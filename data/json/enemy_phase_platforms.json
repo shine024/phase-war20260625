@@ -1,0 +1,478 @@
+{
+  "schema_version": 1,
+  "source": "data/enemy_phase_equipment.gd",
+  "key": "WAR_PLATFORMS",
+  "data": {
+    "steel_fortress_basic": {
+      "id": "steel_fortress_basic",
+      "name": "【钢铁·基础】要塞固定炮平台",
+      "faction": "steel",
+      "level": 5,
+      "type": "fortress",
+      "default_weapon": "steel_machinegun_basic",
+      "stats": {
+        "hp": 1500,
+        "attack": 80,
+        "defense": 100,
+        "move_speed": 20,
+        "attack_speed": 1.0
+      },
+      "special": [
+        "stationary",
+        "high_defense"
+      ]
+    },
+    "steel_titan_basic": {
+      "id": "steel_titan_basic",
+      "name": "【钢铁·基础】马克V型坦克平台",
+      "faction": "steel",
+      "level": 5,
+      "type": "titan",
+      "default_weapon": "steel_cannon_basic",
+      "stats": {
+        "hp": 1200,
+        "attack": 100,
+        "defense": 80,
+        "move_speed": 35,
+        "attack_speed": 0.9
+      },
+      "special": [
+        "heavy_armor",
+        "slow_but_strong"
+      ]
+    },
+    "steel_fortress_advanced": {
+      "id": "steel_fortress_advanced",
+      "name": "【钢铁·进阶】要塞固定炮平台",
+      "faction": "steel",
+      "level": 12,
+      "type": "fortress",
+      "default_weapon": "steel_minigun_advanced",
+      "stats": {
+        "hp": 2500,
+        "attack": 150,
+        "defense": 180,
+        "move_speed": 15,
+        "attack_speed": 0.8
+      },
+      "special": [
+        "stationary",
+        "artillery_support"
+      ]
+    },
+    "steel_titan_advanced": {
+      "id": "steel_titan_advanced",
+      "name": "【钢铁·进阶】马克V型坦克平台",
+      "faction": "steel",
+      "level": 12,
+      "type": "titan",
+      "default_weapon": "steel_railcannon_advanced",
+      "stats": {
+        "hp": 2000,
+        "attack": 180,
+        "defense": 140,
+        "move_speed": 30,
+        "attack_speed": 0.85
+      },
+      "special": [
+        "heavy_armor",
+        "regeneration"
+      ]
+    },
+    "steel_fortress_expert": {
+      "id": "steel_fortress_expert",
+      "name": "【钢铁·专家】要塞固定炮平台",
+      "faction": "steel",
+      "level": 18,
+      "type": "fortress",
+      "default_weapon": "steel_gatling_expert",
+      "stats": {
+        "hp": 4000,
+        "attack": 250,
+        "defense": 250,
+        "move_speed": 10,
+        "attack_speed": 0.7
+      },
+      "special": [
+        "stationary",
+        "fortress_mode",
+        "repair_aura"
+      ]
+    },
+    "steel_titan_expert": {
+      "id": "steel_titan_expert",
+      "name": "【钢铁·专家】马克V型坦克平台",
+      "faction": "steel",
+      "level": 18,
+      "type": "titan",
+      "default_weapon": "steel_artillery_expert",
+      "stats": {
+        "hp": 3500,
+        "attack": 300,
+        "defense": 200,
+        "move_speed": 25,
+        "attack_speed": 0.8
+      },
+      "special": [
+        "heavy_armor",
+        "adaptive_defense"
+      ]
+    },
+    "flame_raider_basic": {
+      "id": "flame_raider_basic",
+      "name": "【烈焰·基础】BA-64轻型突击车平台",
+      "faction": "flame",
+      "level": 6,
+      "type": "raider",
+      "default_weapon": "flame_thrower_basic",
+      "stats": {
+        "hp": 900,
+        "attack": 120,
+        "defense": 40,
+        "move_speed": 60,
+        "attack_speed": 1.2
+      },
+      "special": [
+        "fast_attack",
+        "burning_touch"
+      ]
+    },
+    "flame_siege_basic": {
+      "id": "flame_siege_basic",
+      "name": "【烈焰·基础】203毫米迫击炮平台",
+      "faction": "flame",
+      "level": 6,
+      "type": "siege",
+      "default_weapon": "incendiary_mortar_basic",
+      "stats": {
+        "hp": 1100,
+        "attack": 150,
+        "defense": 60,
+        "move_speed": 25,
+        "attack_speed": 0.7
+      },
+      "special": [
+        "explosive_attack",
+        "area_damage"
+      ]
+    },
+    "flame_raider_advanced": {
+      "id": "flame_raider_advanced",
+      "name": "【烈焰·进阶】BA-64轻型突击车平台",
+      "faction": "flame",
+      "level": 13,
+      "type": "raider",
+      "default_weapon": "flame_thrower_advanced",
+      "stats": {
+        "hp": 1400,
+        "attack": 200,
+        "defense": 50,
+        "move_speed": 70,
+        "attack_speed": 1.4
+      },
+      "special": [
+        "fast_attack",
+        "flame_trail"
+      ]
+    },
+    "flame_siege_advanced": {
+      "id": "flame_siege_advanced",
+      "name": "【烈焰·进阶】203毫米迫击炮平台",
+      "faction": "flame",
+      "level": 13,
+      "type": "siege",
+      "default_weapon": "incendiary_cannon_advanced",
+      "stats": {
+        "hp": 1800,
+        "attack": 250,
+        "defense": 80,
+        "move_speed": 20,
+        "attack_speed": 0.6
+      },
+      "special": [
+        "explosive_attack",
+        "incendiary_mortar"
+      ]
+    },
+    "thunter_striker_basic": {
+      "id": "thunter_striker_basic",
+      "name": "雷霆打击者·基础",
+      "faction": "thunder",
+      "level": 7,
+      "type": "striker",
+      "default_weapon": "tesla_coil_basic",
+      "stats": {
+        "hp": 800,
+        "attack": 140,
+        "defense": 35,
+        "move_speed": 65,
+        "attack_speed": 1.5
+      },
+      "special": [
+        "lightning_attack",
+        "critical_boost"
+      ]
+    },
+    "thunter_sniper_basic": {
+      "id": "thunter_sniper_basic",
+      "name": "雷霆狙击手·基础",
+      "faction": "thunder",
+      "level": 7,
+      "type": "sniper",
+      "default_weapon": "railgun_basic",
+      "stats": {
+        "hp": 600,
+        "attack": 200,
+        "defense": 20,
+        "move_speed": 30,
+        "attack_speed": 0.5
+      },
+      "special": [
+        "long_range",
+        "precision_strike"
+      ]
+    },
+    "void_stealth_basic": {
+      "id": "void_stealth_basic",
+      "name": "虚空潜行者·基础",
+      "faction": "void",
+      "level": 8,
+      "type": "stealth",
+      "default_weapon": "void_lance_basic",
+      "stats": {
+        "hp": 700,
+        "attack": 130,
+        "defense": 30,
+        "move_speed": 80,
+        "attack_speed": 1.3
+      },
+      "special": [
+        "invisibility",
+        "backstab"
+      ]
+    },
+    "void_mage_basic": {
+      "id": "void_mage_basic",
+      "name": "虚空法师·基础",
+      "faction": "void",
+      "level": 8,
+      "type": "mage",
+      "default_weapon": "gravity_well_basic",
+      "stats": {
+        "hp": 650,
+        "attack": 180,
+        "defense": 25,
+        "move_speed": 35,
+        "attack_speed": 0.8
+      },
+      "special": [
+        "void_magic",
+        "entropy_spells"
+      ]
+    },
+    "flame_raider_expert": {
+      "id": "flame_raider_expert",
+      "name": "【烈焰·专家】BA-64轻型突击车平台",
+      "faction": "flame",
+      "level": 19,
+      "type": "raider",
+      "default_weapon": "flame_thrower_expert",
+      "stats": {
+        "hp": 2000,
+        "attack": 320,
+        "defense": 60,
+        "move_speed": 80,
+        "attack_speed": 1.6
+      },
+      "special": [
+        "fast_attack",
+        "flame_trail",
+        "burning_fury"
+      ]
+    },
+    "flame_siege_expert": {
+      "id": "flame_siege_expert",
+      "name": "【烈焰·专家】203毫米迫击炮平台",
+      "faction": "flame",
+      "level": 19,
+      "type": "siege",
+      "default_weapon": "plasma_cannon_expert",
+      "stats": {
+        "hp": 2800,
+        "attack": 380,
+        "defense": 90,
+        "move_speed": 18,
+        "attack_speed": 0.5
+      },
+      "special": [
+        "explosive_attack",
+        "incendiary_mortar",
+        "heat_wave_aura"
+      ]
+    },
+    "thunter_striker_advanced": {
+      "id": "thunter_striker_advanced",
+      "name": "雷霆打击者·进阶",
+      "faction": "thunder",
+      "level": 14,
+      "type": "striker",
+      "default_weapon": "tesla_coil_advanced",
+      "stats": {
+        "hp": 1200,
+        "attack": 220,
+        "defense": 50,
+        "move_speed": 75,
+        "attack_speed": 1.8
+      },
+      "special": [
+        "lightning_attack",
+        "critical_boost",
+        "static_discharge"
+      ]
+    },
+    "thunter_sniper_advanced": {
+      "id": "thunter_sniper_advanced",
+      "name": "雷霆狙击手·进阶",
+      "faction": "thunder",
+      "level": 14,
+      "type": "sniper",
+      "default_weapon": "railgun_advanced",
+      "stats": {
+        "hp": 900,
+        "attack": 320,
+        "defense": 30,
+        "move_speed": 35,
+        "attack_speed": 0.4
+      },
+      "special": [
+        "long_range",
+        "precision_strike",
+        "armor_pierce"
+      ]
+    },
+    "thunter_striker_expert": {
+      "id": "thunter_striker_expert",
+      "name": "雷霆打击者·专家",
+      "faction": "thunder",
+      "level": 20,
+      "type": "striker",
+      "default_weapon": "tesla_coil_expert",
+      "stats": {
+        "hp": 1800,
+        "attack": 350,
+        "defense": 65,
+        "move_speed": 85,
+        "attack_speed": 2.0
+      },
+      "special": [
+        "lightning_attack",
+        "critical_boost",
+        "storm_dash",
+        "chain_strike"
+      ]
+    },
+    "thunter_sniper_expert": {
+      "id": "thunter_sniper_expert",
+      "name": "雷霆狙击手·专家",
+      "faction": "thunder",
+      "level": 20,
+      "type": "sniper",
+      "default_weapon": "railgun_expert",
+      "stats": {
+        "hp": 1300,
+        "attack": 500,
+        "defense": 40,
+        "move_speed": 40,
+        "attack_speed": 0.3
+      },
+      "special": [
+        "long_range",
+        "precision_strike",
+        "headshot",
+        "railgun_support"
+      ]
+    },
+    "void_stealth_advanced": {
+      "id": "void_stealth_advanced",
+      "name": "虚空潜行者·进阶",
+      "faction": "void",
+      "level": 15,
+      "type": "stealth",
+      "default_weapon": "void_lance_advanced",
+      "stats": {
+        "hp": 1100,
+        "attack": 200,
+        "defense": 45,
+        "move_speed": 95,
+        "attack_speed": 1.5
+      },
+      "special": [
+        "invisibility",
+        "backstab",
+        "phase_shift"
+      ]
+    },
+    "void_mage_advanced": {
+      "id": "void_mage_advanced",
+      "name": "虚空法师·进阶",
+      "faction": "void",
+      "level": 15,
+      "type": "mage",
+      "default_weapon": "gravity_well_advanced",
+      "stats": {
+        "hp": 1000,
+        "attack": 280,
+        "defense": 35,
+        "move_speed": 40,
+        "attack_speed": 0.7
+      },
+      "special": [
+        "void_magic",
+        "entropy_spells",
+        "dimensional_rift"
+      ]
+    },
+    "void_stealth_expert": {
+      "id": "void_stealth_expert",
+      "name": "虚空潜行者·专家",
+      "faction": "void",
+      "level": 21,
+      "type": "stealth",
+      "default_weapon": "void_lance_expert",
+      "stats": {
+        "hp": 1600,
+        "attack": 320,
+        "defense": 60,
+        "move_speed": 110,
+        "attack_speed": 1.8
+      },
+      "special": [
+        "invisibility",
+        "backstab",
+        "shadow_step",
+        "reality_tear"
+      ]
+    },
+    "void_mage_expert": {
+      "id": "void_mage_expert",
+      "name": "虚空法师·专家",
+      "faction": "void",
+      "level": 21,
+      "type": "mage",
+      "default_weapon": "entropy_caster_expert",
+      "stats": {
+        "hp": 1500,
+        "attack": 420,
+        "defense": 50,
+        "move_speed": 45,
+        "attack_speed": 0.6
+      },
+      "special": [
+        "void_magic",
+        "entropy_spells",
+        "gravity_control",
+        "black_hole_mini"
+      ]
+    }
+  }
+}

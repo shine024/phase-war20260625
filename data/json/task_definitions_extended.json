@@ -1,0 +1,459 @@
+{
+  "schema_version": 1,
+  "source": "data/task_definitions_extended.gd",
+  "key": "EXTENDED_TASKS",
+  "data": {
+    "story_chapter_1": {
+      "id": "story_chapter_1",
+      "name": "第一章：觉醒",
+      "description": "完成第一章的所有任务",
+      "type": "main_story",
+      "chapter": 1,
+      "objectives": [
+        {
+          "type": "win_battles",
+          "target": 5
+        },
+        {
+          "type": "reach_level",
+          "target": 10
+        },
+        {
+          "type": "collect_equipment",
+          "target": 3
+        }
+      ],
+      "rewards": [
+        {
+          "type": "experience",
+          "amount": 500
+        },
+        {
+          "type": "basic_nano",
+          "amount": 2000
+        },
+        {
+          "type": "card",
+          "card_id": "story_reward_1"
+        }
+      ],
+      "sort_order": 1
+    },
+    "story_chapter_2": {
+      "id": "story_chapter_2",
+      "name": "第二章：挑战",
+      "description": "完成第二章的所有任务",
+      "type": "main_story",
+      "chapter": 2,
+      "prerequisites": [
+        "story_chapter_1"
+      ],
+      "objectives": [
+        {
+          "type": "defeat_masters",
+          "target": 3
+        },
+        {
+          "type": "enhance_cards",
+          "target": 5
+        },
+        {
+          "type": "reach_level",
+          "target": 20
+        }
+      ],
+      "rewards": [
+        {
+          "type": "experience",
+          "amount": 1000
+        },
+        {
+          "type": "basic_nano",
+          "amount": 5000
+        },
+        {
+          "type": "blueprint_fragment",
+          "fragment_id": "epic_fragment",
+          "amount": 3
+        }
+      ],
+      "sort_order": 2
+    },
+    "daily_battle_master": {
+      "id": "daily_battle_master",
+      "name": "战斗大师",
+      "description": "每天赢得5场战斗",
+      "type": "daily",
+      "objectives": [
+        {
+          "type": "win_battles",
+          "target": 5
+        }
+      ],
+      "rewards": [
+        {
+          "type": "basic_nano",
+          "amount": 300
+        },
+        {
+          "type": "experience",
+          "amount": 100
+        }
+      ],
+      "difficulty": "normal",
+      "sort_order": 102
+    },
+    "daily_resource_collector": {
+      "id": "daily_resource_collector",
+      "name": "资源收集者",
+      "description": "每天收集10000基础纳米颗粒",
+      "type": "daily",
+      "objectives": [
+        {
+          "type": "collect_resources",
+          "resource_type": "basic_nano",
+          "target": 10000
+        }
+      ],
+      "rewards": [
+        {
+          "type": "energy_block",
+          "amount": 200
+        }
+      ],
+      "difficulty": "easy",
+      "sort_order": 103
+    },
+    "daily_enhancer": {
+      "id": "daily_enhancer",
+      "name": "强化专家",
+      "description": "每天强化3张卡牌",
+      "type": "daily",
+      "objectives": [
+        {
+          "type": "enhance_cards",
+          "target": 3
+        }
+      ],
+      "rewards": [
+        {
+          "type": "basic_nano",
+          "amount": 250
+        },
+        {
+          "type": "blueprint_fragment",
+          "fragment_id": "common_fragment",
+          "amount": 2
+        }
+      ],
+      "difficulty": "normal",
+      "sort_order": 104
+    },
+    "daily_speedrunner": {
+      "id": "daily_speedrunner",
+      "name": "速度之星",
+      "description": "在120秒内赢得一场战斗",
+      "type": "daily",
+      "objectives": [
+        {
+          "type": "win_battle_fast",
+          "target": 120
+        }
+      ],
+      "rewards": [
+        {
+          "type": "experience",
+          "amount": 150
+        }
+      ],
+      "difficulty": "hard",
+      "sort_order": 105
+    },
+    "daily_perfect": {
+      "id": "daily_perfect",
+      "name": "完美主义",
+      "description": "无伤赢得一场战斗",
+      "type": "daily",
+      "objectives": [
+        {
+          "type": "win_battle_no_damage",
+          "target": 1
+        }
+      ],
+      "rewards": [
+        {
+          "type": "basic_nano",
+          "amount": 500
+        }
+      ],
+      "difficulty": "expert",
+      "sort_order": 106
+    },
+    "weekly_battle_veteran": {
+      "id": "weekly_battle_veteran",
+      "name": "战斗老兵",
+      "description": "本周赢得50场战斗",
+      "type": "weekly",
+      "objectives": [
+        {
+          "type": "win_battles",
+          "target": 50
+        }
+      ],
+      "rewards": [
+        {
+          "type": "basic_nano",
+          "amount": 5000
+        },
+        {
+          "type": "experience",
+          "amount": 1000
+        }
+      ],
+      "difficulty": "normal",
+      "sort_order": 201
+    },
+    "weekly_collector": {
+      "id": "weekly_collector",
+      "name": "收藏家",
+      "description": "本周收集20张不同的卡牌",
+      "type": "weekly",
+      "objectives": [
+        {
+          "type": "collect_cards",
+          "target": 20
+        }
+      ],
+      "rewards": [
+        {
+          "type": "card",
+          "card_id": "rare_card_pack"
+        }
+      ],
+      "difficulty": "normal",
+      "sort_order": 202
+    },
+    "weekly_enhancement_master": {
+      "id": "weekly_enhancement_master",
+      "name": "强化大师",
+      "description": "本周强化30张卡牌",
+      "type": "weekly",
+      "objectives": [
+        {
+          "type": "enhance_cards",
+          "target": 30
+        }
+      ],
+      "rewards": [
+        {
+          "type": "basic_nano",
+          "amount": 3000
+        },
+        {
+          "type": "blueprint_fragment",
+          "fragment_id": "rare_fragment",
+          "amount": 5
+        }
+      ],
+      "difficulty": "hard",
+      "sort_order": 203
+    },
+    "challenge_untouchable": {
+      "id": "challenge_untouchable",
+      "name": "不可触碰",
+      "description": "连续5场战斗不受到伤害",
+      "type": "challenge",
+      "objectives": [
+        {
+          "type": "win_battle_no_damage",
+          "target": 5
+        }
+      ],
+      "rewards": [
+        {
+          "type": "basic_nano",
+          "amount": 10000
+        },
+        {
+          "type": "card",
+          "card_id": "legendary_card_02"
+        }
+      ],
+      "difficulty": "legendary",
+      "sort_order": 301
+    },
+    "challenge_speed_demon": {
+      "id": "challenge_speed_demon",
+      "name": "速度恶魔",
+      "description": "在60秒内赢得一场战斗",
+      "type": "challenge",
+      "objectives": [
+        {
+          "type": "win_battle_fast",
+          "target": 60
+        }
+      ],
+      "rewards": [
+        {
+          "type": "experience",
+          "amount": 500
+        },
+        {
+          "type": "basic_nano",
+          "amount": 2000
+        }
+      ],
+      "difficulty": "expert",
+      "sort_order": 302
+    },
+    "challenge_hoarder": {
+      "id": "challenge_hoarder",
+      "name": "囤积者",
+      "description": "同时拥有50000基础纳米颗粒",
+      "type": "challenge",
+      "objectives": [
+        {
+          "type": "collect_resources",
+          "resource_type": "basic_nano",
+          "target": 50000
+        }
+      ],
+      "rewards": [
+        {
+          "type": "energy_block",
+          "amount": 1000
+        }
+      ],
+      "difficulty": "normal",
+      "sort_order": 303
+    },
+    "achievement_task_master": {
+      "id": "achievement_task_master",
+      "name": "任务大师",
+      "description": "完成100个任务",
+      "type": "achievement",
+      "objectives": [
+        {
+          "type": "complete_tasks",
+          "target": 100
+        }
+      ],
+      "rewards": [
+        {
+          "type": "basic_nano",
+          "amount": 50000
+        },
+        {
+          "type": "card",
+          "card_id": "achievement_reward_card"
+        }
+      ],
+      "difficulty": "legendary",
+      "sort_order": 401
+    },
+    "achievement_daily_streak": {
+      "id": "achievement_daily_streak",
+      "name": "坚持不懈",
+      "description": "连续7天完成每日任务",
+      "type": "achievement",
+      "objectives": [
+        {
+          "type": "daily_streak",
+          "target": 7
+        }
+      ],
+      "rewards": [
+        {
+          "type": "basic_nano",
+          "amount": 10000
+        },
+        {
+          "type": "experience",
+          "amount": 2000
+        }
+      ],
+      "difficulty": "hard",
+      "sort_order": 402
+    },
+    "side_blacksmith": {
+      "id": "side_blacksmith",
+      "name": "铁匠的请求",
+      "description": "为铁匠收集10份蓝图库储备（解析份，与战备卡同源）",
+      "type": "side_quest",
+      "objectives": [
+        {
+          "type": "collect_resources",
+          "resource_type": "blueprint_fragment",
+          "target": 10
+        }
+      ],
+      "rewards": [
+        {
+          "type": "basic_nano",
+          "amount": 1000
+        },
+        {
+          "type": "experience",
+          "amount": 200
+        }
+      ],
+      "difficulty": "easy",
+      "prerequisites": [
+        "main_002"
+      ],
+      "sort_order": 51
+    },
+    "side_merchant": {
+      "id": "side_merchant",
+      "name": "商人的贸易",
+      "description": "与商人交易10次",
+      "type": "side_quest",
+      "objectives": [
+        {
+          "type": "shop_transactions",
+          "target": 10
+        }
+      ],
+      "rewards": [
+        {
+          "type": "experience",
+          "amount": 300
+        },
+        {
+          "type": "card",
+          "card_id": "merchant_reward"
+        }
+      ],
+      "difficulty": "normal",
+      "prerequisites": [
+        "main_002"
+      ],
+      "sort_order": 52
+    },
+    "repeatable_battle_practice": {
+      "id": "repeatable_battle_practice",
+      "name": "战斗练习",
+      "description": "完成3场战斗",
+      "type": "repeatable",
+      "objectives": [
+        {
+          "type": "win_battles",
+          "target": 3
+        }
+      ],
+      "rewards": [
+        {
+          "type": "basic_nano",
+          "amount": 100
+        },
+        {
+          "type": "experience",
+          "amount": 50
+        }
+      ],
+      "difficulty": "easy",
+      "cooldown": 3600,
+      "sort_order": 500
+    }
+  }
+}

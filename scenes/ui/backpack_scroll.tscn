@@ -1,0 +1,11 @@
+[gd_scene load_steps=2 format=3 uid="uid://backpack_scroll"]
+
+[ext_resource type="Script" path="res://scenes/ui/backpack_scroll.gd" id="1_script"]
+
+[node name="BackpackScroll" type="ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 2
+script = ExtResource("1_script")

@@ -1,0 +1,94 @@
+# ═══════════════════════════════════════
+# Godot 4 — phase-war .gitignore
+# ═══════════════════════════════════════
+
+# ── Godot 引擎生成 ──
+.godot/
+
+# ── 构建产物 ──
+build/
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+*.app
+
+# ── 导出预设（含密钥，不应提交）──
+export_presets.cfg
+
+# ── IDE / 编辑器 ──
+.vs/
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+
+# ── OS 生成文件 ──
+.DS_Store
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+$RECYCLE.BIN/
+
+# ── Claude Code 本地配置 ──
+.claude/settings.local.json
+.claude/agent-memory/
+CLAUDE.local.md
+
+# ── 内部规划文档（不公开）──
+expansions/
+production/session-logs/
+
+# ── 自动生成的文档 ──
+docs/consistency-failures.md
+
+# ── 临时文件和缓存 ──
+*.tmp
+*.temp
+*.cache
+*.log
+*.stackdump
+PixPin_*.mp4
+__pycache__/
+*.pyc
+node_modules/
+.deepvcode/
+
+# ── 压缩包 ──
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# ── 二进制资源文件（图片、音频、视频，不通过 Git 管理）──
+# 图片
+*.png
+*.jpg
+*.jpeg
+*.svg
+*.bmp
+*.webp
+*.tga
+*.exr
+*.hdr
+*.gif
+*.ico
+*.dds
+# 音频
+*.mp3
+*.wav
+*.ogg
+*.flac
+# Godot 导入缓存（会自动重新生成）
+*.import
+
+# ── 密钥和环境变量 ──
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+credentials.json
+secrets.json

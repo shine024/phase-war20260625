@@ -1,0 +1,215 @@
+[gd_scene load_steps=8 format=3 uid="uid://b8v77j6hjdmyi"]
+
+[ext_resource type="Script" uid="uid://ck6w6d2kn2b6u" path="res://scenes/ui/backpack_panel.gd" id="1_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg"]
+bg_color = Color(0.04, 0.07, 0.12, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0, 0.941, 1, 0.5)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0, 0.941, 1, 0.2)
+shadow_size = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slot"]
+bg_color = Color(0.06, 0.1, 0.16, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.3, 0.4, 0.5, 0.5)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slot_hover"]
+bg_color = Color(0, 0.941, 1, 0.1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0, 0.941, 1, 0.6)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_close_btn"]
+bg_color = Color(0.545, 0.361, 0.965, 0.15)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.545, 0.361, 0.965, 0.6)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_title_sep"]
+bg_color = Color(0, 0.941, 1, 0.15)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_popup"]
+bg_color = Color(0.04, 0.07, 0.12, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0, 0.941, 1, 0.5)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+shadow_color = Color(0, 0.941, 1, 0.2)
+shadow_size = 8
+
+[node name="BackpackPanel" type="PanelContainer"]
+custom_minimum_size = Vector2(1000, 520)
+layout_mode = 2
+script = ExtResource("1_script")
+theme_override_styles/panel = SubResource("StyleBoxFlat_bg")
+
+[node name="VBoxOuter" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/separation = 0
+
+[node name="TitleRow" type="HBoxContainer" parent="VBoxOuter"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 36)
+theme_override_constants/separation = 8
+
+[node name="TitleLabel" type="Label" parent="VBoxOuter/TitleRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0, 0.941, 1, 1)
+theme_override_font_sizes/font_size = 15
+text = "🎒 背包"
+
+[node name="CloseButton" type="Button" parent="VBoxOuter/TitleRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(60, 32)
+theme_override_colors/font_color = Color(1, 1, 1, 0.85)
+theme_override_colors/font_hover_color = Color(0, 0.941, 1, 1)
+theme_override_font_sizes/font_size = 13
+theme_override_styles/normal = SubResource("StyleBoxFlat_close_btn")
+text = "关闭"
+
+[node name="TitleSep" type="PanelContainer" parent="VBoxOuter"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 1)
+theme_override_styles/panel = SubResource("StyleBoxFlat_title_sep")
+
+[node name="ScrollContainer" type="ScrollContainer" parent="VBoxOuter"]
+clip_contents = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 2
+follow_focus = false
+
+[node name="CardGrid" type="GridContainer" parent="VBoxOuter/ScrollContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 0)
+size_flags_horizontal = 3
+size_flags_vertical = 0
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+columns = 17
+
+[node name="CardDetailPopup" type="PopupPanel" parent="."]
+size = Vector2i(320, 380)
+theme_override_colors/title_color = Color(0, 0.941, 1, 1)
+theme_override_styles/panel = SubResource("StyleBoxFlat_popup")
+
+[node name="Margin" type="MarginContainer" parent="CardDetailPopup"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 2.0
+offset_top = 2.0
+offset_right = 318.0
+offset_bottom = 378.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 14
+
+[node name="VBox" type="VBoxContainer" parent="CardDetailPopup/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Header" type="HBoxContainer" parent="CardDetailPopup/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="NameLabel" type="Label" parent="CardDetailPopup/Margin/VBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0, 0.941, 1, 1)
+theme_override_font_sizes/font_size = 18
+text = ""
+
+[node name="CostLabel" type="Label" parent="CardDetailPopup/Margin/VBox/Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.6, 0.1, 1)
+theme_override_font_sizes/font_size = 16
+text = ""
+horizontal_alignment = 2
+
+[node name="LevelLabel" type="Label" parent="CardDetailPopup/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.85, 1, 1)
+theme_override_font_sizes/font_size = 13
+text = ""
+
+[node name="TypeLineLabel" type="Label" parent="CardDetailPopup/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.545, 0.361, 0.965, 1)
+theme_override_font_sizes/font_size = 14
+text = ""
+
+[node name="SummaryLabel" type="Label" parent="CardDetailPopup/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.75, 0.85, 1)
+theme_override_font_sizes/font_size = 13
+text = ""
+
+[node name="HSeparator" type="HSeparator" parent="CardDetailPopup/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="DescLabel" type="Label" parent="CardDetailPopup/Margin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.8, 0.82, 0.9, 1)
+theme_override_font_sizes/font_size = 13
+text = ""
+autowrap_mode = 2
+
+[node name="FlavorLabel" type="Label" parent="CardDetailPopup/Margin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 1)
+theme_override_font_sizes/font_size = 12
+text = ""
+autowrap_mode = 2
+
+[node name="CloseButton" type="Button" parent="CardDetailPopup/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(0.545, 0.361, 0.965, 1)
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBoxFlat_close_btn")
+text = "关闭"

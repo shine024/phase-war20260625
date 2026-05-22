@@ -1,0 +1,356 @@
+extends Node2D
+## 敌方相位场驱动器：相位师基地，被摧毁则玩家胜利；持续生产敌方单位
+## 使用 EnemyPhaseMasters 的装备数据（平台/武器）生成 ConstructUnit
+
+const GC = preload("res://resources/game_constants.gd")
+const EnemyPhaseEquipment = preload("res://data/enemy_phase_equipment.gd")
+const EnemyPhaseMasters = preload("res://data/enemy_phase_masters.gd")
+const UnitStatsTable = preload("res://resources/unit_stats_table.gd")
+const ConstructUnitScene = preload("res://scenes/units/construct_unit.tscn")
+const EnemyUnitScene = preload("res://scenes/units/enemy_unit.tscn")
+const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
+const EnemyStatResolver = preload("res://data/enemy_stat_resolver.gd")
+const BattleSlotGrid = preload("res://scenes/battlefield/battle_slot_grid.gd")
+
+## 兜底：EnemyArchetypes 生成（当没有装备数据时使用）
+const USE_FALLBACK_SPAWN: bool = true
+## 与 EnemyUnit 视觉一致：用 archetype 的 visual_scale × 典型精灵帧边长，再按整张贴图缩放到同量级
+const _PHASE_BODY_REFERENCE_FRAME_PX: float = 256.0
+## 与 enemy_unit.gd 中 MAX_ENEMY_VISUAL_EXTENT_PX 对齐（底座略大可等同上限）
+const _PHASE_BODY_MAX_EXTENT_PX: float = 220.0
+
+@export var max_hp: float = 500.0
+@export var spawn_interval: float = 6.0
+@export var rotate_speed_deg: float = -30.0
+
+var hp: float = 500.0
+var master_name: String = "相位师"
+var era: int = 4
+@onready var _body: Node2D = $Body
+
+var _spawn_timer: float = 0.0
+var _battle_active: bool = false
+
+## 装备数据（从 EnemyPhaseMasters 配置传入）
+var _equipment: Dictionary = {}
+var _master_stats: Dictionary = {}
+var _unit_limit: int = 5
+var _has_equipment: bool = false
+
+## 平台类型字符串 -> GC.PlatformType 映射
+const _PLATFORM_TYPE_MAP: Dictionary = {
+	"fortress": GC.PlatformType.FORTRESS,
+	"titan": GC.PlatformType.TITAN,
+	"raider": GC.PlatformType.RAIDER,
+	"siege": GC.PlatformType.SIEGE,
+	"striker": GC.PlatformType.HOUND,
+	"sniper": GC.PlatformType.SCOUT,
+	"stealth": GC.PlatformType.STEALTH,
+	"mage": GC.PlatformType.GUARD,
+}
+
+## 武器类型字符串 -> GC.WeaponType 映射
+## 取最接近的 GC 类型（部分敌方武器无精确对应）
+const _WEAPON_TYPE_MAP: Dictionary = {
+	"machinegun": GC.WeaponType.MG,
+	"minigun": GC.WeaponType.MG,
+	"machinegun_advanced": GC.WeaponType.MG,
+	"cannon": GC.WeaponType.ROCKET,
+	"railcannon": GC.WeaponType.RAIL_CANNON,
+	"flamethrower": GC.WeaponType.SHOTGUN,
+	"mortar": GC.WeaponType.ROCKET,
+	"tesla": GC.WeaponType.MG,
+	"railgun": GC.WeaponType.RAIL_CANNON,
+	"lance": GC.WeaponType.RIFLE,
+	"gravity": GC.WeaponType.SNIPER,
+}
+const _ERA_VISUAL_ARCHETYPES: Dictionary = {
+	0: ["enemy_ww1_infantry_basic", "elite_ww1_armored", "enemy_ww1_mg_nest", "enemy_ww1_mortar"],
+	1: ["enemy_ww2_infantry", "elite_ww2_panther", "enemy_ww2_mg42", "enemy_ww2_panzerschreck"],
+	2: ["enemy_cold_ak", "enemy_cold_btr", "enemy_cold_m113", "enemy_cold_m60"],
+	3: ["enemy_modern_marine", "enemy_modern_stryker", "enemy_modern_mlrs", "enemy_modern_technical"],
+	4: ["enemy_future_cyborg", "enemy_future_hovertank", "enemy_future_mech", "enemy_future_drone"],
+}
+
+func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_PAUSABLE
+
+func setup(master_config: Dictionary) -> void:
+	stop_production()
+	master_name = master_config.get("name", "相位师")
+	var era_override: String = String(master_config.get("era", ""))
+	if not era_override.is_empty():
+		era = _era_string_to_int(era_override)
+	else:
+		era = _era_from_level(int(master_config.get("level", 15)))
+
+	## 尝试获取装备数据
+	_equipment = master_config.get("equipment", {})
+	_master_stats = master_config.get("stats", {})
+	_unit_limit = int(_master_stats.get("unit_limit", 5))
+
+	if not _equipment.is_empty() and _equipment.has("platforms") and _equipment.has("weapons"):
+		_has_equipment = true
+		## 使用相位师的属性设定基地 HP
+		max_hp = float(_master_stats.get("max_hp", 300.0 + era * 80.0))
+		## 能量恢复越高，出兵越快（基础间隔6秒，最低3秒）
+		var energy_regen: float = float(_master_stats.get("energy_regen", 2.0))
+		spawn_interval = maxf(3.0, 8.0 - energy_regen * 1.0)
+	else:
+		_has_equipment = false
+		max_hp = 300.0 + era * 80.0
+		spawn_interval = 6.0
+
+	hp = max_hp
+	add_to_group("enemy_phase_driver")
+	if SignalBus:
+		SignalBus.enemy_phase_driver_hp_changed.emit(hp, max_hp)
+	var mode_str := "装备模式" if _has_equipment else "经典模式"
+	print("[EnemyPhaseDriver] 相位师 %s 基地建立 (HP=%d, era=%d, limit=%d, interval=%.1f) [%s]" \
+		% [master_name, int(max_hp), era, _unit_limit, spawn_interval, mode_str])
+	_apply_body_visual_from_master(master_config)
+
+func _apply_body_visual_from_master(master_config: Dictionary) -> void:
+	var spr := get_node_or_null("Body") as Sprite2D
+	if spr == null:
+		return
+	# 底座在战场右侧，贴图若按「朝右」绘制则需翻转以面向道路 / 我方
+	spr.flip_h = true
+	var ef: String = String(master_config.get("enemy_faction", ""))
+	if ef.is_empty():
+		ef = _player_company_faction_to_enemy_visual_faction(String(master_config.get("faction", "")))
+	var tints: Dictionary = {
+		"steel": Color(0.82, 0.88, 1.0),
+		"flame": Color(1.0, 0.78, 0.72),
+		"thunder": Color(0.88, 0.84, 1.0),
+		"void": Color(0.86, 0.76, 1.0),
+	}
+	spr.modulate = tints.get(ef, Color.WHITE)
+	# 缩放：与当前时代下「默认可用敌方原型」同一套 visual_scale 数据（见 _pick_visual_archetype_for_era）
+	var tex: Texture2D = spr.texture
+	if tex != null:
+		var ref_arch: String = _pick_visual_archetype_for_era(era)
+		var vs: float = 0.4
+		if not ref_arch.is_empty():
+			var cfg_r: Dictionary = EnemyArchetypes.get_config(ref_arch)
+			vs = EnemyArchetypes.get_visual_scale_for_archetype(ref_arch, cfg_r)
+		var tex_max: float = maxf(float(tex.get_width()), float(tex.get_height()))
+		var s: float = (vs * _PHASE_BODY_REFERENCE_FRAME_PX) / maxf(1.0, tex_max)
+		var rendered: float = tex_max * s
+		if rendered > _PHASE_BODY_MAX_EXTENT_PX:
+			s *= _PHASE_BODY_MAX_EXTENT_PX / maxf(1.0, rendered)
+		spr.scale = Vector2(s, s)
+
+
+static func _player_company_faction_to_enemy_visual_faction(company_faction: String) -> String:
+	var m: Dictionary = {
+		"aether_dynamics": "steel",
+		"helix_recon": "thunder",
+		"nova_arms": "flame",
+		"iron_wall_corp": "steel",
+		"void_research": "void",
+		"quantum_logistics": "steel",
+		"frontier_union": "thunder",
+	}
+	return String(m.get(company_faction, company_faction))
+
+func start_production() -> void:
+	if _battle_active:
+		return
+	_battle_active = true
+	_spawn_timer = 3.0  # 首次出兵在3秒后
+
+func stop_production() -> void:
+	_battle_active = false
+
+func _process(delta: float) -> void:
+	if _body != null:
+		_body.rotation += deg_to_rad(rotate_speed_deg) * delta
+	if not _battle_active or not is_inside_tree():
+		return
+	var tree := get_tree()
+	if tree == null or tree.paused:
+		return
+	_spawn_timer += delta
+	if _spawn_timer >= spawn_interval:
+		_spawn_timer = 0.0
+		_produce_unit()
+
+## 从装备数据生成单位（使用 ConstructUnit）
+func _produce_unit_with_equipment() -> void:
+	if not BattleManager:
+		return
+	var current_count: int = BattleManager.get_enemy_unit_count()
+	if current_count >= _unit_limit:
+		return
+
+	var platforms: Array = _equipment.get("platforms", [])
+	var weapons: Array = _equipment.get("weapons", [])
+	if platforms.is_empty():
+		return
+
+	# 验证平台数据有效性（保留所有平台类型，含 striker/sniper/stealth/mage）
+	var valid_platforms: Array = []
+	for pid in platforms:
+		var pdata := EnemyPhaseEquipment.get_war_platform(String(pid))
+		if not pdata.is_empty():
+			valid_platforms.append(String(pid))
+
+	if valid_platforms.is_empty():
+		return
+
+	## 随机选平台
+	var platform_id: String = valid_platforms[randi() % valid_platforms.size()]
+	var platform_data: Dictionary = EnemyPhaseEquipment.get_war_platform(platform_id)
+	if platform_data.is_empty():
+		return
+
+	## 平台卡默认武器（非随机）；表无字段时在装备武器列表中按 id 排序取首项作为确定性回退
+	var wid: String = EnemyPhaseEquipment.get_default_weapon_id_for_platform(platform_id)
+	if wid.is_empty():
+		if weapons.is_empty():
+			return
+		var sorted_w: Array = weapons.duplicate()
+		sorted_w.sort()
+		wid = String(sorted_w[0])
+	var wdata: Dictionary = EnemyPhaseEquipment.get_war_weapon(wid)
+	if wdata.is_empty():
+		return
+	var wt_int: int = _map_weapon_type(wdata.get("type", ""))
+	if wt_int < 0:
+		return
+	var weapon_types: Array = [wt_int]
+
+	## 映射平台类型
+	var platform_type_int: int = _map_platform_type(platform_data.get("type", ""))
+	if platform_type_int < 0:
+		return
+
+	## 构建 UnitStats
+	var stats: UnitStats = UnitStatsTable.build_multi_stats(platform_type_int, weapon_types, era)
+
+	## 用装备数据覆写基础属性（让不同装备的差异化体现）
+	var plat_stats: Dictionary = platform_data.get("stats", {})
+	if not plat_stats.is_empty():
+		stats.max_hp = float(plat_stats.get("hp", stats.max_hp))
+		stats.move_speed = 0.0
+		if plat_stats.has("defense"):
+			stats.defense = float(plat_stats["defense"])
+
+	EnemyStatResolver.apply_phase_master_to_unit_stats(stats, _master_stats)
+	stats.platform_card_id = platform_id
+
+	## 生成 ConstructUnit
+	var unit: Node2D = ConstructUnitScene.instantiate()
+	var visual_archetype_id: String = _pick_visual_archetype_for_era(era)
+	if unit.has_method("setup_with_enemy_visual"):
+		unit.setup_with_enemy_visual(false, stats, visual_archetype_id)
+	else:
+		unit.setup(false, stats)
+	_add_unit_to_battle(unit, current_count)
+
+## 兜底：使用经典 EnemyArchetypes 生成
+func _produce_unit_fallback() -> void:
+	if not BattleManager:
+		return
+	var current_count: int = BattleManager.get_enemy_unit_count()
+	if current_count >= _unit_limit:
+		return
+	var parent = get_parent()
+	if parent == null:
+		return
+	var era_ids: Array = EnemyArchetypes.get_ids_for_era(era)
+	if era_ids.is_empty():
+		return
+	var archetype_id: String = String(era_ids[randi() % era_ids.size()])
+	var wave_idx: int = 0
+	if BattleManager != null and BattleManager.has_method("get_enemy_wave_index"):
+		wave_idx = BattleManager.get_enemy_wave_index()
+	var unit = EnemyUnitScene.instantiate()
+	unit.setup(false, wave_idx, archetype_id)
+	_add_unit_to_battle(unit, current_count)
+
+func _produce_unit() -> void:
+	if _has_equipment:
+		_produce_unit_with_equipment()
+	elif USE_FALLBACK_SPAWN:
+		_produce_unit_fallback()
+
+func _add_unit_to_battle(unit: Node2D, current_count: int) -> void:
+	if BattleManager != null and BattleManager.has_method("spawn_enemy_unit_on_card_grid"):
+		if BattleManager.spawn_enemy_unit_on_card_grid(unit):
+			return
+	var battlefield_node: Node = get_parent()
+	if battlefield_node == null:
+		return
+	var enemy_container: Node = battlefield_node.get_node_or_null("EnemyUnits")
+	if enemy_container == null and BattleManager and "enemy_units_node" in BattleManager:
+		enemy_container = BattleManager.enemy_units_node
+	if enemy_container == null:
+		enemy_container = battlefield_node
+	enemy_container.add_child(unit)
+	var slot_i: int = current_count % BattleSlotGrid.SLOT_COUNT
+	if battlefield_node.has_method("get_card_grid_enemy_slot_global"):
+		unit.global_position = battlefield_node.get_card_grid_enemy_slot_global(slot_i)
+		unit.set_meta("card_grid_enemy_slot", slot_i)
+	elif battlefield_node.has_method("get_enemy_spawn_position_in_lane"):
+		var lane_off: float = float(slot_i) * 18.0 - 72.0
+		unit.global_position = battlefield_node.get_enemy_spawn_position_in_lane(15.0, 10.0) + Vector2(lane_off, 0.0)
+	if unit.has_method("apply_card_grid_enemy_presentation"):
+		unit.apply_card_grid_enemy_presentation()
+	BattleManager.set_enemy_unit_count(current_count + 1)
+	if SignalBus:
+		SignalBus.unit_spawned.emit(unit, false)
+
+func take_damage(amount: float, attacker: Variant = null) -> void:
+	hp -= amount
+	if SignalBus:
+		SignalBus.enemy_phase_driver_hp_changed.emit(maxf(hp, 0.0), max_hp)
+		SignalBus.unit_damaged.emit(self, false, amount, global_position)
+	if hp <= 0:
+		_on_destroyed()
+
+func _on_destroyed() -> void:
+	stop_production()
+	if SignalBus:
+		SignalBus.enemy_phase_driver_destroyed.emit()
+	queue_free()
+
+## 平台类型映射
+static func _map_platform_type(type_str: String) -> int:
+	var result: int = _PLATFORM_TYPE_MAP.get(type_str, -1)
+	if result < 0:
+		result = GC.PlatformType.GUARD
+	return result
+
+## 武器类型映射
+static func _map_weapon_type(type_str: String) -> int:
+	var result: int = _WEAPON_TYPE_MAP.get(type_str, -1)
+	if result < 0:
+		result = GC.WeaponType.MG
+	return result
+
+static func _era_string_to_int(era_str: String) -> int:
+	match era_str:
+		"ww1": return 0
+		"ww2": return 1
+		"cold": return 2
+		"modern": return 3
+		"future", "near_future": return 4
+		_: return 4
+
+## 无显式 era 时按等级推算时代
+## Lv5-9→WW1(0), Lv10-14→WW2(1), Lv15-19→Cold(2), Lv20-24→Modern(3), Lv25+→Future(4)
+static func _era_from_level(level: int) -> int:
+	return clampi(floori(float(maxi(level, 5) - 5) / 5.0), 0, 4)
+
+func _pick_visual_archetype_for_era(target_era: int) -> String:
+	var candidates: Array = _ERA_VISUAL_ARCHETYPES.get(target_era, [])
+	for candidate in candidates:
+		var archetype_id: String = String(candidate)
+		var cfg: Dictionary = EnemyArchetypes.get_config(archetype_id)
+		if cfg.is_empty():
+			continue
+		if not EnemyArchetypes.resolve_card_icon_texture_path(archetype_id, cfg, archetype_id).is_empty():
+			return archetype_id
+	return ""

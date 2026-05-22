@@ -1,0 +1,14 @@
+﻿archive_name,formal_path,kind
+set_c_luxe_common_普通·C华丽典藏.png,assets/cards/frames/common.png,frames
+set_c_luxe_epic_史诗·C华丽典藏.png,assets/cards/frames/epic.png,frames
+set_c_luxe_legendary_传说·C华丽典藏.png,assets/cards/frames/legendary.png,frames
+set_c_luxe_rare_稀有·C华丽典藏.png,assets/cards/frames/rare.png,frames
+set_c_luxe_uncommon_优秀·C华丽典藏.png,assets/cards/frames/uncommon.png,frames
+set_heraldic_v3_bg_aether_dynamics_以太动力·势力底v3纹章.png,assets/cards/backgrounds/bg_aether_dynamics.png,backgrounds
+set_heraldic_v3_bg_frontier_union_边境联合·势力底v3纹章.png,assets/cards/backgrounds/bg_frontier_union.png,backgrounds
+set_heraldic_v3_bg_helix_recon_螺旋侦察·势力底v3纹章.png,assets/cards/backgrounds/bg_helix_recon.png,backgrounds
+set_heraldic_v3_bg_iron_wall_corp_钢壁防务·势力底v3纹章.png,assets/cards/backgrounds/bg_iron_wall_corp.png,backgrounds
+set_heraldic_v3_bg_neutral_无势力底图·势力底v3纹章.png,assets/cards/backgrounds/bg_neutral.png,backgrounds
+set_heraldic_v3_bg_nova_arms_新星兵工·势力底v3纹章.png,assets/cards/backgrounds/bg_nova_arms.png,backgrounds
+set_heraldic_v3_bg_quantum_logistics_量子后勤·势力底v3纹章.png,assets/cards/backgrounds/bg_quantum_logistics.png,backgrounds
+set_heraldic_v3_bg_void_research_虚空相位·势力底v3纹章.png,assets/cards/backgrounds/bg_void_research.png,backgrounds

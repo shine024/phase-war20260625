@@ -1,0 +1,127 @@
+��2026-05 ���¡�����ս���Ӿ��Ѹ�Ϊ�����ſ�ͼ PNG������ EnemyArchetypes.resolve_card_icon_texture_path ������res://assets/card_icons/ �� work_ȫ����ӹ�/ �ȣ�����ɾ�� assets/enemies �� .frames.tres��Sprite Sheet����֡��Ŀ¼�����ٰ��������� SpriteFrames ���˶�����
+
+�Ѱ������˱༭����Ԥ�����ߣ�@tool�������ÿ���Ϸ���ܿ����˶�����
+
+�����ļ�
+scenes/tools/enemy_preview.tscn
+scenes/tools/enemy_preview.gd
+��ô��
+�� Godot ��� scenes/tools/enemy_preview.tscn
+ѡ�и��ڵ� EnemyPreview
+�� Inspector ����Щ�ֶΣ�
+preview_archetype_id������ ID������ enemy_ww1_infantry_basic��
+preview_anim��AUTO / IDLE / RUN / ATTACK
+preview_wave�����Σ�����ֵ����Ч����
+center_position��Ԥ��λ��
+ÿ�θ�ֵ���Զ�ˢ����ʾ������Ҫ������Ϸ
+˵��
+Ԥ��ʹ�������� enemy_unit.tscn + setup() �߼���Ч����ʵսһ�¶ȸߡ�
+�ű����ڱ༭��ģʽ���Զ�ʵ���������ᵥλ�߼���ֻ������������Ԥ����
+��� preview_archetype_id д�������Զ����˵���һ������ ID�������� Inspector ���档
+
+36 ���̶������ļ����嵥
+�㰴����������ȣ�
+
+enemy_ww1_infantry_basic.png
+enemy_ww1_infantry_rifle.png
+enemy_ww1_mg_nest.png
+enemy_ww1_mortar.png
+elite_ww1_storm.png
+elite_ww1_armored.png
+boss_ww1_av7.png
+enemy_ww2_infantry.png
+enemy_ww2_rifleman.png
+enemy_ww2_mg42.png
+enemy_ww2_panzerschreck.png
+elite_ww2_paratrooper.png
+elite_ww2_panther.png
+boss_ww2_kingtiger.png
+enemy_cold_ak.png
+enemy_cold_m60.png
+enemy_cold_btr.png
+enemy_cold_m113.png
+elite_cold_spetsnaz.png
+elite_cold_t72.png
+boss_cold_mig.png
+enemy_modern_marine.png
+enemy_modern_technical.png
+enemy_modern_stryker.png
+enemy_modern_mlrs.png
+elite_modern_delta.png
+elite_modern_abrams.png
+elite_modern_apache.png
+boss_modern_command.png
+enemy_future_drone.png
+enemy_future_cyborg.png
+enemy_future_mech.png
+enemy_future_hovertank.png
+elite_future_spectre.png
+elite_future_colossus.png
+boss_future_nexus.png
+
+�ܺã���һ���Ͱ�����Ŀ����Լ��������
+ÿ������һ�� SpriteFrames ��Դ������Ϊ <archetype_id>.frames.tres��
+
+�����Ŀ��ȡ���򣨹ؼ���
+enemy_unit.gd �����ȶ���
+
+res://assets/enemies/<archetype_id>.frames.tres
+����Ҳ������Ż��˵���̬ͼ��
+������ֻҪ�� .frames.tres �ŵ� assets/enemies ��������ȷ���ͻ��Զ���Ч��
+
+�� Godot �ﵼ�붯��֡�������������̣�
+�� enemy_ww1_infantry_basic Ϊ����
+
+�Ѹõ��˵�����֡ͼ�Ž� res://assets/enemies/enemy_ww1_infantry_basic/
+���磺idle_000.png, idle_001.png...
+���磺run_000.png, run_001.png...
+���磺attack_000.png, attack_001.png...
+�½� SpriteFrames ��Դ
+���ļ�ϵͳ�Ҽ� assets/enemies -> New Resource -> SpriteFrames
+����Ϊ enemy_ww1_infantry_basic.frames.tres
+˫������� .frames.tres�����Ӷ��������
+idle
+run
+attack
+�ֱ�Ѷ�ӦͼƬ����ÿ��������������� FPS ��ѭ����
+idle: ѭ��
+run: ѭ��
+attack: ͨ����ѭ���������������
+���棬����Ϸ���Ըõ��˶����л�
+��������һ�£��ǳ���Ҫ��
+�������Ĭ�϶������ǣ�
+
+anim_idle = "idle"
+anim_move = "run"
+anim_attack = "attack"
+���� SpriteFrames ��Ķ�������Ҫ���� 3 ��һ�¡�
+������Ქ�Ų�����Ӧ����������ֻ��ʾĳ��Ĭ�϶�����
+
+�����������飨36 ���̶����ˣ�
+ͳһĿ¼�ṹ��assets/enemies/<id>/...֡ͼ...
+ͳһ��Դ������assets/enemies/<id>.frames.tres
+ͳһ��������idle/run/attack
+���� 1 ��ģ����ˣ�ȷ��������ȷ�����������Ƹ�֡����죩
+�����Ҫ���ҿ�����һ��ֱ�Ӹ���һ����������嵥��36 �� ID ��Щ���� .frames.tres����Щȱʧ����Щ��������������������Ա����߶��ղ���
+
+1-100 ������������ؿ��ĳ���
+
+���� Battlefield.gd �ﰴ��Ĺ���Ӻ��߼���
+
+��Ϊ˵��
+�ȿ�����ר��ͼ��res://assets/backgrounds/bg_level_XX.png��XX Ϊ��λ�ؿ��ţ������ 2 �� �� bg_level_02.png����
+û�и��ļ�������ԭ����ʱ��ͨ���б���һս bg_level_01.png����ս bg_01.png ������
+��Ҫ�ŵ��ļ�
+Ŀ¼��phase-war/assets/backgrounds/
+������bg_level_01.png �� bg_level_100.png����ؿ���һ�£�
+ĳһ��û����ͼʱ�����ý���Ӧ bg_level_XX.png�����Զ��ø�ʱ������ͨ��ͼ��
+�� 1 �������� bg_level_01.png����Ϊ����ǰһ�£��� 2 ��ֻ����Ž� bg_level_02.png ʱ�Ż���ʾר��ͼ����������һսͨ�õ� bg_level_01.png��
+
+
+
+
+
+
+
+
+

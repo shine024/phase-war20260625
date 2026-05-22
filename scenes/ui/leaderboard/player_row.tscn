@@ -1,0 +1,56 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/ui/leaderboard/player_row.gd" id="1_script"]
+
+[node name="PlayerRow" type="PanelContainer"]
+custom_minimum_size = Vector2(0, 40)
+script = ExtResource("1_script")
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_bottom = 4
+
+[node name="HBox" type="HBoxContainer" parent="MarginContainer"]
+theme_override_constants/separation = 8
+
+[node name="RankLabel" type="Label" parent="MarginContainer/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(35, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+horizontal_alignment = 1
+text = "1"
+
+[node name="NameLabel" type="Label" parent="MarginContainer/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 13
+text = "相位师"
+
+[node name="LevelLabel" type="Label" parent="MarginContainer/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(55, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+horizontal_alignment = 1
+text = "Lv.1"
+
+[node name="FactionLabel" type="Label" parent="MarginContainer/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+horizontal_alignment = 1
+text = "势力"
+
+[node name="WinsLabel" type="Label" parent="MarginContainer/HBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(50, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(0.5, 1.0, 0.4, 1)
+horizontal_alignment = 2
+text = "0"

@@ -1,0 +1,61 @@
+[gd_scene load_steps=2 format=3 uid="uid://drops_inventory_panel"]
+
+[ext_resource type="Script" path="res://scenes/ui/drops_inventory_panel.gd" id="1"]
+
+[node name="DropsInventoryPanel" type="PanelContainer"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1")
+
+[node name="VBoxOuter" type="VBoxContainer" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TitleRow" type="HBoxContainer" parent="VBoxOuter"]
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="VBoxOuter/TitleRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "掉落物品"
+theme_type_variation = &"HeaderMedium"
+
+[node name="CloseButton" type="Button" parent="VBoxOuter/TitleRow"]
+layout_mode = 2
+text = "✕"
+
+[node name="TabsContainer" type="TabContainer" parent="VBoxOuter"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="AllItems" type="ScrollContainer" parent="VBoxOuter/TabsContainer"]
+layout_mode = 2
+
+[node name="ItemsGrid" type="GridContainer" parent="VBoxOuter/TabsContainer/AllItems"]
+layout_mode = 2
+columns = 6
+
+[node name="Materials" type="ScrollContainer" parent="VBoxOuter/TabsContainer"]
+layout_mode = 2
+
+[node name="MaterialsGrid" type="GridContainer" parent="VBoxOuter/TabsContainer/Materials"]
+layout_mode = 2
+columns = 6
+
+[node name="Blueprints" type="ScrollContainer" parent="VBoxOuter/TabsContainer"]
+layout_mode = 2
+
+[node name="BlueprintsGrid" type="GridContainer" parent="VBoxOuter/TabsContainer/Blueprints"]
+layout_mode = 2
+columns = 6
+
+[node name="Lore" type="ScrollContainer" parent="VBoxOuter/TabsContainer"]
+layout_mode = 2
+
+[node name="LoreGrid" type="GridContainer" parent="VBoxOuter/TabsContainer/Lore"]
+layout_mode = 2
+columns = 6

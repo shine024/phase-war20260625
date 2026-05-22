@@ -1,0 +1,10 @@
+Godot Engine v4.5.stable.official.876b29033 - https://godotengine.org
+
+ERROR: Unrecognized UID: "uid://ce43lbwdryxch".
+   at: get_id_path (core/io/resource_uid.cpp:199)
+ERROR: Condition "local_path.is_empty()" is true. Returning: Ref<ResourceLoader::LoadToken>()
+   at: _load_start (core/io/resource_loader.cpp:568)
+ERROR: Error loading custom project font 'uid://ce43lbwdryxch'
+   at: initialize_theme (scene/theme/theme_db.cpp:79)
+[ObjectPoolManager] 娉ㄥ唽姹?'bullets'锛屽ぇ灏? 2
+[ObjectPoolManager] 娉ㄥ唽姹?'damage_numbers'锛屽ぇ灏? 4

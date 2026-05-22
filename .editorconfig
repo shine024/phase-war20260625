@@ -1,0 +1,43 @@
+root = true
+
+# ── 默认规则 ──
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = tab
+indent_size = 4
+
+# ── GDScript ──
+[*.gd]
+indent_style = tab
+indent_size = 4
+
+# ── JSON / YAML ──
+[*.{json,yml,yaml}]
+indent_style = tab
+indent_size = 2
+
+# ── Godot 场景/资源/项目文件 ──
+[*.{tscn,tres,godot,cfg,import}]
+indent_style = space
+indent_size = 4
+
+# ── Markdown ──
+[*.md]
+trim_trailing_whitespace = false
+
+# ── Shell 脚本 ──
+[*.sh]
+indent_style = space
+indent_size = 2
+
+# ── Python ──
+[*.py]
+indent_style = space
+indent_size = 4
+
+# ── Makefile（必须用tab）──
+[Makefile]
+indent_style = tab

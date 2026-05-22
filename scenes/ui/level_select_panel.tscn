@@ -1,0 +1,100 @@
+[gd_scene load_steps=2 format=3 uid="uid://levelselectpanel"]
+
+[ext_resource type="Script" path="res://scenes/ui/level_select_panel.gd" id="1"]
+
+[node name="LevelSelectPanel" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.7)
+
+[node name="Panel" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -450.0
+offset_top = -350.0
+offset_right = 450.0
+offset_bottom = 350.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+offset_left = 20.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = -20.0
+theme_override_constants/separation = 15
+
+[node name="EraTabs" type="TabBar" parent="Panel/VBoxContainer"]
+layout_mode = 2
+max_tab_closed = -1
+
+[node name="Header" type="VBoxContainer" parent="Panel/VBoxContainer"]
+layout_mode = 2
+
+[node name="EraNameLabel" type="Label" parent="Panel/VBoxContainer/Header"]
+layout_mode = 2
+text = "一战时代"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 24
+
+[node name="EraProgressLabel" type="Label" parent="Panel/VBoxContainer/Header"]
+layout_mode = 2
+text = "进度: 0/20 关卡 | 总星数: 0/60"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 14
+
+[node name="HSeparator" type="HSeparator" parent="Panel/VBoxContainer"]
+layout_mode = 2
+
+[node name="Body" type="VBoxContainer" parent="Panel/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="LevelsScroll" type="ScrollContainer" parent="Panel/VBoxContainer/Body"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="LevelsGrid" type="GridContainer" parent="Panel/VBoxContainer/Body/LevelsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+columns = 5
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 10
+
+[node name="HSeparator2" type="HSeparator" parent="Panel/VBoxContainer"]
+layout_mode = 2
+
+[node name="Footer" type="VBoxContainer" parent="Panel/VBoxContainer"]
+layout_mode = 2
+
+[node name="CloseButton" type="Button" parent="Panel/VBoxContainer/Footer"]
+layout_mode = 2
+text = "关闭"
+size_flags_horizontal = 3
+
+[connection signal="panel_closed" from="." to="." method="queue_free"]

@@ -1,0 +1,89 @@
+=== battle_card_visual_audit ===
+Time: 2026-05-18T08:22:00
+
+--- counts ---
+EnemyBlueprints+default platform ids scanned: 83
+PLATFORM/COMBINED cards: 83
+  drops反查命中 (revhit): 54
+  反查空→platform镜像兜底: 29
+  WEAPON blueprint (非部署平台): 0
+  有可用精灵/静态图(asset_ok): 83
+  缺资源或无数值原型(asset_bad): 0
+
+--- revhit (sample up to 40) ---
+  abrams_mk2 -> elite_modern_abrams
+  bp_cold_001 -> enemy_cold_09
+  bp_cold_002 -> enemy_cold_04
+  bp_cold_003 -> enemy_cold_08
+  bp_cold_004 -> enemy_cold_03
+  bp_cold_005 -> enemy_cold_07
+  bp_cold_006 -> enemy_cold_02
+  bp_cold_007 -> enemy_cold_06
+  bp_cold_008 -> enemy_cold_01
+  bp_cold_009 -> enemy_cold_05
+  bp_modern_001 -> enemy_modern_01
+  bp_modern_002 -> enemy_modern_05
+  bp_modern_003 -> enemy_modern_09
+  bp_modern_004 -> enemy_modern_04
+  bp_modern_005 -> enemy_modern_08
+  bp_modern_006 -> enemy_modern_03
+  bp_modern_007 -> enemy_modern_07
+  bp_modern_008 -> enemy_modern_02
+  bp_modern_009 -> enemy_modern_06
+  bp_near_001 -> enemy_near_20
+  bp_near_002 -> enemy_near_03
+  bp_near_003 -> enemy_near_06
+  bp_near_004 -> enemy_near_09
+  bp_near_005 -> enemy_near_12
+  bp_near_006 -> enemy_near_15
+  bp_near_007 -> enemy_near_18
+  bp_near_008 -> enemy_near_21
+  bp_near_009 -> enemy_near_24
+  bp_near_010 -> enemy_near_27
+  bp_ww1_001 -> enemy_ww1_12
+  bp_ww1_002 -> enemy_ww1_15
+  bp_ww1_003 -> enemy_ww1_18
+  bp_ww1_004 -> enemy_ww1_21
+  bp_ww1_005 -> enemy_ww1_24
+  bp_ww1_006 -> enemy_ww1_27
+  bp_ww1_007 -> enemy_ww1_20
+  bp_ww1_008 -> enemy_ww1_03
+  bp_ww1_009 -> enemy_ww1_06
+  bp_ww1_010 -> enemy_ww1_09
+  bp_ww2_001 -> enemy_ww2_09
+  ... +14
+
+--- fallback mirror (sample up to 40) ---
+  omega_platform -> mirror:enemy_future_mech
+  platform_cold_carrier -> mirror:enemy_cold_m113
+  platform_cold_ifv -> mirror:enemy_cold_m113
+  platform_cold_light -> mirror:enemy_ww1_infantry_basic
+  platform_cold_medium -> mirror:elite_ww1_armored
+  platform_cold_radar -> mirror:enemy_modern_stryker
+  platform_cold_scout -> mirror:enemy_cold_btr
+  platform_future_heavy -> mirror:elite_ww1_armored
+  platform_future_light -> mirror:elite_future_spectre
+  platform_future_medium -> mirror:enemy_future_hovertank
+  platform_future_radar -> mirror:enemy_modern_stryker
+  platform_modern_guard_heavy -> mirror:enemy_ww2_infantry
+  platform_modern_light -> mirror:enemy_ww1_infantry_basic
+  platform_modern_medium -> mirror:enemy_ww2_infantry
+  platform_modern_radar -> mirror:enemy_modern_stryker
+  platform_modern_spg -> mirror:enemy_ww1_mortar
+  platform_modern_stealth -> mirror:elite_future_spectre
+  platform_ww1_fort -> mirror:enemy_ww1_mg_nest
+  platform_ww1_light -> mirror:enemy_ww1_infantry_basic
+  platform_ww1_medic -> mirror:enemy_modern_marine
+  platform_ww1_medium -> mirror:elite_ww1_armored
+  platform_ww1_radar -> mirror:enemy_modern_stryker
+  platform_ww2_fortress -> mirror:enemy_ww1_mg_nest
+  platform_ww2_heavy -> mirror:elite_ww1_armored
+  platform_ww2_light -> mirror:enemy_cold_btr
+  platform_ww2_medium -> mirror:enemy_ww2_infantry
+  platform_ww2_radar -> mirror:enemy_modern_stryker
+  platform_ww2_raider -> mirror:enemy_future_hovertank
+  platform_ww2_siege -> mirror:enemy_ww1_mortar
+
+--- asset_bad (full) ---
+
+--- weapon blueprint ids (informational) ---

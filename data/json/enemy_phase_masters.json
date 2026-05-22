@@ -1,0 +1,2756 @@
+{
+  "schema_version": 1,
+  "source": "data/enemy_phase_masters.gd",
+  "key": "ENEMY_MASTERS",
+  "data": [
+    {
+      "id": "enemy_master_001",
+      "name": "钢铁先锋·马库斯",
+      "title": "钢铁防线守卫",
+      "level": 5,
+      "faction": "steel",
+      "difficulty": "easy",
+      "traits": [
+        {
+          "id": "recruit_commander",
+          "name": "新兵教官",
+          "description": "所有友军防御+10%，部署冷却-5%",
+          "effects": {
+            "defense_boost": 0.1,
+            "deploy_cooldown_reduction": 0.05
+          }
+        }
+      ],
+      "active_spells": [
+        {
+          "id": "steel_wall_summon",
+          "name": "钢铁壁垒",
+          "description": "召唤3个钢铁壁垒单位，每个拥有800血量和50防御",
+          "cooldown": 15.0,
+          "mana_cost": 80,
+          "effect": "summon_units",
+          "params": {
+            "count": 3,
+            "unit_type": "steel_wall",
+            "hp": 800,
+            "defense": 50
+          }
+        },
+        {
+          "id": "armor_break",
+          "name": "破甲冲击",
+          "description": "对前方扇形区域造成200伤害并降低30%防御，持续5秒",
+          "cooldown": 12.0,
+          "mana_cost": 60,
+          "effect": "damage_debuff",
+          "params": {
+            "damage": 200,
+            "defense_reduction": 0.3,
+            "duration": 5.0,
+            "angle": 90
+          }
+        }
+      ],
+      "passive_spells": [
+        {
+          "id": "steel_skin",
+          "name": "钢铁之肤",
+          "description": "所有友军获得15%额外护甲",
+          "effect": "armor_boost",
+          "params": {
+            "bonus": 0.15
+          }
+        },
+        {
+          "id": "fortress_mind",
+          "name": "堡垒思维",
+          "description": "每当友军单位死亡时，获得5%最大生命值护盾",
+          "effect": "death_shield",
+          "params": {
+            "shield_percent": 0.05
+          }
+        }
+      ],
+      "equipment": {
+        "phase_instrument": "steel_guardian_mk1",
+        "level": 5,
+        "platforms": [
+          "steel_fortress_basic",
+          "steel_titan_basic"
+        ],
+        "weapons": [
+          "steel_machinegun_basic",
+          "steel_cannon_basic"
+        ],
+        "energy_cards": [
+          "steel_energy_basic"
+        ]
+      },
+      "stats": {
+        "max_hp": 1500,
+        "attack_power": 120,
+        "defense": 80,
+        "energy_regen": 2.0,
+        "unit_limit": 5
+      }
+    },
+    {
+      "id": "enemy_master_002",
+      "name": "烈焰使者·伊格尼斯",
+      "title": "火焰狂暴者",
+      "level": 6,
+      "faction": "flame",
+      "difficulty": "easy",
+      "traits": [
+        {
+          "id": "first_flame",
+          "name": "初燃之心",
+          "description": "攻击力+10%，火焰伤害额外+10%",
+          "effects": {
+            "attack_boost": 0.1,
+            "fire_damage_boost": 0.1
+          }
+        }
+      ],
+      "active_spells": [
+        {
+          "id": "fire_storm",
+          "name": "烈焰风暴",
+          "description": "在指定区域召唤火焰风暴，每秒造成150伤害，持续6秒",
+          "cooldown": 18.0,
+          "mana_cost": 100,
+          "effect": "aoe_damage_over_time",
+          "params": {
+            "damage": 150,
+            "duration": 6.0,
+            "radius": 120
+          }
+        },
+        {
+          "id": "explosive_charge",
+          "name": "爆炸冲锋",
+          "description": "所有己方单位获得爆炸死亡效果，死亡时对周围造成100伤害",
+          "cooldown": 20.0,
+          "mana_cost": 90,
+          "effect": "death_explosion_buff",
+          "params": {
+            "damage": 100,
+            "radius": 80,
+            "duration": 8.0
+          }
+        }
+      ],
+      "passive_spells": [
+        {
+          "id": "burning_aura",
+          "name": "燃烧光环",
+          "description": "周围敌人每秒受到30点火焰伤害",
+          "effect": "damage_aura",
+          "params": {
+            "damage": 30,
+            "radius": 100
+          }
+        },
+        {
+          "id": "fire_adaptation",
+          "name": "火焰适应",
+          "description": "火焰伤害提升20%，受到的火焰伤害减少30%",
+          "effect": "damage_boost_resistance",
+          "params": {
+            "boost": 0.2,
+            "resistance": 0.3,
+            "damage_type": "fire"
+          }
+        }
+      ],
+      "equipment": {
+        "phase_instrument": "flame_destroyer_mk1",
+        "level": 6,
+        "platforms": [
+          "flame_raider_basic",
+          "flame_siege_basic"
+        ],
+        "weapons": [
+          "flame_thrower_basic",
+          "incendiary_mortar_basic"
+        ],
+        "energy_cards": [
+          "flame_energy_basic"
+        ]
+      },
+      "stats": {
+        "max_hp": 1200,
+        "attack_power": 150,
+        "defense": 50,
+        "energy_regen": 2.5,
+        "unit_limit": 6
+      }
+    },
+    {
+      "id": "enemy_master_003",
+      "name": "雷击者·沃尔特",
+      "title": "闪电链大师",
+      "level": 7,
+      "faction": "thunder",
+      "difficulty": "medium",
+      "traits": [
+        {
+          "id": "first_thunder",
+          "name": "初雷之印",
+          "description": "攻击速度+10%，暴击率+5%",
+          "effects": {
+            "attack_speed_boost": 0.1,
+            "crit_chance": 0.05
+          }
+        }
+      ],
+      "active_spells": [
+        {
+          "id": "chain_lightning",
+          "name": "连锁闪电",
+          "description": "释放闪电链，弹射4次，每次造成250伤害",
+          "cooldown": 14.0,
+          "mana_cost": 85,
+          "effect": "chain_damage",
+          "params": {
+            "damage": 250,
+            "bounces": 4,
+            "range": 200
+          }
+        },
+        {
+          "id": "thunder_strike",
+          "name": "雷霆一击",
+          "description": "对单个目标造成400伤害并眩晕2秒",
+          "cooldown": 16.0,
+          "mana_cost": 110,
+          "effect": "single_damage_stun",
+          "params": {
+            "damage": 400,
+            "stun_duration": 2.0
+          }
+        }
+      ],
+      "passive_spells": [
+        {
+          "id": "static_field",
+          "name": "静电场",
+          "description": "攻击时对目标周围造成30%溅射伤害",
+          "effect": "splash_damage",
+          "params": {
+            "splash_percent": 0.3,
+            "radius": 60
+          }
+        },
+        {
+          "id": "overcharge",
+          "name": "过载",
+          "description": "能量超过80%时，攻击速度提升40%",
+          "effect": "high_energy_bonus",
+          "params": {
+            "threshold": 0.8,
+            "attack_speed_boost": 0.4
+          }
+        }
+      ],
+      "equipment": {
+        "phase_instrument": "thunder_storm_mk1",
+        "level": 7,
+        "platforms": [
+          "thunter_striker_basic",
+          "thunter_sniper_basic"
+        ],
+        "weapons": [
+          "tesla_coil_basic",
+          "railgun_basic"
+        ],
+        "energy_cards": [
+          "thunder_energy_basic"
+        ]
+      },
+      "stats": {
+        "max_hp": 1100,
+        "attack_power": 160,
+        "defense": 45,
+        "energy_regen": 3.0,
+        "unit_limit": 5
+      }
+    },
+    {
+      "id": "enemy_master_004",
+      "name": "虚空行者·奈克萨斯",
+      "title": "时空操纵者",
+      "level": 8,
+      "faction": "void",
+      "difficulty": "medium",
+      "traits": [
+        {
+          "id": "void_sense",
+          "name": "虚空初感",
+          "description": "法术强度+15%，攻击附带3%能量吸取",
+          "effects": {
+            "magic_power_boost": 0.15,
+            "energy_drain_on_hit": 0.03
+          }
+        }
+      ],
+      "active_spells": [
+        {
+          "id": "time_warp",
+          "name": "时间扭曲",
+          "description": "使所有敌军速度降低50%，持续5秒",
+          "cooldown": 22.0,
+          "mana_cost": 120,
+          "effect": "speed_debuff",
+          "params": {
+            "slow_percent": 0.5,
+            "duration": 5.0
+          }
+        },
+        {
+          "id": "void_tear",
+          "name": "虚空撕裂",
+          "description": "在战场上开启3个虚空传送门，传送己方单位",
+          "cooldown": 25.0,
+          "mana_cost": 100,
+          "effect": "teleport_gates",
+          "params": {
+            "gate_count": 3,
+            "duration": 10.0
+          }
+        }
+      ],
+      "passive_spells": [
+        {
+          "id": "entropy_aura",
+          "name": "熵增光环",
+          "description": "周围敌人持续失去生命值，最大值每秒减少1%",
+          "effect": "max_hp_drain",
+          "params": {
+            "drain_percent": 0.01,
+            "radius": 150
+          }
+        },
+        {
+          "id": "phase_shift",
+          "name": "相位移",
+          "description": "受到致命伤害时，有30%概率避免并瞬移到安全位置",
+          "effect": "death_avoid_teleport",
+          "params": {
+            "chance": 0.3
+          }
+        }
+      ],
+      "equipment": {
+        "phase_instrument": "void_walker_mk1",
+        "level": 8,
+        "platforms": [
+          "void_stealth_basic",
+          "void_mage_basic"
+        ],
+        "weapons": [
+          "void_lance_basic",
+          "gravity_well_basic"
+        ],
+        "energy_cards": [
+          "void_energy_basic"
+        ]
+      },
+      "stats": {
+        "max_hp": 1300,
+        "attack_power": 140,
+        "defense": 60,
+        "energy_regen": 2.8,
+        "unit_limit": 5
+      }
+    },
+    {
+      "id": "enemy_master_005",
+      "name": "钢铁元帅·克劳斯",
+      "title": "不可破之盾",
+      "level": 10,
+      "faction": "steel",
+      "difficulty": "medium",
+      "traits": [
+        {
+          "id": "iron_wall_command",
+          "name": "铁壁指挥",
+          "description": "防御+20%，单位上限+1",
+          "effects": {
+            "defense_boost": 0.2,
+            "unit_limit_bonus": 1
+          }
+        }
+      ],
+      "active_spells": [
+        {
+          "id": "iron_dome",
+          "name": "钢铁穹顶",
+          "description": "为己方基地施加无敌护盾，吸收3000点伤害，持续8秒",
+          "cooldown": 30.0,
+          "mana_cost": 150,
+          "effect": "shield_base",
+          "params": {
+            "shield_amount": 3000,
+            "duration": 8.0
+          }
+        },
+        {
+          "id": "reinforcement_call",
+          "name": "增援呼叫",
+          "description": "立即召唤4个精锐钢铁战士",
+          "cooldown": 22.0,
+          "mana_cost": 100,
+          "effect": "summon_elites",
+          "params": {
+            "count": 4,
+            "unit_type": "steel_elite"
+          }
+        }
+      ],
+      "passive_spells": [
+        {
+          "id": "formation_master",
+          "name": "阵型大师",
+          "description": "每3个相邻友军提供20%伤害加成",
+          "effect": "formation_bonus",
+          "params": {
+            "adjacent_count": 3,
+            "damage_boost": 0.2
+          }
+        },
+        {
+          "id": "siege_breaker",
+          "name": "攻城破坏者",
+          "description": "对建筑类目标造成50%额外伤害",
+          "effect": "damage_vs_building",
+          "params": {
+            "bonus_damage": 0.5
+          }
+        }
+      ],
+      "equipment": {
+        "phase_instrument": "steel_guardian_mk2",
+        "level": 10,
+        "platforms": [
+          "steel_fortress_advanced",
+          "steel_titan_advanced"
+        ],
+        "weapons": [
+          "steel_minigun_advanced",
+          "steel_railcannon_advanced"
+        ],
+        "energy_cards": [
+          "steel_energy_advanced"
+        ]
+      },
+      "stats": {
+        "max_hp": 2200,
+        "attack_power": 200,
+        "defense": 120,
+        "energy_regen": 2.5,
+        "unit_limit": 7
+      }
+    },
+    {
+      "id": "enemy_master_006",
+      "name": "炎魔女王·赫卡特",
+      "title": "毁灭之焰",
+      "level": 12,
+      "faction": "flame",
+      "difficulty": "medium",
+      "traits": [
+        {
+          "id": "flame_authority",
+          "name": "炎之权柄",
+          "description": "火焰伤害+20%，燃烧持续时间+2秒",
+          "effects": {
+            "fire_damage_boost": 0.2,
+            "burn_duration_bonus": 2.0
+          }
+        }
+      ],
+      "active_spells": [
+        {
+          "id": "meteor_swarm",
+          "name": "流星群",
+          "description": "召唤4颗流星，每颗造成350伤害并点燃区域",
+          "cooldown": 25.0,
+          "mana_cost": 180,
+          "effect": "meteor_rain",
+          "params": {
+            "count": 4,
+            "damage": 350,
+            "burn_duration": 4.0
+          }
+        },
+        {
+          "id": "phoenix_rebirth",
+          "name": "凤凰重生",
+          "description": "复活所有死亡的友军单位，恢复50%生命值",
+          "cooldown": 45.0,
+          "mana_cost": 200,
+          "effect": "mass_resurrect",
+          "params": {
+            "hp_percent": 0.5
+          }
+        }
+      ],
+      "passive_spells": [
+        {
+          "id": "eternal_flame",
+          "name": "永恒之火",
+          "description": "友军单位死亡时爆炸，对周围造成200伤害",
+          "effect": "death_explosion",
+          "params": {
+            "damage": 200,
+            "radius": 100
+          }
+        },
+        {
+          "id": "heat_wave",
+          "name": "热浪",
+          "description": "战斗每进行10秒，所有友军攻击力提升10%",
+          "effect": "scaling_damage",
+          "params": {
+            "interval": 10.0,
+            "boost_per_stack": 0.1,
+            "max_stacks": 5
+          }
+        }
+      ],
+      "equipment": {
+        "phase_instrument": "flame_destroyer_mk2",
+        "level": 12,
+        "platforms": [
+          "flame_raider_advanced",
+          "flame_siege_advanced"
+        ],
+        "weapons": [
+          "flame_thrower_advanced",
+          "incendiary_cannon_advanced"
+        ],
+        "energy_cards": [
+          "flame_energy_advanced"
+        ]
+      },
+      "stats": {
+        "max_hp": 2000,
+        "attack_power": 260,
+        "defense": 70,
+        "energy_regen": 3.0,
+        "unit_limit": 7
+      }
+    },
+    {
+      "id": "enemy_master_007",
+      "name": "雷神之子·索尔",
+      "title": "万钧雷霆",
+      "level": 13,
+      "faction": "thunder",
+      "difficulty": "hard",
+      "traits": [
+        {
+          "id": "storm_child",
+          "name": "风暴之子",
+          "description": "雷电伤害+20%，闪电链弹射+1次",
+          "effects": {
+            "lightning_damage_boost": 0.2,
+            "chain_bounce_bonus": 1
+          }
+        }
+      ],
+      "active_spells": [
+        {
+          "id": "lightning_storm",
+          "name": "雷暴",
+          "description": "全屏闪电打击，随机敌人受到300伤害",
+          "cooldown": 20.0,
+          "mana_cost": 160,
+          "effect": "global_lightning",
+          "params": {
+            "damage": 300,
+            "strike_count": 6
+          }
+        },
+        {
+          "id": "electrify",
+          "name": "充能",
+          "description": "使所有友军获得电击攻击，每次攻击附加100伤害",
+          "cooldown": 18.0,
+          "mana_cost": 140,
+          "effect": "weapon_enchant",
+          "params": {
+            "bonus_damage": 100,
+            "duration": 10.0
+          }
+        }
+      ],
+      "passive_spells": [
+        {
+          "id": "conductive",
+          "name": "传导",
+          "description": "友军攻击时，电流会在敌人间跳跃",
+          "effect": "chain_attack",
+          "params": {
+            "jump_count": 2,
+            "jump_damage": 80
+          }
+        },
+        {
+          "id": "storm_caller",
+          "name": "风暴召唤者",
+          "description": "能量满时自动释放闪电链，不消耗能量",
+          "effect": "full_energy_trigger",
+          "params": {
+            "trigger_spell": "chain_lightning"
+          }
+        }
+      ],
+      "equipment": {
+        "phase_instrument": "thunder_storm_mk2",
+        "level": 13,
+        "platforms": [
+          "thunter_striker_advanced",
+          "thunter_sniper_advanced"
+        ],
+        "weapons": [
+          "tesla_coil_advanced",
+          "railgun_advanced"
+        ],
+        "energy_cards": [
+          "thunder_energy_advanced"
+        ]
+      },
+      "stats": {
+        "max_hp": 1800,
+        "attack_power": 300,
+        "defense": 65,
+        "energy_regen": 3.5,
+        "unit_limit": 6
+      }
+    },
+    {
+      "id": "enemy_master_008",
+      "name": "虚空领主·萨洛斯",
+      "title": "维度撕裂者",
+      "level": 14,
+      "faction": "void",
+      "difficulty": "hard",
+      "traits": [
+        {
+          "id": "dimension_perception",
+          "name": "维度感知",
+          "description": "虚空伤害+20%，相位仪能量恢复+30%",
+          "effects": {
+            "void_damage_boost": 0.2,
+            "energy_regen_boost": 0.3
+          }
+        }
+      ],
+      "active_spells": [
+        {
+          "id": "dimension_rift",
+          "name": "维度裂隙",
+          "description": "打开传送门，持续召唤虚空生物，持续12秒",
+          "cooldown": 35.0,
+          "mana_cost": 200,
+          "effect": "portal_summon",
+          "params": {
+            "duration": 12.0,
+            "spawn_interval": 2.0
+          }
+        },
+        {
+          "id": "black_hole",
+          "name": "黑洞",
+          "description": "创造黑洞，持续吸引敌人并每秒造成200伤害",
+          "cooldown": 28.0,
+          "mana_cost": 180,
+          "effect": "black_hole",
+          "params": {
+            "damage": 200,
+            "duration": 6.0,
+            "radius": 150
+          }
+        }
+      ],
+      "passive_spells": [
+        {
+          "id": "reality_tear",
+          "name": "现实撕裂",
+          "description": "攻击有20%概率无视敌人护甲",
+          "effect": "armor_ignore_chance",
+          "params": {
+            "chance": 0.2
+          }
+        },
+        {
+          "id": "void_embrace",
+          "name": "虚空拥抱",
+          "description": "周围敌人每秒失去5%能量",
+          "effect": "energy_drain",
+          "params": {
+            "drain_percent": 0.05,
+            "radius": 200
+          }
+        }
+      ],
+      "equipment": {
+        "phase_instrument": "void_walker_mk2",
+        "level": 14,
+        "platforms": [
+          "void_stealth_advanced",
+          "void_mage_advanced"
+        ],
+        "weapons": [
+          "void_lance_advanced",
+          "gravity_well_advanced"
+        ],
+        "energy_cards": [
+          "void_energy_advanced"
+        ]
+      },
+      "stats": {
+        "max_hp": 2100,
+        "attack_power": 280,
+        "defense": 80,
+        "energy_regen": 3.8,
+        "unit_limit": 6
+      }
+    },
+    {
+      "id": "enemy_master_009",
+      "name": "钢铁军团长·费米",
+      "title": "钢铁军团统帅",
+      "level": 16,
+      "faction": "steel",
+      "difficulty": "hard",
+      "traits": [
+        {
+          "id": "industrial_commander",
+          "name": "工业统帅",
+          "description": "单位生产速度+30%，存活单位每10秒获得+5%全属性",
+          "effects": {
+            "deploy_speed_boost": 0.3,
+            "time_scaling": {
+              "interval": 10.0,
+              "boost": 0.05
+            }
+          }
+        }
+      ],
+      "active_spells": [
+        {
+          "id": "legion_call",
+          "name": "军团召唤",
+          "description": "召唤10个钢铁战士，包括3个精锐和7个普通",
+          "cooldown": 40.0,
+          "mana_cost": 220,
+          "effect": "mass_summon",
+          "params": {
+            "elite_count": 3,
+            "normal_count": 7
+          }
+        },
+        {
+          "id": "fortress_mode",
+          "name": "要塞模式",
+          "description": "所有友军获得50%防御和1500生命值护盾",
+          "cooldown": 35.0,
+          "mana_cost": 200,
+          "effect": "mass_buff_shield",
+          "params": {
+            "defense_boost": 0.5,
+            "shield_amount": 1500
+          }
+        }
+      ],
+      "passive_spells": [
+        {
+          "id": "iron_will",
+          "name": "钢铁意志",
+          "description": "友军生命值低于30%时，防御翻倍",
+          "effect": "low_hp_defense_boost",
+          "params": {
+            "threshold": 0.3,
+            "defense_multiplier": 2.0
+          }
+        },
+        {
+          "id": "auto_production",
+          "name": "自动化生产",
+          "description": "每12秒自动生产一个额外单位",
+          "effect": "auto_production",
+          "params": {
+            "interval": 12.0
+          }
+        }
+      ],
+      "equipment": {
+        "phase_instrument": "steel_guardian_mk3",
+        "level": 16,
+        "platforms": [
+          "steel_fortress_expert",
+          "steel_titan_expert"
+        ],
+        "weapons": [
+          "steel_gatling_expert",
+          "steel_artillery_expert"
+        ],
+        "energy_cards": [
+          "steel_energy_expert"
+        ]
+      },
+      "stats": {
+        "max_hp": 3000,
+        "attack_power": 280,
+        "defense": 150,
+        "energy_regen": 3.0,
+        "unit_limit": 8
+      }
+    },
+    {
+      "id": "enemy_master_010",
+      "name": "炎帝·普罗米修斯",
+      "title": "永恒烈焰",
+      "level": 17,
+      "faction": "flame",
+      "difficulty": "hard",
+      "traits": [
+        {
+          "id": "eternal_inferno",
+          "name": "永恒烈焰",
+          "description": "火焰伤害+30%，友军移动路径留下燃烧轨迹",
+          "effects": {
+            "fire_damage_boost": 0.3,
+            "flame_trail": true
+          }
+        }
+      ],
+      "active_spells": [
+        {
+          "id": "world_inferno",
+          "name": "世界炼狱",
+          "description": "将战场变为熔岩环境，所有敌人每秒受到80伤害",
+          "cooldown": 50.0,
+          "mana_cost": 300,
+          "effect": "terrain_transform",
+          "params": {
+            "damage": 80,
+            "duration": 12.0
+          }
+        },
+        {
+          "id": "supernova",
+          "name": "超新星",
+          "description": "在中心点释放巨大爆炸，造成700伤害并点燃所有敌人",
+          "cooldown": 45.0,
+          "mana_cost": 280,
+          "effect": "massive_explosion",
+          "params": {
+            "damage": 700,
+            "radius": 200,
+            "burn_duration": 6.0
+          }
+        }
+      ],
+      "passive_spells": [
+        {
+          "id": "hellfire",
+          "name": "地狱火",
+          "description": "友军攻击造成额外40%火焰伤害",
+          "effect": "elemental_damage_boost",
+          "params": {
+            "boost": 0.4,
+            "element": "fire"
+          }
+        },
+        {
+          "id": "immolation",
+          "name": "自焚",
+          "description": "友军每秒对周围造成40伤害，自身失去15生命值",
+          "effect": "self_damage_aura",
+          "params": {
+            "aura_damage": 40,
+            "self_damage": 15
+          }
+        }
+      ],
+      "equipment": {
+        "phase_instrument": "flame_destroyer_mk3",
+        "level": 17,
+        "platforms": [
+          "flame_raider_expert",
+          "flame_siege_expert"
+        ],
+        "weapons": [
+          "flame_thrower_expert",
+          "plasma_cannon_expert"
+        ],
+        "energy_cards": [
+          "flame_energy_expert"
+        ]
+      },
+      "stats": {
+        "max_hp": 2800,
+        "attack_power": 380,
+        "defense": 90,
+        "energy_regen": 3.5,
+        "unit_limit": 8
+      }
+    },
+    {
+      "id": "enemy_master_011",
+      "name": "雷皇·宙斯",
+      "title": "雷霆主宰",
+      "level": 18,
+      "faction": "thunder",
+      "difficulty": "hard",
+      "traits": [
+        {
+          "id": "thunder_domination",
+          "name": "雷霆主宰",
+          "description": "雷电伤害+35%，能量满时自动触发闪电链打击",
+          "effects": {
+            "lightning_damage_boost": 0.35,
+            "energy_full_auto_strike": true
+          }
+        }
+      ],
+      "active_spells": [
+        {
+          "id": "thunder_god_fury",
+          "name": "雷神之怒",
+          "description": "连续释放8次强力闪电，每次造成450伤害",
+          "cooldown": 30.0,
+          "mana_cost": 250,
+          "effect": "rapid_lightning",
+          "params": {
+            "strike_count": 8,
+            "damage": 450
+          }
+        },
+        {
+          "id": "electromagnetic_pulse",
+          "name": "电磁脉冲",
+          "description": "EMP攻击，瘫痪所有敌人4秒",
+          "cooldown": 40.0,
+          "mana_cost": 200,
+          "effect": "emp_stun",
+          "params": {
+            "duration": 4.0,
+            "target_type": "all"
+          }
+        }
+      ],
+      "passive_spells": [
+        {
+          "id": "lightning_speed",
+          "name": "闪电速度",
+          "description": "所有友军移动和攻击速度提升30%",
+          "effect": "speed_boost",
+          "params": {
+            "move_speed": 0.3,
+            "attack_speed": 0.3
+          }
+        },
+        {
+          "id": "static_overload",
+          "name": "静电过载",
+          "description": "友军死亡时释放连锁闪电",
+          "effect": "death_chain_lightning",
+          "params": {
+            "damage": 180,
+            "bounces": 3
+          }
+        }
+      ],
+      "equipment": {
+        "phase_instrument": "thunder_storm_mk3",
+        "level": 18,
+        "platforms": [
+          "thunter_striker_expert",
+          "thunter_sniper_expert"
+        ],
+        "weapons": [
+          "tesla_coil_expert",
+          "railgun_expert"
+        ],
+        "energy_cards": [
+          "thunder_energy_expert"
+        ]
+      },
+      "stats": {
+        "max_hp": 2600,
+        "attack_power": 420,
+        "defense": 85,
+        "energy_regen": 4.0,
+        "unit_limit": 7
+      }
+    },
+    {
+      "id": "enemy_master_012",
+      "name": "虚空虚主·阿扎托斯",
+      "title": "虚空君王",
+      "level": 19,
+      "faction": "void",
+      "difficulty": "expert",
+      "traits": [
+        {
+          "id": "void_mastery",
+          "name": "虚空精通",
+          "description": "虚空伤害+35%，所有技能冷却-20%，能量吸取效果+50%",
+          "effects": {
+            "void_damage_boost": 0.35,
+            "cooldown_reduction": 0.2,
+            "energy_drain_boost": 0.5
+          }
+        }
+      ],
+      "active_spells": [
+        {
+          "id": "reality_collapse",
+          "name": "现实崩塌",
+          "description": "删除区域内生命值低于20%的敌人",
+          "cooldown": 60.0,
+          "mana_cost": 350,
+          "effect": "instant_kill_zone",
+          "params": {
+            "radius": 100,
+            "cast_time": 3.0,
+            "hp_threshold": 0.2
+          }
+        },
+        {
+          "id": "void_army",
+          "name": "虚空大军",
+          "description": "召唤12个虚空生物，包括2个虚空巨兽",
+          "cooldown": 45.0,
+          "mana_cost": 280,
+          "effect": "summon_void_army",
+          "params": {
+            "normal_count": 10,
+            "behemoth_count": 2
+          }
+        }
+      ],
+      "passive_spells": [
+        {
+          "id": "cooldown_mastery",
+          "name": "冷却精通",
+          "description": "所有技能冷却时间减少25%",
+          "effect": "cooldown_reduction",
+          "params": {
+            "reduction": 0.25
+          }
+        },
+        {
+          "id": "dimension_siphon",
+          "name": "维度虹吸",
+          "description": "从每个敌人身上每秒吸取40生命值和15能量",
+          "effect": "life_energy_drain",
+          "params": {
+            "hp_drain": 40,
+            "energy_drain": 15
+          }
+        }
+      ],
+      "equipment": {
+        "phase_instrument": "void_walker_mk3",
+        "level": 19,
+        "platforms": [
+          "void_stealth_expert",
+          "void_mage_expert"
+        ],
+        "weapons": [
+          "void_lance_expert",
+          "entropy_caster_expert"
+        ],
+        "energy_cards": [
+          "void_energy_expert"
+        ]
+      },
+      "stats": {
+        "max_hp": 3200,
+        "attack_power": 400,
+        "defense": 100,
+        "energy_regen": 4.2,
+        "unit_limit": 7
+      }
+    },
+    {
+      "id": "enemy_master_013",
+      "name": "钢铁烈焰·卡尔",
+      "title": "熔铸大师",
+      "level": 18,
+      "faction": "steel_flame",
+      "difficulty": "hard",
+      "traits": [
+        {
+          "id": "forgemaster",
+          "name": "熔铸大师",
+          "description": "钢铁+烈焰协同：相邻的钢铁和烈焰单位互相增强25%伤害",
+          "effects": {
+            "synergy_boost": 0.25,
+            "synergy_types": [
+              "steel",
+              "flame"
+            ]
+          }
+        }
+      ],
+      "active_spells": [
+        {
+          "id": "molten_armor",
+          "name": "熔岩护甲",
+          "description": "友军获得熔岩护甲，受到攻击时对攻击者造成80火焰伤害",
+          "cooldown": 25.0,
+          "mana_cost": 150,
+          "effect": "thorn_armor_fire",
+          "params": {
+            "thorn_damage": 80,
+            "duration": 10.0
+          }
+        },
+        {
+          "id": "forge_hammer",
+          "name": "锻锤",
+          "description": "巨大的锻锤砸向地面，造成300伤害并眩晕2.5秒",
+          "cooldown": 20.0,
+          "mana_cost": 130,
+          "effect": "hammer_smash",
+          "params": {
+            "damage": 300,
+            "stun_duration": 2.5,
+            "radius": 120
+          }
+        }
+      ],
+      "passive_spells": [
+        {
+          "id": "heat_treatment",
+          "name": "热处理",
+          "description": "友军攻击有15%概率触发额外火焰爆炸",
+          "effect": "proc_explosion",
+          "params": {
+            "chance": 0.15,
+            "explosion_damage": 120
+          }
+        },
+        {
+          "id": "tempered",
+          "name": "回火",
+          "description": "友军受到火焰伤害时，攻击力提升10%，持续5秒",
+          "effect": "fire_damage_boost",
+          "params": {
+            "boost": 0.1,
+            "duration": 5.0
+          }
+        }
+      ],
+      "equipment": {
+        "phase_instrument": "hybrid_steel_flame_mk1",
+        "level": 18,
+        "platforms": [
+          "steel_fortress_expert",
+          "flame_raider_expert"
+        ],
+        "weapons": [
+          "steel_gatling_expert",
+          "flame_thrower_expert"
+        ],
+        "energy_cards": [
+          "hybrid_energy_basic"
+        ]
+      },
+      "stats": {
+        "max_hp": 2800,
+        "attack_power": 340,
+        "defense": 120,
+        "energy_regen": 3.2,
+        "unit_limit": 8
+      }
+    },
+    {
+      "id": "enemy_master_014",
+      "name": "雷霆钢铁·维克多",
+      "title": "电磁装甲师",
+      "level": 19,
+      "faction": "thunder_steel",
+      "difficulty": "hard",
+      "traits": [
+        {
+          "id": "electromagnetic_armor",
+          "name": "电磁装甲师",
+          "description": "雷霆+钢铁协同：护甲受到攻击时反射雷电，造成80伤害",
+          "effects": {
+            "synergy_boost": 0.2,
+            "synergy_types": [
+              "thunder",
+              "steel"
+            ],
+            "armor_reflect": 80
+          }
+        }
+      ],
+      "active_spells": [
+        {
+          "id": "railgun_barrage",
+          "name": "电磁炮齐射",
+          "description": "发射5枚电磁炮弹，穿透路径上的所有敌人",
+          "cooldown": 22.0,
+          "mana_cost": 160,
+          "effect": "piercing_shots",
+          "params": {
+            "shot_count": 5,
+            "damage": 220
+          }
+        },
+        {
+          "id": "energize_shields",
+          "name": "充能护盾",
+          "description": "为所有友军施加能量护盾，吸收400点伤害",
+          "cooldown": 18.0,
+          "mana_cost": 120,
+          "effect": "mass_shield",
+          "params": {
+            "shield_amount": 400
+          }
+        }
+      ],
+      "passive_spells": [
+        {
+          "id": "conductive_armor",
+          "name": "导电护甲",
+          "description": "友军受到攻击时，对攻击者放电造成60伤害",
+          "effect": "lightning_thorn",
+          "params": {
+            "thorn_damage": 60
+          }
+        },
+        {
+          "id": "overclock",
+          "name": "超频",
+          "description": "能量超过70%时，射速提升40%",
+          "effect": "high_energy_attack_speed",
+          "params": {
+            "threshold": 0.7,
+            "speed_boost": 0.4
+          }
+        }
+      ],
+      "equipment": {
+        "phase_instrument": "hybrid_thunder_steel_mk1",
+        "level": 19,
+        "platforms": [
+          "steel_titan_expert",
+          "thunter_striker_expert"
+        ],
+        "weapons": [
+          "steel_railcannon_advanced",
+          "tesla_coil_expert"
+        ],
+        "energy_cards": [
+          "hybrid_energy_basic"
+        ]
+      },
+      "stats": {
+        "max_hp": 2700,
+        "attack_power": 360,
+        "defense": 140,
+        "energy_regen": 3.5,
+        "unit_limit": 7
+      }
+    },
+    {
+      "id": "enemy_master_015",
+      "name": "虚空烈焰·塞拉菲娜",
+      "title": "熵增炎魔",
+      "level": 20,
+      "faction": "void_flame",
+      "difficulty": "expert",
+      "traits": [
+        {
+          "id": "chaos_flame_trait",
+          "name": "熵增炎魔",
+          "description": "烈焰+虚空协同：被燃烧的敌人能量流失速度翻倍",
+          "effects": {
+            "synergy_boost": 0.2,
+            "synergy_types": [
+              "flame",
+              "void"
+            ],
+            "burn_energy_drain_mult": 2.0
+          }
+        }
+      ],
+      "active_spells": [
+        {
+          "id": "chaos_inferno",
+          "name": "混沌炼狱",
+          "description": "召唤混乱火焰，随机移动并每秒造成180伤害",
+          "cooldown": 30.0,
+          "mana_cost": 200,
+          "effect": "chaos_flame",
+          "params": {
+            "duration": 8.0,
+            "damage": 180
+          }
+        },
+        {
+          "id": "burning_void",
+          "name": "燃烧虚空",
+          "description": "在指定区域创造燃烧虚空，持续造成伤害和能量流失",
+          "cooldown": 25.0,
+          "mana_cost": 180,
+          "effect": "burning_void_zone",
+          "params": {
+            "damage": 120,
+            "energy_drain": 25,
+            "duration": 8.0
+          }
+        }
+      ],
+      "passive_spells": [
+        {
+          "id": "entropy_flame",
+          "name": "熵增之火",
+          "description": "火焰伤害有25%概率触发虚空吸取效果",
+          "effect": "fire_lifesteal_chance",
+          "params": {
+            "chance": 0.25,
+            "lifesteal_percent": 0.15
+          }
+        },
+        {
+          "id": "void_burn",
+          "name": "虚空燃烧",
+          "description": "被燃烧的敌人移动速度降低35%",
+          "effect": "burn_slow",
+          "params": {
+            "slow_percent": 0.35
+          }
+        }
+      ],
+      "equipment": {
+        "phase_instrument": "hybrid_void_flame_mk1",
+        "level": 20,
+        "platforms": [
+          "void_mage_expert",
+          "flame_siege_expert"
+        ],
+        "weapons": [
+          "entropy_caster_expert",
+          "plasma_cannon_expert"
+        ],
+        "energy_cards": [
+          "hybrid_energy_advanced"
+        ]
+      },
+      "stats": {
+        "max_hp": 2600,
+        "attack_power": 380,
+        "defense": 85,
+        "energy_regen": 3.8,
+        "unit_limit": 7
+      }
+    },
+    {
+      "id": "enemy_master_016",
+      "name": "不朽钢铁·阿特拉斯",
+      "title": "世界承载者",
+      "level": 22,
+      "faction": "steel",
+      "difficulty": "expert",
+      "traits": [
+        {
+          "id": "immortal_will",
+          "name": "不朽意志",
+          "description": "友军不会受到超过30%最大HP的单次伤害；每有1个友军全体防御+5%",
+          "effects": {
+            "damage_cap": 0.3,
+            "unit_count_defense": 0.05
+          }
+        }
+      ],
+      "active_spells": [
+        {
+          "id": "world_pillar",
+          "name": "世界支柱",
+          "description": "创造2个巨大的钢铁支柱，拥有4000HP",
+          "cooldown": 60.0,
+          "mana_cost": 300,
+          "effect": "permanent_structures",
+          "params": {
+            "count": 2,
+            "hp": 4000
+          }
+        },
+        {
+          "id": "earthquake",
+          "name": "大地震",
+          "description": "全屏震动，造成500伤害并降低所有敌人40%防御",
+          "cooldown": 40.0,
+          "mana_cost": 250,
+          "effect": "global_earthquake",
+          "params": {
+            "damage": 500,
+            "defense_reduction": 0.4,
+            "duration": 6.0
+          }
+        }
+      ],
+      "passive_spells": [
+        {
+          "id": "unbreakable",
+          "name": "不可破坏",
+          "description": "友军单位不会受到超过最大生命值30%的单次伤害",
+          "effect": "damage_cap",
+          "params": {
+            "max_damage_percent": 0.3
+          }
+        },
+        {
+          "id": "steel_mountain",
+          "name": "钢铁之山",
+          "description": "友军数量越多，全体防御力越高（每个单位+5%）",
+          "effect": "unit_count_defense",
+          "params": {
+            "defense_per_unit": 0.05
+          }
+        }
+      ],
+      "equipment": {
+        "phase_instrument": "steel_guardian_mk4",
+        "level": 22,
+        "platforms": [
+          "steel_fortress_expert",
+          "steel_titan_expert"
+        ],
+        "weapons": [
+          "steel_gatling_expert",
+          "steel_artillery_expert"
+        ],
+        "energy_cards": [
+          "steel_energy_expert"
+        ]
+      },
+      "stats": {
+        "max_hp": 5000,
+        "attack_power": 400,
+        "defense": 200,
+        "energy_regen": 3.5,
+        "unit_limit": 9
+      }
+    },
+    {
+      "id": "enemy_master_017",
+      "name": "永恒炎魔·苏尔特",
+      "title": "诸神黄昏",
+      "level": 23,
+      "faction": "flame",
+      "difficulty": "expert",
+      "traits": [
+        {
+          "id": "ragnarok",
+          "name": "诸神黄昏",
+          "description": "火焰伤害+40%；友军首次死亡时自动复活，恢复30%生命值",
+          "effects": {
+            "fire_damage_boost": 0.4,
+            "auto_revive_once": {
+              "hp_percent": 0.3
+            }
+          }
+        }
+      ],
+      "active_spells": [
+        {
+          "id": "ragnarok_inferno",
+          "name": "诸神黄昏炼狱",
+          "description": "召唤火焰巨人，持续20秒",
+          "cooldown": 90.0,
+          "mana_cost": 500,
+          "effect": "summon_fire_giant",
+          "params": {
+            "duration": 20.0
+          }
+        },
+        {
+          "id": "solar_flare",
+          "name": "太阳耀斑",
+          "description": "释放太阳耀斑，全屏800伤害并致盲所有敌人5秒",
+          "cooldown": 60.0,
+          "mana_cost": 400,
+          "effect": "solar_flare",
+          "params": {
+            "damage": 800,
+            "blind_duration": 5.0
+          }
+        }
+      ],
+      "passive_spells": [
+        {
+          "id": "phoenix_rebirth_auto",
+          "name": "凤凰重生",
+          "description": "友军死亡后会在原位置以30%HP复活",
+          "effect": "phoenix_rebirth_auto",
+          "params": {
+            "rebirth_hp": 0.3,
+            "cooldown_per_unit": 30.0
+          }
+        },
+        {
+          "id": "time_based_hp_drain",
+          "name": "热寂",
+          "description": "战斗每进行30秒，所有敌人失去8%最大生命值",
+          "effect": "time_based_hp_drain",
+          "params": {
+            "interval": 30.0,
+            "drain_percent": 0.08
+          }
+        }
+      ],
+      "equipment": {
+        "phase_instrument": "flame_destroyer_mk4",
+        "level": 23,
+        "platforms": [
+          "flame_raider_expert",
+          "flame_siege_expert"
+        ],
+        "weapons": [
+          "flame_thrower_expert",
+          "plasma_cannon_expert"
+        ],
+        "energy_cards": [
+          "flame_energy_expert"
+        ]
+      },
+      "stats": {
+        "max_hp": 4200,
+        "attack_power": 520,
+        "defense": 110,
+        "energy_regen": 4.0,
+        "unit_limit": 8
+      }
+    },
+    {
+      "id": "enemy_master_018",
+      "name": "万雷之主·雷神",
+      "title": "雷霆化身",
+      "level": 24,
+      "faction": "thunder",
+      "difficulty": "expert",
+      "traits": [
+        {
+          "id": "thunder_avatar",
+          "name": "万钧雷霆",
+          "description": "雷电伤害+45%，闪电链弹射额外+2次，能量满自动打击",
+          "effects": {
+            "lightning_damage_boost": 0.45,
+            "chain_bounce_bonus": 2,
+            "energy_full_auto_strike": true
+          }
+        }
+      ],
+      "active_spells": [
+        {
+          "id": "thunder_god_avatar",
+          "name": "雷神化身",
+          "description": "化身为雷神，获得无限能量和无敌状态，持续8秒",
+          "cooldown": 120.0,
+          "mana_cost": 600,
+          "effect": "avatar_mode",
+          "params": {
+            "duration": 8.0
+          }
+        },
+        {
+          "id": "lightning_omega",
+          "name": "终极雷霆",
+          "description": "释放超强力闪电，造成1200伤害并分裂为6道",
+          "cooldown": 50.0,
+          "mana_cost": 350,
+          "effect": "ultimate_lightning",
+          "params": {
+            "damage": 1200,
+            "splits": 6
+          }
+        }
+      ],
+      "passive_spells": [
+        {
+          "id": "auto_lightning",
+          "name": "无处不在的闪电",
+          "description": "每5秒自动随机打击敌人，造成250伤害",
+          "effect": "auto_lightning",
+          "params": {
+            "interval": 5.0,
+            "damage": 250
+          }
+        },
+        {
+          "id": "global_damage_boost",
+          "name": "导电世界",
+          "description": "整个战场变为导电体，所有敌人受到的雷电伤害+40%",
+          "effect": "global_damage_boost",
+          "params": {
+            "damage_type": "lightning",
+            "boost": 0.4
+          }
+        }
+      ],
+      "equipment": {
+        "phase_instrument": "thunder_storm_mk4",
+        "level": 24,
+        "platforms": [
+          "thunter_striker_expert",
+          "thunter_sniper_expert"
+        ],
+        "weapons": [
+          "tesla_coil_expert",
+          "railgun_expert"
+        ],
+        "energy_cards": [
+          "thunder_energy_expert"
+        ]
+      },
+      "stats": {
+        "max_hp": 3800,
+        "attack_power": 560,
+        "defense": 95,
+        "energy_regen": 4.5,
+        "unit_limit": 8
+      }
+    },
+    {
+      "id": "enemy_master_019",
+      "name": "虚空主宰·尼德霍格",
+      "title": "世界吞噬者",
+      "level": 25,
+      "faction": "void",
+      "difficulty": "expert",
+      "traits": [
+        {
+          "id": "world_devourer",
+          "name": "世界吞噬者",
+          "description": "虚空伤害+45%；敌方护盾和护甲效果降低30%",
+          "effects": {
+            "void_damage_boost": 0.45,
+            "enemy_defense_reduction": 0.3
+          }
+        }
+      ],
+      "active_spells": [
+        {
+          "id": "devour_all",
+          "name": "世界吞噬",
+          "description": "吞噬战场上低生命值的敌人，恢复40%最大生命值",
+          "cooldown": 80.0,
+          "mana_cost": 500,
+          "effect": "devour_all",
+          "params": {
+            "heal_percent": 0.4,
+            "hp_threshold": 0.25
+          }
+        },
+        {
+          "id": "void_apocalypse",
+          "name": "虚空末日",
+          "description": "开启虚空末日，所有敌人持续受到伤害并被传送",
+          "cooldown": 60.0,
+          "mana_cost": 450,
+          "effect": "void_apocalypse",
+          "params": {
+            "damage": 180,
+            "duration": 12.0
+          }
+        }
+      ],
+      "passive_spells": [
+        {
+          "id": "void_lord",
+          "name": "虚空领主",
+          "description": "所有虚空技能伤害提升80%，冷却减少25%",
+          "effect": "void_mastery_ultimate",
+          "params": {
+            "damage_boost": 0.8,
+            "cooldown_reduction": 0.25
+          }
+        },
+        {
+          "id": "enemy_defense_reduction",
+          "name": "现实崩溃",
+          "description": "敌人的护盾和护甲效果降低40%",
+          "effect": "enemy_defense_reduction",
+          "params": {
+            "reduction": 0.4
+          }
+        }
+      ],
+      "equipment": {
+        "phase_instrument": "void_walker_mk4",
+        "level": 25,
+        "platforms": [
+          "void_stealth_expert",
+          "void_mage_expert"
+        ],
+        "weapons": [
+          "void_lance_expert",
+          "entropy_caster_expert"
+        ],
+        "energy_cards": [
+          "void_energy_expert"
+        ]
+      },
+      "stats": {
+        "max_hp": 4500,
+        "attack_power": 500,
+        "defense": 120,
+        "energy_regen": 4.5,
+        "unit_limit": 8
+      }
+    },
+    {
+      "id": "enemy_master_020",
+      "name": "钢铁雷霆·泰尔",
+      "title": "电磁战神",
+      "level": 24,
+      "faction": "steel_thunder",
+      "difficulty": "expert",
+      "traits": [
+        {
+          "id": "em_war_god",
+          "name": "电磁战神",
+          "description": "钢铁+雷霆协同：部署时单位获得闪电护盾，反弹200伤害",
+          "effects": {
+            "synergy_boost": 0.3,
+            "synergy_types": [
+              "steel",
+              "thunder"
+            ],
+            "deploy_shield": 200
+          }
+        }
+      ],
+      "active_spells": [
+        {
+          "id": "electromagnetic_fortress",
+          "name": "电磁堡垒",
+          "description": "创造电磁堡垒，对周围敌人造成持续伤害",
+          "cooldown": 45.0,
+          "mana_cost": 300,
+          "effect": "em_fortress",
+          "params": {
+            "damage": 200,
+            "duration": 15.0
+          }
+        },
+        {
+          "id": "lightning_assault",
+          "name": "雷霆突击",
+          "description": "所有友军获得闪电护盾和攻击加速",
+          "cooldown": 30.0,
+          "mana_cost": 250,
+          "effect": "lightning_buff",
+          "params": {
+            "attack_speed": 0.4,
+            "shield_damage": 120
+          }
+        }
+      ],
+      "passive_spells": [
+        {
+          "id": "synergy_boost",
+          "name": "导电钢铁",
+          "description": "钢铁单位和雷电单位互相增强25%属性",
+          "effect": "synergy_boost",
+          "params": {
+            "boost": 0.25,
+            "types": [
+              "steel",
+              "thunder"
+            ]
+          }
+        },
+        {
+          "id": "armor_chain_lightning",
+          "name": "雷霆护甲",
+          "description": "友军受到攻击时，触发连锁闪电",
+          "effect": "armor_chain_lightning",
+          "params": {
+            "chain_count": 3,
+            "damage": 100
+          }
+        }
+      ],
+      "equipment": {
+        "phase_instrument": "hybrid_steel_thunder_mk1",
+        "level": 24,
+        "platforms": [
+          "steel_fortress_expert",
+          "thunter_striker_expert"
+        ],
+        "weapons": [
+          "steel_gatling_expert",
+          "tesla_coil_expert"
+        ],
+        "energy_cards": [
+          "hybrid_energy_advanced"
+        ]
+      },
+      "stats": {
+        "max_hp": 4200,
+        "attack_power": 480,
+        "defense": 160,
+        "energy_regen": 4.0,
+        "unit_limit": 8
+      }
+    },
+    {
+      "id": "enemy_master_021",
+      "name": "烈焰虚空·克尔加",
+      "title": "混沌炎魔",
+      "level": 25,
+      "faction": "flame_void",
+      "difficulty": "legendary",
+      "traits": [
+        {
+          "id": "chaos_inferno_trait",
+          "name": "混沌炎魔",
+          "description": "烈焰+虚空协同：被燃烧的敌人随机传送，有20%概率双重伤害",
+          "effects": {
+            "synergy_boost": 0.3,
+            "synergy_types": [
+              "flame",
+              "void"
+            ],
+            "dual_damage_chance": 0.2
+          }
+        }
+      ],
+      "active_spells": [
+        {
+          "id": "chaos_zone",
+          "name": "混沌虚空炼狱",
+          "description": "创造混乱的虚空炼狱，随机传送和伤害敌人",
+          "cooldown": 50.0,
+          "mana_cost": 350,
+          "effect": "chaos_zone",
+          "params": {
+            "damage": 250,
+            "duration": 12.0
+          }
+        },
+        {
+          "id": "entropy_drain",
+          "name": "熵增烈焰",
+          "description": "所有敌人持续失去生命值和能量",
+          "cooldown": 40.0,
+          "mana_cost": 280,
+          "effect": "entropy_drain",
+          "params": {
+            "hp_drain": 80,
+            "energy_drain": 40,
+            "duration": 8.0
+          }
+        }
+      ],
+      "passive_spells": [
+        {
+          "id": "dual_element_boost",
+          "name": "混沌之火",
+          "description": "火焰和虚空伤害提升40%，有15%概率触发双重伤害",
+          "effect": "dual_element_boost",
+          "params": {
+            "boost": 0.4,
+            "dual_chance": 0.15
+          }
+        },
+        {
+          "id": "immunity",
+          "name": "混沌免疫",
+          "description": "友军对燃烧和虚空能量流失效果免疫",
+          "effect": "immunity",
+          "params": {
+            "effects": [
+              "burn",
+              "void_drain"
+            ]
+          }
+        }
+      ],
+      "equipment": {
+        "phase_instrument": "hybrid_flame_void_mk1",
+        "level": 25,
+        "platforms": [
+          "flame_siege_expert",
+          "void_mage_expert"
+        ],
+        "weapons": [
+          "plasma_cannon_expert",
+          "entropy_caster_expert"
+        ],
+        "energy_cards": [
+          "hybrid_energy_advanced"
+        ]
+      },
+      "stats": {
+        "max_hp": 4000,
+        "attack_power": 520,
+        "defense": 100,
+        "energy_regen": 4.5,
+        "unit_limit": 7
+      }
+    },
+    {
+      "id": "enemy_master_022",
+      "name": "战争机器·铁骑",
+      "title": "钢铁风暴",
+      "level": 26,
+      "faction": "steel",
+      "difficulty": "legendary",
+      "traits": [
+        {
+          "id": "automated_warfare",
+          "name": "自动化战争",
+          "description": "每10秒自动生产一个战斗单位；单位每存活10秒获得一层升级(+8%属性)",
+          "effects": {
+            "auto_spawn_interval": 10.0,
+            "time_scaling": {
+              "interval": 10.0,
+              "boost": 0.08
+            }
+          }
+        }
+      ],
+      "active_spells": [
+        {
+          "id": "deploy_mechs",
+          "name": "机械军团",
+          "description": "部署6个战斗机器人",
+          "cooldown": 30.0,
+          "mana_cost": 180,
+          "effect": "deploy_mechs",
+          "params": {
+            "count": 6,
+            "mech_type": "battle_robot"
+          }
+        },
+        {
+          "id": "mass_repair",
+          "name": "修复蜂群",
+          "description": "纳米机器人修复所有友军，恢复25%生命值",
+          "cooldown": 25.0,
+          "mana_cost": 150,
+          "effect": "mass_repair",
+          "params": {
+            "heal_percent": 0.25
+          }
+        }
+      ],
+      "passive_spells": [
+        {
+          "id": "automation",
+          "name": "自动化",
+          "description": "每12秒自动生产一个战斗单位",
+          "effect": "auto_production_fast",
+          "params": {
+            "interval": 12.0
+          }
+        },
+        {
+          "id": "modular_upgrade",
+          "name": "模块化升级",
+          "description": "友军单位每存活10秒，获得一层升级（+8%属性）",
+          "effect": "time_based_upgrade",
+          "params": {
+            "interval": 10.0,
+            "boost_per_level": 0.08
+          }
+        }
+      ],
+      "equipment": {
+        "phase_instrument": "steel_guardian_mk4",
+        "level": 26,
+        "platforms": [
+          "steel_fortress_expert",
+          "steel_titan_expert"
+        ],
+        "weapons": [
+          "steel_gatling_expert",
+          "steel_artillery_expert"
+        ],
+        "energy_cards": [
+          "steel_energy_expert"
+        ]
+      },
+      "stats": {
+        "max_hp": 5500,
+        "attack_power": 480,
+        "defense": 200,
+        "energy_regen": 3.5,
+        "unit_limit": 10
+      }
+    },
+    {
+      "id": "enemy_master_023",
+      "name": "火术宗师·凤凰",
+      "title": "不死鸟",
+      "level": 27,
+      "faction": "flame",
+      "difficulty": "legendary",
+      "traits": [
+        {
+          "id": "phoenix_trait",
+          "name": "不死鸟",
+          "description": "火焰技能冷却-30%；全队每场战斗可触发一次完全复活",
+          "effects": {
+            "fire_cooldown_reduction": 0.3,
+            "full_resurrect_once": true
+          }
+        }
+      ],
+      "active_spells": [
+        {
+          "id": "pyroblast",
+          "name": "炎爆术",
+          "description": "发射巨大火球，造成600伤害并点燃区域",
+          "cooldown": 18.0,
+          "mana_cost": 160,
+          "effect": "pyroblast",
+          "params": {
+            "damage": 600,
+            "radius": 100,
+            "burn_duration": 6.0
+          }
+        },
+        {
+          "id": "flame_wave",
+          "name": "烈焰波",
+          "description": "释放环形烈焰波，推开敌人并造成400伤害",
+          "cooldown": 16.0,
+          "mana_cost": 140,
+          "effect": "flame_wave",
+          "params": {
+            "damage": 400,
+            "knockback": 150
+          }
+        }
+      ],
+      "passive_spells": [
+        {
+          "id": "fire_mastery",
+          "name": "火焰精通",
+          "description": "火焰伤害提升35%，火焰法术冷却减少20%",
+          "effect": "elemental_mastery",
+          "params": {
+            "element": "fire",
+            "damage_boost": 0.35,
+            "cooldown_reduction": 0.2
+          }
+        },
+        {
+          "id": "ignite",
+          "name": "点燃",
+          "description": "攻击有20%概率点燃敌人，每秒造成45伤害",
+          "effect": "ignite_chance",
+          "params": {
+            "chance": 0.2,
+            "burn_damage": 45
+          }
+        }
+      ],
+      "equipment": {
+        "phase_instrument": "flame_destroyer_mk4",
+        "level": 27,
+        "platforms": [
+          "flame_raider_expert",
+          "flame_siege_expert"
+        ],
+        "weapons": [
+          "flame_thrower_expert",
+          "plasma_cannon_expert"
+        ],
+        "energy_cards": [
+          "flame_energy_expert"
+        ]
+      },
+      "stats": {
+        "max_hp": 4800,
+        "attack_power": 580,
+        "defense": 100,
+        "energy_regen": 4.2,
+        "unit_limit": 9
+      }
+    },
+    {
+      "id": "enemy_master_024",
+      "name": "风暴使者·赛勒斯",
+      "title": "疾风迅雷",
+      "level": 27,
+      "faction": "thunder",
+      "difficulty": "legendary",
+      "traits": [
+        {
+          "id": "storm_rush",
+          "name": "超级突袭",
+          "description": "移动速度+50%；对首领级目标造成+100%伤害",
+          "effects": {
+            "move_speed_boost": 0.5,
+            "boss_damage_boost": 1.0
+          }
+        }
+      ],
+      "active_spells": [
+        {
+          "id": "tornado_summon",
+          "name": "龙卷风链",
+          "description": "召唤3个龙卷风，在战场上移动并造成伤害",
+          "cooldown": 28.0,
+          "mana_cost": 200,
+          "effect": "tornado_summon",
+          "params": {
+            "count": 3,
+            "damage": 160,
+            "duration": 10.0
+          }
+        },
+        {
+          "id": "wind_blast",
+          "name": "风之冲击",
+          "description": "强力风击，将所有敌人推向一侧并造成280伤害",
+          "cooldown": 22.0,
+          "mana_cost": 170,
+          "effect": "wind_push",
+          "params": {
+            "damage": 280,
+            "push_distance": 200
+          }
+        }
+      ],
+      "passive_spells": [
+        {
+          "id": "storm_speed",
+          "name": "风暴骑手",
+          "description": "友军移动速度提升50%，攻击速度提升25%",
+          "effect": "storm_speed",
+          "params": {
+            "move_speed": 0.5,
+            "attack_speed": 0.25
+          }
+        },
+        {
+          "id": "periodic_electric_shock",
+          "name": "电场",
+          "description": "周围敌人每3秒受到一次电击",
+          "effect": "periodic_electric_shock",
+          "params": {
+            "interval": 3.0,
+            "damage": 100
+          }
+        }
+      ],
+      "equipment": {
+        "phase_instrument": "thunder_storm_mk4",
+        "level": 27,
+        "platforms": [
+          "thunter_striker_expert",
+          "thunter_sniper_expert"
+        ],
+        "weapons": [
+          "tesla_coil_expert",
+          "railgun_expert"
+        ],
+        "energy_cards": [
+          "thunder_energy_expert"
+        ]
+      },
+      "stats": {
+        "max_hp": 4000,
+        "attack_power": 550,
+        "defense": 80,
+        "energy_regen": 4.8,
+        "unit_limit": 8
+      }
+    },
+    {
+      "id": "enemy_master_025",
+      "name": "暗影主宰·深渊",
+      "title": "暗影之王",
+      "level": 28,
+      "faction": "void",
+      "difficulty": "legendary",
+      "traits": [
+        {
+          "id": "shadow_realm",
+          "name": "暗影领域",
+          "description": "暗影中敌人受到伤害+50%；背刺伤害+200%",
+          "effects": {
+            "darkness_damage_boost": 0.5,
+            "backstab_damage_boost": 2.0
+          }
+        }
+      ],
+      "active_spells": [
+        {
+          "id": "shadow_clones",
+          "name": "暗影军团",
+          "description": "召唤8个暗影分身，持续时间15秒",
+          "cooldown": 35.0,
+          "mana_cost": 220,
+          "effect": "shadow_clones",
+          "params": {
+            "count": 8,
+            "duration": 15.0
+          }
+        },
+        {
+          "id": "eclipse",
+          "name": "日蚀",
+          "description": "战场陷入黑暗，敌人命中率降低40%",
+          "cooldown": 40.0,
+          "mana_cost": 180,
+          "effect": "darkness_debuff",
+          "params": {
+            "accuracy_reduction": 0.4,
+            "duration": 10.0
+          }
+        }
+      ],
+      "passive_spells": [
+        {
+          "id": "teleport_behind",
+          "name": "暗影步",
+          "description": "友军可以瞬间移动到敌人身后",
+          "effect": "teleport_behind",
+          "params": {
+            "cooldown": 8.0
+          }
+        },
+        {
+          "id": "execute_damage",
+          "name": "暗杀",
+          "description": "攻击低生命值敌人时，伤害提升100%",
+          "effect": "execute_damage",
+          "params": {
+            "threshold": 0.3,
+            "damage_boost": 1.0
+          }
+        }
+      ],
+      "equipment": {
+        "phase_instrument": "void_walker_mk4",
+        "level": 28,
+        "platforms": [
+          "void_stealth_expert",
+          "void_mage_expert"
+        ],
+        "weapons": [
+          "void_lance_expert",
+          "entropy_caster_expert"
+        ],
+        "energy_cards": [
+          "void_energy_expert"
+        ]
+      },
+      "stats": {
+        "max_hp": 4500,
+        "attack_power": 580,
+        "defense": 80,
+        "energy_regen": 4.5,
+        "unit_limit": 7
+      }
+    },
+    {
+      "id": "enemy_master_026",
+      "name": "钢铁之神·赫淮斯托斯",
+      "title": "锻造之神",
+      "level": 28,
+      "faction": "steel",
+      "difficulty": "legendary",
+      "traits": [
+        {
+          "id": "divine_forging",
+          "name": "神圣锻造",
+          "description": "每场战斗可使用一次神圣变身：全队全属性+80%持续15秒",
+          "effects": {
+            "divine_transform": {
+              "duration": 15.0,
+              "all_stat_boost": 0.8
+            }
+          }
+        },
+        {
+          "id": "cheat_death",
+          "name": "神之庇护",
+          "description": "友军受到致命伤害时，有40%概率保留1点生命值（每单位一次）",
+          "effects": {
+            "cheat_death_chance": 0.4
+          }
+        }
+      ],
+      "active_spells": [
+        {
+          "id": "divine_transformation",
+          "name": "神圣锻造",
+          "description": "将所有友军转化为神圣形态，全属性提升80%",
+          "cooldown": 90.0,
+          "mana_cost": 600,
+          "effect": "divine_transformation",
+          "params": {
+            "duration": 15.0,
+            "stat_boost": 0.8
+          }
+        },
+        {
+          "id": "terrain_forge",
+          "name": "世界锻造",
+          "description": "重塑战场地形，创造3个钢铁堡垒",
+          "cooldown": 120.0,
+          "mana_cost": 800,
+          "effect": "terrain_forge",
+          "params": {
+            "fortress_count": 3
+          }
+        }
+      ],
+      "passive_spells": [
+        {
+          "id": "cheat_death_chance",
+          "name": "神圣庇护",
+          "description": "友军受到致命伤害时，有40%概率保留1点生命值",
+          "effect": "cheat_death_chance",
+          "params": {
+            "chance": 0.4
+          }
+        },
+        {
+          "id": "massive_heal_aura",
+          "name": "神之光环",
+          "description": "周围友军每秒恢复4%最大生命值",
+          "effect": "massive_heal_aura",
+          "params": {
+            "heal_percent": 0.04,
+            "radius": 250
+          }
+        }
+      ],
+      "equipment": {
+        "phase_instrument": "steel_guardian_god",
+        "level": 28,
+        "platforms": [
+          "steel_fortress_expert",
+          "steel_titan_expert"
+        ],
+        "weapons": [
+          "steel_gatling_expert",
+          "steel_artillery_expert"
+        ],
+        "energy_cards": [
+          "steel_energy_god"
+        ]
+      },
+      "stats": {
+        "max_hp": 7000,
+        "attack_power": 550,
+        "defense": 230,
+        "energy_regen": 4.0,
+        "unit_limit": 12
+      }
+    },
+    {
+      "id": "enemy_master_027",
+      "name": "炎魔之神·赫卡特",
+      "title": "炼狱女王",
+      "level": 29,
+      "faction": "flame",
+      "difficulty": "legendary",
+      "traits": [
+        {
+          "id": "hell_queen",
+          "name": "炼狱女王",
+          "description": "火焰伤害+60%；全队单位死亡后3秒自动复活(50%HP)",
+          "effects": {
+            "fire_damage_boost": 0.6,
+            "auto_resurrect": {
+              "delay": 3.0,
+              "hp": 0.5
+            }
+          }
+        },
+        {
+          "id": "global_burn",
+          "name": "世界燃烧",
+          "description": "每秒对所有敌人造成150伤害",
+          "effects": {
+            "global_dot": 150
+          }
+        }
+      ],
+      "active_spells": [
+        {
+          "id": "hell_terrain",
+          "name": "地狱降临",
+          "description": "将整个战场变为地狱环境，持续造成毁灭性伤害",
+          "cooldown": 100.0,
+          "mana_cost": 700,
+          "effect": "hell_terrain",
+          "params": {
+            "damage": 400,
+            "duration": 15.0
+          }
+        },
+        {
+          "id": "full_resurrect_all",
+          "name": "凤凰涅槃",
+          "description": "完全复活所有死亡单位，并恢复70%生命值",
+          "cooldown": 150.0,
+          "mana_cost": 1000,
+          "effect": "full_resurrect_all",
+          "params": {
+            "hp_percent": 0.7
+          }
+        }
+      ],
+      "passive_spells": [
+        {
+          "id": "auto_resurrect",
+          "name": "不朽之火",
+          "description": "友军不会真正死亡，而是3秒后复活",
+          "effect": "auto_resurrect",
+          "params": {
+            "resurrect_delay": 3.0,
+            "resurrect_hp": 0.5
+          }
+        },
+        {
+          "id": "global_dot",
+          "name": "世界燃烧",
+          "description": "每秒对所有敌人造成150伤害",
+          "effect": "global_dot",
+          "params": {
+            "damage": 150
+          }
+        }
+      ],
+      "equipment": {
+        "phase_instrument": "flame_destroyer_god",
+        "level": 29,
+        "platforms": [
+          "flame_raider_expert",
+          "flame_siege_expert"
+        ],
+        "weapons": [
+          "flame_thrower_expert",
+          "plasma_cannon_expert"
+        ],
+        "energy_cards": [
+          "flame_energy_god"
+        ]
+      },
+      "stats": {
+        "max_hp": 6500,
+        "attack_power": 750,
+        "defense": 140,
+        "energy_regen": 4.5,
+        "unit_limit": 11
+      }
+    },
+    {
+      "id": "enemy_master_028",
+      "name": "雷神·托尔",
+      "title": "雷霆之神",
+      "level": 29,
+      "faction": "thunder",
+      "difficulty": "legendary",
+      "traits": [
+        {
+          "id": "god_of_thunder",
+          "name": "雷霆之神",
+          "description": "雷电伤害+150%，技能冷却-40%，能量消耗-60%",
+          "effects": {
+            "lightning_damage_boost": 1.5,
+            "cooldown_reduction": 0.4,
+            "energy_cost_reduction": 0.6
+          }
+        },
+        {
+          "id": "thunder_dome",
+          "name": "雷霆穹顶",
+          "description": "每60秒自动展开雷霆穹顶，保护友军5秒",
+          "effects": {
+            "auto_thunder_dome": {
+              "interval": 60.0,
+              "duration": 5.0
+            }
+          }
+        }
+      ],
+      "active_spells": [
+        {
+          "id": "god_weapon_attack",
+          "name": "雷神之锤",
+          "description": "投掷雷神之锤，造成1500伤害并瘫痪所有敌人4秒",
+          "cooldown": 80.0,
+          "mana_cost": 800,
+          "effect": "god_weapon_attack",
+          "params": {
+            "damage": 1500,
+            "stun_duration": 4.0
+          }
+        },
+        {
+          "id": "thunder_dome_shield",
+          "name": "雷霆穹顶",
+          "description": "创造无敌雷霆穹顶，保护所有友军并电击敌人",
+          "cooldown": 60.0,
+          "mana_cost": 600,
+          "effect": "thunder_dome_shield",
+          "params": {
+            "duration": 12.0,
+            "shock_damage": 250
+          }
+        }
+      ],
+      "passive_spells": [
+        {
+          "id": "god_mastery",
+          "name": "雷霆之神",
+          "description": "所有雷电伤害提升150%，冷却时间减少40%",
+          "effect": "god_mastery",
+          "params": {
+            "damage_boost": 1.5,
+            "cooldown_reduction": 0.4,
+            "element": "lightning"
+          }
+        },
+        {
+          "id": "energy_cost_reduction",
+          "name": "无限能量",
+          "description": "能量消耗减少60%",
+          "effect": "energy_cost_reduction",
+          "params": {
+            "reduction": 0.6
+          }
+        }
+      ],
+      "equipment": {
+        "phase_instrument": "thunder_storm_god",
+        "level": 29,
+        "platforms": [
+          "thunter_striker_expert",
+          "thunter_sniper_expert"
+        ],
+        "weapons": [
+          "tesla_coil_expert",
+          "railgun_expert"
+        ],
+        "energy_cards": [
+          "thunder_energy_god"
+        ]
+      },
+      "stats": {
+        "max_hp": 6000,
+        "attack_power": 850,
+        "defense": 130,
+        "energy_regen": 6.0,
+        "unit_limit": 10
+      }
+    },
+    {
+      "id": "enemy_master_029",
+      "name": "虚空女神·尼克斯",
+      "title": "夜之女神",
+      "level": 30,
+      "faction": "void",
+      "difficulty": "legendary",
+      "traits": [
+        {
+          "id": "void_goddess_trait",
+          "name": "夜之女神",
+          "description": "虚空伤害+200%；永久黑暗(敌方命中率-60%)；可转化1个敌方单位",
+          "effects": {
+            "void_damage_boost": 2.0,
+            "permanent_darkness": 0.6,
+            "mass_convert_once": true
+          }
+        },
+        {
+          "id": "reality_erasure",
+          "name": "现实抹除",
+          "description": "每90秒可抹除1个敌方单位",
+          "effects": {
+            "instant_delete": {
+              "cooldown": 90.0
+            }
+          }
+        }
+      ],
+      "active_spells": [
+        {
+          "id": "mass_conversion",
+          "name": "虚空转化",
+          "description": "将生命值最低的敌方单位转化为虚空生物",
+          "cooldown": 120.0,
+          "mana_cost": 900,
+          "effect": "mass_conversion",
+          "params": {
+            "duration": 12.0,
+            "target_count": 2
+          }
+        },
+        {
+          "id": "instant_delete",
+          "name": "现实抹除",
+          "description": "抹除一个敌方单位的存在",
+          "cooldown": 90.0,
+          "mana_cost": 700,
+          "effect": "instant_delete",
+          "params": {
+            "cast_time": 2.0
+          }
+        }
+      ],
+      "passive_spells": [
+        {
+          "id": "goddess_mastery",
+          "name": "虚空女神",
+          "description": "所有虚空技能伤害提升200%",
+          "effect": "goddess_mastery",
+          "params": {
+            "damage_boost": 2.0
+          }
+        },
+        {
+          "id": "permanent_darkness",
+          "name": "永恒之夜",
+          "description": "战场永远保持黑暗状态，敌人命中率降低60%",
+          "effect": "permanent_darkness",
+          "params": {
+            "accuracy_reduction": 0.6
+          }
+        }
+      ],
+      "equipment": {
+        "phase_instrument": "void_walker_god",
+        "level": 30,
+        "platforms": [
+          "void_stealth_expert",
+          "void_mage_expert"
+        ],
+        "weapons": [
+          "void_lance_expert",
+          "entropy_caster_expert"
+        ],
+        "energy_cards": [
+          "void_energy_god"
+        ]
+      },
+      "stats": {
+        "max_hp": 5800,
+        "attack_power": 800,
+        "defense": 110,
+        "energy_regen": 5.5,
+        "unit_limit": 9
+      }
+    },
+    {
+      "id": "enemy_master_030",
+      "name": "全能相位师·奥米伽",
+      "title": "完美融合",
+      "level": 30,
+      "faction": "all",
+      "difficulty": "ultimate",
+      "traits": [
+        {
+          "id": "master_of_all",
+          "name": "万物主宰",
+          "description": "所有伤害类型+80%，所有抗性+40%，每使用技能全属性+8%(无上限)",
+          "effects": {
+            "all_damage_boost": 0.8,
+            "all_resistance_boost": 0.4,
+            "scaling_per_cast": 0.08
+          }
+        },
+        {
+          "id": "infinite_potential",
+          "name": "无限潜能",
+          "description": "能量回复+100%，单位上限+3",
+          "effects": {
+            "energy_regen_boost": 1.0,
+            "unit_limit_bonus": 3
+          }
+        }
+      ],
+      "active_spells": [
+        {
+          "id": "perfect_fusion",
+          "name": "完美和谐",
+          "description": "融合所有势力力量，全属性提升150%",
+          "cooldown": 120.0,
+          "mana_cost": 1000,
+          "effect": "perfect_fusion",
+          "params": {
+            "duration": 25.0,
+            "all_boost": 1.5
+          }
+        },
+        {
+          "id": "combo_ultimate",
+          "name": "奥米茄打击",
+          "description": "释放所有势力的终极技能，造成毁灭性伤害",
+          "cooldown": 180.0,
+          "mana_cost": 1500,
+          "effect": "combo_ultimate",
+          "params": {
+            "skill_count": 4
+          }
+        }
+      ],
+      "passive_spells": [
+        {
+          "id": "omni_mastery",
+          "name": "万物主宰",
+          "description": "所有伤害类型提升80%，所有抗性提升40%",
+          "effect": "omni_mastery",
+          "params": {
+            "damage_boost": 0.8,
+            "resistance_boost": 0.4
+          }
+        },
+        {
+          "id": "infinite_scaling",
+          "name": "无限潜能",
+          "description": "每使用一个技能，所有属性提升8%，无上限",
+          "effect": "infinite_scaling",
+          "params": {
+            "boost_per_cast": 0.08
+          }
+        }
+      ],
+      "equipment": {
+        "phase_instrument": "omega_instrument",
+        "level": 30,
+        "platforms": [
+          "steel_titan_expert",
+          "flame_siege_expert"
+        ],
+        "weapons": [
+          "railgun_expert",
+          "plasma_cannon_expert"
+        ],
+        "energy_cards": [
+          "hybrid_energy_god"
+        ]
+      },
+      "stats": {
+        "max_hp": 10000,
+        "attack_power": 1000,
+        "defense": 200,
+        "energy_regen": 8.0,
+        "unit_limit": 15
+      }
+    }
+  ]
+}

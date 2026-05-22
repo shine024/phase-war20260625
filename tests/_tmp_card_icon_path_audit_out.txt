@@ -1,0 +1,67 @@
+Godot Engine v4.5.stable.official.876b29033 - https://godotengine.org
+
+ERROR: Unrecognized UID: "uid://ce43lbwdryxch".
+   at: get_id_path (core/io/resource_uid.cpp:199)
+ERROR: Condition "local_path.is_empty()" is true. Returning: Ref<ResourceLoader::LoadToken>()
+   at: _load_start (core/io/resource_loader.cpp:568)
+ERROR: Error loading custom project font 'uid://ce43lbwdryxch'
+   at: initialize_theme (scene/theme/theme_db.cpp:79)
+=== card_icon_path_for audit ===
+cached cards scanned161
+vis_player hits93
+vis_enemy/pool hits65
+shape/aggregate fallback8
+placeholder path0
+missing texture load0
+
+--- shape fallback (platform/special, first 40) ---
+
+--- vis_player hits (first 15) ---
+ platform_ww1_light -> res://assets/card_icons/units/vis_player_001.png
+ platform_ww1_medium -> res://assets/card_icons/units/vis_player_002.png
+ platform_ww1_fort -> res://assets/card_icons/units/vis_player_003.png
+ platform_ww1_radar -> res://assets/card_icons/units/vis_player_004.png
+ platform_ww1_medic -> res://assets/card_icons/units/vis_player_005.png
+ platform_ww2_light -> res://assets/card_icons/units/vis_player_006.png
+ platform_ww2_medium -> res://assets/card_icons/units/vis_player_007.png
+ platform_ww2_heavy -> res://assets/card_icons/units/vis_player_008.png
+ platform_ww2_raider -> res://assets/card_icons/units/vis_player_009.png
+ platform_ww2_radar -> res://assets/card_icons/units/vis_player_010.png
+ platform_ww2_siege -> res://assets/card_icons/units/vis_player_011.png
+ platform_ww2_fortress -> res://assets/card_icons/units/vis_player_012.png
+ platform_cold_light -> res://assets/card_icons/units/vis_player_013.png
+ platform_cold_medium -> res://assets/card_icons/units/vis_player_014.png
+ platform_cold_ifv -> res://assets/card_icons/units/vis_player_015.png
+
+--- captured manifest hits (first 15) ---
+ captured_enemy_ww1_infantry_basic -> res://assets/card_icons/units/vis_enemy_036.png
+ captured_enemy_ww1_infantry_rifle -> res://assets/card_icons/units/vis_enemy_037.png
+ captured_enemy_ww1_mg_nest -> res://assets/card_icons/units/vis_enemy_038.png
+ captured_enemy_ww1_mortar -> res://assets/card_icons/units/vis_enemy_039.png
+ captured_elite_ww1_storm -> res://assets/card_icons/units/vis_enemy_040.png
+ captured_elite_ww1_armored -> res://assets/card_icons/units/vis_enemy_041.png
+ captured_boss_ww1_av7 -> res://assets/card_icons/units/vis_enemy_042.png
+ captured_enemy_ww2_infantry -> res://assets/card_icons/units/vis_enemy_043.png
+ captured_enemy_ww2_rifleman -> res://assets/card_icons/units/vis_enemy_044.png
+ captured_enemy_ww2_mg42 -> res://assets/card_icons/units/vis_enemy_045.png
+ captured_enemy_ww2_panzerschreck -> res://assets/card_icons/units/vis_enemy_046.png
+ captured_elite_ww2_paratrooper -> res://assets/card_icons/units/vis_enemy_047.png
+ captured_elite_ww2_panther -> res://assets/card_icons/units/vis_enemy_048.png
+ captured_boss_ww2_kingtiger -> res://assets/card_icons/units/vis_enemy_049.png
+ captured_enemy_cold_ak -> res://assets/card_icons/units/vis_enemy_050.png
+
+--- placeholder ---
+
+--- missing tex ---
+
+=== archetypes resolving to placeholder ===
+count:0
+[ObjectPoolManager] 娉ㄥ唽姹?'bullets'锛屽ぇ灏? 2
+[ObjectPoolManager] 娉ㄥ唽姹?'damage_numbers'锛屽ぇ灏? 4
+WARNING: 14 RIDs of type "CanvasItem" were leaked.
+   at: _free_rids (servers/rendering/renderer_canvas_cull.cpp:2678)
+ERROR: 2 RID allocations of type 'N13RendererDummy9DummyMeshE' were leaked at exit.
+WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
+   at: cleanup (core/object/object.cpp:2514)
+ERROR: 2 resources still in use at exit (run with --verbose for details).
+   at: clear (core/io/resource.cpp:795)

@@ -1,0 +1,4 @@
+Icons in this folder (icon_*.svg) are from Lucide (https://lucide.dev/), used under the MIT License.
+Source: https://github.com/lucide-icons/lucide
+Strokes use fill color #d4e6ff for contrast on dark UI (edited from Lucide default currentColor).
+Battle bar: play / pause / play (continue) from Lucide play.svg and pause.svg.

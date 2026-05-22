@@ -1,0 +1,50 @@
+[gd_scene load_steps=3 format=3 uid="uid://battlefield"]
+
+[ext_resource type="Script" uid="uid://clwpgv2frbgmp" path="res://scenes/battlefield/Battlefield.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://scenes/units/phase_field_driver.tscn" id="2_phase_driver"]
+
+[node name="Battlefield" type="Node2D"]
+script = ExtResource("1_script")
+
+[node name="Level10Background" type="Sprite2D" parent="."]
+z_index = -10
+
+[node name="Background" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 2.0
+offset_top = 8.0
+offset_right = 1282.0
+offset_bottom = 390.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.04, 0.07, 0.12, 1)
+
+[node name="Ground" type="ColorRect" parent="."]
+visible = false
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = 2.0
+offset_top = 395.0
+offset_right = 1284.0
+offset_bottom = 493.0
+grow_horizontal = 2
+mouse_filter = 2
+color = Color(0.08, 0.08, 0.1, 1)
+
+[node name="PlayerSpawn" type="Marker2D" parent="."]
+position = Vector2(80, 360)
+
+[node name="EnemySpawn" type="Marker2D" parent="."]
+position = Vector2(1120, 360)
+
+[node name="PlayerUnits" type="Node2D" parent="."]
+
+[node name="EnemyUnits" type="Node2D" parent="."]
+
+[node name="PhaseFieldDriver" parent="." instance=ExtResource("2_phase_driver")]
+position = Vector2(40, 360)
+

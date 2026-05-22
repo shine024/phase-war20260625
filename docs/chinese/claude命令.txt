@@ -1,0 +1,105 @@
+一、原生 Claude Code 基础命令（通用）
+这些是 Claude Code 自带的核心命令，在安装 Studio 模板后依然可用：
+
+1. 会话管理
+命令	作用
+/help	显示所有可用命令和帮助信息
+/clear	清空当前对话历史
+/compact [焦点]	压缩对话历史，节省 Token（可指定保留重点）
+/resume	恢复之前的会话
+/rename [名称]	重命名当前会话
+/branch	从当前对话创建分支（/fork 别名）
+/rewind	回退到上一步，撤销代码修改
+2. 项目配置
+命令	作用
+/init	分析项目并创建 CLAUDE.md 配置文件
+/memory	编辑 CLAUDE.md 记忆文件
+/config	打开设置面板
+/permissions	查看/修改权限设置
+/doctor	诊断安装环境和配置
+3. 模型与费用
+命令	作用
+/model [模型名]	切换 AI 模型
+/cost	查看当前会话 Token 用量和费用
+/context	可视化 Token 使用情况（彩色进度条）
+/usage	查看账户整体用量和限额
+4. 开发辅助
+命令	作用
+/review	审查未提交的代码变更
+/todos	列出对话中追踪的 TODO 项
+/agents	查看活跃的子代理状态
+/add-dir	添加额外工作目录
+5. 其他实用命令
+命令	作用
+/btw	侧向提问（不带当前上下文）
+/plan	进入只读计划模式
+/simplify	整理代码、减冗余
+/diff	交互式查看代码差异
+/export	导出对话记录
+/stats	使用习惯统计
+/exit	退出 Claude Code
+
+
+
+
+二、Claude Code Game Studios 专属命令
+根据项目介绍，Studio 模板提供了37 个工作流命令，主要包括以下类型：
+
+1. 项目初始化与阶段检测
+命令	作用
+/start	核心入口：引导式项目初始化，根据你的项目阶段（概念/已有代码）进行配置
+/project-stage-detect	分析现有项目所处的开发阶段和状况
+2. 创意与规划
+命令	作用
+/brainstorm	创意总监 AI 引导进行头脑风暴
+/design-system	规划游戏核心系统（角色控制、战斗逻辑等）
+/sprint-plan	路线图管理和冲刺规划
+3. 团队协作开发（/team-* 系列）
+命令	作用
+/team-combat	召唤战斗系统团队（玩法程序员 + 系统设计师 + 性能分析师）协同开发
+/team-ui	召集 UI 团队，专门负责用户界面开发
+项目共提供 37 个集成工作流命令，涵盖战斗、UI、音频、网络等各个模块的团队协作。
+
+4. 质量与评审
+命令	作用
+/code-review	主程序 AI 对代码进行同行级审查
+/tech-debt	生成技术债务评估报告，指出需要重构的位置
+5. 发布与运维
+命令	作用
+/release-checklist	生成发布前检查清单
+/hotfix	引导标准热修复流程
+三、快捷键参考
+快捷键	作用
+Shift + Tab	循环切换模式（默认 → 自动接受编辑 → 规划模式）
+Alt/Option + P	快速切换模型
+Alt/Option + T	切换扩展思考模式
+Ctrl + /	打开斜杠命令菜单
+Esc + Esc	撤销/回退操作
+Ctrl + D	退出会话
+Ctrl + L	清屏
+四、快速上手指南
+进入项目目录：cd your-game-project
+
+启动 Claude Code：claude
+
+运行初始化：/start（Studio 专属）
+
+根据需要调用命令：
+
+新概念 → /brainstorm
+
+规划系统 → /design-system
+
+开发功能 → /team-combat
+
+准备发布 → /release-checklist
+
+?? 提示：完整的命令列表可通过 /help 在会话中查看。Studio 模板的详细文档位于项目内的 docs/ 文件夹。
+
+/session new
+
+hermes
+
+hermes dashboard
+
+

@@ -1,0 +1,55 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="phase-war"
+run/main_scene="res://scenes/title_screen.tscn"
+config/features=PackedStringArray("4.5", "Mobile")
+run/max_fps=60
+config/icon="res://icon.svg"
+
+[autoload]
+
+SignalBus="*res://scripts/signal_bus.gd"
+BattleInputState="*res://scripts/battle_input_state.gd"
+EnergyManager="*res://managers/energy_manager.gd"
+PhaseInstrumentManager="*res://managers/phase_instrument_manager.gd"
+BattleManager="*res://managers/battle/battle_manager.gd"
+GameManager="*res://managers/game_manager.gd"
+BlueprintManager="*res://managers/blueprint_manager.gd"
+DropManager="*res://managers/drop_manager.gd"
+SaveManager="*res://managers/save_manager.gd"
+AudioManager="*res://managers/audio_manager.gd"
+PhaseLawManager="*res://managers/phase_law_manager.gd"
+BasicResourceManager="*res://managers/basic_resource_manager.gd"
+ObjectPoolManager="*res://managers/object_pool.gd"
+UILazyLoader="*res://managers/ui_lazy_loader.gd"
+ManagerLazyLoader="*res://managers/manager_lazy_loader.gd"
+PerformanceMetricsManager="*res://managers/performance_metrics_manager.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/godot-mcp/plugin.cfg", "res://addons/gdunit4/plugin.cfg")
+
+[gui]
+
+theme/custom_font="uid://ce43lbwdryxch"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"

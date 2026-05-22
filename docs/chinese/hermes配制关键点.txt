@@ -1,0 +1,29 @@
+Hermes Agent 智谱 GLM-5-Turbo 配置关键点：
+
+配置文件位置：C:\Users\Administrator\AppData\Local\hermes\（不是 C:\Users\Administrator\.hermes\）
+config.yaml 关键配置：
+model:
+  default: GLM-5-Turbo
+  provider: zai
+  base_url: https://open.bigmodel.cn/api/coding/paas/v4
+
+custom_providers:
+- name: zai
+  base_url: https://open.bigmodel.cn/api/coding/paas/v4
+  api_key: 你的API密钥
+  api_mode: chat_completions
+  model: GLM-5-Turbo
+.env 关键配置：
+OPENAI_API_KEY=你的API密钥
+OPENAI_BASE_URL=https://open.bigmodel.cn/api/coding/paas/v4
+OPENAI_MODEL=GLM-5-Turbo
+注意：
+Coding Plan 专属端点是 /api/coding/paas/v4，不是 /api/paas/v4
+模型名是 GLM-5-Turbo（不是 glm-5v-turbo）
+
+已修复 auth.json 中的端点。重启 Hermes 再试。
+
+已修改：
+
+auth.json - base_url 改为 /api/coding/paas/v4
+正确端点：https://open.bigmodel.cn/api/coding/paas/v4

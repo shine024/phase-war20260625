@@ -1,0 +1,928 @@
+{
+  "schema_version": 1,
+  "source": "data/quest_definitions.gd",
+  "key": "QUESTS",
+  "data": [
+    {
+      "id": "q_win_3",
+      "title": "初战告捷",
+      "description": "胜利完成 3 场战斗。",
+      "objective_type": "win_battles",
+      "target": 3,
+      "company_id": "iron_wall_corp",
+      "rewards": {
+        "blueprint_fragments": {
+          "smg_mk2": 1
+        },
+        "nano_materials": 10,
+        "company_rep": {
+          "iron_wall_corp": 10
+        }
+      }
+    },
+    {
+      "id": "q_win_10",
+      "title": "连战连捷",
+      "description": "胜利完成 10 场战斗。",
+      "objective_type": "win_battles",
+      "target": 10,
+      "company_id": "iron_wall_corp",
+      "rewards": {
+        "blueprint_fragments": {
+          "bp_ww2_013": 2
+        },
+        "nano_materials": 25,
+        "company_rep": {
+          "iron_wall_corp": 20
+        }
+      }
+    },
+    {
+      "id": "q_kill_20",
+      "title": "歼灭敌单位",
+      "description": "累计击毁 20 个敌方单位。",
+      "objective_type": "kill_enemies",
+      "target": 20,
+      "company_id": "nova_arms",
+      "rewards": {
+        "blueprint_fragments": {
+          "bp_cold_022": 1
+        },
+        "nano_materials": 15,
+        "company_rep": {
+          "nova_arms": 12
+        }
+      }
+    },
+    {
+      "id": "q_kill_50",
+      "title": "火力压制",
+      "description": "累计击毁 50 个敌方单位。",
+      "objective_type": "kill_enemies",
+      "target": 50,
+      "company_id": "nova_arms",
+      "rewards": {
+        "nano_materials": 40,
+        "company_rep": {
+          "nova_arms": 20
+        }
+      }
+    },
+    {
+      "id": "q_frag_smg",
+      "title": "收集冲锋枪碎片",
+      "description": "拥有至少 3 个 MP18·改 蓝图碎片（可解析即算）。",
+      "objective_type": "collect_fragments",
+      "target": {
+        "smg_mk2": 3
+      },
+      "company_id": "void_research",
+      "rewards": {
+        "nano_materials": 20,
+        "company_rep": {
+          "void_research": 15
+        }
+      }
+    },
+    {
+      "id": "q_clear_5",
+      "title": "突破第5关",
+      "description": "在第 5 关取得胜利。",
+      "objective_type": "clear_level",
+      "target": 5,
+      "company_id": "frontier_union",
+      "rewards": {
+        "blueprint_fragments": {
+          "phase_lance": 1
+        },
+        "nano_materials": 15,
+        "company_rep": {
+          "frontier_union": 12
+        }
+      }
+    },
+    {
+      "id": "q_clear_10",
+      "title": "突破第10关",
+      "description": "在第 10 关取得胜利。",
+      "objective_type": "clear_level",
+      "target": 10,
+      "company_id": "frontier_union",
+      "rewards": {
+        "blueprint_fragments": {
+          "railgun": 1
+        },
+        "nano_materials": 30,
+        "company_rep": {
+          "frontier_union": 20
+        }
+      }
+    },
+    {
+      "id": "q_win_5_any",
+      "title": "五场胜利",
+      "description": "任意关卡胜利 5 场。",
+      "objective_type": "win_battles",
+      "target": 5,
+      "company_id": "quantum_logistics",
+      "rewards": {
+        "blueprint_fragments": {
+          "bulwark": 1
+        },
+        "nano_materials": 12,
+        "company_rep": {
+          "quantum_logistics": 10
+        }
+      }
+    },
+    {
+      "id": "q_win_20",
+      "title": "百战精兵",
+      "description": "胜利完成 20 场战斗。",
+      "objective_type": "win_battles",
+      "target": 20,
+      "company_id": "iron_wall_corp",
+      "rewards": {
+        "blueprint_fragments": {
+          "thunder_field": 1
+        },
+        "nano_materials": 50,
+        "company_rep": {
+          "iron_wall_corp": 35
+        }
+      }
+    },
+    {
+      "id": "q_kill_100",
+      "title": "歼灭百敌",
+      "description": "累计击毁 100 个敌方单位。",
+      "objective_type": "kill_enemies",
+      "target": 100,
+      "company_id": "nova_arms",
+      "rewards": {
+        "blueprint_fragments": {
+          "mega_beam_cannon": 1
+        },
+        "nano_materials": 60,
+        "company_rep": {
+          "nova_arms": 40
+        }
+      }
+    },
+    {
+      "id": "q_clear_20",
+      "title": "突破第20关",
+      "description": "在第 20 关取得胜利。",
+      "objective_type": "clear_level",
+      "target": 20,
+      "company_id": "frontier_union",
+      "rewards": {
+        "blueprint_fragments": {
+          "titan_mk2": 1
+        },
+        "nano_materials": 45,
+        "company_rep": {
+          "frontier_union": 30
+        }
+      }
+    },
+    {
+      "id": "q_attack_void",
+      "title": "进攻：虚空相位",
+      "description": "击败虚空相位势力的相位师「终焉之镰」，夺取其领地。",
+      "objective_type": "attack_faction",
+      "target": {
+        "target_faction": "void_research",
+        "target_master": "终焉之镰"
+      },
+      "company_id": "nova_arms",
+      "rewards": {
+        "blueprint_fragments": {
+          "mega_beam_cannon": 2
+        },
+        "nano_materials": 80,
+        "faction_rep": {
+          "nova_arms": 25,
+          "void_research": -20
+        }
+      }
+    },
+    {
+      "id": "q_attack_nova",
+      "title": "进攻：新星兵工",
+      "description": "击败新星兵工势力的相位师「炽焰星痕」，夺取其领地。",
+      "objective_type": "attack_faction",
+      "target": {
+        "target_faction": "nova_arms",
+        "target_master": "炽焰星痕"
+      },
+      "company_id": "iron_wall_corp",
+      "rewards": {
+        "blueprint_fragments": {
+          "thunder_field": 2
+        },
+        "nano_materials": 80,
+        "faction_rep": {
+          "iron_wall_corp": 25,
+          "nova_arms": -20
+        }
+      }
+    },
+    {
+      "id": "q_attack_aether",
+      "title": "进攻：以太动力",
+      "description": "击败以太动力势力相位师「雷霆判官」，瓦解其防御体系。",
+      "objective_type": "attack_faction",
+      "target": {
+        "target_faction": "aether_dynamics",
+        "target_master": "雷霆判官"
+      },
+      "company_id": "quantum_logistics",
+      "rewards": {
+        "blueprint_fragments": {
+          "phase_lance": 2
+        },
+        "nano_materials": 80,
+        "faction_rep": {
+          "quantum_logistics": 25,
+          "aether_dynamics": -20
+        }
+      }
+    },
+    {
+      "id": "q_defend_iron",
+      "title": "防守：钢壁防务",
+      "description": "保护钢壁防务领地，击退进攻的敌方相位师。",
+      "objective_type": "defend_faction",
+      "target": {
+        "defend_faction": "iron_wall_corp"
+      },
+      "company_id": "iron_wall_corp",
+      "rewards": {
+        "blueprint_fragments": {
+          "bulwark": 2
+        },
+        "nano_materials": 60,
+        "faction_rep": {
+          "iron_wall_corp": 30
+        }
+      }
+    },
+    {
+      "id": "q_defend_frontier",
+      "title": "防守：边境联合",
+      "description": "保护边境联合领地，击退敌方相位师的进攻。",
+      "objective_type": "defend_faction",
+      "target": {
+        "defend_faction": "frontier_union"
+      },
+      "company_id": "frontier_union",
+      "rewards": {
+        "blueprint_fragments": {
+          "titan_mk2": 2
+        },
+        "nano_materials": 60,
+        "faction_rep": {
+          "frontier_union": 30
+        }
+      }
+    },
+    {
+      "id": "q_defend_helix",
+      "title": "防守：螺旋侦察",
+      "description": "保护螺旋侦察的侦察网络，击退来犯之敌。",
+      "objective_type": "defend_faction",
+      "target": {
+        "defend_faction": "helix_recon"
+      },
+      "company_id": "helix_recon",
+      "rewards": {
+        "blueprint_fragments": {
+          "bp_cold_022": 2
+        },
+        "nano_materials": 60,
+        "faction_rep": {
+          "helix_recon": 30
+        }
+      }
+    },
+    {
+      "id": "q_tutorial_win_1",
+      "title": "首战告捷",
+      "description": "完成你的第一场战斗胜利。",
+      "objective_type": "win_battles",
+      "target": 1,
+      "company_id": "iron_wall_corp",
+      "rewards": {
+        "nano_materials": 5,
+        "company_rep": {
+          "iron_wall_corp": 5
+        }
+      }
+    },
+    {
+      "id": "q_tutorial_synthesis",
+      "title": "初次合成",
+      "description": "在合成界面完成一次卡片合成。",
+      "objective_type": "synthesis",
+      "target": 1,
+      "company_id": "aether_dynamics",
+      "rewards": {
+        "nano_materials": 10,
+        "company_rep": {
+          "aether_dynamics": 8
+        }
+      }
+    },
+    {
+      "id": "q_tutorial_enhance",
+      "title": "强化尝试",
+      "description": "强化任意一张卡片到 +3。",
+      "objective_type": "enhance",
+      "target": 3,
+      "company_id": "void_research",
+      "rewards": {
+        "blueprint_fragments": {
+          "bp_ww1_013": 1
+        },
+        "nano_materials": 15,
+        "company_rep": {
+          "void_research": 10
+        }
+      }
+    },
+    {
+      "id": "q_tutorial_clear_3",
+      "title": "初露锋芒",
+      "description": "成功通关前3关中的任意一关。",
+      "objective_type": "clear_level",
+      "target": 3,
+      "company_id": "frontier_union",
+      "rewards": {
+        "blueprint_fragments": {
+          "bp_ww1_001": 1
+        },
+        "nano_materials": 8,
+        "company_rep": {
+          "frontier_union": 8
+        }
+      }
+    },
+    {
+      "id": "q_tutorial_collect_5",
+      "title": "收藏家",
+      "description": "拥有至少5张不同的卡片。",
+      "objective_type": "collect_cards",
+      "target": 5,
+      "company_id": "quantum_logistics",
+      "rewards": {
+        "nano_materials": 10,
+        "company_rep": {
+          "quantum_logistics": 8
+        }
+      }
+    },
+    {
+      "id": "q_tutorial_law",
+      "title": "法则初探",
+      "description": "研究你的第一个战争法则。",
+      "objective_type": "research_law",
+      "target": 1,
+      "company_id": "void_research",
+      "rewards": {
+        "nano_materials": 12,
+        "company_rep": {
+          "void_research": 10
+        }
+      }
+    },
+    {
+      "id": "q_tutorial_faction",
+      "title": "势力接触",
+      "description": "与任意势力建立关系（声望达到10）。",
+      "objective_type": "reach_reputation",
+      "target": 10,
+      "company_id": "helix_recon",
+      "rewards": {
+        "blueprint_fragments": {
+          "bp_ww1_011": 1
+        },
+        "nano_materials": 10,
+        "company_rep": {
+          "helix_recon": 10
+        }
+      }
+    },
+    {
+      "id": "q_battle_win_30",
+      "title": "战争老手",
+      "description": "累计胜利30场战斗。",
+      "objective_type": "win_battles",
+      "target": 30,
+      "company_id": "iron_wall_corp",
+      "rewards": {
+        "blueprint_fragments": {
+          "bp_modern_013": 2
+        },
+        "nano_materials": 70,
+        "company_rep": {
+          "iron_wall_corp": 40
+        }
+      }
+    },
+    {
+      "id": "q_battle_win_50",
+      "title": "战场传奇",
+      "description": "累计胜利50场战斗。",
+      "objective_type": "win_battles",
+      "target": 50,
+      "company_id": "iron_wall_corp",
+      "rewards": {
+        "blueprint_fragments": {
+          "bp_future_013": 2
+        },
+        "nano_materials": 100,
+        "company_rep": {
+          "iron_wall_corp": 60
+        }
+      }
+    },
+    {
+      "id": "q_battle_kill_150",
+      "title": "收割者",
+      "description": "累计击毁150个敌方单位。",
+      "objective_type": "kill_enemies",
+      "target": 150,
+      "company_id": "nova_arms",
+      "rewards": {
+        "blueprint_fragments": {
+          "omega_cannon": 2
+        },
+        "nano_materials": 80,
+        "company_rep": {
+          "nova_arms": 50
+        }
+      }
+    },
+    {
+      "id": "q_battle_kill_200",
+      "title": "战场主宰",
+      "description": "累计击毁200个敌方单位。",
+      "objective_type": "kill_enemies",
+      "target": 200,
+      "company_id": "nova_arms",
+      "rewards": {
+        "blueprint_fragments": {
+          "omega_platform": 1
+        },
+        "nano_materials": 120,
+        "company_rep": {
+          "nova_arms": 70
+        }
+      }
+    },
+    {
+      "id": "q_battle_clear_40",
+      "title": "突破中期",
+      "description": "通关第40关（二战时代终点）。",
+      "objective_type": "clear_level",
+      "target": 40,
+      "company_id": "frontier_union",
+      "rewards": {
+        "blueprint_fragments": {
+          "bp_ww2_022": 2
+        },
+        "nano_materials": 55,
+        "company_rep": {
+          "frontier_union": 35
+        }
+      }
+    },
+    {
+      "id": "q_battle_clear_60",
+      "title": "冷战胜利",
+      "description": "通关第60关（冷战时代终点）。",
+      "objective_type": "clear_level",
+      "target": 60,
+      "company_id": "frontier_union",
+      "rewards": {
+        "blueprint_fragments": {
+          "bp_cold_022": 2
+        },
+        "nano_materials": 65,
+        "company_rep": {
+          "frontier_union": 40
+        }
+      }
+    },
+    {
+      "id": "q_battle_clear_80",
+      "title": "现代主宰",
+      "description": "通关第80关（现代时代终点）。",
+      "objective_type": "clear_level",
+      "target": 80,
+      "company_id": "frontier_union",
+      "rewards": {
+        "blueprint_fragments": {
+          "bp_modern_022": 2
+        },
+        "nano_materials": 75,
+        "company_rep": {
+          "frontier_union": 45
+        }
+      }
+    },
+    {
+      "id": "q_battle_clear_100",
+      "title": "终极征服",
+      "description": "通关第100关（近未来时代终点）。",
+      "objective_type": "clear_level",
+      "target": 100,
+      "company_id": "frontier_union",
+      "rewards": {
+        "blueprint_fragments": {
+          "omega_platform": 2,
+          "omega_cannon": 2
+        },
+        "nano_materials": 200,
+        "company_rep": {
+          "frontier_union": 100
+        }
+      }
+    },
+    {
+      "id": "q_battle_boss_3",
+      "title": "Boss猎手",
+      "description": "击败3个Boss关卡（每时代第20关）。",
+      "objective_type": "clear_level",
+      "target": 3,
+      "company_id": "frontier_union",
+      "rewards": {
+        "blueprint_fragments": {
+          "titan_mk2": 1
+        },
+        "nano_materials": 75,
+        "company_rep": {
+          "frontier_union": 45
+        }
+      }
+    },
+    {
+      "id": "q_battle_all_era",
+      "title": "时空穿越者",
+      "description": "在所有5个时代都取得过胜利。",
+      "objective_type": "clear_level",
+      "target": 5,
+      "company_id": "void_research",
+      "rewards": {
+        "blueprint_fragments": {
+          "mega_beam_cannon": 1
+        },
+        "nano_materials": 90,
+        "company_rep": {
+          "void_research": 50
+        }
+      }
+    },
+    {
+      "id": "q_battle_quick_win",
+      "title": "速战速决",
+      "description": "在60秒内完成一场战斗胜利。",
+      "objective_type": "quick_win",
+      "target": 60,
+      "company_id": "nova_arms",
+      "rewards": {
+        "nano_materials": 40,
+        "company_rep": {
+          "nova_arms": 25
+        }
+      }
+    },
+    {
+      "id": "q_collect_platform_10",
+      "title": "平台收藏家",
+      "description": "拥有10张不同的平台卡。",
+      "objective_type": "collect_cards",
+      "target": 10,
+      "company_id": "quantum_logistics",
+      "rewards": {
+        "blueprint_fragments": {
+          "bp_ww1_001": 1
+        },
+        "nano_materials": 20,
+        "company_rep": {
+          "quantum_logistics": 15
+        }
+      }
+    },
+    {
+      "id": "q_collect_weapon_15",
+      "title": "武器库",
+      "description": "拥有15张不同的武器卡。",
+      "objective_type": "collect_cards",
+      "target": 15,
+      "company_id": "nova_arms",
+      "rewards": {
+        "blueprint_fragments": {
+          "bp_ww1_011": 1
+        },
+        "nano_materials": 25,
+        "company_rep": {
+          "nova_arms": 18
+        }
+      }
+    },
+    {
+      "id": "q_collect_rare",
+      "title": "稀世珍宝",
+      "description": "拥有3张稀有度以上的卡片。",
+      "objective_type": "collect_cards",
+      "target": 3,
+      "company_id": "void_research",
+      "rewards": {
+        "blueprint_fragments": {
+          "thunder_field": 1
+        },
+        "nano_materials": 30,
+        "company_rep": {
+          "void_research": 20
+        }
+      }
+    },
+    {
+      "id": "q_collect_legendary",
+      "title": "传说猎手",
+      "description": "拥有1张传说稀有度的卡片。",
+      "objective_type": "collect_cards",
+      "target": 1,
+      "company_id": "void_research",
+      "rewards": {
+        "nano_materials": 50,
+        "company_rep": {
+          "void_research": 35
+        }
+      }
+    },
+    {
+      "id": "q_collect_fragments_50",
+      "title": "碎片大师",
+      "description": "拥有总计50个蓝图碎片（可包含不同类型）。",
+      "objective_type": "collect_fragments",
+      "target": {
+        "total": 50
+      },
+      "company_id": "void_research",
+      "rewards": {
+        "blueprint_fragments": {
+          "railgun": 2
+        },
+        "nano_materials": 35,
+        "company_rep": {
+          "void_research": 25
+        }
+      }
+    },
+    {
+      "id": "q_collect_ww2",
+      "title": "二战收藏家",
+      "description": "拥有5张二战时代的卡片。",
+      "objective_type": "collect_cards",
+      "target": 5,
+      "company_id": "iron_wall_corp",
+      "rewards": {
+        "blueprint_fragments": {
+          "bp_ww2_001": 1
+        },
+        "nano_materials": 22,
+        "company_rep": {
+          "iron_wall_corp": 16
+        }
+      }
+    },
+    {
+      "id": "q_collect_modern",
+      "title": "现代收藏家",
+      "description": "拥有5张现代时代的卡片。",
+      "objective_type": "collect_cards",
+      "target": 5,
+      "company_id": "aether_dynamics",
+      "rewards": {
+        "blueprint_fragments": {
+          "bp_modern_001": 1
+        },
+        "nano_materials": 28,
+        "company_rep": {
+          "aether_dynamics": 20
+        }
+      }
+    },
+    {
+      "id": "q_collect_future",
+      "title": "未来收藏家",
+      "description": "拥有5张近未来时代的卡片。",
+      "objective_type": "collect_cards",
+      "target": 5,
+      "company_id": "void_research",
+      "rewards": {
+        "blueprint_fragments": {
+          "bp_future_001": 1
+        },
+        "nano_materials": 32,
+        "company_rep": {
+          "void_research": 22
+        }
+      }
+    },
+    {
+      "id": "q_faction_iron_30",
+      "title": "钢壁盟友",
+      "description": "与钢壁防务的声望达到30。",
+      "objective_type": "reach_reputation",
+      "target": 30,
+      "company_id": "iron_wall_corp",
+      "rewards": {
+        "blueprint_fragments": {
+          "bulwark": 1
+        },
+        "nano_materials": 35,
+        "company_rep": {
+          "iron_wall_corp": 20
+        }
+      }
+    },
+    {
+      "id": "q_faction_nova_30",
+      "title": "新星伙伴",
+      "description": "与新星兵工的声望达到30。",
+      "objective_type": "reach_reputation",
+      "target": 30,
+      "company_id": "nova_arms",
+      "rewards": {
+        "blueprint_fragments": {
+          "mega_beam_cannon": 1
+        },
+        "nano_materials": 35,
+        "company_rep": {
+          "nova_arms": 20
+        }
+      }
+    },
+    {
+      "id": "q_faction_aether_30",
+      "title": "以太之友",
+      "description": "与以太动力的声望达到30。",
+      "objective_type": "reach_reputation",
+      "target": 30,
+      "company_id": "aether_dynamics",
+      "rewards": {
+        "blueprint_fragments": {
+          "phase_lance": 1
+        },
+        "nano_materials": 35,
+        "company_rep": {
+          "aether_dynamics": 20
+        }
+      }
+    },
+    {
+      "id": "q_faction_void_30",
+      "title": "虚空探索者",
+      "description": "与虚空研究所的声望达到30。",
+      "objective_type": "reach_reputation",
+      "target": 30,
+      "company_id": "void_research",
+      "rewards": {
+        "blueprint_fragments": {
+          "thunder_field": 1
+        },
+        "nano_materials": 35,
+        "company_rep": {
+          "void_research": 20
+        }
+      }
+    },
+    {
+      "id": "q_faction_all_20",
+      "title": "各方势力",
+      "description": "与所有7个势力的声望都达到20。",
+      "objective_type": "reach_reputation",
+      "target": 20,
+      "company_id": "frontier_union",
+      "rewards": {
+        "blueprint_fragments": {
+          "titan_mk2": 2
+        },
+        "nano_materials": 80,
+        "company_rep": {
+          "frontier_union": 50,
+          "iron_wall_corp": 15,
+          "nova_arms": 15,
+          "aether_dynamics": 15,
+          "void_research": 15,
+          "quantum_logistics": 15,
+          "helix_recon": 15
+        }
+      }
+    },
+    {
+      "id": "q_faction_max_50",
+      "title": "势力领袖",
+      "description": "与任意一个势力的声望达到50。",
+      "objective_type": "reach_reputation",
+      "target": 50,
+      "company_id": "quantum_logistics",
+      "rewards": {
+        "blueprint_fragments": {
+          "omega_platform": 1
+        },
+        "nano_materials": 60,
+        "company_rep": {
+          "quantum_logistics": 35
+        }
+      }
+    },
+    {
+      "id": "q_faction_buy_10",
+      "title": "购物达人",
+      "description": "在公司商店购买10次物品。",
+      "objective_type": "buy_items",
+      "target": 10,
+      "company_id": "quantum_logistics",
+      "rewards": {
+        "nano_materials": 25,
+        "company_rep": {
+          "quantum_logistics": 18
+        }
+      }
+    },
+    {
+      "id": "q_challenge_all_era_boss",
+      "title": "Boss征服者",
+      "description": "击败所有5个时代的Boss关卡。",
+      "objective_type": "clear_level",
+      "target": 5,
+      "company_id": "frontier_union",
+      "rewards": {
+        "blueprint_fragments": {
+          "omega_cannon": 1,
+          "omega_platform": 1
+        },
+        "nano_materials": 150,
+        "company_rep": {
+          "frontier_union": 80
+        }
+      }
+    },
+    {
+      "id": "q_challenge_perfect",
+      "title": "完美战役",
+      "description": "在一场战斗中获得三星评价。",
+      "objective_type": "perfect_battle",
+      "target": 1,
+      "company_id": "iron_wall_corp",
+      "rewards": {
+        "blueprint_fragments": {
+          "thunder_field": 1
+        },
+        "nano_materials": 60,
+        "company_rep": {
+          "iron_wall_corp": 40
+        }
+      }
+    },
+    {
+      "id": "q_challenge_speed",
+      "title": "闪电战",
+      "description": "在30秒内完成一场战斗胜利。",
+      "objective_type": "quick_win",
+      "target": 30,
+      "company_id": "aether_dynamics",
+      "rewards": {
+        "blueprint_fragments": {
+          "phase_lance": 1
+        },
+        "nano_materials": 65,
+        "company_rep": {
+          "aether_dynamics": 42
+        }
+      }
+    },
+    {
+      "id": "q_challenge_survival",
+      "title": "生存大师",
+      "description": "在一场战斗中存活15个波次。",
+      "objective_type": "survive_waves",
+      "target": 15,
+      "company_id": "iron_wall_corp",
+      "rewards": {
+        "blueprint_fragments": {
+          "bulwark": 1
+        },
+        "nano_materials": 70,
+        "company_rep": {
+          "iron_wall_corp": 45
+        }
+      }
+    }
+  ]
+}

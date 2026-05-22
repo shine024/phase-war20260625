@@ -1,0 +1,104 @@
+[gd_scene load_steps=5 format=3 uid="uid://d0ekxsdbvfjpy"]
+
+[ext_resource type="Script" path="res://scenes/ui/faction_panel.gd" id="1_7rnc5"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg"]
+bg_color = Color(0.04, 0.06, 0.12, 0.97)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.545, 0.361, 0.965, 0.6)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0.545, 0.361, 0.965, 0.25)
+shadow_size = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_scroll_bg"]
+bg_color = Color(0.03, 0.05, 0.10, 0.6)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_close_btn_hover"]
+bg_color = Color(0.545, 0.361, 0.965, 0.25)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.545, 0.361, 0.965, 0.8)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_close_btn"]
+bg_color = Color(0.545, 0.361, 0.965, 0.12)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.545, 0.361, 0.965, 0.5)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[node name="FactionPanel" type="PanelContainer"]
+custom_minimum_size = Vector2(720, 480)
+layout_mode = 2
+script = ExtResource("1_7rnc5")
+theme_override_styles/panel = SubResource("StyleBoxFlat_bg")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/separation = 6
+
+[node name="TitleRow" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TitleLabel" type="Label" parent="VBoxContainer/TitleRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1.0, 0.843, 0.0, 1)
+theme_override_font_sizes/font_size = 17
+text = "★ 势力系统 FACTION"
+
+[node name="CloseButton" type="Button" parent="VBoxContainer/TitleRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(60, 32)
+theme_override_colors/font_color = Color(1, 1, 1, 0.85)
+theme_override_colors/font_hover_color = Color(0.545, 0.361, 0.965, 1)
+theme_override_font_sizes/font_size = 13
+theme_override_styles/normal = SubResource("StyleBoxFlat_close_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_close_btn_hover")
+text = "关闭"
+
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 0
+custom_minimum_size = Vector2(250, 0)
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_scroll_bg")
+
+[node name="FactionListContainer" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="DetailPanel" type="VBoxContainer" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+custom_minimum_size = Vector2(400, 0)
+theme_override_constants/separation = 6
+

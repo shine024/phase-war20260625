@@ -1,0 +1,206 @@
+[gd_scene load_steps=24 format=3 uid="uid://battle_hud"]
+
+[ext_resource type="Script" path="res://scenes/ui/battle_hud.gd" id="1_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.05, 0.08, 0.15, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.2, 0.7, 1, 0.9)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0.2, 0.7, 1, 0.3)
+shadow_size = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slot_empty"]
+bg_color = Color(0.07, 0.1, 0.18, 0.9)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.2, 0.7, 1, 0.4)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slot_filled"]
+bg_color = Color(0.1, 1, 1, 0.15)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0, 1, 1, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+shadow_color = Color(0, 1, 1, 0.5)
+shadow_size = 6
+
+[node name="BattleHUD" type="CanvasLayer"]
+layer = 220
+script = ExtResource("1_script")
+
+[node name="InfoPanel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = -118.0
+offset_right = 440.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="Margin" type="MarginContainer" parent="InfoPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 8
+
+[node name="VBox" type="VBoxContainer" parent="InfoPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="ResourceInfo" type="HBoxContainer" parent="InfoPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CoinsLabel" type="Label" parent="InfoPanel/Margin/VBox/ResourceInfo"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.8, 0.3, 1)
+theme_override_font_sizes/font_size = 14
+text = "💰 0"
+horizontal_alignment = 1
+
+[node name="EnergyLabel" type="Label" parent="InfoPanel/Margin/VBox/ResourceInfo"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3, 0.8, 1, 1)
+theme_override_font_sizes/font_size = 14
+text = "⚡ 0/100"
+horizontal_alignment = 1
+
+[node name="WaveInfo" type="Label" parent="InfoPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 1, 0.8, 1)
+theme_override_font_sizes/font_size = 13
+text = "波次: 1/∞"
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="TimerLabel" type="Label" parent="InfoPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+theme_override_font_sizes/font_size = 12
+text = "时间: 00:00"
+horizontal_alignment = 1
+
+[node name="DamagePopupLayer" type="CanvasLayer" parent="."]
+layer = 280
+
+[node name="TopRightPanel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -272.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = 200.0
+grow_horizontal = 0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="Margin" type="MarginContainer" parent="TopRightPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="VBox" type="VBoxContainer" parent="TopRightPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="SlotTitle" type="Label" parent="TopRightPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0, 1, 1, 0.9)
+theme_override_font_sizes/font_size = 11
+text = "相位仪槽位"
+horizontal_alignment = 1
+
+[node name="Slots" type="HBoxContainer" parent="TopRightPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Slot1" type="PanelContainer" parent="TopRightPanel/Margin/VBox/Slots"]
+custom_minimum_size = Vector2(50, 38)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot_empty")
+
+[node name="Label" type="Label" parent="TopRightPanel/Margin/VBox/Slots/Slot1"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.45, 0.55, 1)
+theme_override_font_sizes/font_size = 10
+text = "1"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+clip_text = true
+
+[node name="Slot2" type="PanelContainer" parent="TopRightPanel/Margin/VBox/Slots"]
+custom_minimum_size = Vector2(50, 38)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot_empty")
+
+[node name="Label" type="Label" parent="TopRightPanel/Margin/VBox/Slots/Slot2"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.45, 0.55, 1)
+theme_override_font_sizes/font_size = 10
+text = "2"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+clip_text = true
+
+[node name="Slot3" type="PanelContainer" parent="TopRightPanel/Margin/VBox/Slots"]
+custom_minimum_size = Vector2(50, 38)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot_empty")
+
+[node name="Label" type="Label" parent="TopRightPanel/Margin/VBox/Slots/Slot3"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.45, 0.55, 1)
+theme_override_font_sizes/font_size = 10
+text = "3"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+clip_text = true
+
+[node name="Slot4" type="PanelContainer" parent="TopRightPanel/Margin/VBox/Slots"]
+custom_minimum_size = Vector2(50, 38)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot_empty")
+
+[node name="Label" type="Label" parent="TopRightPanel/Margin/VBox/Slots/Slot4"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.45, 0.55, 1)
+theme_override_font_sizes/font_size = 10
+text = "4"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+clip_text = true

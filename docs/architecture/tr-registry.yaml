@@ -1,0 +1,357 @@
+# Technical Requirement ID Registry
+#
+# PURPOSE: Persistent, stable IDs for every GDD technical requirement.
+# Prevents TR-ID renumbering across /architecture-review runs, which would
+# break story references.
+#
+# RULES:
+#   - IDs are PERMANENT. Never renumber, never delete (use status: deprecated).
+#   - Add new entries only at the END of each system's list.
+#   - When a GDD requirement is reworded (same intent): update `requirement`
+#     text and add a `revised` date. The ID stays the same.
+#   - When a requirement is removed from the GDD: set status: deprecated.
+#   - When a requirement is split or replaced: set status: superseded-by with
+#     the new TR-ID(s).
+#
+# WRITTEN BY: /architecture-review (appends new entries, never overwrites)
+# READ BY:    /create-stories (embed IDs in stories)
+#             /story-done (look up current requirement text at review time)
+#             /story-readiness (validate TR-ID exists and is active)
+#
+# ID FORMAT: TR-[system-slug]-[NNN]
+#   system-slug = short slug matching the GDD system name
+#   NNN = three-digit zero-padded sequence per system, starting at 001
+#
+# STATUS VALUES: active | deprecated | superseded-by: TR-[system]-NNN
+
+version: 2
+last_updated: "2026-04-24"
+
+requirements:
+
+# --- Battle System (design/gdd/battle-system.md) ---
+- id: TR-battle-001
+  system: battle
+  gdd: design/gdd/battle-system.md
+  requirement: "Deployment energy cost = max(1, platform_energy_cost + sum weapon_energy_costs)"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+- id: TR-battle-002
+  system: battle
+  gdd: design/gdd/battle-system.md
+  requirement: "Deployment time = deploy_energy_cost / energy_output_rate"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+- id: TR-battle-003
+  system: battle
+  gdd: design/gdd/battle-system.md
+  requirement: "Unit cap max 5, duplicate platform restriction, deploy ghost materializes after timer"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+- id: TR-battle-004
+  system: battle
+  gdd: design/gdd/battle-system.md
+  requirement: "Star rating: 1 star victory, 2 star survival >= 50%, 3 star survival >= 80% + time efficiency"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+- id: TR-battle-005
+  system: battle
+  gdd: design/gdd/battle-system.md
+  requirement: "Victory: all waves spawned + all enemies killed; Defeat: phase driver destroyed"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+- id: TR-battle-006
+  system: battle
+  gdd: design/gdd/battle-system.md
+  requirement: "Blueprint fragment drop: archetype base chance x drop_rate_multiplier, recon bonus up to 50%"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+- id: TR-battle-007
+  system: battle
+  gdd: design/gdd/battle-system.md
+  requirement: "Enemy wave spawn every interval seconds, enemy cap 5, boss on wave > 3"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+- id: TR-battle-008
+  system: battle
+  gdd: design/gdd/battle-system.md
+  requirement: "Phase master battle mode: no timed waves, continuous enemy spawn from enemy driver"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+- id: TR-battle-009
+  system: battle
+  gdd: design/gdd/battle-system.md
+  requirement: "Law shard drop: 15% base, 30% elite, 50% boss, boosted by recon units"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+- id: TR-battle-010
+  system: battle
+  gdd: design/gdd/battle-system.md
+  requirement: "Energy spend for deployment with insufficient energy fails and emits energy_insufficient signal"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+# --- Blueprint System (design/gdd/blueprint-system.md) ---
+- id: TR-blueprint-001
+  system: blueprint
+  gdd: design/gdd/blueprint-system.md
+  requirement: "Blueprint fragments accumulate permanently and are never consumed by star upgrades"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+- id: TR-blueprint-002
+  system: blueprint
+  gdd: design/gdd/blueprint-system.md
+  requirement: "Star level (1-9) upgraded manually by player choice with fragment + nano cost"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+- id: TR-blueprint-003
+  system: blueprint
+  gdd: design/gdd/blueprint-system.md
+  requirement: "Manufacturing consumes 1 blueprint fragment, creates card with current star bonuses"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+- id: TR-blueprint-004
+  system: blueprint
+  gdd: design/gdd/blueprint-system.md
+  requirement: "Stat multiplier = rarity_multiplier x (1.0 + (star - 1) x 0.06) for cards, 0.08 for laws"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+- id: TR-blueprint-005
+  system: blueprint
+  gdd: design/gdd/blueprint-system.md
+  requirement: "Surplus fragments at 9 star convert to nano at 50 per fragment, capped 1000/day"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+- id: TR-blueprint-006
+  system: blueprint
+  gdd: design/gdd/blueprint-system.md
+  requirement: "Law fragments use law: prefix, unified in blueprint system, auto-unlock on threshold"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+# --- Phase Law System (design/gdd/phase-law-system.md) ---
+- id: TR-phase-law-001
+  system: phase-law
+  gdd: design/gdd/phase-law-system.md
+  requirement: "Laws unlocked via blueprint fragment threshold check through BlueprintManager"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+- id: TR-phase-law-002
+  system: phase-law
+  gdd: design/gdd/phase-law-system.md
+  requirement: "Law equipping requires nano activation cost, slot constraints, and family restrictions"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+- id: TR-phase-law-003
+  system: phase-law
+  gdd: design/gdd/phase-law-system.md
+  requirement: "Environmental match: power = 0.5 + (match_count / total_dims) x 0.5, 50% to 100%"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+- id: TR-phase-law-004
+  system: phase-law
+  gdd: design/gdd/phase-law-system.md
+  requirement: "Battle casting costs energy + nano, respects max_cast_per_battle and min_friendly_units"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+- id: TR-phase-law-005
+  system: phase-law
+  gdd: design/gdd/phase-law-system.md
+  requirement: "Passive law value scaling: base x (1.0 + (law_level - 1) x 0.02), 1.0x to 1.18x"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+- id: TR-phase-law-006
+  system: phase-law
+  gdd: design/gdd/phase-law-system.md
+  requirement: "Active laws can modify runtime environment via env_changes dict (add/remove tags)"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+- id: TR-phase-law-007
+  system: phase-law
+  gdd: design/gdd/phase-law-system.md
+  requirement: "Knowledge value system (4 types) implemented but reserved for future features"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+# --- Synthesis System (design/gdd/synthesis-system.md) ---
+- id: TR-synthesis-001
+  system: synthesis
+  gdd: design/gdd/synthesis-system.md
+  requirement: "Card+Card synthesis: same rarity + type, 80% success, consumes nano, cards preserved on fail"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+- id: TR-synthesis-002
+  system: synthesis
+  gdd: design/gdd/synthesis-system.md
+  requirement: "Success rate 80%/90% via randf() roll, consumes nano on both success and failure"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+- id: TR-synthesis-003
+  system: synthesis
+  gdd: design/gdd/synthesis-system.md
+  requirement: "Card+Blueprint fusion: always rare, energy cost x0.8, stat bonus = star x 5%"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+- id: TR-synthesis-004
+  system: synthesis
+  gdd: design/gdd/synthesis-system.md
+  requirement: "Nano costs: common->uncommon 50, uncommon->rare 150, rare->legendary 500, fusion 100"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+# --- Energy System (design/gdd/energy-system.md) ---
+- id: TR-energy-001
+  system: energy
+  gdd: design/gdd/energy-system.md
+  requirement: "Energy max = max(1, base_start), fallback to 100 if no energy cards equipped"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+- id: TR-energy-002
+  system: energy
+  gdd: design/gdd/energy-system.md
+  requirement: "Net regen = base_regen + card_regen - drain, only positive if net > 0"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+- id: TR-energy-003
+  system: energy
+  gdd: design/gdd/energy-system.md
+  requirement: "Post-battle auto-recharge: consume energy blocks from BasicResourceManager, 1:1 ratio"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+- id: TR-energy-004
+  system: energy
+  gdd: design/gdd/energy-system.md
+  requirement: "Top-tier phase instrument (>=4 energy slots) multiplies net regen by 5.0"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+# --- Unit Stats System (design/gdd/unit-stats-system.md) ---
+- id: TR-unitstats-001
+  system: unitstats
+  gdd: design/gdd/unit-stats-system.md
+  requirement: "Stats composed from platform + weapon base, modified by affix bonuses"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+- id: TR-unitstats-002
+  system: unitstats
+  gdd: design/gdd/unit-stats-system.md
+  requirement: "Multi-weapon units (OMEGA) track weapon timers independently in weapons array"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+- id: TR-unitstats-003
+  system: unitstats
+  gdd: design/gdd/unit-stats-system.md
+  requirement: "8 affix modifiers: damage_reduction, crit_chance, lifesteal, splash_damage, armor_penetration, chain_chance, shield_on_kill, hp_regen"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+- id: TR-unitstats-004
+  system: unitstats
+  gdd: design/gdd/unit-stats-system.md
+  requirement: "6 mutation flags: weapon_dmg, weapon_atkspd, crit, lifesteal, hp_regen, platform_hp"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+- id: TR-unitstats-005
+  system: unitstats
+  gdd: design/gdd/unit-stats-system.md
+  requirement: "Damage: base x crit(2x), reduced by armor x (1 - penetration), splash as % of final"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+# --- Drop System (design/gdd/drop-system.md) ---
+- id: TR-drop-001
+  system: drop
+  gdd: design/gdd/drop-system.md
+  requirement: "Era-specific drop tables with weighted entries, guarantee drops always included"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+- id: TR-drop-002
+  system: drop
+  gdd: design/gdd/drop-system.md
+  requirement: "Weighted random selection: total_weight x randf() cumulative matching"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+- id: TR-drop-003
+  system: drop
+  gdd: design/gdd/drop-system.md
+  requirement: "10 drop types: material, blueprint_fragment, dropped_card, lore, card, energy, stat_boost, law_card, law_blueprint, energy_blueprint"
+  created: 2026-04-24
+  revised: ""
+  status: active
+
+- id: TR-drop-004
+  system: drop
+  gdd: design/gdd/drop-system.md
+  requirement: "Pending drops array with claim/release cycle, serialized in save for forward compatibility"
+  created: 2026-04-24
+  revised: ""
+  status: active

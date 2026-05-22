@@ -1,0 +1,15 @@
+[gd_scene load_steps=2 format=3 uid="uid://card_affix_tooltip"]
+
+[ext_resource type="Script" path="res://scenes/ui/card_affix_tooltip.gd" id="1_script"]
+
+[node name="CardAffixTooltip" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+visible = false
+mouse_filter = 2
+z_index = 100
+script = ExtResource("1_script")

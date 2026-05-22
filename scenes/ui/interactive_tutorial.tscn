@@ -1,0 +1,93 @@
+[gd_scene load_steps=3 format=3 uid="uid://interactive_tutorial"]
+
+[ext_resource type="Script" path="res://scenes/ui/interactive_tutorial.gd" id="1_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_highlight"]
+bg_color = Color(1, 1, 1, 0)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0, 0.941, 1, 1)
+
+[node name="InteractiveTutorial" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_script")
+
+[node name="DimBackground" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.5)
+visible = false
+mouse_filter = 2
+
+[node name="HighlightRect" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 100.0
+offset_top = 100.0
+offset_right = 200.0
+offset_bottom = 150.0
+mouse_filter = 2
+
+[node name="TutorialPanel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -250.0
+offset_top = -150.0
+offset_right = 250.0
+offset_bottom = 150.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="TutorialPanel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Header" type="HBoxContainer" parent="TutorialPanel/VBoxContainer"]
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="TutorialPanel/VBoxContainer/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "教程标题"
+
+[node name="ProgressIndicator" type="HBoxContainer" parent="TutorialPanel/VBoxContainer/Header"]
+layout_mode = 2
+
+[node name="Content" type="MarginContainer" parent="TutorialPanel/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="ContentLabel" type="Label" parent="TutorialPanel/VBoxContainer/Content"]
+layout_mode = 2
+text = "教程内容在这里显示..."
+autowrap_mode = 3
+
+[node name="Buttons" type="HBoxContainer" parent="TutorialPanel/VBoxContainer"]
+layout_mode = 2
+alignment = 2
+
+[node name="SkipButton" type="Button" parent="TutorialPanel/VBoxContainer/Buttons"]
+layout_mode = 2
+text = "跳过"
+
+[node name="NextButton" type="Button" parent="TutorialPanel/VBoxContainer/Buttons"]
+layout_mode = 2
+text = "下一步"

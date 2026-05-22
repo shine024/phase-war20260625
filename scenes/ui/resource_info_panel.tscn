@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3 uid="uid://resource_info_panel"]
+
+[ext_resource type="Script" path="res://scenes/ui/resource_info_panel.gd" id="1_script"]
+
+[node name="ResourceInfoPanel" type="PanelContainer"]
+custom_minimum_size = Vector2(160, 0)
+script = ExtResource("1_script")

@@ -1,0 +1,22 @@
+Godot Engine v4.5.stable.official.876b29033 - https://godotengine.org
+
+ERROR: Unrecognized UID: "uid://ce43lbwdryxch".
+   at: get_id_path (core/io/resource_uid.cpp:199)
+ERROR: Condition "local_path.is_empty()" is true. Returning: Ref<ResourceLoader::LoadToken>()
+   at: _load_start (core/io/resource_loader.cpp:568)
+ERROR: Error loading custom project font 'uid://ce43lbwdryxch'
+   at: initialize_theme (scene/theme/theme_db.cpp:79)
+=== archetype icons ===
+ok=100 bad=0 oversized=0
+
+=== platform card_icon_path_for (UiAssetLoader) ===
+missing=0
+[ObjectPoolManager] 娉ㄥ唽姹?'bullets'锛屽ぇ灏? 2
+[ObjectPoolManager] 娉ㄥ唽姹?'damage_numbers'锛屽ぇ灏? 4
+WARNING: 14 RIDs of type "CanvasItem" were leaked.
+   at: _free_rids (servers/rendering/renderer_canvas_cull.cpp:2678)
+ERROR: 2 RID allocations of type 'N13RendererDummy9DummyMeshE' were leaked at exit.
+WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
+   at: cleanup (core/object/object.cpp:2514)
+ERROR: 2 resources still in use at exit (run with --verbose for details).
+   at: clear (core/io/resource.cpp:795)

@@ -1,0 +1,44 @@
+[gd_scene format=3 uid="uid://affix_row_tpl"]
+
+[node name="AffixRow" type="PanelContainer"]
+
+[node name="Margin" type="MarginContainer" parent="."]
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 6
+
+[node name="VBox" type="VBoxContainer" parent="Margin"]
+theme_override_constants/separation = 3
+
+[node name="TopHBox" type="HBoxContainer" parent="Margin/VBox"]
+theme_override_constants/separation = 6
+
+[node name="NameLabel" type="Label" parent="Margin/VBox/TopHBox"]
+theme_override_font_sizes/font_size = 13
+text = "词条名称"
+size_flags_horizontal = 3
+
+[node name="RerollBtn" type="Button" parent="Margin/VBox/TopHBox"]
+custom_minimum_size = Vector2(75, 22)
+theme_override_font_sizes/font_size = 10
+text = "重随 0纳"
+disabled = true
+
+[node name="LockBtn" type="Button" parent="Margin/VBox/TopHBox"]
+custom_minimum_size = Vector2(45, 22)
+theme_override_font_sizes/font_size = 10
+text = "🔒"
+
+[node name="DescLabel" type="Label" parent="Margin/VBox"]
+theme_override_colors/font_color = Color(0.75, 0.75, 0.8, 0.9)
+theme_override_font_sizes/font_size = 11
+text = "词条描述"
+autowrap_mode = 2
+
+[node name="MutLabel" type="Label" parent="Margin/VBox"]
+theme_override_colors/font_color = Color(1, 0.75, 0.1, 1)
+theme_override_font_sizes/font_size = 11
+text = "⚡ 变异: ..."
+autowrap_mode = 2
+visible = false

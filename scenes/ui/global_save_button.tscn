@@ -1,0 +1,43 @@
+[gd_scene load_steps=2 format=3 uid="uid://bvlqk8jxn3u2"]
+
+[ext_resource type="Script" path="res://scenes/ui/global_save_button.gd" id="1_0xy2"]
+
+[node name="GlobalSaveButton" type="Control"]
+layout_mode = 3
+anchors_preset = 3  # BOTTOM_RIGHT
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 15.0   # 距离右边15px，使用正值
+offset_top = 15.0    # 距离底部15px，使用正值
+offset_right = 135.0  # 按钮宽度
+offset_bottom = 55.0  # 按钮高度
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 0  # Stop - 允许接收鼠标事件
+script = ExtResource("1_0xy2")
+
+[node name="SaveButton" type="Button" parent="."]
+layout_mode = 3
+anchors_preset = 15  # FULL_RECT（填充父容器）
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_type = &"PrimaryButton"
+
+[node name="NotificationLabel" type="Label" parent="."]
+layout_mode = 3
+anchors_preset = 1  # TOP_LEFT（相对于父容器定位）
+offset_left = 130.0   # 在按钮右侧显示
+offset_top = 10.0     # 垂直居中
+offset_right = 260.0  # 宽度130px
+offset_bottom = 30.0  # 高度20px
+grow_horizontal = 0
+grow_vertical = 0
+theme_type = &"HeaderMedium"
+text = "存档成功！"
+visible = false

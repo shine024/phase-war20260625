@@ -1,0 +1,52 @@
+[gd_scene format=3 uid="uid://store_instrument_row_tpl"]
+
+[node name="StoreInstrumentRow" type="PanelContainer"]
+size_flags_horizontal = 3
+
+[node name="M2" type="MarginContainer" parent="."]
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 8
+
+[node name="HB2" type="HBoxContainer" parent="M2"]
+theme_override_constants/separation = 8
+
+[node name="VB2" type="VBoxContainer" parent="M2/HB2"]
+size_flags_horizontal = 3
+
+[node name="NameLabel" type="Label" parent="M2/HB2/VB2"]
+theme_override_colors/font_color = Color(0.92, 0.95, 1, 1)
+theme_override_font_sizes/font_size = 13
+text = "★1  相位仪名称"
+
+[node name="DescLabel" type="Label" parent="M2/HB2/VB2"]
+theme_override_colors/font_color = Color(0.7, 0.78, 0.88, 0.9)
+theme_override_font_sizes/font_size = 11
+text = "需声望 0，价格 0 能量块"
+
+[node name="AttrLabel" type="Label" parent="M2/HB2/VB2"]
+theme_override_colors/font_color = Color(0.55, 0.75, 0.95, 0.85)
+theme_override_font_sizes/font_size = 10
+autowrap_mode = 2
+text = ""
+visible = false
+
+[node name="AdvancedLabel" type="Label" parent="M2/HB2/VB2"]
+theme_override_colors/font_color = Color(0.95, 0.75, 0.35, 0.9)
+theme_override_font_sizes/font_size = 10
+autowrap_mode = 2
+text = ""
+visible = false
+
+[node name="TraitLabel" type="Label" parent="M2/HB2/VB2"]
+theme_override_colors/font_color = Color(0.8, 0.95, 1, 0.95)
+theme_override_font_sizes/font_size = 10
+autowrap_mode = 2
+text = ""
+visible = false
+
+[node name="BuyBtn" type="Button" parent="M2/HB2"]
+custom_minimum_size = Vector2(88, 36)
+theme_override_font_sizes/font_size = 12
+text = "购买"

@@ -1,0 +1,407 @@
+[gd_scene load_steps=21 format=3 uid="uid://main"]
+
+[ext_resource type="Script" uid="uid://d0jpdmko5mrnu" path="res://scenes/main.gd" id="1_script"]
+[ext_resource type="PackedScene" uid="uid://battlefield" path="res://scenes/battlefield/battlefield.tscn" id="2_battlefield"]
+[ext_resource type="PackedScene" path="res://scenes/ui/unit_info_panel.tscn" id="6_unit_info"]
+[ext_resource type="PackedScene" path="res://scenes/ui/player_spawn_hud.tscn" id="8_player_hud"]
+[ext_resource type="PackedScene" path="res://scenes/ui/enemy_spawn_hud.tscn" id="9_enemy_hud"]
+[ext_resource type="Script" uid="uid://crrqivol5erqy" path="res://scenes/ui/battle_click_overlay.gd" id="10_overlay"]
+[ext_resource type="PackedScene" path="res://scenes/ui/quest_panel.tscn" id="13_quest_panel"]
+[ext_resource type="PackedScene" path="res://scenes/ui/phase_law_panel.tscn" id="14_phase_law_panel"]
+[ext_resource type="PackedScene" path="res://scenes/ui/store_panel.tscn" id="17_store_panel"]
+[ext_resource type="PackedScene" uid="uid://d0ekxsdbvfjpy" path="res://scenes/ui/faction_panel.tscn" id="21_faction_panel"]
+[ext_resource type="Script" path="res://scenes/ui/world_map_panel.gd" id="30_world_map_panel"]
+[ext_resource type="Script" path="res://scenes/ui/settings_panel_popup.gd" id="31_settings_panel"]
+[ext_resource type="PackedScene" path="res://scenes/ui/leaderboard_panel.tscn" id="23_leaderboard"]
+[ext_resource type="PackedScene" uid="uid://b8v77j6hjdmyi" path="res://scenes/ui/backpack_panel.tscn" id="24_backpack"]
+[ext_resource type="PackedScene" path="res://scenes/ui/bottom_instrument_bar.tscn" id="26_instrument_bar"]
+[ext_resource type="PackedScene" path="res://scenes/ui/bottom_function_bar.tscn" id="27_function_bar"]
+[ext_resource type="PackedScene" path="res://scenes/ui/resource_bar.tscn" id="28_resource_bar"]
+[ext_resource type="PackedScene" path="res://scenes/ui/resource_info_panel.tscn" id="29_resource_info"]
+[ext_resource type="PackedScene" path="res://scenes/ui/battle_info_display.tscn" id="32_battle_info_display"]
+[ext_resource type="PackedScene" path="res://scenes/ui/card_grid_battle_hud.tscn" id="33_card_grid_hud"]
+[ext_resource type="PackedScene" path="res://scenes/ui/intelligence_hub_panel.tscn" id="34_intelligence_hub"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_level_display"]
+font_size = 24
+
+[node name="Main" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_script")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.039, 0.055, 0.09, 1)
+
+[node name="GridPattern" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0.941, 1, 0.02)
+
+[node name="BattleContainer" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_bottom = -124.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="BattleBg" type="ColorRect" parent="BattleContainer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.02, 0.035, 0.06, 1)
+
+[node name="SubViewportContainer" type="SubViewportContainer" parent="BattleContainer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+stretch = true
+
+[node name="SubViewport" type="SubViewport" parent="BattleContainer/SubViewportContainer"]
+own_world_3d = false
+handle_input_locally = false
+size = Vector2i(1280, 580)
+render_target_update_mode = 1
+
+[node name="Battlefield" parent="BattleContainer/SubViewportContainer/SubViewport" instance=ExtResource("2_battlefield")]
+
+[node name="BattleClickOverlay" type="Control" parent="BattleContainer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("10_overlay")
+
+[node name="CardGridBattleHud" parent="." instance=ExtResource("33_card_grid_hud")]
+
+[node name="HudLayer" type="CanvasLayer" parent="."]
+layer = 40
+
+[node name="BattleTopStatusBar" type="HBoxContainer" parent="HudLayer"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = 112.0
+theme_override_constants/separation = 10
+
+[node name="PlayerSpawnHUD" parent="HudLayer/BattleTopStatusBar" instance=ExtResource("8_player_hud")]
+layout_mode = 2
+size_flags_horizontal = 1
+
+[node name="BattleInfoDisplay" parent="HudLayer/BattleTopStatusBar" instance=ExtResource("32_battle_info_display")]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="EnemySpawnHUD" parent="HudLayer/BattleTopStatusBar" instance=ExtResource("9_enemy_hud")]
+layout_mode = 2
+size_flags_horizontal = 1
+
+[node name="TopLeftMeta" type="Control" parent="HudLayer"]
+layout_mode = 1
+anchors_preset = 0
+offset_left = 8.0
+offset_top = 120.0
+offset_right = 200.0
+offset_bottom = 340.0
+
+[node name="ResourceInfoPanel" parent="HudLayer/TopLeftMeta" instance=ExtResource("29_resource_info")]
+layout_mode = 1
+anchors_preset = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 160.0
+offset_bottom = 180.0
+
+[node name="TopCenterMeta" type="Control" parent="HudLayer"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 0.0
+offset_top = 8.0
+offset_right = 0.0
+offset_bottom = 48.0
+grow_horizontal = 2
+
+[node name="LevelDisplay" type="Label" parent="HudLayer/TopCenterMeta"]
+layout_mode = 1
+anchors_preset = 10
+anchor_left = 0.5
+anchor_top = 0.0
+anchor_right = 0.5
+anchor_bottom = 0.0
+offset_left = -120.0
+offset_top = 0.0
+offset_right = 120.0
+offset_bottom = 32.0
+grow_horizontal = 2
+grow_vertical = 0
+label_settings = SubResource("LabelSettings_level_display")
+text = "第 1 关"
+horizontal_alignment = 1
+mouse_filter = 2
+
+[node name="BattleBottomBar" type="VBoxContainer" parent="HudLayer"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -124.0
+offset_bottom = 0.0
+grow_vertical = 0
+theme_override_constants/separation = 0
+
+[node name="BottomInstrumentBar" parent="HudLayer/BattleBottomBar" instance=ExtResource("26_instrument_bar")]
+layout_mode = 2
+
+[node name="BottomFunctionBar" parent="HudLayer/BattleBottomBar" instance=ExtResource("27_function_bar")]
+layout_mode = 2
+
+[node name="UnitInfoPanel" parent="HudLayer" instance=ExtResource("6_unit_info")]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -140.0
+offset_top = 120.0
+offset_right = 140.0
+offset_bottom = 340.0
+grow_horizontal = 2
+
+[node name="PopupLayer" type="CanvasLayer" parent="."]
+layer = 100
+
+
+[node name="QuestOverlay" type="Control" parent="PopupLayer"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="CenterContainer" type="CenterContainer" parent="PopupLayer/QuestOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="QuestPanel" parent="PopupLayer/QuestOverlay/CenterContainer" instance=ExtResource("13_quest_panel")]
+
+[node name="StoreOverlay" type="Control" parent="PopupLayer"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="CenterContainer" type="CenterContainer" parent="PopupLayer/StoreOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="StorePanel" parent="PopupLayer/StoreOverlay/CenterContainer" instance=ExtResource("17_store_panel")]
+
+[node name="PhaseLawOverlay" type="Control" parent="PopupLayer"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="CenterContainer" type="CenterContainer" parent="PopupLayer/PhaseLawOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PhaseLawPanel" parent="PopupLayer/PhaseLawOverlay/CenterContainer" instance=ExtResource("14_phase_law_panel")]
+
+[node name="BackpackOverlay" type="Control" parent="PopupLayer"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="BackpackVBox" type="VBoxContainer" parent="PopupLayer/BackpackOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TopSpacer" type="Control" parent="PopupLayer/BackpackOverlay/BackpackVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.45
+
+[node name="CenterRow" type="HBoxContainer" parent="PopupLayer/BackpackOverlay/BackpackVBox"]
+layout_mode = 2
+size_flags_vertical = 0
+size_flags_horizontal = 3
+
+[node name="BackpackCenter" type="CenterContainer" parent="PopupLayer/BackpackOverlay/BackpackVBox/CenterRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+
+[node name="BackpackPanel" parent="PopupLayer/BackpackOverlay/BackpackVBox/CenterRow/BackpackCenter" instance=ExtResource("24_backpack")]
+layout_mode = 2
+
+[node name="BottomSpacer" type="Control" parent="PopupLayer/BackpackOverlay/BackpackVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.9
+
+
+[node name="FactionOverlay" type="Control" parent="PopupLayer"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="CenterContainer" type="CenterContainer" parent="PopupLayer/FactionOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="FactionPanel" parent="PopupLayer/FactionOverlay/CenterContainer" instance=ExtResource("21_faction_panel")]
+
+[node name="ManufactureOverlay" type="Control" parent="PopupLayer"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="CenterContainer" type="CenterContainer" parent="PopupLayer/ManufactureOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MapOverlay" type="Control" parent="PopupLayer"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="CenterContainer" type="CenterContainer" parent="PopupLayer/MapOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="WorldMapPanel" type="Control" parent="PopupLayer/MapOverlay/CenterContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(1200, 600)
+script = ExtResource("30_world_map_panel")
+
+[node name="SettingsOverlay" type="Control" parent="PopupLayer"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="CenterContainer" type="CenterContainer" parent="PopupLayer/SettingsOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="SettingsPanel" type="Control" parent="PopupLayer/SettingsOverlay/CenterContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(400, 300)
+script = ExtResource("31_settings_panel")
+
+[node name="LeaderboardPanel" parent="PopupLayer" instance=ExtResource("23_leaderboard")]
+size = Vector2i(560, 500)
+
+[node name="IntelligenceOverlay" type="Control" parent="PopupLayer"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="CenterContainer" type="CenterContainer" parent="PopupLayer/IntelligenceOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="IntelligenceHubPanel" parent="PopupLayer/IntelligenceOverlay/CenterContainer" instance=ExtResource("34_intelligence_hub")]
+layout_mode = 2
+

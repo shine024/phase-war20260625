@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "source": "data/task_definitions_extended.gd",
+  "key": "OBJECTIVE_TYPES",
+  "data": {
+    "win_battles": {
+      "name": "赢得战斗",
+      "description_template": "赢得{target}场战斗",
+      "event_type": "battle_completed",
+      "check_condition": "victory == true"
+    },
+    "kill_enemies": {
+      "name": "击败敌人",
+      "description_template": "击败{target}个敌人",
+      "event_type": "enemy_killed"
+    },
+    "deal_damage": {
+      "name": "造成伤害",
+      "description_template": "累计造成{target}点伤害",
+      "event_type": "damage_dealt"
+    },
+    "win_battle_no_damage": {
+      "name": "无伤胜利",
+      "description_template": "无伤赢得{target}场战斗",
+      "event_type": "battle_completed",
+      "check_condition": "victory == true and damage_taken == 0"
+    },
+    "win_battle_fast": {
+      "name": "快速胜利",
+      "description_template": "在{target}秒内赢得战斗",
+      "event_type": "battle_completed",
+      "check_condition": "victory == true and battle_time <= target"
+    },
+    "collect_equipment": {
+      "name": "收集装备",
+      "description_template": "收集{target}件装备",
+      "event_type": "equipment_collected"
+    },
+    "collect_cards": {
+      "name": "收集卡牌",
+      "description_template": "收集{target}张卡牌",
+      "event_type": "card_collected"
+    },
+    "collect_resources": {
+      "name": "收集资源",
+      "description_template": "收集{target}{resource_type}",
+      "event_type": "resource_collected"
+    },
+    "unlock_blueprints": {
+      "name": "解锁蓝图",
+      "description_template": "解锁{target}张蓝图",
+      "event_type": "blueprint_unlocked"
+    },
+    "defeat_masters": {
+      "name": "击败相位师",
+      "description_template": "击败{target}位相位师",
+      "event_type": "master_defeated"
+    },
+    "defeat_specific_master": {
+      "name": "击败特定相位师",
+      "description_template": "击败{master_name}",
+      "event_type": "master_defeated",
+      "check_condition": "master_id == target"
+    },
+    "enhance_cards": {
+      "name": "强化卡牌",
+      "description_template": "强化{target}张卡牌",
+      "event_type": "card_enhanced"
+    },
+    "enhance_to_level": {
+      "name": "强化到等级",
+      "description_template": "将卡牌强化到{target}级",
+      "event_type": "card_enhanced",
+      "check_condition": "enhancement_level >= target"
+    },
+    "synthesize_items": {
+      "name": "合成物品",
+      "description_template": "合成{target}个物品",
+      "event_type": "item_synthesized"
+    },
+    "reach_level": {
+      "name": "到达关卡",
+      "description_template": "到达第{target}关",
+      "event_type": "level_reached",
+      "check_condition": "level >= target"
+    },
+    "complete_level_with_stars": {
+      "name": "星级通关",
+      "description_template": "以{stars}星通关第{target}关",
+      "event_type": "level_completed",
+      "check_condition": "level == target and stars >= target"
+    },
+    "add_friends": {
+      "name": "添加好友",
+      "description_template": "添加{target}个好友",
+      "event_type": "friend_added"
+    },
+    "send_gifts": {
+      "name": "发送礼物",
+      "description_template": "发送{target}个礼物",
+      "event_type": "gift_sent"
+    },
+    "unlock_achievements": {
+      "name": "解锁成就",
+      "description_template": "解锁{target}个成就",
+      "event_type": "achievement_unlocked"
+    },
+    "spend_resources": {
+      "name": "花费资源",
+      "description_template": "花费{target}{resource_type}",
+      "event_type": "resource_spent"
+    },
+    "earn_resources": {
+      "name": "赚取资源",
+      "description_template": "赚取{target}{resource_type}",
+      "event_type": "resource_earned"
+    }
+  }
+}
