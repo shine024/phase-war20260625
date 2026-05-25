@@ -184,13 +184,13 @@ func _format_reward(reward: Dictionary) -> String:
 			"energy_blocks":
 				parts.append("能量块x%d" % amount)
 			"common_fragment":
-				parts.append("普通碎片x%d" % amount)
+				parts.append("普通蓝图x%d" % amount)
 			"rare_fragment":
-				parts.append("稀有碎片x%d" % amount)
+				parts.append("稀有蓝图x%d" % amount)
 			"epic_fragment":
-				parts.append("史诗碎片x%d" % amount)
+				parts.append("史诗蓝图x%d" % amount)
 			"legendary_fragment":
-				parts.append("传说碎片x%d" % amount)
+				parts.append("传说蓝图x%d" % amount)
 
 	return ", ".join(PackedStringArray(parts))
 

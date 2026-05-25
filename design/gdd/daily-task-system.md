@@ -24,7 +24,7 @@ Players have a reason to log in every day. The daily task panel gives them a cle
 | UPGRADE_CARDS | Upgrade card star level | Star upgrade events |
 | COMPLETE_LEVELS | Clear story levels | Level completion events |
 | USE_PHASE_LAWS | Cast phase laws in battle | Law cast tracking |
-| SYNTHESIS_CARDS | Synthesize cards | Synthesis completion events |
+| ENHANCE_CARDS | Enhance cards | Enhancement completion events |
 | EARN_XP | Gain phase instrument XP | XP gain events |
 
 ### Daily Task Composition
@@ -125,7 +125,7 @@ countdown = max(0, next_refresh_time - current_time)
 
 ### Depended On By
 - Battle system — reports victories and kills via `update_task_progress()`
-- Synthesis system — reports synthesis operations
+- Enhancement system — reports enhancement operations
 - Phase law system — reports law usage
 - Level system — reports level completions
 - Card system — reports card collection and upgrades

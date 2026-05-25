@@ -317,7 +317,7 @@ func _format_rewards(rewards: Dictionary) -> String:
 	if rewards.has("blueprint_fragments"):
 		var fragments = rewards["blueprint_fragments"]
 		for fragment_id in fragments:
-			parts.append("%s碎片x%d" % [fragment_id, fragments[fragment_id]])
+			parts.append("%s蓝图x%d" % [fragment_id, fragments[fragment_id]])
 
 	if rewards.has("company_rep"):
 		var rep = rewards["company_rep"]

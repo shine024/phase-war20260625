@@ -176,7 +176,7 @@ func _on_resources_changed() -> void:
 	pass  # 资源已在顶部资源栏显示
 
 func _on_blueprint_fragments_changed() -> void:
-	pass  # 蓝图碎片在蓝图库中显示
+	pass  # 已解锁蓝图在蓝图库中显示
 
 func _on_lore_unlocked(_lore_id: String, _lore_name: String) -> void:
 	if _view and _view.has_method("refresh_lore_pages"):

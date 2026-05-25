@@ -350,7 +350,7 @@ func _format_reward(reward: Dictionary) -> String:
 			return "卡牌: %s" % card_id
 		"blueprint_fragment":
 			var fragment_id = reward.get("fragment_id", "")
-			return "蓝图碎片: %s x%d" % [fragment_id, amount]
+			return "蓝图复制: %s x%d" % [fragment_id, amount]
 		_:
 			return "%s x%d" % [reward_type, amount]
 

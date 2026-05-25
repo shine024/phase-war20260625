@@ -6,7 +6,7 @@
 
 ## Overview
 
-Quest System manages freely-accepted progression objectives ("委托任务") with 15 objective types spanning combat, collection, crafting, and faction interactions. Players can accept up to 5 quests simultaneously. Progress is tracked via a mix of internal counters (wins, kills, synthesis count) and real-time queries (fragment counts, card counts, reputation). Quest definitions come from `QuestDefs` (preloaded `RefCounted`). Rewards are auto-granted on completion — no manual claim step.
+Quest System manages freely-accepted progression objectives ("委托任务") with 15 objective types spanning combat, collection, crafting, and faction interactions. Players can accept up to 5 quests simultaneously. Progress is tracked via a mix of internal counters (wins, kills, enhance count) and real-time queries (fragment counts, card counts, reputation). Quest definitions come from `QuestDefs` (preloaded `RefCounted`). Rewards are auto-granted on completion — no manual claim step.
 
 ## Player Fantasy
 
@@ -24,7 +24,6 @@ Players pick up quests from a quest board, choosing objectives that align with t
 | `collect_fragments` | Blueprint fragments | Real-time query BlueprintManager | `{total: N}` or `{card_id: count}` |
 | `attack_faction` | Defeat specific phase master | Internal defeated masters list | `{target_master: name, target_faction: id}` |
 | `defend_faction` | Defeat master in faction territory | Internal + faction check | `{defend_faction: id}` |
-| `synthesis` | Synthesis operations | Internal counter | int (N synths) |
 | `enhance` | Enhancement operations | Internal counter | int (N enhances) |
 | `collect_cards` | Total blueprints owned | Real-time query BlueprintManager | int (N cards) |
 | `research_law` | Laws researched | Internal counter | int (N laws) |
@@ -37,7 +36,7 @@ Players pick up quests from a quest board, choosing objectives that align with t
 ### Quest Lifecycle
 
 1. **Accept**: Player calls `accept_quest(quest_id)` — checks slot limit (max 5), definition exists, not already accepted
-2. **Progress**: Events from battle/synthesis/shop/etc. call `notify_*()` methods or SignalBus signals
+2. **Progress**: Events from battle/enhancement/shop/etc. call `notify_*()` methods or SignalBus signals
 3. **Check**: After each progress event, `_try_complete()` evaluates `is_quest_done(quest_id)`
 4. **Complete**: If done, rewards auto-granted via `_grant_rewards()`, quest removed from active, ID added to `_completed_ids`
 5. **Abandon**: Player can `abandon_quest()` to free a slot — progress is lost
@@ -128,7 +127,7 @@ done = max_reputation >= target_reputation
 
 ### Depended On By
 - Battle system — emits battle_ended and unit_died signals
-- Synthesis system — calls `notify_*()` after synthesis completion
+- Enhancement system — calls `notify_*()` after enhancement completion
 - Enhancement system — calls enhancement notification
 - Shop system — calls `notify_item_bought()`
 - Phase master battles — calls `notify_phase_master_defeated()`

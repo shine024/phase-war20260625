@@ -22,7 +22,7 @@ Players feel a sense of long-term progression and mastery. Every battle, collect
 | **Collection** | Cards and blueprints collected by rarity | "收集10张传说蓝图" |
 | **Progress** | Level advancement, stars earned, era completion | "通关3个时代" |
 | **Challenge** | Special mode completions — survival, boss rush, time attack | "完成5次生存模式" |
-| **System** | Meta operations — saves, synthesis, enhancements, purchases | "执行50次合成" |
+| **System** | Meta operations — saves, enhancements, purchases | "执行50次强化" |
 | **Special** | Manually triggered, story-related, or event achievements | "完成新手引导" |
 
 ### Achievement Rarity
@@ -69,7 +69,7 @@ Players feel a sense of long-term progression and mastery. Every battle, collect
 
 **Challenge Stats**: survival_modes_completed, boss_rushes_completed, time_attacks_completed, no_loss_challenges, max_damage_dealt
 
-**System Stats**: total_saves, manual_saves, auto_saves, synthesis_operations, enhancement_operations, shop_purchases
+**System Stats**: total_saves, manual_saves, auto_saves, enhancement_operations, shop_purchases
 
 ## Formulas
 

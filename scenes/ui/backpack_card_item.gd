@@ -376,7 +376,7 @@ func set_card(c: CardResource) -> void:
 				weight_label.text = ""
 		weight_label.visible = true
 
-	# 等级 + 碎片进度
+	# 等级 + 经验进度
 	if lv_label and BlueprintManager and BlueprintManager.has_method("get_card_xp_progress"):
 		var prog: Dictionary = BlueprintManager.get_card_xp_progress(c.card_id)
 		var lvl: int = int(prog.get("level", 1))

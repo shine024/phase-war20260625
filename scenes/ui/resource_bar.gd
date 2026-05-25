@@ -1,5 +1,5 @@
 extends PanelContainer
-## 顶部资源栏：显示关键资源（战斗能量、纳米材料、蓝图碎片等）
+## 顶部资源栏：显示关键资源（战斗能量、纳米材料、已解锁蓝图等）
 
 const GC = preload("res://resources/game_constants.gd")
 const BasicResources = preload("res://data/basic_resources.gd")
@@ -83,8 +83,8 @@ func _build_ui() -> void:
 	# 晶体
 	_crystal_label = _create_resource_item(hbox, "💎", "晶体", Color(0.6, 0.3, 1.0, 1.0))
 
-	# 蓝图碎片
-	_blueprint_count_label = _create_resource_item(hbox, "📜", "蓝图碎片", Color(0.4, 0.7, 1.0, 1.0))
+	# 已解锁蓝图
+	_blueprint_count_label = _create_resource_item(hbox, "📜", "已解锁蓝图", Color(0.4, 0.7, 1.0, 1.0))
 
 	# 情报
 	_lore_count_label = _create_resource_item(hbox, "📖", "情报", Color(0.9, 0.7, 0.2, 1.0))

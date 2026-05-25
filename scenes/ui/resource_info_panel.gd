@@ -1,5 +1,5 @@
 extends PanelContainer
-## 左上角常驻资源面板：基础资源 + 情报数量（蓝图碎片、法则碎片等已不在此汇总）。
+## 左上角常驻资源面板：基础资源 + 情报数量。
 
 var _labels: Dictionary = {}
 var _row_nodes: Dictionary = {}

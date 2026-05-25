@@ -311,7 +311,7 @@ func _get_item_details_text(item: Variant) -> String:
 		details.append("使用: 点击背包中的材料图标查看详情")
 
 	elif item.item_type == 2:  # CARD_BUNDLE（原 BLUEPRINT_FRAGMENT）
-		details.append("类型: 蓝图碎片")
+		details.append("类型: 蓝图数据")
 		details.append("用途: 在蓝图工坊中解锁卡牌升级")
 
 	return "\n".join(details)

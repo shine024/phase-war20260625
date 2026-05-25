@@ -6,7 +6,7 @@
 
 ## Overview
 
-Tutorial System orchestrates a linear 8-step onboarding sequence that introduces new players to core game systems: card collection, equipment, battle, synthesis, factions, and phase laws. Each step contains instructional content (title, description, highlights) and an action target that triggers UI navigation via SignalBus. The system supports skip, reset, and auto-start on first launch. State persists via `SaveManager`.
+Tutorial System orchestrates a linear 8-step onboarding sequence that introduces new players to core game systems: card collection, equipment, battle, enhancement, factions, and phase laws. Each step contains instructional content (title, description, highlights) and an action target that triggers UI navigation via SignalBus. The system supports skip, reset, and auto-start on first launch. State persists via `SaveManager`.
 
 ## Player Fantasy
 
@@ -19,10 +19,10 @@ New players are guided through their first experience with clear, step-by-step i
 | Step | Enum | Title | Action Target | Highlights |
 |------|------|-------|--------------|------------|
 | 1 | INTRO_WELCOME | "欢迎来到 Phase War" | open_card_collection | 100 levels, 300+ cards, 7 factions |
-| 2 | CARD_COLLECTION_INTRO | "卡牌收藏" | open_backpack | Platform=unit type, Weapon=attack, Synthesis |
+| 2 | CARD_COLLECTION_INTRO | "卡牌收藏" | open_backpack | Platform=unit type, Weapon=attack, Enhancement |
 | 3 | CARD_EQUIP_INTRO | "装备卡牌" | open_phase_instrument | Green=platform+weapon, Yellow=energy, Blue/Red=law |
 | 4 | FIRST_BATTLE_INTRO | "首次战斗" | start_first_battle | Deploy on battlefield, protect driver, kill enemies |
-| 5 | SYNTHESIS_INTRO | "卡牌合成" | open_synthesis | Card+Card merge, blueprint fragments, 80%/90% rates |
+| 5 | ENHANCEMENT_INTRO | "卡牌强化" | open_enhancement | 消耗纳米材料提升卡牌等级，成功率从 95% 递减 |
 | 6 | FACTION_INTRO | "势力系统" | open_factions | 7 factions, exclusive instruments, reputation |
 | 7 | PHASE_LAWS_INTRO | "相位法则" | open_phase_laws | 12 laws, 4 families, environment constraints |
 | 8 | ADVANCED_TACTICS | "高级战术" | close_tutorial | Deck strategy, resource mgmt, tactical adaptation |
@@ -54,7 +54,7 @@ Each step contains:
 | open_card_collection / open_backpack | `toggle_backpack` | Opens backpack panel |
 | open_phase_instrument | `toggle_phase_instrument` | Opens instrument equip panel |
 | start_first_battle | `start_level(1)` | Starts level 1 |
-| open_synthesis | `toggle_synthesis` | Opens synthesis panel |
+| open_enhancement | `toggle_enhancement` | Opens enhancement panel |
 | open_factions | `toggle_factions` | Opens faction panel |
 | open_phase_laws | `toggle_phase_laws` | Opens law library |
 | close_tutorial | `complete_current_step()` | Advances to FREEDOM_MODE |
@@ -104,7 +104,7 @@ progress = {
 ## Dependencies
 
 ### Depends On
-- `SignalBus` — emits UI toggle signals (backpack, instrument, synthesis, factions, laws, start_level)
+- `SignalBus` — emits UI toggle signals (backpack, instrument, enhancement, factions, laws, start_level)
 - `SaveManager` — persists current_step and completed_steps via `save_state()` / `load_state()`
 
 ### Depended On By
