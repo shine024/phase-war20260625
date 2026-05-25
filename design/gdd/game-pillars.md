@@ -66,24 +66,24 @@
 
 ---
 
-## Pillar 4: Experimentation & Optimization
+## Pillar 4: 组合与词缀多样性
 
-**One-line**: 300+ 卡牌组合创造多样性，合成系统允许试错和优化。
+**One-line**: 13 种平台 × 10+ 种武器的组合 + 词缀系统创造丰富的构筑多样性。
 
-**Design Test**: 当在特性 X（减少卡牌种类提高平衡性）和特性 Y（更多组合创造意外发现）之间争论时，此 Pillar 说选择 **Y** — 多样性和意外发现比完美平衡更有趣。
+**Design Test**: 当在特性 X（减少组合种类提高平衡性）和特性 Y（更多组合创造意外发现）之间争论时，此 Pillar 说选择 **Y** — 多样性和意外发现比完美平衡更有趣。
 
-**System Ownership**: synthesis-system, blueprint-system, unit-stats-system
+**System Ownership**: blueprint-system, unit-stats-system, affix-system
 
 **What this means**:
-- 卡牌合成应让玩家愿意尝试不寻常的组合
-- 失败的尝试（合成失败 80%/90% 成功率）不应让人沮丧
+- 平台 × 武器的自由组合应鼓励玩家尝试不寻常的搭配
+- 词缀随机性创造意外发现，每次掉落都可能带来惊喜
 - 发现强力组合应创造 "aha moment"
 - 不同玩家应有截然不同的最优构筑
 
 **GDD References**:
-- "Resource Management & Experimentation" (synthesis-system.md)
 - "Growth & Collection" (blueprint-system.md)
 - "Combat Mechanics & Unit Customization" (unit-stats-system.md)
+- "Affix & Modifier System" (affix-system.md)
 
 ---
 
@@ -105,8 +105,8 @@
 |---------|---------|------------|
 | Build depth vs. Accessibility | #1 vs. #3 | 新手用简单构筑即可通关，高手用复杂构筑追求优化 |
 | Environmental adaptation vs. Build consistency | #2 vs. #1 | 通用构筑可行但非最优，环境特定构筑有显著奖励 |
-| Permanent growth vs. Experimentation risk | #3 vs. #4 | 碎片永久保留降低试错成本，合成失败只损失投入资源 |
-| Collection completion vs. Variety | #3 vs. #4 | 9星上限提供目标，融合卡提供持续新鲜感 |
+| Permanent growth vs. Affix randomness | #3 vs. #4 | 蓝图升级提供稳定成长，词缀随机性带来意外惊喜与构筑变化 |
+| Collection completion vs. Build variety | #3 vs. #4 | 9星上限提供目标，平台×武器组合+词缀提供持续新鲜感 |
 
 ---
 
@@ -117,4 +117,4 @@
 1. **Tactical Build & Deploy** — 核心，没有它就没有游戏
 2. **Permanent Growth** — 留存驱动力，没有它就没有长期目标
 3. **Environmental Adaptation** — 差异化特色，没有它法则系统变得平庸
-4. **Experimentation & Optimization** — 深度，没有它游戏变浅但仍然可玩
+4. **组合与词缀多样性** — 深度，没有它游戏变浅但仍然可玩

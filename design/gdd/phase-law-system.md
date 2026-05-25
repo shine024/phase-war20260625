@@ -11,7 +11,7 @@
 
 ## Summary
 
-The Phase Law System provides active combat skills ("laws") that players can research, equip, and cast during battle. Laws come in four families (Steel, Flame, Thunder, Void) and have environmental requirements that affect their power. The system supports passive laws (auto-apply effects) and active laws (player-triggered skills with energy/nano costs and usage limits). Laws are unlocked **only** by spending the four knowledge values defined in each law's `research_req` (v3 — no law shards).
+The Phase Law System provides active combat skills ("laws") that players can research, equip, and cast during battle. Laws come in four families (Steel, Flame, Thunder, Void) and have environmental requirements that affect their power. The system supports passive laws (auto-apply effects) and active laws (player-triggered skills with energy/nano costs and usage limits). Laws are unlocked **only** by spending the four knowledge values defined in each law's `research_req` (v3 — no law shards, no fragment system).
 
 Key design philosophy: **Active skill system** (laws provide spell-like abilities for combat depth) and **Environmental strategy** (players adapt their law selection to battle environments for optimal power).
 
@@ -54,17 +54,16 @@ The system should feel like **preparing a spellbook in an RPG**—you choose you
    - **VOID** (虚空): Debuffs, time manipulation, stealth
 
 3. **Unlocking Laws**
-   - **Primary method**: Collect blueprint fragments (via `BlueprintManager.can_unlock_law()`)
-   - **Fragment threshold**: Each law has `shard_req` (fragments needed to unlock)
-   - **Secondary method**: Knowledge values (reserved for future features)
-   - `can_research_law(law_id)`: Checks if unlock conditions met
-   - `research_law(law_id)`: Unlocks the law
+   - **Sole method**: Knowledge values — each law defines `research_req` with thresholds for the four knowledge types
+   - `can_research_law(law_id)`: Checks if all knowledge thresholds are met and the law is not yet unlocked
+   - `research_law(law_id)`: Consumes the required knowledge amounts and unlocks the law
+   - **No fragment system**: Law shards / `BlueprintManager.can_unlock_law()` are **not** used for law unlocking
 
-4. **Knowledge Values** (Future Features)
+4. **Knowledge Values**
    - Four types: `defense_knowledge`, `energy_knowledge`, `mobility_knowledge`, `mystic_knowledge`
-   - **Status**: Implemented but not currently used for unlocking
-   - **Intended for**: Future expansion (special laws, alternate unlock paths)
-   - **Note**: Fragment-based unlocking is the primary system; knowledge is a separate progression track
+   - **Status**: Core unlock currency — every law requires specific amounts of these values
+   - **Acquisition**: Earned through gameplay progression (see `knowledge-value-system.md`)
+   - **Consumption**: Spent permanently when researching a law via `research_law()`
 
 5. **Environmental Requirements**
    - Laws may require specific environmental conditions:
@@ -136,7 +135,7 @@ The system should feel like **preparing a spellbook in an RPG**—you choose you
 
 | System | Interface | Data Flow | Direction |
 |--------|-----------|-----------|-----------|
-| **BlueprintManager** | `can_unlock_law()`, `get_law_blueprint_level()` | Fragment checks, star level | BlueprintManager → PhaseLawManager |
+| **BlueprintManager** | `get_law_blueprint_level()` | Star level for value scaling | BlueprintManager → PhaseLawManager |
 | **BasicResourceManager** | `get_total()`, `add_basic_resource()` | Nano material queries/deductions | PhaseLawManager → BasicResourceManager |
 | **EnergyManager** | `current_energy` (via context) | Energy cost checks | EnergyManager → PhaseLawManager |
 | **PhaseLaws** | `get_by_id()`, `get_all_ids()`, `get_family()` | Law data | PhaseLaws → PhaseLawManager |
@@ -146,20 +145,7 @@ The system should feel like **preparing a spellbook in an RPG**—you choose you
 
 ## Formulas
 
-### Law Unlock Check (Fragment Method)
-
-```
-can_unlock = (BlueprintManager.can_unlock_law(law_id) == true)
-```
-
-| Variable | Type | Range | Source | Description |
-|----------|------|-------|--------|-------------|
-| law_id | String | - | Input | Law identifier |
-| can_unlock | bool | true/false | BlueprintManager | Whether fragments meet threshold |
-
-**Expected output range**: true or false
-
-### Law Unlock Check (Knowledge Method - Legacy)
+### Law Unlock Check (Knowledge Method)
 
 ```
 can_unlock = (unlocked == false) AND
@@ -171,8 +157,9 @@ can_unlock = (unlocked == false) AND
 
 | Variable | Type | Range | Source | Description |
 |----------|------|-------|--------|-------------|
-| req.*knowledge | int | 0-∞ | Law data | Required knowledge threshold |
-| current_knowledge | int | 0-∞ | Tracked | Player's current knowledge |
+| req.*knowledge | int | 0-∞ | Law data `research_req` | Required knowledge threshold |
+| current_knowledge | int | 0-∞ | Tracked per type | Player's current knowledge values |
+| unlocked | bool | true/false | PhaseLawManager | Whether law is already researched |
 
 **Expected output range**: true or false
 
@@ -251,13 +238,13 @@ scaled_value = base_value × (1.0 + (law_level - 1) × 0.02)
 | Nano insufficient for cast | `can_cast` returns false | Resource gate |
 | Law changes environment | Runtime env updates, may affect other laws | Cascading environment effects |
 | Battle ends | Active law states reset, runtime env resets | Clean slate for next battle |
-| Knowledge value present | Tracked but not used for unlocking (future feature) | Reserved for future systems |
+| Knowledge value below threshold | `can_research_law` returns false, law stays locked | Must earn more knowledge before researching |
 
 ## Dependencies
 
 | System | Direction | Nature of Dependency |
 |--------|-----------|---------------------|
-| **BlueprintManager** | This depends on BlueprintManager | Fragment checks, star level data |
+| **BlueprintManager** | This depends on BlueprintManager | Star level data for passive value scaling |
 | **BasicResourceManager** | This depends on BasicResourceManager | Nano material management |
 | **EnergyManager** | EnergyManager depends on this | Energy cost checks (via context) |
 | **PhaseLaws** | This depends on PhaseLaws | Law data definitions |
@@ -275,7 +262,7 @@ scaled_value = base_value × (1.0 + (law_level - 1) × 0.02)
 
 **Balance Concerns**:
 - **Environment matching complexity**: 4 dimensions × multiple values = many combinations. Players may struggle to understand which laws work where.
-- **Knowledge value system**: Implemented but unused. If this is for future features, document what those features are so the system isn't over-engineered for nothing.
+- **Knowledge value economy**: Four knowledge types mean four progression vectors. Tuning thresholds is critical — too steep blocks progression, too shallow makes unlocking trivial.
 - **Active law power variance**: 50%-100% power range is significant. Underpowered laws may never be used; overpowered laws may be must-haves.
 
 ## Visual/Audio Requirements
@@ -338,11 +325,7 @@ scaled_value = base_value × (1.0 + (law_level - 1) × 0.02)
 
 ## Open Questions
 
-1. **Knowledge Value Purpose**: The knowledge system (4 types) is implemented but not used for unlocking. What is it intended for? Is it:
-   - **Future law types** (only unlockable via knowledge)?
-   - **Alternate progression** (side-grade laws)?
-   - **Skill tree** (boosts law effectiveness)?
-   - If no plans, consider removing to reduce complexity.
+1. **Knowledge Value Pacing**: How fast should players accumulate each knowledge type? Should all laws cost roughly the same total knowledge, or should powerful laws cost significantly more?
 
 2. **Environmental Complexity**: 4 dimensions × 3-5 values each = 81+ combinations. Is this intentional depth, or should it be simplified for player accessibility?
 
@@ -354,7 +337,7 @@ scaled_value = base_value × (1.0 + (law_level - 1) × 0.02)
 
 ## Acceptance Criteria
 
-- **GIVEN** law has fragment threshold met, **WHEN** player researches law, **THEN** law added to unlocked_laws
+- **GIVEN** law's knowledge thresholds are met and law is not yet unlocked, **WHEN** player calls `research_law()`, **THEN** knowledge amounts are consumed and law is added to unlocked_laws
 - **GIVEN** passive law equipped, **WHEN** environment matches, **THEN** law provides runtime effects
 - **GIVEN** passive law equipped, **WHEN** environment mismatches, **THEN** law cannot be equipped (or provides no effects)
 - **GIVEN** active law equipped, **WHEN** environment mismatches, **THEN** law can be equipped but power reduced to 50%
@@ -367,10 +350,10 @@ scaled_value = base_value × (1.0 + (law_level - 1) × 0.02)
 
 ---
 
-**Document Status**: Reverse-documented from existing implementation. Knowledge value system marked for future features.
+**Document Status**: Reverse-documented from existing implementation. Knowledge values are the sole unlock mechanism (v3 design lock, no fragment system).
 
 **Notes**:
-- **Knowledge values are implemented but unused**. Clarify their intended purpose before removing or expanding.
+- **Knowledge values are the core unlock currency** — every law requires spending specific amounts of the four knowledge types.
 - **Environmental complexity** may be a player accessibility issue. Consider UI helpers to show which laws work where.
 - **Active law power variance** (50%-100%) needs playtesting to ensure underpowered laws aren't ignored.
 - **Consider documenting law families and their identities** to help players understand the thematic organization.

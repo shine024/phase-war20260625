@@ -9,6 +9,7 @@ enum BuffKind {
 	SCOUT,
 	FORTRESS,
 	COMMAND,
+	CARRIER,
 }
 
 const ICON_WIDTH_FRAC: float = 0.22
@@ -19,6 +20,7 @@ const _BUFF_ORDER: Array[BuffKind] = [
 	BuffKind.SCOUT,
 	BuffKind.FORTRESS,
 	BuffKind.COMMAND,
+	BuffKind.CARRIER,
 ]
 
 const _BUFF_COLORS: Dictionary = {
@@ -26,6 +28,7 @@ const _BUFF_COLORS: Dictionary = {
 	BuffKind.SCOUT: Color(0.45, 1.0, 0.55, 0.95),
 	BuffKind.FORTRESS: Color(1.0, 0.68, 0.28, 0.95),
 	BuffKind.COMMAND: Color(0.92, 0.72, 1.0, 0.95),
+	BuffKind.CARRIER: Color(0.3, 0.85, 1.0, 0.95),
 }
 
 var _card_art_width: float = 0.0
@@ -46,6 +49,8 @@ static func collect_buff_kinds(unit: Node) -> Array[BuffKind]:
 		kinds.append(BuffKind.FORTRESS)
 	if unit.has_meta("command_buffed") and bool(unit.get_meta("command_buffed")):
 		kinds.append(BuffKind.COMMAND)
+	if unit.has_meta("carrier_repair_buffed") and bool(unit.get_meta("carrier_repair_buffed")):
+		kinds.append(BuffKind.CARRIER)
 	return kinds
 
 
@@ -102,6 +107,8 @@ func _draw() -> void:
 				_draw_fortress_icon(cx, cy, s, col)
 			BuffKind.COMMAND:
 				_draw_command_icon(cx, cy, s, col)
+			BuffKind.CARRIER:
+				_draw_carrier_icon(cx, cy, s, col)
 
 
 func _draw_radar_icon(cx: float, cy: float, s: float, col: Color) -> void:

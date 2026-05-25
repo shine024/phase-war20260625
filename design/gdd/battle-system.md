@@ -10,7 +10,7 @@
 
 ## Summary
 
-The Battle System is Phase War's core gameplay loop, managing real-time auto-combat between player-deployed units and enemy waves. Players manually deploy units during battle by clicking on the field, spending energy and managing a limited unit cap. Enemy waves spawn at timed intervals according to level configuration. The system handles victory/defeat conditions, star rating (1-3★) based on performance, combat drops (blueprint fragments, law shards), and integrates with affix, blueprint, and phase law systems for unit stat calculations and combat effects.
+The Battle System is Phase War's core gameplay loop, managing real-time auto-combat between player-deployed units and enemy waves. Players manually deploy units during battle by clicking on the field, spending energy and managing a limited unit cap. Enemy waves spawn at timed intervals according to level configuration. The system handles victory/defeat conditions, star rating (1-3★) based on performance, combat drops (CARD_DATA / finished cards / blueprint data / knowledge values), and integrates with affix, blueprint, and phase law systems for unit stat calculations and combat effects.
 
 Key design philosophy: **Balance build & operation** (pre-battle loadout matters, but in-battle decisions are meaningful), **resource management** (plan deployments within limited waves and energy), and **reward tiering** (higher stars = better drops).
 
@@ -28,7 +28,7 @@ Victory requires surviving all configured enemy waves (or all enemies in unlimit
 - **Deployment**: Each deployment is a strategic choice—positioning, timing, and energy management
 - **Observation**: Watch your custom creations fight autonomously, seeing your build choices in action
 - **Adaptation**: Respond to battlefield conditions with timely deployments and law casts
-- **Progression**: Each battle grants resources (fragments, shards) that permanently improve your arsenal
+- **Progression**: Each battle grants resources (knowledge, research points) that permanently improve your arsenal
 
 The system should feel like **a blend of auto-battler preparation and real-time strategy control**. You're not directly controlling units, but your deployment decisions shape the battle flow.
 
@@ -88,11 +88,13 @@ The system should feel like **a blend of auto-battler preparation and real-time 
    - **Battle energy**: Separate from pre-battle energy, managed by EnergyManager
 
 7. **Combat Drops**
-   - **Blueprint fragments**: Roll on enemy death based on archetype drop definitions
-   - **Law shards**: 15% base chance (30% elite, 50% boss), boosted by recon units
-   - **Recon bonus**: Scout/Stealth units increase drop amount and law shard chance
-   - **Environment-based laws**: Law shard type influenced by battle environment (weather, terrain, energy field, time)
-   - **Post-battle drops**: Generated on victory based on era, level, win/loss, star rating
+   - **CARD_DATA drops**: Roll on enemy death based on archetype drop definitions; yields raw card data entries used for research
+   - **Finished cards**: Rare direct drops of usable cards (platforms/weapons), chance increased by star rating
+   - **Blueprint data**: Dropped from elite/boss enemies; provides blueprint entries for BlueprintManager
+   - **Knowledge values (知识值)**: Base gain on enemy kill; elite = 2×, boss = 3×; boosted by recon units and star rating
+   - **Recon bonus**: Scout/Stealth units increase knowledge gain and card drop quality
+   - **Environment-based laws**: Knowledge value type influenced by battle environment (weather, terrain, energy field, time)
+   - **Post-battle drops**: Generated on victory based on era, level, win/loss, star rating via DropManager
 
 8. **Phase Master Battle Mode** (Special PvP)
    - **Disabled wave system**: No timed enemy waves
@@ -130,7 +132,7 @@ The system should feel like **a blend of auto-battler preparation and real-time 
 | **PhaseInstrumentManager** | `get_loadout_by_platform_card_id()`, `get_max_deployable_units()`, `get_energy_output_rate()`, `get_spawn_range_ratio()` | Loadout data, unit caps, energy multipliers | PhaseInstrumentManager → BattleManager |
 | **DropManager** | `generate_battle_drops()` | Era, level, win/loss, stars → drops | BattleManager → DropManager |
 | **AffixManager** | `apply_affixes_to_stats()`, `on_battle_won()` | Star level → affix grants | Bidirectional |
-| **BlueprintManager** | `apply_growth_to_stats()`, `add_blueprint_copy()` | Blueprint star → stat multipliers, fragment additions | BattleManager →/← BlueprintManager |
+| **BlueprintManager** | `apply_growth_to_stats()`, `add_blueprint_copy()` | Blueprint star → stat multipliers, blueprint data | BattleManager →/← BlueprintManager |
 | **GameManager** | `current_level`, `get_era()`, `get_enemy_wave_total_for_level()`, `get_drop_rate_multiplier()` | Level data → battle config | GameManager → BattleManager |
 | **QuestManager** | `notify_battle_result()`, `notify_fragments_changed()` | Battle stats → quest progress | BattleManager → QuestManager |
 | **SignalBus** | Multiple signals | Battle events → UI and other systems | BattleManager → SignalBus |
@@ -214,12 +216,12 @@ estimated_time = wave_total × wave_interval + 15.0
 
 **Expected output range**: 15s (0 waves) to 600s+ (many waves)
 
-### Blueprint Fragment Drop Chance
+### Card Data Drop Chance
 
 ```
 drop_chance = archetype_base_chance × drop_rate_multiplier
 if randf() < drop_chance:
-    grant fragments (amount × recon_bonus)
+    grant CARD_DATA entry (tier scaled by star rating)
 ```
 
 | Variable | Type | Range | Source | Description |
@@ -228,29 +230,30 @@ if randf() < drop_chance:
 | drop_rate_multiplier | float | 0.5-2.0 | GameManager | Level-specific modifier |
 | drop_chance | float | 0.0-1.0 | Calculated | Final drop probability |
 | recon_bonus | float | 0.0-0.5 | Calculated | Bonus from scout/stealth units |
-| amount | int | 1-∞ | Drop definition | Base fragment count |
+| star_rating | int | 1-3 | Battle result | Scales CARD_DATA tier quality |
 
 **Expected output range**: 0% to 100% drop chance
 
-### Law Shard Drop Chance
+### Knowledge Gain Formula
+
+> **Replaces**: Law Shard Drop Chance (deprecated in v3)
 
 ```
-base_chance = 0.15 (15%)
-if enemy is elite: base_chance = 0.30 (30%)
-if enemy is boss: base_chance = 0.50 (50%)
-final_chance = base_chance × (1.0 + recon_bonus)
-if randf() < final_chance:
-    grant law shards (1 for basic, 2 for elite, 3 for boss)
+knowledge_base = 10
+if enemy is elite: knowledge_base = 20 (2×)
+if enemy is boss: knowledge_base = 30 (3×)
+knowledge_gain = knowledge_base × (1.0 + recon_bonus) × star_multiplier
+grant knowledge values (知识值)
 ```
 
 | Variable | Type | Range | Source | Description |
 |----------|------|-------|--------|-------------|
-| base_chance | float | 0.15-0.50 | Constants | Base shard drop probability |
+| knowledge_base | int | 10-30 | Enemy tier | Base knowledge per kill |
 | recon_bonus | float | 0.0-0.5 | Calculated | Bonus from scout/stealth units |
-| final_chance | float | 0.15-0.75 | Calculated | Final shard probability |
-| amount | int | 1-3 | Enemy tier | Shards granted |
+| star_multiplier | float | 1.0-1.5 | Star rating | 1★=1.0, 2★=1.2, 3★=1.5 |
+| knowledge_gain | int | 10-45 | Calculated | Final knowledge granted |
 
-**Expected output range**: 15% (basic, no recon) to 75% (boss, max recon)
+**Expected output range**: 10 (basic, no bonus, 1★) to 45 (boss, max recon, 3★)
 
 ### Recon Bonus Calculation
 
@@ -279,7 +282,7 @@ recon_bonus = min(0.5, recon_unit_count × 0.1)
 | Phase master battle without config | Falls back to normal battle behavior | Graceful degradation for missing config |
 | Loading old save format | Migrates legacy data structures to new format | Backward compatibility |
 | Recon bonus exceeds cap | Clamped to 0.5 (50% bonus maximum) | Prevents exploitation |
-| Law shard drop with no valid laws | Skip drop, log warning | Prevents crash when law data missing |
+| Knowledge gain with no valid knowledge pool | Skip gain, log warning | Prevents crash when knowledge data missing |
 
 ## Dependencies
 
@@ -289,7 +292,7 @@ recon_bonus = min(0.5, recon_unit_count × 0.1)
 | **PhaseInstrumentManager** | This depends on PhaseInstrumentManager | Loadout data, unit caps, energy multipliers |
 | **DropManager** | DropManager depends on this | Battle results (win/loss, stars) → drop generation |
 | **AffixManager** | Bidirectional | Stat calculation (Affix→Battle) + battle affix grants (Battle→Affix) |
-| **BlueprintManager** | This depends on BlueprintManager | Star growth → stat multipliers, fragment additions |
+| **BlueprintManager** | This depends on BlueprintManager | Star growth → stat multipliers, blueprint data |
 | **GameManager** | This depends on GameManager | Level config (waves, intervals, era) |
 | **QuestManager** | QuestManager depends on this | Battle stats → quest progress tracking |
 | **SignalBus** | This emits to SignalBus | Battle events → UI and other systems |
@@ -306,11 +309,11 @@ recon_bonus = min(0.5, recon_unit_count × 0.1)
 | **3★ Time threshold** | 70% | 50-90% | Harder to get 3★ | Easier to get 3★ |
 | **2★ Survival threshold** | 50% | 30-70% | Harder to get 2★ | Easier to get 2★ |
 | **3★ Survival threshold** | 80% | 60-90% | Harder to get 3★ | Easier to get 3★ |
-| **RECON_FRAGMENT_BONUS_PER_UNIT** | 0.1 (10%) | 0.05-0.2 | Recon units more valuable | Recon units less impactful |
-| **RECON_FRAGMENT_BONUS_CAP** | 0.5 (50%) | 0.3-0.8 | Higher drop potential | Lower drop potential |
-| **LAW_SHARD_BASE_CHANCE** | 0.15 (15%) | 0.05-0.30 | More law shards (faster law progression) | Fewer law shards (slower progression) |
-| **LAW_SHARD_ELITE_CHANCE** | 0.30 (30%) | 0.15-0.50 | Elite rewards better | Elite rewards worse |
-| **LAW_SHARD_BOSS_CHANCE** | 0.50 (50%) | 0.25-0.75 | Boss rewards better | Boss rewards worse |
+| **RECON_KNOWLEDGE_BONUS_PER_UNIT** | 0.1 (10%) | 0.05-0.2 | Recon units more valuable | Recon units less impactful |
+| **RECON_KNOWLEDGE_BONUS_CAP** | 0.5 (50%) | 0.3-0.8 | Higher knowledge gain potential | Lower knowledge gain potential |
+| **KNOWLEDGE_BASE_GAIN** | 10 | 5-20 | Faster knowledge progression | Slower knowledge progression |
+| **KNOWLEDGE_ELITE_MULTIPLIER** | 2.0 | 1.5-3.0 | Elite rewards better | Elite rewards worse |
+| **KNOWLEDGE_BOSS_MULTIPLIER** | 3.0 | 2.0-5.0 | Boss rewards better | Boss rewards worse |
 
 **Balance Concerns**:
 - **Recon unit stacking**: 5 scout units = 50% bonus, very powerful. Consider if this is intended or exploitable.
@@ -331,8 +334,8 @@ recon_bonus = min(0.5, recon_unit_count × 0.1)
 | Phase driver hit (player) | Screen flash red, low HP warning | Critical alarm | HIGH |
 | Phase driver destroyed (player) | Explosion, defeat overlay | Defeat stinger | HIGH |
 | All enemies cleared | Victory overlay, star rating reveal | Victory fanfare | HIGH |
-| Blueprint fragment dropped | Fragment icon flies to collection | Collect chime | MEDIUM |
-| Law shard dropped | Shard icon with glow effect flies to collection | Mystical chime | MEDIUM |
+| CARD_DATA dropped | Card icon flies to collection | Collect chime | MEDIUM |
+| Knowledge values gained | Knowledge icon with glow effect flies to collection | Mystical chime | MEDIUM |
 
 **UI Elements Required**:
 - Battle HUD (energy bar, unit counters, wave progress, timer)
@@ -403,8 +406,8 @@ recon_bonus = min(0.5, recon_unit_count × 0.1)
 - **GIVEN** all configured waves spawned and all enemies killed, **WHEN** check conditions, **THEN** battle ends in victory
 - **GIVEN** phase field driver destroyed, **WHEN** signal received, **THEN** battle ends in defeat immediately
 - **GIVEN** victory with 80%+ survival and fast time, **WHEN** stars calculated, **THEN** player awarded 3★
-- **GIVEN** enemy unit killed, **WHEN** roll for drops, **THEN** may grant blueprint fragments and law shards based on chances
-- **GIVEN** recon units on field, **WHEN** rolling drops, **THEN** fragment amount and law shard chance increased
+- **GIVEN** enemy unit killed, **WHEN** roll for drops, **THEN** may grant CARD_DATA, finished cards, blueprint data, and knowledge values based on chances
+- **GIVEN** recon units on field, **WHEN** calculating drops, **THEN** knowledge gain amount and card drop quality increased
 - **GIVEN** battle ends in victory, **WHEN** generating drops, **THEN** drop quality influenced by star rating
 
 ---
@@ -416,5 +419,5 @@ recon_bonus = min(0.5, recon_unit_count × 0.1)
   - **Core Battle Flow** (start/end, victory conditions)
   - **Deployment System** (player unit spawning)
   - **Enemy Wave System** (enemy spawning logic)
-  - **Combat Drops** (fragment/shard rewards)
+  - **Combat Drops** (CARD_DATA / knowledge values rewards)
 - The debug logging subsystems (`_dbg_ndjson`, `_agent_debug_log`) appear to be for A/B testing or analytics. Clarify if these are production systems.
