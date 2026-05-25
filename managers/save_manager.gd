@@ -52,7 +52,7 @@ const DEFERRED_MANAGER_LOADS: Array = [
 	["/root/DailyTaskManager", "daily_task"],
 	["/root/StatisticsManager", "statistics"],
 	["/root/CardEnhancementManager", "card_enhancement"],
-	["/root/LawShardManager", "law_shards"],
+	["/root/LawShardManager", "law_shards"],  ## legacy migration — LawShard 已废弃
 	["/root/TutorialProgressionManager", "tutorial_progress"],
 	["/root/StoryManager", "story_progress"],
 	["/root/CharacterManager", "characters"],
@@ -84,7 +84,7 @@ const RESETTABLE_MANAGERS := [
 	"LoreManager",
 	"StatBoostManager",
 	"CardEnhancementManager",
-	"LawShardManager",
+	"LawShardManager",  ## legacy migration — LawShard 已废弃
 	"TutorialProgressionManager",
 	"StoryManager",
 	"CharacterManager",
@@ -448,7 +448,7 @@ func _collect_noncritical_save_data(data: Dictionary, now_ms: int) -> void:
 		_collect_manager_state(fresh, "/root/DailyTaskManager", "daily_task")
 		_collect_manager_state(fresh, "/root/StatisticsManager", "statistics")
 		_collect_manager_state(fresh, "/root/CardEnhancementManager", "card_enhancement")
-		_collect_manager_state(fresh, "/root/LawShardManager", "law_shards")
+		_collect_manager_state(fresh, "/root/LawShardManager", "law_shards")  ## legacy migration — LawShard 已废弃
 		_collect_manager_state(fresh, "/root/TutorialProgressionManager", "tutorial_progress")
 		_collect_manager_state(fresh, "/root/StoryManager", "story_progress")
 		_collect_manager_state(fresh, "/root/CharacterManager", "characters")

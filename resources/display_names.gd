@@ -168,7 +168,6 @@ static func get_resource_name(resource_id: String) -> String:
 		"alloy":         return "合金"
 		"crystal":       return "晶体"
 		"energy_block":  return "能量块"
-		"law_shard":     return "法则碎片"
 		"research_points": return "研究点"
 		_:               return resource_id
 
@@ -179,7 +178,6 @@ static func get_resource_unit(resource_id: String) -> String:
 		"alloy":         return "合"
 		"crystal":       return "晶"
 		"energy_block":  return "块"
-		"law_shard":     return "片"
 		"research_points": return "点"
 		_:               return ""
 

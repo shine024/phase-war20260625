@@ -34,6 +34,7 @@ const CARD_GRID_ENLISTED_BASE_HEIGHT_CM: float = 1.5
 ## 卡面常为 1024 方图，按边长归一后屏上仍偏小，在目标像素上乘以此系数加大立绘（与 cm 比例叠乘，可调）
 const CARD_GRID_BATTLEFIELD_DRAW_SCALE_MULTIPLIER: float = 2.35
 
+## @deprecated — ADR-001: 法则碎片已移除
 ## 新游戏时赠送法则碎片（用于蓝图库解析/升级；对应法则的 env_req 已放宽为全关卡可用）
 const NEW_GAME_STARTER_LAW_SHARD_AMOUNT: int = 50
 ## 主动：烈焰·前线火力压制、雷霆·链式放电

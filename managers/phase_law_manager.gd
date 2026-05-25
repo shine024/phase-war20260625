@@ -648,7 +648,9 @@ func reset_to_defaults() -> void:
 
 func _grant_new_game_starter_knowledge() -> void:
 	const GameConstants = preload("res://resources/game_constants.gd")
-	var amount: int = GameConstants.NEW_GAME_STARTER_LAW_SHARD_AMOUNT
+	## [deprecated] LawShard 机制已废弃，下面读取的 NEW_GAME_STARTER_LAW_SHARD_AMOUNT
+	## 仅作为「新游戏初始知识值倍率」的兼容来源，未来应改为独立常量。
+	var amount: int = GameConstants.NEW_GAME_STARTER_LAW_SHARD_AMOUNT  ## legacy — LawShard 已废弃，此处仅借用其数值作为知识值倍率
 	for law_id in GameConstants.get_all_new_game_starter_law_ids():
 		var law: Dictionary = PhaseLaws.get_by_id(law_id)
 		if law.is_empty():

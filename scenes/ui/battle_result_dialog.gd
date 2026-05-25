@@ -112,7 +112,7 @@ static func create(parent: Node, player_won: bool, blueprints: Array, \
 		var basic_nano_gain: int = int(reward_summary.get("basic_nano_gain", 0))
 		var nano_material_gain: int = int(reward_summary.get("nano_material_gain", 0))
 		var fragment_gain_total: int = int(reward_summary.get("fragment_gain_total", 0))
-		var knowledge_gain_total: int = int(reward_summary.get("knowledge_gain_total", reward_summary.get("law_shard_gain_total", 0)))
+		var knowledge_gain_total: int = int(reward_summary.get("knowledge_gain_total", 0))
 		var recon_bonus_percent: int = int(reward_summary.get("recon_fragment_bonus_percent", 0))
 		var recon_multiplier: float = float(reward_summary.get("recon_fragment_multiplier", 1.0))
 		var reward_lines: Array[String] = [
