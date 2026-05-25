@@ -446,7 +446,7 @@ func _show_level_info_popup(level_index: int) -> void:
 		recon_bonus = float(GameManager._get_recon_fragment_bonus_multiplier())
 	var base_fragment_chance_percent: float = float(info.get("fragment_chance_percent", 0.0))
 	var preview_fragment_chance_percent: float = base_fragment_chance_percent * (1.0 + recon_bonus)
-	reward.text = "掉落预览: 能量块 +%d, 纳米材料 +%d, 合金 +%d, 晶体 +%d, 蓝图碎片概率 %.1f%% → %.1f%%（侦查加成 %+d%%）" % [
+	reward.text = "掉落预览: 能量块 +%d, 纳米材料 +%d, 合金 +%d, 晶体 +%d, 蓝图概率 %.1f%% → %.1f%%（侦查加成 %+d%%）" % [
 		int(info.get("energy_block_drop", 0)),
 		int(info.get("nano_materials_drop", 0)),
 		int(info.get("alloy_drop", 0)),

@@ -250,9 +250,9 @@ star_level = randi_range(1, 9)
 | **star_level range** | 1-9 | 1-9 | Wider range includes more high-star drops | Narrower range limits high-star drops |
 
 **Balance Concerns**:
-- **Material economy**: Late-game battles drop 120-250 materials. Ensure material sinks (synthesis, crafting) scale appropriately to prevent accumulation.
+- **Material economy**: Late-game battles drop 120-250 materials. Ensure material sinks (enhancement, affix rerolling) scale appropriately to prevent accumulation.
 - **Dropped card star level**: Uniform 1-9★ distribution means 9★ cards are as common as 1★. Consider weighted distribution (more low-star, fewer high-star).
-- **Blueprint fragment vs. complete card balance**: Players get both fragments (for long-term progression) and complete cards (immediate power). Ensure this dual system doesn't trivialize progression.
+- **Blueprint data vs. complete card balance**: Players get both blueprint data (for long-term progression) and complete cards (immediate power). Ensure this dual system doesn't trivialize progression.
 - **Law drop randomness**: Random law cards/blueprints may give unwanted laws. Consider if players should have some control (e.g., law family selection).
 
 ## Visual/Audio Requirements
