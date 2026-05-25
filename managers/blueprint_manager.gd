@@ -1,4 +1,7 @@
 extends Node
+## BlueprintManager — 卡牌账号进度管理器
+## 当前职责：蓝图解锁、卡牌星级管理、研究点升级、纳米材料管理
+## @todo 待重命名为 CardDataManager（ADR-001），因引用范围广暂保留原名
 
 ## 信号名保留 fragments_changed 以兼容外部（30+ 引用）
 ## 实际含义已变为「蓝图数据变更」（副本/星级/研究点/改装等）

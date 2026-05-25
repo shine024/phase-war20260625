@@ -50,7 +50,7 @@ Total items: 6 | Completed: 5 | Partial: 1
 | data/json/enemy_phase_equipment.json | 1442 | 阶段装备数据 |
 | data/json/quest_definitions.json | 922 | 任务定义 |
 | data/json/enemy_archetypes.json | 642 | 敌人原型 |
-| data/json/achievement_definitions_extended.json | 0 | 成就定义（空文件，GDScript加载待完成） |
+~~data/json/achievement_definitions_extended.json~~ | ~~0~~ | ~~已删除：空JSON，代码使用.gd源文件加载~~ |
 
 ### 清理的文件
 
