@@ -264,5 +264,6 @@ const NANO_MATERIAL_PER_LEVEL_EARLY: float = 1.5  # 前50关每关奖励系数
 const NANO_MATERIAL_MAX_REWARD: int = 150         # 单次奖励上限
 
 ## 能量系统常量
-const ENERGY_SLOT_MULTIPLIER_3_SLOT: float = 1.5  # 3槽相位仪回复倍率
-const ENERGY_SLOT_MULTIPLIER_4_SLOT: float = 2.0  # 4槽相位仪回复倍率
+## @deprecated — 旧版3/4槽倍率已废弃，当前使用5槽系统（见 energy_manager.gd）
+# const ENERGY_SLOT_MULTIPLIER_3_SLOT: float = 1.5
+# const ENERGY_SLOT_MULTIPLIER_4_SLOT: float = 2.0
