@@ -153,3 +153,11 @@ func _draw_command_icon(cx: float, cy: float, s: float, col: Color) -> void:
 		pts.append(Vector2(cx + cos(outer_a) * s, cy + sin(outer_a) * s))
 		pts.append(Vector2(cx + cos(inner_a) * s * 0.42, cy + sin(inner_a) * s * 0.42))
 	draw_colored_polygon(pts, col)
+
+
+func _draw_carrier_icon(cx: float, cy: float, s: float, col: Color) -> void:
+	# 十字 + 圆弧 = 维修/补给意象
+	var hw: float = s * 0.28
+	draw_rect(Rect2(cx - hw, cy - s * 0.85, hw * 2.0, s * 1.7), col)
+	draw_rect(Rect2(cx - s * 0.85, cy - hw, s * 1.7, hw * 2.0), col)
+	draw_arc(Vector2(cx, cy), s * 0.95, 0.0, TAU, 24, col, 1.2, true)
