@@ -7,7 +7,40 @@ const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const EnemyBlueprints = preload("res://data/enemy_blueprints.gd")
 const GC = preload("res://resources/game_constants.gd")
 
+const UNITS_ICON_DIR := "res://assets/card_icons/units/"
+
+## 兵种聚合键 → manifest A 段代表图（根目录聚合 PNG 归档后的回退）
+const SHAPE_KEY_UNIT_ICON: Dictionary = {
+	"hound": "vis_player_001",
+	"titan": "vis_player_002",
+	"fortress": "vis_player_003",
+	"radar": "vis_player_004",
+	"medic": "vis_player_005",
+	"scout": "vis_player_006",
+	"guard": "vis_player_007",
+	"raider": "vis_player_009",
+	"siege": "vis_player_011",
+	"carrier": "vis_player_015",
+	"stealth": "vis_player_023",
+	"omega_platform": "vis_player_029",
+}
+
 static var _tex_cache: Dictionary = {}
+
+
+static func _path_for_shape_key(shape_key: String) -> String:
+	var key: String = shape_key.strip_edges()
+	if key.is_empty():
+		return ""
+	var vis_id: String = String(SHAPE_KEY_UNIT_ICON.get(key, ""))
+	if not vis_id.is_empty():
+		var unit_p: String = "%s%s.png" % [UNITS_ICON_DIR, vis_id]
+		if ResourceLoader.exists(unit_p, "Texture2D"):
+			return unit_p
+	var legacy: String = "res://assets/card_icons/%s.png" % key
+	if ResourceLoader.exists(legacy, "Texture2D"):
+		return legacy
+	return ""
 
 
 static func load_tex(path: String) -> Texture2D:
@@ -112,6 +145,24 @@ static func _manifest_icon_for_archetype(archetype_id: String) -> String:
 	return EnemyUnitManifest.get_unit_icon_path_for_archetype(aid)
 
 
+## 我方平台卡 `platform_*` / 精英平台 / `omega_platform` → `foe_*` → `units/vis_player_*`
+static func manifest_icon_path_for_platform_card_id(platform_card_id: String) -> String:
+	var cid: String = platform_card_id.strip_edges()
+	if cid.is_empty():
+		return ""
+	return _manifest_icon_for_archetype(EnemyUnitManifest.archetype_id_for_platform_card(cid))
+
+
+static func _platform_card_id_for_icon(c: CardResource) -> String:
+	if c == null:
+		return ""
+	if c.card_type == GC.CardType.COMBINED and not String(c.source_platform_id).strip_edges().is_empty():
+		return String(c.source_platform_id).strip_edges()
+	if c.card_type == GC.CardType.PLATFORM:
+		return c.card_id.strip_edges()
+	return ""
+
+
 ## 生成平台蓝图 `bp_<era>_<n>` → 清单 A 段 `vis_player_*`（仅平台条，不含武器蓝图）
 static func _vis_player_path_for_bp_platform(card_id: String) -> String:
 	var parts: PackedStringArray = card_id.split("_")
@@ -138,18 +189,19 @@ static func _vis_player_path_for_bp_platform(card_id: String) -> String:
 static func card_icon_path_for(c: CardResource) -> String:
 	if c == null:
 		return ""
-	# 1) 平台蓝图 → vis_player（与 card_icon_manifest_100 的 A 段序号对齐）
-	if c.card_type == GC.CardType.PLATFORM:
-		var bp_p: String = _vis_player_path_for_bp_platform(c.card_id)
-		if not bp_p.is_empty():
-			return bp_p
-	# 2) 缴获/敌人 archetype → units/<visual_id>.png
+	# 1) 平台/合成卡 → manifest（含 platform_* → foe_* → vis_player_*，含 omega_platform → vis_player_029）
+	# 注：bp_* 蓝图不走单独的累计偏移映射（编号与 manifest A 段不一致），统一走 manifest/drop 反查链
+	if c.card_type == GC.CardType.PLATFORM or c.card_type == GC.CardType.COMBINED:
+		var plat_p: String = manifest_icon_path_for_platform_card_id(_platform_card_id_for_icon(c))
+		if not plat_p.is_empty():
+			return plat_p
+	# 3) 缴获/敌人 archetype → units/<visual_id>.png
 	var arch: String = archetype_id_for_card_icon(c)
 	if not arch.is_empty():
 		var manifest_p: String = _manifest_icon_for_archetype(arch)
 		if not manifest_p.is_empty():
 			return manifest_p
-	# 3) 掉落表反查 archetype（bp_* 等）
+	# 4) 掉落表反查 archetype（bp_* 等）
 	var drop_arch: String = EnemyArchetypes.get_visual_archetype_id_for_card(c.card_id)
 	if not drop_arch.is_empty():
 		var from_drop: String = _manifest_icon_for_archetype(drop_arch)
@@ -158,11 +210,30 @@ static func card_icon_path_for(c: CardResource) -> String:
 		var arch_root: String = "res://assets/card_icons/%s.png" % drop_arch
 		if ResourceLoader.exists(arch_root, "Texture2D"):
 			return arch_root
-	# 4) 根目录 card_id / 聚合 shape
+	# 5) 法则 / 能量卡
+	if c.card_type == GC.CardType.LAW:
+		var law_id: String = c.linked_law_id.strip_edges()
+		if law_id.is_empty():
+			law_id = c.card_id.strip_edges()
+		return law_slot_icon_path(law_id)
+	if c.card_type == GC.CardType.ENERGY:
+		var energy_by_id: String = "res://assets/card_icons/%s.png" % c.card_id
+		if ResourceLoader.exists(energy_by_id, "Texture2D"):
+			return energy_by_id
+		var energy_shape: String = _path_for_shape_key("energy")
+		if not energy_shape.is_empty():
+			return energy_shape
+	# 6) 根目录 card_id / 聚合 shape → units/vis_player_* 或遗留 PNG
 	var by_id: String = "res://assets/card_icons/%s.png" % c.card_id
 	if ResourceLoader.exists(by_id, "Texture2D"):
 		return by_id
-	return "res://assets/card_icons/%s.png" % c.get_shape_key()
+	var shape_p: String = _path_for_shape_key(c.get_shape_key())
+	if not shape_p.is_empty():
+		return shape_p
+	const PLACEHOLDER := "res://assets/card_icons/_enemy_placeholder.png"
+	if ResourceLoader.exists(PLACEHOLDER, "Texture2D"):
+		return PLACEHOLDER
+	return ""
 
 
 ## 法则槽：优先 `law_id` 卡面，否则 `law` 聚合图，再否则 UI `icon_law`。

@@ -1,7 +1,7 @@
 [gd_scene load_steps=25 format=3 uid="uid://cm1yab31giyt3"]
 
 [ext_resource type="Script" uid="uid://inxmudd4wm4c" path="res://scenes/units/construct_unit.gd" id="1_script"]
-[ext_resource type="Texture2D" uid="uid://bvfiqla60ihei" path="res://assets/unit_sprites/omega_platform-1.png" id="2_6mqoh"]
+[ext_resource type="Texture2D" path="res://assets/card_icons/units/vis_player_029.png" id="2_6mqoh"]
 [ext_resource type="PackedScene" path="res://scenes/units/unit_hp_bar.tscn" id="2_hpbar"]
 [ext_resource type="PackedScene" path="res://scenes/units/deploy_progress_bar.tscn" id="3_deploybar"]
 

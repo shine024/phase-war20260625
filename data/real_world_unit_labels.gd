@@ -51,7 +51,7 @@ static func weapon_kind_short(weapon_type: int) -> String:
 		_: return "未知"
 
 
-## 与 GameConstants.PlatformType 一致：0=HOUND … 11=OMEGA_PLATFORM
+## 与 GameConstants.PlatformType 一致：0=HOUND … 12=COMMAND
 static func platform_chassis_long(platform_type: int) -> String:
 	match platform_type:
 		0:
@@ -78,6 +78,8 @@ static func platform_chassis_long(platform_type: int) -> String:
 			return "隐身侦察平台（架空）"
 		11:
 			return "全装重型机动平台（架空）"
+		12:
+			return "指挥战车 / 联合作业指挥站"
 		_:
 			return "未知底盘"
 
@@ -96,4 +98,5 @@ static func platform_chassis_short(platform_type: int) -> String:
 		9: return "救护/维修"
 		10: return "隐身侦"
 		11: return "全装机甲"
+		12: return "指挥车"
 		_: return "未知"

@@ -221,6 +221,9 @@ func end_battle(player_won: bool) -> void:
 			_spawn_system.get_max_player_units_deployed(),
 			_spawn_system.get_player_units_lost()
 		)
+	# 清空节点引用，防止悬空指针
+	player_units_node = null
+	enemy_units_node = null
 	# 清理战场单位
 	if DEBUG_BATTLE_LOG:
 		print("[BattleManager] Calling clear_all_units")
@@ -388,10 +391,14 @@ func get_enemy_unit_count() -> int:
 
 
 func recount_player_units_on_field() -> int:
+	if player_units_node == null or not is_instance_valid(player_units_node):
+		return 0
 	return _recount_units_under(player_units_node, true)
 
 
 func recount_enemy_units_on_field() -> int:
+	if enemy_units_node == null or not is_instance_valid(enemy_units_node):
+		return 0
 	return _recount_units_under(enemy_units_node, false)
 
 

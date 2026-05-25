@@ -3,9 +3,9 @@ extends CharacterBody2D
 
 const GC = preload("res://resources/game_constants.gd")
 const BulletScene = preload("res://scenes/units/bullet.tscn")
-const CardAbilityManager = preload("res://managers/card_ability_manager.gd")
 const AffixCombatHandler = preload("res://managers/affix_combat_handler.gd")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
+const EnemyUnitManifest = preload("res://data/enemy_unit_manifest.gd")
 const RankRules = preload("res://data/rank_rules.gd")
 const CardGridUnitVisuals = preload("res://scripts/card_grid_unit_visuals.gd")
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
@@ -20,8 +20,9 @@ const BATTLE_MIN_Y: float = 280.0
 const BATTLE_MAX_Y: float = 440.0
 ## 我方单位前进上限（留出屏幕边缘余量）
 const PLAYER_MAX_ADVANCE_X: float = 1160.0
-const OMEGA_SPRITE_PATH := "res://assets/unit_sprites/omega_platform.png"
-const OmegaTex = preload("res://assets/unit_sprites/omega_platform.png")
+## 全装型静态回退：旧 unit_sprites/omega_platform.png 已移除，对齐 manifest vis_player_029
+const OMEGA_SPRITE_PATH := "res://assets/card_icons/units/vis_player_029.png"
+static var _omega_tex_cache: Texture2D = null
 ## 与 EnemyUnit 一致：允许 1024 卡面，仍拒绝整张地图级贴图
 const MAX_ENEMY_FRAME_TEX_DIM := 1280
 
@@ -50,6 +51,7 @@ const PLAYER_MIRROR_ARCHETYPE_BY_PLATFORM := {
 	GC.PlatformType.MEDIC: "enemy_modern_marine",
 	GC.PlatformType.STEALTH: "elite_future_spectre",
 	GC.PlatformType.OMEGA_PLATFORM: "enemy_future_mech",
+	GC.PlatformType.COMMAND: "enemy_modern_marine",  # 临时复用，后续替换专用图
 }
 var is_player: bool = true
 var stats: UnitStats
@@ -104,6 +106,8 @@ var _mod_color: Color = Color(0.5, 0.8, 1, 0.45)
 var _presentation_card_grid: bool = false
 var _hit_stun_left: float = 0.0
 var _card_tween: Tween = null
+var _card_nudge_tween: Tween = null
+var _card_grid_rest_x: float = NAN  ## 格子战术中卡片的归位 X（首次 nudge 时记录）
 ## 卡牌能力冷却 CD（本地 float，避免每帧 meta 字典读写）
 var _medic_aura_cd: float = 0.0
 var _storm_rider_cd: float = 0.0
@@ -199,6 +203,10 @@ func setup(p_is_player: bool, p_stats: UnitStats, forced_enemy_visual_archetype_
 				aura_mgr.register_aura(self, aura_mgr.AuraType.SCOUT_CRIT)
 			GC.PlatformType.FORTRESS:
 				aura_mgr.register_aura(self, aura_mgr.AuraType.FORTRESS_DEF)
+			GC.PlatformType.CARRIER:
+				aura_mgr.register_aura(self, aura_mgr.AuraType.CARRIER_REPAIR)
+			GC.PlatformType.COMMAND:
+				aura_mgr.register_aura(self, aura_mgr.AuraType.COMMAND_GLOBAL)
 
 	# 性能优化：初始化卡牌能力缓存（setup时一次性查询）
 	_has_regen_frame = CardAbilityManager.has_platform_card(stats.platform_card_id, "regen_frame")
@@ -413,13 +421,18 @@ func _acquisition_range() -> float:
 func _play_card_attack_nudge() -> void:
 	if not _presentation_card_grid:
 		return
-	if _card_tween != null and _card_tween.is_valid():
-		_card_tween.kill()
-	_card_tween = create_tween()
+	# 首次 nudge 或格子吸附后记录归位 X
+	if is_nan(_card_grid_rest_x):
+		_card_grid_rest_x = position.x
+	# 若有正在播放的 nudge tween，先 kill 并把 position 修正回归位点
+	if _card_nudge_tween != null and _card_nudge_tween.is_valid():
+		_card_nudge_tween.kill()
+		position.x = _card_grid_rest_x
+	_card_nudge_tween = create_tween()
 	var dir: float = 1.0 if is_player else -1.0
-	var start_x := position.x
-	_card_tween.tween_property(self, "position:x", start_x + dir * 22.0, 0.07)
-	_card_tween.tween_property(self, "position:x", start_x, 0.09)
+	var rest_x: float = _card_grid_rest_x
+	_card_nudge_tween.tween_property(self, "position:x", rest_x + dir * 22.0, 0.07)
+	_card_nudge_tween.tween_property(self, "position:x", rest_x, 0.09)
 
 
 func _play_card_hit_recoil() -> void:
@@ -605,14 +618,35 @@ func _update_visual() -> void:
 	_apply_geometry_fallback_visual(sprite, walk_sprite, poly)
 
 
+static func _load_omega_fallback_texture() -> Texture2D:
+	if _omega_tex_cache != null:
+		return _omega_tex_cache
+	if ResourceLoader.exists(OMEGA_SPRITE_PATH):
+		_omega_tex_cache = load(OMEGA_SPRITE_PATH) as Texture2D
+	return _omega_tex_cache
+
+
+## 优先用平台卡 id 查 manifest 卡图（omega_platform → vis_player_029），再退回兵种镜像表
+func _player_platform_visual_archetype_id() -> String:
+	if stats == null:
+		return ""
+	var platform_cid: String = stats.platform_card_id.strip_edges()
+	if not platform_cid.is_empty():
+		var foe_arch: String = EnemyUnitManifest.archetype_id_for_platform_card(platform_cid)
+		if not EnemyUnitManifest.get_unit_icon_path_for_archetype(foe_arch).is_empty():
+			return foe_arch
+	return String(PLAYER_MIRROR_ARCHETYPE_BY_PLATFORM.get(int(stats.platform_type), ""))
+
+
 func _apply_omega_static_player_visual(sprite: Sprite2D, walk_sprite: AnimatedSprite2D, poly: Polygon2D) -> void:
 	if walk_sprite != null:
 		walk_sprite.sprite_frames = null
 		walk_sprite.visible = false
-	if sprite != null:
-		sprite.texture = OmegaTex
+	var tex: Texture2D = _load_omega_fallback_texture()
+	if sprite != null and tex != null:
+		sprite.texture = tex
 		sprite.visible = true
-		_scale_static_sprite_to_enemy_archetype(sprite, String(PLAYER_MIRROR_ARCHETYPE_BY_PLATFORM.get(GC.PlatformType.OMEGA_PLATFORM, "enemy_future_mech")))
+		_scale_static_sprite_to_enemy_archetype(sprite, "foe_omega_platform")
 		_apply_enemy_visual_facing(sprite, walk_sprite)
 	if poly != null:
 		poly.visible = false
@@ -703,7 +737,7 @@ func _apply_enemy_card_texture_for_archetype_id(sprite: Sprite2D, walk_sprite: A
 func _try_apply_player_mirrored_enemy_visual(sprite: Sprite2D, walk_sprite: AnimatedSprite2D, poly: Polygon2D) -> bool:
 	if stats == null:
 		return false
-	var archetype_id: String = String(PLAYER_MIRROR_ARCHETYPE_BY_PLATFORM.get(int(stats.platform_type), ""))
+	var archetype_id: String = _player_platform_visual_archetype_id()
 	if archetype_id.is_empty():
 		return false
 	var cfg: Dictionary = EnemyArchetypes.get_config(archetype_id)
@@ -932,6 +966,9 @@ func _process_multi_weapons(delta: float) -> void:
 	# 预览模式和部署虚影都不会攻击
 	if is_deploy_ghost or is_preview_mode:
 		return
+	# COMMAND 不攻击（纯光环平台）
+	if stats != null and stats.platform_type == GC.PlatformType.COMMAND:
+		return
 	if _hit_stun_left > 0.0:
 		return
 	for i in range(_weapon_cfgs.size()):
@@ -1026,6 +1063,8 @@ func _enforce_card_grid_lane_alignment() -> void:
 		var lane_y: float = bf.get_card_grid_player_slot_global(si).y
 		if absf(global_position.y - lane_y) > 0.01:
 			global_position.y = lane_y
+		# 吸附后重置归位基准，避免下次 nudge 以偏移位置为起点
+		_card_grid_rest_x = NAN
 		return
 	if not _presentation_card_grid:
 		return
@@ -1035,6 +1074,8 @@ func _enforce_card_grid_lane_alignment() -> void:
 	var anchor: Vector2 = bf.get_card_grid_enemy_slot_global(esi)
 	if global_position.distance_squared_to(anchor) > 0.25:
 		global_position = anchor
+		# 吸附后重置归位基准
+		_card_grid_rest_x = NAN
 
 func _get_target_find_interval() -> float:
 	var n: int = 0
@@ -1291,6 +1332,8 @@ func _die() -> void:
 				CardAbilityManager.remove_scout_crit_aura(self)
 			GC.PlatformType.FORTRESS:
 				CardAbilityManager.remove_fortress_defense_aura(self)
+			GC.PlatformType.COMMAND:
+				CardAbilityManager.remove_command_global_aura(self)
 
 	# 安全清理：防止死亡后继续处理事件
 	_cleanup_before_destroy()

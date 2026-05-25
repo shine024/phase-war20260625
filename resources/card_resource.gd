@@ -65,6 +65,7 @@ static var _platform_shape_map: Dictionary = {
 	GC.PlatformType.MEDIC: "medic",
 	GC.PlatformType.STEALTH: "stealth",
 	GC.PlatformType.OMEGA_PLATFORM: "omega_platform",
+	GC.PlatformType.COMMAND: "command",
 }
 
 func get_shape_key() -> String:

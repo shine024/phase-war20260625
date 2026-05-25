@@ -47,7 +47,7 @@ static func get_all_new_game_starter_law_ids() -> Array[String]:
 	out.append_array(NEW_GAME_STARTER_PASSIVE_LAW_IDS)
 	return out
 
-# 平台类型（一战载具 + 高达风格，10 种 + 特殊 1 种）
+# 平台类型（一战载具 + 高达风格，12 种）
 enum PlatformType {
 	HOUND,    # 威克斯装甲侦察车
 	GUARD,    # 雷诺装甲护卫车
@@ -60,7 +60,8 @@ enum PlatformType {
 	CARRIER,  # 载机母舰
 	MEDIC,    # 野战维修车
 	STEALTH,  # 渗透侦察型（隐匿机动）
-	OMEGA_PLATFORM # 全装型机动舱（多槽重装，高达风）
+	OMEGA_PLATFORM, # 全装型机动舱（多槽重装，高达风）
+	COMMAND   # 指挥车（全场光环，不攻击）
 }
 
 # 武器类型（一战武器 + 高达风格，10 种 + 特殊 1 种）
@@ -119,6 +120,7 @@ static func get_platform_type_name(platform_type: int) -> String:
 		PlatformType.MEDIC:       return "维修型"
 		PlatformType.STEALTH:     return "隐匿型"
 		PlatformType.OMEGA_PLATFORM: return "全装型"
+		PlatformType.COMMAND: return "指挥型"
 		_: return "未知平台"
 
 ## 平台类型简短名称（用于UI空间有限时）
@@ -136,6 +138,7 @@ static func get_platform_type_short(platform_type: int) -> String:
 		PlatformType.MEDIC:       return "维修"
 		PlatformType.STEALTH:     return "隐匿"
 		PlatformType.OMEGA_PLATFORM: return "全装"
+		PlatformType.COMMAND: return "指挥"
 		_: return "未知"
 
 const RealWorldUnitLabels = preload("res://data/real_world_unit_labels.gd")

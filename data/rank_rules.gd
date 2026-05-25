@@ -47,6 +47,8 @@ const BASE_RANK_BY_PLATFORM_TYPE: Dictionary = {
 	8: "captain",
 	9: "captain",
 	10: "major",
+	11: "captain",   # OMEGA_PLATFORM
+	12: "major",     # COMMAND
 }
 
 const POWER_THRESHOLDS: Dictionary = {

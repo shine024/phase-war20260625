@@ -312,8 +312,12 @@ func _show_enemy_phase_driver(unit: Node) -> void:
 
 func _show_enemy_construct_unit(unit: Node) -> void:
 	var stats: UnitStats = unit.stats
-	name_label.text = "敌方构装单位"
-	var platform_name := DefaultCards.get_platform_display_name(stats.platform_type)
+	var card_res: CardResource = DefaultCards.get_card_by_id(stats.platform_card_id)
+	if card_res != null and not card_res.display_name.is_empty():
+		name_label.text = card_res.display_name
+	else:
+		name_label.text = "敌方构装单位"
+	var platform_name := card_res.display_name if card_res != null and not card_res.display_name.is_empty() else DefaultCards.get_platform_display_name(stats.platform_type)
 	var weapon_label_text: String = ""
 	if stats.weapons.size() > 0:
 		var weapon_names: Array = []
@@ -353,8 +357,12 @@ func _show_enemy_construct_unit(unit: Node) -> void:
 
 func _show_player_unit(unit: Node) -> void:
 	var stats: UnitStats = unit.stats
-	name_label.text = "我方单位"
-	var platform_name := DefaultCards.get_platform_display_name(stats.platform_type)
+	var card_res: CardResource = DefaultCards.get_card_by_id(stats.platform_card_id)
+	if card_res != null and not card_res.display_name.is_empty():
+		name_label.text = card_res.display_name
+	else:
+		name_label.text = "我方单位"
+	var platform_name := card_res.display_name if card_res != null and not card_res.display_name.is_empty() else DefaultCards.get_platform_display_name(stats.platform_type)
 	var weapon_label_text: String = ""
 	# 多武器：优先从 stats.weapons 里取出所有武器名称
 	if stats.weapons.size() > 0:
@@ -504,7 +512,11 @@ func _show_enemy_unit(unit: Node) -> void:
 		var weapon_label_text := "未知武器"
 		if "stats" in unit:
 			var stats: UnitStats = unit.stats
-			platform_name = DefaultCards.get_platform_display_name(stats.platform_type)
+			var pm_card_res: CardResource = DefaultCards.get_card_by_id(stats.platform_card_id)
+			if pm_card_res != null and not pm_card_res.display_name.is_empty():
+				platform_name = pm_card_res.display_name
+			else:
+				platform_name = DefaultCards.get_platform_display_name(stats.platform_type)
 			if stats.weapons.size() > 0:
 				var weapon_names: Array = []
 				for w in stats.weapons:

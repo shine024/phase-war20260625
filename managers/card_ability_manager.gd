@@ -3,6 +3,14 @@ class_name CardAbilityManager
 ## 卡牌特殊能力集中处理器。
 ## 所有函数为 static，由 bullet._on_hit 和 construct_unit 调用。
 
+static var _aura_data: RefCounted = null
+static var _construct_unit_scene: PackedScene = null
+
+static func _get_aura_data() -> RefCounted:
+	if _aura_data == null:
+		_aura_data = load("res://data/aura_data.gd") as RefCounted
+	return _aura_data
+
 # ── 工具函数 ─────────────────────────────────
 
 ## 临时修改 stats.move_speed，duration 秒后恢复
@@ -247,7 +255,9 @@ static func apply_repair_fortress_heal(unit: Node2D, delta: float) -> void:
 static func _spawn_wingman(carrier: Node2D, parent_stats: UnitStats) -> void:
 	if carrier == null or parent_stats == null:
 		return
-	var scene: PackedScene = preload("res://scenes/units/construct_unit.tscn") as PackedScene
+	if _construct_unit_scene == null:
+		_construct_unit_scene = load("res://scenes/units/construct_unit.tscn") as PackedScene
+	var scene: PackedScene = _construct_unit_scene
 	if scene == null:
 		return
 	var wingman_stats = UnitStats.new()
@@ -308,6 +318,9 @@ static func apply_medic_heal_aura_tick(unit: Node2D) -> void:
 	if unit == null or not ("stats" in unit) or unit.stats == null:
 		return
 	var is_player: bool = unit.is_player if "is_player" in unit else true
+	var star: int = _get_unit_star(unit)
+	var params: Dictionary = _get_aura_data().get_aura_params(_get_aura_data().Category.MEDIC_HEAL, star)
+	var heal_pct: float = float(params.get("heal_pct", 0.08))
 	var allies: Array = _get_nearby_allies(unit, 180.0, is_player)
 	allies.append(unit)  # 也治疗自身
 	for ally in allies:
@@ -318,13 +331,13 @@ static func apply_medic_heal_aura_tick(unit: Node2D) -> void:
 			ally_max_hp = ally.stats.max_hp
 		elif "max_hp" in ally:
 			ally_max_hp = float(ally.max_hp)
-		var heal_amount: float = ally_max_hp * 0.08
+		var heal_amount: float = ally_max_hp * heal_pct
 		if ally.has_method("heal"):
 			ally.heal(heal_amount)
 		elif "hp" in ally:
 			ally.hp = min(ally.hp + heal_amount, ally_max_hp)
 
-## RADAR 雷达光环：180 范围内友军射程 +30%
+## RADAR 雷达光环：射程加成（按槽位判定范围）
 static func apply_radar_range_aura(unit: Node2D, delta: float) -> void:
 	if unit == null or not ("stats" in unit) or unit.stats == null:
 		return
@@ -333,6 +346,9 @@ static func apply_radar_range_aura(unit: Node2D, delta: float) -> void:
 		return
 	unit.set_meta("radar_aura_applied", true)
 	var is_player: bool = unit.is_player if "is_player" in unit else true
+	var star: int = _get_unit_star(unit)
+	var params: Dictionary = _get_aura_data().get_aura_params(_get_aura_data().Category.RADAR_RANGE, star)
+	var range_bonus: float = float(params.get("range_bonus", 15.0))
 	var allies: Array = _get_nearby_allies(unit, 180.0, is_player)
 	for ally in allies:
 		if not is_instance_valid(ally) or ally == unit:
@@ -342,11 +358,11 @@ static func apply_radar_range_aura(unit: Node2D, delta: float) -> void:
 		if not ally.has_meta("radar_buffed"):
 			ally.set_meta("radar_buffed", true)
 			ally.set_meta("radar_orig_range", ally.stats.attack_range)
-			ally.stats.attack_range *= 1.3
+			ally.stats.attack_range += range_bonus
 			# 同时更新多武器射程
 			for w in ally.stats.weapons:
 				if w.has("range"):
-					w["range"] = float(w["range"]) * 1.3
+					w["range"] = float(w["range"]) + range_bonus
 
 ## RADAR 光环清理：单位死亡时恢复友军射程
 static func remove_radar_range_aura(unit: Node2D) -> void:
@@ -365,11 +381,11 @@ static func remove_radar_range_aura(unit: Node2D) -> void:
 				ally.stats.attack_range = orig_range
 				for w in ally.stats.weapons:
 					if w.has("range"):
-						w["range"] = float(w["range"]) / 1.3  # 除回来
+						w["range"] = float(w["range"]) - (ally.stats.attack_range - orig_range)
 			ally.remove_meta("radar_buffed")
 			ally.remove_meta("radar_orig_range")
 
-## SCOUT/STEALTH 侦查光环：150 范围内友军暴击率 +10%
+## SCOUT/STEALTH 侦查光环：暴击+命中（按槽位判定范围）
 static func apply_scout_crit_aura(unit: Node2D, delta: float) -> void:
 	if unit == null or not ("stats" in unit) or unit.stats == null:
 		return
@@ -377,6 +393,9 @@ static func apply_scout_crit_aura(unit: Node2D, delta: float) -> void:
 		return
 	unit.set_meta("scout_aura_applied", true)
 	var is_player: bool = unit.is_player if "is_player" in unit else true
+	var star: int = _get_unit_star(unit)
+	var params: Dictionary = _get_aura_data().get_aura_params(_get_aura_data().Category.SCOUT_CRIT, star)
+	var crit_bonus: float = float(params.get("crit_bonus", 0.08))
 	var allies: Array = _get_nearby_allies(unit, 150.0, is_player)
 	for ally in allies:
 		if not is_instance_valid(ally) or ally == unit:
@@ -386,7 +405,7 @@ static func apply_scout_crit_aura(unit: Node2D, delta: float) -> void:
 		if not ally.has_meta("scout_crit_buffed"):
 			ally.set_meta("scout_crit_buffed", true)
 			ally.set_meta("scout_orig_crit", ally.stats.crit_chance)
-			ally.stats.crit_chance = min(1.0, ally.stats.crit_chance + 0.10)
+			ally.stats.crit_chance = min(1.0, ally.stats.crit_chance + crit_bonus)
 
 ## SCOUT 光环清理
 static func remove_scout_crit_aura(unit: Node2D) -> void:
@@ -406,7 +425,7 @@ static func remove_scout_crit_aura(unit: Node2D) -> void:
 			ally.remove_meta("scout_crit_buffed")
 			ally.remove_meta("scout_orig_crit")
 
-## FORTRESS 堡垒光环：200 范围内友军伤害减免 +10%
+## FORTRESS 堡垒光环：减伤+防御（按槽位判定范围）
 static func apply_fortress_defense_aura(unit: Node2D, delta: float) -> void:
 	if unit == null or not ("stats" in unit) or unit.stats == null:
 		return
@@ -414,6 +433,10 @@ static func apply_fortress_defense_aura(unit: Node2D, delta: float) -> void:
 		return
 	unit.set_meta("fortress_aura_applied", true)
 	var is_player: bool = unit.is_player if "is_player" in unit else true
+	var star: int = _get_unit_star(unit)
+	var params: Dictionary = _get_aura_data().get_aura_params(_get_aura_data().Category.FORTRESS_DEF, star)
+	var dr_bonus: float = float(params.get("damage_reduction_bonus", 0.06))
+	var def_bonus: float = float(params.get("defense_bonus", 2.0))
 	var allies: Array = _get_nearby_allies(unit, 200.0, is_player)
 	for ally in allies:
 		if not is_instance_valid(ally) or ally == unit:
@@ -423,7 +446,9 @@ static func apply_fortress_defense_aura(unit: Node2D, delta: float) -> void:
 		if not ally.has_meta("fortress_def_buffed"):
 			ally.set_meta("fortress_def_buffed", true)
 			ally.set_meta("fortress_orig_dr", ally.stats.damage_reduction)
-			ally.stats.damage_reduction = min(0.75, ally.stats.damage_reduction + 0.10)
+			ally.set_meta("fortress_orig_def", ally.stats.defense)
+			ally.stats.damage_reduction = min(0.75, ally.stats.damage_reduction + dr_bonus)
+			ally.stats.defense += def_bonus
 
 ## FORTRESS 光环清理
 static func remove_fortress_defense_aura(unit: Node2D) -> void:
@@ -438,7 +463,104 @@ static func remove_fortress_defense_aura(unit: Node2D) -> void:
 			continue
 		if ally.has_meta("fortress_def_buffed"):
 			var orig_dr: float = float(ally.get_meta("fortress_orig_dr"))
+			var orig_def: float = float(ally.get_meta("fortress_orig_def", ally.stats.defense if "stats" in ally and ally.stats != null else 0.0))
 			if "stats" in ally and ally.stats != null:
 				ally.stats.damage_reduction = orig_dr
+				ally.stats.defense = orig_def
 			ally.remove_meta("fortress_def_buffed")
 			ally.remove_meta("fortress_orig_dr")
+			if ally.has_meta("fortress_orig_def"):
+				ally.remove_meta("fortress_orig_def")
+
+
+## CARRIER_REPAIR 维修光环：仅治疗机械类平台（由 AuraManager Timer 周期驱动）
+static func apply_carrier_repair_aura_tick(unit: Node2D) -> void:
+	if unit == null or not ("stats" in unit) or unit.stats == null:
+		return
+	var is_player: bool = unit.is_player if "is_player" in unit else true
+	var star: int = _get_unit_star(unit)
+	var params: Dictionary = _get_aura_data().get_aura_params(_get_aura_data().Category.CARRIER_REPAIR, star)
+	var heal_pct: float = float(params.get("heal_pct", 0.12))
+	var allies: Array = _get_nearby_allies(unit, 180.0, is_player)
+	for ally in allies:
+		if not is_instance_valid(ally):
+			continue
+		if not ("stats" in ally) or ally.stats == null:
+			continue
+		if not _get_aura_data().is_mechanical_platform(ally.stats.platform_type):
+			continue
+		var heal_amount: float = ally.stats.max_hp * heal_pct
+		if ally.has_method("heal"):
+			ally.heal(heal_amount)
+		elif "hp" in ally:
+			ally.hp = min(ally.hp + heal_amount, ally.stats.max_hp)
+
+## COMMAND_GLOBAL 指挥光环：全场友军攻/速/暴加成
+static func apply_command_global_aura(unit: Node2D) -> void:
+	if unit == null or not ("stats" in unit) or unit.stats == null:
+		return
+	if unit.has_meta("command_aura_applied"):
+		return
+	unit.set_meta("command_aura_applied", true)
+	var is_player: bool = unit.is_player if "is_player" in unit else true
+	var star: int = _get_unit_star(unit)
+	var params: Dictionary = _get_aura_data().get_aura_params(_get_aura_data().Category.COMMAND_GLOBAL, star)
+	var atk_mul: float = float(params.get("attack_mul", 0.05))
+	var spd_mul: float = float(params.get("speed_mul", 0.05))
+	var crit_mul: float = float(params.get("crit_mul", 0.02))
+	var allies: Array = _get_nearby_allies(unit, 99999.0, is_player)
+	for ally in allies:
+		if not is_instance_valid(ally) or ally == unit:
+			continue
+		if not ("stats" in ally) or ally.stats == null:
+			continue
+		if not ally.has_meta("command_buffed"):
+			ally.set_meta("command_buffed", true)
+			ally.set_meta("command_orig_atk", ally.stats.attack_damage)
+			ally.set_meta("command_orig_spd", ally.stats.move_speed)
+			ally.set_meta("command_orig_crit", ally.stats.crit_chance)
+			ally.stats.attack_damage *= (1.0 + atk_mul)
+			ally.stats.move_speed *= (1.0 + spd_mul)
+			ally.stats.crit_chance = min(1.0, ally.stats.crit_chance + crit_mul)
+
+## COMMAND 光环清理：死亡时恢复友军属性
+static func remove_command_global_aura(unit: Node2D) -> void:
+	if unit == null:
+		return
+	if not unit.has_meta("command_aura_applied"):
+		return
+	var is_player: bool = unit.is_player if "is_player" in unit else true
+	var allies: Array = _get_nearby_allies(unit, 99999.0, is_player)
+	for ally in allies:
+		if not is_instance_valid(ally) or ally == unit:
+			continue
+		if ally.has_meta("command_buffed"):
+			var orig_atk: float = float(ally.get_meta("command_orig_atk"))
+			var orig_spd: float = float(ally.get_meta("command_orig_spd"))
+			var orig_crit: float = float(ally.get_meta("command_orig_crit"))
+			if "stats" in ally and ally.stats != null:
+				ally.stats.attack_damage = orig_atk
+				ally.stats.move_speed = orig_spd
+				ally.stats.crit_chance = orig_crit
+			ally.remove_meta("command_buffed")
+			ally.remove_meta("command_orig_atk")
+			ally.remove_meta("command_orig_spd")
+			ally.remove_meta("command_orig_crit")
+	unit.remove_meta("command_aura_applied")
+
+## 获取单位星级（优先读 meta 缓存，其次查 BlueprintManager）
+static func _get_unit_star(unit: Node2D) -> int:
+	if unit == null:
+		return 1
+	if unit.has_meta("star_level"):
+		return int(unit.get_meta("star_level"))
+	if "stats" in unit and unit.stats != null and not unit.stats.platform_card_id.is_empty():
+		var loop = Engine.get_main_loop()
+		if loop is SceneTree:
+			var bm: Node = (loop as SceneTree).root.get_node_or_null("BlueprintManager")
+			if bm != null and bm.has_method("get_blueprint_star"):
+				var star: int = int(bm.get_blueprint_star(unit.stats.platform_card_id))
+				unit.set_meta("star_level", star)
+				return star
+	unit.set_meta("star_level", 1)
+	return 1

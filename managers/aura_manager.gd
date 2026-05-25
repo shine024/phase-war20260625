@@ -3,26 +3,38 @@ extends Node
 ## 集中管理所有光环效果，使用 Timer 驱动而非每帧检查
 var DEBUG_AURA_LOG := false
 
-## 光环类型定义
+var _aura_data: RefCounted = null
+
+static func _get_aura_data() -> RefCounted:
+	if _aura_data == null:
+		_aura_data = load("res://data/aura_data.gd") as RefCounted
+	return _aura_data
+
+## 光环类型定义（与 _get_aura_data().Category 保持一一对应）
 enum AuraType {
-	MEDIC_HEAL,      # MEDIC 维修光环
-	RADAR_RANGE,    # RADAR 雷达光环
-	SCOUT_CRIT,     # SCOUT/STEALTH 侦查光环
-	FORTRESS_DEF    # FORTRESS 堡垒光环
+	MEDIC_HEAL,      # 0  MEDIC 维修光环
+	CARRIER_REPAIR,  # 1  CARRIER 机械维修光环
+	SCOUT_CRIT,      # 2  SCOUT/STEALTH 侦查光环
+	RADAR_RANGE,     # 3  RADAR 雷达光环
+	FORTRESS_DEF,    # 4  FORTRESS 堡垒光环
+	COMMAND_GLOBAL   # 5  COMMAND 指挥光环
 }
 
 ## 光环配置
 var _aura_timers: Dictionary = {}  # 兼容旧结构（统计/调试）
 var _aura_intervals: Dictionary = {
 	AuraType.MEDIC_HEAL: 3.0,
+	AuraType.CARRIER_REPAIR: 3.0,
 	AuraType.RADAR_RANGE: 1.0,
 	AuraType.SCOUT_CRIT: 1.0,
-	AuraType.FORTRESS_DEF: 1.0
+	AuraType.FORTRESS_DEF: 1.0,
+	AuraType.COMMAND_GLOBAL: 1.0,
 }
 var _global_tick_timer: Timer = null
 var _unit_map: Dictionary = {}          # unit_id -> Node2D
 var _unit_auras: Dictionary = {}        # unit_id -> {aura_type: true}
 var _medic_elapsed: float = 0.0
+var _carrier_elapsed: float = 0.0
 var _fallback_group_cache: Dictionary = {"player_units": [], "enemy_units": []}
 var _fallback_group_cache_ttl_sec: float = 0.35
 var _fallback_group_cache_elapsed: float = 0.0
@@ -64,6 +76,10 @@ func register_aura(unit: Node2D, aura_type: AuraType) -> void:
 			_apply_scout_aura(unit)
 		AuraType.FORTRESS_DEF:
 			_apply_fortress_aura(unit)
+		AuraType.CARRIER_REPAIR:
+			_apply_carrier_repair_aura(unit)
+		AuraType.COMMAND_GLOBAL:
+			_apply_command_global_aura(unit)
 		_:
 			pass
 	if DEBUG_AURA_LOG:
@@ -104,6 +120,7 @@ func unregister_all_auras(unit: Node2D) -> void:
 ## 全局 Tick 回调（单 Timer 批处理）
 func _on_global_tick() -> void:
 	_medic_elapsed += _global_tick_timer.wait_time
+	_carrier_elapsed += _global_tick_timer.wait_time
 	_fallback_group_cache_elapsed += _global_tick_timer.wait_time
 	# 清理失效引用
 	var dead_ids: Array = []
@@ -115,7 +132,7 @@ func _on_global_tick() -> void:
 		_unit_map.erase(unit_id)
 		_unit_auras.erase(unit_id)
 		_aura_timers.erase(unit_id)
-	# MEDIC 按原 3 秒节奏批处理
+	# MEDIC 按 3 秒节奏批处理
 	if _medic_elapsed >= _aura_intervals[AuraType.MEDIC_HEAL]:
 		_medic_elapsed = 0.0
 		for unit_id in _unit_auras.keys():
@@ -125,22 +142,103 @@ func _on_global_tick() -> void:
 			var unit: Node2D = _unit_map.get(unit_id, null)
 			if unit != null and is_instance_valid(unit):
 				_apply_medic_aura(unit)
+	# CARRIER 按 3 秒节奏批处理
+	if _carrier_elapsed >= _aura_intervals[AuraType.CARRIER_REPAIR]:
+		_carrier_elapsed = 0.0
+		for unit_id in _unit_auras.keys():
+			var aura_map: Dictionary = _unit_auras[unit_id]
+			if not aura_map.has(AuraType.CARRIER_REPAIR):
+				continue
+			var unit: Node2D = _unit_map.get(unit_id, null)
+			if unit != null and is_instance_valid(unit):
+				_apply_carrier_repair_tick(unit)
+
+## ── 槽位判定辅助 ──
+
+## 通过槽位索引找受影响的友军（替代像素距离判定）
+static func get_slot_targets(unit: Node2D, is_global: bool, is_player: bool) -> Array:
+	var targets: Array = []
+	if unit == null or not is_instance_valid(unit):
+		return targets
+	var tree: SceneTree = unit.get_tree()
+	if tree == null:
+		return targets
+	var source_slot: int = int(unit.get_meta("card_grid_slot", -1))
+	if source_slot < 0:
+		return targets
+	var group_name: String = "player_units" if is_player else "enemy_units"
+	var group_nodes: Array = tree.get_nodes_in_group(group_name)
+	for node in group_nodes:
+		if not is_instance_valid(node) or node == unit:
+			continue
+		if not node is Node2D:
+			continue
+		var target_slot: int = int(node.get_meta("card_grid_slot", -1))
+		if target_slot < 0:
+			continue
+		if _get_aura_data().is_in_aura_range(source_slot, target_slot, is_global):
+			targets.append(node)
+	return targets
+
+## 获取单位星级（从 BlueprintManager 读取，缓存到 meta 避免重复查询）
+static func get_unit_star(unit: Node2D) -> int:
+	if unit == null:
+		return 1
+	if unit.has_meta("star_level"):
+		return int(unit.get_meta("star_level"))
+	# 首次访问时从 BlueprintManager 查询并缓存
+	if "stats" in unit and unit.stats != null and not unit.stats.platform_card_id.is_empty():
+		var bm: Node = null
+		var loop = Engine.get_main_loop()
+		if loop is SceneTree:
+			bm = (loop as SceneTree).root.get_node_or_null("BlueprintManager")
+		if bm != null and bm.has_method("get_blueprint_star"):
+			var star: int = int(bm.get_blueprint_star(unit.stats.platform_card_id))
+			unit.set_meta("star_level", star)
+			return star
+	unit.set_meta("star_level", 1)
+	return 1
 
 ## 应用光环效果（内部方法）
 func _apply_medic_aura(unit: Node2D) -> void:
 	if not "stats" in unit or unit.stats == null:
 		return
 	var is_player: bool = unit.is_player if "is_player" in unit else true
-	var allies = _get_nearby_allies(unit, 180.0, is_player)
+	var allies: Array = get_slot_targets(unit, false, is_player)
 	for ally in allies:
-		if not is_instance_valid(ally) or ally == unit:
+		if not is_instance_valid(ally):
 			continue
 		if not "stats" in ally or ally.stats == null:
 			continue
-		# 治疗 8% 最大 HP
-		var heal_amount = ally.stats.max_hp * 0.08
+		var star: int = get_unit_star(unit)
+		var params: Dictionary = _get_aura_data().get_aura_params(_get_aura_data().Category.MEDIC_HEAL, star)
+		var heal_amount: float = ally.stats.max_hp * float(params.get("heal_pct", 0.08))
 		if ally.has_method("heal"):
 			ally.heal(heal_amount)
+
+func _apply_carrier_repair_tick(unit: Node2D) -> void:
+	if not "stats" in unit or unit.stats == null:
+		return
+	var is_player: bool = unit.is_player if "is_player" in unit else true
+	var allies: Array = get_slot_targets(unit, false, is_player)
+	for ally in allies:
+		if not is_instance_valid(ally):
+			continue
+		if not "stats" in ally or ally.stats == null:
+			continue
+		if not _get_aura_data().is_mechanical_platform(ally.stats.platform_type):
+			continue
+		var star: int = get_unit_star(unit)
+		var params: Dictionary = _get_aura_data().get_aura_params(_get_aura_data().Category.CARRIER_REPAIR, star)
+		var heal_amount: float = ally.stats.max_hp * float(params.get("heal_pct", 0.12))
+		if ally.has_method("heal"):
+			ally.heal(heal_amount)
+
+func _apply_carrier_repair_aura(unit: Node2D) -> void:
+	# CARRIER_REPAIR 由 _on_global_tick 周期驱动，此处仅做一次性标记
+	if unit.has_meta("carrier_repair_aura_applied"):
+		return
+	unit.set_meta("carrier_repair_aura_applied", true)
 
 func _apply_radar_aura(unit: Node2D) -> void:
 	# RADAR 光环在单位生成时应用一次即可，无需持续更新
@@ -160,46 +258,22 @@ func _apply_fortress_aura(unit: Node2D) -> void:
 		return
 	CardAbilityManager.apply_fortress_defense_aura(unit, 0.0)
 
-## 辅助方法：获取附近友军
+func _apply_command_global_aura(unit: Node2D) -> void:
+	if unit.has_meta("command_aura_applied"):
+		return
+	CardAbilityManager.apply_command_global_aura(unit)
+
+## 辅助方法：获取附近友军（保留旧签名，内部改为槽位判定）
 func _get_nearby_allies(origin: Node2D, radius: float, is_player_unit: bool) -> Array:
-	var group_name: String = "player_units" if is_player_unit else "enemy_units"
-	return _get_nearby_units(origin, radius, group_name)
+	return get_slot_targets(origin, false, is_player_unit)
 
 func _get_nearby_units(origin: Node2D, radius: float, target_group: String) -> Array:
 	var units: Array = []
-
-	# 性能优化：优先使用空间分区
-	var battle_mgr = get_node_or_null("/root/BattleManager")
-	if battle_mgr and battle_mgr.spatial_grid:
-		# 使用空间网格查询（O(1)）
-		var nearby = battle_mgr.spatial_grid.query_nearby(origin.global_position, radius)
-		for unit in nearby:
-			if unit.is_in_group(target_group):
-				units.append(unit)
-		return units
-
-	# 回退到传统方法（遍历所有单位）
-	var tree = origin.get_tree()
+	var tree: SceneTree = origin.get_tree() if origin != null else null
 	if tree == null:
 		return units
-
-	if _fallback_group_cache_elapsed >= _fallback_group_cache_ttl_sec:
-		_fallback_group_cache["player_units"] = tree.get_nodes_in_group("player_units")
-		_fallback_group_cache["enemy_units"] = tree.get_nodes_in_group("enemy_units")
-		_fallback_group_cache_elapsed = 0.0
-	var group_nodes: Array = _fallback_group_cache.get(target_group, [])
-	if group_nodes.is_empty():
-		group_nodes = tree.get_nodes_in_group(target_group)
-		_fallback_group_cache[target_group] = group_nodes
-	for node in group_nodes:
-		if not is_instance_valid(node) or node == origin:
-			continue
-		if not node is Node2D:
-			continue
-		if origin.global_position.distance_to(node.global_position) <= radius:
-			units.append(node)
-
-	return units
+	var is_player: bool = target_group == "player_units"
+	return get_slot_targets(origin, false, is_player)
 
 ## 清理所有光环
 func clear_all() -> void:
@@ -211,6 +285,8 @@ func clear_all() -> void:
 	_fallback_group_cache["player_units"] = []
 	_fallback_group_cache["enemy_units"] = []
 	_fallback_group_cache_elapsed = 0.0
+	_medic_elapsed = 0.0
+	_carrier_elapsed = 0.0
 	if DEBUG_AURA_LOG:
 		print("[AuraManager] 清理所有光环")
 

@@ -1,0 +1,219 @@
+# 卡面文件名与显示名 · 最全表（自动生成；数据变更后请重跑 tools/build_card_icon_manifest_full.py）
+# 制表符分隔：文件名 | 显示名 | 资源状态 | 数据来源
+# 已排除：蓝图 BLUEPRINT_NAME_MAP「# … - 武器」小节内全部 id；enemy_phase_weapons.json 全部 id。
+# 已排除：未匹配任何数据源的条目（通常为 assets/card_icons 内无对应 id 定义的孤儿 PNG）。
+# 统计：共 213 条；其中已有 PNG 21 条；无 PNG 待导出 192 条；本次剔除未匹配 1 条
+
+bulwark.png	盾卫装甲车	无PNG·待补导出	EnemyBlueprints 精英掉落 _p
+carrier.png	平台占位图·母舰型（CARRIER）	已有PNG	CardResource 形状聚合键 / UI 回退
+energy.png	能量卡聚合占位	已有PNG	CardResource 形状聚合键 / UI 回退
+fortress.png	平台占位图·要塞型（FORTRESS）	已有PNG	CardResource 形状聚合键 / UI 回退
+guard.png	平台占位图·护卫型（GUARD）	已有PNG	CardResource 形状聚合键 / UI 回退
+hound.png	平台占位图·侦察型（HOUND）	已有PNG	CardResource 形状聚合键 / UI 回退
+law.png	法则卡聚合占位（UI：无单独法则图时）	已有PNG	CardResource 形状聚合键 / UI 回退
+medic.png	平台占位图·维修型（MEDIC）	已有PNG	CardResource 形状聚合键 / UI 回退
+radar.png	平台占位图·雷达型（RADAR）	已有PNG	CardResource 形状聚合键 / UI 回退
+raider.png	平台占位图·突击型（RAIDER）	已有PNG	CardResource 形状聚合键 / UI 回退
+scout.png	平台占位图·轻侦察型（SCOUT）	已有PNG	CardResource 形状聚合键 / UI 回退
+siege.png	平台占位图·攻城型（SIEGE）	已有PNG	CardResource 形状聚合键 / UI 回退
+stealth.png	平台占位图·隐匿型（STEALTH）	已有PNG	CardResource 形状聚合键 / UI 回退
+titan.png	平台占位图·泰坦型（TITAN）	已有PNG	CardResource 形状聚合键 / UI 回退
+unknown.png	未知类型占位（异常/缺数据回退）	无PNG·待补导出	CardResource 形状聚合键 / UI 回退
+abrams_mk2.png	艾布拉姆斯坦克·改	无PNG·待补导出	EnemyBlueprints 精英掉落 _p
+energy_advanced.png	战前能量 IV（掉落表别名 → energy_start_4）	无PNG·待补导出	default_cards.gd 掉落别名
+energy_basic.png	战前能量 I（掉落表别名 → energy_start_1）	无PNG·待补导出	default_cards.gd 掉落别名
+energy_quantum.png	战前能量 VII（掉落表别名 → energy_start_7）	无PNG·待补导出	default_cards.gd 掉落别名
+flame_afterburn.png	烈焰·余烬加燃	无PNG·待补导出	PhaseLaws.LAWS
+flame_mark.png	烈焰·灼烧印记	无PNG·待补导出	PhaseLaws.LAWS
+heavy_carrier.png	重型载机母舰	无PNG·待补导出	EnemyBlueprints 精英掉落 _p
+omega_instrument.png	奥米茄相位仪	无PNG·待补导出	敌方相位装备·相位仪 JSON
+omega_platform.png	全装型机动舱	已有PNG	DefaultCards.create_all
+regen_frame.png	野战维修车·改	无PNG·待补导出	EnemyBlueprints 精英掉落 _p
+storm_rider.png	突击坦克·风暴型	无PNG·待补导出	EnemyBlueprints 精英掉落 _p
+titan_mk2.png	马克V型·改	无PNG·待补导出	EnemyBlueprints 精英掉落 _p
+bp_cold_001.png	BTR-夜巡装甲运兵车	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_cold_002.png	雷铸式步兵战车	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_cold_003.png	铁壁式警戒塔	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_cold_004.png	M113 霜脊装甲车	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_cold_005.png	风痕空降战车	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_cold_006.png	玄甲防御工事	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_cold_007.png	苍穹防空导弹车	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_cold_008.png	赤曜主战坦克	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_cold_009.png	夜巡哨戒炮台	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_modern_001.png	赤曜轮式侦察车	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_modern_002.png	夜巡城市作战车	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_modern_003.png	雷铸模块化底盘	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_modern_004.png	铁壁防地雷反伏击车	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_modern_005.png	霜脊轻型坦克	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_modern_006.png	风痕高机动底盘	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_modern_007.png	玄甲无人侦察车	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_modern_008.png	苍穹防空系统载车	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_modern_009.png	赤曜重型突击底盘	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_near_001.png	苍穹型主动防御系统	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_near_002.png	赤曜无人战斗车体	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_near_003.png	夜巡外骨骼装甲	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_near_004.png	雷铸遥控武器站	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_near_005.png	铁壁重型装甲套件	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_near_006.png	霜脊机动外骨骼	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_near_007.png	风痕无人哨戒系统	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_near_008.png	玄甲模块化装甲车体	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_near_009.png	苍穹无人机控制站	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_near_010.png	赤曜近防武器站	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_ww1_001.png	铁壁 Mk.I 机动装甲	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_ww1_002.png	霜脊式固定碉堡	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_ww1_003.png	风痕型侦察车体	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_ww1_004.png	A7V 玄甲突击装甲	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_ww1_005.png	苍穹型防空塔	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_ww1_006.png	赤曜式突击底盘	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_ww1_007.png	夜巡者轻型装甲	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_ww1_008.png	雷铸机动堡垒	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_ww1_009.png	铁壁 Mk.II 车体	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_ww1_010.png	霜脊·改机动装甲	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_ww2_001.png	雷铸式突击车	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_ww2_002.png	铁壁突击炮底盘	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_ww2_003.png	霜脊轮式侦察车	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_ww2_004.png	风痕装甲车	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_ww2_005.png	玄甲重型底盘	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_ww2_006.png	苍穹空降侦察车	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_ww2_007.png	赤曜步兵坦克	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_ww2_008.png	夜巡歼击车底盘	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_ww2_009.png	雷铸轻型侦察车	无PNG·待补导出	EnemyBlueprints 生成蓝图
+bp_ww2_010.png	铁壁步兵战车	无PNG·待补导出	EnemyBlueprints 生成蓝图
+energy_start_1.png	战前能量 I	已有PNG	DefaultCards.create_all
+energy_start_2.png	战前能量 II	已有PNG	DefaultCards.create_all
+energy_start_3.png	战前能量 III	已有PNG	DefaultCards.create_all
+energy_start_4.png	战前能量 IV	已有PNG	DefaultCards.create_all
+energy_start_5.png	战前能量 V	已有PNG	DefaultCards.create_all
+energy_start_6.png	战前能量 VI	已有PNG	DefaultCards.create_all
+energy_start_7.png	战前能量 VII	已有PNG	DefaultCards.create_all
+flame_core_rupture.png	烈焰·核心破裂	无PNG·待补导出	PhaseLaws.LAWS
+flame_destroyer_god.png	炎魔之神	无PNG·待补导出	敌方相位装备·相位仪 JSON
+flame_destroyer_mk1.png	烈焰破坏者·初阶	无PNG·待补导出	敌方相位装备·相位仪 JSON
+flame_destroyer_mk2.png	烈焰破坏者·进阶	无PNG·待补导出	敌方相位装备·相位仪 JSON
+flame_destroyer_mk3.png	烈焰破坏者·专家	无PNG·待补导出	敌方相位装备·相位仪 JSON
+flame_destroyer_mk4.png	烈焰破坏者·大师	无PNG·待补导出	敌方相位装备·相位仪 JSON
+flame_ember_screen.png	烈焰·灰烬幕障	无PNG·待补导出	PhaseLaws.LAWS
+flame_energy_advanced.png	烈焰能量·进阶	无PNG·待补导出	敌方相位装备·能量 JSON
+flame_energy_basic.png	烈焰能量·基础	无PNG·待补导出	敌方相位装备·能量 JSON
+flame_energy_expert.png	烈焰能量·专家	无PNG·待补导出	敌方相位装备·能量 JSON
+flame_energy_god.png	炎魔神力	无PNG·待补导出	敌方相位装备·能量 JSON
+flame_front_bombard.png	烈焰·前线火力压制	无PNG·待补导出	PhaseLaws.LAWS
+flame_heat_overload.png	烈焰·热能过载	无PNG·待补导出	PhaseLaws.LAWS
+flame_raider_advanced.png	【烈焰·进阶】BA-64轻型突击车平台	无PNG·待补导出	敌方相位装备·平台 JSON
+flame_raider_basic.png	【烈焰·基础】BA-64轻型突击车平台	无PNG·待补导出	敌方相位装备·平台 JSON
+flame_raider_expert.png	【烈焰·专家】BA-64轻型突击车平台	无PNG·待补导出	敌方相位装备·平台 JSON
+flame_scorch_wave.png	烈焰·灼浪推进	无PNG·待补导出	PhaseLaws.LAWS
+flame_siege_advanced.png	【烈焰·进阶】203毫米迫击炮平台	无PNG·待补导出	敌方相位装备·平台 JSON
+flame_siege_basic.png	【烈焰·基础】203毫米迫击炮平台	无PNG·待补导出	敌方相位装备·平台 JSON
+flame_siege_expert.png	【烈焰·专家】203毫米迫击炮平台	无PNG·待补导出	敌方相位装备·平台 JSON
+hybrid_energy_advanced.png	混合能量·进阶	无PNG·待补导出	敌方相位装备·能量 JSON
+hybrid_energy_basic.png	混合能量·基础	无PNG·待补导出	敌方相位装备·能量 JSON
+hybrid_energy_god.png	奥米茄能量	无PNG·待补导出	敌方相位装备·能量 JSON
+law_flame_active.png	烈焰·前线火力压制（存档兼容旧 id：law_flame_active → flame_front_bombard）	无PNG·待补导出	LEGACY_LAW_CARD_ID_MAP
+law_steel_active.png	钢铁·堡垒之墙（存档兼容旧 id：law_steel_active → steel_bastion_wall）	无PNG·待补导出	LEGACY_LAW_CARD_ID_MAP
+law_thunder_active.png	雷霆·电磁风暴（存档兼容旧 id：law_thunder_active → thunder_emp_storm）	无PNG·待补导出	LEGACY_LAW_CARD_ID_MAP
+law_void_active.png	虚空·时空涟漪（存档兼容旧 id：law_void_active → void_time_ripple）	无PNG·待补导出	LEGACY_LAW_CARD_ID_MAP
+platform_cold_carrier.png	BMP步战车	无PNG·待补导出	DefaultCards.create_all
+platform_cold_ifv.png	布雷德利步战车	无PNG·待补导出	DefaultCards.create_all
+platform_cold_light.png	悍马侦察车	无PNG·待补导出	DefaultCards.create_all
+platform_cold_medium.png	T-72主战坦克	无PNG·待补导出	DefaultCards.create_all
+platform_cold_radar.png	电子对抗站	无PNG·待补导出	DefaultCards.create_all
+platform_cold_scout.png	BRDM-2侦察车	无PNG·待补导出	DefaultCards.create_all
+platform_future_heavy.png	机甲步行者	无PNG·待补导出	DefaultCards.create_all
+platform_future_light.png	光学侦察车	无PNG·待补导出	DefaultCards.create_all
+platform_future_medium.png	悬浮坦克	无PNG·待补导出	DefaultCards.create_all
+platform_future_radar.png	量子感知平台	无PNG·待补导出	DefaultCards.create_all
+platform_modern_light.png	北极星全地形车	无PNG·待补导出	DefaultCards.create_all
+platform_modern_medium.png	艾布拉姆斯坦克	无PNG·待补导出	DefaultCards.create_all
+platform_modern_radar.png	相控阵雷达车	无PNG·待补导出	DefaultCards.create_all
+platform_modern_spg.png	帕拉丁自行火炮	无PNG·待补导出	DefaultCards.create_all
+platform_modern_stealth.png	光学隐匿侦察车	无PNG·待补导出	DefaultCards.create_all
+platform_ww1_fort.png	要塞固定炮	无PNG·待补导出	DefaultCards.create_all
+platform_ww1_light.png	威克斯侦察车	无PNG·待补导出	DefaultCards.create_all
+platform_ww1_medic.png	野战救护车	无PNG·待补导出	DefaultCards.create_all
+platform_ww1_medium.png	马克V型坦克	无PNG·待补导出	DefaultCards.create_all
+platform_ww1_radar.png	野战观测站	无PNG·待补导出	DefaultCards.create_all
+platform_ww2_fortress.png	混凝土碉堡	无PNG·待补导出	DefaultCards.create_all
+platform_ww2_heavy.png	虎式坦克	无PNG·待补导出	DefaultCards.create_all
+platform_ww2_light.png	M8灰狗装甲车	无PNG·待补导出	DefaultCards.create_all
+platform_ww2_medium.png	谢尔曼坦克	无PNG·待补导出	DefaultCards.create_all
+platform_ww2_radar.png	雷达指挥车	无PNG·待补导出	DefaultCards.create_all
+platform_ww2_raider.png	BA-64轻型突击车	无PNG·待补导出	DefaultCards.create_all
+platform_ww2_siege.png	203毫米迫击炮	无PNG·待补导出	DefaultCards.create_all
+steel_aegis_link.png	钢铁·护阵联结	无PNG·待补导出	PhaseLaws.LAWS
+steel_anchor_field.png	钢铁·锚定力场	无PNG·待补导出	PhaseLaws.LAWS
+steel_bastion_wall.png	钢铁·堡垒之墙	无PNG·待补导出	PhaseLaws.LAWS
+steel_energy_advanced.png	钢铁能量·进阶	无PNG·待补导出	敌方相位装备·能量 JSON
+steel_energy_basic.png	钢铁能量·基础	无PNG·待补导出	敌方相位装备·能量 JSON
+steel_energy_expert.png	钢铁能量·专家	无PNG·待补导出	敌方相位装备·能量 JSON
+steel_energy_god.png	钢铁神力	无PNG·待补导出	敌方相位装备·能量 JSON
+steel_fortify_protocol.png	钢铁·固壁协议	无PNG·待补导出	PhaseLaws.LAWS
+steel_fortress_advanced.png	【钢铁·进阶】要塞固定炮平台	无PNG·待补导出	敌方相位装备·平台 JSON
+steel_fortress_basic.png	【钢铁·基础】要塞固定炮平台	无PNG·待补导出	敌方相位装备·平台 JSON
+steel_fortress_expert.png	【钢铁·专家】要塞固定炮平台	无PNG·待补导出	敌方相位装备·平台 JSON
+steel_guardian_god.png	钢铁之神	无PNG·待补导出	敌方相位装备·相位仪 JSON
+steel_guardian_mk1.png	钢铁卫士·初阶	无PNG·待补导出	敌方相位装备·相位仪 JSON
+steel_guardian_mk2.png	钢铁卫士·进阶	无PNG·待补导出	敌方相位装备·相位仪 JSON
+steel_guardian_mk3.png	钢铁卫士·专家	无PNG·待补导出	敌方相位装备·相位仪 JSON
+steel_guardian_mk4.png	钢铁卫士·大师	无PNG·待补导出	敌方相位装备·相位仪 JSON
+steel_phase_armor.png	钢铁·相位装甲	无PNG·待补导出	PhaseLaws.LAWS
+steel_quick_repair.png	钢铁·快速维修	无PNG·待补导出	PhaseLaws.LAWS
+steel_resonant_plate.png	钢铁·共振装甲	无PNG·待补导出	PhaseLaws.LAWS
+steel_titan_advanced.png	【钢铁·进阶】马克V型坦克平台	无PNG·待补导出	敌方相位装备·平台 JSON
+steel_titan_basic.png	【钢铁·基础】马克V型坦克平台	无PNG·待补导出	敌方相位装备·平台 JSON
+steel_titan_expert.png	【钢铁·专家】马克V型坦克平台	无PNG·待补导出	敌方相位装备·平台 JSON
+thunder_arc_beacon.png	雷霆·弧光信标	无PNG·待补导出	PhaseLaws.LAWS
+thunder_chain_discharge.png	雷霆·链式放电	无PNG·待补导出	PhaseLaws.LAWS
+thunder_emp_storm.png	雷霆·电磁风暴	无PNG·待补导出	PhaseLaws.LAWS
+thunder_energy_advanced.png	雷霆能量·进阶	无PNG·待补导出	敌方相位装备·能量 JSON
+thunder_energy_basic.png	雷霆能量·基础	无PNG·待补导出	敌方相位装备·能量 JSON
+thunder_energy_expert.png	雷霆能量·专家	无PNG·待补导出	敌方相位装备·能量 JSON
+thunder_energy_god.png	雷霆神力	无PNG·待补导出	敌方相位装备·能量 JSON
+thunder_ion_net.png	雷霆·离子网	无PNG·待补导出	PhaseLaws.LAWS
+thunder_static_domain.png	雷霆·静电域	无PNG·待补导出	PhaseLaws.LAWS
+thunder_storm_god.png	雷神	无PNG·待补导出	敌方相位装备·相位仪 JSON
+thunder_storm_mk1.png	雷霆风暴·初阶	无PNG·待补导出	敌方相位装备·相位仪 JSON
+thunder_storm_mk2.png	雷霆风暴·进阶	无PNG·待补导出	敌方相位装备·相位仪 JSON
+thunder_storm_mk3.png	雷霆风暴·专家	无PNG·待补导出	敌方相位装备·相位仪 JSON
+thunder_storm_mk4.png	雷霆风暴·大师	无PNG·待补导出	敌方相位装备·相位仪 JSON
+thunder_surge_drive.png	雷霆·激涌驱动	无PNG·待补导出	PhaseLaws.LAWS
+thunter_sniper_advanced.png	雷霆狙击手·进阶	无PNG·待补导出	敌方相位装备·平台 JSON
+thunter_sniper_basic.png	雷霆狙击手·基础	无PNG·待补导出	敌方相位装备·平台 JSON
+thunter_sniper_expert.png	雷霆狙击手·专家	无PNG·待补导出	敌方相位装备·平台 JSON
+thunter_striker_advanced.png	雷霆打击者·进阶	无PNG·待补导出	敌方相位装备·平台 JSON
+thunter_striker_basic.png	雷霆打击者·基础	无PNG·待补导出	敌方相位装备·平台 JSON
+thunter_striker_expert.png	雷霆打击者·专家	无PNG·待补导出	敌方相位装备·平台 JSON
+void_barrier_shift.png	虚空·护盾转移	无PNG·待补导出	PhaseLaws.LAWS
+void_energy_advanced.png	虚空能量·进阶	无PNG·待补导出	敌方相位装备·能量 JSON
+void_energy_basic.png	虚空能量·基础	无PNG·待补导出	敌方相位装备·能量 JSON
+void_energy_expert.png	虚空能量·专家	无PNG·待补导出	敌方相位装备·能量 JSON
+void_energy_god.png	虚空神力	无PNG·待补导出	敌方相位装备·能量 JSON
+void_entropy_lens.png	虚空·熵镜	无PNG·待补导出	PhaseLaws.LAWS
+void_gravity_well.png	虚空·引力井	无PNG·待补导出	PhaseLaws.LAWS
+void_mage_advanced.png	虚空法师·进阶	无PNG·待补导出	敌方相位装备·平台 JSON
+void_mage_basic.png	虚空法师·基础	无PNG·待补导出	敌方相位装备·平台 JSON
+void_mage_expert.png	虚空法师·专家	无PNG·待补导出	敌方相位装备·平台 JSON
+void_phase_cloak.png	虚空·相位披幕	无PNG·待补导出	PhaseLaws.LAWS
+void_stealth_advanced.png	虚空潜行者·进阶	无PNG·待补导出	敌方相位装备·平台 JSON
+void_stealth_basic.png	虚空潜行者·基础	无PNG·待补导出	敌方相位装备·平台 JSON
+void_stealth_expert.png	虚空潜行者·专家	无PNG·待补导出	敌方相位装备·平台 JSON
+void_time_ripple.png	虚空·时空涟漪	无PNG·待补导出	PhaseLaws.LAWS
+void_walker_god.png	虚空女神	无PNG·待补导出	敌方相位装备·相位仪 JSON
+void_walker_mk1.png	虚空行者·初阶	无PNG·待补导出	敌方相位装备·相位仪 JSON
+void_walker_mk2.png	虚空行者·进阶	无PNG·待补导出	敌方相位装备·相位仪 JSON
+void_walker_mk3.png	虚空行者·专家	无PNG·待补导出	敌方相位装备·相位仪 JSON
+void_walker_mk4.png	虚空行者·大师	无PNG·待补导出	敌方相位装备·相位仪 JSON
+hybrid_flame_void_mk1.png	混沌炎魔仪	无PNG·待补导出	敌方相位装备·相位仪 JSON
+hybrid_steel_flame_mk1.png	熔铸卫士	无PNG·待补导出	敌方相位装备·相位仪 JSON
+hybrid_steel_thunder_mk1.png	电磁卫士	无PNG·待补导出	敌方相位装备·相位仪 JSON
+hybrid_thunder_steel_mk1.png	电磁卫士	无PNG·待补导出	敌方相位装备·相位仪 JSON
+hybrid_void_flame_mk1.png	熵增炎魔	无PNG·待补导出	敌方相位装备·相位仪 JSON
+law_flame_passive_1.png	烈焰·热能过载（存档兼容旧 id：law_flame_passive_1 → flame_heat_overload）	无PNG·待补导出	LEGACY_LAW_CARD_ID_MAP
+law_flame_passive_2.png	烈焰·余烬加燃（存档兼容旧 id：law_flame_passive_2 → flame_afterburn）	无PNG·待补导出	LEGACY_LAW_CARD_ID_MAP
+law_steel_passive_1.png	钢铁·相位装甲（存档兼容旧 id：law_steel_passive_1 → steel_phase_armor）	无PNG·待补导出	LEGACY_LAW_CARD_ID_MAP
+law_steel_passive_2.png	钢铁·快速维修（存档兼容旧 id：law_steel_passive_2 → steel_quick_repair）	无PNG·待补导出	LEGACY_LAW_CARD_ID_MAP
+law_thunder_passive_1.png	雷霆·弧光信标（存档兼容旧 id：law_thunder_passive_1 → thunder_arc_beacon）	无PNG·待补导出	LEGACY_LAW_CARD_ID_MAP
+law_thunder_passive_2.png	雷霆·电磁风暴（存档兼容旧 id：law_thunder_passive_2 → thunder_emp_storm）	无PNG·待补导出	LEGACY_LAW_CARD_ID_MAP
+law_void_passive_1.png	虚空·熵镜（存档兼容旧 id：law_void_passive_1 → void_entropy_lens）	无PNG·待补导出	LEGACY_LAW_CARD_ID_MAP
+law_void_passive_2.png	虚空·时空涟漪（存档兼容旧 id：law_void_passive_2 → void_time_ripple）	无PNG·待补导出	LEGACY_LAW_CARD_ID_MAP
+platform_modern_guard_heavy.png	豹2A7主战坦克	无PNG·待补导出	DefaultCards.create_all

@@ -20,6 +20,7 @@ static func get_platform_base(pt: int) -> Dictionary:
 		GC.PlatformType.MEDIC: return {"speed": 70.0, "hp": 90.0, "stationary": false}
 		GC.PlatformType.STEALTH: return {"speed": 110.0, "hp": 55.0, "stationary": false}
 		GC.PlatformType.OMEGA_PLATFORM: return {"speed": 35.0, "hp": 260.0, "stationary": false}
+		GC.PlatformType.COMMAND: return {"speed": 0.0, "hp": 120.0, "stationary": true}  # 指挥车：固定、不攻击
 	return {"speed": 80.0, "hp": 100.0, "stationary": false}
 
 
@@ -37,6 +38,7 @@ static func get_platform_defense(pt: int) -> int:
 		GC.PlatformType.RADAR: return 13
 		GC.PlatformType.FORTRESS: return 16
 		GC.PlatformType.SIEGE: return 15
+		GC.PlatformType.COMMAND: return 6
 	return 8
 
 
@@ -118,6 +120,8 @@ static func get_platform_growth_bias(pt: int) -> Dictionary:
 			return {"heal_bias": 0.12, "hp_bias": 0.04}
 		GC.PlatformType.OMEGA_PLATFORM:
 			return {"hp_bias": 0.10, "dmg_bias": 0.10, "def_bias": 0.08}
+		GC.PlatformType.COMMAND:
+			return {"hp_bias": 0.08, "def_bias": 0.04}
 		_:
 			return {"hp_bias": 0.04, "dmg_bias": 0.04}
 

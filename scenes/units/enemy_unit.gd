@@ -79,6 +79,8 @@ func _cached_load(path: String, type_hint: int = -1) -> Resource:
 var _presentation_card_grid: bool = false
 var _hit_stun_left: float = 0.0
 var _card_tween: Tween = null
+var _card_nudge_tween: Tween = null
+var _card_grid_rest_x: float = NAN  ## 格子战术中卡片的归位 X
 
 func _ready() -> void:
 	# 战斗逻辑跟随暂停状态
@@ -154,14 +156,19 @@ func apply_card_grid_enemy_presentation() -> void:
 func _play_card_attack_nudge() -> void:
 	if not _presentation_card_grid:
 		return
-	if _card_tween != null and _card_tween.is_valid():
-		_card_tween.kill()
-	_card_tween = create_tween()
+	# 首次 nudge 时记录归位 X
+	if is_nan(_card_grid_rest_x):
+		_card_grid_rest_x = position.x
+	# 若有正在播放的 nudge tween，先 kill 并把 position 修正回归位点
+	if _card_nudge_tween != null and _card_nudge_tween.is_valid():
+		_card_nudge_tween.kill()
+		position.x = _card_grid_rest_x
+	_card_nudge_tween = create_tween()
 	# 与我方 ConstructUnit 一致：前冲向目标侧；我方 +x，敌方面左，用 -x
 	var dir: float = -1.0
-	var start_x := position.x
-	_card_tween.tween_property(self, "position:x", start_x + dir * 22.0, 0.07)
-	_card_tween.tween_property(self, "position:x", start_x, 0.09)
+	var rest_x: float = _card_grid_rest_x
+	_card_nudge_tween.tween_property(self, "position:x", rest_x + dir * 22.0, 0.07)
+	_card_nudge_tween.tween_property(self, "position:x", rest_x, 0.09)
 
 
 func _play_card_hit_recoil() -> void:

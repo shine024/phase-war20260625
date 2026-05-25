@@ -1,11 +1,11 @@
 === card_icon_fix_verify ===
-Time: 2026-05-21T17:07:17
+Time: 2026-05-22T10:58:28
 platform_ww1_light UI: expect vis_player_001 | got res://assets/card_icons/units/vis_player_001.png | tex=true | OK
 platform_cold_light UI: expect vis_player_013 | got res://assets/card_icons/units/vis_player_013.png | tex=true | OK
 platform_modern_light UI: expect vis_player_019 | got res://assets/card_icons/units/vis_player_019.png | tex=true | OK
 omega_platform UI: expect vis_player_029 | got res://assets/card_icons/units/vis_player_029.png | tex=true | OK
 bulwark UI: expect vis_player_030 | got res://assets/card_icons/units/vis_player_030.png | tex=true | OK
-hound.png load: OK
+hound.png load: FAIL
 archetypes total=100 placeholder=0 non_units=0
 battle map platform_ww1_light -> foe_platform_ww1_light -> res://assets/card_icons/units/vis_player_001.png | OK
 battle map platform_cold_light -> foe_platform_cold_light -> res://assets/card_icons/units/vis_player_013.png | OK
@@ -14,4 +14,4 @@ battle map omega_platform -> foe_omega_platform -> res://assets/card_icons/units
 battle map bulwark -> foe_bulwark -> res://assets/card_icons/units/vis_player_030.png | OK
 default platform cards vis_player=64 shape_fallback=0 missing_tex=0
 
-RESULT: PASS (failures=0)
+RESULT: FAIL (failures=1)
