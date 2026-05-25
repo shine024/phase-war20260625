@@ -210,6 +210,41 @@ const AFFIX_TABLE: Dictionary = {
 		"rarity_pool":        ["common", "rare", "epic", "legendary"],
 		"unlock_condition":   "boss_1",
 	},
+
+	# ─── 重平衡新增词条 ────────────────────────────────────────────
+	"platform_def_up": {
+		"affix_name":         "复合装甲",
+		"description":        "平台防御值提升（直接增加护甲）",
+		"affix_type":         "base_property",
+		"effect_key":         "defense",
+		"base_value":         2.0,     # +2 DEF (Lv1), 每级+2 → Lv5=+10 DEF
+		"card_type_filter":   0,       # 仅平台
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["common", "rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+	},
+	"dodge_chance": {
+		"affix_name":         "相位闪避",
+		"description":        "平台获得闪避几率（完全回避一次攻击）",
+		"affix_type":         "combat_feature",
+		"effect_key":         "dodge_chance",
+		"base_value":         0.05,    # +5% 闪避 (Lv1), 每级+5% → Lv5=+25%
+		"card_type_filter":   0,       # 仅平台
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "boss_1",
+	},
+	"crit_dmg_up": {
+		"affix_name":         "致命一击",
+		"description":        "暴击伤害倍率提升（基础暴击1.5倍，每级+0.2倍）",
+		"affix_type":         "combat_feature",
+		"effect_key":         "crit_damage_bonus",
+		"base_value":         0.20,    # +0.2x 暴击倍率 (Lv1), 每级+0.2 → Lv5=+1.0x (总暴击2.5x)
+		"card_type_filter":   1,       # 仅武器
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "boss_2",
+	},
 }
 
 ## 变异配置（词条 Lv5 时有概率触发，为词条额外添加特殊效果描述）
@@ -223,6 +258,9 @@ const MUTATION_TABLE: Dictionary = {
 	"chain_lightning":   "连锁最多延伸至5个目标",
 	"shield_on_kill":    "护盾层数上限+2",
 	"nano_regen":        "生命值低于50%时，回复速度翻倍",
+	"platform_def_up":   "受到暴击时，额外减免30%暴击伤害",
+	"dodge_chance":      "成功闪避后，下次攻击必定暴击",
+	"crit_dmg_up":       "暴击击杀时，恢复10%最大生命值",
 }
 
 # ─────────────────────────────────────────────

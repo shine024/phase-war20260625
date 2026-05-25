@@ -247,35 +247,35 @@ static func _platform(id: String, name: String, cost: float, pt: int) -> CardRes
 		"platform_ww1_light":
 			c.rarity = "common"
 			c.type_line = "一战 — 轻型侦察车"
-			c.summary_line = "移速 1.2｜耐久 60｜重量 3"
+			c.summary_line = "移速 1.15｜耐久 65｜重量 3"
 			c.description = "轻型装甲车，快速侦察用途。"
 			c.flavor_text = "“总要有第一辆冲进火线的装甲车。”"
 			c.default_weapon_type = GC.WeaponType.SMG
 		"platform_ww1_medium":
 			c.rarity = "common"
 			c.type_line = "一战 — 中型坦克"
-			c.summary_line = "移速 0.45｜耐久 180｜重量 5"
+			c.summary_line = "移速 0.40｜耐久 200｜重量 5"
 			c.description = "菱形车身，跨越战壕的重型坦克。"
 			c.flavor_text = "“当它开始加速，战线的形状就被重新焊接。”"
 			c.default_weapon_type = GC.WeaponType.MG
 		"platform_ww1_fort":
 			c.rarity = "uncommon"
 			c.type_line = "一战 — 固定阵地"
-			c.summary_line = "移速 0｜耐久 280｜重量 6"
+			c.summary_line = "移速 0｜耐久 260｜重量 6"
 			c.description = "固定防御工事，不可移动。"
 			c.flavor_text = "“炮位一旦落下，战场就多了一座新堡。”"
 			c.default_weapon_type = GC.WeaponType.MG
 		"platform_ww1_medic":
 			c.rarity = "common"
 			c.type_line = "一战 — 野战救护"
-			c.summary_line = "移速 0.7｜耐久 90｜重量 4"
+			c.summary_line = "移速 0.75｜耐久 80｜重量 4"
 			c.description = "轻型野战救护车，脱战缓慢回复附近友军。"
 			c.flavor_text = "“把伤员从死神手里抢回来。”"
 			c.default_weapon_type = GC.WeaponType.PISTOL
 		"platform_ww1_radar":
 			c.rarity = "common"
 			c.type_line = "一战 — 野战观测站"
-			c.summary_line = "移速 0｜耐久 200｜重量 5"
+			c.summary_line = "移速 0｜耐久 180｜重量 5"
 			c.description = "固定观测站，可侦测敌方位置。"
 			c.flavor_text = "“看得见，才打得着。”"
 			c.default_weapon_type = GC.WeaponType.RIFLE
@@ -284,49 +284,49 @@ static func _platform(id: String, name: String, cost: float, pt: int) -> CardRes
 		"platform_ww2_light":
 			c.rarity = "common"
 			c.type_line = "二战 — 轮式侦察车"
-			c.summary_line = "移速 1.4｜耐久 45｜重量 4"
+			c.summary_line = "移速 1.35｜耐久 50｜重量 4"
 			c.description = "轮式侦察车，公路机动性强。"
 			c.flavor_text = "“先看到，先开火。”"
 			c.default_weapon_type = GC.WeaponType.SMG
 		"platform_ww2_medium":
 			c.rarity = "common"
 			c.type_line = "二战 — 中型坦克"
-			c.summary_line = "移速 0.8｜耐久 100｜重量 5"
+			c.summary_line = "移速 0.75｜耐久 110｜重量 5"
 			c.description = "均衡型中型坦克。"
 			c.flavor_text = "“不是墙，而是会向前推进的装甲墙。”"
 			c.default_weapon_type = GC.WeaponType.RIFLE
 		"platform_ww2_heavy":
 			c.rarity = "rare"
 			c.type_line = "二战 — 重型坦克"
-			c.summary_line = "移速 0.45｜耐久 180｜重量 6"
+			c.summary_line = "移速 0.40｜耐久 200｜重量 6"
 			c.description = "重型坦克，装甲厚但速度慢。"
 			c.flavor_text = "“装甲就是最好的防御。”"
 			c.default_weapon_type = GC.WeaponType.ROCKET
 		"platform_ww2_raider":
 			c.rarity = "common"
 			c.type_line = "二战 — 轻型突击车"
-			c.summary_line = "移速 0.95｜耐久 85｜重量 4"
+			c.summary_line = "移速 1.0｜耐久 90｜重量 4"
 			c.description = "轻型四轮突击车，速度极快但装甲薄弱。"
 			c.flavor_text = "“快到子弹追不上。”"
 			c.default_weapon_type = GC.WeaponType.MG
 		"platform_ww2_radar":
 			c.rarity = "common"
 			c.type_line = "二战 — 雷达指挥车"
-			c.summary_line = "移速 0｜耐久 200｜重量 5"
+			c.summary_line = "移速 0｜耐久 180｜重量 5"
 			c.description = "搭载早期雷达，可远距离侦测敌军动向。"
 			c.flavor_text = "天线转动，战场透明。"
 			c.default_weapon_type = GC.WeaponType.RIFLE
 		"platform_ww2_siege":
 			c.rarity = "common"
 			c.type_line = "二战 — 迫击炮"
-			c.summary_line = "移速 0.25｜耐久 350｜重量 5"
+			c.summary_line = "移速 0｜耐久 300｜重量 5"
 			c.description = "重型迫击炮，曲射越过障碍攻击后方。"
 			c.flavor_text = "“绕过去”只是弹道的选择。"
 			c.default_weapon_type = GC.WeaponType.ROCKET
 		"platform_ww2_fortress":
 			c.rarity = "common"
 			c.type_line = "二战 — 固定碉堡"
-			c.summary_line = "移速 0|耐久 280|重量 5"
+			c.summary_line = "移速 0|耐久 260|重量 5"
 			c.description = "钢筋混凝土碉堡,固定阵地防御。"
 			c.flavor_text = "“混凝土浇筑的勇气。”"
 			c.default_weapon_type = GC.WeaponType.MG
@@ -335,42 +335,42 @@ static func _platform(id: String, name: String, cost: float, pt: int) -> CardRes
 		"platform_cold_light":
 			c.rarity = "common"
 			c.type_line = "冷战 — 轻型多用途车"
-			c.summary_line = "移速 1.2｜耐久 60｜重量 4"
+			c.summary_line = "移速 1.15｜耐久 65｜重量 4"
 			c.description = "多功能轮式车辆。"
 			c.flavor_text = "“够用就好。”"
 			c.default_weapon_type = GC.WeaponType.SMG
 		"platform_cold_medium":
 			c.rarity = "common"
 			c.type_line = "冷战 — 中型坦克"
-			c.summary_line = "移速 0.45｜耐久 180｜重量 5"
+			c.summary_line = "移速 0.40｜耐久 200｜重量 5"
 			c.description = "苏式主战坦克，低矮外形。"
 			c.flavor_text = "“简约而致命。”"
 			c.default_weapon_type = GC.WeaponType.ROCKET
 		"platform_cold_ifv":
 			c.rarity = "uncommon"
 			c.type_line = "冷战 — 步兵战车"
-			c.summary_line = "移速 0.55｜耐久 130｜重量 5"
+			c.summary_line = "移速 0.50｜耐久 140｜重量 5"
 			c.description = "步兵战车，可搭载步兵。"
 			c.flavor_text = "“步兵与装甲的完美结合。”"
 			c.default_weapon_type = GC.WeaponType.MG
 		"platform_cold_scout":
 			c.rarity = "common"
 			c.type_line = "冷战 — 轮式侦察车"
-			c.summary_line = "移速 1.4｜耐久 45｜重量 4"
+			c.summary_line = "移速 1.35｜耐久 50｜重量 4"
 			c.description = "轻型轮式侦察车，视野较远。"
 			c.flavor_text = "先看清楚，再决定打不打。"
 			c.default_weapon_type = GC.WeaponType.SMG
 		"platform_cold_radar":
 			c.rarity = "uncommon"
 			c.type_line = "冷战 — 电子对抗站"
-			c.summary_line = "移速 0｜耐久 200｜重量 5"
+			c.summary_line = "移速 0｜耐久 180｜重量 5"
 			c.description = "电子对抗站，可干扰敌方通信与瞄准系统。"
 			c.flavor_text = "看不见的战争，往往最致命。"
 			c.default_weapon_type = GC.WeaponType.RIFLE
 		"platform_cold_carrier":
 			c.rarity = "common"
 			c.type_line = "冷战 — 履带步兵战车"
-			c.summary_line = "移速 0.55｜耐久 130｜重量 5"
+			c.summary_line = "移速 0.50｜耐久 140｜重量 5"
 			c.description = "履带步兵战车，可搭载步兵协同作战。"
 			c.flavor_text = "士兵最好的朋友是履带。"
 			c.default_weapon_type = GC.WeaponType.MG
@@ -379,42 +379,42 @@ static func _platform(id: String, name: String, cost: float, pt: int) -> CardRes
 		"platform_modern_light":
 			c.rarity = "common"
 			c.type_line = "现代 — 轻型突击车"
-			c.summary_line = "移速 1.2｜耐久 60｜重量 3"
+			c.summary_line = "移速 1.15｜耐久 65｜重量 3"
 			c.description = "快速突击车，适合特种作战。"
 			c.flavor_text = "“速度就是力量。”"
 			c.default_weapon_type = GC.WeaponType.SMG
 		"platform_modern_medium":
 			c.rarity = "rare"
 			c.type_line = "现代 — 主战坦克"
-			c.summary_line = "移速 0.8｜耐久 100｜重量 6"
+			c.summary_line = "移速 0.75｜耐久 110｜重量 6"
 			c.description = "现代化主战坦克。"
 			c.flavor_text = "当它驶入战场，其余单位只需护航。"
 			c.default_weapon_type = GC.WeaponType.ROCKET
 		"platform_modern_radar":
 			c.rarity = "rare"
 			c.type_line = "现代 — 相控阵雷达车"
-			c.summary_line = "移速 0｜耐久 200｜重量 5"
+			c.summary_line = "移速 0｜耐久 180｜重量 5"
 			c.description = "搭载相控阵雷达，大范围侦测与目标指示。"
 			c.flavor_text = "一车即可照亮半片战场。"
 			c.default_weapon_type = GC.WeaponType.RIFLE
 		"platform_modern_spg":
 			c.rarity = "rare"
 			c.type_line = "现代 — 自行火炮"
-			c.summary_line = "移速 0.25｜耐久 350｜重量 5"
+			c.summary_line = "移速 0｜耐久 300｜重量 5"
 			c.description = "自行火炮，可越过障碍攻击。"
 			c.flavor_text = "“有些战术问题，只需要一发炮弹。”"
 			c.default_weapon_type = GC.WeaponType.ROCKET
 		"platform_modern_stealth":
 			c.rarity = "uncommon"
 			c.type_line = "现代 — 隐匿侦察车"
-			c.summary_line = "移速 1.1｜耐久 55｜重量 5"
+			c.summary_line = "移速 1.15｜耐久 50｜重量 5"
 			c.description = "搭载光学迷彩系统，难以被敌方锁定。"
 			c.flavor_text = "消失在光影之间。"
 			c.default_weapon_type = GC.WeaponType.SMG
 		"platform_modern_guard_heavy":
 			c.rarity = "rare"
 			c.type_line = "现代 — 重型坦克"
-			c.summary_line = "移速 0.8｜耐久 100｜重量 7"
+			c.summary_line = "移速 0.75｜耐久 110｜重量 7"
 			c.description = "最新型主战坦克，复合装甲+主动防御。"
 			c.flavor_text = "最好的进攻就是最好的装甲。"
 			c.default_weapon_type = GC.WeaponType.RAIL_CANNON
@@ -423,28 +423,28 @@ static func _platform(id: String, name: String, cost: float, pt: int) -> CardRes
 		"platform_future_light":
 			c.rarity = "uncommon"
 			c.type_line = "近未来 — 隐匿侦察车"
-			c.summary_line = "移速 1.1｜耐久 55｜重量 4"
+			c.summary_line = "移速 1.15｜耐久 50｜重量 4"
 			c.description = "搭载光学迷彩，难以被发现。"
 			c.flavor_text = "“看不见的才最危险。”"
 			c.default_weapon_type = GC.WeaponType.LASER
 		"platform_future_medium":
 			c.rarity = "rare"
 			c.type_line = "近未来 — 悬浮坦克"
-			c.summary_line = "移速 0.95｜耐久 85｜重量 5"
+			c.summary_line = "移速 1.0｜耐久 90｜重量 5"
 			c.description = "反重力悬浮，无视地形。"
 			c.flavor_text = "重力也无法束缚它。"
 			c.default_weapon_type = GC.WeaponType.LASER
 		"platform_future_radar":
 			c.rarity = "rare"
 			c.type_line = "近未来 — 量子感知平台"
-			c.summary_line = "移速 0｜耐久 200｜重量 5"
+			c.summary_line = "移速 0｜耐久 180｜重量 5"
 			c.description = "量子纠缠感知系统，穿透一切遮蔽侦测敌情。"
 			c.flavor_text = "当量子塌缩，一切无所遁形。"
 			c.default_weapon_type = GC.WeaponType.LASER
 		"platform_future_heavy":
 			c.rarity = "rare"
 			c.type_line = "近未来 — 步行机甲"
-			c.summary_line = "移速 0.45｜耐久 180｜重量 6"
+			c.summary_line = "移速 0.40｜耐久 200｜重量 6"
 			c.description = "双足步行机甲，全地形适应。"
 			c.flavor_text = "“机甲的轰鸣是最后的防线。”"
 			c.default_weapon_type = GC.WeaponType.OMEGA_CANNON
@@ -452,7 +452,7 @@ static func _platform(id: String, name: String, cost: float, pt: int) -> CardRes
 		"omega_platform":
 			c.rarity = "legendary"
 			c.type_line = "终极 — 多槽重装"
-			c.summary_line = "移速 0.35｜耐久 260｜重量 9"
+			c.summary_line = "移速 0.30｜耐久 240｜重量 9"
 			c.description = "可以同时装备3张武器卡，作为整条战线的核心输出。终极单位。"
 			c.max_weapons = 3
 			c.weight_capacity = 18

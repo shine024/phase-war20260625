@@ -3,6 +3,7 @@ class_name CardGridUnitVisuals
 
 const CardGridThumbnailScale = preload("res://scripts/card_grid_thumbnail_scale.gd")
 const CardGridRankStrip = preload("res://scripts/card_grid_rank_strip.gd")
+const CardGridBuffStrip = preload("res://scripts/card_grid_buff_strip.gd")
 const CardGridBattleLayout = preload("res://scripts/card_grid_battle_layout.gd")
 const RankRules = preload("res://data/rank_rules.gd")
 const CardFrameUi = preload("res://scripts/card_frame_ui.gd")
@@ -161,3 +162,30 @@ static func sync_rank_strip(host: Node2D, rank_level: int, spr: Sprite2D) -> voi
 
 static func rank_level_from_id(rank_id: String) -> int:
 	return RankRules.rank_id_to_level(rank_id)
+
+
+## 卡底加成条：雷达/侦查/堡垒/指挥等受光环单位下方彩色矢量图标
+static func sync_buff_strip(host: Node2D, unit: Node, spr: Sprite2D) -> void:
+	if host == null or unit == null or spr == null or spr.texture == null:
+		return
+	var kinds: Array[CardGridBuffStrip.BuffKind] = CardGridBuffStrip.collect_buff_kinds(unit)
+	var strip: CardGridBuffStrip = host.get_node_or_null("CardGridBuffStrip") as CardGridBuffStrip
+	if kinds.is_empty():
+		if strip != null:
+			strip.rebuild([])
+			strip.visible = false
+		return
+	if strip == null:
+		strip = CardGridBuffStrip.new()
+		strip.name = "CardGridBuffStrip"
+		host.add_child(strip)
+	strip.z_index = 13
+	var card_art_w: float = float(spr.texture.get_width()) * absf(spr.scale.x)
+	strip.rebuild(kinds, card_art_w)
+	var half_h: float = float(spr.texture.get_height()) * absf(spr.scale.y) * 0.5
+	var hp_gap: float = 8.0
+	var hp_h: float = 8.0
+	var hb := host.get_node_or_null("HpBar")
+	if hb != null and (hb as CanvasItem).visible:
+		hp_h = 8.0
+	strip.position = Vector2(0.0, half_h + hp_gap + hp_h + card_art_w * 0.03)

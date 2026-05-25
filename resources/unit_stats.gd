@@ -35,6 +35,9 @@ var weapon_card_ids: Array[String] = []
 ## 暴击率（0.0~1.0，来自 crit_chance 词条）
 @export var crit_chance: float = 0.0
 
+## 暴击伤害加成（来自 crit_dmg_up 词条；基础暴击1.5x，每级+0.2x）
+@export var crit_damage_bonus: float = 0.0
+
 ## 吸血率（0.0~1.0，来自 lifesteal 词条）
 @export var lifesteal: float = 0.0
 

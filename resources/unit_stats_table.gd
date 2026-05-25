@@ -8,19 +8,19 @@ const GC = preload("res://resources/game_constants.gd")
 # 平台基础：血量、是否固定（格子战不再使用移速）
 static func get_platform_base(pt: int) -> Dictionary:
 	match pt:
-		GC.PlatformType.HOUND: return {"speed": 120.0, "hp": 60.0, "stationary": false}
-		GC.PlatformType.GUARD: return {"speed": 80.0, "hp": 100.0, "stationary": false}
-		GC.PlatformType.TITAN: return {"speed": 45.0, "hp": 180.0, "stationary": false}
-		GC.PlatformType.FORTRESS: return {"speed": 0.0, "hp": 280.0, "stationary": true}  # 固定平台大幅提升HP
-		GC.PlatformType.RADAR: return {"speed": 0.0, "hp": 200.0, "stationary": true}  # 固定雷达站
-		GC.PlatformType.SCOUT: return {"speed": 140.0, "hp": 45.0, "stationary": false}
-		GC.PlatformType.RAIDER: return {"speed": 95.0, "hp": 85.0, "stationary": false}
-		GC.PlatformType.SIEGE: return {"speed": 25.0, "hp": 350.0, "stationary": true}  # 固定火炮大幅提升HP
-		GC.PlatformType.CARRIER: return {"speed": 55.0, "hp": 130.0, "stationary": false}
-		GC.PlatformType.MEDIC: return {"speed": 70.0, "hp": 90.0, "stationary": false}
-		GC.PlatformType.STEALTH: return {"speed": 110.0, "hp": 55.0, "stationary": false}
-		GC.PlatformType.OMEGA_PLATFORM: return {"speed": 35.0, "hp": 260.0, "stationary": false}
-		GC.PlatformType.COMMAND: return {"speed": 0.0, "hp": 120.0, "stationary": true}  # 指挥车：固定、不攻击
+		GC.PlatformType.HOUND: return {"speed": 115.0, "hp": 65.0, "stationary": false}
+		GC.PlatformType.GUARD: return {"speed": 75.0, "hp": 110.0, "stationary": false}
+		GC.PlatformType.TITAN: return {"speed": 40.0, "hp": 200.0, "stationary": false}
+		GC.PlatformType.FORTRESS: return {"speed": 0.0, "hp": 260.0, "stationary": true}  # 纯防御核心：DEF最高
+		GC.PlatformType.RADAR: return {"speed": 0.0, "hp": 180.0, "stationary": true}  # 固定雷达站
+		GC.PlatformType.SCOUT: return {"speed": 135.0, "hp": 50.0, "stationary": false}
+		GC.PlatformType.RAIDER: return {"speed": 100.0, "hp": 90.0, "stationary": false}
+		GC.PlatformType.SIEGE: return {"speed": 0.0, "hp": 300.0, "stationary": true}  # 完全固定攻城炮（曲射）
+		GC.PlatformType.CARRIER: return {"speed": 50.0, "hp": 140.0, "stationary": false}
+		GC.PlatformType.MEDIC: return {"speed": 75.0, "hp": 80.0, "stationary": false}
+		GC.PlatformType.STEALTH: return {"speed": 115.0, "hp": 50.0, "stationary": false}
+		GC.PlatformType.OMEGA_PLATFORM: return {"speed": 30.0, "hp": 240.0, "stationary": false}
+		GC.PlatformType.COMMAND: return {"speed": 0.0, "hp": 150.0, "stationary": true}  # 指挥车：固定、提供全场光环
 	return {"speed": 80.0, "hp": 100.0, "stationary": false}
 
 
@@ -29,16 +29,16 @@ static func get_platform_defense(pt: int) -> int:
 		GC.PlatformType.SCOUT: return 4
 		GC.PlatformType.HOUND: return 5
 		GC.PlatformType.STEALTH: return 5
+		GC.PlatformType.MEDIC: return 6
 		GC.PlatformType.RAIDER: return 7
-		GC.PlatformType.GUARD: return 8
-		GC.PlatformType.MEDIC: return 7
-		GC.PlatformType.CARRIER: return 9
-		GC.PlatformType.TITAN: return 12
-		GC.PlatformType.OMEGA_PLATFORM: return 14
-		GC.PlatformType.RADAR: return 13
-		GC.PlatformType.FORTRESS: return 16
-		GC.PlatformType.SIEGE: return 15
-		GC.PlatformType.COMMAND: return 6
+		GC.PlatformType.CARRIER: return 8
+		GC.PlatformType.GUARD: return 9
+		GC.PlatformType.COMMAND: return 10
+		GC.PlatformType.RADAR: return 11
+		GC.PlatformType.TITAN: return 13
+		GC.PlatformType.SIEGE: return 14
+		GC.PlatformType.OMEGA_PLATFORM: return 15
+		GC.PlatformType.FORTRESS: return 20
 	return 8
 
 
@@ -65,25 +65,25 @@ static func get_weapon_base(wt: int, era: int = -1) -> Dictionary:
 	var base: Dictionary
 	match wt:
 		GC.WeaponType.SMG:
-			base = {"damage": 7.0, "range": 90.0, "interval": 0.39}
+			base = {"damage": 8.0, "range": 95.0, "interval": 0.38}
 		GC.WeaponType.PISTOL:
-			base = {"damage": 5.0, "range": 80.0, "interval": 0.4}
+			base = {"damage": 7.0, "range": 85.0, "interval": 0.45}
 		GC.WeaponType.RIFLE:
-			base = {"damage": 12.0, "range": 150.0, "interval": 1.0}
+			base = {"damage": 14.0, "range": 155.0, "interval": 0.95}
 		GC.WeaponType.SNIPER:
-			base = {"damage": 17.0, "range": 230.0, "interval": 1.545}
+			base = {"damage": 28.0, "range": 240.0, "interval": 1.60}
 		GC.WeaponType.MG:
-			base = {"damage": 6.0, "range": 165.0, "interval": 0.24}
+			base = {"damage": 7.0, "range": 160.0, "interval": 0.25}
 		GC.WeaponType.SHOTGUN:
-			base = {"damage": 16.0, "range": 65.0, "interval": 1.0}
+			base = {"damage": 22.0, "range": 60.0, "interval": 0.85}
 		GC.WeaponType.ROCKET:
-			base = {"damage": 29.0, "range": 190.0, "interval": 1.8}
+			base = {"damage": 30.0, "range": 195.0, "interval": 1.70}
 		GC.WeaponType.MISSILE:
-			base = {"damage": 36.0, "range": 210.0, "interval": 2.0}
+			base = {"damage": 38.0, "range": 215.0, "interval": 2.00}
 		GC.WeaponType.FLAK:
-			base = {"damage": 8.0, "range": 120.0, "interval": 0.364}
+			base = {"damage": 9.0, "range": 125.0, "interval": 0.35}
 		GC.WeaponType.LASER:
-			base = {"damage": 11.0, "range": 180.0, "interval": 0.55}
+			base = {"damage": 13.0, "range": 185.0, "interval": 0.50}
 		GC.WeaponType.OMEGA_CANNON:
 			base = {"damage": 220.0, "range": 250.0, "interval": 2.2}
 		GC.WeaponType.RAIL_CANNON:
@@ -103,25 +103,31 @@ static func get_weapon_base(wt: int, era: int = -1) -> Dictionary:
 static func get_platform_growth_bias(pt: int) -> Dictionary:
 	match pt:
 		GC.PlatformType.SIEGE:
-			return {"hp_bias": 0.10, "dmg_bias": 0.08, "range_bias": 0.05}
+			return {"hp_bias": 0.08, "dmg_bias": 0.06, "range_bias": 0.04}
 		GC.PlatformType.FORTRESS:
-			return {"hp_bias": 0.12, "def_bias": 0.10}
+			return {"hp_bias": 0.10, "def_bias": 0.08}
 		GC.PlatformType.TITAN:
 			return {"hp_bias": 0.08, "def_bias": 0.06}
-		GC.PlatformType.SCOUT, GC.PlatformType.STEALTH:
-			return {"dodge_bias": 0.05, "dmg_bias": 0.06}
+		GC.PlatformType.SCOUT:
+			return {"dodge_bias": 0.05, "dmg_bias": 0.05, "speed_bias": 0.03}
+		GC.PlatformType.STEALTH:
+			return {"dodge_bias": 0.06, "dmg_bias": 0.04}
 		GC.PlatformType.RAIDER:
-			return {"dmg_bias": 0.08, "speed_bias": 0.05}
+			return {"dmg_bias": 0.07, "speed_bias": 0.04}
 		GC.PlatformType.RADAR:
-			return {"range_bias": 0.08, "def_bias": 0.04}
+			return {"range_bias": 0.06, "def_bias": 0.04}
 		GC.PlatformType.CARRIER:
-			return {"hp_bias": 0.06, "heal_bias": 0.10}
+			return {"hp_bias": 0.05, "heal_bias": 0.08}
 		GC.PlatformType.MEDIC:
-			return {"heal_bias": 0.12, "hp_bias": 0.04}
+			return {"heal_bias": 0.10, "hp_bias": 0.04}
 		GC.PlatformType.OMEGA_PLATFORM:
-			return {"hp_bias": 0.10, "dmg_bias": 0.10, "def_bias": 0.08}
+			return {"hp_bias": 0.08, "dmg_bias": 0.08, "def_bias": 0.06}
 		GC.PlatformType.COMMAND:
-			return {"hp_bias": 0.08, "def_bias": 0.04}
+			return {"hp_bias": 0.06, "def_bias": 0.05}
+		GC.PlatformType.HOUND:
+			return {"hp_bias": 0.04, "dmg_bias": 0.05, "dodge_bias": 0.03}
+		GC.PlatformType.GUARD:
+			return {"hp_bias": 0.06, "def_bias": 0.04, "dmg_bias": 0.04}
 		_:
 			return {"hp_bias": 0.04, "dmg_bias": 0.04}
 
@@ -132,15 +138,20 @@ static func apply_platform_innate_modifiers(stats: UnitStats) -> void:
 		return
 	match stats.platform_type:
 		GC.PlatformType.SIEGE:
-			stats.attack_range *= 1.15
+			stats.attack_range *= 1.18
 		GC.PlatformType.FORTRESS:
-			stats.max_hp *= 1.10
-		GC.PlatformType.RADAR:
-			stats.attack_range *= 1.10
-		GC.PlatformType.TITAN:
+			stats.max_hp *= 1.12
 			stats.defense += 3.0
-		GC.PlatformType.SCOUT, GC.PlatformType.STEALTH:
-			stats.dodge_chance = maxf(stats.dodge_chance, 0.15)
+		GC.PlatformType.RADAR:
+			stats.attack_range *= 1.12
+		GC.PlatformType.TITAN:
+			stats.defense += 4.0
+		GC.PlatformType.SCOUT:
+			stats.dodge_chance = maxf(stats.dodge_chance, 0.18)
+		GC.PlatformType.STEALTH:
+			stats.dodge_chance = maxf(stats.dodge_chance, 0.20)
+		GC.PlatformType.CARRIER:
+			stats.max_hp *= 1.08
 	for i in range(stats.weapons.size()):
 		var w: Dictionary = stats.weapons[i] as Dictionary
 		if not w.has("range"):
@@ -148,9 +159,9 @@ static func apply_platform_innate_modifiers(stats: UnitStats) -> void:
 		var scaled_range: float = float(w["range"])
 		match stats.platform_type:
 			GC.PlatformType.SIEGE:
-				scaled_range *= 1.15
+				scaled_range *= 1.18
 			GC.PlatformType.RADAR:
-				scaled_range *= 1.10
+				scaled_range *= 1.12
 		w["range"] = scaled_range
 		stats.weapons[i] = w
 	if stats.platform_type == GC.PlatformType.SIEGE or stats.platform_type == GC.PlatformType.RADAR:

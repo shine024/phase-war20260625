@@ -8,6 +8,7 @@ const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const EnemyUnitManifest = preload("res://data/enemy_unit_manifest.gd")
 const RankRules = preload("res://data/rank_rules.gd")
 const CardGridUnitVisuals = preload("res://scripts/card_grid_unit_visuals.gd")
+const CardGridBuffStrip = preload("res://scripts/card_grid_buff_strip.gd")
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 const CardGridDamage = preload("res://scripts/card_grid_damage.gd")
 const CombatTargeting = preload("res://scripts/combat_targeting.gd")
@@ -112,6 +113,8 @@ var _card_grid_rest_x: float = NAN  ## 格子战术中卡片的归位 X（首次
 var _medic_aura_cd: float = 0.0
 var _storm_rider_cd: float = 0.0
 var _repair_fortress_cd: float = 0.0
+var _buff_strip_timer: float = 0.0
+var _buff_strip_signature: String = ""
 ## 跨实例共享的资源缓存，避免运行时重复 load()
 var _res_cache: Dictionary = {}
 
@@ -263,6 +266,7 @@ func _materialize_deploy_ghost() -> void:
 	# 卡牌特殊能力：部署后初始化（超频、泰坦计时、僚机等）
 	CardAbilityManager.on_unit_materialized(self)
 	_register_to_spatial_grid()
+	_update_card_grid_buff_strip(true)
 
 	# 隐藏进度条
 	if _deploy_bar:
@@ -323,6 +327,18 @@ func _maybe_apply_card_grid_presentation() -> void:
 	if rank_badge != null:
 		rank_badge.visible = false
 	_update_hp_bar()
+	_update_card_grid_buff_strip()
+
+
+func _update_card_grid_buff_strip(force: bool = false) -> void:
+	if not _presentation_card_grid or is_preview_mode:
+		return
+	var sig: String = CardGridBuffStrip.buff_signature(self)
+	if not force and sig == _buff_strip_signature:
+		return
+	_buff_strip_signature = sig
+	var spr: Sprite2D = get_node_or_null("Sprite") as Sprite2D
+	CardGridUnitVisuals.sync_buff_strip(self, self, spr)
 
 
 func _configure_card_grid_player_hp_bar(spr: Sprite2D) -> void:
@@ -398,6 +414,7 @@ func apply_card_grid_enemy_presentation() -> void:
 	if rank_badge != null:
 		rank_badge.visible = false
 	velocity = Vector2.ZERO
+	_update_card_grid_buff_strip(true)
 
 
 func _acquisition_range() -> float:
@@ -948,6 +965,12 @@ func _physics_process(delta: float) -> void:
 			if _medic_aura_cd <= 0.0:
 				_medic_aura_cd = 3.0
 				CardAbilityManager.apply_medic_heal_aura_tick(self)
+
+	if _presentation_card_grid and not is_deploy_ghost and not is_preview_mode:
+		_buff_strip_timer += delta
+		if _buff_strip_timer >= 0.25:
+			_buff_strip_timer = 0.0
+			_update_card_grid_buff_strip()
 
 func _apply_continuous_effects(delta: float) -> void:
 	if stats == null:
