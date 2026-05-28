@@ -1051,7 +1051,7 @@ static func _should_auto_add_platform_drop(id: String, cfg: Dictionary, drops: A
 		if card_id.is_empty():
 			continue
 		var card: CardResource = EnemyBlueprints.get_card_by_id(card_id)
-		if card != null and card.card_type == GC.CardType.PLATFORM:
+		if card != null and card.card_type == GC.CardType.COMBAT_UNIT:
 			return false
 	return true
 

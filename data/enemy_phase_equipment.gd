@@ -26,6 +26,8 @@ static func _load_json_dict(path: String, fallback: Dictionary) -> Dictionary:
 
 const GC = preload("res://resources/game_constants.gd")
 
+const CardResource = preload("res://resources/card_resource.gd")
+
 ## 相位仪数据
 const LEGACY_PHASE_INSTRUMENTS: Dictionary = {
 	# ==================== 钢铁势力相位仪 ====================
@@ -1259,27 +1261,44 @@ const LEGACY_ENERGY_CARDS: Dictionary = {
 
 ## 战争平台 type 字符串 -> GameConstants.PlatformType（用于蓝图库 CardResource）
 const _WAR_PLATFORM_TYPE_MAP: Dictionary = {
-	"fortress": GC.PlatformType.FORTRESS,
-	"titan": GC.PlatformType.TITAN,
-	"raider": GC.PlatformType.RAIDER,
-	"siege": GC.PlatformType.SIEGE,
-	"striker": GC.PlatformType.RAIDER,
-	"sniper": GC.PlatformType.SCOUT,
-	"stealth": GC.PlatformType.STEALTH,
-	"mage": GC.PlatformType.OMEGA_PLATFORM,
+	"fortress": 3,
+	"titan": 2,
+	"raider": 6,
+	"siege": 7,
+	"striker": 6,
+	"sniper": 5,
+	"stealth": 10,
+	"mage": 11,
+}
+
+## PlatformType -> combat_kind 正确映射（0=轻装, 1=装甲, 2=支援, 3=空中）
+const _PLATFORM_TO_COMBAT_KIND: Dictionary = {
+	0: 0,          # 轻装
+	1: 1,          # 装甲
+	2: 1,          # 装甲
+	3: 2,       # 支援
+	4: 2,          # 支援
+	5: 0,          # 轻装
+	6: 0,         # 轻装
+	7: 2,          # 支援
+	8: 3,        # 空中
+	9: 2,          # 支援
+	10: 0,        # 轻装
+	11: 1, # 装甲
+	12: 2,        # 支援
 }
 
 ## 战争武器 type 字符串 -> GameConstants.WeaponType
 const _WAR_WEAPON_TYPE_MAP: Dictionary = {
-	"machinegun": GC.WeaponType.MG,
-	"cannon": GC.WeaponType.ROCKET,
-	"railcannon": GC.WeaponType.RAIL_CANNON,
-	"flamethrower": GC.WeaponType.FLAK,
-	"mortar": GC.WeaponType.ROCKET,
-	"tesla": GC.WeaponType.LASER,
-	"railgun": GC.WeaponType.RAIL_CANNON,
-	"lance": GC.WeaponType.LASER,
-	"gravity": GC.WeaponType.MISSILE,
+	"machinegun": 2,
+	"cannon": 3,
+	"railcannon": 11,
+	"flamethrower": 7,
+	"mortar": 3,
+	"tesla": 8,
+	"railgun": 11,
+	"lance": 8,
+	"gravity": 9,
 }
 
 ## 将敌方相位师装备 ID 转为蓝图库/解析 UI 用的 CardResource（仅展示）
@@ -1306,8 +1325,9 @@ static func _card_resource_from_war_platform(d: Dictionary, equipment_id: String
 	c.display_name = String(d.get("name", equipment_id))
 	c.rarity = String(d.get("rarity", "common"))
 	var ptype: String = String(d.get("type", "titan"))
-	c.card_type = GC.CardType.PLATFORM
-	c.platform_type = int(_WAR_PLATFORM_TYPE_MAP.get(ptype, GC.PlatformType.TITAN))
+	c.card_type = GC.CardType.COMBAT_UNIT
+	var platform_type_val: int = int(_WAR_PLATFORM_TYPE_MAP.get(ptype, 2))
+	c.combat_kind = int(_PLATFORM_TO_COMBAT_KIND.get(platform_type_val, 1))
 	c.energy_cost = 5.0 + float(d.get("level", 5)) * 0.3
 	c.type_line = "平台 — %s／敌方相位师" % String(d.get("faction", ""))
 	var stats: Dictionary = d.get("stats", {}) as Dictionary
@@ -1315,8 +1335,13 @@ static func _card_resource_from_war_platform(d: Dictionary, equipment_id: String
 		int(stats.get("hp", 0)), int(stats.get("attack", 0)), int(stats.get("move_speed", 0))]
 	c.description = "由敌方相位师装备数据生成的平台蓝图（展示用）。"
 	c.flavor_text = ""
-	c.max_weapons = 2
-	c.weight_capacity = 0
+	#c.max_weapons = 2
+	#c.weight_capacity = 0
+	c.era = 0
+	c.base_hp = float(stats.get("hp", 100.0))
+	c.base_range = 120.0
+	c.base_interval = 1.0
+	c.base_speed = float(stats.get("move_speed", 80.0))
 	return c
 
 static func _card_resource_from_war_weapon(d: Dictionary, equipment_id: String) -> CardResource:
@@ -1325,14 +1350,20 @@ static func _card_resource_from_war_weapon(d: Dictionary, equipment_id: String) 
 	c.display_name = String(d.get("name", equipment_id))
 	c.rarity = String(d.get("rarity", "common"))
 	var wtype: String = String(d.get("type", "machinegun"))
-	c.card_type = GC.CardType.WEAPON
-	c.weapon_type = int(_WAR_WEAPON_TYPE_MAP.get(wtype, GC.WeaponType.MG))
+	c.card_type = GC.CardType.COMBAT_UNIT
+	c.weapon_label = wtype
 	c.energy_cost = 4.0 + float(d.get("level", 5)) * 0.25
 	c.type_line = "武器 — %s／敌方相位师" % String(d.get("faction", ""))
 	c.summary_line = "伤害 %d｜攻速 %.2f｜射程 %d" % [
 		int(d.get("damage", 0)), float(d.get("attack_speed", 0.0)), int(d.get("range", 0))]
 	c.description = "由敌方相位师装备数据生成的武器蓝图（展示用）。"
-	c.weight = 1
+	#c.weight = 1
+	c.era = 0
+	c.combat_kind = 0
+	c.base_hp = 100.0
+	c.base_range = float(d.get("range", 120.0))
+	c.base_interval = float(d.get("attack_speed", 1.0)) if float(d.get("attack_speed", 0.0)) > 0.0 else 1.0
+	c.base_speed = 0.0
 	return c
 
 static func _card_resource_from_energy_card(d: Dictionary, equipment_id: String) -> CardResource:
@@ -1354,15 +1385,20 @@ static func _card_resource_from_phase_instrument(d: Dictionary, equipment_id: St
 	c.card_id = equipment_id
 	c.display_name = String(d.get("name", equipment_id))
 	c.rarity = String(d.get("rarity", "common"))
-	c.card_type = GC.CardType.PLATFORM
-	c.platform_type = GC.PlatformType.OMEGA_PLATFORM
+	c.card_type = GC.CardType.COMBAT_UNIT
+	c.combat_kind = int(_PLATFORM_TO_COMBAT_KIND.get(11, 1))
 	c.energy_cost = 6.0 + float(d.get("level", 5)) * 0.35
 	c.type_line = "相位仪 — %s" % String(d.get("faction", ""))
 	var bs: Dictionary = d.get("base_stats", {}) as Dictionary
 	c.summary_line = "Lv.%d｜耐久 %d｜能量 %d" % [
 		int(d.get("level", 0)), int(bs.get("max_hp", 0)), int(bs.get("energy_capacity", 0))]
 	c.description = "由敌方相位师装备数据生成的相位仪蓝图（展示用）。"
-	c.max_weapons = 0
+	#c.max_weapons = 0
+	c.era = 0
+	c.base_hp = float(bs.get("max_hp", 100.0))
+	c.base_range = 120.0
+	c.base_interval = 1.0
+	c.base_speed = 0.0
 	return c
 
 ## 获取相位仪数据

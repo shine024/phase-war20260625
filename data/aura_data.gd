@@ -27,9 +27,9 @@ static func is_in_aura_range(source_slot: int, target_slot: int, is_global: bool
 ## 机械类平台判定（CARRIER_REPAIR 只治疗机械平台）
 static func is_mechanical_platform(platform_type: int) -> bool:
 	match platform_type:
-		GC.PlatformType.TITAN, GC.PlatformType.FORTRESS, GC.PlatformType.SIEGE, \
-		GC.PlatformType.RADAR, GC.PlatformType.CARRIER, GC.PlatformType.OMEGA_PLATFORM, \
-		GC.PlatformType.COMMAND:
+		2, 3, 7,  # TITAN, FORTRESS, SIEGE
+		4, 8, 11,  # RADAR, CARRIER, OMEGA_PLATFORM
+		12:  # COMMAND
 			return true
 	return false
 

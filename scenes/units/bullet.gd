@@ -15,7 +15,7 @@ var damage: float = 5.0
 var target: Node2D = null
 var shooter_is_player: bool = true
 var max_distance: float = 1600.0
-var weapon_type: int = GC.WeaponType.SMG
+var weapon_type: int = 0
 var shooter: Node2D = null  # 射手引用（用于词条效果）
 var shooter_stats: UnitStats = null  # 射手数值（用于词条效果计算）
 ## 超射程「哑弹」：飞过但不造成伤害（仍可对卡牌模式播放擦弹表现）
@@ -111,46 +111,46 @@ func _configure_behavior() -> void:
 	spread_angle_deg = 0.0
 
 	match weapon_type:
-		GC.WeaponType.SMG, GC.WeaponType.PISTOL:
+		0, 4:
 			speed = 720.0
 			max_distance = 1200.0
-		GC.WeaponType.RIFLE:
+		1:
 			speed = 800.0
 			max_distance = 1600.0
-		GC.WeaponType.MG:
+		2:
 			speed = 680.0
 			max_distance = 1400.0
-		GC.WeaponType.SHOTGUN:
+		5:
 			speed = 650.0
 			max_distance = 900.0
 			pellet_count = 6
 			spread_angle_deg = 18.0
-		GC.WeaponType.SNIPER:
+		6:
 			speed = 1100.0
 			max_distance = 2200.0
 			pierce_count = 1
-		GC.WeaponType.LASER:
+		8:
 			speed = 1400.0
 			max_distance = 2200.0
 			pierce_count = 3
-		GC.WeaponType.ROCKET:
+		3:
 			speed = 420.0
 			max_distance = 2000.0
 			explosion_radius = 40.0
-		GC.WeaponType.MISSILE:
+		9:
 			speed = 380.0
 			max_distance = 2300.0
 			explosion_radius = 55.0
-		GC.WeaponType.FLAK:
+		7:
 			speed = 520.0
 			max_distance = 1500.0
 			explosion_radius = 36.0
-		GC.WeaponType.RAIL_CANNON:
+		11:  # RAIL_CANNON
 			speed = 560.0
 			max_distance = 2500.0
 			explosion_radius = 58.0
 			pierce_count = 1
-		GC.WeaponType.OMEGA_CANNON:
+		10:  # OMEGA_CANNON
 			speed = 520.0
 			max_distance = 2600.0
 			explosion_radius = 70.0
@@ -180,28 +180,28 @@ func _apply_visual() -> void:
 	var use_beam: bool = false
 	var size_scale: float = 1.0
 	match weapon_type:
-		GC.WeaponType.SMG, GC.WeaponType.PISTOL:
+		0, 4:
 			bullet_color = Color(0.95, 0.9, 0.3) if is_player else Color(1, 0.4, 0.2)
 			size_scale = 0.8
-		GC.WeaponType.RIFLE, GC.WeaponType.MG:
+		1, 2:
 			bullet_color = Color(0.85, 0.85, 0.9) if is_player else Color(0.9, 0.5, 0.3)
 			size_scale = 1.0
-		GC.WeaponType.SHOTGUN:
+		5:
 			bullet_color = Color(0.9, 0.85, 0.5) if is_player else Color(1, 0.5, 0.2)
 			size_scale = 1.2
-		GC.WeaponType.SNIPER:
+		6:
 			use_beam = true
 			beam_color = Color(0.4, 0.9, 1) if is_player else Color(1, 0.5, 0.4)
-		GC.WeaponType.LASER:
+		8:
 			use_beam = true
 			beam_color = Color(0.2, 0.85, 1) if is_player else Color(1, 0.3, 0.6)
-		GC.WeaponType.ROCKET, GC.WeaponType.MISSILE:
+		3, 9:
 			bullet_color = Color(0.9, 0.5, 0.1) if is_player else Color(1, 0.35, 0.15)
 			size_scale = 1.8
-		GC.WeaponType.FLAK:
+		7:
 			bullet_color = Color(0.8, 0.75, 0.6) if is_player else Color(0.95, 0.6, 0.3)
 			size_scale = 0.6
-		GC.WeaponType.RAIL_CANNON:
+		11:  # RAIL_CANNON
 			bullet_color = Color(0.5, 0.55, 1) if is_player else Color(1, 0.25, 0.45)
 			size_scale = 1.85
 		_:
@@ -216,7 +216,7 @@ func _apply_visual() -> void:
 		_beam_line.visible = use_beam
 		if use_beam:
 			_beam_line.default_color = beam_color
-			_beam_line.width = 3.0 if weapon_type == GC.WeaponType.SNIPER else 4.5
+			_beam_line.width = 3.0 if weapon_type == 6 else 4.5
 
 
 func _apply_tex_sprite_visual(is_player: bool) -> void:
@@ -265,7 +265,7 @@ func _process(delta: float) -> void:
 		#endregion
 	# 目标死亡时：非导引弹直接消失，导引类仍按最后方向飞行
 	if target == null or not is_instance_valid(target):
-		if weapon_type in [GC.WeaponType.MISSILE, GC.WeaponType.ROCKET]:
+		if weapon_type in [9, 3]:
 			# 继续沿当前方向飞一段距离
 			global_position += _direction * speed * delta
 		else:
@@ -273,7 +273,7 @@ func _process(delta: float) -> void:
 			return
 	else:
 		# 激光/狙击等保持精准指向目标，其他武器略带跟踪
-		if weapon_type in [GC.WeaponType.LASER, GC.WeaponType.SNIPER, GC.WeaponType.MISSILE]:
+		if weapon_type in [8, 6, 9]:
 			_direction = (target.global_position - global_position).normalized()
 		else:
 			var desired := (target.global_position - global_position).normalized()
@@ -481,7 +481,7 @@ func reset_pool_object() -> void:
 	target = null
 	shooter_is_player = true
 	max_distance = 1600.0
-	weapon_type = GC.WeaponType.SMG
+	weapon_type = 0
 	shooter = null
 	shooter_stats = null
 	forced_miss = false

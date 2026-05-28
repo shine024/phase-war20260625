@@ -185,9 +185,9 @@ func get_statistics() -> Dictionary:
 		stats["total_cards"] += 1
 		stats["empty_slots"] -= 1
 		match card.card_type:
-			GC.CardType.PLATFORM:
+			GC.CardType.COMBAT_UNIT:
 				stats["platform_cards"] += 1
-			GC.CardType.WEAPON:
+			GC.CardType.COMBAT_UNIT:
 				# 武器概念下线后，将旧武器卡计入战斗卡
 				stats["platform_cards"] += 1
 			GC.CardType.ENERGY:

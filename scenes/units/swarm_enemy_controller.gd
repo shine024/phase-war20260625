@@ -271,7 +271,7 @@ func _fire_from_slot(s: Node2D) -> void:
 	_fallthrough_bullet(s, wt, dmg_out, miss)
 
 func _should_use_projectile_batch(wt: int) -> bool:
-	return wt in [GC.WeaponType.SMG, GC.WeaponType.PISTOL, GC.WeaponType.RIFLE, GC.WeaponType.MG]
+	return wt in [0, 4, 1, 2]  # SMG, PISTOL, RIFLE, MG
 
 func _fallthrough_bullet(s: Node2D, wt: int, p_damage: float = -1.0, p_miss: bool = false) -> void:
 	const BulletScene = preload("res://scenes/units/bullet.tscn")

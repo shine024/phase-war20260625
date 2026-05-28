@@ -48,7 +48,8 @@ static func get_all_new_game_starter_law_ids() -> Array[String]:
 	out.append_array(NEW_GAME_STARTER_PASSIVE_LAW_IDS)
 	return out
 
-# 平台类型（一战载具 + 高达风格，12 种）
+# @deprecated 旧平台类型枚举，仅供存档兼容和旧字段 platform_type 的映射。
+# 新代码应使用 combat_kind（0=轻装, 1=装甲, 2=支援, 3=空中）。
 enum PlatformType {
 	HOUND,    # 威克斯装甲侦察车
 	GUARD,    # 雷诺装甲护卫车
@@ -65,8 +66,27 @@ enum PlatformType {
 	COMMAND   # 指挥车（全场光环，不攻击）
 }
 
-# 武器类型（一战武器 + 高达风格，10 种 + 特殊 1 种）
+# 武器类型枚举（基于攻击方式）
+# v3：替换旧的10种武器类型枚举，改为按攻击方式分类
+# 旧枚举(SMG/RIFLE/MG/ROCKET等)标记为@deprecated，仅供存档兼容
 enum WeaponType {
+	DIRECT = 0,   # 直射：坦克炮、步枪、机枪、反坦克炮，攻击最近敌人，有射程衰减
+	INDIRECT = 1, # 曲射：迫击炮、榴弹炮、火箭炮，全图攻击被克制类型，无衰减
+	AERIAL = 2    # 空射：战斗机、攻击机、无人机，全图攻击，可被防空拦截
+}
+
+# 战斗定位枚举（单位类型）
+# v3：替换旧的PlatformType枚举，改为按战斗类型分类
+enum CombatKind {
+	LIGHT = 0,   # 轻装（步兵、侦察车）
+	ARMOR = 1,   # 装甲（坦克、机甲）
+	SUPPORT = 2, # 支援（火炮、防空）
+	AIR = 3      # 空中（战斗机、攻击机、无人机）
+}
+
+# 旧武器类型枚举（一战武器 + 高达风格）
+# @deprecated 仅供存档兼容，新代码应使用新的 WeaponType
+enum WeaponTypeLegacy {
 	SMG,      # MP18冲锋枪
 	RIFLE,    # 李-恩菲尔德步枪
 	MG,       # 马克沁机枪
@@ -82,15 +102,15 @@ enum WeaponType {
 }
 
 # 卡片类型
-# 显式数值：保持 COMBAT_UNIT/ENERGY/LAW 为 0~2，与既有蓝图/存档一致；3~5 为拆分式战斗卡（数据与 UI 仍大量使用）。
-# v3：新内容优先 COMBAT_UNIT；PLATFORM/WEAPON/COMBINED 渐进弃用策略见 docs/BATTLE_CARD_V3_SCHEMA.md §2。
+# v3：只有三种卡 — 战斗卡(0)、能量卡(1)、法则卡(2)
+# 3~5 为旧类型，保留枚举值以保证存档兼容，新代码不应使用
 enum CardType {
-	COMBAT_UNIT = 0, ## 战斗单位卡（蓝图等：底盘+武器合一）
-	ENERGY = 1,
-	LAW = 2, ## 法则卡
-	PLATFORM = 3, ## 平台卡（独立平台资源）
-	WEAPON = 4, ## 武器卡
-	COMBINED = 5, ## 合成卡（多武器/来源追踪）
+	COMBAT_UNIT = 0, ## 战斗卡（敌人卡，缴获后可部署）
+	ENERGY = 1,      ## 能量卡
+	LAW = 2,         ## 法则卡
+	PLATFORM = 3,    ## @deprecated 旧平台卡，仅供存档迁移
+	WEAPON = 4,      ## @deprecated 旧武器卡，仅供存档迁移
+	COMBINED = 5,    ## @deprecated 旧合成卡，仅供存档迁移
 }
 
 # 时代枚举（统一游戏中的时代定义）
@@ -148,6 +168,14 @@ const RealWorldUnitLabels = preload("res://data/real_world_unit_labels.gd")
 static func get_weapon_type_name(weapon_type: int) -> String:
 	return RealWorldUnitLabels.weapon_kind_long(weapon_type)
 
+## 新武器类型中文名称映射
+static func get_weapon_type_new_name(weapon_type: int) -> String:
+	match weapon_type:
+		WeaponType.DIRECT: return "直射"
+		WeaponType.INDIRECT: return "曲射"
+		WeaponType.AERIAL: return "空射"
+		_: return "未知"
+
 ## 武器类型简短名称
 static func get_weapon_type_short(weapon_type: int) -> String:
 	return RealWorldUnitLabels.weapon_kind_short(weapon_type)
@@ -156,17 +184,18 @@ static func get_weapon_type_short(weapon_type: int) -> String:
 static func get_card_type_name(card_type: int) -> String:
 	match card_type:
 		CardType.COMBAT_UNIT:
-			return "战斗单位卡"
-		CardType.PLATFORM:
-			return "平台卡"
-		CardType.WEAPON:
-			return "武器卡"
-		CardType.COMBINED:
-			return "合成卡"
+			return "战斗卡"
 		CardType.ENERGY:
 			return "能量卡"
 		CardType.LAW:
 			return "法则卡"
+		# 旧类型（兼容）
+		CardType.PLATFORM:
+			return "战斗卡"
+		CardType.WEAPON:
+			return "战斗卡"
+		CardType.COMBINED:
+			return "战斗卡"
 		_:
 			return "未知卡片"
 

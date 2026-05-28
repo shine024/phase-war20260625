@@ -41,11 +41,9 @@ var _icon_cache: Dictionary = {}
 
 # 各卡片类型对应的顶部色条颜色
 const TYPE_BAR_COLORS := {
-	GC.CardType.PLATFORM: Color(0.1, 0.5, 0.9, 1.0),
-	GC.CardType.WEAPON:   Color(0.85, 0.45, 0.1, 1.0),
-	GC.CardType.COMBINED: Color(0.55, 0.25, 0.9, 1.0),
-	GC.CardType.ENERGY:   Color(0.15, 0.75, 0.35, 1.0),
-	GC.CardType.LAW:      Color(0.85, 0.2, 0.5, 1.0)  # 紫红色
+	GC.CardType.COMBAT_UNIT: Color(0.1, 0.5, 0.9, 1.0),
+	GC.CardType.ENERGY:      Color(0.15, 0.75, 0.35, 1.0),
+	GC.CardType.LAW:         Color(0.85, 0.2, 0.5, 1.0),
 }
 
 # 空槽样式（懒加载缓存）
@@ -360,14 +358,11 @@ func set_card(c: CardResource) -> void:
 	# ── 承载 / 重量 ───────────────────────────────────────────
 	if weight_label:
 		match c.card_type:
-			GC.CardType.PLATFORM:
+			GC.CardType.COMBAT_UNIT:
 				if c.weight_capacity > 0:
 					weight_label.text = "%d" % int(c.weight_capacity)
 					weight_label.add_theme_color_override("font_color", Color(0.5, 0.85, 1.0, 1))
-				else:
-					weight_label.text = ""
-			GC.CardType.WEAPON:
-				if c.weight > 0:
+				elif c.weight > 0:
 					weight_label.text = "%d" % int(c.weight)
 					weight_label.add_theme_color_override("font_color", Color(1.0, 0.75, 0.35, 1))
 				else:
@@ -401,7 +396,7 @@ func set_card(c: CardResource) -> void:
 
 	# 设置内置 tooltip 显示完整信息
 	if ENABLE_CARD_HOVER_TOOLTIP_TEXT:
-		if c.card_type == GC.CardType.PLATFORM:
+		if c.card_type == GC.CardType.COMBAT_UNIT:
 			tooltip_text = "[%s] %s\n%s\n%s｜武器槽：%d" % [c.rarity, c.display_name, c.type_line, c.summary_line, max(c.max_weapons, 1)]
 		else:
 			tooltip_text = "[%s] %s\n%s\n%s" % [c.rarity, c.display_name, c.type_line, c.summary_line]
@@ -524,12 +519,8 @@ func _apply_card_border_flat(c: CardResource) -> void:
 	panel_style.border_width_right = 1
 	panel_style.border_width_bottom = 1
 	match c.card_type:
-		GC.CardType.PLATFORM:
+		GC.CardType.COMBAT_UNIT:
 			panel_style.border_color = Color(0.15, 0.55, 0.9, 0.55)
-		GC.CardType.WEAPON:
-			panel_style.border_color = Color(0.85, 0.45, 0.15, 0.55)
-		GC.CardType.COMBINED:
-			panel_style.border_color = Color(0.6, 0.3, 0.95, 0.65)
 		GC.CardType.ENERGY:
 			panel_style.border_color = Color(0.2, 0.8, 0.4, 0.55)
 		GC.CardType.LAW:
@@ -900,11 +891,7 @@ func _mtg_intel_body_text(c: CardResource) -> String:
 	var combat_tip: String = BackpackCombatPreview.build_line(c)
 	var use_combat: bool = (
 		not combat_tip.is_empty()
-		and (
-			c.card_type == GC.CardType.PLATFORM
-			or c.card_type == GC.CardType.WEAPON
-			or c.card_type == GC.CardType.COMBINED
-		)
+		and c.card_type == GC.CardType.COMBAT_UNIT
 	)
 	if use_combat:
 		parts.append(combat_tip)
@@ -1078,11 +1065,7 @@ func _set_mtg_minimal_card_view(c: CardResource, type_bar, name_label, cost_labe
 	var combat_tip: String = BackpackCombatPreview.build_line(c)
 	var use_combat_only: bool = (
 		not combat_tip.is_empty()
-		and (
-			c.card_type == GC.CardType.PLATFORM
-			or c.card_type == GC.CardType.WEAPON
-			or c.card_type == GC.CardType.COMBINED
-		)
+		and c.card_type == GC.CardType.COMBAT_UNIT
 	)
 	if use_combat_only:
 		tip_parts.append(combat_tip)

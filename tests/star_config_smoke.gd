@@ -31,14 +31,15 @@ func _initialize() -> void:
 		push_error("common max mod times expected 3")
 		code = 1
 	# 时代：平台 HP ×(1+0.15×era)，步枪伤害 ×(1+0.25×era)（era=1 时守卫 100→115，步枪 8→10）
-	var st_e1: UnitStats = UnitStatsTable.build_multi_stats(GC.PlatformType.GUARD, [GC.WeaponType.RIFLE], 1)
+	var st_e1: UnitStats = UnitStatsTable.build_multi_stats(1, [1], 1)  # GUARD, RIFLE
 	if not is_equal_approx(st_e1.max_hp, 115.0):
 		push_error("era1 guard hp expected 115 got %s" % str(st_e1.max_hp))
 		code = 1
-	if not is_equal_approx(st_e1.attack_damage, 15.0):
-		push_error("era1 rifle damage expected 15 got %s" % str(st_e1.attack_damage))
+	# 新的多维战斗系统：使用 attack_light 字段
+	if not is_equal_approx(st_e1.attack_light, 10.0):
+		push_error("era1 rifle damage expected 10 got %s" % str(st_e1.attack_light))
 		code = 1
-	var st_e0: UnitStats = UnitStatsTable.build_multi_stats(GC.PlatformType.GUARD, [GC.WeaponType.RIFLE], 0)
+	var st_e0: UnitStats = UnitStatsTable.build_multi_stats(1, [1], 0)  # GUARD, RIFLE
 	if not is_equal_approx(st_e0.max_hp, 100.0):
 		push_error("era0 guard hp expected 100 got %s" % str(st_e0.max_hp))
 		code = 1

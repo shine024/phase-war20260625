@@ -115,6 +115,8 @@ func _refresh_all() -> void:
 
 
 func _format_card_slot_tooltip(color: String, card: CardResource) -> String:
+	if card == null:
+		return ""
 	var display_name: String = "能量卡" if card.card_type == GC.CardType.ENERGY else String(card.display_name)
 	var cost_text: String = "%d⚡" % int(card.energy_cost)
 	var detail_lines: Array[String] = []
@@ -214,8 +216,8 @@ func _update_slot_panel(panel: Control, entry: Dictionary) -> void:
 		sb.border_color = _slot_border(color)
 	if _slot_name_label(panel) == null:
 		return
-	# 处理 DeployIndicator：仅在 PLATFORM/COMBINED 时存在
-	var needs_indicator: bool = card != null and (card.card_type == GC.CardType.PLATFORM or card.card_type == GC.CardType.COMBINED)
+	# 处理 DeployIndicator：仅在战斗卡时存在
+	var needs_indicator: bool = card != null and card.card_type == GC.CardType.COMBAT_UNIT
 	var indicator: Polygon2D = panel.get_node_or_null("DeployIndicator") as Polygon2D
 	if needs_indicator and indicator == null:
 		indicator = Polygon2D.new()
@@ -286,9 +288,9 @@ func _sync_slot_rank_badge(panel: Control, card: CardResource) -> void:
 	if panel == null:
 		return
 	if card == null or (
-		card.card_type != GC.CardType.PLATFORM
-		and card.card_type != GC.CardType.WEAPON
-		and card.card_type != GC.CardType.COMBINED
+		card.card_type != GC.CardType.COMBAT_UNIT
+		and card.card_type != GC.CardType.COMBAT_UNIT
+		and card.card_type != GC.CardType.COMBAT_UNIT
 	):
 		var old: Node = panel.get_node_or_null("RankCornerBadge")
 		if old != null:
@@ -319,6 +321,8 @@ func _apply_slot_bottom_text(panel: Control, name_text: String, cost_text: Strin
 
 
 func _apply_slot_card_labels(panel: Control, card: CardResource) -> void:
+	if card == null:
+		return
 	var display_name: String = "能量" if card.card_type == GC.CardType.ENERGY else String(card.display_name)
 	if display_name.length() > 6:
 		display_name = display_name.substr(0, 6)
@@ -432,7 +436,7 @@ func _build_slot_panel(entry: Dictionary) -> PanelContainer:
 		panel.set_meta("law_kind", "")
 		_apply_slot_card_labels(panel, card)
 		panel.tooltip_text = _format_card_slot_tooltip(color, card)
-		if card.card_type == GC.CardType.PLATFORM or card.card_type == GC.CardType.COMBINED:
+		if card.card_type == GC.CardType.COMBAT_UNIT:
 			var indicator := Polygon2D.new()
 			indicator.name = "DeployIndicator"
 			indicator.polygon = PackedVector2Array([
@@ -550,7 +554,7 @@ func _on_slot_gui_input(ev: InputEvent, panel: Control) -> void:
 			var in_battle: bool = BattleManager != null and "battle_active" in BattleManager and BattleManager.battle_active
 			var can_deploy: bool = (
 				in_battle
-				and (m_card_type == GC.CardType.PLATFORM or m_card_type == GC.CardType.COMBINED)
+				and (m_card_type == GC.CardType.COMBAT_UNIT or m_card_type == GC.CardType.COMBAT_UNIT)
 			)
 			if can_deploy and SignalBus:
 				BattleInputState.pending_cast_law_id = ""
@@ -659,7 +663,7 @@ func _can_drop_data(at_position: Vector2, data: Variant) -> bool:
 		return false
 	var color: String = String(target.get("color", ""))
 	if color == "green":
-		return card.card_type == GC.CardType.PLATFORM or card.card_type == GC.CardType.WEAPON or card.card_type == GC.CardType.COMBINED
+		return card.card_type == GC.CardType.COMBAT_UNIT
 	if color == "yellow":
 		return card.card_type == GC.CardType.ENERGY
 	if color == "red" or color == "blue":

@@ -251,9 +251,9 @@ func _get_item_details_text(item: Variant) -> String:
 
 			# 添加类型信息
 			match card.card_type:
-				GC.CardType.PLATFORM:
+				GC.CardType.COMBAT_UNIT:
 					type_parts.append("载具卡")
-				GC.CardType.WEAPON:
+				GC.CardType.COMBAT_UNIT:
 					type_parts.append("武器卡")
 				GC.CardType.ENERGY:
 					type_parts.append("能量卡")
@@ -275,12 +275,12 @@ func _get_item_details_text(item: Variant) -> String:
 			# 第二行：基础数值属性
 			var base_attrs: Array[String] = []
 			match card.card_type:
-				GC.CardType.PLATFORM:
+				GC.CardType.COMBAT_UNIT:
 					if card.weight_capacity > 0:
 						base_attrs.append("承载 %d 重量" % card.weight_capacity)
 					if card.max_weapons > 0:
 						base_attrs.append("武器槽 %d" % card.max_weapons)
-				GC.CardType.WEAPON:
+				GC.CardType.COMBAT_UNIT:
 					if card.weight > 0:
 						base_attrs.append("重量 %d" % card.weight)
 				GC.CardType.ENERGY:
@@ -288,7 +288,7 @@ func _get_item_details_text(item: Variant) -> String:
 						base_attrs.append("能量消耗 %d" % card.energy_cost)
 					if card.energy_grant > 0:
 						base_attrs.append("能量提供 %.0f⚡" % card.energy_grant)
-			GC.CardType.COMBINED:
+			GC.CardType.COMBAT_UNIT:
 				if card.weight_capacity > 0:
 					base_attrs.append("承载 %d 重量" % card.weight_capacity)
 			GC.CardType.LAW:

@@ -312,7 +312,7 @@ func _try_equip_card(card: CardResource) -> bool:
 	var green_start: int = red_count + blue_count
 
 	match card.card_type:
-		GC.CardType.PLATFORM, GC.CardType.WEAPON, GC.CardType.COMBINED:
+		GC.CardType.COMBAT_UNIT, GC.CardType.COMBAT_UNIT, GC.CardType.COMBAT_UNIT:
 			if green_count <= 0:
 				push_warning("[BackpackPresenter] 当前相位仪没有平台/武器槽位")
 				return false

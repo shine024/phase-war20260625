@@ -17,9 +17,9 @@ var _original_modulate: Color
 
 # 各卡片类型对应的顶部色条颜色
 const TYPE_BAR_COLORS := {
-	GC.CardType.PLATFORM: Color(0.1, 0.5, 0.9, 1.0),
-	GC.CardType.WEAPON:   Color(0.85, 0.45, 0.1, 1.0),
-	GC.CardType.COMBINED: Color(0.55, 0.25, 0.9, 1.0),
+	GC.CardType.COMBAT_UNIT: Color(0.1, 0.5, 0.9, 1.0),
+	GC.CardType.COMBAT_UNIT:   Color(0.85, 0.45, 0.1, 1.0),
+	GC.CardType.COMBAT_UNIT: Color(0.55, 0.25, 0.9, 1.0),
 	GC.CardType.ENERGY:   Color(0.15, 0.75, 0.35, 1.0),
 }
 

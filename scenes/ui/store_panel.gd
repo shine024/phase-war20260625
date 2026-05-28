@@ -205,9 +205,9 @@ func _refresh_items() -> void:
 		if enemy_bp:
 			if not String(enemy_bp.display_name).is_empty():
 				card_name = String(enemy_bp.display_name)
-			elif enemy_bp.card_type == GC.CardType.PLATFORM:
+			elif enemy_bp.card_type == GC.CardType.COMBAT_UNIT:
 				card_name = DefaultCards.get_platform_display_name(int(enemy_bp.platform_type))
-			elif enemy_bp.card_type == GC.CardType.WEAPON:
+			elif enemy_bp.card_type == GC.CardType.COMBAT_UNIT:
 				card_name = DefaultCards.get_weapon_display_name(int(enemy_bp.weapon_type))
 		else:
 			card = DefaultCards.get_card_by_id(card_id)
@@ -224,7 +224,7 @@ func _refresh_items() -> void:
 				card_name = String(LEGACY_BLUEPRINT_DISPLAY_NAMES[card_id])
 		# 武器概念下线：商店不再展示独立武器卡
 		var inspect_card = enemy_bp if enemy_bp != null else card
-		if inspect_card != null and int(inspect_card.card_type) == GC.CardType.WEAPON:
+		if inspect_card != null and int(inspect_card.card_type) == GC.CardType.COMBAT_UNIT:
 			continue
 
 		# 高等级商品名称打码
@@ -290,10 +290,10 @@ func _build_store_item_row(
 		var info_label: Label = row_panel.get_node("RowMargin/RowHBox/InfoVBox/InfoLabel")
 		var info_parts: Array[String] = []
 		match info_card.card_type:
-			GC.CardType.PLATFORM: info_parts.append("战斗卡")
-			GC.CardType.WEAPON:   info_parts.append("战斗卡")
+			GC.CardType.COMBAT_UNIT: info_parts.append("战斗卡")
+			GC.CardType.COMBAT_UNIT:   info_parts.append("战斗卡")
 			GC.CardType.ENERGY:   info_parts.append("能量卡")
-			GC.CardType.COMBINED: info_parts.append("战斗卡")
+			GC.CardType.COMBAT_UNIT: info_parts.append("战斗卡")
 			GC.CardType.LAW:      info_parts.append("法则卡")
 		var rarity_text := ""
 		match info_card.rarity:
@@ -313,12 +313,12 @@ func _build_store_item_row(
 		var base_attrs_label: Label = row_panel.get_node("RowMargin/RowHBox/InfoVBox/BaseAttrsLabel")
 		var base_attrs_parts: Array[String] = []
 		match info_card.card_type:
-			GC.CardType.PLATFORM:
+			GC.CardType.COMBAT_UNIT:
 				if info_card.weight_capacity > 0:
 					base_attrs_parts.append("承载 %d 重量" % info_card.weight_capacity)
 				if info_card.max_weapons > 0:
 					base_attrs_parts.append("武器槽 %d" % info_card.max_weapons)
-			GC.CardType.WEAPON:
+			GC.CardType.COMBAT_UNIT:
 				if info_card.weight > 0:
 					base_attrs_parts.append("重量 %d" % info_card.weight)
 			GC.CardType.ENERGY:
@@ -326,7 +326,7 @@ func _build_store_item_row(
 					base_attrs_parts.append("能量消耗 %d" % info_card.energy_cost)
 				if info_card.energy_grant > 0:
 					base_attrs_parts.append("能量提供 %.0f⚡" % info_card.energy_grant)
-			GC.CardType.COMBINED:
+			GC.CardType.COMBAT_UNIT:
 				if info_card.weight_capacity > 0:
 					base_attrs_parts.append("承载 %d 重量" % info_card.weight_capacity)
 			GC.CardType.LAW:

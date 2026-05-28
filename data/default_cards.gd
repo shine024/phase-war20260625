@@ -1,36 +1,16 @@
 extends RefCounted
-class_name DefaultCards
-## 默认背包卡片数据（用于演示）
+## 默认战斗卡数据（v3：100单位完整时代系统）
 
 const GC = preload("res://resources/game_constants.gd")
-const PhaseLaws = preload("res://data/phase_laws.gd")
-const EnemyBlueprints = preload("res://data/enemy_blueprints.gd")
-const CapturedUnitCards = preload("res://data/captured_unit_cards.gd")
-const EnemyPhaseEquipment = preload("res://data/enemy_phase_equipment.gd")
 const RealWorldUnitLabels = preload("res://data/real_world_unit_labels.gd")
-const UnitStatsTable = preload("res://resources/unit_stats_table.gd")
+const EnemyBlueprints = preload("res://data/enemy_blueprints.gd")
+const PhaseLaws = preload("res://data/phase_laws.gd")
 
-## 旧版法则卡 id → PhaseLaws.id（存档/商店兼容）
-const LEGACY_LAW_CARD_ID_MAP: Dictionary = {
-	"law_steel_passive_1": "steel_phase_armor",
-	"law_steel_passive_2": "steel_quick_repair",
-	"law_steel_active": "steel_bastion_wall",
-	"law_flame_passive_1": "flame_heat_overload",
-	"law_flame_passive_2": "flame_afterburn",
-	"law_flame_active": "flame_front_bombard",
-	"law_thunder_passive_1": "thunder_arc_beacon",
-	"law_thunder_passive_2": "thunder_emp_storm",
-	"law_thunder_active": "thunder_emp_storm",
-	"law_void_passive_1": "void_entropy_lens",
-	"law_void_passive_2": "void_time_ripple",
-	"law_void_active": "void_time_ripple",
-}
-
-## 静态缓存：避免每次 get_card_by_id 都重新 create_all() 68 张卡
+## 静态缓存：避免每次 get_card_by_id 都重新创建
 static var _all_cards_cache: Array = []
 static var _id_lookup_cache: Dictionary = {}
 
-## 确保 create_all 缓存已构建（整个游戏会话只构建一次）
+## 确保缓存已构建
 static func _ensure_card_cache() -> void:
 	if not _all_cards_cache.is_empty():
 		return
@@ -38,55 +18,132 @@ static func _ensure_card_cache() -> void:
 	for c in _all_cards_cache:
 		if c is CardResource:
 			_id_lookup_cache[c.card_id] = c
-	CapturedUnitCards.register_into_default_cards_cache()
 
 static func create_all() -> Array:
 	var list: Array = []
+	
+	# ==================== 一战单位（20个）====================
+	list.append(_unit("ww1_mp18", "MP18突击班", 0, 0, 15, 1.5, 4, 2, 10, 35, 0, 0, 8, 5, 3))
+	list.append(_unit("ww1_mauser", "毛瑟步枪班", 0, 0, 15, 0.67, 3, 3, 10, 30, 0, 0, 8, 5, 3))
+	list.append(_unit("ww1_enfield", "李恩菲尔德班", 0, 0, 15, 0.83, 3, 3, 10, 30, 0, 0, 8, 5, 3))
+	list.append(_unit("ww1_mg08", "MG08机枪巢", 0, 2, 23, 2.0, 0, 4, 15, 45, 0, 25, 12, 8, 10))
+	list.append(_unit("ww1_vickers", "维克斯机枪巢", 0, 2, 23, 1.8, 0, 4, 15, 40, 0, 22, 12, 8, 10))
+	list.append(_unit("ww1_m81", "81mm迫击炮组", 0, 2, 23, 0.5, 1, 99, 12, 40, 20, 0, 6, 5, 3))
+	list.append(_unit("ww1_m76", "76mm迫击炮组", 0, 2, 23, 0.5, 1, 99, 12, 38, 18, 0, 6, 5, 3))
+	list.append(_unit("ww1_storm", "暴风突击队", 0, 0, 20, 1.5, 5, 2, 12, 40, 5, 0, 10, 6, 4))
+	list.append(_unit("ww1_rolls", "罗尔斯装甲车", 0, 1, 45, 1.0, 5, 3, 14, 25, 35, 5, 18, 22, 10))
+	list.append(_unit("ww1_lanchest", "兰彻斯特装甲车", 0, 1, 45, 1.0, 5, 3, 14, 22, 32, 8, 18, 22, 10))
+	list.append(_unit("ww1_ft17", "FT-17轻型坦克", 0, 1, 45, 0.83, 3, 3, 16, 28, 40, 0, 20, 25, 8))
+	list.append(_unit("ww1_saint", "圣沙蒙坦克", 0, 1, 50, 0.67, 2, 4, 20, 20, 50, 0, 25, 35, 8))
+	list.append(_unit("ww1_a7v", "A7V重型坦克", 0, 1, 50, 0.5, 2, 4, 20, 18, 48, 0, 28, 38, 8))
+	list.append(_unit("ww1_mark4", "马克IV型坦克", 0, 1, 48, 0.67, 2, 3, 18, 22, 45, 0, 22, 30, 8))
+	list.append(_unit("ww1_77mm", "77mm野战炮", 0, 2, 23, 0.33, 0, 99, 14, 45, 30, 0, 6, 8, 4))
+	list.append(_unit("ww1_105mm", "105mm榴弹炮", 0, 2, 23, 0.25, 0, 99, 16, 50, 35, 0, 6, 8, 4))
+	list.append(_unit("ww1_37mm", "37mm高射炮", 0, 2, 23, 1.5, 0, 5, 14, 10, 8, 50, 8, 8, 18))
+	list.append(_unit("ww1_cavalry", "骑兵斥候", 0, 0, 15, 1.0, 6, 1, 8, 20, 0, 0, 6, 4, 2))
+	list.append(_unit("ww1_flame", "火焰喷射兵", 0, 0, 18, 1.0, 3, 1, 12, 45, 15, 0, 8, 5, 3))
+	list.append(_unit("ww1_engineer", "工兵班", 0, 2, 20, 1.0, 3, 2, 12, 30, 25, 0, 10, 8, 5))
+	
+	# ==================== 二战单位（20个）====================
+	list.append(_unit("ww2_thompson", "汤普森班", 1, 0, 60, 1.5, 4, 2, 10, 55, 0, 0, 15, 10, 6))
+	list.append(_unit("ww2_garand", "加兰德班", 1, 0, 60, 0.83, 3, 3, 10, 50, 0, 0, 15, 10, 6))
+	list.append(_unit("ww2_mp40", "MP40班", 1, 0, 60, 1.5, 4, 2, 10, 52, 0, 0, 15, 10, 6))
+	list.append(_unit("ww2_ppsh", "波波沙班", 1, 0, 60, 1.8, 4, 2, 10, 54, 0, 0, 15, 10, 6))
+	list.append(_unit("ww2_mg42", "MG42机枪组", 1, 2, 90, 2.5, 0, 4, 15, 70, 0, 45, 20, 15, 18))
+	list.append(_unit("ww2_browning", "勃朗宁机枪组", 1, 2, 90, 2.0, 0, 4, 15, 65, 0, 40, 20, 15, 18))
+	list.append(_unit("ww2_panzerschrek", "铁拳反坦克组", 1, 0, 65, 0.33, 3, 2, 12, 15, 90, 0, 12, 10, 5))
+	list.append(_unit("ww2_bazooka", "巴祖卡组", 1, 0, 65, 0.33, 3, 2, 12, 12, 85, 0, 12, 10, 5))
+	list.append(_unit("ww2_m81 mortar", "81mm迫击炮", 1, 2, 90, 0.5, 1, 99, 12, 55, 30, 0, 12, 10, 6))
+	list.append(_unit("ww2_m120 mortar", "120mm重迫击炮", 1, 2, 90, 0.33, 1, 99, 14, 65, 40, 0, 12, 10, 6))
+	list.append(_unit("ww2_pz3", "三号坦克", 1, 1, 180, 0.83, 3, 3, 16, 40, 80, 0, 40, 55, 15))
+	list.append(_unit("ww2_pz4", "四号坦克", 1, 1, 180, 0.83, 3, 3, 18, 45, 90, 0, 42, 60, 15))
+	list.append(_unit("ww2_panther", "黑豹坦克", 1, 1, 180, 0.83, 3, 4, 18, 45, 110, 0, 45, 70, 15))
+	list.append(_unit("ww2_tiger", "虎式坦克", 1, 1, 180, 0.67, 2, 4, 22, 35, 130, 0, 55, 80, 18))
+	list.append(_unit("ww2_kingtiger", "虎王坦克", 1, 1, 180, 0.5, 1, 4, 25, 30, 150, 0, 60, 85, 18))
+	list.append(_unit("ww2_t34_76", "T-34/76坦克", 1, 1, 180, 0.83, 4, 3, 16, 45, 85, 0, 40, 60, 15))
+	list.append(_unit("ww2_t34_85", "T-34/85坦克", 1, 1, 180, 0.83, 4, 3, 18, 45, 100, 0, 42, 65, 15))
+	list.append(_unit("ww2_is2", "IS-2重型坦克", 1, 1, 180, 0.5, 2, 4, 22, 35, 135, 0, 55, 80, 18))
+	list.append(_unit("ww2_sherman", "M4谢尔曼", 1, 1, 180, 0.83, 4, 3, 16, 45, 80, 0, 40, 55, 15))
+	list.append(_unit("ww2_hellcat", "M18地狱猫", 1, 1, 170, 0.83, 5, 3, 16, 30, 95, 0, 25, 40, 12))
+	
+	# ==================== 冷战单位（20个）====================
+	list.append(_unit("cold_ak47", "AK-47步兵班", 2, 0, 160, 1.5, 4, 2, 10, 90, 0, 0, 30, 20, 12))
+	list.append(_unit("cold_m14", "M14步兵班", 2, 0, 160, 0.83, 4, 3, 10, 85, 0, 0, 30, 20, 12))
+	list.append(_unit("cold_m60 mg", "M60机枪班", 2, 0, 170, 2.0, 3, 4, 12, 110, 0, 60, 32, 22, 15))
+	list.append(_unit("cold_rpk", "RPK机枪班", 2, 0, 170, 1.8, 3, 3, 12, 105, 0, 55, 32, 22, 15))
+	list.append(_unit("cold_btr60", "BTR-60装甲车", 2, 1, 480, 1.0, 4, 3, 14, 60, 70, 40, 50, 60, 35))
+	list.append(_unit("cold_m113", "M113装甲车", 2, 2, 240, 0.83, 4, 2, 12, 40, 30, 20, 35, 45, 25))
+	list.append(_unit("cold_bmp1", "BMP-1步战车", 2, 1, 480, 0.83, 4, 99, 16, 70, 120, 30, 55, 70, 30))
+	list.append(_unit("cold_bradley", "M2布雷德利", 2, 1, 480, 0.83, 4, 99, 18, 75, 130, 35, 55, 75, 30))
+	list.append(_unit("cold_t55", "T-55坦克", 2, 1, 480, 0.67, 3, 3, 16, 60, 140, 0, 60, 85, 25))
+	list.append(_unit("cold_t62", "T-62坦克", 2, 1, 480, 0.67, 3, 4, 18, 60, 155, 0, 60, 90, 25))
+	list.append(_unit("cold_t72", "T-72坦克", 2, 1, 480, 0.67, 3, 4, 20, 55, 180, 0, 65, 100, 30))
+	list.append(_unit("cold_m60t", "M60坦克", 2, 1, 480, 0.67, 3, 3, 18, 55, 160, 0, 60, 95, 30))
+	list.append(_unit("cold_m1", "M1主战坦克", 2, 1, 480, 0.67, 3, 4, 20, 55, 175, 0, 65, 100, 30))
+	list.append(_unit("cold_leo1", "豹1坦克", 2, 1, 480, 0.83, 4, 3, 16, 55, 150, 0, 50, 80, 25))
+	list.append(_unit("cold_chieftain", "酋长坦克", 2, 1, 480, 0.5, 2, 4, 20, 50, 165, 0, 65, 100, 25))
+	list.append(_unit("cold_zsu23", "ZSU-23-4自行高炮", 2, 2, 240, 2.5, 3, 5, 16, 30, 20, 150, 25, 30, 50))
+	list.append(_unit("cold_sam7", "萨姆-7防空组", 2, 0, 165, 0.33, 3, 99, 14, 5, 5, 120, 15, 12, 20))
+	list.append(_unit("cold_mig21", "米格-21战机", 2, 3, 400, 1.0, 6, 99, 18, 60, 50, 160, 15, 20, 40))
+	list.append(_unit("cold_f4", "F-4鬼怪战机", 2, 3, 400, 1.0, 6, 99, 20, 80, 70, 180, 15, 20, 40))
+	list.append(_unit("cold_spetsnaz", "阿尔法特种部队", 2, 0, 180, 1.5, 5, 2, 14, 100, 30, 15, 35, 25, 15))
+	
+	# ==================== 现代单位（20个）====================
+	list.append(_unit("mod_marine", "海军陆战队", 3, 0, 320, 1.5, 4, 2, 10, 140, 0, 0, 50, 35, 20))
+	list.append(_unit("mod_ranger", "游骑兵", 3, 0, 340, 1.5, 5, 2, 12, 160, 20, 10, 55, 38, 22))
+	list.append(_unit("mod_javelin", "标枪导弹兵", 3, 0, 330, 0.25, 3, 99, 14, 25, 250, 20, 30, 25, 15))
+	list.append(_unit("mod_stinger", "毒刺导弹兵", 3, 0, 320, 0.33, 3, 99, 14, 10, 10, 220, 25, 20, 25))
+	list.append(_unit("mod_technical", "武装皮卡", 3, 0, 280, 1.0, 5, 3, 8, 80, 40, 15, 25, 20, 12))
+	list.append(_unit("mod_stryker_mgs", "斯特赖克MGS", 3, 1, 900, 0.67, 4, 4, 16, 80, 220, 0, 70, 90, 30))
+	list.append(_unit("mod_stryker_m2", "斯特赖克M2", 3, 1, 880, 1.0, 4, 3, 14, 100, 120, 60, 65, 80, 40))
+	list.append(_unit("mod_hummer_tow", "悍马·陶式", 3, 0, 330, 0.25, 5, 99, 14, 20, 260, 10, 30, 25, 15))
+	list.append(_unit("mod_hummer_m2", "悍马·M2", 3, 0, 300, 1.0, 5, 3, 10, 90, 20, 40, 30, 25, 20))
+	list.append(_unit("mod_m1a1", "M1A1坦克", 3, 1, 950, 0.67, 3, 4, 20, 70, 280, 0, 90, 140, 35))
+	list.append(_unit("mod_m1a2", "M1A2艾布拉姆斯", 3, 1, 960, 0.67, 3, 4, 22, 70, 300, 0, 95, 150, 35))
+	list.append(_unit("mod_m1a2sep", "M1A2 SEP", 3, 1, 960, 0.67, 3, 4, 24, 75, 320, 0, 100, 160, 35))
+	list.append(_unit("mod_t90", "T-90坦克", 3, 1, 950, 0.67, 3, 4, 20, 80, 280, 0, 85, 135, 35))
+	list.append(_unit("mod_leo2a6", "豹2A6坦克", 3, 1, 960, 0.67, 3, 4, 22, 70, 310, 0, 90, 145, 35))
+	list.append(_unit("mod_challenger2", "挑战者2坦克", 3, 1, 950, 0.5, 2, 4, 22, 65, 290, 0, 100, 160, 35))
+	list.append(_unit("mod_ah64", "AH-64阿帕奇", 3, 3, 800, 0.67, 5, 99, 20, 160, 280, 100, 25, 35, 30))
+	list.append(_unit("mod_ah1", "AH-1眼镜蛇", 3, 3, 780, 0.67, 5, 99, 18, 140, 250, 80, 25, 35, 30))
+	list.append(_unit("mod_uh60", "UH-60黑鹰", 3, 3, 700, 0.5, 5, 99, 12, 40, 20, 30, 20, 25, 20))
+	list.append(_unit("mod_m270", "M270火箭炮", 3, 2, 480, 0.2, 1, 99, 20, 180, 120, 0, 20, 25, 15))
+	list.append(_unit("mod_m6", "自行高炮M6", 3, 2, 480, 2.0, 3, 5, 18, 40, 30, 280, 30, 35, 60))
+	
+	# ==================== 近未来单位（20个）====================
+	list.append(_unit("fut_swarm", "蜂群无人机", 4, 3, 1200, 2.0, 6, 99, 8, 100, 60, 80, 15, 15, 25))
+	list.append(_unit("fut_scout_drone", "侦察无人机", 4, 3, 1100, 0.5, 7, 99, 6, 40, 20, 30, 12, 12, 20))
+	list.append(_unit("fut_attack_drone", "攻击无人机", 4, 3, 1300, 1.0, 6, 99, 10, 150, 280, 100, 20, 25, 30))
+	list.append(_unit("fut_cyborg", "机械步兵", 4, 0, 500, 1.5, 4, 3, 12, 200, 0, 0, 80, 60, 40))
+	list.append(_unit("fut_heavy_trooper", "重装机兵", 4, 0, 520, 1.0, 3, 3, 15, 220, 30, 15, 100, 80, 50))
+	list.append(_unit("fut_scout_mech", "侦察机甲", 4, 0, 500, 1.5, 5, 3, 12, 150, 80, 40, 60, 50, 35))
+	list.append(_unit("fut_assault_mech", "突击机甲", 4, 1, 1500, 0.83, 4, 4, 18, 120, 380, 50, 100, 160, 60))
+	list.append(_unit("fut_heavy_mech", "重装机甲", 4, 1, 1580, 0.5, 2, 4, 25, 80, 500, 60, 140, 220, 70))
+	list.append(_unit("fut_hovertank", "悬浮坦克", 4, 1, 1500, 0.83, 5, 4, 22, 100, 420, 50, 80, 140, 60))
+	list.append(_unit("fut_howitzer", "悬浮自行火炮", 4, 2, 795, 0.25, 4, 99, 20, 280, 200, 0, 40, 50, 30))
+	list.append(_unit("fut_prism", "光棱坦克", 4, 1, 1550, 0.67, 3, 5, 20, 180, 350, 100, 80, 140, 80))
+	list.append(_unit("fut_aa_hover", "防空悬浮车", 4, 2, 780, 2.5, 5, 5, 16, 30, 20, 400, 30, 40, 100))
+	list.append(_unit("fut_stealth_bomber", "隐形轰炸机", 4, 3, 1400, 0.2, 6, 99, 24, 300, 350, 30, 25, 35, 40))
+	list.append(_unit("fut_space_fighter", "空天战斗机", 4, 3, 1325, 1.0, 7, 99, 22, 120, 100, 350, 30, 40, 80))
+	list.append(_unit("fut_spectre", "幽灵特工", 4, 0, 530, 1.5, 5, 3, 16, 220, 80, 50, 60, 50, 40))
+	list.append(_unit("fut_nano_drone", "纳米修复机", 4, 3, 1000, 0.5, 5, 99, 10, 0, 0, 0, 20, 30, 30))
+	list.append(_unit("fut_shield", "力场发生器", 4, 2, 750, 0.0, 0, 0, 15, 0, 0, 0, 100, 150, 120))
+	list.append(_unit("fut_colossus", "巨神机甲", 4, 1, 1590, 0.33, 1, 5, 30, 100, 550, 80, 150, 250, 80))
+	list.append(_unit("fut_stormcore", "风暴核心原型", 4, 2, 800, 0.2, 0, 99, 0, 200, 200, 200, 80, 100, 100))
+	list.append(_unit("fut_nexus", "虚空领主", 4, 1, 1590, 0.5, 2, 99, 35, 150, 480, 120, 120, 200, 100))
 
-	# ==================== 载具卡（23种，按时代分类） ====================
+	# ==================== 终极单位 ====================
+	var omega := _unit("omega_platform", "全装型机动舱", 4, 1, 9999, 0.45, 7, 3, 9, 55, 80, 0, 8, 18, 0)
+	omega.rarity = "legendary"
+	omega.type_line = "终极 — 多槽重装"
+	omega.summary_line = "移速 0.30｜耐久 240｜防御 13"
+	omega.description = "可以同时装备3张武器卡，作为整条战线的核心输出。终极单位。"
+	omega.flavor_text = "当它开火时，战场会短暂安静。"
+	omega.base_hp = 240.0
+	omega.power = 9999
+	list.append(omega)
 
-	# 一战载具（4种）
-	list.append(_platform("platform_ww1_light", "威克斯侦察车", 3, GC.PlatformType.HOUND))
-	list.append(_platform("platform_ww1_medium", "马克V型坦克", 5, GC.PlatformType.TITAN))
-	list.append(_platform("platform_ww1_fort", "要塞固定炮", 5, GC.PlatformType.FORTRESS))
-	list.append(_platform("platform_ww1_radar", "野战观测站", 5, GC.PlatformType.RADAR))
-	list.append(_platform("platform_ww1_medic", "野战救护车", 4, GC.PlatformType.MEDIC))
-
-	# 二战载具（6种）
-	list.append(_platform("platform_ww2_light", "M8灰狗装甲车", 4, GC.PlatformType.SCOUT))
-	list.append(_platform("platform_ww2_medium", "谢尔曼坦克", 5, GC.PlatformType.GUARD))
-	list.append(_platform("platform_ww2_heavy", "虎式坦克", 6, GC.PlatformType.TITAN))
-	list.append(_platform("platform_ww2_raider", "BA-64轻型突击车", 4, GC.PlatformType.RAIDER))
-	list.append(_platform("platform_ww2_radar", "雷达指挥车", 5, GC.PlatformType.RADAR))
-	list.append(_platform("platform_ww2_siege", "203毫米迫击炮", 5, GC.PlatformType.SIEGE))
-	list.append(_platform("platform_ww2_fortress", "混凝土碉堡", 5, GC.PlatformType.FORTRESS))
-
-	# 冷战载具（5种）
-	list.append(_platform("platform_cold_light", "悍马侦察车", 4, GC.PlatformType.HOUND))
-	list.append(_platform("platform_cold_medium", "T-72主战坦克", 5, GC.PlatformType.TITAN))
-	list.append(_platform("platform_cold_ifv", "布雷德利步战车", 5, GC.PlatformType.CARRIER))
-	list.append(_platform("platform_cold_scout", "BRDM-2侦察车", 4, GC.PlatformType.SCOUT))
-	list.append(_platform("platform_cold_radar", "电子对抗站", 5, GC.PlatformType.RADAR))
-	list.append(_platform("platform_cold_carrier", "BMP步战车", 5, GC.PlatformType.CARRIER))
-
-	# 现代载具（5种）
-	list.append(_platform("platform_modern_light", "北极星全地形车", 3, GC.PlatformType.HOUND))
-	list.append(_platform("platform_modern_medium", "艾布拉姆斯坦克", 6, GC.PlatformType.GUARD))
-	list.append(_platform("platform_modern_radar", "相控阵雷达车", 5, GC.PlatformType.RADAR))
-	list.append(_platform("platform_modern_spg", "帕拉丁自行火炮", 5, GC.PlatformType.SIEGE))
-	list.append(_platform("platform_modern_stealth", "光学隐匿侦察车", 5, GC.PlatformType.STEALTH))
-	list.append(_platform("platform_modern_guard_heavy", "豹2A7主战坦克", 7, GC.PlatformType.GUARD))
-
-	# 近未来载具（3种）
-	list.append(_platform("platform_future_light", "光学侦察车", 4, GC.PlatformType.STEALTH))
-	list.append(_platform("platform_future_medium", "悬浮坦克", 5, GC.PlatformType.RAIDER))
-	list.append(_platform("platform_future_radar", "量子感知平台", 5, GC.PlatformType.RADAR))
-	list.append(_platform("platform_future_heavy", "机甲步行者", 6, GC.PlatformType.TITAN))
-
-	# 终极载具
-	list.append(_platform("omega_platform", "全装型机动舱", 9, GC.PlatformType.OMEGA_PLATFORM))
-	# ==================== 能量卡（仅战前能量 1～7 级） ====================
-
+	# ==================== 能量卡（战前能量 1～7 级）====================
 	list.append(_energy_start("energy_start_1", "战前能量 I", 5, 100.0, "common"))
 	list.append(_energy_start("energy_start_2", "战前能量 II", 10, 150.0, "common"))
 	list.append(_energy_start("energy_start_3", "战前能量 III", 15, 200.0, "common"))
@@ -95,30 +152,22 @@ static func create_all() -> Array:
 	list.append(_energy_start("energy_start_6", "战前能量 VI", 30, 350.0, "rare"))
 	list.append(_energy_start("energy_start_7", "战前能量 VII", 35, 400.0, "rare"))
 
-	# ==================== 法则卡（与 PhaseLaws 一一对应） ====================
-	_append_all_law_cards(list)
-
 	return list
 
-## 返回所有可作为「蓝图」的卡牌 id（无武器版：平台 + 能量），用于装配/蓝图库判定
+## 返回所有蓝图 ID（战斗卡 + 能量卡 + 敌人蓝图）
 static func get_all_blueprint_ids() -> Array:
 	var ids: Array = []
 	_ensure_card_cache()
 	for c in _all_cards_cache:
 		if c is CardResource:
 			var card := c as CardResource
-			if card.card_type == GC.CardType.PLATFORM:
+			if card.card_type == GC.CardType.COMBAT_UNIT or card.card_type == GC.CardType.ENERGY:
 				ids.append(card.card_id)
-			elif card.card_type == GC.CardType.ENERGY:
-				# 全部默认能量卡均可作为蓝图（与 BlueprintManager.default_energy_blueprints 一致）
-				ids.append(card.card_id)
-
 	# 添加敌人掉落的高级蓝图ID
 	var enemy_blueprint_ids = EnemyBlueprints.get_all_enemy_blueprint_ids()
 	for id in enemy_blueprint_ids:
 		if id is String and not ids.has(id):
 			ids.append(id)
-
 	return ids
 
 ## 根据 PhaseLaws 定义生成法则卡模板（印制/发奖时用 clone()）
@@ -148,333 +197,148 @@ static func create_law_card_resource(law_id: String) -> CardResource:
 		c.type_line = "法则 — 被动"
 		c.summary_line = "激活纳米 %d" % int(ac.get("nano", 0))
 	c.description = "自蓝图印制；装配至相位仪红/蓝槽后，在战前环境满足时可激活。"
-	c.flavor_text = "“法则需要载体。”"
+	c.flavor_text = "\"法则需要载体。\""
 	return c
 
-static func _append_all_law_cards(list: Array) -> void:
-	for law_id_raw in PhaseLaws.get_all_ids():
-		var lid: String = String(law_id_raw)
-		var card := create_law_card_resource(lid)
-		if card != null:
-			list.append(card)
-
-## 根据 card_id 取出一张卡（先查默认卡，再查组合卡 id，再查敌人掉落蓝图）
+## 根据 card_id 获取卡牌（兼容层）
 static func get_card_by_id(card_id: String) -> CardResource:
-	var resolved_id: String = LEGACY_LAW_CARD_ID_MAP.get(card_id, card_id) as String
-	# 无武器版：屏蔽历史武器卡与旧合成卡 ID，避免旧存档/商店继续注入武器卡。
-	if resolved_id.begins_with("weapon_") or resolved_id == "omega_cannon" or resolved_id.begins_with("syn_"):
-		return null
-	# 掉落表 ENERGY_CARD 占位 id → 默认卡池中的真实能量卡
-	const DROP_ENERGY_CARD_ALIASES: Dictionary = {
-		"energy_basic": "energy_start_1",
-		"energy_advanced": "energy_start_4",
-		"energy_quantum": "energy_start_7",
-	}
-	if DROP_ENERGY_CARD_ALIASES.has(resolved_id):
-		return get_card_by_id(String(DROP_ENERGY_CARD_ALIASES[resolved_id]))
-	# 旧存档/商店：已移除的能量收集、即时、混合卡 → 对应战前能量档
-	const RETIRED_ENERGY_TO_START: Dictionary = {
-		"energy_regen_1": "energy_start_4",
-		"energy_regen_2": "energy_start_5",
-		"energy_regen_3": "energy_start_6",
-		"energy_instant_s": "energy_start_4",
-		"energy_instant_m": "energy_start_5",
-		"energy_instant_l": "energy_start_6",
-		"energy_hybrid": "energy_start_7",
-	}
-	if RETIRED_ENERGY_TO_START.has(resolved_id):
-		return get_card_by_id(String(RETIRED_ENERGY_TO_START[resolved_id]))
-	# 蓝图/存档中法则卡 id 常带 law: 前缀；PhaseLaws 的 key 为无前缀 law_id
-	if resolved_id.begins_with("law:"):
-		var law_core: String = resolved_id.substr(4)
-		if not law_core.is_empty() and not PhaseLaws.get_by_id(law_core).is_empty():
-			return create_law_card_resource(law_core)
-	# 使用缓存查找（仅首次调用 create_all）
 	_ensure_card_cache()
-	if _id_lookup_cache.has(resolved_id):
-		return _id_lookup_cache[resolved_id] as CardResource
 	if _id_lookup_cache.has(card_id):
 		return _id_lookup_cache[card_id] as CardResource
-	# 旧存档槽位等：仅给了 PhaseLaws id 时已在上面命中；若仍无且是合法 law id：
-	if not PhaseLaws.get_by_id(resolved_id).is_empty():
-		return create_law_card_resource(resolved_id)
-	var enemy_card = EnemyBlueprints.get_card_by_id(card_id)
-	if enemy_card:
-		return enemy_card
-	var equip_card: CardResource = EnemyPhaseEquipment.get_equipment_blueprint(resolved_id)
-	if equip_card != null:
-		return equip_card
-	if resolved_id != card_id:
-		equip_card = EnemyPhaseEquipment.get_equipment_blueprint(card_id)
-		if equip_card != null:
-			return equip_card
 	return null
 
-## 根据平台类型枚举返回显示名（用于单位信息框等）
-static func get_platform_display_name(platform_type: int) -> String:
-	_ensure_card_cache()
-	for c in _all_cards_cache:
-		if c is CardResource:
-			var card := c as CardResource
-			if card.card_type == GC.CardType.PLATFORM and card.platform_type == platform_type:
-				return card.display_name
-	return RealWorldUnitLabels.platform_chassis_long(platform_type)
-
-## 根据武器类型枚举返回显示名（用于单位信息框等）
-static func get_weapon_display_name(weapon_type: int) -> String:
-	_ensure_card_cache()
-	for c in _all_cards_cache:
-		if c is CardResource:
-			var card := c as CardResource
-			if card.card_type == GC.CardType.WEAPON and card.weapon_type == weapon_type:
-				return card.display_name
-	# 默认卡池未收录独立武器卡时，用现实向武装分类名（与 GameConstants.WeaponType 序号一致）
-	return RealWorldUnitLabels.weapon_kind_long(weapon_type)
-
-static func _platform(id: String, name: String, cost: float, pt: int) -> CardResource:
+## 创建战斗单位辅助函数
+## 参数：id, name, era(0-4), combat_kind(0-3), power, attack_speed, deploy_speed, range, energy_cost, 
+##      attack_light, attack_armor, attack_air, defense_light, defense_armor, defense_air
+static func _unit(
+	id: String, name: String, era: int, combat_kind: int, power: int,
+	attack_speed: float, deploy_speed: int, range: int, energy_cost: int,
+	atk_light: int, atk_armor: int, atk_air: int,
+	def_light: int, def_armor: int, def_air: int
+) -> CardResource:
 	var c = CardResource.new()
 	c.card_id = id
 	c.display_name = name
-	c.card_type = GC.CardType.PLATFORM
-	c.energy_cost = cost
-	c.platform_type = pt
-	c.max_weapons = 1
-	c.weight_capacity = cost
-
-	# 根据卡牌ID设置详细属性与默认武器（与 docs/相位战争：战斗卡牌完整设定与养成系统.txt 对齐）
-	match id:
-		# 一战平台
-		"platform_ww1_light":
-			c.rarity = "common"
-			c.type_line = "一战 — 轻型侦察车"
-			c.summary_line = "移速 1.15｜耐久 65｜重量 3"
-			c.description = "轻型装甲车，快速侦察用途。"
-			c.flavor_text = "“总要有第一辆冲进火线的装甲车。”"
-			c.default_weapon_type = GC.WeaponType.SMG
-		"platform_ww1_medium":
-			c.rarity = "common"
-			c.type_line = "一战 — 中型坦克"
-			c.summary_line = "移速 0.40｜耐久 200｜重量 5"
-			c.description = "菱形车身，跨越战壕的重型坦克。"
-			c.flavor_text = "“当它开始加速，战线的形状就被重新焊接。”"
-			c.default_weapon_type = GC.WeaponType.MG
-		"platform_ww1_fort":
-			c.rarity = "uncommon"
-			c.type_line = "一战 — 固定阵地"
-			c.summary_line = "移速 0｜耐久 260｜重量 6"
-			c.description = "固定防御工事，不可移动。"
-			c.flavor_text = "“炮位一旦落下，战场就多了一座新堡。”"
-			c.default_weapon_type = GC.WeaponType.MG
-		"platform_ww1_medic":
-			c.rarity = "common"
-			c.type_line = "一战 — 野战救护"
-			c.summary_line = "移速 0.75｜耐久 80｜重量 4"
-			c.description = "轻型野战救护车，脱战缓慢回复附近友军。"
-			c.flavor_text = "“把伤员从死神手里抢回来。”"
-			c.default_weapon_type = GC.WeaponType.PISTOL
-		"platform_ww1_radar":
-			c.rarity = "common"
-			c.type_line = "一战 — 野战观测站"
-			c.summary_line = "移速 0｜耐久 180｜重量 5"
-			c.description = "固定观测站，可侦测敌方位置。"
-			c.flavor_text = "“看得见，才打得着。”"
-			c.default_weapon_type = GC.WeaponType.RIFLE
-
-		# 二战平台
-		"platform_ww2_light":
-			c.rarity = "common"
-			c.type_line = "二战 — 轮式侦察车"
-			c.summary_line = "移速 1.35｜耐久 50｜重量 4"
-			c.description = "轮式侦察车，公路机动性强。"
-			c.flavor_text = "“先看到，先开火。”"
-			c.default_weapon_type = GC.WeaponType.SMG
-		"platform_ww2_medium":
-			c.rarity = "common"
-			c.type_line = "二战 — 中型坦克"
-			c.summary_line = "移速 0.75｜耐久 110｜重量 5"
-			c.description = "均衡型中型坦克。"
-			c.flavor_text = "“不是墙，而是会向前推进的装甲墙。”"
-			c.default_weapon_type = GC.WeaponType.RIFLE
-		"platform_ww2_heavy":
-			c.rarity = "rare"
-			c.type_line = "二战 — 重型坦克"
-			c.summary_line = "移速 0.40｜耐久 200｜重量 6"
-			c.description = "重型坦克，装甲厚但速度慢。"
-			c.flavor_text = "“装甲就是最好的防御。”"
-			c.default_weapon_type = GC.WeaponType.ROCKET
-		"platform_ww2_raider":
-			c.rarity = "common"
-			c.type_line = "二战 — 轻型突击车"
-			c.summary_line = "移速 1.0｜耐久 90｜重量 4"
-			c.description = "轻型四轮突击车，速度极快但装甲薄弱。"
-			c.flavor_text = "“快到子弹追不上。”"
-			c.default_weapon_type = GC.WeaponType.MG
-		"platform_ww2_radar":
-			c.rarity = "common"
-			c.type_line = "二战 — 雷达指挥车"
-			c.summary_line = "移速 0｜耐久 180｜重量 5"
-			c.description = "搭载早期雷达，可远距离侦测敌军动向。"
-			c.flavor_text = "天线转动，战场透明。"
-			c.default_weapon_type = GC.WeaponType.RIFLE
-		"platform_ww2_siege":
-			c.rarity = "common"
-			c.type_line = "二战 — 迫击炮"
-			c.summary_line = "移速 0｜耐久 300｜重量 5"
-			c.description = "重型迫击炮，曲射越过障碍攻击后方。"
-			c.flavor_text = "“绕过去”只是弹道的选择。"
-			c.default_weapon_type = GC.WeaponType.ROCKET
-		"platform_ww2_fortress":
-			c.rarity = "common"
-			c.type_line = "二战 — 固定碉堡"
-			c.summary_line = "移速 0|耐久 260|重量 5"
-			c.description = "钢筋混凝土碉堡,固定阵地防御。"
-			c.flavor_text = "“混凝土浇筑的勇气。”"
-			c.default_weapon_type = GC.WeaponType.MG
-
-		# 冷战平台
-		"platform_cold_light":
-			c.rarity = "common"
-			c.type_line = "冷战 — 轻型多用途车"
-			c.summary_line = "移速 1.15｜耐久 65｜重量 4"
-			c.description = "多功能轮式车辆。"
-			c.flavor_text = "“够用就好。”"
-			c.default_weapon_type = GC.WeaponType.SMG
-		"platform_cold_medium":
-			c.rarity = "common"
-			c.type_line = "冷战 — 中型坦克"
-			c.summary_line = "移速 0.40｜耐久 200｜重量 5"
-			c.description = "苏式主战坦克，低矮外形。"
-			c.flavor_text = "“简约而致命。”"
-			c.default_weapon_type = GC.WeaponType.ROCKET
-		"platform_cold_ifv":
-			c.rarity = "uncommon"
-			c.type_line = "冷战 — 步兵战车"
-			c.summary_line = "移速 0.50｜耐久 140｜重量 5"
-			c.description = "步兵战车，可搭载步兵。"
-			c.flavor_text = "“步兵与装甲的完美结合。”"
-			c.default_weapon_type = GC.WeaponType.MG
-		"platform_cold_scout":
-			c.rarity = "common"
-			c.type_line = "冷战 — 轮式侦察车"
-			c.summary_line = "移速 1.35｜耐久 50｜重量 4"
-			c.description = "轻型轮式侦察车，视野较远。"
-			c.flavor_text = "先看清楚，再决定打不打。"
-			c.default_weapon_type = GC.WeaponType.SMG
-		"platform_cold_radar":
-			c.rarity = "uncommon"
-			c.type_line = "冷战 — 电子对抗站"
-			c.summary_line = "移速 0｜耐久 180｜重量 5"
-			c.description = "电子对抗站，可干扰敌方通信与瞄准系统。"
-			c.flavor_text = "看不见的战争，往往最致命。"
-			c.default_weapon_type = GC.WeaponType.RIFLE
-		"platform_cold_carrier":
-			c.rarity = "common"
-			c.type_line = "冷战 — 履带步兵战车"
-			c.summary_line = "移速 0.50｜耐久 140｜重量 5"
-			c.description = "履带步兵战车，可搭载步兵协同作战。"
-			c.flavor_text = "士兵最好的朋友是履带。"
-			c.default_weapon_type = GC.WeaponType.MG
-
-		# 现代平台
-		"platform_modern_light":
-			c.rarity = "common"
-			c.type_line = "现代 — 轻型突击车"
-			c.summary_line = "移速 1.15｜耐久 65｜重量 3"
-			c.description = "快速突击车，适合特种作战。"
-			c.flavor_text = "“速度就是力量。”"
-			c.default_weapon_type = GC.WeaponType.SMG
-		"platform_modern_medium":
-			c.rarity = "rare"
-			c.type_line = "现代 — 主战坦克"
-			c.summary_line = "移速 0.75｜耐久 110｜重量 6"
-			c.description = "现代化主战坦克。"
-			c.flavor_text = "当它驶入战场，其余单位只需护航。"
-			c.default_weapon_type = GC.WeaponType.ROCKET
-		"platform_modern_radar":
-			c.rarity = "rare"
-			c.type_line = "现代 — 相控阵雷达车"
-			c.summary_line = "移速 0｜耐久 180｜重量 5"
-			c.description = "搭载相控阵雷达，大范围侦测与目标指示。"
-			c.flavor_text = "一车即可照亮半片战场。"
-			c.default_weapon_type = GC.WeaponType.RIFLE
-		"platform_modern_spg":
-			c.rarity = "rare"
-			c.type_line = "现代 — 自行火炮"
-			c.summary_line = "移速 0｜耐久 300｜重量 5"
-			c.description = "自行火炮，可越过障碍攻击。"
-			c.flavor_text = "“有些战术问题，只需要一发炮弹。”"
-			c.default_weapon_type = GC.WeaponType.ROCKET
-		"platform_modern_stealth":
-			c.rarity = "uncommon"
-			c.type_line = "现代 — 隐匿侦察车"
-			c.summary_line = "移速 1.15｜耐久 50｜重量 5"
-			c.description = "搭载光学迷彩系统，难以被敌方锁定。"
-			c.flavor_text = "消失在光影之间。"
-			c.default_weapon_type = GC.WeaponType.SMG
-		"platform_modern_guard_heavy":
-			c.rarity = "rare"
-			c.type_line = "现代 — 重型坦克"
-			c.summary_line = "移速 0.75｜耐久 110｜重量 7"
-			c.description = "最新型主战坦克，复合装甲+主动防御。"
-			c.flavor_text = "最好的进攻就是最好的装甲。"
-			c.default_weapon_type = GC.WeaponType.RAIL_CANNON
-
-		# 近未来平台
-		"platform_future_light":
-			c.rarity = "uncommon"
-			c.type_line = "近未来 — 隐匿侦察车"
-			c.summary_line = "移速 1.15｜耐久 50｜重量 4"
-			c.description = "搭载光学迷彩，难以被发现。"
-			c.flavor_text = "“看不见的才最危险。”"
-			c.default_weapon_type = GC.WeaponType.LASER
-		"platform_future_medium":
-			c.rarity = "rare"
-			c.type_line = "近未来 — 悬浮坦克"
-			c.summary_line = "移速 1.0｜耐久 90｜重量 5"
-			c.description = "反重力悬浮，无视地形。"
-			c.flavor_text = "重力也无法束缚它。"
-			c.default_weapon_type = GC.WeaponType.LASER
-		"platform_future_radar":
-			c.rarity = "rare"
-			c.type_line = "近未来 — 量子感知平台"
-			c.summary_line = "移速 0｜耐久 180｜重量 5"
-			c.description = "量子纠缠感知系统，穿透一切遮蔽侦测敌情。"
-			c.flavor_text = "当量子塌缩，一切无所遁形。"
-			c.default_weapon_type = GC.WeaponType.LASER
-		"platform_future_heavy":
-			c.rarity = "rare"
-			c.type_line = "近未来 — 步行机甲"
-			c.summary_line = "移速 0.40｜耐久 200｜重量 6"
-			c.description = "双足步行机甲，全地形适应。"
-			c.flavor_text = "“机甲的轰鸣是最后的防线。”"
-			c.default_weapon_type = GC.WeaponType.OMEGA_CANNON
-
-		"omega_platform":
-			c.rarity = "legendary"
-			c.type_line = "终极 — 多槽重装"
-			c.summary_line = "移速 0.30｜耐久 240｜重量 9"
-			c.description = "可以同时装备3张武器卡，作为整条战线的核心输出。终极单位。"
-			c.max_weapons = 3
-			c.weight_capacity = 18
-			c.flavor_text = "“当它开火时，战场会短暂安静。”"
-			c.default_weapon_type = GC.WeaponType.OMEGA_CANNON
-
-	_apply_platform_summary_defense(c)
+	c.card_type = GC.CardType.COMBAT_UNIT
+	
+	# === 新字段（v3）===
+	c.era = era
+	c.power = power
+	c.weapon_type = _infer_weapon_type(combat_kind, range, atk_light, atk_armor, atk_air)
+	c.combat_kind = combat_kind
+	c.attack_speed = attack_speed
+	c.deploy_speed = deploy_speed
+	c.range_value = range
+	c.energy_cost = float(energy_cost)
+	
+	# === 多维攻击 ===
+	c.attack_light = atk_light
+	c.attack_armor = atk_armor
+	c.attack_air = atk_air
+	
+	# === 多维防御 ===
+	c.defense_light = def_light
+	c.defense_armor = def_armor
+	c.defense_air = def_air
+	
+	# === 推断其他属性 ===
+	c.base_hp = _infer_hp(power, combat_kind)
+	c.rarity = _infer_rarity(era, power)
+	c.type_line = _format_type_line(era, combat_kind)
+	c.summary_line = _format_summary(c)
+	c.description = ""
+	c.flavor_text = ""
+	
 	return c
 
+## 推断武器类型
+static func _infer_weapon_type(combat_kind: int, range: int, atk_light: int, atk_armor: int, atk_air: int) -> int:
+	# 空中单位 → AERIAL
+	if combat_kind == 3:  # AIR
+		return GC.WeaponType.AERIAL
+	
+	# 曲射单位（range=99 且对地对空都有攻击）→ INDIRECT
+	if range >= 99:
+		return GC.WeaponType.INDIRECT
+	
+	# 默认直射
+	return GC.WeaponType.DIRECT
 
-static func _apply_platform_summary_defense(c: CardResource) -> void:
-	if c == null or c.card_type != GC.CardType.PLATFORM:
-		return
-	var wt: int = c.default_weapon_type if c.default_weapon_type >= 0 else GC.WeaponType.RIFLE
-	var def_v: int = UnitStatsTable.get_combined_defense(c.platform_type, wt)
-	var sep: String = "｜" if "｜" in c.summary_line else "|"
-	var parts: PackedStringArray = c.summary_line.split(sep, false)
-	if parts.size() >= 1:
-		parts[0] = "防御 %d" % def_v
-		c.summary_line = sep.join(parts)
+## 推断HP
+static func _infer_hp(power: int, combat_kind: int) -> int:
+	var base = power * 2
+	match combat_kind:
+		0:  # LIGHT
+			base = power * 1.5
+		1:  # ARMOR
+			base = power * 3.0
+		2:  # SUPPORT
+			base = power * 2.0
+		3:  # AIR
+			base = power * 1.2
+	return int(base)
+
+## 推断稀有度
+static func _infer_rarity(era: int, power: int) -> String:
+	if era <= 1:
+		return "common"
+	elif era == 2:
+		return "rare" if power > 400 else "uncommon"
+	elif era == 3:
+		return "epic" if power > 800 else "rare"
+	else:  # era 4
+		return "mythic" if power > 1500 else "legendary"
+
+## 格式化类型行
+static func _format_type_line(era: int, combat_kind: int) -> String:
+	var era_names = ["一战", "二战", "冷战", "现代", "近未来"]
+	var kind_names = ["轻装", "装甲", "支援", "空中"]
+	return "%s — %s" % [era_names[era], kind_names[combat_kind]]
+
+## 格式化摘要
+static func _format_summary(c: CardResource) -> String:
+	var parts = []
+	parts.append("战力 %d" % c.power)
+	
+	if c.attack_speed > 0:
+		parts.append("攻速 %.1f/s" % c.attack_speed)
+	
+	parts.append("部署 %d" % c.deploy_speed)
+	
+	if c.range_value < 99:
+		parts.append("射程 %d" % c.range_value)
+	else:
+		parts.append("全图")
+	
+	# 显示主要攻击类型
+	var main_atk = 0
+	var main_type = ""
+	if c.attack_light >= c.attack_armor and c.attack_light >= c.attack_air:
+		main_atk = c.attack_light
+		main_type = "对轻"
+	elif c.attack_armor >= c.attack_light and c.attack_armor >= c.attack_air:
+		main_atk = c.attack_armor
+		main_type = "对甲"
+	else:
+		main_atk = c.attack_air
+		main_type = "对空"
+	
+	if main_atk > 0:
+		parts.append("%s %d" % [main_type, main_atk])
+	
+	return "｜".join(parts)
 
 
+## 平台类型显示名（兼容旧 platform_type 引用）
+static func get_platform_display_name(platform_type: int) -> String:
+	return RealWorldUnitLabels.platform_chassis_long(platform_type)
+
+
+## 武器类型显示名（兼容旧 weapon_type 引用）
+static func get_weapon_display_name(weapon_type: int) -> String:
+	return RealWorldUnitLabels.weapon_kind_long(weapon_type)
+
+## 生成战前能量卡
 static func _energy_start(id: String, name: String, cost: float, bonus: float, rarity: String = "common") -> CardResource:
 	var c = CardResource.new()
 	c.card_id = id
@@ -486,5 +350,5 @@ static func _energy_start(id: String, name: String, cost: float, bonus: float, r
 	c.type_line = "战前 — 能量储备"
 	c.summary_line = "开局额外 +%d⚡" % int(bonus)
 	c.description = "作为准备卡装入相位仪时，战斗开始时你的初始能量 +%d 点，可叠加多张。" % int(bonus)
-	c.flavor_text = "“把能量灌满电枢再出击。”"
+	c.flavor_text = "把能量灌满电枢再出击。"
 	return c

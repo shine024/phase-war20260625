@@ -156,8 +156,11 @@ func _draw_command_icon(cx: float, cy: float, s: float, col: Color) -> void:
 
 
 func _draw_carrier_icon(cx: float, cy: float, s: float, col: Color) -> void:
-	# 十字 + 圆弧 = 维修/补给意象
-	var hw: float = s * 0.28
-	draw_rect(Rect2(cx - hw, cy - s * 0.85, hw * 2.0, s * 1.7), col)
-	draw_rect(Rect2(cx - s * 0.85, cy - hw, s * 1.7, hw * 2.0), col)
-	draw_arc(Vector2(cx, cy), s * 0.95, 0.0, TAU, 24, col, 1.2, true)
+	draw_line(Vector2(cx - s * 0.85, cy), Vector2(cx + s * 0.85, cy), col, 1.6, true)
+	draw_line(Vector2(cx, cy - s * 0.85), Vector2(cx, cy + s * 0.85), col, 1.6, true)
+	draw_arc(Vector2(cx, cy), s * 0.78, 0.0, TAU, 20, col, 1.2, true)
+	var dot_r: float = s * 0.15
+	draw_circle(Vector2(cx, cy - s * 0.85), dot_r, col)
+	draw_circle(Vector2(cx, cy + s * 0.85), dot_r, col)
+	draw_circle(Vector2(cx - s * 0.85, cy), dot_r, col)
+	draw_circle(Vector2(cx + s * 0.85, cy), dot_r, col)

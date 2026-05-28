@@ -360,9 +360,9 @@ func show_card_detail(card: CardResource, _source_item: Control) -> void:
 			var use_combat_only: bool = (
 				not combat_line.is_empty()
 				and (
-					card.card_type == GC.CardType.PLATFORM
-					or card.card_type == GC.CardType.WEAPON
-					or card.card_type == GC.CardType.COMBINED
+					card.card_type == GC.CardType.COMBAT_UNIT
+					or card.card_type == GC.CardType.COMBAT_UNIT
+					or card.card_type == GC.CardType.COMBAT_UNIT
 				)
 			)
 			if use_combat_only:

@@ -156,9 +156,9 @@ static func manifest_icon_path_for_platform_card_id(platform_card_id: String) ->
 static func _platform_card_id_for_icon(c: CardResource) -> String:
 	if c == null:
 		return ""
-	if c.card_type == GC.CardType.COMBINED and not String(c.source_platform_id).strip_edges().is_empty():
+	if c.card_type == GC.CardType.COMBAT_UNIT and not String(c.source_platform_id).strip_edges().is_empty():
 		return String(c.source_platform_id).strip_edges()
-	if c.card_type == GC.CardType.PLATFORM:
+	if c.card_type == GC.CardType.COMBAT_UNIT:
 		return c.card_id.strip_edges()
 	return ""
 
@@ -191,7 +191,7 @@ static func card_icon_path_for(c: CardResource) -> String:
 		return ""
 	# 1) 平台/合成卡 → manifest（含 platform_* → foe_* → vis_player_*，含 omega_platform → vis_player_029）
 	# 注：bp_* 蓝图不走单独的累计偏移映射（编号与 manifest A 段不一致），统一走 manifest/drop 反查链
-	if c.card_type == GC.CardType.PLATFORM or c.card_type == GC.CardType.COMBINED:
+	if c.card_type == GC.CardType.COMBAT_UNIT or c.card_type == GC.CardType.COMBAT_UNIT:
 		var plat_p: String = manifest_icon_path_for_platform_card_id(_platform_card_id_for_icon(c))
 		if not plat_p.is_empty():
 			return plat_p

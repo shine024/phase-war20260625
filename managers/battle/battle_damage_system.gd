@@ -127,7 +127,9 @@ func _get_recon_fragment_bonus_multiplier() -> float:
 		var stats: UnitStats = player_unit.get("stats")
 		if stats == null:
 			continue
-		if stats.platform_type == GC.PlatformType.SCOUT or stats.platform_type == GC.PlatformType.STEALTH:
+		if stats.platform_type == 5 or stats.platform_type == 10:  # SCOUT, STEALTH (旧枚举值，存档兼容)
+			# v3: 应使用 stats.combat_kind，但 SCOUT(5)=轻装(0)，STEALTH(10)=轻装(0)
+			# 为保持存档兼容，暂时保留 platform_type 检查
 			recon_unit_count += 1
 	var bonus: float = minf(GC.RECON_FRAGMENT_BONUS_CAP, float(recon_unit_count) * GC.RECON_FRAGMENT_BONUS_PER_UNIT)
 	return bonus

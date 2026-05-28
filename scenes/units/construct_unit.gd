@@ -40,19 +40,19 @@ const MAX_ENEMY_VISUAL_EXTENT_PX := 220.0
 const ENEMY_VISUAL_ASSET_BASE := "res://assets/enemies"
 ## 我方平台类型 -> 用于显示的敌方原型 id（与 EnemyUnit 同源，直接读 ENEMY_VISUAL_ASSET_BASE，不再使用 player_from_enemy 副本目录）
 const PLAYER_MIRROR_ARCHETYPE_BY_PLATFORM := {
-	GC.PlatformType.HOUND: "enemy_ww1_infantry_basic",
-	GC.PlatformType.GUARD: "enemy_ww2_infantry",
-	GC.PlatformType.TITAN: "elite_ww1_armored",
-	GC.PlatformType.FORTRESS: "enemy_ww1_mg_nest",
-	GC.PlatformType.RADAR: "enemy_modern_stryker",
-	GC.PlatformType.SCOUT: "enemy_cold_btr",
-	GC.PlatformType.RAIDER: "enemy_future_hovertank",
-	GC.PlatformType.SIEGE: "enemy_ww1_mortar",
-	GC.PlatformType.CARRIER: "enemy_cold_m113",
-	GC.PlatformType.MEDIC: "enemy_modern_marine",
-	GC.PlatformType.STEALTH: "elite_future_spectre",
-	GC.PlatformType.OMEGA_PLATFORM: "enemy_future_mech",
-	GC.PlatformType.COMMAND: "enemy_modern_marine",  # 临时复用，后续替换专用图
+	0: "enemy_ww1_infantry_basic",
+	1: "enemy_ww2_infantry",
+	2: "elite_ww1_armored",
+	3: "enemy_ww1_mg_nest",
+	4: "enemy_modern_stryker",
+	5: "enemy_cold_btr",
+	6: "enemy_future_hovertank",
+	7: "enemy_ww1_mortar",
+	8: "enemy_cold_m113",
+	9: "enemy_modern_marine",
+	10: "elite_future_spectre",
+	11: "enemy_future_mech",
+	12: "enemy_modern_marine",  # 临时复用，后续替换专用图
 }
 var is_player: bool = true
 var stats: UnitStats
@@ -193,22 +193,22 @@ func setup(p_is_player: bool, p_stats: UnitStats, forced_enemy_visual_archetype_
 	_register_to_spatial_grid()
 
 	# MEDIC 治疗光环由 _physics_process 内 _medic_aura_cd + apply_medic_heal_aura_tick 驱动（避免每帧 meta）
-	if stats != null and stats.platform_type == GC.PlatformType.MEDIC:
+	if stats != null and stats.platform_type == 9:
 		_medic_aura_cd = randf_range(0.0, 0.75)
 
 	# 性能优化：注册其他光环到 AuraManager（setup 可能发生在尚未入树前）
 	var aura_mgr: Node = _resolve_autoload(&"AuraManager")
 	if aura_mgr:
 		match stats.platform_type:
-			GC.PlatformType.RADAR:
+			4:
 				aura_mgr.register_aura(self, aura_mgr.AuraType.RADAR_RANGE)
-			GC.PlatformType.SCOUT, GC.PlatformType.STEALTH:
+			5, 10:
 				aura_mgr.register_aura(self, aura_mgr.AuraType.SCOUT_CRIT)
-			GC.PlatformType.FORTRESS:
+			3:
 				aura_mgr.register_aura(self, aura_mgr.AuraType.FORTRESS_DEF)
-			GC.PlatformType.CARRIER:
+			8:
 				aura_mgr.register_aura(self, aura_mgr.AuraType.CARRIER_REPAIR)
-			GC.PlatformType.COMMAND:
+			12:
 				aura_mgr.register_aura(self, aura_mgr.AuraType.COMMAND_GLOBAL)
 
 	# 性能优化：初始化卡牌能力缓存（setup时一次性查询）
@@ -615,7 +615,7 @@ func _update_visual() -> void:
 	if _using_enemy_archetype_visual:
 		return
 
-	var is_omega := stats != null and stats.platform_type == GC.PlatformType.OMEGA_PLATFORM
+	var is_omega := stats != null and stats.platform_type == 11
 	if is_player:
 		# 我方：全装型与敌方「机甲步兵」同源精灵（enemy_future_mech），仅朝右；缺镜像时再回退静态 omega_platform.png
 		if is_omega:
@@ -829,21 +829,21 @@ func _update_animation() -> void:
 func _shape_points() -> PackedVector2Array:
 	var s = 24.0
 	match stats.platform_type:
-		GC.PlatformType.HOUND:
+		0:
 			return PackedVector2Array([Vector2(0, -s), Vector2(s*0.8, s), Vector2(-s*0.8, s)])
-		GC.PlatformType.GUARD:
+		1:
 			return PackedVector2Array([Vector2(-s,s), Vector2(s,s), Vector2(s,-s), Vector2(-s,-s)])
-		GC.PlatformType.TITAN:
+		2:
 			return PackedVector2Array([Vector2(-s*1.2,s), Vector2(s*1.2,s), Vector2(s*1.2,-s), Vector2(-s*1.2,-s)])
-		GC.PlatformType.OMEGA_PLATFORM:
+		11:
 			return PackedVector2Array([Vector2(-s*1.4,s), Vector2(s*1.4,s), Vector2(s*1.4,-s), Vector2(-s*1.4,-s)])
-		GC.PlatformType.FORTRESS:
+		3:
 			var arr: PackedVector2Array = []
 			for i in range(8):
 				var a = TAU * i / 8.0
 				arr.append(Vector2(cos(a)*s, sin(a)*s))
 			return arr
-		GC.PlatformType.RADAR:
+		4:
 			# 十字形雷达
 			var arm = s * 0.4
 			return PackedVector2Array([
@@ -851,17 +851,17 @@ func _shape_points() -> PackedVector2Array:
 				Vector2(arm, arm), Vector2(0, s), Vector2(-arm, arm),
 				Vector2(-s, 0), Vector2(-arm, -arm)
 			])
-		GC.PlatformType.SCOUT:
+		5:
 			return PackedVector2Array([Vector2(0, -s), Vector2(s*0.8, s), Vector2(-s*0.8, s)])
-		GC.PlatformType.RAIDER:
+		6:
 			return PackedVector2Array([Vector2(-s,s), Vector2(s,s), Vector2(s,-s), Vector2(-s,-s)])
-		GC.PlatformType.SIEGE:
+		7:
 			return PackedVector2Array([Vector2(-s*1.2,s), Vector2(s*1.2,s), Vector2(s*1.2,-s), Vector2(-s*1.2,-s)])
-		GC.PlatformType.CARRIER:
+		8:
 			return PackedVector2Array([Vector2(-s*1.1,s), Vector2(s*1.1,s), Vector2(s*1.1,-s), Vector2(-s*1.1,-s)])
-		GC.PlatformType.MEDIC:
+		9:
 			return PackedVector2Array([Vector2(-s,s), Vector2(s,s), Vector2(s,-s), Vector2(-s,-s)])
-		GC.PlatformType.STEALTH:
+		10:
 			return PackedVector2Array([Vector2(0, -s*0.9), Vector2(s*0.7, s*0.9), Vector2(-s*0.7, s*0.9)])
 	return PackedVector2Array([Vector2(-s,s), Vector2(s,s), Vector2(s,-s), Vector2(-s,-s)])
 
@@ -960,7 +960,7 @@ func _physics_process(delta: float) -> void:
 
 	# ── 平台类型光环系统（仅 MEDIC，其余由 AuraManager Timer 驱动） ──
 	if stats != null and not is_deploy_ghost and not is_preview_mode:
-		if stats.platform_type == GC.PlatformType.MEDIC:
+		if stats.platform_type == 9:
 			_medic_aura_cd -= delta
 			if _medic_aura_cd <= 0.0:
 				_medic_aura_cd = 3.0
@@ -990,7 +990,7 @@ func _process_multi_weapons(delta: float) -> void:
 	if is_deploy_ghost or is_preview_mode:
 		return
 	# COMMAND 不攻击（纯光环平台）
-	if stats != null and stats.platform_type == GC.PlatformType.COMMAND:
+	if stats != null and stats.platform_type == 12:
 		return
 	if _hit_stun_left > 0.0:
 		return
@@ -1223,7 +1223,7 @@ func _do_attack_with_damage(damage: float, weapon_type_override: int = -1) -> vo
 		damage *= CardAbilityManager.get_titan_mk2_damage_multiplier(self)
 	if _has_storm_rider:
 		damage *= CardAbilityManager.get_storm_rider_damage_multiplier(self)
-	var wt: int = weapon_type_override if weapon_type_override >= 0 else (stats.weapon_type if stats else GC.WeaponType.SMG)
+	var wt: int = weapon_type_override if weapon_type_override >= 0 else (stats.weapon_type if stats else 0)
 	#region agent log
 	_agent_log("H3_bullet_spawn", "construct_fire_attempt", {
 		"unit": name,
@@ -1349,13 +1349,13 @@ func _die() -> void:
 	# 清理平台光环（恢复友军属性）
 	if stats != null:
 		match stats.platform_type:
-			GC.PlatformType.RADAR:
+			4:
 				CardAbilityManager.remove_radar_range_aura(self)
-			GC.PlatformType.SCOUT, GC.PlatformType.STEALTH:
+			5, 10:
 				CardAbilityManager.remove_scout_crit_aura(self)
-			GC.PlatformType.FORTRESS:
+			3:
 				CardAbilityManager.remove_fortress_defense_aura(self)
-			GC.PlatformType.COMMAND:
+			12:
 				CardAbilityManager.remove_command_global_aura(self)
 
 	# 安全清理：防止死亡后继续处理事件

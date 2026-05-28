@@ -519,7 +519,7 @@ func _do_attack() -> void:
 		root_2d.add_child(bullet)
 
 func _try_fire_enemy_projectile_batch(p_target: Node2D, wt: int, p_damage: float = -1.0, p_miss: bool = false) -> bool:
-	if wt not in [GC.WeaponType.SMG, GC.WeaponType.PISTOL, GC.WeaponType.RIFLE, GC.WeaponType.MG]:
+	if wt not in [0, 4, 1, 2]:  # SMG, PISTOL, RIFLE, MG
 		return false
 	if BattleManager == null or BattleManager.enemy_projectile_batch == null:
 		return false

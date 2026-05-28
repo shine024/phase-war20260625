@@ -677,6 +677,12 @@ func get_last_known_backpack_ids() -> Array:
 func clear_pending_backpack_ids() -> void:
 	_pending_backpack_ids.clear()
 
+## 新存档初始背包卡牌
+func _enqueue_starter_backpack_cards() -> void:
+	enqueue_backpack_card_id("omega_platform")
+	enqueue_backpack_card_id("energy_start_1")
+	enqueue_backpack_card_id("energy_start_2")
+
 ## 处理一个待入包的卡牌ID（从pending中移除，标记为已处理）
 func consume_pending_backpack_card_id(card_id: String) -> bool:
 	if card_id.is_empty():
@@ -724,6 +730,8 @@ func start_new_game() -> void:
 	# 清除待处理的背包ID（开始新游戏时）
 	_pending_backpack_ids.clear()
 	_last_known_extra_ids.clear()
+	# 新存档初始背包：全装型战斗卡 ×1，2星能量卡 ×2
+	_enqueue_starter_backpack_cards()
 	if DEBUG_SAVE_LOG:
 		print("[SaveManager] 新游戏已准备完毕")
 	if _deferred_reset_queue.is_empty() and _start_new_game_perf_pending:

@@ -83,6 +83,20 @@ const RANK_BONUS: Dictionary = {
 	"marshal": {"hp_mul": 1.07, "dmg_mul": 1.07},
 }
 
+## v3：根据战斗定位（combat_kind）获取基础军衔
+static func get_base_rank_by_combat_kind(combat_kind: int) -> String:
+	match combat_kind:
+		0:  # LIGHT
+			return "corporal"
+		1:  # ARMOR
+			return "sergeant"
+		2:  # SUPPORT
+			return "captain"
+		3:  # AIR
+			return "second_lieutenant"
+		_:
+			return "corporal"
+
 static func get_base_rank(platform_type: int) -> String:
 	return String(BASE_RANK_BY_PLATFORM_TYPE.get(platform_type, "corporal"))
 

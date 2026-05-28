@@ -39,30 +39,30 @@ var _has_equipment: bool = false
 
 ## 平台类型字符串 -> GC.PlatformType 映射
 const _PLATFORM_TYPE_MAP: Dictionary = {
-	"fortress": GC.PlatformType.FORTRESS,
-	"titan": GC.PlatformType.TITAN,
-	"raider": GC.PlatformType.RAIDER,
-	"siege": GC.PlatformType.SIEGE,
-	"striker": GC.PlatformType.HOUND,
-	"sniper": GC.PlatformType.SCOUT,
-	"stealth": GC.PlatformType.STEALTH,
-	"mage": GC.PlatformType.GUARD,
+	"fortress": 3,
+	"titan": 2,
+	"raider": 6,
+	"siege": 7,
+	"striker": 0,
+	"sniper": 5,
+	"stealth": 10,
+	"mage": 1,
 }
 
 ## 武器类型字符串 -> GC.WeaponType 映射
 ## 取最接近的 GC 类型（部分敌方武器无精确对应）
 const _WEAPON_TYPE_MAP: Dictionary = {
-	"machinegun": GC.WeaponType.MG,
-	"minigun": GC.WeaponType.MG,
-	"machinegun_advanced": GC.WeaponType.MG,
-	"cannon": GC.WeaponType.ROCKET,
-	"railcannon": GC.WeaponType.RAIL_CANNON,
-	"flamethrower": GC.WeaponType.SHOTGUN,
-	"mortar": GC.WeaponType.ROCKET,
-	"tesla": GC.WeaponType.MG,
-	"railgun": GC.WeaponType.RAIL_CANNON,
-	"lance": GC.WeaponType.RIFLE,
-	"gravity": GC.WeaponType.SNIPER,
+	"machinegun": 2,
+	"minigun": 2,
+	"machinegun_advanced": 2,
+	"cannon": 3,
+	"railcannon": 11,
+	"flamethrower": 5,
+	"mortar": 3,
+	"tesla": 2,
+	"railgun": 11,
+	"lance": 1,
+	"gravity": 6,
 }
 const _ERA_VISUAL_ARCHETYPES: Dictionary = {
 	0: ["enemy_ww1_infantry_basic", "elite_ww1_armored", "enemy_ww1_mg_nest", "enemy_ww1_mortar"],
@@ -320,14 +320,14 @@ func _on_destroyed() -> void:
 static func _map_platform_type(type_str: String) -> int:
 	var result: int = _PLATFORM_TYPE_MAP.get(type_str, -1)
 	if result < 0:
-		result = GC.PlatformType.GUARD
+		result = 1
 	return result
 
 ## 武器类型映射
 static func _map_weapon_type(type_str: String) -> int:
 	var result: int = _WEAPON_TYPE_MAP.get(type_str, -1)
 	if result < 0:
-		result = GC.WeaponType.MG
+		result = 2
 	return result
 
 static func _era_string_to_int(era_str: String) -> int:

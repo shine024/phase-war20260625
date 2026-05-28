@@ -36,156 +36,156 @@ const EVOLVE_REASON_ZH: Dictionary = {
 }
 
 const LINEAGES: Dictionary = {
-	"platform_ww1_light": {
-		"evolution_1": "platform_ww2_light",
+	"ww1_rolls": {
+		"evolution_1": "ww2_hellcat",
 		"faction_branches": {
-			"iron_wall_corp": "platform_ww2_heavy",
-			"nova_arms": "platform_ww2_raider",
-			"void_research": "platform_future_light",
+			"iron_wall_corp": "ww2_tiger",
+			"nova_arms": "ww2_bazooka",
+			"void_research": "fut_scout_mech",
 		},
 	},
-	"platform_ww1_medium": {
-		"evolution_1": "platform_ww2_medium",
+	"ww1_ft17": {
+		"evolution_1": "ww2_sherman",
 		"faction_branches": {
-			"iron_wall_corp": "platform_ww2_heavy",
-			"nova_arms": "platform_ww2_raider",
-			"void_research": "platform_future_medium",
+			"iron_wall_corp": "ww2_tiger",
+			"nova_arms": "ww2_bazooka",
+			"void_research": "fut_hovertank",
 		},
 	},
-	"platform_ww1_fort": {
-		"evolution_1": "platform_ww2_fortress",
+	"ww1_77mm": {
+		"evolution_1": "ww1_m81",
 		"faction_branches": {
-			"iron_wall_corp": "platform_ww2_siege",
-			"helix_recon": "platform_ww2_radar",
-			"void_research": "platform_future_heavy",
+			"iron_wall_corp": "ww2_m81 mortar",
+			"helix_recon": "ww2_panzerschrek",
+			"void_research": "fut_heavy_mech",
 		},
 	},
-	"platform_ww1_radar": {
-		"evolution_1": "platform_ww2_radar",
+	"ww1_cavalry": {
+		"evolution_1": "ww2_panzerschrek",
 		"faction_branches": {
-			"helix_recon": "platform_cold_scout",
-			"aether_dynamics": "platform_cold_radar",
-			"void_research": "platform_future_radar",
+			"helix_recon": "cold_m113",
+			"aether_dynamics": "cold_zsu23",
+			"void_research": "fut_prism",
 		},
 	},
-	"platform_ww1_medic": {
-		"evolution_1": "platform_cold_carrier",
+	"ww1_engineer": {
+		"evolution_1": "cold_bmp1",
 		"faction_branches": {
-			"iron_wall_corp": "platform_cold_ifv",
-			"quantum_logistics": "platform_cold_carrier",
-			"frontier_union": "platform_cold_light",
+			"iron_wall_corp": "cold_bmp1",
+			"quantum_logistics": "cold_bmp1",
+			"frontier_union": "cold_btr60",
 		},
 	},
-	"platform_ww2_light": {
-		"evolution_1": "platform_cold_light",
+	"ww2_hellcat": {
+		"evolution_1": "cold_btr60",
 		"faction_branches": {
-			"iron_wall_corp": "platform_cold_medium",
-			"frontier_union": "platform_cold_scout",
-			"void_research": "platform_future_medium",
+			"iron_wall_corp": "cold_t55",
+			"frontier_union": "cold_m113",
+			"void_research": "fut_hovertank",
 		},
 	},
-	"platform_ww2_medium": {
-		"evolution_1": "platform_cold_medium",
+	"ww2_sherman": {
+		"evolution_1": "cold_t55",
 		"faction_branches": {
-			"iron_wall_corp": "platform_modern_guard_heavy",
-			"aether_dynamics": "platform_modern_radar",
-			"void_research": "platform_future_heavy",
+			"iron_wall_corp": "mod_m1a2sep",
+			"aether_dynamics": "mod_m6",
+			"void_research": "fut_heavy_mech",
 		},
 	},
-	"platform_ww2_heavy": {
-		"evolution_1": "platform_cold_medium",
+	"ww2_tiger": {
+		"evolution_1": "cold_t55",
 		"faction_branches": {
-			"iron_wall_corp": "platform_modern_guard_heavy",
-			"nova_arms": "platform_cold_scout",
-			"void_research": "platform_future_heavy",
+			"iron_wall_corp": "mod_m1a2sep",
+			"nova_arms": "cold_m113",
+			"void_research": "fut_heavy_mech",
 		},
 	},
-	"platform_ww2_raider": {
-		"evolution_1": "platform_cold_scout",
+	"ww2_bazooka": {
+		"evolution_1": "cold_m113",
 		"faction_branches": {
-			"nova_arms": "platform_modern_light",
-			"frontier_union": "platform_future_light",
-			"void_research": "platform_future_medium",
+			"nova_arms": "mod_technical",
+			"frontier_union": "fut_scout_mech",
+			"void_research": "fut_hovertank",
 		},
 	},
-	"platform_ww2_radar": {
-		"evolution_1": "platform_cold_radar",
+	"ww2_panzerschrek": {
+		"evolution_1": "cold_zsu23",
 		"faction_branches": {
-			"helix_recon": "platform_modern_radar",
-			"aether_dynamics": "platform_cold_scout",
-			"void_research": "platform_future_radar",
+			"helix_recon": "mod_m6",
+			"aether_dynamics": "cold_m113",
+			"void_research": "fut_prism",
 		},
 	},
-	"platform_ww2_siege": {
-		"evolution_1": "platform_modern_spg",
+	"ww2_m81 mortar": {
+		"evolution_1": "mod_m270",
 		"faction_branches": {
-			"iron_wall_corp": "platform_modern_guard_heavy",
-			"nova_arms": "platform_modern_medium",
-			"void_research": "omega_platform",
+			"iron_wall_corp": "mod_m1a2sep",
+			"nova_arms": "mod_m1a1",
+			"void_research": "fut_nexus",
 		},
 	},
-	"platform_ww2_fortress": {
-		"evolution_1": "platform_modern_guard_heavy",
+	"ww1_m81": {
+		"evolution_1": "mod_m1a2sep",
 		"faction_branches": {
-			"iron_wall_corp": "platform_modern_spg",
-			"helix_recon": "platform_modern_stealth",
-			"void_research": "platform_future_heavy",
+			"iron_wall_corp": "mod_m270",
+			"helix_recon": "fut_scout_drone",
+			"void_research": "fut_heavy_mech",
 		},
 	},
-	"platform_cold_light": {
-		"evolution_1": "platform_modern_light",
+	"cold_btr60": {
+		"evolution_1": "mod_technical",
 		"faction_branches": {
-			"helix_recon": "platform_modern_stealth",
-			"frontier_union": "platform_future_light",
-			"void_research": "platform_future_medium",
+			"helix_recon": "fut_scout_drone",
+			"frontier_union": "fut_scout_mech",
+			"void_research": "fut_hovertank",
 		},
 	},
-	"platform_cold_medium": {
-		"evolution_1": "platform_modern_medium",
+	"cold_t55": {
+		"evolution_1": "mod_m1a1",
 		"faction_branches": {
-			"iron_wall_corp": "platform_modern_guard_heavy",
-			"aether_dynamics": "platform_modern_radar",
-			"void_research": "platform_future_heavy",
+			"iron_wall_corp": "mod_m1a2sep",
+			"aether_dynamics": "mod_m6",
+			"void_research": "fut_heavy_mech",
 		},
 	},
-	"platform_cold_ifv": {
-		"evolution_1": "platform_modern_medium",
+	"cold_bmp1": {
+		"evolution_1": "mod_m1a1",
 		"faction_branches": {
-			"iron_wall_corp": "platform_modern_guard_heavy",
-			"aether_dynamics": "platform_modern_radar",
-			"void_research": "platform_future_heavy",
+			"iron_wall_corp": "mod_m1a2sep",
+			"aether_dynamics": "mod_m6",
+			"void_research": "fut_heavy_mech",
 		},
 	},
-	"platform_cold_scout": {
-		"evolution_1": "platform_future_light",
+	"cold_m113": {
+		"evolution_1": "fut_scout_mech",
 		"faction_branches": {
-			"helix_recon": "platform_modern_stealth",
-			"frontier_union": "platform_modern_light",
-			"void_research": "omega_platform",
+			"helix_recon": "fut_scout_drone",
+			"frontier_union": "mod_technical",
+			"void_research": "fut_nexus",
 		},
 	},
-	"platform_modern_light": {
-		"evolution_1": "platform_future_light",
+	"mod_technical": {
+		"evolution_1": "fut_scout_mech",
 		"faction_branches": {
-			"helix_recon": "platform_future_radar",
-			"frontier_union": "platform_future_medium",
-			"void_research": "omega_platform",
+			"helix_recon": "fut_prism",
+			"frontier_union": "fut_hovertank",
+			"void_research": "fut_nexus",
 		},
 	},
-	"platform_modern_medium": {
-		"evolution_1": "platform_future_heavy",
+	"mod_m1a1": {
+		"evolution_1": "fut_heavy_mech",
 		"faction_branches": {
-			"iron_wall_corp": "platform_modern_guard_heavy",
-			"helix_recon": "platform_future_light",
-			"void_research": "omega_platform",
+			"iron_wall_corp": "mod_m1a2sep",
+			"helix_recon": "fut_scout_mech",
+			"void_research": "fut_nexus",
 		},
 	},
-	"platform_modern_radar": {
-		"evolution_1": "platform_future_radar",
+	"mod_m6": {
+		"evolution_1": "fut_prism",
 		"faction_branches": {
-			"helix_recon": "platform_future_light",
-			"aether_dynamics": "platform_future_medium",
-			"void_research": "omega_platform",
+			"helix_recon": "fut_scout_mech",
+			"aether_dynamics": "fut_hovertank",
+			"void_research": "fut_nexus",
 		},
 	},
 	"void_time_ripple": {

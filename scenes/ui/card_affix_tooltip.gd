@@ -226,9 +226,9 @@ func _add_affix_row(affix: AffixResource) -> void:
 ## 获取卡牌类型颜色
 func _get_card_type_color(card_type: int) -> Color:
 	match card_type:
-		GC.CardType.PLATFORM: return Color(0.1, 0.5, 0.9, 1.0)
-		GC.CardType.WEAPON:   return Color(0.85, 0.45, 0.1, 1.0)
-		GC.CardType.COMBINED: return Color(0.55, 0.25, 0.9, 1.0)
+		GC.CardType.COMBAT_UNIT: return Color(0.1, 0.5, 0.9, 1.0)
+		GC.CardType.COMBAT_UNIT:   return Color(0.85, 0.45, 0.1, 1.0)
+		GC.CardType.COMBAT_UNIT: return Color(0.55, 0.25, 0.9, 1.0)
 		GC.CardType.ENERGY:   return Color(0.15, 0.75, 0.35, 1.0)
 		GC.CardType.LAW:      return Color(0.95, 0.90, 0.60, 1.0)  # 金白 — 法则权威
 		_:                    return Color(0.5, 0.5, 0.5, 1.0)

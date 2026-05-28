@@ -1,34 +1,88 @@
 extends Resource
 class_name UnitStats
 ## 单位数值：战斗单位卡的属性。
-## v3 目标：由 `card_id` + 养成状态派生（见 docs/BATTLE_CARD_V3_SCHEMA.md §3）；
-## 当前仍保留 platform/weapon 字段以兼容拆分式卡与战斗逻辑。
+##
+## v3 重构：由 CardResource 的战斗卡字段直接派生（era + combat_kind + base_*）。
+## 保留旧 platform_type/weapon_type 字段以兼容过渡期，新代码不应写入。
 
-@export var platform_type: int = 0     # 底盘类型（决定移动/生存特性）
-@export var weapon_type: int = 0       # 攻击类型（决定弹道/伤害模式）
+# ─────────────────────────────────────────────
+#  核心属性（由 CardResource 战斗卡字段派生）
+# ─────────────────────────────────────────────
+
 @export var max_hp: float = 100.0
 @export var move_speed: float = 80.0
 ## 格子战术护甲：参与 CardGridDamage 百分比减伤 def/(def+50)
 @export var defense: float = 0.0
-## 格子战术闪避率（0~1，侦察/隐匿等平台固有）
+## 格子战术闪避率（0~1，轻装型固有）
 @export var dodge_chance: float = 0.0
-@export var attack_damage: float = 10.0
 @export var attack_range: float = 120.0
 @export var attack_interval: float = 1.0
-@export var is_stationary: bool = false  # 堡垒不移动
+@export var is_stationary: bool = false  # 炮台不移动
 
-## 多武器槽（每项 Dictionary：weapon_type, damage, range, interval, timer）；与 UnitStatsTable.build_multi_stats 一致
+## @compat 兼容属性：attack_damage 读写映射到 attack_light
+## 旧代码仍然读写 stats.attack_damage，内部等价于 attack_light
+var attack_damage: float = 0.0:
+	set(v):
+		attack_light = v
+	get:
+		return attack_light
+
+## 武器类型（GameConstants.WeaponType：DIRECT/INDIRECT/AERIAL）
+var weapon_type: int = 0
+
+## 部署速度（0-7，越大越快进入战场）
+var deploy_speed: int = 3
+
+## 攻击维度（对不同类型单位的伤害）
+@export var attack_light: float = 0.0   # 对轻装
+@export var attack_armor: float = 0.0   # 对装甲
+@export var attack_air: float = 0.0     # 对空中
+
+## 防御维度（对不同武器类型的防御）
+@export var defense_light: float = 0.0  # 防轻装武器
+@export var defense_armor: float = 0.0  # 防装甲武器
+@export var defense_air: float = 0.0    # 防空武器
+
+## 多武器槽（每项 Dictionary：damage, range, interval, timer）
 var weapons: Array = []
 
-# ── 卡牌特殊能力识别 ─────────────────────────
+# ─────────────────────────────────────────────
+#  身份字段
+# ─────────────────────────────────────────────
+
 ## 当前战斗单位卡的 card_id（用于战斗中判断特殊能力）
 var card_id: String = ""
-## 相位仪绿槽平台卡 id（改装次数、军衔、星级强化文案、平台专属能力等）
+
+## 时代（GameConstants.Era）
+var era: int = 0
+
+## 战斗定位（0=轻装/1=装甲/2=支援/3=空中）
+var combat_kind: int = 0
+
+## 武器外观标签（纯显示）
+var weapon_label: String = ""
+
+# ─────────────────────────────────────────────
+#  旧字段（deprecated，保留兼容）
+# ─────────────────────────────────────────────
+
+## @deprecated 旧底盘类型，新代码用 combat_kind
+@export var platform_type: int = 0
+
+## @deprecated 旧攻击类型（已废弃，保留用于兼容）
+## 新代码使用新的 weapon_type 变量存储 WeaponTypeNew 枚举值
+@export var legacy_weapon_type: int = 0
+
+## @deprecated 旧平台卡 id，新代码用 card_id
 var platform_card_id: String = ""
-## 该平台槽位已装配的武器卡 id 列表（无武器模式时可为空）
+
+## @deprecated 旧武器卡 id 列表
 var weapon_card_ids: Array[String] = []
 
-# ── 词条特殊属性（默认值表示"未启用"）──────────────────────
+# ─────────────────────────────────────────────
+#  词条特殊属性（默认值表示"未启用"）
+# ─────────────────────────────────────────────
+
 ## 伤害减免（0.0~1.0，来自 platform_armor 词条）
 @export var damage_reduction: float = 0.0
 
@@ -56,7 +110,10 @@ var weapon_card_ids: Array[String] = []
 ## 每秒回血（基于 max_hp 百分比，来自 nano_regen 词条）
 @export var hp_regen: float = 0.0
 
-# ── 变异词条标记 ──────────────────────────────
+# ─────────────────────────────────────────────
+#  变异词条标记
+# ─────────────────────────────────────────────
+
 ## 是否有武器伤害变异（双倍伤害概率）
 var has_weapon_dmg_mutation: bool = false
 

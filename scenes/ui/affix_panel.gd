@@ -177,7 +177,7 @@ func _build_affix_card_lines(card_id: String) -> Array[String]:
 	var machine_name: String = card.display_name
 	var weapon_names: Array[String] = []
 
-	if card.card_type == GC.CardType.COMBINED:
+	if card.card_type == GC.CardType.COMBAT_UNIT:
 		if not card.source_platform_id.is_empty():
 			machine_name = _resolve_card_name_by_id(card.source_platform_id)
 		for wid_raw in card.source_weapon_ids:
@@ -185,10 +185,10 @@ func _build_affix_card_lines(card_id: String) -> Array[String]:
 			if wid.is_empty():
 				continue
 			weapon_names.append(_resolve_card_name_by_id(wid))
-	elif card.card_type == GC.CardType.PLATFORM:
+	elif card.card_type == GC.CardType.COMBAT_UNIT:
 		machine_name = card.display_name
 		weapon_names.append(_suggest_weapon_name_for_platform(card))
-	elif card.card_type == GC.CardType.WEAPON:
+	elif card.card_type == GC.CardType.COMBAT_UNIT:
 		machine_name = "通用机体"
 		weapon_names.append(card.display_name)
 	else:

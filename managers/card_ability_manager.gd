@@ -267,8 +267,10 @@ static func _spawn_wingman(carrier: Node2D, parent_stats: UnitStats) -> void:
 	wingman_stats.attack_range = parent_stats.attack_range * 0.8
 	wingman_stats.attack_interval = parent_stats.attack_interval
 	wingman_stats.is_stationary = false
-	wingman_stats.platform_type = parent_stats.platform_type
-	wingman_stats.weapon_type = parent_stats.weapon_type
+	wingman_stats.platform_type = parent_stats.platform_type  # @deprecated 存档兼容
+	wingman_stats.weapon_type = parent_stats.weapon_type  # 新 WeaponTypeNew 枚举
+	# v3: 也应该复制 combat_kind
+	wingman_stats.combat_kind = parent_stats.combat_kind
 	var wingman = scene.instantiate()
 	wingman.setup(carrier.is_player if "is_player" in carrier else true, wingman_stats)
 	wingman.set_meta("is_wingman", true)
@@ -490,6 +492,8 @@ static func apply_carrier_repair_aura_tick(unit: Node2D) -> void:
 		if not _get_aura_data().is_mechanical_platform(ally.stats.platform_type):
 			continue
 		var heal_amount: float = ally.stats.max_hp * heal_pct
+		if not ally.has_meta("carrier_repair_buffed"):
+			ally.set_meta("carrier_repair_buffed", true)
 		if ally.has_method("heal"):
 			ally.heal(heal_amount)
 		elif "hp" in ally:

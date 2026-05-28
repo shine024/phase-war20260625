@@ -11,6 +11,7 @@ const DefaultCards = preload("res://data/default_cards.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
 const GameConstants = preload("res://resources/game_constants.gd")
 const CardDropGrants = preload("res://scripts/card_drop_grants.gd")
+const DropTables = preload("res://resources/drop_tables.gd")
 
 var drop_tables: DropTables
 var pending_drops: Array = []  # 待处理的掉落物
@@ -126,7 +127,7 @@ func _add_dropped_card(card_id: String, count: int) -> void:
 		push_error("无法找到掉落卡牌: " + card_id)
 		return
 	# 安全网：拦截 WEAPON 类型（武器系统已废弃）
-	if card.card_type == GameConstants.CardType.WEAPON:
+	if card.card_type == GameConstants.CardType.COMBAT_UNIT:
 		push_warning("[DropManager] 已拦截废弃 WEAPON 类型掉落: %s" % card_id)
 		return
 	var n: int = maxi(1, int(count))

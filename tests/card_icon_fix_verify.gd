@@ -78,7 +78,7 @@ func _initialize() -> void:
 	DefaultCards._ensure_card_cache()
 	for cid_raw in DefaultCards._id_lookup_cache.keys():
 		var c = DefaultCards.get_card_by_id(String(cid_raw))
-		if c == null or c.card_type != GC.CardType.PLATFORM:
+		if c == null or c.card_type != GC.CardType.COMBAT_UNIT:
 			continue
 		if String(c.card_id).begins_with("bp_"):
 			continue

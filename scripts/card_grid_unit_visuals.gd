@@ -46,7 +46,7 @@ static func synthetic_card_for_archetype(archetype_id: String, cfg: Dictionary) 
 	c.card_id = archetype_id
 	c.display_name = String(cfg.get("display_name", archetype_id))
 	c.rarity = "common"
-	c.card_type = GC.CardType.PLATFORM
+	c.card_type = GC.CardType.COMBAT_UNIT
 	return c
 
 

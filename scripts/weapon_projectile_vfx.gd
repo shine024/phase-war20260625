@@ -7,18 +7,18 @@ const GC = preload("res://resources/game_constants.gd")
 const TEX_DIR := "res://assets/effects/projectiles/weapons_realistic/"
 
 const PROJ_TEX: Dictionary = {
-	GC.WeaponType.SMG: preload(TEX_DIR + "weapon_smg_projectile.png"),
-	GC.WeaponType.RIFLE: preload(TEX_DIR + "weapon_rifle_projectile.png"),
-	GC.WeaponType.MG: preload(TEX_DIR + "weapon_mg_projectile.png"),
-	GC.WeaponType.ROCKET: preload(TEX_DIR + "weapon_rocket_projectile.png"),
-	GC.WeaponType.PISTOL: preload(TEX_DIR + "weapon_pistol_projectile.png"),
-	GC.WeaponType.SHOTGUN: preload(TEX_DIR + "weapon_shotgun_projectile.png"),
-	GC.WeaponType.SNIPER: preload(TEX_DIR + "weapon_sniper_projectile.png"),
-	GC.WeaponType.FLAK: preload(TEX_DIR + "weapon_flak_projectile.png"),
-	GC.WeaponType.LASER: preload(TEX_DIR + "weapon_laser_projectile.png"),
-	GC.WeaponType.MISSILE: preload(TEX_DIR + "weapon_missile_projectile.png"),
-	GC.WeaponType.OMEGA_CANNON: preload(TEX_DIR + "weapon_omega_cannon_projectile.png"),
-	GC.WeaponType.RAIL_CANNON: preload(TEX_DIR + "weapon_rail_cannon_projectile.png"),
+	0: preload(TEX_DIR + "weapon_smg_projectile.png"),
+	1: preload(TEX_DIR + "weapon_rifle_projectile.png"),
+	2: preload(TEX_DIR + "weapon_mg_projectile.png"),
+	3: preload(TEX_DIR + "weapon_rocket_projectile.png"),
+	4: preload(TEX_DIR + "weapon_pistol_projectile.png"),
+	5: preload(TEX_DIR + "weapon_shotgun_projectile.png"),
+	6: preload(TEX_DIR + "weapon_sniper_projectile.png"),
+	7: preload(TEX_DIR + "weapon_flak_projectile.png"),
+	8: preload(TEX_DIR + "weapon_laser_projectile.png"),
+	9: preload(TEX_DIR + "weapon_missile_projectile.png"),
+	10: preload(TEX_DIR + "weapon_omega_cannon_projectile.png"),
+	11: preload(TEX_DIR + "weapon_rail_cannon_projectile.png"),
 }
 
 const IMPACT_TEX_SMALL := preload(TEX_DIR + "weapon_impact_small_arms.png")
@@ -27,33 +27,33 @@ const IMPACT_TEX_SNIPER := preload(TEX_DIR + "weapon_impact_sniper.png")
 const IMPACT_TEX_EXPLOSIVE := preload(TEX_DIR + "weapon_impact_explosive.png")
 
 const PROJ_TEX_SCALE: Dictionary = {
-	GC.WeaponType.SMG: 0.09,
-	GC.WeaponType.PISTOL: 0.08,
-	GC.WeaponType.RIFLE: 0.10,
-	GC.WeaponType.MG: 0.10,
-	GC.WeaponType.SHOTGUN: 0.11,
-	GC.WeaponType.SNIPER: 0.11,
-	GC.WeaponType.LASER: 0.10,
-	GC.WeaponType.ROCKET: 0.15,
-	GC.WeaponType.MISSILE: 0.16,
-	GC.WeaponType.FLAK: 0.13,
-	GC.WeaponType.RAIL_CANNON: 0.16,
-	GC.WeaponType.OMEGA_CANNON: 0.17,
+	0: 0.09,
+	4: 0.08,
+	1: 0.10,
+	2: 0.10,
+	5: 0.11,
+	6: 0.11,
+	8: 0.10,
+	3: 0.15,
+	9: 0.16,
+	7: 0.13,
+	11: 0.16,
+	10: 0.17,
 }
 
 const IMPACT_TEX_SCALE: Dictionary = {
-	GC.WeaponType.SMG: 0.10,
-	GC.WeaponType.PISTOL: 0.10,
-	GC.WeaponType.RIFLE: 0.10,
-	GC.WeaponType.MG: 0.10,
-	GC.WeaponType.SHOTGUN: 0.12,
-	GC.WeaponType.SNIPER: 0.11,
-	GC.WeaponType.LASER: 0.11,
-	GC.WeaponType.ROCKET: 0.15,
-	GC.WeaponType.MISSILE: 0.16,
-	GC.WeaponType.FLAK: 0.14,
-	GC.WeaponType.RAIL_CANNON: 0.17,
-	GC.WeaponType.OMEGA_CANNON: 0.18,
+	0: 0.10,
+	4: 0.10,
+	1: 0.10,
+	2: 0.10,
+	5: 0.12,
+	6: 0.11,
+	8: 0.11,
+	3: 0.15,
+	9: 0.16,
+	7: 0.14,
+	11: 0.17,
+	10: 0.18,
 }
 
 const REF_TEX_PX: float = 512.0
@@ -80,11 +80,11 @@ static func proj_quad_size(weapon_type: int) -> Vector2:
 
 static func impact_texture(weapon_type: int) -> Texture2D:
 	match weapon_type:
-		GC.WeaponType.SHOTGUN:
+		5:
 			return IMPACT_TEX_SHOTGUN
-		GC.WeaponType.SNIPER, GC.WeaponType.LASER:
+		6, 8:
 			return IMPACT_TEX_SNIPER
-		GC.WeaponType.ROCKET, GC.WeaponType.MISSILE, GC.WeaponType.FLAK, GC.WeaponType.RAIL_CANNON, GC.WeaponType.OMEGA_CANNON:
+		3, 9, 7, 11, 10:
 			return IMPACT_TEX_EXPLOSIVE
 		_:
 			return IMPACT_TEX_SMALL

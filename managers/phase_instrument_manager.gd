@@ -4,6 +4,7 @@ extends Node
 const GC = preload("res://resources/game_constants.gd")
 const PhaseInstruments = preload("res://data/phase_instruments.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
+const DefaultCards = preload("res://data/default_cards.gd")
 const DEBUG_EQUIP_LOG := false
 ## 累计相位场经验阈值（Lv1..Lv16），与每关 victory 发放的 LevelEras.get_base_xp_for_level 对齐调参
 const PHASE_FIELD_XP_THRESHOLDS: Array = [
@@ -570,8 +571,8 @@ func get_loadouts() -> Array:
 		var c: CardResource = c_raw
 		if c == null:
 			continue
-		# 仅平台卡/一体卡可部署，旧武器卡直接忽略（武器概念下线）
-		if c.card_type != GC.CardType.PLATFORM and c.card_type != GC.CardType.COMBINED:
+		# 仅平台卡可部署（战斗卡）
+		if c.card_type != GC.CardType.COMBAT_UNIT:
 			continue
 		loadouts.append({"platform": c, "weapons": []})
 
@@ -761,10 +762,9 @@ func _emit_slots_changed() -> void:
 
 func _card_type_name(card: CardResource) -> String:
 	match card.card_type:
-		GC.CardType.PLATFORM: return "platform"
+		GC.CardType.COMBAT_UNIT: return "platform"
 		GC.CardType.ENERGY: return "energy"
 		GC.CardType.LAW: return "law"
-		GC.CardType.COMBINED: return "combined"
 	return "unknown"
 
 func get_current_instrument() -> Dictionary:
@@ -1053,7 +1053,7 @@ func _slot_to_flat_index(color: String, color_index: int) -> int:
 
 func _can_equip_card_to_color(card: CardResource, color: String) -> bool:
 	if color == "green":
-		return card.card_type == GC.CardType.PLATFORM or card.card_type == GC.CardType.COMBINED
+		return card.card_type == GC.CardType.COMBAT_UNIT
 	if color == "yellow":
 		return card.card_type == GC.CardType.ENERGY
 	if color == "red" or color == "blue":

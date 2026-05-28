@@ -664,16 +664,16 @@ func _emit_deploy_failed(reason_code: String, message: String) -> void:
 ## 与 backpack_combat_preview 一致：一体卡多武器用 multi_weapon_types，否则单默认武器。
 static func resolve_deploy_weapon_types(card: CardResource) -> Array:
 	if card == null:
-		return [GC.WeaponType.RIFLE]
-	var default_wt: int = int(card.default_weapon_type) if card.default_weapon_type >= 0 else GC.WeaponType.RIFLE
-	if card.card_type == GC.CardType.COMBINED:
+		return [1]  # RIFLE
+	var default_wt: int = int(card.default_weapon_type) if card.default_weapon_type >= 0 else 1  # RIFLE
+	if card.card_type == GC.CardType.COMBAT_UNIT:
 		var wts: Array = []
 		for t in card.multi_weapon_types:
 			wts.append(int(t))
 		if wts.is_empty() and card.default_weapon_type >= 0:
 			wts.append(int(card.default_weapon_type))
 		if wts.is_empty():
-			wts.append(GC.WeaponType.RIFLE)
+			wts.append(1)  # RIFLE
 		return wts
 	return [default_wt]
 

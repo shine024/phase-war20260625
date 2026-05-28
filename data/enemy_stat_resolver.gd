@@ -84,7 +84,7 @@ static func resolve_classic_enemy(archetype_id: String, ctx: EnemyStatContext) -
 			"attack_range": 100.0,
 			"attack_interval": 1.0,
 			"move_speed": 0.0,
-			"weapon_type": int(GC.WeaponType.SMG),
+			"weapon_type": 0,  # SMG
 		}
 
 	var base_hp: float = float(cfg.get("hp", 80.0))
@@ -99,7 +99,7 @@ static func resolve_classic_enemy(archetype_id: String, ctx: EnemyStatContext) -
 		"attack_range": float(cfg.get("attack_range", 100.0)),
 		"attack_interval": float(cfg.get("attack_interval", 1.0)),
 		"move_speed": 0.0,
-		"weapon_type": int(cfg.get("weapon_type", GC.WeaponType.SMG)),
+		"weapon_type": int(cfg.get("weapon_type", 0)),  # default SMG
 	}
 
 

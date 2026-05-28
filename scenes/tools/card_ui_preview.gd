@@ -220,9 +220,9 @@ func _build_ui() -> void:
 	preview_vbox.add_child(grid1)
 
 	var card_types := [
-		[GC.CardType.PLATFORM, "平台"],
-		[GC.CardType.WEAPON,   "武器"],
-		[GC.CardType.COMBINED, "合成"],
+		[GC.CardType.COMBAT_UNIT, "平台"],
+		[GC.CardType.COMBAT_UNIT,   "武器"],
+		[GC.CardType.COMBAT_UNIT, "合成"],
 		[GC.CardType.ENERGY,   "能量"],
 		[GC.CardType.LAW,      "法则"],
 	]
@@ -238,7 +238,7 @@ func _build_ui() -> void:
 	preview_vbox.add_child(grid2)
 
 	for star in range(0, 8):
-		var card := _fake_card(GC.CardType.PLATFORM, "rare", star, "★%d" % star)
+		var card := _fake_card(GC.CardType.COMBAT_UNIT, "rare", star, "★%d" % star)
 		_add_card(grid2, card, "★%d" % star)
 
 	# ── 长名称测试 ──
@@ -255,7 +255,7 @@ func _build_ui() -> void:
 		["energy",   "common", 0, "能量"],
 	]
 	for ln in long_names:
-		var ct := GC.CardType.PLATFORM if ln[0] == "platform" else GC.CardType.ENERGY
+		var ct := GC.CardType.COMBAT_UNIT if ln[0] == "platform" else GC.CardType.ENERGY
 		var card := _fake_card(ct, ln[1], ln[2], ln[3])
 		_add_card(grid3, card, ln[3])
 
@@ -277,7 +277,7 @@ func _build_ui() -> void:
 	filled_slot.set_meta("slot_index", 1)
 	var slot_card: CardResource = _preview_card_from_blueprint_id("platform_modern_guard_heavy")
 	if slot_card == null:
-		slot_card = _fake_card(GC.CardType.PLATFORM, "rare", 3, "豹2A7")
+		slot_card = _fake_card(GC.CardType.COMBAT_UNIT, "rare", 3, "豹2A7")
 	filled_slot.set_card(slot_card)
 	filled_slot.add_theme_stylebox_override("panel", _filled_slot_sb())
 	hbox_slots.add_child(filled_slot)
@@ -627,7 +627,7 @@ func _make_single_preview_card() -> CardResource:
 		var c: CardResource = _preview_card_from_blueprint_id(single_card_blueprint_id)
 		if c:
 			return c
-	return _fake_card(GC.CardType.PLATFORM, "legendary", 5, "全装型机动舱")
+	return _fake_card(GC.CardType.COMBAT_UNIT, "legendary", 5, "全装型机动舱")
 
 
 func _fake_card(ct: int, rarity: String, star: int, name: String) -> CardResource:
@@ -646,9 +646,9 @@ func _fake_card(ct: int, rarity: String, star: int, name: String) -> CardResourc
 
 static func _type_cn(ct: int) -> String:
 	match ct:
-		GC.CardType.PLATFORM: return "平台"
-		GC.CardType.WEAPON:   return "武器"
-		GC.CardType.COMBINED: return "合成"
+		GC.CardType.COMBAT_UNIT: return "平台"
+		GC.CardType.COMBAT_UNIT:   return "武器"
+		GC.CardType.COMBAT_UNIT: return "合成"
 		GC.CardType.ENERGY:   return "能量"
 		GC.CardType.LAW:      return "法则"
 		_: return "?"

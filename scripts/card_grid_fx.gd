@@ -10,9 +10,9 @@ static func spawn_impact(parent: Node2D, world_pos: Vector2, weapon_type: int) -
 	var poly := Polygon2D.new()
 	var col := Color(1, 0.85, 0.35, 0.95)
 	match weapon_type:
-		GC.WeaponType.LASER, GC.WeaponType.SNIPER:
+		8, 6:  # LASER, SNIPER
 			col = Color(0.35, 0.92, 1.0, 0.95)
-		GC.WeaponType.ROCKET, GC.WeaponType.MISSILE, GC.WeaponType.RAIL_CANNON, GC.WeaponType.OMEGA_CANNON:
+		3, 9, 11, 10:  # ROCKET, MISSILE, RAIL_CANNON, OMEGA_CANNON
 			col = Color(1.0, 0.45, 0.15, 0.95)
 		_:
 			col = Color(0.95, 0.9, 0.35, 0.92)

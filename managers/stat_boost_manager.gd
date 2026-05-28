@@ -151,17 +151,16 @@ func apply_all_boosts_to_stats(stats: UnitStats) -> void:
 	var hp_bonus = get_total_bonus_for_type(BoostType.HP_MAX)
 	if hp_bonus != 0.0:
 		stats.max_hp *= (1.0 + hp_bonus)
-		stats.hp *= (1.0 + hp_bonus)  # 同时提升当前生命值
 
 	# 伤害提升
 	var damage_bonus = get_total_bonus_for_type(BoostType.DAMAGE)
 	if damage_bonus != 0.0:
-		stats.damage *= (1.0 + damage_bonus)
+		stats.attack_damage *= (1.0 + damage_bonus)
 
 	# 速度提升
 	var speed_bonus = get_total_bonus_for_type(BoostType.SPEED)
 	if speed_bonus != 0.0:
-		stats.speed *= (1.0 + speed_bonus)
+		stats.move_speed *= (1.0 + speed_bonus)
 
 	# 防御提升（负值表示减伤）
 	var defense_bonus = get_total_bonus_for_type(BoostType.DEFENSE)
@@ -171,17 +170,17 @@ func apply_all_boosts_to_stats(stats: UnitStats) -> void:
 	# 攻速提升
 	var attack_speed_bonus = get_total_bonus_for_type(BoostType.ATTACK_SPEED)
 	if attack_speed_bonus != 0.0:
-		stats.attack_speed *= (1.0 + attack_speed_bonus)
+		stats.attack_interval *= (1.0 + attack_speed_bonus)
 
 	# 暴击率提升
 	var crit_rate_bonus = get_total_bonus_for_type(BoostType.CRIT_RATE)
 	if crit_rate_bonus != 0.0:
-		stats.crit_rate += crit_rate_bonus
+		stats.crit_chance += crit_rate_bonus
 
 	# 暴击伤害提升
 	var crit_damage_bonus = get_total_bonus_for_type(BoostType.CRIT_DAMAGE)
 	if crit_damage_bonus != 0.0:
-		stats.crit_damage += crit_damage_bonus
+		stats.crit_damage_bonus += crit_damage_bonus
 
 ## 获取指定类型的所有加成总和
 func get_total_bonus_for_type(boost_type: BoostType) -> float:

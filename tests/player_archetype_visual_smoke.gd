@@ -61,7 +61,7 @@ func _initialize() -> void:
 	var titan_cards: Array = []
 	for cid in card_chance.keys():
 		var card = DefaultCards.get_card_by_id(cid)
-		if card != null and card.card_type == GC.CardType.PLATFORM and int(card.platform_type) == int(GC.PlatformType.TITAN):
+		if card != null and card.card_type == GC.CardType.COMBAT_UNIT and int(card.platform_type) == 2:  # TITAN
 			titan_cards.append(cid)
 	if titan_cards.size() >= 2:
 		var a: String = EnemyArchetypes.get_visual_archetype_id_for_card(titan_cards[0])

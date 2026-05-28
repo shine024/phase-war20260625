@@ -94,9 +94,9 @@ static func get_mod_unlock_star(mod_index: int) -> int:
 
 static func get_pool_for_card_type(card_type: int) -> Array:
 	match card_type:
-		GC.CardType.PLATFORM, GC.CardType.COMBAT_UNIT:
+		GC.CardType.COMBAT_UNIT, GC.CardType.COMBAT_UNIT:
 			return _POOL_PLATFORM.duplicate()
-		GC.CardType.WEAPON:
+		GC.CardType.COMBAT_UNIT:
 			return _POOL_WEAPON.duplicate()
 		GC.CardType.ENERGY:
 			return _POOL_ENERGY.duplicate()

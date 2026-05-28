@@ -785,7 +785,7 @@ func _get_card_attributes(card_data: Variant, level: int) -> Dictionary:
 		stats["能量消耗"] = energy_cost
 
 		# 根据卡牌类型获取不同属性
-		if card_type == GC.CardType.PLATFORM:
+		if card_type == GC.CardType.COMBAT_UNIT:
 			var max_hp = card_data.get("max_hp", 100)
 			var move_speed = card_data.get("move_speed", 100)
 			stats["生命值"] = int(max_hp * (1.0 + (level - 1) * 0.1))

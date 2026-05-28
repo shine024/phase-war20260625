@@ -1,176 +1,120 @@
 extends RefCounted
 class_name UnitStatsTable
-## 根据底盘类型+攻击类型返回 UnitStats（数值表）
-## 时代对武器伤害/射程、对平台生命倍率与 docs/BATTLE_CARD_V3.md §1.3 一致（BattleCardV3）。
+## 数值表：从 CardResource 战斗卡字段构建 UnitStats
+##
+## v3 重构：主入口 build_stats_from_card() 直接从 CardResource 读取 base_* 字段，
+## 不再依赖 platform_type + weapon_type 二元查表。
+## 旧 build_stats / build_multi_stats 已改为内部构造 CardResource 后调用新入口，
+## 保留函数签名做兼容。
 
 const GC = preload("res://resources/game_constants.gd")
-
-# 平台基础：血量、是否固定（格子战不再使用移速）
-static func get_platform_base(pt: int) -> Dictionary:
-	match pt:
-		GC.PlatformType.HOUND: return {"speed": 115.0, "hp": 65.0, "stationary": false}
-		GC.PlatformType.GUARD: return {"speed": 75.0, "hp": 110.0, "stationary": false}
-		GC.PlatformType.TITAN: return {"speed": 40.0, "hp": 200.0, "stationary": false}
-		GC.PlatformType.FORTRESS: return {"speed": 0.0, "hp": 260.0, "stationary": true}  # 纯防御核心：DEF最高
-		GC.PlatformType.RADAR: return {"speed": 0.0, "hp": 180.0, "stationary": true}  # 固定雷达站
-		GC.PlatformType.SCOUT: return {"speed": 135.0, "hp": 50.0, "stationary": false}
-		GC.PlatformType.RAIDER: return {"speed": 100.0, "hp": 90.0, "stationary": false}
-		GC.PlatformType.SIEGE: return {"speed": 0.0, "hp": 300.0, "stationary": true}  # 完全固定攻城炮（曲射）
-		GC.PlatformType.CARRIER: return {"speed": 50.0, "hp": 140.0, "stationary": false}
-		GC.PlatformType.MEDIC: return {"speed": 75.0, "hp": 80.0, "stationary": false}
-		GC.PlatformType.STEALTH: return {"speed": 115.0, "hp": 50.0, "stationary": false}
-		GC.PlatformType.OMEGA_PLATFORM: return {"speed": 30.0, "hp": 240.0, "stationary": false}
-		GC.PlatformType.COMMAND: return {"speed": 0.0, "hp": 150.0, "stationary": true}  # 指挥车：固定、提供全场光环
-	return {"speed": 80.0, "hp": 100.0, "stationary": false}
+const BattleCardV3 = preload("res://data/battle_card_v3.gd")
 
 
-static func get_platform_defense(pt: int) -> int:
-	match pt:
-		GC.PlatformType.SCOUT: return 4
-		GC.PlatformType.HOUND: return 5
-		GC.PlatformType.STEALTH: return 5
-		GC.PlatformType.MEDIC: return 6
-		GC.PlatformType.RAIDER: return 7
-		GC.PlatformType.CARRIER: return 8
-		GC.PlatformType.GUARD: return 9
-		GC.PlatformType.COMMAND: return 10
-		GC.PlatformType.RADAR: return 11
-		GC.PlatformType.TITAN: return 13
-		GC.PlatformType.SIEGE: return 14
-		GC.PlatformType.OMEGA_PLATFORM: return 15
-		GC.PlatformType.FORTRESS: return 20
-	return 8
+# ─────────────────────────────────────────────
+#  新主入口：从 CardResource 战斗卡直接构建
+# ─────────────────────────────────────────────
+
+## 从 CardResource 的战斗卡字段直接构建 UnitStats
+## card: CardResource（必须是 COMBAT_UNIT 类型）
+## era_override: 覆盖时代（-1=使用 card.era）
+static func build_stats_from_card(card: CardResource, era_override: int = -1) -> UnitStats:
+	var stats = UnitStats.new()
+	var e: int = era_override if era_override >= 0 else card.era
+	stats.era = e
+	stats.combat_kind = card.combat_kind
+	stats.weapon_label = card.weapon_label
+	stats.card_id = card.card_id
+
+	# 基础数值直接从卡牌读取
+	stats.max_hp = card.base_hp
+	# v3：使用新字段替代旧的base_interval/base_range
+	stats.attack_interval = 1.0 / card.attack_speed if card.attack_speed > 0 else 1.0
+	stats.attack_range = float(card.range_value * 100.0)  # 格转像素（1格=100px）
+	stats.move_speed = card.base_speed
+	stats.is_stationary = (card.base_speed <= 0.0)
+
+	# 多维攻防
+	stats.weapon_type = card.weapon_type
+	stats.deploy_speed = card.deploy_speed
+	stats.attack_light = card.attack_light
+	stats.attack_armor = card.attack_armor
+	stats.attack_air = card.attack_air
+	stats.defense_light = card.defense_light
+	stats.defense_armor = card.defense_armor
+	stats.defense_air = card.defense_air
+
+	# 时代缩放
+	if e >= 0:
+		stats.max_hp *= BattleCardV3.era_hp_multiplier(clampi(e, 0, 4))
+		stats.attack_light *= BattleCardV3.era_damage_multiplier(clampi(e, 0, 4))
+		stats.attack_armor *= BattleCardV3.era_damage_multiplier(clampi(e, 0, 4))
+		stats.attack_air *= BattleCardV3.era_damage_multiplier(clampi(e, 0, 4))
+		stats.attack_range *= BattleCardV3.era_range_multiplier(clampi(e, 0, 4))
+
+	# 多武器（如果有）
+	stats.weapons.clear()
+	if card.multi_weapons.size() > 0:
+		for w_entry in card.multi_weapons:
+			var entry: Dictionary = w_entry.duplicate()
+			entry["timer"] = 0.0
+			if e >= 0:
+				entry["damage"] = float(entry.get("damage", 0.0)) * BattleCardV3.era_damage_multiplier(clampi(e, 0, 4))
+				entry["range"] = float(entry.get("range", 0.0)) * BattleCardV3.era_range_multiplier(clampi(e, 0, 4))
+			stats.weapons.append(entry)
+
+	# 旧字段兼容（写入旧字段让过渡期代码仍能工作）
+	stats.platform_type = card.platform_type
+	stats.legacy_weapon_type = card.legacy_weapon_type
+	stats.platform_card_id = card.card_id
+
+	# 战斗定位修正
+	apply_combat_kind_modifiers(stats)
+
+	return stats
 
 
-static func get_weapon_defense(wt: int) -> int:
-	match wt:
-		GC.WeaponType.RIFLE, GC.WeaponType.SHOTGUN, GC.WeaponType.LASER:
-			return 1
-		GC.WeaponType.MG, GC.WeaponType.FLAK:
-			return 2
-		GC.WeaponType.ROCKET, GC.WeaponType.MISSILE:
-			return 1
-		GC.WeaponType.OMEGA_CANNON, GC.WeaponType.RAIL_CANNON:
-			return 2
-	return 0
+## 战斗定位固有修正（替代旧 apply_platform_innate_modifiers）
+static func apply_combat_kind_modifiers(stats: UnitStats) -> void:
+	if stats == null:
+		return
+	match stats.combat_kind:
+		0:  # 轻装：高闪避
+			stats.dodge_chance = maxf(stats.dodge_chance, 0.18)
+		1:  # 装甲：高防御
+			stats.defense_light += 4.0
+			stats.defense_armor += 4.0
+			stats.defense_air += 4.0
+		2:  # 支援：加HP
+			stats.max_hp *= 1.08
+		3:  # 空中：高机动，可被防空攻击
+			stats.dodge_chance = maxf(stats.dodge_chance, 0.12)
+			stats.defense_light += 2.0
+			stats.defense_armor += 2.0
 
 
-static func get_combined_defense(platform_type: int, weapon_type: int) -> int:
-	return get_platform_defense(platform_type) + get_weapon_defense(weapon_type)
+# ─────────────────────────────────────────────
+#  战斗定位成长倾斜
+# ─────────────────────────────────────────────
 
-
-# 武器：伤害、射程、攻击间隔（表内 DPS 分档；爆炸/穿透等行为见 bullet.gd）
-# era >= 0 时按关卡时代缩放（玩家/预览/与文案对齐的缴获卡摘要）
-static func get_weapon_base(wt: int, era: int = -1) -> Dictionary:
-	var base: Dictionary
-	match wt:
-		GC.WeaponType.SMG:
-			base = {"damage": 8.0, "range": 95.0, "interval": 0.38}
-		GC.WeaponType.PISTOL:
-			base = {"damage": 7.0, "range": 85.0, "interval": 0.45}
-		GC.WeaponType.RIFLE:
-			base = {"damage": 14.0, "range": 155.0, "interval": 0.95}
-		GC.WeaponType.SNIPER:
-			base = {"damage": 28.0, "range": 240.0, "interval": 1.60}
-		GC.WeaponType.MG:
-			base = {"damage": 7.0, "range": 160.0, "interval": 0.25}
-		GC.WeaponType.SHOTGUN:
-			base = {"damage": 22.0, "range": 60.0, "interval": 0.85}
-		GC.WeaponType.ROCKET:
-			base = {"damage": 30.0, "range": 195.0, "interval": 1.70}
-		GC.WeaponType.MISSILE:
-			base = {"damage": 38.0, "range": 215.0, "interval": 2.00}
-		GC.WeaponType.FLAK:
-			base = {"damage": 9.0, "range": 125.0, "interval": 0.35}
-		GC.WeaponType.LASER:
-			base = {"damage": 13.0, "range": 185.0, "interval": 0.50}
-		GC.WeaponType.OMEGA_CANNON:
-			base = {"damage": 220.0, "range": 250.0, "interval": 2.2}
-		GC.WeaponType.RAIL_CANNON:
-			base = {"damage": 140.0, "range": 240.0, "interval": 1.65}
-		_:
-			base = {"damage": 10.0, "range": 120.0, "interval": 1.0}
-	if era < 0:
-		return base
-	var scaled: Dictionary = base.duplicate()
-	var e: int = clampi(era, 0, 4)
-	scaled["damage"] = float(scaled["damage"]) * BattleCardV3.era_damage_multiplier(e)
-	scaled["range"] = float(scaled["range"]) * BattleCardV3.era_range_multiplier(e)
-	return scaled
-
-
-## 按平台类型的星级成长倾斜（每星叠一层，与 BlueprintManager.apply_growth_to_stats 配合）
-static func get_platform_growth_bias(pt: int) -> Dictionary:
-	match pt:
-		GC.PlatformType.SIEGE:
-			return {"hp_bias": 0.08, "dmg_bias": 0.06, "range_bias": 0.04}
-		GC.PlatformType.FORTRESS:
-			return {"hp_bias": 0.10, "def_bias": 0.08}
-		GC.PlatformType.TITAN:
-			return {"hp_bias": 0.08, "def_bias": 0.06}
-		GC.PlatformType.SCOUT:
-			return {"dodge_bias": 0.05, "dmg_bias": 0.05, "speed_bias": 0.03}
-		GC.PlatformType.STEALTH:
-			return {"dodge_bias": 0.06, "dmg_bias": 0.04}
-		GC.PlatformType.RAIDER:
-			return {"dmg_bias": 0.07, "speed_bias": 0.04}
-		GC.PlatformType.RADAR:
-			return {"range_bias": 0.06, "def_bias": 0.04}
-		GC.PlatformType.CARRIER:
-			return {"hp_bias": 0.05, "heal_bias": 0.08}
-		GC.PlatformType.MEDIC:
-			return {"heal_bias": 0.10, "hp_bias": 0.04}
-		GC.PlatformType.OMEGA_PLATFORM:
-			return {"hp_bias": 0.08, "dmg_bias": 0.08, "def_bias": 0.06}
-		GC.PlatformType.COMMAND:
-			return {"hp_bias": 0.06, "def_bias": 0.05}
-		GC.PlatformType.HOUND:
+## 按战斗定位的星级成长倾斜（每星叠一层，与 BlueprintManager.apply_growth_to_stats 配合）
+static func get_combat_kind_growth_bias(kind: int) -> Dictionary:
+	match kind:
+		0:  # 轻装
 			return {"hp_bias": 0.04, "dmg_bias": 0.05, "dodge_bias": 0.03}
-		GC.PlatformType.GUARD:
+		1:  # 装甲
 			return {"hp_bias": 0.06, "def_bias": 0.04, "dmg_bias": 0.04}
+		2:  # 支援
+			return {"hp_bias": 0.05, "heal_bias": 0.08}
+		3:  # 空中
+			return {"hp_bias": 0.03, "dmg_bias": 0.06, "speed_bias": 0.05}
 		_:
 			return {"hp_bias": 0.04, "dmg_bias": 0.04}
 
 
-## 平台固有数值修正（与 CardAbilityManager 光环互补，在 build_stats 末尾调用）
-static func apply_platform_innate_modifiers(stats: UnitStats) -> void:
-	if stats == null:
-		return
-	match stats.platform_type:
-		GC.PlatformType.SIEGE:
-			stats.attack_range *= 1.18
-		GC.PlatformType.FORTRESS:
-			stats.max_hp *= 1.12
-			stats.defense += 3.0
-		GC.PlatformType.RADAR:
-			stats.attack_range *= 1.12
-		GC.PlatformType.TITAN:
-			stats.defense += 4.0
-		GC.PlatformType.SCOUT:
-			stats.dodge_chance = maxf(stats.dodge_chance, 0.18)
-		GC.PlatformType.STEALTH:
-			stats.dodge_chance = maxf(stats.dodge_chance, 0.20)
-		GC.PlatformType.CARRIER:
-			stats.max_hp *= 1.08
-	for i in range(stats.weapons.size()):
-		var w: Dictionary = stats.weapons[i] as Dictionary
-		if not w.has("range"):
-			continue
-		var scaled_range: float = float(w["range"])
-		match stats.platform_type:
-			GC.PlatformType.SIEGE:
-				scaled_range *= 1.18
-			GC.PlatformType.RADAR:
-				scaled_range *= 1.12
-		w["range"] = scaled_range
-		stats.weapons[i] = w
-	if stats.platform_type == GC.PlatformType.SIEGE or stats.platform_type == GC.PlatformType.RADAR:
-		var max_r: float = stats.attack_range
-		for w2 in stats.weapons:
-			if w2 is Dictionary and float(w2.get("range", 0.0)) > max_r:
-				max_r = float(w2["range"])
-		stats.attack_range = max_r
-
+# ─────────────────────────────────────────────
+#  辅助：射程/攻速描述
+# ─────────────────────────────────────────────
 
 static func _describe_weapon_range(range_px: float) -> String:
 	if range_px < 95.0:
@@ -183,7 +127,6 @@ static func _describe_weapon_range(range_px: float) -> String:
 		return "远"
 	return "极远"
 
-
 static func _describe_attack_speed(interval_sec: float) -> String:
 	if interval_sec <= 0.32:
 		return "极快"
@@ -195,72 +138,242 @@ static func _describe_attack_speed(interval_sec: float) -> String:
 		return "慢"
 	return "极慢"
 
+## 用于战斗单位卡文案
+static func summarize_weapon_stats_from_card(card: CardResource, era_override: int = -1) -> String:
+	var e: int = era_override if era_override >= 0 else card.era
+	var atk_light: float = card.attack_light
+	var atk_armor: float = card.attack_armor
+	var atk_air: float = card.attack_air
+	# v3：使用新字段
+	var rng: float = float(card.range_value * 100.0)  # 格转像素
+	var ivl: float = 1.0 / card.attack_speed if card.attack_speed > 0 else 1.0
+	if e >= 0:
+		var multiplier = BattleCardV3.era_damage_multiplier(clampi(e, 0, 4))
+		atk_light *= multiplier
+		atk_armor *= multiplier
+		atk_air *= multiplier
+		rng *= BattleCardV3.era_range_multiplier(clampi(e, 0, 4))
+	var total_dmg = atk_light + atk_armor + atk_air
+	return "伤害 %d｜射程 %s｜攻速 %s" % [int(round(total_dmg)), _describe_weapon_range(rng), _describe_attack_speed(ivl)]
 
-## 用于战斗单位卡文案，与 get_weapon_base 数值一致
+
+# ─────────────────────────────────────────────
+#  PlatformType → combat_kind / 行为映射
+# ─────────────────────────────────────────────
+
+## PlatformType → combat_kind 映射（0=轻装, 1=装甲, 2=支援, 3=空中）
+const PLATFORM_TO_COMBAT_KIND: Dictionary = {
+	0: 0,    # HOUND → 轻装
+	1: 1,    # GUARD → 装甲
+	2: 1,    # TITAN → 装甲
+	3: 2,    # FORTRESS → 支援
+	4: 2,    # RADAR → 支援
+	5: 0,    # SCOUT → 轻装
+	6: 0,    # RAIDER → 轻装
+	7: 2,    # SIEGE → 支援
+	8: 3,    # CARRIER → 空中
+	9: 2,    # MEDIC → 支援
+	10: 0,   # STEALTH → 轻装
+	11: 1,   # OMEGA_PLATFORM → 装甲
+	12: 2,   # COMMAND → 支援
+}
+
+## PlatformType → 旧基础数据（HP, 速度, 是否固定）
+const _PLATFORM_BASE: Dictionary = {
+	0:  {"speed": 115.0, "hp": 65.0, "stationary": false},   # HOUND
+	1:  {"speed": 75.0,  "hp": 110.0, "stationary": false},  # GUARD
+	2:  {"speed": 40.0,  "hp": 200.0, "stationary": false},  # TITAN
+	3:  {"speed": 0.0,   "hp": 260.0, "stationary": true},   # FORTRESS
+	4:  {"speed": 0.0,   "hp": 180.0, "stationary": true},   # RADAR
+	5:  {"speed": 135.0, "hp": 50.0,  "stationary": false},  # SCOUT
+	6:  {"speed": 100.0, "hp": 90.0,  "stationary": false},  # RAIDER
+	7:  {"speed": 0.0,   "hp": 300.0, "stationary": true},   # SIEGE
+	8:  {"speed": 50.0,  "hp": 140.0, "stationary": false},  # CARRIER
+	9:  {"speed": 75.0,  "hp": 80.0,  "stationary": false},  # MEDIC
+	10: {"speed": 115.0, "hp": 50.0,  "stationary": false},  # STEALTH
+	11: {"speed": 30.0,  "hp": 240.0, "stationary": false},  # OMEGA_PLATFORM
+	12: {"speed": 0.0,   "hp": 150.0, "stationary": true},   # COMMAND
+}
+
+## 旧 WeaponType → 武器基础数据（damage, range, interval）
+const _WEAPON_BASE: Dictionary = {
+	0:  {"damage": 8.0,  "range": 95.0,  "interval": 0.38},   # SMG
+	1:  {"damage": 14.0, "range": 155.0, "interval": 0.95},   # RIFLE
+	2:  {"damage": 7.0,  "range": 160.0, "interval": 0.25},   # MG
+	3:  {"damage": 30.0, "range": 195.0, "interval": 1.70},   # ROCKET
+	4:  {"damage": 7.0,  "range": 85.0,  "interval": 0.45},   # PISTOL
+	5:  {"damage": 22.0, "range": 60.0,  "interval": 0.85},   # SHOTGUN
+	6:  {"damage": 28.0, "range": 240.0, "interval": 1.60},   # SNIPER
+	7:  {"damage": 9.0,  "range": 125.0, "interval": 0.35},   # FLAK
+	8:  {"damage": 13.0, "range": 185.0, "interval": 0.50},   # LASER
+	9:  {"damage": 38.0, "range": 215.0, "interval": 2.00},   # MISSILE
+	10: {"damage": 220.0,"range": 250.0, "interval": 2.20},   # OMEGA_CANNON
+	11: {"damage": 140.0,"range": 240.0, "interval": 1.65},   # RAIL_CANNON
+}
+
+## 旧 PlatformType → 防御值
+const _PLATFORM_DEFENSE: Dictionary = {
+	0: 5,   # HOUND
+	1: 9,   # GUARD
+	2: 13,  # TITAN
+	3: 20,  # FORTRESS
+	4: 11,  # RADAR
+	5: 4,   # SCOUT
+	6: 7,   # RAIDER
+	7: 14,  # SIEGE
+	8: 8,   # CARRIER
+	9: 6,   # MEDIC
+	10: 5,  # STEALTH
+	11: 15, # OMEGA_PLATFORM
+	12: 10, # COMMAND
+}
+
+## 旧 WeaponType → 防御值
+const _WEAPON_DEFENSE: Dictionary = {
+	1: 1,   # RIFLE
+	5: 1,   # SHOTGUN
+	8: 1,   # LASER
+	2: 2,   # MG
+	7: 2,   # FLAK
+	3: 1,   # ROCKET
+	9: 1,   # MISSILE
+	10: 2,  # OMEGA_CANNON
+	11: 2,  # RAIL_CANNON
+}
+
+
+# ─────────────────────────────────────────────
+#  旧接口兼容桥接
+# ─────────────────────────────────────────────
+
+## 获取平台基础数据（旧接口兼容）
+static func get_platform_base(pt: int) -> Dictionary:
+	var d: Dictionary = _PLATFORM_BASE.get(pt, {})
+	if d.is_empty():
+		return {"speed": 80.0, "hp": 100.0, "stationary": false}
+	return d.duplicate()
+
+
+## 获取平台防御值（旧接口兼容）
+static func get_platform_defense(pt: int) -> int:
+	return int(_PLATFORM_DEFENSE.get(pt, 8))
+
+
+## 获取武器防御值（旧接口兼容）
+static func get_weapon_defense(wt: int) -> int:
+	return int(_WEAPON_DEFENSE.get(wt, 0))
+
+
+## 获取组合防御值（旧接口兼容）
+static func get_combined_defense(platform_type: int, weapon_type: int) -> int:
+	return get_platform_defense(platform_type) + get_weapon_defense(weapon_type)
+
+
+## 获取武器基础数据（旧接口兼容）
+static func get_weapon_base(wt: int, era: int = -1) -> Dictionary:
+	var base: Dictionary = _WEAPON_BASE.get(wt, {"damage": 10.0, "range": 120.0, "interval": 1.0}).duplicate()
+	if era < 0:
+		return base
+	var e: int = clampi(era, 0, 4)
+	base["damage"] = float(base["damage"]) * BattleCardV3.era_damage_multiplier(e)
+	base["range"] = float(base["range"]) * BattleCardV3.era_range_multiplier(e)
+	return base
+
+
+## 旧接口：武器统计摘要
 static func summarize_weapon_stats_weapon_row(wt: int, era: int = -1) -> String:
 	var w: Dictionary = get_weapon_base(wt, era)
 	var dmg: int = int(round(float(w["damage"])))
 	return "伤害 %d｜射程 %s｜攻速 %s" % [dmg, _describe_weapon_range(float(w["range"])), _describe_attack_speed(float(w["interval"]))]
 
 
+## 从 PlatformType + WeaponType 构造临时 CardResource，再调用 build_stats_from_card
+static func _make_compat_card(platform_type: int, weapon_type: int, era: int) -> CardResource:
+	var p: Dictionary = _PLATFORM_BASE.get(platform_type, {"speed": 80.0, "hp": 100.0, "stationary": false})
+	var w: Dictionary = _WEAPON_BASE.get(weapon_type, {"damage": 10.0, "range": 120.0, "interval": 1.0})
+	var c := CardResource.new()
+	c.card_type = GC.CardType.COMBAT_UNIT
+	c.era = era
+	c.combat_kind = int(PLATFORM_TO_COMBAT_KIND.get(platform_type, 1))
+	c.platform_type = platform_type
+	c.legacy_weapon_type = weapon_type
+	c.weapon_type = weapon_type
+	c.base_hp = float(p.get("hp", 100.0))
+	c.base_speed = float(p.get("speed", 80.0))
+	c.base_range = float(w.get("range", 120.0))
+	c.base_interval = float(w.get("interval", 1.0))
+	var dmg: float = float(w.get("damage", 10.0))
+	c.attack_light = dmg
+	c.attack_armor = dmg * 0.8
+	c.attack_air = dmg * 0.7
+	var pd: float = float(_PLATFORM_DEFENSE.get(platform_type, 8))
+	c.defense_light = pd
+	c.defense_armor = pd * 1.2
+	c.defense_air = pd * 0.6
+	return c
+
+
+## @deprecated 旧 build_stats(platform_type, weapon_type, era)，内部已转为调用 build_stats_from_card
 static func build_stats(platform_type: int, weapon_type: int, era: int = -1) -> UnitStats:
-	var stats = UnitStats.new()
-	var p = get_platform_base(platform_type)
-	var w = get_weapon_base(weapon_type, era)
+	var card := _make_compat_card(platform_type, weapon_type, era)
+	var stats := build_stats_from_card(card, era)
 	stats.platform_type = platform_type
-	stats.weapon_type = weapon_type
-	stats.max_hp = float(p["hp"])
-	if era >= 0:
-		stats.max_hp *= BattleCardV3.era_hp_multiplier(clampi(era, 0, 4))
-	stats.move_speed = 0.0
-	stats.is_stationary = true
-	stats.defense = float(get_combined_defense(platform_type, weapon_type))
-	stats.attack_damage = w["damage"]
-	stats.attack_range = w["range"]
-	stats.attack_interval = w["interval"]
-	stats.weapons.clear()
-	apply_platform_innate_modifiers(stats)
 	return stats
 
-# 多武器版本：同一平台挂载多把武器
-static func build_multi_stats(platform_type: int, weapon_types: Array, era: int = -1) -> UnitStats:
-	var stats: UnitStats = UnitStats.new()
-	var p = get_platform_base(platform_type)
-	stats.platform_type = platform_type
-	stats.max_hp = float(p["hp"])
-	if era >= 0:
-		stats.max_hp *= BattleCardV3.era_hp_multiplier(clampi(era, 0, 4))
-	stats.move_speed = 0.0
-	stats.is_stationary = true
 
+## @deprecated 旧 build_multi_stats，内部已转为调用 build_stats_from_card
+static func build_multi_stats(platform_type: int, weapon_types: Array, era: int = -1) -> UnitStats:
+	var p: Dictionary = _PLATFORM_BASE.get(platform_type, {"speed": 80.0, "hp": 100.0, "stationary": false})
+	# 取第一个武器做主武器
+	var main_wt: int = int(weapon_types[0]) if weapon_types.size() > 0 else 1  # RIFLE=1
+	var w: Dictionary = _WEAPON_BASE.get(main_wt, {"damage": 10.0, "range": 120.0, "interval": 1.0})
+
+	var c := CardResource.new()
+	c.card_type = GC.CardType.COMBAT_UNIT
+	c.era = era
+	c.combat_kind = int(PLATFORM_TO_COMBAT_KIND.get(platform_type, 1))
+	c.platform_type = platform_type
+	c.legacy_weapon_type = main_wt
+	c.weapon_type = main_wt
+	c.base_hp = float(p.get("hp", 100.0))
+	c.base_speed = float(p.get("speed", 80.0))
+	c.base_range = float(w.get("range", 120.0))
+	c.base_interval = float(w.get("interval", 1.0))
+	var dmg: float = float(w.get("damage", 10.0))
+	c.attack_light = dmg
+	c.attack_armor = dmg * 0.8
+	c.attack_air = dmg * 0.7
+	var pd: float = float(_PLATFORM_DEFENSE.get(platform_type, 8))
+	c.defense_light = pd
+	c.defense_armor = pd * 1.2
+	c.defense_air = pd * 0.6
+
+	var stats := build_stats_from_card(c, era)
+	stats.platform_type = platform_type
+
+	# 多武器槽
 	stats.weapons.clear()
 	var max_range: float = 0.0
 	for wt in weapon_types:
-		var w = get_weapon_base(int(wt), era)
+		var we: Dictionary = _WEAPON_BASE.get(int(wt), {"damage": 10.0, "range": 120.0, "interval": 1.0}).duplicate()
 		var entry: Dictionary = {
 			"weapon_type": int(wt),
-			"damage": w["damage"],
-			"range": w["range"],
-			"interval": w["interval"],
+			"damage": float(we.get("damage", 10.0)),
+			"range": float(we.get("range", 120.0)),
+			"interval": float(we.get("interval", 1.0)),
 			"timer": 0.0,
 		}
 		stats.weapons.append(entry)
-		if float(w["range"]) > max_range:
-			max_range = float(w["range"])
+		if float(we.get("range", 0.0)) > max_range:
+			max_range = float(we.get("range", 0.0))
 
 	if stats.weapons.size() > 0:
-		var main = stats.weapons[0]
-		stats.weapon_type = main["weapon_type"]
-		stats.attack_damage = main["damage"]
-		stats.attack_range = max_range
-		stats.attack_interval = main["interval"]
-	else:
-		stats.weapon_type = 0
-		stats.attack_damage = 0.0
-		stats.attack_range = 0.0
-		stats.attack_interval = 9999.0
+		stats.attack_range = maxf(stats.attack_range, max_range)
 
-	var main_wt: int = stats.weapon_type if stats.weapons.size() > 0 else int(GC.WeaponType.RIFLE)
-	stats.defense = float(get_combined_defense(platform_type, main_wt))
-	apply_platform_innate_modifiers(stats)
 	return stats
+
+
+## @deprecated 旧 get_platform_growth_bias，映射到新 get_combat_kind_growth_bias
+static func get_platform_growth_bias(pt: int) -> Dictionary:
+	var kind: int = int(PLATFORM_TO_COMBAT_KIND.get(pt, 0))
+	return get_combat_kind_growth_bias(kind)

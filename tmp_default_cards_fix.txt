@@ -1,0 +1,112 @@
+# default_cards.gd v3 架构修复补丁
+
+## 问题
+`_platform()` 函数仍在使用旧的 v2 字段：
+- `c.platform_type` (应使用 c.combat_kind)
+- `c.default_weapon_type` (应使用新的 weapon_type + attack_XXX)
+- `c.max_weapons`, `c.weight_capacity` (已废弃)
+- 缺少 v3 必需字段：era, base_hp, base_damage, base_range, base_interval, base_speed, base_defense
+- 缺少多维攻防：attack_light/armor/air, defense_light/armor/air
+- 缺少：weapon_label, weapon_type(新枚举), deploy_speed
+
+## 修复方案
+
+### 1. 添加辅助函数 `_apply_platform_v3_stats()`
+
+```gdscript
+## v3 重构：为平台卡片设置完整的战斗属性
+static func _apply_platform_v3_stats(
+	c: CardResource,
+	era: int,
+	pt: int,  # 旧 PlatformType，用于映射
+	hp: float,
+	speed: float,
+	weapon_label: String,
+	weapon_type_new: int,  # 新 WeaponTypeNew
+	damage: float,
+	range_val: float,
+	interval: float,
+	deploy_speed: int,
+	attack_light: float,
+	attack_armor: float,
+	attack_air: float,
+	defense_light: float,
+	defense_armor: float,
+	defense_air: float
+) -> void:
+	c.era = era
+	c.combat_kind = int(UnitStatsTable.PLATFORM_TO_COMBAT_KIND.get(pt, 0))
+	c.base_hp = hp
+	c.base_speed = speed
+	c.weapon_label = weapon_label
+	c.weapon_type = weapon_type_new
+	c.deploy_speed = deploy_speed
+
+	# 单武器模式：使用 base_* 字段
+	c.base_range = range_val
+	c.base_interval = interval
+
+	# 多维攻防
+	c.attack_light = attack_light
+	c.attack_armor = attack_armor
+	c.attack_air = attack_air
+	c.defense_light = defense_light
+	c.defense_armor = defense_armor
+	c.defense_air = defense_air
+
+	# base_defense 用于防御百分比计算（取平均防御值）
+	c.base_defense = (defense_light + defense_armor + defense_air) / 3.0
+```
+
+### 2. 简化的 `_platform()` 函数框架
+
+```gdscript
+static func _platform(id: String, name: String, cost: float, pt: int) -> CardResource:
+	var c = CardResource.new()
+	c.card_id = id
+	c.display_name = name
+	c.card_type = GC.CardType.COMBAT_UNIT
+	c.energy_cost = cost
+
+	# v3 重构：使用新字段
+	c.combat_kind = int(UnitStatsTable.PLATFORM_TO_COMBAT_KIND.get(pt, 0))
+
+	# 根据卡牌ID设置详细属性
+	match id:
+		"platform_ww1_light":
+			c.rarity = "common"
+			c.type_line = "一战 — 轻型侦察车"
+			c.summary_line = "移速 1.15｜耐久 65｜防御 2"
+			c.description = "轻型装甲车，快速侦察用途。"
+			c.flavor_text = ""总要有第一辆冲进火线的装甲车。""
+			_apply_platform_v3_stats(c, 0, 0, 65.0, 115.0, "冲锋枪", 0, 14.0, 120.0, 0.8, 4, 14.0, 7.0, 0.0, 2.0, 3.0, 0.0)
+		# ... 其他平台类似处理
+		_:
+			# 默认值
+			_apply_platform_v3_stats(c, 0, pt, 100.0, 80.0, "步枪", 0, 15.0, 120.0, 1.0, 3, 15.0, 10.0, 0.0, 3.0, 5.0, 0.0)
+
+	return c
+```
+
+### 3. 废弃的函数需要替换
+
+```gdscript
+## 删除或标记废弃
+# static func _apply_platform_summary_defense(c: CardResource) -> void:
+# 	此函数依赖已废弃的 platform_type 和 default_weapon_type，需要重写
+```
+
+## 需要修复的平台数量
+- 一战: 5个
+- 二战: 7个
+- 冷战: 6个
+- 现代: 6个
+- 近未来: 4个
+- 终极: 1个
+总计: 29个平台卡片
+
+## 优先级
+1. 先修复辅助函数和框架
+2. 逐个平台添加正确的属性值
+3. 删除废弃的 `_apply_platform_summary_defense()` 调用
+4. 修复 `get_platform_display_name()` 中的 `platform_type` 引用

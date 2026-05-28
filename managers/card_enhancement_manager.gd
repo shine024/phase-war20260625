@@ -124,11 +124,11 @@ func _calculate_enhanced_stats(card_id: String, bonus: float) -> Dictionary:
 	
 	# 不同类型卡牌的强化效果
 	match card.card_type:
-		GC.CardType.PLATFORM:
+		GC.CardType.COMBAT_UNIT:
 			stats["hp_bonus"] = bonus  # 血量提升 5%-60%
 			stats["weight_bonus"] = bonus * 0.2  # 承载能力略微增加
 		
-		GC.CardType.WEAPON:
+		GC.CardType.COMBAT_UNIT:
 			stats["damage_bonus"] = bonus  # 伤害提升 5%-60%
 			stats["weight_bonus"] = -bonus * 0.1  # 优化设计，重量略微降低
 		

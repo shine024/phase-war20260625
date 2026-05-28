@@ -1,9 +1,10 @@
 extends RefCounted
 class_name CapturedUnitCards
 ## 100 张缴获成品卡（captured_*）：击杀敌人后进背包，可部署。
-## 由模板 platform_* / 特殊平台卡克隆，display_name 与 EnemyUnitManifest 对齐。
+##
+## v3 重构：直接从 EnemyUnitManifest 的 archetype_config 构建战斗卡，
+## 不再从旧 default_cards 平台卡克隆。
 
-const DefaultCards = preload("res://data/default_cards.gd")
 const EnemyUnitManifest = preload("res://data/enemy_unit_manifest.gd")
 const GC = preload("res://resources/game_constants.gd")
 
@@ -13,75 +14,75 @@ static var _cache_built: bool = false
 static func register_into_default_cards_cache() -> void:
 	if _cache_built:
 		return
-	DefaultCards._ensure_card_cache()
+	# 使用 DefaultCards 的缓存机制（如果存在）
+	var DefaultCards = load("res://data/default_cards.gd")
+	if DefaultCards and DefaultCards.has_method("_ensure_card_cache"):
+		DefaultCards._ensure_card_cache()
 	for row in EnemyUnitManifest.get_entries():
 		if row is not Dictionary:
 			continue
 		var drop_id: String = String(row.get("drop_card_id", ""))
-		var template_id: String = _resolve_template_card_id(row)
+		if drop_id.is_empty():
+			continue
 		var display_name: String = String(row.get("display_name", ""))
-		if drop_id.is_empty() or template_id.is_empty():
-			continue
-		if DefaultCards._id_lookup_cache.has(drop_id):
-			continue
-		var card: CardResource = _build_captured_card(drop_id, template_id, display_name, row)
+		var cfg: Dictionary = row.get("archetype_config", {})
+		var card: CardResource = _build_captured_card(drop_id, display_name, cfg)
 		if card == null:
 			continue
-		DefaultCards._all_cards_cache.append(card)
-		DefaultCards._id_lookup_cache[drop_id] = card
+		# 写入 DefaultCards 缓存（如果可用）
+		if DefaultCards and DefaultCards.has_method("_ensure_card_cache"):
+			if not DefaultCards._id_lookup_cache.has(drop_id):
+				DefaultCards._all_cards_cache.append(card)
+				DefaultCards._id_lookup_cache[drop_id] = card
 	_cache_built = true
 
 
 static func _build_captured_card(
 	drop_id: String,
-	template_id: String,
 	display_name: String,
-	row: Dictionary
+	cfg: Dictionary
 ) -> CardResource:
-	var template: CardResource = DefaultCards.get_card_by_id(template_id)
-	if template == null:
-		return null
-	var c: CardResource
-	if template.has_method("clone"):
-		c = template.clone() as CardResource
-	else:
-		c = (template as Resource).duplicate(true) as CardResource
-	if c == null:
-		return null
+	var c: CardResource = CardResource.new()
 	c.card_id = drop_id
+	c.card_type = GC.CardType.COMBAT_UNIT  # 战斗卡
+	c.is_dropped_card = true
+
+	# 从 archetype_config 读取战斗卡属性
 	if not display_name.is_empty():
 		c.display_name = display_name
-	c.is_dropped_card = true
-	c.type_line = _captured_type_line(c, int(row.get("era", 0)))
-	return c
+	elif cfg.has("display_name"):
+		c.display_name = String(cfg.get("display_name", ""))
+	else:
+		c.display_name = drop_id
 
+	var era: int = int(cfg.get("era", 0))
+	c.era = era
+	c.combat_kind = int(cfg.get("combat_kind", 1))
+	c.base_hp = float(cfg.get("hp", 100.0))
+	c.base_range = float(cfg.get("attack_range", 120.0))
+	c.base_interval = float(cfg.get("attack_interval", 1.0))
+	c.weapon_label = String(cfg.get("weapon_label", ""))
 
-static func _resolve_template_card_id(row: Dictionary) -> String:
-	var tid: String = String(row.get("template_card_id", ""))
-	if not tid.is_empty() and DefaultCards.get_card_by_id(tid) != null:
-		return tid
-	var era: int = int(row.get("era", 0))
-	var aid: String = String(row.get("archetype_id", ""))
-	var tier: String = "frontline"
-	if aid.begins_with("boss_"):
-		tier = "boss"
-	elif aid.begins_with("elite_"):
-		tier = "elite"
-	var kind: int = 1
-	if tier == "frontline" and (aid.contains("infantry") or aid.contains("marine") or aid.contains("drone")):
-		kind = 0
-	elif tier == "boss" or aid.contains("tank") or aid.contains("panther") or aid.contains("abrams"):
-		kind = 1
-	elif aid.contains("mg") or aid.contains("mortar") or aid.contains("mlrs") or aid.contains("nest"):
-		kind = 2
-	elif aid.contains("medic") or aid.contains("carrier") or aid.contains("m113"):
-		kind = 3
-	return EnemyUnitManifest._template_platform_for_pool(era, kind)
+	# 新增：多维攻防
+	c.weapon_type = int(cfg.get("weapon_type", 0))
+	c.deploy_speed = int(cfg.get("deploy_speed", 3))
+	c.attack_light = float(cfg.get("attack_light", 0.0))
+	c.attack_armor = float(cfg.get("attack_armor", 0.0))
+	c.attack_air = float(cfg.get("attack_air", 0.0))
+	c.defense_light = float(cfg.get("defense_light", 0.0))
+	c.defense_armor = float(cfg.get("defense_armor", 0.0))
+	c.defense_air = float(cfg.get("defense_air", 0.0))
 
+	# 移速：从 archetype_config 的 speed 字段推算（speed 是负值或 0）
+	var raw_speed: float = float(cfg.get("speed", 0.0))
+	if raw_speed < 0.0:
+		c.base_speed = minf(absf(raw_speed) / 0.65, 200.0)
+	else:
+		c.base_speed = 0.0
 
-static func _captured_type_line(card: CardResource, era: int) -> String:
+	# type_line
 	var era_label: String = ["一战", "二战", "冷战", "现代", "近未来"][clampi(era, 0, 4)]
-	var role: String = "缴获平台"
-	if card.card_type == GC.CardType.PLATFORM:
-		role = "缴获平台"
-	return "%s — %s" % [era_label, role]
+	var kind_label: String = CardResource.get_combat_kind_name(c.combat_kind)
+	c.type_line = "%s — 缴获%s" % [era_label, kind_label]
+
+	return c

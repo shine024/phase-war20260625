@@ -8,18 +8,18 @@ const EnemyBlueprints = preload("res://data/enemy_blueprints.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 
 const MIRROR_BY_PLATFORM: Dictionary = {
-	GC.PlatformType.HOUND: "enemy_ww1_infantry_basic",
-	GC.PlatformType.GUARD: "enemy_ww2_infantry",
-	GC.PlatformType.TITAN: "elite_ww1_armored",
-	GC.PlatformType.FORTRESS: "enemy_ww1_mg_nest",
-	GC.PlatformType.RADAR: "enemy_modern_stryker",
-	GC.PlatformType.SCOUT: "enemy_cold_btr",
-	GC.PlatformType.RAIDER: "enemy_future_hovertank",
-	GC.PlatformType.SIEGE: "enemy_ww1_mortar",
-	GC.PlatformType.CARRIER: "enemy_cold_m113",
-	GC.PlatformType.MEDIC: "enemy_modern_marine",
-	GC.PlatformType.STEALTH: "elite_future_spectre",
-	GC.PlatformType.OMEGA_PLATFORM: "enemy_future_mech",
+	0: "enemy_ww1_infantry_basic",
+	1: "enemy_ww2_infantry",
+	2: "elite_ww1_armored",
+	3: "enemy_ww1_mg_nest",
+	4: "enemy_modern_stryker",
+	5: "enemy_cold_btr",
+	6: "enemy_future_hovertank",
+	7: "enemy_ww1_mortar",
+	8: "enemy_cold_m113",
+	9: "enemy_modern_marine",
+	10: "elite_future_spectre",
+	11: "enemy_future_mech",
 }
 
 
@@ -58,8 +58,8 @@ func _initialize() -> void:
 		if card == null:
 			lines.append("[NO_CARD] %s" % card_id)
 			continue
-		if card.card_type != GC.CardType.PLATFORM and card.card_type != GC.CardType.COMBINED:
-			if card.card_type == GC.CardType.WEAPON:
+		if card.card_type != GC.CardType.COMBAT_UNIT and card.card_type != GC.CardType.COMBAT_UNIT:
+			if card.card_type == GC.CardType.COMBAT_UNIT:
 				rev_miss_weapon.append(card_id)
 			continue
 
@@ -75,7 +75,7 @@ func _initialize() -> void:
 			asset_bad.append("%s | NO_ARCHETYPE" % card_id)
 			continue
 
-		if int(card.platform_type) == int(GC.PlatformType.OMEGA_PLATFORM):
+		if int(card.platform_type) == int(11):
 			if ResourceLoader.exists("res://assets/unit_sprites/omega_platform.png"):
 				asset_ok.append("%s | omega_static_png" % card_id)
 			else:

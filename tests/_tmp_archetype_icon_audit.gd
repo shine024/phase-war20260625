@@ -35,7 +35,7 @@ func _initialize() -> void:
 		if not cid.begins_with("platform_") and cid != "omega_platform":
 			continue
 		var c = DefaultCards.get_card_by_id(cid)
-		if c == null or c.card_type != GC.CardType.PLATFORM:
+		if c == null or c.card_type != GC.CardType.COMBAT_UNIT:
 			continue
 		var path: String = UiAssetLoader.card_icon_path_for(c)
 		var tex: Texture2D = UiAssetLoader.load_tex(path)

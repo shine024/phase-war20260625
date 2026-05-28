@@ -30,12 +30,12 @@ static func build_line(card: CardResource) -> String:
 	var am: Node = root.get_node_or_null("AffixManager")
 	var era: int = _preview_battle_era()
 
-	if card.card_type == GC.CardType.PLATFORM:
+	if card.card_type == GC.CardType.COMBAT_UNIT:
 		if card.platform_type < 0:
 			return ""
 		var wt: int = card.default_weapon_type
 		if wt < 0:
-			wt = GC.WeaponType.RIFLE
+			wt = 1  # RIFLE
 		var stats: UnitStats = UnitStatsTable.build_multi_stats(card.platform_type, [wt], era)
 		if bm and bm.has_method("apply_growth_to_stats"):
 			bm.apply_growth_to_stats(stats, card, [])
@@ -45,7 +45,7 @@ static func build_line(card: CardResource) -> String:
 			stats.max_hp, stats.attack_damage, stats.defense, stats.attack_range, stats.attack_interval,
 		]
 
-	if card.card_type == GC.CardType.WEAPON:
+	if card.card_type == GC.CardType.COMBAT_UNIT:
 		if card.weapon_type < 0:
 			return ""
 		var wbase: Dictionary = UnitStatsTable.get_weapon_base(card.weapon_type, era)
@@ -61,7 +61,7 @@ static func build_line(card: CardResource) -> String:
 			stats_w.attack_damage, UnitStatsTable.get_weapon_defense(card.weapon_type), stats_w.attack_range, stats_w.attack_interval,
 		]
 
-	if card.card_type == GC.CardType.COMBINED:
+	if card.card_type == GC.CardType.COMBAT_UNIT:
 		if card.platform_type < 0:
 			return ""
 		var wts: Array = []

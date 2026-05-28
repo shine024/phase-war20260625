@@ -141,7 +141,7 @@ func _refresh_assemble_tree() -> void:
 					card.card_id = law_lookup_id  # 确保card_id是不带前缀的
 		if not card:
 			continue
-		if card.card_type == GC.CardType.PLATFORM:
+		if card.card_type == GC.CardType.COMBAT_UNIT:
 			platform_cards.append(card)
 		elif card.card_type == GC.CardType.LAW:
 			law_cards.append(card)
@@ -187,7 +187,7 @@ func _on_assemble_tree_item_selected() -> void:
 	var card: CardResource = DefaultCards.get_card_by_id(str(raw))
 	if not card:
 		return
-	if card.card_type == GC.CardType.PLATFORM:
+	if card.card_type == GC.CardType.COMBAT_UNIT:
 		_selected_platform_card = card
 		var max_w: int = max(_selected_platform_card.max_weapons, 1)
 		if _selected_weapon_cards.size() > max_w:

@@ -106,11 +106,11 @@ func _get_mod_category_permit_id(card_id: String) -> String:
 	if card.card_type == GC.CardType.ENERGY:
 		return BasicResources.ID_PERMIT_TYPE_SUPPORT
 	if card.card_type == GC.CardType.COMBAT_UNIT:
-		var ptype: int = int(card.platform_type)
-		if ptype in [GC.PlatformType.TITAN, GC.PlatformType.FORTRESS, GC.PlatformType.SIEGE]:
+		## v3兼容：旧platform_type已废弃，改用combat_kind
+		var ckind: int = card.combat_kind if card.combat_kind >= 0 else 0
+		if ckind == GC.CombatKind.ARMOR or ckind == GC.CombatKind.SUPPORT:
 			return BasicResources.ID_PERMIT_TYPE_HEAVY
-		if ptype in [GC.PlatformType.MEDIC, GC.PlatformType.RADAR, GC.PlatformType.CARRIER]:
-			return BasicResources.ID_PERMIT_TYPE_SUPPORT
+		# 默认轻装单位为突击类型
 		return BasicResources.ID_PERMIT_TYPE_ASSAULT
 	return BasicResources.ID_PERMIT_TYPE_ASSAULT
 
@@ -218,6 +218,13 @@ func _ensure_starter_copies_for_default_energy_blueprints() -> void:
 			continue
 		if get_blueprint_copies(eid) < 1:
 			add_blueprint_copy(eid, 1)
+	# 全装型初始1份副本（新存档背包直接给，此处确保蓝图面板也可见）
+	if is_blueprint_unlocked("omega_platform") and get_blueprint_copies("omega_platform") < 1:
+		add_blueprint_copy("omega_platform", 1)
+	# 初始能量卡设为2★
+	for eid in ["energy_start_1", "energy_start_2"]:
+		if int(blueprint_stars.get(eid, 1)) < 2:
+			blueprint_stars[eid] = 2
 
 ## 旧存档：已解锁的默认能量蓝图若 0 副本则补到 1（每个存档只执行一次）
 func _migrate_legacy_default_energy_starter_copies() -> void:
@@ -810,7 +817,8 @@ func get_rank_info(card_id: String) -> Dictionary:
 	var card: CardResource = DefaultCards.get_card_by_id(card_id)
 	if card == null:
 		return {}
-	var base_rank: String = RankRules.get_base_rank(int(card.platform_type))
+	## v3兼容：旧platform_type已废弃，改用combat_kind
+	var base_rank: String = RankRules.get_base_rank_by_combat_kind(card.combat_kind)
 	var power_score: float = _estimate_power_score(card_id)
 	var rank_id: String = RankRules.get_rank_by_power(base_rank, power_score)
 	var out: Dictionary = {
@@ -844,7 +852,7 @@ func _estimate_power_score_meta_only(card_id: String) -> float:
 
 
 func _preview_battle_era_internal() -> int:
-	var tree := Engine.get_main_loop() as SceneTree
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
 	if tree == null or tree.root == null:
 		return 0
 	var gm: Node = tree.root.get_node_or_null("GameManager")
@@ -862,48 +870,15 @@ func _build_unit_stats_for_power_preview(card: CardResource) -> UnitStats:
 		mll.ensure_loaded("affix")
 	var am: Node = get_node_or_null("/root/AffixManager")
 
-	if card.card_type == GC.CardType.PLATFORM:
-		if card.platform_type < 0:
+	if card.card_type == GC.CardType.COMBAT_UNIT:
+		## v3兼容：直接使用 card 对象构建统计，不再使用旧的 platform_type
+		var stats: UnitStats = UnitStatsTable.build_stats_from_card(card, era)
+		if stats == null:
 			return null
-		var wt: int = card.default_weapon_type
-		if wt < 0:
-			wt = GC.WeaponType.RIFLE
-		var stats: UnitStats = UnitStatsTable.build_multi_stats(card.platform_type, [wt], era)
 		apply_growth_to_stats(stats, card, [], false)
 		if am and am.has_method("apply_affixes_to_stats"):
 			am.apply_affixes_to_stats(stats, card, [])
 		return stats
-
-	if card.card_type == GC.CardType.WEAPON:
-		if card.weapon_type < 0:
-			return null
-		var wbase: Dictionary = UnitStatsTable.get_weapon_base(card.weapon_type, era)
-		var stats_w := UnitStats.new()
-		stats_w.attack_damage = float(wbase["damage"])
-		stats_w.attack_range = float(wbase["range"])
-		stats_w.attack_interval = float(wbase["interval"])
-		stats_w.max_hp = 0.0
-		stats_w.move_speed = 0.0
-		apply_growth_to_stats(stats_w, null, [card], false)
-		if am and am.has_method("apply_affixes_to_stats"):
-			am.apply_affixes_to_stats(stats_w, null, [card])
-		return stats_w
-
-	if card.card_type == GC.CardType.COMBINED:
-		if card.platform_type < 0:
-			return null
-		var wts: Array = []
-		for t in card.multi_weapon_types:
-			wts.append(int(t))
-		if wts.is_empty() and card.default_weapon_type >= 0:
-			wts.append(card.default_weapon_type)
-		if wts.is_empty():
-			return null
-		var stats_c: UnitStats = UnitStatsTable.build_multi_stats(card.platform_type, wts, era)
-		apply_growth_to_stats(stats_c, card, [], false)
-		if am and am.has_method("apply_affixes_to_stats"):
-			am.apply_affixes_to_stats(stats_c, card, [])
-		return stats_c
 
 	return null
 
@@ -1024,12 +999,12 @@ func apply_growth_to_stats(stats: UnitStats, platform_card: CardResource, weapon
 
 func _compute_platform_preview_hp(card_id: String, era: int) -> float:
 	var card: CardResource = DefaultCards.get_card_by_id(card_id)
-	if card == null or card.card_type != GC.CardType.PLATFORM or card.platform_type < 0:
+	## v3兼容：不再检查 platform_type，直接使用 card 构建
+	if card == null or card.card_type != GC.CardType.COMBAT_UNIT:
 		return 0.0
-	var wt: int = card.default_weapon_type
-	if wt < 0:
-		wt = GC.WeaponType.RIFLE
-	var stats: UnitStats = UnitStatsTable.build_multi_stats(card.platform_type, [wt], era)
+	var stats: UnitStats = UnitStatsTable.build_stats_from_card(card, era)
+	if stats == null:
+		return 0.0
 	apply_growth_to_stats(stats, card, [], false)
 	return stats.max_hp
 
@@ -1041,7 +1016,8 @@ func _apply_platform_star_growth_bias(stats: UnitStats, platform_card_id: String
 	var tiers: float = float(maxi(0, star - 1))
 	if tiers <= 0.0:
 		return
-	var bias: Dictionary = UnitStatsTable.get_platform_growth_bias(stats.platform_type)
+	## v3兼容：使用 combat_kind 而非 platform_type
+	var bias: Dictionary = UnitStatsTable.get_combat_kind_growth_bias(stats.combat_kind)
 	var hp_bias: float = float(bias.get("hp_bias", 0.04))
 	var dmg_bias: float = float(bias.get("dmg_bias", 0.04))
 	stats.max_hp *= 1.0 + tiers * hp_bias

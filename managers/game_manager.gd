@@ -565,7 +565,9 @@ func _get_recon_fragment_bonus_multiplier() -> float:
 		if platform == null:
 			continue
 		platform_types_seen.append(int(platform.platform_type))
-		if platform.platform_type == GC.PlatformType.SCOUT or platform.platform_type == GC.PlatformType.STEALTH:
+		if platform.platform_type == 5 or platform.platform_type == 10:  # SCOUT, STEALTH (旧枚举值，存档兼容)
+			# v3: 应使用 platform.combat_kind，SCOUT(5)=轻装(0)，STEALTH(10)=轻装(0)
+			# 为保持存档兼容，暂时保留 platform_type 检查
 			recon_platforms += 1
 	var bonus: float = minf(RECON_FRAGMENT_BONUS_CAP, float(recon_platforms) * RECON_FRAGMENT_BONUS_PER_PLATFORM)
 	return bonus

@@ -8,10 +8,10 @@ const WeaponProjectileVfx = preload("res://scripts/weapon_projectile_vfx.gd")
 const _HIT_R2: float = 100.0
 const _MAX_PROJ: int = 720
 const _BATCH_WEAPON_TYPES: Array[int] = [
-	GC.WeaponType.SMG,
-	GC.WeaponType.PISTOL,
-	GC.WeaponType.RIFLE,
-	GC.WeaponType.MG,
+	0,
+	4,
+	1,
+	2,
 ]
 const _ENEMY_TINT := Color(1.0, 0.38, 0.52)
 
@@ -157,22 +157,22 @@ func _apply_shield_wall_mitigation(raw_damage: float, target: Node) -> float:
 
 func _speed_for(wt: int) -> float:
 	match wt:
-		GC.WeaponType.SMG, GC.WeaponType.PISTOL:
+		0, 4:
 			return 720.0
-		GC.WeaponType.RIFLE:
+		1:
 			return 800.0
-		GC.WeaponType.MG:
+		2:
 			return 680.0
 		_:
 			return 650.0
 
 func _max_dist_for(wt: int) -> float:
 	match wt:
-		GC.WeaponType.SMG, GC.WeaponType.PISTOL:
+		0, 4:
 			return 1200.0
-		GC.WeaponType.RIFLE:
+		1:
 			return 1600.0
-		GC.WeaponType.MG:
+		2:
 			return 1400.0
 		_:
 			return 1300.0

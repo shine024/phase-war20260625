@@ -25,10 +25,10 @@ func test_evolution_inherit_bonus_clamped() -> void:
 
 
 func test_unit_stats_table_era_scales_hp_and_weapon_damage() -> void:
-	var st: UnitStats = UnitStatsTable.build_multi_stats(GC.PlatformType.GUARD, [GC.WeaponType.RIFLE], 1)
+	var st: UnitStats = UnitStatsTable.build_multi_stats(1, [1], 1)  # GUARD, RIFLE
 	assert_float(st.max_hp).is_equal(115.0)
 	assert_float(st.attack_damage).is_equal(15.0)
-	var st0: UnitStats = UnitStatsTable.build_multi_stats(GC.PlatformType.GUARD, [GC.WeaponType.RIFLE], 0)
+	var st0: UnitStats = UnitStatsTable.build_multi_stats(1, [1], 0)  # GUARD, RIFLE
 	assert_float(st0.max_hp).is_equal(100.0)
 	assert_float(st0.attack_damage).is_equal(12.0)
 
