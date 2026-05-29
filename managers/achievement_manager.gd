@@ -8,6 +8,8 @@ extends Node
 ## 所有外部调用者（achievement_panel / battle_manager_addons / save_manager 等）
 ## 通过 /root/AchievementManager 访问，接口保持 100% 兼容。
 
+const DefaultCards = preload("res://data/default_cards.gd")
+
 signal achievement_unlocked(achievement_id: String, achievement_name: String)
 signal achievement_progress_updated(achievement_id: String, current_progress: int, max_progress: int)
 signal all_achievements_completed()

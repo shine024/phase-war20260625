@@ -235,23 +235,35 @@ func _rank_line_for_stats(stats: UnitStats) -> String:
 		return ""
 	return _rank_line_for_card_id(String(stats.platform_card_id))
 
+## 统一的三维攻防格式：轻甲空攻击/防御
 func _format_unit_stats_summary(stats: UnitStats, cur_hp: float = -1.0, extra_suffix: String = "") -> String:
 	if stats == null:
 		return ""
 	var hp_text: String
 	if cur_hp >= 0.0:
-		hp_text = "HP %.0f / %.0f" % [cur_hp, stats.max_hp]
+		hp_text = "HP %.0f/%.0f" % [cur_hp, stats.max_hp]
 	else:
 		hp_text = "HP %.0f" % stats.max_hp
-	var line1: String = "%s｜防 %.0f｜攻 %.0f｜射程 %.0f｜攻速 %.2f%s" % [
+	
+	# 三维攻击/防御：轻/甲/空
+	var atk_light: float = stats.attack_light if stats.attack_light > 0.001 else 0.0
+	var atk_armor: float = stats.attack_armor if stats.attack_armor > 0.001 else 0.0
+	var atk_air: float = stats.attack_air if stats.attack_air > 0.001 else 0.0
+	
+	var def_light: float = stats.defense_light if stats.defense_light > 0.001 else 0.0
+	var def_armor: float = stats.defense_armor if stats.defense_armor > 0.001 else 0.0
+	var def_air: float = stats.defense_air if stats.defense_air > 0.001 else 0.0
+	
+	# 格式：HP 100｜攻 10/5/8｜防 3/5/2｜射程 120｜攻速 1.0
+	var line: String = "%s｜攻 %.0f/%.0f/%.0f｜防 %.0f/%.0f/%.0f｜射程 %.0f｜攻速 %.2f%s" % [
 		hp_text,
-		stats.defense,
-		stats.attack_damage,
+		atk_light, atk_armor, atk_air,
+		def_light, def_armor, def_air,
 		stats.attack_range,
 		stats.attack_interval,
 		extra_suffix,
 	]
-	return line1
+	return line
 
 func _enemy_surface_combat_stats(unit: Node) -> Array:
 	var hp: float = float(unit.get("hp")) if "hp" in unit else 0.0

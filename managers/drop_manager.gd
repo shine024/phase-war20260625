@@ -126,10 +126,8 @@ func _add_dropped_card(card_id: String, count: int) -> void:
 	if card == null:
 		push_error("无法找到掉落卡牌: " + card_id)
 		return
-	# 安全网：拦截 WEAPON 类型（武器系统已废弃）
-	if card.card_type == GameConstants.CardType.COMBAT_UNIT:
-		push_warning("[DropManager] 已拦截废弃 WEAPON 类型掉落: %s" % card_id)
-		return
+	# v3 后所有战斗卡都是 COMBAT_UNIT，无需拦截 WEAPON 类型（该类型已废弃）
+	# 原错误代码拦截了 COMBAT_UNIT 导致所有战斗卡掉落被拦，现已移除
 	var n: int = maxi(1, int(count))
 	for _i in range(n):
 		var dropped_card: CardResource = card.clone()

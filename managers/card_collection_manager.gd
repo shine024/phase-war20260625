@@ -1,6 +1,8 @@
 extends Node
 ## 卡牌收集管理器：管理卡牌图鉴和收集进度
 
+const DefaultCards = preload("res://data/default_cards.gd")
+
 ## 稀有度卡牌映射
 const RARITY_CARD_MAP = {
 	"普通": [

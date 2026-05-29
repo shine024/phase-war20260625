@@ -227,33 +227,9 @@ static func create(parent: Node, player_won: bool, blueprints: Array, \
 				more_line.add_theme_color_override("font_color", Color(0.60, 0.78, 0.95, 0.88))
 				content_box.add_child(more_line)
 
-	# 蓝图列表
-	if blueprints.size() > 0:
-		var sep := HSeparator.new()
-		sep.add_theme_color_override("color", Color(0, 0.9, 0.7, 0.2) if player_won else Color(0.9, 0.2, 0.2, 0.2))
-		content_box.add_child(sep)
-		var bp_label := Label.new()
-		bp_label.text = "◆ 本局新解锁蓝图"
-		bp_label.add_theme_font_size_override("font_size", 13)
-		bp_label.add_theme_color_override("font_color", Color(0.4, 0.9, 0.6, 1) if player_won else Color(0.9, 0.5, 0.5, 1))
-		content_box.add_child(bp_label)
-		var bp_list := VBoxContainer.new()
-		bp_list.add_theme_constant_override("separation", 4)
-		for cid in blueprints:
-			var card_name: String = _get_blueprint_display_name(cid)
-			var item_lbl := Label.new()
-			item_lbl.text = "  ▸ %s" % card_name
-			item_lbl.add_theme_font_size_override("font_size", 12)
-			var rarity: String = BlueprintMgr.get_card_rarity(cid) if BlueprintMgr else "common"
-			var rarity_color: Color
-			match rarity:
-				"uncommon": rarity_color = Color(0.4, 0.9, 0.5, 1)
-				"rare":     rarity_color = Color(0.4, 0.65, 1.0, 1)
-				"mythic":   rarity_color = Color(1.0, 0.55, 0.9, 1)
-				_:          rarity_color = Color(0.85, 0.9, 0.95, 0.9)
-			item_lbl.add_theme_color_override("font_color", rarity_color)
-			bp_list.add_child(item_lbl)
-		content_box.add_child(bp_list)
+	# v3 后直接掉落成品卡到背包，不再展示蓝图解锁信息
+	# 蓝图制造系统已废弃，以下蓝图列表展示代码已移除（2026-05-29）
+	# 原 230-256 行的蓝图展示逻辑已删除，避免误导玩家
 
 	# 按钮信号
 	ok_btn.pressed.connect(func():

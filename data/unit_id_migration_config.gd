@@ -53,14 +53,21 @@ const UNIT_ID_MIGRATION_MAP: Dictionary = {
 }
 
 ## 新ID → 旧ID反向映射（用于兼容检查）
-const NEW_TO_OLD_ID_MAP: Dictionary = {}
+## 使用静态 getter 实现懒加载初始化
+static var _new_to_old_id_map_cached: Dictionary = {}
+static var _reverse_map_initialized: bool = false
 
-## 初始化反向映射
-static func _static_init():
-	if NEW_TO_OLD_ID_MAP.is_empty():
+static func get_reverse_map() -> Dictionary:
+	if not _reverse_map_initialized:
+		_reverse_map_initialized = true
 		for old_id in UNIT_ID_MIGRATION_MAP:
 			var new_id = UNIT_ID_MIGRATION_MAP[old_id]
-			NEW_TO_OLD_ID_MAP[new_id] = old_id
+			_new_to_old_id_map_cached[new_id] = old_id
+	return _new_to_old_id_map_cached
+
+## 初始化反向映射（已废弃，使用 get_reverse_map()）
+static func _static_init():
+	get_reverse_map()
 
 ## 获取迁移后的新ID
 static func get_new_id(old_id: String) -> String:

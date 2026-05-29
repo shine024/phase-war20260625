@@ -16,6 +16,36 @@ static func _preview_battle_era() -> int:
 	return 0
 
 
+## 统一的三维攻防格式：轻甲空攻击/防御，与战场显示一致
+static func _format_combat_stats_summary(stats: UnitStats, cur_hp: float = -1.0) -> String:
+	if stats == null:
+		return ""
+	var hp_text: String
+	if cur_hp >= 0.0:
+		hp_text = "HP %.0f/%.0f" % [cur_hp, stats.max_hp]
+	else:
+		hp_text = "HP %.0f" % stats.max_hp
+	
+	# 三维攻击/防御：轻/甲/空
+	var atk_light: float = stats.attack_light if stats.attack_light > 0.001 else 0.0
+	var atk_armor: float = stats.attack_armor if stats.attack_armor > 0.001 else 0.0
+	var atk_air: float = stats.attack_air if stats.attack_air > 0.001 else 0.0
+	
+	var def_light: float = stats.defense_light if stats.defense_light > 0.001 else 0.0
+	var def_armor: float = stats.defense_armor if stats.defense_armor > 0.001 else 0.0
+	var def_air: float = stats.defense_air if stats.defense_air > 0.001 else 0.0
+	
+	# 格式：HP 100｜攻 10/5/8｜防 3/5/2｜射程 120｜攻速 1.0｜移速 80
+	var line: String = "%s｜攻 %.0f/%.0f/%.0f｜防 %.0f/%.0f/%.0f｜射程 %.0f｜攻速 %.2f｜移速 %.0f" % [
+		hp_text,
+		atk_light, atk_armor, atk_air,
+		def_light, def_armor, def_air,
+		stats.attack_range,
+		stats.attack_interval,
+		stats.move_speed,
+	]
+	return line
+
 static func build_line(card: CardResource) -> String:
 	if card == null:
 		return ""
@@ -30,65 +60,43 @@ static func build_line(card: CardResource) -> String:
 	var am: Node = root.get_node_or_null("AffixManager")
 	var era: int = _preview_battle_era()
 
+	# 只处理战斗卡
 	if card.card_type == GC.CardType.COMBAT_UNIT:
-		if card.platform_type < 0:
-			if card.base_hp <= 0:
+		# 处理战斗单位卡（有底盘）
+		if card.platform_type >= 0:
+			var wts: Array = []
+			for t in card.multi_weapon_types:
+				wts.append(int(t))
+			if wts.is_empty() and card.default_weapon_type >= 0:
+				wts.append(card.default_weapon_type)
+			
+			if wts.is_empty():
 				return ""
-			var stats: UnitStats = UnitStatsTable.build_stats_from_card(card, era)
-			if stats.defense <= 0.0:
-				stats.defense = maxf(stats.defense_light, maxf(stats.defense_armor, stats.defense_air))
+			
+			var stats: UnitStats = UnitStatsTable.build_multi_stats(card.platform_type, wts, era)
 			if bm and bm.has_method("apply_growth_to_stats"):
 				bm.apply_growth_to_stats(stats, card, [])
 			if am and am.has_method("apply_affixes_to_stats"):
 				am.apply_affixes_to_stats(stats, card, [])
-			return "战斗中：HP %.0f｜攻 %.0f｜防 %.0f｜射程 %.0f｜攻速 %.2f" % [
-				stats.max_hp, stats.attack_damage, stats.defense, stats.attack_range, stats.attack_interval,
+			return "战斗中：" + _format_combat_stats_summary(stats)
+		
+		# 处理武器卡（无底盘）
+		elif card.weapon_type >= 0:
+			var wbase: Dictionary = UnitStatsTable.get_weapon_base(card.weapon_type, era)
+			var stats_w := UnitStats.new()
+			stats_w.attack_light = float(wbase["damage"])
+			stats_w.attack_armor = float(wbase["damage"])
+			stats_w.attack_air = float(wbase["damage"])
+			stats_w.attack_range = float(wbase["range"])
+			stats_w.attack_interval = float(wbase["interval"])
+			if bm and bm.has_method("apply_growth_to_stats"):
+				bm.apply_growth_to_stats(stats_w, null, [card])
+			if am and bm.has_method("apply_affixes_to_stats"):
+				am.apply_affixes_to_stats(stats_w, null, [card])
+			# 武器卡：只显示攻击相关
+			return "战斗中：攻 %.0f/%.0f/%.0f｜射程 %.0f｜攻速 %.2f" % [
+				stats_w.attack_light, stats_w.attack_armor, stats_w.attack_air,
+				stats_w.attack_range, stats_w.attack_interval,
 			]
-		var wt: int = card.default_weapon_type
-		if wt < 0:
-			wt = 1  # RIFLE
-		var stats: UnitStats = UnitStatsTable.build_multi_stats(card.platform_type, [wt], era)
-		if bm and bm.has_method("apply_growth_to_stats"):
-			bm.apply_growth_to_stats(stats, card, [])
-		if am and am.has_method("apply_affixes_to_stats"):
-			am.apply_affixes_to_stats(stats, card, [])
-		return "战斗中：HP %.0f｜攻 %.0f｜防 %.0f｜射程 %.0f｜攻速 %.2f" % [
-			stats.max_hp, stats.attack_damage, stats.defense, stats.attack_range, stats.attack_interval,
-		]
-
-	if card.card_type == GC.CardType.COMBAT_UNIT:
-		if card.weapon_type < 0:
-			return ""
-		var wbase: Dictionary = UnitStatsTable.get_weapon_base(card.weapon_type, era)
-		var stats_w := UnitStats.new()
-		stats_w.attack_damage = float(wbase["damage"])
-		stats_w.attack_range = float(wbase["range"])
-		stats_w.attack_interval = float(wbase["interval"])
-		if bm and bm.has_method("apply_growth_to_stats"):
-			bm.apply_growth_to_stats(stats_w, null, [card])
-		if am and am.has_method("apply_affixes_to_stats"):
-			am.apply_affixes_to_stats(stats_w, null, [card])
-		return "战斗中：攻 %.0f｜防 %.0f｜射程 %.0f｜攻速 %.2f" % [
-			stats_w.attack_damage, UnitStatsTable.get_weapon_defense(card.weapon_type), stats_w.attack_range, stats_w.attack_interval,
-		]
-
-	if card.card_type == GC.CardType.COMBAT_UNIT:
-		if card.platform_type < 0:
-			return ""
-		var wts: Array = []
-		for t in card.multi_weapon_types:
-			wts.append(int(t))
-		if wts.is_empty() and card.default_weapon_type >= 0:
-			wts.append(card.default_weapon_type)
-		if wts.is_empty():
-			return ""
-		var stats_c: UnitStats = UnitStatsTable.build_multi_stats(card.platform_type, wts, era)
-		if bm and bm.has_method("apply_growth_to_stats"):
-			bm.apply_growth_to_stats(stats_c, card, [])
-		if am and am.has_method("apply_affixes_to_stats"):
-			am.apply_affixes_to_stats(stats_c, card, [])
-		return "战斗中：HP %.0f｜攻 %.0f｜防 %.0f｜射程 %.0f｜攻速 %.2f" % [
-			stats_c.max_hp, stats_c.attack_damage, stats_c.defense, stats_c.attack_range, stats_c.attack_interval,
-		]
-
+	
 	return ""

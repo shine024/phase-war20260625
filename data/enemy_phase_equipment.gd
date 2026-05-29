@@ -1339,8 +1339,8 @@ static func _card_resource_from_war_platform(d: Dictionary, equipment_id: String
 	#c.weight_capacity = 0
 	c.era = 0
 	c.base_hp = float(stats.get("hp", 100.0))
-	c.base_range = 120.0
-	c.base_interval = 1.0
+	c.range_value = 120  # 射程（格）
+	c.attack_speed = 1.0  # 攻速（次/秒）
 	c.base_speed = float(stats.get("move_speed", 80.0))
 	return c
 
@@ -1361,8 +1361,8 @@ static func _card_resource_from_war_weapon(d: Dictionary, equipment_id: String) 
 	c.era = 0
 	c.combat_kind = 0
 	c.base_hp = 100.0
-	c.base_range = float(d.get("range", 120.0))
-	c.base_interval = float(d.get("attack_speed", 1.0)) if float(d.get("attack_speed", 0.0)) > 0.0 else 1.0
+	c.range_value = int(float(d.get("range", 120.0)))  # 射程（格）
+	c.attack_speed = float(d.get("attack_speed", 1.0)) if float(d.get("attack_speed", 0.0)) > 0.0 else 1.0  # 攻速（次/秒）
 	c.base_speed = 0.0
 	return c
 

@@ -222,10 +222,11 @@ func _refresh_items() -> void:
 				card_name = String(PERMIT_DISPLAY_NAMES[card_id])
 			elif LEGACY_BLUEPRINT_DISPLAY_NAMES.has(card_id):
 				card_name = String(LEGACY_BLUEPRINT_DISPLAY_NAMES[card_id])
-		# 武器概念下线：商店不再展示独立武器卡
-		var inspect_card = enemy_bp if enemy_bp != null else card
-		if inspect_card != null and int(inspect_card.card_type) == GC.CardType.COMBAT_UNIT:
-			continue
+		# v3 后所有战斗卡都是 COMBAT_UNIT，可以正常在商店售卖
+		# 原错误代码过滤了 COMBAT_UNIT 导致所有战斗卡被隐藏，现已移除
+		# var inspect_card = enemy_bp if enemy_bp != null else card
+		# if inspect_card != null and int(inspect_card.card_type) == GC.CardType.COMBAT_UNIT:
+		# 	continue
 
 		# 高等级商品名称打码
 		if item_tier > current_tier + 1:

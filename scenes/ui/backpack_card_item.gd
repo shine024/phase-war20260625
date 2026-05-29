@@ -31,6 +31,7 @@ const BackpackCombatPreview = preload("res://scenes/ui/backpack_combat_preview.g
 const RankDisplayUi = preload("res://scripts/rank_display_ui.gd")
 const CardFrameUi = preload("res://scripts/card_frame_ui.gd")
 const CardBackgroundUi = preload("res://scripts/card_background_ui.gd")
+const CardInfoPanel = preload("res://scenes/ui/card_info_panel.gd")
 ## 与相位仪槽位 `PhaseSlot.SLOT_SIZE` 一致，便于拖拽与装备时视觉对齐
 var SLOT_SIZE: Vector2 = PhaseSlot.SLOT_SIZE
 ## 列表内卡图：与 backpack_card_item.tscn 中 Icon 一致，竖向窄格内居中
@@ -112,7 +113,7 @@ func _apply_icon_texture_rect_fixed(icon_rect: TextureRect, min_size: Vector2) -
 	icon_rect.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	icon_rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 
-## 鼠标进入 - 显示词条提示
+## 鼠标进入 - 显示统一情报面板
 func _on_mouse_entered() -> void:
 	if not ENABLE_HOVER_AFFIX_TOOLTIP:
 		return
@@ -130,18 +131,18 @@ func _on_mouse_entered() -> void:
 		if seq != _affix_hover_seq:
 			return
 		if get_global_mouse_position().distance_to(global_position + size / 2.0) < size.length():
-			_show_affix_tooltip()
+			_show_card_info_panel()
 	, CONNECT_ONE_SHOT)
 
-## 鼠标离开 - 隐藏词条提示
+## 鼠标离开 - 隐藏统一情报面板
 func _on_mouse_exited() -> void:
 	if not ENABLE_HOVER_AFFIX_TOOLTIP:
 		return
 	_affix_hover_seq += 1
-	_hide_affix_tooltip()
+	_hide_card_info_panel()
 
-## 显示词条提示
-func _show_affix_tooltip() -> void:
+## 显示统一卡牌情报面板
+func _show_card_info_panel() -> void:
 	if card == null:
 		return
 
@@ -154,32 +155,37 @@ func _show_affix_tooltip() -> void:
 		return
 
 	# 单例挂在 root，避免随 current_scene 切换重复创建
-	var tooltip: Control = root.get_node_or_null("CardAffixTooltip") as Control
-	if tooltip == null:
-		tooltip = _CardAffixTooltipScript.new() as Control
-		tooltip.name = "CardAffixTooltip"
-		root.add_child(tooltip)
+	var info_panel: Control = root.get_node_or_null("CardInfoPanel") as Control
+	if info_panel == null:
+		info_panel = CardInfoPanel.new() as Control
+		info_panel.name = "CardInfoPanel"
+		root.add_child(info_panel)
 
-	if tooltip.has_method("show_for_card"):
+	if info_panel.has_method("show_card_info"):
 		# 计算提示位置（优先在卡片右侧，超出屏幕则在左侧）
-		var tooltip_pos := global_position + Vector2(size.x, 0)
-		var viewport_size := get_viewport().get_visible_rect().size
-		if tooltip_pos.x + 200 > viewport_size.x:
-			tooltip_pos.x = global_position.x - 205
-		tooltip.show_for_card(card, tooltip_pos)
+		var card_rect: Rect2 = get_global_rect()
+		var panel_pos: Vector2 = card_rect.position + Vector2(card_rect.size.x + 8.0, 0.0)
+		
+		# 检查是否超出屏幕右侧
+		var viewport_size: Vector2 = tree.current_scene.get_viewport_rect().size
+		if panel_pos.x + 400.0 > viewport_size.x:  # 假设面板宽度约400
+			panel_pos.x = card_rect.position.x - 408.0  # 移到左侧
+		
+		info_panel.show_card_info(card, panel_pos)
 
-## 隐藏词条提示
-func _hide_affix_tooltip() -> void:
+## 隐藏统一卡牌情报面板
+func _hide_card_info_panel() -> void:
 	var tree: SceneTree = get_tree()
 	if not tree or not is_instance_valid(tree):
 		return
+
 	var root: Window = tree.root
 	if root == null:
 		return
 
-	var tooltip: Control = root.get_node_or_null("CardAffixTooltip") as Control
-	if tooltip != null and tooltip.has_method("hide_tooltip"):
-		tooltip.hide_tooltip()
+	var info_panel: Control = root.get_node_or_null("CardInfoPanel") as Control
+	if info_panel != null and info_panel.has_method("hide_panel"):
+		info_panel.hide_panel()
 
 func _check_drag_state() -> void:
 	if not is_instance_valid(self) or not is_inside_tree():
