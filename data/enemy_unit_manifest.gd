@@ -17,7 +17,7 @@ const FOE_PLATFORM_CARD_IDS: Array[String] = [
 	"ww1_rolls", "ww1_ft17", "ww1_77mm", "ww1_cavalry", "ww1_engineer",
 	# 二战（7个）
 	"ww2_hellcat", "ww2_sherman", "ww2_tiger", "ww2_bazooka", "ww2_panzerschrek",
-	"ww2_m81 mortar", "ww1_m81",
+	"ww2_m81", "ww1_m81",
 	# 冷战（7个）
 	"cold_btr60", "cold_t55", "cold_bmp1", "cold_m113", "cold_zsu23",
 	# 现代系统（7个）
@@ -484,6 +484,7 @@ static func _tags_for_kind(kind: int) -> Array:
 	match kind:
 		2: return ["turret", "sustained"]
 		3: return ["support"]
+		4: return ["fortress", "immobile"]  # v5.0 堡垒
 		1: return ["vehicle", "armored"]
 		_: return ["frontline"]
 

@@ -72,12 +72,15 @@ func _ready() -> void:
 		"player_units_node": null,  # 战斗开始后更新
 	})
 
-	# 连接信号
+	# 连接信号（is_connected 守卫防止重复注册）
 	if SignalBus:
-		SignalBus.unit_died.connect(_on_unit_died)
-		SignalBus.phase_driver_destroyed.connect(_on_phase_driver_destroyed)
+		if not SignalBus.unit_died.is_connected(_on_unit_died):
+			SignalBus.unit_died.connect(_on_unit_died)
+		if not SignalBus.phase_driver_destroyed.is_connected(_on_phase_driver_destroyed):
+			SignalBus.phase_driver_destroyed.connect(_on_phase_driver_destroyed)
 		if SignalBus.has_signal("enemy_phase_driver_destroyed"):
-			SignalBus.enemy_phase_driver_destroyed.connect(_on_enemy_phase_driver_destroyed)
+			if not SignalBus.enemy_phase_driver_destroyed.is_connected(_on_enemy_phase_driver_destroyed):
+				SignalBus.enemy_phase_driver_destroyed.connect(_on_enemy_phase_driver_destroyed)
 		if not SignalBus.unit_damaged.is_connected(_on_unit_damaged_combat_feedback):
 			SignalBus.unit_damaged.connect(_on_unit_damaged_combat_feedback)
 

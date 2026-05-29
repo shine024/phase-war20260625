@@ -8,6 +8,7 @@ const ActiveLawEffects = preload("res://managers/active_law_effects.gd")
 const CardAbilityManager = preload("res://managers/card_ability_manager.gd")
 const CardGridFx = preload("res://scripts/card_grid_fx.gd")
 const WeaponProjectileVfx = preload("res://scripts/weapon_projectile_vfx.gd")
+const AttackCalculator = preload("res://scripts/battle/attack_calculator.gd")
 # ObjectPoolManager 为 autoload
 
 var speed: float = 600.0
@@ -351,6 +352,25 @@ func _on_hit(primary: Node2D) -> void:
 	var defender_reduction: float = 0.0
 	if GameManager == null or not GameManager.is_card_grid_battle():
 		defender_reduction = primary.damage_reduction if primary != null and "damage_reduction" in primary else 0.0
+	# v5.0: 击穿检查 + 三维防御减免 100/(100+def)
+	var primary_stats: UnitStats = primary.get("stats") as UnitStats if primary != null else null
+	if primary_stats != null and shooter_stats != null:
+		var def_val: float = AttackCalculator.get_defense_vs(primary_stats, shooter_stats.combat_kind)
+		# 击穿检查: attack <= defense → 伤害=0
+		if damage <= def_val:
+			# 伤害被完全吸收，仍然需要执行miss等后续逻辑
+			_on_hit_basic(primary)
+			return
+		# 防御减免: damage × 100/(100+def)
+		damage = damage * (100.0 / (100.0 + def_val))
+	# v5.0: 强化加成（enhance_level 乘法）
+	if shooter_stats != null and shooter_stats.enhance_level > 0:
+		var enhance_mult := 1.0 + float(shooter_stats.enhance_level) * 0.05
+		if shooter_stats.enhance_level >= 9:
+			enhance_mult = 1.50
+		elif shooter_stats.enhance_level >= 10:
+			enhance_mult = 1.60
+		damage *= enhance_mult
 	var damage_calc: Dictionary = AffixCombatHandler.calculate_damage(
 		damage,
 		shooter_stats,
@@ -382,8 +402,19 @@ func _on_hit(primary: Node2D) -> void:
 			var splash_red: float = 0.0
 			if GameManager == null or not GameManager.is_card_grid_battle():
 				splash_red = child.damage_reduction if child != null and "damage_reduction" in child else 0.0
+			var splash_base: float = damage * shooter_stats.splash_damage
+			# v5.0: 溅射目标也做击穿检查+防御减免
+			var child_stats: UnitStats = child.get("stats") as UnitStats if child != null else null
+			if child_stats != null and shooter_stats != null:
+				var child_def: float = AttackCalculator.get_defense_vs(child_stats, shooter_stats.combat_kind)
+				if splash_base > child_def:
+					splash_base = splash_base * (100.0 / (100.0 + child_def))
+				else:
+					splash_base = 0.0
+			if splash_base <= 0.0:
+				continue
 			var splash_calc: Dictionary = AffixCombatHandler.calculate_damage(
-				damage * shooter_stats.splash_damage,
+				splash_base,
 				shooter_stats,
 				child.hp if child != null and "hp" in child else 0.0,
 				child.max_hp if child != null and "max_hp" in child else 1.0,

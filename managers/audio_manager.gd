@@ -37,15 +37,20 @@ func _ready() -> void:
 		add_child(p)
 		_players[name] = p
 
-	# 连接信号
+	# 连接信号（is_connected 守卫防止重复注册）
 	if SignalBus:
-		SignalBus.unit_damaged.connect(_on_unit_damaged)
-		SignalBus.active_law_cast_at.connect(_on_cast)
-		SignalBus.battle_ended.connect(_on_battle_ended)
+		if not SignalBus.unit_damaged.is_connected(_on_unit_damaged):
+			SignalBus.unit_damaged.connect(_on_unit_damaged)
+		if not SignalBus.active_law_cast_at.is_connected(_on_cast):
+			SignalBus.active_law_cast_at.connect(_on_cast)
+		if not SignalBus.battle_ended.is_connected(_on_battle_ended):
+			SignalBus.battle_ended.connect(_on_battle_ended)
 		if SignalBus.has_signal("blueprint_unlocked"):
-			SignalBus.blueprint_unlocked.connect(_on_blueprint_unlocked)
+			if not SignalBus.blueprint_unlocked.is_connected(_on_blueprint_unlocked):
+				SignalBus.blueprint_unlocked.connect(_on_blueprint_unlocked)
 		if SignalBus.has_signal("achievement_unlocked"):
-			SignalBus.achievement_unlocked.connect(_on_achievement_unlocked)
+			if not SignalBus.achievement_unlocked.is_connected(_on_achievement_unlocked):
+				SignalBus.achievement_unlocked.connect(_on_achievement_unlocked)
 
 ## 播放音效
 func play_sfx(name: String) -> void:

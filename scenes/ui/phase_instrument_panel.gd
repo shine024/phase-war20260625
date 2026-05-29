@@ -9,6 +9,7 @@ const DefaultCards = preload("res://data/default_cards.gd")
 const RankDisplayUi = preload("res://scripts/rank_display_ui.gd")
 const NodeFinder = preload("res://scripts/node_finder.gd")
 const BackpackPanelScript = preload("res://scenes/ui/backpack_panel.gd")
+const BackpackCombatPreview = preload("res://scenes/ui/backpack_combat_preview.gd")
 const DEBUG_PHASE_PANEL_LOG := false
 
 var slots: Array = []
@@ -311,9 +312,10 @@ func _show_detail_popup_for_card(card: CardResource) -> void:
 	cost_label.add_theme_font_size_override("font_size", 12)
 	vbox.add_child(cost_label)
 	
-	# 摘要
+	# 摘要（优先使用战前预览的缩放值）
 	var summary_label = Label.new()
-	summary_label.text = card.summary_line
+	var combat_line: String = BackpackCombatPreview.build_line(card)
+	summary_label.text = combat_line if not combat_line.is_empty() else card.summary_line
 	summary_label.add_theme_font_size_override("font_size", 11)
 	summary_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.9, 0.9))
 	summary_label.autowrap_mode = TextServer.AUTOWRAP_WORD

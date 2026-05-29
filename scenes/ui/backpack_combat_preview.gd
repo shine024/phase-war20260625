@@ -32,7 +32,18 @@ static func build_line(card: CardResource) -> String:
 
 	if card.card_type == GC.CardType.COMBAT_UNIT:
 		if card.platform_type < 0:
-			return ""
+			if card.base_hp <= 0:
+				return ""
+			var stats: UnitStats = UnitStatsTable.build_stats_from_card(card, era)
+			if stats.defense <= 0.0:
+				stats.defense = maxf(stats.defense_light, maxf(stats.defense_armor, stats.defense_air))
+			if bm and bm.has_method("apply_growth_to_stats"):
+				bm.apply_growth_to_stats(stats, card, [])
+			if am and am.has_method("apply_affixes_to_stats"):
+				am.apply_affixes_to_stats(stats, card, [])
+			return "战斗中：HP %.0f｜攻 %.0f｜防 %.0f｜射程 %.0f｜攻速 %.2f" % [
+				stats.max_hp, stats.attack_damage, stats.defense, stats.attack_range, stats.attack_interval,
+			]
 		var wt: int = card.default_weapon_type
 		if wt < 0:
 			wt = 1  # RIFLE

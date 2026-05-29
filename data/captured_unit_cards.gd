@@ -59,8 +59,8 @@ static func _build_captured_card(
 	c.era = era
 	c.combat_kind = int(cfg.get("combat_kind", 1))
 	c.base_hp = float(cfg.get("hp", 100.0))
-	c.base_range = float(cfg.get("attack_range", 120.0))
-	c.base_interval = float(cfg.get("attack_interval", 1.0))
+	c.range_value = max(1, int(round(float(cfg.get("attack_range", 120.0)) / 100.0)))
+	c.attack_speed = 1.0 / maxf(0.001, float(cfg.get("attack_interval", 1.0)))
 	c.weapon_label = String(cfg.get("weapon_label", ""))
 
 	# 新增：多维攻防

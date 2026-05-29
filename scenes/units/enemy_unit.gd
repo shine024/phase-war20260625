@@ -12,6 +12,9 @@ const CardGridDamage = preload("res://scripts/card_grid_damage.gd")
 const CombatTargeting = preload("res://scripts/combat_targeting.gd")
 const RankRules = preload("res://data/rank_rules.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
+const TargetSelection = preload("res://scripts/battle/target_selection.gd")
+const DamageAttenuation = preload("res://scripts/battle/damage_attenuation.gd")
+const AttackCalculator = preload("res://scripts/battle/attack_calculator.gd")
 const BATTLE_MIN_X: float = 40.0
 const BATTLE_MAX_X: float = 1240.0
 const BATTLE_MIN_Y: float = 280.0
@@ -29,6 +32,9 @@ var attack_damage: float = 10.0
 var attack_range: float = 100.0
 var attack_interval: float = 1.0
 var attack_timer: float = 0.0
+## v5.0 攻速分离: 三阶段攻击状态机 (IDLE=0, WINDUP=1, ACTIVE=2, COOLDOWN=3)
+var _attack_phase: int = 0
+var _attack_phase_timer: float = 0.0
 var move_speed: float = 60.0
 var defense: float = 5.0
 var target: Node2D = null
@@ -399,12 +405,7 @@ func _physics_process(delta: float) -> void:
 		else:
 			velocity = Vector2(-move_speed, 0.0)
 	if _hit_stun_left <= 0.0:
-		attack_timer += delta
-	if target != null and _hit_stun_left <= 0.0 and attack_timer >= attack_interval:
-		var d_fire: float = global_position.distance_to(target.global_position)
-		if d_fire <= _effective_fire_range():
-			attack_timer = 0.0
-			_do_attack()
+		_process_attack_timing(delta)
 	move_and_slide()
 	_clamp_inside_battlefield()
 	# 性能优化：更新空间分区网格中的位置
@@ -477,6 +478,58 @@ func _find_target(_delta: float) -> void:
 			target = phase_field
 			return
 
+## v5.0 攻速分离: 三阶段攻击状态机
+## idle(0) → windup(1) → active(2,发射) → cooldown(3) → idle(0)
+func _process_attack_timing(delta: float) -> void:
+	if target == null or not is_instance_valid(target):
+		_attack_phase = 0
+		_attack_phase_timer = 0.0
+		return
+	# 获取攻速参数
+	var timing: Dictionary
+	if stats != null:
+		var target_stats = target.get("stats") as UnitStats
+		var target_kind: int = target_stats.combat_kind if target_stats else 0
+		timing = AttackCalculator.get_attack_timing(stats, target_kind)
+	else:
+		# 无stats时回退到旧逻辑
+		timing = {"cycle": attack_interval, "windup": attack_interval * 0.2, "active": 0.1, "cooldown": attack_interval * 0.7, "speed": 1.0 / attack_interval}
+	var fire_range: float = _effective_fire_range()
+	var dist: float = global_position.distance_to(target.global_position)
+	var wt: int = 0
+	if stats != null:
+		wt = stats.weapon_type
+	else:
+		var cfg: Dictionary = _cached_archetype_cfg
+		wt = int(cfg.get("weapon_type", 0))
+	# 超射程且直射时重置
+	if dist > fire_range and wt == GC.WeaponType.DIRECT:
+		_attack_phase = 0
+		_attack_phase_timer = 0.0
+		return
+	match _attack_phase:
+		0:  # IDLE
+			if dist <= fire_range:
+				_attack_phase = 1
+				_attack_phase_timer = 0.0
+		1:  # WINDUP
+			_attack_phase_timer += delta
+			if _attack_phase_timer >= timing["windup"]:
+				_attack_phase = 2
+				_attack_phase_timer = 0.0
+		2:  # ACTIVE
+			_attack_phase_timer += delta
+			if _attack_phase_timer < delta * 1.1:
+				_do_attack()
+			if _attack_phase_timer >= timing["active"]:
+				_attack_phase = 3
+				_attack_phase_timer = 0.0
+		3:  # COOLDOWN
+			_attack_phase_timer += delta
+			if _attack_phase_timer >= timing["cooldown"]:
+				_attack_phase = 0
+				_attack_phase_timer = 0.0
+
 func _do_attack() -> void:
 	if target == null or not is_instance_valid(target):
 		return
@@ -484,16 +537,17 @@ func _do_attack() -> void:
 		return
 	var dist_t := global_position.distance_to(target.global_position)
 	var miss := false
-	var falloff: Dictionary = CombatTargeting.range_falloff(dist_t, attack_range)
-	var dmg_out: float = attack_damage
-	if dist_t > attack_range and attack_range > 0.5:
-		if randf() > float(falloff.get("p_hit", 1.0)):
-			miss = true
-			CombatFeedback.show_miss(target.global_position, target)
-		else:
-			dmg_out *= float(falloff.get("damage_mult", 1.0))
+	# v5.0: 按目标类型获取攻击值
+	var dmg_out: float = attack_damage  # 默认值（无stats时）
+	if stats != null:
+		var target_stats = target.get("stats") as UnitStats
+		var target_kind: int = target_stats.combat_kind if target_stats else 0
+		dmg_out = AttackCalculator.get_attack_vs(stats, target_kind)
+	# v5.0: 仅直射有衰减
 	var cfg: Dictionary = _cached_archetype_cfg
 	var wt: int = int(cfg.get("weapon_type", 0))
+	if stats != null:
+		wt = stats.weapon_type
 	var multi: Array = cfg.get("weapon_types", [])
 	if multi.size() > 0:
 		wt = int(multi[_attack_weapon_index % multi.size()])

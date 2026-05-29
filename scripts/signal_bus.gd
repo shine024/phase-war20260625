@@ -131,3 +131,8 @@ signal daily_task_reward_granted(task: Dictionary)
 # 战斗掉落奖励
 signal kill_reward_granted(reward_type: String, amount: float)
 
+# 情报手册系统
+signal intel_updated(card_id: String, progress: float, tier: int)
+signal intel_unlocked(card_id: String)
+signal intel_tier_reached(card_id: String, tier: int)
+

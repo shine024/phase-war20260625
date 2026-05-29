@@ -829,9 +829,15 @@ func _create_shard_effect() -> Node2D:
 	tween.tween_property(shard, "rotation", randf() * 360.0, 0.6)
 
 	return shard
+## 震动 tween 引用，防止 set_loops 堆积
+var _shake_tween: Tween = null
 
-## 应用屏幕震动
 func _apply_screen_shake(intensity: float, duration: float) -> void:
+	if not effect_config["enable_screen_shake"]:
+		return
+	# kill 前一个震动 tween，防止 set_loops 堆积
+	if _shake_tween and _shake_tween.is_valid():
+		_shake_tween.kill()
 	var camera = get_viewport().get_camera_2d()
 	if camera == null:
 		return
@@ -839,8 +845,8 @@ func _apply_screen_shake(intensity: float, duration: float) -> void:
 	var original_offset = camera.offset
 	var shake_amount = intensity
 
-	var tween = create_tween()
-	tween.set_loops()
+	_shake_tween = create_tween()
+	_shake_tween.set_loops()
 
 	# 随机震动
 	for i in range(int(duration * 60)):  # 60fps
@@ -848,10 +854,10 @@ func _apply_screen_shake(intensity: float, duration: float) -> void:
 			randf_range(-shake_amount, shake_amount),
 			randf_range(-shake_amount, shake_amount)
 		)
-		tween.tween_property(camera, "offset", original_offset + shake_offset, 0.016)
+	_shake_tween.tween_property(camera, "offset", original_offset + shake_offset, 0.016)
 
-	# 恢复原位
-	tween.tween_property(camera, "offset", original_offset, 0.1)
+# 恢复原位
+	_shake_tween.tween_property(camera, "offset", original_offset, 0.1)
 
 ## 应用慢动作
 func apply_slow_motion(scale: float = 0.5, duration: float = 1.0) -> void:

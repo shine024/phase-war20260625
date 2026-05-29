@@ -1,13 +1,14 @@
 extends Node
-## 单张卡片强化系统：区别于卡牌合成
+## 单张卡片强化系统 v5.0：区别于卡牌合成
 ##
 ## 强化 vs 合成的区别：
 ## - 强化：单张卡片+纳米材料→属性增加（原卡保留ID）
 ## - 合成：卡牌+卡牌 或 卡牌+蓝图 → 新卡（生成新ID）
 ##
 ## 强化等级：1-10级
-## 强化消耗：递增的纳米材料
-## 强化效果：基础属性加成（HP、DMG）+ 稀有度变化
+## 强化成功率：100%（无失败机制）
+## 强化消耗：基础战力 x 等级系数（动态计算）
+## 强化效果：属性加成 Lv1=+5% ... Lv10=+60%，战力倍率 Lv1-8=1.0+level*0.05, Lv9=1.50, Lv10=1.60
 
 signal enhancement_started(card_id: String, target_level: int)
 signal enhancement_completed(success: bool, card_id: String, new_stats: Dictionary, message: String)
@@ -16,18 +17,20 @@ signal enhancement_failed(card_id: String, reason: String)
 const GC = preload("res://resources/game_constants.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 
-# 强化等级配置
+# v5.0 强化等级配置
+# 消耗 = 基础战力 x level_cost_multiplier（不再使用固定纳米消耗表）
+# 100% 成功，无 success_rate
 var enhancement_config: Dictionary = {
-	1: {"nano_cost": 100, "success_rate": 0.95, "attribute_bonus": 0.05},   # Lv1: +5% 属性
-	2: {"nano_cost": 200, "success_rate": 0.90, "attribute_bonus": 0.10},   # Lv2: +10% 属性
-	3: {"nano_cost": 350, "success_rate": 0.85, "attribute_bonus": 0.15},   # Lv3: +15% 属性
-	4: {"nano_cost": 550, "success_rate": 0.80, "attribute_bonus": 0.20},   # Lv4: +20% 属性
-	5: {"nano_cost": 800, "success_rate": 0.75, "attribute_bonus": 0.25},   # Lv5: +25% 属性
-	6: {"nano_cost": 1100, "success_rate": 0.70, "attribute_bonus": 0.30},  # Lv6: +30% 属性
-	7: {"nano_cost": 1450, "success_rate": 0.65, "attribute_bonus": 0.35},  # Lv7: +35% 属性
-	8: {"nano_cost": 1850, "success_rate": 0.60, "attribute_bonus": 0.40},  # Lv8: +40% 属性
-	9: {"nano_cost": 2300, "success_rate": 0.50, "attribute_bonus": 0.50},  # Lv9: +50% 属性
-	10: {"nano_cost": 3000, "success_rate": 0.40, "attribute_bonus": 0.60}, # Lv10: +60% 属性
+	1:  {"level_cost_multiplier": 0.5, "attribute_bonus": 0.05},   # Lv1:  消耗=基础战力*0.5,  +5% 属性
+	2:  {"level_cost_multiplier": 1.0, "attribute_bonus": 0.10},   # Lv2:  消耗=基础战力*1.0,  +10% 属性
+	3:  {"level_cost_multiplier": 1.5, "attribute_bonus": 0.15},   # Lv3:  消耗=基础战力*1.5,  +15% 属性
+	4:  {"level_cost_multiplier": 2.0, "attribute_bonus": 0.20},   # Lv4:  消耗=基础战力*2.0,  +20% 属性
+	5:  {"level_cost_multiplier": 2.5, "attribute_bonus": 0.25},   # Lv5:  消耗=基础战力*2.5,  +25% 属性
+	6:  {"level_cost_multiplier": 3.0, "attribute_bonus": 0.30},   # Lv6:  消耗=基础战力*3.0,  +30% 属性
+	7:  {"level_cost_multiplier": 3.5, "attribute_bonus": 0.35},   # Lv7:  消耗=基础战力*3.5,  +35% 属性
+	8:  {"level_cost_multiplier": 4.0, "attribute_bonus": 0.40},   # Lv8:  消耗=基础战力*4.0,  +40% 属性
+	9:  {"level_cost_multiplier": 5.0, "attribute_bonus": 0.50},   # Lv9:  消耗=基础战力*5.0,  +50% 属性
+	10: {"level_cost_multiplier": 6.0, "attribute_bonus": 0.60},   # Lv10: 消耗=基础战力*6.0,  +60% 属性
 }
 
 # 追踪卡牌强化等级：card_id -> 当前强化等级(1-10)
@@ -48,6 +51,29 @@ func _init_card_enhancement_data() -> void:
 		if not card_id.is_empty():
 			card_enhancement_level[card_id] = 1
 
+func get_card_base_power(card_id: String) -> int:
+	## 获取卡牌基础战力（用于动态计算强化消耗）
+	var card = DefaultCards.get_card_by_id(card_id)
+	if card == null:
+		return 0
+	# 基础战力 = HP + DMG（或其他卡牌类型的等效值）
+	return card.base_hp + card.base_damage
+
+func get_enhance_nano_cost(card_id: String, target_level: int) -> int:
+	## 计算强化到目标等级的纳米消耗 = 基础战力 x 等级系数
+	var base_power = get_card_base_power(card_id)
+	var config = enhancement_config.get(target_level, {})
+	var multiplier = config.get("level_cost_multiplier", 1.0)
+	return int(base_power * multiplier)
+
+func get_power_multiplier(level: int) -> float:
+	## 获取指定强化等级的战力倍率
+	## Lv1-8: 1.0 + level * 0.05  →  Lv1=1.05, Lv8=1.40
+	## Lv9=1.50, Lv10=1.60
+	if level >= 9:
+		return 1.50 if level == 9 else 1.60
+	return 1.0 + level * 0.05
+
 func can_enhance(card_id: String, blueprint_manager: Node) -> bool:
 	## 检查是否可以强化某张卡牌
 	# 检查卡牌是否存在
@@ -60,10 +86,9 @@ func can_enhance(card_id: String, blueprint_manager: Node) -> bool:
 	if current_level >= 10:
 		return false
 	
-	# 检查纳米材料是否足够
+	# v5.0: 动态计算纳米消耗
 	var target_level = current_level + 1
-	var config = enhancement_config.get(target_level, {})
-	var nano_cost = config.get("nano_cost", 0)
+	var nano_cost = get_enhance_nano_cost(card_id, target_level)
 	
 	if blueprint_manager == null or blueprint_manager.get_nano_materials() < nano_cost:
 		return false
@@ -71,7 +96,7 @@ func can_enhance(card_id: String, blueprint_manager: Node) -> bool:
 	return true
 
 func enhance(card_id: String, blueprint_manager: Node) -> bool:
-	## 执行单张卡片强化
+	## 执行单张卡片强化（v5.0: 100% 成功）
 	if not can_enhance(card_id, blueprint_manager):
 		emit_signal("enhancement_failed", card_id, "无法强化此卡牌")
 		return false
@@ -81,29 +106,25 @@ func enhance(card_id: String, blueprint_manager: Node) -> bool:
 	
 	# 获取配置
 	var config = enhancement_config.get(target_level, {})
-	var nano_cost = config.get("nano_cost", 0)
-	var success_rate = config.get("success_rate", 0.5)
+	var nano_cost = get_enhance_nano_cost(card_id, target_level)
 	var attribute_bonus = config.get("attribute_bonus", 0.0)
 	
 	# 发出开始信号
 	emit_signal("enhancement_started", card_id, target_level)
 	
-	# 消耗纳米材料（add_nano_materials 为 void，前置校验已在 can_enhance 中完成）
+	# 消耗纳米材料
 	blueprint_manager.add_nano_materials(-nano_cost)
 	
-	# 检查成功率
-	if randf() > success_rate:
-		# 强化失败
-		emit_signal("enhancement_completed", false, card_id, {}, "强化失败！成功率: %.0f%%" % (success_rate * 100))
-		return false
-	
+	# v5.0: 100% 成功，无随机判定
 	# 强化成功：更新等级
 	card_enhancement_level[card_id] = target_level
 	
 	# 计算新属性
 	var new_stats = _calculate_enhanced_stats(card_id, attribute_bonus)
 	
-	emit_signal("enhancement_completed", true, card_id, new_stats, "强化成功！等级提升至 Lv.%d，属性 +%.0f%%" % [target_level, attribute_bonus * 100])
+	var power_mult = get_power_multiplier(target_level)
+	emit_signal("enhancement_completed", true, card_id, new_stats,
+		"强化成功！等级提升至 Lv.%d，属性 +%.0f%%，战力倍率 %.2f" % [target_level, attribute_bonus * 100, power_mult])
 	
 	return true
 
@@ -113,13 +134,17 @@ func _calculate_enhanced_stats(card_id: String, bonus: float) -> Dictionary:
 	if card == null:
 		return {}
 	
-	# 基础属性加成（可根据卡牌类型定制）
+	var level = get_card_enhancement_level(card_id)
+	var power_mult = get_power_multiplier(level)
+	
+	# 基础属性加成
 	var stats = {
 		"card_id": card_id,
 		"original_energy_cost": card.energy_cost,
 		"enhanced_energy_cost": card.energy_cost * (1.0 + bonus * 0.5),  # 能量消耗也略微增加
 		"attribute_bonus": bonus,  # 基础属性加成百分比
-		"level": get_card_enhancement_level(card_id),
+		"level": level,
+		"power_multiplier": power_mult,  # v5.0: 战力倍率
 	}
 	
 	# 不同类型卡牌的强化效果
@@ -127,16 +152,15 @@ func _calculate_enhanced_stats(card_id: String, bonus: float) -> Dictionary:
 		GC.CardType.COMBAT_UNIT:
 			stats["hp_bonus"] = bonus  # 血量提升 5%-60%
 			stats["weight_bonus"] = bonus * 0.2  # 承载能力略微增加
-		
-		GC.CardType.COMBAT_UNIT:
-			stats["damage_bonus"] = bonus  # 伤害提升 5%-60%
-			stats["weight_bonus"] = -bonus * 0.1  # 优化设计，重量略微降低
-		
+			
 		GC.CardType.ENERGY:
 			stats["energy_grant_bonus"] = bonus  # 能量输出提升 5%-60%
-		
+			
 		GC.CardType.LAW:
 			stats["effect_bonus"] = bonus  # 法则效果提升 5%-60%
+		
+		_:
+			stats["damage_bonus"] = bonus  # 默认：伤害提升 5%-60%
 	
 	return stats
 
@@ -153,6 +177,7 @@ func get_enhancement_info(card_id: String) -> Dictionary:
 		"current_level": current_level,
 		"max_level": 10,
 		"can_enhance": current_level < 10,
+		"current_power_multiplier": get_power_multiplier(current_level),
 	}
 	
 	if current_level < 10:
@@ -160,27 +185,26 @@ func get_enhancement_info(card_id: String) -> Dictionary:
 		var config = enhancement_config.get(target_level, {})
 		
 		info["next_level"] = target_level
-		info["nano_cost"] = config.get("nano_cost", 0)
-		info["success_rate"] = config.get("success_rate", 0.5)
+		info["nano_cost"] = get_enhance_nano_cost(card_id, target_level)
 		info["attribute_bonus"] = config.get("attribute_bonus", 0.0)
+		info["next_power_multiplier"] = get_power_multiplier(target_level)
 	
 	return info
 
-func get_all_enhancement_costs() -> Dictionary:
-	## 获取所有等级的强化成本
+func get_all_enhancement_costs(card_id: String) -> Dictionary:
+	## 获取所有等级的强化成本（v5.0: 需要card_id动态计算）
 	var costs = {}
 	for level in enhancement_config.keys():
-		costs[level] = enhancement_config[level].get("nano_cost", 0)
+		costs[level] = get_enhance_nano_cost(card_id, level)
 	return costs
 
 func get_total_enhancement_cost_to_max(card_id: String) -> int:
-	## 获取从当前等级升到满级的总成本
+	## 获取从当前等级升到满级的总成本（v5.0: 动态计算）
 	var current_level = get_card_enhancement_level(card_id)
 	var total_cost = 0
 	
 	for level in range(current_level + 1, 11):
-		var config = enhancement_config.get(level, {})
-		total_cost += config.get("nano_cost", 0)
+		total_cost += get_enhance_nano_cost(card_id, level)
 	
 	return total_cost
 

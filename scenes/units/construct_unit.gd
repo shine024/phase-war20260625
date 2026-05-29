@@ -12,6 +12,9 @@ const CardGridBuffStrip = preload("res://scripts/card_grid_buff_strip.gd")
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 const CardGridDamage = preload("res://scripts/card_grid_damage.gd")
 const CombatTargeting = preload("res://scripts/combat_targeting.gd")
+const TargetSelection = preload("res://scripts/battle/target_selection.gd")
+const DamageAttenuation = preload("res://scripts/battle/damage_attenuation.gd")
+const AttackCalculator = preload("res://scripts/battle/attack_calculator.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 const EnemyPhaseEquipment = preload("res://data/enemy_phase_equipment.gd")
 # ObjectPoolManager 为 autoload
@@ -59,6 +62,10 @@ var stats: UnitStats
 var hp: float = 100.0
 var shield: float = 0.0  # 护盾值
 var attack_timer: float = 0.0
+## v5.0 攻速分离: 三阶段攻击状态机 (idle → windup → active → cooldown → idle)
+enum AttackPhase { IDLE, WINDUP, ACTIVE, COOLDOWN }
+var _attack_phase: int = AttackPhase.IDLE
+var _attack_phase_timer: float = 0.0
 var target: Node2D = null
 var _weapon_cfgs: Array = []
 var _move_target: Vector2 = Vector2.INF
@@ -927,12 +934,7 @@ func _physics_process(delta: float) -> void:
 		_process_multi_weapons(delta)
 	else:
 		if _hit_stun_left <= 0.0:
-			attack_timer += delta
-			if target != null and attack_timer >= stats.attack_interval:
-				var d_fire: float = global_position.distance_to(target.global_position)
-				if d_fire <= _effective_fire_range():
-					attack_timer = 0.0
-					_do_attack()
+			_process_single_weapon_attack(delta)
 	_update_animation()
 	move_and_slide()
 	_clamp_inside_battlefield()
@@ -985,6 +987,51 @@ func _apply_continuous_effects(delta: float) -> void:
 	# 应用平台HP变异防御加成
 	# （在 take_damage 中处理会更合适）
 
+## v5.0 攻速分离: 单武器三阶段攻击状态机
+## idle → windup → active(发射) → cooldown → idle
+func _process_single_weapon_attack(delta: float) -> void:
+	# 目标丢失或无效时重置到idle
+	if target == null or not is_instance_valid(target):
+		_attack_phase = AttackPhase.IDLE
+		_attack_phase_timer = 0.0
+		return
+	# 获取目标类型对应的攻速参数
+	var target_stats = target.get("stats") as UnitStats
+	var target_kind: int = target_stats.combat_kind if target_stats else 0
+	var timing: Dictionary = AttackCalculator.get_attack_timing(stats, target_kind)
+	var fire_range: float = _effective_fire_range()
+	var dist: float = global_position.distance_to(target.global_position)
+	# 超射程且直射时重置（不蓄力）
+	if dist > fire_range and stats.weapon_type == GC.WeaponType.DIRECT:
+		_attack_phase = AttackPhase.IDLE
+		_attack_phase_timer = 0.0
+		return
+	match _attack_phase:
+		AttackPhase.IDLE:
+			# 有目标且在射程内，进入蓄力
+			if dist <= fire_range:
+				_attack_phase = AttackPhase.WINDUP
+				_attack_phase_timer = 0.0
+		AttackPhase.WINDUP:
+			_attack_phase_timer += delta
+			# 蓄力期间目标切换时重新获取攻速参数
+			if _attack_phase_timer >= timing["windup"]:
+				_attack_phase = AttackPhase.ACTIVE
+				_attack_phase_timer = 0.0
+		AttackPhase.ACTIVE:
+			_attack_phase_timer += delta
+			# active阶段立即发射（前摇结束瞬间的第一帧）
+			if _attack_phase_timer < delta * 1.1:  # 确保只触发一次
+				_do_attack()
+			if _attack_phase_timer >= timing["active"]:
+				_attack_phase = AttackPhase.COOLDOWN
+				_attack_phase_timer = 0.0
+		AttackPhase.COOLDOWN:
+			_attack_phase_timer += delta
+			if _attack_phase_timer >= timing["cooldown"]:
+				_attack_phase = AttackPhase.IDLE
+				_attack_phase_timer = 0.0
+
 func _process_multi_weapons(delta: float) -> void:
 	# 预览模式和部署虚影都不会攻击
 	if is_deploy_ghost or is_preview_mode:
@@ -994,21 +1041,73 @@ func _process_multi_weapons(delta: float) -> void:
 		return
 	if _hit_stun_left > 0.0:
 		return
+	if target == null or not is_instance_valid(target):
+		# 目标无效时重置所有武器槽状态
+		for w in _weapon_cfgs:
+			w["phase"] = AttackPhase.IDLE
+			w["phase_timer"] = 0.0
+		return
+	var target_stats = target.get("stats") as UnitStats
+	var target_kind: int = target_stats.combat_kind if target_stats else 0
+	var eff_rng: float = _effective_fire_range()
+	var dist: float = global_position.distance_to(target.global_position)
 	for i in range(_weapon_cfgs.size()):
 		var w = _weapon_cfgs[i]
-		var timer: float = float(w.get("timer", 0.0))
-		timer += delta
-		w["timer"] = timer
-		if target == null or not is_instance_valid(target):
-			continue
-		var d = global_position.distance_to(target.global_position)
-		var interval: float = float(w.get("interval", stats.attack_interval))
-		var eff_rng: float = _effective_fire_range()
-		if d <= eff_rng and timer >= interval:
-			w["timer"] = 0.0
-			var dmg: float = float(w.get("damage", stats.attack_damage))
-			var wt: int = int(w.get("weapon_type", -1))
-			_do_attack_with_damage(dmg, wt)
+		# v5.0: 每个武器槽独立三阶段状态机
+		var phase: int = int(w.get("phase", AttackPhase.IDLE))
+		var phase_timer: float = float(w.get("phase_timer", 0.0))
+		var w_wt: int = int(w.get("weapon_type", -1))
+		# 使用该武器槽的attack_interval作为基础speed（或默认1.0）
+		var w_interval: float = float(w.get("interval", 1.0))
+		var w_speed: float = 1.0 / w_interval if w_interval > 0 else 1.0
+		var w_windup: float = 0.2
+		var w_active: float = 0.1
+		var w_cycle: float = 1.0 / w_speed
+		var w_cooldown: float = maxf(0.0, w_cycle - w_windup - w_active)
+		# v5.0: 尝试按目标类型获取攻速（若unit_stats有对应字段则用，否则用武器槽默认值）
+		if stats != null:
+			var timing: Dictionary = AttackCalculator.get_attack_timing(stats, target_kind)
+			# 如果武器槽有自己的interval，按比例缩放
+			if w_interval > 0 and stats.attack_interval > 0:
+				var scale_ratio: float = w_interval / stats.attack_interval
+				w_cycle = timing["cycle"] * scale_ratio
+				w_windup = timing["windup"] * scale_ratio
+				w_active = timing["active"]
+				w_cooldown = maxf(0.0, w_cycle - w_windup - w_active)
+			else:
+				w_cycle = timing["cycle"]
+				w_windup = timing["windup"]
+				w_active = timing["active"]
+				w_cooldown = timing["cooldown"]
+		# 超射程且武器是直射时重置
+		if dist > eff_rng and w_wt == GC.WeaponType.DIRECT:
+			phase = AttackPhase.IDLE
+			phase_timer = 0.0
+		match phase:
+			AttackPhase.IDLE:
+				if dist <= eff_rng:
+					phase = AttackPhase.WINDUP
+					phase_timer = 0.0
+			AttackPhase.WINDUP:
+				phase_timer += delta
+				if phase_timer >= w_windup:
+					phase = AttackPhase.ACTIVE
+					phase_timer = 0.0
+			AttackPhase.ACTIVE:
+				phase_timer += delta
+				if phase_timer < delta * 1.1:
+					var dmg: float = float(w.get("damage", stats.attack_damage))
+					_do_attack_with_damage(dmg, w_wt)
+				if phase_timer >= w_active:
+					phase = AttackPhase.COOLDOWN
+					phase_timer = 0.0
+			AttackPhase.COOLDOWN:
+				phase_timer += delta
+				if phase_timer >= w_cooldown:
+					phase = AttackPhase.IDLE
+					phase_timer = 0.0
+		w["phase"] = phase
+		w["phase_timer"] = phase_timer
 
 func _input_event(_viewport: Viewport, event: InputEvent, _shape_idx: int) -> void:
 	# 性能优化和错误修复：确保节点在场景树中才处理输入
@@ -1164,30 +1263,32 @@ func _find_target(_delta: float) -> void:
 				target = nearest_target
 				return
 
-	# 回退到传统方法（如果空间网格不可用）
+# 回退到传统方法（如果空间网格不可用）
 	var tree = get_tree()
 	if tree == null:
 		return
 
-	# 性能优化：使用提前退出和距离平方比较避免平方根计算
 	var target_group: String = "enemy_units" if is_player else "player_units"
 	var gr: Array = BattleManager.get_cached_nodes_in_group(target_group) if BattleManager else tree.get_nodes_in_group(target_group)
-	var best_target: Node2D = null
+	# 过滤可攻击目标
+	var candidates: Array = []
 	var acq: float = _acquisition_range()
-	var best_dist_sq := acq * acq
-
 	for n in gr:
 		if not CombatTargeting.is_attackable_combat_unit(n):
 			continue
-		# 使用距离平方比较，避免昂贵的平方根计算
-		var dist_sq := global_position.distance_squared_to(n.global_position)
-		if dist_sq <= best_dist_sq:
-			best_target = n as Node2D
-			best_dist_sq = dist_sq
-			break  # 找到第一个范围内的目标即可
+		if global_position.distance_to((n as Node2D).global_position) <= acq:
+			candidates.append(n)
 
-	if best_target != null:
-		target = best_target
+	if not candidates.is_empty() and stats != null:
+		# v5.0: 根据武器类型使用不同选敌逻辑
+		var selected: Node2D = TargetSelection.select_target(self, candidates, stats.weapon_type)
+		if selected != null:
+			target = selected
+			return
+	elif not candidates.is_empty():
+		# 无stats时回退到最近
+		candidates.sort_custom(func(a, b): return global_position.distance_squared_to((a as Node2D).global_position) < global_position.distance_squared_to((b as Node2D).global_position))
+		target = candidates[0] as Node2D
 		return
 
 	# 无对方战斗单位时，攻击对方相位场（格子战可跨全场）
@@ -1200,7 +1301,14 @@ func _find_target(_delta: float) -> void:
 			return
 
 func _do_attack() -> void:
-	_do_attack_with_damage(stats.attack_damage, stats.weapon_type)
+	# v5.0: 根据目标类型计算攻击力
+	if target == null or stats == null:
+		_do_attack_with_damage(stats.attack_light if stats else 0.0, stats.weapon_type if stats else 0)
+		return
+	var target_stats = target.get("stats") as UnitStats
+	var target_kind: int = target_stats.combat_kind if target_stats else 0
+	var damage: float = AttackCalculator.get_attack_vs(stats, target_kind)
+	_do_attack_with_damage(damage, stats.weapon_type)
 
 func _do_attack_with_damage(damage: float, weapon_type_override: int = -1) -> void:
 	if is_deploy_ghost:
@@ -1211,8 +1319,24 @@ func _do_attack_with_damage(damage: float, weapon_type_override: int = -1) -> vo
 		return
 	var dist_t := global_position.distance_to(target.global_position)
 	var miss := false
-	var falloff: Dictionary = CombatTargeting.range_falloff(dist_t, stats.attack_range)
-	if dist_t > stats.attack_range and stats.attack_range > 0.5:
+	# v5.0: 仅直射有衰减
+	var wt: int = weapon_type_override if weapon_type_override >= 0 else (stats.weapon_type if stats else 0)
+	if wt == 0 and stats and stats.attack_range > 0.5 and dist_t > stats.attack_range:
+		var sub_type: String = DamageAttenuation.infer_weapon_sub_type(
+			stats.combat_kind, int(stats.attack_range / 100.0),
+			stats.attack_light, stats.attack_armor, stats.attack_air
+		)
+		var max_range_grids: float = stats.attack_range / 100.0
+		var dist_grids: float = dist_t / 100.0
+		var att_mult: float = DamageAttenuation.calculate_attenuation(dist_grids, max_range_grids, sub_type)
+		if att_mult <= 0.0:
+			miss = true
+			CombatFeedback.show_miss(target.global_position, target)
+		else:
+			damage *= att_mult
+	elif dist_t > stats.attack_range and stats.attack_range > 0.5:
+		# 非直射超射程：保持旧命中率衰减（向后兼容）
+		var falloff: Dictionary = CombatTargeting.range_falloff(dist_t, stats.attack_range)
 		if randf() > float(falloff.get("p_hit", 1.0)):
 			miss = true
 			CombatFeedback.show_miss(target.global_position, target)
@@ -1223,7 +1347,6 @@ func _do_attack_with_damage(damage: float, weapon_type_override: int = -1) -> vo
 		damage *= CardAbilityManager.get_titan_mk2_damage_multiplier(self)
 	if _has_storm_rider:
 		damage *= CardAbilityManager.get_storm_rider_damage_multiplier(self)
-	var wt: int = weapon_type_override if weapon_type_override >= 0 else (stats.weapon_type if stats else 0)
 	#region agent log
 	_agent_log("H3_bullet_spawn", "construct_fire_attempt", {
 		"unit": name,

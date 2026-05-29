@@ -39,9 +39,11 @@ func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
 	if SignalBus:
-		SignalBus.battle_ended.connect(_on_battle_ended)
+		if not SignalBus.battle_ended.is_connected(_on_battle_ended):
+			SignalBus.battle_ended.connect(_on_battle_ended)
 		if SignalBus.has_signal("unit_died"):
-			SignalBus.unit_died.connect(_on_unit_died)
+			if not SignalBus.unit_died.is_connected(_on_unit_died):
+				SignalBus.unit_died.connect(_on_unit_died)
 
 # ──────────────── 信号处理器 ────────────────
 

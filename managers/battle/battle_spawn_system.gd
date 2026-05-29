@@ -702,7 +702,7 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 	if _stats_cache.has(key):
 		var cached_stats: UnitStats = _stats_cache[key]
 		return cached_stats.duplicate() as UnitStats
-	var stats = UnitStatsTable.build_multi_stats(platform_card.platform_type, weapon_types, battle_era)
+	var stats = UnitStatsTable.build_stats_from_card(platform_card, battle_era)
 	var bm_growth: Node = _get_autoload_node("BlueprintManager")
 	if bm_growth and bm_growth.has_method("apply_growth_to_stats"):
 		bm_growth.apply_growth_to_stats(stats, platform_card, weapon_cards)

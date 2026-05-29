@@ -234,26 +234,40 @@ func get_phase_field_total_bonus() -> Dictionary:
 func apply_phase_field_bonus_to_unit_stats(stats: UnitStats) -> void:
 	if stats == null:
 		return
+	var cfg: Dictionary = get_current_instrument()
 	var bonus: Dictionary = get_phase_field_total_bonus()
+	# 相位场属性点加成
 	var hp_bonus: float = float(bonus.get("hp_pct", 0.0))
 	var atk_bonus: float = float(bonus.get("atk_pct", 0.0))
 	var def_bonus: float = float(bonus.get("def_pct", 0.0))
+	# 相位仪固有属性加成
+	var pi_atk: float = _get_property_value(cfg, "pi_atk")
+	var pi_def: float = _get_property_value(cfg, "pi_def")
+	var pi_hp: float = _get_property_value(cfg, "pi_hp")
+	# 合计
+	var total_hp_mult: float = hp_bonus + pi_hp * 0.05  # pi_hp 每点+5% HP
+	var total_atk_mult: float = atk_bonus + pi_atk * 0.05  # pi_atk 每点+5% 攻击
+	var total_def_mult: float = def_bonus + pi_def * 0.05  # pi_def 每点+5% 防御
 
-	if hp_bonus > 0.0:
-		stats.max_hp = maxf(1.0, stats.max_hp * (1.0 + hp_bonus))
+	if total_hp_mult > 0.0:
+		stats.max_hp = maxf(1.0, stats.max_hp * (1.0 + total_hp_mult))
 
-	if atk_bonus > 0.0:
-		stats.attack_damage = maxf(0.1, stats.attack_damage * (1.0 + atk_bonus))
+	if total_atk_mult > 0.0:
+		stats.attack_damage = maxf(0.1, stats.attack_damage * (1.0 + total_atk_mult))
+		# v5.0: 三维攻击全加成
+		stats.attack_light = maxf(0.1, stats.attack_light * (1.0 + total_atk_mult))
+		stats.attack_armor = maxf(0.1, stats.attack_armor * (1.0 + total_atk_mult))
+		stats.attack_air = maxf(0.1, stats.attack_air * (1.0 + total_atk_mult))
 		for i in range(stats.weapons.size()):
 			var w: Variant = stats.weapons[i]
 			if not (w is Dictionary):
 				continue
 			var wd: Dictionary = w
-			wd["damage"] = maxf(0.1, float(wd.get("damage", 0.0)) * (1.0 + atk_bonus))
+			wd["damage"] = maxf(0.1, float(wd.get("damage", 0.0)) * (1.0 + total_atk_mult))
 			stats.weapons[i] = wd
 
-	if def_bonus > 0.0:
-		stats.damage_reduction = clampf(stats.damage_reduction + def_bonus, 0.0, 0.8)
+	if total_def_mult > 0.0:
+		stats.damage_reduction = clampf(stats.damage_reduction + total_def_mult, 0.0, 0.8)
 
 func _set_default_instrument_if_needed() -> void:
 	# 仅在「未选择」或「当前 ID 已非法/未解锁」时重选；否则每次 get_current_instrument 会把选择覆盖成默认 ID，导致无法切换相位仪

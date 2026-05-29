@@ -286,7 +286,7 @@ func _update_detail_panel() -> void:
 	if can_enhance and current_level < max_level:
 		var next_level = enhancement_info.get("next_level", current_level + 1)
 		var nano_cost = enhancement_info.get("nano_cost", 0)
-		var success_rate = enhancement_info.get("success_rate", 0.0)
+		var next_power_mult = enhancement_info.get("next_power_multiplier", 1.0)
 		var attribute_bonus = enhancement_info.get("attribute_bonus", 0.0)
 		
 		# 显示升级成本
@@ -297,10 +297,14 @@ func _update_detail_panel() -> void:
 		cost_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		card_detail_panel.add_child(cost_label)
 		
-		# 显示成功率
+		# v5.0: 显示强化成功率（100%）和战力倍率
 		var rate_label = Label.new()
-		rate_label.text = "成功率：%.0f%%" % (success_rate * 100)
+		rate_label.text = "成功率：100%%"
 		card_detail_panel.add_child(rate_label)
+		
+		var power_label = Label.new()
+		power_label.text = "升级后战力倍率：%.2f" % next_power_mult
+		card_detail_panel.add_child(power_label)
 		
 		# 显示属性加成
 		var bonus_label = Label.new()

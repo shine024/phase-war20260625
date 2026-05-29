@@ -29,10 +29,19 @@ static func build_stats_from_card(card: CardResource, era_override: int = -1) ->
 	# 基础数值直接从卡牌读取
 	stats.max_hp = card.base_hp
 	# v3：使用新字段替代旧的base_interval/base_range
-	stats.attack_interval = 1.0 / card.attack_speed if card.attack_speed > 0 else 1.0
+	# v5.0: 透传 per-target 攻速（替代旧的统一 attack_speed）
+	stats.attack_light_speed = card.attack_light_speed
+	stats.attack_armor_speed = card.attack_armor_speed
+	stats.attack_air_speed = card.attack_air_speed
+	# 旧兼容：用对轻装攻速作为统一 attack_interval
+	stats.attack_interval = 1.0 / card.attack_light_speed if card.attack_light_speed > 0 else 1.0
 	stats.attack_range = float(card.range_value * 100.0)  # 格转像素（1格=100px）
 	stats.move_speed = card.base_speed
 	stats.is_stationary = (card.base_speed <= 0.0)
+
+	# v5.0 透传
+	stats.power = card.power
+	stats.enhance_level = card.enhance_level
 
 	# 多维攻防
 	stats.weapon_type = card.weapon_type
@@ -71,6 +80,10 @@ static func build_stats_from_card(card: CardResource, era_override: int = -1) ->
 	# 战斗定位修正
 	apply_combat_kind_modifiers(stats)
 
+	# 综合防御：若未显式设置，从三维防御取最大值（格子战术护甲公式用）
+	if stats.defense <= 0.0:
+		stats.defense = maxf(stats.defense_light, maxf(stats.defense_armor, stats.defense_air))
+
 	return stats
 
 
@@ -91,6 +104,11 @@ static func apply_combat_kind_modifiers(stats: UnitStats) -> void:
 			stats.dodge_chance = maxf(stats.dodge_chance, 0.12)
 			stats.defense_light += 2.0
 			stats.defense_armor += 2.0
+		4:  # 堡垒：极高防御，不可移动（v5.0）
+			stats.defense_light += 8.0
+			stats.defense_armor += 8.0
+			stats.defense_air += 8.0
+			stats.max_hp *= 1.15
 
 
 # ─────────────────────────────────────────────
@@ -108,6 +126,8 @@ static func get_combat_kind_growth_bias(kind: int) -> Dictionary:
 			return {"hp_bias": 0.05, "heal_bias": 0.08}
 		3:  # 空中
 			return {"hp_bias": 0.03, "dmg_bias": 0.06, "speed_bias": 0.05}
+		4:  # 堡垒（v5.0）
+			return {"hp_bias": 0.08, "def_bias": 0.06, "dmg_bias": 0.02}
 		_:
 			return {"hp_bias": 0.04, "dmg_bias": 0.04}
 
@@ -300,8 +320,8 @@ static func _make_compat_card(platform_type: int, weapon_type: int, era: int) ->
 	c.weapon_type = weapon_type
 	c.base_hp = float(p.get("hp", 100.0))
 	c.base_speed = float(p.get("speed", 80.0))
-	c.base_range = float(w.get("range", 120.0))
-	c.base_interval = float(w.get("interval", 1.0))
+	c.range_value = max(1, int(round(float(w.get("range", 120.0)) / 100.0)))
+	c.attack_speed = 1.0 / maxf(0.001, float(w.get("interval", 1.0)))
 	var dmg: float = float(w.get("damage", 10.0))
 	c.attack_light = dmg
 	c.attack_armor = dmg * 0.8
@@ -337,8 +357,8 @@ static func build_multi_stats(platform_type: int, weapon_types: Array, era: int 
 	c.weapon_type = main_wt
 	c.base_hp = float(p.get("hp", 100.0))
 	c.base_speed = float(p.get("speed", 80.0))
-	c.base_range = float(w.get("range", 120.0))
-	c.base_interval = float(w.get("interval", 1.0))
+	c.range_value = max(1, int(round(float(w.get("range", 120.0)) / 100.0)))
+	c.attack_speed = 1.0 / maxf(0.001, float(w.get("interval", 1.0)))
 	var dmg: float = float(w.get("damage", 10.0))
 	c.attack_light = dmg
 	c.attack_armor = dmg * 0.8

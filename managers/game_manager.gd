@@ -227,7 +227,8 @@ func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
 	if SignalBus:
-		SignalBus.battle_ended.connect(_on_battle_ended)
+		if not SignalBus.battle_ended.is_connected(_on_battle_ended):
+			SignalBus.battle_ended.connect(_on_battle_ended)
 
 ## 战斗恒为卡牌格子战术；保留 API 供单位/UI 分支调用。
 func is_card_grid_battle() -> bool:

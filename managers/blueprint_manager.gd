@@ -21,6 +21,7 @@ var DEBUG_BLUEPRINT_LOG := false
 const GC = preload("res://resources/game_constants.gd")
 const BasicResources = preload("res://data/basic_resources.gd")
 const StarConfig = preload("res://data/blueprint_star_config.gd")
+const ModEffects = preload("res://data/mod_effects.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 const EnemyPhaseEquipment = preload("res://data/enemy_phase_equipment.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
@@ -54,7 +55,7 @@ var blueprint_copies: Dictionary = {}
 ## card_id -> 当前星级(1~9)
 var blueprint_stars: Dictionary = {}
 
-## card_id -> 已选改装分支（最多3项）
+## card_id -> 已选改装分支（最多9项，同 conflict_group 冲突自动替换）
 var blueprint_mods: Dictionary = {}
 
 ## card_id -> 进化继承属性倍率（累计），如 0.30 表示 +30%
@@ -80,10 +81,18 @@ var _legacy_default_energy_copies_migrated: bool = false
 ## 战斗中解锁仅写入数据；battle_ended 前由 BattleManager 调用 flush 再发信号（音效/结算列表）
 var _deferred_unlock_notify_ids: Array = []
 
+## @deprecated Phase 3.3 — 保留字段以兼容 card_enhancement_panel 的 _mod_option_display_name
+## 新代码请使用 ModEffects.get_mod_definition(mod_id)
 const DEFAULT_MOD_OPTIONS: Dictionary = {
-	"offense": {"id": "offense", "name": "火力改装", "desc": "提高输出倾向"},
-	"defense": {"id": "defense", "name": "防护改装", "desc": "提高生存倾向"},
-	"utility": {"id": "utility", "name": "功能改装", "desc": "提高战术功能"},
+	"MOD_ATK_DMG": {"id": "MOD_ATK_DMG", "name": "火力增幅", "desc": "提高基础攻击伤害"},
+	"MOD_ATK_SPEED": {"id": "MOD_ATK_SPEED", "name": "射速优化", "desc": "提高攻击速度"},
+	"MOD_CRIT_UP": {"id": "MOD_CRIT_UP", "name": "弱点解析", "desc": "提高暴击率"},
+	"MOD_HP_BOOST": {"id": "MOD_HP_BOOST", "name": "结构强化", "desc": "提高最大生命值"},
+	"MOD_ARMOR_PLATE": {"id": "MOD_ARMOR_PLATE", "name": "装甲镀层", "desc": "提高防御力"},
+	"MOD_DODGE_CAL": {"id": "MOD_DODGE_CAL", "name": "机动校准", "desc": "提高闪避率"},
+	"MOD_RANGE_EXT": {"id": "MOD_RANGE_EXT", "name": "射程扩展", "desc": "提高攻击射程"},
+	"MOD_COOLDOWN": {"id": "MOD_COOLDOWN", "name": "冷却缩减", "desc": "减少技能冷却"},
+	"MOD_ENERGY_REGEN": {"id": "MOD_ENERGY_REGEN", "name": "能量回流", "desc": "提高能量回复速率"},
 }
 
 ## ─────────── 内部辅助 ───────────
@@ -602,11 +611,21 @@ func get_manufacture_info(card_id: String) -> Dictionary:
 		"cost_copies": 1
 	}
 
-## ─────────── 卡牌改装（研究点） ───────────
+## ─────────── 卡牌改装（Phase 3.3 重构：MOD_XX 列表 + 冲突替换） ───────────
 
+## 获取卡牌基础战力（不含改造加成），用于改造消耗公式
+func get_base_power_for_mod_cost(card_id: String) -> float:
+	var star: int = get_blueprint_star(card_id)
+	var rarity_mul: float = get_rarity_multiplier(card_id)
+	var inherit_bonus: float = float(blueprint_inherit_bonus.get(card_id, 0.0))
+	return (80.0 + float(star) * 28.0) * rarity_mul * (1.0 + inherit_bonus)
+
+## 获取第 mod_index 个改造槽位的消耗需求（研究点 + 许可证）
+## 研究点消耗 = 基础战力 × ModEffects.get_mod_slot_cost(mod_index)
 func get_modification_requirements(card_id: String, mod_index: int) -> Dictionary:
-	var rarity: String = get_card_rarity(card_id)
-	var research_cost: int = StarConfig.get_mod_cost(rarity, mod_index)
+	var base_power: float = get_base_power_for_mod_cost(card_id)
+	var cost_mul: float = ModEffects.get_mod_slot_cost(mod_index)
+	var research_cost: int = max(1, int(base_power * cost_mul))
 	var rule: Dictionary = StarConfig.get_mod_permit_rule(mod_index)
 	var req_general: int = int(rule.get("general", 0))
 	var req_category: int = int(rule.get("category", 0))
@@ -623,25 +642,27 @@ func get_modification_requirements(card_id: String, mod_index: int) -> Dictionar
 		"permit_specific_count": req_specific,
 	}
 
+## 获取当前已装改造数量
 func get_modification_count(card_id: String) -> int:
 	var mods: Array = blueprint_mods.get(card_id, [])
 	return mods.size()
 
+## 获取最大改造次数
+func get_max_mod_slots() -> int:
+	return ModEffects.MAX_MOD_SLOTS
+
+## 获取可选 MOD 列表（从 ModEffects 获取具体 MOD_XX 定义）
 func get_mod_options(card_id: String, _mod_index: int) -> Array[Dictionary]:
 	if card_id.is_empty():
 		return []
-	var options: Array[Dictionary] = []
-	options.append(DEFAULT_MOD_OPTIONS["offense"])
-	options.append(DEFAULT_MOD_OPTIONS["defense"])
-	options.append(DEFAULT_MOD_OPTIONS["utility"])
-	return options
+	return ModEffects.get_all_mod_definitions()
 
+## 检查是否可以执行第 mod_index 次改造
+## 最多 9 次（ModEffects.MAX_MOD_SLOTS），受星级门槛 + 资源限制
 func can_apply_modification(card_id: String, mod_index: int) -> bool:
 	if card_id.is_empty() or mod_index < 0:
 		return false
-	var rarity: String = get_card_rarity(card_id)
-	var max_times: int = StarConfig.get_max_mod_times(rarity)
-	if mod_index >= max_times:
+	if mod_index >= ModEffects.MAX_MOD_SLOTS:
 		return false
 	if mod_index != get_modification_count(card_id):
 		return false
@@ -662,9 +683,15 @@ func can_apply_modification(card_id: String, mod_index: int) -> bool:
 		return false
 	return true
 
+## 执行改造：安装 MOD
+## 替换规则：
+##   - 同 conflict_group 冲突：替换已有旧件（总数不变）
+##   - 无冲突且未满 9 个：追加（总数 +1）
+##   - 无冲突但已满 9 个：拒绝
 func apply_modification(card_id: String, option_id: String) -> bool:
 	var mod_index: int = get_modification_count(card_id)
-	if not can_apply_modification(card_id, mod_index):
+	## 冲突替换时 mod_index 可能 == count，先不严格校验 count == index
+	if card_id.is_empty() or mod_index < 0 or mod_index >= ModEffects.MAX_MOD_SLOTS:
 		return false
 	var options: Array[Dictionary] = get_mod_options(card_id, mod_index)
 	var found: bool = false
@@ -674,9 +701,37 @@ func apply_modification(card_id: String, option_id: String) -> bool:
 			break
 	if not found:
 		return false
+	## 资源检查
 	var req: Dictionary = get_modification_requirements(card_id, mod_index)
-	add_research_points(-int(req.get("research_points", 0)))
+	if get_research_points() < int(req.get("research_points", 0)):
+		return false
 	var brm: Node = _get_basic_resource_manager()
+	if brm == null or not brm.has_method("get_total"):
+		return false
+	if int(req.get("permit_general_count", 0)) > int(brm.get_total(String(req.get("permit_general_id", "")))):
+		return false
+	if int(req.get("permit_category_count", 0)) > int(brm.get_total(String(req.get("permit_category_id", "")))):
+		return false
+	if int(req.get("permit_specific_count", 0)) > int(brm.get_total(String(req.get("permit_specific_id", "")))):
+		return false
+	## 冲突检测 + 替换/追加
+	var conflict_group: String = ModEffects.get_conflict_group(option_id)
+	var mods: Array = blueprint_mods.get(card_id, [])
+	var replaced: bool = false
+	if not conflict_group.is_empty():
+		for i in range(mods.size()):
+			if ModEffects.get_conflict_group(String(mods[i])) == conflict_group:
+				mods[i] = option_id
+				replaced = true
+				if DEBUG_BLUEPRINT_LOG:
+					print("[BlueprintManager] 改造替换：slot %d %s → %s" % [i, mods[i], option_id])
+				break
+	if not replaced:
+		if mods.size() >= ModEffects.MAX_MOD_SLOTS:
+			return false
+		mods.append(option_id)
+	## 扣除消耗
+	add_research_points(-int(req.get("research_points", 0)))
 	if brm != null and brm.has_method("add_resource"):
 		var n_general: int = int(req.get("permit_general_count", 0))
 		var n_category: int = int(req.get("permit_category_count", 0))
@@ -687,8 +742,6 @@ func apply_modification(card_id: String, option_id: String) -> bool:
 			brm.add_resource(String(req.get("permit_category_id", "")), -n_category)
 		if n_specific > 0:
 			brm.add_resource(String(req.get("permit_specific_id", "")), -n_specific)
-	var mods: Array = blueprint_mods.get(card_id, [])
-	mods.append(option_id)
 	blueprint_mods[card_id] = mods
 	emit_signal("fragments_changed")
 	return true
@@ -731,6 +784,28 @@ func can_evolve_blueprint(card_id: String, target_card_id: String) -> Dictionary
 				break
 	if not valid_target:
 		return _evolve_check_denied("target_not_in_path")
+
+	## v5.0 Phase 4: 不跨类型检查（combat_kind 一致）
+	var from_card: CardResource = DefaultCards.get_card_by_id(card_id)
+	var to_card: CardResource = DefaultCards.get_card_by_id(target_card_id)
+	if from_card != null and to_card != null:
+		if from_card.combat_kind >= 0 and to_card.combat_kind >= 0:
+			if from_card.combat_kind != to_card.combat_kind:
+				return _evolve_check_denied("cross_class")
+
+	## v5.0 Phase 4: 战力达标检查（培养后战力 >= 目标基础战力）
+	var target_base_power: int = UnitLineageConfig.get_target_base_power(target_card_id)
+	if target_base_power > 0:
+		var current_power: float = _estimate_power_score(card_id)
+		if current_power < float(target_base_power):
+			return _evolve_check_denied("power_not_enough")
+
+	## v5.0 Phase 4: 情报100%检查（Phase 5 启用）
+	## TODO(Phase 5): 取消下方注释以启用情报检查
+	# var target_intel: float = _get_card_intel_progress(target_card_id)
+	# if target_intel < 1.0:
+	#     return _evolve_check_denied("intel_not_full")
+
 	var stage: String = UnitLineageConfig.get_stage(card_id, target_card_id)
 	var min_star: int = UnitLineageConfig.get_min_star_for_stage(stage)
 	if get_blueprint_star(card_id) < min_star:
@@ -802,9 +877,20 @@ func evolve_blueprint(card_id: String, target_card_id: String) -> bool:
 		var floor_hp: float = old_hp * 1.10
 		var prev_floor: float = float(blueprint_evolution_hp_floor.get(target_card_id, 0.0))
 		blueprint_evolution_hp_floor[target_card_id] = maxf(prev_floor, floor_hp)
-	# 进化重置改造轨道
+
+	## v5.0 Phase 4 进化执行规则:
+	## - 改造完全继承（mods 从源复制到目标，源清空）
+	## - 强化重置（enhance_level=0 在 CardResource 层面）
+	## - 品质保留（星级已通过 max 继承）
+	## - 情报保留（blueprint_intel 字段，Phase 5 数据层预留）
+	var source_mods: Array = blueprint_mods.get(card_id, [])
+	blueprint_mods[target_card_id] = source_mods.duplicate()
 	blueprint_mods[card_id] = []
-	blueprint_mods[target_card_id] = []
+
+	## Phase 5 预留: 情报继承 — 进化后保留目标情报进度
+	## var source_intel: float = float(blueprint_intel.get(card_id, 0.0))
+	## blueprint_intel[target_card_id] = maxf(float(blueprint_intel.get(target_card_id, 0.0)), source_intel)
+
 	emit_signal("fragments_changed")
 	emit_signal("blueprint_star_upgraded", target_card_id, int(blueprint_stars[target_card_id]))
 	return true

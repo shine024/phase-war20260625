@@ -1,11 +1,19 @@
 extends RefCounted
 class_name UnitLineageConfig
 
-## 卡牌进化链配置（统一卡牌成长体系）
-## 规则：
-## - evolution_1: 同体系进化
-## - faction_branches: 势力特化进化
+## 卡牌进化链配置（v5.0：9条主线进化路线）
+## 路线结构：
+## - evolution_1: 下一阶段进化目标（同体系直线）
+## - faction_branches: 势力特化进化（备选路线）
 ## - inherit_ratio: 进化仅继承属性比例（不继承改造）
+##
+## v5.0 进化条件（Phase 4）:
+## 1. 战力达标: 培养满后战力 >= 目标基础战力
+## 2. 情报100%: 目标单位情报满（Phase 5实现，此处预留接口）
+## 3. 不跨类型: combat_kind 相同
+## 4. 资源足够: 研究点 + 改造许可函
+##
+## 进化执行规则: 改造完全继承(mods复制)、强化重置(enhance_level=0)、品质保留、情报保留
 
 const DefaultCards = preload("res://data/default_cards.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
@@ -33,169 +41,243 @@ const EVOLVE_REASON_ZH: Dictionary = {
 	"permit_general_not_enough": "通用改造许可函不足",
 	"permit_category_not_enough": "类型改造许可函不足",
 	"permit_specific_not_enough": "专属改造许可函不足",
+	"power_not_enough": "培养战力未达标",
+	"cross_class": "不能跨类型进化",
+	"intel_not_full": "目标情报未满100%（Phase 5启用）",
 }
 
+## ═══════════════════════════════════════════════════════════
+## v5.0 进化路线（9条主线，共37个节点）
+## ═══════════════════════════════════════════════════════════
+##
+## 轻装线（combat_kind=0）:
+##   普通步兵: ww1_mp18(15) → ww2_thompson(60) → cold_ak47(160) → mod_marine(320) → fut_cyborg(500)
+##   反坦克:   ww2_panzerschrek(65) → mod_javelin(330) → fut_cyborg(500)
+##   特种:     ww1_storm(20) → cold_spetsnaz(180) → mod_ranger(340) → fut_spectre(530)
+##
+## 装甲线（combat_kind=1）:
+##   主战坦克: ww1_ft17(45) → ww2_pz3(180) → cold_t55(480) → mod_m1a1(950) → fut_hovertank(1500)
+##   重型坦克: ww1_saint(50) → ww2_tiger(180) → cold_t72(480) → mod_m1a2sep(960) → fut_heavy_mech(1580)
+##
+## 空中线（combat_kind=3）:
+##   战斗机:   cold_mig21(400) → mod_ah64(800) → fut_space_fighter(1325)
+##   攻击机:   mod_ah1(780) → fut_attack_drone(1300)
+##
+## 支援线（combat_kind=2）:
+##   火炮:     ww1_m81(23) → ww2_m81(90) → cold_m113(240) → mod_m270(480) → fut_howitzer(795)
+##   防空:     ww1_37mm(23) → cold_zsu23(240) → mod_m6(480) → fut_aa_hover(780)
+
 const LINEAGES: Dictionary = {
-	"ww1_rolls": {
-		"evolution_1": "ww2_hellcat",
-		"faction_branches": {
-			"iron_wall_corp": "ww2_tiger",
-			"nova_arms": "ww2_bazooka",
-			"void_research": "fut_scout_mech",
-		},
+	# ─── 轻装线：普通步兵（5节） ───
+	"ww1_mp18": {
+		"evolution_1": "ww2_thompson",
+		"faction_branches": {},
 	},
-	"ww1_ft17": {
-		"evolution_1": "ww2_sherman",
-		"faction_branches": {
-			"iron_wall_corp": "ww2_tiger",
-			"nova_arms": "ww2_bazooka",
-			"void_research": "fut_hovertank",
-		},
+	"ww2_thompson": {
+		"evolution_1": "cold_ak47",
+		"faction_branches": {},
 	},
-	"ww1_77mm": {
-		"evolution_1": "ww1_m81",
-		"faction_branches": {
-			"iron_wall_corp": "ww2_m81 mortar",
-			"helix_recon": "ww2_panzerschrek",
-			"void_research": "fut_heavy_mech",
-		},
+	"cold_ak47": {
+		"evolution_1": "mod_marine",
+		"faction_branches": {},
 	},
-	"ww1_cavalry": {
-		"evolution_1": "ww2_panzerschrek",
-		"faction_branches": {
-			"helix_recon": "cold_m113",
-			"aether_dynamics": "cold_zsu23",
-			"void_research": "fut_prism",
-		},
+	"mod_marine": {
+		"evolution_1": "fut_cyborg",
+		"faction_branches": {},
 	},
-	"ww1_engineer": {
-		"evolution_1": "cold_bmp1",
-		"faction_branches": {
-			"iron_wall_corp": "cold_bmp1",
-			"quantum_logistics": "cold_bmp1",
-			"frontier_union": "cold_btr60",
-		},
-	},
-	"ww2_hellcat": {
-		"evolution_1": "cold_btr60",
-		"faction_branches": {
-			"iron_wall_corp": "cold_t55",
-			"frontier_union": "cold_m113",
-			"void_research": "fut_hovertank",
-		},
-	},
-	"ww2_sherman": {
-		"evolution_1": "cold_t55",
-		"faction_branches": {
-			"iron_wall_corp": "mod_m1a2sep",
-			"aether_dynamics": "mod_m6",
-			"void_research": "fut_heavy_mech",
-		},
-	},
-	"ww2_tiger": {
-		"evolution_1": "cold_t55",
-		"faction_branches": {
-			"iron_wall_corp": "mod_m1a2sep",
-			"nova_arms": "cold_m113",
-			"void_research": "fut_heavy_mech",
-		},
-	},
-	"ww2_bazooka": {
-		"evolution_1": "cold_m113",
-		"faction_branches": {
-			"nova_arms": "mod_technical",
-			"frontier_union": "fut_scout_mech",
-			"void_research": "fut_hovertank",
-		},
-	},
+
+	# ─── 轻装线：反坦克（3节） ───
 	"ww2_panzerschrek": {
-		"evolution_1": "cold_zsu23",
-		"faction_branches": {
-			"helix_recon": "mod_m6",
-			"aether_dynamics": "cold_m113",
-			"void_research": "fut_prism",
-		},
+		"evolution_1": "mod_javelin",
+		"faction_branches": {},
 	},
-	"ww2_m81 mortar": {
-		"evolution_1": "mod_m270",
-		"faction_branches": {
-			"iron_wall_corp": "mod_m1a2sep",
-			"nova_arms": "mod_m1a1",
-			"void_research": "fut_nexus",
-		},
+	"mod_javelin": {
+		"evolution_1": "fut_cyborg",
+		"faction_branches": {},
 	},
-	"ww1_m81": {
-		"evolution_1": "mod_m1a2sep",
-		"faction_branches": {
-			"iron_wall_corp": "mod_m270",
-			"helix_recon": "fut_scout_drone",
-			"void_research": "fut_heavy_mech",
-		},
+
+	# ─── 轻装线：特种（4节） ───
+	"ww1_storm": {
+		"evolution_1": "cold_spetsnaz",
+		"faction_branches": {},
 	},
-	"cold_btr60": {
-		"evolution_1": "mod_technical",
-		"faction_branches": {
-			"helix_recon": "fut_scout_drone",
-			"frontier_union": "fut_scout_mech",
-			"void_research": "fut_hovertank",
-		},
+	"cold_spetsnaz": {
+		"evolution_1": "mod_ranger",
+		"faction_branches": {},
+	},
+	"mod_ranger": {
+		"evolution_1": "fut_spectre",
+		"faction_branches": {},
+	},
+
+	# ─── 装甲线：主战坦克（5节） ───
+	"ww1_ft17": {
+		"evolution_1": "ww2_pz3",
+		"faction_branches": {},
+	},
+	"ww2_pz3": {
+		"evolution_1": "cold_t55",
+		"faction_branches": {},
 	},
 	"cold_t55": {
 		"evolution_1": "mod_m1a1",
-		"faction_branches": {
-			"iron_wall_corp": "mod_m1a2sep",
-			"aether_dynamics": "mod_m6",
-			"void_research": "fut_heavy_mech",
-		},
-	},
-	"cold_bmp1": {
-		"evolution_1": "mod_m1a1",
-		"faction_branches": {
-			"iron_wall_corp": "mod_m1a2sep",
-			"aether_dynamics": "mod_m6",
-			"void_research": "fut_heavy_mech",
-		},
-	},
-	"cold_m113": {
-		"evolution_1": "fut_scout_mech",
-		"faction_branches": {
-			"helix_recon": "fut_scout_drone",
-			"frontier_union": "mod_technical",
-			"void_research": "fut_nexus",
-		},
-	},
-	"mod_technical": {
-		"evolution_1": "fut_scout_mech",
-		"faction_branches": {
-			"helix_recon": "fut_prism",
-			"frontier_union": "fut_hovertank",
-			"void_research": "fut_nexus",
-		},
+		"faction_branches": {},
 	},
 	"mod_m1a1": {
+		"evolution_1": "fut_hovertank",
+		"faction_branches": {},
+	},
+
+	# ─── 装甲线：重型坦克（5节） ───
+	"ww1_saint": {
+		"evolution_1": "ww2_tiger",
+		"faction_branches": {},
+	},
+	"ww2_tiger": {
+		"evolution_1": "cold_t72",
+		"faction_branches": {},
+	},
+	"cold_t72": {
+		"evolution_1": "mod_m1a2sep",
+		"faction_branches": {},
+	},
+	"mod_m1a2sep": {
 		"evolution_1": "fut_heavy_mech",
-		"faction_branches": {
-			"iron_wall_corp": "mod_m1a2sep",
-			"helix_recon": "fut_scout_mech",
-			"void_research": "fut_nexus",
-		},
+		"faction_branches": {},
+	},
+
+	# ─── 空中线：战斗机（3节） ───
+	"cold_mig21": {
+		"evolution_1": "mod_ah64",
+		"faction_branches": {},
+	},
+	"mod_ah64": {
+		"evolution_1": "fut_space_fighter",
+		"faction_branches": {},
+	},
+
+	# ─── 空中线：攻击机（2节） ───
+	"mod_ah1": {
+		"evolution_1": "fut_attack_drone",
+		"faction_branches": {},
+	},
+
+	# ─── 支援线：火炮（5节） ───
+	"ww1_m81": {
+		"evolution_1": "ww2_m81",
+		"faction_branches": {},
+	},
+	"ww2_m81": {
+		"evolution_1": "cold_m113",
+		"faction_branches": {},
+	},
+	"cold_m113": {
+		"evolution_1": "mod_m270",
+		"faction_branches": {},
+	},
+	"mod_m270": {
+		"evolution_1": "fut_howitzer",
+		"faction_branches": {},
+	},
+
+	# ─── 支援线：防空（4节） ───
+	"ww1_37mm": {
+		"evolution_1": "cold_zsu23",
+		"faction_branches": {},
+	},
+	"cold_zsu23": {
+		"evolution_1": "mod_m6",
+		"faction_branches": {},
 	},
 	"mod_m6": {
-		"evolution_1": "fut_prism",
-		"faction_branches": {
-			"helix_recon": "fut_scout_mech",
-			"aether_dynamics": "fut_hovertank",
-			"void_research": "fut_nexus",
-		},
+		"evolution_1": "fut_aa_hover",
+		"faction_branches": {},
 	},
-	"void_time_ripple": {
-		"evolution_1": "void_barrier_shift",
-		"faction_branches": {
-			"void_research": "void_phase_cloak",
-			"frontier_union": "thunder_emp_storm",
-		},
-	},
+
+	# ─── 终端节点（无后续进化） ───
+	# fut_cyborg, fut_spectre, fut_hovertank, fut_heavy_mech,
+	# fut_space_fighter, fut_attack_drone, fut_howitzer, fut_aa_hover
+	# 均无 LINEAGES 条目，表示进化链末端
 }
+
+## ═══════════════════════════════════════════════════════════
+## v5.0 进化条件检查
+## ═══════════════════════════════════════════════════════════
+
+## 检查是否可以进化（纯数据层条件，不含资源检查）
+## 参数:
+##   from_card_id: 当前单位 blueprint ID
+##   target_card_id: 进化目标 blueprint ID
+##   current_power: 当前培养后的实际战力（由 BlueprintManager 传入）
+##   from_combat_kind: 当前单位 combat_kind（由 BlueprintManager 传入）
+##   target_intel: 目标单位当前情报进度（0.0~1.0，Phase 5 传入）
+## 返回: Dictionary { "ok": bool, "reason": String }
+static func can_evolve(
+	from_card_id: String,
+	target_card_id: String,
+	current_power: float = 0.0,
+	from_combat_kind: int = -1,
+	target_intel: float = 1.0
+) -> Dictionary:
+	# 1. 基本有效性
+	if from_card_id.is_empty() or target_card_id.is_empty():
+		return {"ok": false, "reason": "invalid"}
+
+	# 2. 检查进化路线中存在此目标
+	if not has_lineage(from_card_id):
+		return {"ok": false, "reason": "target_not_in_path"}
+	var evo_target: String = get_evolution_1_target(from_card_id)
+	if evo_target != target_card_id:
+		# 也检查势力分支
+		var branches: Dictionary = get_all_faction_targets(from_card_id)
+		var found_in_branches: bool = false
+		for _k in branches.keys():
+			if String(branches[_k]) == target_card_id:
+				found_in_branches = true
+				break
+		if not found_in_branches:
+			return {"ok": false, "reason": "target_not_in_path"}
+
+	# 3. 不跨类型（combat_kind 必须相同）
+	if from_combat_kind >= 0:
+		var target_card: CardResource = DefaultCards.get_card_by_id(target_card_id)
+		if target_card != null:
+			var target_kind: int = target_card.combat_kind if target_card.combat_kind >= 0 else 0
+			if from_combat_kind != target_kind:
+				return {"ok": false, "reason": "cross_class"}
+
+	# 4. 战力达标：培养后战力 >= 目标基础战力
+	var target_card: CardResource = DefaultCards.get_card_by_id(target_card_id)
+	if target_card != null and current_power > 0.0:
+		if current_power < float(target_card.power):
+			return {"ok": false, "reason": "power_not_enough"}
+
+	# 5. 情报100%（Phase 5 启用 — 当前跳过）
+	# TODO(Phase 5): 取消注释以启用情报检查
+	# if target_intel < 1.0:
+	#     return {"ok": false, "reason": "intel_not_full"}
+
+	return {"ok": true, "reason": "ok"}
+
+## 获取进化链中两个单位之间的 combat_kind 一致性
+## 返回 true 表示同类型（允许进化），false 表示跨类型（不允许）
+static func check_same_combat_kind(from_card_id: String, to_card_id: String) -> bool:
+	var from_card: CardResource = DefaultCards.get_card_by_id(from_card_id)
+	var to_card: CardResource = DefaultCards.get_card_by_id(to_card_id)
+	if from_card == null or to_card == null:
+		return true  # 无法判断时放行
+	return from_card.combat_kind == to_card.combat_kind
+
+## 获取目标单位的基础战力（用于战力达标检查）
+static func get_target_base_power(target_card_id: String) -> int:
+	var card: CardResource = DefaultCards.get_card_by_id(target_card_id)
+	if card == null:
+		return 0
+	return card.power
+
+## ═══════════════════════════════════════════════════════════
+## 工具函数
+## ═══════════════════════════════════════════════════════════
 
 static func localize_evolve_reason(reason: String) -> String:
 	var key: String = String(reason).strip_edges()

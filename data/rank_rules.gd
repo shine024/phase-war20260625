@@ -94,6 +94,8 @@ static func get_base_rank_by_combat_kind(combat_kind: int) -> String:
 			return "captain"
 		3:  # AIR
 			return "second_lieutenant"
+		4:  # FORT（v5.0）
+			return "major"
 		_:
 			return "corporal"
 

@@ -18,7 +18,7 @@ const GC = preload("res://resources/game_constants.gd")
 @export var energy_cost: float = 5.0
 
 # 展示用扩展字段
-@export_enum("common", "uncommon", "rare", "legendary") var rarity: String = "common"
+@export_enum("common", "uncommon", "rare", "epic", "legendary", "mythic") var rarity: String = "common"
 @export var type_line: String = ""      # 牌面类型行：如"战斗卡 — 装甲／坦克"
 @export var summary_line: String = ""   # 上半行数值摘要：如"攻击 14｜射程 长｜耐久 110"
 @export var flavor_text: String = ""    # 斜体风味文字
@@ -40,6 +40,8 @@ const GC = preload("res://resources/game_constants.gd")
 @export var base_hp: float = 100.0
 
 ## 攻击速度（次/秒，v3新增，替代base_interval）
+## @deprecated v5.0: 使用 per-target attack_X_speed 替代
+## 保留此字段作为兼容后备（读取时若 per-target speed 为0则回退到此值）
 @export var attack_speed: float = 1.0
 
 ## 基础攻击射程（格，v3新增，替代base_range）
@@ -61,6 +63,22 @@ const GC = preload("res://resources/game_constants.gd")
 @export var attack_light: float = 0.0   # 对轻装
 @export var attack_armor: float = 0.0   # 对装甲
 @export var attack_air: float = 0.0     # 对空中
+
+## v5.0: 每种攻击目标独立的攻速参数
+## 对轻装攻击参数
+@export var attack_light_speed: float = 1.0   # 次/秒
+@export var attack_light_windup: float = 0.2    # 前摇（秒）
+@export var attack_light_active: float = 0.1    # 动作（秒）
+
+## 对装甲攻击参数
+@export var attack_armor_speed: float = 1.0   # 次/秒
+@export var attack_armor_windup: float = 0.2  # 前摇（秒）
+@export var attack_armor_active: float = 0.1   # 动作（秒）
+
+## 对空中攻击参数
+@export var attack_air_speed: float = 1.0   # 次/秒
+@export var attack_air_windup: float = 0.2   # 前摇（秒）
+@export var attack_air_active: float = 0.1    # 动作（秒）
 
 ## 防御维度（对不同武器类型的防御）
 @export var defense_light: float = 0.0  # 防轻装武器
@@ -86,18 +104,42 @@ var multi_weapons: Array = []
 @export var linked_law_id: String = ""
 
 # ─────────────────────────────────────────────
+#  v5.0 养成字段（运行时状态，不序列化为@export）
+# ─────────────────────────────────────────────
+
+## 强化等级 0-10（v5.0 替代旧 star_level）
+var enhance_level: int = 0
+
+## 改造ID列表（最多9个 MOD_XX）
+var mods: Array = []
+
+## 可进化目标卡ID列表
+var evolution_paths: Array = []
+
+## 进化阶段 0=E0, 1=E1, 2=E2, 3=E3
+var evolution_stage: int = 0
+
+## 情报进度 0.0-1.0
+var intel_progress: float = 0.0
+
+## 是否已解锁进化（情报100%时解锁）
+var is_unlocked: bool = false
+
+# ─────────────────────────────────────────────
 #  通用辅助字段
 # ─────────────────────────────────────────────
 
-# 词条槽位：运行时词条由 AffixManager 管理，此处仅记录词条 ID 列表用于 UI 快速查询
-# 不要直接修改此字段，使用 AffixManager 的接口操作词条
+## @deprecated v5.0: 词条/附魔系统将删除。此处仅记录词条 ID 列表用于 UI 快速查询。
+## 不要直接修改此字段，使用 AffixManager 的接口操作词条。
 @export var affix_slot_ids: Array = []  # Array[String]：当前词条 ID 列表（只读镜像）
+## @deprecated v5.0: 词条/附魔系统将删除。
 @export var affix_slot_count: int = 4   # 该卡允许的最大词条数（默认4）
 
 # 卡片来源标记：true=战斗掉落成品卡，false=蓝图制造卡
 @export var is_dropped_card: bool = false
 
-# 星级（1~9）：制造卡=蓝图星级，掉落卡=掉落时确定的固定星级
+# @deprecated v5.0: 星级系统已删除，改用 enhance_level
+# 保留此字段仅供存档兼容读取，新代码不应写入
 @export var star_level: int = 1
 
 
@@ -146,6 +188,7 @@ static func get_combat_kind_name(kind: int) -> String:
 		1: return "装甲"
 		2: return "支援"
 		3: return "空中"
+		4: return "堡垒"
 		_: return "未知"
 
 ## 战斗定位简短名称
@@ -155,6 +198,7 @@ static func get_combat_kind_short(kind: int) -> String:
 		1: return "甲"
 		2: return "援"
 		3: return "空"
+		4: return "堡"
 		_: return "?"
 
 ## 获取形状标识（用于 UI 图标）
@@ -211,6 +255,7 @@ func _get_rarity_display_name() -> String:
 		"rare":      return "稀有"
 		"epic":      return "史诗"
 		"legendary": return "传说"
+		"mythic":    return "神话"
 		_:           return "普通"
 
 ## 获取卡片的完整显示信息（用于tooltip等）
@@ -288,10 +333,27 @@ func clone() -> CardResource:
 	new_card.attack_light = attack_light
 	new_card.attack_armor = attack_armor
 	new_card.attack_air = attack_air
+	# v5.0 per-target attack speeds
+	new_card.attack_light_speed = attack_light_speed
+	new_card.attack_light_windup = attack_light_windup
+	new_card.attack_light_active = attack_light_active
+	new_card.attack_armor_speed = attack_armor_speed
+	new_card.attack_armor_windup = attack_armor_windup
+	new_card.attack_armor_active = attack_armor_active
+	new_card.attack_air_speed = attack_air_speed
+	new_card.attack_air_windup = attack_air_windup
+	new_card.attack_air_active = attack_air_active
 	new_card.defense_light = defense_light
 	new_card.defense_armor = defense_armor
 	new_card.defense_air = defense_air
 	new_card.multi_weapons = multi_weapons.duplicate(true)
+	# v5.0 养成字段
+	new_card.enhance_level = enhance_level
+	new_card.mods = mods.duplicate()
+	new_card.evolution_paths = evolution_paths.duplicate()
+	new_card.evolution_stage = evolution_stage
+	new_card.intel_progress = intel_progress
+	new_card.is_unlocked = is_unlocked
 	# 能量卡字段
 	new_card.energy_grant = energy_grant
 	# 法则卡字段

@@ -38,6 +38,22 @@ var deploy_speed: int = 3
 @export var attack_armor: float = 0.0   # 对装甲
 @export var attack_air: float = 0.0     # 对空中
 
+## v5.0: 每种攻击目标独立的攻速参数
+## 对轻装攻击参数
+var attack_light_speed: float = 1.0   # 次/秒
+var attack_light_windup: float = 0.2    # 前摇（秒）
+var attack_light_active: float = 0.1    # 动作（秒）
+
+## 对装甲攻击参数
+var attack_armor_speed: float = 1.0   # 次/秒
+var attack_armor_windup: float = 0.2  # 前摇（秒）
+var attack_armor_active: float = 0.1   # 动作（秒）
+
+## 对空中攻击参数
+var attack_air_speed: float = 1.0   # 次/秒
+var attack_air_windup: float = 0.2   # 前摇（秒）
+var attack_air_active: float = 0.1    # 动作（秒）
+
 ## 防御维度（对不同武器类型的防御）
 @export var defense_light: float = 0.0  # 防轻装武器
 @export var defense_armor: float = 0.0  # 防装甲武器
@@ -56,8 +72,14 @@ var card_id: String = ""
 ## 时代（GameConstants.Era）
 var era: int = 0
 
-## 战斗定位（0=轻装/1=装甲/2=支援/3=空中）
+## 战斗定位（0=轻装/1=装甲/2=支援/3=空中/4=堡垒）
 var combat_kind: int = 0
+
+## 战力（进化门槛用，v5.0新增）
+var power: int = 0
+
+## 强化等级 0-10（v5.0）
+var enhance_level: int = 0
 
 ## 武器外观标签（纯显示）
 var weapon_label: String = ""

@@ -138,10 +138,10 @@ func _add_dropped_card(card_id: String, count: int) -> void:
 		dropped_card.star_level = star
 		if BlueprintManager and BlueprintManager.has_method("get_default_enhancements"):
 			var enhancements: Array = BlueprintManager.get_default_enhancements(card_id, star)
-			dropped_card.affix_slot_ids = []
+			dropped_card.affix_slot_ids = []  # @deprecated v5.0: 词条系统将删除
 			for e in enhancements:
 				if e is Dictionary and e.has("id"):
-					dropped_card.affix_slot_ids.append(String(e["id"]))
+					dropped_card.affix_slot_ids.append(String(e["id"]))  # @deprecated v5.0
 		if SignalBus:
 			SignalBus.card_added_to_backpack.emit(dropped_card)
 

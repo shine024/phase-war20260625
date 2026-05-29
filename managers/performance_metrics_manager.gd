@@ -56,11 +56,14 @@ func sample_battle_frame(delta_sec: float) -> void:
 	if now_ms - _battle_last_flush_ms >= 4000:
 		_battle_last_flush_ms = now_ms
 		_try_flush_to_disk("battle_live")
+		_battle_frame_ms_samples.clear()
 
 func end_battle_sampling() -> void:
 	if not _battle_sampling:
 		return
 	_battle_sampling = false
+	_battle_frame_ms_samples.clear()
+	_phase_start_ms.clear()
 	_try_flush_to_disk("battle_end")
 
 func get_snapshot() -> Dictionary:

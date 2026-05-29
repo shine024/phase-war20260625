@@ -81,7 +81,8 @@ enum CombatKind {
 	LIGHT = 0,   # 轻装（步兵、侦察车）
 	ARMOR = 1,   # 装甲（坦克、机甲）
 	SUPPORT = 2, # 支援（火炮、防空）
-	AIR = 3      # 空中（战斗机、攻击机、无人机）
+	AIR = 3,     # 空中（战斗机、攻击机、无人机）
+	FORT = 4     # 堡垒（固定防御工事）v5.0新增
 }
 
 # 旧武器类型枚举（一战武器 + 高达风格）
@@ -207,6 +208,7 @@ static func get_rarity_name(rarity: String) -> String:
 		"rare":      return "稀有"
 		"epic":      return "史诗"
 		"legendary": return "传说"
+		"mythic":    return "神话"
 		_:           return "普通"
 
 ## 稀有度颜色
@@ -215,8 +217,9 @@ static func get_rarity_color(rarity: String) -> Color:
 		"common":    return Color(0.75, 0.75, 0.75, 1.0)  # 灰色
 		"uncommon":  return Color(0.40, 0.90, 0.50, 1.0)  # 绿色
 		"rare":      return Color(0.40, 0.65, 1.00, 1.0)  # 蓝色
-		"epic":      return Color(0.75, 0.40, 1.00, 1.0)  # 紫色
+		"epic":      return Color(0.48, 0.41, 0.93, 1.0)  # 紫色 #7B68EE
 		"legendary": return Color(1.00, 0.70, 0.30, 1.0)  # 金色
+		"mythic":    return Color(1.00, 0.42, 0.62, 1.0)  # 粉金 #FF6B9D
 		_: return Color(0.75, 0.75, 0.75, 1.0)
 
 ## 时代中文名称映射

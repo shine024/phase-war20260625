@@ -55,8 +55,10 @@ func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
 	if SignalBus:
-		SignalBus.battle_started.connect(_on_battle_started)
-		SignalBus.battle_ended.connect(_on_battle_ended)
+		if not SignalBus.battle_started.is_connected(_on_battle_started):
+			SignalBus.battle_started.connect(_on_battle_started)
+		if not SignalBus.battle_ended.is_connected(_on_battle_ended):
+			SignalBus.battle_ended.connect(_on_battle_ended)
 	# 若当前环境未初始化，则从 GameManager 获取一次，避免法则面板里环境全为 ? 导致无法装配
 	if current_env.is_empty():
 		var level := 1

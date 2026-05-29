@@ -56,6 +56,16 @@ __pycache__/
 node_modules/
 .deepvcode/
 
+# ── 测试/临时脚本（不应进入版本库）──
+test_*.gd
+test_*.gd.uid
+tmp_*
+gen_*.py
+update_unit_manifest.py
+*_backup*
+*_v3_fixed*
+data/test_half1*
+
 # ── 压缩包 ──
 *.zip
 *.tar.gz
