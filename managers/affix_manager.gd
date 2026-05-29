@@ -14,6 +14,7 @@ signal affix_rerolled(card_id: String, slot_index: int)
 signal affix_locked(card_id: String, slot_index: int)
 
 const AffixDefs = preload("res://data/affix_definitions.gd")
+const DefaultCards = preload("res://data/default_cards.gd")
 const GC = preload("res://resources/game_constants.gd")
 
 ## affix_key → Array[AffixResource]（实例词条列表）
