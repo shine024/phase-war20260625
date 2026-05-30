@@ -3,6 +3,8 @@ class_name AttackCalculator
 ## v5.0: 攻速分离计算 + 伤害公式
 
 const GC = preload("res://resources/game_constants.gd")
+const DamageAttenuation = preload("res://scripts/battle/damage_attenuation.gd")
+const ModEffects = preload("res://data/mod_effects.gd")
 
 ## 根据目标类型获取攻击值
 static func get_attack_vs(attacker_stats: UnitStats, target_combat_kind: int) -> float:
@@ -44,7 +46,6 @@ static func calculate_damage(
 	# 3. 射程衰减(仅直射)
 	if weapon_type == GC.WeaponType.DIRECT:
 		var max_range = distance  # 调用方需传入正确的max_range
-		var DamageAttenuation = preload("res://scripts/battle/damage_attenuation.gd")
 		var sub_type = DamageAttenuation.infer_weapon_sub_type(
 			attacker_stats.combat_kind, int(max_range),
 			attacker_stats.attack_light, attacker_stats.attack_armor, attacker_stats.attack_air
@@ -76,7 +77,6 @@ static func calculate_damage(
 ## 计算改造伤害倍率
 ## 遍历已装配的 MOD 列表，累加 attack_multiplier（条件型仅当目标匹配时生效）
 static func get_mod_damage_multiplier(mods: Array, target_combat_kind: int) -> float:
-	var ModEffects = preload("res://data/mod_effects.gd")
 	var total_mult := 1.0
 	for mod_id in mods:
 		if mod_id is not String:
@@ -116,7 +116,6 @@ static func calculate_damage_with_range(
 
 	# 3. 射程衰减(仅直射)
 	if weapon_type == GC.WeaponType.DIRECT:
-		var DamageAttenuation = preload("res://scripts/battle/damage_attenuation.gd")
 		var sub_type = DamageAttenuation.infer_weapon_sub_type(
 			attacker_stats.combat_kind, int(max_range),
 			attacker_stats.attack_light, attacker_stats.attack_armor, attacker_stats.attack_air

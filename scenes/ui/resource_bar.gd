@@ -127,6 +127,20 @@ func _connect_signals() -> void:
 	if sbm and sbm.has_signal("stat_boost_applied"):
 		sbm.stat_boost_applied.connect(_on_stat_boost_applied)
 
+func _exit_tree() -> void:
+	if EnergyManager and EnergyManager.has_signal("energy_changed") and EnergyManager.energy_changed.is_connected(_on_energy_changed):
+		EnergyManager.energy_changed.disconnect(_on_energy_changed)
+	if BasicResourceManager and BasicResourceManager.has_signal("resources_changed") and BasicResourceManager.resources_changed.is_connected(_on_resources_changed):
+		BasicResourceManager.resources_changed.disconnect(_on_resources_changed)
+	if BlueprintManager and BlueprintManager.has_signal("fragments_changed") and BlueprintManager.fragments_changed.is_connected(_on_blueprint_fragments_changed):
+		BlueprintManager.fragments_changed.disconnect(_on_blueprint_fragments_changed)
+	var lm = get_node_or_null("/root/LoreManager")
+	if lm and lm.has_signal("lore_unlocked") and lm.lore_unlocked.is_connected(_on_lore_unlocked):
+		lm.lore_unlocked.disconnect(_on_lore_unlocked)
+	var sbm = get_node_or_null("/root/StatBoostManager")
+	if sbm and sbm.has_signal("stat_boost_applied") and sbm.stat_boost_applied.is_connected(_on_stat_boost_applied):
+		sbm.stat_boost_applied.disconnect(_on_stat_boost_applied)
+
 func _refresh_all() -> void:
 	_refresh_energy()
 	_refresh_resources()

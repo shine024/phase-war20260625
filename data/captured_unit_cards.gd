@@ -10,11 +10,15 @@ const GC = preload("res://resources/game_constants.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 
 static var _cache_built: bool = false
+static var _building: bool = false
 
 
 static func register_into_default_cards_cache() -> void:
 	if _cache_built:
 		return
+	if _building:
+		return # 防重入
+	_building = true
 	# 使用 DefaultCards 的缓存机制（如果存在）
 	var DefaultCards = load("res://data/default_cards.gd")
 	if DefaultCards and DefaultCards.has_method("_ensure_card_cache"):
@@ -36,6 +40,7 @@ static func register_into_default_cards_cache() -> void:
 				DefaultCards._all_cards_cache.append(card)
 				DefaultCards._id_lookup_cache[drop_id] = card
 	_cache_built = true
+	_building = false
 
 
 static func _build_captured_card(

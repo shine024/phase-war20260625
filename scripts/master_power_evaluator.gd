@@ -193,6 +193,9 @@ const INSTRUMENT_RARITY_SCORE: Dictionary = {
 	"common": 50, "uncommon": 120, "rare": 250, "epic": 450, "mythic": 800,
 }
 
+const EnergyFieldEngravings = preload("res://data/energy_field_engravings.gd")
+const EnemyPhaseEquipment = preload("res://data/enemy_phase_equipment.gd")
+
 
 # ═════════════════════════════════════════════
 #  主评估函数
@@ -337,7 +340,7 @@ static func _eval_engravings(master: Dictionary) -> float:
 	if affixes.is_empty():
 		return 0.0
 
-	var EFE = preload("res://data/energy_field_engravings.gd")
+	var EFE = EnergyFieldEngravings
 	var total: float = 0.0
 
 	for affix in affixes:
@@ -473,7 +476,7 @@ static func _eval_equipment_slots(master: Dictionary) -> float:
 # ═════════════════════════════════════════════
 
 static func _get_instrument_data(instrument_id: String) -> Dictionary:
-	var EPE = preload("res://data/enemy_phase_equipment.gd")
+	var EPE = EnemyPhaseEquipment
 	return EPE.get_phase_instrument(instrument_id)
 
 

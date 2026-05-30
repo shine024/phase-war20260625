@@ -251,16 +251,16 @@ func _format_unit_stats_summary(stats: UnitStats, cur_hp: float = -1.0, extra_su
 		hp_text = "HP %.0f/%.0f" % [cur_hp, stats.max_hp]
 	else:
 		hp_text = "HP %.0f" % stats.max_hp
-	
+
 	# 三维攻击/防御：轻/甲/空
 	var atk_light: float = stats.attack_light if stats.attack_light > 0.001 else 0.0
 	var atk_armor: float = stats.attack_armor if stats.attack_armor > 0.001 else 0.0
 	var atk_air: float = stats.attack_air if stats.attack_air > 0.001 else 0.0
-	
+
 	var def_light: float = stats.defense_light if stats.defense_light > 0.001 else 0.0
 	var def_armor: float = stats.defense_armor if stats.defense_armor > 0.001 else 0.0
 	var def_air: float = stats.defense_air if stats.defense_air > 0.001 else 0.0
-	
+
 	# 格式：HP 100｜攻 10/5/8｜防 3/5/2｜射程 120｜攻速 1.0
 	var line: String = "%s｜攻 %.0f/%.0f/%.0f｜防 %.0f/%.0f/%.0f｜射程 %.0f｜攻速 %.2f%s" % [
 		hp_text,
@@ -394,12 +394,18 @@ func _show_player_unit(unit: Node) -> void:
 			if not (w is Dictionary):
 				continue
 			var cfg: Dictionary = w
-			if not cfg.has("weapon_type"):
-				continue
-			var wt: int = int(cfg["weapon_type"])
-			var wn := DefaultCards.get_weapon_display_name(wt)
-			if not weapon_names.has(wn):
-				weapon_names.append(wn)
+			# 优先尝试 weapon_type 枚举值
+			if cfg.has("weapon_type"):
+				var wt: int = int(cfg["weapon_type"])
+				var wn := DefaultCards.get_weapon_display_name(wt)
+				if not weapon_names.has(wn):
+					weapon_names.append(wn)
+			# 其次尝试 weapon_id 字符串
+			elif cfg.has("weapon_id"):
+				var wid: String = String(cfg["weapon_id"])
+				var wn := DefaultCards.get_safe_display_name(wid)
+				if not wn.is_empty() and not weapon_names.has(wn):
+					weapon_names.append(wn)
 		if weapon_names.size() > 0:
 			weapon_label_text = " / ".join(weapon_names)
 	# 退回到单武器显示
@@ -408,13 +414,13 @@ func _show_player_unit(unit: Node) -> void:
 	type_label.text = "%s / %s" % [platform_name, weapon_label_text]
 	summary_label.text = _format_unit_stats_summary(stats)
 	var base_desc := "可选「进攻」向敌侧推进，或「防守」固守原位（仍可射击）；选中后点地面可沿 X 轴微调站位。"
-	
+
 	# 显示被动法则影响
 	var passive_desc := _build_phase_law_effects_for_unit(unit, true)
-	
+
 	# 显示主动法则（我方装备的）
 	var active_desc := _build_active_law_effects_for_unit(unit, true)
-	
+
 	var star_desc := _build_star_enhancement_effects_for_stats(stats)
 	if passive_desc.is_empty() and active_desc.is_empty() and star_desc.is_empty():
 		desc_label.text = base_desc
@@ -427,7 +433,7 @@ func _show_player_unit(unit: Node) -> void:
 		if not active_desc.is_empty():
 			full_desc += "\n\n【主动法则】\n" + active_desc
 		desc_label.text = full_desc
-	
+
 	flavor_label.text = "“装甲军团永不疲倦。”"
 
 func _set_stance_row_for_unit(unit: Node) -> void:
@@ -477,7 +483,7 @@ func _show_enemy_unit(unit: Node) -> void:
 		if unit.archetype_id.begins_with("phase_master_"):
 			is_phase_master = true
 			master_name = unit.archetype_id.substr(13)  # 去掉 "phase_master_" 前缀
-	
+
 	if is_phase_master:
 		# 相位师单位：显示平台+武器配置+相位师档案
 		var master_cfg: Dictionary = {}
@@ -529,43 +535,42 @@ func _show_enemy_unit(unit: Node) -> void:
 			type_text = "【未知相位师】"
 		else:
 			type_text = "【%s】%s" % [master_disp_name if not master_disp_name.is_empty() else "相位师", type_text]
-		
+
 		# 获取平台和武器信息
 		var platform_name := "未知平台"
 		var weapon_label_text := "未知武器"
-		if "stats" in unit:
-			var stats: UnitStats = unit.stats
-		var pm_safe_name := DefaultCards.get_safe_display_name(stats.platform_card_id)
+		var stats: UnitStats = unit.stats if "stats" in unit else null
+		var pm_safe_name := DefaultCards.get_safe_display_name(stats.platform_card_id if stats else "")
 		var pm_card_res: CardResource = DefaultCards.get_card_by_id(stats.platform_card_id)
 		var pm_dn := DefaultCards.safe_name(pm_card_res)
 		if not pm_dn.is_empty():
 			platform_name = pm_dn
-			elif not pm_safe_name.is_empty():
-				platform_name = pm_safe_name
-			else:
-				platform_name = DefaultCards.get_platform_display_name(stats.platform_type)
-			if stats.weapons.size() > 0:
-				var weapon_names: Array = []
-				for w in stats.weapons:
-					if not (w is Dictionary):
-						continue
-					var cfg: Dictionary = w
-					if not cfg.has("weapon_type"):
-						continue
-					var wt: int = int(cfg["weapon_type"])
-					var wn := DefaultCards.get_weapon_display_name(wt)
-					if not weapon_names.has(wn):
-						weapon_names.append(wn)
-				if weapon_names.size() > 0:
-					weapon_label_text = "/ ".join(weapon_names)
-			else:
-				weapon_label_text = DefaultCards.get_weapon_display_name(stats.weapon_type)
-		
+		elif not pm_safe_name.is_empty():
+			platform_name = pm_safe_name
+		else:
+			platform_name = DefaultCards.get_platform_display_name(stats.platform_type)
+		if stats.weapons.size() > 0:
+			var weapon_names: Array = []
+			for w in stats.weapons:
+				if not (w is Dictionary):
+					continue
+				var cfg: Dictionary = w
+				if not cfg.has("weapon_type"):
+					continue
+				var wt: int = int(cfg["weapon_type"])
+				var wn := DefaultCards.get_weapon_display_name(wt)
+				if not weapon_names.has(wn):
+					weapon_names.append(wn)
+			if weapon_names.size() > 0:
+				weapon_label_text = "/ ".join(weapon_names)
+		else:
+			weapon_label_text = DefaultCards.get_weapon_display_name(stats.weapon_type)
+
 		type_label.text = "%s\n%s / %s" % [type_text, platform_name, weapon_label_text]
-		
+
 		var scombat: Array = _enemy_surface_combat_stats(unit)
 		summary_label.text = _format_enemy_combat_summary(unit, scombat)
-		
+
 		# 显示被动法则影响
 		var base_desc := "敌方相位师单位，拥有强大的战斗力。"
 		if not trait_lines.is_empty():
@@ -577,7 +582,7 @@ func _show_enemy_unit(unit: Node) -> void:
 		if not active_desc.is_empty():
 			base_desc += "\n\n【敌方被动法则】\n" + active_desc
 		desc_label.text = base_desc
-		
+
 		flavor_label.text = "\u201c相位师的威严不容侵犯。\u201d"
 	elif _is_construct_unit_script(unit) and "stats" in unit and unit.stats != null:
 		_show_enemy_construct_unit(unit)
@@ -612,6 +617,10 @@ func _show_enemy_unit(unit: Node) -> void:
 							"heavy": tag_names.append("重型")
 							"elite": tag_names.append("精英")
 							"boss": tag_names.append("Boss")
+							"armored": tag_names.append("装甲")
+							"artillery": tag_names.append("火炮")
+							"support": tag_names.append("支援")
+							"swarm": tag_names.append("蜂群")
 							_: tag_names.append(ts)
 					tags_text = " · ".join(tag_names)
 		if "wave_index" in unit:
@@ -680,7 +689,7 @@ func _build_active_law_effects_for_unit(unit: Node, is_player_side: bool) -> Str
 	var law_ids: Array = plm.equipped_active_laws
 	if law_ids.is_empty():
 		return ""
-	
+
 	var lines: Array[String] = []
 	for law_id in law_ids:
 		var cfg: Dictionary = PhaseLaws.get_by_id(String(law_id))
@@ -698,7 +707,7 @@ func _build_active_law_effects_for_unit(unit: Node, is_player_side: bool) -> Str
 		var value: float = float(rt.get("value", 0.0))
 		var duration: float = float(rt.get("duration", 0.0))
 		var radius: float = float(rt.get("radius", 0.0))
-		
+
 		var line := _format_effect_line(law_name, String(rt.get("effect", "")), value, duration, radius)
 		if nano_cost > 0:
 			line += " (消耗%d纳米)" % nano_cost
@@ -707,7 +716,7 @@ func _build_active_law_effects_for_unit(unit: Node, is_player_side: bool) -> Str
 		if not desc.is_empty():
 			line += "：%s" % desc
 		lines.append(line)
-	
+
 	if lines.is_empty():
 		return ""
 	return "\n".join(lines)

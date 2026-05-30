@@ -112,6 +112,32 @@ func _connect_signals() -> void:
 	if not SignalBus.unit_died.is_connected(_on_unit_died_hud):
 		SignalBus.unit_died.connect(_on_unit_died_hud)
 
+func _exit_tree() -> void:
+	_disconnect_signals()
+
+func _disconnect_signals() -> void:
+	if SignalBus:
+		if SignalBus.energy_changed.is_connected(_on_energy_changed):
+			SignalBus.energy_changed.disconnect(_on_energy_changed)
+		if SignalBus.phase_driver_hp_changed.is_connected(_on_phase_driver_hp_changed):
+			SignalBus.phase_driver_hp_changed.disconnect(_on_phase_driver_hp_changed)
+		if SignalBus.phase_slots_changed.is_connected(_on_phase_slots_changed):
+			SignalBus.phase_slots_changed.disconnect(_on_phase_slots_changed)
+		if SignalBus.wave_spawned.is_connected(_on_wave_spawned):
+			SignalBus.wave_spawned.disconnect(_on_wave_spawned)
+		if SignalBus.unit_selected.is_connected(_on_unit_selected):
+			SignalBus.unit_selected.disconnect(_on_unit_selected)
+		if SignalBus.unit_damaged.is_connected(_on_unit_damaged):
+			SignalBus.unit_damaged.disconnect(_on_unit_damaged)
+		if SignalBus.battle_started.is_connected(_on_battle_started):
+			SignalBus.battle_started.disconnect(_on_battle_started)
+		if SignalBus.battle_ended.is_connected(_on_battle_ended):
+			SignalBus.battle_ended.disconnect(_on_battle_ended)
+		if SignalBus.unit_spawned.is_connected(_on_unit_spawned):
+			SignalBus.unit_spawned.disconnect(_on_unit_spawned)
+		if SignalBus.unit_died.is_connected(_on_unit_died_hud):
+			SignalBus.unit_died.disconnect(_on_unit_died_hud)
+
 func _process(delta: float) -> void:
 	if not _battle_active:
 		return

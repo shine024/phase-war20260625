@@ -408,6 +408,28 @@ func _apply_card_chrome(c: CardResource) -> void:
 	else:
 		CardFrameUi.clear_overlay(self)
 		_apply_card_border_flat(c)
+	# 势力专属卡不可用检测
+	_apply_faction_exclusive_state(c)
+
+## 势力专属卡：不可用时显示灰色 + 降低透明度
+func _apply_faction_exclusive_state(c: CardResource) -> void:
+	if not c.is_faction_exclusive:
+		return
+	var ExclusiveCards = preload("res://data/faction_exclusive_cards.gd")
+	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
+	var available := false
+	if fsm != null:
+		var faction_id: String = ExclusiveCards.get_exclusive_faction(c.card_id)
+		var min_lv: int = ExclusiveCards.get_min_faction_level(c.card_id)
+		if fsm.get_active_faction() == faction_id and fsm.get_faction_level(faction_id) >= min_lv:
+			available = true
+	if not available:
+		modulate = Color(0.5, 0.5, 0.5, 0.7)
+		tooltip_text = "需要激活 %s 势力且等级 >= %d" % [
+			ExclusiveCards.get_exclusive_faction(c.card_id),
+			ExclusiveCards.get_min_faction_level(c.card_id)]
+	else:
+		modulate = Color(1, 1, 1, 1)
 
 
 func _apply_card_icon_rect(icon_rect: TextureRect, c: CardResource, min_size: Vector2) -> void:

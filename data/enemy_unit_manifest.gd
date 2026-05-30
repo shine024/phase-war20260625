@@ -209,6 +209,37 @@ static func _get_foe_stats(card_id: String) -> Dictionary:
 			        "attack_light": 140.0, "attack_armor": 100.0, "attack_air": 90.0,
 			        "defense_light": 9.0, "defense_armor": 7.0, "defense_air": 7.0,
 			        "rng": 240.0, "ivl": 1.65, "spd": 75.0, "weapon": "轨道炮"}
+		# 现代 A段 - 直接使用的 ID
+		"mod_technical":
+			return {"kind": 0, "hp": 90.0, "weapon_type": 0, "deploy_speed": 4,
+			        "attack_light": 18.0, "attack_armor": 5.0, "attack_air": 5.0,
+			        "defense_light": 7.0, "defense_armor": 5.0, "defense_air": 5.0,
+			        "rng": 130.0, "ivl": 0.30, "spd": 120.0, "weapon": "机枪"}
+		"mod_m1a1":
+			return {"kind": 1, "hp": 220.0, "weapon_type": 1, "deploy_speed": 2,
+			        "attack_light": 50.0, "attack_armor": 40.0, "attack_air": 35.0,
+			        "defense_light": 15.0, "defense_armor": 12.0, "defense_air": 12.0,
+			        "rng": 240.0, "ivl": 1.80, "spd": 60.0, "weapon": "火炮"}
+		"mod_m6":
+			return {"kind": 2, "hp": 160.0, "weapon_type": 0, "deploy_speed": 0,
+			        "attack_light": 25.0, "attack_armor": 15.0, "attack_air": 35.0,
+			        "defense_light": 12.0, "defense_armor": 10.0, "defense_air": 12.0,
+			        "rng": 280.0, "ivl": 0.15, "spd": 0.0, "weapon": "机枪"}
+		"mod_m270":
+			return {"kind": 2, "hp": 200.0, "weapon_type": 1, "deploy_speed": 0,
+			        "attack_light": 40.0, "attack_armor": 30.0, "attack_air": 20.0,
+			        "defense_light": 10.0, "defense_armor": 8.0, "defense_air": 8.0,
+			        "rng": 400.0, "ivl": 2.50, "spd": 0.0, "weapon": "火箭炮"}
+		"fut_scout_drone":
+			return {"kind": 3, "hp": 50.0, "weapon_type": 0, "deploy_speed": 6,
+			        "attack_light": 8.0, "attack_armor": 8.0, "attack_air": 8.0,
+			        "defense_light": 3.0, "defense_armor": 3.0, "defense_air": 3.0,
+			        "rng": 150.0, "ivl": 0.35, "spd": 135.0, "weapon": "机枪"}
+		"mod_m1a2sep":
+			return {"kind": 1, "hp": 240.0, "weapon_type": 1, "deploy_speed": 2,
+			        "attack_light": 55.0, "attack_armor": 45.0, "attack_air": 40.0,
+			        "defense_light": 16.0, "defense_armor": 13.0, "defense_air": 13.0,
+			        "rng": 250.0, "ivl": 1.70, "spd": 65.0, "weapon": "火炮"}
 		# 近未来 A段
 		"platform_future_light":
 			return {"kind": 0, "hp": 50.0, "weapon_type": 0, "deploy_speed": 5,
@@ -509,6 +540,12 @@ static func _get_foe_display_name(card_id: String) -> String:
 		"platform_cold_scout": return "BRDM-2侦察车"
 		"platform_cold_radar": return "电子对抗站"
 		"platform_cold_carrier": return "BMP步战车"
+		"mod_technical": return "皮卡武装"
+		"mod_m1a1": return "M1A1主战坦克"
+		"mod_m6": return "自行高炮M6"
+		"mod_m270": return "M270火箭炮"
+		"fut_scout_drone": return "侦察无人机"
+		"mod_m1a2sep": return "M1A2 SEP主战坦克"
 		"platform_modern_light": return "北极星全地形车"
 		"platform_modern_medium": return "艾布拉姆斯坦克"
 		"platform_modern_radar": return "相控阵雷达车"

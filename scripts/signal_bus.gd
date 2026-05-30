@@ -136,3 +136,15 @@ signal intel_updated(card_id: String, progress: float, tier: int)
 signal intel_unlocked(card_id: String)
 signal intel_tier_reached(card_id: String, tier: int)
 
+# 势力系统
+signal faction_reputation_changed(faction_id: String, delta: int, new_value: int)
+signal faction_level_up(faction_id: String, new_level: int)
+signal faction_store_updated(faction_id: String)
+signal active_faction_changed(faction_id: String)
+signal faction_skill_unlocked(faction_id: String, skill_id: String)
+signal faction_event_generated(event: Dictionary)
+
+# 合成系统
+signal synthesis_completed(hybrid_card_id: String)
+signal synthesis_failed(reason: String)
+

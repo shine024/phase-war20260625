@@ -118,7 +118,7 @@ func _refresh_all() -> void:
 func _format_card_slot_tooltip(color: String, card: CardResource) -> String:
 	if card == null:
 		return ""
-	var display_name: String = "能量卡" if card.card_type == GC.CardType.ENERGY else String(card.display_name)
+	var display_name: String = "能量卡" if card.card_type == GC.CardType.ENERGY else DefaultCardsData.get_safe_display_name(card.card_id)
 	var cost_text: String = "%d⚡" % int(card.energy_cost)
 	var detail_lines: Array[String] = []
 	detail_lines.append("%s 槽：%s" % [_slot_name(color), display_name])

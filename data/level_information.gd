@@ -128,7 +128,7 @@ func _add_ww1_levels() -> void:
 			"faction_id": faction_id,
 			"environment": _get_environment_for_era_level(LevelEras.Era.WW1, i),
 			"available_law_families": families,
-			"difficulty_modifier": 0.8 + (i - 1) * 0.02,
+			"difficulty_modifier": 0.8 + level_num * 0.014,
 		}
 
 func _add_ww2_levels() -> void:
@@ -218,7 +218,7 @@ func _add_ww2_levels() -> void:
 			"faction_id": faction_id,
 			"environment": _get_environment_for_era_level(LevelEras.Era.WW2, i),
 			"available_law_families": families,
-			"difficulty_modifier": 1.0 + (i - 1) * 0.025,
+			"difficulty_modifier": 0.8 + level_num * 0.014,
 		}
 
 func _add_cold_war_levels() -> void:
@@ -308,7 +308,7 @@ func _add_cold_war_levels() -> void:
 			"faction_id": faction_id,
 			"environment": _get_environment_for_era_level(LevelEras.Era.COLD_WAR, i),
 			"available_law_families": families,
-			"difficulty_modifier": 1.15 + (i - 1) * 0.03,
+			"difficulty_modifier": 0.8 + level_num * 0.014,
 		}
 
 func _add_modern_levels() -> void:
@@ -396,7 +396,7 @@ func _add_modern_levels() -> void:
 			"faction_id": faction_id,
 			"environment": _get_environment_for_era_level(LevelEras.Era.MODERN, i),
 			"available_law_families": families,
-			"difficulty_modifier": 1.25 + (i - 1) * 0.035,
+			"difficulty_modifier": 0.8 + level_num * 0.014,
 		}
 
 func _add_future_levels() -> void:
@@ -493,7 +493,7 @@ func _add_future_levels() -> void:
 			"faction_id": faction_id,
 			"environment": _get_environment_for_era_level(LevelEras.Era.NEAR_FUTURE, i),
 			"available_law_families": families,
-			"difficulty_modifier": 1.4 + (i - 1) * 0.04,
+			"difficulty_modifier": 0.8 + level_num * 0.014,
 		}
 
 func _get_environment_for_era_level(era: int, level_in_era: int) -> Dictionary:

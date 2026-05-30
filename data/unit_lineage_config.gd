@@ -71,43 +71,104 @@ const LINEAGES: Dictionary = {
 	# ─── 轻装线：普通步兵（5节） ───
 	"ww1_mp18": {
 		"evolution_1": "ww2_thompson",
-		"faction_branches": {},
+		"faction_branches": {
+			"aether_dynamics": "mod_marine",
+			"frontier_union": "cold_ak47",
+			"helix_recon": "mod_ranger",
+			"void_research": "fut_spectre",
+		},
 	},
 	"ww2_thompson": {
 		"evolution_1": "cold_ak47",
-		"faction_branches": {},
+		"faction_branches": {
+			"aether_dynamics": "cold_spetsnaz",
+			"frontier_union": "cold_ak47",
+			"helix_recon": "mod_ranger",
+			"iron_wall_corp": "mod_ranger",
+			"nova_arms": "mod_marine",
+			"quantum_logistics": "mod_marine",
+			"void_research": "fut_spectre",
+		},
 	},
 	"cold_ak47": {
 		"evolution_1": "mod_marine",
-		"faction_branches": {},
+		"faction_branches": {
+			"aether_dynamics": "mod_ranger",
+			"frontier_union": "mod_marine",
+			"helix_recon": "fut_spectre",
+			"iron_wall_corp": "mod_ranger",
+			"nova_arms": "fut_cyborg",
+			"quantum_logistics": "mod_marine",
+			"void_research": "fut_cyborg",
+		},
 	},
 	"mod_marine": {
 		"evolution_1": "fut_cyborg",
-		"faction_branches": {},
+		"faction_branches": {
+			"aether_dynamics": "fut_scout_mech",
+			"frontier_union": "fut_cyborg",
+			"helix_recon": "fut_spectre",
+			"iron_wall_corp": "fut_heavy_trooper",
+			"nova_arms": "fut_cyborg",
+			"quantum_logistics": "fut_cyborg",
+			"void_research": "fut_nexus",
+		},
 	},
 
 	# ─── 轻装线：反坦克（4节） ───
 	"ww2_panzerschrek": {
 		"evolution_1": "cold_rpg",
-		"faction_branches": {},
+		"faction_branches": {
+			"aether_dynamics": "mod_javelin",
+			"frontier_union": "cold_rpg",
+			"nova_arms": "mod_javelin",
+		},
 	},
 	"cold_rpg": {
 		"evolution_1": "mod_javelin",
-		"faction_branches": {},
+		"faction_branches": {
+			"aether_dynamics": "mod_javelin",
+			"frontier_union": "mod_javelin",
+			"nova_arms": "mod_javelin",
+		},
 	},
 	"mod_javelin": {
 		"evolution_1": "fut_cyborg",
-		"faction_branches": {},
+		"faction_branches": {
+			"aether_dynamics": "fut_scout_mech",
+			"frontier_union": "fut_cyborg",
+			"helix_recon": "fut_spectre",
+			"iron_wall_corp": "fut_heavy_trooper",
+			"nova_arms": "fut_assault_mech",
+			"quantum_logistics": "fut_cyborg",
+			"void_research": "fut_nexus",
+		},
 	},
 
 	# ─── 轻装线：特种（4节） ───
 	"ww1_storm": {
 		"evolution_1": "cold_spetsnaz",
-		"faction_branches": {},
+		"faction_branches": {
+			"aether_dynamics": "mod_ranger",
+			"frontier_union": "cold_spetsnaz",
+			"helix_recon": "mod_ranger",
+			"iron_wall_corp": "mod_ranger",
+			"nova_arms": "mod_ranger",
+			"quantum_logistics": "mod_ranger",
+			"void_research": "fut_spectre",
+		},
 	},
 	"cold_spetsnaz": {
 		"evolution_1": "mod_ranger",
-		"faction_branches": {},
+		"faction_branches": {
+			"aether_dynamics": "mod_ranger",
+			"frontier_union": "mod_ranger",
+			"helix_recon": "mod_ranger",
+			"iron_wall_corp": "mod_ranger",
+			"nova_arms": "mod_ranger",
+			"quantum_logistics": "mod_ranger",
+			"void_research": "fut_spectre",
+		},
 	},
 	"mod_ranger": {
 		"evolution_1": "fut_spectre",
@@ -117,85 +178,220 @@ const LINEAGES: Dictionary = {
 	# ─── 装甲线：主战坦克（5节） ───
 	"ww1_ft17": {
 		"evolution_1": "ww2_pz3",
-		"faction_branches": {},
+		"faction_branches": {
+			"aether_dynamics": "cold_t55",
+			"frontier_union": "cold_t55",
+			"helix_recon": "cold_t62",
+			"iron_wall_corp": "ww2_tiger",
+			"nova_arms": "ww2_panther",
+			"quantum_logistics": "ww2_t34_85",
+			"void_research": "fut_hovertank",
+		},
 	},
 	"ww2_pz3": {
 		"evolution_1": "cold_t55",
-		"faction_branches": {},
+		"faction_branches": {
+			"aether_dynamics": "cold_t55",
+			"frontier_union": "cold_t72",
+			"helix_recon": "cold_chieftain",
+			"iron_wall_corp": "cold_t72",
+			"nova_arms": "cold_leo1",
+			"void_research": "fut_hovertank",
+		},
 	},
 	"cold_t55": {
 		"evolution_1": "mod_m1a1",
-		"faction_branches": {},
+		"faction_branches": {
+			"iron_wall_corp": "mod_m1a2sep",
+			"nova_arms": "mod_m1a2sep",
+			"aether_dynamics": "mod_m1a1",
+			"quantum_logistics": "mod_m1a1",
+			"helix_recon": "mod_leo2a6",
+			"void_research": "fut_hovertank",
+			"frontier_union": "mod_m1a1",
+		},
 	},
 	"mod_m1a1": {
 		"evolution_1": "fut_hovertank",
-		"faction_branches": {},
+		"faction_branches": {
+			"iron_wall_corp": "fut_heavy_mech",
+			"nova_arms": "fut_assault_mech",
+			"aether_dynamics": "fut_hovertank",
+			"quantum_logistics": "fut_hovertank",
+			"helix_recon": "fut_prism",
+			"void_research": "fut_colossus",
+			"frontier_union": "fut_hovertank",
+		},
 	},
 
 	# ─── 装甲线：重型坦克（5节） ───
 	"ww1_saint": {
 		"evolution_1": "ww2_tiger",
-		"faction_branches": {},
+		"faction_branches": {
+			"iron_wall_corp": "ww2_kingtiger",
+			"nova_arms": "ww2_panther",
+			"aether_dynamics": "ww2_tiger",
+			"quantum_logistics": "cold_t72",
+			"helix_recon": "cold_chieftain",
+			"void_research": "fut_heavy_mech",
+			"frontier_union": "cold_t72",
+		},
 	},
 	"ww2_tiger": {
 		"evolution_1": "cold_t72",
-		"faction_branches": {},
+		"faction_branches": {
+			"iron_wall_corp": "cold_t72",
+			"nova_arms": "mod_m1a2sep",
+			"aether_dynamics": "cold_t72",
+			"quantum_logistics": "mod_m1a2sep",
+			"helix_recon": "mod_leo2a6",
+			"void_research": "fut_heavy_mech",
+			"frontier_union": "mod_m1a2sep",
+		},
 	},
 	"cold_t72": {
 		"evolution_1": "mod_m1a2sep",
-		"faction_branches": {},
+		"faction_branches": {
+			"iron_wall_corp": "mod_m1a2sep",
+			"nova_arms": "mod_m1a2sep",
+			"aether_dynamics": "mod_m1a1",
+			"quantum_logistics": "mod_m1a1",
+			"helix_recon": "mod_leo2a6",
+			"void_research": "fut_heavy_mech",
+			"frontier_union": "mod_m1a2sep",
+		},
 	},
 	"mod_m1a2sep": {
 		"evolution_1": "fut_heavy_mech",
-		"faction_branches": {},
+		"faction_branches": {
+			"iron_wall_corp": "fut_colossus",
+			"nova_arms": "fut_assault_mech",
+			"aether_dynamics": "fut_hovertank",
+			"quantum_logistics": "fut_heavy_mech",
+			"helix_recon": "fut_prism",
+			"void_research": "fut_nexus",
+			"frontier_union": "fut_heavy_mech",
+		},
 	},
 
 	# ─── 空中线：战斗机（3节） ───
 	"cold_mig21": {
 		"evolution_1": "mod_ah64",
-		"faction_branches": {},
+		"faction_branches": {
+			"nova_arms": "mod_ah64",
+			"aether_dynamics": "fut_space_fighter",
+			"quantum_logistics": "mod_uh60",
+			"helix_recon": "fut_space_fighter",
+			"void_research": "fut_space_fighter",
+			"frontier_union": "mod_ah64",
+		},
 	},
 	"mod_ah64": {
 		"evolution_1": "fut_space_fighter",
-		"faction_branches": {},
+		"faction_branches": {
+			"iron_wall_corp": "fut_space_fighter",
+			"nova_arms": "fut_stealth_bomber",
+			"aether_dynamics": "fut_space_fighter",
+			"quantum_logistics": "fut_attack_drone",
+			"helix_recon": "fut_space_fighter",
+			"void_research": "fut_stealth_bomber",
+			"frontier_union": "fut_space_fighter",
+		},
 	},
 
 	# ─── 空中线：攻击机（2节） ───
 	"mod_ah1": {
 		"evolution_1": "fut_attack_drone",
-		"faction_branches": {},
+		"faction_branches": {
+			"iron_wall_corp": "fut_attack_drone",
+			"nova_arms": "fut_attack_drone",
+			"aether_dynamics": "fut_space_fighter",
+			"quantum_logistics": "fut_scout_drone",
+			"helix_recon": "fut_attack_drone",
+			"void_research": "fut_stealth_bomber",
+			"frontier_union": "fut_attack_drone",
+		},
 	},
 
 	# ─── 支援线：火炮（5节） ───
 	"ww1_m81": {
 		"evolution_1": "ww2_m81",
-		"faction_branches": {},
+		"faction_branches": {
+			"iron_wall_corp": "ww2_m120",
+			"quantum_logistics": "ww2_m120",
+			"void_research": "ww2_m120",
+			"frontier_union": "ww2_m81",
+		},
 	},
 	"ww2_m81": {
 		"evolution_1": "cold_m113",
-		"faction_branches": {},
+		"faction_branches": {
+			"nova_arms": "cold_bmp1",
+			"aether_dynamics": "cold_bmp1",
+			"quantum_logistics": "cold_m113",
+			"helix_recon": "cold_bmp1",
+			"void_research": "cold_m113",
+			"frontier_union": "cold_m113",
+		},
 	},
 	"cold_m113": {
 		"evolution_1": "mod_m270",
-		"faction_branches": {},
+		"faction_branches": {
+			"nova_arms": "mod_m270",
+			"aether_dynamics": "mod_m270",
+			"quantum_logistics": "mod_m270",
+			"helix_recon": "mod_m270",
+			"void_research": "mod_m270",
+			"frontier_union": "mod_m270",
+		},
 	},
 	"mod_m270": {
 		"evolution_1": "fut_howitzer",
-		"faction_branches": {},
+		"faction_branches": {
+			"iron_wall_corp": "fut_ion",
+			"aether_dynamics": "fut_howitzer",
+			"quantum_logistics": "fut_howitzer",
+			"helix_recon": "fut_howitzer",
+			"void_research": "fut_ion",
+			"frontier_union": "fut_howitzer",
+		},
 	},
 
 	# ─── 支援线：防空（4节） ───
 	"ww1_37mm": {
 		"evolution_1": "cold_zsu23",
-		"faction_branches": {},
+		"faction_branches": {
+			"aether_dynamics": "cold_zsu23",
+			"frontier_union": "cold_zsu23",
+			"helix_recon": "mod_m6",
+			"nova_arms": "cold_zsu23",
+			"quantum_logistics": "cold_zsu23",
+			"void_research": "mod_m6",
+		},
 	},
 	"cold_zsu23": {
 		"evolution_1": "mod_m6",
-		"faction_branches": {},
+		"faction_branches": {
+			"aether_dynamics": "mod_m6",
+			"frontier_union": "mod_m6",
+			"helix_recon": "mod_m6",
+			"iron_wall_corp": "mod_m6",
+			"nova_arms": "mod_m6",
+			"quantum_logistics": "mod_m6",
+			"void_research": "mod_m6",
+		},
 	},
 	"mod_m6": {
 		"evolution_1": "fut_aa_hover",
-		"faction_branches": {},
+		"faction_branches": {
+			"aether_dynamics": "fut_aa_hover",
+			"frontier_union": "fut_aa_hover",
+			"helix_recon": "fut_aa_hover",
+			"iron_wall_corp": "fut_aa_hover",
+			"nova_arms": "fut_aa_hover",
+			"quantum_logistics": "fut_aa_hover",
+			"void_research": "fut_shield",
+		},
 	},
 
 	# ─── 终端节点（无后续进化） ───

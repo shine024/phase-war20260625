@@ -153,3 +153,16 @@ var has_hp_regen_mutation: bool = false
 
 ## 是否有平台HP变异（高血量时防御加成）
 var has_platform_hp_mutation: bool = false
+
+# ─────────────────────────────────────────────
+#  势力变体特殊属性（由 FactionCardGenerator 注入）
+# ─────────────────────────────────────────────
+
+## 势力命中精度加成（0.0~0.50，降低敌方闪避效果）
+var faction_accuracy_bonus: float = 0.0
+
+## 势力法则效果加成（倍率，1.0=无加成）
+var faction_effect_bonus: float = 0.0
+
+## 技能树特殊效果标记列表（由战斗系统按需读取）
+var skill_tree_specials: Array = []

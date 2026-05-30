@@ -5,24 +5,31 @@ const GC = preload("res://resources/game_constants.gd")
 const RealWorldUnitLabels = preload("res://data/real_world_unit_labels.gd")
 const EnemyBlueprints = preload("res://data/enemy_blueprints.gd")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
+const EnemyPhaseEquipment = preload("res://data/enemy_phase_equipment.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
 
 ## 静态缓存：避免每次 get_card_by_id 都重新创建
 static var _all_cards_cache: Array = []
 static var _id_lookup_cache: Dictionary = {}
 
+static var _cache_building: bool = false
+
 ## 确保缓存已构建
 static func _ensure_card_cache() -> void:
 	if not _all_cards_cache.is_empty():
 		return
+	if _cache_building:
+		return # 防重入：构建过程中被间接回调时直接返回，避免无限递归
+	_cache_building = true
 	_all_cards_cache = create_all()
 	for c in _all_cards_cache:
 		if c is CardResource:
 			_id_lookup_cache[c.card_id] = c
+	_cache_building = false
 
 static func create_all() -> Array:
 	var list: Array = []
-	
+
 	# ==================== 一战单位（20个）====================
 	list.append(_unit("ww1_mp18", "MP18突击班", 0, 0, 15, 4, 2, 10, 100, 35, 1.5, 0.15, 0.08, 0, 0, 0, 0, 0, 0, 0, 0, 8, 5, 3))
 	list.append(_unit("ww1_mauser", "毛瑟步枪班", 0, 0, 15, 3, 3, 10, 95, 30, 0.67, 0.2, 0.1, 0, 0, 0, 0, 0, 0, 0, 0, 8, 5, 3))
@@ -158,6 +165,11 @@ static func create_all() -> Array:
 	list.append(_energy_start("energy_start_5", "战前能量 V", 25, 300.0, "uncommon"))
 	list.append(_energy_start("energy_start_6", "战前能量 VI", 30, 350.0, "rare"))
 	list.append(_energy_start("energy_start_7", "战前能量 VII", 35, 400.0, "rare"))
+
+	# ─── 势力专属卡（14张）───
+	var ExclusiveCards = preload("res://data/faction_exclusive_cards.gd")
+	for cfg in ExclusiveCards.EXCLUSIVE_CARDS:
+		list.append(ExclusiveCards.create_card(cfg))
 
 	return list
 
@@ -371,7 +383,7 @@ static func get_platform_display_name(platform_type: int) -> String:
 static func get_weapon_display_name(weapon_type: int) -> String:
 	return RealWorldUnitLabels.weapon_kind_long(weapon_type)
 
-## 统一安全获取卡牌中文名：依次尝试 DefaultCards → EnemyBlueprints → 返回 ID 本身
+## 统一安全获取卡牌中文名：依次尝试 DefaultCards → EnemyBlueprints → EnemyPhaseEquipment → EnemyArchetypes → 返回 ID 本身
 ## 所有 UI 层的 ID 回退都应使用此函数，杜绝显示原始 card_id
 static func get_safe_display_name(card_id: String) -> String:
 	if card_id.is_empty():
@@ -384,6 +396,17 @@ static func get_safe_display_name(card_id: String) -> String:
 	var eb: CardResource = EnemyBlueprints.get_card_by_id(card_id)
 	if eb != null and not eb.display_name.is_empty() and not _looks_like_id(eb.display_name):
 		return eb.display_name
+	# 尝试敌方相位装备（platform 或 weapon）
+	var eq_data: Dictionary = EnemyPhaseEquipment.get_war_platform(card_id)
+	if not eq_data.is_empty():
+		var eq_name: String = String(eq_data.get("name", ""))
+		if not eq_name.is_empty():
+			return eq_name
+	eq_data = EnemyPhaseEquipment.get_war_weapon(card_id)
+	if not eq_data.is_empty():
+		var eq_name: String = String(eq_data.get("name", ""))
+		if not eq_name.is_empty():
+			return eq_name
 	# 尝试敌方原型表（enemy_* 格式）
 	var arch_cfg: Dictionary = EnemyArchetypes.get_config(card_id)
 	var arch_name: String = String(arch_cfg.get("display_name", "")) if not arch_cfg.is_empty() else ""

@@ -12,7 +12,13 @@ const BATTLE_RESEARCH_WIN_MULTIPLIER: float = 1.0
 const BATTLE_RESEARCH_STAR_MULTIPLIER: Dictionary = {
 	1: 1.0,
 	2: 1.2,
-	3: 1.5,
+	3: 1.4,
+	4: 1.6,
+	5: 1.8,
+	6: 2.0,
+	7: 2.3,
+	8: 2.6,
+	9: 3.0,
 }
 
 ## 改装分支模板（默认所有卡可用，可按 card_id 覆盖）

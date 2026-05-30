@@ -453,7 +453,7 @@ func on_battle_won(card_ids: Array, level: int) -> void:
 		# 武器词条 (type 1)
 		_seed_initial_affixes(cid, 1, "uncommon")
 
-func _seed_initial_affixes(card_id: String, affix_type: int, rarity: String) -> void:
+func _seed_initial_affixes(card_id: String, affix_type: int, _rarity: String) -> void:
 	_seed_affixes_by_star(card_id, affix_type, 1)
 
 func _seed_affixes_by_star(card_id: String, affix_type: int, star: int) -> void:

@@ -38,6 +38,17 @@ func _ready() -> void:
 	else:
 		set_process(false)
 
+func _exit_tree() -> void:
+	if SignalBus:
+		if SignalBus.battle_started.is_connected(_on_battle_started):
+			SignalBus.battle_started.disconnect(_on_battle_started)
+		if SignalBus.battle_ended.is_connected(_on_battle_ended):
+			SignalBus.battle_ended.disconnect(_on_battle_ended)
+		if SignalBus.unit_damaged.is_connected(_on_unit_damaged):
+			SignalBus.unit_damaged.disconnect(_on_unit_damaged)
+		if SignalBus.unit_died.is_connected(_on_unit_died):
+			SignalBus.unit_died.disconnect(_on_unit_died)
+
 func _process(delta: float) -> void:
 	if _battle_active:
 		_battle_time += delta

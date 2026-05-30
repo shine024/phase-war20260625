@@ -12,6 +12,10 @@ const CompanyDefinitions = preload("res://data/company_definitions.gd")
 const LevelInformation = preload("res://data/level_information.gd")
 const PhaseInstruments = preload("res://data/phase_instruments.gd")
 const BasicResources = preload("res://data/basic_resources.gd")
+const FactionCardGenerator = preload("res://managers/faction/faction_card_generator.gd")
+const FactionSkillManager = preload("res://managers/faction/faction_skill_manager.gd")
+const FactionEventManager = preload("res://managers/faction/faction_event_manager.gd")
+const SynthesisManager = preload("res://managers/synthesis/synthesis_manager.gd")
 
 ## 势力关系矩阵：faction_id -> {关系势力ID: 关系类型}
 ## 关系类型：allied(同盟), rival(竞争), enemy(敌对), neutral(中立)
@@ -111,6 +115,9 @@ static func get_relationship_between(faction_a: String, faction_b: String) -> St
 signal faction_reputation_changed(faction_id: String, delta: int, new_value: int)
 signal faction_level_up(faction_id: String, new_level: int)
 signal faction_store_updated(faction_id: String)
+signal active_faction_changed(faction_id: String)
+signal faction_skill_unlocked(faction_id: String, skill_id: String)
+signal faction_event_generated(event: Dictionary)
 
 ## 全局声望数据：faction_id -> 声望值（0-10000）
 var faction_reputation: Dictionary = {}
@@ -122,6 +129,12 @@ var faction_level: Dictionary = {}
 var faction_store_inventory: Dictionary = {}
 var unlocked_faction_instruments: Dictionary = {}
 
+## 当前激活势力（空字符串=未激活）
+var active_faction: String = ""
+
+## 已解锁的势力变体列表（格式: "faction:{faction_id}:{base_card_id}"）
+var faction_variants_unlocked: Array = []
+
 ## 关卡信息实例
 var level_info: LevelInformation
 
@@ -131,12 +144,33 @@ var _faction_definitions: Dictionary = {}
 ## 缓存所有势力ID列表
 var _all_faction_ids: Array = []
 
+## 势力技能树状态：faction_id -> {"unlocked_skills": [], "spent_points": 0, "bonus_points": 0}
+var faction_skill_states: Dictionary = {}
+
+## 势力事件管理器实例
+var _event_manager: Node = null
+
+## 合成管理器实例
+var _synthesis_manager: Node = null
+
 func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
 
 	level_info = LevelInformation.new()
 	_init_faction_data()
+	# 监听战斗结束信号（触发势力事件检查）
+	var sb: Node = get_node_or_null("/root/SignalBus")
+	if sb != null and not sb.battle_ended.is_connected(_on_battle_ended):
+		sb.battle_ended.connect(_on_battle_ended)
+	# 将势力信号转发到 SignalBus（UI 层统一监听）
+	if sb != null:
+		faction_reputation_changed.connect(sb.faction_reputation_changed.emit)
+		faction_level_up.connect(sb.faction_level_up.emit)
+		faction_store_updated.connect(sb.faction_store_updated.emit)
+		active_faction_changed.connect(sb.active_faction_changed.emit)
+		faction_skill_unlocked.connect(sb.faction_skill_unlocked.emit)
+		faction_event_generated.connect(sb.faction_event_generated.emit)
 
 func _init_faction_data() -> void:
 	var factions = CompanyDefinitions.get_all()
@@ -304,7 +338,53 @@ func get_faction_info(faction_id: String) -> Dictionary:
 		"level_progress": get_faction_progress_to_next_level(faction_id),
 		"store_inventory": get_faction_store_inventory(faction_id),
 		"controlled_levels": level_info.get_levels_for_faction(faction_id),
+		"is_active": (faction_id == active_faction),
 	}
+
+# ─────────────────────────────────────────────
+#  势力激活与变体查询
+# ─────────────────────────────────────────────
+
+## 设置当前激活势力
+func set_active_faction(faction_id: String) -> void:
+	if faction_id == active_faction:
+		return
+	# 校验势力ID有效
+	if not faction_id.is_empty():
+		var found: bool = false
+		for fid in _all_faction_ids:
+			if String(fid) == faction_id:
+				found = true
+				break
+		if not found:
+			return
+	active_faction = faction_id
+	active_faction_changed.emit(active_faction)
+
+## 获取当前激活势力ID（空字符串=未激活）
+func get_active_faction() -> String:
+	return active_faction
+
+## 获取当前激活势力的变体卡
+## 如果未激活势力，返回 null
+func get_faction_variant_card(base_card_id: String) -> CardResource:
+	if active_faction.is_empty() or base_card_id.is_empty():
+		return null
+	var lv: int = get_faction_level(active_faction)
+	if lv <= 0:
+		return null
+	return FactionCardGenerator.generate_faction_variant(base_card_id, active_faction, lv)
+
+## 检查某个势力变体是否已解锁
+func is_variant_unlocked(faction_id: String, base_card_id: String) -> bool:
+	var variant_key: String = "faction:%s:%s" % [faction_id, base_card_id]
+	return variant_key in faction_variants_unlocked
+
+## 解锁势力变体
+func unlock_variant(faction_id: String, base_card_id: String) -> void:
+	var variant_key: String = "faction:%s:%s" % [faction_id, base_card_id]
+	if not variant_key in faction_variants_unlocked:
+		faction_variants_unlocked.append(variant_key)
 
 ## 获取所有势力的信息
 func get_all_factions_info() -> Array:
@@ -403,17 +483,33 @@ func grant_instrument_quest_reward(faction_id: String, instrument_id: String) ->
 # ─────────────────────────────────────────────
 
 func save_state() -> Dictionary:
+	var skill_states: Dictionary = {}
+	for fid in faction_skill_states:
+		skill_states[fid] = faction_skill_states[fid].duplicate(true)
+	var event_state: Dictionary = {}
+	if _event_manager != null:
+		event_state = _event_manager.save_state()
+	var synthesis_state: Dictionary = {}
+	if _synthesis_manager != null:
+		synthesis_state = _synthesis_manager.save_state()
 	return {
 		"faction_reputation": faction_reputation.duplicate(true),
 		"faction_level": faction_level.duplicate(true),
 		"faction_store_inventory": faction_store_inventory.duplicate(true),
 		"unlocked_faction_instruments": unlocked_faction_instruments.duplicate(true),
+		"faction_active": active_faction,
+		"faction_variants_unlocked": faction_variants_unlocked.duplicate(),
+		"faction_skill_states": skill_states,
+		"faction_event_state": event_state,
+		"synthesis_state": synthesis_state,
 	}
 
 func load_state(data: Dictionary) -> void:
 	# 新游戏：SaveManager 传入空字典，必须整表重置（否则仍保留上一局的声望）
 	if data.is_empty():
 		_init_faction_data()
+		active_faction = ""
+		faction_variants_unlocked.clear()
 		return
 	if data.has("faction_reputation") and data["faction_reputation"] is Dictionary:
 		faction_reputation = (data["faction_reputation"] as Dictionary).duplicate(true)
@@ -425,6 +521,29 @@ func load_state(data: Dictionary) -> void:
 		faction_store_inventory = (data["faction_store_inventory"] as Dictionary).duplicate(true)
 	if data.has("unlocked_faction_instruments") and data["unlocked_faction_instruments"] is Dictionary:
 		unlocked_faction_instruments = (data["unlocked_faction_instruments"] as Dictionary).duplicate(true)
+	# 势力激活（向后兼容：旧存档无此字段→默认无势力激活）
+	if data.has("faction_active"):
+		active_faction = String(data["faction_active"])
+	else:
+		active_faction = ""
+	# 已解锁势力变体（向后兼容：旧存档无此字段→默认空数组）
+	if data.has("faction_variants_unlocked") and data["faction_variants_unlocked"] is Array:
+		faction_variants_unlocked = (data["faction_variants_unlocked"] as Array).duplicate()
+	else:
+		faction_variants_unlocked = []
+	# 技能树状态（向后兼容：旧存档无此字段→初始化默认值）
+	if data.has("faction_skill_states") and data["faction_skill_states"] is Dictionary:
+		faction_skill_states = (data["faction_skill_states"] as Dictionary).duplicate(true)
+	else:
+		_init_faction_skill_states()
+	# 事件管理器状态
+	_init_event_manager()
+	if data.has("faction_event_state") and data["faction_event_state"] is Dictionary:
+		_event_manager.load_state(data["faction_event_state"])
+	# 合成管理器状态
+	_init_synthesis_manager()
+	if data.has("synthesis_state") and data["synthesis_state"] is Dictionary:
+		_synthesis_manager.load_state(data["synthesis_state"])
 	_ensure_faction_keys_after_load()
 
 ## 读档后补全各势力键
@@ -445,6 +564,8 @@ func _ensure_faction_keys_after_load() -> void:
 			faction_store_inventory[fid] = FactionShop.get_default_store_inventory(fid)
 		if not unlocked_faction_instruments.has(fid):
 			unlocked_faction_instruments[fid] = []
+		if not faction_skill_states.has(fid):
+			faction_skill_states[fid] = FactionSkillManager.create_default_state(fid)
 
 ## 合并旧版 CompanyManager 存档中的 company_rep
 func merge_legacy_company_rep(legacy: Dictionary) -> void:
@@ -459,3 +580,124 @@ func merge_legacy_company_rep(legacy: Dictionary) -> void:
 	for fid2 in faction_reputation.keys():
 		var r: int = int(faction_reputation[fid2])
 		faction_level[fid2] = FactionReputation.get_level_from_reputation(r)
+
+# ═══════════════════════════════════════════════════
+#  势力技能树管理
+# ═══════════════════════════════════════════════════
+
+## 初始化所有势力技能状态
+func _init_faction_skill_states() -> void:
+	faction_skill_states.clear()
+	for faction_data in CompanyDefinitions.get_all():
+		var fid: String = faction_data.get("id", "")
+		if not fid.is_empty():
+			faction_skill_states[fid] = FactionSkillManager.create_default_state(fid)
+
+## 解锁势力技能
+func unlock_faction_skill(faction_id: String, skill_id: String) -> bool:
+	if not faction_skill_states.has(faction_id):
+		return false
+	var fl: int = get_faction_level(faction_id)
+	var state: Dictionary = faction_skill_states[faction_id]
+	if FactionSkillManager.unlock_skill(state, faction_id, skill_id, fl):
+		faction_skill_unlocked.emit(faction_id, skill_id)
+		return true
+	return false
+
+## 检查能否解锁技能
+func can_unlock_faction_skill(faction_id: String, skill_id: String) -> Dictionary:
+	if not faction_skill_states.has(faction_id):
+		return {"ok": false, "reason": "faction_not_found"}
+	return FactionSkillManager.can_unlock_skill(
+		faction_skill_states[faction_id], faction_id, skill_id, get_faction_level(faction_id))
+
+## 获取当前势力激活技能效果（用于战斗注入）
+func get_active_faction_skill_effects() -> Dictionary:
+	if active_faction.is_empty():
+		return {}
+	if not faction_skill_states.has(active_faction):
+		return {}
+	return FactionSkillManager.get_active_effects(faction_skill_states[active_faction], active_faction)
+
+## 添加额外技能点（任务/事件奖励）
+func add_faction_skill_bonus_points(faction_id: String, amount: int) -> void:
+	if not faction_skill_states.has(faction_id):
+		faction_skill_states[faction_id] = FactionSkillManager.create_default_state(faction_id)
+	FactionSkillManager.add_bonus_points(faction_skill_states[faction_id], amount)
+
+## 重置指定等级层的分支技能（返还点数）
+func reset_faction_skill_branch(faction_id: String, tier: int, branch: String) -> Array:
+	if not faction_skill_states.has(faction_id):
+		return []
+	return FactionSkillManager.reset_branch(faction_skill_states[faction_id], faction_id, tier, branch)
+
+## 重置整个势力技能树（返还所有点数）
+func reset_all_faction_skills(faction_id: String) -> int:
+	if not faction_skill_states.has(faction_id):
+		return 0
+	return FactionSkillManager.reset_all(faction_skill_states[faction_id])
+
+# ═══════════════════════════════════════════════════
+#  势力事件管理
+# ═══════════════════════════════════════════════════
+
+## 初始化事件管理器
+func _init_event_manager() -> void:
+	_event_manager = FactionEventManager.new()
+	_event_manager.event_generated.connect(func(evt): faction_event_generated.emit(evt))
+
+## SignalBus.battle_ended 信号处理（触发势力事件检查）
+func _on_battle_ended(_player_won: bool) -> void:
+	on_battle_ended_for_events()
+
+## 每场战斗结束后调用（触发事件检查）
+func on_battle_ended_for_events() -> void:
+	if _event_manager != null:
+		_event_manager.on_battle_ended()
+
+## 获取活跃事件
+func get_active_event() -> Dictionary:
+	if _event_manager != null:
+		return _event_manager.active_event.duplicate(true)
+	return {}
+
+## 解决事件
+func resolve_faction_event(choice: String) -> Dictionary:
+	if _event_manager != null:
+		return _event_manager.resolve_event(choice)
+	return {}
+
+## 获取事件忠诚度
+func get_faction_event_loyalty(faction_id: String) -> float:
+	if _event_manager != null:
+		return _event_manager.get_loyalty(faction_id)
+	return 50.0
+
+# ═══════════════════════════════════════════════════
+#  合成管理
+# ═══════════════════════════════════════════════════
+
+## 初始化合成管理器
+func _init_synthesis_manager() -> void:
+	_synthesis_manager = SynthesisManager.new()
+
+## 获取合成管理器
+func get_synthesis_manager() -> Node:
+	return _synthesis_manager
+
+## 获取势力变体的基础卡ID（供合成系统使用）
+func get_faction_variant_base_id(card_id: String) -> String:
+	if card_id.begins_with("faction:"):
+		var parts: PackedStringArray = card_id.split(":")
+		if parts.size() >= 3:
+			return parts[2]
+	return ""
+
+## 获取势力显示名称
+func get_faction_display_name(faction_id: String) -> String:
+	var cd: Dictionary = CompanyDefinitions.get_by_id(faction_id)
+	return cd.get("name", faction_id)
+
+## 获取势力声望（供FactionEventManager使用）
+func get_faction_reputation(faction_id: String) -> int:
+	return int(faction_reputation.get(faction_id, 0))

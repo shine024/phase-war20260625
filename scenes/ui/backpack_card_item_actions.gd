@@ -14,7 +14,7 @@ static func on_mouse_entered(item: PanelContainer) -> void:
 	if item.card == null:
 		return
 	item._affix_hover_seq += 1
-	var seq := item._affix_hover_seq
+	var seq: int = item._affix_hover_seq
 	var tree := item.get_tree()
 	if tree == null or not is_instance_valid(tree):
 		return

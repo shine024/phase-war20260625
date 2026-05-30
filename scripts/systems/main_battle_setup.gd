@@ -30,7 +30,7 @@ func run_start_battle_sequence() -> void:
 		if main.bottom_function_bar:
 			main.bottom_function_bar.set_pause_text("暂停")
 	show_battle()
-	var battlefield = main._get_battlefield()
+	var battlefield: Node2D = main._get_battlefield()
 	if not battlefield:
 		if main.bottom_function_bar:
 			main.bottom_function_bar.set_start_battle_text("开始战斗")
@@ -59,15 +59,15 @@ func show_battle() -> void:
 	if main.battle_container:
 		main.battle_container.visible = true
 	# 性能优化：只在战斗时持续渲染 SubViewport
-	var viewport = main.get_node_or_null("BattleContainer/SubViewportContainer/SubViewport")
+	var viewport: Node = main.get_node_or_null("BattleContainer/SubViewportContainer/SubViewport")
 	if viewport:
 		viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	var battlefield = main._get_battlefield()
+	var battlefield: Node2D = main._get_battlefield()
 	if battlefield:
 		if battlefield.has_method("ensure_phase_driver"):
 			battlefield.ensure_phase_driver()
-		var pu = battlefield.get_node_or_null("PlayerUnits")
-		var eu = battlefield.get_node_or_null("EnemyUnits")
+		var pu: Node = battlefield.get_node_or_null("PlayerUnits")
+		var eu: Node = battlefield.get_node_or_null("EnemyUnits")
 		if pu:
 			for c in pu.get_children():
 				c.queue_free()

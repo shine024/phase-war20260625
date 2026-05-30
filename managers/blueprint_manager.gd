@@ -591,7 +591,41 @@ func manufacture_card(card_id: String) -> CardResource:
 
 func can_manufacture(card_id: String) -> bool:
 	var lookup_id: String = _normalize_blueprint_id(card_id)
-	return is_blueprint_unlocked(lookup_id)
+	if not is_blueprint_unlocked(lookup_id):
+		return false
+	# 非专属卡：蓝图已解锁即可制造
+	if not _is_exclusive_card(lookup_id):
+		return true
+	# 专属卡：需检查势力条件
+	return _is_exclusive_card_available(lookup_id)
+
+## 检查是否为势力专属卡
+func _is_exclusive_card(card_id: String) -> bool:
+	var ExclusiveCards = preload("res://data/faction_exclusive_cards.gd")
+	return ExclusiveCards.is_exclusive_card(card_id)
+
+## 获取蓝图的势力分支（供合成系统使用）
+## 势力变体卡的 card_id 格式为 faction:{faction_id}:{base_card_id}
+func get_blueprint_faction_branch(card_id: String) -> String:
+	if card_id.begins_with("faction:"):
+		var parts: PackedStringArray = card_id.split(":")
+		if parts.size() >= 2:
+			return parts[1]
+	return ""
+
+## 检查势力专属卡是否可用
+func _is_exclusive_card_available(card_id: String) -> bool:
+	var ExclusiveCards = preload("res://data/faction_exclusive_cards.gd")
+	if not ExclusiveCards.is_exclusive_card(card_id):
+		return true  # 非专属卡始终可用
+	var faction_id: String = ExclusiveCards.get_exclusive_faction(card_id)
+	var min_lv: int = ExclusiveCards.get_min_faction_level(card_id)
+	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
+	if fsm == null:
+		return false
+	if fsm.get_active_faction() != faction_id:
+		return false
+	return fsm.get_faction_level(faction_id) >= min_lv
 
 func get_manufacture_info(card_id: String) -> Dictionary:
 	var lookup_id: String = _normalize_blueprint_id(card_id)

@@ -87,6 +87,22 @@ const GC = preload("res://resources/game_constants.gd")
 
 ## 多武器槽（每项 Dictionary：damage, range, interval, timer）
 ## 空数组=单武器模式，使用 base_damage/base_range/base_interval
+
+# ─────────────────────────────────────────────
+#  势力变体元数据（运行时，非序列化）
+# ─────────────────────────────────────────────
+
+## 势力ID（空字符串=非变体）
+var faction_id: String = ""
+## 势力等级（0=非变体，1-10）
+var faction_level: int = 0
+## 原始基础卡ID（空字符串=非变体）
+var base_card_id: String = ""
+## 是否为势力变体
+var is_faction_variant: bool = false
+var is_faction_exclusive: bool = false
+var is_faction_hybrid: bool = false
+var hybrid_second_faction: String = ""
 var multi_weapons: Array = []
 
 # ─────────────────────────────────────────────
@@ -374,6 +390,14 @@ func clone() -> CardResource:
 	new_card.weight_capacity = weight_capacity
 	new_card.weight = weight
 	new_card.multi_weapon_types = multi_weapon_types.duplicate()
+	# 势力变体元数据
+	new_card.faction_id = faction_id
+	new_card.faction_level = faction_level
+	new_card.base_card_id = base_card_id
+	new_card.is_faction_variant = is_faction_variant
+	new_card.is_faction_exclusive = is_faction_exclusive
+	new_card.is_faction_hybrid = is_faction_hybrid
+	new_card.hybrid_second_faction = hybrid_second_faction
 	return new_card
 
 ## 验证卡片数据的完整性

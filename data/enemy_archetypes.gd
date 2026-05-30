@@ -10,6 +10,7 @@ const _ArchColdModern = preload("res://data/enemy_archetypes_cold_modern.gd")
 const _ArchFuture = preload("res://data/enemy_archetypes_future.gd")
 
 static var _manifest_merged: Dictionary = {}
+static var _manifest_building: bool = false
 
 static func _load_json_dict(path: String, fallback: Dictionary) -> Dictionary:
 	if not FileAccess.file_exists(path):
@@ -338,6 +339,9 @@ static func _gcd(a: int, b: int) -> int:
 static func _ensure_manifest_merged() -> void:
 	if not _manifest_merged.is_empty():
 		return
+	if _manifest_building:
+		return # 防重入：避免 CapturedUnitCards → _ensure_manifest_merged 循环
+	_manifest_building = true
 	CapturedUnitCards.register_into_default_cards_cache()
 	_manifest_merged = EnemyUnitManifest.apply_capture_drops_to_archetypes(ARCHETYPES.duplicate(true))
 	for row in EnemyUnitManifest.get_entries():
@@ -349,6 +353,24 @@ static func _ensure_manifest_merged() -> void:
 			continue
 		if not _manifest_merged.has(aid):
 			_manifest_merged[aid] = sub.duplicate(true)
+	_manifest_building = false
+
+	# ─────────────────────────────────────────────
+	# 合并生成敌人的数据，确保不覆盖已存在的 display_name
+	# ─────────────────────────────────────────────
+	var gen_archetypes: Dictionary = _get_generated_archetypes()
+	for gen_id in gen_archetypes:
+		var gen_cfg: Dictionary = gen_archetypes[gen_id]
+		if not _manifest_merged.has(gen_id):
+			# 生成敌人不存在，直接添加
+			_manifest_merged[gen_id] = gen_cfg.duplicate(true)
+		else:
+			# 已存在，只合并非 display_name 字段，保留原有的中文名称
+			var existing_cfg: Dictionary = _manifest_merged[gen_id]
+			for key in gen_cfg:
+				if key != "display_name":
+					existing_cfg[key] = gen_cfg[key]
+			_manifest_merged[gen_id] = existing_cfg
 
 
 static func get_all_ids() -> Array:

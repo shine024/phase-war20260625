@@ -10,7 +10,7 @@ const BattleResultDialog = preload("res://scenes/ui/battle_result_dialog.gd")
 ## 战斗结束回调：清理待处理输入、停止持续渲染
 func on_battle_ended_clear_pending(_player_won: bool) -> void:
 	# 性能优化：战斗结束后停止持续渲染 SubViewport
-	var viewport = main.get_node_or_null("BattleContainer/SubViewportContainer/SubViewport")
+	var viewport: Node = main.get_node_or_null("BattleContainer/SubViewportContainer/SubViewport")
 	if viewport:
 		viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 	if SignalBus:
@@ -46,17 +46,17 @@ func on_result_confirmed() -> void:
 
 ## 清理战场上的所有单位节点
 func clear_battlefield_units() -> void:
-	var bf := main._get_battlefield()
+	var bf: Node2D = main._get_battlefield()
 	if bf == null:
 		return
 
-	var pu := bf.get_node_or_null("PlayerUnits")
+	var pu: Node = bf.get_node_or_null("PlayerUnits")
 	if pu:
 		for c in pu.get_children():
 			if c:
 				c.queue_free()
 
-	var eu := bf.get_node_or_null("EnemyUnits")
+	var eu: Node = bf.get_node_or_null("EnemyUnits")
 	if eu:
 		for c in eu.get_children():
 			if c:

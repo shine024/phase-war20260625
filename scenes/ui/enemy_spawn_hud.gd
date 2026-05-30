@@ -29,6 +29,13 @@ func _ready() -> void:
 	if BattleManager != null and BattleManager.battle_active:
 		_on_battle_started()
 
+func _exit_tree() -> void:
+	if SignalBus:
+		if SignalBus.battle_started.is_connected(_on_battle_started):
+			SignalBus.battle_started.disconnect(_on_battle_started)
+		if SignalBus.battle_ended.is_connected(_on_battle_ended):
+			SignalBus.battle_ended.disconnect(_on_battle_ended)
+
 func _on_battle_started() -> void:
 	_refresh_accum = REFRESH_INTERVAL_SEC
 	set_process(true)

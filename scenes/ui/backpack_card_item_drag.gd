@@ -106,7 +106,7 @@ static func start_drag(item: PanelContainer) -> void:
 		preview_icon.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		preview_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		preview_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		var tex_path3 := item._card_icon_tex_path(item.card)
+		var tex_path3: String = item._card_icon_tex_path(item.card)
 		UiAssetLoader.setup_card_unit_icon(preview_icon, item._get_cached_icon_texture(tex_path3), DRAG_PREVIEW_ICON_DISPLAY_MIN, true)
 		if preview_icon.texture != null:
 			body.add_child(preview_icon)

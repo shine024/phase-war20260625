@@ -64,6 +64,11 @@ func _agent_log(_hypothesis_id: String, _message: String, _data: Dictionary) -> 
 func _mark_loadouts_dirty() -> void:
 	_loadouts_dirty = true
 
+## 显式使 loadout 缓存失效（外部修改 loadout 数据后调用）
+func invalidate_loadout_cache() -> void:
+	_loadouts_cache.clear()
+	_loadouts_dirty = true
+
 func _ensure_plm() -> Node:
 	if _plm == null or not is_instance_valid(_plm):
 		_plm = get_node_or_null("/root/PhaseLawManager")
