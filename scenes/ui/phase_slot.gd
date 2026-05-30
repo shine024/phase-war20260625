@@ -6,6 +6,7 @@ const UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")
 const CardFrameUi = preload("res://scripts/card_frame_ui.gd")
 const CardBackgroundUi = preload("res://scripts/card_background_ui.gd")
 const CardInfoPanel = preload("res://scenes/ui/card_info_panel.gd")
+const DefaultCards = preload("res://data/default_cards.gd")
 
 ## 竖向格：窄宽高长，与背包卡、相位仪条视觉一致
 const SLOT_SIZE: Vector2 = Vector2(50, 80)
@@ -71,7 +72,7 @@ func refresh_display() -> void:
 		UiAssetLoader.setup_card_unit_icon(icon, tex, Vector2(art_w, art_h), true)
 
 	if name_label:
-		var display_name: String = "能量" if c.card_type == GameConstants.CardType.ENERGY else String(c.display_name)
+		var display_name: String = "能量" if c.card_type == GameConstants.CardType.ENERGY else DefaultCards.safe_name(c)
 		if display_name.length() > 6:
 			display_name = display_name.substr(0, 6)
 		name_label.text = display_name

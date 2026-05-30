@@ -3,6 +3,8 @@ class_name BattleHUD
 ## Battle HUD - 战斗界面抬头显示
 ## 显示：HP条、能量条、我方刷新进度、波次信息、相位仪槽位、单位信息、伤害弹出数字
 
+const DefaultCardsData = preload("res://data/default_cards.gd")
+
 var _tween: Tween
 var _wave_timer_tween: Tween
 
@@ -136,7 +138,7 @@ func _on_phase_slots_changed(slots: Array) -> void:
 		if i < slots.size():
 			var card = slots[i]
 			if card and card is CardResource:
-				var card_name = card.display_name if card.display_name else card.card_id
+				var card_name = card.display_name if card.display_name else DefaultCardsData.get_safe_display_name(card.card_id)
 				_update_phase_slot(i, card_name, true)
 			else:
 				_update_phase_slot(i, "", false)
@@ -245,7 +247,6 @@ func _play_intro_animation() -> void:
 		if panel:
 			panel.modulate.a = 0.0
 			var t = create_tween()
-			t# DELAY: i * 0.08)
 			t.tween_property(panel, "modulate:a", 1.0, 0.35).set_ease(Tween.EASE_OUT)
 
 func _make_danger_panel_style() -> StyleBoxFlat:

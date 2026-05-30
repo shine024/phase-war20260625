@@ -267,18 +267,6 @@ static func _get_blueprint_display_name(card_id: String) -> String:
 			"energy_advanced": return "高级能量卡"
 			"energy_quantum": return "量子能量卡"
 			_:
-				var card = DefaultCards.get_card_by_id(card_id)
-				return card.display_name if card else card_id
-
-	# 敌人蓝图（bp_ww1_001 等）
-	var card = DefaultCards.get_card_by_id(card_id)
-	if card:
-		return card.display_name
-
-	# 尝试 EnemyBlueprints
-	var EnemyBP = preload("res://data/enemy_blueprints.gd")
-	var ecard = EnemyBP.get_card_by_id(card_id)
-	if ecard:
-		return ecard.display_name
-
-	return card_id
+				return DefaultCards.get_safe_display_name(card_id)
+	# 敌人蓝图（bp_ww1_001 等）及其他未命中的卡牌
+	return DefaultCards.get_safe_display_name(card_id)

@@ -3,6 +3,7 @@ extends Control
 
 const GC = preload("res://resources/game_constants.gd")
 const AffixDefs = preload("res://data/affix_definitions.gd")
+const DefaultCards = preload("res://data/default_cards.gd")
 
 var _card: CardResource = null
 var _tooltip_panel: PanelContainer = null
@@ -127,7 +128,7 @@ func _refresh_content() -> void:
 	
 	# 卡牌名
 	var name_label := Label.new()
-	name_label.text = _card.display_name
+	name_label.text = _card.display_name if not _card.display_name.is_empty() else DefaultCards.get_safe_display_name(_card.card_id)
 	name_label.add_theme_font_size_override("font_size", 13)
 	name_label.add_theme_color_override("font_color", Color(0.0, 0.94, 1.0, 1.0))
 	title_hbox.add_child(name_label)

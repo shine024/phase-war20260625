@@ -54,7 +54,7 @@ func _refresh_display() -> void:
 	
 	# 基本信息显示
 	if name_label:
-		name_label.text = current_card.display_name
+		name_label.text = current_card.display_name if not current_card.display_name.is_empty() else DefaultCards.get_safe_display_name(current_card.card_id)
 	
 	if type_label:
 		var type_text = ""

@@ -6,6 +6,10 @@ const PhaseInstruments = preload("res://data/phase_instruments.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 const DEBUG_EQUIP_LOG := false
+## ── 子系统：装备/卸下/同步 ──
+const LoadoutSync = preload("res://managers/phase_instrument_loadout_sync.gd")
+var _loadout_sync: PhaseInstrumentLoadoutSync = null
+
 ## 累计相位场经验阈值（Lv1..Lv16），与每关 victory 发放的 LevelEras.get_base_xp_for_level 对齐调参
 const PHASE_FIELD_XP_THRESHOLDS: Array = [
 	0,
@@ -51,28 +55,19 @@ var _loadouts_cache: Array = []
 var _loadouts_dirty: bool = true
 var _runtime_instrument_defs: Dictionary = {} # instrument_id -> Dictionary
 var _drop_serial_counter: int = 0
+var _plm: Node
 
-#region agent log
-func _agent_log(hypothesis_id: String, message: String, data: Dictionary) -> void:
-	var f := FileAccess.open("F:/godot fair duel/phase-war/debug-585b52.log", FileAccess.WRITE_READ)
-	if f == null:
-		return
-	f.seek_end()
-	var payload := {
-		"sessionId": "585b52",
-		"runId": "equip_slow_v1",
-		"hypothesisId": hypothesis_id,
-		"location": "phase_instrument_manager.gd",
-		"message": message,
-		"data": data,
-		"timestamp": Time.get_ticks_msec()
-	}
-	f.store_line(JSON.stringify(payload))
-	f.close()
-#endregion
+## @deprecated agent log 已迁移到 DebugLogger
+func _agent_log(_hypothesis_id: String, _message: String, _data: Dictionary) -> void:
+	pass
 
 func _mark_loadouts_dirty() -> void:
 	_loadouts_dirty = true
+
+func _ensure_plm() -> Node:
+	if _plm == null or not is_instance_valid(_plm):
+		_plm = get_node_or_null("/root/PhaseLawManager")
+	return _plm
 
 func _resolve_instrument_cfg(instrument_id: String) -> Dictionary:
 	if _runtime_instrument_defs.has(instrument_id):
@@ -123,6 +118,8 @@ func _get_max_unlocked_star() -> int:
 	return max_star
 
 func _ready() -> void:
+	_loadout_sync = LoadoutSync.new()
+	_loadout_sync.setup(self)
 	_init_unlocked_instruments()
 	_set_default_instrument_if_needed()
 	_rebuild_slots()
@@ -358,22 +355,23 @@ func _compact_law_ids_from_current_slots() -> Dictionary:
 	}
 
 func _apply_law_slots_to_plm() -> bool:
-	if PhaseLawManager == null or not PhaseLawManager.has_method("set_equipped_laws"):
+	_ensure_plm()
+	if not _plm or not _plm.has_method("set_equipped_laws"):
 		return false
 	# 退出阶段场景树销毁中时，plm 可能已不在树内，调用其内部绝对路径查询会报错
-	if not PhaseLawManager.is_inside_tree():
+	if not _plm.is_inside_tree():
 		return false
 	var pack: Dictionary = _compact_law_ids_from_current_slots()
 	for pid in pack["passives"]:
-		if PhaseLawManager.has_method("ensure_law_unlocked"):
-			PhaseLawManager.ensure_law_unlocked(String(pid))
+		if _plm.has_method("ensure_law_unlocked"):
+			_plm.ensure_law_unlocked(String(pid))
 	for aid in pack["actives"]:
-		if PhaseLawManager.has_method("ensure_law_unlocked"):
-			PhaseLawManager.ensure_law_unlocked(String(aid))
-	var budget: int = int(PhaseLawManager.battle_nano_budget) if "battle_nano_budget" in PhaseLawManager else 0
-	var ok: bool = PhaseLawManager.set_equipped_laws(pack["passives"], pack["actives"], budget)
-	if not ok and PhaseLawManager.has_method("force_sync_instrument_law_slots"):
-		PhaseLawManager.force_sync_instrument_law_slots(pack["passives"], pack["actives"])
+		if _plm.has_method("ensure_law_unlocked"):
+			_plm.ensure_law_unlocked(String(aid))
+	var budget: int = int(_plm.battle_nano_budget) if "battle_nano_budget" in _plm else 0
+	var ok: bool = _plm.set_equipped_laws(pack["passives"], pack["actives"], budget)
+	if not ok and _plm.has_method("force_sync_instrument_law_slots"):
+		_plm.force_sync_instrument_law_slots(pack["passives"], pack["actives"])
 		return true
 	return ok
 
@@ -386,8 +384,13 @@ func sync_law_cards_to_phase_law_manager() -> bool:
 func migrate_law_slots_from_phase_law_manager_if_empty() -> void:
 	if _has_any_law_card_in_slots():
 		return
-	var actives: Array = PhaseLawManager.equipped_active_laws if "equipped_active_laws" in PhaseLawManager else []
-	var passives: Array = PhaseLawManager.equipped_passive_laws if "equipped_passive_laws" in PhaseLawManager else []
+	var actives: Array = []
+	var passives: Array = []
+	_ensure_plm()
+	if _plm and "equipped_active_laws" in _plm:
+		actives = _plm.equipped_active_laws
+	if _plm and "equipped_passive_laws" in _plm:
+		passives = _plm.equipped_passive_laws
 	if actives.is_empty() and passives.is_empty():
 		return
 	var reds: Array = instrument_slots.get("red", [])
@@ -473,21 +476,22 @@ func equip_card(slot_index: int, card: CardResource, _energy_manager: Node = nul
 		return false
 
 	if color == "red" or color == "blue":
-		if PhaseLawManager == null or not PhaseLawManager.has_method("set_equipped_laws"):
+		_ensure_plm()
+		if not _plm or not _plm.has_method("set_equipped_laws"):
 			return false
 		var hyp: Dictionary = _compact_law_ids_from_slots_hypothetical(color, color_index, card)
 		for pid in hyp["passives"]:
-			if PhaseLawManager.has_method("ensure_law_unlocked"):
-				PhaseLawManager.ensure_law_unlocked(String(pid))
+			if _plm.has_method("ensure_law_unlocked"):
+				_plm.ensure_law_unlocked(String(pid))
 		for aid in hyp["actives"]:
-			if PhaseLawManager.has_method("ensure_law_unlocked"):
-				PhaseLawManager.ensure_law_unlocked(String(aid))
-		var budget: int = int(PhaseLawManager.battle_nano_budget) if "battle_nano_budget" in PhaseLawManager else 0
-		if not PhaseLawManager.set_equipped_laws(hyp["passives"], hyp["actives"], budget):
+			if _plm.has_method("ensure_law_unlocked"):
+				_plm.ensure_law_unlocked(String(aid))
+		var budget: int = int(_plm.battle_nano_budget) if "battle_nano_budget" in _plm else 0
+		if not _plm.set_equipped_laws(hyp["passives"], hyp["actives"], budget):
 			# 相位仪槽位中的法则卡是玩家实体持有卡，优先保证槽位可装配；
 			# 若战前规则校验失败，则回退为与槽位强同步（不做环境/纳米/解锁拦截）。
-			if PhaseLawManager.has_method("force_sync_instrument_law_slots"):
-				PhaseLawManager.force_sync_instrument_law_slots(hyp["passives"], hyp["actives"])
+			if _plm.has_method("force_sync_instrument_law_slots"):
+				_plm.force_sync_instrument_law_slots(hyp["passives"], hyp["actives"])
 			else:
 				print("[PhaseInstrumentManager] 法则槽装配未通过（环境/纳米/解锁）: ", card.display_name)
 				return false
@@ -853,8 +857,13 @@ func get_highest_unlocked_instrument() -> Dictionary:
 
 func get_slot_layout() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
-	var active_laws: Array = PhaseLawManager.equipped_active_laws if "equipped_active_laws" in PhaseLawManager else []
-	var passive_laws: Array = PhaseLawManager.equipped_passive_laws if "equipped_passive_laws" in PhaseLawManager else []
+	var active_laws: Array = []
+	var passive_laws: Array = []
+	_ensure_plm()
+	if _plm and "equipped_active_laws" in _plm:
+		active_laws = _plm.equipped_active_laws
+	if _plm and "equipped_passive_laws" in _plm:
+		passive_laws = _plm.equipped_passive_laws
 	var active_idx: int = 0
 	var passive_idx: int = 0
 	for color in SLOT_COLOR_ORDER:

@@ -12,26 +12,17 @@ var _law_target_indicator: Node2D = null
 var _deploy_target_indicator: Node2D = null
 var _had_pending_input: bool = false
 var _is_processing: bool = false  ## set_process(false) 空闲优化
+var _plm: Node = null  ## 安全引用：PhaseLawManager 本地缓存
 var _cast_toast = null
 
-#region agent log
-func _agent_log(hypothesis_id: String, message: String, data: Dictionary) -> void:
-	var f := FileAccess.open("debug-1776fa.log", FileAccess.WRITE_READ)
-	if f == null:
+## @deprecated agent log 已迁移到 DebugLogger
+func _agent_log(_hypothesis_id: String, _message: String, _data: Dictionary) -> void:
+	pass
+
+func _ensure_plm() -> void:
+	if _plm != null and is_instance_valid(_plm):
 		return
-	f.seek_end()
-	var payload := {
-		"sessionId": "1776fa",
-		"runId": "law_bullet_debug_v1",
-		"hypothesisId": hypothesis_id,
-		"location": "battle_click_overlay.gd",
-		"message": message,
-		"data": data,
-		"timestamp": Time.get_ticks_msec()
-	}
-	f.store_line(JSON.stringify(payload))
-	f.close()
-#endregion
+	_plm = get_node_or_null("/root/PhaseLawManager")
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -199,8 +190,6 @@ func _do_unit_pick(viewport_pos: Vector2) -> bool:
 
 	# 单位部署：点战场放置虚影
 	if SignalBus and not BattleInputState.pending_deploy_platform_card_id.is_empty():
-		if DEBUG_DEPLOY_CLICK_LOG:
-			print("[BattleClickOverlay] 检测到待部署卡牌: card_id=%s, pos=%s" % [BattleInputState.pending_deploy_platform_card_id, viewport_pos])
 		if BattleManager and BattleManager.battle_active and BattleManager.has_method("request_player_deploy_at"):
 			var cid: String = BattleInputState.pending_deploy_platform_card_id
 			if BattleManager.request_player_deploy_at(cid, viewport_pos):
@@ -229,14 +218,15 @@ func _try_cast_active_law_at(viewport_pos: Vector2) -> bool:
 	var law_id: String = BattleInputState.pending_cast_law_id
 	if law_id.is_empty():
 		return false
+	_ensure_plm()
 	#region agent log
 	_agent_log("H1_cast_gate", "cast_attempt_entry", {
 		"law_id": law_id,
 		"viewport_pos": viewport_pos,
-		"has_plm": PhaseLawManager != null
+		"has_plm": _plm != null
 	})
 	#endregion
-	if PhaseLawManager and PhaseLawManager.has_method("can_cast") and PhaseLawManager.has_method("record_cast"):
+	if _plm and _plm.has_method("can_cast") and _plm.has_method("record_cast"):
 		var current_energy: float = 0.0
 		if EnergyManager and EnergyManager.has_method("get_current"):
 			current_energy = EnergyManager.get_current()
@@ -253,7 +243,7 @@ func _try_cast_active_law_at(viewport_pos: Vector2) -> bool:
 			var pu: Node = bf.get_player_units_node()
 			if pu:
 				extra["friendly_units"] = pu.get_child_count()
-		var can_cast_now: bool = PhaseLawManager.can_cast(law_id, current_energy, extra)
+		var can_cast_now: bool = _plm.can_cast(law_id, current_energy, extra)
 		#region agent log
 		_agent_log("H1_cast_gate", "cast_gate_checked", {
 			"law_id": law_id,
@@ -277,7 +267,7 @@ func _try_cast_active_law_at(viewport_pos: Vector2) -> bool:
 				BattleInputState.pending_cast_law_origin_global = Vector2.ZERO
 		else:
 			var fail_reason: String = ""
-			var equipped_check = PhaseLawManager._resolve_equipped_active_key(law_id) if PhaseLawManager.has_method("_resolve_equipped_active_key") else ""
+			var equipped_check = _plm._resolve_equipped_active_key(law_id) if _plm.has_method("_resolve_equipped_active_key") else ""
 			if equipped_check.is_empty():
 				fail_reason = "法则未正确装配"
 			else:
@@ -287,7 +277,7 @@ func _try_cast_active_law_at(viewport_pos: Vector2) -> bool:
 				var need_nano: int = int(bc.get("nano", 0))
 				var casts_used: int = 0
 				var casts_limit: int = 999999
-				var active_states: Dictionary = PhaseLawManager.active_law_states if "active_law_states" in PhaseLawManager else {}
+				var active_states: Dictionary = _plm.active_law_states if "active_law_states" in _plm else {}
 				if active_states.has(law_id):
 					casts_used = int(active_states[law_id].get("casts_used", 0))
 					casts_limit = int(active_states[law_id].get("casts_limit", 999999))

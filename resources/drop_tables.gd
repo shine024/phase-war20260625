@@ -166,11 +166,11 @@ func sample_era_blueprint_display_names_for_preview(p_era: int, level_seed: int,
 			continue
 		seen[bid] = true
 		var card = DefaultCards.get_card_by_id(bid)
-		var disp: String = card.display_name if card else bid
+		var disp: String = DefaultCards.safe_name(card) if card else bid
 		if disp == bid:
 			var ecard = EnemyBlueprints.get_card_by_id(bid)
 			if ecard:
-				disp = ecard.display_name
+				disp = DefaultCards.safe_name(ecard)
 		out.append(disp)
 	return out
 

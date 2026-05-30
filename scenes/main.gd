@@ -11,7 +11,8 @@ func _play_sfx(name: String) -> void:
 
 const ActiveLawEffects = preload("res://managers/active_law_effects.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
-const BattleResultDialog = preload("res://scenes/ui/battle_result_dialog.gd")
+const MainBattleSetup = preload("res://scripts/systems/main_battle_setup.gd")
+const MainReward = preload("res://scripts/systems/main_reward.gd")
 const ToastUtils = preload("res://scripts/toast_utils.gd")
 const CardEnhancementPanelScene = preload("res://scenes/ui/card_enhancement_panel.tscn")
 const DEBUG_MAIN_LOG := false
@@ -20,6 +21,8 @@ const DEBUG_LOG_PATH := "debug-22f19e.log"
 var _blueprints_unlocked_this_battle: Array = []
 var _phase_field_xp_before_battle: int = 0
 var _phase_field_level_before_battle: int = 1
+var _battle_setup: MainBattleSetup = null
+var _reward: MainReward = null
 var _deploy_toast: ToastUtils = null
 var _save_toast: ToastUtils = null
 
@@ -41,44 +44,14 @@ func _debug_log(hypothesis_id: String, location: String, message: String, data: 
 	f.store_line(JSON.stringify(payload))
 	f.close()
 
-#region agent log
-func _agent_log(hypothesis_id: String, message: String, data: Dictionary) -> void:
-	var f := FileAccess.open("debug-1776fa.log", FileAccess.WRITE_READ)
-	if f == null:
-		return
-	f.seek_end()
-	var payload := {
-		"sessionId": "1776fa",
-		"runId": "law_bullet_debug_v1",
-		"hypothesisId": hypothesis_id,
-		"location": "Main.gd",
-		"message": message,
-		"data": data,
-		"timestamp": Time.get_ticks_msec()
-	}
-	f.store_line(JSON.stringify(payload))
-	f.close()
-#endregion
+## @deprecated agent log 已迁移到 DebugLogger
+func _agent_log(_hypothesis_id: String, _message: String, _data: Dictionary) -> void:
+	pass
 
 
-#region agent log
-func _agent_log_67fe53(hypothesis_id: String, location: String, message: String, data: Dictionary = {}, run_id: String = "run1") -> void:
-	var payload := {
-		"sessionId": "67fe53",
-		"runId": run_id,
-		"hypothesisId": hypothesis_id,
-		"location": location,
-		"message": message,
-		"data": data,
-		"timestamp": Time.get_unix_time_from_system() * 1000
-	}
-	var f := FileAccess.open("debug-67fe53.log", FileAccess.READ_WRITE if FileAccess.file_exists("debug-67fe53.log") else FileAccess.WRITE_READ)
-	if f == null:
-		return
-	f.seek_end()
-	f.store_line(JSON.stringify(payload))
-	f.close()
-#endregion
+## @deprecated agent log 已迁移到 DebugLogger
+func _agent_log_67fe53(_hypothesis_id: String, _location: String, _message: String, _data: Dictionary = {}, _run_id: String = "run1") -> void:
+	pass
 
 
 # ── 节点引用 ──────────────────────────────────────────────────
@@ -110,15 +83,14 @@ func _ready() -> void:
 		"has_center_container": has_node("PopupLayer/ManufactureOverlay/CenterContainer")
 	})
 	#endregion
-	if DEBUG_MAIN_LOG:
-		print("[Main] _ready() 被调用，主界面初始化开始")
+	## 初始化拆分模块
+	_battle_setup = MainBattleSetup.new()
+	_battle_setup.main = self
+	_reward = MainReward.new()
+	_reward.main = self
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	# 连接底部仪表栏信号
-	if DEBUG_MAIN_LOG:
-		print("[Main] 底部仪表栏检查: %s" % ("存在" if bottom_instrument_bar != null else "不存在"))
 	if bottom_instrument_bar:
-		if DEBUG_MAIN_LOG:
-			print("[Main] 连接底部仪表栏信号...")
 		bottom_instrument_bar.instrument_area_clicked.connect(_on_instrument_area_clicked)
 		bottom_instrument_bar.law_area_clicked.connect(_on_law_area_clicked)
 		bottom_instrument_bar.law_slot_clicked.connect(_on_law_slot_clicked)
@@ -462,7 +434,7 @@ func _on_law_slot_clicked(law_id: String, kind: String, origin_global: Vector2) 
 		var pim: Node = PhaseInstrumentManager
 		if pim and pim.has_method("sync_law_cards_to_phase_law_manager"):
 			pim.sync_law_cards_to_phase_law_manager()
-		var plm: Node = PhaseLawManager
+		var plm: Node = get_node_or_null("/root/PhaseLawManager")
 		if plm and "equipped_active_laws" in plm:
 			var actives: Array = plm.equipped_active_laws
 			if not actives.has(law_id):
@@ -658,51 +630,10 @@ func _on_info_pressed() -> void:
 
 # ── 战斗控制 ─────────────────────────────────────────────────
 func _on_start_battle() -> void:
-	_run_start_battle_sequence()
-
-
-func _run_start_battle_sequence() -> void:
-	_play_sfx("button")
-	# 关闭所有弹出面板
-	_close_all_overlays()
-	if bottom_function_bar:
-		var phase_master_ui: bool = (
-			GameManager
-			and GameManager.has_method("is_phase_master_battle")
-			and GameManager.is_phase_master_battle()
-		)
-		if phase_master_ui:
-			bottom_function_bar.set_start_battle_text("战斗中")
-		else:
-			bottom_function_bar.set_start_battle_text("格子布阵")
-	var tree := get_tree()
-	if tree:
-		tree.paused = false
-		if bottom_function_bar:
-			bottom_function_bar.set_pause_text("暂停")
-	_show_battle()
-	var battlefield = _get_battlefield()
-	if not battlefield:
-		if bottom_function_bar:
-			bottom_function_bar.set_start_battle_text("开始战斗")
-		return
-	var plm = PhaseLawManager
-	var actives: Array = []
-	if plm and "equipped_active_laws" in plm:
-		actives = plm.equipped_active_laws
-	_blueprints_unlocked_this_battle.clear()
-	var pim: Node = PhaseInstrumentManager
-	if pim and pim.has_method("get_phase_field_xp_progress"):
-		var phase_prog: Dictionary = pim.get_phase_field_xp_progress()
-		_phase_field_xp_before_battle = int(phase_prog.get("xp", 0))
-		_phase_field_level_before_battle = int(phase_prog.get("level", 1))
-	if GameManager:
-		GameManager.set_battle_scene(battlefield)
-		call_deferred("_deferred_go_to_battle")
+	_battle_setup.on_start_battle()
 
 func _deferred_go_to_battle() -> void:
-	if GameManager:
-		GameManager.go_to_battle()
+	_battle_setup.deferred_go_to_battle()
 
 func _on_pause_pressed() -> void:
 	var tree := get_tree()
@@ -738,29 +669,7 @@ func _close_all_overlays() -> void:
 
 # ── 战场显示控制 ─────────────────────────────────────────────
 func _show_battle() -> void:
-	if battle_container:
-		battle_container.visible = true
-	# 性能优化：只在战斗时持续渲染 SubViewport
-	var viewport = get_node_or_null("BattleContainer/SubViewportContainer/SubViewport")
-	if viewport:
-		viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	var battlefield = _get_battlefield()
-	if battlefield:
-		if battlefield.has_method("ensure_phase_driver"):
-			battlefield.ensure_phase_driver()
-		var pu = battlefield.get_node_or_null("PlayerUnits")
-		var eu = battlefield.get_node_or_null("EnemyUnits")
-		if pu:
-			for c in pu.get_children():
-				c.queue_free()
-		if eu:
-			for c in eu.get_children():
-				c.queue_free()
-		var enemy_driver := battlefield.get_node_or_null("EnemyPhaseFieldDriver")
-		if enemy_driver != null and is_instance_valid(enemy_driver):
-			if enemy_driver.has_method("stop_production"):
-				enemy_driver.stop_production()
-			enemy_driver.queue_free()
+	_battle_setup.show_battle()
 
 func _get_battlefield() -> Node2D:
 	return get_node_or_null("BattleContainer/SubViewportContainer/SubViewport/Battlefield") as Node2D
@@ -794,13 +703,8 @@ func _restore_subviewport_if_needed() -> void:
 		vp.render_target_update_mode = SubViewport.UPDATE_ONCE
 
 # ── 战斗相关回调 ─────────────────────────────────────────────
-func _on_battle_ended_clear_pending(_player_won: bool) -> void:
-	# 性能优化：战斗结束后停止持续渲染 SubViewport
-	var viewport = get_node_or_null("BattleContainer/SubViewportContainer/SubViewport")
-	if viewport:
-		viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
-	if SignalBus:
-		BattleInputState.clear_all_pending()
+func _on_battle_ended_clear_pending(player_won: bool) -> void:
+	_reward.on_battle_ended_clear_pending(player_won)
 
 func _on_player_deploy_failed(_reason_code: String, message: String) -> void:
 	_show_deploy_failure_toast(message)
@@ -836,58 +740,25 @@ func _on_active_law_cast_at(law_id: String, world_pos: Vector2) -> void:
 	bf.add_child(effect)
 	ActiveLawEffects.apply_active_law_effect(law_id, world_pos, bf)
 	# 记录施放：扣除纳米材料、递增施放次数、应用环境变化
-	if PhaseLawManager and PhaseLawManager.has_method("record_cast"):
-		PhaseLawManager.record_cast(law_id)
+	var plm := get_node_or_null("/root/PhaseLawManager")
+	if plm and plm.has_method("record_cast"):
+		plm.record_cast(law_id)
 	if SignalBus and SignalBus.has_signal("phase_law_cast"):
 		var fam: String = PhaseLaws.get_family(law_id)
 		SignalBus.phase_law_cast.emit(law_id, world_pos, fam)
 
 func _on_blueprint_unlocked(card_id: String) -> void:
-	if not _blueprints_unlocked_this_battle.has(card_id):
-		_blueprints_unlocked_this_battle.append(card_id)
+	_reward.on_blueprint_unlocked(card_id)
 
 # ── 战斗结果 ─────────────────────────────────────────────────
 func show_battle_result(player_won: bool) -> void:
-	var reward_summary: Dictionary = {}
-	if GameManager != null and ("last_battle_reward_summary" in GameManager):
-		reward_summary = GameManager.last_battle_reward_summary
-	BattleResultDialog.create(self, player_won, _blueprints_unlocked_this_battle, \
-		_phase_field_xp_before_battle, _phase_field_level_before_battle, reward_summary)
-	_blueprints_unlocked_this_battle.clear()
+	_reward.show_battle_result(player_won)
 
 func _on_result_confirmed() -> void:
-	_clear_battlefield_units()
-	if SignalBus:
-		BattleInputState.clear_all_pending()
-	if bottom_function_bar:
-		bottom_function_bar.set_start_battle_text("开始战斗")
-	if GameManager:
-		GameManager.return_to_prep()
-	# 刷新底部仪表栏
-	if bottom_instrument_bar and bottom_instrument_bar.has_method("refresh"):
-		bottom_instrument_bar.refresh()
-	_update_level_display()
+	_reward.on_result_confirmed()
 
 func _clear_battlefield_units() -> void:
-	var bf := _get_battlefield()
-	if bf == null:
-		return
-
-	var pu := bf.get_node_or_null("PlayerUnits")
-	if pu:
-		for c in pu.get_children():
-			if c:
-				c.queue_free()
-
-	var eu := bf.get_node_or_null("EnemyUnits")
-	if eu:
-		for c in eu.get_children():
-			if c:
-				c.queue_free()
-
-	# 清理临时节点（须保留 BattleSlotGrid，否则下一场无法部署）
-	if bf.has_method("prune_transient_children"):
-		bf.prune_transient_children()
+	_reward.clear_battlefield_units()
 
 ## 打开相位仪选择面板
 func _open_phase_instrument_selector() -> void:
@@ -936,23 +807,17 @@ func _setup_new_managers() -> void:
 func _start_tutorial_if_needed() -> void:
 	var tutorial_manager = get_node_or_null("/root/TutorialProgressionManager")
 	if tutorial_manager and tutorial_manager.has_method("should_show_tutorial") and tutorial_manager.should_show_tutorial():
-		if DEBUG_MAIN_LOG:
-			print("[Main] 应该显示新手教程")
-		# 暂时不自动启动教程，避免潜在问题
+		pass  # 暂时不自动启动教程，避免潜在问题
 
 ## 初始化日常任务
 func _init_daily_tasks() -> void:
 	var task_manager = get_node_or_null("/root/DailyTaskManager")
 	if task_manager:
 		task_manager.refresh_daily_tasks()
-		if DEBUG_MAIN_LOG:
-			print("[Main] 日常任务已初始化")
 
 ## 集成新系统
 func _integrate_new_systems() -> void:
-	# 暂时跳过系统集成，直到新系统完全就绪
-	if DEBUG_MAIN_LOG:
-		print("[Main] 跳过新系统集成")
+	pass  # 暂时跳过系统集成，直到新系统完全就绪
 
 func _exit_tree() -> void:
 	if _deploy_toast:

@@ -56,18 +56,45 @@ static func calculate_damage(
 	var final_damage = base_damage * (100.0 / (100.0 + def))
 
 	# 5. 强化加成(百分比)
+	# Lv1-8: 1.0 + level × 0.05; Lv9: 1.50; Lv10: 1.60
 	if attacker_enhance_level > 0:
-		var enhance_mult = 1.0 + float(attacker_enhance_level) * 0.05
-		if attacker_enhance_level >= 9:
-			enhance_mult = 1.50  # Lv9 nonlinear
-		elif attacker_enhance_level >= 10:
-			enhance_mult = 1.60  # Lv10 nonlinear
+		var enhance_mult: float
+		if attacker_enhance_level >= 10:
+			enhance_mult = 1.60  # Lv10
+		elif attacker_enhance_level >= 9:
+			enhance_mult = 1.50  # Lv9
+		else:
+			enhance_mult = 1.0 + float(attacker_enhance_level) * 0.05
 		final_damage *= enhance_mult
 
-	# 6. 改造加成 (placeholder - mod system in Phase 3)
-	# final_damage *= get_mod_damage_multiplier(attacker_mods)
+	# 6. 改造加成
+	if attacker_mods and not attacker_mods.is_empty():
+		final_damage *= get_mod_damage_multiplier(attacker_mods, target_stats.combat_kind)
 
 	return final_damage
+
+## 计算改造伤害倍率
+## 遍历已装配的 MOD 列表，累加 attack_multiplier（条件型仅当目标匹配时生效）
+static func get_mod_damage_multiplier(mods: Array, target_combat_kind: int) -> float:
+	var ModEffects = preload("res://data/mod_effects.gd")
+	var total_mult := 1.0
+	for mod_id in mods:
+		if mod_id is not String:
+			continue
+		var mod_def: Dictionary = ModEffects.get_mod_info(mod_id)
+		if mod_def.is_empty():
+			continue
+		var attack_mult: float = float(mod_def.get("attack_multiplier", 1.0))
+		# 条件型改造：仅当目标类型匹配时才生效
+		var condition_type: String = String(mod_def.get("condition_type", ""))
+		if condition_type == "vs_armor" and target_combat_kind != GC.CombatKind.ARMOR:
+			attack_mult = 1.0
+		elif condition_type == "vs_light" and target_combat_kind != GC.CombatKind.LIGHT:
+			attack_mult = 1.0
+		elif condition_type == "vs_air" and target_combat_kind != GC.CombatKind.AIR:
+			attack_mult = 1.0
+		total_mult *= attack_mult
+	return total_mult
 
 ## 完整伤害计算（带max_range参数版）
 static func calculate_damage_with_range(
@@ -101,12 +128,18 @@ static func calculate_damage_with_range(
 
 	# 5. 强化加成
 	if attacker_enhance_level > 0:
-		var enhance_mult = 1.0 + float(attacker_enhance_level) * 0.05
-		if attacker_enhance_level >= 9:
-			enhance_mult = 1.50
-		elif attacker_enhance_level >= 10:
+		var enhance_mult: float
+		if attacker_enhance_level >= 10:
 			enhance_mult = 1.60
+		elif attacker_enhance_level >= 9:
+			enhance_mult = 1.50
+		else:
+			enhance_mult = 1.0 + float(attacker_enhance_level) * 0.05
 		final_damage *= enhance_mult
+
+	# 6. 改造加成
+	if attacker_mods and not attacker_mods.is_empty():
+		final_damage *= get_mod_damage_multiplier(attacker_mods, target_stats.combat_kind)
 
 	return final_damage
 

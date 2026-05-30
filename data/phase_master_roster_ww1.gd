@@ -1,0 +1,773 @@
+extends RefCounted
+class_name PhaseMasterRosterWw1
+## 一战 (World War I) 相位师名册
+## Auto-generated from phase_master_roster.gd split
+
+const ALL_MASTERS: Array[Dictionary] = [
+{
+  "id": "player_master_001",
+  "name": "初始相位师·艾拉",
+  "title": "觉醒者",
+  "faction": "neutral",
+  "side": "player",
+  "phase_instrument": "steel_guardian_mk1",
+  "unit_limit": 5,
+  "engraved_affixes": [],
+  "traits": [
+{
+      "id": "newbie_luck",
+      "name": "新手好运",
+      "description": "首次通关每关额外获得10%资源",
+    }
+  ],
+  "active_spells": [
+{
+      "id": "basic_strike",
+      "name": "相位冲击",
+      "cooldown": 8.0,
+      "mana_cost": 30,
+      "effect": "single_damage",
+      "params": {
+        "damage": 150,
+      },
+    }
+  ],
+  "passive_spells": [
+{
+      "id": "energy_saver",
+      "name": "节能模式",
+      "effect": "deploy_cost_reduction",
+      "params": {
+        "reduction": 0.1,
+      },
+    }
+  ],
+  "equipment": {
+    "platforms": [
+      "steel_fortress_basic"
+    ],
+    "weapons": [
+      "steel_machinegun_basic"
+    ],
+    "energy_cards": [
+      "energy_start_1"
+    ],
+  },
+},
+{
+  "id": "player_master_002",
+  "name": "铁壁守卫·格伦",
+  "title": "磐石之心",
+  "faction": "iron_bastion",
+  "side": "player",
+  "phase_instrument": "steel_guardian_mk2",
+  "unit_limit": 6,
+  "engraved_affixes": [
+{
+      "engraving_id": "trench_armor",
+      "progress": 0.5,
+      "active": true,
+    }
+  ],
+  "traits": [
+{
+      "id": "iron_wall_basic",
+      "name": "铁壁之心",
+      "description": "防御+15%，友军5%伤害减免",
+    }
+  ],
+  "active_spells": [
+{
+      "id": "steel_barrier",
+      "name": "钢铁屏障",
+      "cooldown": 20.0,
+      "mana_cost": 80,
+      "effect": "create_barrier",
+      "params": {
+        "duration": 8.0,
+      },
+    },
+{
+      "id": "repair_nanites",
+      "name": "修复纳米虫",
+      "cooldown": 25.0,
+      "mana_cost": 60,
+      "effect": "heal_all",
+      "params": {
+        "heal_percent": 0.15,
+      },
+    }
+  ],
+  "passive_spells": [
+{
+      "id": "fortify",
+      "name": "坚守",
+      "effect": "static_defense_boost",
+      "params": {
+        "boost": 0.1,
+      },
+    }
+  ],
+  "equipment": {
+    "platforms": [
+      "steel_fortress_basic",
+      "steel_titan_basic"
+    ],
+    "weapons": [
+      "steel_machinegun_basic",
+      "steel_cannon_basic"
+    ],
+    "energy_cards": [
+      "energy_start_4"
+    ],
+  },
+},
+{
+  "id": "player_master_003",
+  "name": "烈焰舞者·莉娜",
+  "title": "灼热之焰",
+  "faction": "crimson_blade",
+  "side": "player",
+  "phase_instrument": "flame_destroyer_mk1",
+  "unit_limit": 6,
+  "engraved_affixes": [
+{
+      "engraving_id": "radiation_penetration",
+      "progress": 0.3,
+      "active": true,
+    }
+  ],
+  "traits": [
+{
+      "id": "flame_heart",
+      "name": "炎心",
+      "description": "火焰伤害+15%，攻击附带轻微燃烧",
+    }
+  ],
+  "active_spells": [
+{
+      "id": "fire_bolt",
+      "name": "火球术",
+      "cooldown": 10.0,
+      "mana_cost": 50,
+      "effect": "fireball",
+      "params": {
+        "damage": 200,
+        "burn_duration": 3.0,
+      },
+    },
+{
+      "id": "inferno_wall",
+      "name": "烈焰之墙",
+      "cooldown": 18.0,
+      "mana_cost": 90,
+      "effect": "fire_wall",
+      "params": {
+        "damage": 180,
+        "duration": 5.0,
+      },
+    }
+  ],
+  "passive_spells": [
+{
+      "id": "burning_spirit",
+      "name": "燃烧之魂",
+      "effect": "kill_explosion",
+      "params": {
+        "chance": 0.2,
+        "damage": 80,
+        "radius": 60,
+      },
+    }
+  ],
+  "equipment": {
+    "platforms": [
+      "flame_raider_basic"
+    ],
+    "weapons": [
+      "flame_thrower_basic",
+      "incendiary_mortar_basic"
+    ],
+    "energy_cards": [
+      "energy_start_7"
+    ],
+  },
+},
+{
+  "id": "player_master_004",
+  "name": "雷鸣猎手·凯恩",
+  "title": "闪电追踪者",
+  "faction": "sun_forge",
+  "side": "player",
+  "phase_instrument": "thunder_storm_mk1",
+  "unit_limit": 5,
+  "engraved_affixes": [
+{
+      "engraving_id": "chain_conduct",
+      "progress": 0.4,
+      "active": true,
+    }
+  ],
+  "traits": [
+{
+      "id": "storm_eye",
+      "name": "风暴之眼",
+      "description": "暴击率+8%，暴击伤害+20%",
+    }
+  ],
+  "active_spells": [
+{
+      "id": "lightning_bolt",
+      "name": "闪电箭",
+      "cooldown": 8.0,
+      "mana_cost": 45,
+      "effect": "single_lightning",
+      "params": {
+        "damage": 250,
+        "stun_chance": 0.3,
+      },
+    },
+{
+      "id": "static_trap",
+      "name": "静电陷阱",
+      "cooldown": 15.0,
+      "mana_cost": 70,
+      "effect": "trap_aoe",
+      "params": {
+        "damage": 180,
+        "slow_percent": 0.3,
+      },
+    }
+  ],
+  "passive_spells": [
+{
+      "id": "static_charge",
+      "name": "静电蓄能",
+      "effect": "attack_speed_stack",
+      "params": {
+        "per_hit": 0.05,
+        "max_stacks": 10,
+      },
+    }
+  ],
+  "equipment": {
+    "platforms": [
+      "thunter_striker_basic"
+    ],
+    "weapons": [
+      "tesla_coil_basic"
+    ],
+    "energy_cards": [
+      "energy_start_5"
+    ],
+  },
+},
+{
+  "id": "player_master_005",
+  "name": "虚空窥视者·莫恩",
+  "title": "维度旅行者",
+  "faction": "void_walkers",
+  "side": "player",
+  "phase_instrument": "void_walker_mk1",
+  "unit_limit": 5,
+  "engraved_affixes": [
+{
+      "engraving_id": "quantum_drain",
+      "progress": 0.6,
+      "active": true,
+    }
+  ],
+  "traits": [
+{
+      "id": "void_insight",
+      "name": "虚空洞察",
+      "description": "法术强度+12%，能量吸取+3%",
+    }
+  ],
+  "active_spells": [
+{
+      "id": "phase_shift_p",
+      "name": "相位转移",
+      "cooldown": 12.0,
+      "mana_cost": 40,
+      "effect": "teleport_ally",
+    },
+{
+      "id": "time_dilation",
+      "name": "时间膨胀",
+      "cooldown": 20.0,
+      "mana_cost": 80,
+      "effect": "slow_all",
+      "params": {
+        "slow_percent": 0.3,
+        "duration": 4.0,
+      },
+    }
+  ],
+  "passive_spells": [
+{
+      "id": "void_lurk",
+      "name": "虚空潜伏",
+      "effect": "stealth_bonus",
+      "params": {
+        "bonus": 0.15,
+      },
+    }
+  ],
+  "equipment": {
+    "platforms": [
+      "void_stealth_basic"
+    ],
+    "weapons": [
+      "void_lance_basic"
+    ],
+    "energy_cards": [
+      "energy_start_2"
+    ],
+  },
+},
+{
+  "id": "player_master_006",
+  "name": "灰烬贤者·维恩",
+  "title": "余烬守望",
+  "faction": "ashen_order",
+  "side": "player",
+  "phase_instrument": "steel_guardian_mk2",
+  "unit_limit": 7,
+  "engraved_affixes": [
+{
+      "engraving_id": "trench_endurance",
+      "progress": 0.8,
+      "active": true,
+    },
+{
+      "engraving_id": "trench_armor",
+      "progress": 0.4,
+      "active": false,
+    }
+  ],
+  "traits": [
+{
+      "id": "ashen_persistence",
+      "name": "灰烬不灭",
+      "description": "友军死亡时3秒后恢复20%HP重生一次",
+    }
+  ],
+  "active_spells": [
+{
+      "id": "ash_storm",
+      "name": "灰烬风暴",
+      "cooldown": 22.0,
+      "mana_cost": 100,
+      "effect": "aoe_dot",
+      "params": {
+        "damage": 100,
+        "duration": 6.0,
+      },
+    },
+{
+      "id": "ember_shield",
+      "name": "余烬护盾",
+      "cooldown": 28.0,
+      "mana_cost": 80,
+      "effect": "shield_break_damage",
+      "params": {
+        "shield_amount": 300,
+        "break_damage": 100,
+      },
+    }
+  ],
+  "passive_spells": [
+{
+      "id": "slow_burn",
+      "name": "缓燃",
+      "effect": "damage_reduction",
+      "params": {
+        "reduction": 0.08,
+      },
+    },
+{
+      "id": "ash_recall",
+      "name": "灰烬召回",
+      "effect": "auto_heal_lowest",
+      "params": {
+        "interval": 30.0,
+        "heal_percent": 0.1,
+      },
+    }
+  ],
+  "equipment": {
+    "platforms": [
+      "steel_fortress_basic",
+      "steel_titan_basic"
+    ],
+    "weapons": [
+      "steel_machinegun_basic",
+      "steel_cannon_basic"
+    ],
+    "energy_cards": [
+      "energy_start_4",
+      "energy_start_1"
+    ],
+  },
+},
+{
+  "id": "player_master_007",
+  "name": "赤刃战士·绯樱",
+  "title": "血色锋芒",
+  "faction": "crimson_blade",
+  "side": "player",
+  "phase_instrument": "flame_destroyer_mk2",
+  "unit_limit": 6,
+  "engraved_affixes": [
+{
+      "engraving_id": "radiation_penetration",
+      "progress": 0.7,
+      "active": true,
+    },
+{
+      "engraving_id": "void_siphon",
+      "progress": 0.2,
+      "active": true,
+    }
+  ],
+  "traits": [
+{
+      "id": "crimson_blade_trait",
+      "name": "赤刃本能",
+      "description": "攻击力+18%，击杀时攻速+5%（可叠加8层）",
+    }
+  ],
+  "active_spells": [
+{
+      "id": "crimson_slash",
+      "name": "赤刃斩",
+      "cooldown": 12.0,
+      "mana_cost": 70,
+      "effect": "cone_execute",
+      "params": {
+        "damage": 350,
+      },
+    },
+{
+      "id": "blood_fury",
+      "name": "血怒",
+      "cooldown": 25.0,
+      "mana_cost": 100,
+      "effect": "team_buff",
+      "params": {
+        "attack_speed_boost": 0.4,
+        "duration": 6.0,
+      },
+    }
+  ],
+  "passive_spells": [
+{
+      "id": "lifesteal_aura",
+      "name": "吸血光环",
+      "effect": "lifesteal",
+      "params": {
+        "percent": 0.08,
+      },
+    },
+{
+      "id": "berserk",
+      "name": "狂化",
+      "effect": "low_hp_atk_boost",
+      "params": {
+        "threshold": 0.4,
+        "boost": 0.25,
+      },
+    }
+  ],
+  "equipment": {
+    "platforms": [
+      "flame_raider_basic",
+      "flame_raider_advanced"
+    ],
+    "weapons": [
+      "flame_thrower_basic",
+      "flame_thrower_advanced"
+    ],
+    "energy_cards": [
+      "energy_start_7",
+      "flame_energy_basic"
+    ],
+  },
+},
+{
+  "id": "player_master_008",
+  "name": "铁壁将领·奥利弗",
+  "title": "不破之阵",
+  "faction": "iron_bastion",
+  "side": "player",
+  "phase_instrument": "steel_guardian_mk3",
+  "unit_limit": 8,
+  "engraved_affixes": [
+{
+      "engraving_id": "trench_endurance",
+      "progress": 1.0,
+      "active": true,
+    },
+{
+      "engraving_id": "trench_armor",
+      "progress": 0.9,
+      "active": true,
+    }
+  ],
+  "traits": [
+{
+      "id": "iron_command",
+      "name": "铁壁指挥",
+      "description": "防御+20%，每有1个存活友军全体防御+3%",
+    }
+  ],
+  "active_spells": [
+{
+      "id": "iron_dome_p",
+      "name": "铁穹",
+      "cooldown": 35.0,
+      "mana_cost": 120,
+      "effect": "base_shield",
+      "params": {
+        "shield_amount": 2000,
+      },
+    },
+{
+      "id": "rally",
+      "name": "集结号",
+      "cooldown": 30.0,
+      "mana_cost": 100,
+      "effect": "rally_buff",
+      "params": {
+        "all_stat_boost": 0.15,
+      },
+    },
+{
+      "id": "artillery_strike",
+      "name": "火力覆盖",
+      "cooldown": 25.0,
+      "mana_cost": 140,
+      "effect": "artillery_barrage",
+      "params": {
+        "damage_per_hit": 300,
+        "hits": 5,
+      },
+    }
+  ],
+  "passive_spells": [
+{
+      "id": "formation_bonus_p",
+      "name": "方阵",
+      "effect": "adjacent_defense",
+      "params": {
+        "bonus": 0.1,
+      },
+    },
+{
+      "id": "siege_resist_p",
+      "name": "攻城抵抗",
+      "effect": "damage_reduction_vs_type",
+      "params": {
+        "reduction": 0.3,
+      },
+    }
+  ],
+  "equipment": {
+    "platforms": [
+      "steel_fortress_basic",
+      "steel_titan_basic",
+      "steel_fortress_advanced"
+    ],
+    "weapons": [
+      "steel_machinegun_basic",
+      "steel_cannon_basic",
+      "steel_minigun_advanced"
+    ],
+    "energy_cards": [
+      "energy_start_5",
+      "steel_energy_basic"
+    ],
+  },
+},
+{
+  "id": "player_master_009",
+  "name": "霜冠法师·艾莎",
+  "title": "凛冬之息",
+  "faction": "frost_crown",
+  "side": "player",
+  "phase_instrument": "thunder_storm_mk2",
+  "unit_limit": 6,
+  "engraved_affixes": [
+{
+      "engraving_id": "emp_pulse",
+      "progress": 0.6,
+      "active": true,
+    },
+{
+      "engraving_id": "timeline_collapse",
+      "progress": 0.2,
+      "active": true,
+    }
+  ],
+  "traits": [
+{
+      "id": "frost_heart",
+      "name": "冰霜之心",
+      "description": "攻击附带减速15%持续2秒",
+    }
+  ],
+  "active_spells": [
+{
+      "id": "blizzard",
+      "name": "暴风雪",
+      "cooldown": 24.0,
+      "mana_cost": 110,
+      "effect": "aoe_slow_damage",
+      "params": {
+        "damage": 120,
+        "slow": 0.4,
+        "duration": 6.0,
+      },
+    },
+{
+      "id": "ice_wall",
+      "name": "冰墙",
+      "cooldown": 16.0,
+      "mana_cost": 60,
+      "effect": "ice_barrier",
+      "params": {
+        "duration": 8.0,
+      },
+    },
+{
+      "id": "frozen_orb",
+      "name": "寒冰宝珠",
+      "cooldown": 18.0,
+      "mana_cost": 90,
+      "effect": "projectile_freeze",
+      "params": {
+        "damage": 300,
+        "freeze_duration": 2.0,
+      },
+    }
+  ],
+  "passive_spells": [
+{
+      "id": "cold_aura",
+      "name": "寒气",
+      "effect": "slow_aura",
+      "params": {
+        "attack_speed_slow": 0.15,
+      },
+    },
+{
+      "id": "shatter",
+      "name": "碎冰",
+      "effect": "frozen_vulnerability",
+      "params": {
+        "damage_boost": 0.3,
+      },
+    }
+  ],
+  "equipment": {
+    "platforms": [
+      "thunter_striker_basic",
+      "thunter_sniper_basic"
+    ],
+    "weapons": [
+      "tesla_coil_basic",
+      "railgun_basic"
+    ],
+    "energy_cards": [
+      "energy_start_4",
+      "thunder_energy_basic"
+    ],
+  },
+},
+{
+  "id": "player_master_010",
+  "name": "阳光铸师·赫利俄斯",
+  "title": "光辉锻造者",
+  "faction": "sun_forge",
+  "side": "player",
+  "phase_instrument": "thunder_storm_mk3",
+  "unit_limit": 7,
+  "engraved_affixes": [
+{
+      "engraving_id": "chain_conduct",
+      "progress": 0.9,
+      "active": true,
+    },
+{
+      "engraving_id": "static_charge",
+      "progress": 0.5,
+      "active": true,
+    }
+  ],
+  "traits": [
+{
+      "id": "solar_radiance",
+      "name": "太阳光辉",
+      "description": "能量回复+20%，主动技能伤害+10%",
+    }
+  ],
+  "active_spells": [
+{
+      "id": "solar_beam",
+      "name": "太阳光束",
+      "cooldown": 15.0,
+      "mana_cost": 80,
+      "effect": "piercing_beam",
+      "params": {
+        "damage": 400,
+      },
+    },
+{
+      "id": "radiance_burst",
+      "name": "光辉爆发",
+      "cooldown": 20.0,
+      "mana_cost": 100,
+      "effect": "aoe_heal_damage",
+      "params": {
+        "damage": 250,
+        "heal": 100,
+      },
+    }
+  ],
+  "passive_spells": [
+{
+      "id": "energy_link",
+      "name": "能量链接",
+      "effect": "energy_share",
+      "params": {
+        "share_percent": 0.1,
+      },
+    },
+{
+      "id": "radiant_armor",
+      "name": "光辉护甲",
+      "effect": "hp_regen",
+      "params": {
+        "percent_per_sec": 0.01,
+      },
+    }
+  ],
+  "equipment": {
+    "platforms": [
+      "thunter_striker_basic",
+      "thunter_striker_advanced",
+      "thunter_sniper_advanced"
+    ],
+    "weapons": [
+      "tesla_coil_basic",
+      "tesla_coil_advanced",
+      "railgun_expert"
+    ],
+    "energy_cards": [
+      "energy_start_5",
+      "energy_start_6"
+    ],
+  },
+},
+]

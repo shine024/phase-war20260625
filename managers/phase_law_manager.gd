@@ -46,10 +46,9 @@ func _get_level_info() -> RefCounted:
 		_level_info = _LevelInfoScript.new()
 	return _level_info
 
-func _agent_log(message: String, data: Dictionary, hypothesis_id: String = "") -> void:
-	var DebugLog = get_node_or_null("/root/DebugLog")
-	if DebugLog:
-		DebugLog.agent_log("phase_law_manager.gd", message, data, hypothesis_id, "95dad8")
+## @deprecated agent log 已迁移到 DebugLogger
+func _agent_log(_message: String, _data: Dictionary, _hypothesis_id: String = "") -> void:
+	pass
 
 func _ready() -> void:
 	if Engine.is_editor_hint():

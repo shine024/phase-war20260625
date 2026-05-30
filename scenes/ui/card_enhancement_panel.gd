@@ -23,6 +23,10 @@ const MOD_SLOT_LABELS: PackedStringArray = ["A", "B", "C"]
 
 signal closed
 
+## ── 子系统：强化动画/属性预览 ──
+const EnhanceAnimSub = preload("res://scenes/ui/enhancement_animation.gd")
+var _enhance_anim: EnhancementAnimation = null
+
 # UI 组件引用
 @onready var card_list_container = $VBoxContainer/HBoxContainer/ScrollContainer/CardListContainer
 @onready var card_detail_panel = $VBoxContainer/HBoxContainer/DetailPanel
@@ -71,6 +75,8 @@ func _dbg_runtime(run_id: String, hypothesis_id: String, location: String, messa
 	# #endregion
 
 func _ready() -> void:
+	_enhance_anim = EnhanceAnimSub.new()
+	_enhance_anim.setup(self)
 	# #region agent log
 	_dbg_runtime("pre-fix", "H5", "card_enhancement_panel.gd:_ready", "card_enhancement_panel_ready_entered", {})
 	# #endregion
@@ -186,6 +192,9 @@ func _get_card_display_name(card_id: String, card_data: Variant) -> String:
 		# Support Resource/Object-based card definitions.
 		var object_name: Variant = card_data.get("display_name")
 		name_str = str(object_name if object_name != null else card_id)
+	# 如果仍等于 card_id，尝试统一安全查找
+	if name_str == card_id:
+		name_str = DefaultCards.get_safe_display_name(card_id)
 	var level = 1
 	var card_enh_mgr = get_node_or_null("/root/CardEnhancementManager")
 	if card_enh_mgr:
@@ -252,7 +261,7 @@ func _update_detail_panel() -> void:
 	
 	# 显示卡牌名称
 	var name_label = Label.new()
-	name_label.text = str(card_data.display_name if card_data else selected_card_id)
+	name_label.text = str(card_data.display_name if card_data else DefaultCards.get_safe_display_name(selected_card_id))
 	name_label.add_theme_font_size_override("font_size", 16)
 	name_label.add_theme_color_override("font_color", Color(0, 0.9, 1, 1))
 	card_detail_panel.add_child(name_label)
@@ -350,6 +359,8 @@ func _update_evolution_section(card_data: CardResource) -> void:
 	var options: Dictionary = BlueprintManager.get_evolution_options(selected_card_id)
 	var evo_1: String = String(options.get("evolution_1", ""))
 	var branches: Dictionary = options.get("faction_branches", {})
+	if evolution_branch_selector:
+		evolution_branch_selector.visible = not branches.is_empty()
 	var target_id: String = ""
 	if evolution_branch_selector:
 		_is_syncing_evolution_selector = true
@@ -612,7 +623,7 @@ func _on_star_upgrade_button_pressed() -> void:
 	if result_label:
 		if ok:
 			var new_star: int = BlueprintManager.get_blueprint_star(selected_card_id)
-			result_label.text = "升星成功：%s 现为 %d★" % [selected_card_id, new_star]
+			result_label.text = "升星成功：%s 现为 %d★" % [DefaultCards.get_safe_display_name(selected_card_id), new_star]
 			result_label.add_theme_color_override("font_color", Color(1.0, 0.88, 0.35, 1))
 		else:
 			result_label.text = "升星失败：研究点不足或已达满星。"
@@ -664,8 +675,8 @@ func _try_execute_evolution() -> void:
 	if result_label:
 		if ok:
 			var target_card: CardResource = DefaultCards.get_card_by_id(_pending_evolution_target_id)
-			var target_name: String = target_card.display_name if target_card != null else _pending_evolution_target_id
-			result_label.text = "进化成功：%s -> %s" % [selected_card_id, target_name]
+			var target_name: String = target_card.display_name if target_card != null else DefaultCards.get_safe_display_name(_pending_evolution_target_id)
+			result_label.text = "进化成功：%s -> %s" % [DefaultCards.get_safe_display_name(selected_card_id), target_name]
 			result_label.add_theme_color_override("font_color", Color(0.55, 1.0, 0.6, 1))
 			selected_card_id = _pending_evolution_target_id
 		else:

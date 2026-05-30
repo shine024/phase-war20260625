@@ -18,6 +18,13 @@ const RankDisplayUi = preload("res://scripts/rank_display_ui.gd")
 
 var _rank_badge_host: HBoxContainer
 
+## ── PhaseLawManager 安全引用缓存 ──
+var _plm: Node = null
+func _ensure_plm() -> Node:
+	if _plm == null:
+		_plm = get_node_or_null("/root/PhaseLawManager")
+	return _plm
+
 func _ready() -> void:
 	_apply_design_tokens()
 	_setup_rank_badge_host()
@@ -325,11 +332,13 @@ func _show_enemy_phase_driver(unit: Node) -> void:
 func _show_enemy_construct_unit(unit: Node) -> void:
 	var stats: UnitStats = unit.stats
 	var card_res: CardResource = DefaultCards.get_card_by_id(stats.platform_card_id)
-	if card_res != null and not card_res.display_name.is_empty():
-		name_label.text = card_res.display_name
+	var safe_name := DefaultCards.get_safe_display_name(stats.platform_card_id)
+	var dn := DefaultCards.safe_name(card_res)
+	if not dn.is_empty():
+		name_label.text = dn
 	else:
-		name_label.text = "敌方构装单位"
-	var platform_name := card_res.display_name if card_res != null and not card_res.display_name.is_empty() else DefaultCards.get_platform_display_name(stats.platform_type)
+		name_label.text = safe_name if not safe_name.is_empty() else "敌方构装单位"
+	var platform_name := dn if not dn.is_empty() else (safe_name if not safe_name.is_empty() else DefaultCards.get_platform_display_name(stats.platform_type))
 	var weapon_label_text: String = ""
 	if stats.weapons.size() > 0:
 		var weapon_names: Array = []
@@ -370,11 +379,13 @@ func _show_enemy_construct_unit(unit: Node) -> void:
 func _show_player_unit(unit: Node) -> void:
 	var stats: UnitStats = unit.stats
 	var card_res: CardResource = DefaultCards.get_card_by_id(stats.platform_card_id)
-	if card_res != null and not card_res.display_name.is_empty():
-		name_label.text = card_res.display_name
+	var safe_name := DefaultCards.get_safe_display_name(stats.platform_card_id)
+	var dn := DefaultCards.safe_name(card_res)
+	if not dn.is_empty():
+		name_label.text = dn
 	else:
-		name_label.text = "我方单位"
-	var platform_name := card_res.display_name if card_res != null and not card_res.display_name.is_empty() else DefaultCards.get_platform_display_name(stats.platform_type)
+		name_label.text = safe_name if not safe_name.is_empty() else "我方单位"
+	var platform_name := dn if not dn.is_empty() else (safe_name if not safe_name.is_empty() else DefaultCards.get_platform_display_name(stats.platform_type))
 	var weapon_label_text: String = ""
 	# 多武器：优先从 stats.weapons 里取出所有武器名称
 	if stats.weapons.size() > 0:
@@ -515,18 +526,22 @@ func _show_enemy_unit(unit: Node) -> void:
 			type_parts.append(fn)
 		var type_text := " · ".join(type_parts)
 		if type_text.is_empty():
-			type_text = "【%s】" % master_name
+			type_text = "【未知相位师】"
 		else:
-			type_text = "【%s】%s" % [master_name, type_text]
+			type_text = "【%s】%s" % [master_disp_name if not master_disp_name.is_empty() else "相位师", type_text]
 		
 		# 获取平台和武器信息
 		var platform_name := "未知平台"
 		var weapon_label_text := "未知武器"
 		if "stats" in unit:
 			var stats: UnitStats = unit.stats
-			var pm_card_res: CardResource = DefaultCards.get_card_by_id(stats.platform_card_id)
-			if pm_card_res != null and not pm_card_res.display_name.is_empty():
-				platform_name = pm_card_res.display_name
+		var pm_safe_name := DefaultCards.get_safe_display_name(stats.platform_card_id)
+		var pm_card_res: CardResource = DefaultCards.get_card_by_id(stats.platform_card_id)
+		var pm_dn := DefaultCards.safe_name(pm_card_res)
+		if not pm_dn.is_empty():
+			platform_name = pm_dn
+			elif not pm_safe_name.is_empty():
+				platform_name = pm_safe_name
 			else:
 				platform_name = DefaultCards.get_platform_display_name(stats.platform_type)
 			if stats.weapons.size() > 0:
@@ -630,9 +645,10 @@ func _show_enemy_unit(unit: Node) -> void:
 		flavor_label.text = "\u201c相位裂隙的另一侧，总有人在看着你。\u201d"
 
 func _build_phase_law_effects_for_unit(unit: Node, is_player_side: bool) -> String:
-	if not PhaseLawManager or not ("equipped_passive_laws" in PhaseLawManager):
+	var plm := _ensure_plm()
+	if not plm or not ("equipped_passive_laws" in plm):
 		return ""
-	var law_ids: Array = PhaseLawManager.equipped_passive_laws
+	var law_ids: Array = plm.equipped_passive_laws
 	if law_ids.is_empty():
 		return ""
 	var lines: Array[String] = []
@@ -658,9 +674,10 @@ func _build_phase_law_effects_for_unit(unit: Node, is_player_side: bool) -> Stri
 
 ## 构建主动法则效果描述（仅显示会影响该单位的法则）
 func _build_active_law_effects_for_unit(unit: Node, is_player_side: bool) -> String:
-	if not PhaseLawManager or not ("equipped_active_laws" in PhaseLawManager):
+	var plm := _ensure_plm()
+	if not plm or not ("equipped_active_laws" in plm):
 		return ""
-	var law_ids: Array = PhaseLawManager.equipped_active_laws
+	var law_ids: Array = plm.equipped_active_laws
 	if law_ids.is_empty():
 		return ""
 	

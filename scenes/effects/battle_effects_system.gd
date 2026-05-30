@@ -1,5 +1,6 @@
 extends Node
 ## 战斗特效系统：创建炫酷的战斗视觉效果和特效
+## 音效子系统已拆分到 battle_audio_system.gd
 
 ## 特效类型
 enum EffectType {
@@ -20,6 +21,10 @@ enum EffectType {
 	BLOCK,                 # 格挡
 	ENVIRONMENTAL           # 环境特效
 }
+
+## ── 子系统：音效 ──
+const AudioSub = preload("res://scenes/effects/battle_audio_system.gd")
+var _audio_system: BattleAudioSystem = null
 
 ## 特效配置
 var effect_config: Dictionary = {
@@ -52,6 +57,8 @@ var effects_root: Node2D = null
 var ui_effects_root: Control = null
 
 func _ready() -> void:
+	_audio_system = AudioSub.new()
+	_audio_system.setup(self)
 	_initialize_effect_system()
 	_setup_effect_pools()
 	_cache_shared_materials()
@@ -872,27 +879,15 @@ func apply_slow_motion(scale: float = 0.5, duration: float = 1.0) -> void:
 			Engine.time_scale = 1.0
 		)
 
-## 播放攻击音效
+## 播放攻击音效（委托 → BattleAudioSystem）
 func _play_attack_sound(attack_type: String) -> void:
-	if not effect_config["sound_integration"]:
-		return
+	if _audio_system:
+		_audio_system.play_attack_sound(attack_type)
 
-	if AudioManager and AudioManager.has_method("play_sfx"):
-		match attack_type:
-			"melee":
-				AudioManager.play_sfx("sword_hit")
-			"ranged":
-				AudioManager.play_sfx("arrow_hit")
-			"magic":
-				AudioManager.play_sfx("magic_cast")
-
-## 播放死亡音效
+## 播放死亡音效（委托 → BattleAudioSystem）
 func _play_death_sound() -> void:
-	if not effect_config["sound_integration"]:
-		return
-
-	if AudioManager and AudioManager.has_method("play_sfx"):
-		AudioManager.play_sfx("unit_death")
+	if _audio_system:
+		_audio_system.play_death_sound()
 
 ## 世界坐标转屏幕坐标
 func _world_to_screen(world_pos: Vector2) -> Vector2:

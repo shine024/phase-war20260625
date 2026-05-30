@@ -31,11 +31,12 @@ func refresh_list() -> void:
 	for c in button_container.get_children():
 		c.queue_free()
 	_update_hint()
-	if not PhaseLawManager:
+	var plm := get_node_or_null("/root/PhaseLawManager")
+	if not plm:
 		_active_law_ui_log("refresh_list_no_plm", {}, "H3")
 		return
-	var actives: Array = PhaseLawManager.equipped_active_laws if "equipped_active_laws" in PhaseLawManager else []
-	var states: Dictionary = PhaseLawManager.active_law_states if "active_law_states" in PhaseLawManager else {}
+	var actives: Array = plm.equipped_active_laws if "equipped_active_laws" in plm else []
+	var states: Dictionary = plm.active_law_states if "active_law_states" in plm else {}
 	_active_law_ui_log("refresh_list_before_buttons", {
 		"active_count": actives.size(),
 		"equipped_actives": actives,
@@ -82,7 +83,7 @@ func _on_law_pressed(law_id: String) -> void:
 	var pim: Node = PhaseInstrumentManager
 	if pim and pim.has_method("sync_law_cards_to_phase_law_manager"):
 		pim.sync_law_cards_to_phase_law_manager()
-	var plm: Node = PhaseLawManager
+	var plm: Node = get_node_or_null("/root/PhaseLawManager")
 	if plm and "equipped_active_laws" in plm:
 		var actives: Array = plm.equipped_active_laws
 		if not actives.has(law_id):
@@ -104,7 +105,8 @@ func _update_hint() -> void:
 		return
 	if SignalBus and not BattleInputState.pending_cast_law_id.is_empty():
 		var name_str := BattleInputState.pending_cast_law_id
-		if PhaseLawManager:
+		var plm := get_node_or_null("/root/PhaseLawManager")
+		if plm:
 			var cfg: Dictionary = PhaseLaws.get_by_id(BattleInputState.pending_cast_law_id)
 			if not cfg.is_empty():
 				name_str = cfg.get("name", name_str)

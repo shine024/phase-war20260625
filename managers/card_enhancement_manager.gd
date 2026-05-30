@@ -56,8 +56,8 @@ func get_card_base_power(card_id: String) -> int:
 	var card = DefaultCards.get_card_by_id(card_id)
 	if card == null:
 		return 0
-	# 基础战力 = HP + DMG（或其他卡牌类型的等效值）
-	return card.base_hp + card.base_damage
+	# v5.0: 基础战力直接使用 card.power 字段（设计文档§13.1定义）
+	return card.power
 
 func get_enhance_nano_cost(card_id: String, target_level: int) -> int:
 	## 计算强化到目标等级的纳米消耗 = 基础战力 x 等级系数

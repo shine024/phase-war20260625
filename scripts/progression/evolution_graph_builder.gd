@@ -26,7 +26,7 @@ static func infer_era_index(card_id: String) -> int:
 static func get_display_name(card_id: String) -> String:
 	var card: CardResource = DefaultCards.get_card_by_id(card_id)
 	if card != null:
-		return String(card.display_name)
+		return DefaultCards.safe_name(card)
 	return card_id
 
 

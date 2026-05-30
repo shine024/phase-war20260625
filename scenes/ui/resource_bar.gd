@@ -12,24 +12,9 @@ var _crystal_label: Label
 var _blueprint_count_label: Label
 var _lore_count_label: Label
 
-#region agent log
-func _agent_log(hypothesis_id: String, message: String, data: Dictionary) -> void:
-	var f := FileAccess.open("debug-8fcb79.log", FileAccess.READ_WRITE)
-	if f == null:
-		return
-	f.seek_end()
-	var payload := {
-		"sessionId": "8fcb79",
-		"runId": "energy_visibility_v1",
-		"hypothesisId": hypothesis_id,
-		"location": "scenes/ui/resource_bar.gd",
-		"message": message,
-		"data": data,
-		"timestamp": Time.get_ticks_msec()
-	}
-	f.store_line(JSON.stringify(payload))
-	f.close()
-#endregion
+## @deprecated agent log 已迁移到 DebugLogger
+func _agent_log(_hypothesis_id: String, _message: String, _data: Dictionary) -> void:
+	pass
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(0, 40)

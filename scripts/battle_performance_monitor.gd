@@ -26,10 +26,11 @@ func _log_sample() -> void:
 	var draw: float = Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)
 	var prim: float = Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)
 	var obj_n: float = Performance.get_monitor(Performance.OBJECT_COUNT)
-	print(
-		"[BattlePerfMon] FPS=%.1f | process_ms=%.2f physics_ms=%.2f | draw_calls=%.0f primitives=%.0f objects=%.0f"
-		% [fps, proc_ms, phys_ms, draw, prim, obj_n]
-	)
-	print(
-		"[BattlePerfMon] 建议在编辑器中同时打开「调试器 → 分析器」查看 Script Functions 累计时间前项。"
-	)
+	if OS.is_debug_build():
+		print(
+			"[BattlePerfMon] FPS=%.1f | process_ms=%.2f physics_ms=%.2f | draw_calls=%.0f primitives=%.0f objects=%.0f"
+			% [fps, proc_ms, phys_ms, draw, prim, obj_n]
+		)
+		print(
+			"[BattlePerfMon] 建议在编辑器中同时打开「调试器 → 分析器」查看 Script Functions 累计时间前项。"
+		)

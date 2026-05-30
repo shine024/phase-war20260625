@@ -187,6 +187,9 @@ func _add_forward_evolution_block() -> void:
 	if not e1.is_empty():
 		_add_evolution_target("E1 · 同体系", e1, "base")
 	var branches: Dictionary = opts.get("faction_branches", {})
+	if e1.is_empty() and branches.is_empty():
+		_add_line("暂无可进化路线", Color(0.6, 0.65, 0.75))
+		return
 	for faction_id in branches.keys():
 		var tid: String = String(branches[faction_id])
 		if tid.is_empty():

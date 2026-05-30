@@ -433,17 +433,9 @@ func simulate_faction_battles() -> void:
 			if target_state["cleared"] > 0:
 				target_state["cleared"] -= 1
 				attacker_state["cleared"] += 1
-				print("[模拟] %s 攻占了 %s 的1关！（当前: %s=%d, %s=%d）" % [
-					attacker_fid, target_fid,
-					attacker_fid, attacker_state["cleared"],
-					target_fid, target_state["cleared"]
-				])
 		else:
 			if attacker_state["cleared"] > 0:
 				attacker_state["cleared"] -= 1
-				print("[模拟] %s 进攻失败，丢失1关！（当前: %s=%d）" % [
-					attacker_fid, attacker_fid, attacker_state["cleared"]
-				])
 	
 	_update_npc_progress_from_faction_state()
 

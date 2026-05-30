@@ -7,7 +7,6 @@ extends Control
 
 
 func _ready() -> void:
-	print("[GlobalSaveButton] ========== 初始化开始 ==========")
 
 	# 确保在最上层显示（但不超过Godot的最大值）
 	z_index = 100  # 合理的z_index值
@@ -15,11 +14,8 @@ func _ready() -> void:
 	# 获取子节点引用
 	save_button = $SaveButton
 	notification_label = $NotificationLabel
-
-	print("[GlobalSaveButton] 子节点引用获取完成")
 	if save_button:
 		save_button.pressed.connect(_on_save_pressed)
-		print("[GlobalSaveButton] 按钮信号已连接")
 
 	# 设置按钮样式
 	_setup_button_style()
@@ -33,20 +29,12 @@ func _ready() -> void:
 	if notification_label:
 		notification_label.z_index = 102  # 通知标签在按钮上方
 
-	print("[GlobalSaveButton] 按钮可见性设置完成")
-	print("[GlobalSaveButton] GlobalSaveButton visible: ", visible)
-	print("[GlobalSaveButton] GlobalSaveButton anchors: ", anchor_left, ", ", anchor_top, ", ", anchor_right, ", ", anchor_bottom)
-	print("[GlobalSaveButton] GlobalSaveButton offsets: ", offset_left, ", ", offset_top, ", ", offset_right, ", ", offset_bottom)
-	print("[GlobalSaveButton] GlobalSaveButton z_index: ", z_index)
-
 	# 监听窗口大小变化，重新调整位置
 	if get_tree():
 		get_tree().size_changed.connect(_on_window_resized)
 
 	# 立即更新一次位置
 	call_deferred("_on_window_resized")
-
-	print("[GlobalSaveButton] ========== 初始化完成 ==========")
 
 func _setup_button_style() -> void:
 	if not save_button:
@@ -115,8 +103,6 @@ func _setup_button_style() -> void:
 	save_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 
 func _on_save_pressed() -> void:
-	print("[GlobalSaveButton] 快速存档按钮被按下")
-
 	# 禁用按钮防止重复点击
 	if save_button:
 		save_button.disabled = true
@@ -143,7 +129,8 @@ func _perform_save() -> void:
 	var success = SaveManager.save_game()
 
 	if success:
-		print("[GlobalSaveButton] 存档成功")
+		if OS.is_debug_build():
+			print("[GlobalSaveButton] 存档成功")
 		_show_notification("✅ 存档成功！", Color(0.2, 0.8, 0.2))  # 绿色
 	else:
 		print("[GlobalSaveButton] 存档失败")
@@ -159,8 +146,6 @@ func _reenable_button() -> void:
 		save_button.text = "💾 快速存档"
 
 func _on_load_pressed() -> void:
-	print("[GlobalSaveButton] 快速读档触发")
-
 	if save_button:
 		save_button.disabled = true
 		save_button.text = "读档中..."
@@ -184,7 +169,8 @@ func _perform_load() -> void:
 	var success = SaveManager.load_game()
 
 	if success:
-		print("[GlobalSaveButton] 读档成功")
+		if OS.is_debug_build():
+			print("[GlobalSaveButton] 读档成功")
 		_show_notification("📥 读档成功！", Color(0.2, 0.8, 0.2))
 	else:
 		print("[GlobalSaveButton] 读档失败")
@@ -254,13 +240,6 @@ func _on_window_resized() -> void:
 	offset_top = 15.0      # 从底部向上15px开始
 	offset_right = 135.0   # 从右边向左135px结束（15 + 120宽度）
 	offset_bottom = 55.0   # 从底部向上55px结束（15 + 40高度）
-
-	print("[GlobalSaveButton] 位置已更新到右下角")
-	print("[GlobalSaveButton] offset_left: ", offset_left, " (距离右边)")
-	print("[GlobalSaveButton] offset_top: ", offset_top, " (距离底部)")
-	print("[GlobalSaveButton] offset_right: ", offset_right)
-	print("[GlobalSaveButton] offset_bottom: ", offset_bottom)
-	print("[GlobalSaveButton] 最终位置: x=", position.x, " y=", position.y)
 
 	# 更新通知标签位置（在按钮右侧）
 	if notification_label:

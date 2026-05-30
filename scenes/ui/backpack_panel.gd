@@ -33,6 +33,9 @@ const NodeFinder = preload("res://scripts/node_finder.gd")
 const DETAIL_CARD_FACE_SIZE := Vector2(210, 294)
 const RankDisplayUi = preload("res://scripts/rank_display_ui.gd")
 const BackpackCombatPreview = preload("res://scenes/ui/backpack_combat_preview.gd")
+## ── 子系统：筛选/排序 ──
+const FilterSortSub = preload("res://scripts/systems/backpack_filter_sort.gd")
+var _filter_sort: BackpackFilterSort = null
 
 ## 与相位仪槽位、背包卡条目同尺寸（见 PhaseSlot.SLOT_SIZE）
 const CARD_SLOT_MIN: Vector2 = PhaseSlot.SLOT_SIZE
@@ -71,6 +74,8 @@ var _loading_label: Label = null
 ## ============================================================
 
 func _ready() -> void:
+	_filter_sort = FilterSortSub.new()
+	_filter_sort.setup(self)
 	add_to_group("backpack_panel")
 	# 必须先锁定列数再 setup（setup 会立刻 rebuild，不能在 rebuild 之后才设 columns）
 	var grid := get_node_or_null("VBoxOuter/ScrollContainer/CardGrid") as GridContainer
@@ -343,7 +348,7 @@ func show_card_detail(card: CardResource, _source_item: Control) -> void:
 
 	if not use_face:
 		if name_l:
-			name_l.text = card.display_name
+			name_l.text = DefaultCardsData.safe_name(card)
 		if cost_l:
 			cost_l.text = "%d⚡" % int(card.energy_cost)
 		if level_l:
@@ -459,28 +464,15 @@ func hide_card_detail() -> void:
 func emit_closed() -> void:
 	closed.emit()
 
-## 按稀有度过滤可见性
+## 按稀有度过滤可见性（委托 → BackpackFilterSort）
 func apply_rarity_filter(rarity: String) -> void:
-	var grid = get_node_or_null("VBoxOuter/ScrollContainer/CardGrid")
-	if not grid:
-		return
-	for child in grid.get_children():
-		if child.has_meta("is_resource_slot") and child.get_meta("is_resource_slot"):
-			continue
-		if child.has_method("set_card"):
-			var card: CardResource = child.card if "card" in child else null
-			if card != null and card.rarity != rarity:
-				child.visible = false
-			else:
-				child.visible = true
+	if _filter_sort:
+		_filter_sort.apply_rarity_filter(rarity)
 
-## 重置所有子节点可见性
+## 重置所有子节点可见性（委托 → BackpackFilterSort）
 func reset_visibility() -> void:
-	var grid = get_node_or_null("VBoxOuter/ScrollContainer/CardGrid")
-	if not grid:
-		return
-	for child in grid.get_children():
-		child.visible = true
+	if _filter_sort:
+		_filter_sort.reset_visibility()
 
 ## 刷新情报页显示
 func refresh_lore_pages() -> void:
@@ -920,9 +912,6 @@ func _add_stat_boost_item(grid: GridContainer, boost_id: String, count: int) -> 
 ## ============================================================
 
 func _sort_type_string_to_int(sort_type: String) -> int:
-	match sort_type:
-		"default": return BackpackData.SortType.DEFAULT
-		"name": return BackpackData.SortType.NAME
-		"cost": return BackpackData.SortType.COST
-		"rarity": return BackpackData.SortType.RARITY
-		_: return BackpackData.SortType.DEFAULT
+	if _filter_sort:
+		return _filter_sort.sort_type_string_to_int(sort_type)
+	return BackpackData.SortType.DEFAULT

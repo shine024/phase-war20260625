@@ -40,24 +40,9 @@ const BEAM_VISUAL_LEN: float = 52.0
 var _beam_pts: PackedVector2Array = PackedVector2Array([Vector2.ZERO, Vector2.ZERO])
 var _dbg_spawn_logged: bool = false
 
-#region agent log
-func _agent_log(hypothesis_id: String, message: String, data: Dictionary) -> void:
-	var f := FileAccess.open("debug-1776fa.log", FileAccess.WRITE_READ)
-	if f == null:
-		return
-	f.seek_end()
-	var payload := {
-		"sessionId": "1776fa",
-		"runId": "law_bullet_debug_v1",
-		"hypothesisId": hypothesis_id,
-		"location": "bullet.gd",
-		"message": message,
-		"data": data,
-		"timestamp": Time.get_ticks_msec()
-	}
-	f.store_line(JSON.stringify(payload))
-	f.close()
-#endregion
+## @deprecated agent log 已迁移到 DebugLogger
+func _agent_log(_hypothesis_id: String, _message: String, _data: Dictionary) -> void:
+	pass
 
 func _apply_shield_wall_mitigation(raw_damage: float, target: Node) -> float:
 	if target == null or not is_instance_valid(target):
@@ -364,12 +349,15 @@ func _on_hit(primary: Node2D) -> void:
 		# 防御减免: damage × 100/(100+def)
 		damage = damage * (100.0 / (100.0 + def_val))
 	# v5.0: 强化加成（enhance_level 乘法）
+	# Lv1-8: 1.0 + level × 0.05; Lv9: 1.50; Lv10: 1.60
 	if shooter_stats != null and shooter_stats.enhance_level > 0:
-		var enhance_mult := 1.0 + float(shooter_stats.enhance_level) * 0.05
-		if shooter_stats.enhance_level >= 9:
-			enhance_mult = 1.50
-		elif shooter_stats.enhance_level >= 10:
+		var enhance_mult: float
+		if shooter_stats.enhance_level >= 10:
 			enhance_mult = 1.60
+		elif shooter_stats.enhance_level >= 9:
+			enhance_mult = 1.50
+		else:
+			enhance_mult = 1.0 + float(shooter_stats.enhance_level) * 0.05
 		damage *= enhance_mult
 	var damage_calc: Dictionary = AffixCombatHandler.calculate_damage(
 		damage,

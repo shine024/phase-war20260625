@@ -129,17 +129,18 @@ var is_unlocked: bool = false
 #  通用辅助字段
 # ─────────────────────────────────────────────
 
-## @deprecated v5.0: 词条/附魔系统将删除。此处仅记录词条 ID 列表用于 UI 快速查询。
-## 不要直接修改此字段，使用 AffixManager 的接口操作词条。
-@export var affix_slot_ids: Array = []  # Array[String]：当前词条 ID 列表（只读镜像）
-## @deprecated v5.0: 词条/附魔系统将删除。
-@export var affix_slot_count: int = 4   # 该卡允许的最大词条数（默认4）
+## 模块化词条槽位（原 affix_slot_ids）
+## 不要直接修改此字段，使用 AffixManager 的接口操作。
+@export var affix_slot_ids: Array = []
+@export var affix_slot_count: int = 4
 
 # 卡片来源标记：true=战斗掉落成品卡，false=蓝图制造卡
 @export var is_dropped_card: bool = false
 
-# @deprecated v5.0: 星级系统已删除，改用 enhance_level
-# 保留此字段仅供存档兼容读取，新代码不应写入
+## 蓝图星级 1-9★（Blueprint Star Level）
+## v5.0 虽标记 @deprecated，但仍被 BlueprintManager/DropManager/ManufacturePanel 活跃写入
+## 作为蓝图属性（非强化等级），承载「研究点升星」的产出值
+## 不建议删除；新代码如无特殊需求不应读写此字段
 @export var star_level: int = 1
 
 

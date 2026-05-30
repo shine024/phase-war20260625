@@ -71,8 +71,6 @@ func _start_drag() -> void:
 	_drag_start_position = get_global_mouse_position()
 	_original_modulate = modulate
 
-	print("[CustomDrag] 开始拖拽: ", card.display_name)
-
 	# 创建拖拽预览
 	_drag_preview = duplicate()
 	_drag_preview.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
@@ -104,7 +102,6 @@ func _end_drag() -> void:
 	# 检查是否在槽位上方
 	var slot = _find_slot_under_mouse()
 	if slot and slot is Control:
-		print("[CustomDrag] 在槽位上方: ", slot.name)
 		# 尝试装备
 		_try_equip_to_slot(slot)
 
@@ -129,7 +126,6 @@ func _find_slot_under_mouse() -> Control:
 		phase_panel = get_node_or_null("/root/BottomInstrumentBar/PhaseInstrumentPanel")
 
 	if not phase_panel:
-		print("[CustomDrag] 找不到相位仪面板")
 		return null
 
 	# 检查所有子节点（槽位）
@@ -137,7 +133,6 @@ func _find_slot_under_mouse() -> Control:
 		if child is Control:
 			var rect = child.get_global_rect()
 			if rect.has_point(mouse_pos):
-				print("[CustomDrag] 找到槽位: ", child.name)
 				return child
 
 	return null
@@ -146,29 +141,22 @@ func _try_equip_to_slot(slot: Control) -> void:
 	# 发送信号到相位仪面板
 	if slot.has_method("get_card"):
 		# 这是有效的槽位
-		print("[CustomDrag] 尝试装备卡牌: ", card.display_name)
 
 		# 通过 SignalBus 发送装备请求
 		if SignalBus and SignalBus.has_signal("card_equipped"):
 			# 需要获取槽位索引
 			var slot_index = slot.get("slot_index") if slot.has_method("get") else -1
 			if slot_index >= 0:
-				print("[CustomDrag] 槽位索引: ", slot_index)
 				# 直接触发槽位的 drop 请求
 				if slot.has_signal("slot_drop_requested"):
 					slot.emit_signal("slot_drop_requested", slot_index, card)
-					print("[CustomDrag] 已发出 slot_drop_requested 信号")
-				else:
-					print("[CustomDrag] 槽位没有 slot_drop_requested 信号")
 
 func _hide_backpack_overlay() -> void:
 	var overlay = get_node("../../../../BackpackOverlay")
 	if overlay and overlay is Control:
 		overlay.visible = false
-		print("[CustomDrag] 隐藏 BackpackOverlay")
 
 func _show_backpack_overlay() -> void:
 	var overlay = get_node("../../../../BackpackOverlay")
 	if overlay and overlay is Control:
 		overlay.visible = true
-		print("[CustomDrag] 显示 BackpackOverlay")

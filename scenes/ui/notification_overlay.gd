@@ -206,17 +206,14 @@ func _execute_notification_action(action: Dictionary) -> void:
 
 ## 打开面板
 func _open_panel(panel_name: String) -> void:
-	print("[NotificationOverlay] 打开面板: ", panel_name)
 	# 实现打开面板的逻辑
 
 ## 导航到目标
 func _navigate_to(target: String) -> void:
-	print("[NotificationOverlay] 导航到: ", target)
 	# 实现导航逻辑
 
 ## 运行命令
 func _run_command(command: String) -> void:
-	print("[NotificationOverlay] 运行命令: ", command)
 	# 实现命令执行逻辑
 
 ## 移除最旧的通知

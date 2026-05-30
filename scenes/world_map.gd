@@ -30,6 +30,7 @@ const LevelInformation = preload("res://data/level_information.gd")
 const BasicResourcesData = preload("res://data/basic_resources.gd")
 const EnemyArchetypesData = preload("res://data/enemy_archetypes.gd")
 const EnemyBlueprintsData = preload("res://data/enemy_blueprints.gd")
+const DefaultCardsData = preload("res://data/default_cards.gd")
 const PhaseLawsData = preload("res://data/phase_laws.gd")
 const DropTablesPreview = preload("res://resources/drop_tables.gd")
 const LEVEL_COUNT: int = LevelEras.LEVEL_COUNT
@@ -92,7 +93,6 @@ func _enter_tree() -> void:
 	pass
 
 func _ready() -> void:
-	print("[WorldMap] _ready() 开始")
 	_generate_stars()
 	# 延迟一帧再生成地图，避免启动时卡顿
 	call_deferred("_build_level_map")
@@ -109,21 +109,14 @@ func _ready() -> void:
 		back_btn = find_child("BackToTitleButton", true, false)
 
 	if back_btn:
-		print("[WorldMap] 返回按钮找到，连接信号")
 		back_btn.pressed.connect(_on_back_to_title)
 		# 美化返回按钮
 		_style_back_button(back_btn)
 	else:
-		print("[WorldMap] ⚠️ 返回按钮未找到！")
-		print("[WorldMap] 尝试的路径: Margin/VBox/BackToTitleButton")
-		# 列出所有子节点帮助调试
-		print("[WorldMap] 当前场景子节点:")
-		for child in get_children():
-			print("  - ", child.name, " (", child.get_class(), ")")
+		push_warning("[WorldMap] ⚠️ 返回按钮未找到！")
 
 	# 美化标题
 	_style_title()
-	print("[WorldMap] _ready() 完成")
 
 func _on_visibility_changed() -> void:
 	_runtime_active = is_visible_in_tree()
@@ -374,11 +367,7 @@ func _on_back_to_title() -> void:
 		back_to_main.emit()
 		return
 	# 独立场景模式：直接切换回主场景
-	print("[WorldMap] 返回按钮被点击，准备返回主场景")
-	# 切换回主场景
-	print("[WorldMap] 切换到主场景: res://scenes/main.tscn")
 	get_tree().change_scene_to_file("res://scenes/main.tscn")
-	print("[WorldMap] 场景切换完成")
 
 func _on_level_selected(level_index: int) -> void:
 	_show_level_info_popup(level_index)
@@ -534,7 +523,7 @@ func _collect_level_info(level_index: int) -> Dictionary:
 				if cid.is_empty():
 					continue
 				var c = EnemyBlueprintsData.get_card_by_id(cid)
-				var n: String = c.display_name if c else cid
+				var n: String = c.display_name if c else DefaultCardsData.get_safe_display_name(cid)
 				if not drop_names.has(n):
 					drop_names.append(n)
 	# 统计该关敌人池的可能掉落（关卡专属口径）

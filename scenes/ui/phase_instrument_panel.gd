@@ -238,7 +238,7 @@ func _show_detail_popup_for_card(card: CardResource) -> void:
 	
 	# 创建临时弹窗
 	var popup = Window.new()
-	popup.title = card.display_name
+	popup.title = card.display_name if not card.display_name.is_empty() else DefaultCards.get_safe_display_name(card.card_id)
 	popup.size = Vector2i(360, min(560, int(get_viewport_rect().size.y * 0.72)))
 	popup.transient = true
 	# exclusive 易导致标题栏关闭与输入焦点异常；用 unexclusive + close_requested 统一释放
@@ -270,7 +270,8 @@ func _show_detail_popup_for_card(card: CardResource) -> void:
 	
 	# 卡牌名称和类型
 	var name_label = Label.new()
-	name_label.text = "[%s] %s" % [card.rarity, card.display_name]
+	var disp := card.display_name if not card.display_name.is_empty() else DefaultCards.get_safe_display_name(card.card_id)
+	name_label.text = "[%s] %s" % [card.rarity, disp]
 	name_label.add_theme_font_size_override("font_size", 14)
 	vbox.add_child(name_label)
 	

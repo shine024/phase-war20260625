@@ -12,6 +12,9 @@ const RankDisplayUi = preload("res://scripts/rank_display_ui.gd")
 const CardFrameUi = preload("res://scripts/card_frame_ui.gd")
 const CardBackgroundUi = preload("res://scripts/card_background_ui.gd")
 const DEBUG_BOTTOM_BAR_LOG := false
+## ── 子系统：槽位拖放 ──
+const DragSub = preload("res://scenes/ui/instrument_bar_drag.gd")
+var _drag_system: InstrumentBarDrag = null
 
 signal instrument_area_clicked
 signal phase_level_label_clicked
@@ -40,8 +43,8 @@ var _slots_refresh_coalesce: bool = false
 var _phase_level_label_container: Control = null
 
 func _ready() -> void:
-	if DEBUG_BOTTOM_BAR_LOG:
-		print("[BottomInstrumentBar] _ready() 被调用，底部栏初始化开始")
+	_drag_system = DragSub.new()
+	_drag_system.setup(self)
 	custom_minimum_size.y = BAR_FIXED_HEIGHT
 	size.y = BAR_FIXED_HEIGHT
 	size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -51,8 +54,6 @@ func _ready() -> void:
 	_refresh_all()
 	# 布局完成后，让格子高度精确填满条的可用空间
 	call_deferred("_fit_slots_to_bar")
-	if DEBUG_BOTTOM_BAR_LOG:
-		print("[BottomInstrumentBar] _ready() 完成，底部栏初始化结束")
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
@@ -324,6 +325,8 @@ func _apply_slot_card_labels(panel: Control, card: CardResource) -> void:
 	if card == null:
 		return
 	var display_name: String = "能量" if card.card_type == GC.CardType.ENERGY else String(card.display_name)
+	if display_name.is_empty():
+		display_name = DefaultCardsData.get_safe_display_name(card.card_id)
 	if display_name.length() > 6:
 		display_name = display_name.substr(0, 6)
 	_apply_slot_bottom_text(panel, display_name, "%d⚡" % int(card.energy_cost))
@@ -639,99 +642,28 @@ func _slot_border(color: String) -> Color:
 	return Color(0.35, 0.45, 0.60, 0.8)
 
 func _try_unequip_card_slot(color: String, color_index: int) -> bool:
-	if color_index < 0:
-		return false
-	var in_battle: bool = BattleManager != null and "battle_active" in BattleManager and BattleManager.battle_active
-	if in_battle:
-		return false
-	if PhaseInstrumentManager == null:
-		return false
-	var flat_index: int = _slot_to_flat_index(color, color_index)
-	if flat_index < 0:
-		return false
-	if PhaseInstrumentManager.has_method("unequip_card"):
-		PhaseInstrumentManager.unequip_card(flat_index)
-		return true
+	if _drag_system:
+		return _drag_system.try_unequip_card_slot(color, color_index)
 	return false
 
 func _can_drop_data(at_position: Vector2, data: Variant) -> bool:
-	if not (data is Dictionary) or not (data.get("card") is CardResource):
-		return false
-	var card: CardResource = data.get("card")
-	var target: Dictionary = _get_slot_entry_by_local_pos(at_position)
-	if target.is_empty():
-		return false
-	var color: String = String(target.get("color", ""))
-	if color == "green":
-		return card.card_type == GC.CardType.COMBAT_UNIT
-	if color == "yellow":
-		return card.card_type == GC.CardType.ENERGY
-	if color == "red" or color == "blue":
-		if card.card_type != GC.CardType.LAW:
-			return false
-		var lid: String = card.linked_law_id if not String(card.linked_law_id).is_empty() else card.card_id
-		if lid.begins_with("law:"):
-			lid = lid.substr(4)
-		var law: Dictionary = PhaseLaws.get_by_id(lid)
-		if law.is_empty():
-			return false
-		var kind: String = String(law.get("kind", ""))
-		return (color == "red" and kind == "active") or (color == "blue" and kind == "passive")
+	if _drag_system:
+		return _drag_system.can_drop_data(at_position, data)
 	return false
 
 func _drop_data(at_position: Vector2, data: Variant) -> void:
-	if not _can_drop_data(at_position, data):
-		return
-	var card: CardResource = data.get("card")
-	var target: Dictionary = _get_slot_entry_by_local_pos(at_position)
-	if target.is_empty():
-		return
-	var color: String = String(target.get("color", ""))
-	var color_index: int = int(target.get("index", -1))
-	var flat_index: int = _slot_to_flat_index(color, color_index)
-	if flat_index < 0:
-		return
-	if PhaseInstrumentManager and EnergyManager and PhaseInstrumentManager.has_method("equip_card"):
-		PhaseInstrumentManager.equip_card(flat_index, card, EnergyManager)
+	if _drag_system:
+		_drag_system.drop_data(at_position, data)
 
 func _get_slot_entry_by_local_pos(at_position: Vector2) -> Dictionary:
-	var global_pos: Vector2 = get_global_transform() * at_position
-	for p in _slot_panels:
-		if p == null or not is_instance_valid(p):
-			continue
-		var rect: Rect2 = (p as Control).get_global_rect()
-		if rect.has_point(global_pos):
-			return {
-				"color": String(p.get_meta("slot_color", "")),
-				"index": int(p.get_meta("slot_index", -1))
-			}
+	if _drag_system:
+		return _drag_system.get_slot_entry_by_local_pos(at_position)
 	return {}
 
 func _slot_to_flat_index(color: String, color_index: int) -> int:
-	if color_index < 0:
-		return -1
-
-	if not PhaseInstrumentManager or not PhaseInstrumentManager.has_method("get_current_instrument"):
-		return -1
-
-	var cfg: Dictionary = PhaseInstrumentManager.get_current_instrument()
-	var slot_counts: Dictionary = cfg.get("slot_counts", {})
-	var red_count = int(slot_counts.get("red", 0))
-	var blue_count = int(slot_counts.get("blue", 0))
-	var green_count = int(slot_counts.get("green", 0))
-
-	# 槽位顺序：红→蓝→绿→黄
-	match color:
-		"red":
-			return color_index  # 0 到 red_count-1
-		"blue":
-			return red_count + color_index  # red_count 到 red_count+blue_count-1
-		"green":
-			return red_count + blue_count + color_index  # red_count+blue_count 到 red_count+blue_count+green_count-1
-		"yellow":
-			return red_count + blue_count + green_count + color_index  # 最后的位置
-		_:
-			return -1
+	if _drag_system:
+		return _drag_system.slot_to_flat_index(color, color_index)
+	return -1
 
 ## 刷新相位仪等级标签
 func _refresh_phase_level() -> void:

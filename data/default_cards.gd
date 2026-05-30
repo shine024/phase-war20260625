@@ -4,6 +4,7 @@ extends RefCounted
 const GC = preload("res://resources/game_constants.gd")
 const RealWorldUnitLabels = preload("res://data/real_world_unit_labels.gd")
 const EnemyBlueprints = preload("res://data/enemy_blueprints.gd")
+const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
 
 ## 静态缓存：避免每次 get_card_by_id 都重新创建
@@ -67,6 +68,7 @@ static func create_all() -> Array:
 	list.append(_unit("ww2_hellcat", "M18地狱猫", 1, 1, 170, 5, 3, 16, 280, 30, 0.83, 0.22, 0.12, 95, 0.67, 0.25, 0.12, 0, 0, 0, 0, 25, 40, 12))
 
 	# ==================== 冷战单位（20个）====================
+	list.append(_unit("cold_rpg", "RPG火箭筒组", 2, 0, 170, 3, 2, 14, 180, 18, 0.9, 0.2, 0.1, 120, 0.4, 0.45, 0.2, 0, 0, 0, 0, 15, 5, 5))
 	list.append(_unit("cold_ak47", "AK-47步兵班", 2, 0, 160, 4, 2, 10, 200, 90, 1.5, 0.15, 0.08, 0, 0, 0, 0, 0, 0, 0, 0, 30, 20, 12))
 	list.append(_unit("cold_m14", "M14步兵班", 2, 0, 160, 4, 3, 10, 195, 85, 0.83, 0.18, 0.1, 0, 0, 0, 0, 0, 0, 0, 0, 30, 20, 12))
 	list.append(_unit("cold_m60", "M60机枪班", 2, 0, 170, 3, 4, 12, 210, 110, 2.0, 0.1, 0.05, 0, 0, 0, 0, 60, 1.5, 0.15, 0.08, 32, 22, 15))
@@ -132,7 +134,8 @@ static func create_all() -> Array:
 	list.append(_unit("fut_stormcore", "风暴核心原型", 4, 2, 800, 0, 99, 0, 600, 200, 0.2, 0.6, 0.3, 200, 0.2, 0.6, 0.3, 200, 0.2, 0.6, 0.3, 80, 100, 100))
 	list.append(_unit("fut_nexus", "虚空领主", 4, 1, 1590, 2, 99, 35, 2200, 150, 0.5, 0.3, 0.15, 480, 0.33, 0.4, 0.2, 120, 0.5, 0.3, 0.15, 120, 200, 100))
 
-	# omega_platform（原终极单位，现为常规近未来单位）
+	# omega_platform（全装型机动舱）— 与 fut_colossus 数据相同
+	# 保留用于存档兼容：早期版本以此ID创建的蓝图不会失效
 	list.append(_unit("omega_platform", "全装型机动舱", 4, 1, 1590, 1, 5, 30, 2000, 100, 0.33, 0.4, 0.2, 550, 0.25, 0.6, 0.3, 80, 0.33, 0.4, 0.2, 150, 250, 80))
 
 	# ==================== 堡垒单位（10个）====================
@@ -183,7 +186,8 @@ static func create_law_card_resource(law_id: String) -> CardResource:
 	var c := CardResource.new()
 	c.card_id = law_id
 	c.linked_law_id = law_id
-	c.display_name = String(law.get("name", law_id))
+	var lname: String = String(law.get("name", ""))
+	c.display_name = lname if not lname.is_empty() else law_id
 	c.card_type = GC.CardType.LAW
 	c.rarity = "rare" if kind == "passive" else "epic"
 	var bc: Dictionary = law.get("battle_cost", {})
@@ -292,14 +296,15 @@ static func _unit(
 
 ## 推断武器类型
 static func _infer_weapon_type(combat_kind: int, range: int, atk_light: int, atk_armor: int, atk_air: int) -> int:
+	# 纯辅助/无攻击力单位 → 标记为 DIRECT（战斗系统需检查 is_support 跳过攻击）
+	if atk_light == 0 and atk_armor == 0 and atk_air == 0:
+		return GC.WeaponType.DIRECT
 	# 空中单位 → AERIAL
 	if combat_kind == 3:  # AIR
 		return GC.WeaponType.AERIAL
-
 	# 曲射单位（range>=99）→ INDIRECT
 	if range >= 99:
 		return GC.WeaponType.INDIRECT
-
 	# 默认直射（包括堡垒类 range<99）
 	return GC.WeaponType.DIRECT
 
@@ -365,6 +370,55 @@ static func get_platform_display_name(platform_type: int) -> String:
 ## 武器类型显示名（兼容旧 weapon_type 引用）
 static func get_weapon_display_name(weapon_type: int) -> String:
 	return RealWorldUnitLabels.weapon_kind_long(weapon_type)
+
+## 统一安全获取卡牌中文名：依次尝试 DefaultCards → EnemyBlueprints → 返回 ID 本身
+## 所有 UI 层的 ID 回退都应使用此函数，杜绝显示原始 card_id
+static func get_safe_display_name(card_id: String) -> String:
+	if card_id.is_empty():
+		return ""
+	_ensure_card_cache()
+	var c: CardResource = _id_lookup_cache.get(card_id) as CardResource
+	if c != null and not c.display_name.is_empty() and not _looks_like_id(c.display_name):
+		return c.display_name
+	# 尝试敌人蓝图库
+	var eb: CardResource = EnemyBlueprints.get_card_by_id(card_id)
+	if eb != null and not eb.display_name.is_empty() and not _looks_like_id(eb.display_name):
+		return eb.display_name
+	# 尝试敌方原型表（enemy_* 格式）
+	var arch_cfg: Dictionary = EnemyArchetypes.get_config(card_id)
+	var arch_name: String = String(arch_cfg.get("display_name", "")) if not arch_cfg.is_empty() else ""
+	if not arch_name.is_empty() and not _looks_like_id(arch_name):
+		return arch_name
+	return card_id
+
+## 从 CardResource 对象安全获取显示名称；display_name 为空或像 ID 时回退到 get_safe_display_name
+static func safe_name(card: CardResource) -> String:
+	if card == null:
+		return ""
+	if not card.display_name.is_empty() and not _looks_like_id(card.display_name):
+		return card.display_name
+	var fallback: String = get_safe_display_name(card.card_id)
+	return fallback if not fallback.is_empty() else card.display_name
+
+## 判断一个字符串是否看起来像内部 ID 而非人类可读名称
+static func _looks_like_id(s: String) -> bool:
+	if s.is_empty():
+		return false
+	# 以常见 ID 前缀开头，或全是英文小写+下划线+数字且无中文
+	if s.begins_with("bp_") or s.begins_with("enemy_") or s.begins_with("captured_") or s.begins_with("ww") or s.begins_with("cold_") or s.begins_with("modern_") or s.begins_with("future_"):
+		return true
+	# 纯 ASCII 小写+下划线+数字（无中文、无空格）= 大概率是 ID
+	if s.to_utf8_buffer().size() == s.length() and s.find(" ") < 0:
+		# 全 ASCII 且无空格：检查是否像 snake_case ID
+		var has_underscore: bool = s.find("_") >= 0
+		var has_digit: bool = false
+		for ch in s:
+			if ch >= '0' and ch <= '9':
+				has_digit = true
+				break
+		if has_underscore and has_digit:
+			return true
+	return false
 
 ## 生成战前能量卡
 static func _energy_start(id: String, name: String, cost: float, bonus: float, rarity: String = "common") -> CardResource:

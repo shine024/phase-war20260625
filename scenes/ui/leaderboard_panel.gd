@@ -501,11 +501,6 @@ func simulate_faction_battles() -> void:
 			if target_state["cleared"] > 0:
 				target_state["cleared"] -= 1
 				attacker_state["cleared"] += 1
-				print("[模拟] %s 攻占了 %s 的1关！（当前: %s=%d, %s=%d）" % [
-					attacker_fid, target_fid,
-					attacker_fid, attacker_state["cleared"],
-					target_fid, target_state["cleared"]
-				])
 			else:
 				# 目标已经被攻占完了，不再减少
 				pass
@@ -513,9 +508,6 @@ func simulate_faction_battles() -> void:
 			# 进攻失败：本方可能丢失1关（如果有被攻占的关卡）
 			if attacker_state["cleared"] > 0:
 				attacker_state["cleared"] -= 1
-				print("[模拟] %s 进攻失败，丢失1关！（当前: %s=%d）" % [
-					attacker_fid, attacker_fid, attacker_state["cleared"]
-				])
 	
 	# 根据动态状态更新NPC相位师的进度
 	_update_npc_progress_from_faction_state()

@@ -20,24 +20,9 @@ const PhaseLaws = preload("res://data/phase_laws.gd")
 var _selected_platform_card: CardResource = null
 var _selected_weapon_cards: Array[CardResource] = []
 
-#region agent log
-func _agent_log(hypothesis_id: String, message: String, data: Dictionary) -> void:
-	var f := FileAccess.open("F:/godot fair duel/phase-war/debug-585b52.log", FileAccess.WRITE_READ)
-	if f == null:
-		return
-	f.seek_end()
-	var payload := {
-		"sessionId": "585b52",
-		"runId": "manufacture_law_v1",
-		"hypothesisId": hypothesis_id,
-		"location": "manufacture_panel.gd",
-		"message": message,
-		"data": data,
-		"timestamp": Time.get_ticks_msec()
-	}
-	f.store_line(JSON.stringify(payload))
-	f.close()
-#endregion
+## @deprecated agent log 已迁移到 DebugLogger
+func _agent_log(_hypothesis_id: String, _message: String, _data: Dictionary) -> void:
+	pass
 
 func _enqueue_backpack_fallback_if_needed(card_id: String) -> void:
 	if card_id.is_empty():
@@ -54,9 +39,9 @@ func _build_card_tooltip(card: CardResource) -> String:
 	if card == null:
 		return ""
 	var lines: Array = []
-	var head: String = card.display_name
+	var head: String = DefaultCards.safe_name(card)
 	if String(card.rarity).length() > 0:
-		head = "[%s] %s" % [String(card.rarity), card.display_name]
+		head = "[%s] %s" % [String(card.rarity), DefaultCards.safe_name(card)]
 	lines.append(head)
 	if String(card.type_line).length() > 0:
 		lines.append(String(card.type_line))
@@ -155,7 +140,7 @@ func _refresh_assemble_tree() -> void:
 		platform_item.set_selectable(0, false)
 		for c in platform_cards:
 			var child_item: TreeItem = assemble_tree.create_item(platform_item)
-			child_item.set_text(0, c.display_name)
+			child_item.set_text(0, DefaultCards.safe_name(c))
 			child_item.set_metadata(0, c.card_id)
 			child_item.set_tooltip_text(0, _build_card_tooltip(c))
 	if not law_cards.is_empty():
@@ -164,7 +149,7 @@ func _refresh_assemble_tree() -> void:
 		law_item.set_selectable(0, false)
 		for c in law_cards:
 			var child_item: TreeItem = assemble_tree.create_item(law_item)
-			child_item.set_text(0, c.display_name)
+			child_item.set_text(0, DefaultCards.safe_name(c))
 			child_item.set_metadata(0, c.card_id)
 			child_item.set_tooltip_text(0, _build_card_tooltip(c))
 	if not energy_cards.is_empty():
@@ -173,7 +158,7 @@ func _refresh_assemble_tree() -> void:
 		energy_item.set_selectable(0, false)
 		for c in energy_cards:
 			var child_item: TreeItem = assemble_tree.create_item(energy_item)
-			child_item.set_text(0, c.display_name)
+			child_item.set_text(0, DefaultCards.safe_name(c))
 			child_item.set_metadata(0, c.card_id)
 			child_item.set_tooltip_text(0, _build_card_tooltip(c))
 
@@ -198,7 +183,7 @@ func _update_combo_labels() -> void:
 	if card_info_label:
 		if _selected_platform_card != null:
 			var info = "%s\n%s\n重量: %d/%d" % [
-				_selected_platform_card.display_name,
+				DefaultCards.safe_name(_selected_platform_card),
 				_selected_platform_card.rarity,
 				0,
 				_selected_platform_card.weight_capacity
@@ -207,7 +192,7 @@ func _update_combo_labels() -> void:
 		else:
 			card_info_label.text = "选择载具查看详情"
 	if platform_label:
-		platform_label.text = "已选载具：%s" % (_selected_platform_card.display_name if _selected_platform_card else "—")
+		platform_label.text = "已选载具：%s" % (DefaultCards.safe_name(_selected_platform_card) if _selected_platform_card else "—")
 	if assemble_combined_btn:
 		assemble_combined_btn.disabled = true
 	var selected_item: TreeItem = assemble_tree.get_selected() if assemble_tree else null
@@ -268,8 +253,9 @@ func _on_assemble_single() -> void:
 				# 同步解锁法则到 PhaseLawManager
 				if manufactured_card.card_type == GC.CardType.LAW:
 					var law_id: String = manufactured_card.linked_law_id if manufactured_card.linked_law_id else manufactured_card.card_id
-					if PhaseLawManager and PhaseLawManager.has_method("ensure_law_unlocked"):
-						PhaseLawManager.ensure_law_unlocked(law_id)
+				var plm := get_node_or_null("/root/PhaseLawManager")
+				if plm and plm.has_method("ensure_law_unlocked"):
+					plm.ensure_law_unlocked(law_id)
 						print("[ManufacturePanel] 法则已解锁: ", law_id)
 				# 继承蓝图星级
 				if BlueprintManager.has_method("get_blueprint_star"):
@@ -280,7 +266,7 @@ func _on_assemble_single() -> void:
 					#region agent log
 					_agent_log("H1_pending_double_enqueue", "manufacture_emit_card_added", {"card_id": manufactured_card.card_id})
 					#endregion
-				print("[ManufacturePanel] 制造成功: ", manufactured_card.display_name)
+				print("[ManufacturePanel] 制造成功: ", DefaultCards.safe_name(manufactured_card))
 		return
 
 	# 平台和武器卡：原有逻辑

@@ -435,7 +435,7 @@ func request_player_deploy(platform_card_id: String, world_pos: Vector2, battle_
 	if deploy_slot_idx >= 0 and _battlefield != null and _battlefield.has_method("snap_card_grid_unit") and unit is Node2D:
 		_battlefield.snap_card_grid_unit(unit as Node2D)
 	if unit.has_method("start_as_deploy_ghost"):
-		unit.start_as_deploy_ghost(deploy_time)
+		unit.start_as_deploy_ghost()
 	if BattleManager and BattleManager.spatial_grid and unit is Node2D:
 		var sg: Node = BattleManager.spatial_grid
 		if sg.has_method("insert"):

@@ -360,8 +360,6 @@ func get_loading_progress() -> float:
 
 ## 显示设置
 func show_settings() -> void:
-	print("[GameLauncher] 显示设置面板...")
-
 	# 使用延迟加载获取设置面板
 	var settings_panel = null
 	if UILazyLoader:
@@ -376,11 +374,10 @@ func show_settings() -> void:
 
 ## 设置关闭处理
 func _on_settings_closed() -> void:
-	print("[GameLauncher] 设置面板已关闭")
+	pass
 
 ## 显示成就
 func show_achievements() -> void:
-	print("[GameLauncher] 显示成就面板...")
 
 	# 使用延迟加载获取成就面板
 	var achievement_panel = null
@@ -393,14 +390,12 @@ func show_achievements() -> void:
 
 ## 显示存档管理
 func show_save_management() -> void:
-	print("[GameLauncher] 显示存档管理...")
 
 	var save_slot_manager = preload("res://scenes/ui/save_slot_manager.tscn").instantiate()
 	add_child(save_slot_manager)
 
 ## 显示帮助
 func show_help() -> void:
-	print("[GameLauncher] 显示帮助...")
 
 	# 使用延迟加载获取帮助面板
 	var help_panel = null
@@ -413,7 +408,6 @@ func show_help() -> void:
 
 ## 显示关于
 func show_about() -> void:
-	print("[GameLauncher] 显示关于信息...")
 
 	var version_mgr = get_node_or_null("/root/VersionManager")
 	var version_info = "Unknown"
@@ -433,7 +427,6 @@ func show_about() -> void:
 
 ## 检查更新
 func check_updates() -> void:
-	print("[GameLauncher] 检查更新...")
 
 	var version_mgr = get_node_or_null("/root/VersionManager")
 	if version_mgr != null and version_mgr.has_method("check_updates"):

@@ -199,9 +199,10 @@ func _apply_phase_law_passives() -> void:
 		_base_move_speed = move_speed
 		_base_attack_interval = attack_interval
 		_base_stats_ready = true
-	if not PhaseLawManager or not PhaseLawManager.has_method("get_passive_runtime_tags_for_side"):
+	var plm := get_node_or_null("/root/PhaseLawManager")
+	if not plm or not plm.has_method("get_passive_runtime_tags_for_side"):
 		return
-	var tags: Array = PhaseLawManager.get_passive_runtime_tags_for_side(false)
+	var tags: Array = plm.get_passive_runtime_tags_for_side(false)
 	var hp_mult: float = 1.0
 	var dmg_mult: float = 1.0
 	var move_mult: float = 1.0

@@ -234,7 +234,7 @@ func measure_execution_time(name: String, func_ref: Callable) -> void:
 	start_performance_marker(name)
 	func_ref.call()
 	var elapsed = end_performance_marker(name)
-	print("[PerformanceUtils] %s executed in %.2f ms" % [name, elapsed])
+	if OS.is_debug_build(): print("[PerformanceUtils] %s executed in %.2f ms" % [name, elapsed])
 
 ## 优化的数组查找（使用字典索引）
 static func create_array_index(items: Array, key_field: String) -> Dictionary:

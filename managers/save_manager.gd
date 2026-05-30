@@ -1,6 +1,9 @@
 extends Node
 ## 存档管理：读写 save.json，协调 BlueprintManager / PhaseInstrumentManager / 背包 状态
 ## 写入固定为 user://save.json；读取优先该文件，再兼容旧版（项目根 / 旧 user 路径），避免仓库内 res 存档遮挡真存档
+## ─── 预加载提取模块 ───
+const SaveConstants = preload("res://scripts/systems/save_constants.gd")
+const SaveMigration = preload("res://scripts/systems/save_migration.gd")
 var DEBUG_SAVE_LOG := false
 
 var _pending_backpack_ids: Array = []
@@ -52,7 +55,7 @@ const DEFERRED_MANAGER_LOADS: Array = [
 	["/root/DailyTaskManager", "daily_task"],
 	["/root/StatisticsManager", "statistics"],
 	["/root/CardEnhancementManager", "card_enhancement"],
-	["/root/LawShardManager", "law_shards"],  ## legacy migration — LawShard 已废弃
+	## ["/root/LawShardManager", "law_shards"],  # legacy — LawShard 已废弃 (v5.1 移除)
 	["/root/TutorialProgressionManager", "tutorial_progress"],
 	["/root/StoryManager", "story_progress"],
 	["/root/CharacterManager", "characters"],
@@ -84,14 +87,45 @@ const RESETTABLE_MANAGERS := [
 	"LoreManager",
 	"StatBoostManager",
 	"CardEnhancementManager",
-	"LawShardManager",  ## legacy migration — LawShard 已废弃
+	## "LawShardManager",  # legacy — LawShard 已废弃 (v5.1 移除)
 	"TutorialProgressionManager",
 	"StoryManager",
 	"CharacterManager",
 	"ChallengeModeManager",
 	"CardCollectionManager",
-	"LeaderboardManager",
 ]
+
+## ─── 存档数据键名常量（别名，定义见 scripts/systems/save_constants.gd）───
+const SK_SCHEMA_VERSION: String = SaveConstants.SK_SCHEMA_VERSION
+const SK_BLUEPRINT: String = SaveConstants.SK_BLUEPRINT
+const SK_BASIC_RESOURCES: String = SaveConstants.SK_BASIC_RESOURCES
+const SK_PHASE_LAW: String = SaveConstants.SK_PHASE_LAW
+const SK_QUEST: String = SaveConstants.SK_QUEST
+const SK_FACTION_SYSTEM: String = SaveConstants.SK_FACTION_SYSTEM
+const SK_AFFIX_DATA: String = SaveConstants.SK_AFFIX_DATA
+const SK_LEVEL_PROGRESS: String = SaveConstants.SK_LEVEL_PROGRESS
+const SK_DROP_MANAGER: String = SaveConstants.SK_DROP_MANAGER
+const SK_GAME: String = SaveConstants.SK_GAME
+const SK_CURRENT_LEVEL: String = SaveConstants.SK_CURRENT_LEVEL
+const SK_PHASE_SLOTS: String = SaveConstants.SK_PHASE_SLOTS
+const SK_PHASE_SLOTS_ORDER: String = SaveConstants.SK_PHASE_SLOTS_ORDER
+const SK_PHASE_INSTRUMENT: String = SaveConstants.SK_PHASE_INSTRUMENT
+const SK_BACKPACK_EXTRA_IDS: String = SaveConstants.SK_BACKPACK_EXTRA_IDS
+const SK_LORE: String = SaveConstants.SK_LORE
+const SK_STAT_BOOST: String = SaveConstants.SK_STAT_BOOST
+const SK_ACHIEVEMENT: String = SaveConstants.SK_ACHIEVEMENT
+const SK_DAILY_TASK: String = SaveConstants.SK_DAILY_TASK
+const SK_STATISTICS: String = SaveConstants.SK_STATISTICS
+const SK_CARD_ENHANCEMENT: String = SaveConstants.SK_CARD_ENHANCEMENT
+const SK_LAW_SHARDS: String = SaveConstants.SK_LAW_SHARDS
+const SK_TUTORIAL_PROGRESS: String = SaveConstants.SK_TUTORIAL_PROGRESS
+const SK_STORY_PROGRESS: String = SaveConstants.SK_STORY_PROGRESS
+const SK_CHARACTERS: String = SaveConstants.SK_CHARACTERS
+const SK_CHALLENGE_RECORDS: String = SaveConstants.SK_CHALLENGE_RECORDS
+const SK_CARD_COLLECTION: String = SaveConstants.SK_CARD_COLLECTION
+const SK_LEADERBOARD: String = SaveConstants.SK_LEADERBOARD
+const SK_LEGACY_COMPANY_REP: String = SaveConstants.SK_LEGACY_COMPANY_REP
+
 var _deferred_load_data: Dictionary = {}
 var _deferred_manager_queue: Array = []
 var _deferred_reset_queue: Array[String] = []
@@ -101,24 +135,9 @@ var _load_game_parse_phase_open: bool = false
 var _load_game_critical_phase_open: bool = false
 var _load_game_deferred_phase_open: bool = false
 
-#region agent log
-func _agent_log(hypothesis_id: String, message: String, data: Dictionary) -> void:
-	var f := FileAccess.open("F:/godot fair duel/phase-war/debug-585b52.log", FileAccess.WRITE_READ)
-	if f == null:
-		return
-	f.seek_end()
-	var payload := {
-		"sessionId": "585b52",
-		"runId": "manufacture_law_v1",
-		"hypothesisId": hypothesis_id,
-		"location": "save_manager.gd",
-		"message": message,
-		"data": data,
-		"timestamp": Time.get_ticks_msec()
-	}
-	f.store_line(JSON.stringify(payload))
-	f.close()
-#endregion
+## @deprecated agent log 已迁移到 DebugLogger；此函数保留空壳防止调用方报错
+func _agent_log(_hypothesis_id: String, _message: String, _data: Dictionary) -> void:
+	pass
 
 func _ready() -> void:
 	_sync_debug_log_flag()
@@ -317,11 +336,11 @@ func get_slot_info() -> Array:
 				var json := JSON.new()
 				if json.parse(f.get_as_text()) == OK:
 					var data = json.get_data()
-					if data is Dictionary and data.has("game"):
-						var gd: Dictionary = data["game"]
-						if gd.has("current_level"):
-							slot_data["level"] = int(gd["current_level"])
-				f.close()
+					if data is Dictionary and data.has(SK_GAME):
+						var gd: Dictionary = data[SK_GAME]
+						if gd.has(SK_CURRENT_LEVEL):
+							slot_data["level"] = int(gd[SK_CURRENT_LEVEL])
+					f.close()
 		info.append(slot_data)
 	_slot_info_cache = info.duplicate(true)
 	_slot_info_cache_valid = true
@@ -442,19 +461,19 @@ func _collect_noncritical_save_data(data: Dictionary, now_ms: int) -> void:
 	var should_refresh: bool = _is_exiting or _noncritical_save_cache.is_empty() or (now_ms - _last_noncritical_save_ms >= NONCRITICAL_SAVE_INTERVAL_MS)
 	if should_refresh:
 		var fresh: Dictionary = {}
-		_collect_manager_state(fresh, "/root/LoreManager", "lore")
-		_collect_manager_state(fresh, "/root/StatBoostManager", "stat_boost")
-		_collect_manager_state(fresh, "/root/AchievementManager", "achievement")
-		_collect_manager_state(fresh, "/root/DailyTaskManager", "daily_task")
-		_collect_manager_state(fresh, "/root/StatisticsManager", "statistics")
-		_collect_manager_state(fresh, "/root/CardEnhancementManager", "card_enhancement")
-		_collect_manager_state(fresh, "/root/LawShardManager", "law_shards")  ## legacy migration — LawShard 已废弃
-		_collect_manager_state(fresh, "/root/TutorialProgressionManager", "tutorial_progress")
-		_collect_manager_state(fresh, "/root/StoryManager", "story_progress")
-		_collect_manager_state(fresh, "/root/CharacterManager", "characters")
-		_collect_manager_state(fresh, "/root/ChallengeModeManager", "challenge_records")
-		_collect_manager_state(fresh, "/root/CardCollectionManager", "card_collection")
-		_collect_manager_state(fresh, "/root/LeaderboardManager", "leaderboard")
+		_collect_manager_state(fresh, "/root/LoreManager", SK_LORE)
+		_collect_manager_state(fresh, "/root/StatBoostManager", SK_STAT_BOOST)
+		_collect_manager_state(fresh, "/root/AchievementManager", SK_ACHIEVEMENT)
+		_collect_manager_state(fresh, "/root/DailyTaskManager", SK_DAILY_TASK)
+		_collect_manager_state(fresh, "/root/StatisticsManager", SK_STATISTICS)
+		_collect_manager_state(fresh, "/root/CardEnhancementManager", SK_CARD_ENHANCEMENT)
+		## _collect_manager_state(fresh, "/root/LawShardManager", SK_LAW_SHARDS)  # legacy — LawShard 已废弃 (v5.1 移除)
+		_collect_manager_state(fresh, "/root/TutorialProgressionManager", SK_TUTORIAL_PROGRESS)
+		_collect_manager_state(fresh, "/root/StoryManager", SK_STORY_PROGRESS)
+		_collect_manager_state(fresh, "/root/CharacterManager", SK_CHARACTERS)
+		_collect_manager_state(fresh, "/root/ChallengeModeManager", SK_CHALLENGE_RECORDS)
+		_collect_manager_state(fresh, "/root/CardCollectionManager", SK_CARD_COLLECTION)
+		_collect_manager_state(fresh, "/root/LeaderboardManager", SK_LEADERBOARD)
 		_noncritical_save_cache = fresh
 		_last_noncritical_save_ms = now_ms
 	for key in _noncritical_save_cache.keys():
@@ -519,16 +538,16 @@ func save_game() -> bool:
 		push_error("[SaveManager] BlueprintManager 未找到")
 		_is_saving = false
 		return false
-	var data: Dictionary = {"__schema_version": SAVE_SCHEMA_VERSION}
+	var data: Dictionary = {SK_SCHEMA_VERSION: SAVE_SCHEMA_VERSION}
 	if bm.has_method("save_state"):
-		data["blueprint"] = bm.save_state()
-	_collect_manager_state(data, "/root/BasicResourceManager", "basic_resources")
-	_collect_manager_state(data, "/root/PhaseLawManager", "phase_law")
-	_collect_manager_state(data, "/root/QuestManager", "quest")
-	_collect_manager_state(data, "/root/FactionSystemManager", "faction_system")
-	_collect_manager_state(data, "/root/AffixManager", "affix_data")
-	_collect_manager_state(data, "/root/LevelProgressManager", "level_progress")
-	_collect_manager_state(data, "/root/DropManager", "drop_manager")
+		data[SK_BLUEPRINT] = bm.save_state()
+	_collect_manager_state(data, "/root/BasicResourceManager", SK_BASIC_RESOURCES)
+	_collect_manager_state(data, "/root/PhaseLawManager", SK_PHASE_LAW)
+	_collect_manager_state(data, "/root/QuestManager", SK_QUEST)
+	_collect_manager_state(data, "/root/FactionSystemManager", SK_FACTION_SYSTEM)
+	_collect_manager_state(data, "/root/AffixManager", SK_AFFIX_DATA)
+	_collect_manager_state(data, "/root/LevelProgressManager", SK_LEVEL_PROGRESS)
+	_collect_manager_state(data, "/root/DropManager", SK_DROP_MANAGER)
 	_collect_noncritical_save_data(data, now_ms)
 	var gmgr: Node = get_node_or_null("/root/GameManager")
 	# 保存前同步 current_level：确保与 LevelProgressManager.max_unlocked_level 一致
@@ -539,28 +558,28 @@ func save_game() -> bool:
 			var cur: int = int(gmgr.current_level)
 			if max_u_save > cur:
 				gmgr.set_current_level(max_u_save)
-		data["game"] = {"current_level": int(gmgr.current_level)}
+		data[SK_GAME] = {SK_CURRENT_LEVEL: int(gmgr.current_level)}
 	else:
 		# GameManager 不可用时仍写入默认值，避免校验缺失 game 字段
-		data["game"] = {"current_level": 1}
+		data[SK_GAME] = {SK_CURRENT_LEVEL: 1}
 	if pm != null and pm.has_method("get_slot_card_ids"):
-		data["phase_slots"] = pm.get_slot_card_ids()
-		data["phase_slots_order"] = "rbgy"
+		data[SK_PHASE_SLOTS] = pm.get_slot_card_ids()
+		data[SK_PHASE_SLOTS_ORDER] = "rbgy"
 	if pm != null and pm.has_method("save_state"):
-		data["phase_instrument"] = pm.save_state()
+		data[SK_PHASE_INSTRUMENT] = pm.save_state()
 	var backpack: Node = _find_backpack_panel()
 	if backpack != null and backpack.has_method("get_extra_card_ids"):
 		var extra_ids: Array = backpack.get_extra_card_ids()
-		data["backpack_extra_ids"] = extra_ids
+		data[SK_BACKPACK_EXTRA_IDS] = extra_ids
 		_last_known_extra_ids = extra_ids.duplicate()
 	elif not _last_known_extra_ids.is_empty():
 		# 背包面板不可用时使用上次已知值，防止额外卡丢失
-		data["backpack_extra_ids"] = _last_known_extra_ids.duplicate()
+		data[SK_BACKPACK_EXTRA_IDS] = _last_known_extra_ids.duplicate()
 		if not _is_exiting:
 			push_warning("[SaveManager] 背包面板不可用，使用上次已知的额外卡ID (%d 张)" % _last_known_extra_ids.size())
 
 	# 保存前清洗非法浮点值（inf/-inf/nan），防止写出不可解析的 JSON。
-	data = _sanitize_save_variant(data)
+	data = SaveMigration.sanitize_save_variant(data)
 
 	# JSON预检：确保序列化成功
 	var json_str: String = JSON.stringify(data)
@@ -791,7 +810,7 @@ func _load_from_path(path: String) -> bool:
 	var err: Error = json.parse(json_str)
 	if err != OK:
 		# 兼容旧坏档：若包含 inf/-inf/nan，尝试修复为 0 后重试解析。
-		var repaired_json_str: String = _repair_non_finite_json_tokens(json_str)
+		var repaired_json_str: String = SaveMigration.repair_non_finite_json_tokens(json_str)
 		if repaired_json_str != json_str:
 			var json_retry := JSON.new()
 			var retry_err: Error = json_retry.parse(repaired_json_str)
@@ -821,19 +840,19 @@ func _load_from_path(path: String) -> bool:
 
 	# 数据校验（性能模式默认走轻量校验；需要排查时可打开详细校验）
 	if ENABLE_DETAILED_LOAD_VALIDATION:
-		if not _validate_save_data(data):
-			# 详细错误已由 _validate_save_data 内部打印
+		if not SaveMigration.validate_save_data(data, DEBUG_SAVE_LOG):
+			# 详细错误已由 SaveMigration.validate_save_data 内部打印
 			push_error("[SaveManager] 存档数据校验失败，拒绝加载: %s (schema v%s, 共 %d 个顶层键)" % [
-				path, data.get("__schema_version", "?"), data.size()])
+				path, data.get(SK_SCHEMA_VERSION, "?"), data.size()])
 			_finalize_load_game_perf_on_fail()
 			return false
 	else:
-		_apply_fast_load_normalization(data)
+		SaveMigration.apply_fast_load_normalization(data)
 
 	# 检查存档版本并迁移
-	var version: int = data.get("__schema_version", 1)
+	var version: int = data.get(SK_SCHEMA_VERSION, 1)
 	if version < SAVE_SCHEMA_VERSION:
-		_migrate_save_data(data, version)
+		SaveMigration.migrate_save_data(data, version, DEBUG_SAVE_LOG)
 	_noncritical_save_cache.clear()
 	_last_noncritical_save_ms = 0
 	if _load_game_parse_phase_open:
@@ -853,11 +872,11 @@ func _load_from_path(path: String) -> bool:
 
 	# 特殊处理：phase_slots（仅旧档兼容，新版存档已在 load_state 内部恢复）
 	var pm: Node = get_node_or_null("/root/PhaseInstrumentManager")
-	if pm != null and data.has("phase_slots") and pm.has_method("set_slots_from_card_ids"):
-		var pi_data: Dictionary = data.get("phase_instrument", {}) as Dictionary
+	if pm != null and data.has(SK_PHASE_SLOTS) and pm.has_method("set_slots_from_card_ids"):
+		var pi_data: Dictionary = data.get(SK_PHASE_INSTRUMENT, {}) as Dictionary
 		if not (pi_data.has("slot_card_ids")):
-			var slot_ids: Array = data["phase_slots"] as Array
-			if String(data.get("phase_slots_order", "")) != "rbgy" and pm.has_method("remap_legacy_green_first_slots"):
+			var slot_ids: Array = data[SK_PHASE_SLOTS] as Array
+			if String(data.get(SK_PHASE_SLOTS_ORDER, "")) != "rbgy" and pm.has_method("remap_legacy_green_first_slots"):
 				slot_ids = pm.remap_legacy_green_first_slots(slot_ids)
 			pm.set_slots_from_card_ids(slot_ids)
 
@@ -873,10 +892,10 @@ func _load_from_path(path: String) -> bool:
 
 	# 特殊处理：game.current_level
 	var gmgr_load: Node = get_node_or_null("/root/GameManager")
-	if gmgr_load != null and data.has("game") and data["game"] is Dictionary:
-		var gdict: Dictionary = data["game"]
-		if gdict.has("current_level") and gmgr_load.has_method("set_current_level"):
-			gmgr_load.set_current_level(int(gdict["current_level"]))
+	if gmgr_load != null and data.has(SK_GAME) and data[SK_GAME] is Dictionary:
+		var gdict: Dictionary = data[SK_GAME]
+		if gdict.has(SK_CURRENT_LEVEL) and gmgr_load.has_method("set_current_level"):
+			gmgr_load.set_current_level(int(gdict[SK_CURRENT_LEVEL]))
 
 	# 旧存档常见：level_progress 已推进但 game.current_level 仍为 1，读档后主界面/教程判断会误以为新档
 	var lpm_cursor: Node = get_node_or_null("/root/LevelProgressManager")
@@ -888,8 +907,8 @@ func _load_from_path(path: String) -> bool:
 			gmgr_cursor.set_current_level(max_u)
 
 	# 特殊处理：backpack_extra_ids
-	if data.has("backpack_extra_ids") and data["backpack_extra_ids"] is Array:
-		_pending_backpack_ids = (data["backpack_extra_ids"] as Array).duplicate()
+	if data.has(SK_BACKPACK_EXTRA_IDS) and data[SK_BACKPACK_EXTRA_IDS] is Array:
+		_pending_backpack_ids = (data[SK_BACKPACK_EXTRA_IDS] as Array).duplicate()
 		_last_known_extra_ids = _pending_backpack_ids.duplicate()
 	else:
 		_pending_backpack_ids = []
@@ -980,212 +999,6 @@ func _process_deferred_manager_loads() -> void:
 		_deferred_load_data.clear()
 		if _load_game_deferred_phase_open:
 			_load_game_deferred_phase_open = false
-			_perf_phase_end("load_game_deferred_managers")
 		if _load_game_perf_pending:
 			_load_game_perf_pending = false
 			_perf_phase_end("load_game")
-
-## 存档数据迁移（链式执行：逐步从 from_version 升级到 SAVE_SCHEMA_VERSION）
-func _migrate_save_data(data: Dictionary, from_version: int) -> void:
-	var ver: int = from_version
-	while ver < SAVE_SCHEMA_VERSION:
-		match ver:
-			1:  # v1 → v2: 合并旧公司声望到势力系统
-				if data.has("company"):
-					var legacy := data["company"].get("company_rep", {}) as Dictionary
-					if not legacy.is_empty() and data.has("faction_system"):
-						data["faction_system"]["_legacy_company_rep"] = legacy
-				ver = 2
-				data["__schema_version"] = 2
-			2:  # v2 → v3: 从SaveUtils独立文件迁移数据到save.json
-				_migrate_v2_to_v3(data)
-				ver = 3
-				data["__schema_version"] = 3
-			_:  # 未知版本，停止迁移
-				push_warning("Unknown save schema version: %d" % ver)
-				break
-
-## v2 → v3 数据迁移：从SaveUtils独立文件合并数据
-func _migrate_v2_to_v3(data: Dictionary) -> void:
-	if DEBUG_SAVE_LOG:
-		print("[SaveManager] 开始v2→v3数据迁移...")
-
-	# 定义需要迁移的文件和对应的数据键
-	var files_to_migrate = {
-		"daily_tasks": "daily_task",
-		"tutorial_progress": "tutorial_progress",
-		"card_collection": "card_collection",
-		"story_progress": "story_progress",
-		"characters": "characters",
-		"challenge_records": "challenge_records",
-		"leaderboard_data": "leaderboard"
-	}
-
-	# 迁移每个文件
-	for file_name in files_to_migrate:
-		var data_key = files_to_migrate[file_name]
-		var migrated_data = _load_and_migrate_file(file_name)
-		if not migrated_data.is_empty():
-			data[data_key] = migrated_data
-			if DEBUG_SAVE_LOG:
-				print("[SaveManager] 已迁移文件 %s 到键 %s" % [file_name, data_key])
-
-	if DEBUG_SAVE_LOG:
-		print("[SaveManager] v2→v3数据迁移完成")
-
-## 从文件加载并迁移数据（一次性操作）
-func _load_and_migrate_file(file_name: String) -> Dictionary:
-	## 从SaveUtils格式的文件加载数据，然后删除文件
-	var save_dir = OS.get_user_data_dir()
-	if save_dir.is_empty():
-		return {}
-
-	var save_path = save_dir + "/" + file_name + ".json"
-	var file = FileAccess.open(save_path, FileAccess.READ)
-	if file == null:
-		return {}  # 文件不存在，跳过
-
-	var json_string = file.get_as_text()
-	file.close()
-
-	var json = JSON.new()
-	var error = json.parse(json_string)
-	if error != OK:
-		if DEBUG_SAVE_LOG:
-			print("[SaveManager] 跳过损坏的文件: %s" % file_name)
-		return {}
-
-	var data = json.data
-	if data is Dictionary:
-		# 删除旧文件
-		DirAccess.remove_absolute(save_path)
-		if DEBUG_SAVE_LOG:
-			print("[SaveManager] 已删除旧文件: %s" % save_path)
-		return data
-	else:
-		return {}
-
-## 校验存档数据完整性（容错模式：缺失字段自动补全，仅致命错误拒绝加载）
-func _validate_save_data(data: Dictionary) -> bool:
-	## 校验存档数据完整性，防止损坏数据导致崩溃。
-	## 缺失字段补默认值，仅数值类致命错误（负数/超范围）拒绝加载并打印详细信息。
-	var errors: Array[String] = []
-	var warnings: Array[String] = []
-
-	# 校验必要字段（缺少时补默认值，不直接拒绝加载）
-	if not data.has("blueprint"):
-		warnings.append("缺少 blueprint 字段（已补空字典）")
-		data["blueprint"] = {}
-	if not data.has("game"):
-		warnings.append("缺少 game 字段（已补 current_level=1）")
-		data["game"] = {"current_level": 1}
-
-	# 校验蓝图碎片数量
-	if data.has("blueprint") and data["blueprint"] is Dictionary:
-		var bp: Dictionary = data["blueprint"]
-		if bp.has("blueprint_counts"):
-			var counts: Dictionary = bp["blueprint_counts"]
-			for bp_id in counts.keys():
-				var cnt: int = int(counts[bp_id])
-				if cnt < 0:
-					errors.append("蓝图 '%s' 数量为负: %d" % [bp_id, cnt])
-	elif data.has("blueprint"):
-		warnings.append("blueprint 字段类型错误: %s（已覆盖为空字典）" % type_string(typeof(data["blueprint"])))
-		data["blueprint"] = {}
-
-	# 校验关卡等级范围
-	if data.has("game") and data["game"] is Dictionary:
-		var gd: Dictionary = data["game"]
-		if gd.has("current_level"):
-			var level: int = int(gd["current_level"])
-			if level < 1 or level > 100:
-				errors.append("关卡等级超出范围: %d (应为1-100)，已修正为1" % level)
-				gd["current_level"] = 1
-				data["game"] = gd
-		else:
-			warnings.append("game 字段缺少 current_level（已补1）")
-			data["game"]["current_level"] = 1
-	elif data.has("game"):
-		warnings.append("game 字段类型错误: %s（已覆盖为默认值）" % type_string(typeof(data["game"])))
-		data["game"] = {"current_level": 1}
-
-	# 校验基础资源不能为负
-	if data.has("basic_resources") and data["basic_resources"] is Dictionary:
-		var br: Dictionary = data["basic_resources"]
-		for key in br:
-			if br[key] is int and br[key] < 0:
-				errors.append("基础资源为负: %s = %d（已修正为0）" % [key, br[key]])
-				br[key] = 0
-
-	# 打印校验摘要
-	if not warnings.is_empty():
-		var msg := "[SaveManager] 存档校验警告 (%d): %s" % [warnings.size(), "; ".join(warnings)]
-		push_warning(msg)
-	if not errors.is_empty():
-		var msg := "[SaveManager] 存档校验错误 (%d): %s" % [errors.size(), "; ".join(errors)]
-		push_error(msg)
-	if warnings.is_empty() and errors.is_empty():
-		if DEBUG_SAVE_LOG:
-			print("[SaveManager] 存档校验通过")
-
-	return errors.is_empty()
-
-
-func _apply_fast_load_normalization(data: Dictionary) -> void:
-	# 轻量校验：只修正关键字段，避免大字典深遍历带来的读档卡顿。
-	if not data.has("blueprint") or not (data["blueprint"] is Dictionary):
-		data["blueprint"] = {}
-	if not data.has("game") or not (data["game"] is Dictionary):
-		data["game"] = {"current_level": 1}
-	var gd: Dictionary = data["game"] as Dictionary
-	var level: int = int(gd.get("current_level", 1))
-	if level < 1 or level > 100:
-		level = 1
-	gd["current_level"] = level
-	data["game"] = gd
-
-
-func _sanitize_save_variant(v: Variant) -> Variant:
-	if v is Dictionary:
-		var src: Dictionary = v
-		var out: Dictionary = {}
-		for k in src.keys():
-			out[k] = _sanitize_save_variant(src[k])
-		return out
-	if v is Array:
-		var src_arr: Array = v
-		var out_arr: Array = []
-		out_arr.resize(src_arr.size())
-		for i in range(src_arr.size()):
-			out_arr[i] = _sanitize_save_variant(src_arr[i])
-		return out_arr
-	if v is float:
-		var f: float = v
-		if is_nan(f) or is_inf(f):
-			return 0.0
-	return v
-
-
-func _repair_non_finite_json_tokens(json_str: String) -> String:
-	var s := json_str
-	# 常见模式：对象值和数组值中的 inf/-inf/nan
-	s = s.replace(":inf", ":0")
-	s = s.replace(":-inf", ":0")
-	s = s.replace(":nan", ":0")
-	s = s.replace(",inf", ",0")
-	s = s.replace(",-inf", ",0")
-	s = s.replace(",nan", ",0")
-	s = s.replace("[inf", "[0")
-	s = s.replace("[-inf", "[0")
-	s = s.replace("[nan", "[0")
-	# 含空白分隔的变体
-	s = s.replace(": inf", ": 0")
-	s = s.replace(": -inf", ": 0")
-	s = s.replace(": nan", ": 0")
-	s = s.replace(", inf", ", 0")
-	s = s.replace(", -inf", ", 0")
-	s = s.replace(", nan", ", 0")
-	s = s.replace("[ inf", "[ 0")
-	s = s.replace("[ -inf", "[ 0")
-	s = s.replace("[ nan", "[ 0")
-	return s

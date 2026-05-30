@@ -9,6 +9,7 @@ signal closed
 @onready var list_container: VBoxContainer = $Margin/VBox/ScrollContainer/LawList
 @onready var close_btn: Button = $Margin/VBox/CloseButton
 var _slots_refresh_pending: bool = false
+var _plm: Node = null  ## 安全引用：PhaseLawManager 本地缓存
 var _law_row_nodes: Dictionary = {}
 ## 每行法则面板（含未解锁），用于研究成功后局部替换，避免整表 queue_free
 var _law_row_panels: Dictionary = {}
@@ -41,12 +42,18 @@ func _flush_slots_changed_refresh() -> void:
 func _on_close() -> void:
 	closed.emit()
 
+func _ensure_plm() -> void:
+	if _plm != null and is_instance_valid(_plm):
+		return
+	_plm = get_node_or_null("/root/PhaseLawManager")
+
 func _refresh_env() -> void:
-	if not PhaseLawManager or not PhaseLawManager.has_method("get_current_env"):
+	_ensure_plm()
+	if not _plm or not _plm.has_method("get_current_env"):
 		if env_label:
 			env_label.text = "环境：未知"
 		return
-	var env: Dictionary = PhaseLawManager.get_current_env()
+	var env: Dictionary = _plm.get_current_env()
 	var parts: Array = []
 	var weather := _env_value_label("weather", String(env.get("weather","?")))
 	var terrain := _env_value_label("terrain", String(env.get("terrain","?")))
@@ -64,16 +71,17 @@ func _refresh_list() -> void:
 	_law_row_panels.clear()
 	for c in list_container.get_children():
 		c.queue_free()
-	if not PhaseLawManager:
+	_ensure_plm()
+	if not _plm:
 		return
-	if not (PhaseLawManager.has_method("get_all_law_status_for_current_env") and PhaseLawManager.has_method("can_research_law") and PhaseLawManager.has_method("research_law")):
+	if not (_plm.has_method("get_all_law_status_for_current_env") and _plm.has_method("can_research_law") and _plm.has_method("research_law")):
 		return
-	var status_list: Array = PhaseLawManager.get_all_law_status_for_current_env()
+	var status_list: Array = _plm.get_all_law_status_for_current_env()
 	status_list.sort_custom(func(a, b):
 		return String(a.get("id","")) < String(b.get("id",""))
 	)
-	var equipped_passives: Array = PhaseLawManager.equipped_passive_laws if "equipped_passive_laws" in PhaseLawManager else []
-	var equipped_actives: Array = PhaseLawManager.equipped_active_laws if "equipped_active_laws" in PhaseLawManager else []
+	var equipped_passives: Array = _plm.equipped_passive_laws if "equipped_passive_laws" in _plm else []
+	var equipped_actives: Array = _plm.equipped_active_laws if "equipped_active_laws" in _plm else []
 	var passive_statuses: Array = []
 	var active_statuses: Array = []
 	var unlocked_count: int = 0
@@ -141,16 +149,17 @@ func _refresh_rows_state_only() -> void:
 	if _law_row_nodes.is_empty():
 		_refresh_list()
 		return
-	if not PhaseLawManager or not PhaseLawManager.has_method("get_all_law_status_for_current_env"):
+	_ensure_plm()
+	if not _plm or not _plm.has_method("get_all_law_status_for_current_env"):
 		return
 	var status_by_id: Dictionary = {}
-	for s in PhaseLawManager.get_all_law_status_for_current_env():
+	for s in _plm.get_all_law_status_for_current_env():
 		if s is Dictionary:
 			var sid: String = String(s.get("id", ""))
 			if not sid.is_empty():
 				status_by_id[sid] = s
-	var equipped_passives: Array = PhaseLawManager.equipped_passive_laws if "equipped_passive_laws" in PhaseLawManager else []
-	var equipped_actives: Array = PhaseLawManager.equipped_active_laws if "equipped_active_laws" in PhaseLawManager else []
+	var equipped_passives: Array = _plm.equipped_passive_laws if "equipped_passive_laws" in _plm else []
+	var equipped_actives: Array = _plm.equipped_active_laws if "equipped_active_laws" in _plm else []
 	for law_id in _law_row_nodes.keys():
 		var row_info: Dictionary = _law_row_nodes[law_id]
 		var panel: PanelContainer = row_info.get("panel")
@@ -168,6 +177,7 @@ func _refresh_rows_state_only() -> void:
 		_apply_row_state_visual(panel, title, env_hint, slot_hint, unlocked, can_research, env_ok, is_equipped, is_active_law)
 
 func _make_law_row(law_id: String, cfg: Dictionary, st: Dictionary, is_equipped: bool, is_active_law: bool = false) -> Control:
+	_ensure_plm()
 	var env_ok: bool = bool(st.get("env_ok", false))
 	var unlocked: bool = bool(st.get("unlocked", false))
 	var can_research: bool = bool(st.get("can_research", false))
@@ -239,13 +249,13 @@ func _make_law_row(law_id: String, cfg: Dictionary, st: Dictionary, is_equipped:
 		desc.add_theme_font_size_override("font_size", 11)
 		v.add_child(desc)
 	# 知识值需求（未解锁时）
-	if not unlocked and PhaseLawManager:
+	if not unlocked and _plm:
 		var req: Dictionary = cfg.get("research_req", {})
-		for k in PhaseLawManager.KNOWLEDGE_KEYS:
+		for k in _plm.KNOWLEDGE_KEYS:
 			if not req.has(k):
 				continue
 			var need: int = int(req[k])
-			var have: int = PhaseLawManager.get_knowledge(k) if PhaseLawManager.has_method("get_knowledge") else 0
+			var have: int = _plm.get_knowledge(k) if _plm.has_method("get_knowledge") else 0
 			var kn_label := Label.new()
 			kn_label.text = "%s: %d/%d" % [_knowledge_short_label(k), have, need]
 			var kn_color: Color = Color(0.3, 0.9, 0.5, 1) if have >= need else Color(0.6, 0.65, 0.75, 0.8)
@@ -278,8 +288,8 @@ func _make_law_row(law_id: String, cfg: Dictionary, st: Dictionary, is_equipped:
 		else:
 			btn.add_theme_color_override("font_color", Color(0.45, 0.45, 0.5, 0.6))
 		btn.pressed.connect(func() -> void:
-			if PhaseLawManager and PhaseLawManager.has_method("research_law"):
-				if PhaseLawManager.research_law(law_id):
+			if _plm and _plm.has_method("research_law"):
+				if _plm.research_law(law_id):
 					_refresh_law_row_after_research(law_id)
 		)
 		row.add_child(btn)
@@ -320,11 +330,12 @@ func _refresh_law_row_after_research(law_id: String) -> void:
 	_law_row_nodes.erase(law_id)
 	_law_row_panels.erase(law_id)
 
-	if not PhaseLawManager or not PhaseLawManager.has_method("get_all_law_status_for_current_env"):
+	_ensure_plm()
+	if not _plm or not _plm.has_method("get_all_law_status_for_current_env"):
 		_refresh_list()
 		return
 	var st_found: Dictionary = {}
-	for s in PhaseLawManager.get_all_law_status_for_current_env():
+	for s in _plm.get_all_law_status_for_current_env():
 		if s is Dictionary and String(s.get("id", "")) == law_id:
 			st_found = s
 			break
@@ -335,8 +346,8 @@ func _refresh_law_row_after_research(law_id: String) -> void:
 	if cfg.is_empty():
 		_refresh_list()
 		return
-	var passive_ids: Array = PhaseLawManager.equipped_passive_laws if "equipped_passive_laws" in PhaseLawManager else []
-	var active_ids: Array = PhaseLawManager.equipped_active_laws if "equipped_active_laws" in PhaseLawManager else []
+	var passive_ids: Array = _plm.equipped_passive_laws if "equipped_passive_laws" in _plm else []
+	var active_ids: Array = _plm.equipped_active_laws if "equipped_active_laws" in _plm else []
 	var is_active_kind: bool = String(cfg.get("kind", "")) == "active"
 	var is_equipped: bool = active_ids.has(law_id) if is_active_kind else passive_ids.has(law_id)
 	var new_row := _make_law_row(law_id, cfg, st_found, is_equipped, is_active_kind)

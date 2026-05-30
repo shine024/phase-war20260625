@@ -174,7 +174,7 @@ func _build_affix_card_lines(card_id: String) -> Array[String]:
 		lines.append(card_id)
 		return lines
 
-	var machine_name: String = card.display_name
+	var machine_name: String = DefaultCards.safe_name(card)
 	var weapon_names: Array[String] = []
 
 	if card.card_type == GC.CardType.COMBAT_UNIT:
@@ -186,13 +186,13 @@ func _build_affix_card_lines(card_id: String) -> Array[String]:
 				continue
 			weapon_names.append(_resolve_card_name_by_id(wid))
 	elif card.card_type == GC.CardType.COMBAT_UNIT:
-		machine_name = card.display_name
+		machine_name = DefaultCards.safe_name(card)
 		weapon_names.append(_suggest_weapon_name_for_platform(card))
 	elif card.card_type == GC.CardType.COMBAT_UNIT:
 		machine_name = "通用机体"
-		weapon_names.append(card.display_name)
+		weapon_names.append(DefaultCards.safe_name(card))
 	else:
-		machine_name = card.display_name
+		machine_name = DefaultCards.safe_name(card)
 
 	lines.append(machine_name)
 	for weapon_name in weapon_names:
@@ -213,7 +213,7 @@ func _resolve_card_name_by_id(card_id: String) -> String:
 		return "未知武器"
 	var card: CardResource = _resolve_card_for_affix_list(card_id)
 	if card != null and not card.display_name.is_empty():
-		return card.display_name
+		return DefaultCards.safe_name(card)
 	return card_id
 
 func _suggest_weapon_name_for_platform(platform_card: CardResource) -> String:
@@ -269,7 +269,7 @@ func _refresh_affix_detail() -> void:
 		if DefaultCards != null:
 			var card: CardResource = DefaultCards.get_card_by_id(_selected_card_id)
 			if card:
-				display_name = card.display_name
+				display_name = DefaultCards.safe_name(card)
 
 		var type_str: String = "机体" if _selected_affix_type == 0 else "武器"
 		_selected_card_lbl.text = "📋 %s [%s] Lv%d" % [display_name, type_str, level]

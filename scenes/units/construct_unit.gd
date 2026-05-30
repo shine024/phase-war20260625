@@ -1,5 +1,6 @@
 extends CharacterBody2D
 ## 我方装甲单位：根据 UnitStats 显示形状，自动向右移动并攻击
+## 拆分模块：AI → ConstructUnitAI, 部署 → ConstructUnitDeploy
 
 const GC = preload("res://resources/game_constants.gd")
 const BulletScene = preload("res://scenes/units/bullet.tscn")
@@ -125,24 +126,9 @@ var _buff_strip_signature: String = ""
 ## 跨实例共享的资源缓存，避免运行时重复 load()
 var _res_cache: Dictionary = {}
 
-#region agent log
-func _agent_log(hypothesis_id: String, message: String, data: Dictionary) -> void:
-	var f := FileAccess.open("debug-1776fa.log", FileAccess.WRITE_READ)
-	if f == null:
-		return
-	f.seek_end()
-	var payload := {
-		"sessionId": "1776fa",
-		"runId": "law_bullet_debug_v1",
-		"hypothesisId": hypothesis_id,
-		"location": "construct_unit.gd",
-		"message": message,
-		"data": data,
-		"timestamp": Time.get_ticks_msec()
-	}
-	f.store_line(JSON.stringify(payload))
-	f.close()
-#endregion
+## @deprecated agent log 已迁移到 DebugLogger
+func _agent_log(_hypothesis_id: String, _message: String, _data: Dictionary) -> void:
+	pass
 
 func _ready() -> void:
 	# 战斗逻辑跟随暂停状态
@@ -242,42 +228,16 @@ func setup_as_preview(p_is_player: bool, p_stats: UnitStats, p_card_name: String
 	# 禁用血条显示
 	if has_node("HpBar"):
 		get_node("HpBar").visible = false
-	print("[ConstructUnit] 设置为预览模式: %s" % p_card_name)
 
-func start_as_deploy_ghost(materialize_after_sec: float) -> void:
-	is_deploy_ghost = true
-	_ghost_materialize_time_left = maxf(0.05, materialize_after_sec)
-	_ghost_total_time = _ghost_materialize_time_left  # 记录总时间
-	modulate = Color(1.0, 1.0, 1.0, 0.42)
-	if _presentation_card_grid and is_player:
-		var hb_hide := get_node_or_null("HpBar") as CanvasItem
-		if hb_hide != null:
-			hb_hide.visible = false
+## 根据单位 deploy_speed 计算实际部署延迟（委托给 ConstructUnitDeploy）
+func _calculate_deploy_delay() -> float:
+	return ConstructUnitDeploy.calculate_deploy_delay(stats)
 
-	# 显示并重置进度条（格子战术只显示卡图，不显示部署条）
-	if _deploy_bar and not (GameManager and GameManager.has_method("is_card_grid_battle") and GameManager.is_card_grid_battle()):
-		_deploy_bar.set_visible(true)
-		_deploy_bar.set_progress(0.0)
+func start_as_deploy_ghost(materialize_after_sec: float = -1.0) -> void:
+	ConstructUnitDeploy.start_as_deploy_ghost(self, materialize_after_sec)
 
 func _materialize_deploy_ghost() -> void:
-	is_deploy_ghost = false
-	_ghost_materialize_time_left = 0.0
-	modulate = Color.WHITE
-	_field_stance_attack = not _should_card_grid_defend_stance()
-	_move_target = Vector2.INF
-	hp = stats.max_hp
-	if _presentation_card_grid and is_player:
-		_configure_card_grid_player_hp_bar(get_node_or_null("Sprite") as Sprite2D)
-		_cached_hp_ratio = -1.0
-		_update_hp_bar()
-	# 卡牌特殊能力：部署后初始化（超频、泰坦计时、僚机等）
-	CardAbilityManager.on_unit_materialized(self)
-	_register_to_spatial_grid()
-	_update_card_grid_buff_strip(true)
-
-	# 隐藏进度条
-	if _deploy_bar:
-		_deploy_bar.set_visible(false)
+	ConstructUnitDeploy.materialize_deploy_ghost(self)
 
 
 func _should_card_grid_defend_stance() -> bool:
@@ -285,9 +245,7 @@ func _should_card_grid_defend_stance() -> bool:
 
 
 func force_materialize_if_deploy_ghost() -> void:
-	if is_deploy_ghost:
-		_ghost_materialize_time_left = 0.0
-		_materialize_deploy_ghost()
+	ConstructUnitDeploy.force_materialize_if_deploy_ghost(self)
 
 
 func apply_card_grid_combat_started() -> void:
@@ -349,19 +307,7 @@ func _update_card_grid_buff_strip(force: bool = false) -> void:
 
 
 func _configure_card_grid_player_hp_bar(spr: Sprite2D) -> void:
-	var hb := get_node_or_null("HpBar")
-	if hb == null:
-		return
-	if hb is CanvasItem:
-		(hb as CanvasItem).visible = true
-	var half_h: float = 0.0
-	if spr != null and spr.texture != null:
-		half_h = float(spr.texture.get_height()) * absf(spr.scale.y) * 0.5
-	hb.position = Vector2(0.0, half_h + 8.0)
-	if hb.has_method("set_side"):
-		hb.set_side(true)
-	if hb.has_method("set_folded"):
-		hb.set_folded(false)
+	ConstructUnitDeploy._configure_card_grid_player_hp_bar(self, spr)
 
 
 ## 格子战术敌方（含相位师装备产兵）：卡面化并与波次格子敌一致固守
@@ -425,38 +371,11 @@ func apply_card_grid_enemy_presentation() -> void:
 
 
 func _acquisition_range() -> float:
-	if stats == null:
-		return 120.0
-	var combat_started: bool = (
-		GameManager
-		and GameManager.is_card_grid_battle()
-		and BattleManager != null
-		and BattleManager.has_method("is_card_grid_combat_started")
-		and BattleManager.is_card_grid_combat_started()
-	)
-	if not is_player and GameManager and GameManager.is_card_grid_battle():
-		return CombatTargeting.card_grid_enemy_acquisition_range(stats.attack_range, combat_started)
-	var r: float = stats.attack_range
-	if combat_started:
-		r *= 2.6
-	return r
+	return ConstructUnitAI.acquisition_range(self)
 
 
 func _play_card_attack_nudge() -> void:
-	if not _presentation_card_grid:
-		return
-	# 首次 nudge 或格子吸附后记录归位 X
-	if is_nan(_card_grid_rest_x):
-		_card_grid_rest_x = position.x
-	# 若有正在播放的 nudge tween，先 kill 并把 position 修正回归位点
-	if _card_nudge_tween != null and _card_nudge_tween.is_valid():
-		_card_nudge_tween.kill()
-		position.x = _card_grid_rest_x
-	_card_nudge_tween = create_tween()
-	var dir: float = 1.0 if is_player else -1.0
-	var rest_x: float = _card_grid_rest_x
-	_card_nudge_tween.tween_property(self, "position:x", rest_x + dir * 22.0, 0.07)
-	_card_nudge_tween.tween_property(self, "position:x", rest_x, 0.09)
+	ConstructUnitAI._play_card_attack_nudge(self)
 
 
 func _play_card_hit_recoil() -> void:
@@ -513,9 +432,10 @@ func _apply_phase_law_passives() -> void:
 		_base_move_speed = stats.move_speed
 		_base_attack_interval = stats.attack_interval
 		_base_stats_ready = true
-	if not PhaseLawManager or not PhaseLawManager.has_method("get_passive_runtime_tags_for_side"):
+	var plm: Node = _resolve_autoload(&"PhaseLawManager")
+	if not plm or not plm.has_method("get_passive_runtime_tags_for_side"):
 		return
-	var tags: Array = PhaseLawManager.get_passive_runtime_tags_for_side(true)
+	var tags: Array = plm.get_passive_runtime_tags_for_side(true)
 	var hp_mult: float = 1.0
 	var dmg_mult: float = 1.0
 	var move_mult: float = 1.0
@@ -882,7 +802,6 @@ func _physics_process(delta: float) -> void:
 		# 渐渐消失效果
 		modulate = Color(1, 1, 1, 0.3 * maxf(0.0, _preview_time_left / 5.0))
 		if _preview_time_left <= 0:
-			print("[ConstructUnit] 预览时间结束，移除预览单位")
 			# queue_free 在本帧末才移除节点；若已把 is_preview_mode=false，下几帧会走完整战斗 AI，可能卡死或与敌单位交互
 			set_physics_process(false)
 			queue_free()
@@ -899,20 +818,8 @@ func _physics_process(delta: float) -> void:
 		_hit_stun_left -= delta
 	# 性能优化：不再每帧更新 HP 条，改为在 HP 变化时更新
 	if is_deploy_ghost:
-		_ghost_materialize_time_left -= delta
-		velocity = Vector2.ZERO
-		target = null
-		move_and_slide()
-		_clamp_inside_battlefield()
-
-		# 更新部署进度条
-		if _deploy_bar and _ghost_total_time > 0.0:
-			var progress = 1.0 - (_ghost_materialize_time_left / _ghost_total_time)
-			_deploy_bar.set_progress(progress)
-
-		if _ghost_materialize_time_left <= 0.0:
-			_materialize_deploy_ghost()
-		return
+		if ConstructUnitDeploy.update_deploy_ghost(self, delta):
+			return
 
 	# 性能优化：减少目标查找频率
 	_target_find_timer += delta
@@ -924,17 +831,13 @@ func _physics_process(delta: float) -> void:
 		_target_find_timer = 0.0
 
 	if should_find_target:
-		_find_target(delta)
+		ConstructUnitAI.find_target(self, delta)
 	# 应用持续效果（回血）
-	_apply_continuous_effects(delta)
+	ConstructUnitAI.apply_continuous_effects(self, delta)
 	# 格子战术：单位固守当前格，不位移
 	velocity = Vector2.ZERO
 	_move_target = Vector2.INF
-	if _weapon_cfgs.size() > 0:
-		_process_multi_weapons(delta)
-	else:
-		if _hit_stun_left <= 0.0:
-			_process_single_weapon_attack(delta)
+	ConstructUnitAI.process_attack(self, delta)
 	_update_animation()
 	move_and_slide()
 	_clamp_inside_battlefield()
@@ -975,139 +878,14 @@ func _physics_process(delta: float) -> void:
 			_update_card_grid_buff_strip()
 
 func _apply_continuous_effects(delta: float) -> void:
-	if stats == null:
-		return
-	
-	# 应用回血效果（纳米自愈词条）
-	if stats.hp_regen > 0.0:
-		var regen_mult: float = AffixCombatHandler.get_hp_regen_multiplier(self, stats)
-		var effective_regen: float = stats.hp_regen * regen_mult
-		AffixCombatHandler.apply_hp_regen(self, stats, delta)
-	
-	# 应用平台HP变异防御加成
-	# （在 take_damage 中处理会更合适）
+	ConstructUnitAI.apply_continuous_effects(self, delta)
 
-## v5.0 攻速分离: 单武器三阶段攻击状态机
-## idle → windup → active(发射) → cooldown → idle
+## v5.0 攻速分离: 单武器三阶段攻击状态机（委托给 ConstructUnitAI）
 func _process_single_weapon_attack(delta: float) -> void:
-	# 目标丢失或无效时重置到idle
-	if target == null or not is_instance_valid(target):
-		_attack_phase = AttackPhase.IDLE
-		_attack_phase_timer = 0.0
-		return
-	# 获取目标类型对应的攻速参数
-	var target_stats = target.get("stats") as UnitStats
-	var target_kind: int = target_stats.combat_kind if target_stats else 0
-	var timing: Dictionary = AttackCalculator.get_attack_timing(stats, target_kind)
-	var fire_range: float = _effective_fire_range()
-	var dist: float = global_position.distance_to(target.global_position)
-	# 超射程且直射时重置（不蓄力）
-	if dist > fire_range and stats.weapon_type == GC.WeaponType.DIRECT:
-		_attack_phase = AttackPhase.IDLE
-		_attack_phase_timer = 0.0
-		return
-	match _attack_phase:
-		AttackPhase.IDLE:
-			# 有目标且在射程内，进入蓄力
-			if dist <= fire_range:
-				_attack_phase = AttackPhase.WINDUP
-				_attack_phase_timer = 0.0
-		AttackPhase.WINDUP:
-			_attack_phase_timer += delta
-			# 蓄力期间目标切换时重新获取攻速参数
-			if _attack_phase_timer >= timing["windup"]:
-				_attack_phase = AttackPhase.ACTIVE
-				_attack_phase_timer = 0.0
-		AttackPhase.ACTIVE:
-			_attack_phase_timer += delta
-			# active阶段立即发射（前摇结束瞬间的第一帧）
-			if _attack_phase_timer < delta * 1.1:  # 确保只触发一次
-				_do_attack()
-			if _attack_phase_timer >= timing["active"]:
-				_attack_phase = AttackPhase.COOLDOWN
-				_attack_phase_timer = 0.0
-		AttackPhase.COOLDOWN:
-			_attack_phase_timer += delta
-			if _attack_phase_timer >= timing["cooldown"]:
-				_attack_phase = AttackPhase.IDLE
-				_attack_phase_timer = 0.0
+	ConstructUnitAI._process_single_weapon_attack(self, delta)
 
 func _process_multi_weapons(delta: float) -> void:
-	# 预览模式和部署虚影都不会攻击
-	if is_deploy_ghost or is_preview_mode:
-		return
-	# COMMAND 不攻击（纯光环平台）
-	if stats != null and stats.platform_type == 12:
-		return
-	if _hit_stun_left > 0.0:
-		return
-	if target == null or not is_instance_valid(target):
-		# 目标无效时重置所有武器槽状态
-		for w in _weapon_cfgs:
-			w["phase"] = AttackPhase.IDLE
-			w["phase_timer"] = 0.0
-		return
-	var target_stats = target.get("stats") as UnitStats
-	var target_kind: int = target_stats.combat_kind if target_stats else 0
-	var eff_rng: float = _effective_fire_range()
-	var dist: float = global_position.distance_to(target.global_position)
-	for i in range(_weapon_cfgs.size()):
-		var w = _weapon_cfgs[i]
-		# v5.0: 每个武器槽独立三阶段状态机
-		var phase: int = int(w.get("phase", AttackPhase.IDLE))
-		var phase_timer: float = float(w.get("phase_timer", 0.0))
-		var w_wt: int = int(w.get("weapon_type", -1))
-		# 使用该武器槽的attack_interval作为基础speed（或默认1.0）
-		var w_interval: float = float(w.get("interval", 1.0))
-		var w_speed: float = 1.0 / w_interval if w_interval > 0 else 1.0
-		var w_windup: float = 0.2
-		var w_active: float = 0.1
-		var w_cycle: float = 1.0 / w_speed
-		var w_cooldown: float = maxf(0.0, w_cycle - w_windup - w_active)
-		# v5.0: 尝试按目标类型获取攻速（若unit_stats有对应字段则用，否则用武器槽默认值）
-		if stats != null:
-			var timing: Dictionary = AttackCalculator.get_attack_timing(stats, target_kind)
-			# 如果武器槽有自己的interval，按比例缩放
-			if w_interval > 0 and stats.attack_interval > 0:
-				var scale_ratio: float = w_interval / stats.attack_interval
-				w_cycle = timing["cycle"] * scale_ratio
-				w_windup = timing["windup"] * scale_ratio
-				w_active = timing["active"]
-				w_cooldown = maxf(0.0, w_cycle - w_windup - w_active)
-			else:
-				w_cycle = timing["cycle"]
-				w_windup = timing["windup"]
-				w_active = timing["active"]
-				w_cooldown = timing["cooldown"]
-		# 超射程且武器是直射时重置
-		if dist > eff_rng and w_wt == GC.WeaponType.DIRECT:
-			phase = AttackPhase.IDLE
-			phase_timer = 0.0
-		match phase:
-			AttackPhase.IDLE:
-				if dist <= eff_rng:
-					phase = AttackPhase.WINDUP
-					phase_timer = 0.0
-			AttackPhase.WINDUP:
-				phase_timer += delta
-				if phase_timer >= w_windup:
-					phase = AttackPhase.ACTIVE
-					phase_timer = 0.0
-			AttackPhase.ACTIVE:
-				phase_timer += delta
-				if phase_timer < delta * 1.1:
-					var dmg: float = float(w.get("damage", stats.attack_damage))
-					_do_attack_with_damage(dmg, w_wt)
-				if phase_timer >= w_active:
-					phase = AttackPhase.COOLDOWN
-					phase_timer = 0.0
-			AttackPhase.COOLDOWN:
-				phase_timer += delta
-				if phase_timer >= w_cooldown:
-					phase = AttackPhase.IDLE
-					phase_timer = 0.0
-		w["phase"] = phase
-		w["phase_timer"] = phase_timer
+	ConstructUnitAI._process_multi_weapons(self, delta)
 
 func _input_event(_viewport: Viewport, event: InputEvent, _shape_idx: int) -> void:
 	# 性能优化和错误修复：确保节点在场景树中才处理输入
@@ -1200,177 +978,27 @@ func _enforce_card_grid_lane_alignment() -> void:
 		_card_grid_rest_x = NAN
 
 func _get_target_find_interval() -> float:
-	var n: int = 0
-	if BattleManager and BattleManager.has_method("get_enemy_unit_count"):
-		n = BattleManager.get_enemy_unit_count()
-	if n > 55:
-		return 0.55
-	if n > 35:
-		return 0.42
-	return TARGET_FIND_INTERVAL
+	return ConstructUnitAI.get_target_find_interval(self)
 
 func _targeting_opponent_phase_field_only() -> bool:
-	if is_player:
-		return not CombatTargeting.has_alive_enemy_units(BattleManager)
-	return not CombatTargeting.has_alive_player_units(BattleManager)
+	return ConstructUnitAI.targeting_opponent_phase_field_only(self)
 
 
 func _effective_fire_range() -> float:
-	if stats == null:
-		return 120.0
-	var rng: float = stats.attack_range
-	if (
-		GameManager
-		and GameManager.is_card_grid_battle()
-		and BattleManager != null
-		and BattleManager.has_method("is_card_grid_combat_started")
-		and BattleManager.is_card_grid_combat_started()
-	):
-		rng *= 2.6
-	if target != null and is_instance_valid(target) and CombatTargeting.is_phase_field_node(target):
-		if _targeting_opponent_phase_field_only():
-			return maxf(rng, _acquisition_range() * 1.5)
-	return rng
+	return ConstructUnitAI.effective_fire_range(self)
 
 
 func _should_retain_current_target() -> bool:
-	if target == null or not is_instance_valid(target):
-		return false
-	if CombatTargeting.should_drop_phase_field_target(target, is_player, BattleManager):
-		return false
-	if CombatTargeting.is_phase_field_node(target):
-		return _targeting_opponent_phase_field_only()
-	var d: float = global_position.distance_to(target.global_position)
-	return d <= _acquisition_range()
-
+	return ConstructUnitAI.should_retain_current_target(self)
 
 func _find_target(_delta: float) -> void:
-	if _should_retain_current_target():
-		return
-	target = null
-
-	# 性能优化：优先使用空间分区系统
-	if BattleManager and BattleManager.spatial_grid:
-		var spatial_grid = BattleManager.spatial_grid
-		if spatial_grid:
-			# 使用空间网格查询最近目标（O(1)复杂度）
-			var nearest_target = spatial_grid.query_nearest_target(
-				global_position,
-				is_player,
-				_acquisition_range()
-			)
-			if nearest_target != null:
-				target = nearest_target
-				return
-
-# 回退到传统方法（如果空间网格不可用）
-	var tree = get_tree()
-	if tree == null:
-		return
-
-	var target_group: String = "enemy_units" if is_player else "player_units"
-	var gr: Array = BattleManager.get_cached_nodes_in_group(target_group) if BattleManager else tree.get_nodes_in_group(target_group)
-	# 过滤可攻击目标
-	var candidates: Array = []
-	var acq: float = _acquisition_range()
-	for n in gr:
-		if not CombatTargeting.is_attackable_combat_unit(n):
-			continue
-		if global_position.distance_to((n as Node2D).global_position) <= acq:
-			candidates.append(n)
-
-	if not candidates.is_empty() and stats != null:
-		# v5.0: 根据武器类型使用不同选敌逻辑
-		var selected: Node2D = TargetSelection.select_target(self, candidates, stats.weapon_type)
-		if selected != null:
-			target = selected
-			return
-	elif not candidates.is_empty():
-		# 无stats时回退到最近
-		candidates.sort_custom(func(a, b): return global_position.distance_squared_to((a as Node2D).global_position) < global_position.distance_squared_to((b as Node2D).global_position))
-		target = candidates[0] as Node2D
-		return
-
-	# 无对方战斗单位时，攻击对方相位场（格子战可跨全场）
-	if _targeting_opponent_phase_field_only():
-		var phase_field: Node2D = CombatTargeting.find_opponent_phase_field(
-			global_position, is_player, BattleManager, -1.0
-		)
-		if phase_field != null:
-			target = phase_field
-			return
+	ConstructUnitAI.find_target(self, _delta)
 
 func _do_attack() -> void:
-	# v5.0: 根据目标类型计算攻击力
-	if target == null or stats == null:
-		_do_attack_with_damage(stats.attack_light if stats else 0.0, stats.weapon_type if stats else 0)
-		return
-	var target_stats = target.get("stats") as UnitStats
-	var target_kind: int = target_stats.combat_kind if target_stats else 0
-	var damage: float = AttackCalculator.get_attack_vs(stats, target_kind)
-	_do_attack_with_damage(damage, stats.weapon_type)
+	ConstructUnitAI.do_attack(self)
 
 func _do_attack_with_damage(damage: float, weapon_type_override: int = -1) -> void:
-	if is_deploy_ghost:
-		return
-	if _hit_stun_left > 0.0:
-		return
-	if target == null or not is_instance_valid(target):
-		return
-	var dist_t := global_position.distance_to(target.global_position)
-	var miss := false
-	# v5.0: 仅直射有衰减
-	var wt: int = weapon_type_override if weapon_type_override >= 0 else (stats.weapon_type if stats else 0)
-	if wt == 0 and stats and stats.attack_range > 0.5 and dist_t > stats.attack_range:
-		var sub_type: String = DamageAttenuation.infer_weapon_sub_type(
-			stats.combat_kind, int(stats.attack_range / 100.0),
-			stats.attack_light, stats.attack_armor, stats.attack_air
-		)
-		var max_range_grids: float = stats.attack_range / 100.0
-		var dist_grids: float = dist_t / 100.0
-		var att_mult: float = DamageAttenuation.calculate_attenuation(dist_grids, max_range_grids, sub_type)
-		if att_mult <= 0.0:
-			miss = true
-			CombatFeedback.show_miss(target.global_position, target)
-		else:
-			damage *= att_mult
-	elif dist_t > stats.attack_range and stats.attack_range > 0.5:
-		# 非直射超射程：保持旧命中率衰减（向后兼容）
-		var falloff: Dictionary = CombatTargeting.range_falloff(dist_t, stats.attack_range)
-		if randf() > float(falloff.get("p_hit", 1.0)):
-			miss = true
-			CombatFeedback.show_miss(target.global_position, target)
-		else:
-			damage *= float(falloff.get("damage_mult", 1.0))
-	# 卡牌特殊能力：平台攻击修改
-	if _has_titan_mk2:
-		damage *= CardAbilityManager.get_titan_mk2_damage_multiplier(self)
-	if _has_storm_rider:
-		damage *= CardAbilityManager.get_storm_rider_damage_multiplier(self)
-	#region agent log
-	_agent_log("H3_bullet_spawn", "construct_fire_attempt", {
-		"unit": name,
-		"target_valid": target != null and is_instance_valid(target),
-		"damage": damage,
-		"weapon_type": wt
-	})
-	#endregion
-	if _presentation_card_grid:
-		_play_card_attack_nudge()
-	var bullet: Node2D = ObjectPoolManager.get_object("bullets")
-	if bullet == null:
-		# 对象池未初始化或已满，回退到直接创建
-		bullet = BulletScene.instantiate()
-	bullet.global_position = global_position
-	# 传递射手和射手的数值信息到子弹，用于计算词条效果
-	bullet.setup(target, damage, true, wt, self, stats, miss)
-	# 子弹加入战场（与单位同一 SubViewport），否则会画到主场景
-	var root_2d = get_parent().get_parent() if get_parent() else self
-	var current_parent: Node = bullet.get_parent()
-	if current_parent != root_2d:
-		if current_parent != null:
-			current_parent.remove_child(bullet)
-		root_2d.add_child(bullet)
+	ConstructUnitAI.do_attack_with_damage(self, damage, weapon_type_override)
 
 func _update_hp_bar() -> void:
 	if _presentation_card_grid and not is_player:

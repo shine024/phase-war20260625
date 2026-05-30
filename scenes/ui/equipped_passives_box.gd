@@ -56,10 +56,11 @@ func _update_collapsed_state() -> void:
 func refresh_list() -> void:
 	for c in list_container.get_children():
 		c.queue_free()
-	if not PhaseLawManager:
+	var plm := get_node_or_null("/root/PhaseLawManager")
+	if not plm:
 		return
-	var equipped_passives: Array = PhaseLawManager.equipped_passive_laws if "equipped_passive_laws" in PhaseLawManager else []
-	var equipped_actives: Array = PhaseLawManager.equipped_active_laws if "equipped_active_laws" in PhaseLawManager else []
+	var equipped_passives: Array = plm.equipped_passive_laws if "equipped_passive_laws" in plm else []
+	var equipped_actives: Array = plm.equipped_active_laws if "equipped_active_laws" in plm else []
 	var all_laws: Array[String] = []
 	all_laws.append_array(equipped_passives)
 	all_laws.append_array(equipped_actives)
@@ -144,7 +145,7 @@ func _on_active_slot_gui_input(event: InputEvent, law_id: String) -> void:
 	var pim: Node = PhaseInstrumentManager
 	if pim and pim.has_method("sync_law_cards_to_phase_law_manager"):
 		pim.sync_law_cards_to_phase_law_manager()
-	var plm: Node = PhaseLawManager
+	var plm: Node = get_node_or_null("/root/PhaseLawManager")
 	if plm and "equipped_active_laws" in plm:
 		var actives: Array = plm.equipped_active_laws
 		if not actives.has(law_id):

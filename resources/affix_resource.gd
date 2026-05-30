@@ -1,6 +1,8 @@
 extends Resource
 class_name AffixResource
-## 词条资源类 - 单个词条实例（运行时数据）
+## 模块化词条资源（原称"词缀/附魔"）
+## 提供战斗内被动效果：暴击、吸血、溅射、护盾等
+## 与改造(MOD)系统共存
 
 ## 词条ID（对应 affix_definitions.gd 中的 key）
 var affix_id: String = ""

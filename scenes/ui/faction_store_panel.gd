@@ -54,8 +54,6 @@ func _fetch_store_items():
 	var all_items = []
 	var all_factions = fsm.get_all_factions_info() if fsm.has_method("get_all_factions_info") else []
 
-	print("[FactionStorePanel] 开始获取所有势力的商品，势力数量: %d" % all_factions.size())
-
 	for faction_info in all_factions:
 		if faction_info is Dictionary:
 			var faction_id = faction_info.get("id", "")
@@ -68,7 +66,6 @@ func _fetch_store_items():
 				all_items.append_array(faction_items)
 
 	store_items = all_items
-	print("[FactionStorePanel] 商店加载完成，总商品数: %d" % store_items.size())
 
 ## 显示物品列表
 func _display_items():
@@ -116,9 +113,9 @@ func _create_store_item_ui(item: Variant) -> Control:
 	if item.has_meta("faction_name"):
 		faction_prefix = item.get_meta("faction_name")
 	if not faction_prefix.is_empty():
-		name_label.text = "[%s] %s" % [faction_prefix, item.display_name]
+		name_label.text = "[%s] %s" % [faction_prefix, item.display_name if not item.display_name.is_empty() else str(item.get("id", ""))]
 	else:
-		name_label.text = item.display_name
+		name_label.text = item.display_name if not item.display_name.is_empty() else str(item.get("id", ""))
 	name_label.add_theme_font_size_override("font_size", 16)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top_hbox.add_child(name_label)
@@ -221,7 +218,6 @@ func _on_buy_button_pressed(item: Variant):
 	var result = fsm.purchase_item(item_faction_id, item)
 
 	if result.get("ok", false):
-		print("[FactionStorePanel] 购买成功: ", item.display_name)
 		item_purchased.emit(item.item_id, item.item_type)
 
 		# 刷新显示
@@ -229,7 +225,6 @@ func _on_buy_button_pressed(item: Variant):
 		_fetch_store_items()
 		_display_items()
 	else:
-		print("[FactionStorePanel] 购买失败: ", result)
 
 ## 关闭面板
 func _on_close_pressed():

@@ -52,7 +52,7 @@ const EVOLVE_REASON_ZH: Dictionary = {
 ##
 ## 轻装线（combat_kind=0）:
 ##   普通步兵: ww1_mp18(15) → ww2_thompson(60) → cold_ak47(160) → mod_marine(320) → fut_cyborg(500)
-##   反坦克:   ww2_panzerschrek(65) → mod_javelin(330) → fut_cyborg(500)
+##   反坦克:   ww2_panzerschrek(65) → cold_rpg(170) → mod_javelin(330) → fut_cyborg(500)
 ##   特种:     ww1_storm(20) → cold_spetsnaz(180) → mod_ranger(340) → fut_spectre(530)
 ##
 ## 装甲线（combat_kind=1）:
@@ -86,8 +86,12 @@ const LINEAGES: Dictionary = {
 		"faction_branches": {},
 	},
 
-	# ─── 轻装线：反坦克（3节） ───
+	# ─── 轻装线：反坦克（4节） ───
 	"ww2_panzerschrek": {
+		"evolution_1": "cold_rpg",
+		"faction_branches": {},
+	},
+	"cold_rpg": {
 		"evolution_1": "mod_javelin",
 		"faction_branches": {},
 	},
@@ -252,10 +256,9 @@ static func can_evolve(
 		if current_power < float(target_card.power):
 			return {"ok": false, "reason": "power_not_enough"}
 
-	# 5. 情报100%（Phase 5 启用 — 当前跳过）
-	# TODO(Phase 5): 取消注释以启用情报检查
-	# if target_intel < 1.0:
-	#     return {"ok": false, "reason": "intel_not_full"}
+	# 5. 情报100%
+	if target_intel < 1.0:
+		return {"ok": false, "reason": "intel_not_full"}
 
 	return {"ok": true, "reason": "ok"}
 

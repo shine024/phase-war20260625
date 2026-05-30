@@ -16,6 +16,7 @@ var last_battle_reward_summary: Dictionary = {}
 var _blueprint_fragments_before_battle: Dictionary = {}
 var _knowledge_before_battle: Dictionary = {}
 var _battle_stats: Dictionary = {}  # 战斗统计数据，用于星级计算
+var _plm: Node = null  ## 安全引用：PhaseLawManager 本地缓存
 signal current_level_changed(level: int)
 
 # 相位师对战相关
@@ -111,6 +112,12 @@ func is_phase_master_battle() -> bool:
 
 ## 将排行榜的简单相位师配置与 EnemyPhaseMasters 的完整装备数据合并
 ## 排行榜提供 {name, faction, era}，EnemyPhaseMasters 提供 {equipment, stats, traits, active_spells, ...}
+
+func _ensure_plm() -> void:
+	if _plm != null and is_instance_valid(_plm):
+		return
+	_plm = get_node_or_null("/root/PhaseLawManager")
+
 func _enrich_master_config(simple_config: Dictionary) -> Dictionary:
 	var master_faction: String = simple_config.get("faction", "")
 	var master_era: String = simple_config.get("era", "future")
@@ -351,8 +358,9 @@ func set_current_level(level: int) -> void:
 	current_level = new_level
 	if DEBUG_GAME_LOG:
 		print("[GameManager] 当前关卡设为: ", current_level)
-	if PhaseLawManager.has_method("update_env_for_level"):
-		PhaseLawManager.update_env_for_level(current_level)
+	_ensure_plm()
+	if _plm and _plm.has_method("update_env_for_level"):
+		_plm.update_env_for_level(current_level)
 	current_level_changed.emit(current_level)
 
 ## 攻克关卡后触发势力反应
@@ -584,8 +592,9 @@ func _grant_phase_field_xp_for_victory() -> void:
 func _snapshot_battle_reward_baselines() -> void:
 	_blueprint_fragments_before_battle.clear()
 	_knowledge_before_battle.clear()
-	if PhaseLawManager and PhaseLawManager.has_method("get_knowledge_snapshot"):
-		_knowledge_before_battle = PhaseLawManager.get_knowledge_snapshot()
+	_ensure_plm()
+	if _plm and _plm.has_method("get_knowledge_snapshot"):
+		_knowledge_before_battle = _plm.get_knowledge_snapshot()
 	if BlueprintManager and BlueprintManager.has_method("get_all_blueprint_ids"):
 		for id_raw in BlueprintManager.get_all_blueprint_ids():
 			var card_id: String = String(id_raw)
@@ -609,10 +618,11 @@ func _calculate_blueprint_fragment_gain() -> Dictionary:
 func _calculate_knowledge_gain() -> Dictionary:
 	var total_gain: int = 0
 	var items: Array = []
-	if not PhaseLawManager or not PhaseLawManager.has_method("get_knowledge_snapshot"):
+	_ensure_plm()
+	if not _plm or not _plm.has_method("get_knowledge_snapshot"):
 		return {"total": 0, "items": []}
-	var after: Dictionary = PhaseLawManager.get_knowledge_snapshot()
-	for key in PhaseLawManager.KNOWLEDGE_KEYS:
+	var after: Dictionary = _plm.get_knowledge_snapshot()
+	for key in _plm.KNOWLEDGE_KEYS:
 		var before_val: int = int(_knowledge_before_battle.get(key, 0))
 		var after_val: int = int(after.get(key, 0))
 		var gain: int = after_val - before_val

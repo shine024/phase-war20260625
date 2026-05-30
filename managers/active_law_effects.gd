@@ -12,24 +12,9 @@ const GRAVITY_WELL_DAMAGE_MULTIPLIER: float = 30.0
 static var _law_shield_wall_nodes: Array = []
 static var _shield_wall_counter: int = 0
 
-#region agent log
-static func _agent_log(hypothesis_id: String, message: String, data: Dictionary) -> void:
-	var f := FileAccess.open("debug-1776fa.log", FileAccess.WRITE_READ)
-	if f == null:
-		return
-	f.seek_end()
-	var payload := {
-		"sessionId": "1776fa",
-		"runId": "law_bullet_debug_v1",
-		"hypothesisId": hypothesis_id,
-		"location": "active_law_effects.gd",
-		"message": message,
-		"data": data,
-		"timestamp": Time.get_ticks_msec()
-	}
-	f.store_line(JSON.stringify(payload))
-	f.close()
-#endregion
+## @deprecated agent log 已迁移到 DebugLogger
+static func _agent_log(_hypothesis_id: String, _message: String, _data: Dictionary) -> void:
+	pass
 
 static func _has_property(obj: Object, property_name: StringName) -> bool:
 	if obj == null:

@@ -1,6 +1,7 @@
 extends PanelContainer
 ## 背包中的单张卡片：固定大小、简略显示，点击卡片弹出全部信息
 ## 使用自定义拖拽系统来解决 CanvasLayer 拖拽问题
+## 拆分模块：拖拽 → BackpackCardItemDrag, 操作 → BackpackCardItemActions
 
 signal card_clicked(card: CardResource, source_item: Control)
 signal drag_completed(card: CardResource, target_slot: Control)
@@ -27,6 +28,7 @@ var _last_drag_log_ms: int = 0
 var _drag_started_ms: int = 0
 const GC = preload("res://resources/game_constants.gd")
 const StarConfig = preload("res://data/blueprint_star_config.gd")
+const DefaultCards = preload("res://data/default_cards.gd")
 const BackpackCombatPreview = preload("res://scenes/ui/backpack_combat_preview.gd")
 const RankDisplayUi = preload("res://scripts/rank_display_ui.gd")
 const CardFrameUi = preload("res://scripts/card_frame_ui.gd")
@@ -115,121 +117,32 @@ func _apply_icon_texture_rect_fixed(icon_rect: TextureRect, min_size: Vector2) -
 
 ## 鼠标进入 - 显示统一情报面板
 func _on_mouse_entered() -> void:
-	if not ENABLE_HOVER_AFFIX_TOOLTIP:
-		return
-	if card == null:
-		return
-	_affix_hover_seq += 1
-	var seq := _affix_hover_seq
-	var tree := get_tree()
-	if tree == null or not is_instance_valid(tree):
-		return
-	var timer := tree.create_timer(_AFFIX_HOVER_DELAY_SEC, false, false, true)
-	timer.timeout.connect(func() -> void:
-		if not is_instance_valid(self) or card == null:
-			return
-		if seq != _affix_hover_seq:
-			return
-		if get_global_mouse_position().distance_to(global_position + size / 2.0) < size.length():
-			_show_card_info_panel()
-	, CONNECT_ONE_SHOT)
+	BackpackCardItemActions.on_mouse_entered(self)
 
 ## 鼠标离开 - 隐藏统一情报面板
 func _on_mouse_exited() -> void:
-	if not ENABLE_HOVER_AFFIX_TOOLTIP:
-		return
-	_affix_hover_seq += 1
-	_hide_card_info_panel()
+	BackpackCardItemActions.on_mouse_exited(self)
 
 ## 显示统一卡牌情报面板
 func _show_card_info_panel() -> void:
-	if card == null:
-		return
-
-	var tree: SceneTree = get_tree()
-	if not tree or not is_instance_valid(tree):
-		return
-
-	var root: Window = tree.root
-	if root == null:
-		return
-
-	# 单例挂在 root，避免随 current_scene 切换重复创建
-	var info_panel: Control = root.get_node_or_null("CardInfoPanel") as Control
-	if info_panel == null:
-		info_panel = CardInfoPanel.new() as Control
-		info_panel.name = "CardInfoPanel"
-		root.add_child(info_panel)
-
-	if info_panel.has_method("show_card_info"):
-		# 计算提示位置（优先在卡片右侧，超出屏幕则在左侧）
-		var card_rect: Rect2 = get_global_rect()
-		var panel_pos: Vector2 = card_rect.position + Vector2(card_rect.size.x + 8.0, 0.0)
-		
-		# 检查是否超出屏幕右侧
-		var viewport_size: Vector2 = tree.current_scene.get_viewport_rect().size
-		if panel_pos.x + 400.0 > viewport_size.x:  # 假设面板宽度约400
-			panel_pos.x = card_rect.position.x - 408.0  # 移到左侧
-		
-		info_panel.show_card_info(card, panel_pos)
+	BackpackCardItemActions.show_card_info_panel(self)
 
 ## 隐藏统一卡牌情报面板
 func _hide_card_info_panel() -> void:
-	var tree: SceneTree = get_tree()
-	if not tree or not is_instance_valid(tree):
-		return
-
-	var root: Window = tree.root
-	if root == null:
-		return
-
-	var info_panel: Control = root.get_node_or_null("CardInfoPanel") as Control
-	if info_panel != null and info_panel.has_method("hide_panel"):
-		info_panel.hide_panel()
+	BackpackCardItemActions.hide_card_info_panel(self)
 
 func _check_drag_state() -> void:
-	if not is_instance_valid(self) or not is_inside_tree():
-		_disconnect_drag_frame_hook()
-		return
-	if _is_dragging:
-		# 更新拖拽预览位置（确保预览跟随鼠标）
-		var mouse_pos = get_global_mouse_position()
-		if _drag_preview and is_instance_valid(_drag_preview):
-			_drag_preview.global_position = mouse_pos - _drag_preview.size / 2
-		# 检查鼠标是否释放 → 结束拖拽
-		if not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-			_end_drag()
-	else:
-		# 不在拖拽状态
-		_is_dragging = false
-		# 断开 process_frame 信号节省性能
-		_disconnect_drag_frame_hook()
-		process_mode = Node.PROCESS_MODE_INHERIT
+	BackpackCardItemDrag.check_drag_state(self)
 
 func _disconnect_drag_frame_hook() -> void:
-	var main_loop: MainLoop = Engine.get_main_loop()
-	if not (main_loop is SceneTree):
-		return
-	var tree: SceneTree = main_loop as SceneTree
-	if tree.process_frame and tree.process_frame.is_connected(_check_drag_state):
-		tree.process_frame.disconnect(_check_drag_state)
+	BackpackCardItemDrag.disconnect_drag_frame_hook(self)
 
 func _exit_tree() -> void:
-	_is_dragging = false
-	if _drag_preview and is_instance_valid(_drag_preview):
-		_drag_preview.queue_free()
-		_drag_preview = null
-	_disconnect_drag_frame_hook()
+	BackpackCardItemDrag.exit_tree_cleanup(self)
 
 ## 检查全局鼠标移动（用于拖拽过程中）
 func _check_global_mouse_movement() -> void:
-	if not _is_dragging:
-		return
-
-	# 通过全局 Input 获取鼠标位置并更新预览
-	var mouse_pos = get_global_mouse_position()
-	if _drag_preview and is_instance_valid(_drag_preview):
-		_drag_preview.global_position = mouse_pos - _drag_preview.size / 2
+	BackpackCardItemDrag.check_global_mouse_movement(self)
 
 func _backpack_uses_mtg_face() -> bool:
 	if not ENABLE_MINIMAL_CARD_RENDER:
@@ -326,7 +239,7 @@ func set_card(c: CardResource) -> void:
 		name_label.clip_text = false
 		name_label.custom_minimum_size = Vector2(0, 22)
 		name_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		var display_name: String = c.display_name
+		var display_name: String = DefaultCards.safe_name(c)
 
 		# 星级（与蓝图库一致：按累计副本换算）+ （副本）数量
 		var star_text := ""
@@ -403,9 +316,9 @@ func set_card(c: CardResource) -> void:
 	# 设置内置 tooltip 显示完整信息
 	if ENABLE_CARD_HOVER_TOOLTIP_TEXT:
 		if c.card_type == GC.CardType.COMBAT_UNIT:
-			tooltip_text = "[%s] %s\n%s\n%s｜武器槽：%d" % [c.rarity, c.display_name, c.type_line, c.summary_line, max(c.max_weapons, 1)]
+			tooltip_text = "[%s] %s\n%s\n%s｜武器槽：%d" % [c.rarity, DefaultCards.safe_name(c), c.type_line, c.summary_line, max(c.max_weapons, 1)]
 		else:
-			tooltip_text = "[%s] %s\n%s\n%s" % [c.rarity, c.display_name, c.type_line, c.summary_line]
+			tooltip_text = "[%s] %s\n%s\n%s" % [c.rarity, DefaultCards.safe_name(c), c.type_line, c.summary_line]
 		if c.description.is_empty() == false:
 			tooltip_text += "\n\n%s" % c.description
 	else:
@@ -725,7 +638,9 @@ func _layout_compact_art_clip(art_clip: Control) -> void:
 
 
 func _compact_display_name(c: CardResource) -> String:
-	var display_name: String = "能量" if c.card_type == GC.CardType.ENERGY else String(c.display_name)
+	var display_name: String = "能量" if c.card_type == GC.CardType.ENERGY else DefaultCards.safe_name(c)
+	if display_name.is_empty():
+		display_name = DefaultCards.get_safe_display_name(c.card_id)
 	if display_name.length() > 6:
 		display_name = display_name.substr(0, 6)
 	return display_name
@@ -995,7 +910,7 @@ func _set_mtg_minimal_card_view(c: CardResource, type_bar, name_label, cost_labe
 	if hdr_root:
 		hdr_root.custom_minimum_size.y = hdr_h
 	if name_hdr:
-		name_hdr.text = c.display_name
+		name_hdr.text = DefaultCards.safe_name(c)
 		name_hdr.add_theme_font_size_override("font_size", clampi(int(ceil(SLOT_SIZE.y * 0.028)), 9, 18))
 	if rank_row:
 		var ri: Dictionary = _mtg_rank_info(c)
@@ -1065,7 +980,7 @@ func _set_mtg_minimal_card_view(c: CardResource, type_bar, name_label, cost_labe
 			stars_row.add_child(star_lbl)
 		stars_row.visible = sn > 0
 	var tip_parts: Array[String] = []
-	tip_parts.append("[%s] %s" % [c.rarity, c.display_name])
+	tip_parts.append("[%s] %s" % [c.rarity, DefaultCards.safe_name(c)])
 	if not c.type_line.is_empty():
 		tip_parts.append(c.type_line)
 	var combat_tip: String = BackpackCombatPreview.build_line(c)
@@ -1095,145 +1010,11 @@ func mtg_preview_refresh_art_layout() -> void:
 
 
 func _on_gui_input(ev: InputEvent) -> void:
-	# 调试：默认关闭高频输入日志，避免拖拽阶段刷屏拖慢主线程
-	if DEBUG_DRAG_LOG and ev is InputEventMouseButton:
-		var mb := ev as InputEventMouseButton
-		print("[BackpackCardItem] 鼠标按钮事件: ", mb.button_index, " pressed=", mb.pressed)
-
-	if card == null:
-		return
-
-	if ev is InputEventMouseButton:
-		var mb := ev as InputEventMouseButton
-		if mb.button_index == MOUSE_BUTTON_LEFT:
-			if mb.pressed:
-				# 记录点击位置
-				_click_start_position = mb.position
-				if DEBUG_DRAG_LOG:
-					print("[BackpackCardItem] Mouse Down: ", mb.position)
-			else:
-				if DEBUG_DRAG_LOG:
-					print("[BackpackCardItem] Mouse Up: ", mb.position)
-				# 鼠标释放
-				if _is_dragging:
-					if DEBUG_DRAG_LOG:
-						print("[BackpackCardItem] Dragging, calling _end_drag()")
-					_end_drag()
-				else:
-					# 检查是否是点击（没有拖动）
-					var distance = mb.position.distance_to(_click_start_position)
-					if DEBUG_DRAG_LOG:
-						print("[BackpackCardItem] Move distance: ", distance)
-					if distance < _drag_threshold:
-						if DEBUG_DRAG_LOG:
-							print("[BackpackCardItem] Click, not drag")
-						card_clicked.emit(card, self)
-
-	elif ev is InputEventMouseMotion:
-		# 检查是否应该开始拖拽
-		if not _is_dragging and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-			var mouse_event = ev as InputEventMouseMotion
-			var distance = mouse_event.position.distance_to(_click_start_position)
-			if distance >= _drag_threshold:
-				if DEBUG_DRAG_LOG:
-					print("[BackpackCardItem] Move distance ", distance, " >= threshold, starting drag")
-				_start_drag()
-
-		# 如果正在拖拽，更新预览
-		if _is_dragging:
-			if DEBUG_DRAG_LOG:
-				var now_ms: int = Time.get_ticks_msec()
-				if now_ms - _last_drag_log_ms >= DRAG_LOG_INTERVAL_MS:
-					_last_drag_log_ms = now_ms
-					print("[BackpackCardItem] Dragging, update preview")
-			_update_drag_preview()
-			_check_slot_under_mouse()
-		else:
-			# 如果鼠标在拖拽中但事件没有到达，尝试通过全局 Input 检测
-			_check_global_mouse_movement()
+	BackpackCardItemDrag.on_gui_input(self, ev)
 
 ## 开始拖拽
 func _start_drag() -> void:
-	if card == null:
-		return
-
-	_is_dragging = true
-	_drag_started_ms = Time.get_ticks_msec()
-
-	# 拖拽中需持续接收 process_frame（鼠标可能移出卡片）
-	var drag_tree := get_tree()
-	if drag_tree and is_instance_valid(drag_tree) and not drag_tree.process_frame.is_connected(_check_drag_state):
-		drag_tree.process_frame.connect(_check_drag_state)
-
-	# 创建轻量拖拽预览（不 duplicate 整个面板树）
-	_drag_preview = PanelContainer.new()
-	_drag_preview.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	_drag_preview.custom_minimum_size = SLOT_SIZE
-	if ENABLE_IMAGE_DRAG_PREVIEW:
-		var body := MarginContainer.new()
-		body.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		body.add_theme_constant_override("margin_left", 4)
-		body.add_theme_constant_override("margin_top", 4)
-		body.add_theme_constant_override("margin_right", 4)
-		body.add_theme_constant_override("margin_bottom", 4)
-		body.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var preview_icon := TextureRect.new()
-		preview_icon.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		preview_icon.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		preview_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		preview_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		var tex_path3 := _card_icon_tex_path(card)
-		UiAssetLoader.setup_card_unit_icon(preview_icon, _get_cached_icon_texture(tex_path3), DRAG_PREVIEW_ICON_DISPLAY_MIN, true)
-		if preview_icon.texture != null:
-			body.add_child(preview_icon)
-		else:
-			var preview_lbl_fallback := Label.new()
-			preview_lbl_fallback.text = card.display_name
-			preview_lbl_fallback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			preview_lbl_fallback.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-			body.add_child(preview_lbl_fallback)
-		_drag_preview.add_child(body)
-	else:
-		var preview_lbl := Label.new()
-		preview_lbl.text = card.display_name
-		preview_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		preview_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		_drag_preview.add_child(preview_lbl)
-	var preview_style := StyleBoxFlat.new()
-	preview_style.bg_color = Color(0.1, 0.15, 0.25, 0.85)
-	preview_style.border_color = Color(0.4, 0.7, 1.0, 0.8)
-	preview_style.border_width_left = 2
-	preview_style.border_width_top = 2
-	preview_style.border_width_right = 2
-	preview_style.border_width_bottom = 2
-	preview_style.set_corner_radius_all(6)
-	_drag_preview.add_theme_stylebox_override(
-		"panel",
-		CardFrameUi.subtle_panel_style() if CardFrameUi.has_frame(card.rarity) else preview_style
-	)
-	if not ENABLE_IMAGE_DRAG_PREVIEW:
-		_drag_preview.custom_minimum_size = Vector2(SLOT_SIZE.x, 36)
-	_drag_preview.position = get_global_mouse_position()
-	if ENABLE_IMAGE_DRAG_PREVIEW and card != null:
-		CardFrameUi.apply_slot_chrome(_drag_preview, card)
-	_drag_preview.top_level = true
-	_drag_preview.z_as_relative = false
-	_drag_preview.z_index = 4096
-	_drag_preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var preview_parent: Node = _get_drag_preview_parent()
-	if preview_parent != null:
-		preview_parent.add_child(_drag_preview)
-	else:
-		get_tree().root.add_child(_drag_preview)
-
-	# 半透明显示原始卡牌
-	modulate = Color(1, 1, 1, 0.3)
-
-	# 隐藏 BackpackOverlay 让拖拽可以通过
-	_hide_backpack_overlay()
-	_cache_slot_controls_for_drag()
+	BackpackCardItemDrag.start_drag(self)
 
 func _get_cached_icon_texture(tex_path: String) -> Texture2D:
 	if tex_path.is_empty():
@@ -1256,104 +1037,28 @@ func _get_cached_icon_texture(tex_path: String) -> Texture2D:
 	return icon_tex
 
 func _get_drag_preview_parent() -> Node:
-	var tree: SceneTree = get_tree()
-	if tree == null:
-		return null
-	var current_scene: Node = tree.current_scene
-	if current_scene != null:
-		var popup_layer: Node = current_scene.get_node_or_null("PopupLayer")
-		if popup_layer != null:
-			return popup_layer
-	return tree.root
+	return BackpackCardItemDrag.get_drag_preview_parent(self)
 
 ## 更新拖拽预览位置
 func _update_drag_preview() -> void:
-	if _drag_preview and is_instance_valid(_drag_preview):
-		var mouse_pos = get_global_mouse_position()
-		_drag_preview.global_position = mouse_pos - _drag_preview.size / 2
+	BackpackCardItemDrag.update_drag_preview(self)
 
 ## 检查鼠标下的槽位（轻量版：不每帧查找节点）
 func _check_slot_under_mouse() -> void:
-	var mouse_pos = get_global_mouse_position()
-	if _cached_slot_controls.is_empty():
-		_cache_slot_controls_for_drag()
-	if _cached_slot_controls.is_empty():
-		_clear_slot_hover_feedback()
-		return
-	for child in _cached_slot_controls:
-		if not child is Control:
-			continue
-		if child.get_global_rect().has_point(mouse_pos) and child.has_meta("slot_color"):
-			_apply_slot_hover_feedback(child)
-			if _drag_preview and is_instance_valid(_drag_preview):
-				_drag_preview.modulate = Color(0.4, 1.0, 0.4, 0.8)
-			return
-	_clear_slot_hover_feedback()
-	if _drag_preview and is_instance_valid(_drag_preview):
-		_drag_preview.modulate = Color(1, 1, 1, 0.8)
+	BackpackCardItemDrag.check_slot_under_mouse(self)
 
 ## 结束拖拽
 func _end_drag() -> void:
-	if not _is_dragging:
-		return
-
-	_is_dragging = false
-
-	# 先清理拖拽预览（确保一定会执行）
-	if _drag_preview and is_instance_valid(_drag_preview):
-		_drag_preview.queue_free()
-		_drag_preview = null
-
-	# 恢复原始卡牌
-	modulate = Color(1, 1, 1, 1)
-
-	# 恢复 BackpackOverlay
-	_show_backpack_overlay()
-	_clear_slot_hover_feedback()
-
-	# 尝试装备
-	var slot = _find_slot_under_mouse()
-	if slot:
-		_try_equip_to_slot(slot)
-	_clear_drag_slot_cache()
+	BackpackCardItemDrag.end_drag(self)
 
 func _apply_slot_hover_feedback(slot: Control) -> void:
-	if slot == null or not is_instance_valid(slot):
-		return
-	if _last_hover_slot != null and _last_hover_slot != slot:
-		_clear_single_slot_hover_feedback(_last_hover_slot)
-	_last_hover_slot = slot
-	var style := slot.get_theme_stylebox("panel")
-	if style is StyleBoxFlat:
-		var sb := style as StyleBoxFlat
-		if not slot.has_meta("_drag_prev_border"):
-			slot.set_meta("_drag_prev_border", sb.border_color)
-		if not slot.has_meta("_drag_prev_width"):
-			slot.set_meta("_drag_prev_width", sb.border_width_left)
-		sb.border_color = Color(0.45, 1.0, 0.65, 1.0)
-		sb.set_border_width_all(3)
-		slot.queue_redraw()
+	BackpackCardItemDrag.apply_slot_hover_feedback(self, slot)
 
 func _clear_slot_hover_feedback() -> void:
-	if _last_hover_slot == null:
-		return
-	_clear_single_slot_hover_feedback(_last_hover_slot)
-	_last_hover_slot = null
+	BackpackCardItemDrag.clear_slot_hover_feedback(self)
 
 func _clear_single_slot_hover_feedback(slot: Control) -> void:
-	if slot == null or not is_instance_valid(slot):
-		return
-	var style := slot.get_theme_stylebox("panel")
-	if not (style is StyleBoxFlat):
-		return
-	var sb := style as StyleBoxFlat
-	if slot.has_meta("_drag_prev_border"):
-		sb.border_color = slot.get_meta("_drag_prev_border")
-		slot.remove_meta("_drag_prev_border")
-	if slot.has_meta("_drag_prev_width"):
-		sb.set_border_width_all(int(slot.get_meta("_drag_prev_width")))
-		slot.remove_meta("_drag_prev_width")
-	slot.queue_redraw()
+	BackpackCardItemDrag.clear_single_slot_hover_feedback(slot)
 
 ## 查找相位仪面板的槽位容器
 func _find_phase_instrument_panel() -> Node:
@@ -1379,120 +1084,33 @@ func _find_phase_instrument_panel() -> Node:
 
 ## 查找鼠标下的槽位
 func _find_slot_under_mouse() -> Control:
-	var mouse_pos = get_global_mouse_position()
-	if _cached_slot_controls.is_empty():
-		_cache_slot_controls_for_drag()
-	if _cached_slot_controls.is_empty():
-		return null
-	for child in _cached_slot_controls:
-		if not child is Control:
-			continue
-		if child.get_global_rect().has_point(mouse_pos) and child.has_meta("slot_color"):
-			return child
-	return null
+	return BackpackCardItemDrag.find_slot_under_mouse(self)
 
 ## 获取相位仪可放置槽位节点（兼容旧版和新版底栏结构）
 func _get_phase_slot_controls(instrument_section: Node) -> Array:
-	var out: Array = []
-	if instrument_section == null:
-		return out
-	# 旧结构：槽位直接挂在 InstrumentSection 下
-	for child in instrument_section.get_children():
-		if child is Control and child.has_meta("slot_color"):
-			out.append(child)
-	# 新结构：槽位挂在 InstrumentSection/SlotSection 下
-	var slot_section = instrument_section.get_node_or_null("SlotSection")
-	if slot_section:
-		for child in slot_section.get_children():
-			if child is Control and child.has_meta("slot_color"):
-				out.append(child)
-	return out
+	return BackpackCardItemDrag.get_phase_slot_controls(instrument_section)
 
 func _cache_slot_controls_for_drag() -> void:
-	_cached_slot_controls.clear()
-	var bottom_bar = get_node_or_null("/root/Main/HudLayer/BattleBottomBar/BottomInstrumentBar")
-	if bottom_bar == null:
-		# 兼容旧结构
-		bottom_bar = get_node_or_null("/root/Main/HudLayer/BottomInstrumentBar")
-	if bottom_bar == null:
-		var main_root: Node = get_node_or_null("/root/Main")
-		if main_root != null:
-			bottom_bar = main_root.find_child("BottomInstrumentBar", true, false)
-	if not bottom_bar or not is_instance_valid(bottom_bar):
-		return
-	var section = bottom_bar.get("instrument_section")
-	if section == null:
-		section = bottom_bar.get_node_or_null("Margin/HBox/InstrumentSection")
-	if section == null:
-		return
-	_cached_slot_controls = _get_phase_slot_controls(section)
+	BackpackCardItemDrag.cache_slot_controls_for_drag(self)
 
 func _clear_drag_slot_cache() -> void:
-	_cached_slot_controls.clear()
+	BackpackCardItemDrag.clear_drag_slot_cache(self)
 
 ## 尝试装备到槽位
 func _try_equip_to_slot(slot: Control) -> void:
-	if not slot:
-		return
-
-	var slot_color = slot.get_meta("slot_color") if slot.has_meta("slot_color") else ""
-	var slot_index = slot.get_meta("slot_index") if slot.has_meta("slot_index") else -1
-
-	if slot_color.is_empty() or slot_index < 0:
-		return
-
-	# 计算扁平索引
-	var flat_index = _calculate_flat_index(slot_color, slot_index)
-	if flat_index < 0:
-		return
-
-	if not PhaseInstrumentManager or not PhaseInstrumentManager.has_method("equip_card"):
-		return
-
-	PhaseInstrumentManager.equip_card(flat_index, card, null)
+	BackpackCardItemDrag.try_equip_to_slot(self, slot)
 
 ## 计算扁平索引（参考 bottom_instrument_bar.gd 的 _slot_to_flat_index）
 func _calculate_flat_index(slot_color: String, slot_index: int) -> int:
-	if slot_index < 0:
-		return -1
-
-	if not PhaseInstrumentManager or not PhaseInstrumentManager.has_method("get_current_instrument"):
-		return -1
-
-	var cfg: Dictionary = PhaseInstrumentManager.get_current_instrument()
-	var slot_counts: Dictionary = cfg.get("slot_counts", {})
-	var red_count = int(slot_counts.get("red", 0))
-	var blue_count = int(slot_counts.get("blue", 0))
-	var green_count = int(slot_counts.get("green", 0))
-
-	# 槽位顺序：红→蓝→绿→黄
-	match slot_color:
-		"red":
-			return slot_index  # 0 ~ red_count-1
-		"blue":
-			return red_count + slot_index  # red_count ~ red_count+blue_count-1
-		"green":
-			return red_count + blue_count + slot_index  # red_count+blue_count ~ red_count+blue_count+green_count-1
-		"yellow":
-			return red_count + blue_count + green_count + slot_index  # 最后的位置
-		_:
-			return -1
+	return BackpackCardItemDrag.calculate_flat_index(self, slot_color, slot_index)
 
 ## 隐藏 BackpackOverlay
 func _hide_backpack_overlay() -> void:
-	var overlay = get_node_or_null("/root/Main/PopupLayer/BackpackOverlay")
-	if overlay == null:
-		overlay = get_tree().root.find_child("BackpackOverlay", true, false)
-	if overlay and overlay is Control:
-		overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	BackpackCardItemDrag.hide_backpack_overlay(self)
 
 ## 显示 BackpackOverlay
 func _show_backpack_overlay() -> void:
-	var overlay = get_node_or_null("/root/Main/PopupLayer/BackpackOverlay")
-	if overlay == null:
-		overlay = get_tree().root.find_child("BackpackOverlay", true, false)
-	if overlay and overlay is Control:
-		overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	BackpackCardItemDrag.show_backpack_overlay(self)
 
 	# print("[CustomDrag] 无法找到 BackpackOverlay")
 

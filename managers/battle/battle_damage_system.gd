@@ -73,7 +73,8 @@ func roll_blueprint_drops(unit: Node) -> void:
 func _roll_law_knowledge_drops(unit: Node) -> void:
 	if unit.get("archetype_id") == null:
 		return
-	if PhaseLawManager == null:
+	var plm: Node = _get_autoload_node("PhaseLawManager")
+	if plm == null:
 		return
 	# 知识值基础掉落概率
 	var base_chance: float = 0.15
@@ -107,9 +108,9 @@ func _roll_law_knowledge_drops(unit: Node) -> void:
 	if recon_bonus > 0.0:
 		knowledge_amount += int(floor(recon_bonus * 2.0))
 	knowledge_amount = max(1, knowledge_amount)
-	var kind: String = PhaseLawManager.knowledge_key_for_law_id(law_id)
-	if PhaseLawManager.has_method("add_knowledge"):
-		PhaseLawManager.add_knowledge(kind, knowledge_amount)
+	var kind: String = plm.knowledge_key_for_law_id(law_id) if plm.has_method("knowledge_key_for_law_id") else ""
+	if not kind.is_empty() and plm.has_method("add_knowledge"):
+		plm.add_knowledge(kind, knowledge_amount)
 
 # =========================================================================
 #  侦查加成计算

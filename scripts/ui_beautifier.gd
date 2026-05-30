@@ -77,7 +77,6 @@ func _ready() -> void:
 
 ## 初始化UI系统
 func _initialize_ui_system() -> void:
-	print("[UIBeautifier] UI美化系统已初始化")
 
 	# 设置默认主题样式
 	_setup_default_styles()
@@ -175,7 +174,6 @@ func _initialize_animation_system() -> void:
 	animation_root.name = "AnimationRoot"
 	ui_root.add_child(animation_root)
 
-	print("[UIBeautifier] 动画系统已初始化")
 
 ## 应用主题
 func apply_theme(theme_name: String) -> void:
@@ -194,7 +192,6 @@ func apply_theme(theme_name: String) -> void:
 
 	theme_changed.emit(theme_name)
 
-	print("[UIBeautifier] 已应用主题: ", theme_data["name"])
 
 ## 应用颜色主题
 func _apply_color_theme(theme_data: Dictionary) -> void:

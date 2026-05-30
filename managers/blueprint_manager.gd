@@ -29,6 +29,12 @@ const UnitLineageConfig = preload("res://data/unit_lineage_config.gd")
 const RankRules = preload("res://data/rank_rules.gd")
 const UnitStatsTable = preload("res://resources/unit_stats_table.gd")
 
+## ── 进化/改装子模块（class_name 全局引用） ──
+## @note Godot 4.5 --check-only 模式下部分 class_name 加载顺序不确定，preload 保证可用
+const ModManager = preload("res://managers/evolution/mod_manager.gd")
+const CardEvolutionManager = preload("res://managers/evolution/card_evolution_manager.gd")
+const EvolutionHelpers = preload("res://managers/evolution/evolution_helpers.gd")
+
 const MAX_BLUEPRINT_LEVEL: int = 9
 const LAW_BLUEPRINT_PREFIX: String = "law:"
 
@@ -38,6 +44,13 @@ const XP_TYPE_DEFAULT: int = -1
 const XP_TYPE_PLATFORM: int = 0
 
 const EXCLUDED_WAR_PLATFORM_TYPES: Array = ["striker", "sniper", "stealth", "mage"]
+
+## ── PhaseLawManager 安全引用缓存 ──
+var _plm: Node = null
+func _ensure_plm() -> Node:
+	if _plm == null:
+		_plm = get_node_or_null("/root/PhaseLawManager")
+	return _plm
 
 ## 默认解锁的基础能量蓝图（新存档与一次性迁移会补足）
 const DEFAULT_ENERGY_BLUEPRINT_IDS: Array[String] = [
@@ -81,19 +94,7 @@ var _legacy_default_energy_copies_migrated: bool = false
 ## 战斗中解锁仅写入数据；battle_ended 前由 BattleManager 调用 flush 再发信号（音效/结算列表）
 var _deferred_unlock_notify_ids: Array = []
 
-## @deprecated Phase 3.3 — 保留字段以兼容 card_enhancement_panel 的 _mod_option_display_name
-## 新代码请使用 ModEffects.get_mod_definition(mod_id)
-const DEFAULT_MOD_OPTIONS: Dictionary = {
-	"MOD_ATK_DMG": {"id": "MOD_ATK_DMG", "name": "火力增幅", "desc": "提高基础攻击伤害"},
-	"MOD_ATK_SPEED": {"id": "MOD_ATK_SPEED", "name": "射速优化", "desc": "提高攻击速度"},
-	"MOD_CRIT_UP": {"id": "MOD_CRIT_UP", "name": "弱点解析", "desc": "提高暴击率"},
-	"MOD_HP_BOOST": {"id": "MOD_HP_BOOST", "name": "结构强化", "desc": "提高最大生命值"},
-	"MOD_ARMOR_PLATE": {"id": "MOD_ARMOR_PLATE", "name": "装甲镀层", "desc": "提高防御力"},
-	"MOD_DODGE_CAL": {"id": "MOD_DODGE_CAL", "name": "机动校准", "desc": "提高闪避率"},
-	"MOD_RANGE_EXT": {"id": "MOD_RANGE_EXT", "name": "射程扩展", "desc": "提高攻击射程"},
-	"MOD_COOLDOWN": {"id": "MOD_COOLDOWN", "name": "冷却缩减", "desc": "减少技能冷却"},
-	"MOD_ENERGY_REGEN": {"id": "MOD_ENERGY_REGEN", "name": "能量回流", "desc": "提高能量回复速率"},
-}
+
 
 ## ─────────── 内部辅助 ───────────
 
@@ -189,6 +190,7 @@ func _sync_debug_log_flag() -> void:
 		DEBUG_BLUEPRINT_LOG = bool(debug_mgr.is_channel_enabled("blueprint_manager", DEBUG_BLUEPRINT_LOG))
 
 func _unlock_default_blueprints() -> void:
+	var plm := _ensure_plm()
 	var all_ids: Array = DefaultCards.get_all_blueprint_ids()
 	var high_tier_blueprints = [
 		"omega_platform", "titan_mk2", "abrams_mk2",
@@ -216,8 +218,8 @@ func _unlock_default_blueprints() -> void:
 			blueprint_stars[bp_id] = 1
 			if DEBUG_BLUEPRINT_LOG:
 				print("[BlueprintManager] Initial law unlock: ", law_id, " (1 copy)")
-			if PhaseLawManager.has_method("ensure_law_unlocked"):
-				PhaseLawManager.ensure_law_unlocked(law_id)
+			if plm and plm.has_method("ensure_law_unlocked"):
+				plm.ensure_law_unlocked(law_id)
 
 	_ensure_starter_copies_for_default_energy_blueprints()
 
@@ -318,6 +320,7 @@ func get_blueprint_copies(card_id: String) -> int:
 
 ## 首次从「掉卡」获得某张卡：解锁蓝图并保证至少 1 副本
 func apply_card_drop_first_copy(card_id: String) -> void:
+	var plm := _ensure_plm()
 	var id: String = _normalize_blueprint_id(card_id)
 	if id.is_empty() or _is_excluded_war_platform_id(id):
 		return
@@ -326,11 +329,13 @@ func apply_card_drop_first_copy(card_id: String) -> void:
 	blueprint_copies[id] = maxi(1, int(blueprint_copies.get(id, 0)))
 	if int(blueprint_stars.get(id, 0)) < 1:
 		blueprint_stars[id] = 1
-	if is_law_blueprint_id(id) and PhaseLawManager and PhaseLawManager.has_method("ensure_law_unlocked"):
-		PhaseLawManager.ensure_law_unlocked(law_id_from_blueprint_id(id))
+	if is_law_blueprint_id(id) and plm and plm.has_method("ensure_law_unlocked"):
+		plm.ensure_law_unlocked(law_id_from_blueprint_id(id))
 	emit_signal("fragments_changed")
 
-## ─────────── 星级系统（研究点升星） ───────────
+## ─────────── 蓝图等级系统（研究点升星，影响进化门槛） ───────────
+## 星级是蓝图的整体成长度，影响进化资格检查（E1≥4★，E2≥7★）
+## 注意：与 enhance_level（强化等级，0-10）是不同概念
 
 ## 获取蓝图当前星级
 func get_blueprint_star(card_id: String) -> int:
@@ -612,522 +617,109 @@ func get_manufacture_info(card_id: String) -> Dictionary:
 	}
 
 ## ─────────── 卡牌改装（Phase 3.3 重构：MOD_XX 列表 + 冲突替换） ───────────
+## Facade 委托 → ModManager（managers/evolution/mod_manager.gd）
 
 ## 获取卡牌基础战力（不含改造加成），用于改造消耗公式
 func get_base_power_for_mod_cost(card_id: String) -> float:
-	var star: int = get_blueprint_star(card_id)
-	var rarity_mul: float = get_rarity_multiplier(card_id)
-	var inherit_bonus: float = float(blueprint_inherit_bonus.get(card_id, 0.0))
-	return (80.0 + float(star) * 28.0) * rarity_mul * (1.0 + inherit_bonus)
+	return ModManager.get_base_power_for_mod_cost(card_id, self)
 
 ## 获取第 mod_index 个改造槽位的消耗需求（研究点 + 许可证）
-## 研究点消耗 = 基础战力 × ModEffects.get_mod_slot_cost(mod_index)
 func get_modification_requirements(card_id: String, mod_index: int) -> Dictionary:
-	var base_power: float = get_base_power_for_mod_cost(card_id)
-	var cost_mul: float = ModEffects.get_mod_slot_cost(mod_index)
-	var research_cost: int = max(1, int(base_power * cost_mul))
-	var rule: Dictionary = StarConfig.get_mod_permit_rule(mod_index)
-	var req_general: int = int(rule.get("general", 0))
-	var req_category: int = int(rule.get("category", 0))
-	var req_specific: int = int(rule.get("specific", 0))
-	var category_permit_id: String = _get_mod_category_permit_id(card_id)
-	var specific_permit_id: String = BasicResources.get_specific_permit_id(card_id)
-	return {
-		"research_points": research_cost,
-		"permit_general_id": BasicResources.ID_PERMIT_GENERAL,
-		"permit_general_count": req_general,
-		"permit_category_id": category_permit_id,
-		"permit_category_count": req_category,
-		"permit_specific_id": specific_permit_id,
-		"permit_specific_count": req_specific,
-	}
+	return ModManager.get_modification_requirements(card_id, mod_index, self)
 
 ## 获取当前已装改造数量
 func get_modification_count(card_id: String) -> int:
-	var mods: Array = blueprint_mods.get(card_id, [])
-	return mods.size()
+	return ModManager.get_modification_count(card_id, blueprint_mods)
 
 ## 获取最大改造次数
 func get_max_mod_slots() -> int:
-	return ModEffects.MAX_MOD_SLOTS
+	return ModManager.get_max_mod_slots()
 
 ## 获取可选 MOD 列表（从 ModEffects 获取具体 MOD_XX 定义）
 func get_mod_options(card_id: String, _mod_index: int) -> Array[Dictionary]:
-	if card_id.is_empty():
-		return []
-	return ModEffects.get_all_mod_definitions()
+	return ModManager.get_mod_options(card_id)
 
 ## 检查是否可以执行第 mod_index 次改造
-## 最多 9 次（ModEffects.MAX_MOD_SLOTS），受星级门槛 + 资源限制
 func can_apply_modification(card_id: String, mod_index: int) -> bool:
-	if card_id.is_empty() or mod_index < 0:
-		return false
-	if mod_index >= ModEffects.MAX_MOD_SLOTS:
-		return false
-	if mod_index != get_modification_count(card_id):
-		return false
-	var need_star: int = StarConfig.get_mod_unlock_star(mod_index)
-	if get_blueprint_star(card_id) < need_star:
-		return false
-	var req: Dictionary = get_modification_requirements(card_id, mod_index)
-	var brm: Node = _get_basic_resource_manager()
-	if get_research_points() < int(req.get("research_points", 0)):
-		return false
-	if brm == null or not brm.has_method("get_total"):
-		return false
-	if int(req.get("permit_general_count", 0)) > int(brm.get_total(String(req.get("permit_general_id", "")))):
-		return false
-	if int(req.get("permit_category_count", 0)) > int(brm.get_total(String(req.get("permit_category_id", "")))):
-		return false
-	if int(req.get("permit_specific_count", 0)) > int(brm.get_total(String(req.get("permit_specific_id", "")))):
-		return false
-	return true
+	return ModManager.can_apply_modification(card_id, mod_index, self)
 
 ## 执行改造：安装 MOD
-## 替换规则：
-##   - 同 conflict_group 冲突：替换已有旧件（总数不变）
-##   - 无冲突且未满 9 个：追加（总数 +1）
-##   - 无冲突但已满 9 个：拒绝
 func apply_modification(card_id: String, option_id: String) -> bool:
-	var mod_index: int = get_modification_count(card_id)
-	## 冲突替换时 mod_index 可能 == count，先不严格校验 count == index
-	if card_id.is_empty() or mod_index < 0 or mod_index >= ModEffects.MAX_MOD_SLOTS:
-		return false
-	var options: Array[Dictionary] = get_mod_options(card_id, mod_index)
-	var found: bool = false
-	for op in options:
-		if String(op.get("id", "")) == option_id:
-			found = true
-			break
-	if not found:
-		return false
-	## 资源检查
-	var req: Dictionary = get_modification_requirements(card_id, mod_index)
-	if get_research_points() < int(req.get("research_points", 0)):
-		return false
-	var brm: Node = _get_basic_resource_manager()
-	if brm == null or not brm.has_method("get_total"):
-		return false
-	if int(req.get("permit_general_count", 0)) > int(brm.get_total(String(req.get("permit_general_id", "")))):
-		return false
-	if int(req.get("permit_category_count", 0)) > int(brm.get_total(String(req.get("permit_category_id", "")))):
-		return false
-	if int(req.get("permit_specific_count", 0)) > int(brm.get_total(String(req.get("permit_specific_id", "")))):
-		return false
-	## 冲突检测 + 替换/追加
-	var conflict_group: String = ModEffects.get_conflict_group(option_id)
-	var mods: Array = blueprint_mods.get(card_id, [])
-	var replaced: bool = false
-	if not conflict_group.is_empty():
-		for i in range(mods.size()):
-			if ModEffects.get_conflict_group(String(mods[i])) == conflict_group:
-				mods[i] = option_id
-				replaced = true
-				if DEBUG_BLUEPRINT_LOG:
-					print("[BlueprintManager] 改造替换：slot %d %s → %s" % [i, mods[i], option_id])
-				break
-	if not replaced:
-		if mods.size() >= ModEffects.MAX_MOD_SLOTS:
-			return false
-		mods.append(option_id)
-	## 扣除消耗
-	add_research_points(-int(req.get("research_points", 0)))
-	if brm != null and brm.has_method("add_resource"):
-		var n_general: int = int(req.get("permit_general_count", 0))
-		var n_category: int = int(req.get("permit_category_count", 0))
-		var n_specific: int = int(req.get("permit_specific_count", 0))
-		if n_general > 0:
-			brm.add_resource(String(req.get("permit_general_id", "")), -n_general)
-		if n_category > 0:
-			brm.add_resource(String(req.get("permit_category_id", "")), -n_category)
-		if n_specific > 0:
-			brm.add_resource(String(req.get("permit_specific_id", "")), -n_specific)
-	blueprint_mods[card_id] = mods
-	emit_signal("fragments_changed")
-	return true
+	return ModManager.apply_modification(card_id, option_id, self)
 
 ## ─────────── 进化系统 ───────────
+## Facade 委托 → CardEvolutionManager（managers/evolution/card_evolution_manager.gd）
 
 func get_evolution_options(card_id: String) -> Dictionary:
-	if card_id.is_empty():
-		return {}
-	var evo_1: String = UnitLineageConfig.get_evolution_1_target(card_id)
-	var branches: Dictionary = UnitLineageConfig.get_all_faction_targets(card_id)
-	return {
-		"base_card_id": card_id,
-		"evolution_1": evo_1,
-		"faction_branches": branches,
-	}
-
-func _evolve_check_denied(reason: String) -> Dictionary:
-	return {
-		"ok": false,
-		"reason": reason,
-		"reason_zh": UnitLineageConfig.localize_evolve_reason(reason),
-	}
+	return CardEvolutionManager.get_evolution_options(card_id)
 
 func can_evolve_blueprint(card_id: String, target_card_id: String) -> Dictionary:
-	if card_id.is_empty() or target_card_id.is_empty():
-		return _evolve_check_denied("invalid")
-	if not is_blueprint_unlocked(card_id):
-		return _evolve_check_denied("card_locked")
-	if DefaultCards.get_card_by_id(target_card_id) == null and PhaseLaws.get_by_id(target_card_id).is_empty():
-		return _evolve_check_denied("invalid_target")
-	var opts: Dictionary = get_evolution_options(card_id)
-	var evo_1: String = String(opts.get("evolution_1", ""))
-	var branches: Dictionary = opts.get("faction_branches", {})
-	var valid_target: bool = (target_card_id == evo_1)
-	if not valid_target:
-		for k in branches.keys():
-			if String(branches[k]) == target_card_id:
-				valid_target = true
-				break
-	if not valid_target:
-		return _evolve_check_denied("target_not_in_path")
-
-	## v5.0 Phase 4: 不跨类型检查（combat_kind 一致）
-	var from_card: CardResource = DefaultCards.get_card_by_id(card_id)
-	var to_card: CardResource = DefaultCards.get_card_by_id(target_card_id)
-	if from_card != null and to_card != null:
-		if from_card.combat_kind >= 0 and to_card.combat_kind >= 0:
-			if from_card.combat_kind != to_card.combat_kind:
-				return _evolve_check_denied("cross_class")
-
-	## v5.0 Phase 4: 战力达标检查（培养后战力 >= 目标基础战力）
-	var target_base_power: int = UnitLineageConfig.get_target_base_power(target_card_id)
-	if target_base_power > 0:
-		var current_power: float = _estimate_power_score(card_id)
-		if current_power < float(target_base_power):
-			return _evolve_check_denied("power_not_enough")
-
-	## v5.0 Phase 4: 情报100%检查（Phase 5 启用）
-	## TODO(Phase 5): 取消下方注释以启用情报检查
-	# var target_intel: float = _get_card_intel_progress(target_card_id)
-	# if target_intel < 1.0:
-	#     return _evolve_check_denied("intel_not_full")
-
-	var stage: String = UnitLineageConfig.get_stage(card_id, target_card_id)
-	var min_star: int = UnitLineageConfig.get_min_star_for_stage(stage)
-	if get_blueprint_star(card_id) < min_star:
-		return _evolve_check_denied("star_not_enough")
-	if get_modification_count(card_id) < UnitLineageConfig.REQUIRED_MOD_COUNT:
-		return _evolve_check_denied("mod_not_enough")
-	var costs: Dictionary = UnitLineageConfig.get_costs_for_stage(stage)
-	var cost_research: int = int(costs.get("research", 0))
-	if get_research_points() < cost_research:
-		return _evolve_check_denied("research_not_enough")
-	var brm: Node = _get_basic_resource_manager()
-	if brm == null or not brm.has_method("get_total"):
-		return _evolve_check_denied("resource_manager_unavailable")
-	var need_general: int = int(costs.get("permit_general", 0))
-	var need_category: int = int(costs.get("permit_category", 0))
-	var need_specific: int = int(costs.get("permit_specific", 0))
-	var category_id: String = _get_mod_category_permit_id(card_id)
-	var specific_id: String = BasicResources.get_specific_permit_id(target_card_id)
-	if int(brm.get_total(BasicResources.ID_PERMIT_GENERAL)) < need_general:
-		return _evolve_check_denied("permit_general_not_enough")
-	if int(brm.get_total(category_id)) < need_category:
-		return _evolve_check_denied("permit_category_not_enough")
-	if int(brm.get_total(specific_id)) < need_specific:
-		return _evolve_check_denied("permit_specific_not_enough")
-	var out: Dictionary = {
-		"ok": true,
-		"reason": "ok",
-		"stage": stage,
-		"research_cost": cost_research,
-		"permit_general_id": BasicResources.ID_PERMIT_GENERAL,
-		"permit_general_count": need_general,
-		"permit_category_id": category_id,
-		"permit_category_count": need_category,
-		"permit_specific_id": specific_id,
-		"permit_specific_count": need_specific,
-	}
-	out["inherit_ratio"] = UnitLineageConfig.get_inherit_ratio(card_id, target_card_id)
-	out["reason_zh"] = UnitLineageConfig.localize_evolve_reason(String(out.get("reason", "invalid")))
-	return out
+	return CardEvolutionManager.can_evolve_blueprint(card_id, target_card_id, self)
 
 func evolve_blueprint(card_id: String, target_card_id: String) -> bool:
-	var can_info: Dictionary = can_evolve_blueprint(card_id, target_card_id)
-	if not bool(can_info.get("ok", false)):
-		return false
-	var research_cost: int = int(can_info.get("research_cost", 0))
-	add_research_points(-research_cost)
-	var brm: Node = _get_basic_resource_manager()
-	if brm != null and brm.has_method("add_resource"):
-		var n_general: int = int(can_info.get("permit_general_count", 0))
-		var n_category: int = int(can_info.get("permit_category_count", 0))
-		var n_specific: int = int(can_info.get("permit_specific_count", 0))
-		if n_general > 0:
-			brm.add_resource(String(can_info.get("permit_general_id", "")), -n_general)
-		if n_category > 0:
-			brm.add_resource(String(can_info.get("permit_category_id", "")), -n_category)
-		if n_specific > 0:
-			brm.add_resource(String(can_info.get("permit_specific_id", "")), -n_specific)
-	var old_star: int = get_blueprint_star(card_id)
-	var inherit_ratio: float = float(can_info.get("inherit_ratio", 0.30))
-	var old_bonus: float = float(blueprint_inherit_bonus.get(card_id, 0.0))
-	var merged_bonus: float = clampf(old_bonus + inherit_ratio, 0.0, 0.9)
-	if not is_blueprint_unlocked(target_card_id):
-		unlock_blueprint(target_card_id)
-	blueprint_copies[target_card_id] = max(1, int(blueprint_copies.get(target_card_id, 0)))
-	blueprint_stars[target_card_id] = max(int(blueprint_stars.get(target_card_id, 1)), old_star)
-	blueprint_inherit_bonus[target_card_id] = merged_bonus
-	var old_hp: float = _compute_platform_preview_hp(card_id, 0)
-	if old_hp > 0.0:
-		var floor_hp: float = old_hp * 1.10
-		var prev_floor: float = float(blueprint_evolution_hp_floor.get(target_card_id, 0.0))
-		blueprint_evolution_hp_floor[target_card_id] = maxf(prev_floor, floor_hp)
-
-	## v5.0 Phase 4 进化执行规则:
-	## - 改造完全继承（mods 从源复制到目标，源清空）
-	## - 强化重置（enhance_level=0 在 CardResource 层面）
-	## - 品质保留（星级已通过 max 继承）
-	## - 情报保留（blueprint_intel 字段，Phase 5 数据层预留）
-	var source_mods: Array = blueprint_mods.get(card_id, [])
-	blueprint_mods[target_card_id] = source_mods.duplicate()
-	blueprint_mods[card_id] = []
-
-	## Phase 5 预留: 情报继承 — 进化后保留目标情报进度
-	## var source_intel: float = float(blueprint_intel.get(card_id, 0.0))
-	## blueprint_intel[target_card_id] = maxf(float(blueprint_intel.get(target_card_id, 0.0)), source_intel)
-
-	emit_signal("fragments_changed")
-	emit_signal("blueprint_star_upgraded", target_card_id, int(blueprint_stars[target_card_id]))
-	return true
+	return CardEvolutionManager.evolve_blueprint(card_id, target_card_id, self)
 
 ## ─────────── 军衔系统 ───────────
+## Facade 委托 → EvolutionHelpers（managers/evolution/evolution_helpers.gd）
 
 func get_rank_info(card_id: String) -> Dictionary:
-	if card_id.is_empty():
-		return {}
-	var card: CardResource = DefaultCards.get_card_by_id(card_id)
-	if card == null:
-		return {}
-	## v3兼容：旧platform_type已废弃，改用combat_kind
-	var base_rank: String = RankRules.get_base_rank_by_combat_kind(card.combat_kind)
-	var power_score: float = _estimate_power_score(card_id)
-	var rank_id: String = RankRules.get_rank_by_power(base_rank, power_score)
-	var out: Dictionary = {
-		"rank_id": rank_id,
-		"rank_name": RankRules.get_rank_display_name(rank_id),
-		"power_score": power_score,
-	}
-	blueprint_rank_cache[card_id] = out.duplicate(true)
-	return out
+	return EvolutionHelpers.get_rank_info(card_id, self)
 
-## 战力：平台/武器/合成卡用「与 BackpackCombatPreview 一致」的 UnitStats 推导（星级+稀有度+词条+时代），
-## 与牌面 HP/攻/射程/攻速对齐；不含军衔乘区（避免与 apply_growth 循环）。能量/法则仍用养成向公式。
+## 战力估算（委托 → EvolutionHelpers）
 func _estimate_power_score(card_id: String) -> float:
-	var card: CardResource = DefaultCards.get_card_by_id(card_id)
-	if card == null:
-		return _estimate_power_score_meta_only(card_id)
-	if card.card_type == GC.CardType.ENERGY or card.card_type == GC.CardType.LAW:
-		return _estimate_power_score_meta_only(card_id)
-	var stats: UnitStats = _build_unit_stats_for_power_preview(card)
-	if stats == null:
-		return _estimate_power_score_meta_only(card_id)
-	return _combat_power_from_unit_stats(stats)
-
+	return EvolutionHelpers.estimate_power_score(card_id, self)
 
 func _estimate_power_score_meta_only(card_id: String) -> float:
-	var star: int = get_blueprint_star(card_id)
-	var mod_count: int = get_modification_count(card_id)
-	var rarity_mul: float = get_rarity_multiplier(card_id)
-	var inherit_bonus: float = float(blueprint_inherit_bonus.get(card_id, 0.0))
-	return (80.0 + float(star) * 28.0 + float(mod_count) * 22.0) * rarity_mul * (1.0 + inherit_bonus)
-
+	return EvolutionHelpers.estimate_power_score_meta_only(card_id, self)
 
 func _preview_battle_era_internal() -> int:
-	var tree: SceneTree = Engine.get_main_loop() as SceneTree
-	if tree == null or tree.root == null:
-		return 0
-	var gm: Node = tree.root.get_node_or_null("GameManager")
-	if gm != null and "current_level" in gm:
-		return GC.get_era_for_level(int(gm.current_level))
-	return 0
-
+	return EvolutionHelpers._preview_battle_era()
 
 func _build_unit_stats_for_power_preview(card: CardResource) -> UnitStats:
-	if card == null:
-		return null
-	var era: int = _preview_battle_era_internal()
-	var mll: Node = get_node_or_null("/root/ManagerLazyLoader")
-	if mll and mll.has_method("ensure_loaded"):
-		mll.ensure_loaded("affix")
-	var am: Node = get_node_or_null("/root/AffixManager")
+	return EvolutionHelpers.build_unit_stats_for_power_preview(card, self)
 
-	if card.card_type == GC.CardType.COMBAT_UNIT:
-		## v3兼容：直接使用 card 对象构建统计，不再使用旧的 platform_type
-		var stats: UnitStats = UnitStatsTable.build_stats_from_card(card, era)
-		if stats == null:
-			return null
-		apply_growth_to_stats(stats, card, [], false)
-		if am and am.has_method("apply_affixes_to_stats"):
-			am.apply_affixes_to_stats(stats, card, [])
-		return stats
-
-	return null
-
-
-## 与 RankRules 阈值（约 120~780）同量级：HP、DPS、射程、移速及少量词条战斗属性加权。
 func _combat_power_from_unit_stats(stats: UnitStats) -> float:
-	if stats == null:
-		return 0.0
-	var interval: float = maxf(float(stats.attack_interval), 0.05)
-	var dps: float = float(stats.attack_damage) / interval
-	var hp: float = maxf(float(stats.max_hp), 0.0)
-	var range_f: float = maxf(float(stats.attack_range), 0.0)
-	var spd: float = maxf(float(stats.move_speed), 0.0)
-	var out: float = (
-		hp * 0.28
-		+ dps * 2.2
-		+ range_f * 0.22
-		+ spd * 0.08
-		+ float(stats.damage_reduction) * 80.0
-		+ float(stats.crit_chance) * 120.0
-		+ float(stats.armor_penetration) * 60.0
-	)
-	return maxf(out, 1.0)
+	return EvolutionHelpers.combat_power_from_unit_stats(stats)
 
 
-## ─────────── 稀有度 ───────────
+## ─────────── 稀有度 ──
+## Facade 委托 → EvolutionHelpers（统一入口见 RarityHelpers）
 
 func get_card_base_rarity(card_id: String) -> String:
-	if is_law_blueprint_id(card_id):
-		return "rare"
-	var card: CardResource = DefaultCards.get_card_by_id(card_id)
-	if card:
-		return card.rarity
-	return "common"
+	return EvolutionHelpers.get_card_base_rarity(card_id)
 
 func get_card_rarity(card_id: String) -> String:
-	return get_card_base_rarity(card_id)
+	return EvolutionHelpers.get_card_rarity(card_id)
 
 func get_rarity_multiplier(card_id: String) -> float:
-	var r: String = get_card_rarity(card_id)
-	match r:
-		"uncommon":  return 1.1
-		"rare":      return 1.25
-		"legendary": return 1.5
-		"mythic":    return 1.8
-		"epic":      return 1.4
-		_:           return 1.0
+	return EvolutionHelpers.get_rarity_multiplier(card_id)
 
 func get_effective_power_multiplier(card_id: String) -> float:
-	if is_law_blueprint_id(card_id):
-		var star: int = get_blueprint_star(card_id)
-		return 1.0 + float(max(0, star - 1)) * 0.08
-	var rarity_mul: float = get_rarity_multiplier(card_id)
-	var star: int = get_blueprint_star(card_id)
-	var star_mul: float = BattleCardV3.star_stat_multiplier(star, get_card_rarity(card_id))
-	return rarity_mul * star_mul
+	return EvolutionHelpers.get_effective_power_multiplier(card_id, self)
 
-## 单武器：`stats.weapons[0]` 与 `attack_damage` 保持一致（战斗逻辑以主武器一行为准）
 func _sync_single_weapon_damage_from_attack(stats: UnitStats) -> void:
-	if stats == null or stats.weapons.size() != 1:
-		return
-	var w: Dictionary = stats.weapons[0] as Dictionary
-	w["damage"] = stats.attack_damage
-	stats.weapons[0] = w
+	EvolutionHelpers._sync_single_weapon_damage_from_attack(stats)
 
 
 func _multiply_attack_damage_and_weapon_slots(stats: UnitStats, factor: float) -> void:
-	if stats == null or factor == 1.0:
-		return
-	stats.attack_damage *= factor
-	for i in range(stats.weapons.size()):
-		var w: Dictionary = stats.weapons[i] as Dictionary
-		if w.has("damage"):
-			w["damage"] = float(w["damage"]) * factor
-			stats.weapons[i] = w
+	EvolutionHelpers._multiply_attack_damage_and_weapon_slots(stats, factor)
 
 
 func apply_growth_to_stats(stats: UnitStats, platform_card: CardResource, weapon_cards: Array, apply_rank_bonus: bool = true) -> void:
-	if stats == null:
-		return
-	var cards_to_check: Array = []
-	if platform_card != null:
-		cards_to_check.append(platform_card)
-	for wc_raw in weapon_cards:
-		if wc_raw is CardResource:
-			cards_to_check.append(wc_raw)
-	if cards_to_check.is_empty():
-		return
-	var hp_mul: float = 1.0
-	var dmg_mul: float = 1.0
-	var n: int = cards_to_check.size()
-	for c_raw in cards_to_check:
-		var c: CardResource = c_raw
-		if c.card_id.is_empty():
-			continue
-		var m: float = get_effective_power_multiplier(c.card_id)
-		hp_mul += (m - 1.0) / float(n)
-		dmg_mul += (m - 1.0) / float(n)
-	stats.max_hp *= hp_mul
-	_multiply_attack_damage_and_weapon_slots(stats, dmg_mul)
-	if platform_card != null and not platform_card.card_id.is_empty():
-		var inherit_bonus: float = float(blueprint_inherit_bonus.get(platform_card.card_id, 0.0))
-		if inherit_bonus > 0.0:
-			var inh_mul: float = 1.0 + inherit_bonus
-			stats.max_hp *= inh_mul
-			_multiply_attack_damage_and_weapon_slots(stats, inh_mul)
-		if apply_rank_bonus:
-			var rank_info: Dictionary = get_rank_info(platform_card.card_id)
-			var rank_id: String = String(rank_info.get("rank_id", ""))
-			var rank_bonus: Dictionary = RankRules.get_rank_bonus(rank_id)
-			stats.max_hp *= float(rank_bonus.get("hp_mul", 1.0))
-			var rank_dmg: float = float(rank_bonus.get("dmg_mul", 1.0))
-			_multiply_attack_damage_and_weapon_slots(stats, rank_dmg)
-		_apply_platform_star_growth_bias(stats, platform_card.card_id)
-		_apply_evolution_hp_floor(stats, platform_card.card_id, _preview_battle_era_internal())
-	_sync_single_weapon_damage_from_attack(stats)
+	## 统一入口见 AttributeGrowth（scripts/systems/attribute_growth.gd）
+	EvolutionHelpers.apply_growth_to_stats(stats, platform_card, weapon_cards, self, apply_rank_bonus)
 
 
 func _compute_platform_preview_hp(card_id: String, era: int) -> float:
-	var card: CardResource = DefaultCards.get_card_by_id(card_id)
-	## v3兼容：不再检查 platform_type，直接使用 card 构建
-	if card == null or card.card_type != GC.CardType.COMBAT_UNIT:
-		return 0.0
-	var stats: UnitStats = UnitStatsTable.build_stats_from_card(card, era)
-	if stats == null:
-		return 0.0
-	apply_growth_to_stats(stats, card, [], false)
-	return stats.max_hp
+	return EvolutionHelpers.compute_platform_preview_hp(card_id, era, self)
 
 
 func _apply_platform_star_growth_bias(stats: UnitStats, platform_card_id: String) -> void:
-	if stats == null or platform_card_id.is_empty():
-		return
-	var star: int = get_blueprint_star(platform_card_id)
-	var tiers: float = float(maxi(0, star - 1))
-	if tiers <= 0.0:
-		return
-	## v3兼容：使用 combat_kind 而非 platform_type
-	var bias: Dictionary = UnitStatsTable.get_combat_kind_growth_bias(stats.combat_kind)
-	var hp_bias: float = float(bias.get("hp_bias", 0.04))
-	var dmg_bias: float = float(bias.get("dmg_bias", 0.04))
-	stats.max_hp *= 1.0 + tiers * hp_bias
-	_multiply_attack_damage_and_weapon_slots(stats, 1.0 + tiers * dmg_bias)
-	if bias.has("range_bias"):
-		var range_mul: float = 1.0 + tiers * float(bias["range_bias"])
-		stats.attack_range *= range_mul
-		for i in range(stats.weapons.size()):
-			var w: Dictionary = stats.weapons[i] as Dictionary
-			if w.has("range"):
-				w["range"] = float(w["range"]) * range_mul
-				stats.weapons[i] = w
-	if bias.has("def_bias"):
-		stats.defense += tiers * float(bias["def_bias"]) * 2.0
+	EvolutionHelpers._apply_platform_star_growth_bias(stats, platform_card_id, self)
 
 
 func _apply_evolution_hp_floor(stats: UnitStats, platform_card_id: String, era: int) -> void:
-	if stats == null or platform_card_id.is_empty():
-		return
-	var floor_base: float = float(blueprint_evolution_hp_floor.get(platform_card_id, 0.0))
-	if floor_base <= 0.0:
-		return
-	var era_mul: float = BattleCardV3.era_hp_multiplier(clampi(era, 0, 4)) if era >= 0 else 1.0
-	stats.max_hp = maxf(stats.max_hp, floor_base * era_mul)
+	EvolutionHelpers._apply_evolution_hp_floor(stats, platform_card_id, era, self)
 
 ## ─────────── 存档 ───────────
 
@@ -1230,7 +822,8 @@ func load_state(data: Dictionary) -> void:
 	_migrate_v3_law_copies_to_knowledge()
 
 func _migrate_v3_law_copies_to_knowledge() -> void:
-	if PhaseLawManager == null or not PhaseLawManager.has_method("add_knowledge"):
+	var plm := _ensure_plm()
+	if plm == null or not plm.has_method("add_knowledge"):
 		return
 	var to_erase: Array[String] = []
 	for k in blueprint_copies.keys():
@@ -1240,8 +833,8 @@ func _migrate_v3_law_copies_to_knowledge() -> void:
 		var law_id: String = key.substr(LAW_BLUEPRINT_PREFIX.length())
 		var copies: int = int(blueprint_copies[key])
 		if copies > 0:
-			var kind: String = PhaseLawManager.knowledge_key_for_law_id(law_id)
-			PhaseLawManager.add_knowledge(kind, copies * 5)
+			var kind: String = plm.knowledge_key_for_law_id(law_id)
+			plm.add_knowledge(kind, copies * 5)
 		to_erase.append(key)
 	for key in to_erase:
 		blueprint_copies.erase(key)
