@@ -1,5 +1,4 @@
 extends Node
-class_name EnemyOriginModManager
 ## v6.0: 敌源改造（Enemy-Origin MOD）管理器
 ## 负责：
 ##   - 管理敌源MOD的解锁状态
@@ -109,8 +108,8 @@ func get_available_mods_for_card(card_id: String) -> Array[Dictionary]:
 		combat_kind = bpm.get_combat_kind(card_id)
 	if combat_kind < 0:
 		## 尝试从DefaultCards获取
-		var DefaultCards = preload("res://data/default_cards.gd")
-		var card = DefaultCards.get_card_by_id(card_id) if DefaultCards else null
+		var DC = preload("res://data/default_cards.gd")
+		var card = DC.get_card_by_id(card_id) if DC else null
 		if card and card.get("combat_kind") != null:
 			combat_kind = int(card.combat_kind)
 	if combat_kind < 0:
@@ -173,7 +172,7 @@ func equip_eom(card_id: String, mod_id: String) -> bool:
 	if not is_slot_unlocked_for_card():
 		return false
 	var bpm: Node = get_node_or_null("/root/BlueprintManager")
-	if bpm == nil:
+	if bpm == null:
 		return false
 	if not bpm.blueprint_enemy_origin_mod is Dictionary:
 		bpm.blueprint_enemy_origin_mod = {}
@@ -185,7 +184,7 @@ func equip_eom(card_id: String, mod_id: String) -> bool:
 ## 卸载敌源MOD
 func unequip_eom(card_id: String) -> void:
 	var bpm: Node = get_node_or_null("/root/BlueprintManager")
-	if bpm == nil:
+	if bpm == null:
 		return
 	if bpm.blueprint_enemy_origin_mod is Dictionary:
 		bpm.blueprint_enemy_origin_mod.erase(card_id)
@@ -213,7 +212,7 @@ static func calc_eom_power_bonus(card_id: String, bpm_ref: Node) -> float:
 		eom_id = str(bpm_ref.blueprint_enemy_origin_mod.get(card_id, ""))
 	if eom_id.is_empty():
 		return 0.0
-	var mgr: Node = get_node_or_null("/root/EnemyOriginModManager")
+	var mgr: Node = Engine.get_main_loop().root.get_node_or_null("/root/EnemyOriginModManager")
 	if mgr == null:
 		return 0.0
 	var tier: int = mgr.get_effective_tier(eom_id)

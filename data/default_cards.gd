@@ -3,7 +3,6 @@ extends RefCounted
 
 const GC = preload("res://resources/game_constants.gd")
 const RealWorldUnitLabels = preload("res://data/real_world_unit_labels.gd")
-const EnemyBlueprints = preload("res://data/enemy_blueprints.gd")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const EnemyPhaseEquipment = preload("res://data/enemy_phase_equipment.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
@@ -167,9 +166,9 @@ static func create_all() -> Array:
 	list.append(_energy_start("energy_start_7", "战前能量 VII", 35, 400.0, "rare"))
 
 	# ─── 势力专属卡（14张）───
-	var ExclusiveCards = preload("res://data/faction_exclusive_cards.gd")
-	for cfg in ExclusiveCards.EXCLUSIVE_CARDS:
-		list.append(ExclusiveCards.create_card(cfg))
+	var EC = preload("res://data/faction_exclusive_cards.gd")
+	for cfg in EC.EXCLUSIVE_CARDS:
+		list.append(EC.create_card(cfg))
 
 	return list
 
@@ -183,7 +182,6 @@ static func get_all_blueprint_ids() -> Array:
 			if card.card_type == GC.CardType.COMBAT_UNIT or card.card_type == GC.CardType.ENERGY:
 				ids.append(card.card_id)
 	# 添加敌人掉落的高级蓝图ID
-	var enemy_blueprint_ids = EnemyBlueprints.get_all_enemy_blueprint_ids()
 	for id in enemy_blueprint_ids:
 		if id is String and not ids.has(id):
 			ids.append(id)
@@ -225,11 +223,6 @@ static func get_card_by_id(card_id: String) -> CardResource:
 	_ensure_card_cache()
 	if _id_lookup_cache.has(card_id):
 		return _id_lookup_cache[card_id] as CardResource
-	# 兜底：从敌人蓝图库查找（bp_* 等敌方掉落卡不在默认卡池中）
-	var eb: CardResource = EnemyBlueprints.get_card_by_id(card_id)
-	if eb != null:
-		_id_lookup_cache[card_id] = eb
-		return eb
 	return null
 
 ## 创建战斗单位辅助函数（v5.0：24参数，含显式HP和每目标攻击速度）
@@ -388,7 +381,7 @@ static func get_platform_display_name(platform_type: int) -> String:
 static func get_weapon_display_name(weapon_type: int) -> String:
 	return RealWorldUnitLabels.weapon_kind_long(weapon_type)
 
-## 统一安全获取卡牌中文名：依次尝试 DefaultCards → EnemyBlueprints → EnemyPhaseEquipment → EnemyArchetypes → 返回 ID 本身
+## 统一安全获取卡牌中文名：依次尝试 DefaultCards → EnemyPhaseEquipment → EnemyArchetypes → 返回 ID 本身
 ## 所有 UI 层的 ID 回退都应使用此函数，杜绝显示原始 card_id
 static func get_safe_display_name(card_id: String) -> String:
 	if card_id.is_empty():
@@ -397,10 +390,6 @@ static func get_safe_display_name(card_id: String) -> String:
 	var c: CardResource = _id_lookup_cache.get(card_id) as CardResource
 	if c != null and not c.display_name.is_empty() and not _looks_like_id(c.display_name):
 		return c.display_name
-	# 尝试敌人蓝图库
-	var eb: CardResource = EnemyBlueprints.get_card_by_id(card_id)
-	if eb != null and not eb.display_name.is_empty() and not _looks_like_id(eb.display_name):
-		return eb.display_name
 	# 尝试敌方相位装备（platform 或 weapon）
 	var eq_data: Dictionary = EnemyPhaseEquipment.get_war_platform(card_id)
 	if not eq_data.is_empty():

@@ -1,5 +1,4 @@
 extends Node
-class_name IntelManual
 ## 情报手册核心逻辑
 ## 管理所有敌方单位的情报数据：遭遇、击败、侦察、分解等情报获取，
 ## 情报奖励阶梯判定，存档/读档。
@@ -436,7 +435,9 @@ func get_completed_list() -> Array[String]:
 
 ## 获取所有已记录的卡片 ID 列表
 func get_known_card_ids() -> Array[String]:
-	return _entries.keys()
+	var result: Array[String] = []
+	result.assign(_entries.keys())
+	return result
 
 ## 获取已记录情报的总数
 func get_total_entries() -> int:

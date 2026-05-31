@@ -5,7 +5,6 @@ signal closed
 
 const DefaultCards = preload("res://data/default_cards.gd")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
-const EnemyBlueprints = preload("res://data/enemy_blueprints.gd")
 const GC = preload("res://resources/game_constants.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
 @onready var assemble_popup: PanelContainer = $AssemblePopup

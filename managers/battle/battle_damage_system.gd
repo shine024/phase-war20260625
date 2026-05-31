@@ -149,7 +149,7 @@ func _get_random_law_for_current_env() -> String:
 		if gm and gm.has_method("get"):
 			var gm_level_raw: Variant = gm.current_level if "current_level" in gm else 1
 			var level: int = int(gm_level_raw)
-			current_env = BattleEnvs.get_for_level(level)
+			current_env = preload("res://data/battle_environments.gd").get_for_level(level)
 	if current_env.is_empty():
 		current_env = {"weather": "clear", "terrain": "plain", "energy_field": "normal", "time_of_day": "day"}
 	# 获取环境关联的法则流派
@@ -329,8 +329,8 @@ func generate_battle_completion_drops(player_won: bool, elapsed_time: float, wav
 		var current_env: Dictionary = {}
 		if gm and gm.has_method("get"):
 			var gm_level: Variant = gm.current_level if "current_level" in gm else 1
-			var BattleEnvs = preload("res://data/battle_environments.gd")
-			current_env = BattleEnvs.get_for_level(int(gm_level))
+			var BE = preload("res://data/battle_environments.gd")
+			current_env = BE.get_for_level(int(gm_level))
 		var has_recon: bool = _get_recon_fragment_bonus_multiplier() > 0.0
 		var intel_harvest: Dictionary = idm.generate_battle_intel_harvest(
 			defeated_list, victory_stars, has_recon, current_env

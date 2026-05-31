@@ -112,9 +112,9 @@ func on_blueprint_star_up(card_id: String, old_star: int, new_star: int) -> void
 	if bm == null:
 		return
 	var card: CardResource = null
-	var DefaultCards = preload("res://data/default_cards.gd")
-	if DefaultCards:
-		card = DefaultCards.get_card_by_id(card_id)
+	var DC = preload("res://data/default_cards.gd")
+	if DC:
+		card = DC.get_card_by_id(card_id)
 	if card == null:
 		return
 	if card.card_type == GC.CardType.LAW:

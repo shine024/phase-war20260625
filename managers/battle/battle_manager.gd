@@ -367,16 +367,14 @@ func _record_defeated_enemy(unit: Node) -> void:
 		rank = "boss" if unit.get("is_boss") == true else "elite"
 	## 尝试从EnemyArchetypes获取tags
 	if not archetype_id.is_empty():
-		var EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
-		if EnemyArchetypes and EnemyArchetypes.has_method("get_config"):
-			var config: Dictionary = EnemyArchetypes.get_config(archetype_id)
-			if not config.is_empty():
-				var tags: Array = config.get("tags", [])
-				if tags.has("boss"):
-					rank = "boss"
-				elif tags.has("elite"):
-					rank = "elite"
-				enemy_type = _guess_enemy_type_from_archetype(archetype_id, tags)
+		var config: Dictionary = EnemyArchetypes.get_config(archetype_id)
+		if not config.is_empty():
+			var tags: Array = config.get("tags", [])
+			if tags.has("boss"):
+				rank = "boss"
+			elif tags.has("elite"):
+				rank = "elite"
+			enemy_type = _guess_enemy_type_from_archetype(archetype_id, tags)
 	if enemy_type.is_empty():
 		enemy_type = "infantry"
 	_defeated_enemies.append({

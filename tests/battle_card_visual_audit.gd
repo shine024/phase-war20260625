@@ -4,7 +4,6 @@ extends SceneTree
 
 const GC = preload("res://resources/game_constants.gd")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
-const EnemyBlueprints = preload("res://data/enemy_blueprints.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 
 const MIRROR_BY_PLATFORM: Dictionary = {
@@ -43,7 +42,7 @@ func _initialize() -> void:
 	var asset_bad: Array[String] = []
 
 	var ids: Array[String] = []
-	for id_raw in EnemyBlueprints.get_all_enemy_blueprint_ids():
+		# EnemyBlueprints removed
 		ids.append(String(id_raw))
 	ids.sort()
 	for cid in DefaultCards.get_all_blueprint_ids():
@@ -89,7 +88,7 @@ func _initialize() -> void:
 
 	lines.append("")
 	lines.append("--- counts ---")
-	lines.append("EnemyBlueprints+default platform ids scanned: %d" % ids.size())
+	lines.append("Default platform ids scanned: %d" % ids.size())
 	lines.append("PLATFORM/COMBINED cards: %d" % (rev_hit.size() + rev_miss_platform.size()))
 	lines.append("  drops反查命中 (revhit): %d" % rev_hit.size())
 	lines.append("  反查空→platform镜像兜底: %d" % rev_miss_platform.size())

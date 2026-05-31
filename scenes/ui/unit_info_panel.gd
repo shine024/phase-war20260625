@@ -588,7 +588,8 @@ func _show_enemy_unit(unit: Node) -> void:
 		_show_enemy_construct_unit(unit)
 	else:
 		# 普通敌方单位
-		name_label.text = "敌方单位"
+		var display_name := "敌方单位"
+		name_label.text = display_name
 		var type_text := "敌方单位"
 		var era_text := ""
 		var tags_text := ""
@@ -598,6 +599,8 @@ func _show_enemy_unit(unit: Node) -> void:
 			var cfg = EnemyArchetypes.get_config(unit.archetype_id)
 			if not cfg.is_empty():
 				type_text = cfg.get("display_name", type_text)
+				## 修正name_label为敌人实际名称
+				display_name = type_text
 				era_text = str(cfg.get("era", ""))
 				speed_val = float(cfg.get("speed", 0.0))
 				weapon_type_val = int(cfg.get("weapon_type", -1))
@@ -636,6 +639,7 @@ func _show_enemy_unit(unit: Node) -> void:
 		if weapon_type_val >= 0:
 			type_text += "\n武装：%s" % DefaultCards.get_weapon_display_name(weapon_type_val)
 		type_label.text = type_text
+		name_label.text = display_name
 		var s2: Array = _enemy_surface_combat_stats(unit)
 		# 补充移速显示
 		var speed_display: float = float(unit.get("speed")) if "speed" in unit else speed_val

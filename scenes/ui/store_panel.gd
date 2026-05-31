@@ -5,7 +5,6 @@ const CompanyDefs = preload("res://data/company_definitions.gd")
 const CompanyStore = preload("res://data/company_store.gd")
 const BasicResources = preload("res://data/basic_resources.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
-const EnemyBlueprints = preload("res://data/enemy_blueprints.gd")
 const GC = preload("res://resources/game_constants.gd")
 const IntelManualItems = preload("res://data/intel_manual_items.gd")
 const StoreItemRowScene = preload("res://scenes/ui/store_item_row.tscn")
@@ -202,7 +201,7 @@ func _refresh_items() -> void:
 		var card = null
 
 		# 先从敌方蓝图表查找
-		var enemy_bp = EnemyBlueprints.get_card_by_id(card_id)
+		var enemy_bp = null
 		if enemy_bp:
 			if not String(enemy_bp.display_name).is_empty():
 				card_name = String(enemy_bp.display_name)
@@ -590,7 +589,7 @@ func _on_buy_pressed(card_id: String, card_count: int, price_nano: int, row_node
 	else:
 		var template_card: CardResource = DefaultCards.get_card_by_id(card_id)
 		if template_card == null:
-			template_card = EnemyBlueprints.get_card_by_id(card_id)
+			template_card = null
 		for i in range(maxi(1, card_count)):
 			if template_card != null and SignalBus:
 				var out_card: CardResource = template_card.clone() if template_card.has_method("clone") else template_card

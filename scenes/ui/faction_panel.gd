@@ -157,8 +157,8 @@ func _update_faction_detail() -> void:
 		for card_id in store_inventory:
 			if not store_text.is_empty():
 				store_text += ", "
-			var default_cards = preload("res://data/default_cards.gd")
-			var card_data = default_cards.get_card_by_id(card_id) if default_cards else null
+			var dc = preload("res://data/default_cards.gd")
+			var card_data = dc.get_card_by_id(card_id) if dc else null
 			var card_name = card_data.display_name if card_data else String(card_id)
 			store_text += card_name
 		store_preview.text = store_text

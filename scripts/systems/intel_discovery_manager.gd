@@ -1,5 +1,4 @@
 extends Node
-class_name IntelDiscoveryManager
 ## v6.0: 情报发现管理器
 ## 负责：
 ##   - 战斗结束时计算各维情报增长
@@ -181,7 +180,7 @@ func _check_reveals(card_id: String, enemy_type: String, im: Node) -> Array:
 			if not IntelRevealEvents.has_event(enemy_type, dim, t):
 				continue
 			var event_data: Dictionary = IntelRevealEvents.get_event(enemy_type, dim, t)
-			_trigger_reveals[event_key] = true
+			_triggered_reveals[event_key] = true
 			new_events.append({
 				"event_key": event_key,
 				"card_id": card_id,
@@ -340,6 +339,18 @@ func _harvest_defeat(harvests: Array, card_id: String, enemy_type: String, rank:
 		"dimensions": deltas,
 	})
 
+## IntelManual情报维度变化回调
+func _on_intel_dimension_changed(card_id: String, dimension: String, old_val: float, new_val: float, source: String) -> void:
+	_check_and_fire_reveals(card_id)
+
+## 触发揭示检查（被动回调用）
+func _check_and_fire_reveals(card_id: String) -> void:
+	var im: Node = get_node_or_null("/root/IntelManual")
+	if im == null:
+		return
+	var enemy_type: String = _guess_enemy_type(card_id)
+	_check_reveals(card_id, enemy_type, im)
+
 ## 构建侦察情报收获条目
 func _harvest_recon(harvests: Array, card_id: String, deltas: Dictionary) -> void:
 	if deltas.is_empty():
@@ -394,4 +405,3 @@ func _roll_intel_item_drops(
 			drops.append(item)
 
 	return drops
-

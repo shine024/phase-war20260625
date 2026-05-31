@@ -17,7 +17,7 @@ static func _load_json_array(path: String, fallback: Array) -> Array:
 ##
 ## 条目字段：
 ## - company_id: 所属公司
-## - card_id: 卡牌 id（DefaultCards / EnemyBlueprints / permit_*）
+## - card_id: 卡牌 id（DefaultCards permit_*）
 ## - fragment_amount: 购买一次获得的张数（沿用字段名，语义为「卡牌数量」）
 ## - price_nano_materials: 花费的纳米材料
 ## - required_rep: 购买所需的公司贡献度（公司声望）

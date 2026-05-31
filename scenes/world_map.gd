@@ -29,7 +29,6 @@ const LevelEras = preload("res://data/level_eras.gd")
 const LevelInformation = preload("res://data/level_information.gd")
 const BasicResourcesData = preload("res://data/basic_resources.gd")
 const EnemyArchetypesData = preload("res://data/enemy_archetypes.gd")
-const EnemyBlueprintsData = preload("res://data/enemy_blueprints.gd")
 const DefaultCardsData = preload("res://data/default_cards.gd")
 const PhaseLawsData = preload("res://data/phase_laws.gd")
 const DropTablesPreview = preload("res://resources/drop_tables.gd")
@@ -522,7 +521,7 @@ func _collect_level_info(level_index: int) -> Dictionary:
 				var cid: String = String(d.get("card_id", ""))
 				if cid.is_empty():
 					continue
-				var c = EnemyBlueprintsData.get_card_by_id(cid)
+				var c = null
 				var n: String = c.display_name if c else DefaultCardsData.get_safe_display_name(cid)
 				if not drop_names.has(n):
 					drop_names.append(n)
@@ -568,7 +567,7 @@ func _collect_level_info(level_index: int) -> Dictionary:
 		var mythic_drops: Array = []
 		
 		for cid in drop_ids_all:
-			var c = EnemyBlueprintsData.get_card_by_id(String(cid))
+			var c = null
 			if c:
 				match c.rarity:
 					"common":

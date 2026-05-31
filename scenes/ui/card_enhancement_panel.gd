@@ -11,7 +11,6 @@ class_name CardEnhancementPanel
 
 const GC = preload("res://resources/game_constants.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
-const EnemyBlueprints = preload("res://data/enemy_blueprints.gd")
 const UnitLineageConfig = preload("res://data/unit_lineage_config.gd")
 const RankRules = preload("res://data/rank_rules.gd")
 const CompanyDefinitions = preload("res://data/company_definitions.gd")
@@ -171,7 +170,7 @@ func _init_card_list() -> void:
 			continue
 		var card_data = DefaultCards.get_card_by_id(card_id)
 		if card_data == null:
-			card_data = EnemyBlueprints.get_card_by_id(card_id)
+			card_data = null
 		if card_data == null:
 			continue
 
@@ -255,7 +254,7 @@ func _update_detail_panel() -> void:
 
 	var card_data = DefaultCards.get_card_by_id(selected_card_id)
 	if card_data == null:
-		card_data = EnemyBlueprints.get_card_by_id(selected_card_id)
+		card_data = null
 
 	if card_data == null:
 		return
@@ -841,8 +840,8 @@ func _update_eom_section_content(section: Control) -> void:
 	## 显示当前装备
 	var equipped_id: String = eom_mgr.get_equipped_eom(selected_card_id)
 	if not equipped_id.is_empty():
-		var EnemyOriginMods = preload("res://data/enemy_origin_mods.gd")
-		var mod: Dictionary = EnemyOriginMods.get_mod(equipped_id)
+		var EOM = preload("res://data/enemy_origin_mods.gd")
+		var mod: Dictionary = EOM.get_mod(equipped_id)
 		if not mod.is_empty():
 			var tier: int = eom_mgr.get_effective_tier(equipped_id)
 			var name_lbl := Label.new()
@@ -850,7 +849,7 @@ func _update_eom_section_content(section: Control) -> void:
 			name_lbl.add_theme_font_size_override("font_size", 12)
 			name_lbl.add_theme_color_override("font_color", Color(0.4, 0.95, 0.65, 1.0))
 			content.add_child(name_lbl)
-			var effects: Dictionary = EnemyOriginMods.get_tier_effects(equipped_id, tier)
+			var effects: Dictionary = EOM.get_tier_effects(equipped_id, tier)
 			var effect_lbl := Label.new()
 			effect_lbl.text = "    %s" % mod.get("tiers", [{}])[min(tier, 2)].get("desc", "")
 			effect_lbl.add_theme_font_size_override("font_size", 10)

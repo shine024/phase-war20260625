@@ -54,13 +54,11 @@ static func _merged_legacy_archetypes() -> Dictionary:
 
 static var ARCHETYPES: Dictionary = _load_json_dict(_ARCHETYPES_JSON_PATH, _merged_legacy_archetypes())
 
-const EnemyBlueprints = preload("res://data/enemy_blueprints.gd")
 const GC = preload("res://resources/game_constants.gd")
 const ERA_PREFIX: Array[String] = ["ww1", "ww2", "cold", "modern", "near"]
 const TARGET_ARCHETYPE_COUNT: int = 150
 ## 100 基本敌人清单启用后关闭程序批量生成（见 data/enemy_unit_manifest.gd）
 const GENERATED_PER_ERA: int = 0
-const ERA_BP_COUNT: Array[int] = [26, 26, 26, 26, 26]  # 兜底值；优先按 EnemyBlueprints 实际数量计算
 ## 每个时代前若干 bp_* 视为“平台蓝图”区间（与 enemy_blueprints.gd 生成顺序一致）
 const PLATFORM_BP_COUNT_BY_ERA: Array[int] = [10, 10, 9, 9, 10]
 
@@ -305,7 +303,6 @@ static func _get_era_blueprint_count(era: int) -> int:
 	var safe_era: int = clampi(era, 0, ERA_PREFIX.size() - 1)
 	var prefix: String = ERA_PREFIX[safe_era]
 	var actual_count: int = 0
-	var all_ids: Array = EnemyBlueprints.get_all_enemy_blueprint_ids()
 	for id_val in all_ids:
 		var sid: String = String(id_val)
 		if sid.begins_with("bp_%s_" % prefix):
@@ -574,9 +571,6 @@ static func _should_auto_add_platform_drop(id: String, cfg: Dictionary, drops: A
 		var card_id: String = String((d as Dictionary).get("card_id", ""))
 		if card_id.is_empty():
 			continue
-		var card: CardResource = EnemyBlueprints.get_card_by_id(card_id)
-		if card != null and card.card_type == GC.CardType.COMBAT_UNIT:
-			return false
 	return true
 
 static func _should_auto_add_weapon_drop(id: String, cfg: Dictionary, drops: Array) -> bool:

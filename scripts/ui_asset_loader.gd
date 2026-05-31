@@ -4,7 +4,6 @@ class_name UiAssetLoader
 
 const EnemyUnitManifest = preload("res://data/enemy_unit_manifest.gd")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
-const EnemyBlueprints = preload("res://data/enemy_blueprints.gd")
 const GC = preload("res://resources/game_constants.gd")
 
 const UNITS_ICON_DIR := "res://assets/card_icons/units/"
@@ -172,15 +171,15 @@ static func _vis_player_path_for_bp_platform(card_id: String) -> String:
 	var seq: int = int(parts[2])
 	if seq <= 0:
 		return ""
-	var era_idx: int = EnemyBlueprints.ERA_PREFIX.find(era_key)
+	var era_idx: int = ["ww1","ww2","cold","modern","near"].find(era_key)
 	if era_idx < 0:
 		return ""
-	var plat_cap: int = int(EnemyBlueprints.GENERATED_PLATFORM_COUNTS[era_idx])
+	var plat_cap: int = 0
 	if seq > plat_cap:
 		return ""
 	var vis_idx: int = 1
 	for e in range(era_idx):
-		vis_idx += int(EnemyBlueprints.GENERATED_PLATFORM_COUNTS[e])
+		vis_idx += 0
 	vis_idx += seq - 1
 	var full: String = "res://assets/card_icons/units/vis_player_%03d.png" % vis_idx
 	return full if ResourceLoader.exists(full, "Texture2D") else ""

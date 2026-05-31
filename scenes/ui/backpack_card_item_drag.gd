@@ -29,12 +29,8 @@ static func check_drag_state(item: PanelContainer) -> void:
 
 ## 断开 process_frame 拖拽钩子
 static func disconnect_drag_frame_hook(item: PanelContainer) -> void:
-	var main_loop: MainLoop = Engine.get_main_loop()
-	if not (main_loop is SceneTree):
-		return
-	var tree: SceneTree = main_loop as SceneTree
-	if tree.process_frame and tree.process_frame.is_connected(check_drag_state):
-		tree.process_frame.disconnect(check_drag_state)
+	## 拖拽由 backpack_card_item._check_drag_state 桥接，无需在此断开全局信号
+	pass
 
 ## 检查全局鼠标移动（拖拽过程中）
 static func check_global_mouse_movement(item: PanelContainer) -> void:
@@ -82,10 +78,8 @@ static func start_drag(item: PanelContainer) -> void:
 	item._is_dragging = true
 	item._drag_started_ms = Time.get_ticks_msec()
 
-	# 拖拽中需持续接收 process_frame
-	var drag_tree := item.get_tree()
-	if drag_tree and is_instance_valid(drag_tree) and not drag_tree.process_frame.is_connected(check_drag_state):
-		drag_tree.process_frame.connect(check_drag_state)
+	# 拖拽中需持续接收 process_frame（由 backpack_card_item._check_drag_state 桥接）
+	# 不再重复连接 process_frame 信号
 
 	# 创建轻量拖拽预览
 	item._drag_preview = PanelContainer.new()

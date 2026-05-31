@@ -341,8 +341,8 @@ func _try_equip_card(card: CardResource) -> bool:
 			# 制造/蓝图链路可能传入 law: 前缀，查法则定义前统一去前缀。
 			if lid.begins_with("law:"):
 				lid = lid.substr(4)
-			var PhaseLaws = preload("res://data/phase_laws.gd")
-			var law: Dictionary = PhaseLaws.get_by_id(lid)
+			var PL = preload("res://data/phase_laws.gd")
+			var law: Dictionary = PL.get_by_id(lid)
 			if law.is_empty():
 				push_error("[BackpackPresenter] 法则卡找不到法则数据: " + lid)
 				return false

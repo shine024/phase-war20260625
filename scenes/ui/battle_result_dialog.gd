@@ -157,8 +157,8 @@ static func create(parent: Node, player_won: bool, blueprints: Array, \
 		var intel_sep := HSeparator.new()
 		intel_sep.add_theme_color_override("color", Color(0.5, 0.3, 0.9, 0.25))
 		content_box.add_child(intel_sep)
-		var IntelHarvestDisplay = preload("res://scenes/ui/intel_harvest_display.gd")
-		var harvest_ui := IntelHarvestDisplay.new()
+		var IHD = preload("res://scenes/ui/intel_harvest_display.gd")
+		var harvest_ui = IHD.new()
 		harvest_ui.set_data(intel_harvest)
 		content_box.add_child(harvest_ui)
 
@@ -286,8 +286,8 @@ static func _get_blueprint_display_name(card_id: String) -> String:
 	# 法则蓝图（law:xxx 前缀）
 	if card_id.begins_with("law:"):
 		var law_id: String = card_id.substr(4)
-		var PhaseLaws = preload("res://data/phase_laws.gd")
-		var law = PhaseLaws.get_by_id(law_id)
+		var PL = preload("res://data/phase_laws.gd")
+		var law = PL.get_by_id(law_id)
 		if not law.is_empty():
 			return str(law.get("name", card_id))
 		return card_id

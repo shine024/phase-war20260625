@@ -115,13 +115,13 @@ func _create_card_entry(entry: Dictionary) -> PanelContainer:
 		if delta < 0.001:
 			continue  ## 跳过无增长的维度
 
-		var dim_row := _create_dimension_bar(card_id, dim, delta)
+		var dim_row := _create_dimension_bar(card_id, enemy_type, dim, delta)
 		vbox.add_child(dim_row)
 
 	return box
 
 ## 创建单个维度的进度条行
-func _create_dimension_bar(card_id: String, dimension: String, delta: float) -> HBoxContainer:
+func _create_dimension_bar(card_id: String, enemy_type: String, dimension: String, delta: float) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 
@@ -190,7 +190,7 @@ func _create_dimension_bar(card_id: String, dimension: String, delta: float) -> 
 		var tier: int = IntelDimensions.get_reveal_tier(val)
 		var idm: Node = get_node_or_null("/root/IntelDiscoveryManager")
 		if tier >= 0 and idm:
-			var key: String = "%s_%s_%d" % [entry?.get("enemy_type", ""), dimension, tier]
+			var key: String = "%s_%s_%d" % [enemy_type, dimension, tier]
 			## 检查是否是新触发的揭示
 			for rev in _reveal_events:
 				if rev.get("dimension", "") == dimension:
@@ -205,20 +205,16 @@ func _create_dimension_bar(card_id: String, dimension: String, delta: float) -> 
 
 ## 获取敌人显示名称
 func _get_enemy_display_name(card_id: String, enemy_type: String) -> String:
-	## 尝试从EnemyArchetypes获取名称
+	## 优先从EnemyArchetypes获取名称
 	if not card_id.is_empty():
-		var EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
-		if EnemyArchetypes and EnemyArchetypes.has_method("get_config"):
-			var config: Dictionary = EnemyArchetypes.get_config(card_id)
-			if not config.is_empty():
-				return config.get("name", card_id)
-	## 尝试从DefaultCards获取
+		var config: Dictionary = EnemyArchetypes.get_config(card_id)
+		if not config.is_empty():
+			return config.get("display_name", "")
+	## 尝试DefaultCards.get_safe_display_name（依次查DefaultCards→EnemyArchetypes）
 	if not card_id.is_empty():
-		var DefaultCards = preload("res://data/default_cards.gd")
-		if DefaultCards and DefaultCards.has_method("get_card_by_id"):
-			var card = DefaultCards.get_card_by_id(card_id)
-			if card:
-				return card.display_name if card.has("display_name") else card.card_id
+		var safe: String = _get_default_cards().get_safe_display_name(card_id)
+		if not safe.is_empty() and safe != card_id:
+			return safe
 	## 兜底
 	match enemy_type:
 		"infantry": return "步兵部队"
@@ -230,3 +226,7 @@ func _get_enemy_display_name(card_id: String, enemy_type: String) -> String:
 		"boss_nano": return "纳米核心"
 		"boss_phase": return "相位师"
 		_: return card_id if not card_id.is_empty() else "未知敌人"
+
+## 获取DefaultCards脚本引用
+func _get_default_cards() -> GDScript:
+	return preload("res://data/default_cards.gd")

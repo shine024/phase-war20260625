@@ -40,7 +40,7 @@ const INTEL_BRANCHES: Dictionary = {
 		"target_card_id": "fut_cyborg",
 		"intel_requirements": {
 			"heavy_armor": {"dimension": "tactical", "threshold": 0.80},
-			"heavy_armor": {"dimension": "material", "threshold": 0.75},
+			"heavy_armor_mat": {"dimension": "material", "threshold": 0.75},
 		},
 		"unique_bonus": {
 			"inherit_ratio": 0.50,

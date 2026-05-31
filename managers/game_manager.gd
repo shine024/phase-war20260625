@@ -35,14 +35,14 @@ func check_phase_master_encounter() -> Dictionary:
 	if force_phase_master_battle:
 		if DEBUG_GAME_LOG:
 			print("[GameManager] 第49关固定触发相位师战斗")
-	
+
 	# 获取当前关卡的势力
-	var LevelInfoClass = preload("res://data/level_information.gd")
-	var LevelInfo = LevelInfoClass.new()
+	var LIC = preload("res://data/level_information.gd")
+	var LevelInfo = LIC.new()
 	var current_faction: String = LevelInfo.get_level_faction(current_level)
 	if DEBUG_GAME_LOG:
 		print("[GameManager] 当前关卡 %d 属于势力: %s" % [current_level, current_faction])
-	
+
 	# 从排行榜获取活跃相位师（按优先级尝试多条路径）
 	var lp = get_node_or_null("/root/Main/PopupLayer/LeaderboardPanel")
 	if lp == null:
@@ -51,7 +51,7 @@ func check_phase_master_encounter() -> Dictionary:
 		lp = get_node_or_null("/root/Main/Margin/VBox/LeaderboardPanel")
 	if lp == null:
 		lp = get_node_or_null("/root/LeaderboardPanel")
-	
+
 	# 获取相位师数据：优先从节点获取，节点不存在时使用内嵌兜底数据
 	var all_masters: Array = []
 	if lp and lp.has_method("get_active_phase_masters"):
@@ -69,10 +69,10 @@ func check_phase_master_encounter() -> Dictionary:
 		]
 		if DEBUG_GAME_LOG:
 			print("[GameManager] LeaderboardPanel 节点未找到，使用内嵌相位师数据")
-	
+
 	if not all_masters.is_empty():
 		var selected_master: Dictionary = {}
-		
+
 		# 优先尝试抽取当前关卡势力的相位师（防守任务需要）
 		if not current_faction.is_empty():
 			var faction_masters: Array = []
@@ -84,20 +84,20 @@ func check_phase_master_encounter() -> Dictionary:
 				selected_master = faction_masters[idx]
 				if DEBUG_GAME_LOG:
 					print("[GameManager] 遭遇防守方相位师: %s（势力: %s）" % [selected_master.get("name", "?"), current_faction])
-		
+
 		# 如果没有找到对应势力的相位师（或没拿到），则随机抽取
 		if selected_master.is_empty():
 			var idx = randi() % min(3, all_masters.size())
 			selected_master = all_masters[idx]
 			if DEBUG_GAME_LOG:
 				print("[GameManager] 遭遇随机相位师: %s！" % selected_master.get("name", "?"))
-		
+
 		## 尝试从 EnemyPhaseMasters 获取完整装备数据
 		var enriched_config = _enrich_master_config(selected_master)
 		_current_phase_master = enriched_config
 		_is_phase_master_battle = true
 		return _current_phase_master
-	
+
 	_is_phase_master_battle = false
 	_current_phase_master = {}
 	return {}
@@ -135,11 +135,11 @@ func _enrich_master_config(simple_config: Dictionary) -> Dictionary:
 	var enemy_faction: String = faction_map.get(master_faction, master_faction)
 
 	## 从 EnemyPhaseMasters 查找匹配势力且适合当前关卡的相位师
-	var EnemyPhaseMastersClass = preload("res://data/enemy_phase_masters.gd")
-	var candidates: Array = EnemyPhaseMastersClass.get_masters_by_faction(enemy_faction)
+	var EPMC = preload("res://data/enemy_phase_masters.gd")
+	var candidates: Array = EPMC.get_masters_by_faction(enemy_faction)
 	if candidates.is_empty():
 		# 没找到匹配势力的，尝试所有相位师
-		candidates = EnemyPhaseMastersClass.ENEMY_MASTERS
+		candidates = EPMC.ENEMY_MASTERS
 
 	# 过滤掉“纯步兵相关平台”的相位师（只保留能产出 fortress/titan/raider/siege 等平台的相位师）
 	var excluded_types: Array[String] = ["striker", "sniper", "stealth", "mage"]
@@ -166,7 +166,7 @@ func _enrich_master_config(simple_config: Dictionary) -> Dictionary:
 	else:
 		# 如果该势力的相位师全部都由被剔除平台构成，则退回到全局“可用平台”相位师，避免相位师战斗空转
 		var global_allowed: Array = []
-		for c in EnemyPhaseMastersClass.ENEMY_MASTERS:
+		for c in EPMC.ENEMY_MASTERS:
 			if not (c is Dictionary):
 				continue
 			var equipment: Dictionary = c.get("equipment", {})
@@ -505,7 +505,6 @@ func get_drop_rate_multiplier(level: int) -> float:
 	return LevelEras.get_drop_rate_multiplier(max(1, level))
 
 const BasicResources = preload("res://data/basic_resources.gd")
-const EnemyBlueprints = preload("res://data/enemy_blueprints.gd")
 const EnemyPhaseEquipment = preload("res://data/enemy_phase_equipment.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
 const CardDropGrants = preload("res://scripts/card_drop_grants.gd")
@@ -520,42 +519,9 @@ func _grant_basic_resources_for_current_level() -> void:
 	# 战后额外：纳米材料（用于解析蓝图）
 	if BlueprintManager and BlueprintManager.has_method("add_nano_materials"):
 		var nano_bonus: int = 10 + current_level * 3 + int(pow(float(current_level), 1.15))  # 经济平衡：指数增长
-		BlueprintManager.add_nano_materials(nano_bonus)
-		# 胜利奖励：小概率额外掉落随机敌方卡（当前时代 bp 池）
-	_grant_victory_bonus_fragment()
+	BlueprintManager.add_nano_materials(nano_bonus)
 	return
 
-func _grant_victory_bonus_fragment() -> void:
-	if not BlueprintManager:
-		return
-	var era: int = GC.get_era_for_level(current_level)
-	var prefix: String = GC.get_era_prefix(era)
-	var all_ids: Array = EnemyBlueprints.get_all_enemy_blueprint_ids()
-	var era_pool: Array = []
-	for id_val in all_ids:
-		var sid: String = str(id_val)
-		if sid.begins_with("bp_%s_" % prefix):
-			era_pool.append(sid)
-	if era_pool.is_empty():
-		return
-	var chance: float = 0.25 + current_level * 0.002
-	chance *= (1.0 + _get_recon_fragment_bonus_multiplier())
-	chance = minf(chance, 0.6)
-	var roll: float = randf()
-	if roll > chance:
-		return
-	var idx: int = randi() % era_pool.size()
-	var amount_f: float = 1.0 + _get_recon_fragment_bonus_multiplier()
-	var amount: int = int(floor(amount_f))
-	var extra_prob: float = amount_f - float(amount)
-	if randf() < extra_prob:
-		amount += 1
-	amount = max(1, amount)
-	CardDropGrants.grant_enemy_style_card(BlueprintManager, String(era_pool[idx]), era, amount)
-	ManagerLazyLoader.ensure_loaded("quest")
-	var qm: Node = get_node_or_null("/root/QuestManager")
-	if qm and qm.has_method("notify_fragments_changed"):
-		qm.notify_fragments_changed()
 
 func _get_recon_fragment_bonus_multiplier() -> float:
 	if not PhaseInstrumentManager or not PhaseInstrumentManager.has_method("get_loadouts"):

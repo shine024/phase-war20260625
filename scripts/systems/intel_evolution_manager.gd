@@ -1,5 +1,4 @@
 extends Node
-class_name IntelEvolutionManager
 ## v6.0: 情报进化管理器
 ## 负责：
 ##   - 检查情报进化分支是否可发现

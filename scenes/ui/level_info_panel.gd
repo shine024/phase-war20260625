@@ -23,7 +23,7 @@ const PhaseLaws = preload("res://data/phase_laws.gd")
 
 # 数据
 var current_level: int = 0
-var level_info_data = preload("res://data/level_information.gd")
+var lid = preload("res://data/level_information.gd")
 
 func _ready() -> void:
 	if enter_button:
@@ -43,7 +43,7 @@ func _update_level_info() -> void:
 	if current_level <= 0:
 		return
 
-	var level_info = level_info_data.new()
+	var level_info = lid.new()
 	var info = level_info.get_level_info(current_level)
 
 	if info.is_empty():
