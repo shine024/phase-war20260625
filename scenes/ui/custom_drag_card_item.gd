@@ -95,7 +95,6 @@ func _end_drag() -> void:
 	if not _is_dragging:
 		return
 
-	print("[CustomDrag] 结束拖拽")
 
 	_is_dragging = false
 

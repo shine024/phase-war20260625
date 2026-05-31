@@ -604,11 +604,12 @@ func _clone_card_for_preview(tmpl: CardResource) -> CardResource:
 		return null
 	var c: CardResource = tmpl.duplicate(true) as CardResource
 	# 与 BlueprintManager 一致：未记录蓝图 id 时 get_blueprint_star 默认为 1★
-	if BlueprintManager and BlueprintManager.has_method("get_blueprint_star"):
-		var bp: int = clampi(int(BlueprintManager.get_blueprint_star(c.card_id)), 1, StarConfig.MAX_STAR_LEVEL)
-		c.star_level = maxi(int(c.star_level), bp)
-	else:
-		c.star_level = maxi(1, int(c.star_level))
+	# DEPRECATED: star_level 已迁移至 BlueprintManager，预览场景不再直接赋值
+	#if BlueprintManager and BlueprintManager.has_method("get_blueprint_star"):
+	#	var bp: int = clampi(int(BlueprintManager.get_blueprint_star(c.card_id)), 1, StarConfig.MAX_STAR_LEVEL)
+	#	c.star_level = maxi(int(c.star_level), bp)
+	#else:
+	#	c.star_level = maxi(1, int(c.star_level))
 	return c
 
 
@@ -639,7 +640,8 @@ func _fake_card(ct: int, rarity: String, star: int, name: String) -> CardResourc
 	c.energy_cost = 5.0
 	c.type_line = "%s — 测试" % _type_cn(ct)
 	c.summary_line = "预览卡"
-	c.star_level = star
+	# DEPRECATED: star_level 已迁移至 BlueprintManager，预览场景不再直接赋值
+	#c.star_level = star
 	c.max_weapons = 1
 	c.weight_capacity = 5
 	return c

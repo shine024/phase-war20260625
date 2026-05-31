@@ -3,7 +3,6 @@ extends Node2D
 
 const GC = preload("res://resources/game_constants.gd")
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
-const AffixCombatHandler = preload("res://managers/affix_combat_handler.gd")
 const ActiveLawEffects = preload("res://managers/active_law_effects.gd")
 const CardAbilityManager = preload("res://managers/card_ability_manager.gd")
 const CardGridFx = preload("res://scripts/card_grid_fx.gd")
@@ -40,9 +39,6 @@ const BEAM_VISUAL_LEN: float = 52.0
 var _beam_pts: PackedVector2Array = PackedVector2Array([Vector2.ZERO, Vector2.ZERO])
 var _dbg_spawn_logged: bool = false
 
-## @deprecated agent log 已迁移到 DebugLogger
-func _agent_log(_hypothesis_id: String, _message: String, _data: Dictionary) -> void:
-	pass
 
 func _apply_shield_wall_mitigation(raw_damage: float, target: Node) -> float:
 	if target == null or not is_instance_valid(target):
@@ -77,15 +73,6 @@ func setup(p_target: Node2D, p_damage: float, p_is_player: bool, p_weapon_type: 
 	_apply_visual()
 	_configure_behavior()
 	_beam_visual_phase = 0
-	#region agent log
-	_agent_log("H3_bullet_spawn", "bullet_setup", {
-		"is_player": shooter_is_player,
-		"weapon_type": weapon_type,
-		"visible": visible,
-		"target_valid": target != null and is_instance_valid(target),
-		"parent_name": get_parent().name if get_parent() != null else ""
-	})
-	#endregion
 
 func _configure_behavior() -> void:
 	# 基础：大多数子弹直线追踪目标
@@ -242,13 +229,6 @@ func _finish_tex_bullet() -> void:
 func _process(delta: float) -> void:
 	if not _dbg_spawn_logged:
 		_dbg_spawn_logged = true
-		#region agent log
-		_agent_log("H3_bullet_spawn", "bullet_process_first_tick", {
-			"visible": visible,
-			"global_position": global_position,
-			"target_valid": target != null and is_instance_valid(target)
-		})
-		#endregion
 	# 目标死亡时：非导引弹直接消失，导引类仍按最后方向飞行
 	if target == null or not is_instance_valid(target):
 		if weapon_type in [9, 3]:
@@ -359,16 +339,9 @@ func _on_hit(primary: Node2D) -> void:
 		else:
 			enhance_mult = 1.0 + float(shooter_stats.enhance_level) * 0.05
 		damage *= enhance_mult
-	var damage_calc: Dictionary = AffixCombatHandler.calculate_damage(
-		damage,
-		shooter_stats,
-		primary.hp if primary != null and "hp" in primary else 0.0,
-		primary.max_hp if primary != null and "max_hp" in primary else 1.0,
-		defender_reduction
-	)
-	
-	var final_damage: float = damage_calc["final_damage"]
-	var is_crit: bool = damage_calc["is_crit"]
+	# 词缀战斗效果已移除：直接使用已计算的 damage 值
+	var final_damage: float = damage * (1.0 - defender_reduction)
+	var is_crit: bool = false
 	
 	# 武器伤害变异：15% 概率双倍伤害
 	if shooter_stats.has_weapon_dmg_mutation and randf() < 0.15:
@@ -401,14 +374,7 @@ func _on_hit(primary: Node2D) -> void:
 					splash_base = 0.0
 			if splash_base <= 0.0:
 				continue
-			var splash_calc: Dictionary = AffixCombatHandler.calculate_damage(
-				splash_base,
-				shooter_stats,
-				child.hp if child != null and "hp" in child else 0.0,
-				child.max_hp if child != null and "max_hp" in child else 1.0,
-				splash_red
-			)
-			var splash_damage: float = _apply_shield_wall_mitigation(float(splash_calc["final_damage"]), child)
+			var splash_damage: float = _apply_shield_wall_mitigation(splash_base * (1.0 - splash_red), child)
 			var atk_splash: Variant = shooter if is_instance_valid(shooter) else null
 			child.take_damage(splash_damage, atk_splash)
 	
@@ -417,41 +383,6 @@ func _on_hit(primary: Node2D) -> void:
 		var final_after_wall: float = _apply_shield_wall_mitigation(final_damage, primary)
 		var atk_primary: Variant = shooter if is_instance_valid(shooter) else null
 		primary.take_damage(final_after_wall, atk_primary)
-
-
-	# 伤害后处理：吸血（含变异加成）；射手可能已阵亡，避免把已释放引用传入强类型 Node2D 形参
-	if is_instance_valid(shooter):
-		var lifesteal_multiplier: float = 1.0
-		if shooter_stats.has_lifesteal_mutation:
-			lifesteal_multiplier = AffixCombatHandler.get_lifesteal_multiplier(shooter, shooter_stats)
-		var _lifesteal_heal: float = AffixCombatHandler.apply_lifesteal(
-			final_damage * lifesteal_multiplier,
-			shooter_stats,
-			shooter
-		)
-
-		# 暴击变异：暴击时恢复 5% 最大生命值
-		if is_crit and shooter_stats.has_crit_mutation:
-			AffixCombatHandler.check_crit_mutation_heal(is_crit, shooter, shooter_stats)
-	
-	# 伤害后处理：溅射（如果启用了词条）
-	if shooter_stats.splash_damage > 0.0:
-		var splash_targets: Array = AffixCombatHandler.apply_splash_damage(
-			primary,
-			final_damage,
-			shooter_stats,
-			shooter_is_player
-		)
-	
-	# 伤害后处理：连锁（如果启用了词条）
-	if shooter_stats.chain_chance > 0.0:
-		var chain_targets: Array = AffixCombatHandler.apply_chain_lightning(
-			primary,
-			final_damage,
-			shooter_stats,
-			shooter_is_player,
-			5
-		)
 
 	# 卡牌特殊能力：命中后施加效果（同上，避免已释放 shooter）
 	if is_instance_valid(shooter):

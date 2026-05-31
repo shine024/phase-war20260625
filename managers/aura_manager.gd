@@ -184,8 +184,8 @@ static func get_slot_targets(unit: Node2D, is_global: bool, is_player: bool) -> 
 static func get_unit_star(unit: Node2D) -> int:
 	if unit == null:
 		return 1
-	if unit.has_meta("star_level"):
-		return int(unit.get_meta("star_level"))
+	if unit.has_meta("enhance_level"):
+		return int(unit.get_meta("enhance_level"))
 	# 首次访问时从 BlueprintManager 查询并缓存
 	if "stats" in unit and unit.stats != null and not unit.stats.platform_card_id.is_empty():
 		var bm: Node = null
@@ -194,9 +194,9 @@ static func get_unit_star(unit: Node2D) -> int:
 			bm = (loop as SceneTree).root.get_node_or_null("BlueprintManager")
 		if bm != null and bm.has_method("get_blueprint_star"):
 			var star: int = int(bm.get_blueprint_star(unit.stats.platform_card_id))
-			unit.set_meta("star_level", star)
+			unit.set_meta("enhance_level", star)
 			return star
-	unit.set_meta("star_level", 1)
+	unit.set_meta("enhance_level", 1)
 	return 1
 
 ## 应用光环效果（内部方法）

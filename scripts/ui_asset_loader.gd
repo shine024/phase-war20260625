@@ -76,7 +76,9 @@ static func faction_logo_128(faction_id: String) -> Texture2D:
 	return load_tex("res://assets/ui/factions/%s_128.png" % faction_id)
 
 
+## [DEPRECATED] star_icon — star_level 概念已移除，保留空壳供 battle_result_panel.gd 调用。
 static func star_icon(star_level: int) -> Texture2D:
+	push_warning("[UiAssetLoader] star_icon() is deprecated; star_level concept removed.")
 	var n: int = clampi(star_level, 1, 8)
 	return load_tex("res://assets/ui/stars/star_%d.png" % n)
 

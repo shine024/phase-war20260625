@@ -44,16 +44,6 @@ func _debug_log(hypothesis_id: String, location: String, message: String, data: 
 	f.store_line(JSON.stringify(payload))
 	f.close()
 
-## @deprecated agent log 已迁移到 DebugLogger
-func _agent_log(_hypothesis_id: String, _message: String, _data: Dictionary) -> void:
-	pass
-
-
-## @deprecated agent log 已迁移到 DebugLogger
-func _agent_log_67fe53(_hypothesis_id: String, _location: String, _message: String, _data: Dictionary = {}, _run_id: String = "run1") -> void:
-	pass
-
-
 # ── 节点引用 ──────────────────────────────────────────────────
 @onready var battle_container: Control            = $BattleContainer
 @onready var bottom_instrument_bar                = $HudLayer/BattleBottomBar/BottomInstrumentBar
@@ -74,15 +64,6 @@ func _agent_log_67fe53(_hypothesis_id: String, _location: String, _message: Stri
 @onready var level_display: Label = $HudLayer/TopCenterMeta/LevelDisplay
 
 func _ready() -> void:
-	#region agent log
-	_agent_log_67fe53("H3", "main.gd:_ready", "main ready entered", {
-		"self_path": str(get_path()),
-		"scene_file_path": str(scene_file_path),
-		"has_popup_layer": has_node("PopupLayer"),
-		"has_manufacture_overlay": has_node("PopupLayer/ManufactureOverlay"),
-		"has_center_container": has_node("PopupLayer/ManufactureOverlay/CenterContainer")
-	})
-	#endregion
 	## 初始化拆分模块
 	_battle_setup = MainBattleSetup.new()
 	_battle_setup.main = self
@@ -272,22 +253,10 @@ func _input(event: InputEvent) -> void:
 
 func _connect_panel_closed_signals() -> void:
 	var manufacture_cc := get_node_or_null("PopupLayer/ManufactureOverlay/CenterContainer")
-	#region agent log
-	_agent_log_67fe53("H1_H4", "main.gd:_connect_panel_closed_signals", "before connecting panel closed signals", {
-		"has_manufacture_cc": manufacture_cc != null,
-		"manufacture_cc_child_count": manufacture_cc.get_child_count() if manufacture_cc != null else -1,
-		"has_progression_path": has_node("PopupLayer/ManufactureOverlay/CenterContainer/CardEnhancementPanel")
-	})
-	#endregion
 	if manufacture_cc != null:
 		var child_names: Array[String] = []
 		for child in manufacture_cc.get_children():
 			child_names.append(str(child.name))
-		#region agent log
-		_agent_log_67fe53("H2", "main.gd:_connect_panel_closed_signals", "manufacture center container children snapshot", {
-			"child_names": child_names
-		})
-		#endregion
 	# CardEnhancementPanel 由 _ensure_card_enhancement_panel 按需创建，勿在 _ready 用 $ 强引用
 	var progression_panel: Node = get_node_or_null("PopupLayer/ManufactureOverlay/CenterContainer/CardEnhancementPanel")
 	var panels := {
@@ -301,11 +270,6 @@ func _connect_panel_closed_signals() -> void:
 		"settings":           $PopupLayer/SettingsOverlay/CenterContainer/SettingsPanel,
 		"info":               $PopupLayer/IntelligenceOverlay/CenterContainer/IntelligenceHubPanel,
 	}
-	#region agent log
-	_agent_log_67fe53("H1", "main.gd:_connect_panel_closed_signals", "panels dictionary built", {
-		"keys": panels.keys()
-	})
-	#endregion
 	for key in panels:
 		var panel = panels[key]
 		if panel == null:
@@ -722,17 +686,7 @@ func _show_save_result_toast(message: String, is_error: bool) -> void:
 func _on_active_law_cast_at(law_id: String, world_pos: Vector2) -> void:
 	var bf := _get_battlefield()
 	if bf == null:
-		#region agent log
-		_agent_log("H2_law_apply", "active_law_cast_no_battlefield", {"law_id": law_id, "world_pos": world_pos})
-		#endregion
 		return
-	#region agent log
-	_agent_log("H2_law_apply", "active_law_cast_received", {
-		"law_id": law_id,
-		"world_pos": world_pos,
-		"battlefield_name": bf.name
-	})
-	#endregion
 	var CastEffect = preload("res://scenes/effects/cast_effect.gd")
 	var effect := Node2D.new()
 	effect.set_script(CastEffect)

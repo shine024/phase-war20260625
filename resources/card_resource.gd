@@ -123,7 +123,7 @@ var multi_weapons: Array = []
 #  v5.0 养成字段（运行时状态，不序列化为@export）
 # ─────────────────────────────────────────────
 
-## 强化等级 0-10（v5.0 替代旧 star_level）
+## 强化等级 0-10（v5.0 替代旧 star_level；star_level 已废弃见 L160）
 var enhance_level: int = 0
 
 ## 改造ID列表（最多9个 MOD_XX）
@@ -154,10 +154,9 @@ var is_unlocked: bool = false
 @export var is_dropped_card: bool = false
 
 ## 蓝图星级 1-9★（Blueprint Star Level）
-## v5.0 虽标记 @deprecated，但仍被 BlueprintManager/DropManager/ManufacturePanel 活跃写入
-## 作为蓝图属性（非强化等级），承载「研究点升星」的产出值
-## 不建议删除；新代码如无特殊需求不应读写此字段
-@export var star_level: int = 1
+## [DEPRECATED] v5.0 已废弃，去掉 @export，仅保留字段用于存档兼容。
+## 新代码不应再读写此字段，数据已由 enhance_level 替代。
+var star_level: int = 1
 
 
 # ─────────────────────────────────────────────

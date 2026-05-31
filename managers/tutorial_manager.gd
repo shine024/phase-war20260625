@@ -94,15 +94,15 @@ func _grant_rewards(rewards: Dictionary) -> void:
 		if brm and brm.has_method("add_resource"):
 			brm.add_resource("nano_materials", amount)
 
-	# 发放蓝图碎片
-	if rewards.has("blueprint_fragments"):
-		var fragments = rewards["blueprint_fragments"]
-		var bpm = get_node_or_null("/root/BlueprintManager")
-		if bpm:
-			for fragment_id in fragments:
-				var count = fragments[fragment_id]
-			if bpm.has_method("add_blueprint_copy"):
-				bpm.add_blueprint_copy(fragment_id, count)
+	# DEPRECATED (P0-3c): blueprint_fragments reward logic disabled — reward schema migrated away from fragment-based model
+	#if rewards.has("blueprint_fragments"):
+	#	var fragments = rewards["blueprint_fragments"]
+	#	var bpm = get_node_or_null("/root/BlueprintManager")
+	#	if bpm:
+	#		for fragment_id in fragments:
+	#			var count = fragments[fragment_id]
+	#			if bpm.has_method("add_blueprint_copy"):
+	#				bpm.add_blueprint_copy(fragment_id, count)
 
 ## 检查引导是否完成
 func is_tutorial_completed(tutorial_id: String) -> bool:

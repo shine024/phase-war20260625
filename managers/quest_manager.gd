@@ -378,10 +378,11 @@ func _try_complete(quest_id: String) -> void:
 
 func _grant_rewards(rewards: Dictionary) -> void:
 	var bm = get_node_or_null("/root/BlueprintManager")
-	if rewards.has("blueprint_fragments") and rewards["blueprint_fragments"] is Dictionary and bm != null:
-		for card_id in rewards["blueprint_fragments"]:
-			var n: int = int(rewards["blueprint_fragments"][card_id])
-			CardDropGrantsScript.grant_enemy_style_card(bm, String(card_id), 0, maxi(1, n))
+	# DEPRECATED (P0-3c): blueprint_fragments reward logic disabled — reward schema migrated away from fragment-based model
+	#if rewards.has("blueprint_fragments") and rewards["blueprint_fragments"] is Dictionary and bm != null:
+	#	for card_id in rewards["blueprint_fragments"]:
+	#		var n: int = int(rewards["blueprint_fragments"][card_id])
+	#		CardDropGrantsScript.grant_enemy_style_card(bm, String(card_id), 0, maxi(1, n))
 	if bm != null:
 		if rewards.has("nano_materials") and bm.has_method("add_nano_materials"):
 			bm.add_nano_materials(int(rewards["nano_materials"]))

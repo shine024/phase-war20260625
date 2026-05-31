@@ -26,7 +26,7 @@ const DATA: Dictionary = {
 		"category": "battle",
 		"rarity": "COMMON",
 		"requirements": {"type": "wins", "count": 10},
-		"reward": {"nano_materials": 100, "blueprint_fragments": 2},
+		"reward": {"nano_materials": 100},
 		"icon": "🎖️",
 		"hidden": false,
 		"flavor_text": "胜利会成为习惯。"
@@ -38,7 +38,7 @@ const DATA: Dictionary = {
 		"category": "battle",
 		"rarity": "UNCOMMON",
 		"requirements": {"type": "wins", "count": 50},
-		"reward": {"nano_materials": 300, "blueprint_fragments": 5},
+		"reward": {"nano_materials": 300},
 		"icon": "🏆",
 		"hidden": false,
 		"flavor_text": "战场是最好的老师。"
@@ -50,7 +50,7 @@ const DATA: Dictionary = {
 		"category": "battle",
 		"rarity": "RARE",
 		"requirements": {"type": "wins", "count": 100},
-		"reward": {"nano_materials": 500, "blueprint_fragments": 10, "rare_card": 1},
+		"reward": {"nano_materials": 500, "rare_card": 1},
 		"icon": "👑",
 		"hidden": false,
 		"flavor_text": "战争已经融入你的血液。"
@@ -62,7 +62,7 @@ const DATA: Dictionary = {
 		"category": "battle",
 		"rarity": "EPIC",
 		"requirements": {"type": "wins", "count": 500},
-		"reward": {"nano_materials": 2000, "blueprint_fragments": 20, "mythic_card": 1},
+		"reward": {"nano_materials": 2000, "mythic_card": 1},
 		"icon": "🌟",
 		"hidden": false,
 		"flavor_text": "你的名字将载入史册。"
@@ -98,7 +98,7 @@ const DATA: Dictionary = {
 		"category": "battle",
 		"rarity": "RARE",
 		"requirements": {"type": "kills", "count": 1000},
-		"reward": {"nano_materials": 800, "blueprint_fragments": 5},
+		"reward": {"nano_materials": 800},
 		"icon": "💥",
 		"hidden": false,
 		"flavor_text": "毁灭是你的第二名字。"
@@ -110,7 +110,7 @@ const DATA: Dictionary = {
 		"category": "battle",
 		"rarity": "EPIC",
 		"requirements": {"type": "kills", "count": 5000},
-		"reward": {"nano_materials": 3000, "blueprint_fragments": 15, "mythic_card": 1},
+		"reward": {"nano_materials": 3000, "mythic_card": 1},
 		"icon": "🔱",
 		"hidden": false,
 		"flavor_text": "你就是行走的末日。"
@@ -134,7 +134,7 @@ const DATA: Dictionary = {
 		"category": "battle",
 		"rarity": "RARE",
 		"requirements": {"type": "total_damage", "count": 1000000},
-		"reward": {"nano_materials": 500, "blueprint_fragments": 8},
+		"reward": {"nano_materials": 500},
 		"icon": "💎",
 		"hidden": false,
 		"flavor_text": "破坏是你的艺术。"
@@ -146,7 +146,7 @@ const DATA: Dictionary = {
 		"category": "challenge",
 		"rarity": "RARE",
 		"requirements": {"type": "no_damage_win", "count": 1},
-		"reward": {"nano_materials": 200, "blueprint_fragments": 3},
+		"reward": {"nano_materials": 200},
 		"icon": "🛡️",
 		"hidden": false,
 		"flavor_text": "完美的胜利，无瑕的战役。"
@@ -158,7 +158,7 @@ const DATA: Dictionary = {
 		"category": "challenge",
 		"rarity": "EPIC",
 		"requirements": {"type": "no_damage_win", "count": 10},
-		"reward": {"nano_materials": 1000, "blueprint_fragments": 10, "rare_card": 1},
+		"reward": {"nano_materials": 1000, "rare_card": 1},
 		"icon": "✨",
 		"hidden": false,
 		"flavor_text": "你的操作已经超越了凡人。"
@@ -182,7 +182,7 @@ const DATA: Dictionary = {
 		"category": "challenge",
 		"rarity": "RARE",
 		"requirements": {"type": "fast_win", "seconds": 60},
-		"reward": {"nano_materials": 300, "blueprint_fragments": 5},
+		"reward": {"nano_materials": 300},
 		"icon": "🌩",
 		"hidden": false,
 		"flavor_text": "闪电般的速度，雷霆般的打击。"
@@ -206,7 +206,7 @@ const DATA: Dictionary = {
 		"category": "battle",
 		"rarity": "EPIC",
 		"requirements": {"type": "win_streak", "count": 20},
-		"reward": {"nano_materials": 800, "blueprint_fragments": 12, "rare_card": 1},
+		"reward": {"nano_materials": 800, "rare_card": 1},
 		"icon": "👑",
 		"hidden": false,
 		"flavor_text": "你已经习惯了胜利的滋味。"
@@ -218,7 +218,7 @@ const DATA: Dictionary = {
 		"category": "challenge",
 		"rarity": "LEGENDARY",
 		"requirements": {"type": "defeat_all_masters", "count": 30},
-		"reward": {"nano_materials": 5000, "blueprint_fragments": 50, "mythic_card": 3, "title": "相位师终结者"},
+		"reward": {"nano_materials": 5000, "mythic_card": 3, "title": "相位师终结者"},
 		"icon": "🏅",
 		"hidden": false,
 		"flavor_text": "没有任何相位师能逃过你的手掌。"
@@ -233,7 +233,7 @@ const DATA: Dictionary = {
 		"category": "challenge",
 		"rarity": "RARE",
 		"requirements": {"type": "survival_waves", "count": 20},
-		"reward": {"nano_materials": 400, "blueprint_fragments": 8},
+		"reward": {"nano_materials": 400},
 		"icon": "🛡️",
 		"hidden": false,
 		"flavor_text": "生存是最基本的技能。"
@@ -245,7 +245,7 @@ const DATA: Dictionary = {
 		"category": "challenge",
 		"rarity": "EPIC",
 		"requirements": {"type": "survival_waves", "count": 50},
-		"reward": {"nano_materials": 800, "blueprint_fragments": 16, "rare_card": 1},
+		"reward": {"nano_materials": 800, "rare_card": 1},
 		"icon": "🏰",
 		"hidden": false,
 		"flavor_text": "没有任何波浪能击倒你。"
@@ -257,7 +257,7 @@ const DATA: Dictionary = {
 		"category": "challenge",
 		"rarity": "LEGENDARY",
 		"requirements": {"type": "survival_waves", "count": 100},
-		"reward": {"nano_materials": 2000, "blueprint_fragments": 30, "mythic_card": 2, "title": "不朽生存者"},
+		"reward": {"nano_materials": 2000, "mythic_card": 2, "title": "不朽生存者"},
 		"icon": "♾️",
 		"hidden": false,
 		"flavor_text": "你就是生存的代名词。"
@@ -269,7 +269,7 @@ const DATA: Dictionary = {
 		"category": "challenge",
 		"rarity": "EPIC",
 		"requirements": {"type": "defeat_all_bosses"},
-		"reward": {"nano_materials": 1000, "blueprint_fragments": 20, "rare_card": 2},
+		"reward": {"nano_materials": 1000, "rare_card": 2},
 		"icon": "👹",
 		"hidden": false,
 		"flavor_text": "没有任何Boss能幸存。"
@@ -293,7 +293,7 @@ const DATA: Dictionary = {
 		"category": "challenge",
 		"rarity": "EPIC",
 		"requirements": {"type": "no_loss_wins", "count": 10},
-		"reward": {"nano_materials": 600, "blueprint_fragments": 12, "rare_card": 1},
+		"reward": {"nano_materials": 600, "rare_card": 1},
 		"icon": "🎯",
 		"hidden": false,
 		"flavor_text": "完美就是你的标准。"
@@ -305,7 +305,7 @@ const DATA: Dictionary = {
 		"category": "challenge",
 		"rarity": "RARE",
 		"requirements": {"type": "max_damage_challenge", "damage": 1000000},
-		"reward": {"nano_materials": 500, "blueprint_fragments": 10},
+		"reward": {"nano_materials": 500},
 		"icon": "💪",
 		"hidden": false,
 		"flavor_text": "伤害没有上限。"
@@ -321,5 +321,5 @@ const DATA: Dictionary = {
 		"icon": "🎲",
 		"hidden": false,
 		"flavor_text": "任何情况都能应对。"
-		},
+		}
 }

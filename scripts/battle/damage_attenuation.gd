@@ -14,6 +14,9 @@ const ATTENUATION_FACTORS: Dictionary = {
 
 ## 根据单位属性推断武器子类型
 static func infer_weapon_sub_type(combat_kind: int, range_value: int, attack_light: float, attack_armor: float, attack_air: float) -> String:
+	# 全0攻击力 → 纯辅助单位
+	if attack_light == 0.0 and attack_armor == 0.0 and attack_air == 0.0:
+		return "SUPPORT"
 	# LIGHT + short range → SMG
 	if combat_kind == 0 and range_value <= 2:
 		return "SMG"

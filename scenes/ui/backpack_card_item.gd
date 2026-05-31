@@ -248,7 +248,9 @@ func set_card(c: CardResource) -> void:
 		if BlueprintManager and BlueprintManager.has_method("get_star_progress"):
 			var sp: Dictionary = BlueprintManager.get_star_progress(c.card_id)
 			var cs: int = int(sp.get("current_star", 0))
-			var mx: int = StarConfig.MAX_STAR_LEVEL
+			var mx: int = int(sp.get("max_star", 9))
+			if mx <= 0:
+				mx = 9
 			star_text = " %d/%d" % [mini(cs, mx), mx]
 			if BlueprintManager.has_method("get_blueprint_copies"):
 				var copies: int = BlueprintManager.get_blueprint_copies(c.card_id)
@@ -816,13 +818,9 @@ func _layout_mtg_art_clip(art_clip: Control) -> void:
 
 
 func _mtg_star_display_count(c: CardResource) -> int:
-	var st: int = int(c.star_level)
-	if BlueprintManager and BlueprintManager.has_method("get_blueprint_star"):
-		st = maxi(st, int(BlueprintManager.get_blueprint_star(c.card_id)))
-	else:
-		# 无养成单例时与 CardResource 默认一致：至少按 1★ 显示
-		st = maxi(st, 1)
-	return clampi(st, 0, StarConfig.MAX_STAR_LEVEL)
+	var st: int = int(c.enhance_level)
+	# 注：蓝图星级逻辑已废弃，enhance_level 直接作为显示值
+	return clampi(st, 0, 10)  # MAX_ENHANCE_LEVEL = 10
 
 
 func _mtg_intel_body_text(c: CardResource) -> String:

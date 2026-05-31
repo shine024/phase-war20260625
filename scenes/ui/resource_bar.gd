@@ -12,10 +12,6 @@ var _crystal_label: Label
 var _blueprint_count_label: Label
 var _lore_count_label: Label
 
-## @deprecated agent log 已迁移到 DebugLogger
-func _agent_log(_hypothesis_id: String, _message: String, _data: Dictionary) -> void:
-	pass
-
 func _ready() -> void:
 	custom_minimum_size = Vector2(0, 40)
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -27,17 +23,6 @@ func _ready() -> void:
 	#region agent log
 	var em := EnergyManager
 	var sb := SignalBus
-	_agent_log("H1_ui_not_connected", "_ready_post", {
-		"has_energy_label": _energy_label != null,
-		"energy_label_text": _energy_label.text if _energy_label else "",
-		"EnergyManager_null": em == null,
-		"EnergyManager_has_energy_changed_signal": (em != null and em.has_signal("energy_changed")),
-		"EnergyManager_has_get_energy": (em != null and em.has_method("get_energy")),
-		"EnergyManager_has_get_current": (em != null and em.has_method("get_current")),
-		"EnergyManager_has_get_max": (em != null and em.has_method("get_max")),
-		"SignalBus_null": sb == null,
-		"SignalBus_has_energy_changed": (sb != null and sb.has_signal("energy_changed")),
-	})
 	#endregion
 
 func _build_ui() -> void:
@@ -102,22 +87,14 @@ func _create_resource_item(parent: Container, icon: String, tooltip: String, col
 	return value_lbl
 
 func _connect_signals() -> void:
-	#region agent log
-	_agent_log("H1_ui_not_connected", "_connect_signals_entry", {
-		"EnergyManager_null": EnergyManager == null,
-		"EnergyManager_has_energy_changed_signal": (EnergyManager != null and EnergyManager.has_signal("energy_changed")),
-		"SignalBus_null": SignalBus == null,
-		"SignalBus_has_energy_changed": (SignalBus != null and SignalBus.has_signal("energy_changed")),
-	})
-	#endregion
 	if EnergyManager and EnergyManager.has_signal("energy_changed"):
 		EnergyManager.energy_changed.connect(_on_energy_changed)
 
 	if BasicResourceManager and BasicResourceManager.has_signal("resources_changed"):
 		BasicResourceManager.resources_changed.connect(_on_resources_changed)
-
-	if BlueprintManager and BlueprintManager.has_signal("fragments_changed"):
-		BlueprintManager.fragments_changed.connect(_on_blueprint_fragments_changed)
+	# DEPRECATED (P0-3c): blueprint_fragments signal connection disabled — fragment-based model removed
+	#if BlueprintManager and BlueprintManager.has_signal("fragments_changed"):
+	#	BlueprintManager.fragments_changed.connect(_on_blueprint_fragments_changed)
 
 	var lm = get_node_or_null("/root/LoreManager")
 	if lm and lm.has_signal("lore_unlocked"):
@@ -132,8 +109,9 @@ func _exit_tree() -> void:
 		EnergyManager.energy_changed.disconnect(_on_energy_changed)
 	if BasicResourceManager and BasicResourceManager.has_signal("resources_changed") and BasicResourceManager.resources_changed.is_connected(_on_resources_changed):
 		BasicResourceManager.resources_changed.disconnect(_on_resources_changed)
-	if BlueprintManager and BlueprintManager.has_signal("fragments_changed") and BlueprintManager.fragments_changed.is_connected(_on_blueprint_fragments_changed):
-		BlueprintManager.fragments_changed.disconnect(_on_blueprint_fragments_changed)
+	# DEPRECATED (P0-3c): blueprint_fragments signal disconnect disabled
+	#if BlueprintManager and BlueprintManager.has_signal("fragments_changed") and BlueprintManager.fragments_changed.is_connected(_on_blueprint_fragments_changed):
+	#	BlueprintManager.fragments_changed.disconnect(_on_blueprint_fragments_changed)
 	var lm = get_node_or_null("/root/LoreManager")
 	if lm and lm.has_signal("lore_unlocked") and lm.lore_unlocked.is_connected(_on_lore_unlocked):
 		lm.lore_unlocked.disconnect(_on_lore_unlocked)
@@ -154,13 +132,6 @@ func _refresh_energy() -> void:
 	if em and em.has_method("get_energy"):
 		var energy = em.get_energy()
 		_energy_label.text = str(energy)
-	#region agent log
-	_agent_log("H4_wrong_energy_source", "_refresh_energy", {
-		"EnergyManager_null": em == null,
-		"used_get_energy": (em != null and em.has_method("get_energy")),
-		"label": _energy_label.text if _energy_label else "",
-	})
-	#endregion
 
 func _refresh_resources() -> void:
 	if BasicResourceManager == null or not BasicResourceManager.has_method("get_all_totals"):
@@ -187,12 +158,13 @@ func _refresh_resources() -> void:
 func _refresh_blueprint_count() -> void:
 	if _blueprint_count_label == null:
 		return
-
-	var total_fragments = 0
-	if BlueprintManager and BlueprintManager.has_method("get_total_fragment_count"):
-		total_fragments = BlueprintManager.get_total_fragment_count()
-
-	_blueprint_count_label.text = str(total_fragments)
+	# DEPRECATED (P0-3c): blueprint_fragments count display replaced with unlocked blueprints count
+	var blueprint_count = 0
+	if BlueprintManager and BlueprintManager.has_method("get_unlocked_count"):
+		blueprint_count = BlueprintManager.get_unlocked_count()
+	elif BlueprintManager and BlueprintManager.has_method("get_total_fragment_count"):
+		blueprint_count = BlueprintManager.get_total_fragment_count()
+	_blueprint_count_label.text = str(blueprint_count)
 
 func _refresh_lore_count() -> void:
 	if _lore_count_label == null:
@@ -222,7 +194,7 @@ func _on_resources_changed() -> void:
 	_refresh_resources()
 
 func _on_blueprint_fragments_changed() -> void:
-	_refresh_blueprint_count()
+	pass  # DEPRECATED (P0-3c): blueprint_fragments callback disabled
 
 func _on_lore_unlocked(_lore_id: String, _lore_name: String) -> void:
 	_refresh_lore_count()

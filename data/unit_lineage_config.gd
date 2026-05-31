@@ -44,7 +44,7 @@ const EVOLVE_REASON_ZH: Dictionary = {
 }
 
 ## ═══════════════════════════════════════════════════════════
-## v5.0 进化路线（9条主线，共37个节点）
+## v6.0 进化路线（11条主线，共47个节点）
 ## ═══════════════════════════════════════════════════════════
 ##
 ## 轻装线（combat_kind=0）:
@@ -63,6 +63,11 @@ const EVOLVE_REASON_ZH: Dictionary = {
 ## 支援线（combat_kind=2）:
 ##   火炮:     ww1_m81(23) → ww2_m81(90) → cold_m113(240) → mod_m270(480) → fut_howitzer(795)
 ##   防空:     ww1_37mm(23) → cold_zsu23(240) → mod_m6(480) → fut_aa_hover(780)
+##
+## 堡垒线（combat_kind=4）:
+##   防御线:   fort_ww1_pillbox(80) → fort_ww2_bunker(200) → fort_cold_missile(500) → fort_modern_citadel(800) → fort_future_ion(1200)
+##   防空线:   fort_ww2_flak(220) → fort_modern_phalanx(600) → fort_future_shield(1000)
+##   终端:     fort_ww1_artillery, fort_cold_radar（辅助功能单位，不进化）
 
 const LINEAGES: Dictionary = {
 	# ─── 轻装线：普通步兵（5节） ───
@@ -391,9 +396,87 @@ const LINEAGES: Dictionary = {
 		},
 	},
 
+	# ─── 堡垒线：防御线（5节） ───
+	"fort_ww1_pillbox": {
+		"evolution_1": "fort_ww2_bunker",
+		"faction_branches": {
+			"iron_wall_corp": "fort_ww2_bunker",
+			"frontier_union": "fort_ww2_bunker",
+			"nova_arms": "fort_ww2_bunker",
+			"aether_dynamics": "fort_ww2_bunker",
+			"quantum_logistics": "fort_ww2_bunker",
+			"helix_recon": "fort_ww2_bunker",
+			"void_research": "fort_ww2_bunker",
+		},
+	},
+	"fort_ww2_bunker": {
+		"evolution_1": "fort_cold_missile",
+		"faction_branches": {
+			"iron_wall_corp": "fort_cold_missile",
+			"frontier_union": "fort_cold_missile",
+			"nova_arms": "fort_cold_missile",
+			"aether_dynamics": "fort_cold_missile",
+			"quantum_logistics": "fort_cold_missile",
+			"helix_recon": "fort_cold_missile",
+			"void_research": "fort_cold_missile",
+		},
+	},
+	"fort_cold_missile": {
+		"evolution_1": "fort_modern_citadel",
+		"faction_branches": {
+			"iron_wall_corp": "fort_modern_citadel",
+			"frontier_union": "fort_modern_citadel",
+			"nova_arms": "fort_modern_citadel",
+			"aether_dynamics": "fort_modern_citadel",
+			"quantum_logistics": "fort_modern_citadel",
+			"helix_recon": "fort_modern_citadel",
+			"void_research": "fort_modern_citadel",
+		},
+	},
+	"fort_modern_citadel": {
+		"evolution_1": "fort_future_ion",
+		"faction_branches": {
+			"iron_wall_corp": "fort_future_ion",
+			"frontier_union": "fort_future_ion",
+			"nova_arms": "fort_future_ion",
+			"aether_dynamics": "fort_future_ion",
+			"quantum_logistics": "fort_future_ion",
+			"helix_recon": "fort_future_ion",
+			"void_research": "fort_future_ion",
+		},
+	},
+
+	# ─── 堡垒线：防空线（3节） ───
+	"fort_ww2_flak": {
+		"evolution_1": "fort_modern_phalanx",
+		"faction_branches": {
+			"iron_wall_corp": "fort_modern_phalanx",
+			"frontier_union": "fort_modern_phalanx",
+			"nova_arms": "fort_modern_phalanx",
+			"aether_dynamics": "fort_modern_phalanx",
+			"quantum_logistics": "fort_modern_phalanx",
+			"helix_recon": "fort_modern_phalanx",
+			"void_research": "fort_modern_phalanx",
+		},
+	},
+	"fort_modern_phalanx": {
+		"evolution_1": "fort_future_shield",
+		"faction_branches": {
+			"iron_wall_corp": "fort_future_shield",
+			"frontier_union": "fort_future_shield",
+			"nova_arms": "fort_future_shield",
+			"aether_dynamics": "fort_future_shield",
+			"quantum_logistics": "fort_future_shield",
+			"helix_recon": "fort_future_shield",
+			"void_research": "fort_future_shield",
+		},
+	},
+
 	# ─── 终端节点（无后续进化） ───
 	# fut_cyborg, fut_spectre, fut_hovertank, fut_heavy_mech,
-	# fut_space_fighter, fut_attack_drone, fut_howitzer, fut_aa_hover
+	# fut_space_fighter, fut_attack_drone, fut_howitzer, fut_aa_hover,
+	# fort_future_ion, fort_future_shield（堡垒线末端）
+	# fort_ww1_artillery, fort_cold_radar（堡垒辅助功能单位，不进化）
 	# 均无 LINEAGES 条目，表示进化链末端
 }
 

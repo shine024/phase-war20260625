@@ -76,7 +76,6 @@ func check_and_discover_branches() -> Array:
 			var branch_data: Dictionary = IntelEvolutionBranches.get_branch(bid)
 			new_discoveries.append(branch_data)
 			intel_branch_discovered.emit(bid, branch_data)
-			print("[IntelEvolutionManager] 🗺️ 发现隐藏进化分支: %s" % branch_data.get("name", bid))
 
 	if not new_discoveries.is_empty():
 		_save_state()

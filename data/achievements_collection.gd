@@ -24,7 +24,7 @@ const DATA: Dictionary = {
 		"category": "collection",
 		"rarity": "UNCOMMON",
 		"requirements": {"type": "unique_blueprints", "count": 30},
-		"reward": {"nano_materials": 200, "blueprint_fragments": 5},
+		"reward": {"nano_materials": 200},
 		"icon": "📐",
 		"hidden": false,
 		"flavor_text": "蓝图在手，天下我有。"
@@ -36,7 +36,7 @@ const DATA: Dictionary = {
 		"category": "collection",
 		"rarity": "RARE",
 		"requirements": {"type": "unique_blueprints", "count": 50},
-		"reward": {"nano_materials": 400, "blueprint_fragments": 10, "rare_card": 1},
+		"reward": {"nano_materials": 400, "rare_card": 1},
 		"icon": "🗺️",
 		"hidden": false,
 		"flavor_text": "你已经掌握了大部分蓝图奥秘。"
@@ -48,7 +48,7 @@ const DATA: Dictionary = {
 		"category": "collection",
 		"rarity": "EPIC",
 		"requirements": {"type": "unique_blueprints", "count": 80},
-		"reward": {"nano_materials": 800, "blueprint_fragments": 20, "mythic_card": 1},
+		"reward": {"nano_materials": 800, "mythic_card": 1},
 		"icon": "📖",
 		"hidden": false,
 		"flavor_text": "你就是行走的蓝图百科全书。"
@@ -60,7 +60,7 @@ const DATA: Dictionary = {
 		"category": "collection",
 		"rarity": "LEGENDARY",
 		"requirements": {"type": "unique_blueprints", "count": 999},
-		"reward": {"nano_materials": 10000, "blueprint_fragments": 100, "mythic_card": 5, "title": "终极收藏家"},
+		"reward": {"nano_materials": 10000, "mythic_card": 5, "title": "终极收藏家"},
 		"icon": "🏆",
 		"hidden": false,
 		"flavor_text": "没有任何蓝图能逃过你的收藏。"
@@ -72,7 +72,7 @@ const DATA: Dictionary = {
 		"category": "collection",
 		"rarity": "RARE",
 		"requirements": {"type": "all_common_blueprints"},
-		"reward": {"nano_materials": 300, "blueprint_fragments": 8},
+		"reward": {"nano_materials": 300},
 		"icon": "🟩",
 		"hidden": false,
 		"flavor_text": "普通并不平凡。"
@@ -84,7 +84,7 @@ const DATA: Dictionary = {
 		"category": "collection",
 		"rarity": "EPIC",
 		"requirements": {"type": "all_rare_blueprints"},
-		"reward": {"nano_materials": 600, "blueprint_fragments": 15, "rare_card": 1},
+		"reward": {"nano_materials": 600, "rare_card": 1},
 		"icon": "🟦",
 		"hidden": false,
 		"flavor_text": "稀有中的稀有。"
@@ -96,7 +96,7 @@ const DATA: Dictionary = {
 		"category": "collection",
 		"rarity": "LEGENDARY",
 		"requirements": {"type": "all_mythic_blueprints"},
-		"reward": {"nano_materials": 2000, "blueprint_fragments": 30, "mythic_card": 3, "title": "神话征服者"},
+		"reward": {"nano_materials": 2000, "mythic_card": 3, "title": "神话征服者"},
 		"icon": "🟪",
 		"hidden": false,
 		"flavor_text": "神话在向你低头。"
@@ -120,7 +120,7 @@ const DATA: Dictionary = {
 		"category": "collection",
 		"rarity": "UNCOMMON",
 		"requirements": {"type": "total_cards", "count": 500},
-		"reward": {"nano_materials": 300, "blueprint_fragments": 6},
+		"reward": {"nano_materials": 300},
 		"icon": "🎴",
 		"hidden": false,
 		"flavor_text": "你的卡牌收藏令人印象深刻。"

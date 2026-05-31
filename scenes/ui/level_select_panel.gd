@@ -193,7 +193,6 @@ func _on_era_tab_changed(tab_index: int):
 ## 关卡按钮按下
 func _on_level_pressed(level: int):
 	level_selected.emit(level)
-	print("[LevelSelectPanel] 选择关卡: %d" % level)
 
 ## 获取时代特色描述
 func _get_era_description(era: int) -> String:

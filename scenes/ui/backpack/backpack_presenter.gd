@@ -102,9 +102,10 @@ func _connect_global_signals() -> void:
 		if not brm.resources_changed.is_connected(_on_resources_changed):
 			brm.resources_changed.connect(_on_resources_changed)
 
-	if BlueprintManager and BlueprintManager.has_signal("fragments_changed"):
-		if not BlueprintManager.fragments_changed.is_connected(_on_blueprint_fragments_changed):
-			BlueprintManager.fragments_changed.connect(_on_blueprint_fragments_changed)
+	# DEPRECATED (P0-3c): blueprint_fragments signal connection disabled — fragment-based model removed
+	#if BlueprintManager and BlueprintManager.has_signal("fragments_changed"):
+	#	if not BlueprintManager.fragments_changed.is_connected(_on_blueprint_fragments_changed):
+	#		BlueprintManager.fragments_changed.connect(_on_blueprint_fragments_changed)
 
 	var lm: Node = _get_autoload_node("LoreManager")
 	if lm and lm.has_signal("lore_unlocked"):
@@ -176,7 +177,7 @@ func _on_resources_changed() -> void:
 	pass  # 资源已在顶部资源栏显示
 
 func _on_blueprint_fragments_changed() -> void:
-	pass  # 已解锁蓝图在蓝图库中显示
+	pass  # DEPRECATED (P0-3c): blueprint_fragments callback disabled — no longer needed
 
 func _on_lore_unlocked(_lore_id: String, _lore_name: String) -> void:
 	if _view and _view.has_method("refresh_lore_pages"):

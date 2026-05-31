@@ -167,7 +167,6 @@ func load_data() -> void:
 			_entries[card_id] = entry
 			if entry.is_unlocked:
 				_completed_cache.append(card_id)
-	print("[IntelManual] 加载完成，共 %d 条情报记录" % _entries.size())
 
 ## 🆕 迁移旧格式条目：将单一intel_progress分配到4维度
 func _migrate_single_entry(entry: IntelEntry) -> void:
@@ -183,7 +182,6 @@ func _migrate_single_entry(entry: IntelEntry) -> void:
 	for dim in IntelDimensions.ALL_DIMENSIONS:
 		entry.revealed_tiers[dim] = IntelDimensions.get_reveal_tier(entry.intel_dimensions[dim])
 	entry.migrated = true
-	print("[IntelManual] 迁移情报条目: %s (%.0f%% -> 4维)" % [entry.card_id, old * 100.0])
 
 # ── 内部工具 ──────────────────────────────────────────────────────
 

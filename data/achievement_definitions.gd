@@ -39,8 +39,7 @@ const ACHIEVEMENTS: Dictionary = {
 		"description": "累计赢得10场战斗",
 		"category": "battle",
 		"reward": {
-			"nano_materials": 100,
-			"blueprint_fragments": {"bp_ww2_013": 2}
+			"nano_materials": 100
 		},
 		"icon": "🎖️",
 		"hidden": false
@@ -52,8 +51,7 @@ const ACHIEVEMENTS: Dictionary = {
 		"description": "累计赢得50场战斗",
 		"category": "battle",
 		"reward": {
-			"nano_materials": 300,
-			"blueprint_fragments": {"bp_modern_013": 3}
+			"nano_materials": 300
 		},
 		"icon": "🏆",
 		"hidden": false
@@ -65,8 +63,7 @@ const ACHIEVEMENTS: Dictionary = {
 		"description": "累计击毁100个敌方单位",
 		"category": "battle",
 		"reward": {
-			"nano_materials": 200,
-			"blueprint_fragments": {"omega_cannon": 1}
+			"nano_materials": 200
 		},
 		"icon": "💀",
 		"hidden": false
@@ -78,8 +75,7 @@ const ACHIEVEMENTS: Dictionary = {
 		"description": "累计击毁500个敌方单位",
 		"category": "battle",
 		"reward": {
-			"nano_materials": 500,
-			"blueprint_fragments": {"omega_platform": 1}
+			"nano_materials": 500
 		},
 		"icon": "☠️",
 		"hidden": false
@@ -91,8 +87,7 @@ const ACHIEVEMENTS: Dictionary = {
 		"description": "在一场战斗中不受到任何伤害",
 		"category": "challenge",
 		"reward": {
-			"nano_materials": 150,
-			"blueprint_fragments": {"bp_future_013": 2}
+			"nano_materials": 150
 		},
 		"icon": "🛡️",
 		"hidden": false
@@ -119,8 +114,7 @@ const ACHIEVEMENTS: Dictionary = {
 		"description": "拥有20张不同的卡片",
 		"category": "collection",
 		"reward": {
-			"nano_materials": 100,
-			"blueprint_fragments": {"titan_mk2": 1}
+			"nano_materials": 100
 		},
 		"icon": "📚",
 		"hidden": false
@@ -132,8 +126,7 @@ const ACHIEVEMENTS: Dictionary = {
 		"description": "拥有50张不同的卡片",
 		"category": "collection",
 		"reward": {
-			"nano_materials": 300,
-			"blueprint_fragments": {"bp_near_005": 1}
+			"nano_materials": 300
 		},
 		"icon": "📖",
 		"hidden": false
@@ -145,8 +138,7 @@ const ACHIEVEMENTS: Dictionary = {
 		"description": "解锁10个不同的蓝图",
 		"category": "collection",
 		"reward": {
-			"nano_materials": 150,
-			"blueprint_fragments": {"railgun": 2}
+			"nano_materials": 150
 		},
 		"icon": "📋",
 		"hidden": false
@@ -158,8 +150,7 @@ const ACHIEVEMENTS: Dictionary = {
 		"description": "拥有5张稀有度以上的卡片",
 		"category": "collection",
 		"reward": {
-			"nano_materials": 200,
-			"blueprint_fragments": {"bp_modern_001": 1}
+			"nano_materials": 200
 		},
 		"icon": "💎",
 		"hidden": false
@@ -171,8 +162,7 @@ const ACHIEVEMENTS: Dictionary = {
 		"description": "拥有1张传说稀有度的卡片",
 		"category": "collection",
 		"reward": {
-			"nano_materials": 400,
-			"blueprint_fragments": {"omega_cannon": 2}
+			"nano_materials": 400
 		},
 		"icon": "👑",
 		"hidden": false
@@ -199,8 +189,7 @@ const ACHIEVEMENTS: Dictionary = {
 		"description": "通关第20关（一战时代）",
 		"category": "progress",
 		"reward": {
-			"nano_materials": 100,
-			"blueprint_fragments": {"bp_ww1_022": 2}
+			"nano_materials": 100
 		},
 		"icon": "🌟",
 		"hidden": false
@@ -212,8 +201,7 @@ const ACHIEVEMENTS: Dictionary = {
 		"description": "通关第40关（二战时代）",
 		"category": "progress",
 		"reward": {
-			"nano_materials": 150,
-			"blueprint_fragments": {"bp_ww2_022": 2}
+			"nano_materials": 150
 		},
 		"icon": "🌟🌟",
 		"hidden": false
@@ -225,8 +213,7 @@ const ACHIEVEMENTS: Dictionary = {
 		"description": "通关第60关（冷战时代）",
 		"category": "progress",
 		"reward": {
-			"nano_materials": 200,
-			"blueprint_fragments": {"bp_cold_022": 2}
+			"nano_materials": 200
 		},
 		"icon": "🌟🌟🌟",
 		"hidden": false
@@ -238,8 +225,7 @@ const ACHIEVEMENTS: Dictionary = {
 		"description": "通关第80关（现代时代）",
 		"category": "progress",
 		"reward": {
-			"nano_materials": 250,
-			"blueprint_fragments": {"bp_modern_022": 2}
+			"nano_materials": 250
 		},
 		"icon": "🌟🌟🌟🌟",
 		"hidden": false
@@ -251,8 +237,7 @@ const ACHIEVEMENTS: Dictionary = {
 		"description": "通关第100关（未来时代）",
 		"category": "progress",
 		"reward": {
-			"nano_materials": 1000,
-			"blueprint_fragments": {"omega_platform": 2, "omega_cannon": 2}
+			"nano_materials": 1000
 		},
 		"icon": "🌟🌟🌟🌟🌟",
 		"hidden": false
@@ -264,8 +249,7 @@ const ACHIEVEMENTS: Dictionary = {
 		"description": "击败所有5个时代的Boss关卡",
 		"category": "challenge",
 		"reward": {
-			"nano_materials": 500,
-			"blueprint_fragments": {"omega_platform": 1, "omega_cannon": 1}
+			"nano_materials": 500
 		},
 		"icon": "👹",
 		"hidden": false
@@ -277,8 +261,7 @@ const ACHIEVEMENTS: Dictionary = {
 		"description": "在所有5个时代都取得过胜利",
 		"category": "progress",
 		"reward": {
-			"nano_materials": 300,
-			"blueprint_fragments": {"bp_near_005": 2}
+			"nano_materials": 300
 		},
 		"icon": "🌀",
 		"hidden": false
@@ -292,8 +275,7 @@ const ACHIEVEMENTS: Dictionary = {
 		"description": "与任意一个势力的声望达到50",
 		"category": "progress",
 		"reward": {
-			"nano_materials": 200,
-			"blueprint_fragments": {"omega_platform": 1}
+			"nano_materials": 200
 		},
 		"icon": "🤝",
 		"hidden": false
@@ -305,8 +287,7 @@ const ACHIEVEMENTS: Dictionary = {
 		"description": "与所有7个势力的声望都达到20",
 		"category": "challenge",
 		"reward": {
-			"nano_materials": 400,
-			"blueprint_fragments": {"titan_mk2": 3}
+			"nano_materials": 400
 		},
 		"icon": "🌐",
 		"hidden": false
@@ -333,8 +314,7 @@ const ACHIEVEMENTS: Dictionary = {
 		"description": "将任意卡片强化到等级20",
 		"category": "challenge",
 		"reward": {
-			"nano_materials": 300,
-			"blueprint_fragments": {"phase_lance": 2}
+			"nano_materials": 300
 		},
 		"icon": "📊",
 		"hidden": false
@@ -346,8 +326,7 @@ const ACHIEVEMENTS: Dictionary = {
 		"description": "完成一次卡片突破（提升稀有度）",
 		"category": "challenge",
 		"reward": {
-			"nano_materials": 250,
-			"blueprint_fragments": {"bp_modern_001": 2}
+			"nano_materials": 250
 		},
 		"icon": "💥",
 		"hidden": false
@@ -361,8 +340,7 @@ const ACHIEVEMENTS: Dictionary = {
 		"description": "在一场战斗中获得三星评价",
 		"category": "challenge",
 		"reward": {
-			"nano_materials": 200,
-			"blueprint_fragments": {"bp_near_005": 1}
+			"nano_materials": 200
 		},
 		"icon": "⭐",
 		"hidden": false
@@ -387,12 +365,11 @@ const ACHIEVEMENTS: Dictionary = {
 		"description": "在一场战斗中存活15个波次",
 		"category": "challenge",
 		"reward": {
-			"nano_materials": 220,
-			"blueprint_fragments": {"bulwark": 2}
+			"nano_materials": 220
 		},
 		"icon": "❤️",
 		"hidden": false
-	},
+	}
 }
 
 ## 获取所有成就

@@ -508,8 +508,9 @@ func _set_mod_branch_buttons_enabled(enabled: bool) -> void:
 		mod_utility_btn.disabled = not enabled
 
 func _mod_option_display_name(option_id: String) -> String:
-	if BlueprintManager and BlueprintManager.DEFAULT_MOD_OPTIONS.has(option_id):
-		return String(BlueprintManager.DEFAULT_MOD_OPTIONS[option_id].get("name", option_id))
+	var info: Dictionary = ModEffects.get_mod_info(option_id)
+	if not info.is_empty():
+		return String(info.get("name", option_id))
 	return option_id
 
 func _permit_display_name(permit_id: String) -> String:

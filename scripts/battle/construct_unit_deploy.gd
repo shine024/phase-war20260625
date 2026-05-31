@@ -40,7 +40,6 @@ static func materialize_deploy_ghost(u: CharacterBody2D) -> void:
 	u.is_deploy_ghost = false
 	u._ghost_materialize_time_left = 0.0
 	u.modulate = Color.WHITE
-	u._field_stance_attack = not should_card_grid_defend_stance()
 	u._move_target = Vector2.INF
 	u.hp = u.stats.max_hp
 	if u._presentation_card_grid and u.is_player:

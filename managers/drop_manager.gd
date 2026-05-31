@@ -133,7 +133,8 @@ func _add_dropped_card(card_id: String, count: int) -> void:
 		var dropped_card: CardResource = card.clone()
 		dropped_card.is_dropped_card = true
 		var star: int = randi_range(1, 9)
-		dropped_card.star_level = star
+		# DEPRECATED: star_level is no longer assigned; star_rating system replaces it
+		# dropped_card.star_level = star
 		if BlueprintManager and BlueprintManager.has_method("get_default_enhancements"):
 			var enhancements: Array = BlueprintManager.get_default_enhancements(card_id, star)
 			dropped_card.affix_slot_ids = []  # @deprecated v5.0: 词条系统将删除
@@ -299,7 +300,8 @@ func _add_law_card(law_id: String, count: int) -> void:
 
 	var card: CardResource = DefaultCards.create_law_card_resource(law_id)
 	if card:
-		card.star_level = 1
+		# DEPRECATED: star_level is no longer assigned; star_rating system replaces it
+		# card.star_level = 1
 		for i in range(maxi(1, count)):
 			if SignalBus:
 				SignalBus.card_added_to_backpack.emit(card.clone() if card.has_method("clone") else card)

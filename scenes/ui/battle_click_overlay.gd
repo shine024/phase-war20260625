@@ -6,6 +6,8 @@ const PhaseLaws = preload("res://data/phase_laws.gd")
 const BasicResources = preload("res://data/basic_resources.gd")
 const LawTargetIndicatorScript = preload("res://scenes/effects/law_target_indicator.gd")
 const ToastUtilsScript = preload("res://scripts/toast_utils.gd")
+const BackpackPanelScript = preload("res://scenes/ui/backpack_panel.gd")
+const DefaultCardsData = preload("res://data/default_cards.gd")
 const DEBUG_DEPLOY_CLICK_LOG := false
 
 var _law_target_indicator: Node2D = null
@@ -14,10 +16,6 @@ var _had_pending_input: bool = false
 var _is_processing: bool = false  ## set_process(false) 空闲优化
 var _plm: Node = null  ## 安全引用：PhaseLawManager 本地缓存
 var _cast_toast = null
-
-## @deprecated agent log 已迁移到 DebugLogger
-func _agent_log(_hypothesis_id: String, _message: String, _data: Dictionary) -> void:
-	pass
 
 func _ensure_plm() -> void:
 	if _plm != null and is_instance_valid(_plm):
@@ -169,8 +167,12 @@ func _gui_input(event: InputEvent) -> void:
 		var panel_rect = panel.get_global_rect()
 		if not panel_rect.has_point(mb.global_position):
 			panel.hide()
+			# 同时关闭 CardDetailPopup（背包同款弹窗）
+			var bp_node = get_node_or_null("/root/Main/BackpackPanel")
+			if bp_node and bp_node.has_method("hide_card_detail"):
+				bp_node.hide_card_detail()
 			_safe_set_input_handled()
-		return
+			return
 	# 点击战场区域：做单位检测并显示信息框（暂停/继续都由此处或 _input 处理）
 	var viewport_pos: Variant = _global_to_battle_viewport_pos(mb.global_position)
 	if mb.button_index == MOUSE_BUTTON_LEFT and viewport_pos != null and _do_unit_pick(viewport_pos):
@@ -203,6 +205,14 @@ func _do_unit_pick(viewport_pos: Vector2) -> bool:
 		return false
 	var result: Dictionary = bf.get_unit_at_position(viewport_pos)
 	if not result.is_empty():
+		if result.is_player:
+			# 我方单位：用 CardDetailPopup 显示（同背包/相位仪）
+			var unit = result.unit
+			if unit and is_instance_valid(unit) and unit.stats and not unit.stats.platform_card_id.is_empty():
+				var card: CardResource = DefaultCardsData.get_card_by_id(unit.stats.platform_card_id)
+				if card != null:
+					BackpackPanelScript.open_card_detail(card, null)
+		# 发射信号给选中高亮等监听者
 		if SignalBus:
 			SignalBus.unit_selected.emit(result.unit, result.is_player, Vector2.ZERO)
 		return true
@@ -219,13 +229,6 @@ func _try_cast_active_law_at(viewport_pos: Vector2) -> bool:
 	if law_id.is_empty():
 		return false
 	_ensure_plm()
-	#region agent log
-	_agent_log("H1_cast_gate", "cast_attempt_entry", {
-		"law_id": law_id,
-		"viewport_pos": viewport_pos,
-		"has_plm": _plm != null
-	})
-	#endregion
 	if _plm and _plm.has_method("can_cast") and _plm.has_method("record_cast"):
 		var current_energy: float = 0.0
 		if EnergyManager and EnergyManager.has_method("get_current"):
@@ -244,14 +247,6 @@ func _try_cast_active_law_at(viewport_pos: Vector2) -> bool:
 			if pu:
 				extra["friendly_units"] = pu.get_child_count()
 		var can_cast_now: bool = _plm.can_cast(law_id, current_energy, extra)
-		#region agent log
-		_agent_log("H1_cast_gate", "cast_gate_checked", {
-			"law_id": law_id,
-			"current_energy": current_energy,
-			"extra": extra,
-			"can_cast": can_cast_now
-		})
-		#endregion
 		if can_cast_now:
 			var law: Dictionary = PhaseLaws.get_by_id(law_id) if PhaseLaws else {}
 			var cost: Dictionary = law.get("battle_cost", {}) if not law.is_empty() else {}

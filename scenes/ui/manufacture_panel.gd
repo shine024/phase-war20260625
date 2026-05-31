@@ -19,10 +19,6 @@ const PhaseLaws = preload("res://data/phase_laws.gd")
 var _selected_platform_card: CardResource = null
 var _selected_weapon_cards: Array[CardResource] = []
 
-## @deprecated agent log 已迁移到 DebugLogger
-func _agent_log(_hypothesis_id: String, _message: String, _data: Dictionary) -> void:
-	pass
-
 func _enqueue_backpack_fallback_if_needed(card_id: String) -> void:
 	if card_id.is_empty():
 		return
@@ -30,9 +26,6 @@ func _enqueue_backpack_fallback_if_needed(card_id: String) -> void:
 	# 仅当 SignalBus 不可用时，才走直接 enqueue 兜底，避免同一次制造被重复入队。
 	if (SignalBus == null) and SaveManager and SaveManager.has_method("enqueue_backpack_card_id"):
 		SaveManager.enqueue_backpack_card_id(card_id)
-		#region agent log
-		_agent_log("H1_pending_double_enqueue", "explicit_enqueue_fallback", {"card_id": card_id})
-		#endregion
 
 func _build_card_tooltip(card: CardResource) -> String:
 	if card == null:
@@ -242,13 +235,6 @@ func _on_assemble_single() -> void:
 		if BlueprintManager and BlueprintManager.has_method("manufacture_card"):
 			var manufactured_card: CardResource = BlueprintManager.manufacture_card(card_id)
 			if manufactured_card:
-				#region agent log
-				_agent_log("H1_pending_double_enqueue", "manufacture_single_success", {
-					"request_card_id": card_id,
-					"produced_card_id": manufactured_card.card_id,
-					"card_type": int(manufactured_card.card_type),
-				})
-				#endregion
 				# 同步解锁法则到 PhaseLawManager
 				if manufactured_card.card_type == GC.CardType.LAW:
 					var law_id: String = manufactured_card.linked_law_id if manufactured_card.linked_law_id else manufactured_card.card_id
@@ -256,23 +242,20 @@ func _on_assemble_single() -> void:
 				if plm and plm.has_method("ensure_law_unlocked"):
 					plm.ensure_law_unlocked(law_id)
 						print("[ManufacturePanel] 法则已解锁: ", law_id)
-				# 继承蓝图星级
-				if BlueprintManager.has_method("get_blueprint_star"):
-					manufactured_card.star_level = BlueprintManager.get_blueprint_star(card_id)
+				# 继承蓝图星级（已废弃，enhance_level 由养成系统管理）
+				#if BlueprintManager.has_method("get_blueprint_star"):
+				#	manufactured_card.star_level = BlueprintManager.get_blueprint_star(card_id)
 				if SignalBus:
 					_enqueue_backpack_fallback_if_needed(String(manufactured_card.card_id))
 					SignalBus.card_added_to_backpack.emit(manufactured_card)
-					#region agent log
-					_agent_log("H1_pending_double_enqueue", "manufacture_emit_card_added", {"card_id": manufactured_card.card_id})
-					#endregion
 				print("[ManufacturePanel] 制造成功: ", DefaultCards.safe_name(manufactured_card))
 		return
 
 	# 平台和武器卡：原有逻辑
 	if card:
-		# 继承蓝图星级
-		if BlueprintManager and BlueprintManager.has_method("get_blueprint_star"):
-			card.star_level = BlueprintManager.get_blueprint_star(card.card_id)
+	# 继承蓝图星级（已废弃，enhance_level 由养成系统管理）
+	#if BlueprintManager and BlueprintManager.has_method("get_blueprint_star"):
+	#	card.star_level = BlueprintManager.get_blueprint_star(card.card_id)
 		var am: Node = get_node_or_null("/root/AffixManager")
 		if am and am.has_method("grant_initial_affixes_for_card"):
 			# 避开制造点击同帧的 UI 重建，减轻主线程尖峰。

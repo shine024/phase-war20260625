@@ -53,7 +53,6 @@ func _ready() -> void:
 
 ## 开始启动序列
 func _start_launch_sequence() -> void:
-	print("[GameLauncher] 开始游戏启动序列...")
 
 	# 显示启动画面
 	if launch_config["show_splash_screen"] and splash_screen != null:
@@ -94,7 +93,6 @@ func _enter_loading_phase() -> void:
 
 ## 加载资源
 func _load_assets() -> void:
-	print("[GameLauncher] 加载游戏资源...")
 	current_phase = LaunchPhase.LOADING_ASSETS
 
 	# 预加载关键资源
@@ -123,7 +121,6 @@ func _create_resource_queue() -> Node:
 
 ## 加载游戏数据
 func _load_game_data() -> void:
-	print("[GameLauncher] 加载游戏数据...")
 	current_phase = LaunchPhase.LOADING_DATA
 
 	# 加载核心游戏数据
@@ -151,7 +148,6 @@ func _preload_data_files() -> void:
 
 ## 验证数据完整性
 func _verify_data_integrity() -> void:
-	print("[GameLauncher] 验证数据完整性...")
 
 	# 检查关键数据文件
 	var critical_files = [
@@ -167,7 +163,6 @@ func _verify_data_integrity() -> void:
 
 ## 初始化系统
 func _initialize_systems() -> void:
-	print("[GameLauncher] 初始化游戏系统...")
 	current_phase = LaunchPhase.LOADING_DATA
 
 	# 确保所有管理器都已加载
@@ -191,7 +186,6 @@ func _initialize_systems() -> void:
 
 ## 加载存档数据
 func _load_save_data() -> void:
-	print("[GameLauncher] 加载存档数据...")
 	current_phase = LaunchPhase.LOADING_SAVE
 
 	if launch_config["load_last_save"]:
@@ -201,7 +195,6 @@ func _load_save_data() -> void:
 
 ## 启动完成
 func _launch_completed() -> void:
-	print("[GameLauncher] 游戏启动完成!")
 	current_phase = LaunchPhase.READY
 
 	if loading_screen != null:
@@ -264,7 +257,6 @@ func _show_error_screen(message: String) -> void:
 
 ## 重试启动
 func _on_retry_launch() -> void:
-	print("[GameLauncher] 重试启动...")
 
 	# 重置状态
 	current_phase = LaunchPhase.INITIALIZING
@@ -275,7 +267,6 @@ func _on_retry_launch() -> void:
 
 ## 开始新游戏
 func start_new_game() -> void:
-	print("[GameLauncher] 开始新游戏...")
 
 	if main_menu != null:
 		main_menu.visible = false
@@ -288,7 +279,6 @@ func start_new_game() -> void:
 
 ## 加载游戏
 func load_game() -> void:
-	print("[GameLauncher] 加载游戏...")
 
 	if main_menu != null:
 		main_menu.visible = false
@@ -310,14 +300,12 @@ func load_game() -> void:
 
 ## 进入游戏场景
 func _enter_game_scene() -> void:
-	print("[GameLauncher] 进入游戏场景...")
 
 	# 切换到主游戏场景
 	get_tree().change_scene_to_file("res://scenes/main.tscn")
 
 ## 退出游戏
 func exit_game() -> void:
-	print("[GameLauncher] 退出游戏...")
 
 	# 清理资源
 	_cleanup_before_exit()
@@ -329,7 +317,6 @@ func exit_game() -> void:
 
 ## 退出前清理
 func _cleanup_before_exit() -> void:
-	print("[GameLauncher] 清理游戏资源...")
 
 	# 保存设置
 	var settings_mgr = get_node_or_null("/root/SettingsManager")

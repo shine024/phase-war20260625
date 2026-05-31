@@ -344,7 +344,7 @@ func show_card_detail(card: CardResource, _source_item: Control) -> void:
 	var sum_l = popup.get_node_or_null("Margin/VBox/SummaryLabel")
 	var desc_l = popup.get_node_or_null("Margin/VBox/DescLabel")
 	var flavor_l = popup.get_node_or_null("Margin/VBox/FlavorLabel")
-	var detail_star: int = card.star_level if card.star_level > 0 else BlueprintManager.get_blueprint_star(card.card_id)
+	var detail_star: int = int(card.enhance_level)
 
 	if not use_face:
 		if name_l:

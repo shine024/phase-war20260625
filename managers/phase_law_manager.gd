@@ -46,9 +46,6 @@ func _get_level_info() -> RefCounted:
 		_level_info = _LevelInfoScript.new()
 	return _level_info
 
-## @deprecated agent log 已迁移到 DebugLogger
-func _agent_log(_message: String, _data: Dictionary, _hypothesis_id: String = "") -> void:
-	pass
 
 func _ready() -> void:
 	if Engine.is_editor_hint():
@@ -403,14 +400,11 @@ func set_equipped_laws(passives: Array, actives: Array, nano_budget: int) -> boo
 			continue
 		var law_p: Dictionary = PhaseLaws.get_by_id(pid)
 		if law_p.is_empty() or String(law_p.get("kind", "")) != "passive":
-			_agent_log("set_equipped_laws_reject_invalid_passive", {"law_id": pid}, "H_equip_guard")
 			return false
 		if not unlocked_law_ids.has(pid) or not get_law_env_match(pid, current_env):
-			_agent_log("set_equipped_laws_reject_passive_guard", {"law_id": pid}, "H_equip_guard")
 			return false
 		# 法则家族限制检查
 		if not allowed_families.is_empty() and not allowed_families.has(law_p.get("family", "")):
-			_agent_log("set_equipped_laws_reject_passive_family", {"law_id": pid, "family": law_p.get("family", ""), "allowed": allowed_families}, "H_equip_family")
 			return false
 		new_passives.append(pid)
 	for id_a in actives:
@@ -419,15 +413,12 @@ func set_equipped_laws(passives: Array, actives: Array, nano_budget: int) -> boo
 			continue
 		var law_a: Dictionary = PhaseLaws.get_by_id(aid)
 		if law_a.is_empty() or String(law_a.get("kind", "")) != "active":
-			_agent_log("set_equipped_laws_reject_invalid_active", {"law_id": aid}, "H_equip_guard")
 			return false
 		# 主动法则：只检查解锁状态，不检查环境匹配（任何关卡都能装备）
 		if not unlocked_law_ids.has(aid):
-			_agent_log("set_equipped_laws_reject_active_not_unlocked", {"law_id": aid}, "H_equip_guard")
 			return false
 		# 法则家族限制检查
 		if not allowed_families.is_empty() and not allowed_families.has(law_a.get("family", "")):
-			_agent_log("set_equipped_laws_reject_active_family", {"law_id": aid, "family": law_a.get("family", ""), "allowed": allowed_families}, "H_equip_family")
 			return false
 		new_actives.append(aid)
 
@@ -436,10 +427,8 @@ func set_equipped_laws(passives: Array, actives: Array, nano_budget: int) -> boo
 	var delta_cost: int = new_cost - old_cost
 	if delta_cost > 0:
 		if not BlueprintManager.has_method("get_nano_materials") or not BlueprintManager.has_method("add_nano_materials"):
-			_agent_log("set_equipped_laws_reject_no_bm", {"delta_cost": delta_cost}, "H_equip_cost")
 			return false
 		if int(BlueprintManager.get_nano_materials()) < delta_cost:
-			_agent_log("set_equipped_laws_reject_nano_insufficient", {"need": delta_cost, "have": int(BlueprintManager.get_nano_materials())}, "H_equip_cost")
 			return false
 	if BlueprintManager.has_method("add_nano_materials") and delta_cost != 0:
 		BlueprintManager.add_nano_materials(-delta_cost)
@@ -447,13 +436,6 @@ func set_equipped_laws(passives: Array, actives: Array, nano_budget: int) -> boo
 	equipped_passive_laws = new_passives
 	equipped_active_laws = new_actives
 	battle_nano_budget = max(0, nano_budget)
-	_agent_log("set_equipped_laws", {
-		"equipped_passives": equipped_passive_laws,
-		"equipped_actives": equipped_active_laws,
-		"nano_budget": battle_nano_budget,
-		"activate_cost_total": new_cost,
-		"activate_cost_delta": delta_cost,
-	}, "H_equip")
 	if SignalBus and SignalBus.has_signal("phase_law_runtime_changed"):
 		SignalBus.phase_law_runtime_changed.emit()
 	return true
@@ -481,7 +463,6 @@ func force_sync_instrument_law_slots(passives: Array, actives: Array) -> void:
 		na.append(aid)
 	equipped_passive_laws = np
 	equipped_active_laws = na
-	_agent_log("force_sync_instrument_law_slots", {"passives": np, "actives": na}, "H_sync")
 	if SignalBus and SignalBus.has_signal("phase_law_runtime_changed"):
 		SignalBus.phase_law_runtime_changed.emit()
 
@@ -622,13 +603,6 @@ func get_passive_runtime_tags_for_side(is_player: bool) -> Array:
 			side_ok = false
 		if side == "ENEMY" and is_player:
 			side_ok = false
-		_agent_log("passive_law_checked", {
-			"law_id": law_id,
-			"env_ok_runtime": env_ok_runtime,
-			"side": side,
-			"is_player": is_player,
-			"side_ok": side_ok,
-		}, "H_passive_env")
 		if not env_ok_runtime or not side_ok:
 			continue
 		out.append(rt)

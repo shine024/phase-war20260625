@@ -25,7 +25,7 @@ static func _load_json_array(path: String, fallback: Array) -> Array:
 ##   - collect_fragments：已废弃（v3），新任务用 collect_cards
 ##   - attack_faction→{target_faction: 势力ID, target_master: 相位师名}
 ##   - defend_faction→{defend_faction: 势力ID, attacker_master: 相位师名}
-## rewards: { blueprint_fragments: {card_id: n} → 背包成品卡（CardDropGrants）；nano_materials；unlock_blueprint；… }
+## rewards: { nano_materials; unlock_blueprint; ... }
 ## company_rep 与 FactionSystemManager 声望同源（任务奖励仍可用 company_rep 键名）
 
 const LEGACY_QUESTS: Array[Dictionary] = [
@@ -39,7 +39,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 3,
 		"company_id": "iron_wall_corp",
 		"rewards": {
-			"blueprint_fragments": {"smg_mk2": 1},
 			"nano_materials": 10,
 			"company_rep": {"iron_wall_corp": 10},
 		},
@@ -52,7 +51,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 10,
 		"company_id": "iron_wall_corp",
 		"rewards": {
-			"blueprint_fragments": {"bp_ww2_013": 2},
 			"nano_materials": 25,
 			"company_rep": {"iron_wall_corp": 20},
 		},
@@ -65,7 +63,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 20,
 		"company_id": "nova_arms",
 		"rewards": {
-			"blueprint_fragments": {"bp_cold_022": 1},
 			"nano_materials": 15,
 			"company_rep": {"nova_arms": 12},
 		},
@@ -102,7 +99,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 5,
 		"company_id": "frontier_union",
 		"rewards": {
-			"blueprint_fragments": {"phase_lance": 1},
 			"nano_materials": 15,
 			"company_rep": {"frontier_union": 12},
 		},
@@ -115,7 +111,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 10,
 		"company_id": "frontier_union",
 		"rewards": {
-			"blueprint_fragments": {"railgun": 1},
 			"nano_materials": 30,
 			"company_rep": {"frontier_union": 20},
 		},
@@ -128,7 +123,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 5,
 		"company_id": "quantum_logistics",
 		"rewards": {
-			"blueprint_fragments": {"bulwark": 1},
 			"nano_materials": 12,
 			"company_rep": {"quantum_logistics": 10},
 		},
@@ -141,7 +135,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 20,
 		"company_id": "iron_wall_corp",
 		"rewards": {
-			"blueprint_fragments": {"bp_modern_001": 1},
 			"nano_materials": 50,
 			"company_rep": {"iron_wall_corp": 35},
 		},
@@ -154,7 +147,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 100,
 		"company_id": "nova_arms",
 		"rewards": {
-			"blueprint_fragments": {"bp_near_005": 1},
 			"nano_materials": 60,
 			"company_rep": {"nova_arms": 40},
 		},
@@ -167,7 +159,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 20,
 		"company_id": "frontier_union",
 		"rewards": {
-			"blueprint_fragments": {"titan_mk2": 1},
 			"nano_materials": 45,
 			"company_rep": {"frontier_union": 30},
 		},
@@ -183,7 +174,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": {"target_faction": "void_research", "target_master": "终焉之镰"},
 		"company_id": "nova_arms",
 		"rewards": {
-			"blueprint_fragments": {"bp_near_005": 2},
 			"nano_materials": 80,
 			"faction_rep": {"nova_arms": 25, "void_research": -20},
 		},
@@ -196,7 +186,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": {"target_faction": "nova_arms", "target_master": "炽焰星痕"},
 		"company_id": "iron_wall_corp",
 		"rewards": {
-			"blueprint_fragments": {"bp_modern_001": 2},
 			"nano_materials": 80,
 			"faction_rep": {"iron_wall_corp": 25, "nova_arms": -20},
 		},
@@ -209,7 +198,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": {"target_faction": "aether_dynamics", "target_master": "雷霆判官"},
 		"company_id": "quantum_logistics",
 		"rewards": {
-			"blueprint_fragments": {"bp_ww2_004": 2},
 			"nano_materials": 80,
 			"faction_rep": {"quantum_logistics": 25, "aether_dynamics": -20},
 		},
@@ -222,7 +210,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": {"defend_faction": "iron_wall_corp"},
 		"company_id": "iron_wall_corp",
 		"rewards": {
-			"blueprint_fragments": {"bulwark": 2},
 			"nano_materials": 60,
 			"faction_rep": {"iron_wall_corp": 30},
 		},
@@ -235,7 +222,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": {"defend_faction": "frontier_union"},
 		"company_id": "frontier_union",
 		"rewards": {
-			"blueprint_fragments": {"titan_mk2": 2},
 			"nano_materials": 60,
 			"faction_rep": {"frontier_union": 30},
 		},
@@ -248,7 +234,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": {"defend_faction": "helix_recon"},
 		"company_id": "helix_recon",
 		"rewards": {
-			"blueprint_fragments": {"bp_cold_022": 2},
 			"nano_materials": 60,
 			"faction_rep": {"helix_recon": 30},
 		},
@@ -276,7 +261,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 3,
 		"company_id": "void_research",
 		"rewards": {
-			"blueprint_fragments": {"bp_ww1_013": 1},
 			"nano_materials": 15,
 			"company_rep": {"void_research": 10},
 		},
@@ -289,7 +273,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 3,
 		"company_id": "frontier_union",
 		"rewards": {
-			"blueprint_fragments": {"bp_ww1_001": 1},
 			"nano_materials": 8,
 			"company_rep": {"frontier_union": 8},
 		},
@@ -326,7 +309,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 10,
 		"company_id": "helix_recon",
 		"rewards": {
-			"blueprint_fragments": {"bp_ww1_011": 1},
 			"nano_materials": 10,
 			"company_rep": {"helix_recon": 10},
 		},
@@ -342,7 +324,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 30,
 		"company_id": "iron_wall_corp",
 		"rewards": {
-			"blueprint_fragments": {"bp_modern_013": 2},
 			"nano_materials": 70,
 			"company_rep": {"iron_wall_corp": 40},
 		},
@@ -355,7 +336,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 50,
 		"company_id": "iron_wall_corp",
 		"rewards": {
-			"blueprint_fragments": {"bp_future_013": 2},
 			"nano_materials": 100,
 			"company_rep": {"iron_wall_corp": 60},
 		},
@@ -368,7 +348,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 150,
 		"company_id": "nova_arms",
 		"rewards": {
-			"blueprint_fragments": {"omega_cannon": 2},
 			"nano_materials": 80,
 			"company_rep": {"nova_arms": 50},
 		},
@@ -381,7 +360,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 200,
 		"company_id": "nova_arms",
 		"rewards": {
-			"blueprint_fragments": {"omega_platform": 1},
 			"nano_materials": 120,
 			"company_rep": {"nova_arms": 70},
 		},
@@ -394,7 +372,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 40,
 		"company_id": "frontier_union",
 		"rewards": {
-			"blueprint_fragments": {"bp_ww2_022": 2},
 			"nano_materials": 55,
 			"company_rep": {"frontier_union": 35},
 		},
@@ -407,7 +384,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 60,
 		"company_id": "frontier_union",
 		"rewards": {
-			"blueprint_fragments": {"bp_cold_022": 2},
 			"nano_materials": 65,
 			"company_rep": {"frontier_union": 40},
 		},
@@ -420,7 +396,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 80,
 		"company_id": "frontier_union",
 		"rewards": {
-			"blueprint_fragments": {"bp_modern_022": 2},
 			"nano_materials": 75,
 			"company_rep": {"frontier_union": 45},
 		},
@@ -433,7 +408,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 100,
 		"company_id": "frontier_union",
 		"rewards": {
-			"blueprint_fragments": {"omega_platform": 2, "omega_cannon": 2},
 			"nano_materials": 200,
 			"company_rep": {"frontier_union": 100},
 		},
@@ -446,7 +420,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 3,
 		"company_id": "frontier_union",
 		"rewards": {
-			"blueprint_fragments": {"titan_mk2": 1},
 			"nano_materials": 75,
 			"company_rep": {"frontier_union": 45},
 		},
@@ -459,7 +432,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 5,
 		"company_id": "void_research",
 		"rewards": {
-			"blueprint_fragments": {"bp_near_005": 1},
 			"nano_materials": 90,
 			"company_rep": {"void_research": 50},
 		},
@@ -487,7 +459,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 10,
 		"company_id": "quantum_logistics",
 		"rewards": {
-			"blueprint_fragments": {"bp_ww1_001": 1},
 			"nano_materials": 20,
 			"company_rep": {"quantum_logistics": 15},
 		},
@@ -500,7 +471,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 3,
 		"company_id": "void_research",
 		"rewards": {
-			"blueprint_fragments": {"bp_modern_001": 1},
 			"nano_materials": 30,
 			"company_rep": {"void_research": 20},
 		},
@@ -525,7 +495,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": {"total": 50},
 		"company_id": "void_research",
 		"rewards": {
-			"blueprint_fragments": {"railgun": 2},
 			"nano_materials": 35,
 			"company_rep": {"void_research": 25},
 		},
@@ -538,7 +507,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 5,
 		"company_id": "iron_wall_corp",
 		"rewards": {
-			"blueprint_fragments": {"bp_ww2_001": 1},
 			"nano_materials": 22,
 			"company_rep": {"iron_wall_corp": 16},
 		},
@@ -551,7 +519,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 5,
 		"company_id": "aether_dynamics",
 		"rewards": {
-			"blueprint_fragments": {"bp_modern_001": 1},
 			"nano_materials": 28,
 			"company_rep": {"aether_dynamics": 20},
 		},
@@ -564,7 +531,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 5,
 		"company_id": "void_research",
 		"rewards": {
-			"blueprint_fragments": {"bp_future_001": 1},
 			"nano_materials": 32,
 			"company_rep": {"void_research": 22},
 		},
@@ -580,7 +546,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 30,
 		"company_id": "iron_wall_corp",
 		"rewards": {
-			"blueprint_fragments": {"bulwark": 1},
 			"nano_materials": 35,
 			"company_rep": {"iron_wall_corp": 20},
 		},
@@ -593,7 +558,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 30,
 		"company_id": "nova_arms",
 		"rewards": {
-			"blueprint_fragments": {"bp_near_005": 1},
 			"nano_materials": 35,
 			"company_rep": {"nova_arms": 20},
 		},
@@ -606,7 +570,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 30,
 		"company_id": "aether_dynamics",
 		"rewards": {
-			"blueprint_fragments": {"phase_lance": 1},
 			"nano_materials": 35,
 			"company_rep": {"aether_dynamics": 20},
 		},
@@ -619,7 +582,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 30,
 		"company_id": "void_research",
 		"rewards": {
-			"blueprint_fragments": {"bp_modern_001": 1},
 			"nano_materials": 35,
 			"company_rep": {"void_research": 20},
 		},
@@ -632,7 +594,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 20,
 		"company_id": "frontier_union",
 		"rewards": {
-			"blueprint_fragments": {"titan_mk2": 2},
 			"nano_materials": 80,
 			"company_rep": {"frontier_union": 50, "iron_wall_corp": 15, "nova_arms": 15, "aether_dynamics": 15, "void_research": 15, "quantum_logistics": 15, "helix_recon": 15},
 		},
@@ -645,7 +606,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 50,
 		"company_id": "quantum_logistics",
 		"rewards": {
-			"blueprint_fragments": {"omega_platform": 1},
 			"nano_materials": 60,
 			"company_rep": {"quantum_logistics": 35},
 		},
@@ -673,7 +633,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 5,
 		"company_id": "frontier_union",
 		"rewards": {
-			"blueprint_fragments": {"omega_cannon": 1, "omega_platform": 1},
 			"nano_materials": 150,
 			"company_rep": {"frontier_union": 80},
 		},
@@ -686,7 +645,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 1,
 		"company_id": "iron_wall_corp",
 		"rewards": {
-			"blueprint_fragments": {"bp_modern_001": 1},
 			"nano_materials": 60,
 			"company_rep": {"iron_wall_corp": 40},
 		},
@@ -699,7 +657,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 30,
 		"company_id": "aether_dynamics",
 		"rewards": {
-			"blueprint_fragments": {"phase_lance": 1},
 			"nano_materials": 65,
 			"company_rep": {"aether_dynamics": 42},
 		},
@@ -712,7 +669,6 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"target": 15,
 		"company_id": "iron_wall_corp",
 		"rewards": {
-			"blueprint_fragments": {"bulwark": 1},
 			"nano_materials": 70,
 			"company_rep": {"iron_wall_corp": 45},
 		},

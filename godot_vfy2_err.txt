@@ -1,0 +1,19 @@
+ERROR: era1 guard hp expected 115 got 126.5
+   at: push_error (core/variant/variant_utility.cpp:1024)
+   GDScript backtrace (most recent call first):
+       [0] _initialize (res://tests/star_config_smoke.gd:36)
+ERROR: era1 rifle damage expected 10 got 16.8
+   at: push_error (core/variant/variant_utility.cpp:1024)
+   GDScript backtrace (most recent call first):
+       [0] _initialize (res://tests/star_config_smoke.gd:40)
+ERROR: era0 guard hp expected 100 got 110.0
+   at: push_error (core/variant/variant_utility.cpp:1024)
+   GDScript backtrace (most recent call first):
+       [0] _initialize (res://tests/star_config_smoke.gd:44)
+WARNING: 14 RIDs of type "CanvasItem" were leaked.
+   at: _free_rids (servers/rendering/renderer_canvas_cull.cpp:2678)
+ERROR: 2 RID allocations of type 'N13RendererDummy9DummyMeshE' were leaked at exit.
+WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
+   at: cleanup (core/object/object.cpp:2514)
+ERROR: 2 resources still in use at exit (run with --verbose for details).
+   at: clear (core/io/resource.cpp:795)

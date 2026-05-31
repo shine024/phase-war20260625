@@ -13,9 +13,8 @@ var battle_scene: Node = null
 var main_scene: Node = null
 var current_level: int = 1
 var last_battle_reward_summary: Dictionary = {}
-var _blueprint_fragments_before_battle: Dictionary = {}
+var _blueprint_copies_before_battle: Dictionary = {}
 var _knowledge_before_battle: Dictionary = {}
-var _battle_stats: Dictionary = {}  # 战斗统计数据，用于星级计算
 var _plm: Node = null  ## 安全引用：PhaseLawManager 本地缓存
 signal current_level_changed(level: int)
 
@@ -519,7 +518,7 @@ func _grant_basic_resources_for_current_level() -> void:
 	# 战后额外：纳米材料（用于解析蓝图）
 	if BlueprintManager and BlueprintManager.has_method("add_nano_materials"):
 		var nano_bonus: int = 10 + current_level * 3 + int(pow(float(current_level), 1.15))  # 经济平衡：指数增长
-	BlueprintManager.add_nano_materials(nano_bonus)
+		BlueprintManager.add_nano_materials(nano_bonus)
 	return
 
 
@@ -556,7 +555,7 @@ func _grant_phase_field_xp_for_victory() -> void:
 	PhaseInstrumentManager.grant_phase_field_xp("battle_victory", total_xp)
 
 func _snapshot_battle_reward_baselines() -> void:
-	_blueprint_fragments_before_battle.clear()
+	_blueprint_copies_before_battle.clear()
 	_knowledge_before_battle.clear()
 	_ensure_plm()
 	if _plm and _plm.has_method("get_knowledge_snapshot"):
@@ -564,7 +563,7 @@ func _snapshot_battle_reward_baselines() -> void:
 	if BlueprintManager and BlueprintManager.has_method("get_all_blueprint_ids"):
 		for id_raw in BlueprintManager.get_all_blueprint_ids():
 			var card_id: String = String(id_raw)
-			_blueprint_fragments_before_battle[card_id] = int(BlueprintManager.get_blueprint_copies(card_id))
+			_blueprint_copies_before_battle[card_id] = int(BlueprintManager.get_blueprint_copies(card_id))
 
 func _calculate_blueprint_fragment_gain() -> Dictionary:
 	var total_gain: int = 0
@@ -573,7 +572,7 @@ func _calculate_blueprint_fragment_gain() -> Dictionary:
 		return {"total": 0, "items": []}
 	for id_raw in BlueprintManager.get_all_blueprint_ids():
 		var card_id: String = String(id_raw)
-		var before_count: int = int(_blueprint_fragments_before_battle.get(card_id, 0))
+		var before_count: int = int(_blueprint_copies_before_battle.get(card_id, 0))
 		var after_count: int = int(BlueprintManager.get_blueprint_copies(card_id))
 		var gain: int = after_count - before_count
 		if gain > 0:
@@ -596,13 +595,3 @@ func _calculate_knowledge_gain() -> Dictionary:
 			total_gain += gain
 			items.append({"id": key, "gain": gain})
 	return {"total": total_gain, "items": items}
-
-## ========== 新增辅助方法 ==========
-
-## 设置战斗统计数据（供战场调用）
-func set_battle_stats(stats: Dictionary) -> void:
-	_battle_stats = stats
-
-## 获取战斗统计数据
-func get_battle_stats() -> Dictionary:
-	return _battle_stats.duplicate()

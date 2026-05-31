@@ -12,7 +12,7 @@ class_name GameConfig
 @export_group("数值平衡")
 @export var nano_bonus_base: int = 5  ## 纳米基础奖励
 @export var nano_bonus_per_level: int = 2  ## 每级额外纳米奖励
-@export var blueprint_drop_chance_base: float = 0.15  ## @deprecated — 旧版蓝图掉落率，v3已改为CARD_DATA机制
+@export var blueprint_drop_chance_base: float = 0.15  ## 蓝图掉落基础概率
 @export var exp_base_amount: int = 10  ## 基础经验值
 @export var exp_per_level: int = 5  ## 每级额外经验值
 

@@ -74,6 +74,20 @@ class DropResult:
 
 var era_blueprint_ids: Dictionary = {}
 
+## 各时代通用掉落池
+var ww1_common_drops: Array[DropEntry] = []
+var ww2_common_drops: Array[DropEntry] = []
+var cold_war_common_drops: Array[DropEntry] = []
+var modern_common_drops: Array[DropEntry] = []
+var near_future_common_drops: Array[DropEntry] = []
+var material_drops: Array[DropEntry] = []
+
+## Boss 专属许可映射
+var era_boss_specific_permits: Dictionary = {}
+
+## Boss 通用掉落池
+var boss_drops: Array[DropEntry] = []
+
 ## 与击杀精英掉落、敌方原型表一致的「命名敌方蓝图」id（仅 PLATFORM 类型，WEAPON 系统已废弃）
 const _NAMED_ELITE_ENEMY_BLUEPRINT_IDS: Array[String] = [
 	"bulwark", "titan_mk2", "storm_rider", "heavy_carrier",

@@ -77,28 +77,6 @@ text = "HP 1000｜防 50｜攻 100｜射程 200｜攻速 1.0
 horizontal_alignment = 1
 autowrap_mode = 2
 
-[node name="StanceRow" type="HBoxContainer" parent="Margin/VBox"]
-visible = false
-layout_mode = 2
-theme_override_constants/separation = 10
-alignment = 1
-
-[node name="StanceHint" type="Label" parent="Margin/VBox/StanceRow"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.65, 0.72, 0.82, 1)
-theme_override_font_sizes/font_size = 11
-text = "场上姿态"
-
-[node name="StanceAttackBtn" type="Button" parent="Margin/VBox/StanceRow"]
-custom_minimum_size = Vector2(76, 30)
-layout_mode = 2
-text = "进攻"
-
-[node name="StanceDefendBtn" type="Button" parent="Margin/VBox/StanceRow"]
-custom_minimum_size = Vector2(76, 30)
-layout_mode = 2
-text = "防守"
-
 [node name="Divider1" type="Control" parent="Margin/VBox"]
 custom_minimum_size = Vector2(0, 2)
 layout_mode = 2

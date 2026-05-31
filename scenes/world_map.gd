@@ -166,7 +166,6 @@ func _style_back_button(btn: Button) -> void:
 func _build_level_map() -> void:
 	# 缓存检查：如果地图已构建，跳过
 	if _map_built:
-		print("[WorldMap] 地图已构建，跳过重复生成")
 		return
 
 	var container: GridContainer = get_node_or_null("Margin/VBox/ScrollContainer/LevelGrid") as GridContainer
@@ -184,7 +183,6 @@ func _build_level_map() -> void:
 		if reused != null:
 			scroll.add_child(reused)
 			_map_built = true
-			print("[WorldMap] 使用缓存地图模板，跳过100按钮重建")
 			return
 
 	# 创建新的内容 VBox
@@ -272,7 +270,6 @@ func _build_level_map() -> void:
 	# 标记地图已构建
 	_cached_level_map_template = content_vbox.duplicate(Node.DUPLICATE_USE_INSTANTIATION) as Control
 	_map_built = true
-	print("[WorldMap] 地图构建完成，共创建 ", _btn_count, " 个关卡按钮")
 
 ## 刷新地图（清除缓存，强制重新生成）
 func refresh_levels() -> void:

@@ -60,6 +60,7 @@ const TARGET_ARCHETYPE_COUNT: int = 150
 ## 100 基本敌人清单启用后关闭程序批量生成（见 data/enemy_unit_manifest.gd）
 const GENERATED_PER_ERA: int = 0
 ## 每个时代前若干 bp_* 视为“平台蓝图”区间（与 enemy_blueprints.gd 生成顺序一致）
+const ERA_BP_COUNT: Array[int] = [26, 26, 26, 26, 26]
 const PLATFORM_BP_COUNT_BY_ERA: Array[int] = [10, 10, 9, 9, 10]
 
 ## 各时代可用武器类型（GC.WeaponType：0 SMG 1 RIFLE 2 MG 3 ROCKET 4 PISTOL 5 SHOTGUN 6 SNIPER 7 FLAK 8 LASER 9 MISSILE 10 OMEGA）
@@ -303,7 +304,7 @@ static func _get_era_blueprint_count(era: int) -> int:
 	var safe_era: int = clampi(era, 0, ERA_PREFIX.size() - 1)
 	var prefix: String = ERA_PREFIX[safe_era]
 	var actual_count: int = 0
-	for id_val in all_ids:
+	for id_val in get_all_ids():
 		var sid: String = String(id_val)
 		if sid.begins_with("bp_%s_" % prefix):
 			actual_count += 1

@@ -34,8 +34,7 @@ const CARD_GRID_ENLISTED_BASE_HEIGHT_CM: float = 1.5
 ## 卡面常为 1024 方图，按边长归一后屏上仍偏小，在目标像素上乘以此系数加大立绘（与 cm 比例叠乘，可调）
 const CARD_GRID_BATTLEFIELD_DRAW_SCALE_MULTIPLIER: float = 2.35
 
-## @deprecated — ADR-001: 法则碎片已移除
-## 新游戏时赠送法则碎片（用于蓝图库解析/升级；对应法则的 env_req 已放宽为全关卡可用）
+## 初始知识值倍率（旧 LawShard 常量，改作知识值倍率使用）
 const NEW_GAME_STARTER_LAW_SHARD_AMOUNT: int = 50
 ## 主动：烈焰·前线火力压制、雷霆·链式放电
 const NEW_GAME_STARTER_ACTIVE_LAW_IDS: Array[String] = ["flame_front_bombard", "thunder_chain_discharge"]
@@ -72,7 +71,8 @@ enum PlatformType {
 enum WeaponType {
 	DIRECT = 0,   # 直射：坦克炮、步枪、机枪、反坦克炮，攻击最近敌人，有射程衰减
 	INDIRECT = 1, # 曲射：迫击炮、榴弹炮、火箭炮，全图攻击被克制类型，无衰减
-	AERIAL = 2    # 空射：战斗机、攻击机、无人机，全图攻击，可被防空拦截
+	AERIAL = 2,   # 空射：战斗机、攻击机、无人机，全图攻击，可被防空拦截
+	SUPPORT = 3   # 辅助：无攻击力单位，不参与攻击计算
 }
 
 # 战斗定位枚举（单位类型）
@@ -127,59 +127,17 @@ enum Era {
 #  显示名称映射（枚举值 -> 中文名称）
 # ─────────────────────────────────────────────
 
-## 平台类型中文名称映射
-static func get_platform_type_name(platform_type: int) -> String:
-	match platform_type:
-		PlatformType.HOUND:       return "侦察型"
-		PlatformType.GUARD:       return "护卫型"
-		PlatformType.TITAN:       return "泰坦型"
-		PlatformType.FORTRESS:    return "要塞型"
-		PlatformType.RADAR:       return "雷达型"
-		PlatformType.SCOUT:       return "轻侦察型"
-		PlatformType.RAIDER:      return "突击型"
-		PlatformType.SIEGE:       return "攻城型"
-		PlatformType.CARRIER:     return "母舰型"
-		PlatformType.MEDIC:       return "维修型"
-		PlatformType.STEALTH:     return "隐匿型"
-		PlatformType.OMEGA_PLATFORM: return "全装型"
-		PlatformType.COMMAND: return "指挥型"
-		_: return "未知平台"
-
-## 平台类型简短名称（用于UI空间有限时）
-static func get_platform_type_short(platform_type: int) -> String:
-	match platform_type:
-		PlatformType.HOUND:       return "侦察"
-		PlatformType.GUARD:       return "护卫"
-		PlatformType.TITAN:       return "泰坦"
-		PlatformType.FORTRESS:    return "要塞"
-		PlatformType.RADAR:       return "雷达"
-		PlatformType.SCOUT:       return "轻侦"
-		PlatformType.RAIDER:      return "突击"
-		PlatformType.SIEGE:       return "攻城"
-		PlatformType.CARRIER:     return "母舰"
-		PlatformType.MEDIC:       return "维修"
-		PlatformType.STEALTH:     return "隐匿"
-		PlatformType.OMEGA_PLATFORM: return "全装"
-		PlatformType.COMMAND: return "指挥"
-		_: return "未知"
-
 const RealWorldUnitLabels = preload("res://data/real_world_unit_labels.gd")
 
-## 武器类型中文名称映射（与单位信息面板一致的现实向长名）
+## 武器类型中文名称映射
 static func get_weapon_type_name(weapon_type: int) -> String:
 	return RealWorldUnitLabels.weapon_kind_long(weapon_type)
-
-## 新武器类型中文名称映射
-static func get_weapon_type_new_name(weapon_type: int) -> String:
-	match weapon_type:
-		WeaponType.DIRECT: return "直射"
-		WeaponType.INDIRECT: return "曲射"
-		WeaponType.AERIAL: return "空射"
-		_: return "未知"
 
 ## 武器类型简短名称
 static func get_weapon_type_short(weapon_type: int) -> String:
 	return RealWorldUnitLabels.weapon_kind_short(weapon_type)
+
+
 
 ## 卡片类型中文名称映射
 static func get_card_type_name(card_type: int) -> String:
@@ -321,6 +279,3 @@ const INTEL_DIMENSION_WEIGHTS: Dictionary = {
 const PERFECT_VICTORY_INTEL_BONUS: float = 0.10
 
 ## 能量系统常量
-## @deprecated — 旧版3/4槽倍率已废弃，当前使用5槽系统（见 energy_manager.gd）
-# const ENERGY_SLOT_MULTIPLIER_3_SLOT: float = 1.5
-# const ENERGY_SLOT_MULTIPLIER_4_SLOT: float = 2.0

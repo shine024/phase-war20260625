@@ -139,7 +139,6 @@ func _update_continue_button(btn: Button) -> void:
 		btn.disabled = not SaveManager.has_save_slot(SaveManager.get_slot())
 
 func _on_new_game() -> void:
-	print("[TitleScreen] 新游戏 存档位 %d" % SaveManager.get_slot())
 	_play_sfx("button")
 	if SaveManager:
 		SaveManager.start_new_game()
@@ -152,7 +151,6 @@ func _on_continue() -> void:
 		if load_success:
 			get_tree().change_scene_to_file("res://scenes/main.tscn")
 		else:
-			print("[TitleScreen] 存档加载失败或没有存档")
 			var toast_mgr = get_node_or_null("/root/ToastManager")
 			if toast_mgr and toast_mgr.has_method("show_error"):
 				toast_mgr.show_error("存档加载失败，请尝试新建游戏")

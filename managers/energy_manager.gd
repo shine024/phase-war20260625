@@ -10,18 +10,12 @@ var _base_start: float = GC.ENERGY_START
 var _regen_per_sec: float = 0.0
 var _in_battle: bool = false
 
-## @deprecated agent log 已迁移到 DebugLogger
-func _agent_log(_hypothesis_id: String, _message: String, _data: Dictionary) -> void:
-	pass
 
 func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
 	set_process(false)
 	_reset_to_start()
-	#region agent log
-	_agent_log("H2_start_battle_not_called", "_ready", {"current": current, "max": _max, "base_start": _base_start, "regen": _regen_per_sec})
-	#endregion
 
 func _process(delta: float) -> void:
 	if Engine.is_editor_hint() or not _in_battle:
@@ -43,9 +37,6 @@ func start_battle() -> void:
 	current = clampf(_base_start, 0.0, _max)
 	if SignalBus:
 		SignalBus.energy_changed.emit(current, _max)
-	#region agent log
-	_agent_log("H2_start_battle_not_called", "start_battle_emit", {"current": current, "max": _max, "base_start": _base_start, "regen": _regen_per_sec, "in_battle": _in_battle})
-	#endregion
 
 func end_battle() -> void:
 	_in_battle = false
@@ -66,9 +57,6 @@ func _auto_recharge_from_energy_blocks() -> void:
 	current = clampf(current + float(spend_blocks), 0.0, _max)
 	if SignalBus:
 		SignalBus.energy_changed.emit(current, _max)
-	#region agent log
-	_agent_log("H4_wrong_energy_source", "auto_recharge_emit", {"spend_blocks": spend_blocks, "current": current, "max": _max})
-	#endregion
 
 func _reset_to_start() -> void:
 	current = GC.ENERGY_START
@@ -103,17 +91,11 @@ func _apply_equipped_energy_cards() -> void:
 	# 顶级相位仪（4个以上能量槽）能量回复乘5
 	if slot_count >= 4:
 		_regen_per_sec *= 5.0
-	#region agent log
-	_agent_log("H3_apply_equipped_logic_wrong", "_apply_equipped_energy_cards_done", {"slot_count_total": slot_count, "energy_card_count": energy_card_count, "total_energy_star": total_energy_star, "base_start": _base_start, "regen": _regen_per_sec, "max": _max})
-	#endregion
 
 func _add_energy(amount: float) -> void:
 	current = clampf(current + amount, 0.0, _max)
 	if SignalBus:
 		SignalBus.energy_changed.emit(current, _max)
-	#region agent log
-	_agent_log("H1_ui_not_connected", "energy_changed_emit", {"delta": amount, "current": current, "max": _max})
-	#endregion
 
 func can_afford(cost: float) -> bool:
 	return current >= cost

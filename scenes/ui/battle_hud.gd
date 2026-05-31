@@ -55,17 +55,6 @@ func _ready() -> void:
 		if top_right_panel:
 			top_right_panel.visible = false
 		_connect_signals()
-	# 隐藏旧的冗余 HUD（它们在主视口 BattleContainer 中）
-	_hide_legacy_huds()
-
-func _hide_legacy_huds() -> void:
-	# 延迟执行，确保主场景节点已加载
-	await get_tree().process_frame
-	# PlayerSpawnHUD 和 EnemySpawnHUD 已集成到 BattleHUD，可以隐藏
-	# 注意：它们在主场景，而 BattleHUD 在 SubViewport 内，无法直接访问
-	# 通过 SignalBus 通知
-	pass
-
 func _cache_slot_styles() -> void:
 	# 从 slot1 拿 empty 样式，filled 样式从 tscn sub_resource 中提取
 	if slot1_panel:

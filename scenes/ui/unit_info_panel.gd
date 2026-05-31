@@ -12,9 +12,7 @@ const RankDisplayUi = preload("res://scripts/rank_display_ui.gd")
 @onready var summary_label: Label = $Margin/VBox/StatsBox/SummaryLabel
 @onready var desc_label: Label = $Margin/VBox/DescLabel
 @onready var flavor_label: Label = $Margin/VBox/FlavorLabel
-@onready var stance_row: HBoxContainer = $Margin/VBox/StanceRow
-@onready var stance_attack_btn: Button = $Margin/VBox/StanceRow/StanceAttackBtn
-@onready var stance_defend_btn: Button = $Margin/VBox/StanceRow/StanceDefendBtn
+
 
 var _rank_badge_host: HBoxContainer
 
@@ -30,12 +28,7 @@ func _ready() -> void:
 	_setup_rank_badge_host()
 	visible = false
 	z_index = 50
-	if stance_row:
-		stance_row.visible = false
-	if stance_attack_btn and not stance_attack_btn.pressed.is_connected(_on_stance_attack_pressed):
-		stance_attack_btn.pressed.connect(_on_stance_attack_pressed)
-	if stance_defend_btn and not stance_defend_btn.pressed.is_connected(_on_stance_defend_pressed):
-		stance_defend_btn.pressed.connect(_on_stance_defend_pressed)
+
 	if SignalBus:
 		SignalBus.unit_selected.connect(_on_unit_selected)
 
@@ -118,15 +111,12 @@ func _on_unit_selected(unit: Node, is_player: bool, at_position: Vector2 = Vecto
 	var is_ally: bool = _resolve_unit_is_player(unit, is_player)
 	if unit.is_in_group("enemy_phase_driver"):
 		_show_enemy_phase_driver(unit)
-		_set_stance_row_for_unit(null)
 		_refresh_rank_badge(null)
 	elif is_ally and "stats" in unit:
 		_show_player_unit(unit)
-		_set_stance_row_for_unit(unit)
 		_refresh_rank_badge(unit)
 	else:
 		_show_enemy_unit(unit)
-		_set_stance_row_for_unit(null)
 		_refresh_rank_badge(unit)
 
 
@@ -413,7 +403,7 @@ func _show_player_unit(unit: Node) -> void:
 		weapon_label_text = DefaultCards.get_weapon_display_name(stats.weapon_type)
 	type_label.text = "%s / %s" % [platform_name, weapon_label_text]
 	summary_label.text = _format_unit_stats_summary(stats)
-	var base_desc := "可选「进攻」向敌侧推进，或「防守」固守原位（仍可射击）；选中后点地面可沿 X 轴微调站位。"
+	var base_desc := "自动向敌侧推进，在射程内交战。选中后可点击地面微调站位。"
 
 	# 显示被动法则影响
 	var passive_desc := _build_phase_law_effects_for_unit(unit, true)
@@ -436,44 +426,7 @@ func _show_player_unit(unit: Node) -> void:
 
 	flavor_label.text = "“装甲军团永不疲倦。”"
 
-func _set_stance_row_for_unit(unit: Node) -> void:
-	if stance_row == null:
-		return
-	var ok: bool = (
-		unit != null
-		and is_instance_valid(unit)
-		and unit.is_in_group("player_units")
-		and _is_construct_unit_script(unit)
-		and bool(unit.get("is_deploy_ghost")) == false
-		and bool(unit.get("is_preview_mode")) == false
-	)
-	stance_row.visible = ok
-	if not ok:
-		return
-	_sync_stance_buttons(unit)
 
-func _sync_stance_buttons(unit: Node) -> void:
-	if stance_attack_btn == null or stance_defend_btn == null:
-		return
-	var attacking: bool = true
-	if unit.has_method("is_field_stance_attack"):
-		attacking = unit.is_field_stance_attack()
-	stance_attack_btn.disabled = attacking
-	stance_defend_btn.disabled = not attacking
-
-func _on_stance_attack_pressed() -> void:
-	var u: Node = BattleInputState.current_selected_unit
-	if u == null or not is_instance_valid(u) or not u.has_method("set_field_stance_attack"):
-		return
-	u.set_field_stance_attack()
-	_sync_stance_buttons(u)
-
-func _on_stance_defend_pressed() -> void:
-	var u: Node = BattleInputState.current_selected_unit
-	if u == null or not is_instance_valid(u) or not u.has_method("set_field_stance_defend"):
-		return
-	u.set_field_stance_defend()
-	_sync_stance_buttons(u)
 
 func _show_enemy_unit(unit: Node) -> void:
 	# 检查是否是相位师单位

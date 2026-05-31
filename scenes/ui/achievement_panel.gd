@@ -266,7 +266,6 @@ func _has_claimable_reward(achievement_id: String) -> bool:
 func _on_achievement_claim(achievement_id: String) -> void:
 	if achievement_manager != null and achievement_manager.has_method("claim_achievement_reward"):
 		if achievement_manager.claim_achievement_reward(achievement_id):
-			print("[AchievementPanel] 已领取奖励: ", achievement_id)
 			reward_claimed.emit(achievement_id)
 			refresh()  # 刷新显示
 
@@ -287,12 +286,10 @@ func _on_claim_all_rewards() -> void:
 				reward_claimed.emit(ach_id)
 
 	if claimed_count > 0:
-		print("[AchievementPanel] 批量领取奖励: %d 个" % claimed_count)
 		refresh()
 
 ## 成就解锁处理
 func _on_achievement_unlocked(achievement_id: String, achievement_name: String) -> void:
-	print("[AchievementPanel] 成就解锁: ", achievement_name)
 	refresh()
 
 ## 进度更新处理
@@ -313,11 +310,11 @@ func _format_rewards(rewards: Dictionary) -> String:
 
 	if rewards.has("nano_materials"):
 		parts.append("%d纳米材料" % rewards["nano_materials"])
-
-	if rewards.has("blueprint_fragments"):
-		var fragments = rewards["blueprint_fragments"]
-		for fragment_id in fragments:
-			parts.append("%s蓝图x%d" % [fragment_id, fragments[fragment_id]])
+	# DEPRECATED (P0-3c): blueprint_fragments reward display disabled — reward schema migrated away from fragment-based model
+	#if rewards.has("blueprint_fragments"):
+	#	var fragments = rewards["blueprint_fragments"]
+	#	for fragment_id in fragments:
+	#		parts.append("%s蓝图x%d" % [fragment_id, fragments[fragment_id]])
 
 	if rewards.has("company_rep"):
 		var rep = rewards["company_rep"]

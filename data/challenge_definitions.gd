@@ -20,10 +20,10 @@ const CHALLENGES: Dictionary = {
 			"card_restriction": []
 		},
 		"rewards": {
-			"completion": {"nano_materials": 200, "blueprint_fragments": 10},
+			"completion": {"nano_materials": 200},
 			"per_wave": {"nano_materials": 10},
 			"bonus_objectives": {
-				"no_loss": {"nano_materials": 100, "blueprint_fragments": 5},
+				"no_loss": {"nano_materials": 100},
 				"under_10_minutes": {"nano_materials": 50}
 			}
 		},
@@ -45,10 +45,10 @@ const CHALLENGES: Dictionary = {
 			"card_restriction": ["mythic"]
 		},
 		"rewards": {
-			"completion": {"nano_materials": 500, "blueprint_fragments": 25, "rare_cards": 1},
+			"completion": {"nano_materials": 500, "rare_cards": 1},
 			"per_wave": {"nano_materials": 20},
 			"bonus_objectives": {
-				"no_loss": {"nano_materials": 300, "blueprint_fragments": 15},
+				"no_loss": {"nano_materials": 300},
 				"under_15_minutes": {"nano_materials": 100}
 			}
 		},
@@ -69,10 +69,10 @@ const CHALLENGES: Dictionary = {
 			"start_energy": 120
 		},
 		"rewards": {
-			"completion": {"nano_materials": 800, "blueprint_fragments": 40, "legendary_card": 1},
+			"completion": {"nano_materials": 800, "legendary_card": 1},
 			"per_boss": {"nano_materials": 100},
 			"bonus_objectives": {
-				"no_loss": {"nano_materials": 500, "blueprint_fragments": 20}
+				"no_loss": {"nano_materials": 500}
 			}
 		},
 		"unlock_requirements": {"level": 15, "completed_survival_hard": true}
@@ -138,7 +138,7 @@ const CHALLENGES: Dictionary = {
 			"start_energy": 120
 		},
 		"rewards": {
-			"completion": {"nano_materials": 300, "blueprint_fragments": 15},
+			"completion": {"nano_materials": 300},
 			"bonus_per_level": {"nano_materials": 50}
 		},
 		"unlock_requirements": {"level": 8}
@@ -156,7 +156,7 @@ const CHALLENGES: Dictionary = {
 			"start_energy": 100
 		},
 		"rewards": {
-			"completion": {"nano_materials": 600, "blueprint_fragments": 30, "mythic_card": 1},
+			"completion": {"nano_materials": 600, "mythic_card": 1},
 			"bonus_per_level": {"nano_materials": 100}
 		},
 		"unlock_requirements": {"level": 25, "completed_no_loss_normal": true}
@@ -177,7 +177,7 @@ const CHALLENGES: Dictionary = {
 			"rarity_limit": "rare"
 		},
 		"rewards": {
-			"completion": {"nano_materials": 250, "blueprint_fragments": 12},
+			"completion": {"nano_materials": 250},
 			"wins_streak": {
 				"3_wins": {"nano_materials": 100},
 				"5_wins": {"nano_materials": 200, "rare_card": 1},
@@ -204,7 +204,7 @@ const CHALLENGES: Dictionary = {
 			"milestones": {
 				"1000_damage": {"nano_materials": 100},
 				"5000_damage": {"nano_materials": 300},
-				"10000_damage": {"nano_materials": 600, "blueprint_fragments": 20}
+				"10000_damage": {"nano_materials": 600}
 			}
 		},
 		"unlock_requirements": {"level": 18}

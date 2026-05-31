@@ -5,6 +5,7 @@ const GC = preload("res://resources/game_constants.gd")
 const RealWorldUnitLabels = preload("res://data/real_world_unit_labels.gd")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const EnemyPhaseEquipment = preload("res://data/enemy_phase_equipment.gd")
+const EnemyBlueprints = preload("res://data/enemy_blueprints.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
 
 ## 静态缓存：避免每次 get_card_by_id 都重新创建
@@ -182,7 +183,7 @@ static func get_all_blueprint_ids() -> Array:
 			if card.card_type == GC.CardType.COMBAT_UNIT or card.card_type == GC.CardType.ENERGY:
 				ids.append(card.card_id)
 	# 添加敌人掉落的高级蓝图ID
-	for id in enemy_blueprint_ids:
+	for id in EnemyBlueprints.get_all_enemy_blueprint_ids():
 		if id is String and not ids.has(id):
 			ids.append(id)
 	return ids
@@ -306,9 +307,9 @@ static func _unit(
 
 ## 推断武器类型
 static func _infer_weapon_type(combat_kind: int, range: int, atk_light: int, atk_armor: int, atk_air: int) -> int:
-	# 纯辅助/无攻击力单位 → 标记为 DIRECT（战斗系统需检查 is_support 跳过攻击）
+	# 纯辅助/无攻击力单位 → 标记为 SUPPORT
 	if atk_light == 0 and atk_armor == 0 and atk_air == 0:
-		return GC.WeaponType.DIRECT
+		return GC.WeaponType.SUPPORT
 	# 空中单位 → AERIAL
 	if combat_kind == 3:  # AIR
 		return GC.WeaponType.AERIAL

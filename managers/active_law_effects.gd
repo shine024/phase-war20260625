@@ -12,9 +12,6 @@ const GRAVITY_WELL_DAMAGE_MULTIPLIER: float = 30.0
 static var _law_shield_wall_nodes: Array = []
 static var _shield_wall_counter: int = 0
 
-## @deprecated agent log 已迁移到 DebugLogger
-static func _agent_log(_hypothesis_id: String, _message: String, _data: Dictionary) -> void:
-	pass
 
 static func _has_property(obj: Object, property_name: StringName) -> bool:
 	if obj == null:
@@ -46,9 +43,6 @@ static func _compact_shield_wall_cache() -> void:
 static func apply_active_law_effect(law_id: String, world_pos: Vector2, battlefield: Node) -> void:
 	var law: Dictionary = PhaseLaws.get_by_id(law_id)
 	if law.is_empty():
-		#region agent log
-		_agent_log("H2_law_apply", "law_config_missing", {"law_id": law_id})
-		#endregion
 		return
 	
 	var effect: String = law.get("runtime_tags", {}).get("effect", "")
@@ -57,17 +51,6 @@ static func apply_active_law_effect(law_id: String, world_pos: Vector2, battlefi
 	var duration: float = float(law.get("runtime_tags", {}).get("duration", 0.0))
 	var target_side: String = String(law.get("runtime_tags", {}).get("target_side", "ENEMY"))
 	var target_type: String = String(law.get("runtime_tags", {}).get("target_type", "ALL"))
-	#region agent log
-	_agent_log("H2_law_apply", "law_apply_entry", {
-		"law_id": law_id,
-		"effect": effect,
-		"value": value,
-		"radius": radius,
-		"duration": duration,
-		"target_side": target_side,
-		"target_type": target_type
-	})
-	#endregion
 	
 	match effect:
 		"aoe_emp":

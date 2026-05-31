@@ -57,9 +57,6 @@ var _runtime_instrument_defs: Dictionary = {} # instrument_id -> Dictionary
 var _drop_serial_counter: int = 0
 var _plm: Node
 
-## @deprecated agent log 已迁移到 DebugLogger
-func _agent_log(_hypothesis_id: String, _message: String, _data: Dictionary) -> void:
-	pass
 
 func _mark_loadouts_dirty() -> void:
 	_loadouts_dirty = true
@@ -447,16 +444,6 @@ func equip_card(slot_index: int, card: CardResource, _energy_manager: Node = nul
 				"card_null": card == null,
 			}, "", "0ec8f5")
 		return false
-	#region agent log
-	_agent_log("H2_equip_manager", "equip_card_entry", {
-		"slot_index": slot_index,
-		"color": color,
-		"color_index": color_index,
-		"card_id": card.card_id if card != null else "",
-		"card_type": int(card.card_type) if card != null else -1,
-		"depth": _recursion_depth,
-	})
-	#endregion
 	if not _can_equip_card_to_color(card, color):
 		# 法则卡自动路由：拖到红/蓝任一槽时，自动找到正确颜色的第一个空位
 		if card.card_type == GC.CardType.LAW and (color == "red" or color == "blue"):
@@ -524,14 +511,6 @@ func equip_card(slot_index: int, card: CardResource, _energy_manager: Node = nul
 			"energy_cost": int(card.energy_cost),
 			"replaced_old_card": old_card != null,
 		}, "", "0ec8f5")
-	#region agent log
-	_agent_log("H2_equip_manager", "equip_card_exit_ok", {
-		"slot_index": slot_index,
-		"card_id": card.card_id,
-		"emit_done": true,
-		"elapsed_ms": Time.get_ticks_msec() - _equip_t0,
-	})
-	#endregion
 	return true
 
 func unequip_card(slot_index: int) -> void:

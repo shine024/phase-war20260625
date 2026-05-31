@@ -18,6 +18,9 @@ var _battle_end_save_hooked: bool = false
 var _backpack_signal_hooked: bool = false
 ## 兜底：上次成功保存时的额外卡ID列表（背包面板不可用时使用）
 var _last_known_extra_ids: Array = []
+
+
+
 var _slot_info_cache: Array = []
 var _slot_info_cache_valid: bool = false
 var _noncritical_save_cache: Dictionary = {}
@@ -56,7 +59,6 @@ const DEFERRED_MANAGER_LOADS: Array = [
 	["/root/DailyTaskManager", "daily_task"],
 	["/root/StatisticsManager", "statistics"],
 	["/root/CardEnhancementManager", "card_enhancement"],
-	## ["/root/LawShardManager", "law_shards"],  # legacy — LawShard 已废弃 (v5.1 移除)
 	["/root/TutorialProgressionManager", "tutorial_progress"],
 	["/root/StoryManager", "story_progress"],
 	["/root/CharacterManager", "characters"],
@@ -89,7 +91,6 @@ const RESETTABLE_MANAGERS := [
 	"LoreManager",
 	"StatBoostManager",
 	"CardEnhancementManager",
-	## "LawShardManager",  # legacy — LawShard 已废弃 (v5.1 移除)
 	"TutorialProgressionManager",
 	"StoryManager",
 	"CharacterManager",
@@ -138,10 +139,6 @@ var _start_new_game_perf_pending: bool = false
 var _load_game_parse_phase_open: bool = false
 var _load_game_critical_phase_open: bool = false
 var _load_game_deferred_phase_open: bool = false
-
-## @deprecated agent log 已迁移到 DebugLogger；此函数保留空壳防止调用方报错
-func _agent_log(_hypothesis_id: String, _message: String, _data: Dictionary) -> void:
-	pass
 
 func _ready() -> void:
 	_sync_debug_log_flag()
@@ -204,9 +201,6 @@ func _on_card_added_to_backpack_fallback(card: CardResource) -> void:
 	var cid: String = String(card.card_id)
 	if cid.is_empty():
 		return
-	#region agent log
-	_agent_log("H1_pending_double_enqueue", "signal_enqueue_fallback", {"card_id": cid, "pending_before": _pending_backpack_ids.size()})
-	#endregion
 	enqueue_backpack_card_id(cid)
 
 func _on_card_equipped_remove_fallback(_slot_index: int, card_id: String, _card_type: String) -> void:
@@ -225,13 +219,6 @@ func enqueue_backpack_card_id(card_id: String) -> void:
 		return
 	_pending_backpack_ids.append(card_id)
 	_last_known_extra_ids.append(card_id)
-	#region agent log
-	_agent_log("H1_pending_double_enqueue", "enqueue_done", {
-		"card_id": card_id,
-		"pending_size": _pending_backpack_ids.size(),
-		"last_known_size": _last_known_extra_ids.size(),
-	})
-	#endregion
 
 func _is_battle_active_now() -> bool:
 	if BattleManager == null:
@@ -471,7 +458,6 @@ func _collect_noncritical_save_data(data: Dictionary, now_ms: int) -> void:
 		_collect_manager_state(fresh, "/root/DailyTaskManager", SK_DAILY_TASK)
 		_collect_manager_state(fresh, "/root/StatisticsManager", SK_STATISTICS)
 		_collect_manager_state(fresh, "/root/CardEnhancementManager", SK_CARD_ENHANCEMENT)
-		## _collect_manager_state(fresh, "/root/LawShardManager", SK_LAW_SHARDS)  # legacy — LawShard 已废弃 (v5.1 移除)
 		_collect_manager_state(fresh, "/root/TutorialProgressionManager", SK_TUTORIAL_PROGRESS)
 		_collect_manager_state(fresh, "/root/StoryManager", SK_STORY_PROGRESS)
 		_collect_manager_state(fresh, "/root/CharacterManager", SK_CHARACTERS)
@@ -714,13 +700,7 @@ func consume_pending_backpack_card_id(card_id: String) -> bool:
 	var idx: int = _pending_backpack_ids.find(card_id)
 	if idx >= 0:
 		_pending_backpack_ids.remove_at(idx)
-		#region agent log
-		_agent_log("H1_pending_double_enqueue", "consume_pending_hit", {"card_id": card_id, "pending_size": _pending_backpack_ids.size()})
-		#endregion
 		return true
-	#region agent log
-	_agent_log("H1_pending_double_enqueue", "consume_pending_miss", {"card_id": card_id, "pending_size": _pending_backpack_ids.size()})
-	#endregion
 	return false
 
 ## 直接添加待入包的卡牌ID（用于制造/掉落等场景）
@@ -924,11 +904,6 @@ func _load_from_path(path: String) -> bool:
 		var legacy: Dictionary = data["company"].get("company_rep", {}) as Dictionary
 		if not legacy.is_empty() and fsm.has_method("merge_legacy_company_rep"):
 			fsm.merge_legacy_company_rep(legacy)
-
-	# 特殊处理：blueprint nano merge
-	var bm: Node = get_node_or_null("/root/BlueprintManager")
-	if bm != null and bm.has_method("merge_legacy_nano_into_basic_resources"):
-		bm.merge_legacy_nano_into_basic_resources()
 
 	# 特殊处理：phase instrument migration
 	if pm != null:

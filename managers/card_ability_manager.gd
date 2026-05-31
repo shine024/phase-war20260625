@@ -556,15 +556,15 @@ static func remove_command_global_aura(unit: Node2D) -> void:
 static func _get_unit_star(unit: Node2D) -> int:
 	if unit == null:
 		return 1
-	if unit.has_meta("star_level"):
-		return int(unit.get_meta("star_level"))
+	if unit.has_meta("enhance_level"):
+		return int(unit.get_meta("enhance_level"))
 	if "stats" in unit and unit.stats != null and not unit.stats.platform_card_id.is_empty():
 		var loop = Engine.get_main_loop()
 		if loop is SceneTree:
 			var bm: Node = (loop as SceneTree).root.get_node_or_null("BlueprintManager")
 			if bm != null and bm.has_method("get_blueprint_star"):
 				var star: int = int(bm.get_blueprint_star(unit.stats.platform_card_id))
-				unit.set_meta("star_level", star)
+				unit.set_meta("enhance_level", star)
 				return star
-	unit.set_meta("star_level", 1)
+	unit.set_meta("enhance_level", 1)
 	return 1

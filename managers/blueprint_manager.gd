@@ -39,7 +39,6 @@ const MAX_BLUEPRINT_LEVEL: int = 9
 const LAW_BLUEPRINT_PREFIX: String = "law:"
 
 ## XP 类型常量（兼容旧升级系统）
-## TODO: 确认 affix_panel 等引用方迁移后删除
 const XP_TYPE_DEFAULT: int = -1
 const XP_TYPE_PLATFORM: int = 0
 
@@ -66,6 +65,7 @@ var unlocked_blueprint_ids: Array = []
 var blueprint_copies: Dictionary = {}
 
 ## card_id -> 当前星级(1~9)
+## [DEPRECATED] 蓝图星级系统已废弃，保留字段仅用于存档向后兼容
 var blueprint_stars: Dictionary = {}
 
 ## card_id -> 已选改装分支（最多9项，同 conflict_group 冲突自动替换）
@@ -80,9 +80,7 @@ var blueprint_evolution_hp_floor: Dictionary = {}
 ## card_id -> 最近一次军衔缓存 {rank_id, rank_name, power_score}
 var blueprint_rank_cache: Dictionary = {}
 
-## 纳米材料兜底（已迁移到 BasicResourceManager，此字段仅作后备）
-var nano_materials: int = 0
-var _legacy_nano_pending: int = 0
+## 纳米材料已迁移到 BasicResourceManager（autoload）
 
 var _suppress_auto_save: bool = false
 var _auto_save_deferred_scheduled: bool = false
@@ -216,6 +214,7 @@ func _unlock_default_blueprints() -> void:
 		if blueprint_copies.get(bp_id, 0) < 1:
 			blueprint_copies[bp_id] = 1
 			blueprint_stars[bp_id] = 1
+			# [DEPRECATED] blueprint_stars 写入已禁用
 			if DEBUG_BLUEPRINT_LOG:
 				print("[BlueprintManager] Initial law unlock: ", law_id, " (1 copy)")
 			if plm and plm.has_method("ensure_law_unlocked"):
@@ -233,9 +232,10 @@ func _ensure_starter_copies_for_default_energy_blueprints() -> void:
 	if is_blueprint_unlocked("omega_platform") and get_blueprint_copies("omega_platform") < 1:
 		add_blueprint_copy("omega_platform", 1)
 	# 初始能量卡设为2★
-	for eid in ["energy_start_1", "energy_start_2"]:
-		if int(blueprint_stars.get(eid, 1)) < 2:
-			blueprint_stars[eid] = 2
+	# [DEPRECATED] 初始能量卡设星级逻辑已禁用
+	#for eid in ["energy_start_1", "energy_start_2"]:
+	#	if int(blueprint_stars.get(eid, 1)) < 2:
+	#		blueprint_stars[eid] = 2
 
 ## 旧存档：已解锁的默认能量蓝图若 0 副本则补到 1（每个存档只执行一次）
 func _migrate_legacy_default_energy_starter_copies() -> void:
@@ -248,6 +248,7 @@ func _migrate_legacy_default_energy_starter_copies() -> void:
 		blueprint_copies[eid] = 1
 		var rarity: String = get_card_rarity(eid)
 		blueprint_stars[eid] = StarConfig.calculate_star(1, rarity)
+		# [DEPRECATED] blueprint_stars 写入已禁用
 		changed = true
 	if changed:
 		if DEBUG_BLUEPRINT_LOG:
@@ -307,6 +308,7 @@ func add_blueprint_copy(card_id: String, count: int = 1) -> void:
 		unlock_blueprint(card_id)
 	blueprint_copies[card_id] = max(1, int(blueprint_copies.get(card_id, 0)))
 	blueprint_stars[card_id] = max(1, int(blueprint_stars.get(card_id, 1)))
+	# [DEPRECATED] blueprint_stars 写入已禁用
 	# 多余副本 → 研究点奖励
 	var rarity: String = get_card_rarity(card_id)
 	var grant_per_copy: int = int(StarConfig.get_research_cost_for_next_star(1, rarity) * 0.35)
@@ -329,6 +331,7 @@ func apply_card_drop_first_copy(card_id: String) -> void:
 	blueprint_copies[id] = maxi(1, int(blueprint_copies.get(id, 0)))
 	if int(blueprint_stars.get(id, 0)) < 1:
 		blueprint_stars[id] = 1
+		# [DEPRECATED] blueprint_stars 写入已禁用
 	if is_law_blueprint_id(id) and plm and plm.has_method("ensure_law_unlocked"):
 		plm.ensure_law_unlocked(law_id_from_blueprint_id(id))
 	emit_signal("fragments_changed")
@@ -339,7 +342,8 @@ func apply_card_drop_first_copy(card_id: String) -> void:
 
 ## 获取蓝图当前星级
 func get_blueprint_star(card_id: String) -> int:
-	return int(blueprint_stars.get(card_id, 1))
+	# [DEPRECATED] 星级系统已废弃，固定返回1
+	return 1
 
 ## 获取法则蓝图星级（别名）
 func get_law_blueprint_level(law_id: String) -> int:
@@ -382,6 +386,7 @@ func upgrade_blueprint_level(card_id: String, _xp_type: int = 0) -> bool:
 	add_research_points(-cost)
 	var new_star: int = min(MAX_BLUEPRINT_LEVEL, old_star + 1)
 	blueprint_stars[card_id] = new_star
+	# [DEPRECATED] blueprint_stars 写入已禁用
 	emit_signal("fragments_changed")
 	emit_signal("blueprint_star_upgraded", card_id, new_star)
 	_on_blueprint_star_up(card_id, old_star, new_star)
@@ -505,7 +510,7 @@ func get_nano_materials() -> int:
 	var brm: Node = _get_basic_resource_manager()
 	if brm != null and brm.has_method("get_total"):
 		return int(brm.get_total(BasicResources.ID_NANO_MATERIALS))
-	return nano_materials
+	return 0
 
 func add_nano_materials(amount: int) -> void:
 	if amount == 0:
@@ -513,10 +518,6 @@ func add_nano_materials(amount: int) -> void:
 	var brm: Node = _get_basic_resource_manager()
 	if brm != null and brm.has_method("add_basic_resource"):
 		brm.add_basic_resource(BasicResources.ID_NANO_MATERIALS, amount)
-	elif brm != null and brm.has_method("add_resource"):
-		brm.add_basic_resource(BasicResources.ID_NANO_MATERIALS, amount)
-	else:
-		nano_materials = max(0, nano_materials + amount)
 	emit_signal("fragments_changed")
 
 func get_research_points() -> int:
@@ -531,24 +532,6 @@ func add_research_points(amount: int) -> void:
 	var brm: Node = _get_basic_resource_manager()
 	if brm != null and brm.has_method("add_basic_resource"):
 		brm.add_basic_resource(BasicResources.ID_RESEARCH_POINTS, amount)
-	elif brm != null and brm.has_method("add_resource"):
-		brm.add_resource(BasicResources.ID_RESEARCH_POINTS, amount)
-	emit_signal("fragments_changed")
-
-func merge_legacy_nano_into_basic_resources() -> void:
-	if _legacy_nano_pending <= 0:
-		_legacy_nano_pending = 0
-		nano_materials = 0
-		return
-	var brm: Node = _get_basic_resource_manager()
-	if brm != null and brm.has_method("add_basic_resource"):
-		brm.add_basic_resource(BasicResources.ID_NANO_MATERIALS, _legacy_nano_pending)
-	elif brm != null and brm.has_method("add_resource"):
-		brm.add_basic_resource(BasicResources.ID_NANO_MATERIALS, _legacy_nano_pending)
-	else:
-		nano_materials = max(0, nano_materials + _legacy_nano_pending)
-	_legacy_nano_pending = 0
-	nano_materials = 0
 	emit_signal("fragments_changed")
 
 ## ─────────── 制造 ───────────
@@ -576,7 +559,8 @@ func manufacture_card(card_id: String) -> CardResource:
 
 	if card.card_type == GC.CardType.LAW or card.card_type == GC.CardType.ENERGY:
 		var out_card: CardResource = card.clone()
-		out_card.star_level = star
+		# out_card.star_level = star  # [DEPRECATED] star_level 赋值已废弃
+		# [DEPRECATED] out_card.star_level 赋值已废弃
 		if DEBUG_BLUEPRINT_LOG:
 			print("[BlueprintManager] 制造成功: ", out_card.display_name, " ★", star)
 		emit_signal("card_manufactured", lookup_id, star)
@@ -848,8 +832,6 @@ func load_state(data: Dictionary) -> void:
 			for cid in blueprint_copies:
 				var rarity: String = get_card_rarity(cid)
 				blueprint_stars[cid] = StarConfig.calculate_star(blueprint_copies[cid], rarity)
-	_legacy_nano_pending = 0
-	nano_materials = 0
 	if not _legacy_default_energy_copies_migrated:
 		_migrate_legacy_default_energy_starter_copies()
 		_legacy_default_energy_copies_migrated = true
@@ -880,8 +862,6 @@ func reset_to_defaults() -> void:
 	blueprint_mods.clear()
 	blueprint_inherit_bonus.clear()
 	blueprint_rank_cache.clear()
-	nano_materials = 0
-	_legacy_nano_pending = 0
 	_legacy_default_energy_copies_migrated = false
 	_unlock_default_blueprints()
 

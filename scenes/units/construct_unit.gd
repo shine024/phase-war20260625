@@ -70,8 +70,6 @@ var _attack_phase_timer: float = 0.0
 var target: Node2D = null
 var _weapon_cfgs: Array = []
 var _move_target: Vector2 = Vector2.INF
-## 我方战场姿态：true=进攻（向敌侧推进），false=防守（无移动指令时固守当前位置）
-var _field_stance_attack: bool = true
 var _law_regen_per_sec: float = 0.0
 var _base_stats_ready: bool = false
 var _base_max_hp: float = 100.0
@@ -126,10 +124,6 @@ var _buff_strip_signature: String = ""
 ## 跨实例共享的资源缓存，避免运行时重复 load()
 var _res_cache: Dictionary = {}
 
-## @deprecated agent log 已迁移到 DebugLogger
-func _agent_log(_hypothesis_id: String, _message: String, _data: Dictionary) -> void:
-	pass
-
 func _ready() -> void:
 	# 战斗逻辑跟随暂停状态
 	process_mode = Node.PROCESS_MODE_PAUSABLE
@@ -172,7 +166,6 @@ func setup(p_is_player: bool, p_stats: UnitStats, forced_enemy_visual_archetype_
 	remove_from_group("enemy_units")
 	if is_player:
 		add_to_group("player_units")
-		_field_stance_attack = true
 	else:
 		add_to_group("enemy_units")
 	$CollisionShape2D.disabled = false
@@ -239,11 +232,6 @@ func start_as_deploy_ghost(materialize_after_sec: float = -1.0) -> void:
 func _materialize_deploy_ghost() -> void:
 	ConstructUnitDeploy.materialize_deploy_ghost(self)
 
-
-func _should_card_grid_defend_stance() -> bool:
-	return GameManager != null and GameManager.has_method("is_card_grid_battle") and GameManager.is_card_grid_battle()
-
-
 func force_materialize_if_deploy_ghost() -> void:
 	ConstructUnitDeploy.force_materialize_if_deploy_ghost(self)
 
@@ -252,7 +240,6 @@ func apply_card_grid_combat_started() -> void:
 	if not is_player:
 		return
 	if GameManager and GameManager.is_card_grid_battle():
-		set_field_stance_defend()
 		_enforce_card_grid_lane_alignment()
 
 
@@ -319,7 +306,6 @@ func apply_card_grid_enemy_presentation() -> void:
 	if is_player:
 		return
 	_presentation_card_grid = true
-	set_field_stance_defend()
 	_move_target = Vector2.INF
 	var spr: Sprite2D = get_node_or_null("Sprite") as Sprite2D
 	var walk_sprite: AnimatedSprite2D = get_node_or_null("WalkSprite") as AnimatedSprite2D
@@ -905,30 +891,6 @@ func _on_unit_move_command(unit: Node, target_pos: Vector2) -> void:
 	if GameManager and GameManager.is_card_grid_battle() and is_player and int(get_meta("card_grid_slot", -1)) >= 0:
 		target_pos.y = global_position.y
 	_move_target = target_pos
-
-## 战场姿态：进攻（默认），单位会向敌侧推进并在射程内交战。
-func set_field_stance_attack() -> void:
-	if is_deploy_ghost or is_preview_mode:
-		return
-	# 格子战术敌方机甲：保持卡位固守，不按进攻姿态推进
-	if not is_player and _presentation_card_grid:
-		return
-	if not is_player:
-		return
-	_field_stance_attack = true
-
-## 战场姿态：防守，无其它指令时停留在当前位置，仍可射击；可用点击地面微调站位。
-func set_field_stance_defend() -> void:
-	if is_deploy_ghost or is_preview_mode:
-		return
-	# 格子战术敌方 Construct（如相位师产兵）：与 EnemyUnit 一致固守当前格
-	if not is_player and not _presentation_card_grid:
-		return
-	_field_stance_attack = false
-	_move_target = Vector2.INF
-
-func is_field_stance_attack() -> bool:
-	return _field_stance_attack
 
 func _battlefield_y_clamp_range() -> Vector2:
 	if GameManager and GameManager.has_method("is_card_grid_battle") and GameManager.is_card_grid_battle():

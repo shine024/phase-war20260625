@@ -64,7 +64,6 @@ func _load_state() -> void:
 	var data: Dictionary = SaveUtils.load_data_from_file(STATE_SAVE_NAME)
 	_unlocked = data.get("unlocked", {})
 	_fragments = data.get("fragments", {})
-	print("[EnemyOriginModManager] 加载完成，已解锁 %d 种敌源MOD" % _unlocked.size())
 
 # ── 解锁 ───────────────────────────────────────────────────────────
 
@@ -76,7 +75,6 @@ func unlock_mod(mod_id: String) -> void:
 		return
 	_unlocked[mod_id] = true
 	eom_unlocked.emit(mod_id)
-	print("[EnemyOriginModManager] 🧬 解锁敌源MOD: %s" % mod_id)
 	_save_state()
 
 ## 检查敌源MOD是否已解锁
@@ -178,7 +176,6 @@ func equip_eom(card_id: String, mod_id: String) -> bool:
 		bpm.blueprint_enemy_origin_mod = {}
 	bpm.blueprint_enemy_origin_mod[card_id] = mod_id
 	eom_equipped.emit(card_id, mod_id)
-	print("[EnemyOriginModManager] 装备敌源MOD: %s → %s" % [mod_id, card_id])
 	return true
 
 ## 卸载敌源MOD
@@ -188,7 +185,6 @@ func unequip_eom(card_id: String) -> void:
 		return
 	if bpm.blueprint_enemy_origin_mod is Dictionary:
 		bpm.blueprint_enemy_origin_mod.erase(card_id)
-		print("[EnemyOriginModManager] 卸载敌源MOD: %s" % card_id)
 
 # ── 碎片 ───────────────────────────────────────────────────────────
 

@@ -98,7 +98,6 @@ func _initialize_effect_system() -> void:
 	ui_effects_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	get_tree().root.add_child(ui_effects_root)
 
-	print("[BattleEffects] 战斗特效系统已初始化")
 
 ## 设置特效池
 func _setup_effect_pools() -> void:

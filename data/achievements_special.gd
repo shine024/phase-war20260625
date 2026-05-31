@@ -36,7 +36,7 @@ const DATA: Dictionary = {
 		"category": "progress",
 		"rarity": "RARE",
 		"requirements": {"type": "max_level", "count": 50},
-		"reward": {"nano_materials": 400, "blueprint_fragments": 8},
+		"reward": {"nano_materials": 400},
 		"icon": "🏰",
 		"hidden": false,
 		"flavor_text": "你已经是一名经验丰富的指挥官。"
@@ -48,7 +48,7 @@ const DATA: Dictionary = {
 		"category": "progress",
 		"rarity": "EPIC",
 		"requirements": {"type": "max_level", "count": 75},
-		"reward": {"nano_materials": 800, "blueprint_fragments": 16, "rare_card": 1},
+		"reward": {"nano_materials": 800, "rare_card": 1},
 		"icon": "🎖️",
 		"hidden": false,
 		"flavor_text": "战争的每一个细节你都了如指掌。"
@@ -60,7 +60,7 @@ const DATA: Dictionary = {
 		"category": "progress",
 		"rarity": "LEGENDARY",
 		"requirements": {"type": "max_level", "count": 100},
-		"reward": {"nano_materials": 5000, "blueprint_fragments": 50, "mythic_card": 5, "title": "战争之王"},
+		"reward": {"nano_materials": 5000, "mythic_card": 5, "title": "战争之王"},
 		"icon": "👑",
 		"hidden": false,
 		"flavor_text": "你已经成为战争的主宰。"
@@ -72,7 +72,7 @@ const DATA: Dictionary = {
 		"category": "progress",
 		"rarity": "RARE",
 		"requirements": {"type": "complete_era", "era": "ww1"},
-		"reward": {"nano_materials": 300, "blueprint_fragments": 6},
+		"reward": {"nano_materials": 300},
 		"icon": "🪖",
 		"hidden": false,
 		"flavor_text": "一战的历史你已经完全掌握。"
@@ -84,7 +84,7 @@ const DATA: Dictionary = {
 		"category": "progress",
 		"rarity": "RARE",
 		"requirements": {"type": "complete_era", "era": "ww2"},
-		"reward": {"nano_materials": 300, "blueprint_fragments": 6},
+		"reward": {"nano_materials": 300},
 		"icon": "✈️",
 		"hidden": false,
 		"flavor_text": "二战的荣耀属于你。"
@@ -96,7 +96,7 @@ const DATA: Dictionary = {
 		"category": "progress",
 		"rarity": "RARE",
 		"requirements": {"type": "complete_era", "era": "cold"},
-		"reward": {"nano_materials": 300, "blueprint_fragments": 6},
+		"reward": {"nano_materials": 300},
 		"icon": "☢",
 		"hidden": false,
 		"flavor_text": "冷战的硝烟你已经散去。"
@@ -108,7 +108,7 @@ const DATA: Dictionary = {
 		"category": "progress",
 		"rarity": "RARE",
 		"requirements": {"type": "complete_era", "era": "modern"},
-		"reward": {"nano_materials": 300, "blueprint_fragments": 6},
+		"reward": {"nano_materials": 300},
 		"icon": "🚀",
 		"hidden": false,
 		"flavor_text": "现代战争你已经游刃有余。"
@@ -120,7 +120,7 @@ const DATA: Dictionary = {
 		"category": "progress",
 		"rarity": "RARE",
 		"requirements": {"type": "complete_era", "era": "future"},
-		"reward": {"nano_materials": 300, "blueprint_fragments": 6},
+		"reward": {"nano_materials": 300},
 		"icon": "⚡",
 		"hidden": false,
 		"flavor_text": "未来的战争你也已征服。"
@@ -132,7 +132,7 @@ const DATA: Dictionary = {
 		"category": "progress",
 		"rarity": "LEGENDARY",
 		"requirements": {"type": "all_3_stars"},
-		"reward": {"nano_materials": 10000, "blueprint_fragments": 100, "mythic_card": 10, "title": "完美征服者"},
+		"reward": {"nano_materials": 10000, "mythic_card": 10, "title": "完美征服者"},
 		"icon": "⭐",
 		"hidden": false,
 		"flavor_text": "完美的征服，完美的荣耀。"
@@ -183,7 +183,7 @@ const DATA: Dictionary = {
 		"category": "system",
 		"rarity": "RARE",
 		"requirements": {"type": "play_time_hours", "count": 100},
-		"reward": {"nano_materials": 800, "blueprint_fragments": 15},
+		"reward": {"nano_materials": 800},
 		"icon": "⌛",
 		"hidden": false,
 		"flavor_text": "战争已经成为你生活的一部分。"
@@ -222,7 +222,7 @@ const DATA: Dictionary = {
 		"category": "special",
 		"rarity": "RARE",
 		"requirements": {"type": "find_easter_egg", "id": "secret_1"},
-		"reward": {"nano_materials": 500, "blueprint_fragments": 5},
+		"reward": {"nano_materials": 500},
 		"icon": "🥚",
 		"hidden": true,
 		"flavor_text": "你发现了开发者埋藏的秘密。"
@@ -234,7 +234,7 @@ const DATA: Dictionary = {
 		"category": "special",
 		"rarity": "EPIC",
 		"requirements": {"type": "nano_materials", "amount": 1000000},
-		"reward": {"blueprint_fragments": 20, "mythic_card": 1, "title": "纳米大亨"},
+		"reward": {"nano_materials": 1000, "mythic_card": 1, "title": "纳米大亨"},
 		"icon": "💰",
 		"hidden": false,
 		"flavor_text": "财富已经不再是问题。"
@@ -246,7 +246,7 @@ const DATA: Dictionary = {
 		"category": "special",
 		"rarity": "LEGENDARY",
 		"requirements": {"type": "defeat_boss", "boss_id": "enemy_master_030"},
-		"reward": {"nano_materials": 10000, "blueprint_fragments": 100, "mythic_card": 10, "title": "世界拯救者"},
+		"reward": {"nano_materials": 10000, "mythic_card": 10, "title": "世界拯救者"},
 		"icon": "🌟",
 		"hidden": false,
 		"flavor_text": "你拯救了世界，成为真正的传奇。"
@@ -258,7 +258,7 @@ const DATA: Dictionary = {
 			"category": "special",
 		"rarity": "LEGENDARY",
 		"requirements": {"type": "perfect_mythic_collection"},
-		"reward": {"nano_materials": 15000, "blueprint_fragments": 200, "mythic_card": 15, "title": "完美收藏家"},
+		"reward": {"nano_materials": 15000, "mythic_card": 15, "title": "完美收藏家"},
 		"icon": "👑",
 		"hidden": false,
 		"flavor_text": "你已经达到了收集的终极境界。"
@@ -270,7 +270,7 @@ const DATA: Dictionary = {
 		"category": "special",
 		"rarity": "EPIC",
 		"requirements": {"type": "ultra_fast_win", "seconds": 30},
-		reward": {"nano_materials": 700, "blueprint_fragments": 14},
+		reward": {"nano_materials": 700},
 		"icon": "💨",
 		"hidden": false,
 		"flavor_text": "你的速度快得不可思议。"
@@ -282,7 +282,7 @@ const DATA: Dictionary = {
 		"category": "special",
 		"rarity": "EPIC",
 		"requirements": {"type": "pacifist_win"},
-		"reward": {"nano_materials": 600, "blueprint_fragments": 12},
+		"reward": {"nano_materials": 600},
 		"icon": "☮️",
 		"hidden": false,
 		"flavor_text": "和平是最强的武器。"
@@ -294,7 +294,7 @@ const DATA: Dictionary = {
 		"category": "special",
 		"rarity": "LEGENDARY",
 		"requirements": {"type": "all_factions_max_reputation"},
-		"reward": {"nano_materials": 8000, "blueprint_fragments": 80, "mythic_card": 8, "title": "势力领袖"},
+		"reward": {"nano_materials": 8000, "mythic_card": 8, "title": "势力领袖"},
 		"icon": "🎖️",
 		"hidden": false,
 		"flavor_text": "所有势力都对你心悦诚服。"

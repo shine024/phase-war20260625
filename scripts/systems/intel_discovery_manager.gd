@@ -209,7 +209,6 @@ func _process_reveal_rewards(event_data: Dictionary, enemy_type: String) -> void
 				if not mod_id.is_empty() and not _unlocked_eom.has(mod_id):
 					_unlocked_eom[mod_id] = true
 					eom_unlocked.emit(mod_id)
-					print("[IntelDiscoveryManager] 🧬 通过揭示解锁敌源MOD: %s" % mod_id)
 
 # ── 敌源MOD碎片掉落 ──────────────────────────────────────────────
 
