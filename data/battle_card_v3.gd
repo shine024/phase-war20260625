@@ -34,6 +34,23 @@ static func star_stat_multiplier(star: int, rarity: String = "common") -> float:
 			rarity_extra = 0.04
 	return base + float(s - 1) * rarity_extra
 
+## v6.0: 基于强化等级的等价倍率（enhance 1~10 对应原 star 1~9）
+## 系数略低（0.07 vs 0.08）因为范围更宽
+static func enhance_stat_multiplier(enhance_level: int, rarity: String = "common") -> float:
+	var e: int = maxi(1, enhance_level)
+	var base: float = 1.0 + float(e - 1) * 0.07
+	var rarity_extra: float = 0.0
+	match rarity:
+		"rare":
+			rarity_extra = 0.01
+		"epic":
+			rarity_extra = 0.02
+		"legendary":
+			rarity_extra = 0.03
+		"mythic":
+			rarity_extra = 0.04
+	return base + float(e - 1) * rarity_extra
+
 
 ## §6.4 继承加成（返回 0~1 的加成比例，如 0.12 表示 +12%）
 static func evolution_inherit_bonus(star: int, enhance_level: int) -> float:

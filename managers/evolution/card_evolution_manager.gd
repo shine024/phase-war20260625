@@ -5,7 +5,6 @@ class_name CardEvolutionManager
 const DefaultCards = preload("res://data/default_cards.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
 const UnitLineageConfig = preload("res://data/unit_lineage_config.gd")
-const BasicResources = preload("res://data/basic_resources.gd")
 
 ## 通过 Autoload 名称获取节点
 static func _get_autoload_node(autoload_name: String) -> Node:
@@ -110,40 +109,25 @@ static func can_evolve_blueprint(card_id: String, target_card_id: String, bpm_re
 		return _evolve_check_denied("intel_not_full")
 
 	var stage: String = UnitLineageConfig.get_stage(card_id, target_card_id)
-	var min_star: int = UnitLineageConfig.get_min_star_for_stage(stage)
-	if bpm_ref.get_blueprint_star(card_id) < min_star:
-		return _evolve_check_denied("star_not_enough")
-	if ModManager.get_modification_count(card_id, bpm_ref.blueprint_mods) < UnitLineageConfig.REQUIRED_MOD_COUNT:
+
+	## v6.0: 新门槛 — 强化等级 + MOD数量 + 敌源MOD
+	var enhance_lvl: int = _get_card_enhance_level(card_id, bpm_ref)
+	var mod_count: int = ModManager.get_modification_count(card_id, bpm_ref.blueprint_mods)
+	if enhance_lvl < UnitLineageConfig.get_enhance_requirement(stage):
+		return _evolve_check_denied("enhance_not_enough")
+	if mod_count < UnitLineageConfig.get_mod_requirement(stage):
 		return _evolve_check_denied("mod_not_enough")
-	var costs: Dictionary = UnitLineageConfig.get_costs_for_stage(stage)
-	var cost_research: int = int(costs.get("research", 0))
-	if bpm_ref.get_research_points() < cost_research:
-		return _evolve_check_denied("research_not_enough")
-	var brm: Node = bpm_ref._get_basic_resource_manager()
-	if brm == null or not brm.has_method("get_total"):
-		return _evolve_check_denied("resource_manager_unavailable")
-	var need_general: int = int(costs.get("permit_general", 0))
-	var need_category: int = int(costs.get("permit_category", 0))
-	var need_specific: int = int(costs.get("permit_specific", 0))
-	var category_id: String = bpm_ref._get_mod_category_permit_id(card_id)
-	var specific_id: String = BasicResources.get_specific_permit_id(target_card_id)
-	if int(brm.get_total(BasicResources.ID_PERMIT_GENERAL)) < need_general:
-		return _evolve_check_denied("permit_general_not_enough")
-	if int(brm.get_total(category_id)) < need_category:
-		return _evolve_check_denied("permit_category_not_enough")
-	if int(brm.get_total(specific_id)) < need_specific:
-		return _evolve_check_denied("permit_specific_not_enough")
+	if UnitLineageConfig.get_enemy_mod_required(stage):
+		if not ModManager.has_enemy_origin_mod(card_id, bpm_ref.blueprint_mods):
+			return _evolve_check_denied("enemy_mod_not_enough")
 	var out: Dictionary = {
 		"ok": true,
 		"reason": "ok",
 		"stage": stage,
-		"research_cost": cost_research,
-		"permit_general_id": BasicResources.ID_PERMIT_GENERAL,
-		"permit_general_count": need_general,
-		"permit_category_id": category_id,
-		"permit_category_count": need_category,
-		"permit_specific_id": specific_id,
-		"permit_specific_count": need_specific,
+		"enhance_requirement": UnitLineageConfig.get_enhance_requirement(stage),
+		"mod_requirement": UnitLineageConfig.get_mod_requirement(stage),
+		"current_enhance": enhance_lvl,
+		"current_mod_count": mod_count,
 	}
 	out["inherit_ratio"] = UnitLineageConfig.get_inherit_ratio(card_id, target_card_id)
 	out["reason_zh"] = UnitLineageConfig.localize_evolve_reason(String(out.get("reason", "invalid")))
@@ -154,19 +138,6 @@ static func evolve_blueprint(card_id: String, target_card_id: String, bpm_ref: N
 	var can_info: Dictionary = can_evolve_blueprint(card_id, target_card_id, bpm_ref)
 	if not bool(can_info.get("ok", false)):
 		return false
-	var research_cost: int = int(can_info.get("research_cost", 0))
-	bpm_ref.add_research_points(-research_cost)
-	var brm: Node = bpm_ref._get_basic_resource_manager()
-	if brm != null and brm.has_method("add_resource"):
-		var n_general: int = int(can_info.get("permit_general_count", 0))
-		var n_category: int = int(can_info.get("permit_category_count", 0))
-		var n_specific: int = int(can_info.get("permit_specific_count", 0))
-		if n_general > 0:
-			brm.add_resource(String(can_info.get("permit_general_id", "")), -n_general)
-		if n_category > 0:
-			brm.add_resource(String(can_info.get("permit_category_id", "")), -n_category)
-		if n_specific > 0:
-			brm.add_resource(String(can_info.get("permit_specific_id", "")), -n_specific)
 	var old_star: int = bpm_ref.get_blueprint_star(card_id)
 	var inherit_ratio: float = float(can_info.get("inherit_ratio", 0.30))
 	var old_bonus: float = float(bpm_ref.blueprint_inherit_bonus.get(card_id, 0.0))
@@ -198,3 +169,12 @@ static func evolve_blueprint(card_id: String, target_card_id: String, bpm_ref: N
 	bpm_ref.emit_signal("fragments_changed")
 	bpm_ref.emit_signal("blueprint_star_upgraded", target_card_id, int(bpm_ref.blueprint_stars[target_card_id]))
 	return true
+
+## 获取卡片强化等级（通过 CardEnhancementManager Autoload）
+static func _get_card_enhance_level(card_id: String, bpm_ref: Node) -> int:
+	var tree = Engine.get_main_loop()
+	if tree and tree.root:
+		var cem: Node = tree.root.get_node_or_null("CardEnhancementManager")
+		if cem != null and cem.has_method("get_card_enhancement_level"):
+			return cem.get_card_enhancement_level(card_id)
+	return 1

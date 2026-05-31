@@ -206,12 +206,12 @@ func _add_evolution_target(stage_label: String, target_id: String, faction_id: S
 	var can_info: Dictionary = BlueprintManager.can_evolve_blueprint(_card_id, target_id)
 	var ok: bool = bool(can_info.get("ok", false))
 	var reason: String = String(can_info.get("reason_zh", UnitLineageConfig.localize_evolve_reason(String(can_info.get("reason", "")))))
-	var min_star: int = UnitLineageConfig.get_min_star_for_stage(UnitLineageConfig.get_stage(_card_id, target_id))
-	var research: int = int(can_info.get("research_cost", 0))
+	var enhance_req: int = int(can_info.get("enhance_requirement", 0))
+	var mod_req: int = int(can_info.get("mod_requirement", 0))
 	var status_col := Color(0.55, 0.95, 0.65) if ok else Color(0.95, 0.55, 0.45)
 	var status_text: String = "可进化" if ok else "未满足：%s" % reason
 	_add_line("%s → %s" % [stage_label, target_name], Color(0.85, 0.9, 0.95), 13)
-	_add_line("  需 %d★ · 研究点 %d · %s" % [min_star, research, status_text], status_col, 11)
+	_add_line("  需 强化Lv%d · %d个MOD · %s" % [enhance_req, mod_req, status_text], status_col, 11)
 
 
 func _add_separator() -> void:

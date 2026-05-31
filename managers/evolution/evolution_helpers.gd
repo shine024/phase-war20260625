@@ -37,12 +37,12 @@ static func get_rarity_multiplier(card_id: String) -> float:
 
 static func get_effective_power_multiplier(card_id: String, bpm_ref: Node) -> float:
 	if _is_law_blueprint_id(card_id):
-		var star: int = int(bpm_ref.blueprint_stars.get(card_id, 1))
-		return 1.0 + float(max(0, star - 1)) * 0.08
+		var enhance: int = _get_card_enhance_level(card_id)
+		return 1.0 + float(maxi(0, enhance - 1)) * 0.07
 	var rarity_mul: float = get_rarity_multiplier(card_id)
-	var star: int = int(bpm_ref.blueprint_stars.get(card_id, 1))
-	var star_mul: float = BattleCardV3.star_stat_multiplier(star, get_card_rarity(card_id))
-	return rarity_mul * star_mul
+	var enhance: int = _get_card_enhance_level(card_id)
+	var enhance_mul: float = BattleCardV3.enhance_stat_multiplier(enhance, get_card_rarity(card_id))
+	return rarity_mul * enhance_mul
 
 ## ─────────── 内部辅助 ───────────
 
@@ -73,13 +73,13 @@ static func _preview_battle_era() -> int:
 		return GC.get_era_for_level(int(gm.current_level))
 	return 0
 
-## ─────────── 星级成长倾斜 / 进化 HP 下限 ───────────
+## ─────────── 强化成长倾斜 / 进化 HP 下限 ───────────
 
-static func _apply_platform_star_growth_bias(stats: UnitStats, platform_card_id: String, bpm_ref: Node) -> void:
+static func _apply_platform_enhance_growth_bias(stats: UnitStats, platform_card_id: String, bpm_ref: Node) -> void:
 	if stats == null or platform_card_id.is_empty():
 		return
-	var star: int = int(bpm_ref.blueprint_stars.get(platform_card_id, 1))
-	var tiers: float = float(maxi(0, star - 1))
+	var enhance: int = _get_card_enhance_level(platform_card_id)
+	var tiers: float = float(enhance)
 	if tiers <= 0.0:
 		return
 	var bias: Dictionary = UnitStatsTable.get_combat_kind_growth_bias(stats.combat_kind)
@@ -141,11 +141,11 @@ static func estimate_power_score(card_id: String, bpm_ref: Node) -> float:
 	return combat_power_from_unit_stats(stats)
 
 static func estimate_power_score_meta_only(card_id: String, bpm_ref: Node) -> float:
-	var star: int = int(bpm_ref.blueprint_stars.get(card_id, 1))
+	var enhance: int = _get_card_enhance_level(card_id)
 	var mod_count: int = ModManager.get_modification_count(card_id, bpm_ref.blueprint_mods)
 	var rarity_mul: float = get_rarity_multiplier(card_id)
 	var inherit_bonus: float = float(bpm_ref.blueprint_inherit_bonus.get(card_id, 0.0))
-	return (80.0 + float(star) * 28.0 + float(mod_count) * 22.0) * rarity_mul * (1.0 + inherit_bonus)
+	return (80.0 + float(enhance) * 28.0 + float(mod_count) * 22.0) * rarity_mul * (1.0 + inherit_bonus)
 
 static func build_unit_stats_for_power_preview(card: CardResource, bpm_ref: Node) -> UnitStats:
 	if card == null:
@@ -227,7 +227,7 @@ static func apply_growth_to_stats(stats: UnitStats, platform_card: CardResource,
 			stats.max_hp *= float(rank_bonus.get("hp_mul", 1.0))
 			var rank_dmg: float = float(rank_bonus.get("dmg_mul", 1.0))
 			_multiply_attack_damage_and_weapon_slots(stats, rank_dmg)
-		_apply_platform_star_growth_bias(stats, platform_card.card_id, bpm_ref)
+		_apply_platform_enhance_growth_bias(stats, platform_card.card_id, bpm_ref)
 		_apply_evolution_hp_floor(stats, platform_card.card_id, _preview_battle_era(), bpm_ref)
 	_sync_single_weapon_damage_from_attack(stats)
 
@@ -241,3 +241,12 @@ static func compute_platform_preview_hp(card_id: String, era: int, bpm_ref: Node
 		return 0.0
 	apply_growth_to_stats(stats, card, [], bpm_ref, false)
 	return stats.max_hp
+
+## 获取卡片强化等级（通过 CardEnhancementManager Autoload）
+static func _get_card_enhance_level(card_id: String) -> int:
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	if tree != null and tree.root != null:
+		var cem: Node = tree.root.get_node_or_null("CardEnhancementManager")
+		if cem != null and cem.has_method("get_card_enhancement_level"):
+			return cem.get_card_enhancement_level(card_id)
+	return 1

@@ -7,11 +7,13 @@ class_name UnitLineageConfig
 ## - faction_branches: 势力特化进化（备选路线）
 ## - inherit_ratio: 进化仅继承属性比例（不继承改造）
 ##
-## v5.0 进化条件（Phase 4）:
+## v6.0 进化条件:
 ## 1. 战力达标: 培养满后战力 >= 目标基础战力
 ## 2. 情报100%: 目标单位情报满（Phase 5实现，此处预留接口）
 ## 3. 不跨类型: combat_kind 相同
-## 4. 资源足够: 研究点 + 改造许可函
+## 4. 强化门槛: E1≥Lv5, E2≥Lv8
+## 5. 改造门槛: E1≥2个MOD, E2≥5个MOD
+## 6. 敌源门槛: E2需1个敌源改造模块
 ##
 ## 进化执行规则: 改造完全继承(mods复制)、强化重置(enhance_level=0)、品质保留、情报保留
 
@@ -19,14 +21,13 @@ const DefaultCards = preload("res://data/default_cards.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
 
 const DEFAULT_INHERIT_RATIO: float = 0.30
-const E1_MIN_STAR: int = 4
-const E2_MIN_STAR: int = 7
-const REQUIRED_MOD_COUNT: int = 3
 
-const EVOLVE_COSTS: Dictionary = {
-	"e1": {"research": 320, "permit_general": 1, "permit_category": 1, "permit_specific": 0},
-	"e2": {"research": 680, "permit_general": 1, "permit_category": 1, "permit_specific": 1},
-}
+## v6.0 进化门槛（替代旧的星级/研究点/许可证）
+const E1_MIN_ENHANCE_LEVEL: int = 5       ## 基础进化：强化至少Lv5
+const E1_MIN_MOD_COUNT: int = 2            ## 基础进化：至少装2个MOD
+const E2_MIN_ENHANCE_LEVEL: int = 8        ## 势力分支：强化至少Lv8
+const E2_MIN_MOD_COUNT: int = 5             ## 势力分支：至少装5个MOD
+const E2_REQUIRE_ENEMY_ORIGIN_MOD: bool = true  ## 势力分支：必须有1个敌源MOD
 
 const EVOLVE_REASON_ZH: Dictionary = {
 	"ok": "可进化",
@@ -34,13 +35,9 @@ const EVOLVE_REASON_ZH: Dictionary = {
 	"card_locked": "蓝图未解锁",
 	"invalid_target": "进化目标不存在",
 	"target_not_in_path": "目标不在该卡进化路线中",
-	"star_not_enough": "星级不足（基础进化需4★，势力分支需7★）",
-	"mod_not_enough": "改装未满3次",
-	"research_not_enough": "研究点不足",
-	"resource_manager_unavailable": "资源系统不可用",
-	"permit_general_not_enough": "通用改造许可函不足",
-	"permit_category_not_enough": "类型改造许可函不足",
-	"permit_specific_not_enough": "专属改造许可函不足",
+	"enhance_not_enough": "强化等级不足（基础进化需Lv5，势力分支需Lv8）",
+	"mod_not_enough": "改造模块不足（基础进化需2个，势力分支需5个）",
+	"enemy_mod_not_enough": "未安装敌源改造模块（势力分支进化要求）",
 	"power_not_enough": "培养战力未达标",
 	"cross_class": "不能跨类型进化",
 	"intel_not_full": "目标情报未满100%（Phase 5启用）",
@@ -539,8 +536,11 @@ static func get_stage(from_card_id: String, to_card_id: String) -> String:
 		return "e1"
 	return "e2"
 
-static func get_min_star_for_stage(stage: String) -> int:
-	return E2_MIN_STAR if stage == "e2" else E1_MIN_STAR
+static func get_enhance_requirement(stage: String) -> int:
+	return E2_MIN_ENHANCE_LEVEL if stage == "e2" else E1_MIN_ENHANCE_LEVEL
 
-static func get_costs_for_stage(stage: String) -> Dictionary:
-	return (EVOLVE_COSTS.get(stage, EVOLVE_COSTS["e1"]) as Dictionary).duplicate(true)
+static func get_mod_requirement(stage: String) -> int:
+	return E2_MIN_MOD_COUNT if stage == "e2" else E1_MIN_MOD_COUNT
+
+static func get_enemy_mod_required(stage: String) -> bool:
+	return E2_REQUIRE_ENEMY_ORIGIN_MOD if stage == "e2" else false

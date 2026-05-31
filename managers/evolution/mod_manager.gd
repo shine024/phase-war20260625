@@ -137,3 +137,12 @@ static func apply_modification(card_id: String, option_id: String, bpm_ref: Node
 	bpm_ref.blueprint_mods[card_id] = mods
 	bpm_ref.emit_signal("fragments_changed")
 	return true
+
+## 检查卡片是否已安装敌源改造模块（EOM_前缀）
+static func has_enemy_origin_mod(card_id: String, mods_dict: Dictionary) -> bool:
+	var mods: Array = mods_dict.get(card_id, [])
+	if mods is Array:
+		for m in mods:
+			if String(m).begins_with("EOM_"):
+				return true
+	return false

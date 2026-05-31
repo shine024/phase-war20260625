@@ -5,7 +5,8 @@ const UnitLineageConfig = preload("res://data/unit_lineage_config.gd")
 
 
 func test_localize_evolve_reason_known_keys() -> void:
-	assert_str(UnitLineageConfig.localize_evolve_reason("star_not_enough")).contains("星级")
+	assert_str(UnitLineageConfig.localize_evolve_reason("enhance_not_enough")).contains("强化等级")
+	assert_str(UnitLineageConfig.localize_evolve_reason("enemy_mod_not_enough")).contains("敌源改造")
 	assert_str(UnitLineageConfig.localize_evolve_reason("ok")).is_equal("可进化")
 
 

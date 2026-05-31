@@ -748,8 +748,8 @@ func _compute_platform_preview_hp(card_id: String, era: int) -> float:
 	return EvolutionHelpers.compute_platform_preview_hp(card_id, era, self)
 
 
-func _apply_platform_star_growth_bias(stats: UnitStats, platform_card_id: String) -> void:
-	EvolutionHelpers._apply_platform_star_growth_bias(stats, platform_card_id, self)
+func _apply_platform_enhance_growth_bias(stats: UnitStats, platform_card_id: String) -> void:
+	EvolutionHelpers._apply_platform_enhance_growth_bias(stats, platform_card_id, self)
 
 
 func _apply_evolution_hp_floor(stats: UnitStats, platform_card_id: String, era: int) -> void:
