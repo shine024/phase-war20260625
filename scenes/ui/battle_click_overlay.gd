@@ -208,7 +208,7 @@ func _do_unit_pick(viewport_pos: Vector2) -> bool:
 		if result.is_player:
 			# 我方单位：用 CardDetailPopup 显示（同背包/相位仪）
 			var unit = result.unit
-			if unit and is_instance_valid(unit) and unit.stats and not unit.stats.platform_card_id.is_empty():
+			if unit and is_instance_valid(unit) and "stats" in unit and unit.stats and not unit.stats.platform_card_id.is_empty():
 				var card: CardResource = DefaultCardsData.get_card_by_id(unit.stats.platform_card_id)
 				if card != null:
 					BackpackPanelScript.open_card_detail(card, null)

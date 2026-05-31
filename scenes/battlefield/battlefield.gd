@@ -597,6 +597,9 @@ func get_unit_at_position(viewport_pos: Vector2) -> Dictionary:
 			for node in grid.query_nearby(viewport_pos, hit_radius):
 				if not is_instance_valid(node) or not (node is Node2D):
 					continue
+				# 跳过非单位节点（伤害数字、指示器等）
+				if not (node.is_in_group("player_units") or node.is_in_group("enemy_units") or node.is_in_group("phase_driver") or node.is_in_group("enemy_phase_driver")):
+					continue
 				var d_grid := viewport_pos.distance_to((node as Node2D).global_position)
 				if d_grid < best_d:
 					best_d = d_grid
