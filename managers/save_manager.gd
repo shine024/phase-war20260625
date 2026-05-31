@@ -47,6 +47,7 @@ const CRITICAL_MANAGER_LOADS: Array = [
 	["/root/AffixManager", "affix_data"],
 	["/root/LevelProgressManager", "level_progress"],
 	["/root/DropManager", "drop_manager"],
+	["/root/IntelItemBag", "intel_item_bag"],
 ]
 const DEFERRED_MANAGER_LOADS: Array = [
 	["/root/LoreManager", "lore"],
@@ -72,6 +73,7 @@ const CRITICAL_RESETTABLE_MANAGERS: Array[String] = [
 	"FactionSystemManager",
 	"AffixManager",
 	"LevelProgressManager",
+	"IntelItemBag",
 ]
 const DEFERRED_RESET_BATCH_SIZE := 4
 
@@ -93,6 +95,7 @@ const RESETTABLE_MANAGERS := [
 	"CharacterManager",
 	"ChallengeModeManager",
 	"CardCollectionManager",
+	"IntelItemBag",
 ]
 
 ## ─── 存档数据键名常量（别名，定义见 scripts/systems/save_constants.gd）───
@@ -105,6 +108,7 @@ const SK_FACTION_SYSTEM: String = SaveConstants.SK_FACTION_SYSTEM
 const SK_AFFIX_DATA: String = SaveConstants.SK_AFFIX_DATA
 const SK_LEVEL_PROGRESS: String = SaveConstants.SK_LEVEL_PROGRESS
 const SK_DROP_MANAGER: String = SaveConstants.SK_DROP_MANAGER
+const SK_INTEL_ITEM_BAG: String = "intel_item_bag"
 const SK_GAME: String = SaveConstants.SK_GAME
 const SK_CURRENT_LEVEL: String = SaveConstants.SK_CURRENT_LEVEL
 const SK_PHASE_SLOTS: String = SaveConstants.SK_PHASE_SLOTS
@@ -548,6 +552,7 @@ func save_game() -> bool:
 	_collect_manager_state(data, "/root/AffixManager", SK_AFFIX_DATA)
 	_collect_manager_state(data, "/root/LevelProgressManager", SK_LEVEL_PROGRESS)
 	_collect_manager_state(data, "/root/DropManager", SK_DROP_MANAGER)
+	_collect_manager_state(data, "/root/IntelItemBag", SK_INTEL_ITEM_BAG)
 	_collect_noncritical_save_data(data, now_ms)
 	var gmgr: Node = get_node_or_null("/root/GameManager")
 	# 保存前同步 current_level：确保与 LevelProgressManager.max_unlocked_level 一致

@@ -229,7 +229,7 @@ const SKILL_TREE: Dictionary = {
 		 "effects": {"reputation_bonus": 0.15, "drop_bonus": 0.10}},
 		{"id": "sk_void_sp1", "name": "相位闪避", "desc": "虚空变体受到暴击时30%概率闪避",
 		 "tier": 4, "cost": 2, "branch": "A", "effect_type": "special",
-		 "effects": {"conditional": {"on_crit_received", "dodge_chance": 0.30}}},
+		 "effects": {"conditional": {"on_crit_received": true, "dodge_chance": 0.30}}},
 		{"id": "sk_void_dep1", "name": "虚空传送", "desc": "支援/空中部署-15%能量",
 		 "tier": 4, "cost": 2, "branch": "B", "effect_type": "deploy",
 		 "effects": {"energy_reduction": {"combat_kind": [2, 3], "amount": 0.15}}},

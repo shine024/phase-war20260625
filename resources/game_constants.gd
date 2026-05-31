@@ -295,6 +295,31 @@ const NANO_MATERIAL_BASE_REWARD: int = 5
 const NANO_MATERIAL_PER_LEVEL_EARLY: float = 1.5  # 前50关每关奖励系数
 const NANO_MATERIAL_MAX_REWARD: int = 150         # 单次奖励上限
 
+## ═══ v6.0: 情报驱动系统常量 ═══
+
+## 情报系统功能开关
+const ENABLE_INTEL_DIMENSIONS: bool = true      # Phase 1: 4维情报
+const ENABLE_ENEMY_ORIGIN_MODS: bool = true      # Phase 2: 敌源MOD
+const ENABLE_INTEL_EVOLUTION: bool = true        # Phase 3: 情报进化分支
+
+## 敌源MOD系统
+const ENEMY_ORIGIN_MOD_SLOT_NAME: String = "D"              # 敌源MOD槽位名
+const ENEMY_ORIGIN_MOD_SLOT_UNLOCK_INTEL: float = 0.30      # D槽解锁所需最低素材情报
+const ENEMY_ORIGIN_MOD_MAX_TIER: int = 3                     # 敌源MOD最大等级
+const EOM_FRAGMENT_DROP_CHANCE: float = 0.25                # 敌源MOD碎片掉落基础概率
+const EOM_FRAGMENT_PER_DROP: int = 1                        # 每次掉落数量
+
+## 情报维度权重（计算总情报时使用）
+const INTEL_DIMENSION_WEIGHTS: Dictionary = {
+	"basic": 0.30,
+	"tactical": 0.30,
+	"material": 0.25,
+	"secret": 0.15,
+}
+
+## 3星胜利额外情报加成
+const PERFECT_VICTORY_INTEL_BONUS: float = 0.10
+
 ## 能量系统常量
 ## @deprecated — 旧版3/4槽倍率已废弃，当前使用5槽系统（见 energy_manager.gd）
 # const ENERGY_SLOT_MULTIPLIER_3_SLOT: float = 1.5

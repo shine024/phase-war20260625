@@ -1,7 +1,7 @@
 extends Control
 class_name CardEnhancementPanel
 ## 卡牌强化UI面板
-## 
+##
 ## 功能：
 ## - 显示所有可强化的卡牌列表
 ## - 显示当前强化等级和升级成本
@@ -17,6 +17,7 @@ const RankRules = preload("res://data/rank_rules.gd")
 const CompanyDefinitions = preload("res://data/company_definitions.gd")
 const StarConfig = preload("res://data/blueprint_star_config.gd")
 const BasicResources = preload("res://data/basic_resources.gd")
+const IntelManualItems = preload("res://data/intel_manual_items.gd")
 const DEBUG_LOG_PATH = "debug-119cff.log"
 
 const MOD_SLOT_LABELS: PackedStringArray = ["A", "B", "C"]
@@ -90,13 +91,13 @@ func _ready() -> void:
 	if card_enh_mgr:
 		card_enh_mgr.enhancement_completed.connect(_on_enhancement_completed)
 		card_enh_mgr.enhancement_failed.connect(_on_enhancement_failed)
-	
+
 	if BlueprintManager:
 		if BlueprintManager.has_signal("fragments_changed"):
 			BlueprintManager.fragments_changed.connect(_on_nano_materials_changed)
 		if BlueprintManager.has_signal("blueprint_star_upgraded"):
 			BlueprintManager.blueprint_star_upgraded.connect(_on_blueprint_star_upgraded)
-	
+
 	if star_upgrade_button:
 		star_upgrade_button.pressed.connect(_on_star_upgrade_button_pressed)
 	if mod_offense_btn:
@@ -119,7 +120,7 @@ func _ready() -> void:
 	if SignalBus and SignalBus.has_signal("card_added_to_backpack"):
 		if not SignalBus.card_added_to_backpack.is_connected(_on_card_added_to_backpack):
 			SignalBus.card_added_to_backpack.connect(_on_card_added_to_backpack)
-	
+
 	# 初始化卡牌列表
 	_init_card_list()
 	_update_resource_labels()
@@ -142,12 +143,12 @@ func _init_card_list() -> void:
 	if not card_list_container:
 		return
 	selected_card_id = ""
-	
+
 	for child in card_list_container.get_children():
 		child.queue_free()
-	
+
 	card_items.clear()
-	
+
 	var all_card_ids: Array = []
 	# 仅展示“背包中的卡牌”
 	if SaveManager and SaveManager.has_method("get_pending_backpack_ids"):
@@ -164,7 +165,7 @@ func _init_card_list() -> void:
 		uniq[sid] = true
 		filtered_ids.append(sid)
 	all_card_ids = filtered_ids
-	
+
 	for card_id in all_card_ids:
 		if card_id.is_empty():
 			continue
@@ -173,13 +174,13 @@ func _init_card_list() -> void:
 			card_data = EnemyBlueprints.get_card_by_id(card_id)
 		if card_data == null:
 			continue
-		
+
 		# 创建卡牌项目按钮
 		var item_button = Button.new()
 		item_button.text = _get_card_display_name(card_id, card_data)
 		item_button.custom_minimum_size = Vector2(200, 40)
 		item_button.pressed.connect(_on_card_item_selected.bindv([card_id]))
-		
+
 		card_list_container.add_child(item_button)
 		card_items.append({"id": card_id, "data": card_data, "button": item_button})
 
@@ -246,19 +247,19 @@ func _update_detail_panel() -> void:
 			evolution_branch_selector.clear()
 		_reset_modification_section()
 		return
-	
+
 	# 清空现有内容（保留升星/强化/进化控件）
 	for child in card_detail_panel.get_children():
 		if not _is_detail_panel_persist_child(child):
 			child.queue_free()
-	
+
 	var card_data = DefaultCards.get_card_by_id(selected_card_id)
 	if card_data == null:
 		card_data = EnemyBlueprints.get_card_by_id(selected_card_id)
-	
+
 	if card_data == null:
 		return
-	
+
 	# 显示卡牌名称
 	var name_label = Label.new()
 	name_label.text = str(card_data.display_name if card_data else DefaultCards.get_safe_display_name(selected_card_id))
@@ -278,26 +279,27 @@ func _update_detail_panel() -> void:
 
 	_update_star_upgrade_section()
 	_update_modification_section()
-	
+	_update_enemy_origin_mod_section()  ## v6.0: D slot enemy origin mod
+
 	# 获取强化信息
 	var card_enh_mgr = get_node_or_null("/root/CardEnhancementManager")
 	var enhancement_info = card_enh_mgr.get_enhancement_info(selected_card_id) if card_enh_mgr else {}
 	var current_level = enhancement_info.get("current_level", 1)
 	var max_level = enhancement_info.get("max_level", 10)
 	var can_enhance = enhancement_info.get("can_enhance", true)
-	
+
 	# 显示当前等级
 	var level_label = Label.new()
 	level_label.text = "当前等级：%d / %d" % [current_level, max_level]
 	card_detail_panel.add_child(level_label)
-	
+
 	# 如果可以强化，显示升级成本
 	if can_enhance and current_level < max_level:
 		var next_level = enhancement_info.get("next_level", current_level + 1)
 		var nano_cost = enhancement_info.get("nano_cost", 0)
 		var next_power_mult = enhancement_info.get("next_power_multiplier", 1.0)
 		var attribute_bonus = enhancement_info.get("attribute_bonus", 0.0)
-		
+
 		# 显示升级成本
 		var cost_label = Label.new()
 		var current_nano = BlueprintManager.get_nano_materials() if BlueprintManager else 0
@@ -305,21 +307,21 @@ func _update_detail_panel() -> void:
 		cost_label.text = "[color=%s]升级成本：%d纳米材料（当前：%d）[/color]" % [cost_color, nano_cost, current_nano]
 		cost_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		card_detail_panel.add_child(cost_label)
-		
+
 		# v5.0: 显示强化成功率（100%）和战力倍率
 		var rate_label = Label.new()
 		rate_label.text = "成功率：100%%"
 		card_detail_panel.add_child(rate_label)
-		
+
 		var power_label = Label.new()
 		power_label.text = "升级后战力倍率：%.2f" % next_power_mult
 		card_detail_panel.add_child(power_label)
-		
+
 		# 显示属性加成
 		var bonus_label = Label.new()
 		bonus_label.text = "属性加成：+%.0f%%" % (attribute_bonus * 100)
 		card_detail_panel.add_child(bonus_label)
-		
+
 		# 启用强化按钮
 		if enhancement_button:
 			enhancement_button.disabled = current_nano < nano_cost
@@ -329,7 +331,7 @@ func _update_detail_panel() -> void:
 		var max_label = Label.new()
 		max_label.text = "[color=yellow]已达最高等级[/color]"
 		card_detail_panel.add_child(max_label)
-		
+
 		if enhancement_button:
 			enhancement_button.disabled = true
 			enhancement_button.text = "已满级"
@@ -585,6 +587,11 @@ func _on_mod_option_pressed(option_id: String) -> void:
 			result_label.add_theme_color_override("font_color", Color(1.0, 0.45, 0.45, 1))
 		_update_modification_section()
 		return
+	## v6.0: 消耗对应改装指南
+	var mod_item_type: String = _get_mod_item_type_for_slot(mod_index)
+	if not mod_item_type.is_empty():
+		if not _consume_intel_item(mod_item_type):
+			return
 	var ok: bool = BlueprintManager.apply_modification(selected_card_id, option_id)
 	if result_label:
 		if ok:
@@ -611,13 +618,20 @@ func _update_star_upgrade_section() -> void:
 		star_upgrade_button.text = "已满星（%d★）" % star_now
 		return
 	var can_up: bool = BlueprintManager.can_upgrade_blueprint(selected_card_id) if BlueprintManager.has_method("can_upgrade_blueprint") else false
-	star_upgrade_button.disabled = not can_up
-	star_upgrade_button.text = "升星至 %d★（消耗研究点 %d，当前 %d）" % [star_now + 1, need_rp, have_rp]
+	## v6.0: 额外检查升星指南
+	var bag: Node = get_node_or_null("/root/IntelItemBag")
+	var has_guide: bool = bag.has_item(IntelManualItems.TYPE_STAR_UPGRADE) if bag else false
+	star_upgrade_button.disabled = not can_up or not has_guide
+	var guide_count: int = bag.get_count(IntelManualItems.TYPE_STAR_UPGRADE) if bag else 0
+	star_upgrade_button.text = "升星至 %d★（研究点 %d，📋升星指南×%d）" % [star_now + 1, need_rp, guide_count]
 
 func _on_star_upgrade_button_pressed() -> void:
 	if selected_card_id.is_empty() or BlueprintManager == null:
 		return
 	if not BlueprintManager.has_method("upgrade_blueprint_level"):
+		return
+	## v6.0: 消耗升星指南
+	if not _consume_intel_item(IntelManualItems.TYPE_STAR_UPGRADE):
 		return
 	var ok: bool = BlueprintManager.upgrade_blueprint_level(selected_card_id)
 	if result_label:
@@ -644,7 +658,9 @@ func _on_enhance_button_pressed() -> void:
 	var card_enh_mgr = get_node_or_null("/root/CardEnhancementManager")
 	if selected_card_id.is_empty() or not card_enh_mgr or not BlueprintManager:
 		return
-	
+	## v6.0: 检查情报道具消耗
+	if not _consume_intel_item(IntelManualItems.TYPE_ENHANCE):
+		return
 	# 执行强化
 	card_enh_mgr.enhance(selected_card_id, BlueprintManager)
 
@@ -662,7 +678,13 @@ func _on_evolve_button_pressed() -> void:
 	var pc: int = int(can_info.get("permit_category_count", 0))
 	var ps: int = int(can_info.get("permit_specific_count", 0))
 	var inherit_ratio: float = float(can_info.get("inherit_ratio", UnitLineageConfig.DEFAULT_INHERIT_RATIO))
-	evolution_confirm_dialog.dialog_text = "将进化为：%s\n\n你将获得：\n- 新单位成长上限\n- 属性传承 %.0f%%\n\n你将失去：\n- 当前A/B/C改造进度（清零）\n\n消耗：\n- 研究点 %d\n- 通用许可函 %d\n- 类型许可函 %d\n- 专属许可函 %d\n\n是否确认进化？" % [target_name, inherit_ratio * 100.0, research_cost, pg, pc, ps]
+	## v6.0: 显示进化图纸需求
+	var evolve_item_name: String = IntelManualItems.get_def(IntelManualItems.TYPE_EVOLVE).get("name", "进化图纸")
+	var bag: Node = get_node_or_null("/root/IntelItemBag")
+	var evolve_have: int = bag.get_count(IntelManualItems.TYPE_EVOLVE) if bag else 0
+	if nano_label:
+		nano_label.text = "纳米材料：%d" % [BlueprintManager.get_nano_materials() if BlueprintManager else 0]
+	## TODO: evolution_confirm_dialog 可扩展显示情报需求
 	evolution_confirm_dialog.popup_centered(Vector2i(520, 360))
 
 func _on_confirm_evolution() -> void:
@@ -670,6 +692,9 @@ func _on_confirm_evolution() -> void:
 
 func _try_execute_evolution() -> void:
 	if BlueprintManager == null or selected_card_id.is_empty() or _pending_evolution_target_id.is_empty():
+		return
+	## v6.0: 消耗进化图纸
+	if not _consume_intel_item(IntelManualItems.TYPE_EVOLVE):
 		return
 	var ok: bool = BlueprintManager.evolve_blueprint(selected_card_id, _pending_evolution_target_id) if BlueprintManager.has_method("evolve_blueprint") else false
 	if result_label:
@@ -696,7 +721,7 @@ func _on_enhancement_completed(success: bool, card_id: String, new_stats: Dictio
 				result_label.add_theme_color_override("font_color", Color.GREEN)
 			else:
 				result_label.add_theme_color_override("font_color", Color.RED)
-		
+
 		# 刷新列表和详情面板
 		_init_card_list()
 		_update_detail_panel()
@@ -720,6 +745,182 @@ func _update_resource_labels() -> void:
 		nano_label.text = "纳米材料：%d" % BlueprintManager.get_nano_materials()
 	if research_label:
 		research_label.text = "研究点：%d" % BlueprintManager.get_research_points()
+
+# ═══ v6.0: 敌源改造D槽 ═══
+
+## 更新敌源改造区域
+func _update_enemy_origin_mod_section() -> void:
+	## 在detail_panel中查找或创建敌源MOD区域
+	var section: Control = card_detail_panel.get_node_or_null("EomSection")
+	if section == null:
+		section = _create_eom_section()
+		card_detail_panel.add_child(section)
+		section.name = "EomSection"
+	## 更新内容
+	_update_eom_section_content(section)
+
+## 创建敌源改造区域UI
+func _create_eom_section() -> VBoxContainer:
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 4)
+
+	## 分隔线
+	var sep := HSeparator.new()
+	sep.add_theme_color_override("color", Color(0.25, 0.55, 0.35, 0.3))
+	vbox.add_child(sep)
+
+	## 标题
+	var title := Label.new()
+	title.text = "🧬 敌源改造 (D槽)"
+	title.add_theme_font_size_override("font_size", 13)
+	title.add_theme_color_override("font_color", Color(0.3, 0.85, 0.55, 1.0))
+	vbox.add_child(title)
+
+	## 内容容器
+	var content := VBoxContainer.new()
+	content.name = "EomContent"
+	content.add_theme_constant_override("separation", 3)
+	vbox.add_child(content)
+
+	## 更换按钮
+	var btn := Button.new()
+	btn.name = "EomChangeBtn"
+	btn.text = "选择敌源改造"
+	btn.custom_minimum_size = Vector2(0, 28)
+	var btn_style := StyleBoxFlat.new()
+	btn_style.bg_color = Color(0.1, 0.25, 0.15, 0.9)
+	btn_style.set_border_width_all(1)
+	btn_style.set_border_color(Color(0.3, 0.6, 0.4, 0.5))
+	btn_style.set_corner_radius_all(6)
+	btn.add_theme_stylebox_override("normal", btn_style)
+	btn.add_theme_font_size_override("font_size", 11)
+	btn.add_theme_color_override("font_color", Color(0.7, 0.95, 0.8, 1.0))
+	btn.pressed.connect(_on_eom_change_pressed)
+	vbox.add_child(btn)
+
+	return vbox
+
+## 更新敌源改造区域内容
+func _update_eom_section_content(section: Control) -> void:
+	var content: VBoxContainer = section.get_node_or_null("EomContent")
+	var btn: Button = section.get_node_or_null("EomChangeBtn")
+	if content == null:
+		return
+
+	## 清空旧内容
+	for child in content.get_children():
+		child.queue_free()
+
+	## 检查D槽是否解锁
+	var eom_mgr: Node = get_node_or_null("/root/EnemyOriginModManager")
+	if eom_mgr == null or not eom_mgr.has_method("is_slot_unlocked_for_card"):
+		var lock_lbl := Label.new()
+		lock_lbl.text = "  ⚙ 敌源改造系统加载中..."
+		lock_lbl.add_theme_font_size_override("font_size", 11)
+		lock_lbl.add_theme_color_override("font_color", Color(0.5, 0.5, 0.55, 1.0))
+		content.add_child(lock_lbl)
+		if btn:
+			btn.disabled = true
+		return
+
+	if not eom_mgr.is_slot_unlocked_for_card():
+		var lock_lbl := Label.new()
+		lock_lbl.text = "  🔒 需要任意敌人素材情报 ≥ 30% 解锁D槽"
+		lock_lbl.add_theme_font_size_override("font_size", 11)
+		lock_lbl.add_theme_color_override("font_color", Color(0.55, 0.45, 0.5, 1.0))
+		content.add_child(lock_lbl)
+		if btn:
+			btn.disabled = true
+		return
+
+	if selected_card_id.is_empty():
+		if btn:
+			btn.disabled = true
+		return
+
+	## 显示当前装备
+	var equipped_id: String = eom_mgr.get_equipped_eom(selected_card_id)
+	if not equipped_id.is_empty():
+		var EnemyOriginMods = preload("res://data/enemy_origin_mods.gd")
+		var mod: Dictionary = EnemyOriginMods.get_mod(equipped_id)
+		if not mod.is_empty():
+			var tier: int = eom_mgr.get_effective_tier(equipped_id)
+			var name_lbl := Label.new()
+			name_lbl.text = "  ◆ %s [Tier %d]" % [mod.get("name", "?"), tier]
+			name_lbl.add_theme_font_size_override("font_size", 12)
+			name_lbl.add_theme_color_override("font_color", Color(0.4, 0.95, 0.65, 1.0))
+			content.add_child(name_lbl)
+			var effects: Dictionary = EnemyOriginMods.get_tier_effects(equipped_id, tier)
+			var effect_lbl := Label.new()
+			effect_lbl.text = "    %s" % mod.get("tiers", [{}])[min(tier, 2)].get("desc", "")
+			effect_lbl.add_theme_font_size_override("font_size", 10)
+			effect_lbl.add_theme_color_override("font_color", Color(0.7, 0.8, 0.75, 1.0))
+			content.add_child(effect_lbl)
+	else:
+		var empty_lbl := Label.new()
+		empty_lbl.text = "  ○ 未装备敌源改造"
+		empty_lbl.add_theme_font_size_override("font_size", 11)
+		empty_lbl.add_theme_color_override("font_color", Color(0.5, 0.55, 0.6, 1.0))
+		content.add_child(empty_lbl)
+
+	if btn:
+		btn.disabled = false
+
+# ═══ v6.0: 情报道具消耗逻辑 ═══
+
+## 消耗一个情报道具，失败时显示提示
+func _consume_intel_item(item_type: String) -> bool:
+	var bag: Node = get_node_or_null("/root/IntelItemBag")
+	if bag == null or not bag.has_method("has_item"):
+		if result_label:
+			result_label.text = "情报道具系统未加载。"
+			result_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.3, 1.0))
+		return false
+	var item_def: Dictionary = IntelManualItems.get_def(item_type)
+	var item_name: String = item_def.get("name", "情报道具") if not item_def.is_empty() else item_type
+	if not bag.has_item(item_type):
+		if result_label:
+			result_label.text = "缺少【%s】！可在战斗中获得或商店购买。" % item_name
+			result_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.3, 1.0))
+		return false
+	var ok: bool = bag.consume_item(item_type)
+	if ok and result_label:
+		result_label.text = "使用【%s】..." % item_name
+		result_label.add_theme_color_override("font_color", Color(0.7, 0.8, 1.0, 1.0))
+	return ok
+
+## 根据改装槽位返回对应的情报道具类型
+func _get_mod_item_type_for_slot(slot_index: int) -> String:
+	match slot_index:
+		0:
+			return IntelManualItems.TYPE_MOD_A
+		1:
+			return IntelManualItems.TYPE_MOD_B
+		2:
+			return IntelManualItems.TYPE_MOD_C
+		_:
+			return ""
+
+## 更换敌源改造按钮回调
+func _on_eom_change_pressed() -> void:
+	if selected_card_id.is_empty():
+		return
+	var eom_mgr: Node = get_node_or_null("/root/EnemyOriginModManager")
+	if eom_mgr == null:
+		return
+	var available: Array = eom_mgr.get_available_mods_for_card(selected_card_id)
+	if available.is_empty():
+		return
+	## 简化实现：轮流装备第一个可用的敌源MOD
+	## TODO: 弹出选择器弹窗
+	var current: String = eom_mgr.get_equipped_eom(selected_card_id)
+	if not current.is_empty():
+		eom_mgr.unequip_eom(selected_card_id)
+	elif available.size() > 0:
+		var mod_id: String = available[0].get("id", "") if available[0] is Dictionary else ""
+		if not mod_id.is_empty():
+			eom_mgr.equip_eom(selected_card_id, mod_id)
+	_update_detail_panel()
 
 func _on_close() -> void:
 	closed.emit()

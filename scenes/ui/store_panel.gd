@@ -7,6 +7,7 @@ const BasicResources = preload("res://data/basic_resources.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 const EnemyBlueprints = preload("res://data/enemy_blueprints.gd")
 const GC = preload("res://resources/game_constants.gd")
+const IntelManualItems = preload("res://data/intel_manual_items.gd")
 const StoreItemRowScene = preload("res://scenes/ui/store_item_row.tscn")
 const StoreInstrumentRowScene = preload("res://scenes/ui/store_instrument_row.tscn")
 const LEGACY_BLUEPRINT_DISPLAY_NAMES: Dictionary = {
@@ -259,6 +260,99 @@ func _refresh_items() -> void:
 				var row_panel2: PanelContainer = _build_instrument_row(cfg, fsm)
 				if row_panel2:
 					item_list.add_child(row_panel2)
+
+	# ═══ v6.0: 情报道具售卖区 ═══
+	_build_intel_items_section()
+
+
+func _build_intel_items_section() -> void:
+	var sep := HSeparator.new()
+	sep.add_theme_color_override("color", Color(0.6, 0.4, 0.9, 0.3))
+	item_list.add_child(sep)
+	var title := Label.new()
+	title.text = "📋 情报道具"
+	title.add_theme_font_size_override("font_size", 13)
+	title.add_theme_color_override("font_color", Color(0.75, 0.55, 0.95, 1.0))
+	item_list.add_child(title)
+
+	var bag: Node = get_node_or_null("/root/IntelItemBag")
+	var current_nano: int = BasicResourceManager.get_total(BasicResources.ID_NANO_MATERIALS)
+
+	for item_type in IntelManualItems.ALL_TYPES:
+		var def: Dictionary = IntelManualItems.get_def(item_type)
+		if def.is_empty():
+			continue
+		var price: int = IntelManualItems.get_shop_price(item_type)
+		var count: int = bag.get_count(item_type) if bag else 0
+		var afford: bool = current_nano >= price
+		var rarity_color: Color = IntelManualItems.get_rarity_color(def.get("rarity", "common"))
+
+		var row := PanelContainer.new()
+		var row_style := _make_style_box(
+			Color(0.08, 0.06, 0.14, 0.92),
+			rarity_color * 0.4, 1, 4
+		)
+		row.add_theme_stylebox_override("panel", row_style)
+
+		var hbox := HBoxContainer.new()
+		hbox.add_theme_constant_override("separation", 8)
+
+		## 名称和描述
+		var info_vbox := VBoxContainer.new()
+		var name_lbl := Label.new()
+		name_lbl.text = "%s  × %d" % [def.get("name", ""), count]
+		name_lbl.add_theme_font_size_override("font_size", 12)
+		name_lbl.add_theme_color_override("font_color", rarity_color)
+		info_vbox.add_child(name_lbl)
+		var desc_lbl := Label.new()
+		desc_lbl.text = "  %s" % def.get("desc", "")
+		desc_lbl.add_theme_font_size_override("font_size", 11)
+		desc_lbl.add_theme_color_override("font_color", Color(0.6, 0.6, 0.65, 0.8))
+		info_vbox.add_child(desc_lbl)
+		hbox.add_child(info_vbox)
+
+		hbox.add_child(VBoxContainer.new())  ## spacer
+
+		## 价格
+		var price_lbl := Label.new()
+		price_lbl.text = "⬡ %d" % price
+		price_lbl.add_theme_font_size_override("font_size", 12)
+		price_lbl.add_theme_color_override("font_color", Color(0.9, 0.85, 0.5, 1.0) if afford else Color(0.5, 0.5, 0.5, 0.6))
+		hbox.add_child(price_lbl)
+
+		## 购买按钮
+		var buy_btn := Button.new()
+		buy_btn.text = "购买"
+		buy_btn.custom_minimum_size = Vector2(50, 26)
+		buy_btn.disabled = not afford
+		buy_btn.pressed.connect(_on_buy_intel_item.bind(item_type, price, row))
+		var btn_style := StyleBoxFlat.new()
+		btn_style.bg_color = Color(0.15, 0.1, 0.3, 0.9) if afford else Color(0.08, 0.08, 0.1, 0.7)
+		btn_style.set_border_width_all(1)
+		btn_style.set_border_color(rarity_color * 0.6)
+		btn_style.set_corner_radius_all(4)
+		buy_btn.add_theme_stylebox_override("normal", btn_style)
+		buy_btn.add_theme_font_size_override("font_size", 11)
+		buy_btn.add_theme_color_override("font_color", rarity_color if afford else Color(0.4, 0.4, 0.45, 0.6))
+		hbox.add_child(buy_btn)
+
+		row.add_child(hbox)
+		item_list.add_child(row)
+
+
+func _on_buy_intel_item(item_type: String, price: int, row_node: Control) -> void:
+	var bag: Node = get_node_or_null("/root/IntelItemBag")
+	if bag == null or not bag.has_method("add_item"):
+		return
+	var current_nano: int = BasicResourceManager.get_total(BasicResources.ID_NANO_MATERIALS)
+	if current_nano < price:
+		_flash_row(row_node, Color(1, 0.3, 0.3, 0.6))
+		return
+	BasicResourceManager.add_resource(BasicResources.ID_NANO_MATERIALS, -price)
+	bag.add_item(item_type, 1)
+	_flash_row(row_node, Color(0.3, 0.8, 0.5, 0.6))
+	_refresh_balance()
+	_refresh_items()
 
 
 func _build_store_item_row(

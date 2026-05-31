@@ -46,6 +46,9 @@ var _battle_result: Dictionary = {
 	"player_won": false
 }
 
+# ---- v6.0: 击败敌人记录（供情报系统使用） ----
+var _defeated_enemies: Array = []  ## [{"archetype_id": str, "rank": str, "enemy_type": str}]
+
 # ---- 卡牌格子战术 ----
 var _card_grid_placement_active: bool = false
 var _card_grid_combat_started: bool = false
@@ -160,6 +163,7 @@ func start_battle(battle_scene: Node) -> void:
 	_battle_elapsed_time = 0.0
 	_battle_result = {"victory_stars": 0, "era": 0, "player_won": false}
 	battle_active = true
+	_defeated_enemies.clear()  ## v6.0: reset defeated enemy tracking
 	_group_target_cache_accum = _GROUP_TARGET_CACHE_INTERVAL_SEC
 
 	# 初始化刷新子系统
@@ -309,6 +313,8 @@ func _on_unit_died(unit: Node, is_player: bool) -> void:
 		_spawn_system.on_enemy_unit_died()
 		_damage_system.roll_blueprint_drops(unit)
 		_damage_system.process_kill_rewards(unit)
+		## v6.0: record defeated enemy for intel system
+		_record_defeated_enemy(unit)
 	_check_win_lose()
 
 
@@ -343,6 +349,65 @@ func _on_enemy_phase_driver_destroyed() -> void:
 	if not battle_active:
 		return
 	end_battle(true)
+
+# =========================================================================
+#  v6.0: 记录击败的敌人信息（供情报系统使用）
+# =========================================================================
+
+func _record_defeated_enemy(unit: Node) -> void:
+	if not is_instance_valid(unit):
+		return
+	var archetype_id: String = ""
+	var rank: String = "normal"
+	var enemy_type: String = ""
+	if unit.get("archetype_id") != null:
+		archetype_id = str(unit.archetype_id)
+	## 判断rank
+	if unit.get("is_elite") == true or unit.get("is_boss") == true:
+		rank = "boss" if unit.get("is_boss") == true else "elite"
+	## 尝试从EnemyArchetypes获取tags
+	if not archetype_id.is_empty():
+		var EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
+		if EnemyArchetypes and EnemyArchetypes.has_method("get_config"):
+			var config: Dictionary = EnemyArchetypes.get_config(archetype_id)
+			if not config.is_empty():
+				var tags: Array = config.get("tags", [])
+				if tags.has("boss"):
+					rank = "boss"
+				elif tags.has("elite"):
+					rank = "elite"
+				enemy_type = _guess_enemy_type_from_archetype(archetype_id, tags)
+	if enemy_type.is_empty():
+		enemy_type = "infantry"
+	_defeated_enemies.append({
+		"archetype_id": archetype_id,
+		"rank": rank,
+		"enemy_type": enemy_type,
+	})
+
+func _guess_enemy_type_from_archetype(archetype_id: String, tags: Array) -> String:
+	var lower: String = archetype_id.to_lower()
+	if "flame" in lower or "fire" in lower:
+		return "flame"
+	if "armor" in lower or "tank" in lower or "pz" in lower or "tiger" in lower or "t72" in lower or "m1a" in lower or "ft17" in lower:
+		return "heavy_armor"
+	if "artillery" in lower or "howitzer" in lower or "m270" in lower or "mortar" in lower or "m81" in lower or "zsu" in lower:
+		return "artillery"
+	if "stealth" in lower or "spectre" in lower:
+		return "stealth"
+	if "air" in lower or "mig" in lower or "fighter" in lower or "drone" in lower or "heli" in lower or "ah64" in lower or "ah1" in lower:
+		return "air"
+	if "boss" in lower or "nano" in lower or tags.has("boss"):
+		return "boss_nano"
+	if "phase_master" in lower or tags.has("phase_master"):
+		return "boss_phase"
+	if "scout" in lower or "recon" in lower:
+		return "scout"
+	if "medic" in lower or "repair" in lower:
+		return "medic"
+	if "command" in lower or "hq" in lower:
+		return "command"
+	return "infantry"
 
 
 # =========================================================================

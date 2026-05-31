@@ -120,7 +120,7 @@ func get_random_blueprint_for_era(era: int) -> String:
 		if sid.begins_with(needle):
 			# 过滤 WEAPON 类型（武器系统已废弃）
 			var card = DefaultCards.get_card_by_id(sid)
-			if card and card.card_type == GC.CardType.COMBAT_UNIT:
+			if card and card.card_type != GC.CardType.COMBAT_UNIT:
 				continue
 			pool.append(sid)
 	if not pool.is_empty():

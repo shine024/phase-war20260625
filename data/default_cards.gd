@@ -225,6 +225,11 @@ static func get_card_by_id(card_id: String) -> CardResource:
 	_ensure_card_cache()
 	if _id_lookup_cache.has(card_id):
 		return _id_lookup_cache[card_id] as CardResource
+	# 兜底：从敌人蓝图库查找（bp_* 等敌方掉落卡不在默认卡池中）
+	var eb: CardResource = EnemyBlueprints.get_card_by_id(card_id)
+	if eb != null:
+		_id_lookup_cache[card_id] = eb
+		return eb
 	return null
 
 ## 创建战斗单位辅助函数（v5.0：24参数，含显式HP和每目标攻击速度）

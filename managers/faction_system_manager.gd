@@ -697,7 +697,3 @@ func get_faction_variant_base_id(card_id: String) -> String:
 func get_faction_display_name(faction_id: String) -> String:
 	var cd: Dictionary = CompanyDefinitions.get_by_id(faction_id)
 	return cd.get("name", faction_id)
-
-## 获取势力声望（供FactionEventManager使用）
-func get_faction_reputation(faction_id: String) -> int:
-	return int(faction_reputation.get(faction_id, 0))

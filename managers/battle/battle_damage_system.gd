@@ -322,7 +322,38 @@ func generate_battle_completion_drops(player_won: bool, elapsed_time: float, wav
 		if _signal_bus and _signal_bus.has_signal("drops_ready_to_claim"):
 			_signal_bus.drops_ready_to_claim.emit(drops)
 
+	# ═══ v6.0: 情报收获生成 ═══
+	var idm: Node = _get_autoload_node("IntelDiscoveryManager")
+	if idm != null and idm.has_method("generate_battle_intel_harvest") and player_won:
+		var defeated_list: Array = _collect_defeated_enemy_info()
+		var current_env: Dictionary = {}
+		if gm and gm.has_method("get"):
+			var gm_level: Variant = gm.current_level if "current_level" in gm else 1
+			var BattleEnvs = preload("res://data/battle_environments.gd")
+			current_env = BattleEnvs.get_for_level(int(gm_level))
+		var has_recon: bool = _get_recon_fragment_bonus_multiplier() > 0.0
+		var intel_harvest: Dictionary = idm.generate_battle_intel_harvest(
+			defeated_list, victory_stars, has_recon, current_env
+		)
+		battle_result["intel_harvest"] = intel_harvest
+		# 敌源MOD碎片
+		if intel_harvest.get("eom_drops", {}).size() > 0:
+			battle_result["eom_fragments"] = intel_harvest["eom_drops"]
+
 	return battle_result
+
+# =========================================================================
+#  v6.0: 收集本局击败的敌人信息（供情报系统使用）
+# =========================================================================
+
+func _collect_defeated_enemy_info() -> Array:
+	## 从BattleManager获取本局击败的敌人列表
+	var bm: Node = _get_autoload_node("BattleManager")
+	if bm and bm.get("_defeated_enemies") != null:
+		var list = bm._defeated_enemies
+		if list is Array:
+			return list.duplicate(true)
+	return []
 
 func _get_autoload_node(name: String) -> Node:
 	var loop := Engine.get_main_loop()
