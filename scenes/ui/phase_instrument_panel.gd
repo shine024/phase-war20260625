@@ -8,8 +8,8 @@ const GC = preload("res://resources/game_constants.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 const RankDisplayUi = preload("res://scripts/rank_display_ui.gd")
 const NodeFinder = preload("res://scripts/node_finder.gd")
-const BackpackPanelScript = preload("res://scenes/ui/backpack_panel.gd")
 const BackpackCombatPreview = preload("res://scenes/ui/backpack_combat_preview.gd")
+const CardInfoPanel = preload("res://scenes/ui/card_info_panel.gd")
 const DEBUG_PHASE_PANEL_LOG := false
 
 var slots: Array = []
@@ -226,140 +226,27 @@ func _on_slot_unequip_requested(slot_index: int) -> void:
 func _show_slot_card_detail(card: CardResource) -> void:
 	if card == null:
 		return
-	BackpackPanelScript.open_card_detail(card, null)
-	if NodeFinder.get_backpack_panel() != null:
+	# 使用全局 CardInfoPanel（挂在 InfoPanelLayer layer=90，不被 HUD 遮挡）
+	var info_panel: Control = NodeFinder.get_card_info_panel() as Control
+	if info_panel == null:
 		return
-	_show_detail_popup_for_card(card)
+	if info_panel.has_method("set_panel_mode"):
+		info_panel.set_panel_mode(CardInfoPanel.PanelMode.MODE_PHASE_INSTRUMENT)
+	# 连接 action_requested 信号（仅连接一次）
+	if info_panel.has_signal("action_requested") and not info_panel.action_requested.is_connected(_on_phase_panel_action):
+		info_panel.action_requested.connect(_on_phase_panel_action)
+	if info_panel.has_method("show_card_info"):
+		var mouse_pos: Vector2 = get_global_mouse_position()
+		var show_pos: Vector2 = mouse_pos if mouse_pos != Vector2.ZERO else Vector2(480, 100)
+		info_panel.show_card_info(card, show_pos)
 
-## 直接显示卡牌详情弹窗
-func _show_detail_popup_for_card(card: CardResource) -> void:
-	if BlueprintManager == null:
-		return
-	
-	# 创建临时弹窗
-	var popup = Window.new()
-	popup.title = card.display_name if not card.display_name.is_empty() else DefaultCards.get_safe_display_name(card.card_id)
-	popup.size = Vector2i(360, min(560, int(get_viewport_rect().size.y * 0.72)))
-	popup.transient = true
-	# exclusive 易导致标题栏关闭与输入焦点异常；用 unexclusive + close_requested 统一释放
-	popup.exclusive = false
-	popup.close_requested.connect(func():
-		_dbg_agent("H_window_close", "close_requested queue_free", {"card_id": card.card_id})
-		if is_instance_valid(popup):
-			popup.call_deferred("queue_free")
-	)
-	get_tree().root.add_child(popup)
-	_dbg_agent("H_popup_open", "detail Window shown", {"card_id": card.card_id, "exclusive": false})
-	
-	var margin = MarginContainer.new()
-	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 10)
-	margin.add_theme_constant_override("margin_top", 10)
-	margin.add_theme_constant_override("margin_right", 10)
-	margin.add_theme_constant_override("margin_bottom", 10)
-	popup.add_child(margin)
-	var scroll := ScrollContainer.new()
-	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	margin.add_child(scroll)
-	var vbox = VBoxContainer.new()
-	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	vbox.add_theme_constant_override("separation", 5)
-	scroll.add_child(vbox)
-	
-	# 卡牌名称和类型
-	var name_label = Label.new()
-	var disp := card.display_name if not card.display_name.is_empty() else DefaultCards.get_safe_display_name(card.card_id)
-	name_label.text = "[%s] %s" % [card.rarity, disp]
-	name_label.add_theme_font_size_override("font_size", 14)
-	vbox.add_child(name_label)
-	
-	var type_label = Label.new()
-	type_label.text = card.type_line
-	type_label.add_theme_font_size_override("font_size", 12)
-	type_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.8, 1.0))
-	vbox.add_child(type_label)
-	
-	var rank_host := HBoxContainer.new()
-	rank_host.alignment = BoxContainer.ALIGNMENT_BEGIN
-	var rank_info: Dictionary = RankDisplayUi.resolve_from_card_resource(card)
-	RankDisplayUi.apply_to_host(rank_host, rank_info, 22)
-	if not rank_info.is_empty():
-		var rn: Label = rank_host.get_node_or_null("RankName") as Label
-		if rn:
-			var power: float = float(rank_info.get("power_score", 0.0))
-			if power > 0.0:
-				rn.text = "%s（战力 %.0f）" % [str(rank_info.get("rank_name", "")), power]
-			rn.add_theme_color_override("font_color", Color(0.95, 0.85, 0.45, 1))
-		vbox.add_child(rank_host)
-	
-	# 经验等级
-	var prog = BlueprintManager.get_card_xp_progress(card.card_id)
-	var lvl = int(prog.get("level", 1))
-	var bt = BlueprintManager.get_card_breakthroughs(card.card_id)
-	var level_text = "Lv.%d" % lvl
-	if bt > 0:
-		level_text += " (突破 %d)" % bt
-	var level_label = Label.new()
-	level_label.text = level_text
-	level_label.add_theme_font_size_override("font_size", 12)
-	level_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.4, 1.0))
-	vbox.add_child(level_label)
-	
-	# 能量消耗
-	var cost_label = Label.new()
-	cost_label.text = "能量消耗: %d⚡" % int(card.energy_cost)
-	cost_label.add_theme_font_size_override("font_size", 12)
-	vbox.add_child(cost_label)
-	
-	# 摘要（优先使用战前预览的缩放值）
-	var summary_label = Label.new()
-	var combat_line: String = BackpackCombatPreview.build_line(card)
-	summary_label.text = combat_line if not combat_line.is_empty() else card.summary_line
-	summary_label.add_theme_font_size_override("font_size", 11)
-	summary_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.9, 0.9))
-	summary_label.autowrap_mode = TextServer.AUTOWRAP_WORD
-	vbox.add_child(summary_label)
-	
-	# 描述
-	var desc_label = Label.new()
-	desc_label.text = card.description
-	if BlueprintManager and BlueprintManager.has_method("get_star_enhancement_lines"):
-		var star_now: int = BlueprintManager.get_blueprint_star(card.card_id)
-		var enhance_lines: Array[String] = BlueprintManager.get_star_enhancement_lines(card.card_id, star_now)
-		if not enhance_lines.is_empty():
-			desc_label.text += "\n\n【星级强化（★%d）】\n- %s" % [star_now, "\n- ".join(enhance_lines)]
-		elif star_now >= 1:
-			desc_label.text += "\n\n【星级强化（★%d）】\n- （暂无词条说明）" % star_now
-	desc_label.add_theme_font_size_override("font_size", 11)
-	desc_label.add_theme_color_override("font_color", Color(0.75, 0.75, 0.85, 0.85))
-	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD
-	vbox.add_child(desc_label)
-	
-	# 卸下按钮
-	var unequip_btn = Button.new()
-	unequip_btn.text = "卸下此卡"
-	unequip_btn.pressed.connect(func():
-		_dbg_agent("H_btn", "unequip pressed", {"card_id": card.card_id})
-		_on_slot_unequip_requested(_find_slot_index_by_card(card))
-		if is_instance_valid(popup):
-			popup.call_deferred("queue_free")
-	)
-	vbox.add_child(unequip_btn)
-	
-	# 关闭按钮
-	var close_btn = Button.new()
-	close_btn.text = "关闭"
-	close_btn.pressed.connect(func():
-		_dbg_agent("H_btn", "close pressed", {"card_id": card.card_id})
-		if is_instance_valid(popup):
-			popup.call_deferred("queue_free")
-	)
-	vbox.add_child(close_btn)
-	
-	# 弹出窗口
-	popup.popup_centered()
+func _on_phase_panel_action(action: String, card: CardResource) -> void:
+	match action:
+		"unequip":
+			var slot_idx: int = _find_slot_index_by_card(card)
+			if slot_idx >= 0:
+				PhaseInstrumentManager.unequip_card(slot_idx)
+
 
 ## 根据卡牌查找槽位索引
 func _find_slot_index_by_card(card: CardResource) -> int:

@@ -29,10 +29,10 @@ const GC = preload("res://resources/game_constants.gd")
 const BackpackDataScript = preload("res://scenes/ui/backpack/backpack_data.gd")
 const BackpackPresenterScript = preload("res://scenes/ui/backpack/backpack_presenter.gd")
 const NodeFinder = preload("res://scripts/node_finder.gd")
-## 详情弹窗：仅展示竖向卡面（5:7），下方只保留说明/风味/操作
-const DETAIL_CARD_FACE_SIZE := Vector2(210, 294)
+const CardInfoPanel = preload("res://scenes/ui/card_info_panel.gd")
 const RankDisplayUi = preload("res://scripts/rank_display_ui.gd")
-const BackpackCombatPreview = preload("res://scenes/ui/backpack_combat_preview.gd")
+## 详情弹窗内的统一情报面板实例引用
+var _detail_info_panel: Control = null
 ## ── 子系统：筛选/排序 ──
 const FilterSortSub = preload("res://scripts/systems/backpack_filter_sort.gd")
 var _filter_sort: BackpackFilterSort = null
@@ -101,6 +101,8 @@ func _ready() -> void:
 		var btn = popup.get_node_or_null("Margin/VBox/CloseButton")
 		if btn:
 			btn.pressed.connect(_on_detail_close)
+		# 在 CardDetailPopup 中嵌入统一的情报面板
+		_init_detail_info_panel(popup)
 
 	# 创建网格加载指示器（不加入场景树，需要时动态插入 CardGrid）
 	_loading_label = Label.new()
@@ -305,145 +307,64 @@ func pin_top_energy_to_front() -> void:
 			grid.move_child(child, 0)
 			return
 
-## 能量卡无 MTG 竖卡面，仍用弹窗文本区展示
-func _detail_uses_card_face_only(card: CardResource) -> bool:
-	return card != null and card.card_type != GC.CardType.ENERGY
+## 在 CardDetailPopup 内引用已嵌入的统一情报面板（.tscn 子场景实例）
+func _init_detail_info_panel(popup: PopupPanel) -> void:
+	_detail_info_panel = popup.get_node_or_null("Margin/VBox/DetailInfoPanel") as Control
 
 
-func _set_detail_popup_header_fields_visible(popup: PopupPanel, visible: bool) -> void:
-	for node_path in [
-		"Margin/VBox/Header",
-		"Margin/VBox/LevelLabel",
-		"Margin/VBox/TypeLineLabel",
-		"Margin/VBox/SummaryLabel",
-	]:
-		var n: Node = popup.get_node_or_null(node_path)
-		if n:
-			n.visible = visible
-
-
-## 显示卡片详情弹窗
+## 显示卡片详情弹窗（使用统一情报面板）
 func show_card_detail(card: CardResource, _source_item: Control) -> void:
 	var popup = get_node_or_null("CardDetailPopup")
-	if popup == null:
+	if popup == null or _detail_info_panel == null:
 		return
 
-	var use_face: bool = _detail_uses_card_face_only(card)
-	if use_face:
-		_refresh_detail_card_face(popup, card)
-	else:
-		var vbox_clear: VBoxContainer = popup.get_node_or_null("Margin/VBox") as VBoxContainer
-		_clear_detail_card_faces(vbox_clear)
+	# 清理旧版手动词条区（AffixSep / AffixBox），统一面板已在 desc_label 中包含词条
+	_cleanup_legacy_popup_affixes(popup)
 
-	_set_detail_popup_header_fields_visible(popup, not use_face)
+	# 设置背包模式（面板内部自动添加拆解/装备按钮）
+	if _detail_info_panel.has_method("set_panel_mode"):
+		_detail_info_panel.set_panel_mode(CardInfoPanel.PanelMode.MODE_BACKPACK)
+	# 连接 action_requested 信号（仅连接一次）
+	if not _detail_info_panel.action_requested.is_connected(_on_detail_action_requested):
+		_detail_info_panel.action_requested.connect(_on_detail_action_requested)
 
-	var name_l = popup.get_node_or_null("Margin/VBox/Header/NameLabel")
-	var cost_l = popup.get_node_or_null("Margin/VBox/Header/CostLabel")
-	var level_l = popup.get_node_or_null("Margin/VBox/LevelLabel")
-	var type_l = popup.get_node_or_null("Margin/VBox/TypeLineLabel")
-	var sum_l = popup.get_node_or_null("Margin/VBox/SummaryLabel")
-	var desc_l = popup.get_node_or_null("Margin/VBox/DescLabel")
-	var flavor_l = popup.get_node_or_null("Margin/VBox/FlavorLabel")
-	var detail_star: int = int(card.enhance_level)
+	# 使用统一情报面板显示卡牌信息
+	if _detail_info_panel.has_method("show_card_info"):
+		_detail_info_panel.show_card_info(card)
+	_detail_info_panel.visible = true
 
-	if not use_face:
-		if name_l:
-			name_l.text = DefaultCardsData.safe_name(card)
-		if cost_l:
-			cost_l.text = "%d⚡" % int(card.energy_cost)
-		if level_l:
-			var dropped_mark: String = " [掉落卡]" if card.is_dropped_card else ""
-			var star_line: String = "★%d%s" % [detail_star, dropped_mark]
-			var rank_line: String = RankDisplayUi.format_line(RankDisplayUi.resolve_from_card_resource(card))
-			if not rank_line.is_empty():
-				rank_line = "\n" + rank_line
-			level_l.text = star_line + rank_line
-		if type_l:
-			type_l.text = card.type_line
-		if sum_l:
-			var combat_line: String = BackpackCombatPreview.build_line(card)
-			var use_combat_only: bool = (
-				not combat_line.is_empty()
-				and (
-					card.card_type == GC.CardType.COMBAT_UNIT
-					or card.card_type == GC.CardType.COMBAT_UNIT
-					or card.card_type == GC.CardType.COMBAT_UNIT
-				)
-			)
-			if use_combat_only:
-				sum_l.text = combat_line
-			else:
-				sum_l.text = card.summary_line
+	# 显示 CloseButton（.tscn 中定义，关闭弹窗用）
+	var close_btn: Button = popup.get_node_or_null("Margin/VBox/CloseButton") as Button
+	if close_btn:
+		close_btn.visible = true
+		if not close_btn.pressed.is_connected(popup.hide):
+			close_btn.pressed.connect(popup.hide)
 
-	if desc_l:
-		desc_l.text = card.description
-	if flavor_l:
-		flavor_l.text = card.flavor_text
-
-	if desc_l and BlueprintManager and BlueprintManager.has_method("get_star_enhancement_lines"):
-		var enhance_lines: Array[String] = BlueprintManager.get_star_enhancement_lines(card.card_id, detail_star)
-		if not enhance_lines.is_empty():
-			desc_l.text += "\n\n【星级强化（★%d）】\n- %s" % [detail_star, "\n- ".join(enhance_lines)]
-
-	_refresh_popup_affixes(popup, card)
-	_clear_popup_action_buttons(popup)
-
-	if card.card_type == GC.CardType.LAW or card.card_type == GC.CardType.ENERGY:
-		_add_equip_button(popup, card)
-	_add_dismantle_button(popup, card)
-
-	if use_face:
-		popup.size = Vector2i(360, 580)
-	else:
-		popup.size = Vector2i(320, 380)
+	# 弹窗大小已由 .tscn 设定（340×460）
 	popup.popup_centered()
 
 
-## 移除详情弹窗内所有卡面预览（queue_free 会延迟一帧，重复点击会叠多张）
-func _clear_detail_card_faces(vbox: VBoxContainer) -> void:
-	if vbox == null:
-		return
-	var to_remove: Array[Node] = []
-	for ch in vbox.get_children():
-		if ch.name == "CardFacePreview":
-			to_remove.append(ch)
-	for ch in to_remove:
-		vbox.remove_child(ch)
-		ch.free()
+## 隐藏详情弹窗
+func hide_card_detail() -> void:
+	var popup = get_node_or_null("CardDetailPopup")
+	if popup:
+		popup.hide()
+	if _detail_info_panel and is_instance_valid(_detail_info_panel) and _detail_info_panel.has_method("hide_panel"):
+		_detail_info_panel.hide_panel()
 
 
-## 详情弹窗顶部：完整竖卡面（MTG 排版，5:7 缩略）
-func _refresh_detail_card_face(popup: PopupPanel, card: CardResource) -> void:
-	var vbox: VBoxContainer = popup.get_node_or_null("Margin/VBox") as VBoxContainer
-	if vbox == null or card == null:
-		return
-	_clear_detail_card_faces(vbox)
-	var wrap := CenterContainer.new()
-	wrap.name = "CardFacePreview"
-	wrap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var item: Control = CardItemScene.instantiate()
-	if item == null:
-		return
-	item.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	if "SLOT_SIZE" in item:
-		item.SLOT_SIZE = DETAIL_CARD_FACE_SIZE
-	if item is Control:
-		(item as Control).custom_minimum_size = DETAIL_CARD_FACE_SIZE
-	if item.has_method("set_meta"):
-		item.set_meta("_pv_mtg_layout", true)
-		item.set_meta("_pv_mtg_art_pct", 62)
-		item.set_meta("_pv_name_ml", 6)
-	wrap.add_child(item)
-	if item.has_method("set_card"):
-		item.set_card(card)
-	if item.has_method("mtg_preview_refresh_art_layout"):
-		item.call_deferred("mtg_preview_refresh_art_layout")
-	vbox.add_child(wrap)
-	vbox.move_child(wrap, 0)
+## 统一面板 action_requested 信号回调
+func _on_detail_action_requested(action: String, card: CardResource) -> void:
+	match action:
+		"dismantle":
+			if _presenter and _presenter.has_method("on_dismantle_button_pressed"):
+				_presenter.on_dismantle_button_pressed(card)
+		"equip":
+			if _presenter:
+				_presenter.on_equip_button_pressed(card)
 
 
-## 供相位仪等外部 UI 直接打开详情（含完整卡面）
+## 供相位仪等外部 UI 直接打开详情
 static func open_card_detail(card: CardResource, source_item: Control = null) -> void:
 	if card == null:
 		return
@@ -452,19 +373,9 @@ static func open_card_detail(card: CardResource, source_item: Control = null) ->
 		panel.show_card_detail(card, source_item)
 
 
-## 隐藏详情弹窗
-func hide_card_detail() -> void:
-	var popup = get_node_or_null("CardDetailPopup")
-	if popup:
-		var vbox: VBoxContainer = popup.get_node_or_null("Margin/VBox") as VBoxContainer
-		_clear_detail_card_faces(vbox)
-		popup.hide()
-
 ## 发射关闭信号
 func emit_closed() -> void:
-	closed.emit()
-
-## 按稀有度过滤可见性（委托 → BackpackFilterSort）
+	closed.emit()## 按稀有度过滤可见性（委托 → BackpackFilterSort）
 func apply_rarity_filter(rarity: String) -> void:
 	if _filter_sort:
 		_filter_sort.apply_rarity_filter(rarity)
@@ -739,71 +650,8 @@ func _hide_loading_indicator() -> void:
 
 ## ============================================================
 ## 详情弹窗辅助
-## ============================================================
-
-const POPUP_ACTION_BUTTON_NAMES: Array[StringName] = [
-	&"DismantleButton",
-	&"EquipToPhaseButton",
-]
-
-func _clear_popup_action_buttons(popup: Window) -> void:
-	var vbox_popup: VBoxContainer = popup.get_node_or_null("Margin/VBox") as VBoxContainer
-	if vbox_popup == null:
-		return
-	var to_remove: Array[Node] = []
-	for ch in vbox_popup.get_children():
-		if ch.name in POPUP_ACTION_BUTTON_NAMES:
-			to_remove.append(ch)
-	for ch in to_remove:
-		vbox_popup.remove_child(ch)
-		ch.free()
-
-func _add_equip_button(popup: Window, card: CardResource) -> void:
-	var vbox_popup = popup.get_node_or_null("Margin/VBox")
-	if vbox_popup == null:
-		return
-	var equip_btn := Button.new()
-	equip_btn.name = "EquipToPhaseButton"
-	equip_btn.text = "装备到相位仪"
-	equip_btn.custom_minimum_size = Vector2(200, 36)
-	equip_btn.add_theme_font_size_override("font_size", 13)
-	equip_btn.add_theme_color_override("font_color", Color(0, 0.94, 1, 1))
-	var _card_ref = card
-	equip_btn.pressed.connect(func():
-		if _presenter:
-			_presenter.on_equip_button_pressed(_card_ref)
-	)
-	vbox_popup.add_child(equip_btn)
-	var close_btn = vbox_popup.get_node_or_null("CloseButton")
-	if close_btn:
-		vbox_popup.move_child(equip_btn, close_btn.get_index())
-
-func _add_dismantle_button(popup: Window, card: CardResource) -> void:
-	var vbox_popup = popup.get_node_or_null("Margin/VBox")
-	if vbox_popup == null:
-		return
-	var dismantle_btn := Button.new()
-	dismantle_btn.name = "DismantleButton"
-	dismantle_btn.text = "拆解（研究点 + 纳米材料）"
-	dismantle_btn.custom_minimum_size = Vector2(200, 36)
-	dismantle_btn.add_theme_font_size_override("font_size", 13)
-	dismantle_btn.add_theme_color_override("font_color", Color(1.0, 0.82, 0.35, 1.0))
-	var _card_ref = card
-	dismantle_btn.pressed.connect(func():
-		if _presenter and _presenter.has_method("on_dismantle_button_pressed"):
-			_presenter.on_dismantle_button_pressed(_card_ref)
-	)
-	vbox_popup.add_child(dismantle_btn)
-	var close_btn = vbox_popup.get_node_or_null("CloseButton")
-	if close_btn:
-		vbox_popup.move_child(dismantle_btn, close_btn.get_index())
-
-## 在详情弹窗中刷新词条区域
-func _refresh_popup_affixes(popup: Window, card: CardResource) -> void:
-	ManagerLazyLoader.ensure_loaded("affix")
-	var AffixManager = get_node_or_null("/root/AffixManager")
-	if card == null or AffixManager == null:
-		return
+## 清理旧版手动词条区（已被统一情报面板 desc_label 内的词条摘要替代）
+func _cleanup_legacy_popup_affixes(popup: Window) -> void:
 	var vbox: VBoxContainer = popup.get_node_or_null("Margin/VBox")
 	if vbox == null:
 		return
@@ -813,66 +661,6 @@ func _refresh_popup_affixes(popup: Window, card: CardResource) -> void:
 	var old_sep: Node = vbox.get_node_or_null("AffixSep")
 	if old_sep:
 		old_sep.queue_free()
-
-	var affixes: Array = AffixManager.get_card_affixes(card.card_id)
-	if affixes.is_empty():
-		return
-
-	var sep := HSeparator.new()
-	sep.name = "AffixSep"
-	sep.add_theme_color_override("color", Color(0.60, 0.35, 1.0, 0.4))
-	vbox.add_child(sep)
-	var close_btn: Node = vbox.get_node_or_null("CloseButton")
-	if close_btn:
-		vbox.move_child(sep, close_btn.get_index())
-
-	var affix_box := VBoxContainer.new()
-	affix_box.name = "AffixBox"
-	affix_box.add_theme_constant_override("separation", 3)
-	vbox.add_child(affix_box)
-	var close_btn2: Node = vbox.get_node_or_null("CloseButton")
-	if close_btn2:
-		vbox.move_child(affix_box, close_btn2.get_index())
-
-	var title := Label.new()
-	title.text = "词条加成"
-	title.add_theme_font_size_override("font_size", 12)
-	title.add_theme_color_override("font_color", Color(0.80, 0.50, 1.0, 1.0))
-	affix_box.add_child(title)
-
-	for a_raw in affixes:
-		var affix: AffixResource = a_raw as AffixResource
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 4)
-		affix_box.add_child(row)
-
-		var dot := Label.new()
-		match affix.rarity:
-			"common":    dot.text = "◇"
-			"rare":      dot.text = "◆"
-			"epic":      dot.text = "★"
-			"legendary": dot.text = "✦"
-			_:           dot.text = "·"
-		dot.add_theme_font_size_override("font_size", 11)
-		dot.add_theme_color_override("font_color", GC.get_rarity_color(affix.rarity))
-		dot.custom_minimum_size = Vector2(16, 0)
-		row.add_child(dot)
-
-		var lbl := Label.new()
-		lbl.text = affix.get_detailed_description()
-		lbl.add_theme_font_size_override("font_size", 11)
-		lbl.add_theme_color_override("font_color", Color(0.82, 0.82, 0.88, 0.95))
-		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD
-		row.add_child(lbl)
-
-		if affix.is_mutated:
-			var mut_dot := Label.new()
-			mut_dot.text = "⚡"
-			mut_dot.add_theme_font_size_override("font_size", 11)
-			mut_dot.add_theme_color_override("font_color", Color(1.0, 0.80, 0.1, 1.0))
-			mut_dot.tooltip_text = affix.mutation_description
-			row.add_child(mut_dot)
 
 
 ## ============================================================

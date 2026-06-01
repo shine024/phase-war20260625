@@ -1,4 +1,4 @@
-[gd_scene load_steps=21 format=3 uid="uid://main"]
+[gd_scene load_steps=22 format=3 uid="uid://main"]
 
 [ext_resource type="Script" uid="uid://d0jpdmko5mrnu" path="res://scenes/main.gd" id="1_script"]
 [ext_resource type="PackedScene" uid="uid://battlefield" path="res://scenes/battlefield/battlefield.tscn" id="2_battlefield"]
@@ -21,6 +21,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/battle_info_display.tscn" id="32_battle_info_display"]
 [ext_resource type="PackedScene" path="res://scenes/ui/card_grid_battle_hud.tscn" id="33_card_grid_hud"]
 [ext_resource type="PackedScene" path="res://scenes/ui/intelligence_hub_panel.tscn" id="34_intelligence_hub"]
+[ext_resource type="PackedScene" uid="uid://b8xk3l2m5n6o" path="res://scenes/ui/card_info_panel.tscn" id="35_card_info_panel"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_level_display"]
 font_size = 24
@@ -201,6 +202,13 @@ grow_horizontal = 2
 
 [node name="PopupLayer" type="CanvasLayer" parent="."]
 layer = 100
+
+[node name="InfoPanelLayer" type="CanvasLayer" parent="."]
+layer = 90
+
+[node name="CardInfoPanel" parent="InfoPanelLayer" instance=ExtResource("35_card_info_panel")]
+layout_mode = 1
+anchors_preset = 0
 
 
 [node name="QuestOverlay" type="Control" parent="PopupLayer"]

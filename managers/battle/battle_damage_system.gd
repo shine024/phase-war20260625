@@ -4,6 +4,8 @@ extends RefCounted
 ## 设计文档: docs/architecture/project-architecture.md (Sections 4.4, 5, 7)
 ## 从 BattleManager 中提取，负责所有伤害后处理与奖励结算逻辑。
 
+const DEBUG_DAMAGE_LOG := false
+
 const GC = preload("res://resources/game_constants.gd")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const BasicResources = preload("res://data/basic_resources.gd")
@@ -237,7 +239,8 @@ func calculate_victory_stars(max_deployed: int, units_lost: int, elapsed_time: f
 		var estimated_time: float = float(wave_total) * wave_interval + 15.0
 		if estimated_time > 0.0 and elapsed_time <= estimated_time * 0.7:
 			stars = 3
-	print("[BattleDamageSystem] 星级计算: 部署=%d, 损失=%d, 存活率=%.0f%%, 时间=%.1fs → %d星" % [max_deployed, units_lost, survival_rate * 100.0, elapsed_time, stars])
+	if DEBUG_DAMAGE_LOG:
+		print("[BattleDamageSystem] 星级计算: 部署=%d, 损失=%d, 存活率=%.0f%%, 时间=%.1fs → %d星" % [max_deployed, units_lost, survival_rate * 100.0, elapsed_time, stars])
 	return stars
 
 # =========================================================================

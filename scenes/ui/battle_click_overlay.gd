@@ -6,8 +6,8 @@ const PhaseLaws = preload("res://data/phase_laws.gd")
 const BasicResources = preload("res://data/basic_resources.gd")
 const LawTargetIndicatorScript = preload("res://scenes/effects/law_target_indicator.gd")
 const ToastUtilsScript = preload("res://scripts/toast_utils.gd")
-const BackpackPanelScript = preload("res://scenes/ui/backpack_panel.gd")
 const DefaultCardsData = preload("res://data/default_cards.gd")
+const NodeFinder = preload("res://scripts/node_finder.gd")
 const DEBUG_DEPLOY_CLICK_LOG := false
 
 var _law_target_indicator: Node2D = null
@@ -164,15 +164,12 @@ func _gui_input(event: InputEvent) -> void:
 	var panel = _get_unit_info_panel()
 	# 若信息框已打开且点击在框外，关闭信息框
 	if panel != null and panel.visible:
-		var panel_rect = panel.get_global_rect()
-		if not panel_rect.has_point(mb.global_position):
+		if panel.has_method("hide_panel"):
+			panel.hide_panel()
+		else:
 			panel.hide()
-			# 同时关闭 CardDetailPopup（背包同款弹窗）
-			var bp_node = get_node_or_null("/root/Main/BackpackPanel")
-			if bp_node and bp_node.has_method("hide_card_detail"):
-				bp_node.hide_card_detail()
-			_safe_set_input_handled()
-			return
+		_safe_set_input_handled()
+		return
 	# 点击战场区域：做单位检测并显示信息框（暂停/继续都由此处或 _input 处理）
 	var viewport_pos: Variant = _global_to_battle_viewport_pos(mb.global_position)
 	if mb.button_index == MOUSE_BUTTON_LEFT and viewport_pos != null and _do_unit_pick(viewport_pos):
@@ -205,14 +202,7 @@ func _do_unit_pick(viewport_pos: Vector2) -> bool:
 		return false
 	var result: Dictionary = bf.get_unit_at_position(viewport_pos)
 	if not result.is_empty():
-		if result.is_player:
-			# 我方单位：用 CardDetailPopup 显示（同背包/相位仪）
-			var unit = result.unit
-			if unit and is_instance_valid(unit) and "stats" in unit and unit.stats and not unit.stats.platform_card_id.is_empty():
-				var card: CardResource = DefaultCardsData.get_card_by_id(unit.stats.platform_card_id)
-				if card != null:
-					BackpackPanelScript.open_card_detail(card, null)
-		# 发射信号给选中高亮等监听者
+		# 发射信号给选中高亮等监听者（UnitInfoPanel 会显示战场情报面板）
 		if SignalBus:
 			SignalBus.unit_selected.emit(result.unit, result.is_player, Vector2.ZERO)
 		return true
@@ -443,13 +433,4 @@ func _get_battlefield() -> Node:
 	return container.get_node_or_null("SubViewportContainer/SubViewport/Battlefield")
 
 func _get_unit_info_panel() -> Control:
-	var container = get_parent()
-	if container != null:
-		var local_panel := container.get_node_or_null("UnitInfoPanel") as Control
-		if local_panel != null:
-			return local_panel
-	# HUD 重构后 UnitInfoPanel 位于 Main/HudLayer
-	var main_root := get_node_or_null("/root/Main")
-	if main_root != null:
-		return main_root.get_node_or_null("HudLayer/UnitInfoPanel") as Control
-	return null
+	return NodeFinder.get_card_info_panel() as Control

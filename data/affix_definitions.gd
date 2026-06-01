@@ -1,6 +1,7 @@
 extends RefCounted
 class_name AffixDefinitions
-## 词条配置表 - 所有可用词条的静态定义
+## 模块化词条配置表 - 所有可用词条的静态定义
+## [术语] affix = 模块化词条（同义词，设计文档用\"模块化词条\"）
 ##
 ## 词条分三大类：
 ##   base_property   - 基础属性（血量、伤害、速度、射程、攻速）

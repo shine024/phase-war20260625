@@ -1,6 +1,8 @@
 extends Node
 ## 属性提升管理器：记录和管理玩家获得的所有属性提升效果
 
+const DEBUG_LOG := false
+
 signal stat_boost_applied(boost_id: String, boost_name: String, total_count: int)
 
 ## 属性提升类型定义
@@ -118,12 +120,14 @@ func apply_boost(boost_id: String) -> void:
 	var max_stacks = boost_data.get("max_stacks", 999)
 
 	if current_count >= max_stacks:
-		print("[StatBoostManager] 属性提升已达上限: ", boost_data.get("name", boost_id))
+		if DEBUG_LOG:
+			print("[StatBoostManager] 属性提升已达上限: ", boost_data.get("name", boost_id))
 		return
 
 	boost_counts[boost_id] = current_count + 1
 	stat_boost_applied.emit(boost_id, boost_data.get("name", boost_id), boost_counts[boost_id])
-	print("[StatBoostManager] 应用属性提升: ", boost_data.get("name", boost_id), " (", boost_counts[boost_id], "/", max_stacks, ")")
+	if DEBUG_LOG:
+		print("[StatBoostManager] 应用属性提升: ", boost_data.get("name", boost_id), " (", boost_counts[boost_id], "/", max_stacks, ")")
 
 ## 获取指定属性提升的层数
 func get_boost_count(boost_id: String) -> int:
@@ -209,7 +213,8 @@ func get_all_boosts() -> Array[Dictionary]:
 ## 重置所有属性提升
 func reset_all_boosts() -> void:
 	boost_counts.clear()
-	print("[StatBoostManager] 已重置所有属性提升")
+	if DEBUG_LOG:
+		print("[StatBoostManager] 已重置所有属性提升")
 
 ## 获取属性提升数据
 func get_boost_data(boost_id: String) -> Dictionary:
@@ -228,4 +233,5 @@ func load_state(data: Dictionary) -> void:
 	for boost_id in saved_counts:
 		if BOOST_DATABASE.has(boost_id):
 			boost_counts[boost_id] = saved_counts[boost_id]
-	print("[StatBoostManager] 加载属性提升状态")
+	if DEBUG_LOG:
+		print("[StatBoostManager] 加载属性提升状态")

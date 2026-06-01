@@ -6,7 +6,7 @@ const PhaseLaws = preload("res://data/phase_laws.gd")
 const PhaseInstruments = preload("res://data/phase_instruments.gd")
 const DefaultCardsData = preload("res://data/default_cards.gd")
 const NodeFinder = preload("res://scripts/node_finder.gd")
-const BackpackPanelScript = preload("res://scenes/ui/backpack_panel.gd")
+const CardInfoPanel = preload("res://scenes/ui/card_info_panel.gd")
 const BackpackCombatPreview = preload("res://scenes/ui/backpack_combat_preview.gd")
 const RankDisplayUi = preload("res://scripts/rank_display_ui.gd")
 const CardFrameUi = preload("res://scripts/card_frame_ui.gd")
@@ -530,12 +530,14 @@ func _show_instrument_slot_card_detail(card_id: String, source_panel: Control) -
 		card = PhaseInstrumentManager.get_card_by_id(card_id)
 	if card == null:
 		return false
-	BackpackPanelScript.open_card_detail(card, source_panel)
-	if NodeFinder.get_backpack_panel() != null:
-		return true
-	var backpack_panel: Node = get_tree().get_first_node_in_group("backpack_panel") if get_tree() else null
-	if backpack_panel and backpack_panel.has_method("show_card_detail"):
-		backpack_panel.show_card_detail(card, source_panel)
+	# 使用全局 CardInfoPanel（挂在 InfoPanelLayer layer=90，不被 HUD 遮挡）
+	var info_panel: Control = NodeFinder.get_card_info_panel() as Control
+	if info_panel != null:
+		if info_panel.has_method("set_panel_mode"):
+			info_panel.set_panel_mode(CardInfoPanel.PanelMode.MODE_BATTLEFIELD)
+		if info_panel.has_method("show_card_info"):
+			var show_pos := source_panel.global_position + Vector2(source_panel.size.x + 8, -200)
+			info_panel.show_card_info(card, show_pos)
 		return true
 	return false
 

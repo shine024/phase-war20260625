@@ -13,7 +13,6 @@ const _FAMILY_MAP := {
 func _ready() -> void:
 	await get_tree().process_frame
 	_connect_signals()
-	print("[NewSystemsIntegration] 新系统集成完成")
 
 func _connect_signals() -> void:
 	if not SignalBus:
@@ -31,7 +30,6 @@ func _connect_signals() -> void:
 			SignalBus.battle_ended.connect(_on_battle_ended_achievement)
 	if SignalBus.has_signal("blueprint_unlocked") and not SignalBus.blueprint_unlocked.is_connected(_on_blueprint_unlocked):
 		SignalBus.blueprint_unlocked.connect(_on_blueprint_unlocked)
-	print("[NewSystemsIntegration] 信号已连接")
 
 ## 单位受伤 → 伤害数字 + 暴击屏幕震动（委托给 BattleFeedbackManager）
 func _on_unit_damaged(unit: Node, _is_player: bool, damage: float, _position: Vector2) -> void:

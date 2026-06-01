@@ -33,14 +33,14 @@ func check_phase_master_encounter() -> Dictionary:
 		return {}
 	if force_phase_master_battle:
 		if DEBUG_GAME_LOG:
-			print("[GameManager] 第49关固定触发相位师战斗")
+			pass  # LOG: 第49关固定触发相位师战斗
 
 	# 获取当前关卡的势力
 	var LIC = preload("res://data/level_information.gd")
 	var LevelInfo = LIC.new()
 	var current_faction: String = LevelInfo.get_level_faction(current_level)
 	if DEBUG_GAME_LOG:
-		print("[GameManager] 当前关卡 %d 属于势力: %s" % [current_level, current_faction])
+		pass  # LOG: 当前关卡势力
 
 	# 从排行榜获取活跃相位师（按优先级尝试多条路径）
 	var lp = get_node_or_null("/root/Main/PopupLayer/LeaderboardPanel")
@@ -67,7 +67,7 @@ func check_phase_master_encounter() -> Dictionary:
 			{"name": "边境开拓者", "faction": "frontier_union",    "era": "ww2",      "platform": "platform_ww2_light"},
 		]
 		if DEBUG_GAME_LOG:
-			print("[GameManager] LeaderboardPanel 节点未找到，使用内嵌相位师数据")
+			pass  # LOG: LeaderboardPanel 节点未找到，使用内嵌相位师数据
 
 	if not all_masters.is_empty():
 		var selected_master: Dictionary = {}
@@ -82,14 +82,14 @@ func check_phase_master_encounter() -> Dictionary:
 				var idx = randi() % faction_masters.size()
 				selected_master = faction_masters[idx]
 				if DEBUG_GAME_LOG:
-					print("[GameManager] 遭遇防守方相位师: %s（势力: %s）" % [selected_master.get("name", "?"), current_faction])
+					pass  # LOG: 遭遇防守方相位师
 
 		# 如果没有找到对应势力的相位师（或没拿到），则随机抽取
 		if selected_master.is_empty():
 			var idx = randi() % min(3, all_masters.size())
 			selected_master = all_masters[idx]
 			if DEBUG_GAME_LOG:
-				print("[GameManager] 遭遇随机相位师: %s！" % selected_master.get("name", "?"))
+				pass  # LOG: 遭遇随机相位师
 
 		## 尝试从 EnemyPhaseMasters 获取完整装备数据
 		var enriched_config = _enrich_master_config(selected_master)
@@ -216,8 +216,7 @@ func _enrich_master_config(simple_config: Dictionary) -> Dictionary:
 	enriched["enemy_faction"] = String(best.get("faction", enemy_faction))
 
 	if DEBUG_GAME_LOG:
-		print("[GameManager] 相位师配置已合并: %s -> equipment=%s, stats=%s" \
-			% [enriched.get("name", "?"), str(enriched.get("equipment", {}).get("platforms", [])), str(enriched.get("stats", {}))])
+		pass  # LOG: 相位师配置已合并
 	return enriched
 
 static func _era_string_to_int(era_str: String) -> int:
@@ -242,7 +241,7 @@ func is_card_grid_battle() -> bool:
 
 func go_to_battle() -> void:
 	if DEBUG_GAME_LOG:
-		print("[GameManager] go_to_battle 被调用")
+		pass  # LOG: go_to_battle 被调用
 	current_phase = GamePhase.BATTLE
 
 	_snapshot_battle_reward_baselines()
@@ -252,7 +251,7 @@ func go_to_battle() -> void:
 		push_error("battle_scene 为空，请检查 Main 是否调用了 GameManager.set_battle_scene")
 		return
 	if DEBUG_GAME_LOG:
-		print("[GameManager] 调用 BattleManager.start_battle")
+		pass  # LOG: 调用 BattleManager.start_battle
 	BattleManager.start_battle(battle_scene)
 
 func _on_battle_ended(player_won: bool) -> void:
@@ -275,7 +274,7 @@ func _on_battle_ended(player_won: bool) -> void:
 			_grant_phase_master_victory_reward(master_name)
 		else:
 			if DEBUG_GAME_LOG:
-				print("[GameManager] 败给相位师 %s" % master_name)
+				pass  # LOG: 败给相位师
 		# 清除相位师战斗状态
 		_is_phase_master_battle = false
 		_current_phase_master = {}
@@ -300,7 +299,7 @@ func _on_battle_ended(player_won: bool) -> void:
 	# ========== 掉落系统由 BattleManager.end_battle 直接触发，此处不重复调用 ==========
 	# BattleManager._generate_battle_completion_drops 已在 end_battle 时执行
 	if DEBUG_GAME_LOG:
-		print("[GameManager] DropManager 已就绪，掉落由 BattleManager 负责生成")
+		pass  # LOG: DropManager 已就绪，掉落由 BattleManager 负责生成
 
 	# ========== 新增：更新关卡进度 ==========
 	if player_won:
@@ -309,7 +308,7 @@ func _on_battle_ended(player_won: bool) -> void:
 		if level_progress and level_progress.has_method("complete_level"):
 			level_progress.complete_level(current_level, victory_stars)
 			if DEBUG_GAME_LOG:
-				print("[GameManager] 关卡进度已更新: 关卡 %d, 星级 %d" % [current_level, victory_stars])
+				pass  # LOG: 关卡进度已更新
 		# 与已解锁关卡的「最前沿」对齐，否则 save.json 里 game.current_level 会永远停在 1（读档像没进度）
 		if level_progress and level_progress.has_method("get_max_unlocked_level"):
 			set_current_level(level_progress.get_max_unlocked_level())
@@ -356,7 +355,7 @@ func set_current_level(level: int) -> void:
 		return
 	current_level = new_level
 	if DEBUG_GAME_LOG:
-		print("[GameManager] 当前关卡设为: ", current_level)
+		pass  # LOG: 当前关卡设为
 	_ensure_plm()
 	if _plm and _plm.has_method("update_env_for_level"):
 		_plm.update_env_for_level(current_level)
@@ -369,12 +368,12 @@ func _apply_faction_reaction_for_conquest() -> void:
 	if fsm and fsm.has_method("on_level_conquered"):
 		var faction_result: Dictionary = fsm.on_level_conquered(current_level)
 		if DEBUG_GAME_LOG:
-			print("[GameManager] 势力反应完成: ", faction_result)
+			pass  # LOG: 势力反应完成
 
 ## 相位师战胜奖励
 func _grant_phase_master_victory_reward(master_name: String) -> void:
 	if DEBUG_GAME_LOG:
-		print("[GameManager] 战胜相位师 %s，获得特殊奖励！" % master_name)
+		pass  # LOG: 战胜相位师
 
 	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
 
@@ -382,13 +381,13 @@ func _grant_phase_master_victory_reward(master_name: String) -> void:
 	if BasicResourceManager.has_method("add_resource"):
 		BasicResourceManager.add_resource(BasicResources.ID_NANO_MATERIALS, 50)
 		if DEBUG_GAME_LOG:
-			print("[GameManager]  +50 基础纳米")
+			pass  # LOG: +50 基础纳米
 
 	# 2. 额外能量块
 	if BasicResourceManager.has_method("add_resource"):
 		BasicResourceManager.add_resource(BasicResources.ID_ENERGY_BLOCK, 10)
 		if DEBUG_GAME_LOG:
-			print("[GameManager]  +10 能量块")
+			pass  # LOG: +10 能量块
 
 	# 3. 敌方装备 → 背包缴获卡（无武器版：仅战斗平台）
 	if BlueprintManager:
@@ -405,7 +404,7 @@ func _grant_phase_master_victory_reward(master_name: String) -> void:
 			var era_pm: int = GC.get_era_for_level(current_level)
 			CardDropGrants.grant_enemy_style_card(BlueprintManager, String(pid), era_pm, 2)
 			if DEBUG_GAME_LOG:
-				print("[GameManager]  +2 平台卡奖励: %s" % pname)
+				pass  # LOG: 平台卡奖励
 	# 4. 势力法则 → 背包法则卡（从相位师所属势力的法则家族中随机选取3条）
 	if BlueprintManager:
 		var master_faction: String = _current_phase_master.get("faction", "")
@@ -422,7 +421,7 @@ func _grant_phase_master_victory_reward(master_name: String) -> void:
 				var law_name: String = law_data.get("name", law_id)
 				CardDropGrants.grant_law_cards_to_backpack(law_id, 2)
 				if DEBUG_GAME_LOG:
-					print("[GameManager]  +2 法则卡: %s" % law_name)
+					pass  # LOG: +2 法则卡
 
 	# 5. 势力声望提升（战胜相位师，该势力获得声望）
 	var faction_id: String = ""
@@ -438,7 +437,7 @@ func _grant_phase_master_victory_reward(master_name: String) -> void:
 		qm.notify_phase_master_defeated(master_name)
 
 	if not faction_id.is_empty() and DEBUG_GAME_LOG:
-		print("[GameManager] %s 势力声望 +30" % faction_id)
+		pass  # LOG: 势力声望 +30
 
 	# 记录到战斗奖励摘要
 	last_battle_reward_summary["phase_master_victory"] = master_name

@@ -59,3 +59,16 @@ static func get_battlefield() -> Node2D:
 	return _find(
 		"/root/Main/BattleContainer/SubViewportContainer/SubViewport/Battlefield"
 	) as Node2D
+
+
+## 获取全局情报面板（挂在 InfoPanelLayer layer=90，不被 HUD 遮挡）
+static func get_card_info_panel() -> Node:
+	var paths := [
+		"/root/Main/InfoPanelLayer/CardInfoPanel",
+	]
+	for p in paths:
+		var n: Node = _find(p)
+		if n != null:
+			return n
+	# fallback: root 下的旧式全局单例
+	return _find("/root/CardInfoPanel")

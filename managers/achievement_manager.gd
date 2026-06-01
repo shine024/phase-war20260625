@@ -8,6 +8,8 @@ extends Node
 ## 所有外部调用者（achievement_panel / battle_manager_addons / save_manager 等）
 ## 通过 /root/AchievementManager 访问，接口保持 100% 兼容。
 
+const DEBUG_LOG := false
+
 const DefaultCards = preload("res://data/default_cards.gd")
 
 signal achievement_unlocked(achievement_id: String, achievement_name: String)
@@ -88,17 +90,14 @@ func _deferred_init() -> void:
 	_load_achievement_definitions()
 	_load_achievement_progress()
 	_setup_auto_save()
-	print("[AchievementManager] 延迟初始化完成")
 
 ## 加载成就定义
 func _load_achievement_definitions() -> void:
 	var achievement_defs = get_node_or_null("/root/AchievementDefinitionsExtended")
 	if achievement_defs != null:
 		ACHIEVEMENT_DATABASE = achievement_defs.ACHIEVEMENT_DEFINITIONS.duplicate()
-		print("[AchievementManager] 加载扩展成就定义: ", ACHIEVEMENT_DATABASE.size(), " 个成就")
 	else:
 		_setup_basic_achievements()
-		print("[AchievementManager] 使用基础成就定义")
 
 ## 设置基础成就定义（后备方案）
 func _setup_basic_achievements() -> void:
@@ -253,7 +252,8 @@ func unlock_achievement(achievement_id: String) -> void:
 	unlocked_achievements.append(achievement_id)
 	var ach_data = ACHIEVEMENT_DATABASE[achievement_id]
 	achievement_unlocked.emit(achievement_id, ach_data.get("name", achievement_id))
-	print("[AchievementManager] 解锁成就: ", ach_data.get("name", achievement_id))
+	if DEBUG_LOG:
+		print("[AchievementManager] 解锁成就: ", ach_data.get("name", achievement_id))
 	_save_achievement_progress()
 
 ## 记录战斗胜利
@@ -439,7 +439,8 @@ func claim_achievement_reward(achievement_id: String) -> bool:
 	reward_claimed[achievement_id] = true
 	var reward_type = reward.get("type", "")
 	var reward_amount = reward.get("amount", 0)
-	print("[AchievementManager] 已领取成就奖励: %s (%s x%d)" % [achievement_id, reward_type, reward_amount])
+	if DEBUG_LOG:
+		print("[AchievementManager] 已领取成就奖励: %s (%s x%d)" % [achievement_id, reward_type, reward_amount])
 	return true
 
 ## 获取可领取奖励的成就列表
@@ -570,4 +571,5 @@ func load_state(data: Dictionary) -> void:
 	if not saved_system.is_empty():
 		system_stats = saved_system.duplicate()
 
-	print("[AchievementManager] 加载成就状态，已解锁: ", unlocked_achievements.size(), "/", ACHIEVEMENT_DATABASE.size())
+	if DEBUG_LOG:
+		print("[AchievementManager] 加载成就状态，已解锁: ", unlocked_achievements.size(), "/", ACHIEVEMENT_DATABASE.size())

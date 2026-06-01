@@ -71,9 +71,7 @@ func _load_state() -> void:
 	_triggered_reveals = data.get("triggered_reveals", {})
 	_unlocked_eom = data.get("unlocked_eom", {})
 	_eom_fragments = data.get("eom_fragments", {})
-	print("[IntelDiscoveryManager] 加载完成，已触发揭示 %d，已解锁敌源MOD %d" % [
-		_triggered_reveals.size(), _unlocked_eom.size()
-	])
+	# [DEBUG] print("[IntelDiscoveryManager] 加载完成，已触发揭示 %d，已解锁敌源MOD %d" % [_triggered_reveals.size(), _unlocked_eom.size()])
 
 # ── 核心接口：战斗情报收获生成 ───────────────────────────────────
 

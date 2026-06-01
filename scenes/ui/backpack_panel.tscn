@@ -1,6 +1,7 @@
-[gd_scene load_steps=8 format=3 uid="uid://b8v77j6hjdmyi"]
+[gd_scene load_steps=9 format=3 uid="uid://b8v77j6hjdmyi"]
 
 [ext_resource type="Script" uid="uid://ck6w6d2kn2b6u" path="res://scenes/ui/backpack_panel.gd" id="1_script"]
+[ext_resource type="PackedScene" uid="uid://b8xk3l2m5n6o" path="res://scenes/ui/card_info_panel.tscn" id="2_card_info"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg"]
 bg_color = Color(0.04, 0.07, 0.12, 0.98)
@@ -127,7 +128,7 @@ theme_override_constants/v_separation = 6
 columns = 17
 
 [node name="CardDetailPopup" type="PopupPanel" parent="."]
-size = Vector2i(320, 380)
+size = Vector2i(340, 460)
 theme_override_colors/title_color = Color(0, 0.941, 1, 1)
 theme_override_styles/panel = SubResource("StyleBoxFlat_popup")
 
@@ -137,74 +138,23 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 2.0
 offset_top = 2.0
-offset_right = 318.0
-offset_bottom = 378.0
+offset_right = 338.0
+offset_bottom = 458.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 14
-theme_override_constants/margin_top = 14
-theme_override_constants/margin_right = 14
-theme_override_constants/margin_bottom = 14
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
 
 [node name="VBox" type="VBoxContainer" parent="CardDetailPopup/Margin"]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="Header" type="HBoxContainer" parent="CardDetailPopup/Margin/VBox"]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="NameLabel" type="Label" parent="CardDetailPopup/Margin/VBox/Header"]
+[node name="DetailInfoPanel" parent="CardDetailPopup/Margin/VBox" instance=ExtResource("2_card_info")]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0, 0.941, 1, 1)
-theme_override_font_sizes/font_size = 18
-text = ""
-
-[node name="CostLabel" type="Label" parent="CardDetailPopup/Margin/VBox/Header"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.9, 0.6, 0.1, 1)
-theme_override_font_sizes/font_size = 16
-text = ""
-horizontal_alignment = 2
-
-[node name="LevelLabel" type="Label" parent="CardDetailPopup/Margin/VBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.6, 0.85, 1, 1)
-theme_override_font_sizes/font_size = 13
-text = ""
-
-[node name="TypeLineLabel" type="Label" parent="CardDetailPopup/Margin/VBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.545, 0.361, 0.965, 1)
-theme_override_font_sizes/font_size = 14
-text = ""
-
-[node name="SummaryLabel" type="Label" parent="CardDetailPopup/Margin/VBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.7, 0.75, 0.85, 1)
-theme_override_font_sizes/font_size = 13
-text = ""
-
-[node name="HSeparator" type="HSeparator" parent="CardDetailPopup/Margin/VBox"]
-layout_mode = 2
-theme_override_constants/separation = 4
-
-[node name="DescLabel" type="Label" parent="CardDetailPopup/Margin/VBox"]
-layout_mode = 2
 size_flags_vertical = 3
-theme_override_colors/font_color = Color(0.8, 0.82, 0.9, 1)
-theme_override_font_sizes/font_size = 13
-text = ""
-autowrap_mode = 2
-
-[node name="FlavorLabel" type="Label" parent="CardDetailPopup/Margin/VBox"]
-layout_mode = 2
-size_flags_vertical = 3
-theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 1)
-theme_override_font_sizes/font_size = 12
-text = ""
-autowrap_mode = 2
 
 [node name="CloseButton" type="Button" parent="CardDetailPopup/Margin/VBox"]
 layout_mode = 2

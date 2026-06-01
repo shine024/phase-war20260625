@@ -5,7 +5,6 @@ const GameConstants = preload("res://resources/game_constants.gd")
 const UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")
 const CardFrameUi = preload("res://scripts/card_frame_ui.gd")
 const CardBackgroundUi = preload("res://scripts/card_background_ui.gd")
-const CardInfoPanel = preload("res://scenes/ui/card_info_panel.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 
 ## 竖向格：窄宽高长，与背包卡、相位仪条视觉一致
@@ -17,7 +16,6 @@ var current_card = null
 var used_weight: int = 0
 var weight_capacity: int = 0
 var _is_weight_capped: bool = false
-var _is_hovering: bool = false
 var _tween = null
 
 signal slot_clicked(slot_index: int, mouse_button_index: int)
@@ -31,8 +29,6 @@ func _ready() -> void:
 	CardBackgroundUi.ensure_overlay(self)
 	CardFrameUi.ensure_overlay(self)
 	refresh_display()
-	mouse_entered.connect(_on_mouse_entered)
-	mouse_exited.connect(_on_mouse_exited)
 
 func set_card(card) -> void:
 	current_card = card
@@ -105,57 +101,3 @@ func _gui_input(event: InputEvent) -> void:
 		if mb_event.pressed:
 			slot_clicked.emit(slot_index, mb_event.button_index)
 
-func _on_mouse_entered() -> void:
-	_is_hovering = true
-	_show_card_info_panel()
-
-func _on_mouse_exited() -> void:
-	_is_hovering = false
-	_hide_card_info_panel()
-
-func _show_card_info_panel() -> void:
-	if not _is_hovering:
-		return
-	var c: CardResource = current_card as CardResource
-	if c == null:
-		return
-
-	var tree: SceneTree = get_tree()
-	if not tree or not is_instance_valid(tree):
-		return
-
-	var root: Window = tree.root
-	if root == null:
-		return
-
-	# 单例挂在 root，避免随 current_scene 切换重复创建
-	var info_panel: Control = root.get_node_or_null("CardInfoPanel") as Control
-	if info_panel == null:
-		info_panel = CardInfoPanel.new() as Control
-		info_panel.name = "CardInfoPanel"
-		root.add_child(info_panel)
-
-	if info_panel.has_method("show_card_info"):
-		# 计算提示位置（优先在槽位右侧，超出屏幕则在左侧）
-		var slot_rect: Rect2 = get_global_rect()
-		var panel_pos: Vector2 = slot_rect.position + Vector2(slot_rect.size.x + 8.0, 0.0)
-		
-		# 检查是否超出屏幕右侧
-		var viewport_size: Vector2 = tree.current_scene.get_viewport_rect().size
-		if panel_pos.x + 400.0 > viewport_size.x:  # 假设面板宽度约400
-			panel_pos.x = slot_rect.position.x - 408.0  # 移到左侧
-		
-		info_panel.show_card_info(c, panel_pos)
-
-func _hide_card_info_panel() -> void:
-	var tree: SceneTree = get_tree()
-	if not tree or not is_instance_valid(tree):
-		return
-
-	var root: Window = tree.root
-	if root == null:
-		return
-
-	var info_panel: Control = root.get_node_or_null("CardInfoPanel") as Control
-	if info_panel != null and info_panel.has_method("hide_panel"):
-		info_panel.hide_panel()

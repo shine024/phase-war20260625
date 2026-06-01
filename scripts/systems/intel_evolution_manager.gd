@@ -54,9 +54,7 @@ func _load_state() -> void:
 	var data: Dictionary = SaveUtils.load_data_from_file(STATE_SAVE_NAME)
 	_discovered = data.get("discovered", {})
 	_claimed = data.get("claimed", {})
-	print("[IntelEvolutionManager] 加载完成，已发现 %d 条分支，已领取 %d 条" % [
-		_discovered.size(), _claimed.size()
-	])
+	# [DEBUG] print("[IntelEvolutionManager] 加载完成，已发现 %d 条分支，已领取 %d 条" % [_discovered.size(), _claimed.size()])
 
 # ── 核心接口 ───────────────────────────────────────────────────────
 

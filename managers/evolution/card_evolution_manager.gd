@@ -145,7 +145,8 @@ static func evolve_blueprint(card_id: String, target_card_id: String, bpm_ref: N
 	if not bpm_ref.is_blueprint_unlocked(target_card_id):
 		bpm_ref.unlock_blueprint(target_card_id)
 	bpm_ref.blueprint_copies[target_card_id] = max(1, int(bpm_ref.blueprint_copies.get(target_card_id, 0)))
-	bpm_ref.blueprint_stars[target_card_id] = max(int(bpm_ref.blueprint_stars.get(target_card_id, 1)), old_star)
+	# [DEPRECATED] blueprint_stars 写入已禁用 — 星级系统废弃，固定为1
+	# bpm_ref.blueprint_stars[target_card_id] = max(int(bpm_ref.blueprint_stars.get(target_card_id, 1)), old_star)
 	bpm_ref.blueprint_inherit_bonus[target_card_id] = merged_bonus
 	var old_hp: float = EvolutionHelpers.compute_platform_preview_hp(card_id, 0, bpm_ref)
 	if old_hp > 0.0:
@@ -167,7 +168,8 @@ static func evolve_blueprint(card_id: String, target_card_id: String, bpm_ref: N
 	## bpm_ref.blueprint_intel[target_card_id] = maxf(float(bpm_ref.blueprint_intel.get(target_card_id, 0.0)), source_intel)
 
 	bpm_ref.emit_signal("fragments_changed")
-	bpm_ref.emit_signal("blueprint_star_upgraded", target_card_id, int(bpm_ref.blueprint_stars[target_card_id]))
+	# [DEPRECATED] blueprint_star_upgraded 信号已废弃，不再基于星级变化
+	# bpm_ref.emit_signal("blueprint_star_upgraded", target_card_id, int(bpm_ref.blueprint_stars[target_card_id]))
 	return true
 
 ## 获取卡片强化等级（通过 CardEnhancementManager Autoload）

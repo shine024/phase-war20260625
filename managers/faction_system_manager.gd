@@ -4,6 +4,8 @@ extends Node
 ## 本文件作为 Autoload 入口，保持对外公共 API 不变。
 ## 声望计算逻辑已拆分到 managers/faction/faction_reputation.gd
 ## 商店逻辑已拆分到 managers/faction/faction_shop.gd
+
+const DEBUG_LOG := false
 ##
 ## 所有外部调用者（faction_panel / store_panel / quest_manager / save_manager 等）
 ## 通过 /root/FactionSystemManager 访问，接口保持 100% 兼容。
@@ -233,7 +235,8 @@ func on_level_conquered(level_conquered: int) -> Dictionary:
 			result[faction_id] = add_faction_reputation(faction_id, delta)
 			if delta != 0:
 				var rel_type: String = get_relationship_between(conquered_faction, faction_id)
-				print("[FactionSystem] 势力 %s（与 %s 为 %s）声望 %+d" % [faction_id, conquered_faction, rel_type, delta])
+				if DEBUG_LOG:
+					print("[FactionSystem] 势力 %s（与 %s 为 %s）声望 %+d" % [faction_id, conquered_faction, rel_type, delta])
 
 	return result
 

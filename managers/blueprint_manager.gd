@@ -199,7 +199,7 @@ func _unlock_default_blueprints() -> void:
 			if id in high_tier_blueprints or id in DEFAULT_ENERGY_BLUEPRINT_IDS:
 				unlocked_blueprint_ids.append(id)
 				if DEBUG_BLUEPRINT_LOG:
-					print("[BlueprintManager] Initial unlock: ", id)
+					pass  # LOG: Initial unlock
 
 	var default_law_blueprints = [
 		"steel_quick_repair",
@@ -213,10 +213,10 @@ func _unlock_default_blueprints() -> void:
 			unlocked_blueprint_ids.append(bp_id)
 		if blueprint_copies.get(bp_id, 0) < 1:
 			blueprint_copies[bp_id] = 1
-			blueprint_stars[bp_id] = 1
 			# [DEPRECATED] blueprint_stars 写入已禁用
+			# blueprint_stars[bp_id] = 1
 			if DEBUG_BLUEPRINT_LOG:
-				print("[BlueprintManager] Initial law unlock: ", law_id, " (1 copy)")
+				pass  # LOG: Initial law unlock
 			if plm and plm.has_method("ensure_law_unlocked"):
 				plm.ensure_law_unlocked(law_id)
 
@@ -246,13 +246,13 @@ func _migrate_legacy_default_energy_starter_copies() -> void:
 		if int(blueprint_copies.get(eid, 0)) >= 1:
 			continue
 		blueprint_copies[eid] = 1
-		var rarity: String = get_card_rarity(eid)
-		blueprint_stars[eid] = StarConfig.calculate_star(1, rarity)
 		# [DEPRECATED] blueprint_stars 写入已禁用
+		# var rarity: String = get_card_rarity(eid)
+		# blueprint_stars[eid] = StarConfig.calculate_star(1, rarity)
 		changed = true
 	if changed:
 		if DEBUG_BLUEPRINT_LOG:
-			print("[BlueprintManager] 旧存档迁移：已为默认能量蓝图补足首份副本")
+			pass  # LOG: 旧存档迁移：已为默认能量蓝图补足首份副本
 		emit_signal("fragments_changed")
 
 ## ─────────── 蓝图解锁 ───────────
@@ -307,8 +307,8 @@ func add_blueprint_copy(card_id: String, count: int = 1) -> void:
 	if not is_blueprint_unlocked(card_id):
 		unlock_blueprint(card_id)
 	blueprint_copies[card_id] = max(1, int(blueprint_copies.get(card_id, 0)))
-	blueprint_stars[card_id] = max(1, int(blueprint_stars.get(card_id, 1)))
-	# [DEPRECATED] blueprint_stars 写入已禁用
+	# [DEPRECATED] blueprint_stars 写入已禁用 — 星级系统废弃，不再主动写入
+	# blueprint_stars[card_id] = max(1, int(blueprint_stars.get(card_id, 1)))
 	# 多余副本 → 研究点奖励
 	var rarity: String = get_card_rarity(card_id)
 	var grant_per_copy: int = int(StarConfig.get_research_cost_for_next_star(1, rarity) * 0.35)
@@ -329,9 +329,9 @@ func apply_card_drop_first_copy(card_id: String) -> void:
 	if not is_blueprint_unlocked(id):
 		unlock_blueprint(id)
 	blueprint_copies[id] = maxi(1, int(blueprint_copies.get(id, 0)))
-	if int(blueprint_stars.get(id, 0)) < 1:
-		blueprint_stars[id] = 1
-		# [DEPRECATED] blueprint_stars 写入已禁用
+	# [DEPRECATED] blueprint_stars 写入已禁用
+	# if int(blueprint_stars.get(id, 0)) < 1:
+	#		blueprint_stars[id] = 1
 	if is_law_blueprint_id(id) and plm and plm.has_method("ensure_law_unlocked"):
 		plm.ensure_law_unlocked(law_id_from_blueprint_id(id))
 	emit_signal("fragments_changed")
@@ -364,33 +364,14 @@ func get_star_progress(card_id: String) -> Dictionary:
 	}
 
 ## 检查蓝图是否可以升星
+## [DEPRECATED] 升星功能已废弃，始终返回 false
 func can_upgrade_blueprint(card_id: String, _xp_type: int = 0) -> bool:
-	if card_id.is_empty():
-		return false
-	var star: int = get_blueprint_star(card_id)
-	if star >= MAX_BLUEPRINT_LEVEL:
-		return false
-	if not is_blueprint_unlocked(card_id):
-		return false
-	var rarity: String = get_card_rarity(card_id)
-	var needed: int = StarConfig.get_research_cost_for_next_star(star, rarity)
-	return get_research_points() >= needed
+	return false
 
 ## 蓝图升星：消耗研究点
+## [DEPRECATED] 升星功能已废弃，始终返回 false
 func upgrade_blueprint_level(card_id: String, _xp_type: int = 0) -> bool:
-	if not can_upgrade_blueprint(card_id, _xp_type):
-		return false
-	var old_star: int = get_blueprint_star(card_id)
-	var rarity: String = get_card_rarity(card_id)
-	var cost: int = StarConfig.get_research_cost_for_next_star(old_star, rarity)
-	add_research_points(-cost)
-	var new_star: int = min(MAX_BLUEPRINT_LEVEL, old_star + 1)
-	blueprint_stars[card_id] = new_star
-	# [DEPRECATED] blueprint_stars 写入已禁用
-	emit_signal("fragments_changed")
-	emit_signal("blueprint_star_upgraded", card_id, new_star)
-	_on_blueprint_star_up(card_id, old_star, new_star)
-	return true
+	return false
 
 ## 蓝图升星通知已制造卡片
 func _on_blueprint_star_up(card_id: String, old_star: int, new_star: int) -> void:
@@ -562,13 +543,13 @@ func manufacture_card(card_id: String) -> CardResource:
 		# out_card.star_level = star  # [DEPRECATED] star_level 赋值已废弃
 		# [DEPRECATED] out_card.star_level 赋值已废弃
 		if DEBUG_BLUEPRINT_LOG:
-			print("[BlueprintManager] 制造成功: ", out_card.display_name, " ★", star)
+			pass  # LOG: 制造成功（法则/能量卡）
 		emit_signal("card_manufactured", lookup_id, star)
 		_auto_save("制造卡牌: %s ★%d" % [lookup_id, star])
 		return out_card
 
 	if DEBUG_BLUEPRINT_LOG:
-		print("[BlueprintManager] 制造成功: ", card.display_name, " ★", star)
+		pass  # LOG: 制造成功
 	emit_signal("card_manufactured", lookup_id, star)
 	_auto_save("制造卡牌: %s ★%d" % [lookup_id, star])
 	return card

@@ -7,6 +7,8 @@ signal update_downloaded(progress: float)
 signal update_installed()
 signal version_checked(current_version: String, latest_version: String)
 
+const DEBUG_LOG := false
+
 ## 版本信息
 var current_version: Dictionary = {
 	"major": 1,
@@ -51,7 +53,8 @@ func _load_version_info() -> void:
 		current_version["minor"] = version_parts[1].to_int()
 		current_version["patch"] = version_parts[2].to_int()
 
-	print("[VersionManager] 当前版本: ", current_version["version_string"])
+	if DEBUG_LOG:
+		print("[VersionManager] 当前版本: ", current_version["version_string"])
 
 ## 设置自动检查
 func _setup_auto_check() -> void:
@@ -72,11 +75,13 @@ func _on_auto_check_timeout() -> void:
 ## 检查更新
 func check_updates() -> void:
 	if update_status["is_checking"]:
-		print("[VersionManager] 正在检查更新，请稍候...")
+		if DEBUG_LOG:
+			print("[VersionManager] 正在检查更新，请稍候...")
 		return
 
 	update_status["is_checking"] = true
-	print("[VersionManager] 检查游戏更新...")
+	if DEBUG_LOG:
+		print("[VersionManager] 检查游戏更新...")
 
 	# 模拟更新检查（实际实现中应该连接到更新服务器）
 	_perform_update_check()
@@ -95,8 +100,8 @@ func _perform_update_check() -> void:
 	update_status["latest_version"] = current_version["version_string"]
 
 	version_checked.emit(current_version["version_string"], current_version["version_string"])
-
-	print("[VersionManager] 已是最新版本: ", current_version["version_string"])
+	if DEBUG_LOG:
+		print("[VersionManager] 已是最新版本: ", current_version["version_string"])
 
 ## 比较版本
 func compare_versions(version1: String, version2: String) -> int:
@@ -167,15 +172,18 @@ func get_version_history() -> Array[Dictionary]:
 ## 下载更新
 func download_update() -> void:
 	if not update_status["update_available"]:
-		print("[VersionManager] 没有可用的更新")
+		if DEBUG_LOG:
+			print("[VersionManager] 没有可用的更新")
 		return
 
-	print("[VersionManager] 开始下载更新...")
+	if DEBUG_LOG:
+		print("[VersionManager] 开始下载更新...")
 	# 实现更新下载逻辑
 
 ## 安装更新
 func install_update() -> void:
-	print("[VersionManager] 安装更新...")
+	if DEBUG_LOG:
+		print("[VersionManager] 安装更新...")
 	# 实现更新安装逻辑
 
 	update_installed.emit()
@@ -210,7 +218,8 @@ func export_diagnostic_report(file_path: String) -> void:
 	if file != null:
 		file.store_string(json_str)
 		file.close()
-		print("[VersionManager] 诊断报告已导出")
+		if DEBUG_LOG:
+			print("[VersionManager] 诊断报告已导出")
 
 ## 检查数据迁移需求
 func check_migration_required() -> bool:

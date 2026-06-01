@@ -145,7 +145,7 @@ var is_unlocked: bool = false
 #  通用辅助字段
 # ─────────────────────────────────────────────
 
-## 模块化词条槽位（原 affix_slot_ids）
+## 模块化词条槽位（affix = 模块化词条，同义词）
 ## 不要直接修改此字段，使用 AffixManager 的接口操作。
 @export var affix_slot_ids: Array = []
 @export var affix_slot_count: int = 4

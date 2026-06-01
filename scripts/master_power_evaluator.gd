@@ -539,24 +539,9 @@ static func _build_details(master: Dictionary, scores: Dictionary,
 #  排行榜打印
 # ═════════════════════════════════════════════
 
-## 打印排行榜（调试用）
+## 打印排行榜（调试用）— disabled in production
 static func print_ranking(ranking: Array) -> void:
-	print("\n╔══════════════════════════════════════════════════════════════════════╗")
-	print("║                    相位师战力排行榜 TOP %d                       ║" % ranking.size())
-	print("╠══════════════════════════════════════════════════════════════════════╣")
-	print("║ 排名  星级   战力     势力    相位师                        刻印  ║")
-	print("╠══════════════════════════════════════════════════════════════════════╣")
-	for r in ranking:
-		var d: Dictionary = r.details
-		var rank_str: String = "%2d" % r.rank
-		var star_str: String = "%d★%-4s" % [r.stars, r.star_name]
-		var score_str: String = "%7.0f" % r.total_score
-		var faction_str: String = "%-8s" % _faction_short(d.faction)
-		var name_str: String = "%-28s" % d.master_name.substr(0, 28)
-		var eng_str: String = "%d/%d" % [d.completed_engravings, d.active_engravings]
-		print("║ %s  %s  %s  %s  %s  %s ║" % [
-			rank_str, star_str, score_str, faction_str, name_str, eng_str])
-	print("╚══════════════════════════════════════════════════════════════════════╝\n")
+	push_warning("[MasterPowerEvaluator] print_ranking() is disabled in production")
 
 
 ## 势力简称映射
@@ -569,24 +554,6 @@ static func _faction_short(faction: String) -> String:
 	return map.get(faction, faction)
 
 
-## 打印单个相位师详细评估
+## 打印单个相位师详细评估 — disabled in production
 static func print_detail(master: Dictionary) -> void:
-	var r: Dictionary = evaluate(master)
-	var d: Dictionary = r.details
-	print("\n═══ %s 「%s」═══" % [d.master_name, d.title])
-	print("  势力: %s  |  相位仪: %s [%s]" % [
-		_faction_short(d.faction), d.phase_instrument, d.instrument_rarity])
-	print("  HP: %d  |  ATK: %d  |  DEF: %d  |  EN: %d(+%.1f/s)  |  单位上限: %d" % [
-		d.hp, d.attack, d.defense, d.energy_capacity, d.energy_regen, d.unit_limit])
-	print("  刻印: %d激活 / %d完成 / %d总计" % [
-		d.active_engravings, d.completed_engravings, d.total_engravings])
-	print("  ─────────────────────────────────")
-	print("  仪器基础属性:  %6.0f" % d.instrument_score)
-	print("  刻印词条:      %6.0f" % d.engravings_score)
-	print("  特质:          %6.0f" % d.traits_score)
-	print("  主动技能:      %6.0f" % d.active_spells_score)
-	print("  被动技能:      %6.0f" % d.passive_spells_score)
-	print("  装备槽位:      %6.0f" % d.equipment_slots_score)
-	print("  ─────────────────────────────────")
-	print("  ★★★ 总战力: %.0f  |  %d★ %s ★★★" % [r.total_score, r.stars, r.star_name])
-	print()
+	push_warning("[MasterPowerEvaluator] print_detail() is disabled in production")

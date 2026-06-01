@@ -13,10 +13,6 @@ var _is_dragging := false
 var _drag_preview: Control = null
 var _click_start_position: Vector2
 var _drag_threshold := 5.0  # 移动5像素才开始拖拽
-const DEBUG_DRAG_LOG := false
-const DRAG_LOG_INTERVAL_MS := 200
-var ENABLE_HOVER_AFFIX_TOOLTIP := false
-var ENABLE_CARD_HOVER_TOOLTIP_TEXT := false
 ## 背包格内简图：卡图 + 底栏名/费（与相位仪槽一致）；完整卡面仅详情弹窗
 var ENABLE_MINIMAL_CARD_RENDER := true
 const BACKPACK_USE_MTG_CARD_FACE := false
@@ -33,7 +29,6 @@ const BackpackCombatPreview = preload("res://scenes/ui/backpack_combat_preview.g
 const RankDisplayUi = preload("res://scripts/rank_display_ui.gd")
 const CardFrameUi = preload("res://scripts/card_frame_ui.gd")
 const CardBackgroundUi = preload("res://scripts/card_background_ui.gd")
-const CardInfoPanel = preload("res://scenes/ui/card_info_panel.gd")
 ## 与相位仪槽位 `PhaseSlot.SLOT_SIZE` 一致，便于拖拽与装备时视觉对齐
 var SLOT_SIZE: Vector2 = PhaseSlot.SLOT_SIZE
 ## 列表内卡图：与 backpack_card_item.tscn 中 Icon 一致，竖向窄格内居中
@@ -59,10 +54,6 @@ static var _card_border_style_cache: Dictionary = {}
 static var _empty_type_bar_style: StyleBoxFlat = null
 static var _empty_card_panel_style: StyleBoxFlat = null
 
-## 悬停词条提示：递增以取消未完成的延迟协程/定时器
-var _affix_hover_seq: int = 0
-const _AFFIX_HOVER_DELAY_SEC := 0.3
-const _CardAffixTooltipScript = preload("res://scenes/ui/card_affix_tooltip.gd")
 
 func _ready() -> void:
 	gui_input.connect(_on_gui_input)
@@ -89,9 +80,6 @@ func _ready() -> void:
 	CardBackgroundUi.ensure_overlay(self)
 	CardFrameUi.ensure_overlay(self)
 
-	# 连接鼠标悬停信号
-	mouse_entered.connect(_on_mouse_entered)
-	mouse_exited.connect(_on_mouse_exited)
 
 	# 监听全局输入以捕获拖拽结束
 	var tree = get_tree()
@@ -115,21 +103,7 @@ func _apply_icon_texture_rect_fixed(icon_rect: TextureRect, min_size: Vector2) -
 	icon_rect.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	icon_rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 
-## 鼠标进入 - 显示统一情报面板
-func _on_mouse_entered() -> void:
-	BackpackCardItemActions.on_mouse_entered(self)
 
-## 鼠标离开 - 隐藏统一情报面板
-func _on_mouse_exited() -> void:
-	BackpackCardItemActions.on_mouse_exited(self)
-
-## 显示统一卡牌情报面板
-func _show_card_info_panel() -> void:
-	BackpackCardItemActions.show_card_info_panel(self)
-
-## 隐藏统一卡牌情报面板
-func _hide_card_info_panel() -> void:
-	BackpackCardItemActions.hide_card_info_panel(self)
 
 func _check_drag_state() -> void:
 	BackpackCardItemDrag.check_drag_state(self)
@@ -315,16 +289,7 @@ func set_card(c: CardResource) -> void:
 
 	_apply_card_chrome(c)
 
-	# 设置内置 tooltip 显示完整信息
-	if ENABLE_CARD_HOVER_TOOLTIP_TEXT:
-		if c.card_type == GC.CardType.COMBAT_UNIT:
-			tooltip_text = "[%s] %s\n%s\n%s｜武器槽：%d" % [c.rarity, DefaultCards.safe_name(c), c.type_line, c.summary_line, max(c.max_weapons, 1)]
-		else:
-			tooltip_text = "[%s] %s\n%s\n%s" % [c.rarity, DefaultCards.safe_name(c), c.type_line, c.summary_line]
-		if c.description.is_empty() == false:
-			tooltip_text += "\n\n%s" % c.description
-	else:
-		tooltip_text = ""
+	tooltip_text = ""
 
 func _set_empty_style(type_bar, name_label, cost_label, weight_label, lv_label, xp_fill, icon_rect) -> void:
 	if _icon_row_has_compact_layout():

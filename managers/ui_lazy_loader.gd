@@ -4,6 +4,8 @@ extends Node
 const DEBUG_UI_LAZY_LOG := false
 const DEBUG_LOG_PATH := "debug-22f19e.log"
 
+
+
 func _debug_log(hypothesis_id: String, location: String, message: String, data: Dictionary = {}) -> void:
 	if not DEBUG_UI_LAZY_LOG:
 		return
@@ -238,12 +240,12 @@ func unload_panel(panel_id: String) -> void:
 	var panel = _loaded_panels[panel_id]
 	if panel and is_instance_valid(panel):
 		# 发送关闭信号
-			if panel.has_signal("close_requested"):
-				panel.close_requested.emit()
-			elif panel.has_method("queue_free"):
-				panel.queue_free()
-			else:
-				panel.queue_free()
+		if panel.has_signal("close_requested"):
+			panel.close_requested.emit()
+		elif panel.has_method("queue_free"):
+			panel.queue_free()
+		else:
+			panel.queue_free()
 
 	_loaded_panels.erase(panel_id)
 	if DEBUG_UI_LAZY_LOG:

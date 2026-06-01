@@ -58,7 +58,6 @@ func _deferred_init() -> void:
 		return
 	_deferred_initialized = true
 	# 当前无额外初始化逻辑，保留此方法供后续扩展
-	print("[CardCollectionManager] 延迟初始化完成")
 
 ## 更新卡牌收集状态
 func update_card_status(card_id: String) -> void:

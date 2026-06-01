@@ -44,7 +44,6 @@ func _deferred_init() -> void:
 		return
 	_deferred_initialized = true
 	_load_statistics()
-	print("[StatisticsManager] 延迟初始化完成")
 
 ## 记录战斗开始
 func record_battle_start() -> void:

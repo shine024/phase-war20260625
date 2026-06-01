@@ -86,15 +86,15 @@ func _log_error(error_info: ErrorInfo) -> void:
 
 	match error_info.level:
 		ErrorLevel.INFO:
-			print(log_msg)
+			pass  # INFO 级别静默处理
 		ErrorLevel.WARNING:
 			push_warning(log_msg)
 		ErrorLevel.ERROR, ErrorLevel.CRITICAL:
 			push_error(log_msg)
 
 	# 如果有上下文，也记录
-	if not error_info.context.is_empty():
-		print("  上下文: %s" % error_info.context)
+	if not error_info.context.is_empty() and error_info.level >= ErrorLevel.WARNING:
+		push_warning("  上下文: %s" % error_info.context)
 
 func _show_user_notification(error_info: ErrorInfo) -> void:
 	# 只对WARNING及以上级别显示通知
@@ -113,7 +113,7 @@ func _show_user_notification(error_info: ErrorInfo) -> void:
 			"duration": 8.0 if error_info.level >= ErrorLevel.ERROR else 5.0
 		})
 	else:
-		print("[用户通知] %s" % user_msg)
+		push_warning("[用户通知] %s" % user_msg)
 
 func _get_user_friendly_message(error_info: ErrorInfo) -> String:
 	# 根据错误代码生成用户友好的消息

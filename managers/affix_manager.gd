@@ -1,5 +1,6 @@
 extends Node
-## 模块化词条管理器（原称 AffixManager）
+## 模块化词条管理器（代码内部沿用 AffixManager 类名以避免大面积重命名）
+## 设计文档中称为"模块化词条"，代码中 affix = 模块化词条（同义词）
 ## 全局自动加载节点，负责：
 ##   - 词条获取：卡牌升级到特定等级（Lv5/10/15/20/25）时触发强化
 ##   - 词条升级：强化时随机升级已有词条
@@ -7,17 +8,19 @@ extends Node
 ##   - 词条锁定：消耗锁定符锁定
 ##   - 词条存档/读档
 
+## [术语] affix = 模块化词条（同义词，设计文档用"模块化词条"）
 signal affix_changed(card_id: String)
 signal affix_acquired(card_id: String, affix: AffixResource)
 signal affix_upgraded(card_id: String, affix: AffixResource)
 signal affix_rerolled(card_id: String, slot_index: int)
 signal affix_locked(card_id: String, slot_index: int)
 
+## [术语] AffixDefs = 模块化词条定义表
 const AffixDefs = preload("res://data/affix_definitions.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 const GC = preload("res://resources/game_constants.gd")
 
-## affix_key → Array[AffixResource]（实例词条列表）
+## affix_key → Array[AffixResource]（模块化词条实例列表）
 ## key格式: "{card_id}_{affix_type}" (affix_type: 0=机体, 1=武器)
 var _card_affixes: Dictionary = {}
 
@@ -90,16 +93,16 @@ func get_affix_level(affix_key: String, affix_id: String) -> int:
 ## affix_type: 0=机体强化, 1=武器强化
 func on_card_level_up(card_id: String, new_level: int, affix_type: int) -> void:
 	var affix_key: String = _get_affix_key(card_id, affix_type)
-	
+
 	# 检查是否达到强化触发等级
 	var enhance_count: int = _get_enhance_count_for_level(new_level)
 	var current_count: int = get_affix_count(affix_key)
-	
+
 	# 如果达到了新的强化节点
 	if enhance_count > current_count and has_empty_affix_slot(affix_key):
 		# 执行强化：获得新词条
 		_enhance_card(card_id, affix_type, new_level)
-	
+
 	# 每次升级都有概率随机升级已有词条（即使是同等级强化）
 	_try_upgrade_existing_affixes(affix_key, affix_type)
 
@@ -151,17 +154,17 @@ func _enhance_card_for_star(card_id: String, affix_type: int, star: int, rarity:
 func _enhance_card(card_id: String, affix_type: int, card_level: int) -> void:
 	# 计算稀有度（基于等级）
 	var rarity: String = AffixDefs.roll_rarity_by_level(card_level)
-	
+
 	# 随机抽取词条ID（考虑已解锁的头目）
 	var affix_id: String = AffixDefs.roll_unlocked_affix_id(affix_type, rarity, _unlocked_bosses)
-	
+
 	# 如果随机失败，尝试从所有可用词条中抽取
 	if affix_id.is_empty():
 		affix_id = AffixDefs.roll_random_affix_id(affix_type, "")
-	
+
 	if affix_id.is_empty():
 		return
-	
+
 	# 添加新词条
 	var affix_key: String = _get_affix_key(card_id, affix_type)
 	_add_affix(affix_key, affix_id, rarity, 1)
@@ -178,10 +181,10 @@ func _try_upgrade_existing_affixes(affix_key: String, affix_type: int) -> void:
 		var affix: AffixResource = affixes[i] as AffixResource
 		if not affix.is_locked and affix.level < AffixDefs.MAX_AFFIX_LEVEL:
 			upgradeable.append(i)
-	
+
 	if upgradeable.is_empty():
 		return
-	
+
 	# 按概率升级
 	if randf() < AffixDefs.AFFIX_UPGRADE_CHANCE:
 		var idx: int = upgradeable[randi() % upgradeable.size()]
@@ -192,14 +195,14 @@ func _upgrade_affix_by_index(affix_key: String, slot_index: int) -> void:
 	var affixes: Array = _get_affix_array(affix_key)
 	if slot_index < 0 or slot_index >= affixes.size():
 		return
-	
+
 	var affix: AffixResource = affixes[slot_index] as AffixResource
 	if affix.is_locked or affix.level >= AffixDefs.MAX_AFFIX_LEVEL:
 		return
-	
+
 	affix.level += 1
 	affix.recalculate()
-	
+
 	# 检查变异
 	if affix.level >= 5 and not affix.is_mutated:
 		if randf() < AffixDefs.MUTATION_CHANCE:
@@ -207,7 +210,7 @@ func _upgrade_affix_by_index(affix_key: String, slot_index: int) -> void:
 			if not mut.is_empty():
 				affix.is_mutated = true
 				affix.mutation_description = mut
-	
+
 	emit_signal("affix_upgraded", affix_key, affix)
 	emit_signal("affix_changed", affix_key)
 
@@ -221,11 +224,11 @@ func reroll_affix(affix_key: String, slot_index: int) -> bool:
 	var affixes: Array = _get_affix_array(affix_key)
 	if slot_index < 0 or slot_index >= affixes.size():
 		return false
-	
+
 	var affix: AffixResource = affixes[slot_index] as AffixResource
 	if affix.is_locked:
 		return false
-	
+
 	# 从 affix_key 解析 card_id 和 affix_type
 	var parts: Array = affix_key.split("_")
 	if parts.size() < 2:
@@ -233,7 +236,7 @@ func reroll_affix(affix_key: String, slot_index: int) -> bool:
 	var card_id: String = parts[0]
 	var affix_type: int = int(parts[parts.size() - 1])
 	# 旧实现会基于等级重新 roll 稀有度；新方案为“同层池”，保持该词条当前稀有度不变
-	
+
 	# 消耗纳米材料
 	var cost: int = get_reroll_cost(slot_index)
 	var bm: Node = _get_root_node_or_null("BlueprintManager")
@@ -242,17 +245,17 @@ func reroll_affix(affix_key: String, slot_index: int) -> bool:
 	if int(bm.get_nano_materials()) < cost:
 		return false
 	bm.add_nano_materials(-cost)
-	
+
 	# 重新随机词条
 	var rarity: String = affix.rarity  # 同层池：保持不变
 	var new_affix_id: String = AffixDefs.roll_unlocked_affix_id(affix_type, rarity, _unlocked_bosses)
-	
+
 	if new_affix_id.is_empty():
 		new_affix_id = AffixDefs.roll_random_affix_id(affix_type, rarity)
-	
+
 	if new_affix_id.is_empty():
 		return false
-	
+
 	# 替换词条
 	affix.affix_id = new_affix_id
 	var def: Dictionary = AffixDefs.get_definition(new_affix_id)
@@ -267,7 +270,7 @@ func reroll_affix(affix_key: String, slot_index: int) -> bool:
 	affix.is_mutated = false
 	affix.mutation_description = ""
 	affix.recalculate()
-	
+
 	emit_signal("affix_rerolled", affix_key, slot_index)
 	emit_signal("affix_changed", affix_key)
 	return true
@@ -282,11 +285,11 @@ func can_reroll_affix(affix_key: String, slot_index: int) -> bool:
 	var affixes: Array = _get_affix_array(affix_key)
 	if slot_index < 0 or slot_index >= affixes.size():
 		return false
-	
+
 	var affix: AffixResource = affixes[slot_index] as AffixResource
 	if affix.is_locked:
 		return false
-	
+
 	var cost: int = get_reroll_cost(slot_index)
 	var bm: Node = _get_root_node_or_null("BlueprintManager")
 	if bm and bm.has_method("get_nano_materials"):
@@ -384,7 +387,7 @@ func lock_affix(affix_key: String, slot_index: int) -> bool:
 	var affixes: Array = _get_affix_array(affix_key)
 	if slot_index < 0 or slot_index >= affixes.size():
 		return false
-	
+
 	var affix: AffixResource = affixes[slot_index] as AffixResource
 	if affix.is_locked:
 		return true  # 已经锁定就算成功
@@ -399,7 +402,7 @@ func unlock_affix(affix_key: String, slot_index: int) -> bool:
 	var affixes: Array = _get_affix_array(affix_key)
 	if slot_index < 0 or slot_index >= affixes.size():
 		return false
-	
+
 	var affix: AffixResource = affixes[slot_index] as AffixResource
 	affix.is_locked = false
 	emit_signal("affix_changed", affix_key)
@@ -511,7 +514,7 @@ func save_state() -> Dictionary:
 func load_state(data: Dictionary) -> void:
 	_card_affixes.clear()
 	_unlocked_bosses = data.get("unlocked_bosses", []).duplicate()
-	
+
 	for affix_key in data.keys():
 		if affix_key == "unlocked_bosses":
 			continue
@@ -637,7 +640,7 @@ func _apply_card_affixes(stats: UnitStats, affix_key: String) -> void:
 				stats.shield_on_kill += val
 			"hp_regen":
 				stats.hp_regen += val
-		
+
 		# 标记变异词条
 		if affix.is_mutated:
 			_mark_mutation_on_stats(stats, affix.affix_id)

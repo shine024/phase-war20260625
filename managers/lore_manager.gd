@@ -1,6 +1,8 @@
 extends Node
 ## 情报库管理器：记录和管理玩家解锁的所有情报资料
 
+const DEBUG_LOG := false
+
 signal lore_unlocked(lore_id: String, lore_name: String)
 
 ## 情报数据库定义
@@ -139,7 +141,8 @@ func unlock_lore(lore_id: String) -> void:
 	unlocked_lore_ids.append(lore_id)
 	var lore_data = LORE_DATABASE[lore_id]
 	lore_unlocked.emit(lore_id, lore_data.get("name", lore_id))
-	print("[LoreManager] 解锁情报: ", lore_data.get("name", lore_id))
+	if DEBUG_LOG:
+		print("[LoreManager] 解锁情报: ", lore_data.get("name", lore_id))
 
 ## 检查情报是否已解锁
 func is_lore_unlocked(lore_id: String) -> bool:
@@ -209,4 +212,5 @@ func load_state(data: Dictionary) -> void:
 	for lore_id in saved_ids:
 		if LORE_DATABASE.has(lore_id):
 			unlocked_lore_ids.append(lore_id)
-	print("[LoreManager] 加载情报状态，已解锁: ", unlocked_lore_ids.size(), "/", LORE_DATABASE.size())
+	if DEBUG_LOG:
+		print("[LoreManager] 加载情报状态，已解锁: ", unlocked_lore_ids.size(), "/", LORE_DATABASE.size())

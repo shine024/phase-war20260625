@@ -24,7 +24,6 @@ func _deferred_init() -> void:
 		return
 	_deferred_initialized = true
 	_initialize_player_scores()
-	print("[LeaderboardManager] 延迟初始化完成")
 
 ## 初始化玩家分数
 func _initialize_player_scores() -> void:

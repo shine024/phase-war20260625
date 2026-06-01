@@ -351,7 +351,7 @@ func request_player_deploy(platform_card_id: String, world_pos: Vector2, battle_
 		_emit_deploy_failed("internal", "战斗已结束，无法部署。")
 		return false
 	if _player_units_node == null or _phase_instrument == null:
-		print("[BattleSpawnSystem] 部署失败: 节点未初始化 (player_units=%s, phase_instrument=%s)" % [_player_units_node != null, _phase_instrument != null])
+		push_warning("[BattleSpawnSystem] 部署失败: 节点未初始化 (player_units=%s, phase_instrument=%s)" % [_player_units_node != null, _phase_instrument != null])
 		_emit_deploy_failed("internal", "当前无法部署。")
 		return false
 	# 使用相位仪的绿色槽位数量作为单位上限
@@ -461,7 +461,6 @@ func clear_preview_units() -> void:
 				if u.has_method("set_physics_process"):
 					u.set_physics_process(false)
 				u.queue_free()
-				print("[BattleSpawnSystem] 清理预览单位")
 
 # =========================================================================
 #  单位清理

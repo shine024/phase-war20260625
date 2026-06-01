@@ -31,6 +31,3 @@ func _log_sample() -> void:
 			"[BattlePerfMon] FPS=%.1f | process_ms=%.2f physics_ms=%.2f | draw_calls=%.0f primitives=%.0f objects=%.0f"
 			% [fps, proc_ms, phys_ms, draw, prim, obj_n]
 		)
-		print(
-			"[BattlePerfMon] 建议在编辑器中同时打开「调试器 → 分析器」查看 Script Functions 累计时间前项。"
-		)

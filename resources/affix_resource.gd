@@ -1,6 +1,6 @@
 extends Resource
 class_name AffixResource
-## 模块化词条资源（原称"词缀/附魔"）
+## 模块化词条资源（affix = 模块化词条，同义词）
 ## 提供战斗内被动效果：暴击、吸血、溅射、护盾等
 ## 与改造(MOD)系统共存
 

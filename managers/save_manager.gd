@@ -294,7 +294,7 @@ func _current_temp_file() -> String:
 func set_slot(slot: int) -> void:
 	current_slot = clampi(slot, 1, MAX_SLOTS)
 	if DEBUG_SAVE_LOG:
-		print("[SaveManager] 切换到存档位 %d" % current_slot)
+		pass  # LOG: 切换到存档位
 
 ## 获取当前存档位
 func get_slot() -> int:
@@ -363,7 +363,7 @@ func _migrate_old_save_if_needed() -> void:
 		new_f.close()
 		_slot_info_cache_valid = false
 		if DEBUG_SAVE_LOG:
-			print("[SaveManager] 已迁移旧存档 save.json → save_slot_1.json")
+			pass  # LOG: 已迁移旧存档
 
 func _resolve_read_save_path() -> String:
 	# 优先当前存档位
@@ -412,7 +412,7 @@ func _backup_current_save() -> void:
 	else:
 		_last_backup_ms = now_ms
 		if DEBUG_SAVE_LOG:
-			print("[SaveManager] 已创建存档备份: %s" % backup)
+			pass  # LOG: 已创建存档备份
 
 func _schedule_deferred_save() -> void:
 	if _save_deferred_pending:
@@ -643,7 +643,7 @@ func save_game() -> bool:
 				if cleanup_dir != null and cleanup_dir.file_exists(tmp_n):
 					cleanup_dir.remove(tmp_n)
 				if DEBUG_SAVE_LOG:
-					print("[SaveManager] rename失败，已使用临时存档直写恢复")
+					pass  # LOG: rename失败，已使用临时存档直写恢复
 				_is_saving = false
 				return true
 			push_error("[SaveManager] 临时存档读取失败，无法直写恢复: %s" % [{
@@ -658,14 +658,14 @@ func save_game() -> bool:
 		if FileAccess.file_exists(prior_name_rollback):
 			if dir_swap.rename(prior_name_rollback, main_name_rollback) == OK:
 				if DEBUG_SAVE_LOG:
-					print("[SaveManager] 已从 prior 恢复 save.json（替换失败回滚）")
+					pass  # LOG: 已从 prior 恢复
 		var toast_mgr_err3 = get_node_or_null("/root/ToastManager")
 		if not _is_exiting and toast_mgr_err3 and toast_mgr_err3.has_method("show_error"):
 			toast_mgr_err3.show_error("存档保存失败！")
 		_is_saving = false
 		return false
 	if DEBUG_SAVE_LOG:
-		print("[SaveManager] 已保存到: ", _current_save_file())
+		pass  # LOG: 已保存到
 	# 显示成功Toast
 	var toast_mgr = get_node_or_null("/root/ToastManager")
 	if not _is_exiting and toast_mgr and toast_mgr.has_method("show_success"):
@@ -715,7 +715,7 @@ func start_new_game() -> void:
 	_perf_phase_begin("start_new_game")
 	_start_new_game_perf_pending = true
 	if DEBUG_SAVE_LOG:
-		print("[SaveManager] 开始新游戏，重置所有管理器...")
+		pass  # LOG: 开始新游戏，重置所有管理器
 	# 关键管理器同步重置；其余管理器分批 deferred 重置，降低按钮点击同帧阻塞。
 	for manager_name in CRITICAL_RESETTABLE_MANAGERS:
 		_reset_manager_by_name(manager_name)
@@ -737,7 +737,7 @@ func start_new_game() -> void:
 	# 新存档初始背包：全装型战斗卡 ×1，2星能量卡 ×2
 	_enqueue_starter_backpack_cards()
 	if DEBUG_SAVE_LOG:
-		print("[SaveManager] 新游戏已准备完毕")
+		pass  # LOG: 新游戏已准备完毕
 	if _deferred_reset_queue.is_empty() and _start_new_game_perf_pending:
 		_start_new_game_perf_pending = false
 		_perf_phase_end("start_new_game")
@@ -755,7 +755,7 @@ func load_game() -> bool:
 		var backup := _current_backup_file()
 		if FileAccess.file_exists(backup):
 			if DEBUG_SAVE_LOG:
-				print("[SaveManager] 主存档不存在，尝试从备份恢复")
+				pass  # LOG: 主存档不存在，尝试从备份恢复
 			return _load_from_path(backup)
 		_finalize_load_game_perf_on_fail()
 		return false
@@ -766,7 +766,7 @@ func load_game() -> bool:
 		var backup := _current_backup_file()
 		if FileAccess.file_exists(backup):
 			if DEBUG_SAVE_LOG:
-				print("[SaveManager] 主存档损坏，尝试从备份恢复")
+				pass  # LOG: 主存档损坏，尝试从备份恢复
 			return _load_from_path(backup)
 		_finalize_load_game_perf_on_fail()
 		return false
@@ -913,7 +913,7 @@ func _load_from_path(path: String) -> bool:
 			pm.sync_law_slots_to_plm_if_has_law_cards()
 
 	if DEBUG_SAVE_LOG:
-		print("[SaveManager] 已加载存档: %s" % path)
+		pass  # LOG: 已加载存档
 	return true
 
 ## 安全加载管理器数据（类型检查+错误日志）
