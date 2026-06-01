@@ -543,6 +543,19 @@ func _restore_compact_slot_structure(icon_row: Control) -> void:
 		_apply_icon_texture_rect_fixed(icon, CARD_LIST_ICON_DISPLAY_MIN)
 
 
+## 清理 icon_row 中的所有动态创建的子节点，避免新旧UI结构叠加
+func _cleanup_icon_row_children(icon_row: Control) -> void:
+	if icon_row == null:
+		return
+	# 查找并移除动态创建的节点（CompactArtClip, CompactTextVBox, MtgArtClip 等）
+	var dynamic_nodes = ["CompactArtClip", "CompactTextVBox", "MtgArtClip", "MtgHeader", "MtgStarsRow"]
+	for node_name in dynamic_nodes:
+		var node = icon_row.get_node_or_null(node_name)
+		if node and is_instance_valid(node):
+			icon_row.remove_child(node)
+			node.queue_free()
+
+
 func _ensure_compact_slot_structure(icon_row: Control, name_label: Label, cost_label: Label) -> void:
 	if icon_row == null or name_label == null or cost_label == null:
 		return
@@ -551,8 +564,14 @@ func _ensure_compact_slot_structure(icon_row: Control, name_label: Label, cost_l
 	if icon_row.get_node_or_null("CompactArtClip") != null:
 		icon_row.set_meta("_compact_slot_built", true)
 		return
+	
+	# 修复两层面板问题：在创建新结构之前，完全清理icon_row中的所有子节点
+	# 避免新旧UI结构叠加
+	_cleanup_icon_row_children(icon_row)
+	
 	if icon_row.get_meta("_mtg_preview_built", false):
 		_restore_icon_row_from_mtg_preview(icon_row)
+	
 	var icon: TextureRect = icon_row.find_child("Icon", true, false) as TextureRect
 	if icon == null:
 		return

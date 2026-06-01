@@ -17,6 +17,8 @@ func _on_unit_selected(unit: Node, is_player: bool, at_position: Vector2 = Vecto
 		BattleInputState.current_selected_unit = unit
 	# 先隐藏全局 CardInfoPanel 单例（防止悬停残留）
 	_dismiss_global_card_info_panel()
+	# 隐藏背包的 CardDetailPopup（防止与全局面板同时显示）
+	_dismiss_backpack_card_detail()
 	# 获取全局 CardInfoPanel（挂在 InfoPanelLayer layer=90，不被 HUD 遮挡）
 	var info_panel: Control = NodeFinder.get_card_info_panel()
 	if info_panel == null:
@@ -36,3 +38,9 @@ func _dismiss_global_card_info_panel() -> void:
 	var info_panel: Control = NodeFinder.get_card_info_panel()
 	if info_panel != null and info_panel.has_method("hide_panel"):
 		info_panel.hide_panel()
+
+## 隐藏背包的 CardDetailPopup
+func _dismiss_backpack_card_detail() -> void:
+	var backpack_panel = NodeFinder.get_backpack_panel()
+	if backpack_panel and backpack_panel.has_method("hide_card_detail"):
+		backpack_panel.hide_card_detail()

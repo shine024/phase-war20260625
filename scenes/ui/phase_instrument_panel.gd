@@ -226,6 +226,10 @@ func _on_slot_unequip_requested(slot_index: int) -> void:
 func _show_slot_card_detail(card: CardResource) -> void:
 	if card == null:
 		return
+	# 先隐藏背包的 CardDetailPopup（防止与全局面板同时显示）
+	var backpack_panel = NodeFinder.get_backpack_panel()
+	if backpack_panel and backpack_panel.has_method("hide_card_detail"):
+		backpack_panel.hide_card_detail()
 	# 使用全局 CardInfoPanel（挂在 InfoPanelLayer layer=90，不被 HUD 遮挡）
 	var info_panel: Control = NodeFinder.get_card_info_panel() as Control
 	if info_panel == null:

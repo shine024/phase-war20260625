@@ -95,13 +95,9 @@ func _ready() -> void:
 	if close_btn:
 		close_btn.pressed.connect(_on_close)
 
-	# 连接详情弹窗关闭按钮
+	# 初始化详情弹窗（信号连接延迟到首次显示时）
 	var popup = get_node_or_null("CardDetailPopup")
 	if popup:
-		var btn = popup.get_node_or_null("Margin/VBox/CloseButton")
-		if btn:
-			btn.pressed.connect(_on_detail_close)
-		# 在 CardDetailPopup 中嵌入统一的情报面板
 		_init_detail_info_panel(popup)
 
 	# 创建网格加载指示器（不加入场景树，需要时动态插入 CardGrid）
@@ -318,6 +314,11 @@ func show_card_detail(card: CardResource, _source_item: Control) -> void:
 	if popup == null or _detail_info_panel == null:
 		return
 
+	# 先隐藏全局 CardInfoPanel（防止与背包弹窗中的面板同时显示）
+	var global_info_panel = NodeFinder.get_card_info_panel()
+	if global_info_panel and global_info_panel.has_method("hide_panel"):
+		global_info_panel.hide_panel()
+
 	# 清理旧版手动词条区（AffixSep / AffixBox），统一面板已在 desc_label 中包含词条
 	_cleanup_legacy_popup_affixes(popup)
 
@@ -328,17 +329,17 @@ func show_card_detail(card: CardResource, _source_item: Control) -> void:
 	if not _detail_info_panel.action_requested.is_connected(_on_detail_action_requested):
 		_detail_info_panel.action_requested.connect(_on_detail_action_requested)
 
-	# 使用统一情报面板显示卡牌信息
+	# 使用统一情报面板显示卡牌信息（show_card_info 内部已设置 visible = true）
 	if _detail_info_panel.has_method("show_card_info"):
 		_detail_info_panel.show_card_info(card)
-	_detail_info_panel.visible = true
 
 	# 显示 CloseButton（.tscn 中定义，关闭弹窗用）
 	var close_btn: Button = popup.get_node_or_null("Margin/VBox/CloseButton") as Button
 	if close_btn:
 		close_btn.visible = true
-		if not close_btn.pressed.is_connected(popup.hide):
-			close_btn.pressed.connect(popup.hide)
+		# 连接关闭按钮（只连接一次，连接到 _on_detail_close 以确保正确清理）
+		if not close_btn.pressed.is_connected(_on_detail_close):
+			close_btn.pressed.connect(_on_detail_close)
 
 	# 弹窗大小已由 .tscn 设定（340×460）
 	popup.popup_centered()
