@@ -14,7 +14,7 @@ corner_radius_top_left = 8
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
-shadow_color = Color(0, 0.941, 1, 0.2)
+shadow_color = Color(0, 0, 941, 1, 0.2)
 shadow_size = 10
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slot"]
@@ -108,7 +108,17 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 1)
 theme_override_styles/panel = SubResource("StyleBoxFlat_title_sep")
 
-[node name="ScrollContainer" type="ScrollContainer" parent="VBoxOuter"]
+[node name="TabContainer" type="TabContainer" parent="VBoxOuter"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="CombatCardsTab" type="Control" parent="VBoxOuter/TabContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ScrollContainer" type="ScrollContainer" parent="VBoxOuter/TabContainer/CombatCardsTab"]
 clip_contents = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -117,11 +127,74 @@ horizontal_scroll_mode = 0
 vertical_scroll_mode = 2
 follow_focus = false
 
-[node name="CardGrid" type="GridContainer" parent="VBoxOuter/ScrollContainer"]
+[node name="CardGrid" type="GridContainer" parent="VBoxOuter/TabContainer/CombatCardsTab/ScrollContainer"]
 layout_mode = 2
 custom_minimum_size = Vector2(0, 0)
 size_flags_horizontal = 3
 size_flags_vertical = 0
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+columns = 17
+
+[node name="ResourcesTab" type="Control" parent="VBoxOuter/TabContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ResourcesScroll" type="ScrollContainer" parent="VBoxOuter/TabContainer/ResourcesTab"]
+clip_contents = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 2
+
+[node name="ResourcesGrid" type="GridContainer" parent="VBoxOuter/TabContainer/ResourcesTab/ResourcesScroll"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 0)
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+columns = 17
+
+[node name="IntelTab" type="Control" parent="VBoxOuter/TabContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="IntelScroll" type="ScrollContainer" parent="VBoxOuter/TabContainer/IntelTab"]
+clip_contents = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 2
+
+[node name="IntelGrid" type="GridContainer" parent="VBoxOuter/TabContainer/IntelTab/IntelScroll"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 0)
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+columns = 17
+
+[node name="StatBoostsTab" type="Control" parent="VBoxOuter/TabContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="StatBoostsScroll" type="ScrollContainer" parent="VBoxOuter/TabContainer/StatBoostsTab"]
+clip_contents = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 2
+
+[node name="StatBoostsGrid" type="GridContainer" parent="VBoxOuter/TabContainer/StatBoostsTab/StatBoostsScroll"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 0)
+size_flags_horizontal = 3
 theme_override_constants/h_separation = 6
 theme_override_constants/v_separation = 6
 columns = 17

@@ -23,6 +23,9 @@ const GC = preload("res://resources/game_constants.gd")
 @export var summary_line: String = ""   # 上半行数值摘要：如"攻击 14｜射程 长｜耐久 110"
 @export var flavor_text: String = ""    # 斜体风味文字
 
+## v6.0: 标签系统（用于分类和筛选）
+@export var tags: Array[String] = []    # 卡片标签：如["步兵", "反坦克", "突击"]
+
 # ─────────────────────────────────────────────
 #  战斗卡专用字段（card_type == COMBAT_UNIT）
 # ─────────────────────────────────────────────

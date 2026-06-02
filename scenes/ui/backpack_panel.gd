@@ -3,6 +3,12 @@ extends PanelContainer
 ## 负责所有 UI 渲染和用户输入转发。
 ## 业务逻辑已拆分到 BackpackPresenter，数据管理已拆分到 BackpackData。
 ##
+## v6.0 新增：标签页功能
+## - 战斗卡标签：显示所有战斗单位卡片
+## - 资源标签：显示基础资源
+## - 情报标签：显示情报页
+## - 属性提升标签：显示属性提升道具
+##
 ## 设计文档：背包 MVP 架构重构（MVP 模式拆分）
 ## 职责：
 ##   - 渲染卡片网格、详情弹窗
@@ -51,10 +57,27 @@ const BACKPACK_GRID_COLUMNS: int = (BACKPACK_PANEL_DESIGN_WIDTH + BACKPACK_GRID_
 var _presenter: BackpackPresenter = null
 var _data: BackpackData = null
 
+## 标签页容器
+@onready var _tab_container: TabContainer = $VBoxOuter/TabContainer
+
 ## 内嵌滚动容器（用于程序化滚动定位）
-@onready var _scroll: ScrollContainer = $VBoxOuter/ScrollContainer
+@onready var _scroll: ScrollContainer = $VBoxOuter/TabContainer/CombatCardsTab/ScrollContainer
+
+## 各标签页的Grid引用
+var _combat_cards_grid: GridContainer = null
+var _resources_grid: GridContainer = null
+var _intel_grid: GridContainer = null
+var _stat_boosts_grid: GridContainer = null
 
 ## 相位仪快捷栏已移除（不再在背包内显示）
+
+## 标签页索引枚举
+enum TabIndex {
+	COMBAT_CARDS = 0,
+	RESOURCES = 1,
+	INTEL = 2,
+	STAT_BOOSTS = 3,
+}
 
 ## 全量重建排到 idle 再执行：在背包卡 item 的 gui_input / 拖拽 / 装备信号栈内不能对其 free()，否则会报 Object is locked
 var _rebuild_grid_snapshot: Array = []
@@ -77,10 +100,22 @@ func _ready() -> void:
 	_filter_sort = FilterSortSub.new()
 	_filter_sort.setup(self)
 	add_to_group("backpack_panel")
+
+	# 初始化各标签页Grid引用
+	_combat_cards_grid = get_node_or_null("VBoxOuter/TabContainer/CombatCardsTab/ScrollContainer/CardGrid") as GridContainer
+	_resources_grid = get_node_or_null("VBoxOuter/TabContainer/ResourcesTab/ResourcesScroll/ResourcesGrid") as GridContainer
+	_intel_grid = get_node_or_null("VBoxOuter/TabContainer/IntelTab/IntelScroll/IntelGrid") as GridContainer
+	_stat_boosts_grid = get_node_or_null("VBoxOuter/TabContainer/StatBoostsTab/StatBoostsScroll/StatBoostsGrid") as GridContainer
+
 	# 必须先锁定列数再 setup（setup 会立刻 rebuild，不能在 rebuild 之后才设 columns）
-	var grid := get_node_or_null("VBoxOuter/ScrollContainer/CardGrid") as GridContainer
-	if grid:
-		_apply_backpack_grid_layout(grid)
+	if _combat_cards_grid:
+		_apply_backpack_grid_layout(_combat_cards_grid)
+	if _resources_grid:
+		_apply_backpack_grid_layout(_resources_grid)
+	if _intel_grid:
+		_apply_backpack_grid_layout(_intel_grid)
+	if _stat_boosts_grid:
+		_apply_backpack_grid_layout(_stat_boosts_grid)
 
 	# 初始化 MVP
 	_data = BackpackData.new()
@@ -94,6 +129,14 @@ func _ready() -> void:
 	var close_btn = get_node_or_null("VBoxOuter/TitleRow/CloseButton")
 	if close_btn:
 		close_btn.pressed.connect(_on_close)
+
+	# 设置标签页标题
+	if _tab_container:
+		_tab_container.set_tab_title(TabIndex.COMBAT_CARDS, "战斗卡")
+		_tab_container.set_tab_title(TabIndex.RESOURCES, "资源")
+		_tab_container.set_tab_title(TabIndex.INTEL, "情报")
+		_tab_container.set_tab_title(TabIndex.STAT_BOOSTS, "属性提升")
+		_tab_container.tab_changed.connect(_on_tab_changed)
 
 	# 初始化详情弹窗（信号连接延迟到首次显示时）
 	var popup = get_node_or_null("CardDetailPopup")
@@ -119,6 +162,26 @@ func _exit_tree() -> void:
 		_presenter.cleanup()
 		_presenter = null
 	_data = null
+
+## ============================================================
+## 标签页事件处理
+## ============================================================
+
+## 标签页切换事件
+func _on_tab_changed(tab_index: int) -> void:
+	match tab_index:
+		TabIndex.COMBAT_CARDS:
+			# 战斗卡标签页切换时刷新（如有需要）
+			pass
+		TabIndex.RESOURCES:
+			# 资源标签页切换时刷新（如有需要）
+			pass
+		TabIndex.INTEL:
+			# 情报标签页切换时刷新
+			refresh_intel_tab()
+		TabIndex.STAT_BOOSTS:
+			# 属性提升标签页切换时刷新
+			refresh_stat_boosts_tab()
 
 ## ============================================================
 ## 公共接口（向后兼容）
@@ -189,7 +252,7 @@ func _flush_rebuild_card_grid() -> void:
 		return
 	var cards: Array = _rebuild_grid_snapshot.duplicate()
 	_rebuild_grid_snapshot.clear()
-	var grid = get_node_or_null("VBoxOuter/ScrollContainer/CardGrid") as GridContainer
+	var grid = _combat_cards_grid
 	if grid == null:
 		return
 	_apply_backpack_grid_layout(grid)
@@ -212,25 +275,25 @@ func _flush_rebuild_card_grid() -> void:
 				_empty_slot_pool.append(child)
 			else:
 				child.free()
-	# 全量重建后重置增量签名，避免后续刷新因“签名未变”而误跳过重建。
+	# 全量重建后重置增量签名，避免后续刷新因"签名未变"而误跳过重建。
 	_last_lore_signature = ""
 	_last_stat_boost_signature = ""
 	# 基础资源不在背包网格展示（见左上角资源面板等）；此处仅卡牌 + 空位，情报/属性由 refresh_* 增量维护。
 	for card in cards:
 		if card is CardResource:
 			_add_card_item(grid, card)
-	_ensure_min_card_slots()
-	_sync_card_grid_scroll_size()
+	_ensure_min_card_slots(grid)
+	_sync_card_grid_scroll_size(grid)
 	_hide_loading_indicator()
 
 ## 添加单张卡到网格末尾或顶部
 func add_card(card: CardResource, at_top: bool = false) -> void:
-	var grid = get_node_or_null("VBoxOuter/ScrollContainer/CardGrid") as GridContainer
+	var grid = _combat_cards_grid
 	if grid == null:
 		return
 	_apply_backpack_grid_layout(grid)
 	_add_card_item(grid, card, at_top)
-	_ensure_min_card_slots()
+	_ensure_min_card_slots(grid)
 	_schedule_sync_card_grid_scroll_size()
 	# 滚动到新卡位置
 	if get_tree():
@@ -249,7 +312,7 @@ func add_card(card: CardResource, at_top: bool = false) -> void:
 func remove_last_card_by_id(card_id: String) -> bool:
 	if card_id.is_empty():
 		return false
-	var grid = get_node_or_null("VBoxOuter/ScrollContainer/CardGrid") as GridContainer
+	var grid = _combat_cards_grid
 	if grid == null:
 		return false
 	var target: Node = null
@@ -270,13 +333,13 @@ func remove_last_card_by_id(card_id: String) -> bool:
 	if target.has_signal("card_clicked") and target.card_clicked.is_connected(_on_card_clicked):
 		target.card_clicked.disconnect(_on_card_clicked)
 	_card_item_pool.append(target)
-	_ensure_min_card_slots()
+	_ensure_min_card_slots(grid)
 	_schedule_sync_card_grid_scroll_size()
 	return true
 
 ## 高亮最后一个匹配 card_id 的卡
 func highlight_last_card_by_id(card_id: String) -> void:
-	var grid = get_node_or_null("VBoxOuter/ScrollContainer/CardGrid")
+	var grid = _combat_cards_grid
 	if grid == null:
 		return
 	var target: Control = null
@@ -292,7 +355,7 @@ func highlight_last_card_by_id(card_id: String) -> void:
 
 ## 将顶级能量卡移动到网格最前面
 func pin_top_energy_to_front() -> void:
-	var grid = get_node_or_null("VBoxOuter/ScrollContainer/CardGrid") as GridContainer
+	var grid = _combat_cards_grid
 	if grid == null:
 		return
 	_apply_backpack_grid_layout(grid)
@@ -381,7 +444,9 @@ static func open_card_detail(card: CardResource, source_item: Control = null) ->
 
 ## 发射关闭信号
 func emit_closed() -> void:
-	closed.emit()## 按稀有度过滤可见性（委托 → BackpackFilterSort）
+	closed.emit()
+
+## 按稀有度过滤可见性（委托 → BackpackFilterSort）
 func apply_rarity_filter(rarity: String) -> void:
 	if _filter_sort:
 		_filter_sort.apply_rarity_filter(rarity)
@@ -391,15 +456,20 @@ func reset_visibility() -> void:
 	if _filter_sort:
 		_filter_sort.reset_visibility()
 
-## 刷新情报页显示
-func refresh_lore_pages() -> void:
-	var grid = get_node_or_null("VBoxOuter/ScrollContainer/CardGrid") as GridContainer
-	if grid == null:
+## ============================================================
+## 标签页刷新方法
+## ============================================================
+
+## 刷新情报标签页
+func refresh_intel_tab() -> void:
+	if _intel_grid == null:
 		return
-	_apply_backpack_grid_layout(grid)
+	_apply_backpack_grid_layout(_intel_grid)
 	var lm = get_node_or_null("/root/LoreManager")
 	if lm == null or not lm.has_method("get_unlocked_lore"):
+		_add_intel_placeholder(_intel_grid, "情报系统未初始化")
 		return
+
 	var unlocked_lore: Array[Dictionary] = lm.get_unlocked_lore()
 	var target_ids: Array[String] = []
 	for lore_data in unlocked_lore:
@@ -409,41 +479,50 @@ func refresh_lore_pages() -> void:
 	var lore_signature := "|".join(target_ids)
 	if lore_signature == _last_lore_signature:
 		return
-	var existing_by_id: Dictionary = {}
-	for child in grid.get_children():
-		if child.has_meta("is_lore_page") and child.get_meta("is_lore_page"):
-			var lore_id_existing: String = str(child.get_meta("lore_id", ""))
-			if lore_id_existing.is_empty():
-				continue
-			existing_by_id[lore_id_existing] = child
-	var target_set: Dictionary = {}
-	for lore_id in target_ids:
-		target_set[lore_id] = true
-	# 移除已失效项
-	for lore_id_existing in existing_by_id.keys():
-		if target_set.has(lore_id_existing):
-			continue
-		var stale_item: Node = existing_by_id[lore_id_existing]
-		if stale_item != null and is_instance_valid(stale_item):
-			grid.remove_child(stale_item)
-			_lore_slot_pool.append(stale_item)
-	# 补齐新增项
-	for lore_id in target_ids:
-		if existing_by_id.has(lore_id):
-			continue
-		_add_lore_page_item(grid, lore_id)
-	_last_lore_signature = lore_signature
-	_schedule_sync_card_grid_scroll_size()
 
-## 刷新属性提升显示
-func refresh_stat_boosts() -> void:
-	var grid = get_node_or_null("VBoxOuter/ScrollContainer/CardGrid") as GridContainer
-	if grid == null:
+	# 清空现有内容
+	for child in _intel_grid.get_children():
+		child.queue_free()
+
+	if unlocked_lore.is_empty():
+		_add_intel_placeholder(_intel_grid, "暂无已解锁情报\n（战斗掉落情报页后显示于此）")
+		_last_lore_signature = lore_signature
 		return
-	_apply_backpack_grid_layout(grid)
+
+	# 添加情报页
+	for lore_data in unlocked_lore:
+		var lore_id: String = str(lore_data.get("id", ""))
+		_add_intel_item(_intel_grid, lore_id)
+
+	_last_lore_signature = lore_signature
+	_schedule_sync_card_grid_scroll_size_for_grid(_intel_grid)
+
+func _add_intel_placeholder(grid: GridContainer, message: String) -> void:
+	var lbl := Label.new()
+	lbl.text = message
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.add_theme_color_override("font_color", Color(0.55, 0.6, 0.7, 0.9))
+	grid.add_child(lbl)
+
+func _add_intel_item(grid: GridContainer, lore_id: String) -> void:
+	var item = ResourceSlotScene.instantiate()
+	if item == null:
+		return
+	grid.add_child(item)
+	if item.has_method("set_data"):
+		item.set_data(lore_id, 1, ResourceSlotItem.SlotType.LORE)
+
+## 刷新属性提升标签页
+func refresh_stat_boosts_tab() -> void:
+	if _stat_boosts_grid == null:
+		return
+	_apply_backpack_grid_layout(_stat_boosts_grid)
 	var sbm = get_node_or_null("/root/StatBoostManager")
 	if sbm == null or not sbm.has_method("get_all_boosts"):
+		_add_stat_boosts_placeholder(_stat_boosts_grid, "属性提升系统未初始化")
 		return
+
 	var boosts: Array[Dictionary] = sbm.get_all_boosts()
 	var target_counts: Dictionary = {}
 	var signature_parts: Array[String] = []
@@ -458,32 +537,47 @@ func refresh_stat_boosts() -> void:
 	var stat_signature := "|".join(signature_parts)
 	if stat_signature == _last_stat_boost_signature:
 		return
-	var existing_by_id: Dictionary = {}
-	for child in grid.get_children():
-		if child.has_meta("is_stat_boost") and child.get_meta("is_stat_boost"):
-			var boost_id_existing: String = str(child.get_meta("boost_id", ""))
-			if boost_id_existing.is_empty():
-				continue
-			existing_by_id[boost_id_existing] = child
-	# 移除已失效项
-	for boost_id_existing in existing_by_id.keys():
-		if target_counts.has(boost_id_existing):
-			continue
-		var stale_item: Node = existing_by_id[boost_id_existing]
-		if stale_item != null and is_instance_valid(stale_item):
-			grid.remove_child(stale_item)
-			_stat_boost_slot_pool.append(stale_item)
-	# 增量更新/新增
+
+	# 清空现有内容
+	for child in _stat_boosts_grid.get_children():
+		child.queue_free()
+
+	if target_counts.is_empty():
+		_add_stat_boosts_placeholder(_stat_boosts_grid, "暂无属性提升")
+		_last_stat_boost_signature = stat_signature
+		return
+
+	# 添加属性提升项
 	for boost_id in target_counts.keys():
 		var count: int = int(target_counts[boost_id])
-		if existing_by_id.has(boost_id):
-			var existing_item: Node = existing_by_id[boost_id]
-			if existing_item != null and is_instance_valid(existing_item) and existing_item.has_method("set_data"):
-				existing_item.set_data(boost_id, count, ResourceSlotItem.SlotType.STAT_BOOST)
-			continue
-		_add_stat_boost_item(grid, boost_id, count)
+		_add_stat_boost_item(_stat_boosts_grid, boost_id, count)
+
 	_last_stat_boost_signature = stat_signature
-	_schedule_sync_card_grid_scroll_size()
+	_schedule_sync_card_grid_scroll_size_for_grid(_stat_boosts_grid)
+
+func _add_stat_boosts_placeholder(grid: GridContainer, message: String) -> void:
+	var lbl := Label.new()
+	lbl.text = message
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.add_theme_color_override("font_color", Color(0.55, 0.6, 0.7, 0.9))
+	grid.add_child(lbl)
+
+## ============================================================
+## 向后兼容方法（已废弃，保留以避免破坏现有调用）
+## ============================================================
+
+## 刷新情报页显示（废弃：使用 refresh_intel_tab 代替）
+func refresh_lore_pages() -> void:
+	# 如果当前在情报标签页，则刷新
+	if _tab_container and _tab_container.current_tab == TabIndex.INTEL:
+		refresh_intel_tab()
+
+## 刷新属性提升显示（废弃：使用 refresh_stat_boosts_tab 代替）
+func refresh_stat_boosts() -> void:
+	# 如果当前在属性提升标签页，则刷新
+	if _tab_container and _tab_container.current_tab == TabIndex.STAT_BOOSTS:
+		refresh_stat_boosts_tab()
 
 ## ============================================================
 ## UI 事件回调（转发给 Presenter）
@@ -513,11 +607,11 @@ func on_overlay_opened() -> void:
 	if _presenter and _presenter.has_method("on_overlay_opened"):
 		_presenter.on_overlay_opened()
 
-func _refresh_aux_sections_after_open() -> void:
+	func _refresh_aux_sections_after_open() -> void:
 	if not is_visible_in_tree():
 		return
-	refresh_lore_pages()
-	refresh_stat_boosts()
+	refresh_intel_tab()
+	refresh_stat_boosts_tab()
 
 ## ============================================================
 ## 内部 UI 方法
@@ -562,8 +656,7 @@ func _highlight_card_item(item: Control) -> void:
 	t.tween_property(item, "modulate", Color(0.4, 1.0, 0.9, 1.0), 0.0)
 	t.tween_property(item, "modulate", Color(1, 1, 1, 1), 0.5).set_ease(Tween.EASE_OUT)
 
-func _ensure_min_card_slots() -> void:
-	var grid = get_node_or_null("VBoxOuter/ScrollContainer/CardGrid") as GridContainer
+func _ensure_min_card_slots(grid: GridContainer) -> void:
 	if grid == null:
 		return
 	var card_count := 0
@@ -607,8 +700,15 @@ func _schedule_sync_card_grid_scroll_size() -> void:
 		return
 	call_deferred("_sync_card_grid_scroll_size")
 
+func _schedule_sync_card_grid_scroll_size_for_grid(grid: GridContainer) -> void:
+	if not is_inside_tree():
+		return
+	call_deferred("_sync_card_grid_scroll_size_for_grid", grid)
+
 func _sync_card_grid_scroll_size() -> void:
-	var grid := get_node_or_null("VBoxOuter/ScrollContainer/CardGrid") as GridContainer
+	_sync_card_grid_scroll_size_for_grid(_combat_cards_grid)
+
+func _sync_card_grid_scroll_size_for_grid(grid: GridContainer) -> void:
 	if grid == null or not is_instance_valid(grid):
 		return
 	grid.update_minimum_size()
@@ -644,7 +744,7 @@ func _setup_drag_through_support() -> void:
 func _show_loading_indicator() -> void:
 	if not _loading_label or not is_instance_valid(_loading_label):
 		return
-	var grid = get_node_or_null("VBoxOuter/ScrollContainer/CardGrid") as GridContainer
+	var grid = _combat_cards_grid
 	if grid == null:
 		return
 	if _loading_label.get_parent() != grid:

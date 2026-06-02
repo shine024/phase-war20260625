@@ -19,6 +19,7 @@ class_name UnitLineageConfig
 
 const DefaultCards = preload("res://data/default_cards.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
+const EvolutionPathsSupplement = preload("res://data/evolution_paths_supplement.gd")
 
 const DEFAULT_INHERIT_RATIO: float = 0.30
 
@@ -481,6 +482,61 @@ const LINEAGES: Dictionary = {
 }
 
 ## ═══════════════════════════════════════════════════════════
+## v6.0 补充配置合并
+## ═══════════════════════════════════════════════════════════
+
+## 合并后的完整进化路径配置（包含补充配置）
+static var _merged_lineages: Dictionary = {}
+static var _lineages_initialized: bool = false
+
+## 初始化合并配置
+static func _initialize_merged_lineages() -> void:
+	if _lineages_initialized:
+		return
+
+	_merged_lineages = LINEAGES.duplicate(true)
+
+	# 合并补充配置
+	var supplement = EvolutionPathsSupplement.get_supplementary_lineages()
+	for card_id in supplement.keys():
+		var supp_cfg = supplement[card_id]
+		if _merged_lineages.has(card_id):
+			# 如果已存在，合并 faction_branches
+			var existing = _merged_lineages[card_id]
+			if supp_cfg.has("faction_branches"):
+				if not existing.has("faction_branches"):
+					existing["faction_branches"] = {}
+				for branch_id in supp_cfg["faction_branches"].keys():
+					existing["faction_branches"][branch_id] = supp_cfg["faction_branches"][branch_id]
+			# 添加特殊标记
+			if supp_cfg.has("is_terminal"):
+				existing["is_terminal"] = supp_cfg["is_terminal"]
+			if supp_cfg.has("is_utility"):
+				existing["is_utility"] = supp_cfg["is_utility"]
+		else:
+			# 新增配置
+			_merged_lineages[card_id] = supp_cfg.duplicate(true)
+
+	_lineages_initialized = true
+
+## 获取合并后的进化路径配置
+static func get_merged_lineages() -> Dictionary:
+	_initialize_merged_lineages()
+	return _merged_lineages.duplicate(true)
+
+## 检查是否为终端节点
+static func is_terminal_unit(card_id: String) -> bool:
+	_initialize_merged_lineages()
+	var cfg = _merged_lineages.get(card_id, {})
+	return bool(cfg.get("is_terminal", false))
+
+## 检查是否为辅助单位
+static func is_utility_unit(card_id: String) -> bool:
+	_initialize_merged_lineages()
+	var cfg = _merged_lineages.get(card_id, {})
+	return bool(cfg.get("is_utility", false))
+
+## ═══════════════════════════════════════════════════════════
 ## v5.0 进化条件检查
 ## ═══════════════════════════════════════════════════════════
 
@@ -586,22 +642,26 @@ static func validate_lineage_targets() -> PackedStringArray:
 	return errors
 
 static func has_lineage(card_id: String) -> bool:
-	return LINEAGES.has(card_id)
+	_initialize_merged_lineages()
+	return _merged_lineages.has(card_id)
 
 static func get_inherit_ratio(_from_card_id: String, _to_card_id: String) -> float:
 	return DEFAULT_INHERIT_RATIO
 
 static func get_evolution_1_target(card_id: String) -> String:
-	var cfg: Dictionary = LINEAGES.get(card_id, {})
+	_initialize_merged_lineages()
+	var cfg: Dictionary = _merged_lineages.get(card_id, {})
 	return String(cfg.get("evolution_1", ""))
 
 static func get_faction_target(card_id: String, faction_id: String) -> String:
-	var cfg: Dictionary = LINEAGES.get(card_id, {})
+	_initialize_merged_lineages()
+	var cfg: Dictionary = _merged_lineages.get(card_id, {})
 	var branches: Dictionary = cfg.get("faction_branches", {})
 	return String(branches.get(faction_id, ""))
 
 static func get_all_faction_targets(card_id: String) -> Dictionary:
-	var cfg: Dictionary = LINEAGES.get(card_id, {})
+	_initialize_merged_lineages()
+	var cfg: Dictionary = _merged_lineages.get(card_id, {})
 	return (cfg.get("faction_branches", {}) as Dictionary).duplicate(true)
 
 static func get_progression_step(card_id: String) -> int:

@@ -2,6 +2,7 @@ extends Node
 ## 情报库管理器：记录和管理玩家解锁的所有情报资料
 
 const DEBUG_LOG := false
+const LoreTagsSupplement = preload("res://data/lore_tags_supplement.gd")
 
 signal lore_unlocked(lore_id: String, lore_name: String)
 
@@ -156,7 +157,17 @@ func get_lore_data(lore_id: String) -> Dictionary:
 func get_unlocked_lore() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	for lore_id in unlocked_lore_ids:
-		result.append(LORE_DATABASE.get(lore_id, {}))
+		var lore_data = LORE_DATABASE.get(lore_id, {}).duplicate(true)
+		# 添加标签（如果不存在）
+		if not lore_data.has("tags"):
+			var tags = LoreTagsSupplement.get_lore_tags(lore_id)
+			if tags.is_empty():
+				# 自动生成标签
+				var category = lore_data.get("category", "")
+				var era = lore_data.get("era", 0)
+				tags = [_get_era_name(era), _get_category_name(category)]
+			lore_data["tags"] = tags
+		result.append(lore_data)
 	return result
 
 ## 获取指定时代的所有情报
@@ -214,3 +225,20 @@ func load_state(data: Dictionary) -> void:
 			unlocked_lore_ids.append(lore_id)
 	if DEBUG_LOG:
 		print("[LoreManager] 加载情报状态，已解锁: ", unlocked_lore_ids.size(), "/", LORE_DATABASE.size())
+## 辅助方法
+func _get_era_name(era: int) -> String:
+	match era:
+		0: return "一战"
+		1: return "二战"
+		2: return "冷战"
+		3: return "现代"
+		4: return "未来"
+		_: return "未知"
+
+func _get_category_name(category: String) -> String:
+	match category:
+		"tactics": return "战术"
+		"technology": return "技术"
+		"history": return "历史"
+		"intelligence": return "情报"
+		_: return "其他"

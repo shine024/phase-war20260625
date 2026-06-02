@@ -101,32 +101,103 @@ func _update_evolution_tree() -> void:
 		evolution_tree.add_child(target_node)
 
 func _create_evolution_node(target: Dictionary) -> Control:
+	## v6.0 改进：更清晰的进化路径显示，突出战力要求
 	var node = VBoxContainer.new()
-	node.custom_minimum_size = Vector2(300, 80)
+	node.custom_minimum_size = Vector2(320, 100)
+
+	# 主容器：左边信息，右边状态
+	var main_box = HBoxContainer.new()
+	main_box.custom_minimum_size = Vector2(320, 90)
+
+	# 左侧：名称和信息
+	var left_box = VBoxContainer.new()
+	left_box.custom_minimum_size = Vector2(240, 90)
 
 	var name_btn = Button.new()
 	name_btn.text = target.name
-	name_btn.custom_minimum_size = Vector2(280, 40)
+	name_btn.custom_minimum_size = Vector2(220, 32)
 	name_btn.pressed.connect(func(): _on_target_selected(target.target_id, target.name))
 
-	var type_label = Label.new()
-	type_label.text = "路径：%s | 阶段：E%d" % [target.path_type, target.stage]
-	type_label.add_theme_color_override("font_color", Color.GRAY)
+	# 获取目标卡牌信息
+	var target_card = DefaultCards.get_card_by_id(target.target_id)
+	var current_power = 0
+	var target_power = 0
+	if target_card:
+		target_power = target_card.power
+		# 获取当前卡牌战力（通过BlueprintManager）
+		current_power = _get_current_power_score()
 
-	var req_label = Label.new()
+	# 战力要求显示（突出显示）
+	var power_label = Label.new()
+	power_label.text = "战力要求： %d / %d" % [current_power, target_power]
+	if current_power >= target_power:
+		power_label.add_theme_color_override("font_color", Color(0.4, 1.0, 0.6))  # 绿色
+	else:
+		power_label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.4))  # 红色
+	power_label.add_theme_font_size_override("font_size", 14)
+
+	# 路径类型和阶段
+	var type_label = Label.new()
+	type_label.text = "路径：%s | 时代：%s" % [target.path_type, target_card.era if target_card else ""]
+	type_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+
+	left_box.add_child(name_btn)
+	left_box.add_child(power_label)
+	left_box.add_child(type_label)
+
+	# 右侧：状态指示
+	var right_box = VBoxContainer.new()
+	right_box.custom_minimum_size = Vector2(60, 90)
+
+	var status_label = Label.new()
 	var check_result = selected_card.check_evolution_requirements(target.target_id)
 	if check_result.passed:
-		req_label.text = "✓ 可进化"
-		req_label.add_theme_color_override("font_color", Color.GREEN)
+		status_label.text = "✓"
+		status_label.add_theme_color_override("font_color", Color.GREEN)
+		status_label.add_theme_font_size_override("font_size", 32)
+		status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	else:
-		req_label.text = "✗ " + ", ".join(check_result.missing)
-		req_label.add_theme_color_override("font_color", Color.RED)
+		status_label.text = "✗"
+		status_label.add_theme_color_override("font_color", Color.RED)
+		status_label.add_theme_font_size_override("font_size", 32)
+		status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
-	node.add_child(name_btn)
-	node.add_child(type_label)
-	node.add_child(req_label)
+	right_box.add_child(status_label)
+
+	main_box.add_child(left_box)
+	main_box.add_child(right_box)
+
+	node.add_child(main_box)
+
+	# 底部：条件详情（简化显示）
+	var req_detail_label = Label.new()
+	if check_result.passed:
+		req_detail_label.text = "所有条件已满足"
+		req_detail_label.add_theme_color_override("font_color", Color(0.4, 1.0, 0.6))
+	else:
+		# 只显示主要缺失条件
+		var missing_summary = ""
+		if current_power < target_power:
+			missing_summary = "战力不足"
+		else:
+			missing_summary = check_result.missing[0] if check_result.missing.size() > 0 else "条件不满足"
+		req_detail_label.text = "✗ " + missing_summary
+		req_detail_label.add_theme_color_override("font_color", Color(1.0, 0.6, 0.4))
+	req_detail_label.add_theme_font_size_override("font_size", 12)
+
+	node.add_child(req_detail_label)
 
 	return node
+
+## 获取当前卡牌的战力评分
+func _get_current_power_score() -> int:
+	if not selected_card:
+		return 0
+	# 通过BlueprintManager获取实际战力
+	if BlueprintManager and BlueprintManager.has_method("estimate_power_score"):
+		return int(BlueprintManager.estimate_power_score(selected_card.card_id))
+	# 回退到基础战力
+	return selected_card.power
 
 func _update_detail_panel() -> void:
 	if detail_panel == null:
