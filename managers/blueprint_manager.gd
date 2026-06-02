@@ -28,6 +28,8 @@ const PhaseLaws = preload("res://data/phase_laws.gd")
 const UnitLineageConfig = preload("res://data/unit_lineage_config.gd")
 const RankRules = preload("res://data/rank_rules.gd")
 const UnitStatsTable = preload("res://resources/unit_stats_table.gd")
+const IntelManualItems = preload("res://data/intel_manual_items.gd")
+const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
 
 ## ── 进化/改装子模块（class_name 全局引用） ──
 ## @note Godot 4.5 --check-only 模式下部分 class_name 加载顺序不确定，preload 保证可用
@@ -891,6 +893,7 @@ func _get_rank_cost_multiplier(level: int) -> float:
 		_: return 1.0
 
 ## 安装改造（新接口）
+## 改造需要：纳米材料 + 改造指南（根据稀有度）
 func install_modification(card: CardResource, mod_id: String, slot: int = -1) -> Dictionary:
 	var result = {success = false, cost = 0, message = ""}
 
@@ -911,14 +914,22 @@ func install_modification(card: CardResource, mod_id: String, slot: int = -1) ->
 		result.message = "找不到改造数据：%s" % mod_id
 		return result
 
-	# 计算消耗
-	var slot_cost = get_mod_slot_cost(card.mods.size())
-	var base_power = get_base_power_for_mod_cost(card.card_id)
-	var research_cost = int(mod_data.get("cost_research", 0))
+	# 计算特定蓝图ID
+	var blueprint_id = BlueprintDefinitions.get_mod_blueprint_id(mod_id)
+	var blueprint_name = BlueprintDefinitions.get_mod_blueprint_name(mod_id)
 
-	# 检查研究点
-	if not _can_afford_research(research_cost):
-		result.message = "研究点不足（需要%d）" % research_cost
+	# 检查改造蓝图
+	if IntelItemBag == null or not IntelItemBag.has_item(blueprint_id):
+		result.message = "缺少图纸：%s" % blueprint_name
+		return result
+
+	# 计算纳米材料消耗
+	var base_power = get_base_power_for_mod_cost(card.card_id)
+	var nano_cost = int(base_power * 0.5)  # 改造消耗卡牌战力50%的纳米材料
+
+	# 检查纳米材料
+	if has_method("_can_afford_nano") and not _can_afford_nano(nano_cost):
+		result.message = "纳米材料不足（需要%d）" % nano_cost
 		return result
 
 	# 应用改造
@@ -932,10 +943,12 @@ func install_modification(card: CardResource, mod_id: String, slot: int = -1) ->
 	else:
 		card.mods.append(mod_entry)
 
-	_consume_research(research_cost)
+	# 消耗资源
+	_consume_nano(nano_cost)
+	IntelItemBag.consume_item(blueprint_id)
 
 	result.success = true
-	result.cost = research_cost
+	result.cost = nano_cost
 	result.message = "改造安装成功：%s" % mod_data.get("name", mod_id)
 
 	# 更新blueprint_mods缓存
@@ -987,6 +1000,7 @@ func replace_modification(card: CardResource, old_mod_id: String, new_mod_id: St
 	return result
 
 ## 进化卡牌（改造保留到新卡牌）
+## 进化需要：纳米材料 + 进化图纸
 func evolve_card(card: CardResource, target_card_id: String) -> Dictionary:
 	var result = {success = false, new_card = null, message = ""}
 
@@ -996,6 +1010,27 @@ func evolve_card(card: CardResource, target_card_id: String) -> Dictionary:
 		result.message = "进化条件未满足：" + ", ".join(check_result.missing)
 		return result
 
+	# 计算特定进化蓝图ID
+	var evo_blueprint_id = BlueprintDefinitions.get_evolution_blueprint_id(card.card_id, target_card_id)
+
+	# 检查进化图纸
+	if IntelItemBag == null or not IntelItemBag.has_item(evo_blueprint_id):
+		result.message = "缺少进化图纸：%s → %s" % [card.display_name, target_card_id]
+		return result
+
+	# 计算纳米材料消耗（基于目标卡牌战力）
+	var target_card = _get_card_from_library(target_card_id)
+	if target_card == null:
+		result.message = "找不到目标卡牌：%s" % target_card_id
+		return result
+
+	var nano_cost = int(target_card.power * 2.0)  # 进化消耗目标战力2倍的纳米材料
+
+	# 检查纳米材料
+	if has_method("_can_afford_nano") and not _can_afford_nano(nano_cost):
+		result.message = "纳米材料不足（需要%d）" % nano_cost
+		return result
+
 	# 记录旧改造
 	var preserved_mods = card.mods.duplicate(true)
 
@@ -1003,16 +1038,17 @@ func evolve_card(card: CardResource, target_card_id: String) -> Dictionary:
 	card.record_evolution(card.card_id, target_card_id, preserved_mods)
 
 	# 创建新卡牌（通过DefaultCards）
-	var new_card = _get_card_from_library(target_card_id)
-	if new_card == null:
-		result.message = "找不到目标卡牌：%s" % target_card_id
-		return result
+	var new_card = target_card  # 使用已获取的卡牌
 
 	# 转移改造到新卡牌
 	new_card.mods = preserved_mods
 
 	# 继承强化等级
 	new_card.enhance_level = card.enhance_level
+
+	# 消耗资源
+	_consume_nano(nano_cost)
+	IntelItemBag.consume_item(evo_blueprint_id)
 
 	# 更新blueprint数据
 	_remove_blueprint(card.card_id)

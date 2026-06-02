@@ -58,11 +58,9 @@ static func _build_captured_card(
 		var EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 		# drop_id 格式是 "captured_elite_ww1_storm"，需要提取 "elite_ww1_storm"
 		var archetype_id: String = drop_id.trim_prefix("captured_")
-		var all_archetypes: Dictionary = EnemyArchetypes.ARCHETYPES if EnemyArchetypes.has_method("ARCHETYPES") else {}
-		if all_archetypes.has(archetype_id):
-			cfg = all_archetypes[archetype_id]
-			if cfg is Dictionary:
-				cfg = cfg.duplicate(true)  # 复制一份避免修改原数据
+		cfg = EnemyArchetypes.get_config(archetype_id)
+		if cfg is Dictionary:
+			cfg = cfg.duplicate(true)  # 复制一份避免修改原数据
 
 	# 从 archetype_config 读取战斗卡属性
 	if not display_name.is_empty():

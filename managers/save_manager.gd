@@ -4,6 +4,7 @@ extends Node
 ## ─── 预加载提取模块 ───
 const SaveConstants = preload("res://scripts/systems/save_constants.gd")
 const SaveMigration = preload("res://scripts/systems/save_migration.gd")
+const IntelManualItems = preload("res://data/intel_manual_items.gd")
 var DEBUG_SAVE_LOG := false
 
 var _pending_backpack_ids: Array = []
@@ -705,7 +706,20 @@ func _enqueue_starter_backpack_cards() -> void:
 	# 初始情报：解锁所有情报
 	if IntelManual and IntelManual.has_method("unlock_all_intel"):
 		IntelManual.unlock_all_intel()
-	
+
+	# 初始蓝图：赠送一些基础改造图纸用于测试
+	if IntelItemBag:
+		const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
+		# 步兵基础改造
+		IntelItemBag.add_item(BlueprintDefinitions.get_mod_blueprint_id("inf_01_submachine_gun"), 1)
+		IntelItemBag.add_item(BlueprintDefinitions.get_mod_blueprint_id("inf_02_assault_rifle"), 1)
+		IntelItemBag.add_item(BlueprintDefinitions.get_mod_blueprint_id("inf_05_ap_ammo"), 1)
+		IntelItemBag.add_item(BlueprintDefinitions.get_mod_blueprint_id("inf_11_armor_insert"), 1)
+		# 装甲基础改造
+		IntelItemBag.add_item(BlueprintDefinitions.get_mod_blueprint_id("arm_01_sloped_armor"), 1)
+		IntelItemBag.add_item(BlueprintDefinitions.get_mod_blueprint_id("arm_06_apfsds"), 1)
+		IntelItemBag.add_item(BlueprintDefinitions.get_mod_blueprint_id("arm_11_fire_control"), 1)
+
 	# 初始改装材料：所有改装库存100
 	# TODO: 需要根据改装系统实现添加
 	# if ModificationRegistry:

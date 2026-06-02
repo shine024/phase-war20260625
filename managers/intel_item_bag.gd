@@ -45,8 +45,8 @@ func _load_state() -> void:
 
 ## 添加道具
 func add_item(item_type: String, count: int = 1) -> void:
-	if not IntelManualItems.is_valid_type(item_type):
-		push_warning("[IntelItemBag] 无效道具类型: %s" % item_type)
+	if not IntelManualItems.is_valid_blueprint(item_type):
+		push_warning("[IntelItemBag] 无效蓝图类型: %s" % item_type)
 		return
 	if count <= 0:
 		return
@@ -55,8 +55,8 @@ func add_item(item_type: String, count: int = 1) -> void:
 
 ## 消耗一个道具（返回是否成功）
 func consume_item(item_type: String) -> bool:
-	if not IntelManualItems.is_valid_type(item_type):
-		push_warning("[IntelItemBag] 无效道具类型: %s" % item_type)
+	if not IntelManualItems.is_valid_blueprint(item_type):
+		push_warning("[IntelItemBag] 无效蓝图类型: %s" % item_type)
 		return false
 	var have: int = int(_inventory.get(item_type, 0))
 	if have <= 0:

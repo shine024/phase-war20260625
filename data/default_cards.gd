@@ -19,13 +19,17 @@ static func _ensure_card_cache() -> void:
 	if not _all_cards_cache.is_empty():
 		return
 	if _cache_building:
+		push_warning("[DefaultCards] 缓存正在构建中，防止重入")
 		return # 防重入：构建过程中被间接回调时直接返回，避免无限递归
 	_cache_building = true
 	_all_cards_cache = create_all()
 	for c in _all_cards_cache:
 		if c is CardResource:
 			_id_lookup_cache[c.card_id] = c
+		else:
+			push_error("[DefaultCards] create_all() 返回了非 CardResource 对象: %s" % str(c))
 	_cache_building = false
+	print("[DefaultCards] 缓存构建完成，共 %d 张卡牌" % _all_cards_cache.size())
 
 static func create_all() -> Array:
 	var list: Array = []
@@ -386,6 +390,7 @@ static func get_weapon_display_name(weapon_type: int) -> String:
 ## 所有 UI 层的 ID 回退都应使用此函数，杜绝显示原始 card_id
 static func get_safe_display_name(card_id: String) -> String:
 	if card_id.is_empty():
+		push_warning("[DefaultCards] get_safe_display_name: card_id 为空")
 		return ""
 	_ensure_card_cache()
 	var c: CardResource = _id_lookup_cache.get(card_id) as CardResource
@@ -407,16 +412,22 @@ static func get_safe_display_name(card_id: String) -> String:
 	var arch_name: String = String(arch_cfg.get("display_name", "")) if not arch_cfg.is_empty() else ""
 	if not arch_name.is_empty() and not _looks_like_id(arch_name):
 		return arch_name
+	# 所有回退都失败，记录警告并返回ID
+	push_error("[DefaultCards] 无法找到卡牌名称: %s，将显示原始ID" % card_id)
 	return card_id
 
 ## 从 CardResource 对象安全获取显示名称；display_name 为空或像 ID 时回退到 get_safe_display_name
 static func safe_name(card: CardResource) -> String:
 	if card == null:
+		push_warning("[DefaultCards] safe_name: card 为 null")
 		return ""
 	if not card.display_name.is_empty() and not _looks_like_id(card.display_name):
 		return card.display_name
 	var fallback: String = get_safe_display_name(card.card_id)
-	return fallback if not fallback.is_empty() else card.display_name
+	if fallback.is_empty():
+		push_error("[DefaultCards] safe_name: 无法获取卡牌 %s 的名称" % card.card_id)
+		return card.card_id  # 最后回退到ID，避免完全空白
+	return fallback
 
 ## 判断一个字符串是否看起来像内部 ID 而非人类可读名称
 static func _looks_like_id(s: String) -> bool:

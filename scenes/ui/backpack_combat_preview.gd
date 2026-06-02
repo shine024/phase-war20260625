@@ -62,41 +62,12 @@ static func build_line(card: CardResource) -> String:
 
 	# 只处理战斗卡
 	if card.card_type == GC.CardType.COMBAT_UNIT:
-		# 处理战斗单位卡（有底盘）
-		if card.platform_type >= 0:
-			var wts: Array = []
-			for t in card.multi_weapon_types:
-				wts.append(int(t))
-			if wts.is_empty() and card.default_weapon_type >= 0:
-				wts.append(card.default_weapon_type)
-			
-			if wts.is_empty():
-				return ""
-			
-			var stats: UnitStats = UnitStatsTable.build_multi_stats(card.platform_type, wts, era)
-			if bm and bm.has_method("apply_growth_to_stats"):
-				bm.apply_growth_to_stats(stats, card, [])
-			if am and am.has_method("apply_affixes_to_stats"):
-				am.apply_affixes_to_stats(stats, card, [])
-			return "战斗中：" + _format_combat_stats_summary(stats)
-		
-		# 处理武器卡（无底盘）
-		elif card.weapon_type >= 0:
-			var wbase: Dictionary = UnitStatsTable.get_weapon_base(card.weapon_type, era)
-			var stats_w := UnitStats.new()
-			stats_w.attack_light = float(wbase["damage"])
-			stats_w.attack_armor = float(wbase["damage"])
-			stats_w.attack_air = float(wbase["damage"])
-			stats_w.attack_range = float(wbase["range"])
-			stats_w.attack_interval = float(wbase["interval"])
-			if bm and bm.has_method("apply_growth_to_stats"):
-				bm.apply_growth_to_stats(stats_w, null, [card])
-			if am and bm.has_method("apply_affixes_to_stats"):
-				am.apply_affixes_to_stats(stats_w, null, [card])
-			# 武器卡：只显示攻击相关
-			return "战斗中：攻 %.0f/%.0f/%.0f｜射程 %.0f｜攻速 %.2f" % [
-				stats_w.attack_light, stats_w.attack_armor, stats_w.attack_air,
-				stats_w.attack_range, stats_w.attack_interval,
-			]
-	
+		# v5.0: 使用新的 build_stats_from_card 方法，不再检查已弃用的 platform_type
+		var stats: UnitStats = UnitStatsTable.build_stats_from_card(card, era)
+		if bm and bm.has_method("apply_growth_to_stats"):
+			bm.apply_growth_to_stats(stats, card, [])
+		if am and am.has_method("apply_affixes_to_stats"):
+			am.apply_affixes_to_stats(stats, card, [])
+		return "战斗中：" + _format_combat_stats_summary(stats)
+
 	return ""

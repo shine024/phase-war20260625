@@ -401,15 +401,10 @@ func _build_card_affix_summary(card: CardResource) -> String:
 	var gm: Node = root.get_node_or_null("GameManager")
 	if gm and "current_level" in gm:
 		era = GC.get_era_for_level(int(gm.current_level))
-	if card.platform_type >= 0:
-		var wts: Array = []
-		for t in card.multi_weapon_types:
-			wts.append(int(t))
-		if wts.is_empty() and card.default_weapon_type >= 0:
-			wts.append(card.default_weapon_type)
-		if wts.is_empty():
-			return ""
-		var stats: UnitStats = UnitStatsTable.build_multi_stats(card.platform_type, wts, era)
+
+	# v5.0: 使用新的 build_stats_from_card 方法，不再检查已弃用的 platform_type
+	if card.card_type == GC.CardType.COMBAT_UNIT:
+		var stats: UnitStats = UnitStatsTable.build_stats_from_card(card, era)
 		if bm and bm.has_method("apply_growth_to_stats"):
 			bm.apply_growth_to_stats(stats, card, [])
 		if am and am.has_method("apply_affixes_to_stats"):
@@ -502,13 +497,15 @@ func _resolve_unit_is_player(unit: Node, hinted: bool) -> bool:
 		return bool(unit.is_player)
 	return hinted
 
+## 判断单位是否为载具类型（装甲/支援/堡垒）
 func _is_vehicle_unit(unit: Node) -> bool:
 	if unit == null or not is_instance_valid(unit):
 		return false
 	if "stats" in unit:
 		var stats: UnitStats = unit.stats
 		if stats != null:
-			return stats.platform_type >= 0
+			# v5.0: 使用 combat_kind 判断是否为载具类型（装甲/支援/堡垒）
+			return stats.combat_kind in [GC.CombatKind.ARMOR, GC.CombatKind.SUPPORT, GC.CombatKind.FORT]
 	return true
 
 func _law_targets_this_unit(rt: Dictionary, unit: Node, is_player_side: bool) -> bool:

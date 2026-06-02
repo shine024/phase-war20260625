@@ -92,8 +92,9 @@ func _update_detail_panel() -> void:
 	_update_reinforce_button(rank_info)
 
 	# 更新资源标签
-	var nano_amount = BasicResourceManager.get_total(BasicResources.ID_NANO_MATERIALS)
-	nano_label.text = "纳米材料：%d" % nano_amount
+	if nano_label:
+		var nano_amount = BasicResourceManager.get_total(BasicResources.ID_NANO_MATERIALS)
+		nano_label.text = "纳米材料：%d" % nano_amount
 
 func _update_card_info() -> void:
 	var info_label = card_detail_panel.get_node_or_null("InfoLabel")

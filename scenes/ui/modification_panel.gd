@@ -2,15 +2,19 @@ extends Control
 class_name ModificationPanel
 ## 改造面板（新系统）
 ## 显示军事技术改造模块
+## 改造消耗：纳米材料 + 改造指南（根据稀有度）
 
 signal closed
 
+const IntelManualItems = preload("res://data/intel_manual_items.gd")
+const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
+
 # UI 组件引用
-var card_list_container = get_node_or_null("VBoxContainer/HBoxContainer/ScrollContainer/CardListContainer")
-var mod_list_container = get_node_or_null("VBoxContainer/HBoxContainer/ModScrollContainer/ModListContainer")
-var card_info_panel = get_node_or_null("VBoxContainer/HBoxContainer/DetailPanel")
-var research_label = get_node_or_null("VBoxContainer/ResearchLabel")
-var result_label = get_node_or_null("VBoxContainer/ResultLabel")
+@onready var card_list_container = get_node_or_null("VBoxContainer/HBoxContainer/ScrollContainer/CardListContainer")
+@onready var mod_list_container = get_node_or_null("VBoxContainer/HBoxContainer/ModScrollContainer/ModListContainer")
+@onready var card_info_panel = get_node_or_null("VBoxContainer/HBoxContainer/DetailPanel")
+@onready var research_label = get_node_or_null("VBoxContainer/ResearchLabel")
+@onready var result_label = get_node_or_null("VBoxContainer/ResultLabel")
 
 var selected_card: CardResource = null
 var selected_mod_id: String = ""
@@ -136,8 +140,12 @@ func _update_card_info() -> void:
 		_refresh_installed_list(installed_list)
 
 	# 更新资源标签
-	var research_amount = BasicResourceManager.get_total(BasicResources.ID_RESEARCH_POINTS)
-	research_label.text = "研究点：%d" % research_amount
+	if research_label:
+		var nano_amount = BasicResourceManager.get_total(BasicResources.ID_NANO_MATERIALS)
+		var total_blueprints = 0
+		if IntelItemBag:
+			total_blueprints = IntelItemBag.get_total_count()
+		research_label.text = "纳米：%d | 图纸总数：%d" % [nano_amount, total_blueprints]
 
 func _refresh_installed_list(installed_list: Control) -> void:
 	for child in installed_list.get_children():
@@ -225,12 +233,45 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 				effect_texts.append("%s：%s" % [key, str(effects[key])])
 			effects_label.text = "效果：\n" + "\n".join(effect_texts)
 
+
+
 		var install_btn = details_panel.get_node_or_null("InstallButton")
 		if install_btn:
-			var cost = mod_data.get("cost_research", 0)
-			install_btn.text = "安装（消耗：%d研究点）" % cost
-			install_btn.pressed.disconnect_all()
-			install_btn.pressed.connect(func(): _install_modification(selected_mod_id))
+			# 计算消耗：纳米材料（卡牌战力50%）
+			var base_power = selected_card.get_current_power() if selected_card else 100
+			var nano_cost = int(base_power * 0.5)
+
+			# 计算特定蓝图ID
+			var blueprint_id = BlueprintDefinitions.get_mod_blueprint_id(selected_mod_id)
+			var blueprint_name = BlueprintDefinitions.get_mod_blueprint_name(selected_mod_id)
+			var has_blueprint = false
+			if IntelItemBag:
+				has_blueprint = IntelItemBag.has_item(blueprint_id)
+
+			# 检查纳米材料
+			var has_nano = true
+			if BasicResourceManager:
+				var nano_amount = BasicResourceManager.get_total(BasicResources.ID_NANO_MATERIALS)
+				has_nano = nano_amount >= nano_cost
+
+			# 更新按钮文本和状态
+			if not has_blueprint:
+				install_btn.text = "缺少图纸：%s" % blueprint_name
+				install_btn.disabled = true
+			elif not has_nano:
+				install_btn.text = "纳米不足（需要 %d）" % nano_cost
+				install_btn.disabled = true
+			else:
+				install_btn.text = "安装（消耗：%d纳米 + %s）" % [nano_cost, blueprint_name]
+				install_btn.disabled = false
+
+			# v5.0: Godot 4 正确的信号断开方式：存储并移除所有现有连接
+			var connections: Array = install_btn.pressed.get_connections()
+			for conn in connections:
+				if conn.callable.is_valid():
+					install_btn.pressed.disconnect(conn.callable)
+			var install_callable = func(): _install_modification(selected_mod_id)
+			install_btn.pressed.connect(install_callable)
 
 
 ## 供外部调用的接口

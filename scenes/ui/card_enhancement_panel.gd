@@ -618,20 +618,13 @@ func _update_star_upgrade_section() -> void:
 		star_upgrade_button.text = "已满星（%d★）" % star_now
 		return
 	var can_up: bool = BlueprintManager.can_upgrade_blueprint(selected_card_id) if BlueprintManager.has_method("can_upgrade_blueprint") else false
-	## v6.0: 额外检查升星指南
-	var bag: Node = get_node_or_null("/root/IntelItemBag")
-	var has_guide: bool = bag.has_item(IntelManualItems.TYPE_STAR_UPGRADE) if bag else false
-	star_upgrade_button.disabled = not can_up or not has_guide
-	var guide_count: int = bag.get_count(IntelManualItems.TYPE_STAR_UPGRADE) if bag else 0
-	star_upgrade_button.text = "升星至 %d★（研究点 %d，📋升星指南×%d）" % [star_now + 1, need_rp, guide_count]
+	star_upgrade_button.disabled = not can_up
+	star_upgrade_button.text = "升星至 %d★（研究点 %d）" % [star_now + 1, need_rp]
 
 func _on_star_upgrade_button_pressed() -> void:
 	if selected_card_id.is_empty() or BlueprintManager == null:
 		return
 	if not BlueprintManager.has_method("upgrade_blueprint_level"):
-		return
-	## v6.0: 消耗升星指南
-	if not _consume_intel_item(IntelManualItems.TYPE_STAR_UPGRADE):
 		return
 	var ok: bool = BlueprintManager.upgrade_blueprint_level(selected_card_id)
 	if result_label:
@@ -658,9 +651,6 @@ func _on_enhance_button_pressed() -> void:
 	var card_enh_mgr = get_node_or_null("/root/CardEnhancementManager")
 	if selected_card_id.is_empty() or not card_enh_mgr or not BlueprintManager:
 		return
-	## v6.0: 检查情报道具消耗
-	if not _consume_intel_item(IntelManualItems.TYPE_ENHANCE):
-		return
 	# 执行强化
 	card_enh_mgr.enhance(selected_card_id, BlueprintManager)
 
@@ -678,10 +668,7 @@ func _on_evolve_button_pressed() -> void:
 	var pc: int = int(can_info.get("permit_category_count", 0))
 	var ps: int = int(can_info.get("permit_specific_count", 0))
 	var inherit_ratio: float = float(can_info.get("inherit_ratio", UnitLineageConfig.DEFAULT_INHERIT_RATIO))
-	## v6.0: 显示进化图纸需求
-	var evolve_item_name: String = IntelManualItems.get_def(IntelManualItems.TYPE_EVOLVE).get("name", "进化图纸")
-	var bag: Node = get_node_or_null("/root/IntelItemBag")
-	var evolve_have: int = bag.get_count(IntelManualItems.TYPE_EVOLVE) if bag else 0
+	## v6.0: 显示进化图纸需求（由调用者检查蓝图，这里不重复显示）
 	if nano_label:
 		nano_label.text = "纳米材料：%d" % [BlueprintManager.get_nano_materials() if BlueprintManager else 0]
 	## TODO: evolution_confirm_dialog 可扩展显示情报需求
@@ -692,9 +679,6 @@ func _on_confirm_evolution() -> void:
 
 func _try_execute_evolution() -> void:
 	if BlueprintManager == null or selected_card_id.is_empty() or _pending_evolution_target_id.is_empty():
-		return
-	## v6.0: 消耗进化图纸
-	if not _consume_intel_item(IntelManualItems.TYPE_EVOLVE):
 		return
 	var ok: bool = BlueprintManager.evolve_blueprint(selected_card_id, _pending_evolution_target_id) if BlueprintManager.has_method("evolve_blueprint") else false
 	if result_label:
@@ -889,17 +873,11 @@ func _consume_intel_item(item_type: String) -> bool:
 		result_label.add_theme_color_override("font_color", Color(0.7, 0.8, 1.0, 1.0))
 	return ok
 
-## 根据改装槽位返回对应的情报道具类型
+## 根据改装槽位返回对应的情报道具类型（v7.0: 已废弃，使用特定蓝图系统）
 func _get_mod_item_type_for_slot(slot_index: int) -> String:
-	match slot_index:
-		0:
-			return IntelManualItems.TYPE_MOD_A
-		1:
-			return IntelManualItems.TYPE_MOD_B
-		2:
-			return IntelManualItems.TYPE_MOD_C
-		_:
-			return ""
+	## 蓝图系统现在由BlueprintManager在apply_modification中检查特定蓝图
+	## 此函数返回空表示不再消耗通用许可函
+	return ""
 
 ## 更换敌源改造按钮回调
 func _on_eom_change_pressed() -> void:

@@ -6,6 +6,8 @@ class_name EvolutionPanel
 signal closed
 
 const DefaultCards = preload("res://data/default_cards.gd")
+const IntelManualItems = preload("res://data/intel_manual_items.gd")
+const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
 
 # UI 组件引用
 var card_list_container = get_node_or_null("VBoxContainer/HBoxContainer/ScrollContainer/CardListContainer")
@@ -145,7 +147,7 @@ func _update_detail_panel() -> void:
 	info_text += "战力：%d | 时代：%s\n" % [target_card.power, target_card.era]
 	info_text += "类型：%s | 武器：%s\n" % [target_card.combat_kind, target_card.weapon_type]
 	info_text += "─────────────────\n"
-	
+
 	var info_label = detail_panel.get_node_or_null("InfoLabel")
 	if info_label:
 		info_label.text = info_text
@@ -166,6 +168,17 @@ func _update_detail_panel() -> void:
 	if mod_label:
 		mod_label.text = "改造保留：%d个改造将完整保留" % selected_card.mods.size()
 
+	# 显示资源信息
+	var nano_amount = BasicResourceManager.get_total(BasicResources.ID_NANO_MATERIALS)
+	var total_blueprints = 0
+	if IntelItemBag:
+		total_blueprints = IntelItemBag.get_total_count()
+	var nano_cost = int(target_card.power * 2.0)
+
+	var resource_label = detail_panel.get_node_or_null("ResourceLabel")
+	if resource_label:
+		resource_label.text = "当前资源：纳米 %d | 图纸总数 %d\n进化需要：纳米 %d + 特定图纸" % [nano_amount, total_blueprints, nano_cost]
+
 	# 计算新属性
 	var new_stats = selected_card.calculate_evolved_stats(selected_target_id)
 	var stats_text = "进化后属性预览\n─────────────────\n"
@@ -184,7 +197,7 @@ func _update_detail_panel() -> void:
 		new_stats.get("attack_speed", 1.0),
 		new_stats.get("move_speed", 0),
 	]
-	
+
 	var stats_label = detail_panel.get_node_or_null("NewStatsLabel")
 	if stats_label:
 		stats_label.text = stats_text
@@ -192,8 +205,34 @@ func _update_detail_panel() -> void:
 	# 进化按钮
 	var evolve_btn = detail_panel.get_node_or_null("EvolveButton")
 	if evolve_btn:
-		evolve_btn.disabled = not check_result.passed
-		evolve_btn.pressed.disconnect_all()
+		# 计算特定进化蓝图ID
+		var evo_blueprint_id = BlueprintDefinitions.get_evolution_blueprint_id(selected_card.card_id, selected_target_id)
+		var has_blueprint = false
+		if IntelItemBag:
+			has_blueprint = IntelItemBag.has_item(evo_blueprint_id)
+
+		# 检查纳米材料
+		var has_nano = nano_amount >= nano_cost
+
+		# 更新按钮文本和状态
+		if not has_blueprint:
+			evolve_btn.text = "缺少进化图纸"
+			evolve_btn.disabled = true
+		elif not has_nano:
+			evolve_btn.text = "纳米不足（需要 %d）" % nano_cost
+			evolve_btn.disabled = true
+		elif not check_result.passed:
+			evolve_btn.text = "条件不满足"
+			evolve_btn.disabled = true
+		else:
+			evolve_btn.text = "进化（消耗：%d纳米 + 图纸）" % nano_cost
+			evolve_btn.disabled = false
+
+		# Godot 4 正确的信号断开方式
+		var connections: Array = evolve_btn.pressed.get_connections()
+		for conn in connections:
+			if conn.callable.is_valid():
+				evolve_btn.pressed.disconnect(conn.callable)
 		evolve_btn.pressed.connect(func(): _on_evolve_pressed())
 
 ## ─────────────────────────────────────────────

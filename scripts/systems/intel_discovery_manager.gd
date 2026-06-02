@@ -361,12 +361,12 @@ func _harvest_recon(harvests: Array, card_id: String, deltas: Dictionary) -> voi
 		"source": "recon",
 	})
 
-# ── v6.0: 情报道具掉落 ───────────────────────────────────────
+# ── v7.0: 蓝图掉落 ───────────────────────────────────────
 
 const IntelManualItems = preload("res://data/intel_manual_items.gd")
 
-## 根据击败敌人和星级，随机掉落情报道具
-## 强化手册 / 改装指南 / 进化图纸 等
+## 根据击败敌人和星级，随机掉落蓝图
+## 改造蓝图（基于敌人类型）/ 进化蓝图（精英/Boss）
 func _roll_intel_item_drops(
 	defeated_enemies: Array,
 	victory_stars: int,
@@ -384,6 +384,8 @@ func _roll_intel_item_drops(
 		if not enemy_info is Dictionary:
 			continue
 		var rank: String = enemy_info.get("rank", "normal")
+		var enemy_type: String = enemy_info.get("enemy_type", _guess_enemy_type(enemy_info.get("archetype_id", "")))
+
 		var rank_mult: float = 1.0
 		match rank:
 			"boss":
@@ -396,8 +398,17 @@ func _roll_intel_item_drops(
 		if randf() > base_chance * rank_mult:
 			continue
 
-		## 从情报道具池中随机选择一个
-		var item: Dictionary = IntelManualItems.roll_random_item(rank)
+		## 随机选择掉落改造蓝图或进化蓝图
+		var is_evolution = randf() < 0.2  ## 20%概率进化蓝图
+		var item: Dictionary = {}
+
+		if is_evolution and rank != "normal":
+			## 进化蓝图（仅精英/Boss）
+			item = IntelManualItems.roll_random_evolution_blueprint(rank)
+		else:
+			## 改造蓝图（基于敌人类型）
+			item = IntelManualItems.roll_random_mod_blueprint(enemy_type, rank)
+
 		if not item.is_empty():
 			drops.append(item)
 

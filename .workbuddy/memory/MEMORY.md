@@ -112,6 +112,17 @@
 
 ## 更新日期：2026-06-01
 
+## 蓝图系统 v7.0（2026-06-02）
+- **特定蓝图系统**：每个改造模块和进化路径需要特定图纸
+- **改造蓝图ID**: `blueprint_<mod_id>`（如 `blueprint_inf_01_submachine_gun`）
+- **进化蓝图ID**: `blueprint_evol_<from>_<to>`（如 `blueprint_evol_omega_mk1_omega_mk2`）
+- **强化系统**: 只消耗纳米材料，不需要图纸
+- **获取方式**: 战斗掉落（基于敌人类型）+ 商店购买
+- **价格体系**: common=100, uncommon=250, rare=600, epic=1500, legendary=3500 纳米
+- **初始蓝图**: 新游戏赠送7个基础改造图纸
+- **已修复**: card_enhancement_panel.gd 移除旧 TYPE_MOD_A/B/C/EVOLVE/ENHANCE/STAR_UPGRADE 引用
+- **相关文件**: blueprint_definitions.gd, intel_manual_items.gd, modification_panel.gd, evolution_panel.gd
+
 ## 强化改造与进化系统重构计划（2026-06-01）
 
 **核心机制澄清**：
