@@ -242,13 +242,21 @@ func end_battle(player_won: bool) -> void:
 	if BlueprintManager and BlueprintManager.has_method("flush_deferred_unlock_notifications"):
 		BlueprintManager.flush_deferred_unlock_notifications()
 	if SignalBus:
-		SignalBus.battle_ended.emit(player_won)
+		call_deferred("_emit_battle_ended", player_won)
 	# 通知任务系统
 	ManagerLazyLoader.ensure_loaded("quest")
 	var qm = get_node_or_null("/root/QuestManager")
 	if qm and qm.has_method("notify_battle_result"):
 		var stars: int = _battle_result.get("victory_stars", 0)
 		qm.notify_battle_result(_battle_elapsed_time, stars, _spawn_system.get_enemy_wave_index())
+	# 清理相位师战斗状态
+	_phase_master_config = {}
+	_is_phase_master_battle = false
+
+
+func _emit_battle_ended(player_won: bool) -> void:
+	if SignalBus:
+		SignalBus.battle_ended.emit(player_won)
 
 
 # =========================================================================
@@ -332,10 +340,14 @@ func _check_win_lose() -> void:
 	# 普通格子战：配置波次全部刷出 + 场上无敌方战斗单位
 	if not _spawn_system.all_enemy_waves_spawned():
 		return
-	if get_enemy_unit_count() > 0:
+	var live_enemies: int = _spawn_system.enemy_unit_count
+	if live_enemies <= 0:
+		live_enemies = recount_enemy_units_on_field()
+		_spawn_system.enemy_unit_count = live_enemies
+	if live_enemies > 0:
 		return
 	if DEBUG_BATTLE_LOG:
-		print("[BattleManager] 普通战斗胜利！波次=%d/%d，剩余敌人=%d" % [_spawn_system.get_enemy_wave_index(), _spawn_system.get_enemy_wave_total(), get_enemy_unit_count()])
+		print("[BattleManager] 普通战斗胜利！波次=%d/%d，剩余敌人=%d" % [_spawn_system.get_enemy_wave_index(), _spawn_system.get_enemy_wave_total(), live_enemies])
 	end_battle(true)
 
 
@@ -546,7 +558,13 @@ func _clear_group_target_cache() -> void:
 ## 供单位索敌 fallback：读节流缓存（战斗外或未命中缓存时回退到实时 get_nodes_in_group）
 func get_cached_nodes_in_group(group_name: String) -> Array:
 	if battle_active and _cached_nodes_by_group.has(group_name):
-		return _cached_nodes_by_group[group_name] as Array
+		var cached: Array = _cached_nodes_by_group[group_name] as Array
+		# 过滤已释放节点，防止悬空引用
+		var valid: Array = []
+		for n in cached:
+			if is_instance_valid(n):
+				valid.append(n)
+		return valid
 	var tree := get_tree()
 	if tree == null:
 		return []

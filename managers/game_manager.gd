@@ -86,7 +86,7 @@ func check_phase_master_encounter() -> Dictionary:
 
 		# 如果没有找到对应势力的相位师（或没拿到），则随机抽取
 		if selected_master.is_empty():
-			var idx = randi() % min(3, all_masters.size())
+			var idx = randi() % all_masters.size()
 			selected_master = all_masters[idx]
 			if DEBUG_GAME_LOG:
 				pass  # LOG: 遭遇随机相位师
@@ -244,6 +244,7 @@ func go_to_battle() -> void:
 		pass  # LOG: go_to_battle 被调用
 	current_phase = GamePhase.BATTLE
 
+	last_battle_reward_summary = {}
 	_snapshot_battle_reward_baselines()
 	# 检查是否遭遇相位师
 	check_phase_master_encounter()

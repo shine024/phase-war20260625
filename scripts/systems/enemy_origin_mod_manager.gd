@@ -138,7 +138,7 @@ func is_slot_unlocked_for_card() -> bool:
 ## 获取某张卡当前装备的敌源MOD ID
 func get_equipped_eom(card_id: String) -> String:
 	var bpm: Node = get_node_or_null("/root/BlueprintManager")
-	if bpm and bpm.has("blueprint_enemy_origin_mod"):
+	if bpm and bpm.blueprint_enemy_origin_mod is Dictionary:
 		return str(bpm.blueprint_enemy_origin_mod.get(card_id, ""))
 	return ""
 

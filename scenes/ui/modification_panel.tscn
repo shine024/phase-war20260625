@@ -1,0 +1,130 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" uid="uid://xfff2bifmi26" path="res://scenes/ui/modification_panel.gd" id="1_script"]
+
+[node name="ModificationPanel" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TitleRow" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="VBoxContainer/TitleRow"]
+layout_mode = 2
+text = "改造面板"
+
+[node name="CloseButton" type="Button" parent="VBoxContainer/TitleRow"]
+layout_mode = 2
+text = "X"
+
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+
+[node name="CardListContainer" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ModScrollContainer" type="ScrollContainer" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+
+[node name="ModListContainer" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/ModScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="DetailPanel" type="Panel" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+
+[node name="InfoLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = 4.0
+
+[node name="InstalledList" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/DetailPanel"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.8
+offset_left = 8.0
+offset_top = 4.0
+offset_right = -8.0
+
+[node name="ModDetailsPanel" type="Panel" parent="VBoxContainer/HBoxContainer/DetailPanel"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -80.0
+offset_left = 4.0
+offset_right = -4.0
+visible = false
+
+[node name="NameLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel"]
+layout_mode = 2
+offset_left = 4.0
+offset_top = 4.0
+
+[node name="PrototypeLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel"]
+layout_mode = 2
+offset_left = 4.0
+offset_top = 24.0
+
+[node name="DescLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel"]
+layout_mode = 2
+offset_left = 4.0
+offset_top = 44.0
+
+[node name="EffectsLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel"]
+layout_mode = 2
+offset_left = 4.0
+offset_top = 64.0
+
+[node name="InstallButton" type="Button" parent="VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel"]
+layout_mode = 2
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -160.0
+offset_top = -32.0
+offset_right = -4.0
+offset_bottom = -4.0
+text = "安装"
+
+[node name="ResearchLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "研究点：0"
+
+[node name="ResultLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = ""
+visible = false

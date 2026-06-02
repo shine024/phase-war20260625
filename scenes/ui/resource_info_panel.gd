@@ -8,6 +8,8 @@ const COMPACT_RESOURCE_KEYS: Array[String] = ["energy", "nano_materials"]
 var _toggle_button: Button = null
 
 func _ready() -> void:
+	# 确保面板不阻止子元素点击，但阻止传递到背景
+	mouse_filter = Control.MOUSE_FILTER_STOP
 	_setup_style()
 	_build_ui()
 	_connect_signals()
@@ -46,9 +48,30 @@ func _build_ui() -> void:
 
 	_toggle_button = Button.new()
 	_toggle_button.text = "展开"
-	_toggle_button.custom_minimum_size = Vector2(52, 24)
-	_toggle_button.add_theme_font_size_override("font_size", 11)
-	_toggle_button.pressed.connect(_on_toggle_pressed)
+	_toggle_button.custom_minimum_size = Vector2(70, 32)
+	_toggle_button.add_theme_font_size_override("font_size", 13)
+	
+	# 添加明显的按钮样式
+	var btn_style = StyleBoxFlat.new()
+	btn_style.bg_color = Color(0.3, 0.5, 0.8, 0.8)
+	btn_style.set_corner_radius_all(4)
+	_toggle_button.add_theme_stylebox_override("normal", btn_style)
+	
+	var hover_style = StyleBoxFlat.new()
+	hover_style.bg_color = Color(0.4, 0.6, 0.9, 0.9)
+	hover_style.set_corner_radius_all(4)
+	_toggle_button.add_theme_stylebox_override("hover", hover_style)
+	
+	_toggle_button.focus_mode = Control.FOCUS_NONE
+	_toggle_button.mouse_filter = Control.MOUSE_FILTER_STOP
+	_toggle_button.z_index = 10  # 确保按钮在最上层
+	_toggle_button.tooltip_text = "点击展开/收起资源列表"  # 添加提示文本
+	
+	# 验证信号连接
+	if not _toggle_button.pressed.is_connected(_on_toggle_pressed):
+		_toggle_button.pressed.connect(_on_toggle_pressed)
+		print("资源面板：已连接展开/收起按钮信号")
+	
 	header.add_child(_toggle_button)
 
 	_add_resource_row(vbox, "energy", "⚡", "能量块", Color(1.0, 0.85, 0.3))
@@ -98,10 +121,11 @@ func _update_row_visibility() -> void:
 		var row: Control = _row_nodes[key]
 		if row == null:
 			continue
+		var should_show: bool = true
 		if _compact_mode:
-			row.visible = COMPACT_RESOURCE_KEYS.has(String(key))
-		else:
-			row.visible = true
+			should_show = COMPACT_RESOURCE_KEYS.has(String(key))
+		row.visible = should_show
+	
 	if _toggle_button != null:
 		_toggle_button.text = "展开" if _compact_mode else "收起"
 

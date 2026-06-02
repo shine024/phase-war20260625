@@ -99,6 +99,9 @@ func _ready() -> void:
 	var popup = get_node_or_null("CardDetailPopup")
 	if popup:
 		_init_detail_info_panel(popup)
+		# 点弹窗外关闭时也触发 hide_panel，避免旧 action 按钮残留造成下次点击按钮数翻倍
+		if popup.has_signal("popup_hide") and not popup.popup_hide.is_connected(_on_detail_popup_hide):
+			popup.popup_hide.connect(_on_detail_popup_hide)
 
 	# 创建网格加载指示器（不加入场景树，需要时动态插入 CardGrid）
 	_loading_label = Label.new()
@@ -332,6 +335,9 @@ func show_card_detail(card: CardResource, _source_item: Control) -> void:
 	# 使用统一情报面板显示卡牌信息（show_card_info 内部已设置 visible = true）
 	if _detail_info_panel.has_method("show_card_info"):
 		_detail_info_panel.show_card_info(card)
+		# 背包模式使用 CardDetailPopup 的关闭按钮，隐藏内部关闭按钮
+		if _detail_info_panel.has_method("set_close_button_visible"):
+			_detail_info_panel.set_close_button_visible(false)
 
 	# 显示 CloseButton（.tscn 中定义，关闭弹窗用）
 	var close_btn: Button = popup.get_node_or_null("Margin/VBox/CloseButton") as Button
@@ -363,7 +369,6 @@ func _on_detail_action_requested(action: String, card: CardResource) -> void:
 		"equip":
 			if _presenter:
 				_presenter.on_equip_button_pressed(card)
-
 
 ## 供相位仪等外部 UI 直接打开详情
 static func open_card_detail(card: CardResource, source_item: Control = null) -> void:
@@ -493,6 +498,11 @@ func _on_card_clicked(card: CardResource, source_item: Control) -> void:
 func _on_detail_close() -> void:
 	if _presenter:
 		_presenter.on_detail_close()
+
+## PopupPanel.popup_hide 信号回调：点弹窗外区域/系统关闭时触发，确保内嵌情报面板状态清空
+func _on_detail_popup_hide() -> void:
+	if _detail_info_panel and is_instance_valid(_detail_info_panel) and _detail_info_panel.has_method("hide_panel"):
+		_detail_info_panel.hide_panel()
 
 func _on_close() -> void:
 	if _presenter:

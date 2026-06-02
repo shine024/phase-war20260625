@@ -39,6 +39,9 @@ IntelItemBag="*res://managers/intel_item_bag.gd"
 IntelDiscoveryManager="*res://scripts/systems/intel_discovery_manager.gd"
 EnemyOriginModManager="*res://scripts/systems/enemy_origin_mod_manager.gd"
 IntelEvolutionManager="*res://scripts/systems/intel_evolution_manager.gd"
+ModificationRegistry="*res://scripts/systems/modification_registry.gd"
+MilitaryTitleRegistry="*res://scripts/systems/military_title_registry.gd"
+EvolutionPathRegistry="*res://scripts/systems/evolution_path_registry.gd"
 
 [display]
 

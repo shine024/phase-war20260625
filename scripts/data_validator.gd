@@ -58,13 +58,6 @@ static func validate_card_id(card_id: String) -> bool:
 	push_warning("[DataValidator] Card ID format unusual: %s" % card_id)
 	return true  # 警告但不阻止
 
-## [DEPRECATED] validate_star_level — star_level 概念已移除，保留空壳避免调用方编译报错。
-## 验证星级范围
-@warning_ignore("unused_parameter")
-static func validate_star_level(_star: int) -> bool:
-	push_warning("[DataValidator] validate_star_level is deprecated; star_level concept removed.")
-	return true
-
 ## 验证能量值
 static func validate_energy_value(energy: float) -> bool:
 	return validate_range(energy, 0.0, 1000.0, "Energy")

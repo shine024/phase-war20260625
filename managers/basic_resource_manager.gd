@@ -74,15 +74,15 @@ func add_basic_resource(id: String, amount: int) -> void:
 
 func get_total(id: String) -> int:
 	match id:
-		BasicResources.ID_NANO_MATERIALS, "nano_materials", "basic_nano":  # 兼容旧ID
+		BasicResources.ID_NANO_MATERIALS, "nano_materials", "basic_nano", "nano":  # 兼容旧ID和短名称
 			return total_nano_materials
 		BasicResources.ID_ALLOY, "alloy":
 			return total_alloy
 		BasicResources.ID_CRYSTAL, "crystal":
 			return total_crystal
-		BasicResources.ID_ENERGY_BLOCK, "energy_block":
+		BasicResources.ID_ENERGY_BLOCK, "energy_block", "energy":
 			return total_energy_block
-		BasicResources.ID_RESEARCH_POINTS, "research_points":
+		BasicResources.ID_RESEARCH_POINTS, "research_points", "research":
 			return total_research_points
 		_:
 			return int(custom_totals.get(id, 0))
@@ -126,3 +126,11 @@ func load_state(data: Dictionary) -> void:
 	# 同步兼容变量
 	total_basic_nano = total_nano_materials
 	resources_changed.emit()
+
+## 检查资源是否足够（用于BlueprintManager调用）
+func can_afford(id: String, amount: int) -> bool:
+	return get_total(id) >= amount
+
+## 消耗资源（用于BlueprintManager调用）
+func consume(id: String, amount: int) -> void:
+	add_resource(id, -amount)

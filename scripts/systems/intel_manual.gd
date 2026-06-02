@@ -16,6 +16,8 @@ extends Node
 
 const SaveUtils = preload("res://scripts/save_utils.gd")
 const IntelDimensions = preload("res://data/intel_dimensions.gd")
+const DefaultCards = preload("res://data/default_cards.gd")
+const GC = preload("res://resources/game_constants.gd")
 
 # ── 常量 ──────────────────────────────────────────────────────────
 
@@ -451,3 +453,20 @@ func get_total_completed() -> int:
 ## 情报100%时掉落率+50%，即返回 1.5；否则返回 1.0
 func get_drop_bonus_multiplier(card_id: String) -> float:
 	return 1.5 if is_complete(card_id) else 1.0
+
+## 解锁所有情报（用于新游戏初始资源）
+func unlock_all_intel() -> void:
+	var all_cards = DefaultCards.create_all()
+	for card in all_cards:
+		if card is CardResource and card.card_type == GC.CardType.COMBAT_UNIT:
+			_ensure_entry(card.card_id)
+			var entry = _entries[card.card_id]
+			entry.intel_progress = 1.0
+			entry.is_unlocked = true
+			# 所有4维情报设为100%
+			for dim in IntelDimensions.ALL_DIMENSIONS:
+				entry.intel_dimensions[dim] = 1.0
+				entry.revealed_tiers[dim] = 4  # 最高等级
+			if not _completed_cache.has(card.card_id):
+				_completed_cache.append(card.card_id)
+	_completed_cache = _completed_cache.duplicate()  # 触发更新

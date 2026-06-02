@@ -91,6 +91,8 @@ func _apply_equipped_energy_cards() -> void:
 	# 顶级相位仪（4个以上能量槽）能量回复乘5
 	if slot_count >= 4:
 		_regen_per_sec *= 5.0
+	if _base_start <= 0.0:
+		_base_start = GC.ENERGY_START
 
 func _add_energy(amount: float) -> void:
 	current = clampf(current + amount, 0.0, _max)

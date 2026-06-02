@@ -33,7 +33,7 @@ const MAX_SLOTS := 3
 const SAVE_FILE_USER := "user://save.json"
 const SAVE_FILE_BACKUP := "user://save_backup.json"
 const SAVE_FILE_TEMP := "user://save.json.tmp"
-const SAVE_SCHEMA_VERSION := 3
+const SAVE_SCHEMA_VERSION := 5
 const SAVE_MIN_INTERVAL_MS := 1200
 const SAVE_BACKUP_INTERVAL_MS := 15000
 const NONCRITICAL_SAVE_INTERVAL_MS := 10000
@@ -687,11 +687,36 @@ func get_last_known_backpack_ids() -> Array:
 func clear_pending_backpack_ids() -> void:
 	_pending_backpack_ids.clear()
 
-## 新存档初始背包卡牌
+## 新存档初始背包卡牌 + 初始资源
 func _enqueue_starter_backpack_cards() -> void:
+	# 初始卡牌
 	enqueue_backpack_card_id("omega_platform")
 	enqueue_backpack_card_id("energy_start_1")
 	enqueue_backpack_card_id("energy_start_2")
+	
+	# 初始资源：各资源100000点
+	if BasicResourceManager:
+		BasicResourceManager.add_resource("nano_materials", 100000)
+		BasicResourceManager.add_resource("alloy", 100000)
+		BasicResourceManager.add_resource("crystal", 100000)
+		BasicResourceManager.add_resource("energy_block", 100000)
+		BasicResourceManager.add_resource("research_points", 100000)
+	
+	# 初始情报：解锁所有情报
+	if IntelManual and IntelManual.has_method("unlock_all_intel"):
+		IntelManual.unlock_all_intel()
+	
+	# 初始改装材料：所有改装库存100
+	# TODO: 需要根据改装系统实现添加
+	# if ModificationRegistry:
+	#     for mod_id in ModificationRegistry.get_all_mod_ids():
+	#         BlueprintManager.add_modification_stock(mod_id, 100)
+	
+	# 初始进化材料：所有进化材料库存100
+	# TODO: 需要根据进化系统实现添加
+	
+	# 初始关键道具：所有关键道具库存100
+	# TODO: 需要根据道具系统实现添加
 
 ## 处理一个待入包的卡牌ID（从pending中移除，标记为已处理）
 func consume_pending_backpack_card_id(card_id: String) -> bool:

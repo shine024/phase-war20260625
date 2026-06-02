@@ -64,9 +64,7 @@ var unlocked_blueprint_ids: Array = []
 ## card_id -> 副本数量（≥1 表示可制造）
 var blueprint_copies: Dictionary = {}
 
-## card_id -> 当前星级(1~9)
-## [DEPRECATED] 蓝图星级系统已废弃，保留字段仅用于存档向后兼容
-var blueprint_stars: Dictionary = {}
+## blueprint_stars 已在 v5 迁移中彻底废弃，不再保留字段
 
 ## card_id -> 已选改装分支（最多9项，同 conflict_group 冲突自动替换）
 var blueprint_mods: Dictionary = {}
@@ -79,6 +77,8 @@ var blueprint_evolution_hp_floor: Dictionary = {}
 
 ## card_id -> 最近一次军衔缓存 {rank_id, rank_name, power_score}
 var blueprint_rank_cache: Dictionary = {}
+## card_id -> 敌源MOD ID
+var blueprint_enemy_origin_mod: Dictionary = {}
 
 ## 纳米材料已迁移到 BasicResourceManager（autoload）
 
@@ -213,8 +213,6 @@ func _unlock_default_blueprints() -> void:
 			unlocked_blueprint_ids.append(bp_id)
 		if blueprint_copies.get(bp_id, 0) < 1:
 			blueprint_copies[bp_id] = 1
-			# [DEPRECATED] blueprint_stars 写入已禁用
-			# blueprint_stars[bp_id] = 1
 			if DEBUG_BLUEPRINT_LOG:
 				pass  # LOG: Initial law unlock
 			if plm and plm.has_method("ensure_law_unlocked"):
@@ -234,8 +232,6 @@ func _ensure_starter_copies_for_default_energy_blueprints() -> void:
 	# 初始能量卡设为2★
 	# [DEPRECATED] 初始能量卡设星级逻辑已禁用
 	#for eid in ["energy_start_1", "energy_start_2"]:
-	#	if int(blueprint_stars.get(eid, 1)) < 2:
-	#		blueprint_stars[eid] = 2
 
 ## 旧存档：已解锁的默认能量蓝图若 0 副本则补到 1（每个存档只执行一次）
 func _migrate_legacy_default_energy_starter_copies() -> void:
@@ -246,9 +242,7 @@ func _migrate_legacy_default_energy_starter_copies() -> void:
 		if int(blueprint_copies.get(eid, 0)) >= 1:
 			continue
 		blueprint_copies[eid] = 1
-		# [DEPRECATED] blueprint_stars 写入已禁用
 		# var rarity: String = get_card_rarity(eid)
-		# blueprint_stars[eid] = StarConfig.calculate_star(1, rarity)
 		changed = true
 	if changed:
 		if DEBUG_BLUEPRINT_LOG:
@@ -307,8 +301,6 @@ func add_blueprint_copy(card_id: String, count: int = 1) -> void:
 	if not is_blueprint_unlocked(card_id):
 		unlock_blueprint(card_id)
 	blueprint_copies[card_id] = max(1, int(blueprint_copies.get(card_id, 0)))
-	# [DEPRECATED] blueprint_stars 写入已禁用 — 星级系统废弃，不再主动写入
-	# blueprint_stars[card_id] = max(1, int(blueprint_stars.get(card_id, 1)))
 	# 多余副本 → 研究点奖励
 	var rarity: String = get_card_rarity(card_id)
 	var grant_per_copy: int = int(StarConfig.get_research_cost_for_next_star(1, rarity) * 0.35)
@@ -329,9 +321,6 @@ func apply_card_drop_first_copy(card_id: String) -> void:
 	if not is_blueprint_unlocked(id):
 		unlock_blueprint(id)
 	blueprint_copies[id] = maxi(1, int(blueprint_copies.get(id, 0)))
-	# [DEPRECATED] blueprint_stars 写入已禁用
-	# if int(blueprint_stars.get(id, 0)) < 1:
-	#		blueprint_stars[id] = 1
 	if is_law_blueprint_id(id) and plm and plm.has_method("ensure_law_unlocked"):
 		plm.ensure_law_unlocked(law_id_from_blueprint_id(id))
 	emit_signal("fragments_changed")
@@ -622,6 +611,12 @@ func get_manufacture_info(card_id: String) -> Dictionary:
 func get_base_power_for_mod_cost(card_id: String) -> float:
 	return ModManager.get_base_power_for_mod_cost(card_id, self)
 
+## 获取改造槽位消耗（新系统：按槽位次数递增）
+func get_mod_slot_cost(slot_index: int) -> int:
+	## 槽位消耗：第1槽50，第2槽100，...第9槽450
+	var base_cost = 50
+	return base_cost * slot_index
+
 ## 获取第 mod_index 个改造槽位的消耗需求（研究点 + 许可证）
 func get_modification_requirements(card_id: String, mod_index: int) -> Dictionary:
 	return ModManager.get_modification_requirements(card_id, mod_index, self)
@@ -726,9 +721,6 @@ func save_state() -> Dictionary:
 	var copies_dict: Dictionary = {}
 	for k in blueprint_copies:
 		copies_dict[k] = blueprint_copies[k]
-	var stars_dict: Dictionary = {}
-	for k in blueprint_stars:
-		stars_dict[k] = blueprint_stars[k]
 	var mods_dict: Dictionary = {}
 	for k in blueprint_mods:
 		mods_dict[k] = (blueprint_mods[k] as Array).duplicate()
@@ -744,7 +736,6 @@ func save_state() -> Dictionary:
 	return {
 		"unlocked": unlocked_blueprint_ids.duplicate(),
 		"blueprint_copies": copies_dict,
-		"blueprint_stars": stars_dict,
 		"blueprint_mods": mods_dict,
 		"blueprint_inherit_bonus": inherit_dict,
 		"blueprint_evolution_hp_floor": hp_floor_dict,
@@ -770,12 +761,6 @@ func load_state(data: Dictionary) -> void:
 			var cid: String = String(k)
 			if not _is_excluded_war_platform_id(cid):
 				blueprint_copies[cid] = int(data["blueprint_copies"][k])
-	if data.has("blueprint_stars") and data["blueprint_stars"] is Dictionary:
-		blueprint_stars.clear()
-		for k in data["blueprint_stars"]:
-			var cid: String = String(k)
-			if not _is_excluded_war_platform_id(cid):
-				blueprint_stars[cid] = max(1, int(data["blueprint_stars"][k]))
 	if data.has("blueprint_mods") and data["blueprint_mods"] is Dictionary:
 		blueprint_mods.clear()
 		for k in data["blueprint_mods"]:
@@ -802,17 +787,6 @@ func load_state(data: Dictionary) -> void:
 			var cid: String = String(k)
 			if not _is_excluded_war_platform_id(cid):
 				blueprint_copies[cid] = int(data["fragments"][k])
-		if data.has("blueprint_levels") and data["blueprint_levels"] is Dictionary:
-			blueprint_stars.clear()
-			for k in data["blueprint_levels"]:
-				var cid: String = String(k)
-				if not _is_excluded_war_platform_id(cid):
-					blueprint_stars[cid] = max(1, mini(int(data["blueprint_levels"][k]), MAX_BLUEPRINT_LEVEL))
-		else:
-			blueprint_stars.clear()
-			for cid in blueprint_copies:
-				var rarity: String = get_card_rarity(cid)
-				blueprint_stars[cid] = StarConfig.calculate_star(blueprint_copies[cid], rarity)
 	if not _legacy_default_energy_copies_migrated:
 		_migrate_legacy_default_energy_starter_copies()
 		_legacy_default_energy_copies_migrated = true
@@ -839,7 +813,6 @@ func _migrate_v3_law_copies_to_knowledge() -> void:
 func reset_to_defaults() -> void:
 	unlocked_blueprint_ids.clear()
 	blueprint_copies.clear()
-	blueprint_stars.clear()
 	blueprint_mods.clear()
 	blueprint_inherit_bonus.clear()
 	blueprint_rank_cache.clear()
@@ -854,3 +827,287 @@ func _auto_save(reason: String = "") -> void:
 func _flush_deferred_auto_save() -> void:
 	_auto_save_deferred_scheduled = false
 	_auto_save_pending_reason = ""
+
+# ─────────────────────────────────────────────
+#  新扩展方法：强化改造与进化系统
+# ─────────────────────────────────────────────
+
+## 强化卡牌到指定等级（新接口）
+func apply_reinforcement(card: CardResource, target_level: int) -> Dictionary:
+	var result = {success = false, cost = 0, message = ""}
+
+	# 验证等级范围
+	if target_level < 1 or target_level > 10:
+		result.message = "强化等级超出范围（1-10）"
+		return result
+
+	var current_level = card.enhance_level
+	if target_level <= current_level:
+		result.message = "目标等级不高于当前等级"
+		return result
+
+	# 计算消耗
+	var base_power = card.power
+	var cost_multiplier_sum = 0.0
+
+	# 使用UnifiedRankSystem的cost_multiplier
+	for level in range(current_level + 1, target_level + 1):
+		var mult = _get_rank_cost_multiplier(level)
+		cost_multiplier_sum += mult
+
+	var nano_cost = int(base_power * cost_multiplier_sum)
+
+	# 检查资源（通过BasicResourceManager）
+	if has_method("_can_afford_nano") and not _can_afford_nano(nano_cost):
+		result.message = "纳米材料不足（需要%d）" % nano_cost
+		return result
+
+	# 应用强化
+	card.enhance_level = target_level
+	_consume_nano(nano_cost)
+
+	result.success = true
+	result.cost = nano_cost
+	result.message = "强化成功：%s → Lv%d" % [card.display_name, target_level]
+
+	# 自动保存
+	_auto_save("reinforcement")
+
+	return result
+
+## 备用：获取等级消耗倍率
+func _get_rank_cost_multiplier(level: int) -> float:
+	match level:
+		1: return 0.0
+		2: return 0.5
+		3: return 1.0
+		4: return 1.5
+		5: return 2.0
+		6: return 2.5
+		7: return 3.0
+		8: return 3.5
+		9: return 4.5
+		10: return 6.0
+		_: return 1.0
+
+## 安装改造（新接口）
+func install_modification(card: CardResource, mod_id: String, slot: int = -1) -> Dictionary:
+	var result = {success = false, cost = 0, message = ""}
+
+	# 检查槽位
+	if card.mods.size() >= 9:
+		result.message = "改造槽位已满（最多9个）"
+		return result
+
+	# 检查冲突
+	var check_result = card.can_install_modification(mod_id)
+	if not check_result.can_install:
+		result.message = check_result.reason
+		return result
+
+	# 获取改造数据
+	var mod_data = _get_mod_data_from_registry(mod_id)
+	if mod_data.is_empty():
+		result.message = "找不到改造数据：%s" % mod_id
+		return result
+
+	# 计算消耗
+	var slot_cost = get_mod_slot_cost(card.mods.size())
+	var base_power = get_base_power_for_mod_cost(card.card_id)
+	var research_cost = int(mod_data.get("cost_research", 0))
+
+	# 检查研究点
+	if not _can_afford_research(research_cost):
+		result.message = "研究点不足（需要%d）" % research_cost
+		return result
+
+	# 应用改造
+	var mod_entry = {
+		id = mod_id,
+		installed_at = Time.get_unix_time_from_system(),
+	}
+
+	if slot >= 0 and slot < card.mods.size():
+		card.mods.insert(slot, mod_entry)
+	else:
+		card.mods.append(mod_entry)
+
+	_consume_research(research_cost)
+
+	result.success = true
+	result.cost = research_cost
+	result.message = "改造安装成功：%s" % mod_data.get("name", mod_id)
+
+	# 更新blueprint_mods缓存
+	_update_blueprint_mods_cache(card.card_id)
+
+	# 自动保存
+	_auto_save("modification")
+
+	return result
+
+## 替换改造（新接口）
+func replace_modification(card: CardResource, old_mod_id: String, new_mod_id: String) -> Dictionary:
+	var result = {success = false, refund = 0, cost = 0, message = ""}
+
+	# 查找旧改造位置
+	var old_index = -1
+	for i in range(card.mods.size()):
+		var mod_entry = card.mods[i]
+		var entry_id = mod_entry.get("id", "") if mod_entry is Dictionary else ""
+		if entry_id == old_mod_id:
+			old_index = i
+			break
+
+	if old_index < 0:
+		result.message = "找不到要替换的改造：%s" % old_mod_id
+		return result
+
+	# 移除旧改造
+	card.mods.remove_at(old_index)
+
+	# 安装新改造
+	var install_result = install_modification(card, new_mod_id, old_index)
+
+	if install_result.success:
+		# 计算返还
+		var old_mod_data = _get_mod_data_from_registry(old_mod_id)
+		var refund = int(old_mod_data.get("cost_install", 0) * 0.5)
+		_add_research(refund)
+
+		result.success = true
+		result.refund = refund
+		result.cost = install_result.cost
+		result.message = "改造替换成功"
+	else:
+		# 失败，恢复旧改造
+		card.mods.insert(old_index, {id = old_mod_id, installed_at = 0})
+		result.message = install_result.message
+
+	return result
+
+## 进化卡牌（改造保留到新卡牌）
+func evolve_card(card: CardResource, target_card_id: String) -> Dictionary:
+	var result = {success = false, new_card = null, message = ""}
+
+	# 检查进化条件
+	var check_result = card.check_evolution_requirements(target_card_id)
+	if not check_result.passed:
+		result.message = "进化条件未满足：" + ", ".join(check_result.missing)
+		return result
+
+	# 记录旧改造
+	var preserved_mods = card.mods.duplicate(true)
+
+	# 记录进化历史
+	card.record_evolution(card.card_id, target_card_id, preserved_mods)
+
+	# 创建新卡牌（通过DefaultCards）
+	var new_card = _get_card_from_library(target_card_id)
+	if new_card == null:
+		result.message = "找不到目标卡牌：%s" % target_card_id
+		return result
+
+	# 转移改造到新卡牌
+	new_card.mods = preserved_mods
+
+	# 继承强化等级
+	new_card.enhance_level = card.enhance_level
+
+	# 更新blueprint数据
+	_remove_blueprint(card.card_id)
+	_add_blueprint(target_card_id, new_card.enhance_level, new_card.mods)
+
+	result.success = true
+	result.new_card = new_card
+	result.message = "进化成功：%s → %s" % [card.display_name, new_card.display_name]
+
+	# 自动保存
+	_auto_save("evolution")
+
+	return result
+
+## 获取卡牌的当前军衔称号（新接口）
+func get_card_military_title(card: CardResource) -> Dictionary:
+	return card.get_military_rank()
+
+## 获取可用的改造列表（按卡牌ID精筛）
+func get_available_modifications(card: CardResource) -> Array:
+	# ModificationRegistry是autoload，直接访问
+	var card_id = card.card_id if card else ""
+	if not card_id.is_empty() and ModificationRegistry.has_method("get_mods_for_card"):
+		return ModificationRegistry.get_mods_for_card(card_id)
+	return ModificationRegistry.get_for_unit_type(card.combat_kind if card else 0)
+
+## 获取进化路径预览
+func get_evolution_preview(card: CardResource, target_card_id: String) -> Dictionary:
+	var check_result = card.check_evolution_requirements(target_card_id)
+	var stats = card.calculate_evolved_stats(target_card_id)
+
+	return {
+		can_evolve = check_result.passed,
+		missing = check_result.missing,
+		new_stats = stats,
+		preserved_mods = card.mods.size(),
+	}
+
+## ─────────────────────────────────────────────
+##  内部辅助方法
+## ─────────────────────────────────────────────
+
+## 从注册表获取改造数据
+func _get_mod_data_from_registry(mod_id: String) -> Dictionary:
+	# ModificationRegistry是autoload，直接访问
+	return ModificationRegistry.get_data(mod_id)
+
+## 检查纳米材料是否足够
+func _can_afford_nano(amount: int) -> bool:
+	# BasicResourceManager是autoload，直接访问
+	return BasicResourceManager.can_afford("nano", amount)
+
+## 消耗纳米材料
+func _consume_nano(amount: int) -> void:
+	# BasicResourceManager是autoload，直接访问
+	BasicResourceManager.consume("nano", amount)
+
+## 检查研究点是否足够
+func _can_afford_research(amount: int) -> bool:
+	# BasicResourceManager是autoload，直接访问
+	return BasicResourceManager.can_afford("research", amount)
+
+## 消耗研究点
+func _consume_research(amount: int) -> void:
+	# BasicResourceManager是autoload，直接访问
+	BasicResourceManager.consume("research", amount)
+
+## 添加研究点
+func _add_research(amount: int) -> void:
+	# BasicResourceManager是autoload，直接访问
+	BasicResourceManager.add("research", amount)
+
+## 移除蓝图（进化时调用）
+func _remove_blueprint(card_id: String) -> void:
+	if blueprint_copies.has(card_id):
+		blueprint_copies[card_id] = 0
+	if blueprint_mods.has(card_id):
+		blueprint_mods.erase(card_id)
+
+## 添加蓝图（进化时调用）
+func _add_blueprint(card_id: String, enhance_level: int, mods: Array) -> void:
+	if not blueprint_copies.has(card_id):
+		blueprint_copies[card_id] = 0
+	blueprint_copies[card_id] = max(1, blueprint_copies[card_id])
+	if not mods.is_empty():
+		blueprint_mods[card_id] = mods.duplicate(true)
+
+## 从库中获取卡牌
+func _get_card_from_library(card_id: String) -> CardResource:
+	# DefaultCards是const preload，始终可用
+	return DefaultCards.get_card_by_id(card_id)
+
+## 更新blueprint_mods缓存
+func _update_blueprint_mods_cache(card_id: String) -> void:
+	if blueprint_mods.has(card_id):
+		var card = _get_card_from_library(card_id)
+		if card:
+			blueprint_mods[card_id] = card.mods.duplicate(true)

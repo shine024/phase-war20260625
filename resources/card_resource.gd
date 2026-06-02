@@ -153,10 +153,6 @@ var is_unlocked: bool = false
 # 卡片来源标记：true=战斗掉落成品卡，false=蓝图制造卡
 @export var is_dropped_card: bool = false
 
-## 蓝图星级 1-9★（Blueprint Star Level）
-## [DEPRECATED] v5.0 已废弃，去掉 @export，仅保留字段用于存档兼容。
-## 新代码不应再读写此字段，数据已由 enhance_level 替代。
-var star_level: int = 1
 
 
 # ─────────────────────────────────────────────
@@ -378,18 +374,6 @@ func clone() -> CardResource:
 	new_card.affix_slot_ids = affix_slot_ids.duplicate()
 	new_card.affix_slot_count = affix_slot_count
 	new_card.is_dropped_card = is_dropped_card
-	new_card.star_level = star_level
-	# 旧字段（兼容）
-	new_card.platform_type = platform_type
-	new_card.legacy_weapon_type = legacy_weapon_type
-	new_card.default_weapon_type = default_weapon_type
-	new_card.source_platform_id = source_platform_id
-	new_card.source_weapon_ids = source_weapon_ids.duplicate()
-	new_card.max_weapons = max_weapons
-	new_card.weight_capacity = weight_capacity
-	new_card.weight = weight
-	new_card.multi_weapon_types = multi_weapon_types.duplicate()
-	# 势力变体元数据
 	new_card.faction_id = faction_id
 	new_card.faction_level = faction_level
 	new_card.base_card_id = base_card_id
@@ -411,3 +395,244 @@ func validate() -> bool:
 		if attack_light <= 0.0 and attack_armor <= 0.0 and attack_air <= 0.0:
 			return false
 	return true
+
+# ─────────────────────────────────────────────
+#  新扩展方法：强化改造与进化系统
+# ─────────────────────────────────────────────
+
+## 获取当前战力（基础属性 + 强化 + 改造加成）
+func get_current_power() -> int:
+	var base_p = power
+	var level = enhance_level
+
+	# 强化倍率（通过UnifiedRankSystem统一计算）
+	var level_multiplier = UnifiedRankSystem.get_power_multiplier(level)
+
+	# 改造加成
+	var mod_bonus = _get_modifications_power_bonus()
+
+	return int(base_p * level_multiplier) + mod_bonus
+
+## 计算改造战力加成
+func _get_modifications_power_bonus() -> int:
+	var bonus = 0
+	for mod_entry in mods:
+		var mod_id = mod_entry.get("id", "") if mod_entry is Dictionary else ""
+		# 通过ModificationRegistry获取数据（autoload，直接访问）
+		var mod_data = ModificationRegistry.get_data(mod_id)
+		var power_mult = mod_data.get("power_mult", 1.0)
+		bonus += int(power_mult * 10)
+	return bonus
+
+## 获取军衔信息（动态计算）
+func get_military_rank() -> Dictionary:
+	var base_p = power
+	var current_p = get_current_power()
+	var unit_type = combat_kind
+
+	# 通过MilitaryTitleRegistry获取数据（autoload，直接访问）
+	return MilitaryTitleRegistry.get_military_title(base_p, current_p, unit_type)
+
+## 备用：根据倍率获取等级
+func _get_rank_by_ratio(ratio: float) -> int:
+	if ratio < 1.05: return 1
+	elif ratio < 1.10: return 2
+	elif ratio < 1.15: return 3
+	elif ratio < 1.20: return 4
+	elif ratio < 1.25: return 5
+	elif ratio < 1.30: return 6
+	elif ratio < 1.35: return 7
+	elif ratio < 1.50: return 8
+	elif ratio < 1.60: return 9
+	else: return 10
+
+## 备用：获取军衔名称
+func _get_rank_name(unit_type: int, level: int) -> String:
+	match unit_type:
+		0:  # 步兵
+			match level:
+				1: return "征召兵"
+				2: return "合格步兵"
+				3: return "老兵"
+				4: return "精锐"
+				5: return "士官"
+				6: return "战斗老兵"
+				7: return "三级军士长"
+				8: return "二级军士长"
+				9: return "一级军士长"
+				10: return "战斗大师"
+				_: return "步兵Lv%d" % level
+		1:  # 装甲
+			match level:
+				1: return "装填手"
+				2: return "驾驶员"
+				3: return "炮手"
+				4: return "车长"
+				5: return "排长"
+				6: return "连长"
+				7: return "营长"
+				8: return "装甲兵总监"
+				9: return "装甲兵上将"
+				10: return "钢铁战神"
+				_: return "装甲Lv%d" % level
+		_: return "军衔%d" % level
+
+## 获取下一级军衔信息
+func get_next_rank_info() -> Dictionary:
+	var base_p = power
+	var current_p = get_current_power()
+	var unit_type = combat_kind
+
+	# 通过MilitaryTitleRegistry获取数据（autoload，直接访问）
+	return MilitaryTitleRegistry.get_next_rank_info(base_p, current_p, unit_type)
+
+## 获取军衔进度（0-1）
+func get_rank_progress() -> float:
+	var base_p = power
+	var current_p = get_current_power()
+	if base_p <= 0:
+		return 0.0
+	var current_rank = _get_rank_by_ratio(float(current_p) / float(base_p))
+
+	if current_rank >= 10:
+		return 1.0
+
+	# 简化计算
+	var current_min = base_p * (1.0 + (current_rank - 1) * 0.05)
+	var next_min = base_p * (1.0 + current_rank * 0.05)
+
+	if next_min <= current_min:
+		return 1.0
+
+	var progress = (current_p - current_min) / (next_min - current_min)
+	return clamp(progress, 0.0, 1.0)
+
+## 检查改造冲突
+func can_install_modification(mod_id: String) -> Dictionary:
+	var result = {can_install = true, conflicts = [], reason = ""}
+
+	# 检查槽位
+	if mods.size() >= 9:
+		result.can_install = false
+		result.reason = "改造槽位已满（最多9个）"
+		return result
+
+	# 获取改造数据
+	var mod_data = ModificationRegistry.get_data(mod_id)
+	if mod_data.is_empty():
+		result.can_install = false
+		result.reason = "找不到改造数据"
+		return result
+
+	# 检查情报需求
+	var intel_requirements = mod_data.get("intel_requirements", {})
+	if not intel_requirements.is_empty():
+		if IntelManual and IntelManual.has_method("get_intel_progress"):
+			for intel_key in intel_requirements.keys():
+				var required_progress = intel_requirements[intel_key]
+				var target_card_id = intel_key.trim_prefix("intel_")
+				var current_progress = IntelManual.get_intel_progress(target_card_id)
+				
+				if current_progress < required_progress:
+					result.can_install = false
+					result.reason = "情报不足：%s需要%.0f%%情报（当前%.0f%%）" % [
+						target_card_id, required_progress * 100, current_progress * 100
+					]
+					return result
+
+	# 检查冲突组
+	var conflict_group = mod_data.get("conflict_group", "")
+
+	if not conflict_group.is_empty():
+		for installed_mod in mods:
+			var installed_id = installed_mod.get("id", "") if installed_mod is Dictionary else ""
+			var installed_data = ModificationRegistry.get_data(installed_id)
+			var installed_group = installed_data.get("conflict_group", "")
+
+			if installed_group == conflict_group:
+				result.can_install = false
+				result.conflicts.append(installed_id)
+				result.reason = "与已安装改造冲突（%s）" % conflict_group
+				break
+
+	return result
+
+## 获取应用改造后的属性
+func get_modified_stats() -> Dictionary:
+	var base_stats = {
+		max_hp = base_hp,
+		attack_light = attack_light,
+		attack_armor = attack_armor,
+		attack_air = attack_air,
+		defense_light = defense_light,
+		defense_armor = defense_armor,
+		defense_air = defense_air,
+		move_speed = base_speed,
+		attack_range = range_value,
+		attack_interval = 1.0 / attack_speed if attack_speed > 0 else 1.0,
+		deploy_speed = deploy_speed,
+	}
+
+	# 通过ModificationRegistry应用改造效果（autoload，直接访问）
+	return ModificationRegistry.apply_effects(base_stats, mods)
+
+## 获取可进化目标列表
+func get_evolution_targets() -> Array:
+	var card_dict = {
+		id = card_id,
+		level = enhance_level,
+		installed_modifications = mods,
+		power = power,
+		combat_kind = combat_kind,
+	}
+	# 通过EvolutionPathRegistry获取数据（autoload，直接访问）
+	return EvolutionPathRegistry.get_evolution_targets(card_dict)
+
+## 检查进化条件
+func check_evolution_requirements(target_card_id: String) -> Dictionary:
+	var card_dict = {
+		id = card_id,
+		level = enhance_level,
+		installed_modifications = mods,
+		power = power,
+		combat_kind = combat_kind,
+	}
+	# 通过EvolutionPathRegistry获取数据（autoload，直接访问）
+	return EvolutionPathRegistry.check_evolution_requirements(card_dict, target_card_id)
+
+## 计算进化后属性
+func calculate_evolved_stats(target_card_id: String) -> Dictionary:
+	var card_dict = {
+		id = card_id,
+		level = enhance_level,
+		installed_modifications = mods,
+		power = power,
+	}
+	# 通过EvolutionPathRegistry获取数据（autoload，直接访问）
+	return EvolutionPathRegistry.calculate_evolved_stats(card_dict, target_card_id)
+
+## 记录进化历史
+func record_evolution(from_id: String, to_id: String, preserved_mods: Array) -> void:
+	if not has_meta("evolution_history"):
+		set_meta("evolution_history", [])
+
+	var history = get_meta("evolution_history")
+	history.append({
+		from_id = from_id,
+		to_id = to_id,
+		at_time = Time.get_unix_time_from_system(),
+		preserved_mods = preserved_mods,
+	})
+
+## 获取进化历史
+func get_evolution_history() -> Array:
+	if has_meta("evolution_history"):
+		return get_meta("evolution_history")
+	return []
+
+## 获取最初卡牌ID
+func get_original_card_id() -> String:
+	var history = get_evolution_history()
+	if history.is_empty():
+		return card_id
+	return history[0].get("from_id", card_id)

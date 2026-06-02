@@ -106,7 +106,9 @@ func setup(_is_player: bool, p_wave: int, p_archetype_id: String = "basic_infant
 		call_deferred("_apply_phase_law_passives")
 	max_hp = hp
 	add_to_group("enemy_units")
-	$CollisionShape2D.disabled = false
+	var cs := get_node_or_null("CollisionShape2D")
+	if cs:
+		cs.disabled = false
 	_update_shape()
 	_update_hp_bar()
 
@@ -490,7 +492,7 @@ func _process_attack_timing(delta: float) -> void:
 	var timing: Dictionary
 	if stats != null:
 		var target_stats = target.get("stats") as UnitStats
-		var target_kind: int = target_stats.combat_kind if target_stats else 0
+		var target_kind: int = target_stats.combat_kind if target_stats != null else 0
 		timing = AttackCalculator.get_attack_timing(stats, target_kind)
 	else:
 		# 无stats时回退到旧逻辑
@@ -542,7 +544,7 @@ func _do_attack() -> void:
 	var dmg_out: float = attack_damage  # 默认值（无stats时）
 	if stats != null:
 		var target_stats = target.get("stats") as UnitStats
-		var target_kind: int = target_stats.combat_kind if target_stats else 0
+		var target_kind: int = target_stats.combat_kind if target_stats != null else 0
 		dmg_out = AttackCalculator.get_attack_vs(stats, target_kind)
 	# v5.0: 仅直射有衰减
 	var cfg: Dictionary = _cached_archetype_cfg
@@ -550,7 +552,7 @@ func _do_attack() -> void:
 	if stats != null:
 		wt = stats.weapon_type
 	var multi: Array = cfg.get("weapon_types", [])
-	if multi.size() > 0:
+	if not multi.is_empty():
 		wt = int(multi[_attack_weapon_index % multi.size()])
 		_attack_weapon_index += 1
 	if _try_fire_enemy_projectile_batch(target, wt, dmg_out, miss):
@@ -566,7 +568,7 @@ func _do_attack() -> void:
 	bullet.global_position = global_position
 	# 如果有完整的 stats 信息，传递给子弹用于词条效果
 	bullet.setup(target, dmg_out, false, wt, self, stats, miss)
-	var root_2d = get_parent().get_parent() if get_parent() else self
+	var root_2d = get_parent().get_parent() if (get_parent() != null and get_parent().get_parent() != null) else self
 	var current_parent: Node = bullet.get_parent()
 	if current_parent != root_2d:
 		if current_parent != null:
@@ -582,13 +584,6 @@ func _try_fire_enemy_projectile_batch(p_target: Node2D, wt: int, p_damage: float
 	BattleManager.enemy_projectile_batch.fire(global_position, p_target, dmg, wt, self, stats, p_miss)
 	return true
 
-func _input_event(viewport: Viewport, event: InputEvent, shape_idx: int) -> void:
-	# 性能优化和错误修复：确保节点在场景树中才处理输入
-	if not is_inside_tree():
-		return
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		if SignalBus:
-			SignalBus.unit_selected.emit(self, false, Vector2.ZERO)
 func _update_hp_bar() -> void:
 	if _presentation_card_grid:
 		return

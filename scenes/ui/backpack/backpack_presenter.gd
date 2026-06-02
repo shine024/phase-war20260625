@@ -244,8 +244,7 @@ func on_dismantle_button_pressed(card: CardResource) -> void:
 			if nano_gain > 0:
 				brm.add_resource(BasicResources.ID_NANO_MATERIALS, nano_gain)
 
-	if _view and _view.has_method("hide_card_detail"):
-		_view.hide_card_detail()
+	# 刷新网格（不需要再调用 hide_card_detail，因为按钮回调已经延迟隐藏了）
 	if _view and _view.has_method("remove_last_card_by_id"):
 		var removed_from_view: bool = _view.remove_last_card_by_id(card.card_id)
 		if not removed_from_view:

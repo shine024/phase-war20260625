@@ -135,6 +135,21 @@ func _ready() -> void:
 		"scene": "res://scenes/ui/help_panel.tscn",
 			"user_data_path": "PopupLayer/HelpOverlay",
 			"autoload": false
+		},
+		"reinforcement": {
+			"scene": "res://scenes/ui/reinforcement_panel.tscn",
+			"user_data_path": "PopupLayer/ReinforcementOverlay",
+			"autoload": false
+		},
+		"modification": {
+			"scene": "res://scenes/ui/modification_panel.tscn",
+			"user_data_path": "PopupLayer/ModificationOverlay",
+			"autoload": false
+		},
+		"evolution": {
+			"scene": "res://scenes/ui/evolution_panel.tscn",
+			"user_data_path": "PopupLayer/EvolutionOverlay",
+			"autoload": false
 		}
 	}
 

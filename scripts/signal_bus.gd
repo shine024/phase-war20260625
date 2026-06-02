@@ -148,3 +148,17 @@ signal faction_event_generated(event: Dictionary)
 signal synthesis_completed(hybrid_card_id: String)
 signal synthesis_failed(reason: String)
 
+# 强化系统
+signal card_reinforced(card_id: String, old_level: int, new_level: int)
+signal reinforcement_failed(card_id: String, reason: String)
+
+# 改造系统
+signal modification_installed(card_id: String, mod_id: String)
+signal modification_removed(card_id: String, mod_id: String)
+signal modification_failed(card_id: String, mod_id: String, reason: String)
+
+# 进化系统
+signal card_evolved(source_card_id: String, target_card_id: String)
+signal evolution_failed(source_card_id: String, target_card_id: String, reason: String)
+signal evolution_path_unlocked(card_id: String, branch_name: String)
+

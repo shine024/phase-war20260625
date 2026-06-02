@@ -24,7 +24,7 @@ const BATTLE_MAX_X: float = 1240.0
 const BATTLE_MIN_Y: float = 280.0
 const BATTLE_MAX_Y: float = 440.0
 ## 我方单位前进上限（留出屏幕边缘余量）
-const PLAYER_MAX_ADVANCE_X: float = 1160.0
+var PLAYER_MAX_ADVANCE_X: float = BATTLE_MAX_X - 80.0
 ## 全装型静态回退：旧 unit_sprites/omega_platform.png 已移除，对齐 manifest vis_player_029
 const OMEGA_SPRITE_PATH := "res://assets/card_icons/units/vis_player_029.png"
 static var _omega_tex_cache: Texture2D = null
@@ -128,9 +128,11 @@ func _ready() -> void:
 	# 战斗逻辑跟随暂停状态
 	process_mode = Node.PROCESS_MODE_PAUSABLE
 	if SignalBus:
-		SignalBus.unit_move_command.connect(_on_unit_move_command)
+		if not SignalBus.unit_move_command.is_connected(_on_unit_move_command):
+			SignalBus.unit_move_command.connect(_on_unit_move_command)
 		if SignalBus.has_signal("phase_law_runtime_changed"):
-			SignalBus.phase_law_runtime_changed.connect(_on_phase_law_runtime_changed)
+			if not SignalBus.phase_law_runtime_changed.is_connected(_on_phase_law_runtime_changed):
+				SignalBus.phase_law_runtime_changed.connect(_on_phase_law_runtime_changed)
 	# 应用相位法则的被动加成（如装甲增益）
 	_apply_phase_law_passives()
 
@@ -168,7 +170,9 @@ func setup(p_is_player: bool, p_stats: UnitStats, forced_enemy_visual_archetype_
 		add_to_group("player_units")
 	else:
 		add_to_group("enemy_units")
-	$CollisionShape2D.disabled = false
+	var cs := get_node_or_null("CollisionShape2D")
+	if cs:
+		cs.disabled = false
 	_update_shape()
 	_update_visual()
 	_maybe_apply_card_grid_presentation()
@@ -768,7 +772,7 @@ func _shape_points() -> PackedVector2Array:
 			return PackedVector2Array([Vector2(0, -s), Vector2(s*0.8, s), Vector2(-s*0.8, s)])
 		6:
 			return PackedVector2Array([Vector2(-s,s), Vector2(s,s), Vector2(s,-s), Vector2(-s,-s)])
-		7:
+		7:  # 迫击炮：与装甲(2)同形
 			return PackedVector2Array([Vector2(-s*1.2,s), Vector2(s*1.2,s), Vector2(s*1.2,-s), Vector2(-s*1.2,-s)])
 		8:
 			return PackedVector2Array([Vector2(-s*1.1,s), Vector2(s*1.1,s), Vector2(s*1.1,-s), Vector2(-s*1.1,-s)])
@@ -873,16 +877,6 @@ func _process_single_weapon_attack(delta: float) -> void:
 func _process_multi_weapons(delta: float) -> void:
 	ConstructUnitAI._process_multi_weapons(self, delta)
 
-func _input_event(_viewport: Viewport, event: InputEvent, _shape_idx: int) -> void:
-	# 性能优化和错误修复：确保节点在场景树中才处理输入
-	if not is_inside_tree():
-		return
-	# 预览模式不能被点击选中
-	if is_preview_mode:
-		return
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		if SignalBus:
-			SignalBus.unit_selected.emit(self, is_player, Vector2.ZERO)
 
 func _on_unit_move_command(unit: Node, target_pos: Vector2) -> void:
 	# 预览模式不能接受移动指令
