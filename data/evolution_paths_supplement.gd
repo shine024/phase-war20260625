@@ -87,7 +87,7 @@ const SUPPLEMENTARY_LINEAGES: Dictionary = {
 
 	# 工兵线：工兵 → 先锋 → 工兵 → 战斗工兵 → 蜂群机甲
 	"ww1_engineer": {
-		"evolution_1": "ww2_flame",  # 临时连接到火焰线
+		"evolution_1": "ww2_mp40",  # 临时连接到火焰线
 		"faction_branches": {
 			"aether_dynamics": "ww2_bazooka",
 		},
@@ -198,13 +198,13 @@ const SUPPLEMENTARY_LINEAGES: Dictionary = {
 
 	# 装甲车线：罗尔斯 → 半履带车 → BTR-60 → 布雷德利 → 侦察机甲
 	"ww1_rolls": {
-		"evolution_1": "ww2_halftrack",  # 需要添加半履带车
+		"evolution_1": "ww2_sherman",  # 需要添加半履带车
 		"faction_branches": {
 			"frontier_union": "ww2_sherman",
 		},
 	},
 	"ww1_lanchest": {
-		"evolution_1": "ww2_halftrack",  # 需要添加半履带车
+		"evolution_1": "ww2_sherman",  # 需要添加半履带车
 		"faction_branches": {},
 	},
 
@@ -222,7 +222,7 @@ const SUPPLEMENTARY_LINEAGES: Dictionary = {
 	"cold_btr60": {
 		"evolution_1": "mod_stryker_m2",
 		"faction_branches": {
-			"aether_dynamics": "mod_bradley",
+			"aether_dynamics": "cold_bradley",
 		},
 	},
 	"cold_bradley": {
@@ -320,7 +320,7 @@ const SUPPLEMENTARY_LINEAGES: Dictionary = {
 		"faction_branches": {},
 	},
 	"ww2_m120": {
-		"evolution_1": "cold_mortar",  # 需要添加冷战迫击炮
+		"evolution_1": "cold_m113",  # 需要添加冷战迫击炮
 		"faction_branches": {
 			"frontier_union": "cold_m113",
 		},
@@ -328,13 +328,13 @@ const SUPPLEMENTARY_LINEAGES: Dictionary = {
 
 	# 火炮线：105mm → 155mm（需要添加）→ M109（需要添加）→ MLRS（已有）→ 未来火炮
 	"ww1_105mm": {
-		"evolution_1": "ww2_105mm",  # 需要添加二战105mm
+		"evolution_1": "ww2_m120",  # 需要添加二战105mm
 		"faction_branches": {
 			"frontier_union": "ww2_m120",
 		},
 	},
 	"ww1_77mm": {
-		"evolution_1": "ww2_88mm",  # 需要添加二战88mm
+		"evolution_1": "ww2_m81",  # 需要添加二战88mm
 		"faction_branches": {},
 	},
 
@@ -435,7 +435,7 @@ const SUPPLEMENTARY_LINEAGES: Dictionary = {
 
 	# 骑兵线
 	"ww1_cavalry": {
-		"evolution_1": "ww2_halftrack",  # 需要添加半履带车
+		"evolution_1": "ww2_sherman",  # 需要添加半履带车
 		"faction_branches": {
 			"frontier_union": "ww2_sherman",
 		},

@@ -11,16 +11,16 @@ const BattleCardV3 = preload("res://data/battle_card_v3.gd")
 const MANIFEST_VERSION: int = 2
 const CAPTURED_PREFIX: String = "captured_"
 
-## A 段：新时代单位 → 敌人 archetype 前缀 foe_（29张，v3更新）
+## A 段：新时代单位 → 敌人 archetype 前缀 foe_（28张，v3更新）
 const FOE_PLATFORM_CARD_IDS: Array[String] = [
 	# 一战（5个）
 	"ww1_rolls", "ww1_ft17", "ww1_77mm", "ww1_cavalry", "ww1_engineer",
 	# 二战（7个）
 	"ww2_hellcat", "ww2_sherman", "ww2_tiger", "ww2_bazooka", "ww2_panzerschrek",
 	"ww2_m81", "ww1_m81",
-	# 冷战（7个）
+	# 冷战（5个）
 	"cold_btr60", "cold_t55", "cold_bmp1", "cold_m113", "cold_zsu23",
-	# 现代系统（7个）
+	# 现代系统（6个）
 	"mod_technical", "mod_m1a1", "mod_m6", "mod_m270", "fut_scout_drone",
 	"mod_m1a2sep",
 	# 近未来（4个）
@@ -83,8 +83,42 @@ const UNITS_ICON_DIR := "res://assets/card_icons/units/"
 #            "spd": base_speed, "weapon": weapon_label }
 # ─────────────────────────────────────────────
 
+## FOE_PLATFORM_CARD_IDS 直接 ID → 已有 platform_* 属性键映射
+const _FOE_ID_TO_PLATFORM: Dictionary = {
+	"ww1_rolls": "platform_ww1_medium",
+	"ww1_ft17": "platform_ww1_medium",
+	"ww1_77mm": "platform_ww1_fort",
+	"ww1_cavalry": "platform_ww1_light",
+	"ww1_engineer": "platform_ww1_medic",
+	"ww2_hellcat": "platform_ww2_raider",
+	"ww2_sherman": "platform_ww2_medium",
+	"ww2_tiger": "platform_ww2_heavy",
+	"ww2_bazooka": "platform_ww2_light",
+	"ww2_panzerschrek": "platform_ww2_light",
+	"ww2_m81": "platform_ww2_fortress",
+	"ww1_m81": "platform_ww1_fort",
+	"cold_btr60": "platform_cold_ifv",
+	"cold_t55": "platform_cold_medium",
+	"cold_bmp1": "platform_cold_ifv",
+	"cold_m113": "platform_cold_carrier",
+	"cold_zsu23": "platform_cold_radar",
+	"fut_scout_mech": "platform_future_light",
+	"fut_hovertank": "platform_future_medium",
+	"fut_prism": "platform_future_heavy",
+	"fut_heavy_mech": "platform_future_heavy",
+	"fut_nexus": "omega_platform",
+		# 现代时代（FOE_PLATFORM_CARD_IDS 现代段）
+		"mod_technical": "platform_modern_light",
+		"mod_m1a1": "platform_modern_medium",
+		"mod_m6": "platform_modern_radar",
+		"mod_m270": "platform_modern_spg",
+		"fut_scout_drone": "platform_modern_stealth",
+		"mod_m1a2sep": "platform_modern_guard_heavy",
+	}
+
 static func _get_foe_stats(card_id: String) -> Dictionary:
-	match card_id:
+	var key: String = String(_FOE_ID_TO_PLATFORM.get(card_id, card_id))
+	match key:
 		# 一战 A段
 		"platform_ww1_light":
 			return {"kind": 0, "hp": 65.0, "weapon_type": 0, "deploy_speed": 4,
@@ -365,7 +399,7 @@ static func _ensure_unit_icon_map() -> void:
 
 
 static func get_entry_count() -> int:
-	return 29 + 6 + 36 + 29
+	return 28 + 6 + 36 + 29
 
 
 static func captured_card_id_for(archetype_id: String) -> String:
@@ -546,6 +580,29 @@ static func _get_foe_display_name(card_id: String) -> String:
 		"mod_m270": return "M270火箭炮"
 		"fut_scout_drone": return "侦察无人机"
 		"mod_m1a2sep": return "M1A2 SEP主战坦克"
+		# 直接 ID 显示名（与 default_cards 对齐）
+		"ww1_rolls": return "罗尔斯装甲车"
+		"ww1_ft17": return "FT-17轻型坦克"
+		"ww1_77mm": return "77mm野战炮"
+		"ww1_cavalry": return "骑兵斥候"
+		"ww1_engineer": return "工兵班"
+		"ww2_hellcat": return "M18地狱猫"
+		"ww2_sherman": return "M4谢尔曼"
+		"ww2_tiger": return "虎式坦克"
+		"ww2_bazooka": return "巴祖卡组"
+		"ww2_panzerschrek": return "铁拳反坦克组"
+		"ww2_m81": return "81mm迫击炮"
+		"ww1_m81": return "81mm迫击炮组"
+		"cold_btr60": return "BTR-60装甲车"
+		"cold_t55": return "T-55坦克"
+		"cold_bmp1": return "BMP-1步战车"
+		"cold_m113": return "M113装甲车"
+		"cold_zsu23": return "ZSU-23-4自行高炮"
+		"fut_scout_mech": return "侦察机甲"
+		"fut_hovertank": return "悬浮坦克"
+		"fut_prism": return "光棱坦克"
+		"fut_heavy_mech": return "重装机甲"
+		"fut_nexus": return "虚空领主"
 		"platform_modern_light": return "北极星全地形车"
 		"platform_modern_medium": return "艾布拉姆斯坦克"
 		"platform_modern_radar": return "相控阵雷达车"
@@ -609,9 +666,9 @@ static func _era_from_platform_id(card_id: String) -> int:
 		return 1
 	if card_id.contains("cold"):
 		return 2
-	if card_id.contains("modern"):
+	if card_id.contains("modern") or card_id.begins_with("mod_"):
 		return 3
-	if card_id.contains("future") or card_id == "omega_platform":
+	if card_id.contains("future") or card_id.begins_with("fut_") or card_id == "omega_platform":
 		return 4
 	return 0
 

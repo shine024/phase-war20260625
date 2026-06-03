@@ -5,6 +5,7 @@ class_name CardEvolutionManager
 const DefaultCards = preload("res://data/default_cards.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
 const UnitLineageConfig = preload("res://data/unit_lineage_config.gd")
+const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
 
 ## 通过 Autoload 名称获取节点
 static func _get_autoload_node(autoload_name: String) -> Node:
@@ -103,10 +104,11 @@ static func can_evolve_blueprint(card_id: String, target_card_id: String, bpm_re
 		if current_power < float(target_base_power):
 			return _evolve_check_denied("power_not_enough")
 
-	## v5.0 情报100%检查
-	var target_intel: float = get_card_intel_progress(target_card_id)
-	if target_intel < 1.0:
-		return _evolve_check_denied("intel_not_full")
+	## 进化蓝图检查：持有目标卡进化蓝图即可解锁进化（蓝图不消耗）
+	var evo_blueprint_id: String = BlueprintDefinitions.get_evolution_blueprint_id(card_id, target_card_id)
+	var iib: Node = _get_autoload_node("IntelItemBag")
+	if iib == null or not iib.has_item(evo_blueprint_id):
+		return _evolve_check_denied("evo_blueprint_missing")
 
 	var stage: String = UnitLineageConfig.get_stage(card_id, target_card_id)
 
@@ -120,6 +122,22 @@ static func can_evolve_blueprint(card_id: String, target_card_id: String, bpm_re
 	if UnitLineageConfig.get_enemy_mod_required(stage):
 		if not ModManager.has_enemy_origin_mod(card_id, bpm_ref.blueprint_mods):
 			return _evolve_check_denied("enemy_mod_not_enough")
+
+	## 势力贡献度检查：E2（势力分支）需要目标势力达到指定等级
+	var required_faction_lv: int = UnitLineageConfig.get_faction_level_required(stage)
+	if required_faction_lv > 0:
+		var target_faction_id: String = ""
+		var all_branches: Dictionary = UnitLineageConfig.get_all_faction_targets(card_id)
+		for f_id in all_branches.keys():
+			if String(all_branches[f_id]) == target_card_id:
+				target_faction_id = String(f_id)
+				break
+		if target_faction_id.is_empty():
+			push_warning("[CardEvolutionManager] E2进化目标 %s 不在 %s 的势力分支中，跳过势力等级检查" % [target_card_id, card_id])
+		else:
+			var fsm: Node = _get_autoload_node("FactionSystemManager")
+			if fsm == null or not fsm.has_method("get_faction_level") or fsm.get_faction_level(target_faction_id) < required_faction_lv:
+				return _evolve_check_denied("faction_level_not_enough")
 	var out: Dictionary = {
 		"ok": true,
 		"reason": "ok",
@@ -162,6 +180,8 @@ static func evolve_blueprint(card_id: String, target_card_id: String, bpm_ref: N
 	var source_mods: Array = bpm_ref.blueprint_mods.get(card_id, [])
 	bpm_ref.blueprint_mods[target_card_id] = source_mods.duplicate()
 	bpm_ref.blueprint_mods[card_id] = []
+	## 进化后清理源卡副本（避免仍可制造旧卡）
+	bpm_ref.blueprint_copies[card_id] = 0
 
 	## Phase 5 预留: 情报继承 — 进化后保留目标情报进度
 	## var source_intel: float = float(bpm_ref.blueprint_intel.get(card_id, 0.0))

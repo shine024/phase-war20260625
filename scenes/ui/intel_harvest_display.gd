@@ -12,6 +12,7 @@ const IntelDimensions = preload("res://data/intel_dimensions.gd")
 
 var _card_entries: Array[Dictionary] = []
 var _reveal_events: Array[Dictionary] = []
+var _intel_item_drops: Array = []
 var _im: Node = null  ## IntelManual引用
 
 func _ready() -> void:
@@ -28,10 +29,11 @@ func _build_initial_ui() -> void:
 	add_theme_stylebox_override("panel", style)
 
 ## 设置情报收获数据（由战斗结算调用）
-## data格式: {"harvests": [...], "reveal_events": [...], "eom_drops": [...]}
+## data格式: {"harvests": [...], "reveal_events": [...], "eom_drops": [...], "intel_item_drops": [...]}
 func set_data(data: Dictionary) -> void:
 	_card_entries = data.get("harvests", [])
 	_reveal_events = data.get("reveal_events", [])
+	_intel_item_drops = data.get("intel_item_drops", [])
 	_refresh_ui()
 
 func _refresh_ui() -> void:
@@ -40,7 +42,7 @@ func _refresh_ui() -> void:
 		if child.name != "_style_placeholder":
 			child.queue_free()
 
-	if _card_entries.is_empty() and _reveal_events.is_empty():
+	if _card_entries.is_empty() and _reveal_events.is_empty() and _intel_item_drops.is_empty():
 		return
 
 	var outer := VBoxContainer.new()
@@ -63,6 +65,24 @@ func _refresh_ui() -> void:
 
 	## 敌源MOD碎片掉落预览
 	## TODO: Phase 2整合
+
+	## 情报道具掉落展示
+	if not _intel_item_drops.is_empty():
+		var item_title := Label.new()
+		item_title.text = "📋 情报道具"
+		item_title.add_theme_font_size_override("font_size", 13)
+		item_title.add_theme_color_override("font_color", Color(0.75, 0.55, 0.95, 1.0))
+		outer.add_child(item_title)
+		for item in _intel_item_drops:
+			if not item is Dictionary:
+				continue
+			var item_lbl := Label.new()
+			var item_name: String = item.get("name", "未知道具")
+			var item_desc: String = item.get("desc", "")
+			item_lbl.text = "  ▸ %s — %s" % [item_name, item_desc]
+			item_lbl.add_theme_font_size_override("font_size", 12)
+			item_lbl.add_theme_color_override("font_color", Color(0.8, 0.65, 1.0, 1))
+			outer.add_child(item_lbl)
 
 	add_child(outer)
 

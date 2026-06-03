@@ -735,6 +735,9 @@ func save_state() -> Dictionary:
 	var rank_dict: Dictionary = {}
 	for k in blueprint_rank_cache:
 		rank_dict[k] = (blueprint_rank_cache[k] as Dictionary).duplicate(true)
+	var eom_dict: Dictionary = {}
+	for k in blueprint_enemy_origin_mod:
+		eom_dict[k] = String(blueprint_enemy_origin_mod[k])
 	return {
 		"unlocked": unlocked_blueprint_ids.duplicate(),
 		"blueprint_copies": copies_dict,
@@ -742,6 +745,7 @@ func save_state() -> Dictionary:
 		"blueprint_inherit_bonus": inherit_dict,
 		"blueprint_evolution_hp_floor": hp_floor_dict,
 		"blueprint_rank_cache": rank_dict,
+		"blueprint_enemy_origin_mod": eom_dict,
 		"legacy_default_energy_copies_migrated": _legacy_default_energy_copies_migrated,
 	}
 
@@ -782,6 +786,10 @@ func load_state(data: Dictionary) -> void:
 		for k in data["blueprint_rank_cache"]:
 			if data["blueprint_rank_cache"][k] is Dictionary:
 				blueprint_rank_cache[String(k)] = (data["blueprint_rank_cache"][k] as Dictionary).duplicate(true)
+	if data.has("blueprint_enemy_origin_mod") and data["blueprint_enemy_origin_mod"] is Dictionary:
+		blueprint_enemy_origin_mod.clear()
+		for k in data["blueprint_enemy_origin_mod"]:
+			blueprint_enemy_origin_mod[String(k)] = String(data["blueprint_enemy_origin_mod"][k])
 	# 兼容旧存档的 fragments → blueprint_copies 迁移
 	if not data.has("blueprint_copies") and data.has("fragments") and data["fragments"] is Dictionary:
 		blueprint_copies.clear()
@@ -818,6 +826,7 @@ func reset_to_defaults() -> void:
 	blueprint_mods.clear()
 	blueprint_inherit_bonus.clear()
 	blueprint_rank_cache.clear()
+	blueprint_enemy_origin_mod.clear()
 	_legacy_default_energy_copies_migrated = false
 	_unlock_default_blueprints()
 
@@ -945,7 +954,7 @@ func install_modification(card: CardResource, mod_id: String, slot: int = -1) ->
 
 	# 消耗资源
 	_consume_nano(nano_cost)
-	IntelItemBag.consume_item(blueprint_id)
+	# 图纸不消耗，获得一次后永久可用
 
 	result.success = true
 	result.cost = nano_cost
@@ -1048,7 +1057,7 @@ func evolve_card(card: CardResource, target_card_id: String) -> Dictionary:
 
 	# 消耗资源
 	_consume_nano(nano_cost)
-	IntelItemBag.consume_item(evo_blueprint_id)
+	# 进化图纸不消耗，获得一次后永久可用
 
 	# 更新blueprint数据
 	_remove_blueprint(card.card_id)
@@ -1118,8 +1127,7 @@ func _consume_research(amount: int) -> void:
 
 ## 添加研究点
 func _add_research(amount: int) -> void:
-	# BasicResourceManager是autoload，直接访问
-	BasicResourceManager.add("research", amount)
+	BasicResourceManager.add_resource(BasicResources.ID_RESEARCH_POINTS, amount)
 
 ## 移除蓝图（进化时调用）
 func _remove_blueprint(card_id: String) -> void:

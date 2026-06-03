@@ -332,6 +332,6 @@ func _add_energy_blueprint(_item_id: String, count: int) -> void:
 		_add_card_to_backpack(energy_id)
 	if BlueprintManager and BlueprintManager.has_method("apply_card_drop_first_copy"):
 		BlueprintManager.apply_card_drop_first_copy(energy_id)
-	if BlueprintManager.has_method("add_research_points"):
+	if BlueprintManager != null and BlueprintManager.has_method("add_research_points"):
 		BlueprintManager.add_research_points(12 * n)
 	print("[DropManager] 获得能量卡: ", energy_id, " x", n)

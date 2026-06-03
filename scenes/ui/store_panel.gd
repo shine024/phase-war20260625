@@ -590,10 +590,13 @@ func _on_buy_pressed(card_id: String, card_count: int, price_nano: int, row_node
 		var template_card: CardResource = DefaultCards.get_card_by_id(card_id)
 		if template_card == null:
 			template_card = null
+		print("[StorePanel] _on_buy_pressed: Buying card_id=%s template_card=%s" % [card_id, template_card != null])
 		for i in range(maxi(1, card_count)):
 			if template_card != null and SignalBus:
 				var out_card: CardResource = template_card.clone() if template_card.has_method("clone") else template_card
+				print("[StorePanel] _on_buy_pressed: Emitting card_added_to_backpack for card_id=%s (i=%d)" % [out_card.card_id, i])
 				SignalBus.card_added_to_backpack.emit(out_card)
+				print("[StorePanel] _on_buy_pressed: Signal emitted")
 	# 通知任务系统
 	var qm = get_node_or_null("/root/QuestManager")
 	if qm and qm.has_method("notify_item_bought"):

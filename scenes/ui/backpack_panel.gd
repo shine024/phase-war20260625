@@ -238,6 +238,7 @@ func quick_filter_by_rarity(rarity: String) -> void:
 ## 重建整个卡片网格（实际在下一 idle 执行，避免装备/拖拽回调链内 free 子节点）
 func rebuild_card_grid(cards: Array) -> void:
 	_rebuild_grid_snapshot = cards.duplicate()
+	print("[BackpackPanel] rebuild_card_grid: cards=%d scheduled=%s" % [cards.size(), _rebuild_grid_scheduled])
 	if _rebuild_grid_scheduled:
 		return
 	_rebuild_grid_scheduled = true
@@ -251,6 +252,7 @@ func _flush_rebuild_card_grid() -> void:
 		_rebuild_grid_snapshot.clear()
 		return
 	var cards: Array = _rebuild_grid_snapshot.duplicate()
+	print("[BackpackPanel] _flush_rebuild: snapshot_count=%d grid_null=%s" % [cards.size(), _combat_cards_grid == null])
 	_rebuild_grid_snapshot.clear()
 	var grid = _combat_cards_grid
 	if grid == null:
@@ -283,7 +285,7 @@ func _flush_rebuild_card_grid() -> void:
 		if card is CardResource:
 			_add_card_item(grid, card)
 	_ensure_min_card_slots(grid)
-	_sync_card_grid_scroll_size(grid)
+	_sync_card_grid_scroll_size_for_grid(grid)
 	_hide_loading_indicator()
 
 ## 添加单张卡到网格末尾或顶部
@@ -607,7 +609,7 @@ func on_overlay_opened() -> void:
 	if _presenter and _presenter.has_method("on_overlay_opened"):
 		_presenter.on_overlay_opened()
 
-	func _refresh_aux_sections_after_open() -> void:
+func _refresh_aux_sections_after_open() -> void:
 	if not is_visible_in_tree():
 		return
 	refresh_intel_tab()

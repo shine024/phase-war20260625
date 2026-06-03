@@ -83,21 +83,14 @@ static func get_max_mod_times(_rarity: String) -> int:
 
 
 static func get_mod_unlock_star(mod_index: int) -> int:
-	match mod_index:
-		0:
-			return 3
-		1:
-			return 5
-		_:
-			return 7
+	# 改造不再受星级门槛限制（返回0表示无星级要求）
+	return 0
 
 
 static func get_pool_for_card_type(card_type: int) -> Array:
 	match card_type:
-		GC.CardType.COMBAT_UNIT, GC.CardType.COMBAT_UNIT:
-			return _POOL_PLATFORM.duplicate()
 		GC.CardType.COMBAT_UNIT:
-			return _POOL_WEAPON.duplicate()
+			return _POOL_PLATFORM.duplicate()
 		GC.CardType.ENERGY:
 			return _POOL_ENERGY.duplicate()
 		GC.CardType.LAW:

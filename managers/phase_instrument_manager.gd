@@ -529,7 +529,9 @@ func unequip_card(slot_index: int) -> void:
 	SignalBus.card_unequipped.emit(slot_index)
 	# 将卡归还到背包
 	if card != null:
+		print("[PhaseInstrumentManager] unequip_card: Emitting card_added_to_backpack for card_id=%s" % card.card_id)
 		SignalBus.card_added_to_backpack.emit(card)
+		print("[PhaseInstrumentManager] unequip_card: Signal emitted successfully")
 
 ## 战斗结束后：清空所有槽位并将卡片逐一放回背包的第一个空位
 func unequip_all_and_return_to_backpack() -> void:

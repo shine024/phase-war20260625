@@ -16,6 +16,7 @@ const StarConfig = preload("res://data/blueprint_star_config.gd")
 
 ## 数据
 var _all_drops: Array = []  # 存储所有掉落物品
+var _drop_tables: DropTables = null  # 缓存实例
 
 func _ready() -> void:
 	# 连接关闭按钮
@@ -294,7 +295,9 @@ func _add_blueprint_item(grid: GridContainer, card_id: String, count: int) -> vo
 ## 获取卡牌掉落显示名称（与 drop_tables CARD_DATA 一致）
 func _get_blueprint_fragment_display_name(card_id: String) -> String:
 	var entry = DropTables.DropEntry.new(card_id, DropTables.DropType.CARD_DATA)
-	return DropTables.new().get_drop_display_name(entry)
+	if _drop_tables == null:
+		_drop_tables = DropTables.new()
+	return _drop_tables.get_drop_display_name(entry)
 
 ## 获取素材显示名称
 func _get_material_display_name(material_id: String) -> String:

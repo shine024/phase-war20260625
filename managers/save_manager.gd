@@ -694,7 +694,7 @@ func _enqueue_starter_backpack_cards() -> void:
 	enqueue_backpack_card_id("omega_platform")
 	enqueue_backpack_card_id("energy_start_1")
 	enqueue_backpack_card_id("energy_start_2")
-	
+
 	# 初始资源：各资源100000点
 	if BasicResourceManager:
 		BasicResourceManager.add_resource("nano_materials", 100000)
@@ -702,7 +702,7 @@ func _enqueue_starter_backpack_cards() -> void:
 		BasicResourceManager.add_resource("crystal", 100000)
 		BasicResourceManager.add_resource("energy_block", 100000)
 		BasicResourceManager.add_resource("research_points", 100000)
-	
+
 	# 初始情报：解锁所有情报
 	if IntelManual and IntelManual.has_method("unlock_all_intel"):
 		IntelManual.unlock_all_intel()
@@ -725,10 +725,10 @@ func _enqueue_starter_backpack_cards() -> void:
 	# if ModificationRegistry:
 	#     for mod_id in ModificationRegistry.get_all_mod_ids():
 	#         BlueprintManager.add_modification_stock(mod_id, 100)
-	
+
 	# 初始进化材料：所有进化材料库存100
 	# TODO: 需要根据进化系统实现添加
-	
+
 	# 初始关键道具：所有关键道具库存100
 	# TODO: 需要根据道具系统实现添加
 
@@ -905,11 +905,16 @@ func _load_from_path(path: String) -> bool:
 			pm.set_slots_from_card_ids(slot_ids)
 
 	# 确保槽位中已恢复的额外卡（非默认卡池）也加入背包追踪
+	# 注意：仅将不在默认卡池中的卡标记为额外卡；默认池中的卡（如 omega_platform、energy_start_4）
+	# 是初始装备卡，不应出现在背包中（它们属于相位仪槽位）
 	if pm != null and pm.has_method("get_slot_card_ids"):
 		var restored_slot_ids: Array = pm.get_slot_card_ids()
 		for sid_raw in restored_slot_ids:
 			var sid: String = str(sid_raw) if sid_raw != null else ""
 			if sid.is_empty():
+				continue
+			# 跳过初始装备卡（这些是相位仪自带的默认卡，不是玩家额外获取的）
+			if sid == "omega_platform" or sid == "energy_start_4":
 				continue
 			if not _pending_backpack_ids.has(sid):
 				_pending_backpack_ids.append(sid)

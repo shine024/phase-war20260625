@@ -130,28 +130,7 @@ static func create(parent: Node, player_won: bool, blueprints: Array, \
 			reward_list.add_child(reward_lbl)
 		content_box.add_child(reward_list)
 
-	# ═══ v6.0: 情报道具掉落展示 ═══
-	var intel_h: Dictionary = reward_summary.get("intel_harvest", {})
-	if not intel_h.is_empty():
-		var intel_item_drops: Array = intel_h.get("intel_item_drops", [])
-		if not intel_item_drops.is_empty():
-			var item_title := Label.new()
-			item_title.text = "◆ 情报道具"
-			item_title.add_theme_font_size_override("font_size", 13)
-			item_title.add_theme_color_override("font_color", Color(0.75, 0.55, 0.95, 1.0))
-			content_box.add_child(item_title)
-			for item in intel_item_drops:
-				if not item is Dictionary:
-					continue
-				var item_lbl := Label.new()
-				var item_name: String = item.get("name", "未知道具")
-				var item_desc: String = item.get("desc", "")
-				item_lbl.text = "  ▸ 📋 %s — %s" % [item_name, item_desc]
-				item_lbl.add_theme_font_size_override("font_size", 12)
-				item_lbl.add_theme_color_override("font_color", Color(0.8, 0.65, 1.0, 1))
-				content_box.add_child(item_lbl)
-
-	# ═══ v6.0: 情报收获展示 ═══
+	# ═══ v6.0: 情报收获展示（含 intel_item_drops，由 IntelHarvestDisplay 统一渲染） ═══
 	var intel_harvest: Dictionary = reward_summary.get("intel_harvest", {})
 	if not intel_harvest.is_empty():
 		var intel_sep := HSeparator.new()

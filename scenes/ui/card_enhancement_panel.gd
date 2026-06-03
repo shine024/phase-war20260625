@@ -520,13 +520,10 @@ func _permit_display_name(permit_id: String) -> String:
 func _format_mod_requirements(card_id: String, mod_index: int) -> String:
 	if BlueprintManager == null:
 		return ""
-	var need_star: int = StarConfig.get_mod_unlock_star(mod_index)
-	var star_now: int = BlueprintManager.get_blueprint_star(card_id)
 	var req: Dictionary = BlueprintManager.get_modification_requirements(card_id, mod_index)
 	var slot: String = MOD_SLOT_LABELS[mod_index] if mod_index >= 0 and mod_index < MOD_SLOT_LABELS.size() else "?"
 	var lines: Array[String] = [
-		"槽位 %s：需 %d★（当前 %d★）" % [slot, need_star, star_now],
-		"消耗：研究点 %d（当前 %d）" % [int(req.get("research_points", 0)), BlueprintManager.get_research_points()],
+		"槽位 %s：消耗研究点 %d（当前 %d）" % [slot, int(req.get("research_points", 0)), BlueprintManager.get_research_points()],
 	]
 	var brm: Node = BasicResourceManager
 	var n_general: int = int(req.get("permit_general_count", 0))
@@ -706,6 +703,12 @@ func _on_enhancement_completed(success: bool, card_id: String, new_stats: Dictio
 			else:
 				result_label.add_theme_color_override("font_color", Color.RED)
 
+		if _enhance_anim:
+			if success:
+				_enhance_anim.play_success_animation(card_id)
+			else:
+				_enhance_anim.play_failure_animation()
+
 		# 刷新列表和详情面板
 		_init_card_list()
 		_update_detail_panel()
@@ -717,6 +720,8 @@ func _on_enhancement_failed(card_id: String, reason: String) -> void:
 		if result_label:
 			result_label.text = reason
 			result_label.add_theme_color_override("font_color", Color.RED)
+		if _enhance_anim:
+			_enhance_anim.play_failure_animation()
 
 func _on_nano_materials_changed(_old_value: int = 0, _new_value: int = 0) -> void:
 	_update_resource_labels()
@@ -906,83 +911,3 @@ func _on_close() -> void:
 func _on_card_added_to_backpack(_card: CardResource) -> void:
 	_init_card_list()
 	_update_detail_panel()
-
-## 添加属性预览功能
-func _add_attribute_preview(parent: Control, card_data: Variant, current_level: int, next_level: int) -> void:
-	"""显示强化前后的属性对比"""
-	if not card_data:
-		return
-
-	# 添加分割线
-	var sep = VSeparator.new()
-	sep.custom_minimum_size = Vector2(2, 0)
-	parent.add_child(sep)
-
-	var preview_label = Label.new()
-	preview_label.text = "━━━ 属性预览 ━━━"
-	preview_label.add_theme_font_size_override("font_size", 12)
-	preview_label.add_theme_color_override("font_color", Color(0.6, 0.8, 1.0, 1.0))
-	preview_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	parent.add_child(preview_label)
-
-	# 显示当前属性和预计属性
-	var current_stats = _get_card_attributes(card_data, current_level)
-	var next_stats = _get_card_attributes(card_data, next_level)
-
-	for key in current_stats.keys():
-		var current_val = current_stats[key]
-		var next_val = next_stats[key]
-		var increase = next_val - current_val
-
-		var stat_row = HBoxContainer.new()
-		stat_row.add_theme_constant_override("separation", 8)
-
-		var key_label = Label.new()
-		key_label.text = key + "："
-		key_label.custom_minimum_size = Vector2(60, 0)
-		key_label.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85, 1.0))
-		stat_row.add_child(key_label)
-
-		var current_label = Label.new()
-		current_label.text = str(current_val)
-		current_label.custom_minimum_size = Vector2(40, 0)
-		stat_row.add_child(current_label)
-
-		var arrow_label = Label.new()
-		arrow_label.text = "→"
-		arrow_label.add_theme_color_override("font_color", Color(0.4, 0.8, 0.4, 1.0))
-		stat_row.add_child(arrow_label)
-
-		var next_label = Label.new()
-		next_label.text = str(next_val)
-		next_label.custom_minimum_size = Vector2(40, 0)
-		next_label.add_theme_color_override("font_color", Color(0.4, 1.0, 0.4, 1.0))
-		stat_row.add_child(next_label)
-
-		var increase_label = Label.new()
-		increase_label.text = "(+%d)" % increase if increase > 0 else "(=)"
-		increase_label.add_theme_color_override("font_color", Color(0.2, 0.8, 1.0, 1.0))
-		stat_row.add_child(increase_label)
-
-		parent.add_child(stat_row)
-
-## 获取卡牌属性
-func _get_card_attributes(card_data: Variant, level: int) -> Dictionary:
-	"""根据卡牌数据获取当前等级的属性"""
-	var stats = {}
-
-	if card_data is Dictionary:
-		var display_name = card_data.get("display_name", "")
-		var energy_cost = card_data.get("energy_cost", 0)
-		var card_type = card_data.get("card_type", 0)
-
-		stats["能量消耗"] = energy_cost
-
-		# 根据卡牌类型获取不同属性
-		if card_type == GC.CardType.COMBAT_UNIT:
-			var max_hp = card_data.get("max_hp", 100)
-			var move_speed = card_data.get("move_speed", 100)
-			stats["生命值"] = int(max_hp * (1.0 + (level - 1) * 0.1))
-			stats["移速"] = int(move_speed * (1.0 + (level - 1) * 0.05))
-
-	return stats

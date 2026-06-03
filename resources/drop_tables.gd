@@ -72,21 +72,133 @@ class DropResult:
 
 ## ========== 时代卡牌ID映射表（仅作兜底；主路径见 get_random_blueprint_for_era）==========
 
-var era_blueprint_ids: Dictionary = {}
+const ERA_BLUEPRINT_IDS: Dictionary = {
+		0: ["ww1_mp18", "ww1_mauser", "ww1_enfield", "ww1_mg08", "ww1_vickers",
+			 "ww1_m81", "ww1_storm", "ww1_rolls", "ww1_ft17", "ww1_saint",
+			 "ww1_a7v", "ww1_mark4", "ww1_77mm", "ww1_105mm", "ww1_37mm",
+			 "ww1_cavalry", "ww1_flame", "ww1_engineer"],
+		1: ["ww2_thompson", "ww2_garand", "ww2_mp40", "ww2_ppsh", "ww2_mg42",
+			 "ww2_browning", "ww2_panzerschrek", "ww2_bazooka", "ww2_m81", "ww2_m120",
+			 "ww2_pz3", "ww2_pz4", "ww2_panther", "ww2_tiger", "ww2_kingtiger",
+			 "ww2_t34_76", "ww2_t34_85", "ww2_is2", "ww2_sherman", "ww2_hellcat"],
+		2: ["cold_rpg", "cold_ak47", "cold_m14", "cold_m60", "cold_rpk",
+			 "cold_btr60", "cold_m113", "cold_bmp1", "cold_bradley", "cold_t55",
+			 "cold_t62", "cold_t72", "cold_m60t", "cold_m1", "cold_leo1",
+			 "cold_chieftain", "cold_zsu23", "cold_sam7", "cold_mig21", "cold_f4"],
+		3: ["mod_marine", "mod_ranger", "mod_javelin", "mod_stinger", "mod_technical",
+			 "mod_stryker_mgs", "mod_stryker_m2", "mod_hummer_tow", "mod_hummer_m2",
+			 "mod_m1a1", "mod_m1a2", "mod_t90", "mod_leo2a6", "mod_challenger2",
+			 "mod_ah64", "mod_ah1", "mod_m270", "mod_m6"],
+		4: ["fut_swarm", "fut_scout_drone", "fut_attack_drone", "fut_cyborg",
+			 "fut_heavy_trooper", "fut_scout_mech", "fut_assault_mech", "fut_heavy_mech",
+			 "fut_hovertank", "fut_howitzer", "fut_prism", "fut_aa_hover",
+			 "fut_stealth_bomber", "fut_spectre", "fut_nano_drone", "fut_shield"],
+	}
 
-## 各时代通用掉落池
 var ww1_common_drops: Array[DropEntry] = []
 var ww2_common_drops: Array[DropEntry] = []
 var cold_war_common_drops: Array[DropEntry] = []
 var modern_common_drops: Array[DropEntry] = []
 var near_future_common_drops: Array[DropEntry] = []
 var material_drops: Array[DropEntry] = []
-
-## Boss 专属许可映射
-var era_boss_specific_permits: Dictionary = {}
-
-## Boss 通用掉落池
 var boss_drops: Array[DropEntry] = []
+
+func _init() -> void:
+	_build_era_drops()
+
+func _build_era_drops() -> void:
+	ww1_common_drops = [
+		DropEntry.new("ww1_mp18", DropType.BLUEPRINT_FRAGMENT, 3.0, 1, 2),
+		DropEntry.new("ww1_mauser", DropType.BLUEPRINT_FRAGMENT, 3.0, 1, 2),
+		DropEntry.new("ww1_enfield", DropType.BLUEPRINT_FRAGMENT, 3.0, 1, 2),
+		DropEntry.new("ww1_storm", DropType.BLUEPRINT_FRAGMENT, 2.0, 1, 1),
+		DropEntry.new("ww1_flame", DropType.BLUEPRINT_FRAGMENT, 2.0, 1, 1),
+		DropEntry.new("ww1_engineer", DropType.BLUEPRINT_FRAGMENT, 2.0, 1, 1),
+		DropEntry.new("ww1_cavalry", DropType.BLUEPRINT_FRAGMENT, 2.5, 1, 1),
+		DropEntry.new("ww1_mg08", DropType.BLUEPRINT_FRAGMENT, 1.5, 1, 1),
+		DropEntry.new("ww1_vickers", DropType.BLUEPRINT_FRAGMENT, 1.5, 1, 1),
+		DropEntry.new("ww1_rolls", DropType.BLUEPRINT_FRAGMENT, 1.2, 1, 1),
+		DropEntry.new("ww1_ft17", DropType.BLUEPRINT_FRAGMENT, 1.0, 1, 1),
+		DropEntry.new("ww1_m81", DropType.BLUEPRINT_FRAGMENT, 1.5, 1, 1),
+		DropEntry.new("ww1_105mm", DropType.BLUEPRINT_FRAGMENT, 0.8, 1, 1),
+		DropEntry.new("ww1_a7v", DropType.BLUEPRINT_FRAGMENT, 0.5, 1, 1),
+		DropEntry.new("ww1_mark4", DropType.BLUEPRINT_FRAGMENT, 0.5, 1, 1),
+		DropEntry.new("alloy", DropType.MATERIAL, 2.0, 5, 15),
+	]
+	ww2_common_drops = [
+		DropEntry.new("ww2_thompson", DropType.BLUEPRINT_FRAGMENT, 3.0, 1, 2),
+		DropEntry.new("ww2_garand", DropType.BLUEPRINT_FRAGMENT, 3.0, 1, 2),
+		DropEntry.new("ww2_mp40", DropType.BLUEPRINT_FRAGMENT, 3.0, 1, 2),
+		DropEntry.new("ww2_ppsh", DropType.BLUEPRINT_FRAGMENT, 3.0, 1, 2),
+		DropEntry.new("ww2_bazooka", DropType.BLUEPRINT_FRAGMENT, 2.0, 1, 1),
+		DropEntry.new("ww2_mg42", DropType.BLUEPRINT_FRAGMENT, 1.5, 1, 1),
+		DropEntry.new("ww2_sherman", DropType.BLUEPRINT_FRAGMENT, 1.5, 1, 1),
+		DropEntry.new("ww2_t34_76", DropType.BLUEPRINT_FRAGMENT, 1.5, 1, 1),
+		DropEntry.new("ww2_pz4", DropType.BLUEPRINT_FRAGMENT, 1.2, 1, 1),
+		DropEntry.new("ww2_panther", DropType.BLUEPRINT_FRAGMENT, 0.7, 1, 1),
+		DropEntry.new("ww2_tiger", DropType.BLUEPRINT_FRAGMENT, 0.4, 1, 1),
+		DropEntry.new("ww2_kingtiger", DropType.BLUEPRINT_FRAGMENT, 0.2, 1, 1),
+		DropEntry.new("ww2_is2", DropType.BLUEPRINT_FRAGMENT, 0.3, 1, 1),
+		DropEntry.new("alloy", DropType.MATERIAL, 2.5, 10, 25),
+	]
+	cold_war_common_drops = [
+		DropEntry.new("cold_ak47", DropType.BLUEPRINT_FRAGMENT, 3.0, 1, 2),
+		DropEntry.new("cold_m14", DropType.BLUEPRINT_FRAGMENT, 3.0, 1, 2),
+		DropEntry.new("cold_rpg", DropType.BLUEPRINT_FRAGMENT, 2.5, 1, 1),
+		DropEntry.new("cold_m60", DropType.BLUEPRINT_FRAGMENT, 2.0, 1, 1),
+		DropEntry.new("cold_btr60", DropType.BLUEPRINT_FRAGMENT, 1.5, 1, 1),
+		DropEntry.new("cold_m113", DropType.BLUEPRINT_FRAGMENT, 1.5, 1, 1),
+		DropEntry.new("cold_bmp1", DropType.BLUEPRINT_FRAGMENT, 1.0, 1, 1),
+		DropEntry.new("cold_t55", DropType.BLUEPRINT_FRAGMENT, 1.2, 1, 1),
+		DropEntry.new("cold_t72", DropType.BLUEPRINT_FRAGMENT, 0.6, 1, 1),
+		DropEntry.new("cold_m1", DropType.BLUEPRINT_FRAGMENT, 0.4, 1, 1),
+		DropEntry.new("cold_leo1", DropType.BLUEPRINT_FRAGMENT, 0.5, 1, 1),
+		DropEntry.new("alloy", DropType.MATERIAL, 2.0, 15, 30),
+		DropEntry.new("crystal", DropType.MATERIAL, 1.0, 5, 12),
+	]
+	modern_common_drops = [
+		DropEntry.new("mod_marine", DropType.BLUEPRINT_FRAGMENT, 3.0, 1, 2),
+		DropEntry.new("mod_ranger", DropType.BLUEPRINT_FRAGMENT, 2.5, 1, 1),
+		DropEntry.new("mod_javelin", DropType.BLUEPRINT_FRAGMENT, 2.0, 1, 1),
+		DropEntry.new("mod_technical", DropType.BLUEPRINT_FRAGMENT, 2.5, 1, 1),
+		DropEntry.new("mod_hummer_m2", DropType.BLUEPRINT_FRAGMENT, 2.0, 1, 1),
+		DropEntry.new("mod_stryker_m2", DropType.BLUEPRINT_FRAGMENT, 1.2, 1, 1),
+		DropEntry.new("mod_m1a1", DropType.BLUEPRINT_FRAGMENT, 0.7, 1, 1),
+		DropEntry.new("mod_t90", DropType.BLUEPRINT_FRAGMENT, 0.5, 1, 1),
+		DropEntry.new("mod_m1a2", DropType.BLUEPRINT_FRAGMENT, 0.3, 1, 1),
+		DropEntry.new("mod_ah1", DropType.BLUEPRINT_FRAGMENT, 0.8, 1, 1),
+		DropEntry.new("mod_ah64", DropType.BLUEPRINT_FRAGMENT, 0.4, 1, 1),
+		DropEntry.new("mod_m270", DropType.BLUEPRINT_FRAGMENT, 0.3, 1, 1),
+		DropEntry.new("alloy", DropType.MATERIAL, 2.0, 20, 35),
+		DropEntry.new("crystal", DropType.MATERIAL, 1.5, 8, 18),
+	]
+	near_future_common_drops = [
+		DropEntry.new("fut_cyborg", DropType.BLUEPRINT_FRAGMENT, 3.0, 1, 2),
+		DropEntry.new("fut_heavy_trooper", DropType.BLUEPRINT_FRAGMENT, 2.5, 1, 1),
+		DropEntry.new("fut_scout_mech", DropType.BLUEPRINT_FRAGMENT, 2.0, 1, 1),
+		DropEntry.new("fut_swarm", DropType.BLUEPRINT_FRAGMENT, 2.0, 1, 1),
+		DropEntry.new("fut_attack_drone", DropType.BLUEPRINT_FRAGMENT, 1.5, 1, 1),
+		DropEntry.new("fut_spectre", DropType.BLUEPRINT_FRAGMENT, 1.2, 1, 1),
+		DropEntry.new("fut_assault_mech", DropType.BLUEPRINT_FRAGMENT, 0.7, 1, 1),
+		DropEntry.new("fut_hovertank", DropType.BLUEPRINT_FRAGMENT, 0.5, 1, 1),
+		DropEntry.new("fut_prism", DropType.BLUEPRINT_FRAGMENT, 0.3, 1, 1),
+		DropEntry.new("fut_heavy_mech", DropType.BLUEPRINT_FRAGMENT, 0.2, 1, 1),
+		DropEntry.new("fut_shield", DropType.BLUEPRINT_FRAGMENT, 0.6, 1, 1),
+		DropEntry.new("fut_nano_drone", DropType.BLUEPRINT_FRAGMENT, 0.8, 1, 1),
+		DropEntry.new("alloy", DropType.MATERIAL, 2.0, 25, 45),
+		DropEntry.new("crystal", DropType.MATERIAL, 2.0, 12, 25),
+	]
+	material_drops = [
+		DropEntry.new("nano_materials", DropType.MATERIAL, 3.0, 15, 30),
+		DropEntry.new("alloy", DropType.MATERIAL, 2.0, 5, 15),
+	]
+	boss_drops = [
+		DropEntry.new("alloy", DropType.MATERIAL, 3.0, 30, 60),
+		DropEntry.new("crystal", DropType.MATERIAL, 2.0, 10, 25),
+		DropEntry.new("permit_general", DropType.MATERIAL, 1.5, 1, 2),
+		DropEntry.new("stat_boost_hp", DropType.STAT_BOOST, 0.5, 1, 1),
+		DropEntry.new("stat_boost_damage", DropType.STAT_BOOST, 0.5, 1, 1),
+	]
 
 ## 与击杀精英掉落、敌方原型表一致的「命名敌方蓝图」id（仅 PLATFORM 类型，WEAPON 系统已废弃）
 const _NAMED_ELITE_ENEMY_BLUEPRINT_IDS: Array[String] = [
@@ -95,28 +207,45 @@ const _NAMED_ELITE_ENEMY_BLUEPRINT_IDS: Array[String] = [
 ]
 
 
-## 根据时代从敌方蓝图池随机一张 bp_{时代}_###（仅 PLATFORM 类型，WEAPON 已废弃）
+## 根据时代从卡牌池随机一张卡牌ID
 func get_random_blueprint_for_era(era: int) -> String:
+	var ids = ERA_BLUEPRINT_IDS.get(era, [])
+	if ids is Array and not ids.is_empty():
+		return String(ids[randi() % ids.size()])
 	return ""
 
 
 func _pick_random_rare_enemy_drop_id(era: int) -> String:
-	return ""
+	var ids = ERA_BLUEPRINT_IDS.get(era, [])
+	if ids is Array and ids.size() > 3:
+		var rare_start: int = int(ids.size() * 0.7)
+		var rare_ids: Array = ids.slice(rare_start)
+		if not rare_ids.is_empty():
+			return String(rare_ids[randi() % rare_ids.size()])
+	return get_random_blueprint_for_era(era)
 
 
 func sample_era_blueprint_display_names_for_preview(p_era: int, level_seed: int, max_names: int) -> PackedStringArray:
-	return []
+	var ids = ERA_BLUEPRINT_IDS.get(p_era, [])
+	if not ids is Array or ids.is_empty():
+		return []
+	var names: PackedStringArray = []
+	for i in range(mini(max_names, ids.size())):
+		var card = DefaultCards.get_card_by_id(String(ids[i]))
+		if card:
+			names.append(card.display_name)
+	return names
 
 
 func resolve_blueprint_id(item_id: String, era: int) -> String:
 	if item_id.begins_with("bp_"):
 		return item_id
 	if item_id.begins_with("era_"):
-		return ""
+		return get_random_blueprint_for_era(era)
 	if item_id == "random_rare":
-		return ""
+		return _pick_random_rare_enemy_drop_id(era)
 	if item_id == "random_boss":
-		return ""
+		return _pick_random_rare_enemy_drop_id(era)
 	return item_id
 
 ## 根据关卡时代和难度生成掉落
@@ -220,7 +349,7 @@ func generate_boss_drops(era: int, boss_id: String) -> Array[DropResult]:
 		"卡牌数据"
 	))
 
-	var specific_candidates: Array = era_boss_specific_permits.get(era, [])
+	var specific_candidates: Array = {}.get(era, [])
 	if boss_id.find("void") >= 0:
 		specific_candidates.append("permit_card_void_time_ripple")
 		specific_candidates.append("permit_card_omega_platform")

@@ -73,9 +73,8 @@ func _on_model_cards_changed() -> void:
 	if not _is_view_visible():
 		_grid_dirty_while_hidden = true
 		return
-	if _defer_visible_grid_refresh:
-		_grid_dirty_while_hidden = true
-		return
+	# 当背包可见时，立即刷新网格以显示新添加的卡牌
+	# 移除 _defer_visible_grid_refresh 条件，确保用户能看到最新变化
 	_refresh_card_grid()
 
 func _on_model_filter_changed() -> void:
@@ -86,16 +85,21 @@ func _on_model_filter_changed() -> void:
 ## ============================================================
 
 func _connect_global_signals() -> void:
+	print("[BackpackPresenter] _connect_global_signals: SignalBus=%s" % (SignalBus != null))
 	if SignalBus:
+		print("[BackpackPresenter] Connecting card_added_to_backpack signal")
 		if SignalBus.card_added_to_backpack.is_connected(_on_card_added):
 			SignalBus.card_added_to_backpack.disconnect(_on_card_added)
+			print("[BackpackPresenter] Disconnected existing card_added_to_backpack signal")
 		SignalBus.card_added_to_backpack.connect(_on_card_added)
+		print("[BackpackPresenter] Connected card_added_to_backpack signal")
 		if SignalBus.card_equipped.is_connected(_on_card_equipped):
 			SignalBus.card_equipped.disconnect(_on_card_equipped)
 		SignalBus.card_equipped.connect(_on_card_equipped)
 		if SignalBus.backpack_changed.is_connected(_on_backpack_changed):
 			SignalBus.backpack_changed.disconnect(_on_backpack_changed)
 		SignalBus.backpack_changed.connect(_on_backpack_changed)
+		print("[BackpackPresenter] All global signals connected")
 
 	var brm: Node = _get_autoload_node("BasicResourceManager")
 	if brm != null and brm.has_signal("resources_changed"):
@@ -134,18 +138,26 @@ func _disconnect_global_signals() -> void:
 ## ============================================================
 
 func _on_card_added(card: CardResource) -> void:
+	print("[BackpackPresenter] _on_card_added CALLED: card=%s card_id=%s" % [card, card.card_id if card else "null"])
 	if card == null:
-		push_warning("[BackpackPresenter] _on_card_received null card")
+		push_warning("[BackpackPresenter] _on_card_added received null card")
 		return
+	if _data == null:
+		push_error("[BackpackPresenter] _on_card_added: _data is null! Cannot add card.")
+		return
+	print("[BackpackPresenter] _on_card_added: card_id=%s view_visible=%s current_extra_count=%d" % [card.card_id, _is_view_visible(), _data.get_extra_card_ids().size()])
 	# 从pending中移除该卡牌ID（标记为已处理）
 	if SaveManager and SaveManager.has_method("consume_pending_backpack_card_id"):
 		SaveManager.consume_pending_backpack_card_id(card.card_id)
 	# 先保证正确性：制造入包统一走全量刷新路径，避免增量插入在复杂时序下漏显示。
 	_data.add_extra_card(card.card_id, false)
+	print("[BackpackPresenter] _on_card_added done: extra_ids_count=%d dirty=%s" % [_data.get_extra_card_ids().size(), _grid_dirty_while_hidden])
 	if not _is_view_visible():
 		_grid_dirty_while_hidden = true
+		print("[BackpackPresenter] _on_card_added: Backpack not visible, set dirty flag")
 	else:
 		_refresh_card_grid()
+		print("[BackpackPresenter] _on_card_added: Backpack visible, refreshed grid")
 	if _view and _view.has_method("highlight_last_card_by_id"):
 		_view.highlight_last_card_by_id(card.card_id)
 
@@ -519,6 +531,7 @@ func _refresh_card_grid() -> void:
 	if _data == null:
 		return
 	var cards := _data.get_filtered_sorted_cards()
+	print("[BackpackPresenter] _refresh_card_grid: cards_count=%d view_null=%s" % [cards.size(), _view == null])
 	if _view and _view.has_method("rebuild_card_grid"):
 		_view.rebuild_card_grid(cards)
 
@@ -526,6 +539,7 @@ func _can_incremental_update() -> bool:
 	return _is_view_visible() and _data != null and _data.has_method("is_default_view_mode") and _data.is_default_view_mode()
 
 func _run_open_refresh_pipeline() -> void:
+	print("[BackpackPresenter] _run_open_refresh_pipeline: view_visible=%s dirty=%s data_extra=%d" % [_is_view_visible(), _grid_dirty_while_hidden, _data.get_extra_card_ids().size() if _data else -1])
 	# 保护：若背包在这一帧内已关闭，直接结束。
 	if not _is_view_visible():
 		_open_refresh_inflight = false

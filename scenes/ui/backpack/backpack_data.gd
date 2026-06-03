@@ -15,17 +15,18 @@ signal cards_changed()  ## 背包卡牌集合发生增/删变化
 signal filter_changed()  ## 筛选/排序条件变化
 
 const DefaultCardsData = preload("res://data/default_cards.gd")
+const PhaseLawsData = preload("res://data/phase_laws.gd")
 const GC = preload("res://resources/game_constants.gd")
 
 ## 背包最大卡槽数
 const MAX_CARD_SLOTS: int = 50
 
-## 筛选类型常量
+## 筛选类型常量（与 GC.CardType 对齐）
 enum FilterType {
 	ALL = -1,       ## 全部
-	PLATFORM = 0,   ## 战斗卡（含原平台卡/武器卡）
-	ENERGY = 2,     ## 能量卡
-	LAW = 3,        ## 法则卡
+	PLATFORM = 0,   ## 战斗卡（对应 GC.CardType.COMBAT_UNIT）
+	ENERGY = 1,     ## 能量卡（对应 GC.CardType.ENERGY）
+	LAW = 2,        ## 法则卡（对应 GC.CardType.LAW）
 }
 
 ## 排序方式
@@ -65,6 +66,11 @@ func get_all_cards() -> Array[CardResource]:
 		if sid.is_empty():
 			continue
 		var card: CardResource = DefaultCardsData.get_card_by_id(sid)
+		# 法则卡可能不在 DefaultCards 静态缓存中，尝试从 PhaseLaws 动态创建
+		if card == null and sid.begins_with("law:"):
+			sid = sid.substr(4)
+		if card == null:
+			card = DefaultCardsData.create_law_card_resource(sid)
 		if card != null:
 			_all_cards_cache.append(card)
 	_cards_cache_dirty = false

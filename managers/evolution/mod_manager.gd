@@ -58,9 +58,6 @@ static func can_apply_modification(card_id: String, mod_index: int, bpm_ref: Nod
 		return false
 	if mod_index != get_modification_count(card_id, bpm_ref.blueprint_mods):
 		return false
-	var need_star: int = StarConfig.get_mod_unlock_star(mod_index)
-	if bpm_ref.get_blueprint_star(card_id) < need_star:
-		return false
 	var req: Dictionary = get_modification_requirements(card_id, mod_index, bpm_ref)
 	var brm: Node = bpm_ref._get_basic_resource_manager()
 	if bpm_ref.get_research_points() < int(req.get("research_points", 0)):

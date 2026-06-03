@@ -29,6 +29,7 @@ const E1_MIN_MOD_COUNT: int = 2            ## 基础进化：至少装2个MOD
 const E2_MIN_ENHANCE_LEVEL: int = 8        ## 势力分支：强化至少Lv8
 const E2_MIN_MOD_COUNT: int = 5             ## 势力分支：至少装5个MOD
 const E2_REQUIRE_ENEMY_ORIGIN_MOD: bool = true  ## 势力分支：必须有1个敌源MOD
+const E2_FACTION_LEVEL_REQUIRED: int = 3        ## 势力分支：目标势力需达到Lv3（声望约1200+）
 
 const EVOLVE_REASON_ZH: Dictionary = {
 	"ok": "可进化",
@@ -41,7 +42,9 @@ const EVOLVE_REASON_ZH: Dictionary = {
 	"enemy_mod_not_enough": "未安装敌源改造模块（势力分支进化要求）",
 	"power_not_enough": "培养战力未达标",
 	"cross_class": "不能跨类型进化",
-	"intel_not_full": "目标情报未满100%（Phase 5启用）",
+	"intel_not_full": "目标情报未满100%（已废弃）",
+		"evo_blueprint_missing": "缺少进化蓝图（需从战斗中获得目标卡的进化蓝图）",
+		"faction_level_not_enough": "势力贡献度不足（势力分支进化需目标势力达到Lv3）",
 }
 
 ## ═══════════════════════════════════════════════════════════
@@ -351,11 +354,11 @@ const LINEAGES: Dictionary = {
 	"mod_m270": {
 		"evolution_1": "fut_howitzer",
 		"faction_branches": {
-			"iron_wall_corp": "fut_ion",
+			"iron_wall_corp": "fut_howitzer",
 			"aether_dynamics": "fut_howitzer",
 			"quantum_logistics": "fut_howitzer",
 			"helix_recon": "fut_howitzer",
-			"void_research": "fut_ion",
+			"void_research": "fut_howitzer",
 			"frontier_union": "fut_howitzer",
 		},
 	},
@@ -687,3 +690,6 @@ static func get_mod_requirement(stage: String) -> int:
 
 static func get_enemy_mod_required(stage: String) -> bool:
 	return E2_REQUIRE_ENEMY_ORIGIN_MOD if stage == "e2" else false
+
+static func get_faction_level_required(stage: String) -> int:
+	return E2_FACTION_LEVEL_REQUIRED if stage == "e2" else 0
