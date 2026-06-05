@@ -8,6 +8,7 @@ signal closed
 
 const IntelManualItems = preload("res://data/intel_manual_items.gd")
 const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
+const GC = preload("res://resources/game_constants.gd")
 
 # UI 组件引用
 @onready var card_list_container = get_node_or_null("VBoxContainer/HBoxContainer/ScrollContainer/CardListContainer")
@@ -49,6 +50,7 @@ func _apply_embedded_layout() -> void:
 ##  UI更新
 ## ─────────────────────────────────────────────
 
+## v7.1: 同时获取通用改造
 func _refresh_card_list() -> void:
 	if card_list_container == null:
 		return
@@ -56,10 +58,29 @@ func _refresh_card_list() -> void:
 		child.queue_free()
 
 	var DefaultCards = preload("res://data/default_cards.gd")
+	## v7.1: 同时显示蓝图中有副本的卡和当前背包中的卡
+	var card_id_set: Dictionary = {}
+	## 来源1：蓝图有副本的
 	for id_raw in BlueprintManager.get_all_blueprint_ids():
 		var card_id: String = str(id_raw)
+		card_id_set[card_id] = true
+	## 来源2：背包中的
+	var sm: Node = get_node_or_null("/root/SaveManager")
+	if sm and sm.has_method("get_pending_backpack_ids"):
+		for idv in sm.get_pending_backpack_ids():
+			var sid: String = String(idv)
+			if not sid.is_empty():
+				card_id_set[sid] = true
+	if sm and sm.has_method("get_last_known_backpack_ids"):
+		for idv in sm.get_last_known_backpack_ids():
+			var sid: String = String(idv)
+			if not sid.is_empty():
+				card_id_set[sid] = true
+	for card_id in card_id_set:
 		var card: CardResource = DefaultCards.get_card_by_id(card_id)
 		if card == null:
+			continue
+		if card.card_type != GC.CardType.COMBAT_UNIT:
 			continue
 		var item = _create_card_item(card)
 		card_list_container.add_child(item)
@@ -75,6 +96,7 @@ func _create_card_item(card: CardResource) -> Control:
 	item.pressed.connect(func(): _on_card_selected(card))
 	return item
 
+## v7.1: 显示未安装的改造（仅显示对应兵种可用的）
 func _refresh_mod_list() -> void:
 	if not selected_card:
 		return
@@ -82,9 +104,17 @@ func _refresh_mod_list() -> void:
 	for child in mod_list_container.get_children():
 		child.queue_free()
 
-	# 获取可用改造
-	var unit_type = selected_card.combat_kind
-	var available_mods = ModificationRegistry.get_for_unit_type(unit_type)
+	## 获取可用改造（先精确匹配card_id，再按unit_type匹配）
+	var available_mods: Array = []
+	if ModificationRegistry and ModificationRegistry.has_method("get_mods_for_card"):
+		available_mods = ModificationRegistry.get_mods_for_card(selected_card.card_id)
+	if available_mods.is_empty() and ModificationRegistry and ModificationRegistry.has_method("get_for_unit_type"):
+		available_mods = ModificationRegistry.get_for_unit_type(selected_card.combat_kind)
+	if available_mods.is_empty():
+		var empty_label = Label.new()
+		empty_label.text = "该兵种暂无可用改造"
+		mod_list_container.add_child(empty_label)
+		return
 
 	for mod_id in available_mods:
 		var mod_data = ModificationRegistry.get_data(mod_id)
@@ -166,7 +196,15 @@ func _refresh_installed_list(installed_list: Control) -> void:
 func _is_mod_installed(mod_id: String) -> bool:
 	if not selected_card:
 		return false
-
+	# 优先从 BlueprintManager 的持久存储读取（比 card.mods 更可靠）
+	if BlueprintManager and BlueprintManager.blueprint_mods.has(selected_card.card_id):
+		var saved_mods = BlueprintManager.blueprint_mods[selected_card.card_id] as Array
+		if saved_mods:
+			for entry in saved_mods:
+				var eid = entry.get("id", "") if entry is Dictionary else ""
+				if eid == mod_id:
+					return true
+	# 回退到 card.mods（模板）
 	for mod_entry in selected_card.mods:
 		var entry_id = mod_entry.get("id", "") if mod_entry is Dictionary else ""
 		if entry_id == mod_id:
@@ -208,6 +246,7 @@ func _on_mod_selected(mod_id: String, mod_data: Dictionary) -> void:
 	# 显示改造详情
 	_show_mod_details(mod_data)
 
+## v7.1: 改造效果展示更友好
 func _show_mod_details(mod_data: Dictionary) -> void:
 	var details_panel = card_info_panel.get_node_or_null("ModDetailsPanel")
 	if details_panel:
@@ -215,7 +254,9 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 
 		var name_label = details_panel.get_node_or_null("NameLabel")
 		if name_label:
-			name_label.text = mod_data.get("name", "")
+			var rarity_names := {"common": "普通", "uncommon": "精良", "rare": "稀有", "epic": "史诗", "legendary": "传说"}
+			var mod_rarity: String = String(mod_data.get("rarity", "common"))
+			name_label.text = "%s [%s]" % [mod_data.get("name", ""), rarity_names.get(mod_rarity, mod_rarity)]
 
 		var proto_label = details_panel.get_node_or_null("PrototypeLabel")
 		if proto_label:
@@ -230,10 +271,20 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 			var effects = mod_data.get("effects", {})
 			var effect_texts = []
 			for key in effects.keys():
-				effect_texts.append("%s：%s" % [key, str(effects[key])])
-			effects_label.text = "效果：\n" + "\n".join(effect_texts)
-
-
+				var val = effects[key]
+				## 将效果键翻译为中文
+				var key_display = _translate_effect_key(key)
+				if val is float and val >= 0.01 and val < 100.0:
+					effect_texts.append("%s +%d%%" % [key_display, int(val * 100)])
+				elif val is float and val <= -0.01:
+					effect_texts.append("%s %d%%" % [key_display, int(val * 100)])
+				elif val is int:
+					effect_texts.append("%s +%d" % [key_display, val])
+				elif val is bool and val:
+					effect_texts.append("✓ %s" % key_display)
+				else:
+					effect_texts.append("%s: %s" % [key_display, str(val)])
+			effects_label.text = "效果：\n" + "\n".join(effect_texts) if effect_texts.size() > 0 else "无具体数值效果"
 
 		var install_btn = details_panel.get_node_or_null("InstallButton")
 		if install_btn:
@@ -254,8 +305,14 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 				var nano_amount = BasicResourceManager.get_total(BasicResources.ID_NANO_MATERIALS)
 				has_nano = nano_amount >= nano_cost
 
+			# 检查是否已安装
+			var is_installed = _is_mod_installed(selected_mod_id)
+
 			# 更新按钮文本和状态
-			if not has_blueprint:
+			if is_installed:
+				install_btn.text = "已安装"
+				install_btn.disabled = true
+			elif not has_blueprint:
 				install_btn.text = "缺少图纸：%s" % blueprint_name
 				install_btn.disabled = true
 			elif not has_nano:
@@ -272,6 +329,33 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 					install_btn.pressed.disconnect(conn.callable)
 			var install_callable = func(): _install_modification(selected_mod_id)
 			install_btn.pressed.connect(install_callable)
+
+## v7.1: 效果键翻译
+func _translate_effect_key(key: String) -> String:
+	match key:
+		"attack_light": return "对轻甲攻击"
+		"attack_armor": return "对甲攻击"
+		"attack_air": return "对空攻击"
+		"defense_light": return "对轻甲防御"
+		"defense_armor": return "对甲防御"
+		"defense_air": return "对空防御"
+		"max_hp": return "生命值"
+		"move_speed": return "移动速度"
+		"attack_range": return "射程"
+		"attack_interval": return "攻击间隔"
+		"deploy_speed": return "部署速度"
+		"crit_chance": return "暴击率"
+		"dodge_chance": return "闪避率"
+		"crit_resist": return "暴抗"
+		"smoke_ignore": return "烟雾无视"
+		"mine_immunity": return "地雷免疫"
+		"river_no_penalty": return "涉渡无损"
+		"missile_intercept": return "导弹拦截"
+		"heat_immunity_once": return "HEAT首击免疫"
+		"heat_resist": return "HEAT抗性"
+		"ally_hit_bonus": return "友军命中加成"
+		"vision": return "视野"
+		_: return key
 
 
 ## 供外部调用的接口

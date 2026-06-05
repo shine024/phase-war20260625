@@ -22,13 +22,12 @@ var description: String = ""
 func _ready() -> void:
 	clip_contents = true
 	custom_minimum_size = SLOT_SIZE
-	var margin = get_node_or_null("Margin")
-	var vbox = get_node_or_null("Margin/VBox")
-	if margin:
-		margin.custom_minimum_size = SLOT_SIZE
+	size_flags_horizontal = 0
+	size_flags_vertical = 0
+	var vbox = get_node_or_null("VBox")
 	if vbox:
 		vbox.custom_minimum_size = SLOT_SIZE
-	var icon_rect: TextureRect = get_node_or_null("Margin/VBox/Icon") as TextureRect
+	var icon_rect: TextureRect = get_node_or_null("VBox/Icon") as TextureRect
 	if icon_rect:
 		icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -45,11 +44,16 @@ func set_data(id: String, stack_amount: int, type: SlotType = SlotType.RESOURCE,
 	var amount_label: Label = get_node_or_null("Margin/VBox/AmountLabel")
 	var icon_rect: TextureRect = get_node_or_null("Margin/VBox/Icon")
 
+	# 保存额外数据（包含图标路径和名称）
+	description = extra_data.get("description", "")
+	var custom_icon: String = extra_data.get("icon", "")
+	var custom_name: String = extra_data.get("name", "")
+
 	match slot_type:
 		SlotType.RESOURCE:
 			_refresh_resource(id, name_label, amount_label, icon_rect)
 		SlotType.LORE:
-			_refresh_lore(id, stack_amount, name_label, amount_label, icon_rect)
+			_refresh_lore(id, stack_amount, name_label, amount_label, icon_rect, custom_icon, custom_name)
 		SlotType.STAT_BOOST:
 			_refresh_stat_boost(id, stack_amount, name_label, amount_label, icon_rect)
 
@@ -70,15 +74,23 @@ func _refresh_resource(id: String, name_label: Label, amount_label: Label, icon_
 			icon_rect.texture = null
 
 ## 刷新情报显示
-func _refresh_lore(lore_id: String, count: int, name_label: Label, amount_label: Label, icon_rect: TextureRect) -> void:
+func _refresh_lore(lore_id: String, count: int, name_label: Label, amount_label: Label, icon_rect: TextureRect, custom_icon: String = "", custom_name: String = "") -> void:
 	var lm = get_node_or_null("/root/LoreManager")
-	if lm and lm.has_method("get_lore_data"):
-		var lore_data = lm.get_lore_data(lore_id)
-		display_name = lore_data.get("name", "情报资料")
-		description = lore_data.get("description", "")
+
+	# 优先使用自定义名称（用于蓝图物品）
+	if not custom_name.is_empty():
+		display_name = custom_name
 	else:
-		display_name = _get_lore_default_name(lore_id)
-		description = "通过战斗获得的情报资料。"
+		# 回退到 LoreManager
+		if lm and lm.has_method("get_lore_data"):
+			var lore_data = lm.get_lore_data(lore_id)
+			display_name = lore_data.get("name", "情报资料")
+			if description.is_empty():
+				description = lore_data.get("description", "")
+		else:
+			display_name = _get_lore_default_name(lore_id)
+			if description.is_empty():
+				description = "通过战斗获得的情报资料。"
 
 	if name_label:
 		name_label.text = display_name.substr(0, 6)  # 限制长度
@@ -87,6 +99,9 @@ func _refresh_lore(lore_id: String, count: int, name_label: Label, amount_label:
 	if icon_rect:
 		# 情报使用金色图标
 		icon_rect.modulate = Color(0.8, 0.6, 0.2, 1.0)
+		# 如果有自定义图标，尝试加载
+		if not custom_icon.is_empty() and ResourceLoader.exists(custom_icon):
+			icon_rect.texture = load(custom_icon)
 
 ## 刷新属性提升显示
 func _refresh_stat_boost(boost_id: String, count: int, name_label: Label, amount_label: Label, icon_rect: TextureRect) -> void:

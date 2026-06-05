@@ -66,13 +66,14 @@ func get_all_cards() -> Array[CardResource]:
 		if sid.is_empty():
 			continue
 		var card: CardResource = DefaultCardsData.get_card_by_id(sid)
-		# 法则卡可能不在 DefaultCards 静态缓存中，尝试从 PhaseLaws 动态创建
 		if card == null and sid.begins_with("law:"):
 			sid = sid.substr(4)
 		if card == null:
 			card = DefaultCardsData.create_law_card_resource(sid)
 		if card != null:
 			_all_cards_cache.append(card)
+		else:
+			push_warning("[BackpackData] get_all_cards: unresolved id=%s" % sid)
 	_cards_cache_dirty = false
 	return _all_cards_cache
 

@@ -265,7 +265,7 @@ func _connect_panel_closed_signals() -> void:
 		"phase_law":          $PopupLayer/PhaseLawOverlay/CenterContainer/PhaseLawPanel,
 		"faction":            $PopupLayer/FactionOverlay/CenterContainer/FactionPanel,
 		"leaderboard":        $PopupLayer/LeaderboardPanel,
-		"backpack":           $PopupLayer/BackpackOverlay/BackpackVBox/CenterRow/BackpackCenter/BackpackPanel,
+		"backpack":           get_node_or_null("PopupLayer/BackpackOverlay/BackpackVBox/CenterRow/BackpackCenter/BackpackPanel"),
 		"progression":        progression_panel,
 		"settings":           $PopupLayer/SettingsOverlay/CenterContainer/SettingsPanel,
 		"info":               $PopupLayer/IntelligenceOverlay/CenterContainer/IntelligenceHubPanel,

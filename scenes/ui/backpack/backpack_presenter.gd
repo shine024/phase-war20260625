@@ -73,8 +73,6 @@ func _on_model_cards_changed() -> void:
 	if not _is_view_visible():
 		_grid_dirty_while_hidden = true
 		return
-	# 当背包可见时，立即刷新网格以显示新添加的卡牌
-	# 移除 _defer_visible_grid_refresh 条件，确保用户能看到最新变化
 	_refresh_card_grid()
 
 func _on_model_filter_changed() -> void:
@@ -85,21 +83,16 @@ func _on_model_filter_changed() -> void:
 ## ============================================================
 
 func _connect_global_signals() -> void:
-	print("[BackpackPresenter] _connect_global_signals: SignalBus=%s" % (SignalBus != null))
 	if SignalBus:
-		print("[BackpackPresenter] Connecting card_added_to_backpack signal")
 		if SignalBus.card_added_to_backpack.is_connected(_on_card_added):
 			SignalBus.card_added_to_backpack.disconnect(_on_card_added)
-			print("[BackpackPresenter] Disconnected existing card_added_to_backpack signal")
 		SignalBus.card_added_to_backpack.connect(_on_card_added)
-		print("[BackpackPresenter] Connected card_added_to_backpack signal")
 		if SignalBus.card_equipped.is_connected(_on_card_equipped):
 			SignalBus.card_equipped.disconnect(_on_card_equipped)
 		SignalBus.card_equipped.connect(_on_card_equipped)
 		if SignalBus.backpack_changed.is_connected(_on_backpack_changed):
 			SignalBus.backpack_changed.disconnect(_on_backpack_changed)
 		SignalBus.backpack_changed.connect(_on_backpack_changed)
-		print("[BackpackPresenter] All global signals connected")
 
 	var brm: Node = _get_autoload_node("BasicResourceManager")
 	if brm != null and brm.has_signal("resources_changed"):
@@ -138,26 +131,23 @@ func _disconnect_global_signals() -> void:
 ## ============================================================
 
 func _on_card_added(card: CardResource) -> void:
-	print("[BackpackPresenter] _on_card_added CALLED: card=%s card_id=%s" % [card, card.card_id if card else "null"])
 	if card == null:
-		push_warning("[BackpackPresenter] _on_card_added received null card")
 		return
 	if _data == null:
-		push_error("[BackpackPresenter] _on_card_added: _data is null! Cannot add card.")
 		return
-	print("[BackpackPresenter] _on_card_added: card_id=%s view_visible=%s current_extra_count=%d" % [card.card_id, _is_view_visible(), _data.get_extra_card_ids().size()])
 	# 从pending中移除该卡牌ID（标记为已处理）
 	if SaveManager and SaveManager.has_method("consume_pending_backpack_card_id"):
 		SaveManager.consume_pending_backpack_card_id(card.card_id)
-	# 先保证正确性：制造入包统一走全量刷新路径，避免增量插入在复杂时序下漏显示。
-	_data.add_extra_card(card.card_id, false)
-	print("[BackpackPresenter] _on_card_added done: extra_ids_count=%d dirty=%s" % [_data.get_extra_card_ids().size(), _grid_dirty_while_hidden])
+	# silent=true：由本函数自身控制刷新，避免 cards_changed 信号触发
+	# _on_model_cards_changed 时被 _suppress_next_cards_changed_refresh 吞掉导致漏刷新。
+	_data.add_extra_card(card.card_id, true)
+	# 同步写入 last_known_extra_ids，确保下次面板重建时能恢复
+	if SaveManager and SaveManager.has_method("enqueue_backpack_card_id"):
+		SaveManager.enqueue_backpack_card_id(card.card_id)
 	if not _is_view_visible():
 		_grid_dirty_while_hidden = true
-		print("[BackpackPresenter] _on_card_added: Backpack not visible, set dirty flag")
 	else:
 		_refresh_card_grid()
-		print("[BackpackPresenter] _on_card_added: Backpack visible, refreshed grid")
 	if _view and _view.has_method("highlight_last_card_by_id"):
 		_view.highlight_last_card_by_id(card.card_id)
 
@@ -440,31 +430,63 @@ func restore_extra_cards(ids: Array) -> void:
 	_data.restore_extra_cards(ids)
 
 ## 读档后从 SaveManager 加载 pending 卡牌
+## 关键：面板可能被 LazyLoader 反复销毁重建，每次重建 _data._extra_card_ids 都是空的。
+## 因此每次打开背包时，都要从 SaveManager 的权威数据（pending + last_known）中同步恢复。
 func load_pending_cards(prefer_incremental_view_update: bool = false) -> bool:
+	if _data == null:
+		return false
+	# 1. 从 pending 取完整列表（含重复卡）
 	var pending: Array = []
 	if SaveManager and SaveManager.has_method("get_pending_backpack_ids"):
 		pending = SaveManager.get_pending_backpack_ids()
-	# 背包面板可能被销毁重建：若 pending 已被清空，但会话内仍有最近已知卡列表，则用其恢复一次。
-	if pending.is_empty() and _data != null and _data.has_method("get_extra_card_ids") and _data.get_extra_card_ids().is_empty():
-		if SaveManager and SaveManager.has_method("get_last_known_backpack_ids"):
-			pending = SaveManager.get_last_known_backpack_ids()
-	if pending.size() <= 0:
+	# 2. 合并 last_known（会话内曾经入包的所有卡，防止 pending 被消费后丢失）
+	var last_known: Array = []
+	if SaveManager and SaveManager.has_method("get_last_known_backpack_ids"):
+		last_known = SaveManager.get_last_known_backpack_ids()
+	print("[BP] load_pending: pending=%s last_known=%s data_extra=%d" % [pending, last_known, _data.get_extra_card_ids().size()])
+	# 3. 合并：以 pending 为主，补充 last_known 中 pending 缺少的卡（按出现次数差值补齐）
+	var pending_counts: Dictionary = {}
+	for id_val in pending:
+		var sid: String = str(id_val) if id_val != null else ""
+		if not sid.is_empty():
+			pending_counts[sid] = pending_counts.get(sid, 0) + 1
+	var last_known_counts: Dictionary = {}
+	for id_val in last_known:
+		var sid: String = str(id_val) if id_val != null else ""
+		if not sid.is_empty():
+			last_known_counts[sid] = last_known_counts.get(sid, 0) + 1
+	var final_ids: Array = []
+	# 先放 pending 的全部（保留重复）
+	for id_val in pending:
+		var sid: String = str(id_val) if id_val != null else ""
+		if not sid.is_empty():
+			final_ids.append(sid)
+	# 补齐 last_known 比 pending 多出的次数
+	for sid in last_known_counts:
+		var lk_count: int = last_known_counts.get(sid, 0)
+		var p_count: int = pending_counts.get(sid, 0)
+		var diff: int = lk_count - p_count
+		for _i in range(maxi(0, diff)):
+			final_ids.append(sid)
+	if final_ids.is_empty():
 		return false
-	var can_incremental: bool = prefer_incremental_view_update and _can_incremental_update()
-	if _data != null and _data.has_method("append_extra_cards"):
-		_data.append_extra_cards(pending, can_incremental)
-	else:
-		_data.restore_extra_cards(pending)
-	if can_incremental and _view and _view.has_method("add_card"):
-		for id_val in pending:
-			var card_id: String = str(id_val) if id_val != null else ""
-			if card_id.is_empty():
-				continue
-			var card_res: CardResource = DefaultCardsData.get_card_by_id(card_id)
-			if card_res != null:
-				_view.add_card(card_res, false)
-	if SaveManager and SaveManager.has_method("clear_pending_backpack_ids"):
-		SaveManager.clear_pending_backpack_ids()
+	# 4. 仅追加 _data 中不存在的卡（按出现次数逐张比对）
+	var data_ids: Array = _data.get_extra_card_ids()
+	var data_count_map: Dictionary = {}
+	for sid in data_ids:
+		data_count_map[sid] = data_count_map.get(sid, 0) + 1
+	var new_ids: Array = []
+	for sid in final_ids:
+		var current: int = data_count_map.get(sid, 0)
+		if current > 0:
+			data_count_map[sid] = current - 1
+		else:
+			new_ids.append(sid)
+	if new_ids.is_empty():
+		return false
+	var silent: bool = prefer_incremental_view_update
+	_data.append_extra_cards(new_ids, silent)
+	print("[BP] load_pending: new_ids=%s final_data=%d" % [new_ids, _data.get_extra_card_ids().size()])
 	return true
 
 ## ============================================================
@@ -496,19 +518,23 @@ func reset_visibility_filters() -> void:
 ## 内部方法
 ## ============================================================
 
-## 初始加载：读档 pending + 仅额外卡网格（无默认全卡池）
+## 初始加载：从 SaveManager 同步 pending + last_known 额外卡
 func _load_initial_cards() -> void:
 	if _view == null:
 		return
-	# 1. 读取存档的 pending 额外卡
-	var loaded: bool = load_pending_cards(false)
-	# 2. 填充卡片网格
+	# 1. 合并 pending + last_known 恢复所有已知额外卡
+	var loaded := load_pending_cards(false)
+	print("[BP] _load_initial_cards: loaded=%s extra=%d" % [loaded, _data.get_extra_card_ids().size()])
+	# 2. 同步当前 _data 到 SaveManager._last_known_extra_ids（如果尚未同步）
+	if SaveManager and SaveManager.has_method("_set_last_known_extra_ids_direct"):
+		var all_known: Array = _data.get_extra_card_ids().duplicate()
+		SaveManager._set_last_known_extra_ids_direct(all_known)
+	# 3. 填充卡片网格
 	_refresh_card_grid()
-	var cards := _data.get_filtered_sorted_cards()
-	# 3. 固定顶部能量卡
+	# 4. 固定顶部能量卡
 	if _view and _view.has_method("pin_top_energy_to_front"):
 		_view.pin_top_energy_to_front()
-	# 4. 情报/属性提升区域改为首次打开背包后再异步初始化，避免首开卡顿。
+	# 5. 情报/属性提升区域改为首次打开背包后再异步初始化，避免首开卡顿。
 	_aux_sections_initialized = false
 
 func flush_if_dirty() -> void:
@@ -531,7 +557,8 @@ func _refresh_card_grid() -> void:
 	if _data == null:
 		return
 	var cards := _data.get_filtered_sorted_cards()
-	print("[BackpackPresenter] _refresh_card_grid: cards_count=%d view_null=%s" % [cards.size(), _view == null])
+	var extra := _data.get_extra_card_ids()
+	print("[BP] _refresh_grid: cards=%d extra_ids=%s" % [cards.size(), extra])
 	if _view and _view.has_method("rebuild_card_grid"):
 		_view.rebuild_card_grid(cards)
 
@@ -539,17 +566,17 @@ func _can_incremental_update() -> bool:
 	return _is_view_visible() and _data != null and _data.has_method("is_default_view_mode") and _data.is_default_view_mode()
 
 func _run_open_refresh_pipeline() -> void:
-	print("[BackpackPresenter] _run_open_refresh_pipeline: view_visible=%s dirty=%s data_extra=%d" % [_is_view_visible(), _grid_dirty_while_hidden, _data.get_extra_card_ids().size() if _data else -1])
+	print("[BP] _run_open_refresh_pipeline: visible=%s dirty=%s inflight=%s" % [_is_view_visible(), _grid_dirty_while_hidden, _open_refresh_inflight])
 	# 保护：若背包在这一帧内已关闭，直接结束。
 	if not _is_view_visible():
 		_open_refresh_inflight = false
 		return
 	# Step 1: 先吸收 pending，默认模式优先增量插入。
 	var loaded_pending: bool = load_pending_cards(true)
-	# Step 2: 若存在隐藏期脏数据，或 pending 未走增量，则下一帧再做一次网格刷新。
-	var need_grid_rebuild: bool = _grid_dirty_while_hidden or (loaded_pending and not _can_incremental_update()) or (not loaded_pending and _grid_dirty_while_hidden)
+	# Step 2: 总是刷新网格。dirty flag 或 pending 变化是充分条件，
+	# 但即使两者都为 false，也做一次全量刷新确保 SaveManager 与 _data 一致。
 	var tree: SceneTree = _get_scene_tree()
-	if need_grid_rebuild and tree != null:
+	if tree != null:
 		await tree.process_frame
 		if _is_view_visible():
 			_grid_dirty_while_hidden = false

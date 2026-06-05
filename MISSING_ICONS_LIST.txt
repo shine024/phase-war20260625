@@ -1,0 +1,111 @@
+卡图清单 — 需补文件 (83张)
+======================================
+存放目录: assets/card_icons/<文件名>.png
+规格: 512x512 PNG
+
+--------------------------------------
+WW1 时代 (14张)
+--------------------------------------
+ww1_mp18.png          MP18突击班
+ww1_mauser.png        毛瑟步枪班
+ww1_enfield.png       李恩菲尔德班
+ww1_mg08.png          MG08机枪巢
+ww1_vickers.png       维克斯机枪巢
+ww1_76mm.png          76mm迫击炮组
+ww1_storm.png         暴风突击队
+ww1_lanchest.png      兰彻斯特装甲车
+ww1_saint.png         圣沙蒙坦克
+ww1_a7v.png           A7V重型坦克
+ww1_mark4.png         马克IV型坦克
+ww1_105mm.png         105mm榴弹炮
+ww1_37mm.png          37mm高射炮
+ww1_flame.png         火焰喷射兵
+
+--------------------------------------
+WW2 时代 (14张)
+--------------------------------------
+ww2_thompson.png      汤普森班
+ww2_garand.png        加兰德班
+ww2_mp40.png          MP40班
+ww2_ppsh.png          波波沙班
+ww2_mg42.png          MG42机枪组
+ww2_browning.png      勃朗宁机枪组
+ww2_m120.png          120mm重迫击炮
+ww2_pz3.png           三号坦克
+ww2_pz4.png           四号坦克
+ww2_panther.png       黑豹坦克
+ww2_kingtiger.png     虎王坦克
+ww2_t34_76.png        T-34/76坦克
+ww2_t34_85.png        T-34/85坦克
+ww2_is2.png           IS-2重型坦克
+
+--------------------------------------
+冷战时代 (16张)
+--------------------------------------
+cold_rpg.png          RPG火箭筒组
+cold_ak47.png         AK-47步兵班
+cold_m14.png          M14步兵班
+cold_m60.png          M60机枪班
+cold_rpk.png          RPK机枪班
+cold_bradley.png      M2布雷德利
+cold_t62.png          T-62坦克
+cold_t72.png          T-72坦克
+cold_m60t.png         M60坦克
+cold_m1.png           M1主战坦克
+cold_leo1.png         豹1坦克
+cold_chieftain.png    酋长坦克
+cold_sam7.png         萨姆-7防空组
+cold_mig21.png        米格-21战机
+cold_f4.png           F-4鬼怪战机
+cold_spetsnaz.png     阿尔法特种部队
+
+--------------------------------------
+现代时代 (15张)
+--------------------------------------
+mod_marine.png        海军陆战队
+mod_ranger.png        游骑兵
+mod_javelin.png       标枪导弹兵
+mod_stinger.png       毒刺导弹兵
+mod_stryker_mgs.png   斯特赖克MGS
+mod_stryker_m2.png    斯特赖克M2
+mod_hummer_tow.png    悍马·陶式
+mod_hummer_m2.png     悍马·M2
+mod_m1a2.png          M1A2艾布拉姆斯
+mod_t90.png           T-90坦克
+mod_leo2a6.png        豹2A6坦克
+mod_challenger2.png   挑战者2坦克
+mod_ah64.png          AH-64阿帕奇
+mod_ah1.png           AH-1眼镜蛇
+mod_uh60.png          UH-60黑鹰
+
+--------------------------------------
+未来时代 (14张)
+--------------------------------------
+fut_swarm.png         蜂群无人机
+fut_attack_drone.png  攻击无人机
+fut_cyborg.png        机械步兵
+fut_heavy_trooper.png 重装机兵
+fut_assault_mech.png  突击机甲
+fut_howitzer.png      悬浮自行火炮
+fut_aa_hover.png      防空悬浮车
+fut_stealth_bomber.png 隐形轰炸机
+fut_space_fighter.png 空天战斗机
+fut_spectre.png       幽灵特工
+fut_nano_drone.png    纳米修复机
+fut_shield.png        力场发生器
+fut_colossus.png      巨神机甲
+fut_stormcore.png     风暴核心原型
+
+--------------------------------------
+堡垒时代 (10张)
+--------------------------------------
+fort_ww1_pillbox.png  混凝土机枪碉堡
+fort_ww1_artillery.png 要塞炮台
+fort_ww2_bunker.png   混凝土碉堡
+fort_ww2_flak.png     88mm防空塔
+fort_cold_missile.png 导弹发射井
+fort_cold_radar.png   雷达站
+fort_modern_citadel.png 要塞核心
+fort_modern_phalanx.png 近防炮系统
+fort_future_ion.png   离子炮台
+fort_future_shield.png 能量护盾发生器

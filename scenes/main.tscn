@@ -311,9 +311,6 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
 
-[node name="BackpackPanel" parent="PopupLayer/BackpackOverlay/BackpackVBox/CenterRow/BackpackCenter" instance=ExtResource("24_backpack")]
-layout_mode = 2
-
 [node name="BottomSpacer" type="Control" parent="PopupLayer/BackpackOverlay/BackpackVBox"]
 layout_mode = 2
 size_flags_vertical = 3

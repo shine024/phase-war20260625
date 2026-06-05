@@ -106,19 +106,24 @@ static func apply_modification(card_id: String, option_id: String, bpm_ref: Node
 	## 冲突检测 + 替换/追加
 	var conflict_group: String = ModEffects.get_conflict_group(option_id)
 	var mods: Array = bpm_ref.blueprint_mods.get(card_id, [])
+	## 迁移旧格式：纯 String → Dictionary（{"id": "..."}）
+	for i in range(mods.size()):
+		if mods[i] is String:
+			mods[i] = {"id": mods[i]}
 	var replaced: bool = false
 	if not conflict_group.is_empty():
 		for i in range(mods.size()):
-			if ModEffects.get_conflict_group(String(mods[i])) == conflict_group:
-				mods[i] = option_id
+			var entry_id = mods[i].get("id", "") if mods[i] is Dictionary else String(mods[i])
+			if ModEffects.get_conflict_group(entry_id) == conflict_group:
+				mods[i] = {id = option_id}
 				replaced = true
 				if bpm_ref.DEBUG_BLUEPRINT_LOG:
-					print("[ModManager] 改造替换：slot %d %s → %s" % [i, mods[i], option_id])
+					print("[ModManager] 改造替换：slot %d → %s" % [i, option_id])
 				break
 	if not replaced:
 		if mods.size() >= ModEffects.MAX_MOD_SLOTS:
 			return false
-		mods.append(option_id)
+		mods.append({id = option_id})
 	## 扣除消耗
 	bpm_ref.add_research_points(-int(req.get("research_points", 0)))
 	if brm != null and brm.has_method("add_resource"):
@@ -140,6 +145,7 @@ static func has_enemy_origin_mod(card_id: String, mods_dict: Dictionary) -> bool
 	var mods: Array = mods_dict.get(card_id, [])
 	if mods is Array:
 		for m in mods:
-			if String(m).begins_with("EOM_"):
+			var entry_id = m.get("id", "") if m is Dictionary else String(m)
+			if entry_id.begins_with("EOM_"):
 				return true
 	return false

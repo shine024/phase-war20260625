@@ -36,13 +36,61 @@ static func extract_mod_id(blueprint_id: String) -> String:
 static func extract_evolution_info(blueprint_id: String) -> Dictionary:
 	if not blueprint_id.begins_with("blueprint_evol_"):
 		return {}
-	var parts = blueprint_id.substr(15).split("_")  # 去掉 "blueprint_evol_" 前缀
-	# 格式: blueprint_evol_<from>_<to>
-	# 需要找到两个card_id的分界点
-	# 简化处理：假设card_id不包含下划线，或者按已知规则解析
-	# 实际项目中card_id可能包含下划线，这里需要更复杂的解析
-	# 暂时返回空，由调用者根据实际card_id格式处理
-	return {"from": "", "to": ""}
+	var rest = blueprint_id.substr(15)  # 去掉 "blueprint_evol_" 前缀
+	# 格式: blueprint_evol_<from_card_id>_<to_card_id>
+	# card_id可能的格式: ww1_mp18, cold_ak47, fort_ww1_pillbox, mod_marine, fut_colossus
+	# 策略: 使用已知前缀来找到from和to的分界点
+	# 已知前缀（按优先级排序，长的在前）
+	var known_prefixes = ["fort_", "ww1_", "ww2_", "cold_", "mod_", "fut_", "fe_", "ac"]
+	var parts = rest.split("_")
+	if parts.size() < 2:
+		print("[BlueprintDefinitions] 解析失败：parts太少 %s" % [parts])
+		return {}
+
+	# 从后往前找最后一个已知前缀的位置（找到第一个就停止）
+	var last_prefix_idx = -1
+	for i in range(parts.size() - 1, -1, -1):  # 从后往前，包括第一个
+		var part = parts[i]
+		for prefix in known_prefixes:
+			if part == prefix.rstrip("_"):  # 检查是否匹配前缀
+				last_prefix_idx = i
+				break
+		if last_prefix_idx >= 0:
+			break  # 找到后立即停止
+
+	if last_prefix_idx <= 0:
+		# 如果找不到明确的前缀，使用简单策略：最后两个部分为to，其余为from
+		if parts.size() < 4:
+			print("[BlueprintDefinitions] 解析失败：无法找到分界点 %s" % [parts])
+			return {}
+		var to_card = parts[parts.size() - 2] + "_" + parts[parts.size() - 1]
+		var from_parts = parts.slice(0, parts.size() - 2)
+		var from_card = ""
+		for i in range(from_parts.size()):
+			if i > 0:
+				from_card += "_"
+			from_card += from_parts[i]
+		print("[BlueprintDefinitions] 简单解析: from=%s to=%s" % [from_card, to_card])
+		return {"from": from_card, "to": to_card}
+
+	# 找到了前缀，从该位置开始构建to_card
+	var to_parts = parts.slice(last_prefix_idx)
+	var to_card = ""
+	for i in range(to_parts.size()):
+		if i > 0:
+			to_card += "_"
+		to_card += to_parts[i]
+
+	# from_card是剩余部分
+	var from_parts = parts.slice(0, last_prefix_idx)
+	var from_card = ""
+	for i in range(from_parts.size()):
+		if i > 0:
+			from_card += "_"
+		from_card += from_parts[i]
+
+	print("[BlueprintDefinitions] 前缀解析: from=%s to=%s" % [from_card, to_card])
+	return {"from": from_card, "to": to_card}
 
 ## 检查是否为改造蓝图
 static func is_mod_blueprint(blueprint_id: String) -> bool:

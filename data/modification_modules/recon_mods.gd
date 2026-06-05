@@ -19,7 +19,8 @@ const DATA: Dictionary = {
 	"rec_01_optical_camouflage" = {
 		id = REC_01_OPTICAL_CAMOUFLAGE, name = "光学伪装", name_en = "Optical Camouflage",
 		prototype = "吉利服", description = "降低被发现的距离",
-		rarity = "rare", cost_research = 140, cost_install = 70,
+		rarity = "rare",
+	power_mult = 1.3, cost_research = 140, cost_install = 70,
 		slot_type = "stealth", conflict_group = "stealth",
 		effects = {detection_range = -0.50},
 		unlock_conditions = {required_level = 2}
@@ -27,7 +28,8 @@ const DATA: Dictionary = {
 	"rec_02_ir_suppression" = {
 		id = REC_02_IR_SUPPRESSION, name = "红外抑制", name_en = "IR Suppression",
 		prototype = "热信号遮蔽", description = "热成像免疫，大幅降低被发现",
-		rarity = "epic", cost_research = 280, cost_install = 140,
+		rarity = "epic",
+	power_mult = 1.6, cost_research = 280, cost_install = 140,
 		slot_type = "stealth", conflict_group = "stealth",
 		effects = {thermal_immunity = 0.70},
 		unlock_conditions = {required_level = 4}
@@ -35,7 +37,8 @@ const DATA: Dictionary = {
 	"rec_03_suppressor" = {
 		id = REC_03_SUPPRESSOR, name = "消音器", name_en = "Suppressor",
 		prototype = "抑制器", description = "开火暴露距离大幅降低",
-		rarity = "rare", cost_research = 160, cost_install = 80,
+		rarity = "rare",
+	power_mult = 1.3, cost_research = 160, cost_install = 80,
 		slot_type = "weapon", conflict_group = "weapon",
 		effects = {fire_exposure = -0.80},
 		unlock_conditions = {required_level = 3}
@@ -43,7 +46,8 @@ const DATA: Dictionary = {
 	"rec_04_high_power_scope" = {
 		id = REC_04_HIGH_POWER_SCOPE, name = "高倍瞄准镜", name_en = "High-Power Scope",
 		prototype = "施华洛世奇", description = "高倍瞄具，射程和暴击提升",
-		rarity = "epic", cost_research = 300, cost_install = 150,
+		rarity = "epic",
+	power_mult = 1.6, cost_research = 300, cost_install = 150,
 		slot_type = "optics", conflict_group = "optics",
 		effects = {attack_range = 60, crit_chance = 0.10},
 		unlock_conditions = {required_level = 5}
@@ -51,7 +55,8 @@ const DATA: Dictionary = {
 	"rec_05_uav" = {
 		id = REC_05_UAV, name = "无人侦察机", name_en = "Recon UAV",
 		prototype = "RQ-11大乌鸦", description = "无人机侦察，视野和反隐提升",
-		rarity = "epic", cost_research = 320, cost_install = 160,
+		rarity = "epic",
+	power_mult = 1.6, cost_research = 320, cost_install = 160,
 		slot_type = "drone", conflict_group = "drone",
 		effects = {vision_bonus = 0.50, stealth_detect = 0.20},
 		unlock_conditions = {required_level = 5}
@@ -59,7 +64,8 @@ const DATA: Dictionary = {
 	"rec_06_tactical_radio" = {
 		id = REC_06_TACTICAL_RADIO, name = "战术电台", name_en = "Tactical Radio",
 		prototype = "单兵超短波", description = "情报传输速度提升",
-		rarity = "uncommon", cost_research = 80, cost_install = 40,
+		rarity = "uncommon",
+	power_mult = 1.0, cost_research = 80, cost_install = 40,
 		slot_type = "comms", conflict_group = "comms",
 		effects = {intel_speed = 0.30},
 		unlock_conditions = {required_level = 1}
@@ -67,7 +73,8 @@ const DATA: Dictionary = {
 	"rec_07_gps" = {
 		id = REC_07_GPS, name = "GPS定位仪", name_en = "GPS Receiver",
 		prototype = "军用GPS", description = "精确定位，机动性提升",
-		rarity = "uncommon", cost_research = 90, cost_install = 45,
+		rarity = "uncommon",
+	power_mult = 1.0, cost_research = 90, cost_install = 45,
 		slot_type = "navigation", conflict_group = "navigation",
 		effects = {move_speed = 10},
 		unlock_conditions = {required_level = 2}
@@ -75,7 +82,8 @@ const DATA: Dictionary = {
 	"rec_08_nvg" = {
 		id = REC_08_NVG, name = "夜视仪", name_en = "Night Vision",
 		prototype = "PVS-14", description = "夜间全属性提升",
-		rarity = "rare", cost_research = 180, cost_install = 90,
+		rarity = "rare",
+	power_mult = 1.3, cost_research = 180, cost_install = 90,
 		slot_type = "optics", conflict_group = "optics",
 		effects = {night_bonus = 0.15},
 		unlock_conditions = {required_level = 3}
@@ -83,7 +91,8 @@ const DATA: Dictionary = {
 	"rec_09_breaching" = {
 		id = REC_09_BREACHING, name = "破门工具", name_en = "Breaching Tools",
 		prototype = "霰弹枪/破门锤", description = "城市战机动提升",
-		rarity = "uncommon", cost_research = 100, cost_install = 50,
+		rarity = "uncommon",
+	power_mult = 1.0, cost_research = 100, cost_install = 50,
 		slot_type = "environment", conflict_group = "environment",
 		effects = {urban_move_bonus = 20},
 		unlock_conditions = {required_level = 2}
@@ -91,7 +100,8 @@ const DATA: Dictionary = {
 	"rec_10_medkit" = {
 		id = REC_10_MEDKIT, name = "急救包", name_en = "Medical Kit",
 		prototype = "IFAK", description = "濒死回复15%HP",
-		rarity = "rare", cost_research = 120, cost_install = 60,
+		rarity = "rare",
+	power_mult = 1.3, cost_research = 120, cost_install = 60,
 		slot_type = "medical", conflict_group = "medical",
 		effects = {ifak_heal = 0.15},
 		unlock_conditions = {required_level = 2}
@@ -99,7 +109,8 @@ const DATA: Dictionary = {
 	"rec_11_decoy" = {
 		id = REC_11_DECOY, name = "假目标", name_en = "Decoy",
 		prototype = "充气坦克/假人", description = "敌方误判概率提升",
-		rarity = "rare", cost_research = 160, cost_install = 80,
+		rarity = "rare",
+	power_mult = 1.3, cost_research = 160, cost_install = 80,
 		slot_type = "deception", conflict_group = "deception",
 		effects = {enemy_confusion = 0.20},
 		unlock_conditions = {required_level = 3}
@@ -107,7 +118,8 @@ const DATA: Dictionary = {
 	"rec_12_atv" = {
 		id = REC_12_ATV, name = "越野摩托", name_en = "All-Terrain Vehicle",
 		prototype = "侦察摩托", description = "高机动性，速度大幅提升",
-		rarity = "uncommon", cost_research = 110, cost_install = 55,
+		rarity = "uncommon",
+	power_mult = 1.0, cost_research = 110, cost_install = 55,
 		slot_type = "mobility", conflict_group = "mobility",
 		effects = {move_speed = 30},
 		unlock_conditions = {required_level = 2}

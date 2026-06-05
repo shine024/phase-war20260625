@@ -314,16 +314,25 @@ func _on_evolve_pressed() -> void:
 	if not selected_card or selected_target_id.is_empty():
 		return
 
-	var result = BlueprintManager.evolve_card(selected_card, selected_target_id)
-
-	if result.success:
-		_show_result("进化成功！%s" % result.message)
-		# 刷新UI
-		selected_card = result.new_card
-		_refresh_card_list()
-		_update_evolution_tree()
+	## v7.1: 统一使用BlueprintManager.evolve_blueprint（与card_enhancement_panel一致）
+	if BlueprintManager and BlueprintManager.has_method("can_evolve_blueprint") and BlueprintManager.has_method("evolve_blueprint"):
+		var ok: bool = BlueprintManager.evolve_blueprint(selected_card.card_id, selected_target_id)
+		if ok:
+			_show_result("进化成功：%s → %s" % [selected_card.display_name, DefaultCards.get_safe_display_name(selected_target_id)])
+			# 刷新UI - 选中进化后的新卡
+			var new_card: CardResource = DefaultCards.get_card_by_id(selected_target_id)
+			if new_card:
+				selected_card = new_card
+			_refresh_card_list()
+			_update_evolution_tree()
+			detail_panel.visible = false
+		else:
+			## 精确错误信息
+			var fail_info: Dictionary = BlueprintManager.can_evolve_blueprint(selected_card.card_id, selected_target_id)
+			var fail_reason: String = String(fail_info.get("reason_zh", "条件未满足"))
+			_show_result("进化失败：%s" % fail_reason)
 	else:
-		_show_result("进化失败：%s" % result.message)
+		_show_result("进化系统未加载")
 
 ## ─────────────────────────────────────────────
 ##  事件处理

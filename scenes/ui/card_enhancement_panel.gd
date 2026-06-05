@@ -19,7 +19,9 @@ const BasicResources = preload("res://data/basic_resources.gd")
 const IntelManualItems = preload("res://data/intel_manual_items.gd")
 const DEBUG_LOG_PATH = "debug-119cff.log"
 
-const MOD_SLOT_LABELS: PackedStringArray = ["A", "B", "C"]
+const MOD_SLOT_LABELS: PackedStringArray = ["A", "B", "C", "D", "E", "F", "G", "H", "I"]
+
+const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
 
 signal closed
 
@@ -149,7 +151,13 @@ func _init_card_list() -> void:
 	card_items.clear()
 
 	var all_card_ids: Array = []
-	# 仅展示“背包中的卡牌”
+	# v7.1: 蓝图副本（进化后新卡在此）
+	if BlueprintManager and BlueprintManager.has_method("get_all_blueprint_ids"):
+		for id_raw in BlueprintManager.get_all_blueprint_ids():
+			var sid: String = String(id_raw)
+			if not sid.is_empty():
+				all_card_ids.append(sid)
+	# 背包中的卡牌
 	if SaveManager and SaveManager.has_method("get_pending_backpack_ids"):
 		all_card_ids.append_array(SaveManager.get_pending_backpack_ids())
 	if SaveManager and SaveManager.has_method("get_last_known_backpack_ids"):
@@ -431,18 +439,15 @@ func _update_evolution_section(card_data: CardResource) -> void:
 	tips.fit_content = true
 	tips.scroll_active = false
 	tips.custom_minimum_size = Vector2(0, 96)
-	var star_now: int = BlueprintManager.get_blueprint_star(selected_card_id) if BlueprintManager.has_method("get_blueprint_star") else 1
 	var mod_now: int = BlueprintManager.get_modification_count(selected_card_id) if BlueprintManager.has_method("get_modification_count") else 0
 	var inherit_ratio: float = float(can_info.get("inherit_ratio", UnitLineageConfig.DEFAULT_INHERIT_RATIO))
-	var research_cost: int = int(can_info.get("research_cost", 0))
 	var reason: String = _evolve_reason_display(can_info)
-	var permit_gap_text: String = _build_permit_gap_text(can_info)
 	tips.bbcode_enabled = true
 	tips.text = "[color=#7fd3ff]进化得失提示[/color]\n" + \
 		"[color=#8ef58e]获得[/color]：新单位成长上限、军衔重新评估、属性传承 %.0f%%\n" % (inherit_ratio * 100.0) + \
-		"[color=#ffb37f]失去[/color]：当前改造A/B/C进度清零（重走改造）\n" + \
-		"当前：星级 %d，改造 %d/3，进化消耗研究点 %d\n" % [star_now, mod_now, research_cost] + \
-		("状态：可进化" if can_evolve else "状态：不可进化（%s%s）" % [reason, permit_gap_text])
+		"[color=#ffb37f]失去[/color]：强化等级重置（改造继承到新卡）\n" + \
+		"当前：改造 %d/9，强化Lv需≥%d\n" % [mod_now, int(can_info.get("enhance_requirement", 5))] + \
+		("状态：[color=#8ef58e]可进化[/color]" if can_evolve else "状态：[color=#ff7373]不可进化（%s）[/color]" % reason)
 	card_detail_panel.add_child(tips)
 
 func _evolve_reason_display(can_info: Dictionary) -> String:
@@ -552,51 +557,207 @@ func _update_modification_section() -> void:
 	if selected_card_id.is_empty():
 		_reset_modification_section()
 		return
+	## v7.1: 统一到新改造系统（ModificationRegistry）
 	var applied: Array = BlueprintManager.blueprint_mods.get(selected_card_id, [])
 	var applied_parts: PackedStringArray = PackedStringArray()
 	for i in range(applied.size()):
+		var entry = applied[i]
+		var mod_id: String = ""
+		if entry is Dictionary:
+			mod_id = String(entry.get("id", ""))
+		else:
+			mod_id = String(entry)
 		var slot: String = MOD_SLOT_LABELS[i] if i < MOD_SLOT_LABELS.size() else "?"
-		applied_parts.append("%s:%s" % [slot, _mod_option_display_name(String(applied[i]))])
+		var mod_name: String = _new_mod_display_name(mod_id)
+		applied_parts.append("%s:%s" % [slot, mod_name])
 	var applied_text: String = " / ".join(applied_parts) if applied_parts.size() > 0 else "无"
-	mod_status_label.text = "改装进度：%s（%d/3）" % [applied_text, applied.size()]
-	var rarity: String = BlueprintManager.get_card_rarity(selected_card_id) if BlueprintManager.has_method("get_card_rarity") else "common"
-	var max_times: int = StarConfig.get_max_mod_times(rarity)
-	var mod_index: int = BlueprintManager.get_modification_count(selected_card_id)
-	if mod_index >= max_times:
+	mod_status_label.text = "改造进度：%s（%d/9）" % [applied_text, applied.size()]
+	var card_data: CardResource = DefaultCards.get_card_by_id(selected_card_id)
+	if card_data == null:
 		if mod_req_label:
-			mod_req_label.text = "已完成全部改装槽位。"
+			mod_req_label.text = "找不到卡牌数据"
 		_set_mod_branch_buttons_enabled(false)
 		return
-	var can_apply: bool = BlueprintManager.can_apply_modification(selected_card_id, mod_index)
+	## 计算纳米消耗
+	var nano_cost: int = int(card_data.power * 0.5)
+	var have_nano: int = BlueprintManager.get_nano_materials() if BlueprintManager else 0
 	if mod_req_label:
-		mod_req_label.text = _format_mod_requirements(selected_card_id, mod_index)
-	_set_mod_branch_buttons_enabled(can_apply)
+		mod_req_label.text = "下次改造消耗：%d纳米（当前：%d）\n选择下方的\"火力\"\"防护\"\"功能\"查看并安装具体改造模块" % [nano_cost, have_nano]
+	_set_mod_branch_buttons_enabled(applied.size() < 9 and have_nano >= nano_cost)
+
+## v7.1: 新改造系统名称解析
+func _new_mod_display_name(mod_id: String) -> String:
+	if mod_id.is_empty():
+		return "?"
+	## 旧MOD_XX格式（兼容旧存档）
+	if mod_id.begins_with("MOD_"):
+		return _mod_option_display_name(mod_id)
+	## 新格式：从ModificationRegistry查询
+	if ModificationRegistry and ModificationRegistry.has_method("get_data"):
+		var mod_data: Dictionary = ModificationRegistry.get_data(mod_id)
+		if not mod_data.is_empty():
+			return String(mod_data.get("name", mod_id))
+	return mod_id
 
 func _on_mod_option_pressed(option_id: String) -> void:
-	if selected_card_id.is_empty() or BlueprintManager == null:
+	## v7.1: 改为显示新系统改造选择面板
+	if selected_card_id.is_empty():
 		return
-	if not BlueprintManager.has_method("apply_modification"):
+	var card_data: CardResource = DefaultCards.get_card_by_id(selected_card_id)
+	if card_data == null:
 		return
-	var mod_index: int = BlueprintManager.get_modification_count(selected_card_id)
-	if not BlueprintManager.can_apply_modification(selected_card_id, mod_index):
+	## 根据选择的分类（offense/defense/utility）过滤改造
+	_open_mod_selector_popup(card_data, option_id)
+
+## v7.1: 打开改造选择弹窗
+func _open_mod_selector_popup(card: CardResource, category: String) -> void:
+	if not is_inside_tree():
+		return
+	var unit_type: int = card.combat_kind
+	var available_mods: Array = []
+	if ModificationRegistry and ModificationRegistry.has_method("get_for_unit_type"):
+		available_mods = ModificationRegistry.get_for_unit_type(unit_type)
+	## 同时获取通用改造
+	if ModificationRegistry and ModificationRegistry.has_method("get_mods_for_card"):
+		var card_mods: Array = ModificationRegistry.get_mods_for_card(card.card_id)
+		for cm_id in card_mods:
+			if not available_mods.has(cm_id):
+				available_mods.append(cm_id)
+	if available_mods.is_empty():
 		if result_label:
-			result_label.text = "改装失败：星级、研究点或许可函不足。"
-			result_label.add_theme_color_override("font_color", Color(1.0, 0.45, 0.45, 1))
-		_update_modification_section()
+			result_label.text = "该兵种暂无可用改造模块。"
+			result_label.add_theme_color_override("font_color", Color(1.0, 0.7, 0.3, 1))
 		return
-	## v6.0: 消耗对应改装指南
-	var mod_item_type: String = _get_mod_item_type_for_slot(mod_index)
-	if not mod_item_type.is_empty():
-		if not _consume_intel_item(mod_item_type):
-			return
-	var ok: bool = BlueprintManager.apply_modification(selected_card_id, option_id)
+	## 按分类过滤
+	var filtered_mods: Array = []
+	for mod_id in available_mods:
+		var mod_data: Dictionary = ModificationRegistry.get_data(mod_id) if ModificationRegistry else {}
+		var slot_type: String = String(mod_data.get("slot_type", ""))
+		if _mod_category_matches(slot_type, category):
+			filtered_mods.append(mod_id)
+	if filtered_mods.is_empty():
+		## 如果过滤后为空，显示全部（让玩家看到所有选项）
+		filtered_mods = available_mods.duplicate()
+		if result_label:
+			result_label.text = "该分类无可用改造，显示全部选项"
+			result_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.5, 1))
+	## 创建弹窗
+	_create_mod_popup(filtered_mods, card)
+
+## 判断改造slot_type是否匹配分类
+func _mod_category_matches(slot_type: String, category: String) -> bool:
+	match category:
+		"offense":
+			return slot_type in ["gun", "ammunition", "autoloader", "fire_control"]
+		"defense":
+			return slot_type in ["armor", "active", "command", "optics", "engineering", "environment"]
+		"utility":
+			return slot_type in ["engine", "comms", "survival"]
+		_:
+			return true
+
+## 创建改造选择弹窗
+func _create_mod_popup(mod_ids: Array, card: CardResource) -> void:
+	## 移除旧弹窗
+	var old_popup = get_node_or_null("_ModSelectorPopup")
+	if old_popup:
+		old_popup.queue_free()
+	## 创建容器
+	var popup := PopupPanel.new()
+	popup.name = "_ModSelectorPopup"
+	popup.size = Vector2i(480, 520)
+	## 标题
+	var title := Label.new()
+	title.text = "选择改造模块（%s）" % card.display_name
+	title.add_theme_font_size_override("font_size", 15)
+	title.add_theme_color_override("font_color", Color(0, 0.9, 1, 1))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	## 滚动容器
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(460, 400)
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 4)
+	scroll.add_child(vbox)
+	## 获取已安装的改造列表
+	var installed_ids: Array = []
+	var applied: Array = BlueprintManager.blueprint_mods.get(card.card_id, []) if BlueprintManager else []
+	for entry in applied:
+		var eid: String = String(entry.get("id", "")) if entry is Dictionary else String(entry)
+		installed_ids.append(eid)
+	for mod_id in mod_ids:
+		var mod_data: Dictionary = ModificationRegistry.get_data(mod_id) if ModificationRegistry else {}
+		var mod_name: String = String(mod_data.get("name", mod_id))
+		var mod_desc: String = String(mod_data.get("description", ""))
+		var mod_rarity: String = String(mod_data.get("rarity", "common"))
+		var conflict_group: String = String(mod_data.get("conflict_group", ""))
+		## 检查是否已安装
+		var is_installed: bool = installed_ids.has(mod_id)
+		## 检查是否冲突
+		var conflict_with: String = ""
+		if not conflict_group.is_empty():
+			for inst_id in installed_ids:
+				var inst_data: Dictionary = ModificationRegistry.get_data(inst_id) if ModificationRegistry else {}
+				if inst_data.get("conflict_group", "") == conflict_group:
+					conflict_with = String(inst_data.get("name", inst_id))
+					break
+		## 检查蓝图持有
+		var blueprint_id: String = BlueprintDefinitions.get_mod_blueprint_id(mod_id)
+		var has_blueprint: bool = false
+		if IntelItemBag:
+			has_blueprint = IntelItemBag.has_item(blueprint_id)
+		## 纳米消耗
+		var nano_cost: int = int(card.power * 0.5)
+		var have_nano: int = BlueprintManager.get_nano_materials() if BlueprintManager else 0
+		var rarity_color := Color(0.7, 0.8, 0.7, 1)
+		match mod_rarity:
+			"uncommon": rarity_color = Color(0.3, 0.75, 0.3, 1)
+			"rare": rarity_color = Color(0.3, 0.5, 1.0, 1)
+			"epic": rarity_color = Color(0.7, 0.3, 0.9, 1)
+			"legendary": rarity_color = Color(1.0, 0.6, 0.2, 1)
+		var btn := Button.new()
+		btn.custom_minimum_size = Vector2(440, 60)
+		var rarity_names := {"common": "普通", "uncommon": "精良", "rare": "稀有", "epic": "史诗", "legendary": "传说"}
+		var rarity_text: String = rarity_names.get(mod_rarity, mod_rarity)
+		var status_text: String = ""
+		if is_installed:
+			btn.text = "%s [%s]（已安装）" % [mod_name, rarity_text]
+			btn.disabled = true
+		elif not conflict_with.is_empty():
+			btn.text = "%s [%s]（与「%s」冲突）" % [mod_name, rarity_text, conflict_with]
+			btn.disabled = true
+		elif not has_blueprint:
+			btn.text = "%s [%s]（缺少图纸）" % [mod_name, rarity_text]
+			btn.disabled = true
+		elif have_nano < nano_cost:
+			btn.text = "%s [%s]（纳米不足 %d）" % [mod_name, rarity_text, nano_cost]
+			btn.disabled = true
+		else:
+			btn.text = "%s [%s] — %d纳米 + 图纸" % [mod_name, rarity_text, nano_cost]
+			btn.pressed.connect(_on_new_mod_selected.bind(card, mod_id))
+		btn.add_theme_color_override("font_color", rarity_color)
+		btn.tooltip_text = "%s\n%s\n冲突组：%s" % [mod_name, mod_desc, conflict_group if not conflict_group.is_empty() else "无"]
+		vbox.add_child(btn)
+	## 布局
+	var main_vbox := VBoxContainer.new()
+	main_vbox.add_child(title)
+	main_vbox.add_child(scroll)
+	popup.add_child(main_vbox)
+	add_child(popup)
+	popup.popup_centered()
+
+## v7.1: 新系统改造安装回调
+func _on_new_mod_selected(card: CardResource, mod_id: String) -> void:
+	## 移除弹窗
+	var popup = get_node_or_null("_ModSelectorPopup")
+	if popup:
+		popup.queue_free()
+	var result: Dictionary = BlueprintManager.install_modification(card, mod_id)
 	if result_label:
-		if ok:
-			var slot: String = MOD_SLOT_LABELS[mod_index] if mod_index < MOD_SLOT_LABELS.size() else "?"
-			result_label.text = "改装成功：槽位 %s 选择【%s】" % [slot, _mod_option_display_name(option_id)]
+		if result.get("success", false):
+			result_label.text = "改造安装成功：%s" % String(result.get("message", ""))
 			result_label.add_theme_color_override("font_color", Color(0.75, 0.85, 1.0, 1))
 		else:
-			result_label.text = "改装失败：请检查星级、研究点与许可函。"
+			result_label.text = "改造安装失败：%s" % String(result.get("message", "未知错误"))
 			result_label.add_theme_color_override("font_color", Color(1.0, 0.45, 0.45, 1))
 	_init_card_list()
 	_update_resource_labels()
@@ -659,17 +820,37 @@ func _on_evolve_button_pressed() -> void:
 		return
 	var target_card: CardResource = DefaultCards.get_card_by_id(_pending_evolution_target_id)
 	var target_name: String = target_card.display_name if target_card != null else _pending_evolution_target_id
+	var source_name: String = DefaultCards.get_safe_display_name(selected_card_id)
 	var can_info: Dictionary = BlueprintManager.can_evolve_blueprint(selected_card_id, _pending_evolution_target_id) if BlueprintManager.has_method("can_evolve_blueprint") else {}
-	var research_cost: int = int(can_info.get("research_cost", 0))
-	var pg: int = int(can_info.get("permit_general_count", 0))
-	var pc: int = int(can_info.get("permit_category_count", 0))
-	var ps: int = int(can_info.get("permit_specific_count", 0))
 	var inherit_ratio: float = float(can_info.get("inherit_ratio", UnitLineageConfig.DEFAULT_INHERIT_RATIO))
-	## v6.0: 显示进化图纸需求（由调用者检查蓝图，这里不重复显示）
-	if nano_label:
-		nano_label.text = "纳米材料：%d" % [BlueprintManager.get_nano_materials() if BlueprintManager else 0]
-	## TODO: evolution_confirm_dialog 可扩展显示情报需求
-	evolution_confirm_dialog.popup_centered(Vector2i(520, 360))
+	var current_nano: int = BlueprintManager.get_nano_materials() if BlueprintManager else 0
+	var current_research: int = BlueprintManager.get_research_points() if BlueprintManager else 0
+	## v7.1: 构建清晰的确认对话框内容
+	var lines: Array[String] = []
+	lines.append("▶ 进化：%s → %s" % [source_name, target_name])
+	lines.append("")
+	lines.append("【条件要求】")
+	var stage: String = String(can_info.get("stage", "e1"))
+	var req_enhance: int = int(can_info.get("enhance_requirement", UnitLineageConfig.E1_MIN_ENHANCE_LEVEL))
+	var req_mod: int = int(can_info.get("mod_requirement", UnitLineageConfig.E1_MIN_MOD_COUNT))
+	var cur_enhance: int = int(can_info.get("current_enhance", 0))
+	var cur_mod: int = int(can_info.get("current_mod_count", 0))
+	lines.append("  强化等级：%d（需≥%d）%s" % [cur_enhance, req_enhance, "✓" if cur_enhance >= req_enhance else "✗"])
+	lines.append("  改造数量：%d（需≥%d）%s" % [cur_mod, req_mod, "✓" if cur_mod >= req_mod else "✗"])
+	if UnitLineageConfig.get_enemy_mod_required(stage):
+		lines.append("  敌源改造：需要1个 %s" % ("✓" if can_info.get("ok", false) else "✗"))
+	var req_faction_lv: int = UnitLineageConfig.get_faction_level_required(stage)
+	if req_faction_lv > 0:
+		lines.append("  势力等级：需≥%d" % req_faction_lv)
+	lines.append("  进化蓝图：需要（已获得后永久可用）")
+	lines.append("")
+	lines.append("【获得】属性传承 %.0f%%、新成长上限" % (inherit_ratio * 100.0))
+	lines.append("【失去】强化等级重置、改造继承到新卡")
+	lines.append("")
+	lines.append("当前资源：纳米 %d | 研究点 %d" % [current_nano, current_research])
+	evolution_confirm_dialog.title = "进化确认"
+	evolution_confirm_dialog.dialog_text = "\n".join(lines)
+	evolution_confirm_dialog.popup_centered(Vector2i(460, 380))
 
 func _on_confirm_evolution() -> void:
 	_try_execute_evolution()
@@ -686,7 +867,14 @@ func _try_execute_evolution() -> void:
 			result_label.add_theme_color_override("font_color", Color(0.55, 1.0, 0.6, 1))
 			selected_card_id = _pending_evolution_target_id
 		else:
-			result_label.text = "进化失败：请检查星级、改造次数与研究点是否满足。"
+			## v7.1: 精确错误信息
+			var fail_reason: String = ""
+			var fail_info: Dictionary = BlueprintManager.can_evolve_blueprint(selected_card_id, _pending_evolution_target_id) if BlueprintManager.has_method("can_evolve_blueprint") else {}
+			if not fail_info.is_empty():
+				fail_reason = String(fail_info.get("reason_zh", ""))
+			if fail_reason.is_empty():
+				fail_reason = "条件未满足"
+			result_label.text = "进化失败：%s" % fail_reason
 			result_label.add_theme_color_override("font_color", Color(1.0, 0.45, 0.45, 1))
 	_init_card_list()
 	_update_resource_labels()

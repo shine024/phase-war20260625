@@ -801,6 +801,24 @@ func load_state(data: Dictionary) -> void:
 		_migrate_legacy_default_energy_starter_copies()
 		_legacy_default_energy_copies_migrated = true
 	_migrate_v3_law_copies_to_knowledge()
+	# 将 blueprint_mods 反向同步到 CardResource 模板，确保 UI 和冲突检测正常
+	_sync_blueprint_mods_to_templates()
+
+## 将 blueprint_mods（持久存储）同步回 CardResource 模板的 mods 数组
+func _sync_blueprint_mods_to_templates() -> void:
+	for card_id in blueprint_mods:
+		var mods_array = blueprint_mods[card_id]
+		if not mods_array is Array:
+			continue
+		var card = _get_card_from_library(card_id)
+		if card:
+			card.mods.clear()
+			for entry in mods_array:
+				if entry is Dictionary:
+					card.mods.append(entry.duplicate(true))
+	if blueprint_mods.is_empty():
+		return
+	print("[BlueprintManager] 已同步 %d 张卡的改造数据到模板" % blueprint_mods.size())
 
 func _migrate_v3_law_copies_to_knowledge() -> void:
 	var plm := _ensure_plm()
@@ -868,14 +886,14 @@ func apply_reinforcement(card: CardResource, target_level: int) -> Dictionary:
 
 	var nano_cost = int(base_power * cost_multiplier_sum)
 
-	# 检查资源（通过BasicResourceManager）
-	if has_method("_can_afford_nano") and not _can_afford_nano(nano_cost):
+	# 检查资源（直接调用BasicResourceManager）
+	if not BasicResourceManager.can_afford("nano", nano_cost):
 		result.message = "纳米材料不足（需要%d）" % nano_cost
 		return result
 
 	# 应用强化
 	card.enhance_level = target_level
-	_consume_nano(nano_cost)
+	BasicResourceManager.consume("nano", nano_cost)
 
 	result.success = true
 	result.cost = nano_cost
@@ -927,17 +945,21 @@ func install_modification(card: CardResource, mod_id: String, slot: int = -1) ->
 	var blueprint_id = BlueprintDefinitions.get_mod_blueprint_id(mod_id)
 	var blueprint_name = BlueprintDefinitions.get_mod_blueprint_name(mod_id)
 
-	# 检查改造蓝图
-	if IntelItemBag == null or not IntelItemBag.has_item(blueprint_id):
-		result.message = "缺少图纸：%s" % blueprint_name
-		return result
+	# 检查改造蓝图（图纸）
+	## v7.1: 兼容 - 如果IntelItemBag不存在或未初始化，跳过蓝图检查
+	## 开发/测试时可手动给予纳米即可操作
+	var skip_blueprint_check = (IntelItemBag == null)
+	if not skip_blueprint_check:
+		if not IntelItemBag.has_item(blueprint_id):
+			result.message = "缺少图纸：%s" % blueprint_name
+			return result
 
 	# 计算纳米材料消耗
 	var base_power = get_base_power_for_mod_cost(card.card_id)
 	var nano_cost = int(base_power * 0.5)  # 改造消耗卡牌战力50%的纳米材料
 
 	# 检查纳米材料
-	if has_method("_can_afford_nano") and not _can_afford_nano(nano_cost):
+	if not BasicResourceManager.can_afford("nano", nano_cost):
 		result.message = "纳米材料不足（需要%d）" % nano_cost
 		return result
 
@@ -953,7 +975,7 @@ func install_modification(card: CardResource, mod_id: String, slot: int = -1) ->
 		card.mods.append(mod_entry)
 
 	# 消耗资源
-	_consume_nano(nano_cost)
+	BasicResourceManager.consume("nano", nano_cost)
 	# 图纸不消耗，获得一次后永久可用
 
 	result.success = true
@@ -962,6 +984,9 @@ func install_modification(card: CardResource, mod_id: String, slot: int = -1) ->
 
 	# 更新blueprint_mods缓存
 	_update_blueprint_mods_cache(card.card_id)
+
+	# 通知外部
+	emit_signal("fragments_changed")
 
 	# 自动保存
 	_auto_save("modification")
@@ -1035,8 +1060,8 @@ func evolve_card(card: CardResource, target_card_id: String) -> Dictionary:
 
 	var nano_cost = int(target_card.power * 2.0)  # 进化消耗目标战力2倍的纳米材料
 
-	# 检查纳米材料
-	if has_method("_can_afford_nano") and not _can_afford_nano(nano_cost):
+	## v7.1: 直接调用 BasicResourceManager 而非 has_method(self) 检查
+	if not BasicResourceManager.can_afford("nano", nano_cost):
 		result.message = "纳米材料不足（需要%d）" % nano_cost
 		return result
 
@@ -1056,7 +1081,7 @@ func evolve_card(card: CardResource, target_card_id: String) -> Dictionary:
 	new_card.enhance_level = card.enhance_level
 
 	# 消耗资源
-	_consume_nano(nano_cost)
+	BasicResourceManager.consume("nano", nano_cost)
 	# 进化图纸不消耗，获得一次后永久可用
 
 	# 更新blueprint数据
@@ -1107,12 +1132,10 @@ func _get_mod_data_from_registry(mod_id: String) -> Dictionary:
 
 ## 检查纳米材料是否足够
 func _can_afford_nano(amount: int) -> bool:
-	# BasicResourceManager是autoload，直接访问
 	return BasicResourceManager.can_afford("nano", amount)
 
 ## 消耗纳米材料
 func _consume_nano(amount: int) -> void:
-	# BasicResourceManager是autoload，直接访问
 	BasicResourceManager.consume("nano", amount)
 
 ## 检查研究点是否足够
@@ -1149,9 +1172,10 @@ func _get_card_from_library(card_id: String) -> CardResource:
 	# DefaultCards是const preload，始终可用
 	return DefaultCards.get_card_by_id(card_id)
 
-## 更新blueprint_mods缓存
+## 更新blueprint_mods缓存（始终同步 card.mods → blueprint_mods）
 func _update_blueprint_mods_cache(card_id: String) -> void:
-	if blueprint_mods.has(card_id):
-		var card = _get_card_from_library(card_id)
-		if card:
-			blueprint_mods[card_id] = card.mods.duplicate(true)
+	var card = _get_card_from_library(card_id)
+	if card and not card.mods.is_empty():
+		blueprint_mods[card_id] = card.mods.duplicate(true)
+	elif card and card.mods.is_empty():
+		blueprint_mods.erase(card_id)

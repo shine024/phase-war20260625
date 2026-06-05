@@ -1,0 +1,17 @@
+{
+  "generated": {
+    "weapon_artillery_ballistic": "F:\\godot fair duet\\create\\phase-war\\assets\\effects\\projectiles\\artillery_anim\\weapon_artillery_ballistic.png",
+    "weapon_artillery_muzzle": "F:\\godot fair duet\\create\\phase-war\\assets\\effects\\projectiles\\artillery_anim\\weapon_artillery_muzzle.png",
+    "weapon_artillery_impact": "F:\\godot fair duet\\create\\phase-war\\assets\\effects\\projectiles\\artillery_anim\\weapon_artillery_impact.png"
+  },
+  "transparent": {
+    "weapon_artillery_ballistic": "F:\\godot fair duet\\create\\phase-war\\assets\\effects\\projectiles\\artillery_anim\\weapon_artillery_ballistic_transparent.png",
+    "weapon_artillery_muzzle": "F:\\godot fair duet\\create\\phase-war\\assets\\effects\\projectiles\\artillery_anim\\weapon_artillery_muzzle_transparent.png",
+    "weapon_artillery_impact": "F:\\godot fair duet\\create\\phase-war\\assets\\effects\\projectiles\\artillery_anim\\weapon_artillery_impact_transparent.png"
+  },
+  "deploy": {
+    "ballistic": "weapon_artillery_ballistic",
+    "muzzle": "weapon_artillery_muzzle",
+    "impact": "weapon_artillery_impact"
+  }
+}

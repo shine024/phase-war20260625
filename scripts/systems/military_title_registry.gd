@@ -42,29 +42,31 @@ static func get_title_name_en(base_power: int, current_power: int, unit_type: in
 ## ─────────────────────────────────────────────
 
 ## 计算当前战力（基础属性 + 强化 + 改造加成）
-## 这应该由CardResource提供，这里提供辅助计算
-static func calculate_current_power(card: Dictionary) -> int:
-	var base_power = card.get("power", 0)
-	var level = card.get("level", 1)
-
+static func calculate_current_power(base_power: int, current_power: int, unit_type: int) -> int:
 	# 强化倍率（通过UnifiedRankSystem统一计算）
-	var level_bonus = UnifiedRankSystem.get_power_multiplier(level)
+	var level_bonus = UnifiedRankSystem.get_power_multiplier(current_power)
 
 	# 改造加成
-	var mod_bonus = get_modifications_power_bonus(card.get("installed_modifications", []))
+	var mod_bonus = get_modifications_power_bonus(unit_type, current_power)
 
 	return int(base_power * level_bonus) + mod_bonus
 
 ## 计算改造战力加成
-static func get_modifications_power_bonus(modifications: Array) -> int:
+static func get_modifications_power_bonus(unit_type: int, current_power: int) -> int:
 	var bonus = 0
+	# 从CardResource获取当前改造
+	var card = CardResource
+	if not card:
+		return 0
+
+	var modifications = card.get_installed_modifications()
 	for mod_entry in modifications:
 		var mod_id = mod_entry.get("id", "")
 		# ModificationRegistry是autoload，直接访问
 		var mod_data = ModificationRegistry.get_data(mod_id)
 		var power_mult = mod_data.get("power_mult", 1.0)
-		# 简化：每个改造增加固定战力
-		bonus += int(power_mult * 10)
+		# 改造加成基于当前战力比例
+		bonus += int(power_mult * (current_power / 10.0))
 	return bonus
 
 ## ─────────────────────────────────────────────

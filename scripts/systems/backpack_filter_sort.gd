@@ -13,7 +13,7 @@ func setup(host: Node) -> void:
 func apply_rarity_filter(rarity: String) -> void:
 	if not _host:
 		return
-	var grid = _host.get_node_or_null("VBoxOuter/ScrollContainer/CardGrid")
+	var grid = _host.get_node_or_null("VBoxOuter/TabContainer/CombatCardsTab/ScrollContainer/CardGrid")
 	if not grid:
 		return
 	for child in grid.get_children():
@@ -30,7 +30,7 @@ func apply_rarity_filter(rarity: String) -> void:
 func reset_visibility() -> void:
 	if not _host:
 		return
-	var grid = _host.get_node_or_null("VBoxOuter/ScrollContainer/CardGrid")
+	var grid = _host.get_node_or_null("VBoxOuter/TabContainer/CombatCardsTab/ScrollContainer/CardGrid")
 	if not grid:
 		return
 	for child in grid.get_children():

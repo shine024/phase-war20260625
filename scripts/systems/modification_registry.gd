@@ -73,7 +73,12 @@ static func _count_total() -> int:
 static func get_data(mod_id: String) -> Dictionary:
 	_ensure_initialized()
 
-	# 解析ID前缀获取类型
+	# 优先通过各模块直接查找（避免前缀解析问题）
+	for type_key in _cache.keys():
+		if _cache[type_key].has(mod_id):
+			return _cache[type_key][mod_id].duplicate(true)
+
+	# 回退：解析ID前缀获取类型
 	var prefix = mod_id.split("_")[0]  # "inf", "arm", "art"...
 	var type_key = _prefix_to_type(prefix)
 
@@ -125,7 +130,8 @@ static func check_conflict(card: Dictionary, mod_id: String) -> bool:
 
 	var installed = card.get("installed_modifications", [])
 	for installed_mod in installed:
-		var installed_data = get_data(installed_mod.id)
+		var installed_id = installed_mod.get("id", "") if installed_mod is Dictionary else String(installed_mod)
+		var installed_data = get_data(installed_id)
 		var installed_group = installed_data.get("conflict_group", "")
 		if installed_group == conflict_group:
 			return true  # 冲突
@@ -147,7 +153,7 @@ static func apply_effects(base_stats: Dictionary, modifications: Array) -> Dicti
 	var result = base_stats.duplicate(true)
 
 	for mod_entry in modifications:
-		var mod_id = mod_entry.get("id", "")
+		var mod_id = mod_entry.get("id", "") if mod_entry is Dictionary else String(mod_entry)
 		var mod_data = get_data(mod_id)
 		var effects = mod_data.get("effects", {})
 

@@ -42,6 +42,8 @@ IntelEvolutionManager="*res://scripts/systems/intel_evolution_manager.gd"
 ModificationRegistry="*res://scripts/systems/modification_registry.gd"
 MilitaryTitleRegistry="*res://scripts/systems/military_title_registry.gd"
 EvolutionPathRegistry="*res://scripts/systems/evolution_path_registry.gd"
+CardEnhancementManager="*res://managers/card_enhancement_manager.gd"
+AffixManager="*res://managers/affix_manager.gd"
 
 [display]
 

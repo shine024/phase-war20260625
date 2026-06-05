@@ -684,6 +684,14 @@ func get_pending_backpack_ids() -> Array:
 func get_last_known_backpack_ids() -> Array:
 	return _last_known_extra_ids.duplicate()
 
+## 直接设置 _last_known_extra_ids（供 BackpackPresenter 首次加载后同步完整列表）
+func _set_last_known_extra_ids_direct(ids: Array) -> void:
+	_last_known_extra_ids.clear()
+	for id_val in ids:
+		var sid: String = str(id_val) if id_val != null else ""
+		if not sid.is_empty() and not _last_known_extra_ids.has(sid):
+			_last_known_extra_ids.append(sid)
+
 ## 清除待处理的背包ID
 func clear_pending_backpack_ids() -> void:
 	_pending_backpack_ids.clear()
@@ -694,7 +702,6 @@ func _enqueue_starter_backpack_cards() -> void:
 	enqueue_backpack_card_id("omega_platform")
 	enqueue_backpack_card_id("energy_start_1")
 	enqueue_backpack_card_id("energy_start_2")
-
 	# 初始资源：各资源100000点
 	if BasicResourceManager:
 		BasicResourceManager.add_resource("nano_materials", 100000)
@@ -707,18 +714,22 @@ func _enqueue_starter_backpack_cards() -> void:
 	if IntelManual and IntelManual.has_method("unlock_all_intel"):
 		IntelManual.unlock_all_intel()
 
-	# 初始蓝图：赠送一些基础改造图纸用于测试
+	# 初始蓝图：授予所有改造情报书和进化蓝图
 	if IntelItemBag:
 		const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
-		# 步兵基础改造
-		IntelItemBag.add_item(BlueprintDefinitions.get_mod_blueprint_id("inf_01_submachine_gun"), 1)
-		IntelItemBag.add_item(BlueprintDefinitions.get_mod_blueprint_id("inf_02_assault_rifle"), 1)
-		IntelItemBag.add_item(BlueprintDefinitions.get_mod_blueprint_id("inf_05_ap_ammo"), 1)
-		IntelItemBag.add_item(BlueprintDefinitions.get_mod_blueprint_id("inf_11_armor_insert"), 1)
-		# 装甲基础改造
-		IntelItemBag.add_item(BlueprintDefinitions.get_mod_blueprint_id("arm_01_sloped_armor"), 1)
-		IntelItemBag.add_item(BlueprintDefinitions.get_mod_blueprint_id("arm_06_apfsds"), 1)
-		IntelItemBag.add_item(BlueprintDefinitions.get_mod_blueprint_id("arm_11_fire_control"), 1)
+		var mod_registry = get_node_or_null("/root/ModificationRegistry")
+		# 授予所有改造蓝图（改造情报书）
+		# 注意：ModificationRegistry.get_all_ids() 是 static 方法，
+		# Godot 4 的 has_method() 不检测 static 方法，所以直接调用
+		if mod_registry:
+			var all_mod_ids = ModificationRegistry.get_all_ids()
+			for mod_id in all_mod_ids:
+				if mod_id is String and not mod_id.is_empty():
+					var blueprint_id = BlueprintDefinitions.get_mod_blueprint_id(mod_id)
+					IntelItemBag.add_item(blueprint_id, 1)
+
+		# 授予所有进化蓝图
+		_grant_all_evolution_blueprints()
 
 	# 初始改装材料：所有改装库存100
 	# TODO: 需要根据改装系统实现添加
@@ -731,6 +742,99 @@ func _enqueue_starter_backpack_cards() -> void:
 
 	# 初始关键道具：所有关键道具库存100
 	# TODO: 需要根据道具系统实现添加
+
+## 辅助函数：为单个进化路径生成蓝图
+func _process_evolution_blueprint_path(path_data: Dictionary) -> void:
+	const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
+	# 按 stage 数值排序，而不是字符串键
+	var sorted_entries = []
+	for key in path_data.keys():
+		var node = path_data[key]
+		var stage = node.get("stage", 0)
+		sorted_entries.append({"key": key, "stage": stage, "node": node})
+	# 按 stage 升序排序
+	sorted_entries.sort_custom(func(a, b): return a.stage < b.stage)
+
+	var previous_card = ""
+	for entry in sorted_entries:
+		var card_id = entry.node.get("card_id", "")
+		if not card_id.is_empty() and not previous_card.is_empty():
+			var evo_bp_id = BlueprintDefinitions.get_evolution_blueprint_id(previous_card, card_id)
+			print("[SaveManager] 添加进化蓝图: %s (E%d→E%d: %s → %s)" % [evo_bp_id, entry.stage - 1, entry.stage, previous_card, card_id])
+			IntelItemBag.add_item(evo_bp_id, 1)
+		previous_card = card_id
+
+## 辅助函数：为隐藏分支生成蓝图
+func _process_evolution_hidden_branches(branches_data: Dictionary) -> void:
+	const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
+	for branch_name in branches_data.keys():
+		var branch = branches_data[branch_name]
+		# 按 stage 数值排序
+		var sorted_entries = []
+		for key in branch.keys():
+			var node = branch[key]
+			var stage = node.get("stage", 0)
+			sorted_entries.append({"key": key, "stage": stage, "node": node})
+		sorted_entries.sort_custom(func(a, b): return a.stage < b.stage)
+
+		var branch_prev_card = ""
+		for entry in sorted_entries:
+			var card_id = entry.node.get("card_id", "")
+			if not card_id.is_empty():
+				if not branch_prev_card.is_empty():
+					var evo_bp_id = BlueprintDefinitions.get_evolution_blueprint_id(branch_prev_card, card_id)
+					print("[SaveManager] 添加隐藏分支蓝图: %s (E%d→E%d: %s → %s)" % [evo_bp_id, entry.stage - 1, entry.stage, branch_prev_card, card_id])
+					IntelItemBag.add_item(evo_bp_id, 1)
+				branch_prev_card = card_id
+
+## 授予所有进化蓝图
+## 遍历所有进化路径，为每个进化节点生成对应的蓝图
+func _grant_all_evolution_blueprints() -> void:
+	# 加载所有进化路径类
+	const InfantryEvolution = preload("res://data/evolution_paths/infantry_evolution.gd")
+	const ArmorEvolution = preload("res://data/evolution_paths/armor_evolution.gd")
+	const ArtilleryEvolution = preload("res://data/evolution_paths/artillery_evolution.gd")
+	const AntiAirEvolution = preload("res://data/evolution_paths/anti_air_evolution.gd")
+	const AirEvolution = preload("res://data/evolution_paths/air_evolution.gd")
+	const ReconEvolution = preload("res://data/evolution_paths/recon_evolution.gd")
+	const EngineerEvolution = preload("res://data/evolution_paths/engineer_evolution.gd")
+	const FortEvolution = preload("res://data/evolution_paths/fort_evolution.gd")
+
+	# 步兵进化路径
+	_process_evolution_blueprint_path(InfantryEvolution.get_main_line())
+	_process_evolution_hidden_branches(InfantryEvolution.get_hidden_branches())
+
+	# 装甲兵进化路径（两条主线）
+	_process_evolution_blueprint_path(ArmorEvolution.get_main_line())        # 机动路线
+	_process_evolution_blueprint_path(ArmorEvolution.get_secondary_line())   # 重甲路线
+	_process_evolution_hidden_branches(ArmorEvolution.get_hidden_branches())  # 豹系分支
+
+	# 炮兵进化路径
+	_process_evolution_blueprint_path(ArtilleryEvolution.get_main_line())
+	_process_evolution_hidden_branches(ArtilleryEvolution.get_hidden_branches())
+
+	# 防空兵进化路径
+	_process_evolution_blueprint_path(AntiAirEvolution.get_main_line())
+	_process_evolution_hidden_branches(AntiAirEvolution.get_hidden_branches())
+
+	# 空中单位进化路径（两条主线）
+	_process_evolution_blueprint_path(AirEvolution.get_main_line())           # 制空路线
+	_process_evolution_blueprint_path(AirEvolution.get_secondary_line())      # 对地攻击路线
+	_process_evolution_hidden_branches(AirEvolution.get_hidden_branches())    # 隐形轰炸机
+
+	# 侦察/特种进化路径
+	_process_evolution_blueprint_path(ReconEvolution.get_main_line())
+	_process_evolution_hidden_branches(ReconEvolution.get_hidden_branches())
+
+	# 工程/支援进化路径
+	_process_evolution_blueprint_path(EngineerEvolution.get_main_line())
+	_process_evolution_hidden_branches(EngineerEvolution.get_hidden_branches())
+
+	# 堡垒单位进化路径（两条主线）
+	_process_evolution_blueprint_path(FortEvolution.get_main_line())         # 防御路线
+	_process_evolution_blueprint_path(FortEvolution.get_secondary_line())    # 防空路线
+	_process_evolution_hidden_branches(FortEvolution.get_hidden_branches())   # 雷达站
+
 
 ## 处理一个待入包的卡牌ID（从pending中移除，标记为已处理）
 func consume_pending_backpack_card_id(card_id: String) -> bool:
@@ -904,9 +1008,17 @@ func _load_from_path(path: String) -> bool:
 				slot_ids = pm.remap_legacy_green_first_slots(slot_ids)
 			pm.set_slots_from_card_ids(slot_ids)
 
+	# 特殊处理：backpack_extra_ids（必须先加载，避免后续操作被覆盖）
+	if data.has(SK_BACKPACK_EXTRA_IDS) and data[SK_BACKPACK_EXTRA_IDS] is Array:
+		_pending_backpack_ids = (data[SK_BACKPACK_EXTRA_IDS] as Array).duplicate()
+		_last_known_extra_ids = _pending_backpack_ids.duplicate()
+	else:
+		_pending_backpack_ids = []
+
 	# 确保槽位中已恢复的额外卡（非默认卡池）也加入背包追踪
 	# 注意：仅将不在默认卡池中的卡标记为额外卡；默认池中的卡（如 omega_platform、energy_start_4）
 	# 是初始装备卡，不应出现在背包中（它们属于相位仪槽位）
+	# 追加到 _pending_backpack_ids 和 _last_known_extra_ids，不覆盖已有数据
 	if pm != null and pm.has_method("get_slot_card_ids"):
 		var restored_slot_ids: Array = pm.get_slot_card_ids()
 		for sid_raw in restored_slot_ids:
@@ -918,6 +1030,8 @@ func _load_from_path(path: String) -> bool:
 				continue
 			if not _pending_backpack_ids.has(sid):
 				_pending_backpack_ids.append(sid)
+			if not _last_known_extra_ids.has(sid):
+				_last_known_extra_ids.append(sid)
 
 	# 特殊处理：game.current_level
 	var gmgr_load: Node = get_node_or_null("/root/GameManager")
@@ -935,13 +1049,6 @@ func _load_from_path(path: String) -> bool:
 		if max_u > 1 and gl0 <= 1:
 			gmgr_cursor.set_current_level(max_u)
 
-	# 特殊处理：backpack_extra_ids
-	if data.has(SK_BACKPACK_EXTRA_IDS) and data[SK_BACKPACK_EXTRA_IDS] is Array:
-		_pending_backpack_ids = (data[SK_BACKPACK_EXTRA_IDS] as Array).duplicate()
-		_last_known_extra_ids = _pending_backpack_ids.duplicate()
-	else:
-		_pending_backpack_ids = []
-
 	# 特殊处理：legacy company
 	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
 	if fsm != null and data.has("company") and data["company"] is Dictionary:
@@ -956,9 +1063,31 @@ func _load_from_path(path: String) -> bool:
 		if pm.has_method("sync_law_slots_to_plm_if_has_law_cards"):
 			pm.sync_law_slots_to_plm_if_has_law_cards()
 
+	# 补偿缺失的改造蓝图（老存档可能因为 has_method 不检测 static 方法而缺失）
+	_ensure_mod_blueprints_exist()
+
 	if DEBUG_SAVE_LOG:
 		pass  # LOG: 已加载存档
 	return true
+
+## 补偿缺失的改造蓝图（每次加载存档时自动检查）
+func _ensure_mod_blueprints_exist() -> void:
+	if IntelItemBag == null:
+		return
+	var mod_registry = get_node_or_null("/root/ModificationRegistry")
+	if mod_registry == null:
+		return
+	var all_mod_ids = ModificationRegistry.get_all_ids()
+	const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
+	var granted_count: int = 0
+	for mod_id in all_mod_ids:
+		if mod_id is String and not mod_id.is_empty():
+			var blueprint_id = BlueprintDefinitions.get_mod_blueprint_id(mod_id)
+			if not IntelItemBag.has_item(blueprint_id):
+				IntelItemBag.add_item(blueprint_id, 1)
+				granted_count += 1
+	if granted_count > 0:
+		print("[SaveManager] 补偿了 %d 个缺失的改造蓝图" % granted_count)
 
 ## 安全加载管理器数据（类型检查+错误日志）
 ## 支持延迟加载管理器：如果管理器不在场景树中，尝试通过 ManagerLazyLoader 实例化

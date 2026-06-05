@@ -20,9 +20,11 @@ var total_basic_nano: int = 0  # 映射到 total_nano_materials
 
 func add_resource(id: String, amount: int) -> void:
 	if amount == 0:
+		resources_changed.emit()
 		return
+
 	match id:
-		BasicResources.ID_NANO_MATERIALS, "basic_nano":  # 兼容旧ID
+		BasicResources.ID_NANO_MATERIALS, "basic_nano", "nano":  # 兼容旧ID
 			var before := total_nano_materials
 			total_nano_materials = max(0, total_nano_materials + amount)
 			# 同步更新兼容变量
@@ -48,7 +50,9 @@ func add_resource(id: String, amount: int) -> void:
 
 func add_basic_resource(id: String, amount: int) -> void:
 	if amount == 0:
+		resources_changed.emit()
 		return
+
 	match id:
 		"nano_materials", "basic_nano":  # 兼容旧ID
 			var before := total_nano_materials
@@ -127,6 +131,7 @@ func load_state(data: Dictionary) -> void:
 	total_basic_nano = total_nano_materials
 	resources_changed.emit()
 
+## 检查资源是否足够（用于BlueprintManager调用）
 ## 检查资源是否足够（用于BlueprintManager调用）
 func can_afford(id: String, amount: int) -> bool:
 	return get_total(id) >= amount

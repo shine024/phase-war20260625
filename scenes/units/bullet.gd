@@ -8,6 +8,9 @@ const CardAbilityManager = preload("res://managers/card_ability_manager.gd")
 const CardGridFx = preload("res://scripts/card_grid_fx.gd")
 const WeaponProjectileVfx = preload("res://scripts/weapon_projectile_vfx.gd")
 const AttackCalculator = preload("res://scripts/battle/attack_calculator.gd")
+## 曲射弹道：炮口火焰和命中爆炸特效纹理（预加载，避免运行时 ResourceLoader.load 卡顿）
+const ARTILLERY_MUZZLE_TEX := preload("res://assets/effects/projectiles/weapons_realistic/weapon_artillery_muzzle.png")
+const ARTILLERY_IMPACT_TEX := preload("res://assets/effects/projectiles/weapons_realistic/weapon_artillery_impact.png")
 # ObjectPoolManager 为 autoload
 
 var speed: float = 600.0
@@ -26,6 +29,17 @@ var pierce_count: int = 0          # 可额外穿透多少个目标（LASER/SNIP
 var explosion_radius: float = 0.0  # >0 时命中产生范围伤害（ROCKET/MISSILE/FLAK）
 var pellet_count: int = 1          # 霰弹多发
 var spread_angle_deg: float = 0.0  # 多发散射角
+
+## 曲射（INDIRECT）弹道参数
+var _is_indirect: bool = false
+var _indirect_apex: float = 200.0      # 抛物线顶点高度（相对于起点和目标连线）
+var _indirect_progress: float = 0.0    # 0→1 飞行进度
+var _indirect_duration: float = 1.2    # 全程飞行时间（秒）
+var _indirect_start: Vector2           # 起点位置
+var _indirect_end: Vector2             # 目标位置
+var _indirect_prev_pos: Vector2  # 上一帧位置（用于计算朝向）
+var _muzzle_spawned: bool = false      # 是否已生成炮口火焰
+var _impact_spawned: bool = false      # 是否已生成爆炸效果
 
 var _start_position: Vector2
 var _sprite: Polygon2D
@@ -110,14 +124,18 @@ func _configure_behavior() -> void:
 			speed = 420.0
 			max_distance = 2000.0
 			explosion_radius = 40.0
+			## 曲射武器：使用抛物线弹道
+			_is_indirect = true
 		9:
 			speed = 380.0
 			max_distance = 2300.0
 			explosion_radius = 55.0
+			_is_indirect = true
 		7:
 			speed = 520.0
 			max_distance = 1500.0
 			explosion_radius = 36.0
+			_is_indirect = true
 		11:  # RAIL_CANNON
 			speed = 560.0
 			max_distance = 2500.0
@@ -229,6 +247,10 @@ func _finish_tex_bullet() -> void:
 func _process(delta: float) -> void:
 	if not _dbg_spawn_logged:
 		_dbg_spawn_logged = true
+	# 曲射弹道：抛物线飞行
+	if _is_indirect:
+		_process_indirect(delta)
+		return
 	# 目标死亡时：非导引弹直接消失，导引类仍按最后方向飞行
 	if target == null or not is_instance_valid(target):
 		if weapon_type in [9, 3]:
@@ -261,6 +283,93 @@ func _process(delta: float) -> void:
 		return
 	if target and is_instance_valid(target) and global_position.distance_squared_to(target.global_position) < 100.0:
 		_on_hit(target)
+
+func _process_indirect(delta: float) -> void:
+	## 曲射（INDIRECT）弹道：抛物线飞行
+	## 初始化（仅第一帧执行）
+	if _indirect_progress == 0.0:
+		_indirect_start = global_position
+		_indirect_end = target.global_position if target and is_instance_valid(target) else global_position + _direction * 500.0
+		_muzzle_spawned = false
+		_impact_spawned = false
+		# 根据距离计算飞行时间
+		var dist = _indirect_start.distance_to(_indirect_end)
+		_indirect_duration = 0.6 + dist / 2000.0 * 0.8  # 0.6~1.4秒
+		_indirect_apex = 100.0 + dist * 0.25  # 100~600px
+
+	# 记录旧位置，用于计算朝向
+	_indirect_prev_pos = global_position
+
+	_indirect_progress += delta / _indirect_duration
+	if _indirect_progress >= 1.0:
+		_indirect_progress = 1.0
+		# 命中目标
+		if target and is_instance_valid(target):
+			# 复用 WeaponProjectileVfx.spawn_impact（preload 缓存，无卡顿）
+			_spawn_tex_impact_at(target.global_position)
+			_on_hit(target)
+		_finish_tex_bullet()
+		return
+
+	# 计算抛物线位置（二次贝塞尔曲线）
+	var t = _indirect_progress
+	var mid := (_indirect_start + _indirect_end) * 0.5
+	var apex_point := mid + Vector2.UP * _indirect_apex
+
+	global_position = (1.0 - t) * (1.0 - t) * _indirect_start + 2.0 * (1.0 - t) * t * apex_point + t * t * _indirect_end
+
+	# 计算朝向：用移动方向（只需一次 Vector2 减法，无额外贝塞尔计算）
+	_direction = (global_position - _indirect_prev_pos).normalized() if global_position != _indirect_prev_pos else _direction
+
+	# 炮口火焰特效（仅首帧一次，preload 已缓存 texture）
+	if not _muzzle_spawned:
+		_muzzle_spawned = true
+		_spawn_muzzle_effect(_indirect_start)
+
+	# 弹道拖尾
+	if _trail_sprite and _trail_sprite.visible:
+		_trail_sprite.visible = false
+
+	# 更新朝向（Sprite2D 旋转）
+	if _use_tex_sprite:
+		rotation = _direction.angle()
+
+	# 目标死亡：沿抛物线继续飞完
+	if target == null or not is_instance_valid(target):
+		pass
+
+func _spawn_muzzle_effect(pos: Vector2) -> void:
+	if ARTILLERY_MUZZLE_TEX == null:
+		return
+	var fx := Sprite2D.new()
+	fx.texture = ARTILLERY_MUZZLE_TEX
+	fx.centered = true
+	fx.scale = Vector2(0.25, 0.25)
+	fx.global_position = pos
+	if not shooter_is_player:
+		fx.scale.x = -fx.scale.x
+	get_parent().add_child(fx)
+	var tw := fx.create_tween()
+	tw.tween_property(fx, "scale", fx.scale * 1.5, 0.15)
+	tw.parallel().tween_property(fx, "modulate:a", 0.0, 0.3)
+	tw.finished.connect(fx.queue_free)
+
+func _spawn_impact_explosion(pos: Vector2) -> void:
+	if ARTILLERY_IMPACT_TEX == null:
+		return
+	var fx := Sprite2D.new()
+	fx.texture = ARTILLERY_IMPACT_TEX
+	fx.centered = true
+	fx.scale = Vector2(0.3, 0.3)
+	fx.global_position = pos
+	if not shooter_is_player:
+		fx.scale.x = -fx.scale.x
+	get_parent().add_child(fx)
+	var tw := fx.create_tween()
+	tw.tween_property(fx, "scale", fx.scale * 1.8, 0.2)
+	tw.parallel().tween_property(fx, "modulate:a", 0.0, 0.4)
+	tw.finished.connect(fx.queue_free)
+
 
 ## 爆炸/溅射候选：优先空间网格，避免遍历父节点下全部子节点。
 func _get_aoe_damage_targets(center: Vector2, radius: float, primary: Node2D) -> Array:
@@ -445,6 +554,14 @@ func reset_pool_object() -> void:
 	_direction = Vector2.RIGHT
 	_beam_visual_phase = 0
 	_use_tex_sprite = false
+
+	# 曲射弹道重置
+	_is_indirect = false
+	_indirect_progress = 0.0
+	_indirect_apex = 200.0
+	_indirect_duration = 1.2
+	_muzzle_spawned = false
+	_impact_spawned = false
 
 	global_position = Vector2.ZERO
 	rotation = 0.0

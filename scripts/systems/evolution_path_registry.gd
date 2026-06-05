@@ -27,15 +27,18 @@ static func register_all() -> void:
 
 	_cache.clear()
 
-	# 注册步兵进化路径
+	# 注册所有兵种进化路径
 	_register_path("infantry", InfantryEvolution.get_main_line(), InfantryEvolution.get_hidden_branches())
-
-	# TODO: 其他兵种
-	# _register_path("armor", ArmorEvolution.get_main_line(), ArmorEvolution.get_hidden_branches())
-	# ...
+	_register_path("armor", ArmorEvolution.get_main_line(), ArmorEvolution.get_hidden_branches())
+	_register_path("air", AirEvolution.get_main_line(), AirEvolution.get_hidden_branches())
+	_register_path("artillery", ArtilleryEvolution.get_main_line(), ArtilleryEvolution.get_hidden_branches())
+	_register_path("fort", FortEvolution.get_main_line(), FortEvolution.get_hidden_branches())
+	_register_path("recon", ReconEvolution.get_main_line(), ReconEvolution.get_hidden_branches())
+	_register_path("engineer", EngineerEvolution.get_main_line(), EngineerEvolution.get_hidden_branches())
+	_register_path("anti_air", AntiAirEvolution.get_main_line(), AntiAirEvolution.get_hidden_branches())
 
 	_initialized = true
-	print("[EvolutionPathRegistry] Registered evolution paths")
+	print("[EvolutionPathRegistry] Registered evolution paths for all 8 unit types")
 
 static func _register_path(type_key: String, main_line: Dictionary, hidden_branches: Dictionary) -> void:
 	_cache[type_key] = {
@@ -149,16 +152,22 @@ static func check_evolution_requirements(card: Dictionary, target_card_id: Strin
 		var current_eom = _count_eom_modifications(card.get("installed_modifications", []))
 		if current_eom < required_eom:
 			result.passed = false
-		result.missing.append("需要%d个进化专属改造" % required_eom)
+			result.missing.append("需要%d个进化专属改造" % required_eom)
 
 	# 战力门槛
 	var power_ratio = requirements.get("power_ratio", 1.0)
-	var current_power = MilitaryTitleRegistry.calculate_current_power(card)
+	var card_id = card.get("id", "")
+	var base_power = card.get("power", 0)
+	var current_power = card.get("level", 1)
 	var target_power = target_node.get("power", 0)
 	var min_power = int(target_power * power_ratio)
-	if current_power < min_power:
+
+	# 计算实际战力（包含强化和改造加成）
+	var actual_power = MilitaryTitleRegistry.calculate_current_power(base_power, current_power, _identify_unit_type(card_id))
+
+	if actual_power < min_power:
 		result.passed = false
-		result.missing.append("战力不足，需要%d（当前%d）" % [min_power, current_power])
+		result.missing.append("战力不足，需要%d（当前%d）" % [min_power, actual_power])
 
 	# 情报需求
 	var intel_requirements = {}
@@ -174,7 +183,7 @@ static func check_evolution_requirements(card: Dictionary, target_card_id: Strin
 				# 从key中提取卡牌ID，如 "intel_ww1_mp18" -> "ww1_mp18"
 				var intel_card_id = intel_key.trim_prefix("intel_")
 				var current_progress = IntelManual.get_intel_progress(intel_card_id)
-				
+
 				if current_progress < required_progress:
 					result.passed = false
 					result.missing.append("%s情报不足（需要%.0f%%，当前%.0f%%）" % [
@@ -225,10 +234,76 @@ static func _ensure_initialized() -> void:
 		register_all()
 
 static func _identify_unit_type(card_id: String) -> int:
-	# 简化：根据ID前缀识别
+	# 根据卡牌ID前缀识别兵种类型
+	# 步兵 (LIGHT)
 	if card_id.begins_with("ww1_mp18") or card_id.begins_with("ww2_thompson"):
-		return 0  # LIGHT (步兵)
-	# TODO: 其他兵种识别
+		return 0
+
+	# 装甲 (MEDIUM)
+	if card_id.begins_with("ww1_ft17") or card_id.begins_with("ww1_saint"):
+		return 1
+	if card_id.begins_with("ww2_pz3") or card_id.begins_with("ww2_tiger"):
+		return 1
+	if card_id.begins_with("cold_t55") or card_id.begins_with("cold_t72") or card_id.begins_with("cold_leo1"):
+		return 1
+	if card_id.begins_with("mod_m1a1") or card_id.begins_with("mod_m1a2sep") or card_id.begins_with("mod_leo2a6"):
+		return 1
+	if card_id.begins_with("fut_hovertank") or card_id.begins_with("fut_heavy_mech") or card_id.begins_with("fut_prism"):
+		return 1
+
+	# 空中 (HEAVY)
+	if card_id.begins_with("cold_mig21") or card_id.begins_with("mod_f16"):
+		return 2
+	if card_id.begins_with("mod_ah1") or card_id.begins_with("mod_ah64"):
+		return 2
+	if card_id.begins_with("fut_f22") or card_id.begins_with("fut_space_fighter") or card_id.begins_with("fut_attack_drone") or card_id.begins_with("fut_swarm"):
+		return 2
+	if card_id.begins_with("fut_b2") or card_id.begins_with("fut_stealth_bomber"):
+		return 2
+
+	# 火炮 (HEAVY)
+	if card_id.begins_with("mod_katyusha") or card_id.begins_with("mod_self_propelled"):
+		return 3
+	if card_id.begins_with("fort_cold_missile"):
+		return 3
+	if card_id.begins_with("fort_modern_cannon") or card_id.begins_with("fort_future_cannon"):
+		return 3
+
+	# 要塞 (HEAVY)
+	if card_id.begins_with("fort_ww1_pillbox") or card_id.begins_with("fort_ww2_bunker"):
+		return 4
+	if card_id.begins_with("fort_ww2_flak"):
+		return 4
+	if card_id.begins_with("fort_cold_missile") or card_id.begins_with("fort_cold_radar"):
+		return 4
+	if card_id.begins_with("fort_modern_citadel") or card_id.begins_with("fort_modern_phalanx"):
+		return 4
+	if card_id.begins_with("fort_future_ion") or card_id.begins_with("fort_future_shield"):
+		return 4
+
+	# 侦察 (SUPPORT)
+	if card_id.begins_with("ww1_cavalry") or card_id.begins_with("ww2_motorcycle"):
+		return 5
+	if card_id.begins_with("cold_spetsnaz"):
+		return 5
+	if card_id.begins_with("mod_ranger") or card_id.begins_with("mod_m24"):
+		return 5
+	if card_id.begins_with("cold_sniper"):
+		return 5
+	if card_id.begins_with("fut_spectre") or card_id.begins_with("fut_nexus_archer"):
+		return 5
+
+	# 工兵 (SUPPORT)
+	if card_id.begins_with("mod_pioneer") or card_id.begins_with("mod_sapper") or card_id.begins_with("mod_engineer"):
+		return 6
+	if card_id.begins_with("mod_captain") or card_id.begins_with("mod_commissar"):
+		return 6
+
+	# 反空 (HEAVY)
+	if card_id.begins_with("mod_flak") or card_id.begins_with("fort_ww2_flak"):
+		return 7
+
+	# 默认返回步兵
 	return 0
 
 static func _unit_type_to_key(unit_type: int) -> String:
@@ -265,5 +340,9 @@ static func _check_requirements(card: Dictionary, requirements: Dictionary) -> b
 	return card.get("level", 1) >= level and card.get("installed_modifications", []).size() >= mods_count
 
 static func _count_eom_modifications(modifications: Array) -> int:
-	# TODO: 实现EOM识别
-	return 0
+	var count = 0
+	for mod_entry in modifications:
+		var mod_id = mod_entry.get("id", "") if mod_entry is Dictionary else String(mod_entry)
+		if mod_id.begins_with("EOM_"):
+			count += 1
+	return count

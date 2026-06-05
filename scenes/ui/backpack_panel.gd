@@ -88,8 +88,9 @@ var _resource_slot_pool: Array = []
 var _lore_slot_pool: Array = []
 var _stat_boost_slot_pool: Array = []
 var _empty_slot_pool: Array = []
-var _last_lore_signature: String = ""
-var _last_stat_boost_signature: String = ""
+var _last_lore_signature: String = "__INIT__"
+var _last_stat_boost_signature: String = "__INIT__"
+var _last_resources_signature: String = "__INIT__"
 var _loading_label: Label = null
 
 ## ============================================================
@@ -120,7 +121,10 @@ func _ready() -> void:
 	# 初始化 MVP
 	_data = BackpackData.new()
 	_presenter = BackpackPresenterScript.new()
-	_presenter.setup(_data, self)
+	if _presenter != null:
+		_presenter.setup(_data, self)
+	else:
+		push_error("[BackpackPanel] Failed to instantiate BackpackPresenter! Grid will use fallback init.")
 
 	# 设置拖拽穿透支持（占位，自定义拖拽在 backpack_card_item.gd 中）
 	_setup_drag_through_support()
@@ -157,11 +161,62 @@ func _ready() -> void:
 	_loading_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_loading_label.set_meta("is_loading_indicator", true)
 
+	# 防御性兜底：如果 presenter 初始化失败，手动从 SaveManager 恢复额外卡并构建网格
+	if _presenter == null and _data != null:
+		_fallback_init_from_save_manager()
+
 func _exit_tree() -> void:
 	if _presenter:
 		_presenter.cleanup()
 		_presenter = null
 	_data = null
+
+## Presenter 初始化失败时的兜底：直接从 SaveManager 恢复额外卡并构建网格，
+## 确保用户至少能看到已有卡和空格子。
+func _fallback_init_from_save_manager() -> void:
+	push_warning("[BackpackPanel] Using fallback init (presenter unavailable)")
+	# 从 SaveManager 恢复额外卡 ID
+	var ids: Array = []
+	if SaveManager and SaveManager.has_method("get_last_known_backpack_ids"):
+		ids = SaveManager.get_last_known_backpack_ids()
+	if ids.is_empty() and SaveManager and SaveManager.has_method("get_pending_backpack_ids"):
+		ids = SaveManager.get_pending_backpack_ids()
+	if not ids.is_empty():
+		_data.restore_extra_cards(ids)
+	# 连接全局信号以便后续卡牌变动能刷新
+	if _data and not _data.cards_changed.is_connected(_fallback_on_cards_changed):
+		_data.cards_changed.connect(_fallback_on_cards_changed)
+	if SignalBus and SignalBus.has_signal("card_added_to_backpack"):
+		if not SignalBus.card_added_to_backpack.is_connected(_fallback_on_card_added):
+			SignalBus.card_added_to_backpack.connect(_fallback_on_card_added)
+	if SignalBus and SignalBus.has_signal("card_equipped"):
+		if not SignalBus.card_equipped.is_connected(_fallback_on_card_equipped):
+			SignalBus.card_equipped.connect(_fallback_on_card_equipped)
+	# 构建网格（至少显示空格子）
+	var cards: Array = _data.get_filtered_sorted_cards()
+	rebuild_card_grid(cards)
+
+func _fallback_on_card_added(card: CardResource) -> void:
+	if card == null or _data == null:
+		return
+	if SaveManager and SaveManager.has_method("consume_pending_backpack_card_id"):
+		SaveManager.consume_pending_backpack_card_id(card.card_id)
+	_data.add_extra_card(card.card_id, false)
+	if SaveManager and SaveManager.has_method("enqueue_backpack_card_id"):
+		SaveManager.enqueue_backpack_card_id(card.card_id)
+
+func _fallback_on_cards_changed() -> void:
+	if _data == null:
+		return
+	var cards: Array = _data.get_filtered_sorted_cards()
+	rebuild_card_grid(cards)
+
+func _fallback_on_card_equipped(_slot_index: int, card_id: String, _card_type: String) -> void:
+	if _data == null or card_id.is_empty():
+		return
+	_data.remove_card(card_id, false)
+	if SaveManager and SaveManager.has_method("_on_card_equipped_remove_fallback"):
+		SaveManager._on_card_equipped_remove_fallback(_slot_index, card_id, _card_type)
 
 ## ============================================================
 ## 标签页事件处理
@@ -175,7 +230,7 @@ func _on_tab_changed(tab_index: int) -> void:
 			pass
 		TabIndex.RESOURCES:
 			# 资源标签页切换时刷新（如有需要）
-			pass
+			refresh_resources_tab()
 		TabIndex.INTEL:
 			# 情报标签页切换时刷新
 			refresh_intel_tab()
@@ -238,7 +293,6 @@ func quick_filter_by_rarity(rarity: String) -> void:
 ## 重建整个卡片网格（实际在下一 idle 执行，避免装备/拖拽回调链内 free 子节点）
 func rebuild_card_grid(cards: Array) -> void:
 	_rebuild_grid_snapshot = cards.duplicate()
-	print("[BackpackPanel] rebuild_card_grid: cards=%d scheduled=%s" % [cards.size(), _rebuild_grid_scheduled])
 	if _rebuild_grid_scheduled:
 		return
 	_rebuild_grid_scheduled = true
@@ -250,12 +304,13 @@ func _flush_rebuild_card_grid() -> void:
 	_rebuild_grid_scheduled = false
 	if not is_inside_tree():
 		_rebuild_grid_snapshot.clear()
+		print("[BP] _flush_rebuild: SKIP not in tree")
 		return
 	var cards: Array = _rebuild_grid_snapshot.duplicate()
-	print("[BackpackPanel] _flush_rebuild: snapshot_count=%d grid_null=%s" % [cards.size(), _combat_cards_grid == null])
 	_rebuild_grid_snapshot.clear()
 	var grid = _combat_cards_grid
 	if grid == null:
+		print("[BP] _flush_rebuild: SKIP grid null")
 		return
 	_apply_backpack_grid_layout(grid)
 	var to_clear: Array = grid.get_children().duplicate()
@@ -278,15 +333,68 @@ func _flush_rebuild_card_grid() -> void:
 			else:
 				child.free()
 	# 全量重建后重置增量签名，避免后续刷新因"签名未变"而误跳过重建。
-	_last_lore_signature = ""
-	_last_stat_boost_signature = ""
+	# signatures managed by individual tab refresh functions
+	
 	# 基础资源不在背包网格展示（见左上角资源面板等）；此处仅卡牌 + 空位，情报/属性由 refresh_* 增量维护。
+	var added_count := 0
 	for card in cards:
 		if card is CardResource:
 			_add_card_item(grid, card)
+			added_count += 1
 	_ensure_min_card_slots(grid)
+	# 诊断：检查第一个卡片 item 的视觉状态
+	var first_item = null
+	for ch in grid.get_children():
+		if ch.has_method("set_card") and ch.card != null:
+			first_item = ch
+			break
+	if first_item:
+		print("[BP] _flush_rebuild: added=%d/%d grid_children=%d cols=%d item_visible=%s item_size=%s item_modulate=%s card_id=%s" % [added_count, cards.size(), grid.get_child_count(), grid.columns, first_item.visible, first_item.size, first_item.modulate, first_item.card.card_id if first_item.card else "null"])
+		_diag_card_item_internals(first_item, grid)
+	else:
+		print("[BP] _flush_rebuild: added=%d/%d BUT NO visible card item found! grid_children=%d" % [added_count, cards.size(), grid.get_child_count()])
 	_sync_card_grid_scroll_size_for_grid(grid)
 	_hide_loading_indicator()
+
+
+func _diag_card_item_internals(item: Control, grid: GridContainer) -> void:
+	var scroll = _scroll
+	if scroll:
+		print("[BP DIAG] Scroll: vis=%s size=%s sv=%d" % [scroll.visible, scroll.size, scroll.scroll_vertical])
+	var tab_ctr = _tab_container
+	if tab_ctr:
+		print("[BP DIAG] TabCtr: tab=%d tabs=%d" % [tab_ctr.current_tab, tab_ctr.get_tab_count()])
+	var combat_tab = get_node_or_null("VBoxOuter/TabContainer/CombatCardsTab")
+	if combat_tab:
+		print("[BP DIAG] CombatTab: vis=%s size=%s" % [combat_tab.visible, combat_tab.size])
+	print("[BP DIAG] Grid: gpos=%s size=%s vis=%s" % [grid.global_position, grid.size, grid.visible])
+	var vbox = item.get_node_or_null("VBox")
+	if vbox:
+		print("[BP DIAG] VBox: vis=%s size=%s" % [vbox.visible, vbox.size])
+		var cm = vbox.get_node_or_null("ContentMargin")
+		if cm:
+			print("[BP DIAG] CM: vis=%s size=%s" % [cm.visible, cm.size])
+			var ivb = cm.get_node_or_null("InnerVBox")
+			if ivb:
+				print("[BP DIAG] InnerVB: vis=%s size=%s clip=%s" % [ivb.visible, ivb.size, ivb.clip_contents])
+				var ir = ivb.get_node_or_null("IconRow")
+				if ir:
+					print("[BP DIAG] IconRow: vis=%s size=%s ch=%d compact=%s" % [ir.visible, ir.size, ir.get_child_count(), ir.get_meta("_compact_slot_built", false)])
+					for ic in ir.get_children():
+						var sz = ic.size if ic is Control else "NA"
+						print("[BP DIAG]   %s: vis=%s size=%s" % [ic.name, ic.visible, sz])
+						if ic.name == "CompactArtClip":
+							var icon = ic.get_node_or_null("Icon")
+							if icon:
+								print("[BP DIAG]     Icon: vis=%s size=%s tex=%s" % [icon.visible, icon.size, "YES" if icon.texture else "NULL"])
+						if ic.name == "CompactTextVBox":
+							for tc in ic.get_children():
+								if tc is Label:
+									print("[BP DIAG]     %s: vis=%s text=%s" % [tc.name, tc.visible, tc.text])
+	var sb = item.get_theme_stylebox("panel")
+	if sb and sb is StyleBoxFlat:
+		print("[BP DIAG] panel: bg=%s bdr=%s" % [sb.bg_color, sb.border_color])
+	print("[BP DIAG] BPP: vis=%s size=%s gpos=%s" % [visible, size, global_position])
 
 ## 添加单张卡到网格末尾或顶部
 func add_card(card: CardResource, at_top: bool = false) -> void:
@@ -467,37 +575,64 @@ func refresh_intel_tab() -> void:
 	if _intel_grid == null:
 		return
 	_apply_backpack_grid_layout(_intel_grid)
+	var mll = get_node_or_null("/root/ManagerLazyLoader")
+	if mll and mll.has_method("ensure_loaded"): mll.ensure_loaded("lore")
 	var lm = get_node_or_null("/root/LoreManager")
-	if lm == null or not lm.has_method("get_unlocked_lore"):
-		_add_intel_placeholder(_intel_grid, "情报系统未初始化")
+	var bag = get_node_or_null("/root/IntelItemBag")
+	# Build signature from both sources
+	var lore_ids: Array[String] = []
+	if lm and lm.has_method("get_unlocked_lore"):
+		for lore_data in lm.get_unlocked_lore():
+			var lid: String = str(lore_data.get("id", ""))
+			if not lid.is_empty(): lore_ids.append(lid)
+	var bag_items: Dictionary = {}
+	if bag and bag.has_method("get_all_inventory"):
+		bag_items = bag.get_all_inventory()
+	print("[BP] refresh_intel_tab: bag_items.size=%d" % bag_items.size())
+	var sig_parts: Array[String] = []
+	for lid in lore_ids: sig_parts.append("lore:" + lid)
+	for bk in bag_items.keys(): sig_parts.append("bag:" + bk + ":" + str(bag_items[bk]))
+	sig_parts.sort()
+	var sig := "|".join(sig_parts)
+	if sig == _last_lore_signature:
+		print("[BP] refresh_intel_tab: signature未变化，跳过刷新")
 		return
-
-	var unlocked_lore: Array[Dictionary] = lm.get_unlocked_lore()
-	var target_ids: Array[String] = []
-	for lore_data in unlocked_lore:
-		var lore_id: String = str(lore_data.get("id", ""))
-		if not lore_id.is_empty():
-			target_ids.append(lore_id)
-	var lore_signature := "|".join(target_ids)
-	if lore_signature == _last_lore_signature:
+	_last_lore_signature = sig
+	_clear_grid_children(_intel_grid)
+	var has_content := lore_ids.size() > 0 or bag_items.size() > 0
+	if not has_content:
+		_add_intel_placeholder(_intel_grid, "暂无已解锁情报
+（战斗掉落或商店购买后显示于此）")
 		return
-
-	# 清空现有内容
-	for child in _intel_grid.get_children():
-		child.queue_free()
-
-	if unlocked_lore.is_empty():
-		_add_intel_placeholder(_intel_grid, "暂无已解锁情报\n（战斗掉落情报页后显示于此）")
-		_last_lore_signature = lore_signature
-		return
-
-	# 添加情报页
-	for lore_data in unlocked_lore:
-		var lore_id: String = str(lore_data.get("id", ""))
+	# Lore from LoreManager
+	for lore_id in lore_ids:
 		_add_intel_item(_intel_grid, lore_id)
-
-	_last_lore_signature = lore_signature
+	# Blueprint items from IntelItemBag
+	var _imi = load("res://data/intel_manual_items.gd")
+	for item_type in bag_items.keys():
+		var count: int = int(bag_items[item_type])
+		if count <= 0: continue
+		var def: Dictionary = _imi.get_def(item_type) if _imi else {}
+		print("[BP] 添加蓝图物品: %s, def_is_empty=%s" % [item_type, def.is_empty()])
+		if not def.is_empty():
+			print("[BP]   蓝图定义: name=%s, icon=%s" % [def.get("name", ""), def.get("icon", "")])
+		var item = ResourceSlotScene.instantiate()
+		if item == null: continue
+		_intel_grid.add_child(item)
+		if item.has_method("set_data"):
+			var display_name: String = def.get("name", item_type) if not def.is_empty() else item_type
+			# 传递图标和名称信息
+			var extra_data: Dictionary = {}
+			if not def.is_empty():
+				if def.has("icon"):
+					extra_data["icon"] = def.get("icon", "")
+				if def.has("name"):
+					extra_data["name"] = def.get("name", "")
+				if def.has("desc"):
+					extra_data["description"] = def.get("desc", "")
+			item.set_data(item_type, count, ResourceSlotItem.SlotType.LORE, extra_data)
 	_schedule_sync_card_grid_scroll_size_for_grid(_intel_grid)
+
 
 func _add_intel_placeholder(grid: GridContainer, message: String) -> void:
 	var lbl := Label.new()
@@ -505,7 +640,10 @@ func _add_intel_placeholder(grid: GridContainer, message: String) -> void:
 	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl.add_theme_color_override("font_color", Color(0.55, 0.6, 0.7, 0.9))
+	lbl.add_theme_font_size_override("font_size", 14)
+	lbl.custom_minimum_size = Vector2(950.0, 80.0)
 	grid.add_child(lbl)
+
 
 func _add_intel_item(grid: GridContainer, lore_id: String) -> void:
 	var item = ResourceSlotScene.instantiate()
@@ -520,8 +658,14 @@ func refresh_stat_boosts_tab() -> void:
 	if _stat_boosts_grid == null:
 		return
 	_apply_backpack_grid_layout(_stat_boosts_grid)
+	print("[BP TAB] stat: grid=%s sig=%s" % [_stat_boosts_grid != null, _last_stat_boost_signature])
+	var mll = get_node_or_null("/root/ManagerLazyLoader")
+	if mll and mll.has_method("ensure_loaded"): mll.ensure_loaded("stat_boost")
 	var sbm = get_node_or_null("/root/StatBoostManager")
+	print("[BP TAB] stat: sbm=%s" % [sbm != null])
 	if sbm == null or not sbm.has_method("get_all_boosts"):
+		print("[BP TAB] stat: ADDING placeholder (no sbm)")
+		_clear_grid_children(_stat_boosts_grid)
 		_add_stat_boosts_placeholder(_stat_boosts_grid, "属性提升系统未初始化")
 		return
 
@@ -542,6 +686,7 @@ func refresh_stat_boosts_tab() -> void:
 
 	# 清空现有内容
 	for child in _stat_boosts_grid.get_children():
+		_stat_boosts_grid.remove_child(child)
 		child.queue_free()
 
 	if target_counts.is_empty():
@@ -563,13 +708,63 @@ func _add_stat_boosts_placeholder(grid: GridContainer, message: String) -> void:
 	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl.add_theme_color_override("font_color", Color(0.55, 0.6, 0.7, 0.9))
+	lbl.add_theme_font_size_override("font_size", 14)
+	lbl.custom_minimum_size = Vector2(950.0, 80.0)
 	grid.add_child(lbl)
-
-## ============================================================
 ## 向后兼容方法（已废弃，保留以避免破坏现有调用）
 ## ============================================================
 
 ## 刷新情报页显示（废弃：使用 refresh_intel_tab 代替）
+func _clear_grid_children(grid: GridContainer) -> void:
+	for child in grid.get_children():
+		grid.remove_child(child)
+		child.queue_free()
+
+
+func refresh_resources_tab() -> void:
+	if _resources_grid == null:
+		return
+	_apply_backpack_grid_layout(_resources_grid)
+	print("[BP TAB] res: grid=%s sig=%s" % [_resources_grid != null, _last_resources_signature])
+	var brm = get_node_or_null("/root/BasicResourceManager")
+	if brm == null or not brm.has_method("get_all_totals"):
+		_clear_grid_children(_resources_grid)
+		var lbl := Label.new()
+		lbl.text = "资源系统未初始化"
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl.add_theme_color_override("font_color", Color(0.55, 0.6, 0.7, 0.9))
+		_resources_grid.add_child(lbl)
+		return
+	var resources_raw: Dictionary = brm.get_all_totals()
+	var res_parts: Array[String] = []
+	for k in resources_raw.keys():
+		var v: int = int(resources_raw[k])
+		if v > 0:
+			res_parts.append("%s:%d" % [k, v])
+	res_parts.sort()
+	var res_signature := "|".join(res_parts)
+	if res_signature == _last_resources_signature:
+		return
+	_last_resources_signature = res_signature
+	_clear_grid_children(_resources_grid)
+	if res_parts.is_empty():
+		var lbl := Label.new()
+		lbl.text = "暂无资源"
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl.add_theme_color_override("font_color", Color(0.55, 0.6, 0.7, 0.9))
+		_resources_grid.add_child(lbl)
+		return
+	for k in resources_raw.keys():
+		var count: int = int(resources_raw[k])
+		if count <= 0:
+			continue
+		var item = ResourceSlotScene.instantiate()
+		if item == null:
+			continue
+		_resources_grid.add_child(item)
+		if item.has_method("set_data"):
+			item.set_data(k, count, 0)
+	_schedule_sync_card_grid_scroll_size_for_grid(_resources_grid)
 func refresh_lore_pages() -> void:
 	# 如果当前在情报标签页，则刷新
 	if _tab_container and _tab_container.current_tab == TabIndex.INTEL:
@@ -612,6 +807,7 @@ func on_overlay_opened() -> void:
 func _refresh_aux_sections_after_open() -> void:
 	if not is_visible_in_tree():
 		return
+	refresh_resources_tab()
 	refresh_intel_tab()
 	refresh_stat_boosts_tab()
 
