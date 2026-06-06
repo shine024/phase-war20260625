@@ -62,7 +62,7 @@ This specification unifies fragmented battle HUD elements into a single, state-a
 - Total reserved bottom space: 124 px.
 
 ### 5.3 Resource Compact Mode
-- Default show: `energy`, `nano_materials`, `blueprint_fragments`.
+- Default show: `energy`, `nano_materials`, ~~`blueprint_fragments`~~ `research_points`.
 - Expand action shows full resource list.
 - In battle, compact mode is default; expansion is user-triggered.
 

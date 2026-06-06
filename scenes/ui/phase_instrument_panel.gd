@@ -198,7 +198,8 @@ func _on_slot_drop(slot_index: int, card: CardResource) -> void:
 	if PhaseInstrumentManager:
 		var ok: bool = PhaseInstrumentManager.equip_card(slot_index, card, null)
 		if DEBUG_PHASE_PANEL_LOG:
-			print("[PhaseInstrumentPanel] 装备卡牌 %s 到槽位 %d，结果: %s" % [card.display_name, slot_index, "成功" if ok else "失败"])
+			pass
+			# [LOG-v5.1] print("[PhaseInstrumentPanel] 装备卡牌 %s 到槽位 %d，结果: %s" % [card.display_name, slot_index, "成功" if ok else "失败"])
 
 ## 处理相位仪槽位点击：左键查看详情，右键卸下
 func _on_slot_clicked(slot_index: int, mouse_button_index: int) -> void:

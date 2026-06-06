@@ -40,7 +40,8 @@ static func migrate_save_data(data: Dictionary, from_version: int, debug_log: bo
 static func _migrate_v2_to_v3(data: Dictionary, debug_log: bool) -> void:
 	if debug_log:
 		if DEBUG_LOG:
-			print("[SaveMigration] 开始v2→v3数据迁移...")
+			pass
+			# [LOG-v5.1] print("[SaveMigration] 开始v2→v3数据迁移...")
 
 	# 定义需要迁移的文件和对应的数据键
 	var files_to_migrate = {
@@ -61,7 +62,8 @@ static func _migrate_v2_to_v3(data: Dictionary, debug_log: bool) -> void:
 			data[data_key] = migrated_data
 
 	if debug_log:
-		print("[SaveMigration] v2→v3数据迁移完成")
+		pass
+		# [LOG-v5.1] print("[SaveMigration] v2→v3数据迁移完成")
 
 ## 从文件加载并迁移数据（一次性操作）
 static func _load_and_migrate_file(file_name: String, debug_log: bool) -> Dictionary:
@@ -81,14 +83,16 @@ static func _load_and_migrate_file(file_name: String, debug_log: bool) -> Dictio
 	var error = json.parse(json_string)
 	if error != OK:
 		if debug_log:
-			print("[SaveMigration] 跳过损坏的文件: %s" % file_name)
+			pass
+			# [LOG-v5.1] print("[SaveMigration] 跳过损坏的文件: %s" % file_name)
 		return {}
 
 	var data = json.data
 	if not data.is_empty():
 		DirAccess.remove_absolute(save_path)
 		if debug_log and DEBUG_LOG:
-			print("[SaveMigration] 已删除旧文件: %s" % save_path)
+			pass
+			# [LOG-v5.1] print("[SaveMigration] 已删除旧文件: %s" % save_path)
 		return data
 	else:
 		return {}
@@ -198,7 +202,8 @@ static func validate_save_data(data: Dictionary, debug_log: bool = false) -> boo
 		push_error(msg)
 	if warnings.is_empty() and errors.is_empty():
 		if debug_log and DEBUG_LOG:
-			print("[SaveManager] 存档校验通过")
+			pass
+			# [LOG-v5.1] print("[SaveManager] 存档校验通过")
 
 	return errors.is_empty()
 

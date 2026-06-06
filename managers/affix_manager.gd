@@ -477,10 +477,8 @@ func _seed_affixes_by_star(card_id: String, affix_type: int, star: int) -> void:
 func grant_initial_affixes_for_card(card: CardResource) -> void:
 	if card == null or card.card_id.is_empty():
 		return
-	var bm: Node = _get_root_node_or_null("BlueprintManager")
+	# v5.1: star_level deprecated, use fixed star=1
 	var star: int = 1
-	if bm and bm.has_method("get_blueprint_star"):
-		star = bm.get_blueprint_star(card.card_id)
 	# 双轨统一：所有可强化卡都具有机体/武器两套词条槽，数量按总星级一致
 	_seed_affixes_by_star(card.card_id, 0, star)
 	_seed_affixes_by_star(card.card_id, 1, star)

@@ -37,6 +37,7 @@ var selected_card: CardResource = null
 var selected_target_id: String = ""
 var _embedded_mode: bool = false
 var _card_list: Array[CardResource] = []
+var _evolve_callable: Callable
 
 func _ready() -> void:
 	# 获取UI组件引用
@@ -73,6 +74,8 @@ func _ready() -> void:
 	# 连接卡牌选择器
 	if card_selector:
 		card_selector.item_selected.connect(_on_card_selector_changed)
+
+	_evolve_callable = _on_evolve_pressed
 
 	if _embedded_mode:
 		_apply_embedded_layout()
@@ -146,9 +149,9 @@ func _create_evolution_node(target: Dictionary) -> Control:
 	top_row.add_child(name_btn)
 
 	# 状态指示
-	var check_result = selected_card.check_evolution_requirements(target.target_id)
+	var check_result = BlueprintManager.can_evolve_blueprint(selected_card.card_id, target.target_id)
 	var status_label = Label.new()
-	if check_result.passed:
+	if check_result.get("ok", false):
 		status_label.text = "✓ 可进化"
 		status_label.add_theme_color_override("font_color", Color(0.2, 0.9, 0.3))
 		status_label.add_theme_font_size_override("font_size", 20)
@@ -186,15 +189,15 @@ func _create_evolution_node(target: Dictionary) -> Control:
 	# 底部：条件详情
 	var req_detail = Label.new()
 	req_detail.add_theme_constant_override("separation", 0)
-	if check_result.passed:
+	if check_result.get("ok", false):
 		req_detail.text = "✓ 所有条件已满足，可以进化"
 		req_detail.add_theme_color_override("font_color", Color(0.3, 0.8, 0.4))
 		req_detail.add_theme_font_size_override("font_size", 14)
 	else:
-		# 显示缺失的条件
 		var missing_text = "缺失条件：\n"
-		for miss in check_result.missing:
-			missing_text += "  • " + miss + "\n"
+		var reason_zh: String = String(check_result.get("reason_zh", ""))
+		if not reason_zh.is_empty():
+			missing_text += "  • " + reason_zh + "\n"
 		req_detail.text = missing_text
 		req_detail.add_theme_color_override("font_color", Color(0.9, 0.5, 0.3))
 		req_detail.add_theme_font_size_override("font_size", 14)
@@ -259,8 +262,8 @@ func _update_current_card_info() -> void:
 func _get_current_power_score() -> int:
 	if not selected_card:
 		return 0
-	if BlueprintManager and BlueprintManager.has_method("estimate_power_score"):
-		return int(BlueprintManager.estimate_power_score(selected_card.card_id))
+	if BlueprintManager and BlueprintManager.has_method("_estimate_power_score"):
+		return int(BlueprintManager._estimate_power_score(selected_card.card_id))
 	return selected_card.power
 
 func _update_detail_panel() -> void:
@@ -268,14 +271,12 @@ func _update_detail_panel() -> void:
 		return
 	if not selected_card or selected_target_id.is_empty():
 		_clear_detail_panel()
-		_set_detail_panel_visible(false)
 		return
 
-	_set_detail_panel_visible(true)
-
-	# 隐藏默认提示
+	# 隐藏默认提示，显示详情面板
 	if no_selection_label:
 		no_selection_label.visible = false
+	_set_detail_panel_visible(true)
 
 	# 显示目标信息
 	var target_card = DefaultCards.get_card_by_id(selected_target_id)
@@ -294,15 +295,16 @@ func _update_detail_panel() -> void:
 		info_details.text += "武器：%s\n" % target_card.weapon_type
 
 	# 显示条件检查
-	var check_result = selected_card.check_evolution_requirements(selected_target_id)
+	var check_result = BlueprintManager.can_evolve_blueprint(selected_card.card_id, selected_target_id)
 	if req_details:
-		if check_result.passed:
+		if check_result.get("ok", false):
 			req_details.text = "✓ 所有条件满足，可以进化"
 			req_details.add_theme_color_override("font_color", Color(0.3, 0.9, 0.4))
 		else:
 			var req_text = "缺失条件：\n"
-			for miss in check_result.missing:
-				req_text += "  • " + miss + "\n"
+			var reason_zh: String = String(check_result.get("reason_zh", ""))
+			if not reason_zh.is_empty():
+				req_text += "  • " + reason_zh + "\n"
 			req_details.text = req_text
 			req_details.add_theme_color_override("font_color", Color(0.9, 0.4, 0.3))
 
@@ -359,65 +361,54 @@ func _update_detail_panel() -> void:
 
 		var has_nano = nano_amount >= nano_cost
 
-		# 更新按钮文本和状态
 		if not has_blueprint:
 			evolve_button.text = "缺少进化图纸"
 			evolve_button.disabled = true
 		elif not has_nano:
 			evolve_button.text = "纳米材料不足（需要 %d）" % nano_cost
 			evolve_button.disabled = true
-		elif not check_result.passed:
+		elif not check_result.get("ok", false):
 			evolve_button.text = "进化条件未满足"
 			evolve_button.disabled = true
 		else:
 			evolve_button.text = "执行进化（消耗 %d 纳米）" % nano_cost
 			evolve_button.disabled = false
 
-		# 断开旧信号
-		var connections: Array = evolve_button.pressed.get_connections()
-		for conn in connections:
-			if conn.callable.is_valid():
-				evolve_button.pressed.disconnect(conn.callable)
-		evolve_button.pressed.connect(func(): _on_evolve_pressed())
+		if not evolve_button.pressed.is_connected(_evolve_callable):
+			evolve_button.pressed.connect(_evolve_callable)
 
 func _clear_detail_panel() -> void:
 	if no_selection_label:
 		no_selection_label.visible = true
 
+	# 显示详情面板（让 NoSelectionLabel 可见），但隐藏子面板
+	_set_detail_panel_visible(true)
 	if target_name_label:
-		target_name_label.text = "进化目标"
-
+		target_name_label.visible = false
 	if info_details:
-		info_details.text = ""
-
+		info_details.visible = false
 	if req_details:
-		req_details.text = ""
-
+		req_details.visible = false
 	if stat_hp:
-		stat_hp.text = "生命值：0"
-	if stat_attack_light:
-		stat_attack_light.text = "攻击轻甲：0"
-	if stat_attack_armor:
-		stat_attack_armor.text = "攻击重甲：0"
-	if stat_attack_air:
-		stat_attack_air.text = "攻击空中：0"
-	if stat_defense_light:
-		stat_defense_light.text = "防御轻甲：0"
-	if stat_defense_armor:
-		stat_defense_armor.text = "防御重甲：0"
-	if stat_defense_air:
-		stat_defense_air.text = "防御空中：0"
-	if stat_range:
-		stat_range.text = "射程：0"
-	if stat_speed:
-		stat_speed.text = "移速：0"
-
+		stat_hp.visible = false
 	if resource_details:
-		resource_details.text = ""
-
+		resource_details.visible = false
 	if evolve_button:
-		evolve_button.text = "执行进化"
-		evolve_button.disabled = true
+		evolve_button.visible = false
+
+func _restore_detail_sub_panels() -> void:
+	if target_name_label:
+		target_name_label.visible = true
+	if info_details:
+		info_details.visible = true
+	if req_details:
+		req_details.visible = true
+	if stat_hp:
+		stat_hp.visible = true
+	if resource_details:
+		resource_details.visible = true
+	if evolve_button:
+		evolve_button.visible = true
 
 func _set_detail_panel_visible(visible: bool) -> void:
 	if detail_content:
@@ -448,7 +439,6 @@ func _on_evolve_pressed() -> void:
 						break
 			_update_evolution_tree()
 			_clear_detail_panel()
-			_set_detail_panel_visible(false)
 		else:
 			var fail_info: Dictionary = BlueprintManager.can_evolve_blueprint(selected_card.card_id, selected_target_id)
 			var fail_reason: String = String(fail_info.get("reason_zh", "条件未满足"))
@@ -466,10 +456,10 @@ func _on_card_selected(card: CardResource) -> void:
 	_update_current_card_info()
 	_update_evolution_tree()
 	_clear_detail_panel()
-	_set_detail_panel_visible(false)
 
 func _on_target_selected(target_id: String, target_name: String) -> void:
 	selected_target_id = target_id
+	_restore_detail_sub_panels()
 	_update_detail_panel()
 
 ## 供外部调用的接口

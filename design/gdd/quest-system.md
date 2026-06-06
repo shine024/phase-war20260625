@@ -52,7 +52,7 @@ Players pick up quests from a quest board, choosing objectives that align with t
 
 | Reward Type | Grant Method | Description |
 |-------------|-------------|-------------|
-| `blueprint_fragments` | `BlueprintManager.add_blueprint_fragment()` | `{card_id: count}` dict |
+| `blueprint_fragments` | ~~deprecated in v5.1~~ → use `nano_materials` instead | ~~`{card_id: count}` dict~~ |
 | `nano_materials` | `BlueprintManager.add_nano_materials()` | int amount |
 | `unlock_blueprint` | `BlueprintManager.unlock_blueprint()` | card_id string |
 | `faction_reputation` / `faction_rep` | `FactionSystemManager.add_faction_reputation()` | `{faction_id: delta}` dict |

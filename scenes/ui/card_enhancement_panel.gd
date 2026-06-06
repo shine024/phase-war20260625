@@ -1,7 +1,7 @@
 extends Control
 class_name CardEnhancementPanel
 ## 卡牌强化UI面板
-## 
+##
 ## 功能：
 ## - 显示所有可强化的卡牌列表
 ## - 显示当前强化等级和升级成本
@@ -15,7 +15,7 @@ const EnemyBlueprints = preload("res://data/enemy_blueprints.gd")
 const UnitLineageConfig = preload("res://data/unit_lineage_config.gd")
 const RankRules = preload("res://data/rank_rules.gd")
 const CompanyDefinitions = preload("res://data/company_definitions.gd")
-const StarConfig = preload("res://data/blueprint_star_config.gd")
+# StarConfig removed - star_level system deprecated in v5.1
 const BasicResources = preload("res://data/basic_resources.gd")
 const DEBUG_LOG_PATH = "debug-119cff.log"
 
@@ -34,8 +34,8 @@ signal closed
 @onready var mod_status_label = $VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/ModSection/ModVBox/ModStatusLabel
 @onready var mod_req_label = $VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/ModSection/ModVBox/ModReqLabel
 @onready var mod_offense_btn = $VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/ModSection/ModVBox/ModButtonsHBox/ModOffenseBtn
-@onready var mod_defense_btn = $VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/ModSection/ModVBox/ModDefenseBtn
-@onready var mod_utility_btn = $VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/ModSection/ModVBox/ModUtilityBtn
+@onready var mod_defense_btn = $VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/ModSection/ModVBox/ModButtonsHBox/ModDefenseBtn
+@onready var mod_utility_btn = $VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/ModSection/ModVBox/ModButtonsHBox/ModUtilityBtn
 @onready var enhancement_button = $VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/EnhancementSection/EnhancementVBox/EnhancementButton
 @onready var evolve_button = $VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/EvolutionSection/EvolutionVBox/EvolveButton
 @onready var evolution_branch_selector: OptionButton = $VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/EvolutionSection/EvolutionVBox/EvolutionBranchSelector
@@ -87,13 +87,12 @@ func _ready() -> void:
 	if card_enh_mgr:
 		card_enh_mgr.enhancement_completed.connect(_on_enhancement_completed)
 		card_enh_mgr.enhancement_failed.connect(_on_enhancement_failed)
-	
+
 	if BlueprintManager:
 		if BlueprintManager.has_signal("fragments_changed"):
-			BlueprintManager.fragments_changed.connect(_on_nano_materials_changed)
-		if BlueprintManager.has_signal("blueprint_star_upgraded"):
-			BlueprintManager.blueprint_star_upgraded.connect(_on_blueprint_star_upgraded)
-	
+			if not BlueprintManager.fragments_changed.is_connected(_on_nano_materials_changed):
+				BlueprintManager.fragments_changed.connect(_on_nano_materials_changed)
+
 	if star_upgrade_button:
 		star_upgrade_button.pressed.connect(_on_star_upgrade_button_pressed)
 	if mod_offense_btn:
@@ -116,37 +115,41 @@ func _ready() -> void:
 	if SignalBus and SignalBus.has_signal("card_added_to_backpack"):
 		if not SignalBus.card_added_to_backpack.is_connected(_on_card_added_to_backpack):
 			SignalBus.card_added_to_backpack.connect(_on_card_added_to_backpack)
-	
+
 	# 初始化卡牌列表
 	_init_card_list()
 	_update_resource_labels()
 	# 初始化详情面板为空状态
 	_update_detail_panel()
 
+## 检查子节点是否为 tscn 定义的持久化 Section（不应被清除）
 func _is_detail_panel_persist_child(child: Node) -> bool:
-	if child == star_upgrade_button \
-		or child == enhancement_button \
-		or child == evolve_button \
-		or child == evolution_branch_selector \
-		or child == mod_section:
-		return true
-	if mod_section and child.get_parent() == mod_section:
-		return true
-	return false
+	if child == null:
+		return false
+	var n: String = child.name
+	return n == "CardInfoSection" or n == "StarUpgradeSection" \
+		or n == "ModSection" or n == "EnhancementSection" \
+		or n == "EvolutionSection"
+
+## 仅清除 detail_panel 中动态添加的子节点，保留 tscn Section
+func _clear_dynamic_detail() -> void:
+	if detail_panel:
+		for child in detail_panel.get_children():
+			if not _is_detail_panel_persist_child(child):
+				child.queue_free()
 
 func _init_card_list() -> void:
-	"""初始化卡牌列表"""
 	if not card_list_container:
 		return
 	selected_card_id = ""
-	
+
 	for child in card_list_container.get_children():
 		child.queue_free()
-	
+
 	card_items.clear()
-	
+
 	var all_card_ids: Array = []
-	# 仅展示“背包中的卡牌”
+	# 仅展示"背包中的卡牌"
 	if SaveManager and SaveManager.has_method("get_pending_backpack_ids"):
 		all_card_ids.append_array(SaveManager.get_pending_backpack_ids())
 	if SaveManager and SaveManager.has_method("get_last_known_backpack_ids"):
@@ -161,7 +164,7 @@ func _init_card_list() -> void:
 		uniq[sid] = true
 		filtered_ids.append(sid)
 	all_card_ids = filtered_ids
-	
+
 	for card_id in all_card_ids:
 		if card_id.is_empty():
 			continue
@@ -170,24 +173,22 @@ func _init_card_list() -> void:
 			card_data = EnemyBlueprints.get_card_by_id(card_id)
 		if card_data == null:
 			continue
-		
+
 		# 创建卡牌项目按钮
 		var item_button = Button.new()
 		item_button.text = _get_card_display_name(card_id, card_data)
-		item_button.custom_minimum_size = Vector2(220, 50)
+		item_button.custom_minimum_size = Vector2(180, 40)
 		item_button.add_theme_font_size_override("font_size", 15)
 		item_button.pressed.connect(_on_card_item_selected.bindv([card_id]))
-		
+
 		card_list_container.add_child(item_button)
 		card_items.append({"id": card_id, "data": card_data, "button": item_button})
 
 func _get_card_display_name(card_id: String, card_data: Variant) -> String:
-	"""获取卡牌显示名称"""
 	var name_str = card_id
 	if card_data is Dictionary:
 		name_str = str(card_data.get("display_name", card_id))
 	elif card_data is Object:
-		# Support Resource/Object-based card definitions.
 		var object_name: Variant = card_data.get("display_name")
 		name_str = str(object_name if object_name != null else card_id)
 	var level = 1
@@ -198,7 +199,6 @@ func _get_card_display_name(card_id: String, card_data: Variant) -> String:
 	return "%s (Lv.%d)" % [name_str, level]
 
 func _on_card_item_selected(card_id: String) -> void:
-	"""卡牌项目被选中"""
 	select_card_by_id(card_id)
 
 
@@ -212,21 +212,16 @@ func select_card_by_id(card_id: String) -> void:
 	_update_detail_panel()
 
 func _update_detail_panel() -> void:
-	"""更新详细信息面板"""
 	if not card_detail_panel:
 		return
 
 	# 如果没有选择卡牌，显示提示并禁用按钮
 	if selected_card_id.is_empty():
-		for child in card_detail_panel.get_children():
-			if not _is_detail_panel_persist_child(child):
-				child.queue_free()
-		var tip_label = Label.new()
-		tip_label.text = "请从左侧列表选择要强化的卡牌"
-		tip_label.add_theme_color_override("font_color", Color(0.6, 0.65, 0.75, 1))
-		tip_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		tip_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		card_detail_panel.add_child(tip_label)
+		if no_selection_label:
+			no_selection_label.visible = true
+		if detail_scroll:
+			detail_scroll.visible = false
+		_clear_dynamic_detail()
 		if star_upgrade_button:
 			star_upgrade_button.disabled = true
 			star_upgrade_button.text = "请选择卡牌升星"
@@ -241,25 +236,30 @@ func _update_detail_panel() -> void:
 			evolution_branch_selector.clear()
 		_reset_modification_section()
 		return
-	
-	# 清空现有内容（保留升星/强化/进化控件）
-	for child in card_detail_panel.get_children():
-		if not _is_detail_panel_persist_child(child):
-			child.queue_free()
-	
+
+	# 选中了卡牌：隐藏 NoSelection，显示 DetailScroll
+	if no_selection_label:
+		no_selection_label.visible = false
+	if detail_scroll:
+		detail_scroll.visible = true
+
+	# 清空动态内容
+	_clear_dynamic_detail()
+
 	var card_data = DefaultCards.get_card_by_id(selected_card_id)
 	if card_data == null:
 		card_data = EnemyBlueprints.get_card_by_id(selected_card_id)
-	
+
 	if card_data == null:
 		return
-	
-	# 显示卡牌名称
+
+	# 显示卡牌名称 — 插入到 detail_panel 顶部（index 0）
 	var name_label = Label.new()
 	name_label.text = str(card_data.display_name if card_data else selected_card_id)
 	name_label.add_theme_font_size_override("font_size", 16)
 	name_label.add_theme_color_override("font_color", Color(0, 0.9, 1, 1))
-	card_detail_panel.add_child(name_label)
+	detail_panel.add_child(name_label)
+	detail_panel.move_child(name_label, 0)
 	# 显示军衔
 	if BlueprintManager and BlueprintManager.has_method("get_rank_info"):
 		var rank_info: Dictionary = BlueprintManager.get_rank_info(selected_card_id)
@@ -269,48 +269,58 @@ func _update_detail_panel() -> void:
 			float(rank_info.get("power_score", 0.0))
 		]
 		rank_label.add_theme_color_override("font_color", Color(0.95, 0.85, 0.45, 1))
-		card_detail_panel.add_child(rank_label)
+		detail_panel.add_child(rank_label)
+		detail_panel.move_child(rank_label, 1)
 
 	_update_star_upgrade_section()
 	_update_modification_section()
-	
+
 	# 获取强化信息
 	var card_enh_mgr = get_node_or_null("/root/CardEnhancementManager")
 	var enhancement_info = card_enh_mgr.get_enhancement_info(selected_card_id) if card_enh_mgr else {}
 	var current_level = enhancement_info.get("current_level", 1)
 	var max_level = enhancement_info.get("max_level", 10)
 	var can_enhance = enhancement_info.get("can_enhance", true)
-	
+
 	# 显示当前等级
 	var level_label = Label.new()
 	level_label.text = "当前等级：%d / %d" % [current_level, max_level]
-	card_detail_panel.add_child(level_label)
-	
+	detail_panel.add_child(level_label)
+
 	# 如果可以强化，显示升级成本
 	if can_enhance and current_level < max_level:
 		var next_level = enhancement_info.get("next_level", current_level + 1)
 		var nano_cost = enhancement_info.get("nano_cost", 0)
-		var success_rate = enhancement_info.get("success_rate", 0.0)
-		var attribute_bonus = enhancement_info.get("attribute_bonus", 0.0)
-		
-		# 显示升级成本
+		var level_action = String(enhancement_info.get("level_action", ""))
+
+		# 获取当前纳米材料数量
+		var current_nano: int = 0
+		if BasicResourceManager and BasicResourceManager.has_method("get_total"):
+			current_nano = int(BasicResourceManager.get_total(BasicResources.ID_NANO_MATERIALS))
+		elif BlueprintManager and BlueprintManager.has_method("get_nano_materials"):
+			current_nano = int(BlueprintManager.get_nano_materials())
+
+		# 显示升级成本（用颜色代替BBCode）
 		var cost_label = Label.new()
-		var current_nano = BlueprintManager.get_nano_materials() if BlueprintManager else 0
-		var cost_color = "green" if current_nano >= nano_cost else "red"
-		cost_label.text = "[color=%s]升级成本：%d纳米材料（当前：%d）[/color]" % [cost_color, nano_cost, current_nano]
+		cost_label.text = "升级成本：%d纳米材料（当前：%d）" % [nano_cost, current_nano]
+		cost_label.add_theme_color_override("font_color", Color.GREEN if current_nano >= nano_cost else Color.RED)
 		cost_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		card_detail_panel.add_child(cost_label)
-		
-		# 显示成功率
-		var rate_label = Label.new()
-		rate_label.text = "成功率：%.0f%%" % (success_rate * 100)
-		card_detail_panel.add_child(rate_label)
-		
-		# 显示属性加成
-		var bonus_label = Label.new()
-		bonus_label.text = "属性加成：+%.0f%%" % (attribute_bonus * 100)
-		card_detail_panel.add_child(bonus_label)
-		
+		detail_panel.add_child(cost_label)
+
+		# 显示本次强化效果（v6.0词条系统）
+		if not level_action.is_empty():
+			var action_label = Label.new()
+			match level_action:
+				"new_slot":
+					action_label.text = "本次强化：获得新词条槽"
+					action_label.add_theme_color_override("font_color", Color(0.4, 1.0, 0.6, 1))
+				"upgrade_slot":
+					action_label.text = "本次强化：升级已有词条"
+					action_label.add_theme_color_override("font_color", Color(0.4, 0.8, 1.0, 1))
+				_:
+					action_label.text = ""
+			detail_panel.add_child(action_label)
+
 		# 启用强化按钮
 		if enhancement_button:
 			enhancement_button.disabled = current_nano < nano_cost
@@ -318,14 +328,16 @@ func _update_detail_panel() -> void:
 	else:
 		# 已达最高等级
 		var max_label = Label.new()
-		max_label.text = "[color=yellow]已达最高等级[/color]"
-		card_detail_panel.add_child(max_label)
-		
+		max_label.text = "已达最高等级"
+		max_label.add_theme_color_override("font_color", Color.YELLOW)
+		detail_panel.add_child(max_label)
+
 		if enhancement_button:
 			enhancement_button.disabled = true
 			enhancement_button.text = "已满级"
 	# 进化区域
-	_update_evolution_section(card_data)
+	if card_data != null:
+		_update_evolution_section(card_data)
 
 func _update_evolution_section(card_data: CardResource) -> void:
 	if evolve_button == null:
@@ -350,6 +362,7 @@ func _update_evolution_section(card_data: CardResource) -> void:
 	var options: Dictionary = BlueprintManager.get_evolution_options(selected_card_id)
 	var evo_1: String = String(options.get("evolution_1", ""))
 	var branches: Dictionary = options.get("faction_branches", {})
+	var intel_branches: Array = options.get("intel_branches", [])
 	var target_id: String = ""
 	if evolution_branch_selector:
 		_is_syncing_evolution_selector = true
@@ -373,6 +386,19 @@ func _update_evolution_section(card_data: CardResource) -> void:
 			"group": "势力特化",
 			"faction_id": String(faction_id),
 		})
+	# v6.0: 情报进化分支
+	for ib in intel_branches:
+		if not ib is Dictionary:
+			continue
+		var ib_target: String = String(ib.get("target_card_id", ""))
+		if ib_target.is_empty() or _pending_evolution_candidates.has(ib_target):
+			continue
+		_pending_evolution_candidates.append(ib_target)
+		_evolution_selector_meta.append({
+			"target_id": ib_target,
+			"group": "情报进化",
+			"faction_id": "intel",
+		})
 	# 构建可选列表
 	if evolution_branch_selector:
 		for i in range(_pending_evolution_candidates.size()):
@@ -386,8 +412,7 @@ func _update_evolution_section(card_data: CardResource) -> void:
 			var can_info_for_item: Dictionary = BlueprintManager.can_evolve_blueprint(selected_card_id, cand_id) if BlueprintManager.has_method("can_evolve_blueprint") else {"ok": false, "reason": "invalid"}
 			var can_item: bool = bool(can_info_for_item.get("ok", false))
 			var reason_item: String = _evolve_reason_display(can_info_for_item)
-			var gap_text: String = _build_permit_gap_text(can_info_for_item)
-			var disabled_tag: String = "" if can_item else " [不可进化：%s%s]" % [reason_item, gap_text]
+			var disabled_tag: String = "" if can_item else " [不可进化：%s]" % reason_item
 			evolution_branch_selector.add_item("[%s%s] %s%s" % [group, faction_text, cand_name, disabled_tag])
 			# 禁用不可进化分支，但仍保留条目用于预览
 			if evolution_branch_selector.has_method("set_item_disabled"):
@@ -419,19 +444,18 @@ func _update_evolution_section(card_data: CardResource) -> void:
 	tips.fit_content = true
 	tips.scroll_active = false
 	tips.custom_minimum_size = Vector2(0, 96)
-	var star_now: int = BlueprintManager.get_blueprint_star(selected_card_id) if BlueprintManager.has_method("get_blueprint_star") else 1
+	var card_enh_mgr = get_node_or_null("/root/CardEnhancementManager")
+	var enhance_level_now: int = card_enh_mgr.get_card_enhancement_level(selected_card_id) if card_enh_mgr else 0
 	var mod_now: int = BlueprintManager.get_modification_count(selected_card_id) if BlueprintManager.has_method("get_modification_count") else 0
 	var inherit_ratio: float = float(can_info.get("inherit_ratio", UnitLineageConfig.DEFAULT_INHERIT_RATIO))
-	var research_cost: int = int(can_info.get("research_cost", 0))
 	var reason: String = _evolve_reason_display(can_info)
-	var permit_gap_text: String = _build_permit_gap_text(can_info)
 	tips.bbcode_enabled = true
 	tips.text = "[color=#7fd3ff]进化得失提示[/color]\n" + \
 		"[color=#8ef58e]获得[/color]：新单位成长上限、军衔重新评估、属性传承 %.0f%%\n" % (inherit_ratio * 100.0) + \
 		"[color=#ffb37f]失去[/color]：当前改造A/B/C进度清零（重走改造）\n" + \
-		"当前：星级 %d，改造 %d/3，进化消耗研究点 %d\n" % [star_now, mod_now, research_cost] + \
-		("状态：可进化" if can_evolve else "状态：不可进化（%s%s）" % [reason, permit_gap_text])
-	card_detail_panel.add_child(tips)
+		"当前：强化 Lv.%d，改造 %d/3\n" % [enhance_level_now, mod_now] + \
+		("状态：可进化" if can_evolve else "状态：不可进化（%s）" % reason)
+	detail_panel.add_child(tips)
 
 func _evolve_reason_display(can_info: Dictionary) -> String:
 	if can_info.has("reason_zh"):
@@ -496,8 +520,10 @@ func _set_mod_branch_buttons_enabled(enabled: bool) -> void:
 		mod_utility_btn.disabled = not enabled
 
 func _mod_option_display_name(option_id: String) -> String:
-	if BlueprintManager and BlueprintManager.DEFAULT_MOD_OPTIONS.has(option_id):
-		return String(BlueprintManager.DEFAULT_MOD_OPTIONS[option_id].get("name", option_id))
+	var ModEffects = preload("res://data/mod_effects.gd")
+	var mod_info: Dictionary = ModEffects.get_mod_info(option_id)
+	if not mod_info.is_empty():
+		return String(mod_info.get("name", option_id))
 	return option_id
 
 func _permit_display_name(permit_id: String) -> String:
@@ -507,12 +533,10 @@ func _permit_display_name(permit_id: String) -> String:
 func _format_mod_requirements(card_id: String, mod_index: int) -> String:
 	if BlueprintManager == null:
 		return ""
-	var need_star: int = StarConfig.get_mod_unlock_star(mod_index)
-	var star_now: int = BlueprintManager.get_blueprint_star(card_id)
 	var req: Dictionary = BlueprintManager.get_modification_requirements(card_id, mod_index)
 	var slot: String = MOD_SLOT_LABELS[mod_index] if mod_index >= 0 and mod_index < MOD_SLOT_LABELS.size() else "?"
 	var lines: Array[String] = [
-		"槽位 %s：需 %d★（当前 %d★）" % [slot, need_star, star_now],
+		"槽位 %s" % slot,
 		"消耗：研究点 %d（当前 %d）" % [int(req.get("research_points", 0)), BlueprintManager.get_research_points()],
 	]
 	var brm: Node = BasicResourceManager
@@ -549,8 +573,7 @@ func _update_modification_section() -> void:
 		applied_parts.append("%s:%s" % [slot, _mod_option_display_name(String(applied[i]))])
 	var applied_text: String = " / ".join(applied_parts) if applied_parts.size() > 0 else "无"
 	mod_status_label.text = "改装进度：%s（%d/3）" % [applied_text, applied.size()]
-	var rarity: String = BlueprintManager.get_card_rarity(selected_card_id) if BlueprintManager.has_method("get_card_rarity") else "common"
-	var max_times: int = StarConfig.get_max_mod_times(rarity)
+	var max_times: int = 3  # v5.1: 改造次数固定为3次（不再依赖星级）
 	var mod_index: int = BlueprintManager.get_modification_count(selected_card_id)
 	if mod_index >= max_times:
 		if mod_req_label:
@@ -588,54 +611,48 @@ func _on_mod_option_pressed(option_id: String) -> void:
 	_update_detail_panel()
 
 func _update_star_upgrade_section() -> void:
-	if star_upgrade_button == null or BlueprintManager == null or selected_card_id.is_empty():
-		return
-	var star_now: int = BlueprintManager.get_blueprint_star(selected_card_id) if BlueprintManager.has_method("get_blueprint_star") else 1
-	var max_star: int = BlueprintManager.MAX_BLUEPRINT_LEVEL
-	var sp: Dictionary = BlueprintManager.get_star_progress(selected_card_id) if BlueprintManager.has_method("get_star_progress") else {}
-	var need_rp: int = int(sp.get("next_star_research", 0))
-	var have_rp: int = int(sp.get("current_research", BlueprintManager.get_research_points()))
-	if star_now >= max_star:
+	# v5.1: star_level system removed - hide the entire section
+	if star_upgrade_button:
 		star_upgrade_button.disabled = true
-		star_upgrade_button.text = "已满星（%d★）" % star_now
-		return
-	var can_up: bool = BlueprintManager.can_upgrade_blueprint(selected_card_id) if BlueprintManager.has_method("can_upgrade_blueprint") else false
-	star_upgrade_button.disabled = not can_up
-	star_upgrade_button.text = "升星至 %d★（消耗研究点 %d，当前 %d）" % [star_now + 1, need_rp, have_rp]
+		star_upgrade_button.text = "已合并至强化系统"
+	var section = get_node_or_null("VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/StarUpgradeSection")
+	if section:
+		section.visible = false
 
 func _on_star_upgrade_button_pressed() -> void:
-	if selected_card_id.is_empty() or BlueprintManager == null:
-		return
-	if not BlueprintManager.has_method("upgrade_blueprint_level"):
-		return
-	var ok: bool = BlueprintManager.upgrade_blueprint_level(selected_card_id)
-	if result_label:
-		if ok:
-			var new_star: int = BlueprintManager.get_blueprint_star(selected_card_id)
-			result_label.text = "升星成功：%s 现为 %d★" % [selected_card_id, new_star]
-			result_label.add_theme_color_override("font_color", Color(1.0, 0.88, 0.35, 1))
-		else:
-			result_label.text = "升星失败：研究点不足或已达满星。"
-			result_label.add_theme_color_override("font_color", Color(1.0, 0.45, 0.45, 1))
-	_init_card_list()
-	_update_resource_labels()
-	_update_detail_panel()
-
-func _on_blueprint_star_upgraded(card_id: String, _new_star: int) -> void:
-	if card_id != selected_card_id:
-		return
-	_update_resource_labels()
-	_update_star_upgrade_section()
-	_update_modification_section()
+	pass  # v5.1: star_level system removed
 
 func _on_enhance_button_pressed() -> void:
-	"""强化按钮被按下"""
 	var card_enh_mgr = get_node_or_null("/root/CardEnhancementManager")
-	if selected_card_id.is_empty() or not card_enh_mgr or not BlueprintManager:
+	if selected_card_id.is_empty() or not card_enh_mgr:
 		return
-	
-	# 执行强化
-	card_enh_mgr.enhance(selected_card_id, BlueprintManager)
+
+	# 获取纳米材料数量（从 BasicResourceManager）
+	var current_nano: int = 0
+	if BasicResourceManager and BasicResourceManager.has_method("get_total"):
+		current_nano = int(BasicResourceManager.get_total(BasicResources.ID_NANO_MATERIALS))
+	elif BlueprintManager and BlueprintManager.has_method("get_nano_materials"):
+		current_nano = int(BlueprintManager.get_nano_materials())
+
+	# 执行强化（v6.0：使用 do_enhance）
+	var result = card_enh_mgr.do_enhance(selected_card_id, current_nano)
+	if not result.get("ok", false):
+		if result_label:
+			result_label.text = "强化失败：" + str(result.get("reason", "纳米材料不足"))
+			result_label.add_theme_color_override("font_color", Color.RED)
+		return
+
+	# 扣费：通过 BasicResourceManager 消耗纳米材料
+	var nano_cost: int = card_enh_mgr.get_enhance_nano_cost(selected_card_id, int(result.get("level", 0)))
+	if BasicResourceManager and BasicResourceManager.has_method("spend_resource"):
+		BasicResourceManager.spend_resource(BasicResources.ID_NANO_MATERIALS, nano_cost)
+	elif BlueprintManager and BlueprintManager.has_method("add_nano_materials"):
+		BlueprintManager.add_nano_materials(-nano_cost)
+
+	# 刷新面板
+	_init_card_list()
+	_update_detail_panel()
+	_update_resource_labels()
 
 func _on_evolve_button_pressed() -> void:
 	if BlueprintManager == null or selected_card_id.is_empty() or _pending_evolution_target_id.is_empty():
@@ -646,12 +663,8 @@ func _on_evolve_button_pressed() -> void:
 	var target_card: CardResource = DefaultCards.get_card_by_id(_pending_evolution_target_id)
 	var target_name: String = target_card.display_name if target_card != null else _pending_evolution_target_id
 	var can_info: Dictionary = BlueprintManager.can_evolve_blueprint(selected_card_id, _pending_evolution_target_id) if BlueprintManager.has_method("can_evolve_blueprint") else {}
-	var research_cost: int = int(can_info.get("research_cost", 0))
-	var pg: int = int(can_info.get("permit_general_count", 0))
-	var pc: int = int(can_info.get("permit_category_count", 0))
-	var ps: int = int(can_info.get("permit_specific_count", 0))
 	var inherit_ratio: float = float(can_info.get("inherit_ratio", UnitLineageConfig.DEFAULT_INHERIT_RATIO))
-	evolution_confirm_dialog.dialog_text = "将进化为：%s\n\n你将获得：\n- 新单位成长上限\n- 属性传承 %.0f%%\n\n你将失去：\n- 当前A/B/C改造进度（清零）\n\n消耗：\n- 研究点 %d\n- 通用许可函 %d\n- 类型许可函 %d\n- 专属许可函 %d\n\n是否确认进化？" % [target_name, inherit_ratio * 100.0, research_cost, pg, pc, ps]
+	evolution_confirm_dialog.dialog_text = "将进化为：%s\n\n你将获得：\n- 新单位成长上限\n- 属性传承 %.0f%%\n\n你将失去：\n- 当前A/B/C改造进度（清零）\n\n是否确认进化？" % [target_name, inherit_ratio * 100.0]
 	evolution_confirm_dialog.popup_centered(Vector2i(520, 360))
 
 func _on_confirm_evolution() -> void:
@@ -669,14 +682,13 @@ func _try_execute_evolution() -> void:
 			result_label.add_theme_color_override("font_color", Color(0.55, 1.0, 0.6, 1))
 			selected_card_id = _pending_evolution_target_id
 		else:
-			result_label.text = "进化失败：请检查星级、改造次数与研究点是否满足。"
+			result_label.text = "进化失败：请检查强化等级、改造数量与进化蓝图是否满足。"
 			result_label.add_theme_color_override("font_color", Color(1.0, 0.45, 0.45, 1))
 	_init_card_list()
 	_update_resource_labels()
 	_update_detail_panel()
 
-func _on_enhancement_completed(success: bool, card_id: String, new_stats: Dictionary, message: String) -> void:
-	"""强化完成回调"""
+func _on_enhancement_completed(success: bool, card_id: String, action: String, message: String) -> void:
 	if card_id == selected_card_id:
 		# 更新结果标签
 		if result_label:
@@ -685,14 +697,13 @@ func _on_enhancement_completed(success: bool, card_id: String, new_stats: Dictio
 				result_label.add_theme_color_override("font_color", Color.GREEN)
 			else:
 				result_label.add_theme_color_override("font_color", Color.RED)
-		
+
 		# 刷新列表和详情面板
 		_init_card_list()
 		_update_detail_panel()
 		_update_resource_labels()
 
 func _on_enhancement_failed(card_id: String, reason: String) -> void:
-	"""强化失败回调"""
 	if card_id == selected_card_id:
 		if result_label:
 			result_label.text = reason
@@ -703,12 +714,18 @@ func _on_nano_materials_changed(_old_value: int = 0, _new_value: int = 0) -> voi
 	_update_detail_panel()
 
 func _update_resource_labels() -> void:
-	if BlueprintManager == null:
-		return
+	var nano_amount: int = 0
+	var rp_amount: int = 0
+	if BasicResourceManager and BasicResourceManager.has_method("get_total"):
+		nano_amount = int(BasicResourceManager.get_total(BasicResources.ID_NANO_MATERIALS))
+	elif BlueprintManager and BlueprintManager.has_method("get_nano_materials"):
+		nano_amount = int(BlueprintManager.get_nano_materials())
+	if BlueprintManager and BlueprintManager.has_method("get_research_points"):
+		rp_amount = BlueprintManager.get_research_points()
 	if nano_label:
-		nano_label.text = "纳米材料：%d" % BlueprintManager.get_nano_materials()
+		nano_label.text = "纳米材料：%d" % nano_amount
 	if research_label:
-		research_label.text = "研究点：%d" % BlueprintManager.get_research_points()
+		research_label.text = "研究点：%d" % rp_amount
 
 func _on_close() -> void:
 	closed.emit()
@@ -719,7 +736,6 @@ func _on_card_added_to_backpack(_card: CardResource) -> void:
 
 ## 添加属性预览功能
 func _add_attribute_preview(parent: Control, card_data: Variant, current_level: int, next_level: int) -> void:
-	"""显示强化前后的属性对比"""
 	if not card_data:
 		return
 
@@ -778,7 +794,6 @@ func _add_attribute_preview(parent: Control, card_data: Variant, current_level: 
 
 ## 获取卡牌属性
 func _get_card_attributes(card_data: Variant, level: int) -> Dictionary:
-	"""根据卡牌数据获取当前等级的属性"""
 	var stats = {}
 
 	if card_data is Dictionary:

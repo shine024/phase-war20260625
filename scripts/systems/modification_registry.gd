@@ -48,7 +48,7 @@ static func register_all() -> void:
 	_register_modifications("universal", UniversalModifications)
 
 	_initialized = true
-	print("[ModificationRegistry] Registered %d modification modules" % _count_total())
+	# [LOG-v5.1] print("[ModificationRegistry] Registered %d modification modules" % _count_total())
 
 static func _register_modifications(type_key: String, class_ref: RefCounted) -> void:
 	var mod_ids = class_ref.get_all_mod_ids()

@@ -120,4 +120,5 @@ func _try_flush_to_disk(reason: String) -> void:
 		return
 	f.store_string(JSON.stringify(payload, "\t"))
 	if DEBUG_LOG:
-		print("[PerformanceMetrics] flushed: %s -> %s" % [reason, OUTPUT_PATH])
+		pass
+		# [LOG-v5.1] print("[PerformanceMetrics] flushed: %s -> %s" % [reason, OUTPUT_PATH])

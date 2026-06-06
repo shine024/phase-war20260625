@@ -138,21 +138,7 @@ func _format_card_slot_tooltip(color: String, card: CardResource) -> String:
 	var combat_line: String = BackpackCombatPreview.build_line(card)
 	if not combat_line.is_empty():
 		detail_lines.append(combat_line)
-	if BlueprintManager and BlueprintManager.has_method("get_star_enhancement_lines"):
-		var star_now: int = BlueprintManager.get_blueprint_star(card.card_id)
-		var enhance_lines: Array[String] = BlueprintManager.get_star_enhancement_lines(card.card_id, star_now)
-		if not enhance_lines.is_empty():
-			detail_lines.append("星级强化(★%d)：" % star_now)
-			var n := 0
-			for line in enhance_lines:
-				if n >= _TOOLTIP_ENHANCE_MAX:
-					break
-				detail_lines.append("  - %s" % line)
-				n += 1
-			if enhance_lines.size() > n:
-				detail_lines.append("  - …")
-		elif star_now >= 1:
-			detail_lines.append("星级强化(★%d)：暂无星级词条说明" % star_now)
+	# v5.1: star_level system removed - skip star enhancement display
 	return "\n".join(detail_lines)
 
 

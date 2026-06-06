@@ -59,13 +59,15 @@ func complete_level(level: int, stars: int) -> void:
 		level_stars[level] = stars
 		stars_updated.emit(level, stars)
 		if DEBUG_LOG:
-			print("[LevelProgress] 关卡 %d 星级更新: %d -> %d" % [level, prev_stars, stars])
+			pass
+			# [LOG-v5.1] print("[LevelProgress] 关卡 %d 星级更新: %d -> %d" % [level, prev_stars, stars])
 
 	# 记录首次通关
 	if is_first:
 		first_completion[level] = true
 		if DEBUG_LOG:
-			print("[LevelProgress] 关卡 %d 首次通关！" % level)
+			pass
+			# [LOG-v5.1] print("[LevelProgress] 关卡 %d 首次通关！" % level)
 
 	# 发放首次通关奖励
 	if is_first:
@@ -91,7 +93,8 @@ func _unlock_next_level(completed_level: int) -> void:
 		max_unlocked_level = max(max_unlocked_level, next_level)
 		level_unlocked.emit(next_level)
 		if DEBUG_LOG:
-			print("[LevelProgress] 解锁关卡: %d" % next_level)
+			pass
+			# [LOG-v5.1] print("[LevelProgress] 解锁关卡: %d" % next_level)
 
 ## 检查是否解锁新时代
 func _check_era_unlock(level: int) -> void:
@@ -104,12 +107,14 @@ func _check_era_unlock(level: int) -> void:
 			unlocked_eras[era] = true
 			era_unlocked.emit(era)
 			if DEBUG_LOG:
-				print("[LevelProgress] 解锁时代: %d" % era)
+				pass
+				# [LOG-v5.1] print("[LevelProgress] 解锁时代: %d" % era)
 
 ## 首次通关奖励
 func _grant_first_completion_rewards(level: int) -> void:
 	if DEBUG_LOG:
-		print("[LevelProgress] 发放关卡 %d 首次通关奖励" % level)
+		pass
+		# [LOG-v5.1] print("[LevelProgress] 发放关卡 %d 首次通关奖励" % level)
 
 	# 基础奖励：纳米材料
 	var brm = get_node_or_null("/root/BasicResourceManager")
@@ -117,20 +122,23 @@ func _grant_first_completion_rewards(level: int) -> void:
 		var base_amount = 50 + (level * 5)
 		brm.add_basic_resource("nano_materials", base_amount)
 		if DEBUG_LOG:
-			print("[LevelProgress]  + %d 纳米材料" % base_amount)
+			pass
+			# [LOG-v5.1] print("[LevelProgress]  + %d 纳米材料" % base_amount)
 
 	# Boss关卡额外奖励
 	if level % 20 == 0:
 		var boss_bonus = 500
 		brm.add_basic_resource("nano_materials", boss_bonus)
 		if DEBUG_LOG:
-			print("[LevelProgress]  Boss关卡额外 + %d 纳米材料" % boss_bonus)
+			pass
+			# [LOG-v5.1] print("[LevelProgress]  Boss关卡额外 + %d 纳米材料" % boss_bonus)
 
 		# 解锁新时代的消息
 		var era = level / 20
 		if era < 5:
 			if DEBUG_LOG:
-				print("[LevelProgress]  解锁新时代: %d" % (era + 1))
+				pass
+				# [LOG-v5.1] print("[LevelProgress]  解锁新时代: %d" % (era + 1))
 
 ## 获取已解锁关卡列表
 func get_unlocked_levels() -> Array:
@@ -230,7 +238,7 @@ func load_state(state: Dictionary) -> void:
 		max_unlocked_level = 1
 
 	if DEBUG_LOG:
-		print("[LevelProgress] 进度已加载: max_level=%d, unlocked=%d关, stars=%d关" % [
+		# [LOG-v5.1] print("[LevelProgress] 进度已加载: max_level=%d, unlocked=%d关, stars=%d关" % [
 			max_unlocked_level, unlocked_levels.size(), level_stars.size()])
 
 ## 重置进度（用于新游戏）
@@ -241,7 +249,8 @@ func reset_progress() -> void:
 	first_completion.clear()
 	unlocked_eras = {1: true}
 	if DEBUG_LOG:
-		print("[LevelProgress] 进度已重置")
+		pass
+		# [LOG-v5.1] print("[LevelProgress] 进度已重置")
 
 ## 内部加载（初始化时调用）
 ## 注意：不再主动读取存档，而是等待 SaveManager 调用 load_state()
@@ -249,4 +258,5 @@ func _load_progress() -> void:
 	# 进度数据将由 SaveManager.load_game() 通过 load_state() 加载
 	# 这里只做初始化日志
 	if DEBUG_LOG:
-		print("[LevelProgress] 进度管理器已初始化，等待存档加载...")
+		pass
+		# [LOG-v5.1] print("[LevelProgress] 进度管理器已初始化，等待存档加载...")

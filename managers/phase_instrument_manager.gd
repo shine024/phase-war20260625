@@ -485,13 +485,12 @@ func equip_card(slot_index: int, card: CardResource, _energy_manager: Node = nul
 			if _plm.has_method("force_sync_instrument_law_slots"):
 				_plm.force_sync_instrument_law_slots(hyp["passives"], hyp["actives"])
 			else:
-				print("[PhaseInstrumentManager] 法则槽装配未通过（环境/纳米/解锁）: ", card.display_name)
+				# [LOG-v5.1] print("[PhaseInstrumentManager] 法则槽装配未通过（环境/纳米/解锁）: ", card.display_name)
 				return false
 
 	# 装备卡牌到相位仪不消耗能量
 	# 只有战斗中使用卡牌才消耗能量
-	if DEBUG_EQUIP_LOG:
-		print("[PhaseInstrumentManager] 装备卡牌 %s 到槽位 %s (颜色: %s)，不消耗能量" % [card.display_name, slot_index, color])
+	# [LOG-v5.1] if DEBUG_EQUIP_LOG: print("[PhaseInstrumentManager] 装备卡牌 %s 到槽位 %s (颜色: %s)，不消耗能量" % [card.display_name, slot_index, color])
 
 	var arr: Array = instrument_slots.get(color, [])
 	var old_card: CardResource = arr[color_index]
@@ -529,9 +528,9 @@ func unequip_card(slot_index: int) -> void:
 	SignalBus.card_unequipped.emit(slot_index)
 	# 将卡归还到背包
 	if card != null:
-		print("[PhaseInstrumentManager] unequip_card: Emitting card_added_to_backpack for card_id=%s" % card.card_id)
+		# [LOG-v5.1] print("[PhaseInstrumentManager] unequip_card: Emitting card_added_to_backpack for card_id=%s" % card.card_id)
 		SignalBus.card_added_to_backpack.emit(card)
-		print("[PhaseInstrumentManager] unequip_card: Signal emitted successfully")
+		# [LOG-v5.1] print("[PhaseInstrumentManager] unequip_card: Signal emitted successfully")
 
 ## 战斗结束后：清空所有槽位并将卡片逐一放回背包的第一个空位
 func unequip_all_and_return_to_backpack() -> void:
@@ -553,7 +552,7 @@ func unequip_all_and_return_to_backpack() -> void:
 	if SignalBus and not cards_to_return.is_empty():
 		for c2 in cards_to_return:
 			SignalBus.card_added_to_backpack.emit(c2)
-			print("[PhaseInstrumentManager] 卡片 %s 已返还背包" % c2.card_id)
+			# [LOG-v5.1] print("[PhaseInstrumentManager] 卡片 %s 已返还背包" % c2.card_id)
 
 func get_slots() -> Array:
 	var out: Array = []
@@ -708,7 +707,7 @@ func _equip_starter_cards_for_new_game() -> void:
 				yellow_arr[i] = starter_energy.clone()
 	instrument_slots["yellow"] = yellow_arr
 
-	print("[PhaseInstrumentManager] 新游戏初始卡牌已自动装备")
+	# [LOG-v5.1] print("[PhaseInstrumentManager] 新游戏初始卡牌已自动装备")
 
 func save_state() -> Dictionary:
 	var runtime_defs: Dictionary = {}

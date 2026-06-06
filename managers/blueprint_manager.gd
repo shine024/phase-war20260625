@@ -818,7 +818,7 @@ func _sync_blueprint_mods_to_templates() -> void:
 					card.mods.append(entry.duplicate(true))
 	if blueprint_mods.is_empty():
 		return
-	print("[BlueprintManager] 已同步 %d 张卡的改造数据到模板" % blueprint_mods.size())
+	# [LOG-v5.1] print("[BlueprintManager] 已同步 %d 张卡的改造数据到模板" % blueprint_mods.size())
 
 func _migrate_v3_law_copies_to_knowledge() -> void:
 	var plm := _ensure_plm()

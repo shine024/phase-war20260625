@@ -39,10 +39,11 @@ const CORE_MANAGERS: Array = [
 func _ready() -> void:
 	_ensure_configs_initialized()
 	if DEBUG_MANAGER_LAZY_LOG:
-		print("[ManagerLazyLoader] v2 初始化完成")
-		print("  核心Autoload: ", CORE_MANAGERS.size(), " 个")
-		print("  可延迟加载:   ", _manager_configs.size(), " 个")
-		print("  Autoload总计: ", CORE_MANAGERS.size() + 1, " 个 (含ManagerLazyLoader)")
+		pass
+		# [LOG-v5.1] print("[ManagerLazyLoader] v2 初始化完成")
+		# [LOG-v5.1] print("  核心Autoload: ", CORE_MANAGERS.size(), " 个")
+		# [LOG-v5.1] print("  可延迟加载:   ", _manager_configs.size(), " 个")
+		# [LOG-v5.1] print("  Autoload总计: ", CORE_MANAGERS.size() + 1, " 个 (含ManagerLazyLoader)")
 
 func _ensure_configs_initialized() -> void:
 	if not _manager_configs.is_empty():
@@ -239,7 +240,8 @@ func preload_by_priority(max_priority: int) -> int:
 				count += 1
 	if count > 0:
 		if DEBUG_MANAGER_LAZY_LOG:
-			print("[ManagerLazyLoader] 预加载 priority<=", max_priority, ": ", count, " 个管理器")
+			pass
+			# [LOG-v5.1] print("[ManagerLazyLoader] 预加载 priority<=", max_priority, ": ", count, " 个管理器")
 	return count
 
 
@@ -338,7 +340,8 @@ func _instantiate_manager(manager_id: String) -> Node:
 	if existing:
 		_loaded_managers[manager_id] = existing
 		if DEBUG_MANAGER_LAZY_LOG:
-			print("[ManagerLazyLoader] 管理器已存在于场景树: ", node_name)
+			pass
+			# [LOG-v5.1] print("[ManagerLazyLoader] 管理器已存在于场景树: ", node_name)
 		return existing
 
 	# 加载脚本
@@ -368,7 +371,8 @@ func _instantiate_manager(manager_id: String) -> Node:
 	# _enter_tree() 和 _ready() 在 add_child 后自动调用
 
 	if DEBUG_MANAGER_LAZY_LOG:
-		print("[ManagerLazyLoader] 实例化: ", node_name, " [", config.get("description", ""), "]")
+		pass
+		# [LOG-v5.1] print("[ManagerLazyLoader] 实例化: ", node_name, " [", config.get("description", ""), "]")
 	return manager
 
 

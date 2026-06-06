@@ -241,14 +241,14 @@ func _on_assemble_single() -> void:
 				var plm := get_node_or_null("/root/PhaseLawManager")
 				if plm and plm.has_method("ensure_law_unlocked"):
 					plm.ensure_law_unlocked(law_id)
-						print("[ManufacturePanel] 法则已解锁: ", law_id)
+						# [LOG-v5.1] print("[ManufacturePanel] 法则已解锁: ", law_id)
 				# 继承蓝图星级（已废弃，enhance_level 由养成系统管理）
 				#if BlueprintManager.has_method("get_blueprint_star"):
 				#	manufactured_card.star_level = BlueprintManager.get_blueprint_star(card_id)
 				if SignalBus:
 					_enqueue_backpack_fallback_if_needed(String(manufactured_card.card_id))
 					SignalBus.card_added_to_backpack.emit(manufactured_card)
-				print("[ManufacturePanel] 制造成功: ", DefaultCards.safe_name(manufactured_card))
+				# [LOG-v5.1] print("[ManufacturePanel] 制造成功: ", DefaultCards.safe_name(manufactured_card))
 		return
 
 	# 平台和武器卡：原有逻辑

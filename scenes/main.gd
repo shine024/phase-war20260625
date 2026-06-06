@@ -411,7 +411,7 @@ func _on_law_slot_clicked(law_id: String, kind: String, origin_global: Vector2) 
 				if "active_law_states" in plm:
 					if not plm.active_law_states.has(law_id):
 						plm.active_law_states[law_id] = {"casts_used": 0, "casts_limit": 999999}
-				print("[Main] 强制同步主动法则到 PhaseLawManager: ", law_id)
+				# [LOG-v5.1] print("[Main] 强制同步主动法则到 PhaseLawManager: ", law_id)
 		if SignalBus:
 			BattleInputState.pending_deploy_platform_card_id = ""
 			BattleInputState.pending_deploy_origin_global = Vector2.ZERO
@@ -752,10 +752,12 @@ func _setup_new_managers() -> void:
 		var existing = get_node_or_null("/root/" + manager_name)
 		if existing:
 			if DEBUG_MAIN_LOG:
-				print("[Main] 管理器已加载: ", manager_name)
+				pass
+				# [LOG-v5.1] print("[Main] 管理器已加载: ", manager_name)
 		else:
 			if DEBUG_MAIN_LOG:
-				print("[Main] 管理器未找到: ", manager_name)
+				pass
+				# [LOG-v5.1] print("[Main] 管理器未找到: ", manager_name)
 
 ## 启动新手教程（如果是新游戏）
 func _start_tutorial_if_needed() -> void:

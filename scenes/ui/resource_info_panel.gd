@@ -70,7 +70,7 @@ func _build_ui() -> void:
 	# 验证信号连接
 	if not _toggle_button.pressed.is_connected(_on_toggle_pressed):
 		_toggle_button.pressed.connect(_on_toggle_pressed)
-		print("资源面板：已连接展开/收起按钮信号")
+		# [LOG-v5.1] print("资源面板：已连接展开/收起按钮信号")
 	
 	header.add_child(_toggle_button)
 

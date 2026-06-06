@@ -11,10 +11,7 @@
       "target": 3,
       "company_id": "iron_wall_corp",
       "rewards": {
-        "blueprint_fragments": {
-          "smg_mk2": 1
-        },
-        "nano_materials": 10,
+        "nano_materials": 20,
         "company_rep": {
           "iron_wall_corp": 10
         }
@@ -28,10 +25,7 @@
       "target": 10,
       "company_id": "iron_wall_corp",
       "rewards": {
-        "blueprint_fragments": {
-          "bp_ww2_013": 2
-        },
-        "nano_materials": 25,
+        "nano_materials": 45,
         "company_rep": {
           "iron_wall_corp": 20
         }
@@ -45,10 +39,7 @@
       "target": 20,
       "company_id": "nova_arms",
       "rewards": {
-        "blueprint_fragments": {
-          "bp_cold_022": 1
-        },
-        "nano_materials": 15,
+        "nano_materials": 25,
         "company_rep": {
           "nova_arms": 12
         }
@@ -92,10 +83,7 @@
       "target": 5,
       "company_id": "frontier_union",
       "rewards": {
-        "blueprint_fragments": {
-          "phase_lance": 1
-        },
-        "nano_materials": 15,
+        "nano_materials": 25,
         "company_rep": {
           "frontier_union": 12
         }
@@ -109,10 +97,7 @@
       "target": 10,
       "company_id": "frontier_union",
       "rewards": {
-        "blueprint_fragments": {
-          "railgun": 1
-        },
-        "nano_materials": 30,
+        "nano_materials": 40,
         "company_rep": {
           "frontier_union": 20
         }
@@ -126,10 +111,7 @@
       "target": 5,
       "company_id": "quantum_logistics",
       "rewards": {
-        "blueprint_fragments": {
-          "bulwark": 1
-        },
-        "nano_materials": 12,
+        "nano_materials": 22,
         "company_rep": {
           "quantum_logistics": 10
         }
@@ -143,10 +125,7 @@
       "target": 20,
       "company_id": "iron_wall_corp",
       "rewards": {
-        "blueprint_fragments": {
-          "thunder_field": 1
-        },
-        "nano_materials": 50,
+        "nano_materials": 60,
         "company_rep": {
           "iron_wall_corp": 35
         }
@@ -160,10 +139,7 @@
       "target": 100,
       "company_id": "nova_arms",
       "rewards": {
-        "blueprint_fragments": {
-          "mega_beam_cannon": 1
-        },
-        "nano_materials": 60,
+        "nano_materials": 70,
         "company_rep": {
           "nova_arms": 40
         }
@@ -177,10 +153,7 @@
       "target": 20,
       "company_id": "frontier_union",
       "rewards": {
-        "blueprint_fragments": {
-          "titan_mk2": 1
-        },
-        "nano_materials": 45,
+        "nano_materials": 55,
         "company_rep": {
           "frontier_union": 30
         }
@@ -197,10 +170,7 @@
       },
       "company_id": "nova_arms",
       "rewards": {
-        "blueprint_fragments": {
-          "mega_beam_cannon": 2
-        },
-        "nano_materials": 80,
+        "nano_materials": 100,
         "faction_rep": {
           "nova_arms": 25,
           "void_research": -20
@@ -218,10 +188,7 @@
       },
       "company_id": "iron_wall_corp",
       "rewards": {
-        "blueprint_fragments": {
-          "thunder_field": 2
-        },
-        "nano_materials": 80,
+        "nano_materials": 100,
         "faction_rep": {
           "iron_wall_corp": 25,
           "nova_arms": -20
@@ -239,10 +206,7 @@
       },
       "company_id": "quantum_logistics",
       "rewards": {
-        "blueprint_fragments": {
-          "phase_lance": 2
-        },
-        "nano_materials": 80,
+        "nano_materials": 100,
         "faction_rep": {
           "quantum_logistics": 25,
           "aether_dynamics": -20
@@ -259,10 +223,7 @@
       },
       "company_id": "iron_wall_corp",
       "rewards": {
-        "blueprint_fragments": {
-          "bulwark": 2
-        },
-        "nano_materials": 60,
+        "nano_materials": 80,
         "faction_rep": {
           "iron_wall_corp": 30
         }
@@ -278,10 +239,7 @@
       },
       "company_id": "frontier_union",
       "rewards": {
-        "blueprint_fragments": {
-          "titan_mk2": 2
-        },
-        "nano_materials": 60,
+        "nano_materials": 80,
         "faction_rep": {
           "frontier_union": 30
         }
@@ -297,10 +255,7 @@
       },
       "company_id": "helix_recon",
       "rewards": {
-        "blueprint_fragments": {
-          "bp_cold_022": 2
-        },
-        "nano_materials": 60,
+        "nano_materials": 80,
         "faction_rep": {
           "helix_recon": 30
         }
@@ -342,10 +297,7 @@
       "target": 3,
       "company_id": "void_research",
       "rewards": {
-        "blueprint_fragments": {
-          "bp_ww1_013": 1
-        },
-        "nano_materials": 15,
+        "nano_materials": 25,
         "company_rep": {
           "void_research": 10
         }
@@ -359,10 +311,7 @@
       "target": 3,
       "company_id": "frontier_union",
       "rewards": {
-        "blueprint_fragments": {
-          "bp_ww1_001": 1
-        },
-        "nano_materials": 8,
+        "nano_materials": 18,
         "company_rep": {
           "frontier_union": 8
         }
@@ -404,10 +353,7 @@
       "target": 10,
       "company_id": "helix_recon",
       "rewards": {
-        "blueprint_fragments": {
-          "bp_ww1_011": 1
-        },
-        "nano_materials": 10,
+        "nano_materials": 20,
         "company_rep": {
           "helix_recon": 10
         }
@@ -421,10 +367,7 @@
       "target": 30,
       "company_id": "iron_wall_corp",
       "rewards": {
-        "blueprint_fragments": {
-          "bp_modern_013": 2
-        },
-        "nano_materials": 70,
+        "nano_materials": 90,
         "company_rep": {
           "iron_wall_corp": 40
         }
@@ -438,10 +381,7 @@
       "target": 50,
       "company_id": "iron_wall_corp",
       "rewards": {
-        "blueprint_fragments": {
-          "bp_future_013": 2
-        },
-        "nano_materials": 100,
+        "nano_materials": 120,
         "company_rep": {
           "iron_wall_corp": 60
         }
@@ -455,10 +395,7 @@
       "target": 150,
       "company_id": "nova_arms",
       "rewards": {
-        "blueprint_fragments": {
-          "omega_cannon": 2
-        },
-        "nano_materials": 80,
+        "nano_materials": 100,
         "company_rep": {
           "nova_arms": 50
         }
@@ -472,10 +409,7 @@
       "target": 200,
       "company_id": "nova_arms",
       "rewards": {
-        "blueprint_fragments": {
-          "omega_platform": 1
-        },
-        "nano_materials": 120,
+        "nano_materials": 130,
         "company_rep": {
           "nova_arms": 70
         }
@@ -489,10 +423,7 @@
       "target": 40,
       "company_id": "frontier_union",
       "rewards": {
-        "blueprint_fragments": {
-          "bp_ww2_022": 2
-        },
-        "nano_materials": 55,
+        "nano_materials": 75,
         "company_rep": {
           "frontier_union": 35
         }
@@ -506,10 +437,7 @@
       "target": 60,
       "company_id": "frontier_union",
       "rewards": {
-        "blueprint_fragments": {
-          "bp_cold_022": 2
-        },
-        "nano_materials": 65,
+        "nano_materials": 85,
         "company_rep": {
           "frontier_union": 40
         }
@@ -523,10 +451,7 @@
       "target": 80,
       "company_id": "frontier_union",
       "rewards": {
-        "blueprint_fragments": {
-          "bp_modern_022": 2
-        },
-        "nano_materials": 75,
+        "nano_materials": 95,
         "company_rep": {
           "frontier_union": 45
         }
@@ -540,11 +465,7 @@
       "target": 100,
       "company_id": "frontier_union",
       "rewards": {
-        "blueprint_fragments": {
-          "omega_platform": 2,
-          "omega_cannon": 2
-        },
-        "nano_materials": 200,
+        "nano_materials": 240,
         "company_rep": {
           "frontier_union": 100
         }
@@ -558,10 +479,7 @@
       "target": 3,
       "company_id": "frontier_union",
       "rewards": {
-        "blueprint_fragments": {
-          "titan_mk2": 1
-        },
-        "nano_materials": 75,
+        "nano_materials": 85,
         "company_rep": {
           "frontier_union": 45
         }
@@ -575,10 +493,7 @@
       "target": 5,
       "company_id": "void_research",
       "rewards": {
-        "blueprint_fragments": {
-          "mega_beam_cannon": 1
-        },
-        "nano_materials": 90,
+        "nano_materials": 100,
         "company_rep": {
           "void_research": 50
         }
@@ -606,10 +521,7 @@
       "target": 10,
       "company_id": "quantum_logistics",
       "rewards": {
-        "blueprint_fragments": {
-          "bp_ww1_001": 1
-        },
-        "nano_materials": 20,
+        "nano_materials": 30,
         "company_rep": {
           "quantum_logistics": 15
         }
@@ -623,10 +535,7 @@
       "target": 15,
       "company_id": "nova_arms",
       "rewards": {
-        "blueprint_fragments": {
-          "bp_ww1_011": 1
-        },
-        "nano_materials": 25,
+        "nano_materials": 35,
         "company_rep": {
           "nova_arms": 18
         }
@@ -640,10 +549,7 @@
       "target": 3,
       "company_id": "void_research",
       "rewards": {
-        "blueprint_fragments": {
-          "thunder_field": 1
-        },
-        "nano_materials": 30,
+        "nano_materials": 40,
         "company_rep": {
           "void_research": 20
         }
@@ -673,10 +579,7 @@
       },
       "company_id": "void_research",
       "rewards": {
-        "blueprint_fragments": {
-          "railgun": 2
-        },
-        "nano_materials": 35,
+        "nano_materials": 55,
         "company_rep": {
           "void_research": 25
         }
@@ -690,10 +593,7 @@
       "target": 5,
       "company_id": "iron_wall_corp",
       "rewards": {
-        "blueprint_fragments": {
-          "bp_ww2_001": 1
-        },
-        "nano_materials": 22,
+        "nano_materials": 32,
         "company_rep": {
           "iron_wall_corp": 16
         }
@@ -707,10 +607,7 @@
       "target": 5,
       "company_id": "aether_dynamics",
       "rewards": {
-        "blueprint_fragments": {
-          "bp_modern_001": 1
-        },
-        "nano_materials": 28,
+        "nano_materials": 38,
         "company_rep": {
           "aether_dynamics": 20
         }
@@ -724,10 +621,7 @@
       "target": 5,
       "company_id": "void_research",
       "rewards": {
-        "blueprint_fragments": {
-          "bp_future_001": 1
-        },
-        "nano_materials": 32,
+        "nano_materials": 42,
         "company_rep": {
           "void_research": 22
         }
@@ -741,10 +635,7 @@
       "target": 30,
       "company_id": "iron_wall_corp",
       "rewards": {
-        "blueprint_fragments": {
-          "bulwark": 1
-        },
-        "nano_materials": 35,
+        "nano_materials": 45,
         "company_rep": {
           "iron_wall_corp": 20
         }
@@ -758,10 +649,7 @@
       "target": 30,
       "company_id": "nova_arms",
       "rewards": {
-        "blueprint_fragments": {
-          "mega_beam_cannon": 1
-        },
-        "nano_materials": 35,
+        "nano_materials": 45,
         "company_rep": {
           "nova_arms": 20
         }
@@ -775,10 +663,7 @@
       "target": 30,
       "company_id": "aether_dynamics",
       "rewards": {
-        "blueprint_fragments": {
-          "phase_lance": 1
-        },
-        "nano_materials": 35,
+        "nano_materials": 45,
         "company_rep": {
           "aether_dynamics": 20
         }
@@ -792,10 +677,7 @@
       "target": 30,
       "company_id": "void_research",
       "rewards": {
-        "blueprint_fragments": {
-          "thunder_field": 1
-        },
-        "nano_materials": 35,
+        "nano_materials": 45,
         "company_rep": {
           "void_research": 20
         }
@@ -809,10 +691,7 @@
       "target": 20,
       "company_id": "frontier_union",
       "rewards": {
-        "blueprint_fragments": {
-          "titan_mk2": 2
-        },
-        "nano_materials": 80,
+        "nano_materials": 100,
         "company_rep": {
           "frontier_union": 50,
           "iron_wall_corp": 15,
@@ -832,10 +711,7 @@
       "target": 50,
       "company_id": "quantum_logistics",
       "rewards": {
-        "blueprint_fragments": {
-          "omega_platform": 1
-        },
-        "nano_materials": 60,
+        "nano_materials": 70,
         "company_rep": {
           "quantum_logistics": 35
         }
@@ -863,11 +739,7 @@
       "target": 5,
       "company_id": "frontier_union",
       "rewards": {
-        "blueprint_fragments": {
-          "omega_cannon": 1,
-          "omega_platform": 1
-        },
-        "nano_materials": 150,
+        "nano_materials": 170,
         "company_rep": {
           "frontier_union": 80
         }
@@ -881,10 +753,7 @@
       "target": 1,
       "company_id": "iron_wall_corp",
       "rewards": {
-        "blueprint_fragments": {
-          "thunder_field": 1
-        },
-        "nano_materials": 60,
+        "nano_materials": 70,
         "company_rep": {
           "iron_wall_corp": 40
         }
@@ -898,10 +767,7 @@
       "target": 30,
       "company_id": "aether_dynamics",
       "rewards": {
-        "blueprint_fragments": {
-          "phase_lance": 1
-        },
-        "nano_materials": 65,
+        "nano_materials": 75,
         "company_rep": {
           "aether_dynamics": 42
         }
@@ -915,10 +781,7 @@
       "target": 15,
       "company_id": "iron_wall_corp",
       "rewards": {
-        "blueprint_fragments": {
-          "bulwark": 1
-        },
-        "nano_materials": 70,
+        "nano_materials": 80,
         "company_rep": {
           "iron_wall_corp": 45
         }

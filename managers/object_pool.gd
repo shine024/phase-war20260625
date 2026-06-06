@@ -187,7 +187,8 @@ func register_pool(pool_name: String, config: PoolConfig) -> void:
 	add_child(pool)
 	_pools[pool_name] = pool
 	if OS.is_debug_build():
-		print("[ObjectPoolManager] 注册池 '%s'，大小: %d" % [pool_name, config.pool_size])
+		pass
+		# [LOG-v5.1] print("[ObjectPoolManager] 注册池 '%s'，大小: %d" % [pool_name, config.pool_size])
 
 ## 从池中获取对象
 func get_object(pool_name: String) -> Node:

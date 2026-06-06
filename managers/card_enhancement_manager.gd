@@ -63,7 +63,7 @@ var card_module_slots: Dictionary = {}
 func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
-	_load_state()
+	# v5.1: _load_state() removed, state loaded on demand
 
 # ─────────────────────────────────────────────
 #  查询接口

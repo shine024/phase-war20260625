@@ -130,10 +130,11 @@ func _perform_save() -> void:
 
 	if success:
 		if OS.is_debug_build():
-			print("[GlobalSaveButton] 存档成功")
+			pass
+			# [LOG-v5.1] print("[GlobalSaveButton] 存档成功")
 		_show_notification("✅ 存档成功！", Color(0.2, 0.8, 0.2))  # 绿色
 	else:
-		print("[GlobalSaveButton] 存档失败")
+		# [LOG-v5.1] print("[GlobalSaveButton] 存档失败")
 		_show_notification("❌ 存档失败，请检查存储空间", Color(0.9, 0.2, 0.2))  # 红色
 
 	_reenable_button()
@@ -170,10 +171,11 @@ func _perform_load() -> void:
 
 	if success:
 		if OS.is_debug_build():
-			print("[GlobalSaveButton] 读档成功")
+			pass
+			# [LOG-v5.1] print("[GlobalSaveButton] 读档成功")
 		_show_notification("📥 读档成功！", Color(0.2, 0.8, 0.2))
 	else:
-		print("[GlobalSaveButton] 读档失败")
+		# [LOG-v5.1] print("[GlobalSaveButton] 读档失败")
 		_show_notification("❌ 读档失败，存档不存在或已损坏", Color(0.9, 0.2, 0.2))
 
 	_reenable_button()

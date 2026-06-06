@@ -443,7 +443,7 @@ func load_pending_cards(prefer_incremental_view_update: bool = false) -> bool:
 	var last_known: Array = []
 	if SaveManager and SaveManager.has_method("get_last_known_backpack_ids"):
 		last_known = SaveManager.get_last_known_backpack_ids()
-	print("[BP] load_pending: pending=%s last_known=%s data_extra=%d" % [pending, last_known, _data.get_extra_card_ids().size()])
+	# [LOG-v5.1] print("[BP] load_pending: pending=%s last_known=%s data_extra=%d" % [pending, last_known, _data.get_extra_card_ids().size()])
 	# 3. 合并：以 pending 为主，补充 last_known 中 pending 缺少的卡（按出现次数差值补齐）
 	var pending_counts: Dictionary = {}
 	for id_val in pending:
@@ -486,7 +486,7 @@ func load_pending_cards(prefer_incremental_view_update: bool = false) -> bool:
 		return false
 	var silent: bool = prefer_incremental_view_update
 	_data.append_extra_cards(new_ids, silent)
-	print("[BP] load_pending: new_ids=%s final_data=%d" % [new_ids, _data.get_extra_card_ids().size()])
+	# [LOG-v5.1] print("[BP] load_pending: new_ids=%s final_data=%d" % [new_ids, _data.get_extra_card_ids().size()])
 	return true
 
 ## ============================================================
@@ -524,7 +524,7 @@ func _load_initial_cards() -> void:
 		return
 	# 1. 合并 pending + last_known 恢复所有已知额外卡
 	var loaded := load_pending_cards(false)
-	print("[BP] _load_initial_cards: loaded=%s extra=%d" % [loaded, _data.get_extra_card_ids().size()])
+	# [LOG-v5.1] print("[BP] _load_initial_cards: loaded=%s extra=%d" % [loaded, _data.get_extra_card_ids().size()])
 	# 2. 同步当前 _data 到 SaveManager._last_known_extra_ids（如果尚未同步）
 	if SaveManager and SaveManager.has_method("_set_last_known_extra_ids_direct"):
 		var all_known: Array = _data.get_extra_card_ids().duplicate()
@@ -558,7 +558,7 @@ func _refresh_card_grid() -> void:
 		return
 	var cards := _data.get_filtered_sorted_cards()
 	var extra := _data.get_extra_card_ids()
-	print("[BP] _refresh_grid: cards=%d extra_ids=%s" % [cards.size(), extra])
+	# [LOG-v5.1] print("[BP] _refresh_grid: cards=%d extra_ids=%s" % [cards.size(), extra])
 	if _view and _view.has_method("rebuild_card_grid"):
 		_view.rebuild_card_grid(cards)
 
@@ -566,7 +566,7 @@ func _can_incremental_update() -> bool:
 	return _is_view_visible() and _data != null and _data.has_method("is_default_view_mode") and _data.is_default_view_mode()
 
 func _run_open_refresh_pipeline() -> void:
-	print("[BP] _run_open_refresh_pipeline: visible=%s dirty=%s inflight=%s" % [_is_view_visible(), _grid_dirty_while_hidden, _open_refresh_inflight])
+	# [LOG-v5.1] print("[BP] _run_open_refresh_pipeline: visible=%s dirty=%s inflight=%s" % [_is_view_visible(), _grid_dirty_while_hidden, _open_refresh_inflight])
 	# 保护：若背包在这一帧内已关闭，直接结束。
 	if not _is_view_visible():
 		_open_refresh_inflight = false

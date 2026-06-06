@@ -129,7 +129,8 @@ func _process(delta: float) -> void:
 
 func start_battle(battle_scene: Node) -> void:
 	if DEBUG_BATTLE_LOG:
-		print("[BattleManager] start_battle 被调用")
+		pass
+		# [LOG-v5.1] print("[BattleManager] start_battle 被调用")
 	battlefield = battle_scene
 
 	# 性能优化：初始化空间分区系统
@@ -146,7 +147,8 @@ func start_battle(battle_scene: Node) -> void:
 		if _is_phase_master_battle and GameManager.has_method("get_current_phase_master"):
 			_phase_master_config = GameManager.get_current_phase_master()
 			if DEBUG_BATTLE_LOG:
-				print("[BattleManager] 相位师对战配置: %s" % _phase_master_config)
+				pass
+				# [LOG-v5.1] print("[BattleManager] 相位师对战配置: %s" % _phase_master_config)
 
 	if GameManager.has_method("get_enemy_wave_total_for_level"):
 		enemy_wave_total = GameManager.get_enemy_wave_total_for_level(GameManager.current_level)
@@ -154,7 +156,8 @@ func start_battle(battle_scene: Node) -> void:
 			enemy_wave_interval = GameManager.get_enemy_wave_interval_for_level(GameManager.current_level)
 	elif _is_phase_master_battle:
 		if DEBUG_BATTLE_LOG:
-			print("[BattleManager] 相位师战斗：禁用波次系统")
+			pass
+			# [LOG-v5.1] print("[BattleManager] 相位师战斗：禁用波次系统")
 
 	_card_grid_placement_active = false
 	_card_grid_combat_started = false
@@ -197,7 +200,8 @@ func start_battle(battle_scene: Node) -> void:
 
 func end_battle(player_won: bool) -> void:
 	if DEBUG_BATTLE_LOG:
-		print("[BattleManager] end_battle called, player_won: ", player_won)
+		pass
+		# [LOG-v5.1] print("[BattleManager] end_battle called, player_won: ", player_won)
 	battle_active = false
 	_card_grid_placement_active = false
 	_card_grid_combat_started = false
@@ -233,10 +237,12 @@ func end_battle(player_won: bool) -> void:
 	enemy_units_node = null
 	# 清理战场单位
 	if DEBUG_BATTLE_LOG:
-		print("[BattleManager] Calling clear_all_units")
+		pass
+		# [LOG-v5.1] print("[BattleManager] Calling clear_all_units")
 	_spawn_system.clear_all_units()
 	if DEBUG_BATTLE_LOG:
-		print("[BattleManager] clear_all_units completed")
+		pass
+		# [LOG-v5.1] print("[BattleManager] clear_all_units completed")
 	if PerformanceMetricsManager and PerformanceMetricsManager.has_method("end_battle_sampling"):
 		PerformanceMetricsManager.end_battle_sampling()
 	if BlueprintManager and BlueprintManager.has_method("flush_deferred_unlock_notifications"):
@@ -347,7 +353,8 @@ func _check_win_lose() -> void:
 	if live_enemies > 0:
 		return
 	if DEBUG_BATTLE_LOG:
-		print("[BattleManager] 普通战斗胜利！波次=%d/%d，剩余敌人=%d" % [_spawn_system.get_enemy_wave_index(), _spawn_system.get_enemy_wave_total(), live_enemies])
+		pass
+		# [LOG-v5.1] print("[BattleManager] 普通战斗胜利！波次=%d/%d，剩余敌人=%d" % [_spawn_system.get_enemy_wave_index(), _spawn_system.get_enemy_wave_total(), live_enemies])
 	end_battle(true)
 
 
@@ -593,7 +600,8 @@ func _setup_spatial_grid() -> void:
 	if battlefield:
 		battlefield.add_child(spatial_grid)
 		if DEBUG_BATTLE_LOG:
-			print("[BattleManager] 空间分区系统已初始化")
+			pass
+			# [LOG-v5.1] print("[BattleManager] 空间分区系统已初始化")
 	else:
 		push_warning("[BattleManager] 战场未设置，空间网格无法添加到场景树")
 
@@ -604,7 +612,8 @@ func _cleanup_spatial_grid() -> void:
 		spatial_grid.queue_free()
 		spatial_grid = null
 		if DEBUG_BATTLE_LOG:
-			print("[BattleManager] 空间分区系统已清理")
+			pass
+			# [LOG-v5.1] print("[BattleManager] 空间分区系统已清理")
 
 
 func _setup_enemy_projectile_batch() -> void:

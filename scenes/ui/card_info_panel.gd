@@ -995,23 +995,5 @@ func _build_active_law_effects_for_unit(unit: Node, is_player_side: bool) -> Str
 	return "\n".join(lines)
 
 func _build_star_enhancement_effects_for_stats(stats: UnitStats) -> String:
-	if stats == null or BlueprintManager == null or not BlueprintManager.has_method("get_star_enhancement_lines"):
-		return ""
-	var lines: Array[String] = []
-	if not String(stats.platform_card_id).is_empty():
-		var plat_star: int = 1
-		if BlueprintManager.has_method("get_blueprint_star"):
-			plat_star = maxi(1, BlueprintManager.get_blueprint_star(stats.platform_card_id))
-		var p_enh: Array[String] = BlueprintManager.get_star_enhancement_lines(stats.platform_card_id, plat_star)
-		for line in p_enh:
-			lines.append("平台 %s" % line)
-	for wid_raw in stats.weapon_card_ids:
-		var wid: String = String(wid_raw)
-		if wid.is_empty(): continue
-		var w_star: int = 1
-		if BlueprintManager.has_method("get_blueprint_star"):
-			w_star = maxi(1, BlueprintManager.get_blueprint_star(wid))
-		var w_enh: Array[String] = BlueprintManager.get_star_enhancement_lines(wid, w_star)
-		for line in w_enh:
-			lines.append("武器 %s" % line)
-	return "\n".join(lines)
+	# v5.1: star_level system removed
+	return ""

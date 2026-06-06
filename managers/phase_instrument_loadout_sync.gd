@@ -204,11 +204,12 @@ func equip_card(slot_index: int, card: CardResource, _energy_manager: Node = nul
 			if plm.has_method("force_sync_instrument_law_slots"):
 				plm.force_sync_instrument_law_slots(hyp["passives"], hyp["actives"])
 			else:
-				print("[PhaseInstrumentLoadoutSync] 法则槽装配未通过: ", card.display_name)
+				# [LOG-v5.1] print("[PhaseInstrumentLoadoutSync] 法则槽装配未通过: ", card.display_name)
+				pass
 				return false
 
 	if DEBUG_EQUIP_LOG:
-		print("[PhaseInstrumentLoadoutSync] 装备卡牌 %s 到槽位 %s (颜色: %s)" % [card.display_name, slot_index, color])
+		pass  # [LOG-v5.1] print("[PhaseInstrumentLoadoutSync] 装备卡牌 %s 到槽位 %s (颜色: %s)" % [card.display_name, slot_index, color])
 
 	var slots: Dictionary = _instrument_slots()
 	var arr: Array = slots.get(color, [])
@@ -262,7 +263,7 @@ func unequip_all_and_return_to_backpack() -> void:
 	if SignalBus and not cards_to_return.is_empty():
 		for c2 in cards_to_return:
 			SignalBus.card_added_to_backpack.emit(c2)
-			print("[PhaseInstrumentLoadoutSync] 卡片 %s 已返还背包" % c2.card_id)
+			# [LOG-v5.1] print("[PhaseInstrumentLoadoutSync] 卡片 %s 已返还背包" % c2.card_id)
 
 ## ── 负载系统 ──
 func get_loadouts() -> Array:

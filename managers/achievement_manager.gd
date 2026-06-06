@@ -253,7 +253,8 @@ func unlock_achievement(achievement_id: String) -> void:
 	var ach_data = ACHIEVEMENT_DATABASE[achievement_id]
 	achievement_unlocked.emit(achievement_id, ach_data.get("name", achievement_id))
 	if DEBUG_LOG:
-		print("[AchievementManager] 解锁成就: ", ach_data.get("name", achievement_id))
+		pass
+		# [LOG-v5.1] print("[AchievementManager] 解锁成就: ", ach_data.get("name", achievement_id))
 	_save_achievement_progress()
 
 ## 记录战斗胜利
@@ -440,7 +441,8 @@ func claim_achievement_reward(achievement_id: String) -> bool:
 	var reward_type = reward.get("type", "")
 	var reward_amount = reward.get("amount", 0)
 	if DEBUG_LOG:
-		print("[AchievementManager] 已领取成就奖励: %s (%s x%d)" % [achievement_id, reward_type, reward_amount])
+		pass
+		# [LOG-v5.1] print("[AchievementManager] 已领取成就奖励: %s (%s x%d)" % [achievement_id, reward_type, reward_amount])
 	return true
 
 ## 获取可领取奖励的成就列表
@@ -572,4 +574,5 @@ func load_state(data: Dictionary) -> void:
 		system_stats = saved_system.duplicate()
 
 	if DEBUG_LOG:
-		print("[AchievementManager] 加载成就状态，已解锁: ", unlocked_achievements.size(), "/", ACHIEVEMENT_DATABASE.size())
+		pass
+		# [LOG-v5.1] print("[AchievementManager] 加载成就状态，已解锁: ", unlocked_achievements.size(), "/", ACHIEVEMENT_DATABASE.size())

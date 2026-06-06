@@ -118,7 +118,8 @@ static func apply_modification(card_id: String, option_id: String, bpm_ref: Node
 				mods[i] = {id = option_id}
 				replaced = true
 				if bpm_ref.DEBUG_BLUEPRINT_LOG:
-					print("[ModManager] 改造替换：slot %d → %s" % [i, option_id])
+					pass
+					# [LOG-v5.1] print("[ModManager] 改造替换：slot %d → %s" % [i, option_id])
 				break
 	if not replaced:
 		if mods.size() >= ModEffects.MAX_MOD_SLOTS:

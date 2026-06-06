@@ -187,7 +187,7 @@ func _on_load_slot(slot_id: String) -> void:
 		success = SaveManager.load_game()
 
 	if success:
-		print("[SaveSlotManager] 成功加载存档槽: ", slot_id)
+		# [LOG-v5.1] print("[SaveSlotManager] 成功加载存档槽: ", slot_id)
 		slot_selected.emit(slot_id)
 		_refresh_all_slots()
 	else:
@@ -205,7 +205,7 @@ func _on_save_slot(slot_id: String) -> void:
 		success = SaveManager.save_game()
 
 	if success:
-		print("[SaveSlotManager] 成功保存到槽位: ", slot_id)
+		# [LOG-v5.1] print("[SaveSlotManager] 成功保存到槽位: ", slot_id)
 		_refresh_all_slots()
 	else:
 		push_error("[SaveSlotManager] 保存到槽位失败: ", slot_id)
@@ -223,7 +223,7 @@ func _on_delete_slot(slot_id: String) -> void:
 		success = SaveManager.delete_save(slot_id)
 
 	if success:
-		print("[SaveSlotManager] 成功删除存档槽: ", slot_id)
+		# [LOG-v5.1] print("[SaveSlotManager] 成功删除存档槽: ", slot_id)
 		slot_deleted.emit(slot_id)
 		_refresh_all_slots()
 	else:
@@ -257,7 +257,7 @@ func _on_import_file_selected(file_path: String, dialog: FileDialog) -> void:
 		success = SaveManager.import_save(file_path, target_slot)
 
 	if success:
-		print("[SaveSlotManager] 成功导入存档到: ", target_slot)
+		# [LOG-v5.1] print("[SaveSlotManager] 成功导入存档到: ", target_slot)
 		_refresh_all_slots()
 	else:
 		push_error("[SaveSlotManager] 导入存档失败")
@@ -299,7 +299,8 @@ func _on_export_file_selected(file_path: String, dialog: FileDialog) -> void:
 		success = SaveManager.export_save(source_slot, file_path)
 
 	if success:
-		print("[SaveSlotManager] 成功导出存档: ", file_path)
+		pass
+		# [LOG-v5.1] print("[SaveSlotManager] 成功导出存档: ", file_path)
 	else:
 		push_error("[SaveSlotManager] 导出存档失败")
 
@@ -316,7 +317,7 @@ func _on_cleanup_pressed() -> void:
 
 	if SaveManager.has_method("cleanup_old_saves"):
 		SaveManager.cleanup_old_saves(max_age_days)
-		print("[SaveSlotManager] 清理旧存档完成")
+		# [LOG-v5.1] print("[SaveSlotManager] 清理旧存档完成")
 		_refresh_all_slots()
 
 ## 关闭管理器
@@ -334,7 +335,7 @@ func get_save_statistics() -> Dictionary:
 func configure_auto_save(enabled: bool, interval_minutes: int) -> void:
 	if SaveManager != null and SaveManager.has_method("configure_auto_save"):
 		SaveManager.configure_auto_save(enabled, interval_minutes)
-		print("[SaveSlotManager] 自动存档配置: %s, 间隔: %d 分钟" % [enabled, interval_minutes])
+		# [LOG-v5.1] print("[SaveSlotManager] 自动存档配置: %s, 间隔: %d 分钟" % [enabled, interval_minutes])
 
 ## 快速存档
 func quick_save() -> bool:

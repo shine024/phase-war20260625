@@ -159,7 +159,7 @@ func _unlock_lore(lore_id: String) -> void:
 			var lore_list = GameManager.get_meta("unlocked_lore")
 			if not lore_list.has(lore_id):
 				lore_list.append(lore_id)
-				print("[DropManager] 解锁情报: ", lore_id, " - ", _get_lore_display_name(lore_id))
+				# [LOG-v5.1] print("[DropManager] 解锁情报: ", lore_id, " - ", _get_lore_display_name(lore_id))
 		else:
 			GameManager.add_unlocked_lore(lore_id)
 
@@ -197,7 +197,7 @@ func _apply_stat_boost(boost_id: String) -> void:
 			var boosts = GameManager.get_meta("stat_boosts")
 			if not boosts.has(boost_id):
 				boosts[boost_id] = boosts.get(boost_id, 0) + 1
-				print("[DropManager] 应用属性提升: ", boost_id, " - ", _get_boost_display_name(boost_id))
+				# [LOG-v5.1] print("[DropManager] 应用属性提升: ", boost_id, " - ", _get_boost_display_name(boost_id))
 		else:
 			GameManager.add_stat_boost(boost_id)
 
@@ -270,7 +270,7 @@ func _add_law_blueprint(law_id: String, count: int) -> void:
 		var law_card: CardResource = DefaultCards.create_law_card_resource(law_id)
 		if law_card and SignalBus:
 			SignalBus.card_added_to_backpack.emit(law_card)
-	print("[DropManager] 获得法则卡: ", law_id, " x", count)
+	# [LOG-v5.1] print("[DropManager] 获得法则卡: ", law_id, " x", count)
 
 ## 随机选择一个法则蓝图ID
 func _pick_random_law_blueprint() -> String:
@@ -305,7 +305,7 @@ func _add_law_card(law_id: String, count: int) -> void:
 		for i in range(maxi(1, count)):
 			if SignalBus:
 				SignalBus.card_added_to_backpack.emit(card.clone() if card.has_method("clone") else card)
-		print("[DropManager] 获得法则卡: ", card.display_name, " x", count)
+		# [LOG-v5.1] print("[DropManager] 获得法则卡: ", card.display_name, " x", count)
 	else:
 		push_error("[DropManager] 无法创建法则卡: " + law_id)
 
@@ -334,4 +334,4 @@ func _add_energy_blueprint(_item_id: String, count: int) -> void:
 		BlueprintManager.apply_card_drop_first_copy(energy_id)
 	if BlueprintManager != null and BlueprintManager.has_method("add_research_points"):
 		BlueprintManager.add_research_points(12 * n)
-	print("[DropManager] 获得能量卡: ", energy_id, " x", n)
+	# [LOG-v5.1] print("[DropManager] 获得能量卡: ", energy_id, " x", n)

@@ -29,9 +29,9 @@ static func _resource_exists(path: String) -> bool:
 
 static func _main() -> void:
 	var all_cards := DefaultCards.get_all_cards()
-	print("=== 战斗卡 Icon 诊断 ===")
-	print("总计: %d 张" % all_cards.size())
-	print()
+	# [LOG-v5.1] print("=== 战斗卡 Icon 诊断 ===")
+	# [LOG-v5.1] print("总计: %d 张" % all_cards.size())
+	# [LOG-v5.1] print()
 	
 	var mismatch_count := 0
 	var ok_count := 0
@@ -94,21 +94,23 @@ static func _main() -> void:
 		
 		# 输出有问题的卡
 		if status in ["MISSING", "PLACEHOLDER", "ENEMY_VIS", "FOE_ALIAS"]:
-			print("  [%s] %s (platform: %s)" % [status, card_id, platform_id])
-			print("         path: %s  |  detail: %s" % [icon_path, details])
+			# [LOG-v5.1] print("  [%s] %s (platform: %s)" % [status, card_id, platform_id])
+			# [LOG-v5.1] print("         path: %s  |  detail: %s" % [icon_path, details])
 			# 尝试找正确的映射
 			if platform_id:
 				var foe_arch := EnemyUnitManifest.archetype_id_for_platform_card(platform_id)
 				var icon := EnemyUnitManifest.get_unit_icon_path_for_archetype(foe_arch)
 				if not icon.is_empty():
-					print("         foe_arch: %s  →  icon: %s" % [foe_arch, icon])
+					pass
+					# [LOG-v5.1] print("         foe_arch: %s  →  icon: %s" % [foe_arch, icon])
 				else:
+					pass
 					# fallback: 用 platform_type 找 PLAYER_MIRROR_ARCHETYPE
-					print("         foe_arch 无图标文件，尝试 platform_type 映射")
+					# [LOG-v5.1] print("         foe_arch 无图标文件，尝试 platform_type 映射")
 	
-	print()
-	print("=== 统计 ===")
-	print("  正确 (PLAYER_VIS/ROOT_FILE): %d" % ok_count)
-	print("  敌方视觉 (ENEMY_VIS/FOE_ALIAS): %d" % mismatch_count)
-	print("  占位图 (PLACEHOLDER): %d" % placeholder_count)
-	print("  缺失 (MISSING): %d" % error_count)
+	# [LOG-v5.1] print()
+	# [LOG-v5.1] print("=== 统计 ===")
+	# [LOG-v5.1] print("  正确 (PLAYER_VIS/ROOT_FILE): %d" % ok_count)
+	# [LOG-v5.1] print("  敌方视觉 (ENEMY_VIS/FOE_ALIAS): %d" % mismatch_count)
+	# [LOG-v5.1] print("  占位图 (PLACEHOLDER): %d" % placeholder_count)
+	push_error("  缺失 (MISSING): %d" % error_count)

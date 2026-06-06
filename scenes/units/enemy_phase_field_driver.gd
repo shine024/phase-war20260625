@@ -106,8 +106,7 @@ func setup(master_config: Dictionary) -> void:
 	if SignalBus:
 		SignalBus.enemy_phase_driver_hp_changed.emit(hp, max_hp)
 	var mode_str := "装备模式" if _has_equipment else "经典模式"
-	print("[EnemyPhaseDriver] 相位师 %s 基地建立 (HP=%d, era=%d, limit=%d, interval=%.1f) [%s]" \
-		% [master_name, int(max_hp), era, _unit_limit, spawn_interval, mode_str])
+	# [LOG-v5.1] print("[EnemyPhaseDriver] 相位师 %s 基地建立 (HP=%d, era=%d, limit=%d, interval=%.1f) [%s]" % [master_name, int(max_hp), era, _unit_limit, spawn_interval, mode_str])
 	_apply_body_visual_from_master(master_config)
 
 func _apply_body_visual_from_master(master_config: Dictionary) -> void:

@@ -79,10 +79,11 @@ func _output_to_console(entry: Dictionary) -> void:
 		LogLevel.WARNING:
 			push_warning(output)
 		_:
-			print(output)
+			# [LOG-v5.1] print(output)
 	var data = entry.get("data", {})
 	if not data.is_empty():
-		print("  Data: ", data)
+		pass
+		# [LOG-v5.1] print("  Data: ", data)
 
 func _buffer_log_entry(entry: Dictionary) -> void:
 	log_buffer.append(entry)

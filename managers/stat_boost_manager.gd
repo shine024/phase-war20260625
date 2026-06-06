@@ -121,13 +121,15 @@ func apply_boost(boost_id: String) -> void:
 
 	if current_count >= max_stacks:
 		if DEBUG_LOG:
-			print("[StatBoostManager] 属性提升已达上限: ", boost_data.get("name", boost_id))
+			pass
+			# [LOG-v5.1] print("[StatBoostManager] 属性提升已达上限: ", boost_data.get("name", boost_id))
 		return
 
 	boost_counts[boost_id] = current_count + 1
 	stat_boost_applied.emit(boost_id, boost_data.get("name", boost_id), boost_counts[boost_id])
 	if DEBUG_LOG:
-		print("[StatBoostManager] 应用属性提升: ", boost_data.get("name", boost_id), " (", boost_counts[boost_id], "/", max_stacks, ")")
+		pass
+		# [LOG-v5.1] print("[StatBoostManager] 应用属性提升: ", boost_data.get("name", boost_id), " (", boost_counts[boost_id], "/", max_stacks, ")")
 
 ## 获取指定属性提升的层数
 func get_boost_count(boost_id: String) -> int:
@@ -214,7 +216,8 @@ func get_all_boosts() -> Array[Dictionary]:
 func reset_all_boosts() -> void:
 	boost_counts.clear()
 	if DEBUG_LOG:
-		print("[StatBoostManager] 已重置所有属性提升")
+		pass
+		# [LOG-v5.1] print("[StatBoostManager] 已重置所有属性提升")
 
 ## 获取属性提升数据
 func get_boost_data(boost_id: String) -> Dictionary:
@@ -234,4 +237,5 @@ func load_state(data: Dictionary) -> void:
 		if BOOST_DATABASE.has(boost_id):
 			boost_counts[boost_id] = saved_counts[boost_id]
 	if DEBUG_LOG:
-		print("[StatBoostManager] 加载属性提升状态")
+		pass
+		# [LOG-v5.1] print("[StatBoostManager] 加载属性提升状态")

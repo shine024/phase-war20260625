@@ -39,7 +39,7 @@ func _load_state() -> void:
 	_inventory = data.get("inventory", {})
 	if not (_inventory is Dictionary):
 		_inventory = {}
-	print("[IntelItemBag] 加载完成，道具种类 %d" % _inventory.size())
+	# [LOG-v5.1] print("[IntelItemBag] 加载完成，道具种类 %d" % _inventory.size())
 
 # ── 核心接口 ──────────────────────────────────────────────
 

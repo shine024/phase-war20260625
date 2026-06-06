@@ -27,7 +27,10 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-offset_bottom = 8.0
+offset_left = 16.0
+offset_top = 8.0
+offset_right = -16.0
+offset_bottom = 0.0
 theme_override_constants/separation = 0
 
 [node name="TitleArea" type="PanelContainer" parent="VBoxContainer"]
@@ -78,7 +81,7 @@ theme_override_colors/font_color = Color(0.7, 0.8, 0.95, 1)
 [node name="CardSelector" type="OptionButton" parent="VBoxContainer/CardSelectorArea/CardSelectorHBox"]
 layout_mode = 2
 size_flags_horizontal = 3
-custom_minimum_size = Vector2(400, 50)
+custom_minimum_size = Vector2(280, 50)
 theme_override_font_sizes/font_size = 18
 
 [node name="CurrentCardInfo" type="Label" parent="VBoxContainer/CardSelectorArea/CardSelectorHBox"]
@@ -91,7 +94,7 @@ theme_override_colors/font_color = Color(0.6, 0.75, 0.9, 1)
 [node name="MainContentSplit" type="HSplitContainer" parent="VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
-split_offset = 850
+split_offset = 480
 theme_override_constants/separation = 0
 
 [node name="LeftPanel" type="VBoxContainer" parent="VBoxContainer/MainContentSplit"]

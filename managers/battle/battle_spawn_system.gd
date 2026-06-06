@@ -476,7 +476,8 @@ func _free_damage_numbers_under(node: Node) -> void:
 
 func clear_all_units() -> void:
 	if OS.is_debug_build():
-		print("[BattleSpawnSystem] clear_all_units: clearing units")
+		pass
+		# [LOG-v5.1] print("[BattleSpawnSystem] clear_all_units: clearing units")
 	player_unit_count = 0
 	enemy_unit_count = 0
 
@@ -491,7 +492,8 @@ func clear_all_units() -> void:
 	if _player_units_node and is_instance_valid(_player_units_node):
 		var children = _player_units_node.get_children().duplicate()
 		if OS.is_debug_build():
-			print("[BattleSpawnSystem] Clearing ", children.size(), " player units")
+			pass
+			# [LOG-v5.1] print("[BattleSpawnSystem] Clearing ", children.size(), " player units")
 		for u in children:
 			if is_instance_valid(u):
 				if u.has_method("set") and "is_preview_mode" in u:
@@ -500,13 +502,15 @@ func clear_all_units() -> void:
 	if _enemy_units_node and is_instance_valid(_enemy_units_node):
 		var children = _enemy_units_node.get_children().duplicate()
 		if OS.is_debug_build():
-			print("[BattleSpawnSystem] Clearing ", children.size(), " enemy units")
+			pass
+			# [LOG-v5.1] print("[BattleSpawnSystem] Clearing ", children.size(), " enemy units")
 		for u in children:
 			if is_instance_valid(u):
 				u.queue_free()
 	_clear_battlefield_transient_nodes()
 	if OS.is_debug_build():
-		print("[BattleSpawnSystem] clear_all_units done")
+		pass
+		# [LOG-v5.1] print("[BattleSpawnSystem] clear_all_units done")
 
 func _clear_battlefield_transient_nodes() -> void:
 	if _battlefield == null or not is_instance_valid(_battlefield):
@@ -655,7 +659,7 @@ func _emit_deploy_failed(reason_code: String, message: String) -> void:
 	var now_ms: int = Time.get_ticks_msec()
 	var key: String = "%s|%s" % [reason_code, message]
 	if key != _last_deploy_fail_key or (now_ms - _last_deploy_fail_ts_ms) >= DEPLOY_FAIL_LOG_THROTTLE_MS:
-		print("[BattleSpawnSystem] 部署失败: reason=%s, msg=%s" % [reason_code, message])
+		# [LOG-v5.1] print("[BattleSpawnSystem] 部署失败: reason=%s, msg=%s" % [reason_code, message])
 		_last_deploy_fail_key = key
 		_last_deploy_fail_ts_ms = now_ms
 	if _signal_bus:

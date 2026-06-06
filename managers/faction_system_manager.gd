@@ -236,7 +236,8 @@ func on_level_conquered(level_conquered: int) -> Dictionary:
 			if delta != 0:
 				var rel_type: String = get_relationship_between(conquered_faction, faction_id)
 				if DEBUG_LOG:
-					print("[FactionSystem] 势力 %s（与 %s 为 %s）声望 %+d" % [faction_id, conquered_faction, rel_type, delta])
+					pass
+					# [LOG-v5.1] print("[FactionSystem] 势力 %s（与 %s 为 %s）声望 %+d" % [faction_id, conquered_faction, rel_type, delta])
 
 	return result
 

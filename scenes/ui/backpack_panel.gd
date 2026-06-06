@@ -304,13 +304,13 @@ func _flush_rebuild_card_grid() -> void:
 	_rebuild_grid_scheduled = false
 	if not is_inside_tree():
 		_rebuild_grid_snapshot.clear()
-		print("[BP] _flush_rebuild: SKIP not in tree")
+		# [LOG-v5.1] print("[BP] _flush_rebuild: SKIP not in tree")
 		return
 	var cards: Array = _rebuild_grid_snapshot.duplicate()
 	_rebuild_grid_snapshot.clear()
 	var grid = _combat_cards_grid
 	if grid == null:
-		print("[BP] _flush_rebuild: SKIP grid null")
+		# [LOG-v5.1] print("[BP] _flush_rebuild: SKIP grid null")
 		return
 	_apply_backpack_grid_layout(grid)
 	var to_clear: Array = grid.get_children().duplicate()
@@ -349,10 +349,11 @@ func _flush_rebuild_card_grid() -> void:
 			first_item = ch
 			break
 	if first_item:
-		print("[BP] _flush_rebuild: added=%d/%d grid_children=%d cols=%d item_visible=%s item_size=%s item_modulate=%s card_id=%s" % [added_count, cards.size(), grid.get_child_count(), grid.columns, first_item.visible, first_item.size, first_item.modulate, first_item.card.card_id if first_item.card else "null"])
+		# [LOG-v5.1] print("[BP] _flush_rebuild: added=%d/%d grid_children=%d cols=%d item_visible=%s item_size=%s item_modulate=%s card_id=%s" % [added_count, cards.size(), grid.get_child_count(), grid.columns, first_item.visible, first_item.size, first_item.modulate, first_item.card.card_id if first_item.card else "null"])
 		_diag_card_item_internals(first_item, grid)
 	else:
-		print("[BP] _flush_rebuild: added=%d/%d BUT NO visible card item found! grid_children=%d" % [added_count, cards.size(), grid.get_child_count()])
+		pass
+		# [LOG-v5.1] print("[BP] _flush_rebuild: added=%d/%d BUT NO visible card item found! grid_children=%d" % [added_count, cards.size(), grid.get_child_count()])
 	_sync_card_grid_scroll_size_for_grid(grid)
 	_hide_loading_indicator()
 
@@ -360,41 +361,47 @@ func _flush_rebuild_card_grid() -> void:
 func _diag_card_item_internals(item: Control, grid: GridContainer) -> void:
 	var scroll = _scroll
 	if scroll:
-		print("[BP DIAG] Scroll: vis=%s size=%s sv=%d" % [scroll.visible, scroll.size, scroll.scroll_vertical])
+		pass
+		# [LOG-v5.1] print("[BP DIAG] Scroll: vis=%s size=%s sv=%d" % [scroll.visible, scroll.size, scroll.scroll_vertical])
 	var tab_ctr = _tab_container
 	if tab_ctr:
-		print("[BP DIAG] TabCtr: tab=%d tabs=%d" % [tab_ctr.current_tab, tab_ctr.get_tab_count()])
+		pass
+		# [LOG-v5.1] print("[BP DIAG] TabCtr: tab=%d tabs=%d" % [tab_ctr.current_tab, tab_ctr.get_tab_count()])
 	var combat_tab = get_node_or_null("VBoxOuter/TabContainer/CombatCardsTab")
 	if combat_tab:
-		print("[BP DIAG] CombatTab: vis=%s size=%s" % [combat_tab.visible, combat_tab.size])
-	print("[BP DIAG] Grid: gpos=%s size=%s vis=%s" % [grid.global_position, grid.size, grid.visible])
+		pass
+		# [LOG-v5.1] print("[BP DIAG] CombatTab: vis=%s size=%s" % [combat_tab.visible, combat_tab.size])
+	# [LOG-v5.1] print("[BP DIAG] Grid: gpos=%s size=%s vis=%s" % [grid.global_position, grid.size, grid.visible])
 	var vbox = item.get_node_or_null("VBox")
 	if vbox:
-		print("[BP DIAG] VBox: vis=%s size=%s" % [vbox.visible, vbox.size])
+		# [LOG-v5.1] print("[BP DIAG] VBox: vis=%s size=%s" % [vbox.visible, vbox.size])
 		var cm = vbox.get_node_or_null("ContentMargin")
 		if cm:
-			print("[BP DIAG] CM: vis=%s size=%s" % [cm.visible, cm.size])
+			# [LOG-v5.1] print("[BP DIAG] CM: vis=%s size=%s" % [cm.visible, cm.size])
 			var ivb = cm.get_node_or_null("InnerVBox")
 			if ivb:
-				print("[BP DIAG] InnerVB: vis=%s size=%s clip=%s" % [ivb.visible, ivb.size, ivb.clip_contents])
+				# [LOG-v5.1] print("[BP DIAG] InnerVB: vis=%s size=%s clip=%s" % [ivb.visible, ivb.size, ivb.clip_contents])
 				var ir = ivb.get_node_or_null("IconRow")
 				if ir:
-					print("[BP DIAG] IconRow: vis=%s size=%s ch=%d compact=%s" % [ir.visible, ir.size, ir.get_child_count(), ir.get_meta("_compact_slot_built", false)])
+					# [LOG-v5.1] print("[BP DIAG] IconRow: vis=%s size=%s ch=%d compact=%s" % [ir.visible, ir.size, ir.get_child_count(), ir.get_meta("_compact_slot_built", false)])
 					for ic in ir.get_children():
 						var sz = ic.size if ic is Control else "NA"
-						print("[BP DIAG]   %s: vis=%s size=%s" % [ic.name, ic.visible, sz])
+						# [LOG-v5.1] print("[BP DIAG]   %s: vis=%s size=%s" % [ic.name, ic.visible, sz])
 						if ic.name == "CompactArtClip":
 							var icon = ic.get_node_or_null("Icon")
 							if icon:
-								print("[BP DIAG]     Icon: vis=%s size=%s tex=%s" % [icon.visible, icon.size, "YES" if icon.texture else "NULL"])
+								pass
+								# [LOG-v5.1] print("[BP DIAG]     Icon: vis=%s size=%s tex=%s" % [icon.visible, icon.size, "YES" if icon.texture else "NULL"])
 						if ic.name == "CompactTextVBox":
 							for tc in ic.get_children():
 								if tc is Label:
-									print("[BP DIAG]     %s: vis=%s text=%s" % [tc.name, tc.visible, tc.text])
+									pass
+									# [LOG-v5.1] print("[BP DIAG]     %s: vis=%s text=%s" % [tc.name, tc.visible, tc.text])
 	var sb = item.get_theme_stylebox("panel")
 	if sb and sb is StyleBoxFlat:
-		print("[BP DIAG] panel: bg=%s bdr=%s" % [sb.bg_color, sb.border_color])
-	print("[BP DIAG] BPP: vis=%s size=%s gpos=%s" % [visible, size, global_position])
+		pass
+		# [LOG-v5.1] print("[BP DIAG] panel: bg=%s bdr=%s" % [sb.bg_color, sb.border_color])
+	# [LOG-v5.1] print("[BP DIAG] BPP: vis=%s size=%s gpos=%s" % [visible, size, global_position])
 
 ## 添加单张卡到网格末尾或顶部
 func add_card(card: CardResource, at_top: bool = false) -> void:
@@ -588,14 +595,14 @@ func refresh_intel_tab() -> void:
 	var bag_items: Dictionary = {}
 	if bag and bag.has_method("get_all_inventory"):
 		bag_items = bag.get_all_inventory()
-	print("[BP] refresh_intel_tab: bag_items.size=%d" % bag_items.size())
+	# [LOG-v5.1] print("[BP] refresh_intel_tab: bag_items.size=%d" % bag_items.size())
 	var sig_parts: Array[String] = []
 	for lid in lore_ids: sig_parts.append("lore:" + lid)
 	for bk in bag_items.keys(): sig_parts.append("bag:" + bk + ":" + str(bag_items[bk]))
 	sig_parts.sort()
 	var sig := "|".join(sig_parts)
 	if sig == _last_lore_signature:
-		print("[BP] refresh_intel_tab: signature未变化，跳过刷新")
+		# [LOG-v5.1] print("[BP] refresh_intel_tab: signature未变化，跳过刷新")
 		return
 	_last_lore_signature = sig
 	_clear_grid_children(_intel_grid)
@@ -613,9 +620,10 @@ func refresh_intel_tab() -> void:
 		var count: int = int(bag_items[item_type])
 		if count <= 0: continue
 		var def: Dictionary = _imi.get_def(item_type) if _imi else {}
-		print("[BP] 添加蓝图物品: %s, def_is_empty=%s" % [item_type, def.is_empty()])
+		# [LOG-v5.1] print("[BP] 添加蓝图物品: %s, def_is_empty=%s" % [item_type, def.is_empty()])
 		if not def.is_empty():
-			print("[BP]   蓝图定义: name=%s, icon=%s" % [def.get("name", ""), def.get("icon", "")])
+			pass
+			# [LOG-v5.1] print("[BP]   蓝图定义: name=%s, icon=%s" % [def.get("name", ""), def.get("icon", "")])
 		var item = ResourceSlotScene.instantiate()
 		if item == null: continue
 		_intel_grid.add_child(item)
@@ -658,13 +666,13 @@ func refresh_stat_boosts_tab() -> void:
 	if _stat_boosts_grid == null:
 		return
 	_apply_backpack_grid_layout(_stat_boosts_grid)
-	print("[BP TAB] stat: grid=%s sig=%s" % [_stat_boosts_grid != null, _last_stat_boost_signature])
+	# [LOG-v5.1] print("[BP TAB] stat: grid=%s sig=%s" % [_stat_boosts_grid != null, _last_stat_boost_signature])
 	var mll = get_node_or_null("/root/ManagerLazyLoader")
 	if mll and mll.has_method("ensure_loaded"): mll.ensure_loaded("stat_boost")
 	var sbm = get_node_or_null("/root/StatBoostManager")
-	print("[BP TAB] stat: sbm=%s" % [sbm != null])
+	# [LOG-v5.1] print("[BP TAB] stat: sbm=%s" % [sbm != null])
 	if sbm == null or not sbm.has_method("get_all_boosts"):
-		print("[BP TAB] stat: ADDING placeholder (no sbm)")
+		# [LOG-v5.1] print("[BP TAB] stat: ADDING placeholder (no sbm)")
 		_clear_grid_children(_stat_boosts_grid)
 		_add_stat_boosts_placeholder(_stat_boosts_grid, "属性提升系统未初始化")
 		return
@@ -725,7 +733,7 @@ func refresh_resources_tab() -> void:
 	if _resources_grid == null:
 		return
 	_apply_backpack_grid_layout(_resources_grid)
-	print("[BP TAB] res: grid=%s sig=%s" % [_resources_grid != null, _last_resources_signature])
+	# [LOG-v5.1] print("[BP TAB] res: grid=%s sig=%s" % [_resources_grid != null, _last_resources_signature])
 	var brm = get_node_or_null("/root/BasicResourceManager")
 	if brm == null or not brm.has_method("get_all_totals"):
 		_clear_grid_children(_resources_grid)

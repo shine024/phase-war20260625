@@ -154,7 +154,8 @@ func _ready() -> void:
 	}
 
 	if DEBUG_UI_LAZY_LOG:
-		print("[UILazyLoader] 初始化完成，配置面板数: ", _panel_configs.size())
+		pass
+		# [LOG-v5.1] print("[UILazyLoader] 初始化完成，配置面板数: ", _panel_configs.size())
 
 
 ## 获取UI面板（按需加载）
@@ -236,7 +237,8 @@ func get_panel(panel_id: String) -> Control:
 	_loaded_panels[panel_id] = panel
 
 	if DEBUG_UI_LAZY_LOG:
-		print("[UILazyLoader] 加载面板: ", panel_id)
+		pass
+		# [LOG-v5.1] print("[UILazyLoader] 加载面板: ", panel_id)
 	return panel
 
 
@@ -264,7 +266,8 @@ func unload_panel(panel_id: String) -> void:
 
 	_loaded_panels.erase(panel_id)
 	if DEBUG_UI_LAZY_LOG:
-		print("[UILazyLoader] 卸载面板: ", panel_id)
+		pass
+		# [LOG-v5.1] print("[UILazyLoader] 卸载面板: ", panel_id)
 
 
 ## 卸载所有UI面板
@@ -272,7 +275,8 @@ func unload_all_panels() -> void:
 	for panel_id in _loaded_panels.keys():
 		unload_panel(panel_id)
 	if DEBUG_UI_LAZY_LOG:
-		print("[UILazyLoader] 已卸载所有面板，总计: ", _loaded_panels.size())
+		pass
+		# [LOG-v5.1] print("[UILazyLoader] 已卸载所有面板，总计: ", _loaded_panels.size())
 
 
 ## 获取面板状态
@@ -303,4 +307,5 @@ func clear_all() -> void:
 	unload_all_panels()
 	_loaded_panels.clear()
 	if DEBUG_UI_LAZY_LOG:
-		print("[UILazyLoader] 清理完成")
+		pass
+		# [LOG-v5.1] print("[UILazyLoader] 清理完成")

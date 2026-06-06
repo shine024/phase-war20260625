@@ -38,7 +38,7 @@ static func register_all() -> void:
 	_register_path("anti_air", AntiAirEvolution.get_main_line(), AntiAirEvolution.get_hidden_branches())
 
 	_initialized = true
-	print("[EvolutionPathRegistry] Registered evolution paths for all 8 unit types")
+	# [LOG-v5.1] print("[EvolutionPathRegistry] Registered evolution paths for all 8 unit types")
 
 static func _register_path(type_key: String, main_line: Dictionary, hidden_branches: Dictionary) -> void:
 	_cache[type_key] = {

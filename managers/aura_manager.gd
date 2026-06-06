@@ -83,7 +83,8 @@ func register_aura(unit: Node2D, aura_type: AuraType) -> void:
 		_:
 			pass
 	if DEBUG_AURA_LOG:
-		print("[AuraManager] 注册光环: 单位=%d, 类型=%d" % [unit_id, aura_type])
+		pass
+		# [LOG-v5.1] print("[AuraManager] 注册光环: 单位=%d, 类型=%d" % [unit_id, aura_type])
 
 ## 注销单位光环
 func unregister_aura(unit: Node2D, aura_type: AuraType) -> void:
@@ -103,7 +104,8 @@ func unregister_aura(unit: Node2D, aura_type: AuraType) -> void:
 		_unit_map.erase(unit_id)
 		_aura_timers.erase(unit_id)
 	if DEBUG_AURA_LOG:
-		print("[AuraManager] 注销光环: 单位=%d, 类型=%d" % [unit_id, aura_type])
+		pass
+		# [LOG-v5.1] print("[AuraManager] 注销光环: 单位=%d, 类型=%d" % [unit_id, aura_type])
 
 ## 注销单位所有光环
 func unregister_all_auras(unit: Node2D) -> void:
@@ -115,7 +117,8 @@ func unregister_all_auras(unit: Node2D) -> void:
 	_unit_map.erase(unit_id)
 	_aura_timers.erase(unit_id)
 	if DEBUG_AURA_LOG:
-		print("[AuraManager] 注销所有光环: 单位=%d" % unit_id)
+		pass
+		# [LOG-v5.1] print("[AuraManager] 注销所有光环: 单位=%d" % unit_id)
 
 ## 全局 Tick 回调（单 Timer 批处理）
 func _on_global_tick() -> void:
@@ -288,7 +291,8 @@ func clear_all() -> void:
 	_medic_elapsed = 0.0
 	_carrier_elapsed = 0.0
 	if DEBUG_AURA_LOG:
-		print("[AuraManager] 清理所有光环")
+		pass
+		# [LOG-v5.1] print("[AuraManager] 清理所有光环")
 
 ## 获取统计信息
 func get_stats() -> Dictionary:

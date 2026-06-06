@@ -767,7 +767,7 @@ func _process_evolution_blueprint_path(path_data: Dictionary) -> void:
 		var card_id = entry.node.get("card_id", "")
 		if not card_id.is_empty() and not previous_card.is_empty():
 			var evo_bp_id = BlueprintDefinitions.get_evolution_blueprint_id(previous_card, card_id)
-			print("[SaveManager] 添加进化蓝图: %s (E%d→E%d: %s → %s)" % [evo_bp_id, entry.stage - 1, entry.stage, previous_card, card_id])
+			# [LOG-v5.1] print("[SaveManager] 添加进化蓝图: %s (E%d→E%d: %s → %s)" % [evo_bp_id, entry.stage - 1, entry.stage, previous_card, card_id])
 			IntelItemBag.add_item(evo_bp_id, 1)
 		previous_card = card_id
 
@@ -790,7 +790,7 @@ func _process_evolution_hidden_branches(branches_data: Dictionary) -> void:
 			if not card_id.is_empty():
 				if not branch_prev_card.is_empty():
 					var evo_bp_id = BlueprintDefinitions.get_evolution_blueprint_id(branch_prev_card, card_id)
-					print("[SaveManager] 添加隐藏分支蓝图: %s (E%d→E%d: %s → %s)" % [evo_bp_id, entry.stage - 1, entry.stage, branch_prev_card, card_id])
+					# [LOG-v5.1] print("[SaveManager] 添加隐藏分支蓝图: %s (E%d→E%d: %s → %s)" % [evo_bp_id, entry.stage - 1, entry.stage, branch_prev_card, card_id])
 					IntelItemBag.add_item(evo_bp_id, 1)
 				branch_prev_card = card_id
 
@@ -855,7 +855,7 @@ func _unlock_all_enemy_origin_mods() -> void:
 	for mod_id in all_mod_ids:
 		if mod_id is String and not mod_id.is_empty():
 			eom_mgr.unlock_mod(mod_id)
-	print('[SaveManager] 已解锁 %d 个敌源改造模块' % all_mod_ids.size())
+	# [LOG-v5.1] print('[SaveManager] 已解锁 %d 个敌源改造模块' % all_mod_ids.size())
 
 
 ## 处理一个待入包的卡牌ID（从pending中移除，标记为已处理）
@@ -1113,7 +1113,8 @@ func _ensure_mod_blueprints_exist() -> void:
 				IntelItemBag.add_item(blueprint_id, 1)
 				granted_count += 1
 	if granted_count > 0:
-		print("[SaveManager] 补偿了 %d 个缺失的改造蓝图" % granted_count)
+		pass
+		# [LOG-v5.1] print("[SaveManager] 补偿了 %d 个缺失的改造蓝图" % granted_count)
 
 ## 安全加载管理器数据（类型检查+错误日志）
 ## 支持延迟加载管理器：如果管理器不在场景树中，尝试通过 ManagerLazyLoader 实例化
@@ -1132,7 +1133,8 @@ func _ensure_evolution_branches_discovered() -> void:
 				IntelEvolutionManager._discovered[branch_id] = true
 				discovered_count += 1
 	if discovered_count > 0:
-		print('[SaveManager] 补偿发现了 %d 个情报进化分支' % discovered_count)
+		pass
+		# [LOG-v5.1] print('[SaveManager] 补偿发现了 %d 个情报进化分支' % discovered_count)
 
 ## 补偿缺失的敌源MOD解锁（每次加载存档时自动检查）
 func _ensure_enemy_origin_mods_unlocked() -> void:
@@ -1148,7 +1150,8 @@ func _ensure_enemy_origin_mods_unlocked() -> void:
 				eom_mgr.unlock_mod(mod_id)
 				unlocked_count += 1
 	if unlocked_count > 0:
-		print('[SaveManager] 补偿解锁了 %d 个敌源改造模块' % unlocked_count)
+		pass
+		# [LOG-v5.1] print('[SaveManager] 补偿解锁了 %d 个敌源改造模块' % unlocked_count)
 
 func _safe_load_manager(node_path: String, data: Dictionary, data_key: String) -> void:
 	var manager: Node = get_node_or_null(node_path)

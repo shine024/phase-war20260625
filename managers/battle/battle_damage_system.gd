@@ -239,8 +239,7 @@ func calculate_victory_stars(max_deployed: int, units_lost: int, elapsed_time: f
 		var estimated_time: float = float(wave_total) * wave_interval + 15.0
 		if estimated_time > 0.0 and elapsed_time <= estimated_time * 0.7:
 			stars = 3
-	if DEBUG_DAMAGE_LOG:
-		print("[BattleDamageSystem] 星级计算: 部署=%d, 损失=%d, 存活率=%.0f%%, 时间=%.1fs → %d星" % [max_deployed, units_lost, survival_rate * 100.0, elapsed_time, stars])
+	# [LOG-v5.1] if DEBUG_DAMAGE_LOG: print("[BattleDamageSystem] 星级计算: 部署=%d, 损失=%d, 存活率=%.0f%%, 时间=%.1fs → %d星" % [max_deployed, units_lost, survival_rate * 100.0, elapsed_time, stars])
 	return stars
 
 # =========================================================================
@@ -249,28 +248,7 @@ func calculate_victory_stars(max_deployed: int, units_lost: int, elapsed_time: f
 
 func try_grant_battle_affixes(phase_instrument: Node) -> void:
 	# v6.0: 旧的 affix 战斗奖励系统已废弃
-	return
-	# 收集本局参战的所有卡牌 ID
-	var card_ids: Array = []
-	var loadouts: Array = pm.get_loadouts()
-	for loadout in loadouts:
-		if loadout is Dictionary:
-			var plat: CardResource = loadout.get("platform", null)
-			var wpns: Array = loadout.get("weapons", [])
-			if plat != null and not plat.card_id.is_empty():
-				if not card_ids.has(plat.card_id):
-					card_ids.append(plat.card_id)
-			for w in wpns:
-				if w is CardResource and not (w as CardResource).card_id.is_empty():
-					if not card_ids.has((w as CardResource).card_id):
-						card_ids.append((w as CardResource).card_id)
-	if card_ids.is_empty():
-		return
-	var gm: Node = _get_autoload_node("GameManager")
-	var level: int = 1
-	if gm and "current_level" in gm:
-		level = int(gm.current_level)
-	am.on_battle_won(card_ids, level)
+	pass
 
 # =========================================================================
 #  战斗结算掉落生成
