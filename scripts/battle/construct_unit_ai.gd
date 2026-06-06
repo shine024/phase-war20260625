@@ -5,7 +5,7 @@ extends RefCounted
 
 const GC = preload("res://resources/game_constants.gd")
 const BulletScene = preload("res://scenes/units/bullet.tscn")
-const AffixCombatHandler = preload("res://managers/affix_combat_handler.gd")
+const ModuleEffectHandler = preload("res://scripts/battle/module_effect_handler.gd")
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 const CombatTargeting = preload("res://scripts/combat_targeting.gd")
 const TargetSelection = preload("res://scripts/battle/target_selection.gd")
@@ -152,8 +152,7 @@ static func apply_continuous_effects(u: CharacterBody2D, delta: float) -> void:
 		return
 	# 应用回血效果（纳米自愈词条）
 	if u.stats.hp_regen > 0.0:
-		var regen_mult: float = AffixCombatHandler.get_hp_regen_multiplier(u, u.stats)
-		AffixCombatHandler.apply_hp_regen(u, u.stats, delta)
+		ModuleEffectHandler.on_tick(u, delta)
 
 ## v5.0 攻速分离: 单武器三阶段攻击状态机
 static func _process_single_weapon_attack(u: CharacterBody2D, delta: float) -> void:

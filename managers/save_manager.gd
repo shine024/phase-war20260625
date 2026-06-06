@@ -731,6 +731,13 @@ func _enqueue_starter_backpack_cards() -> void:
 		# 授予所有进化蓝图
 		_grant_all_evolution_blueprints()
 
+	# 初始进化分支：发现所有情报进化分支
+	if IntelEvolutionManager and IntelEvolutionManager.has_method("check_and_discover_branches"):
+		IntelEvolutionManager.check_and_discover_branches()
+
+	# 初始敌源改造：解锁所有敌源MOD
+	_unlock_all_enemy_origin_mods()
+
 	# 初始改装材料：所有改装库存100
 	# TODO: 需要根据改装系统实现添加
 	# if ModificationRegistry:
@@ -834,6 +841,21 @@ func _grant_all_evolution_blueprints() -> void:
 	_process_evolution_blueprint_path(FortEvolution.get_main_line())         # 防御路线
 	_process_evolution_blueprint_path(FortEvolution.get_secondary_line())    # 防空路线
 	_process_evolution_hidden_branches(FortEvolution.get_hidden_branches())   # 雷达站
+
+
+## 解锁所有敌源改造模块（EOM）
+## 在新游戏开始时调用，解锁所有敌源MOD以供玩家使用
+func _unlock_all_enemy_origin_mods() -> void:
+	var eom_mgr = get_node_or_null('/root/EnemyOriginModManager')
+	if eom_mgr == null or not eom_mgr.has_method('unlock_mod'):
+		return
+	
+	const EnemyOriginMods = preload('res://data/enemy_origin_mods.gd')
+	var all_mod_ids = EnemyOriginMods.get_all_mod_ids()
+	for mod_id in all_mod_ids:
+		if mod_id is String and not mod_id.is_empty():
+			eom_mgr.unlock_mod(mod_id)
+	print('[SaveManager] 已解锁 %d 个敌源改造模块' % all_mod_ids.size())
 
 
 ## 处理一个待入包的卡牌ID（从pending中移除，标记为已处理）
@@ -1066,6 +1088,10 @@ func _load_from_path(path: String) -> bool:
 	# 补偿缺失的改造蓝图（老存档可能因为 has_method 不检测 static 方法而缺失）
 	_ensure_mod_blueprints_exist()
 
+	# 补偿缺失的进化分支和敌源MOD
+	_ensure_evolution_branches_discovered()
+	_ensure_enemy_origin_mods_unlocked()
+
 	if DEBUG_SAVE_LOG:
 		pass  # LOG: 已加载存档
 	return true
@@ -1091,6 +1117,39 @@ func _ensure_mod_blueprints_exist() -> void:
 
 ## 安全加载管理器数据（类型检查+错误日志）
 ## 支持延迟加载管理器：如果管理器不在场景树中，尝试通过 ManagerLazyLoader 实例化
+
+## 补偿缺失的进化分支发现（每次加载存档时自动检查）
+func _ensure_evolution_branches_discovered() -> void:
+	if IntelEvolutionManager == null:
+		return
+	const IntelEvolutionBranches = preload('res://data/intel_evolution_branches.gd')
+	var all_branch_ids = IntelEvolutionBranches.get_all_branch_ids()
+	var discovered_count = 0
+	for branch_id in all_branch_ids:
+		if branch_id is String and not branch_id.is_empty():
+			if not IntelEvolutionManager.is_branch_discovered(branch_id):
+				# 直接标记为已发现
+				IntelEvolutionManager._discovered[branch_id] = true
+				discovered_count += 1
+	if discovered_count > 0:
+		print('[SaveManager] 补偿发现了 %d 个情报进化分支' % discovered_count)
+
+## 补偿缺失的敌源MOD解锁（每次加载存档时自动检查）
+func _ensure_enemy_origin_mods_unlocked() -> void:
+	var eom_mgr = get_node_or_null('/root/EnemyOriginModManager')
+	if eom_mgr == null or not eom_mgr.has_method('unlock_mod'):
+		return
+	const EnemyOriginMods = preload('res://data/enemy_origin_mods.gd')
+	var all_mod_ids = EnemyOriginMods.get_all_mod_ids()
+	var unlocked_count = 0
+	for mod_id in all_mod_ids:
+		if mod_id is String and not mod_id.is_empty():
+			if not eom_mgr.is_mod_unlocked(mod_id):
+				eom_mgr.unlock_mod(mod_id)
+				unlocked_count += 1
+	if unlocked_count > 0:
+		print('[SaveManager] 补偿解锁了 %d 个敌源改造模块' % unlocked_count)
+
 func _safe_load_manager(node_path: String, data: Dictionary, data_key: String) -> void:
 	var manager: Node = get_node_or_null(node_path)
 	if manager == null:

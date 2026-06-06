@@ -108,15 +108,16 @@ signal tutorial_completed(tutorial_id: String)
 signal start_level(level: int)
 
 # 塔爬模式
-signal tower_run_started()
-signal tower_floor_changed(floor: int)
-signal tower_run_ended(victory: bool, final_floor: int, final_score: int)
-signal tower_reward_offered(choices: Array)
-signal tower_hp_changed(current: int, maximum: int)
-signal tower_gold_changed(gold: int)
-signal tower_reward_selected(reward: Dictionary)
-signal tower_state_changed(state: int)
-signal tower_relic_obtained(relic_id: String)
+# @deprecated v6.0 — 爬塔模式已移除，以下信号保留仅供存档兼容
+# signal tower_run_started()
+# signal tower_floor_changed(floor: int)
+# signal tower_run_ended(victory: bool, final_floor: int, final_score: int)
+# signal tower_reward_offered(choices: Array)
+# signal tower_hp_changed(current: int, maximum: int)
+# signal tower_gold_changed(gold: int)
+# signal tower_reward_selected(reward: Dictionary)
+# signal tower_state_changed(state: int)
+# signal tower_relic_obtained(relic_id: String)
 
 # 故事 UI
 signal show_story_ui(chapter: String, first_node: int)

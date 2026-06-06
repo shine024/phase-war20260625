@@ -148,9 +148,15 @@ var is_unlocked: bool = false
 #  通用辅助字段
 # ─────────────────────────────────────────────
 
-## 模块化词条槽位（affix = 模块化词条，同义词）
+## v6.0 词条槽位（强化=选词条系统）
+## 最多5个 ModuleSlot，每个存储一个词条ID和等级(Lv1-3)。
+## 通过 CardEnhancementManager 操作，不要直接修改。
+var module_slots: Array = []  ## Array[ModuleSlot]
+
+## @deprecated v6.0 — 保留仅供存档兼容读取，新代码不要写入
 ## 不要直接修改此字段，使用 AffixManager 的接口操作。
 @export var affix_slot_ids: Array = []
+## @deprecated v6.0 — 保留仅供存档兼容读取
 @export var affix_slot_count: int = 4
 
 # 卡片来源标记：true=战斗掉落成品卡，false=蓝图制造卡
@@ -374,6 +380,10 @@ func clone() -> CardResource:
 	# 法则卡字段
 	new_card.linked_law_id = linked_law_id
 	# 通用辅助
+	new_card.module_slots = []
+	for s in module_slots:
+		if s is ModuleSlot:
+			new_card.module_slots.append(s.duplicate_slot())
 	new_card.affix_slot_ids = affix_slot_ids.duplicate()
 	new_card.affix_slot_count = affix_slot_count
 	new_card.is_dropped_card = is_dropped_card
@@ -535,7 +545,7 @@ func can_install_modification(mod_id: String) -> Dictionary:
 				var required_progress = intel_requirements[intel_key]
 				var target_card_id = intel_key.trim_prefix("intel_")
 				var current_progress = IntelManual.get_intel_progress(target_card_id)
-				
+
 				if current_progress < required_progress:
 					result.can_install = false
 					result.reason = "情报不足：%s需要%.0f%%情报（当前%.0f%%）" % [

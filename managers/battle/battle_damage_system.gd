@@ -218,8 +218,8 @@ func process_kill_rewards(killed_unit: Node) -> void:
 		return
 
 	# 应用护盾效果
-	const AffixCombatHandler = preload("res://managers/affix_combat_handler.gd")
-	var shield_gained: float = AffixCombatHandler.apply_shield_on_kill(killer_unit, unit_stats)
+	const ModuleEffectHandler = preload("res://scripts/battle/module_effect_handler.gd")
+	ModuleEffectHandler.on_kill(killer_unit)
 
 # =========================================================================
 #  星级评定（战斗胜利时调用）
@@ -248,14 +248,8 @@ func calculate_victory_stars(max_deployed: int, units_lost: int, elapsed_time: f
 # =========================================================================
 
 func try_grant_battle_affixes(phase_instrument: Node) -> void:
-	var am: Node = _get_autoload_node("AffixManager")
-	if am == null or not am.has_method("on_battle_won"):
-		return
-	var pm: Node = phase_instrument
-	if pm == null:
-		pm = _get_autoload_node("PhaseInstrumentManager")
-	if pm == null or not pm.has_method("get_loadouts"):
-		return
+	# v6.0: 旧的 affix 战斗奖励系统已废弃
+	return
 	# 收集本局参战的所有卡牌 ID
 	var card_ids: Array = []
 	var loadouts: Array = pm.get_loadouts()

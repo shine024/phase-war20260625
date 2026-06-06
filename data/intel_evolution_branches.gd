@@ -104,7 +104,7 @@ static func has_branch(branch_id: String) -> bool:
 	return INTEL_BRANCHES.has(branch_id)
 
 ## 获取所有分支ID
-static func get_all_branch_ids() -> Array[String]:
+static func get_all_branch_ids() -> Array:
 	return INTEL_BRANCHES.keys()
 
 ## 检查分支是否是隐藏的

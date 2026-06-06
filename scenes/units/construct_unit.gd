@@ -4,7 +4,7 @@ extends CharacterBody2D
 
 const GC = preload("res://resources/game_constants.gd")
 const BulletScene = preload("res://scenes/units/bullet.tscn")
-const AffixCombatHandler = preload("res://managers/affix_combat_handler.gd")
+const ModuleEffectHandler = preload("res://scripts/battle/module_effect_handler.gd")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const EnemyUnitManifest = preload("res://data/enemy_unit_manifest.gd")
 const RankRules = preload("res://data/rank_rules.gd")
@@ -1023,21 +1023,21 @@ func add_shield(amount: float) -> void:
 ## 返回实际扣除的 HP
 func take_damage_with_shield(amount: float) -> float:
 	var remaining_damage: float = amount
-	
+
 	# 平台HP变异：血量超过 80% 时额外减少 10% 伤害
 	if stats and stats.has_platform_hp_mutation:
-		if AffixCombatHandler.check_platform_hp_mutation_extra_defense(self, stats):
+		if ModuleEffectHandler.check_platform_hp_mutation_extra_defense(self, stats):
 			remaining_damage *= 0.9  # 额外减少 10%
-	
+
 	# 先从护盾中扣除
 	var shield_absorbed: float = min(shield, remaining_damage)
 	shield -= shield_absorbed
 	remaining_damage -= shield_absorbed
-	
+
 	# 剩余伤害扣 HP
 	if remaining_damage > 0:
 		take_damage(remaining_damage)
-	
+
 	return remaining_damage
 
 func _die() -> void:

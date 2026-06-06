@@ -4,11 +4,13 @@ class_name UnitStatsTable
 ##
 ## v3 重构：主入口 build_stats_from_card() 直接从 CardResource 读取 base_* 字段，
 ## 不再依赖 platform_type + weapon_type 二元查表。
+## v6.0: 新增 apply_module_effects() 将强化词条效果应用到 UnitStats。
 ## 旧 build_stats / build_multi_stats 已改为内部构造 CardResource 后调用新入口，
 ## 保留函数签名做兼容。
 
 const GC = preload("res://resources/game_constants.gd")
 const BattleCardV3 = preload("res://data/battle_card_v3.gd")
+const ModuleDefinitions = preload("res://data/module_definitions.gd")
 
 
 # ─────────────────────────────────────────────
@@ -84,7 +86,73 @@ static func build_stats_from_card(card: CardResource, era_override: int = -1) ->
 	if stats.defense <= 0.0:
 		stats.defense = maxf(stats.defense_light, maxf(stats.defense_armor, stats.defense_air))
 
+	# v6.0: 应用强化词条效果（如有 module_slots）
+	if card.module_slots.size() > 0:
+		apply_module_effects(stats, card.module_slots, card.enhance_level)
+
 	return stats
+
+
+## v6.0: 将强化词条效果应用到 UnitStats（原地修改）
+## module_slots: Array[ModuleSlot] — 词条槽位数组
+## enhance_level: int — 强化等级（用于Lv10全属性加成判断）
+static func apply_module_effects(stats: UnitStats, module_slots: Array, enhance_level: int = 0) -> void:
+	if stats == null or module_slots.is_empty():
+		return
+	# 构建 base 字典
+	var base_dict: Dictionary = {
+		"max_hp": stats.max_hp,
+		"attack_light": stats.attack_light,
+		"attack_armor": stats.attack_armor,
+		"attack_air": stats.attack_air,
+		"attack_range": stats.attack_range,
+		"attack_interval": stats.attack_interval,
+		"defense": stats.defense,
+		"deploy_speed": stats.deploy_speed,
+		"damage_reduction": stats.damage_reduction,
+		"crit_chance": stats.crit_chance,
+		"crit_damage_bonus": stats.crit_damage_bonus,
+		"lifesteal": stats.lifesteal,
+		"splash_damage": stats.splash_damage,
+		"armor_penetration": stats.armor_penetration,
+		"chain_chance": stats.chain_chance,
+		"shield_on_kill": stats.shield_on_kill,
+		"hp_regen": stats.hp_regen,
+		"dodge_chance": stats.dodge_chance,
+	}
+	# 将 ModuleSlot 数组转为字典数组
+	var slots_data: Array = []
+	for s in module_slots:
+		if s is ModuleSlot:
+			slots_data.append(s.to_dict())
+		elif s is Dictionary:
+			slots_data.append(s)
+	# 应用词条效果
+	var result: Dictionary = ModuleDefinitions.apply_modules_to_stats(base_dict, slots_data)
+	# Lv10 全属性加成
+	if enhance_level >= 10:
+		result = ModuleDefinitions.apply_level10_bonus(result)
+	# 写回 stats
+	stats.max_hp = float(result.get("max_hp", stats.max_hp))
+	stats.attack_light = float(result.get("attack_light", stats.attack_light))
+	stats.attack_armor = float(result.get("attack_armor", stats.attack_armor))
+	stats.attack_air = float(result.get("attack_air", stats.attack_air))
+	stats.attack_range = float(result.get("attack_range", stats.attack_range))
+	stats.attack_interval = float(result.get("attack_interval", stats.attack_interval))
+	stats.defense = float(result.get("defense", stats.defense))
+	stats.deploy_speed = int(result.get("deploy_speed", stats.deploy_speed))
+	stats.damage_reduction = float(result.get("damage_reduction", 0.0))
+	stats.crit_chance = float(result.get("crit_chance", 0.0))
+	stats.crit_damage_bonus = float(result.get("crit_damage_bonus", 0.0))
+	stats.lifesteal = float(result.get("lifesteal", 0.0))
+	stats.splash_damage = float(result.get("splash_damage", 0.0))
+	stats.armor_penetration = float(result.get("armor_penetration", 0.0))
+	stats.chain_chance = float(result.get("chain_chance", 0.0))
+	stats.shield_on_kill = float(result.get("shield_on_kill", 0.0))
+	stats.hp_regen = float(result.get("hp_regen", 0.0))
+	stats.dodge_chance = float(result.get("dodge_chance", 0.0))
+	# 同步旧兼容字段
+	stats.attack_damage = stats.attack_light
 
 
 ## 战斗定位固有修正（替代旧 apply_platform_innate_modifiers）

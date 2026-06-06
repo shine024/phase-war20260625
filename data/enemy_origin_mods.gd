@@ -315,7 +315,7 @@ static func has_mod(mod_id: String) -> bool:
 	return ENEMY_ORIGIN_MODS.has(mod_id)
 
 ## 获取所有MOD ID
-static func get_all_mod_ids() -> Array[String]:
+static func get_all_mod_ids() -> Array:
 	return ENEMY_ORIGIN_MODS.keys()
 
 ## 获取所有适合某combat_kind的MOD ID

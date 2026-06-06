@@ -4,7 +4,7 @@ extends CharacterBody2D
 const BulletScene = preload("res://scenes/units/bullet.tscn")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const EnemyStatResolver = preload("res://data/enemy_stat_resolver.gd")
-const AffixCombatHandler = preload("res://managers/affix_combat_handler.gd")
+const ModuleEffectHandler = preload("res://scripts/battle/module_effect_handler.gd")
 const GC = preload("res://resources/game_constants.gd")
 const CardGridUnitVisuals = preload("res://scripts/card_grid_unit_visuals.gd")
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")

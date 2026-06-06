@@ -151,21 +151,13 @@ static func build_unit_stats_for_power_preview(card: CardResource, bpm_ref: Node
 	if card == null:
 		return null
 	var era: int = _preview_battle_era()
-	var tree = Engine.get_main_loop()
-	if tree and tree.root:
-		var mll = tree.root.get_node_or_null("ManagerLazyLoader")
-		if mll and mll.has_method("ensure_loaded"):
-			mll.ensure_loaded("affix")
-	var am: Node = null
-	if tree and tree.root:
-		am = tree.root.get_node_or_null("AffixManager")
 	if card.card_type == GC.CardType.COMBAT_UNIT:
 		var stats: UnitStats = UnitStatsTable.build_stats_from_card(card, era)
 		if stats == null:
 			return null
 		apply_growth_to_stats(stats, card, [], bpm_ref, false)
-		if am and am.has_method("apply_affixes_to_stats"):
-			am.apply_affixes_to_stats(stats, card, [])
+		# v6.0: 词条效果已由 UnitStatsTable.build_stats_from_card 内部处理
+		# 不再需要额外调用 AffixManager
 		return stats
 	return null
 

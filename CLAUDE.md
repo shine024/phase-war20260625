@@ -33,35 +33,63 @@ Add `--rendering-driver opengl3` if Vulkan issues (applies to `--headless` / `--
 
 ## Architecture
 
-### Autoload Singletons (21 total, in load order)
+### Autoload Singletons (26 total, in project.godot load order)
 
-**Core (always loaded):**
-| Singleton | File | Role |
-|---|---|---|
-| `SignalBus` | `scripts/signal_bus.gd` | Central event bus (~80 signals). All cross-system comms go here. |
-| `BattleInputState` | `scripts/battle_input_state.gd` | Battle input state machine |
-| `EnergyManager` | `managers/energy_manager.gd` | Battle energy pool |
-| `PhaseInstrumentManager` | `managers/phase_instrument_manager.gd` | 4-color equipment slots + phase field XP |
-| `BattleManager` | `managers/battle/battle_manager.gd` | Battle orchestration, delegates to Spawn/Damage subsystems |
-| `GameManager` | `managers/game_manager.gd` | Game phase: pre-battle → battle → post-battle |
-| `BlueprintManager` | `managers/blueprint_manager.gd` | Card account progression (copies, stars, mods, evolution) |
-| `DropManager` | `managers/drop_manager.gd` | Post-battle drop tables and claiming |
-| `SaveManager` | `managers/save_manager.gd` | `user://save.json`, 3 slots, schema v3, migration chain |
-| `AudioManager` | `managers/audio_manager.gd` | Audio |
-| `PhaseLawManager` | `managers/phase_law_manager.gd` | Law research, equipping, battle state |
-| `BasicResourceManager` | `managers/basic_resource_manager.gd` | Global currencies (nano materials, alloy, crystal, energy blocks, license) |
-| `ObjectPoolManager` | `managers/object_pool.gd` | Object pool for bullets, damage numbers |
-| `UILazyLoader` | `managers/ui_lazy_loader.gd` | On-demand UI panel loading |
-| `ManagerLazyLoader` | `managers/manager_lazy_loader.gd` | On-demand non-core manager loading |
-| `PerformanceMetricsManager` | `managers/performance_metrics_manager.gd` | FPS/performance sampling |
-| `IntelManual` | `scripts/systems/intel_manual.gd` | Intel 4-dimension progress |
-| `IntelItemBag` | `managers/intel_item_bag.gd` | Intel item inventory |
-| `IntelDiscoveryManager` | `scripts/systems/intel_discovery_manager.gd` | Battle harvest, reveal events |
-| `IntelEvolutionManager` | `scripts/systems/intel_evolution_manager.gd` | Evolution branch discovery |
-| `EnemyOriginModManager` | `scripts/systems/enemy_origin_mod_manager.gd` | Enemy origin mods |
+**All autoloaded (always loaded at startup):**
+| # | Singleton | File | Role |
+|---|---|---|---|
+| 1 | `SignalBus` | `scripts/signal_bus.gd` | Central event bus (~80+ signals). All cross-system comms go here. |
+| 2 | `BattleInputState` | `scripts/battle_input_state.gd` | Battle input state machine |
+| 3 | `EnergyManager` | `managers/energy_manager.gd` | Battle energy pool; cap = equipped energy card star × 100 |
+| 4 | `PhaseInstrumentManager` | `managers/phase_instrument_manager.gd` | 4-color equipment slots (red/blue/green/yellow) + phase field XP (Lv1-16) |
+| 5 | `BattleManager` | `managers/battle/battle_manager.gd` | Battle orchestration, delegates to BattleSpawnSystem + BattleDamageSystem |
+| 6 | `GameManager` | `managers/game_manager.gd` | Game flow: pre-battle → battle → post-battle; 15% phase master encounter |
+| 7 | `BlueprintManager` | `managers/blueprint_manager.gd` | Card account progression (copies, stars, mods, evolution, inherit bonus, HP floor) |
+| 8 | `DropManager` | `managers/drop_manager.gd` | Post-battle drop tables (13 drop types) and claiming |
+| 9 | `SaveManager` | `managers/save_manager.gd` | `user://save.json`, 3 slots, schema v5, migration chain v1→v5 |
+| 10 | `AudioManager` | `managers/audio_manager.gd` | Audio |
+| 11 | `PhaseLawManager` | `managers/phase_law_manager.gd` | Law research/equip/battle state; 4 families (STEEL/FLAME/THUNDER/VOID); nano budget |
+| 12 | `BasicResourceManager` | `managers/basic_resource_manager.gd` | Global currencies (nano materials, alloy, crystal, energy blocks, research points, permits) |
+| 13 | `ObjectPoolManager` | `managers/object_pool.gd` | Object pool for bullets, damage numbers |
+| 14 | `UILazyLoader` | `managers/ui_lazy_loader.gd` | On-demand UI panel loading (~30+ panels) |
+| 15 | `ManagerLazyLoader` | `managers/manager_lazy_loader.gd` | On-demand non-core manager loading (20+ managers, priority 1-10) |
+| 16 | `PerformanceMetricsManager` | `managers/performance_metrics_manager.gd` | FPS/performance sampling |
+| 17 | `IntelManual` | `scripts/systems/intel_manual.gd` | v6.0 4-dimension intel (basic/tactical/material/secret); reveal tiers |
+| 18 | `IntelItemBag` | `managers/intel_item_bag.gd` | v6.0 Intel item inventory (6 consumable types replacing intel_points) |
+| 19 | `IntelDiscoveryManager` | `scripts/systems/intel_discovery_manager.gd` | v6.0 Battle harvest, 112 reveal events, enemy-origin MOD unlock |
+| 20 | `EnemyOriginModManager` | `scripts/systems/enemy_origin_mod_manager.gd` | v6.0 Enemy-origin MOD equip/fragment progress (9 MODs, D-slot) |
+| 21 | `IntelEvolutionManager` | `scripts/systems/intel_evolution_manager.gd` | v6.0 4 hidden evolution branches (intel-triggered) |
+| 22 | `ModificationRegistry` | `scripts/systems/modification_registry.gd` | 140+ modification modules across 9 unit types (autoload, static registry) |
+| 23 | `MilitaryTitleRegistry` | `scripts/systems/military_title_registry.gd` | Unified rank system (13 ranks, per combat_kind, via UnifiedRankSystem) |
+| 24 | `EvolutionPathRegistry` | `scripts/systems/evolution_path_registry.gd` | 8 unit-type evolution paths (main line + hidden branches) |
+| 25 | `CardEnhancementManager` | `managers/card_enhancement_manager.gd` | Single-card enhancement Lv1-10 (100% success, nano cost = base × level × era) |
+| 26 | `AffixManager` | `managers/affix_manager.gd` | Modular affix management (acquire/upgrade/reroll/lock; boss-unlocked affix pool) |
 
-**Lazy-loaded managers** (via `ManagerLazyLoader.ensure_loaded()`):
-`AuraManager`, `LevelProgressManager`, `QuestManager`, `AchievementManager`, `LoreManager`, `StatBoostManager`, `CardEnhancementManager`, `TutorialProgressionManager`, `StoryManager`, `CharacterManager`, `ChallengeModeManager`, `CardCollectionManager`, `LeaderboardManager`, `DailyTaskManager`, `FactionSystemManager`, etc.
+**Lazy-loaded managers** (via `ManagerLazyLoader.ensure_loaded()`, 20 total):
+
+| Priority | Manager ID | Node Name | Description |
+|----------|-----------|-----------|-------------|
+| 1 | `aura` | `AuraManager` | Aura system |
+| 1 | `battle_feedback` | `BattleFeedbackManager` | Battle feedback |
+| 1 | `level_progress` | `LevelProgressManager` | Level progress |
+| 2 | `quest` | `QuestManager` | Quest system |
+| 2 | `achievement` | `AchievementManager` | Achievement system |
+| 2 | `daily_task` | `DailyTaskManager` | Daily tasks |
+| 2 | `challenge_mode` | `ChallengeModeManager` | Challenge mode |
+| 3 | `faction` | `FactionSystemManager` | 7-faction system (reputation/shop/skill/events/card-gen) |
+| 3 | `affix` | `AffixManager` | ⚠️ Duplicate — also autoloaded as #26 above |
+| 4 | `card_collection` | `CardCollectionManager` | Card collection |
+| 4 | `stat_boost` | `StatBoostManager` | Stat boosts |
+| 5 | `statistics` | `StatisticsManager` | Statistics |
+| 5 | `leaderboard` | `LeaderboardManager` | Leaderboard |
+| 6 | `lore` | `LoreManager` | Lore |
+| 6 | `story` | `StoryManager` | Story |
+| 6 | `character` | `CharacterManager` | Character management |
+| 7 | `tutorial` | `TutorialProgressionManager` | Tutorial |
+| 8 | `new_systems` | `NewSystemsIntegration` | New systems integration |
+| 9 | `toast` | `ToastManager` | Toast notifications |
+| 9 | `version` | `VersionManager` | Version management |
+| 99 | `debug_log` | `DebugLog` | Debug logging |
 
 ### Key Patterns
 
@@ -85,12 +113,31 @@ GameManager → BattleManager, BlueprintManager, PhaseInstrumentManager,
                FactionSystemManager, DropManager, QuestManager
 
 BattleManager → BattleSpawnSystem, BattleDamageSystem, EnergyManager,
-                 PhaseInstrumentManager, GameManager, SpatialGrid, SignalBus
+                 PhaseInstrumentManager, GameManager, SpatialGrid, SignalBus,
+                 IntelDiscoveryManager (v6.0 defeated enemy recording)
 
 SaveManager → ALL managers (loads/saves their state sections)
+              Critical: BlueprintManager, PhaseInstrumentManager, PhaseLawManager,
+              QuestManager, BasicResourceManager, FactionSystemManager, AffixManager,
+              LevelProgressManager, DropManager, IntelItemBag
+              Deferred: LoreManager, StatBoostManager, AchievementManager,
+              DailyTaskManager, StatisticsManager, CardEnhancementManager, etc.
 
 BlueprintManager → CardEvolutionManager, ModManager, EvolutionHelpers,
-                    DefaultCards, PhaseLaws, UnitStatsTable
+                    DefaultCards, PhaseLaws, UnitStatsTable, RankRules
+
+CardEnhancementManager → DefaultCards, UnifiedRankSystem (military titles)
+
+ModificationRegistry → 9 unit-type mod modules (infantry/armor/artillery/anti_air/air/recon/engineer/fort/universal)
+
+EvolutionPathRegistry → 8 unit-type evolution modules (infantry/armor/air/artillery/fort/recon/engineer/anti_air)
+
+FactionSystemManager → FactionReputation, FactionShop, FactionSkillManager,
+                        FactionEventManager, FactionCardGenerator, SynthesisManager
+
+IntelDiscoveryManager → IntelManual, IntelDimensions, IntelRevealEvents, EnemyOriginMods
+IntelEvolutionManager → IntelManual, IntelEvolutionBranches
+EnemyOriginModManager → IntelManual, IntelDimensions, EnemyOriginMods
 ```
 
 ### Battle Flow
@@ -102,30 +149,72 @@ BlueprintManager → CardEvolutionManager, ModManager, EvolutionHelpers,
 ### Scene Structure
 
 - `scenes/main.tscn` — `BattleContainer` + `HudLayer` (CanvasLayer 40) + `PopupLayer` (CanvasLayer 100)
-- `scenes/battlefield/battlefield.tscn` — Battlefield rendering
-- `scenes/ui/` — ~65 UI panel scripts (backpack, store, faction, quest, achievement, etc.)
-- `scenes/units/` — `construct_unit`, `enemy_unit`, `phase_field_driver`, `bullet`
-- `scenes/effects/` — Damage numbers, screen shake, cast effects
+- `scenes/battlefield/battlefield.tscn` — Battlefield rendering + battle slot grid
+- `scenes/ui/` — ~65+ UI panel scripts (backpack, store, faction, quest, achievement, evolution, enhancement, modification, affix, intel hub, leaderboard, daily task, etc.)
+- `scenes/units/` — `construct_unit` (player), `enemy_unit`, `phase_field_driver` (base), `enemy_phase_field_driver`, `bullet`, `swarm_enemy_controller`, `unit_hp_bar`
+- `scenes/effects/` — Damage numbers, screen shake, cast effects, law target indicator, battle audio/effects systems
+- `scripts/battle/` — `attack_calculator`, `construct_unit_ai`, `construct_unit_deploy`, `damage_attenuation`, `target_selection`
 
 ### Data Layer (`data/`)
 
-Key data files (all `extends RefCounted`, static):
-- `default_cards.gd` — ~110 battle unit definitions (WWI to future)
-- `enemy_archetypes.gd` — Enemy types, drops, nano material drops
-- `phase_laws.gd` — Law definitions (4 families: STEEL/FLAME/THUNDER/VOID)
-- `affix_definitions.gd` — Affix definition table
-- `blueprint_star_config.gd` — Star upgrade costs, mod costs, license rules
+All data files are pure GDScript static classes (`extends RefCounted`), no JSON/CSV.
+
+**Core Cards & Enemies:**
+- `default_cards.gd` — ~110 battle unit definitions (WWI to near-future, 5 eras × 20 levels)
+- `enemy_archetypes.gd` (+ era-split variants: `_ww.gd`, `_cold_modern.gd`, `_future.gd`) — Enemy types, drops
+- `enemy_phase_masters*.gd` (5 era files + combined) — Phase master (boss) definitions
+- `enemy_equipment_*.gd` — Enemy weapons, armor modules, specials
+- `enemy_blueprints.gd`, `enemy_unit_manifest.gd`, `enemy_stat_context.gd`, `enemy_stat_resolver.gd`
+
+**Law & Environment:**
+- `phase_laws.gd` — Law definitions (4 families: STEEL/FLAME/THUNDER/VOID, passive + active)
+- `battle_environments.gd` — Battlefield environment modifiers
+- `phase_instruments.gd` — Phase instrument definitions (4-color slot configs)
+
+**Economy & Progression:**
+- `basic_resources.gd` — Resource ID definitions (nano/alloy/crystal/energy block/research points/permits)
+- `blueprint_star_config.gd` — Star upgrade costs, mod costs, permit rules
 - `battle_card_v3.gd` — Era HP/damage multipliers
-- `level_eras.gd` — Level-to-era mapping, wave parameters
+- `level_eras.gd` / `level_information.gd` — Level-to-era mapping (100 levels, 5 eras)
+- `rank_rules.gd`, `card_progression_settings.gd` — Progression tuning
+
+**v6.0 Intel System:**
+- `intel_dimensions.gd` — 4 intel dimensions (basic/tactical/material/secret)
+- `intel_reveal_events.gd` — 112 reveal events (7 enemy types × 4 dimensions × 4 tiers)
+- `intel_evolution_branches.gd` — 4 hidden evolution branches
+- `intel_manual_items.gd` — 6 intel consumable items
+- `enemy_origin_mods.gd` — 9 enemy-origin MOD definitions
+
+**Evolution:**
+- `data/evolution_paths/` — 8 files: infantry/armor/air/artillery/fort/recon/engineer/anti_air evolution paths
+- `unit_lineage_config.gd` — Unit lineage and evolution target mapping
+- `evolution_paths_supplement.gd` — Supplementary evolution data
+
+**Modification:**
+- `data/modification_modules/` — 9 files: infantry/armor/artillery/anti_air/air/recon/engineer/fort/universal mods (140+ total)
+- `mod_effects.gd` — Mod effect definitions and slot cost formulas
+
+**Military Titles:**
+- `data/military_titles/unified_rank_system.gd` — Unified rank system (13 ranks, power multipliers)
+- `data/military_titles/title_display_names.gd` — Rank display names per combat_kind
+
+**Faction:**
+- `company_definitions.gd` — 7 faction definitions
+- `faction_card_bonuses.gd`, `faction_exclusive_cards.gd`, `faction_skill_tree.gd`, `faction_war_events.gd`
+- `synthesis_recipes.gd` — Hybrid card synthesis recipes
+
+**Quest/Achievement/Challenge:**
+- `quest_definitions.gd`, `achievement_definitions*.gd` (4 files), `challenge_definitions.gd`, `task_definitions_extended.gd`, `daily_task_definitions.gd`
 
 ### Resource Types (`resources/`)
 
-- `CardResource` — Unified card model (unit/energy/law types), evolution, affix slots, mods
-- `AffixResource` — Card modifiers with rarity, level scaling, stat caps
-- `UnitStats` / `UnitStatsTable` — Derived combat stats from CardResource
-- `GameConstants` — All enums: CardType, WeaponType, CombatKind, etc.
-- `DropTables` — Weighted drop entries and tables
-- `DesignTokens` — UI theming constants
+- `CardResource` — Unified card model (combat_unit/energy/law), evolution, affix slots, mods, per-target attack speeds (v5.0)
+- `AffixResource` — Modular affix with rarity, level scaling, stat caps
+- `UnitStats` / `UnitStatsTable` — Derived combat stats from CardResource with era scaling
+- `GameConstants` — All enums: CardType(3), WeaponType(4), CombatKind(5), Era(5), PlatformType(13, deprecated), WeaponTypeLegacy(12, deprecated)
+- `DropTables` — Weighted drop entries (13 drop types), tables, guarantee drops
+- `DesignTokens` — UI theming constants (neon palette, typography, spacing, glow, accessibility)
+- `GameConfig` — Tunable game config (battle/economy/UI/performance/debug)
 
 ### Test Structure
 
@@ -150,8 +239,9 @@ tests/
 ### Save System
 
 - Single JSON file: `user://save.json`, 3 save slots
-- Schema version 3, migration chain v1→v2→v3 via `scripts/systems/save_migration.gd`
-- Critical managers load first, others lazy-load
+- Schema version 5, migration chain v1→v2→v3→v4→v5 via `scripts/systems/save_migration.gd` + `save_migration_v4.gd` + `save_migration_v5.gd`
+- Critical managers (10) load immediately; deferred managers (12) load in batches after scene ready
+- Auto-save on battle end + window close; backup every 15s
 
 ## Engine Version Notes
 

@@ -745,9 +745,8 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 	var bm_growth: Node = _get_autoload_node("BlueprintManager")
 	if bm_growth and bm_growth.has_method("apply_growth_to_stats"):
 		bm_growth.apply_growth_to_stats(stats, platform_card, weapon_cards)
-	var am: Node = _get_autoload_node("AffixManager")
-	if am and am.has_method("apply_affixes_to_stats"):
-		am.apply_affixes_to_stats(stats, platform_card, weapon_cards)
+	# v6.0: 词条效果已由 UnitStatsTable.build_stats_from_card 内部处理
+	# 不再需要额外调用 AffixManager.apply_affixes_to_stats
 	if _phase_instrument and _phase_instrument.has_method("apply_phase_field_bonus_to_unit_stats"):
 		_phase_instrument.apply_phase_field_bonus_to_unit_stats(stats)
 	_stats_cache[key] = stats.duplicate()
