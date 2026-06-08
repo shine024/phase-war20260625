@@ -238,8 +238,7 @@ func load_state(state: Dictionary) -> void:
 		max_unlocked_level = 1
 
 	if DEBUG_LOG:
-		# [LOG-v5.1] print("[LevelProgress] 进度已加载: max_level=%d, unlocked=%d关, stars=%d关" % [
-			max_unlocked_level, unlocked_levels.size(), level_stars.size()])
+		pass  # [LOG-v5.1] print("[LevelProgress] 进度已加载: max_level=%d, unlocked=%d关, stars=%d关" % [max_unlocked_level, unlocked_levels.size(), level_stars.size()])
 
 ## 重置进度（用于新游戏）
 func reset_progress() -> void:

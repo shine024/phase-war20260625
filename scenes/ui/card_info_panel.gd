@@ -564,18 +564,41 @@ func _format_unit_stats_summary(stats: UnitStats, cur_hp: float = -1.0, extra_su
 		hp_text = "HP %.0f/%.0f" % [cur_hp, stats.max_hp]
 	else:
 		hp_text = "HP %.0f" % stats.max_hp
+	
+	# 获取武器名称
+	var weapon_names: Array[String] = ["", "", ""]
+	if not stats.weapon_slots.is_empty():
+		for i in range(min(stats.weapon_slots.size(), 3)):
+			var w = stats.weapon_slots[i]
+			if w is WeaponResource and w.enabled:
+				weapon_names[i] = w.display_name
+	
 	var atk_light: float = stats.attack_light if stats.attack_light > 0.001 else 0.0
 	var atk_armor: float = stats.attack_armor if stats.attack_armor > 0.001 else 0.0
 	var atk_air: float = stats.attack_air if stats.attack_air > 0.001 else 0.0
 	var def_light: float = stats.defense_light if stats.defense_light > 0.001 else 0.0
 	var def_armor: float = stats.defense_armor if stats.defense_armor > 0.001 else 0.0
 	var def_air: float = stats.defense_air if stats.defense_air > 0.001 else 0.0
-	return "%s｜攻 %.0f/%.0f/%.0f｜防 %.0f/%.0f/%.0f｜射程 %.0f｜攻速 %.2f｜移速 %.0f%s" % [
+	var spd_light: float = stats.attack_light_speed if stats.attack_light_speed > 0.001 else 0.0
+	var spd_armor: float = stats.attack_armor_speed if stats.attack_armor_speed > 0.001 else 0.0
+	var spd_air: float = stats.attack_air_speed if stats.attack_air_speed > 0.001 else 0.0
+	
+	# 构建攻击部分（包含武器名）
+	var atk_part: String
+	if weapon_names[0].is_empty() and weapon_names[1].is_empty() and weapon_names[2].is_empty():
+		atk_part = "%.0f/%.0f/%.0f" % [atk_light, atk_armor, atk_air]
+	else:
+		var a0: String = weapon_names[0] + str(atk_light) if not weapon_names[0].is_empty() else str(atk_light)
+		var a1: String = weapon_names[1] + str(atk_armor) if not weapon_names[1].is_empty() else str(atk_armor)
+		var a2: String = weapon_names[2] + str(atk_air) if not weapon_names[2].is_empty() else str(atk_air)
+		atk_part = "%s/%s/%s" % [a0, a1, a2]
+	
+	return "%s｜攻 %s｜防 %.0f/%.0f/%.0f｜射程 %.0f｜攻速 %.2f/%.2f/%.2f｜移速 %.0f%s" % [
 		hp_text,
-		atk_light, atk_armor, atk_air,
+		atk_part,
 		def_light, def_armor, def_air,
 		stats.attack_range,
-		stats.attack_interval,
+		spd_light, spd_armor, spd_air,
 		stats.move_speed,
 		extra_suffix,
 	]

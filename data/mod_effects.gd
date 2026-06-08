@@ -115,8 +115,8 @@ static func get_mod_slot_cost(slot_index: int) -> float:
 
 ## ── 兼容 BlueprintManager（子任务3引用的旧接口）──
 ## 获取全部 MOD 定义（旧名 get_all_mod_definitions，保留兼容）
-static func get_all_mod_definitions() -> Array:
-	var result: Array = []
+static func get_all_mod_definitions() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
 	for mod_id in get_all_mod_ids():
 		result.append(get_mod_info(mod_id))
 	return result

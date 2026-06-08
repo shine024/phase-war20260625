@@ -6,6 +6,9 @@ const GC = preload("res://resources/game_constants.gd")
 const DamageAttenuation = preload("res://scripts/battle/damage_attenuation.gd")
 const ModEffects = preload("res://data/mod_effects.gd")
 
+## 默认攻速值（当攻速为0或负数时使用）
+const DEFAULT_ATTACK_SPEED: float = 1.0
+
 ## 根据目标类型获取攻击值
 static func get_attack_vs(attacker_stats: UnitStats, target_combat_kind: int) -> float:
 	match target_combat_kind:
@@ -168,7 +171,7 @@ static func get_attack_timing(attacker_stats: UnitStats, target_combat_kind: int
 			active = attacker_stats.attack_light_active
 
 	if speed <= 0.0:
-		speed = 1.0
+		speed = DEFAULT_ATTACK_SPEED
 
 	var cycle = 1.0 / speed
 	return {
@@ -178,3 +181,94 @@ static func get_attack_timing(attacker_stats: UnitStats, target_combat_kind: int
 		"cooldown": maxf(0.0, cycle - windup - active),
 		"speed": speed,
 	}
+
+## ─── 武器槽位系统支持 ───
+
+## 根据目标类型获取对应武器
+static func get_weapon_for_target(attacker_stats: UnitStats, target_combat_kind: int) -> WeaponResource:
+	if attacker_stats == null or attacker_stats.weapon_slots.is_empty():
+		return null
+
+	# 优先使用新槽位系统
+	if attacker_stats.has_method("get_weapon_for_target"):
+		return attacker_stats.get_weapon_for_target(target_combat_kind)
+
+	# 回退到旧系统（按索引映射）
+	match target_combat_kind:
+		GC.CombatKind.LIGHT, GC.CombatKind.SUPPORT:
+			return attacker_stats.weapon_slots[0] if attacker_stats.weapon_slots.size() > 0 else null
+		GC.CombatKind.ARMOR, GC.CombatKind.FORT:
+			return attacker_stats.weapon_slots[1] if attacker_stats.weapon_slots.size() > 1 else null
+		GC.CombatKind.AIR:
+			return attacker_stats.weapon_slots[2] if attacker_stats.weapon_slots.size() > 2 else null
+		_:
+			return attacker_stats.weapon_slots[0] if attacker_stats.weapon_slots.size() > 0 else null
+
+## 使用槽位武器计算伤害
+static func calculate_damage_with_weapon(
+	attacker_stats: UnitStats,
+	target_stats: UnitStats,
+	distance: float,
+	weapon: WeaponResource,
+	attacker_enhance_level: int = 0,
+	attacker_mods: Array = []
+) -> float:
+	if weapon == null or not weapon.enabled:
+		return 0.0
+
+	var base_damage = weapon.damage
+	var def = get_defense_vs(target_stats, attacker_stats.combat_kind)
+
+	# 击穿检查
+	if base_damage <= def:
+		return 0.0
+
+	# 射程衰减（仅直射）
+	if weapon.weapon_type == GC.WeaponType.DIRECT:
+		var max_range = float(weapon.range_value) * 100.0
+		var sub_type = DamageAttenuation.infer_weapon_sub_type(
+			attacker_stats.combat_kind, weapon.range_value,
+			base_damage, base_damage, base_damage
+		)
+		base_damage *= DamageAttenuation.calculate_attenuation(distance, max_range, sub_type)
+
+	# 防御减免
+	var final_damage = base_damage * (100.0 / (100.0 + def))
+
+	# 强化加成
+	if attacker_enhance_level > 0:
+		var enhance_mult: float
+		if attacker_enhance_level >= 10:
+			enhance_mult = 1.60
+		elif attacker_enhance_level >= 9:
+			enhance_mult = 1.50
+		else:
+			enhance_mult = 1.0 + float(attacker_enhance_level) * 0.05
+		final_damage *= enhance_mult
+
+	# 改造加成
+	if attacker_mods and not attacker_mods.is_empty():
+		final_damage *= get_mod_damage_multiplier(attacker_mods, target_stats.combat_kind)
+
+	return final_damage
+
+## 获取槽位武器的攻击计时参数
+static func get_weapon_attack_timing(weapon: WeaponResource) -> Dictionary:
+	if weapon == null or not weapon.enabled:
+		return {"cycle": 1.0, "windup": 0.2, "active": 0.1, "cooldown": 0.7, "speed": 1.0}
+
+	var speed = weapon.attack_speed if weapon.attack_speed > 0 else DEFAULT_ATTACK_SPEED
+	var cycle = 1.0 / speed
+	return {
+		"cycle": cycle,
+		"windup": weapon.windup,
+		"active": weapon.active,
+		"cooldown": maxf(0.0, cycle - weapon.windup - weapon.active),
+		"speed": speed,
+	}
+
+## 获取槽位武器的射程（米）
+static func get_weapon_range(weapon: WeaponResource) -> float:
+	if weapon == null:
+		return 120.0
+	return float(weapon.range_value) * 100.0

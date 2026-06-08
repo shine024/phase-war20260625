@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3 uid="uid://backpack_scroll"]
+[gd_scene load_steps=1 format=3 uid="uid://backpack_scroll"]
 
 [ext_resource type="Script" path="res://scenes/ui/backpack_scroll.gd" id="1_script"]
 

@@ -108,6 +108,14 @@ var is_faction_hybrid: bool = false
 var hybrid_second_faction: String = ""
 var multi_weapons: Array = []
 
+## 武器槽位名称（3个槽位：轻装/装甲/对空）
+## 每项为具体武器名（如"MP18冲锋枪"），空字符串表示无武器
+var weapon_names: Array[String] = ["", "", ""]
+
+## 武器槽位数组（3个槽位：轻装/装甲/对空）
+## 每个槽位可装配独立的 WeaponResource，可为空（enabled=false）
+var weapon_slots: Array = []
+
 # ─────────────────────────────────────────────
 #  能量卡专用字段（card_type == ENERGY）
 # ─────────────────────────────────────────────
@@ -368,6 +376,13 @@ func clone() -> CardResource:
 	new_card.defense_armor = defense_armor
 	new_card.defense_air = defense_air
 	new_card.multi_weapons = multi_weapons.duplicate(true)
+	# 武器槽位名称（v6.0）
+	new_card.weapon_names = weapon_names.duplicate()
+	# 武器槽位
+	new_card.weapon_slots = Array()
+	for weapon in weapon_slots:
+		if weapon != null and weapon.has_method("clone"):
+			new_card.weapon_slots.append(weapon.clone())
 	# v5.0 养成字段
 	new_card.enhance_level = enhance_level
 	new_card.mods = mods.duplicate()
@@ -648,4 +663,49 @@ func get_original_card_id() -> String:
 	var history = get_evolution_history()
 	if history.is_empty():
 		return card_id
+	## 安全检查：确保第一个元素存在且为字典类型
+	if history[0] == null or not (history[0] is Dictionary):
+		return card_id
 	return history[0].get("from_id", card_id)
+
+## 武器槽位初始化（向后兼容）
+func _ensure_weapon_slots_initialized() -> void:
+	if not weapon_slots.is_empty():
+		return  # 已初始化
+
+	# 从现有字段创建默认槽位
+	weapon_slots = Array()
+	weapon_slots.append(_create_slot_from_legacy(0, attack_light, attack_light_speed, attack_light_windup, attack_light_active))
+	weapon_slots.append(_create_slot_from_legacy(1, attack_armor, attack_armor_speed, attack_armor_windup, attack_armor_active))
+	weapon_slots.append(_create_slot_from_legacy(2, attack_air, attack_air_speed, attack_air_windup, attack_air_active))
+
+## 从旧字段创建槽位武器（向后兼容）
+func _create_slot_from_legacy(slot_idx: int, base_damage: float, base_speed: float, base_windup: float, base_active: float) -> Resource:
+	var w = load("res://resources/weapon_resource.gd").new()
+	w.slot_type = slot_idx
+	w.damage = base_damage
+	w.attack_speed = base_speed if base_speed > 0 else 1.0
+	w.windup = base_windup
+	w.active = base_active
+	w.weapon_type = weapon_type
+	w.range_value = range_value
+	w.enabled = base_damage > 0
+
+	# 设置默认显示名称
+	if has_method("_get_weapon_name_for_slot"):
+		var fallback = get_weapon_name_for_slot(slot_idx)
+		if fallback != "":
+			w.display_name = fallback
+
+	match slot_idx:
+		0: w.display_name = "轻装武器"
+		1: w.display_name = "装甲武器"
+		2: w.display_name = "对空武器"
+
+	return w
+
+## 获取武器槽位名称（v6.0：从 weapon_names 数组读取）
+func get_weapon_name_for_slot(slot_idx: int) -> String:
+	if slot_idx >= 0 and slot_idx < weapon_names.size():
+		return weapon_names[slot_idx]
+	return ""

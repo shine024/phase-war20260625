@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3 uid="uid://battle_click_overlay"]
+[gd_scene load_steps=1 format=3 uid="uid://battle_click_overlay"]
 
 [ext_resource type="Script" path="res://scenes/ui/battle_click_overlay.gd" id="1_script"]
 

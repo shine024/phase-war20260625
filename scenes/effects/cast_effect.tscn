@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3 uid="uid://b5v1f33uqbqt7"]
+[gd_scene load_steps=1 format=3 uid="uid://b5v1f33uqbqt7"]
 
 [ext_resource type="Script" path="res://scenes/effects/cast_effect.gd" id="1"]
 

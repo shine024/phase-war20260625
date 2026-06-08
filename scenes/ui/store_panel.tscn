@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3 uid="uid://store_panel"]
+[gd_scene load_steps=11 format=3 uid="uid://store_panel"]
 
 [ext_resource type="Script" path="res://scenes/ui/store_panel.gd" id="1_script"]
 

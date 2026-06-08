@@ -74,6 +74,32 @@ static func build_stats_from_card(card: CardResource, era_override: int = -1) ->
 				entry["range"] = float(entry.get("range", 0.0)) * BattleCardV3.era_range_multiplier(clampi(e, 0, 4))
 			stats.weapons.append(entry)
 
+		# 武器槽位系统（新）
+		stats.weapon_slots.clear()
+		# 确保卡牌的槽位已初始化
+		if card.has_method("_ensure_weapon_slots_initialized"):
+			card._ensure_weapon_slots_initialized()
+		# 复制槽位数据并应用时代缩放
+		var tmp_slots: Array[WeaponResource] = []
+		for weapon in card.weapon_slots:
+			if weapon is WeaponResource and weapon.enabled:
+				var w_copy = weapon.clone()
+				# 应用时代伤害缩放
+				if e >= 0:
+					w_copy.damage *= BattleCardV3.era_damage_multiplier(clampi(e, 0, 4))
+					w_copy.range_value = int(float(w_copy.range_value) * BattleCardV3.era_range_multiplier(clampi(e, 0, 4)))
+				tmp_slots.append(w_copy)
+			else:
+				# 添加空槽位占位
+				tmp_slots.append(WeaponResource.create_empty_slot(tmp_slots.size()))
+
+		# v6.0: 应用改造效果到武器槽位
+		if card.mods and not card.mods.is_empty():
+			if ModificationRegistry and ModificationRegistry.has_method("apply_to_weapon_slots"):
+				tmp_slots = ModificationRegistry.apply_to_weapon_slots(tmp_slots, card.mods)
+
+		stats.weapon_slots = tmp_slots
+
 	# 旧字段兼容（写入旧字段让过渡期代码仍能工作）
 	stats.platform_type = card.platform_type
 	stats.legacy_weapon_type = card.legacy_weapon_type

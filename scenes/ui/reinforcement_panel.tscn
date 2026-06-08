@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=1 format=3]
 
 [ext_resource type="Script" uid="uid://b0be1y4feesii" path="res://scenes/ui/reinforcement_panel.gd" id="1_script"]
 

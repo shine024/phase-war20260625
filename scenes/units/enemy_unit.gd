@@ -488,23 +488,29 @@ func _process_attack_timing(delta: float) -> void:
 		_attack_phase = 0
 		_attack_phase_timer = 0.0
 		return
-	# 获取攻速参数
+	# 获取攻速参数：优先使用武器槽位
 	var timing: Dictionary
+	var fire_range: float
+	var wt: int
 	if stats != null:
 		var target_stats = target.get("stats") as UnitStats
 		var target_kind: int = target_stats.combat_kind if target_stats != null else 0
-		timing = AttackCalculator.get_attack_timing(stats, target_kind)
+		var weapon = AttackCalculator.get_weapon_for_target(stats, target_kind)
+		if weapon and weapon.enabled:
+			timing = AttackCalculator.get_weapon_attack_timing(weapon)
+			fire_range = AttackCalculator.get_weapon_range(weapon)
+			wt = weapon.weapon_type
+		else:
+			timing = AttackCalculator.get_attack_timing(stats, target_kind)
+			fire_range = stats.attack_range
+			wt = stats.weapon_type
 	else:
 		# 无stats时回退到旧逻辑
 		timing = {"cycle": attack_interval, "windup": attack_interval * 0.2, "active": 0.1, "cooldown": attack_interval * 0.7, "speed": 1.0 / attack_interval}
-	var fire_range: float = _effective_fire_range()
+		fire_range = attack_range
+		wt = 0
+
 	var dist: float = global_position.distance_to(target.global_position)
-	var wt: int = 0
-	if stats != null:
-		wt = stats.weapon_type
-	else:
-		var cfg: Dictionary = _cached_archetype_cfg
-		wt = int(cfg.get("weapon_type", 0))
 	# 超射程且直射时重置
 	if dist > fire_range and wt == GC.WeaponType.DIRECT:
 		_attack_phase = 0
@@ -540,21 +546,27 @@ func _do_attack() -> void:
 		return
 	var dist_t := global_position.distance_to(target.global_position)
 	var miss := false
-	# v5.0: 按目标类型获取攻击值
-	var dmg_out: float = attack_damage  # 默认值（无stats时）
+	var weapon_name_str: String = ""
+
+	# v6.0: 从 stats 武器槽位获取 weapon_name 和 dmg
+	var wt: int = 0
+	var dmg_out: float = attack_damage
 	if stats != null:
 		var target_stats = target.get("stats") as UnitStats
 		var target_kind: int = target_stats.combat_kind if target_stats != null else 0
-		dmg_out = AttackCalculator.get_attack_vs(stats, target_kind)
-	# v5.0: 仅直射有衰减
-	var cfg: Dictionary = _cached_archetype_cfg
-	var wt: int = int(cfg.get("weapon_type", 0))
-	if stats != null:
-		wt = stats.weapon_type
-	var multi: Array = cfg.get("weapon_types", [])
-	if not multi.is_empty():
-		wt = int(multi[_attack_weapon_index % multi.size()])
-		_attack_weapon_index += 1
+		var weapon = AttackCalculator.get_weapon_for_target(stats, target_kind)
+		if weapon and weapon.enabled:
+			wt = weapon.weapon_type
+			weapon_name_str = weapon.display_name
+			dmg_out = AttackCalculator.calculate_damage_with_weapon(
+				stats, target_stats, dist_t, weapon, 0, []
+			)
+		else:
+			wt = stats.weapon_type
+			dmg_out = AttackCalculator.get_attack_vs(stats, target_kind)
+	else:
+		var cfg: Dictionary = _cached_archetype_cfg
+		wt = int(cfg.get("weapon_type", 0))
 	if _try_fire_enemy_projectile_batch(target, wt, dmg_out, miss):
 		if _presentation_card_grid:
 			_play_card_attack_nudge()
@@ -566,8 +578,8 @@ func _do_attack() -> void:
 		# 对象池未初始化或已满，回退到直接创建
 		bullet = BulletScene.instantiate()
 	bullet.global_position = global_position
-	# 如果有完整的 stats 信息，传递给子弹用于词条效果
-	bullet.setup(target, dmg_out, false, wt, self, stats, miss)
+	# v6.0: 传递 weapon_name 给子弹用于 VFX 贴图查找
+	bullet.setup(target, dmg_out, false, wt, self, stats, miss, weapon_name_str)
 	var root_2d = get_parent().get_parent() if (get_parent() != null and get_parent().get_parent() != null) else self
 	var current_parent: Node = bullet.get_parent()
 	if current_parent != root_2d:

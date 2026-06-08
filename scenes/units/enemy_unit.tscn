@@ -1,4 +1,4 @@
-[gd_scene load_steps=4 format=3 uid="uid://bi71jasyvxq5e"]
+[gd_scene load_steps=3 format=3 uid="uid://bi71jasyvxq5e"]
 
 [ext_resource type="Script" uid="uid://ds7i5hsmlod3a" path="res://scenes/units/enemy_unit.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://scenes/units/unit_hp_bar.tscn" id="2_hpbar"]

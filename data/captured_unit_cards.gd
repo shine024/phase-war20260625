@@ -7,7 +7,6 @@ class_name CapturedUnitCards
 
 const EnemyUnitManifest = preload("res://data/enemy_unit_manifest.gd")
 const GC = preload("res://resources/game_constants.gd")
-const DefaultCards = preload("res://data/default_cards.gd")
 
 static var _cache_built: bool = false
 static var _building: bool = false
@@ -68,7 +67,8 @@ static func _build_captured_card(
 	elif cfg.has("display_name"):
 		c.display_name = String(cfg.get("display_name", ""))
 	else:
-		var safe := DefaultCards.get_safe_display_name(drop_id)
+		var dc: GDScript = load("res://data/default_cards.gd")
+		var safe: String = dc.get_safe_display_name(drop_id) if dc else drop_id
 		c.display_name = safe if not safe.is_empty() else drop_id
 
 	var era: int = int(cfg.get("era", 0))

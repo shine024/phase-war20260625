@@ -1,4 +1,4 @@
-[gd_scene load_steps=3 format=3 uid="uid://battlefield"]
+[gd_scene load_steps=2 format=3 uid="uid://battlefield"]
 
 [ext_resource type="Script" uid="uid://clwpgv2frbgmp" path="res://scenes/battlefield/Battlefield.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://scenes/units/phase_field_driver.tscn" id="2_phase_driver"]

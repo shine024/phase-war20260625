@@ -81,6 +81,8 @@ var blueprint_evolution_hp_floor: Dictionary = {}
 var blueprint_rank_cache: Dictionary = {}
 ## card_id -> 敌源MOD ID
 var blueprint_enemy_origin_mod: Dictionary = {}
+## card_id -> 自定义武器槽位配置（用于进化/改造后的武器）
+var blueprint_weapon_slots: Dictionary = {}
 
 ## 纳米材料已迁移到 BasicResourceManager（autoload）
 
@@ -738,6 +740,29 @@ func save_state() -> Dictionary:
 	var eom_dict: Dictionary = {}
 	for k in blueprint_enemy_origin_mod:
 		eom_dict[k] = String(blueprint_enemy_origin_mod[k])
+	var weapon_slots_dict: Dictionary = {}
+	for k2 in blueprint_weapon_slots:
+			var slots_array = []
+			for w in blueprint_weapon_slots[k2]:
+				if w is WeaponResource:
+					# 只保存必要数据
+					slots_array.append({
+						"weapon_id": w.weapon_id,
+						"slot_type": w.slot_type,
+						"display_name": w.display_name,
+						"enabled": w.enabled,
+						"damage": w.damage,
+						"attack_speed": w.attack_speed,
+						"windup": w.windup,
+						"active": w.active,
+						"weapon_type": w.weapon_type,
+						"range_value": w.range_value,
+						"projectile_scene": w.projectile_scene,
+						"hit_effect_scene": w.hit_effect_scene,
+						"sound_id": w.sound_id,
+					})
+			weapon_slots_dict[k2] = slots_array
+
 	return {
 		"unlocked": unlocked_blueprint_ids.duplicate(),
 		"blueprint_copies": copies_dict,
@@ -746,6 +771,7 @@ func save_state() -> Dictionary:
 		"blueprint_evolution_hp_floor": hp_floor_dict,
 		"blueprint_rank_cache": rank_dict,
 		"blueprint_enemy_origin_mod": eom_dict,
+		"blueprint_weapon_slots": weapon_slots_dict,
 		"legacy_default_energy_copies_migrated": _legacy_default_energy_copies_migrated,
 	}
 
@@ -790,6 +816,33 @@ func load_state(data: Dictionary) -> void:
 		blueprint_enemy_origin_mod.clear()
 		for k in data["blueprint_enemy_origin_mod"]:
 			blueprint_enemy_origin_mod[String(k)] = String(data["blueprint_enemy_origin_mod"][k])
+
+		# 武器槽位配置加载
+		if data.has("blueprint_weapon_slots") and data["blueprint_weapon_slots"] is Dictionary:
+			blueprint_weapon_slots.clear()
+			for k in data["blueprint_weapon_slots"]:
+				var cid_w: String = String(k)
+				if data["blueprint_weapon_slots"][k] is Array:
+					var slots_array: Array[WeaponResource] = []
+					for w_data in data["blueprint_weapon_slots"][k]:
+						if w_data is Dictionary:
+							var w = WeaponResource.new()
+							w.weapon_id = w_data.get("weapon_id", "")
+							w.slot_type = w_data.get("slot_type", 0)
+							w.display_name = w_data.get("display_name", "")
+							w.enabled = w_data.get("enabled", true)
+							w.damage = w_data.get("damage", 0.0)
+							w.attack_speed = w_data.get("attack_speed", 1.0)
+							w.windup = w_data.get("windup", 0.2)
+							w.active = w_data.get("active", 0.1)
+							w.weapon_type = w_data.get("weapon_type", 0)
+							w.range_value = w_data.get("range_value", 3)
+							w.projectile_scene = w_data.get("projectile_scene", "")
+							w.hit_effect_scene = w_data.get("hit_effect_scene", "")
+							w.sound_id = w_data.get("sound_id", "")
+							slots_array.append(w)
+					blueprint_weapon_slots[cid_w] = slots_array
+
 	# 兼容旧存档的 fragments → blueprint_copies 迁移
 	if not data.has("blueprint_copies") and data.has("fragments") and data["fragments"] is Dictionary:
 		blueprint_copies.clear()
@@ -1074,6 +1127,14 @@ func evolve_card(card: CardResource, target_card_id: String) -> Dictionary:
 	# 创建新卡牌（通过DefaultCards）
 	var new_card = target_card  # 使用已获取的卡牌
 
+	# v6.0: 同步武器槽位（继承/替换）
+	if EvolutionPathRegistry and EvolutionPathRegistry.has_method("evolve_weapon_slots"):
+		var evolved_slots = EvolutionPathRegistry.evolve_weapon_slots(card, target_card_id, true)
+		for i in range(evolved_slots.size()):
+			var slot = evolved_slots[i]
+			if slot is WeaponResource:
+				new_card.weapon_slots.append(slot)
+
 	# 转移改造到新卡牌
 	new_card.mods = preserved_mods
 
@@ -1179,3 +1240,57 @@ func _update_blueprint_mods_cache(card_id: String) -> void:
 		blueprint_mods[card_id] = card.mods.duplicate(true)
 	elif card and card.mods.is_empty():
 		blueprint_mods.erase(card_id)
+
+## ─── 武器槽位管理 ───
+
+## 获取卡牌的自定义武器槽位配置
+## card_id: String - 卡牌ID
+## 返回：Array[WeaponResource] 或 null（如果无自定义配置）
+func get_custom_weapon_slots(card_id: String) -> Array:
+	if not blueprint_weapon_slots.has(card_id):
+		return []
+	return blueprint_weapon_slots.get(card_id, []) as Array
+
+## 设置卡牌的自定义武器槽位配置
+## card_id: String - 卡牌ID
+## slots: Array[WeaponResource] - 武器槽位数组
+## auto_save: bool - 是否自动保存（默认true）
+func set_custom_weapon_slots(card_id: String, slots: Array, auto_save: bool = true) -> void:
+	blueprint_weapon_slots[card_id] = slots.duplicate(true)
+	if auto_save:
+		_auto_save("武器槽位修改")
+
+## 应用自定义武器槽位到卡牌
+## card: CardResource - 卡牌资源
+## 返回：是否应用了自定义配置
+func apply_custom_weapon_slots(card: CardResource) -> bool:
+	if card == null:
+		return false
+	
+	var custom_slots = get_custom_weapon_slots(card.card_id)
+	if custom_slots.is_empty():
+		# 无自定义配置，确保使用默认槽位
+		if card.has_method("_ensure_weapon_slots_initialized"):
+			card._ensure_weapon_slots_initialized()
+		return false
+	
+	# 应用自定义槽位
+	card.weapon_slots.clear()
+	for w in custom_slots:
+		if w is WeaponResource:
+			card.weapon_slots.append(w.clone())
+	
+	return true
+
+## 保存当前卡牌的武器槽位配置（用于进化/改造后保存）
+## card: CardResource - 卡牌资源
+func save_card_weapon_slots(card: CardResource) -> void:
+	if card == null:
+		return
+	
+	blueprint_weapon_slots[card.card_id] = []
+	for w in card.weapon_slots:
+		if w is WeaponResource:
+			blueprint_weapon_slots[card.card_id].append(w.clone())
+	
+	_auto_save("保存武器槽位配置")

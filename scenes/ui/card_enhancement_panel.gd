@@ -19,7 +19,7 @@ const CompanyDefinitions = preload("res://data/company_definitions.gd")
 const BasicResources = preload("res://data/basic_resources.gd")
 const DEBUG_LOG_PATH = "debug-119cff.log"
 
-const MOD_SLOT_LABELS: PackedStringArray = ["A", "B", "C"]
+const MOD_SLOT_LABELS: PackedStringArray = ["A", "B", "C", "D", "E", "F", "G", "H", "I"]
 
 signal closed
 
@@ -179,6 +179,9 @@ func _init_card_list() -> void:
 		item_button.text = _get_card_display_name(card_id, card_data)
 		item_button.custom_minimum_size = Vector2(180, 40)
 		item_button.add_theme_font_size_override("font_size", 15)
+		# 防止长文本导致按钮过宽：设置文本截断+水平不扩展
+		item_button.clip_text = true
+		item_button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		item_button.pressed.connect(_on_card_item_selected.bindv([card_id]))
 
 		card_list_container.add_child(item_button)
@@ -258,6 +261,8 @@ func _update_detail_panel() -> void:
 	name_label.text = str(card_data.display_name if card_data else selected_card_id)
 	name_label.add_theme_font_size_override("font_size", 16)
 	name_label.add_theme_color_override("font_color", Color(0, 0.9, 1, 1))
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	detail_panel.add_child(name_label)
 	detail_panel.move_child(name_label, 0)
 	# 显示军衔
@@ -269,6 +274,8 @@ func _update_detail_panel() -> void:
 			float(rank_info.get("power_score", 0.0))
 		]
 		rank_label.add_theme_color_override("font_color", Color(0.95, 0.85, 0.45, 1))
+		rank_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		rank_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		detail_panel.add_child(rank_label)
 		detail_panel.move_child(rank_label, 1)
 
@@ -304,6 +311,7 @@ func _update_detail_panel() -> void:
 		var cost_label = Label.new()
 		cost_label.text = "升级成本：%d纳米材料（当前：%d）" % [nano_cost, current_nano]
 		cost_label.add_theme_color_override("font_color", Color.GREEN if current_nano >= nano_cost else Color.RED)
+		cost_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		cost_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		detail_panel.add_child(cost_label)
 
@@ -452,8 +460,8 @@ func _update_evolution_section(card_data: CardResource) -> void:
 	tips.bbcode_enabled = true
 	tips.text = "[color=#7fd3ff]进化得失提示[/color]\n" + \
 		"[color=#8ef58e]获得[/color]：新单位成长上限、军衔重新评估、属性传承 %.0f%%\n" % (inherit_ratio * 100.0) + \
-		"[color=#ffb37f]失去[/color]：当前改造A/B/C进度清零（重走改造）\n" + \
-		"当前：强化 Lv.%d，改造 %d/3\n" % [enhance_level_now, mod_now] + \
+		"[color=#ffb37f]失去[/color]：当前改造进度清零（重走改造）\n" + \
+		"当前：强化 Lv.%d，改造 %d/9\n" % [enhance_level_now, mod_now] + \
 		("状态：可进化" if can_evolve else "状态：不可进化（%s）" % reason)
 	detail_panel.add_child(tips)
 
@@ -570,10 +578,17 @@ func _update_modification_section() -> void:
 	var applied_parts: PackedStringArray = PackedStringArray()
 	for i in range(applied.size()):
 		var slot: String = MOD_SLOT_LABELS[i] if i < MOD_SLOT_LABELS.size() else "?"
-		applied_parts.append("%s:%s" % [slot, _mod_option_display_name(String(applied[i]))])
+		# applied[i] 是 Dictionary 格式 {"id": "MOD_XX"}，需要先获取 id
+		var entry = applied[i]
+		var mod_id: String = ""
+		if entry is Dictionary:
+			mod_id = String(entry.get("id", ""))
+		else:
+			mod_id = String(entry)  # 兼容旧格式
+		applied_parts.append("%s:%s" % [slot, _mod_option_display_name(mod_id)])
 	var applied_text: String = " / ".join(applied_parts) if applied_parts.size() > 0 else "无"
-	mod_status_label.text = "改装进度：%s（%d/3）" % [applied_text, applied.size()]
-	var max_times: int = 3  # v5.1: 改造次数固定为3次（不再依赖星级）
+	mod_status_label.text = "改装进度：%s（%d/9）" % [applied_text, applied.size()]
+	var max_times: int = 9  # v5.1: 改造次数固定为9次（与底层ModManager对齐）
 	var mod_index: int = BlueprintManager.get_modification_count(selected_card_id)
 	if mod_index >= max_times:
 		if mod_req_label:
@@ -664,7 +679,7 @@ func _on_evolve_button_pressed() -> void:
 	var target_name: String = target_card.display_name if target_card != null else _pending_evolution_target_id
 	var can_info: Dictionary = BlueprintManager.can_evolve_blueprint(selected_card_id, _pending_evolution_target_id) if BlueprintManager.has_method("can_evolve_blueprint") else {}
 	var inherit_ratio: float = float(can_info.get("inherit_ratio", UnitLineageConfig.DEFAULT_INHERIT_RATIO))
-	evolution_confirm_dialog.dialog_text = "将进化为：%s\n\n你将获得：\n- 新单位成长上限\n- 属性传承 %.0f%%\n\n你将失去：\n- 当前A/B/C改造进度（清零）\n\n是否确认进化？" % [target_name, inherit_ratio * 100.0]
+	evolution_confirm_dialog.dialog_text = "将进化为：%s\n\n你将获得：\n- 新单位成长上限\n- 属性传承 %.0f%%\n\n你将失去：\n- 当前改造进度（清零）\n\n是否确认进化？" % [target_name, inherit_ratio * 100.0]
 	evolution_confirm_dialog.popup_centered(Vector2i(520, 360))
 
 func _on_confirm_evolution() -> void:

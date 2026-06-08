@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3 uid="uid://save_slot_mgr"]
+[gd_scene load_steps=1 format=3 uid="uid://save_slot_mgr"]
 
 [ext_resource type="Script" uid="uid://bsf6p5yq3v2xj" path="res://scenes/ui/save_slot_manager.gd" id="1_script"]
 

@@ -1,4 +1,4 @@
-[gd_scene load_steps=4 format=3 uid="uid://settings_panel"]
+[gd_scene load_steps=3 format=3 uid="uid://settings_panel"]
 
 [ext_resource type="Script" path="res://scenes/ui/settings_panel.gd" id="1_script"]
 

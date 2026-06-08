@@ -1,11 +1,14 @@
 extends RefCounted
 class_name WeaponProjectileVfx
 ## 武器弹道 / 命中贴图与缩放（玩家 Bullet 与敌方批处理共用）
+## v6.0: 按武器名称查找专属贴图
 
 const GC = preload("res://resources/game_constants.gd")
+const WeaponVfxMapping: GDScript = preload("res://data/weapon_vfx_mapping.gd")
 
 const TEX_DIR := "res://assets/effects/projectiles/weapons_realistic/"
 
+## 旧 WeaponType 枚举 → 默认贴图（兼容）
 const PROJ_TEX: Dictionary = {
 	0: preload(TEX_DIR + "weapon_smg_projectile.png"),
 	1: preload(TEX_DIR + "weapon_rifle_projectile.png"),
@@ -57,9 +60,63 @@ const IMPACT_TEX_SCALE: Dictionary = {
 }
 
 const REF_TEX_PX: float = 512.0
-## 弹道贴图显示倍率（命中 IMPACT_TEX_SCALE 不受此影响）
 const PROJ_DISPLAY_SCALE_MUL: float = 0.5
 
+
+## ========== v6.0: 按武器名称查贴图 ==========
+
+static func has_proj_texture_by_name(weapon_name: String) -> bool:
+	var sid: String = WeaponVfxMapping.get_weapon_safe_id(weapon_name)
+	if sid.is_empty():
+		return false
+	var path: String = TEX_DIR + sid + "_proj.png"
+	return ResourceLoader.exists(path)
+
+
+static func proj_texture_by_name(weapon_name: String) -> Texture2D:
+	var sid: String = WeaponVfxMapping.get_weapon_safe_id(weapon_name)
+	if sid.is_empty():
+		return null
+	var path: String = TEX_DIR + sid + "_proj.png"
+	if ResourceLoader.exists(path):
+		return load(path) as Texture2D
+	return null
+
+
+static func impact_texture_by_name(weapon_name: String) -> Texture2D:
+	var sid: String = WeaponVfxMapping.get_weapon_safe_id(weapon_name)
+	if sid.is_empty():
+		return null
+	var path: String = TEX_DIR + sid + "_impact.png"
+	if ResourceLoader.exists(path):
+		return load(path) as Texture2D
+	return null
+
+
+static func proj_scale_by_name(weapon_name: String) -> float:
+	var cat: String = WeaponVfxMapping.get_category(weapon_name)
+	match cat:
+		"energy", "railgun": return 0.16 * PROJ_DISPLAY_SCALE_MUL
+		"missile": return 0.16 * PROJ_DISPLAY_SCALE_MUL
+		"cannon": return 0.15 * PROJ_DISPLAY_SCALE_MUL
+		"mortar": return 0.15 * PROJ_DISPLAY_SCALE_MUL
+		"machinegun": return 0.10 * PROJ_DISPLAY_SCALE_MUL
+		"rifle": return 0.10 * PROJ_DISPLAY_SCALE_MUL
+		_: return 0.10 * PROJ_DISPLAY_SCALE_MUL
+
+
+static func impact_scale_by_name(weapon_name: String) -> float:
+	var cat: String = WeaponVfxMapping.get_category(weapon_name)
+	match cat:
+		"energy", "railgun": return 0.17
+		"missile": return 0.16
+		"cannon", "mortar": return 0.15
+		"machinegun": return 0.10
+		"rifle": return 0.10
+		_: return 0.11
+
+
+## ========== 旧接口（兼容） ==========
 
 static func has_proj_texture(weapon_type: int) -> bool:
 	return PROJ_TEX.has(weapon_type) and PROJ_TEX[weapon_type] != null
@@ -93,6 +150,8 @@ static func impact_texture(weapon_type: int) -> Texture2D:
 static func impact_scale(weapon_type: int) -> float:
 	return float(IMPACT_TEX_SCALE.get(weapon_type, 0.11))
 
+
+## ========== 命中特效生成 ==========
 
 static func spawn_impact(parent: Node2D, world_pos: Vector2, weapon_type: int, is_player_shot: bool) -> void:
 	if parent == null:

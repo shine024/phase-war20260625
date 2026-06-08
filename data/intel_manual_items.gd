@@ -183,14 +183,14 @@ static func _get_rarity_drop_weight(rarity: String, rank: String) -> int:
 ## Returns: {name, desc, rarity, type}
 static func get_def(blueprint_id: String) -> Dictionary:
 	if not is_valid_blueprint(blueprint_id):
-		print("[IntelManualItems] 无效蓝图ID: %s" % blueprint_id)
+		push_warning("[IntelManualItems] 无效蓝图ID: %s" % blueprint_id)
 		return {}
 
 	if is_mod_blueprint(blueprint_id):
 		var mod_id = BlueprintDefinitions.extract_mod_id(blueprint_id)
 		var mod_data = ModificationRegistry.get_data(mod_id)
 		if mod_data.is_empty():
-			print("[IntelManualItems] 改造模块不存在: %s" % mod_id)
+			push_warning("[IntelManualItems] 改造模块不存在: %s" % mod_id)
 			return {}
 		var rarity = mod_data.get("rarity", "common")
 		return {
@@ -199,7 +199,7 @@ static func get_def(blueprint_id: String) -> Dictionary:
 			"rarity": rarity,
 			"type": "mod",
 			"mod_id": mod_id,
-			"icon": mod_data.get("icon", "res://textures/icons/mods/default_mod.png"),
+			"icon": "res://assets/ui/icons/icon_modification.svg",
 		}
 	elif is_evolution_blueprint(blueprint_id):
 		## 进化蓝图定义
@@ -207,7 +207,7 @@ static func get_def(blueprint_id: String) -> Dictionary:
 		var from_card = info.get("from", "")
 		var to_card = info.get("to", "")
 		if from_card.is_empty() or to_card.is_empty():
-			print("[IntelManualItems] 进化蓝图解析失败: %s, from=%s, to=%s" % [blueprint_id, from_card, to_card])
+			push_warning("[IntelManualItems] 进化蓝图解析失败: %s, from=%s, to=%s" % [blueprint_id, from_card, to_card])
 			return {}
 		return {
 			"name": "进化图纸：%s → %s" % [from_card, to_card],
@@ -215,10 +215,10 @@ static func get_def(blueprint_id: String) -> Dictionary:
 			"rarity": "epic",
 			"type": "evolution",
 			"from": from_card,
-			"icon": "res://textures/icons/evolution_blueprint.png",
+			"icon": "res://assets/ui/icons/icon_blueprint.svg",
 			"to": to_card,
 		}
-	print("[IntelManualItems] 未知的蓝图类型: %s" % blueprint_id)
+	push_warning("[IntelManualItems] 未知的蓝图类型: %s" % blueprint_id)
 	return {}
 
 ## 获取改造蓝图描述

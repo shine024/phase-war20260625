@@ -62,6 +62,10 @@ var attack_air_active: float = 0.1    # 动作（秒）
 ## 多武器槽（每项 Dictionary：damage, range, interval, timer）
 var weapons: Array = []
 
+## 武器槽位数组（3个槽位：轻装/装甲/对空）
+## 从 CardResource 同步而来，用于战斗中选择对应武器
+var weapon_slots: Array = []
+
 # ─────────────────────────────────────────────
 #  身份字段
 # ─────────────────────────────────────────────
@@ -166,3 +170,19 @@ var faction_effect_bonus: float = 0.0
 
 ## 技能树特殊效果标记列表（由战斗系统按需读取）
 var skill_tree_specials: Array = []
+
+## 根据目标类型获取对应武器
+func get_weapon_for_target(target_combat_kind: int) -> WeaponResource:
+	if weapon_slots.is_empty():
+		return null
+
+	const GC = preload("res://resources/game_constants.gd")
+	match target_combat_kind:
+		GC.CombatKind.LIGHT, GC.CombatKind.SUPPORT:
+			return weapon_slots[0] if weapon_slots.size() > 0 else null
+		GC.CombatKind.ARMOR, GC.CombatKind.FORT:
+			return weapon_slots[1] if weapon_slots.size() > 1 else null
+		GC.CombatKind.AIR:
+			return weapon_slots[2] if weapon_slots.size() > 2 else null
+		_:
+			return weapon_slots[0] if weapon_slots.size() > 0 else null

@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3 uid="uid://mnmj3vyyl8q1"]
+[gd_scene load_steps=1 format=3 uid="uid://mnmj3vyyl8q1"]
 
 [ext_resource type="Script" path="res://scenes/ui/phase_instrument_selector.gd" id="1_abc12"]
 

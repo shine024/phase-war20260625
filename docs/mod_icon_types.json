@@ -1,0 +1,348 @@
+{
+  "final_types": {
+    "armor": [
+      "装甲",
+      "装甲/防御相关改造"
+    ],
+    "ammunition": [
+      "弹药",
+      "弹药升级，含穿甲弹、增程弹、子母弹、温压弹等"
+    ],
+    "aerodynamics": [
+      "气动",
+      "飞行气动优化，含可变后掠翼"
+    ],
+    "autoloader": [
+      "装弹",
+      "自动装弹机"
+    ],
+    "bridge": [
+      "架桥",
+      "架桥设备"
+    ],
+    "command": [
+      "指挥",
+      "指挥通讯/数据链/协同系统"
+    ],
+    "countermeasure": [
+      "干扰",
+      "电子干扰/烟幕/红外干扰/伪装网"
+    ],
+    "demolition": [
+      "爆破",
+      "爆破/对堡垒伤害提升"
+    ],
+    "designator": [
+      "指示",
+      "激光指示器"
+    ],
+    "digging": [
+      "挖掘",
+      "工程挖掘"
+    ],
+    "drone": [
+      "无人机",
+      "无人侦察机/无人机系统"
+    ],
+    "ejection_seat": [
+      "弹射",
+      "弹射座椅/逃生系统"
+    ],
+    "ecm": [
+      "电子对抗",
+      "电子对抗/雷达对抗"
+    ],
+    "electronics": [
+      "电子",
+      "敌我识别/电子系统"
+    ],
+    "engine": [
+      "动力",
+      "发动机/燃气轮机/矢量推力"
+    ],
+    "engineering": [
+      "工程",
+      "扫雷/焊接/维修/维修设备"
+    ],
+    "environment": [
+      "环境",
+      "环境适应性/破门工具"
+    ],
+    "ergonomics": [
+      "人体",
+      "人体工学/双弹匣"
+    ],
+    "exoskeleton": [
+      "外骨骼",
+      "外骨骼原型"
+    ],
+    "fire_control": [
+      "火控",
+      "火控/射击计算机/猎歼火控"
+    ],
+    "fortification": [
+      "工事",
+      "掩体/雷场/反坦克壕"
+    ],
+    "fuze": [
+      "引信",
+      "近炸引信"
+    ],
+    "gun": [
+      "火炮",
+      "滑膛炮/炮射导弹"
+    ],
+    "laser": [
+      "激光",
+      "激光近防系统"
+    ],
+    "logistics": [
+      "后勤",
+      "后勤/补给/加油/副油箱"
+    ],
+    "medical": [
+      "医疗",
+      "医疗/急救/止血带/急救站"
+    ],
+    "minefield": [
+      "雷场",
+      "雷场布置"
+    ],
+    "missile": [
+      "导弹",
+      "导弹/导弹挂架"
+    ],
+    "mobility": [
+      "机动",
+      "机动性/越野摩托/行进间射击"
+    ],
+    "mount": [
+      "多联装",
+      "多联装/双联装"
+    ],
+    "navigation": [
+      "导航",
+      "GPS/导航定位"
+    ],
+    "network": [
+      "网络",
+      "地下坑道/通信网络"
+    ],
+    "obstacle": [
+      "障碍",
+      "反坦克壕/障碍物"
+    ],
+    "optics": [
+      "光学",
+      "光学瞄准镜/夜视仪/热成像"
+    ],
+    "power": [
+      "电力",
+      "车载发电机组"
+    ],
+    "protection": [
+      "防护",
+      "NBC防护/通风过滤"
+    ],
+    "radar": [
+      "雷达",
+      "雷达/相控阵/反炮兵雷达"
+    ],
+    "recovery": [
+      "回收",
+      "起重机/战损回收"
+    ],
+    "repair": [
+      "维修",
+      "焊接/维修设备"
+    ],
+    "shield": [
+      "盾牌",
+      "防弹盾牌/移动掩体"
+    ],
+    "stealth": [
+      "隐身",
+      "隐身涂层/光学伪装/伪装迷彩"
+    ],
+    "survival": [
+      "生存",
+      "防雷座椅/生存系统"
+    ],
+    "system": [
+      "系统",
+      "数字化单兵/系统升级"
+    ],
+    "weapon": [
+      "武器",
+      "武器改装/冲锋枪/突击步枪/机枪化"
+    ],
+    "weapons": [
+      "外挂",
+      "外挂武器架"
+    ],
+    "automation": [
+      "自动化",
+      "自动炮塔"
+    ],
+    "barrel": [
+      "炮管",
+      "膛线强化/炮管升级"
+    ]
+  },
+  "type_mapping": {
+    "engine": "engine",
+    "thrust": "engine",
+    "power": "power",
+    "armor": "armor",
+    "active": "armor",
+    "concrete": "armor",
+    "optics": "optics",
+    "helmetsight": "optics",
+    "thermal": "optics",
+    "radar": "radar",
+    "ecm": "radar",
+    "guidance": "radar",
+    "fire_control": "radar",
+    "counter_battery_radar": "radar",
+    "weapon": "weapon",
+    "gun": "weapon",
+    "barrel": "weapon",
+    "ammo": "ammunition",
+    "ammunition": "ammunition",
+    "missile": "weapon",
+    "weapons": "weapon",
+    "stealth": "stealth",
+    "camouflage": "stealth",
+    "deception": "stealth",
+    "medical": "medical",
+    "repair": "medical",
+    "command": "command",
+    "comms": "command",
+    "system": "command",
+    "data_link": "command",
+    "tactical_radio": "command",
+    "logistics": "logistics",
+    "fuel": "logistics",
+    "ammo_supply": "logistics",
+    "supply": "logistics",
+    "drop_tank": "logistics",
+    "air_refuel": "logistics",
+    "ammo_dump": "logistics",
+    "mobility": "mobility",
+    "auto_nav": "mobility",
+    "deep_wading": "mobility",
+    "knee_pads": "mobility",
+    "fire_on_move": "mobility",
+    "atv": "mobility",
+    "survival": "survival",
+    "mine_resistant": "survival",
+    "ejection_seat": "survival",
+    "protection": "protection",
+    "filtering": "protection",
+    "nbc_protection": "protection",
+    "helmet": "protection",
+    "body_armor": "armor",
+    "armor_insert": "armor",
+    "shield": "shield",
+    "riot_shield": "shield",
+    "countermeasure": "countermeasure",
+    "smoke_launcher": "countermeasure",
+    "ir_jammer": "countermeasure",
+    "engineering": "engineering",
+    "demolition": "engineering",
+    "welding": "engineering",
+    "mine_sweeper": "engineering",
+    "mine_plow": "engineering",
+    "shovel": "engineering",
+    "bridge": "bridge",
+    "crane": "engineering",
+    "generator": "engineering",
+    "medical_medical": "medical",
+    "autoloader": "autoloader",
+    "rapid_fire": "autoloader",
+    "sloped_armor": "armor",
+    "composite_armor": "armor",
+    "reactive_armor": "armor",
+    "aps": "armor",
+    "navigation": "navigation",
+    "gps": "navigation",
+    "drone": "drone",
+    "uav": "drone",
+    "recon": "drone",
+    "environment": "environment",
+    "breaching": "environment",
+    "exoskeleton": "exoskeleton",
+    "ergonomics": "ergonomics",
+    "fortification": "fortification",
+    "trench": "fortification",
+    "minefield": "fortification",
+    "fuze": "fuze",
+    "proximity_fuze": "fuze",
+    "mount": "mount",
+    "quad_mount": "mount",
+    "electronics": "electronics",
+    "iff": "electronics",
+    "designator": "designator",
+    "laser_designator": "designator",
+    "digging": "digging",
+    "laser": "laser",
+    "laser_defense": "laser",
+    "network": "network",
+    "tunnel": "network",
+    "obstacle": "obstacle",
+    "recovery": "recovery",
+    "extended_range": "ammunition",
+    "cluster_munition": "ammunition",
+    "thermobaric": "ammunition",
+    "apfsds": "ammunition",
+    "hp_ammo": "ammunition",
+    "ap_ammo": "ammunition",
+    "smoothbore": "gun",
+    "gun_missile": "gun",
+    "turbine": "engine",
+    "diesel_turbo": "engine",
+    "aerodynamics": "aerodynamics",
+    "swing_wing": "aerodynamics",
+    "automation": "automation",
+    "auto_turret": "automation"
+  },
+  "type_counts": {
+    "engine": 4,
+    "power": 1,
+    "armor": 9,
+    "optics": 3,
+    "radar": 5,
+    "weapon": 5,
+    "ammunition": 8,
+    "stealth": 3,
+    "medical": 3,
+    "command": 5,
+    "logistics": 7,
+    "mobility": 6,
+    "survival": 3,
+    "protection": 4,
+    "shield": 2,
+    "countermeasure": 3,
+    "engineering": 8,
+    "bridge": 1,
+    "autoloader": 2,
+    "navigation": 2,
+    "drone": 3,
+    "environment": 2,
+    "exoskeleton": 1,
+    "ergonomics": 1,
+    "fortification": 3,
+    "fuze": 2,
+    "mount": 2,
+    "electronics": 2,
+    "designator": 2,
+    "digging": 1,
+    "laser": 2,
+    "network": 2,
+    "obstacle": 1,
+    "recovery": 1,
+    "gun": 2,
+    "aerodynamics": 2,
+    "automation": 2
+  }
+}

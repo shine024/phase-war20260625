@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3 uid="uid://world_map"]
+[gd_scene load_steps=1 format=3 uid="uid://world_map"]
 
 [ext_resource type="Script" path="res://scenes/world_map.gd" id="1_script"]
 

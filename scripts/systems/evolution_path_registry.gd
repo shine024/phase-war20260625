@@ -346,3 +346,107 @@ static func _count_eom_modifications(modifications: Array) -> int:
 		if mod_id.begins_with("EOM_"):
 			count += 1
 	return count
+
+## ─── 武器槽位系统支持 ───
+
+## 进化时继承/替换武器槽位
+## source_card: CardResource - 源卡牌
+## target_card_id: String - 目标卡牌ID
+## preserve_mods: bool - 是否保留改造加成（默认true）
+## 返回：进化后的武器槽位数组
+static func evolve_weapon_slots(source_card: CardResource, target_card_id: String, preserve_mods: bool = true) -> Array:
+	_ensure_initialized()
+	
+	# 获取目标卡牌（延迟加载避免循环依赖）
+	var target_dc: GDScript = load("res://data/default_cards.gd")
+	var target_card = target_dc.get_card_by_id(target_card_id) if target_dc else null
+	if target_card == null:
+		# 如果找不到目标卡牌，返回源卡槽位
+		var result = []
+		for w in source_card.weapon_slots:
+			if w is WeaponResource:
+				result.append(w.clone())
+		return result
+	
+	# 确保目标卡槽位已初始化
+	if target_card.has_method("_ensure_weapon_slots_initialized"):
+		target_card._ensure_weapon_slots_initialized()
+	
+	# 确保源卡槽位已初始化
+	if source_card.has_method("_ensure_weapon_slots_initialized"):
+		source_card._ensure_weapon_slots_initialized()
+	
+	var evolved_slots = []
+	
+	# 遍历三个槽位
+	for i in range(min(3, target_card.weapon_slots.size())):
+		var target_weapon = target_card.weapon_slots[i]
+		var source_weapon = null
+		
+		# 获取源卡对应槽位
+		if i < source_card.weapon_slots.size():
+			source_weapon = source_card.weapon_slots[i]
+		
+		if target_weapon is WeaponResource and target_weapon.enabled:
+			# 目标槽位有武器，使用目标武器
+			var evolved = target_weapon.clone()
+			
+			# 如果源卡有对应槽位且启用了改造保留
+			if preserve_mods and source_weapon is WeaponResource and source_weapon.enabled:
+				# 继承改造加成比例
+				var base_damage = target_weapon.damage
+				var source_damage = source_weapon.damage
+				var mod_ratio = 1.0
+				
+				# 检查源武器是否有改造效果
+				if source_weapon.has("_mod_effects"):
+					var mod_effects = source_weapon.get("_mod_effects", {})
+					var damage_mult = mod_effects.get("slot_damage_mult", 1.0)
+					var damage_add = mod_effects.get("slot_damage_add", 0.0)
+					mod_ratio = damage_mult + (damage_add / max(1.0, base_damage))
+				
+				# 应用改造加成到新武器
+				if mod_ratio != 1.0:
+					evolved.damage = int(evolved.damage * mod_ratio)
+				
+				# 继承其他改造效果
+				if source_weapon.has("_mod_effects"):
+					evolved._mod_effects = source_weapon._mod_effects.duplicate()
+			
+			# 设置新武器ID
+			evolved.weapon_id = target_card_id + "_slot_" + ["light", "armor", "air"][i]
+			evolved_slots.append(evolved)
+			
+		elif source_weapon is WeaponResource and source_weapon.enabled:
+			# 目标槽位为空但源卡有武器，继承源武器
+			var inherited = source_weapon.clone()
+			inherited.weapon_id = target_card_id + "_slot_" + ["light", "armor", "air"][i]
+			evolved_slots.append(inherited)
+		else:
+			# 都为空，添加空槽位
+			evolved_slots.append(WeaponResource.create_empty_slot(i))
+	
+	return evolved_slots
+
+## 获取进化后的武器配置对比（用于UI显示）
+## 返回：描述进化前后的武器变化文本
+static func get_weapon_evolution_summary(source_slots: Array, target_slots: Array) -> String:
+	var summary_parts = []
+	
+	for i in range(min(3, source_slots.size(), target_slots.size())):
+		var slot_names = ["轻装", "装甲", "对空"]
+		var source_w = source_slots[i] if i < source_slots.size() else null
+		var target_w = target_slots[i] if i < target_slots.size() else null
+		
+		var source_name = source_w.display_name if source_w is WeaponResource and source_w.enabled else "空槽位"
+		var target_name = target_w.display_name if target_w is WeaponResource and target_w.enabled else "空槽位"
+		
+		if source_name != target_name:
+			var source_dmg = int(source_w.damage) if source_w is WeaponResource else 0
+			var target_dmg = int(target_w.damage) if target_w is WeaponResource else 0
+			summary_parts.append("%s: %s(%d) → %s(%d)" % [slot_names[i], source_name, source_dmg, target_name, target_dmg])
+	
+	if summary_parts.is_empty():
+		return "武器配置无变化"
+	else:
+		return "武器变化：" + " | ".join(summary_parts)

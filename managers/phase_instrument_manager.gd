@@ -4,8 +4,13 @@ extends Node
 const GC = preload("res://resources/game_constants.gd")
 const PhaseInstruments = preload("res://data/phase_instruments.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
-const DefaultCards = preload("res://data/default_cards.gd")
 const DEBUG_EQUIP_LOG := false
+var _default_cards_instance: Variant = null
+
+func _get_default_cards() -> Variant:
+	if _default_cards_instance == null:
+		_default_cards_instance = load("res://data/default_cards.gd")
+	return _default_cards_instance
 ## ── 子系统：装备/卸下/同步 ──
 const LoadoutSync = preload("res://managers/phase_instrument_loadout_sync.gd")
 var _loadout_sync: PhaseInstrumentLoadoutSync = null
@@ -404,7 +409,7 @@ func migrate_law_slots_from_phase_law_manager_if_empty() -> void:
 		var lid: String = String(actives[i])
 		if lid.is_empty():
 			continue
-		var tmpl: CardResource = DefaultCards.create_law_card_resource(lid)
+		var tmpl: CardResource = _get_default_cards().create_law_card_resource(lid)
 		if tmpl != null:
 			reds[i] = tmpl.clone()
 			changed = true
@@ -414,7 +419,7 @@ func migrate_law_slots_from_phase_law_manager_if_empty() -> void:
 		var lid2: String = String(passives[i])
 		if lid2.is_empty():
 			continue
-		var tmpl2: CardResource = DefaultCards.create_law_card_resource(lid2)
+		var tmpl2: CardResource = _get_default_cards().create_law_card_resource(lid2)
 		if tmpl2 != null:
 			blues[i] = tmpl2.clone()
 			changed = true
@@ -669,7 +674,7 @@ func set_slots_from_card_ids(card_ids: Array) -> void:
 			if ptr < card_ids.size() and card_ids[ptr] != null:
 				id_val = str(card_ids[ptr])
 			ptr += 1
-			arr[i] = DefaultCards.get_card_by_id(id_val) if not id_val.is_empty() else null
+			arr[i] = _get_default_cards().get_card_by_id(id_val) if not id_val.is_empty() else null
 		instrument_slots[color] = arr
 
 	_emit_slots_changed()
@@ -691,7 +696,7 @@ func clear_slots_for_new_game() -> void:
 func _equip_starter_cards_for_new_game() -> void:
 	# 绿色槽：尝试填入初始平台卡（omega_platform 是默认解锁的高级蓝图）
 	var green_arr: Array = instrument_slots.get("green", [])
-	var starter_platform: CardResource = DefaultCards.get_card_by_id("omega_platform")
+	var starter_platform: CardResource = _get_default_cards().get_card_by_id("omega_platform")
 	if starter_platform != null:
 		for i in range(green_arr.size()):
 			if green_arr[i] == null:
@@ -700,7 +705,7 @@ func _equip_starter_cards_for_new_game() -> void:
 
 	# 黄色槽：尝试填入初始能量卡（战前能量 IV 为默认演示档位）
 	var yellow_arr: Array = instrument_slots.get("yellow", [])
-	var starter_energy: CardResource = DefaultCards.get_card_by_id("energy_start_4")
+	var starter_energy: CardResource = _get_default_cards().get_card_by_id("energy_start_4")
 	if starter_energy != null:
 		for i in range(yellow_arr.size()):
 			if yellow_arr[i] == null:
@@ -1080,7 +1085,7 @@ func _can_equip_card_to_color(card: CardResource, color: String) -> bool:
 	return false
 
 func get_card_by_id(card_id: String) -> CardResource:
-	return DefaultCards.get_card_by_id(card_id)
+	return _get_default_cards().get_card_by_id(card_id)
 
 ## 获取当前相位仪的最大单位上场数量（基于绿色槽位数量）
 ## 绿色槽位数量直接决定可上场的平台卡数量

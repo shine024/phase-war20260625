@@ -23,6 +23,7 @@ var shooter: Node2D = null  # 射手引用（用于词条效果）
 var shooter_stats: UnitStats = null  # 射手数值（用于词条效果计算）
 ## 超射程「哑弹」：飞过但不造成伤害（仍可对卡牌模式播放擦弹表现）
 var forced_miss: bool = false
+var _weapon_name: String = ""  # v6.0: 武器名（用于 VFX 贴图查找）
 
 # 行为参数：由武器类型决定
 var pierce_count: int = 0          # 可额外穿透多少个目标（LASER/SNIPER 用）
@@ -67,7 +68,7 @@ func _apply_shield_wall_mitigation(raw_damage: float, target: Node) -> float:
 		return raw_damage
 	return raw_damage * (1.0 - mitigation)
 
-func setup(p_target: Node2D, p_damage: float, p_is_player: bool, p_weapon_type: int = -1, p_shooter: Node2D = null, p_shooter_stats: UnitStats = null, p_forced_miss: bool = false) -> void:
+func setup(p_target: Node2D, p_damage: float, p_is_player: bool, p_weapon_type: int = -1, p_shooter: Node2D = null, p_shooter_stats: UnitStats = null, p_forced_miss: bool = false, p_weapon_name: String = "") -> void:
 	visible = true
 	_dbg_spawn_logged = false
 	target = p_target
@@ -76,6 +77,7 @@ func setup(p_target: Node2D, p_damage: float, p_is_player: bool, p_weapon_type: 
 	shooter = p_shooter
 	shooter_stats = p_shooter_stats
 	forced_miss = p_forced_miss
+	_weapon_name = p_weapon_name
 	if p_weapon_type >= 0:
 		weapon_type = p_weapon_type
 	_start_position = global_position
@@ -216,10 +218,18 @@ func _apply_tex_sprite_visual(is_player: bool) -> void:
 	if _beam_line:
 		_beam_line.visible = false
 	var tint := Color.WHITE if is_player else Color(1.0, 0.38, 0.52)
-	var sc := WeaponProjectileVfx.proj_scale(weapon_type)
+	# v6.0: 优先使用武器名查贴图
+	var sc: float
+	var tex: Texture2D
+	if not _weapon_name.is_empty():
+		tex = WeaponProjectileVfx.proj_texture_by_name(_weapon_name)
+		sc = WeaponProjectileVfx.proj_scale_by_name(_weapon_name)
+	if tex == null:
+		tex = WeaponProjectileVfx.proj_texture(weapon_type)
+		sc = WeaponProjectileVfx.proj_scale(weapon_type)
 	if _tex_sprite:
 		_tex_sprite.visible = true
-		_tex_sprite.texture = WeaponProjectileVfx.proj_texture(weapon_type)
+		_tex_sprite.texture = tex
 		_tex_sprite.scale = Vector2(sc, sc)
 		_tex_sprite.modulate = tint
 	if _trail_sprite:
@@ -237,7 +247,31 @@ func _spawn_tex_impact_at(world_pos: Vector2) -> void:
 	var parent := get_parent()
 	if parent == null:
 		return
-	WeaponProjectileVfx.spawn_impact(parent, world_pos, weapon_type, shooter_is_player)
+	# v6.0: 武器名查 VFX → 旧 weapon_type 回退
+	if not _weapon_name.is_empty():
+		_spawn_impact_v2(parent, world_pos, _weapon_name)
+	else:
+		WeaponProjectileVfx.spawn_impact(parent, world_pos, weapon_type, shooter_is_player)
+
+
+## v6.0: 新版命中特效（按武器名）
+func _spawn_impact_v2(parent: Node2D, world_pos: Vector2, weapon_name: String) -> void:
+	var tex: Texture2D = WeaponProjectileVfx.impact_texture_by_name(weapon_name)
+	if tex == null:
+		return  # fallback: 用旧系统
+	var fx := Sprite2D.new()
+	fx.texture = tex
+	fx.centered = true
+	var sc := WeaponProjectileVfx.impact_scale_by_name(weapon_name)
+	fx.scale = Vector2.ONE * sc
+	fx.global_position = world_pos
+	if not shooter_is_player:
+		fx.modulate = Color(1.0, 0.45, 0.55)
+	parent.add_child(fx)
+	var tw := fx.create_tween()
+	tw.tween_property(fx, "scale", fx.scale * 1.22, 0.07)
+	tw.parallel().tween_property(fx, "modulate:a", 0.0, 0.20)
+	tw.finished.connect(fx.queue_free)
 
 
 func _finish_tex_bullet() -> void:

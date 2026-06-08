@@ -203,23 +203,20 @@ func _create_dimension_bar(card_id: String, enemy_type: String, dimension: Strin
 	delta_lbl.add_theme_color_override("font_color", Color(0.4, 0.95, 0.5, 1.0))
 	row.add_child(delta_lbl)
 
-	## 揭示检查
-	var im2: Node = _im
-	if im2 and im2.has_method("get_dimension_progress"):
-		var val: float = im2.get_dimension_progress(card_id, dimension)
-		var tier: int = IntelDimensions.get_reveal_tier(val)
-		var idm: Node = get_node_or_null("/root/IntelDiscoveryManager")
-		if tier >= 0 and idm:
-			var key: String = "%s_%s_%d" % [enemy_type, dimension, tier]
-			## 检查是否是新触发的揭示
-			for rev in _reveal_events:
-				if rev.get("dimension", "") == dimension:
-					var rev_icon := Label.new()
-					rev_icon.text = " ✦新揭示!"
-					rev_icon.add_theme_font_size_override("font_size", 10)
-					rev_icon.add_theme_color_override("font_color", Color(0.95, 0.75, 0.3, 1.0))
-					row.add_child(rev_icon)
-					break
+	## 揭示检查：按 card_id + dimension 精确匹配
+	var found_reveal: Dictionary = {}
+	for rev in _reveal_events:
+		var rev_card: String = rev.get("card_id", "")
+		var rev_dim: String = rev.get("dimension", "")
+		if rev_card == card_id and rev_dim == dimension:
+			found_reveal = rev
+			break
+	if not found_reveal.is_empty():
+		var rev_icon := Label.new()
+		rev_icon.text = " ✦新揭示!"
+		rev_icon.add_theme_font_size_override("font_size", 10)
+		rev_icon.add_theme_color_override("font_color", Color(0.95, 0.75, 0.3, 1.0))
+		row.add_child(rev_icon)
 
 	return row
 

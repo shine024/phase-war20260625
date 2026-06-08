@@ -230,3 +230,78 @@ static func get_all_ids() -> Array:
 	for type_key in _cache.keys():
 		result.append_array(_cache[type_key].keys())
 	return result
+
+## ─── 武器槽位系统支持 ───
+
+## 应用改造效果到武器槽位
+## weapon: WeaponResource - 基础武器
+## modifications: Array - 改造ID列表
+## slot_idx: int - 槽位索引（0=轻装, 1=装甲, 2=对空）
+## 返回：修改后的 WeaponResource
+static func apply_to_weapon_slot(weapon: WeaponResource, modifications: Array, slot_idx: int = -1) -> WeaponResource:
+	_ensure_initialized()
+	if weapon == null or not weapon.enabled:
+		return weapon
+
+	var result = weapon.clone()
+	
+	for mod_entry in modifications:
+		var mod_id = mod_entry.get("id", "") if mod_entry is Dictionary else String(mod_entry)
+		var mod_data = get_data(mod_id)
+		if mod_data.is_empty():
+			continue
+		
+		var effects = mod_data.get("effects", {})
+		
+		# 检查改造是否适用于特定槽位
+		var condition_slot = int(mod_data.get("condition_slot", -1))
+		if condition_slot >= 0 and condition_slot != slot_idx:
+			continue
+		
+		# 应用效果到武器属性
+		for effect_key in effects.keys():
+			var effect_value = effects[effect_key]
+			
+			match effect_key:
+				"slot_damage_mult":
+					if effect_value is float or effect_value is int:
+						result.damage *= float(effect_value)
+				"slot_damage_add":
+					if effect_value is float or effect_value is int:
+						result.damage += float(effect_value)
+				"slot_attack_speed_mult":
+					if effect_value is float or effect_value is int:
+						result.attack_speed *= float(effect_value)
+				"slot_range_bonus":
+					if effect_value is int:
+						result.range_value += effect_value
+				"slot_windup_reduce":
+					if effect_value is float or effect_value is int:
+						result.windup = maxf(0.05, result.windup - float(effect_value))
+				"slot_active_reduce":
+					if effect_value is float or effect_value is int:
+						result.active = maxf(0.05, result.active - float(effect_value))
+				_:
+					# 其他特殊效果存储到武器元数据
+					if not result.has("_mod_effects"):
+						result._mod_effects = {}
+					result._mod_effects[effect_key] = effect_value
+	
+	return result
+
+## 批量应用改造到所有武器槽位
+## weapon_slots: Array[WeaponResource] - 武器槽位数组
+## modifications: Array - 改造ID列表
+## 返回：修改后的槽位数组
+static func apply_to_weapon_slots(weapon_slots: Array, modifications: Array) -> Array:
+	_ensure_initialized()
+	var result = []
+	
+	for i in range(weapon_slots.size()):
+		var weapon = weapon_slots[i]
+		if weapon is WeaponResource and weapon.enabled:
+			result.append(apply_to_weapon_slot(weapon, modifications, i))
+		else:
+			result.append(weapon)
+	
+	return result

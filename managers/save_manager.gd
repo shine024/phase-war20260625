@@ -1032,7 +1032,8 @@ func _load_from_path(path: String) -> bool:
 
 	# 特殊处理：backpack_extra_ids（必须先加载，避免后续操作被覆盖）
 	if data.has(SK_BACKPACK_EXTRA_IDS) and data[SK_BACKPACK_EXTRA_IDS] is Array:
-		_pending_backpack_ids = (data[SK_BACKPACK_EXTRA_IDS] as Array).duplicate()
+		## 类型已验证，直接使用（移除冗余的 as Array 强制转换）
+		_pending_backpack_ids = data[SK_BACKPACK_EXTRA_IDS].duplicate()
 		_last_known_extra_ids = _pending_backpack_ids.duplicate()
 	else:
 		_pending_backpack_ids = []

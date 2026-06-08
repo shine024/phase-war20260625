@@ -1,4 +1,4 @@
-[gd_scene load_steps=3 format=3 uid="uid://battle_info_display"]
+[gd_scene load_steps=2 format=3 uid="uid://battle_info_display"]
 
 [ext_resource type="Script" path="res://scenes/ui/battle_info_display.gd" id="1_script"]
 

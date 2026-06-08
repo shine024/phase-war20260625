@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3 uid="uid://battle_result_dialog"]
+[gd_scene load_steps=1 format=3 uid="uid://battle_result_dialog"]
 
 [ext_resource type="Script" path="res://scenes/ui/battle_result_dialog.gd" id="1_br_dialog"]
 

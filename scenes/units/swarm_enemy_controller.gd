@@ -280,7 +280,7 @@ func _fallthrough_bullet(s: Node2D, wt: int, p_damage: float = -1.0, p_miss: boo
 		bullet = BulletScene.instantiate()
 	bullet.global_position = s.global_position
 	var dmg: float = float(s.attack_damage) if p_damage < 0.0 else p_damage
-	bullet.setup(s.target, dmg, false, wt, s, null, p_miss)
+	bullet.setup(s.target, dmg, false, wt, s, null, p_miss, "")
 	var root_2d: Node = get_parent().get_parent() if get_parent() else self
 	var current_parent: Node = bullet.get_parent()
 	if current_parent != root_2d:

@@ -38,6 +38,7 @@ class ObjectPool extends Node:
 		scene = load(config.scene_path) as PackedScene
 		if scene == null:
 			push_error("[ObjectPool] 无法加载场景: %s" % config.scene_path)
+			is_initialized = false  ## 标记初始化失败，阻止池被使用
 			return
 		is_initialized = true
 		# 预创建对象

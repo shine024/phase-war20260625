@@ -187,7 +187,11 @@ func _enrich_master_config(simple_config: Dictionary) -> Dictionary:
 
 	## 按难度过滤（根据当前关卡等级）
 	var era_int: int = _era_string_to_int(master_era)
-	var target_level: int = clampi(era_int * 5 + 5, 5, 30)  # era 0->5, era 4->25
+	var target_level: int = clampi(
+		era_int * PHASE_MASTER_ERA_TO_LEVEL_MULTIPLIER + PHASE_MASTER_ERA_TO_LEVEL_BASE,
+		PHASE_MASTER_MIN_TARGET_LEVEL,
+		PHASE_MASTER_MAX_TARGET_LEVEL
+	)  # era 0->5, era 4->25
 
 	## 找最接近目标等级的候选
 	var best: Dictionary = {}
@@ -482,6 +486,12 @@ const LevelEras = preload("res://data/level_eras.gd")
 const GC = preload("res://resources/game_constants.gd")
 const RECON_FRAGMENT_BONUS_PER_PLATFORM: float = 0.20
 const RECON_FRAGMENT_BONUS_CAP: float = 0.80
+
+## 相位师难度计算常量
+const PHASE_MASTER_ERA_TO_LEVEL_BASE: int = 5
+const PHASE_MASTER_ERA_TO_LEVEL_MULTIPLIER: int = 5
+const PHASE_MASTER_MIN_TARGET_LEVEL: int = 5
+const PHASE_MASTER_MAX_TARGET_LEVEL: int = 30
 
 func get_era(level: int) -> int:
 	# 使用统一的时代划分逻辑

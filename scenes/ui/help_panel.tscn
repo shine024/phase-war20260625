@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3 uid="uid://help_panel"]
+[gd_scene load_steps=1 format=3 uid="uid://help_panel"]
 
 [ext_resource type="Script" path="res://scenes/ui/help_panel.gd" id="1_help_script"]
 

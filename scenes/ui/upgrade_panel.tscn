@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=3 uid="uid://upgrade_panel"]
+[gd_scene load_steps=12 format=3 uid="uid://upgrade_panel"]
 
 [ext_resource type="Script" path="res://scenes/ui/upgrade_panel.gd" id="1_script"]
 

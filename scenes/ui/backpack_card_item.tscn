@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3 uid="uid://backpack_card_item"]
+[gd_scene load_steps=10 format=3 uid="uid://backpack_card_item"]
 
 [ext_resource type="Script" path="res://scenes/ui/backpack_card_item.gd" id="1_script"]
 

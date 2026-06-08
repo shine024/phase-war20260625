@@ -16,7 +16,6 @@ extends Node
 
 const SaveUtils = preload("res://scripts/save_utils.gd")
 const IntelDimensions = preload("res://data/intel_dimensions.gd")
-const DefaultCards = preload("res://data/default_cards.gd")
 const GC = preload("res://resources/game_constants.gd")
 
 # ── 常量 ──────────────────────────────────────────────────────────
@@ -456,7 +455,8 @@ func get_drop_bonus_multiplier(card_id: String) -> float:
 
 ## 解锁所有情报（用于新游戏初始资源）
 func unlock_all_intel() -> void:
-	var all_cards = DefaultCards.create_all()
+	var dc: GDScript = load("res://data/default_cards.gd")
+	var all_cards = dc.create_all() if dc else []
 	for card in all_cards:
 		if card is CardResource and card.card_type == GC.CardType.COMBAT_UNIT:
 			_ensure_entry(card.card_id)

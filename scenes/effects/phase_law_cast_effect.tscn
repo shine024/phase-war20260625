@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3 uid="uid://d2itdq2q3rmak"]
+[gd_scene load_steps=1 format=3 uid="uid://d2itdq2q3rmak"]
 
 [ext_resource type="Script" path="res://scenes/effects/phase_law_cast_effect.gd" id="1"]
 

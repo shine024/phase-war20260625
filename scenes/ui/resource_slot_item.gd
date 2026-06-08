@@ -4,7 +4,8 @@ class_name ResourceSlotItem
 
 const BasicResources = preload("res://data/basic_resources.gd")
 
-const SLOT_SIZE: Vector2 = PhaseSlot.SLOT_SIZE
+## 槽位尺寸（与PhaseSlot.SLOT_SIZE保持一致）
+const SLOT_SIZE: Vector2 = Vector2(50, 80)
 
 ## 槽位类型
 enum SlotType {
@@ -93,7 +94,8 @@ func _refresh_lore(lore_id: String, count: int, name_label: Label, amount_label:
 				description = "通过战斗获得的情报资料。"
 
 	if name_label:
-		name_label.text = display_name.substr(0, 6)  # 限制长度
+		var max_name_len := 12 if slot_type == SlotType.LORE else 6
+		name_label.text = display_name.substr(0, max_name_len)
 	if amount_label:
 		amount_label.text = ""
 	if icon_rect:

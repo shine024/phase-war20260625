@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3 uid="uid://intelligence_hub_panel"]
+[gd_scene load_steps=1 format=3 uid="uid://intelligence_hub_panel"]
 
 [ext_resource type="Script" path="res://scenes/ui/intelligence_hub_panel.gd" id="1_script"]
 

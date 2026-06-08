@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3 uid="uid://dd3v5t4e8w4gc"]
+[gd_scene load_steps=8 format=3 uid="uid://dd3v5t4e8w4gc"]
 
 [ext_resource type="Script" path="res://scenes/ui/card_enhancement_panel.gd" id="1_ja9f5"]
 
@@ -84,7 +84,7 @@ corner_radius_bottom_right = 5
 corner_radius_bottom_left = 5
 
 [node name="CardEnhancementPanel" type="PanelContainer"]
-custom_minimum_size = Vector2(1200, 800)
+custom_minimum_size = Vector2(1200, 640)
 layout_mode = 2
 script = ExtResource("1_ja9f5")
 theme_override_styles/panel = SubResource("StyleBoxFlat_bg")

@@ -36,6 +36,7 @@ const BackpackDataScript = preload("res://scenes/ui/backpack/backpack_data.gd")
 const BackpackPresenterScript = preload("res://scenes/ui/backpack/backpack_presenter.gd")
 const NodeFinder = preload("res://scripts/node_finder.gd")
 const CardInfoPanel = preload("res://scenes/ui/card_info_panel.gd")
+const IntelManualItemsRef = preload("res://data/intel_manual_items.gd")
 const RankDisplayUi = preload("res://scripts/rank_display_ui.gd")
 ## 详情弹窗内的统一情报面板实例引用
 var _detail_info_panel: Control = null
@@ -615,21 +616,15 @@ func refresh_intel_tab() -> void:
 	for lore_id in lore_ids:
 		_add_intel_item(_intel_grid, lore_id)
 	# Blueprint items from IntelItemBag
-	var _imi = load("res://data/intel_manual_items.gd")
 	for item_type in bag_items.keys():
 		var count: int = int(bag_items[item_type])
 		if count <= 0: continue
-		var def: Dictionary = _imi.get_def(item_type) if _imi else {}
-		# [LOG-v5.1] print("[BP] 添加蓝图物品: %s, def_is_empty=%s" % [item_type, def.is_empty()])
-		if not def.is_empty():
-			pass
-			# [LOG-v5.1] print("[BP]   蓝图定义: name=%s, icon=%s" % [def.get("name", ""), def.get("icon", "")])
+		var def: Dictionary = IntelManualItemsRef.get_def(item_type)
 		var item = ResourceSlotScene.instantiate()
 		if item == null: continue
 		_intel_grid.add_child(item)
 		if item.has_method("set_data"):
 			var display_name: String = def.get("name", item_type) if not def.is_empty() else item_type
-			# 传递图标和名称信息
 			var extra_data: Dictionary = {}
 			if not def.is_empty():
 				if def.has("icon"):

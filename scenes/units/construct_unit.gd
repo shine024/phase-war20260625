@@ -25,7 +25,7 @@ const BATTLE_MIN_Y: float = 280.0
 const BATTLE_MAX_Y: float = 440.0
 ## 我方单位前进上限（留出屏幕边缘余量）
 var PLAYER_MAX_ADVANCE_X: float = BATTLE_MAX_X - 80.0
-## 全装型静态回退：旧 unit_sprites/omega_platform.png 已移除，对齐 manifest vis_player_029
+## 全装型静态回退：已对齐 manifest vis_player_029
 const OMEGA_SPRITE_PATH := "res://assets/card_icons/units/vis_player_029.png"
 static var _omega_tex_cache: Texture2D = null
 ## 与 EnemyUnit 一致：允许 1024 卡面，仍拒绝整张地图级贴图
@@ -534,7 +534,7 @@ func _update_visual() -> void:
 
 	var is_omega := stats != null and stats.platform_type == 11
 	if is_player:
-		# 我方：全装型与敌方「机甲步兵」同源精灵（enemy_future_mech），仅朝右；缺镜像时再回退静态 omega_platform.png
+		# 我方：全装型与敌方「机甲步兵」同源精灵（enemy_future_mech），仅朝右；缺镜像时再回退静态 fallback
 		if is_omega:
 			if _try_apply_player_mirrored_enemy_visual(sprite, walk_sprite, poly):
 				_using_enemy_archetype_visual = true

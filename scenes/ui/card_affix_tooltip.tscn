@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3 uid="uid://card_affix_tooltip"]
+[gd_scene load_steps=1 format=3 uid="uid://card_affix_tooltip"]
 
 [ext_resource type="Script" path="res://scenes/ui/card_affix_tooltip.gd" id="1_script"]
 

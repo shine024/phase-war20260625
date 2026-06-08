@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3 uid="uid://bullet"]
+[gd_scene load_steps=1 format=3 uid="uid://bullet"]
 
 [ext_resource type="Script" path="res://scenes/units/bullet.gd" id="1_script"]
 

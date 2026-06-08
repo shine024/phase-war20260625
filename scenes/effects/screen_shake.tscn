@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3 uid="uid://dmp5phjcjmpjh"]
+[gd_scene load_steps=1 format=3 uid="uid://dmp5phjcjmpjh"]
 
 [ext_resource type="Script" path="res://scenes/effects/screen_shake.gd" id="1"]
 

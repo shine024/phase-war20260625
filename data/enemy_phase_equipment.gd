@@ -39,8 +39,6 @@ const GC = preload("res://resources/game_constants.gd")
 
 const CardResource = preload("res://resources/card_resource.gd")
 
-const DefaultCards = preload("res://data/default_cards.gd")
-
 ## 战争平台 type 字符串 -> GameConstants.PlatformType（用于蓝图库 CardResource）
 const _WAR_PLATFORM_TYPE_MAP: Dictionary = {
 	"fortress": 3,
@@ -105,7 +103,10 @@ static func _card_resource_from_war_platform(d: Dictionary, equipment_id: String
 	var c := CardResource.new()
 	c.card_id = equipment_id
 	var ename: String = String(d.get("name", ""))
-	c.display_name = ename if not ename.is_empty() else DefaultCards.get_safe_display_name(equipment_id)
+	if ename.is_empty():
+		var dc: GDScript = load("res://data/default_cards.gd")
+		ename = dc.get_safe_display_name(equipment_id) if dc else equipment_id
+	c.display_name = ename
 	c.rarity = String(d.get("rarity", "common"))
 	var ptype: String = String(d.get("type", "titan"))
 	c.card_type = GC.CardType.COMBAT_UNIT
@@ -131,7 +132,10 @@ static func _card_resource_from_war_weapon(d: Dictionary, equipment_id: String) 
 	var c := CardResource.new()
 	c.card_id = equipment_id
 	var ename: String = String(d.get("name", ""))
-	c.display_name = ename if not ename.is_empty() else DefaultCards.get_safe_display_name(equipment_id)
+	if ename.is_empty():
+		var dc: GDScript = load("res://data/default_cards.gd")
+		ename = dc.get_safe_display_name(equipment_id) if dc else equipment_id
+	c.display_name = ename
 	c.rarity = String(d.get("rarity", "common"))
 	var wtype: String = String(d.get("type", "machinegun"))
 	c.card_type = GC.CardType.COMBAT_UNIT
@@ -154,7 +158,10 @@ static func _card_resource_from_energy_card(d: Dictionary, equipment_id: String)
 	var c := CardResource.new()
 	c.card_id = equipment_id
 	var ename: String = String(d.get("name", ""))
-	c.display_name = ename if not ename.is_empty() else DefaultCards.get_safe_display_name(equipment_id)
+	if ename.is_empty():
+		var dc: GDScript = load("res://data/default_cards.gd")
+		ename = dc.get_safe_display_name(equipment_id) if dc else equipment_id
+	c.display_name = ename
 	c.rarity = String(d.get("rarity", "common"))
 	c.card_type = GC.CardType.ENERGY
 	c.energy_cost = 0.0
@@ -169,7 +176,10 @@ static func _card_resource_from_phase_instrument(d: Dictionary, equipment_id: St
 	var c := CardResource.new()
 	c.card_id = equipment_id
 	var ename: String = String(d.get("name", ""))
-	c.display_name = ename if not ename.is_empty() else DefaultCards.get_safe_display_name(equipment_id)
+	if ename.is_empty():
+		var dc: GDScript = load("res://data/default_cards.gd")
+		ename = dc.get_safe_display_name(equipment_id) if dc else equipment_id
+	c.display_name = ename
 	c.rarity = String(d.get("rarity", "common"))
 	c.card_type = GC.CardType.COMBAT_UNIT
 	c.combat_kind = int(_PLATFORM_TO_COMBAT_KIND.get(11, 1))
