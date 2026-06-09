@@ -65,31 +65,47 @@ const PROJ_DISPLAY_SCALE_MUL: float = 0.5
 
 ## ========== v6.0: 按武器名称查贴图 ==========
 
+## v6.1 性能优化：武器名贴图静态缓存，避免每发子弹 ResourceLoader.exists() + load()
+static var _proj_name_cache: Dictionary = {}
+static var _impact_name_cache: Dictionary = {}
+## v6.1 性能优化：活跃命中特效计数器，限制同时存在数量
+static var _active_impacts: int = 0
+const MAX_ACTIVE_IMPACTS: int = 24
+
+
 static func has_proj_texture_by_name(weapon_name: String) -> bool:
-	var sid: String = WeaponVfxMapping.get_weapon_safe_id(weapon_name)
-	if sid.is_empty():
-		return false
-	var path: String = TEX_DIR + sid + "_proj.png"
-	return ResourceLoader.exists(path)
+	return proj_texture_by_name(weapon_name) != null
 
 
 static func proj_texture_by_name(weapon_name: String) -> Texture2D:
+	if _proj_name_cache.has(weapon_name):
+		return _proj_name_cache[weapon_name]
 	var sid: String = WeaponVfxMapping.get_weapon_safe_id(weapon_name)
 	if sid.is_empty():
+		_proj_name_cache[weapon_name] = null
 		return null
 	var path: String = TEX_DIR + sid + "_proj.png"
 	if ResourceLoader.exists(path):
-		return load(path) as Texture2D
+		var tex: Texture2D = load(path) as Texture2D
+		_proj_name_cache[weapon_name] = tex
+		return tex
+	_proj_name_cache[weapon_name] = null
 	return null
 
 
 static func impact_texture_by_name(weapon_name: String) -> Texture2D:
+	if _impact_name_cache.has(weapon_name):
+		return _impact_name_cache[weapon_name]
 	var sid: String = WeaponVfxMapping.get_weapon_safe_id(weapon_name)
 	if sid.is_empty():
+		_impact_name_cache[weapon_name] = null
 		return null
 	var path: String = TEX_DIR + sid + "_impact.png"
 	if ResourceLoader.exists(path):
-		return load(path) as Texture2D
+		var tex: Texture2D = load(path) as Texture2D
+		_impact_name_cache[weapon_name] = tex
+		return tex
+	_impact_name_cache[weapon_name] = null
 	return null
 
 
@@ -156,9 +172,12 @@ static func impact_scale(weapon_type: int) -> float:
 static func spawn_impact(parent: Node2D, world_pos: Vector2, weapon_type: int, is_player_shot: bool) -> void:
 	if parent == null:
 		return
+	if _active_impacts >= MAX_ACTIVE_IMPACTS:
+		return
 	var tex: Texture2D = impact_texture(weapon_type)
 	if tex == null:
 		return
+	_active_impacts += 1
 	var fx := Sprite2D.new()
 	fx.texture = tex
 	fx.centered = true
@@ -171,4 +190,7 @@ static func spawn_impact(parent: Node2D, world_pos: Vector2, weapon_type: int, i
 	var tw := fx.create_tween()
 	tw.tween_property(fx, "scale", fx.scale * 1.22, 0.07)
 	tw.parallel().tween_property(fx, "modulate:a", 0.0, 0.20)
-	tw.finished.connect(fx.queue_free)
+	tw.finished.connect(func():
+		fx.queue_free()
+		_active_impacts -= 1
+	)

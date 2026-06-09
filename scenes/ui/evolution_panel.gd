@@ -336,15 +336,19 @@ func _update_detail_panel() -> void:
 	if resource_details:
 		var res_text = ""
 		if nano_amount >= nano_cost:
-			res_text += "✓ 纳米材料：%d / %d\n" % [nano_amount, nano_cost]
+			res_text += "test"
 		else:
 			res_text += "✗ 纳米材料：%d / %d（不足）\n" % [nano_amount, nano_cost]
 
 		var evo_blueprint_id = BlueprintDefinitions.get_evolution_blueprint_id(selected_card.card_id, selected_target_id)
 		var has_blueprint = false
-		if IntelItemBag:
-			has_blueprint = IntelItemBag.has_item(evo_blueprint_id)
-		res_text += "进化图纸：" + ("✓ 已拥有" if has_blueprint else "✗ 未获得")
+		var _iib = Engine.get_main_loop().get_root().get_node_or_null("IntelItemBag")
+		if _iib:
+			has_blueprint = _iib.has_item(evo_blueprint_id)
+		var _evo_text = "✓ 已拥有"
+		if not has_blueprint:
+			_evo_text = "✗ 未获得"
+		res_text += "进化图纸：" + _evo_text
 
 		resource_details.text = res_text
 		if has_blueprint and nano_amount >= nano_cost:
@@ -356,8 +360,9 @@ func _update_detail_panel() -> void:
 	if evolve_button:
 		var evo_blueprint_id = BlueprintDefinitions.get_evolution_blueprint_id(selected_card.card_id, selected_target_id)
 		var has_blueprint = false
-		if IntelItemBag:
-			has_blueprint = IntelItemBag.has_item(evo_blueprint_id)
+		var _iib = Engine.get_main_loop().get_root().get_node_or_null("IntelItemBag")
+		if _iib:
+			has_blueprint = _iib.has_item(evo_blueprint_id)
 
 		var has_nano = nano_amount >= nano_cost
 

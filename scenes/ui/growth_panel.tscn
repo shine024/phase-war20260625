@@ -1,0 +1,520 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scenes/ui/growth_panel.gd" id="1_growth"]
+[ext_resource type="PackedScene" path="res://scenes/ui/mod_slot_item.tscn" id="2_mod_slot"]
+
+[node name="GrowthPanel" type="PanelContainer"]
+custom_minimum_size = Vector2(860, 920)
+script = ExtResource("1_growth")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 10
+
+[node name="VBox" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+spacing = 2
+
+## ── SECTION: HEADER ──
+[node name="Header" type="PanelContainer" parent="Margin/VBox"]
+custom_minimum_size = Vector2(0, 110)
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 0
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 0
+theme_override_constants/margin_bottom = 6
+
+[node name="HeaderHBox" type="HBoxContainer" parent="Margin/VBox/Header"]
+layout_mode = 2
+spacing = 14
+
+[node name="Portrait" type="PanelContainer" parent="Margin/VBox/Header/HeaderHBox"]
+custom_minimum_size = Vector2(84, 84)
+size_flags_horizontal = 0
+size_flags_vertical = 0
+theme_override_constants/margin_left = 0
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 0
+theme_override_constants/margin_bottom = 0
+
+[node name="PortraitIcon" type="Label" parent="Margin/VBox/Header/HeaderHBox/Portrait"]
+layout_mode = 2
+text = "?"
+horizontal_alignment = 1
+custom_minimum_size = Vector2(0, 70)
+theme_override_font_sizes/font_size = 36
+
+[node name="InfoVBox" type="VBoxContainer" parent="Margin/VBox/Header/HeaderHBox"]
+layout_mode = 2
+expand_fraction = 1
+spacing = 2
+
+[node name="UnitName" type="Label" parent="Margin/VBox/Header/HeaderHBox/InfoVBox"]
+layout_mode = 2
+text = "CARD_ID"
+horizontal_alignment = 0
+autowrap_mode = 3
+custom_minimum_size = Vector2(0, 22)
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.91, 0.93, 0.96, 1)
+
+[node name="SubtitleHBox" type="HBoxContainer" parent="Margin/VBox/Header/HeaderHBox/InfoVBox"]
+layout_mode = 2
+spacing = 8
+
+[node name="Subtitle" type="Label" parent="Margin/VBox/Header/HeaderHBox/InfoVBox/SubtitleHBox"]
+layout_mode = 2
+text = "名称"
+custom_minimum_size = Vector2(0, 14)
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 1)
+
+[node name="EraBadge" type="Label" parent="Margin/VBox/Header/HeaderHBox/InfoVBox/SubtitleHBox"]
+layout_mode = 2
+text = "ERA"
+custom_minimum_size = Vector2(0, 14)
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(1.0, 0.596, 0.0)
+
+[node name="TagsContainer" type="FlowContainer" parent="Margin/VBox/Header/HeaderHBox/InfoVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 20)
+
+[node name="StarDisplay" type="VBoxContainer" parent="Margin/VBox/Header/HeaderHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(70, 0)
+spacing = 2
+
+[node name="StarsBig" type="HBoxContainer" parent="Margin/VBox/Header/HeaderHBox/StarDisplay"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 22)
+alignment = 1
+
+[node name="StarCountLabel" type="Label" parent="Margin/VBox/Header/HeaderHBox/StarDisplay"]
+layout_mode = 2
+text = "0/5 星级"
+horizontal_alignment = 1
+custom_minimum_size = Vector2(0, 14)
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 1)
+
+## ── SECTION 1: STAR ENHANCEMENT ──
+[node name="SectionStar" type="PanelContainer" parent="Margin/VBox"]
+custom_minimum_size = Vector2(0, 0)
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 0
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 0
+theme_override_constants/margin_bottom = 0
+
+[node name="StarVBox" type="VBoxContainer" parent="Margin/VBox/SectionStar"]
+layout_mode = 2
+spacing = 2
+
+[node name="StarHeaderHBox" type="HBoxContainer" parent="Margin/VBox/SectionStar/StarVBox"]
+layout_mode = 2
+alignment = 0
+
+[node name="StarTitle" type="Label" parent="Margin/VBox/SectionStar/StarVBox/StarHeaderHBox"]
+layout_mode = 2
+text = "★  星 级 强 化"
+custom_minimum_size = Vector2(0, 0)
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.91, 0.93, 0.96, 1)
+
+[node name="StarLevel" type="Label" parent="Margin/VBox/SectionStar/StarVBox/StarHeaderHBox"]
+layout_mode = 2
+text = "LV.3"
+h_separation = -1
+custom_minimum_size = Vector2(0, 0)
+alignment = 1
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.0, 0.73, 0.855, 1)
+
+[node name="StarRow" type="HBoxContainer" parent="Margin/VBox/SectionStar/StarVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 36)
+spacing = 6
+alignment = 0
+
+[node name="StarProgress" type="ProgressBar" parent="Margin/VBox/SectionStar/StarVBox"]
+layout_mode = 2
+value = 60.0
+custom_minimum_size = Vector2(0, 5)
+theme_override_constants/separation = 0
+
+[node name="StarXpText" type="Label" parent="Margin/VBox/SectionStar/StarVBox"]
+layout_mode = 2
+text = "1,200 / 2,000 晶体"
+horizontal_alignment = 2
+custom_minimum_size = Vector2(0, 12)
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.333, 0.4, 0.467, 1)
+
+[node name="StarCostText" type="Label" parent="Margin/VBox/SectionStar/StarVBox"]
+layout_mode = 2
+text = "下一星所需: 合金×200 · 晶体×150"
+custom_minimum_size = Vector2(0, 14)
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 1)
+
+## ── SECTION 2: CARD ENHANCEMENT ──
+[node name="SectionEnhance" type="PanelContainer" parent="Margin/VBox"]
+custom_minimum_size = Vector2(0, 0)
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 0
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 0
+theme_override_constants/margin_bottom = 0
+
+[node name="EnhanceVBox" type="VBoxContainer" parent="Margin/VBox/SectionEnhance"]
+layout_mode = 2
+spacing = 2
+
+[node name="EnhanceHeaderHBox" type="HBoxContainer" parent="Margin/VBox/SectionEnhance/EnhanceVBox"]
+layout_mode = 2
+alignment = 0
+
+[node name="EnhanceTitle" type="Label" parent="Margin/VBox/SectionEnhance/EnhanceVBox/EnhanceHeaderHBox"]
+layout_mode = 2
+text = "⬆  卡 牌 强 化"
+custom_minimum_size = Vector2(0, 0)
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.91, 0.93, 0.96, 1)
+
+[node name="EnhanceLevel" type="Label" parent="Margin/VBox/SectionEnhance/EnhanceVBox/EnhanceHeaderHBox"]
+layout_mode = 2
+text = "Lv.3 / 10"
+custom_minimum_size = Vector2(0, 0)
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.0, 0.73, 0.855, 1)
+
+[node name="EnhanceProgress" type="ProgressBar" parent="Margin/VBox/SectionEnhance/EnhanceVBox"]
+layout_mode = 2
+value = 30.0
+custom_minimum_size = Vector2(0, 5)
+theme_override_constants/separation = 0
+
+[node name="StatsGrid" type="GridContainer" parent="Margin/VBox/SectionEnhance/EnhanceVBox"]
+layout_mode = 2
+columns = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="AtkCard" type="PanelContainer" parent="Margin/VBox/SectionEnhance/EnhanceVBox/StatsGrid"]
+custom_minimum_size = Vector2(200, 65)
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 0
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 0
+theme_override_constants/margin_bottom = 0
+
+[node name="AtkVBox" type="VBoxContainer" parent="Margin/VBox/SectionEnhance/EnhanceVBox/StatsGrid/AtkCard"]
+layout_mode = 2
+spacing = 2
+
+[node name="AtkLabel" type="Label" parent="Margin/VBox/SectionEnhance/EnhanceVBox/StatsGrid/AtkCard/AtkVBox"]
+layout_mode = 2
+text = "攻击力 / ATK"
+custom_minimum_size = Vector2(0, 12)
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0.333, 0.4, 0.467, 1)
+
+[node name="AtkValues" type="Label" parent="Margin/VBox/SectionEnhance/EnhanceVBox/StatsGrid/AtkCard/AtkVBox"]
+layout_mode = 2
+text = "轻45 / 甲32 / 空28 ▲+8"
+custom_minimum_size = Vector2(0, 18)
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.91, 0.93, 0.96, 1)
+
+[node name="DefCard" type="PanelContainer" parent="Margin/VBox/SectionEnhance/EnhanceVBox/StatsGrid"]
+custom_minimum_size = Vector2(200, 65)
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 0
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 0
+theme_override_constants/margin_bottom = 0
+
+[node name="DefVBox" type="VBoxContainer" parent="Margin/VBox/SectionEnhance/EnhanceVBox/StatsGrid/DefCard"]
+layout_mode = 2
+spacing = 2
+
+[node name="DefLabel" type="Label" parent="Margin/VBox/SectionEnhance/EnhanceVBox/StatsGrid/DefCard/DefVBox"]
+layout_mode = 2
+text = "防御力 / DEF"
+custom_minimum_size = Vector2(0, 12)
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0.333, 0.4, 0.467, 1)
+
+[node name="DefValues" type="Label" parent="Margin/VBox/SectionEnhance/EnhanceVBox/StatsGrid/DefCard/DefVBox"]
+layout_mode = 2
+text = "轻18 / 甲12 / 空10 ▲+3"
+custom_minimum_size = Vector2(0, 18)
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.91, 0.93, 0.96, 1)
+
+[node name="HpCard" type="PanelContainer" parent="Margin/VBox/SectionEnhance/EnhanceVBox/StatsGrid"]
+custom_minimum_size = Vector2(200, 65)
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 0
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 0
+theme_override_constants/margin_bottom = 0
+
+[node name="HpVBox" type="VBoxContainer" parent="Margin/VBox/SectionEnhance/EnhanceVBox/StatsGrid/HpCard"]
+layout_mode = 2
+spacing = 2
+
+[node name="HpLabel" type="Label" parent="Margin/VBox/SectionEnhance/EnhanceVBox/StatsGrid/HpCard/HpVBox"]
+layout_mode = 2
+text = "生命值 / HP"
+custom_minimum_size = Vector2(0, 12)
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0.333, 0.4, 0.467, 1)
+
+[node name="HpValues" type="Label" parent="Margin/VBox/SectionEnhance/EnhanceVBox/StatsGrid/HpCard/HpVBox"]
+layout_mode = 2
+text = "680 ▲+120"
+custom_minimum_size = Vector2(0, 18)
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.91, 0.93, 0.96, 1)
+
+[node name="MiscCard" type="PanelContainer" parent="Margin/VBox/SectionEnhance/EnhanceVBox/StatsGrid"]
+custom_minimum_size = Vector2(200, 65)
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 0
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 0
+theme_override_constants/margin_bottom = 0
+
+[node name="MiscVBox" type="VBoxContainer" parent="Margin/VBox/SectionEnhance/EnhanceVBox/StatsGrid/MiscCard"]
+layout_mode = 2
+spacing = 2
+
+[node name="MiscLabel" type="Label" parent="Margin/VBox/SectionEnhance/EnhanceVBox/StatsGrid/MiscCard/MiscVBox"]
+layout_mode = 2
+text = "战斗参数"
+custom_minimum_size = Vector2(0, 12)
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0.333, 0.4, 0.467, 1)
+
+[node name="MiscValues" type="Label" parent="Margin/VBox/SectionEnhance/EnhanceVBox/StatsGrid/MiscCard/MiscVBox"]
+layout_mode = 2
+text = "射程 3 | 攻速 0.8 | 移速 2.5"
+custom_minimum_size = Vector2(0, 18)
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.91, 0.93, 0.96, 1)
+
+## ── SECTION 3: MOD MODULES ──
+[node name="SectionMod" type="PanelContainer" parent="Margin/VBox"]
+custom_minimum_size = Vector2(0, 0)
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 0
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 0
+theme_override_constants/margin_bottom = 0
+
+[node name="ModVBox" type="VBoxContainer" parent="Margin/VBox/SectionMod"]
+layout_mode = 2
+spacing = 2
+
+[node name="ModHeaderHBox" type="HBoxContainer" parent="Margin/VBox/SectionMod/ModVBox"]
+layout_mode = 2
+alignment = 0
+
+[node name="ModTitle" type="Label" parent="Margin/VBox/SectionMod/ModVBox/ModHeaderHBox"]
+layout_mode = 2
+text = "⚙  MOD 模 块 装 配"
+custom_minimum_size = Vector2(0, 0)
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.91, 0.93, 0.96, 1)
+
+[node name="ModCountLabel" type="Label" parent="Margin/VBox/SectionMod/ModVBox/ModHeaderHBox"]
+layout_mode = 2
+text = "3/9 已装配"
+h_separation = -1
+custom_minimum_size = Vector2(0, 0)
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.0, 0.73, 0.855, 1)
+
+[node name="ModSubtitle" type="Label" parent="Margin/VBox/SectionMod/ModVBox"]
+layout_mode = 2
+text = "最多装配 9 个模块 (3×3)"
+custom_minimum_size = Vector2(0, 12)
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.333, 0.4, 0.467, 1)
+
+[node name="ScrollContainer" type="ScrollContainer" parent="Margin/VBox/SectionMod/ModVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ModGrid" type="GridContainer" parent="Margin/VBox/SectionMod/ModVBox/ScrollContainer"]
+layout_mode = 2
+columns = 9
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
+size_flags_horizontal = 3
+
+[node name="PlaceholderSlot" parent="Margin/VBox/SectionMod/ModVBox/ScrollContainer/ModGrid" instance="ExtResource(\"2_mod_slot\")"]
+
+## ── SECTION 4: EVOLUTION ──
+[node name="SectionEvo" type="PanelContainer" parent="Margin/VBox"]
+custom_minimum_size = Vector2(0, 0)
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 0
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 0
+theme_override_constants/margin_bottom = 0
+
+[node name="EvoVBox" type="VBoxContainer" parent="Margin/VBox/SectionEvo"]
+layout_mode = 2
+spacing = 2
+
+[node name="EvoHeaderHBox" type="HBoxContainer" parent="Margin/VBox/SectionEvo/EvoVBox"]
+layout_mode = 2
+alignment = 0
+
+[node name="EvoTitle" type="Label" parent="Margin/VBox/SectionEvo/EvoVBox/EvoHeaderHBox"]
+layout_mode = 2
+text = "⟐  进 化 路 线"
+custom_minimum_size = Vector2(0, 0)
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.91, 0.93, 0.96, 1)
+
+[node name="EvoStatusLabel" type="Label" parent="Margin/VBox/SectionEvo/EvoVBox/EvoHeaderHBox"]
+layout_mode = 2
+text = "未解锁"
+custom_minimum_size = Vector2(0, 0)
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(1.0, 0.596, 0.0)
+
+[node name="EvoPath" type="HBoxContainer" parent="Margin/VBox/SectionEvo/EvoVBox"]
+layout_mode = 2
+spacing = 12
+
+[node name="EvoCurrent" type="VBoxContainer" parent="Margin/VBox/SectionEvo/EvoVBox/EvoPath"]
+layout_mode = 2
+alignment = 1
+expand_fraction = 1
+
+[node name="EvoCurrentIcon" type="Label" parent="Margin/VBox/SectionEvo/EvoVBox/EvoPath/EvoCurrent"]
+layout_mode = 2
+text = "⚔"
+horizontal_alignment = 1
+custom_minimum_size = Vector2(0, 26)
+theme_override_font_sizes/font_size = 24
+
+[node name="EvoCurrentName" type="Label" parent="Margin/VBox/SectionEvo/EvoVBox/EvoPath/EvoCurrent"]
+layout_mode = 2
+text = "当前单位"
+horizontal_alignment = 1
+custom_minimum_size = Vector2(0, 14)
+theme_override_font_sizes/font_size = 12
+
+[node name="EvoCurrentLv" type="Label" parent="Margin/VBox/SectionEvo/EvoVBox/EvoPath/EvoCurrent"]
+layout_mode = 2
+text = "Lv.3"
+horizontal_alignment = 1
+custom_minimum_size = Vector2(0, 12)
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 1)
+
+[node name="EvoArrowLabel" type="Label" parent="Margin/VBox/SectionEvo/EvoVBox/EvoPath"]
+layout_mode = 2
+text = "→"
+custom_minimum_size = Vector2(22, 0)
+theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(1.0, 0.596, 0.0)
+
+[node name="EvoTarget" type="VBoxContainer" parent="Margin/VBox/SectionEvo/EvoVBox/EvoPath"]
+layout_mode = 2
+alignment = 1
+expand_fraction = 1
+
+[node name="EvoTargetIcon" type="Label" parent="Margin/VBox/SectionEvo/EvoVBox/EvoPath/EvoTarget"]
+layout_mode = 2
+text = "🔒"
+horizontal_alignment = 1
+custom_minimum_size = Vector2(0, 26)
+theme_override_font_sizes/font_size = 24
+
+[node name="EvoTargetName" type="Label" parent="Margin/VBox/SectionEvo/EvoVBox/EvoPath/EvoTarget"]
+layout_mode = 2
+text = "进化目标"
+horizontal_alignment = 1
+custom_minimum_size = Vector2(0, 14)
+theme_override_font_sizes/font_size = 12
+
+[node name="EvoTargetLv" type="Label" parent="Margin/VBox/SectionEvo/EvoVBox/EvoPath/EvoTarget"]
+layout_mode = 2
+text = ""
+horizontal_alignment = 1
+custom_minimum_size = Vector2(0, 12)
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 1)
+
+[node name="EvoRequirements" type="Label" parent="Margin/VBox/SectionEvo/EvoVBox"]
+layout_mode = 2
+text = "条件列表"
+autowrap_mode = 3
+custom_minimum_size = Vector2(0, 50)
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 1)
+theme_override_font_sizes/bold = false
+
+## ── FOOTER ──
+[node name="Footer" type="PanelContainer" parent="Margin/VBox"]
+custom_minimum_size = Vector2(0, 40)
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 0
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 0
+theme_override_constants/margin_bottom = 0
+
+[node name="FooterHBox" type="HBoxContainer" parent="Margin/VBox/Footer"]
+layout_mode = 2
+alignment = 1
+custom_minimum_size = Vector2(0, 0)
+
+[node name="CurrencyInfo" type="HBoxContainer" parent="Margin/VBox/Footer/FooterHBox"]
+layout_mode = 2
+spacing = 12
+
+[node name="C1" type="Label" parent="Margin/VBox/Footer/FooterHBox/CurrencyInfo"]
+layout_mode = 2
+text = "💎 12,500"
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 1)
+
+[node name="C2" type="Label" parent="Margin/VBox/Footer/FooterHBox/CurrencyInfo"]
+layout_mode = 2
+text = "🔩 8,200"
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 1)
+
+[node name="C3" type="Label" parent="Margin/VBox/Footer/FooterHBox/CurrencyInfo"]
+layout_mode = 2
+text = "⚡ 3,400"
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 1)
+
+[node name="C4" type="Label" parent="Margin/VBox/Footer/FooterHBox/CurrencyInfo"]
+layout_mode = 2
+text = "📋 12"
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 1)
+
+[node name="ApplyBtn" type="Button" parent="Margin/VBox/Footer/FooterHBox"]
+layout_mode = 2
+text = "应用保存"
+custom_minimum_size = Vector2(0, 32)

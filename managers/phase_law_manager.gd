@@ -58,7 +58,7 @@ func _ready() -> void:
 	# 若当前环境未初始化，则从 GameManager 获取一次，避免法则面板里环境全为 ? 导致无法装配
 	if current_env.is_empty():
 		var level := 1
-		if "current_level" in GameManager:
+		if GameManager != null and "current_level" in GameManager:
 			level = int(GameManager.current_level)
 		update_env_for_level(level)
 	# 法则解锁仅由四维知识值驱动（v3 ADR-002）。

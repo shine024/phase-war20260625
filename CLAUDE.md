@@ -33,11 +33,11 @@ Add `--rendering-driver opengl3` if Vulkan issues (applies to `--headless` / `--
 
 ## Architecture
 
-### Autoload Singletons (26 total, in project.godot load order)
+### Autoload Singletons (19 total, in project.godot load order)
 
-**All autoloaded (always loaded at startup):**
+**Core autoloaded singletons (always loaded at startup):**
 | # | Singleton | File | Role |
-|---|---|---|---|
+|---|---|---|---| 
 | 1 | `SignalBus` | `scripts/signal_bus.gd` | Central event bus (~80+ signals). All cross-system comms go here. |
 | 2 | `BattleInputState` | `scripts/battle_input_state.gd` | Battle input state machine |
 | 3 | `EnergyManager` | `managers/energy_manager.gd` | Battle energy pool; cap = equipped energy card star × 100 |
@@ -50,20 +50,13 @@ Add `--rendering-driver opengl3` if Vulkan issues (applies to `--headless` / `--
 | 10 | `AudioManager` | `managers/audio_manager.gd` | Audio |
 | 11 | `PhaseLawManager` | `managers/phase_law_manager.gd` | Law research/equip/battle state; 4 families (STEEL/FLAME/THUNDER/VOID); nano budget |
 | 12 | `BasicResourceManager` | `managers/basic_resource_manager.gd` | Global currencies (nano materials, alloy, crystal, energy blocks, research points, permits) |
-| 13 | `ObjectPoolManager` | `managers/object_pool.gd` | Object pool for bullets, damage numbers |
-| 14 | `UILazyLoader` | `managers/ui_lazy_loader.gd` | On-demand UI panel loading (~30+ panels) |
+| 13 | `ObjectPoolManager` | `managers/object_pool.gd` | Object pool for bullets (25), damage numbers (15) |
+| 14 | `UILazyLoader` | `managers/ui_lazy_loader.gd` | On-demand UI panel loading (18 panels) |
 | 15 | `ManagerLazyLoader` | `managers/manager_lazy_loader.gd` | On-demand non-core manager loading (20+ managers, priority 1-10) |
 | 16 | `PerformanceMetricsManager` | `managers/performance_metrics_manager.gd` | FPS/performance sampling |
-| 17 | `IntelManual` | `scripts/systems/intel_manual.gd` | v6.0 4-dimension intel (basic/tactical/material/secret); reveal tiers |
-| 18 | `IntelItemBag` | `managers/intel_item_bag.gd` | v6.0 Intel item inventory (6 consumable types replacing intel_points) |
-| 19 | `IntelDiscoveryManager` | `scripts/systems/intel_discovery_manager.gd` | v6.0 Battle harvest, 112 reveal events, enemy-origin MOD unlock |
-| 20 | `EnemyOriginModManager` | `scripts/systems/enemy_origin_mod_manager.gd` | v6.0 Enemy-origin MOD equip/fragment progress (9 MODs, D-slot) |
-| 21 | `IntelEvolutionManager` | `scripts/systems/intel_evolution_manager.gd` | v6.0 4 hidden evolution branches (intel-triggered) |
-| 22 | `ModificationRegistry` | `scripts/systems/modification_registry.gd` | 140+ modification modules across 9 unit types (autoload, static registry) |
-| 23 | `MilitaryTitleRegistry` | `scripts/systems/military_title_registry.gd` | Unified rank system (13 ranks, per combat_kind, via UnifiedRankSystem) |
-| 24 | `EvolutionPathRegistry` | `scripts/systems/evolution_path_registry.gd` | 8 unit-type evolution paths (main line + hidden branches) |
-| 25 | `CardEnhancementManager` | `managers/card_enhancement_manager.gd` | Single-card enhancement Lv1-10 (100% success, nano cost = base × level × era) |
-| 26 | `AffixManager` | `managers/affix_manager.gd` | Modular affix management (acquire/upgrade/reroll/lock; boss-unlocked affix pool) |
+| 17 | `ModificationRegistry` | `scripts/systems/modification_registry.gd` | 140+ modification modules across 9 unit types (autoload, static registry) |
+| 18 | `MilitaryTitleRegistry` | `scripts/systems/military_title_registry.gd` | Unified rank system (13 ranks, per combat_kind, via UnifiedRankSystem) |
+| 19 | `EvolutionPathRegistry` | `scripts/systems/evolution_path_registry.gd` | 8 unit-type evolution paths (main line + hidden branches) |
 
 **Lazy-loaded managers** (via `ManagerLazyLoader.ensure_loaded()`, 20 total):
 
@@ -77,7 +70,7 @@ Add `--rendering-driver opengl3` if Vulkan issues (applies to `--headless` / `--
 | 2 | `daily_task` | `DailyTaskManager` | Daily tasks |
 | 2 | `challenge_mode` | `ChallengeModeManager` | Challenge mode |
 | 3 | `faction` | `FactionSystemManager` | 7-faction system (reputation/shop/skill/events/card-gen) |
-| 3 | `affix` | `AffixManager` | ⚠️ Duplicate — also autoloaded as #26 above |
+| 3 | `affix` | `AffixManager` | Modular affix management (acquire/upgrade/reroll/lock; boss-unlocked affix pool) |
 | 4 | `card_collection` | `CardCollectionManager` | Card collection |
 | 4 | `stat_boost` | `StatBoostManager` | Stat boosts |
 | 5 | `statistics` | `StatisticsManager` | Statistics |
@@ -90,6 +83,14 @@ Add `--rendering-driver opengl3` if Vulkan issues (applies to `--headless` / `--
 | 9 | `toast` | `ToastManager` | Toast notifications |
 | 9 | `version` | `VersionManager` | Version management |
 | 99 | `debug_log` | `DebugLog` | Debug logging |
+
+**v6.0 情报系统管理器** (已移至延迟加载):
+- `IntelManual` — 4维情报系统（basic/tactical/material/secret）
+- `IntelItemBag` — 情报道具背包（6种消耗品）
+- `IntelDiscoveryManager` — 战利品发现系统（112个揭示事件）
+- `IntelEvolutionManager` — 情报进化分支（4条隐藏分支）
+- `EnemyOriginModManager` — 敌源MOD系统（9种敌源MOD）
+- `CardEnhancementManager` — 卡牌强化系统（Lv1-10，词条选择）
 
 ### Key Patterns
 
@@ -174,7 +175,7 @@ All data files are pure GDScript static classes (`extends RefCounted`), no JSON/
 **Economy & Progression:**
 - `basic_resources.gd` — Resource ID definitions (nano/alloy/crystal/energy block/research points/permits)
 - `blueprint_star_config.gd` — Star upgrade costs, mod costs, permit rules
-- `battle_card_v3.gd` — Era HP/damage multipliers
+- `battle_card_v3.gd` — Era HP/damage multipliers (v6.1: 近未来伤害倍率 1.90→1.80)
 - `level_eras.gd` / `level_information.gd` — Level-to-era mapping (100 levels, 5 eras)
 - `rank_rules.gd`, `card_progression_settings.gd` — Progression tuning
 
@@ -228,6 +229,7 @@ tests/
     data/         — battle card v3, enemy archetypes, level info
     economy/      — drop tables, energy economy
     energy/       — energy manager
+    managers/     — core managers (BlueprintManager, SaveManager, BattleManager, GameManager)
     progression/  — evolution HP floor, unit lineage
     resources/    — basic resource manager
     save/         — save integrity, save migration
@@ -243,6 +245,25 @@ tests/
 - Critical managers (10) load immediately; deferred managers (12) load in batches after scene ready
 - Auto-save on battle end + window close; backup every 15s
 
+## v6.1 UI修复记录 (2026-06-09)
+
+**UI面板尺寸优化**:
+1. card_enhancement_panel: 1200x640 → 1000x580
+2. achievement_panel: 修复硬编码偏移量，改用居中布局 600x500
+3. level_select_panel: 900x700 → 760x580
+4. intelligence_hub_panel: 920x620 → 840x580
+5. drops_inventory_panel: 添加尺寸定义 800x520
+
+**UI布局优化**:
+1. backpack_panel: Grid列数 17 → 12
+2. affix_panel: 修复文本硬编码换行
+3. modification_panel: 添加完整样式定义 960x600
+
+**文档创建**:
+- `docs/UI_AUDIT_REPORT.md` - UI检查报告
+- `docs/UI_DESIGN_GUIDELINES.md` - UI设计规范
+- `docs/UI_FIX_SUMMARY.md` - UI修复总结
+
 ## Engine Version Notes
 
 LLM training data covers Godot up to ~4.3. This project uses Godot 4.5.
@@ -256,3 +277,30 @@ User-driven collaboration. Every task follows: **Question → Options → Decisi
 - Show drafts before requesting approval
 - Multi-file changes need explicit approval for the full changeset
 - No commits without user instruction
+
+## v6.1 平衡性调整记录 (2026-06-08)
+
+**单位平衡性调整:**
+1. 降低近未来伤害倍率：1.90 → 1.80 (battle_card_v3.gd)
+2. 调整T-72/M1 HP关系：T-72 850→800，M1 800→850 (default_cards.gd)
+
+**MOD平衡性调整:**
+1. aa_01_radar：attack_interval -50% → -30% (已完成于v6.0)
+2. art_06_fire_computer：attack_interval -40% → -30% (已完成于v6.0)
+3. art_09_rapid_fire：attack_interval -30% → -20% (已完成于v6.0)
+4. arm_06_apfsds：attack_armor +35% → +30% (已完成于v6.0)
+5. aa_04_quad_mount：attack_interval -35% → -30% (v6.1新增)
+6. aa_11_auto_fc：attack_interval -50% → -40% (v6.1新增)
+7. air_05_helmet_sight：attack_interval -50% → -40% (v6.1新增)
+
+**性能优化:**
+1. 增加对象池大小：子弹池 2→25，伤害数字池 4→15 (object_pool.gd)
+
+**架构修复:**
+1. 移除7个重复的autoload配置，改用ManagerLazyLoader延迟加载 (project.godot)
+2. 修复BattleManager依赖注入，使用运行时get_node_or_null() (battle_manager.gd)
+
+**UI修复:**
+1. 修复UILazyLoader配置：删除不存在的blueprint_workshop和blueprint_library配置
+2. 统一路径字段命名：全部使用parent_path
+3. 在main.tscn中添加11个缺失的Overlay容器

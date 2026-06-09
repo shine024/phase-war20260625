@@ -177,12 +177,13 @@ static func check_evolution_requirements(card: Dictionary, target_card_id: Strin
 
 	if not intel_requirements.is_empty():
 		# 检查情报系统
-		if IntelManual and IntelManual.has_method("get_intel_progress"):
+		var _im = Engine.get_main_loop().get_root().get_node_or_null("IntelManual")
+		if _im and _im.has_method("get_intel_progress"):
 			for intel_key in intel_requirements.keys():
 				var required_progress = intel_requirements[intel_key]
 				# 从key中提取卡牌ID，如 "intel_ww1_mp18" -> "ww1_mp18"
 				var intel_card_id = intel_key.trim_prefix("intel_")
-				var current_progress = IntelManual.get_intel_progress(intel_card_id)
+				var current_progress = _im.get_intel_progress(intel_card_id)
 
 				if current_progress < required_progress:
 					result.passed = false

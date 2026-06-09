@@ -60,7 +60,7 @@ const DATA: Dictionary = {
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 300, cost_install = 150,
 		slot_type = "optics", conflict_group = "optics",
-		effects = {attack_interval = -0.50},
+		effects = {attack_interval = -0.40},
 		unlock_conditions = {required_level = 5}
 	},
 	"air_06_bvr_missile" = {

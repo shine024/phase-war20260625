@@ -22,7 +22,7 @@ const DATA: Dictionary = {
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 180, cost_install = 90,
 		slot_type = "radar", conflict_group = "radar",
-		effects = {accuracy_bonus = 0.30, attack_interval = -0.50},
+		effects = {accuracy_bonus = 0.30, attack_interval = -0.30},  # v6.0 平衡性调整: -50% → -30%
 		unlock_conditions = {required_level = 3}
 	},
 	"aa_02_iff" = {
@@ -49,7 +49,7 @@ const DATA: Dictionary = {
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 200, cost_install = 100,
 		slot_type = "mount", conflict_group = "mount",
-		effects = {attack_interval = -0.35},
+		effects = {attack_interval = -0.30},
 		unlock_conditions = {required_level = 3}
 	},
 	"aa_05_proximity_fuze" = {
@@ -112,7 +112,7 @@ const DATA: Dictionary = {
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 320, cost_install = 160,
 		slot_type = "fire_control", conflict_group = "fire_control",
-		effects = {attack_interval = -0.50, accuracy_bonus = 0.15},
+		effects = {attack_interval = -0.40, accuracy_bonus = 0.15},
 		unlock_conditions = {required_level = 5}
 	},
 	"aa_12_fire_on_move" = {

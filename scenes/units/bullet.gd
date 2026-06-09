@@ -243,7 +243,12 @@ func _hide_tex_sprite_visual() -> void:
 		_trail_sprite.visible = false
 
 
+## v6.1 性能优化：轻武器跳过命中特效（SMG/RIFLE/MG/PISTOL），减少 ~70% 节点创建
+const _SKIP_IMPACT_WEAPON_TYPES: Array = [0, 1, 2, 4]
+
 func _spawn_tex_impact_at(world_pos: Vector2) -> void:
+	if weapon_type in _SKIP_IMPACT_WEAPON_TYPES:
+		return
 	var parent := get_parent()
 	if parent == null:
 		return
@@ -258,7 +263,10 @@ func _spawn_tex_impact_at(world_pos: Vector2) -> void:
 func _spawn_impact_v2(parent: Node2D, world_pos: Vector2, weapon_name: String) -> void:
 	var tex: Texture2D = WeaponProjectileVfx.impact_texture_by_name(weapon_name)
 	if tex == null:
-		return  # fallback: 用旧系统
+		return
+	if WeaponProjectileVfx._active_impacts >= WeaponProjectileVfx.MAX_ACTIVE_IMPACTS:
+		return
+	WeaponProjectileVfx._active_impacts += 1
 	var fx := Sprite2D.new()
 	fx.texture = tex
 	fx.centered = true
@@ -271,7 +279,10 @@ func _spawn_impact_v2(parent: Node2D, world_pos: Vector2, weapon_name: String) -
 	var tw := fx.create_tween()
 	tw.tween_property(fx, "scale", fx.scale * 1.22, 0.07)
 	tw.parallel().tween_property(fx, "modulate:a", 0.0, 0.20)
-	tw.finished.connect(fx.queue_free)
+	tw.finished.connect(func():
+		fx.queue_free()
+		WeaponProjectileVfx._active_impacts -= 1
+	)
 
 
 func _finish_tex_bullet() -> void:

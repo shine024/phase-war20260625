@@ -1001,9 +1001,10 @@ func install_modification(card: CardResource, mod_id: String, slot: int = -1) ->
 	# 检查改造蓝图（图纸）
 	## v7.1: 兼容 - 如果IntelItemBag不存在或未初始化，跳过蓝图检查
 	## 开发/测试时可手动给予纳米即可操作
-	var skip_blueprint_check = (IntelItemBag == null)
+	var bag = get_node_or_null("/root/IntelItemBag")
+	var skip_blueprint_check = (bag == null)
 	if not skip_blueprint_check:
-		if not IntelItemBag.has_item(blueprint_id):
+		if not bag.has_item(blueprint_id):
 			result.message = "缺少图纸：%s" % blueprint_name
 			return result
 
@@ -1100,8 +1101,9 @@ func evolve_card(card: CardResource, target_card_id: String) -> Dictionary:
 	# 计算特定进化蓝图ID
 	var evo_blueprint_id = BlueprintDefinitions.get_evolution_blueprint_id(card.card_id, target_card_id)
 
-	# 检查进化图纸
-	if IntelItemBag == null or not IntelItemBag.has_item(evo_blueprint_id):
+	# 检查进化图纸（通过ManagerLazyLoader获取IntelItemBag）
+	var bag = get_node_or_null("/root/IntelItemBag")
+	if bag == null or not bag.has_item(evo_blueprint_id):
 		result.message = "缺少进化图纸：%s → %s" % [card.display_name, target_card_id]
 		return result
 

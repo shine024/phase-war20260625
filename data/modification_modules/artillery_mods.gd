@@ -108,7 +108,7 @@ const DATA: Dictionary = {
 		cost_install = 160,
 		slot_type = "fire_control",
 		conflict_group = "fire_control",
-		effects = {attack_interval = -0.40},
+		effects = {attack_interval = -0.30},  # v6.0 平衡性调整: -40% → -30%
 		unlock_conditions = {required_level = 5}
 	},
 
@@ -156,7 +156,7 @@ const DATA: Dictionary = {
 		cost_install = 110,
 		slot_type = "autoloader",
 		conflict_group = "autoloader",
-		effects = {attack_interval = -0.30},
+		effects = {attack_interval = -0.20},  # v6.0 平衡性调整: -30% → -20%
 		unlock_conditions = {required_level = 4}
 	},
 

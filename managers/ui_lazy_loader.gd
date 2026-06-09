@@ -34,6 +34,7 @@ var _panel_dependencies: Dictionary = {}
 ## 初始化面板配置
 func _ready() -> void:
 	# 定义所有可延迟加载的UI面板
+	# 统一使用 parent_path 字段（user_data_path 已废弃）
 	_panel_configs = {
 		"backpack": {
 			"scene": "res://scenes/ui/backpack_panel.tscn",
@@ -45,12 +46,6 @@ func _ready() -> void:
 			"scene": "res://scenes/ui/manufacture_panel.tscn",
 			"parent_path": "PopupLayer/ManufactureOverlay/CenterContainer",
 			"node_name": "ManufacturePanel",
-			"autoload": false
-		},
-		"blueprint_workshop": {
-			"scene": "res://scenes/ui/blueprint_workshop_panel.tscn",
-			"parent_path": "PopupLayer/BlueprintWorkshopOverlay/CenterContainer",
-			"node_name": "BlueprintWorkshopPanel",
 			"autoload": false
 		},
 		"quest": {
@@ -79,76 +74,92 @@ func _ready() -> void:
 		},
 		"faction": {
 			"scene": "res://scenes/ui/faction_panel.tscn",
-			"user_data_path": "PopupLayer/FactionOverlay/CenterContainer",
+			"parent_path": "PopupLayer/FactionOverlay/CenterContainer",
 			"node_name": "FactionPanel",
 			"autoload": false
 		},
 		"map": {
 			"scene": "res://scenes/ui/world_map_panel.tscn",
-			"user_data_path": "PopupLayer/MapOverlay/CenterContainer",
+			"parent_path": "PopupLayer/MapOverlay/CenterContainer",
 			"node_name": "WorldMapPanel",
 			"autoload": false
 		},
 		"settings": {
 			"scene": "res://scenes/ui/settings_panel.tscn",
-			"user_data_path": "PopupLayer/SettingsOverlay/CenterContainer",
+			"parent_path": "PopupLayer/SettingsOverlay/CenterContainer",
 			"node_name": "SettingsPanel",
 			"autoload": false
 		},
 		"leaderboard": {
 			"scene": "res://scenes/ui/leaderboard_panel.tscn",
-			"user_data_path": "PopupLayer/LeaderboardPanel",
+			"parent_path": "PopupLayer/LeaderboardPanel",
 			"node_name": "LeaderboardPanel",
 			"autoload": false
-	},
-	"blueprint_library": {
-		"scene": "res://scenes/ui/blueprint_library_panel.tscn",
-		"user_data_path": "PopupLayer/BlueprintLibraryOverlay",
-		"autoload": false
-	},
-	"achievement": {
+		},
+		"achievement": {
 			"scene": "res://scenes/ui/achievement_panel.tscn",
-			"user_data_path": "PopupLayer/AchievementOverlay",
+			"parent_path": "PopupLayer/AchievementOverlay/CenterContainer",
+			"node_name": "AchievementPanel",
 			"autoload": false
 		},
-	"statistics": {
+		"statistics": {
 			"scene": "res://scenes/ui/statistics_panel.tscn",
-			"user_data_path": "PopupLayer/StatisticsOverlay",
+			"parent_path": "PopupLayer/StatisticsOverlay/CenterContainer",
+			"node_name": "StatisticsPanel",
 			"autoload": false
 		},
-	"enhancement": {
-		"scene": "res://scenes/ui/card_enhancement_panel.tscn",
-			"user_data_path": "PopupLayer/EnhancementOverlay",
+		"enhancement": {
+			"scene": "res://scenes/ui/card_enhancement_panel.tscn",
+			"parent_path": "PopupLayer/EnhancementOverlay/CenterContainer",
+			"node_name": "CardEnhancementPanel",
 			"autoload": false
 		},
-	"drops_inventory": {
-		"scene": "res://scenes/ui/drops_inventory_panel.tscn",
-			"user_data_path": "PopupLayer/DropsInventoryOverlay",
+		"drops_inventory": {
+			"scene": "res://scenes/ui/drops_inventory_panel.tscn",
+			"parent_path": "PopupLayer/DropsInventoryOverlay/CenterContainer",
+			"node_name": "DropsInventoryPanel",
 			"autoload": false
 		},
-	"level_select": {
-		"scene": "res://scenes/ui/level_select_panel.tscn",
-			"user_data_path": "PopupLayer/LevelSelectOverlay",
+		"level_select": {
+			"scene": "res://scenes/ui/level_select_panel.tscn",
+			"parent_path": "PopupLayer/LevelSelectOverlay/CenterContainer",
+			"node_name": "LevelSelectPanel",
 			"autoload": false
 		},
-	"help": {
-		"scene": "res://scenes/ui/help_panel.tscn",
-			"user_data_path": "PopupLayer/HelpOverlay",
+		"help": {
+			"scene": "res://scenes/ui/help_panel.tscn",
+			"parent_path": "PopupLayer/HelpOverlay/CenterContainer",
+			"node_name": "HelpPanel",
 			"autoload": false
 		},
 		"reinforcement": {
 			"scene": "res://scenes/ui/reinforcement_panel.tscn",
-			"user_data_path": "PopupLayer/ReinforcementOverlay",
+			"parent_path": "PopupLayer/ReinforcementOverlay/CenterContainer",
+			"node_name": "ReinforcementPanel",
 			"autoload": false
 		},
 		"modification": {
 			"scene": "res://scenes/ui/modification_panel.tscn",
-			"user_data_path": "PopupLayer/ModificationOverlay",
+			"parent_path": "PopupLayer/ModificationOverlay/CenterContainer",
+			"node_name": "ModificationPanel",
 			"autoload": false
 		},
 		"evolution": {
 			"scene": "res://scenes/ui/evolution_panel.tscn",
-			"user_data_path": "PopupLayer/EvolutionOverlay",
+			"parent_path": "PopupLayer/EvolutionOverlay/CenterContainer",
+			"node_name": "EvolutionPanel",
+			"autoload": false
+		},
+		"intelligence": {
+			"scene": "res://scenes/ui/intelligence_hub_panel.tscn",
+			"parent_path": "PopupLayer/IntelligenceOverlay/CenterContainer",
+			"node_name": "IntelligenceHubPanel",
+			"autoload": false
+		},
+		"growth": {
+			"scene": "res://scenes/ui/growth_panel.tscn",
+			"parent_path": "PopupLayer/GrowthOverlay/CenterContainer",
+			"node_name": "GrowthPanel",
 			"autoload": false
 		}
 	}
@@ -212,7 +223,7 @@ func get_panel(panel_id: String) -> Control:
 		push_error("[UILazyLoader] 当前场景为空")
 		return null
 
-	var parent_path = String(config.get("parent_path", config.get("user_data_path", "")))
+	var parent_path = config.get("parent_path", "")
 	if parent_path.is_empty():
 		push_error("[UILazyLoader] 父节点路径为空: ", panel_id)
 		return null

@@ -10,8 +10,10 @@ const SpatialGridClass = preload("res://scripts/spatial_grid.gd")
 const SimpleEnemyProjectileBatchScript = preload("res://managers/battle/simple_enemy_projectile_batch.gd")
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 const DEBUG_BATTLE_LOG := false
-@onready var energy_manager: Node = EnergyManager
-@onready var phase_instrument: Node = PhaseInstrumentManager
+
+# v6.0 依赖注入重构: 移除 @onready 单例引用，改用 setup() 方法注入
+var energy_manager: Node = null
+var phase_instrument: Node = null
 
 # ---- 子系统 ----
 var _spawn_system: RefCounted = null  ## BattleSpawnSystem
@@ -58,6 +60,11 @@ func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
 	process_mode = Node.PROCESS_MODE_PAUSABLE
+
+	# v6.0 依赖注入: 初始化核心管理器引用
+	# EnergyManager 和 PhaseInstrumentManager 是核心管理器，直接 autoload
+	energy_manager = get_node_or_null("/root/EnergyManager")
+	phase_instrument = get_node_or_null("/root/PhaseInstrumentManager")
 
 	# 初始化子系统
 	const SpawnSystemScript = preload("res://managers/battle/battle_spawn_system.gd")

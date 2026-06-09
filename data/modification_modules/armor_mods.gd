@@ -152,7 +152,7 @@ const DATA: Dictionary = {
 		slot_type = "ammunition",
 		conflict_group = "ammunition",
 		effects = {
-			attack_armor = 0.35,   # +35%
+			attack_armor = 0.30,   # +30% (v6.0 平衡性调整: +35% → +30%)
 			attack_light = -0.15,   # -15% 副作用
 		},
 		unlock_conditions = {

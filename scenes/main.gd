@@ -61,6 +61,7 @@ func _debug_log(hypothesis_id: String, location: String, message: String, data: 
 @onready var leaderboard_panel: PopupPanel       = $PopupLayer/LeaderboardPanel
 @onready var manufacture_overlay: Control      = $PopupLayer/ManufactureOverlay
 @onready var intelligence_overlay: Control     = $PopupLayer/IntelligenceOverlay
+@onready var growth_overlay: Control           = $PopupLayer/GrowthOverlay
 @onready var level_display: Label = $HudLayer/TopCenterMeta/LevelDisplay
 
 func _ready() -> void:
@@ -162,6 +163,7 @@ func _prune_preloaded_panels() -> void:
 	var overlay_to_container_path := {
 		"backpack": "BackpackVBox/CenterRow/BackpackCenter",
 		"progression": "CenterContainer",
+		"growth": "CenterContainer",
 		"quest": "CenterContainer",
 		"store": "CenterContainer",
 		"phase_law": "CenterContainer",
@@ -269,6 +271,7 @@ func _connect_panel_closed_signals() -> void:
 		"progression":        progression_panel,
 		"settings":           $PopupLayer/SettingsOverlay/CenterContainer/SettingsPanel,
 		"info":               $PopupLayer/IntelligenceOverlay/CenterContainer/IntelligenceHubPanel,
+		"growth":             get_node_or_null("PopupLayer/GrowthOverlay/CenterContainer/GrowthPanel"),
 	}
 	for key in panels:
 		var panel = panels[key]
@@ -355,7 +358,7 @@ func _on_panel_closed(key: String) -> void:
 			if bottom_function_bar:
 				bottom_function_bar.notify_panel_closed("leaderboard")
 		"backpack":           _close_overlay(backpack_overlay, "backpack")
-		"progression":        _close_overlay(manufacture_overlay, "progression")
+		"growth":             _close_overlay(growth_overlay, "growth")
 		"info":               _close_overlay(intelligence_overlay, "info")
 
 # ── 排行榜：PopupPanel 特殊处理 ──────────────────────────────
@@ -433,6 +436,7 @@ func _overlay_for_panel_key(panel_key: String) -> Control:
 		"store": return store_overlay
 		"law": return phase_law_overlay
 		"phase_law": return phase_law_overlay
+		"growth": return growth_overlay
 		"faction": return faction_overlay
 		"map": return map_overlay
 		"settings": return settings_overlay
@@ -462,6 +466,8 @@ func _ensure_lazy_panel(panel_key: String) -> void:
 			lazy_id = "map"
 		"settings":
 			lazy_id = "settings"
+		"growth":
+			lazy_id = "growth"
 		_:
 			return
 	var overlay: Control = _overlay_for_panel_key(lazy_id)
@@ -515,11 +521,10 @@ func _connect_intelligence_hub_signals() -> void:
 
 func _on_intelligence_open_progression(card_id: String) -> void:
 	_close_overlay(intelligence_overlay, "info")
-	_ensure_card_enhancement_panel()
-	_open_overlay(manufacture_overlay, "progression")
-	var panel: Node = manufacture_overlay.get_node_or_null("CenterContainer/CardEnhancementPanel")
+	_toggle_overlay(growth_overlay, "growth")
+	var panel: Node = growth_overlay.get_node_or_null("CenterContainer/GrowthPanel")
 	if panel == null:
-		panel = manufacture_overlay.find_child("CardEnhancementPanel", true, false)
+		panel = growth_overlay.find_child("GrowthPanel", true, false)
 	if panel and panel.has_method("select_card_by_id") and not card_id.is_empty():
 		panel.select_card_by_id(card_id)
 
@@ -540,9 +545,8 @@ func _on_store_pressed() -> void:
 
 func _on_progression_pressed() -> void:
 	_play_sfx("button")
-	# 主流程切换：制造/蓝图工坊下线，成长统一进入卡牌强化面板
-	_ensure_card_enhancement_panel()
-	_toggle_overlay(manufacture_overlay, "progression")
+	# 成长面板统一入口
+	_toggle_overlay(growth_overlay, "growth")
 
 func _ensure_card_enhancement_panel() -> void:
 	if manufacture_overlay == null:

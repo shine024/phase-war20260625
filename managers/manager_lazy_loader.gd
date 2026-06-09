@@ -106,6 +106,13 @@ func _ensure_configs_initialized() -> void:
 			"priority": 3,
 			"description": "词缀系统"
 		},
+		# ── 情报系统 (priority 3) ──
+		"intel_item_bag": {
+			"node_name": "IntelItemBag",
+			"script_path": "res://managers/intel_item_bag.gd",
+			"priority": 3,
+			"description": "情报道具背包"
+		},
 		# ── 收集和强化 (priority 4) ──
 		"card_collection": {
 			"node_name": "CardCollectionManager",

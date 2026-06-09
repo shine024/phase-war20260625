@@ -1,61 +1,149 @@
-[gd_scene load_steps=1 format=3 uid="uid://drops_inventory_panel"]
+[gd_scene load_steps=7 format=3 uid="uid://drops_inventory_panel"]
 
 [ext_resource type="Script" path="res://scenes/ui/drops_inventory_panel.gd" id="1"]
 
-[node name="DropsInventoryPanel" type="PanelContainer"]
-anchor_right = 1.0
-anchor_bottom = 1.0
-script = ExtResource("1")
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg"]
+bg_color = Color(0.04, 0.07, 0.12, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0, 0.941, 1, 0.5)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0, 0.941, 1, 0.2)
+shadow_size = 10
 
-[node name="VBoxOuter" type="VBoxContainer" parent="."]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_close_btn"]
+bg_color = Color(0.545, 0.361, 0.965, 0.12)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.545, 0.361, 0.965, 0.5)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_scroll_bg"]
+bg_color = Color(0.03, 0.05, 0.10, 0.6)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sep"]
+bg_color = Color(0, 0.941, 1, 0.15)
+
+[node name="DropsInventoryPanel" type="PanelContainer"]
+custom_minimum_size = Vector2(800, 520)
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -400.0
+offset_top = -260.0
+offset_right = 400.0
+offset_bottom = 260.0
 grow_horizontal = 2
 grow_vertical = 2
+script = ExtResource("1")
+theme_override_styles/panel = SubResource("StyleBoxFlat_bg")
+
+[node name="VBoxOuter" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 8
 
 [node name="TitleRow" type="HBoxContainer" parent="VBoxOuter"]
 layout_mode = 2
+custom_minimum_size = Vector2(0, 40)
+theme_override_constants/separation = 12
 
 [node name="TitleLabel" type="Label" parent="VBoxOuter/TitleRow"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "掉落物品"
-theme_type_variation = &"HeaderMedium"
+text = "📦 掉落物品"
+theme_override_colors/font_color = Color(0, 0.941, 1, 1)
+theme_override_font_sizes/font_size = 16
 
 [node name="CloseButton" type="Button" parent="VBoxOuter/TitleRow"]
 layout_mode = 2
-text = "✕"
+custom_minimum_size = Vector2(70, 32)
+text = "关闭"
+theme_override_colors/font_color = Color(1, 1, 1, 0.85)
+theme_override_colors/font_hover_color = Color(0.545, 0.361, 0.965, 1)
+theme_override_font_sizes/font_size = 13
+theme_override_styles/normal = SubResource("StyleBoxFlat_close_btn")
+
+[node name="TitleSep" type="Panel" parent="VBoxOuter"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 1)
+theme_override_styles/panel = SubResource("StyleBoxFlat_sep")
 
 [node name="TabsContainer" type="TabContainer" parent="VBoxOuter"]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="AllItems" type="ScrollContainer" parent="VBoxOuter/TabsContainer"]
+[node name="AllItems" type="Control" parent="VBoxOuter/TabsContainer"]
 layout_mode = 2
+metadata/_tab_name = "全部"
 
-[node name="ItemsGrid" type="GridContainer" parent="VBoxOuter/TabsContainer/AllItems"]
+[node name="ScrollContainer" type="ScrollContainer" parent="VBoxOuter/TabsContainer/AllItems"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_scroll_bg")
+
+[node name="ItemsGrid" type="GridContainer" parent="VBoxOuter/TabsContainer/AllItems/ScrollContainer"]
 layout_mode = 2
 columns = 6
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
 
-[node name="Materials" type="ScrollContainer" parent="VBoxOuter/TabsContainer"]
+[node name="Materials" type="Control" parent="VBoxOuter/TabsContainer"]
 layout_mode = 2
+metadata/_tab_name = "材料"
 
-[node name="MaterialsGrid" type="GridContainer" parent="VBoxOuter/TabsContainer/Materials"]
+[node name="ScrollContainer" type="ScrollContainer" parent="VBoxOuter/TabsContainer/Materials"]
 layout_mode = 2
-columns = 6
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_scroll_bg")
 
-[node name="Blueprints" type="ScrollContainer" parent="VBoxOuter/TabsContainer"]
-layout_mode = 2
-
-[node name="BlueprintsGrid" type="GridContainer" parent="VBoxOuter/TabsContainer/Blueprints"]
-layout_mode = 2
-columns = 6
-
-[node name="Lore" type="ScrollContainer" parent="VBoxOuter/TabsContainer"]
-layout_mode = 2
-
-[node name="LoreGrid" type="GridContainer" parent="VBoxOuter/TabsContainer/Lore"]
+[node name="MaterialsGrid" type="GridContainer" parent="VBoxOuter/TabsContainer/Materials/ScrollContainer"]
 layout_mode = 2
 columns = 6
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="Blueprints" type="Control" parent="VBoxOuter/TabsContainer"]
+layout_mode = 2
+metadata/_tab_name = "蓝图"
+
+[node name="ScrollContainer" type="ScrollContainer" parent="VBoxOuter/TabsContainer/Blueprints"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_scroll_bg")
+
+[node name="BlueprintsGrid" type="GridContainer" parent="VBoxOuter/TabsContainer/Blueprints/ScrollContainer"]
+layout_mode = 2
+columns = 6
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="Lore" type="Control" parent="VBoxOuter/TabsContainer"]
+layout_mode = 2
+metadata/_tab_name = "文献"
+
+[node name="ScrollContainer" type="ScrollContainer" parent="VBoxOuter/TabsContainer/Lore"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_scroll_bg")
+
+[node name="LoreGrid" type="GridContainer" parent="VBoxOuter/TabsContainer/Lore/ScrollContainer"]
+layout_mode = 2
+columns = 6
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8

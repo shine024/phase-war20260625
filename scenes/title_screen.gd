@@ -170,8 +170,8 @@ func _on_settings_closed() -> void:
 func _on_switch_slot() -> void:
 	if not SaveManager:
 		return
-	var current := SaveManager.get_slot()
-	var next_slot := current + 1
+	var current: int = SaveManager.get_slot()
+	var next_slot: int = current + 1
 	if next_slot > SaveManager.MAX_SLOTS:
 		next_slot = 1
 	SaveManager.set_slot(next_slot)

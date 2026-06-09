@@ -173,8 +173,9 @@ func _update_card_info() -> void:
 	if research_label:
 		var nano_amount = BasicResourceManager.get_total(BasicResources.ID_NANO_MATERIALS)
 		var total_blueprints = 0
-		if IntelItemBag:
-			total_blueprints = IntelItemBag.get_total_count()
+		var _iib = Engine.get_main_loop().get_root().get_node_or_null("IntelItemBag")
+		if _iib:
+			total_blueprints = _iib.get_total_count()
 		research_label.text = "纳米：%d | 图纸总数：%d" % [nano_amount, total_blueprints]
 
 func _refresh_installed_list(installed_list: Control) -> void:
@@ -296,8 +297,9 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 			var blueprint_id = BlueprintDefinitions.get_mod_blueprint_id(selected_mod_id)
 			var blueprint_name = BlueprintDefinitions.get_mod_blueprint_name(selected_mod_id)
 			var has_blueprint = false
-			if IntelItemBag:
-				has_blueprint = IntelItemBag.has_item(blueprint_id)
+			var _iib = Engine.get_main_loop().get_root().get_node_or_null("IntelItemBag")
+			if _iib:
+				has_blueprint = _iib.has_item(blueprint_id)
 
 			# 检查纳米材料
 			var has_nano = true

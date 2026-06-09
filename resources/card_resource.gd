@@ -552,15 +552,24 @@ func can_install_modification(mod_id: String) -> Dictionary:
 		result.reason = "找不到改造数据"
 		return result
 
-	# 检查情报需求
+	# 检查情报需求（通过ManagerLazyLoader获取）
 	var intel_requirements = mod_data.get("intel_requirements", {})
 	if not intel_requirements.is_empty():
-		if IntelManual and IntelManual.has_method("get_intel_progress"):
+		var tree = Engine.get_main_loop()
+		if not tree or not tree.root:
+			result.can_install = false
+			result.reason = "情报系统未加载"
+			return result
+		var ml = tree.root.get_node_or_null("ManagerLazyLoader")
+		var im: Node = null
+		if ml and ml.has_method("ensure_loaded"):
+			ml.ensure_loaded("intel_manual")
+			im = tree.root.get_node_or_null("IntelManual")
+		if im and im.has_method("get_intel_progress"):
 			for intel_key in intel_requirements.keys():
 				var required_progress = intel_requirements[intel_key]
 				var target_card_id = intel_key.trim_prefix("intel_")
-				var current_progress = IntelManual.get_intel_progress(target_card_id)
-
+				var current_progress = im.get_intel_progress(target_card_id)
 				if current_progress < required_progress:
 					result.can_install = false
 					result.reason = "情报不足：%s需要%.0f%%情报（当前%.0f%%）" % [
@@ -691,16 +700,15 @@ func _create_slot_from_legacy(slot_idx: int, base_damage: float, base_speed: flo
 	w.range_value = range_value
 	w.enabled = base_damage > 0
 
-	# 设置默认显示名称
-	if has_method("_get_weapon_name_for_slot"):
-		var fallback = get_weapon_name_for_slot(slot_idx)
-		if fallback != "":
-			w.display_name = fallback
-
-	match slot_idx:
-		0: w.display_name = "轻装武器"
-		1: w.display_name = "装甲武器"
-		2: w.display_name = "对空武器"
+	# 设置武器显示名称：优先使用具体武器名，回退到通用名
+	var specific_name: String = get_weapon_name_for_slot(slot_idx)
+	if not specific_name.is_empty():
+		w.display_name = specific_name
+	else:
+		match slot_idx:
+			0: w.display_name = "轻装武器"
+			1: w.display_name = "装甲武器"
+			2: w.display_name = "对空武器"
 
 	return w
 

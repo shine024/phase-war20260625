@@ -5,8 +5,8 @@ class_name BattleCardV3
 
 ## era: GameConstants.Era 枚举值 0~4（WW1..NEAR_FUTURE）
 static func era_damage_multiplier(era: int) -> float:
-	# 重平衡：1.00 / 1.20 / 1.40 / 1.65 / 1.90（原每级+0.25，现曲线微降）
-	var multipliers := [1.00, 1.20, 1.40, 1.65, 1.90]
+	# 重平衡：1.00 / 1.20 / 1.40 / 1.65 / 1.80（v6.1: 1.90→1.80，避免后期火力过溢）
+	var multipliers := [1.00, 1.20, 1.40, 1.65, 1.80]
 	return multipliers[clampi(era, 0, 4)]
 
 

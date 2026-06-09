@@ -84,7 +84,7 @@ corner_radius_bottom_right = 5
 corner_radius_bottom_left = 5
 
 [node name="CardEnhancementPanel" type="PanelContainer"]
-custom_minimum_size = Vector2(1200, 640)
+custom_minimum_size = Vector2(1000, 580)
 layout_mode = 2
 script = ExtResource("1_ja9f5")
 theme_override_styles/panel = SubResource("StyleBoxFlat_bg")

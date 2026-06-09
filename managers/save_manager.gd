@@ -711,29 +711,39 @@ func _enqueue_starter_backpack_cards() -> void:
 		BasicResourceManager.add_resource("research_points", 100000)
 
 	# 初始情报：解锁所有情报
-	if IntelManual and IntelManual.has_method("unlock_all_intel"):
-		IntelManual.unlock_all_intel()
+		# 初始情报：解锁所有情报（通过ManagerLazyLoader获取）
+		var ml = get_node_or_null("/root/ManagerLazyLoader")
+		if ml and ml.has_method("ensure_loaded"):
+			ml.ensure_loaded("intel_manual")
+			var im = get_node_or_null("/root/IntelManual")
+			if im and im.has_method("unlock_all_intel"):
+				im.unlock_all_intel()
 
 	# 初始蓝图：授予所有改造情报书和进化蓝图
-	if IntelItemBag:
-		const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
-		var mod_registry = get_node_or_null("/root/ModificationRegistry")
-		# 授予所有改造蓝图（改造情报书）
-		# 注意：ModificationRegistry.get_all_ids() 是 static 方法，
-		# Godot 4 的 has_method() 不检测 static 方法，所以直接调用
-		if mod_registry:
-			var all_mod_ids = ModificationRegistry.get_all_ids()
-			for mod_id in all_mod_ids:
-				if mod_id is String and not mod_id.is_empty():
-					var blueprint_id = BlueprintDefinitions.get_mod_blueprint_id(mod_id)
-					IntelItemBag.add_item(blueprint_id, 1)
+		# 初始蓝图：授予所有改造情报书和进化蓝图（通过ManagerLazyLoader获取）
+		if ml and ml.has_method("ensure_loaded"):
+			ml.ensure_loaded("intel_item_bag")
+			var bag = get_node_or_null("/root/IntelItemBag")
+			if bag:
+				const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
+				var mod_registry = get_node_or_null("/root/ModificationRegistry")
+				# 授予所有改造蓝图（改造情报书）
+				if mod_registry:
+					var all_mod_ids = ModificationRegistry.get_all_ids()
+					for mod_id in all_mod_ids:
+						if mod_id is String and not mod_id.is_empty():
+							var blueprint_id = BlueprintDefinitions.get_mod_blueprint_id(mod_id)
+							bag.add_item(blueprint_id, 1)
 
 		# 授予所有进化蓝图
 		_grant_all_evolution_blueprints()
 
-	# 初始进化分支：发现所有情报进化分支
-	if IntelEvolutionManager and IntelEvolutionManager.has_method("check_and_discover_branches"):
-		IntelEvolutionManager.check_and_discover_branches()
+		# 初始进化分支：发现所有情报进化分支（通过ManagerLazyLoader获取）
+		if ml and ml.has_method("ensure_loaded"):
+			ml.ensure_loaded("intel_evolution")
+			var iem = get_node_or_null("/root/IntelEvolutionManager")
+			if iem and iem.has_method("check_and_discover_branches"):
+				iem.check_and_discover_branches()
 
 	# 初始敌源改造：解锁所有敌源MOD
 	_unlock_all_enemy_origin_mods()
@@ -753,13 +763,15 @@ func _enqueue_starter_backpack_cards() -> void:
 ## 辅助函数：为单个进化路径生成蓝图
 func _process_evolution_blueprint_path(path_data: Dictionary) -> void:
 	const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
+	# 获取IntelItemBag引用
+	var bag = get_node_or_null("/root/IntelItemBag")
+	if not bag:
+		return
 	# 按 stage 数值排序，而不是字符串键
 	var sorted_entries = []
 	for key in path_data.keys():
 		var node = path_data[key]
-		var stage = node.get("stage", 0)
-		sorted_entries.append({"key": key, "stage": stage, "node": node})
-	# 按 stage 升序排序
+		sorted_entries.append({"key": key, "stage": int(key), "node": node})
 	sorted_entries.sort_custom(func(a, b): return a.stage < b.stage)
 
 	var previous_card = ""
@@ -767,13 +779,17 @@ func _process_evolution_blueprint_path(path_data: Dictionary) -> void:
 		var card_id = entry.node.get("card_id", "")
 		if not card_id.is_empty() and not previous_card.is_empty():
 			var evo_bp_id = BlueprintDefinitions.get_evolution_blueprint_id(previous_card, card_id)
-			# [LOG-v5.1] print("[SaveManager] 添加进化蓝图: %s (E%d→E%d: %s → %s)" % [evo_bp_id, entry.stage - 1, entry.stage, previous_card, card_id])
-			IntelItemBag.add_item(evo_bp_id, 1)
+			bag.add_item(evo_bp_id, 1)
+		previous_card = card_id
 		previous_card = card_id
 
 ## 辅助函数：为隐藏分支生成蓝图
 func _process_evolution_hidden_branches(branches_data: Dictionary) -> void:
 	const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
+	# 获取IntelItemBag引用
+	var bag = get_node_or_null("/root/IntelItemBag")
+	if not bag:
+		return
 	for branch_name in branches_data.keys():
 		var branch = branches_data[branch_name]
 		# 按 stage 数值排序
@@ -790,8 +806,7 @@ func _process_evolution_hidden_branches(branches_data: Dictionary) -> void:
 			if not card_id.is_empty():
 				if not branch_prev_card.is_empty():
 					var evo_bp_id = BlueprintDefinitions.get_evolution_blueprint_id(branch_prev_card, card_id)
-					# [LOG-v5.1] print("[SaveManager] 添加隐藏分支蓝图: %s (E%d→E%d: %s → %s)" % [evo_bp_id, entry.stage - 1, entry.stage, branch_prev_card, card_id])
-					IntelItemBag.add_item(evo_bp_id, 1)
+					bag.add_item(evo_bp_id, 1)
 				branch_prev_card = card_id
 
 ## 授予所有进化蓝图
@@ -1099,7 +1114,8 @@ func _load_from_path(path: String) -> bool:
 
 ## 补偿缺失的改造蓝图（每次加载存档时自动检查）
 func _ensure_mod_blueprints_exist() -> void:
-	if IntelItemBag == null:
+	var bag = get_node_or_null("/root/IntelItemBag")
+	if bag == null:
 		return
 	var mod_registry = get_node_or_null("/root/ModificationRegistry")
 	if mod_registry == null:
@@ -1110,9 +1126,11 @@ func _ensure_mod_blueprints_exist() -> void:
 	for mod_id in all_mod_ids:
 		if mod_id is String and not mod_id.is_empty():
 			var blueprint_id = BlueprintDefinitions.get_mod_blueprint_id(mod_id)
-			if not IntelItemBag.has_item(blueprint_id):
-				IntelItemBag.add_item(blueprint_id, 1)
+			if not bag.has_item(blueprint_id):
+				bag.add_item(blueprint_id, 1)
 				granted_count += 1
+	if granted_count > 0:
+		pass
 	if granted_count > 0:
 		pass
 		# [LOG-v5.1] print("[SaveManager] 补偿了 %d 个缺失的改造蓝图" % granted_count)
@@ -1122,16 +1140,17 @@ func _ensure_mod_blueprints_exist() -> void:
 
 ## 补偿缺失的进化分支发现（每次加载存档时自动检查）
 func _ensure_evolution_branches_discovered() -> void:
-	if IntelEvolutionManager == null:
+	var iem = get_node_or_null("/root/IntelEvolutionManager")
+	if iem == null:
 		return
 	const IntelEvolutionBranches = preload('res://data/intel_evolution_branches.gd')
 	var all_branch_ids = IntelEvolutionBranches.get_all_branch_ids()
 	var discovered_count = 0
 	for branch_id in all_branch_ids:
 		if branch_id is String and not branch_id.is_empty():
-			if not IntelEvolutionManager.is_branch_discovered(branch_id):
+			if not iem.is_branch_discovered(branch_id):
 				# 直接标记为已发现
-				IntelEvolutionManager._discovered[branch_id] = true
+				iem._discovered[branch_id] = true
 				discovered_count += 1
 	if discovered_count > 0:
 		pass

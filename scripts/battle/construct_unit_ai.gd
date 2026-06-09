@@ -115,7 +115,14 @@ static func do_attack(u: CharacterBody2D) -> void:
 
 	# 回退到旧系统
 	var damage: float = AttackCalculator.get_attack_vs(u.stats, target_kind)
-	do_attack_with_damage(u, damage, u.stats.weapon_type, "")
+	var fallback_name: String = ""
+	if u.stats.weapon_slots.size() > 0:
+		var ws = u.stats.weapon_slots[0]
+		if ws and ws is WeaponResource and ws.display_name:
+			fallback_name = ws.display_name
+	if fallback_name.is_empty() and u.stats.weapons.size() > 0:
+		fallback_name = str(u.stats.weapons[0].get("display_name", ""))
+	do_attack_with_damage(u, damage, u.stats.weapon_type, fallback_name)
 
 ## 执行攻击（指定伤害值）
 static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type_override: int = -1, weapon_name: String = "", weapon_resource: Variant = null) -> void:
@@ -169,9 +176,9 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 	if bullet == null:
 		bullet = BulletScene.instantiate()
 	bullet.global_position = u.global_position
-	# v6.0: 传递 weapon_name 给子弹用于 VFX 贴图查找
-	var w_name: String = ""
-	if weapon_resource and weapon_resource is WeaponResource:
+	# v6.1: 优先使用传入的 weapon_name 参数，回退到 WeaponResource.display_name
+	var w_name: String = weapon_name
+	if w_name.is_empty() and weapon_resource and weapon_resource is WeaponResource:
 		w_name = weapon_resource.display_name if weapon_resource.display_name else ""
 	bullet.setup(u.target, damage, true, wt, u, u.stats, miss, w_name)
 	var root_2d = u.get_parent().get_parent() if u.get_parent() else u
