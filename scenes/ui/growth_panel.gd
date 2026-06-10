@@ -71,11 +71,14 @@ func show_panel(card: CardResource) -> void:
 	_is_open = true
 	_selected_card = card
 	visible = true
+	# 先设为完全透明+缩小
+	modulate.a = 0.0
+	scale = Vector2(0.92, 0.92)
 	var tw := create_tween()
 	tw.tween_property(self, "modulate:a", 1.0, _anim_duration).set_trans(Tween.TRANS_SINE)
-	scale = Vector2(0.92, 0.92)
 	tw.parallel().tween_property(self, "scale", Vector2(1.0, 1.0), _anim_duration).set_trans(Tween.TRANS_BACK)
-	_refresh_data()
+	# 动画完成后刷新数据
+	tw.tween_callback(func(): _refresh_data())
 
 func hide_panel() -> void:
 	if not _is_open:
@@ -84,7 +87,10 @@ func hide_panel() -> void:
 	var tw := create_tween()
 	tw.tween_property(self, "modulate:a", 0.0, _anim_duration).set_trans(Tween.TRANS_SINE)
 	tw.parallel().tween_property(self, "scale", Vector2(0.92, 0.92), _anim_duration).set_trans(Tween.TRANS_QUAD)
-	tw.tween_callback(func(): visible = false)
+	tw.tween_callback(func():
+		visible = false
+		print("[GrowthPanel] hide_panel complete")
+	)
 	closed.emit()
 
 func _on_apply_pressed() -> void:

@@ -310,10 +310,21 @@ func _open_overlay(overlay: Control, panel_key: String = "") -> void:
 		var hub: Node = overlay.get_node_or_null("CenterContainer/IntelligenceHubPanel")
 		if hub and hub.has_method("refresh"):
 			hub.refresh()
+	elif panel_key == "growth":
+		var gp: Control = overlay.get_node_or_null("CenterContainer/GrowthPanel")
+		if gp == null:
+			gp = overlay.find_child("GrowthPanel", true, false)
+		if gp and gp.has_method("show_panel"):
+			print("[Main] Calling GrowthPanel.show_panel")
+			gp.show_panel(null)
 	# 性能优化：非战斗中打开面板时，冻结 SubViewport 避免无谓渲染
-	_freeze_subviewport_if_not_in_battle()
+	if panel_key != "growth":
+		_freeze_subviewport_if_not_in_battle()
 
 func _close_overlay(overlay: Control, panel_key: String = "") -> void:
+	if overlay == null:
+		print("[Main] _close_overlay: overlay is null for key=", panel_key)
+		return
 	# 成长面板关闭前尝试收拢可能存在的内嵌弹窗，避免输入焦点残留
 	if overlay != null and overlay == manufacture_overlay:
 		var mp: Node = manufacture_overlay.get_node_or_null("CenterContainer/CardEnhancementPanel")
