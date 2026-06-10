@@ -245,14 +245,9 @@ func get_panel(panel_id: String) -> Control:
 	# 实例化面板
 	var panel = scene.instantiate()
 	if panel == null:
-		# #region agent log
-		_debug_log("H2", "ui_lazy_loader.gd:get_panel:instantiate_failed", "scene.instantiate() returned null", {
-			"panel_id": panel_id,
-			"scene_path": scene_path
-		})
-		# #endregion
-		push_error("[UILazyLoader] 无法实例化面板: ", scene_path)
+		print("[UILazyLoader] ERROR: scene.instantiate() returned null for ", panel_id)
 		return null
+	print("[UILazyLoader] Instantiated panel for ", panel_id, " : ", panel)
 	var explicit_name: String = config.get("node_name", "")
 	if not explicit_name.is_empty():
 		panel.name = explicit_name
@@ -260,7 +255,9 @@ func get_panel(panel_id: String) -> Control:
 		panel.name = panel_id + "_panel"
 
 	# 添加到场景树
+	print("[UILazyLoader] Adding panel to: ", parent_path)
 	parent_node.add_child(panel)
+	print("[UILazyLoader] Panel added successfully")
 
 	# 存储引用
 	_loaded_panels[panel_id] = panel

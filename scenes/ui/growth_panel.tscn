@@ -1,7 +1,6 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=2 format=3]
 
 [ext_resource type="Script" path="res://scenes/ui/growth_panel.gd" id="1_growth"]
-[ext_resource type="PackedScene" path="res://scenes/ui/mod_slot_item.tscn" id="2_mod"]
 
 [node name="GrowthPanel" type="PanelContainer"]
 custom_minimum_size = Vector2(860, 920)
@@ -22,7 +21,6 @@ theme_override_constants/margin_bottom = 10
 layout_mode = 2
 spacing = 2
 
-## ── SECTION: HEADER ──
 [node name="Header" type="PanelContainer" parent="Margin/VBox"]
 custom_minimum_size = Vector2(0, 110)
 size_flags_horizontal = 3
@@ -87,7 +85,7 @@ custom_minimum_size = Vector2(0, 14)
 theme_override_font_sizes/font_size = 10
 theme_override_colors/font_color = Color(1.0, 0.596, 0.0, 1)
 
-[node name="TagsContainer" type="FlowContainer" parent="Margin/VBox/Header/HeaderHBox/InfoVBox"]
+[node name="TagsContainer" type="HBoxContainer" parent="Margin/VBox/Header/HeaderHBox/InfoVBox"]
 unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(0, 20)
@@ -112,7 +110,6 @@ custom_minimum_size = Vector2(0, 14)
 theme_override_font_sizes/font_size = 10
 theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 1)
 
-## ── SECTION 1: STAR ENHANCEMENT ──
 [node name="SectionStar" type="PanelContainer" parent="Margin/VBox"]
 custom_minimum_size = Vector2(0, 0)
 size_flags_horizontal = 3
@@ -177,7 +174,6 @@ custom_minimum_size = Vector2(0, 14)
 theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 1)
 
-## ── SECTION 2: CARD ENHANCEMENT ──
 [node name="SectionEnhance" type="PanelContainer" parent="Margin/VBox"]
 custom_minimum_size = Vector2(0, 0)
 size_flags_horizontal = 3
@@ -332,7 +328,6 @@ custom_minimum_size = Vector2(0, 18)
 theme_override_font_sizes/font_size = 13
 theme_override_colors/font_color = Color(0.91, 0.93, 0.96, 1)
 
-## ── SECTION 3: MOD MODULES ──
 [node name="SectionMod" type="PanelContainer" parent="Margin/VBox"]
 custom_minimum_size = Vector2(0, 0)
 size_flags_horizontal = 3
@@ -398,7 +393,6 @@ theme_override_constants/v_separation = 4
 unique_name_in_owner = true
 
 
-## ── SECTION 4: EVOLUTION ──
 [node name="SectionEvo" type="PanelContainer" parent="Margin/VBox"]
 custom_minimum_size = Vector2(0, 0)
 size_flags_horizontal = 3
@@ -508,7 +502,7 @@ autowrap_mode = 3
 custom_minimum_size = Vector2(0, 50)
 theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 1)
-## ── FOOTER ──
+
 [node name="Footer" type="PanelContainer" parent="Margin/VBox"]
 custom_minimum_size = Vector2(0, 40)
 size_flags_horizontal = 3

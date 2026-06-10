@@ -283,18 +283,10 @@ func _connect_panel_closed_signals() -> void:
 # ── overlay 统一开关 ─────────────────────────────────────────
 func _open_overlay(overlay: Control, panel_key: String = "") -> void:
 	if overlay == null:
+		print("[Main] _open_overlay: overlay is null for key=", panel_key)
 		return
 	_ensure_lazy_panel(panel_key)
-	# 暂时禁用panel刷新，避免潜在问题
-	# var panel: Node = null
-	# var cc = overlay.get_node_or_null("CenterContainer")
-	# if cc and cc.get_child_count() > 0:
-	# 	panel = cc.get_child(0)
-	# else:
-	# 	panel = overlay.find_child("BackpackPanel", true, false)
-	# if panel and panel.has_method("refresh"):
-	# 	panel.refresh()
-	
+	print("[Main] _open_overlay: showing overlay for key=", panel_key)
 	# 先显示，再fade in
 	overlay.visible = true
 	# 防止子级曾被误 hide（例如旧版设置关闭只藏了 CenterContainer）
@@ -547,7 +539,7 @@ func _on_store_pressed() -> void:
 
 func _on_progression_pressed() -> void:
 	_play_sfx("button")
-	# 成长面板统一入口
+	print("[Main] _on_progression_pressed called, growth_overlay=", growth_overlay)
 	_toggle_overlay(growth_overlay, "growth")
 
 func _ensure_card_enhancement_panel() -> void:
