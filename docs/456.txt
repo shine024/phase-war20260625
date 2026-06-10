@@ -1,0 +1,164 @@
+Godot Engine v4.5.stable.official.876b29033 - https://godotengine.org
+OpenGL API OpenGL ES 3.0.0 (ANGLE 2.1.1 git hash: d8c00a9d4283) - Compatibility - Using Device: Google Inc. (Intel) - ANGLE (Intel, Intel(R) HD Graphics 630 (0x00005912) Direct3D11 vs_5_0 ps_5_0, D3D11-26.20.100.7263)
+
+[DefaultCards] 缓存构建完成,共 133 张卡牌
+[BottomFuncBar] _on_func_btn_pressed key=backpack signal=btn_backpack_pressed
+[Main] _ensure_lazy_panel called with: backpack
+[UILazyLoader] about to instantiate: res://scenes/ui/backpack_panel.tscn for panel: backpack
+[UILazyLoader] instantiate result: BackpackPanel:<PanelContainer#379634848185>
+[UILazyLoader] about to set name: BackpackPanel
+[UILazyLoader] name set OK
+[UILazyLoader] about to add_child
+[UILazyLoader] add_child done
+[UILazyLoader] stored panel, returning
+[Main] get_panel returned: BackpackPanel:<PanelContainer#379634848185>
+[Main] about to _connect_panel_closed_runtime: backpack
+[Main] _connect_panel_closed_runtime called, panel: BackpackPanel:<PanelContainer#379634848185>
+[Main] checking closed signal
+[Main] connecting closed signal
+[Main] signal connected
+[Main] _connect_panel_closed_runtime done
+[Main] _open_overlay about to set visible = true, panel_key=backpack
+[Main] overlay.visible = true done
+[BlueprintDefinitions] 前缀解析: from=ww1_mp18 to=ww2_thompson
+[BlueprintDefinitions] 前缀解析: from=ww2_thompson to=cold_ak47
+[BlueprintDefinitions] 前缀解析: from=cold_ak47 to=mod_marine
+[BlueprintDefinitions] 前缀解析: from=mod_marine to=fut_cyborg
+[BlueprintDefinitions] 前缀解析: from=fut_cyborg to=fut_colossus
+[BlueprintDefinitions] 前缀解析: from=mod_ranger to=fe_nova_ghost_sniper
+[BlueprintDefinitions] 前缀解析: from=fe_nova_ghost_sniper to=fut_spectre
+[BlueprintDefinitions] 前缀解析: from=ww2_panzerschrek to=cold_rpg
+[BlueprintDefinitions] 前缀解析: from=cold_rpg to=mod_javelin
+[BlueprintDefinitions] 前缀解析: from=mod_javelin to=fut_cyborg_at
+[BlueprintDefinitions] 前缀解析: from=cold_sniper to=mod_m24
+[BlueprintDefinitions] 前缀解析: from=mod_m24 to=fut_nexus_archer
+[BlueprintDefinitions] 前缀解析: from=ww1_ft17 to=ww2_pz3
+[BlueprintDefinitions] 前缀解析: from=ww2_pz3 to=cold_t55
+[BlueprintDefinitions] 前缀解析: from=cold_t55 to=mod_m1a1
+[BlueprintDefinitions] 前缀解析: from=mod_m1a1 to=fut_hovertank
+[BlueprintDefinitions] 前缀解析: from=ww1_saint to=ww2_tiger
+[BlueprintDefinitions] 前缀解析: from=ww2_tiger to=cold_t72
+[BlueprintDefinitions] 前缀解析: from=cold_t72 to=mod_m1a2sep
+[BlueprintDefinitions] 前缀解析: from=mod_m1a2sep to=fut_heavy_mech
+[BlueprintDefinitions] 前缀解析: from=cold_leo1 to=mod_leo2a6
+[BlueprintDefinitions] 前缀解析: from=mod_leo2a6 to=fut_prism
+[BlueprintDefinitions] 前缀解析: from=ww1_m81 to=ww2_m81
+[BlueprintDefinitions] 前缀解析: from=ww2_m81 to=cold_m113
+[BlueprintDefinitions] 前缀解析: from=cold_m113 to=mod_m270
+[BlueprintDefinitions] 前缀解析: from=mod_m270 to=fut_howitzer
+[BlueprintDefinitions] 前缀解析: from=ac130 to=fut_gunship
+[BlueprintDefinitions] 前缀解析: from=ww1_37mm to=ww2_flak
+[BlueprintDefinitions] 前缀解析: from=ww2_flak to=cold_zsu23
+[BlueprintDefinitions] 前缀解析: from=cold_zsu23 to=mod_m6
+[BlueprintDefinitions] 前缀解析: from=mod_m6 to=fut_aa_hover
+[BlueprintDefinitions] 前缀解析: from=pantsir to=fut_aa_mech
+[BlueprintDefinitions] 前缀解析: from=cold_mig21 to=mod_f16
+[BlueprintDefinitions] 前缀解析: from=mod_f16 to=fut_f22
+[BlueprintDefinitions] 前缀解析: from=fut_f22 to=fut_space_fighter
+[BlueprintDefinitions] 前缀解析: from=mod_ah1 to=mod_ah64
+[BlueprintDefinitions] 前缀解析: from=mod_ah64 to=fut_attack_drone
+[BlueprintDefinitions] 前缀解析: from=fut_attack_drone to=fut_swarm
+[BlueprintDefinitions] 前缀解析: from=fut_b2 to=fut_stealth_bomber
+[BlueprintDefinitions] 前缀解析: from=ww1_cavalry to=ww2_motorcycle
+[BlueprintDefinitions] 前缀解析: from=ww2_motorcycle to=cold_spetsnaz
+[BlueprintDefinitions] 前缀解析: from=cold_spetsnaz to=mod_ranger
+[BlueprintDefinitions] 前缀解析: from=mod_ranger to=fut_spectre
+[BlueprintDefinitions] 前缀解析: from=ww1_engineer to=ww2_engineer
+[BlueprintDefinitions] 前缀解析: from=ww2_engineer to=cold_avlb
+[BlueprintDefinitions] 前缀解析: from=cold_avlb to=mod_m9ace
+[BlueprintDefinitions] 前缀解析: from=mod_m9ace to=fut_nano_drone
+[BlueprintDefinitions] 前缀解析: from=fort_ww1_pillbox_fort to=ww2_bunker
+[BlueprintDefinitions] 前缀解析: from=fort_ww2_bunker_fort to=cold_missile
+[BlueprintDefinitions] 前缀解析: from=fort_cold_missile to=fort_modern_citadel
+[BlueprintDefinitions] 前缀解析: from=fort_modern_citadel to=fort_future_ion
+[BlueprintDefinitions] 前缀解析: from=fort_ww2_flak to=fort_modern_phalanx
+[BlueprintDefinitions] 前缀解析: from=fort_modern_phalanx to=fort_future_shield
+[BottomFuncBar] _on_func_btn_pressed key=store signal=btn_store_pressed
+[Main] _ensure_lazy_panel called with: store
+[UILazyLoader] about to instantiate: res://scenes/ui/store_panel.tscn for panel: store
+[UILazyLoader] instantiate result: StorePanel:<PanelContainer#408458104756>
+[UILazyLoader] about to set name: StorePanel
+[UILazyLoader] name set OK
+[UILazyLoader] about to add_child
+[UILazyLoader] add_child done
+[UILazyLoader] stored panel, returning
+[Main] get_panel returned: StorePanel:<PanelContainer#408458104756>
+[Main] about to _connect_panel_closed_runtime: store
+[Main] _connect_panel_closed_runtime called, panel: StorePanel:<PanelContainer#408458104756>
+[Main] checking closed signal
+[Main] connecting closed signal
+[Main] signal connected
+[Main] _connect_panel_closed_runtime done
+[Main] _open_overlay about to set visible = true, panel_key=store
+[Main] overlay.visible = true done
+[BottomFuncBar] _on_func_btn_pressed key=backpack signal=btn_backpack_pressed
+[Main] _ensure_lazy_panel called with: backpack
+[Main] _connect_panel_closed_runtime called, panel: BackpackPanel:<PanelContainer#379634848185>
+[Main] checking closed signal
+[Main] _open_overlay about to set visible = true, panel_key=backpack
+[Main] overlay.visible = true done
+[BottomFuncBar] _on_func_btn_pressed key=backpack signal=btn_backpack_pressed
+[Main] _ensure_lazy_panel called with: backpack
+[Main] _connect_panel_closed_runtime called, panel: BackpackPanel:<PanelContainer#379634848185>
+[Main] checking closed signal
+[Main] _open_overlay about to set visible = true, panel_key=backpack
+[Main] overlay.visible = true done
+  ERROR: core/string/optimized_translation.cpp:136 - Condition "bucket_table_size == 0" is true.
+  ERROR: core/string/optimized_translation.cpp:136 - Condition "bucket_table_size == 0" is true.
+  ERROR: core/string/optimized_translation.cpp:136 - Condition "bucket_table_size == 0" is true.
+  ERROR: core/string/optimized_translation.cpp:136 - Condition "bucket_table_size == 0" is true.
+  ERROR: core/string/optimized_translation.cpp:136 - Condition "bucket_table_size == 0" is true.
+  ERROR: core/string/optimized_translation.cpp:136 - Condition "bucket_table_size == 0" is true.
+  ERROR: core/string/optimized_translation.cpp:136 - Condition "bucket_table_size == 0" is true.
+  ERROR: core/string/optimized_translation.cpp:136 - Condition "bucket_table_size == 0" is true.
+  ERROR: core/string/optimized_translation.cpp:136 - Condition "bucket_table_size == 0" is true.
+  ERROR: core/string/optimized_translation.cpp:136 - Condition "bucket_table_size == 0" is true.
+  ERROR: core/string/optimized_translation.cpp:136 - Condition "bucket_table_size == 0" is true.
+  ERROR: core/string/optimized_translation.cpp:136 - Condition "bucket_table_size == 0" is true.
+  ERROR: core/string/optimized_translation.cpp:136 - Condition "bucket_table_size == 0" is true.
+  ERROR: core/string/optimized_translation.cpp:136 - Condition "bucket_table_size == 0" is true.
+  ERROR: core/string/optimized_translation.cpp:136 - Condition "bucket_table_size == 0" is true.
+  ERROR: core/string/optimized_translation.cpp:136 - Condition "bucket_table_size == 0" is true.
+  ERROR: Cannot create file 'res://docs/战斗卡武器配置.防御(轻/装/空).translation'.
+  ERROR: Cannot open file 'res://docs/战斗卡武器配置.防御(轻/装/空).translation'.
+  ERROR: core/io/file_access.cpp:910 - Condition "f.is_null()" is true. Continuing.
+[BottomFuncBar] _on_func_btn_pressed key=progression signal=btn_progression_pressed
+[Main] _ensure_lazy_panel called with: growth
+[UILazyLoader] about to instantiate: res://scenes/ui/growth_panel.tscn for panel: growth
+[UILazyLoader] instantiate result: GrowthPanel:<PanelContainer#532626283399>
+[UILazyLoader] about to set name: GrowthPanel
+[UILazyLoader] name set OK
+[UILazyLoader] about to add_child
+[GrowthPanel] _ready ENTER
+[GrowthPanel] about to _bind_nodes
+[GrowthPanel] _bind_nodes done
+[UILazyLoader] add_child done
+[UILazyLoader] stored panel, returning
+[Main] get_panel returned: GrowthPanel:<PanelContainer#532626283399>
+[Main] about to _connect_panel_closed_runtime: growth
+[Main] _connect_panel_closed_runtime called, panel: GrowthPanel:<PanelContainer#532626283399>
+[Main] checking closed signal
+[Main] connecting closed signal
+[Main] signal connected
+[Main] _connect_panel_closed_runtime done
+[Main] _open_overlay about to set visible = true, panel_key=growth
+[Main] overlay.visible = true done
+  ERROR: core/string/optimized_translation.cpp:136 - Condition "bucket_table_size == 0" is true.
+  ERROR: core/string/optimized_translation.cpp:136 - Condition "bucket_table_size == 0" is true.
+  ERROR: core/string/optimized_translation.cpp:136 - Condition "bucket_table_size == 0" is true.
+  ERROR: core/string/optimized_translation.cpp:136 - Condition "bucket_table_size == 0" is true.
+  ERROR: core/string/optimized_translation.cpp:136 - Condition "bucket_table_size == 0" is true.
+  ERROR: core/string/optimized_translation.cpp:136 - Condition "bucket_table_size == 0" is true.
+  ERROR: core/string/optimized_translation.cpp:136 - Condition "bucket_table_size == 0" is true.
+  ERROR: core/string/optimized_translation.cpp:136 - Condition "bucket_table_size == 0" is true.
+  ERROR: core/string/optimized_translation.cpp:136 - Condition "bucket_table_size == 0" is true.
+  ERROR: core/string/optimized_translation.cpp:136 - Condition "bucket_table_size == 0" is true.
+  ERROR: core/string/optimized_translation.cpp:136 - Condition "bucket_table_size == 0" is true.
+  ERROR: core/string/optimized_translation.cpp:136 - Condition "bucket_table_size == 0" is true.
+  ERROR: core/string/optimized_translation.cpp:136 - Condition "bucket_table_size == 0" is true.
+  ERROR: core/string/optimized_translation.cpp:136 - Condition "bucket_table_size == 0" is true.
+  ERROR: core/string/optimized_translation.cpp:136 - Condition "bucket_table_size == 0" is true.
+  ERROR: core/string/optimized_translation.cpp:136 - Condition "bucket_table_size == 0" is true.
+  ERROR: Cannot create file 'res://docs/战斗卡武器配置.防御(轻/装/空).translation'.
+  ERROR: Cannot open file 'res://docs/战斗卡武器配置.防御(轻/装/空).translation'.
+  ERROR: core/io/file_access.cpp:910 - Condition "f.is_null()" is true. Continuing.

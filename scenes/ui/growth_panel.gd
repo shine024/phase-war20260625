@@ -21,50 +21,94 @@ var _selected_card: CardResource = null
 var _base_card: CardResource = null       # 基础卡(不含强化加成)
 
 # UI 引用
-@onready var portrait_box: Panel = null
-@onready var unit_name_label: Label = null
-@onready var unit_subtitle_label: Label = null
-@onready var era_badle: Label = null
-@onready var stat_tags: Control = null
+var portrait_box: Panel
+var unit_name_label: Label
+var unit_subtitle_label: Label
+var era_badle: Label
+var stat_tags: Control
 
-@onready var stars_big_container: Control = null
-@onready var star_count_label: Label = null
+var stars_big_container: Control
+var star_count_label: Label
 
-@onready var section_star_label: Label = null
-@onready var star_row_container: Control = null
-@onready var star_progress_bar: ProgressBar = null
-@onready var star_xp_text: Label = null
-@onready var star_cost_text: Label = null
+var section_star_label: Label
+var star_row_container: Control
+var star_progress_bar: ProgressBar
+var star_xp_text: Label
+var star_cost_text: Label
 
-@onready var section_enhance_label: Label = null
-@onready var enhance_progress_bar: ProgressBar = null
+var section_enhance_label: Label
+var enhance_progress_bar: ProgressBar
 
-@onready var stat_atk_label: Label = null
-@onready var stat_def_label: Label = null
-@onready var stat_hp_label: Label = null
-@onready var stat_misc_label: Label = null
+var stat_atk_label: Label
+var stat_def_label: Label
+var stat_hp_label: Label
+var stat_misc_label: Label
 
-@onready var section_mod_label: Label = null
-@onready var mod_count_label: Label = null
-@onready var mod_grid: GridContainer = null
-@onready var mod_subtitle_label: Label = null
+var section_mod_label: Label
+var mod_count_label: Label
+var mod_grid: GridContainer
+var mod_subtitle_label: Label
+var mod_open_btn: Button
 
-@onready var section_evo_label: Label = null
-@onready var evo_arrow: Label = null
-@onready var evo_requirements_label: Label = null
-@onready var evo_current_icon: Label = null
-@onready var evo_current_name: Label = null
-@onready var evo_target_icon: Label = null
-@onready var evo_target_name: Label = null
+var section_evo_label: Label
+var evo_arrow: Label
+var evo_requirements_label: Label
+var evo_current_icon: Label
+var evo_current_name: Label
+var evo_target_icon: Label
+var evo_target_name: Label
 
-@onready var currency_bar: Control = null
-@onready var btn_apply: Button = null
+var currency_bar: Control
+var btn_apply: Button
 
 func _ready() -> void:
 	visible = false
 	modulate.a = 0.0
+	_bind_nodes()
 	if btn_apply:
 		btn_apply.pressed.connect(_on_apply_pressed)
+	if mod_open_btn:
+		mod_open_btn.pressed.connect(_on_open_modification)
+
+func _bind_nodes() -> void:
+	# Header
+	portrait_box = %Portrait
+	unit_name_label = %UnitName
+	unit_subtitle_label = %Subtitle
+	era_badle = %EraBadge
+	stat_tags = %TagsContainer
+	stars_big_container = %StarsBig
+	star_count_label = %StarCountLabel
+	# Star section
+	section_star_label = %StarTitle
+	star_row_container = %StarRow
+	star_progress_bar = %StarProgress
+	star_xp_text = %StarXpText
+	star_cost_text = %StarCostText
+	# Enhance section
+	section_enhance_label = %EnhanceLevel
+	enhance_progress_bar = %EnhanceProgress
+	stat_atk_label = %AtkValues
+	stat_def_label = %DefValues
+	stat_hp_label = %HpValues
+	stat_misc_label = %MiscValues
+	# Mod section
+	section_mod_label = %ModTitle
+	mod_count_label = %ModCountLabel
+	mod_grid = %ModGrid
+	mod_subtitle_label = %ModSubtitle
+	mod_open_btn = %ModOpenBtn
+	# Evo section
+	section_evo_label = %EvoTitle
+	evo_arrow = %EvoArrowLabel
+	evo_requirements_label = %EvoRequirements
+	evo_current_icon = %EvoCurrentIcon
+	evo_current_name = %EvoCurrentName
+	evo_target_icon = %EvoTargetIcon
+	evo_target_name = %EvoTargetName
+	# Footer
+	currency_bar = %CurrencyInfo
+	btn_apply = %ApplyBtn
 
 # ─── 公开接口 ───────────────────────────────────────
 
@@ -130,6 +174,26 @@ func select_card(card: CardResource) -> void:
 		return
 	_refresh_data()
 
+## 从成长面板打开独立改造面板
+func _on_open_modification() -> void:
+	if not _selected_card:
+		return
+	# 懒加载获取改造面板
+	var lazy = get_node_or_null("/root/UILazyLoader")
+	if lazy == null:
+		return
+	var mod_panel = lazy.call("get_panel", "modification")
+	if mod_panel == null:
+		return
+	# 设置选中卡牌
+	if mod_panel.has_method("set_selected_card"):
+		mod_panel.set_selected_card(_selected_card)
+	# 显示改造覆盖层
+	var overlay = get_node_or_null("PopupLayer/ModificationOverlay")
+	if overlay:
+		overlay.visible = true
+		overlay.modulate.a = 1.0
+
 func _refresh_header() -> void:
 	var c := _selected_card
 	if not c:
@@ -174,6 +238,8 @@ func _refresh_header() -> void:
 			stat_tags.add_child(e_cost)
 
 func _refresh_star_section() -> void:
+	if not _selected_card:
+		return
 	# 星级(用 power 和 enhance_level 估算)
 	var star: int = _calculate_star()
 	_clear_children(star_row_container)
@@ -193,7 +259,7 @@ func _refresh_star_section() -> void:
 	if star_count_label:
 		star_count_label.text = "%d/5 星级" % star
 	# 星级进度(估算)
-	var star_frac := float(mini(star, 4)) / 4.0
+	var star_frac := float(min(star, 4)) / 4.0
 	if star_progress_bar:
 		star_progress_bar.value = star_frac * 100.0
 	# 消耗文本(简化显示)
@@ -228,17 +294,30 @@ func _refresh_enhance_section() -> void:
 func _refresh_mod_section() -> void:
 	if not mod_grid:
 		return
-	# 清空
+	if not _selected_card:
+		return
+	# 清空（保留PlaceholderSlot模板）
 	for child in mod_grid.get_children():
-		child.queue_free()
+		if child.name != "PlaceholderSlot":
+			child.queue_free()
+	var template: PackedScene = load("res://scenes/ui/mod_slot_item.tscn")
 	var mod_list: Array = _selected_card.mods
-	var filled := mini(mod_list.size(), 9)
+	var filled: int = mini(mod_list.size(), 9)
 	if mod_count_label:
 		mod_count_label.text = "%d/9 已装配" % filled
-	# 创建9个槽位
+	# 创建9个槽位（从模板复制）
 	for i in range(9):
-		var slot := $Margin/VBox/ScrollContainer/ModGrid.get_child(0).duplicate()
-		slot.set_slot_index(i + 1)
+		var slot: Control
+		if template:
+			slot = template.instantiate()
+		else:
+			slot = PanelContainer.new()
+		slot.custom_minimum_size = Vector2(80, 100)
+		slot.layout_mode = 2
+		slot.modulate.a = 1.0  # 确保可见
+		mod_grid.add_child(slot)
+		if slot.has_method("set_slot_index"):
+			slot.set_slot_index(i + 1)
 		var mod_data: Dictionary = {}
 		if i < filled:
 			var entry = mod_list[i]
@@ -247,11 +326,13 @@ func _refresh_mod_section() -> void:
 			elif entry is String:
 				var md = ModificationRegistry.get_data(entry)
 				mod_data = {"id": entry, "name": md.get("display_name", entry), "level": 1, "tier": "A"}
-		slot.set_mod(mod_data)
-		mod_grid.add_child(slot)
+		if slot.has_method("set_mod"):
+			slot.set_mod(mod_data)
 
 func _refresh_evolution_section() -> void:
 	var c := _selected_card
+	if not c:
+		return
 	var evo_paths: Array = c.evolution_paths
 	if evo_target_icon:
 		if evo_paths.is_empty():
@@ -274,7 +355,7 @@ func _refresh_evolution_section() -> void:
 		lines.append("[color=#00E676]✓ 素材情报 ≥ 2/2[/color]")
 		# 条件2: 战力
 		var current_power := c.get_current_power()
-		var target_power: int = maxi(int(c.power * 2.0), 800)
+		var target_power: int = max(int(c.power * 2.0), 800)
 		if current_power >= target_power:
 			lines.append("[color=#00E676]✓ 战力 ≥ %d (当前 %d)[/color]" % [target_power, current_power])
 		else:

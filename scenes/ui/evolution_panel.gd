@@ -313,17 +313,17 @@ func _update_detail_panel() -> void:
 	if stat_hp:
 		stat_hp.text = "生命值：%d" % new_stats.get("max_hp", 0)
 	if stat_attack_light:
-		stat_attack_light.text = "攻击轻甲：%d" % new_stats.get("attack_light", 0)
+		stat_attack_light.text = "对直射攻击：%d" % new_stats.get("attack_light", 0)
 	if stat_attack_armor:
-		stat_attack_armor.text = "攻击重甲：%d" % new_stats.get("attack_armor", 0)
+		stat_attack_armor.text = "对曲射攻击：%d" % new_stats.get("attack_armor", 0)
 	if stat_attack_air:
-		stat_attack_air.text = "攻击空中：%d" % new_stats.get("attack_air", 0)
+		stat_attack_air.text = "对空攻击：%d" % new_stats.get("attack_air", 0)
 	if stat_defense_light:
-		stat_defense_light.text = "防御轻甲：%d" % new_stats.get("defense_light", 0)
+		stat_defense_light.text = "对直射防御：%d" % new_stats.get("defense_light", 0)
 	if stat_defense_armor:
-		stat_defense_armor.text = "防御重甲：%d" % new_stats.get("defense_armor", 0)
+		stat_defense_armor.text = "对曲射防御：%d" % new_stats.get("defense_armor", 0)
 	if stat_defense_air:
-		stat_defense_air.text = "防御空中：%d" % new_stats.get("defense_air", 0)
+		stat_defense_air.text = "对空防御：%d" % new_stats.get("defense_air", 0)
 	if stat_range:
 		stat_range.text = "射程：%d" % new_stats.get("attack_range", 0)
 	if stat_speed:

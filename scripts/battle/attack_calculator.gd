@@ -10,6 +10,7 @@ const ModEffects = preload("res://data/mod_effects.gd")
 const DEFAULT_ATTACK_SPEED: float = 1.0
 
 ## 根据目标类型获取攻击值
+## 目标轻甲→attack_light, 装甲→attack_armor, 空中→attack_air
 static func get_attack_vs(attacker_stats: UnitStats, target_combat_kind: int) -> float:
 	match target_combat_kind:
 		GC.CombatKind.LIGHT: return attacker_stats.attack_light
@@ -19,15 +20,16 @@ static func get_attack_vs(attacker_stats: UnitStats, target_combat_kind: int) ->
 		GC.CombatKind.FORT: return attacker_stats.attack_armor    # 堡垒按装甲算
 		_: return attacker_stats.attack_light
 
-## 根据攻击者类型获取对应防御值
-static func get_defense_vs(target_stats: UnitStats, attacker_combat_kind: int) -> float:
-	match attacker_combat_kind:
-		GC.CombatKind.LIGHT: return target_stats.defense_light
-		GC.CombatKind.ARMOR: return target_stats.defense_armor
-		GC.CombatKind.AIR: return target_stats.defense_air
-		GC.CombatKind.SUPPORT: return target_stats.defense_light
-		GC.CombatKind.FORT: return target_stats.defense_armor
-		_: return target_stats.defense_light
+## 根据武器类型（攻击方式）获取对应防御值
+## 直射武器穿透 defense_light（对直射防御）
+## 曲射武器穿透 defense_armor（对曲射防御）
+## 空射武器穿透 defense_air（对空防御）
+static func get_defense_vs(target_stats: UnitStats, weapon_type: int) -> float:
+	match weapon_type:
+		GC.WeaponType.DIRECT: return target_stats.defense_light
+		GC.WeaponType.INDIRECT: return target_stats.defense_armor
+		GC.WeaponType.AERIAL: return target_stats.defense_air
+		_: return target_stats.defense_light  # 默认直射
 
 ## 完整伤害计算
 static func calculate_damage(
@@ -38,11 +40,12 @@ static func calculate_damage(
 	attacker_enhance_level: int = 0,
 	attacker_mods: Array = []
 ) -> float:
-	# 1. 根据目标类型选攻击值
+	# 1. 攻击值 = 根据目标类型选（目标轻甲→attack_light, 装甲→attack_armor, 空中→attack_air）
 	var base_damage = get_attack_vs(attacker_stats, target_stats.combat_kind)
 
 	# 2. 击穿检查: attack <= defense → 伤害=0
-	var def = get_defense_vs(target_stats, attacker_stats.combat_kind)
+	# 防御值 = 根据武器类型穿透（直射→defense_light, 曲射→defense_armor, 空射→defense_air）
+	var def = get_defense_vs(target_stats, weapon_type)
 	if base_damage <= def:
 		return 0.0
 
@@ -109,11 +112,11 @@ static func calculate_damage_with_range(
 	attacker_enhance_level: int = 0,
 	attacker_mods: Array = []
 ) -> float:
-	# 1. 根据目标类型选攻击值
+	# 1. 攻击值 = 根据目标类型选
 	var base_damage = get_attack_vs(attacker_stats, target_stats.combat_kind)
 
-	# 2. 击穿检查
-	var def = get_defense_vs(target_stats, attacker_stats.combat_kind)
+	# 2. 击穿检查 — 防御值 = 根据武器类型穿透
+	var def = get_defense_vs(target_stats, weapon_type)
 	if base_damage <= def:
 		return 0.0
 
@@ -217,7 +220,8 @@ static func calculate_damage_with_weapon(
 		return 0.0
 
 	var base_damage = weapon.damage
-	var def = get_defense_vs(target_stats, attacker_stats.combat_kind)
+	# 用武器的 weapon_type 决定穿透哪个防御值（配对）
+	var def = get_defense_vs(target_stats, weapon.weapon_type)
 
 	# 击穿检查
 	if base_damage <= def:

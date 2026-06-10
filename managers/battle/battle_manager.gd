@@ -8,6 +8,7 @@ extends Node
 const GC = preload("res://resources/game_constants.gd")
 const SpatialGridClass = preload("res://scripts/spatial_grid.gd")
 const SimpleEnemyProjectileBatchScript = preload("res://managers/battle/simple_enemy_projectile_batch.gd")
+const SimplePlayerProjectileBatchScript = preload("res://managers/battle/simple_player_projectile_batch.gd")
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 const DEBUG_BATTLE_LOG := false
 
@@ -23,6 +24,8 @@ var _damage_system: RefCounted = null  ## BattleDamageSystem
 var spatial_grid: Node = null  ## SpatialGrid 实例
 ## 敌方轻武器弹道批处理（SimpleEnemyProjectileBatch）
 var enemy_projectile_batch: Node = null
+## 玩家轻武器弹道批处理（SimplePlayerProjectileBatch）
+var player_projectile_batch: Node = null
 
 # ---- 战斗状态 ----
 var battle_active: bool = false
@@ -143,6 +146,7 @@ func start_battle(battle_scene: Node) -> void:
 	# 性能优化：初始化空间分区系统
 	_setup_spatial_grid()
 	_setup_enemy_projectile_batch()
+	_setup_player_projectile_batch()
 
 	# 读取波次参数
 	var enemy_wave_interval: float = 12.0
@@ -217,6 +221,7 @@ func end_battle(player_won: bool) -> void:
 	# 性能优化：清理空间分区系统
 	_cleanup_spatial_grid()
 	_cleanup_enemy_projectile_batch()
+	_cleanup_player_projectile_batch()
 
 	# 停止敌方相位驱动器
 	if _enemy_phase_driver != null and is_instance_valid(_enemy_phase_driver):
@@ -640,6 +645,25 @@ func _cleanup_enemy_projectile_batch() -> void:
 			enemy_projectile_batch.clear_all()
 		enemy_projectile_batch.queue_free()
 	enemy_projectile_batch = null
+
+
+func _setup_player_projectile_batch() -> void:
+	_cleanup_player_projectile_batch()
+	if battlefield == null:
+		return
+	var n := Node2D.new()
+	n.set_script(SimplePlayerProjectileBatchScript)
+	n.name = "SimplePlayerProjectileBatch"
+	battlefield.add_child(n)
+	player_projectile_batch = n
+
+
+func _cleanup_player_projectile_batch() -> void:
+	if player_projectile_batch != null and is_instance_valid(player_projectile_batch):
+		if player_projectile_batch.has_method("clear_all"):
+			player_projectile_batch.clear_all()
+		player_projectile_batch.queue_free()
+	player_projectile_batch = null
 
 
 func _on_unit_damaged_combat_feedback(unit: Node, _is_player: bool, amount: float, at_position: Vector2) -> void:

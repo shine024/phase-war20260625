@@ -9,7 +9,9 @@ const GC = preload("res://resources/game_constants.gd")
 const UNITS_ICON_DIR := "res://assets/card_icons/units/"
 
 ## 兵种聚合键 → manifest A 段代表图（根目录聚合 PNG 归档后的回退）
+## 英文角色名 + 中文 combat_kind 短名双键（get_shape_key() 返回中文）
 const SHAPE_KEY_UNIT_ICON: Dictionary = {
+	# 英文角色名（遗留兼容）
 	"hound": "vis_player_001",
 	"titan": "vis_player_002",
 	"fortress": "vis_player_003",
@@ -22,9 +24,59 @@ const SHAPE_KEY_UNIT_ICON: Dictionary = {
 	"carrier": "vis_player_015",
 	"stealth": "vis_player_023",
 	"omega_platform": "vis_player_029",
+	# 中文 combat_kind 短名 → 按兵种选代表图
+	"轻": "vis_player_001",   # LIGHT → hound（轻装步兵）
+	"甲": "vis_player_002",   # ARMOR → titan（装甲）
+	"援": "vis_player_005",   # SUPPORT → medic（支援）
+	"空": "vis_player_015",   # AIR → carrier（空中）
+	"堡": "vis_player_003",   # FORTRESS → fortress（堡垒）
 }
 
 static var _tex_cache: Dictionary = {}
+
+## 时代(0-4) + combat_kind(0-4) → 最接近的 vis_player 代表图
+## key = "era_kind"，value = vis_player_NNN
+const ERA_KIND_FALLBACK_ICON: Dictionary = {
+	# 一战
+	"0_0": "vis_player_004",  # WWI Light    → ww1_cavalry
+	"0_1": "vis_player_001",  # WWI Armor    → ww1_rolls
+	"0_2": "vis_player_003",  # WWI Support  → ww1_77mm
+	"0_3": "vis_player_015",  # WWI Air      → cold_bmp1
+	"0_4": "vis_player_003",  # WWI Fortress → ww1_77mm
+	# 二战
+	"1_0": "vis_player_009",  # WWII Light    → ww2_bazooka
+	"1_1": "vis_player_007",  # WWII Armor    → ww2_sherman
+	"1_2": "vis_player_011",  # WWII Support  → ww2_m81
+	"1_3": "vis_player_022",  # WWII Air      → fut_scout_drone
+	"1_4": "vis_player_011",  # WWII Fortress → ww2_m81
+	# 冷战
+	"2_0": "vis_player_018",  # Cold Light    → mod_technical
+	"2_1": "vis_player_014",  # Cold Armor    → cold_t55
+	"2_2": "vis_player_016",  # Cold Support  → cold_m113
+	"2_3": "vis_player_015",  # Cold Air      → cold_bmp1
+	"2_4": "vis_player_016",  # Cold Fortress → cold_m113
+	# 现代
+	"3_0": "vis_player_018",  # Modern Light    → mod_technical
+	"3_1": "vis_player_019",  # Modern Armor    → mod_m1a1
+	"3_2": "vis_player_020",  # Modern Support  → mod_m6
+	"3_3": "vis_player_022",  # Modern Air      → fut_scout_drone
+	"3_4": "vis_player_020",  # Modern Fortress → mod_m6
+	# 近未来
+	"4_0": "vis_player_024",  # Future Light    → fut_scout_mech
+	"4_1": "vis_player_025",  # Future Armor    → fut_hovertank
+	"4_2": "vis_player_020",  # Future Support  → mod_m6
+	"4_3": "vis_player_022",  # Future Air      → fut_scout_drone
+	"4_4": "vis_player_025",  # Future Fortress → fut_hovertank
+}
+
+
+static func _era_kind_fallback_path(era: int, combat_kind: int) -> String:
+	var key: String = "%d_%d" % [clampi(era, 0, 4), clampi(combat_kind, 0, 4)]
+	var vis_id: String = String(ERA_KIND_FALLBACK_ICON.get(key, ""))
+	if vis_id.is_empty():
+		return ""
+	var path: String = "%s%s.png" % [UNITS_ICON_DIR, vis_id]
+	return path if ResourceLoader.exists(path, "Texture2D") else ""
 
 
 static func _path_for_shape_key(shape_key: String) -> String:
@@ -49,12 +101,10 @@ static func load_tex(path: String) -> Texture2D:
 		var prev: Variant = _tex_cache[path]
 		if prev is Texture2D:
 			return prev as Texture2D
-		# 曾失败写入 null 时，允许在修正 exists/load 后重试
 		_tex_cache.erase(path)
 	if not ResourceLoader.exists(path):
 		_tex_cache[path] = null
 		return null
-	# 不设 type_hint：部分 .svg 导入资源用 "Texture2D" 二次 load 会失败
 	var loaded: Resource = ResourceLoader.load(path)
 	var t: Texture2D = loaded as Texture2D
 	if t == null:
@@ -189,19 +239,18 @@ static func _vis_player_path_for_bp_platform(card_id: String) -> String:
 static func card_icon_path_for(c: CardResource) -> String:
 	if c == null:
 		return ""
-	# 1) 平台/合成卡 → manifest（含 platform_* → foe_* → vis_player_*，含 omega_platform → vis_player_029）
-	# 注：bp_* 蓝图不走单独的累计偏移映射（编号与 manifest A 段不一致），统一走 manifest/drop 反查链
-	if c.card_type == GC.CardType.COMBAT_UNIT or c.card_type == GC.CardType.COMBAT_UNIT:
+	# 1) 战斗卡 → manifest（card_id → foe_* → vis_player_*）
+	if c.card_type == GC.CardType.COMBAT_UNIT:
 		var plat_p: String = manifest_icon_path_for_platform_card_id(_platform_card_id_for_icon(c))
 		if not plat_p.is_empty():
 			return plat_p
-	# 3) 缴获/敌人 archetype → units/<visual_id>.png
+	# 2) 缴获/敌人 archetype → units/<visual_id>.png
 	var arch: String = archetype_id_for_card_icon(c)
 	if not arch.is_empty():
 		var manifest_p: String = _manifest_icon_for_archetype(arch)
 		if not manifest_p.is_empty():
 			return manifest_p
-	# 4) 掉落表反查 archetype（bp_* 等）
+	# 3) 掉落表反查 archetype
 	var drop_arch: String = EnemyArchetypes.get_visual_archetype_id_for_card(c.card_id)
 	if not drop_arch.is_empty():
 		var from_drop: String = _manifest_icon_for_archetype(drop_arch)
@@ -210,7 +259,7 @@ static func card_icon_path_for(c: CardResource) -> String:
 		var arch_root: String = "res://assets/card_icons/%s.png" % drop_arch
 		if ResourceLoader.exists(arch_root, "Texture2D"):
 			return arch_root
-	# 5) 法则 / 能量卡
+	# 4) 法则 / 能量卡
 	if c.card_type == GC.CardType.LAW:
 		var law_id: String = c.linked_law_id.strip_edges()
 		if law_id.is_empty():
@@ -223,10 +272,16 @@ static func card_icon_path_for(c: CardResource) -> String:
 		var energy_shape: String = _path_for_shape_key("energy")
 		if not energy_shape.is_empty():
 			return energy_shape
-	# 6) 根目录 card_id / 聚合 shape → units/vis_player_* 或遗留 PNG
+	# 5) 根目录 card_id PNG
 	var by_id: String = "res://assets/card_icons/%s.png" % c.card_id
 	if ResourceLoader.exists(by_id, "Texture2D"):
 		return by_id
+	# 6) 时代+兵种代表图回退（所有不在 manifest 的战斗卡至少拿到同期同类图）
+	if c.card_type == GC.CardType.COMBAT_UNIT:
+		var era_kind_p: String = _era_kind_fallback_path(c.era, c.combat_kind)
+		if not era_kind_p.is_empty():
+			return era_kind_p
+	# 7) 聚合 shape 键
 	var shape_p: String = _path_for_shape_key(c.get_shape_key())
 	if not shape_p.is_empty():
 		return shape_p

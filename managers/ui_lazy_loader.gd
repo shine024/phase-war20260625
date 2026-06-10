@@ -217,6 +217,15 @@ func get_panel(panel_id: String) -> Control:
 		push_error("[UILazyLoader] 无法加载面板场景: ", scene_path)
 		return null
 
+	# #region agent log
+	_debug_log("H2", "ui_lazy_loader.gd:get_panel:scene_loaded", "scene loaded successfully", {
+		"panel_id": panel_id,
+		"scene_path": scene_path,
+		"scene_type": String(scene.resource_path),
+		"scene_class": String(scene.get_class())
+	})
+	# #endregion
+
 	# 查找父节点
 	var main_scene = get_tree().current_scene
 	if main_scene == null:
@@ -235,6 +244,15 @@ func get_panel(panel_id: String) -> Control:
 
 	# 实例化面板
 	var panel = scene.instantiate()
+	if panel == null:
+		# #region agent log
+		_debug_log("H2", "ui_lazy_loader.gd:get_panel:instantiate_failed", "scene.instantiate() returned null", {
+			"panel_id": panel_id,
+			"scene_path": scene_path
+		})
+		# #endregion
+		push_error("[UILazyLoader] 无法实例化面板: ", scene_path)
+		return null
 	var explicit_name: String = config.get("node_name", "")
 	if not explicit_name.is_empty():
 		panel.name = explicit_name
@@ -246,7 +264,6 @@ func get_panel(panel_id: String) -> Control:
 
 	# 存储引用
 	_loaded_panels[panel_id] = panel
-
 	if DEBUG_UI_LAZY_LOG:
 		pass
 		# [LOG-v5.1] print("[UILazyLoader] 加载面板: ", panel_id)

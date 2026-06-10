@@ -294,6 +294,8 @@ func _open_overlay(overlay: Control, panel_key: String = "") -> void:
 	# 	panel = overlay.find_child("BackpackPanel", true, false)
 	# if panel and panel.has_method("refresh"):
 	# 	panel.refresh()
+	
+	# 先显示，再fade in
 	overlay.visible = true
 	# 防止子级曾被误 hide（例如旧版设置关闭只藏了 CenterContainer）
 	var cc_reset: Node = overlay.get_node_or_null("CenterContainer")

@@ -263,8 +263,12 @@ func _maybe_apply_card_grid_presentation() -> void:
 		rank_id = String(ri.get("rank_id", rank_id))
 		power_score = float(ri.get("power_score", power_score))
 	var card_res: CardResource = DefaultCards.get_card_by_id(stats.platform_card_id)
-	var icon_path: String = UiAssetLoader.card_icon_path_for(card_res)
-	var tex: Texture2D = UiAssetLoader.load_tex(icon_path)
+	# 与敌方一致的双回退：先 UiAssetLoader，再 EnemyArchetypes.resolve_card_icon_texture_path
+	var arch_for_icon: String = EnemyArchetypes.get_visual_archetype_id_for_card(stats.platform_card_id)
+	if arch_for_icon.is_empty():
+		arch_for_icon = stats.platform_card_id
+	var cfg: Dictionary = EnemyArchetypes.get_config(arch_for_icon)
+	var tex: Texture2D = CardGridUnitVisuals.resolve_battle_icon_texture(card_res, arch_for_icon, cfg)
 	var spr: Sprite2D = get_node_or_null("Sprite") as Sprite2D
 	var walk_sprite: AnimatedSprite2D = get_node_or_null("WalkSprite") as AnimatedSprite2D
 	var poly: Polygon2D = get_node_or_null("Shape") as Polygon2D

@@ -264,32 +264,32 @@ theme_override_font_sizes/font_size = 18
 
 [node name="StatAttackLight" type="Label" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent/StatsPanel/StatsContent"]
 layout_mode = 2
-text = "攻击轻甲：0"
+text = "对直射攻击：0"
 theme_override_font_sizes/font_size = 18
 
 [node name="StatAttackArmor" type="Label" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent/StatsPanel/StatsContent"]
 layout_mode = 2
-text = "攻击重甲：0"
+text = "对曲射攻击：0"
 theme_override_font_sizes/font_size = 18
 
 [node name="StatAttackAir" type="Label" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent/StatsPanel/StatsContent"]
 layout_mode = 2
-text = "攻击空中：0"
+text = "对空攻击：0"
 theme_override_font_sizes/font_size = 18
 
 [node name="StatDefenseLight" type="Label" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent/StatsPanel/StatsContent"]
 layout_mode = 2
-text = "防御轻甲：0"
+text = "对直射防御：0"
 theme_override_font_sizes/font_size = 18
 
 [node name="StatDefenseArmor" type="Label" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent/StatsPanel/StatsContent"]
 layout_mode = 2
-text = "防御重甲：0"
+text = "对曲射防御：0"
 theme_override_font_sizes/font_size = 18
 
 [node name="StatDefenseAir" type="Label" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent/StatsPanel/StatsContent"]
 layout_mode = 2
-text = "防御空中：0"
+text = "对空防御：0"
 theme_override_font_sizes/font_size = 18
 
 [node name="StatRange" type="Label" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent/StatsPanel/StatsContent"]

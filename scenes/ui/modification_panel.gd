@@ -335,11 +335,11 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 ## v7.1: 效果键翻译
 func _translate_effect_key(key: String) -> String:
 	match key:
-		"attack_light": return "对轻甲攻击"
-		"attack_armor": return "对甲攻击"
+		"attack_light": return "对直射攻击"
+		"attack_armor": return "对曲射攻击"
 		"attack_air": return "对空攻击"
-		"defense_light": return "对轻甲防御"
-		"defense_armor": return "对甲防御"
+		"defense_light": return "对直射防御"
+		"defense_armor": return "对曲射防御"
 		"defense_air": return "对空防御"
 		"max_hp": return "生命值"
 		"move_speed": return "移动速度"

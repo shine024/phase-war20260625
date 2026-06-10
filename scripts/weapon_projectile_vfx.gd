@@ -68,9 +68,35 @@ const PROJ_DISPLAY_SCALE_MUL: float = 0.5
 ## v6.1 性能优化：武器名贴图静态缓存，避免每发子弹 ResourceLoader.exists() + load()
 static var _proj_name_cache: Dictionary = {}
 static var _impact_name_cache: Dictionary = {}
-## v6.1 性能优化：活跃命中特效计数器，限制同时存在数量
+## v6.2 性能优化：命中特效 Sprite2D 对象池，替代每帧 new/queue_free
+static var _impact_pool: Array = []  # 可复用 Sprite2D
 static var _active_impacts: int = 0
-const MAX_ACTIVE_IMPACTS: int = 24
+const MAX_ACTIVE_IMPACTS: int = 32
+
+## 从池中获取（或新建）Sprite2D
+static func _acquire_impact_sprite() -> Sprite2D:
+	if _impact_pool.size() > 0:
+		var fx: Sprite2D = _impact_pool.pop_back()
+		if is_instance_valid(fx):
+			fx.visible = true
+			fx.modulate = Color.WHITE
+			return fx
+	return Sprite2D.new()
+
+## 归还 Sprite2D 到池
+static func _release_impact_sprite(fx: Sprite2D) -> void:
+	if fx == null or not is_instance_valid(fx):
+		_active_impacts -= 1
+		return
+	if fx.is_inside_tree() and fx.get_parent():
+		fx.get_parent().remove_child(fx)
+	fx.visible = false
+	fx.modulate = Color.WHITE
+	_active_impacts -= 1
+	if _impact_pool.size() < MAX_ACTIVE_IMPACTS:
+		_impact_pool.append(fx)
+	else:
+		fx.queue_free()
 
 
 static func has_proj_texture_by_name(weapon_name: String) -> bool:
@@ -178,7 +204,7 @@ static func spawn_impact(parent: Node2D, world_pos: Vector2, weapon_type: int, i
 	if tex == null:
 		return
 	_active_impacts += 1
-	var fx := Sprite2D.new()
+	var fx: Sprite2D = _acquire_impact_sprite()
 	fx.texture = tex
 	fx.centered = true
 	var sc := impact_scale(weapon_type)
@@ -190,7 +216,4 @@ static func spawn_impact(parent: Node2D, world_pos: Vector2, weapon_type: int, i
 	var tw := fx.create_tween()
 	tw.tween_property(fx, "scale", fx.scale * 1.22, 0.07)
 	tw.parallel().tween_property(fx, "modulate:a", 0.0, 0.20)
-	tw.finished.connect(func():
-		fx.queue_free()
-		_active_impacts -= 1
-	)
+	tw.finished.connect(func(): _release_impact_sprite(fx))

@@ -89,7 +89,8 @@ static func find_target(u: CharacterBody2D, _delta: float) -> void:
 ## 执行攻击（使用 stats 计算伤害）
 static func do_attack(u: CharacterBody2D) -> void:
 	if u.target == null or u.stats == null:
-		do_attack_with_damage(u, u.stats.attack_light if u.stats else 0.0, u.stats.weapon_type if u.stats else 0)
+		# 无目标时直接用直射攻击值（兼容旧逻辑）
+		do_attack_with_damage(u, u.stats.attack_light if u.stats else 0.0, GC.WeaponType.DIRECT)
 		return
 
 	var target_stats = u.target.get("stats") as UnitStats
@@ -110,22 +111,15 @@ static func do_attack(u: CharacterBody2D) -> void:
 			if distance > max_range:
 				CombatFeedback.show_miss(u.target.global_position, u.target)
 				return
-		do_attack_with_damage(u, damage, weapon.weapon_type, weapon.display_name, weapon)
+		do_attack_with_damage(u, damage, weapon.weapon_type, weapon.display_name, weapon, true)
 		return
 
-	# 回退到旧系统
-	var damage: float = AttackCalculator.get_attack_vs(u.stats, target_kind)
-	var fallback_name: String = ""
-	if u.stats.weapon_slots.size() > 0:
-		var ws = u.stats.weapon_slots[0]
-		if ws and ws is WeaponResource and ws.display_name:
-			fallback_name = ws.display_name
-	if fallback_name.is_empty() and u.stats.weapons.size() > 0:
-		fallback_name = str(u.stats.weapons[0].get("display_name", ""))
-	do_attack_with_damage(u, damage, u.stats.weapon_type, fallback_name)
+	# 回退：用武器类型获取攻击值（配对防御）
+	var damage: float = u.stats.attack_light  # 默认直射攻击值
+	do_attack_with_damage(u, damage, u.stats.weapon_type, "")
 
 ## 执行攻击（指定伤害值）
-static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type_override: int = -1, weapon_name: String = "", weapon_resource: Variant = null) -> void:
+static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type_override: int = -1, weapon_name: String = "", weapon_resource: Variant = null, p_pre_calculated: bool = false) -> void:
 	if u.is_deploy_ghost:
 		return
 	if u._hit_stun_left > 0.0:
@@ -172,21 +166,34 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 		damage *= CardAbilityManager.get_storm_rider_damage_multiplier(u)
 	if u._presentation_card_grid:
 		_play_card_attack_nudge(u)
-	var bullet: Node2D = ObjectPoolManager.get_object("bullets")
-	if bullet == null:
-		bullet = BulletScene.instantiate()
-	bullet.global_position = u.global_position
-	# v6.1: 优先使用传入的 weapon_name 参数，回退到 WeaponResource.display_name
 	var w_name: String = weapon_name
 	if w_name.is_empty() and weapon_resource and weapon_resource is WeaponResource:
 		w_name = weapon_resource.display_name if weapon_resource.display_name else ""
-	bullet.setup(u.target, damage, true, wt, u, u.stats, miss, w_name)
+
+	# 玩家轻武器弹道批处理（SMG/PISTOL/RIFLE/MG）
+	if u.is_player and wt in [0, 4, 1, 2]:
+		if BattleManager and BattleManager.player_projectile_batch:
+			BattleManager.player_projectile_batch.fire(
+				u.global_position, u.target, damage, wt, u, u.stats, miss
+			)
+			return
+
+	# 霰弹（weapon_type 5）：创建多枚子弹，每枚均分伤害并独立散布
+	var pellet_n := 6 if wt == 5 else 1
+	var pellet_dmg := damage / float(pellet_n)
 	var root_2d = u.get_parent().get_parent() if u.get_parent() else u
-	var current_parent: Node = bullet.get_parent()
-	if current_parent != root_2d:
-		if current_parent != null:
-			current_parent.remove_child(bullet)
-		root_2d.add_child(bullet)
+
+	for _p in range(pellet_n):
+		var bullet: Node2D = ObjectPoolManager.get_object("bullets")
+		if bullet == null:
+			bullet = BulletScene.instantiate()
+		bullet.global_position = u.global_position
+		bullet.setup(u.target, pellet_dmg, true, wt, u, u.stats, miss, w_name, p_pre_calculated)
+		var current_parent: Node = bullet.get_parent()
+		if current_parent != root_2d:
+			if current_parent != null:
+				current_parent.remove_child(bullet)
+			root_2d.add_child(bullet)
 
 ## 应用持续效果（回血等），由 _physics_process 调用
 static func apply_continuous_effects(u: CharacterBody2D, delta: float) -> void:

@@ -357,15 +357,15 @@ static func _format_summary(c: CardResource) -> String:
 	var main_speed = c.attack_speed
 	if c.attack_light >= c.attack_armor and c.attack_light >= c.attack_air:
 		main_atk = c.attack_light
-		main_type = "对轻"
+		main_type = "直射"
 		main_speed = c.attack_light_speed
 	elif c.attack_armor >= c.attack_light and c.attack_armor >= c.attack_air:
 		main_atk = c.attack_armor
-		main_type = "对甲"
+		main_type = "曲射"
 		main_speed = c.attack_armor_speed
 	else:
 		main_atk = c.attack_air
-		main_type = "对空"
+		main_type = "空射"
 		main_speed = c.attack_air_speed
 
 	if main_atk > 0:

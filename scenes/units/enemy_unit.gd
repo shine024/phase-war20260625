@@ -551,6 +551,7 @@ func _do_attack() -> void:
 	# v6.0: 从 stats 武器槽位获取 weapon_name 和 dmg
 	var wt: int = 0
 	var dmg_out: float = attack_damage
+	var pre_calc := false
 	if stats != null:
 		var target_stats = target.get("stats") as UnitStats
 		var target_kind: int = target_stats.combat_kind if target_stats != null else 0
@@ -561,6 +562,7 @@ func _do_attack() -> void:
 			dmg_out = AttackCalculator.calculate_damage_with_weapon(
 				stats, target_stats, dist_t, weapon, 0, []
 			)
+			pre_calc = true
 		else:
 			wt = stats.weapon_type
 			dmg_out = AttackCalculator.get_attack_vs(stats, target_kind)
@@ -573,19 +575,21 @@ func _do_attack() -> void:
 		return
 	if _presentation_card_grid:
 		_play_card_attack_nudge()
-	var bullet: Node2D = ObjectPoolManager.get_object("bullets")
-	if bullet == null:
-		# 对象池未初始化或已满，回退到直接创建
-		bullet = BulletScene.instantiate()
-	bullet.global_position = global_position
-	# v6.0: 传递 weapon_name 给子弹用于 VFX 贴图查找
-	bullet.setup(target, dmg_out, false, wt, self, stats, miss, weapon_name_str)
+	var pellet_n := 6 if wt == 5 else 1
+	var pellet_dmg := dmg_out / float(pellet_n)
 	var root_2d = get_parent().get_parent() if (get_parent() != null and get_parent().get_parent() != null) else self
-	var current_parent: Node = bullet.get_parent()
-	if current_parent != root_2d:
-		if current_parent != null:
-			current_parent.remove_child(bullet)
-		root_2d.add_child(bullet)
+
+	for _p in range(pellet_n):
+		var bullet: Node2D = ObjectPoolManager.get_object("bullets")
+		if bullet == null:
+			bullet = BulletScene.instantiate()
+		bullet.global_position = global_position
+		bullet.setup(target, pellet_dmg, false, wt, self, stats, miss, weapon_name_str, pre_calc)
+		var current_parent: Node = bullet.get_parent()
+		if current_parent != root_2d:
+			if current_parent != null:
+				current_parent.remove_child(bullet)
+			root_2d.add_child(bullet)
 
 func _try_fire_enemy_projectile_batch(p_target: Node2D, wt: int, p_damage: float = -1.0, p_miss: bool = false) -> bool:
 	if wt not in [0, 4, 1, 2]:  # SMG, PISTOL, RIFLE, MG

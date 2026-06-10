@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scenes/ui/growth_panel.gd" id="1_growth"]
-[ext_resource type="PackedScene" path="res://scenes/ui/mod_slot_item.tscn" id="2_mod_slot"]
+[ext_resource type="PackedScene" path="res://scenes/ui/mod_slot_item.tscn" id="2_mod"]
 
 [node name="GrowthPanel" type="PanelContainer"]
 custom_minimum_size = Vector2(860, 920)
@@ -36,6 +36,7 @@ layout_mode = 2
 spacing = 14
 
 [node name="Portrait" type="PanelContainer" parent="Margin/VBox/Header/HeaderHBox"]
+unique_name_in_owner = true
 custom_minimum_size = Vector2(84, 84)
 size_flags_horizontal = 0
 size_flags_vertical = 0
@@ -57,6 +58,7 @@ expand_fraction = 1
 spacing = 2
 
 [node name="UnitName" type="Label" parent="Margin/VBox/Header/HeaderHBox/InfoVBox"]
+unique_name_in_owner = true
 layout_mode = 2
 text = "CARD_ID"
 horizontal_alignment = 0
@@ -70,6 +72,7 @@ layout_mode = 2
 spacing = 8
 
 [node name="Subtitle" type="Label" parent="Margin/VBox/Header/HeaderHBox/InfoVBox/SubtitleHBox"]
+unique_name_in_owner = true
 layout_mode = 2
 text = "名称"
 custom_minimum_size = Vector2(0, 14)
@@ -77,13 +80,15 @@ theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 1)
 
 [node name="EraBadge" type="Label" parent="Margin/VBox/Header/HeaderHBox/InfoVBox/SubtitleHBox"]
+unique_name_in_owner = true
 layout_mode = 2
 text = "ERA"
 custom_minimum_size = Vector2(0, 14)
 theme_override_font_sizes/font_size = 10
-theme_override_colors/font_color = Color(1.0, 0.596, 0.0)
+theme_override_colors/font_color = Color(1.0, 0.596, 0.0, 1)
 
 [node name="TagsContainer" type="FlowContainer" parent="Margin/VBox/Header/HeaderHBox/InfoVBox"]
+unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(0, 20)
 
@@ -93,11 +98,13 @@ custom_minimum_size = Vector2(70, 0)
 spacing = 2
 
 [node name="StarsBig" type="HBoxContainer" parent="Margin/VBox/Header/HeaderHBox/StarDisplay"]
+unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(0, 22)
 alignment = 1
 
 [node name="StarCountLabel" type="Label" parent="Margin/VBox/Header/HeaderHBox/StarDisplay"]
+unique_name_in_owner = true
 layout_mode = 2
 text = "0/5 星级"
 horizontal_alignment = 1
@@ -123,6 +130,7 @@ layout_mode = 2
 alignment = 0
 
 [node name="StarTitle" type="Label" parent="Margin/VBox/SectionStar/StarVBox/StarHeaderHBox"]
+unique_name_in_owner = true
 layout_mode = 2
 text = "★  星 级 强 化"
 custom_minimum_size = Vector2(0, 0)
@@ -139,18 +147,21 @@ theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(0.0, 0.73, 0.855, 1)
 
 [node name="StarRow" type="HBoxContainer" parent="Margin/VBox/SectionStar/StarVBox"]
+unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(0, 36)
 spacing = 6
 alignment = 0
 
 [node name="StarProgress" type="ProgressBar" parent="Margin/VBox/SectionStar/StarVBox"]
+unique_name_in_owner = true
 layout_mode = 2
 value = 60.0
 custom_minimum_size = Vector2(0, 5)
 theme_override_constants/separation = 0
 
 [node name="StarXpText" type="Label" parent="Margin/VBox/SectionStar/StarVBox"]
+unique_name_in_owner = true
 layout_mode = 2
 text = "1,200 / 2,000 晶体"
 horizontal_alignment = 2
@@ -159,6 +170,7 @@ theme_override_font_sizes/font_size = 10
 theme_override_colors/font_color = Color(0.333, 0.4, 0.467, 1)
 
 [node name="StarCostText" type="Label" parent="Margin/VBox/SectionStar/StarVBox"]
+unique_name_in_owner = true
 layout_mode = 2
 text = "下一星所需: 合金×200 · 晶体×150"
 custom_minimum_size = Vector2(0, 14)
@@ -190,6 +202,7 @@ theme_override_font_sizes/font_size = 13
 theme_override_colors/font_color = Color(0.91, 0.93, 0.96, 1)
 
 [node name="EnhanceLevel" type="Label" parent="Margin/VBox/SectionEnhance/EnhanceVBox/EnhanceHeaderHBox"]
+unique_name_in_owner = true
 layout_mode = 2
 text = "Lv.3 / 10"
 custom_minimum_size = Vector2(0, 0)
@@ -197,6 +210,7 @@ theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(0.0, 0.73, 0.855, 1)
 
 [node name="EnhanceProgress" type="ProgressBar" parent="Margin/VBox/SectionEnhance/EnhanceVBox"]
+unique_name_in_owner = true
 layout_mode = 2
 value = 30.0
 custom_minimum_size = Vector2(0, 5)
@@ -230,6 +244,7 @@ theme_override_font_sizes/font_size = 9
 theme_override_colors/font_color = Color(0.333, 0.4, 0.467, 1)
 
 [node name="AtkValues" type="Label" parent="Margin/VBox/SectionEnhance/EnhanceVBox/StatsGrid/AtkCard/AtkVBox"]
+unique_name_in_owner = true
 layout_mode = 2
 text = "轻45 / 甲32 / 空28 ▲+8"
 custom_minimum_size = Vector2(0, 18)
@@ -256,6 +271,7 @@ theme_override_font_sizes/font_size = 9
 theme_override_colors/font_color = Color(0.333, 0.4, 0.467, 1)
 
 [node name="DefValues" type="Label" parent="Margin/VBox/SectionEnhance/EnhanceVBox/StatsGrid/DefCard/DefVBox"]
+unique_name_in_owner = true
 layout_mode = 2
 text = "轻18 / 甲12 / 空10 ▲+3"
 custom_minimum_size = Vector2(0, 18)
@@ -282,6 +298,7 @@ theme_override_font_sizes/font_size = 9
 theme_override_colors/font_color = Color(0.333, 0.4, 0.467, 1)
 
 [node name="HpValues" type="Label" parent="Margin/VBox/SectionEnhance/EnhanceVBox/StatsGrid/HpCard/HpVBox"]
+unique_name_in_owner = true
 layout_mode = 2
 text = "680 ▲+120"
 custom_minimum_size = Vector2(0, 18)
@@ -308,6 +325,7 @@ theme_override_font_sizes/font_size = 9
 theme_override_colors/font_color = Color(0.333, 0.4, 0.467, 1)
 
 [node name="MiscValues" type="Label" parent="Margin/VBox/SectionEnhance/EnhanceVBox/StatsGrid/MiscCard/MiscVBox"]
+unique_name_in_owner = true
 layout_mode = 2
 text = "射程 3 | 攻速 0.8 | 移速 2.5"
 custom_minimum_size = Vector2(0, 18)
@@ -332,6 +350,7 @@ layout_mode = 2
 alignment = 0
 
 [node name="ModTitle" type="Label" parent="Margin/VBox/SectionMod/ModVBox/ModHeaderHBox"]
+unique_name_in_owner = true
 layout_mode = 2
 text = "⚙  MOD 模 块 装 配"
 custom_minimum_size = Vector2(0, 0)
@@ -339,6 +358,7 @@ theme_override_font_sizes/font_size = 13
 theme_override_colors/font_color = Color(0.91, 0.93, 0.96, 1)
 
 [node name="ModCountLabel" type="Label" parent="Margin/VBox/SectionMod/ModVBox/ModHeaderHBox"]
+unique_name_in_owner = true
 layout_mode = 2
 text = "3/9 已装配"
 h_separation = -1
@@ -346,7 +366,16 @@ custom_minimum_size = Vector2(0, 0)
 theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(0.0, 0.73, 0.855, 1)
 
+[node name="ModOpenBtn" type="Button" parent="Margin/VBox/SectionMod/ModVBox/ModHeaderHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "🔧 打开改造"
+custom_minimum_size = Vector2(0, 0)
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.333, 0.4, 0.467, 1)
+
 [node name="ModSubtitle" type="Label" parent="Margin/VBox/SectionMod/ModVBox"]
+unique_name_in_owner = true
 layout_mode = 2
 text = "最多装配 9 个模块 (3×3)"
 custom_minimum_size = Vector2(0, 12)
@@ -359,13 +388,15 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 
 [node name="ModGrid" type="GridContainer" parent="Margin/VBox/SectionMod/ModVBox/ScrollContainer"]
+unique_name_in_owner = true
 layout_mode = 2
 columns = 9
 theme_override_constants/h_separation = 4
 theme_override_constants/v_separation = 4
-size_flags_horizontal = 3
 
-[node name="PlaceholderSlot" parent="Margin/VBox/SectionMod/ModVBox/ScrollContainer/ModGrid" instance="ExtResource(\"2_mod_slot\")"]
+[node name="PlaceholderSlot" type="PanelContainer" parent="Margin/VBox/SectionMod/ModVBox/ScrollContainer/ModGrid"]
+unique_name_in_owner = true
+
 
 ## ── SECTION 4: EVOLUTION ──
 [node name="SectionEvo" type="PanelContainer" parent="Margin/VBox"]
@@ -385,6 +416,7 @@ layout_mode = 2
 alignment = 0
 
 [node name="EvoTitle" type="Label" parent="Margin/VBox/SectionEvo/EvoVBox/EvoHeaderHBox"]
+unique_name_in_owner = true
 layout_mode = 2
 text = "⟐  进 化 路 线"
 custom_minimum_size = Vector2(0, 0)
@@ -396,7 +428,7 @@ layout_mode = 2
 text = "未解锁"
 custom_minimum_size = Vector2(0, 0)
 theme_override_font_sizes/font_size = 11
-theme_override_colors/font_color = Color(1.0, 0.596, 0.0)
+theme_override_colors/font_color = Color(1.0, 0.596, 0.0, 1)
 
 [node name="EvoPath" type="HBoxContainer" parent="Margin/VBox/SectionEvo/EvoVBox"]
 layout_mode = 2
@@ -408,6 +440,7 @@ alignment = 1
 expand_fraction = 1
 
 [node name="EvoCurrentIcon" type="Label" parent="Margin/VBox/SectionEvo/EvoVBox/EvoPath/EvoCurrent"]
+unique_name_in_owner = true
 layout_mode = 2
 text = "⚔"
 horizontal_alignment = 1
@@ -415,6 +448,7 @@ custom_minimum_size = Vector2(0, 26)
 theme_override_font_sizes/font_size = 24
 
 [node name="EvoCurrentName" type="Label" parent="Margin/VBox/SectionEvo/EvoVBox/EvoPath/EvoCurrent"]
+unique_name_in_owner = true
 layout_mode = 2
 text = "当前单位"
 horizontal_alignment = 1
@@ -430,11 +464,12 @@ theme_override_font_sizes/font_size = 10
 theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 1)
 
 [node name="EvoArrowLabel" type="Label" parent="Margin/VBox/SectionEvo/EvoVBox/EvoPath"]
+unique_name_in_owner = true
 layout_mode = 2
 text = "→"
 custom_minimum_size = Vector2(22, 0)
 theme_override_font_sizes/font_size = 20
-theme_override_colors/font_color = Color(1.0, 0.596, 0.0)
+theme_override_colors/font_color = Color(1.0, 0.596, 0.0, 1)
 
 [node name="EvoTarget" type="VBoxContainer" parent="Margin/VBox/SectionEvo/EvoVBox/EvoPath"]
 layout_mode = 2
@@ -442,6 +477,7 @@ alignment = 1
 expand_fraction = 1
 
 [node name="EvoTargetIcon" type="Label" parent="Margin/VBox/SectionEvo/EvoVBox/EvoPath/EvoTarget"]
+unique_name_in_owner = true
 layout_mode = 2
 text = "🔒"
 horizontal_alignment = 1
@@ -449,6 +485,7 @@ custom_minimum_size = Vector2(0, 26)
 theme_override_font_sizes/font_size = 24
 
 [node name="EvoTargetName" type="Label" parent="Margin/VBox/SectionEvo/EvoVBox/EvoPath/EvoTarget"]
+unique_name_in_owner = true
 layout_mode = 2
 text = "进化目标"
 horizontal_alignment = 1
@@ -464,14 +501,13 @@ theme_override_font_sizes/font_size = 10
 theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 1)
 
 [node name="EvoRequirements" type="Label" parent="Margin/VBox/SectionEvo/EvoVBox"]
+unique_name_in_owner = true
 layout_mode = 2
 text = "条件列表"
 autowrap_mode = 3
 custom_minimum_size = Vector2(0, 50)
 theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 1)
-theme_override_font_sizes/bold = false
-
 ## ── FOOTER ──
 [node name="Footer" type="PanelContainer" parent="Margin/VBox"]
 custom_minimum_size = Vector2(0, 40)
@@ -487,6 +523,7 @@ alignment = 1
 custom_minimum_size = Vector2(0, 0)
 
 [node name="CurrencyInfo" type="HBoxContainer" parent="Margin/VBox/Footer/FooterHBox"]
+unique_name_in_owner = true
 layout_mode = 2
 spacing = 12
 
@@ -515,6 +552,7 @@ theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 1)
 
 [node name="ApplyBtn" type="Button" parent="Margin/VBox/Footer/FooterHBox"]
+unique_name_in_owner = true
 layout_mode = 2
 text = "应用保存"
 custom_minimum_size = Vector2(0, 32)

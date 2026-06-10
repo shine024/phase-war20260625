@@ -322,14 +322,14 @@ func get_attributes_text() -> String:
 	var attrs: Array = []
 
 	if card_type == GC.CardType.COMBAT_UNIT:
-		attrs.append("对轻装: %.0f" % attack_light)
-		attrs.append("对装甲: %.0f" % attack_armor)
-		attrs.append("对空中: %.0f" % attack_air)
+		attrs.append("对直射攻击: %.0f" % attack_light)
+		attrs.append("对曲射攻击: %.0f" % attack_armor)
+		attrs.append("对空攻击: %.0f" % attack_air)
 		attrs.append("射程: %.0f" % range_value)
 		attrs.append("耐久: %.0f" % base_hp)
-		attrs.append("防轻装: %.0f" % defense_light)
-		attrs.append("防装甲: %.0f" % defense_armor)
-		attrs.append("防空: %.0f" % defense_air)
+		attrs.append("对直射防御: %.0f" % defense_light)
+		attrs.append("对曲射防御: %.0f" % defense_armor)
+		attrs.append("对空防御: %.0f" % defense_air)
 		if not weapon_label.is_empty():
 			attrs.append("武器: %s" % weapon_label)
 	elif card_type == GC.CardType.ENERGY:

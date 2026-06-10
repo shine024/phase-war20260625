@@ -23,6 +23,7 @@ var shooter: Node2D = null  # 射手引用（用于词条效果）
 var shooter_stats: UnitStats = null  # 射手数值（用于词条效果计算）
 ## 超射程「哑弹」：飞过但不造成伤害（仍可对卡牌模式播放擦弹表现）
 var forced_miss: bool = false
+var _pre_calculated: bool = false  # 伤害已完整计算（防御/强化不再重复）
 var _weapon_name: String = ""  # v6.0: 武器名（用于 VFX 贴图查找）
 
 # 行为参数：由武器类型决定
@@ -68,7 +69,7 @@ func _apply_shield_wall_mitigation(raw_damage: float, target: Node) -> float:
 		return raw_damage
 	return raw_damage * (1.0 - mitigation)
 
-func setup(p_target: Node2D, p_damage: float, p_is_player: bool, p_weapon_type: int = -1, p_shooter: Node2D = null, p_shooter_stats: UnitStats = null, p_forced_miss: bool = false, p_weapon_name: String = "") -> void:
+func setup(p_target: Node2D, p_damage: float, p_is_player: bool, p_weapon_type: int = -1, p_shooter: Node2D = null, p_shooter_stats: UnitStats = null, p_forced_miss: bool = false, p_weapon_name: String = "", p_pre_calculated: bool = false) -> void:
 	visible = true
 	_dbg_spawn_logged = false
 	target = p_target
@@ -78,6 +79,7 @@ func setup(p_target: Node2D, p_damage: float, p_is_player: bool, p_weapon_type: 
 	shooter_stats = p_shooter_stats
 	forced_miss = p_forced_miss
 	_weapon_name = p_weapon_name
+	_pre_calculated = p_pre_calculated
 	if p_weapon_type >= 0:
 		weapon_type = p_weapon_type
 	_start_position = global_position
@@ -259,7 +261,7 @@ func _spawn_tex_impact_at(world_pos: Vector2) -> void:
 		WeaponProjectileVfx.spawn_impact(parent, world_pos, weapon_type, shooter_is_player)
 
 
-## v6.0: 新版命中特效（按武器名）
+## v6.0: 新版命中特效（按武器名）— 使用 WeaponProjectileVfx 对象池
 func _spawn_impact_v2(parent: Node2D, world_pos: Vector2, weapon_name: String) -> void:
 	var tex: Texture2D = WeaponProjectileVfx.impact_texture_by_name(weapon_name)
 	if tex == null:
@@ -267,7 +269,7 @@ func _spawn_impact_v2(parent: Node2D, world_pos: Vector2, weapon_name: String) -
 	if WeaponProjectileVfx._active_impacts >= WeaponProjectileVfx.MAX_ACTIVE_IMPACTS:
 		return
 	WeaponProjectileVfx._active_impacts += 1
-	var fx := Sprite2D.new()
+	var fx: Sprite2D = WeaponProjectileVfx._acquire_impact_sprite()
 	fx.texture = tex
 	fx.centered = true
 	var sc := WeaponProjectileVfx.impact_scale_by_name(weapon_name)
@@ -279,10 +281,7 @@ func _spawn_impact_v2(parent: Node2D, world_pos: Vector2, weapon_name: String) -
 	var tw := fx.create_tween()
 	tw.tween_property(fx, "scale", fx.scale * 1.22, 0.07)
 	tw.parallel().tween_property(fx, "modulate:a", 0.0, 0.20)
-	tw.finished.connect(func():
-		fx.queue_free()
-		WeaponProjectileVfx._active_impacts -= 1
-	)
+	tw.finished.connect(func(): WeaponProjectileVfx._release_impact_sprite(fx))
 
 
 func _finish_tex_bullet() -> void:
@@ -296,21 +295,17 @@ func _process(delta: float) -> void:
 	if _is_indirect:
 		_process_indirect(delta)
 		return
-	# 目标死亡时：非导引弹直接消失，导引类仍按最后方向飞行
+	# 目标死亡时：直接消失（曲射由 _process_indirect 单独处理）
 	if target == null or not is_instance_valid(target):
-		if weapon_type in [9, 3]:
-			# 继续沿当前方向飞一段距离
-			global_position += _direction * speed * delta
-		else:
-			_finish_tex_bullet()
-			return
+		_finish_tex_bullet()
+		return
 	else:
 		# 激光/狙击等保持精准指向目标，其他武器略带跟踪
 		if weapon_type in [8, 6, 9]:
 			_direction = (target.global_position - global_position).normalized()
 		else:
 			var desired := (target.global_position - global_position).normalized()
-			_direction = _direction.lerp(desired, 0.15).normalized()
+			_direction = _direction.lerp(desired, 1.0 - exp(-4.5 * delta)).normalized()
 		global_position += _direction * speed * delta
 	if _use_tex_sprite:
 		rotation = _direction.angle()
@@ -350,8 +345,8 @@ func _process_indirect(delta: float) -> void:
 		_indirect_progress = 1.0
 		# 命中目标
 		if target and is_instance_valid(target):
-			# 复用 WeaponProjectileVfx.spawn_impact（preload 缓存，无卡顿）
-			_spawn_tex_impact_at(target.global_position)
+			# 命中特效在弹道落点（global_position），避免与移动目标视觉脱节
+			_spawn_tex_impact_at(global_position)
 			_on_hit(target)
 		_finish_tex_bullet()
 		return
@@ -386,7 +381,8 @@ func _process_indirect(delta: float) -> void:
 func _spawn_muzzle_effect(pos: Vector2) -> void:
 	if ARTILLERY_MUZZLE_TEX == null:
 		return
-	var fx := Sprite2D.new()
+	WeaponProjectileVfx._active_impacts += 1
+	var fx: Sprite2D = WeaponProjectileVfx._acquire_impact_sprite()
 	fx.texture = ARTILLERY_MUZZLE_TEX
 	fx.centered = true
 	fx.scale = Vector2(0.25, 0.25)
@@ -397,12 +393,13 @@ func _spawn_muzzle_effect(pos: Vector2) -> void:
 	var tw := fx.create_tween()
 	tw.tween_property(fx, "scale", fx.scale * 1.5, 0.15)
 	tw.parallel().tween_property(fx, "modulate:a", 0.0, 0.3)
-	tw.finished.connect(fx.queue_free)
+	tw.finished.connect(func(): WeaponProjectileVfx._release_impact_sprite(fx))
 
 func _spawn_impact_explosion(pos: Vector2) -> void:
 	if ARTILLERY_IMPACT_TEX == null:
 		return
-	var fx := Sprite2D.new()
+	WeaponProjectileVfx._active_impacts += 1
+	var fx: Sprite2D = WeaponProjectileVfx._acquire_impact_sprite()
 	fx.texture = ARTILLERY_IMPACT_TEX
 	fx.centered = true
 	fx.scale = Vector2(0.3, 0.3)
@@ -413,7 +410,7 @@ func _spawn_impact_explosion(pos: Vector2) -> void:
 	var tw := fx.create_tween()
 	tw.tween_property(fx, "scale", fx.scale * 1.8, 0.2)
 	tw.parallel().tween_property(fx, "modulate:a", 0.0, 0.4)
-	tw.finished.connect(fx.queue_free)
+	tw.finished.connect(func(): WeaponProjectileVfx._release_impact_sprite(fx))
 
 
 ## 爆炸/溅射候选：优先空间网格，避免遍历父节点下全部子节点。
@@ -471,28 +468,25 @@ func _on_hit(primary: Node2D) -> void:
 	var defender_reduction: float = 0.0
 	if GameManager == null or not GameManager.is_card_grid_battle():
 		defender_reduction = primary.damage_reduction if primary != null and "damage_reduction" in primary else 0.0
-	# v5.0: 击穿检查 + 三维防御减免 100/(100+def)
-	var primary_stats: UnitStats = primary.get("stats") as UnitStats if primary != null else null
-	if primary_stats != null and shooter_stats != null:
-		var def_val: float = AttackCalculator.get_defense_vs(primary_stats, shooter_stats.combat_kind)
-		# 击穿检查: attack <= defense → 伤害=0
-		if damage <= def_val:
-			# 伤害被完全吸收，仍然需要执行miss等后续逻辑
-			_on_hit_basic(primary)
-			return
-		# 防御减免: damage × 100/(100+def)
-		damage = damage * (100.0 / (100.0 + def_val))
-	# v5.0: 强化加成（enhance_level 乘法）
-	# Lv1-8: 1.0 + level × 0.05; Lv9: 1.50; Lv10: 1.60
-	if shooter_stats != null and shooter_stats.enhance_level > 0:
-		var enhance_mult: float
-		if shooter_stats.enhance_level >= 10:
-			enhance_mult = 1.60
-		elif shooter_stats.enhance_level >= 9:
-			enhance_mult = 1.50
-		else:
-			enhance_mult = 1.0 + float(shooter_stats.enhance_level) * 0.05
-		damage *= enhance_mult
+	# v5.0: 击穿检查 + 三维防御减免（仅当伤害未预计算时）
+	if not _pre_calculated:
+		var primary_stats: UnitStats = primary.get("stats") as UnitStats if primary != null else null
+		if primary_stats != null and shooter_stats != null:
+			var def_val: float = AttackCalculator.get_defense_vs(primary_stats, weapon_type)
+			if damage <= def_val:
+				_on_hit_basic(primary)
+				return
+			damage = damage * (100.0 / (100.0 + def_val))
+		# 强化加成
+		if shooter_stats != null and shooter_stats.enhance_level > 0:
+			var enhance_mult: float
+			if shooter_stats.enhance_level >= 10:
+				enhance_mult = 1.60
+			elif shooter_stats.enhance_level >= 9:
+				enhance_mult = 1.50
+			else:
+				enhance_mult = 1.0 + float(shooter_stats.enhance_level) * 0.05
+			damage *= enhance_mult
 	# 词缀战斗效果已移除：直接使用已计算的 damage 值
 	var final_damage: float = damage * (1.0 - defender_reduction)
 	var is_crit: bool = false
@@ -521,7 +515,7 @@ func _on_hit(primary: Node2D) -> void:
 			# v5.0: 溅射目标也做击穿检查+防御减免
 			var child_stats: UnitStats = child.get("stats") as UnitStats if child != null else null
 			if child_stats != null and shooter_stats != null:
-				var child_def: float = AttackCalculator.get_defense_vs(child_stats, shooter_stats.combat_kind)
+				var child_def: float = AttackCalculator.get_defense_vs(child_stats, weapon_type)
 				if splash_base > child_def:
 					splash_base = splash_base * (100.0 / (100.0 + child_def))
 				else:
@@ -589,6 +583,7 @@ func reset_pool_object() -> void:
 	shooter = null
 	shooter_stats = null
 	forced_miss = false
+	_pre_calculated = false
 
 	pierce_count = 0
 	explosion_radius = 0.0
