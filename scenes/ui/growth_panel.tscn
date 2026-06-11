@@ -133,6 +133,22 @@ content_margin_top = 5.0
 content_margin_right = 12.0
 content_margin_bottom = 5.0
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_evo_req"]
+bg_color = Color(1.0, 0.596, 0.0, 0.04)
+border_color = Color(1.0, 0.596, 0.0, 0.1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+content_margin_left = 8
+content_margin_top = 4
+content_margin_right = 8
+content_margin_bottom = 4
+
 [node name="GrowthPanel" type="PanelContainer"]
 custom_minimum_size = Vector2(1080, 480)
 size_flags_horizontal = 3
@@ -269,7 +285,7 @@ theme_override_constants/margin_right = 0
 theme_override_constants/margin_bottom = 0
 theme_override_styleboxes/panel = SubResource("StyleBoxFlat_portrait")
 
-[node name="PortraitIcon" type="Label" parent="RootVBox/DetailHBox/DetailCol/DetailHeader/Portrait"]
+[node name="PortraitIcon" type="Label" parent="RootVBox/DetailHBox/DetailCol/DetailHeader/DetailHeaderInner/Portrait"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "?"
@@ -281,7 +297,7 @@ theme_override_font_sizes/font_size = 22
 layout_mode = 2
 spacing = 1
 
-[node name="UnitName" type="Label" parent="RootVBox/DetailHBox/DetailCol/DetailHeader/HeaderInfo"]
+[node name="UnitName" type="Label" parent="RootVBox/DetailHBox/DetailCol/DetailHeader/DetailHeaderInner/HeaderInfo"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "CARD_ID"
@@ -291,11 +307,11 @@ autowrap_mode = 3
 theme_override_font_sizes/font_size = 13
 theme_override_colors/font_color = Color(0.91, 0.93, 0.96, 1)
 
-[node name="SubtitleHBox" type="HBoxContainer" parent="RootVBox/DetailHBox/DetailCol/DetailHeader/HeaderInfo"]
+[node name="SubtitleHBox" type="HBoxContainer" parent="RootVBox/DetailHBox/DetailCol/DetailHeader/DetailHeaderInner/HeaderInfo"]
 layout_mode = 2
 spacing = 6
 
-[node name="Subtitle" type="Label" parent="RootVBox/DetailHBox/DetailCol/DetailHeader/HeaderInfo/SubtitleHBox"]
+[node name="Subtitle" type="Label" parent="RootVBox/DetailHBox/DetailCol/DetailHeader/DetailHeaderInner/HeaderInfo/SubtitleHBox"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "名称"
@@ -303,7 +319,7 @@ custom_minimum_size = Vector2(0, 0)
 theme_override_font_sizes/font_size = 10
 theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 1)
 
-[node name="EraBadge" type="Label" parent="RootVBox/DetailHBox/DetailCol/DetailHeader/HeaderInfo/SubtitleHBox"]
+[node name="EraBadge" type="Label" parent="RootVBox/DetailHBox/DetailCol/DetailHeader/DetailHeaderInner/HeaderInfo/SubtitleHBox"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "ERA"
@@ -311,7 +327,7 @@ custom_minimum_size = Vector2(0, 0)
 theme_override_font_sizes/font_size = 8
 theme_override_colors/font_color = Color(1.0, 0.596, 0.0, 1)
 
-[node name="TagsContainer" type="HBoxContainer" parent="RootVBox/DetailHBox/DetailCol/DetailHeader/HeaderInfo"]
+[node name="TagsContainer" type="HBoxContainer" parent="RootVBox/DetailHBox/DetailCol/DetailHeader/DetailHeaderInner/HeaderInfo"]
 unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(0, 0)
@@ -322,13 +338,13 @@ layout_mode = 2
 custom_minimum_size = Vector2(45, 0)
 spacing = 2
 
-[node name="StarsRow" type="HBoxContainer" parent="RootVBox/DetailHBox/DetailCol/DetailHeader/StarDisplay"]
+[node name="StarsRow" type="HBoxContainer" parent="RootVBox/DetailHBox/DetailCol/DetailHeader/DetailHeaderInner/StarDisplay"]
 unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(0, 0)
 alignment = 1
 
-[node name="StarCountLabel" type="Label" parent="RootVBox/DetailHBox/DetailCol/DetailHeader/StarDisplay"]
+[node name="StarCountLabel" type="Label" parent="RootVBox/DetailHBox/DetailCol/DetailHeader/DetailHeaderInner/StarDisplay"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "0/5"
@@ -813,22 +829,6 @@ text = ""
 autowrap_mode = 3
 custom_minimum_size = Vector2(0, 0)
 theme_override_font_sizes/font_size = 8
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_evo_req"]
-bg_color = Color(1.0, 0.596, 0.0, 0.04)
-border_color = Color(1.0, 0.596, 0.0, 0.1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
-content_margin_left = 8
-content_margin_top = 4
-content_margin_right = 8
-content_margin_bottom = 4
 
 [node name="DetailFooter" type="PanelContainer" parent="RootVBox/DetailHBox/DetailCol"]
 custom_minimum_size = Vector2(0, 0)

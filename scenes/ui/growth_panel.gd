@@ -55,7 +55,7 @@ var evo_current_lv: Label
 var evo_target_icon: Label
 var evo_target_name: Label
 var evo_target_lv: Label
-var evo_requirements_label: Label
+var evo_requirements_label: RichTextLabel
 var evo_requirements_panel: PanelContainer
 
 # ---- Footer ----
