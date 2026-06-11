@@ -170,14 +170,25 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 	if w_name.is_empty() and weapon_resource and weapon_resource is WeaponResource:
 		w_name = weapon_resource.display_name if weapon_resource.display_name else ""
 
-	# 玩家轻武器弹道批处理（SMG/PISTOL/RIFLE/MG）
-	if u.is_player and wt in [0, 4, 1, 2]:
-		if BattleManager and BattleManager.player_projectile_batch:
-			BattleManager.player_projectile_batch.fire(
-				u.global_position, u.target, damage, wt, u, u.stats, miss
-			)
+	# 获取武器射速（用于弹道路由决策）
+	var weapon_speed: float = AttackCalculator.get_weapon_speed(u.stats, weapon_resource if weapon_resource is WeaponResource else null)
+
+	# ── 弹道路由规则 ──
+	# 曲射/空射 → 独立子弹节点（抛物线弹道，批处理不支持）
+	# 直射 + 射速 ≤ 2发/秒 → 独立子弹节点
+	# 直射 + 射速 > 2发/秒 → MultiMesh 批处理
+	var use_batch: bool = false
+	if wt == GC.WeaponType.DIRECT and weapon_speed > 2.0:
+		use_batch = true
+
+	if use_batch:
+		# 高速直射 → 批处理（敌我双方）
+		var batch = BattleManager.player_projectile_batch if u.is_player else BattleManager.enemy_projectile_batch
+		if batch and batch.has_method("fire"):
+			batch.fire(u.global_position, u.target, damage, wt, u, u.stats, miss)
 			return
 
+	# 曲射/空射 或 低速直射 → 独立子弹节点（对象池）
 	# 霰弹（weapon_type 5）：创建多枚子弹，每枚均分伤害并独立散布
 	var pellet_n := 6 if wt == 5 else 1
 	var pellet_dmg := damage / float(pellet_n)
@@ -188,7 +199,7 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 		if bullet == null:
 			bullet = BulletScene.instantiate()
 		bullet.global_position = u.global_position
-		bullet.setup(u.target, pellet_dmg, true, wt, u, u.stats, miss, w_name, p_pre_calculated)
+		bullet.setup(u.target, pellet_dmg, u.is_player, wt, u, u.stats, miss, w_name, p_pre_calculated)
 		var current_parent: Node = bullet.get_parent()
 		if current_parent != root_2d:
 			if current_parent != null:
@@ -291,6 +302,11 @@ static func _process_multi_weapons(u: CharacterBody2D, delta: float) -> void:
 			else:
 				timing = AttackCalculator.get_attack_timing(u.stats, target_kind)
 				w_range = u.stats.attack_range
+
+			# Fix-7: 曲射/空射武器最小攻击间隔限制
+			if w_wt in [GC.WeaponType.INDIRECT, GC.WeaponType.AERIAL]:
+				timing["windup"] = maxf(timing.get("windup", 0.0), 0.15)
+				timing["cooldown"] = maxf(timing.get("cooldown", 0.0), 0.25)
 		else:
 			timing = AttackCalculator.get_attack_timing(u.stats, target_kind)
 			w_range = u.stats.attack_range

@@ -164,19 +164,19 @@ func _ready() -> void:
 func _register_default_pools() -> void:
 	# 战前不预创建：进入主界面/标题阶段避免一次性实例化数十个战斗节点造成卡顿；首帧开战时按需扩展
 	# 小批量预热：降低首战时同步扩容尖峰（仍允许 auto_expand 到 max）
-	# v6.0 性能优化: 增加初始池大小以减少战斗期间频繁扩展
+	# v6.1 性能优化: 支持曲射弹道高频率攻击，进一步增加池大小
 	register_pool("bullets", PoolConfig.new(
-		25,  # 从 2 增加到 25，减少战斗初期池扩展
+		60,  # 从 25 增加到 60，支持多个曲射单位同时攻击
 		BULLET_SCENE_PATH,
 		true,
-		100,
+		200,  # 最大池从 100 增加到 200
 		true
 	))
 	register_pool("damage_numbers", PoolConfig.new(
-		15,  # 从 4 增加到 15，减少伤害数字显示时的池扩展
+		30,  # 从 15 增加到 30，支持更多伤害数字显示
 		DAMAGE_NUMBER_SCENE_PATH,
 		true,
-		40,
+		80,  # 最大池从 40 增加到 80
 		true
 	))
 

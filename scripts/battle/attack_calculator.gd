@@ -276,3 +276,17 @@ static func get_weapon_range(weapon: WeaponResource) -> float:
 	if weapon == null:
 		return 120.0
 	return float(weapon.range_value) * 100.0
+
+## 获取武器每秒射速（用于弹道路由决策）
+static func get_weapon_speed(attacker_stats: UnitStats, weapon_resource: WeaponResource) -> float:
+	if weapon_resource and weapon_resource.enabled:
+		return float(weapon_resource.attack_speed) if weapon_resource.attack_speed > 0 else DEFAULT_ATTACK_SPEED
+	if attacker_stats == null:
+		return 1.0
+	var speed: float = attacker_stats.attack_light_speed
+	match attacker_stats.combat_kind:
+		GC.CombatKind.ARMOR, GC.CombatKind.FORT:
+			speed = attacker_stats.attack_armor_speed
+		GC.CombatKind.AIR:
+			speed = attacker_stats.attack_air_speed
+	return speed if speed > 0.0 else DEFAULT_ATTACK_SPEED

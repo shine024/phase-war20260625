@@ -8,20 +8,29 @@ const WeaponVfxMapping: GDScript = preload("res://data/weapon_vfx_mapping.gd")
 
 const TEX_DIR := "res://assets/effects/projectiles/weapons_realistic/"
 
-## 旧 WeaponType 枚举 → 默认贴图（兼容）
-const PROJ_TEX: Dictionary = {
-	0: preload(TEX_DIR + "weapon_smg_projectile.png"),
-	1: preload(TEX_DIR + "weapon_rifle_projectile.png"),
-	2: preload(TEX_DIR + "weapon_mg_projectile.png"),
-	3: preload(TEX_DIR + "weapon_rocket_projectile.png"),
-	4: preload(TEX_DIR + "weapon_pistol_projectile.png"),
-	5: preload(TEX_DIR + "weapon_shotgun_projectile.png"),
-	6: preload(TEX_DIR + "weapon_sniper_projectile.png"),
-	7: preload(TEX_DIR + "weapon_flak_projectile.png"),
-	8: preload(TEX_DIR + "weapon_laser_projectile.png"),
-	9: preload(TEX_DIR + "weapon_missile_projectile.png"),
-	10: preload(TEX_DIR + "weapon_omega_cannon_projectile.png"),
-	11: preload(TEX_DIR + "weapon_rail_cannon_projectile.png"),
+## 旧 WeaponType 枚举 → 默认贴图（兼容 v3 旧武器 ID）
+## v6.1 新枚举映射：INDIRECT(1) -> 曲射弹道, AERIAL(2) -> 空射导弹
+## 注意：新枚举 0=DIRECT, 1=INDIRECT, 2=AERIAL 不在此字典中
+## 直接映射通过 _proj_texture_by_wt() 处理
+const PROJ_TEX_LEGACY: Dictionary = {
+	0: preload(TEX_DIR + "weapon_smg_projectile.png"),       # SMG
+	1: preload(TEX_DIR + "weapon_rifle_projectile.png"),     # RIFLE (旧)
+	2: preload(TEX_DIR + "weapon_mg_projectile.png"),        # MG
+	3: preload(TEX_DIR + "weapon_rocket_projectile.png"),    # ROCKET (旧物理)
+	4: preload(TEX_DIR + "weapon_pistol_projectile.png"),    # PISTOL
+	5: preload(TEX_DIR + "weapon_shotgun_projectile.png"),   # SHOTGUN
+	6: preload(TEX_DIR + "weapon_sniper_projectile.png"),    # SNIPER
+	7: preload(TEX_DIR + "weapon_flak_projectile.png"),      # FLAK (旧物理)
+	8: preload(TEX_DIR + "weapon_laser_projectile.png"),     # LASER
+	9: preload(TEX_DIR + "weapon_missile_projectile.png"),   # MISSILE (旧物理)
+	10: preload(TEX_DIR + "weapon_omega_cannon_projectile.png"), # OMEGA_CANNON
+	11: preload(TEX_DIR + "weapon_rail_cannon_projectile.png"),  # RAIL_CANNON
+}
+## 新枚举投射贴图（GameConstants.WeaponType）
+const PROJ_TEX_NEW: Dictionary = {
+	0: preload(TEX_DIR + "weapon_smg_projectile.png"),       # DIRECT -> 通用直射
+	1: preload(TEX_DIR + "weapon_artillery_ballistic.png"),  # INDIRECT -> 曲射弹道
+	2: preload(TEX_DIR + "weapon_missile_projectile.png"),   # AERIAL -> 空射导弹
 }
 
 const IMPACT_TEX_SMALL := preload(TEX_DIR + "weapon_impact_small_arms.png")
@@ -30,33 +39,36 @@ const IMPACT_TEX_SNIPER := preload(TEX_DIR + "weapon_impact_sniper.png")
 const IMPACT_TEX_EXPLOSIVE := preload(TEX_DIR + "weapon_impact_explosive.png")
 
 const PROJ_TEX_SCALE: Dictionary = {
+	# New enum: 0=DIRECT, 1=INDIRECT, 2=AERIAL
 	0: 0.09,
-	4: 0.08,
-	1: 0.10,
-	2: 0.10,
+	1: 0.15,
+	2: 0.16,
+	# Legacy: SMG=0, RIFLE=1, MG=2, ROCKET=3, PISTOL=4, SHOTGUN=5, SNIPER=6, FLAK=7, LASER=8, MISSILE=9, OMEGA=10, RAIL=11
+	3: 0.15,
 	5: 0.11,
 	6: 0.11,
-	8: 0.10,
-	3: 0.15,
-	9: 0.16,
 	7: 0.13,
-	11: 0.16,
+	8: 0.10,
+	9: 0.16,
 	10: 0.17,
+	11: 0.16,
+	4: 0.08,
 }
 
 const IMPACT_TEX_SCALE: Dictionary = {
-	0: 0.10,
+	# New enum
+	0: 0.10,  # DIRECT
+	1: 0.15,  # INDIRECT -> explosive
+	2: 0.16,  # AERIAL -> explosive
+	# Legacy
 	4: 0.10,
-	1: 0.10,
-	2: 0.10,
 	5: 0.12,
 	6: 0.11,
-	8: 0.11,
-	3: 0.15,
-	9: 0.16,
 	7: 0.14,
-	11: 0.17,
+	8: 0.11,
+	9: 0.16,
 	10: 0.18,
+	11: 0.17,
 }
 
 const REF_TEX_PX: float = 512.0
@@ -71,7 +83,7 @@ static var _impact_name_cache: Dictionary = {}
 ## v6.2 性能优化：命中特效 Sprite2D 对象池，替代每帧 new/queue_free
 static var _impact_pool: Array = []  # 可复用 Sprite2D
 static var _active_impacts: int = 0
-const MAX_ACTIVE_IMPACTS: int = 32
+const MAX_ACTIVE_IMPACTS: int = 64  # 从 32 增加到 64，支持曲射单位同时攻击
 
 ## 从池中获取（或新建）Sprite2D
 static func _acquire_impact_sprite() -> Sprite2D:
@@ -161,11 +173,23 @@ static func impact_scale_by_name(weapon_name: String) -> float:
 ## ========== 旧接口（兼容） ==========
 
 static func has_proj_texture(weapon_type: int) -> bool:
-	return PROJ_TEX.has(weapon_type) and PROJ_TEX[weapon_type] != null
+	# New enum: 0=DIRECT, 1=INDIRECT, 2=AERIAL
+	if weapon_type in [0, 1, 2]:
+		return true
+	# Legacy: check PROJ_LEGACY
+	return PROJ_TEX_LEGACY.has(weapon_type) and PROJ_TEX_LEGACY[weapon_type] != null
 
 
 static func proj_texture(weapon_type: int) -> Texture2D:
-	return PROJ_TEX.get(weapon_type) as Texture2D
+	# New enum first
+	if weapon_type == 1:  # INDIRECT
+		return PROJ_TEX_NEW[1]
+	if weapon_type == 2:  # AERIAL
+		return PROJ_TEX_NEW[2]
+	if weapon_type == 0:  # DIRECT -> default to SMG
+		return PROJ_TEX_NEW[0]
+	# Legacy fallback
+	return PROJ_TEX_LEGACY.get(weapon_type) as Texture2D
 
 
 static func proj_scale(weapon_type: int) -> float:
@@ -178,6 +202,10 @@ static func proj_quad_size(weapon_type: int) -> Vector2:
 
 
 static func impact_texture(weapon_type: int) -> Texture2D:
+	# New enum: 0=DIRECT, 1=INDIRECT, 2=AERIAL
+	if weapon_type == 1 or weapon_type == 2:  # INDIRECT / AERIAL -> explosive
+		return IMPACT_TEX_EXPLOSIVE
+	# Legacy
 	match weapon_type:
 		5:
 			return IMPACT_TEX_SHOTGUN

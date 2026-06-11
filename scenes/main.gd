@@ -630,6 +630,7 @@ func _close_all_overlays() -> void:
 		quest_overlay, store_overlay, phase_law_overlay,
 		backpack_overlay, faction_overlay,
 		map_overlay, settings_overlay, intelligence_overlay,
+		growth_overlay,
 	]
 	for ov in overlays:
 		if ov:

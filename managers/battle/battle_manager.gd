@@ -22,10 +22,10 @@ var _damage_system: RefCounted = null  ## BattleDamageSystem
 
 # ---- 性能优化：空间分区系统 ----
 var spatial_grid: Node = null  ## SpatialGrid 实例
-## 敌方轻武器弹道批处理（SimpleEnemyProjectileBatch）
-var enemy_projectile_batch: Node = null
 ## 玩家轻武器弹道批处理（SimplePlayerProjectileBatch）
 var player_projectile_batch: Node = null
+## 敌方轻武器弹道批处理（SimpleEnemyProjectileBatch）
+var enemy_projectile_batch: Node = null
 
 # ---- 战斗状态 ----
 var battle_active: bool = false

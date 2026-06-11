@@ -105,12 +105,14 @@ func _configure_behavior() -> void:
 		0, 4:
 			speed = 720.0
 			max_distance = 1200.0
-		1:
+		1:  # INDIRECT (新枚举)
 			speed = 800.0
 			max_distance = 1600.0
-		2:
+			_is_indirect = true
+		2:  # AERIAL (新枚举)
 			speed = 680.0
 			max_distance = 1400.0
+			_is_indirect = true
 		5:
 			speed = 650.0
 			max_distance = 900.0
@@ -245,8 +247,11 @@ func _hide_tex_sprite_visual() -> void:
 		_trail_sprite.visible = false
 
 
-## v6.1 性能优化：轻武器跳过命中特效（SMG/RIFLE/MG/PISTOL），减少 ~70% 节点创建
-const _SKIP_IMPACT_WEAPON_TYPES: Array = [0, 1, 2, 4]
+## v6.1 性能优化：轻武器跳过命中特效
+## 旧枚举: SMG=0, RIFLE=1, MG=2, PISTOL=4 → 跳过（高速直射已有弹体动画）
+## 新枚举: DIRECT=0 → 跳过；INDIRECT=1 和 AERIAL=2 → 必须有爆炸效果
+## 因此跳过列表只包含旧枚举值 0(SMG)、4(PISTOL)
+const _SKIP_IMPACT_WEAPON_TYPES: Array = [0, 4]
 
 func _spawn_tex_impact_at(world_pos: Vector2) -> void:
 	if weapon_type in _SKIP_IMPACT_WEAPON_TYPES:
@@ -361,10 +366,8 @@ func _process_indirect(delta: float) -> void:
 	# 计算朝向：用移动方向（只需一次 Vector2 减法，无额外贝塞尔计算）
 	_direction = (global_position - _indirect_prev_pos).normalized() if global_position != _indirect_prev_pos else _direction
 
-	# 炮口火焰特效（仅首帧一次，preload 已缓存 texture）
-	if not _muzzle_spawned:
-		_muzzle_spawned = true
-		_spawn_muzzle_effect(_indirect_start)
+	# 炮口火焰特效（已禁用，不需要发射火光）
+	_muzzle_spawned = true
 
 	# 弹道拖尾
 	if _trail_sprite and _trail_sprite.visible:
@@ -385,14 +388,14 @@ func _spawn_muzzle_effect(pos: Vector2) -> void:
 	var fx: Sprite2D = WeaponProjectileVfx._acquire_impact_sprite()
 	fx.texture = ARTILLERY_MUZZLE_TEX
 	fx.centered = true
-	fx.scale = Vector2(0.25, 0.25)
+	fx.scale = Vector2(0.20, 0.20)  # v6.1: 从 0.25 降低到 0.20，减少特效大小
 	fx.global_position = pos
 	if not shooter_is_player:
 		fx.scale.x = -fx.scale.x
 	get_parent().add_child(fx)
 	var tw := fx.create_tween()
-	tw.tween_property(fx, "scale", fx.scale * 1.5, 0.15)
-	tw.parallel().tween_property(fx, "modulate:a", 0.0, 0.3)
+	tw.tween_property(fx, "scale", fx.scale * 1.3, 0.12)  # v6.1: 缩放从 1.5→1.3，时间从 0.15→0.12
+	tw.parallel().tween_property(fx, "modulate:a", 0.0, 0.25)  # v6.1: 渐隐时间从 0.3→0.25
 	tw.finished.connect(func(): WeaponProjectileVfx._release_impact_sprite(fx))
 
 func _spawn_impact_explosion(pos: Vector2) -> void:
@@ -402,14 +405,14 @@ func _spawn_impact_explosion(pos: Vector2) -> void:
 	var fx: Sprite2D = WeaponProjectileVfx._acquire_impact_sprite()
 	fx.texture = ARTILLERY_IMPACT_TEX
 	fx.centered = true
-	fx.scale = Vector2(0.3, 0.3)
+	fx.scale = Vector2(0.25, 0.25)  # v6.1: 从 0.3 降低到 0.25，减少特效大小
 	fx.global_position = pos
 	if not shooter_is_player:
 		fx.scale.x = -fx.scale.x
 	get_parent().add_child(fx)
 	var tw := fx.create_tween()
-	tw.tween_property(fx, "scale", fx.scale * 1.8, 0.2)
-	tw.parallel().tween_property(fx, "modulate:a", 0.0, 0.4)
+	tw.tween_property(fx, "scale", fx.scale * 1.5, 0.15)  # v6.1: 缩放从 1.8→1.5，时间从 0.2→0.15
+	tw.parallel().tween_property(fx, "modulate:a", 0.0, 0.3)  # v6.1: 渐隐时间从 0.4→0.3
 	tw.finished.connect(func(): WeaponProjectileVfx._release_impact_sprite(fx))
 
 

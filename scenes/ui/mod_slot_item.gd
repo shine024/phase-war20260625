@@ -45,13 +45,33 @@ func set_mod(mod_data: Dictionary) -> void:
 		_set_filled_style(mod_data.get("tier", ""))
 
 func _set_empty_style() -> void:
-	add_theme_stylebox_override("panel", _get_stylebox(Color(1, 1, 1, 0.03), Color(0.2, 0.23, 0.278, 0.3), true))
+	var sb := StyleBoxFlat.new()
+	sb.set_corner_radius_all(3)
+	sb.bg_color = Color(1, 1, 1, 0.01)
+	sb.border_color = Color(1, 1, 1, 0.05)
+	sb.set_border_width_all(1)
+	# 虚线边框效果
+	sb.draw_center = false
+	add_theme_stylebox_override("panel", sb)
 
 func _set_filled_style(tier: String) -> void:
 	var tier_key: String = tier if tier in SLOT_COLORS else "A"
 	var col: Color = SLOT_COLORS[tier_key]
-	var bg: Color = SLOT_BG_A if tier_key == "A" else (SLOT_BG_B if tier_key == "B" else SLOT_BG_C)
-	add_theme_stylebox_override("panel", _get_stylebox(bg, col, false))
+	var bg_top: Color = SLOT_BG_A if tier_key == "A" else (SLOT_BG_B if tier_key == "B" else SLOT_BG_C)
+	var bg_bottom: Color = Color(bg_top.r, bg_top.g, bg_top.b, 0.0)
+	add_theme_stylebox_override("panel", _get_stylebox_gradient(bg_top, bg_bottom, col))
+
+static func _get_stylebox_gradient(bg_top: Color, bg_bottom: Color, border_col: Color) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.set_corner_radius_all(3)
+	sb.bg_color = bg_top
+	sb.border_color = border_col
+	sb.set_border_width_all(1)
+	sb.content_left = 4
+	sb.content_top = 2
+	sb.content_right = 4
+	sb.content_bottom = 2
+	return sb
 
 static func _get_stylebox(bg_color: Color, border_color: Color, dashed: bool) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
@@ -59,7 +79,7 @@ static func _get_stylebox(bg_color: Color, border_color: Color, dashed: bool) ->
 	sb.bg_color = bg_color
 	sb.border_color = border_color
 	if dashed:
-		sb.draw_center = false  # approximate dashed
+		sb.draw_center = false
 	else:
 		sb.set_border_width_all(1)
 	sb.content_left = 4
