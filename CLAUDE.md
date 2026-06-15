@@ -14,21 +14,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Godot CLI Commands
 
-Godot not on PATH. Executable: `E:\下载\Godot_4.41\Godot_v4.5-stable_win64.exe`
+Godot not on PATH. Executable: `D:\Downloads\Godot\Godot_v4.5.1-stable_win64.exe`
 Add `--rendering-driver opengl3` if Vulkan issues (applies to `--headless` / `--check-only` too).
 
 ```powershell
 # Version check
-& "E:\下载\Godot_4.41\Godot_v4.5-stable_win64.exe" --path "." --version
+& "D:\Downloads\Godot\Godot_v4.5.1-stable_win64.exe" --path "." --version
 
 # Project validation (no UI, recommended)
-& "E:\下载\Godot_4.41\Godot_v4.5-stable_win64.exe" --headless --rendering-driver opengl3 --path "." --check-only
+& "D:\Downloads\Godot\Godot_v4.5.1-stable_win64.exe" --headless --rendering-driver opengl3 --path "." --check-only
 
 # Smoke test (no GdUnit dependency)
-& "E:\下载\Godot_4.41\Godot_v4.5-stable_win64.exe" --headless --rendering-driver opengl3 --path "." --script "tests/star_config_smoke.gd"
+& "D:\Downloads\Godot\Godot_v4.5.1-stable_win64.exe" --headless --rendering-driver opengl3 --path "." --script "tests/star_config_smoke.gd"
 
 # Full GdUnit test suite
-& "E:\下载\Godot_4.41\Godot_v4.5-stable_win64.exe" --headless --rendering-driver opengl3 --path "." --script "tests/gdunit4_runner.gd"
+& "D:\Downloads\Godot\Godot_v4.5.1-stable_win64.exe" --headless --rendering-driver opengl3 --path "." --script "tests/gdunit4_runner.gd"
 ```
 
 ## Architecture

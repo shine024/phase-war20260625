@@ -259,6 +259,14 @@ func _spawn_tex_impact_at(world_pos: Vector2) -> void:
 	var parent := get_parent()
 	if parent == null:
 		return
+
+	# 曲射/空射/火箭/导弹 → 使用完整爆炸特效
+	# 新枚举: INDIRECT=1, AERIAL=2
+	# 旧枚举: ROCKET=3, FLAK=7, MISSILE=9
+	if weapon_type in [1, 2, 3, 7, 9]:  # INDIRECT, AERIAL, ROCKET, FLAK, MISSILE
+		_spawn_impact_explosion(world_pos)
+		return
+
 	# v6.0: 武器名查 VFX → 旧 weapon_type 回退
 	if not _weapon_name.is_empty():
 		_spawn_impact_v2(parent, world_pos, _weapon_name)
@@ -388,14 +396,14 @@ func _spawn_muzzle_effect(pos: Vector2) -> void:
 	var fx: Sprite2D = WeaponProjectileVfx._acquire_impact_sprite()
 	fx.texture = ARTILLERY_MUZZLE_TEX
 	fx.centered = true
-	fx.scale = Vector2(0.20, 0.20)  # v6.1: 从 0.25 降低到 0.20，减少特效大小
+	fx.scale = Vector2(0.60, 0.60)
 	fx.global_position = pos
 	if not shooter_is_player:
 		fx.scale.x = -fx.scale.x
 	get_parent().add_child(fx)
 	var tw := fx.create_tween()
-	tw.tween_property(fx, "scale", fx.scale * 1.3, 0.12)  # v6.1: 缩放从 1.5→1.3，时间从 0.15→0.12
-	tw.parallel().tween_property(fx, "modulate:a", 0.0, 0.25)  # v6.1: 渐隐时间从 0.3→0.25
+	tw.tween_property(fx, "scale", fx.scale * 1.3, 0.12)
+	tw.parallel().tween_property(fx, "modulate:a", 0.0, 0.25)
 	tw.finished.connect(func(): WeaponProjectileVfx._release_impact_sprite(fx))
 
 func _spawn_impact_explosion(pos: Vector2) -> void:
@@ -405,14 +413,14 @@ func _spawn_impact_explosion(pos: Vector2) -> void:
 	var fx: Sprite2D = WeaponProjectileVfx._acquire_impact_sprite()
 	fx.texture = ARTILLERY_IMPACT_TEX
 	fx.centered = true
-	fx.scale = Vector2(0.25, 0.25)  # v6.1: 从 0.3 降低到 0.25，减少特效大小
+	fx.scale = Vector2(0.75, 0.75)
 	fx.global_position = pos
 	if not shooter_is_player:
 		fx.scale.x = -fx.scale.x
 	get_parent().add_child(fx)
 	var tw := fx.create_tween()
-	tw.tween_property(fx, "scale", fx.scale * 1.5, 0.15)  # v6.1: 缩放从 1.8→1.5，时间从 0.2→0.15
-	tw.parallel().tween_property(fx, "modulate:a", 0.0, 0.3)  # v6.1: 渐隐时间从 0.4→0.3
+	tw.tween_property(fx, "scale", fx.scale * 1.5, 0.15)
+	tw.parallel().tween_property(fx, "modulate:a", 0.0, 0.3)
 	tw.finished.connect(func(): WeaponProjectileVfx._release_impact_sprite(fx))
 
 
@@ -466,7 +474,7 @@ func _on_hit(primary: Node2D) -> void:
 	if shooter_stats == null:
 		_on_hit_basic(primary)
 		return
-	
+
 	# 格子战：百分比护甲减伤与闪避在 take_damage（CardGridDamage）结算；穿甲仍作用于 shooter_stats
 	var defender_reduction: float = 0.0
 	if GameManager == null or not GameManager.is_card_grid_battle():
@@ -476,9 +484,7 @@ func _on_hit(primary: Node2D) -> void:
 		var primary_stats: UnitStats = primary.get("stats") as UnitStats if primary != null else null
 		if primary_stats != null and shooter_stats != null:
 			var def_val: float = AttackCalculator.get_defense_vs(primary_stats, weapon_type)
-			if damage <= def_val:
-				_on_hit_basic(primary)
-				return
+		# 修复：统一应用防御减免，移除错误的击穿跳过逻辑
 			damage = damage * (100.0 / (100.0 + def_val))
 		# 强化加成
 		if shooter_stats != null and shooter_stats.enhance_level > 0:
@@ -493,7 +499,7 @@ func _on_hit(primary: Node2D) -> void:
 	# 词缀战斗效果已移除：直接使用已计算的 damage 值
 	var final_damage: float = damage * (1.0 - defender_reduction)
 	var is_crit: bool = false
-	
+
 	# 武器伤害变异：15% 概率双倍伤害
 	if shooter_stats.has_weapon_dmg_mutation and randf() < 0.15:
 		final_damage *= 2.0
@@ -507,7 +513,7 @@ func _on_hit(primary: Node2D) -> void:
 		)
 	final_damage += ability_result["damage_bonus"]
 	final_damage *= (1.0 + ability_result["damage_mult_bonus"])
-	
+
 	# 范围伤害
 	if explosion_radius > 0.0:
 		for child in _get_aoe_damage_targets(global_position, explosion_radius, primary):
@@ -528,7 +534,7 @@ func _on_hit(primary: Node2D) -> void:
 			var splash_damage: float = _apply_shield_wall_mitigation(splash_base * (1.0 - splash_red), child)
 			var atk_splash: Variant = shooter if is_instance_valid(shooter) else null
 			child.take_damage(splash_damage, atk_splash)
-	
+
 	# 直击伤害
 	if primary.has_method("take_damage"):
 		var final_after_wall: float = _apply_shield_wall_mitigation(final_damage, primary)
@@ -548,7 +554,7 @@ func _on_hit(primary: Node2D) -> void:
 	if pierce_count > 0:
 		pierce_count -= 1
 		return
-	
+
 	_finish_tex_bullet()
 
 ## 基础伤害处理（不带词条效果）

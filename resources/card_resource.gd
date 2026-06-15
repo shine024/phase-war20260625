@@ -696,9 +696,9 @@ func _create_slot_from_legacy(slot_idx: int, base_damage: float, base_speed: flo
 	w.attack_speed = base_speed if base_speed > 0 else 1.0
 	w.windup = base_windup
 	w.active = base_active
-	w.weapon_type = weapon_type
+	w.weapon_type = weapon_type  # Fix-10: 继承卡牌的weapon_type（野战炮=INDIRECT）
 	w.range_value = range_value
-	w.enabled = base_damage > 0
+	w.enabled = base_damage > 0  # 仅当伤害>0时启用
 
 	# 设置武器显示名称：优先使用具体武器名，回退到通用名
 	var specific_name: String = get_weapon_name_for_slot(slot_idx)

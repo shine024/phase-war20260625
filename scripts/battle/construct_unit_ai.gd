@@ -33,49 +33,68 @@ static func get_target_find_interval(u: CharacterBody2D) -> float:
 		return 0.42
 	return 0.3
 
-## 查找攻击目标
+## 查找攻击目标（性能优化：卡牌网格只检查附近槽位）
 static func find_target(u: CharacterBody2D, _delta: float) -> void:
 	if should_retain_current_target(u):
 		return
 	u.target = null
 
-	# 性能优化：优先使用空间分区系统
+	## 获取索敌方式（三攻三防系统）
+	var targeting_mode: int = GC.TargetingMode.NEAREST_FIRST
+	if u.stats != null:
+		targeting_mode = GC.get_targeting_mode_for_combat_kind(u.stats.combat_kind)
+
+	# 卡牌网格战斗：使用槽位系统快速查找
+	if GameManager and GameManager.is_card_grid_battle():
+		var slot_target = _find_target_by_card_grid(u, targeting_mode)
+		if slot_target != null:
+			u.target = slot_target
+			return
+
+	# 传统战场：使用空间分区系统
 	if BattleManager and BattleManager.spatial_grid:
 		var spatial_grid = BattleManager.spatial_grid
 		if spatial_grid:
-			var nearest_target = spatial_grid.query_nearest_target(
+			# 限制查询范围，避免过大范围导致性能问题
+			var max_range: float = mini(acquisition_range(u), 250.0)
+			var nearest_target = spatial_grid.query_nearest_target_with_mode(
 				u.global_position,
 				u.is_player,
-				acquisition_range(u)
+				max_range,
+				targeting_mode
 			)
 			if nearest_target != null:
 				u.target = nearest_target
 				return
 
-	# 回退到传统方法
-	var tree = u.get_tree()
-	if tree == null:
-		return
+	# 回退到传统方法（使用新索敌函数）
+	var candidates = CombatTargeting.find_targets_with_mode(
+		u.global_position,
+		u.is_player,
+		BattleManager,
+		acquisition_range(u),
+		targeting_mode
+	)
 
-	var target_group: String = "enemy_units" if u.is_player else "player_units"
-	var gr: Array = BattleManager.get_cached_nodes_in_group(target_group) if BattleManager else tree.get_nodes_in_group(target_group)
-	var candidates: Array = []
-	var acq: float = acquisition_range(u)
-	for n in gr:
-		if not CombatTargeting.is_attackable_combat_unit(n):
-			continue
-		if u.global_position.distance_to((n as Node2D).global_position) <= acq:
-			candidates.append(n)
+	if not candidates.is_empty():
+		var candidate_nodes: Array = []
+		var final_candidates: Array = []
+		# 限制候选数量到最多10个
+		var limit: int = mini(candidates.size(), 10)
+		for i in range(limit):
+			candidate_nodes.append(candidates[i].node)
 
-	if not candidates.is_empty() and u.stats != null:
-		var selected: Node2D = TargetSelection.select_target(u, candidates, u.stats.weapon_type)
-		if selected != null:
-			u.target = selected
+		if u.stats != null:
+			var selected: Node2D = TargetSelection.select_target(
+				u, candidate_nodes, u.stats.weapon_type
+			)
+			if selected != null:
+				u.target = selected
+				return
+
+		if not candidate_nodes.is_empty():
+			u.target = candidate_nodes[0] as Node2D
 			return
-	elif not candidates.is_empty():
-		candidates.sort_custom(func(a, b): return u.global_position.distance_squared_to((a as Node2D).global_position) < u.global_position.distance_squared_to((b as Node2D).global_position))
-		u.target = candidates[0] as Node2D
-		return
 
 	# 无对方战斗单位时，攻击对方相位场
 	if targeting_opponent_phase_field_only(u):
@@ -85,6 +104,103 @@ static func find_target(u: CharacterBody2D, _delta: float) -> void:
 		if phase_field != null:
 			u.target = phase_field
 			return
+
+## 卡牌网格战斗：索敌
+## 曲射/空射 → 槽位编号扫描（从最远敌方槽位起，逐个向近，第一个有人的槽位即目标）
+## 直射 → 射程内距离筛选 + select_target
+## 注意：玩家单位槽位 meta 为 card_grid_slot，敌方单位为 card_grid_enemy_slot（见 battlefield.gd:474-480）
+static func _find_target_by_card_grid(u: CharacterBody2D, targeting_mode: int = 0) -> Node2D:
+	var my_slot: int = _get_unit_slot_index(u)
+	if my_slot < 0:
+		return null
+
+	var tree = u.get_tree()
+	if tree == null:
+		return null
+
+	var target_group: String = "enemy_units" if u.is_player else "player_units"
+	var gr: Array = BattleManager.get_cached_nodes_in_group(target_group) if BattleManager else tree.get_nodes_in_group(target_group)
+
+	# 曲射/空射：槽位编号扫描（全场，纯顺序，从远到近）
+	# 判断：主武器 OR 任一武器槽为 INDIRECT/AERIAL
+	# （多武器单位主武器可能为 DIRECT，但配有曲射副武器——之前漏判导致走直射索敌）
+	var is_indirect: bool = false
+	if u.stats != null:
+		if u.stats.weapon_type in [GC.WeaponType.INDIRECT, GC.WeaponType.AERIAL]:
+			is_indirect = true
+		else:
+			for _ws in u.stats.weapon_slots:
+				if _ws is WeaponResource and _ws.enabled and _ws.weapon_type in [GC.WeaponType.INDIRECT, GC.WeaponType.AERIAL]:
+					is_indirect = true
+					break
+	if is_indirect:
+		return _scan_slot_targets(u, gr)
+
+	# 直射：射程内距离筛选 + select_target
+	var origin: Vector2 = u.global_position
+	var acq_range: float = acquisition_range(u)
+	var acq_range_sq: float = acq_range * acq_range
+	var candidates: Array = []
+	for n in gr:
+		if not CombatTargeting.is_attackable_combat_unit(n):
+			continue
+		var n2d: Node2D = n as Node2D
+		if origin.distance_squared_to(n2d.global_position) <= acq_range_sq:
+			candidates.append(n)
+	if candidates.is_empty():
+		return null
+	if u.stats != null:
+		return TargetSelection.select_target(u, candidates, u.stats.weapon_type)
+	# 回退：取距离最近
+	var best: Node2D = candidates[0]
+	var best_d2: float = origin.distance_squared_to(best.global_position)
+	for c in candidates:
+		var d2: float = origin.distance_squared_to((c as Node2D).global_position)
+		if d2 < best_d2:
+			best_d2 = d2
+			best = c
+	return best
+
+
+## 统一读取单位槽位编号（玩家用 card_grid_slot，敌方用 card_grid_enemy_slot）
+static func _get_unit_slot_index(n: Node) -> int:
+	var s: int = int(n.get_meta("card_grid_slot", -1))
+	if s >= 0:
+		return s
+	return int(n.get_meta("card_grid_enemy_slot", -1))
+
+
+## 槽位编号扫描索敌（曲射/空射用）
+## 布局：玩家7槽(左带, slot0最左→slot6靠中线) | 中间空带 | 敌方7槽(右带, slot0靠中线→slot6最右)
+## 玩家方扫敌方 slot 6→0（远→近）；敌方方扫玩家 slot 0→6（远→近）
+## 第一个有存活单位的槽位即目标（纯顺序，不考虑克制）
+static func _scan_slot_targets(u: CharacterBody2D, gr: Array) -> Node2D:
+	var slot_units: Dictionary = {}  # slot -> Array
+	for n in gr:
+		if not CombatTargeting.is_attackable_combat_unit(n):
+			continue
+		var s: int = _get_unit_slot_index(n)
+		if s < 0:
+			continue
+		if not slot_units.has(s):
+			slot_units[s] = []
+		(slot_units[s] as Array).append(n)
+	if slot_units.is_empty():
+		return null
+
+	var slots: Array = slot_units.keys()
+	if u.is_player:
+		slots.sort_custom(func(a, b): return int(a) > int(b))  # 敌方 slot 6→0（远→近）
+	else:
+		slots.sort()  # 玩家 slot 0→6（远→近）
+
+	for s in slots:
+		for unit in slot_units[s]:
+			if is_instance_valid(unit):
+				print("[ScanSlot] ", u.name, " slot=", _get_unit_slot_index(u), " wt=", (u.stats.weapon_type if u.stats != null else -1), " → 敌slot=", s, " target=", unit.name)
+				return unit
+	print("[ScanSlot] ", u.name, " 无目标(空槽) slots=", slots)
+	return null
 
 ## 执行攻击（使用 stats 计算伤害）
 static func do_attack(u: CharacterBody2D) -> void:
@@ -100,10 +216,13 @@ static func do_attack(u: CharacterBody2D) -> void:
 	# 尝试使用槽位系统
 	var weapon = AttackCalculator.get_weapon_for_target(u.stats, target_kind)
 	if weapon != null and weapon.enabled:
+		# 检测格子战模式：防御由 CardGridDamage 处理，跳过防御减免避免双重计算
+		var is_card_grid = GameManager and GameManager.has_method("is_card_grid_battle") and GameManager.is_card_grid_battle()
 		var damage = AttackCalculator.calculate_damage_with_weapon(
 			u.stats, target_stats,
 			distance, weapon,
-			u.stats.enhance_level, _get_mod_array(u.stats)
+			u.stats.enhance_level, _get_mod_array(u.stats),
+			is_card_grid  # 格子战模式跳过防御减免
 		)
 		# 射程检查
 		if weapon.weapon_type == GC.WeaponType.DIRECT:
@@ -114,9 +233,9 @@ static func do_attack(u: CharacterBody2D) -> void:
 		do_attack_with_damage(u, damage, weapon.weapon_type, weapon.display_name, weapon, true)
 		return
 
-	# 回退：用武器类型获取攻击值（配对防御）
-	var damage: float = u.stats.attack_light  # 默认直射攻击值
-	do_attack_with_damage(u, damage, u.stats.weapon_type, "")
+	# 回退：用攻击值获取攻击值（配对防御）
+	var damage: float = u.stats.attack_damage if u.stats else 0.0
+	do_attack_with_damage(u, damage, u.stats.weapon_type if u.stats else 0, "")
 
 ## 执行攻击（指定伤害值）
 static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type_override: int = -1, weapon_name: String = "", weapon_resource: Variant = null, p_pre_calculated: bool = false) -> void:
@@ -138,6 +257,11 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 		range_val = u.stats.attack_range
 
 	if range_val > 0 and dist_t > range_val:
+		# 武器资源射程超限：直接 Miss（不依赖旧 stats.attack_range 判断）
+		if weapon_resource and weapon_resource is WeaponResource:
+			CombatFeedback.show_miss(u.target.global_position, u.target)
+			return
+		# 旧逻辑：无武器资源时按 stats.attack_range 衰减
 		if wt == GC.WeaponType.DIRECT or wt == -1:
 			if wt == 0 and u.stats and u.stats.attack_range > 0.5 and dist_t > u.stats.attack_range:
 				var sub_type: String = DamageAttenuation.infer_weapon_sub_type(
@@ -174,21 +298,30 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 	var weapon_speed: float = AttackCalculator.get_weapon_speed(u.stats, weapon_resource if weapon_resource is WeaponResource else null)
 
 	# ── 弹道路由规则 ──
-	# 曲射/空射 → 独立子弹节点（抛物线弹道，批处理不支持）
-	# 直射 + 射速 ≤ 2发/秒 → 独立子弹节点
+	# 曲射/空射 → 批处理（MultiMesh 抛物线弹道）
 	# 直射 + 射速 > 2发/秒 → MultiMesh 批处理
-	var use_batch: bool = false
-	if wt == GC.WeaponType.DIRECT and weapon_speed > 2.0:
-		use_batch = true
+	# 直射 + 射速 ≤ 2发/秒 → 独立子弹节点（对象池）
 
-	if use_batch:
-		# 高速直射 → 批处理（敌我双方）
+	# 优先路由：曲射/空射武器
+	if wt in [GC.WeaponType.INDIRECT, GC.WeaponType.AERIAL]:
+		if u.is_player and BattleManager and is_instance_valid(BattleManager.player_indirect_batch):
+			if BattleManager.player_indirect_batch.has_method("fire"):
+				BattleManager.player_indirect_batch.fire(u.global_position, u.target, damage, wt, u, u.stats, miss, w_name)
+				return
+		elif not u.is_player and BattleManager and is_instance_valid(BattleManager.enemy_indirect_batch):
+			if BattleManager.enemy_indirect_batch.has_method("fire"):
+				BattleManager.enemy_indirect_batch.fire(u.global_position, u.target, damage, wt, u, u.stats, miss, w_name)
+				return
+		# 批处理不可用时回退到独立子弹
+
+	# 高速直射 → 批处理
+	if wt == GC.WeaponType.DIRECT and weapon_speed > 2.0:
 		var batch = BattleManager.player_projectile_batch if u.is_player else BattleManager.enemy_projectile_batch
-		if batch and batch.has_method("fire"):
+		if batch and is_instance_valid(batch) and batch.has_method("fire"):
 			batch.fire(u.global_position, u.target, damage, wt, u, u.stats, miss)
 			return
 
-	# 曲射/空射 或 低速直射 → 独立子弹节点（对象池）
+	# 低速直射 或 曲射/空射回退 → 独立子弹节点（对象池）
 	# 霰弹（weapon_type 5）：创建多枚子弹，每枚均分伤害并独立散布
 	var pellet_n := 6 if wt == 5 else 1
 	var pellet_dmg := damage / float(pellet_n)
@@ -282,35 +415,35 @@ static func _process_multi_weapons(u: CharacterBody2D, delta: float) -> void:
 	var target_stats = u.target.get("stats") as UnitStats
 	var target_kind: int = target_stats.combat_kind if target_stats else 0
 	var eff_rng: float = effective_fire_range(u)
-	var dist: float = u.global_position.distance_to(u.target.global_position)
 	for i in range(u._weapon_cfgs.size()):
 		var w = u._weapon_cfgs[i]
 		var phase: int = int(w.get("phase", u.AttackPhase.IDLE))
 		var phase_timer: float = float(w.get("phase_timer", 0.0))
-		var w_wt: int = int(w.get("weapon_type", -1))
-		var w_damage: float = float(w.get("damage", 0.0))
 
-		# v6.0: 从武器槽位获取对应 timing
+		# v6.1 FIX: 统一从武器槽位获取 weapon_type / timing / range
 		var timing: Dictionary
 		var w_range: float
 		var w_weapon: WeaponResource
+		var w_wt: int = GC.WeaponType.DIRECT
 		if i < u.stats.weapon_slots.size():
 			w_weapon = u.stats.weapon_slots[i] as WeaponResource
 			if w_weapon and w_weapon.enabled:
 				timing = AttackCalculator.get_weapon_attack_timing(w_weapon)
 				w_range = AttackCalculator.get_weapon_range(w_weapon)
+				w_wt = w_weapon.weapon_type
 			else:
 				timing = AttackCalculator.get_attack_timing(u.stats, target_kind)
 				w_range = u.stats.attack_range
-
-			# Fix-7: 曲射/空射武器最小攻击间隔限制
-			if w_wt in [GC.WeaponType.INDIRECT, GC.WeaponType.AERIAL]:
-				timing["windup"] = maxf(timing.get("windup", 0.0), 0.15)
-				timing["cooldown"] = maxf(timing.get("cooldown", 0.0), 0.25)
 		else:
 			timing = AttackCalculator.get_attack_timing(u.stats, target_kind)
 			w_range = u.stats.attack_range
 
+		# 曲射/空射武器最小攻击间隔限制
+		if w_wt in [GC.WeaponType.INDIRECT, GC.WeaponType.AERIAL]:
+			timing["windup"] = maxf(timing.get("windup", 0.0), 0.15)
+			timing["cooldown"] = maxf(timing.get("cooldown", 0.0), 0.25)
+
+		var dist: float = u.global_position.distance_to(u.target.global_position)
 		if dist > w_range and w_wt == GC.WeaponType.DIRECT:
 			phase = u.AttackPhase.IDLE
 			phase_timer = 0.0
@@ -327,10 +460,20 @@ static func _process_multi_weapons(u: CharacterBody2D, delta: float) -> void:
 			u.AttackPhase.ACTIVE:
 				phase_timer += delta
 				if phase_timer < delta * 1.1:
-					var dmg: float = w_damage if w_damage > 0 else float(w.get("damage", u.stats.attack_damage))
+					# v6.1 FIX: 伤害从 weapon_slots[i] 的 WeaponResource 重算
+					# 原 _weapon_cfgs["damage"] 对无 multi_weapons 的卡为占位 0 → 不掉血
+					var dmg: float = 0.0
 					var w_name: String = ""
-					if w_weapon and w_weapon is WeaponResource:
-						w_name = w_weapon.display_name
+					if w_weapon and w_weapon is WeaponResource and w_weapon.enabled:
+						w_name = w_weapon.display_name if w_weapon.display_name else ""
+						var is_card_grid: bool = GameManager and GameManager.has_method("is_card_grid_battle") and GameManager.is_card_grid_battle()
+						dmg = AttackCalculator.calculate_damage_with_weapon(
+							u.stats, target_stats, dist, w_weapon,
+							u.stats.enhance_level, _get_mod_array(u.stats),
+							is_card_grid
+						)
+					else:
+						dmg = u.stats.attack_damage if u.stats else 0.0
 					do_attack_with_damage(u, dmg, w_wt, w_name, w_weapon)
 				if phase_timer >= timing["active"]:
 					phase = u.AttackPhase.COOLDOWN

@@ -21,6 +21,19 @@ const DEBUG_LOG_PATH = "debug-119cff.log"
 
 const MOD_SLOT_LABELS: PackedStringArray = ["A", "B", "C", "D", "E", "F", "G", "H", "I"]
 
+# === 主题色（绿色强化主题） ===
+const THEME_GREEN := Color(0.3, 0.92, 0.5, 1)
+const THEME_GREEN_SOFT := Color(0.2, 0.7, 0.38, 1)
+const THEME_CYAN := Color(0.0, 0.9, 1.0, 1)
+const THEME_GOLD := Color(1.0, 0.85, 0.35, 1)
+const THEME_PURPLE := Color(0.75, 0.55, 1.0, 1)
+const THEME_RED := Color(0.95, 0.4, 0.4, 1)
+const THEME_TEXT := Color(0.88, 0.92, 0.98, 1)
+const THEME_TEXT_DIM := Color(0.6, 0.66, 0.78, 1)
+const THEME_BG_CARD := Color(0.07, 0.12, 0.16, 0.92)
+const THEME_BG_SLOT := Color(0.05, 0.08, 0.11, 0.95)
+const THEME_BORDER_DIM := Color(0.25, 0.35, 0.42, 0.7)
+
 signal closed
 
 # UI 组件引用 - 新布局结构
@@ -137,6 +150,11 @@ func _clear_dynamic_detail() -> void:
 		for child in detail_panel.get_children():
 			if not _is_detail_panel_persist_child(child):
 				child.queue_free()
+		# 清理 persist Section 内部的动态内容（进度条/槽位/tips 等）
+		for rel in ["ModSection/ModVBox", "EnhancementSection/EnhancementVBox", "EvolutionSection/EvolutionVBox"]:
+			var vbox = detail_panel.get_node_or_null(rel)
+			if vbox:
+				_clear_dyn(vbox)
 
 func _init_card_list() -> void:
 	if not card_list_container:
@@ -177,11 +195,15 @@ func _init_card_list() -> void:
 		# 创建卡牌项目按钮
 		var item_button = Button.new()
 		item_button.text = _get_card_display_name(card_id, card_data)
-		item_button.custom_minimum_size = Vector2(180, 40)
-		item_button.add_theme_font_size_override("font_size", 15)
+		item_button.custom_minimum_size = Vector2(200, 42)
+		item_button.add_theme_font_size_override("font_size", 14)
 		# 防止长文本导致按钮过宽：设置文本截断+水平不扩展
 		item_button.clip_text = true
-		item_button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		item_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		item_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		item_button.add_theme_stylebox_override("normal", _card_item_stylebox(false))
+		item_button.add_theme_stylebox_override("hover", _make_sb(THEME_GREEN * Color(1, 1, 1, 0.1), THEME_GREEN_SOFT * Color(1, 1, 1, 0.6), 1, 5, Color(0, 0, 0, 0), 0, 10, 6, 10, 6))
+		item_button.add_theme_stylebox_override("pressed", _card_item_stylebox(false))
 		item_button.pressed.connect(_on_card_item_selected.bindv([card_id]))
 
 		card_list_container.add_child(item_button)
@@ -212,6 +234,7 @@ func select_card_by_id(card_id: String) -> void:
 	if card_list_container and card_list_container.get_child_count() == 0:
 		_init_card_list()
 	selected_card_id = card_id
+	_refresh_card_selection_style()
 	_update_detail_panel()
 
 func _update_detail_panel() -> void:
@@ -256,28 +279,39 @@ func _update_detail_panel() -> void:
 	if card_data == null:
 		return
 
-	# 显示卡牌名称 — 插入到 detail_panel 顶部（index 0）
-	var name_label = Label.new()
+	# 隐藏冗余的 CardInfoSection（其信息已由 header 卡片取代）
+	var card_info_sec = get_node_or_null("VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/CardInfoSection")
+	if card_info_sec:
+		card_info_sec.visible = false
+	# === 卡牌头部卡片：大字名称 + 军衔/战力胶囊 ===
+	var header := PanelContainer.new()
+	header.name = "_dyn_header"
+	header.add_theme_stylebox_override("panel", _make_sb(THEME_BG_CARD, THEME_GREEN_SOFT * Color(1, 1, 1, 0.5), 1, 6, THEME_GREEN * Color(1, 1, 1, 0.12), 4, 14, 12, 14, 12))
+	var header_hbox := HBoxContainer.new()
+	header_hbox.add_theme_constant_override("separation", 12)
+	var name_box := VBoxContainer.new()
+	name_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_box.add_theme_constant_override("separation", 6)
+	var name_label := Label.new()
 	name_label.text = str(card_data.display_name if card_data else selected_card_id)
-	name_label.add_theme_font_size_override("font_size", 16)
-	name_label.add_theme_color_override("font_color", Color(0, 0.9, 1, 1))
+	name_label.add_theme_font_size_override("font_size", 22)
+	name_label.add_theme_color_override("font_color", THEME_CYAN)
+	name_label.add_theme_color_override("font_outline_color", Color(0, 0.12, 0.18, 0.75))
+	name_label.add_theme_constant_override("outline_size", 2)
 	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	detail_panel.add_child(name_label)
-	detail_panel.move_child(name_label, 0)
-	# 显示军衔
+	name_box.add_child(name_label)
+	var chips_row := HBoxContainer.new()
+	chips_row.add_theme_constant_override("separation", 8)
+	chips_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if BlueprintManager and BlueprintManager.has_method("get_rank_info"):
 		var rank_info: Dictionary = BlueprintManager.get_rank_info(selected_card_id)
-		var rank_label := Label.new()
-		rank_label.text = "当前军衔：%s（战力 %.0f）" % [
-			String(rank_info.get("rank_name", "未定级")),
-			float(rank_info.get("power_score", 0.0))
-		]
-		rank_label.add_theme_color_override("font_color", Color(0.95, 0.85, 0.45, 1))
-		rank_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		rank_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		detail_panel.add_child(rank_label)
-		detail_panel.move_child(rank_label, 1)
+		chips_row.add_child(_make_chip("🏅 %s" % String(rank_info.get("rank_name", "未定级")), THEME_GOLD * Color(1, 1, 1, 0.18), THEME_GOLD * Color(1, 1, 1, 0.7), THEME_GOLD, 13))
+		chips_row.add_child(_make_chip("⚡ 战力 %.0f" % float(rank_info.get("power_score", 0.0)), THEME_CYAN * Color(1, 1, 1, 0.15), THEME_CYAN * Color(1, 1, 1, 0.6), THEME_CYAN, 13))
+	name_box.add_child(chips_row)
+	header_hbox.add_child(name_box)
+	header.add_child(header_hbox)
+	detail_panel.add_child(header)
+	detail_panel.move_child(header, 0)
 
 	_update_star_upgrade_section()
 	_update_modification_section()
@@ -289,57 +323,59 @@ func _update_detail_panel() -> void:
 	var max_level = enhancement_info.get("max_level", 10)
 	var can_enhance = enhancement_info.get("can_enhance", true)
 
-	# 显示当前等级
-	var level_label = Label.new()
-	level_label.text = "当前等级：%d / %d" % [current_level, max_level]
-	detail_panel.add_child(level_label)
-
-	# 如果可以强化，显示升级成本
+	# === 强化信息卡片：进度条 + 词条槽 + 成本（注入到 EnhancementVBox） ===
+	var enh_vbox = get_node_or_null("VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/EnhancementSection/EnhancementVBox")
+	if enh_vbox:
+		_clear_dyn(enh_vbox)
+		# 进度条插到 Title(index 0) 之后
+		var prog = _make_level_progress(current_level, max_level)
+		enh_vbox.add_child(prog)
+		enh_vbox.move_child(prog, 1)
+		# 词条槽位
+		var affix = _render_affix_slots(selected_card_id, current_level)
+		enh_vbox.add_child(affix)
+		enh_vbox.move_child(affix, 2)
+	# 升级成本 / 强化按钮状态
 	if can_enhance and current_level < max_level:
-		var next_level = enhancement_info.get("next_level", current_level + 1)
-		var nano_cost = enhancement_info.get("nano_cost", 0)
+		var next_level = int(enhancement_info.get("next_level", current_level + 1))
+		var nano_cost = int(enhancement_info.get("nano_cost", 0))
 		var level_action = String(enhancement_info.get("level_action", ""))
-
-		# 获取当前纳米材料数量
 		var current_nano: int = 0
 		if BasicResourceManager and BasicResourceManager.has_method("get_total"):
 			current_nano = int(BasicResourceManager.get_total(BasicResources.ID_NANO_MATERIALS))
 		elif BlueprintManager and BlueprintManager.has_method("get_nano_materials"):
 			current_nano = int(BlueprintManager.get_nano_materials())
-
-		# 显示升级成本（用颜色代替BBCode）
-		var cost_label = Label.new()
-		cost_label.text = "升级成本：%d纳米材料（当前：%d）" % [nano_cost, current_nano]
-		cost_label.add_theme_color_override("font_color", Color.GREEN if current_nano >= nano_cost else Color.RED)
-		cost_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		cost_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		detail_panel.add_child(cost_label)
-
-		# 显示本次强化效果（v6.0词条系统）
-		if not level_action.is_empty():
-			var action_label = Label.new()
-			match level_action:
-				"new_slot":
-					action_label.text = "本次强化：获得新词条槽"
-					action_label.add_theme_color_override("font_color", Color(0.4, 1.0, 0.6, 1))
-				"upgrade_slot":
-					action_label.text = "本次强化：升级已有词条"
-					action_label.add_theme_color_override("font_color", Color(0.4, 0.8, 1.0, 1))
-				_:
-					action_label.text = ""
-			detail_panel.add_child(action_label)
-
-		# 启用强化按钮
+		var enough: bool = current_nano >= nano_cost
+		if enh_vbox:
+			var cost_row := HBoxContainer.new()
+			cost_row.name = "_dyn_cost"
+			cost_row.add_theme_constant_override("separation", 8)
+			cost_row.add_child(_make_chip("🧪 消耗 %d" % nano_cost, (THEME_RED if not enough else THEME_GREEN) * Color(1, 1, 1, 0.16), (THEME_RED if not enough else THEME_GREEN) * Color(1, 1, 1, 0.7), THEME_RED if not enough else THEME_GREEN, 14))
+			cost_row.add_child(_make_chip("持有 %d" % current_nano, THEME_TEXT_DIM * Color(1, 1, 1, 0.12), THEME_BORDER_DIM, THEME_TEXT, 13))
+			enh_vbox.add_child(cost_row)
+			enh_vbox.move_child(cost_row, 3)
+			if not level_action.is_empty() and level_action != "none":
+				match level_action:
+					"new_slot":
+						var b1 = _make_chip("✦ 本次强化：解锁新词条槽", THEME_GREEN * Color(1, 1, 1, 0.18), THEME_GREEN * Color(1, 1, 1, 0.7), THEME_GREEN, 13)
+						b1.name = "_dyn_action"
+						enh_vbox.add_child(b1)
+						enh_vbox.move_child(b1, 4)
+					"upgrade_slot":
+						var b2 = _make_chip("↑ 本次强化：升级已有词条", THEME_CYAN * Color(1, 1, 1, 0.18), THEME_CYAN * Color(1, 1, 1, 0.7), THEME_CYAN, 13)
+						b2.name = "_dyn_action"
+						enh_vbox.add_child(b2)
+						enh_vbox.move_child(b2, 4)
 		if enhancement_button:
-			enhancement_button.disabled = current_nano < nano_cost
-			enhancement_button.text = "强化至 Lv.%d" % next_level
+			enhancement_button.disabled = not enough
+			enhancement_button.text = "💪 强化至 Lv.%d" % next_level
 	else:
 		# 已达最高等级
-		var max_label = Label.new()
-		max_label.text = "已达最高等级"
-		max_label.add_theme_color_override("font_color", Color.YELLOW)
-		detail_panel.add_child(max_label)
-
+		if enh_vbox:
+			var max_chip = _make_chip("★ 已达最高强化等级", THEME_GOLD * Color(1, 1, 1, 0.2), THEME_GOLD * Color(1, 1, 1, 0.8), THEME_GOLD, 14)
+			max_chip.name = "_dyn_max"
+			enh_vbox.add_child(max_chip)
+			enh_vbox.move_child(max_chip, 3)
 		if enhancement_button:
 			enhancement_button.disabled = true
 			enhancement_button.text = "已满级"
@@ -447,23 +483,30 @@ func _update_evolution_section(card_data: CardResource) -> void:
 	var can_evolve: bool = bool(can_info.get("ok", false))
 	evolve_button.disabled = not can_evolve
 	evolve_button.text = "进化为：%s" % target_name
-	# 显示得失提示
-	var tips := RichTextLabel.new()
-	tips.fit_content = true
-	tips.scroll_active = false
-	tips.custom_minimum_size = Vector2(0, 96)
+	# 显示得失提示（卡片化）
 	var card_enh_mgr = get_node_or_null("/root/CardEnhancementManager")
 	var enhance_level_now: int = card_enh_mgr.get_card_enhancement_level(selected_card_id) if card_enh_mgr else 0
 	var mod_now: int = BlueprintManager.get_modification_count(selected_card_id) if BlueprintManager.has_method("get_modification_count") else 0
 	var inherit_ratio: float = float(can_info.get("inherit_ratio", UnitLineageConfig.DEFAULT_INHERIT_RATIO))
 	var reason: String = _evolve_reason_display(can_info)
-	tips.bbcode_enabled = true
-	tips.text = "[color=#7fd3ff]进化得失提示[/color]\n" + \
-		"[color=#8ef58e]获得[/color]：新单位成长上限、军衔重新评估、属性传承 %.0f%%\n" % (inherit_ratio * 100.0) + \
-		"[color=#ffb37f]失去[/color]：当前改造进度清零（重走改造）\n" + \
-		"当前：强化 Lv.%d，改造 %d/9\n" % [enhance_level_now, mod_now] + \
-		("状态：可进化" if can_evolve else "状态：不可进化（%s）" % reason)
-	detail_panel.add_child(tips)
+	var evo_vbox = get_node_or_null("VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/EvolutionSection/EvolutionVBox")
+	if evo_vbox:
+		_clear_dyn(evo_vbox)
+		var tips_card := PanelContainer.new()
+		tips_card.name = "_dyn_tips_card"
+		tips_card.add_theme_stylebox_override("panel", _make_sb(THEME_BG_CARD, THEME_GOLD * Color(1, 1, 1, 0.35), 1, 6, Color(0, 0, 0, 0), 0, 12, 10, 12, 10))
+		var tips := RichTextLabel.new()
+		tips.fit_content = true
+		tips.scroll_active = false
+		tips.bbcode_enabled = true
+		tips.add_theme_font_size_override("normal_font_size", 13)
+		tips.text = "[color=#ffe9a8][b]进化得失[/b][/color]\n" + \
+			"[color=#8ef58e]✅ 获得[/color]：新单位成长上限、军衔重评、属性传承 %.0f%%\n" % (inherit_ratio * 100.0) + \
+			"[color=#ffb37f]⚠️ 失去[/color]：当前改造进度清零（重走改造）\n" + \
+			"[color=#bcd4ff]当前[/color]：强化 Lv.%d，改造 %d/9\n" % [enhance_level_now, mod_now] + \
+			("[color=#8ef58e]状态：可进化[/color]" if can_evolve else "[color=#ff8888]状态：不可进化（%s）[/color]" % reason)
+		tips_card.add_child(tips)
+		evo_vbox.add_child(tips_card)
 
 func _evolve_reason_display(can_info: Dictionary) -> String:
 	if can_info.has("reason_zh"):
@@ -518,6 +561,10 @@ func _reset_modification_section() -> void:
 	if mod_req_label:
 		mod_req_label.text = ""
 	_set_mod_branch_buttons_enabled(false)
+	# 清理动态槽位可视化
+	var mod_vbox = get_node_or_null("VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/ModSection/ModVBox")
+	if mod_vbox:
+		_clear_dyn(mod_vbox)
 
 func _set_mod_branch_buttons_enabled(enabled: bool) -> void:
 	if mod_offense_btn:
@@ -587,7 +634,15 @@ func _update_modification_section() -> void:
 			mod_id = String(entry)  # 兼容旧格式
 		applied_parts.append("%s:%s" % [slot, _mod_option_display_name(mod_id)])
 	var applied_text: String = " / ".join(applied_parts) if applied_parts.size() > 0 else "无"
-	mod_status_label.text = "改装进度：%s（%d/9）" % [applied_text, applied.size()]
+	mod_status_label.text = "改装进度：%d / 9" % applied.size()
+	# 9 槽位可视化
+	var mod_vbox = get_node_or_null("VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/ModSection/ModVBox")
+	if mod_vbox:
+		_clear_dyn(mod_vbox)
+		var slots_viz = _render_mod_slots(selected_card_id)
+		mod_vbox.add_child(slots_viz)
+		var status_idx: int = mod_status_label.get_index() if mod_status_label else 1
+		mod_vbox.move_child(slots_viz, status_idx + 1)
 	var max_times: int = 9  # v5.1: 改造次数固定为9次（与底层ModManager对齐）
 	var mod_index: int = BlueprintManager.get_modification_count(selected_card_id)
 	if mod_index >= max_times:
@@ -738,9 +793,9 @@ func _update_resource_labels() -> void:
 	if BlueprintManager and BlueprintManager.has_method("get_research_points"):
 		rp_amount = BlueprintManager.get_research_points()
 	if nano_label:
-		nano_label.text = "纳米材料：%d" % nano_amount
+		nano_label.text = "🧪 纳米材料：%d" % nano_amount
 	if research_label:
-		research_label.text = "研究点：%d" % rp_amount
+		research_label.text = "🔬 研究点：%d" % rp_amount
 
 func _on_close() -> void:
 	closed.emit()
@@ -748,6 +803,218 @@ func _on_close() -> void:
 func _on_card_added_to_backpack(_card: CardResource) -> void:
 	_init_card_list()
 	_update_detail_panel()
+
+# ─────────────────────────────────────────────
+#  UI 美化 helper
+# ─────────────────────────────────────────────
+
+## 生成可复用 StyleBoxFlat（参数化主题色）
+func _make_sb(bg: Color, border: Color, border_w: float, corner: float, \
+		shadow_color := Color(0, 0, 0, 0), shadow_size := 0, \
+		ml := 0.0, mt := 0.0, mr := 0.0, mb := 0.0) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = bg
+	sb.border_color = border
+	sb.border_width_left = border_w
+	sb.border_width_top = border_w
+	sb.border_width_right = border_w
+	sb.border_width_bottom = border_w
+	sb.corner_radius_top_left = corner
+	sb.corner_radius_top_right = corner
+	sb.corner_radius_bottom_left = corner
+	sb.corner_radius_bottom_right = corner
+	if shadow_size > 0:
+		sb.shadow_color = shadow_color
+		sb.shadow_size = shadow_size
+	if ml > 0 or mt > 0 or mr > 0 or mb > 0:
+		sb.content_margin_left = ml
+		sb.content_margin_top = mt
+		sb.content_margin_right = mr
+		sb.content_margin_bottom = mb
+	return sb
+
+## 清除父节点下所有 "_dyn_" 前缀的动态子节点
+func _clear_dyn(parent: Node) -> void:
+	if parent == null:
+		return
+	for c in parent.get_children():
+		if c is Node and String(c.name).begins_with("_dyn_"):
+			c.queue_free()
+
+## 创建带背景的胶囊标签（chip）
+func _make_chip(text: String, bg: Color, border: Color, fg: Color = THEME_TEXT, size := 13) -> PanelContainer:
+	var p := PanelContainer.new()
+	p.name = "_dyn_chip"
+	p.add_theme_stylebox_override("panel", _make_sb(bg, border, 1, 4, Color(0, 0, 0, 0), 0, 8, 3, 8, 3))
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", size)
+	l.add_theme_color_override("font_color", fg)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	p.add_child(l)
+	return p
+
+## 创建强化等级进度条（绿色填充）
+func _make_level_progress(current: int, total: int) -> Control:
+	var wrap := VBoxContainer.new()
+	wrap.name = "_dyn_level_prog"
+	wrap.add_theme_constant_override("separation", 4)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var title := Label.new()
+	title.text = "强化等级"
+	title.add_theme_font_size_override("font_size", 14)
+	title.add_theme_color_override("font_color", THEME_GREEN_SOFT)
+	row.add_child(title)
+	var bar := ProgressBar.new()
+	bar.min_value = 0
+	bar.max_value = total
+	bar.value = current
+	bar.custom_minimum_size = Vector2(0, 16)
+	bar.show_percentage = false
+	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bar.add_theme_stylebox_override("background", _make_sb(Color(0.04, 0.08, 0.05, 0.95), THEME_GREEN_SOFT * Color(1, 1, 1, 0.4), 1, 3))
+	bar.add_theme_stylebox_override("fill", _make_sb(THEME_GREEN * Color(1, 1, 1, 0.78), Color(0, 0, 0, 0), 0, 3))
+	row.add_child(bar)
+	var num := Label.new()
+	num.text = "%d/%d" % [current, total]
+	num.add_theme_font_size_override("font_size", 14)
+	num.add_theme_color_override("font_color", THEME_GREEN)
+	num.custom_minimum_size = Vector2(48, 0)
+	num.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	row.add_child(num)
+	wrap.add_child(row)
+	return wrap
+
+## 创建词条槽位可视化（5槽，随强化等级解锁）
+func _render_affix_slots(card_id: String, current_level: int) -> Control:
+	var wrap := VBoxContainer.new()
+	wrap.name = "_dyn_affix"
+	wrap.add_theme_constant_override("separation", 6)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 8)
+	var title := Label.new()
+	title.text = "词条槽位"
+	title.add_theme_font_size_override("font_size", 13)
+	title.add_theme_color_override("font_color", THEME_TEXT_DIM)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(title)
+	var unlock_label := Label.new()
+	unlock_label.add_theme_font_size_override("font_size", 12)
+	unlock_label.add_theme_color_override("font_color", THEME_CYAN)
+	# 解锁规则：Lv2/4/6/8/10 解锁槽1-5
+	var ModuleDefinitions = preload("res://data/module_definitions.gd")
+	var max_slots := ModuleDefinitions.get_max_slots_for_level(current_level)
+	var card_enh_mgr = get_node_or_null("/root/CardEnhancementManager")
+	var slots: Array = []
+	if card_enh_mgr and card_enh_mgr.has_method("get_module_slots"):
+		slots = card_enh_mgr.get_module_slots(card_id)
+	unlock_label.text = "已解锁 %d / 5" % max_slots
+	head.add_child(unlock_label)
+	wrap.add_child(head)
+	var grid := HBoxContainer.new()
+	grid.add_theme_constant_override("separation", 6)
+	for i in range(5):
+		var unlocked := (i < max_slots)
+		var slot_cell := PanelContainer.new()
+		slot_cell.custom_minimum_size = Vector2(0, 34)
+		slot_cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		if unlocked:
+			var has_mod := i < slots.size()
+			if has_mod:
+				slot_cell.add_theme_stylebox_override("panel", _make_sb(THEME_GREEN * Color(1, 1, 1, 0.18), THEME_GREEN * Color(1, 1, 1, 0.75), 1, 4, THEME_GREEN * Color(1, 1, 1, 0.25), 3))
+			else:
+				slot_cell.add_theme_stylebox_override("panel", _make_sb(THEME_GREEN_SOFT * Color(1, 1, 1, 0.1), THEME_GREEN_SOFT * Color(1, 1, 1, 0.45), 1, 4))
+		else:
+			slot_cell.add_theme_stylebox_override("panel", _make_sb(THEME_BG_SLOT, THEME_BORDER_DIM * Color(1, 1, 1, 0.5), 1, 4))
+		var cell_label := Label.new()
+		cell_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		cell_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		cell_label.add_theme_font_size_override("font_size", 13)
+		if not unlocked:
+			cell_label.text = "🔒"
+			cell_label.add_theme_color_override("font_color", THEME_TEXT_DIM * Color(1, 1, 1, 0.5))
+		elif i < slots.size():
+			cell_label.text = "✦%d" % (i + 1)
+			cell_label.add_theme_color_override("font_color", THEME_GREEN)
+		else:
+			cell_label.text = "空"
+			cell_label.add_theme_color_override("font_color", THEME_GREEN_SOFT * Color(1, 1, 1, 0.7))
+		slot_cell.add_child(cell_label)
+		grid.add_child(slot_cell)
+	wrap.add_child(grid)
+	return wrap
+
+## 创建改装槽位可视化（9槽 A-I）
+func _render_mod_slots(card_id: String) -> Control:
+	var wrap := VBoxContainer.new()
+	wrap.name = "_dyn_mod_slots"
+	wrap.add_theme_constant_override("separation", 6)
+	var applied: Array = BlueprintManager.blueprint_mods.get(card_id, []) if BlueprintManager else []
+	var grid := HBoxContainer.new()
+	grid.add_theme_constant_override("separation", 5)
+	for i in range(9):
+		var filled := i < applied.size()
+		var slot_id: String = MOD_SLOT_LABELS[i] if i < MOD_SLOT_LABELS.size() else "?"
+		var mod_id: String = ""
+		var mod_name: String = ""
+		if filled:
+			var entry = applied[i]
+			if entry is Dictionary:
+				mod_id = String(entry.get("id", ""))
+			else:
+				mod_id = String(entry)
+			mod_name = _mod_option_display_name(mod_id)
+		var cell := PanelContainer.new()
+		cell.custom_minimum_size = Vector2(0, 40)
+		cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		if filled:
+			cell.add_theme_stylebox_override("panel", _make_sb(THEME_PURPLE * Color(1, 1, 1, 0.18), THEME_PURPLE * Color(1, 1, 1, 0.8), 1, 4, THEME_PURPLE * Color(1, 1, 1, 0.22), 3))
+		else:
+			cell.add_theme_stylebox_override("panel", _make_sb(THEME_BG_SLOT, THEME_BORDER_DIM * Color(1, 1, 1, 0.45), 1, 4))
+		cell.tooltip_text = "槽位 %s：%s" % [slot_id, mod_name] if filled else "槽位 %s（空）" % slot_id
+		var inner := VBoxContainer.new()
+		inner.add_theme_constant_override("separation", 1)
+		var slot_label := Label.new()
+		slot_label.text = slot_id
+		slot_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		slot_label.add_theme_font_size_override("font_size", 11)
+		slot_label.add_theme_color_override("font_color", THEME_GOLD if filled else THEME_TEXT_DIM)
+		inner.add_child(slot_label)
+		var name_label := Label.new()
+		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		name_label.add_theme_font_size_override("font_size", 11)
+		name_label.clip_text = true
+		if filled:
+			var short := mod_name.left(2) if mod_name.length() > 2 else mod_name
+			name_label.text = short
+			name_label.add_theme_color_override("font_color", THEME_PURPLE)
+		else:
+			name_label.text = "·"
+			name_label.add_theme_color_override("font_color", THEME_TEXT_DIM * Color(1, 1, 1, 0.5))
+		inner.add_child(name_label)
+		cell.add_child(inner)
+		grid.add_child(cell)
+	wrap.add_child(grid)
+	return wrap
+
+## 卡牌列表项样式（选中/未选中）
+func _card_item_stylebox(selected: bool) -> StyleBoxFlat:
+	if selected:
+		return _make_sb(THEME_GREEN * Color(1, 1, 1, 0.18), THEME_GREEN * Color(1, 1, 1, 0.85), 1, 5, THEME_GREEN * Color(1, 1, 1, 0.3), 4, 10, 6, 10, 6)
+	return _make_sb(THEME_BG_CARD * Color(1, 1, 1, 0.6), THEME_BORDER_DIM, 1, 5, Color(0, 0, 0, 0), 0, 10, 6, 10, 6)
+
+## 刷新卡牌列表项的选中高亮
+func _refresh_card_selection_style() -> void:
+	for item in card_items:
+		var btn = item.get("button")
+		if btn == null:
+			continue
+		var is_sel: bool = (String(item.get("id", "")) == selected_card_id)
+		btn.add_theme_stylebox_override("normal", _card_item_stylebox(is_sel))
+		btn.add_theme_stylebox_override("pressed", _card_item_stylebox(is_sel))
 
 ## 添加属性预览功能
 func _add_attribute_preview(parent: Control, card_data: Variant, current_level: int, next_level: int) -> void:

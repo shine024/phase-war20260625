@@ -158,6 +158,10 @@ signal modification_installed(card_id: String, mod_id: String)
 signal modification_removed(card_id: String, mod_id: String)
 signal modification_failed(card_id: String, mod_id: String, reason: String)
 
+# 成长面板系统
+signal growth_panel_saved(card: CardResource)
+signal card_data_changed(card_id: String)
+
 # 进化系统
 signal card_evolved(source_card_id: String, target_card_id: String)
 signal evolution_failed(source_card_id: String, target_card_id: String, reason: String)

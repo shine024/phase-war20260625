@@ -24,6 +24,7 @@ func _ready() -> void:
 	for wt: int in _BATCH_WEAPON_TYPES:
 		_layers[wt] = _make_layer(wt)
 		add_child(_layers[wt])
+	prints("[BATCH_READY]", name, "layers_keys=", _layers.keys(), "layer_count=", _layers.size())
 
 func _make_layer(wt: int) -> MultiMeshInstance2D:
 	var mmi := MultiMeshInstance2D.new()
@@ -66,8 +67,8 @@ func _physics_process(delta: float) -> void:
 	var tree := get_tree()
 	if tree == null or tree.paused:
 		return
+	_sync_multimesh_layers()
 	if _proj.is_empty():
-		_sync_multimesh_layers()
 		return
 
 	var write: int = 0
@@ -95,10 +96,7 @@ func _physics_process(delta: float) -> void:
 		if write != read_idx:
 			_proj[write] = r
 		write += 1
-	if _proj.is_empty():
-		write = 0
-	else:
-		_proj.resize(write)
+	_proj.resize(write)
 	_sync_multimesh_layers()
 
 func _sync_multimesh_layers() -> void:
@@ -124,7 +122,10 @@ func _sync_multimesh_layers() -> void:
 		cursors[wt_r] = idx + 1
 		var dir: Vector2 = r.get("dir", Vector2.RIGHT) as Vector2
 		var mm2: MultiMesh = (_layers[wt_r] as MultiMeshInstance2D).multimesh
-		mm2.set_instance_transform_2d(idx, Transform2D(dir.angle(), Vector2(r["pos"])))
+		var global_pos: Vector2 = r["pos"]
+		var local_pos: Vector2 = to_local(global_pos)
+		prints("BATCH_DEBUG:", name, "global_pos=", global_pos, "local_pos=", local_pos, "pos=", position)
+		mm2.set_instance_transform_2d(idx, Transform2D(dir.angle(), local_pos))
 		mm2.set_instance_color(idx, _ENEMY_TINT)
 
 func _apply_hit(r: Dictionary) -> void:

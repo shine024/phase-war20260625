@@ -117,12 +117,39 @@ func _find_enemy_subtree_with_slot(n: Node, slot_idx: int) -> Node:
 	return null
 
 
-## 敌方区域：槽索引 0 在靠中线一侧、递增向屏幕右缘 → 从左向右逐个占空位
+## 敌方区域：从远端 slot(最大索引，靠屏幕右缘、离玩家最远)开始填，依次向近端
+## 这样少量敌人也部署在远端，玩家曲射(先远后近)能优先打到后排
 func _card_grid_next_free_enemy_slot_index() -> int:
-	for si in range(_CardGridSlotsPerSide):
+	for si in range(_CardGridSlotsPerSide - 1, -1, -1):
 		if not _is_enemy_grid_slot_occupied(si):
 			return si
 	return -1
+
+
+## 按单位射程选敌方槽位：长程(>=阈值)放远端(slot 6起倒序)，短程放近端(slot 0起顺序)
+## 短程直射单位放近端才够得到玩家；长程/曲射放远端供玩家曲射打击
+func _pick_enemy_slot_by_range(attack_range: float) -> int:
+	const LONG_RANGE_THRESHOLD: float = 300.0
+	if attack_range >= LONG_RANGE_THRESHOLD:
+		for si in range(_CardGridSlotsPerSide - 1, -1, -1):
+			if not _is_enemy_grid_slot_occupied(si):
+				return si
+	else:
+		for si in range(_CardGridSlotsPerSide):
+			if not _is_enemy_grid_slot_occupied(si):
+				return si
+	return -1
+
+
+## 获取单位攻击射程（像素），用于按射程分配槽位
+func _get_unit_attack_range(unit: Node2D) -> float:
+	if unit == null:
+		return 200.0
+	if "attack_range" in unit:
+		return float(unit.attack_range)
+	if "stats" in unit and unit.stats != null:
+		return float(unit.stats.attack_range)
+	return 200.0
 
 
 ## 与场上实际敌单位对齐，避免阵亡后缓存计数偏高导致后续波次刷不出、胜利条件不满足
@@ -190,9 +217,6 @@ func spawn_card_grid_enemy_wave(current_level: int) -> bool:
 	for _i in range(to_spawn):
 		if enemy_unit_count >= _enemy_field_unit_cap():
 			break
-		var slot_i: int = _card_grid_next_free_enemy_slot_index()
-		if slot_i < 0:
-			break
 		var archetype_id: String = ""
 		if is_last_wave and _enemy_wave_total > 3 and not boss_ids.is_empty():
 			archetype_id = String(boss_ids[randi() % boss_ids.size()])
@@ -203,9 +227,12 @@ func spawn_card_grid_enemy_wave(current_level: int) -> bool:
 		elif not era_archetypes.is_empty():
 			archetype_id = String(era_archetypes[randi() % era_archetypes.size()])
 
-		var spawn_g: Vector2 = _enemy_slot_global_position(slot_i)
-
+		# 蜂群单位视为短程，部署到近端
 		if not archetype_id.is_empty() and EnemyArchetypes.should_spawn_as_swarm(archetype_id):
+			var swarm_slot: int = _pick_enemy_slot_by_range(150.0)
+			if swarm_slot < 0:
+				break
+			var spawn_g: Vector2 = _enemy_slot_global_position(swarm_slot)
 			var ctl: Node = _ensure_swarm_controller()
 			if ctl and ctl.has_method("spawn_slot"):
 				var local_p: Vector2 = spawn_g - _enemy_units_node.global_position
@@ -213,15 +240,16 @@ func spawn_card_grid_enemy_wave(current_level: int) -> bool:
 				if slot != null:
 					enemy_unit_count += 1
 					if slot is Object:
-						(slot as Object).set_meta("card_grid_enemy_slot", slot_i)
+						(slot as Object).set_meta("card_grid_enemy_slot", swarm_slot)
 					if _signal_bus:
 						_signal_bus.unit_spawned.emit(slot, false)
 			continue
 
+		# 普通单位：先创建，再按实际射程选 slot（长程远端、短程近端）
 		var unit: Node2D = _create_enemy_unit_with_id(archetype_id) as Node2D
 		if unit == null:
 			continue
-		if not spawn_enemy_unit_on_card_grid(unit, slot_i):
+		if not spawn_enemy_unit_on_card_grid(unit, -1):
 			if is_instance_valid(unit):
 				unit.queue_free()
 			continue
@@ -250,7 +278,8 @@ func spawn_enemy_unit_on_card_grid(unit: Node2D, preferred_slot: int = -1) -> bo
 		return false
 	var slot_i: int = preferred_slot
 	if slot_i < 0 or _is_enemy_grid_slot_occupied(slot_i):
-		slot_i = _card_grid_next_free_enemy_slot_index()
+		# 按单位射程分层：长程远端、短程近端
+		slot_i = _pick_enemy_slot_by_range(_get_unit_attack_range(unit))
 	if slot_i < 0:
 		return false
 	var spawn_g: Vector2 = _enemy_slot_global_position(slot_i)

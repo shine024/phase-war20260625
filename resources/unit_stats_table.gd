@@ -74,31 +74,36 @@ static func build_stats_from_card(card: CardResource, era_override: int = -1) ->
 				entry["range"] = float(entry.get("range", 0.0)) * BattleCardV3.era_range_multiplier(clampi(e, 0, 4))
 			stats.weapons.append(entry)
 
-		# 武器槽位系统（新）
-		stats.weapon_slots.clear()
-		# 确保卡牌的槽位已初始化
-		if card.has_method("_ensure_weapon_slots_initialized"):
-			card._ensure_weapon_slots_initialized()
-		# 复制槽位数据并应用时代缩放
-		var tmp_slots: Array[WeaponResource] = []
-		for weapon in card.weapon_slots:
-			if weapon is WeaponResource and weapon.enabled:
-				var w_copy = weapon.clone()
-				# 应用时代伤害缩放
-				if e >= 0:
-					w_copy.damage *= BattleCardV3.era_damage_multiplier(clampi(e, 0, 4))
-					w_copy.range_value = int(float(w_copy.range_value) * BattleCardV3.era_range_multiplier(clampi(e, 0, 4)))
-				tmp_slots.append(w_copy)
-			else:
-				# 添加空槽位占位
-				tmp_slots.append(WeaponResource.create_empty_slot(tmp_slots.size()))
+	# ═══════════════════════════════════════════════════════════
+	# 武器槽位系统（新）— 无条件初始化
+	# 旧逻辑：只有 card.multi_weapons.size() > 0 时才初始化，
+	# 导致绝大多数默认战斗卡的 weapon_slots 始终为空，
+	# ConstructUnitAI.get_weapon_for_target() 直接返回 null，
+	# 战斗回退到陈旧路径，出现"不攻击"现象。
+	# ═══════════════════════════════════════════════════════════
+	stats.weapon_slots.clear()
+	if card.has_method("_ensure_weapon_slots_initialized"):
+		card._ensure_weapon_slots_initialized()
 
-		# v6.0: 应用改造效果到武器槽位
-		if card.mods and not card.mods.is_empty():
-			if ModificationRegistry and ModificationRegistry.has_method("apply_to_weapon_slots"):
-				tmp_slots = ModificationRegistry.apply_to_weapon_slots(tmp_slots, card.mods)
+	var tmp_slots: Array[WeaponResource] = []
+	for weapon in card.weapon_slots:
+		if weapon is WeaponResource and weapon.enabled:
+			var w_copy = weapon.clone()
+			# 应用时代伤害缩放
+			if e >= 0:
+				w_copy.damage *= BattleCardV3.era_damage_multiplier(clampi(e, 0, 4))
+				w_copy.range_value = int(float(w_copy.range_value) * BattleCardV3.era_range_multiplier(clampi(e, 0, 4)))
+			tmp_slots.append(w_copy)
+		else:
+			# 添加空槽位占位
+			tmp_slots.append(WeaponResource.create_empty_slot(tmp_slots.size()))
 
-		stats.weapon_slots = tmp_slots
+	# v6.0: 应用改造效果到武器槽位
+	if card.mods and not card.mods.is_empty():
+		if ModificationRegistry and ModificationRegistry.has_method("apply_to_weapon_slots"):
+			tmp_slots = ModificationRegistry.apply_to_weapon_slots(tmp_slots, card.mods)
+
+	stats.weapon_slots = tmp_slots
 
 	# 旧字段兼容（写入旧字段让过渡期代码仍能工作）
 	stats.platform_type = card.platform_type

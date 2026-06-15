@@ -14,8 +14,13 @@ static func resolve_fx_parent(unit: Node) -> Node:
 			p = p.get_parent()
 		if unit.get_parent() != null:
 			return unit.get_parent()
-	if BattleManager != null and BattleManager.battlefield != null:
-		return BattleManager.battlefield
+		# 动态获取 BattleManager 以避免循环依赖
+		if unit != null and is_instance_valid(unit):
+			var tree := unit.get_tree()
+			if tree != null:
+				var bm = tree.root.get_node_or_null("BattleManager")
+				if bm != null and bm.get("battlefield") != null:
+					return bm.battlefield
 	return null
 
 

@@ -27,11 +27,10 @@ static func is_in_aura_range(source_slot: int, target_slot: int, is_global: bool
 ## 机械类平台判定（CARRIER_REPAIR 只治疗机械平台）
 static func is_mechanical_platform(platform_type: int) -> bool:
 	match platform_type:
-		2, 3, 7,  # TITAN, FORTRESS, SIEGE
-		4, 8, 11,  # RADAR, CARRIER, OMEGA_PLATFORM
-		12:  # COMMAND
+		2, 3, 7, 4, 8, 11, 12:  # TITAN, FORTRESS, SIEGE, RADAR, CARRIER, OMEGA_PLATFORM, COMMAND
 			return true
-	return false
+		_:
+			return false
 
 ## 光环是否为全场类型
 static func is_global_aura(category: int) -> bool:

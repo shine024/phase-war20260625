@@ -21,9 +21,10 @@ static func get_attack_vs(attacker_stats: UnitStats, target_combat_kind: int) ->
 		_: return attacker_stats.attack_light
 
 ## 根据武器类型（攻击方式）获取对应防御值
-## 直射武器穿透 defense_light（对直射防御）
-## 曲射武器穿透 defense_armor（对曲射防御）
-## 空射武器穿透 defense_air（对空防御）
+## 注意：当前使用旧的属性名（defense_light/armor/air）但含义已改变
+## defense_light 现在表示对直射防御（防DIRECT武器）
+## defense_armor 现在表示对曲射防御（防INDIRECT武器）
+## defense_air 现在表示对空射防御（防AERIAL武器）
 static func get_defense_vs(target_stats: UnitStats, weapon_type: int) -> float:
 	match weapon_type:
 		GC.WeaponType.DIRECT: return target_stats.defense_light
@@ -43,11 +44,8 @@ static func calculate_damage(
 	# 1. 攻击值 = 根据目标类型选（目标轻甲→attack_light, 装甲→attack_armor, 空中→attack_air）
 	var base_damage = get_attack_vs(attacker_stats, target_stats.combat_kind)
 
-	# 2. 击穿检查: attack <= defense → 伤害=0
-	# 防御值 = 根据武器类型穿透（直射→defense_light, 曲射→defense_armor, 空射→defense_air）
+	# 2. 防御值 = 根据武器类型穿透（直射→defense_light, 曲射→defense_armor, 空射→defense_air）
 	var def = get_defense_vs(target_stats, weapon_type)
-	if base_damage <= def:
-		return 0.0
 
 	# 3. 射程衰减(仅直射)
 	if weapon_type == GC.WeaponType.DIRECT:
@@ -208,24 +206,20 @@ static func get_weapon_for_target(attacker_stats: UnitStats, target_combat_kind:
 			return attacker_stats.weapon_slots[0] if attacker_stats.weapon_slots.size() > 0 else null
 
 ## 使用槽位武器计算伤害
+## skip_defense_reduction: 跳过防御减免（格子战模式下，防御由CardGridDamage处理）
 static func calculate_damage_with_weapon(
 	attacker_stats: UnitStats,
 	target_stats: UnitStats,
 	distance: float,
 	weapon: WeaponResource,
 	attacker_enhance_level: int = 0,
-	attacker_mods: Array = []
+	attacker_mods: Array = [],
+	skip_defense_reduction: bool = false
 ) -> float:
 	if weapon == null or not weapon.enabled:
 		return 0.0
 
 	var base_damage = weapon.damage
-	# 用武器的 weapon_type 决定穿透哪个防御值（配对）
-	var def = get_defense_vs(target_stats, weapon.weapon_type)
-
-	# 击穿检查
-	if base_damage <= def:
-		return 0.0
 
 	# 射程衰减（仅直射）
 	if weapon.weapon_type == GC.WeaponType.DIRECT:
@@ -236,8 +230,12 @@ static func calculate_damage_with_weapon(
 		)
 		base_damage *= DamageAttenuation.calculate_attenuation(distance, max_range, sub_type)
 
-	# 防御减免
-	var final_damage = base_damage * (100.0 / (100.0 + def))
+	# 防御减免（非格子战模式）
+	var final_damage = base_damage
+	if not skip_defense_reduction:
+		# 用武器的 weapon_type 决定穿透哪个防御值（配对）
+		var def = get_defense_vs(target_stats, weapon.weapon_type)
+		final_damage = base_damage * (100.0 / (100.0 + def))
 
 	# 强化加成
 	if attacker_enhance_level > 0:

@@ -1,15 +1,115 @@
-[gd_scene load_steps=1 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" uid="uid://b0be1y4feesii" path="res://scenes/ui/reinforcement_panel.gd" id="1_script"]
 
-[node name="ReinforcementPanel" type="Control"]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg"]
+bg_color = Color(0.04, 0.06, 0.12, 0.97)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.2, 0.85, 0.5, 0.6)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0.2, 0.85, 0.5, 0.25)
+shadow_size = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_title_bg"]
+bg_color = Color(0.06, 0.10, 0.18, 0.9)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_scroll_bg"]
+bg_color = Color(0.03, 0.05, 0.10, 0.6)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_detail_panel"]
+bg_color = Color(0.06, 0.10, 0.18, 0.8)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2, 0.85, 0.5, 0.3)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_close_btn"]
+bg_color = Color(0.2, 0.85, 0.5, 0.12)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2, 0.85, 0.5, 0.5)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_close_btn_hover"]
+bg_color = Color(0.2, 0.85, 0.5, 0.25)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.2, 0.85, 0.5, 0.8)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_reinforce_btn"]
+bg_color = Color(0.2, 0.85, 0.5, 0.15)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.2, 0.85, 0.5, 0.7)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+shadow_color = Color(0.2, 0.85, 0.5, 0.3)
+shadow_size = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_reinforce_btn_hover"]
+bg_color = Color(0.2, 0.85, 0.5, 0.25)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.2, 0.85, 0.5, 0.9)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+shadow_color = Color(0.2, 0.85, 0.5, 0.4)
+shadow_size = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_progress_bg"]
+bg_color = Color(0.04, 0.08, 0.05, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2, 0.7, 0.38, 0.4)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_progress_fill"]
+bg_color = Color(0.3, 0.92, 0.5, 0.78)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[node name="ReinforcementPanel" type="PanelContainer"]
+custom_minimum_size = Vector2(960, 600)
+layout_mode = 2
 script = ExtResource("1_script")
+theme_override_styles/panel = SubResource("StyleBoxFlat_bg")
 
 [node name="VBoxContainer" type="VBoxContainer" parent="."]
 layout_mode = 1
@@ -18,100 +118,142 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_constants/separation = 0
 
-[node name="TitleRow" type="HBoxContainer" parent="VBoxContainer"]
+[node name="TitleRow" type="PanelContainer" parent="VBoxContainer"]
 layout_mode = 2
+custom_minimum_size = Vector2(0, 56)
+theme_override_styles/panel = SubResource("StyleBoxFlat_title_bg")
 
-[node name="TitleLabel" type="Label" parent="VBoxContainer/TitleRow"]
-layout_mode = 2
-text = "强化面板"
-
-[node name="CloseButton" type="Button" parent="VBoxContainer/TitleRow"]
-layout_mode = 2
-text = "X"
-
-[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer"]
-layout_mode = 2
-size_flags_vertical = 3
-
-[node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer/HBoxContainer"]
+[node name="TitleHBox" type="HBoxContainer" parent="VBoxContainer/TitleRow"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_stretch_ratio = 1.0
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 0
+theme_override_constants/separation = 20
 
-[node name="CardListContainer" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/ScrollContainer"]
+[node name="TitleLabel" type="Label" parent="VBoxContainer/TitleRow/TitleHBox"]
 layout_mode = 2
 size_flags_horizontal = 3
+text = "💪 强化面板"
+theme_override_font_sizes/font_size = 24
+theme_override_colors/font_color = Color(0.3, 0.95, 0.55, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.18, 0.09, 0.9)
+theme_override_constants/outline_size = 3
 
-[node name="DetailPanel" type="Panel" parent="VBoxContainer/HBoxContainer"]
+[node name="CloseButton" type="Button" parent="VBoxContainer/TitleRow/TitleHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(80, 36)
+text = "关闭"
+theme_override_font_sizes/font_size = 15
+theme_override_colors/font_color = Color(1, 1, 1, 0.85)
+theme_override_colors/font_hover_color = Color(0.3, 0.95, 0.6, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_close_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_close_btn_hover")
+
+[node name="ResourceBar" type="PanelContainer" parent="VBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 32)
+theme_override_styles/panel = SubResource("StyleBoxFlat_title_bg")
+
+[node name="ResourceHBox" type="HBoxContainer" parent="VBoxContainer/ResourceBar"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_stretch_ratio = 1.0
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 0
+theme_override_constants/separation = 40
 
-[node name="InfoLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 0.4
-offset_left = 8.0
-offset_top = 8.0
-offset_right = -8.0
-
-[node name="RankLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel"]
-layout_mode = 1
-anchors_preset = 12
-anchor_top = 0.4
-anchor_right = 1.0
-anchor_bottom = 0.55
-offset_left = 8.0
-offset_right = -8.0
-
-[node name="RankDescLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel"]
-layout_mode = 1
-anchors_preset = 12
-anchor_top = 0.55
-anchor_right = 1.0
-anchor_bottom = 0.7
-offset_left = 8.0
-offset_right = -8.0
-
-[node name="RankProgressBar" type="ProgressBar" parent="VBoxContainer/HBoxContainer/DetailPanel"]
-layout_mode = 1
-anchors_preset = 12
-anchor_top = 0.7
-anchor_right = 1.0
-anchor_bottom = 0.75
-offset_left = 8.0
-offset_right = -8.0
-value = 50.0
-
-[node name="NextRankLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel"]
-layout_mode = 1
-anchors_preset = 12
-anchor_top = 0.75
-anchor_right = 1.0
-anchor_bottom = 0.85
-offset_left = 8.0
-offset_right = -8.0
-
-[node name="ReinforceButton" type="Button" parent="VBoxContainer/HBoxContainer/DetailPanel"]
-layout_mode = 1
-anchors_preset = 3
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -80.0
-offset_top = -40.0
-offset_right = 80.0
-offset_bottom = -4.0
-text = "晋升"
-
-[node name="NanoLabel" type="Label" parent="VBoxContainer"]
+[node name="NanoLabel" type="Label" parent="VBoxContainer/ResourceBar/ResourceHBox"]
 layout_mode = 2
 text = "纳米材料：0"
+theme_override_font_sizes/font_size = 15
+theme_override_colors/font_color = Color(0.6, 0.85, 1, 0.9)
+
+[node name="MainHBox" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 0
+
+[node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer/MainHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_scroll_bg")
+
+[node name="CardListContainer" type="VBoxContainer" parent="VBoxContainer/MainHBox/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="DetailPanel" type="PanelContainer" parent="VBoxContainer/MainHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_detail_panel")
+
+[node name="InfoLabel" type="Label" parent="VBoxContainer/MainHBox/DetailPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+text = "← 请从左侧选择一张卡牌"
+theme_override_colors/font_color = Color(0.6, 0.75, 0.9, 1)
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="CardDetailVBox" type="VBoxContainer" parent="VBoxContainer/MainHBox/DetailPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+theme_override_constants/margin_left = 15
+theme_override_constants/margin_top = 15
+theme_override_constants/margin_right = 15
+theme_override_constants/margin_bottom = 15
+visible = false
+
+[node name="RankLabel" type="Label" parent="VBoxContainer/MainHBox/DetailPanel/CardDetailVBox"]
+layout_mode = 2
+text = "当前军衔"
+theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(1, 0.88, 0.35, 1)
+
+[node name="RankDescLabel" type="Label" parent="VBoxContainer/MainHBox/DetailPanel/CardDetailVBox"]
+layout_mode = 2
+text = "军衔描述"
+theme_override_font_sizes/font_size = 15
+theme_override_colors/font_color = Color(0.75, 0.8, 0.9, 1)
+autowrap_mode = 3
+
+[node name="RankProgressBar" type="ProgressBar" parent="VBoxContainer/MainHBox/DetailPanel/CardDetailVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 18)
+theme_override_styles/background = SubResource("StyleBoxFlat_progress_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_progress_fill")
+
+[node name="NextRankLabel" type="Label" parent="VBoxContainer/MainHBox/DetailPanel/CardDetailVBox"]
+layout_mode = 2
+text = "下一军衔"
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.6, 0.75, 0.9, 1)
+
+[node name="ReinforceButton" type="Button" parent="VBoxContainer/MainHBox/DetailPanel/CardDetailVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 48)
+size_flags_horizontal = 3
+text = "请选择卡牌"
+theme_override_colors/font_color = Color(0.2, 0.9, 0.5, 1)
+theme_override_colors/font_hover_color = Color(0.3, 0.95, 0.6, 1)
+theme_override_font_sizes/font_size = 18
+theme_override_styles/normal = SubResource("StyleBoxFlat_reinforce_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_reinforce_btn_hover")
 
 [node name="ResultLabel" type="Label" parent="VBoxContainer"]
 layout_mode = 2
+custom_minimum_size = Vector2(0, 28)
 text = ""
-visible = false
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 1

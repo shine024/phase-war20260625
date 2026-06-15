@@ -58,6 +58,11 @@ var _cached_hp_ratio: float = -1.0
 # 性能优化：目标查找计时器，减少频繁查找
 var _target_find_timer: float = 0.0
 const TARGET_FIND_INTERVAL: float = 0.3  # 每300ms重新查找一次目标
+## 性能优化：缓存攻击时序数据，避免每帧重新查字典
+var _cached_timing: Dictionary = {}
+var _cached_fire_range: float = -1.0
+var _cached_weapon_type: int = -1
+var _cached_target_ref: Node2D = null
 ## 跨实例共享的资源缓存
 var _res_cache: Dictionary = {}
 
@@ -85,6 +90,7 @@ func _cached_load(path: String, type_hint: int = -1) -> Resource:
 var _presentation_card_grid: bool = false
 var _hit_stun_left: float = 0.0
 var _card_tween: Tween = null
+var _rest_position: Vector2 = Vector2.ZERO
 var _card_nudge_tween: Tween = null
 var _card_grid_rest_x: float = NAN  ## 格子战术中卡片的归位 X
 
@@ -126,6 +132,7 @@ func _suppress_stray_editor_visual_nodes() -> void:
 
 func apply_card_grid_enemy_presentation() -> void:
 	_presentation_card_grid = true
+	_rest_position = position
 	velocity = Vector2.ZERO
 	var spr: Sprite2D = $Sprite2D as Sprite2D
 	var anim: AnimatedSprite2D = $AnimatedSprite2D as AnimatedSprite2D
@@ -186,9 +193,9 @@ func _play_card_hit_recoil() -> void:
 		_card_tween.kill()
 	const RECOIL_MAX_RAD: float = 0.22
 	var rest_r: float = 0.0
+	position = _rest_position
 	rotation = rest_r
 	_card_tween = create_tween()
-	# 我方受击 peak = rest - RECOIL；敌方面左，用 +RECOIL 才与卡面视觉对称
 	var peak_r: float = rest_r + RECOIL_MAX_RAD
 	_card_tween.tween_property(self, "rotation", peak_r, 0.06)
 	_card_tween.tween_property(self, "rotation", rest_r, 0.12)
@@ -453,6 +460,10 @@ func _find_target(_delta: float) -> void:
 			)
 			if nearest_target != null:
 				target = nearest_target
+				var _diag_d := global_position.distance_to(target.global_position)
+				var _diag_fr := _effective_fire_range()
+				if _diag_d > _diag_fr:  # 临时诊断：锁定射程外目标（不攻击嫌疑）
+					print("[EnemyFind] ", name, " slot=", int(get_meta("card_grid_enemy_slot",-1)), " dist=", int(_diag_d), " > fire_range=", int(_diag_fr), " → ", target.name)
 				return
 
 	# 回退到传统方法（如果空间网格不可用）
@@ -462,18 +473,19 @@ func _find_target(_delta: float) -> void:
 
 	# 性能优化：使用距离平方比较，避免昂贵的平方根计算
 	var attack_range_sq := acq * acq
-	# 先找我方战斗单位（BattleManager 节流缓存，避免每单位每帧全树遍历）
 	var gr: Array = BattleManager.get_cached_nodes_in_group("player_units") if BattleManager else get_tree().get_nodes_in_group("player_units")
+	var found_alive: bool = false
 	for n in gr:
 		if not CombatTargeting.is_attackable_combat_unit(n):
 			continue
+		found_alive = true
 		var dist_sq := global_position.distance_squared_to(n.global_position)
 		if dist_sq <= attack_range_sq:
 			target = n as Node2D
 			return
 
-	# 我方场上无单位时，攻击我方相位场（可跨全场，超射程衰减在 _do_attack）
-	if not CombatTargeting.has_alive_player_units(BattleManager):
+	# 我方场上无单位时，攻击我方相位场
+	if not found_alive:
 		var phase_field: Node2D = CombatTargeting.find_opponent_phase_field(
 			global_position, false, BattleManager, -1.0
 		)
@@ -488,27 +500,32 @@ func _process_attack_timing(delta: float) -> void:
 		_attack_phase = 0
 		_attack_phase_timer = 0.0
 		return
-	# 获取攻速参数：优先使用武器槽位
+	# 获取攻速参数：优先使用缓存（仅目标变化时重算）
 	var timing: Dictionary
 	var fire_range: float
 	var wt: int
-	if stats != null:
-		var target_stats = target.get("stats") as UnitStats
-		var target_kind: int = target_stats.combat_kind if target_stats != null else 0
-		var weapon = AttackCalculator.get_weapon_for_target(stats, target_kind)
-		if weapon and weapon.enabled:
-			timing = AttackCalculator.get_weapon_attack_timing(weapon)
-			fire_range = AttackCalculator.get_weapon_range(weapon)
-			wt = weapon.weapon_type
+	if target != _cached_target_ref:
+		_cached_target_ref = target
+		if stats != null:
+			var target_stats = target.get("stats") as UnitStats
+			var target_kind: int = target_stats.combat_kind if target_stats != null else 0
+			var weapon = AttackCalculator.get_weapon_for_target(stats, target_kind)
+			if weapon and weapon.enabled:
+				_cached_timing = AttackCalculator.get_weapon_attack_timing(weapon)
+				_cached_fire_range = AttackCalculator.get_weapon_range(weapon)
+				_cached_weapon_type = weapon.weapon_type
+			else:
+				_cached_timing = AttackCalculator.get_attack_timing(stats, target_kind)
+				_cached_fire_range = stats.attack_range
+				_cached_weapon_type = stats.weapon_type
 		else:
-			timing = AttackCalculator.get_attack_timing(stats, target_kind)
-			fire_range = stats.attack_range
-			wt = stats.weapon_type
-	else:
-		# 无stats时回退到旧逻辑
-		timing = {"cycle": attack_interval, "windup": attack_interval * 0.2, "active": 0.1, "cooldown": attack_interval * 0.7, "speed": 1.0 / attack_interval}
-		fire_range = attack_range
-		wt = 0
+			var cfg: Dictionary = _cached_archetype_cfg
+			_cached_weapon_type = int(cfg.get("weapon_type", GC.WeaponType.DIRECT))
+			_cached_timing = {"cycle": attack_interval, "windup": attack_interval * 0.2, "active": 0.1, "cooldown": attack_interval * 0.7, "speed": 1.0 / maxf(0.001, attack_interval)}
+			_cached_fire_range = attack_range
+	timing = _cached_timing
+	fire_range = _cached_fire_range
+	wt = _cached_weapon_type
 
 	var dist: float = global_position.distance_to(target.global_position)
 	# 超射程且直射时重置
@@ -549,7 +566,7 @@ func _do_attack() -> void:
 	var weapon_name_str: String = ""
 
 	# v6.0: 从 stats 武器槽位获取 weapon_name 和 dmg
-	var wt: int = 0
+	var wt: int = GC.WeaponType.DIRECT
 	var dmg_out: float = attack_damage
 	var pre_calc := false
 	if stats != null:
@@ -565,14 +582,23 @@ func _do_attack() -> void:
 			pre_calc = true
 		else:
 			wt = stats.weapon_type
-			dmg_out = AttackCalculator.get_attack_vs(stats, target_kind)
+			# 修复：使用attack_damage而非attack_light，避免未初始化导致的1点伤害
+			dmg_out = stats.attack_damage
 	else:
 		var cfg: Dictionary = _cached_archetype_cfg
-		wt = int(cfg.get("weapon_type", 0))
+		wt = int(cfg.get("weapon_type", GC.WeaponType.DIRECT))
 	if _try_fire_enemy_projectile_batch(target, wt, dmg_out, miss):
 		if _presentation_card_grid:
 			_play_card_attack_nudge()
 		return
+	# v6.2: 敌方曲射/空射走 indirect batch 批处理
+	if wt in [GC.WeaponType.INDIRECT, GC.WeaponType.AERIAL]:
+		if BattleManager and is_instance_valid(BattleManager.enemy_indirect_batch):
+			if BattleManager.enemy_indirect_batch.has_method("fire"):
+				BattleManager.enemy_indirect_batch.fire(global_position, target, dmg_out, wt, self, stats, miss, weapon_name_str)
+				if _presentation_card_grid:
+					_play_card_attack_nudge()
+				return
 	if _presentation_card_grid:
 		_play_card_attack_nudge()
 	var pellet_n := 6 if wt == 5 else 1
@@ -644,6 +670,8 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 	if attacker != null and is_instance_valid(attacker) and attacker is Node and attacker.is_in_group("player_units"):
 		last_damage_source = attacker
 	hp -= hp_loss * _incoming_damage_mul
+	if hp_loss > 0:
+		print("[Enemy] 受到伤害: ", hp_loss, " 剩余HP: ", hp, " 来自: ", attacker)
 	# 性能优化：在 HP 变化时更新 HP 条
 	_update_hp_bar()
 	if SignalBus:

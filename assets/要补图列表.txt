@@ -1,0 +1,45 @@
+     需要补的是 22 张 vis_player_050~071 缴获卡面（冷战~近未来敌人）：
+
+     | 序号 | 视觉ID         | 对应敌人                                | 时期   |
+     |------|----------------|-----------------------------------------|--------|
+     | 1    | vis_player_050 | enemy_cold_ak (冷战AK步兵)              | 冷战   |
+     | 2    | vis_player_051 | enemy_cold_m60 (冷战M60机枪)            | 冷战   |
+     | 3    | vis_player_052 | enemy_cold_btr (冷战BTR装甲车)          | 冷战   |
+     | 4    | vis_player_053 | enemy_cold_m113 (冷战M113)              | 冷战   |
+     | 5    | vis_player_054 | elite_cold_spetsnaz (冷战精英特种兵)    | 冷战   |
+     | 6    | vis_player_055 | elite_cold_t72 (冷战精英T-72)           | 冷战   |
+     | 7    | vis_player_056 | boss_cold_mig (冷战BOSS米格)            | 冷战   |
+     | 8    | vis_player_057 | enemy_modern_marine (现代海军陆战)      | 现代   |
+     | 9    | vis_player_058 | enemy_modern_technical (现代武装皮卡)   | 现代   |
+     | 10   | vis_player_059 | enemy_modern_stryker (现代斯特赖克)     | 现代   |
+     | 11   | vis_player_060 | enemy_modern_mlrs (现代MLRS火箭)        | 现代   |
+     | 12   | vis_player_061 | elite_modern_delta (现代精英三角洲)     | 现代   |
+     | 13   | vis_player_062 | elite_modern_abrams (现代精英M1A2)      | 现代   |
+     | 14   | vis_player_063 | elite_modern_apache (现代精英阿帕奇)    | 现代   |
+     | 15   | vis_player_064 | boss_modern_command (现代BOSS指挥)      | 现代   |
+     | 16   | vis_player_065 | enemy_future_drone (近未来无人机)       | 近未来 |
+     | 17   | vis_player_066 | enemy_future_cyborg (近未来赛博格)      | 近未来 |
+     | 18   | vis_player_067 | enemy_future_mech (近未来机甲)          | 近未来 |
+     | 19   | vis_player_068 | enemy_future_hovertank (近未来悬浮坦克) | 近未来 |
+     | 20   | vis_player_069 | elite_future_spectre (近未来精英幽灵)   | 近未来 |
+     | 21   | vis_player_070 | elite_future_colossus (近未来精英巨像)  | 近未来 |
+     | 22   | vis_player_071 | boss_future_nexus (近未来BOSS枢纽)      | 近未来 |
+
+     这些是 C 段战场敌人 vis_enemy_050~071 的水平翻转版本，用于势力卡面。                                                                                                                                                                                                                                                                                                                                                                要我用 agnes-image 批量生成吗？还是你有其他安排？                                                                                                                                                                                                                                                                                                                                                                               ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+                                                                                                                                                                                                                  ────────────────────────────────────────                                                                                                                                                                          ● 新复制进来的有这些么                                                                                                                                                                                            ────────────────────────────────────────                                                                                                                                                                          
+  ┊ ??? exec      import os  0.4s [File "C:\Users\JIANCH~1.TAN\AppData\Local\Tem...]
+  ┊ ??? exec      import os  0.4s [Traceback (most recent call last):                                                                                                                                               File "C...]                                                                                                                                                                                                       ┊ ??? exec      import os  0.2s
+ ─  ? Hermes  ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+     拷进来的100张里没有 vis_player_050~071。
+
+     拷进来的都是 _agent_source 里的源文件，包括：
+     - vis_enemy_036_mp18.png ~ vis_enemy_071_nexus.png（36张，但代码引用的是精简版 vis_enemy_XXX.png）
+     - vis_player_001_scout_car.png ~ vis_player_035_abramsmk2.png（35张，A段+B段）
+     - vis_pool_001_volunteer.png ~ vis_pool_029_ps9.png（29张）
+     - 还有一些 fort_* 和 omega_platform
+
+     缺失的 22 张 vis_player_050~071 拷进来一份都没——这些是之前没做过/没存到 _agent_source 的缴获卡面。
+
+     要我用 agnes-image 批量生成这22张吗？
+

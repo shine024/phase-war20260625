@@ -40,35 +40,35 @@ const IMPACT_TEX_EXPLOSIVE := preload(TEX_DIR + "weapon_impact_explosive.png")
 
 const PROJ_TEX_SCALE: Dictionary = {
 	# New enum: 0=DIRECT, 1=INDIRECT, 2=AERIAL
-	0: 0.09,
-	1: 0.15,
-	2: 0.16,
+	0: 0.27,
+	1: 0.45,
+	2: 0.48,
 	# Legacy: SMG=0, RIFLE=1, MG=2, ROCKET=3, PISTOL=4, SHOTGUN=5, SNIPER=6, FLAK=7, LASER=8, MISSILE=9, OMEGA=10, RAIL=11
-	3: 0.15,
-	5: 0.11,
-	6: 0.11,
-	7: 0.13,
-	8: 0.10,
-	9: 0.16,
-	10: 0.17,
-	11: 0.16,
-	4: 0.08,
+	3: 0.45,
+	5: 0.33,
+	6: 0.33,
+	7: 0.39,
+	8: 0.30,
+	9: 0.48,
+	10: 0.51,
+	11: 0.48,
+	4: 0.24,
 }
 
 const IMPACT_TEX_SCALE: Dictionary = {
 	# New enum
-	0: 0.10,  # DIRECT
-	1: 0.15,  # INDIRECT -> explosive
-	2: 0.16,  # AERIAL -> explosive
+	0: 0.30,   # DIRECT
+	1: 0.45,   # INDIRECT
+	2: 0.48,   # AERIAL
 	# Legacy
-	4: 0.10,
-	5: 0.12,
-	6: 0.11,
-	7: 0.14,
-	8: 0.11,
-	9: 0.16,
-	10: 0.18,
-	11: 0.17,
+	4: 0.30,
+	5: 0.36,
+	6: 0.33,
+	7: 0.42,
+	8: 0.33,
+	9: 0.48,
+	10: 0.54,
+	11: 0.51,
 }
 
 const REF_TEX_PX: float = 512.0
@@ -150,24 +150,24 @@ static func impact_texture_by_name(weapon_name: String) -> Texture2D:
 static func proj_scale_by_name(weapon_name: String) -> float:
 	var cat: String = WeaponVfxMapping.get_category(weapon_name)
 	match cat:
-		"energy", "railgun": return 0.16 * PROJ_DISPLAY_SCALE_MUL
-		"missile": return 0.16 * PROJ_DISPLAY_SCALE_MUL
-		"cannon": return 0.15 * PROJ_DISPLAY_SCALE_MUL
-		"mortar": return 0.15 * PROJ_DISPLAY_SCALE_MUL
-		"machinegun": return 0.10 * PROJ_DISPLAY_SCALE_MUL
-		"rifle": return 0.10 * PROJ_DISPLAY_SCALE_MUL
-		_: return 0.10 * PROJ_DISPLAY_SCALE_MUL
+		"energy", "railgun": return 0.48 * PROJ_DISPLAY_SCALE_MUL
+		"missile": return 0.48 * PROJ_DISPLAY_SCALE_MUL
+		"cannon": return 0.45 * PROJ_DISPLAY_SCALE_MUL
+		"mortar": return 0.45 * PROJ_DISPLAY_SCALE_MUL
+		"machinegun": return 0.30 * PROJ_DISPLAY_SCALE_MUL
+		"rifle": return 0.30 * PROJ_DISPLAY_SCALE_MUL
+		_: return 0.30 * PROJ_DISPLAY_SCALE_MUL
 
 
 static func impact_scale_by_name(weapon_name: String) -> float:
 	var cat: String = WeaponVfxMapping.get_category(weapon_name)
 	match cat:
-		"energy", "railgun": return 0.17
-		"missile": return 0.16
-		"cannon", "mortar": return 0.15
-		"machinegun": return 0.10
-		"rifle": return 0.10
-		_: return 0.11
+		"energy", "railgun": return 0.51
+		"missile": return 0.48
+		"cannon", "mortar": return 0.45
+		"machinegun": return 0.30
+		"rifle": return 0.30
+		_: return 0.33
 
 
 ## ========== 旧接口（兼容） ==========
@@ -198,6 +198,7 @@ static func proj_scale(weapon_type: int) -> float:
 
 static func proj_quad_size(weapon_type: int) -> Vector2:
 	var s := proj_scale(weapon_type) * REF_TEX_PX
+	prints("[PROJ_QS]", "wt=", weapon_type, "scale=", proj_scale(weapon_type), "final_size=", s)
 	return Vector2(s, s)
 
 

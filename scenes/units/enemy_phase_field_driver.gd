@@ -288,7 +288,8 @@ func _add_unit_to_battle(unit: Node2D, current_count: int) -> void:
 	if enemy_container == null:
 		enemy_container = battlefield_node
 	enemy_container.add_child(unit)
-	var slot_i: int = current_count % BattleSlotGrid.SLOT_COUNT
+	# 与 _card_grid_next_free_enemy_slot_index 一致：从远端 slot(最大索引，离玩家最远)开始填
+	var slot_i: int = (BattleSlotGrid.SLOT_COUNT - 1) - (current_count % BattleSlotGrid.SLOT_COUNT)
 	if battlefield_node.has_method("get_card_grid_enemy_slot_global"):
 		unit.global_position = battlefield_node.get_card_grid_enemy_slot_global(slot_i)
 		unit.set_meta("card_grid_enemy_slot", slot_i)

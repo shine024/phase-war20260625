@@ -114,12 +114,15 @@ var _presentation_card_grid: bool = false
 var _hit_stun_left: float = 0.0
 var _card_tween: Tween = null
 var _card_nudge_tween: Tween = null
+var _hit_flash_tween: Tween = null
+var _hit_shake_tween: Tween = null
 var _card_grid_rest_x: float = NAN  ## 格子战术中卡片的归位 X（首次 nudge 时记录）
 ## 卡牌能力冷却 CD（本地 float，避免每帧 meta 字典读写）
 var _medic_aura_cd: float = 0.0
 var _storm_rider_cd: float = 0.0
 var _repair_fortress_cd: float = 0.0
 var _buff_strip_timer: float = 0.0
+var _ability_accum: float = 0.0  ## 平台能力累加器（降低调用频率）
 var _buff_strip_signature: String = ""
 ## 跨实例共享的资源缓存，避免运行时重复 load()
 var _res_cache: Dictionary = {}
@@ -157,7 +160,15 @@ func setup(p_is_player: bool, p_stats: UnitStats, forced_enemy_visual_archetype_
 			var cfg: Dictionary = w.duplicate()
 			if not cfg.has("timer"):
 				cfg["timer"] = 0.0
+			if not cfg.has("weapon_type"):
+				cfg["weapon_type"] = GC.WeaponType.DIRECT
+			if not cfg.has("damage"):
+				cfg["damage"] = 0.0
 			_weapon_cfgs.append(cfg)
+	elif stats != null:
+		# 确保 _weapon_cfgs 至少有一个占位项（兼容旧逻辑）
+		var fallback: Dictionary = {"timer": 0.0, "weapon_type": GC.WeaponType.DIRECT, "damage": 0.0, "phase": AttackPhase.IDLE, "phase_timer": 0.0}
+		_weapon_cfgs.append(fallback)
 	_base_weapon_damages.clear()
 	for w in stats.weapons:
 		var d0 := 0.0
@@ -377,7 +388,6 @@ func _play_card_hit_recoil() -> void:
 		return
 	if _card_tween != null and _card_tween.is_valid():
 		_card_tween.kill()
-	# 格子战场卡面以竖直为姿态基准；若用当前 rotation 作回弹目标，连续受击会在「未回正」上叠角度，最后横倒
 	const RECOIL_MAX_RAD: float = 0.22
 	var rest_r: float = 0.0
 	rotation = rest_r
@@ -385,6 +395,35 @@ func _play_card_hit_recoil() -> void:
 	var peak_r: float = rest_r - RECOIL_MAX_RAD
 	_card_tween.tween_property(self, "rotation", peak_r, 0.06)
 	_card_tween.tween_property(self, "rotation", rest_r, 0.12)
+
+
+## 受击闪白反馈（复用Tween，避免每击new）
+func _play_hit_flash() -> void:
+	if is_preview_mode:
+		return
+	var flash_color := Color.RED if is_player else Color.WHITE
+	var original_modulate := modulate
+	modulate = flash_color
+	if _hit_flash_tween != null and _hit_flash_tween.is_valid():
+		_hit_flash_tween.kill()
+	_hit_flash_tween = create_tween()
+	_hit_flash_tween.tween_property(self, "modulate", original_modulate, 0.1)
+
+
+## 受击缩放抖动反馈（复用Tween，避免每击new）
+func _play_hit_shake() -> void:
+	if is_preview_mode:
+		return
+	var base_scale := Vector2.ONE
+	scale = base_scale
+	if _hit_shake_tween != null and _hit_shake_tween.is_valid():
+		_hit_shake_tween.kill()
+	_hit_shake_tween = create_tween()
+	_hit_shake_tween.tween_property(self, "scale", base_scale * 0.85, 0.03)
+	_hit_shake_tween.tween_property(self, "scale", base_scale * 1.05, 0.03)
+	_hit_shake_tween.tween_property(self, "scale", base_scale * 0.95, 0.03)
+	_hit_shake_tween.tween_property(self, "scale", base_scale, 0.03)
+
 
 ## 单武器：法则改写 `stats` 后，把唯一槽位 `_weapon_cfgs[0]` 与 `stats.weapons[0]` 与主行对齐
 func _sync_single_weapon_cfg_from_stats() -> void:
@@ -409,7 +448,7 @@ func _sync_weapon_cfgs_from_stats() -> void:
 	if _weapon_cfgs.size() == 1 and stats.weapons.size() == 1:
 		_sync_single_weapon_cfg_from_stats()
 		return
-	for i in range(mini(_weapon_cfgs.size(), stats.weapons.size())):
+	for i in range(min(_weapon_cfgs.size(), stats.weapons.size())):
 		var cfg: Dictionary = _weapon_cfgs[i] as Dictionary
 		var sw: Dictionary = stats.weapons[i] as Dictionary
 		if sw.has("damage"):
@@ -843,19 +882,23 @@ func _physics_process(delta: float) -> void:
 	if _law_regen_per_sec > 0.0 and target == null and hp < stats.max_hp:
 		hp = minf(stats.max_hp, hp + _law_regen_per_sec * delta)
 		_update_hp_bar()  # 回血时更新 HP 条
-	# 卡牌特殊能力：平台每帧效果（使用缓存的布尔值，避免每帧字符串hash）
+	# 卡牌特殊能力：平台效果（累加器降低调用频率，每0.2s结算一次）
 	if _has_regen_frame or _has_abrams_mk2 or _has_storm_rider or _has_repair_fortress:
 		if target == null:
-			if _has_regen_frame:
-				if CardAbilityManager.apply_regen_frame_regen(self, delta) > 0.0:
-					_update_hp_bar()
-			if _has_abrams_mk2:
-				if CardAbilityManager.apply_abrams_mk2_regen(self, delta) > 0.0:
-					_update_hp_bar()
-		if _has_storm_rider:
-			CardAbilityManager.apply_storm_rider_speed(self, delta)
-		if _has_repair_fortress:
-			CardAbilityManager.apply_repair_fortress_heal(self, delta)
+			_ability_accum += delta
+			if _ability_accum >= 0.2:
+				var dt_acc: float = _ability_accum
+				_ability_accum = 0.0
+				if _has_regen_frame:
+					if CardAbilityManager.apply_regen_frame_regen(self, dt_acc) > 0.0:
+						_update_hp_bar()
+				if _has_abrams_mk2:
+					if CardAbilityManager.apply_abrams_mk2_regen(self, dt_acc) > 0.0:
+						_update_hp_bar()
+				if _has_storm_rider:
+					CardAbilityManager.apply_storm_rider_speed(self, dt_acc)
+				if _has_repair_fortress:
+					CardAbilityManager.apply_repair_fortress_heal(self, dt_acc)
 
 	# ── 平台类型光环系统（仅 MEDIC，其余由 AuraManager Timer 驱动） ──
 	if stats != null and not is_deploy_ghost and not is_preview_mode:
@@ -1005,12 +1048,18 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 	if _has_titan_mk2:
 		hp_loss = CardAbilityManager.apply_titan_mk2_damage_reduction(hp_loss)
 	hp -= hp_loss
+
 	# 性能优化：在 HP 变化时更新 HP 条
 	_update_hp_bar()
 	if SignalBus:
 		SignalBus.unit_damaged.emit(self, is_player, hp_loss, global_position)
 	if hp <= 0:
 		_die()
+		return  # 死亡后跳过受击反馈（节点即将 freed，tween 会报错）
+
+	# 受击闪白/抖动反馈（仅存活单位；死亡时 queue_free 后 tween 会写 freed instance）
+	_play_hit_flash()
+	_play_hit_shake()
 
 ## 治疗方法（用于词条吸血效果）
 func heal(amount: float) -> void:

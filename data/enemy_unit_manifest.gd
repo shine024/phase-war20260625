@@ -34,7 +34,26 @@ const FOE_SPECIAL_CARD_IDS: Array[String] = [
 	"bulwark", "titan_mk2", "storm_rider", "heavy_carrier", "regen_frame", "abrams_mk2",
 ]
 
+## C' 段：缴获卡面映射（C段固定敌人的玩家视角版本，14张）
+const CAPTURED_ENEMY_IDS: Array[String] = [
+	"enemy_ww1_infantry_basic", "enemy_ww1_infantry_rifle", "enemy_ww1_mg_nest", "enemy_ww1_mortar",
+	"elite_ww1_storm", "elite_ww1_armored", "boss_ww1_av7",
+	"enemy_ww2_infantry", "enemy_ww2_rifleman", "enemy_ww2_mg42", "enemy_ww2_panzerschreck",
+	"elite_ww2_paratrooper", "elite_ww2_panther", "boss_ww2_kingtiger",
+]
+
+## E 段：堡垒类别（固定阵地类型，10张）
+const FORT_ENEMY_IDS: Array[String] = [
+	"fort_ww1_pillbox", "fort_ww1_artillery",
+	"fort_ww2_bunker", "fort_ww2_flak",
+	"fort_cold_missile", "fort_cold_radar",
+	"fort_modern_citadel", "fort_modern_phalanx",
+	"fort_future_ion", "fort_future_shield",
+]
+
 ## C 段：固定敌人（与 enemy_archetypes.json 一致，36张）
+## 前14张（索引0-13）缴获卡面 → vis_player_036~049（C'段已接入）
+## 后22张（索引14-35）缴获卡面 → vis_player_050~071（需生成素材后接入）
 const FIXED_ENEMY_IDS: Array[String] = [
 	"enemy_ww1_infantry_basic", "enemy_ww1_infantry_rifle", "enemy_ww1_mg_nest", "enemy_ww1_mortar",
 	"elite_ww1_storm", "elite_ww1_armored", "boss_ww1_av7",
@@ -399,7 +418,7 @@ static func _ensure_unit_icon_map() -> void:
 
 
 static func get_entry_count() -> int:
-	return 28 + 6 + 36 + 29
+	return 28 + 6 + 36 + 29 + 10  # A段 + B段 + C段 + D段 + E段堡垒
 
 
 static func captured_card_id_for(archetype_id: String) -> String:
@@ -427,6 +446,8 @@ static func get_entries() -> Array:
 		rows.append(_make_fixed_row(eid))
 	for i in range(POOL_ENEMY_IDS.size()):
 		rows.append(_make_pool_row(i))
+	for fid in FORT_ENEMY_IDS:
+		rows.append(_make_fort_row(fid))
 	_entries_cache = rows
 	return _entries_cache
 
@@ -537,6 +558,37 @@ static func _make_pool_row(index: int) -> Dictionary:
 			"tags": _tags_for_kind(kind),
 			"swarm_unit": (kind == 0),
 			"drops": [{"card_id": captured_card_id_for(aid), "chance": 0.08}],
+		},
+	}
+
+
+## E 段：堡垒类别（固定阵地，combat_kind=4）
+static func _make_fort_row(fort_id: String) -> Dictionary:
+	var era: int = _era_from_fort_id(fort_id)
+	var display_name: String = _get_fort_display_name(fort_id)
+	return {
+		"archetype_id": fort_id,
+		"display_name": display_name,
+		"era": era,
+		"visual_id": "vis_enemy_%03d" % (72 + FORT_ENEMY_IDS.find(fort_id)),
+		"drop_card_id": captured_card_id_for(fort_id),
+		"template_card_id": "",
+		"drop_trigger": "on_kill",
+		"drop_chance": 0.12,
+		"archetype_config": {
+			"era": era,
+			"display_name": display_name,
+			"hp": 0.0,  # 从 default_cards 读取
+			"speed": 0.0,
+			"attack_damage": 0.0,
+			"attack_range": 0.0,
+			"attack_interval": 0.0,
+			"combat_kind": 4,  # 堡垒
+			"weapon_label": "",
+			"defense": 0.0,
+			"tags": ["fortress", "immobile"],
+			"swarm_unit": false,
+			"drops": [{"card_id": captured_card_id_for(fort_id), "chance": 0.12}],
 		},
 	}
 
@@ -687,6 +739,35 @@ static func _era_from_enemy_id(enemy_id: String) -> int:
 	return 0
 
 
+static func _era_from_fort_id(fort_id: String) -> int:
+	if fort_id.contains("ww1"):
+		return 0
+	if fort_id.contains("ww2"):
+		return 1
+	if fort_id.contains("cold"):
+		return 2
+	if fort_id.contains("modern"):
+		return 3
+	if fort_id.contains("future"):
+		return 4
+	return 0
+
+
+static func _get_fort_display_name(fort_id: String) -> String:
+	match fort_id:
+		"fort_ww1_pillbox": return "混凝土机枪碉堡"
+		"fort_ww1_artillery": return "要塞炮台"
+		"fort_ww2_bunker": return "混凝土碉堡"
+		"fort_ww2_flak": return "88mm防空塔"
+		"fort_cold_missile": return "导弹发射井"
+		"fort_cold_radar": return "雷达站"
+		"fort_modern_citadel": return "要塞核心"
+		"fort_modern_phalanx": return "近防炮系统"
+		"fort_future_ion": return "离子炮台"
+		"fort_future_shield": return "能量护盾发生器"
+		_: return fort_id
+
+
 static func _tag_tier_from_id(enemy_id: String) -> String:
 	if enemy_id.begins_with("boss_"):
 		return "boss"
@@ -708,16 +789,30 @@ static func _default_drop_chance(tier: String) -> float:
 ## 与 docs/card_icon_manifest_100_agent_prompts.md 编号一致
 static func _visual_id_for_source_id(source_id: String) -> String:
 	var sid: String = source_id.strip_edges()
-	var special_idx: int = FOE_SPECIAL_CARD_IDS.find(sid)
-	if special_idx >= 0:
-		return "vis_player_%03d" % (30 + special_idx)
-	var platform_idx: int = FOE_PLATFORM_CARD_IDS.find(sid)
-	if platform_idx >= 0:
-		return "vis_player_%03d" % (platform_idx + 1)
+	## 堡垒类别 → vis_enemy_072~081
+	for i in range(FORT_ENEMY_IDS.size()):
+		if sid == FORT_ENEMY_IDS[i]:
+			return "vis_enemy_%03d" % (72 + i)
+	## 缴获卡面 → vis_player_036~049
+	for i in range(CAPTURED_ENEMY_IDS.size()):
+		if sid == CAPTURED_ENEMY_IDS[i]:
+			return "vis_player_%03d" % (36 + i)
+	## 固定敌人缴获卡面 → vis_player_036~071
+	## 索引0-13 → vis_player_036~049 (C'段)
+	## 索引14-35 → vis_player_050~071 (C''段)
 	var fixed_idx: int = FIXED_ENEMY_IDS.find(sid)
 	if fixed_idx >= 0:
-		return "vis_enemy_%03d" % (36 + fixed_idx)
+		return "vis_player_%03d" % (36 + fixed_idx)
+	## 补充池 → vis_pool_001~029
 	var pool_idx: int = POOL_ENEMY_IDS.find(sid)
 	if pool_idx >= 0:
 		return "vis_pool_%03d" % (pool_idx + 1)
+	## 特殊/精英 → vis_player_030~035
+	var special_idx: int = FOE_SPECIAL_CARD_IDS.find(sid)
+	if special_idx >= 0:
+		return "vis_player_%03d" % (30 + special_idx)
+	## 平台 → vis_player_001~028
+	var platform_idx: int = FOE_PLATFORM_CARD_IDS.find(sid)
+	if platform_idx >= 0:
+		return "vis_player_%03d" % (platform_idx + 1)
 	return sid

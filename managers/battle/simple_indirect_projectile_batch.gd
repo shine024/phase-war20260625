@@ -1,7 +1,9 @@
 extends Node2D
-## 玩家曲射弹道批处理：迫击炮/火箭/导弹使用 MultiMesh 绘制，减轻 Bullet 节点数量。
+## 曲射弹道批处理（玩家/敌方共用）：迫击炮/火箭/导弹使用 MultiMesh 绘制，减轻 Bullet 节点数量。
 ## 支持 weapon_type 3(ROCKET)/7(FLAK)/9(MISSILE) + 新枚举 INDIRECT(1)/AERIAL(2)
 ## Fix-1/3/5/6: 统一新枚举路由、AOE上限、禁用炮口火焰、空弹道跳过同步
+## v6.2: 支持敌方曲射批处理，通过 is_player_side 区分阵营颜色
+## Fix-9: 修复曲射批处理的防御计算（三攻三防系统）
 
 const GC = preload("res://resources/game_constants.gd")
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
@@ -19,6 +21,10 @@ const _BATCH_WEAPON_TYPES: Array[int] = [
 	2,  # AERIAL (新枚举 GC.WeaponType.AERIAL)
 ]
 const _PLAYER_TINT := Color(0.95, 0.92, 0.5)
+const _ENEMY_TINT := Color(1.0, 0.38, 0.52)
+
+## 阵营标识（由 BattleManager 在创建时设置）
+var is_player_side: bool = true
 
 ## 武器配置
 const _WEAPON_CONFIG: Dictionary = {
@@ -33,7 +39,8 @@ var _proj: Array = []
 var _layers: Dictionary = {}  # weapon_type -> MultiMeshInstance2D
 
 func _ready() -> void:
-	set_physics_process(true)
+	# 初始化时不启用 physics_process，等有弹道时再启用
+	set_physics_process(false)
 	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	z_as_relative = false
 	z_index = 3
@@ -41,7 +48,8 @@ func _ready() -> void:
 		_layers[wt] = _make_layer(wt)
 		_layers[wt].show()
 		add_child(_layers[wt])
-	print("[IndirectBatch] initialized with ", _BATCH_WEAPON_TYPES.size(), " layers")
+	var side_str := "玩家" if is_player_side else "敌方"
+	print("[IndirectBatch] %s侧 initialized with " % side_str, _BATCH_WEAPON_TYPES.size(), " layers")
 
 func _make_layer(wt: int) -> MultiMeshInstance2D:
 	var mmi := MultiMeshInstance2D.new()
@@ -74,8 +82,9 @@ func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, shoo
 	if not _layers.has(wt):
 		push_error("[IndirectBatch] weapon_type %d not supported" % wt)
 		return
+	# 首发弹道时启用 physics_process
 	if _proj.is_empty():
-		print("[IndirectBatch] first fire wt=", wt, " from=", from, " to=", tgt.global_position)
+		set_physics_process(true)
 
 	var start := from
 	var end := tgt.global_position
@@ -101,7 +110,7 @@ func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, shoo
 		"prev_pos": from,
 		"muzzle_spawned": true,  # Fix-5: 禁用炮口火焰，标记为已生成
 		"impact_spawned": false,
-		"is_player": true,
+		"is_player": is_player_side,
 	})
 
 func clear_all() -> void:
@@ -116,11 +125,12 @@ func _physics_process(delta: float) -> void:
 	if tree == null or tree.paused:
 		return
 	if _proj.is_empty():
-		# Fix-6: 空弹道时清除 MultiMesh 实例并跳过同步
+		# Fix-6: 空弹道时清除 MultiMesh 实例并跳过同步，禁用 physics_process
 		for wt_key: int in _BATCH_WEAPON_TYPES:
 			var mmi: MultiMeshInstance2D = _layers.get(wt_key)
 			if mmi and mmi.multimesh and mmi.multimesh.instance_count > 0:
 				mmi.multimesh.instance_count = 0
+		set_physics_process(false)
 		return
 
 	var write: int = 0
@@ -172,11 +182,17 @@ func _sync_multimesh_layers() -> void:
 		var wt_r: int = int(r["wt"])
 		if counts.has(wt_r):
 			counts[wt_r] += 1
+	var tint := _PLAYER_TINT if is_player_side else _ENEMY_TINT
 	var cursors: Dictionary = {}
 	for wt: int in _BATCH_WEAPON_TYPES:
+		var n: int = int(counts[wt])
 		var mmi: MultiMeshInstance2D = _layers[wt]
 		var mm: MultiMesh = mmi.multimesh
-		var n: int = int(counts[wt])
+		# 优化：跳过空层
+		if n == 0:
+			if mm.instance_count > 0:
+				mm.instance_count = 0
+			continue
 		mm.instance_count = n
 		cursors[wt] = 0
 	for r: Dictionary in _proj:
@@ -190,26 +206,90 @@ func _sync_multimesh_layers() -> void:
 		var global_pos: Vector2 = r["pos"]
 		var local_pos: Vector2 = to_local(global_pos)
 		mm2.set_instance_transform_2d(idx, Transform2D(dir.angle(), local_pos))
-		mm2.set_instance_color(idx, _PLAYER_TINT)
+		mm2.set_instance_color(idx, tint)
 
 func _apply_hit(r: Dictionary) -> void:
-	var tgt: Node2D = r["tgt"]
-	if tgt == null or not is_instance_valid(tgt):
+	var raw_tgt: Variant = r.get("tgt")
+	if raw_tgt == null or not is_instance_valid(raw_tgt):
 		return
+	var tgt: Node2D = raw_tgt
 
 	var wt: int = int(r["wt"])
 	var hit_pos: Vector2 = r["pos"]
 
 	# 生成命中特效
+	var proj_is_player: bool = bool(r.get("is_player", true))
 	if not bool(r.get("forced_miss", false)):
-		_spawn_impact_explosion(hit_pos)
+		_spawn_impact_explosion(hit_pos, proj_is_player)
 
 	# 造成伤害
 	if bool(r.get("forced_miss", false)):
 		CombatFeedback.show_miss(tgt.global_position, tgt)
 	else:
 		var raw_dmg: float = float(r["dmg"])
+		var shooter_raw: Variant = r["shooter"]
+		var shooter: Node2D = shooter_raw if shooter_raw != null and is_instance_valid(shooter_raw) and shooter_raw is Node2D else null
+		var shooter_stats: Variant = r["shooter_stats"]
 		var explosion_r: float = _WEAPON_CONFIG.get(wt, {}).get("explosion_radius", 40.0)
+
+		# Fix-9: 修复曲射批处理的防御计算（v6.2 核心修复）
+		# 应用防御减免、改造加成、强化加成
+		var final_primary_dmg: float = raw_dmg
+
+		if tgt.has_method("take_damage"):
+			var target_stats: UnitStats = tgt.get("stats") as UnitStats if tgt != null and "stats" in tgt else null
+			if target_stats != null and shooter_stats != null and shooter_stats is UnitStats:
+				# 检测格子战模式：防御由 CardGridDamage 处理，跳过防御减免避免双重计算
+				var is_card_grid := false
+				var tree := get_tree()
+				if tree != null:
+					var gm: Node = tree.root.get_node_or_null("GameManager")
+					if gm != null and gm.has_method("is_card_grid_battle"):
+						is_card_grid = gm.is_card_grid_battle()
+
+				# 1. 根据武器类型获取对应的防御值（三攻三防系统）
+				# 2. 应用防御减免（仅在非格子战模式）
+				if not is_card_grid:
+					var def_val: float = AttackCalculator.get_defense_vs(target_stats, wt)
+					final_primary_dmg = raw_dmg * (100.0 / (100.0 + def_val))
+
+				# 3. 强化加成
+				if shooter_stats.enhance_level > 0:
+					var enhance_mult: float
+					if shooter_stats.enhance_level >= 10:
+						enhance_mult = 1.60
+					elif shooter_stats.enhance_level >= 9:
+						enhance_mult = 1.50
+					else:
+						enhance_mult = 1.0 + float(shooter_stats.enhance_level) * 0.05
+					final_primary_dmg *= enhance_mult
+
+				# 4. 改造加成（如果有mods）
+				var mods: Array = []
+				if shooter_stats.has_method("get_mod_array"):
+					mods = shooter_stats.get_mod_array()
+				if mods and not mods.is_empty():
+					var mod_mult: float = AttackCalculator.get_mod_damage_multiplier(mods, target_stats.combat_kind)
+					final_primary_dmg *= mod_mult
+
+				# 5. 词缀战斗效果（如果shooter节点有效）
+				if shooter and is_instance_valid(shooter):
+					# 5.1 武器伤害变异（15%概率双倍伤害）
+					if shooter_stats.has_weapon_dmg_mutation and randf() < 0.15:
+						final_primary_dmg *= 2.0
+
+				# 6. 卡牌特殊能力：命中前修改伤害
+				if shooter and is_instance_valid(shooter):
+					var ability_result: Dictionary = {"damage_bonus": 0.0, "damage_mult_bonus": 0.0}
+					if shooter.has_method("get_script"):
+						var script = shooter.get_script()
+						if script and script.has_method("on_bullet_hit_post"):
+							ability_result = shooter.get_script().on_bullet_hit_post(
+								shooter, tgt, shooter_stats, hit_pos,
+								final_primary_dmg, r.get("is_player", true)
+							)
+							final_primary_dmg += ability_result["damage_bonus"]
+							final_primary_dmg *= (1.0 + ability_result["damage_mult_bonus"])
 
 		# Fix-3: AOE 伤害，限制溅射目标数量
 		var targets: Array = _get_aoe_targets(hit_pos, explosion_r, tgt)
@@ -220,18 +300,41 @@ func _apply_hit(r: Dictionary) -> void:
 			if splash_count >= MAX_AOE_TARGETS_PER_HIT:
 				break
 			if target.has_method("take_damage"):
-				var splash_dmg := raw_dmg * 0.5
-				var shooter_raw: Variant = r["shooter"]
-				var shooter: Node2D = shooter_raw if shooter_raw != null and is_instance_valid(shooter_raw) and shooter_raw is Node2D else null
-				target.take_damage(splash_dmg, shooter)
+				# 溅射目标也需要防御计算（格子战模式下跳过，由CardGridDamage处理）
+				var splash_raw: float = raw_dmg * 0.5
+				var splash_final: float = splash_raw
+
+				var target_stats_splash: UnitStats = target.get("stats") as UnitStats if target != null and "stats" in target else null
+				if target_stats_splash != null and shooter_stats != null and shooter_stats is UnitStats:
+					# 检测格子战模式
+					var is_card_grid := false
+					var tree := get_tree()
+					if tree != null:
+						var gm: Node = tree.root.get_node_or_null("GameManager")
+						if gm != null and gm.has_method("is_card_grid_battle"):
+							is_card_grid = gm.is_card_grid_battle()
+
+					# 仅在非格子战模式下应用防御减免
+					if not is_card_grid:
+						var def_val_splash: float = AttackCalculator.get_defense_vs(target_stats_splash, wt)
+						if splash_raw > def_val_splash:
+							splash_final = splash_raw * (100.0 / (100.0 + def_val_splash))
+						else:
+							splash_final = 0.0
+
+				if splash_final <= 0.0:
+					continue
+
+				target.take_damage(splash_final, shooter)
 				splash_count += 1
 
-		# 主目标伤害
-		if tgt.has_method("take_damage"):
-			var shooter_raw: Variant = r["shooter"]
-			var shooter: Node2D = shooter_raw if shooter_raw != null and is_instance_valid(shooter_raw) and shooter_raw is Node2D else null
-			tgt.take_damage(raw_dmg, shooter)
+		# 主目标伤害（应用完整计算）
+		if tgt.has_method("take_damage") and final_primary_dmg > 0.0:
+				print("[IndirectBatch] 造成曲射伤害: ", final_primary_dmg, " 目标: ", tgt.name, " 原始伤害: ", raw_dmg)
+				tgt.take_damage(final_primary_dmg, shooter)
 
+		else:
+			print("[IndirectBatch] 伤害为0或目标无take_damage! final_primary_dmg=", final_primary_dmg, " tgt=", tgt)
 	# Fix-8: 性能监控
 	if _proj.size() > 20 and Engine.get_frames_drawn() % 300 == 0:
 		push_warning("[IndirectBatch] 高弹道数: %d" % _proj.size())
@@ -268,7 +371,7 @@ func _get_aoe_targets(center: Vector2, radius: float, primary: Node2D) -> Array:
 	return targets
 
 ## 爆炸特效
-func _spawn_impact_explosion(pos: Vector2) -> void:
+func _spawn_impact_explosion(pos: Vector2, is_player_proj: bool = true) -> void:
 	const ARTILLERY_IMPACT_TEX = preload("res://assets/effects/projectiles/weapons_realistic/weapon_artillery_impact.png")
 	if ARTILLERY_IMPACT_TEX == null:
 		return
@@ -278,10 +381,12 @@ func _spawn_impact_explosion(pos: Vector2) -> void:
 	var fx: Sprite2D = WeaponProjectileVfx._acquire_impact_sprite()
 	fx.texture = ARTILLERY_IMPACT_TEX
 	fx.centered = true
-	fx.scale = Vector2(0.25, 0.25)
+	fx.scale = Vector2(0.75, 0.75)
 	fx.global_position = pos
 	fx.z_as_relative = false
 	fx.z_index = 4
+	if not is_player_proj:
+		fx.modulate = Color(1.0, 0.45, 0.55)
 	fx.show()
 	add_child(fx)
 	var tw := fx.create_tween()

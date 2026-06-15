@@ -2,13 +2,10 @@ extends Control
 class_name LevelInfoPanel
 ## 关卡信息UI面板
 ##
-## 功能：
-## - 显示关卡详细信息（名称、描述、背景故事）
+## 功能�?## - 显示关卡详细信息（名称、描述、背景故事）
 ## - 显示环境信息（天气、地形、能量场、时间）
 ## - 显示势力控制信息
-## - 显示难度倍数和敌人预览
-## - 显示可用的战争魔法列表
-
+## - 显示难度倍数和敌人预�?## - 显示可用的战争魔法列�?
 const GC = preload("res://resources/game_constants.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
 
@@ -64,10 +61,10 @@ func _update_level_info() -> void:
 	if environment_label:
 		var environment = info.get("environment", {})
 		var env_text = "环境信息:\n"
-		env_text += "• 天气：%s\n" % _env_value_label("weather", String(environment.get("weather", "未知")))
-		env_text += "• 地形：%s\n" % _env_value_label("terrain", String(environment.get("terrain", "未知")))
-		env_text += "• 能量场：%s\n" % _env_value_label("energy_field", String(environment.get("energy_field", "未知")))
-		env_text += "• 时间：%s" % _env_value_label("time_of_day", String(environment.get("time_of_day", "未知")))
+		env_text += "�?天气�?s\n" % _env_value_label("weather", String(environment.get("weather", "未知")))
+		env_text += "�?地形�?s\n" % _env_value_label("terrain", String(environment.get("terrain", "未知")))
+		env_text += "�?能量场：%s\n" % _env_value_label("energy_field", String(environment.get("energy_field", "未知")))
+		env_text += "�?时间�?s" % _env_value_label("time_of_day", String(environment.get("time_of_day", "未知")))
 		environment_label.text = env_text
 
 	# 显示势力信息
@@ -78,12 +75,12 @@ func _update_level_info() -> void:
 			var faction_id = info.get("faction_id", "")
 			var faction_info = fsm.get_faction_info(faction_id)
 			var faction_name = faction_info.get("name", "未知势力")
-			faction_label.text = "势力控制：%s" % faction_name
+			faction_label.text = "势力控制�?s" % faction_name
 
 	# 显示难度倍数
 	if difficulty_label:
 		var difficulty = info.get("difficulty_modifier", 1.0)
-		difficulty_label.text = "难度倍数：%.2fx" % difficulty
+		difficulty_label.text = "难度倍数�?.2fx" % difficulty
 
 	# 显示可用法则
 	if law_scroll:
@@ -94,8 +91,7 @@ func _update_level_info() -> void:
 		var available_families = info.get("available_law_families", [])
 
 		if available_families.is_empty():
-			# 空列表表示全部可用
-			var all_label = Label.new()
+			# 空列表表示全部可�?			var all_label = Label.new()
 			all_label.text = "该关卡所有战争魔法均可用"
 			law_scroll.add_child(all_label)
 		else:
@@ -103,11 +99,11 @@ func _update_level_info() -> void:
 				var law_label = Label.new()
 				var cfg: Dictionary = PhaseLaws.get_by_id(String(law_id))
 				var law_name: String = String(cfg.get("name", String(law_id)))
-				law_label.text = "• %s" % law_name
+				law_label.text = "�?%s" % law_name
 				law_scroll.add_child(law_label)
 
 func _on_enter_button_pressed() -> void:
-	"""进入关卡按钮被按下"""
+	"""进入关卡按钮被按�?""
 	if current_level > 0:
 		# 触发进入关卡事件
 		if SignalBus:
@@ -131,9 +127,9 @@ func _env_value_label(env_key: String, raw: String) -> String:
 			"forest": "森林",
 		},
 		"energy_field": {
-			"normal": "常规场",
-			"high_field": "高能场",
-			"nano_fog": "纳米雾",
+			"normal": "常规�?,
+			"high_field": "高能�?,
+			"nano_fog": "纳米�?,
 			"void_rift": "虚空裂隙",
 		},
 		"time_of_day": {

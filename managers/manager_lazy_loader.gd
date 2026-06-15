@@ -113,6 +113,30 @@ func _ensure_configs_initialized() -> void:
 			"priority": 3,
 			"description": "情报道具背包"
 		},
+		"intel_manual": {
+			"node_name": "IntelManual",
+			"script_path": "res://scripts/systems/intel_manual.gd",
+			"priority": 3,
+			"description": "情报手册(4维情报)"
+		},
+		"intel_discovery": {
+			"node_name": "IntelDiscoveryManager",
+			"script_path": "res://scripts/systems/intel_discovery_manager.gd",
+			"priority": 3,
+			"description": "情报发现(战利品揭示)"
+		},
+		"intel_evolution": {
+			"node_name": "IntelEvolutionManager",
+			"script_path": "res://scripts/systems/intel_evolution_manager.gd",
+			"priority": 3,
+			"description": "情报进化分支"
+		},
+		"enemy_origin_mod": {
+			"node_name": "EnemyOriginModManager",
+			"script_path": "res://scripts/systems/enemy_origin_mod_manager.gd",
+			"priority": 3,
+			"description": "敌源改造MOD"
+		},
 		# ── 收集和强化 (priority 4) ──
 		"card_collection": {
 			"node_name": "CardCollectionManager",

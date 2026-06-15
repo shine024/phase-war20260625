@@ -103,34 +103,113 @@ func query_nearby(position: Vector2, radius: float) -> Array:
 
 	return nearby_units
 
-## 查询指定范围内的敌方单位
+## 查询指定范围内的敌方单位（使用bounding-box优化）
 func query_enemies(position: Vector2, radius: float, is_player: bool) -> Array:
-	var nearby = query_nearby(position, radius)
+	_query_count += 1
 	var enemies: Array = []
+	var r2: float = radius * radius
 
-	for unit in nearby:
-		if unit.has_method("get") and unit.get("is_player") != null:
-			if unit.is_player != is_player:
-				enemies.append(unit)
+	# 只遍历 radius 范围内的网格格子
+	var min_c: Vector2i = _get_cell_coords(position - Vector2(radius, radius))
+	var max_c: Vector2i = _get_cell_coords(position + Vector2(radius, radius))
+
+	for x in range(min_c.x, max_c.x + 1):
+		for y in range(min_c.y, max_c.y + 1):
+			var cell_key := Vector2i(x, y)
+			if not _grid.has(cell_key):
+				continue
+			for unit in _grid[cell_key]:
+				if unit == null or not is_instance_valid(unit):
+					continue
+				if not (unit is Node2D):
+					continue
+				if unit.global_position.distance_squared_to(position) > r2:
+					continue
+				if "is_player" in unit:
+					if unit.is_player != is_player:
+						enemies.append(unit)
 
 	return enemies
 
-## 查询最近的目标
+## 查询最近的目标（使用bounding-box优化，避免遍历所有格子）
 func query_nearest_target(position: Vector2, is_player: bool, max_range: float = 1000.0) -> Node2D:
-	var nearby = query_enemies(position, max_range, is_player)
-	if nearby.is_empty():
-		return null
-
+	_query_count += 1
 	var nearest: Node2D = null
 	var nearest_dist_sq: float = max_range * max_range
 
-	for unit in nearby:
-		var d2: float = unit.global_position.distance_squared_to(position)
-		if d2 < nearest_dist_sq:
-			nearest_dist_sq = d2
-			nearest = unit
+	# 只遍历 max_range 范围内的网格格子
+	var min_c: Vector2i = _get_cell_coords(position - Vector2(max_range, max_range))
+	var max_c: Vector2i = _get_cell_coords(position + Vector2(max_range, max_range))
+
+	for x in range(min_c.x, max_c.x + 1):
+		for y in range(min_c.y, max_c.y + 1):
+			var cell_key := Vector2i(x, y)
+			if not _grid.has(cell_key):
+				continue
+			for unit in _grid[cell_key]:
+				if unit == null or not is_instance_valid(unit):
+					continue
+				if not (unit is Node2D):
+					continue
+				if "is_player" in unit:
+					if unit.is_player == is_player:
+						continue
+				else:
+					continue
+				var d2: float = unit.global_position.distance_squared_to(position)
+				if d2 < nearest_dist_sq:
+					nearest_dist_sq = d2
+					nearest = unit
 
 	return nearest
+
+## ========== 三攻三防系统：双向索敌 ==========
+
+## 查询目标（支持从近到远或从远到近）
+## @param targeting_mode: 0=NEAREST_FIRST（从近到远）, 1=FARTHEST_FIRST（从远到近）
+func query_nearest_target_with_mode(
+	position: Vector2,
+	is_player: bool,
+	max_range: float = 1000.0,
+	targeting_mode: int = 0
+) -> Node2D:
+	_query_count += 1
+
+	## 获取范围内所有敌方单位
+	var candidates: Array = []
+	var r2: float = max_range * max_range
+	var min_c: Vector2i = _get_cell_coords(position - Vector2(max_range, max_range))
+	var max_c: Vector2i = _get_cell_coords(position + Vector2(max_range, max_range))
+
+	for x in range(min_c.x, max_c.x + 1):
+		for y in range(min_c.y, max_c.y + 1):
+			var cell_key := Vector2i(x, y)
+			if not _grid.has(cell_key):
+				continue
+			for unit in _grid[cell_key]:
+				if unit == null or not is_instance_valid(unit):
+					continue
+				if not (unit is Node2D):
+					continue
+				if "is_player" in unit and unit.is_player == is_player:
+					continue
+				var d2: float = unit.global_position.distance_squared_to(position)
+				if d2 <= r2:
+					candidates.append({"unit": unit, "distance_sq": d2})
+
+	if candidates.is_empty():
+		return null
+
+	## 根据索敌方式排序
+	const GC = preload("res://resources/game_constants.gd")
+	if targeting_mode == GC.TargetingMode.FARTHEST_FIRST:
+		## 从远到近
+		candidates.sort_custom(func(a, b): return a.distance_sq > b.distance_sq)
+	else:
+		## 从近到远
+		candidates.sort_custom(func(a, b): return a.distance_sq < b.distance_sq)
+
+	return candidates[0].unit
 
 ## 获取网格统计信息
 func get_stats() -> Dictionary:

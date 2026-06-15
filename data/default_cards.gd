@@ -45,7 +45,7 @@ static func _unit(
 	def_l: int, def_a: int, def_air: int, w_light: String = "", w_armor: String = "", w_air: String = ""
 ) -> CardResource:
 	var c = CardResource.new()
-	
+
 	c.card_id = id
 	c.display_name = name
 	c.card_type = GC.CardType.COMBAT_UNIT
@@ -56,28 +56,28 @@ static func _unit(
 	c.range_value = range_val
 	c.energy_cost = energy_cost
 	c.base_hp = float(hp)
-	
+
 	# 攻击属性
 	c.attack_light = atk_l
 	c.attack_light_speed = atk_l_speed
 	c.attack_light_windup = atk_l_windup
 	c.attack_light_active = atk_l_active
-	
+
 	c.attack_armor = atk_a
 	c.attack_armor_speed = atk_a_speed
 	c.attack_armor_windup = atk_a_windup
 	c.attack_armor_active = atk_a_active
-	
+
 	c.attack_air = atk_air
 	c.attack_air_speed = atk_air_speed
 	c.attack_air_windup = atk_air_windup
 	c.attack_air_active = atk_air_active
-	
+
 	# 防御属性
 	c.defense_light = def_l
 	c.defense_armor = def_a
 	c.defense_air = def_air
-	
+
 	# 武器名称
 	c.weapon_names[0] = w_light
 	c.weapon_names[1] = w_armor
@@ -92,7 +92,7 @@ static func _unit(
 
 	# 基础属性
 	c.platform_type = combat_kind
-	
+
 	return c
 
 ## 计算综合攻击速度(取主要攻击类型的攻速)
@@ -313,6 +313,9 @@ static func _infer_weapon_type(combat_kind: int, range: int, atk_light: int, atk
 	# 空中单位 → AERIAL
 	if combat_kind == 3:  # AIR
 		return GC.WeaponType.AERIAL
+	# 支援单位（火炮/迫击炮等）→ INDIRECT（优先判定）
+	if combat_kind == 2:  # SUPPORT
+		return GC.WeaponType.INDIRECT
 	# 曲射单位(range>=99)→ INDIRECT
 	if range >= 99:
 		return GC.WeaponType.INDIRECT

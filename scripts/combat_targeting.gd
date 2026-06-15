@@ -77,7 +77,7 @@ static func is_attackable_combat_unit(node) -> bool:
 		return false
 	if "is_preview_mode" in n and bool(n.is_preview_mode):
 		return false
-	if "hp" in n and float(n.hp) <= 0.0:
+	if "hp" in n and float(node.hp) <= 0.0:
 		return false
 	return n is CharacterBody2D or n.has_method("take_damage")
 
@@ -113,3 +113,52 @@ static func find_opponent_phase_field(
 			best_d2 = d2
 			best = node as Node2D
 	return best
+
+
+## ========== 三攻三防系统：双向索敌 ==========
+
+## 根据索敌方式查找目标候选（按距离排序）
+## @param origin: 攻击者位置
+## @param attacker_is_player: 是否玩家单位
+## @param battle_manager: 战斗管理器
+## @param max_range: 最大射程
+## @param targeting_mode: 索敌方式 (NEAREST_FIRST / FARTHEST_FIRST)
+## @return: 排序后的候选数组 [{node: Node2D, distance_sq: float}, ...]
+static func find_targets_with_mode(
+	origin: Vector2,
+	attacker_is_player: bool,
+	battle_manager: Node,
+	max_range: float = 2400.0,
+	targeting_mode: int = 0
+) -> Array:
+	const GC = preload("res://resources/game_constants.gd")
+	var grp: String = "enemy_units" if attacker_is_player else "player_units"
+	var nodes: Array
+	if battle_manager != null and battle_manager.has_method("get_cached_nodes_in_group"):
+		nodes = battle_manager.get_cached_nodes_in_group(grp)
+	else:
+		var tree := Engine.get_main_loop() as SceneTree
+		if tree == null:
+			return []
+		nodes = tree.get_nodes_in_group(grp)
+
+	var candidates: Array = []
+	var cap_sq: float = max_range * max_range if max_range > 0.0 else 1e18
+
+	for node in nodes:
+		if not is_attackable_combat_unit(node):
+			continue
+		var n2d: Node2D = node as Node2D
+		var d2: float = origin.distance_squared_to(n2d.global_position)
+		if d2 <= cap_sq:
+			candidates.append({"node": n2d, "distance_sq": d2})
+
+	## 根据索敌方式排序
+	if targeting_mode == GC.TargetingMode.FARTHEST_FIRST:
+		## 从远到近：距离最大的优先
+		candidates.sort_custom(func(a, b): return a.distance_sq > b.distance_sq)
+	else:
+		## 从近到远：距离最小的优先（默认）
+		candidates.sort_custom(func(a, b): return a.distance_sq < b.distance_sq)
+
+	return candidates

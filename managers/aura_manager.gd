@@ -3,14 +3,7 @@ extends Node
 ## 集中管理所有光环效果，使用 Timer 驱动而非每帧检查
 var DEBUG_AURA_LOG := false
 
-var _aura_data: RefCounted = null
-
-static func _get_aura_data() -> RefCounted:
-	if _aura_data == null:
-		_aura_data = load("res://data/aura_data.gd") as RefCounted
-	return _aura_data
-
-## 光环类型定义（与 _get_aura_data().Category 保持一一对应）
+## 光环类型定义（与 aura_data.Category 保持一一对应）
 enum AuraType {
 	MEDIC_HEAL,      # 0  MEDIC 维修光环
 	CARRIER_REPAIR,  # 1  CARRIER 机械维修光环
@@ -33,6 +26,13 @@ var _aura_intervals: Dictionary = {
 var _global_tick_timer: Timer = null
 var _unit_map: Dictionary = {}          # unit_id -> Node2D
 var _unit_auras: Dictionary = {}        # unit_id -> {aura_type: true}
+var _aura_data_script: Script = null
+
+func _get_aura_data() -> RefCounted:
+	if _aura_data_script == null:
+		_aura_data_script = load("res://data/aura_data.gd") as Script
+	return _aura_data_script.new()
+
 var _medic_elapsed: float = 0.0
 var _carrier_elapsed: float = 0.0
 var _fallback_group_cache: Dictionary = {"player_units": [], "enemy_units": []}
@@ -128,8 +128,10 @@ func _on_global_tick() -> void:
 	# 清理失效引用
 	var dead_ids: Array = []
 	for unit_id in _unit_map.keys():
-		var u: Node2D = _unit_map[unit_id]
-		if not is_instance_valid(u):
+		# 用无类型变量接收：freed 实例赋给静态类型(Node2D)会触发
+		# "Trying to assign invalid previously freed instance"，需在 is_instance_valid 之前避免类型检查
+		var u = _unit_map[unit_id]
+		if u == null or not is_instance_valid(u):
 			dead_ids.append(unit_id)
 	for unit_id in dead_ids:
 		_unit_map.erase(unit_id)
@@ -142,7 +144,7 @@ func _on_global_tick() -> void:
 			var aura_map: Dictionary = _unit_auras[unit_id]
 			if not aura_map.has(AuraType.MEDIC_HEAL):
 				continue
-			var unit: Node2D = _unit_map.get(unit_id, null)
+			var unit = _unit_map.get(unit_id, null)
 			if unit != null and is_instance_valid(unit):
 				_apply_medic_aura(unit)
 	# CARRIER 按 3 秒节奏批处理
@@ -152,14 +154,14 @@ func _on_global_tick() -> void:
 			var aura_map: Dictionary = _unit_auras[unit_id]
 			if not aura_map.has(AuraType.CARRIER_REPAIR):
 				continue
-			var unit: Node2D = _unit_map.get(unit_id, null)
+			var unit = _unit_map.get(unit_id, null)
 			if unit != null and is_instance_valid(unit):
 				_apply_carrier_repair_tick(unit)
 
 ## ── 槽位判定辅助 ──
 
 ## 通过槽位索引找受影响的友军（替代像素距离判定）
-static func get_slot_targets(unit: Node2D, is_global: bool, is_player: bool) -> Array:
+func get_slot_targets(unit: Node2D, is_global: bool, is_player: bool) -> Array:
 	var targets: Array = []
 	if unit == null or not is_instance_valid(unit):
 		return targets

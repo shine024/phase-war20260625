@@ -54,10 +54,11 @@ var attack_air_speed: float = 1.0   # 次/秒
 var attack_air_windup: float = 0.2   # 前摇（秒）
 var attack_air_active: float = 0.1    # 动作（秒）
 
-## 防御维度（对不同武器类型的防御）
-@export var defense_light: float = 0.0  # 防轻装武器
-@export var defense_armor: float = 0.0  # 防装甲武器
-@export var defense_air: float = 0.0    # 防空武器
+## 防御维度（对不同武器类型的防御）- 三攻三防系统
+## 注意：属性名保持为 defense_light/armor/air 但含义已更新为防御武器类型
+@export var defense_light: float = 0.0  # 对直射防御（防DIRECT武器）
+@export var defense_armor: float = 0.0  # 对曲射防御（防INDIRECT武器）
+@export var defense_air: float = 0.0    # 对空射防御（防AERIAL武器）
 
 ## 多武器槽（每项 Dictionary：damage, range, interval, timer）
 var weapons: Array = []

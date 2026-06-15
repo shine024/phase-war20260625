@@ -9,6 +9,7 @@ const GC = preload("res://resources/game_constants.gd")
 const SpatialGridClass = preload("res://scripts/spatial_grid.gd")
 const SimpleEnemyProjectileBatchScript = preload("res://managers/battle/simple_enemy_projectile_batch.gd")
 const SimplePlayerProjectileBatchScript = preload("res://managers/battle/simple_player_projectile_batch.gd")
+const SimpleIndirectProjectileBatchScript = preload("res://managers/battle/simple_indirect_projectile_batch.gd")
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 const DEBUG_BATTLE_LOG := false
 
@@ -26,6 +27,10 @@ var spatial_grid: Node = null  ## SpatialGrid 实例
 var player_projectile_batch: Node = null
 ## 敌方轻武器弹道批处理（SimpleEnemyProjectileBatch）
 var enemy_projectile_batch: Node = null
+## 玩家曲射/空射弹道批处理（SimpleIndirectProjectileBatch）
+var player_indirect_batch: Node = null
+## 敌方曲射/空射弹道批处理（SimpleIndirectProjectileBatch）
+var enemy_indirect_batch: Node = null
 
 # ---- 战斗状态 ----
 var battle_active: bool = false
@@ -147,6 +152,8 @@ func start_battle(battle_scene: Node) -> void:
 	_setup_spatial_grid()
 	_setup_enemy_projectile_batch()
 	_setup_player_projectile_batch()
+	_setup_player_indirect_batch()
+	_setup_enemy_indirect_batch()
 
 	# 读取波次参数
 	var enemy_wave_interval: float = 12.0
@@ -222,6 +229,8 @@ func end_battle(player_won: bool) -> void:
 	_cleanup_spatial_grid()
 	_cleanup_enemy_projectile_batch()
 	_cleanup_player_projectile_batch()
+	_cleanup_player_indirect_batch()
+	_cleanup_enemy_indirect_batch()
 
 	# 停止敌方相位驱动器
 	if _enemy_phase_driver != null and is_instance_valid(_enemy_phase_driver):
@@ -631,11 +640,15 @@ func _cleanup_spatial_grid() -> void:
 func _setup_enemy_projectile_batch() -> void:
 	_cleanup_enemy_projectile_batch()
 	if battlefield == null:
+		prints("[BM] enemy_batch FAILED: battlefield is null")
 		return
 	var n := Node2D.new()
 	n.set_script(SimpleEnemyProjectileBatchScript)
 	n.name = "SimpleEnemyProjectileBatch"
 	battlefield.add_child(n)
+	prints("[BM] enemy_batch created at", n.position, "z_index=", n.get_z_index())
+	prints("[BM] enemy_batch _layers:", n.get("_layers") if n.has_method("has_method") else "N/A")
+	prints("[BM] enemy_batch _BATCH_WEAPON_TYPES:", n.get("_BATCH_WEAPON_TYPES") if n.has_method("has_method") else "N/A")
 	enemy_projectile_batch = n
 
 
@@ -664,6 +677,45 @@ func _cleanup_player_projectile_batch() -> void:
 			player_projectile_batch.clear_all()
 		player_projectile_batch.queue_free()
 	player_projectile_batch = null
+
+
+func _setup_player_indirect_batch() -> void:
+	_cleanup_player_indirect_batch()
+	if battlefield == null:
+		return
+	var n := Node2D.new()
+	n.set_script(SimpleIndirectProjectileBatchScript)
+	n.name = "SimpleIndirectProjectileBatch"
+	battlefield.add_child(n)
+	player_indirect_batch = n
+
+
+func _cleanup_player_indirect_batch() -> void:
+	if player_indirect_batch != null and is_instance_valid(player_indirect_batch):
+		if player_indirect_batch.has_method("clear_all"):
+			player_indirect_batch.clear_all()
+		player_indirect_batch.queue_free()
+	player_indirect_batch = null
+
+
+func _setup_enemy_indirect_batch() -> void:
+	_cleanup_enemy_indirect_batch()
+	if battlefield == null:
+		return
+	var n := Node2D.new()
+	n.set_script(SimpleIndirectProjectileBatchScript)
+	n.name = "SimpleEnemyIndirectBatch"
+	n.is_player_side = false
+	battlefield.add_child(n)
+	enemy_indirect_batch = n
+
+
+func _cleanup_enemy_indirect_batch() -> void:
+	if enemy_indirect_batch != null and is_instance_valid(enemy_indirect_batch):
+		if enemy_indirect_batch.has_method("clear_all"):
+			enemy_indirect_batch.clear_all()
+		enemy_indirect_batch.queue_free()
+	enemy_indirect_batch = null
 
 
 func _on_unit_damaged_combat_feedback(unit: Node, _is_player: bool, amount: float, at_position: Vector2) -> void:

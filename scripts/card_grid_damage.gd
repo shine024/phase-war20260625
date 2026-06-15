@@ -21,7 +21,8 @@ static func resolve_hit(raw_attack: float, defense: float, dodge_chance: float =
 		return {"hp_loss": 0.0, "apply_stun": false, "apply_recoil": false}
 	var attack_val: float = maxf(0.0, raw_attack)
 	var mult: float = defense_damage_multiplier(defense)
-	var hp_loss: float = maxf(1.0, attack_val * mult)
+	# 修复：移除最低伤害保证，改为允许0伤害（高防御免疫低攻击）
+	var hp_loss: float = attack_val * mult
 	var heavy_hit: bool = mult < 0.85 and attack_val > 12.0
 	return {
 		"hp_loss": hp_loss,

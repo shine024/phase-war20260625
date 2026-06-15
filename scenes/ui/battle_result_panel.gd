@@ -229,6 +229,8 @@ func _claim_animation():
 
 	# 1秒后自动关闭
 	await get_tree().create_timer(1.0).timeout
+	if not is_inside_tree():
+		return
 	_on_close_pressed()
 
 ## 关闭面板

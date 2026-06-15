@@ -62,6 +62,9 @@ func _debug_log(hypothesis_id: String, location: String, message: String, data: 
 @onready var manufacture_overlay: Control      = $PopupLayer/ManufactureOverlay
 @onready var intelligence_overlay: Control     = $PopupLayer/IntelligenceOverlay
 @onready var growth_overlay: Control           = $PopupLayer/GrowthOverlay
+@onready var enhancement_overlay: Control     = $PopupLayer/EnhancementOverlay
+@onready var modification_overlay: Control    = $PopupLayer/ModificationOverlay
+@onready var evolution_overlay: Control       = $PopupLayer/EvolutionOverlay
 @onready var level_display: Label = $HudLayer/TopCenterMeta/LevelDisplay
 
 func _ready() -> void:
@@ -365,6 +368,9 @@ func _on_panel_closed(key: String) -> void:
 		"backpack":           _close_overlay(backpack_overlay, "backpack")
 		"growth":             _close_overlay(growth_overlay, "growth")
 		"info":               _close_overlay(intelligence_overlay, "info")
+		"enhancement":        _close_overlay(enhancement_overlay, "enhancement")
+		"modification":       _close_overlay(modification_overlay, "modification")
+		"evolution":          _close_overlay(evolution_overlay, "evolution")
 
 # ── 排行榜：PopupPanel 特殊处理 ──────────────────────────────
 func _toggle_leaderboard() -> void:
@@ -446,6 +452,9 @@ func _overlay_for_panel_key(panel_key: String) -> Control:
 		"map": return map_overlay
 		"settings": return settings_overlay
 		"info": return intelligence_overlay
+		"enhancement": return enhancement_overlay
+		"modification": return modification_overlay
+		"evolution": return evolution_overlay
 	return null
 
 func _ensure_lazy_panel(panel_key: String) -> void:
@@ -473,6 +482,12 @@ func _ensure_lazy_panel(panel_key: String) -> void:
 			lazy_id = "settings"
 		"growth":
 			lazy_id = "growth"
+		"enhancement":
+			lazy_id = "enhancement"
+		"modification":
+			lazy_id = "modification"
+		"evolution":
+			lazy_id = "evolution"
 		_:
 			return
 	var overlay: Control = _overlay_for_panel_key(lazy_id)

@@ -20,7 +20,7 @@ static func select_target_direct(attacker: Node2D, enemies: Array) -> Node2D:
 	# 同距最低HP
 	var same_dist = valid.filter(func(e): return absf(origin.distance_to(e.global_position) - best_dist) < 10.0)
 	if same_dist.size() > 1:
-		same_dist.sort_custom(func(a, b): return float(a.get("hp", 9999.0)) < float(b.get("hp", 9999.0)))
+		same_dist.sort_custom(func(a, b): return float(a.hp) < float(b.hp))
 	# 返回最近的
 	return same_dist[0] as Node2D
 
