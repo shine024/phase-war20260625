@@ -194,9 +194,10 @@ func get_statistics() -> Dictionary:
 		match card.card_type:
 			GC.CardType.COMBAT_UNIT:
 				stats["platform_cards"] += 1
-			GC.CardType.COMBAT_UNIT:
-				# 武器概念下线后，将旧武器卡计入战斗卡
+			GC.CardType.PLATFORM, GC.CardType.WEAPON, GC.CardType.COMBINED:
+				# 武器概念下线后，将旧武器/平台/合成卡一并计入战斗卡
 				stats["platform_cards"] += 1
+				stats["weapon_cards"] += 1  # 保留旧字段以兼容外部读取
 			GC.CardType.ENERGY:
 				stats["energy_cards"] += 1
 			GC.CardType.LAW:

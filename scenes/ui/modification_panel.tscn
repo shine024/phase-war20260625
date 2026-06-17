@@ -1,6 +1,7 @@
-[gd_scene load_steps=10 format=3 uid="uid://xfff2bifmi26"]
+[gd_scene load_steps=11 format=3 uid="uid://xfff2bifmi26"]
 
 [ext_resource type="Script" uid="uid://bja6yipvtekki" path="res://scenes/ui/modification_panel.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/ui/icons/icon_modification.svg" id="2_title_icon"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg"]
 bg_color = Color(0.04, 0.06, 0.12, 0.97)
@@ -131,10 +132,17 @@ theme_override_constants/margin_right = 20
 theme_override_constants/margin_bottom = 0
 theme_override_constants/separation = 20
 
+[node name="TitleIcon" type="TextureRect" parent="VBoxContainer/TitleRow/TitleHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(28, 28)
+expand_mode = 1
+stretch_mode = 5
+texture = ExtResource("2_title_icon")
+
 [node name="TitleLabel" type="Label" parent="VBoxContainer/TitleRow/TitleHBox"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "🔧 改装面板"
+text = "改装面板"
 theme_override_colors/font_color = Color(0.75, 0.6, 1, 1)
 theme_override_font_sizes/font_size = 22
 

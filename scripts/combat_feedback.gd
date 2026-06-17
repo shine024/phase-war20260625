@@ -24,7 +24,7 @@ static func resolve_fx_parent(unit: Node) -> Node:
 	return null
 
 
-static func show_damage(world_pos: Vector2, amount: float, unit: Node = null, is_critical: bool = false) -> void:
+static func show_damage(world_pos: Vector2, amount: float, unit: Node = null, is_critical: bool = false, dmg_type: String = "") -> void:
 	if amount <= 0.0:
 		return
 	var parent: Node = resolve_fx_parent(unit)
@@ -32,8 +32,11 @@ static func show_damage(world_pos: Vector2, amount: float, unit: Node = null, is
 		return
 	var dmg: int = int(roundf(amount))
 	var crit: bool = is_critical or dmg >= 80
-	var dmg_type: String = "critical" if crit else "normal"
-	_DmgNum.create_damage_number(parent, world_pos, dmg, crit, dmg_type)
+	# v6.4: 显式伤害类型优先；未指定时按暴击判定
+	var final_type: String = dmg_type
+	if final_type.is_empty():
+		final_type = "critical" if crit else "normal"
+	_DmgNum.create_damage_number(parent, world_pos, dmg, crit, final_type)
 
 
 static func show_miss(world_pos: Vector2, unit: Node = null) -> void:

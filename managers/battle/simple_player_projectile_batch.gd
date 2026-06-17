@@ -27,7 +27,6 @@ func _ready() -> void:
 		add_child(_layers[wt])
 
 func _make_layer(wt: int) -> MultiMeshInstance2D:
-	prints("[BATCH_LAYER]", name, "creating layer wt=", wt)
 	var mmi := MultiMeshInstance2D.new()
 	mmi.texture = WeaponProjectileVfx.proj_texture(wt)
 	var mm := MultiMesh.new()
@@ -37,17 +36,17 @@ func _make_layer(wt: int) -> MultiMeshInstance2D:
 	q.size = WeaponProjectileVfx.proj_quad_size(wt)
 	mm.mesh = q
 	mmi.multimesh = mm
-	prints("[BATCH_LAYER]", name, "wt=", wt, "texture=", mmi.texture, "quad_size=", q.size)
+	# v6.4: 发光叠加，让子弹贴图产生霓虹发光
+	var mat := CanvasItemMaterial.new()
+	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	mmi.material = mat
 	return mmi
 
 func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, shooter_stats: Variant, forced_miss: bool = false) -> void:
 	if _proj.size() >= _MAX_PROJ or tgt == null or not is_instance_valid(tgt):
-		prints("BATCH_DEBUG: REJECTED size=", _proj.size(), "wt=", wt)
 		return
 	if not _layers.has(wt):
-		prints("BATCH_DEBUG: REJECTED wt=", wt, "available=", _layers.keys())
 		return
-	prints("BATCH_DEBUG_FIRE:", name, "from=", from, "wt=", wt, "speed=", _speed_for(wt))
 	_proj.append({
 		"pos": from,
 		"tgt": tgt,
@@ -134,14 +133,10 @@ func _sync_multimesh_layers() -> void:
 		var mm2: MultiMesh = (_layers[wt_r] as MultiMeshInstance2D).multimesh
 		var global_pos: Vector2 = r["pos"]
 		var local_pos: Vector2 = to_local(global_pos)
-		prints("BATCH_DEBUG:", name, "global_pos=", global_pos, "local_pos=", local_pos, "parent_pos=", position)
 		mm2.set_instance_transform_2d(idx, Transform2D(dir.angle(), local_pos))
-		if idx == 0:
-			prints("BATCH_DEBUG_SLOW:", name, "dir=", dir, "wt=", wt_r, "speed=", _speed_for(wt_r), "z_index=", get_z_index())
 		mm2.set_instance_color(idx, _PLAYER_TINT)
 
 func _apply_hit(r: Dictionary) -> void:
-	prints("APPLY_HIT:", r["wt"], "from=", r["pos"], "tgt=", r["tgt"].global_position if is_instance_valid(r["tgt"]) else "null")
 	var tgt: Node2D = r["tgt"]
 	if tgt == null or not is_instance_valid(tgt):
 		return
@@ -156,7 +151,6 @@ func _apply_hit(r: Dictionary) -> void:
 	var shooter: Node2D = shooter_raw if shooter_raw != null and is_instance_valid(shooter_raw) and shooter_raw is Node2D else null
 	if tgt.has_method("take_damage"):
 		var atk: Variant = shooter
-		print("[PlayerProjectile] 造成伤害: ", raw, " 目标: ", tgt.name)
 		tgt.take_damage(raw, atk)
 
 func _speed_for(wt: int) -> float:

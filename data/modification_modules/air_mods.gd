@@ -20,6 +20,7 @@ const AIR_14_SWING_WING = "air_14_swing_wing"
 const DATA: Dictionary = {
 	"air_01_turbofan" = {
 		id = AIR_01_TURBOFAN, name = "涡扇发动机", name_en = "Turbofan Engine",
+		icon = "res://assets/ui/icons/mod_icons/mod_engine.png",
 		prototype = "F100-PW-220", description = "高涵道比涡扇，速度提升",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 280, cost_install = 140,
@@ -29,6 +30,7 @@ const DATA: Dictionary = {
 	},
 	"air_02_vector_thrust" = {
 		id = AIR_02_VECTOR_THRUST, name = "矢量推力", name_en = "Thrust Vectoring",
+		icon = "res://assets/ui/icons/mod_icons/mod_thrust.png",
 		prototype = "F-22/F-35", description = "推力矢量，机动性大幅提升",
 		rarity = "legendary",
 	power_mult = 2.0, cost_research = 450, cost_install = 225,
@@ -38,6 +40,7 @@ const DATA: Dictionary = {
 	},
 	"air_03_stealth_coating" = {
 		id = AIR_03_STEALTH_COATING, name = "隐身涂层", name_en = "Stealth Coating",
+		icon = "res://assets/ui/icons/mod_icons/mod_stealth.png",
 		prototype = "RAM吸波材料", description = "降低被锁定概率",
 		rarity = "legendary",
 	power_mult = 2.0, cost_research = 500, cost_install = 250,
@@ -47,6 +50,7 @@ const DATA: Dictionary = {
 	},
 	"air_04_aesa" = {
 		id = AIR_04_AESA, name = "有源相控阵雷达", name_en = "AESA Radar",
+		icon = "res://assets/ui/icons/mod_icons/mod_radar.png",
 		prototype = "AN/APG-77", description = "多目标锁定，射程提升",
 		rarity = "legendary",
 	power_mult = 2.0, cost_research = 480, cost_install = 240,
@@ -56,6 +60,7 @@ const DATA: Dictionary = {
 	},
 	"air_05_helmet_sight" = {
 		id = AIR_05_HELMET_SIGHT, name = "头盔瞄准具", name_en = "Helmet Mounted Sight",
+		icon = "res://assets/ui/icons/mod_icons/mod_optics.png",
 		prototype = "苏-27/阿帕奇", description = "头显瞄准，射速提升",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 300, cost_install = 150,
@@ -65,6 +70,7 @@ const DATA: Dictionary = {
 	},
 	"air_06_bvr_missile" = {
 		id = AIR_06_BVR_MISSILE, name = "超视距导弹", name_en = "BVR Missile",
+		icon = "res://assets/ui/icons/mod_icons/mod_missile.png",
 		prototype = "AIM-120C", description = "远程导弹，射程和精度提升",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 350, cost_install = 175,
@@ -74,6 +80,7 @@ const DATA: Dictionary = {
 	},
 	"air_07_dogfight_missile" = {
 		id = AIR_07_DOGFIGHT_MISSILE, name = "格斗弹舱", name_en = "Dogfight Missile",
+		icon = "res://assets/ui/icons/mod_icons/mod_missile.png",
 		prototype = "AIM-9X", description = "近距格斗导弹，近战命中提升",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 320, cost_install = 160,
@@ -83,6 +90,7 @@ const DATA: Dictionary = {
 	},
 	"air_08_ecm" = {
 		id = AIR_08_ECM, name = "电子对抗系统", name_en = "ECM Suite",
+		icon = "res://assets/ui/icons/mod_icons/mod_ecm.png",
 		prototype = "AN/ALQ-211", description = "电子干扰，导弹闪避提升",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 380, cost_install = 190,
@@ -92,6 +100,7 @@ const DATA: Dictionary = {
 	},
 	"air_09_air_refuel" = {
 		id = AIR_09_AIR_REFUEL, name = "空中加油口", name_en = "Aerial Refueling",
+		icon = "res://assets/ui/icons/mod_icons/mod_logistics.png",
 		prototype = "伙伴加油", description = "作战时间大幅延长",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 220, cost_install = 110,
@@ -101,6 +110,7 @@ const DATA: Dictionary = {
 	},
 	"air_10_drop_tank" = {
 		id = AIR_10_DROP_TANK, name = "副油箱", name_en = "Drop Tank",
+		icon = "res://assets/ui/icons/mod_icons/mod_logistics.png",
 		prototype = "增加燃料", description = "增加燃料，航程提升",
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 100, cost_install = 50,
@@ -110,6 +120,7 @@ const DATA: Dictionary = {
 	},
 	"air_11_weapon_rack" = {
 		id = AIR_11_WEAPON_RACK, name = "外挂武器架", name_en = "Weapon Rack",
+		icon = "res://assets/ui/icons/mod_icons/mod_weapons.png",
 		prototype = "复合挂架", description = "载弹量大幅提升",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 200, cost_install = 100,
@@ -119,6 +130,7 @@ const DATA: Dictionary = {
 	},
 	"air_12_data_link" = {
 		id = AIR_12_DATA_LINK, name = "数据链系统", name_en = "Data Link",
+		icon = "res://assets/ui/icons/mod_icons/mod_command.png",
 		prototype = "Link 16", description = "编队协同，全属性微升",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 340, cost_install = 170,
@@ -128,6 +140,7 @@ const DATA: Dictionary = {
 	},
 	"air_13_ejection_seat" = {
 		id = AIR_13_EJECTION_SEAT, name = "弹射座椅", name_en = "Ejection Seat",
+		icon = "res://assets/ui/icons/mod_icons/mod_survival.png",
 		prototype = "ACES II", description = "被击落50%返还资源",
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 120, cost_install = 60,
@@ -137,6 +150,7 @@ const DATA: Dictionary = {
 	},
 	"air_14_swing_wing" = {
 		id = AIR_14_SWING_WING, name = "可变后掠翼", name_en = "Swing Wing",
+		icon = "res://assets/ui/icons/mod_icons/mod_aerodynamics.png",
 		prototype = "F-14雄猫", description = "后掠翼，速度和机动平衡",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 360, cost_install = 180,

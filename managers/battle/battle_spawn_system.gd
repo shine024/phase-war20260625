@@ -389,8 +389,14 @@ func request_player_deploy(platform_card_id: String, world_pos: Vector2, battle_
 		max_units = _phase_instrument.get_max_deployable_units()
 	if _card_grid_active:
 		max_units = mini(max_units, _CardGridSlotsPerSide)
-	if player_unit_count >= max_units:
-		_emit_deploy_failed("max_units", "我方单位数量已达上限（%d/%d）。" % [player_unit_count, max_units])
+	# v6.5: 用实时 recount（与 HUD 显示口径一致）替代缓存 player_unit_count，
+	# 避免单位死亡淡出/幽灵态导致缓存与实际脱节，出现"显示4个却不让部署"的错位。
+	var live_count: int = player_unit_count
+	if BattleManager != null and BattleManager.has_method("recount_player_units_on_field"):
+		live_count = BattleManager.recount_player_units_on_field()
+		player_unit_count = live_count  # 同步缓存，保持后续逻辑一致
+	if live_count >= max_units:
+		_emit_deploy_failed("max_units", "我方单位数量已达上限（%d/%d）。" % [live_count, max_units])
 		return false
 	if _reach_alive_limit_for_card(platform_card_id):
 		_emit_deploy_failed("unit_on_field", "该单位同配置已全部在场上，请待其离场后再部署。")

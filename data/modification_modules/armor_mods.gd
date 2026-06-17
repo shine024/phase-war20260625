@@ -132,6 +132,7 @@ const DATA: Dictionary = {
 		effects = {
 			attack_armor = 0.25,   # +25%
 			attack_range = 30,     # +30px
+				weapon_type = 0,  # v6.5 DIRECT
 		},
 		unlock_conditions = {
 			required_level = 4,
@@ -153,6 +154,7 @@ const DATA: Dictionary = {
 		conflict_group = "ammunition",
 		effects = {
 			attack_armor = 0.30,   # +30% (v6.0 平衡性调整: +35% → +30%)
+				weapon_type = 6,  # v6.5 SNIPER pierce
 			attack_light = -0.15,   # -15% 副作用
 		},
 		unlock_conditions = {

@@ -116,6 +116,8 @@ var _card_tween: Tween = null
 var _card_nudge_tween: Tween = null
 var _hit_flash_tween: Tween = null
 var _hit_shake_tween: Tween = null
+var _death_fade_tween: Tween = null  ## v6.4: 死亡淡出 Tween
+var _is_dying: bool = false  ## v6.4: 死亡中标志，防止 _die 重复触发
 var _card_grid_rest_x: float = NAN  ## 格子战术中卡片的归位 X（首次 nudge 时记录）
 ## 卡牌能力冷却 CD（本地 float，避免每帧 meta 字典读写）
 var _medic_aura_cd: float = 0.0
@@ -1032,7 +1034,11 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		if attacker != null and is_instance_valid(attacker) and "stats" in attacker:
 			var atk_stats: Variant = attacker.get("stats")
 			if atk_stats is UnitStats:
-				pen = float((atk_stats as UnitStats).armor_penetration)
+				# v6.2: 条件型穿甲（相克 MOD）按目标(自身)类型激活
+				if (atk_stats as UnitStats).has_method("get_effective_armor_penetration"):
+					pen = (atk_stats as UnitStats).get_effective_armor_penetration(stats.combat_kind)
+				else:
+					pen = float((atk_stats as UnitStats).armor_penetration)
 		var eff_def: float = CardGridDamage.effective_defense(stats.defense, pen)
 		var dodge: float = float(stats.dodge_chance)
 		var hit: Dictionary = CardGridDamage.resolve_hit(amount, eff_def, dodge)
@@ -1094,6 +1100,9 @@ func take_damage_with_shield(amount: float) -> float:
 	return remaining_damage
 
 func _die() -> void:
+	if _is_dying:
+		return
+	_is_dying = true
 	# 性能优化：从空间分区网格移除
 	_unregister_from_spatial_grid()
 
@@ -1124,7 +1133,22 @@ func _die() -> void:
 		if BattleInputState.current_selected_unit == self:
 			BattleInputState.current_selected_unit = null
 		SignalBus.unit_died.emit(self, is_player)
-	queue_free()
+	# v6.4: 死亡淡出动画（缩放+透明度），逻辑结算已完成，仅做视觉收尾
+	_play_death_fadeout()
+
+
+## v6.4: 死亡视觉淡出——快速缩放并淡出后销毁节点（逻辑结算已完成，不依赖 _process）
+func _play_death_fadeout() -> void:
+	if _death_fade_tween != null and _death_fade_tween.is_valid():
+		_death_fade_tween.kill()
+	var start_scale := scale
+	_death_fade_tween = create_tween()
+	_death_fade_tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	_death_fade_tween.tween_property(self, "scale", start_scale * 1.15, 0.08)
+	_death_fade_tween.parallel().tween_property(self, "modulate:a", 0.0, 0.25)
+	_death_fade_tween.tween_property(self, "scale", Vector2.ZERO, 0.17)
+	_death_fade_tween.tween_callback(queue_free)
+
 
 ## 销毁前的安全清理
 func _cleanup_before_destroy() -> void:

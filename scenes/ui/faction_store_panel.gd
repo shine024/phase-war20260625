@@ -225,6 +225,22 @@ func _on_buy_button_pressed(item: Variant):
 		_fetch_store_items()
 		_display_items()
 	else:
+		# v6.4: 修复悬空 else——购买失败时提示原因
+		var reason: String = String(result.get("reason", "unknown"))
+		var msg: String = "购买失败"
+		match reason:
+			"level_too_low":
+				msg = "等级不足，需要 %d 级" % int(result.get("required_level", 0))
+			"reputation_insufficient":
+				msg = "声望不足，需要 %d 声望" % int(result.get("required_rep", 0))
+			"out_of_stock":
+				msg = "库存不足"
+		var toast = get_node_or_null("/root/ManagerLazyLoader")
+		if toast and toast.has_method("ensure_loaded"):
+			toast.ensure_loaded("toast")
+			var tm = get_node_or_null("/root/ToastManager")
+			if tm and tm.has_method("show_toast"):
+				tm.show_toast(msg, "warn")
 
 ## 关闭面板
 func _on_close_pressed():

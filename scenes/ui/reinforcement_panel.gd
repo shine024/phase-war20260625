@@ -53,9 +53,15 @@ func _apply_embedded_layout() -> void:
 	var title_row = get_node_or_null("VBoxContainer/TitleRow")
 	if title_row:
 		title_row.visible = false
-	var scroll = get_node_or_null("VBoxContainer/HBoxContainer/ScrollContainer")
+	var scroll = get_node_or_null("VBoxContainer/MainHBox/ScrollContainer")
 	if scroll:
 		scroll.visible = false
+	# v6.4: 内嵌模式下隐藏资源栏（背包场景冗余）
+	var resource_bar = get_node_or_null("VBoxContainer/ResourceBar")
+	if resource_bar:
+		resource_bar.visible = false
+	# v6.6: 嵌入模式尺寸适配——清零根节点最小尺寸，让其服从宿主 Tab 容器
+	custom_minimum_size = Vector2.ZERO
 
 ## ─────────────────────────────────────────────
 ##  UI更新
@@ -237,7 +243,7 @@ func _on_reinforce_pressed() -> void:
 ## 供外部调用的接口
 func set_selected_card(card: CardResource) -> void:
 	selected_card = card
-	if has_node("VBoxContainer/HBoxContainer/DetailPanel"):
+	if has_node("VBoxContainer/MainHBox/DetailPanel"):
 		_update_detail_panel()
 
 func show_panel() -> void:

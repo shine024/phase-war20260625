@@ -88,7 +88,8 @@ static func _load_and_migrate_file(file_name: String, debug_log: bool) -> Dictio
 		return {}
 
 	var data = json.data
-	if not data.is_empty():
+	# 类型安全：仅接受非空 Dictionary（旧独立存档应为字典结构）
+	if data is Dictionary and not data.is_empty():
 		DirAccess.remove_absolute(save_path)
 		if debug_log and DEBUG_LOG:
 			pass

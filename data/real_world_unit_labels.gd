@@ -2,7 +2,34 @@ extends RefCounted
 class_name RealWorldUnitLabels
 ## 单位信息 UI：武器 / 底盘 的「现实向」展示名（与 GameConstants 枚举序号一致，勿改序）。
 
-## 与 GameConstants.WeaponType 一致：0=SMG … 11=RAIL_CANNON
+## ── 当前 WeaponType（4值攻击方式）显示名（v6.5：修正枚举错位）──
+## 注意：当前 WeaponType 只有 DIRECT/INDIRECT/AERIAL/SUPPORT 四值，
+## 不再是旧的 12 值 WeaponTypeLegacy。这里返回的是「战斗方式」描述，
+## 具体武器型号应由 CardResource.weapon_names[] 提供。
+static func weapon_mode_name(weapon_type: int) -> String:
+	match weapon_type:
+		0:  # DIRECT
+			return "直射武器"
+		1:  # INDIRECT
+			return "曲射武器"
+		2:  # AERIAL
+			return "空射武器"
+		3:  # SUPPORT
+			return "支援设备"
+		_:
+			return "未知"
+
+## 简短战斗方式名
+static func weapon_mode_short(weapon_type: int) -> String:
+	match weapon_type:
+		0: return "直射"
+		1: return "曲射"
+		2: return "空射"
+		3: return "支援"
+		_: return "未知"
+
+## ── 旧 WeaponTypeLegacy（12值具体武器型号）显示名 ──
+## 仅用于 legacy_weapon_type 字段（存档迁移），请勿对当前 WeaponType 传值。
 static func weapon_kind_long(weapon_type: int) -> String:
 	match weapon_type:
 		0:

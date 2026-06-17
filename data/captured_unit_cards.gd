@@ -6,6 +6,7 @@ class_name CapturedUnitCards
 ## 不再从旧 default_cards 平台卡克隆。
 
 const EnemyUnitManifest = preload("res://data/enemy_unit_manifest.gd")
+const CapturedCardStats = preload("res://data/captured_card_stats.gd")
 const GC = preload("res://resources/game_constants.gd")
 
 static var _cache_built: bool = false
@@ -47,6 +48,12 @@ static func _build_captured_card(
 	display_name: String,
 	cfg: Dictionary
 ) -> CardResource:
+	# ── 静态表覆盖优先 ──
+	var override: Dictionary = CapturedCardStats.get_stats(drop_id)
+	if not override.is_empty():
+		return _build_from_static(drop_id, override)
+
+	# ── 原动态逻辑 fallback ──
 	var c: CardResource = CardResource.new()
 	c.card_id = drop_id
 	c.card_type = GC.CardType.COMBAT_UNIT  # 战斗卡
@@ -122,7 +129,7 @@ static func _build_captured_card(
 		c.attack_light = float(cfg.get("attack_light", 0.0))
 		c.attack_armor = float(cfg.get("attack_armor", 0.0))
 		c.attack_air = float(cfg.get("attack_air", 0.0))
-		
+
 	c.weapon_type = int(cfg.get("weapon_type", 0))
 	c.deploy_speed = int(cfg.get("deploy_speed", 3))
 	c.defense_light = float(cfg.get("defense_light", 0.0))
@@ -144,6 +151,38 @@ static func _build_captured_card(
 
 	# type_line
 	var era_label: String = ["一战", "二战", "冷战", "现代", "近未来"][clampi(era, 0, 4)]
+	var kind_label: String = CardResource.get_combat_kind_name(c.combat_kind)
+	c.type_line = "%s — 缴获%s" % [era_label, kind_label]
+
+	return c
+
+
+## ── 从静态数据表构建缴获卡 ──
+static func _build_from_static(drop_id: String, stats: Dictionary) -> CardResource:
+	var c: CardResource = CardResource.new()
+	c.card_id = drop_id
+	c.card_type = GC.CardType.COMBAT_UNIT
+	c.is_dropped_card = true
+
+	c.display_name = String(stats.get("display_name", drop_id))
+	c.era = int(stats.get("era", 0))
+	c.combat_kind = int(stats.get("combat_kind", 1))
+	c.base_hp = float(stats.get("base_hp", 100.0))
+	c.range_value = int(stats.get("range_value", 1))
+	c.attack_speed = float(stats.get("attack_speed", 1.0))
+	c.attack_light = float(stats.get("attack_light", 0.0))
+	c.attack_armor = float(stats.get("attack_armor", 0.0))
+	c.attack_air = float(stats.get("attack_air", 0.0))
+	c.weapon_type = int(stats.get("weapon_type", 0))
+	c.deploy_speed = int(stats.get("deploy_speed", 3))
+	c.defense_light = float(stats.get("defense_light", 0.0))
+	c.defense_armor = float(stats.get("defense_armor", 0.0))
+	c.defense_air = float(stats.get("defense_air", 0.0))
+	c.base_speed = float(stats.get("base_speed", 0.0))
+	c.power = int(stats.get("power", 10))
+	c.weapon_label = String(stats.get("weapon_label", ""))
+
+	var era_label: String = ["一战", "二战", "冷战", "现代", "近未来"][clampi(c.era, 0, 4)]
 	var kind_label: String = CardResource.get_combat_kind_name(c.combat_kind)
 	c.type_line = "%s — 缴获%s" % [era_label, kind_label]
 

@@ -378,12 +378,19 @@ static func get_all_ids() -> Array:
 	ids.append_array(_get_generated_archetypes().keys())
 	return ids
 
-## 格子战术防御：配置内 defense 优先，否则按攻/HP/标签推算
+## 格子战术防御：配置内 defense 优先，否则三维防御取最大值，最后按攻/HP/标签推算
+## v6.3: 支持三维防御（defense_light/armor/air），取最大值作为单一 defense
 static func compute_defense_from_config(cfg: Dictionary) -> int:
 	if cfg.is_empty():
 		return 5
 	if cfg.has("defense"):
 		return int(cfg["defense"])
+	# v6.3: 三维防御存在则取最大值
+	if cfg.has("defense_light") or cfg.has("defense_armor") or cfg.has("defense_air"):
+		var dl: float = float(cfg.get("defense_light", 0.0))
+		var da: float = float(cfg.get("defense_armor", 0.0))
+		var dai: float = float(cfg.get("defense_air", 0.0))
+		return int(maxf(dl, maxf(da, dai)))
 	var atk: float = float(cfg.get("attack_damage", 10.0))
 	var hp_v: float = float(cfg.get("hp", 80.0))
 	var tags: Array = cfg.get("tags", [])

@@ -16,6 +16,7 @@ const FOR_10_COMMAND = "for_10_command"
 const DATA: Dictionary = {
 	"for_01_concrete" = {
 		id = FOR_01_CONCRETE, name = "钢筋混凝土装甲", name_en = "Reinforced Concrete",
+		icon = "res://assets/ui/icons/mod_icons/mod_armor.png",
 		prototype = "碉堡标准", description = "标准碉堡装甲，防护大幅提升",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 160, cost_install = 80,
@@ -25,6 +26,7 @@ const DATA: Dictionary = {
 	},
 	"for_02_tunnel" = {
 		id = FOR_02_TUNNEL, name = "地下坑道", name_en = "Underground Tunnel",
+		icon = "res://assets/ui/icons/mod_icons/mod_network.png",
 		prototype = "马奇诺防线", description = "单位间支援提升，被摧毁50%回收",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 280, cost_install = 140,
@@ -34,6 +36,7 @@ const DATA: Dictionary = {
 	},
 	"for_03_auto_turret" = {
 		id = FOR_03_AUTO_TURRET, name = "自动炮塔", name_en = "Auto Turret",
+		icon = "res://assets/ui/icons/mod_icons/mod_automation.png",
 		prototype = "遥控武器站", description = "自动化射击，射速提升",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 300, cost_install = 150,
@@ -43,6 +46,7 @@ const DATA: Dictionary = {
 	},
 	"for_04_filtration" = {
 		id = FOR_04_FILTRATION, name = "通风过滤系统", name_en = "Filtration System",
+		icon = "res://assets/ui/icons/mod_icons/mod_protection.png",
 		prototype = "核生化防护", description = "免疫生化攻击",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 320, cost_install = 160,
@@ -52,6 +56,7 @@ const DATA: Dictionary = {
 	},
 	"for_05_ammo_dump" = {
 		id = FOR_05_AMMO_DUMP, name = "弹药库", name_en = "Ammunition Depot",
+		icon = "res://assets/ui/icons/mod_icons/mod_ammunition.png",
 		prototype = "地下弹药库", description = "攻击力提升",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 180, cost_install = 90,
@@ -61,6 +66,7 @@ const DATA: Dictionary = {
 	},
 	"for_06_radar" = {
 		id = FOR_06_RADAR, name = "雷达天线", name_en = "Radar Array",
+		icon = "res://assets/ui/icons/mod_icons/mod_radar.png",
 		prototype = "远程预警雷达", description = "发现隐形单位",
 		rarity = "legendary",
 	power_mult = 2.0, cost_research = 400, cost_install = 200,
@@ -70,6 +76,7 @@ const DATA: Dictionary = {
 	},
 	"for_07_camouflage" = {
 		id = FOR_07_CAMOUFLAGE, name = "伪装系统", name_en = "Camouflage System",
+		icon = "res://assets/ui/icons/mod_icons/mod_stealth.png",
 		prototype = "伪装网/植被", description = "降低被发现概率",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 140, cost_install = 70,
@@ -79,6 +86,7 @@ const DATA: Dictionary = {
 	},
 	"for_08_trench" = {
 		id = FOR_08_TRENCH, name = "反坦克壕", name_en = "Anti-Tank Trench",
+		icon = "res://assets/ui/icons/mod_icons/mod_obstacle.png",
 		prototype = "堑壕系统", description = "敌方装甲兵减速",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 200, cost_install = 100,
@@ -88,6 +96,7 @@ const DATA: Dictionary = {
 	},
 	"for_09_minefield" = {
 		id = FOR_09_MINEFIELD, name = "雷场", name_en = "Minefield",
+		icon = "res://assets/ui/icons/mod_icons/mod_minefield.png",
 		prototype = "反坦克/人员地雷", description = "接近敌人损失生命值",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 280, cost_install = 140,
@@ -97,6 +106,7 @@ const DATA: Dictionary = {
 	},
 	"for_10_command" = {
 		id = FOR_10_COMMAND, name = "指挥塔", name_en = "Command Tower",
+		icon = "res://assets/ui/icons/mod_icons/mod_command.png",
 		prototype = "要塞核心", description = "周围友军命中提升",
 		rarity = "legendary",
 	power_mult = 2.0, cost_research = 420, cost_install = 210,

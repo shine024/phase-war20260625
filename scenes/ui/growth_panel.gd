@@ -7,6 +7,7 @@ const StarConfig = preload("res://data/blueprint_star_config.gd")
 const ModRegistry = preload("res://scripts/systems/modification_registry.gd")
 const ModSlotScene: PackedScene = preload("res://scenes/ui/mod_slot_item.tscn")
 const EvoPathRegistry = preload("res://scripts/systems/evolution_path_registry.gd")
+const UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")
 
 signal closed
 
@@ -161,6 +162,8 @@ func _ready() -> void:
 
 	# 视觉样式美化
 	_apply_visual_styles()
+	# 改造系统入口按钮挂图标（强化/改装/进化）
+	_apply_action_btn_icons()
 
 # ========== 视觉样式方法 ==========
 
@@ -190,6 +193,30 @@ func _apply_visual_styles() -> void:
 	var ep = get_node_or_null("%EnhanceProgress")
 	if ep:
 		ep.custom_minimum_size = Vector2(0, 6)
+
+# ========== 改造系统入口按钮图标 ==========
+
+## 给强化/改装/进化三个入口按钮挂图标（图标在文字左侧，保留中文文字）
+func _apply_action_btn_icons() -> void:
+	# 强化：mod_enhancement.png 在 mod_icons 子目录，用完整路径加载
+	var enh_tex := UiAssetLoader.load_tex("res://assets/ui/icons/mod_icons/mod_enhancement.png")
+	# 改装：根目录 svg
+	var mod_tex := UiAssetLoader.ui_icon("icon_modification")
+	# 进化：暂用 icon_blueprint.svg 占位（与 intel_manual_items.gd 进化蓝图一致）
+	var evo_tex := UiAssetLoader.ui_icon("icon_blueprint")
+	_apply_btn_icon(%EnhanceBtn, enh_tex, "强化")
+	_apply_btn_icon(%ModBtn, mod_tex, "改造")
+	_apply_btn_icon(%EvoBtn, evo_tex, "进化")
+
+## 统一挂图标：去掉原 text 开头的 emoji，保留中文文字
+func _apply_btn_icon(btn: Button, tex: Texture2D, text_label: String) -> void:
+	if btn == null or tex == null:
+		return
+	btn.text = text_label
+	btn.icon = tex
+	btn.expand_icon = true
+	btn.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	btn.add_theme_constant_override("icon_max_width", 18)
 
 # ========== 打开/关闭 ==========
 
@@ -616,6 +643,10 @@ func _refresh_mod_section() -> void:
 
 	var mod_list: Array = _selected_card.mods
 	var filled: int = mini(mod_list.size(), 9)
+	# [临时诊断] 确认 mods 数据是否到达成长面板
+	print("[GrowthPanel:Diag] card=%s mods.size=%d filled=%d" % [_selected_card.card_id, mod_list.size(), filled])
+	for i in range(mini(mod_list.size(), 3)):
+		print("[GrowthPanel:Diag]   mods[%d]=%s" % [i, mod_list[i]])
 	if mod_count_label:
 		mod_count_label.text = "%d/9" % filled
 
@@ -629,12 +660,26 @@ func _refresh_mod_section() -> void:
 				slot.set_slot_index(idx + 1)
 			var mod_data: Dictionary = {}
 			var entry = mod_list[idx]
+			# BlueprintManager 写入的 entry 是 {id, installed_at}，不含 name/level/tier 等显示字段；
+			# 统一用 id 反查改造注册表补全，避免 mod_slot_item 取不到 name 显示空白。
+			# 用 duplicate 避免把显示字段写回 card.mods 污染存档数据。
+			var mod_id_str: String = ""
 			if entry is Dictionary:
-				mod_data = entry
+				mod_id_str = String(entry.get("id", ""))
+				mod_data = entry.duplicate(true)
 			elif entry is String:
-				var entry_str: String = String(entry)
-				var md: Dictionary = ModRegistry.get_data(entry_str)
-				mod_data = {"id": entry_str, "name": md.get("display_name", entry_str), "level": 1, "tier": "A"}
+				mod_id_str = String(entry)
+			if not mod_id_str.is_empty():
+				var md: Dictionary = ModRegistry.get_data(mod_id_str)
+				mod_data["id"] = mod_id_str
+				# 改造数据名字字段是 "name"（非 display_name）
+				mod_data["name"] = md.get("name", mod_id_str)
+				if not mod_data.has("level"):
+					mod_data["level"] = 1
+				if not mod_data.has("tier"):
+					mod_data["tier"] = md.get("tier", "A")
+				if not mod_data.has("icon"):
+					mod_data["icon"] = md.get("icon", "")
 			if slot.has_method("set_mod"):
 				slot.set_mod(mod_data)
 		else:

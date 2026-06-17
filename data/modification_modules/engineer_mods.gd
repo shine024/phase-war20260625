@@ -16,6 +16,7 @@ const ENG_10_CAMOUFLAGE = "eng_10_camouflage"
 const DATA: Dictionary = {
 	"eng_01_mine_sweeper" = {
 		id = ENG_01_MINE_SWEEPER, name = "扫雷索", name_en = "Mine Sweeper",
+		icon = "res://assets/ui/icons/mod_icons/mod_engineering.png",
 		prototype = "坦克扫雷装置", description = "清除地雷，轻微减速",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 140, cost_install = 70,
@@ -25,6 +26,7 @@ const DATA: Dictionary = {
 	},
 	"eng_02_explosives" = {
 		id = ENG_02_EXPLOSIVES, name = "爆破装置", name_en = "Explosive Charges",
+		icon = "res://assets/ui/icons/mod_icons/mod_demolition.png",
 		prototype = "C4/塑胶炸药", description = "对堡垒伤害大幅提升",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 260, cost_install = 130,
@@ -34,6 +36,7 @@ const DATA: Dictionary = {
 	},
 	"eng_03_welding" = {
 		id = ENG_03_WELDING, name = "焊接设备", name_en = "Welding Equipment",
+		icon = "res://assets/ui/icons/mod_icons/mod_repair.png",
 		prototype = "战场抢修", description = "持续回复生命值",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 160, cost_install = 80,
@@ -43,6 +46,7 @@ const DATA: Dictionary = {
 	},
 	"eng_04_bridge" = {
 		id = ENG_04_BRIDGE, name = "架桥设备", name_en = "Bridge Layer",
+		icon = "res://assets/ui/icons/mod_icons/mod_bridge.png",
 		prototype = "坦克架桥车", description = "友军河流地形速度提升",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 300, cost_install = 150,
@@ -52,6 +56,7 @@ const DATA: Dictionary = {
 	},
 	"eng_05_shovel" = {
 		id = ENG_05_SHOVEL, name = "工程铲", name_en = "Combat Shovel",
+		icon = "res://assets/ui/icons/mod_icons/mod_digging.png",
 		prototype = "推土铲", description = "防御提升，轻微减速",
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 70, cost_install = 35,
@@ -61,6 +66,7 @@ const DATA: Dictionary = {
 	},
 	"eng_06_crane" = {
 		id = ENG_06_CRANE, name = "起重机", name_en = "Recovery Crane",
+		icon = "res://assets/ui/icons/mod_icons/mod_recovery.png",
 		prototype = "装甲回收车", description = "战损单位50%回收",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 180, cost_install = 90,
@@ -70,6 +76,7 @@ const DATA: Dictionary = {
 	},
 	"eng_07_generator" = {
 		id = ENG_07_GENERATOR, name = "发电机", name_en = "Power Generator",
+		icon = "res://assets/ui/icons/mod_icons/mod_power.png",
 		prototype = "野战发电站", description = "周围堡垒HP回复提升",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 200, cost_install = 100,
@@ -79,6 +86,7 @@ const DATA: Dictionary = {
 	},
 	"eng_08_medical" = {
 		id = ENG_08_MEDICAL, name = "战场急救站", name_en = "Field Medical Station",
+		icon = "res://assets/ui/icons/mod_icons/mod_medical.png",
 		prototype = "机动医疗单元", description = "周围友军回复生命值",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 280, cost_install = 140,
@@ -88,6 +96,7 @@ const DATA: Dictionary = {
 	},
 	"eng_09_supply" = {
 		id = ENG_09_SUPPLY, name = "弹药补给车", name_en = "Ammo Supply Truck",
+		icon = "res://assets/ui/icons/mod_icons/mod_logistics.png",
 		prototype = "运输车", description = "周围友军弹药提升",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 180, cost_install = 90,
@@ -97,6 +106,7 @@ const DATA: Dictionary = {
 	},
 	"eng_10_camouflage" = {
 		id = ENG_10_CAMOUFLAGE, name = "伪装网系统", name_en = "Camouflage System",
+		icon = "res://assets/ui/icons/mod_icons/mod_stealth.png",
 		prototype = "大型伪装系统", description = "周围单位被发现降低",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 240, cost_install = 120,

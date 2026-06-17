@@ -22,6 +22,7 @@ const RankDisplayUi = preload("res://scripts/rank_display_ui.gd")
 const ReinforcePanelScene = preload("res://scenes/ui/reinforcement_panel.tscn")
 const ModifyPanelScene = preload("res://scenes/ui/modification_panel.tscn")
 const EvolvePanelScene = preload("res://scenes/ui/evolution_panel.tscn")
+const ModificationRegistry = preload("res://scripts/systems/modification_registry.gd")
 
 var current_card: CardResource = null
 var _current_unit: Node = null
@@ -46,6 +47,18 @@ var rarity_label: Label = null
 var cost_label: Label = null
 var status_section: PanelContainer = null
 var _tab_container: TabContainer = null
+# v6.4 图形化三维攻防卡节点
+var _hp_value_label: Label = null
+var _hp_sub_label: Label = null
+var _atk_value_label: Label = null
+var _atk_sub_label: Label = null
+var _def_value_label: Label = null
+var _def_sub_label: Label = null
+var _extra_stat_label: Label = null
+var _stats_section: PanelContainer = null
+var _stat_cards_row: HBoxContainer = null
+var _affix_flow: VBoxContainer = null
+var _star_detail_label: Label = null
 
 # 子面板实例（懒加载）
 var _reinforce_instance: Control = null
@@ -82,15 +95,28 @@ func _ready() -> void:
 		close_button.pressed.connect(hide_panel)
 
 func _resolve_nodes() -> void:
-	name_label = get_node_or_null("Margin/VBox/HeaderPanel/NameLabel") as Label
-	rarity_label = get_node_or_null("Margin/VBox/HeaderPanel/RarityCostRow/RarityLabel") as Label
-	cost_label = get_node_or_null("Margin/VBox/HeaderPanel/RarityCostRow/CostLabel") as Label
+	name_label = get_node_or_null("Margin/VBox/HeaderPanel/HeaderVBox/NameStarRow/NameLabel") as Label
+	star_label = get_node_or_null("Margin/VBox/HeaderPanel/HeaderVBox/NameStarRow/StarLabel") as Label
+	rarity_label = get_node_or_null("Margin/VBox/HeaderPanel/HeaderVBox/RarityCostRow/RarityLabel") as Label
+	cost_label = get_node_or_null("Margin/VBox/HeaderPanel/HeaderVBox/RarityCostRow/CostLabel") as Label
 	type_label = get_node_or_null("Margin/VBox/TypeLabel") as Label
 	rank_badge_host = get_node_or_null("Margin/VBox/RankBadgeHost") as HBoxContainer
 	_tab_container = get_node_or_null("Margin/VBox/TabBar") as TabContainer
+	# v6.4 图形化三维攻防卡
+	_hp_value_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow/HpCard/HpVBox/HpValue") as Label
+	_hp_sub_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow/HpCard/HpVBox/HpSub") as Label
+	_atk_value_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow/AtkCard/AtkVBox/AtkValue") as Label
+	_atk_sub_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow/AtkCard/AtkVBox/AtkSub") as Label
+	_def_value_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow/DefCard/DefVBox/DefValue") as Label
+	_def_sub_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow/DefCard/DefVBox/DefSub") as Label
+	_extra_stat_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/ExtraStatLabel") as Label
+	_stats_section = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection") as PanelContainer
+	_stat_cards_row = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow") as HBoxContainer
 	summary_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/SummaryLabel") as Label
+	# 词条标签化容器
+	_affix_flow = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/AffixSection/AffixVBox/AffixFlow") as VBoxContainer
 	affix_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/AffixSection/AffixVBox/AffixLabel") as Label
-	star_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StarSection/StarVBox/StarLabel") as Label
+	_star_detail_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StarSection/StarVBox/StarLabel") as Label
 	law_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/LawSection/LawVBox/LawLabel") as Label
 	nurture_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/NurtureSection/NurtureVBox/NurtureLabel") as Label
 	status_section = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StatusSection") as PanelContainer
@@ -289,11 +315,35 @@ func _add_action_button(text: String, color: Color, action: String) -> void:
 	var btn := Button.new()
 	btn.name = action.capitalize().replace(" ", "") + "Button"
 	btn.text = text
-	btn.custom_minimum_size = Vector2(200, 36)
+	btn.custom_minimum_size = Vector2(200, 38)
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn.add_theme_font_size_override("font_size", 13)
 	btn.add_theme_color_override("font_color", color)
-	btn.add_theme_color_override("font_hover_color", Color(0.545, 0.361, 0.965, 1))
+	btn.add_theme_color_override("font_hover_color", Color(1, 1, 1, 1))
+	# v6.4: 圆角按钮 + 左侧色条样式
+	var sb_normal := StyleBoxFlat.new()
+	sb_normal.bg_color = Color(0.12, 0.15, 0.22, 0.95)
+	sb_normal.border_color = color
+	sb_normal.border_width_left = 3
+	sb_normal.border_width_top = 1
+	sb_normal.border_width_right = 1
+	sb_normal.border_width_bottom = 1
+	sb_normal.corner_radius_top_left = 6
+	sb_normal.corner_radius_top_right = 6
+	sb_normal.corner_radius_bottom_left = 6
+	sb_normal.corner_radius_bottom_right = 6
+	sb_normal.content_margin_left = 12.0
+	sb_normal.content_margin_top = 6.0
+	sb_normal.content_margin_right = 12.0
+	sb_normal.content_margin_bottom = 6.0
+	var sb_hover := sb_normal.duplicate()
+	sb_hover.bg_color = Color(color.r * 0.25 + 0.1, color.g * 0.25 + 0.12, color.b * 0.25 + 0.16, 0.97)
+	sb_hover.border_color = color.lightened(0.3)
+	var sb_pressed := sb_normal.duplicate()
+	sb_pressed.bg_color = Color(color.r * 0.15 + 0.08, color.g * 0.15 + 0.1, color.b * 0.15 + 0.13, 0.98)
+	btn.add_theme_stylebox_override("normal", sb_normal)
+	btn.add_theme_stylebox_override("hover", sb_hover)
+	btn.add_theme_stylebox_override("pressed", sb_pressed)
 	var card_ref := current_card
 	btn.pressed.connect(func() -> void:
 		if card_ref != null:
@@ -313,14 +363,39 @@ func _clear_action_buttons() -> void:
 
 ## ── 卡牌头部刷新 ──────────────────────────────────────────────
 
+## v6.4: 按稀有度染色 HeaderPanel 左侧色带（复制 section 样式并覆盖左边框色）
+func _apply_header_rarity_band(rarity_key: String) -> void:
+	var header := get_node_or_null("Margin/VBox/HeaderPanel") as PanelContainer
+	if header == null:
+		return
+	var band_color: Color = RARITY_COLORS.get(rarity_key, Color(0.6, 0.65, 0.75, 1))
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.1, 0.14, 0.22, 0.9)
+	sb.border_color = band_color
+	sb.border_width_left = 4
+	sb.border_width_top = 0
+	sb.border_width_right = 0
+	sb.border_width_bottom = 0
+	sb.corner_radius_top_left = 6
+	sb.corner_radius_top_right = 6
+	sb.corner_radius_bottom_left = 4
+	sb.corner_radius_bottom_right = 4
+	header.add_theme_stylebox_override("panel", sb)
+
 func _refresh_header(card: CardResource) -> void:
 	if rank_badge_host:
 		RankDisplayUi.clear_host(rank_badge_host)
 		rank_badge_host.visible = false
 	if name_label:
 		name_label.text = card.display_name if not card.display_name.is_empty() else DefaultCards.get_safe_display_name(card.card_id)
+	# v6.4: 头部星级（★N，金色），仅战斗卡/能量卡显示
+	if star_label:
+		var star_val: int = int(card.enhance_level) if "enhance_level" in card else 0
+		star_label.text = "★%d" % star_val if star_val > 0 else ""
+	# v6.4: 稀有度色带——染色 HeaderPanel 左侧边框
+	var r_key: String = card.rarity if card.rarity else "common"
+	_apply_header_rarity_band(r_key)
 	if rarity_label:
-		var r_key: String = card.rarity if card.rarity else "common"
 		rarity_label.text = RARITY_DISPLAY.get(r_key, r_key)
 		rarity_label.add_theme_color_override("font_color", RARITY_COLORS.get(r_key, Color(0.75, 0.78, 0.85, 1)))
 	if cost_label:
@@ -336,6 +411,15 @@ func _refresh_header(card: CardResource) -> void:
 				if card.era >= 0 and card.era < ERA_NAMES.size():
 					parts.append(ERA_NAMES[card.era])
 				var wl: String = card.weapon_label if "weapon_label" in card else ""
+				if wl.is_empty() and "weapon_names" in card:
+					# v6.5: weapon_label 从未赋值，改为从 weapon_names[] 拼接具体武器配置名
+					var wnames: Array = []
+					for wn in card.weapon_names:
+						var ws: String = String(wn)
+						if not ws.is_empty() and not wnames.has(ws):
+							wnames.append(ws)
+					if wnames.size() > 0:
+						wl = " / ".join(wnames)
 				if not wl.is_empty():
 					parts.append(wl)
 				type_label.text = " · ".join(parts)
@@ -357,18 +441,13 @@ func _refresh_header(card: CardResource) -> void:
 func _refresh_info_sections(card: CardResource) -> void:
 	if card == null:
 		return
-	# 三维攻防
-	if summary_label:
-		var preview: String = BackpackCombatPreview.build_line(card)
-		if preview.begins_with("战斗中："):
-			preview = preview.substr(5)
-		summary_label.text = preview if not preview.is_empty() else card.summary_line
-	# 词条
-	if affix_label:
-		affix_label.text = _build_card_affix_summary(card) if card.card_type == GC.CardType.COMBAT_UNIT else ""
-	# 星级强化
-	if star_label:
-		star_label.text = _build_star_lines(card)
+	# v6.4: 三维攻防——图形化三列数值卡
+	_refresh_stat_cards(card)
+	# 词条（标签化）
+	_refresh_affix_tags(card)
+	# 星级强化详情（情报 Tab 内，非头部星级）
+	if _star_detail_label:
+		_star_detail_label.text = _build_star_lines(card)
 	# 法则影响
 	if law_label:
 		law_label.text = ""  # 卡牌模式无法则影响行（战场单位才会有）
@@ -384,6 +463,115 @@ func _refresh_info_sections(card: CardResource) -> void:
 	# 隐藏战场专用状态区
 	if status_section:
 		status_section.visible = false
+
+## v6.4: 三维攻防图形化——构建 UnitStats 后结构化填充 HP/攻击/防御三张数值卡
+func _refresh_stat_cards(card: CardResource) -> void:
+	var is_combat: bool = (card.card_type == GC.CardType.COMBAT_UNIT)
+	# 非战斗卡：隐藏三维卡区，回退到纯文本 summary
+	if not is_combat:
+		if _stats_section:
+			_stats_section.visible = false
+		if summary_label:
+			var preview: String = BackpackCombatPreview.build_line(card)
+			if preview.begins_with("战斗中："):
+				preview = preview.substr(5)
+			summary_label.text = preview if not preview.is_empty() else card.summary_line
+			summary_label.visible = true
+		return
+	# 战斗卡：显示三维卡，隐藏旧 summary
+	if _stats_section:
+		_stats_section.visible = true
+	if _stat_cards_row:
+		_stat_cards_row.visible = true
+	if _extra_stat_label:
+		_extra_stat_label.visible = true
+	if summary_label:
+		summary_label.visible = false
+	# 构建 UnitStats（含时代缩放 + growth + affix）
+	var stats: UnitStats = _build_display_stats(card)
+	if stats == null:
+		return
+	# HP 卡
+	if _hp_value_label:
+		_hp_value_label.text = str(int(stats.max_hp))
+	if _hp_sub_label:
+		_hp_sub_label.text = "射程 %d" % int(stats.attack_range)
+	# 攻击卡（取三维最大值作主数字，子项列三维）
+	var atk_main: float = maxf(stats.attack_light, maxf(stats.attack_armor, stats.attack_air))
+	if _atk_value_label:
+		_atk_value_label.text = str(int(atk_main))
+	if _atk_sub_label:
+		_atk_sub_label.text = "轻%d·甲%d·空%d" % [int(stats.attack_light), int(stats.attack_armor), int(stats.attack_air)]
+	# 防御卡（取三维最大值作主数字，子项列三维）
+	var def_main: float = maxf(stats.defense_light, maxf(stats.defense_armor, stats.defense_air))
+	if _def_value_label:
+		_def_value_label.text = str(int(def_main))
+	if _def_sub_label:
+		_def_sub_label.text = "轻%d·甲%d·空%d" % [int(stats.defense_light), int(stats.defense_armor), int(stats.defense_air)]
+	# 额外信息行（攻速/移速）
+	if _extra_stat_label:
+		var spd: float = stats.attack_interval if stats.attack_interval > 0 else 1.0
+		var dps: float = atk_main / spd
+		_extra_stat_label.text = "攻速 %.2f/s · DPS %d · 移速 %d" % [1.0 / spd, int(dps), int(stats.move_speed)]
+
+## v6.4: 构建 UnitStats（含时代缩放 + growth + affix），供三维卡显示
+func _build_display_stats(card: CardResource) -> UnitStats:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null or tree.root == null:
+		return null
+	var root: Node = tree.root
+	var bm: Node = root.get_node_or_null("BlueprintManager")
+	var am: Node = root.get_node_or_null("AffixManager")
+	var era: int = 0
+	var gm: Node = root.get_node_or_null("GameManager")
+	if gm and "current_level" in gm:
+		era = GC.get_era_for_level(int(gm.current_level))
+	var stats: UnitStats = UnitStatsTable.build_stats_from_card(card, era)
+	if bm and bm.has_method("apply_growth_to_stats"):
+		bm.apply_growth_to_stats(stats, card, [])
+	if am and am.has_method("apply_affixes_to_stats"):
+		am.apply_affixes_to_stats(stats, card, [])
+	return stats
+
+## v6.4: 词条标签化——把 affix 摘要拆成多个带色点的小标签填入 AffixFlow
+func _refresh_affix_tags(card: CardResource) -> void:
+	if _affix_flow == null:
+		# 回退：用旧 AffixLabel
+		if affix_label:
+			affix_label.text = _build_card_affix_summary(card) if card.card_type == GC.CardType.COMBAT_UNIT else ""
+			affix_label.visible = not affix_label.text.is_empty()
+		return
+	# 清空旧标签
+	for ch in _affix_flow.get_children():
+		if is_instance_valid(ch):
+			_affix_flow.remove_child(ch)
+			ch.queue_free()
+	if affix_label:
+		affix_label.visible = false
+	if card.card_type != GC.CardType.COMBAT_UNIT:
+		return
+	var tags: Array = _build_affix_tag_list(card)
+	if tags.is_empty():
+		var empty := Label.new()
+		empty.text = "无特殊词条"
+		empty.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.7))
+		empty.add_theme_font_size_override("font_size", 11)
+		_affix_flow.add_child(empty)
+		return
+	for tag in tags:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 4)
+		var dot := Label.new()
+		dot.text = "●"
+		dot.add_theme_color_override("font_color", tag.color)
+		dot.add_theme_font_size_override("font_size", 11)
+		var txt := Label.new()
+		txt.text = tag.text
+		txt.add_theme_color_override("font_color", Color(0.85, 0.85, 0.92, 1))
+		txt.add_theme_font_size_override("font_size", 12)
+		row.add_child(dot)
+		row.add_child(txt)
+		_affix_flow.add_child(row)
 
 func _build_card_affix_summary(card: CardResource) -> String:
 	if card.card_type != GC.CardType.COMBAT_UNIT:
@@ -445,10 +633,44 @@ func _build_nurture_text(card: CardResource) -> String:
 		var stage: String = str(card.evolution_stage)
 		if not stage.is_empty():
 			parts.append("进化 %s" % stage)
+	# v6.5: 情报标签下显示已获得改造的具体名称列表
+	var mod_list_text: String = ""
 	if card.card_type == GC.CardType.COMBAT_UNIT and "mods" in card:
-		parts.append("改造 %d/9" % card.mods.size())
+		var mod_names: Array[String] = []
+		for mod_entry in card.mods:
+			var mod_id: String = ""
+			var mod_disabled: bool = false
+			if mod_entry is Dictionary:
+				mod_id = String(mod_entry.get("id", ""))
+				if mod_entry.has("enabled") and not bool(mod_entry.get("enabled", true)):
+					mod_disabled = true
+			else:
+				mod_id = String(mod_entry)
+			if not mod_id.is_empty():
+				var mod_data: Dictionary = ModificationRegistry.get_data(mod_id)
+				var mod_name: String = String(mod_data.get("name", mod_id)) if not mod_data.is_empty() else mod_id
+				# v6.5: 禁用的武器改造标注（禁用）
+				if mod_disabled:
+					mod_name += "（禁用）"
+				mod_names.append(mod_name)
+		parts.append("改造 %d/9" % mod_names.size())
+		if not mod_names.is_empty():
+			mod_list_text = "\n已装改造：\n    · " + "\n    · ".join(mod_names)
+	# v6.5: 战力星级信息
+	var battle_star_text: String = ""
+	var bs: int = int(card.battle_star) if "battle_star" in card else 0
+	var bsp: float = float(card.battle_star_power) if "battle_star_power" in card else 0.0
+	if bs > 0:
+		var BattleStarCfg = preload("res://data/battle_star_config.gd")
+		var star_display: String = "⭐" + "★".repeat(bs)
+		var bonus_text: String = BattleStarCfg.format_stat_bonus_text(card.combat_kind, bs)
+		var next_thresh: float = BattleStarCfg.get_next_star_threshold(bs)
+		var progress_text: String = ""
+		if next_thresh > 0.0:
+			progress_text = "\n累计战力 %.0f / %.0f" % [bsp, next_thresh]
+		battle_star_text = "\n战力星级 %s\n    %s%s" % [star_display, bonus_text, progress_text]
 	if not parts.is_empty():
-		return " · ".join(parts)
+		return " · ".join(parts) + mod_list_text + battle_star_text
 	return ""
 
 ## ── 战场单位显示刷新 ─────────────────────────────────────────
@@ -456,6 +678,25 @@ func _build_nurture_text(card: CardResource) -> String:
 func _refresh_unit_display(unit: Node, is_player: bool) -> void:
 	if unit == null or not is_instance_valid(unit):
 		return
+	# v6.4: 战场单位模式——隐藏图形化三维卡区，恢复纯文本 summary/affix。
+	# 注意：不能隐藏整个 _stats_section（summary_label 是其子节点，父节点 visible=false
+	# 会使整棵子树不渲染，导致只显示名字、属性 summary 不显示）。改为保持 section 可见，
+	# 仅隐藏其内的图形化卡片行，让 summary_label 正常显示。
+	if _stats_section:
+		_stats_section.visible = true
+	if _stat_cards_row:
+		_stat_cards_row.visible = false
+	if _extra_stat_label:
+		_extra_stat_label.visible = false
+	if summary_label:
+		summary_label.visible = true
+	if _affix_flow:
+		for ch in _affix_flow.get_children():
+			if is_instance_valid(ch):
+				_affix_flow.remove_child(ch)
+				ch.queue_free()
+	if affix_label:
+		affix_label.visible = true
 	_refresh_rank_badge(unit)
 	var is_ally: bool = _resolve_unit_is_player(unit, is_player)
 	if unit.is_in_group("enemy_phase_driver"):
@@ -639,6 +880,50 @@ func _build_affix_summary_lines(stats: UnitStats) -> String:
 		return ""
 	return " · ".join(parts)
 
+## v6.4: 词条标签化——返回 [{text, color}] 数组，每个词条带语义色
+func _build_affix_tag_list(card: CardResource) -> Array:
+	var stats: UnitStats = _build_display_stats(card)
+	if stats == null:
+		return []
+	var tags: Array = []
+	var C_DEF := Color(0.3, 0.8, 0.45, 1)    # 减伤/防御类-绿
+	var C_DODGE := Color(0.4, 0.85, 0.95, 1)  # 闪避-青
+	var C_CRIT := Color(1.0, 0.7, 0.3, 1)     # 暴击-橙
+	var C_VAMP := Color(0.85, 0.3, 0.55, 1)   # 吸血-粉红
+	var C_PEN := Color(0.7, 0.5, 1, 1)        # 穿甲-紫
+	var C_AOE := Color(0.9, 0.6, 0.9, 1)      # 溅射/连锁-粉
+	var C_SHIELD := Color(0.5, 0.7, 1, 1)     # 护盾/回血-蓝
+	var C_MUT := Color(0.95, 0.82, 0.4, 1)    # 变异-金
+	if stats.damage_reduction > 0.001:
+		tags.append({text = "减伤 %d%%" % int(stats.damage_reduction * 100.0), color = C_DEF})
+	if stats.dodge_chance > 0.001:
+		tags.append({text = "闪避 %d%%" % int(stats.dodge_chance * 100.0), color = C_DODGE})
+	if stats.crit_chance > 0.001:
+		var cd_total: float = 1.5 + stats.crit_damage_bonus
+		tags.append({text = "暴击 %d%%（%.1fx）" % [int(stats.crit_chance * 100.0), cd_total], color = C_CRIT})
+	if stats.lifesteal > 0.001:
+		tags.append({text = "吸血 %d%%" % int(stats.lifesteal * 100.0), color = C_VAMP})
+	if stats.armor_penetration > 0.001:
+		tags.append({text = "穿甲 %d%%" % int(stats.armor_penetration * 100.0), color = C_PEN})
+	if stats.splash_damage > 0.001:
+		tags.append({text = "溅射 %d%%" % int(stats.splash_damage * 100.0), color = C_AOE})
+	if stats.chain_chance > 0.001:
+		tags.append({text = "连锁 %d%%" % int(stats.chain_chance * 100.0), color = C_AOE})
+	if stats.shield_on_kill > 0.001:
+		tags.append({text = "击杀护盾 %d%%HP" % int(stats.shield_on_kill * 100.0), color = C_SHIELD})
+	if stats.hp_regen > 0.001:
+		tags.append({text = "每秒回血 %d%%HP" % int(stats.hp_regen * 100.0), color = C_SHIELD})
+	var mutations: Array[String] = []
+	if stats.has_weapon_dmg_mutation: mutations.append("伤害变异")
+	if stats.has_weapon_atkspd_mutation: mutations.append("攻速变异")
+	if stats.has_crit_mutation: mutations.append("暴击变异")
+	if stats.has_lifesteal_mutation: mutations.append("吸血变异")
+	if stats.has_hp_regen_mutation: mutations.append("回血变异")
+	if stats.has_platform_hp_mutation: mutations.append("HP变异")
+	if not mutations.is_empty():
+		tags.append({text = "变异：%s" % " · ".join(mutations), color = C_MUT})
+	return tags
+
 func _enemy_surface_combat_stats(unit: Node) -> Array:
 	var hp: float = float(unit.get("hp")) if "hp" in unit else 0.0
 	var dmg: float = float(unit.get("attack_damage")) if "attack_damage" in unit else 0.0
@@ -698,9 +983,40 @@ func _show_enemy_phase_driver(unit: Node) -> void:
 
 func _clear_non_summary_info_sections() -> void:
 	if affix_label: affix_label.text = ""
-	if star_label: star_label.text = ""
+	if _star_detail_label: _star_detail_label.text = ""
 	if law_label: law_label.text = ""
 	if nurture_label: nurture_label.text = ""
+
+## v6.5: 构建武器名标签文本。
+## 优先级：card.weapon_names[]（具体型号）> weapon_id 名称 > 战斗方式（直射/曲射等）
+func _build_weapon_label_text(card_res: CardResource, stats: UnitStats) -> String:
+	# 1. 优先：卡牌的 weapon_names[] 具体武器型号（最准确）
+	if card_res != null and "weapon_names" in card_res:
+		var wnames: Array = []
+		for wn in card_res.weapon_names:
+			var ws: String = String(wn)
+			if not ws.is_empty() and not wnames.has(ws):
+				wnames.append(ws)
+		if wnames.size() > 0:
+			return " / ".join(wnames)
+	# 2. 次选：从 stats.weapons 的 weapon_id 查具体名称
+	if stats != null and stats.weapons.size() > 0:
+		var wnames: Array = []
+		for w in stats.weapons:
+			if not (w is Dictionary):
+				continue
+			var cfg: Dictionary = w
+			if cfg.has("weapon_id"):
+				var wid: String = String(cfg["weapon_id"])
+				var wn: String = DefaultCards.get_safe_display_name(wid)
+				if not wn.is_empty() and not wnames.has(wn):
+					wnames.append(wn)
+		if wnames.size() > 0:
+			return " / ".join(wnames)
+	# 3. 兜底：战斗方式描述（直射武器/曲射武器/空射武器/支援设备）
+	if stats != null:
+		return DefaultCards.get_weapon_display_name(stats.weapon_type)
+	return ""
 
 ## ── 敌方构装单位 ──
 
@@ -712,19 +1028,8 @@ func _show_enemy_construct_unit(unit: Node) -> void:
 	if name_label:
 		name_label.text = dn if not dn.is_empty() else (safe_name if not safe_name.is_empty() else "敌方构装单位")
 	var platform_name := dn if not dn.is_empty() else (safe_name if not safe_name.is_empty() else DefaultCards.get_platform_display_name(stats.platform_type))
-	var weapon_label_text: String = ""
-	if stats.weapons.size() > 0:
-		var weapon_names: Array = []
-		for w in stats.weapons:
-			if not (w is Dictionary): continue
-			var cfg: Dictionary = w
-			if not cfg.has("weapon_type"): continue
-			var wn := DefaultCards.get_weapon_display_name(int(cfg["weapon_type"]))
-			if not weapon_names.has(wn): weapon_names.append(wn)
-		if weapon_names.size() > 0:
-			weapon_label_text = " / ".join(weapon_names)
-	if weapon_label_text.is_empty():
-		weapon_label_text = DefaultCards.get_weapon_display_name(stats.weapon_type)
+	# v6.5: 优先用 card.weapon_names[] 显示具体武器型号，而非笼统的战斗方式
+	var weapon_label_text: String = _build_weapon_label_text(card_res, stats)
 	if type_label:
 		type_label.text = "相位师部署 · %s / %s" % [platform_name, weapon_label_text]
 	var cur_hp: float = float(unit.get("hp")) if "hp" in unit else stats.max_hp
@@ -733,8 +1038,8 @@ func _show_enemy_construct_unit(unit: Node) -> void:
 	var base_desc := "由敌方相位师基地生产的构装单位，自动推进并攻击我方。"
 	if affix_label:
 		affix_label.text = _build_affix_summary_lines(stats)
-	if star_label:
-		star_label.text = _build_star_enhancement_effects_for_stats(stats)
+	if _star_detail_label:
+		_star_detail_label.text = _build_star_enhancement_effects_for_stats(stats)
 	if law_label:
 		law_label.text = _build_phase_law_effects_for_unit(unit, false)
 	if desc_label:
@@ -752,31 +1057,16 @@ func _show_player_unit(unit: Node) -> void:
 	if name_label:
 		name_label.text = dn if not dn.is_empty() else (safe_name if not safe_name.is_empty() else "我方单位")
 	var platform_name := dn if not dn.is_empty() else (safe_name if not safe_name.is_empty() else DefaultCards.get_platform_display_name(stats.platform_type))
-	var weapon_label_text: String = ""
-	if stats.weapons.size() > 0:
-		var weapon_names: Array = []
-		for w in stats.weapons:
-			if not (w is Dictionary): continue
-			var cfg: Dictionary = w
-			if cfg.has("weapon_type"):
-				var wn := DefaultCards.get_weapon_display_name(int(cfg["weapon_type"]))
-				if not weapon_names.has(wn): weapon_names.append(wn)
-			elif cfg.has("weapon_id"):
-				var wid: String = String(cfg["weapon_id"])
-				var wn := DefaultCards.get_safe_display_name(wid)
-				if not wn.is_empty() and not weapon_names.has(wn): weapon_names.append(wn)
-		if weapon_names.size() > 0:
-			weapon_label_text = " / ".join(weapon_names)
-	if weapon_label_text.is_empty():
-		weapon_label_text = DefaultCards.get_weapon_display_name(stats.weapon_type)
+	# v6.5: 优先用 card.weapon_names[] 显示具体武器型号
+	var weapon_label_text: String = _build_weapon_label_text(card_res, stats)
 	if type_label:
 		type_label.text = "%s / %s" % [platform_name, weapon_label_text]
 	if summary_label:
 		summary_label.text = _format_unit_stats_summary(stats)
 	if affix_label:
 		affix_label.text = _build_affix_summary_lines(stats)
-	if star_label:
-		star_label.text = _build_star_enhancement_effects_for_stats(stats)
+	if _star_detail_label:
+		_star_detail_label.text = _build_star_enhancement_effects_for_stats(stats)
 	if law_label:
 		law_label.text = _build_phase_law_effects_for_unit(unit, true)
 	if desc_label:
@@ -841,7 +1131,6 @@ func _show_enemy_phase_master_unit(unit: Node, master_name: String) -> void:
 	else:
 		type_text = "【%s】%s" % [master_disp_name if not master_disp_name.is_empty() else "相位师", type_text]
 	var platform_name := "未知平台"
-	var weapon_label_text := "未知武器"
 	var stats: UnitStats = unit.stats if "stats" in unit else null
 	var pm_safe_name := DefaultCards.get_safe_display_name(stats.platform_card_id if stats else "")
 	var pm_card_res: CardResource = DefaultCards.get_card_by_id(stats.platform_card_id) if stats else null
@@ -852,18 +1141,10 @@ func _show_enemy_phase_master_unit(unit: Node, master_name: String) -> void:
 		platform_name = pm_safe_name
 	else:
 		platform_name = DefaultCards.get_platform_display_name(stats.platform_type) if stats else platform_name
-	if stats and stats.weapons.size() > 0:
-		var weapon_names: Array = []
-		for w in stats.weapons:
-			if not (w is Dictionary): continue
-			var cfg: Dictionary = w
-			if not cfg.has("weapon_type"): continue
-			var wn := DefaultCards.get_weapon_display_name(int(cfg["weapon_type"]))
-			if not weapon_names.has(wn): weapon_names.append(wn)
-		if weapon_names.size() > 0:
-			weapon_label_text = "/ ".join(weapon_names)
-	else:
-		weapon_label_text = DefaultCards.get_weapon_display_name(stats.weapon_type) if stats else weapon_label_text
+	# v6.5: 优先用 card.weapon_names[] 显示具体武器型号
+	var weapon_label_text: String = _build_weapon_label_text(pm_card_res, stats)
+	if weapon_label_text.is_empty():
+		weapon_label_text = "未知武器"
 	if type_label:
 		type_label.text = "%s\n%s / %s" % [type_text, platform_name, weapon_label_text]
 	var scombat: Array = _enemy_surface_combat_stats(unit)
@@ -890,7 +1171,7 @@ func _show_enemy_phase_master_unit(unit: Node, master_name: String) -> void:
 
 func _clear_other_unit_sections() -> void:
 	if affix_label: affix_label.text = ""
-	if star_label: star_label.text = ""
+	if _star_detail_label: _star_detail_label.text = ""
 	if nurture_label: nurture_label.text = ""
 
 func _show_generic_enemy_unit(unit: Node) -> void:
@@ -960,7 +1241,7 @@ func _show_generic_enemy_unit(unit: Node) -> void:
 		law_label.text = _build_phase_law_effects_for_unit(unit, false)
 	if flavor_label:
 		flavor_label.text = "“相位裂隙的另一侧，总有人在看着你。”"
-	if star_label: star_label.text = ""
+	if _star_detail_label: _star_detail_label.text = ""
 	if nurture_label: nurture_label.text = ""
 
 ## ── 法则效果构建 ──

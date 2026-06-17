@@ -71,6 +71,18 @@ const _ERA_VISUAL_ARCHETYPES: Dictionary = {
 	3: ["enemy_modern_marine", "enemy_modern_stryker", "enemy_modern_mlrs", "enemy_modern_technical"],
 	4: ["enemy_future_cyborg", "enemy_future_hovertank", "enemy_future_mech", "enemy_future_drone"],
 }
+## v7.1: 平台类型 → archetype tag 映射（用于选取与平台类型匹配的卡图）
+## fortress=要塞/阵地, titan/raider/siege=载具系, striker/sniper/stealth/mage=步兵系
+const _PLATFORM_TYPE_TO_TAG: Dictionary = {
+	"fortress": "turret",
+	"titan": "vehicle",
+	"raider": "vehicle",
+	"siege": "vehicle",
+	"striker": "infantry",
+	"sniper": "infantry",
+	"stealth": "infantry",
+	"mage": "infantry",
+}
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_PAUSABLE
@@ -241,7 +253,9 @@ func _produce_unit_with_equipment() -> void:
 
 	## 生成 ConstructUnit
 	var unit: Node2D = ConstructUnitScene.instantiate()
-	var visual_archetype_id: String = _pick_visual_archetype_for_era(era)
+	# v7.1: 按平台类型匹配卡图（替代仅按时代选取，避免不同平台显示同一张图）
+	var platform_type_str: String = String(platform_data.get("type", ""))
+	var visual_archetype_id: String = _pick_visual_archetype_for_platform(era, platform_type_str)
 	if unit.has_method("setup_with_enemy_visual"):
 		unit.setup_with_enemy_visual(false, stats, visual_archetype_id)
 	else:
@@ -288,8 +302,11 @@ func _add_unit_to_battle(unit: Node2D, current_count: int) -> void:
 	if enemy_container == null:
 		enemy_container = battlefield_node
 	enemy_container.add_child(unit)
-	# 与 _card_grid_next_free_enemy_slot_index 一致：从远端 slot(最大索引，离玩家最远)开始填
-	var slot_i: int = (BattleSlotGrid.SLOT_COUNT - 1) - (current_count % BattleSlotGrid.SLOT_COUNT)
+	# 回退路径：扫描实际占用，选真正空闲的敌槽（与 spawn_system._card_grid_next_free_enemy_slot_index 对齐）。
+	# 旧实现用 current_count % SLOT_COUNT 推算 slot，不做占用检查——当主路径因 battle_active 不同步 /
+	# cap 满 / 槽满而返回 false 时，推算出的 slot 会撞上已占用槽，导致两单位 meta 相同、被吸附到同一点
+	# （表现为"同一位置刷新两张牌"）。
+	var slot_i: int = _fallback_pick_free_enemy_slot()
 	if battlefield_node.has_method("get_card_grid_enemy_slot_global"):
 		unit.global_position = battlefield_node.get_card_grid_enemy_slot_global(slot_i)
 		unit.set_meta("card_grid_enemy_slot", slot_i)
@@ -301,6 +318,26 @@ func _add_unit_to_battle(unit: Node2D, current_count: int) -> void:
 	BattleManager.set_enemy_unit_count(current_count + 1)
 	if SignalBus:
 		SignalBus.unit_spawned.emit(unit, false)
+
+## 回退路径：扫描 enemy_units 组，从远端(最大索引)倒序找第一个空闲敌槽；
+## 全满时回退到 current_count 推算（至少不比旧行为差）。
+func _fallback_pick_free_enemy_slot() -> int:
+	var tree: SceneTree = get_tree()
+	if tree == null:
+		return BattleSlotGrid.SLOT_COUNT - 1
+	var occupied := {}
+	for n in tree.get_nodes_in_group("enemy_units"):
+		if n == null or not is_instance_valid(n):
+			continue
+		var esi: int = int(n.get_meta("card_grid_enemy_slot", -1))
+		if esi >= 0 and esi < BattleSlotGrid.SLOT_COUNT:
+			occupied[esi] = true
+	# 从远端(最大索引)倒序，与 _card_grid_next_free_enemy_slot_index 一致
+	for si in range(BattleSlotGrid.SLOT_COUNT - 1, -1, -1):
+		if not occupied.has(si):
+			return si
+	# 全满兜底：用最大索引（避免返回 -1 导致 get_card_grid_enemy_slot_global 越界）
+	return BattleSlotGrid.SLOT_COUNT - 1
 
 func take_damage(amount: float, attacker: Variant = null) -> void:
 	hp -= amount
@@ -354,3 +391,26 @@ func _pick_visual_archetype_for_era(target_era: int) -> String:
 		if not EnemyArchetypes.resolve_card_icon_texture_path(archetype_id, cfg, archetype_id).is_empty():
 			return archetype_id
 	return ""
+
+## v7.1: 按平台类型匹配卡图（替代仅按时代的硬编码列表，避免不同平台显示同一张图）
+## 返回该时代下与平台类型 tag 匹配、且有有效卡图的 archetype ID
+func _pick_visual_archetype_for_platform(era: int, platform_type: String) -> String:
+	var target_tag: String = _PLATFORM_TYPE_TO_TAG.get(platform_type, "")
+	if target_tag.is_empty():
+		return _pick_visual_archetype_for_era(era)  # 未知平台类型回退
+	var candidates: Array = []
+	for archetype_id in EnemyArchetypes.get_ids_for_era(era):
+		var cfg: Dictionary = EnemyArchetypes.get_config(archetype_id)
+		if cfg.is_empty():
+			continue
+		var tags: Array = cfg.get("tags", [])
+		if not tags.has(target_tag):
+			continue
+		if EnemyArchetypes.resolve_card_icon_texture_path(archetype_id, cfg, archetype_id).is_empty():
+			continue
+		candidates.append(archetype_id)
+	if candidates.is_empty():
+		return _pick_visual_archetype_for_era(era)  # 该类型无候选，回退原逻辑
+	# 用平台类型哈希确定性选取（同一类型每次出同一张图，避免战斗中卡图闪烁）
+	var pick: int = absi(platform_type.hash()) % candidates.size()
+	return String(candidates[pick])

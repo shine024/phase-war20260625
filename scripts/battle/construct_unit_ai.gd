@@ -222,10 +222,11 @@ static func do_attack(u: CharacterBody2D) -> void:
 			u.stats, target_stats,
 			distance, weapon,
 			u.stats.enhance_level, _get_mod_array(u.stats),
-			is_card_grid  # 格子战模式跳过防御减免
+			is_card_grid,  # 格子战模式跳过防御减免
+			is_card_grid   # 格子战模式射程衰减保底 30%（传统战场超射程仍在此处拦截）
 		)
-		# 射程检查
-		if weapon.weapon_type == GC.WeaponType.DIRECT:
+		# 射程检查（仅传统战场：格子战允许超射程继续攻击，伤害已由衰减函数处理）
+		if not is_card_grid and weapon.weapon_type == GC.WeaponType.DIRECT:
 			var max_range = AttackCalculator.get_weapon_range(weapon)
 			if distance > max_range:
 				CombatFeedback.show_miss(u.target.global_position, u.target)
@@ -257,8 +258,12 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 		range_val = u.stats.attack_range
 
 	if range_val > 0 and dist_t > range_val:
+		# 格子战：允许超射程继续攻击，伤害由 calculate_damage_with_weapon 的 range_falloff 衰减处理
+		var _is_card_grid_here: bool = GameManager != null and GameManager.has_method("is_card_grid_battle") and GameManager.is_card_grid_battle()
+		if _is_card_grid_here:
+			pass  # 不拦截，继续发射（伤害在 do_attack/do_attack_with_multiple_weapons 阶段已含衰减）
 		# 武器资源射程超限：直接 Miss（不依赖旧 stats.attack_range 判断）
-		if weapon_resource and weapon_resource is WeaponResource:
+		elif weapon_resource and weapon_resource is WeaponResource:
 			CombatFeedback.show_miss(u.target.global_position, u.target)
 			return
 		# 旧逻辑：无武器资源时按 stats.attack_range 衰减
@@ -372,13 +377,26 @@ static func _process_single_weapon_attack(u: CharacterBody2D, delta: float) -> v
 		wt = u.stats.weapon_type if u.stats else 0
 
 	var dist: float = u.global_position.distance_to(u.target.global_position)
-	if dist > fire_range and wt == GC.WeaponType.DIRECT:
+	var is_card_grid_active: bool = (
+		GameManager
+		and GameManager.is_card_grid_battle()
+		and BattleManager != null
+		and BattleManager.has_method("is_card_grid_combat_started")
+		and BattleManager.is_card_grid_combat_started()
+	)
+	# v6.4 修复：格子战时攻击射程与索敌判定一致（×2.6），避免双方固定两端时射程不足永不攻击
+	if is_card_grid_active:
+		fire_range *= 2.6
+	# 格子战：超射程不拦截（伤害由 calculate_damage_with_weapon 的 range_falloff 保底 30% 衰减）
+	# 传统战场：直射超射程仍重置 IDLE
+	if not is_card_grid_active and dist > fire_range and wt == GC.WeaponType.DIRECT:
 		u._attack_phase = u.AttackPhase.IDLE
 		u._attack_phase_timer = 0.0
 		return
 	match u._attack_phase:
 		u.AttackPhase.IDLE:
-			if dist <= fire_range:
+			# 格子战：有目标即进入 WINDUP；传统战场：需在射程内
+			if is_card_grid_active or dist <= fire_range:
 				u._attack_phase = u.AttackPhase.WINDUP
 				u._attack_phase_timer = 0.0
 		u.AttackPhase.WINDUP:
@@ -415,6 +433,13 @@ static func _process_multi_weapons(u: CharacterBody2D, delta: float) -> void:
 	var target_stats = u.target.get("stats") as UnitStats
 	var target_kind: int = target_stats.combat_kind if target_stats else 0
 	var eff_rng: float = effective_fire_range(u)
+	var is_card_grid_multi: bool = (
+		GameManager
+		and GameManager.is_card_grid_battle()
+		and BattleManager != null
+		and BattleManager.has_method("is_card_grid_combat_started")
+		and BattleManager.is_card_grid_combat_started()
+	)
 	for i in range(u._weapon_cfgs.size()):
 		var w = u._weapon_cfgs[i]
 		var phase: int = int(w.get("phase", u.AttackPhase.IDLE))
@@ -444,12 +469,18 @@ static func _process_multi_weapons(u: CharacterBody2D, delta: float) -> void:
 			timing["cooldown"] = maxf(timing.get("cooldown", 0.0), 0.25)
 
 		var dist: float = u.global_position.distance_to(u.target.global_position)
-		if dist > w_range and w_wt == GC.WeaponType.DIRECT:
+		# v6.4 修复：格子战时多武器攻击射程同步×2.6（与索敌判定一致）
+		if is_card_grid_multi:
+			w_range *= 2.6
+		# 格子战：超射程不拦截（伤害由 calculate_damage_with_weapon 的 range_falloff 保底 30%）
+		# 传统战场：直射超射程仍重置 IDLE
+		if not is_card_grid_multi and dist > w_range and w_wt == GC.WeaponType.DIRECT:
 			phase = u.AttackPhase.IDLE
 			phase_timer = 0.0
 		match phase:
 			u.AttackPhase.IDLE:
-				if dist <= eff_rng:
+				# 格子战：有目标即进入 WINDUP；传统战场：需在有效射程内
+				if is_card_grid_multi or dist <= eff_rng:
 					phase = u.AttackPhase.WINDUP
 					phase_timer = 0.0
 			u.AttackPhase.WINDUP:
@@ -470,6 +501,7 @@ static func _process_multi_weapons(u: CharacterBody2D, delta: float) -> void:
 						dmg = AttackCalculator.calculate_damage_with_weapon(
 							u.stats, target_stats, dist, w_weapon,
 							u.stats.enhance_level, _get_mod_array(u.stats),
+							is_card_grid,
 							is_card_grid
 						)
 					else:
@@ -552,12 +584,8 @@ static func _play_card_attack_nudge(u: CharacterBody2D) -> void:
 	u._card_nudge_tween.tween_property(u, "position:x", rest_x + dir * 22.0, 0.07)
 	u._card_nudge_tween.tween_property(u, "position:x", rest_x, 0.09)
 
-## 辅助：从 UnitStats 提取 mods 数组供 AttackCalculator 使用
-static func _get_mod_array(stats: Variant) -> Array:
-	if stats == null:
-		return []
-	var result: Array = []
-	if stats.has_method("get_mod_list"):
-		var raw = stats.get_mod_list()
-		result.assign(raw)
-	return result
+## v6.4: 改造伤害加成已由 ModificationRegistry.apply_with_level 在 UnitStats 构建阶段
+## 直接叠加到 attack_light/armor/air。此函数保留仅为兼容 AttackCalculator 的旧参数签名，
+## 始终返回空数组（改造效果已在 stats 数值中体现，无需在此重复乘倍率）。
+static func _get_mod_array(_stats: Variant) -> Array:
+	return []

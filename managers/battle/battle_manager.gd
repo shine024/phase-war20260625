@@ -344,13 +344,64 @@ func _on_unit_died(unit: Node, is_player: bool) -> void:
 		return
 	if is_player:
 		_spawn_system.on_player_unit_died()
+		# v6.5 诊断：玩家单位死亡后立即 recount，验证左侧 HUD 数量是否同步减少。
+		# 仅在 debug 构建打印，避免污染发布版本日志。
+		if OS.is_debug_build() and DEBUG_BATTLE_LOG:
+			var live_after: int = recount_player_units_on_field()
+			prints("[BM诊断] 我方单位死亡: recount存活=%d, 缓存=%d, _is_dying=%s, phase_master战=%s" % [
+				live_after, _spawn_system.player_unit_count,
+				bool(unit.get("_is_dying")) if "_is_dying" in unit else "N/A",
+				_is_phase_master_battle,
+			])
 	else:
 		_spawn_system.on_enemy_unit_died()
 		_damage_system.roll_blueprint_drops(unit)
 		_damage_system.process_kill_rewards(unit)
 		## v6.0: record defeated enemy for intel system
 		_record_defeated_enemy(unit)
+		## v6.5: 战力星级 — 击杀者累计被杀敌人的战力
+		_record_battle_star_kill(unit)
 	_check_win_lose()
+
+
+## v6.5: 从被杀敌人获取击杀者，累计击溃战力到击杀者的卡牌
+func _record_battle_star_kill(killed_unit: Node) -> void:
+	if killed_unit == null or not is_instance_valid(killed_unit):
+		return
+	# 从 last_damage_source 获取击杀者（玩家单位）
+	var killer: Node = null
+	if "last_damage_source" in killed_unit:
+		killer = killed_unit.get("last_damage_source")
+	if killer == null or not is_instance_valid(killer):
+		return
+	# 取击杀者的卡牌ID
+	var card_id: String = ""
+	if "stats" in killer and killer.get("stats") != null:
+		var killer_stats = killer.get("stats")
+		if "platform_card_id" in killer_stats:
+			card_id = String(killer_stats.platform_card_id)
+	if card_id.is_empty():
+		return
+	# 计算被杀敌人的战力（与 enemy_unit.gd power_score 公式一致）
+	var enemy_power: float = 50.0
+	if "stats" in killed_unit and killed_unit.get("stats") != null:
+		var estats = killed_unit.get("stats")
+		# estats 是 UnitStats（Resource），直接用属性访问
+		var e_hp: float = float(estats.max_hp)
+		var e_range: float = float(estats.attack_range)
+		var e_atk_l: float = float(estats.attack_light)
+		var e_atk_a: float = float(estats.attack_armor)
+		var e_atk_air: float = float(estats.attack_air)
+		var e_interval: float = maxf(float(estats.attack_interval), 0.05)
+		var dps_l: float = e_atk_l / e_interval if e_atk_l > 0.0 else 0.0
+		var dps_a: float = e_atk_a / e_interval if e_atk_a > 0.0 else 0.0
+		var dps_air: float = e_atk_air / e_interval if e_atk_air > 0.0 else 0.0
+		var best_dps: float = maxf(dps_l, maxf(dps_a, dps_air))
+		enemy_power = maxf(50.0, e_hp * 0.28 + best_dps * 2.2 + e_range * 0.22)
+	else:
+		var e_hp_alt: float = float(killed_unit.get("max_hp")) if "max_hp" in killed_unit else 100.0
+		enemy_power = maxf(50.0, e_hp_alt * 0.28)
+	BlueprintManager.add_battle_star_power(card_id, enemy_power)
 
 
 func _check_win_lose() -> void:
@@ -473,11 +524,10 @@ func get_player_spawn_interval() -> float:
 func get_player_unit_count() -> int:
 	if not battle_active:
 		return 0
-	var cached: int = _spawn_system.get_player_unit_count_active()
-	var live: int = recount_player_units_on_field()
-	if live > cached:
-		_spawn_system.player_unit_count = live
-	return maxi(cached, live)
+	# v6.5: HUD 高频读取走缓存计数器（O(1)），避免每帧 O(N) 递归遍历。
+	# 缓存由部署(+1)/死亡(-1)维护，且 _is_active_combat_unit 已排除 deploy ghost，
+	# 计数器与 recount 结果一致。部署检查仍直接调 recount_player_units_on_field() 保证准确。
+	return _spawn_system.player_unit_count
 
 func get_enemy_wave_time_remaining() -> float:
 	return _spawn_system.get_enemy_wave_time_remaining() if battle_active else -1.0
@@ -491,9 +541,8 @@ func get_enemy_wave_index() -> int:
 func get_enemy_unit_count() -> int:
 	if not battle_active:
 		return 0
-	var live: int = recount_enemy_units_on_field()
-	_spawn_system.enemy_unit_count = live
-	return live
+	# v6.5: 同上，读缓存计数器避免每帧 O(N) 遍历
+	return _spawn_system.enemy_unit_count
 
 
 func recount_player_units_on_field() -> int:
@@ -538,6 +587,14 @@ func _is_active_combat_unit(node: Node, ally: bool) -> bool:
 		if not node.is_in_group("enemy_units"):
 			return false
 	if "is_preview_mode" in node and bool(node.get("is_preview_mode")):
+		return false
+	# v6.5: 部署幽灵（尚未实体化）不计入存活数，否则会虚高导致
+	# "场上4个但显示5个且不让再部署"的计数错位
+	if "is_deploy_ghost" in node and bool(node.get("is_deploy_ghost")):
+		return false
+	# 死亡淡出期间（_is_dying=true，queue_free 尚未执行）不计入存活数，
+	# 否则计数会在淡出动画的 ~0.5s 内虚高，且 maxi(cached,live) 会把它锁在峰值
+	if "_is_dying" in node and bool(node.get("_is_dying")):
 		return false
 	return true
 
@@ -719,6 +776,10 @@ func _cleanup_enemy_indirect_batch() -> void:
 
 
 func _on_unit_damaged_combat_feedback(unit: Node, _is_player: bool, amount: float, at_position: Vector2) -> void:
+	# v6.3: 暴击伤害数字已由弹道直接显示（critical 样式），此处跳过普通数字避免重复
+	if unit != null and is_instance_valid(unit) and unit.has_meta("_vfx_crit_pending"):
+		unit.remove_meta("_vfx_crit_pending")
+		return
 	CombatFeedback.show_damage(at_position, amount, unit, false)
 
 
@@ -731,3 +792,12 @@ func _current_battle_era() -> int:
 	if "current_level" in GameManager:
 		lv = int(GameManager.current_level)
 	return GC.get_era_for_level(lv)
+
+
+## v6.4: 触发屏幕震动（命中/爆炸反馈的统一入口）
+## 调用方示例：BattleManager.request_screen_shake(3.0, 0.15)
+func request_screen_shake(intensity: float, duration: float) -> void:
+	if battlefield == null or not is_instance_valid(battlefield):
+		return
+	if battlefield.has_method("request_screen_shake"):
+		battlefield.request_screen_shake(intensity, duration)

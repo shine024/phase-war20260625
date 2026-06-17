@@ -139,26 +139,127 @@ static func roll_random_mod_blueprint(enemy_type: String, rank: String) -> Dicti
 
 ## 随机掉落一个进化蓝图
 ## rank: "normal" / "elite" / "boss"
+## v7.1: 实现——从 8 类进化路径的所有"进化跳"中按稀有度加权随机
+## （允许掉重复：不查背包，已拥有的蓝图数量+1但不影响解锁状态）
 static func roll_random_evolution_blueprint(rank: String) -> Dictionary:
 	# 进化蓝图只从精英和Boss掉落
 	if rank == "normal":
 		return {}
 
-	# TODO: 从进化路径注册表中获取所有可掉落的进化路径
-	# 目前返回空，待进化路径表完善后实现
+	# 收集所有进化路径的"进化跳"（from_card → to_card）
+	var all_evo_steps = _collect_all_evolution_steps()
+
+	if all_evo_steps.is_empty():
+		return {}
+
+	# 按稀有度加权随机选择
+	var weighted_pool = []
+	for step in all_evo_steps:
+		var rarity = _era_to_rarity(step.get("to_era", "WW1"))
+		var weight = _get_rarity_drop_weight(rarity, rank)
+		if weight > 0:
+			weighted_pool.append({
+				"from": step["from"],
+				"to": step["to"],
+				"rarity": rarity,
+				"weight": weight,
+			})
+
+	if weighted_pool.is_empty():
+		return {}
+
+	# 加权随机
+	var total_weight = 0
+	for entry in weighted_pool:
+		total_weight += entry.weight
+	var roll = randi() % total_weight
+	var cumulative = 0
+	for entry in weighted_pool:
+		cumulative += entry.weight
+		if roll < cumulative:
+			var blueprint_id = BlueprintDefinitions.get_evolution_blueprint_id(entry.from, entry.to)
+			return {
+				"item_type": blueprint_id,
+				"name": get_blueprint_name(blueprint_id),
+				"rarity": entry.rarity,
+				"from": entry.from,
+				"to": entry.to,
+			}
 	return {}
 
 ## ── 内部工具 ─────────────────────────────────────────────
 
+## v7.1: 收集所有进化路径的进化跳（每条路径的相邻节点配对）
+## 返回: [{from, to, to_era}, ...]
+static func _collect_all_evolution_steps() -> Array:
+	var steps: Array = []
+	# 8 类进化路径
+	var path_classes: Array = [
+		preload("res://data/evolution_paths/infantry_evolution.gd"),
+		preload("res://data/evolution_paths/armor_evolution.gd"),
+		preload("res://data/evolution_paths/artillery_evolution.gd"),
+		preload("res://data/evolution_paths/anti_air_evolution.gd"),
+		preload("res://data/evolution_paths/air_evolution.gd"),
+		preload("res://data/evolution_paths/recon_evolution.gd"),
+		preload("res://data/evolution_paths/engineer_evolution.gd"),
+		preload("res://data/evolution_paths/fort_evolution.gd"),
+	]
+	for path_class in path_classes:
+		# 主线
+		if path_class.has_method("get_main_line"):
+			_append_steps_from_path(steps, path_class.get_main_line())
+		# 副线（装甲/空军/堡垒有）
+		if path_class.has_method("get_secondary_line"):
+			_append_steps_from_path(steps, path_class.get_secondary_line())
+		# 隐藏分支
+		if path_class.has_method("get_hidden_branches"):
+			var hidden = path_class.get_hidden_branches()
+			for branch_name in hidden:
+				_append_steps_from_path(steps, hidden[branch_name])
+	return steps
+
+## v7.1: 从单条进化路径（Dictionary，按stage排序）中提取相邻卡配对
+static func _append_steps_from_path(steps: Array, path: Dictionary) -> void:
+	if path.is_empty():
+		return
+	# 按stage排序
+	var sorted: Array = []
+	for key in path.keys():
+		var node: Dictionary = path[key]
+		sorted.append({"stage": int(node.get("stage", 0)), "node": node})
+	sorted.sort_custom(func(a, b): return a.stage < b.stage)
+	# 相邻配对
+	var prev_card := ""
+	for entry in sorted:
+		var card_id: String = entry.node.get("card_id", "")
+		if card_id.is_empty():
+			continue
+		if not prev_card.is_empty():
+			steps.append({
+				"from": prev_card,
+				"to": card_id,
+				"to_era": entry.node.get("era", "WW1"),
+			})
+		prev_card = card_id
+
+## v7.1: 进化目标卡 era → 稀有度映射（影响掉落权重）
+static func _era_to_rarity(era: String) -> String:
+	match era:
+		"WW1", "WW2": return "common"
+		"Cold": return "uncommon"
+		"Modern": return "rare"
+		"Future", "Ultimate": return "epic"
+		_: return "common"
+
 static func _enemy_type_to_unit_type(enemy_type: String) -> int:
 	# 将敌人类型转换为unit_type（CombatKind）
-	# 注意：某些兵种共享相同的 unit_type
+	# v6.4: 补全 flame/stealth/anti_air/boss/medic/command 等映射，避免只掉步兵蓝图
 	match enemy_type:
-		"infantry", "recon": return 0  # LIGHT
-		"armor", "heavy_armor": return 1  # ARMOR
-		"artillery", "engineer": return 2  # SUPPORT
-		"air": return 3  # AIR
-		"fort": return 4  # FORT
+		"infantry", "recon", "flame", "medic", "scout": return 0  # LIGHT（步兵系）
+		"armor", "heavy_armor", "command": return 1  # ARMOR（装甲系，指挥官归装甲）
+		"artillery", "engineer", "anti_air": return 2  # SUPPORT（炮兵/工兵/防空）
+		"air", "stealth": return 3  # AIR（空军/隐身单位归空军）
+		"fort", "boss_nano", "boss_phase": return 4  # FORT（堡垒/Boss 归堡垒）
 		_: return 0  # 默认 LIGHT
 
 static func _get_rarity_drop_weight(rarity: String, rank: String) -> int:

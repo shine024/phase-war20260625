@@ -748,7 +748,45 @@ func _refresh_instrument_stats() -> void:
 	var line1: String = "输出 %.1f | 回复 %.1f" % [output_per_second, recovery_per_second]
 	if not bonus_parts.is_empty():
 		line1 += " | " + " ".join(bonus_parts)
+	# v7.1: 追加能量卡与回复速率信息（独立计算预览，与 EnergyManager 公式一致）
+	line1 += _build_energy_preview_line()
 	instrument_stats_label.text = line1
+
+## v7.1: 计算并返回能量预览信息字符串
+## 显示：能量上限(含能量卡贡献) | 初始能量 | 净回复/秒 | 相位仪回复值
+## 注意：战前独立遍历槽位计算，与 EnergyManager._apply_equipped_energy_cards 保持公式一致
+func _build_energy_preview_line() -> String:
+	if PhaseInstrumentManager == null or not PhaseInstrumentManager.has_method("get_slots"):
+		return ""
+	var total_star: int = 0
+	var base_start: float = 0.0
+	var slot_count: int = 0
+	for c_raw in PhaseInstrumentManager.get_slots():
+		if c_raw is CardResource:
+			slot_count += 1
+			var card: CardResource = c_raw
+			if card.card_type != GC.CardType.ENERGY:
+				continue
+			total_star += EnergyManager.parse_energy_card_star(card.card_id)
+			if card.card_id.begins_with("energy_start_"):
+				base_start += maxf(0.0, card.energy_grant)
+	# 能量上限 = 基础100 + 能量卡等级×100
+	var energy_max: float = GC.ENERGY_MAX
+	if total_star > 0:
+		energy_max = GC.ENERGY_MAX + float(total_star) * 100.0
+	# 初始能量（无能量卡时回落到默认起步值）
+	var energy_start: float = base_start if base_start > 0.0 else GC.ENERGY_START
+	# 相位仪回复值
+	var pi_regen: float = 0.0
+	if PhaseInstrumentManager.has_method("get_energy_recovery_rate"):
+		pi_regen = PhaseInstrumentManager.get_energy_recovery_rate()
+	# 4槽全装回复×5（与 EnergyManager 后端一致）
+	var pi_regen_display: float = pi_regen
+	if slot_count >= 4:
+		pi_regen_display *= 5.0
+	# 净回复 = 基础1.0 + 相位仪回复 − 消耗0.5
+	var net_regen: float = GC.ENERGY_REGEN_PER_SEC + pi_regen_display - GC.PHASE_BASE_DRAIN_PER_SEC
+	return " | ⚡上限%d 初始%d 回复%.1f/s(相位%.1f)" % [int(energy_max), int(energy_start), net_regen, pi_regen_display]
 
 func _collect_cfg_property_lines(cfg: Dictionary) -> Array[String]:
 	var out: Array[String] = []

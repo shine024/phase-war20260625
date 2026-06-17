@@ -32,8 +32,6 @@ var current_slot: int = 1
 const MAX_SLOTS := 3
 
 const SAVE_FILE_USER := "user://save.json"
-const SAVE_FILE_BACKUP := "user://save_backup.json"
-const SAVE_FILE_TEMP := "user://save.json.tmp"
 const SAVE_SCHEMA_VERSION := 5
 const SAVE_MIN_INTERVAL_MS := 1200
 const SAVE_BACKUP_INTERVAL_MS := 15000
@@ -623,12 +621,8 @@ func save_game() -> bool:
 			return false
 	var ren_err: Error = dir_swap.rename(tmp_name, main_name)
 	if ren_err != OK:
-		push_error("[SaveManager] 无法将临时存档 rename 为正式存档: %s" % [ren_err, {
-			"slot": current_slot,
-			"tmp_name": tmp_name,
-			"main_name": main_name,
-			"ren_err": int(ren_err),
-		}])
+		push_error("[SaveManager] 无法将临时存档 rename 为正式存档: slot=%d tmp=%s main=%s err=%d" % [
+			current_slot, tmp_name, main_name, int(ren_err)])
 		#endregion
 		# Windows 下退出阶段偶发 rename 失败；兜底为 tmp 直写正式存档，避免”退出后没档”
 		var tmp_read: FileAccess = FileAccess.open(_current_temp_file(), FileAccess.READ)
@@ -719,24 +713,22 @@ func _enqueue_starter_backpack_cards() -> void:
 			if im and im.has_method("unlock_all_intel"):
 				im.unlock_all_intel()
 
-	# 初始蓝图：授予所有改造情报书和进化蓝图
-		# 初始蓝图：授予所有改造情报书和进化蓝图（通过ManagerLazyLoader获取）
+	# 初始蓝图：授予起步改造图纸 + 进化蓝图（其余改造图纸靠战斗掉落解锁）
+		# v7.1: 不再开局全送所有改造图纸，仅授予 IntelManualItems.ALL_TYPES 中的基础起步图纸
 		if ml and ml.has_method("ensure_loaded"):
 			ml.ensure_loaded("intel_item_bag")
 			var bag = get_node_or_null("/root/IntelItemBag")
 			if bag:
-				const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
-				var mod_registry = get_node_or_null("/root/ModificationRegistry")
-				# 授予所有改造蓝图（改造情报书）
-				if mod_registry:
-					var all_mod_ids = ModificationRegistry.get_all_ids()
-					for mod_id in all_mod_ids:
-						if mod_id is String and not mod_id.is_empty():
-							var blueprint_id = BlueprintDefinitions.get_mod_blueprint_id(mod_id)
-							bag.add_item(blueprint_id, 1)
+				const IntelManualItems = preload("res://data/intel_manual_items.gd")
+				# 授予起步改造图纸（7张基础图纸）
+				for blueprint_id in IntelManualItems.ALL_TYPES:
+					if not bag.has_item(blueprint_id):
+						bag.add_item(blueprint_id, 1)
 
-		# 授予所有进化蓝图
-		_grant_all_evolution_blueprints()
+		# v7.1: 移除 _grant_all_evolution_blueprints() 调用。
+		# 进化蓝图现应通过战斗掉落（精英/Boss，20%概率）逐步解锁，不再开局全送。
+		# 老存档已持有的进化蓝图由 IntelItemBag.load_state 保留，不受影响。
+		# _grant_all_evolution_blueprints() 方法本体保留，供测试/调试手动调用。
 
 		# 初始进化分支：发现所有情报进化分支（通过ManagerLazyLoader获取）
 		if ml and ml.has_method("ensure_loaded"):
@@ -745,8 +737,10 @@ func _enqueue_starter_backpack_cards() -> void:
 			if iem and iem.has_method("check_and_discover_branches"):
 				iem.check_and_discover_branches()
 
-	# 初始敌源改造：解锁所有敌源MOD
-	_unlock_all_enemy_origin_mods()
+	# v7.1: 移除 _unlock_all_enemy_origin_mods() 调用。
+	# 原逻辑新游戏时无条件全解锁所有敌源MOD，导致击杀掉落解锁机制失效。
+	# 敌源MOD现应通过 EnemyOriginModManager 在击杀对应敌人时掉碎片逐步解锁。
+	# 老存档的 EOM 解锁状态由 EnemyOriginModManager.load_state 保留，不受影响。
 
 	# 初始改装材料：所有改装库存100
 	# TODO: 需要根据改装系统实现添加
@@ -780,7 +774,6 @@ func _process_evolution_blueprint_path(path_data: Dictionary) -> void:
 		if not card_id.is_empty() and not previous_card.is_empty():
 			var evo_bp_id = BlueprintDefinitions.get_evolution_blueprint_id(previous_card, card_id)
 			bag.add_item(evo_bp_id, 1)
-		previous_card = card_id
 		previous_card = card_id
 
 ## 辅助函数：为隐藏分支生成蓝图
@@ -1101,77 +1094,22 @@ func _load_from_path(path: String) -> bool:
 		if pm.has_method("sync_law_slots_to_plm_if_has_law_cards"):
 			pm.sync_law_slots_to_plm_if_has_law_cards()
 
-	# 补偿缺失的改造蓝图（老存档可能因为 has_method 不检测 static 方法而缺失）
-	_ensure_mod_blueprints_exist()
+	# v7.1: 移除 _ensure_mod_blueprints_exist() 调用。
+	# 原逻辑每次读档无条件补齐全部改造图纸，导致新机制（图纸靠战斗掉落解锁）失效。
+	# 老存档背包里已持有的图纸由 IntelItemBag.load_state 自行加载保留，不受影响。
+	# 新图纸只能通过 intel_discovery_manager 的战斗掉落获得。
 
-	# 补偿缺失的进化分支和敌源MOD
-	_ensure_evolution_branches_discovered()
-	_ensure_enemy_origin_mods_unlocked()
+	# v6.4: 移除 _ensure_evolution_branches_discovered / _ensure_enemy_origin_mods_unlocked
+	# 这两个方法会在每次读档后无条件全解锁所有进化分支和敌源MOD，破坏情报系统的逐步发现机制。
+	# 进化分支和敌源MOD应由 IntelEvolutionManager.check_and_discover_branches() 和
+	# EnemyOriginModManager 的正常游戏流程解锁。
 
 	if DEBUG_SAVE_LOG:
 		pass  # LOG: 已加载存档
 	return true
 
-## 补偿缺失的改造蓝图（每次加载存档时自动检查）
-func _ensure_mod_blueprints_exist() -> void:
-	var bag = get_node_or_null("/root/IntelItemBag")
-	if bag == null:
-		return
-	var mod_registry = get_node_or_null("/root/ModificationRegistry")
-	if mod_registry == null:
-		return
-	var all_mod_ids = ModificationRegistry.get_all_ids()
-	const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
-	var granted_count: int = 0
-	for mod_id in all_mod_ids:
-		if mod_id is String and not mod_id.is_empty():
-			var blueprint_id = BlueprintDefinitions.get_mod_blueprint_id(mod_id)
-			if not bag.has_item(blueprint_id):
-				bag.add_item(blueprint_id, 1)
-				granted_count += 1
-	if granted_count > 0:
-		pass
-	if granted_count > 0:
-		pass
-		# [LOG-v5.1] print("[SaveManager] 补偿了 %d 个缺失的改造蓝图" % granted_count)
-
 ## 安全加载管理器数据（类型检查+错误日志）
 ## 支持延迟加载管理器：如果管理器不在场景树中，尝试通过 ManagerLazyLoader 实例化
-
-## 补偿缺失的进化分支发现（每次加载存档时自动检查）
-func _ensure_evolution_branches_discovered() -> void:
-	var iem = get_node_or_null("/root/IntelEvolutionManager")
-	if iem == null:
-		return
-	const IntelEvolutionBranches = preload('res://data/intel_evolution_branches.gd')
-	var all_branch_ids = IntelEvolutionBranches.get_all_branch_ids()
-	var discovered_count = 0
-	for branch_id in all_branch_ids:
-		if branch_id is String and not branch_id.is_empty():
-			if not iem.is_branch_discovered(branch_id):
-				# 直接标记为已发现
-				iem._discovered[branch_id] = true
-				discovered_count += 1
-	if discovered_count > 0:
-		pass
-		# [LOG-v5.1] print('[SaveManager] 补偿发现了 %d 个情报进化分支' % discovered_count)
-
-## 补偿缺失的敌源MOD解锁（每次加载存档时自动检查）
-func _ensure_enemy_origin_mods_unlocked() -> void:
-	var eom_mgr = get_node_or_null('/root/EnemyOriginModManager')
-	if eom_mgr == null or not eom_mgr.has_method('unlock_mod'):
-		return
-	const EnemyOriginMods = preload('res://data/enemy_origin_mods.gd')
-	var all_mod_ids = EnemyOriginMods.get_all_mod_ids()
-	var unlocked_count = 0
-	for mod_id in all_mod_ids:
-		if mod_id is String and not mod_id.is_empty():
-			if not eom_mgr.is_mod_unlocked(mod_id):
-				eom_mgr.unlock_mod(mod_id)
-				unlocked_count += 1
-	if unlocked_count > 0:
-		pass
-		# [LOG-v5.1] print('[SaveManager] 补偿解锁了 %d 个敌源改造模块' % unlocked_count)
 
 func _safe_load_manager(node_path: String, data: Dictionary, data_key: String) -> void:
 	var manager: Node = get_node_or_null(node_path)

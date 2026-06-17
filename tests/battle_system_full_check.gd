@@ -145,17 +145,17 @@ func check_damage_calculation() -> void:
 	print("      weapon_type = INDIRECT")
 	print("    防御者:")
 	print("      combat_kind = LIGHT")
-	print("      defense_light = 8 (防直射)")
-	print("      defense_armor = 5 (防曲射)")
-	print("      defense_air = 3 (防空)")
+	print("      defense_light = 8 (防轻装)")
+	print("      defense_armor = 5 (防装甲)")
+	print("      defense_air = 3 (防空中)")
 
 	# 测试 get_attack_vs
 	var attack_vs = AttackCalculator.get_attack_vs(attacker, defender.combat_kind)
 	print("\n  get_attack_vs(攻击者, LIGHT) = ", attack_vs, " (应该=135)")
 
-	# 测试 get_defense_vs
-	var defense_vs = AttackCalculator.get_defense_vs(defender, attacker.weapon_type)
-	print("  get_defense_vs(防御者, INDIRECT) = ", defense_vs, " (应该=5, 因为defense_armor防曲射)")
+	# 测试 get_defense_vs（v6.2: 按攻击者单位类型选，SUPPORT→防轻装 defense_light）
+	var defense_vs = AttackCalculator.get_defense_vs(defender, attacker.combat_kind)
+	print("  get_defense_vs(防御者, 攻击者=SUPPORT) = ", defense_vs, " (应该=8, SUPPORT归入LIGHT→defense_light)")
 
 	# 完整伤害计算
 	var damage = AttackCalculator.calculate_damage(
@@ -163,4 +163,4 @@ func check_damage_calculation() -> void:
 	)
 	print("\n  calculate_damage() = ", damage)
 	print("    公式: attack × 100/(100+defense)")
-	print("    135 × 100/(100+5) = ", 135.0 * 100.0 / 105.0)
+	print("    135 × 100/(100+8) = ", 135.0 * 100.0 / 108.0)

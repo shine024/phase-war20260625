@@ -198,7 +198,6 @@ static func proj_scale(weapon_type: int) -> float:
 
 static func proj_quad_size(weapon_type: int) -> Vector2:
 	var s := proj_scale(weapon_type) * REF_TEX_PX
-	prints("[PROJ_QS]", "wt=", weapon_type, "scale=", proj_scale(weapon_type), "final_size=", s)
 	return Vector2(s, s)
 
 

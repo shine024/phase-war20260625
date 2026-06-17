@@ -36,6 +36,10 @@ const GC = preload("res://resources/game_constants.gd")
 ## 战斗定位（0=轻装/1=装甲/2=支援/3=空中）
 @export var combat_kind: int = 0
 
+## 单位子类（v6.2: GameConstants.UnitSubType，用于战斗定位差异化修正）
+## NONE=普通单位, ARTILLERY=火炮, SUPPORT=辅助, FORT=堡垒, ANTI_AIR=防空特化
+@export var unit_subtype: int = 0
+
 ## 战力（进化门槛用，v3新增）
 @export var power: int = 0
 
@@ -83,10 +87,13 @@ const GC = preload("res://resources/game_constants.gd")
 @export var attack_air_windup: float = 0.2   # 前摇（秒）
 @export var attack_air_active: float = 0.1    # 动作（秒）
 
-## 防御维度（对不同武器类型的防御）
-@export var defense_light: float = 0.0  # 防轻装武器
-@export var defense_armor: float = 0.0  # 防装甲武器
-@export var defense_air: float = 0.0    # 防空武器
+## 防御维度（对不同类型单位攻击的防御，v6.2 对齐）
+## defense_light = 防轻装单位(LIGHT/SUPPORT)攻击
+## defense_armor = 防装甲单位(ARMOR/FORT)攻击
+## defense_air   = 防空中单位(AIR)攻击
+@export var defense_light: float = 0.0  # 防轻装单位攻击
+@export var defense_armor: float = 0.0  # 防装甲单位攻击
+@export var defense_air: float = 0.0    # 防空中单位攻击
 
 ## 多武器槽（每项 Dictionary：damage, range, interval, timer）
 ## 空数组=单武器模式，使用 base_damage/base_range/base_interval
@@ -136,6 +143,11 @@ var weapon_slots: Array = []
 
 ## 强化等级 0-10（v5.0 替代旧 star_level；star_level 已废弃见 L160）
 var enhance_level: int = 0
+
+## v6.5 战力星级 0-7（通过战斗中击杀敌人累计击溃战力提升，叠加在强化等级之上）
+var battle_star: int = 0
+## v6.5 累计击溃战力（用于计算战力星级）
+var battle_star_power: float = 0.0
 
 ## 改造ID列表（最多9个 MOD_XX）
 var mods: Array = []
@@ -312,10 +324,6 @@ func get_short_description() -> String:
 		var total_attack = attack_light + attack_armor + attack_air
 		return "攻击 %d｜耐久 %d" % [int(total_attack), int(base_hp)]
 	return ""
-
-## 检查卡片是否可以装备到指定平台
-func can_equip_on(platform: CardResource) -> bool:
-	return false
 
 ## 获取卡片的详细属性文本（用于UI显示）
 func get_attributes_text() -> String:

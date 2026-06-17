@@ -212,7 +212,7 @@ theme_override_constants/v_separation = 6
 columns = 12
 
 [node name="CardDetailPopup" type="PopupPanel" parent="."]
-size = Vector2i(500, 680)
+size = Vector2i(560, 720)
 theme_override_colors/title_color = Color(0, 0.941, 1, 1)
 theme_override_styles/panel = SubResource("StyleBoxFlat_popup")
 
@@ -220,10 +220,6 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_popup")
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 2.0
-offset_top = 2.0
-offset_right = 338.0
-offset_bottom = 458.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/margin_left = 10

@@ -173,14 +173,36 @@ static func get_faction_store_items(faction_id: String, level: int) -> Array[Sto
 
 static func _filter_invalid_card_items(items: Array[StoreItem]) -> Array[StoreItem]:
 	const DefaultCardsData = preload("res://data/default_cards.gd")
+	const PhaseLawsRef = preload("res://data/phase_laws.gd")
+	const EnemyBlueprintsRef = preload("res://data/enemy_blueprints.gd")
+	const MigrationMap = preload("res://data/unit_id_migration_config.gd").UNIT_ID_MIGRATION_MAP
 	var filtered: Array[StoreItem] = []
 	for it in items:
 		if it == null:
 			continue
 		if it.item_type == StoreItemType.CARD:
-			var card: CardResource = DefaultCardsData.get_card_by_id(it.item_id)
-			if card == null:
+			var cid: String = it.item_id
+			# v6.4: platform_* 旧ID → 新ID 迁移
+			if MigrationMap.has(cid):
+				cid = MigrationMap[cid]
+				it.item_id = cid
+			# weapon_* 旧武器卡已废弃（v6.2 武器并入战斗卡武器槽），直接过滤
+			if cid.begins_with("weapon_"):
 				continue
+			# 法则卡：查 PhaseLaws
+			if cid.begins_with("steel_") or cid.begins_with("flame_") \
+				or cid.begins_with("thunder_") or cid.begins_with("void_"):
+				if PhaseLawsRef.get_by_id(cid).is_empty():
+					continue
+			# 缴获卡：查 EnemyBlueprints
+			elif cid.begins_with("bp_"):
+				if EnemyBlueprintsRef.get_card_by_id(cid) == null:
+					continue
+			# 战斗卡：查 DefaultCards
+			else:
+				var card: CardResource = DefaultCardsData.get_card_by_id(cid)
+				if card == null:
+					continue
 		filtered.append(it)
 	return filtered
 
@@ -217,27 +239,67 @@ static func _get_autoload(root_path: String, run_id: String, hypothesis_id: Stri
 ## @return bool 是否成功发放
 static func deliver_item(item: StoreItem) -> bool:
 	var run_id := "run-pre-fix"
-	# #endregion
+	# StoreItem 无 count 字段，材料数量按 item_id 用合理默认值（v6.4 修正：原固定 50/20 不区分商品）
 	match item.item_type:
 		StoreItemType.CARD:
 			const DefaultCardsData = preload("res://data/default_cards.gd")
-			var card: CardResource = DefaultCardsData.get_card_by_id(item.item_id)
+			const PhaseLawsRef = preload("res://data/phase_laws.gd")
+			const EnemyBlueprintsRef = preload("res://data/enemy_blueprints.gd")
+			var cid: String = item.item_id
+			# v6.4: 法则卡通过 PhaseLaws 生成
+			if cid.begins_with("steel_") or cid.begins_with("flame_") \
+				or cid.begins_with("thunder_") or cid.begins_with("void_"):
+				if not PhaseLawsRef.get_by_id(cid).is_empty():
+					var law_card: CardResource = DefaultCardsData.create_law_card_resource(cid)
+					if law_card:
+						SignalBus.card_added_to_backpack.emit(law_card)
+						return true
+				return false
+			# v6.4: 缴获卡通过 EnemyBlueprints 发放
+			if cid.begins_with("bp_"):
+				var bp_card: CardResource = EnemyBlueprintsRef.get_card_by_id(cid)
+				if bp_card:
+					SignalBus.card_added_to_backpack.emit(bp_card)
+					return true
+				return false
+			# 战斗卡
+			var card: CardResource = DefaultCardsData.get_card_by_id(cid)
 			if card:
 				SignalBus.card_added_to_backpack.emit(card)
 				return true
 			else:
-				push_error("[FactionShop] 商店找不到卡牌: " + item.item_id)
+				push_error("[FactionShop] 商店找不到卡牌: " + cid)
 				return false
 		StoreItemType.MATERIAL:
 			var brm := _get_autoload("/root/BasicResourceManager", run_id, "H1")
 			if brm and brm.has_method("add_resource"):
 				match item.item_id:
 					"nano_materials":
-						brm.add_resource("nano_materials", 50)
+						# v6.4: 按声望成本阶梯发纳米（高成本=大量），回退 50
+						var nano_amt: int = 50 if item.reputation_cost < 300 else 100
+						brm.add_resource("nano_materials", nano_amt)
 						return true
 					"alloy":
-						brm.add_resource("alloy", 20)
+						var alloy_amt: int = 20 if item.reputation_cost < 300 else 50
+						brm.add_resource("alloy", alloy_amt)
 						return true
+					"crystal", "energy_block":
+						brm.add_resource(item.item_id, 10)
+						return true
+					# v6.4: stat_boost 走 StatBoostManager
+					"stat_boost_hp", "stat_boost_atk", "stat_boost_damage":
+						var sbm := _get_autoload("/root/StatBoostManager", run_id, "H2")
+						if sbm and sbm.has_method("apply_boost"):
+							sbm.apply_boost(item.item_id, 1)
+							return true
+						return false
+					# v6.4: lore_page 走 LoreManager
+					"lore_page":
+						var lm := _get_autoload("/root/LoreManager", run_id, "H3")
+						if lm and lm.has_method("grant_random_lore"):
+							lm.grant_random_lore()
+							return true
+						return false
 			return false
 		StoreItemType.CARD_BUNDLE:
 			const CardDropGrantsScript = preload("res://scripts/card_drop_grants.gd")

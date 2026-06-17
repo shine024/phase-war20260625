@@ -17,6 +17,7 @@ const GEN_10_AMMO_RACK = "gen_10_ammo_rack"
 const DATA: Dictionary = {
 	"gen_01_comms" = {
 		id = GEN_01_COMMS, name = "战场通讯", name_en = "Field Comms",
+		icon = "res://assets/ui/icons/mod_icons/mod_comms.png",
 		prototype = "SCR-536对讲机", description = "基础通讯，射速和视野微升",
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 60, cost_install = 30,
@@ -27,6 +28,7 @@ const DATA: Dictionary = {
 	},
 	"gen_02_digital" = {
 		id = GEN_02_DIGITAL, name = "数字化单兵", name_en = "Digital Soldier System",
+		icon = "res://assets/ui/icons/mod_icons/mod_system.png",
 		prototype = "陆地勇士系统", description = "指挥效率提升",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 140, cost_install = 70,
@@ -37,6 +39,7 @@ const DATA: Dictionary = {
 	},
 	"gen_03_camouflage" = {
 		id = GEN_03_CAMOUFLAGE, name = "伪装迷彩", name_en = "Camouflage Pattern",
+		icon = "res://assets/ui/icons/mod_icons/mod_stealth.png",
 		prototype = "多地形迷彩", description = "降低被发现概率",
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 70, cost_install = 35,
@@ -47,6 +50,7 @@ const DATA: Dictionary = {
 	},
 	"gen_04_vest" = {
 		id = GEN_04_VEST, name = "战术背心", name_en = "Tactical Vest",
+		icon = "res://assets/ui/icons/mod_icons/mod_armor.png",
 		prototype = "IOTV模块化", description = "基础防护提升",
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 80, cost_install = 40,
@@ -57,6 +61,7 @@ const DATA: Dictionary = {
 	},
 	"gen_05_shield" = {
 		id = GEN_05_SHIELD, name = "防弹盾牌", name_en = "Riot Shield",
+		icon = "res://assets/ui/icons/mod_icons/mod_shield.png",
 		prototype = "防弹盾", description = "防护大幅提升，速度略降",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 160, cost_install = 80,
@@ -67,6 +72,7 @@ const DATA: Dictionary = {
 	},
 	"gen_06_laser_designator" = {
 		id = GEN_06_LASER_DESIGNATOR, name = "激光指示器", name_en = "Laser Designator",
+		icon = "res://assets/ui/icons/mod_icons/mod_designator.png",
 		prototype = "激光目标指示器", description = "周围炮兵命中提升",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 180, cost_install = 90,
@@ -77,6 +83,7 @@ const DATA: Dictionary = {
 	},
 	"gen_07_mine_resistant" = {
 		id = GEN_07_MINE_RESISTANT, name = "防雷座椅", name_en = "Mine-Resistant Seat",
+		icon = "res://assets/ui/icons/mod_icons/mod_survival.png",
 		prototype = "悬挂防雷座椅", description = "地雷伤害大幅降低",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 260, cost_install = 130,
@@ -87,6 +94,7 @@ const DATA: Dictionary = {
 	},
 	"gen_08_nbc_protection" = {
 		id = GEN_08_NBC_PROTECTION, name = "三防系统", name_en = "NBC Protection",
+		icon = "res://assets/ui/icons/mod_icons/mod_protection.png",
 		prototype = "核生化防护", description = "免疫生化攻击",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 300, cost_install = 150,
@@ -97,6 +105,7 @@ const DATA: Dictionary = {
 	},
 	"gen_09_ir_jammer" = {
 		id = GEN_09_IR_JAMMER, name = "红外干扰机", name_en = "IR Jammer",
+		icon = "res://assets/ui/icons/mod_icons/mod_countermeasure.png",
 		prototype = "窗帘光电干扰", description = "导弹闪避提升",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 320, cost_install = 160,
@@ -107,6 +116,7 @@ const DATA: Dictionary = {
 	},
 	"gen_10_ammo_rack" = {
 		id = GEN_10_AMMO_RACK, name = "备用弹药架", name_en = "Ammo Rack",
+		icon = "res://assets/ui/icons/mod_icons/mod_ammunition.png",
 		prototype = "外挂弹药箱", description = "持续作战能力提升",
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 90, cost_install = 45,

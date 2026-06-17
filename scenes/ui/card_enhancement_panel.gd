@@ -17,6 +17,7 @@ const RankRules = preload("res://data/rank_rules.gd")
 const CompanyDefinitions = preload("res://data/company_definitions.gd")
 # StarConfig removed - star_level system deprecated in v5.1
 const BasicResources = preload("res://data/basic_resources.gd")
+const UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")
 const DEBUG_LOG_PATH = "debug-119cff.log"
 
 const MOD_SLOT_LABELS: PackedStringArray = ["A", "B", "C", "D", "E", "F", "G", "H", "I"]
@@ -134,6 +135,47 @@ func _ready() -> void:
 	_update_resource_labels()
 	# 初始化详情面板为空状态
 	_update_detail_panel()
+	# 改造系统分区标题挂图标（改装/强化/进化）
+	_apply_section_title_icons()
+
+## 给分区标题 Label 前置图标：把 Label 包进 HBox + TextureRect（运行时重构）
+func _apply_section_title_icons() -> void:
+	# 强化：mod_enhancement.png 在 mod_icons 子目录
+	var enh_tex := UiAssetLoader.load_tex("res://assets/ui/icons/mod_icons/mod_enhancement.png")
+	# 改装/进化：根目录 svg
+	var mod_tex := UiAssetLoader.ui_icon("icon_modification")
+	var evo_tex := UiAssetLoader.ui_icon("icon_blueprint")
+	_prepend_icon_to_label(
+		get_node_or_null("VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/ModSection/ModVBox/ModTitle"),
+		mod_tex, "改装系统")
+	_prepend_icon_to_label(
+		get_node_or_null("VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/EnhancementSection/EnhancementVBox/EnhancementTitle"),
+		enh_tex, "强化系统")
+	_prepend_icon_to_label(
+		get_node_or_null("VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/EvolutionSection/EvolutionVBox/EvolutionTitle"),
+		evo_tex, "进化系统")
+
+## 把 Label 包进新建的 HBoxContainer（图标 + 文字），替换原节点位置
+func _prepend_icon_to_label(label: Label, tex: Texture2D, new_text: String) -> void:
+	if label == null or tex == null:
+		return
+	label.text = new_text
+	var parent := label.get_parent()
+	if parent == null:
+		return
+	var idx := label.get_index()
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 8)
+	var icon := TextureRect.new()
+	icon.custom_minimum_size = Vector2(22, 22)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.texture = tex
+	parent.remove_child(label)
+	hbox.add_child(icon)
+	hbox.add_child(label)
+	parent.add_child(hbox)
+	parent.move_child(hbox, idx)
 
 ## 检查子节点是否为 tscn 定义的持久化 Section（不应被清除）
 func _is_detail_panel_persist_child(child: Node) -> bool:
@@ -575,10 +617,12 @@ func _set_mod_branch_buttons_enabled(enabled: bool) -> void:
 		mod_utility_btn.disabled = not enabled
 
 func _mod_option_display_name(option_id: String) -> String:
-	var ModEffects = preload("res://data/mod_effects.gd")
-	var mod_info: Dictionary = ModEffects.get_mod_info(option_id)
-	if not mod_info.is_empty():
-		return String(mod_info.get("name", option_id))
+	## v6.5: 改用 ModificationRegistry 查找（新 MOD ID 格式为 inf_01_xxx/arm_01_xxx 等，
+	## 旧 ModEffects 只认 MOD_01~MOD_20，导致新 ID 查不到中文名而回退到原始 ID）。
+	const ModReg = preload("res://scripts/systems/modification_registry.gd")
+	var mod_data: Dictionary = ModReg.get_data(option_id)
+	if not mod_data.is_empty():
+		return mod_data.get("name", option_id)
 	return option_id
 
 func _permit_display_name(permit_id: String) -> String:
@@ -628,13 +672,23 @@ func _update_modification_section() -> void:
 		# applied[i] 是 Dictionary 格式 {"id": "MOD_XX"}，需要先获取 id
 		var entry = applied[i]
 		var mod_id: String = ""
+		var mod_disabled: bool = false
 		if entry is Dictionary:
 			mod_id = String(entry.get("id", ""))
+			# v6.5: 检查启用状态
+			if entry.has("enabled") and not bool(entry.get("enabled", true)):
+				mod_disabled = true
 		else:
 			mod_id = String(entry)  # 兼容旧格式
-		applied_parts.append("%s:%s" % [slot, _mod_option_display_name(mod_id)])
-	var applied_text: String = " / ".join(applied_parts) if applied_parts.size() > 0 else "无"
-	mod_status_label.text = "改装进度：%d / 9" % applied.size()
+		var display_name: String = _mod_option_display_name(mod_id)
+		if mod_disabled:
+			display_name += "（禁用）"
+		applied_parts.append("%s:%s" % [slot, display_name])
+	# v6.5: mod_status_label 同时显示进度和已装改造完整名称列表，避免"看不到改造名字"
+	var progress_text: String = "改装进度：%d / 9" % applied.size()
+	if applied_parts.size() > 0:
+		progress_text += "\n已装：%s" % " / ".join(applied_parts)
+	mod_status_label.text = progress_text
 	# 9 槽位可视化
 	var mod_vbox = get_node_or_null("VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/ModSection/ModVBox")
 	if mod_vbox:
@@ -947,57 +1001,54 @@ func _render_affix_slots(card_id: String, current_level: int) -> Control:
 	wrap.add_child(grid)
 	return wrap
 
-## 创建改装槽位可视化（9槽 A-I）
+## 创建改装槽位可视化（9槽 A-I，竖向列表确保名称完整显示）
 func _render_mod_slots(card_id: String) -> Control:
 	var wrap := VBoxContainer.new()
 	wrap.name = "_dyn_mod_slots"
-	wrap.add_theme_constant_override("separation", 6)
+	wrap.add_theme_constant_override("separation", 3)
 	var applied: Array = BlueprintManager.blueprint_mods.get(card_id, []) if BlueprintManager else []
-	var grid := HBoxContainer.new()
-	grid.add_theme_constant_override("separation", 5)
+	# v6.5: 改为竖向列表，每行一个槽位，名称有足够空间完整显示
 	for i in range(9):
 		var filled := i < applied.size()
 		var slot_id: String = MOD_SLOT_LABELS[i] if i < MOD_SLOT_LABELS.size() else "?"
 		var mod_id: String = ""
 		var mod_name: String = ""
+		var mod_disabled: bool = false
 		if filled:
 			var entry = applied[i]
 			if entry is Dictionary:
 				mod_id = String(entry.get("id", ""))
+				if entry.has("enabled") and not bool(entry.get("enabled", true)):
+					mod_disabled = true
 			else:
 				mod_id = String(entry)
 			mod_name = _mod_option_display_name(mod_id)
-		var cell := PanelContainer.new()
-		cell.custom_minimum_size = Vector2(0, 40)
-		cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		if filled:
-			cell.add_theme_stylebox_override("panel", _make_sb(THEME_PURPLE * Color(1, 1, 1, 0.18), THEME_PURPLE * Color(1, 1, 1, 0.8), 1, 4, THEME_PURPLE * Color(1, 1, 1, 0.22), 3))
-		else:
-			cell.add_theme_stylebox_override("panel", _make_sb(THEME_BG_SLOT, THEME_BORDER_DIM * Color(1, 1, 1, 0.45), 1, 4))
-		cell.tooltip_text = "槽位 %s：%s" % [slot_id, mod_name] if filled else "槽位 %s（空）" % slot_id
-		var inner := VBoxContainer.new()
-		inner.add_theme_constant_override("separation", 1)
+			if mod_disabled:
+				mod_name += "（禁用）"
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		# 槽位标签（固定宽度）
 		var slot_label := Label.new()
-		slot_label.text = slot_id
-		slot_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		slot_label.add_theme_font_size_override("font_size", 11)
+		slot_label.text = "[%s]" % slot_id
+		slot_label.custom_minimum_size = Vector2(36, 0)
+		slot_label.add_theme_font_size_override("font_size", 12)
 		slot_label.add_theme_color_override("font_color", THEME_GOLD if filled else THEME_TEXT_DIM)
-		inner.add_child(slot_label)
+		row.add_child(slot_label)
+		# 改造名称（展开填充，完整显示）
 		var name_label := Label.new()
-		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		name_label.add_theme_font_size_override("font_size", 11)
-		name_label.clip_text = true
+		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		name_label.add_theme_font_size_override("font_size", 12)
 		if filled:
-			var short := mod_name.left(2) if mod_name.length() > 2 else mod_name
-			name_label.text = short
-			name_label.add_theme_color_override("font_color", THEME_PURPLE)
+			name_label.text = mod_name
+			if mod_disabled:
+				name_label.add_theme_color_override("font_color", THEME_TEXT_DIM * Color(1, 1, 1, 0.6))
+			else:
+				name_label.add_theme_color_override("font_color", THEME_PURPLE)
 		else:
-			name_label.text = "·"
-			name_label.add_theme_color_override("font_color", THEME_TEXT_DIM * Color(1, 1, 1, 0.5))
-		inner.add_child(name_label)
-		cell.add_child(inner)
-		grid.add_child(cell)
-	wrap.add_child(grid)
+			name_label.text = "（空）"
+			name_label.add_theme_color_override("font_color", THEME_TEXT_DIM * Color(1, 1, 1, 0.4))
+		row.add_child(name_label)
+		wrap.add_child(row)
 	return wrap
 
 ## 卡牌列表项样式（选中/未选中）

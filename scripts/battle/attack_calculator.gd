@@ -4,7 +4,7 @@ class_name AttackCalculator
 
 const GC = preload("res://resources/game_constants.gd")
 const DamageAttenuation = preload("res://scripts/battle/damage_attenuation.gd")
-const ModEffects = preload("res://data/mod_effects.gd")
+const CombatTargeting = preload("res://scripts/combat_targeting.gd")
 
 ## 默认攻速值（当攻速为0或负数时使用）
 const DEFAULT_ATTACK_SPEED: float = 1.0
@@ -20,17 +20,17 @@ static func get_attack_vs(attacker_stats: UnitStats, target_combat_kind: int) ->
 		GC.CombatKind.FORT: return attacker_stats.attack_armor    # 堡垒按装甲算
 		_: return attacker_stats.attack_light
 
-## 根据武器类型（攻击方式）获取对应防御值
-## 注意：当前使用旧的属性名（defense_light/armor/air）但含义已改变
-## defense_light 现在表示对直射防御（防DIRECT武器）
-## defense_armor 现在表示对曲射防御（防INDIRECT武器）
-## defense_air 现在表示对空射防御（防AERIAL武器）
-static func get_defense_vs(target_stats: UnitStats, weapon_type: int) -> float:
-	match weapon_type:
-		GC.WeaponType.DIRECT: return target_stats.defense_light
-		GC.WeaponType.INDIRECT: return target_stats.defense_armor
-		GC.WeaponType.AERIAL: return target_stats.defense_air
-		_: return target_stats.defense_light  # 默认直射
+## 根据攻击者单位类型获取目标对应防御值（v6.2: 攻防维度对齐）
+## 防御维度与攻击维度对齐——按"攻击者的单位类型"选目标防御值：
+## defense_light = 防轻装单位(LIGHT/SUPPORT)攻击
+## defense_armor = 防装甲单位(ARMOR/FORT)攻击
+## defense_air   = 防空中单位(AIR)攻击
+static func get_defense_vs(target_stats: UnitStats, attacker_combat_kind: int) -> float:
+	match attacker_combat_kind:
+		GC.CombatKind.LIGHT, GC.CombatKind.SUPPORT: return target_stats.defense_light
+		GC.CombatKind.ARMOR, GC.CombatKind.FORT: return target_stats.defense_armor
+		GC.CombatKind.AIR: return target_stats.defense_air
+		_: return target_stats.defense_light  # 默认防轻装
 
 ## 完整伤害计算
 static func calculate_damage(
@@ -44,8 +44,8 @@ static func calculate_damage(
 	# 1. 攻击值 = 根据目标类型选（目标轻甲→attack_light, 装甲→attack_armor, 空中→attack_air）
 	var base_damage = get_attack_vs(attacker_stats, target_stats.combat_kind)
 
-	# 2. 防御值 = 根据武器类型穿透（直射→defense_light, 曲射→defense_armor, 空射→defense_air）
-	var def = get_defense_vs(target_stats, weapon_type)
+	# 2. 防御值 = 根据攻击者单位类型选（v6.2: 攻防维度对齐）
+	var def = get_defense_vs(target_stats, attacker_stats.combat_kind)
 
 	# 3. 射程衰减(仅直射)
 	if weapon_type == GC.WeaponType.DIRECT:
@@ -72,33 +72,10 @@ static func calculate_damage(
 			enhance_mult = 1.0 + float(attacker_enhance_level) * 0.05
 		final_damage *= enhance_mult
 
-	# 6. 改造加成
-	if attacker_mods and not attacker_mods.is_empty():
-		final_damage *= get_mod_damage_multiplier(attacker_mods, target_stats.combat_kind)
+	# v6.4: 改造伤害加成已由 ModificationRegistry.apply_with_level 在 UnitStats 构建阶段
+	# 直接叠加到 attack_light/armor/air，此处无需再乘倍率。
 
 	return final_damage
-
-## 计算改造伤害倍率
-## 遍历已装配的 MOD 列表，累加 attack_multiplier（条件型仅当目标匹配时生效）
-static func get_mod_damage_multiplier(mods: Array, target_combat_kind: int) -> float:
-	var total_mult := 1.0
-	for mod_id in mods:
-		if mod_id is not String:
-			continue
-		var mod_def: Dictionary = ModEffects.get_mod_info(mod_id)
-		if mod_def.is_empty():
-			continue
-		var attack_mult: float = float(mod_def.get("attack_multiplier", 1.0))
-		# 条件型改造：仅当目标类型匹配时才生效
-		var condition_type: String = String(mod_def.get("condition_type", ""))
-		if condition_type == "vs_armor" and target_combat_kind != GC.CombatKind.ARMOR:
-			attack_mult = 1.0
-		elif condition_type == "vs_light" and target_combat_kind != GC.CombatKind.LIGHT:
-			attack_mult = 1.0
-		elif condition_type == "vs_air" and target_combat_kind != GC.CombatKind.AIR:
-			attack_mult = 1.0
-		total_mult *= attack_mult
-	return total_mult
 
 ## 完整伤害计算（带max_range参数版）
 static func calculate_damage_with_range(
@@ -113,8 +90,8 @@ static func calculate_damage_with_range(
 	# 1. 攻击值 = 根据目标类型选
 	var base_damage = get_attack_vs(attacker_stats, target_stats.combat_kind)
 
-	# 2. 击穿检查 — 防御值 = 根据武器类型穿透
-	var def = get_defense_vs(target_stats, weapon_type)
+	# 2. 击穿检查 — 防御值 = 根据攻击者单位类型选（v6.2: 攻防维度对齐）
+	var def = get_defense_vs(target_stats, attacker_stats.combat_kind)
 	if base_damage <= def:
 		return 0.0
 
@@ -140,9 +117,8 @@ static func calculate_damage_with_range(
 			enhance_mult = 1.0 + float(attacker_enhance_level) * 0.05
 		final_damage *= enhance_mult
 
-	# 6. 改造加成
-	if attacker_mods and not attacker_mods.is_empty():
-		final_damage *= get_mod_damage_multiplier(attacker_mods, target_stats.combat_kind)
+	# v6.4: 改造伤害加成已由 ModificationRegistry.apply_with_level 在 UnitStats 构建阶段
+	# 直接叠加到 attack_light/armor/air，此处无需再乘倍率。
 
 	return final_damage
 
@@ -207,6 +183,9 @@ static func get_weapon_for_target(attacker_stats: UnitStats, target_combat_kind:
 
 ## 使用槽位武器计算伤害
 ## skip_defense_reduction: 跳过防御减免（格子战模式下，防御由CardGridDamage处理）
+## is_card_grid: 格子战模式标识。格子战下射程衰减改用 range_falloff（保底30%，永不归零），
+##   max_range 基准用 attacker_stats.attack_range（已含 era 缩放，与索敌判定一致）；
+##   传统战场保持原 calculate_attenuation（按武器子类型衰减，可能归零）。
 static func calculate_damage_with_weapon(
 	attacker_stats: UnitStats,
 	target_stats: UnitStats,
@@ -214,7 +193,8 @@ static func calculate_damage_with_weapon(
 	weapon: WeaponResource,
 	attacker_enhance_level: int = 0,
 	attacker_mods: Array = [],
-	skip_defense_reduction: bool = false
+	skip_defense_reduction: bool = false,
+	is_card_grid: bool = false
 ) -> float:
 	if weapon == null or not weapon.enabled:
 		return 0.0
@@ -223,18 +203,26 @@ static func calculate_damage_with_weapon(
 
 	# 射程衰减（仅直射）
 	if weapon.weapon_type == GC.WeaponType.DIRECT:
-		var max_range = float(weapon.range_value) * 100.0
-		var sub_type = DamageAttenuation.infer_weapon_sub_type(
-			attacker_stats.combat_kind, weapon.range_value,
-			base_damage, base_damage, base_damage
-		)
-		base_damage *= DamageAttenuation.calculate_attenuation(distance, max_range, sub_type)
+		if is_card_grid:
+			# 格子战：用 range_falloff 保底 30%，max_range 取 stats.attack_range
+			# （与索敌/状态机判定基准一致；weapon.range_value×100 对远端槽位 600~1200px 必归零）
+			var cg_max_range: float = attacker_stats.attack_range if attacker_stats != null else (float(weapon.range_value) * 100.0)
+			var falloff: Dictionary = CombatTargeting.range_falloff(distance, cg_max_range)
+			base_damage *= float(falloff.get("damage_mult", 1.0))
+		else:
+			# 传统战场：按武器子类型衰减（原逻辑）
+			var max_range = float(weapon.range_value) * 100.0
+			var sub_type = DamageAttenuation.infer_weapon_sub_type(
+				attacker_stats.combat_kind, weapon.range_value,
+				base_damage, base_damage, base_damage
+			)
+			base_damage *= DamageAttenuation.calculate_attenuation(distance, max_range, sub_type)
 
 	# 防御减免（非格子战模式）
 	var final_damage = base_damage
 	if not skip_defense_reduction:
-		# 用武器的 weapon_type 决定穿透哪个防御值（配对）
-		var def = get_defense_vs(target_stats, weapon.weapon_type)
+		# 用攻击者单位类型决定穿透哪个防御值（v6.2: 攻防维度对齐）
+		var def = get_defense_vs(target_stats, attacker_stats.combat_kind)
 		final_damage = base_damage * (100.0 / (100.0 + def))
 
 	# 强化加成
@@ -248,9 +236,8 @@ static func calculate_damage_with_weapon(
 			enhance_mult = 1.0 + float(attacker_enhance_level) * 0.05
 		final_damage *= enhance_mult
 
-	# 改造加成
-	if attacker_mods and not attacker_mods.is_empty():
-		final_damage *= get_mod_damage_multiplier(attacker_mods, target_stats.combat_kind)
+	# v6.4: 改造伤害加成已由 ModificationRegistry.apply_with_level 在 UnitStats 构建阶段
+	# 直接叠加到 attack_light/armor/air，此处无需再乘倍率。
 
 	return final_damage
 

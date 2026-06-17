@@ -211,11 +211,37 @@ func _process_reveal_rewards(event_data: Dictionary, enemy_type: String) -> void
 # ── 敌源MOD碎片掉落 ──────────────────────────────────────────────
 
 ## 检查是否掉落敌源MOD碎片
+## v6.4: 实现 TODO——按 enemy_type 匹配 EOM 的 source_enemy_type，精英/boss 掉落概率更高
 func _check_eom_drops(enemy_type: String, rank: String) -> Array:
 	var drops: Array = []
-	## 需要敌源MOD定义模块（Phase 2创建）
-	## 这里先预留接口
-	## TODO: 当enemy_origin_mods.gd创建后完善
+	const EnemyOriginModsRef = preload("res://data/enemy_origin_mods.gd")
+	var all_ids: Array = EnemyOriginModsRef.get_all_mod_ids()
+	if all_ids.is_empty():
+		return drops
+	# 掉落概率按敌人等级：normal 10%, elite 30%, boss 60%
+	var drop_chance: float = 0.10
+	if rank == "elite":
+		drop_chance = 0.30
+	elif rank == "boss":
+		drop_chance = 0.60
+	# 遍历所有 EOM，匹配 source_enemy_type
+	for mod_id in all_ids:
+		var mod_data: Dictionary = EnemyOriginModsRef.get_mod_data(mod_id)
+		if mod_data.is_empty():
+			continue
+		var source_type: String = String(mod_data.get("source_enemy_type", ""))
+		if source_type.is_empty() or source_type != enemy_type:
+			continue
+		# 已解锁的不再掉落碎片
+		if _unlocked_eom.has(mod_id):
+			continue
+		if randf() <= drop_chance:
+			drops.append({
+				"type": "eom_fragment",
+				"mod_id": mod_id,
+				"source_enemy_type": enemy_type,
+				"count": 1
+			})
 	return drops
 
 # ── 敌源MOD查询接口 ──────────────────────────────────────────────

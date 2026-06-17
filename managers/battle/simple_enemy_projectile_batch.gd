@@ -24,7 +24,6 @@ func _ready() -> void:
 	for wt: int in _BATCH_WEAPON_TYPES:
 		_layers[wt] = _make_layer(wt)
 		add_child(_layers[wt])
-	prints("[BATCH_READY]", name, "layers_keys=", _layers.keys(), "layer_count=", _layers.size())
 
 func _make_layer(wt: int) -> MultiMeshInstance2D:
 	var mmi := MultiMeshInstance2D.new()
@@ -36,6 +35,10 @@ func _make_layer(wt: int) -> MultiMeshInstance2D:
 	q.size = WeaponProjectileVfx.proj_quad_size(wt)
 	mm.mesh = q
 	mmi.multimesh = mm
+	# v6.4: 发光叠加
+	var mat := CanvasItemMaterial.new()
+	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	mmi.material = mat
 	return mmi
 
 func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, _shooter_stats: Variant, forced_miss: bool = false) -> void:
@@ -124,7 +127,6 @@ func _sync_multimesh_layers() -> void:
 		var mm2: MultiMesh = (_layers[wt_r] as MultiMeshInstance2D).multimesh
 		var global_pos: Vector2 = r["pos"]
 		var local_pos: Vector2 = to_local(global_pos)
-		prints("BATCH_DEBUG:", name, "global_pos=", global_pos, "local_pos=", local_pos, "pos=", position)
 		mm2.set_instance_transform_2d(idx, Transform2D(dir.angle(), local_pos))
 		mm2.set_instance_color(idx, _ENEMY_TINT)
 

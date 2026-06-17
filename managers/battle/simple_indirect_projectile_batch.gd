@@ -48,8 +48,6 @@ func _ready() -> void:
 		_layers[wt] = _make_layer(wt)
 		_layers[wt].show()
 		add_child(_layers[wt])
-	var side_str := "玩家" if is_player_side else "敌方"
-	print("[IndirectBatch] %s侧 initialized with " % side_str, _BATCH_WEAPON_TYPES.size(), " layers")
 
 func _make_layer(wt: int) -> MultiMeshInstance2D:
 	var mmi := MultiMeshInstance2D.new()
@@ -70,11 +68,27 @@ func _make_layer(wt: int) -> MultiMeshInstance2D:
 	mmi.multimesh = mm
 	mmi.z_as_relative = false
 	mmi.show()
+	# v6.4: 发光叠加（导弹/火箭尾焰发光更自然）
 	var mat := CanvasItemMaterial.new()
-	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_MIX
+	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	mmi.material = mat
-	print("[IndirectBatch] layer for wt=", wt, " texture=", tex, " quad_size=", q.size)
 	return mmi
+
+## v6.5: 不同曲射武器的弧线高度倍率（与 bullet.gd 保持一致）
+func _get_indirect_arc_multiplier(wt: int) -> float:
+	match wt:
+		1:   # INDIRECT 迫击炮/野战炮 — 高弧线
+			return 1.6
+		7:   # FLAK 高射炮 — 较高弧线
+			return 1.3
+		9:   # MISSILE 导弹 — 中等弧线（默认基准）
+			return 1.0
+		2:   # AERIAL 空射 — 低弧线（俯冲）
+			return 0.5
+		3:   # ROCKET 火箭筒 — 最低弧线（直瞄反坦克）
+			return 0.3
+		_:
+			return 1.0
 
 func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, shooter_stats: Variant, forced_miss: bool = false, weapon_name: String = "") -> void:
 	if _proj.size() >= _MAX_PROJ or tgt == null or not is_instance_valid(tgt):
@@ -90,7 +104,8 @@ func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, shoo
 	var end := tgt.global_position
 	var dist := start.distance_to(end)
 	var duration := 0.6 + dist / 2000.0 * 0.8
-	var apex := 100.0 + dist * 0.25
+	# v6.5: 不同曲射武器的弧线高低不同（按 weapon_type 差异化）
+	var apex := (100.0 + dist * 0.25) * _get_indirect_arc_multiplier(wt)
 
 	_proj.append({
 		"start": start,
@@ -221,6 +236,11 @@ func _apply_hit(r: Dictionary) -> void:
 	var proj_is_player: bool = bool(r.get("is_player", true))
 	if not bool(r.get("forced_miss", false)):
 		_spawn_impact_explosion(hit_pos, proj_is_player)
+		# v6.4: 曲射爆炸触发中等屏幕震动
+		var tree := get_tree()
+		var bm: Node = tree.root.get_node_or_null("BattleManager") if tree else null
+		if bm != null and is_instance_valid(bm) and bm.has_method("request_screen_shake"):
+			bm.request_screen_shake(5.0, 0.25)
 
 	# 造成伤害
 	if bool(r.get("forced_miss", false)):
@@ -247,10 +267,10 @@ func _apply_hit(r: Dictionary) -> void:
 					if gm != null and gm.has_method("is_card_grid_battle"):
 						is_card_grid = gm.is_card_grid_battle()
 
-				# 1. 根据武器类型获取对应的防御值（三攻三防系统）
+				# 1. 根据攻击者单位类型获取对应的防御值（v6.2: 攻防维度对齐）
 				# 2. 应用防御减免（仅在非格子战模式）
 				if not is_card_grid:
-					var def_val: float = AttackCalculator.get_defense_vs(target_stats, wt)
+					var def_val: float = AttackCalculator.get_defense_vs(target_stats, shooter_stats.combat_kind)
 					final_primary_dmg = raw_dmg * (100.0 / (100.0 + def_val))
 
 				# 3. 强化加成
@@ -264,13 +284,8 @@ func _apply_hit(r: Dictionary) -> void:
 						enhance_mult = 1.0 + float(shooter_stats.enhance_level) * 0.05
 					final_primary_dmg *= enhance_mult
 
-				# 4. 改造加成（如果有mods）
-				var mods: Array = []
-				if shooter_stats.has_method("get_mod_array"):
-					mods = shooter_stats.get_mod_array()
-				if mods and not mods.is_empty():
-					var mod_mult: float = AttackCalculator.get_mod_damage_multiplier(mods, target_stats.combat_kind)
-					final_primary_dmg *= mod_mult
+					# v6.4: 改造伤害加成已由 ModificationRegistry.apply_with_level 在 UnitStats 构建阶段
+					# 直接叠加到 attack_light/armor/air，此处无需再乘倍率。
 
 				# 5. 词缀战斗效果（如果shooter节点有效）
 				if shooter and is_instance_valid(shooter):
@@ -316,7 +331,7 @@ func _apply_hit(r: Dictionary) -> void:
 
 					# 仅在非格子战模式下应用防御减免
 					if not is_card_grid:
-						var def_val_splash: float = AttackCalculator.get_defense_vs(target_stats_splash, wt)
+						var def_val_splash: float = AttackCalculator.get_defense_vs(target_stats_splash, shooter_stats.combat_kind)
 						if splash_raw > def_val_splash:
 							splash_final = splash_raw * (100.0 / (100.0 + def_val_splash))
 						else:
@@ -330,14 +345,7 @@ func _apply_hit(r: Dictionary) -> void:
 
 		# 主目标伤害（应用完整计算）
 		if tgt.has_method("take_damage") and final_primary_dmg > 0.0:
-				print("[IndirectBatch] 造成曲射伤害: ", final_primary_dmg, " 目标: ", tgt.name, " 原始伤害: ", raw_dmg)
-				tgt.take_damage(final_primary_dmg, shooter)
-
-		else:
-			print("[IndirectBatch] 伤害为0或目标无take_damage! final_primary_dmg=", final_primary_dmg, " tgt=", tgt)
-	# Fix-8: 性能监控
-	if _proj.size() > 20 and Engine.get_frames_drawn() % 300 == 0:
-		push_warning("[IndirectBatch] 高弹道数: %d" % _proj.size())
+			tgt.take_damage(final_primary_dmg, shooter)
 
 ## 爆炸候选：优先空间网格
 func _get_aoe_targets(center: Vector2, radius: float, primary: Node2D) -> Array:

@@ -8,6 +8,8 @@ extends Node2D
 @onready var background: ColorRect = $Background
 @onready var ground: ColorRect = $Ground
 @onready var level10_bg: Sprite2D = $Level10Background
+## v6.4: 战场相机（挂 screen_shake.gd），仅作用于 SubViewport 内渲染，不影响外层 HUD
+@onready var battle_camera: Camera2D = $BattleCamera
 
 const PhaseDriverScene = preload("res://scenes/units/phase_field_driver.tscn")
 const EnemyPhaseDriverScene = preload("res://scenes/units/enemy_phase_field_driver.tscn")
@@ -28,7 +30,7 @@ const PERSISTENT_CHILD_NAMES: Dictionary = {
 	"PlayerUnits": true,
 	"EnemyUnits": true,
 	"PhaseFieldDriver": true,
-	"EnemyPhaseFieldDriver": true,
+	"EnemyPhaseDriver": true,
 	"BattleHUD": true,
 	"Level10Background": true,
 	"Background": true,
@@ -37,6 +39,7 @@ const PERSISTENT_CHILD_NAMES: Dictionary = {
 	"PlayerSpawn": true,
 	"EnemySpawn": true,
 	"BattlePerformanceMonitor": true,
+	"BattleCamera": true,  # v6.4: 屏幕震动相机，清场时保留
 }
 
 # 性能优化：调试日志文件句柄缓存
@@ -61,6 +64,22 @@ func _ready() -> void:
 		add_child(sg)
 	_update_background()
 	call_deferred("_sync_battle_slot_grid_lane")
+	# v6.4: 把震动相机对齐到视口中心，使其严格等价于无相机渲染（世界原点在视口左上）
+	call_deferred("_align_battle_camera")
+
+
+## v6.4: 根据所在 SubViewport 实际尺寸，把 BattleCamera position 设为视口中心，
+## 使相机的视野与"无 Camera2D"完全一致（FIXED 模式下 position 即视口中心对应世界点）。
+func _align_battle_camera() -> void:
+	if battle_camera == null or not is_instance_valid(battle_camera):
+		return
+	var vp := get_viewport()
+	if vp == null:
+		return
+	var half: Vector2 = vp.get_visible_rect().size * 0.5
+	battle_camera.global_position = half
+	if OS.is_debug_build():
+		print("[BattleCamera] aligned to viewport center: ", half)
 
 
 func _sync_battle_slot_grid_lane() -> void:
@@ -623,3 +642,17 @@ func get_unit_at_position(viewport_pos: Vector2) -> Dictionary:
 			best_d = dd
 			best = {"unit": enemy_driver, "is_player": false}
 	return best
+
+
+## v6.4: 触发屏幕震动（命中/爆炸反馈）。强度档位建议：
+## 命中 ~2-3，爆炸 ~5-6，Boss死亡 ~10。duration 单位秒。
+func request_screen_shake(intensity: float, duration: float) -> void:
+	if battle_camera == null or not is_instance_valid(battle_camera):
+		return
+	if battle_camera.has_method("start_shake"):
+		battle_camera.start_shake(intensity, duration, true)
+
+
+## v6.4: 获取战场相机（供外部系统如 BattleManager 读取）
+func get_battle_camera() -> Camera2D:
+	return battle_camera

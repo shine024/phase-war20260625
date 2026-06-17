@@ -10,7 +10,6 @@ class_name UnitStatsTable
 
 const GC = preload("res://resources/game_constants.gd")
 const BattleCardV3 = preload("res://data/battle_card_v3.gd")
-const ModuleDefinitions = preload("res://data/module_definitions.gd")
 
 
 # ─────────────────────────────────────────────
@@ -25,6 +24,7 @@ static func build_stats_from_card(card: CardResource, era_override: int = -1) ->
 	var e: int = era_override if era_override >= 0 else card.era
 	stats.era = e
 	stats.combat_kind = card.combat_kind
+	stats.unit_subtype = card.unit_subtype  # v6.2: 透传子类标记
 	stats.weapon_label = card.weapon_label
 	stats.card_id = card.card_id
 
@@ -51,9 +51,11 @@ static func build_stats_from_card(card: CardResource, era_override: int = -1) ->
 	stats.attack_light = card.attack_light
 	stats.attack_armor = card.attack_armor
 	stats.attack_air = card.attack_air
-	stats.defense_light = card.defense_light
-	stats.defense_armor = card.defense_armor
-	stats.defense_air = card.defense_air
+	# v6.2: 防御维度重新标定——由单位类型派生，覆盖旧的"防武器类型"语义数据
+	var recal_def: Dictionary = derive_defense_by_unit_type(card.combat_kind, card.unit_subtype, e)
+	stats.defense_light = recal_def["defense_light"]
+	stats.defense_armor = recal_def["defense_armor"]
+	stats.defense_air = recal_def["defense_air"]
 
 	# 时代缩放
 	if e >= 0:
@@ -102,6 +104,8 @@ static func build_stats_from_card(card: CardResource, era_override: int = -1) ->
 	if card.mods and not card.mods.is_empty():
 		if ModificationRegistry and ModificationRegistry.has_method("apply_to_weapon_slots"):
 			tmp_slots = ModificationRegistry.apply_to_weapon_slots(tmp_slots, card.mods)
+		# v6.2: 应用改造的 stat 效果（穿甲/条件穿甲等）到 UnitStats
+		_apply_mod_stat_effects(stats, card.mods)
 
 	stats.weapon_slots = tmp_slots
 
@@ -121,93 +125,319 @@ static func build_stats_from_card(card: CardResource, era_override: int = -1) ->
 	if card.module_slots.size() > 0:
 		apply_module_effects(stats, card.module_slots, card.enhance_level)
 
+	# v6.5: 应用战力星级加成（固定数值 + 特殊能力，叠加在强化之上）
+	apply_battle_star_bonus(stats, card)
+
 	return stats
 
 
-## v6.0: 将强化词条效果应用到 UnitStats（原地修改）
-## module_slots: Array[ModuleSlot] — 词条槽位数组
+## v6.5: 战力星级加成 — 固定数值（按兵种差异化）+ 特殊能力（复用 Affix effect_key）
+static func apply_battle_star_bonus(stats: UnitStats, card: CardResource) -> void:
+	if stats == null or card == null:
+		return
+	var star: int = int(card.battle_star) if "battle_star" in card else 0
+	if star <= 0:
+		return
+	var BattleStarCfg = preload("res://data/battle_star_config.gd")
+	# 1. 固定数值加成
+	var bonus: Dictionary = BattleStarCfg.get_stat_bonus_per_star(stats.combat_kind)
+	var star_f: float = float(star)
+	stats.max_hp *= (1.0 + bonus.hp_pct * star_f)
+	# 攻击力加成（乘算到三维 + weapons）
+	var atk_mult: float = bonus.atk_pct * star_f
+	stats.attack_light *= (1.0 + atk_mult)
+	stats.attack_armor *= (1.0 + atk_mult)
+	stats.attack_air *= (1.0 + atk_mult)
+	for i in range(stats.weapons.size()):
+		var wd: Dictionary = stats.weapons[i] as Dictionary
+		if wd.has("damage"):
+			wd["damage"] = float(wd["damage"]) * (1.0 + atk_mult)
+			stats.weapons[i] = wd
+	# 兵种特殊数值
+	var extra_key: String = bonus.extra_key
+	var extra_val: float = bonus.extra_per_star * star_f
+	match extra_key:
+		"dodge":
+			stats.dodge_chance = minf(0.75, stats.dodge_chance + extra_val)
+		"damage_reduction":
+			stats.damage_reduction = minf(0.75, stats.damage_reduction + extra_val)
+		"hp_regen":
+			stats.hp_regen += extra_val
+		"move_speed":
+			stats.move_speed *= (1.0 + extra_val)
+	# 2. 特殊能力（复用 Affix effect_key 逻辑）
+	var abilities: Array[Dictionary] = BattleStarCfg.get_unlocked_abilities(stats.combat_kind, star)
+	for ab in abilities:
+		var ek: String = String(ab.get("effect_key", ""))
+		var ev: float = float(ab.get("value", 0.0))
+		match ek:
+			"crit_chance":
+				stats.crit_chance = minf(0.75, stats.crit_chance + ev)
+			"lifesteal":
+				stats.lifesteal = minf(0.60, stats.lifesteal + ev)
+			"armor_penetration":
+				stats.armor_penetration = minf(0.80, stats.armor_penetration + ev)
+			"damage_reduction":
+				stats.damage_reduction = minf(0.75, stats.damage_reduction + ev)
+			"splash_damage":
+				stats.splash_damage = minf(0.80, stats.splash_damage + ev)
+			"hp_regen":
+				stats.hp_regen += ev
+			"chain_chance":
+				stats.chain_chance = minf(0.60, stats.chain_chance + ev)
+			"shield_on_kill":
+				stats.shield_on_kill += ev
+
+
+## v6.4: 将强化词条效果应用到 UnitStats（统一管线）
+## module_slots 里的旧 module_id（module_hp_up 等）需映射到新 enh_ ID，
+## 通过 ModificationRegistry.apply_with_level 统一处理。
 ## enhance_level: int — 强化等级（用于Lv10全属性加成判断）
 static func apply_module_effects(stats: UnitStats, module_slots: Array, enhance_level: int = 0) -> void:
 	if stats == null or module_slots.is_empty():
 		return
-	# 构建 base 字典
+	# 将 module_slots 转为统一 mods 格式 [{id, level}]
+	# 旧 module_id → 新 enh_ ID 映射
+	var mods: Array = []
+	for s in module_slots:
+		var mod_id: String = ""
+		var mod_level: int = 1
+		if s is ModuleSlot:
+			mod_id = _map_legacy_module_id(s.module_id)
+			mod_level = clampi(s.level, 1, 3)
+		elif s is Dictionary:
+			mod_id = _map_legacy_module_id(String(s.get("module_id", "")))
+			mod_level = clampi(int(s.get("level", 1)), 1, 3)
+		if not mod_id.is_empty():
+			mods.append({id = mod_id, level = mod_level})
+	# 通过统一管线应用（复用 _apply_mod_stat_effects 的逻辑）
+	if not mods.is_empty():
+		_apply_mod_stat_effects(stats, mods)
+	# Lv10 全属性加成（保留原有逻辑）
+	if enhance_level >= 10:
+		var bonus: float = 0.10
+		stats.max_hp *= (1.0 + bonus)
+		stats.attack_light *= (1.0 + bonus)
+		stats.attack_armor *= (1.0 + bonus)
+		stats.attack_air *= (1.0 + bonus)
+		stats.attack_damage = stats.attack_light
+
+
+## v6.4: 旧 module_id → 新 enh_ ID 映射表
+static func _map_legacy_module_id(old_id: String) -> String:
+	var mapping: Dictionary = {
+		"module_hp_up": "enh_hp_up",
+		"module_dmg_up": "enh_dmg_up",
+		"module_def_up": "enh_def_up",
+		"module_def_flat": "enh_def_flat",
+		"module_speed_up": "enh_speed_up",
+		"module_range_up": "enh_range_up",
+		"module_atkspd_up": "enh_atkspd_up",
+		"module_crit": "enh_crit",
+		"module_lifesteal": "enh_lifesteal",
+		"module_splash": "enh_splash",
+		"module_penetration": "enh_penetration",
+		"module_regen": "enh_regen",
+		"module_chain": "enh_chain",
+		"module_shield_kill": "enh_shield_kill",
+		"module_dodge": "enh_dodge",
+		"module_crit_dmg": "enh_crit_dmg",
+	}
+	# 新 enh_ ID 直接透传
+	if old_id.begins_with("enh_"):
+		return old_id
+	return String(mapping.get(old_id, old_id))
+
+
+## v6.4: 将改造的 stat 效果应用到 UnitStats（统一管线，支持level）
+## 通过 ModificationRegistry.apply_with_level 处理所有 effects key，
+## 然后把结果写回 UnitStats。
+## 注：武器槽位效果（伤害/射程/攻速）由 apply_to_weapon_slots 单独处理。
+static func _apply_mod_stat_effects(stats: UnitStats, mods: Array) -> void:
+	if stats == null or mods.is_empty():
+		return
+	# 构建 base 字典（UnitStats → Dictionary）
 	var base_dict: Dictionary = {
 		"max_hp": stats.max_hp,
 		"attack_light": stats.attack_light,
 		"attack_armor": stats.attack_armor,
 		"attack_air": stats.attack_air,
+		"defense_light": stats.defense_light,
+		"defense_armor": stats.defense_armor,
+		"defense_air": stats.defense_air,
+		"move_speed": stats.move_speed,
 		"attack_range": stats.attack_range,
 		"attack_interval": stats.attack_interval,
-		"defense": stats.defense,
 		"deploy_speed": stats.deploy_speed,
-		"damage_reduction": stats.damage_reduction,
 		"crit_chance": stats.crit_chance,
 		"crit_damage_bonus": stats.crit_damage_bonus,
+		"dodge_chance": stats.dodge_chance,
+		"damage_reduction": stats.damage_reduction,
+		"armor_penetration": stats.armor_penetration,
+		"armor_pen_vs_light": stats.armor_pen_vs_light,
+		"armor_pen_vs_armor": stats.armor_pen_vs_armor,
+		"armor_pen_vs_air": stats.armor_pen_vs_air,
 		"lifesteal": stats.lifesteal,
 		"splash_damage": stats.splash_damage,
-		"armor_penetration": stats.armor_penetration,
 		"chain_chance": stats.chain_chance,
 		"shield_on_kill": stats.shield_on_kill,
 		"hp_regen": stats.hp_regen,
-		"dodge_chance": stats.dodge_chance,
 	}
-	# 将 ModuleSlot 数组转为字典数组
-	var slots_data: Array = []
-	for s in module_slots:
-		if s is ModuleSlot:
-			slots_data.append(s.to_dict())
-		elif s is Dictionary:
-			slots_data.append(s)
-	# 应用词条效果
-	var result: Dictionary = ModuleDefinitions.apply_modules_to_stats(base_dict, slots_data)
-	# Lv10 全属性加成
-	if enhance_level >= 10:
-		result = ModuleDefinitions.apply_level10_bonus(result)
-	# 写回 stats
+	# 统一应用（支持 level_effects + effects 两种格式）
+	var result: Dictionary = ModificationRegistry.apply_with_level(base_dict, mods)
+	# 写回 UnitStats
 	stats.max_hp = float(result.get("max_hp", stats.max_hp))
 	stats.attack_light = float(result.get("attack_light", stats.attack_light))
 	stats.attack_armor = float(result.get("attack_armor", stats.attack_armor))
 	stats.attack_air = float(result.get("attack_air", stats.attack_air))
+	stats.defense_light = float(result.get("defense_light", stats.defense_light))
+	stats.defense_armor = float(result.get("defense_armor", stats.defense_armor))
+	stats.defense_air = float(result.get("defense_air", stats.defense_air))
+	stats.move_speed = float(result.get("move_speed", stats.move_speed))
 	stats.attack_range = float(result.get("attack_range", stats.attack_range))
 	stats.attack_interval = float(result.get("attack_interval", stats.attack_interval))
-	stats.defense = float(result.get("defense", stats.defense))
 	stats.deploy_speed = int(result.get("deploy_speed", stats.deploy_speed))
-	stats.damage_reduction = float(result.get("damage_reduction", 0.0))
-	stats.crit_chance = float(result.get("crit_chance", 0.0))
-	stats.crit_damage_bonus = float(result.get("crit_damage_bonus", 0.0))
-	stats.lifesteal = float(result.get("lifesteal", 0.0))
-	stats.splash_damage = float(result.get("splash_damage", 0.0))
-	stats.armor_penetration = float(result.get("armor_penetration", 0.0))
-	stats.chain_chance = float(result.get("chain_chance", 0.0))
-	stats.shield_on_kill = float(result.get("shield_on_kill", 0.0))
-	stats.hp_regen = float(result.get("hp_regen", 0.0))
-	stats.dodge_chance = float(result.get("dodge_chance", 0.0))
+	stats.crit_chance = float(result.get("crit_chance", stats.crit_chance))
+	stats.crit_damage_bonus = float(result.get("crit_damage_bonus", stats.crit_damage_bonus))
+	stats.dodge_chance = float(result.get("dodge_chance", stats.dodge_chance))
+	stats.damage_reduction = float(result.get("damage_reduction", stats.damage_reduction))
+	stats.armor_penetration = float(result.get("armor_penetration", stats.armor_penetration))
+	stats.armor_pen_vs_light = float(result.get("armor_pen_vs_light", stats.armor_pen_vs_light))
+	stats.armor_pen_vs_armor = float(result.get("armor_pen_vs_armor", stats.armor_pen_vs_armor))
+	stats.armor_pen_vs_air = float(result.get("armor_pen_vs_air", stats.armor_pen_vs_air))
+	stats.lifesteal = float(result.get("lifesteal", stats.lifesteal))
+	stats.splash_damage = float(result.get("splash_damage", stats.splash_damage))
+	stats.chain_chance = float(result.get("chain_chance", stats.chain_chance))
+	stats.shield_on_kill = float(result.get("shield_on_kill", stats.shield_on_kill))
+	stats.hp_regen = float(result.get("hp_regen", stats.hp_regen))
+	# v6.5: 武器类改造改变武器类型（影响弹道和命中效果）
+	if result.has("weapon_type"):
+		stats.weapon_type = int(result["weapon_type"])
+	# _special 里的效果暂不处理（如 smoke_ignore 等无直接stat对应）
 	# 同步旧兼容字段
 	stats.attack_damage = stats.attack_light
 
 
 ## 战斗定位固有修正（替代旧 apply_platform_innate_modifiers）
+## v6.2: 防御维度与攻击维度对齐后，防御修正也改为对应维度
+##       （装甲/堡垒擅长防装甲攻击 → defense_armor；空中擅长防空中攻击 → defense_air）
+##       SUPPORT(2)/FORT(4) 旧值仍按其主类（LIGHT/ARMOR）处理，确保兼容未迁移数据。
 static func apply_combat_kind_modifiers(stats: UnitStats) -> void:
 	if stats == null:
 		return
-	match stats.combat_kind:
-		0:  # 轻装：高闪避
+	# 主类归属：LIGHT(0)/SUPPORT(2) → 轻装主类；ARMOR(1)/FORT(4) → 装甲主类；AIR(3) → 空中主类
+	var is_light: bool = (stats.combat_kind == 0 or stats.combat_kind == 2)
+	var is_armor: bool = (stats.combat_kind == 1 or stats.combat_kind == 4)
+	# 子类判定：优先取 unit_subtype；若未设置则由旧 combat_kind 推断
+	var sub: int = stats.unit_subtype
+	if sub == GC.UnitSubType.NONE:
+		if stats.combat_kind == 2:
+			sub = GC.UnitSubType.SUPPORT  # 旧支援类 → 辅助子类
+		elif stats.combat_kind == 4:
+			sub = GC.UnitSubType.FORT      # 旧堡垒类 → 堡垒子类
+
+	if is_light:
+		# 普通轻装步兵有闪避；火炮/重型支援无闪避（笨重装备）
+		if sub != GC.UnitSubType.ARTILLERY:
 			stats.dodge_chance = maxf(stats.dodge_chance, 0.18)
-		1:  # 装甲：高防御
-			stats.defense_light += 4.0
+		if sub == GC.UnitSubType.SUPPORT:
+			stats.max_hp *= 1.08  # 辅助单位（机枪巢/工兵）加HP
+	elif is_armor:
+		# 装甲擅长防装甲攻击
+		stats.defense_armor += 4.0
+		if sub == GC.UnitSubType.FORT:
+			# 堡垒：极高HP + 额外防装甲 + 全向防御加成
 			stats.defense_armor += 4.0
+			stats.defense_light += 4.0
 			stats.defense_air += 4.0
-		2:  # 支援：加HP
-			stats.max_hp *= 1.08
-		3:  # 空中：高机动，可被防空攻击
-			stats.dodge_chance = maxf(stats.dodge_chance, 0.12)
-			stats.defense_light += 2.0
-			stats.defense_armor += 2.0
-		4:  # 堡垒：极高防御，不可移动（v5.0）
-			stats.defense_light += 8.0
-			stats.defense_armor += 8.0
-			stats.defense_air += 8.0
 			stats.max_hp *= 1.15
+	elif stats.combat_kind == 3:  # 空中：高机动，擅长防空中攻击
+		stats.dodge_chance = maxf(stats.dodge_chance, 0.12)
+		stats.defense_air += 2.0
+
+
+# ─────────────────────────────────────────────
+#  v6.2 防御数值重新标定
+# ─────────────────────────────────────────────
+
+## v6.2: 按单位类型派生新的三维防御值（攻防维度对齐）
+## 设计原则（defense_light=防轻装攻击者, defense_armor=防装甲攻击者, defense_air=防空中攻击者）：
+##   轻装步兵：防轻装高（抗枪弹）／防装甲低（怕炮）／防空中低（怕飞机扫射）
+##   火炮/辅助：防轻装中／防装甲低／防空中低（笨重装备，无掩体优势）
+##   防空特化：防轻装中／防装甲低／防空中高（有装甲炮塔）
+##   装甲坦克：防轻装极高（枪弹无效）／防装甲中高（同级对抗）／防空中中（对空一般）
+##   空中单位：防轻装低（脆）／防装甲低（脆）／防空中中高（对空有防御）
+##   堡垒：防轻装极高／防装甲极高／防空中高（全方位要塞化）
+## 时代缩放：数值随时代递增（体现科技进步/装甲升级）
+static func derive_defense_by_unit_type(combat_kind: int, unit_subtype: int, era: int) -> Dictionary:
+	# 主类归属
+	var is_light: bool = (combat_kind == GC.CombatKind.LIGHT or combat_kind == GC.CombatKind.SUPPORT)
+	var is_armor: bool = (combat_kind == GC.CombatKind.ARMOR or combat_kind == GC.CombatKind.FORT)
+	var is_air: bool = (combat_kind == GC.CombatKind.AIR)
+	# 子类（兼容未设置 unit_subtype 的旧数据：combat_kind 推断）
+	var sub: int = unit_subtype
+	if sub == GC.UnitSubType.NONE:
+		if combat_kind == GC.CombatKind.SUPPORT:
+			# 进一步区分：原 SUPPORT 中 range≥99 多为火炮，但此处无 range 信息
+			# 默认按 SUPPORT（辅助）处理；火炮与辅助数值接近，差异由 apply_combat_kind_modifiers 处理
+			sub = GC.UnitSubType.SUPPORT
+		elif combat_kind == GC.CombatKind.FORT:
+			sub = GC.UnitSubType.FORT
+
+	# 时代缩放系数（基础值 × 此系数）
+	var e: int = clampi(era, 0, 4)
+	var era_mul: float = 1.0 + e * 0.15  # WW1=1.0 .. 近未来=1.6
+
+	# 基础数值表（WW1 基准，按主类×子类）
+	var d_l: float = 0.0  # 防轻装
+	var d_a: float = 0.0  # 防装甲
+	var d_air: float = 0.0  # 防空中
+
+	if is_armor:
+		if sub == GC.UnitSubType.FORT:
+			# 堡垒：全方位要塞化，防装甲最高（最抗重火力）
+			d_l = 90.0
+			d_a = 140.0
+			d_air = 95.0
+		else:
+			# 普通装甲：枪弹无效，同级对抗中等，对空一般
+			d_l = 60.0
+			d_a = 90.0
+			d_air = 28.0
+	elif is_air:
+		# 空中：脆（地面火力有效），但对空有防御
+		d_l = 14.0
+		d_a = 18.0
+		d_air = 36.0
+	else:
+		# 轻装主类，按子类细分
+		match sub:
+			GC.UnitSubType.ARTILLERY:
+				# 火炮：笨重，防轻装中等，怕重火力
+				d_l = 24.0
+				d_a = 16.0
+				d_air = 14.0
+			GC.UnitSubType.SUPPORT:
+				# 辅助（机枪巢/工兵）：防轻装中等，怕重火力
+				d_l = 26.0
+				d_a = 18.0
+				d_air = 16.0
+			GC.UnitSubType.ANTI_AIR:
+				# 防空特化：有装甲炮塔，对空防御较强
+				d_l = 28.0
+				d_a = 20.0
+				d_air = 48.0
+			_:
+				# 普通轻装步兵：抗枪弹，怕炮，怕飞机
+				d_l = 30.0
+				d_a = 14.0
+				d_air = 12.0
+
+	return {
+		"defense_light": d_l * era_mul,
+		"defense_armor": d_a * era_mul,
+		"defense_air": d_air * era_mul,
+	}
 
 
 # ─────────────────────────────────────────────

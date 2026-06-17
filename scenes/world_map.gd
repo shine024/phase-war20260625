@@ -373,8 +373,9 @@ func _show_level_info_popup(level_index: int) -> void:
 		_level_info_popup.queue_free()
 	var popup := Window.new()
 	popup.title = "关卡情报"
-	popup.size = Vector2i(620, 540)
+	popup.size = Vector2i(620, 640)
 	popup.unresizable = false
+	popup.min_size = Vector2i(580, 560)
 	# 同步 queue_free 可能在输入分发中途拆掉 Window 视口，触发 Viewport::_push_unhandled_input_internal 断言
 	popup.close_requested.connect(_close_popup_safe.bind(popup))
 	add_child(popup)
@@ -385,10 +386,18 @@ func _show_level_info_popup(level_index: int) -> void:
 	margin.add_theme_constant_override("margin_right", 14)
 	margin.add_theme_constant_override("margin_top", 12)
 	margin.add_theme_constant_override("margin_bottom", 12)
+	margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	popup.add_child(margin)
 
+	# 注意：不要在 MarginContainer 与内容之间插入 ScrollContainer——
+	# Window 直接子节点是 MarginContainer 时，ScrollContainer 不向父传递
+	# 最小尺寸需求(min_size 默认 0)，会导致整条链路塌缩为 0×0，弹窗显示为空白。
+	# 内容过多时靠各 Label 的 autowrap 换行，弹窗本身可调整大小。
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 8)
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	margin.add_child(vbox)
 
 	var info: Dictionary = _collect_level_info(level_index)
@@ -518,7 +527,7 @@ func _collect_level_info(level_index: int) -> Dictionary:
 				var cid: String = String(d.get("card_id", ""))
 				if cid.is_empty():
 					continue
-				var c = null
+				var c = DefaultCardsData.get_card_by_id(cid)
 				var n: String = c.display_name if c else DefaultCardsData.get_safe_display_name(cid)
 				if not drop_names.has(n):
 					drop_names.append(n)
@@ -564,7 +573,7 @@ func _collect_level_info(level_index: int) -> Dictionary:
 		var mythic_drops: Array = []
 		
 		for cid in drop_ids_all:
-			var c = null
+			var c = DefaultCardsData.get_card_by_id(cid)
 			if c:
 				match c.rarity:
 					"common":

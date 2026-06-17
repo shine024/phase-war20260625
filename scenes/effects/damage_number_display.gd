@@ -1,5 +1,6 @@
 extends Node2D
-## 伤害数字显示：静态出现，淡出消失，无跳动无特效
+## 伤害数字显示：弹跳出现（overshoot），上浮漂移，淡出消失
+## v6.4: 加入弹跳入场动画，区分穿甲/暴击/MISS 样式
 ## 使用 PROCESS_MODE_ALWAYS：战斗暂停/结算时仍能跑完 _process 并归还对象池，避免残留在屏幕上
 
 const DAMAGE_STYLES: Dictionary = {
@@ -14,6 +15,12 @@ const DAMAGE_STYLES: Dictionary = {
 		"color": Color(1.0, 0.2, 0.1, 1.0),
 		"outline_color": Color(0.8, 0.0, 0.0, 0.9),
 		"scale": 1.12
+	},
+	"pierce": {
+		"font_size": 20,
+		"color": Color(0.75, 0.5, 1.0, 1.0),
+		"outline_color": Color(0.3, 0.1, 0.5, 0.9),
+		"scale": 1.0
 	},
 	"heal": {
 		"font_size": 18,
@@ -50,6 +57,8 @@ var damage_type: String = "normal"  # normal, critical, heal, shield, dot, miss
 var _fade_duration: float = 1.2
 var _lifetime: float = 0.0
 var _label: Label = null
+var _pop_tween: Tween = null  ## v6.4: 弹跳入场 Tween
+var _float_y: float = 0.0  ## v6.4: 上浮累计偏移（_process 中应用）
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -74,8 +83,24 @@ func prepare_for_display(damage: int, crit: bool, type_str: String) -> void:
 	is_critical = crit
 	damage_type = type_str
 	_lifetime = 0.0
+	_float_y = 0.0
 	modulate = Color(1.0, 1.0, 1.0, 1.0)
 	_create_damage_label()
+	_play_pop_tween()
+
+## v6.4: 弹跳入场动画——从 0.4 放大 overshoot 到目标 scale 再回落，给伤害数字"砸出"的冲击感
+func _play_pop_tween() -> void:
+	if _pop_tween != null and _pop_tween.is_valid():
+		_pop_tween.kill()
+	var style: Dictionary = DAMAGE_STYLES.get(damage_type, DAMAGE_STYLES["normal"]) as Dictionary
+	var target_scale: float = float(style.get("scale", 1.0))
+	# 暴击/穿甲 overshoot 更夸张
+	var overshoot: float = 1.45 if damage_type in ["critical", "pierce"] else 1.25
+	scale = Vector2(target_scale * 0.4, target_scale * 0.4)
+	_pop_tween = create_tween()
+	_pop_tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	_pop_tween.tween_property(self, "scale", Vector2(target_scale * overshoot, target_scale * overshoot), 0.09).set_ease(Tween.EASE_OUT)
+	_pop_tween.tween_property(self, "scale", Vector2(target_scale, target_scale), 0.10).set_ease(Tween.EASE_IN_OUT)
 
 func _create_damage_label() -> void:
 	var style: Dictionary = DAMAGE_STYLES.get(damage_type, DAMAGE_STYLES["normal"]) as Dictionary
@@ -108,6 +133,10 @@ func _get_display_text() -> String:
 
 func _process(delta: float) -> void:
 	_lifetime += delta
+	# v6.4: 持续上浮漂移（前半段快，后半段慢），y 减小即向上
+	var float_speed: float = 36.0 if _lifetime < _fade_duration * 0.5 else 14.0
+	global_position.y -= float_speed * delta
+	_float_y = global_position.y
 	# 后半段淡出
 	if _lifetime >= _fade_duration * 0.5:
 		var alpha: float = 1.0 - ((_lifetime - _fade_duration * 0.5) / (_fade_duration * 0.5))
@@ -122,7 +151,12 @@ func _process(delta: float) -> void:
 
 func reset_pool_object() -> void:
 	_lifetime = 0.0
+	_float_y = 0.0
 	modulate = Color(1.0, 1.0, 1.0, 1.0)
+	# v6.4: 归还时终止弹跳 tween，避免复用节点被旧 tween 干扰
+	if _pop_tween != null and _pop_tween.is_valid():
+		_pop_tween.kill()
+	_pop_tween = null
 	# 保留 Label 供下次 prepare 复用，避免反复 new/free
 
 ## 静态创建：走 ObjectPoolManager.damage_numbers

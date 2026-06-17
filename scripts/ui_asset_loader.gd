@@ -239,6 +239,11 @@ static func _vis_player_path_for_bp_platform(card_id: String) -> String:
 static func card_icon_path_for(c: CardResource) -> String:
 	if c == null:
 		return ""
+	# 0) v6.5: 优先用专属卡面（card_icons/{card_id}.png），有专属图则不走 manifest 回退
+	# 避免新加入的专属图被旧的 vis_player 通用图覆盖
+	var dedicated: String = "res://assets/card_icons/%s.png" % c.card_id
+	if ResourceLoader.exists(dedicated, "Texture2D"):
+		return dedicated
 	# 1) 战斗卡 → manifest（card_id → foe_* → vis_player_*）
 	if c.card_type == GC.CardType.COMBAT_UNIT:
 		var plat_p: String = manifest_icon_path_for_platform_card_id(_platform_card_id_for_icon(c))

@@ -123,7 +123,8 @@ func _build_era_drops() -> void:
 		DropEntry.new("ww1_105mm", DropType.BLUEPRINT_FRAGMENT, 0.8, 1, 1),
 		DropEntry.new("ww1_a7v", DropType.BLUEPRINT_FRAGMENT, 0.5, 1, 1),
 		DropEntry.new("ww1_mark4", DropType.BLUEPRINT_FRAGMENT, 0.5, 1, 1),
-		DropEntry.new("alloy", DropType.MATERIAL, 2.0, 5, 15),
+		DropEntry.new("alloy", DropType.MATERIAL, 2.0, 8, 18),
+		DropEntry.new("crystal", DropType.MATERIAL, 0.8, 3, 8),
 	]
 	ww2_common_drops = [
 		DropEntry.new("ww2_thompson", DropType.BLUEPRINT_FRAGMENT, 3.0, 1, 2),
@@ -139,7 +140,8 @@ func _build_era_drops() -> void:
 		DropEntry.new("ww2_tiger", DropType.BLUEPRINT_FRAGMENT, 0.4, 1, 1),
 		DropEntry.new("ww2_kingtiger", DropType.BLUEPRINT_FRAGMENT, 0.2, 1, 1),
 		DropEntry.new("ww2_is2", DropType.BLUEPRINT_FRAGMENT, 0.3, 1, 1),
-		DropEntry.new("alloy", DropType.MATERIAL, 2.5, 10, 25),
+		DropEntry.new("alloy", DropType.MATERIAL, 2.5, 12, 28),
+		DropEntry.new("crystal", DropType.MATERIAL, 1.0, 5, 12),
 	]
 	cold_war_common_drops = [
 		DropEntry.new("cold_ak47", DropType.BLUEPRINT_FRAGMENT, 3.0, 1, 2),
@@ -153,8 +155,8 @@ func _build_era_drops() -> void:
 		DropEntry.new("cold_t72", DropType.BLUEPRINT_FRAGMENT, 0.6, 1, 1),
 		DropEntry.new("cold_m1", DropType.BLUEPRINT_FRAGMENT, 0.4, 1, 1),
 		DropEntry.new("cold_leo1", DropType.BLUEPRINT_FRAGMENT, 0.5, 1, 1),
-		DropEntry.new("alloy", DropType.MATERIAL, 2.0, 15, 30),
-		DropEntry.new("crystal", DropType.MATERIAL, 1.0, 5, 12),
+		DropEntry.new("alloy", DropType.MATERIAL, 2.0, 18, 38),
+		DropEntry.new("crystal", DropType.MATERIAL, 1.2, 7, 16),
 	]
 	modern_common_drops = [
 		DropEntry.new("mod_marine", DropType.BLUEPRINT_FRAGMENT, 3.0, 1, 2),
@@ -169,8 +171,8 @@ func _build_era_drops() -> void:
 		DropEntry.new("mod_ah1", DropType.BLUEPRINT_FRAGMENT, 0.8, 1, 1),
 		DropEntry.new("mod_ah64", DropType.BLUEPRINT_FRAGMENT, 0.4, 1, 1),
 		DropEntry.new("mod_m270", DropType.BLUEPRINT_FRAGMENT, 0.3, 1, 1),
-		DropEntry.new("alloy", DropType.MATERIAL, 2.0, 20, 35),
-		DropEntry.new("crystal", DropType.MATERIAL, 1.5, 8, 18),
+		DropEntry.new("alloy", DropType.MATERIAL, 2.0, 25, 48),
+		DropEntry.new("crystal", DropType.MATERIAL, 1.5, 10, 22),
 	]
 	near_future_common_drops = [
 		DropEntry.new("fut_cyborg", DropType.BLUEPRINT_FRAGMENT, 3.0, 1, 2),
@@ -185,16 +187,17 @@ func _build_era_drops() -> void:
 		DropEntry.new("fut_heavy_mech", DropType.BLUEPRINT_FRAGMENT, 0.2, 1, 1),
 		DropEntry.new("fut_shield", DropType.BLUEPRINT_FRAGMENT, 0.6, 1, 1),
 		DropEntry.new("fut_nano_drone", DropType.BLUEPRINT_FRAGMENT, 0.8, 1, 1),
-		DropEntry.new("alloy", DropType.MATERIAL, 2.0, 25, 45),
-		DropEntry.new("crystal", DropType.MATERIAL, 2.0, 12, 25),
+		DropEntry.new("alloy", DropType.MATERIAL, 2.0, 32, 60),
+		DropEntry.new("crystal", DropType.MATERIAL, 2.0, 16, 32),
 	]
 	material_drops = [
 		DropEntry.new("nano_materials", DropType.MATERIAL, 3.0, 15, 30),
 		DropEntry.new("alloy", DropType.MATERIAL, 2.0, 5, 15),
 	]
 	boss_drops = [
-		DropEntry.new("alloy", DropType.MATERIAL, 3.0, 30, 60),
-		DropEntry.new("crystal", DropType.MATERIAL, 2.0, 10, 25),
+		DropEntry.new("alloy", DropType.MATERIAL, 3.0, 40, 80),
+		DropEntry.new("crystal", DropType.MATERIAL, 2.0, 15, 35),
+		DropEntry.new("energy_block", DropType.MATERIAL, 1.8, 8, 15),
 		DropEntry.new("permit_general", DropType.MATERIAL, 1.5, 1, 2),
 		DropEntry.new("stat_boost_hp", DropType.STAT_BOOST, 0.5, 1, 1),
 		DropEntry.new("stat_boost_damage", DropType.STAT_BOOST, 0.5, 1, 1),
@@ -249,13 +252,23 @@ func resolve_blueprint_id(item_id: String, era: int) -> String:
 	return item_id
 
 ## 根据关卡时代和难度生成掉落
+## v6.4: 掉落数值随时代内关卡进度（in_era_progress 0.0→1.0）线性缩放，
+## 与基础资源路径（BasicResources.get_drops_for_level）对齐。
 func generate_drops(era: int, level: int, player_won: bool, victory_stars: int = 0) -> Array[DropResult]:
 	var results: Array[DropResult] = []
 
+	# 时代内进度 0.0(第1关) → 1.0(第20关)，用于缩放保底材料
+	var in_era: int = ((clampi(level, 1, 100) - 1) % 20) + 1  # 1..20
+	var in_era_progress: float = (in_era - 1) / 19.0 if in_era > 1 else 0.0
+	# 关卡缩放系数：1.0(时代首关) → 1.5(时代末关)，让后期关卡掉落明显更多
+	var lvl_mult: float = 1.0 + in_era_progress * 0.5
+
 	if not player_won:
+		# v6.4: 失败奖励随关卡缩放（基础 15-25 × lvl_mult），不再硬编码 20
+		var fail_nano: int = int(randi_range(15, 25) * lvl_mult)
 		results.append(DropResult.new(
-			DropEntry.new("nano_materials", DropType.MATERIAL, 1.0, 10, 20),
-			20,
+			DropEntry.new("nano_materials", DropType.MATERIAL, 1.0, 15, 25),
+			fail_nano,
 			"失败奖励"
 		))
 		return results
@@ -267,35 +280,35 @@ func generate_drops(era: int, level: int, player_won: bool, victory_stars: int =
 		0:
 			drop_pool = ww1_common_drops
 			guarantee = [
-				DropEntry.new("nano_materials", DropType.MATERIAL, 1.0, 30, 50),
+				DropEntry.new("nano_materials", DropType.MATERIAL, 1.0, int(30 * lvl_mult), int(50 * lvl_mult)),
 				DropEntry.new("", DropType.CARD_DATA, 0.0, 0, 0)
 			]
 		1:
 			drop_pool = ww2_common_drops
 			guarantee = [
-				DropEntry.new("nano_materials", DropType.MATERIAL, 1.0, 50, 80),
+				DropEntry.new("nano_materials", DropType.MATERIAL, 1.0, int(50 * lvl_mult), int(80 * lvl_mult)),
 				DropEntry.new("", DropType.CARD_DATA, 0.0, 0, 0)
 			]
 		2:
 			drop_pool = cold_war_common_drops
 			guarantee = [
-				DropEntry.new("nano_materials", DropType.MATERIAL, 1.0, 70, 100),
-				DropEntry.new("alloy", DropType.MATERIAL, 1.0, 15, 20),
+				DropEntry.new("nano_materials", DropType.MATERIAL, 1.0, int(70 * lvl_mult), int(100 * lvl_mult)),
+				DropEntry.new("alloy", DropType.MATERIAL, 1.0, int(15 * lvl_mult), int(20 * lvl_mult)),
 				DropEntry.new("", DropType.CARD_DATA, 0.0, 0, 0)
 			]
 		3:
 			drop_pool = modern_common_drops
 			guarantee = [
-				DropEntry.new("nano_materials", DropType.MATERIAL, 1.0, 90, 120),
-				DropEntry.new("alloy", DropType.MATERIAL, 1.0, 20, 25),
+				DropEntry.new("nano_materials", DropType.MATERIAL, 1.0, int(90 * lvl_mult), int(120 * lvl_mult)),
+				DropEntry.new("alloy", DropType.MATERIAL, 1.0, int(20 * lvl_mult), int(25 * lvl_mult)),
 				DropEntry.new("", DropType.CARD_DATA, 0.0, 0, 0)
 			]
 		4:
 			drop_pool = near_future_common_drops
 			guarantee = [
-				DropEntry.new("nano_materials", DropType.MATERIAL, 1.0, 110, 150),
-				DropEntry.new("alloy", DropType.MATERIAL, 1.0, 25, 30),
-				DropEntry.new("crystal", DropType.MATERIAL, 1.0, 10, 15),
+				DropEntry.new("nano_materials", DropType.MATERIAL, 1.0, int(110 * lvl_mult), int(150 * lvl_mult)),
+				DropEntry.new("alloy", DropType.MATERIAL, 1.0, int(25 * lvl_mult), int(30 * lvl_mult)),
+				DropEntry.new("crystal", DropType.MATERIAL, 1.0, int(10 * lvl_mult), int(15 * lvl_mult)),
 				DropEntry.new("era_4", DropType.CARD_DATA, 1.0, 1, 2)
 			]
 		_:
@@ -315,7 +328,8 @@ func generate_drops(era: int, level: int, player_won: bool, victory_stars: int =
 			"三星奖励"
 		))
 
-	var random_drop_count = randi_range(1, 3)
+	# v6.4: 随机掉落次数随关卡进度微增（1-3 → 1-4 后期），让后期关卡更丰厚
+	var random_drop_count = randi_range(1, 3 if in_era_progress < 0.5 else 4)
 	var total_weight = 0.0
 	for entry in drop_pool:
 		total_weight += entry.weight
@@ -349,7 +363,8 @@ func generate_boss_drops(era: int, boss_id: String) -> Array[DropResult]:
 		"卡牌数据"
 	))
 
-	var specific_candidates: Array = {}.get(era, [])
+	# v6.4: 修复空字典 BUG——原代码 {}.get(era,[]) 永远返回 []，Boss 专属许可从不掉落
+	var specific_candidates: Array = []
 	if boss_id.find("void") >= 0:
 		specific_candidates.append("permit_card_void_time_ripple")
 		specific_candidates.append("permit_card_omega_platform")

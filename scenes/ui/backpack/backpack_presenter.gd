@@ -152,7 +152,6 @@ func _on_card_added(card: CardResource) -> void:
 		_view.highlight_last_card_by_id(card.card_id)
 
 func _on_card_equipped(_slot_index: int, card_id: String, _card_type: String) -> void:
-	var t0: int = Time.get_ticks_msec()
 	var can_incremental: bool = _view and _view.has_method("remove_last_card_by_id")
 	var use_silent_remove: bool = can_incremental and _is_view_visible() and _defer_visible_grid_refresh
 	var removed: bool = _data.remove_card(card_id, use_silent_remove)

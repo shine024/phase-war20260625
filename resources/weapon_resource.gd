@@ -62,6 +62,10 @@ class_name WeaponResource
 ## 攻击音效ID（对应 AudioManager 中的音效）
 @export var sound_id: String = ""
 
+## 改造模块附加的动态效果（key=effect_key, value=数值），由 ModificationRegistry.apply_to_weapon_slot 写入。
+## 声明为属性而非动态键：Resource 不允许赋值未声明的脚本属性（会报 Invalid assignment）。
+var _mod_effects: Dictionary = {}
+
 # ═══════════════════════════════════════════════════════════════
 # 辅助函数
 # ═══════════════════════════════════════════════════════════════
@@ -130,4 +134,5 @@ func clone() -> WeaponResource:
 	w.projectile_scene = projectile_scene
 	w.hit_effect_scene = hit_effect_scene
 	w.sound_id = sound_id
+	w._mod_effects = _mod_effects.duplicate(true)
 	return w

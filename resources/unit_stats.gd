@@ -54,11 +54,14 @@ var attack_air_speed: float = 1.0   # 次/秒
 var attack_air_windup: float = 0.2   # 前摇（秒）
 var attack_air_active: float = 0.1    # 动作（秒）
 
-## 防御维度（对不同武器类型的防御）- 三攻三防系统
-## 注意：属性名保持为 defense_light/armor/air 但含义已更新为防御武器类型
-@export var defense_light: float = 0.0  # 对直射防御（防DIRECT武器）
-@export var defense_armor: float = 0.0  # 对曲射防御（防INDIRECT武器）
-@export var defense_air: float = 0.0    # 对空射防御（防AERIAL武器）
+## 防御维度（对不同类型单位攻击的防御）- 三攻三防系统（v6.2 对齐）
+## v6.2: 防御维度与攻击维度对齐——按"攻击者的单位类型"选取防御值
+## defense_light = 防轻装单位(LIGHT/SUPPORT)攻击
+## defense_armor = 防装甲单位(ARMOR/FORT)攻击
+## defense_air   = 防空中单位(AIR)攻击
+@export var defense_light: float = 0.0  # 防轻装单位攻击
+@export var defense_armor: float = 0.0  # 防装甲单位攻击
+@export var defense_air: float = 0.0    # 防空中单位攻击
 
 ## 多武器槽（每项 Dictionary：damage, range, interval, timer）
 var weapons: Array = []
@@ -79,6 +82,10 @@ var era: int = 0
 
 ## 战斗定位（0=轻装/1=装甲/2=支援/3=空中/4=堡垒）
 var combat_kind: int = 0
+
+## 单位子类（v6.2: GameConstants.UnitSubType，用于战斗定位差异化修正）
+## NONE=普通单位, ARTILLERY=火炮, SUPPORT=辅助, FORT=堡垒, ANTI_AIR=防空特化
+var unit_subtype: int = 0
 
 ## 战力（进化门槛用，v5.0新增）
 var power: int = 0
@@ -128,6 +135,15 @@ var weapon_card_ids: Array[String] = []
 ## 穿甲率（0.0~1.0，来自 armor_break 词条）
 @export var armor_penetration: float = 0.0
 
+## v6.2: 条件型穿甲（相克 MOD 用）—— 仅对特定单位类型生效
+## armor_pen_vs_light: 仅对 LIGHT/SUPPORT 目标的防御生效
+## armor_pen_vs_armor: 仅对 ARMOR/FORT 目标的防御生效
+## armor_pen_vs_air:   仅对 AIR 目标的防御生效
+## 在 take_damage 中按自身 combat_kind 选取并叠加到基础 armor_penetration
+var armor_pen_vs_light: float = 0.0
+var armor_pen_vs_armor: float = 0.0
+var armor_pen_vs_air: float = 0.0
+
 ## 连锁触发概率（0.0~1.0，来自 chain_lightning 词条）
 @export var chain_chance: float = 0.0
 
@@ -172,7 +188,25 @@ var faction_effect_bonus: float = 0.0
 ## 技能树特殊效果标记列表（由战斗系统按需读取）
 var skill_tree_specials: Array = []
 
+## v6.2: 根据目标单位类型获取有效穿甲率（基础 + 条件型）
+## attacker_combat_kind 是攻击者自身类型（用于将来按攻击者类型限制）；
+## target_combat_kind 决定激活哪个条件穿甲。
+func get_effective_armor_penetration(target_combat_kind: int) -> float:
+	var pen: float = armor_penetration  # 基础穿甲（对所有目标生效）
+	# 条件型穿甲：按目标单位类型激活
+	var is_light: bool = (target_combat_kind == 0 or target_combat_kind == 2)  # LIGHT/SUPPORT
+	var is_armor: bool = (target_combat_kind == 1 or target_combat_kind == 4)  # ARMOR/FORT
+	var is_air: bool = (target_combat_kind == 3)  # AIR
+	if is_light:
+		pen += armor_pen_vs_light
+	if is_armor:
+		pen += armor_pen_vs_armor
+	if is_air:
+		pen += armor_pen_vs_air
+	return clampf(pen, 0.0, 1.0)
+
 ## 根据目标类型获取对应武器
+## v6.2: SUPPORT 归入 LIGHT 槽、FORT 归入 ARMOR 槽（攻防维度对齐）
 func get_weapon_for_target(target_combat_kind: int) -> WeaponResource:
 	if weapon_slots.is_empty():
 		return null

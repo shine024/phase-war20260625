@@ -81,7 +81,36 @@ static func apply_battle_unit_presentation(
 	if card != null:
 		apply_battle_card_chrome(host, unit_spr, card)
 	sync_rank_strip(host, rank_level, unit_spr)
+	# 卡底名称条：face_right 为我方，否则为敌方；名称取 card.display_name
+	sync_name_strip(host, unit_spr, card, face_right)
 	return true
+
+
+## v6.5: 在卡片立绘底部绘制单位名称条（我方青 / 敌方橙），补齐格子战可读性。
+## 卡宽/卡高由 unit_spr 的纹理尺寸 × 缩放计算；定位与 sync_rank_strip 对称（卡顶/卡底）。
+static func sync_name_strip(host: Node2D, unit_spr: Sprite2D, card: CardResource, is_player: bool) -> void:
+	if host == null or unit_spr == null or unit_spr.texture == null:
+		return
+	var strip = host.get_node_or_null("CardGridNameStrip")
+	if strip == null:
+		var NameStripClass = preload("res://scripts/card_grid_name_strip.gd")
+		strip = NameStripClass.new()
+		strip.name = "CardGridNameStrip"
+		host.add_child(strip)
+	strip.z_index = 13
+	var display_name: String = ""
+	if card != null:
+		display_name = card.display_name
+	var card_w: float = float(unit_spr.texture.get_width()) * absf(unit_spr.scale.x)
+	var card_h: float = float(unit_spr.texture.get_height()) * absf(unit_spr.scale.y)
+	if card_w <= 0.0:
+		card_w = CardGridBattleLayout.battle_card_width_px()
+	if card_h <= 0.0:
+		card_h = card_w * 8.0 / 5.0
+	strip.rebuild(display_name, is_player, card_w, card_h)
+	# 卡底定位：与立绘 Sprite 对齐（Sprite position 已含其 y 偏移，这里相对 host 原点）
+	var half_h: float = card_h * 0.5
+	strip.position = Vector2(unit_spr.position.x, unit_spr.position.y + half_h + 2.0)
 
 
 static func apply_uniform_card_sprite(spr: Sprite2D, tex: Texture2D, face_right: bool = false) -> float:

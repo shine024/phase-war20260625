@@ -28,9 +28,9 @@ func _ready() -> void:
 
 	# 测试 attack_calculator
 	const AttackCalculator = preload("res://scripts/battle/attack_calculator.gd")
-	print("测试 get_defense_vs:")
-	print("  DIRECT → ", AttackCalculator.get_defense_vs(stats, GC.WeaponType.DIRECT))
-	print("  INDIRECT → ", AttackCalculator.get_defense_vs(stats, GC.WeaponType.INDIRECT))
-	print("  AERIAL → ", AttackCalculator.get_defense_vs(stats, GC.WeaponType.AERIAL))
+	print("测试 get_defense_vs（v6.2: 按攻击者单位类型选）：")
+	print("  攻击者=LIGHT/SUPPORT → ", AttackCalculator.get_defense_vs(stats, GC.CombatKind.LIGHT), " (取defense_light=10)")
+	print("  攻击者=ARMOR/FORT → ", AttackCalculator.get_defense_vs(stats, GC.CombatKind.ARMOR), " (取defense_armor=20)")
+	print("  攻击者=AIR → ", AttackCalculator.get_defense_vs(stats, GC.CombatKind.AIR), " (取defense_air=5)")
 
 	print("=== 诊断完成 ===")

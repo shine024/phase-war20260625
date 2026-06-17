@@ -19,6 +19,8 @@ var weapon_type: int = 0
 var weapon_types: Array = []
 var wave_index: int = 0
 var stats: UnitStats = null
+## v6.3: 蜂群槽位的单位类型（stats 为 null 时用于条件穿甲判定）
+var combat_kind: int = 0
 var damage_reduction: float = 0.0
 var last_damage_source: Node = null
 var target: Node2D = null
@@ -80,6 +82,25 @@ func _apply_archetype_stats() -> void:
 	move_speed = 0.0
 	defense = float(r.get("defense", 3.0))
 	weapon_type = int(r.get("weapon_type", int(cfg.get("weapon_type", 0))))
+	# v6.3: 读取单位类型（用于条件穿甲判定）
+	combat_kind = int(r.get("combat_kind", int(cfg.get("combat_kind", 0))))
+	# v6.4: 构建轻量 UnitStats 让蜂群接入三维防御系统
+	# take_damage 会优先用 stats.defense_light/armor/air（按攻击者类型）
+	if stats == null:
+		stats = UnitStats.new()
+	stats.combat_kind = combat_kind
+	stats.max_hp = hp
+	stats.attack_range = attack_range
+	stats.attack_interval = attack_interval
+	stats.move_speed = move_speed
+	stats.attack_light = float(r.get("attack_light", attack_damage))
+	stats.attack_armor = float(r.get("attack_armor", 0.0))
+	stats.attack_air = float(r.get("attack_air", 0.0))
+	stats.attack_damage = stats.attack_light
+	stats.defense_light = float(r.get("defense_light", defense))
+	stats.defense_armor = float(r.get("defense_armor", defense))
+	stats.defense_air = float(r.get("defense_air", defense))
+	stats.weapon_type = weapon_type
 	weapon_types = []
 	var wt_arr: Array = cfg.get("weapon_types", [])
 	for x in wt_arr:
@@ -147,11 +168,28 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 	var hp_loss: float = amount
 	if GameManager and GameManager.has_method("is_card_grid_battle") and GameManager.is_card_grid_battle():
 		var pen: float = 0.0
+		var attacker_kind: int = -1
 		if attacker != null and is_instance_valid(attacker) and "stats" in attacker:
 			var atk_stats: Variant = attacker.get("stats")
 			if atk_stats is UnitStats:
-				pen = float((atk_stats as UnitStats).armor_penetration)
-		var eff_def: float = CardGridDamage.effective_defense(defense, pen)
+				# v6.2: 条件型穿甲（相克 MOD）按目标(自身)类型激活
+				var self_kind: int = combat_kind
+				if (atk_stats as UnitStats).has_method("get_effective_armor_penetration"):
+					pen = (atk_stats as UnitStats).get_effective_armor_penetration(self_kind)
+				else:
+					pen = float((atk_stats as UnitStats).armor_penetration)
+				attacker_kind = int((atk_stats as UnitStats).combat_kind)
+		# v6.4: 优先用三维防御（按攻击者类型选），回退到旧 defense 单字段
+		var eff_defense: float = defense
+		if stats != null and attacker_kind >= 0:
+			match attacker_kind:
+				GC.CombatKind.LIGHT, GC.CombatKind.SUPPORT:
+					eff_defense = stats.defense_light
+				GC.CombatKind.ARMOR, GC.CombatKind.FORT:
+					eff_defense = stats.defense_armor
+				GC.CombatKind.AIR:
+					eff_defense = stats.defense_air
+		var eff_def: float = CardGridDamage.effective_defense(eff_defense, pen)
 		hp_loss = float(CardGridDamage.resolve_hit(amount, eff_def).get("hp_loss", amount))
 	if attacker != null and is_instance_valid(attacker) and attacker is Node and attacker.is_in_group("player_units"):
 		last_damage_source = attacker

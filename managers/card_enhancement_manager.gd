@@ -310,11 +310,15 @@ func save_state() -> Dictionary:
 
 func load_state(data: Dictionary) -> void:
 	card_module_slots.clear()
-	if not data.has("module_slots"):
+	if data.is_empty():
 		return
-	var slots_data: Dictionary = data.get("module_slots", {})
+	# save_state() 返回扁平结构 {card_id: [slots]}，直接遍历顶层键。
+	# 兼容历史格式：若存在 "module_slots" 包裹键则取其内层字典。
+	var slots_data: Dictionary = data
+	if data.has("module_slots") and data["module_slots"] is Dictionary:
+		slots_data = data["module_slots"]
 	for card_id in slots_data:
-		var arr: Array = slots_data[card_id]
+		var arr: Array = slots_data[card_id] if slots_data[card_id] is Array else []
 		var slots: Array = []
 		for entry in arr:
 			if entry is Dictionary:

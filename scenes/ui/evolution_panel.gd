@@ -107,6 +107,16 @@ func _apply_embedded_layout() -> void:
 	var selector_area = get_node_or_null("VBoxContainer/CardSelectorArea")
 	if selector_area:
 		selector_area.visible = false
+	# v6.4: 内嵌模式下隐藏资源栏（背包场景冗余）
+	var resource_bar = get_node_or_null("VBoxContainer/ResourceBar")
+	if resource_bar:
+		resource_bar.visible = false
+	# v6.6: 嵌入模式尺寸适配——清零根节点最小尺寸，让其服从宿主 Tab 容器
+	custom_minimum_size = Vector2.ZERO
+	# 调小左右分栏的分割偏移（原 480 是为 960 宽设计，嵌入 ~520 宽容器会让左面板吃满）
+	var split = get_node_or_null("VBoxContainer/MainContentSplit") as HSplitContainer
+	if split:
+		split.split_offset = 240
 
 ## ─────────────────────────────────────────────
 ##  UI更新
@@ -149,7 +159,8 @@ func _create_evolution_node(target: Dictionary) -> Control:
 	var pcolor := _path_type_color(String(target.get("path_type", "")))
 
 	var node = PanelContainer.new()
-	node.custom_minimum_size = Vector2(600, 0)
+	# v6.6: 嵌入模式下用较小宽度适配 Tab 容器，独立模式保持 600
+	node.custom_minimum_size = Vector2(440 if _embedded_mode else 600, 0)
 	var accent := THEME_GOLD if can_evo else THEME_BORDER_DIM
 	node.add_theme_stylebox_override("panel", _make_sb(THEME_BG_CARD, accent * Color(1, 1, 1, 0.7), 1, 6, accent * Color(1, 1, 1, 0.25) if can_evo else Color(0, 0, 0, 0), 4 if can_evo else 0))
 	# 不可进化时整体置灰
@@ -271,6 +282,9 @@ func _clear_evolution_tree() -> void:
 
 ## 更新当前卡牌信息显示
 func _update_current_card_info() -> void:
+	# v6.6: 嵌入模式下 CardSelectorArea 已隐藏，current_card_info 不可见，跳过空跑
+	if _embedded_mode:
+		return
 	if current_card_info == null or selected_card == null:
 		return
 

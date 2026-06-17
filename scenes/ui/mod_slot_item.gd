@@ -15,7 +15,7 @@ var _slot_index: int = 1
 var _mod_data: Dictionary = {}
 
 @onready var _label: Label = $Margin/VBox/Label
-@onready var _icon: Label = $Margin/VBox/Icon
+@onready var _icon: TextureRect = $Margin/VBox/Icon
 @onready var _name: Label = $Margin/VBox/Name
 @onready var _level: Label = $Margin/VBox/Level
 
@@ -29,14 +29,17 @@ func set_mod(mod_data: Dictionary) -> void:
 	if not _name or not _level or not _icon:
 		return
 	if mod_data.is_empty():
-		_icon.text = "+"
-		_icon.modulate = Color(0.333, 0.4, 0.467, 0.3)
+		_icon.texture = null
 		_name.text = "空"
 		_name.modulate = Color(0.333, 0.4, 0.467)
 		_level.text = ""
 		_set_empty_style()
 	else:
-		_icon.text = mod_data.get("icon", "\u2699")
+		var icon_path: String = mod_data.get("icon", "")
+		if icon_path.is_empty() or not ResourceLoader.exists(icon_path):
+			_icon.texture = null
+		else:
+			_icon.texture = load(icon_path)
 		_icon.modulate = Color.WHITE
 		_name.text = mod_data.get("name", "")
 		var lv: int = mod_data.get("level", 1)

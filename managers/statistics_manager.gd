@@ -202,7 +202,12 @@ func load_state(data: Dictionary) -> void:
 	if not data.is_empty():
 		for key in _statistics.keys():
 			if data.has(key):
-				_statistics[key] = data[key]
+				var loaded = data[key]
+				# 类型安全：fastest_victory 是 float，其余为 int
+				if key == "fastest_victory":
+					_statistics[key] = float(loaded)
+				else:
+					_statistics[key] = int(loaded)
 
 ## 触发统计变化信号
 func _emit_change(stat_id: String) -> void:

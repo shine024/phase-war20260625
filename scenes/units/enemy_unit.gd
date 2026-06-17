@@ -52,6 +52,8 @@ var _base_max_hp: float = 80.0
 var _base_attack_damage: float = 10.0
 var _base_move_speed: float = 60.0
 var _base_attack_interval: float = 1.0
+# v6.3: 缓存三维基础攻击（律法减益重算时用）
+var _cached_enemy_base: Dictionary = {}
 var _visual_scale_archetype_id: String = ""
 # 性能优化：缓存 HP 比率，避免每帧更新 UI
 var _cached_hp_ratio: float = -1.0
@@ -93,6 +95,11 @@ var _card_tween: Tween = null
 var _rest_position: Vector2 = Vector2.ZERO
 var _card_nudge_tween: Tween = null
 var _card_grid_rest_x: float = NAN  ## 格子战术中卡片的归位 X
+## v6.4: 受击视觉反馈（复用 construct_unit 的闪白/抖动模式，Tween 复用避免每击 new）
+var _hit_flash_tween: Tween = null
+var _hit_shake_tween: Tween = null
+var _death_fade_tween: Tween = null  ## v6.4: 死亡淡出 Tween
+var _is_dying: bool = false  ## v6.4: 死亡中标志，防止 _die 重复触发
 
 func _ready() -> void:
 	# 战斗逻辑跟随暂停状态
@@ -149,7 +156,18 @@ func apply_card_grid_enemy_presentation() -> void:
 	if spr != null and tex != null and not _texture_exceeds_max_dim(tex, MAX_ENEMY_FRAME_TEX_DIM):
 		var ad: float = attack_damage
 		var ai: float = maxf(attack_interval, 0.05)
-		var pscore: float = maxf(50.0, max_hp * 0.28 + (ad / ai) * 2.2)
+		# v6.3: 统一 power 计算（与玩家 combat_power_from_unit_stats 对齐）
+		# 当 stats 可用时用完整三维 DPS，否则回退到简化版
+		var pscore: float
+		if stats != null:
+			# 三维攻击取最大DPS维度，与玩家口径一致
+			var dps_l: float = stats.attack_light / ai if stats.attack_light > 0 else 0.0
+			var dps_a: float = stats.attack_armor / ai if stats.attack_armor > 0 else 0.0
+			var dps_air: float = stats.attack_air / ai if stats.attack_air > 0 else 0.0
+			var best_dps: float = maxf(dps_l, maxf(dps_a, dps_air))
+			pscore = maxf(50.0, max_hp * 0.28 + best_dps * 2.2 + attack_range * 0.22)
+		else:
+			pscore = maxf(50.0, max_hp * 0.28 + (ad / ai) * 2.2)
 		var rank_id: String = RankRules.get_rank_by_power("corporal", pscore)
 		var rl: int = CardGridUnitVisuals.rank_level_from_id(rank_id)
 		sprite_ok = CardGridUnitVisuals.apply_battle_unit_presentation(
@@ -239,6 +257,22 @@ func _apply_phase_law_passives() -> void:
 	attack_damage = _base_attack_damage * dmg_mult
 	move_speed = _base_move_speed * move_mult
 	attack_interval = max(0.1, _base_attack_interval / atkspd_mult)
+	# v6.3: 同步更新 stats（_do_attack 走 stats 三维路径时需要反映律法减益）
+	if stats != null:
+		stats.max_hp = max_hp
+		stats.attack_damage = attack_damage
+		stats.attack_light = _base_attack_damage * dmg_mult
+		stats.attack_armor = float(_cached_enemy_base.get("attack_armor", 0.0)) * dmg_mult
+		stats.attack_air = float(_cached_enemy_base.get("attack_air", 0.0)) * dmg_mult
+		stats.move_speed = move_speed
+		stats.attack_interval = attack_interval
+		# 同步武器槽位伤害
+		if stats.weapon_slots.size() >= 3:
+			for i in range(mini(3, stats.weapon_slots.size())):
+				var w = stats.weapon_slots[i]
+				if w != null and w.enabled:
+					var base_key: String = ["attack_light", "attack_armor", "attack_air"][i]
+					w.damage = float(_cached_enemy_base.get(base_key, 0.0)) * dmg_mult
 
 func _apply_archetype_stats() -> void:
 	var cfg: Dictionary = EnemyArchetypes.get_config(archetype_id)
@@ -250,9 +284,12 @@ func _apply_archetype_stats() -> void:
 	attack_damage = float(r.get("attack_damage", 10.0))
 	attack_range = float(r.get("attack_range", 100.0))
 	attack_interval = float(r.get("attack_interval", 1.0))
-	move_speed = 0.0
+	move_speed = float(r.get("move_speed", 0.0))
 	defense = float(r.get("defense", 5.0))
 	velocity = Vector2.ZERO
+	# v6.3: 构建完整 UnitStats，使 _do_attack 经典路径复用三维 AttackCalculator
+	# （与相位师产兵的 stats != null 路径统一）
+	_build_enemy_unit_stats(r, cfg)
 	if cfg.is_empty():
 		return
 	_base_max_hp = hp
@@ -261,6 +298,103 @@ func _apply_archetype_stats() -> void:
 	_base_attack_interval = attack_interval
 	_base_stats_ready = true
 	_apply_visual_from_archetype(cfg)
+
+
+## v6.4: 推断敌人 unit_subtype（炮兵/支援/堡垒/防空）
+## 基于 combat_kind + archetype tags/weapon_type/attack_range
+func _infer_enemy_subtype(combat_kind: int, cfg: Dictionary) -> int:
+	# 堡垒：tags 含 fort/bunker，或 combat_kind == FORT
+	var tags = cfg.get("tags", [])
+	if tags is Array:
+		for t in tags:
+			if String(t) in ["fort", "bunker", "structure", "static"]:
+				return GC.UnitSubType.FORT
+	if combat_kind == GC.CombatKind.FORT:
+		return GC.UnitSubType.FORT
+	# 防空：tags 含 anti_air/aa，或 weapon_type 是防空类
+	if tags is Array:
+		for t in tags:
+			if String(t) in ["anti_air", "aa", "flak", "sam"]:
+				return GC.UnitSubType.ANTI_AIR
+	# 炮兵：combat_kind == SUPPORT 且 attack_range >= 400（远程间接火力）
+	if combat_kind == GC.CombatKind.SUPPORT:
+		var atk_range: float = float(cfg.get("attack_range", attack_range))
+		if atk_range >= 400.0:
+			return GC.UnitSubType.ARTILLERY
+		# 近距离支援（如工兵、医疗）→ SUPPORT
+		return GC.UnitSubType.SUPPORT
+	return GC.UnitSubType.NONE
+
+
+## v6.3: 从 resolve_classic_enemy 的结果构建 UnitStats（三维攻防），存到 self.stats
+## 这样 _do_attack 的 stats != null 分支自动生效，敌人用三维攻击/防御。
+func _build_enemy_unit_stats(r: Dictionary, cfg: Dictionary) -> void:
+	var s: UnitStats = UnitStats.new()
+	s.card_id = archetype_id
+	s.combat_kind = int(r.get("combat_kind", int(cfg.get("combat_kind", 0))))
+	# v6.4: 按 combat_kind + archetype 特征推断 unit_subtype，激活差异化修正
+	# （炮兵无闪避/堡垒+HP/防空高def_air/支援特殊）
+	s.unit_subtype = _infer_enemy_subtype(s.combat_kind, cfg)
+	s.max_hp = float(r.get("hp", hp))
+	s.attack_range = float(r.get("attack_range", attack_range))
+	s.attack_interval = float(r.get("attack_interval", attack_interval))
+	s.move_speed = float(r.get("move_speed", move_speed))
+	s.defense = float(r.get("defense", defense))
+	# 三维攻击
+	s.attack_light = float(r.get("attack_light", attack_damage))
+	s.attack_armor = float(r.get("attack_armor", 0.0))
+	s.attack_air = float(r.get("attack_air", 0.0))
+	s.attack_damage = s.attack_light  # 兼容别名
+	# 缓存三维基础攻击（律法减益重算时用）
+	_cached_enemy_base = {
+		"attack_light": s.attack_light,
+		"attack_armor": s.attack_armor,
+		"attack_air": s.attack_air,
+	}
+	# 三维攻速：敌人只有单一 attack_interval，三组攻速统一
+	var spd: float = 1.0 / s.attack_interval if s.attack_interval > 0.0 else 1.0
+	s.attack_light_speed = spd
+	s.attack_armor_speed = spd
+	s.attack_air_speed = spd
+	s.attack_light_windup = 0.2
+	s.attack_armor_windup = 0.2
+	s.attack_air_windup = 0.2
+	s.attack_light_active = 0.1
+	s.attack_armor_active = 0.1
+	s.attack_air_active = 0.1
+	# 三维防御
+	s.defense_light = float(r.get("defense_light", defense))
+	s.defense_armor = float(r.get("defense_armor", defense))
+	s.defense_air = float(r.get("defense_air", defense))
+	# 武器类型（用于射程衰减/弹道路由）
+	s.weapon_type = int(r.get("weapon_type", int(cfg.get("weapon_type", 0))))
+	s.weapon_label = String(r.get("weapon_label", String(cfg.get("weapon_label", ""))))
+	# 初始化武器槽位（让 AttackCalculator.get_weapon_for_target 生效）
+	s.weapon_slots.clear()
+	_ensure_enemy_weapon_slots(s)
+	stats = s
+
+
+## v6.3: 为敌人 UnitStats 初始化3个武器槽位（轻装/装甲/对空），复用三维攻击值
+func _ensure_enemy_weapon_slots(s: UnitStats) -> void:
+	var GC2 = preload("res://resources/game_constants.gd")
+	# 槽位0=对轻装, 槽位1=对装甲, 槽位2=对空
+	var slot_configs: Array = [
+		{"target_kind": GC2.CombatKind.LIGHT, "dmg": s.attack_light, "spd": s.attack_light_speed},
+		{"target_kind": GC2.CombatKind.ARMOR, "dmg": s.attack_armor, "spd": s.attack_armor_speed},
+		{"target_kind": GC2.CombatKind.AIR, "dmg": s.attack_air, "spd": s.attack_air_speed},
+	]
+	for cfg_w in slot_configs:
+		var w = WeaponResource.new()
+		w.enabled = float(cfg_w.dmg) > 0.0
+		w.damage = float(cfg_w.dmg)
+		w.attack_speed = float(cfg_w.spd)
+		w.range_value = maxi(1, int(round(s.attack_range / 100.0)))
+		w.weapon_type = s.weapon_type
+		w.windup = 0.2
+		w.active = 0.1
+		w.display_name = s.weapon_label
+		s.weapon_slots.append(w)
 
 func _apply_visual_from_archetype(cfg: Dictionary) -> void:
 	_suppress_stray_editor_visual_nodes()
@@ -460,10 +594,6 @@ func _find_target(_delta: float) -> void:
 			)
 			if nearest_target != null:
 				target = nearest_target
-				var _diag_d := global_position.distance_to(target.global_position)
-				var _diag_fr := _effective_fire_range()
-				if _diag_d > _diag_fr:  # 临时诊断：锁定射程外目标（不攻击嫌疑）
-					print("[EnemyFind] ", name, " slot=", int(get_meta("card_grid_enemy_slot",-1)), " dist=", int(_diag_d), " > fire_range=", int(_diag_fr), " → ", target.name)
 				return
 
 	# 回退到传统方法（如果空间网格不可用）
@@ -526,16 +656,29 @@ func _process_attack_timing(delta: float) -> void:
 	timing = _cached_timing
 	fire_range = _cached_fire_range
 	wt = _cached_weapon_type
+	# v6.4 修复：格子战开战时射程×2.6（与索敌判定一致）
+	var _is_card_grid_combat: bool = (
+		GameManager != null
+		and GameManager.has_method("is_card_grid_battle")
+		and GameManager.is_card_grid_battle()
+		and BattleManager != null
+		and BattleManager.has_method("is_card_grid_combat_started")
+		and BattleManager.is_card_grid_combat_started()
+	)
+	if _is_card_grid_combat:
+		fire_range *= 2.6
 
 	var dist: float = global_position.distance_to(target.global_position)
-	# 超射程且直射时重置
-	if dist > fire_range and wt == GC.WeaponType.DIRECT:
+	# 格子战：超射程不拦截（伤害由 calculate_damage_with_weapon 的 range_falloff 保底 30%）
+	# 传统战场：直射超射程仍重置 IDLE
+	if not _is_card_grid_combat and dist > fire_range and wt == GC.WeaponType.DIRECT:
 		_attack_phase = 0
 		_attack_phase_timer = 0.0
 		return
 	match _attack_phase:
 		0:  # IDLE
-			if dist <= fire_range:
+			# 格子战：有目标即进入 WINDUP；传统战场：需在射程内
+			if _is_card_grid_combat or dist <= fire_range:
 				_attack_phase = 1
 				_attack_phase_timer = 0.0
 		1:  # WINDUP
@@ -565,6 +708,10 @@ func _do_attack() -> void:
 	var miss := false
 	var weapon_name_str: String = ""
 
+	# 格子战标识：传给 calculate_damage_with_weapon，使其跳过防御减免（防御由 CardGridDamage 处理）
+	# 且射程衰减改用 range_falloff 保底 30%（传统战场用 range_value×100 做 max_range 会归零）。
+	var is_card_grid: bool = GameManager != null and GameManager.has_method("is_card_grid_battle") and GameManager.is_card_grid_battle()
+
 	# v6.0: 从 stats 武器槽位获取 weapon_name 和 dmg
 	var wt: int = GC.WeaponType.DIRECT
 	var dmg_out: float = attack_damage
@@ -577,7 +724,7 @@ func _do_attack() -> void:
 			wt = weapon.weapon_type
 			weapon_name_str = weapon.display_name
 			dmg_out = AttackCalculator.calculate_damage_with_weapon(
-				stats, target_stats, dist_t, weapon, 0, []
+				stats, target_stats, dist_t, weapon, 0, [], is_card_grid, is_card_grid
 			)
 			pre_calc = true
 		else:
@@ -651,7 +798,13 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		if attacker != null and is_instance_valid(attacker) and "stats" in attacker:
 			var atk_stats: Variant = attacker.get("stats")
 			if atk_stats is UnitStats:
-				pen = float((atk_stats as UnitStats).armor_penetration)
+				# v6.2: 条件型穿甲（相克 MOD）按目标(自身)类型激活
+				# 敌人无 combat_kind 字段，从 stats 读（敌人 stats 可能为 null，回退到 LIGHT）
+				var self_kind: int = stats.combat_kind if stats != null else 0
+				if (atk_stats as UnitStats).has_method("get_effective_armor_penetration"):
+					pen = (atk_stats as UnitStats).get_effective_armor_penetration(self_kind)
+				else:
+					pen = float((atk_stats as UnitStats).armor_penetration)
 		var eff_def: float = CardGridDamage.effective_defense(defense, pen)
 		var dodge: float = 0.0
 		if stats != null:
@@ -670,8 +823,10 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 	if attacker != null and is_instance_valid(attacker) and attacker is Node and attacker.is_in_group("player_units"):
 		last_damage_source = attacker
 	hp -= hp_loss * _incoming_damage_mul
-	if hp_loss > 0:
-		print("[Enemy] 受到伤害: ", hp_loss, " 剩余HP: ", hp, " 来自: ", attacker)
+	# v6.4: 受击视觉反馈（复用 construct_unit 的闪白/抖动模式）
+	if hp > 0 and hp_loss > 0:
+		_play_hit_flash()
+		_play_hit_shake()
 	# 性能优化：在 HP 变化时更新 HP 条
 	_update_hp_bar()
 	if SignalBus:
@@ -679,11 +834,37 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 	if hp <= 0:
 		_die()
 
+## v6.4: 受击闪白反馈（复用 Tween，避免每击 new）
+func _play_hit_flash() -> void:
+	var flash_color := Color.WHITE
+	var original_modulate := modulate
+	modulate = flash_color
+	if _hit_flash_tween != null and _hit_flash_tween.is_valid():
+		_hit_flash_tween.kill()
+	_hit_flash_tween = create_tween()
+	_hit_flash_tween.tween_property(self, "modulate", original_modulate, 0.1)
+
+
+## v6.4: 受击缩放抖动反馈（复用 Tween，避免每击 new）
+func _play_hit_shake() -> void:
+	var base_scale := scale
+	if _hit_shake_tween != null and _hit_shake_tween.is_valid():
+		_hit_shake_tween.kill()
+	_hit_shake_tween = create_tween()
+	_hit_shake_tween.tween_property(self, "scale", base_scale * 0.85, 0.03)
+	_hit_shake_tween.tween_property(self, "scale", base_scale * 1.05, 0.03)
+	_hit_shake_tween.tween_property(self, "scale", base_scale * 0.95, 0.03)
+	_hit_shake_tween.tween_property(self, "scale", base_scale, 0.03)
+
+
 ## 治疗方法（用于词条吸血效果）
 func heal(amount: float) -> void:
 	hp = min(hp + amount, max_hp)
 
 func _die() -> void:
+	if _is_dying:
+		return
+	_is_dying = true
 	# 性能优化：从空间分区网格移除
 	_unregister_from_spatial_grid()
 
@@ -693,7 +874,22 @@ func _die() -> void:
 		if BattleInputState.current_selected_unit == self:
 			BattleInputState.current_selected_unit = null
 		SignalBus.unit_died.emit(self, false)
-	queue_free()
+	# v6.4: 死亡淡出动画（缩放+透明度），逻辑结算已完成，仅做视觉收尾
+	_play_death_fadeout()
+
+
+## v6.4: 死亡视觉淡出——快速缩放并淡出后销毁节点（逻辑结算已完成，不依赖 _process）
+func _play_death_fadeout() -> void:
+	if _death_fade_tween != null and _death_fade_tween.is_valid():
+		_death_fade_tween.kill()
+	var start_scale := scale
+	_death_fade_tween = create_tween()
+	_death_fade_tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	_death_fade_tween.tween_property(self, "scale", start_scale * 1.15, 0.08)
+	_death_fade_tween.parallel().tween_property(self, "modulate:a", 0.0, 0.25)
+	_death_fade_tween.tween_property(self, "scale", Vector2.ZERO, 0.17)
+	_death_fade_tween.tween_callback(queue_free)
+
 
 ## 销毁前的安全清理
 func _cleanup_before_destroy() -> void:

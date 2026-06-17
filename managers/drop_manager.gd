@@ -132,15 +132,15 @@ func _add_dropped_card(card_id: String, count: int) -> void:
 	for _i in range(n):
 		var dropped_card: CardResource = card.clone()
 		dropped_card.is_dropped_card = true
+		# v6.4: 掉落星级映射到 enhance_level，让高星掉落卡有属性优势
+		# star 1-3 → enhance_level 0（普通），4-6 → 1（强化），7-9 → 2（精锐）
 		var star: int = randi_range(1, 9)
-		# DEPRECATED: star_level is no longer assigned; star_rating system replaces it
-		# dropped_card.star_level = star
-		if BlueprintManager and BlueprintManager.has_method("get_default_enhancements"):
-			var enhancements: Array = BlueprintManager.get_default_enhancements(card_id, star)
-			dropped_card.affix_slot_ids = []  # @deprecated v5.0: 词条系统将删除
-			for e in enhancements:
-				if e is Dictionary and e.has("id"):
-					dropped_card.affix_slot_ids.append(String(e["id"]))  # @deprecated v5.0
+		var enh_lv: int = 0
+		if star >= 7:
+			enh_lv = 2
+		elif star >= 4:
+			enh_lv = 1
+		dropped_card.enhance_level = enh_lv
 		if SignalBus:
 			SignalBus.card_added_to_backpack.emit(dropped_card)
 
@@ -247,14 +247,31 @@ func load_state(state: Dictionary) -> void:
 	if state.has("pending_drops"):
 		pending_drops.clear()
 		for drop_data in state["pending_drops"]:
+			if not (drop_data is Dictionary):
+				continue
+			# 防御性访问：缺键或类型错误的条目跳过，避免中断整个加载链
+			var item_id: String = str(drop_data.get("item_id", ""))
+			if item_id.is_empty():
+				continue
+			var count: int = int(drop_data.get("count", 0))
+			if count <= 0:
+				continue
+			# type 存为枚举值（int）；兼容字符串名
+			var raw_type = drop_data.get("type", DropTables.DropType.MATERIAL)
+			var drop_type: int = DropTables.DropType.MATERIAL
+			if raw_type is int:
+				drop_type = raw_type
+			elif raw_type is String:
+				drop_type = int(DropTables.DropType.get(raw_type, DropTables.DropType.MATERIAL))
 			var entry = DropTables.DropEntry.new(
-				drop_data["item_id"],
-				drop_data["type"],
+				item_id,
+				drop_type,
 				1.0,
-				drop_data["count"],
-				drop_data["count"]
+				count,
+				count
 			)
-			var result = DropTables.DropResult.new(entry, drop_data["count"], drop_data["source"])
+			var source: String = str(drop_data.get("source", ""))
+			var result = DropTables.DropResult.new(entry, count, source)
 			pending_drops.append(result)
 
 ## 添加法则蓝图碎片

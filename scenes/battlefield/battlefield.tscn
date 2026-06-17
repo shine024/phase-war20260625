@@ -1,10 +1,17 @@
-[gd_scene load_steps=2 format=3 uid="uid://battlefield"]
+[gd_scene load_steps=3 format=3 uid="uid://battlefield"]
 
 [ext_resource type="Script" uid="uid://clwpgv2frbgmp" path="res://scenes/battlefield/Battlefield.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://scenes/units/phase_field_driver.tscn" id="2_phase_driver"]
+[ext_resource type="Script" path="res://scenes/effects/screen_shake.gd" id="3_screen_shake"]
 
 [node name="Battlefield" type="Node2D"]
 script = ExtResource("1_script")
+
+[node name="BattleCamera" type="Camera2D" parent="."]
+anchor_mode = 1
+position = Vector2(640, 290)
+process_callback = 0
+script = ExtResource("3_screen_shake")
 
 [node name="Level10Background" type="Sprite2D" parent="."]
 z_index = -10

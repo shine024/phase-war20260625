@@ -11,6 +11,7 @@ const ReconModifications = preload("res://data/modification_modules/recon_mods.g
 const EngineerModifications = preload("res://data/modification_modules/engineer_mods.gd")
 const FortModifications = preload("res://data/modification_modules/fort_mods.gd")
 const UniversalModifications = preload("res://data/modification_modules/universal_mods.gd")
+const EnhancementModifications = preload("res://data/modification_modules/enhancement_mods.gd")  # v6.4 强化词条统一
 
 ## ─────────────────────────────────────────────
 ##  缓存
@@ -46,6 +47,7 @@ static func register_all() -> void:
 	_register_modifications("engineer", EngineerModifications)
 	_register_modifications("fort", FortModifications)
 	_register_modifications("universal", UniversalModifications)
+	_register_modifications("enhancement", EnhancementModifications)  # v6.4 强化词条统一
 
 	_initialized = true
 	# [LOG-v5.1] print("[ModificationRegistry] Registered %d modification modules" % _count_total())
@@ -101,6 +103,8 @@ static func get_for_unit_type(unit_type: int) -> Array:
 	result.append_array(EngineerModifications.get_for_unit_type(unit_type))
 	result.append_array(FortModifications.get_for_unit_type(unit_type))
 	result.append_array(UniversalModifications.get_for_unit_type(unit_type))
+	# v6.4: 强化词条适用于所有兵种
+	result.append_array(EnhancementModifications.get_for_unit_type(unit_type))
 	return result
 
 ## 按 card_id 精筛改造（比 get_for_unit_type 更精确）
@@ -116,6 +120,8 @@ static func get_mods_for_card(card_id: String) -> Array:
 	result.append_array(EngineerModifications.get_for_card(card_id))
 	result.append_array(FortModifications.get_for_card(card_id))
 	result.append_array(UniversalModifications.get_for_card(card_id))
+	# v6.4: 强化词条适用所有卡
+	result.append_array(EnhancementModifications.get_for_card(card_id))
 	return result
 
 ## 检查改造冲突
@@ -153,52 +159,120 @@ static func apply_effects(base_stats: Dictionary, modifications: Array) -> Dicti
 	var result = base_stats.duplicate(true)
 
 	for mod_entry in modifications:
+		# v6.5: 跳过已禁用的改造
+		if mod_entry is Dictionary:
+			if mod_entry.has("enabled") and not bool(mod_entry.get("enabled", true)):
+				continue
 		var mod_id = mod_entry.get("id", "") if mod_entry is Dictionary else String(mod_entry)
 		var mod_data = get_data(mod_id)
 		var effects = mod_data.get("effects", {})
+		if effects.is_empty():
+			continue
+		# v6.4: 复用统一的单条应用逻辑
+		result = _apply_single_mod_effects(result, effects)
 
-		# 应用效果
-		for effect_key in effects.keys():
-			var effect_value = effects[effect_key]
+	return result
 
-			match effect_key:
-				"attack_light", "attack_armor", "attack_air":
-					if result.has(effect_key):
-						if effect_value is float:
-							result[effect_key] = int(result[effect_key] * (1.0 + effect_value))
-						elif effect_value is int:
-							result[effect_key] += effect_value
-				"defense_light", "defense_armor", "defense_air":
-					if result.has(effect_key):
-						if effect_value is float:
-							result[effect_key] = int(result[effect_key] * (1.0 + effect_value))
-						elif effect_value is int:
-							result[effect_key] += effect_value
-				"max_hp":
-					if result.has(effect_key):
-						if effect_value is float:
-							result[effect_key] = int(result[effect_key] * (1.0 + effect_value))
-						elif effect_value is int:
-							result[effect_key] += effect_value
-				"move_speed", "attack_range":
-					if result.has(effect_key):
-						result[effect_key] += effect_value
-				"attack_interval":
-					if result.has(effect_key):
-						result[effect_key] = max(0.1, result[effect_key] * (1.0 + effect_value))
-				"deploy_speed":
-					if result.has(effect_key):
-						result[effect_key] = max(0, result[effect_key] + effect_value)
-				"crit_chance", "dodge_chance", "crit_resist":
-					if not result.has(effect_key):
-						result[effect_key] = 0.0
-					result[effect_key] = min(1.0, result[effect_key] + effect_value)
-				_:
-					# 特殊效果（如hp_regen, smoke_ignore等）
-					if not result.has("_special"):
-						result["_special"] = {}
-					result["_special"][effect_key] = effect_value
 
+## v6.4: 按等级应用改造效果（统一5套系统的等级概念）
+## modifications: Array of {id, level} 或 {id}（默认level=1）或纯String（默认level=1）
+## 支持改造条目里的 level_effects（每级不同效果）或 effects（无等级差异时用，所有等级相同）
+static func apply_with_level(base_stats: Dictionary, modifications: Array) -> Dictionary:
+	_ensure_initialized()
+
+	var result = base_stats.duplicate(true)
+
+	for mod_entry in modifications:
+		var mod_id: String = ""
+		var mod_level: int = 1
+		if mod_entry is Dictionary:
+			mod_id = String(mod_entry.get("id", ""))
+			mod_level = int(mod_entry.get("level", 1))
+			# v6.5: 跳过已禁用的改造（仅武器类改造可禁用，但这里统一检查）
+			# 旧存档无 enabled 字段时默认视为启用（true）
+			if mod_entry.has("enabled") and not bool(mod_entry.get("enabled", true)):
+				continue
+		else:
+			mod_id = String(mod_entry)
+		if mod_id.is_empty():
+			continue
+		mod_level = clampi(mod_level, 1, 3)  # 等级统一1-3
+
+		var mod_data: Dictionary = get_data(mod_id)
+		if mod_data.is_empty():
+			continue
+
+		# 优先使用 level_effects（每级不同），否则用 effects（所有等级相同）
+		var effects: Dictionary = {}
+		var level_effects: Dictionary = mod_data.get("level_effects", {})
+		if not level_effects.is_empty() and level_effects.has(mod_level):
+			effects = level_effects[mod_level]
+		else:
+			effects = mod_data.get("effects", {})
+
+		# 应用效果（复用 apply_effects 的单条逻辑）
+		result = _apply_single_mod_effects(result, effects)
+
+	return result
+
+
+## v6.4: 内部辅助——对单个 effects 字典应用到一个 stats 字典（apply_effects 的单条逻辑抽取）
+static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary) -> Dictionary:
+	for effect_key in effects.keys():
+		var effect_value = effects[effect_key]
+		match effect_key:
+			"attack_light", "attack_armor", "attack_air", \
+			"defense_light", "defense_armor", "defense_air", "max_hp":
+				if not result.has(effect_key):
+					result[effect_key] = 0
+				if effect_value is float:
+					result[effect_key] = int(float(result[effect_key]) * (1.0 + effect_value))
+				elif effect_value is int:
+					result[effect_key] += effect_value
+			"move_speed", "attack_range":
+				if not result.has(effect_key):
+					result[effect_key] = 0
+				result[effect_key] += effect_value
+			"attack_interval":
+				if not result.has(effect_key):
+					result[effect_key] = 1.0
+				result[effect_key] = max(0.1, float(result[effect_key]) * (1.0 + effect_value))
+			"deploy_speed":
+				if not result.has(effect_key):
+					result[effect_key] = 0
+				result[effect_key] = max(0, int(result[effect_key]) + int(effect_value))
+			"crit_chance", "dodge_chance", "crit_resist", "armor_penetration", \
+			"armor_pen_vs_light", "armor_pen_vs_armor", "armor_pen_vs_air":
+				if not result.has(effect_key):
+					result[effect_key] = 0.0
+				result[effect_key] = min(1.0, float(result[effect_key]) + float(effect_value))
+			"damage_reduction":
+				if not result.has(effect_key):
+					result[effect_key] = 0.0
+				result[effect_key] = min(0.75, float(result[effect_key]) + float(effect_value))
+			"crit_damage_bonus", "shield_on_kill", "hp_regen":
+				if not result.has(effect_key):
+					result[effect_key] = 0.0
+				result[effect_key] += float(effect_value)
+			"lifesteal":
+				if not result.has(effect_key):
+					result[effect_key] = 0.0
+				result[effect_key] = min(0.6, float(result[effect_key]) + float(effect_value))
+			"splash_damage":
+				if not result.has(effect_key):
+					result[effect_key] = 0.0
+				result[effect_key] = min(0.8, float(result[effect_key]) + float(effect_value))
+			"chain_chance":
+				if not result.has(effect_key):
+					result[effect_key] = 0.0
+				result[effect_key] = min(0.6, float(result[effect_key]) + float(effect_value))
+			# v6.5: 武器类改造改变武器类型（影响弹道和命中效果）
+			"weapon_type":
+				result[effect_key] = int(effect_value)
+			_:
+				if not result.has("_special"):
+					result["_special"] = {}
+				result["_special"][effect_key] = effect_value
 	return result
 
 ## ─────────────────────────────────────────────
@@ -246,22 +320,26 @@ static func apply_to_weapon_slot(weapon: WeaponResource, modifications: Array, s
 	var result = weapon.clone()
 	
 	for mod_entry in modifications:
+		# v6.5: 跳过已禁用的改造
+		if mod_entry is Dictionary:
+			if mod_entry.has("enabled") and not bool(mod_entry.get("enabled", true)):
+				continue
 		var mod_id = mod_entry.get("id", "") if mod_entry is Dictionary else String(mod_entry)
 		var mod_data = get_data(mod_id)
 		if mod_data.is_empty():
 			continue
-		
+
 		var effects = mod_data.get("effects", {})
-		
+
 		# 检查改造是否适用于特定槽位
 		var condition_slot = int(mod_data.get("condition_slot", -1))
 		if condition_slot >= 0 and condition_slot != slot_idx:
 			continue
-		
+
 		# 应用效果到武器属性
 		for effect_key in effects.keys():
 			var effect_value = effects[effect_key]
-			
+
 			match effect_key:
 				"slot_damage_mult":
 					if effect_value is float or effect_value is int:
@@ -281,10 +359,11 @@ static func apply_to_weapon_slot(weapon: WeaponResource, modifications: Array, s
 				"slot_active_reduce":
 					if effect_value is float or effect_value is int:
 						result.active = maxf(0.05, result.active - float(effect_value))
+				# v6.5: 武器类改造改变该槽位的武器类型（影响弹道和命中效果）
+				"slot_weapon_type":
+					result.weapon_type = int(effect_value)
 				_:
-					# 其他特殊效果存储到武器元数据
-					if not result.has("_mod_effects"):
-						result._mod_effects = {}
+					# 其他特殊效果存储到武器 _mod_effects（已在 WeaponResource 声明，clone 时复制）
 					result._mod_effects[effect_key] = effect_value
 	
 	return result
@@ -292,16 +371,21 @@ static func apply_to_weapon_slot(weapon: WeaponResource, modifications: Array, s
 ## 批量应用改造到所有武器槽位
 ## weapon_slots: Array[WeaponResource] - 武器槽位数组
 ## modifications: Array - 改造ID列表
-## 返回：修改后的槽位数组
+## 返回：修改后的槽位数组（Array[WeaponResource]，与 unit_stats_table.tmp_slots 类型匹配，
+##   避免普通 Array 赋给 typed Array[WeaponResource] 报错）
 static func apply_to_weapon_slots(weapon_slots: Array, modifications: Array) -> Array:
 	_ensure_initialized()
-	var result = []
-	
+	var result: Array[WeaponResource] = []
+
 	for i in range(weapon_slots.size()):
 		var weapon = weapon_slots[i]
 		if weapon is WeaponResource and weapon.enabled:
 			result.append(apply_to_weapon_slot(weapon, modifications, i))
-		else:
+		elif weapon is WeaponResource:
+			# 未启用槽位：原样保留（仍是 WeaponResource，类型安全）
 			result.append(weapon)
-	
+		else:
+			# 非 WeaponResource 占位：用空槽位补齐，保证 typed Array[WeaponResource] 不报错
+			result.append(WeaponResource.create_empty_slot(i))
+
 	return result

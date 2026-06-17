@@ -37,6 +37,8 @@ const BackpackPresenterScript = preload("res://scenes/ui/backpack/backpack_prese
 const NodeFinder = preload("res://scripts/node_finder.gd")
 const CardInfoPanel = preload("res://scenes/ui/card_info_panel.gd")
 const IntelManualItemsRef = preload("res://data/intel_manual_items.gd")
+const BlueprintDefinitionsRef = preload("res://data/blueprint_definitions.gd")
+const ModificationRegistryRef = preload("res://scripts/systems/modification_registry.gd")
 const RankDisplayUi = preload("res://scripts/rank_display_ui.gd")
 ## 详情弹窗内的统一情报面板实例引用
 var _detail_info_panel: Control = null
@@ -46,7 +48,8 @@ var _filter_sort: BackpackFilterSort = null
 
 ## 与相位仪槽位、背包卡条目同尺寸（见 PhaseSlot.SLOT_SIZE）
 const CARD_SLOT_MIN: Vector2 = PhaseSlot.SLOT_SIZE
-const MAX_CARD_SLOTS := 51
+## 背包卡槽上限，与 BackpackData.MAX_CARD_SLOTS 保持单一真相源（统计与 UI 必须一致）
+const MAX_CARD_SLOTS := 50
 ## 与 `backpack_panel.tscn` 中 CardGrid 的 `h_separation` 一致（勿与主题脱节）
 const BACKPACK_GRID_H_SEP := 6
 ## 与 `backpack_panel.tscn` 中 BackpackPanel `custom_minimum_size.x` 对齐，按竖向槽位宽度取整列数
@@ -108,6 +111,12 @@ func _ready() -> void:
 	_resources_grid = get_node_or_null("VBoxOuter/TabContainer/ResourcesTab/ResourcesScroll/ResourcesGrid") as GridContainer
 	_intel_grid = get_node_or_null("VBoxOuter/TabContainer/IntelTab/IntelScroll/IntelGrid") as GridContainer
 	_stat_boosts_grid = get_node_or_null("VBoxOuter/TabContainer/StatBoostsTab/StatBoostsScroll/StatBoostsGrid") as GridContainer
+	# v6.5: 情报标签页改为显示"未装配改造"，更新 tab 标题以避免歧义
+	var _tab_container: TabContainer = get_node_or_null("VBoxOuter/TabContainer") as TabContainer
+	if _tab_container != null:
+		var _intel_tab_idx: int = _tab_container.get_tab_idx_from_control(get_node_or_null("VBoxOuter/TabContainer/IntelTab"))
+		if _intel_tab_idx >= 0:
+			_tab_container.set_tab_title(_intel_tab_idx, "改造")
 
 	# 必须先锁定列数再 setup（setup 会立刻 rebuild，不能在 rebuild 之后才设 columns）
 	if _combat_cards_grid:
@@ -301,7 +310,6 @@ func rebuild_card_grid(cards: Array) -> void:
 	call_deferred("_flush_rebuild_card_grid")
 
 func _flush_rebuild_card_grid() -> void:
-	var t0: int = Time.get_ticks_msec()
 	_rebuild_grid_scheduled = false
 	if not is_inside_tree():
 		_rebuild_grid_snapshot.clear()
@@ -578,63 +586,100 @@ func reset_visibility() -> void:
 ## 标签页刷新方法
 ## ============================================================
 
-## 刷新情报标签页
+## 刷新改造标签页（v6.5: 显示所有已获得的改造，标注装配状态）
 func refresh_intel_tab() -> void:
 	if _intel_grid == null:
 		return
 	_apply_backpack_grid_layout(_intel_grid)
-	var mll = get_node_or_null("/root/ManagerLazyLoader")
-	if mll and mll.has_method("ensure_loaded"): mll.ensure_loaded("lore")
-	var lm = get_node_or_null("/root/LoreManager")
 	var bag = get_node_or_null("/root/IntelItemBag")
-	# Build signature from both sources
-	var lore_ids: Array[String] = []
-	if lm and lm.has_method("get_unlocked_lore"):
-		for lore_data in lm.get_unlocked_lore():
-			var lid: String = str(lore_data.get("id", ""))
-			if not lid.is_empty(): lore_ids.append(lid)
+	# 收集所有已装配在战斗卡上的 mod_id（用于标注装配状态）
+	var installed_mod_ids: Dictionary = {}
+	if BlueprintManager and "blueprint_mods" in BlueprintManager:
+		for card_id in BlueprintManager.blueprint_mods:
+			var mods_list = BlueprintManager.blueprint_mods[card_id]
+			if mods_list is Array:
+				for mod_entry in mods_list:
+					var mid: String = ""
+					if mod_entry is Dictionary:
+						mid = String(mod_entry.get("id", ""))
+					else:
+						mid = String(mod_entry)
+					if not mid.is_empty():
+						installed_mod_ids[mid] = true
+	# 从 IntelItemBag 收集所有已获得的改造图纸
 	var bag_items: Dictionary = {}
 	if bag and bag.has_method("get_all_inventory"):
 		bag_items = bag.get_all_inventory()
-	# [LOG-v5.1] print("[BP] refresh_intel_tab: bag_items.size=%d" % bag_items.size())
+	# 签名
 	var sig_parts: Array[String] = []
-	for lid in lore_ids: sig_parts.append("lore:" + lid)
-	for bk in bag_items.keys(): sig_parts.append("bag:" + bk + ":" + str(bag_items[bk]))
+	for bk in bag_items.keys():
+		sig_parts.append("bag:" + bk + ":" + str(bag_items[bk]))
+	for mid in installed_mod_ids.keys():
+		sig_parts.append("inst:" + mid)
 	sig_parts.sort()
 	var sig := "|".join(sig_parts)
 	if sig == _last_lore_signature:
-		# [LOG-v5.1] print("[BP] refresh_intel_tab: signature未变化，跳过刷新")
 		return
 	_last_lore_signature = sig
 	_clear_grid_children(_intel_grid)
-	var has_content := lore_ids.size() > 0 or bag_items.size() > 0
-	if not has_content:
-		_add_intel_placeholder(_intel_grid, "暂无已解锁情报
-（战斗掉落或商店购买后显示于此）")
-		return
-	# Lore from LoreManager
-	for lore_id in lore_ids:
-		_add_intel_item(_intel_grid, lore_id)
-	# Blueprint items from IntelItemBag
+	# 筛选：所有改造图纸（永久解锁，全部显示）
+	var acquired_blueprints: Array[Dictionary] = []
 	for item_type in bag_items.keys():
 		var count: int = int(bag_items[item_type])
-		if count <= 0: continue
-		var def: Dictionary = IntelManualItemsRef.get_def(item_type)
+		if count <= 0:
+			continue
+		# 仅处理改造图纸（blueprint_ 前缀，排除 blueprint_evol_ 进化图纸）
+		if not IntelManualItemsRef.is_mod_blueprint(item_type):
+			continue
+		var mod_id: String = BlueprintDefinitionsRef.extract_mod_id(item_type)
+		if mod_id.is_empty():
+			continue
+		var mod_data: Dictionary = ModificationRegistryRef.get_data(mod_id)
+		var display_name: String = String(mod_data.get("name", mod_id)) if not mod_data.is_empty() else mod_id
+		var rarity: String = String(mod_data.get("rarity", "common")) if not mod_data.is_empty() else "common"
+		var is_installed: bool = installed_mod_ids.has(mod_id)
+		acquired_blueprints.append({
+			"item_type": item_type,
+			"mod_id": mod_id,
+			"name": display_name,
+			"rarity": rarity,
+			"count": count,
+			"installed": is_installed,
+		})
+	if acquired_blueprints.is_empty():
+		_add_intel_placeholder(_intel_grid, "暂无已获得的改造
+	（获得改造图纸后，所有取得过的改造会显示于此）")
+		return
+	# 按稀有度排序（稀有→普通）
+	acquired_blueprints.sort_custom(func(a, b): return _rarity_sort_value(a.rarity) > _rarity_sort_value(b.rarity))
+	for bp in acquired_blueprints:
 		var item = ResourceSlotScene.instantiate()
-		if item == null: continue
+		if item == null:
+			continue
 		_intel_grid.add_child(item)
 		if item.has_method("set_data"):
-			var display_name: String = def.get("name", item_type) if not def.is_empty() else item_type
-			var extra_data: Dictionary = {}
-			if not def.is_empty():
-				if def.has("icon"):
-					extra_data["icon"] = def.get("icon", "")
-				if def.has("name"):
-					extra_data["name"] = def.get("name", "")
-				if def.has("desc"):
-					extra_data["description"] = def.get("desc", "")
-			item.set_data(item_type, count, ResourceSlotItem.SlotType.LORE, extra_data)
+			# 名称前缀标注装配状态：✓已装配 / ○未装配
+			var status_mark: String = "✓ " if bp.installed else "○ "
+			var extra_data: Dictionary = {
+				"name": status_mark + bp.name,
+				"description": "改造图纸（永久解锁）\n稀有度：%s\n状态：%s" % [
+					IntelManualItemsRef.get_rarity_name(bp.rarity),
+					"已装配" if bp.installed else "未装配",
+				],
+			}
+			item.set_data(bp.item_type, bp.count, ResourceSlotItem.SlotType.LORE, extra_data)
 	_schedule_sync_card_grid_scroll_size_for_grid(_intel_grid)
+
+
+## 稀有度排序权重（legendary 最大）
+func _rarity_sort_value(rarity: String) -> int:
+	match rarity:
+		"legendary": return 5
+		"epic": return 4
+		"rare": return 3
+		"uncommon": return 2
+		"common": return 1
+		_: return 0
 
 
 func _add_intel_placeholder(grid: GridContainer, message: String) -> void:
@@ -647,14 +692,6 @@ func _add_intel_placeholder(grid: GridContainer, message: String) -> void:
 	lbl.custom_minimum_size = Vector2(950.0, 80.0)
 	grid.add_child(lbl)
 
-
-func _add_intel_item(grid: GridContainer, lore_id: String) -> void:
-	var item = ResourceSlotScene.instantiate()
-	if item == null:
-		return
-	grid.add_child(item)
-	if item.has_method("set_data"):
-		item.set_data(lore_id, 1, ResourceSlotItem.SlotType.LORE)
 
 ## 刷新属性提升标签页
 func refresh_stat_boosts_tab() -> void:

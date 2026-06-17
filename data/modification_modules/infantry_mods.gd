@@ -51,6 +51,7 @@ const DATA: Dictionary = {
 		conflict_group = "fire_rate",
 		effects = {
 			attack_interval = -0.15,  # -15%
+			weapon_type = 5,  # v6.5 SHOTGUN spread
 		},
 		unlock_conditions = {
 			required_level = 1,
@@ -72,6 +73,7 @@ const DATA: Dictionary = {
 		conflict_group = "damage",
 		effects = {
 			attack_light = 0.15,  # +15%
+			weapon_type = 0,  # v6.5 DIRECT
 		},
 		unlock_conditions = {
 			required_level = 2,

@@ -399,19 +399,19 @@ static func evolve_weapon_slots(source_card: CardResource, target_card_id: Strin
 				var source_damage = source_weapon.damage
 				var mod_ratio = 1.0
 				
-				# 检查源武器是否有改造效果
-				if source_weapon.has("_mod_effects"):
-					var mod_effects = source_weapon.get("_mod_effects", {})
+				# 检查源武器是否有改造效果（_mod_effects 已在 WeaponResource 声明，检查是否非空）
+				if not source_weapon._mod_effects.is_empty():
+					var mod_effects = source_weapon._mod_effects
 					var damage_mult = mod_effects.get("slot_damage_mult", 1.0)
 					var damage_add = mod_effects.get("slot_damage_add", 0.0)
 					mod_ratio = damage_mult + (damage_add / max(1.0, base_damage))
-				
+
 				# 应用改造加成到新武器
 				if mod_ratio != 1.0:
 					evolved.damage = int(evolved.damage * mod_ratio)
-				
+
 				# 继承其他改造效果
-				if source_weapon.has("_mod_effects"):
+				if not source_weapon._mod_effects.is_empty():
 					evolved._mod_effects = source_weapon._mod_effects.duplicate()
 			
 			# 设置新武器ID

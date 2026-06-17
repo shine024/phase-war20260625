@@ -1,6 +1,7 @@
-[gd_scene load_steps=10 format=3 uid="uid://bja6yipvtekki"]
+[gd_scene load_steps=11 format=3 uid="uid://bja6yipvtekki"]
 
 [ext_resource type="Script" path="res://scenes/ui/evolution_panel.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/ui/icons/icon_blueprint.svg" id="2_title_icon"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg"]
 bg_color = Color(0.04, 0.06, 0.12, 0.97)
@@ -115,10 +116,17 @@ theme_override_constants/margin_right = 20
 theme_override_constants/margin_bottom = 0
 theme_override_constants/separation = 20
 
+[node name="TitleIcon" type="TextureRect" parent="VBoxContainer/TitleArea/TitleHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(28, 28)
+expand_mode = 1
+stretch_mode = 5
+texture = ExtResource("2_title_icon")
+
 [node name="TitleLabel" type="Label" parent="VBoxContainer/TitleArea/TitleHBox"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "🧬 进化系统"
+text = "进化系统"
 theme_override_font_sizes/font_size = 24
 theme_override_colors/font_color = Color(1, 0.9, 0.42, 1)
 theme_override_colors/font_outline_color = Color(0.18, 0.13, 0.02, 0.85)

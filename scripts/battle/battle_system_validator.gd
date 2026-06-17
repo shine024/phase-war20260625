@@ -91,7 +91,7 @@ static func validate_three_attack_three_defense() -> Dictionary:
 
 	result.details["damage_test"] = {
 		"attack_vs": AttackCalculator.get_attack_vs(attacker, GC.CombatKind.LIGHT),
-		"defense_vs": AttackCalculator.get_defense_vs(defender, GC.WeaponType.INDIRECT),
+		"defense_vs": AttackCalculator.get_defense_vs(defender, attacker.combat_kind),
 		"calculated_damage": damage,
 		"expected_damage": 135.0 * 100.0 / (100.0 + 8.0)
 	}

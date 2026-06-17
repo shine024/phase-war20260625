@@ -65,12 +65,26 @@ enum WeaponType {
 }
 
 # 战斗定位枚举（单位类型）
+# v6.2: 攻防维度对齐后，攻防计算上 SUPPORT 归入 LIGHT、FORT 归入 ARMOR
+#       （参见 AttackCalculator.get_attack_vs / get_defense_vs 的 match 分组）
+#       CombatKind 保留 5 值用于显示/索敌差异化；主类归属由 UnitSubType 标记区分。
 enum CombatKind {
 	LIGHT = 0,
 	ARMOR = 1,
 	SUPPORT = 2,
 	AIR = 3,
 	FORT = 4
+}
+
+# 单位子类标记（v6.2: 配合"3主类+子类"设计）
+# 主类归属：LIGHT 主类含 ARTILLERY/SUPPORT/ANTI_AIR 子类；ARMOR 主类含 FORT 子类
+# 用于战斗定位差异化修正（如火炮不享闪避、堡垒额外HP加成）
+enum UnitSubType {
+	NONE = 0,       # 默认（纯轻装步兵 / 纯装甲坦克 / 纯空中）
+	ARTILLERY = 1,  # 火炮（轻装主类）：远射程，无闪避
+	SUPPORT = 2,    # 辅助/支援（轻装主类）：机枪巢、工兵等
+	FORT = 3,       # 堡垒（装甲主类）：超高HP+防御
+	ANTI_AIR = 4,   # 防空特化（轻装主类）：专防空，高 def_air
 }
 
 # 索敌方式枚举

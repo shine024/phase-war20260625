@@ -46,6 +46,12 @@ func _apply_embedded_layout() -> void:
 	var scroll = get_node_or_null("VBoxContainer/HBoxContainer/ScrollContainer")
 	if scroll:
 		scroll.visible = false
+	# v6.4: 内嵌模式下隐藏资源栏（背包场景冗余）
+	var resource_bar = get_node_or_null("VBoxContainer/ResourceBar")
+	if resource_bar:
+		resource_bar.visible = false
+	# v6.6: 嵌入模式尺寸适配——清零根节点最小尺寸，让其服从宿主 Tab 容器
+	custom_minimum_size = Vector2.ZERO
 
 ## ─────────────────────────────────────────────
 ##  UI更新
@@ -275,29 +281,75 @@ func _refresh_installed_list(installed_list: Control) -> void:
 	for child in installed_list.get_children():
 		child.queue_free()
 
+	var mod_index := 0
 	for mod_entry in selected_card.mods:
 		var mod_id = mod_entry.get("id", "") if mod_entry is Dictionary else ""
 		var mod_data = ModificationRegistry.get_data(mod_id)
 		var rarity: String = String(mod_data.get("rarity", "common"))
+		var slot_type: String = String(mod_data.get("slot_type", ""))
+		var is_weapon_mod: bool = (slot_type == "weapon" or slot_type == "gun" or slot_type == "ammunition")
+		# v6.5: 获取启用状态（武器类改造可切换）
+		var enabled: bool = true
+		if mod_entry is Dictionary and mod_entry.has("enabled"):
+			enabled = bool(mod_entry["enabled"])
 
 		var item := PanelContainer.new()
-		item.custom_minimum_size = Vector2(0, 24)
+		item.custom_minimum_size = Vector2(0, 28)
 		var sb := StyleBoxFlat.new()
-		sb.bg_color = Color(0.1, 0.12, 0.2, 0.5)
+		sb.bg_color = Color(0.1, 0.12, 0.2, 0.5) if enabled else Color(0.08, 0.08, 0.1, 0.5)
 		sb.border_width_left = 2
-		sb.border_color = _rarity_color(rarity)
+		sb.border_color = _rarity_color(rarity) if enabled else (_rarity_color(rarity) * Color(1, 1, 1, 0.4))
 		sb.set_corner_radius_all(3)
 		sb.content_margin_left = 8
 		sb.content_margin_top = 3
 		sb.content_margin_right = 8
 		sb.content_margin_bottom = 3
 		item.add_theme_stylebox_override("panel", sb)
+
+		var hbox := HBoxContainer.new()
+		hbox.add_theme_constant_override("separation", 6)
+
 		var lbl := Label.new()
-		lbl.text = "✓ %s" % mod_data.get("name", mod_id)
+		var status_prefix: String = "✓ " if enabled else "⊘ "
+		lbl.text = status_prefix + String(mod_data.get("name", mod_id))
 		lbl.add_theme_font_size_override("font_size", 11)
-		lbl.add_theme_color_override("font_color", Color(0.85, 0.88, 0.95, 1))
-		item.add_child(lbl)
+		if enabled:
+			lbl.add_theme_color_override("font_color", Color(0.85, 0.88, 0.95, 1))
+		else:
+			lbl.add_theme_color_override("font_color", Color(0.5, 0.5, 0.55, 0.7))
+		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		hbox.add_child(lbl)
+
+		# v6.5: 武器类改造显示启用/禁用切换按钮
+		if is_weapon_mod:
+			var toggle_btn := Button.new()
+			toggle_btn.text = "启用" if not enabled else "禁用"
+			toggle_btn.add_theme_font_size_override("font_size", 10)
+			toggle_btn.custom_minimum_size = Vector2(50, 0)
+			# 绑定切换回调（用 lambda 捕获 mod_index）
+			var captured_index := mod_index
+			toggle_btn.pressed.connect(func():
+				_on_weapon_mod_toggled(captured_index, not enabled)
+			)
+			hbox.add_child(toggle_btn)
+
+		item.add_child(hbox)
 		installed_list.add_child(item)
+		mod_index += 1
+
+
+## v6.5: 武器类改造启用/禁用切换
+func _on_weapon_mod_toggled(mod_index: int, enable: bool) -> void:
+	if selected_card == null:
+		return
+	if BlueprintManager and BlueprintManager.has_method("set_mod_enabled"):
+		var ok: bool = BlueprintManager.set_mod_enabled(selected_card.card_id, mod_index, enable)
+		if ok:
+			# 刷新已安装列表
+			var installed_list = card_info_panel.get_node_or_null("CardView/InstalledList") if card_info_panel else null
+			if installed_list:
+				_refresh_installed_list(installed_list)
+
 
 ## ─────────────────────────────────────────────
 ##  改造操作

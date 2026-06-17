@@ -262,15 +262,22 @@ func go_to_battle() -> void:
 func _on_battle_ended(player_won: bool) -> void:
 	current_phase = GamePhase.POST_BATTLE
 
+	# v6.5: 战斗结束后同步战力星级到所有卡牌实例（防御性，确保存档前数据一致）
+	if BlueprintManager and BlueprintManager.has_method("sync_battle_stars_to_cards"):
+		BlueprintManager.sync_battle_stars_to_cards()
+
 	# 获取战斗结果数据
 	var victory_stars: int = 0
 	var era: int = 0
 	var phase_instrument_drop: Dictionary = {}
+	var intel_harvest: Dictionary = {}
 	if BattleManager.has_method("get_battle_result"):
 		var result: Dictionary = BattleManager.get_battle_result()
 		victory_stars = int(result.get("victory_stars", 0))
 		era = int(result.get("era", 0))
 		phase_instrument_drop = result.get("phase_instrument_drop", {}) as Dictionary
+		# v7.1: 提取情报掉落（含改造图纸/进化蓝图），传给结算界面显示
+		intel_harvest = result.get("intel_harvest", {}) as Dictionary
 
 	# 处理相位师对战结果
 	if _is_phase_master_battle and not _current_phase_master.is_empty():
@@ -326,7 +333,8 @@ func _on_battle_ended(player_won: bool) -> void:
 		"nano_material_gain": max(0, after_blueprint_nano - before_blueprint_nano),
 		"victory_stars": victory_stars,
 		"era": era,
-		"phase_instrument_drop": phase_instrument_drop.duplicate(true)
+		"phase_instrument_drop": phase_instrument_drop.duplicate(true),
+		"intel_harvest": intel_harvest.duplicate(true) if not intel_harvest.is_empty() else {},
 	}
 	var battle_fragment_gain: Dictionary = _calculate_blueprint_fragment_gain()
 	var battle_knowledge_gain: Dictionary = _calculate_knowledge_gain()
@@ -381,18 +389,38 @@ func _grant_phase_master_victory_reward(master_name: String) -> void:
 		pass  # LOG: 战胜相位师
 
 	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
+	var era_pm: int = GC.get_era_for_level(current_level)
 
-	# 1. 额外纳米材料奖励
-	if BasicResourceManager.has_method("add_resource"):
-		BasicResourceManager.add_resource(BasicResources.ID_NANO_MATERIALS, 50)
-		if DEBUG_GAME_LOG:
-			pass  # LOG: +50 基础纳米
+	# 1. v6.4: Boss 掉落表（300-500纳米 + 专属许可 + 额外材料），替换原固定 +50 纳米
+	var boss_id: String = String(_current_phase_master.get("faction", master_name.to_lower()))
+	var _drop_tables_inst = DropTables.new()
+	var boss_drops: Array = _drop_tables_inst.generate_boss_drops(era_pm, boss_id)
+	var extra_nano_total: int = 0
+	var extra_energy_total: int = 0
+	for drop in boss_drops:
+		if drop == null or not (drop is DropTables.DropResult):
+			continue
+		var res: DropTables.DropResult = drop
+		match res.drop.type:
+			DropTables.DropType.MATERIAL:
+				# 许可类：作为通用许可资源发放（permit_card_* 和 permit_type_* 均映射到 permit_general）
+				if res.drop.item_id.begins_with("permit_"):
+					if BasicResourceManager.has_method("add_resource"):
+						BasicResourceManager.add_resource(BasicResources.ID_PERMIT_GENERAL, res.count)
+				else:
+					# 材料类：直接加资源（item_id 与 BasicResources ID 字符串一致）
+					if BasicResourceManager.has_method("add_resource"):
+						BasicResourceManager.add_resource(res.drop.item_id, res.count)
+						if res.drop.item_id == "nano_materials":
+							extra_nano_total += res.count
+						elif res.drop.item_id == "energy_block":
+							extra_energy_total += res.count
+			DropTables.DropType.CARD_DATA, DropTables.DropType.BLUEPRINT_FRAGMENT:
+				# Boss 卡牌数据 → 成品卡发放
+				if not res.drop.item_id.is_empty() and BlueprintManager:
+					CardDropGrants.grant_enemy_style_card(BlueprintManager, res.drop.item_id, era_pm, 2)
 
-	# 2. 额外能量块
-	if BasicResourceManager.has_method("add_resource"):
-		BasicResourceManager.add_resource(BasicResources.ID_ENERGY_BLOCK, 10)
-		if DEBUG_GAME_LOG:
-			pass  # LOG: +10 能量块
+	# 2. v6.4: 固定 +10 能量块已由 Boss 掉落表（boss_drops 含 energy_block）提供，此处移除避免重复
 
 	# 3. 敌方装备 → 背包缴获卡（无武器版：仅战斗平台）
 	if BlueprintManager:
@@ -406,7 +434,6 @@ func _grant_phase_master_victory_reward(master_name: String) -> void:
 			if excluded_types.has(ptype):
 				continue
 			var pname: String = pdata.get("name", pid)
-			var era_pm: int = GC.get_era_for_level(current_level)
 			CardDropGrants.grant_enemy_style_card(BlueprintManager, String(pid), era_pm, 2)
 			if DEBUG_GAME_LOG:
 				pass  # LOG: 平台卡奖励
@@ -444,10 +471,10 @@ func _grant_phase_master_victory_reward(master_name: String) -> void:
 	if not faction_id.is_empty() and DEBUG_GAME_LOG:
 		pass  # LOG: 势力声望 +30
 
-	# 记录到战斗奖励摘要
+	# 记录到战斗奖励摘要（v6.4: 使用 Boss 掉落表实际累计值，而非固定 50/10）
 	last_battle_reward_summary["phase_master_victory"] = master_name
-	last_battle_reward_summary["extra_nano"] = 50
-	last_battle_reward_summary["extra_energy"] = 10
+	last_battle_reward_summary["extra_nano"] = extra_nano_total if extra_nano_total > 0 else 50
+	last_battle_reward_summary["extra_energy"] = extra_energy_total if extra_energy_total > 0 else 10
 
 ## 敌方势力 -> 法则家族映射
 static func _get_law_families_for_faction(enemy_faction: String) -> Array:

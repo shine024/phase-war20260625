@@ -78,21 +78,36 @@ func _apply_equipped_energy_cards() -> void:
 				if card.card_type != GC.CardType.ENERGY:
 					continue
 				energy_card_count += 1
-				# 读取能量卡蓝图星级，累计叠加决定能量上限
-				if BlueprintManager and BlueprintManager.has_method("get_blueprint_star"):
-					total_energy_star += BlueprintManager.get_blueprint_star(card.card_id)
+				# v7.1: 从卡ID解析等级（替代已废弃的 BlueprintManager.get_blueprint_star，原API固定返回1）
+				total_energy_star += _parse_energy_card_star(card.card_id)
 				# energy_start_*: 开局能量（唯一能量卡类型）
 				if card.card_id.begins_with("energy_start_"):
 					_base_start += maxf(0.0, card.energy_grant)
-	# 能量上限 = 基础100 + 所有能量卡星级各自×100 求和
+	# 能量上限 = 基础100 + 所有能量卡等级各自×100 求和
 	# 例：2级卡(200) + 7级卡(700) + 基础100 = 1000
 	if total_energy_star > 0:
 		_max = GC.ENERGY_MAX + float(total_energy_star) * 100.0
+	# v7.1: 接入相位仪"回复能量"属性（get_energy_recovery_rate 原为死代码，从未被调用）
+	if PhaseInstrumentManager.has_method("get_energy_recovery_rate"):
+		_regen_per_sec += PhaseInstrumentManager.get_energy_recovery_rate()
 	# 顶级相位仪（4个以上能量槽）能量回复乘5
 	if slot_count >= 4:
 		_regen_per_sec *= 5.0
 	if _base_start <= 0.0:
 		_base_start = GC.ENERGY_START
+
+## v7.1: 从能量卡ID解析星级（energy_start_1~7 → 1~7）
+## 静态方法，供 UI 和本类共用同一份公式（避免前后端逻辑脱节）
+static func parse_energy_card_star(card_id: String) -> int:
+	if card_id.begins_with("energy_start_"):
+		var suffix := card_id.substr("energy_start_".length())
+		if suffix.is_valid_int():
+			return clampi(int(suffix), 1, 7)
+	return 1
+
+## 实例包装器（兼容内部调用）
+func _parse_energy_card_star(card_id: String) -> int:
+	return parse_energy_card_star(card_id)
 
 func _add_energy(amount: float) -> void:
 	current = clampf(current + amount, 0.0, _max)

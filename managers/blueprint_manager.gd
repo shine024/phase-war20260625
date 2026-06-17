@@ -21,7 +21,6 @@ var DEBUG_BLUEPRINT_LOG := false
 const GC = preload("res://resources/game_constants.gd")
 const BasicResources = preload("res://data/basic_resources.gd")
 const StarConfig = preload("res://data/blueprint_star_config.gd")
-const ModEffects = preload("res://data/mod_effects.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 const EnemyPhaseEquipment = preload("res://data/enemy_phase_equipment.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
@@ -83,6 +82,9 @@ var blueprint_rank_cache: Dictionary = {}
 var blueprint_enemy_origin_mod: Dictionary = {}
 ## card_id -> 自定义武器槽位配置（用于进化/改造后的武器）
 var blueprint_weapon_slots: Dictionary = {}
+
+## v6.5 战力星级追踪：card_id → {star: int, power: float}
+var card_battle_stars: Dictionary = {}
 
 ## 纳米材料已迁移到 BasicResourceManager（autoload）
 
@@ -337,6 +339,53 @@ func apply_card_drop_first_copy(card_id: String) -> void:
 func get_blueprint_star(card_id: String) -> int:
 	# [DEPRECATED] 星级系统已废弃，固定返回1
 	return 1
+
+# ── v6.5 战力星级系统 ──
+
+## 获取卡牌的战力星级（0-7）
+func get_battle_star(card_id: String) -> int:
+	var entry: Dictionary = card_battle_stars.get(card_id, {})
+	if entry.is_empty():
+		return 0
+	return int(entry.get("star", 0))
+
+## 获取卡牌的累计击溃战力
+func get_battle_star_power(card_id: String) -> float:
+	var entry: Dictionary = card_battle_stars.get(card_id, {})
+	if entry.is_empty():
+		return 0.0
+	return float(entry.get("power", 0.0))
+
+## 累加击溃战力，检查是否升星。返回 {leveled_up: bool, new_star: int, old_star: int}
+func add_battle_star_power(card_id: String, power: float) -> Dictionary:
+	if power <= 0.0:
+		return {"leveled_up": false, "new_star": get_battle_star(card_id), "old_star": get_battle_star(card_id)}
+	var BattleStarCfg = preload("res://data/battle_star_config.gd")
+	var entry: Dictionary = card_battle_stars.get(card_id, {"star": 0, "power": 0.0})
+	var old_star: int = int(entry.get("star", 0))
+	var cur_power: float = float(entry.get("power", 0.0)) + power
+	var new_star: int = BattleStarCfg.get_star_from_power(cur_power)
+	entry["power"] = cur_power
+	entry["star"] = new_star
+	card_battle_stars[card_id] = entry
+	# 同步到 CardResource 实例
+	var card: CardResource = _get_card_from_library(card_id)
+	if card != null:
+		card.battle_star = new_star
+		card.battle_star_power = cur_power
+	var leveled_up: bool = new_star > old_star
+	if leveled_up:
+		SignalBus.blueprint_star_upgraded.emit(card_id, new_star)
+	return {"leveled_up": leveled_up, "new_star": new_star, "old_star": old_star}
+
+## 战斗结束时同步所有 card_battle_stars 到 CardResource 实例
+func sync_battle_stars_to_cards() -> void:
+	for card_id in card_battle_stars.keys():
+		var entry: Dictionary = card_battle_stars[card_id]
+		var card: CardResource = _get_card_from_library(card_id)
+		if card != null:
+			card.battle_star = int(entry.get("star", 0))
+			card.battle_star_power = float(entry.get("power", 0.0))
 
 ## 获取法则蓝图星级（别名）
 func get_law_blueprint_level(law_id: String) -> int:
@@ -763,6 +812,15 @@ func save_state() -> Dictionary:
 					})
 			weapon_slots_dict[k2] = slots_array
 
+	# v6.5 战力星级数据
+	var battle_stars_dict: Dictionary = {}
+	for k in card_battle_stars.keys():
+		var bs_entry: Dictionary = card_battle_stars[k]
+		battle_stars_dict[String(k)] = {
+			"star": int(bs_entry.get("star", 0)),
+			"power": float(bs_entry.get("power", 0.0)),
+		}
+
 	return {
 		"unlocked": unlocked_blueprint_ids.duplicate(),
 		"blueprint_copies": copies_dict,
@@ -772,6 +830,7 @@ func save_state() -> Dictionary:
 		"blueprint_rank_cache": rank_dict,
 		"blueprint_enemy_origin_mod": eom_dict,
 		"blueprint_weapon_slots": weapon_slots_dict,
+		"card_battle_stars": battle_stars_dict,
 		"legacy_default_energy_copies_migrated": _legacy_default_energy_copies_migrated,
 	}
 
@@ -843,6 +902,18 @@ func load_state(data: Dictionary) -> void:
 							slots_array.append(w)
 					blueprint_weapon_slots[cid_w] = slots_array
 
+		# v6.5 战力星级数据加载
+		if data.has("card_battle_stars") and data["card_battle_stars"] is Dictionary:
+			card_battle_stars.clear()
+			for k in data["card_battle_stars"]:
+				var bs: Dictionary = data["card_battle_stars"][k]
+				if bs is Dictionary:
+					card_battle_stars[String(k)] = {
+						"star": int(bs.get("star", 0)),
+						"power": float(bs.get("power", 0.0)),
+					}
+			sync_battle_stars_to_cards()
+
 	# 兼容旧存档的 fragments → blueprint_copies 迁移
 	if not data.has("blueprint_copies") and data.has("fragments") and data["fragments"] is Dictionary:
 		blueprint_copies.clear()
@@ -898,6 +969,8 @@ func reset_to_defaults() -> void:
 	blueprint_inherit_bonus.clear()
 	blueprint_rank_cache.clear()
 	blueprint_enemy_origin_mod.clear()
+	blueprint_weapon_slots.clear()
+	card_battle_stars.clear()
 	_legacy_default_energy_copies_migrated = false
 	_unlock_default_blueprints()
 
@@ -1021,6 +1094,7 @@ func install_modification(card: CardResource, mod_id: String, slot: int = -1) ->
 	var mod_entry = {
 		id = mod_id,
 		installed_at = Time.get_unix_time_from_system(),
+		enabled = true,  # v6.5: 武器类改造可启用/禁用
 	}
 
 	if slot >= 0 and slot < card.mods.size():
@@ -1046,6 +1120,45 @@ func install_modification(card: CardResource, mod_id: String, slot: int = -1) ->
 	_auto_save("modification")
 
 	return result
+
+## v6.5: 切换武器类改造的启用/禁用状态
+## 仅对武器类改造（slot_type 为 "weapon" 或 "gun"）有效，禁用后跳过效果但仍占用槽位
+func set_mod_enabled(card_id: String, mod_index: int, enabled: bool) -> bool:
+	var card: CardResource = _get_card_from_library(card_id)
+	if card == null:
+		return false
+	if mod_index < 0 or mod_index >= card.mods.size():
+		return false
+	var mod_entry = card.mods[mod_index]
+	if not (mod_entry is Dictionary):
+		return false
+	# 检查是否武器类改造
+	var mod_id: String = String(mod_entry.get("id", ""))
+	var ModReg = preload("res://scripts/systems/modification_registry.gd")
+	var mod_data: Dictionary = ModReg.get_data(mod_id)
+	var slot_type: String = String(mod_data.get("slot_type", ""))
+	if slot_type != "weapon" and slot_type != "gun":
+		return false  # 仅武器类改造可启用/禁用
+	mod_entry["enabled"] = enabled
+	card.mods[mod_index] = mod_entry
+	_update_blueprint_mods_cache(card_id)
+	emit_signal("fragments_changed")
+	_auto_save("modification_toggle")
+	return true
+
+## v6.5: 获取改造的启用状态（无 enabled 字段时默认 true）
+func is_mod_enabled(card_id: String, mod_index: int) -> bool:
+	var card: CardResource = _get_card_from_library(card_id)
+	if card == null:
+		return true
+	if mod_index < 0 or mod_index >= card.mods.size():
+		return true
+	var mod_entry = card.mods[mod_index]
+	if not (mod_entry is Dictionary):
+		return true
+	if mod_entry.has("enabled"):
+		return bool(mod_entry["enabled"])
+	return true
 
 ## 替换改造（新接口）
 func replace_modification(card: CardResource, old_mod_id: String, new_mod_id: String) -> Dictionary:
