@@ -242,9 +242,28 @@ func _update_slot_panel(panel: Control, entry: Dictionary) -> void:
 			("⚔" if law_kind == "active" else "🛡") + short_law_name,
 			cost_line
 		)
-	else:
-		_apply_slot_bottom_text(panel, "空", "")
-		panel.tooltip_text = "%s 槽（空）" % _slot_name(color)
+		_sync_slot_icon(panel, card, law_id)
+		_sync_slot_rank_badge(panel, card)
+		_sync_slot_card_background(panel, card)
+		_sync_slot_card_frame(panel, card)
+		return
+	# v6.2: 符文槽位显示
+	var rune_id: String = String(entry.get("rune_id", ""))
+	if color == "rune" and not rune_id.is_empty():
+		var RuneDefs = preload("res://data/runes.gd")
+		var rune_name: String = RuneDefs.get_rune_name(rune_id)
+		var rune_def: Dictionary = RuneDefs.get_rune(rune_id)
+		var rarity_name: String = RuneDefs.RARITY_NAMES.get(rune_def.get("rarity", ""), "")
+		var short_name: String = rune_name
+		if short_name.length() > 4:
+			short_name = short_name.substr(0, 4)
+		_apply_slot_bottom_text(panel, "◈" + short_name, rarity_name)
+		panel.tooltip_text = "符文：%s（%s）\n%s" % [rune_name, rarity_name, RuneDefs.get_description(rune_id)]
+		_sync_slot_card_background(panel, null)
+		_sync_slot_card_frame(panel, null)
+		return
+	_apply_slot_bottom_text(panel, "空", "")
+	panel.tooltip_text = "%s 槽（空）" % _slot_name(color)
 	_sync_slot_icon(panel, card, law_id)
 	_sync_slot_rank_badge(panel, card)
 	_sync_slot_card_background(panel, card)
@@ -578,6 +597,7 @@ func _slot_name(color: String) -> String:
 		"red": return "主动法则"
 		"blue": return "被动法则"
 		"yellow": return "能量"
+		"rune": return "符文"
 	return color
 
 func _env_value_label(env_key: String, raw: String) -> String:
@@ -623,6 +643,7 @@ func _slot_bg(color: String) -> Color:
 		"red": return Color(0.20, 0.05, 0.05, 0.92)
 		"blue": return Color(0.05, 0.10, 0.22, 0.92)
 		"yellow": return Color(0.18, 0.15, 0.04, 0.92)
+		"rune": return Color(0.14, 0.06, 0.22, 0.92)
 	return Color(0.07, 0.08, 0.12, 0.92)
 
 func _slot_border(color: String) -> Color:
@@ -631,6 +652,7 @@ func _slot_border(color: String) -> Color:
 		"red": return Color(0.90, 0.35, 0.35, 0.85)
 		"blue": return Color(0.45, 0.70, 1.00, 0.85)
 		"yellow": return Color(0.95, 0.80, 0.35, 0.90)
+		"rune": return Color(0.75, 0.45, 0.95, 0.90)
 	return Color(0.35, 0.45, 0.60, 0.8)
 
 func _try_unequip_card_slot(color: String, color_index: int) -> bool:
@@ -709,11 +731,13 @@ func _update_instrument_tooltip(cfg: Dictionary) -> void:
 	var red_n: int = int(sc.get("red", 0))
 	var blue_n: int = int(sc.get("blue", 0))
 	var yellow_n: int = int(sc.get("yellow", 0))
+	var rune_n: int = int(sc.get("rune", 0))
 	var slot_parts: Array[String] = []
 	if green_n > 0: slot_parts.append("单位%d" % green_n)
 	if red_n > 0: slot_parts.append("主动%d" % red_n)
 	if blue_n > 0: slot_parts.append("被动%d" % blue_n)
 	if yellow_n > 0: slot_parts.append("能量%d" % yellow_n)
+	if rune_n > 0: slot_parts.append("符文%d" % rune_n)
 	if not slot_parts.is_empty():
 		lines.append("槽位: %s" % " ".join(slot_parts))
 	# 属性加成（新 properties[] + 旧字段回退）

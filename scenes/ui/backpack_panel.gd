@@ -72,6 +72,7 @@ var _combat_cards_grid: GridContainer = null
 var _resources_grid: GridContainer = null
 var _intel_grid: GridContainer = null
 var _stat_boosts_grid: GridContainer = null
+var _runes_grid: GridContainer = null  ## v6.2: 符文格子
 
 ## 相位仪快捷栏已移除（不再在背包内显示）
 
@@ -81,6 +82,7 @@ enum TabIndex {
 	RESOURCES = 1,
 	INTEL = 2,
 	STAT_BOOSTS = 3,
+	RUNES = 4,           ## v6.2: 符文标签
 }
 
 ## 全量重建排到 idle 再执行：在背包卡 item 的 gui_input / 拖拽 / 装备信号栈内不能对其 free()，否则会报 Object is locked
@@ -91,10 +93,12 @@ var _card_item_pool: Array = []
 var _resource_slot_pool: Array = []
 var _lore_slot_pool: Array = []
 var _stat_boost_slot_pool: Array = []
+var _rune_slot_pool: Array = []          ## v6.2: 符文格子对象池
 var _empty_slot_pool: Array = []
 var _last_lore_signature: String = "__INIT__"
 var _last_stat_boost_signature: String = "__INIT__"
 var _last_resources_signature: String = "__INIT__"
+var _last_runes_signature: String = "__INIT__"  ## v6.2: 符文签名去重
 var _loading_label: Label = null
 
 ## ============================================================
@@ -111,6 +115,7 @@ func _ready() -> void:
 	_resources_grid = get_node_or_null("VBoxOuter/TabContainer/ResourcesTab/ResourcesScroll/ResourcesGrid") as GridContainer
 	_intel_grid = get_node_or_null("VBoxOuter/TabContainer/IntelTab/IntelScroll/IntelGrid") as GridContainer
 	_stat_boosts_grid = get_node_or_null("VBoxOuter/TabContainer/StatBoostsTab/StatBoostsScroll/StatBoostsGrid") as GridContainer
+	_runes_grid = get_node_or_null("VBoxOuter/TabContainer/RunesTab/RunesScroll/RunesGrid") as GridContainer
 	# v6.5: 情报标签页改为显示"未装配改造"，更新 tab 标题以避免歧义
 	var _tab_container: TabContainer = get_node_or_null("VBoxOuter/TabContainer") as TabContainer
 	if _tab_container != null:
@@ -127,6 +132,8 @@ func _ready() -> void:
 		_apply_backpack_grid_layout(_intel_grid)
 	if _stat_boosts_grid:
 		_apply_backpack_grid_layout(_stat_boosts_grid)
+	if _runes_grid:
+		_apply_backpack_grid_layout(_runes_grid)
 
 	# 初始化 MVP
 	_data = BackpackData.new()
@@ -150,6 +157,7 @@ func _ready() -> void:
 		_tab_container.set_tab_title(TabIndex.RESOURCES, "资源")
 		_tab_container.set_tab_title(TabIndex.INTEL, "情报")
 		_tab_container.set_tab_title(TabIndex.STAT_BOOSTS, "属性提升")
+		_tab_container.set_tab_title(TabIndex.RUNES, "符文")
 		_tab_container.tab_changed.connect(_on_tab_changed)
 
 	# 初始化详情弹窗（信号连接延迟到首次显示时）
@@ -247,6 +255,9 @@ func _on_tab_changed(tab_index: int) -> void:
 		TabIndex.STAT_BOOSTS:
 			# 属性提升标签页切换时刷新
 			refresh_stat_boosts_tab()
+		TabIndex.RUNES:
+			# v6.2: 符文标签页刷新
+			refresh_runes_tab()
 
 ## ============================================================
 ## 公共接口（向后兼容）
@@ -751,6 +762,128 @@ func _add_stat_boosts_placeholder(grid: GridContainer, message: String) -> void:
 	lbl.add_theme_font_size_override("font_size", 14)
 	lbl.custom_minimum_size = Vector2(950.0, 80.0)
 	grid.add_child(lbl)
+
+## ────────────────────────────────────────────────────────────────
+## v6.2: 符文标签页
+## ────────────────────────────────────────────────────────────────
+
+var RuneClass = RuneDefinitions
+
+## 刷新符文标签页：显示已获得的所有符文（名称+稀有度+数量）
+func refresh_runes_tab() -> void:
+	if _runes_grid == null:
+		return
+	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
+	if pim == null or not pim.has_method("get_owned_runes"):
+		_clear_grid_children(_runes_grid)
+		_add_runes_placeholder(_runes_grid, "符文系统未初始化")
+		return
+	var owned_runes: Array = pim.get_owned_runes()
+	# 签名去重
+	var sig_parts: Array[String] = []
+	for rid in owned_runes:
+		sig_parts.append(str(rid))
+	sig_parts.sort()
+	var sig := "|".join(sig_parts)
+	if sig == _last_runes_signature:
+		return
+	_last_runes_signature = sig
+	_clear_grid_children(_runes_grid)
+	if owned_runes.is_empty():
+		_add_runes_placeholder(_runes_grid, "暂无符文\n通过战斗掉落或势力商店获取")
+		return
+	# 获取当前装备中的符文（用于显示"已装备"标记）
+	var equipped_runes: Array = []
+	if pim.has_method("get_rune_slots"):
+		equipped_runes = pim.get_rune_slots()
+	# 统计每种符文的数量（理论上每种符文只有1个，但防御性处理）
+	var rune_counts: Dictionary = {}
+	for rid in owned_runes:
+		var key: String = str(rid)
+		rune_counts[key] = rune_counts.get(key, 0) + 1
+	# 按稀有度排序（传说>史诗>稀有>常见）
+	var sorted_ids: Array = rune_counts.keys()
+	sorted_ids.sort_custom(func(a, b):
+		return _rune_rarity_sort_value(a) > _rune_rarity_sort_value(b))
+	# 渲染
+	for rid in sorted_ids:
+		var rune_id: String = str(rid)
+		var count: int = int(rune_counts[rune_id])
+		_add_rune_item(_runes_grid, rune_id, count, equipped_runes.has(rune_id))
+	_schedule_sync_card_grid_scroll_size_for_grid(_runes_grid)
+
+## 单个符文格子渲染
+func _add_rune_item(grid: GridContainer, rune_id: String, count: int, is_equipped: bool) -> void:
+	var rune_def: Dictionary = RuneClass.get_rune(rune_id)
+	var rune_name: String = RuneClass.get_rune_name(rune_id)
+	var rarity: String = rune_def.get("rarity", "common")
+	var rarity_name: String = RuneClass.RARITY_NAMES.get(rarity, "")
+	var category: String = rune_def.get("category", "")
+	var rune_color: Color = RuneClass.get_color(rune_id)
+	var desc: String = RuneClass.get_description(rune_id)
+	# 显示名称：符文名 + 稀有度
+	var display_name: String = rune_name
+	if is_equipped:
+		display_name += " ✓"
+	# 数量：每种符文数量（通常为1，但显示出来更清晰）
+	var count_text: String = "×%d" % count
+	# extra_data 让 ResourceSlotItem 显示自定义名称和描述
+	var extra_data: Dictionary = {
+		"name": display_name,
+		"description": "【%s】%s\n%s" % [rarity_name, _rune_category_name(category), desc],
+		"rune_color": rune_color,
+	}
+	# 复用 stat_boost 对象池
+	var item = null
+	if not _rune_slot_pool.is_empty():
+		item = _rune_slot_pool.pop_back()
+	else:
+		item = ResourceSlotScene.instantiate()
+	if item == null:
+		return
+	grid.add_child(item)
+	if item.has_method("set_data"):
+		# SlotType.STAT_BOOST=2 作为通用格子类型
+		item.set_data(rune_id, count, 2, extra_data)
+	# 设置稀有度边框颜色
+	if "modulate" in item:
+		var border_color: Color = rune_color
+		item.modulate = Color(1, 1, 1, 1)
+	# 设置 tooltip
+	if "tooltip_text" in item:
+		item.tooltip_text = "【%s】%s\n%s" % [rarity_name, rune_name, desc]
+
+## 符文稀有度排序值
+func _rune_rarity_sort_value(rune_id: String) -> int:
+	var rune_def: Dictionary = RuneClass.get_rune(rune_id)
+	var rarity: String = rune_def.get("rarity", "common")
+	match rarity:
+		"legendary": return 4
+		"epic": return 3
+		"rare": return 2
+		"common": return 1
+	return 0
+
+## 符文分类中文名
+func _rune_category_name(category: String) -> String:
+	match category:
+		"attack": return "攻击符文"
+		"defense": return "防御符文"
+		"energy": return "能量符文"
+		"mobility": return "机动符文"
+		"special": return "特殊符文"
+	return "符文"
+
+## 符文标签空状态占位
+func _add_runes_placeholder(grid: GridContainer, message: String) -> void:
+	var lbl := Label.new()
+	lbl.text = message
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.add_theme_color_override("font_color", Color(0.55, 0.6, 0.7, 0.9))
+	lbl.add_theme_font_size_override("font_size", 14)
+	lbl.custom_minimum_size = Vector2(950.0, 80.0)
+	grid.add_child(lbl)
 ## 向后兼容方法（已废弃，保留以避免破坏现有调用）
 ## ============================================================
 
@@ -850,6 +983,7 @@ func _refresh_aux_sections_after_open() -> void:
 	refresh_resources_tab()
 	refresh_intel_tab()
 	refresh_stat_boosts_tab()
+	refresh_runes_tab()  # v6.2: 刷新符文标签页
 
 ## ============================================================
 ## 内部 UI 方法

@@ -8,6 +8,12 @@ enum GamePhase {
 	POST_BATTLE
 }
 
+# v6.3: 游戏模式
+enum GameMode {
+	FREE,    ## 自由模式（原有玩法，自由选关）
+	STORY,   ## 剧情模式（线性章节，含对话+Boss战）
+}
+
 var current_phase: GamePhase = GamePhase.PRE_BATTLE
 var battle_scene: Node = null
 var main_scene: Node = null
@@ -21,6 +27,11 @@ signal current_level_changed(level: int)
 # 相位师对战相关
 var _current_phase_master: Dictionary = {}  # 当前战斗的相位师配置
 var _is_phase_master_battle: bool = false   # 是否在与相位师战斗
+
+# v6.3: 剧情模式状态
+var game_mode: GameMode = GameMode.FREE
+var current_chapter_id: String = ""         ## 当前进行中的章节ID
+var _story_custom_battle: Dictionary = {}   ## 剧情Boss章的自定义战斗配置（覆盖普通相位师检测）
 
 ## 检查是否遭遇相位师（每场战斗15%概率）
 ## 逻辑：优先遭遇当前关卡所属势力的相位师（用于防守任务）
@@ -262,6 +273,11 @@ func go_to_battle() -> void:
 func _on_battle_ended(player_won: bool) -> void:
 	current_phase = GamePhase.POST_BATTLE
 
+	# v6.3: 剧情模式 — 战斗结束后走剧情专用流程
+	if game_mode == GameMode.STORY:
+		_story_handle_battle_end(player_won)
+		return
+
 	# v6.5: 战斗结束后同步战力星级到所有卡牌实例（防御性，确保存档前数据一致）
 	if BlueprintManager and BlueprintManager.has_method("sync_battle_stars_to_cards"):
 		BlueprintManager.sync_battle_stars_to_cards()
@@ -437,23 +453,41 @@ func _grant_phase_master_victory_reward(master_name: String) -> void:
 			CardDropGrants.grant_enemy_style_card(BlueprintManager, String(pid), era_pm, 2)
 			if DEBUG_GAME_LOG:
 				pass  # LOG: 平台卡奖励
-	# 4. 势力法则 → 背包法则卡（从相位师所属势力的法则家族中随机选取3条）
-	if BlueprintManager:
-		var master_faction: String = _current_phase_master.get("faction", "")
-		var families: Array = _get_law_families_for_faction(master_faction)
-		var law_ids: Array = _get_law_ids_for_families(families)
-		if not law_ids.is_empty():
-			## 随机选3条（不重复）
-			var shuffled: Array = law_ids.duplicate()
-			shuffled.shuffle()
-			var pick_count: int = mini(3, shuffled.size())
-			for i in range(pick_count):
-				var law_id: String = String(shuffled[i])
-				var law_data: Dictionary = PhaseLaws.get_by_id(law_id)
-				var law_name: String = law_data.get("name", law_id)
-				CardDropGrants.grant_law_cards_to_backpack(law_id, 2)
-				if DEBUG_GAME_LOG:
-					pass  # LOG: +2 法则卡
+	# 4. v6.2: 相位大师击败 → 符文掉落（替代废弃的法则卡奖励）
+	# 原逻辑：从势力法则家族随机选3条法则卡 → 已废弃
+	# 新逻辑：必掉1个稀有符文，30%概率额外掉1个史诗符文
+	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
+	if pim and pim.has_method("add_owned_rune"):
+		var RuneDefs = preload("res://data/runes.gd")
+		# 必掉稀有符文
+		var rare_runes: Array[Dictionary] = RuneDefs.get_runes_by_rarity(RuneDefs.RARITY_RARE)
+		var generic_rare: Array[Dictionary] = []
+		for r in rare_runes:
+			if r.get("faction_id", "") == RuneDefs.FACTION_GENERIC:
+				generic_rare.append(r)
+		if not generic_rare.is_empty():
+			var picked = generic_rare[randi() % generic_rare.size()]
+			pim.add_owned_rune(picked["id"])
+		# 30%概率额外掉史诗符文
+		if randf() < 0.30:
+			var epic_runes: Array[Dictionary] = RuneDefs.get_runes_by_rarity(RuneDefs.RARITY_EPIC)
+			var generic_epic: Array[Dictionary] = []
+			for r in epic_runes:
+				if r.get("faction_id", "") == RuneDefs.FACTION_GENERIC:
+					generic_epic.append(r)
+			if not generic_epic.is_empty():
+				var picked_e = generic_epic[randi() % generic_epic.size()]
+				pim.add_owned_rune(picked_e["id"])
+		# 5%概率掉传说符文（极稀有）
+		if randf() < 0.05:
+			var leg_runes: Array[Dictionary] = RuneDefs.get_runes_by_rarity(RuneDefs.RARITY_LEGENDARY)
+			var generic_leg: Array[Dictionary] = []
+			for r in leg_runes:
+				if r.get("faction_id", "") == RuneDefs.FACTION_GENERIC:
+					generic_leg.append(r)
+			if not generic_leg.is_empty():
+				var picked_l = generic_leg[randi() % generic_leg.size()]
+				pim.add_owned_rune(picked_l["id"])
 
 	# 5. 势力声望提升（战胜相位师，该势力获得声望）
 	var faction_id: String = ""
@@ -547,14 +581,17 @@ const CardDropGrants = preload("res://scripts/card_drop_grants.gd")
 
 func _grant_basic_resources_for_current_level() -> void:
 	var drops: Dictionary = BasicResources.get_drops_for_level(current_level)
+	# v6.2: 符文之语资源产出加成
+	var yield_mult: float = 1.0 + _get_rune_special_bonus("on_resource_yield")
 	if BasicResourceManager and BasicResourceManager.has_method("add_resource"):
 		for id in drops.keys():
-			var amount: int = int(drops[id])
+			var amount: int = int(float(drops[id]) * yield_mult)
 			if amount > 0:
 				BasicResourceManager.add_resource(String(id), amount)
 	# 战后额外：纳米材料（用于解析蓝图）
 	if BlueprintManager and BlueprintManager.has_method("add_nano_materials"):
 		var nano_bonus: int = 10 + current_level * 3 + int(pow(float(current_level), 1.15))  # 经济平衡：指数增长
+		nano_bonus = int(float(nano_bonus) * yield_mult)  # v6.2: 资源产出加成
 		BlueprintManager.add_nano_materials(nano_bonus)
 	return
 
@@ -589,7 +626,22 @@ func _grant_phase_field_xp_for_victory() -> void:
 	if not PhaseInstrumentManager.has_method("grant_phase_field_xp"):
 		return
 	var total_xp: int = LevelEras.get_base_xp_for_level(current_level)
+	# v6.2: 符文之语探索奖励加成
+	total_xp = int(float(total_xp) * (1.0 + _get_rune_special_bonus("on_explore_bonus")))
 	PhaseInstrumentManager.grant_phase_field_xp("battle_victory", total_xp)
+
+## v6.2: 获取符文之语结算类特殊效果的加成比例（0.0-1.0+）
+## 支持：on_explore_bonus（探索奖励）、on_resource_yield（资源产出）
+func _get_rune_special_bonus(special_type: String) -> float:
+	if not PhaseInstrumentManager or not PhaseInstrumentManager.has_method("get_rune_bonus"):
+		return 0.0
+	var bonus: Dictionary = PhaseInstrumentManager.get_rune_bonus()
+	var specials: Array = bonus.get("specials", [])
+	var total: float = 0.0
+	for sp in specials:
+		if sp is Dictionary and sp.get("special", "") == special_type:
+			total += float(sp.get("value", 0)) / 100.0
+	return total
 
 func _snapshot_battle_reward_baselines() -> void:
 	_blueprint_copies_before_battle.clear()
@@ -632,3 +684,132 @@ func _calculate_knowledge_gain() -> Dictionary:
 			total_gain += gain
 			items.append({"id": key, "gain": gain})
 	return {"total": total_gain, "items": items}
+
+
+# ═══════════════════════════════════════════════════════════════════
+# v6.3: 剧情模式流程
+# ═══════════════════════════════════════════════════════════════════
+
+const StoryChaptersData = preload("res://data/story_chapters.gd")
+
+## 开始剧情章节：设置关卡 → 触发战前对话
+func start_story_chapter(chapter_id: String) -> void:
+	var chapter: Dictionary = StoryChaptersData.get_chapter(chapter_id)
+	if chapter.is_empty():
+		push_warning("[GameManager] 未找到剧情章节: %s" % chapter_id)
+		return
+	current_chapter_id = chapter_id
+	game_mode = GameMode.STORY
+	# 设置关卡
+	set_current_level(int(chapter.get("level_override", 1)))
+	# Boss章节：设置自定义相位师配置
+	if chapter.get("is_boss_chapter", false):
+		var custom: Dictionary = chapter.get("custom_battle", {})
+		_story_custom_battle = custom
+		_is_phase_master_battle = true
+		_current_phase_master = _build_story_master_config(custom)
+	else:
+		_story_custom_battle = {}
+		_is_phase_master_battle = false
+		_current_phase_master = {}
+	# 触发战前对话信号
+	if SignalBus.has_signal("story_show_pre_battle_dialogue"):
+		SignalBus.story_show_pre_battle_dialogue.emit(chapter_id)
+
+## 战前对话播放完毕后调用：正式进入战斗
+func story_proceed_to_battle() -> void:
+	if game_mode != GameMode.STORY or current_chapter_id.is_empty():
+		return
+	# 复用现有 go_to_battle 流程
+	go_to_battle()
+
+## 战斗结束后（剧情模式）：触发战后对话
+func story_on_battle_won() -> void:
+	if game_mode != GameMode.STORY or current_chapter_id.is_empty():
+		return
+	# 清理自定义Boss配置
+	_story_custom_battle = {}
+	_is_phase_master_battle = false
+	# 标记章节完成
+	var sm: Node = get_node_or_null("/root/StoryManager")
+	if sm and sm.has_method("complete_chapter"):
+		sm.complete_chapter(current_chapter_id)
+	# 触发战后对话信号
+	if SignalBus.has_signal("story_show_post_battle_dialogue"):
+		SignalBus.story_show_post_battle_dialogue.emit(current_chapter_id)
+
+## 战后对话播放完毕后调用：解锁下一章或完成剧情
+func story_advance_to_next() -> void:
+	if game_mode != GameMode.STORY:
+		return
+	var next_id: String = StoryChaptersData.get_next_chapter_id(current_chapter_id)
+	if next_id.is_empty():
+		# 剧情模式全部完成
+		_on_story_completed()
+		return
+	# 解锁下一章
+	var sm: Node = get_node_or_null("/root/StoryManager")
+	if sm and sm.has_method("unlock_chapter"):
+		sm.unlock_chapter(next_id)
+	# 显示章节选择面板（让玩家继续）
+	if SignalBus.has_signal("story_show_chapter_select"):
+		SignalBus.story_show_chapter_select.emit()
+
+## 剧情模式全部完成
+func _on_story_completed() -> void:
+	if SignalBus.has_signal("story_campaign_completed"):
+		SignalBus.story_campaign_completed.emit()
+	# 返回章节选择（玩家可重玩）
+	if SignalBus.has_signal("story_show_chapter_select"):
+		SignalBus.story_show_chapter_select.emit()
+
+## 剧情模式战斗结束处理（仍发放奖励，然后触发战后对话）
+func _story_handle_battle_end(player_won: bool) -> void:
+	# 剧情模式仍发放正常奖励（资源/经验/符文等），复用现有逻辑但跳过选关流程
+	if BlueprintManager and BlueprintManager.has_method("sync_battle_stars_to_cards"):
+		BlueprintManager.sync_battle_stars_to_cards()
+	# 发放基础资源
+	_grant_basic_resources_for_current_level()
+	# 发放相位场XP
+	_grant_phase_field_xp_for_victory()
+	# 保存
+	var sm_save: Node = get_node_or_null("/root/SaveManager")
+	if sm_save and sm_save.has_method("auto_save"):
+		sm_save.auto_save()
+	# 如果胜利，触发战后对话；失败则返回章节选择
+	if player_won:
+		story_on_battle_won()
+	else:
+		# 失败：返回章节选择让玩家重试
+		if SignalBus.has_signal("story_show_chapter_select"):
+			SignalBus.story_show_chapter_select.emit()
+
+## 退出剧情模式，切换到自由模式
+func exit_story_mode() -> void:
+	game_mode = GameMode.FREE
+	current_chapter_id = ""
+	_story_custom_battle = {}
+	_is_phase_master_battle = false
+
+## 构建剧情Boss的相位师配置（复用现有PhaseMaster格式）
+func _build_story_master_config(custom: Dictionary) -> Dictionary:
+	var master_name: String = custom.get("master_name", "剧情Boss")
+	var faction: String = custom.get("faction", "void")
+	var era: int = int(custom.get("era", 0))
+	var stats: Dictionary = custom.get("stats", {})
+	# 复用 _enrich_master_config 的格式
+	return {
+		"name": master_name,
+		"faction": faction,
+		"era": era,
+		"id": "story_boss_%s" % master_name,
+		"level": current_level,
+		"difficulty": 1.5,
+		"stats": stats,
+		"equipment": {},  # 使用默认装备
+		"traits": [],
+		"active_spells": [],
+		"passive_spells": [],
+		"enemy_faction": faction,
+		"is_story_boss": true,
+	}

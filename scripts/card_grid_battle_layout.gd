@@ -1,7 +1,9 @@
 extends RefCounted
 class_name CardGridBattleLayout
 ## 格子战术战场列宽 / 卡宽 / 间隙（1280 设计宽，战场 X 40–1240）
-## 布局：我方 7 槽 | 中间 1 列空带 | 敌方 7 槽；相邻卡间距 = 0.25×列宽
+## 布局：我方 7 槽 | 中间 1 列空带(位置 8 正中空位) | 敌方 7 槽；相邻卡间距 = 0.25×列宽
+## 全局共 15 列：位置 1(最左/我方 slot 0)与位置 15(最右/敌方 slot N-1)靠屏幕边禁放。
+## 故每侧 7 槽中实际可用 6 槽：我方 slot 1~6、敌方 slot 0~5。
 
 const BATTLE_X0: float = 40.0
 const BATTLE_X1: float = 1240.0

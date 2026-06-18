@@ -300,7 +300,7 @@ func _make_law_row(law_id: String, cfg: Dictionary, st: Dictionary, is_equipped:
 			slot_hint.text = "已装配\n（相位仪槽）"
 			slot_hint.add_theme_color_override("font_color", Color(0.45, 0.95, 0.65, 0.95))
 		else:
-			slot_hint.text = "请从背包拖\n法则卡到\n红/蓝槽"
+			slot_hint.text = "法则系统已废弃\n请使用符文系统"
 			slot_hint.add_theme_color_override("font_color", Color(0.55, 0.72, 0.88, 0.9))
 		slot_hint.add_theme_font_size_override("font_size", 10)
 		slot_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -399,7 +399,7 @@ func _apply_row_state_visual(panel: PanelContainer, title: Label, env_hint: Labe
 			slot_hint.text = "已装配\n（相位仪槽）"
 			slot_hint.add_theme_color_override("font_color", Color(0.45, 0.95, 0.65, 0.95))
 		else:
-			slot_hint.text = "请从背包拖\n法则卡到\n红/蓝槽"
+			slot_hint.text = "法则系统已废弃\n请使用符文系统"
 			slot_hint.add_theme_color_override("font_color", Color(0.55, 0.72, 0.88, 0.9))
 
 func _build_short_desc(cfg: Dictionary) -> String:

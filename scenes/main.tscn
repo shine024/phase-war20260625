@@ -1,4 +1,4 @@
-[gd_scene load_steps=23 format=3 uid="uid://main"]
+[gd_scene load_steps=27 format=3 uid="uid://main"]
 
 [ext_resource type="Script" uid="uid://d0jpdmko5mrnu" path="res://scenes/main.gd" id="1_script"]
 [ext_resource type="PackedScene" uid="uid://battlefield" path="res://scenes/battlefield/battlefield.tscn" id="2_battlefield"]
@@ -7,7 +7,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/enemy_spawn_hud.tscn" id="9_enemy_hud"]
 [ext_resource type="Script" uid="uid://crrqivol5erqy" path="res://scenes/ui/battle_click_overlay.gd" id="10_overlay"]
 [ext_resource type="PackedScene" path="res://scenes/ui/quest_panel.tscn" id="13_quest_panel"]
-[ext_resource type="PackedScene" path="res://scenes/ui/phase_law_panel.tscn" id="14_phase_law_panel"]
+[ext_resource type="PackedScene" path="res://scenes/ui/rune_panel.tscn" id="14_rune_panel"]
 [ext_resource type="PackedScene" path="res://scenes/ui/store_panel.tscn" id="17_store_panel"]
 [ext_resource type="PackedScene" uid="uid://d0ekxsdbvfjpy" path="res://scenes/ui/faction_panel.tscn" id="21_faction_panel"]
 [ext_resource type="Script" path="res://scenes/ui/world_map_panel.gd" id="30_world_map_panel"]
@@ -22,6 +22,10 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/card_grid_battle_hud.tscn" id="33_card_grid_hud"]
 [ext_resource type="PackedScene" path="res://scenes/ui/intelligence_hub_panel.tscn" id="34_intelligence_hub"]
 [ext_resource type="PackedScene" uid="uid://b8xk3l2m5n6o" path="res://scenes/ui/card_info_panel.tscn" id="35_card_info_panel"]
+[ext_resource type="PackedScene" path="res://scenes/ui/story_dialogue_panel.tscn" id="36_story_dialogue"]
+[ext_resource type="PackedScene" path="res://scenes/ui/story_chapter_select.tscn" id="37_story_select"]
+[ext_resource type="PackedScene" path="res://scenes/city_map.tscn" id="38_city_map"]
+[ext_resource type="Script" path="res://scenes/ui/ending_panel.gd" id="39_ending"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_level_display"]
 font_size = 24
@@ -277,7 +281,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="PhaseLawPanel" parent="PopupLayer/PhaseLawOverlay/CenterContainer" instance=ExtResource("14_phase_law_panel")]
+[node name="RunePanel" parent="PopupLayer/PhaseLawOverlay/CenterContainer" instance=ExtResource("14_rune_panel")]
 
 [node name="BackpackOverlay" type="Control" parent="PopupLayer"]
 visible = false
@@ -531,6 +535,42 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+
+[node name="StoryOverlay" type="Control" parent="PopupLayer"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="CenterContainer" type="CenterContainer" parent="PopupLayer/StoryOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="StoryDialoguePanel" parent="PopupLayer/StoryOverlay/CenterContainer" instance=ExtResource("36_story_dialogue")]
+visible = false
+
+[node name="StoryChapterSelect" parent="PopupLayer/StoryOverlay/CenterContainer" instance=ExtResource("37_story_select")]
+visible = false
+
+[node name="CityMap" parent="PopupLayer/StoryOverlay/CenterContainer" instance=ExtResource("38_city_map")]
+visible = false
+
+[node name="EndingPanel" type="Control" parent="PopupLayer/StoryOverlay/CenterContainer"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("39_ending")
 
 [node name="CenterContainer" type="CenterContainer" parent="PopupLayer/LevelSelectOverlay"]
 layout_mode = 1

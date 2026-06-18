@@ -125,66 +125,72 @@ static func build_default_shop_properties(star: int) -> Array[Dictionary]:
 	return chosen
 
 ## 通用相位仪布局（平衡型）
+## v6.2：移除 red/blue 法则槽，新增 rune 符文槽（替代法则系统）
+## 槽位类型：green=战斗卡(max6), yellow=能量卡(max2), rune=符文(max6)
+## 每个星级的分配不同，体现策略变化——不是每级都平均增长
 const _STAR_LAYOUT := {
-	1: {"green": 1, "red": 1, "blue": 0, "yellow": 1, "spawn_range_ratio": 0.30},
-	2: {"green": 1, "red": 1, "blue": 1, "yellow": 1, "spawn_range_ratio": 0.40},
-	3: {"green": 2, "red": 1, "blue": 1, "yellow": 1, "spawn_range_ratio": 0.55},
-	4: {"green": 2, "red": 2, "blue": 1, "yellow": 1, "spawn_range_ratio": 0.70},
-	5: {"green": 3, "red": 2, "blue": 1, "yellow": 1, "spawn_range_ratio": 0.82},
-	6: {"green": 4, "red": 2, "blue": 1, "yellow": 2, "spawn_range_ratio": 0.92},
-	7: {"green": 5, "red": 2, "blue": 2, "yellow": 2, "spawn_range_ratio": 1.00},
+	1: {"green": 1, "yellow": 1, "rune": 1, "spawn_range_ratio": 0.30},   # 3格：起步
+	2: {"green": 2, "yellow": 1, "rune": 1, "spawn_range_ratio": 0.40},   # 4格：+1战斗
+	3: {"green": 2, "yellow": 1, "rune": 3, "spawn_range_ratio": 0.55},   # 6格：侧重符文
+	4: {"green": 3, "yellow": 2, "rune": 2, "spawn_range_ratio": 0.70},   # 7格：侧重战斗+能量
+	5: {"green": 4, "yellow": 1, "rune": 4, "spawn_range_ratio": 0.82},   # 9格：均衡扩展
+	6: {"green": 3, "yellow": 2, "rune": 5, "spawn_range_ratio": 0.92},   # 10格：侧重符文
+	7: {"green": 5, "yellow": 2, "rune": 4, "spawn_range_ratio": 1.00},   # 11格：侧重战斗（高星追求火力）
 }
 
 ## 势力专属布局 - 每个势力有独特的格子分配特点
-# aether_dynamics (神盾): 防御特化 - 更多黄色槽（防御卡）
+## v6.2：red/blue 法则槽全部改为 rune 符文槽
+## 每个势力的槽位分配有独特侧重——不全是满配6+6，有取舍
+
+# aether_dynamics (神盾): 防御特化 - 偏能量+符文，战斗卡少
 const _FACTION_LAYOUT_AEGIS := {
-	2: {"green": 1, "red": 1, "blue": 1, "yellow": 1, "spawn_range_ratio": 0.40},
-	4: {"green": 2, "red": 2, "blue": 1, "yellow": 2, "spawn_range_ratio": 0.70},
-	6: {"green": 3, "red": 2, "blue": 1, "yellow": 3, "spawn_range_ratio": 0.92},
-	7: {"green": 4, "red": 2, "blue": 1, "yellow": 3, "spawn_range_ratio": 1.00},
+	2: {"green": 1, "yellow": 2, "rune": 2, "spawn_range_ratio": 0.40},
+	4: {"green": 2, "yellow": 2, "rune": 3, "spawn_range_ratio": 0.70},
+	6: {"green": 3, "yellow": 2, "rune": 4, "spawn_range_ratio": 0.92},
+	7: {"green": 3, "yellow": 2, "rune": 6, "spawn_range_ratio": 1.00},   # 11格：极限符文
 }
 
-# helix_recon (螺旋): 侦查特化 - 更多绿色槽（侦查卡）- 最适合多单位上场
+# helix_recon (螺旋): 侦查特化 - 极限战斗卡，符文少
 const _FACTION_LAYOUT_HELIX := {
-	1: {"green": 1, "red": 1, "blue": 0, "yellow": 1, "spawn_range_ratio": 0.30},
-	3: {"green": 3, "red": 1, "blue": 0, "yellow": 1, "spawn_range_ratio": 0.55},
-	5: {"green": 4, "red": 1, "blue": 1, "yellow": 2, "spawn_range_ratio": 0.82},
+	1: {"green": 2, "yellow": 1, "rune": 1, "spawn_range_ratio": 0.30},
+	3: {"green": 4, "yellow": 1, "rune": 1, "spawn_range_ratio": 0.55},
+	5: {"green": 6, "yellow": 1, "rune": 2, "spawn_range_ratio": 0.82},   # 9格：满战斗卡
 }
 
-# nova_arms (新星): 火力特化 - 更多红色槽（武器卡）
+# nova_arms (新星): 火力特化 - 战斗+符文均衡，能量少
 const _FACTION_LAYOUT_NOVA := {
-	2: {"green": 1, "red": 2, "blue": 0, "yellow": 1, "spawn_range_ratio": 0.40},
-	4: {"green": 2, "red": 3, "blue": 1, "yellow": 1, "spawn_range_ratio": 0.70},
-	6: {"green": 3, "red": 3, "blue": 1, "yellow": 1, "spawn_range_ratio": 0.92},
-	7: {"green": 4, "red": 4, "blue": 1, "yellow": 1, "spawn_range_ratio": 1.00},
+	2: {"green": 2, "yellow": 1, "rune": 2, "spawn_range_ratio": 0.40},
+	4: {"green": 3, "yellow": 1, "rune": 3, "spawn_range_ratio": 0.70},
+	6: {"green": 4, "yellow": 1, "rune": 4, "spawn_range_ratio": 0.92},
+	7: {"green": 5, "yellow": 1, "rune": 5, "spawn_range_ratio": 1.00},   # 11格：战斗+符文双高
 }
 
-# iron_wall_corp (铁幕): 坦克特化 - 平衡但偏黄色和蓝色
+# iron_wall_corp (铁幕): 坦克特化 - 偏能量+战斗，符文中等
 const _FACTION_LAYOUT_IRON := {
-	3: {"green": 2, "red": 1, "blue": 2, "yellow": 2, "spawn_range_ratio": 0.55},
-	5: {"green": 3, "red": 1, "blue": 2, "yellow": 2, "spawn_range_ratio": 0.82},
-	7: {"green": 4, "red": 2, "blue": 2, "yellow": 3, "spawn_range_ratio": 1.00},
+	3: {"green": 3, "yellow": 2, "rune": 2, "spawn_range_ratio": 0.55},
+	5: {"green": 4, "yellow": 2, "rune": 3, "spawn_range_ratio": 0.82},
+	7: {"green": 5, "yellow": 2, "rune": 3, "spawn_range_ratio": 1.00},   # 10格：堆战斗+能量
 }
 
-# void_research (影幕): 爆发特化 - 更多红色和蓝色
+# void_research (影幕): 爆发特化 - 极限符文，战斗卡少
 const _FACTION_LAYOUT_UMBRA := {
-	1: {"green": 1, "red": 1, "blue": 0, "yellow": 1, "spawn_range_ratio": 0.30},
-	3: {"green": 2, "red": 2, "blue": 2, "yellow": 1, "spawn_range_ratio": 0.55},
-	6: {"green": 3, "red": 3, "blue": 2, "yellow": 1, "spawn_range_ratio": 0.92},
+	1: {"green": 1, "yellow": 1, "rune": 2, "spawn_range_ratio": 0.30},
+	3: {"green": 1, "yellow": 1, "rune": 4, "spawn_range_ratio": 0.55},
+	6: {"green": 2, "yellow": 1, "rune": 6, "spawn_range_ratio": 0.92},   # 9格：满符文
 }
 
-# quantum_logistics (擎天): 资源特化 - 更多绿色和黄色
+# quantum_logistics (擎天): 资源特化 - 战斗+能量均衡，符文少
 const _FACTION_LAYOUT_ATLAS := {
-	2: {"green": 2, "red": 1, "blue": 0, "yellow": 1, "spawn_range_ratio": 0.40},
-	4: {"green": 3, "red": 1, "blue": 1, "yellow": 2, "spawn_range_ratio": 0.70},
-	6: {"green": 4, "red": 1, "blue": 1, "yellow": 2, "spawn_range_ratio": 0.92},
+	2: {"green": 2, "yellow": 2, "rune": 1, "spawn_range_ratio": 0.40},
+	4: {"green": 3, "yellow": 2, "rune": 2, "spawn_range_ratio": 0.70},
+	6: {"green": 4, "yellow": 2, "rune": 3, "spawn_range_ratio": 0.92},
 }
 
-# frontier_union (永纪): 时间特化 - 平衡但能量效率高
+# frontier_union (永纪): 时间特化 - 三类均衡
 const _FACTION_LAYOUT_EON := {
-	2: {"green": 1, "red": 1, "blue": 1, "yellow": 1, "spawn_range_ratio": 0.40},
-	5: {"green": 3, "red": 2, "blue": 1, "yellow": 2, "spawn_range_ratio": 0.82},
-	7: {"green": 5, "red": 2, "blue": 2, "yellow": 2, "spawn_range_ratio": 1.00},
+	2: {"green": 2, "yellow": 1, "rune": 2, "spawn_range_ratio": 0.40},
+	5: {"green": 3, "yellow": 2, "rune": 3, "spawn_range_ratio": 0.82},
+	7: {"green": 4, "yellow": 2, "rune": 4, "spawn_range_ratio": 1.00},   # 10格：均衡
 }
 
 static func _make_def(id: String, name: String, faction_id: String, is_generic: bool, star: int, output_rate: float, acquire_rule: String, special_traits: Array = []) -> Dictionary:
@@ -230,12 +236,14 @@ static func _make_def(id: String, name: String, faction_id: String, is_generic: 
 		"faction_id": faction_id,
 		"is_generic": is_generic,
 		"star": star,
+		# v6.2: 槽位结构（red/blue 法则槽废弃，改用 rune 符文槽）
 		"slot_counts": {
 			"green": int(layout.get("green", 1)),
-			"red": int(layout.get("red", 1)),
-			"blue": int(layout.get("blue", 0)),
 			"yellow": int(layout.get("yellow", 1)),
+			"rune": int(layout.get("rune", 1)),
 		},
+		# 兼容字段：保留 red=0/blue=0 防止老代码报错（渐进迁移）
+		"rune_slot_count": int(layout.get("rune", 1)),
 		"energy_output_rate": output_rate,
 		"energy_recovery_rate": recovery_rate,
 		"spawn_range_ratio": float(layout.get("spawn_range_ratio", 0.3)),
@@ -326,26 +334,36 @@ static func get_default_id() -> String:
 # ─────────────────────────────────────────────
 
 ## 槽位颜色中文名称映射
+## v6.2: 新增 rune（符文）槽，废弃 red/blue（法则槽）
 static func get_slot_color_name(color_key: String) -> String:
 	match color_key:
-		"green":  return "绿色"
-		"red":    return "红色"
-		"blue":   return "蓝色"
-		"yellow": return "黄色"
+		"green":  return "战斗卡"
+		"yellow": return "能量卡"
+		"rune":   return "符文"
+		# 兼容旧调用（返回空字符串，表示已废弃）
+		"red":    return ""
+		"blue":   return ""
 		_:        return "未知"
 
 ## 槽位颜色对应的颜色值（用于UI显示）
 static func get_slot_color_value(color_key: String) -> Color:
 	match color_key:
 		"green":  return Color(0.3, 0.9, 0.5, 1.0)
-		"red":    return Color(0.9, 0.3, 0.3, 1.0)
-		"blue":   return Color(0.3, 0.6, 1.0, 1.0)
 		"yellow": return Color(0.95, 0.85, 0.2, 1.0)
+		"rune":   return Color(0.75, 0.45, 0.95, 1.0)  # 紫色（符文专属色）
+		# 兼容旧调用
+		"red":    return Color(0.5, 0.5, 0.5, 0.3)    # 灰色淡化
+		"blue":   return Color(0.5, 0.5, 0.5, 0.3)
 		_:        return Color(0.7, 0.7, 0.7, 1.0)
 
 ## 获取相位仪的所有槽位颜色列表（按显示顺序）
+## v6.2: green(战斗卡) → yellow(能量卡) → rune(符文)
 static func get_all_slot_colors() -> Array:
-	return ["green", "red", "blue", "yellow"]
+	return ["green", "yellow", "rune"]
+
+## 判断某颜色槽位是否已废弃（法则系统迁移用）
+static func is_slot_color_deprecated(color_key: String) -> bool:
+	return color_key in ["red", "blue"]
 
 ## 获取星级中文名称
 static func get_star_name(star: int) -> String:

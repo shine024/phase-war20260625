@@ -18,11 +18,11 @@ enum Category {
 static func star_multiplier(star: int) -> float:
 	return 1.0 + float(maxi(1, star) - 1) * 0.1
 
-## 槽位相邻判定：普通光环 abs(a-b) <= 2，全局光环始终 true
+## 光环范围判定
+## v6.2: 所有光环（含普通光环）均影响我方全体，不再受槽位距离限制
 static func is_in_aura_range(source_slot: int, target_slot: int, is_global: bool) -> bool:
-	if is_global:
-		return true
-	return absi(source_slot - target_slot) <= 2
+	# 所有光环均为全局范围（全体我方单位）
+	return true
 
 ## 机械类平台判定（CARRIER_REPAIR 只治疗机械平台）
 static func is_mechanical_platform(platform_type: int) -> bool:

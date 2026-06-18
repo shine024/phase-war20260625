@@ -60,10 +60,22 @@ func _ready() -> void:
 			"node_name": "StorePanel",
 			"autoload": false
 		},
-		"phase_law": {
-			"scene": "res://scenes/ui/phase_law_panel.tscn",
+		"rune": {
+			"scene": "res://scenes/ui/rune_panel.tscn",
 			"parent_path": "PopupLayer/PhaseLawOverlay/CenterContainer",
-			"node_name": "PhaseLawPanel",
+			"node_name": "RunePanel",
+			"autoload": false
+		},
+		"story_dialogue": {
+			"scene": "res://scenes/ui/story_dialogue_panel.tscn",
+			"parent_path": "PopupLayer/StoryOverlay/CenterContainer",
+			"node_name": "StoryDialoguePanel",
+			"autoload": false
+		},
+		"story_chapter_select": {
+			"scene": "res://scenes/ui/story_chapter_select.tscn",
+			"parent_path": "PopupLayer/StoryOverlay/CenterContainer",
+			"node_name": "StoryChapterSelect",
 			"autoload": false
 		},
 		"affix": {

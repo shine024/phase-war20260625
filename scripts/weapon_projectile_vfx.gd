@@ -86,10 +86,11 @@ static var _active_impacts: int = 0
 const MAX_ACTIVE_IMPACTS: int = 64  # 从 32 增加到 64，支持曲射单位同时攻击
 
 ## 从池中获取（或新建）Sprite2D
+## 跳过已释放实例：战斗清理 queue_free 特效 Sprite 后，静态池仍可能持有悬空引用
 static func _acquire_impact_sprite() -> Sprite2D:
-	if _impact_pool.size() > 0:
+	while _impact_pool.size() > 0:
 		var fx: Sprite2D = _impact_pool.pop_back()
-		if is_instance_valid(fx):
+		if fx != null and is_instance_valid(fx):
 			fx.visible = true
 			fx.modulate = Color.WHITE
 			return fx

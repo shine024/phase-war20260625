@@ -16,13 +16,24 @@ func setup(host: Node) -> void:
 
 ## 验证拖放数据是否可以接受
 func can_drop_data(at_position: Vector2, data: Variant) -> bool:
-	if not (data is Dictionary) or not (data.get("card") is CardResource):
+	if not (data is Dictionary):
 		return false
-	var card: CardResource = data.get("card")
 	var target: Dictionary = get_slot_entry_by_local_pos(at_position)
 	if target.is_empty():
 		return false
 	var color: String = String(target.get("color", ""))
+	# v6.2: rune 槽位接受符文拖放（data 中含 rune_id 字符串）
+	if color == "rune":
+		var rune_id: String = String(data.get("rune_id", ""))
+		if rune_id.is_empty():
+			return false
+		if PhaseInstrumentManager and PhaseInstrumentManager.has_method("has_rune"):
+			return PhaseInstrumentManager.has_rune(rune_id)
+		return false
+	# 卡牌槽位校验
+	if not (data.get("card") is CardResource):
+		return false
+	var card: CardResource = data.get("card")
 	if color == "green":
 		return card.card_type == GC.CardType.COMBAT_UNIT
 	if color == "yellow":
@@ -44,12 +55,19 @@ func can_drop_data(at_position: Vector2, data: Variant) -> bool:
 func drop_data(at_position: Vector2, data: Variant) -> void:
 	if not can_drop_data(at_position, data):
 		return
-	var card: CardResource = data.get("card")
 	var target: Dictionary = get_slot_entry_by_local_pos(at_position)
 	if target.is_empty():
 		return
 	var color: String = String(target.get("color", ""))
 	var color_index: int = int(target.get("index", -1))
+	# v6.2: rune 槽位走 equip_rune
+	if color == "rune":
+		var rune_id: String = String(data.get("rune_id", ""))
+		if not rune_id.is_empty() and PhaseInstrumentManager and PhaseInstrumentManager.has_method("equip_rune"):
+			PhaseInstrumentManager.equip_rune(color_index, rune_id)
+		return
+	# 卡牌槽位走 equip_card
+	var card: CardResource = data.get("card")
 	var flat_index: int = slot_to_flat_index(color, color_index)
 	if flat_index < 0:
 		return
@@ -84,7 +102,8 @@ func slot_to_flat_index(color: String, color_index: int) -> int:
 	var red_count = int(slot_counts.get("red", 0))
 	var blue_count = int(slot_counts.get("blue", 0))
 	var green_count = int(slot_counts.get("green", 0))
-	# 槽位顺序：红→蓝→绿→黄
+	var yellow_count = int(slot_counts.get("yellow", 0))
+	# 槽位顺序：红→蓝→绿→黄→符文
 	match color:
 		"red":
 			return color_index
@@ -94,6 +113,8 @@ func slot_to_flat_index(color: String, color_index: int) -> int:
 			return red_count + blue_count + color_index
 		"yellow":
 			return red_count + blue_count + green_count + color_index
+		"rune":
+			return red_count + blue_count + green_count + yellow_count + color_index
 		_:
 			return -1
 
@@ -105,6 +126,12 @@ func try_unequip_card_slot(color: String, color_index: int) -> bool:
 	if in_battle:
 		return false
 	if PhaseInstrumentManager == null:
+		return false
+	# v6.2: rune 槽位走 unequip_rune
+	if color == "rune":
+		if PhaseInstrumentManager.has_method("unequip_rune"):
+			PhaseInstrumentManager.unequip_rune(color_index)
+			return true
 		return false
 	var flat_index: int = slot_to_flat_index(color, color_index)
 	if flat_index < 0:

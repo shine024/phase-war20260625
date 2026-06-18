@@ -95,8 +95,34 @@ static func _get_nearby_enemies(origin: Node2D, radius: float, is_player_unit: b
 	return _get_nearby_units(origin, radius, group_name)
 
 static func _get_nearby_allies(origin: Node2D, radius: float, is_player_unit: bool) -> Array:
+	# v6.2: 所有光环均影响全体我方单位，忽略距离限制（radius 参数保留以兼容现有调用）
+	# 光环不再受像素距离/槽位距离限制，只要是在场的同阵营单位都受影响
 	var group_name: String = "player_units" if is_player_unit else "enemy_units"
-	return _get_nearby_units(origin, radius, group_name)
+	return _get_all_units_in_group(origin, group_name)
+
+## 获取某阵营在场全部单位（不含 origin 自身）
+static func _get_all_units_in_group(origin: Node2D, target_group: String) -> Array:
+	var units: Array = []
+	if origin == null or not is_instance_valid(origin):
+		return units
+	var tree: SceneTree = origin.get_tree()
+	if tree == null:
+		return units
+	var nodes: Array = []
+	var bm: Node = tree.root.get_node_or_null("BattleManager")
+	if bm != null and is_instance_valid(bm) and bm.has_method("get_cached_nodes_in_group"):
+		var active: bool = bool(bm.get("battle_active")) if "battle_active" in bm else false
+		if active:
+			nodes = bm.get_cached_nodes_in_group(target_group)
+	if nodes.is_empty():
+		nodes = tree.get_nodes_in_group(target_group)
+	for node in nodes:
+		if not is_instance_valid(node) or node == origin:
+			continue
+		if not node is Node2D:
+			continue
+		units.append(node)
+	return units
 
 # ── 部署时属性修改 ─────────────────────────
 
@@ -244,6 +270,10 @@ static func apply_repair_fortress_heal(unit: Node2D, delta: float) -> void:
 			ally_max_hp = ally.stats.max_hp
 		elif "max_hp" in ally:
 			ally_max_hp = float(ally.max_hp)
+		# v6.2 性能优化：跳过已满血的单位
+		var ally_current_hp: float = float(ally.hp) if "hp" in ally else ally_max_hp
+		if ally_current_hp >= ally_max_hp - 0.01:
+			continue
 		var heal_amount: float = ally_max_hp * 0.05
 		if ally.has_method("heal"):
 			ally.heal(heal_amount)
@@ -333,6 +363,10 @@ static func apply_medic_heal_aura_tick(unit: Node2D) -> void:
 			ally_max_hp = ally.stats.max_hp
 		elif "max_hp" in ally:
 			ally_max_hp = float(ally.max_hp)
+		# v6.2 性能优化：跳过已满血的单位，避免无效治疗调用
+		var ally_current_hp: float = float(ally.hp) if "hp" in ally else ally_max_hp
+		if ally_current_hp >= ally_max_hp - 0.01:
+			continue
 		var heal_amount: float = ally_max_hp * heal_pct
 		if ally.has_method("heal"):
 			ally.heal(heal_amount)

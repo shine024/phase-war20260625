@@ -16,6 +16,7 @@ var slots: Array = []
 var _phase_level_label: Label = null
 var _slots_refresh_pending: bool = false
 var _pending_slots_data: Array = []
+var rune_slot_count_cache: int = 0  # v6.2: 符文槽位数（用于显示提示）
 
 func _dbg_agent(hypothesis_id: String, message: String, data: Dictionary) -> void:
 	var DebugLog = get_node_or_null("/root/DebugLog")
@@ -60,8 +61,11 @@ func _rebuild_slots() -> void:
 			blue_n = int(sc.get("blue", 0))
 			green_n = int(sc.get("green", 0))
 			yellow_n = int(sc.get("yellow", 0))
+			# v6.2: rune 槽位由独立的 rune_panel 管理，不在此面板创建 PhaseSlot
+			# 但在 phase_level 标签中显示总槽位数
+			rune_slot_count_cache = int(sc.get("rune", 0))
 
-	var total_slots: int = red_n + blue_n + green_n + yellow_n
+	var total_slots: int = green_n + yellow_n  # v6.2: 仅卡牌槽位（战斗卡+能量卡）
 	for i in range(total_slots):
 		var slot = PhaseSlotScene.instantiate()
 		slot.call_deferred("set", "slot_index", i)

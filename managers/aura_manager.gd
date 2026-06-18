@@ -162,27 +162,29 @@ func _on_global_tick() -> void:
 
 ## 通过槽位索引找受影响的友军（替代像素距离判定）
 func get_slot_targets(unit: Node2D, is_global: bool, is_player: bool) -> Array:
+	# v6.2: 所有光环均影响全体同阵营单位，不再受槽位/距离限制
 	var targets: Array = []
 	if unit == null or not is_instance_valid(unit):
 		return targets
 	var tree: SceneTree = unit.get_tree()
 	if tree == null:
 		return targets
-	var source_slot: int = int(unit.get_meta("card_grid_slot", -1))
-	if source_slot < 0:
-		return targets
 	var group_name: String = "player_units" if is_player else "enemy_units"
-	var group_nodes: Array = tree.get_nodes_in_group(group_name)
+	# v6.2 性能优化：优先使用 BattleManager 缓存的节点列表，避免每次 get_nodes_in_group 分配新数组
+	var group_nodes: Array = []
+	var bm: Node = tree.root.get_node_or_null("BattleManager")
+	if bm != null and is_instance_valid(bm) and bm.has_method("get_cached_nodes_in_group"):
+		var active: bool = bool(bm.get("battle_active")) if "battle_active" in bm else false
+		if active:
+			group_nodes = bm.get_cached_nodes_in_group(group_name)
+	if group_nodes.is_empty():
+		group_nodes = tree.get_nodes_in_group(group_name)
 	for node in group_nodes:
 		if not is_instance_valid(node) or node == unit:
 			continue
 		if not node is Node2D:
 			continue
-		var target_slot: int = int(node.get_meta("card_grid_slot", -1))
-		if target_slot < 0:
-			continue
-		if _get_aura_data().is_in_aura_range(source_slot, target_slot, is_global):
-			targets.append(node)
+		targets.append(node)
 	return targets
 
 ## 获取单位星级（从 BlueprintManager 读取，缓存到 meta 避免重复查询）

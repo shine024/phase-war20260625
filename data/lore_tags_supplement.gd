@@ -30,10 +30,13 @@ const LORE_TAGS: Dictionary = {
 }
 
 ## 为情报条目获取标签
-static func get_lore_tags(lore_id: String) -> Array[String]:
-	if LORE_TAGS.has(lore_id):
-		return LORE_TAGS[lore_id].duplicate()
-	return []
+	static func get_lore_tags(lore_id: String) -> Array[String]:
+		if LORE_TAGS.has(lore_id):
+			var arr: Array[String] = []
+			arr.assign(LORE_TAGS[lore_id].duplicate())
+			return arr
+		var empty: Array[String] = []
+		return empty
 
 ## 为情报数据库添加标签（合并方法）
 static func apply_tags_to_lore_database(lore_db: Dictionary) -> Dictionary:

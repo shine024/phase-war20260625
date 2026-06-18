@@ -673,6 +673,81 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 			"company_rep": {"iron_wall_corp": 45},
 		},
 	},
+
+	# ==================== v6.2 补充：螺旋侦察势力任务（原仅2个，补齐至8个） ====================
+
+	{
+		"id": "q_faction_helix_30",
+		"title": "螺旋声望：信赖",
+		"description": "与螺旋侦察系统建立信赖关系（声望达到30）。",
+		"objective_type": "reach_reputation",
+		"target": 30,
+		"company_id": "helix_recon",
+		"rewards": {
+			"nano_materials": 25,
+			"company_rep": {"helix_recon": 30},
+		},
+	},
+	{
+		"id": "q_helix_scout_50",
+		"title": "侦察精英",
+		"description": "累计击毁50个敌方单位，证明螺旋侦察的情报优势。",
+		"objective_type": "kill_enemies",
+		"target": 50,
+		"company_id": "helix_recon",
+		"rewards": {
+			"nano_materials": 40,
+			"company_rep": {"helix_recon": 25},
+		},
+	},
+	{
+		"id": "q_helix_intel_5",
+		"title": "情报收集",
+		"description": "完成5场战斗胜利，为螺旋侦察收集前线情报。",
+		"objective_type": "win_battles",
+		"target": 5,
+		"company_id": "helix_recon",
+		"rewards": {
+			"nano_materials": 35,
+			"company_rep": {"helix_recon": 20},
+		},
+	},
+	{
+		"id": "q_helix_recon_raid",
+		"title": "突袭行动",
+		"description": "击败3个相位大师，展示螺旋侦察的精准打击能力。",
+		"objective_type": "kill_enemies",
+		"target": 100,
+		"company_id": "helix_recon",
+		"rewards": {
+			"nano_materials": 60,
+			"company_rep": {"helix_recon": 40},
+		},
+	},
+	{
+		"id": "q_helix_speed_clear",
+		"title": "闪电突进",
+		"description": "快速完成10场战斗（每场90秒内结束），展现螺旋的机动优势。",
+		"objective_type": "win_battles",
+		"target": 10,
+		"company_id": "helix_recon",
+		"rewards": {
+			"nano_materials": 50,
+			"company_rep": {"helix_recon": 35},
+		},
+	},
+	{
+		"id": "q_helix_collect_modern",
+		"title": "现代侦察装备",
+		"description": "收集5张不同的现代时代卡牌，充实螺旋侦察的装备库。",
+		"objective_type": "collect_cards",
+		"target": 5,
+		"company_id": "helix_recon",
+		"rewards": {
+			"nano_materials": 45,
+			"company_rep": {"helix_recon": 30},
+		},
+	},
 ]
 
 static func get_all() -> Array:

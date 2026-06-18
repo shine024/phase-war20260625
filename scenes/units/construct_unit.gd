@@ -16,6 +16,7 @@ const CombatTargeting = preload("res://scripts/combat_targeting.gd")
 const TargetSelection = preload("res://scripts/battle/target_selection.gd")
 const DamageAttenuation = preload("res://scripts/battle/damage_attenuation.gd")
 const AttackCalculator = preload("res://scripts/battle/attack_calculator.gd")
+const RuneSpecialHandler = preload("res://managers/rune_special_handler.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 const EnemyPhaseEquipment = preload("res://data/enemy_phase_equipment.gd")
 # ObjectPoolManager 为 autoload
@@ -1053,6 +1054,8 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		hp_loss *= CardAbilityManager.get_bulwark_damage_multiplier(self, attacker)
 	if _has_titan_mk2:
 		hp_loss = CardAbilityManager.apply_titan_mk2_damage_reduction(hp_loss)
+	# v6.2: 符文之语特殊效果 — 受击时触发（护盾生成）
+	RuneSpecialHandler.on_damaged(self, attacker, hp_loss)
 	hp -= hp_loss
 
 	# 性能优化：在 HP 变化时更新 HP 条
@@ -1103,6 +1106,9 @@ func _die() -> void:
 	if _is_dying:
 		return
 	_is_dying = true
+	# v6.2: 符文之语特殊效果 — 死亡复活检查（复活成功则中止死亡流程）
+	if RuneSpecialHandler.on_death(self):
+		return
 	# 性能优化：从空间分区网格移除
 	_unregister_from_spatial_grid()
 
@@ -1133,8 +1139,24 @@ func _die() -> void:
 		if BattleInputState.current_selected_unit == self:
 			BattleInputState.current_selected_unit = null
 		SignalBus.unit_died.emit(self, is_player)
+	# v6.2: 符文之语特殊效果 — 敌方单位死亡时，触发玩家方单位的击杀回能
+	if not is_player:
+		_trigger_allied_kill_rewards()
 	# v6.4: 死亡淡出动画（缩放+透明度），逻辑结算已完成，仅做视觉收尾
 	_play_death_fadeout()
+
+
+## v6.2: 敌方单位死亡时，触发所有携带 on_kill_regen_energy 的玩家方单位
+## 每个符合条件的单位独立判定概率（非击杀者专属，而是光环式全局效果）
+func _trigger_allied_kill_rewards() -> void:
+	var tree: SceneTree = get_tree()
+	if tree == null or tree.root == null:
+		return
+	var allies: Array = tree.get_nodes_in_group("player_units")
+	for ally in allies:
+		if not is_instance_valid(ally):
+			continue
+		RuneSpecialHandler.on_kill(ally, self)
 
 
 ## v6.4: 死亡视觉淡出——快速缩放并淡出后销毁节点（逻辑结算已完成，不依赖 _process）

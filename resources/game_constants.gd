@@ -8,10 +8,10 @@ const PHASE_BASE_DRAIN_PER_SEC: float = 0.5
 
 # 单位
 const PLAYER_SPAWN_INTERVAL: float = 10.0
-const PLAYER_MAX_UNITS: int = 5
+const PLAYER_MAX_UNITS: int = 6
 const ENEMY_SPAWN_INTERVAL: float = 12.0
 const ENEMY_WAVE_INTERVAL: float = 12.0
-const ENEMY_MAX_UNITS: int = 5
+const ENEMY_MAX_UNITS: int = 6
 
 ## 战斗内：场上每名侦察/隐匿平台（SCOUT、STEALTH）提供的加成系数
 const RECON_FRAGMENT_BONUS_PER_UNIT: float = 0.10

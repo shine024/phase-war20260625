@@ -123,8 +123,19 @@ signal start_level(level: int)
 signal show_story_ui(chapter: String, first_node: int)
 signal show_story_node(node_index: int)
 
+# v6.3: 剧情模式信号
+signal story_show_pre_battle_dialogue(chapter_id: String)     ## 显示战前对话
+signal story_show_post_battle_dialogue(chapter_id: String)    ## 显示战后对话
+signal story_show_chapter_select()                            ## 显示章节选择面板
+signal story_chapter_selected(chapter_id: String)             ## 玩家选择了某章节
+signal story_campaign_completed()                             ## 剧情模式全部完成
+signal story_dialogue_finished()                              ## 对话播放完毕
+
 # 通用 UI 反馈
 signal show_toast(message: String)
+
+# v6.2: 符文系统信号
+signal rune_acquired(rune_id: String, source: String)  ## 获得符文（掉落/购买/奖励）
 
 # 日常任务
 signal daily_task_reward_granted(task: Dictionary)

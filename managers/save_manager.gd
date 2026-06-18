@@ -60,6 +60,7 @@ const DEFERRED_MANAGER_LOADS: Array = [
 	["/root/CardEnhancementManager", "card_enhancement"],
 	["/root/TutorialProgressionManager", "tutorial_progress"],
 	["/root/StoryManager", "story_progress"],
+	["/root/DayClock", "day_clock"],
 	["/root/CharacterManager", "characters"],
 	["/root/ChallengeModeManager", "challenge_records"],
 	["/root/CardCollectionManager", "card_collection"],
@@ -92,6 +93,7 @@ const RESETTABLE_MANAGERS := [
 	"CardEnhancementManager",
 	"TutorialProgressionManager",
 	"StoryManager",
+	"DayClock",
 	"CharacterManager",
 	"ChallengeModeManager",
 	"CardCollectionManager",
@@ -459,6 +461,7 @@ func _collect_noncritical_save_data(data: Dictionary, now_ms: int) -> void:
 		_collect_manager_state(fresh, "/root/CardEnhancementManager", SK_CARD_ENHANCEMENT)
 		_collect_manager_state(fresh, "/root/TutorialProgressionManager", SK_TUTORIAL_PROGRESS)
 		_collect_manager_state(fresh, "/root/StoryManager", SK_STORY_PROGRESS)
+		_collect_manager_state(fresh, "/root/DayClock", "day_clock")
 		_collect_manager_state(fresh, "/root/CharacterManager", SK_CHARACTERS)
 		_collect_manager_state(fresh, "/root/ChallengeModeManager", SK_CHALLENGE_RECORDS)
 		_collect_manager_state(fresh, "/root/CardCollectionManager", SK_CARD_COLLECTION)
@@ -914,6 +917,26 @@ func start_new_game() -> void:
 	if _deferred_reset_queue.is_empty() and _start_new_game_perf_pending:
 		_start_new_game_perf_pending = false
 		_perf_phase_end("start_new_game")
+
+## v6.4: 开始二周目（NG+）— 重新开始但保留符文
+func start_ng_plus() -> void:
+	# 1. 保存当前符文列表
+	var carried_runes: Array[String] = []
+	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
+	if pim and pim.has_method("get_owned_runes"):
+		carried_runes = pim.get_owned_runes()
+	# 2. 执行 start_new_game（重置一切）
+	start_new_game()
+	# 3. 恢复符文到新周目
+	if pim and pim.has_method("add_owned_rune"):
+		for rune_id in carried_runes:
+			pim.add_owned_rune(rune_id)
+	# 4. 推进周目数
+	var dc: Node = get_node_or_null("/root/DayClock")
+	if dc and dc.has_method("reset_for_new_loop"):
+		dc.reset_for_new_loop()
+	# 5. 保存
+	save_game()
 
 func load_game() -> bool:
 	_perf_phase_begin("load_game")

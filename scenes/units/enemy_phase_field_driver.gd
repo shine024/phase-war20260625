@@ -34,7 +34,7 @@ var _battle_active: bool = false
 ## 装备数据（从 EnemyPhaseMasters 配置传入）
 var _equipment: Dictionary = {}
 var _master_stats: Dictionary = {}
-var _unit_limit: int = 5
+var _unit_limit: int = 6
 var _has_equipment: bool = false
 
 ## 平台类型字符串 -> GC.PlatformType 映射
@@ -100,6 +100,10 @@ func setup(master_config: Dictionary) -> void:
 	_equipment = master_config.get("equipment", {})
 	_master_stats = master_config.get("stats", {})
 	_unit_limit = int(_master_stats.get("unit_limit", 5))
+	# 格子战场敌方仅 6 个可用槽位（SLOT_COUNT - 1）。数据表 unit_limit 可达 7~15，
+	# 超出会导致产兵越过 6 上限、多单位挤同格。统一钳制到格子可用槽位数。
+	# 注：master_power_evaluator 直接读原始配置 dict 评分，不受此钳制影响。
+	_unit_limit = mini(_unit_limit, BattleSlotGrid.SLOT_COUNT - 1)
 
 	if not _equipment.is_empty() and _equipment.has("platforms") and _equipment.has("weapons"):
 		_has_equipment = true
@@ -320,11 +324,11 @@ func _add_unit_to_battle(unit: Node2D, current_count: int) -> void:
 		SignalBus.unit_spawned.emit(unit, false)
 
 ## 回退路径：扫描 enemy_units 组，从远端(最大索引)倒序找第一个空闲敌槽；
-## 全满时回退到 current_count 推算（至少不比旧行为差）。
+## 敌方仅 slot N-1（位置 15，最右靠屏幕边）禁放，可用 slot 0~N-2。
 func _fallback_pick_free_enemy_slot() -> int:
 	var tree: SceneTree = get_tree()
 	if tree == null:
-		return BattleSlotGrid.SLOT_COUNT - 1
+		return BattleSlotGrid.SLOT_COUNT - 2
 	var occupied := {}
 	for n in tree.get_nodes_in_group("enemy_units"):
 		if n == null or not is_instance_valid(n):
@@ -332,12 +336,12 @@ func _fallback_pick_free_enemy_slot() -> int:
 		var esi: int = int(n.get_meta("card_grid_enemy_slot", -1))
 		if esi >= 0 and esi < BattleSlotGrid.SLOT_COUNT:
 			occupied[esi] = true
-	# 从远端(最大索引)倒序，与 _card_grid_next_free_enemy_slot_index 一致
-	for si in range(BattleSlotGrid.SLOT_COUNT - 1, -1, -1):
+	# 从远端(最大索引 N-2)倒序至 slot 0；敌方仅 slot N-1 禁放
+	for si in range(BattleSlotGrid.SLOT_COUNT - 2, -1, -1):
 		if not occupied.has(si):
 			return si
-	# 全满兜底：用最大索引（避免返回 -1 导致 get_card_grid_enemy_slot_global 越界）
-	return BattleSlotGrid.SLOT_COUNT - 1
+	# 全满兜底：用最大可用索引 N-2（避免返回 -1 导致 get_card_grid_enemy_slot_global 越界）
+	return BattleSlotGrid.SLOT_COUNT - 2
 
 func take_damage(amount: float, attacker: Variant = null) -> void:
 	hp -= amount

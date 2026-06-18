@@ -82,20 +82,36 @@ func _process_single_drop(drop: DropTables.DropResult) -> void:
 
 ## 添加基础素材
 func _add_material(material_id: String, count: int) -> void:
+	# v6.2: 符文之语资源产出加成
+	var yield_mult: float = 1.0 + _get_rune_resource_yield_bonus()
+	var final_count: int = int(float(count) * yield_mult)
 	match material_id:
 		"nano_materials":
-			BasicResourceManager.add_resource("nano_materials", count)
+			BasicResourceManager.add_resource("nano_materials", final_count)
 		"alloy":
-			BasicResourceManager.add_resource("alloy", count)
+			BasicResourceManager.add_resource("alloy", final_count)
 		"crystal":
-			BasicResourceManager.add_resource("crystal", count)
+			BasicResourceManager.add_resource("crystal", final_count)
 		"basic_nano":  # 兼容旧ID，映射到nano_materials
-			BasicResourceManager.add_resource("nano_materials", count)
+			BasicResourceManager.add_resource("nano_materials", final_count)
 		"energy_block":
-			BasicResourceManager.add_resource("energy_block", count)
+			BasicResourceManager.add_resource("energy_block", final_count)
 		_:
 			# 兜底：允许新资源ID（如各类改造许可函）直接入账
-			BasicResourceManager.add_resource(material_id, count)
+			BasicResourceManager.add_resource(material_id, final_count)
+
+## v6.2: 获取符文之语资源产出加成比例
+func _get_rune_resource_yield_bonus() -> float:
+	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
+	if pim == null or not pim.has_method("get_rune_bonus"):
+		return 0.0
+	var bonus: Dictionary = pim.get_rune_bonus()
+	var specials: Array = bonus.get("specials", [])
+	var total: float = 0.0
+	for sp in specials:
+		if sp is Dictionary and sp.get("special", "") == "on_resource_yield":
+			total += float(sp.get("value", 0)) / 100.0
+	return total
 
 ## 敌方/时代随机卡 id：解析后发放为背包「成品掉落卡」（不再只加蓝图副本）
 func _add_blueprint_copy(item_id: String, count: int) -> void:

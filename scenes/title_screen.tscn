@@ -134,6 +134,18 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_btn_disabled")
 text = "新游戏 NEW GAME"
 
+[node name="StoryModeButton" type="Button" parent="CenterContainer/MainVBox/ButtonsVBox"]
+custom_minimum_size = Vector2(280, 50)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.8, 1, 1)
+theme_override_colors/font_hover_color = Color(0.545, 0.361, 0.965, 1)
+theme_override_font_sizes/font_size = 20
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_btn_disabled")
+text = "剧情模式 STORY"
+
 [node name="ContinueButton" type="Button" parent="CenterContainer/MainVBox/ButtonsVBox"]
 custom_minimum_size = Vector2(280, 50)
 layout_mode = 2

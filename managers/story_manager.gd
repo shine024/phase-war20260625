@@ -23,6 +23,10 @@ var _story_chapters: Array = []
 var _current_chapter: String = ""
 var _current_node_index: int = 0
 
+# v6.3: 剧情模式章节进度
+var _completed_chapters: Array[String] = []  ## 已完成的章节ID
+var _unlocked_chapters: Array[String] = []   ## 已解锁的章节ID
+
 signal story_chapter_started(chapter_id: String)
 signal story_node_reached(node_index: int)
 signal story_choice_made(choice_result: String)
@@ -184,7 +188,10 @@ func save_state() -> Dictionary:
 	return {
 		"current_chapter": _current_chapter,
 		"current_node": _current_node_index,
-		"player_reputation": player_character.get("reputation", {})
+		"player_reputation": player_character.get("reputation", {}),
+		# v6.3: 剧情模式章节进度
+		"completed_chapters": _completed_chapters.duplicate(),
+		"unlocked_chapters": _unlocked_chapters.duplicate(),
 	}
 
 ## 加载状态（给SaveManager用）
@@ -195,6 +202,15 @@ func load_state(data: Dictionary) -> void:
 		var reputation = data.get("player_reputation", {})
 		if not reputation.is_empty():
 			player_character["reputation"] = reputation
+		# v6.3: 加载章节进度
+		_completed_chapters.clear()
+		for cid in data.get("completed_chapters", []):
+			_completed_chapters.append(str(cid))
+		_unlocked_chapters.clear()
+		for cid in data.get("unlocked_chapters", []):
+			_unlocked_chapters.append(str(cid))
+		# 确保至少第一章已解锁
+		_ensure_first_chapter_unlocked()
 
 ## 获取玩家角色
 func get_player_character() -> Dictionary:
@@ -205,3 +221,55 @@ func reset_story_progress() -> void:
 	_current_chapter = ""
 	_current_node_index = 0
 	player_character["reputation"] = {}
+	_completed_chapters.clear()
+	_unlocked_chapters.clear()
+	_ensure_first_chapter_unlocked()
+
+# ═══════════════════════════════════════════════════════════════════
+# v6.3: 剧情模式章节进度管理
+# ═══════════════════════════════════════════════════════════════════
+
+const StoryChaptersData = preload("res://data/story_chapters.gd")
+
+## 确保第一章已解锁
+func _ensure_first_chapter_unlocked() -> void:
+	var first_id: String = StoryChaptersData.get_first_chapter_id()
+	if not first_id.is_empty() and not _unlocked_chapters.has(first_id):
+		_unlocked_chapters.append(first_id)
+
+## 章节是否已解锁
+func is_chapter_unlocked(chapter_id: String) -> bool:
+	return _unlocked_chapters.has(chapter_id)
+
+## 章节是否已完成
+func is_chapter_completed(chapter_id: String) -> bool:
+	return _completed_chapters.has(chapter_id)
+
+## 解锁章节
+func unlock_chapter(chapter_id: String) -> void:
+	if not _unlocked_chapters.has(chapter_id):
+		_unlocked_chapters.append(chapter_id)
+
+## 标记章节完成
+func complete_chapter(chapter_id: String) -> void:
+	if not _completed_chapters.has(chapter_id):
+		_completed_chapters.append(chapter_id)
+	# 自动解锁下一章
+	var next_id: String = StoryChaptersData.get_next_chapter_id(chapter_id)
+	if not next_id.is_empty():
+		unlock_chapter(next_id)
+
+## 获取章节完成进度（0.0-1.0）
+func get_story_progress() -> float:
+	var total: int = StoryChaptersData.get_chapter_count()
+	if total == 0:
+		return 0.0
+	return float(_completed_chapters.size()) / float(total)
+
+## 剧情模式是否全部完成
+func is_campaign_completed() -> bool:
+	return _completed_chapters.size() >= StoryChaptersData.get_chapter_count()
+
+## 获取已完成的章节数
+func get_completed_count() -> int:
+	return _completed_chapters.size()

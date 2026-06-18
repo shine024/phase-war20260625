@@ -8,6 +8,7 @@ const CardAbilityManager = preload("res://managers/card_ability_manager.gd")
 const CardGridFx = preload("res://scripts/card_grid_fx.gd")
 const WeaponProjectileVfx = preload("res://scripts/weapon_projectile_vfx.gd")
 const AttackCalculator = preload("res://scripts/battle/attack_calculator.gd")
+const RuneSpecialHandler = preload("res://managers/rune_special_handler.gd")
 ## 曲射弹道：炮口火焰和命中爆炸特效纹理（预加载，避免运行时 ResourceLoader.load 卡顿）
 const ARTILLERY_MUZZLE_TEX := preload("res://assets/effects/projectiles/weapons_realistic/weapon_artillery_muzzle.png")
 const ARTILLERY_IMPACT_TEX := preload("res://assets/effects/projectiles/weapons_realistic/weapon_artillery_impact.png")
@@ -49,6 +50,7 @@ var _indirect_prev_pos: Vector2  # 上一帧位置（用于计算朝向）
 var _muzzle_spawned: bool = false      # 是否已生成炮口火焰
 var _impact_spawned: bool = false      # 是否已生成爆炸效果
 
+var _finished: bool = false  # 防重复归还：_finish_tex_bullet 幂等守卫
 var _start_position: Vector2
 var _sprite: Polygon2D
 var _beam_line: Line2D
@@ -86,6 +88,7 @@ func _apply_shield_wall_mitigation(raw_damage: float, target: Node) -> float:
 
 func setup(p_target: Node2D, p_damage: float, p_is_player: bool, p_weapon_type: int = -1, p_shooter: Node2D = null, p_shooter_stats: UnitStats = null, p_forced_miss: bool = false, p_weapon_name: String = "", p_pre_calculated: bool = false) -> void:
 	visible = true
+	_finished = false  # 复用：清除归还守卫
 	target = p_target
 	damage = p_damage
 	shooter_is_player = p_is_player
@@ -350,6 +353,9 @@ func _spawn_impact_v2(parent: Node2D, world_pos: Vector2, weapon_name: String) -
 
 
 func _finish_tex_bullet() -> void:
+	if _finished:
+		return
+	_finished = true
 	ObjectPoolManager.return_object("bullets", self)
 
 
@@ -632,6 +638,9 @@ func _on_hit(primary: Node2D) -> void:
 		var final_after_wall: float = _apply_shield_wall_mitigation(final_damage, primary)
 		var atk_primary: Variant = shooter if is_instance_valid(shooter) else null
 		primary.take_damage(final_after_wall, atk_primary)
+		# v6.2: 符文之语特殊效果 — 攻击命中时触发（闪电链/溅射）
+		if is_instance_valid(shooter):
+			RuneSpecialHandler.on_hit(shooter, primary, final_after_wall)
 
 	# v6.3: 暴击伤害数字（暴击时由弹道直接显示，并通过 meta 标记让 unit_damaged 跳过普通数字，避免双数字）
 	if is_crit and is_instance_valid(primary):

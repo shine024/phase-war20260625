@@ -66,7 +66,84 @@ func roll_blueprint_drops(unit: Node) -> void:
 		var qm: Node = _get_autoload_node("QuestManager")
 		if qm and qm.has_method("notify_fragments_changed"):
 			qm.notify_fragments_changed()
-	_roll_law_knowledge_drops(unit)
+	# v6.2: 法则系统废弃，禁用法则知识掉落（_roll_law_knowledge_drops(unit)）
+	_roll_rune_drops(unit)  # v6.2: 符文掉落
+
+# =========================================================================
+#  v6.2 符文掉落（敌人死亡时调用）
+#  按稀有度概率掉落符文，通用符文为主，稀有度阶梯参考暗黑2
+# =========================================================================
+
+const RuneDefs = preload("res://data/runes.gd")
+
+## 符文掉落基础概率（每个敌人击杀时）
+const RUNE_DROP_BASE_CHANCE: float = 0.12  # 12% 基础概率
+## 稀有度权重（common:rare:epic:legendary = 100:30:8:1）
+const RUNE_RARITY_WEIGHTS: Dictionary = {
+	"common": 100.0,
+	"rare": 30.0,
+	"epic": 8.0,
+	"legendary": 1.0,
+}
+
+func _roll_rune_drops(unit: Node) -> void:
+	var gm: Node = _get_autoload_node("GameManager")
+	var drop_mult: float = 1.0
+	if gm and gm.has_method("get_drop_rate_multiplier"):
+		drop_mult = gm.get_drop_rate_multiplier(gm.current_level)
+	# 计算最终掉落概率
+	var chance: float = RUNE_DROP_BASE_CHANCE * drop_mult
+	if randf() > chance:
+		return
+	# 随机选择稀有度
+	var rarity: String = _roll_rune_rarity()
+	# 从对应稀有度池中随机选一个通用符文
+	var rune_id: String = _pick_random_rune_by_rarity(rarity)
+	if rune_id.is_empty():
+		return
+	# 授予符文给玩家
+	var pim: Node = _get_autoload_node("PhaseInstrumentManager")
+	if pim and pim.has_method("add_owned_rune"):
+		var is_new: bool = pim.add_owned_rune(rune_id)
+		# v6.2: 显示掉落提示（仅新获得的符文）
+		if is_new:
+			var RuneDefsForDrop = preload("res://data/runes.gd")
+			var rune_name: String = RuneDefsForDrop.RUNE_NAMES.get(rune_id, rune_id)
+			var rarity_name: String = RuneDefsForDrop.RARITY_NAMES.get(rarity, "")
+			SignalBus.show_toast.emit("✦ 获得符文：%s（%s）" % [rune_name, rarity_name])
+	# 通知任务系统（如有）
+	var qm: Node = _get_autoload_node("QuestManager")
+	if qm and qm.has_method("notify_fragments_changed"):
+		qm.notify_fragments_changed()
+
+## 按权重随机选择符文稀有度
+func _roll_rune_rarity() -> String:
+	var total: float = 0.0
+	for key in RUNE_RARITY_WEIGHTS:
+		total += RUNE_RARITY_WEIGHTS[key]
+	var roll: float = randf() * total
+	var cumulative: float = 0.0
+	for key in RUNE_RARITY_WEIGHTS:
+		cumulative += RUNE_RARITY_WEIGHTS[key]
+		if roll <= cumulative:
+			return key
+	return "common"
+
+## 从指定稀有度的通用符文中随机选一个
+func _pick_random_rune_by_rarity(rarity: String) -> String:
+	var pool: Array[Dictionary] = RuneDefs.get_generic_runes()
+	var candidates: Array[String] = []
+	for rune in pool:
+		if rune.get("rarity", "") == rarity:
+			candidates.append(rune["id"])
+	if candidates.is_empty():
+		# 降级到常见
+		for rune in pool:
+			if rune.get("rarity", "") == "common":
+				candidates.append(rune["id"])
+	if candidates.is_empty():
+		return ""
+	return candidates[randi() % candidates.size()]
 
 # =========================================================================
 #  法则知识值掉落（敌人死亡时调用，v3）

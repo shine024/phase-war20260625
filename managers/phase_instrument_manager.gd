@@ -1,9 +1,16 @@
 extends Node
 ## 相位仪管理：按相位仪定义动态生成四色槽位
+##
+## v6.2 新增：符文槽管理系统（与现有四色槽位并行运行）
+## - 符文槽位：存放符文ID（String），替代废弃的法则系统
+## - 战前装备，战斗中不可变更
+## - 全局加成：所有己方单位共享符文之语激活效果
 
 const GC = preload("res://resources/game_constants.gd")
 const PhaseInstruments = preload("res://data/phase_instruments.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
+const RunewordMatcher = preload("res://managers/runeword_matcher.gd")
+const RuneDefs = preload("res://data/runes.gd")
 const DEBUG_EQUIP_LOG := false
 var _default_cards_instance: Variant = null
 
@@ -35,10 +42,10 @@ const PHASE_FIELD_XP_THRESHOLDS: Array = [
 	7500,
 ]
 
-## 与 backpack 扁平索引一致：红→蓝→绿→黄（见 backpack_card_item._calculate_flat_index）
-const SLOT_COLOR_ORDER: Array[String] = ["red", "blue", "green", "yellow"]
+## 与 backpack 扁平索引一致：红→蓝→绿→黄→符文（v6.2 符文追加在末尾，不破坏旧索引）
+const SLOT_COLOR_ORDER: Array[String] = ["red", "blue", "green", "yellow", "rune"]
 ## 四色槽全量遍历（例如手动卸下全部并返还背包时；战后默认不再自动清空槽位）
-const CARD_SLOTS: Array[String] = ["red", "blue", "green", "yellow"]
+const CARD_SLOTS: Array[String] = ["red", "blue", "green", "yellow", "rune"]
 ## 法则卡跨色路由装配时的最大递归深度（防止无限递归）
 const MAX_EQUIP_RECURSION: int = 2
 
@@ -61,6 +68,19 @@ var _loadouts_dirty: bool = true
 var _runtime_instrument_defs: Dictionary = {} # instrument_id -> Dictionary
 var _drop_serial_counter: int = 0
 var _plm: Node
+
+# ── v6.2 符文系统状态 ──────────────────────────────────────────────
+# 符文槽位：索引0..rune_slot_count-1，每个槽存放符文ID(String)或null(空槽)
+# 与四色槽位完全独立，互不影响
+var _rune_slots: Array = [] # Array[String | null]
+# 玩家已拥有的符文ID集合（去重）
+var _owned_runes: Array[String] = []
+# 缓存：当前激活的符文之语加成（装备变更后刷新）
+var _cached_rune_bonus: Dictionary = {}
+# 缓存：当前激活的符文之语列表
+var _cached_active_runewords: Array = []
+# 缓存失效标记
+var _rune_bonus_dirty: bool = true
 
 
 func _mark_loadouts_dirty() -> void:
@@ -130,6 +150,7 @@ func _ready() -> void:
 	_init_unlocked_instruments()
 	_set_default_instrument_if_needed()
 	_rebuild_slots()
+	_rebuild_rune_slots()  # v6.2: 初始化符文槽位
 	var cfg: Dictionary = get_current_instrument()
 	var DebugLog = get_node_or_null("/root/DebugLog")
 	if DebugLog:
@@ -139,6 +160,7 @@ func _ready() -> void:
 			"selected_star": int(cfg.get("star", -1)),
 			"unlocked_count": unlocked_instrument_ids.size(),
 			"max_unlocked_star": _get_max_unlocked_star(),
+			"rune_slot_count": get_rune_slot_count(),  # v6.2
 		}, "", "0ec8f5")
 
 func _init_unlocked_instruments() -> void:
@@ -302,11 +324,21 @@ func _rebuild_slots() -> void:
 	var counts: Dictionary = cfg.get("slot_counts", {})
 	for color in SLOT_COLOR_ORDER:
 		var cnt: int = int(counts.get(color, 0))
+		if color == "rune":
+			# v6.2: rune 槽位从 _rune_slots 同步（rune存的是String不是CardResource）
+			_rebuild_rune_slots()
+			var rune_arr: Array = []
+			for i in range(cnt):
+				rune_arr.append(_rune_slots[i] if i < _rune_slots.size() else null)
+			instrument_slots["rune"] = rune_arr
+			continue
 		var arr: Array = []
 		var old_arr: Array = old_slots.get(color, [])
 		for i in range(cnt):
 			arr.append(old_arr[i] if i < old_arr.size() else null)
 		instrument_slots[color] = arr
+	# v6.2: 同步刷新符文槽位数量（保留已装备的符文）
+	_rebuild_rune_slots()
 
 func _law_id_from_card(card: CardResource) -> String:
 	if card == null or card.card_type != GC.CardType.LAW:
@@ -728,6 +760,8 @@ func save_state() -> Dictionary:
 		"slot_card_ids": get_slot_card_ids(),
 		"runtime_instrument_defs": runtime_defs,
 		"drop_serial_counter": _drop_serial_counter,
+		# v6.2: 符文系统状态
+		"rune_state": save_rune_state(),
 	}
 
 func load_state(data: Dictionary) -> void:
@@ -763,6 +797,10 @@ func load_state(data: Dictionary) -> void:
 	else:
 		# 新游戏（空数据）或旧存档缺少 slot_card_ids：自动装备初始卡牌
 		_equip_starter_cards_for_new_game()
+	# v6.2: 恢复符文系统状态（旧存档无此字段时为空，新游戏从0开始）
+	var rune_state: Variant = data.get("rune_state", {})
+	if rune_state is Dictionary:
+		load_rune_state(rune_state)
 
 func _emit_slots_changed() -> void:
 	_mark_loadouts_dirty()
@@ -879,6 +917,9 @@ func get_slot_layout() -> Array[Dictionary]:
 					e["law_id"] = String(passive_laws[passive_idx])
 					e["law_kind"] = "passive"
 				passive_idx += 1
+			elif color == "rune":
+				# v6.2: rune 槽位存的是 rune_id (String)，不是 CardResource
+				e["rune_id"] = str(slot_card) if slot_card != null else ""
 			out.append(e)
 	return out
 
@@ -1101,3 +1142,181 @@ func get_green_slot_count() -> int:
 	var cfg: Dictionary = get_current_instrument()
 	var slot_counts: Dictionary = cfg.get("slot_counts", {})
 	return int(slot_counts.get("green", 1))
+
+
+# ═══════════════════════════════════════════════════════════════════
+# v6.2 符文槽位管理系统
+# ═══════════════════════════════════════════════════════════════════
+# 符文槽位与四色槽位完全独立：
+#   - 战斗卡槽位(green)：仅放战斗单位卡
+#   - 能量卡槽位(yellow)：仅放能量卡
+#   - 符文槽位(rune)：仅放符文（rune_id 字符串）
+# 三类槽位严格隔离，不可混装。
+
+## 获取当前相位仪的符文槽位数量
+func get_rune_slot_count() -> int:
+	var cfg: Dictionary = get_current_instrument()
+	# 优先使用 rune_slot_count 字段，回退到 slot_counts.rune
+	if cfg.has("rune_slot_count"):
+		return int(cfg["rune_slot_count"])
+	var slot_counts: Dictionary = cfg.get("slot_counts", {})
+	return int(slot_counts.get("rune", 1))
+
+## 获取当前符文槽位内容（Array[String | null]）
+func get_rune_slots() -> Array:
+	return _rune_slots.duplicate()
+
+## 获取指定索引符文槽位的符文ID（空槽返回""）
+func get_rune_at(slot_index: int) -> String:
+	if slot_index < 0 or slot_index >= _rune_slots.size():
+		return ""
+	var v = _rune_slots[slot_index]
+	if v == null:
+		return ""
+	return str(v)
+
+## 初始化符文槽位（按当前相位仪的 rune_slot_count 重建空槽）
+## 在 _rebuild_slots() 或切换相位仪时调用
+func _rebuild_rune_slots() -> void:
+	var count := get_rune_slot_count()
+	# 保留已装备的符文，超出的回收，不足的补空
+	var new_slots: Array = []
+	for i in range(count):
+		if i < _rune_slots.size() and _rune_slots[i] != null and _rune_slots[i] != "":
+			new_slots.append(_rune_slots[i])
+		else:
+			new_slots.append(null)
+	_rune_slots = new_slots
+	_sync_rune_to_instrument_slots()
+	_mark_rune_bonus_dirty()
+
+## v6.2: 把 _rune_slots 同步到 instrument_slots["rune"]，供 get_slot_layout 统一输出
+func _sync_rune_to_instrument_slots() -> void:
+	var rune_arr: Array = []
+	for v in _rune_slots:
+		rune_arr.append(v)
+	# 确保数组长度等于 rune_slot_count
+	var target_count: int = get_rune_slot_count()
+	while rune_arr.size() < target_count:
+		rune_arr.append(null)
+	instrument_slots["rune"] = rune_arr
+
+## 装备符文到指定槽位
+## 返回 true 表示成功，false 表示槽位越界或符文ID无效
+func equip_rune(slot_index: int, rune_id: String) -> bool:
+	if slot_index < 0 or slot_index >= get_rune_slot_count():
+		push_warning("[PhaseInstrumentManager] 符文槽位越界: %d" % slot_index)
+		return false
+	if not _owned_runes.has(rune_id):
+		push_warning("[PhaseInstrumentManager] 未拥有的符文: %s" % rune_id)
+		return false
+	# 如果符文已在其他槽位，先从原槽位移除（同一符文不能重复装备）
+	for i in range(_rune_slots.size()):
+		if _rune_slots[i] == rune_id and i != slot_index:
+			_rune_slots[i] = null
+	# 写入新槽位
+	while _rune_slots.size() <= slot_index:
+		_rune_slots.append(null)
+	_rune_slots[slot_index] = rune_id
+	# v6.2: 同步到 instrument_slots["rune"] 供 get_slot_layout 使用
+	_sync_rune_to_instrument_slots()
+	_mark_rune_bonus_dirty()
+	SignalBus.phase_slots_changed.emit()
+	return true
+
+## 卸下指定槽位的符文（符文保留在已拥有列表中，只是从槽位移除）
+func unequip_rune(slot_index: int) -> void:
+	if slot_index < 0 or slot_index >= _rune_slots.size():
+		return
+	_rune_slots[slot_index] = null
+	_sync_rune_to_instrument_slots()
+	_mark_rune_bonus_dirty()
+	SignalBus.phase_slots_changed.emit()
+
+## 卸下所有符文（保留所有权）
+func unequip_all_runes() -> void:
+	for i in range(_rune_slots.size()):
+		_rune_slots[i] = null
+	_sync_rune_to_instrument_slots()
+	_mark_rune_bonus_dirty()
+	SignalBus.phase_slots_changed.emit()
+
+## 添加符文到玩家持有列表（去重）
+## 返回 true 表示新获得，false 表示已拥有
+func add_owned_rune(rune_id: String) -> bool:
+	if not _owned_runes.has(rune_id):
+		_owned_runes.append(rune_id)
+		SignalBus.rune_acquired.emit(rune_id, "acquired")
+		return true
+	return false
+
+## 移除玩家持有的符文（同时从槽位卸下）
+func remove_owned_rune(rune_id: String) -> void:
+	_owned_runes.erase(rune_id)
+	for i in range(_rune_slots.size()):
+		if _rune_slots[i] == rune_id:
+			_rune_slots[i] = null
+	_mark_rune_bonus_dirty()
+	SignalBus.phase_slots_changed.emit()
+
+## 玩家是否拥有某符文
+func has_rune(rune_id: String) -> bool:
+	return _owned_runes.has(rune_id)
+
+## 获取玩家持有的所有符文ID
+func get_owned_runes() -> Array[String]:
+	return _owned_runes.duplicate()
+
+# ── 符文之语加成（缓存机制） ──────────────────────────────────────
+
+func _mark_rune_bonus_dirty() -> void:
+	_rune_bonus_dirty = true
+
+## 刷新缓存的符文之语加成
+func _refresh_rune_bonus() -> void:
+	var slot_count := get_rune_slot_count()
+	var matched := RunewordMatcher.check_active_runewords(_rune_slots, slot_count)
+	_cached_active_runewords = matched
+	_cached_rune_bonus = RunewordMatcher.merge_effects(matched)
+	_rune_bonus_dirty = false
+
+## 获取当前激活的符文之语加成
+## 返回：{"stats": {attack: 0.5, hp: 0.3, ...}, "specials": [...]}
+func get_rune_bonus() -> Dictionary:
+	if _rune_bonus_dirty:
+		_refresh_rune_bonus()
+	return _cached_rune_bonus
+
+## 获取当前激活的符文之语列表
+## 返回：Array[Dictionary] 每项为符文之语定义
+func get_active_runewords() -> Array:
+	if _rune_bonus_dirty:
+		_refresh_rune_bonus()
+	return _cached_active_runewords
+
+# ── 存档支持 ──────────────────────────────────────────────────────
+
+## 序列化符文槽位状态
+func save_rune_state() -> Dictionary:
+	var slots_serialized: Array = []
+	for v in _rune_slots:
+		slots_serialized.append(v if v != null else "")
+	return {
+		"rune_slots": slots_serialized,
+		"owned_runes": _owned_runes.duplicate(),
+	}
+
+## 从存档恢复符文槽位状态
+func load_rune_state(data: Dictionary) -> void:
+	var saved_slots: Array = data.get("rune_slots", [])
+	_owned_runes = []
+	for r in data.get("owned_runes", []):
+		_owned_runes.append(str(r))
+	# 按 rune_slot_count 重建槽位，载入存档内容
+	_rebuild_rune_slots()
+	for i in range(mini(saved_slots.size(), _rune_slots.size())):
+		var rs: String = str(saved_slots[i])
+		if not rs.is_empty():
+			_rune_slots[i] = rs
+	_mark_rune_bonus_dirty()
+

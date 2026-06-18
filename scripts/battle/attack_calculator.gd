@@ -223,6 +223,10 @@ static func calculate_damage_with_weapon(
 	if not skip_defense_reduction:
 		# 用攻击者单位类型决定穿透哪个防御值（v6.2: 攻防维度对齐）
 		var def = get_defense_vs(target_stats, attacker_stats.combat_kind)
+		# v6.2: 符文之语攻击穿透 — 无视部分目标防御
+		var pen_ratio: float = _get_rune_penetration_ratio(attacker_stats)
+		if pen_ratio > 0.0:
+			def = def * (1.0 - pen_ratio)
 		final_damage = base_damage * (100.0 / (100.0 + def))
 
 	# 强化加成
@@ -275,3 +279,21 @@ static func get_weapon_speed(attacker_stats: UnitStats, weapon_resource: WeaponR
 		GC.CombatKind.AIR:
 			speed = attacker_stats.attack_air_speed
 	return speed if speed > 0.0 else DEFAULT_ATTACK_SPEED
+
+
+## v6.2: 从攻击者 UnitStats 的符文特殊效果中读取攻击穿透比例（0.0-1.0）
+## 返回所有 on_attack_penetration 效果中的最大值
+const MAX_PENETRATION_RATIO: float = 0.9  ## 穿透比例上限（防止100%穿透导致防御完全失效）
+static func _get_rune_penetration_ratio(attacker_stats: UnitStats) -> float:
+	if attacker_stats == null:
+		return 0.0
+	if not attacker_stats.has_meta("rune_specials"):
+		return 0.0
+	var specials = attacker_stats.get_meta("rune_specials")
+	if not specials is Array:
+		return 0.0
+	var max_ratio: float = 0.0
+	for sp in specials:
+		if sp is Dictionary and sp.get("special", "") == "on_attack_penetration":
+			max_ratio = maxf(max_ratio, float(sp.get("value", 0)) / 100.0)
+	return clampf(max_ratio, 0.0, MAX_PENETRATION_RATIO)

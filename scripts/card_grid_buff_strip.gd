@@ -75,11 +75,22 @@ func rebuild(active_kinds: Array[BuffKind], card_art_width: float = -1.0) -> voi
 		queue_redraw()
 		return
 	visible = true
-	var icon_size: float = _card_art_width * ICON_WIDTH_FRAC
-	var icon_gap: float = _card_art_width * ICON_GAP_FRAC
-	var row_w: float = float(_active_kinds.size()) * icon_size + float(maxi(_active_kinds.size() - 1, 0)) * icon_gap
+	# v6.2: 自适应图标大小 — 图标多时缩小，确保总宽度不超过卡宽(90%)
+	var count: int = _active_kinds.size()
+	var icon_width_frac: float = ICON_WIDTH_FRAC
+	var icon_gap_frac: float = ICON_GAP_FRAC
+	# 计算总宽度占比 = count * icon_width + (count-1) * gap
+	# 若超过 0.90，按比例缩小
+	var total_frac: float = float(count) * icon_width_frac + float(maxi(count - 1, 0)) * icon_gap_frac
+	if total_frac > 0.90:
+		var scale: float = 0.90 / total_frac
+		icon_width_frac *= scale
+		icon_gap_frac *= scale
+	var icon_size: float = _card_art_width * icon_width_frac
+	var icon_gap: float = _card_art_width * icon_gap_frac
+	var row_w: float = float(count) * icon_size + float(maxi(count - 1, 0)) * icon_gap
 	var x0: float = -row_w * 0.5
-	for i: int in range(_active_kinds.size()):
+	for i: int in range(count):
 		var kind: BuffKind = _active_kinds[i]
 		_icon_layout.append({
 			"kind": kind,

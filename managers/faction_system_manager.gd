@@ -208,10 +208,37 @@ func add_faction_reputation(faction_id: String, delta: int) -> int:
 	if result["leveled_up"]:
 		faction_level[faction_id] = result["new_level"]
 		_update_faction_store_for_level_up(faction_id)
+		# v6.2: 声望升级奖励 — 每3级赠送1个该势力专属符文
+		_grant_reputation_level_reward(faction_id, result["new_level"])
 		emit_signal("faction_level_up", faction_id, result["new_level"])
 
 	emit_signal("faction_reputation_changed", faction_id, delta, result["new_rep"])
 	return result["new_rep"]
+
+## v6.2: 声望等级奖励 — 每3级（Lv3/6/9）赠送1个该势力专属符文
+func _grant_reputation_level_reward(faction_id: String, new_level: int) -> void:
+	if new_level % 3 != 0:
+		return  # 仅在 Lv3/6/9 触发
+	var RuneDefs = preload("res://data/runes.gd")
+	# 按等级选择符文稀有度：Lv3→稀有, Lv6→史诗, Lv9→传说
+	var target_rarity: String = RuneDefs.RARITY_RARE
+	match new_level:
+		3: target_rarity = RuneDefs.RARITY_RARE
+		6: target_rarity = RuneDefs.RARITY_EPIC
+		9: target_rarity = RuneDefs.RARITY_LEGENDARY
+		_: return
+	# 查找该势力对应稀有度的专属符文
+	var faction_runes: Array[Dictionary] = RuneDefs.get_runes_by_faction(faction_id)
+	var candidates: Array[Dictionary] = []
+	for r in faction_runes:
+		if r.get("rarity", "") == target_rarity:
+			candidates.append(r)
+	if candidates.is_empty():
+		return
+	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
+	if pim and pim.has_method("add_owned_rune"):
+		# 选第一个（避免随机导致玩家错过关键符文）
+		pim.add_owned_rune(candidates[0]["id"])
 
 ## 主角攻克关卡后的势力反应计算
 func on_level_conquered(level_conquered: int) -> Dictionary:

@@ -20,6 +20,7 @@ enum DropType {
 	BLUEPRINT_FRAGMENT, # 敌方蓝图碎片（与 CARD_DATA 语义相同，UI/领取用显式类型）
 	LAW_BLUEPRINT,      # 法则侧蓝图/碎片条目（与 LAW_DATA 展示一致）
 	ENERGY_BLUEPRINT,    # 能量蓝图条目（与 ENERGY_DATA 展示一致）
+	RUNE,               # v6.2 符文（替代法则系统的核心掉落物）
 }
 
 ## 掉落物条目

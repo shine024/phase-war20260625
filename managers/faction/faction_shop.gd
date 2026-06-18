@@ -13,7 +13,8 @@ class_name FactionShop
 enum StoreItemType {
 	CARD,
 	MATERIAL,
-	CARD_BUNDLE  ## 随机卡牌包（经 CardDropGrants 发背包卡，非碎片）
+	CARD_BUNDLE,  ## 随机卡牌包（经 CardDropGrants 发背包卡，非碎片）
+	RUNE,         ## v6.2 符文（势力专属符文，声望解锁）
 }
 
 ## 商店物品定义
@@ -169,7 +170,76 @@ static func get_faction_store_items(faction_id: String, level: int) -> Array[Sto
 			items.append(create_store_item("alloy", StoreItemType.MATERIAL, "合金x50", 140, level))
 			items.append(create_store_item("bp_ww2_009", StoreItemType.CARD, "缴获卡", 210, level))
 
+	# v6.2: 未知势力警告（防御性检查）
+	const _VALID_FACTION_IDS: Array[String] = [
+		"iron_wall_corp", "nova_arms", "aether_dynamics",
+		"quantum_logistics", "helix_recon", "void_research", "frontier_union",
+	]
+	if not _VALID_FACTION_IDS.has(faction_id):
+		push_warning("[FactionShop] 未知势力ID: %s — 商店可能为空" % faction_id)
+
+	# v6.2: 所有势力商店都卖基础通用符文（常见+稀有）
+	_append_basic_rune_items(items, level)
+	# v6.2: 追加势力专属符文商品（每个势力上架其专属符文）
+	_append_faction_rune_items(items, faction_id, level)
+
 	return _filter_invalid_card_items(items)
+
+## v6.2: 所有势力商店通用的基础符文商品（常见+稀有，不含史诗/传说）
+## 价格按稀有度递增：常见100-150，稀有200-350
+static func _append_basic_rune_items(items: Array[StoreItem], level: int) -> void:
+	const RuneDefs = preload("res://data/runes.gd")
+	# 基础符文价格表（按稀有度）
+	const RUNE_PRICES: Dictionary = {
+		"common": 120,    # 常见：120声望
+		"rare": 250,      # 稀有：250声望
+	}
+	for rune in RuneDefs.ALL_RUNES:
+		# 仅通用符文（faction_id=generic）
+		if rune.get("faction_id", "") != RuneDefs.FACTION_GENERIC:
+			continue
+		var rarity: String = rune.get("rarity", "common")
+		# 仅卖常见和稀有（史诗/传说通过掉落和声望奖励获取）
+		if not RUNE_PRICES.has(rarity):
+			continue
+		var rune_id: String = rune.get("id", "")
+		var price: int = int(RUNE_PRICES[rarity])
+		var display_name: String = "符文·%s" % RuneDefs.get_rune_name(rune_id)
+		var rarity_name: String = RuneDefs.RARITY_NAMES.get(rarity, "")
+		if not rarity_name.is_empty():
+			display_name += "(%s)" % rarity_name
+		items.append(create_store_item(rune_id, StoreItemType.RUNE, display_name, price, level))
+
+## v6.2: 追加势力专属符文到商店商品列表
+## 符文按 unlock_requirement 中的声望需求定价
+static func _append_faction_rune_items(items: Array[StoreItem], faction_id: String, level: int) -> void:
+	const RuneDefs = preload("res://data/runes.gd")
+	# 势力ID → 专属符文ID前缀映射
+	const FACTION_RUNE_PREFIX: Dictionary = {
+		"aether_dynamics": "aether_",
+		"helix_recon": "helix_",
+		"nova_arms": "nova_",
+		"iron_wall_corp": "iron_",
+		"void_research": "void_",
+		"quantum_logistics": "quantum_",
+		"frontier_union": "frontier_",
+	}
+	if not FACTION_RUNE_PREFIX.has(faction_id):
+		return
+	var prefix: String = FACTION_RUNE_PREFIX[faction_id]
+	for rune in RuneDefs.ALL_RUNES:
+		var rune_id: String = rune.get("id", "")
+		if not rune_id.begins_with(prefix):
+			continue
+		var unlock_req: Dictionary = rune.get("unlock_requirement", {})
+		var required_rep: int = int(unlock_req.get("min_reputation", 800))
+		# 商品价格 = 声望解锁要求的 60%（让商店比纯靠声望掉落更划算）
+		var price: int = int(float(required_rep) * 0.6)
+		var display_name: String = "符文·%s" % RuneDefs.get_rune_name(rune_id)
+		var rarity_name: String = RuneDefs.RARITY_NAMES.get(rune.get("rarity", ""), "")
+		if not rarity_name.is_empty():
+			display_name += "(%s)" % rarity_name
+		items.append(create_store_item(rune_id, StoreItemType.RUNE, display_name, price, level))
 
 static func _filter_invalid_card_items(items: Array[StoreItem]) -> Array[StoreItem]:
 	const DefaultCardsData = preload("res://data/default_cards.gd")
@@ -179,6 +249,14 @@ static func _filter_invalid_card_items(items: Array[StoreItem]) -> Array[StoreIt
 	var filtered: Array[StoreItem] = []
 	for it in items:
 		if it == null:
+			continue
+		# v6.2: RUNE 类型直接保留（符文ID在 RuneDefs 中定义，无需卡牌验证）
+		if it.item_type == StoreItemType.RUNE:
+			filtered.append(it)
+			continue
+		# MATERIAL 类型直接保留
+		if it.item_type == StoreItemType.MATERIAL:
+			filtered.append(it)
 			continue
 		if it.item_type == StoreItemType.CARD:
 			var cid: String = it.item_id
@@ -306,6 +384,13 @@ static func deliver_item(item: StoreItem) -> bool:
 			var pool_key: String = "rare_fragment" if String(item.item_id).find("rare") >= 0 else "common_fragment"
 			CardDropGrantsScript.grant_from_legacy_fragment_reward_pool(pool_key, 1)
 			return true
+		StoreItemType.RUNE:
+			# v6.2: 符文发放到 PhaseInstrumentManager
+			var pim := _get_autoload("/root/PhaseInstrumentManager", run_id, "RUNE")
+			if pim and pim.has_method("add_owned_rune"):
+				pim.add_owned_rune(item.item_id)
+				return true
+			return false
 	return false
 
 ## 获取默认商店库存（卡牌ID列表）

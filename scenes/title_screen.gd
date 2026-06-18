@@ -21,12 +21,15 @@ var _stars: Array = []
 func _ready() -> void:
 	# 获取按钮节点
 	var new_btn: Button = get_node_or_null("CenterContainer/MainVBox/ButtonsVBox/NewGameButton")
+	var story_btn: Button = get_node_or_null("CenterContainer/MainVBox/ButtonsVBox/StoryModeButton")
 	var continue_btn: Button = get_node_or_null("CenterContainer/MainVBox/ButtonsVBox/ContinueButton")
 	var settings_btn: Button = get_node_or_null("CenterContainer/MainVBox/ButtonsVBox/SettingsButton")
 	var quit_btn: Button = get_node_or_null("CenterContainer/MainVBox/ButtonsVBox/QuitButton")
 	# 连接信号
 	if new_btn:
 		new_btn.pressed.connect(_on_new_game)
+	if story_btn:
+		story_btn.pressed.connect(_on_story_mode)
 	if continue_btn:
 		continue_btn.pressed.connect(_on_continue)
 		_update_continue_button(continue_btn)
@@ -142,6 +145,21 @@ func _on_new_game() -> void:
 	_play_sfx("button")
 	if SaveManager:
 		SaveManager.start_new_game()
+	get_tree().change_scene_to_file("res://scenes/main.tscn")
+
+## v6.3: 剧情模式入口 — 设置模式标志后进入主场景
+func _on_story_mode() -> void:
+	_play_sfx("button")
+	# 确保有存档（新玩家自动创建）
+	if SaveManager:
+		if not SaveManager.has_save():
+			SaveManager.start_new_game()
+		else:
+			SaveManager.load_game()
+	# 设置游戏模式为剧情模式
+	var gm: Node = get_node_or_null("/root/GameManager")
+	if gm:
+		gm.game_mode = gm.GameMode.STORY
 	get_tree().change_scene_to_file("res://scenes/main.tscn")
 
 func _on_continue() -> void:

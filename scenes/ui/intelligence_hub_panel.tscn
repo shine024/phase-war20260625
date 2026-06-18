@@ -71,3 +71,17 @@ metadata/_tab_name = "单位进化图谱"
 layout_mode = 2
 size_flags_vertical = 3
 size_flags_horizontal = 3
+
+[node name="RuneTab" type="VBoxContainer" parent="Margin/VBox/TabContainer"]
+layout_mode = 2
+metadata/_tab_name = "符文图鉴"
+
+[node name="RuneScroll" type="ScrollContainer" parent="Margin/VBox/TabContainer/RuneTab"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="RuneContent" type="VBoxContainer" parent="Margin/VBox/TabContainer/RuneTab/RuneScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8

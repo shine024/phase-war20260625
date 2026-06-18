@@ -43,6 +43,8 @@ var _stats_cache: Dictionary = {}
 ## 卡牌格子战术
 var _card_grid_active: bool = false
 var _card_grid_enemy_quota: int = _CardGridSlotsPerSide
+## 每侧可用槽位数：SLOTS_PER_SIDE(7) 减去 1 个靠屏幕外缘的禁放位（我方 slot 0 / 敌方 slot N-1）= 6
+var _usable_enemy_slots: int = max(1, _CardGridSlotsPerSide - 1)
 
 func setup(deps: Dictionary) -> void:
 	_energy_manager = deps.get("energy_manager", null)
@@ -52,10 +54,13 @@ func setup(deps: Dictionary) -> void:
 func configure_card_grid_battle(enemy_quota: int) -> void:
 	_card_grid_active = true
 	_card_grid_enemy_quota = clampi(enemy_quota, 1, _CardGridSlotsPerSide)
+	# 敌方仅 slot N-1（全局位置 15，最右靠屏幕边）禁放，实际可用 = SLOTS_PER_SIDE - 1
+	_usable_enemy_slots = max(1, _CardGridSlotsPerSide - 1)
 
 
 func _enemy_field_unit_cap() -> int:
-	return _CardGridSlotsPerSide
+	# 敌方仅 slot N-1 禁放，实际可用 = SLOTS_PER_SIDE - 1
+	return max(0, _CardGridSlotsPerSide - 1)
 
 
 func finalize_card_grid_and_spawn_enemies(current_level: int) -> void:
@@ -86,7 +91,8 @@ func _apply_player_card_grid_post_placement() -> void:
 
 func _card_grid_count_free_enemy_slots() -> int:
 	var n: int = 0
-	for si in range(_CardGridSlotsPerSide):
+	# 敌方仅 slot N-1（位置 15）禁放，可用 slot 0~N-2
+	for si in range(0, _CardGridSlotsPerSide - 1):
 		if not _is_enemy_grid_slot_occupied(si):
 			n += 1
 	return n
@@ -118,24 +124,26 @@ func _find_enemy_subtree_with_slot(n: Node, slot_idx: int) -> Node:
 
 
 ## 敌方区域：从远端 slot(最大索引，靠屏幕右缘、离玩家最远)开始填，依次向近端
+## 敌方仅 slot N-1（位置 15，最右靠屏幕边）禁放，可用 slot 0~N-2；远端即 N-2
 ## 这样少量敌人也部署在远端，玩家曲射(先远后近)能优先打到后排
 func _card_grid_next_free_enemy_slot_index() -> int:
-	for si in range(_CardGridSlotsPerSide - 1, -1, -1):
+	for si in range(_CardGridSlotsPerSide - 2, -1, -1):
 		if not _is_enemy_grid_slot_occupied(si):
 			return si
 	return -1
 
 
-## 按单位射程选敌方槽位：长程(>=阈值)放远端(slot 6起倒序)，短程放近端(slot 0起顺序)
+## 按单位射程选敌方槽位：长程(>=阈值)放远端(slot N-2 起倒序)，短程放近端(slot 0 起顺序)
+## 敌方仅 slot N-1（位置 15）禁放，可用 slot 0~N-2
 ## 短程直射单位放近端才够得到玩家；长程/曲射放远端供玩家曲射打击
 func _pick_enemy_slot_by_range(attack_range: float) -> int:
 	const LONG_RANGE_THRESHOLD: float = 300.0
 	if attack_range >= LONG_RANGE_THRESHOLD:
-		for si in range(_CardGridSlotsPerSide - 1, -1, -1):
+		for si in range(_CardGridSlotsPerSide - 2, -1, -1):
 			if not _is_enemy_grid_slot_occupied(si):
 				return si
 	else:
-		for si in range(_CardGridSlotsPerSide):
+		for si in range(0, _CardGridSlotsPerSide - 1):
 			if not _is_enemy_grid_slot_occupied(si):
 				return si
 	return -1
@@ -186,6 +194,9 @@ func spawn_card_grid_enemy_wave(current_level: int) -> bool:
 	elif gm and gm.has_method("get_enemy_spawn_count_for_wave"):
 		to_spawn = gm.get_enemy_spawn_count_for_wave(gm.current_level, next_wave)
 	to_spawn = mini(to_spawn, _card_grid_enemy_quota)
+	# 敌方仅 slot N-1（位置 15）禁放，实际可用槽位 = SLOTS_PER_SIDE - 1
+	var usable_enemy_slots: int = max(1, _CardGridSlotsPerSide - 1)
+	_card_grid_enemy_quota = mini(_card_grid_enemy_quota, usable_enemy_slots)
 	to_spawn = mini(to_spawn, free_n)
 	if to_spawn <= 0:
 		return false
@@ -388,7 +399,9 @@ func request_player_deploy(platform_card_id: String, world_pos: Vector2, battle_
 	if _phase_instrument.has_method("get_max_deployable_units"):
 		max_units = _phase_instrument.get_max_deployable_units()
 	if _card_grid_active:
-		max_units = mini(max_units, _CardGridSlotsPerSide)
+		# 玩家侧仅 slot 0（位置 1，最左靠屏幕边）禁放，实际可用 = SLOTS_PER_SIDE - 1
+		var usable_slots: int = max(1, _CardGridSlotsPerSide - 1)
+		max_units = mini(max_units, usable_slots)
 	# v6.5: 用实时 recount（与 HUD 显示口径一致）替代缓存 player_unit_count，
 	# 避免单位死亡淡出/幽灵态导致缓存与实际脱节，出现"显示4个却不让部署"的错位。
 	var live_count: int = player_unit_count
@@ -788,8 +801,76 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 	# 不再需要额外调用 AffixManager.apply_affixes_to_stats
 	if _phase_instrument and _phase_instrument.has_method("apply_phase_field_bonus_to_unit_stats"):
 		_phase_instrument.apply_phase_field_bonus_to_unit_stats(stats)
+	# v6.2: 符文之语全局加成注入（所有玩家单位共享）
+	if _phase_instrument and _phase_instrument.has_method("get_rune_bonus"):
+		_apply_rune_bonus_to_stats(stats, _phase_instrument.get_rune_bonus())
 	_stats_cache[key] = stats.duplicate()
 	return stats
+
+## v6.2: 应用符文之语加成到单位属性
+## bonus 结构：{"stats": {attack: 0.5, hp: 0.3, ...}, "specials": [...]}
+func _apply_rune_bonus_to_stats(stats: UnitStats, bonus: Dictionary) -> void:
+	var stat_map: Dictionary = bonus.get("stats", {})
+	# v6.2 修复：即使无数值加成，也要写入特殊效果（否则纯特殊效果符文之语会失效）
+	# 先写入特殊效果，再处理数值加成
+	var specials: Array = bonus.get("specials", [])
+	if not specials.is_empty():
+		stats.set_meta("rune_specials", specials)
+	if stat_map.is_empty():
+		return
+	# 攻击力加成（影响所有武器伤害）
+	if stat_map.has("attack") and float(stat_map["attack"]) != 0.0:
+		var mult: float = 1.0 + float(stat_map["attack"])
+		stats.attack_damage *= mult
+		stats.attack_light *= mult
+		stats.attack_armor *= mult
+		stats.attack_air *= mult
+		# 武器伤害同步缩放
+		var weapons = stats.weapons if "weapons" in stats else null
+		if weapons is Array:
+			for w in weapons:
+				if w is Dictionary and w.has("damage"):
+					w["damage"] = float(w["damage"]) * mult
+	# 防御力加成（影响所有防御维度）
+	if stat_map.has("defense") and float(stat_map["defense"]) != 0.0:
+		var def_mult: float = 1.0 + float(stat_map["defense"])
+		stats.defense *= def_mult
+		stats.defense_light *= def_mult
+		stats.defense_armor *= def_mult
+		stats.defense_air *= def_mult
+	# 生命值加成
+	if stat_map.has("hp") and float(stat_map["hp"]) != 0.0:
+		stats.max_hp *= (1.0 + float(stat_map["hp"]))
+	# 攻击速度加成（attack_speed → 降低 attack_interval）
+	if stat_map.has("attack_speed") and float(stat_map["attack_speed"]) != 0.0:
+		var speed_mult: float = 1.0 + float(stat_map["attack_speed"])
+		stats.attack_light_speed /= speed_mult
+		stats.attack_armor_speed /= speed_mult
+		stats.attack_air_speed /= speed_mult
+		stats.attack_interval /= speed_mult
+	# 部署速度加成（影响部署间隔）
+	if stat_map.has("deploy_speed") and float(stat_map["deploy_speed"]) != 0.0:
+		# v6.2: 部署速度加成（UnitStats.deploy_speed 是部署速度倍率，直接叠加）
+		stats.deploy_speed *= (1.0 + float(stat_map["deploy_speed"]))
+	# 射程加成
+	if stat_map.has("range") and float(stat_map["range"]) != 0.0:
+		stats.attack_range *= (1.0 + float(stat_map["range"]))
+	# 闪避率加成
+	if stat_map.has("dodge") and float(stat_map["dodge"]) != 0.0:
+		stats.dodge_chance = clampf(stats.dodge_chance + float(stat_map["dodge"]), 0.0, 0.75)
+	# 暴击率加成
+	if stat_map.has("crit") and float(stat_map["crit"]) != 0.0:
+		stats.crit_chance = clampf(stats.crit_chance + float(stat_map["crit"]), 0.0, 0.95)
+	# 命中率加成（映射到 faction_accuracy_bonus）
+	if stat_map.has("accuracy") and float(stat_map["accuracy"]) != 0.0:
+		stats.faction_accuracy_bonus = clampf(stats.faction_accuracy_bonus + float(stat_map["accuracy"]), 0.0, 1.0)
+	# 生命恢复加成
+	if stat_map.has("hp_regen") and float(stat_map["hp_regen"]) != 0.0:
+		stats.hp_regen = stats.hp_regen + float(stat_map["hp_regen"])
+	# 伤害减免加成
+	if stat_map.has("damage_reduction") and float(stat_map["damage_reduction"]) != 0.0:
+		stats.damage_reduction = clampf(stats.damage_reduction + float(stat_map["damage_reduction"]), 0.0, 0.8)
+	# 注：特殊效果已在函数开头写入 meta，此处无需重复
 
 func _get_autoload_node(name: String) -> Node:
 	var loop := Engine.get_main_loop()

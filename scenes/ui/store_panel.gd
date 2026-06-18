@@ -260,8 +260,123 @@ func _refresh_items() -> void:
 				if row_panel2:
 					item_list.add_child(row_panel2)
 
+	# ═══ v6.2: 符文售卖区 ═══
+	_build_rune_items_section(current_rep)
+
 	# ═══ v6.0: 情报道具售卖区 ═══
 	_build_intel_items_section()
+
+
+## v6.2: 构建符文售卖区 — 从 FactionShop 获取符文商品
+func _build_rune_items_section(current_rep: int) -> void:
+	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
+	if fsm == null or not fsm.has_method("get_faction_store_items"):
+		return
+	# 获取当前势力的商店商品（含基础符文+专属符文）
+	var all_items: Array = fsm.get_faction_store_items(_current_company_id)
+	# 筛选出 RUNE 类型（StoreItemType.RUNE = 3）
+	var rune_items: Array = []
+	for it in all_items:
+		if it == null:
+			continue
+		if int(it.item_type) == 3:  # StoreItemType.RUNE
+			rune_items.append(it)
+	if rune_items.is_empty():
+		return
+	# 标题
+	var sep := HSeparator.new()
+	sep.add_theme_color_override("color", Color(0.6, 0.4, 0.9, 0.3))
+	item_list.add_child(sep)
+	var title := Label.new()
+	title.text = "◈ 符文（%d种）" % rune_items.size()
+	title.add_theme_font_size_override("font_size", 13)
+	title.add_theme_color_override("font_color", Color(0.75, 0.55, 0.95, 1.0))
+	item_list.add_child(title)
+	# 渲染每个符文商品
+	var current_nano: int = BasicResourceManager.get_total(BasicResources.ID_NANO_MATERIALS)
+	var RuneDefsForStore = preload("res://data/runes.gd")
+	for it in rune_items:
+		var rune_id: String = it.item_id
+		var rep_cost: int = int(it.reputation_cost)
+		var rune_def: Dictionary = RuneDefsForStore.get_rune(rune_id)
+		var rune_name: String = RuneDefsForStore.RUNE_NAMES.get(rune_id, rune_id)
+		var rarity: String = rune_def.get("rarity", "common")
+		var rarity_name: String = RuneDefsForStore.RARITY_NAMES.get(rarity, "")
+		# 检查是否已拥有
+		var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
+		var already_owned: bool = false
+		if pim and pim.has_method("has_rune"):
+			already_owned = pim.has_rune(rune_id)
+		var display_name: String = "符文·%s（%s）" % [rune_name, rarity_name]
+		if already_owned:
+			display_name += " ✓"
+		# 构建商品行
+		var row := PanelContainer.new()
+		row.custom_minimum_size = Vector2(0, 44)
+		var style := _make_style_box(Color(0.08, 0.06, 0.14, 0.85), Color(0.55, 0.36, 0.96, 0.5), 1, 4)
+		row.add_theme_stylebox_override("panel", style)
+		var hbox := HBoxContainer.new()
+		hbox.add_theme_constant_override("separation", 10)
+		row.add_child(hbox)
+		# 名称
+		var name_lbl := Label.new()
+		name_lbl.text = display_name
+		name_lbl.add_theme_font_size_override("font_size", 12)
+		name_lbl.custom_minimum_size = Vector2(280, 0)
+		name_lbl.add_theme_color_override("font_color", RuneDefsForStore.RARITY_COLORS.get(rarity, Color.WHITE))
+		hbox.add_child(name_lbl)
+		# 效果
+		var effect_lbl := Label.new()
+		effect_lbl.text = rune_def.get("desc_primary", "")
+		effect_lbl.add_theme_font_size_override("font_size", 10)
+		effect_lbl.add_theme_color_override("font_color", Color(0.65, 0.7, 0.8))
+		effect_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		hbox.add_child(effect_lbl)
+		# 价格
+		var price_lbl := Label.new()
+		price_lbl.text = "%d声望" % rep_cost
+		price_lbl.add_theme_font_size_override("font_size", 11)
+		price_lbl.add_theme_color_override("font_color", Color(0.9, 0.8, 0.3))
+		price_lbl.custom_minimum_size = Vector2(80, 0)
+		hbox.add_child(price_lbl)
+		# 购买按钮
+		var buy_btn := Button.new()
+		buy_btn.text = "购买" if not already_owned else "已拥有"
+		buy_btn.custom_minimum_size = Vector2(60, 30)
+		buy_btn.add_theme_font_size_override("font_size", 11)
+		buy_btn.disabled = already_owned or current_rep < rep_cost
+		var captured_rune_id := rune_id
+		var captured_rep := rep_cost
+		var captured_row := row
+		buy_btn.pressed.connect(func() -> void:
+			_on_buy_rune(captured_rune_id, captured_rep, captured_row)
+		)
+		hbox.add_child(buy_btn)
+		item_list.add_child(row)
+
+
+## v6.2: 购买符文
+func _on_buy_rune(rune_id: String, rep_cost: int, row_node: Control) -> void:
+	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
+	if fsm == null:
+		return
+	# 检查声望是否足够
+	var current_rep: int = 0
+	if fsm.has_method("get_faction_reputation"):
+		current_rep = int(fsm.get_faction_reputation(_current_company_id))
+	if current_rep < rep_cost:
+		_flash_row(row_node, Color(0.8, 0.2, 0.2, 0.3))
+		return
+	# 扣除声望
+	if fsm.has_method("add_faction_reputation"):
+		fsm.add_faction_reputation(_current_company_id, -rep_cost)
+	# 发放符文
+	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
+	if pim and pim.has_method("add_owned_rune"):
+		pim.add_owned_rune(rune_id)
+	# 刷新
+	_flash_row(row_node, Color(0.2, 0.8, 0.3, 0.3))
+	_refresh_items()
 
 
 func _build_intel_items_section() -> void:
