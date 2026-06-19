@@ -29,6 +29,14 @@ static func card_grid_enemy_acquisition_range(attack_range: float, combat_starte
 
 
 static func count_alive_in_group(group_name: String, battle_manager: Node) -> int:
+	# v6.6: 优先用 BattleManager 的 O(1) 计数器缓存（player/enemy_units），
+	# 避免每次索敌判定都对整组节点做 is_instance_valid + hp 遍历。
+	# 计数器由部署(+1)/死亡(-1)维护，与 recount 结果一致。
+	if battle_manager != null:
+		if group_name == "enemy_units" and battle_manager.has_method("get_enemy_unit_count"):
+			return battle_manager.get_enemy_unit_count()
+		if group_name == "player_units" and battle_manager.has_method("get_player_unit_count"):
+			return battle_manager.get_player_unit_count()
 	var nodes: Array
 	if battle_manager != null and battle_manager.has_method("get_cached_nodes_in_group"):
 		nodes = battle_manager.get_cached_nodes_in_group(group_name)

@@ -70,8 +70,9 @@ func _physics_process(delta: float) -> void:
 	var tree := get_tree()
 	if tree == null or tree.paused:
 		return
-	_sync_multimesh_layers()
+	# v6.6: 移除开头冗余的 _sync_multimesh_layers() —— 同 player batch
 	if _proj.is_empty():
+		_sync_multimesh_layers()
 		return
 
 	var write: int = 0

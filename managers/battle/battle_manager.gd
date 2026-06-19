@@ -224,6 +224,8 @@ func end_battle(player_won: bool) -> void:
 	_card_grid_placement_active = false
 	_card_grid_combat_started = false
 	_clear_group_target_cache()
+	# v6.6: 清空伤害数字节流表，flush 残留合并伤害并避免跨战斗残留
+	CombatFeedback.reset_throttle()
 
 	# 性能优化：清理空间分区系统
 	_cleanup_spatial_grid()
@@ -633,6 +635,8 @@ func _maybe_refresh_group_target_cache(delta: float) -> void:
 		return
 	for g in ["player_units", "enemy_units", "phase_driver", "enemy_phase_driver"]:
 		_cached_nodes_by_group[g] = tree.get_nodes_in_group(g)
+	# v6.6: 顺带 flush 伤害数字节流表（同节奏 ~0.28s），确保合并伤害最终显示
+	CombatFeedback.flush_expired_throttle()
 
 
 func _clear_group_target_cache() -> void:
@@ -643,13 +647,11 @@ func _clear_group_target_cache() -> void:
 ## 供单位索敌 fallback：读节流缓存（战斗外或未命中缓存时回退到实时 get_nodes_in_group）
 func get_cached_nodes_in_group(group_name: String) -> Array:
 	if battle_active and _cached_nodes_by_group.has(group_name):
-		var cached: Array = _cached_nodes_by_group[group_name] as Array
-		# 过滤已释放节点，防止悬空引用
-		var valid: Array = []
-		for n in cached:
-			if is_instance_valid(n):
-				valid.append(n)
-		return valid
+		# v6.6: 直接返回缓存数组引用，调用方自行跳过失效节点（用 is_instance_valid）。
+		# 原实现每次调用都分配新数组并做 is_instance_valid 遍历，索敌高频调用下开销可观。
+		# 索敌路径已在 is_attackable_combat_unit / 距离判定中做了 is_instance_valid 检查，
+		# 因此返回原数组不会造成悬空引用错误。
+		return _cached_nodes_by_group[group_name]
 	var tree := get_tree()
 	if tree == null:
 		return []

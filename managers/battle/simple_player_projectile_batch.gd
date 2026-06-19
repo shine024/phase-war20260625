@@ -72,8 +72,11 @@ func _physics_process(delta: float) -> void:
 	var tree := get_tree()
 	if tree == null or tree.paused:
 		return
-	_sync_multimesh_layers()
+	# v6.6: 移除开头冗余的 _sync_multimesh_layers() ——
+	# 上帧末尾已同步过，且本帧 fire() 之前 _proj 不会增长，
+	# 删除此处可每帧每批省 2 遍 720 发遍历
 	if _proj.is_empty():
+		_sync_multimesh_layers()
 		return
 
 	var write: int = 0

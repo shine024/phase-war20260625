@@ -59,6 +59,9 @@ var _visual_scale_archetype_id: String = ""
 var _cached_hp_ratio: float = -1.0
 # 性能优化：目标查找计时器，减少频繁查找
 var _target_find_timer: float = 0.0
+## v6.6: 缓存索敌间隔，避免每帧 has_method 反射；当单位数档位变化时才重算
+var _cached_target_find_interval: float = -1.0
+var _cached_interval_unit_count: int = -1
 const TARGET_FIND_INTERVAL: float = 0.3  # 每300ms重新查找一次目标
 ## 性能优化：缓存攻击时序数据，避免每帧重新查字典
 var _cached_timing: Dictionary = {}
@@ -565,14 +568,20 @@ func _physics_process(delta: float) -> void:
 		_update_in_spatial_grid()
 
 func _get_target_find_interval() -> float:
+	# v6.6: 仅在单位数档位变化时重新计算，避免每帧 has_method 反射
 	var n: int = 0
 	if BattleManager and BattleManager.has_method("get_enemy_unit_count"):
 		n = BattleManager.get_enemy_unit_count()
+	if n == _cached_interval_unit_count and _cached_target_find_interval >= 0.0:
+		return _cached_target_find_interval
+	_cached_interval_unit_count = n
 	if n > 55:
-		return 0.55
-	if n > 35:
-		return 0.42
-	return TARGET_FIND_INTERVAL
+		_cached_target_find_interval = 0.55
+	elif n > 35:
+		_cached_target_find_interval = 0.42
+	else:
+		_cached_target_find_interval = TARGET_FIND_INTERVAL
+	return _cached_target_find_interval
 
 func _should_retain_current_target() -> bool:
 	if target == null or not is_instance_valid(target):
