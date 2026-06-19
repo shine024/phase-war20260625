@@ -563,10 +563,17 @@ func clear_all_units() -> void:
 func _clear_battlefield_transient_nodes() -> void:
 	if _battlefield == null or not is_instance_valid(_battlefield):
 		return
-	if _battlefield.has_method("prune_transient_children"):
-		_battlefield.prune_transient_children()
+	# v6.6: 延迟到下一帧清理战场瞬态节点，避免结算帧阻塞
+	var bf: Node = _battlefield
+	call_deferred("_do_prune_transient", bf)
+
+func _do_prune_transient(bf: Node) -> void:
+	if bf == null or not is_instance_valid(bf):
 		return
-	for child in _battlefield.get_children():
+	if bf.has_method("prune_transient_children"):
+		bf.prune_transient_children()
+		return
+	for child in bf.get_children():
 		if child == null or not is_instance_valid(child):
 			continue
 		child.queue_free()

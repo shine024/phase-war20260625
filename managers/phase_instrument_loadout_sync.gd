@@ -37,10 +37,14 @@ func _card_type_name(card: CardResource) -> String:
 		return _host._card_type_name(card)
 	return ""
 
-func _law_id_from_card(card: CardResource) -> String:
-	if card == null or card.card_type != GC.CardType.LAW:
+func _law_id_from_card(card: Variant) -> String:
+	# v6.2: rune 槽存的是 String，防御非 CardResource 传入（与主文件 phase_instrument_manager 同步）
+	if card == null or not (card is CardResource):
 		return ""
-	var lid: String = card.linked_law_id if not String(card.linked_law_id).is_empty() else card.card_id
+	var cr: CardResource = card
+	if cr.card_type != GC.CardType.LAW:
+		return ""
+	var lid: String = cr.linked_law_id if not String(cr.linked_law_id).is_empty() else cr.card_id
 	if lid.begins_with("law:"):
 		lid = lid.substr(4)
 	if PhaseLaws.get_by_id(lid).is_empty():
@@ -51,9 +55,11 @@ func _has_any_law_card_in_slots() -> bool:
 	var slots: Dictionary = _instrument_slots()
 	for color in ["red", "blue"]:
 		for c_raw in slots.get(color, []):
-			var c: CardResource = c_raw
-			if c != null and c.card_type == GC.CardType.LAW:
-				return true
+			# v6.2: 防御非 CardResource（rune 槽的 String），与主文件同步
+			if c_raw != null and c_raw is CardResource:
+				var c: CardResource = c_raw
+				if c.card_type == GC.CardType.LAW:
+					return true
 	return false
 
 func _compact_law_ids_from_slots_hypothetical(color: String, color_index: int, new_card: CardResource) -> Dictionary:
@@ -71,6 +77,9 @@ func _compact_law_ids_from_slots_hypothetical(color: String, color_index: int, n
 func _compact_law_ids_for_kind(slot_arr: Array, expected_kind: String) -> Array:
 	var out: Array = []
 	for c_raw in slot_arr:
+		# v6.2: 防御非 CardResource（rune 槽的 String），与主文件同步
+		if c_raw != null and not (c_raw is CardResource):
+			continue
 		var c: CardResource = c_raw
 		if c == null:
 			continue

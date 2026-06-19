@@ -143,15 +143,23 @@ func _flush_slots_changed() -> void:
 		blue_count = int(slot_counts.get("blue", 0))
 		green_count = int(slot_counts.get("green", 0))
 		yellow_count = int(slot_counts.get("yellow", 0))
-	var expected_size: int = red_count + blue_count + green_count + yellow_count
+	# v6.2 修复 H3：expected_size 只计 green+yellow（与本面板 _rebuild_slots 的 green_n+yellow_n 一致），
+	# 原含 red+blue 会导致每次刷新都重建（因 slots.size()==green+yellow < expected_size）
+	var expected_size: int = green_count + yellow_count
 	if slots.size() != expected_size:
 		_rebuild_slots()
 
 	_refresh_phase_level_label()
 
 	var all_slots: Array = _pending_slots_data if not _pending_slots_data.is_empty() else _pim_sc.get_slots()
-	for i in range(min(slots.size(), all_slots.size())):
-		var slot_card: CardResource = all_slots[i] as CardResource if all_slots[i] else null
+	# v6.2 修复 B11：all_slots 顺序为 red,blue,green,yellow,rune，本面板只渲染 green+yellow，
+	# 需用偏移跳过 red+blue，否则卡牌会映射到错误槽位
+	var offset: int = red_count + blue_count
+	for i in range(min(slots.size(), max(0, all_slots.size() - offset))):
+		var src_idx: int = i + offset
+		if src_idx >= all_slots.size():
+			break
+		var slot_card: CardResource = all_slots[src_idx] as CardResource if all_slots[src_idx] else null
 		var slot_node: Node = slots[i]
 		if slot_node != null and slot_node.has_method("set_card"):
 			slot_node.set_card(slot_card)

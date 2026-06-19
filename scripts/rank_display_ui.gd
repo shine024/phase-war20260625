@@ -70,7 +70,7 @@ static func format_line(info: Dictionary) -> String:
 	if rank_name.is_empty():
 		return ""
 	if power > 0.0:
-		return "军衔 %s（战力 %.0f）" % [rank_name, power]
+			return "军衔 %s（战力 %d）" % [rank_name, int(power)]
 	return "军衔 %s" % rank_name
 
 

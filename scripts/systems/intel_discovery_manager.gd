@@ -39,6 +39,10 @@ var _unlocked_eom: Dictionary = {}
 ## 敌源MOD碎片进度: mod_id -> int
 var _eom_fragments: Dictionary = {}
 
+## v6.6: 脏标记，避免结算帧内同步写磁盘
+var _state_dirty: bool = false
+var _save_pending: bool = false
+
 # ── 生命周期 ──────────────────────────────────────────────────────
 
 func _ready() -> void:
@@ -51,6 +55,7 @@ func _ready() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		_state_dirty = true  ## 确保退出时强制保存
 		_save_state()
 
 # ── 存档 ───────────────────────────────────────────────────────────
@@ -59,12 +64,33 @@ const SaveUtils = preload("res://scripts/save_utils.gd")
 const STATE_SAVE_NAME: String = "intel_discovery_state"
 
 func _save_state() -> void:
+	if not _state_dirty:
+		return
 	var data: Dictionary = {
 		"triggered_reveals": _triggered_reveals.duplicate(),
 		"unlocked_eom": _unlocked_eom.duplicate(),
 		"eom_fragments": _eom_fragments.duplicate(),
 	}
 	SaveUtils.save_data_to_file(data, STATE_SAVE_NAME)
+	_state_dirty = false
+
+## 延迟保存：通过 call_deferred 避免在结算链内同步 I/O
+func _deferred_save_if_dirty() -> void:
+	if not _state_dirty:
+		return
+	if _save_pending:
+		return
+	_save_pending = true
+	var tree := get_tree()
+	if tree == null:
+		_save_pending = false
+		_save_state()
+		return
+	var t := tree.create_timer(0.3)
+	t.timeout.connect(func() -> void:
+		_save_pending = false
+		_save_state()
+	)
 
 func _load_state() -> void:
 	var data: Dictionary = SaveUtils.load_data_from_file(STATE_SAVE_NAME)
@@ -150,15 +176,17 @@ func generate_battle_intel_harvest(
 			if bag and bag.has_method("add_item") and not item_type.is_empty():
 				bag.add_item(item_type, 1)
 
-	var result: Dictionary = {
-		"harvests": merged.get("items", []),
-		"reveal_events": reveal_events,
-		"eom_drops": eom_drops,
-		"intel_item_drops": intel_item_drops,  ## v6.0
-	}
-	intel_harvest_generated.emit(result)
-	_save_state()
-	return result
+		var result: Dictionary = {
+			"harvests": merged.get("items", []),
+			"reveal_events": reveal_events,
+			"eom_drops": eom_drops,
+			"intel_item_drops": intel_item_drops,  ## v6.0
+		}
+		intel_harvest_generated.emit(result)
+		# v6.6 性能优化：不再同步写磁盘，改为标记脏位由 battle_ended 信号链延迟保存
+		_state_dirty = true
+		call_deferred("_deferred_save_if_dirty")
+		return result
 
 # ── 揭示事件检测 ──────────────────────────────────────────────────
 
@@ -262,7 +290,10 @@ func get_eom_fragments(mod_id: String) -> int:
 func add_eom_fragments(mod_id: String, amount: int) -> int:
 	_eom_fragments[mod_id] = int(_eom_fragments.get(mod_id, 0)) + amount
 	eom_fragment_dropped.emit(mod_id, amount, int(_eom_fragments[mod_id]))
-	_save_state()
+	# v6.6: 延迟保存，避免结算帧同步 I/O
+	_state_dirty = true
+	if not _save_pending:
+		call_deferred("_deferred_save_if_dirty")
 	return int(_eom_fragments[mod_id])
 
 # ── 揭示事件查询接口 ──────────────────────────────────────────────

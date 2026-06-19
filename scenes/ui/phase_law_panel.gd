@@ -21,6 +21,12 @@ func _ready() -> void:
 	_refresh_env()
 	_refresh_list()
 
+# v6.2 修复 M12：断开信号，防止面板销毁后回调访问已释放节点
+func _exit_tree() -> void:
+	if SignalBus != null and SignalBus.has_signal("phase_slots_changed"):
+		if SignalBus.phase_slots_changed.is_connected(_on_phase_slots_changed):
+			SignalBus.phase_slots_changed.disconnect(_on_phase_slots_changed)
+
 func _on_phase_slots_changed(_slots: Array) -> void:
 	if _slots_refresh_pending:
 		return
@@ -297,8 +303,9 @@ func _make_law_row(law_id: String, cfg: Dictionary, st: Dictionary, is_equipped:
 		slot_hint = Label.new()
 		slot_hint.custom_minimum_size = Vector2(120, 0)
 		if is_equipped:
-			slot_hint.text = "已装配\n（相位仪槽）"
-			slot_hint.add_theme_color_override("font_color", Color(0.45, 0.95, 0.65, 0.95))
+			# v6.2 修复 M13：法则系统已废弃（red/blue 槽改用 rune 符文槽），修正误导文案
+			slot_hint.text = "已装配\n（法则系统已废弃\n请迁移至符文）"
+			slot_hint.add_theme_color_override("font_color", Color(0.95, 0.75, 0.3, 0.95))
 		else:
 			slot_hint.text = "法则系统已废弃\n请使用符文系统"
 			slot_hint.add_theme_color_override("font_color", Color(0.55, 0.72, 0.88, 0.9))
@@ -557,7 +564,7 @@ func _build_detail_desc(cfg: Dictionary) -> String:
 		var nano_cast: int = int(battle_cost.get("nano", 0))
 		var cost_parts: Array[String] = []
 		if energy_cost > 0.0:
-			cost_parts.append("能量 %.0f" % energy_cost)
+			cost_parts.append("能量 %d" % int(energy_cost))
 		if nano_cast > 0:
 			cost_parts.append("纳米 %d" % nano_cast)
 		if cost_parts.size() > 0:

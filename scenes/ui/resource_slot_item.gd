@@ -1,17 +1,24 @@
 extends PanelContainer
 class_name ResourceSlotItem
-## 背包网格中的槽位控件：情报页、属性提升等（基础资源仅由左上角资源面板等展示，不再占用背包格）。
+## 背包网格中的槽位控件：情报页、属性提升、符文等（基础资源仅由左上角资源面板等展示，不再占用背包格）。
+##
+## v6.2: RUNE 类型支持点击——背包符文标签点击格子触发 rune_clicked 信号，
+## 由 backpack_panel 接收后装备/卸下符文。
 
 const BasicResources = preload("res://data/basic_resources.gd")
 
 ## 槽位尺寸（与PhaseSlot.SLOT_SIZE保持一致）
 const SLOT_SIZE: Vector2 = Vector2(50, 80)
 
+## v6.2: 符文格子被点击时发射，参数为 rune_id
+signal rune_clicked(rune_id: String)
+
 ## 槽位类型
 enum SlotType {
 	RESOURCE,       # 基础资源
 	LORE,           # 情报页
 	STAT_BOOST,     # 属性提升
+	RUNE,           # v6.2: 符文（依赖 extra_data 提供名称/描述/颜色，可点击）
 }
 
 var slot_type: SlotType = SlotType.RESOURCE
@@ -25,6 +32,10 @@ func _ready() -> void:
 	custom_minimum_size = SLOT_SIZE
 	size_flags_horizontal = 0
 	size_flags_vertical = 0
+	# v6.2: 符文格子需要接收鼠标点击；默认 mouse_filter 已为 STOP（PanelContainer 默认），
+	# 但显式确认避免被主题覆盖。仅 RUNE 类型连接 gui_input。
+	mouse_filter = Control.MOUSE_FILTER_STOP
+	gui_input.connect(_on_gui_input)
 	var vbox = get_node_or_null("VBox")
 	if vbox:
 		vbox.custom_minimum_size = SLOT_SIZE
@@ -34,6 +45,15 @@ func _ready() -> void:
 		icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		icon_rect.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		icon_rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+
+## v6.2: 仅 RUNE 类型响应左键点击，发射 rune_clicked 信号
+func _on_gui_input(event: InputEvent) -> void:
+	if slot_type != SlotType.RUNE:
+		return
+	if event is InputEventMouseButton:
+		var mb: InputEventMouseButton = event
+		if mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed:
+			rune_clicked.emit(resource_id)
 
 ## 设置数据 - 支持多种掉落类型
 func set_data(id: String, stack_amount: int, type: SlotType = SlotType.RESOURCE, extra_data: Dictionary = {}) -> void:
@@ -57,6 +77,8 @@ func set_data(id: String, stack_amount: int, type: SlotType = SlotType.RESOURCE,
 			_refresh_lore(id, stack_amount, name_label, amount_label, icon_rect, custom_icon, custom_name)
 		SlotType.STAT_BOOST:
 			_refresh_stat_boost(id, stack_amount, name_label, amount_label, icon_rect)
+		SlotType.RUNE:
+			_refresh_rune(id, stack_amount, name_label, amount_label, icon_rect, extra_data)
 
 ## 刷新资源显示
 func _refresh_resource(id: String, name_label: Label, amount_label: Label, icon_rect: TextureRect) -> void:
@@ -95,7 +117,7 @@ func _refresh_lore(lore_id: String, count: int, name_label: Label, amount_label:
 
 	if name_label:
 		var max_name_len := 12 if slot_type == SlotType.LORE else 6
-		name_label.text = display_name.substr(0, max_name_len)
+		name_label.text = _truncate_with_ellipsis(display_name, max_name_len)
 	if amount_label:
 		amount_label.text = ""
 	if icon_rect:
@@ -111,12 +133,58 @@ func _refresh_stat_boost(boost_id: String, count: int, name_label: Label, amount
 	description = _get_boost_description(boost_id)
 
 	if name_label:
-		name_label.text = display_name.substr(0, 6)
+		# 属性提升名称截断到 6 字符
+		name_label.text = _truncate_with_ellipsis(display_name, 6)
 	if amount_label:
 		amount_label.text = "Lv.%d" % count
 	if icon_rect:
 		# 属性提升使用橙色图标
 		icon_rect.modulate = Color(1.0, 0.5, 0.0, 1.0)
+
+## v6.2: 刷新符文显示——名称/描述/颜色全部来自 extra_data（由 backpack_panel._add_rune_item 准备）
+func _refresh_rune(rune_id: String, count: int, name_label: Label, amount_label: Label, icon_rect: TextureRect, extra_data: Dictionary) -> void:
+	# 优先使用 extra_data 提供的显示名（含"✓ 已装备"标记），否则回退到 rune_id
+	var custom_name: String = extra_data.get("name", "")
+	if not custom_name.is_empty():
+		display_name = custom_name
+	else:
+		display_name = rune_id
+	# 描述同样优先用 extra_data
+	var custom_desc: String = extra_data.get("description", "")
+	if not custom_desc.is_empty():
+		description = custom_desc
+
+	if name_label:
+		# 符文名允许较长（最多8字符），避免"神盾壁垒"等被截断
+		name_label.text = _truncate_with_ellipsis(display_name, 8)
+		# 稀有度颜色染色：让符文名一眼可辨稀有度
+		var rune_color: Color = extra_data.get("rune_color", Color(0.85, 0.85, 0.85))
+		name_label.add_theme_color_override("font_color", rune_color)
+	if amount_label:
+		# 符文数量通常为1，仅在 >1 时显示数量
+		if count > 1:
+			amount_label.text = "×%d" % count
+		else:
+			amount_label.text = ""
+	if icon_rect:
+		# 符文用稀有度颜色染色图标，无贴图时仅靠颜色区分
+		var icon_color: Color = extra_data.get("rune_color", Color(0.75, 0.45, 0.95))
+		icon_rect.modulate = icon_color
+		# v6.2: 加载符文专属图标贴图（优先用 extra_data 传入的 icon 路径，否则按 rune_id 查找）
+		# 贴图缺失时保持现状（仅颜色染色），不退化
+		var rune_tex: Texture2D = null
+		var icon_path: String = String(extra_data.get("icon", ""))
+		if not icon_path.is_empty():
+			if ResourceLoader.exists(icon_path, "Texture2D"):
+				rune_tex = load(icon_path)
+		else:
+			var UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")
+			rune_tex = UiAssetLoader.rune_icon(rune_id)
+		if rune_tex != null:
+			icon_rect.texture = rune_tex
+			icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			icon_rect.visible = true
 
 ## 获取情报默认名称
 func _get_lore_default_name(lore_id: String) -> String:
@@ -152,6 +220,12 @@ func _get_boost_description(boost_id: String) -> String:
 		"stat_boost_crit_damage": return "单位暴击伤害 +10%"
 		_: return "提升单位属性"
 
+## v6.2 修复 L2：字符串超长截断并加省略号（原 substr 直接截断无提示，中文可能切掉半个词）
+func _truncate_with_ellipsis(text: String, max_len: int) -> String:
+	if text.length() <= max_len:
+		return text
+	return text.substr(0, max_len) + "…"
+
 ## 获取悬停提示文本
 func _get_slot_tooltip_text() -> String:
 	match slot_type:
@@ -161,5 +235,7 @@ func _get_slot_tooltip_text() -> String:
 			return "%s\n%s" % [display_name, description]
 		SlotType.STAT_BOOST:
 			return "%s\n%s\n当前层数: %d" % [display_name, description, amount]
+		SlotType.RUNE:
+			return "%s\n%s" % [display_name, description]
 		_:
 			return display_name

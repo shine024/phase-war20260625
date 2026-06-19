@@ -487,19 +487,22 @@ func _spawn_muzzle_effect(pos: Vector2) -> void:
 	tw.finished.connect(func(): WeaponProjectileVfx._release_impact_sprite(fx))
 
 func _spawn_impact_explosion(pos: Vector2) -> void:
-	if ARTILLERY_IMPACT_TEX == null:
+	# v6.2: 按武器类型选不同爆炸贴图（迫击炮/导弹/高射炮/Omega/电磁炮各有专属外观）
+	var tex: Texture2D = WeaponProjectileVfx.explosion_impact_texture(weapon_type)
+	if tex == null:
 		return
 	WeaponProjectileVfx._active_impacts += 1
 	var fx: Sprite2D = WeaponProjectileVfx._acquire_impact_sprite()
-	fx.texture = ARTILLERY_IMPACT_TEX
+	fx.texture = tex
 	fx.centered = true
-	fx.scale = Vector2(0.75, 0.75)
+	# v6.2: 曲射/空射爆炸特效放大(初始 0.75→1.0，放大倍率 1.5→2.25)
+	fx.scale = Vector2(1.0, 1.0)
 	fx.global_position = pos
 	if not shooter_is_player:
 		fx.scale.x = -fx.scale.x
 	get_parent().add_child(fx)
 	var tw := fx.create_tween()
-	tw.tween_property(fx, "scale", fx.scale * 1.5, 0.15)
+	tw.tween_property(fx, "scale", fx.scale * 2.25, 0.15)
 	tw.parallel().tween_property(fx, "modulate:a", 0.0, 0.3)
 	tw.finished.connect(func(): WeaponProjectileVfx._release_impact_sprite(fx))
 
@@ -552,13 +555,13 @@ func _on_hit(primary: Node2D) -> void:
 		CombatFeedback.show_miss(miss_pos, primary)
 		if _use_tex_sprite:
 			_spawn_tex_impact_at(miss_pos)
-		elif GameManager and GameManager.has_method("is_card_grid_battle") and GameManager.is_card_grid_battle():
+		elif GameManager != null:
 			var root := get_parent() as Node2D
 			if root != null:
 				CardGridFx.spawn_impact(root, miss_pos, weapon_type)
 		_finish_tex_bullet()
 		return
-	if not _use_tex_sprite and GameManager and GameManager.has_method("is_card_grid_battle") and GameManager.is_card_grid_battle():
+	if not _use_tex_sprite and GameManager != null:
 		var root2 := get_parent() as Node2D
 		if root2 != null:
 			CardGridFx.spawn_impact(root2, primary.global_position if primary else global_position, weapon_type)
@@ -569,7 +572,7 @@ func _on_hit(primary: Node2D) -> void:
 
 	# 格子战：百分比护甲减伤与闪避在 take_damage（CardGridDamage）结算；穿甲仍作用于 shooter_stats
 	var defender_reduction: float = 0.0
-	if GameManager == null or not GameManager.is_card_grid_battle():
+	if GameManager == null:
 		defender_reduction = primary.damage_reduction if primary != null and "damage_reduction" in primary else 0.0
 	# v5.0: 击穿检查 + 三维防御减免（仅当伤害未预计算时）
 	if not _pre_calculated:
@@ -615,7 +618,7 @@ func _on_hit(primary: Node2D) -> void:
 	if explosion_radius > 0.0:
 		for child in _get_aoe_damage_targets(global_position, explosion_radius, primary):
 			var splash_red: float = 0.0
-			if GameManager == null or not GameManager.is_card_grid_battle():
+			if GameManager == null:
 				splash_red = child.damage_reduction if child != null and "damage_reduction" in child else 0.0
 			var splash_base: float = damage * shooter_stats.splash_damage
 			# v5.0: 溅射目标也做击穿检查+防御减免

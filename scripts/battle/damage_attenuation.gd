@@ -46,15 +46,18 @@ static func infer_weapon_sub_type(combat_kind: int, range_value: int, attack_lig
 ## 计算衰减倍率（仅直射武器调用）
 ## distance: 实际距离(格), max_range: 最大射程(格)
 ## 返回 0.0~1.0 的倍率
+## v6.2: 直射武器已删除攻击力衰减设定，统一返回 1.0（无衰减）。
+## 原衰减公式保留于下方注释，如需恢复可解开。
 static func calculate_attenuation(distance: float, max_range: float, weapon_sub_type: String) -> float:
-	if max_range <= 0.0:
-		return 1.0
-	if distance <= max_range:
-		return 1.0
-	var factor = float(ATTENUATION_FACTORS.get(weapon_sub_type, 0.4))
-	var over_ratio = (distance - max_range) / max_range
-	var attenuation = 1.0 - over_ratio * factor
-	return clampf(attenuation, 0.0, 1.0)
+	return 1.0
+#	if max_range <= 0.0:
+#		return 1.0
+#	if distance <= max_range:
+#		return 1.0
+#	var factor = float(ATTENUATION_FACTORS.get(weapon_sub_type, 0.4))
+#	var over_ratio = (distance - max_range) / max_range
+#	var attenuation = 1.0 - over_ratio * factor
+#	return clampf(attenuation, 0.0, 1.0)
 
 ## 是否需要衰减（仅直射需要）
 static func needs_attenuation(weapon_type: int) -> bool:

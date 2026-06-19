@@ -167,8 +167,8 @@ static func _card_resource_from_energy_card(d: Dictionary, equipment_id: String)
 	c.energy_cost = 0.0
 	c.energy_grant = float(d.get("energy_amount", 15))
 	c.type_line = "能量 — %s／敌方相位师" % String(d.get("faction", ""))
-	c.summary_line = "能量 +%.0f｜回充 +%.1f" % [
-		float(d.get("energy_amount", 0.0)), float(d.get("energy_regen_boost", 0.0))]
+	c.summary_line = "能量 +%d｜回充 +%.1f" % [
+		int(float(d.get("energy_amount", 0.0))), float(d.get("energy_regen_boost", 0.0))]
 	c.description = "由敌方相位师装备数据生成的能量卡蓝图（展示用）。"
 	return c
 

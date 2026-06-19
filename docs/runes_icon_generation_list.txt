@@ -1,0 +1,65 @@
+Phase War 符文图标生成清单 (54个)
+======================================================================
+
+
+--- 常见 (common) ---
+  attack_01            | 力量       | attack       | generic              | 攻击力 +15%
+  attack_02            | 锐锋       | attack       | generic              | 攻击力 +12%
+  attack_03            | 疾风       | attack       | generic              | 攻击速度 +18%
+  defense_01           | 坚韧       | defense      | generic              | 生命值 +20%
+  defense_02           | 守护       | defense      | generic              | 防御力 +15%
+  defense_03           | 壁垒       | defense      | generic              | 伤害减免 +8%
+  energy_01            | 涌动       | energy       | generic              | 能量恢复 +20%
+  energy_02            | 源泉       | energy       | generic              | 能量消耗 -10%
+  energy_03            | 节制       | energy       | generic              | 能量恢复 +15%
+  mobility_01          | 迅捷       | mobility     | generic              | 部署速度 +20%
+
+--- 稀有 (rare) ---
+  attack_04            | 破甲       | attack       | generic              | 攻击力 +18%
+  attack_05            | 爆裂       | attack       | generic              | 攻击力 +20%
+  defense_04           | 磐石       | defense      | generic              | 生命值 +25%
+  defense_05           | 铁壁       | defense      | generic              | 防御力 +20%
+  defense_06           | 不屈       | defense      | generic              | 生命值 +22%
+  energy_04            | 充盈       | energy       | generic              | 能量恢复 +25%
+  mobility_02          | 幻影       | mobility     | generic              | 闪避率 +12%
+  mobility_03          | 诡步       | mobility     | generic              | 闪避率 +15%
+  special_01           | 掠夺       | special      | generic              | 攻击力 +10%
+  special_02           | 重生       | special      | generic              | 生命值 +15%
+  aether_01            | 神盾壁垒     | aether       | aether_dynamics      | 生命值 +28%
+  helix_01             | 螺旋疾行     | helix        | helix_recon          | 部署速度 +28%
+  nova_01              | 新星炽焰     | nova         | nova_arms            | 攻击力 +22%
+  iron_01              | 铁幕铸甲     | iron         | iron_wall_corp       | 生命值 +30%
+  void_01              | 虚空低语     | void         | void_research        | 攻击力 +12%
+  quantum_01           | 量子工蜂     | quantum      | quantum_logistics    | 能量恢复 +22%
+  frontier_01          | 边境均衡     | frontier     | frontier_union       | 攻击力 +15%
+
+--- 史诗 (epic) ---
+  attack_06            | 精准       | attack       | generic              | 命中率 +25%
+  attack_07            | 狂暴       | attack       | generic              | 攻击力 +25%
+  defense_07           | 圣盾       | defense      | generic              | 伤害减免 +12%
+  energy_05            | 超载       | energy       | generic              | 能量恢复 +30%
+  mobility_04          | 瞬移       | mobility     | generic              | 部署速度 +25%
+  special_03           | 连锁       | special      | generic              | 攻击力 +15%
+  special_04           | 庇护       | special      | generic              | 伤害减免 +8%
+  special_05           | 洞察       | special      | generic              | 命中率 +20%
+  aether_02            | 神盾穹顶     | aether       | aether_dynamics      | 伤害减免 +14%
+  helix_02             | 螺旋神经     | helix        | helix_recon          | 闪避率 +22%
+  nova_02              | 新星裂变     | nova         | nova_arms            | 攻击力 +28%
+  iron_03              | 铁幕铸魂     | iron         | iron_wall_corp       | 伤害减免 +15%
+  void_03              | 虚空裂隙     | void         | void_research        | 攻击力 +15%
+  quantum_03           | 量子矩阵     | quantum      | quantum_logistics    | 能量恢复 +28%
+  frontier_03          | 边境共鸣     | frontier     | frontier_union       | 攻击力 +18%
+
+--- 传说 (legendary) ---
+  attack_08            | 致命       | attack       | generic              | 攻击力 +30%
+  defense_08           | 不朽       | defense      | generic              | 生命值 +35%
+  energy_06            | 永恒       | energy       | generic              | 能量恢复 +40%
+  mobility_05          | 风行       | mobility     | generic              | 部署速度 +30%
+  special_06           | 丰收       | special      | generic              | 攻击力 +15%
+  aether_03            | 神盾圣光     | aether       | aether_dynamics      | 生命值 +38%
+  helix_03             | 螺旋幻影     | helix        | helix_recon          | 闪避率 +30%
+  nova_03              | 新星湮灭     | nova         | nova_arms            | 攻击力 +35%
+  iron_02              | 铁幕王座     | iron         | iron_wall_corp       | 生命值 +40%
+  void_02              | 虚空深渊     | void         | void_research        | 攻击力 +18%
+  quantum_02           | 量子枢纽     | quantum      | quantum_logistics    | 能量恢复 +35%
+  frontier_02          | 边境终式     | frontier     | frontier_union       | 攻击力 +20%

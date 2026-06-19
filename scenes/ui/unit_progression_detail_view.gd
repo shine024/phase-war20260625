@@ -143,10 +143,10 @@ func _add_progress_block() -> void:
 	if BlueprintManager.has_method("get_rank_info"):
 		var rank_info: Dictionary = BlueprintManager.get_rank_info(_card_id)
 		_add_line(
-			"军衔：%s（战力 %.0f）" % [
-				String(rank_info.get("rank_name", "未定级")),
-				float(rank_info.get("power_score", 0.0)),
-			],
+			"军衔：%s（战力 %d）" % [
+					String(rank_info.get("rank_name", "未定级")),
+					int(float(rank_info.get("power_score", 0.0))),
+				],
 			Color(0.95, 0.85, 0.45)
 		)
 	var rarity: String = "common"

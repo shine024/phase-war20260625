@@ -7,6 +7,8 @@ const SoundGeneratorScript = preload("res://managers/sound_generator.gd")
 
 var _players: Dictionary = {}
 var _sound_generator: Node = null
+# P0 性能优化：缓存已加载的音频流，避免每次受击都 ResourceLoader.exists + load
+var _audio_cache: Dictionary = {}
 const SFX_NAMES: Array[String] = [
 	"button", "button_hover", "hit", "shoot", "explosion", "cast", "hurt",
 	"win", "lose", "blueprint_unlock",
@@ -79,15 +81,21 @@ func play_sfx(name: String) -> void:
 
 ## 加载音频流
 func _load_audio_stream(name: String) -> AudioStream:
+	# P0 性能优化：命中缓存直接返回（原每次 play_sfx 都 ResourceLoader.exists + load，
+	# 受击密集时每秒数十次资源存在性查询）
+	if _audio_cache.has(name):
+		return _audio_cache[name]
 	var path_ogg: String = "res://assets/sfx/%s.ogg" % name
 	var path_wav: String = "res://assets/sfx/%s.wav" % name
 
+	var stream: AudioStream = null
 	if ResourceLoader.exists(path_ogg):
-		return load(path_ogg) as AudioStream
+		stream = load(path_ogg) as AudioStream
 	elif ResourceLoader.exists(path_wav):
-		return load(path_wav) as AudioStream
-
-	return null
+		stream = load(path_wav) as AudioStream
+	# 缓存结果（包括 null，避免反复查询不存在的资源）
+	_audio_cache[name] = stream
+	return stream
 
 ## 设置音效音量
 func set_sfx_volume(volume: float) -> void:

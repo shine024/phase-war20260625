@@ -301,10 +301,17 @@ func _get_blueprint_fragment_display_name(card_id: String) -> String:
 
 ## 获取素材显示名称
 func _get_material_display_name(material_id: String) -> String:
+	# v6.2 修复 L4：补全所有基础资源中文名（原仅翻译 3/10 种）
 	match material_id:
-		"nano_materials": return "纳米材料"
+		"nano_materials", "basic_nano": return "纳米材料"
 		"alloy": return "合金"
 		"crystal": return "晶体"
+		"energy_block": return "能量块"
+		"research_points": return "研究点数"
+		"permit_steel": return "钢铁许可"
+		"permit_flame": return "烈焰许可"
+		"permit_thunder": return "雷霆许可"
+		"permit_void": return "虚空许可"
 		_: return material_id
 
 ## 关闭面板

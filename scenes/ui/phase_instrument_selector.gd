@@ -111,7 +111,11 @@ func _create_phase_field_info_item() -> Control:
 	line.add_theme_color_override("font_color", Color(0.80, 0.92, 1.0, 0.95))
 	var alloc_parts: Array[String] = []
 	for key in alloc.keys():
-		alloc_parts.append("%s+%s" % [String(key), String(alloc[key])])
+		# v6.2 修复 L1：用中文 label 显示（原直接显示英文 key 如 atk_pct）
+		# PHASE_FIELD_GROWTH_RULES 是 PhaseInstrumentManager 的 const，通过 autoload 单例访问
+		var rule: Dictionary = PhaseInstrumentManager.PHASE_FIELD_GROWTH_RULES.get(key, {}) if PhaseInstrumentManager != null else {}
+		var label: String = String(rule.get("label", key))
+		alloc_parts.append("%s+%s" % [label, String(alloc[key])])
 	alloc_parts.sort()
 	var alloc_text: String = "未分配"
 	if not alloc_parts.is_empty():

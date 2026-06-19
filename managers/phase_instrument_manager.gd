@@ -340,10 +340,14 @@ func _rebuild_slots() -> void:
 	# v6.2: 同步刷新符文槽位数量（保留已装备的符文）
 	_rebuild_rune_slots()
 
-func _law_id_from_card(card: CardResource) -> String:
-	if card == null or card.card_type != GC.CardType.LAW:
+func _law_id_from_card(card: Variant) -> String:
+	# v6.2: rune 槽存的是 String，防御非 CardResource 传入（red/blue 槽正常只存 CardResource）
+	if card == null or not (card is CardResource):
 		return ""
-	var lid: String = card.linked_law_id if not String(card.linked_law_id).is_empty() else card.card_id
+	var cr: CardResource = card
+	if cr.card_type != GC.CardType.LAW:
+		return ""
+	var lid: String = cr.linked_law_id if not String(cr.linked_law_id).is_empty() else cr.card_id
 	# 法则蓝图在部分链路里会携带 law: 前缀；PhaseLaws 的 key 统一是无前缀 law_id。
 	if lid.begins_with("law:"):
 		lid = lid.substr(4)
@@ -575,7 +579,12 @@ func unequip_all_and_return_to_backpack() -> void:
 	for color in CARD_SLOTS:
 		var arr: Array = instrument_slots.get(color, [])
 		for i in range(arr.size()):
-			var c: CardResource = arr[i]
+			# v6.2: rune 槽存的是 rune_id (String)，不是卡牌；
+			# 切换相位仪时符文由 _rebuild_rune_slots 保留/回收，不参与"返还背包"。
+			var c_raw = arr[i]
+			if c_raw != null and not (c_raw is CardResource):
+				continue
+			var c: CardResource = c_raw
 			if c != null:
 				cards_to_return.append(c)
 				arr[i] = null
@@ -637,6 +646,13 @@ func get_slot_card_ids() -> Array:
 	for color in SLOT_COLOR_ORDER:
 		var arr: Array = instrument_slots.get(color, [])
 		for c_raw in arr:
+			# v6.2: rune 槽存的是 rune_id (String)，不是 CardResource；
+			# rune 槽的持久化由独立的 save_rune_state/load_rune_state 处理，
+			# 此处对 rune 槽返回空字符串占位，避免 String 强转 CardResource 崩溃，
+			# 也避免读档时 get_card_by_id(rune_id) 误把 rune_id 当卡牌 ID 还原。
+			if c_raw != null and not (c_raw is CardResource):
+				ids.append("")
+				continue
 			var c: CardResource = c_raw
 			if c == null:
 				ids.append("")
@@ -897,7 +913,10 @@ func get_slot_layout() -> Array[Dictionary]:
 	for color in SLOT_COLOR_ORDER:
 		var arr: Array = instrument_slots.get(color, [])
 		for i in range(arr.size()):
-			var slot_card: CardResource = arr[i]
+			# v6.2: rune 槽位存的是 rune_id (String)，四色槽存的是 CardResource，
+			# 因此 slot_card 不能用 CardResource 类型注解，否则 rune 槽赋值时会抛
+			# "Trying to assign a non-object value to a variable of type 'card_resource.gd'"。
+			var slot_card: Variant = arr[i]
 			var e := {"color": color, "index": i, "card": slot_card, "law_id": "", "law_kind": ""}
 			if color == "red":
 				var from_card: String = _law_id_from_card(slot_card)
@@ -1221,7 +1240,10 @@ func equip_rune(slot_index: int, rune_id: String) -> bool:
 	# v6.2: 同步到 instrument_slots["rune"] 供 get_slot_layout 使用
 	_sync_rune_to_instrument_slots()
 	_mark_rune_bonus_dirty()
-	SignalBus.phase_slots_changed.emit()
+	# 注意：phase_slots_changed 信号声明为 (slots: Array)，emit 必须传参，
+	# 否则 Godot 4.5 运行时会抛 "emit failed: expected 1 argument" 错误，
+	# 导致 equip_rune 在写入数据后异常中断、UI 不刷新（表现为符文装备不上）。
+	SignalBus.phase_slots_changed.emit(get_slots())
 	return true
 
 ## 卸下指定槽位的符文（符文保留在已拥有列表中，只是从槽位移除）
@@ -1231,7 +1253,7 @@ func unequip_rune(slot_index: int) -> void:
 	_rune_slots[slot_index] = null
 	_sync_rune_to_instrument_slots()
 	_mark_rune_bonus_dirty()
-	SignalBus.phase_slots_changed.emit()
+	SignalBus.phase_slots_changed.emit(get_slots())
 
 ## 卸下所有符文（保留所有权）
 func unequip_all_runes() -> void:
@@ -1239,7 +1261,7 @@ func unequip_all_runes() -> void:
 		_rune_slots[i] = null
 	_sync_rune_to_instrument_slots()
 	_mark_rune_bonus_dirty()
-	SignalBus.phase_slots_changed.emit()
+	SignalBus.phase_slots_changed.emit(get_slots())
 
 ## 添加符文到玩家持有列表（去重）
 ## 返回 true 表示新获得，false 表示已拥有
@@ -1257,7 +1279,7 @@ func remove_owned_rune(rune_id: String) -> void:
 		if _rune_slots[i] == rune_id:
 			_rune_slots[i] = null
 	_mark_rune_bonus_dirty()
-	SignalBus.phase_slots_changed.emit()
+	SignalBus.phase_slots_changed.emit(get_slots())
 
 ## 玩家是否拥有某符文
 func has_rune(rune_id: String) -> bool:
@@ -1272,13 +1294,91 @@ func get_owned_runes() -> Array[String]:
 func _mark_rune_bonus_dirty() -> void:
 	_rune_bonus_dirty = true
 
-## 刷新缓存的符文之语加成
+## 刷新缓存的符文加成
+## v6.2: 同时累加每个已装备符文的基础加成（primary_effect/secondary_effect），
+## 这样即使没凑齐符文之语组合，单个符文也有加成显示。
+## v6.2b: 分开存储单符文加成和符文之语加成，符文之语附带名称
 func _refresh_rune_bonus() -> void:
 	var slot_count := get_rune_slot_count()
 	var matched := RunewordMatcher.check_active_runewords(_rune_slots, slot_count)
 	_cached_active_runewords = matched
-	_cached_rune_bonus = RunewordMatcher.merge_effects(matched)
+	# ── 单符文加成 ──
+	var rune_stats: Dictionary = {}
+	var rune_specials: Array = []
+	for slot_v in _rune_slots:
+		if slot_v == null:
+			continue
+		var rune_id: String = str(slot_v)
+		if rune_id.is_empty():
+			continue
+		var rune_def: Dictionary = RuneDefs.get_rune(rune_id)
+		if rune_def.is_empty():
+			continue
+		_merge_rune_effect(rune_def.get("primary_effect", {}), rune_stats, rune_specials)
+		_merge_rune_effect(rune_def.get("secondary_effect", null), rune_stats, rune_specials)
+	# ── 符文之语加成（每个符文之语独立存储，含名称） ──
+	var runeword_bonuses: Array = []
+	var rw_stats: Dictionary = {}
+	var rw_specials: Array = []
+	for rw in matched:
+		var rw_id: String = String(rw.get("id", ""))
+		var rw_name: String = String(RunewordDefinitions.RUNEWORD_NAMES.get(rw_id, rw_id))
+		var rw_eff_stats: Dictionary = {}
+		var rw_eff_specials: Array = []
+		for eff in rw.get("effects", []):
+			_merge_rune_effect(eff, rw_eff_stats, rw_eff_specials)
+			_merge_rune_effect(eff, rw_stats, rw_specials)
+		runeword_bonuses.append({
+			"id": rw_id,
+			"name": rw_name,
+			"stats": rw_eff_stats,
+			"specials": rw_eff_specials,
+		})
+	# ── 合并总数（向后兼容 get_rune_bonus） ──
+	var merged_stats: Dictionary = {}
+	var merged_specials: Array = []
+	_merge_dict_into(rune_stats, merged_stats)
+	_merge_dict_into(rw_stats, merged_stats)
+	for sp in rune_specials:
+		merged_specials.append(sp)
+	for sp in rw_specials:
+		merged_specials.append(sp)
+	_cached_rune_bonus = {
+		"stats": merged_stats,
+		"specials": merged_specials,
+		"rune_stats": rune_stats,
+		"rune_specials": rune_specials,
+		"runeword_bonuses": runeword_bonuses,
+	}
 	_rune_bonus_dirty = false
+
+## 把 src 字典的数值累加到 dst
+func _merge_dict_into(src: Dictionary, dst: Dictionary) -> void:
+	for key in src.keys():
+		dst[key] = float(dst.get(key, 0.0)) + float(src[key])
+
+## 把单个符文的 effect 累加到 stats/specials
+## effect 结构：{"stat": "attack", "value": 0.15}（数值类）
+##           或 {"stat": "on_kill_regen_energy", "chance": 0.3, "value": 50}（特殊类）
+func _merge_rune_effect(effect: Variant, stats: Dictionary, specials: Array) -> void:
+	if effect == null or not (effect is Dictionary):
+		return
+	var eff: Dictionary = effect
+	var stat_key: String = String(eff.get("stat", ""))
+	if stat_key.is_empty():
+		return
+	# 特殊类：stat 以 on_ 开头（如 on_kill_regen_energy）
+	if stat_key.begins_with("on_"):
+		specials.append({
+			"special": stat_key,
+			"chance": float(eff.get("chance", 1.0)),
+			"value": eff.get("value", 0),
+		})
+	else:
+		# 数值类：累加 value
+		var val: float = float(eff.get("value", 0.0))
+		if val != 0.0:
+			stats[stat_key] = float(stats.get(stat_key, 0.0)) + val
 
 ## 获取当前激活的符文之语加成
 ## 返回：{"stats": {attack: 0.5, hp: 0.3, ...}, "specials": [...]}
@@ -1293,6 +1393,54 @@ func get_active_runewords() -> Array:
 	if _rune_bonus_dirty:
 		_refresh_rune_bonus()
 	return _cached_active_runewords
+
+## v6.2: 汇总所有加成来源，供 UI（tooltip/统计行/HUD）统一显示
+## 返回结构：
+##   {
+##     "instrument_props": ["卡牌伤害 +6%", ...],        # 相位仪固有属性（已格式化字符串）
+##     "phase_field": {"atk_pct": 0.10, ...},            # 相位场属性点加成（原始小数，key 同 PHASE_FIELD_GROWTH_RULES）
+##     "phase_field_labels": {"atk_pct": "攻击", ...},   # 相位场 key→中文 label
+##     "rune_stats": {"attack": 0.15, ...},              # 符文之语数值加成（原始小数）
+##     "rune_specials": [{"special":"on_kill_regen_energy","chance":0.3,"value":50}, ...],  # 符文特殊效果
+##     "has_any": bool,                                   # 是否有任何加成（用于决定是否显示面板）
+##   }
+func get_all_bonus_summary() -> Dictionary:
+	var summary: Dictionary = {}
+	# 1. 相位仪固有属性（复用 get_instrument_property_entries，已是格式化字符串）
+	var prop_entries: Array = get_instrument_property_entries()
+	var inst_props: Array[String] = []
+	for pe in prop_entries:
+		if not (pe is Dictionary):
+			continue
+		var display: String = String((pe as Dictionary).get("display", ""))
+		if not display.is_empty():
+			inst_props.append(display)
+	summary["instrument_props"] = inst_props
+	# 2. 相位场属性点加成
+	var pf_bonus: Dictionary = get_phase_field_total_bonus()
+	summary["phase_field"] = pf_bonus
+	var pf_labels: Dictionary = {}
+	for key in pf_bonus.keys():
+		var rule: Dictionary = PHASE_FIELD_GROWTH_RULES.get(key, {})
+		pf_labels[key] = String(rule.get("label", key))
+	summary["phase_field_labels"] = pf_labels
+	# 3. 符文加成（v6.2b: 单符文与符文之语分开）
+	var rune_bonus: Dictionary = get_rune_bonus()
+	# 单符文加成
+	summary["rune_stats"] = rune_bonus.get("rune_stats", {})
+	summary["rune_specials"] = rune_bonus.get("rune_specials", [])
+	# 符文之语加成（含名称，每个独立）
+	summary["runeword_bonuses"] = rune_bonus.get("runeword_bonuses", [])
+	# 合并总数（向后兼容，部分 UI 仍用合并值）
+	summary["rune_total_stats"] = rune_bonus.get("stats", {})
+	summary["rune_total_specials"] = rune_bonus.get("specials", [])
+	# 4. 是否有任何加成（v6.2c: 补上 runeword_bonuses 判断，避免只激活符文之语时面板被隐藏）
+	var rs: Dictionary = rune_bonus.get("rune_stats", {})
+	var rws: Dictionary = rune_bonus.get("stats", {})
+	var rw_count: int = rune_bonus.get("runeword_bonuses", []).size()
+	var has_any: bool = (not inst_props.is_empty()) or (not pf_bonus.is_empty()) or (not rs.is_empty()) or (not rws.is_empty()) or (rw_count > 0)
+	summary["has_any"] = has_any
+	return summary
 
 # ── 存档支持 ──────────────────────────────────────────────────────
 
@@ -1319,4 +1467,3 @@ func load_rune_state(data: Dictionary) -> void:
 		if not rs.is_empty():
 			_rune_slots[i] = rs
 	_mark_rune_bonus_dirty()
-

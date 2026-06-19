@@ -141,6 +141,11 @@ static func instrument_icon(pi_id: String) -> Texture2D:
 	return load_tex("res://assets/ui/instruments/%s.png" % pi_id)
 
 
+## 符文图标（按 rune_id 加载对应稀有度 PNG；缺失时返回 null，调用方回退到颜色染色）
+static func rune_icon(rune_id: String) -> Texture2D:
+	return load_tex(RuneDefinitions.icon_path_for(rune_id))
+
+
 ## 背包/槽位：优先 `card_id` 对应卡面，否则退回 `get_shape_key()` 聚合图。
 
 const CARD_FRAME_RARITIES: Array[String] = [

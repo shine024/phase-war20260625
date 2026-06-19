@@ -703,9 +703,7 @@ func _setup_enemy_projectile_batch() -> void:
 	n.set_script(SimpleEnemyProjectileBatchScript)
 	n.name = "SimpleEnemyProjectileBatch"
 	battlefield.add_child(n)
-	prints("[BM] enemy_batch created at", n.position, "z_index=", n.get_z_index())
-	prints("[BM] enemy_batch _layers:", n.get("_layers") if n.has_method("has_method") else "N/A")
-	prints("[BM] enemy_batch _BATCH_WEAPON_TYPES:", n.get("_BATCH_WEAPON_TYPES") if n.has_method("has_method") else "N/A")
+	# P0 修复：删除战斗启动时的冗余调试 prints（含笔误条件 n.has_method("has_method")）
 	enemy_projectile_batch = n
 
 

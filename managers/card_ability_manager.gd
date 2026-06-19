@@ -151,14 +151,17 @@ static func on_unit_materialized(unit: Node) -> void:
 # ── 子弹命中前（修改伤害）───────────────────────
 
 ## 返回 { damage_bonus: float, damage_mult_bonus: float }
+# P1 性能优化：静态空结果，避免每次命中都分配新 Dictionary
+const _EMPTY_HIT_RESULT: Dictionary = {"damage_bonus": 0.0, "damage_mult_bonus": 0.0}
+
 static func on_bullet_hit(
 	shooter: Node2D, target: Node2D, shooter_stats: UnitStats,
 	_hit_pos: Vector2, _base_damage: float, _final_damage: float, _is_player: bool
 ) -> Dictionary:
-	var result: Dictionary = {"damage_bonus": 0.0, "damage_mult_bonus": 0.0}
 	if shooter_stats == null:
-		return result
-	return result
+		return _EMPTY_HIT_RESULT
+	# P1 性能优化：当前无命中前伤害修改能力，复用静态空字典避免每次命中分配
+	return _EMPTY_HIT_RESULT
 
 # ── 子弹命中后（施加效果）───────────────────────
 

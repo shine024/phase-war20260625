@@ -19,6 +19,9 @@ var _battle_last_flush_ms: int = 0
 var _phase_start_ms: Dictionary = {}
 var _phase_last_ms: Dictionary = {}
 
+## v6.6: 延迟写入缓冲
+var _deferred_write_payload: String = ""
+
 func _ready() -> void:
 	_session_started_ms = Time.get_ticks_msec()
 	_battle_last_flush_ms = _session_started_ms
@@ -27,7 +30,7 @@ func mark_main_interactive() -> void:
 	if _tti_ms >= 0:
 		return
 	_tti_ms = max(0, Time.get_ticks_msec() - _session_started_ms)
-	_try_flush_to_disk("tti")
+	_deferred_flush("tti")
 
 func mark_backpack_open_begin() -> void:
 	if _backpack_first_open_ms >= 0:
@@ -42,7 +45,7 @@ func mark_backpack_open_ready() -> void:
 		return
 	_backpack_first_open_ms = max(0, Time.get_ticks_msec() - _backpack_open_start_ms)
 	_backpack_open_start_ms = -1
-	_try_flush_to_disk("backpack_first_open")
+	_deferred_flush("backpack_first_open")
 
 func begin_battle_sampling() -> void:
 	_battle_sampling = true
@@ -55,7 +58,7 @@ func sample_battle_frame(delta_sec: float) -> void:
 	var now_ms: int = Time.get_ticks_msec()
 	if now_ms - _battle_last_flush_ms >= 4000:
 		_battle_last_flush_ms = now_ms
-		_try_flush_to_disk("battle_live")
+		_deferred_flush("battle_live")
 		_battle_frame_ms_samples.clear()
 
 func end_battle_sampling() -> void:
@@ -64,7 +67,7 @@ func end_battle_sampling() -> void:
 	_battle_sampling = false
 	_battle_frame_ms_samples.clear()
 	_phase_start_ms.clear()
-	_try_flush_to_disk("battle_end")
+	_deferred_flush("battle_end")
 
 func get_snapshot() -> Dictionary:
 	return {
@@ -91,7 +94,7 @@ func end_phase(phase_name: String) -> void:
 	var elapsed: int = max(0, Time.get_ticks_msec() - int(_phase_start_ms[phase_name]))
 	_phase_last_ms[phase_name] = elapsed
 	_phase_start_ms.erase(phase_name)
-	_try_flush_to_disk("phase_" + phase_name)
+	_deferred_flush("phase_" + phase_name)
 
 func _average(values: Array[float]) -> float:
 	if values.is_empty():
@@ -109,16 +112,26 @@ func _percentile(values: Array[float], p: float) -> float:
 	var idx: int = int(clampf(p, 0.0, 100.0) / 100.0 * float(sorted.size() - 1))
 	return sorted[idx]
 
-func _try_flush_to_disk(reason: String) -> void:
+## v6.6: 延迟磁盘写入：通过 call_deferred 将 I/O 移出当前帧，避免阻塞战斗结算
+func _deferred_flush(reason: String) -> void:
 	var payload: Dictionary = {
 		"timestamp_ms": Time.get_ticks_msec(),
 		"reason": reason,
 		"snapshot": get_snapshot(),
 	}
+	# 将序列化和 I/O 延迟到帧末，避免同步阻塞
+	_deferred_write_payload = JSON.stringify(payload, "\t")
+	call_deferred("_do_write_flush", reason)
+
+func _do_write_flush(reason: String) -> void:
+	if _deferred_write_payload.is_empty():
+		return
 	var f: FileAccess = FileAccess.open(OUTPUT_PATH, FileAccess.WRITE)
 	if f == null:
+		_deferred_write_payload = ""
 		return
-	f.store_string(JSON.stringify(payload, "\t"))
+	f.store_string(_deferred_write_payload)
+	_deferred_write_payload = ""
 	if DEBUG_LOG:
 		pass
 		# [LOG-v5.1] print("[PerformanceMetrics] flushed: %s -> %s" % [reason, OUTPUT_PATH])

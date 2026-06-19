@@ -82,7 +82,7 @@ func _connect_signals() -> void:
 		SignalBus.energy_changed.connect(_on_energy_changed)
 	if not SignalBus.phase_driver_hp_changed.is_connected(_on_phase_driver_hp_changed):
 		SignalBus.phase_driver_hp_changed.connect(_on_phase_driver_hp_changed)
-	# TopRightPanel 被禁用时：不连接 phase_slots_changed，避免刷新
+	# TopRightPanel 被禁用时：不连接 phase_slots_changed 用于槽位刷新
 	if ENABLE_TOP_RIGHT_PANEL:
 		if not SignalBus.phase_slots_changed.is_connected(_on_phase_slots_changed):
 			SignalBus.phase_slots_changed.connect(_on_phase_slots_changed)

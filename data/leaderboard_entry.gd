@@ -33,7 +33,7 @@ func _init(p_master_id: String = "", p_rank: int = 0, p_name: String = "", p_tit
 	last_active = p_last_active
 
 func _to_string() -> String:
-	return "%d. %s (%s Lv.%d) - %.0f分" % [rank, name, title, level, score]
+	return "%d. %s (%s Lv.%d) - %d分" % [rank, name, title, level, int(score)]
 
 ## 创建排行榜条目的便捷函数
 static func create_from_master(master: Dictionary, base_rank: int) -> LeaderboardEntry:

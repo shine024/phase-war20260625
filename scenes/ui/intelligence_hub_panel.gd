@@ -222,6 +222,16 @@ func _add_rune_card(rune_def: Dictionary, is_owned: bool, is_equipped: bool) -> 
 		status = " [已获得]"
 	else:
 		status = " [未获得]"
+
+	# v6.2: 符文专属图标缩略图（未获得的半透明，与文字状态色一致）
+	var icon_rect := TextureRect.new()
+	icon_rect.custom_minimum_size = Vector2(32, 32)
+	icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon_rect.texture = UiAssetLoader.rune_icon(rune_id)
+	icon_rect.modulate = border_color if is_owned else Color(0.4, 0.4, 0.45, 0.5)
+	hbox.add_child(icon_rect)
+
 	var name_lbl := Label.new()
 	name_lbl.text = "%s  (%s·%s)%s" % [rune_name, category_name, rarity_name, status]
 	name_lbl.add_theme_font_size_override("font_size", 13)

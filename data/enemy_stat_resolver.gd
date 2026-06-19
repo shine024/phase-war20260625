@@ -26,14 +26,16 @@ static func master_attack_multiplier(master_stats: Dictionary) -> float:
 	var atk: float = float(master_stats.get("attack_power", 0.0))
 	if atk <= 0.0:
 		return 1.0
-	return 1.0 + atk * 0.0005
+	# v6.2: 提升敌方攻击威胁(0.0005→0.002)，配合召唤上限让战斗更激烈但更短
+	return 1.0 + atk * 0.002
 
 
 static func master_defense_hp_multiplier(master_stats: Dictionary) -> float:
 	var dfn: float = float(master_stats.get("defense", 0.0))
 	if dfn <= 0.0:
 		return 1.0
-	return 1.0 + dfn * 0.0003
+	# v6.2: 削弱敌方血量加成(0.0003→0.0001)，战斗单位更脆、战斗更快
+	return 1.0 + dfn * 0.0001
 
 
 static func _pressure_mul(pressure: Dictionary, key: String) -> float:

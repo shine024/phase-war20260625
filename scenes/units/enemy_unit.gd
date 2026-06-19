@@ -65,6 +65,9 @@ var _cached_timing: Dictionary = {}
 var _cached_fire_range: float = -1.0
 var _cached_weapon_type: int = -1
 var _cached_target_ref: Node2D = null
+# P0 性能优化：缓存战斗模式判定，避免每帧 has_method + is_card_grid_battle 反射调用链
+var _cached_is_card_grid: bool = true
+var _cached_combat_started: bool = false
 ## 跨实例共享的资源缓存
 var _res_cache: Dictionary = {}
 
@@ -104,6 +107,11 @@ var _is_dying: bool = false  ## v6.4: 死亡中标志，防止 _die 重复触发
 func _ready() -> void:
 	# 战斗逻辑跟随暂停状态
 	process_mode = Node.PROCESS_MODE_PAUSABLE
+	# P0 性能优化：缓存战斗模式判定，避免每帧 has_method + is_xxx 反射调用链
+	# is_card_grid_battle() 恒为 true（卡牌格子战术是唯一模式），直接缓存 true
+	_cached_is_card_grid = true
+	if BattleManager != null and "battle_active" in BattleManager:
+		_cached_combat_started = bool(BattleManager.battle_active)
 	if SignalBus and SignalBus.has_signal("phase_law_runtime_changed"):
 		SignalBus.phase_law_runtime_changed.connect(_on_phase_law_runtime_changed)
 
@@ -491,8 +499,8 @@ func _update_shape() -> void:
 
 func _enemy_fire_range_for_motion() -> float:
 	var r: float = attack_range
-	if GameManager and GameManager.has_method("is_card_grid_battle") and GameManager.is_card_grid_battle():
-		if BattleManager and BattleManager.has_method("is_card_grid_combat_started") and BattleManager.is_card_grid_combat_started():
+	if _cached_is_card_grid:
+		if _cached_combat_started:
 			r *= 2.6
 	return r
 
@@ -536,7 +544,7 @@ func _physics_process(delta: float) -> void:
 	if should_find_target:
 		_find_target(delta)
 	# 格子战术：敌方单位固守当前格，不向己方推进（与卡面表现一致）
-	if GameManager and GameManager.has_method("is_card_grid_battle") and GameManager.is_card_grid_battle():
+	if _cached_is_card_grid:
 		velocity = Vector2.ZERO
 	else:
 		# 有目标且在攻击范围内则停下相互攻击，否则继续前进
@@ -552,8 +560,9 @@ func _physics_process(delta: float) -> void:
 		_process_attack_timing(delta)
 	move_and_slide()
 	_clamp_inside_battlefield()
-	# 性能优化：更新空间分区网格中的位置
-	_update_in_spatial_grid()
+	# P2 性能优化：静止单位跳过空间网格更新（格子战敌人 velocity=0，原每帧无谓 update）
+	if velocity != Vector2.ZERO:
+		_update_in_spatial_grid()
 
 func _get_target_find_interval() -> float:
 	var n: int = 0
@@ -657,14 +666,8 @@ func _process_attack_timing(delta: float) -> void:
 	fire_range = _cached_fire_range
 	wt = _cached_weapon_type
 	# v6.4 修复：格子战开战时射程×2.6（与索敌判定一致）
-	var _is_card_grid_combat: bool = (
-		GameManager != null
-		and GameManager.has_method("is_card_grid_battle")
-		and GameManager.is_card_grid_battle()
-		and BattleManager != null
-		and BattleManager.has_method("is_card_grid_combat_started")
-		and BattleManager.is_card_grid_combat_started()
-	)
+	# P0 性能优化：用缓存字段替代 has_method + is_xxx 反射链
+	var _is_card_grid_combat: bool = _cached_is_card_grid and _cached_combat_started
 	if _is_card_grid_combat:
 		fire_range *= 2.6
 
@@ -710,7 +713,7 @@ func _do_attack() -> void:
 
 	# 格子战标识：传给 calculate_damage_with_weapon，使其跳过防御减免（防御由 CardGridDamage 处理）
 	# 且射程衰减改用 range_falloff 保底 30%（传统战场用 range_value×100 做 max_range 会归零）。
-	var is_card_grid: bool = GameManager != null and GameManager.has_method("is_card_grid_battle") and GameManager.is_card_grid_battle()
+	var is_card_grid: bool = _cached_is_card_grid
 
 	# v6.0: 从 stats 武器槽位获取 weapon_name 和 dmg
 	var wt: int = GC.WeaponType.DIRECT
@@ -793,7 +796,7 @@ func _update_hp_bar() -> void:
 
 func take_damage(amount: float, attacker: Variant = null) -> void:
 	var hp_loss: float = amount
-	if GameManager and GameManager.has_method("is_card_grid_battle") and GameManager.is_card_grid_battle():
+	if _cached_is_card_grid:
 		var pen: float = 0.0
 		if attacker != null and is_instance_valid(attacker) and "stats" in attacker:
 			var atk_stats: Variant = attacker.get("stats")
@@ -903,7 +906,7 @@ func _cleanup_before_destroy() -> void:
 			SignalBus.phase_law_runtime_changed.disconnect(_on_phase_law_runtime_changed)
 
 func _battlefield_y_clamp_range() -> Vector2:
-	if GameManager and GameManager.has_method("is_card_grid_battle") and GameManager.is_card_grid_battle():
+	if _cached_is_card_grid:
 		if BattleManager and BattleManager.battlefield and BattleManager.battlefield.has_method("get_deploy_y_bounds"):
 			return BattleManager.battlefield.get_deploy_y_bounds()
 	return Vector2(BATTLE_MIN_Y, BATTLE_MAX_Y)
@@ -924,7 +927,7 @@ func _clamp_inside_battlefield() -> void:
 func _enforce_card_grid_lane_alignment() -> void:
 	if not _presentation_card_grid:
 		return
-	if GameManager == null or not GameManager.is_card_grid_battle():
+	if not _cached_is_card_grid:
 		return
 	var esi: int = int(get_meta("card_grid_enemy_slot", -1))
 	if esi < 0:

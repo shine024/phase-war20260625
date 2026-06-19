@@ -36,6 +36,7 @@ const _TOOLTIP_ENHANCE_MAX := 24
 var _slots_refresh_coalesce: bool = false
 
 @onready var instrument_section: HBoxContainer = $Margin/HBox/InstrumentSection
+@onready var instrument_icon: TextureRect = $Margin/HBox/InstrumentSection/InstrumentIcon
 @onready var name_section: VBoxContainer = $Margin/HBox/InstrumentSection/NameSection
 @onready var phase_level_label: Label = $Margin/HBox/InstrumentSection/NameSection/PhaseLevelLabel
 @onready var instrument_stats_label: Label = $Margin/HBox/InstrumentSection/NameSection/InstrumentStatsLabel
@@ -188,12 +189,17 @@ func _update_slot_panel(panel: Control, entry: Dictionary) -> void:
 	if panel == null or not is_instance_valid(panel):
 		return
 	var color: String = String(entry.get("color", ""))
-	var card: CardResource = entry.get("card", null)
+	# v6.2: rune 槽的 card 字段实际是 rune_id (String)，不能用 CardResource 类型注解，
+	# 否则赋值时崩溃 "Trying to assign a non-object value to a variable of type 'card_resource.gd'"。
+	# 用 Variant 承载，并在使用 card 属性前用 is CardResource 守卫。
+	var card: Variant = entry.get("card", null)
+	# 仅当确为 CardResource 时才视为有效卡（rune 槽的 String 不应走卡牌渲染分支）
+	var has_card: bool = card != null and card is CardResource
 	var law_id: String = String(entry.get("law_id", ""))
 	var law_kind: String = String(entry.get("law_kind", ""))
 	panel.set_meta("slot_color", color)
-	panel.set_meta("card_id", card.card_id if card else "")
-	panel.set_meta("card_type", int(card.card_type) if card else -1)
+	panel.set_meta("card_id", card.card_id if has_card else "")
+	panel.set_meta("card_type", int(card.card_type) if has_card else -1)
 	panel.set_meta("law_id", law_id)
 	panel.set_meta("law_kind", law_kind)
 	# 更新样式
@@ -204,7 +210,7 @@ func _update_slot_panel(panel: Control, entry: Dictionary) -> void:
 	if _slot_name_label(panel) == null:
 		return
 	# 处理 DeployIndicator：仅在战斗卡时存在
-	var needs_indicator: bool = card != null and card.card_type == GC.CardType.COMBAT_UNIT
+	var needs_indicator: bool = has_card and card.card_type == GC.CardType.COMBAT_UNIT
 	var indicator: Polygon2D = panel.get_node_or_null("DeployIndicator") as Polygon2D
 	if needs_indicator and indicator == null:
 		indicator = Polygon2D.new()
@@ -218,7 +224,7 @@ func _update_slot_panel(panel: Control, entry: Dictionary) -> void:
 		panel.add_child(indicator)
 	elif not needs_indicator and indicator != null:
 		indicator.queue_free()
-	if card != null:
+	if has_card:
 		_apply_slot_card_labels(panel, card)
 		panel.tooltip_text = _format_card_slot_tooltip(color, card)
 	elif not law_id.is_empty():
@@ -259,6 +265,13 @@ func _update_slot_panel(panel: Control, entry: Dictionary) -> void:
 			short_name = short_name.substr(0, 4)
 		_apply_slot_bottom_text(panel, "◈" + short_name, rarity_name)
 		panel.tooltip_text = "符文：%s（%s）\n%s" % [rune_name, rarity_name, RuneDefs.get_description(rune_id)]
+		# v6.2: 符文专属图标贴图（参照 _sync_slot_icon 的尺寸算法）
+		var rune_tr: TextureRect = _slot_icon_rect(panel)
+		var rune_tex: Texture2D = UiAssetLoader.rune_icon(rune_id)
+		var slot_h: float = panel.size.y if panel.size.y > 4.0 else float(SLOT_FIXED_SIZE.y)
+		var art_h: float = maxf(18.0, slot_h - float(_SLOT_BOTTOM_TEXT_H) - 4.0)
+		var art_w: float = SLOT_FIXED_SIZE.x - 6.0
+		UiAssetLoader.setup_texrect_icon(rune_tr, rune_tex, Vector2(art_w, art_h))
 		_sync_slot_card_background(panel, null)
 		_sync_slot_card_frame(panel, null)
 		return
@@ -293,11 +306,8 @@ func _update_name_section_width() -> void:
 func _sync_slot_rank_badge(panel: Control, card: CardResource) -> void:
 	if panel == null:
 		return
-	if card == null or (
-		card.card_type != GC.CardType.COMBAT_UNIT
-		and card.card_type != GC.CardType.COMBAT_UNIT
-		and card.card_type != GC.CardType.COMBAT_UNIT
-	):
+	# 段位角标仅对战斗单位卡显示（法则卡/能量卡无军衔段位）
+	if card == null or card.card_type != GC.CardType.COMBAT_UNIT:
 		var old: Node = panel.get_node_or_null("RankCornerBadge")
 		if old != null:
 			old.queue_free()
@@ -375,7 +385,9 @@ func _build_slot_panel(entry: Dictionary) -> PanelContainer:
 	var color_index: int = int(entry.get("index", -1))
 	var law_id: String = String(entry.get("law_id", ""))
 	var law_kind: String = String(entry.get("law_kind", ""))
-	var card: CardResource = entry.get("card", null)
+	# v6.2: rune 槽的 card 字段实际是 rune_id (String)，用 Variant 承载避免类型崩溃
+	var card: Variant = entry.get("card", null)
+	var has_card: bool = card != null and card is CardResource
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(SLOT_FIXED_SIZE.x, 0)
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -437,7 +449,33 @@ func _build_slot_panel(entry: Dictionary) -> PanelContainer:
 	root_v.add_child(icon_clip)
 	root_v.add_child(text_v)
 	panel.add_child(root_v)
-	if card != null:
+	# v6.2c: 符文槽位（card 字段是 rune_id String，不是 CardResource，必须单独处理）
+	var rune_id: String = String(entry.get("rune_id", ""))
+	if color == "rune" and not rune_id.is_empty():
+		var rune_name: String = RuneDefinitions.get_rune_name(rune_id)
+		var rune_def: Dictionary = RuneDefinitions.get_rune(rune_id)
+		var rarity_name: String = RuneDefinitions.RARITY_NAMES.get(rune_def.get("rarity", ""), "")
+		var short_name: String = rune_name
+		if short_name.length() > 4:
+			short_name = short_name.substr(0, 4)
+		panel.set_meta("card_id", "")
+		panel.set_meta("card_type", -1)
+		panel.set_meta("law_id", "")
+		panel.set_meta("law_kind", "")
+		_apply_slot_bottom_text(panel, "◈" + short_name, rarity_name)
+		panel.tooltip_text = "符文：%s（%s）\n%s" % [rune_name, rarity_name, RuneDefinitions.get_description(rune_id)]
+		var rune_tr: TextureRect = _slot_icon_rect(panel)
+		var rune_tex: Texture2D = UiAssetLoader.rune_icon(rune_id)
+		var slot_h: float = panel.size.y if panel.size.y > 4.0 else float(SLOT_FIXED_SIZE.y)
+		var art_h: float = maxf(18.0, slot_h - float(_SLOT_BOTTOM_TEXT_H) - 4.0)
+		var art_w: float = SLOT_FIXED_SIZE.x - 6.0
+		UiAssetLoader.setup_texrect_icon(rune_tr, rune_tex, Vector2(art_w, art_h))
+		_sync_slot_rank_badge(panel, null)
+		_sync_slot_card_background(panel, null)
+		_sync_slot_card_frame(panel, null)
+		panel.gui_input.connect(_on_slot_gui_input.bind(panel))
+		return panel
+	if has_card:
 		panel.set_meta("card_id", card.card_id)
 		panel.set_meta("card_type", int(card.card_type))
 		panel.set_meta("law_id", "")
@@ -568,7 +606,7 @@ func _on_slot_gui_input(ev: InputEvent, panel: Control) -> void:
 			var in_battle: bool = BattleManager != null and "battle_active" in BattleManager and BattleManager.battle_active
 			var can_deploy: bool = (
 				in_battle
-				and (m_card_type == GC.CardType.COMBAT_UNIT or m_card_type == GC.CardType.COMBAT_UNIT)
+				and m_card_type == GC.CardType.COMBAT_UNIT
 			)
 			if can_deploy and SignalBus:
 				BattleInputState.pending_cast_law_id = ""
@@ -752,29 +790,128 @@ func _update_instrument_tooltip(cfg: Dictionary) -> void:
 		lines.append("特殊特性:")
 		for t in traits:
 			lines.append("  ✦ %s" % String(t))
+	# v6.2: 追加符文之语 + 相位场属性点加成
+	_append_bonus_tooltip_lines(lines)
 	target.tooltip_text = "\n".join(lines)
+
+## v6.2: 把符文之语加成和相位场加成格式化追加到 tooltip lines
+## 复用 PhaseInstrumentManager.get_all_bonus_summary() 统一数据源
+func _append_bonus_tooltip_lines(lines: Array) -> void:
+	if PhaseInstrumentManager == null or not PhaseInstrumentManager.has_method("get_all_bonus_summary"):
+		return
+	var summary: Dictionary = PhaseInstrumentManager.get_all_bonus_summary()
+	# v6.2b: 单符文加成
+	var rune_stats: Dictionary = summary.get("rune_stats", {})
+	var rune_specials: Array = summary.get("rune_specials", [])
+	if not rune_stats.is_empty() or not rune_specials.is_empty():
+		lines.append("符文加成:")
+		if not rune_stats.is_empty():
+			var stat_parts: Array[String] = []
+			for key in rune_stats.keys():
+				var s: String = RuneDefinitions.format_stat_bonus(String(key), float(rune_stats[key]))
+				if not s.is_empty():
+					stat_parts.append(s)
+			if not stat_parts.is_empty():
+				lines.append("  " + " | ".join(stat_parts))
+		if not rune_specials.is_empty():
+			var sp_parts: Array[String] = []
+			for sp in rune_specials:
+				if not (sp is Dictionary):
+					continue
+				var sp_name: String = RuneDefinitions.special_display_name(String((sp as Dictionary).get("special", "")))
+				var chance := int(round(float((sp as Dictionary).get("chance", 1.0)) * 100.0))
+				sp_parts.append("%s(%d%%概率)" % [sp_name, chance])
+			if not sp_parts.is_empty():
+				lines.append("  " + " | ".join(sp_parts))
+	# v6.2b: 符文之语加成（每个带名称）
+	var runeword_bonuses: Array = summary.get("runeword_bonuses", [])
+	if not runeword_bonuses.is_empty():
+		lines.append("符文之语加成:")
+		for rw in runeword_bonuses:
+			if not (rw is Dictionary):
+				continue
+			var rw_name: String = String((rw as Dictionary).get("name", ""))
+			var rw_stats: Dictionary = (rw as Dictionary).get("stats", {})
+			var rw_parts: Array[String] = []
+			for key in rw_stats.keys():
+				var s: String = RuneDefinitions.format_stat_bonus(String(key), float(rw_stats[key]))
+				if not s.is_empty():
+					rw_parts.append(s)
+			for sp in (rw as Dictionary).get("specials", []):
+				if not (sp is Dictionary):
+					continue
+				var sp_name: String = RuneDefinitions.special_display_name(String((sp as Dictionary).get("special", "")))
+				var chance := int(round(float((sp as Dictionary).get("chance", 1.0)) * 100.0))
+				rw_parts.append("%s(%d%%概率)" % [sp_name, chance])
+			if not rw_parts.is_empty():
+				lines.append("  [%s] %s" % [rw_name, " | ".join(rw_parts)])
+	# 相位场属性点加成
+	var pf_bonus: Dictionary = summary.get("phase_field", {})
+	var pf_labels: Dictionary = summary.get("phase_field_labels", {})
+	if not pf_bonus.is_empty():
+		var pf_parts: Array[String] = []
+		for key in pf_bonus.keys():
+			var val: float = float(pf_bonus[key])
+			var pct := int(round(val * 100.0))
+			if pct == 0:
+				continue
+			var label: String = String(pf_labels.get(key, key))
+			pf_parts.append("%s +%d%%" % [label, pct])
+		if not pf_parts.is_empty():
+			lines.append("相位场加成:")
+			lines.append("  " + " | ".join(pf_parts))
 
 func _refresh_instrument_stats() -> void:
 	if instrument_stats_label == null or not is_instance_valid(instrument_stats_label):
 		return
 	if PhaseInstrumentManager == null or not PhaseInstrumentManager.has_method("get_current_instrument"):
-		instrument_stats_label.text = "输出 -- | 回复 --"
+		instrument_stats_label.text = "--"
+		if instrument_icon:
+			instrument_icon.texture = null
 		return
 	var cfg: Dictionary = PhaseInstrumentManager.get_current_instrument()
 	if cfg.is_empty():
-		instrument_stats_label.text = "输出 -- | 回复 --"
+		instrument_stats_label.text = "--"
+		if instrument_icon:
+			instrument_icon.texture = null
 		return
-	var output_rate: float = float(cfg.get("energy_output_rate", 1.0))
-	var recovery_rate: float = float(cfg.get("energy_recovery_rate", 0.3))
-	var output_per_second: float = output_rate * 5.0
-	var recovery_per_second: float = recovery_rate * 3.0
-	var bonus_parts: Array[String] = _collect_cfg_property_lines(cfg)
-	var line1: String = "输出 %.1f | 回复 %.1f" % [output_per_second, recovery_per_second]
-	if not bonus_parts.is_empty():
-		line1 += " | " + " ".join(bonus_parts)
-	# v7.1: 追加能量卡与回复速率信息（独立计算预览，与 EnergyManager 公式一致）
-	line1 += _build_energy_preview_line()
-	instrument_stats_label.text = line1
+	# v6.2c: 相位仪位置只显示名字 + 星级（统计信息移到 tooltip）
+	var inst_name: String = String(cfg.get("name", "未知相位仪"))
+	var star: int = int(cfg.get("star", 0))
+	if star > 0:
+		instrument_stats_label.text = "%s ★%d" % [inst_name, star]
+	else:
+		instrument_stats_label.text = inst_name
+	# 加载相位仪图标
+	if instrument_icon:
+		var icon_tex: Texture2D = UiAssetLoader.instrument_icon(String(cfg.get("id", "")))
+		instrument_icon.texture = icon_tex
+		instrument_icon.visible = (icon_tex != null)
+
+## v6.2: 构建符文加成精简摘要（用于底部统计行，单行，避免撑高底部栏）
+## 格式：" | 符文:攻+15% 生+20% ×2语"（×2语 = 已激活 2 个符文之语）
+## 符文之语的名称与详细加成由 tooltip 展示，统计行只给精简计数。
+## 无任何符文加成返回空字符串。
+func _build_rune_bonus_summary() -> String:
+	if PhaseInstrumentManager == null or not PhaseInstrumentManager.has_method("get_rune_bonus"):
+		return ""
+	var bonus: Dictionary = PhaseInstrumentManager.get_rune_bonus()
+	var stats: Dictionary = bonus.get("rune_stats", {})
+	var parts: Array[String] = []
+	for key in stats.keys():
+		var val: float = float(stats[key])
+		var pct := int(round(val * 100.0))
+		if pct == 0:
+			continue
+		parts.append(RuneDefinitions.format_stat_bonus(String(key), val))
+	# 符文之语只显示激活数量（详情见 tooltip）
+	var runeword_count: int = bonus.get("runeword_bonuses", []).size()
+	var result: String = ""
+	if not parts.is_empty():
+		result += " | 符文:" + " ".join(parts)
+	if runeword_count > 0:
+		result += " ×%d语" % runeword_count
+	return result
 
 ## v7.1: 计算并返回能量预览信息字符串
 ## 显示：能量上限(含能量卡贡献) | 初始能量 | 净回复/秒 | 相位仪回复值

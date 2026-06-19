@@ -367,13 +367,18 @@ func _on_buy_rune(rune_id: String, rep_cost: int, row_node: Control) -> void:
 	if current_rep < rep_cost:
 		_flash_row(row_node, Color(0.8, 0.2, 0.2, 0.3))
 		return
-	# 扣除声望
+	# v6.2 修复 M14：先发放符文并校验返回值，成功才扣声望（原顺序是先扣再发，
+	# 若 add_owned_rune 因重复持有返回 false，声望会被误扣不退还）
+	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
+	var acquired: bool = false
+	if pim and pim.has_method("add_owned_rune"):
+		acquired = bool(pim.add_owned_rune(rune_id))
+	if not acquired:
+		_flash_row(row_node, Color(0.9, 0.7, 0.2, 0.3))
+		return
+	# 扣除声望（仅在符文发放成功后）
 	if fsm.has_method("add_faction_reputation"):
 		fsm.add_faction_reputation(_current_company_id, -rep_cost)
-	# 发放符文
-	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
-	if pim and pim.has_method("add_owned_rune"):
-		pim.add_owned_rune(rune_id)
 	# 刷新
 	_flash_row(row_node, Color(0.2, 0.8, 0.3, 0.3))
 	_refresh_items()
@@ -527,17 +532,13 @@ func _build_store_item_row(
 					base_attrs_parts.append("承载 %d 重量" % info_card.weight_capacity)
 				if info_card.max_weapons > 0:
 					base_attrs_parts.append("武器槽 %d" % info_card.max_weapons)
-			GC.CardType.COMBAT_UNIT:
 				if info_card.weight > 0:
 					base_attrs_parts.append("重量 %d" % info_card.weight)
 			GC.CardType.ENERGY:
 				if info_card.energy_cost > 0:
 					base_attrs_parts.append("能量消耗 %d" % info_card.energy_cost)
 				if info_card.energy_grant > 0:
-					base_attrs_parts.append("能量提供 %.0f⚡" % info_card.energy_grant)
-			GC.CardType.COMBAT_UNIT:
-				if info_card.weight_capacity > 0:
-					base_attrs_parts.append("承载 %d 重量" % info_card.weight_capacity)
+					base_attrs_parts.append("能量提供 %d⚡" % int(info_card.energy_grant))
 			GC.CardType.LAW:
 				if info_card.energy_cost > 0:
 					base_attrs_parts.append("能量消耗 %d⚡" % info_card.energy_cost)

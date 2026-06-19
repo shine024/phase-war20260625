@@ -37,7 +37,7 @@ theme_override_constants/separation = 8
 
 [node name="StatusPanel" type="HBoxContainer" parent="VBoxContainer"]
 layout_mode = 2
-size_flags_vertical = 3
+size_flags_vertical = 8
 
 [node name="StatusIndicator" type="ColorRect" parent="VBoxContainer/StatusPanel"]
 layout_mode = 2
@@ -67,3 +67,21 @@ text = "击毁 我方:0 敌方:0"
 [node name="DamageLabel" type="Label" parent="VBoxContainer/BattleStats"]
 layout_mode = 2
 text = "伤害 我方:0 敌方:0"
+
+[node name="BonusSeparator" type="HSeparator" parent="VBoxContainer/BattleStats"]
+layout_mode = 2
+size_flags_horizontal = 4
+custom_minimum_size = Vector2(300, 0)
+visible = false
+
+[node name="BonusLabel" type="Label" parent="VBoxContainer/BattleStats"]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 8
+custom_minimum_size = Vector2(280, 0)
+theme_override_colors/font_color = Color(0.75, 0.55, 0.95, 0.95)
+theme_override_font_sizes/font_size = 10
+text = ""
+visible = false
+autowrap_mode = 3
+clip_text = false

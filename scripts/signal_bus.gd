@@ -177,4 +177,3 @@ signal card_data_changed(card_id: String)
 signal card_evolved(source_card_id: String, target_card_id: String)
 signal evolution_failed(source_card_id: String, target_card_id: String, reason: String)
 signal evolution_path_unlocked(card_id: String, branch_name: String)
-

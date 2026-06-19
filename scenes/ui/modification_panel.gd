@@ -449,11 +449,13 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 				elif val is bool and val:
 					effect_texts.append("✓ %s" % key_display)
 				else:
-					effect_texts.append("%s: %s" % [key_display, str(val)])
+						effect_texts.append("%s: %d" % [key_display, int(val)])
 			effects_label.text = "效果：\n" + "\n".join(effect_texts) if effect_texts.size() > 0 else "无具体数值效果"
 
 		# 消耗可视化
-		var base_power = selected_card.get_current_power() if selected_card else 100
+		# v6.2 修复：用基础战力（与实际扣费 BlueprintManager.install_modification 的 get_base_power_for_mod_cost 一致），
+		# 原用 get_current_power（含强化+改造）导致显示成本虚高
+		var base_power: float = BlueprintManager.get_base_power_for_mod_cost(selected_card.card_id) if selected_card else 100.0
 		var nano_cost = int(base_power * 0.5)
 		var blueprint_id = BlueprintDefinitions.get_mod_blueprint_id(selected_mod_id)
 		var blueprint_name = BlueprintDefinitions.get_mod_blueprint_name(selected_mod_id)

@@ -298,7 +298,7 @@ func _get_item_details_text(item: Variant) -> String:
 					if card.energy_cost > 0:
 						base_attrs.append("能量消耗 %d" % card.energy_cost)
 					if card.energy_grant > 0:
-						base_attrs.append("能量提供 %.0f⚡" % card.energy_grant)
+						base_attrs.append("能量提供 %d⚡" % int(card.energy_grant))
 			GC.CardType.COMBAT_UNIT:
 				if card.weight_capacity > 0:
 					base_attrs.append("承载 %d 重量" % card.weight_capacity)

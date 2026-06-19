@@ -400,7 +400,9 @@ func _refresh_header(card: CardResource) -> void:
 		rarity_label.add_theme_color_override("font_color", RARITY_COLORS.get(r_key, Color(0.75, 0.78, 0.85, 1)))
 	if cost_label:
 		if card.card_type == GC.CardType.ENERGY:
-			cost_label.text = "+%d⚡" % int(card.energy_cost)
+			# v6.2 修复 M8：能量卡应显示提供量（energy_grant）而非部署消耗（energy_cost）
+			# 大部分能量卡是"消耗N提供M"模式，显示提供量对玩家更有意义
+			cost_label.text = "+%d⚡" % int(card.energy_grant if card.energy_grant > 0 else card.energy_cost)
 		else:
 			cost_label.text = "%d⚡" % int(card.energy_cost)
 	if type_label:
@@ -510,9 +512,23 @@ func _refresh_stat_cards(card: CardResource) -> void:
 		_def_sub_label.text = "轻%d·甲%d·空%d" % [int(stats.defense_light), int(stats.defense_armor), int(stats.defense_air)]
 	# 额外信息行（攻速/移速）
 	if _extra_stat_label:
-		var spd: float = stats.attack_interval if stats.attack_interval > 0 else 1.0
-		var dps: float = atk_main / spd
-		_extra_stat_label.text = "攻速 %.2f/s · DPS %d · 移速 %d" % [1.0 / spd, int(dps), int(stats.move_speed)]
+		# v6.2 修复 M6：DPS 应基于 atk_main 对应的目标类型攻速，原统一用 attack_interval（对轻装）
+		# 会导致"对装甲攻击力÷对轻装攻速"算出虚高 DPS
+		var atk_light: float = stats.attack_light
+		var atk_armor: float = stats.attack_armor
+		var atk_air: float = stats.attack_air
+		# 找到最大攻击力对应的目标类型，用配对攻速算 DPS
+		var best_atk: float = atk_light
+		var best_speed: float = stats.attack_light_speed if stats.attack_light_speed > 0 else 1.0
+		if atk_armor > best_atk:
+			best_atk = atk_armor
+			best_speed = stats.attack_armor_speed if stats.attack_armor_speed > 0 else 1.0
+		if atk_air > best_atk:
+			best_atk = atk_air
+			best_speed = stats.attack_air_speed if stats.attack_air_speed > 0 else 1.0
+		var dps: float = best_atk * best_speed
+		var avg_spd: float = stats.attack_interval if stats.attack_interval > 0 else 1.0
+		_extra_stat_label.text = "攻速 %.1f/s · DPS %d · 移速 %d" % [best_speed, int(dps), int(stats.move_speed)]
 
 ## v6.4: 构建 UnitStats（含时代缩放 + growth + affix），供三维卡显示
 func _build_display_stats(card: CardResource) -> UnitStats:
@@ -522,9 +538,13 @@ func _build_display_stats(card: CardResource) -> UnitStats:
 	var root: Node = tree.root
 	var bm: Node = root.get_node_or_null("BlueprintManager")
 	var am: Node = root.get_node_or_null("AffixManager")
-	var era: int = 0
+	# v6.2 修复 M7：非战斗场景（背包/商店查看卡牌）应传 -1 让 build_stats_from_card 用卡牌自身 era，
+	# 原强制取 GameManager.current_level 的 era 会导致非战斗场景按错误时代缩放（如看现代卡显示一战数值）
+	var era: int = -1
 	var gm: Node = root.get_node_or_null("GameManager")
-	if gm and "current_level" in gm:
+	var bm_node: Node = root.get_node_or_null("BattleManager")
+	# 仅在战斗进行中才用当前关卡的 era 缩放
+	if bm_node != null and "battle_active" in bm_node and bm_node.battle_active and gm and "current_level" in gm:
 		era = GC.get_era_for_level(int(gm.current_level))
 	var stats: UnitStats = UnitStatsTable.build_stats_from_card(card, era)
 	if bm and bm.has_method("apply_growth_to_stats"):
@@ -667,7 +687,7 @@ func _build_nurture_text(card: CardResource) -> String:
 		var next_thresh: float = BattleStarCfg.get_next_star_threshold(bs)
 		var progress_text: String = ""
 		if next_thresh > 0.0:
-			progress_text = "\n累计战力 %.0f / %.0f" % [bsp, next_thresh]
+			progress_text = "\n累计战力 %d / %d" % [int(bsp), int(next_thresh)]
 		battle_star_text = "\n战力星级 %s\n    %s%s" % [star_display, bonus_text, progress_text]
 	if not parts.is_empty():
 		return " · ".join(parts) + mod_list_text + battle_star_text
@@ -725,7 +745,7 @@ func _refresh_rank_badge(unit: Node) -> void:
 		name_lbl.add_theme_font_size_override("font_size", 13)
 		var power: float = float(info.get("power_score", 0.0))
 		if power > 0.0:
-			name_lbl.text = "%s（战力 %.0f）" % [str(info.get("rank_name", "")), power]
+			name_lbl.text = "%s（战力 %d）" % [str(info.get("rank_name", "")), int(power)]
 
 func _resolve_unit_is_player(unit: Node, hinted: bool) -> bool:
 	if unit == null or not is_instance_valid(unit):
@@ -802,9 +822,9 @@ func _format_unit_stats_summary(stats: UnitStats, cur_hp: float = -1.0, extra_su
 		return ""
 	var hp_text: String
 	if cur_hp >= 0.0:
-		hp_text = "HP %.0f/%.0f" % [cur_hp, stats.max_hp]
+		hp_text = "HP %d/%d" % [int(cur_hp), int(stats.max_hp)]
 	else:
-		hp_text = "HP %.0f" % stats.max_hp
+		hp_text = "HP %d" % int(stats.max_hp)
 	
 	# 获取武器名称
 	var weapon_names: Array[String] = ["", "", ""]
@@ -827,20 +847,20 @@ func _format_unit_stats_summary(stats: UnitStats, cur_hp: float = -1.0, extra_su
 	# 构建攻击部分（包含武器名）
 	var atk_part: String
 	if weapon_names[0].is_empty() and weapon_names[1].is_empty() and weapon_names[2].is_empty():
-		atk_part = "%.0f/%.0f/%.0f" % [atk_light, atk_armor, atk_air]
+		atk_part = "%d/%d/%d" % [int(atk_light), int(atk_armor), int(atk_air)]
 	else:
-		var a0: String = weapon_names[0] + str(atk_light) if not weapon_names[0].is_empty() else str(atk_light)
-		var a1: String = weapon_names[1] + str(atk_armor) if not weapon_names[1].is_empty() else str(atk_armor)
-		var a2: String = weapon_names[2] + str(atk_air) if not weapon_names[2].is_empty() else str(atk_air)
+		var a0: String = weapon_names[0] + "%d" % atk_light if not weapon_names[0].is_empty() else "%d" % atk_light
+		var a1: String = weapon_names[1] + "%d" % atk_armor if not weapon_names[1].is_empty() else "%d" % atk_armor
+		var a2: String = weapon_names[2] + "%d" % atk_air if not weapon_names[2].is_empty() else "%d" % atk_air
 		atk_part = "%s/%s/%s" % [a0, a1, a2]
-	
-	return "%s｜攻 %s｜防 %.0f/%.0f/%.0f｜射程 %.0f｜攻速 %.2f/%.2f/%.2f｜移速 %.0f%s" % [
+
+	return "%s｜攻 %s｜防 %d/%d/%d｜射程 %d｜攻速 %.1f/%.1f/%.1f｜移速 %d%s" % [
 		hp_text,
 		atk_part,
-		def_light, def_armor, def_air,
-		stats.attack_range,
+		int(def_light), int(def_armor), int(def_air),
+		int(stats.attack_range),
 		spd_light, spd_armor, spd_air,
-		stats.move_speed,
+		int(stats.move_speed),
 		extra_suffix,
 	]
 
@@ -947,7 +967,7 @@ func _format_enemy_combat_summary(unit: Node, scombat: Array, extra_suffix: Stri
 	var def: float = float(scombat[4]) if scombat.size() > 4 else 0.0
 	if "stats" in unit and unit.stats != null:
 		return _format_unit_stats_summary(unit.stats as UnitStats, hp, extra_suffix)
-	return "HP %.0f｜防 %.0f｜攻 %.0f｜射程 %.0f｜攻速 %.2f%s" % [hp, def, dmg, rng, itv, extra_suffix]
+	return "HP %d｜防 %d｜攻 %d｜射程 %d｜攻速 %.2f%s" % [int(hp), int(def), int(dmg), int(rng), itv, extra_suffix]
 
 ## ── 敌方相位驱动器 ──
 
@@ -957,7 +977,7 @@ func _show_enemy_phase_driver(unit: Node) -> void:
 	if type_label: type_label.text = "【%s】· 相位场驱动器" % mname
 	var cur_hp: float = float(unit.get("hp")) if "hp" in unit else 0.0
 	var mx_hp: float = float(unit.get("max_hp")) if "max_hp" in unit else 1.0
-	if summary_label: summary_label.text = "基地 HP %.0f / %.0f" % [cur_hp, mx_hp]
+	if summary_label: summary_label.text = "基地 HP %d / %d" % [int(cur_hp), int(mx_hp)]
 	var lines: Array[String] = []
 	lines.append("摧毁敌方相位场驱动器即可获胜；对方会持续生产战斗单位。")
 	if GameManager and GameManager.has_method("get_current_phase_master"):
@@ -1181,6 +1201,7 @@ func _show_generic_enemy_unit(unit: Node) -> void:
 	var tags_text := ""
 	var speed_val: float = 0.0
 	var weapon_type_val: int = -1
+	var attack_damage_val: float = 0.0
 	if "archetype_id" in unit and unit.archetype_id is String:
 		var cfg = EnemyArchetypes.get_config(unit.archetype_id)
 		if not cfg.is_empty():
@@ -1189,6 +1210,7 @@ func _show_generic_enemy_unit(unit: Node) -> void:
 			era_text = str(cfg.get("era", ""))
 			speed_val = float(cfg.get("speed", 0.0))
 			weapon_type_val = int(cfg.get("weapon_type", -1))
+			attack_damage_val = float(cfg.get("attack_damage", 0.0))
 			var tags: Array = cfg.get("tags", []) as Array
 			if not tags.is_empty():
 				var tag_names: Array = []
@@ -1220,17 +1242,22 @@ func _show_generic_enemy_unit(unit: Node) -> void:
 			type_text += " · %s" % era_names[ei]
 	if not tags_text.is_empty():
 		type_text += "\n类型：%s" % tags_text
-	if weapon_type_val >= 0:
-		type_text += "\n武装：%s" % DefaultCards.get_weapon_display_name(weapon_type_val)
+	# v6.2c: 武装显示——有武器给具体名字，没武器显示"无"
+	# 敌方原型的 weapon_type 是旧 12 值 WeaponTypeLegacy，必须用 weapon_kind_short 查表
+	# 判断"有没有武器"：weapon_type >= 0 且 attack_damage > 0
+	if weapon_type_val >= 0 and attack_damage_val > 0.0:
+		type_text += "\n武装：%s" % RealWorldUnitLabels.weapon_kind_short(weapon_type_val)
+	else:
+		type_text += "\n武装：无"
 	if type_label: type_label.text = type_text
 	if name_label: name_label.text = display_name
 	var s2: Array = _enemy_surface_combat_stats(unit)
 	var speed_display: float = float(unit.get("speed")) if "speed" in unit else speed_val
 	var speed_text: String = ""
 	if speed_display < -0.1:
-		speed_text = "｜移速 %.0f" % absf(speed_display)
+			speed_text = "｜移速 %d" % int(absf(speed_display))
 	elif speed_display > 0.1:
-		speed_text = "｜移速 %.0f" % speed_display
+			speed_text = "｜移速 %d" % int(speed_display)
 	if summary_label:
 		summary_label.text = _format_enemy_combat_summary(unit, s2, speed_text)
 	if desc_label:
@@ -1293,7 +1320,7 @@ func _build_active_law_effects_for_unit(unit: Node, is_player_side: bool) -> Str
 		var radius: float = float(rt.get("radius", 0.0))
 		var line := _format_effect_line(law_name, String(rt.get("effect", "")), value, duration, radius)
 		if nano_cost > 0: line += " (消耗%d纳米)" % nano_cost
-		if energy_cost > 0: line += " (消耗%.0f能量)" % energy_cost
+		if energy_cost > 0: line += " (消耗%d能量)" % int(energy_cost)
 		if not desc.is_empty(): line += "：%s" % desc
 		lines.append(line)
 	return "\n".join(lines)

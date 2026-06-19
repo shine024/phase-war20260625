@@ -116,12 +116,6 @@ func _ready() -> void:
 	_intel_grid = get_node_or_null("VBoxOuter/TabContainer/IntelTab/IntelScroll/IntelGrid") as GridContainer
 	_stat_boosts_grid = get_node_or_null("VBoxOuter/TabContainer/StatBoostsTab/StatBoostsScroll/StatBoostsGrid") as GridContainer
 	_runes_grid = get_node_or_null("VBoxOuter/TabContainer/RunesTab/RunesScroll/RunesGrid") as GridContainer
-	# v6.5: 情报标签页改为显示"未装配改造"，更新 tab 标题以避免歧义
-	var _tab_container: TabContainer = get_node_or_null("VBoxOuter/TabContainer") as TabContainer
-	if _tab_container != null:
-		var _intel_tab_idx: int = _tab_container.get_tab_idx_from_control(get_node_or_null("VBoxOuter/TabContainer/IntelTab"))
-		if _intel_tab_idx >= 0:
-			_tab_container.set_tab_title(_intel_tab_idx, "改造")
 
 	# 必须先锁定列数再 setup（setup 会立刻 rebuild，不能在 rebuild 之后才设 columns）
 	if _combat_cards_grid:
@@ -155,7 +149,9 @@ func _ready() -> void:
 	if _tab_container:
 		_tab_container.set_tab_title(TabIndex.COMBAT_CARDS, "战斗卡")
 		_tab_container.set_tab_title(TabIndex.RESOURCES, "资源")
-		_tab_container.set_tab_title(TabIndex.INTEL, "情报")
+		# v6.5 修复 M3：INTEL tab 实际显示改造蓝图（refresh_intel_tab 用 is_mod_blueprint 过滤），
+		# 标题应为"改造"而非"情报"，原 158 行覆盖了 124 行的设置导致标签与内容不符
+		_tab_container.set_tab_title(TabIndex.INTEL, "改造")
 		_tab_container.set_tab_title(TabIndex.STAT_BOOSTS, "属性提升")
 		_tab_container.set_tab_title(TabIndex.RUNES, "符文")
 		_tab_container.tab_changed.connect(_on_tab_changed)
@@ -183,11 +179,29 @@ func _ready() -> void:
 	if _presenter == null and _data != null:
 		_fallback_init_from_save_manager()
 
+	# v6.2: 监听符文获得信号——购买/掉落符文后实时刷新符文标签页，
+	# 避免因 _aux_sections_initialized 仅首次刷新、签名缓存未失效导致新符文不显示。
+	if SignalBus and SignalBus.has_signal("rune_acquired"):
+		if not SignalBus.rune_acquired.is_connected(_on_rune_acquired):
+			SignalBus.rune_acquired.connect(_on_rune_acquired)
+
 func _exit_tree() -> void:
+	# v6.2: 断开符文信号，防止面板销毁后回调访问已释放节点
+	if SignalBus != null and SignalBus.has_signal("rune_acquired"):
+		if SignalBus.rune_acquired.is_connected(_on_rune_acquired):
+			SignalBus.rune_acquired.disconnect(_on_rune_acquired)
 	if _presenter:
 		_presenter.cleanup()
 		_presenter = null
 	_data = null
+
+## v6.2: 符文获得回调——失效签名缓存并在可见时刷新符文标签
+func _on_rune_acquired(_rune_id: String, _source: String) -> void:
+	# 失效签名缓存，确保下次 refresh_runes_tab 一定会重建网格
+	_last_runes_signature = "__INVALIDATED__"
+	# 仅当背包可见且当前在符文标签页时立即刷新；否则等打开/切标签时自然会刷新
+	if is_visible_in_tree() and _tab_container != null and _tab_container.current_tab == TabIndex.RUNES:
+		refresh_runes_tab()
 
 ## Presenter 初始化失败时的兜底：直接从 SaveManager 恢复额外卡并构建网格，
 ## 确保用户至少能看到已有卡和空格子。
@@ -779,10 +793,18 @@ func refresh_runes_tab() -> void:
 		_add_runes_placeholder(_runes_grid, "符文系统未初始化")
 		return
 	var owned_runes: Array = pim.get_owned_runes()
-	# 签名去重
+	# 获取当前装备中的符文（用于显示"已装备"标记 + 纳入签名）
+	var equipped_runes: Array = []
+	if pim.has_method("get_rune_slots"):
+		equipped_runes = pim.get_rune_slots()
+	# 签名去重：必须把装备状态也纳入签名，否则装备/卸下符文时 owned 列表不变、
+	# 签名不变，导致 refresh_runes_tab 直接 return，已装备的 ✓ 标记无法更新。
 	var sig_parts: Array[String] = []
 	for rid in owned_runes:
-		sig_parts.append(str(rid))
+		var rid_str: String = str(rid)
+		# 已装备的符文签名加 [E] 前缀，装备状态变化时签名随之变化
+		var equipped_mark: String = "[E]" if equipped_runes.has(rid_str) else ""
+		sig_parts.append(equipped_mark + rid_str)
 	sig_parts.sort()
 	var sig := "|".join(sig_parts)
 	if sig == _last_runes_signature:
@@ -792,10 +814,6 @@ func refresh_runes_tab() -> void:
 	if owned_runes.is_empty():
 		_add_runes_placeholder(_runes_grid, "暂无符文\n通过战斗掉落或势力商店获取")
 		return
-	# 获取当前装备中的符文（用于显示"已装备"标记）
-	var equipped_runes: Array = []
-	if pim.has_method("get_rune_slots"):
-		equipped_runes = pim.get_rune_slots()
 	# 统计每种符文的数量（理论上每种符文只有1个，但防御性处理）
 	var rune_counts: Dictionary = {}
 	for rid in owned_runes:
@@ -821,17 +839,26 @@ func _add_rune_item(grid: GridContainer, rune_id: String, count: int, is_equippe
 	var category: String = rune_def.get("category", "")
 	var rune_color: Color = RuneClass.get_color(rune_id)
 	var desc: String = RuneClass.get_description(rune_id)
-	# 显示名称：符文名 + 稀有度
+	# 显示名称：已装备的加 [装] 前缀，让玩家一眼看出该符文正在槽位中（点击可卸下）
 	var display_name: String = rune_name
 	if is_equipped:
-		display_name += " ✓"
+		display_name = "[装]" + rune_name
+	# 描述：已装备的注明状态，提示点击可卸下
+	var status_line: String = ""
+	if is_equipped:
+		status_line = "\n[已装备·点击卸下]"
+	else:
+		status_line = "\n[点击装备]"
 	# 数量：每种符文数量（通常为1，但显示出来更清晰）
 	var count_text: String = "×%d" % count
 	# extra_data 让 ResourceSlotItem 显示自定义名称和描述
+	# 已装备的符文格子整体变暗（modulate），表明已在使用中
+	var display_color: Color = rune_color if not is_equipped else rune_color.darkened(0.35)
 	var extra_data: Dictionary = {
 		"name": display_name,
-		"description": "【%s】%s\n%s" % [rarity_name, _rune_category_name(category), desc],
-		"rune_color": rune_color,
+		"description": "【%s】%s\n%s%s" % [rarity_name, _rune_category_name(category), desc, status_line],
+		"rune_color": display_color,
+		"icon": RuneClass.icon_path_for(rune_id),
 	}
 	# 复用 stat_boost 对象池
 	var item = null
@@ -843,15 +870,70 @@ func _add_rune_item(grid: GridContainer, rune_id: String, count: int, is_equippe
 		return
 	grid.add_child(item)
 	if item.has_method("set_data"):
-		# SlotType.STAT_BOOST=2 作为通用格子类型
-		item.set_data(rune_id, count, 2, extra_data)
+		# v6.2: 使用 RUNE 槽位类型，让 ResourceSlotItem 走 _refresh_rune 分支，
+		# 正确应用 extra_data 里的符文名/描述/稀有度颜色（原误用 STAT_BOOST 导致全部显示为"属性提升"）
+		item.set_data(rune_id, count, ResourceSlotItem.SlotType.RUNE, extra_data)
+	# v6.2: 连接点击信号（对象池复用时先断开旧连接，避免重复连接报错）
+	if item.has_signal("rune_clicked"):
+		if item.rune_clicked.is_connected(_on_backpack_rune_clicked):
+			item.rune_clicked.disconnect(_on_backpack_rune_clicked)
+		item.rune_clicked.connect(_on_backpack_rune_clicked)
 	# 设置稀有度边框颜色
 	if "modulate" in item:
 		var border_color: Color = rune_color
 		item.modulate = Color(1, 1, 1, 1)
 	# 设置 tooltip
 	if "tooltip_text" in item:
-		item.tooltip_text = "【%s】%s\n%s" % [rarity_name, rune_name, desc]
+		item.tooltip_text = "【%s】%s\n%s\n（点击装备/卸下）" % [rarity_name, rune_name, desc]
+
+## v6.2: 背包符文格子点击 → 装备到首个空槽；已装备则卸下
+func _on_backpack_rune_clicked(rune_id: String) -> void:
+	if rune_id.is_empty():
+		return
+	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
+	if pim == null or not pim.has_method("equip_rune"):
+		_show_rune_action_hint("符文系统未就绪")
+		return
+	# 已装备 → 卸下（从槽位移除，保留所有权）
+	if pim.has_method("get_rune_slots") and pim.get_rune_slots().has(rune_id):
+		var slots: Array = pim.get_rune_slots()
+		for i in range(slots.size()):
+			if str(slots[i]) == rune_id:
+				if pim.has_method("unequip_rune"):
+					pim.unequip_rune(i)
+				break
+		_show_rune_action_hint("已卸下：%s" % RuneClass.get_rune_name(rune_id))
+		refresh_runes_tab()
+		return
+	# 未装备 → 找第一个空槽装备
+	var slot_count: int = pim.get_rune_slot_count() if pim.has_method("get_rune_slot_count") else 0
+	if slot_count <= 0:
+		_show_rune_action_hint("当前相位仪没有符文槽位")
+		return
+	var slots: Array = pim.get_rune_slots() if pim.has_method("get_rune_slots") else []
+	var target_slot: int = -1
+	for i in range(slot_count):
+		var v = slots[i] if i < slots.size() else null
+		if v == null or str(v).is_empty():
+			target_slot = i
+			break
+	if target_slot < 0:
+		_show_rune_action_hint("符文槽位已满，请先卸下其他符文")
+		return
+	var ok: bool = pim.equip_rune(target_slot, rune_id)
+	if ok:
+		_show_rune_action_hint("已装备：%s" % RuneClass.get_rune_name(rune_id))
+		refresh_runes_tab()
+	else:
+		_show_rune_action_hint("装备失败（槽位不可用）")
+
+## v6.2: 简易操作反馈——复用 ToastManager（若可用），否则用 print 兜底
+func _show_rune_action_hint(msg: String) -> void:
+	var toast_mgr: Node = get_node_or_null("/root/ToastManager")
+	if toast_mgr and toast_mgr.has_method("show_toast"):
+		toast_mgr.show_toast(msg)
+	else:
+		print("[BackpackPanel] %s" % msg)
 
 ## 符文稀有度排序值
 func _rune_rarity_sort_value(rune_id: String) -> int:
@@ -930,6 +1012,10 @@ func refresh_resources_tab() -> void:
 	for k in resources_raw.keys():
 		var count: int = int(resources_raw[k])
 		if count <= 0:
+			continue
+		# v6.2 修复 M4：跳过兼容性 key（如 basic_nano），它们与正式 ID（nano_materials）映射同一值，
+		# 不过滤会导致资源标签页重复显示纳米材料
+		if String(k).begins_with("basic_"):
 			continue
 		var item = ResourceSlotScene.instantiate()
 		if item == null:

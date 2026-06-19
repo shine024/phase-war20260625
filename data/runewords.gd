@@ -1071,8 +1071,8 @@ static func get_runewords_by_tier(tier: int) -> Array[Dictionary]:
 			result.append(rw)
 	return result
 
-## 获取符文之语名称
-static func get_name(rw_id: String) -> String:
+## 获取符文之语名称（避免与 Object.get_name 冲突）
+static func get_runeword_name(rw_id: String) -> String:
 	if RUNEWORD_NAMES.has(rw_id):
 		return RUNEWORD_NAMES[rw_id]
 	return rw_id

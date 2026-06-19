@@ -235,7 +235,7 @@ func _apply_hit(r: Dictionary) -> void:
 	# 生成命中特效
 	var proj_is_player: bool = bool(r.get("is_player", true))
 	if not bool(r.get("forced_miss", false)):
-		_spawn_impact_explosion(hit_pos, proj_is_player)
+		_spawn_impact_explosion(hit_pos, proj_is_player, wt)
 		# v6.4: 曲射爆炸触发中等屏幕震动
 		var tree := get_tree()
 		var bm: Node = tree.root.get_node_or_null("BattleManager") if tree else null
@@ -379,17 +379,19 @@ func _get_aoe_targets(center: Vector2, radius: float, primary: Node2D) -> Array:
 	return targets
 
 ## 爆炸特效
-func _spawn_impact_explosion(pos: Vector2, is_player_proj: bool = true) -> void:
-	const ARTILLERY_IMPACT_TEX = preload("res://assets/effects/projectiles/weapons_realistic/weapon_artillery_impact.png")
-	if ARTILLERY_IMPACT_TEX == null:
+## v6.2: 按 weapon_type 选不同贴图（迫击炮/导弹/高射炮/Omega/电磁炮各有专属外观）
+func _spawn_impact_explosion(pos: Vector2, is_player_proj: bool = true, weapon_type: int = 1) -> void:
+	var tex: Texture2D = WeaponProjectileVfx.explosion_impact_texture(weapon_type)
+	if tex == null:
 		return
 	if WeaponProjectileVfx._active_impacts >= WeaponProjectileVfx.MAX_ACTIVE_IMPACTS:
 		return
 	WeaponProjectileVfx._active_impacts += 1
 	var fx: Sprite2D = WeaponProjectileVfx._acquire_impact_sprite()
-	fx.texture = ARTILLERY_IMPACT_TEX
+	fx.texture = tex
 	fx.centered = true
-	fx.scale = Vector2(0.75, 0.75)
+	# v6.2: 曲射/空射爆炸特效放大(初始 0.75→1.0，放大倍率 1.5→2.25)
+	fx.scale = Vector2(1.0, 1.0)
 	fx.global_position = pos
 	fx.z_as_relative = false
 	fx.z_index = 4
@@ -398,6 +400,6 @@ func _spawn_impact_explosion(pos: Vector2, is_player_proj: bool = true) -> void:
 	fx.show()
 	add_child(fx)
 	var tw := fx.create_tween()
-	tw.tween_property(fx, "scale", fx.scale * 1.5, 0.15)
+	tw.tween_property(fx, "scale", fx.scale * 2.25, 0.15)
 	tw.parallel().tween_property(fx, "modulate:a", 0.0, 0.3)
 	tw.finished.connect(func(): WeaponProjectileVfx._release_impact_sprite(fx))

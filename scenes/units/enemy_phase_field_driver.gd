@@ -18,6 +18,11 @@ const USE_FALLBACK_SPAWN: bool = true
 const _PHASE_BODY_REFERENCE_FRAME_PX: float = 256.0
 ## 与 enemy_unit.gd 中 MAX_ENEMY_VISUAL_EXTENT_PX 对齐（底座略大可等同上限）
 const _PHASE_BODY_MAX_EXTENT_PX: float = 220.0
+## v6.2: 累计召唤上限。相位师不死即无限产兵会导致战斗拖延；达上限后切换到疲劳间隔，
+## 给玩家留出集中输出基地 HP 的窗口。
+const TOTAL_SPAWN_CAP: int = 12
+## v6.2: 累计达上限后的产兵间隔（原 spawn_interval 约 3~6s），大幅延长以缓解压制。
+const FATIGUED_SPAWN_INTERVAL: float = 18.0
 
 @export var max_hp: float = 500.0
 @export var spawn_interval: float = 6.0
@@ -36,6 +41,9 @@ var _equipment: Dictionary = {}
 var _master_stats: Dictionary = {}
 var _unit_limit: int = 6
 var _has_equipment: bool = false
+## v6.2: 累计召唤计数 + 疲劳标记（达 TOTAL_SPAWN_CAP 后切换到 FATIGUED_SPAWN_INTERVAL）
+var _total_spawned: int = 0
+var _spawn_fatigued: bool = false
 
 ## 平台类型字符串 -> GC.PlatformType 映射
 const _PLATFORM_TYPE_MAP: Dictionary = {
@@ -119,10 +127,13 @@ func setup(master_config: Dictionary) -> void:
 
 	hp = max_hp
 	add_to_group("enemy_phase_driver")
+	# v6.2: 每次重建基地都重置累计召唤计数与疲劳标记
+	_total_spawned = 0
+	_spawn_fatigued = false
 	if SignalBus:
 		SignalBus.enemy_phase_driver_hp_changed.emit(hp, max_hp)
 	var mode_str := "装备模式" if _has_equipment else "经典模式"
-	# [LOG-v5.1] print("[EnemyPhaseDriver] 相位师 %s 基地建立 (HP=%d, era=%d, limit=%d, interval=%.1f) [%s]" % [master_name, int(max_hp), era, _unit_limit, spawn_interval, mode_str])
+	# [LOG-v5.1] print("[EnemyPhaseDriver] 相位师 %s 基地建立 (HP=%d, era=%d, limit=%d, cap=%d, interval=%.1f) [%s]" % [master_name, int(max_hp), era, _unit_limit, TOTAL_SPAWN_CAP, spawn_interval, mode_str])
 	_apply_body_visual_from_master(master_config)
 
 func _apply_body_visual_from_master(master_config: Dictionary) -> void:
@@ -187,7 +198,9 @@ func _process(delta: float) -> void:
 	if tree == null or tree.paused:
 		return
 	_spawn_timer += delta
-	if _spawn_timer >= spawn_interval:
+	# v6.2: 累计召唤达上限后切换到疲劳间隔，缓解无限产兵压制
+	var interval: float = FATIGUED_SPAWN_INTERVAL if _spawn_fatigued else spawn_interval
+	if _spawn_timer >= interval:
 		_spawn_timer = 0.0
 		_produce_unit()
 
@@ -264,7 +277,8 @@ func _produce_unit_with_equipment() -> void:
 		unit.setup_with_enemy_visual(false, stats, visual_archetype_id)
 	else:
 		unit.setup(false, stats)
-	_add_unit_to_battle(unit, current_count)
+	if _add_unit_to_battle(unit, current_count):
+		_record_spawn_and_check_fatigue()
 
 ## 兜底：使用经典 EnemyArchetypes 生成
 func _produce_unit_fallback() -> void:
@@ -285,7 +299,8 @@ func _produce_unit_fallback() -> void:
 		wave_idx = BattleManager.get_enemy_wave_index()
 	var unit = EnemyUnitScene.instantiate()
 	unit.setup(false, wave_idx, archetype_id)
-	_add_unit_to_battle(unit, current_count)
+	if _add_unit_to_battle(unit, current_count):
+		_record_spawn_and_check_fatigue()
 
 func _produce_unit() -> void:
 	if _has_equipment:
@@ -293,13 +308,21 @@ func _produce_unit() -> void:
 	elif USE_FALLBACK_SPAWN:
 		_produce_unit_fallback()
 
-func _add_unit_to_battle(unit: Node2D, current_count: int) -> void:
+## 返回 true 表示单位已成功进入战场（用于累计召唤计数）；false 表示场地已满被丢弃。
+func _add_unit_to_battle(unit: Node2D, current_count: int) -> bool:
 	if BattleManager != null and BattleManager.has_method("spawn_enemy_unit_on_card_grid"):
 		if BattleManager.spawn_enemy_unit_on_card_grid(unit):
-			return
+			return true
+	# 主路径返回 false 通常意味着场地已满（enemy_unit_count >= 6）。
+	# 不应继续产兵，否则会越过 6 上限、导致多单位挤同格。
+	var field_cap: int = BattleSlotGrid.SLOT_COUNT - 1
+	if current_count >= field_cap:
+		if is_instance_valid(unit):
+			unit.queue_free()
+		return false
 	var battlefield_node: Node = get_parent()
 	if battlefield_node == null:
-		return
+		return false
 	var enemy_container: Node = battlefield_node.get_node_or_null("EnemyUnits")
 	if enemy_container == null and BattleManager and "enemy_units_node" in BattleManager:
 		enemy_container = BattleManager.enemy_units_node
@@ -322,6 +345,15 @@ func _add_unit_to_battle(unit: Node2D, current_count: int) -> void:
 	BattleManager.set_enemy_unit_count(current_count + 1)
 	if SignalBus:
 		SignalBus.unit_spawned.emit(unit, false)
+	return true
+
+
+## v6.2: 单位成功进入战场后累计召唤计数；达 TOTAL_SPAWN_CAP 后切换到疲劳间隔。
+func _record_spawn_and_check_fatigue() -> void:
+	_total_spawned += 1
+	if not _spawn_fatigued and _total_spawned >= TOTAL_SPAWN_CAP:
+		_spawn_fatigued = true
+		_spawn_timer = 0.0  # 重置计时器，让疲劳间隔从现在起算
 
 ## 回退路径：扫描 enemy_units 组，从远端(最大索引)倒序找第一个空闲敌槽；
 ## 敌方仅 slot N-1（位置 15，最右靠屏幕边）禁放，可用 slot 0~N-2。

@@ -1204,6 +1204,18 @@ static func get_description(rune_id: String) -> String:
 		return "%s\n%s" % [primary, secondary]
 	return primary
 
+## 符文图标路径：res://assets/runes/{rarity}/rune_{id}.png
+## 稀有度从符文定义读取；路径不存在时返回 ""（调用方按 fallback 处理，例如回退到颜色染色）
+static func icon_path_for(rune_id: String) -> String:
+	var rune: Dictionary = get_rune(rune_id)
+	if rune.is_empty():
+		return ""
+	var rarity: String = String(rune.get("rarity", RARITY_COMMON))
+	var path: String = "res://assets/runes/%s/rune_%s.png" % [rarity, rune_id]
+	if ResourceLoader.exists(path, "Texture2D"):
+		return path
+	return ""
+
 ## 获取所有符文ID列表
 static func get_all_ids() -> Array[String]:
 	var ids: Array[String] = []
@@ -1224,3 +1236,56 @@ static func get_count_by_rarity() -> Dictionary:
 	for rar in RARITY_ORDER:
 		counts[rar] = len(get_runes_by_rarity(rar))
 	return counts
+
+# ── 加成显示工具（v6.2 公共方法，供 rune_panel/bottom_instrument_bar/battle_hud 复用） ──
+
+## 符文属性 key → 中文显示名映射（14 项）
+const STAT_DISPLAY_NAMES: Dictionary = {
+	"attack": "攻击力", "defense": "防御力", "hp": "生命值",
+	"attack_speed": "攻击速度", "deploy_speed": "部署速度",
+	"energy_regen": "能量恢复", "energy_cost_reduction": "能量消耗",
+	"range": "射程", "dodge": "闪避率", "crit": "暴击率",
+	"accuracy": "命中率", "hp_regen": "生命恢复", "damage_reduction": "伤害减免",
+	"attack_penetration": "攻击穿透",
+}
+
+## 符文特殊效果 key → 中文显示名映射（10 项）
+const SPECIAL_DISPLAY_NAMES: Dictionary = {
+	"on_kill_regen_energy": "击杀回能", "on_hit_chain_lightning": "闪电链",
+	"on_death_respawn": "死亡复活", "on_deploy_speed_up": "部署加速",
+	"on_attack_penetration": "攻击穿透", "on_area_damage": "溅射伤害",
+	"on_damage_reduction": "伤害减免", "on_energy_shield": "能量护盾",
+	"on_explore_bonus": "探索奖励", "on_resource_yield": "资源产出",
+}
+
+## 符文属性 key → 简短显示名（用于空间受限的统计行/HUD，2-3字）
+const STAT_SHORT_NAMES: Dictionary = {
+	"attack": "攻", "defense": "防", "hp": "生",
+	"attack_speed": "攻速", "deploy_speed": "部署",
+	"energy_regen": "能回", "energy_cost_reduction": "能耗",
+	"range": "射程", "dodge": "闪避", "crit": "暴击",
+	"accuracy": "命中", "hp_regen": "回血", "damage_reduction": "减伤",
+	"attack_penetration": "穿透",
+}
+
+## 获取符文属性的完整中文名（找不到时回退到 key 本身）
+static func stat_display_name(stat: String) -> String:
+	return STAT_DISPLAY_NAMES.get(stat, stat)
+
+## 获取符文特殊效果的完整中文名（找不到时回退到 key 本身）
+static func special_display_name(special: String) -> String:
+	return SPECIAL_DISPLAY_NAMES.get(special, special)
+
+## 获取符文属性的简短中文名（用于 HUD/统计行，找不到时回退到完整名）
+static func stat_short_name(stat: String) -> String:
+	return STAT_SHORT_NAMES.get(stat, stat_display_name(stat))
+
+## 格式化属性加成值为显示字符串
+## 对于减免类（energy_cost_reduction / damage_reduction）显示 -X%，其余显示 +X%
+static func format_stat_bonus(stat: String, value: float) -> String:
+	var pct := int(round(value * 100.0))
+	if pct == 0:
+		return ""
+	if stat == "energy_cost_reduction" or stat == "damage_reduction":
+		return "%s -%d%%" % [stat_short_name(stat), pct]
+	return "%s +%d%%" % [stat_short_name(stat), pct]

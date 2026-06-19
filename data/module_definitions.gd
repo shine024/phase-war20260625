@@ -533,13 +533,13 @@ static func build_effect_lines(summary: Dictionary) -> Array:
 	if summary.get("dodge_chance", 0.0) > 0.001:
 		lines.append("闪避 %.1f%%" % (summary["dodge_chance"] * 100.0))
 	if summary.get("defense_flat", 0.0) > 0.001:
-		lines.append("防御 +%.0f" % summary["defense_flat"])
+		lines.append("防御 +%d" % int(summary["defense_flat"]))
 	if summary.get("deploy_speed_add", 0) > 0:
 		lines.append("部署速度 +%d" % summary["deploy_speed_add"])
 	if summary.get("range_mult", 1.0) > 1.001:
 		lines.append("射程 ×%.2f" % summary["range_mult"])
 	if summary.get("interval_mult", 0.0) < -0.001:
-		lines.append("攻速加速 %.0f%%" % abs(summary["interval_mult"] * 100.0))
+		lines.append("攻速加速 %d%%" % int(abs(summary["interval_mult"] * 100.0)))
 	return lines
 
 # ─────────────────────────────────────────────

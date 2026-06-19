@@ -47,15 +47,15 @@ static func calculate_damage(
 	# 2. 防御值 = 根据攻击者单位类型选（v6.2: 攻防维度对齐）
 	var def = get_defense_vs(target_stats, attacker_stats.combat_kind)
 
-	# 3. 射程衰减(仅直射)
-	if weapon_type == GC.WeaponType.DIRECT:
-		var max_range = distance  # 调用方需传入正确的max_range
-		var sub_type = DamageAttenuation.infer_weapon_sub_type(
-			attacker_stats.combat_kind, int(max_range),
-			attacker_stats.attack_light, attacker_stats.attack_armor, attacker_stats.attack_air
-		)
-		# Note: caller should pass max_range separately; using a helper
-		base_damage *= DamageAttenuation.calculate_attenuation(distance, max_range, sub_type)
+	# 3. 射程衰减(仅直射) — v6.2: 直射已删除衰减设定，本块停用
+#	if weapon_type == GC.WeaponType.DIRECT:
+#		var max_range = distance  # 调用方需传入正确的max_range
+#		var sub_type = DamageAttenuation.infer_weapon_sub_type(
+#			attacker_stats.combat_kind, int(max_range),
+#			attacker_stats.attack_light, attacker_stats.attack_armor, attacker_stats.attack_air
+#		)
+#		# Note: caller should pass max_range separately; using a helper
+#		base_damage *= DamageAttenuation.calculate_attenuation(distance, max_range, sub_type)
 
 	# 4. 防御减免: damage × 100/(100+def)
 	var final_damage = base_damage * (100.0 / (100.0 + def))
@@ -95,13 +95,13 @@ static func calculate_damage_with_range(
 	if base_damage <= def:
 		return 0.0
 
-	# 3. 射程衰减(仅直射)
-	if weapon_type == GC.WeaponType.DIRECT:
-		var sub_type = DamageAttenuation.infer_weapon_sub_type(
-			attacker_stats.combat_kind, int(max_range),
-			attacker_stats.attack_light, attacker_stats.attack_armor, attacker_stats.attack_air
-		)
-		base_damage *= DamageAttenuation.calculate_attenuation(distance, max_range, sub_type)
+	# 3. 射程衰减(仅直射) — v6.2: 直射已删除衰减设定，本块停用
+#	if weapon_type == GC.WeaponType.DIRECT:
+#		var sub_type = DamageAttenuation.infer_weapon_sub_type(
+#			attacker_stats.combat_kind, int(max_range),
+#			attacker_stats.attack_light, attacker_stats.attack_armor, attacker_stats.attack_air
+#		)
+#		base_damage *= DamageAttenuation.calculate_attenuation(distance, max_range, sub_type)
 
 	# 4. 防御减免
 	var final_damage = base_damage * (100.0 / (100.0 + def))
@@ -201,22 +201,23 @@ static func calculate_damage_with_weapon(
 
 	var base_damage = weapon.damage
 
-	# 射程衰减（仅直射）
-	if weapon.weapon_type == GC.WeaponType.DIRECT:
-		if is_card_grid:
-			# 格子战：用 range_falloff 保底 30%，max_range 取 stats.attack_range
-			# （与索敌/状态机判定基准一致；weapon.range_value×100 对远端槽位 600~1200px 必归零）
-			var cg_max_range: float = attacker_stats.attack_range if attacker_stats != null else (float(weapon.range_value) * 100.0)
-			var falloff: Dictionary = CombatTargeting.range_falloff(distance, cg_max_range)
-			base_damage *= float(falloff.get("damage_mult", 1.0))
-		else:
-			# 传统战场：按武器子类型衰减（原逻辑）
-			var max_range = float(weapon.range_value) * 100.0
-			var sub_type = DamageAttenuation.infer_weapon_sub_type(
-				attacker_stats.combat_kind, weapon.range_value,
-				base_damage, base_damage, base_damage
-			)
-			base_damage *= DamageAttenuation.calculate_attenuation(distance, max_range, sub_type)
+	# v6.2: 直射武器已删除攻击力衰减设定（格子战 range_falloff + 传统战场 DamageAttenuation 均不再生效）
+	# 以下原衰减逻辑保留为注释，如需恢复可解开。
+#	if weapon.weapon_type == GC.WeaponType.DIRECT:
+#		if is_card_grid:
+#			# 格子战：用 range_falloff 保底 30%，max_range 取 stats.attack_range
+#			# （与索敌/状态机判定基准一致；weapon.range_value×100 对远端槽位 600~1200px 必归零）
+#			var cg_max_range: float = attacker_stats.attack_range if attacker_stats != null else (float(weapon.range_value) * 100.0)
+#			var falloff: Dictionary = CombatTargeting.range_falloff(distance, cg_max_range)
+#			base_damage *= float(falloff.get("damage_mult", 1.0))
+#		else:
+#			# 传统战场：按武器子类型衰减（原逻辑）
+#			var max_range = float(weapon.range_value) * 100.0
+#			var sub_type = DamageAttenuation.infer_weapon_sub_type(
+#				attacker_stats.combat_kind, weapon.range_value,
+#				base_damage, base_damage, base_damage
+#			)
+#			base_damage *= DamageAttenuation.calculate_attenuation(distance, max_range, sub_type)
 
 	# 防御减免（非格子战模式）
 	var final_damage = base_damage

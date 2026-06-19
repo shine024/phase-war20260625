@@ -42,6 +42,12 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 6
 
+[node name="InstrumentIcon" type="TextureRect" parent="Margin/HBox/InstrumentSection"]
+layout_mode = 2
+custom_minimum_size = Vector2(48, 48)
+expand_mode = 1
+stretch_mode = 5
+
 [node name="NameSection" type="VBoxContainer" parent="Margin/HBox/InstrumentSection"]
 layout_mode = 2
 size_flags_horizontal = 0

@@ -158,8 +158,6 @@ func _ready() -> void:
 	if close_btn:
 		close_btn.pressed.connect(_on_close_pressed)
 
-	print("[GrowthPanel] _ready OK")
-
 	# 视觉样式美化
 	_apply_visual_styles()
 	# 改造系统入口按钮挂图标（强化/改装/进化）
@@ -277,7 +275,6 @@ func hide_panel() -> void:
 	tw.parallel().tween_property(self, "scale", Vector2(0.92, 0.92), _anim_duration).set_trans(Tween.TRANS_QUAD)
 	tw.tween_callback(func():
 		visible = false
-		print("[GrowthPanel] hide_panel complete")
 	)
 	closed.emit()
 
@@ -295,10 +292,8 @@ func _on_apply_pressed() -> void:
 		sb.growth_panel_saved.emit(_selected_card)
 	if sb and sb.has_signal("card_data_changed"):
 		sb.card_data_changed.emit(_selected_card.card_id)
-	print("[GrowthPanel] 应用保存完成: %s" % _selected_card.card_id)
 
 func _on_close_pressed() -> void:
-	print("[GrowthPanel] 关闭按钮按下")
 	hide_panel()
 
 ## 打开强化面板（ EnhancementOverlay → CardEnhancementPanel ）
@@ -516,7 +511,7 @@ func _refresh_header() -> void:
 
 			if c.range_value > 0:
 				_add_tag("射程 %d" % c.range_value)
-			_add_tag("能量 %.0f" % c.energy_cost)
+			_add_tag("能量 %d" % int(c.energy_cost))
 
 	# 星星
 	if stars_row_container:
@@ -611,27 +606,28 @@ func _refresh_enhance_section() -> void:
 	var enhanced_stats := _get_enhanced_stats()
 
 	if stat_atk_label:
-		stat_atk_label.text = "轻%.0f / 甲%.0f / 空%.0f%s" % [
-			float(enhanced_stats.get("atk_light", 0)),
-			float(enhanced_stats.get("atk_armor", 0)),
-			float(enhanced_stats.get("atk_air", 0)),
-			_get_stat_delta(float(base_stats.get("atk_light", 0)), float(enhanced_stats.get("atk_light", 0)))]
+		stat_atk_label.text = "轻%d / 甲%d / 空%d%s" % [
+				int(float(enhanced_stats.get("atk_light", 0))),
+				int(float(enhanced_stats.get("atk_armor", 0))),
+				int(float(enhanced_stats.get("atk_air", 0))),
+				_get_stat_delta(float(base_stats.get("atk_light", 0)), float(enhanced_stats.get("atk_light", 0)))]
 	if stat_def_label:
-		stat_def_label.text = "轻%.0f / 甲%.0f / 空%.0f%s" % [
-			float(enhanced_stats.get("def_light", 0)),
-			float(enhanced_stats.get("def_armor", 0)),
-			float(enhanced_stats.get("def_air", 0)),
-			_get_stat_delta(float(base_stats.get("def_light", 0)), float(enhanced_stats.get("def_light", 0)))]
+		stat_def_label.text = "轻%d / 甲%d / 空%d%s" % [
+				int(float(enhanced_stats.get("def_light", 0))),
+				int(float(enhanced_stats.get("def_armor", 0))),
+				int(float(enhanced_stats.get("def_air", 0))),
+				_get_stat_delta(float(base_stats.get("def_light", 0)), float(enhanced_stats.get("def_light", 0)))]
 	if stat_hp_label:
-		stat_hp_label.text = "%.0f%s" % [
-			float(enhanced_stats.get("hp", 0)),
-			_get_stat_delta(float(base_stats.get("hp", 0)), float(enhanced_stats.get("hp", 0)))]
+		stat_hp_label.text = "%d%s" % [
+				int(float(enhanced_stats.get("hp", 0))),
+				_get_stat_delta(float(base_stats.get("hp", 0)), float(enhanced_stats.get("hp", 0)))]
 	if stat_misc_label:
 		# V2: 加入移速显示
-		stat_misc_label.text = "射程 %d | 攻速 %.1f | 移速 %.1f" % [
-			int(enhanced_stats.get("range", c.range_value)),
-			float(enhanced_stats.get("atk_speed", c.attack_speed)),
-			float(enhanced_stats.get("speed", c.base_speed))]
+		# 攻速保留1位小数（因为攻速本身是小数值如1.5），移速取整
+			stat_misc_label.text = "射程 %d | 攻速 %.1f | 移速 %d" % [
+				int(enhanced_stats.get("range", c.range_value)),
+				float(enhanced_stats.get("atk_speed", c.attack_speed)),
+				int(float(enhanced_stats.get("speed", c.base_speed)))]
 
 # ---------- MOD ----------
 
@@ -643,10 +639,6 @@ func _refresh_mod_section() -> void:
 
 	var mod_list: Array = _selected_card.mods
 	var filled: int = mini(mod_list.size(), 9)
-	# [临时诊断] 确认 mods 数据是否到达成长面板
-	print("[GrowthPanel:Diag] card=%s mods.size=%d filled=%d" % [_selected_card.card_id, mod_list.size(), filled])
-	for i in range(mini(mod_list.size(), 3)):
-		print("[GrowthPanel:Diag]   mods[%d]=%s" % [i, mod_list[i]])
 	if mod_count_label:
 		mod_count_label.text = "%d/9" % filled
 
@@ -855,7 +847,8 @@ func _get_base_stats() -> Dictionary:
 
 func _get_enhanced_stats() -> Dictionary:
 	var c := _selected_card
-	var mult := 1.0 + (float(c.enhance_level) * 0.08)
+	# v6.2 修复：用 UnifiedRankSystem 统一倍率（原硬编码 0.08/级线性外推与实际 0.05/级非线性不符）
+	var mult := UnifiedRankSystem.get_power_multiplier(c.enhance_level)
 	return {
 		"atk_light": c.attack_light * mult,
 		"atk_armor": c.attack_armor * mult,

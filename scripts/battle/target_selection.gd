@@ -6,23 +6,36 @@ enum TargetMode { DIRECT, INDIRECT, AERIAL }
 
 ## 直射: 距离最近 → 同距最低HP → 同距同HP最早部署
 ## 超出射程时向敌方基地方向移动（由调用方处理，此处只选目标）
+## P1 性能优化：单遍手写循环找最优，避免 sort/filter/lambda 分配
 static func select_target_direct(attacker: Node2D, enemies: Array) -> Node2D:
 	if enemies.is_empty():
 		return null
 	var origin = attacker.global_position
-	# 过滤可攻击目标
-	var valid = _filter_attackable(enemies)
-	if valid.is_empty():
-		return null
-	# 距离排序
-	valid.sort_custom(func(a, b): return origin.distance_squared_to(a.global_position) < origin.distance_squared_to(b.global_position))
-	var best_dist = origin.distance_to(valid[0].global_position)
-	# 同距最低HP
-	var same_dist = valid.filter(func(e): return absf(origin.distance_to(e.global_position) - best_dist) < 10.0)
-	if same_dist.size() > 1:
-		same_dist.sort_custom(func(a, b): return float(a.hp) < float(b.hp))
-	# 返回最近的
-	return same_dist[0] as Node2D
+	var best: Node2D = null
+	var best_dist_sq: float = INF
+	var best_hp: float = INF
+	const SAME_DIST_TOL_SQ: float = 100.0  # 10^2
+	# 单遍：找距离最近，同距（容差内）取最低 HP
+	for e in enemies:
+		if e == null or not is_instance_valid(e):
+			continue
+		if "hp" in e and float(e.hp) <= 0.0:
+			continue
+		var d_sq: float = origin.distance_squared_to(e.global_position)
+		if d_sq < best_dist_sq - SAME_DIST_TOL_SQ:
+			# 明显更近，直接选
+			best = e
+			best_dist_sq = d_sq
+			best_hp = float(e.hp) if "hp" in e else INF
+		elif absf(d_sq - best_dist_sq) <= SAME_DIST_TOL_SQ:
+			# 同距（容差内），取最低 HP
+			var e_hp: float = float(e.hp) if "hp" in e else INF
+			if e_hp < best_hp:
+				best = e
+				best_hp = e_hp
+				if d_sq < best_dist_sq:
+					best_dist_sq = d_sq
+	return best
 
 ## 曲射: 优先被克制类型 → 无克制则最近 → 同距最低HP
 ## 不移动

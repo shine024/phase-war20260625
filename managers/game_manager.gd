@@ -772,10 +772,16 @@ func _story_handle_battle_end(player_won: bool) -> void:
 	_grant_basic_resources_for_current_level()
 	# 发放相位场XP
 	_grant_phase_field_xp_for_victory()
-	# 保存
+	# 保存 — v6.6: 使用延迟保存（0.3秒后），与自由模式一致，避免同步 I/O 卡顿
 	var sm_save: Node = get_node_or_null("/root/SaveManager")
-	if sm_save and sm_save.has_method("auto_save"):
-		sm_save.auto_save()
+	if sm_save and sm_save.has_method("save_game"):
+		var tree := get_tree()
+		if tree:
+			var t := tree.create_timer(0.3)
+			t.timeout.connect(func() -> void:
+				if sm_save and sm_save.has_method("save_game"):
+					sm_save.save_game()
+			)
 	# 如果胜利，触发战后对话；失败则返回章节选择
 	if player_won:
 		story_on_battle_won()

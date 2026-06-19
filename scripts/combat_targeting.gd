@@ -6,6 +6,9 @@ class_name CombatTargeting
 const RANGE_FALLOFF_SPAN_MULT: float = 3.0
 const MIN_FALLOFF_MULT: float = 0.30
 const CARD_GRID_ENEMY_ACQUISITION_MIN: float = 1600.0
+## v6.2: 玩家单位格子战索敌范围保底（与敌方对称）。
+## 原玩家索敌仅 attack_range×2.6 无保底，后排短射程单位够不到战场另一端。
+const CARD_GRID_PLAYER_ACQUISITION_MIN: float = 1600.0
 
 static func range_falloff(dist: float, attack_range: float) -> Dictionary:
 	if attack_range <= 0.5:

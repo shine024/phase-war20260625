@@ -117,12 +117,13 @@ anchor_right = 1.0
 offset_left = 8.0
 offset_top = 8.0
 offset_right = -8.0
-offset_bottom = 112.0
+offset_bottom = 168.0
 theme_override_constants/separation = 10
 
 [node name="PlayerSpawnHUD" parent="HudLayer/BattleTopStatusBar" instance=ExtResource("8_player_hud")]
 layout_mode = 2
 size_flags_horizontal = 1
+size_flags_vertical = 4
 
 [node name="BattleInfoDisplay" parent="HudLayer/BattleTopStatusBar" instance=ExtResource("32_battle_info_display")]
 layout_mode = 2
@@ -131,14 +132,15 @@ size_flags_horizontal = 3
 [node name="EnemySpawnHUD" parent="HudLayer/BattleTopStatusBar" instance=ExtResource("9_enemy_hud")]
 layout_mode = 2
 size_flags_horizontal = 1
+size_flags_vertical = 4
 
 [node name="TopLeftMeta" type="Control" parent="HudLayer"]
 layout_mode = 1
 anchors_preset = 0
 offset_left = 8.0
-offset_top = 120.0
+offset_top = 176.0
 offset_right = 200.0
-offset_bottom = 340.0
+offset_bottom = 396.0
 
 [node name="TopRightMeta" type="Control" parent="HudLayer"]
 layout_mode = 1

@@ -650,7 +650,8 @@ func _compact_display_name(c: CardResource) -> String:
 	if display_name.is_empty():
 		display_name = DefaultCards.get_safe_display_name(c.card_id)
 	if display_name.length() > 6:
-		display_name = display_name.substr(0, 6)
+		# v6.2 修复 L3：超长名截断加省略号（原 substr 直接截断，中文可能残缺）
+		display_name = display_name.substr(0, 6) + "…"
 	return display_name
 
 

@@ -9,6 +9,9 @@ var _max: float = GC.ENERGY_MAX
 var _base_start: float = GC.ENERGY_START
 var _regen_per_sec: float = 0.0
 var _in_battle: bool = false
+# P0 性能优化：缓存上次 emit 的整数能量值，避免每帧 emit energy_changed
+var _last_emitted_int: int = -1
+var _last_emitted_max: int = -1
 
 
 func _ready() -> void:
@@ -111,8 +114,15 @@ func _parse_energy_card_star(card_id: String) -> int:
 
 func _add_energy(amount: float) -> void:
 	current = clampf(current + amount, 0.0, _max)
+	# P0 性能优化：仅在整数部分变化时 emit（能量条每帧回复，但显示只需整数精度）
+	# 原每帧 emit 导致 HUD 每帧格式化字符串，60FPS 下每秒 60 次信号+字符串分配
 	if SignalBus:
-		SignalBus.energy_changed.emit(current, _max)
+		var cur_int: int = int(current)
+		var max_int: int = int(_max)
+		if cur_int != _last_emitted_int or max_int != _last_emitted_max:
+			_last_emitted_int = cur_int
+			_last_emitted_max = max_int
+			SignalBus.energy_changed.emit(current, _max)
 
 func can_afford(cost: float) -> bool:
 	return current >= cost

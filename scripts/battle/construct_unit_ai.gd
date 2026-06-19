@@ -45,7 +45,7 @@ static func find_target(u: CharacterBody2D, _delta: float) -> void:
 		targeting_mode = GC.get_targeting_mode_for_combat_kind(u.stats.combat_kind)
 
 	# 卡牌网格战斗：使用槽位系统快速查找
-	if GameManager and GameManager.is_card_grid_battle():
+	if GameManager != null:
 		var slot_target = _find_target_by_card_grid(u, targeting_mode)
 		if slot_target != null:
 			u.target = slot_target
@@ -197,9 +197,8 @@ static func _scan_slot_targets(u: CharacterBody2D, gr: Array) -> Node2D:
 	for s in slots:
 		for unit in slot_units[s]:
 			if is_instance_valid(unit):
-				print("[ScanSlot] ", u.name, " slot=", _get_unit_slot_index(u), " wt=", (u.stats.weapon_type if u.stats != null else -1), " → 敌slot=", s, " target=", unit.name)
+				# P0 修复：删除热路径裸 print（每次索敌同步 IO 卡顿）
 				return unit
-	print("[ScanSlot] ", u.name, " 无目标(空槽) slots=", slots)
 	return null
 
 ## 执行攻击（使用 stats 计算伤害）
@@ -217,7 +216,7 @@ static func do_attack(u: CharacterBody2D) -> void:
 	var weapon = AttackCalculator.get_weapon_for_target(u.stats, target_kind)
 	if weapon != null and weapon.enabled:
 		# 检测格子战模式：防御由 CardGridDamage 处理，跳过防御减免避免双重计算
-		var is_card_grid = GameManager and GameManager.has_method("is_card_grid_battle") and GameManager.is_card_grid_battle()
+		var is_card_grid = GameManager != null
 		var damage = AttackCalculator.calculate_damage_with_weapon(
 			u.stats, target_stats,
 			distance, weapon,
@@ -259,7 +258,7 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 
 	if range_val > 0 and dist_t > range_val:
 		# 格子战：允许超射程继续攻击，伤害由 calculate_damage_with_weapon 的 range_falloff 衰减处理
-		var _is_card_grid_here: bool = GameManager != null and GameManager.has_method("is_card_grid_battle") and GameManager.is_card_grid_battle()
+		var _is_card_grid_here: bool = GameManager != null
 		if _is_card_grid_here:
 			pass  # 不拦截，继续发射（伤害在 do_attack/do_attack_with_multiple_weapons 阶段已含衰减）
 		# 武器资源射程超限：直接 Miss（不依赖旧 stats.attack_range 判断）
@@ -379,10 +378,8 @@ static func _process_single_weapon_attack(u: CharacterBody2D, delta: float) -> v
 	var dist: float = u.global_position.distance_to(u.target.global_position)
 	var is_card_grid_active: bool = (
 		GameManager
-		and GameManager.is_card_grid_battle()
+		and GameManager != null
 		and BattleManager != null
-		and BattleManager.has_method("is_card_grid_combat_started")
-		and BattleManager.is_card_grid_combat_started()
 	)
 	# v6.4 修复：格子战时攻击射程与索敌判定一致（×2.6），避免双方固定两端时射程不足永不攻击
 	if is_card_grid_active:
@@ -435,10 +432,8 @@ static func _process_multi_weapons(u: CharacterBody2D, delta: float) -> void:
 	var eff_rng: float = effective_fire_range(u)
 	var is_card_grid_multi: bool = (
 		GameManager
-		and GameManager.is_card_grid_battle()
+		and GameManager != null
 		and BattleManager != null
-		and BattleManager.has_method("is_card_grid_combat_started")
-		and BattleManager.is_card_grid_combat_started()
 	)
 	for i in range(u._weapon_cfgs.size()):
 		var w = u._weapon_cfgs[i]
@@ -497,7 +492,7 @@ static func _process_multi_weapons(u: CharacterBody2D, delta: float) -> void:
 					var w_name: String = ""
 					if w_weapon and w_weapon is WeaponResource and w_weapon.enabled:
 						w_name = w_weapon.display_name if w_weapon.display_name else ""
-						var is_card_grid: bool = GameManager and GameManager.has_method("is_card_grid_battle") and GameManager.is_card_grid_battle()
+						var is_card_grid: bool = GameManager != null
 						dmg = AttackCalculator.calculate_damage_with_weapon(
 							u.stats, target_stats, dist, w_weapon,
 							u.stats.enhance_level, _get_mod_array(u.stats),
@@ -525,16 +520,17 @@ static func acquisition_range(u: CharacterBody2D) -> float:
 		return 120.0
 	var combat_started: bool = (
 		GameManager
-		and GameManager.is_card_grid_battle()
+		and GameManager != null
 		and BattleManager != null
-		and BattleManager.has_method("is_card_grid_combat_started")
-		and BattleManager.is_card_grid_combat_started()
 	)
-	if not u.is_player and GameManager and GameManager.is_card_grid_battle():
+	if not u.is_player and GameManager != null:
 		return CombatTargeting.card_grid_enemy_acquisition_range(u.stats.attack_range, combat_started)
 	var r: float = u.stats.attack_range
 	if combat_started:
 		r *= 2.6
+	# v6.2: 玩家单位格子战索敌范围保底（与敌方对称），确保后排短射程单位也能索到战场另一端
+	if combat_started:
+		r = maxf(r, CombatTargeting.CARD_GRID_PLAYER_ACQUISITION_MIN)
 	return r
 
 static func effective_fire_range(u: CharacterBody2D) -> float:
@@ -543,10 +539,8 @@ static func effective_fire_range(u: CharacterBody2D) -> float:
 	var rng: float = u.stats.attack_range
 	if (
 		GameManager
-		and GameManager.is_card_grid_battle()
+		and GameManager != null
 		and BattleManager != null
-		and BattleManager.has_method("is_card_grid_combat_started")
-		and BattleManager.is_card_grid_combat_started()
 	):
 		rng *= 2.6
 	if u.target != null and is_instance_valid(u.target) and CombatTargeting.is_phase_field_node(u.target):

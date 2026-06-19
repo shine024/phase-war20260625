@@ -580,14 +580,17 @@ func _run_open_refresh_pipeline() -> void:
 		if _is_view_visible():
 			_grid_dirty_while_hidden = false
 			_refresh_card_grid()
-	# Step 3: 附属区（情报/属性提升）再延后一帧，避开与网格同帧竞争。
+	# Step 3: 附属区（情报/属性提升/符文）再延后一帧，避开与网格同帧竞争。
+	# 首次打开需要 await 一帧做异步初始化（避免首开卡顿）；后续每次打开也刷新一次，
+	# 否则 _aux_sections_initialized 置位后再次打开背包不会刷新附属区，
+	# 导致购买/掉落的新符文、新情报等不在对应标签页显示。
 	if not _aux_sections_initialized:
 		_aux_sections_initialized = true
 		tree = _get_scene_tree()
 		if tree != null:
 			await tree.process_frame
-		if _view != null and is_instance_valid(_view) and _view.is_visible_in_tree():
-			_view.call_deferred("_refresh_aux_sections_after_open")
+	if _view != null and is_instance_valid(_view) and _view.is_visible_in_tree():
+		_view.call_deferred("_refresh_aux_sections_after_open")
 	_open_refresh_inflight = false
 
 func _is_view_visible() -> bool:

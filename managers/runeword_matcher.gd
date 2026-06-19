@@ -150,7 +150,7 @@ static func debug_report(active_rune_ids: Array, slot_count: int) -> String:
 	lines.append("槽位总数: %d" % slot_count)
 	lines.append("激活符文之语(%d):" % matched.size())
 	for rw in matched:
-		lines.append("  - [%s] %s (tier %d)" % [rw["id"], RunewordDefinitions.get_name(rw["id"]), rw["tier"]])
+			lines.append("  - [%s] %s (tier %d)" % [rw["id"], RunewordDefinitions.get_runeword_name(rw["id"]), rw["tier"]])
 	lines.append("数值加成:")
 	for key in bonus["stats"]:
 		lines.append("  %s: +%d%%" % [key, int(bonus["stats"][key] * 100)])

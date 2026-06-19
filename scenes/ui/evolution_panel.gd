@@ -154,8 +154,9 @@ func _create_evolution_node(target: Dictionary) -> Control:
 	var check_result = BlueprintManager.can_evolve_blueprint(selected_card.card_id, target.target_id)
 	var can_evo: bool = bool(check_result.get("ok", false))
 	var target_card = DefaultCards.get_card_by_id(target.target_id)
+	# v6.2 修复：战力对比双方统一用估算分（含强化+改造），原 current 含强化、target 仅基础导致基准不公平
 	var current_power = _get_current_power_score()
-	var target_power = target_card.power if target_card else 0
+	var target_power = _get_target_power_score(target.target_id)
 	var pcolor := _path_type_color(String(target.get("path_type", "")))
 
 	var node = PanelContainer.new()
@@ -295,12 +296,21 @@ func _update_current_card_info() -> void:
 	]
 
 ## 获取当前卡牌的战力评分
+## v6.2 修复 M15：统一用 CardResource.get_current_power（与 reinforcement_panel 一致），
+## 原 _estimate_power_score 与 get_current_power 口径不同，导致同一张卡在不同面板显示不同战力
 func _get_current_power_score() -> int:
 	if not selected_card:
 		return 0
-	if BlueprintManager and BlueprintManager.has_method("_estimate_power_score"):
-		return int(BlueprintManager._estimate_power_score(selected_card.card_id))
-	return selected_card.power
+	return selected_card.get_current_power()
+
+## v6.2: 获取目标卡的战力评分（统一用 get_current_power，确保对比基准一致）
+func _get_target_power_score(target_id: String) -> int:
+	if target_id.is_empty():
+		return 0
+	var target_card = DefaultCards.get_card_by_id(target_id)
+	if target_card == null:
+		return 0
+	return target_card.get_current_power()
 
 func _update_detail_panel() -> void:
 	if detail_content == null:
@@ -326,7 +336,9 @@ func _update_detail_panel() -> void:
 	# 更新基础信息
 	if info_details:
 		var rank_info = target_card.get_military_rank()
-		info_details.text = "军衔：%s | 战力：%d\n" % [rank_info.name, target_card.power]
+		# v6.2: 目标战力用统一估算（含强化+改造基准），与对比栏一致
+		var target_pw = _get_target_power_score(selected_target_id)
+		info_details.text = "军衔：%s | 战力：%d\n" % [rank_info.name, target_pw]
 		info_details.text += "时代：%s | 类型：%s\n" % [target_card.era, target_card.combat_kind]
 		info_details.text += "武器：%s\n" % target_card.weapon_type
 

@@ -381,8 +381,7 @@ func generate_battle_completion_drops(player_won: bool, elapsed_time: float, wav
 		var current_env: Dictionary = {}
 		if gm and gm.has_method("get"):
 			var gm_level: Variant = gm.current_level if "current_level" in gm else 1
-			var BE = preload("res://data/battle_environments.gd")
-			current_env = BE.get_for_level(int(gm_level))
+			current_env = BattleEnvs.get_for_level(int(gm_level))
 		var has_recon: bool = _get_recon_fragment_bonus_multiplier() > 0.0
 		var intel_harvest: Dictionary = idm.generate_battle_intel_harvest(
 			defeated_list, victory_stars, has_recon, current_env
@@ -400,11 +399,12 @@ func generate_battle_completion_drops(player_won: bool, elapsed_time: float, wav
 
 func _collect_defeated_enemy_info() -> Array:
 	## 从BattleManager获取本局击败的敌人列表
+	## v6.6: 使用浅拷贝（元素均为纯值字典，无需深拷贝）
 	var bm: Node = _get_autoload_node("BattleManager")
 	if bm and bm.get("_defeated_enemies") != null:
 		var list = bm._defeated_enemies
 		if list is Array:
-			return list.duplicate(true)
+			return list.duplicate()
 	return []
 
 func _get_autoload_node(name: String) -> Node:

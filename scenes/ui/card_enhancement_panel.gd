@@ -18,7 +18,6 @@ const CompanyDefinitions = preload("res://data/company_definitions.gd")
 # StarConfig removed - star_level system deprecated in v5.1
 const BasicResources = preload("res://data/basic_resources.gd")
 const UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")
-const DEBUG_LOG_PATH = "debug-119cff.log"
 
 const MOD_SLOT_LABELS: PackedStringArray = ["A", "B", "C", "D", "E", "F", "G", "H", "I"]
 
@@ -66,31 +65,7 @@ var _pending_evolution_candidates: Array[String] = []
 var _is_syncing_evolution_selector: bool = false
 var _evolution_selector_meta: Array[Dictionary] = []
 
-func _dbg_runtime(run_id: String, hypothesis_id: String, location: String, message: String, data: Dictionary) -> void:
-	# #region agent log
-	var payload: Dictionary = {
-		"sessionId": "119cff",
-		"runId": run_id,
-		"hypothesisId": hypothesis_id,
-		"location": location,
-		"message": message,
-		"data": data,
-		"timestamp": Time.get_ticks_msec()
-	}
-	var f := FileAccess.open(DEBUG_LOG_PATH, FileAccess.READ_WRITE)
-	if f == null:
-		f = FileAccess.open(DEBUG_LOG_PATH, FileAccess.WRITE_READ)
-	if f == null:
-		return
-	f.seek_end()
-	f.store_line(JSON.stringify(payload))
-	f.close()
-	# #endregion
-
 func _ready() -> void:
-	# #region agent log
-	_dbg_runtime("pre-fix", "H5", "card_enhancement_panel.gd:_ready", "card_enhancement_panel_ready_entered", {})
-	# #endregion
 	# 连接关闭按钮
 	var close_btn = get_node_or_null("VBoxContainer/TitleArea/TitleHBox/CloseButton")
 	if close_btn:
@@ -133,6 +108,24 @@ func _ready() -> void:
 	# 初始化卡牌列表
 	_init_card_list()
 	_update_resource_labels()
+
+# v6.2 修复 M9：断开所有 _ready 中连接的信号，防止面板销毁后回调访问已释放节点
+func _exit_tree() -> void:
+	var card_enh_mgr = get_node_or_null("/root/CardEnhancementManager")
+	if card_enh_mgr:
+		if card_enh_mgr.enhancement_completed.is_connected(_on_enhancement_completed):
+			card_enh_mgr.enhancement_completed.disconnect(_on_enhancement_completed)
+		if card_enh_mgr.enhancement_failed.is_connected(_on_enhancement_failed):
+			card_enh_mgr.enhancement_failed.disconnect(_on_enhancement_failed)
+	if BlueprintManager and BlueprintManager.has_signal("fragments_changed"):
+		if BlueprintManager.fragments_changed.is_connected(_on_nano_materials_changed):
+			BlueprintManager.fragments_changed.disconnect(_on_nano_materials_changed)
+	if BasicResourceManager and BasicResourceManager.has_signal("resources_changed"):
+		if BasicResourceManager.resources_changed.is_connected(_on_nano_materials_changed):
+			BasicResourceManager.resources_changed.disconnect(_on_nano_materials_changed)
+	if SignalBus and SignalBus.has_signal("card_added_to_backpack"):
+		if SignalBus.card_added_to_backpack.is_connected(_on_card_added_to_backpack):
+			SignalBus.card_added_to_backpack.disconnect(_on_card_added_to_backpack)
 	# 初始化详情面板为空状态
 	_update_detail_panel()
 	# 改造系统分区标题挂图标（改装/强化/进化）
@@ -348,7 +341,7 @@ func _update_detail_panel() -> void:
 	if BlueprintManager and BlueprintManager.has_method("get_rank_info"):
 		var rank_info: Dictionary = BlueprintManager.get_rank_info(selected_card_id)
 		chips_row.add_child(_make_chip("🏅 %s" % String(rank_info.get("rank_name", "未定级")), THEME_GOLD * Color(1, 1, 1, 0.18), THEME_GOLD * Color(1, 1, 1, 0.7), THEME_GOLD, 13))
-		chips_row.add_child(_make_chip("⚡ 战力 %.0f" % float(rank_info.get("power_score", 0.0)), THEME_CYAN * Color(1, 1, 1, 0.15), THEME_CYAN * Color(1, 1, 1, 0.6), THEME_CYAN, 13))
+		chips_row.add_child(_make_chip("⚡ 战力 %d" % int(float(rank_info.get("power_score", 0.0))), THEME_CYAN * Color(1, 1, 1, 0.15), THEME_CYAN * Color(1, 1, 1, 0.6), THEME_CYAN, 13))
 	name_box.add_child(chips_row)
 	header_hbox.add_child(name_box)
 	header.add_child(header_hbox)
@@ -1103,7 +1096,7 @@ func _add_attribute_preview(parent: Control, card_data: Variant, current_level: 
 		stat_row.add_child(key_label)
 
 		var current_label = Label.new()
-		current_label.text = str(current_val)
+		current_label.text = str(int(current_val))
 		current_label.custom_minimum_size = Vector2(40, 0)
 		stat_row.add_child(current_label)
 
@@ -1113,7 +1106,7 @@ func _add_attribute_preview(parent: Control, card_data: Variant, current_level: 
 		stat_row.add_child(arrow_label)
 
 		var next_label = Label.new()
-		next_label.text = str(next_val)
+		next_label.text = str(int(next_val))
 		next_label.custom_minimum_size = Vector2(40, 0)
 		next_label.add_theme_color_override("font_color", Color(0.4, 1.0, 0.4, 1.0))
 		stat_row.add_child(next_label)

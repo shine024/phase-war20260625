@@ -81,6 +81,8 @@ var _base_attack_interval: float = 1.0
 var _base_weapon_damages: Array = []
 # 性能优化：缓存 HP 比率，避免每帧更新 UI
 var _cached_hp_ratio: float = -1.0
+# P0 性能优化：缓存战斗模式判定，避免每帧 has_method + is_card_grid_battle 反射调用链
+var _cached_is_card_grid: bool = true
 # 性能优化：目标查找计时器，减少频繁查找
 var _target_find_timer: float = 0.0
 const TARGET_FIND_INTERVAL: float = 0.3  # 每300ms重新查找一次目标
@@ -133,6 +135,8 @@ var _res_cache: Dictionary = {}
 func _ready() -> void:
 	# 战斗逻辑跟随暂停状态
 	process_mode = Node.PROCESS_MODE_PAUSABLE
+	# P0 性能优化：is_card_grid_battle() 恒为 true，缓存避免每帧反射
+	_cached_is_card_grid = true
 	if SignalBus:
 		if not SignalBus.unit_move_command.is_connected(_on_unit_move_command):
 			SignalBus.unit_move_command.connect(_on_unit_move_command)
@@ -257,14 +261,14 @@ func force_materialize_if_deploy_ghost() -> void:
 func apply_card_grid_combat_started() -> void:
 	if not is_player:
 		return
-	if GameManager and GameManager.is_card_grid_battle():
+	if _cached_is_card_grid:
 		_enforce_card_grid_lane_alignment()
 
 
 func _maybe_apply_card_grid_presentation() -> void:
 	if stats == null:
 		return
-	if GameManager == null or not GameManager.is_card_grid_battle():
+	if not _cached_is_card_grid:
 		return
 	if not is_player:
 		return
@@ -323,7 +327,7 @@ func _configure_card_grid_player_hp_bar(spr: Sprite2D) -> void:
 func apply_card_grid_enemy_presentation() -> void:
 	if stats == null:
 		return
-	if GameManager == null or not GameManager.has_method("is_card_grid_battle") or not GameManager.is_card_grid_battle():
+	if not _cached_is_card_grid:
 		return
 	if is_player:
 		return
@@ -877,7 +881,7 @@ func _physics_process(delta: float) -> void:
 	_update_animation()
 	move_and_slide()
 	_clamp_inside_battlefield()
-	if not is_player and GameManager != null and GameManager.has_method("is_card_grid_battle") and GameManager.is_card_grid_battle():
+	if not is_player and _cached_is_card_grid:
 		velocity = Vector2.ZERO
 	# 性能优化：静止单位跳过空间网格更新
 	if velocity != Vector2.ZERO:
@@ -932,12 +936,12 @@ func _on_unit_move_command(unit: Node, target_pos: Vector2) -> void:
 	# 预览模式不能接受移动指令
 	if unit != self or stats == null or is_deploy_ghost or is_preview_mode:
 		return
-	if GameManager and GameManager.is_card_grid_battle() and is_player and int(get_meta("card_grid_slot", -1)) >= 0:
+	if _cached_is_card_grid and is_player and int(get_meta("card_grid_slot", -1)) >= 0:
 		target_pos.y = global_position.y
 	_move_target = target_pos
 
 func _battlefield_y_clamp_range() -> Vector2:
-	if GameManager and GameManager.has_method("is_card_grid_battle") and GameManager.is_card_grid_battle():
+	if _cached_is_card_grid:
 		if BattleManager and BattleManager.battlefield and BattleManager.battlefield.has_method("get_deploy_y_bounds"):
 			return BattleManager.battlefield.get_deploy_y_bounds()
 	return Vector2(BATTLE_MIN_Y, BATTLE_MAX_Y)
@@ -957,7 +961,7 @@ func _clamp_inside_battlefield() -> void:
 
 
 func _enforce_card_grid_lane_alignment() -> void:
-	if GameManager == null or not GameManager.is_card_grid_battle():
+	if not _cached_is_card_grid:
 		return
 	var bf: Node = BattleManager.battlefield if BattleManager else null
 	if bf == null:
@@ -1030,7 +1034,7 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 	if is_preview_mode:
 		return
 	var hp_loss: float = amount
-	if stats != null and GameManager and GameManager.is_card_grid_battle():
+	if stats != null and _cached_is_card_grid:
 		var pen: float = 0.0
 		if attacker != null and is_instance_valid(attacker) and "stats" in attacker:
 			var atk_stats: Variant = attacker.get("stats")

@@ -201,7 +201,7 @@ static func create_all() -> Array:
 	# ==================== 现代单位(20个)====================
 	list.append(_unit("mod_marine", "海军陆战队", 3, 0, 320, 4, 2, 10, 300, 140, 1.5, 0.15, 0.08, 0, 0, 0, 0, 0, 0, 0, 0,50,35,20, "M4卡宾枪/SCAR-H", "", ""))
 	list.append(_unit("mod_ranger", "游骑兵", 3, 0, 340, 5, 2, 12, 320, 160, 1.5, 0.15, 0.08, 20, 0.83, 0.22, 0.12, 10, 1.0, 0.2, 0.1,55,38,22, "M4卡宾枪/SCAR-H", "火箭筒/轻型装甲武器", "便携式防空导弹"))
-	list.append(_unit("mod_javelin", "标枪导弹兵", 3, 0, 330, 3, 99, 14, 220, 25, 0.33, 0.5, 0.25, 250, 0.25, 0.6, 0.3, 20, 0.33, 0.5, 0.25,30,25,15, "M4卡宾枪", "标枪反坦克导弹", ""))
+	list.append(_unit("mod_javelin", "标枪导弹兵", 3, 0, 330, 3, 99, 14, 220, 25, 0.33, 0.5, 0.25, 250, 0.25, 0.6, 0.3, 20, 0.33, 0.5, 0.25,30,25,15, "M4卡宾枪", "标枪反坦克导弹", "便携式防空导弹"))
 	list.append(_unit("mod_stinger", "毒刺导弹兵", 3, 0, 320, 3, 99, 14, 200, 10, 0.5, 0.3, 0.15, 10, 0.5, 0.3, 0.15, 220, 0.33, 0.5, 0.25,25,20,25, "M4卡宾枪", "M4卡宾枪", "毒刺防空导弹"))
 	list.append(_unit("mod_technical", "武装皮卡", 3, 0, 280, 5, 3, 8, 250, 80, 1.0, 0.2, 0.1, 40, 0.67, 0.25, 0.12, 15, 1.0, 0.2, 0.1,25,20,12, "AK-47突击步枪", "RPG-7火箭筒", "便携式防空导弹"))
 	list.append(_unit("mod_stryker_mgs", "斯特赖克MGS", 3, 1, 900, 4, 4, 16, 900, 80, 0.67, 0.25, 0.12, 220, 0.5, 0.3, 0.15, 0, 0, 0, 0,70,90,30, "105mm主炮", "120mm/125mm主炮", ""))
@@ -309,9 +309,9 @@ static func create_law_card_resource(law_id: String) -> CardResource:
 		c.type_line = "法则 — 主动"
 		var nano_b: int = int(bc.get("nano", 0))
 		if nano_b > 0:
-			c.summary_line = "战中 %.0f⚡｜纳米 %d" % [c.energy_cost, nano_b]
+			c.summary_line = "战中 %d⚡｜纳米 %d" % [int(c.energy_cost), nano_b]
 		else:
-			c.summary_line = "战中能耗 %.0f⚡" % c.energy_cost
+			c.summary_line = "战中能耗 %d⚡" % int(c.energy_cost)
 	else:
 		c.energy_cost = float(ac.get("nano", 0))
 		c.type_line = "法则 — 被动"

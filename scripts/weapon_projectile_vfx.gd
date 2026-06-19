@@ -37,6 +37,10 @@ const IMPACT_TEX_SMALL := preload(TEX_DIR + "weapon_impact_small_arms.png")
 const IMPACT_TEX_SHOTGUN := preload(TEX_DIR + "weapon_impact_shotgun.png")
 const IMPACT_TEX_SNIPER := preload(TEX_DIR + "weapon_impact_sniper.png")
 const IMPACT_TEX_EXPLOSIVE := preload(TEX_DIR + "weapon_impact_explosive.png")
+## v6.2: 曲射专属落地爆炸（迫击炮/榴弹炮，与 IMPACT_TEX_EXPLOSIVE 区分）
+const IMPACT_TEX_ARTILLERY := preload(TEX_DIR + "weapon_artillery_impact.png")
+## v6.2: 能量/电磁类武器命中（Omega 炮 / 电磁炮）
+const IMPACT_TEX_OMEGA := preload(TEX_DIR + "weapon_impact_omega.png")
 
 const PROJ_TEX_SCALE: Dictionary = {
 	# New enum: 0=DIRECT, 1=INDIRECT, 2=AERIAL
@@ -216,6 +220,21 @@ static func impact_texture(weapon_type: int) -> Texture2D:
 			return IMPACT_TEX_EXPLOSIVE
 		_:
 			return IMPACT_TEX_SMALL
+
+
+## v6.2: 爆炸类武器的命中贴图（按武器类型差异化）
+## 用于 bullet._spawn_impact_explosion 与 indirect_batch._spawn_impact_explosion
+## 让迫击炮(抛物线落地)/空射导弹/火箭/高射炮/Omega/电磁炮各有不同外观
+static func explosion_impact_texture(weapon_type: int) -> Texture2D:
+	match weapon_type:
+		1:  # INDIRECT (新枚举) -> 迫击炮/榴弹炮：曲射落地专属爆炸
+			return IMPACT_TEX_ARTILLERY
+		10, 11:  # OMEGA_CANNON / RAIL_CANNON -> 能量/电磁类命中
+			return IMPACT_TEX_OMEGA
+		2, 3, 7, 9:  # AERIAL / ROCKET / FLAK / MISSILE -> 通用爆炸
+			return IMPACT_TEX_EXPLOSIVE
+		_:
+			return IMPACT_TEX_EXPLOSIVE
 
 
 static func impact_scale(weapon_type: int) -> float:

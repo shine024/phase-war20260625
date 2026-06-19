@@ -36,12 +36,22 @@ func _ready() -> void:
 	# 监听槽位变化
 	if SignalBus.has_signal("phase_slots_changed"):
 		SignalBus.phase_slots_changed.connect(_on_slots_changed)
+	# v6.2 修复 M2：监听符文获得信号，新符文即时出现在网格中
+	if SignalBus.has_signal("rune_acquired"):
+		SignalBus.rune_acquired.connect(_on_rune_acquired)
+
+## v6.2: 符文获得回调（购买/掉落）—— 刷新网格让新符文即时出现
+func _on_rune_acquired(_rune_id: String, _source: String) -> void:
+	_refresh_all()
 
 ## v6.2: 清理信号连接，防止面板销毁后回调访问已释放节点
 func _exit_tree() -> void:
-	if SignalBus != null and SignalBus.has_signal("phase_slots_changed"):
-		if SignalBus.phase_slots_changed.is_connected(_on_slots_changed):
+	if SignalBus != null:
+		if SignalBus.has_signal("phase_slots_changed") and SignalBus.phase_slots_changed.is_connected(_on_slots_changed):
 			SignalBus.phase_slots_changed.disconnect(_on_slots_changed)
+		# v6.2 修复 M2：断开 rune_acquired 信号
+		if SignalBus.has_signal("rune_acquired") and SignalBus.rune_acquired.is_connected(_on_rune_acquired):
+			SignalBus.rune_acquired.disconnect(_on_rune_acquired)
 
 # ═══════════════════════════════════════════════════════════════════
 # UI 构建
@@ -233,11 +243,18 @@ func _refresh_rune_grid() -> void:
 
 func _make_rune_button(rune_id: String, rune_def: Dictionary) -> Button:
 	var btn := Button.new()
-	btn.custom_minimum_size = Vector2(105, 60)
+	btn.custom_minimum_size = Vector2(105, 80)
 	btn.text = "%s\n%s" % [RuneDefs.get_rune_name(rune_id), RuneDefs.RARITY_NAMES.get(rune_def.get("rarity", ""), "")]
 	btn.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 	var color: Color = RuneDefs.get_color(rune_id)
 	btn.add_theme_color_override("font_color", color)
+	# v6.2: 符文图标贴图（缺失时回退到纯文字按钮）
+	var icon_tex: Texture2D = UiAssetLoader.rune_icon(rune_id)
+	if icon_tex != null:
+		btn.icon = icon_tex
+		btn.expand_icon = true
+		btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		btn.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
 	# 已装备的符文标记
 	var equipped_slots: Array = _pim.get_rune_slots() if _pim.has_method("get_rune_slots") else []
 	if equipped_slots.has(rune_id):
@@ -270,7 +287,7 @@ func _make_runeword_entry(rw: Dictionary) -> VBoxContainer:
 	# 名称行
 	var name_label := Label.new()
 	var tier_color: Color = RunewordDefs.TIER_COLORS.get(rw.get("tier", 2), DesignTokens.COLOR_ACCENT_PURPLE)
-	name_label.text = "★ %s (T%d)" % [RunewordDefs.get_name(rw.get("id", "")), rw.get("tier", 2)]
+	name_label.text = "★ %s (T%d)" % [RunewordDefs.get_runeword_name(rw.get("id", "")), rw.get("tier", 2)]
 	name_label.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_MEDIUM)
 	name_label.add_theme_color_override("font_color", tier_color)
 	entry.add_child(name_label)
@@ -285,27 +302,46 @@ func _make_runeword_entry(rw: Dictionary) -> VBoxContainer:
 
 func _refresh_detail() -> void:
 	var bonus: Dictionary = _pim.get_rune_bonus() if _pim.has_method("get_rune_bonus") else {}
-	var stats: Dictionary = bonus.get("stats", {})
-	var specials: Array = bonus.get("specials", [])
-	if stats.is_empty() and specials.is_empty():
-		_detail_label.text = "[color=gray]当前无符文之语加成[/color]"
+	var rune_stats: Dictionary = bonus.get("rune_stats", {})
+	var rune_specials: Array = bonus.get("rune_specials", [])
+	var runeword_bonuses: Array = bonus.get("runeword_bonuses", [])
+	if rune_stats.is_empty() and rune_specials.is_empty() and runeword_bonuses.is_empty():
+		_detail_label.text = "[color=gray]当前无符文加成[/color]"
 		return
 	var lines: PackedStringArray = []
-	lines.append("[b]当前加成总览：[/b]")
-	if not stats.is_empty():
-		for key in stats:
+	# v6.2b: 单符文加成
+	if not rune_stats.is_empty() or not rune_specials.is_empty():
+		lines.append("[b]符文加成：[/b]")
+		for key in rune_stats:
 			var display_name: String = _stat_display(key)
-			var pct := int(stats[key] * 100)
+			var pct := int(round(float(rune_stats[key]) * 100.0))
 			if key == "energy_cost_reduction" or key == "damage_reduction":
 				lines.append("  %s -%d%%" % [display_name, pct])
 			else:
 				lines.append("  %s +%d%%" % [display_name, pct])
-	if not specials.is_empty():
-		lines.append("[b]特殊效果：[/b]")
-		for sp in specials:
+		for sp in rune_specials:
 			var sp_name: String = _special_display(sp.get("special", ""))
-			var chance := int(sp.get("chance", 1.0) * 100)
+			var chance := int(round(float(sp.get("chance", 1.0)) * 100.0))
 			lines.append("  %s (%d%%概率)" % [sp_name, chance])
+	# v6.2b: 符文之语加成（每个带名称）
+	if not runeword_bonuses.is_empty():
+		lines.append("[b]符文之语加成：[/b]")
+		for rw in runeword_bonuses:
+			var rw_name: String = String(rw.get("name", ""))
+			var rw_stats: Dictionary = rw.get("stats", {})
+			var rw_parts: Array[String] = []
+			for key in rw_stats:
+				var pct := int(round(float(rw_stats[key]) * 100.0))
+				if String(key) == "energy_cost_reduction" or String(key) == "damage_reduction":
+					rw_parts.append("%s -%d%%" % [_stat_display(String(key)), pct])
+				else:
+					rw_parts.append("%s +%d%%" % [_stat_display(String(key)), pct])
+			for sp in rw.get("specials", []):
+				var sp_name: String = _special_display(sp.get("special", ""))
+				var chance := int(round(float(sp.get("chance", 1.0)) * 100.0))
+				rw_parts.append("%s (%d%%概率)" % [sp_name, chance])
+			if not rw_parts.is_empty():
+				lines.append("  [color=#c9a0ff][%s][/color] %s" % [rw_name, " | ".join(rw_parts)])
 	_detail_label.text = "\n".join(lines)
 
 # ═══════════════════════════════════════════════════════════════════
@@ -319,9 +355,28 @@ func _on_slot_selected(slot_index: int) -> void:
 func _on_rune_pressed(rune_id: String) -> void:
 	if _pim == null or not _pim.has_method("equip_rune"):
 		return
+	# 槽位越界保护：选中的槽位索引可能因相位仪切换/读档后变非法，自动夹紧到首个有效槽
+	var slot_count: int = _pim.get_rune_slot_count() if _pim.has_method("get_rune_slot_count") else 0
+	if slot_count <= 0:
+		_show_detail_hint("当前相位仪没有符文槽位")
+		return
+	if _selected_slot_index < 0 or _selected_slot_index >= slot_count:
+		_selected_slot_index = 0
 	var success: bool = _pim.equip_rune(_selected_slot_index, rune_id)
 	if success:
 		_refresh_all()
+	else:
+		# 装备失败时给出原因提示，避免静默失败让玩家无所适从
+		if not _pim.has_rune(rune_id):
+			_show_detail_hint("未持有该符文，无法装备")
+		else:
+			_show_detail_hint("符文装备失败（槽位不可用）")
+
+## 在底部详情标签里显示一条临时提示（不覆盖加成总览的持久内容则用单独方法）
+func _show_detail_hint(msg: String) -> void:
+	if _detail_label == null:
+		return
+	_detail_label.text = "[color=yellow]%s[/color]" % msg
 
 func _on_filter_pressed(filter_id: String, btn: Button) -> void:
 	_current_filter = filter_id
@@ -341,22 +396,9 @@ func _on_slots_changed(_slots: Variant = null) -> void:
 # 辅助
 # ═══════════════════════════════════════════════════════════════════
 
+## v6.2: 转发到公共工具 RuneDefinitions，消除重复映射（保留旧签名向后兼容）
 static func _stat_display(stat: String) -> String:
-	const NAMES: Dictionary = {
-		"attack": "攻击力", "defense": "防御力", "hp": "生命值",
-		"attack_speed": "攻击速度", "deploy_speed": "部署速度",
-		"energy_regen": "能量恢复", "energy_cost_reduction": "能量消耗",
-		"range": "射程", "dodge": "闪避率", "crit": "暴击率",
-		"accuracy": "命中率", "hp_regen": "生命恢复", "damage_reduction": "伤害减免",
-	}
-	return NAMES.get(stat, stat)
+	return RuneDefinitions.stat_display_name(stat)
 
 static func _special_display(special: String) -> String:
-	const NAMES: Dictionary = {
-		"on_kill_regen_energy": "击杀回能", "on_hit_chain_lightning": "闪电链",
-		"on_death_respawn": "死亡复活", "on_deploy_speed_up": "部署加速",
-		"on_attack_penetration": "攻击穿透", "on_area_damage": "溅射伤害",
-		"on_damage_reduction": "伤害减免", "on_energy_shield": "能量护盾",
-		"on_explore_bonus": "探索奖励", "on_resource_yield": "资源产出",
-	}
-	return NAMES.get(special, special)
+	return RuneDefinitions.special_display_name(special)

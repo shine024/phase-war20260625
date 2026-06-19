@@ -24,9 +24,9 @@ static func _format_combat_stats_summary(stats: UnitStats, cur_hp: float = -1.0)
 		return ""
 	var hp_text: String
 	if cur_hp >= 0.0:
-		hp_text = "HP %.0f/%.0f" % [cur_hp, stats.max_hp]
+		hp_text = "HP %d/%d" % [int(cur_hp), int(stats.max_hp)]
 	else:
-		hp_text = "HP %.0f" % stats.max_hp
+		hp_text = "HP %d" % int(stats.max_hp)
 	
 	# 获取武器名称
 	var weapon_names: Array[String] = ["", "", ""]
@@ -53,20 +53,20 @@ static func _format_combat_stats_summary(stats: UnitStats, cur_hp: float = -1.0)
 	# 构建攻击部分（包含武器名）
 	var atk_part: String
 	if weapon_names[0].is_empty() and weapon_names[1].is_empty() and weapon_names[2].is_empty():
-		atk_part = "%.0f/%.0f/%.0f" % [atk_light, atk_armor, atk_air]
+		atk_part = "%d/%d/%d" % [int(atk_light), int(atk_armor), int(atk_air)]
 	else:
-		var a0: String = weapon_names[0] + str(atk_light) if not weapon_names[0].is_empty() else str(atk_light)
-		var a1: String = weapon_names[1] + str(atk_armor) if not weapon_names[1].is_empty() else str(atk_armor)
-		var a2: String = weapon_names[2] + str(atk_air) if not weapon_names[2].is_empty() else str(atk_air)
+		var a0: String = weapon_names[0] + "%d" % atk_light if not weapon_names[0].is_empty() else "%d" % atk_light
+		var a1: String = weapon_names[1] + "%d" % atk_armor if not weapon_names[1].is_empty() else "%d" % atk_armor
+		var a2: String = weapon_names[2] + "%d" % atk_air if not weapon_names[2].is_empty() else "%d" % atk_air
 		atk_part = "%s/%s/%s" % [a0, a1, a2]
-	
-	var line: String = "%s｜攻 %s｜防 %.0f/%.0f/%.0f｜射程 %.0f｜攻速 %.2f/%.2f/%.2f｜移速 %.0f" % [
+
+	var line: String = "%s｜攻 %s｜防 %d/%d/%d｜射程 %d｜攻速 %.1f/%.1f/%.1f｜移速 %d" % [
 		hp_text,
 		atk_part,
-		def_light, def_armor, def_air,
-		stats.attack_range,
+		int(def_light), int(def_armor), int(def_air),
+		int(stats.attack_range),
 		spd_light, spd_armor, spd_air,
-		stats.move_speed,
+		int(stats.move_speed),
 	]
 	return line
 
