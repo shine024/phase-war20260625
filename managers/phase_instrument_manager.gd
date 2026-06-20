@@ -1472,4 +1472,8 @@ func load_rune_state(data: Dictionary) -> void:
 		var rs: String = str(saved_slots[i])
 		if not rs.is_empty():
 			_rune_slots[i] = rs
+	# 重新同步到 instrument_slots["rune"]（_rebuild_rune_slots 在重建时同步的是空槽）
+	_sync_rune_to_instrument_slots()
 	_mark_rune_bonus_dirty()
+	# 通知 UI 刷新（存档恢复后需要触发 phase_slots_changed 信号）
+	_emit_slots_changed()

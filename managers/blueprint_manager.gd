@@ -80,6 +80,8 @@ var blueprint_evolution_hp_floor: Dictionary = {}
 var blueprint_rank_cache: Dictionary = {}
 ## card_id -> 敌源MOD ID
 var blueprint_enemy_origin_mod: Dictionary = {}
+## v6.6: card_id -> 情报进化分支奖励 {extra_mod_slot: bool, special_ability: str}
+var blueprint_intel_branch_bonus: Dictionary = {}
 ## card_id -> 自定义武器槽位配置（用于进化/改造后的武器）
 var blueprint_weapon_slots: Dictionary = {}
 
@@ -313,6 +315,9 @@ func add_blueprint_copy(card_id: String, count: int = 1) -> void:
 	add_research_points(max(1, grant_per_copy) * count)
 	emit_signal("fragments_changed")
 	emit_signal("blueprint_obtained", card_id, count)
+	# v6.6: 同步到 SignalBus（保持总线一致性，供跨系统监听）
+	if SignalBus.has_signal("blueprint_obtained"):
+		SignalBus.blueprint_obtained.emit(card_id, count)
 
 ## 获取蓝图副本总数
 func get_blueprint_copies(card_id: String) -> int:
@@ -780,6 +785,9 @@ func save_state() -> Dictionary:
 	var eom_dict: Dictionary = {}
 	for k in blueprint_enemy_origin_mod:
 		eom_dict[k] = String(blueprint_enemy_origin_mod[k])
+	var intel_bonus_dict: Dictionary = {}
+	for k3 in blueprint_intel_branch_bonus:
+		intel_bonus_dict[k3] = (blueprint_intel_branch_bonus[k3] as Dictionary).duplicate(true)
 	var weapon_slots_dict: Dictionary = {}
 	for k2 in blueprint_weapon_slots:
 			var slots_array = []
@@ -820,6 +828,7 @@ func save_state() -> Dictionary:
 		"blueprint_evolution_hp_floor": hp_floor_dict,
 		"blueprint_rank_cache": rank_dict,
 		"blueprint_enemy_origin_mod": eom_dict,
+		"blueprint_intel_branch_bonus": intel_bonus_dict,
 		"blueprint_weapon_slots": weapon_slots_dict,
 		"card_battle_stars": battle_stars_dict,
 		"legacy_default_energy_copies_migrated": _legacy_default_energy_copies_migrated,
@@ -866,6 +875,13 @@ func load_state(data: Dictionary) -> void:
 		blueprint_enemy_origin_mod.clear()
 		for k in data["blueprint_enemy_origin_mod"]:
 			blueprint_enemy_origin_mod[String(k)] = String(data["blueprint_enemy_origin_mod"][k])
+
+	# v6.6: 情报进化分支奖励加载
+	if data.has("blueprint_intel_branch_bonus") and data["blueprint_intel_branch_bonus"] is Dictionary:
+		blueprint_intel_branch_bonus.clear()
+		for k in data["blueprint_intel_branch_bonus"]:
+			if data["blueprint_intel_branch_bonus"][k] is Dictionary:
+				blueprint_intel_branch_bonus[String(k)] = (data["blueprint_intel_branch_bonus"][k] as Dictionary).duplicate(true)
 
 		# 武器槽位配置加载
 		if data.has("blueprint_weapon_slots") and data["blueprint_weapon_slots"] is Dictionary:
@@ -960,6 +976,7 @@ func reset_to_defaults() -> void:
 	blueprint_inherit_bonus.clear()
 	blueprint_rank_cache.clear()
 	blueprint_enemy_origin_mod.clear()
+	blueprint_intel_branch_bonus.clear()
 	blueprint_weapon_slots.clear()
 	card_battle_stars.clear()
 	_legacy_default_energy_copies_migrated = false
@@ -967,12 +984,31 @@ func reset_to_defaults() -> void:
 
 ## ─────────── 自动存档 ───────────
 
+## v6.6: 蓝图变更后触发自动存档。
+## 使用 deferred + 标记位实现节流：同一帧内的多次变更只保存一次，
+## 避免高频率操作（如批量改造）导致 I/O 风暴。
 func _auto_save(reason: String = "") -> void:
-	return
+	if _suppress_auto_save:
+		return
+	if _auto_save_deferred_scheduled:
+		# 已有挂起的保存，仅追加 reason（用于调试）
+		if not reason.is_empty():
+			_auto_save_pending_reason = reason
+		return
+	_auto_save_deferred_scheduled = true
+	_auto_save_pending_reason = reason
+	call_deferred("_flush_deferred_auto_save")
 
 func _flush_deferred_auto_save() -> void:
 	_auto_save_deferred_scheduled = false
+	var reason: String = _auto_save_pending_reason
 	_auto_save_pending_reason = ""
+	var sm: Node = get_node_or_null("/root/SaveManager")
+	if sm and sm.has_method("save_game"):
+		sm.save_game()
+	elif sm and sm.has_method("save_state"):
+		# 兜底：SaveManager 可能未初始化完整，触发状态保存
+		sm.save_state()
 
 # ─────────────────────────────────────────────
 #  新扩展方法：强化改造与进化系统

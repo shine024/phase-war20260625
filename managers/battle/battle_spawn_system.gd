@@ -857,6 +857,24 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 		active_faction_cache_key = "%s:%d" % [platform_card.faction_id, platform_card.faction_level]
 		faction_bonus_dict = FactionCardBonuses.get_bonus(platform_card.faction_id, platform_card.faction_level)
 
+	# v6.6: 注入强化词条（CardEnhancementManager 的 module_slots → effective_card）
+	# 战斗读取 card.module_slots，但玩家选择的词条存在 CardEnhancementManager.card_module_slots
+	# 此前两者未同步，导致词条效果在战斗中从未生效。此处补齐同步。
+	var cem: Node = _get_autoload_node("CardEnhancementManager")
+	if cem and cem.has_method("get_module_slots"):
+		var enhance_slots: Array = cem.get_module_slots(platform_card.card_id)
+		if not enhance_slots.is_empty():
+			# 同步强化等级（do_enhance 写入 DefaultCards 卡的 enhance_level，此处确保 effective_card 一致）
+			var enhance_lvl: int = 0
+			if cem.has_method("get_card_enhancement_level"):
+				enhance_lvl = cem.get_card_enhancement_level(platform_card.card_id)
+			if effective_card.enhance_level != enhance_lvl or effective_card.module_slots.is_empty():
+				# clone 避免污染共享单例（DefaultCards 缓存卡）
+				var card_clone: CardResource = effective_card.clone()
+				card_clone.enhance_level = enhance_lvl
+				card_clone.module_slots = enhance_slots
+				effective_card = card_clone
+
 	# 缓存 key 包含势力变体信息，避免不同势力下命中错误缓存
 	var key: String = "%s|%s|%s|%d|%s|%s" % [
 		platform_card.card_id, ",".join(weapon_ids), weapon_types_key, battle_era, pf_bonus_key,
@@ -887,6 +905,10 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 	# v6.2: 符文之语全局加成注入（所有玩家单位共享）
 	if _phase_instrument and _phase_instrument.has_method("get_rune_bonus"):
 		_apply_rune_bonus_to_stats(stats, _phase_instrument.get_rune_bonus())
+	# v6.6: 敌源MOD（D槽）效果注入（仅装备了EOM的卡生效；apply 内部按 card_id 查装备）
+	var eom_mgr = _get_autoload_node("EnemyOriginModManager")
+	if eom_mgr and eom_mgr.has_method("apply_eom_to_stats"):
+		eom_mgr.apply_eom_to_stats(platform_card.card_id, stats)
 	_stats_cache[key] = stats.duplicate()
 	return stats
 

@@ -9,6 +9,8 @@ func _ready() -> void:
 	_create_challenge_button()
 	_create_collection_button()
 	_create_achievement_button()
+	_create_eom_button()
+	_create_synthesis_button()
 
 func _create_daily_task_button() -> void:
 	var button = Button.new()
@@ -42,6 +44,22 @@ func _create_achievement_button() -> void:
 	button.pressed.connect(_on_achievement_pressed)
 	add_child(button)
 
+func _create_eom_button() -> void:
+	var button = Button.new()
+	button.text = "敌源改造"
+	button.custom_minimum_size = Vector2(90, 35)
+	button.tooltip_text = "敌源改造（D槽）装备面板"
+	button.pressed.connect(_on_eom_pressed)
+	add_child(button)
+
+func _create_synthesis_button() -> void:
+	var button = Button.new()
+	button.text = "合成"
+	button.custom_minimum_size = Vector2(80, 35)
+	button.tooltip_text = "卡牌合成（混血卡）面板"
+	button.pressed.connect(_on_synthesis_pressed)
+	add_child(button)
+
 func _on_daily_task_pressed() -> void:
 	_open_panel("DailyTaskPanel", "日常任务")
 
@@ -53,6 +71,31 @@ func _on_collection_pressed() -> void:
 
 func _on_achievement_pressed() -> void:
 	_open_panel("AchievementPanel", "成就")
+
+func _on_eom_pressed() -> void:
+	# EOM面板是纯代码构建（非tscn），走工厂方法挂到PopupLayer
+	var EOMPanelClass = load("res://scenes/ui/enemy_origin_mod_panel.gd")
+	if EOMPanelClass == null:
+		push_error("[功能栏] 无法加载敌源改造面板脚本")
+		return
+	var main_scene = get_tree().current_scene
+	var popup_layer = main_scene.get_node_or_null("PopupLayer") if main_scene else null
+	if popup_layer:
+		EOMPanelClass.create(popup_layer)
+	else:
+		EOMPanelClass.create(get_tree().root)
+
+func _on_synthesis_pressed() -> void:
+	var SynthPanelClass = load("res://scenes/ui/synthesis_panel.gd")
+	if SynthPanelClass == null:
+		push_error("[功能栏] 无法加载合成面板脚本")
+		return
+	var main_scene = get_tree().current_scene
+	var popup_layer = main_scene.get_node_or_null("PopupLayer") if main_scene else null
+	if popup_layer:
+		SynthPanelClass.create(popup_layer)
+	else:
+		SynthPanelClass.create(get_tree().root)
 
 func _open_panel(panel_name: String, panel_title: String) -> void:
 	# 尝试加载面板场景

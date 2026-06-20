@@ -70,14 +70,29 @@ func check_and_discover_branches() -> Array:
 		if _discovered.has(bid):
 			continue
 		if _check_branch_requirements(bid, im):
-			_discovered[bid] = true
-			var branch_data: Dictionary = IntelEvolutionBranches.get_branch(bid)
-			new_discoveries.append(branch_data)
-			intel_branch_discovered.emit(bid, branch_data)
+			_force_discover_internal(bid, new_discoveries)
 
 	if not new_discoveries.is_empty():
 		_save_state()
 	return new_discoveries
+
+## v6.6: 强制发现某条进化分支（由揭示事件 intel_branch_unlock 奖励触发，跳过情报条件检查）
+func force_discover_branch(branch_id: String) -> bool:
+	if _discovered.has(branch_id):
+		return false
+	if not IntelEvolutionBranches.get_branch(branch_id).has("branch_id"):
+		return false  # 分支不存在
+	var dummy: Array = []
+	_force_discover_internal(branch_id, dummy)
+	_save_state()
+	return true
+
+## 内部：将分支标记为已发现并 emit 信号
+func _force_discover_internal(branch_id: String, out_new: Array) -> void:
+	_discovered[branch_id] = true
+	var branch_data: Dictionary = IntelEvolutionBranches.get_branch(branch_id)
+	out_new.append(branch_data)
+	intel_branch_discovered.emit(branch_id, branch_data)
 
 ## 获取某张卡的所有进化选项（含情报分支）
 func get_evolution_options_for_card(card_id: String, bpm_ref: Node) -> Array[Dictionary]:

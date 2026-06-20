@@ -113,14 +113,32 @@ const LORE_DATABASE: Dictionary = {
 		"description": "关于相位位移和相位驱动器的基础理论与应用。",
 		"flavor_text": "\"现实不过是另一种频率的振动。\"",
 	},
-	"lore_future_nano": {
-		"id": "lore_future_nano",
-		"name": "纳米工程导论",
-		"era": 4,
-		"category": "technology",
-		"description": "纳米技术在军事领域的应用前景与伦理讨论。",
-		"flavor_text": "\"最小的机器，最大的变革。\"",
-	},
+		"lore_future_nano": {
+			"id": "lore_future_nano",
+			"name": "纳米工程导论",
+			"era": 4,
+			"category": "technology",
+			"description": "纳米技术在军事领域的应用前景与伦理讨论。",
+			"flavor_text": "\"最小的机器，最大的变革。\"",
+		},
+
+		# v6.6: 隐藏情报 — 来自 intel_reveal_events.gd 揭示事件奖励
+		"secret_recipe_stealth_infantry": {
+			"id": "secret_recipe_stealth_infantry",
+			"name": "秘密配方·隐匿步兵",
+			"era": 3,
+			"category": "intelligence",
+			"description": "一份关于步兵特种改造的秘密配方，将光学迷彩技术与步兵护甲结合的方案。这种隐匿技术不在标准进化图谱中，属于非对称作战的特殊路线。",
+			"flavor_text": "\"看不见的士兵，才是战场上最致命的威胁。\"",
+		},
+		"cipher_fragment_07": {
+			"id": "cipher_fragment_07",
+			"name": "密码碎片·天罚计划",
+			"era": 4,
+			"category": "intelligence",
+			"description": "截获的加密通讯片段，提及'天罚计划'需要空中平台整合火炮，构建跨域打击能力。这是近未来战争形态的重要情报线索。",
+			"flavor_text": "\"天空之上，审判降临。\"",
+		},
 }
 
 ## 已解锁的情报ID列表

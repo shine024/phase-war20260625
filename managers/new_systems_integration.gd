@@ -71,7 +71,8 @@ func _on_battle_ended_daily(player_won: bool) -> void:
 		return
 	var tm = get_node_or_null("/root/DailyTaskManager")
 	if tm and tm.has_method("update_task_progress"):
-		tm.update_task_progress("BATTLE_VICTORY", 1)
+		# 注意：update_task_progress 的参数是 TaskType 枚举，必须传枚举值而非字符串
+		tm.update_task_progress(DailyTaskManager.TaskType.BATTLE_VICTORY, 1)
 
 ## 战斗胜利 → 检查成就
 func _on_battle_ended_achievement(player_won: bool) -> void:

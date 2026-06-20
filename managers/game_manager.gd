@@ -634,9 +634,15 @@ func _get_recon_fragment_bonus_multiplier() -> float:
 		if platform == null:
 			continue
 		platform_types_seen.append(int(platform.platform_type))
-		if platform.platform_type == 5 or platform.platform_type == 10:  # SCOUT, STEALTH (旧枚举值，存档兼容)
-			# v3: 应使用 platform.combat_kind，SCOUT(5)=轻装(0)，STEALTH(10)=轻装(0)
-			# 为保持存档兼容，暂时保留 platform_type 检查
+		# v6.6: 侦察单位识别——旧 platform_type 检查 + card_id 命名匹配
+		var is_recon := false
+		if platform.platform_type == 5 or platform.platform_type == 10:
+			is_recon = true
+		elif "scout" in platform.card_id.to_lower() or "recon" in platform.card_id.to_lower() \
+			or "stealth" in platform.card_id.to_lower() or "spectre" in platform.card_id.to_lower() \
+			or "drone" in platform.card_id.to_lower():
+			is_recon = true
+		if is_recon:
 			recon_platforms += 1
 	var bonus: float = minf(RECON_FRAGMENT_BONUS_CAP, float(recon_platforms) * RECON_FRAGMENT_BONUS_PER_PLATFORM)
 	return bonus

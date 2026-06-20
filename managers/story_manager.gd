@@ -37,6 +37,10 @@ func _ready() -> void:
 	# SaveManager会自动调用load_state
 
 ## 初始化故事章节
+## v6.6 说明：此处硬编码的 chapter_1 是旧引擎遗留的示例数据，
+## 当前 v6.3 剧情系统的真实数据源是 data/story_chapters.gd（8 章，覆盖一战→近未来），
+## 由 game_manager.gd 的战前/战后对话流程驱动（SignalBus.story_show_pre_battle_dialogue 等）。
+## 本方法保留是为兼容旧测试和未来扩展，新剧情内容请添加到 story_chapters.gd。
 func _initialize_story_chapters() -> void:
 	# 第一章：初到时代
 	_story_chapters.append({

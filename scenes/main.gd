@@ -832,10 +832,12 @@ func _setup_new_managers() -> void:
 				# [LOG-v5.1] print("[Main] 管理器未找到: ", manager_name)
 
 ## 启动新手教程（如果是新游戏）
+## 注意：教程系统的展示 UI 尚未实现（tutorial_data 无任何面板消费），
+## 因此暂时保留短路。修复教程 UI 后再启用此入口。
 func _start_tutorial_if_needed() -> void:
 	var tutorial_manager = get_node_or_null("/root/TutorialProgressionManager")
 	if tutorial_manager and tutorial_manager.has_method("should_show_tutorial") and tutorial_manager.should_show_tutorial():
-		pass  # 暂时不自动启动教程，避免潜在问题
+		pass  # 教程展示 UI 未实现，暂不自动启动
 
 ## 初始化日常任务
 func _init_daily_tasks() -> void:
@@ -843,9 +845,29 @@ func _init_daily_tasks() -> void:
 	if task_manager:
 		task_manager.refresh_daily_tasks()
 
-## 集成新系统
+## 集成新系统：实例化 NewSystemsIntegration 节点
+## 该节点连接 SignalBus 信号，负责：
+##   - 战斗胜利 → 更新日常任务进度（DailyTaskManager.BATTLE_VICTORY）
+##   - 战斗胜利 → 检查成就（first_victory 等）
+##   - 单位受伤/死亡 → 战斗反馈（伤害数字、屏幕震动）
+##   - 相位法则施放 → 特效
+##   - 蓝图解锁 → 更新卡牌收集状态
 func _integrate_new_systems() -> void:
-	pass  # 暂时跳过系统集成，直到新系统完全就绪
+	# 防重复：已实例化则跳过
+	if get_node_or_null("/root/NewSystemsIntegration"):
+		return
+	var script = load("res://managers/new_systems_integration.gd")
+	if script == null:
+		push_error("[Main] 无法加载 NewSystemsIntegration 脚本")
+		return
+	var node = script.new()
+	node.name = "NewSystemsIntegration"
+	# 挂到场景树根节点，模拟 autoload 行为（/root/NewSystemsIntegration 可访问）
+	var root = get_tree().root
+	if root.is_node_ready():
+		root.add_child(node)
+	else:
+		root.call_deferred("add_child", node)
 
 func _exit_tree() -> void:
 	if _deploy_toast:

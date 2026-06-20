@@ -708,6 +708,13 @@ func _on_enhance_button_pressed() -> void:
 	elif BlueprintManager and BlueprintManager.has_method("add_nano_materials"):
 		BlueprintManager.add_nano_materials(-nano_cost)
 
+	# v6.6: 强化到新槽位/升级槽位等级时，弹出词条选择
+	var action: String = String(result.get("action", "none"))
+	if action == "new_slot":
+		_show_module_selection_popup(selected_card_id, int(result.get("level", 0)))
+	elif action == "upgrade_slot":
+		_show_module_upgrade_popup(selected_card_id)
+
 	# 刷新面板
 	_init_card_list()
 	_update_detail_panel()
@@ -1083,3 +1090,193 @@ func _get_card_attributes(card_data: Variant, level: int) -> Dictionary:
 			stats["移速"] = int(move_speed * (1.0 + (level - 1) * 0.05))
 
 	return stats
+
+
+# ═══════════════════════════════════════════════════════════
+#  v6.6: 词条选择弹窗（强化到新槽位/升级槽位等级时触发）
+# ═══════════════════════════════════════════════════════════
+
+const ModuleDefinitions = preload("res://data/module_definitions.gd")
+
+## 新槽位：弹出可选词条列表，玩家选一个
+func _show_module_selection_popup(card_id: String, enhance_level: int) -> void:
+	var cem: Node = get_node_or_null("/root/CardEnhancementManager")
+	if cem == null:
+		return
+	var available: Array = ModuleDefinitions.get_available_modules(enhance_level)
+	if available.is_empty():
+		return
+	# 构建弹窗
+	var overlay := _create_module_overlay("✦ 选择新词条", "强化至 Lv.%d，解锁新词条槽位，请选择一个词条：" % enhance_level)
+	var list_box: VBoxContainer = overlay["list_box"]
+	# 候选词条按钮
+	for module_id in available:
+		var mid := String(module_id)
+		var module_name: String = ModuleDefinitions.get_module_name(mid)
+		var effect_key: String = ModuleDefinitions.get_effect_key(mid)
+		var base_val: float = ModuleDefinitions.get_base_value(mid)
+		var effect_desc: String = _format_module_effect(effect_key, base_val)
+		var btn := Button.new()
+		btn.text = "%s  (%s)" % [module_name, effect_desc]
+		btn.custom_minimum_size = Vector2(0, 36)
+		btn.add_theme_font_size_override("font_size", 13)
+		btn.add_theme_stylebox_override("normal", _make_sb(THEME_BG_SLOT, THEME_GREEN_SOFT * Color(1, 1, 1, 0.5), 1, 5))
+		btn.add_theme_color_override("font_color", THEME_TEXT)
+		btn.add_theme_stylebox_override("hover", _make_sb(THEME_GREEN * Color(1, 1, 1, 0.15), THEME_GREEN_SOFT, 1, 5))
+		btn.pressed.connect(_on_module_selected.bind(card_id, mid, overlay["root"]))
+		list_box.add_child(btn)
+
+## 升级槽位：列出已有词条，玩家选一个升级
+func _show_module_upgrade_popup(card_id: String) -> void:
+	var cem: Node = get_node_or_null("/root/CardEnhancementManager")
+	if cem == null:
+		return
+	var slots: Array = cem.get_module_slots(card_id)
+	if slots.is_empty():
+		return
+	var upgradable: Array = []
+	for i in range(slots.size()):
+		var s = slots[i]
+		if s == null:
+			continue
+		var lvl: int = 1
+		var mid: String = ""
+		if s is Dictionary:
+			mid = String(s.get("module_id", ""))
+			lvl = int(s.get("level", 1))
+		elif "module_id" in s:
+			mid = String(s.module_id)
+			lvl = int(s.level)
+		if mid.is_empty() or lvl >= 3:
+			continue
+		upgradable.append({"slot_index": i, "module_id": mid, "level": lvl})
+	if upgradable.is_empty():
+		return
+	var overlay := _create_module_overlay("↑ 升级词条", "本次强化可升级一个已有词条，请选择：")
+	var list_box: VBoxContainer = overlay["list_box"]
+	for u in upgradable:
+		var mid: String = String(u["module_id"])
+		var si: int = int(u["slot_index"])
+		var old_lvl: int = int(u["level"])
+		var module_name: String = ModuleDefinitions.get_module_name(mid)
+		var btn := Button.new()
+		btn.text = "%s  Lv.%d → Lv.%d" % [module_name, old_lvl, old_lvl + 1]
+		btn.custom_minimum_size = Vector2(0, 36)
+		btn.add_theme_font_size_override("font_size", 13)
+		btn.add_theme_stylebox_override("normal", _make_sb(THEME_BG_SLOT, THEME_CYAN * Color(1, 1, 1, 0.5), 1, 5))
+		btn.add_theme_color_override("font_color", THEME_TEXT)
+		btn.add_theme_stylebox_override("hover", _make_sb(THEME_CYAN * Color(1, 1, 1, 0.15), THEME_CYAN, 1, 5))
+		btn.pressed.connect(_on_module_upgrade.bind(card_id, si, overlay["root"]))
+		list_box.add_child(btn)
+
+## 创建词条选择弹窗覆盖层（返回 {root, list_box}）
+func _create_module_overlay(title_text: String, desc_text: String) -> Dictionary:
+	var root := Control.new()
+	root.name = "_dyn_module_popup"
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(root)
+	# 暗色遮罩
+	var dim := ColorRect.new()
+	dim.color = Color(0.0, 0.0, 0.0, 0.55)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.add_child(dim)
+	# 中央面板
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.add_child(center)
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(420, 0)
+	panel.add_theme_stylebox_override("panel", _make_sb(THEME_BG_CARD, THEME_GREEN_SOFT * Color(1, 1, 1, 0.7), 2, 8, THEME_GREEN * Color(1, 1, 1, 0.2), 6))
+	center.add_child(panel)
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 16)
+	margin.add_theme_constant_override("margin_right", 16)
+	margin.add_theme_constant_override("margin_top", 14)
+	margin.add_theme_constant_override("margin_bottom", 14)
+	panel.add_child(margin)
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 10)
+	margin.add_child(vbox)
+	# 标题
+	var title := Label.new()
+	title.text = title_text
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 16)
+	title.add_theme_color_override("font_color", THEME_GREEN)
+	vbox.add_child(title)
+	# 描述
+	var desc := Label.new()
+	desc.text = desc_text
+	desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	desc.add_theme_font_size_override("font_size", 12)
+	desc.add_theme_color_override("font_color", THEME_TEXT_DIM)
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vbox.add_child(desc)
+	# 列表区（可滚动）
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(0, 220)
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	vbox.add_child(scroll)
+	var list_box := VBoxContainer.new()
+	list_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list_box.add_theme_constant_override("separation", 6)
+	scroll.add_child(list_box)
+	# 跳过按钮
+	var skip_btn := Button.new()
+	skip_btn.text = "稍后再选（词条槽位保留为空）"
+	skip_btn.add_theme_font_size_override("font_size", 12)
+	skip_btn.add_theme_stylebox_override("normal", _make_sb(THEME_BG_SLOT, THEME_BORDER_DIM, 1, 4))
+	skip_btn.add_theme_color_override("font_color", THEME_TEXT_DIM)
+	skip_btn.pressed.connect(_close_module_popup.bind(root))
+	vbox.add_child(skip_btn)
+	return {"root": root, "list_box": list_box}
+
+## 选中新词条
+func _on_module_selected(card_id: String, module_id: String, popup_root: Control) -> void:
+	var cem: Node = get_node_or_null("/root/CardEnhancementManager")
+	if cem and cem.has_method("choose_module"):
+		var r: Dictionary = cem.choose_module(card_id, module_id)
+		if r.get("ok", false):
+			_close_module_popup(popup_root)
+			_safe_refresh_after_module_popup()
+			return
+	# 失败：保持弹窗，玩家可重选
+
+## 升级已有词条
+func _on_module_upgrade(card_id: String, slot_index: int, popup_root: Control) -> void:
+	var cem: Node = get_node_or_null("/root/CardEnhancementManager")
+	if cem and cem.has_method("upgrade_module"):
+		var r: Dictionary = cem.upgrade_module(card_id, slot_index)
+		if r.get("ok", false):
+			_close_module_popup(popup_root)
+			_safe_refresh_after_module_popup()
+			return
+
+## 关闭词条弹窗
+func _close_module_popup(popup_root: Control) -> void:
+	if popup_root and is_instance_valid(popup_root):
+		popup_root.queue_free()
+
+## 弹窗关闭后安全刷新面板（避免空引用）
+func _safe_refresh_after_module_popup() -> void:
+	if not is_inside_tree():
+		return
+	_update_detail_panel()
+	_update_resource_labels()
+
+## 格式化词条效果描述
+func _format_module_effect(effect_key: String, base_val: float) -> String:
+	var labels: Dictionary = {
+		"max_hp": "生命+%d", "attack_light": "轻攻+%d", "attack_armor": "重攻+%d",
+		"attack_air": "防空+%d", "defense_light": "轻防+%d", "defense_armor": "重防+%d",
+		"defense_air": "空防+%d", "damage_reduction": "减伤+%.0f%%", "crit_chance": "暴击+%.0f%%",
+		"crit_damage_bonus": "暴伤+%.0f%%", "lifesteal": "吸血+%.0f%%", "splash_damage": "溅射+%.0f%%",
+		"armor_penetration": "穿甲+%.0f%%", "chain_chance": "连锁+%.0f%%", "shield_on_kill": "击杀护盾+%.0f%%",
+		"hp_regen": "回血+%.0f%%", "move_speed": "移速+%d", "attack_range": "射程+%d",
+		"dodge_chance": "闪避+%.0f%%", "faction_accuracy_bonus": "命中+%.0f%%",
+	}
+	var tmpl: String = labels.get(effect_key, "%s+%.1f" % [effect_key, base_val])
+	if tmpl.find("%%") >= 0:
+		return tmpl % (base_val * 100.0)
+	return tmpl % int(base_val)

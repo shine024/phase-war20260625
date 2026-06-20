@@ -149,6 +149,17 @@ static func can_evolve_blueprint(card_id: String, target_card_id: String, bpm_re
 	}
 	out["inherit_ratio"] = UnitLineageConfig.get_inherit_ratio(card_id, target_card_id)
 	out["reason_zh"] = UnitLineageConfig.localize_evolve_reason(String(out.get("reason", "invalid")))
+	## v6.6: 情报进化分支奖励 — 覆盖 inherit_ratio，附加 extra_mod_slot / special_ability
+	if _is_intel_branch and not _intel_branch_data.is_empty():
+		var bonus: Dictionary = _intel_branch_data.get("unique_bonus", {})
+		if bonus.has("inherit_ratio"):
+			out["inherit_ratio"] = float(bonus["inherit_ratio"])
+		if bonus.get("extra_mod_slot", false):
+			out["extra_mod_slot"] = true
+		var ability: String = String(bonus.get("special_ability", ""))
+		if not ability.is_empty():
+			out["special_ability"] = ability
+		out["intel_branch_id"] = String(_intel_branch_data.get("_branch_id", ""))
 	return out
 
 ## 进化执行
@@ -190,6 +201,24 @@ static func evolve_blueprint(card_id: String, target_card_id: String, bpm_ref: N
 	bpm_ref.emit_signal("fragments_changed")
 	# [DEPRECATED] blueprint_star_upgraded 信号已废弃，不再基于星级变化
 	# bpm_ref.emit_signal("blueprint_star_upgraded", target_card_id, int(bpm_ref.blueprint_stars[target_card_id]))
+	## v6.6: 情报进化分支奖励应用 + 自动 claim
+	var intel_branch_id: String = String(can_info.get("intel_branch_id", ""))
+	if not intel_branch_id.is_empty():
+		# 自动 claim 分支（标记为已领取）
+		var iem: Node = _get_autoload_node("IntelEvolutionManager")
+		if iem and iem.has_method("claim_branch"):
+			iem.claim_branch(card_id, intel_branch_id)
+		# 额外改造槽：通过 meta 标记目标卡（ModManager 读取此 meta 决定槽位数）
+		if can_info.get("extra_mod_slot", false):
+			if not bpm_ref.blueprint_intel_branch_bonus.has(target_card_id):
+				bpm_ref.blueprint_intel_branch_bonus[target_card_id] = {}
+			bpm_ref.blueprint_intel_branch_bonus[target_card_id]["extra_mod_slot"] = true
+		# 特殊能力：写入目标卡的特殊能力标记（供战斗系统消费）
+		var ability: String = String(can_info.get("special_ability", ""))
+		if not ability.is_empty():
+			if not bpm_ref.blueprint_intel_branch_bonus.has(target_card_id):
+				bpm_ref.blueprint_intel_branch_bonus[target_card_id] = {}
+			bpm_ref.blueprint_intel_branch_bonus[target_card_id]["special_ability"] = ability
 	return true
 
 ## 获取卡片强化等级（通过 CardEnhancementManager Autoload）

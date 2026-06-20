@@ -745,14 +745,10 @@ func _enqueue_starter_backpack_cards() -> void:
 	# 敌源MOD现应通过 EnemyOriginModManager 在击杀对应敌人时掉碎片逐步解锁。
 	# 老存档的 EOM 解锁状态由 EnemyOriginModManager.load_state 保留，不受影响。
 
-	# 初始改装材料：所有改装库存100
-	# TODO: 需要根据改装系统实现添加
-	# if ModificationRegistry:
-	#     for mod_id in ModificationRegistry.get_all_mod_ids():
-	#         BlueprintManager.add_modification_stock(mod_id, 100)
-
-	# 初始进化材料：所有进化材料库存100
-	# TODO: 需要根据进化系统实现添加
+	# v6.6: 改装/进化材料系统已被"蓝图系统"取代——
+	# 玩家通过收集改造蓝图/进化蓝图（持久持有，不消耗）来解锁改造和进化，
+	# 不再需要"材料库存"概念。下方"测试模式：开局全送"已通过 IntelItemBag
+	# 发放所有蓝图，等效覆盖了原 TODO 的意图。
 
 	# ===== 测试模式：开局全送（后续如需关闭，注释掉本段即可） =====
 	# 1) 所有改造蓝图：覆盖 ModificationRegistry 全部 140+ mod
@@ -777,8 +773,8 @@ func _enqueue_starter_backpack_cards() -> void:
 				pim.add_owned_rune(rune_id)
 	# ===== 测试模式结束 =====
 
-	# 初始关键道具：所有关键道具库存100
-	# TODO: 需要根据道具系统实现添加
+	# v6.6: 关键道具系统尚未实现（reserved），未来若新增消耗型关键道具，
+	# 在此发放初始库存。当前游戏内无关键道具，故留空。
 
 ## 辅助函数：为单个进化路径生成蓝图
 func _process_evolution_blueprint_path(path_data: Dictionary) -> void:

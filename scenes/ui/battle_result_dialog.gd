@@ -140,6 +140,10 @@ static func create(parent: Node, player_won: bool, blueprints: Array, \
 		var harvest_ui = IHD.new()
 		harvest_ui.set_data(intel_harvest)
 		content_box.add_child(harvest_ui)
+		# v6.6: 有新揭示事件时，延迟弹出 IntelRevealPopup 精致展示
+		var reveal_events: Array = intel_harvest.get("reveal_events", [])
+		if not reveal_events.is_empty():
+			dialog.call_deferred("_show_intel_reveal_popup", reveal_events)
 
 	# 掉落列表（来自 DropManager 待领取）
 	var dm: Node = Engine.get_main_loop().root.get_node_or_null("DropManager")
@@ -281,3 +285,26 @@ static func _get_blueprint_display_name(card_id: String) -> String:
 				return DefaultCards.get_safe_display_name(card_id)
 	# 敌人蓝图（bp_ww1_001 等）及其他未命中的卡牌
 	return DefaultCards.get_safe_display_name(card_id)
+
+
+## v6.6: 战斗结算后展示情报揭示事件弹窗（实例方法，由 dialog.call_deferred 调用）
+## reveal_events: [{"title","desc","icon","rewards",...}, ...]
+func _show_intel_reveal_popup(reveal_events: Array) -> void:
+	if reveal_events.is_empty():
+		return
+	# 找到 PopupLayer 挂载点
+	var tree := get_tree()
+	if tree == null:
+		return
+	var main_scene := tree.current_scene
+	var popup_layer: Node = null
+	if main_scene:
+		popup_layer = main_scene.get_node_or_null("PopupLayer")
+	if popup_layer == null:
+		popup_layer = tree.root  # 兜底
+	# 创建并展示揭示弹窗
+	var IntelRevealPopupClass = load("res://scenes/ui/intel_reveal_popup.gd")
+	if IntelRevealPopupClass == null:
+		return
+	var popup = IntelRevealPopupClass.create(popup_layer)
+	popup.show_reveals(reveal_events)

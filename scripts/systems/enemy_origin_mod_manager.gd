@@ -217,3 +217,98 @@ static func calc_eom_power_bonus(card_id: String, bpm_ref: Node) -> float:
 		return 0.0
 	## 简化计算：每个效果大约+5-15战力
 	return float(effects.size()) * 8.0
+
+# ── 战斗效果应用 ──────────────────────────────────────────────────
+
+## 将某张卡装备的敌源MOD效果应用到 UnitStats
+## 在 battle_spawn_system._compute_unit_stats() 的符文应用之后调用
+## 返回 true 表示已应用（有 EOM 装备且生效）
+func apply_eom_to_stats(card_id: String, stats: Resource) -> bool:
+	var eom_id: String = get_equipped_eom(card_id)
+	if eom_id.is_empty():
+		return false
+	if not _unlocked.has(eom_id):
+		return false
+	var tier: int = get_effective_tier(eom_id)
+	if tier <= 0:
+		return false
+	var effects: Dictionary = EnemyOriginMods.get_tier_effects(eom_id, tier)
+	if effects.is_empty():
+		return false
+	## 数值型效果直接映射到 UnitStats 字段
+	# 生命值（固定值）
+	if effects.has("hp_flat"):
+		stats.max_hp += float(effects["hp_flat"])
+	# 防御百分比（映射到 defense）
+	if effects.has("defense_pct"):
+		stats.defense += float(effects["defense_pct"]) * 50.0  ## defense 参与格子减伤 def/(def+50)，0.1→+5 def
+	# 装甲百分比（映射到三个防御维度）
+	if effects.has("armor_pct"):
+		var armor_mult: float = 1.0 + float(effects["armor_pct"])
+		stats.defense_light *= armor_mult
+		stats.defense_armor *= armor_mult
+		stats.defense_air *= armor_mult
+	# 火焰抗性 / 爆炸抗性 / 伤害减免（统一映射到 damage_reduction）
+	if effects.has("fire_resist"):
+		stats.damage_reduction = clampf(stats.damage_reduction + float(effects["fire_resist"]) * 0.5, 0.0, 0.8)
+	if effects.has("explosion_resist"):
+		stats.damage_reduction = clampf(stats.damage_reduction + float(effects["explosion_resist"]) * 0.5, 0.0, 0.8)
+	# 生命恢复（百分比 → 每秒回血率）
+	if effects.has("hp_regen_pct"):
+		stats.hp_regen += float(effects["hp_regen_pct"])
+	# 命中率
+	if effects.has("accuracy_pct"):
+		stats.faction_accuracy_bonus = clampf(stats.faction_accuracy_bonus + float(effects["accuracy_pct"]), 0.0, 1.0)
+	# 暴击
+	if effects.has("crit_bonus"):
+		stats.crit_chance = clampf(stats.crit_chance + float(effects["crit_bonus"]), 0.0, 0.95)
+	# 闪避
+	if effects.has("dodge_pct"):
+		stats.dodge_chance = clampf(stats.dodge_chance + float(effects["dodge_pct"]), 0.0, 0.75)
+	# 攻击速度
+	if effects.has("attack_speed_pct"):
+		var speed_mult: float = 1.0 + float(effects["attack_speed_pct"])
+		stats.attack_light_speed *= speed_mult
+		stats.attack_armor_speed *= speed_mult
+		stats.attack_air_speed *= speed_mult
+		stats.attack_interval /= speed_mult
+	# 射程（格子数 → 像素，每格约 64px）
+	if effects.has("range_flat"):
+		stats.attack_range += float(effects["range_flat"]) * 64.0
+	## 特殊型效果写入 meta，供运行时消费方读取
+	var specials: Dictionary = {}
+	for key in ["cover_bonus", "reflect_fire", "reflect_proj", "entrenchment", "fire_immunity",
+				"adaptive_armor", "precision_strike", "cloak_deploy", "first_strike_bonus",
+				"enemy_accuracy_penalty", "dive_bonus", "evasive_manuver", "revive_chance",
+				"nano_surge", "resurrect_full", "vision_range", "recon_bonus_pct",
+				"enemy_speed_penalty", "mark_target", "ally_damage_pct", "ally_speed_pct",
+				"morale_boost", "formation_bonus"]:
+		if effects.has(key):
+			specials[key] = effects[key]
+	if not specials.is_empty():
+		var existing: Array = stats.get_meta("eom_specials", []) as Array
+		existing.append({"mod_id": eom_id, "tier": tier, "effects": specials})
+		stats.set_meta("eom_specials", existing)
+	return true
+
+## 结算战斗掉落的 EOM 碎片：写入计数，碎片满额时自动解锁
+## 由 IntelDiscoveryManager.generate_battle_intel_harvest 调用
+## eom_drops: [{"type":"eom_fragment", "mod_id":..., "count":1}, ...]
+func settle_battle_eom_drops(eom_drops: Array) -> Dictionary:
+	var unlocked_now: Array = []
+	var fragments_gained: Dictionary = {}
+	const FRAGMENTS_TO_UNLOCK: int = 5  ## 碎片集齐5个自动解锁
+	for drop in eom_drops:
+		if not drop is Dictionary:
+			continue
+		var mod_id: String = drop.get("mod_id", "")
+		if mod_id.is_empty() or not EnemyOriginMods.has_mod(mod_id):
+			continue
+		var count: int = int(drop.get("count", 1))
+		var total: int = add_fragments(mod_id, count)
+		fragments_gained[mod_id] = total
+		## 碎片满额且未解锁 → 自动解锁
+		if total >= FRAGMENTS_TO_UNLOCK and not _unlocked.has(mod_id):
+			unlock_mod(mod_id)
+			unlocked_now.append(mod_id)
+	return {"fragments_gained": fragments_gained, "unlocked_now": unlocked_now}

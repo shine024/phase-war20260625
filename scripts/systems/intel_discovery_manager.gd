@@ -39,6 +39,16 @@ var _unlocked_eom: Dictionary = {}
 ## 敌源MOD碎片进度: mod_id -> int
 var _eom_fragments: Dictionary = {}
 
+## v6.6: 揭示事件奖励状态（持久化）
+## 弱点伤害加成: enemy_type -> 累计 bonus_damage (0.0-1.0+)
+var _weakness_bonuses: Dictionary = {}
+## 掉落率加成: enemy_type -> 累计 bonus_pct (0.0-1.0+)
+var _drop_rate_bonuses: Dictionary = {}
+## 属性可见性等级: enemy_type -> 最高可见性 value (name_and_type/full_stats/hidden_stats/behavior_summary/skill_list/equipment_type)
+var _stat_visibility: Dictionary = {}
+## 已解锁的世界观页面ID集合: page_id -> true
+var _unlocked_lore_pages: Dictionary = {}
+
 ## v6.6: 脏标记，避免结算帧内同步写磁盘
 var _state_dirty: bool = false
 var _save_pending: bool = false
@@ -70,6 +80,10 @@ func _save_state() -> void:
 		"triggered_reveals": _triggered_reveals.duplicate(),
 		"unlocked_eom": _unlocked_eom.duplicate(),
 		"eom_fragments": _eom_fragments.duplicate(),
+		"weakness_bonuses": _weakness_bonuses.duplicate(),
+		"drop_rate_bonuses": _drop_rate_bonuses.duplicate(),
+		"stat_visibility": _stat_visibility.duplicate(),
+		"unlocked_lore_pages": _unlocked_lore_pages.duplicate(),
 	}
 	SaveUtils.save_data_to_file(data, STATE_SAVE_NAME)
 	_state_dirty = false
@@ -97,6 +111,10 @@ func _load_state() -> void:
 	_triggered_reveals = data.get("triggered_reveals", {})
 	_unlocked_eom = data.get("unlocked_eom", {})
 	_eom_fragments = data.get("eom_fragments", {})
+	_weakness_bonuses = data.get("weakness_bonuses", {})
+	_drop_rate_bonuses = data.get("drop_rate_bonuses", {})
+	_stat_visibility = data.get("stat_visibility", {})
+	_unlocked_lore_pages = data.get("unlocked_lore_pages", {})
 	# [DEBUG] print("[IntelDiscoveryManager] 加载完成，已触发揭示 %d，已解锁敌源MOD %d" % [_triggered_reveals.size(), _unlocked_eom.size()])
 
 # ── 核心接口：战斗情报收获生成 ───────────────────────────────────
@@ -176,17 +194,34 @@ func generate_battle_intel_harvest(
 			if bag and bag.has_method("add_item") and not item_type.is_empty():
 				bag.add_item(item_type, 1)
 
-		var result: Dictionary = {
-			"harvests": merged.get("items", []),
-			"reveal_events": reveal_events,
-			"eom_drops": eom_drops,
-			"intel_item_drops": intel_item_drops,  ## v6.0
-		}
-		intel_harvest_generated.emit(result)
-		# v6.6 性能优化：不再同步写磁盘，改为标记脏位由 battle_ended 信号链延迟保存
-		_state_dirty = true
-		call_deferred("_deferred_save_if_dirty")
-		return result
+	## v6.6: 结算敌源MOD碎片 → 写入计数，碎片满额时自动解锁
+	## EOM 碎片由 EnemyOriginModManager 统一管理（避免双计数）
+	if not eom_drops.is_empty():
+		var eom_mgr: Node = get_node_or_null("/root/EnemyOriginModManager")
+		if eom_mgr and eom_mgr.has_method("settle_battle_eom_drops"):
+			var settle_result: Dictionary = eom_mgr.settle_battle_eom_drops(eom_drops)
+			var unlocked_now: Array = settle_result.get("unlocked_now", [])
+			for mod_id in unlocked_now:
+				## 同步本管理器的 _unlocked_eom 缓存（供揭示事件去重）
+				_unlocked_eom[String(mod_id)] = true
+				eom_unlocked.emit(String(mod_id))
+
+	## v6.6: 情报更新后检查情报进化分支发现（分支依赖情报进度）
+	var iem: Node = get_node_or_null("/root/IntelEvolutionManager")
+	if iem and iem.has_method("check_and_discover_branches"):
+		iem.check_and_discover_branches()
+
+	var result: Dictionary = {
+		"harvests": merged.get("items", []),
+		"reveal_events": reveal_events,
+		"eom_drops": eom_drops,
+		"intel_item_drops": intel_item_drops,  ## v6.0
+	}
+	intel_harvest_generated.emit(result)
+	# v6.6 性能优化：不再同步写磁盘，改为标记脏位由 battle_ended 信号链延迟保存
+	_state_dirty = true
+	call_deferred("_deferred_save_if_dirty")
+	return result
 
 # ── 揭示事件检测 ──────────────────────────────────────────────────
 
@@ -229,12 +264,73 @@ func _process_reveal_rewards(event_data: Dictionary, enemy_type: String) -> void
 	for reward in rewards:
 		if not reward is Dictionary:
 			continue
-		match reward.get("type", ""):
+		var rtype: String = reward.get("type", "")
+		match rtype:
 			"eom_unlock":
 				var mod_id: String = reward.get("mod_id", "")
 				if not mod_id.is_empty() and not _unlocked_eom.has(mod_id):
 					_unlocked_eom[mod_id] = true
 					eom_unlocked.emit(mod_id)
+					# 同步到 EnemyOriginModManager
+					var eom_mgr: Node = get_node_or_null("/root/EnemyOriginModManager")
+					if eom_mgr and eom_mgr.has_method("unlock_mod"):
+						eom_mgr.unlock_mod(mod_id)
+			"weakness_bonus":
+				# 累加弱点伤害加成（对特定敌人类型）
+				var target: String = reward.get("target_type", enemy_type)
+				var bonus: float = float(reward.get("bonus_damage", 0.0))
+				if not target.is_empty() and bonus > 0.0:
+					_weakness_bonuses[target] = float(_weakness_bonuses.get(target, 0.0)) + bonus
+			"drop_rate_bonus":
+				# 累加掉落率加成（对特定敌人类型，target_type 缺省则全局）
+				var target2: String = reward.get("target_type", enemy_type)
+				var pct: float = float(reward.get("bonus_pct", 0.0))
+				if pct > 0.0:
+					_drop_rate_bonuses[target2] = float(_drop_rate_bonuses.get(target2, 0.0)) + pct
+			"stat_visibility":
+				# 记录属性可见性等级（取较高优先级）
+				var vis: String = reward.get("value", "")
+				if not vis.is_empty():
+					_stat_visibility[enemy_type] = vis
+			"intel_branch_unlock":
+				# 直接解锁进化分支（标记为已发现）
+				var branch_id: String = reward.get("branch_id", "")
+				if not branch_id.is_empty():
+					var iem: Node = get_node_or_null("/root/IntelEvolutionManager")
+					if iem and iem.has_method("force_discover_branch"):
+						iem.force_discover_branch(branch_id)
+			"intel_branch_hint", "eom_unlock_hint":
+				# 纯文字提示，仅通过揭示事件弹窗展示，无需存储
+				pass
+			"lore_page":
+				# 解锁世界观页面
+				var page_id: String = reward.get("page_id", "")
+				if not page_id.is_empty():
+					_unlocked_lore_pages[page_id] = true
+					var lm: Node = get_node_or_null("/root/LoreManager")
+					if lm and lm.has_method("unlock_lore"):
+						lm.unlock_lore(page_id)
+	# 奖励状态变更后标记脏位
+	_state_dirty = true
+	call_deferred("_deferred_save_if_dirty")
+
+# ── 奖励查询接口（供战斗/掉落系统消费） ───────────────────────────
+
+## 获取对某敌人类型的弱点伤害加成（0.0+，0=无加成）
+func get_weakness_bonus(enemy_type: String) -> float:
+	return float(_weakness_bonuses.get(enemy_type, 0.0))
+
+## 获取对某敌人类型的掉落率加成（0.0-1.0+，0=无加成）
+func get_drop_rate_bonus(enemy_type: String) -> float:
+	return float(_drop_rate_bonuses.get(enemy_type, 0.0))
+
+## 获取某敌人类型的属性可见性等级（空字符串=不可见）
+func get_stat_visibility(enemy_type: String) -> String:
+	return String(_stat_visibility.get(enemy_type, ""))
+
+## 检查某世界观页面是否已解锁
+func is_lore_page_unlocked(page_id: String) -> bool:
+	return _unlocked_lore_pages.has(page_id)
 
 # ── 敌源MOD碎片掉落 ──────────────────────────────────────────────
 
@@ -254,7 +350,7 @@ func _check_eom_drops(enemy_type: String, rank: String) -> Array:
 		drop_chance = 0.60
 	# 遍历所有 EOM，匹配 source_enemy_type
 	for mod_id in all_ids:
-		var mod_data: Dictionary = EnemyOriginModsRef.get_mod_data(mod_id)
+		var mod_data: Dictionary = EnemyOriginModsRef.get_mod(mod_id)
 		if mod_data.is_empty():
 			continue
 		var source_type: String = String(mod_data.get("source_enemy_type", ""))

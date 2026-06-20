@@ -33,6 +33,10 @@ static func get_defense_vs(target_stats: UnitStats, attacker_combat_kind: int) -
 		_: return target_stats.defense_light  # 默认防轻装
 
 ## 完整伤害计算
+## @deprecated v6.2: 简化版伤害计算，仅用于测试/验证器。
+## 战斗主路径使用 calculate_damage_with_weapon（含穿透/词缀/武器系统）。
+## 注意：本函数不应用直射穿透(piercing_shot)、词缀等战斗加成，
+## 测试断言需知晓此差异。
 static func calculate_damage(
 	attacker_stats: UnitStats,
 	target_stats: UnitStats,
@@ -77,7 +81,8 @@ static func calculate_damage(
 
 	return final_damage
 
-## 完整伤害计算（带max_range参数版）
+## @deprecated v6.2: 完整伤害计算（带max_range版），仅用于测试/验证器。
+## 战斗主路径使用 calculate_damage_with_weapon。本函数不应用直射穿透等加成。
 static func calculate_damage_with_range(
 	attacker_stats: UnitStats,
 	target_stats: UnitStats,

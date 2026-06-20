@@ -207,12 +207,28 @@ func _get_recon_fragment_bonus_multiplier() -> float:
 		var stats: UnitStats = player_unit.get("stats")
 		if stats == null:
 			continue
-		if stats.platform_type == 5 or stats.platform_type == 10:  # SCOUT, STEALTH (旧枚举值，存档兼容)
-			# v3: 应使用 stats.combat_kind，但 SCOUT(5)=轻装(0)，STEALTH(10)=轻装(0)
-			# 为保持存档兼容，暂时保留 platform_type 检查
+		if _is_recon_unit(stats):
 			recon_unit_count += 1
 	var bonus: float = minf(GC.RECON_FRAGMENT_BONUS_CAP, float(recon_unit_count) * GC.RECON_FRAGMENT_BONUS_PER_UNIT)
 	return bonus
+
+## v6.6: 判定单位是否为侦察/隐匿类（用于情报碎片加成）
+## v6.2 后 platform_type 已废弃，改用 card_id 模式 + 单位特征识别
+static func _is_recon_unit(stats: UnitStats) -> bool:
+	if stats == null:
+		return false
+	# 1. 旧枚举兼容：platform_type == 5(SCOUT) 或 10(STEALTH)
+	if stats.platform_type == 5 or stats.platform_type == 10:
+		return true
+	# 2. v6.2+：按 card_id 模式匹配（侦察/隐匿类单位命名约定）
+	var cid: String = stats.card_id.to_lower()
+	if cid.is_empty():
+		return false
+	if "scout" in cid or "recon" in cid or "stealth" in cid or "spectre" in cid or "drone" in cid:
+		return true
+	# 3. 高视野远程轻型单位（视野大、射程远、轻装类）也算侦察特性
+	#    （按需可扩展，此处保守起见仅用命名匹配）
+	return false
 
 # =========================================================================
 #  根据当前关卡环境获取随机法则ID

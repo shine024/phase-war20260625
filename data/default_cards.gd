@@ -327,6 +327,13 @@ static func get_card_by_id(card_id: String) -> CardResource:
 		return _id_lookup_cache[card_id] as CardResource
 	return null
 
+## 注册动态生成的卡（混血卡/敌源变体等）到缓存，使 get_card_by_id 可用
+## 用于运行时生成的卡牌，不参与 create_all() 的静态表
+static func register_dynamic_card(card: CardResource) -> void:
+	if card == null or card.card_id.is_empty():
+		return
+	_id_lookup_cache[card.card_id] = card
+
 ## 创建战斗单位辅助函数(v5.0:24参数,v6.0:含武器名参数)
 
 ## 推断武器类型

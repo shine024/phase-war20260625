@@ -51,7 +51,14 @@ func start_survival_challenge(difficulty: ChallengeDifficulty) -> void:
 		GameManager.start_survival_challenge(config)
 
 ## 获取生存模式配置
+## v6.6: 优先读取 challenge_definitions.gd 的规则，hardcoded 作为兜底
 func _get_survival_config(difficulty: ChallengeDifficulty) -> Dictionary:
+	var ChallengeDefs = preload("res://data/challenge_definitions.gd")
+	var def_key: String = "survival_" + _difficulty_to_string(difficulty)
+	var challenge_def: Dictionary = ChallengeDefs.get_challenge(def_key)
+	if not challenge_def.is_empty() and challenge_def.has("rules"):
+		return challenge_def["rules"]
+	# 兜底：hardcoded 配置
 	match difficulty:
 		ChallengeDifficulty.NORMAL:
 			return {
@@ -83,6 +90,15 @@ func _get_survival_config(difficulty: ChallengeDifficulty) -> Dictionary:
 			}
 		_:
 			return {}
+
+## v6.6: 难度枚举转字符串（对应 challenge_definitions.gd 的 difficulty 字段）
+func _difficulty_to_string(difficulty: ChallengeDifficulty) -> String:
+	match difficulty:
+		ChallengeDifficulty.NORMAL: return "normal"
+		ChallengeDifficulty.HARD: return "hard"
+		ChallengeDifficulty.EXPERT: return "expert"
+		ChallengeDifficulty.MASTER: return "master"
+		_: return "normal"
 
 ## 开始Boss连战挑战
 func start_boss_rush_challenge(difficulty: ChallengeDifficulty) -> void:
@@ -223,29 +239,61 @@ func _calculate_challenge_score() -> int:
 
 ## 发放挑战奖励
 func _grant_challenge_rewards(challenge_type: ChallengeType, difficulty: ChallengeDifficulty, result: Dictionary) -> void:
-	var base_reward = 100
+	# v6.6: 优先读取 challenge_definitions.gd 的 completion 奖励
+	var ChallengeDefs = preload("res://data/challenge_definitions.gd")
+	var def_key: String = _challenge_type_to_def_key(challenge_type, difficulty)
+	var challenge_def: Dictionary = ChallengeDefs.get_challenge(def_key)
+	var granted_from_def := false
+	if not challenge_def.is_empty():
+		var rewards: Dictionary = challenge_def.get("rewards", {})
+		var completion_rewards: Dictionary = rewards.get("completion", {})
+		if not completion_rewards.is_empty() and BasicResourceManager:
+			for res_id in completion_rewards:
+				var amount: int = int(completion_rewards[res_id])
+				if amount > 0:
+					BasicResourceManager.add_resource(String(res_id), amount)
+			granted_from_def = true
+		# 额外目标奖励
+		if result.get("perfect_win", false):
+			var bonus_objectives: Dictionary = rewards.get("bonus_objectives", {})
+			if bonus_objectives.has("no_loss"):
+				var no_loss_rewards: Dictionary = bonus_objectives["no_loss"]
+				for res_id2 in no_loss_rewards:
+					var amount2: int = int(no_loss_rewards[res_id2])
+					if amount2 > 0:
+						BasicResourceManager.add_resource(String(res_id2), amount2)
+	# 兜底：hardcoded 奖励（定义文件未配置时）
+	if not granted_from_def:
+		var base_reward = 100
+		match difficulty:
+			ChallengeDifficulty.NORMAL: base_reward = 100
+			ChallengeDifficulty.HARD: base_reward = 300
+			ChallengeDifficulty.EXPERT: base_reward = 800
+			ChallengeDifficulty.MASTER: base_reward = 2000
+		var final_reward = base_reward
+		if result.get("perfect_win", false):
+			final_reward *= 2
+		if BasicResourceManager:
+			BasicResourceManager.add_resource("nano_materials", final_reward)
+		# 给予特殊奖励
+		if difficulty == ChallengeDifficulty.MASTER:
+			var legendary_cards = ["omega_platform", "omega_cannon"]
+			var random_card_id = legendary_cards.pick_random()
+			if BlueprintManager and BlueprintManager.has_method("add_blueprint_copy"):
+				BlueprintManager.add_blueprint_copy(random_card_id, 3)
 
-	match difficulty:
-		ChallengeDifficulty.NORMAL: base_reward = 100
-		ChallengeDifficulty.HARD: base_reward = 300
-		ChallengeDifficulty.EXPERT: base_reward = 800
-		ChallengeDifficulty.MASTER: base_reward = 2000
-
-	# 根据结果调整奖励
-	var final_reward = base_reward
-	if result.get("perfect_win", false):
-		final_reward *= 2
-
-	if BasicResourceManager:
-		BasicResourceManager.add_resource("nano_materials", final_reward)
-
-	# 给予特殊奖励
-	if difficulty == ChallengeDifficulty.MASTER:
-		# 给予传说碎片
-		var legendary_cards = ["omega_platform", "omega_cannon"]
-		var random_card_id = legendary_cards.pick_random()
-		if BlueprintManager and BlueprintManager.has_method("add_blueprint_copy"):
-			BlueprintManager.add_blueprint_copy(random_card_id, 3)
+## v6.6: 挑战类型+难度 → challenge_definitions.gd 的 challenge_id
+func _challenge_type_to_def_key(challenge_type: ChallengeType, difficulty: ChallengeDifficulty) -> String:
+	var type_str: String = ""
+	match challenge_type:
+		ChallengeType.SURVIVAL: type_str = "survival"
+		ChallengeType.BOSS_RUSH: type_str = "boss_rush"
+		ChallengeType.TIME_ATTACK: type_str = "time_attack"
+		ChallengeType.NO_LOSS: type_str = "no_loss"
+		ChallengeType.RANDOM_DECK: type_str = "random_deck"
+		ChallengeType.MAX_DAMAGE: type_str = "max_damage"
+		_: return ""
+	return type_str + "_" + _difficulty_to_string(difficulty)
 
 ## 获取挑战记录
 func get_challenge_records(challenge_type: ChallengeType, difficulty: ChallengeDifficulty) -> Dictionary:

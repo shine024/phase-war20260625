@@ -137,6 +137,9 @@ var active_faction: String = ""
 ## 已解锁的势力变体列表（格式: "faction:{faction_id}:{base_card_id}"）
 var faction_variants_unlocked: Array = []
 
+## v6.6: 已发放的势力独占卡ID列表（避免升级时重复发放）
+var exclusive_cards_granted: Array = []
+
 ## 关卡信息实例
 var level_info: LevelInformation
 
@@ -210,6 +213,8 @@ func add_faction_reputation(faction_id: String, delta: int) -> int:
 		_update_faction_store_for_level_up(faction_id)
 		# v6.2: 声望升级奖励 — 每3级赠送1个该势力专属符文
 		_grant_reputation_level_reward(faction_id, result["new_level"])
+		# v6.6: 检查并发放达到等级门槛的势力独占卡
+		_grant_exclusive_cards_on_level_up(faction_id, result["new_level"])
 		emit_signal("faction_level_up", faction_id, result["new_level"])
 
 	emit_signal("faction_reputation_changed", faction_id, delta, result["new_rep"])
@@ -239,6 +244,35 @@ func _grant_reputation_level_reward(faction_id: String, new_level: int) -> void:
 	if pim and pim.has_method("add_owned_rune"):
 		# 选第一个（避免随机导致玩家错过关键符文）
 		pim.add_owned_rune(candidates[0]["id"])
+
+## v6.6: 势力升级时，检查并发放达到 min_faction_level 门槛的独占卡
+## 每张独占卡仅在首次达到门槛时发放一次（exclusive_cards_granted 去重）
+func _grant_exclusive_cards_on_level_up(faction_id: String, new_level: int) -> void:
+	var ExclusiveCards = preload("res://data/faction_exclusive_cards.gd")
+	var exclusives: Array = ExclusiveCards.get_exclusives_for_faction(faction_id)
+	if exclusives.is_empty():
+		return
+	var sm: Node = get_node_or_null("/root/SaveManager")
+	var granted_any := false
+	for cfg in exclusives:
+		var card_id: String = cfg.get("id", "")
+		var min_level: int = int(cfg.get("min_faction_level", 99))
+		if card_id.is_empty():
+			continue
+		# 等级达标且未发放过
+		if new_level >= min_level and not exclusive_cards_granted.has(card_id):
+			# 注册到 DefaultCards 动态缓存（使 get_card_by_id 可用）
+			var DefaultCards = preload("res://data/default_cards.gd")
+			var card: CardResource = ExclusiveCards.create_card(cfg)
+			if card:
+				DefaultCards.register_dynamic_card(card)
+			# 发放到玩家背包
+			if sm and sm.has_method("enqueue_backpack_card_id"):
+				sm.enqueue_backpack_card_id(card_id)
+			exclusive_cards_granted.append(card_id)
+			granted_any = true
+	if granted_any and sm and sm.has_method("save_game"):
+		sm.call_deferred("save_game")
 
 ## 主角攻克关卡后的势力反应计算
 func on_level_conquered(level_conquered: int) -> Dictionary:
@@ -533,6 +567,7 @@ func save_state() -> Dictionary:
 		"faction_skill_states": skill_states,
 		"faction_event_state": event_state,
 		"synthesis_state": synthesis_state,
+		"exclusive_cards_granted": exclusive_cards_granted.duplicate(),
 	}
 
 func load_state(data: Dictionary) -> void:
@@ -541,6 +576,7 @@ func load_state(data: Dictionary) -> void:
 		_init_faction_data()
 		active_faction = ""
 		faction_variants_unlocked.clear()
+		exclusive_cards_granted.clear()
 		return
 	if data.has("faction_reputation") and data["faction_reputation"] is Dictionary:
 		faction_reputation = (data["faction_reputation"] as Dictionary).duplicate(true)
@@ -575,7 +611,36 @@ func load_state(data: Dictionary) -> void:
 	_init_synthesis_manager()
 	if data.has("synthesis_state") and data["synthesis_state"] is Dictionary:
 		_synthesis_manager.load_state(data["synthesis_state"])
+	# v6.6: 已发放独占卡（向后兼容）
+	if data.has("exclusive_cards_granted") and data["exclusive_cards_granted"] is Array:
+		exclusive_cards_granted = (data["exclusive_cards_granted"] as Array).duplicate()
+	else:
+		exclusive_cards_granted = []
+	# 重建已发放的独占卡到 DefaultCards 动态缓存（使背包/装备可用）
+	call_deferred("_rebuild_exclusive_cards_cache")
 	_ensure_faction_keys_after_load()
+
+## 重建已发放独占卡的 CardResource 到 DefaultCards 动态缓存
+func _rebuild_exclusive_cards_cache() -> void:
+	if exclusive_cards_granted.is_empty():
+		return
+	var ExclusiveCards = preload("res://data/faction_exclusive_cards.gd")
+	var DefaultCards = preload("res://data/default_cards.gd")
+	for card_id in exclusive_cards_granted:
+		var cid := String(card_id)
+		if not ExclusiveCards.is_exclusive_card(cid):
+			continue
+		# 从 EXCLUSIVE_CARDS 表查找配置
+		var cfg: Dictionary = {}
+		for c in ExclusiveCards.EXCLUSIVE_CARDS:
+			if c.get("id", "") == cid:
+				cfg = c
+				break
+		if cfg.is_empty():
+			continue
+		var card: CardResource = ExclusiveCards.create_card(cfg)
+		if card:
+			DefaultCards.register_dynamic_card(card)
 
 ## 读档后补全各势力键
 func _ensure_faction_keys_after_load() -> void:

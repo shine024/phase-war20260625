@@ -106,6 +106,7 @@ signal tutorial_completed(tutorial_id: String)
 
 # 关卡/流程控制
 signal start_level(level: int)
+signal level_selected(level: int)
 
 # 塔爬模式
 # @deprecated v6.0 — 爬塔模式已移除，以下信号保留仅供存档兼容
@@ -144,6 +145,13 @@ signal daily_task_reward_granted(task: Dictionary)
 signal kill_reward_granted(reward_type: String, amount: float)
 
 # 情报手册系统
+# v6.6 现状说明：以下情报/阵营/合成/强化/改造/成长/进化系统的 SignalBus 信号
+# 目前均为"声明未接通"状态——真实事件流发生在各 manager 的本地 signal 上
+# （如 IntelManual.intel_dimension_changed、FactionSystemManager.faction_reputation_changed、
+#   SynthesisManager.synthesis_completed 等）。
+# 这是因为相关 manager 在 v6.0 重构时改用本地 signal 解耦，未同步迁移到 SignalBus。
+# 后续若需统一总线化，应在各 manager emit 本地信号处追加 SignalBus.xxx.emit()。
+# 保留这些声明供未来接通或外部插件监听使用，不影响当前功能。
 signal intel_updated(card_id: String, progress: float, tier: int)
 signal intel_unlocked(card_id: String)
 signal intel_tier_reached(card_id: String, tier: int)
