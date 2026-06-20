@@ -136,7 +136,7 @@ func _preload_data_files() -> void:
 		"res://data/default_cards.gd",
 		"res://data/enemy_phase_masters.gd",
 		"res://data/achievement_definitions_extended.gd",
-		"res://data/challenge_definitions.gd"
+		# v6.6: challenge_definitions.gd 是死数据（ChallengeModeManager 用自己的逻辑，不读它），从预加载移除
 	]
 
 	for file_path in data_files:

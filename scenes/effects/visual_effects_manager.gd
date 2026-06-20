@@ -22,16 +22,18 @@ const _POOL_META_KEY := "_visual_effects_pool"
 const DamageNumberScene = preload("res://scenes/effects/damage_number_display.tscn")
 const CastEffectScene = preload("res://scenes/effects/cast_effect.tscn")
 const ScreenShakeScene = preload("res://scenes/effects/screen_shake.tscn")
+# 脚本本体（damage_number_display.gd 未声明 class_name，按工程惯例 preload 后按名调用其 static 方法）
+const _DamageNumberDisplay = preload("res://scenes/effects/damage_number_display.gd")
 
 func _ready() -> void:
 	_load_effect_scenes()
 
 func _load_effect_scenes() -> void:
-	# 预加载常用特效场景（路径均为编译时常量，直接 preload）
+	# 复用顶部的 const preload 结果，避免重复加载
 	_effect_scenes = {
-		"damage_number": preload(_EFFECT_SCENE_PATHS["damage_number"]),
-		"cast_effect": preload(_EFFECT_SCENE_PATHS["cast_effect"]),
-		"screen_shake": preload(_EFFECT_SCENE_PATHS["screen_shake"]),
+		"damage_number": DamageNumberScene,
+		"cast_effect": CastEffectScene,
+		"screen_shake": ScreenShakeScene,
 	}
 
 static func _get_pool_bucket(effect_key: String) -> Array:
@@ -335,7 +337,7 @@ static func create_heal_effect(parent: Node, position: Vector2, amount: int = 0)
 
 	# 显示治疗数字
 	if amount > 0:
-		DamageNumberDisplay.create_heal_number(parent, position + Vector2(0, -30), amount)
+		_DamageNumberDisplay.create_heal_number(parent, position + Vector2(0, -30), amount)
 
 func _create_rising_particles(color: Color) -> Node2D:
 	var particles = Node2D.new()
@@ -382,16 +384,17 @@ static func create_shield_effect(parent: Node, position: Vector2) -> void:
 	shield.color = Color(0.2, 0.8, 1.0, 0.7)
 	shield_effect.add_child(shield)
 
-	# 护盾闪烁动画
+	# 护盾闪烁动画（static 函数不能 await get_tree()，用 tween 串联 + 末尾回调自动销毁）
 	var tween = shield_effect.create_tween()
-	tween.set_loops(2)
 	tween.tween_property(shield, "modulate:a", 0.3, 0.3).set_ease(Tween.EASE_IN_OUT)
 	tween.tween_property(shield, "modulate:a", 0.7, 0.3).set_ease(Tween.EASE_IN_OUT)
-
-	# 自动销毁
-	await get_tree().create_timer(1.5).timeout
-	if is_instance_valid(shield_effect):
-		shield_effect.queue_free()
+	tween.tween_property(shield, "modulate:a", 0.3, 0.3).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(shield, "modulate:a", 0.7, 0.3).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_interval(0.3)
+	tween.tween_callback(func():
+		if is_instance_valid(shield_effect):
+			shield_effect.queue_free()
+	)
 
 ## 创建升级特效
 static func create_level_up_effect(parent: Node, position: Vector2) -> void:
@@ -422,18 +425,17 @@ static func create_level_up_effect(parent: Node, position: Vector2) -> void:
 	level_text.position = Vector2(-50, -30)
 	level_effect.add_child(level_text)
 
-	# 文字动画
+	# 文字动画（static 函数不能 await get_tree()，用 chain() 串联清理回调，保持原 1.5s 销毁时机）
 	var text_tween = level_effect.create_tween()
 	text_tween.set_parallel(true)
 	text_tween.tween_property(level_text, "position:y", level_text.position.y - 50, 1.0).set_ease(Tween.EASE_OUT)
 	text_tween.tween_property(level_text, "modulate:a", 0.0, 1.0).set_ease(Tween.EASE_IN)
+	text_tween.chain().tween_interval(0.5).tween_callback(func():
+		if is_instance_valid(level_effect):
+			level_effect.queue_free()
+	)
 
-	# 自动销毁
-	await get_tree().create_timer(1.5).timeout
-	if is_instance_valid(level_effect):
-		level_effect.queue_free()
-
-func _create_level_up_ring(index: int) -> Polygon2D:
+static func _create_level_up_ring(index: int) -> Polygon2D:
 	var ring = Polygon2D.new()
 	var points = PackedVector2Array()
 	var segments = 32
@@ -474,12 +476,15 @@ static func create_skill_cast_effect(parent: Node, position: Vector2, skill_colo
 	var energy_gather = _create_energy_gather(skill_color)
 	cast_effect.add_child(energy_gather)
 
-	# 自动销毁
-	await get_tree().create_timer(1.2).timeout
-	if is_instance_valid(cast_effect):
-		cast_effect.queue_free()
+	# 自动销毁（static 函数不能 await get_tree()，用 tween 计时后回调）
+	var cleanup_tween = cast_effect.create_tween()
+	cleanup_tween.tween_interval(1.2)
+	cleanup_tween.tween_callback(func():
+		if is_instance_valid(cast_effect):
+			cast_effect.queue_free()
+	)
 
-func _create_magic_circle(color: Color) -> Node2D:
+static func _create_magic_circle(color: Color) -> Node2D:
 	var circle = Node2D.new()
 
 	# 创建外圈
@@ -515,7 +520,7 @@ func _create_magic_circle(color: Color) -> Node2D:
 
 	return circle
 
-func _create_energy_gather(color: Color) -> Node2D:
+static func _create_energy_gather(color: Color) -> Node2D:
 	var gather = Node2D.new()
 	var particle_count = 16
 
@@ -571,15 +576,14 @@ static func create_combo_effect(parent: Node, position: Vector2, combo_count: in
 	combo_label.add_theme_color_override("font_color", Color(1.0, 0.8 - min(combo_count * 0.05, 0.5), 0.2, 1.0))
 	combo_effect.add_child(combo_label)
 
-	# 文字动画
+	# 文字动画（static 函数不能 await get_tree()，串联清理回调保持原 ~0.8s 销毁时机）
 	var tween = combo_effect.create_tween()
 	tween.set_parallel(true)
 	tween.tween_property(combo_label, "position:y", -30, 0.5).set_ease(Tween.EASE_OUT)
 	tween.tween_property(combo_label, "modulate:a", 0.0, 0.5).set_ease(Tween.EASE_IN)
 	tween.tween_property(combo_effect, "scale", Vector2(1.2, 1.2), 0.2).set_ease(Tween.EASE_OUT)
 	tween.tween_property(combo_effect, "scale", Vector2(1.0, 1.0), 0.3).set_ease(Tween.EASE_IN)
-
-	# 自动销毁
-	await get_tree().create_timer(0.8).timeout
-	if is_instance_valid(combo_effect):
-		combo_effect.queue_free()
+	tween.chain().tween_callback(func():
+		if is_instance_valid(combo_effect):
+			combo_effect.queue_free()
+	)

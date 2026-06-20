@@ -1,0 +1,36 @@
+补动画涉及两个文件，根据你要补哪种动画：
+
+📁 补动画看这两个文件
+1. 主文件：managers/battle/phase_instrument_abilities.gd（特效调用点）
+这是你主要要改的文件——所有7个能力的占位动画都在这里调用。每个能力的占位调用位置：
+
+能力	占位调用所在函数	行号	当前占位调用
+🔥 火炮连发	_fire_artillery_shot()	~158-161	VisualEffects.create_explosion(...) + CombatFeedback.show_damage(...)
+☢ 核子轰炸	_fire_nuclear_bombardment()	~191-194	create_explosion(...) 绿色 + show_damage(...) + _trigger_screen_shake(8.0, 0.5)
+☁ 酸雨释放	_fire_start_abilities() 的 acid_rain 分支	~98-101	create_skill_cast_effect(...) 绿色 + _trigger_screen_shake(4.0, 0.3)
+☁ 酸雨持续	_apply_acid_rain_tick()	~232-235	create_hit_effect(...) + show_damage(...)（节流）
+🛡 能量罩	_apply_mega_shield()	~244-250	create_shield_effect(...) 每个友军 + _trigger_screen_shake(6.0, 0.4)
+补动画方法：把对应的 VisualEffects.create_xxx(...) 替换成你的正式动画调用即可。比如火炮连发：
+
+
+gdscript
+# 占位（现在）
+VisualEffects.create_explosion(_battlefield, tpos, 1.2, Color(1.0, 0.5, 0.15, 1.0))
+# 换成你的正式动画（示例）
+你的火炮动画场景.instantiate() → add_child → play
+2. 特效资源文件：scenes/effects/visual_effects_manager.gd（如果新建特效类型）
+如果你想新增专用特效（而不复用现有的爆炸/护盾/施法），在这个文件加新的 static 方法，模式参考现有的 create_explosion（:111）。
+
+3. 特效场景文件（.tscn，可选）
+现有可复用的特效场景都在 scenes/effects/：
+
+cast_effect.tscn — 施法光环（酸雨用）
+screen_shake.tscn — 屏幕震动
+damage_number_display.tscn — 伤害数字
+你要做专属动画的话，新建 .tscn（如 artillery_shell.tscn、nuclear_blast.tscn、acid_rain.tscn、mega_shield_dome.tscn），放在 scenes/effects/ 下，然后在 phase_instrument_abilities.gd 里 preload + instantiate。
+
+总结：补动画的优先顺序
+先改 phase_instrument_abilities.gd —— 这是唯一要改的调用点
+需要专属美术时，新建 .tscn 场景文件放 scenes/effects/
+复用现有特效够用的话，只改调用参数（颜色/大小）即可，不用新建文件
+5个被动效果（幻影克隆/直射穿透/免能量）没有占位动画——它们体现在数值上，无需补动画。

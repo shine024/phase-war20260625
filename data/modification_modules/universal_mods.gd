@@ -133,11 +133,26 @@ static func get_mod_data(mod_id: String) -> Dictionary:
 static func get_all_mod_ids() -> Array:
 	return DATA.keys()
 
-static func get_for_card(_card_id: String) -> Array:
-	# 通用改造仍需按 applicable_types 过滤，
-	# 但 get_for_card 无法确定 unit_type，回退到 get_for_unit_type 的全量列表
-	# 调用方（ModificationRegistry.get_mods_for_card）已通过 get_for_unit_type 做了兵种过滤
-	return DATA.keys()
+static func get_for_card(card_id: String) -> Array:
+	# v6.6: 按 applicable_types 过滤通用改造，避免向不该装的兵种展示
+	# （如 gen_07_mine_resistant 仅装甲用，不应展示给步兵卡）
+	# 通过 DefaultCards 反查 card_id 对应的 combat_kind
+	var combat_kind: int = -1
+	const DefaultCardsRef = preload("res://data/default_cards.gd")
+	var card = DefaultCardsRef.get_card_by_id(card_id)
+	if card != null and "combat_kind" in card:
+		combat_kind = int(card.combat_kind)
+	if combat_kind < 0:
+		# 查不到卡的兵种（如敌方卡/未注册卡），回退全量避免漏装
+		return DATA.keys()
+	var result: Array = []
+	for mod_id in DATA.keys():
+		var mod_data = get_mod_data(mod_id)
+		var applicable = mod_data.get("applicable_types", [])
+		# applicable_types 为空表示适用所有兵种
+		if applicable.is_empty() or combat_kind in applicable:
+			result.append(mod_id)
+	return result
 
 static func get_for_unit_type(unit_type: int) -> Array:
 	var result = []

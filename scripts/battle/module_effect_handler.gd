@@ -51,6 +51,21 @@ static func on_bullet_hit(attacker: Node, target: Node, base_damage: float) -> f
 	return final_damage
 
 # ─────────────────────────────────────────────
+#  命中副作用（仅吸血/连锁/溅射，不含暴击/穿甲/减伤/闪避）
+# ─────────────────────────────────────────────
+
+## v6.6: 仅处理命中副作用（吸血/连锁/溅射），不重新计算伤害数值。
+## 用于伤害已由 attack_calculator / 已有路径计算的批处理路径，
+## 避免暴击/穿甲双重计算。deal_damage 为最终结算伤害。
+static func apply_on_hit_side_effects(attacker: Node, target: Node, deal_damage: float) -> void:
+	var stats = _get_attacker_stats(attacker)
+	if stats == null or deal_damage <= 0.0:
+		return
+	_apply_lifesteal(attacker, deal_damage, stats)
+	_apply_splash(attacker, target, deal_damage, stats)
+	_apply_chain(attacker, target, deal_damage, stats)
+
+# ─────────────────────────────────────────────
 #  击杀处理
 # ─────────────────────────────────────────────
 

@@ -226,6 +226,8 @@ static func calculate_damage_with_weapon(
 		var def = get_defense_vs(target_stats, attacker_stats.combat_kind)
 		# v6.2: 符文之语攻击穿透 — 无视部分目标防御
 		var pen_ratio: float = _get_rune_penetration_ratio(attacker_stats)
+		# v6.6: 相位仪直射穿透能力（piercing_shot）— 追加穿透比例
+		pen_ratio = clampf(pen_ratio + _get_instrument_piercing_ratio(attacker_stats), 0.0, 0.9)
 		if pen_ratio > 0.0:
 			def = def * (1.0 - pen_ratio)
 		final_damage = base_damage * (100.0 / (100.0 + def))
@@ -298,3 +300,12 @@ static func _get_rune_penetration_ratio(attacker_stats: UnitStats) -> float:
 		if sp is Dictionary and sp.get("special", "") == "on_attack_penetration":
 			max_ratio = maxf(max_ratio, float(sp.get("value", 0)) / 100.0)
 	return clampf(max_ratio, 0.0, MAX_PENETRATION_RATIO)
+
+## v6.6: 获取相位仪直射穿透能力的穿透比例（piercing_shot）
+## 从 PhaseInstrumentAbilities 静态查询当前激活能力
+static func _get_instrument_piercing_ratio(_attacker_stats: UnitStats) -> float:
+	var ability: Dictionary = PhaseInstrumentAbilities.get_active_ability()
+	if ability.is_empty() or String(ability.get("id", "")) != "piercing_shot":
+		return 0.0
+	var params: Dictionary = ability.get("params", {})
+	return float(params.get("pen_ratio", 0.0))

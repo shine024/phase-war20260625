@@ -154,6 +154,13 @@ func setup(p_is_player: bool, p_stats: UnitStats, forced_enemy_visual_archetype_
 		_visual_archetype_id = ""
 	else:
 		_visual_archetype_id = forced_enemy_visual_archetype_id
+	# v6.6: 把 stats 上的 rune_specials meta 复制到节点本身，
+	# 否则 RuneSpecialHandler 读取 unit.has_meta("rune_specials") 时永远为 false
+	# （Resource 的 meta 不会自动出现在持有它的 Node 上），导致 5 类符文特殊效果静默失效。
+	if stats != null and stats.has_meta("rune_specials"):
+		var rune_sp = stats.get_meta("rune_specials")
+		if rune_sp is Array and not rune_sp.is_empty():
+			set_meta("rune_specials", rune_sp)
 	hp = stats.max_hp
 	_base_max_hp = stats.max_hp
 	_base_attack_damage = stats.attack_damage
@@ -1060,6 +1067,14 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		hp_loss = CardAbilityManager.apply_titan_mk2_damage_reduction(hp_loss)
 	# v6.2: 符文之语特殊效果 — 受击时触发（护盾生成）
 	RuneSpecialHandler.on_damaged(self, attacker, hp_loss)
+	# v6.6: 护盾吸收 — 优先从护盾值扣减，剩余伤害才扣 HP。
+	# 修复前 shield 只增不减（add_shield 被 on_kill/law/rune 调用，但伤害从不走护盾吸收路径），
+	# 导致击杀护盾、法则护盾、符文护盾全部"白给"。现在 take_damage 入口统一扣护盾。
+	if shield > 0.0 and hp_loss > 0.0:
+		var absorbed: float = min(shield, hp_loss)
+		shield -= absorbed
+		hp_loss -= absorbed
+		_update_hp_bar()
 	hp -= hp_loss
 
 	# 性能优化：在 HP 变化时更新 HP 条

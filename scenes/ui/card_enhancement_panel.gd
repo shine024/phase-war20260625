@@ -35,6 +35,8 @@ const THEME_BG_SLOT := Color(0.05, 0.08, 0.11, 0.95)
 const THEME_BORDER_DIM := Color(0.25, 0.35, 0.42, 0.7)
 
 signal closed
+## v6.6: 请求打开改造工坊面板（由 Main 连接，跳转到 modification_panel）
+signal open_modification_requested
 
 # UI 组件引用 - 新布局结构
 @onready var card_list_container = $VBoxContainer/MainSplit/LeftPanel/ScrollContainer/CardListContainer
@@ -84,12 +86,19 @@ func _ready() -> void:
 
 	if star_upgrade_button:
 		star_upgrade_button.pressed.connect(_on_star_upgrade_button_pressed)
+	# v6.6: 原 3 个改造分支按钮（offense/defense/utility）是死代码——传入的 option_id
+	# 在 ModEffects.MOD_DATA（仅 MOD_01~20）中查不到，apply_modification 永远失败。
+	# 改造功能已由 modification_panel（走 ModificationRegistry 140+ 模块系统）完整实现。
+	# 这里改为：3 个按钮统一指向 _on_open_modification_pressed，触发跳转信号。
 	if mod_offense_btn:
-		mod_offense_btn.pressed.connect(_on_mod_option_pressed.bind("offense"))
+		mod_offense_btn.pressed.connect(_on_open_modification_pressed)
+		mod_offense_btn.disabled = false
+		mod_offense_btn.text = "🔧 改造工坊"
 	if mod_defense_btn:
-		mod_defense_btn.pressed.connect(_on_mod_option_pressed.bind("defense"))
+		# 复用为同一入口的提示按钮，避免视觉空缺；隐藏防御/辅助两个死按钮
+		mod_defense_btn.visible = false
 	if mod_utility_btn:
-		mod_utility_btn.pressed.connect(_on_mod_option_pressed.bind("utility"))
+		mod_utility_btn.visible = false
 	if BasicResourceManager and BasicResourceManager.has_signal("resources_changed"):
 		if not BasicResourceManager.resources_changed.is_connected(_on_nano_materials_changed):
 			BasicResourceManager.resources_changed.connect(_on_nano_materials_changed)
@@ -182,9 +191,11 @@ func _is_detail_panel_persist_child(child: Node) -> bool:
 ## 仅清除 detail_panel 中动态添加的子节点，保留 tscn Section
 func _clear_dynamic_detail() -> void:
 	if detail_panel:
+		# 同步移除（同 _clear_dyn 的理由）：CenterContainer 下避免面板被撑高后不回缩
 		for child in detail_panel.get_children():
 			if not _is_detail_panel_persist_child(child):
-				child.queue_free()
+				detail_panel.remove_child(child)
+				child.free()
 		# 清理 persist Section 内部的动态内容（进度条/槽位/tips 等）
 		for rel in ["ModSection/ModVBox", "EnhancementSection/EnhancementVBox", "EvolutionSection/EvolutionVBox"]:
 			var vbox = detail_panel.get_node_or_null(rel)
@@ -196,8 +207,11 @@ func _init_card_list() -> void:
 		return
 	selected_card_id = ""
 
+	# 同步移除旧列表项（remove_child + free）：卡牌项是纯运行时生成的 Button，
+	# queue_free 延迟删除会让旧项与新项同帧共存，LeftPanel 列表容器同样会被撑高后不回缩。
 	for child in card_list_container.get_children():
-		child.queue_free()
+		card_list_container.remove_child(child)
+		child.free()
 
 	card_items.clear()
 
@@ -548,32 +562,6 @@ func _evolve_reason_display(can_info: Dictionary) -> String:
 		return String(can_info.get("reason_zh", ""))
 	return UnitLineageConfig.localize_evolve_reason(String(can_info.get("reason", "invalid")))
 
-func _build_permit_gap_text(can_info: Dictionary) -> String:
-	if BlueprintManager == null or not BlueprintManager.has_method("_get_basic_resource_manager"):
-		return ""
-	var brm: Node = BasicResourceManager
-	if brm == null or not brm.has_method("get_total"):
-		return ""
-	var need_g: int = int(can_info.get("permit_general_count", 0))
-	var need_c: int = int(can_info.get("permit_category_count", 0))
-	var need_s: int = int(can_info.get("permit_specific_count", 0))
-	var id_g: String = String(can_info.get("permit_general_id", ""))
-	var id_c: String = String(can_info.get("permit_category_id", ""))
-	var id_s: String = String(can_info.get("permit_specific_id", ""))
-	var have_g: int = int(brm.get_total(id_g))
-	var have_c: int = int(brm.get_total(id_c))
-	var have_s: int = int(brm.get_total(id_s))
-	var gaps: Array[String] = []
-	if have_g < need_g:
-		gaps.append("通用许可-%d" % (need_g - have_g))
-	if have_c < need_c:
-		gaps.append("类型许可-%d" % (need_c - have_c))
-	if have_s < need_s:
-		gaps.append("专属许可-%d" % (need_s - have_s))
-	if gaps.is_empty():
-		return ""
-	return "，缺口：" + " / ".join(PackedStringArray(gaps))
-
 func _get_faction_display_name(faction_id: String) -> String:
 	if faction_id.is_empty() or faction_id == "base":
 		return "基础"
@@ -622,35 +610,9 @@ func _permit_display_name(permit_id: String) -> String:
 	var def: Dictionary = BasicResources.get_def(permit_id)
 	return String(def.get("name", permit_id))
 
-func _format_mod_requirements(card_id: String, mod_index: int) -> String:
-	if BlueprintManager == null:
-		return ""
-	var req: Dictionary = BlueprintManager.get_modification_requirements(card_id, mod_index)
-	var slot: String = MOD_SLOT_LABELS[mod_index] if mod_index >= 0 and mod_index < MOD_SLOT_LABELS.size() else "?"
-	var lines: Array[String] = [
-		"槽位 %s" % slot,
-		"消耗：研究点 %d（当前 %d）" % [int(req.get("research_points", 0)), BlueprintManager.get_research_points()],
-	]
-	var brm: Node = BasicResourceManager
-	var n_general: int = int(req.get("permit_general_count", 0))
-	if n_general > 0:
-		var id_g: String = String(req.get("permit_general_id", ""))
-		var have_g: int = int(brm.get_total(id_g)) if brm else 0
-		lines.append("%s ×%d（拥有 %d）" % [_permit_display_name(id_g), n_general, have_g])
-	var n_category: int = int(req.get("permit_category_count", 0))
-	if n_category > 0:
-		var id_c: String = String(req.get("permit_category_id", ""))
-		var have_c: int = int(brm.get_total(id_c)) if brm else 0
-		lines.append("%s ×%d（拥有 %d）" % [_permit_display_name(id_c), n_category, have_c])
-	var n_specific: int = int(req.get("permit_specific_count", 0))
-	if n_specific > 0:
-		var id_s: String = String(req.get("permit_specific_id", ""))
-		var have_s: int = int(brm.get_total(id_s)) if brm else 0
-		lines.append("%s ×%d（拥有 %d）" % [_permit_display_name(id_s), n_specific, have_s])
-	var gap: String = _build_permit_gap_text(req)
-	if not gap.is_empty():
-		lines.append("缺口%s" % gap)
-	return "\n".join(lines)
+# v6.6: _format_mod_requirements 和 _build_permit_gap_text 已移除（死代码）。
+# 原改造消耗展示依赖旧系统 get_modification_requirements（已删），现改造消耗由
+# modification_panel 内部通过 install_modification 动态计算并提示。
 
 func _update_modification_section() -> void:
 	if mod_status_label == null or BlueprintManager == null:
@@ -690,42 +652,22 @@ func _update_modification_section() -> void:
 		mod_vbox.add_child(slots_viz)
 		var status_idx: int = mod_status_label.get_index() if mod_status_label else 1
 		mod_vbox.move_child(slots_viz, status_idx + 1)
-	var max_times: int = 9  # v5.1: 改造次数固定为9次（与底层ModManager对齐）
-	var mod_index: int = BlueprintManager.get_modification_count(selected_card_id)
+	var max_times: int = 9  # v5.1: 改造次数固定为9次
+	var mod_index: int = applied.size()
 	if mod_index >= max_times:
 		if mod_req_label:
-			mod_req_label.text = "已完成全部改装槽位。"
-		_set_mod_branch_buttons_enabled(false)
-		return
-	var can_apply: bool = BlueprintManager.can_apply_modification(selected_card_id, mod_index)
-	if mod_req_label:
-		mod_req_label.text = _format_mod_requirements(selected_card_id, mod_index)
-	_set_mod_branch_buttons_enabled(can_apply)
+			mod_req_label.text = "已完成全部改装槽位。可在改造工坊中替换。"
+	else:
+		if mod_req_label:
+			mod_req_label.text = "点击【🔧 改造工坊】安装改造模块（共 %d / 9 槽位）" % mod_index
+	# v6.6: 跳转按钮始终可用（改造工坊内部自行校验资源/冲突）
+	_set_mod_branch_buttons_enabled(true)
 
-func _on_mod_option_pressed(option_id: String) -> void:
-	if selected_card_id.is_empty() or BlueprintManager == null:
-		return
-	if not BlueprintManager.has_method("apply_modification"):
-		return
-	var mod_index: int = BlueprintManager.get_modification_count(selected_card_id)
-	if not BlueprintManager.can_apply_modification(selected_card_id, mod_index):
-		if result_label:
-			result_label.text = "改装失败：星级、研究点或许可函不足。"
-			result_label.add_theme_color_override("font_color", Color(1.0, 0.45, 0.45, 1))
-		_update_modification_section()
-		return
-	var ok: bool = BlueprintManager.apply_modification(selected_card_id, option_id)
-	if result_label:
-		if ok:
-			var slot: String = MOD_SLOT_LABELS[mod_index] if mod_index < MOD_SLOT_LABELS.size() else "?"
-			result_label.text = "改装成功：槽位 %s 选择【%s】" % [slot, _mod_option_display_name(option_id)]
-			result_label.add_theme_color_override("font_color", Color(0.75, 0.85, 1.0, 1))
-		else:
-			result_label.text = "改装失败：请检查星级、研究点与许可函。"
-			result_label.add_theme_color_override("font_color", Color(1.0, 0.45, 0.45, 1))
-	_init_card_list()
-	_update_resource_labels()
-	_update_detail_panel()
+## v6.6: 跳转到改造工坊面板（modification_panel）。
+## 原 _on_mod_option_pressed 是死代码（offense/defense/utility 在 ModEffects 查不到），
+## 改造功能已由 modification_panel 通过 ModificationRegistry（140+ 模块）完整实现。
+func _on_open_modification_pressed() -> void:
+	open_modification_requested.emit()
 
 func _update_star_upgrade_section() -> void:
 	# v5.1: star_level system removed - hide the entire section
@@ -884,9 +826,13 @@ func _make_sb(bg: Color, border: Color, border_w: float, corner: float, \
 func _clear_dyn(parent: Node) -> void:
 	if parent == null:
 		return
+	# 同步移除（remove_child + free），不要用 queue_free：本面板挂在 CenterContainer 下，
+	# queue_free 是延迟删除，旧 _dyn_ 与新 _dyn_ 会在同一帧共存，导致内容容器 combined_minimum_size
+	# 暂时膨胀，CenterContainer 据此把面板撑高且永不回缩（强化一张卡后再强化另一张时面板变长）。
 	for c in parent.get_children():
 		if c is Node and String(c.name).begins_with("_dyn_"):
-			c.queue_free()
+			parent.remove_child(c)
+			c.free()
 
 ## 创建带背景的胶囊标签（chip）
 func _make_chip(text: String, bg: Color, border: Color, fg: Color = THEME_TEXT, size := 13) -> PanelContainer:

@@ -534,6 +534,13 @@ func _physics_process(delta: float) -> void:
 		return
 	if _hit_stun_left > 0.0:
 		_hit_stun_left -= delta
+	# v6.6: 敌方单位 hp_regen（持续回血）——之前敌方完全不回血，
+	# 导致敌方装备/词条带 hp_regen 时静默失效。现在与玩家单位对称生效。
+	if stats != null and stats.hp_regen > 0.0 and hp > 0.0:
+		var regen_amt: float = stats.max_hp * stats.hp_regen * delta
+		if regen_amt > 0.0 and hp < stats.max_hp:
+			hp = minf(hp + regen_amt, stats.max_hp)
+			_update_hp_bar()
 	# 性能优化：不再每帧更新 HP 条，改为在 HP 变化时更新
 	# 性能优化：减少目标查找频率
 	_target_find_timer += delta

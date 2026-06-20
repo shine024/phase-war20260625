@@ -152,9 +152,13 @@ func _apply_hit(r: Dictionary) -> void:
 	var raw: float = float(r["dmg"])
 	var shooter_raw: Variant = r["shooter"]
 	var shooter: Node2D = shooter_raw if shooter_raw != null and is_instance_valid(shooter_raw) and shooter_raw is Node2D else null
+	# v6.6: 应用改造/符文命中副作用（吸血/溅射/连锁）。
+	# 之前这些效果在批处理路径完全缺失（module_effect_handler.on_bullet_hit 零调用），
+	# 导致射速>2.0 的直射武器（绝大多数轻武器）的吸血/连锁/溅射全部失效。
+	# 用 apply_on_hit_side_effects（仅副作用，不含暴击/穿甲，避免与已有伤害计算冲突）。
 	if tgt.has_method("take_damage"):
-		var atk: Variant = shooter
-		tgt.take_damage(raw, atk)
+		tgt.take_damage(raw, shooter)
+		ModuleEffectHandler.apply_on_hit_side_effects(shooter, tgt, raw)
 
 func _speed_for(wt: int) -> float:
 	match wt:

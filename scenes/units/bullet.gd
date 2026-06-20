@@ -644,6 +644,8 @@ func _on_hit(primary: Node2D) -> void:
 		# v6.2: 符文之语特殊效果 — 攻击命中时触发（闪电链/溅射）
 		if is_instance_valid(shooter):
 			RuneSpecialHandler.on_hit(shooter, primary, final_after_wall)
+			# v6.6: 应用改造命中副作用（吸血/连锁/溅射）——补全低速直射路径缺失的效果
+			ModuleEffectHandler.apply_on_hit_side_effects(shooter, primary, final_after_wall)
 
 	# v6.3: 暴击伤害数字（暴击时由弹道直接显示，并通过 meta 标记让 unit_damaged 跳过普通数字，避免双数字）
 	if is_crit and is_instance_valid(primary):

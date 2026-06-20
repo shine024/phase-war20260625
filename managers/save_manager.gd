@@ -32,7 +32,7 @@ var current_slot: int = 1
 const MAX_SLOTS := 3
 
 const SAVE_FILE_USER := "user://save.json"
-const SAVE_SCHEMA_VERSION := 5
+const SAVE_SCHEMA_VERSION := 6
 const SAVE_MIN_INTERVAL_MS := 1200
 const SAVE_BACKUP_INTERVAL_MS := 15000
 const NONCRITICAL_SAVE_INTERVAL_MS := 10000

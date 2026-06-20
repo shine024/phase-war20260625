@@ -246,6 +246,27 @@ static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary) -
 				if not result.has(effect_key):
 					result[effect_key] = 0.0
 				result[effect_key] = min(1.0, float(result[effect_key]) + float(effect_value))
+			# v6.6: 补全高频失效的软特性 key（映射到已有 stat）
+			# accuracy_bonus：命中提升 → 映射为暴击率（命中系统简化，6个炮兵/防空/空战核心改造用它）
+			"accuracy_bonus":
+				if not result.has("crit_chance"):
+					result["crit_chance"] = 0.0
+				result["crit_chance"] = min(1.0, float(result["crit_chance"]) + float(effect_value))
+			# ifak_heal：急救包 → 映射为持续回血
+			"ifak_heal":
+				if not result.has("hp_regen"):
+					result["hp_regen"] = 0.0
+				result["hp_regen"] += float(effect_value)
+			# mine_immunity / nbq_immunity：免疫类 → 映射为减伤
+			"mine_immunity", "nbq_immunity":
+				if not result.has("damage_reduction"):
+					result["damage_reduction"] = 0.0
+				result["damage_reduction"] = min(0.75, float(result["damage_reduction"]) + float(effect_value))
+			# sustained_fire：持续射击 → 映射为攻速提升（负 attack_interval）
+			"sustained_fire":
+				if not result.has("attack_interval"):
+					result["attack_interval"] = 1.0
+				result["attack_interval"] = max(0.1, float(result["attack_interval"]) * (1.0 - float(effect_value)))
 			"damage_reduction":
 				if not result.has(effect_key):
 					result[effect_key] = 0.0

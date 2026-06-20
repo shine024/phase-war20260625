@@ -461,8 +461,13 @@ func request_player_deploy(platform_card_id: String, world_pos: Vector2, battle_
 	# 无武器版：部署费用仅由平台卡决定
 	var deploy_energy_cost: float = maxf(1.0, float(platform_card.energy_cost))
 	var deploy_time: float = deploy_energy_cost / output_rate
+	# v6.6: 免能量能力（free_energy）— 应用部署成本倍率（0=全免）
+	var deploy_cost_mult: float = _get_free_energy_multiplier()
+	deploy_energy_cost = deploy_energy_cost * deploy_cost_mult
+	deploy_time = deploy_time * deploy_cost_mult
 	if _energy_manager and _energy_manager.has_method("spend"):
-		if not _energy_manager.spend(deploy_energy_cost):
+		# cost 为 0 时跳过消耗（免能量）
+		if deploy_energy_cost > 0.0 and not _energy_manager.spend(deploy_energy_cost):
 			_emit_deploy_failed("insufficient_energy", "能量不足，无法完成部署。")
 			return false
 	var stats = _build_stats_cached(platform_card, weapon_cards, weapon_types, battle_era)
@@ -478,6 +483,10 @@ func request_player_deploy(platform_card_id: String, world_pos: Vector2, battle_
 		_emit_deploy_failed("internal", "部署失败，请重试。")
 		return false
 	unit.set_meta("source_card_id", platform_card.card_id)
+	# v6.6: 幻影克隆 — 若本次部署是同卡的第2个单位（克隆体），应用克隆加成
+	if _is_phantom_clone_for_card(platform_card.card_id):
+		_apply_phantom_clone_buff(unit)
+		unit.set_meta("is_phantom_clone", true)
 	if deploy_slot_idx >= 0:
 		unit.set_meta("card_grid_slot", deploy_slot_idx)
 	_player_units_node.add_child(unit)
@@ -677,8 +686,75 @@ func _reach_alive_limit_for_card(card_id: String) -> bool:
 	if equipped_count <= 0:
 		# 回退旧行为：未知装配信息时，仍保持“同卡最多一台”保护
 		return _has_alive_player_unit_from_card(card_id)
+	# v6.6: 幻影克隆（phantom_clone）— 同卡可放2个单位
+	var alive_limit: int = equipped_count * _get_phantom_deploy_multiplier()
 	var alive_count: int = _count_alive_player_units_from_card(card_id)
-	return alive_count >= equipped_count
+	return alive_count >= alive_limit
+
+## v6.6: 获取免能量部署的成本倍率（0=全免，1=正常，0.5=半价）
+func _get_free_energy_multiplier() -> float:
+	if _phase_instrument == null or not _phase_instrument.has_method("get_active_ability"):
+		return 1.0
+	var ability: Dictionary = _phase_instrument.get_active_ability()
+	if ability.is_empty() or String(ability.get("id", "")) != "free_energy":
+		return 1.0
+	var params: Dictionary = ability.get("params", {})
+	return float(params.get("deploy_cost_multiplier", 1.0))
+
+## v6.6: 获取幻影克隆的部署倍率（1=正常1个，2=可放2个）
+func _get_phantom_deploy_multiplier() -> int:
+	if _phase_instrument == null or not _phase_instrument.has_method("get_active_ability"):
+		return 1
+	var ability: Dictionary = _phase_instrument.get_active_ability()
+	if ability.is_empty() or String(ability.get("id", "")) != "phantom_clone":
+		return 1
+	var params: Dictionary = ability.get("params", {})
+	return int(params.get("deploy_count", 1))
+
+## v6.6: 判断新部署的单位是否为克隆体（第2个），若是则应用克隆加成
+func _is_phantom_clone_for_card(card_id: String) -> bool:
+	if _get_phantom_deploy_multiplier() < 2:
+		return false
+	# 当同卡已有1个存活单位时，这次部署的是第2个=克隆体
+	return _count_alive_player_units_from_card(card_id) >= 1
+
+## v6.6: 应用幻影克隆加成到克隆体单位（攻击+%，血量+%）
+func _apply_phantom_clone_buff(unit: Node) -> void:
+	if unit == null or not is_instance_valid(unit):
+		return
+	if _phase_instrument == null or not _phase_instrument.has_method("get_active_ability"):
+		return
+	var ability: Dictionary = _phase_instrument.get_active_ability()
+	if ability.is_empty() or String(ability.get("id", "")) != "phantom_clone":
+		return
+	var params: Dictionary = ability.get("params", {})
+	var atk_bonus: float = float(params.get("clone_atk_bonus", 0.0))
+	var hp_bonus: float = float(params.get("clone_hp_bonus", 0.0))
+	var unit_stats = unit.get("stats")
+	if unit_stats == null:
+		return
+	# 血量加成
+	if hp_bonus > 0.0:
+		var old_max: float = float(unit_stats.max_hp)
+		var new_max: float = maxf(1.0, old_max * (1.0 + hp_bonus))
+		unit_stats.max_hp = new_max
+		if "max_hp" in unit:
+			unit.hp = new_max  # 克隆体满血出场
+		if unit.has_method("_update_hp_bar"):
+			unit._update_hp_bar()
+	# 攻击加成（三维攻击 + 武器伤害）
+	if atk_bonus > 0.0:
+		var mult: float = 1.0 + atk_bonus
+		unit_stats.attack_damage = maxf(0.1, float(unit_stats.attack_damage) * mult)
+		unit_stats.attack_light = maxf(0.1, float(unit_stats.attack_light) * mult)
+		unit_stats.attack_armor = maxf(0.1, float(unit_stats.attack_armor) * mult)
+		unit_stats.attack_air = maxf(0.1, float(unit_stats.attack_air) * mult)
+		for i in range(unit_stats.weapons.size()):
+			var w: Variant = unit_stats.weapons[i]
+			if w is Dictionary:
+				var wd: Dictionary = w
+				wd["damage"] = maxf(0.1, float(wd.get("damage", 0.0)) * mult)
+				unit_stats.weapons[i] = wd
 
 func _create_player_unit(stats: UnitStats) -> Node:
 	var u = ConstructUnitScene.instantiate()

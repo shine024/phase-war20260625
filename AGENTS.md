@@ -304,3 +304,27 @@ User-driven collaboration. Every task follows: **Question → Options → Decisi
 1. 修复UILazyLoader配置：删除不存在的blueprint_workshop和blueprint_library配置
 2. 统一路径字段命名：全部使用parent_path
 3. 在main.tscn中添加11个缺失的Overlay容器
+
+## v6.6 7星相位仪主动能力 (2026-06-20)
+
+**新增能力系统**: 相位仪 `active_ability` 字段（之前 special_traits 是纯文本，无战斗实现）
+
+**7个能力分配到各势力7星相位仪（含低星降级版）:**
+
+| 能力 | 7星完整版 | 分配相位仪 | 低星降级 |
+|------|----------|-----------|----------|
+| 火炮连发 | 每10秒连发7发(间隔1秒) | pi_nova_03(新星-超弦) | 6星:15秒/5发, 4星:20秒/3发 |
+| 幻影克隆 | 同卡可放2个,克隆体+100%攻/+80%血 | pi_helix_04(螺旋-幻影核,新增) | 5星:+50%/+40%, 3星:+20% |
+| 直射穿透 | 100%穿透,每穿一个衰减10% | pi_umbra_04(影幕-虚空穿,新增) | 6星:70%, 3星:40% |
+| 免能量 | 部署完全免能量 | pi_atlas_04(擎天-零点能,新增) | 6星:-50%, 4星:-30% |
+| 核子轰炸 | 每30秒敌方全体轰炸 | pi_eon_03(永纪-终式) | 5星:45秒, 2星:60秒减半 |
+| 致命酸雨 | 开局30秒敌方每秒掉2%血 | pi_aegis_04(神盾-壁垒核) | 6星:20秒, 4星:12秒 |
+| 巨型能量罩 | 开局我方全体20000护盾 | pi_generic_12(天穹VII型) | 6星:10000, 4星:5000 |
+
+**关键文件:**
+- `data/phase_instruments.gd` — 7个ability_xxx(star)定义 + active_ability字段 + 3个新7星 + 低星降级
+- `managers/battle/phase_instrument_abilities.gd`(新增) — periodic/on_battle_start能力触发
+- `managers/battle/battle_manager.gd` — start_battle/on_battle_start + _process/update接入
+- `managers/battle/battle_spawn_system.gd` — 免能量+幻影部署+克隆体加成
+- `scripts/battle/attack_calculator.gd` — 直射穿透比例
+- `managers/phase_instrument_manager.gd` — get_active_ability()

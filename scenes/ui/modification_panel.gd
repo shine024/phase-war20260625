@@ -278,8 +278,13 @@ func _update_card_info() -> void:
 		research_label.text = "纳米：%d | 图纸总数：%d" % [nano_amount, total_blueprints]
 
 func _refresh_installed_list(installed_list: Control) -> void:
+	# 同步移除（remove_child + free），不要用 queue_free：InstalledList 不在 ScrollContainer 内
+	# （它是 DetailPanel→CardView 下的 VBox），而整个面板挂在 CenterContainer 下。
+	# queue_free 延迟删除会让旧行与新行同帧共存，DetailPanel 的 combined_minimum_size 暂时膨胀，
+	# CenterContainer 据此把面板撑高且永不回缩（切换到已装改造数量不同的卡时面板变长）。
 	for child in installed_list.get_children():
-		child.queue_free()
+		installed_list.remove_child(child)
+		child.free()
 
 	var mod_index := 0
 	for mod_entry in selected_card.mods:

@@ -670,10 +670,6 @@ func get_mod_slot_cost(slot_index: int) -> int:
 	var base_cost = 50
 	return base_cost * slot_index
 
-## 获取第 mod_index 个改造槽位的消耗需求（研究点 + 许可证）
-func get_modification_requirements(card_id: String, mod_index: int) -> Dictionary:
-	return ModManager.get_modification_requirements(card_id, mod_index, self)
-
 ## 获取当前已装改造数量
 func get_modification_count(card_id: String) -> int:
 	return ModManager.get_modification_count(card_id, blueprint_mods)
@@ -682,17 +678,12 @@ func get_modification_count(card_id: String) -> int:
 func get_max_mod_slots() -> int:
 	return ModManager.get_max_mod_slots()
 
-## 获取可选 MOD 列表（从 ModEffects 获取具体 MOD_XX 定义）
-func get_mod_options(card_id: String, _mod_index: int) -> Array[Dictionary]:
-	return ModManager.get_mod_options(card_id)
-
-## 检查是否可以执行第 mod_index 次改造
-func can_apply_modification(card_id: String, mod_index: int) -> bool:
-	return ModManager.can_apply_modification(card_id, mod_index, self)
-
-## 执行改造：安装 MOD
-func apply_modification(card_id: String, option_id: String) -> bool:
-	return ModManager.apply_modification(card_id, option_id, self)
+# v6.6: 以下旧改造系统方法已移除（死代码，无活跃调用方）：
+#   - get_modification_requirements（仅被 card_enhancement_panel 的 _format_mod_requirements 调用，后者已删除）
+#   - get_mod_options（返回 ModEffects 的 MOD_01~20，与新 140+ 模块系统不兼容）
+#   - can_apply_modification（基于 ModEffects 的资源校验，新系统用 install_modification + card.can_install_modification）
+#   - apply_modification（option_id "offense/defense/utility" 在 ModEffects 查不到，永远失败）
+# 改造安装统一走 install_modification(card, mod_id)（modification_panel 使用）。
 
 ## ─────────── 进化系统 ───────────
 ## Facade 委托 → CardEvolutionManager（managers/evolution/card_evolution_manager.gd）

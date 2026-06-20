@@ -112,6 +112,8 @@ func _process(delta: float) -> void:
 		return
 
 	_maybe_refresh_group_target_cache(delta)
+	# v6.6: 驱动相位仪主动能力（火炮连发/核子轰炸/酸雨持续）
+	PhaseInstrumentAbilities.update(delta)
 
 	# 相位师战斗：不执行波次逻辑
 	if _is_phase_master_battle:
@@ -212,6 +214,8 @@ func start_battle(battle_scene: Node) -> void:
 		SignalBus.battle_started.emit()
 	if PerformanceMetricsManager and PerformanceMetricsManager.has_method("begin_battle_sampling"):
 		PerformanceMetricsManager.begin_battle_sampling()
+	# v6.6: 触发相位仪主动特殊能力（酸雨/能量罩等开局能力）
+	PhaseInstrumentAbilities.on_battle_start(PhaseInstrumentManager, battle_scene)
 
 	call_deferred("_deferred_refresh_card_grid_hud")
 
@@ -226,6 +230,8 @@ func end_battle(player_won: bool) -> void:
 	_clear_group_target_cache()
 	# v6.6: 清空伤害数字节流表，flush 残留合并伤害并避免跨战斗残留
 	CombatFeedback.reset_throttle()
+	# v6.6: 重置相位仪主动能力状态
+	PhaseInstrumentAbilities.reset_state()
 
 	# 性能优化：清理空间分区系统
 	_cleanup_spatial_grid()

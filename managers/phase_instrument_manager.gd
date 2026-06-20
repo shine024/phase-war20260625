@@ -838,6 +838,12 @@ func get_current_instrument() -> Dictionary:
 	copy_cfg["properties"] = _ensure_properties_with_legacy_fallback(copy_cfg)
 	return copy_cfg
 
+## v6.6: 获取当前相位仪的主动特殊能力（active_ability）
+## 返回 {} 表示无主动能力。供 PhaseInstrumentAbilities 和 passive 消费方查询。
+func get_active_ability() -> Dictionary:
+	var cfg: Dictionary = get_current_instrument()
+	return cfg.get("active_ability", {})
+
 func get_all_instruments() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for d in PhaseInstruments.get_all():

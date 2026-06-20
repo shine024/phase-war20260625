@@ -341,6 +341,27 @@ func _on_battle_ended(player_won: bool) -> void:
 		if level_progress and level_progress.has_method("get_max_unlocked_level"):
 			set_current_level(level_progress.get_max_unlocked_level())
 
+	# v6.6: 接线排行榜 — 战斗结束时更新统计（之前 update_* 方法零调用，排行榜永远为空）
+	ManagerLazyLoader.ensure_loaded("leaderboard")
+	var lb: Node = get_node_or_null("/root/LeaderboardManager")
+	if lb != null and lb.has_method("update_battle_stats"):
+		var elapsed_sec: float = 0.0
+		if BattleManager and "battle_elapsed_time" in BattleManager:
+			elapsed_sec = float(BattleManager.battle_elapsed_time)
+		var dmg: int = 0
+		if last_battle_reward_summary.has("total_damage_dealt"):
+			dmg = int(last_battle_reward_summary["total_damage_dealt"])
+		lb.update_battle_stats(player_won, dmg, elapsed_sec)
+	if lb != null and lb.has_method("update_level_progress") and player_won:
+		lb.update_level_progress(current_level, victory_stars)
+	if lb != null and lb.has_method("update_blueprint_count") and BlueprintManager:
+		var bp_count: int = 0
+		if BlueprintManager.has_method("get_unlocked_blueprint_count"):
+			bp_count = BlueprintManager.get_unlocked_blueprint_count()
+		elif "blueprint_stars" in BlueprintManager:
+			bp_count = (BlueprintManager.blueprint_stars as Dictionary).size()
+		lb.update_blueprint_count(bp_count)
+
 	# 保存战斗奖励摘要
 	last_battle_reward_summary = {
 		"player_won": player_won,

@@ -346,6 +346,8 @@ func _apply_hit(r: Dictionary) -> void:
 		# 主目标伤害（应用完整计算）
 		if tgt.has_method("take_damage") and final_primary_dmg > 0.0:
 			tgt.take_damage(final_primary_dmg, shooter)
+			# v6.6: 应用改造/符文命中副作用（吸血/溅射/连锁）
+			ModuleEffectHandler.apply_on_hit_side_effects(shooter, tgt, final_primary_dmg)
 
 ## 爆炸候选：优先空间网格
 func _get_aoe_targets(center: Vector2, radius: float, primary: Node2D) -> Array:

@@ -623,6 +623,16 @@ func _ensure_card_enhancement_panel() -> void:
 	cc.add_child(panel)
 	if panel.has_signal("closed") and not panel.closed.is_connected(_on_panel_closed.bind("progression")):
 		panel.closed.connect(_on_panel_closed.bind("progression"))
+	# v6.6: 强化面板请求跳转改造工坊 → 切换到 modification overlay
+	if panel.has_signal("open_modification_requested") and not panel.open_modification_requested.is_connected(_on_open_modification_from_enhancement):
+		panel.open_modification_requested.connect(_on_open_modification_from_enhancement)
+
+## v6.6: 从强化面板跳转到改造工坊
+func _on_open_modification_from_enhancement() -> void:
+	# 先关闭强化面板所在的 manufacture overlay
+	_close_overlay(manufacture_overlay, "progression")
+	# 打开改造工坊
+	_toggle_overlay(modification_overlay, "modification")
 
 func _on_map_pressed() -> void:
 	_play_sfx("button")
