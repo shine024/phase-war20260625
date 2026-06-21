@@ -636,6 +636,14 @@ func _on_hit(primary: Node2D) -> void:
 			var atk_splash: Variant = shooter if is_instance_valid(shooter) else null
 			child.take_damage(splash_damage, atk_splash)
 
+	# v6.3/v6.6: 暴击伤害数字统一由 take_damage → unit_damaged 信号驱动（用实际扣血值）。
+	# 暴击 meta 必须在 take_damage 之前设置：take_damage 内部 emit unit_damaged 时，
+	# _on_unit_damaged_combat_feedback 据此 meta 用金色 critical 样式显示并清除 meta。
+	# 此前直接 show_damage(final_damage) 会绕过 take_damage 内部处理（护盾/bulwark/倍率），
+	# 导致暴击数字与血条实际扣血矛盾。
+	if is_crit and is_instance_valid(primary):
+		primary.set_meta("_vfx_crit_pending", true)
+
 	# 直击伤害
 	if primary.has_method("take_damage"):
 		var final_after_wall: float = _apply_shield_wall_mitigation(final_damage, primary)
@@ -646,11 +654,9 @@ func _on_hit(primary: Node2D) -> void:
 			RuneSpecialHandler.on_hit(shooter, primary, final_after_wall)
 			# v6.6: 应用改造命中副作用（吸血/连锁/溅射）——补全低速直射路径缺失的效果
 			ModuleEffectHandler.apply_on_hit_side_effects(shooter, primary, final_after_wall)
-
-	# v6.3: 暴击伤害数字（暴击时由弹道直接显示，并通过 meta 标记让 unit_damaged 跳过普通数字，避免双数字）
-	if is_crit and is_instance_valid(primary):
-		primary.set_meta("_vfx_crit_pending", true)
-		CombatFeedback.show_damage(global_position, final_damage, primary, true, "critical")
+	# 兜底：若目标无 take_damage（不应发生），meta 不会经信号清除，此处手动清避免残留
+	elif is_crit and is_instance_valid(primary) and primary.has_meta("_vfx_crit_pending"):
+		primary.remove_meta("_vfx_crit_pending")
 
 	# v6.4: 命中屏幕震动（曲射/爆炸中震动，直射轻震动）
 	_request_hit_shake()

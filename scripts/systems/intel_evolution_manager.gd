@@ -32,7 +32,8 @@ var _claimed: Dictionary = {}
 # ── 生命周期 ──────────────────────────────────────────────────────
 
 func _ready() -> void:
-	_load_state()
+	# v6.6: 移除自加载，由 SaveManager 统一加载
+	pass
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
@@ -43,18 +44,35 @@ func _notification(what: int) -> void:
 const SaveUtils = preload("res://scripts/save_utils.gd")
 const STATE_SAVE_NAME: String = "intel_evolution_state"
 
-func _save_state() -> void:
-	var data: Dictionary = {
+## v6.6: 统一存档接口（供 SaveManager 调用）
+func save_state() -> Dictionary:
+	return {
 		"discovered": _discovered.duplicate(),
 		"claimed": _claimed.duplicate(),
 	}
-	SaveUtils.save_data_to_file(data, STATE_SAVE_NAME)
 
-func _load_state() -> void:
-	var data: Dictionary = SaveUtils.load_data_from_file(STATE_SAVE_NAME)
+## v6.6: 统一存档加载接口。data 为空时尝试兼容读取旧独立文件
+func load_state(data: Dictionary) -> void:
+	if data.is_empty():
+		var legacy: Dictionary = SaveUtils.load_data_from_file(STATE_SAVE_NAME)
+		if not legacy.is_empty():
+			_discovered = legacy.get("discovered", {})
+			_claimed = legacy.get("claimed", {})
+		return
 	_discovered = data.get("discovered", {})
 	_claimed = data.get("claimed", {})
-	# [DEBUG] print("[IntelEvolutionManager] 加载完成，已发现 %d 条分支，已领取 %d 条" % [_discovered.size(), _claimed.size()])
+
+func _save_state() -> void:
+	SaveUtils.save_data_to_file(save_state(), STATE_SAVE_NAME)
+
+func _load_state() -> void:
+	var legacy: Dictionary = SaveUtils.load_data_from_file(STATE_SAVE_NAME)
+	load_state(legacy)
+
+## v6.6: 新游戏重置——清空所有字段，不读旧文件
+func reset_progress() -> void:
+	_discovered.clear()
+	_claimed.clear()
 
 # ── 核心接口 ───────────────────────────────────────────────────────
 

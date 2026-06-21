@@ -223,10 +223,12 @@ func _create_instrument_item(cfg: Dictionary, is_equipped: bool) -> Control:
 
 	var slot_counts = cfg.get("slot_counts", {})
 	var green_count = int(slot_counts.get("green", 0))
-	var red_count = int(slot_counts.get("red", 0))
-	var blue_count = int(slot_counts.get("blue", 0))
 	var yellow_count = int(slot_counts.get("yellow", 0))
-	var total_slots = green_count + red_count + blue_count + yellow_count
+	var rune_count = int(slot_counts.get("rune", 0))   # v6.2: red/blue 法则槽已废弃，改 rune 符文槽
+	# 兼容旧数据：若无 rune 字段则回退读 red/blue（渐进迁移）
+	if rune_count == 0:
+		rune_count = int(slot_counts.get("red", 0)) + int(slot_counts.get("blue", 0))
+	var total_slots = green_count + yellow_count + rune_count
 
 	var config_label = Label.new()
 	config_label.text = "槽位配置: "
@@ -241,26 +243,19 @@ func _create_instrument_item(cfg: Dictionary, is_equipped: bool) -> Control:
 		green_label.add_theme_color_override("font_color", Color(0.3, 0.9, 0.5, 1.0))
 		slot_row.add_child(green_label)
 
-	if red_count > 0:
-		var red_label = Label.new()
-		red_label.text = "红%d " % red_count
-		red_label.add_theme_font_size_override("font_size", 11)
-		red_label.add_theme_color_override("font_color", Color(0.9, 0.3, 0.3, 1.0))
-		slot_row.add_child(red_label)
-
-	if blue_count > 0:
-		var blue_label = Label.new()
-		blue_label.text = "蓝%d " % blue_count
-		blue_label.add_theme_font_size_override("font_size", 11)
-		blue_label.add_theme_color_override("font_color", Color(0.3, 0.6, 1.0, 1.0))
-		slot_row.add_child(blue_label)
-
 	if yellow_count > 0:
 		var yellow_label = Label.new()
 		yellow_label.text = "黄%d " % yellow_count
 		yellow_label.add_theme_font_size_override("font_size", 11)
 		yellow_label.add_theme_color_override("font_color", Color(0.95, 0.85, 0.2, 1.0))
 		slot_row.add_child(yellow_label)
+
+	if rune_count > 0:
+		var rune_label = Label.new()
+		rune_label.text = "符%d " % rune_count
+		rune_label.add_theme_font_size_override("font_size", 11)
+		rune_label.add_theme_color_override("font_color", Color(0.75, 0.55, 0.95, 1.0))
+		slot_row.add_child(rune_label)
 
 	var total_label = Label.new()
 	total_label.text = "(总计: %d)" % total_slots
@@ -331,6 +326,28 @@ func _create_instrument_item(cfg: Dictionary, is_equipped: bool) -> Control:
 			trait_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 			trait_label.custom_minimum_size = Vector2(400, 0)
 			trait_row.add_child(trait_label)
+
+	# v6.6: 主动特殊能力（active_ability）— 与特性区分高亮，让玩家看到这把相位仪还带一个独立的主动能力
+	if cfg.has("active_ability"):
+		var ability: Dictionary = cfg.get("active_ability", {})
+		if not ability.is_empty():
+			var ability_name: String = String(ability.get("name", ""))
+			var ability_desc: String = String(ability.get("description", ""))
+			var ability_row = HBoxContainer.new()
+			vbox.add_child(ability_row)
+			var ability_label = Label.new()
+			if not ability_name.is_empty() and not ability_desc.is_empty():
+				ability_label.text = "⚡ %s：%s" % [ability_name, ability_desc]
+			elif not ability_desc.is_empty():
+				ability_label.text = "⚡ %s" % ability_desc
+			else:
+				ability_label.text = "⚡ %s" % ability_name
+			ability_label.add_theme_font_size_override("font_size", 10)
+			# 金色高亮，区别于普通特性（青色）
+			ability_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2, 1.0))
+			ability_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+			ability_label.custom_minimum_size = Vector2(400, 0)
+			ability_row.add_child(ability_label)
 
 	if is_equipped:
 		var equipped_label = Label.new()

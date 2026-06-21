@@ -126,11 +126,12 @@ static func _find_target_by_card_grid(u: CharacterBody2D, targeting_mode: int = 
 	# （多武器单位主武器可能为 DIRECT，但配有曲射副武器——之前漏判导致走直射索敌）
 	var is_indirect: bool = false
 	if u.stats != null:
-		if u.stats.weapon_type in [GC.WeaponType.INDIRECT, GC.WeaponType.AERIAL]:
+		# v6.6: 统一曲射判定（含改造引入的 legacy 曲射值 MISSILE/ROCKET/FLAK）
+		if GC.is_indirect_weapon_type(u.stats.weapon_type):
 			is_indirect = true
 		else:
 			for _ws in u.stats.weapon_slots:
-				if _ws is WeaponResource and _ws.enabled and _ws.weapon_type in [GC.WeaponType.INDIRECT, GC.WeaponType.AERIAL]:
+				if _ws is WeaponResource and _ws.enabled and GC.is_indirect_weapon_type(_ws.weapon_type):
 					is_indirect = true
 					break
 	if is_indirect:
@@ -306,8 +307,8 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 	# 直射 + 射速 > 2发/秒 → MultiMesh 批处理
 	# 直射 + 射速 ≤ 2发/秒 → 独立子弹节点（对象池）
 
-	# 优先路由：曲射/空射武器
-	if wt in [GC.WeaponType.INDIRECT, GC.WeaponType.AERIAL]:
+	# 优先路由：曲射/空射武器（v6.6: 统一曲射判定）
+	if GC.is_indirect_weapon_type(wt):
 		if u.is_player and BattleManager and is_instance_valid(BattleManager.player_indirect_batch):
 			if BattleManager.player_indirect_batch.has_method("fire"):
 				BattleManager.player_indirect_batch.fire(u.global_position, u.target, damage, wt, u, u.stats, miss, w_name)
@@ -336,7 +337,10 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 		if bullet == null:
 			bullet = BulletScene.instantiate()
 		bullet.global_position = u.global_position
-		bullet.setup(u.target, pellet_dmg, u.is_player, wt, u, u.stats, miss, w_name, p_pre_calculated)
+		# v6.6: 优先传 legacy_weapon_type（改造指定的型号，决定 VFX/弹道），
+		# 否则回退到 weapon_type（基础弹道类型）
+		var _vfx_wt: int = (u.stats.legacy_weapon_type if u.stats and u.stats.legacy_weapon_type > 0 else wt)
+		bullet.setup(u.target, pellet_dmg, u.is_player, _vfx_wt, u, u.stats, miss, w_name, p_pre_calculated)
 		var current_parent: Node = bullet.get_parent()
 		if current_parent != root_2d:
 			if current_parent != null:
@@ -458,8 +462,8 @@ static func _process_multi_weapons(u: CharacterBody2D, delta: float) -> void:
 			timing = AttackCalculator.get_attack_timing(u.stats, target_kind)
 			w_range = u.stats.attack_range
 
-		# 曲射/空射武器最小攻击间隔限制
-		if w_wt in [GC.WeaponType.INDIRECT, GC.WeaponType.AERIAL]:
+		# 曲射/空射武器最小攻击间隔限制（v6.6: 统一曲射判定）
+		if GC.is_indirect_weapon_type(w_wt):
 			timing["windup"] = maxf(timing.get("windup", 0.0), 0.15)
 			timing["cooldown"] = maxf(timing.get("cooldown", 0.0), 0.25)
 

@@ -193,9 +193,11 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		hp_loss = float(CardGridDamage.resolve_hit(amount, eff_def).get("hp_loss", amount))
 	if attacker != null and is_instance_valid(attacker) and attacker is Node and attacker.is_in_group("player_units"):
 		last_damage_source = attacker
-	hp -= hp_loss * _incoming_damage_mul
+	# v6.6 修复：_incoming_damage_mul 同样需作用于伤害数字显示，保持飘字与血条扣血一致
+	var final_loss: float = hp_loss * _incoming_damage_mul
+	hp -= final_loss
 	if SignalBus:
-		SignalBus.unit_damaged.emit(self, false, hp_loss, global_position)
+		SignalBus.unit_damaged.emit(self, false, final_loss, global_position)
 	if hp <= 0.0:
 		_die()
 

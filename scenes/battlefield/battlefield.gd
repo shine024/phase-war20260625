@@ -137,6 +137,12 @@ func _update_background() -> void:
 	if battle_bottom_y <= 0.0:
 		battle_bottom_y = 580.0
 
+	# v6.6(剧情): 第100关终战视觉模式（补剧情.txt L137 记忆场景）
+	# 用灰白冷色调覆盖背景，表现"主角记忆中的城市/办公楼/小区"
+	if _is_final_battle():
+		_apply_final_battle_visuals()
+		return
+
 	var level: int = 1
 	if GameManager:
 		level = clampi(GameManager.current_level, 1, 100)
@@ -254,6 +260,46 @@ func _load_texture_from_source_file(path: String) -> Texture2D:
 		return null
 	var tex := ImageTexture.create_from_image(img)
 	return tex
+
+# ═══════════════════════════════════════════════════════════════════
+# v6.6(剧情): 第100关终战视觉模式（补剧情.txt 第十幕 L137 记忆场景）
+# ═══════════════════════════════════════════════════════════════════
+
+## 是否为最终战（第100关/相位之主/噬时者降临）
+func _is_final_battle() -> bool:
+	var gm: Node = get_node_or_null("/root/GameManager")
+	if gm == null:
+		return false
+	if gm.has_method("is_final_battle"):
+		return gm.is_final_battle()
+	return false
+
+## 应用终战视觉：灰白冷色调背景（表现陈末记忆中的城市/办公楼）
+func _apply_final_battle_visuals() -> void:
+	if background != null and is_instance_valid(background):
+		# 记忆场景色调：偏冷的灰白，暗示"这不是真实战场，是回忆"
+		background.color = Color(0.18, 0.20, 0.26, 1.0)
+	if level10_bg != null and is_instance_valid(level10_bg):
+		level10_bg.visible = false
+	# 显示终战字幕（延迟一帧确保场景树就绪）
+	call_deferred("_show_final_battle_subtitle")
+
+## 终战开场字幕（补剧情.txt L139 "你愿意为通关付出什么？"）
+func _show_final_battle_subtitle() -> void:
+	var label := Label.new()
+	label.text = "第100关 · 最终试炼\n「这里的每一寸土地，都是你的记忆。」"
+	label.add_theme_font_size_override("font_size", 18)
+	label.add_theme_color_override("font_color", Color(0.85, 0.85, 0.95, 0.9))
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	label.position.y = 30
+	label.name = "FinalBattleSubtitle"
+	# 加到 Background 上层（ColorRect 是 Control，可加 Label 子节点）
+	if background != null and is_instance_valid(background):
+		background.add_child(label)
+		# 5秒后淡出
+		create_tween().tween_property(label, "modulate:a", 0.0, 2.0).set_delay(5.0)
+		create_tween().tween_callback(label.queue_free).set_delay(7.5)
 
 func _try_apply_alternative_background(level: int, era: int) -> bool:
 	var candidates: Array[int] = []

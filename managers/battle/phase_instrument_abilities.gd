@@ -199,19 +199,33 @@ static func _fire_nuclear_bombardment(params: Dictionary) -> void:
 	var dmg_mult: float = float(params.get("dmg_mult", 1.0))
 	var base_dmg: float = _compute_nuclear_damage() * dmg_mult
 	var enemies: Array = _get_enemy_units()
-	# v6.6 正式动画：紫色闪电标记 + 绿色核爆
+	# v6.6 正式动画：分两阶段——先紫色闪电标记（警告），延迟后绿色核爆 + 伤害结算
+	var mark_delay: float = 0.35
 	for e in enemies:
 		if e == null or not is_instance_valid(e):
 			continue
 		var epos: Vector2 = (e as Node2D).global_position if e is Node2D else Vector2.ZERO
-		# 先出现紫色闪电标记
+		# 第一阶段：紫色闪电标记（立即出现，提示玩家轰炸即将命中）
 		PhaseLawCastEffect.create_phase_law_effect(_battlefield, epos, Color(0.5, 0.0, 1.0, 1.0))
-		# 然后核爆绿色大爆炸
-		VisualEffects.create_explosion(_battlefield, epos, 3.0, Color(0.2, 1.0, 0.2, 1.0))
-		CombatFeedback.show_damage(epos, base_dmg, e, true, "critical")
-		if e.has_method("take_damage"):
-			e.take_damage(base_dmg, null)
-	# 全屏震动
+		# 第二阶段：延迟核爆 + 伤害结算（用 tween，避免阻塞；结算时复查有效性）
+		var captured_enemy = e
+		var captured_pos = epos
+		var tw := _battlefield.create_tween()
+		tw.tween_interval(mark_delay)
+		tw.tween_callback(func():
+			if _battlefield == null or not is_instance_valid(_battlefield):
+				return
+			# 延迟后敌人可能已死亡/移除，跟踪其当前位置
+			var cur_pos: Vector2 = captured_pos
+			if is_instance_valid(captured_enemy) and captured_enemy is Node2D:
+				cur_pos = (captured_enemy as Node2D).global_position
+			VisualEffects.create_explosion(_battlefield, cur_pos, 3.0, Color(0.2, 1.0, 0.2, 1.0))
+			if is_instance_valid(captured_enemy):
+				CombatFeedback.show_damage(cur_pos, base_dmg, captured_enemy, true, "critical")
+				if captured_enemy.has_method("take_damage"):
+					captured_enemy.take_damage(base_dmg, null)
+		)
+	# 全屏震动（与标记同步出现，强化预警冲击）
 	_trigger_screen_shake(10.0, 0.6)
 	_show_toast("☢ 核子轰炸！敌方全体受到 %.0f 伤害" % base_dmg)
 
@@ -247,11 +261,12 @@ static func _apply_acid_rain_tick(delta: float) -> void:
 		var dmg: float = max_hp * hp_pct * delta
 		if dmg > 0.0 and e.has_method("take_damage"):
 			e.take_damage(dmg, null)
-			# 正式动画：绿色酸液滴落 + 腐蚀粒子
+			# v6.6: 伤害数字由 take_damage → unit_damaged 信号统一驱动（用实际扣血），
+			# 此处不再直接 show_damage（否则双数字 + 不含 _incoming_damage_mul）。
+			# 仅保留酸液滴落视觉特效。
 			if show_vfx_this_frame and i % 3 == 0 and e is Node2D:
 				var epos: Vector2 = (e as Node2D).global_position
 				_create_acid_drip(epos)
-				CombatFeedback.show_damage(epos, dmg, e, false, "normal")
 
 # ── 巨型能量罩 ──
 static func _apply_mega_shield(params: Dictionary) -> void:

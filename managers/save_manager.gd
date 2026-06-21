@@ -50,6 +50,8 @@ const CRITICAL_MANAGER_LOADS: Array = [
 	["/root/LevelProgressManager", "level_progress"],
 	["/root/DropManager", "drop_manager"],
 	["/root/IntelItemBag", "intel_item_bag"],
+	# v6.6: 情报手册（战斗实时查询，需 critical）
+	["/root/IntelManual", "intel_manual"],
 ]
 const DEFERRED_MANAGER_LOADS: Array = [
 	["/root/LoreManager", "lore"],
@@ -65,6 +67,10 @@ const DEFERRED_MANAGER_LOADS: Array = [
 	["/root/ChallengeModeManager", "challenge_records"],
 	["/root/CardCollectionManager", "card_collection"],
 	["/root/LeaderboardManager", "leaderboard"],
+	# v6.6: 情报发现/进化/敌源MOD（deferred，非战斗实时）
+	["/root/IntelDiscoveryManager", "intel_discovery"],
+	["/root/IntelEvolutionManager", "intel_evolution"],
+	["/root/EnemyOriginModManager", "eom_manager"],
 ]
 const CRITICAL_RESETTABLE_MANAGERS: Array[String] = [
 	"BlueprintManager",
@@ -76,6 +82,8 @@ const CRITICAL_RESETTABLE_MANAGERS: Array[String] = [
 	"AffixManager",
 	"LevelProgressManager",
 	"IntelItemBag",
+	# v6.6: 情报手册
+	"IntelManual",
 ]
 const DEFERRED_RESET_BATCH_SIZE := 4
 
@@ -98,6 +106,10 @@ const RESETTABLE_MANAGERS := [
 	"ChallengeModeManager",
 	"CardCollectionManager",
 	"IntelItemBag",
+	# v6.6: 情报系统（reset 靠 load_state({}) 清空字段）
+	"IntelDiscoveryManager",
+	"IntelEvolutionManager",
+	"EnemyOriginModManager",
 ]
 
 ## ─── 存档数据键名常量（别名，定义见 scripts/systems/save_constants.gd）───
@@ -111,6 +123,11 @@ const SK_AFFIX_DATA: String = SaveConstants.SK_AFFIX_DATA
 const SK_LEVEL_PROGRESS: String = SaveConstants.SK_LEVEL_PROGRESS
 const SK_DROP_MANAGER: String = SaveConstants.SK_DROP_MANAGER
 const SK_INTEL_ITEM_BAG: String = "intel_item_bag"
+# v6.6: 情报系统存档键（与 DEFERRED/CRITICAL_MANAGER_LOADS 的 data_key 一致）
+const SK_INTEL_MANUAL: String = SaveConstants.SK_INTEL_MANUAL
+const SK_INTEL_DISCOVERY: String = SaveConstants.SK_INTEL_DISCOVERY
+const SK_INTEL_EVOLUTION: String = SaveConstants.SK_INTEL_EVOLUTION
+const SK_EOM_MANAGER: String = SaveConstants.SK_EOM_MANAGER
 const SK_GAME: String = SaveConstants.SK_GAME
 const SK_CURRENT_LEVEL: String = SaveConstants.SK_CURRENT_LEVEL
 const SK_PHASE_SLOTS: String = SaveConstants.SK_PHASE_SLOTS
@@ -147,6 +164,13 @@ func _ready() -> void:
 	_ensure_backpack_signal_hook()
 	# 部分启动序下 SignalBus 可能晚于本节点就绪，下一帧重试一次挂钩。
 	call_deferred("_ensure_backpack_signal_hook")
+	# v6.6: 预加载 ToastManager，使其 _ready 连接 SignalBus.show_toast，
+	# 否则仅当打开势力商店时才会实例化，期间所有 toast 提示静默失效
+	call_deferred("_ensure_toast_manager")
+
+func _ensure_toast_manager() -> void:
+	if ManagerLazyLoader and ManagerLazyLoader.has_method("ensure_loaded"):
+		ManagerLazyLoader.ensure_loaded("toast")
 
 func _sync_debug_log_flag() -> void:
 	var debug_mgr: Node = get_node_or_null("/root/DebugLogManager")
@@ -466,6 +490,10 @@ func _collect_noncritical_save_data(data: Dictionary, now_ms: int) -> void:
 		_collect_manager_state(fresh, "/root/ChallengeModeManager", SK_CHALLENGE_RECORDS)
 		_collect_manager_state(fresh, "/root/CardCollectionManager", SK_CARD_COLLECTION)
 		_collect_manager_state(fresh, "/root/LeaderboardManager", SK_LEADERBOARD)
+		# v6.6: 情报系统（deferred 收集）
+		_collect_manager_state(fresh, "/root/IntelDiscoveryManager", SK_INTEL_DISCOVERY)
+		_collect_manager_state(fresh, "/root/IntelEvolutionManager", SK_INTEL_EVOLUTION)
+		_collect_manager_state(fresh, "/root/EnemyOriginModManager", SK_EOM_MANAGER)
 		_noncritical_save_cache = fresh
 		_last_noncritical_save_ms = now_ms
 	for key in _noncritical_save_cache.keys():
@@ -541,6 +569,8 @@ func save_game() -> bool:
 	_collect_manager_state(data, "/root/LevelProgressManager", SK_LEVEL_PROGRESS)
 	_collect_manager_state(data, "/root/DropManager", SK_DROP_MANAGER)
 	_collect_manager_state(data, "/root/IntelItemBag", SK_INTEL_ITEM_BAG)
+	# v6.6: 情报手册（critical，战斗实时查询）
+	_collect_manager_state(data, "/root/IntelManual", SK_INTEL_MANUAL)
 	_collect_noncritical_save_data(data, now_ms)
 	var gmgr: Node = get_node_or_null("/root/GameManager")
 	# 保存前同步 current_level：确保与 LevelProgressManager.max_unlocked_level 一致
@@ -551,10 +581,10 @@ func save_game() -> bool:
 			var cur: int = int(gmgr.current_level)
 			if max_u_save > cur:
 				gmgr.set_current_level(max_u_save)
-		data[SK_GAME] = {SK_CURRENT_LEVEL: int(gmgr.current_level)}
+		data[SK_GAME] = {SK_CURRENT_LEVEL: int(gmgr.current_level), "ng_plus": gmgr.ng_plus_active}
 	else:
 		# GameManager 不可用时仍写入默认值，避免校验缺失 game 字段
-		data[SK_GAME] = {SK_CURRENT_LEVEL: 1}
+		data[SK_GAME] = {SK_CURRENT_LEVEL: 1, "ng_plus": false}
 	if pm != null and pm.has_method("get_slot_card_ids"):
 		data[SK_PHASE_SLOTS] = pm.get_slot_card_ids()
 		data[SK_PHASE_SLOTS_ORDER] = "rbgy"
@@ -919,6 +949,9 @@ func start_new_game() -> void:
 	var gm = get_node_or_null("/root/GameManager")
 	if gm != null and "current_level" in gm and gm.has_method("set_current_level"):
 		gm.set_current_level(1)
+	# v6.6(剧情): 全新开始时重置二周目标志（非 NG+ 路径）
+	if gm != null and "ng_plus_active" in gm:
+		gm.ng_plus_active = false
 	# 删除当前存档位的文件
 	_remove_file_at_user(_current_save_file())
 	_remove_file_at_user(_current_backup_file())
@@ -954,6 +987,16 @@ func start_ng_plus() -> void:
 	var dc: Node = get_node_or_null("/root/DayClock")
 	if dc and dc.has_method("reset_for_new_loop"):
 		dc.reset_for_new_loop()
+	# v6.6(剧情): 新周目重置剧情奖励倍率（倒计时×3 不应跨周目继承）
+	var dm: Node = get_node_or_null("/root/DropManager")
+	if dm and dm.has_method("reset_multiplier"):
+		dm.reset_multiplier()
+	# v6.6(剧情): 激活二周目模式（补剧情.txt 第十二幕：敌人属性×1.2）
+	var gm_ng: Node = get_node_or_null("/root/GameManager")
+	if gm_ng and "ng_plus_active" in gm_ng:
+		gm_ng.ng_plus_active = true
+		if "game_mode" in gm_ng:
+			gm_ng.game_mode = GameManager.GameMode.NEW_GAME_PLUS
 	# 5. 保存
 	save_game()
 
@@ -1112,6 +1155,9 @@ func _load_from_path(path: String) -> bool:
 		var gdict: Dictionary = data[SK_GAME]
 		if gdict.has(SK_CURRENT_LEVEL) and gmgr_load.has_method("set_current_level"):
 			gmgr_load.set_current_level(int(gdict[SK_CURRENT_LEVEL]))
+		# v6.6(剧情): 恢复二周目标志（补剧情.txt 第十二幕）
+		if "ng_plus_active" in gmgr_load and gdict.has("ng_plus"):
+			gmgr_load.ng_plus_active = bool(gdict["ng_plus"])
 
 	# 旧存档常见：level_progress 已推进但 game.current_level 仍为 1，读档后主界面/教程判断会误以为新档
 	var lpm_cursor: Node = get_node_or_null("/root/LevelProgressManager")

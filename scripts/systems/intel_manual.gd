@@ -136,7 +136,8 @@ class IntelEntry:
 # ── 生命周期 ──────────────────────────────────────────────────────
 
 func _ready() -> void:
-	load_data()
+	# v6.6: 移除自加载，由 SaveManager 统一加载
+	pass
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
@@ -144,22 +145,33 @@ func _notification(what: int) -> void:
 
 # ── 存档 / 读档 ───────────────────────────────────────────────────
 
-## 将情报数据保存到本地
-func save_data() -> void:
+## v6.6: 统一存档接口（供 SaveManager 调用）
+## 序列化 _entries（每个 IntelEntry.to_dict）+ _completed_cache + _card_to_enemy_type
+func save_state() -> Dictionary:
 	var raw: Dictionary = {"_version": SAVE_VERSION}
 	for card_id in _entries:
 		var entry: IntelEntry = _entries[card_id]
 		raw[card_id] = entry.to_dict()
-	SaveUtils.save_data_to_file(raw, SAVE_FILE_NAME)
+	raw["_completed_cache"] = _completed_cache.duplicate()
+	raw["_card_to_enemy_type"] = _card_to_enemy_type.duplicate()
+	return raw
 
-## 从本地加载情报数据
-func load_data() -> void:
-	var raw: Dictionary = SaveUtils.load_data_from_file(SAVE_FILE_NAME)
+## v6.6: 统一存档加载接口。data 为空时尝试兼容读取旧独立文件
+func load_state(data: Dictionary) -> void:
+	var raw: Dictionary = data
+	if raw.is_empty():
+		raw = SaveUtils.load_data_from_file(SAVE_FILE_NAME)
+		if raw.is_empty():
+			return
+	_apply_loaded_raw(raw)
+
+## 将原始 raw 字典应用到内存状态（迁移 + 缓存重建）
+func _apply_loaded_raw(raw: Dictionary) -> void:
 	_entries.clear()
 	_completed_cache.clear()
 	for card_id in raw:
-		if card_id == "_version":
-			continue  ## 跳过版本标记
+		if card_id == "_version" or card_id == "_completed_cache" or card_id == "_card_to_enemy_type":
+			continue  ## 跳过元数据键
 		if raw[card_id] is Dictionary:
 			var entry: IntelEntry = IntelEntry.from_dict(raw[card_id])
 			## 旧存档迁移：如果尚未迁移且有旧intel_progress
@@ -168,6 +180,26 @@ func load_data() -> void:
 			_entries[card_id] = entry
 			if entry.is_unlocked:
 				_completed_cache.append(card_id)
+	## v6.6: 恢复缓存与映射（旧存档无此键时保持空）
+	if raw.has("_completed_cache") and raw["_completed_cache"] is Array:
+		for item in raw["_completed_cache"]:
+			_completed_cache.append(str(item))
+	if raw.has("_card_to_enemy_type") and raw["_card_to_enemy_type"] is Dictionary:
+		_card_to_enemy_type = (raw["_card_to_enemy_type"] as Dictionary).duplicate()
+
+## 将情报数据保存到本地（退出兜底，委托给统一 save_state）
+func save_data() -> void:
+	SaveUtils.save_data_to_file(save_state(), SAVE_FILE_NAME)
+
+## 从本地加载情报数据（委托给统一 load_state，向后兼容旧调用）
+func load_data() -> void:
+	load_state({})
+
+## v6.6: 新游戏重置——清空所有字段，不读旧文件（区别于 load_state({}) 的兼容读取）
+func reset_progress() -> void:
+	_entries.clear()
+	_completed_cache.clear()
+	_card_to_enemy_type.clear()
 
 ## 🆕 迁移旧格式条目：将单一intel_progress分配到4维度
 func _migrate_single_entry(entry: IntelEntry) -> void:

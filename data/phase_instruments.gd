@@ -235,6 +235,27 @@ static func ability_mega_shield(star: int) -> Dictionary:
 		"description": "开局为我方全体笼罩%.0f血量护盾" % [shield_amount],
 	}
 
+## 8. 钢铁壁垒（铁幕势力）— 我方堡垒/装甲类单位部署时最大HP翻倍（耐久加倍）
+## v6.6: 铁幕王座(pi_iron_03)专属，防御系的标志性能力，让坦克/堡垒单位成为真正的肉盾。
+## type=passive：部署时应用（开局时玩家无单位，须在每次部署符合条件的单位时加成）。
+static func ability_fortress_bulwark(star: int) -> Dictionary:
+	var hp_mult: float = 2.0   # 7星：耐久加倍
+	var apply_armor_only: bool = false  # 7星同时覆盖堡垒+装甲
+	match star:
+		3: hp_mult = 1.3; apply_armor_only = true   # 3星仅装甲+30%
+		5: hp_mult = 1.5; apply_armor_only = false  # 5星装甲+堡垒+50%
+	return {
+		"id": "fortress_bulwark",
+		"name": "钢铁壁垒",
+		"type": "passive",
+		"params": {
+			"hp_multiplier": hp_mult,
+			"apply_armor_only": apply_armor_only,
+			"target_combat_kinds": [1] if apply_armor_only else [1, 4],  # ARMOR=1, FORT=4
+		},
+		"description": "我方装甲/堡垒单位最大HP×%.1f（耐久加倍）" % [hp_mult],
+	}
+
 
 ## 通用相位仪布局（平衡型）
 ## v6.2：移除 red/blue 法则槽，新增 rune 符文槽（替代法则系统）
@@ -247,7 +268,7 @@ const _STAR_LAYOUT := {
 	4: {"green": 3, "yellow": 2, "rune": 2, "spawn_range_ratio": 0.70},   # 7格：侧重战斗+能量
 	5: {"green": 4, "yellow": 1, "rune": 4, "spawn_range_ratio": 0.82},   # 9格：均衡扩展
 	6: {"green": 3, "yellow": 2, "rune": 5, "spawn_range_ratio": 0.92},   # 10格：侧重符文
-	7: {"green": 5, "yellow": 2, "rune": 4, "spawn_range_ratio": 1.00},   # 11格：侧重战斗（高星追求火力）
+	7: {"green": 6, "yellow": 2, "rune": 4, "spawn_range_ratio": 1.00},   # 12格：侧重战斗（高星追求火力）
 }
 
 ## 势力专属布局 - 每个势力有独特的格子分配特点
@@ -259,7 +280,7 @@ const _FACTION_LAYOUT_AEGIS := {
 	2: {"green": 1, "yellow": 2, "rune": 2, "spawn_range_ratio": 0.40},
 	4: {"green": 2, "yellow": 2, "rune": 3, "spawn_range_ratio": 0.70},
 	6: {"green": 3, "yellow": 2, "rune": 4, "spawn_range_ratio": 0.92},
-	7: {"green": 3, "yellow": 2, "rune": 6, "spawn_range_ratio": 1.00},   # 11格：极限符文
+	7: {"green": 4, "yellow": 2, "rune": 6, "spawn_range_ratio": 1.00},   # 12格：极限符文
 }
 
 # helix_recon (螺旋): 侦查特化 - 极限战斗卡，符文少
@@ -267,7 +288,7 @@ const _FACTION_LAYOUT_HELIX := {
 	1: {"green": 2, "yellow": 1, "rune": 1, "spawn_range_ratio": 0.30},
 	3: {"green": 4, "yellow": 1, "rune": 1, "spawn_range_ratio": 0.55},
 	5: {"green": 6, "yellow": 1, "rune": 2, "spawn_range_ratio": 0.82},   # 9格：满战斗卡
-	7: {"green": 6, "yellow": 2, "rune": 3, "spawn_range_ratio": 1.00},   # v6.6: 11格（幻影核）
+	7: {"green": 6, "yellow": 2, "rune": 4, "spawn_range_ratio": 1.00},   # v6.6: 12格（幻影核，满战斗卡）
 }
 
 # nova_arms (新星): 火力特化 - 战斗+符文均衡，能量少
@@ -275,14 +296,14 @@ const _FACTION_LAYOUT_NOVA := {
 	2: {"green": 2, "yellow": 1, "rune": 2, "spawn_range_ratio": 0.40},
 	4: {"green": 3, "yellow": 1, "rune": 3, "spawn_range_ratio": 0.70},
 	6: {"green": 4, "yellow": 1, "rune": 4, "spawn_range_ratio": 0.92},
-	7: {"green": 5, "yellow": 1, "rune": 5, "spawn_range_ratio": 1.00},   # 11格：战斗+符文双高
+	7: {"green": 6, "yellow": 1, "rune": 5, "spawn_range_ratio": 1.00},   # 12格：战斗+符文双高
 }
 
 # iron_wall_corp (铁幕): 坦克特化 - 偏能量+战斗，符文中等
 const _FACTION_LAYOUT_IRON := {
 	3: {"green": 3, "yellow": 2, "rune": 2, "spawn_range_ratio": 0.55},
 	5: {"green": 4, "yellow": 2, "rune": 3, "spawn_range_ratio": 0.82},
-	7: {"green": 5, "yellow": 2, "rune": 3, "spawn_range_ratio": 1.00},   # 10格：堆战斗+能量
+	7: {"green": 6, "yellow": 2, "rune": 4, "spawn_range_ratio": 1.00},   # 12格：堆战斗+能量（满战斗卡）
 }
 
 # void_research (影幕): 爆发特化 - 极限符文，战斗卡少
@@ -290,7 +311,7 @@ const _FACTION_LAYOUT_UMBRA := {
 	1: {"green": 1, "yellow": 1, "rune": 2, "spawn_range_ratio": 0.30},
 	3: {"green": 1, "yellow": 1, "rune": 4, "spawn_range_ratio": 0.55},
 	6: {"green": 2, "yellow": 1, "rune": 6, "spawn_range_ratio": 0.92},   # 9格：满符文
-	7: {"green": 3, "yellow": 1, "rune": 6, "spawn_range_ratio": 1.00},   # v6.6: 10格（虚空穿）
+	7: {"green": 4, "yellow": 2, "rune": 6, "spawn_range_ratio": 1.00},   # v6.6: 12格（虚空穿，满符文）
 }
 
 # quantum_logistics (擎天): 资源特化 - 战斗+能量均衡，符文少
@@ -298,14 +319,14 @@ const _FACTION_LAYOUT_ATLAS := {
 	2: {"green": 2, "yellow": 2, "rune": 1, "spawn_range_ratio": 0.40},
 	4: {"green": 3, "yellow": 2, "rune": 2, "spawn_range_ratio": 0.70},
 	6: {"green": 4, "yellow": 2, "rune": 3, "spawn_range_ratio": 0.92},
-	7: {"green": 5, "yellow": 2, "rune": 4, "spawn_range_ratio": 1.00},   # v6.6: 11格（零点能）
+	7: {"green": 6, "yellow": 2, "rune": 4, "spawn_range_ratio": 1.00},   # v6.6: 12格（零点能）
 }
 
 # frontier_union (永纪): 时间特化 - 三类均衡
 const _FACTION_LAYOUT_EON := {
 	2: {"green": 2, "yellow": 1, "rune": 2, "spawn_range_ratio": 0.40},
 	5: {"green": 3, "yellow": 2, "rune": 3, "spawn_range_ratio": 0.82},
-	7: {"green": 4, "yellow": 2, "rune": 4, "spawn_range_ratio": 1.00},   # 10格：均衡
+	7: {"green": 6, "yellow": 2, "rune": 4, "spawn_range_ratio": 1.00},   # 12格：均衡（v6.6 统一7星12格）
 }
 
 static func _make_def(id: String, name: String, faction_id: String, is_generic: bool, star: int, output_rate: float, acquire_rule: String, special_traits: Array = [], active_ability: Dictionary = {}) -> Dictionary:
@@ -418,7 +439,7 @@ static func _build_all() -> Array[Dictionary]:
 	# 铁幕系列 - 坦克与生存
 	out.append(_make_def("pi_iron_01", "铁幕-重锚", "iron_wall_corp", false, 3, 1.08, "faction_reputation_or_quest", ["重锚稳固：防御+8%，最大生命+10%"]))
 	out.append(_make_def("pi_iron_02", "铁幕-铸链", "iron_wall_corp", false, 5, 1.36, "faction_reputation_or_quest", ["铸链锁甲：防御+14%，受到的伤害-8%，能量消耗-1"]))
-	out.append(_make_def("pi_iron_03", "铁幕-王座", "iron_wall_corp", false, 7, 1.98, "faction_reputation_or_quest", ["王座威严：防御+20%，受到的伤害-12%，最大生命+25%"]))
+	out.append(_make_def("pi_iron_03", "铁幕-王座", "iron_wall_corp", false, 7, 1.98, "faction_reputation_or_quest", ["王座威严：防御+20%，受到的伤害-12%，最大生命+25%"], ability_fortress_bulwark(7)))
 
 	# 影幕系列 - 潜行与爆发
 	out.append(_make_def("pi_umbra_01", "影幕-薄刃", "void_research", false, 1, 0.92, "faction_reputation_or_quest", ["薄刃一击：首次攻击伤害+20%"]))

@@ -282,6 +282,10 @@ static func _apply_mod_stat_effects(stats: UnitStats, mods: Array) -> void:
 		"chain_chance": stats.chain_chance,
 		"shield_on_kill": stats.shield_on_kill,
 		"hp_regen": stats.hp_regen,
+		# v6.6: 改造条件型/乘数加成字段
+		"attack_fort_bonus": stats.attack_fort_bonus,
+		"splash_radius_bonus": stats.splash_radius_bonus,
+		"single_target_penalty": stats.single_target_penalty,
 	}
 	# 统一应用（支持 level_effects + effects 两种格式）
 	var result: Dictionary = ModificationRegistry.apply_with_level(base_dict, mods)
@@ -310,9 +314,14 @@ static func _apply_mod_stat_effects(stats: UnitStats, mods: Array) -> void:
 	stats.chain_chance = float(result.get("chain_chance", stats.chain_chance))
 	stats.shield_on_kill = float(result.get("shield_on_kill", stats.shield_on_kill))
 	stats.hp_regen = float(result.get("hp_regen", stats.hp_regen))
-	# v6.5: 武器类改造改变武器类型（影响弹道和命中效果）
-	if result.has("weapon_type"):
-		stats.weapon_type = int(result["weapon_type"])
+	# v6.6: 改造条件型/乘数加成字段写回
+	stats.attack_fort_bonus = float(result.get("attack_fort_bonus", stats.attack_fort_bonus))
+	stats.splash_radius_bonus = float(result.get("splash_radius_bonus", stats.splash_radius_bonus))
+	stats.single_target_penalty = float(result.get("single_target_penalty", stats.single_target_penalty))
+	# v6.5→v6.6: 武器类改造改变武器型号，写入 legacy_weapon_type（不污染 weapon_type 弹道字段）
+	# bullet 的 VFX/弹道 match 读 legacy_weapon_type，AI 曲射判断读 weapon_type
+	if result.has("legacy_weapon_type"):
+		stats.legacy_weapon_type = int(result["legacy_weapon_type"])
 	# _special 里的效果暂不处理（如 smoke_ignore 等无直接stat对应）
 	# 同步旧兼容字段
 	stats.attack_damage = stats.attack_light

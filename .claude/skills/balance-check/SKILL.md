@@ -15,7 +15,7 @@ description: 审查单位/MOD 平衡性数据，检查倍率和数值一致性
 检查 `data/battle_card_v3.gd` 中的 HP/伤害倍率：
 - WWI → WWII → Cold War → Modern → Near Future
 - 倍率应单调递增
-- 当前值：1.00 / 1.20 / 1.45 / 1.70 / 1.80
+- 当前值：1.00 / 1.20 / 1.40 / 1.65 / 1.80
 
 ### 2. 同级别单位 HP 关系
 检查 `data/default_cards.gd` 中同级别单位：

@@ -3,6 +3,7 @@ extends Control
 
 const DesignTokens = preload("res://resources/design_tokens.gd")
 const StoryNodes = preload("res://data/main_story_nodes.gd")
+const StoryFlags = preload("res://data/story/story_flags.gd")
 
 var _title_label: Label = null
 var _text_label: RichTextLabel = null
@@ -90,10 +91,33 @@ func show_ending(is_good: bool) -> void:
 		var speaker: String = dlg.get("speaker", "")
 		var text: String = dlg.get("text", "")
 		lines.append("[b]%s[/b]：%s" % [speaker, text])
+	# v6.6(剧情): 好结局追加真实者分支后果差异（补剧情.txt 第十一幕）
+	if is_good:
+		var branch_line: String = _get_realist_branch_epilogue()
+		if not branch_line.is_empty():
+			lines.append("")
+			lines.append(branch_line)
 	lines.append("")
 	lines.append("[color=aqua]你的全部符文将继承到下一个轮回。[/color]")
 	_text_label.text = "\n".join(lines)
 	visible = true
+
+## v6.6(剧情): 查询玩家在真实者支线的选择，返回对应的结局后果台词
+func _get_realist_branch_epilogue() -> String:
+	var qm: Node = get_node_or_null("/root/QuestManager")
+	if qm == null or not qm.has_method("get_quest_branch"):
+		return ""
+	# 查询真实者邀请任务的三个分支选择
+	var join_val: Variant = qm.get_quest_branch("q_realist_invite", "join")
+	var reject_val: Variant = qm.get_quest_branch("q_realist_invite", "reject")
+	var delay_val: Variant = qm.get_quest_branch("q_realist_invite", "delay")
+	if bool(join_val):
+		return "[color=purple][b]真实者[/b]：你选择了我们，而你没有背叛。新无限城里，我们会继续寻找真正的出口——这一次，一起。[/color]"
+	if bool(reject_val):
+		return "[color=cyan][b]海伦[/b]：你的忠诚没有白费。系统记录显示，E-10947 是5743次重启中唯一一个拒绝诱惑走到终点的人。[/color]"
+	if bool(delay_val):
+		return "[color=yellow][b]陈末[/b]：我谁都没选。也许这才是对的——在这个循环里，骑墙不是软弱，是清醒。[/color]"
+	return ""
 
 func _on_restart_pressed() -> void:
 	visible = false

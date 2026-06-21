@@ -19,6 +19,7 @@ signal btn_info_pressed
 signal btn_map_pressed
 signal btn_settings_pressed
 signal btn_save_pressed
+signal btn_afk_pressed
 signal btn_start_battle_pressed
 signal btn_pause_pressed
 signal btn_back_pressed
@@ -43,6 +44,7 @@ const BTN_ICON_BY_KEY: Dictionary = {
 	"map": "icon_map",
 	"settings": "icon_settings",
 	"save": "icon_save",
+	"afk": "icon_afk",
 }
 
 const BATTLE_BTN_ICON_BY_KEY: Dictionary = {
@@ -63,6 +65,7 @@ const BTN_CONFIGS: Array = [
 	["map",          "地图",   "btn_map_pressed"],
 	["settings",     "设置",   "btn_settings_pressed"],
 	["save",         "存档",   "btn_save_pressed"],
+	["afk",          "挂机",   "btn_afk_pressed"],
 ]
 
 # 右侧战斗控制按钮（开始/暂停/返回）

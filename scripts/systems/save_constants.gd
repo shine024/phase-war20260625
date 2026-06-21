@@ -33,3 +33,8 @@ const SK_CARD_COLLECTION: String = "card_collection"
 const SK_LEADERBOARD: String = "leaderboard"
 const SK_LEGACY_COMPANY_REP: String = "_legacy_company_rep"
 const SK_SYNTHESIS: String = "synthesis_state"
+# v6.6: 情报系统存档键
+const SK_INTEL_MANUAL: String = "intel_manual"
+const SK_INTEL_DISCOVERY: String = "intel_discovery"
+const SK_INTEL_EVOLUTION: String = "intel_evolution"
+const SK_EOM_MANAGER: String = "eom_manager"

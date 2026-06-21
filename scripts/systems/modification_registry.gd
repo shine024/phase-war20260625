@@ -246,6 +246,22 @@ static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary) -
 				if not result.has(effect_key):
 					result[effect_key] = 0.0
 				result[effect_key] = min(1.0, float(result[effect_key]) + float(effect_value))
+			# v6.6: attack_fort → 条件型对堡垒伤害加成（温压弹/爆破装置）
+			# 加法叠加（值是正小数），仅在 get_attack_vs() 对 FORT 目标时生效
+			"attack_fort":
+				if not result.has("attack_fort_bonus"):
+					result["attack_fort_bonus"] = 0.0
+				result["attack_fort_bonus"] += float(effect_value)
+			# v6.6: splash_radius → 溅射半径乘数加成（子母弹/近炸引信）
+			"splash_radius":
+				if not result.has("splash_radius_bonus"):
+					result["splash_radius_bonus"] = 0.0
+				result["splash_radius_bonus"] += float(effect_value)
+			# v6.6: single_target_penalty → 主目标伤害乘数（负值，子母弹平衡项）
+			"single_target_penalty":
+				if not result.has("single_target_penalty"):
+					result["single_target_penalty"] = 0.0
+				result["single_target_penalty"] += float(effect_value)
 			# v6.6: 补全高频失效的软特性 key（映射到已有 stat）
 			# accuracy_bonus：命中提升 → 映射为暴击率（命中系统简化，6个炮兵/防空/空战核心改造用它）
 			"accuracy_bonus":
@@ -267,6 +283,17 @@ static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary) -
 				if not result.has("attack_interval"):
 					result["attack_interval"] = 1.0
 				result["attack_interval"] = max(0.1, float(result["attack_interval"]) * (1.0 - float(effect_value)))
+			# v6.6: missile_dodge → 映射为通用闪避（反导主题改造：gen_09/aa_09/air_08）
+			# 当前弹道无"导弹 vs 其他"区分维度，干净映射为 dodge_chance
+			"missile_dodge":
+				if not result.has("dodge_chance"):
+					result["dodge_chance"] = 0.0
+				result["dodge_chance"] = min(1.0, float(result["dodge_chance"]) + float(effect_value))
+			# v6.6: counter_bonus → 映射为暴击率（反炮兵雷达 art_05，"精确还击"语义）
+			"counter_bonus":
+				if not result.has("crit_chance"):
+					result["crit_chance"] = 0.0
+				result["crit_chance"] = min(1.0, float(result["crit_chance"]) + float(effect_value))
 			"damage_reduction":
 				if not result.has(effect_key):
 					result[effect_key] = 0.0
@@ -287,9 +314,12 @@ static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary) -
 				if not result.has(effect_key):
 					result[effect_key] = 0.0
 				result[effect_key] = min(0.6, float(result[effect_key]) + float(effect_value))
-			# v6.5: 武器类改造改变武器类型（影响弹道和命中效果）
-			"weapon_type":
-				result[effect_key] = int(effect_value)
+			# v6.5→v6.6: 武器类改造改变武器型号（SHOTGUN/SNIPER/MISSILE 等 legacy 型号）
+			# 修复前：直接写入 weapon_type，污染了弹道类型字段（WeaponType 4值枚举），
+			# 导致 MISSILE(9) 被 AI 误判为非曲射。现写入独立的 legacy_weapon_type 字段
+			# （UnitStats/WeaponResource 均有此字段，bullet 的 VFX/弹道 match 读它）
+			"weapon_type", "legacy_weapon_type":
+				result["legacy_weapon_type"] = int(effect_value)
 			_:
 				if not result.has("_special"):
 					result["_special"] = {}

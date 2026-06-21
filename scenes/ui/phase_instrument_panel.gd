@@ -14,6 +14,7 @@ const DEBUG_PHASE_PANEL_LOG := false
 
 var slots: Array = []
 var _phase_level_label: Label = null
+var _phase_ability_label: Label = null  # v6.6: 主动能力提示行
 var _slots_refresh_pending: bool = false
 var _pending_slots_data: Array = []
 var rune_slot_count_cache: int = 0  # v6.2: 符文槽位数（用于显示提示）
@@ -94,11 +95,20 @@ func _ensure_phase_level_label() -> void:
 	_phase_level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_phase_level_label.add_theme_font_size_override("font_size", 12)
 	_phase_level_label.add_theme_color_override("font_color", Color(0.75, 0.9, 1.0, 0.95))
+	# v6.6: 主动能力提示标签（金色，置于等级标签下方）
+	_phase_ability_label = Label.new()
+	_phase_ability_label.name = "PhaseAbilityLabel"
+	_phase_ability_label.text = ""
+	_phase_ability_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_phase_ability_label.add_theme_font_size_override("font_size", 11)
+	_phase_ability_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2, 0.95))
 	# 父节点若在场景树构建中，同步 add_child 会失败；顺延到空闲帧
 	var idx: int = get_index()
 	_dbg_agent("H_busy_parent", "defer add_child phase label", {"parent": str(parent_box.name), "insert_index": idx})
 	parent_box.call_deferred("add_child", _phase_level_label)
 	parent_box.call_deferred("move_child", _phase_level_label, idx)
+	parent_box.call_deferred("add_child", _phase_ability_label)
+	parent_box.call_deferred("move_child", _phase_ability_label, idx + 1)
 
 func _refresh_phase_level_label() -> void:
 	var _pim_pl = PhaseInstrumentManager
@@ -114,6 +124,28 @@ func _refresh_phase_level_label() -> void:
 		_phase_level_label.text = "相位场 Lv.%d  MAX" % lv
 	else:
 		_phase_level_label.text = "相位场 Lv.%d  进度 %d/%d" % [lv, cur_xp, next_xp]
+	# v6.6: 同步刷新主动能力提示
+	_refresh_phase_ability_label()
+
+## v6.6: 从当前相位仪读取 active_ability，刷新能力提示行
+func _refresh_phase_ability_label() -> void:
+	if _phase_ability_label == null or not is_instance_valid(_phase_ability_label):
+		return
+	if PhaseInstrumentManager == null or not PhaseInstrumentManager.has_method("get_active_ability"):
+		_phase_ability_label.text = ""
+		return
+	var ability: Dictionary = PhaseInstrumentManager.get_active_ability()
+	if ability.is_empty():
+		_phase_ability_label.text = ""
+		return
+	var ability_name: String = String(ability.get("name", ""))
+	var ability_desc: String = String(ability.get("description", ""))
+	if not ability_name.is_empty() and not ability_desc.is_empty():
+		_phase_ability_label.text = "⚡ %s：%s" % [ability_name, ability_desc]
+	elif not ability_desc.is_empty():
+		_phase_ability_label.text = "⚡ %s" % ability_desc
+	else:
+		_phase_ability_label.text = "⚡ %s" % ability_name
 
 func _on_battle_ended(_player_won: bool) -> void:
 	_refresh_phase_level_label()

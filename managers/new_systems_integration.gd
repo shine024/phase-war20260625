@@ -2,7 +2,6 @@ extends Node
 ## 新系统集成脚本：自动连接所有新系统信号
 
 const _LawDefs = preload("res://data/phase_laws.gd")
-const _DmgNum = preload("res://scenes/effects/damage_number_display.gd")
 const _ScreenShake = preload("res://scenes/effects/screen_shake.gd")
 const _LawFx = preload("res://scenes/effects/phase_law_cast_effect.gd")
 
@@ -31,18 +30,20 @@ func _connect_signals() -> void:
 	if SignalBus.has_signal("blueprint_unlocked") and not SignalBus.blueprint_unlocked.is_connected(_on_blueprint_unlocked):
 		SignalBus.blueprint_unlocked.connect(_on_blueprint_unlocked)
 
-## 单位受伤 → 伤害数字 + 暴击屏幕震动（委托给 BattleFeedbackManager）
+## 单位受伤 → 暴击屏幕震动（伤害数字已由 BattleManager._on_unit_damaged_combat_feedback
+## 统一通过 CombatFeedback.show_damage 创建，含 80ms 节流；此处不再重复创建数字，
+## 否则会双数字 + 无节流刷屏。仅保留暴击屏幕震动反馈。）
 func _on_unit_damaged(unit: Node, _is_player: bool, damage: float, _position: Vector2) -> void:
 	var bfm = get_node_or_null("/root/BattleFeedbackManager")
-	if bfm and is_instance_valid(bfm):
-		bfm.on_unit_damaged(unit, damage, false)
-	else:
-		# 兜底：如果 BattleFeedbackManager 不可用，直接调用效果脚本
-		if not unit or not is_instance_valid(unit):
-			return
+	# 暴击判定：由攻击弹道打的 _vfx_crit_pending meta 决定（与 CombatFeedback 口径一致）
+	var is_crit: bool = unit != null and is_instance_valid(unit) and unit.has_meta("_vfx_crit_pending")
+	if bfm and is_instance_valid(bfm) and is_crit:
+		# 暴击屏幕震动（数字由 combat_feedback 负责，这里不重复创建）
 		var bf = unit.get_parent()
 		if bf:
-			_DmgNum.create_damage_number(bf, unit.global_position, int(damage), false)
+			var camera = bf.get_node_or_null("Camera2D")
+			if camera:
+				bfm.shake_screen(camera, 5.0, 0.3)
 
 ## 相位法则施放 → 特效（委托给 BattleFeedbackManager）
 func _on_phase_law_cast(law_id: String, position: Vector2, _family: String) -> void:

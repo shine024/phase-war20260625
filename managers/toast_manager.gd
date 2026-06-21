@@ -4,6 +4,11 @@ var deploy_toast: Control = null
 var save_toast: Control = null
 var active_toasts: Array = []
 
+func _ready() -> void:
+	# v6.6: 连接 SignalBus.show_toast，使全局 toast 提示（战斗/城市/背包等）能到达 ToastManager
+	# 之前此信号全程无连接，导致所有 SignalBus.show_toast.emit(...) 静默失效
+	SignalBus.show_toast.connect(show_toast)
+
 func show_toast(message: String, duration: float = 2.0, color: Color = Color(0.2, 0.8, 0.3), parent: Control = null) -> void:
 	if parent == null:
 		var tree := get_tree()

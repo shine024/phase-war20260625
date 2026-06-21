@@ -64,6 +64,14 @@ enum WeaponType {
 	SUPPORT = 3
 }
 
+# v6.6: 统一曲射武器判定 —— 与 bullet.gd _configure_behavior 的 _is_indirect 分支对齐
+# 含新枚举 INDIRECT(1)/AERIAL(2)，以及改造可能写入的 legacy 曲射值
+# ROCKET(3)/FLAK(7)/MISSILE(9)（见 WeaponTypeLegacy）
+# 修复前 AI 侧仅判 [INDIRECT, AERIAL]，导致 MISSILE(9) 等改造武器被误判为直射，
+# 与其曲射弹道行为(_is_indirect=true)矛盾
+static func is_indirect_weapon_type(wt: int) -> bool:
+	return wt == WeaponType.INDIRECT or wt == WeaponType.AERIAL or wt in [3, 7, 9]
+
 # 战斗定位枚举（单位类型）
 # v6.2: 攻防维度对齐后，攻防计算上 SUPPORT 归入 LIGHT、FORT 归入 ARMOR
 #       （参见 AttackCalculator.get_attack_vs / get_defense_vs 的 match 分组）

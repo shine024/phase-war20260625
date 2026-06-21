@@ -15,6 +15,7 @@ const MainBattleSetup = preload("res://scripts/systems/main_battle_setup.gd")
 const MainReward = preload("res://scripts/systems/main_reward.gd")
 const ToastUtils = preload("res://scripts/toast_utils.gd")
 const CardEnhancementPanelScene = preload("res://scenes/ui/card_enhancement_panel.tscn")
+const AFKModeManagerScript = preload("res://scripts/systems/afk_mode_manager.gd")
 const DEBUG_MAIN_LOG := false
 const DEBUG_LOG_PATH := "debug-22f19e.log"
 
@@ -25,6 +26,7 @@ var _battle_setup: MainBattleSetup = null
 var _reward: MainReward = null
 var _deploy_toast: ToastUtils = null
 var _save_toast: ToastUtils = null
+var _afk_manager: AFKModeManager = null
 
 func _debug_log(hypothesis_id: String, location: String, message: String, data: Dictionary = {}) -> void:
 	var payload := {
@@ -66,6 +68,7 @@ func _debug_log(hypothesis_id: String, location: String, message: String, data: 
 @onready var modification_overlay: Control    = $PopupLayer/ModificationOverlay
 @onready var evolution_overlay: Control       = $PopupLayer/EvolutionOverlay
 @onready var story_overlay: Control           = $PopupLayer/StoryOverlay
+@onready var afk_overlay: Control             = $PopupLayer/AFKOverlay
 @onready var level_display: Label = $HudLayer/TopCenterMeta/LevelDisplay
 
 func _ready() -> void:
@@ -94,6 +97,7 @@ func _ready() -> void:
 		bottom_function_bar.btn_map_pressed.connect(_on_map_pressed)
 		bottom_function_bar.btn_settings_pressed.connect(_on_settings_pressed)
 		bottom_function_bar.btn_save_pressed.connect(_on_manual_save_pressed)
+		bottom_function_bar.btn_afk_pressed.connect(_on_afk_pressed)
 		bottom_function_bar.btn_start_battle_pressed.connect(_on_start_battle)
 		bottom_function_bar.btn_pause_pressed.connect(_on_pause_pressed)
 		bottom_function_bar.btn_back_pressed.connect(_on_back_to_title)
@@ -133,11 +137,21 @@ func _apply_global_ui_textures() -> void:
 		UiAssetLoader.apply_close_icons_recursive(popup_layer)
 
 
+## v6.6(挂机): 转发自动部署推进。
+## AFKModeManager 是 RefCounted，无 _process 自动回调，故由主场景驱动。
+## 非挂机时首行短路，几乎零开销。
+func _process(delta: float) -> void:
+	if _afk_manager != null:
+		_afk_manager.process_auto_deploy(delta)
+
+
 func _deferred_non_critical_init() -> void:
 	# 注册新的游戏系统管理器
 	_setup_new_managers()
 	# 集成新系统
 	_integrate_new_systems()
+	# 初始化挂机管理器
+	_init_afk_manager()
 	# 启动新手教程（如果是新游戏）
 	_start_tutorial_if_needed()
 	# 初始化日常任务
@@ -400,6 +414,7 @@ func _on_panel_closed(key: String) -> void:
 		"enhancement":        _close_overlay(enhancement_overlay, "enhancement")
 		"modification":       _close_overlay(modification_overlay, "modification")
 		"evolution":          _close_overlay(evolution_overlay, "evolution")
+		"afk":                _close_overlay(afk_overlay, "afk")
 
 # ── 排行榜：PopupPanel 特殊处理 ──────────────────────────────
 func _toggle_leaderboard() -> void:
@@ -488,6 +503,7 @@ func _overlay_for_panel_key(panel_key: String) -> Control:
 		"enhancement": return enhancement_overlay
 		"modification": return modification_overlay
 		"evolution": return evolution_overlay
+		"afk": return afk_overlay
 	return null
 
 func _ensure_lazy_panel(panel_key: String) -> void:
@@ -663,6 +679,30 @@ func _on_info_pressed() -> void:
 	_play_sfx("button")
 	_toggle_overlay(intelligence_overlay, "info")
 
+# ── 挂机模式 ─────────────────────────────────────────────────
+func _init_afk_manager() -> void:
+	_afk_manager = AFKModeManagerScript.new()
+	_afk_manager.init(self, _battle_setup)
+	# 连接面板引用
+	var afk_panel_node = afk_overlay.get_node_or_null("CenterContainer/AFKPanel")
+	if afk_panel_node:
+		if afk_panel_node.has_method("set_afk_manager"):
+			afk_panel_node.set_afk_manager(_afk_manager)
+		# v6.6(挂机缩略图): 注入主场景引用，供面板定位 BattleContainer 取 ViewportTexture
+		if afk_panel_node.has_method("set_main_scene"):
+			afk_panel_node.set_main_scene(self)
+
+func _on_afk_pressed() -> void:
+	_play_sfx("button")
+	_toggle_overlay(afk_overlay, "afk")
+
+func _afk_start_battle(level: int) -> void:
+	"""由 AFKModeManager 调用，直接发起战斗"""
+	if GameManager == null:
+		return
+	GameManager.set_current_level(level)
+	call_deferred("_battle_setup.run_start_battle_sequence")
+
 # ── 战斗控制 ─────────────────────────────────────────────────
 func _on_start_battle() -> void:
 	_battle_setup.on_start_battle()
@@ -692,11 +732,16 @@ func _close_all_overlays() -> void:
 		quest_overlay, store_overlay, phase_law_overlay,
 		backpack_overlay, faction_overlay,
 		map_overlay, settings_overlay, intelligence_overlay,
-		growth_overlay,
+		growth_overlay, afk_overlay,
 	]
 	for ov in overlays:
-		if ov:
-			ov.visible = false
+		if ov == null:
+			continue
+		# v6.6(挂机缩略图): 挂机运行中保持 AFK 面板可见，让战场缩略图实时显示。
+		# run_start_battle_sequence 每场战斗开头会调此方法，跳过 afk_overlay 才能持续预览。
+		if ov == afk_overlay and _afk_manager != null and _afk_manager.is_running:
+			continue
+		ov.visible = false
 	# PopupPanel 类型的排行榜单独处理
 	if leaderboard_panel:
 		leaderboard_panel.hide()
@@ -714,7 +759,7 @@ func _get_battlefield() -> Node2D:
 func _is_any_overlay_open() -> bool:
 	for o in [backpack_overlay, quest_overlay,
 			store_overlay, phase_law_overlay, faction_overlay,
-			map_overlay, settings_overlay, manufacture_overlay]:
+			map_overlay, settings_overlay, manufacture_overlay, afk_overlay]:
 		if o and o.visible:
 			return true
 	return false
@@ -724,6 +769,10 @@ func _is_in_battle() -> bool:
 
 func _freeze_subviewport_if_not_in_battle() -> void:
 	if _is_in_battle():
+		return
+	# v6.6(挂机缩略图): 挂机运行中保持战斗视口持续渲染（UPDATE_ALWAYS），
+	# 供 AFK 面板的战场缩略图镜像 ViewportTexture。
+	if _afk_manager != null and _afk_manager.is_running:
 		return
 	var vp = get_node_or_null("BattleContainer/SubViewportContainer/SubViewport")
 	if vp and vp.render_target_update_mode != SubViewport.UPDATE_DISABLED:

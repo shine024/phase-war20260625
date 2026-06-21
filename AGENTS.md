@@ -33,7 +33,7 @@ Add `--rendering-driver opengl3` if Vulkan issues (applies to `--headless` / `--
 
 ## Architecture
 
-### Autoload Singletons (19 total, in project.godot load order)
+### Autoload Singletons (24 total, in project.godot load order)
 
 **Core autoloaded singletons (always loaded at startup):**
 | # | Singleton | File | Role |
@@ -46,7 +46,7 @@ Add `--rendering-driver opengl3` if Vulkan issues (applies to `--headless` / `--
 | 6 | `GameManager` | `managers/game_manager.gd` | Game flow: pre-battle → battle → post-battle; 15% phase master encounter |
 | 7 | `BlueprintManager` | `managers/blueprint_manager.gd` | Card account progression (copies, stars, mods, evolution, inherit bonus, HP floor) |
 | 8 | `DropManager` | `managers/drop_manager.gd` | Post-battle drop tables (13 drop types) and claiming |
-| 9 | `SaveManager` | `managers/save_manager.gd` | `user://save.json`, 3 slots, schema v5, migration chain v1→v5 |
+| 9 | `SaveManager` | `managers/save_manager.gd` | `user://save.json`, 3 slots, schema v6, migration chain v1→v6 |
 | 10 | `AudioManager` | `managers/audio_manager.gd` | Audio |
 | 11 | `PhaseLawManager` | `managers/phase_law_manager.gd` | Law research/equip/battle state; 4 families (STEEL/FLAME/THUNDER/VOID); nano budget |
 | 12 | `BasicResourceManager` | `managers/basic_resource_manager.gd` | Global currencies (nano materials, alloy, crystal, energy blocks, research points, permits) |
@@ -84,7 +84,7 @@ Add `--rendering-driver opengl3` if Vulkan issues (applies to `--headless` / `--
 | 9 | `version` | `VersionManager` | Version management |
 | 99 | `debug_log` | `DebugLog` | Debug logging |
 
-**v6.0 情报系统管理器** (已移至延迟加载):
+**v6.0 情报系统管理器** (project.godot autoload，同时在 ManagerLazyLoader 保留 ensure_loaded 别名入口):
 - `IntelManual` — 4维情报系统（basic/tactical/material/secret）
 - `IntelItemBag` — 情报道具背包（6种消耗品）
 - `IntelDiscoveryManager` — 战利品发现系统（112个揭示事件）
@@ -241,7 +241,7 @@ tests/
 ### Save System
 
 - Single JSON file: `user://save.json`, 3 save slots
-- Schema version 5, migration chain v1→v2→v3→v4→v5 via `scripts/systems/save_migration.gd` + `save_migration_v4.gd` + `save_migration_v5.gd`
+- Schema version 6, migration chain v1→v2→v3→v4→v5→v6 via `scripts/systems/save_migration.gd` + `save_migration_v4.gd` + `save_migration_v5.gd` + `save_migration_v6.gd`
 - Critical managers (10) load immediately; deferred managers (12) load in batches after scene ready
 - Auto-save on battle end + window close; backup every 15s
 
@@ -328,3 +328,69 @@ User-driven collaboration. Every task follows: **Question → Options → Decisi
 - `managers/battle/battle_spawn_system.gd` — 免能量+幻影部署+克隆体加成
 - `scripts/battle/attack_calculator.gd` — 直射穿透比例
 - `managers/phase_instrument_manager.gd` — get_active_ability()
+
+## v6.6 改造效果↔战斗卡属性关联修复 (2026-06-20)
+
+**问题**: `ModificationRegistry._apply_single_mod_effects()` 的 match 分支是改造效果应用的唯一闸门；落入 `default` 分支的 effect key 被塞进 `result["_special"]`，而 `unit_stats_table._apply_mod_stat_effects()` 完全不读 `_special`（注释自承认"暂不处理"），导致一批改造在战斗中空转。
+
+**修复范围**: A类——5个真正属于战斗卡属性范畴的缺口（涉及 art_04/05/11、eng_02、aa_05、gen_09、aa_09、air_08 共8个改造模块）。B/C类约30个 key（环境/情报/经济/光环/战术机制类，如 night_bonus/vision/ally_*/multi_target/missile_intercept 等）有意保留现状——它们本就不属于战斗卡属性范畴，强行映射会语义错位，留待对应系统实现时再接。
+
+**5个修复点:**
+
+| effect key | 修复方式 | 涉及改造 |
+|-----------|---------|----------|
+| `attack_fort` | 新增条件型字段 `attack_fort_bonus`，FORT目标在 get_attack_vs() 叠加（复用 armor_pen_vs_* 模式） | art_11温压弹+50%、eng_02爆破+40% |
+| `splash_radius` | 新增 `splash_radius_bonus`，_apply_splash 半径改为 80×(1+bonus) | art_04子母弹+50%、aa_05近炸+30% |
+| `single_target_penalty` | 新增字段，主目标伤害×(1+penalty)，放在暴击后溅射前，maxf(0,...)防负 | art_04子母弹-20% |
+| `missile_dodge` | 映射为 dodge_chance（反导语义同源） | air_08/aa_09/gen_09 +0.25~0.30 |
+| `counter_bonus` | 映射为 crit_chance（"精确还击"语义） | art_05反炮兵雷达+30% |
+
+**关键文件:**
+- `resources/unit_stats.gd` — 新增3字段：attack_fort_bonus / splash_radius_bonus / single_target_penalty
+- `scripts/systems/modification_registry.gd` — _apply_single_mod_effects match增加5个分支
+- `resources/unit_stats_table.gd` — _apply_mod_stat_effects 增加3字段的 base_dict + 写回
+- `scripts/battle/attack_calculator.gd` — get_attack_vs() FORT分支叠加 attack_fort_bonus
+- `scripts/battle/module_effect_handler.gd` — _apply_splash 动态半径 + on_bullet_hit 应用 single_target_penalty
+
+**设计决策:**
+1. attack_fort 用条件型字段而非新攻击维度——FORT仍走ARMOR维度，仅叠加条件加成，零侵入
+2. single_target_penalty 放暴击后/溅射前——只惩罚主目标不影响溅射伤害，符合子母弹"散布换精度"语义
+3. 向后兼容——3个新字段默认0，未装备相关改造时行为与改动前完全一致
+
+**平衡性:** 8个改造数值全部通过复核。2处WARN（aa_05双重激活、missile_dodge系列dodge量级偏高）均为"从空转激活"而非叠加超模，有 min(1.0) 上限保护且与 power_mult 匹配，建议后续实机观察。
+
+**验证说明:** Godot headless --check-only 因项目体量（133卡+19 autoload）5分钟超时（引擎成功启动到DefaultCards构建阶段，autoload链路无语法错误），改为静态一致性核对（Grep确认3字段全链路拼写一致+5个match key完整+缩进正确）——全部通过。
+
+## v6.6 全面一致性修复 (2026-06-21)
+
+基于全项目数据一致性/功能贯通性/UI属性衔接性审查，修复 5 个 CRITICAL + 1 个 HIGH 问题。
+
+**修复点:**
+
+| 编号 | 问题 | 修复 |
+|------|------|------|
+| C1 | 情报4 manager（IntelManual/IntelDiscoveryManager/IntelEvolutionManager/EnemyOriginModManager）进度不存档，重启丢失 | 新增 save_state/load_state 接口 + 注册到 SaveManager（critical+deferred）+ SK_常量；旧独立文件兼容读取 |
+| C2 | SignalBus.show_toast 全程无连接，所有 toast 提示静默失效 | ToastManager._ready 连接 SignalBus.show_toast + save_manager 预加载 ToastManager |
+| C3 | world_map_panel.tscn 缺失（UILazyLoader 配置死链） | 删除 ui_lazy_loader 的 map 配置（功能由 main.tscn 内联节点承担，lazy-load 永不触发） |
+| C4 | 5 个信号（quest_completed/task_completed/achievement_unlocked/achievement_progress_updated/daily_tasks_refreshed）被 connect 但从不 emit，任务/成就完成 UI 不刷新 | 各 manager 在本地 signal.emit 后追加 SignalBus 镜像 emit |
+| C5 | weapon_type 两套枚举混用：改造写入 legacy 值(5/6/9)污染 weapon_type 弹道字段，导弹(9)被 AI 误判为直射 | 新增 GC.is_indirect_weapon_type() 统一曲射判定（含 ROCKET/FLAK/MISSILE）；改造改写 legacy_weapon_type 字段（不污染 weapon_type）；bullet 传值优先 legacy |
+| H1 | 情报5 manager 三重注册（autoload + lazy_loader + CORE 不同步） | 保留 lazy_loader 配置作 ensure_loaded 入口（4处调用依赖），加注释澄清 autoload+别名双层设计 |
+
+**关键文件:**
+- `scripts/systems/intel_manual.gd` / `intel_discovery_manager.gd` / `intel_evolution_manager.gd` / `enemy_origin_mod_manager.gd` — save_state/load_state + 去 _ready 自加载
+- `managers/save_manager.gd` — 注册4 manager（CRITICAL/DEFERRED/RESETTABLE + SK_常量）+ 预加载 ToastManager
+- `scripts/systems/save_constants.gd` — 4 个情报 SK_ 常量
+- `managers/toast_manager.gd` — _ready 连接 show_toast
+- `managers/ui_lazy_loader.gd` — 删 map 死配置
+- `managers/quest_manager.gd` / `daily_task_manager.gd` / `achievement_manager.gd` — 补 SignalBus 镜像 emit
+- `resources/game_constants.gd` — is_indirect_weapon_type() 辅助函数
+- `scripts/battle/construct_unit_ai.gd` / `scenes/units/enemy_unit.gd` — 曲射判断改用统一辅助函数 + bullet 传值优先 legacy
+- `scripts/systems/modification_registry.gd` / `resources/unit_stats_table.gd` — weapon_type key 改写 legacy_weapon_type
+- `managers/manager_lazy_loader.gd` — intel 配置加 autoload 别名注释
+
+**设计决策:**
+1. C1 完全切换统一存档（清空字段重置），load_state 收到空字典时兼容读取旧独立文件（首次迁移不丢进度）
+2. C5 用统一辅助函数而非分离双字段重构——改造写入 legacy_weapon_type（已存在字段），AI 判断用 is_indirect_weapon_type 扩展范围，bullet 传值优先 legacy，最小改动覆盖全链路
+3. H1 保留 lazy_loader 配置（4处 ensure_loaded 调用依赖），仅加注释澄清——删除会破坏现有调用链
+
+**文档同步:** AGENTS.md autoload 数量(19→24)、schema(v5→v6)、迁移链补 v6、情报系统说明；balance-check SKILL.md era 倍率(1.45/1.70→1.40/1.65)

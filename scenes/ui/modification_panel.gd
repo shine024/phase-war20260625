@@ -215,6 +215,16 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 	var row1 := HBoxContainer.new()
 	row1.add_theme_constant_override("separation", 8)
 	row1.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# 改造图标
+	var icon_path: String = mod_data.get("icon", "")
+	if not icon_path.is_empty() and ResourceLoader.exists(icon_path, "Texture2D"):
+		var tex_rect := TextureRect.new()
+		tex_rect.texture = load(icon_path)
+		tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tex_rect.custom_minimum_size = Vector2(28, 28)
+		tex_rect.tooltip_text = mod_data.get("name", mod_id)
+		row1.add_child(tex_rect)
 	row1.add_child(_make_label(mod_data.get("name", mod_id), 13, Color(0.91, 0.93, 0.96, 1), true))
 	var status_col := Color(0, 0.94, 1, 0.9)
 	var status_text := "可安装"
@@ -313,6 +323,16 @@ func _refresh_installed_list(installed_list: Control) -> void:
 
 		var hbox := HBoxContainer.new()
 		hbox.add_theme_constant_override("separation", 6)
+
+		# 已安装改造图标
+		var icon_path: String = mod_data.get("icon", "")
+		if not icon_path.is_empty() and ResourceLoader.exists(icon_path, "Texture2D"):
+			var tex_rect := TextureRect.new()
+			tex_rect.texture = load(icon_path)
+			tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			tex_rect.custom_minimum_size = Vector2(20, 20)
+			hbox.add_child(tex_rect)
 
 		var lbl := Label.new()
 		var status_prefix: String = "✓ " if enabled else "⊘ "

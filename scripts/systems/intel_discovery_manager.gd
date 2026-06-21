@@ -56,7 +56,7 @@ var _save_pending: bool = false
 # ── 生命周期 ──────────────────────────────────────────────────────
 
 func _ready() -> void:
-	_load_state()
+	# v6.6: 移除自加载，由 SaveManager 统一加载
 	## 连接IntelManual信号
 	var im: Node = get_node_or_null("/root/IntelManual")
 	if im:
@@ -73,10 +73,9 @@ func _notification(what: int) -> void:
 const SaveUtils = preload("res://scripts/save_utils.gd")
 const STATE_SAVE_NAME: String = "intel_discovery_state"
 
-func _save_state() -> void:
-	if not _state_dirty:
-		return
-	var data: Dictionary = {
+## v6.6: 统一存档接口（供 SaveManager 调用，无视脏标记——SaveManager 调用即权威保存点）
+func save_state() -> Dictionary:
+	return {
 		"triggered_reveals": _triggered_reveals.duplicate(),
 		"unlocked_eom": _unlocked_eom.duplicate(),
 		"eom_fragments": _eom_fragments.duplicate(),
@@ -85,7 +84,26 @@ func _save_state() -> void:
 		"stat_visibility": _stat_visibility.duplicate(),
 		"unlocked_lore_pages": _unlocked_lore_pages.duplicate(),
 	}
-	SaveUtils.save_data_to_file(data, STATE_SAVE_NAME)
+
+## v6.6: 统一存档加载接口。data 为空时尝试兼容读取旧独立文件
+func load_state(data: Dictionary) -> void:
+	var src: Dictionary = data
+	if src.is_empty():
+		src = SaveUtils.load_data_from_file(STATE_SAVE_NAME)
+		if src.is_empty():
+			return
+	_triggered_reveals = src.get("triggered_reveals", {})
+	_unlocked_eom = src.get("unlocked_eom", {})
+	_eom_fragments = src.get("eom_fragments", {})
+	_weakness_bonuses = src.get("weakness_bonuses", {})
+	_drop_rate_bonuses = src.get("drop_rate_bonuses", {})
+	_stat_visibility = src.get("stat_visibility", {})
+	_unlocked_lore_pages = src.get("unlocked_lore_pages", {})
+
+func _save_state() -> void:
+	if not _state_dirty:
+		return
+	SaveUtils.save_data_to_file(save_state(), STATE_SAVE_NAME)
 	_state_dirty = false
 
 ## 延迟保存：通过 call_deferred 避免在结算链内同步 I/O
@@ -106,16 +124,20 @@ func _deferred_save_if_dirty() -> void:
 		_save_state()
 	)
 
+## 兼容旧调用（部分内部逻辑仍调用 _load_state）
 func _load_state() -> void:
-	var data: Dictionary = SaveUtils.load_data_from_file(STATE_SAVE_NAME)
-	_triggered_reveals = data.get("triggered_reveals", {})
-	_unlocked_eom = data.get("unlocked_eom", {})
-	_eom_fragments = data.get("eom_fragments", {})
-	_weakness_bonuses = data.get("weakness_bonuses", {})
-	_drop_rate_bonuses = data.get("drop_rate_bonuses", {})
-	_stat_visibility = data.get("stat_visibility", {})
-	_unlocked_lore_pages = data.get("unlocked_lore_pages", {})
-	# [DEBUG] print("[IntelDiscoveryManager] 加载完成，已触发揭示 %d，已解锁敌源MOD %d" % [_triggered_reveals.size(), _unlocked_eom.size()])
+	load_state({})
+
+## v6.6: 新游戏重置——清空所有字段，不读旧文件（区别于 load_state({}) 的兼容读取）
+func reset_progress() -> void:
+	_triggered_reveals.clear()
+	_unlocked_eom.clear()
+	_eom_fragments.clear()
+	_weakness_bonuses.clear()
+	_drop_rate_bonuses.clear()
+	_stat_visibility.clear()
+	_unlocked_lore_pages.clear()
+	_state_dirty = false
 
 # ── 核心接口：战斗情报收获生成 ───────────────────────────────────
 

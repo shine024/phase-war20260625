@@ -122,6 +122,9 @@ func setup(_is_player: bool, p_wave: int, p_archetype_id: String = "basic_infant
 	wave_index = p_wave
 	archetype_id = p_archetype_id
 	_apply_archetype_stats()
+	# v6.6(剧情): 二周目难度提升（补剧情.txt L186 敌人属性×1.2）
+	# 在 _apply_archetype_stats 设置基础值后、max_hp=hp 前统一应用倍率
+	_apply_ng_plus_scaling()
 	# setup 在 add_child() 之前被调用时，当前节点不在有效场景树内；
 	# 延后执行可避免 Godot 报绝对路径 get_node/active scene tree 相关警告。
 	if is_inside_tree():
@@ -309,6 +312,33 @@ func _apply_archetype_stats() -> void:
 	_base_attack_interval = attack_interval
 	_base_stats_ready = true
 	_apply_visual_from_archetype(cfg)
+
+
+## v6.6(剧情): 二周目敌人属性×1.2（补剧情.txt 第十二幕 L186）
+## 仅对敌方单位生效（_is_player=false 的 enemy_unit），玩家单位不受影响
+## 同时更新裸字段和 UnitStats 对象，确保 AttackCalculator 读取一致的数值
+func _apply_ng_plus_scaling() -> void:
+	var gm: Node = get_node_or_null("/root/GameManager")
+	if gm == null or not gm.has_method("is_ng_plus_active"):
+		return
+	if not gm.is_ng_plus_active():
+		return
+	var mult: float = float(gm.get_ng_plus_enemy_mult()) if gm.has_method("get_ng_plus_enemy_mult") else 1.2
+	if mult <= 1.0:
+		return
+	# 裸字段（战斗中直接读取的属性）
+	hp = maxf(1.0, hp * mult)
+	attack_damage = maxf(0.1, attack_damage * mult)
+	defense = maxf(0.0, defense * mult)
+	# UnitStats 对象（AttackCalculator / 词条效果读取的属性）
+	if stats != null:
+		stats.max_hp = maxf(1.0, float(stats.max_hp) * mult)
+		stats.attack_damage = maxf(0.1, float(stats.attack_damage) * mult)
+		stats.attack_light = maxf(0.1, float(stats.attack_light) * mult)
+		stats.attack_armor = maxf(0.1, float(stats.attack_armor) * mult)
+		stats.attack_air = maxf(0.1, float(stats.attack_air) * mult)
+		if "defense" in stats:
+			stats.defense = maxf(0.0, float(stats.defense) * mult)
 
 
 ## v6.4: 推断敌人 unit_subtype（炮兵/支援/堡垒/防空）
@@ -757,8 +787,8 @@ func _do_attack() -> void:
 		if _presentation_card_grid:
 			_play_card_attack_nudge()
 		return
-	# v6.2: 敌方曲射/空射走 indirect batch 批处理
-	if wt in [GC.WeaponType.INDIRECT, GC.WeaponType.AERIAL]:
+	# v6.2: 敌方曲射/空射走 indirect batch 批处理（v6.6: 统一曲射判定）
+	if GC.is_indirect_weapon_type(wt):
 		if BattleManager and is_instance_valid(BattleManager.enemy_indirect_batch):
 			if BattleManager.enemy_indirect_batch.has_method("fire"):
 				BattleManager.enemy_indirect_batch.fire(global_position, target, dmg_out, wt, self, stats, miss, weapon_name_str)
@@ -776,7 +806,9 @@ func _do_attack() -> void:
 		if bullet == null:
 			bullet = BulletScene.instantiate()
 		bullet.global_position = global_position
-		bullet.setup(target, pellet_dmg, false, wt, self, stats, miss, weapon_name_str, pre_calc)
+		# v6.6: 优先传 legacy_weapon_type（决定 VFX/弹道），否则回退到 weapon_type
+		var _vfx_wt: int = (stats.legacy_weapon_type if stats and stats.legacy_weapon_type > 0 else wt)
+		bullet.setup(target, pellet_dmg, false, _vfx_wt, self, stats, miss, weapon_name_str, pre_calc)
 		var current_parent: Node = bullet.get_parent()
 		if current_parent != root_2d:
 			if current_parent != null:
@@ -814,6 +846,8 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 	var hp_loss: float = amount
 	if _cached_is_card_grid:
 		var pen: float = 0.0
+		# 攻击者类型（用于选对应维度的防御）
+		var attacker_kind: int = -1
 		if attacker != null and is_instance_valid(attacker) and "stats" in attacker:
 			var atk_stats: Variant = attacker.get("stats")
 			if atk_stats is UnitStats:
@@ -824,7 +858,23 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 					pen = (atk_stats as UnitStats).get_effective_armor_penetration(self_kind)
 				else:
 					pen = float((atk_stats as UnitStats).armor_penetration)
-		var eff_def: float = CardGridDamage.effective_defense(defense, pen)
+				attacker_kind = int((atk_stats as UnitStats).combat_kind)
+		# v6.6 修复：防御按攻击者类型选三维维度，而非用单一 defense 字段。
+		# 修复前用 defense 单字段（多为配置旧值/5.0默认），三维 defense_light/armor/air 形同虚设，
+		# 导致高防敌人被打像没防御。与 swarm_enemy_slot.take_damage 口径对齐。
+		var base_def: float = defense  # 兜底：旧单字段
+		if stats != null and attacker_kind >= 0:
+			match attacker_kind:
+				GC.CombatKind.LIGHT, GC.CombatKind.SUPPORT:
+					base_def = stats.defense_light
+				GC.CombatKind.ARMOR, GC.CombatKind.FORT:
+					base_def = stats.defense_armor
+				GC.CombatKind.AIR:
+					base_def = stats.defense_air
+		elif stats != null:
+			# 攻击者类型未知时取三维最大值（保守，不致过脆）
+			base_def = maxf(stats.defense_light, maxf(stats.defense_armor, stats.defense_air))
+		var eff_def: float = CardGridDamage.effective_defense(base_def, pen)
 		var dodge: float = 0.0
 		if stats != null:
 			dodge = float(stats.dodge_chance)
@@ -841,15 +891,19 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 	# 记录最后伤害来源（仅玩家单位）
 	if attacker != null and is_instance_valid(attacker) and attacker is Node and attacker.is_in_group("player_units"):
 		last_damage_source = attacker
-	hp -= hp_loss * _incoming_damage_mul
+	# v6.6 修复：_incoming_damage_mul（战场环境 burn_on_hit 等带来的额外受伤倍率）
+	# 此前只作用于 hp 扣减，不作用于伤害数字显示，导致飘字与血条实际扣血矛盾。
+	# 现统一用 final_loss 扣血、发信号、触发受击反馈，三者保持一致。
+	var final_loss: float = hp_loss * _incoming_damage_mul
+	hp -= final_loss
 	# v6.4: 受击视觉反馈（复用 construct_unit 的闪白/抖动模式）
-	if hp > 0 and hp_loss > 0:
+	if hp > 0 and final_loss > 0:
 		_play_hit_flash()
 		_play_hit_shake()
 	# 性能优化：在 HP 变化时更新 HP 条
 	_update_hp_bar()
 	if SignalBus:
-		SignalBus.unit_damaged.emit(self, false, hp_loss, global_position)
+		SignalBus.unit_damaged.emit(self, false, final_loss, global_position)
 	if hp <= 0:
 		_die()
 

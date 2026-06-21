@@ -131,6 +131,57 @@ const LORE_DATABASE: Dictionary = {
 			"description": "一份关于步兵特种改造的秘密配方，将光学迷彩技术与步兵护甲结合的方案。这种隐匿技术不在标准进化图谱中，属于非对称作战的特殊路线。",
 			"flavor_text": "\"看不见的士兵，才是战场上最致命的威胁。\"",
 		},
+		# v6.6: 隐藏情报 — 来自 intel_reveal_events.gd 揭示事件奖励
+		# cipher_fragment_01~07 分别由 7 个敌种的"机密档案·神秘代码"揭示事件奖励，
+		# 每个 fragment 对应一个敌方秘密计划代号。07 之外此前缺失，导致揭示时 push_error。
+		"cipher_fragment_01": {
+			"id": "cipher_fragment_01",
+			"name": "密码碎片·第七计划",
+			"era": 1,
+			"category": "intelligence",
+			"description": "从缴获的步兵通讯设备中破译的加密片段，提及'第七计划'与代号'影刃'的特种作战研究。这暗示着步兵存在一条非标准的进化路线。",
+			"flavor_text": "\"最普通的兵种，藏着最不普通的秘密。\"",
+		},
+		"cipher_fragment_02": {
+			"id": "cipher_fragment_02",
+			"name": "密码碎片·燃烬计划",
+			"era": 2,
+			"category": "intelligence",
+			"description": "截获的火焰兵部队通讯，记录了'燃烬计划'——将纳米核心注入火焰武器系统，追求极致的热能杀伤与自我修复能力。",
+			"flavor_text": "\"当火焰学会自我愈合，就没有什么能将它扑灭。\"",
+		},
+		"cipher_fragment_03": {
+			"id": "cipher_fragment_03",
+			"name": "密码碎片·铁壁协议",
+			"era": 2,
+			"category": "intelligence",
+			"description": "装甲部队的机密通讯，阐述了'铁壁协议'——一种号称不可渗透的全领域防御系统，将反应装甲与自适应结构融合。",
+			"flavor_text": "\"最好的进攻，是让敌人无法进攻。\"",
+		},
+		"cipher_fragment_04": {
+			"id": "cipher_fragment_04",
+			"name": "密码碎片·天罚系统",
+			"era": 3,
+			"category": "intelligence",
+			"description": "火炮阵地的加密档案，揭示了'天罚系统'的构想——通过空中炮艇平台实现跨域精确打击，模糊了火炮与空军的界限。",
+			"flavor_text": "\"炮弹不再只从地面飞来。\"",
+		},
+		"cipher_fragment_05": {
+			"id": "cipher_fragment_05",
+			"name": "密码碎片·影刃计划",
+			"era": 3,
+			"category": "intelligence",
+			"description": "隐匿部队的最高机密，记录了'影刃特种部队'的终极隐匿计划——从无败绩的传说背后，是光学迷彩与相位隐身的结合。",
+			"flavor_text": "\"看不见的刀，才是最锋利的。\"",
+		},
+		"cipher_fragment_06": {
+			"id": "cipher_fragment_06",
+			"name": "密码碎片·创世纪计划",
+			"era": 4,
+			"category": "intelligence",
+			"description": "纳米核心 BOSS 的核心数据，详述了'创世纪计划'——纳米技术与人类的终极融合，追求永不消亡的自我进化形态。",
+			"flavor_text": "\"死亡，只是另一种需要被修复的故障。\"",
+		},
 		"cipher_fragment_07": {
 			"id": "cipher_fragment_07",
 			"name": "密码碎片·天罚计划",

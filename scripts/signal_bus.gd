@@ -132,6 +132,12 @@ signal story_chapter_selected(chapter_id: String)             ## 玩家选择了
 signal story_campaign_completed()                             ## 剧情模式全部完成
 signal story_dialogue_finished()                              ## 对话播放完毕
 
+# v6.6(剧情): docs/补剧情.txt 城市循环模式专用信号
+signal city_day_started(day: int)                              ## 每天开始（DayClock.day_started 镜像转发）
+signal city_emergency(announcement: String)                    ## 全城紧急事件（如海伦宣告倒计时）
+signal helen_guidance(message: String)                         ## 海伦主动引导提示
+signal npc_event(npc_id: String, event_key: String)            ## NPC 剧情事件（林薇归来/洛克失踪等）
+
 # 通用 UI 反馈
 signal show_toast(message: String)
 

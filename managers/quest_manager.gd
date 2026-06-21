@@ -30,6 +30,9 @@ signal quest_phase_master_defeated(quest_id: String, master_name: String)
 var _accepted: Dictionary = {}
 # 已完成过的任务 id
 var _completed_ids: Array = []
+# v6.6(剧情): 已揭示的隐藏任务 id 集合（补剧情.txt 第四幕真实者支线）
+# hidden=true 的任务初始不可见，由 NPC 对话/剧情节点 reveal_quest 后才出现在任务板
+var _revealed_quest_ids: Array[String] = []
 
 const MAX_ACCEPTED: int = 5
 
@@ -204,6 +207,9 @@ func accept_quest(quest_id: String) -> bool:
 	var def: Dictionary = QuestDefs.get_by_id(quest_id)
 	if def.is_empty():
 		return false
+	# v6.6(剧情): hidden 任务必须先 reveal 才能接（补剧情.txt 真实者支线）
+	if not is_quest_available(quest_id):
+		return false
 	_accepted[quest_id] = {"progress": {}, "cleared_levels": []}
 	quest_accepted.emit(quest_id)
 	quest_progress_changed.emit(quest_id)
@@ -212,6 +218,58 @@ func accept_quest(quest_id: String) -> bool:
 func abandon_quest(quest_id: String) -> void:
 	_accepted.erase(quest_id)
 	quest_progress_changed.emit(quest_id)
+
+# ──────────────── v6.6(剧情): 隐藏/分支任务系统（补剧情.txt 第四幕真实者的阴影）────────────────
+
+## 任务是否当前可接（可见且未完成）
+## hidden=true 的任务需先 reveal_quest 揭示；prereq 任务需先完成
+func is_quest_available(quest_id: String) -> bool:
+	var def: Dictionary = QuestDefs.get_by_id(quest_id)
+	if def.is_empty():
+		return false
+	# hidden 且未揭示 → 不可接
+	if bool(def.get("hidden", false)) and not _revealed_quest_ids.has(quest_id):
+		return false
+	# prereq 任务未完成 → 不可接
+	var prereq: String = String(def.get("prereq", ""))
+	if not prereq.is_empty() and not is_completed_ever(prereq):
+		return false
+	return true
+
+## 揭示一个隐藏任务（由 NPC 对话/剧情节点调用，补剧情.txt 真实者邀请）
+func reveal_quest(quest_id: String) -> bool:
+	if not _revealed_quest_ids.has(quest_id):
+		_revealed_quest_ids.append(quest_id)
+		if SignalBus.has_signal("show_toast"):
+			SignalBus.show_toast.emit("新任务已揭示")
+		return true
+	return false
+
+## 任务是否已被揭示（隐藏任务可见性查询）
+func is_quest_revealed(quest_id: String) -> bool:
+	return _revealed_quest_ids.has(quest_id)
+
+## 设置任务分支结果（补剧情.txt 第四幕"加入/拒绝/拖延真实者"选择）
+## branch_key 存入 StoryManager story_flags，供后续剧情节点判定
+func set_quest_branch(quest_id: String, branch_key: String, branch_value: Variant = true) -> void:
+	var sm: Node = get_node_or_null("/root/StoryManager")
+	if sm and sm.has_method("set_story_flag"):
+		# 分支标记命名：quest_<quest_id>_<branch_key>
+		sm.set_story_flag("quest_%s_%s" % [quest_id, branch_key], branch_value)
+	# 揭示分支后续任务（如有）
+	var def: Dictionary = QuestDefs.get_by_id(quest_id)
+	var branches: Dictionary = def.get("branches", {})
+	if branches.has(branch_key):
+		var next_quest: String = String(branches[branch_key].get("next_quest", ""))
+		if not next_quest.is_empty():
+			reveal_quest(next_quest)
+
+## 获取任务分支结果（供剧情节点查询玩家选择）
+func get_quest_branch(quest_id: String, branch_key: String) -> Variant:
+	var sm: Node = get_node_or_null("/root/StoryManager")
+	if sm and sm.has_method("get_story_flag"):
+		return sm.get_story_flag("quest_%s_%s" % [quest_id, branch_key], null)
+	return null
 
 func get_accepted_quest_ids() -> Array:
 	return _accepted.keys()
@@ -375,6 +433,8 @@ func _try_complete(quest_id: String) -> void:
 		_completed_ids.append(quest_id)
 	quest_completed.emit(quest_id, rewards)
 	quest_progress_changed.emit(quest_id)
+	# v6.6: 同步镜像到 SignalBus（audio/全局监听者订阅的是 SignalBus 版本）
+	SignalBus.quest_completed.emit(quest_id, rewards)
 
 func _grant_rewards(rewards: Dictionary) -> void:
 	var bm = get_node_or_null("/root/BlueprintManager")
@@ -411,6 +471,8 @@ func save_state() -> Dictionary:
 	return {
 		"accepted": _accepted.duplicate(true),
 		"completed_ids": _completed_ids.duplicate(),
+		# v6.6(剧情): 持久化已揭示的隐藏任务（补剧情.txt 真实者支线）
+		"revealed_quest_ids": _revealed_quest_ids.duplicate(),
 	}
 
 func load_state(data: Dictionary) -> void:
@@ -418,6 +480,10 @@ func load_state(data: Dictionary) -> void:
 		_accepted = (data["accepted"] as Dictionary).duplicate(true)
 	if data.has("completed_ids") and data["completed_ids"] is Array:
 		_completed_ids = (data["completed_ids"] as Array).duplicate()
+	# v6.6(剧情): 恢复已揭示的隐藏任务（旧存档无此字段时为空，需重新触发剧情揭示）
+	_revealed_quest_ids.clear()
+	for qid in data.get("revealed_quest_ids", []):
+		_revealed_quest_ids.append(String(qid))
 
 # ──────────────── 进攻/防守任务辅助 ────────────────
 

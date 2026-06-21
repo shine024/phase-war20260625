@@ -144,6 +144,19 @@ var armor_pen_vs_light: float = 0.0
 var armor_pen_vs_armor: float = 0.0
 var armor_pen_vs_air: float = 0.0
 
+## v6.6: 条件型对堡垒伤害加成（来自 attack_fort 改造，如温压弹/爆破装置）
+## FORT 目标在 get_attack_vs() 被归入 ARMOR 维度吃 attack_armor，
+## 此字段为额外的对堡垒特攻乘数：实际伤害 = attack_armor × (1 + attack_fort_bonus)
+var attack_fort_bonus: float = 0.0
+
+## v6.6: 溅射半径加成（来自 splash_radius 改造，如子母弹/近炸引信）
+## _apply_splash 的半径 = 80 × (1 + splash_radius_bonus)，默认 0 时与原硬编码行为一致
+var splash_radius_bonus: float = 0.0
+
+## v6.6: 主目标伤害惩罚（来自 single_target_penalty 改造，值是负小数）
+## 子母弹等范围武器的单目标伤害平衡项：主目标伤害 × (1 + single_target_penalty)
+var single_target_penalty: float = 0.0
+
 ## 连锁触发概率（0.0~1.0，来自 chain_lightning 词条）
 @export var chain_chance: float = 0.0
 

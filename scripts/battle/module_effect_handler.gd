@@ -42,6 +42,11 @@ static func on_bullet_hit(attacker: Node, target: Node, base_damage: float) -> f
 	# 5. 吸血
 	_apply_lifesteal(attacker, final_damage, stats)
 
+	# v6.6: 主目标伤害惩罚（子母弹等范围武器的单目标平衡项，值为负小数）
+	# 默认 0 时 (1+0)=1 无影响；放在最终伤害确定后、溅射/连锁之前
+	if stats.single_target_penalty != 0.0:
+		final_damage = maxf(0.0, final_damage * (1.0 + stats.single_target_penalty))
+
 	# 6. 溅射
 	_apply_splash(attacker, target, final_damage, stats)
 
@@ -157,7 +162,9 @@ static func _apply_splash(attacker: Node, target: Node, damage: float, stats: Un
 		return
 	# 溅射逻辑：对目标周围其他敌人造成溅射伤害
 	var splash_dmg = damage * minf(stats.splash_damage, 0.60)
-	var targets = _find_nearby_enemies(target, 80.0)  # 80px 溅射半径
+	# v6.6: 半径支持改造加成（子母弹/近炸引信），默认 0 时与原 80px 行为一致
+	var radius: float = 80.0 * (1.0 + maxf(0.0, stats.splash_radius_bonus))
+	var targets = _find_nearby_enemies(target, radius)
 	for t in targets:
 		if t != target and is_instance_valid(t):
 			_deal_damage_to_unit(t, splash_dmg, attacker)

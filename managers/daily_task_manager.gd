@@ -86,6 +86,8 @@ func refresh_daily_tasks() -> void:
 	_save_refresh_time()
 
 	daily_tasks_refreshed.emit()
+	# v6.6: 镜像到 SignalBus
+	SignalBus.daily_tasks_refreshed.emit()
 
 ## 生成单个任务
 func _generate_task(difficulty: TaskDifficulty, exclude_types: Array = []) -> Dictionary:
@@ -205,6 +207,8 @@ func update_task_progress(task_type: TaskType, amount: int = 1) -> void:
 ## 任务完成回调
 func _on_task_completed(task: Dictionary) -> void:
 	task_completed.emit(task)
+	# v6.6: 镜像到 SignalBus
+	SignalBus.task_completed.emit(task)
 
 	# 检查是否所有任务都完成
 	if _are_all_tasks_completed():

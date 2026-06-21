@@ -251,6 +251,20 @@ const DATA: Dictionary = {
 		"hidden": false,
 		"flavor_text": "你拯救了世界，成为真正的传奇。"
 		},
+	# v6.6(剧情): 剧情模式通关成就（补剧情.txt L141）
+	# 由 city_map._on_battle_ended 在最终Boss胜利后 unlock_achievement("phase_master") 解锁
+	"phase_master": {
+		"id": "phase_master",
+		"name": "相位之主",
+		"description": "通关剧情模式第100关——你是5742次重启中第7个通关的人。",
+		"category": "special",
+		"rarity": "LEGENDARY",
+		"requirements": {"type": "story_flag", "flag": "passed_100"},
+		"reward": {"nano_materials": 5000, "title": "相位征服者"},
+		"icon": "🌀",
+		"hidden": true,
+		"flavor_text": "「恭喜——你做到了前5742个你都没做到的事。」"
+		},
 	"special_perfect_collection": {
 		"id": "special_perfect_collection",
 		"name": "完美收藏",

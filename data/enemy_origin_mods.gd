@@ -330,13 +330,22 @@ static func get_mods_for_combat_kind(combat_kind: int) -> Array[String]:
 
 ## 获取MOD当前有效等级（基于素材情报）
 ## material_intel: 该敌人类型的素材情报进度 (0.0-1.0)
+## 逻辑：从高到低判断，命中即返回。tier 1 缺省 required_material_intel 时回退到顶层阈值。
 static func get_effective_tier(mod_id: String, material_intel: float) -> int:
 	var mod: Dictionary = ENEMY_ORIGIN_MODS.get(mod_id, {})
 	var tiers: Array = mod.get("tiers", [])
-	for tier_data in tiers:
-		var req: float = float(tier_data.get("required_material_intel", 0.0))
+	if tiers.is_empty():
+		return 0
+	## 顶层基础阈值（tier 1 的解锁门槛，如 0.50）；tier 级字段缺失时回退用此值
+	var base_req: float = float(mod.get("required_material_intel", 0.0))
+	## 从高到低判断：先尝试高等级，命中即返回，避免低等级门槛(0.0)提前截断
+	for i in range(tiers.size() - 1, -1, -1):
+		var tier_data: Dictionary = tiers[i]
+		var tier_no: int = int(tier_data.get("tier", i + 1))
+		## tier 1 通常无 required_material_intel 字段，回退到顶层 base_req
+		var req: float = float(tier_data.get("required_material_intel", base_req if tier_no == 1 else 1.0))
 		if material_intel >= req:
-			return int(tier_data.get("tier", 1))
+			return tier_no
 	return 0  ## 未达基础要求
 
 ## 获取MOD当前等级的效果

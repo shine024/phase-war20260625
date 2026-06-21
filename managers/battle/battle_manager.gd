@@ -49,6 +49,11 @@ var _phase_master_config: Dictionary = {}
 var _is_phase_master_battle: bool = false
 var _enemy_phase_driver: Node2D = null
 
+# ---- v6.6(剧情): 必败战机制（序章噩梦/守护者失败重试）----
+# 开启后启动倒计时，到时强制判负；玩家无法通过清场获胜（_check_win_lose 提前返回）
+var _force_defeat: bool = false
+var _force_defeat_timer: float = 0.0  ## 剩余秒数，倒计时到 0 强制 end_battle(false)
+
 # ---- 战斗结果数据 ----
 var _battle_result: Dictionary = {
 	"victory_stars": 0,
@@ -135,6 +140,15 @@ func _process(delta: float) -> void:
 			do_consume = _spawn_system.spawn_card_grid_enemy_wave(level)
 		if do_consume:
 			_spawn_system.consume_wave_timer()
+
+	# v6.6(剧情): 必败战倒计时 — 到时强制判负，玩家"撑过"指定时长后结束
+	if _force_defeat:
+		_force_defeat_timer -= delta
+		if _force_defeat_timer <= 0.0:
+			_force_defeat_timer = 0.0
+			_force_defeat = false  # 防止 end_battle 内重复触发
+			end_battle(false)  # 玩家基地被"梦魇/守护者"击穿
+			return
 	_check_win_lose()
 	if PerformanceMetricsManager and PerformanceMetricsManager.has_method("sample_battle_frame"):
 		PerformanceMetricsManager.sample_battle_frame(delta)
@@ -188,6 +202,16 @@ func start_battle(battle_scene: Node) -> void:
 	battle_active = true
 	_defeated_enemies.clear()  ## v6.0: reset defeated enemy tracking
 	_group_target_cache_accum = _GROUP_TARGET_CACHE_INTERVAL_SEC
+
+	# v6.6(剧情): 读取必败战配置（序章噩梦/守护者失败重试）
+	_force_defeat = false
+	_force_defeat_timer = 0.0
+	if GameManager.has_method("is_force_defeat_battle") and GameManager.is_force_defeat_battle():
+		_force_defeat = true
+		var dur: float = 420.0
+		if GameManager.has_method("get_force_defeat_duration"):
+			dur = GameManager.get_force_defeat_duration()
+		_force_defeat_timer = dur
 
 	# 初始化刷新子系统
 	_spawn_system.reset(battlefield, enemy_wave_interval, enemy_wave_total)
@@ -287,6 +311,9 @@ func end_battle(player_won: bool) -> void:
 	# 清理相位师战斗状态
 	_phase_master_config = {}
 	_is_phase_master_battle = false
+	# v6.6(剧情): 清理必败战状态（防止跨战斗残留）
+	_force_defeat = false
+	_force_defeat_timer = 0.0
 
 
 func _emit_battle_ended(player_won: bool) -> void:
@@ -407,7 +434,11 @@ func _record_battle_star_kill(killed_unit: Node) -> void:
 		var best_dps: float = maxf(dps_l, maxf(dps_a, dps_air))
 		enemy_power = maxf(50.0, e_hp * 0.28 + best_dps * 2.2 + e_range * 0.22)
 	else:
-		var e_hp_alt: float = float(killed_unit.get("max_hp")) if "max_hp" in killed_unit else 100.0
+		# v6.6 修复：原 float(killed_unit.get("max_hp")) 在属性存在但值为 null 时
+		# 触发 "Nonexistent 'float' constructor" 运行时错误（偶发，特定敌人被击杀时）。
+		# get() 默认值仅在 key/属性不存在时生效，值为 null 时返回 null，float(null) 报错。
+		var e_hp_raw: Variant = killed_unit.get("max_hp") if "max_hp" in killed_unit else null
+		var e_hp_alt: float = float(e_hp_raw) if (e_hp_raw is float or e_hp_raw is int) else 100.0
 		enemy_power = maxf(50.0, e_hp_alt * 0.28)
 	BlueprintManager.add_battle_star_power(card_id, enemy_power)
 
@@ -418,6 +449,11 @@ func _check_win_lose() -> void:
 
 	# 相位师战斗：胜负由基地销毁信号驱动
 	if _is_phase_master_battle:
+		return
+
+	# v6.6(剧情): 必败战 — 禁用玩家正常胜利路径，胜负完全由倒计时控制
+	# 即使玩家清场，也不判胜；让波次持续刷敌，直到 _force_defeat_timer 归零
+	if _force_defeat:
 		return
 
 	if not _card_grid_combat_started:
@@ -782,11 +818,13 @@ func _cleanup_enemy_indirect_batch() -> void:
 
 
 func _on_unit_damaged_combat_feedback(unit: Node, _is_player: bool, amount: float, at_position: Vector2) -> void:
-	# v6.3: 暴击伤害数字已由弹道直接显示（critical 样式），此处跳过普通数字避免重复
+	# v6.6: 暴击时弹道会打 _vfx_crit_pending 标记。这里据此用金色 critical 样式显示
+	# （数字仍取信号携带的 amount = 实际扣血），避免暴击数字绕过 take_damage 导致与血条矛盾。
+	var is_crit: bool = false
 	if unit != null and is_instance_valid(unit) and unit.has_meta("_vfx_crit_pending"):
 		unit.remove_meta("_vfx_crit_pending")
-		return
-	CombatFeedback.show_damage(at_position, amount, unit, false)
+		is_crit = true
+	CombatFeedback.show_damage(at_position, amount, unit, is_crit)
 
 
 # =========================================================================

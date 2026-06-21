@@ -1,6 +1,7 @@
 extends Node
 ## 游戏流程：战前准备 → 战斗 → 战后
 const DEBUG_GAME_LOG := false
+const StoryFlags := preload("res://data/story/story_flags.gd")
 
 enum GamePhase {
 	PRE_BATTLE,
@@ -10,9 +11,14 @@ enum GamePhase {
 
 # v6.3: 游戏模式
 enum GameMode {
-	FREE,    ## 自由模式（原有玩法，自由选关）
-	STORY,   ## 剧情模式（线性章节，含对话+Boss战）
+	FREE,            ## 自由模式（原有玩法，自由选关）
+	STORY,           ## 剧情模式（线性章节，含对话+Boss战）
+	NEW_GAME_PLUS,   ## v6.6(剧情): 二周目（补剧情.txt 第十二幕，敌人属性×1.2）
 }
+
+# v6.6(剧情): 二周目难度配置（补剧情.txt L186: 关卡进度重置，但难度提升×1.2）
+const NG_PLUS_ENEMY_MULT: float = 1.2  ## NG+ 敌人属性倍率（HP/攻击/防御）
+var ng_plus_active: bool = false       ## 当前是否处于二周目（与 DayClock.total_loops > 0 同义，但独立标志便于查询）
 
 var current_phase: GamePhase = GamePhase.PRE_BATTLE
 var battle_scene: Node = null
@@ -22,6 +28,7 @@ var last_battle_reward_summary: Dictionary = {}
 var _blueprint_copies_before_battle: Dictionary = {}
 var _knowledge_before_battle: Dictionary = {}
 var _plm: Node = null  ## 安全引用：PhaseLawManager 本地缓存
+var _cached_power_rating: int = 0  ## v6.6(剧情): 玩家战力评级缓存（补剧情.txt L41）
 signal current_level_changed(level: int)
 
 # 相位师对战相关
@@ -32,6 +39,15 @@ var _is_phase_master_battle: bool = false   # 是否在与相位师战斗
 var game_mode: GameMode = GameMode.FREE
 var current_chapter_id: String = ""         ## 当前进行中的章节ID
 var _story_custom_battle: Dictionary = {}   ## 剧情Boss章的自定义战斗配置（覆盖普通相位师检测）
+
+# v6.6(剧情): 必败战机制 — 序章噩梦/守护者失败重试等场景
+# 开启后 BattleManager 会启动倒计时，到时强制判负；玩家正常胜利路径被禁用
+var _is_force_defeat_battle: bool = false   ## 当前战斗是否为必败战
+var _force_defeat_duration: float = 0.0     ## 必败战持续时长（秒），到时强制判负
+var _force_defeat_reason: String = ""       ## 必败战的剧情标识（如 "prologue"/"guardian_20_attempt1"）
+
+# v6.6(剧情): 最终战标记（补剧情.txt 第十幕 第100关/相位之主/噬时者）
+var _is_final_battle: bool = false          ## 当前战斗是否为最终战（触发记忆场景视觉+专属Boss）
 
 ## 检查是否遭遇相位师（每场战斗15%概率）
 ## 逻辑：优先遭遇当前关卡所属势力的相位师（用于防守任务）
@@ -127,6 +143,61 @@ func _ensure_plm() -> void:
 	if _plm != null and is_instance_valid(_plm):
 		return
 	_plm = get_node_or_null("/root/PhaseLawManager")
+
+# ═══════════════════════════════════════════════════════════════════
+# v6.6(剧情): 玩家战力评级（补剧情.txt 第二/三/七/八幕的"战力N"数值锚点）
+# 设计：战力 = 关卡进度主轴 + 卡牌星级加成 + 相位仪加成 + 法则加成
+# 参考曲线：第1天≈2 / 第12天≈12 / 第60天≈40+ / 第100天≈162 / 第360天≈500+
+# ═══════════════════════════════════════════════════════════════════
+
+## 计算玩家当前战力评级（整数，用于剧情节点和 UI 显示）
+func calculate_power_rating() -> int:
+	var power: int = 0
+	# 1. 关卡进度主轴：每解锁 1 关 +3 基础战力（1关≈3，100关≈300）
+	var lp: Node = get_node_or_null("/root/LevelProgressManager")
+	var max_level: int = 1
+	if lp and lp.has_method("get_max_unlocked_level"):
+		max_level = lp.get_max_unlocked_level()
+	power += max_level * 3
+	# 2. 卡牌星级加成：所有拥有卡牌的 battle_star 之和
+	if BlueprintManager and BlueprintManager.has_method("get_all_blueprint_ids_with_copies"):
+		var card_map: Dictionary = BlueprintManager.get_all_blueprint_ids_with_copies()
+		for card_id in card_map:
+			var copies: int = int(card_map[card_id])
+			# 每张卡按 battle_star 贡献（取蓝图星级，无接口则按拥有数粗估）
+			power += copies
+	# 3. 相位仪加成：每级相位场经验 +1
+	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
+	if pim and pim.has_method("get_phase_field_level"):
+		var pf_level: int = int(pim.get_phase_field_level())
+		power += pf_level * 2
+	# 4. 法则加成：每解锁 1 条法则 +5
+	if _plm == null:
+		_ensure_plm()
+	if _plm != null and "unlocked_law_ids" in _plm:
+		power += int(_plm.unlocked_law_ids.size()) * 5
+	_cached_power_rating = power
+	return power
+
+## 获取缓存的战力评级（不重算，供 UI 高频调用）
+func get_power_rating() -> int:
+	return _cached_power_rating
+
+## 强制刷新战力缓存（战斗结束/解锁内容后调用）
+func refresh_power_rating() -> void:
+	_cached_power_rating = calculate_power_rating()
+
+# ═══════════════════════════════════════════════════════════════════
+# v6.6(剧情): 二周目（NG+）查询接口（补剧情.txt 第十二幕）
+# ═══════════════════════════════════════════════════════════════════
+
+## 当前是否处于二周目（敌人属性×1.2 等专属规则生效判定）
+func is_ng_plus_active() -> bool:
+	return ng_plus_active or game_mode == GameMode.NEW_GAME_PLUS
+
+## 获取 NG+ 敌人属性倍率（非 NG+ 时返回 1.0）
+func get_ng_plus_enemy_mult() -> float:
+	return NG_PLUS_ENEMY_MULT if is_ng_plus_active() else 1.0
 
 func _enrich_master_config(simple_config: Dictionary) -> Dictionary:
 	var master_faction: String = simple_config.get("faction", "")
@@ -273,6 +344,24 @@ func go_to_battle() -> void:
 func _on_battle_ended(player_won: bool) -> void:
 	current_phase = GamePhase.POST_BATTLE
 
+	# v6.6(剧情): 必败战处理 — 记录 story_flag 并清理状态
+	# 必败战通常 player_won=false（计时到强制判负），但即使因故 player_won=true 也走标记逻辑
+	if _is_force_defeat_battle:
+		var sm: Node = get_node_or_null("/root/StoryManager")
+		if sm and sm.has_method("set_story_flag") and not _force_defeat_reason.is_empty():
+			match _force_defeat_reason:
+				"prologue":
+					sm.set_story_flag(StoryFlags.PROLOGUE_COMPLETED, true)
+				"guardian_20_attempt1":
+					sm.set_story_flag(StoryFlags.GUARDIAN_20_ATTEMPT_1, true)
+				"guardian_20_attempt2":
+					sm.set_story_flag(StoryFlags.GUARDIAN_20_ATTEMPT_2, true)
+				_:
+					sm.set_story_flag("force_defeat_" + _force_defeat_reason, true)
+			clear_force_defeat_state()
+	# v6.6(剧情): 清理最终战标记（防跨战斗残留）
+	clear_final_battle_state()
+
 	# v6.3: 剧情模式 — 战斗结束后走剧情专用流程
 	if game_mode == GameMode.STORY:
 		_story_handle_battle_end(player_won)
@@ -385,7 +474,19 @@ func _on_battle_ended(player_won: bool) -> void:
 
 	# HUD 重构：结算入口由主场景 `show_battle_result` 弹出 battle_result_dialog（OK 时 claim_drops）。
 	# 若主场景未实现该方法（历史场景/测试），胜利后须仍领取 DropManager 待领掉落，否则会永久卡在 pending。
-	if main_scene and main_scene.has_method("show_battle_result"):
+	#
+	# v6.6(挂机): 挂机模式下跳过结算弹窗，自动领取掉落 + 重置到 PRE_BATTLE，
+	# 让 AFKModeManager 的 call_deferred 下一关启动时战场已清理、phase 已重置。
+	# 必须在 claim_drops() 之前调用 accumulate_pending_drops()，把掉落计入累计奖励总账。
+	if _is_afk_running():
+		var afk_mgr: Node = main_scene._afk_manager if (main_scene != null and "_afk_manager" in main_scene) else null
+		if afk_mgr != null and afk_mgr.has_method("accumulate_pending_drops"):
+			afk_mgr.accumulate_pending_drops()
+		var dm_afk: Node = get_node_or_null("/root/DropManager")
+		if dm_afk != null and dm_afk.has_method("claim_drops"):
+			dm_afk.claim_drops()
+		return_to_prep()
+	elif main_scene and main_scene.has_method("show_battle_result"):
 		main_scene.show_battle_result(player_won)
 	elif player_won:
 		var dm_fallback: Node = get_node_or_null("/root/DropManager")
@@ -564,6 +665,16 @@ func return_to_prep() -> void:
 	if SignalBus:
 		SignalBus.backpack_changed.emit()
 
+## v6.6(挂机): 判断挂机是否正在运行（用于跳过结算弹窗等门控）。
+## 防御性判空：main_scene 或 _afk_manager 不存在时返回 false，走正常流程。
+func _is_afk_running() -> bool:
+	if main_scene == null or not ("_afk_manager" in main_scene):
+		return false
+	var afk_mgr = main_scene._afk_manager
+	if afk_mgr == null or not ("is_running" in afk_mgr):
+		return false
+	return bool(afk_mgr.is_running)
+
 const LevelEras = preload("res://data/level_eras.gd")
 const GC = preload("res://resources/game_constants.gd")
 const RECON_FRAGMENT_BONUS_PER_PLATFORM: float = 0.20
@@ -711,6 +822,66 @@ func _calculate_knowledge_gain() -> Dictionary:
 			total_gain += gain
 			items.append({"id": key, "gain": gain})
 	return {"total": total_gain, "items": items}
+
+
+# ═══════════════════════════════════════════════════════════════════
+# v6.6(剧情): 必败战机制 — docs/补剧情.txt 序章噩梦/守护者失败重试
+# ═══════════════════════════════════════════════════════════════════
+
+## 启动一场必败战（到时长后强制判负，玩家无法正常获胜）
+## duration_sec: 必败战持续秒数（玩家需"撑过"这段时间，如序章撑7分钟=420秒）
+## level_override: 使用的关卡编号（决定敌人 era 和难度）
+## reason: 剧情标识（如 "prologue"/"guardian_20_attempt1"），用于战结束后记录 story_flag
+func start_force_defeat_battle(duration_sec: float, level_override: int, reason: String = "") -> void:
+	_is_force_defeat_battle = true
+	_force_defeat_duration = maxf(10.0, duration_sec)  # 至少10秒，防止误传0
+	_force_defeat_reason = reason
+	# 确保不是相位师战（必败战走普通波次流，让敌人持续刷出）
+	_is_phase_master_battle = false
+	_current_phase_master = {}
+	set_current_level(clampi(level_override, 1, 100))
+	go_to_battle()
+
+## 启动序章噩梦必败战（docs/补剧情.txt 序章：陈末梦境中的一战虫群入侵）
+## 默认撑7分钟（420秒）后强制判负，关卡使用第1关（一战）
+func start_prologue_battle(duration_sec: float = 420.0) -> void:
+	start_force_defeat_battle(duration_sec, 1, "prologue")
+
+## 查询当前是否为必败战
+func is_force_defeat_battle() -> bool:
+	return _is_force_defeat_battle
+
+## 获取必败战剩余时长（BattleManager 读取）
+func get_force_defeat_duration() -> float:
+	return _force_defeat_duration
+
+## 获取必败战剧情标识
+func get_force_defeat_reason() -> String:
+	return _force_defeat_reason
+
+## 清除必败战状态（BattleManager.end_battle 末尾调用，防跨战斗残留）
+func clear_force_defeat_state() -> void:
+	_is_force_defeat_battle = false
+	_force_defeat_duration = 0.0
+	_force_defeat_reason = ""
+
+
+# ═══════════════════════════════════════════════════════════════════
+# v6.6(剧情): 最终战机制（补剧情.txt 第十幕 第100关/相位之主）
+# ═══════════════════════════════════════════════════════════════════
+
+## 设置最终战标记（city_map 第100关节点触发时调用）
+## 触发 Battlefield.gd 的记忆场景视觉 + 专属Boss配置
+func set_final_battle(enabled: bool = true) -> void:
+	_is_final_battle = enabled
+
+## 当前是否为最终战
+func is_final_battle() -> bool:
+	return _is_final_battle
+
+## 清除最终战状态（end_battle 时调用防残留）
+func clear_final_battle_state() -> void:
+	_is_final_battle = false
 
 
 # ═══════════════════════════════════════════════════════════════════

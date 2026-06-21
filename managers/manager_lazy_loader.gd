@@ -106,8 +106,11 @@ func _ensure_configs_initialized() -> void:
 			"priority": 3,
 			"description": "词缀系统"
 		},
-		# ── 情报系统 (priority 3) ──
-		"intel_item_bag": {
+	# ── 情报系统 (priority 3) ──
+	# v6.6 说明：以下 5 个 manager 在 project.godot 已是 autoload（启动即创建），
+	# 此处保留配置仅作为 ensure_loaded("intel_xxx") 的统一访问入口。
+	# _instantiate_manager 的 get_node_or_null 防重检查会复用 autoload 节点，不会重复创建。
+	"intel_item_bag": {
 			"node_name": "IntelItemBag",
 			"script_path": "res://managers/intel_item_bag.gd",
 			"priority": 3,

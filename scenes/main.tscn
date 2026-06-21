@@ -1,4 +1,4 @@
-[gd_scene load_steps=27 format=3 uid="uid://main"]
+[gd_scene load_steps=28 format=3 uid="uid://main"]
 
 [ext_resource type="Script" uid="uid://d0jpdmko5mrnu" path="res://scenes/main.gd" id="1_script"]
 [ext_resource type="PackedScene" uid="uid://battlefield" path="res://scenes/battlefield/battlefield.tscn" id="2_battlefield"]
@@ -25,7 +25,8 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/story_dialogue_panel.tscn" id="36_story_dialogue"]
 [ext_resource type="PackedScene" path="res://scenes/ui/story_chapter_select.tscn" id="37_story_select"]
 [ext_resource type="PackedScene" path="res://scenes/city_map.tscn" id="38_city_map"]
-[ext_resource type="Script" path="res://scenes/ui/ending_panel.gd" id="39_ending"]
+[ext_resource type="Script" path="res://scenes/ui/ending_panel.gd" id="39_ending",
+[ext_resource type="PackedScene" path="res://scenes/ui/afk_panel.tscn" id="39_afk_panel"]]
 
 [sub_resource type="LabelSettings" id="LabelSettings_level_display"]
 font_size = 24
@@ -402,6 +403,26 @@ grow_vertical = 2
 layout_mode = 2
 custom_minimum_size = Vector2(400, 300)
 script = ExtResource("31_settings_panel")
+
+
+[node name="AFKOverlay" type="Control" parent="PopupLayer"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="CenterContainer" type="CenterContainer" parent="PopupLayer/AFKOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="AFKPanel" parent="PopupLayer/AFKOverlay/CenterContainer" instance=ExtResource("39_afk_panel")]
 
 [node name="LeaderboardPanel" parent="PopupLayer" instance=ExtResource("23_leaderboard")]
 size = Vector2i(560, 500)

@@ -100,6 +100,10 @@ func _refresh_list() -> void:
 		if def.is_empty():
 			continue
 		var is_accepted: bool = quest_mgr.is_accepted(qid)
+		# v6.6(剧情): 隐藏任务在 reveal 前不出现在任务板（补剧情.txt 真实者支线）
+		# 已接的任务无论 hidden 都显示（防止接取后 reveal 状态丢失导致任务消失）
+		if not is_accepted and quest_mgr.has_method("is_quest_available") and not quest_mgr.is_quest_available(qid):
+			continue
 		var row: Control = _make_quest_row(qid, def, is_accepted)
 		list_container.add_child(row)
 

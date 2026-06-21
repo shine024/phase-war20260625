@@ -238,6 +238,8 @@ func update_achievement_progress(achievement_id: String, current_value: int, max
 
 	achievement_progress[achievement_id] = current_value
 	achievement_progress_updated.emit(achievement_id, current_value, max_value)
+	# v6.6: 镜像到 SignalBus
+	SignalBus.achievement_progress_updated.emit(achievement_id, current_value, max_value)
 	_check_and_unlock_achievement(achievement_id)
 
 ## 解锁成就
@@ -252,6 +254,8 @@ func unlock_achievement(achievement_id: String) -> void:
 	unlocked_achievements.append(achievement_id)
 	var ach_data = ACHIEVEMENT_DATABASE[achievement_id]
 	achievement_unlocked.emit(achievement_id, ach_data.get("name", achievement_id))
+	# v6.6: 镜像到 SignalBus（audio_manager 订阅此版本以播音效）
+	SignalBus.achievement_unlocked.emit(achievement_id, ach_data.get("name", achievement_id))
 	if DEBUG_LOG:
 		pass
 		# [LOG-v5.1] print("[AchievementManager] 解锁成就: ", ach_data.get("name", achievement_id))

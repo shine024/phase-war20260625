@@ -1,0 +1,110 @@
+[gdscene format=3 uid="uid://afk_level_sel"]
+
+[ext_resource type="Script" path="res://scenes/ui/afk_level_selector.gd" id="1_afk_lvl_sel"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_afk_bg"]
+bg_color = Color(0.03, 0.05, 0.1, 0.98)
+border_color = Color(0, 0.65, 1, 0.2)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[node name="AFKLevelSelector" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_afk_lvl_sel")
+
+[node name="Backdrop" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.6)
+
+[node name="Panel" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -260
+offset_top = -340
+offset_right = 260
+offset_bottom = 340
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/background = SubResource("StyleBoxFlat_afk_bg")
+
+[node name="MarginContainer" type="MarginContainer" parent="Panel" instance=ExtResource("1_afk_lvl_sel")]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="VBox" type="VBoxContainer" parent="Panel/MarginContainer"]
+layout_mode = 2
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 8
+mouse_filter = 2
+
+[node name="Title" type="Label" parent="Panel/MarginContainer/VBox"]
+layout_mode = 2
+text = "选择关卡"
+
+[node name="SearchRow" type="HBoxContainer" parent="Panel/MarginContainer/VBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SearchEdit" type="LineEdit" parent="Panel/MarginContainer/VBox/SearchRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "搜索关卡号..."
+
+[node name="LevelList" type="ScrollContainer" parent="Panel/MarginContainer/VBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="LevelGrid" type="GridContainer" parent="Panel/MarginContainer/VBox/LevelList"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+columns = 10
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
+
+[node name="HBox" type="HBoxContainer" parent="Panel/MarginContainer/VBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+alignment = 1
+
+[node name="CancelBtn" type="Button" parent="Panel/MarginContainer/VBox/HBox"]
+layout_mode = 2
+text = "取消"
+
+[node name="ConfirmBtn" type="Button" parent="Panel/MarginContainer/VBox/HBox"]
+layout_mode = 2
+text = "确定"

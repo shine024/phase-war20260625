@@ -12,6 +12,14 @@ var _current_index: int = 0        ## 当前播放到第几句
 var _is_pre_battle: bool = true    ## true=战前对话, false=战后对话
 var _chapter_id: String = ""
 
+# v6.6(剧情): 对话选项系统（补剧情.txt 第四幕真实者分支选择）
+var _pending_quest_id: String = ""   ## 当前选择节点关联的任务 id（由 city_map 在播放前设置）
+var _choices_container: VBoxContainer = null  ## 选项按钮容器
+var _choice_made: bool = false      ## 本轮对话是否已做出选择（防重复）
+
+## 玩家在对话中做出分支选择（补剧情.txt 真实者 join/reject/delay）
+signal story_choice_made(quest_id: String, branch_key: String)
+
 # UI元素
 var _speaker_label: Label = null
 var _text_label: RichTextLabel = null
@@ -133,6 +141,12 @@ func _build_ui() -> void:
 	_next_button.pressed.connect(_on_next_pressed)
 	btn_box.add_child(_next_button)
 
+	# v6.6(剧情): 选项按钮容器（默认隐藏，仅在 choices 对话节点显示）
+	_choices_container = VBoxContainer.new()
+	_choices_container.add_theme_constant_override("separation", DesignTokens.PADDING_SMALL)
+	_choices_container.visible = false
+	vbox.add_child(_choices_container)
+
 # ═══════════════════════════════════════════════════════════════════
 # 对话播放逻辑
 # ═══════════════════════════════════════════════════════════════════
@@ -178,11 +192,61 @@ func _show_current_dialogue() -> void:
 	_text_label.text = text
 	# 头像颜色按角色变化
 	_portrait_rect.color = _get_speaker_color(speaker)
-	# 按钮文字：最后一句显示不同
-	if _current_index == _dialogues.size() - 1:
-		_next_button.text = "开始战斗 ⚔" if _is_pre_battle else "继续 ▶"
+	# v6.6(剧情): 检测选项节点（choices 字段存在时显示选项按钮，隐藏继续按钮）
+	var choices: Array = dlg.get("choices", [])
+	if not choices.is_empty() and not _choice_made:
+		_next_button.visible = false
+		_show_choices(choices)
 	else:
-		_next_button.text = "继续 ▶"
+		_next_button.visible = true
+		_clear_choices()
+		# 按钮文字：最后一句显示不同
+		if _current_index == _dialogues.size() - 1:
+			_next_button.text = "开始战斗 ⚔" if _is_pre_battle else "继续 ▶"
+		else:
+			_next_button.text = "继续 ▶"
+
+## v6.6(剧情): 渲染选项按钮（补剧情.txt 真实者分支选择）
+func _show_choices(choices: Array) -> void:
+	_clear_choices()
+	for choice in choices:
+		if not (choice is Dictionary):
+			continue
+		var btn := Button.new()
+		btn.text = String(choice.get("text", "???"))
+		btn.custom_minimum_size = Vector2(600, DesignTokens.BUTTON_HEIGHT)
+		btn.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_MEDIUM)
+		var bk: String = String(choice.get("branch_key", ""))
+		var response: Array = choice.get("response", [])
+		btn.pressed.connect(_on_choice_selected.bind(bk, response))
+		_choices_container.add_child(btn)
+	_choices_container.visible = true
+
+## v6.6(剧情): 清空选项按钮
+func _clear_choices() -> void:
+	for child in _choices_container.get_children():
+		child.queue_free()
+	_choices_container.visible = false
+
+## v6.6(剧情): 玩家选择了一个分支选项
+func _on_choice_selected(branch_key: String, response: Array) -> void:
+	if _choice_made:
+		return
+	_choice_made = true
+	_clear_choices()
+	_next_button.visible = true
+	# 发出选择信号（city_map 监听后调 QuestManager.set_quest_branch）
+	if not _pending_quest_id.is_empty() and not branch_key.is_empty():
+		story_choice_made.emit(_pending_quest_id, branch_key)
+	# 若选项有后续 response 对话，插入队列继续播放
+	if not response.is_empty():
+		# 移除当前选择节点及之后的内容，插入 response
+		_dialogues = _dialogues.slice(0, _current_index) + response
+		_current_index = 0
+		_show_current_dialogue()
+	else:
+		# 无后续对话，直接结束
+		_on_all_dialogues_done()
 
 func _on_next_pressed() -> void:
 	_current_index += 1
@@ -194,6 +258,10 @@ func _on_next_pressed() -> void:
 func _on_all_dialogues_done() -> void:
 	visible = false
 	_dialogues.clear()
+	_clear_choices()
+	# v6.6(剧情): 重置选择状态（防跨对话残留）
+	_choice_made = false
+	_pending_quest_id = ""
 	# 通知对话完成
 	if SignalBus.has_signal("story_dialogue_finished"):
 		SignalBus.story_dialogue_finished.emit()
@@ -217,7 +285,8 @@ func _on_all_dialogues_done() -> void:
 func _get_speaker_color(speaker: String) -> Color:
 	# 按角色返回不同的头像色块
 	match speaker:
-		"指挥官":
+		"指挥官", "陈末":
+			# 主角：青色（陈末是主角真名，与"指挥官"同身份）
 			return DesignTokens.COLOR_ACCENT_CYAN
 		"参谋长":
 			return DesignTokens.COLOR_HEALTH
@@ -225,6 +294,25 @@ func _get_speaker_color(speaker: String) -> Color:
 			return DesignTokens.COLOR_ACCENT_PURPLE
 		"旁白":
 			return Color(0.5, 0.5, 0.55)
+		# v6.6(剧情): docs/补剧情.txt 新角色配色
+		"洛克":
+			# 引导者：青绿色（沉稳）
+			return Color(0.2, 0.8, 0.65)
+		"林薇":
+			# 四叶草店主：粉色（温柔）
+			return Color(0.95, 0.55, 0.7)
+		"扎克":
+			# 训练场教官：橙色（刚毅）
+			return Color(0.95, 0.65, 0.2)
+		"海伦":
+			# 城市播报者：金色（权威/中性）
+			return Color(0.9, 0.8, 0.3)
+		"真实者":
+			# 反派：深紫色（神秘/危险）
+			return Color(0.55, 0.25, 0.75)
+		"铁血男爵", "钢铁元帅", "相位之主":
+			# Boss角色：红色系
+			return DesignTokens.COLOR_DANGER
 		_:
-			# Boss角色用红色系
+			# 默认：Boss/未知角色用红色系
 			return DesignTokens.COLOR_DANGER

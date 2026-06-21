@@ -15,9 +15,28 @@ const DropTables = preload("res://resources/drop_tables.gd")
 
 var drop_tables: DropTables
 var pending_drops: Array = []  # 待处理的掉落物
+# v6.6(剧情): 剧情奖励倍率（补剧情.txt L123 海伦宣告倒计时×3）
+# 默认 1.0，由 city_map 在 city_emergency 信号触发时调用 set_multiplier 设置
+# 仅作用于基础素材产出（_add_material），不影响卡牌掉落和能量蓝图
+var _story_reward_multiplier: float = 1.0
 
 func _ready():
 	drop_tables = DropTables.new()
+
+## v6.6(剧情): 设置剧情奖励倍率（补剧情.txt 第340天倒计时奖励×3）
+## multiplier <= 0 时重置为 1.0（防御性）
+func set_multiplier(multiplier: float) -> void:
+	_story_reward_multiplier = maxf(0.0, multiplier)
+	if _story_reward_multiplier == 0.0:
+		_story_reward_multiplier = 1.0
+
+## v6.6(剧情): 获取当前剧情奖励倍率
+func get_multiplier() -> float:
+	return _story_reward_multiplier
+
+## v6.6(剧情): 重置剧情奖励倍率为 1.0（新周目/正常时段）
+func reset_multiplier() -> void:
+	_story_reward_multiplier = 1.0
 
 ## 生成战斗掉落
 func generate_battle_drops(era: int, level: int, player_won: bool, victory_stars: int = 0) -> Array:
@@ -82,8 +101,8 @@ func _process_single_drop(drop: DropTables.DropResult) -> void:
 
 ## 添加基础素材
 func _add_material(material_id: String, count: int) -> void:
-	# v6.2: 符文之语资源产出加成
-	var yield_mult: float = 1.0 + _get_rune_resource_yield_bonus()
+	# v6.2: 符文之语资源产出加成 × v6.6(剧情): 剧情奖励倍率（倒计时×3）
+	var yield_mult: float = (1.0 + _get_rune_resource_yield_bonus()) * _story_reward_multiplier
 	var final_count: int = int(float(count) * yield_mult)
 	match material_id:
 		"nano_materials":
@@ -256,10 +275,16 @@ func save_state() -> Dictionary:
 			"source": drop.source
 		})
 	state["pending_drops"] = drops_data
+	# v6.6(剧情): 持久化剧情奖励倍率（倒计时×3 在新周目前持续生效）
+	state["story_reward_multiplier"] = _story_reward_multiplier
 	return state
 
 ## 加载掉落状态
 func load_state(state: Dictionary) -> void:
+	# v6.6(剧情): 恢复剧情奖励倍率（旧存档无此字段时兜底为 1.0）
+	_story_reward_multiplier = float(state.get("story_reward_multiplier", 1.0))
+	if _story_reward_multiplier <= 0.0:
+		_story_reward_multiplier = 1.0
 	if state.has("pending_drops"):
 		pending_drops.clear()
 		for drop_data in state["pending_drops"]:

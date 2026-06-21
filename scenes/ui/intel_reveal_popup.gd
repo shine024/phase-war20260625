@@ -214,9 +214,9 @@ func _show_current_reveal() -> void:
 			page_lbl.text = ""
 
 	## 入场动画
-	_modulate = Color(1.0, 1.0, 1.0, 0.0)
+	modulate = Color(1.0, 1.0, 1.0, 0.0)
 	var tween := create_tween()
-	tween.tween_property(self, "modulate", Color(1.0, 1.0, 1.0, 1.0), 0.4).set_trans(Tween.TRANS_FADE)
+	tween.tween_property(self, "modulate", Color(1.0, 1.0, 1.0, 1.0), 0.4)
 
 	## 重启自动关闭计时器
 	_auto_close_timer.stop()
@@ -226,7 +226,7 @@ func _hide_popup() -> void:
 	_is_showing = false
 	_auto_close_timer.stop()
 	var tween := create_tween()
-	tween.tween_property(self, "modulate", Color(1.0, 1.0, 1.0, 0.0), 0.3).set_trans(Tween.TRANS_FADE)
+	tween.tween_property(self, "modulate", Color(1.0, 1.0, 1.0, 0.0), 0.3)
 	tween.tween_callback(func(): visible = false)
 
 func _on_close_pressed() -> void:

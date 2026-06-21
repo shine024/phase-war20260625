@@ -424,6 +424,24 @@ func _play_hit_flash() -> void:
 	_hit_flash_tween.tween_property(self, "modulate", original_modulate, 0.1)
 
 
+## v6.6: 幻影克隆体入场脉冲——青色发光放大后回落，让玩家部署时立刻识别克隆体
+## 基础半透明色调（青蓝 alpha 0.72）由 BattleSpawnSystem._apply_phantom_clone_buff 预设，
+## 本方法仅播一次性入场脉冲，结束后回到该基础色调（非纯白）。
+func _play_phantom_clone_spawn_pulse() -> void:
+	if not is_instance_valid(self) or is_preview_mode:
+		return
+	var base_modulate := modulate  # 克隆体青蓝半透明
+	# 先闪亮青白色，再回落到基础青蓝半透明
+	modulate = Color(0.8, 1.0, 1.0, 0.95)
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(self, "modulate", base_modulate, 0.45).set_ease(Tween.EASE_OUT)
+	# 轻微放大脉冲，强化"幻影生成"的视觉冲击
+	var start_scale := scale
+	tw.tween_property(self, "scale", start_scale * 1.18, 0.12).set_ease(Tween.EASE_OUT)
+	tw.chain().tween_property(self, "scale", start_scale, 0.25).set_ease(Tween.EASE_IN_OUT)
+
+
 ## 受击缩放抖动反馈（复用Tween，避免每击new）
 func _play_hit_shake() -> void:
 	if is_preview_mode:
@@ -1043,6 +1061,7 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 	var hp_loss: float = amount
 	if stats != null and _cached_is_card_grid:
 		var pen: float = 0.0
+		var attacker_kind: int = -1
 		if attacker != null and is_instance_valid(attacker) and "stats" in attacker:
 			var atk_stats: Variant = attacker.get("stats")
 			if atk_stats is UnitStats:
@@ -1051,7 +1070,21 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 					pen = (atk_stats as UnitStats).get_effective_armor_penetration(stats.combat_kind)
 				else:
 					pen = float((atk_stats as UnitStats).armor_penetration)
-		var eff_def: float = CardGridDamage.effective_defense(stats.defense, pen)
+				attacker_kind = int((atk_stats as UnitStats).combat_kind)
+		# v6.6 修复：防御按攻击者类型选三维维度，而非用单一 stats.defense 字段。
+		# 修复前用 stats.defense（build 时的三维最大值快照，后续加成不更新且不分攻击类型），
+		# 与实际三维脱节，导致高防单位被特定类型攻击打像没防御。与 swarm_enemy_slot 口径对齐。
+		var base_def: float = stats.defense
+		match attacker_kind:
+			GC.CombatKind.LIGHT, GC.CombatKind.SUPPORT:
+				base_def = stats.defense_light
+			GC.CombatKind.ARMOR, GC.CombatKind.FORT:
+				base_def = stats.defense_armor
+			GC.CombatKind.AIR:
+				base_def = stats.defense_air
+			_:
+				base_def = maxf(stats.defense_light, maxf(stats.defense_armor, stats.defense_air))
+		var eff_def: float = CardGridDamage.effective_defense(base_def, pen)
 		var dodge: float = float(stats.dodge_chance)
 		var hit: Dictionary = CardGridDamage.resolve_hit(amount, eff_def, dodge)
 		hp_loss = float(hit.get("hp_loss", amount))

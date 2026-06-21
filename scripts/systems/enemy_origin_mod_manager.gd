@@ -38,7 +38,7 @@ var _fragments: Dictionary = {}
 # ── 生命周期 ──────────────────────────────────────────────────────
 
 func _ready() -> void:
-	_load_state()
+	# v6.6: 移除自加载，由 SaveManager 统一加载（避免与统一存档重复加载/覆盖）
 	## 连接揭示事件信号（情报系统解锁敌源MOD时同步）
 	var idm: Node = get_node_or_null("/root/IntelDiscoveryManager")
 	if idm and idm.has_signal("eom_unlocked"):
@@ -53,17 +53,38 @@ func _notification(what: int) -> void:
 const SaveUtils = preload("res://scripts/save_utils.gd")
 const STATE_SAVE_NAME: String = "eom_manager_state"
 
-func _save_state() -> void:
-	var data: Dictionary = {
+## v6.6: 统一存档接口（供 SaveManager 调用，约定接口名 save_state/load_state）
+func save_state() -> Dictionary:
+	return {
 		"unlocked": _unlocked.duplicate(),
 		"fragments": _fragments.duplicate(),
 	}
-	SaveUtils.save_data_to_file(data, STATE_SAVE_NAME)
 
-func _load_state() -> void:
-	var data: Dictionary = SaveUtils.load_data_from_file(STATE_SAVE_NAME)
+## v6.6: 统一存档加载接口。data 为空时尝试兼容读取旧独立文件，再不行则保持默认空状态
+func load_state(data: Dictionary) -> void:
+	if data.is_empty():
+		# 向后兼容：首次从独立文件迁移时读取旧存档
+		var legacy: Dictionary = SaveUtils.load_data_from_file(STATE_SAVE_NAME)
+		if not legacy.is_empty():
+			_unlocked = legacy.get("unlocked", {})
+			_fragments = legacy.get("fragments", {})
+		return
 	_unlocked = data.get("unlocked", {})
 	_fragments = data.get("fragments", {})
+
+## 退出时写入独立文件（双保险，SaveManager 已统一保存）
+func _save_state() -> void:
+	SaveUtils.save_data_to_file(save_state(), STATE_SAVE_NAME)
+
+## 兼容旧调用（部分内部逻辑仍调用 _load_state）
+func _load_state() -> void:
+	var legacy: Dictionary = SaveUtils.load_data_from_file(STATE_SAVE_NAME)
+	load_state(legacy)
+
+## v6.6: 新游戏重置——清空所有字段，不读旧文件（区别于 load_state({}) 的兼容读取）
+func reset_progress() -> void:
+	_unlocked.clear()
+	_fragments.clear()
 
 # ── 解锁 ───────────────────────────────────────────────────────────
 

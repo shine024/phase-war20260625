@@ -33,7 +33,7 @@ Add `--rendering-driver opengl3` if Vulkan issues (applies to `--headless` / `--
 
 ## Architecture
 
-### Autoload Singletons (19 total, in project.godot load order)
+### Autoload Singletons (24 total, in project.godot load order)
 
 **Core autoloaded singletons (always loaded at startup):**
 | # | Singleton | File | Role |
@@ -46,7 +46,7 @@ Add `--rendering-driver opengl3` if Vulkan issues (applies to `--headless` / `--
 | 6 | `GameManager` | `managers/game_manager.gd` | Game flow: pre-battle → battle → post-battle; 15% phase master encounter |
 | 7 | `BlueprintManager` | `managers/blueprint_manager.gd` | Card account progression (copies, stars, mods, evolution, inherit bonus, HP floor) |
 | 8 | `DropManager` | `managers/drop_manager.gd` | Post-battle drop tables (13 drop types) and claiming |
-| 9 | `SaveManager` | `managers/save_manager.gd` | `user://save.json`, 3 slots, schema v5, migration chain v1→v5 |
+| 9 | `SaveManager` | `managers/save_manager.gd` | `user://save.json`, 3 slots, schema v6, migration chain v1→v6 |
 | 10 | `AudioManager` | `managers/audio_manager.gd` | Audio |
 | 11 | `PhaseLawManager` | `managers/phase_law_manager.gd` | Law research/equip/battle state; 4 families (STEEL/FLAME/THUNDER/VOID); nano budget |
 | 12 | `BasicResourceManager` | `managers/basic_resource_manager.gd` | Global currencies (nano materials, alloy, crystal, energy blocks, research points, permits) |
@@ -84,7 +84,7 @@ Add `--rendering-driver opengl3` if Vulkan issues (applies to `--headless` / `--
 | 9 | `version` | `VersionManager` | Version management |
 | 99 | `debug_log` | `DebugLog` | Debug logging |
 
-**v6.0 情报系统管理器** (已移至延迟加载):
+**v6.0 情报系统管理器** (project.godot autoload，同时在 ManagerLazyLoader 保留 ensure_loaded 别名入口):
 - `IntelManual` — 4维情报系统（basic/tactical/material/secret）
 - `IntelItemBag` — 情报道具背包（6种消耗品）
 - `IntelDiscoveryManager` — 战利品发现系统（112个揭示事件）
@@ -241,7 +241,7 @@ tests/
 ### Save System
 
 - Single JSON file: `user://save.json`, 3 save slots
-- Schema version 5, migration chain v1→v2→v3→v4→v5 via `scripts/systems/save_migration.gd` + `save_migration_v4.gd` + `save_migration_v5.gd`
+- Schema version 6, migration chain v1→v2→v3→v4→v5→v6 via `scripts/systems/save_migration.gd` + `save_migration_v4.gd` + `save_migration_v5.gd` + `save_migration_v6.gd`
 - Critical managers (10) load immediately; deferred managers (12) load in batches after scene ready
 - Auto-save on battle end + window close; backup every 15s
 
@@ -304,3 +304,5 @@ User-driven collaboration. Every task follows: **Question → Options → Decisi
 1. 修复UILazyLoader配置：删除不存在的blueprint_workshop和blueprint_library配置
 2. 统一路径字段命名：全部使用parent_path
 3. 在main.tscn中添加11个缺失的Overlay容器
+
+> **注**: 本文件为早期版本快照，最新完整文档见 `AGENTS.md`（含 v6.6 改造效果修复、7星相位仪能力、全面一致性修复等后续变更记录）。

@@ -64,7 +64,7 @@ func advance_phase() -> void:
 			year_completed = true
 			year_end_reached.emit()
 			return
-		day_started.emit(current_day)
+		_emit_day_started(current_day)
 	day_phase_changed.emit(current_day, current_phase)
 	phase_advanced.emit(current_day, current_phase)
 
@@ -75,7 +75,7 @@ func advance_to_day(target_day: int) -> void:
 		return
 	current_day = target_day
 	current_phase = PHASE_MORNING
-	day_started.emit(current_day)
+	_emit_day_started(current_day)
 	day_phase_changed.emit(current_day, current_phase)
 
 ## 休息到第二天早晨（消耗剩余时段）
@@ -89,7 +89,7 @@ func rest_until_dawn() -> void:
 		year_completed = true
 		year_end_reached.emit()
 		return
-	day_started.emit(current_day)
+	_emit_day_started(current_day)
 	day_phase_changed.emit(current_day, current_phase)
 
 ## 重置为新周目（保留 total_loops）
@@ -98,6 +98,13 @@ func reset_for_new_loop() -> void:
 	current_phase = PHASE_MORNING
 	year_completed = false
 	total_loops += 1
+
+## v6.6(剧情): 统一的 day_started 发射器，同时镜像转发到 SignalBus.city_day_started
+## 供 city_map / npc_dialog_system 等订阅 SignalBus 的系统使用
+func _emit_day_started(day: int) -> void:
+	day_started.emit(day)
+	if SignalBus != null and SignalBus.has_signal("city_day_started"):
+		SignalBus.city_day_started.emit(day)
 
 ## 完全重置（新游戏）
 func full_reset() -> void:

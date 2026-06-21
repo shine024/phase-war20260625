@@ -748,6 +748,108 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 			"company_rep": {"helix_recon": 30},
 		},
 	},
+
+	# ==================== v6.6(剧情): 真实者支线任务（补剧情.txt 第四幕）====================
+	# hidden=true 的任务初始不可见，由 NPC 对话 reveal_quest 揭示后才能接取
+	# branches 定义玩家选择（加入/拒绝/拖延）后的后续任务链
+
+	# 真实者的邀请 — 第25天由真实者 NPC 对话揭示（realist_first_contact）
+	{
+		"id": "q_realist_invite",
+		"title": "真实者的邀请",
+		"description": "一个自称'真实者'的人声称看穿了无限城的循环真相。他说5742次重启是假的。加入他们？还是拒绝？",
+		"objective_type": "win_battles",
+		"target": 1,
+		"company_id": "void_research",
+		"rewards": {
+			"nano_materials": 50,
+			"company_rep": {"void_research": 25},
+		},
+		"hidden": true,
+		"prereq": "",
+		"branches": {
+			"join":   {"next_quest": "q_realist_join"},
+			"reject": {"next_quest": "q_realist_reject"},
+			"delay":  {"next_quest": "q_realist_delay"},
+		},
+	},
+	# 分支A：加入真实者
+	{
+		"id": "q_realist_join",
+		"title": "觉醒者的道路",
+		"description": "你选择了加入真实者。在他们的指引下，探索城市的隐藏区域，寻找海伦隐瞒的真相。",
+		"objective_type": "clear_level",
+		"target": 60,
+		"company_id": "void_research",
+		"rewards": {
+			"nano_materials": 80,
+			"company_rep": {"void_research": 40},
+		},
+		"hidden": true,
+		"prereq": "q_realist_invite",
+	},
+	# 分支B：拒绝真实者
+	{
+		"id": "q_realist_reject",
+		"title": "忠诚的相位师",
+		"description": "你拒绝了真实者的诱惑。海伦认可了你的忠诚，指挥部对你开放了更多权限。",
+		"objective_type": "reach_reputation",
+		"target": 1000,
+		"company_id": "iron_wall_corp",
+		"rewards": {
+			"nano_materials": 60,
+			"company_rep": {"iron_wall_corp": 50},
+		},
+		"hidden": true,
+		"prereq": "q_realist_invite",
+	},
+	# 分支C：拖延（中立线）
+	{
+		"id": "q_realist_delay",
+		"title": "骑墙的代价",
+		"description": "你没有立刻做决定。真实者和海伦都在观察你。在这段时间里，证明你的实力，让双方都不敢轻视。",
+		"objective_type": "win_battles",
+		"target": 10,
+		"company_id": "aether_dynamics",
+		"rewards": {
+			"nano_materials": 70,
+			"company_rep": {"aether_dynamics": 30, "void_research": 15},
+		},
+		"hidden": true,
+		"prereq": "q_realist_invite",
+	},
+
+	# 林薇支线任务 — 第40天由林薇归来对话揭示（linwei_return）
+	{
+		"id": "q_linwei_secret",
+		"title": "E-10946的秘密",
+		"description": "林薇提到了E-10946——只差一个编号的那个居民。调查她的过去，也许能解开林薇能量球裂纹的谜团。",
+		"objective_type": "collect_cards",
+		"target": 30,
+		"company_id": "helix_recon",
+		"rewards": {
+			"nano_materials": 55,
+			"company_rep": {"helix_recon": 35},
+		},
+		"hidden": true,
+		"prereq": "",
+	},
+
+	# 扎克支线任务 — 第100天由扎克48关真相对话揭示（zack_engineer_memory）
+	{
+		"id": "q_zack_beyond_48",
+		"title": "替扎克看看48关之后",
+		"description": "扎克停在48关三年了。他请你走到48关，替他看看门后面到底是什么。这是对一个老工程师的承诺。",
+		"objective_type": "clear_level",
+		"target": 48,
+		"company_id": "frontier_union",
+		"rewards": {
+			"nano_materials": 100,
+			"company_rep": {"frontier_union": 50},
+		},
+		"hidden": true,
+		"prereq": "",
+	},
 ]
 
 static func get_all() -> Array:

@@ -487,6 +487,8 @@ func request_player_deploy(platform_card_id: String, world_pos: Vector2, battle_
 	if _is_phantom_clone_for_card(platform_card.card_id):
 		_apply_phantom_clone_buff(unit)
 		unit.set_meta("is_phantom_clone", true)
+	# v6.6: 钢铁壁垒 — 装甲/堡垒类单位部署时最大HP翻倍（耐久加倍）
+	_apply_fortress_bulwark_buff(unit)
 	if deploy_slot_idx >= 0:
 		unit.set_meta("card_grid_slot", deploy_slot_idx)
 	_player_units_node.add_child(unit)
@@ -755,6 +757,39 @@ func _apply_phantom_clone_buff(unit: Node) -> void:
 				var wd: Dictionary = w
 				wd["damage"] = maxf(0.1, float(wd.get("damage", 0.0)) * mult)
 				unit_stats.weapons[i] = wd
+	# v6.6: 克隆体视觉区分——青蓝色半透明（受击闪白/死亡淡出均会正确保留此基础色调）
+	# 单位此刻尚未入树，modulate 立即设置；入场脉冲延迟到入树后执行
+	if unit is Node2D:
+		(unit as Node2D).modulate = Color(0.55, 0.85, 1.0, 0.72)
+		(unit as Node2D).call_deferred("_play_phantom_clone_spawn_pulse")
+
+## v6.6: 钢铁壁垒（fortress_bulwark）— 装甲/堡垒类单位部署时最大HP按倍率增加（耐久加倍）
+## 7星：装甲+堡垒 HP×2.0；5星：HP×1.5；3星：仅装甲 HP×1.3
+func _apply_fortress_bulwark_buff(unit: Node) -> void:
+	if unit == null or not is_instance_valid(unit):
+		return
+	if _phase_instrument == null or not _phase_instrument.has_method("get_active_ability"):
+		return
+	var ability: Dictionary = _phase_instrument.get_active_ability()
+	if ability.is_empty() or String(ability.get("id", "")) != "fortress_bulwark":
+		return
+	var unit_stats = unit.get("stats")
+	if unit_stats == null:
+		return
+	# 判定单位是否属于目标 combat_kind（ARMOR=1 / FORT=4）
+	var unit_kind: int = int(unit_stats.combat_kind)
+	var params: Dictionary = ability.get("params", {})
+	var target_kinds: Array = params.get("target_combat_kinds", [1, 4])
+	if not (unit_kind in target_kinds):
+		return
+	# 应用 HP 倍率（max_hp + 当前 hp 同步提升，保持满血出场）
+	var hp_mult: float = float(params.get("hp_multiplier", 2.0))
+	unit_stats.max_hp = maxf(1.0, float(unit_stats.max_hp) * hp_mult)
+	if "max_hp" in unit:
+		unit.hp = float(unit_stats.max_hp)  # 耐久加倍后满血
+	if unit.has_method("_update_hp_bar"):
+		unit._update_hp_bar()
+	unit.set_meta("fortress_bulwark_applied", true)
 
 func _create_player_unit(stats: UnitStats) -> Node:
 	var u = ConstructUnitScene.instantiate()

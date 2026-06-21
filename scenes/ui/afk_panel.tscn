@@ -1,0 +1,303 @@
+[gdscene format=3 uid="uid://afk_panel_scn"]
+
+[ext_resource type="Script" path="res://scenes/ui/afk_panel.gd" id="1_afk_panel"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_afk_panel_bg"]
+bg_color = Color(0.03, 0.05, 0.1, 0.98)
+border_color = Color(0, 0.65, 1, 0.2)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_afk_start_btn"]
+bg_color = Color(0, 0.94, 0.7, 1)
+border_color = Color(0, 0.94, 0.7, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_afk_stop_btn"]
+bg_color = Color(1, 0.3, 0.3, 1)
+border_color = Color(1, 0.3, 0.3, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="AFKPanel" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_afk_panel")
+
+[node name="Backdrop" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.5)
+
+[node name="Panel" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -320
+offset_top = -360
+offset_right = 320
+offset_bottom = 360
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/background = SubResource("StyleBoxFlat_afk_panel_bg")
+
+[node name="MarginContainer" type="MarginContainer" parent="Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="MainVBox" type="VBoxContainer" parent="Panel/MarginContainer"]
+layout_mode = 2
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 10
+
+[node name="HeaderHBox" type="HBoxContainer" parent="Panel/MarginContainer/MainVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+alignment = 1
+
+[node name="Title" type="Label" parent="Panel/MarginContainer/MainVBox/HeaderHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "挂机模式"
+
+[node name="CloseBtn" type="Button" parent="Panel/MarginContainer/MainVBox/HeaderHBox"]
+layout_mode = 2
+text = "X"
+custom_minimum_size = Vector2(32, 28)
+
+[node name="PreviewArea" type="Panel" parent="Panel/MarginContainer/MainVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 140)
+
+[node name="BattlePreview" type="TextureRect" parent="Panel/MarginContainer/MainVBox/PreviewArea"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 2
+stretch_mode = 6
+region_enabled = true
+region_rect = Rect2(0, 290, 1280, 140)
+visible = false
+
+[node name="PreviewLabel" type="Label" parent="Panel/MarginContainer/MainVBox/PreviewArea"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "挂机开始后显示战场"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="SlotsHBox" type="HBoxContainer" parent="Panel/MarginContainer/MainVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="Slot0" type="Panel" parent="Panel/MarginContainer/MainVBox/SlotsHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 80)
+
+[node name="SlotLayout" type="VBoxContainer" parent="Panel/MarginContainer/MainVBox/SlotsHBox/Slot0"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 4
+alignment = 1
+
+[node name="SlotIcon0" type="TextureRect" parent="Panel/MarginContainer/MainVBox/SlotsHBox/Slot0/SlotLayout"]
+layout_mode = 2
+size_flags_horizontal = 3
+stretch_mode = 4
+custom_minimum_size = Vector2(36, 36)
+
+[node name="SlotLabel0" type="Label" parent="Panel/MarginContainer/MainVBox/SlotsHBox/Slot0/SlotLayout"]
+layout_mode = 2
+text = "未关联"
+horizontal_alignment = 1
+
+[node name="Slot1" type="Panel" parent="Panel/MarginContainer/MainVBox/SlotsHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 80)
+
+[node name="SlotLayout" type="VBoxContainer" parent="Panel/MarginContainer/MainVBox/SlotsHBox/Slot1"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 4
+alignment = 1
+
+[node name="SlotIcon1" type="TextureRect" parent="Panel/MarginContainer/MainVBox/SlotsHBox/Slot1/SlotLayout"]
+layout_mode = 2
+size_flags_horizontal = 3
+stretch_mode = 4
+custom_minimum_size = Vector2(36, 36)
+
+[node name="SlotLabel1" type="Label" parent="Panel/MarginContainer/MainVBox/SlotsHBox/Slot1/SlotLayout"]
+layout_mode = 2
+text = "未关联"
+horizontal_alignment = 1
+
+[node name="Slot2" type="Panel" parent="Panel/MarginContainer/MainVBox/SlotsHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 80)
+
+[node name="SlotLayout" type="VBoxContainer" parent="Panel/MarginContainer/MainVBox/SlotsHBox/Slot2"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 4
+alignment = 1
+
+[node name="SlotIcon2" type="TextureRect" parent="Panel/MarginContainer/MainVBox/SlotsHBox/Slot2/SlotLayout"]
+layout_mode = 2
+size_flags_horizontal = 3
+stretch_mode = 4
+custom_minimum_size = Vector2(36, 36)
+
+[node name="SlotLabel2" type="Label" parent="Panel/MarginContainer/MainVBox/SlotsHBox/Slot2/SlotLayout"]
+layout_mode = 2
+text = "未关联"
+horizontal_alignment = 1
+
+[node name="Slot3" type="Panel" parent="Panel/MarginContainer/MainVBox/SlotsHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 80)
+
+[node name="SlotLayout" type="VBoxContainer" parent="Panel/MarginContainer/MainVBox/SlotsHBox/Slot3"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 4
+alignment = 1
+
+[node name="SlotIcon3" type="TextureRect" parent="Panel/MarginContainer/MainVBox/SlotsHBox/Slot3/SlotLayout"]
+layout_mode = 2
+size_flags_horizontal = 3
+stretch_mode = 4
+custom_minimum_size = Vector2(36, 36)
+
+[node name="SlotLabel3" type="Label" parent="Panel/MarginContainer/MainVBox/SlotsHBox/Slot3/SlotLayout"]
+layout_mode = 2
+text = "未关联"
+horizontal_alignment = 1
+
+[node name="Divider" type="HSeparator" parent="Panel/MarginContainer/MainVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ModeRow" type="HBoxContainer" parent="Panel/MarginContainer/MainVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="CycleRadio" type="Button" parent="Panel/MarginContainer/MainVBox/ModeRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "● 循环"
+
+[node name="PushRadio" type="Button" parent="Panel/MarginContainer/MainVBox/ModeRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "○ 推图"
+
+[node name="StartBtn" type="Button" parent="Panel/MarginContainer/MainVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 44)
+text = "▶ 开始挂机"
+
+[node name="StopBtn" type="Button" parent="Panel/MarginContainer/MainVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 44)
+text = "■ 停止挂机"
+visible = false
+
+[node name="StatsHBox" type="HBoxContainer" parent="Panel/MarginContainer/MainVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 24
+alignment = 2
+
+[node name="StatusLabel" type="Label" parent="Panel/MarginContainer/MainVBox/StatsHBox"]
+layout_mode = 2
+text = "状态: 待机中"
+
+[node name="WinsLabel" type="Label" parent="Panel/MarginContainer/MainVBox/StatsHBox"]
+layout_mode = 2
+text = "胜: 0"
+
+[node name="LossesLabel" type="Label" parent="Panel/MarginContainer/MainVBox/StatsHBox"]
+layout_mode = 2
+text = "负: 0"
+
+[node name="SlotsUsedLabel" type="Label" parent="Panel/MarginContainer/MainVBox/StatsHBox"]
+layout_mode = 2
+text = "已关联: 0/4关"

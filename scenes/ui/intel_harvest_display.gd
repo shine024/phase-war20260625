@@ -31,9 +31,15 @@ func _build_initial_ui() -> void:
 ## 设置情报收获数据（由战斗结算调用）
 ## data格式: {"harvests": [...], "reveal_events": [...], "eom_drops": [...], "intel_item_drops": [...]}
 func set_data(data: Dictionary) -> void:
-	_card_entries = data.get("harvests", [])
-	_reveal_events = data.get("reveal_events", [])
-	_intel_item_drops = data.get("intel_item_drops", [])
+	_card_entries.clear()
+	for d in data.get("harvests", []):
+		_card_entries.append(d)
+	_reveal_events.clear()
+	for d in data.get("reveal_events", []):
+		_reveal_events.append(d)
+	_intel_item_drops.clear()
+	for d in data.get("intel_item_drops", []):
+		_intel_item_drops.append(d)
 	_refresh_ui()
 
 func _refresh_ui() -> void:
@@ -130,7 +136,15 @@ func _create_card_entry(entry: Dictionary) -> PanelContainer:
 	for dim in IntelDimensions.ALL_DIMENSIONS:
 		var delta: float = 0.0
 		if dims.has(dim):
-			delta = float(dims[dim])
+			# v6.6 修复：_merge_harvests 把维度存成 {"old_val":..,"new_val":..,"delta":..} 字典，
+			# 而非直接 float。原 float(dims[dim]) 对 Dictionary 调用 float 触发
+			# "Nonexistent 'float' constructor" 运行时错误（每次战斗结算必现）。
+			# 兼容两种结构：Dictionary（合并后）取 "delta"，或直接数值（未合并）。
+			var dim_val: Variant = dims[dim]
+			if dim_val is Dictionary:
+				delta = float(dim_val.get("delta", 0.0))
+			elif dim_val is float or dim_val is int:
+				delta = float(dim_val)
 
 		if delta < 0.001:
 			continue  ## 跳过无增长的维度
