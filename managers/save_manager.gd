@@ -158,6 +158,8 @@ var _deferred_reset_queue: Array[String] = []
 var _pending_afk_load: Dictionary = {}
 var _afk_load_retry_count: int = 0
 const _AFK_LOAD_MAX_RETRIES: int = 60  # 重试上限（约 1 秒 @ 60fps），超时放弃保持默认
+# v6.6(离线挂机): 上次活跃时间戳（epoch 秒），save_game 时刷新，离线奖励计算用
+var _last_active_at: int = 0
 var _load_game_perf_pending: bool = false
 var _start_new_game_perf_pending: bool = false
 var _load_game_parse_phase_open: bool = false
@@ -412,6 +414,10 @@ func _resolve_read_save_path() -> String:
 		return leg_u
 	return ""
 
+## v6.6(离线挂机): 获取上次活跃时间戳（epoch 秒）。旧档/未存档返回 0。
+func get_last_active_at() -> int:
+	return _last_active_at
+
 func has_save() -> bool:
 	_migrate_old_save_if_needed()
 	return _resolve_read_save_path() != ""
@@ -604,6 +610,9 @@ func save_game() -> bool:
 	else:
 		# GameManager 不可用时仍写入默认值，避免校验缺失 game 字段
 		data[SK_GAME] = {SK_CURRENT_LEVEL: 1, "ng_plus": false}
+	# v6.6(离线挂机): 记录上次活跃时间戳（epoch 秒），供下次启动计算离线奖励
+	_last_active_at = int(Time.get_unix_time_from_system())
+	data["last_active_at"] = _last_active_at
 	if pm != null and pm.has_method("get_slot_card_ids"):
 		data[SK_PHASE_SLOTS] = pm.get_slot_card_ids()
 		data[SK_PHASE_SLOTS_ORDER] = "rbgy"
@@ -987,6 +996,8 @@ func start_new_game() -> void:
 		afk_mgr_reset.reset_progress()
 	_pending_afk_load.clear()
 	_afk_load_retry_count = 0
+	# v6.6(离线挂机): 新游戏立即打时间戳，避免首次离线计算异常
+	_last_active_at = int(Time.get_unix_time_from_system())
 	# 新存档初始背包：全装型战斗卡 ×1，2星能量卡 ×2
 	_enqueue_starter_backpack_cards()
 	if DEBUG_SAVE_LOG:
@@ -1121,11 +1132,13 @@ func _load_from_path(path: String) -> bool:
 	var version: int = data.get(SK_SCHEMA_VERSION, 1)
 	if version < SAVE_SCHEMA_VERSION:
 		SaveMigration.migrate_save_data(data, version, DEBUG_SAVE_LOG)
-	_noncritical_save_cache.clear()
-	_last_noncritical_save_ms = 0
-	if _load_game_parse_phase_open:
-		_load_game_parse_phase_open = false
-		_perf_phase_end("load_game_parse_json")
+		_noncritical_save_cache.clear()
+		_last_noncritical_save_ms = 0
+		# v6.6(离线挂机): 读取上次活跃时间戳（旧档无此键 → 0 → 不弹离线窗）
+		_last_active_at = int(data.get("last_active_at", 0))
+		if _load_game_parse_phase_open:
+			_load_game_parse_phase_open = false
+			_perf_phase_end("load_game_parse_json")
 
 	# 关键管理器同步加载，保证主流程稳定；其余管理器分批 deferred，降低 Continue 同帧尖峰。
 	_load_game_critical_phase_open = true

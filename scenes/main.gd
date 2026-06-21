@@ -16,6 +16,8 @@ const MainReward = preload("res://scripts/systems/main_reward.gd")
 const ToastUtils = preload("res://scripts/toast_utils.gd")
 const CardEnhancementPanelScene = preload("res://scenes/ui/card_enhancement_panel.tscn")
 const AFKModeManagerScript = preload("res://scripts/systems/afk_mode_manager.gd")
+const OfflineIdleManagerScript = preload("res://scripts/systems/offline_idle_manager.gd")
+const OfflineRewardDialogScript = preload("res://scenes/ui/offline_reward_dialog.gd")
 const DEBUG_MAIN_LOG := false
 const DEBUG_LOG_PATH := "debug-22f19e.log"
 
@@ -27,6 +29,7 @@ var _reward: MainReward = null
 var _deploy_toast: ToastUtils = null
 var _save_toast: ToastUtils = null
 var _afk_manager: AFKModeManager = null
+var _offline_idle_manager: OfflineIdleManager = null
 
 func _debug_log(hypothesis_id: String, location: String, message: String, data: Dictionary = {}) -> void:
 	var payload := {
@@ -152,6 +155,8 @@ func _deferred_non_critical_init() -> void:
 	_integrate_new_systems()
 	# 初始化挂机管理器
 	_init_afk_manager()
+	# v6.6(离线挂机): 初始化离线挂机管理器 + 检查离线奖励
+	_init_offline_idle_manager()
 	# 启动新手教程（如果是新游戏）
 	_start_tutorial_if_needed()
 	# 初始化日常任务
@@ -696,6 +701,42 @@ func _init_afk_manager() -> void:
 ## SaveManager 的 save/load/reset 经此 getter 访问 AFK 状态。
 func get_afk_manager() -> AFKModeManager:
 	return _afk_manager
+
+# ── 离线挂机 ─────────────────────────────────────────────────
+## v6.6(离线挂机): 初始化离线挂机管理器并检查离线奖励（延迟一帧确保 save 已加载）
+func _init_offline_idle_manager() -> void:
+	_offline_idle_manager = OfflineIdleManagerScript.new()
+	_offline_idle_manager.init(self)
+	# 延迟检查离线奖励：确保 save load（含 deferred）完成后再生效
+	call_deferred("_maybe_show_offline_rewards")
+
+## v6.6(离线挂机): 计算并弹出离线奖励（若离线时长超阈值）
+func _maybe_show_offline_rewards() -> void:
+	if _offline_idle_manager == null or SaveManager == null:
+		return
+	if not SaveManager.has_method("get_last_active_at"):
+		return
+	var last_active: int = SaveManager.get_last_active_at()
+	var now: int = int(Time.get_unix_time_from_system())
+	var result: Dictionary = _offline_idle_manager.compute_offline_rewards(last_active, now)
+	if result.is_empty():
+		return   # 离线不足/无时间戳，不弹
+	_show_offline_reward_dialog(result)
+
+## v6.6(离线挂机): 显示"欢迎回来"弹窗
+func _show_offline_reward_dialog(result: Dictionary) -> void:
+	var dialog := OfflineRewardDialogScript.create(self, result)
+	if dialog:
+		dialog.claimed.connect(_on_offline_reward_claimed)
+
+## v6.6(离线挂机): 玩家点领取后入账
+func _on_offline_reward_claimed(rewards: Dictionary) -> void:
+	if _offline_idle_manager != null:
+		_offline_idle_manager.grant_rewards(rewards)
+
+## v6.6(离线挂机): 暴露 manager（桥接/测试用）
+func get_offline_idle_manager() -> OfflineIdleManager:
+	return _offline_idle_manager
 
 func _on_afk_pressed() -> void:
 	_play_sfx("button")
