@@ -31,18 +31,22 @@ static func create(parent: Node, result: Dictionary) -> OfflineRewardDialog:
 
 
 func _build_ui() -> void:
-	# 半透明遮罩
+	# 半透明遮罩（铺满整个屏幕）
 	var dim := ColorRect.new()
 	dim.color = Color(0, 0, 0, 0.6)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(dim)
 
+	# CenterContainer 保证面板无论内容多高都精确居中（与项目所有 overlay 一致）
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE  # 让点击穿透到 dim 拦截
+	add_child(center)
+
 	# 居中面板
 	var panel := Panel.new()
-	panel.set_anchors_preset(Control.PRESET_CENTER)
 	panel.custom_minimum_size = Vector2(440, 0)
-	panel.position = Vector2(-220, -240)
 	var style := StyleBoxFlat.new()
 	style.bg_color = _BG_PANEL
 	style.border_color = _BORDER
@@ -53,10 +57,10 @@ func _build_ui() -> void:
 	style.content_margin_top = 18
 	style.content_margin_bottom = 18
 	panel.add_theme_stylebox_override("panel", style)
-	add_child(panel)
+	center.add_child(panel)
 
 	var vbox := VBoxContainer.new()
-	vbox.set_anchors_preset(Control.PRESET_FULL_RECT)
+	# 不用 FULL_RECT：让 VBox 自然撑开 Panel 高度（Panel 在 CenterContainer 里按内容尺寸居中）
 	vbox.add_theme_constant_override("separation", 10)
 	panel.add_child(vbox)
 

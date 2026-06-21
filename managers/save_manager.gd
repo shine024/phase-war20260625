@@ -275,6 +275,10 @@ func _on_battle_ended_flush_save(_player_won: bool) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		_is_exiting = true
+		# v6.6(离线挂机): 强制存档刷新 last_active_at 时间戳。
+		# 否则直接关窗口不存档，下次打开会用旧时间戳计算离线奖励（或=0 不弹窗）。
+		# save_game 内部因 _is_exiting=true 会绕过 throttle/battle-active 守卫强制写入。
+		save_game()
 
 func _exit_tree() -> void:
 	_is_exiting = true

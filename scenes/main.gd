@@ -716,6 +716,11 @@ func _maybe_show_offline_rewards() -> void:
 		return
 	if not SaveManager.has_method("get_last_active_at"):
 		return
+	# 防重入：若已有离线奖励弹窗在显示，不再弹第二个
+	if popup_layer != null:
+		for c in popup_layer.get_children():
+			if c is OfflineRewardDialog:
+				return
 	var last_active: int = SaveManager.get_last_active_at()
 	var now: int = int(Time.get_unix_time_from_system())
 	var result: Dictionary = _offline_idle_manager.compute_offline_rewards(last_active, now)
@@ -724,8 +729,11 @@ func _maybe_show_offline_rewards() -> void:
 	_show_offline_reward_dialog(result)
 
 ## v6.6(离线挂机): 显示"欢迎回来"弹窗
+## 必须加到 popup_layer（CanvasLayer layer=100）而非 Main 直接子节点，
+## 否则会被 HudLayer(40)/PopupLayer(100) 遮挡导致玩家看不到。
 func _show_offline_reward_dialog(result: Dictionary) -> void:
-	var dialog := OfflineRewardDialogScript.create(self, result)
+	var parent: Node = popup_layer if popup_layer != null else self
+	var dialog := OfflineRewardDialogScript.create(parent, result)
 	if dialog:
 		dialog.claimed.connect(_on_offline_reward_claimed)
 
