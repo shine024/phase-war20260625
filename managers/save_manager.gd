@@ -148,10 +148,16 @@ const SK_CHALLENGE_RECORDS: String = SaveConstants.SK_CHALLENGE_RECORDS
 const SK_CARD_COLLECTION: String = SaveConstants.SK_CARD_COLLECTION
 const SK_LEADERBOARD: String = SaveConstants.SK_LEADERBOARD
 const SK_LEGACY_COMPANY_REP: String = SaveConstants.SK_LEGACY_COMPANY_REP
+# v6.6(挂机): AFK 状态存档键别名
+const SK_AFK: String = SaveConstants.SK_AFK
 
 var _deferred_load_data: Dictionary = {}
 var _deferred_manager_queue: Array = []
 var _deferred_reset_queue: Array[String] = []
+# v6.6(挂机): AFK 待加载数据（manager 可能晚于 autoload 创建，延迟重试应用）
+var _pending_afk_load: Dictionary = {}
+var _afk_load_retry_count: int = 0
+const _AFK_LOAD_MAX_RETRIES: int = 60  # 重试上限（约 1 秒 @ 60fps），超时放弃保持默认
 var _load_game_perf_pending: bool = false
 var _start_new_game_perf_pending: bool = false
 var _load_game_parse_phase_open: bool = false
@@ -468,6 +474,15 @@ func _find_backpack_panel() -> Node:
 			return n
 	return null
 
+## v6.6(挂机): 通过 Main 桥接获取 AFK manager（RefCounted，非 autoload）。
+## AFK manager 由 Main 在 _init_afk_manager 创建，可能晚于 SaveManager autoload 初始化。
+## 返回 RefCounted 而非 Node（AFK manager 不在场景树中）。
+func _get_afk_manager() -> RefCounted:
+	var main_node: Node = get_node_or_null("/root/Main")
+	if main_node != null and main_node.has_method("get_afk_manager"):
+		return main_node.get_afk_manager()
+	return null
+
 func _collect_manager_state(data: Dictionary, node_path: String, data_key: String) -> void:
 	var mgr: Node = get_node_or_null(node_path)
 	if mgr != null and mgr.has_method("save_state"):
@@ -490,11 +505,15 @@ func _collect_noncritical_save_data(data: Dictionary, now_ms: int) -> void:
 		_collect_manager_state(fresh, "/root/ChallengeModeManager", SK_CHALLENGE_RECORDS)
 		_collect_manager_state(fresh, "/root/CardCollectionManager", SK_CARD_COLLECTION)
 		_collect_manager_state(fresh, "/root/LeaderboardManager", SK_LEADERBOARD)
-		# v6.6: 情报系统（deferred 收集）
-		_collect_manager_state(fresh, "/root/IntelDiscoveryManager", SK_INTEL_DISCOVERY)
-		_collect_manager_state(fresh, "/root/IntelEvolutionManager", SK_INTEL_EVOLUTION)
-		_collect_manager_state(fresh, "/root/EnemyOriginModManager", SK_EOM_MANAGER)
-		_noncritical_save_cache = fresh
+	# v6.6: 情报系统（deferred 收集）
+	_collect_manager_state(fresh, "/root/IntelDiscoveryManager", SK_INTEL_DISCOVERY)
+	_collect_manager_state(fresh, "/root/IntelEvolutionManager", SK_INTEL_EVOLUTION)
+	_collect_manager_state(fresh, "/root/EnemyOriginModManager", SK_EOM_MANAGER)
+	# v6.6(挂机): AFK 配置/进度/累计奖励（通过 Main 桥接访问 RefCounted manager）
+	var afk_mgr_save = _get_afk_manager()
+	if afk_mgr_save != null and afk_mgr_save.has_method("save_state"):
+		fresh[SK_AFK] = afk_mgr_save.save_state()
+	_noncritical_save_cache = fresh
 		_last_noncritical_save_ms = now_ms
 	for key in _noncritical_save_cache.keys():
 		data[key] = _noncritical_save_cache[key]
@@ -962,6 +981,12 @@ func start_new_game() -> void:
 	# 清除待处理的背包ID（开始新游戏时）
 	_pending_backpack_ids.clear()
 	_last_known_extra_ids.clear()
+	# v6.6(挂机): 重置 AFK 状态（manager 是 RefCounted，经 Main 桥接调用 reset_progress）
+	var afk_mgr_reset: RefCounted = _get_afk_manager()
+	if afk_mgr_reset != null and afk_mgr_reset.has_method("reset_progress"):
+		afk_mgr_reset.reset_progress()
+	_pending_afk_load.clear()
+	_afk_load_retry_count = 0
 	# 新存档初始背包：全装型战斗卡 ×1，2星能量卡 ×2
 	_enqueue_starter_backpack_cards()
 	if DEBUG_SAVE_LOG:
@@ -1238,6 +1263,36 @@ func _schedule_deferred_manager_loads(data: Dictionary) -> void:
 	_deferred_load_data = data
 	_deferred_manager_queue = DEFERRED_MANAGER_LOADS.duplicate(true)
 	call_deferred("_process_deferred_manager_loads")
+	# v6.6(挂机): AFK manager 是 RefCounted（非 autoload），用专用桥接加载。
+	# manager 可能晚于 autoload 创建，故延迟重试直到就绪。
+	if data.has(SK_AFK):
+		_pending_afk_load = data[SK_AFK]
+		_afk_load_retry_count = 0
+		call_deferred("_load_afk_state")
+
+
+## v6.6(挂机): 应用 AFK 存档到 manager。manager 未就绪时延迟重试（上限 _AFK_LOAD_MAX_RETRIES 次）。
+func _load_afk_state() -> void:
+	if _pending_afk_load.is_empty():
+		return
+	var afk_mgr: RefCounted = _get_afk_manager()
+	if afk_mgr == null:
+		_afk_load_retry_count += 1
+		if _afk_load_retry_count <= _AFK_LOAD_MAX_RETRIES:
+			call_deferred("_load_afk_state")
+		else:
+			# 超时放弃，保持默认（旧档/异常情况）
+			_pending_afk_load.clear()
+			_afk_load_retry_count = 0
+		return
+	if afk_mgr.has_method("load_state") and _pending_afk_load is Dictionary:
+		afk_mgr.load_state(_pending_afk_load)
+	# 加载完成后刷新面板显示（若面板已就绪）
+	var afk_panel: Node = get_node_or_null("/root/Main/PopupLayer/AFKOverlay/CenterContainer/AFKPanel")
+	if afk_panel != null and afk_panel.has_method("refresh_after_load"):
+		afk_panel.refresh_after_load()
+	_pending_afk_load.clear()
+	_afk_load_retry_count = 0
 
 func _process_deferred_manager_loads() -> void:
 	if _deferred_manager_queue.is_empty():

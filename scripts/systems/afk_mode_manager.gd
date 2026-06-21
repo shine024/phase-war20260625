@@ -71,6 +71,12 @@ var _deploy_fail_streak: int = 0
 const _PLAYER_SLOT_RANGE_START: int = 1
 const _PLAYER_SLOT_RANGE_END: int = 6
 
+# ── 推图失败重试（v6.6）──
+## 推图模式同一关失败重试次数上限；耗尽才停止（消化偶发失败）
+const PUSH_MAX_RETRIES: int = 3
+## 当前推图关已重试次数（start_afk 时清零，_afk_failed 时清零）
+var push_retry_count: int = 0
+
 
 # ── 初始化 ──
 
@@ -124,6 +130,8 @@ func start_afk() -> bool:
 	accumulated_rewards.clear()
 	_auto_deploy_pending.clear()
 	_deploy_fail_streak = 0
+	# v6.6: 重置推图重试计数（新会话从头开始计重试）
+	push_retry_count = 0
 
 	if mode == Mode.PUSH:
 		_pending_level = push_level
@@ -201,6 +209,53 @@ func reset_stats() -> void:
 	total_losses = 0
 
 
+# ── 存档（v6.6）──
+
+## 保存挂机状态（配置/进度/累计奖励池）。由 SaveManager 经 Main 桥接调用。
+## 不存 is_running/state（读档后保持 IDLE，不自动恢复运行）。
+func save_state() -> Dictionary:
+	return {
+		"_version": 1,
+		"mode": int(mode),
+		"slots": slots.duplicate(),
+		"push_level": push_level,
+		"accumulated_rewards": accumulated_rewards.duplicate(true),
+	}
+
+
+## 加载挂机状态。旧 save 无此键时 data 为空字典，保持默认值。
+func load_state(data: Dictionary) -> void:
+	if data.is_empty():
+		return   # 旧档无此键，保持默认（CYCLE / slots=[0,0,0,0] / push_level=1）
+	# mode：0=CYCLE, 1=PUSH；防御性 clamp，越界回退 CYCLE
+	var m: int = int(data.get("mode", 0))
+	if m == int(Mode.PUSH):
+		mode = Mode.PUSH
+	else:
+		mode = Mode.CYCLE
+	# slots：逐个读取，缺失补 0
+	var loaded_slots: Array = data.get("slots", [0, 0, 0, 0])
+	for i in range(min(4, loaded_slots.size())):
+		slots[i] = int(loaded_slots[i])
+	# push_level
+	push_level = max(1, int(data.get("push_level", 1)))
+	# accumulated_rewards：读档恢复累计池（不自动恢复运行，玩家可手动开始挂机继续累积）
+	var loaded_rewards: Variant = data.get("accumulated_rewards", {})
+	if loaded_rewards is Dictionary:
+		accumulated_rewards = (loaded_rewards as Dictionary).duplicate(true)
+
+
+## 新游戏重置（由 SaveManager.start_new_game 经 Main 桥接调用）
+func reset_progress() -> void:
+	mode = Mode.CYCLE
+	slots = [0, 0, 0, 0]
+	push_level = 1
+	push_retry_count = 0
+	accumulated_rewards.clear()
+	total_wins = 0
+	total_losses = 0
+
+
 # ── 进入下一场战斗 ──
 
 ## 进入下一场战斗（由外部调用或信号回调触发）
@@ -238,28 +293,34 @@ func _get_valid_slots() -> Array[int]:
 func _on_battle_ended_from_bus(player_won: bool) -> void:
 	if not is_running:
 		return
-	
+
 	_waiting_for_battle_end = false
-	
+
 	if player_won:
 		total_wins += 1
+		# 胜利清零推图重试计数（过了这关，下关重新计重试）
+		push_retry_count = 0
 		level_completed.emit(_pending_level, true)
-		_continue_loop(true)
+		_advance_to_next_level()
 	else:
 		total_losses += 1
 		level_completed.emit(_pending_level, false)
-		_afk_failed()
-
-
-func _continue_loop(won: bool) -> void:
-	if mode == Mode.PUSH:
-		if won:
-			_pending_level += 1
-			if _pending_level > 100:
-				stop_afk()
-				return
+		# v6.6: 推图模式失败重试——同一关重试 PUSH_MAX_RETRIES 次，耗尽才停止。
+		# 循环模式失败即停（符合设计：刷已能稳定通关的关卡）。
+		if mode == Mode.PUSH and push_retry_count < PUSH_MAX_RETRIES:
+			push_retry_count += 1
+			# 重试同一关：_pending_level 不变，直接延迟进入下一场战斗
+			call_deferred("_delayed_enter_battle")
 		else:
 			_afk_failed()
+
+
+## 推进到下一关（仅在胜利时调用）。失败处理见 _on_battle_ended_from_bus。
+func _advance_to_next_level() -> void:
+	if mode == Mode.PUSH:
+		_pending_level += 1
+		if _pending_level > 100:
+			stop_afk()
 			return
 	else:
 		# 循环模式
@@ -271,7 +332,7 @@ func _continue_loop(won: bool) -> void:
 			stop_afk()
 			return
 		_pending_level = valid[current_slot_index]
-	
+
 	# 延迟一帧进入下一关，确保当前战斗完全清理
 	# 使用 call_deferred 确保 battle_ended 信号完全处理后再启动下一场
 	call_deferred("_delayed_enter_battle")
@@ -285,6 +346,11 @@ func _afk_failed() -> void:
 	# 清理自动部署
 	_auto_deploy_pending.clear()
 	_deploy_fail_streak = 0
+	# v6.6: 推图模式失败时保存已通关最高关（= 失败关 - 1），修复"失败丢弃全部进度"bug。
+	# 下次 start_afk 从该进度续推，而非从会话开始时的 push_level 重来。
+	if mode == Mode.PUSH and _pending_level > 1:
+		push_level = _pending_level - 1
+	push_retry_count = 0
 	# 失败前结算上一场尚未 claim 的掉落（game_manager 的 AFK 分支已处理 claim，
 	# 但若失败场未走该分支，这里兜底快照累计）
 	accumulate_pending_drops()

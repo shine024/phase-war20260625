@@ -692,6 +692,11 @@ func _init_afk_manager() -> void:
 		if afk_panel_node.has_method("set_main_scene"):
 			afk_panel_node.set_main_scene(self)
 
+## v6.6(挂机): 暴露 AFK manager 给 SaveManager 桥接访问（RefCounted 非 autoload）。
+## SaveManager 的 save/load/reset 经此 getter 访问 AFK 状态。
+func get_afk_manager() -> AFKModeManager:
+	return _afk_manager
+
 func _on_afk_pressed() -> void:
 	_play_sfx("button")
 	_toggle_overlay(afk_overlay, "afk")

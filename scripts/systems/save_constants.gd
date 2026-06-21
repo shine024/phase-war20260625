@@ -38,3 +38,5 @@ const SK_INTEL_MANUAL: String = "intel_manual"
 const SK_INTEL_DISCOVERY: String = "intel_discovery"
 const SK_INTEL_EVOLUTION: String = "intel_evolution"
 const SK_EOM_MANAGER: String = "eom_manager"
+# v6.6: 挂机系统存档键（slots/mode/push_level/accumulated_rewards）
+const SK_AFK: String = "afk"

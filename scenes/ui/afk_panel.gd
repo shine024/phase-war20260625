@@ -123,6 +123,23 @@ func set_main_scene(main_node: Node) -> void:
 	_cache_battle_viewport()
 
 
+## v6.6(挂机存档): 读档加载 AFK 状态后由 SaveManager 调用，刷新面板显示。
+## 反映读档恢复的 slots/mode/push_level/accumulated_rewards。
+func refresh_after_load() -> void:
+	if _afk_manager == null:
+		return
+	# 同步模式按钮样式到读档的 mode
+	match _afk_manager.mode:
+		AFKModeManager.Mode.CYCLE:
+			_set_mode_button_style(cycle_btn, true)
+			_set_mode_button_style(push_btn, false)
+		AFKModeManager.Mode.PUSH:
+			_set_mode_button_style(cycle_btn, false)
+			_set_mode_button_style(push_btn, true)
+	_update_slot_display()
+	_update_stats_display()
+
+
 ## v6.6(挂机缩略图): 缓存战斗 SubViewport（ViewportTexture 的源）
 func _cache_battle_viewport() -> void:
 	if _battle_viewport != null and is_instance_valid(_battle_viewport):
