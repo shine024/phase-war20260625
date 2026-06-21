@@ -12,6 +12,9 @@ class_name OfflineIdleManager
 
 # ── 常量 ──
 
+## 在线挂机模式枚举（preload 避免 class_name 注册时序依赖）
+const _AFKModeManager = preload("res://scripts/systems/afk_mode_manager.gd")
+
 ## 离线时长封顶（8 小时）
 const MAX_OFFLINE_SECONDS: int = 8 * 3600
 ## 离线不足此阈值不弹窗（5 分钟）
@@ -143,13 +146,13 @@ func _resolve_reward_level() -> int:
 	var afk_mgr = _get_afk_manager()
 	if afk_mgr != null:
 		# CYCLE：取第一个非 0 slot
-		if afk_mgr.mode == AFKModeManager.Mode.CYCLE:
+		if afk_mgr.mode == _AFKModeManager.Mode.CYCLE:
 			var slots: Array = afk_mgr.slots
 			for i in range(slots.size()):
 				if int(slots[i]) > 0:
 					return int(slots[i])
 		# PUSH：取 push_level
-		elif afk_mgr.mode == AFKModeManager.Mode.PUSH:
+		elif afk_mgr.mode == _AFKModeManager.Mode.PUSH:
 			if afk_mgr.push_level > 0:
 				return afk_mgr.push_level
 	# 回退：最高解锁关

@@ -511,15 +511,15 @@ func _collect_noncritical_save_data(data: Dictionary, now_ms: int) -> void:
 		_collect_manager_state(fresh, "/root/ChallengeModeManager", SK_CHALLENGE_RECORDS)
 		_collect_manager_state(fresh, "/root/CardCollectionManager", SK_CARD_COLLECTION)
 		_collect_manager_state(fresh, "/root/LeaderboardManager", SK_LEADERBOARD)
-	# v6.6: 情报系统（deferred 收集）
-	_collect_manager_state(fresh, "/root/IntelDiscoveryManager", SK_INTEL_DISCOVERY)
-	_collect_manager_state(fresh, "/root/IntelEvolutionManager", SK_INTEL_EVOLUTION)
-	_collect_manager_state(fresh, "/root/EnemyOriginModManager", SK_EOM_MANAGER)
-	# v6.6(挂机): AFK 配置/进度/累计奖励（通过 Main 桥接访问 RefCounted manager）
-	var afk_mgr_save = _get_afk_manager()
-	if afk_mgr_save != null and afk_mgr_save.has_method("save_state"):
-		fresh[SK_AFK] = afk_mgr_save.save_state()
-	_noncritical_save_cache = fresh
+		# v6.6: 情报系统（deferred 收集）
+		_collect_manager_state(fresh, "/root/IntelDiscoveryManager", SK_INTEL_DISCOVERY)
+		_collect_manager_state(fresh, "/root/IntelEvolutionManager", SK_INTEL_EVOLUTION)
+		_collect_manager_state(fresh, "/root/EnemyOriginModManager", SK_EOM_MANAGER)
+		# v6.6(挂机): AFK 配置/进度/累计奖励（通过 Main 桥接访问 RefCounted manager）
+		var afk_mgr_save = _get_afk_manager()
+		if afk_mgr_save != null and afk_mgr_save.has_method("save_state"):
+			fresh[SK_AFK] = afk_mgr_save.save_state()
+		_noncritical_save_cache = fresh
 		_last_noncritical_save_ms = now_ms
 	for key in _noncritical_save_cache.keys():
 		data[key] = _noncritical_save_cache[key]
