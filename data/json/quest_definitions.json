@@ -66,12 +66,10 @@
     {
       "id": "q_frag_smg",
       "category": "commission",
-      "title": "收集冲锋枪碎片",
-      "description": "拥有至少 3 个 MP18·改 蓝图碎片（可解析即算）。",
-      "objective_type": "collect_fragments",
-      "target": {
-        "smg_mk2": 3
-      },
+      "title": "扩充军械库",
+      "description": "解锁至少 3 种卡牌蓝图。",
+      "objective_type": "collect_cards",
+      "target": 3,
       "company_id": "void_research",
       "rewards": {
         "nano_materials": 20,

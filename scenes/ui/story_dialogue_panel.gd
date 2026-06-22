@@ -299,9 +299,6 @@ func _on_all_dialogues_done() -> void:
 	# 战后对话完成后任务进度已由 QuestManager 更新，无需额外推进
 	_mission_quest_id = ""
 	_mission_is_post = false
-	# 通知对话完成
-	if SignalBus.has_signal("story_dialogue_finished"):
-		SignalBus.story_dialogue_finished.emit()
 	# 队列里还有待播剧情（同关多剧情），播下一个，不隐藏 overlay
 	if not _mission_queue.is_empty():
 		var next: Dictionary = _mission_queue.pop_front()

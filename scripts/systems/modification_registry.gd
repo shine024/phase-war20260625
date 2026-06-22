@@ -320,6 +320,41 @@ static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary) -
 			# （UnitStats/WeaponResource 均有此字段，bullet 的 VFX/弹道 match 读它）
 			"weapon_type", "legacy_weapon_type":
 				result["legacy_weapon_type"] = int(effect_value)
+			# ── v6.8: 第一批软特性 key 激活（语义同源映射，零新字段，复活 18 个改造）──
+			# 视野/侦察类 → 攻击射程延伸（视野≈索敌范围≈射程）
+			# gen_01_comms / gen_06_laser_designator / rec_05_uav / for_06_radar
+			"vision", "vision_bonus", "stealth_detect", "detection_range":
+				if not result.has("attack_range"):
+					result["attack_range"] = 0
+				result["attack_range"] += int(float(effect_value) * 120.0)
+			# 夜视/烟雾穿透类 → 暴击率（精确射击语义）
+			# inf_20_night_vision / rec_08_nvg / arm_12_thermal_sight / inf_21_thermal
+			"night_bonus", "smoke_ignore":
+				if not result.has("crit_chance"):
+					result["crit_chance"] = 0.0
+				result["crit_chance"] = min(1.0, float(result["crit_chance"]) + float(effect_value))
+			# 热防护/三防类 → 减伤（防护语义同源）
+			# rec_02_ir_suppression / arm_02_composite_armor / arm_03_reactive_armor / gen_07_mine_resistant
+			"thermal_immunity", "heat_resist", "heat_immunity_once", "mine_damage_reduction":
+				if not result.has("damage_reduction"):
+					result["damage_reduction"] = 0.0
+				result["damage_reduction"] = min(0.75, float(result["damage_reduction"]) + float(effect_value))
+			# 隐蔽/低可探测类 → 闪避（难被发现=难被命中）
+			# rec_01_optical_camouflage / gen_03_camouflage / for_07_camouflage
+			"detection_reduce":
+				if not result.has("dodge_chance"):
+					result["dodge_chance"] = 0.0
+				# detection_reduce 是负值（-0.20），取绝对值映射为闪避增益
+				result["dodge_chance"] = min(1.0, float(result["dodge_chance"]) + absf(float(effect_value)))
+			# 巷战加成类 → 对轻装伤害（巷战主要打击步兵/轻装）
+			# inf_22_breaching / rec_09_breaching
+			"urban_attack_bonus":
+				if not result.has("attack_light"):
+					result["attack_light"] = 0
+				if effect_value is float:
+					result["attack_light"] = int(float(result["attack_light"]) * (1.0 + effect_value))
+				elif effect_value is int:
+					result["attack_light"] += effect_value
 			_:
 				if not result.has("_special"):
 					result["_special"] = {}

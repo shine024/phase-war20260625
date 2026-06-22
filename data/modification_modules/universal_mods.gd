@@ -23,7 +23,7 @@ const DATA: Dictionary = {
 	power_mult = 1.0, cost_research = 60, cost_install = 30,
 		slot_type = "comms", conflict_group = "comms",
 		effects = {attack_interval = -0.05, vision = 0.20},
-		applicable_types = [0, 6],  # LIGHT, RECON
+		applicable_types = [0],  # LIGHT（含侦察子类，_guess_combat_kind 把 recon 归为 LIGHT）
 		unlock_conditions = {required_level = 1}
 	},
 	"gen_02_digital" = {
@@ -31,10 +31,10 @@ const DATA: Dictionary = {
 		icon = "res://assets/ui/icons/mod_icons/mod_system.png",
 		prototype = "陆地勇士系统", description = "指挥效率提升",
 		rarity = "rare",
-	power_mult = 1.3, cost_research = 140, cost_install = 70,
+		power_mult = 1.3, cost_research = 140, cost_install = 70,
 		slot_type = "system", conflict_group = "system",
 		effects = {command_efficiency = 0.15},
-		applicable_types = [0, 6],  # LIGHT, RECON
+		applicable_types = [0],  # LIGHT（含侦察子类）
 		unlock_conditions = {required_level = 3}
 	},
 	"gen_03_camouflage" = {
@@ -45,7 +45,7 @@ const DATA: Dictionary = {
 	power_mult = 1.0, cost_research = 70, cost_install = 35,
 		slot_type = "stealth", conflict_group = "stealth",
 		effects = {detection_reduce = -0.20},
-		applicable_types = [0, 1, 2, 3, 4, 5, 6],  # ALL
+		applicable_types = [0, 1, 2, 3, 4],  # ALL（CombatKind 合法值 0-4）
 		unlock_conditions = {required_level = 1}
 	},
 	"gen_04_vest" = {
@@ -56,7 +56,7 @@ const DATA: Dictionary = {
 	power_mult = 1.0, cost_research = 80, cost_install = 40,
 		slot_type = "armor", conflict_group = "armor",
 		effects = {max_hp = 0.10, defense_light = 0.05},
-		applicable_types = [0, 2, 6],  # LIGHT, SUPPORT, RECON
+		applicable_types = [0, 2],  # LIGHT, SUPPORT（侦察归 LIGHT 已含）
 		unlock_conditions = {required_level = 1}
 	},
 	"gen_05_shield" = {
@@ -78,7 +78,7 @@ const DATA: Dictionary = {
 	power_mult = 1.3, cost_research = 180, cost_install = 90,
 		slot_type = "designator", conflict_group = "designator",
 		effects = {ally_arty_bonus = 0.20},
-		applicable_types = [0, 6],  # LIGHT, RECON
+		applicable_types = [0],  # LIGHT（含侦察子类）
 		unlock_conditions = {required_level = 3}
 	},
 	"gen_07_mine_resistant" = {
@@ -122,7 +122,7 @@ const DATA: Dictionary = {
 	power_mult = 1.0, cost_research = 90, cost_install = 45,
 		slot_type = "ammunition", conflict_group = "ammunition",
 		effects = {sustained_fire = 0.30},
-		applicable_types = [0, 1, 2, 3, 4, 5, 6],  # ALL
+		applicable_types = [0, 1, 2, 3, 4],  # ALL（CombatKind 合法值 0-4）
 		unlock_conditions = {required_level = 1}
 	},
 }
