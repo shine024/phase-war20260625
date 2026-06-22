@@ -11,6 +11,9 @@ const SimpleEnemyProjectileBatchScript = preload("res://managers/battle/simple_e
 const SimplePlayerProjectileBatchScript = preload("res://managers/battle/simple_player_projectile_batch.gd")
 const SimpleIndirectProjectileBatchScript = preload("res://managers/battle/simple_indirect_projectile_batch.gd")
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
+# v6.7: 相位师排名差异化加成 —— 玩家装配器 + 战力评估器
+const MasterPlayerAssembler = preload("res://scripts/master_player_assembler.gd")
+const MasterPowerEvaluator = preload("res://scripts/master_power_evaluator.gd")
 const DEBUG_BATTLE_LOG := false
 
 # v6.0 依赖注入重构: 移除 @onready 单例引用，改用 setup() 方法注入
@@ -158,6 +161,27 @@ func _process(delta: float) -> void:
 #  战斗流程
 # =========================================================================
 
+## v6.7: 计算并缓存玩家与敌方 boss 的相位师星级（1-7★）
+## 玩家星级：用 MasterPlayerAssembler 从 PhaseInstrumentManager 装配 master dict
+## 敌方星级：仅 boss 对战时算，直接用 _phase_master_config 喂评估器
+## 任一计算失败均回落到 3★（基准=现状数值，向后兼容）
+func _compute_and_cache_rank_stars() -> void:
+	var player_stars: int = 3
+	var enemy_stars: int = 3
+	# 玩家星级
+	if PhaseInstrumentManager != null:
+		var pr: Dictionary = MasterPlayerAssembler.evaluate_player_stars(PhaseInstrumentManager)
+		player_stars = int(pr.get("stars", 3))
+	# 敌方 boss 星级（仅 boss 对战）
+	if _is_phase_master_battle and not _phase_master_config.is_empty():
+		var er: Dictionary = MasterPowerEvaluator.evaluate(_phase_master_config)
+		enemy_stars = int(er.get("stars", 3))
+	if PhaseInstrumentManager and PhaseInstrumentManager.has_method("set_player_rank_stars"):
+		PhaseInstrumentManager.set_player_rank_stars(player_stars)
+		PhaseInstrumentManager.set_enemy_rank_stars(enemy_stars)
+	if DEBUG_BATTLE_LOG:
+		push_warning("[v6.7] 相位师排名星级 — 玩家:%d★ / 敌方:%d★" % [player_stars, enemy_stars])
+
 func start_battle(battle_scene: Node) -> void:
 	if DEBUG_BATTLE_LOG:
 		pass
@@ -183,6 +207,11 @@ func start_battle(battle_scene: Node) -> void:
 			if DEBUG_BATTLE_LOG:
 				pass
 				# [LOG-v5.1] print("[BattleManager] 相位师对战配置: %s" % _phase_master_config)
+
+	# v6.7: 计算并缓存相位师星级（玩家 + 敌方 boss），供排名差异化加成使用
+	# 玩家星级：从 PhaseInstrumentManager 装配 master dict，喂给评估器
+	# 敌方星级：仅 boss 对战时算（直接用 _phase_master_config 喂评估器）
+	_compute_and_cache_rank_stars()
 
 	if GameManager.has_method("get_enemy_wave_total_for_level"):
 		enemy_wave_total = GameManager.get_enemy_wave_total_for_level(GameManager.current_level)
@@ -256,6 +285,9 @@ func end_battle(player_won: bool) -> void:
 	CombatFeedback.reset_throttle()
 	# v6.6: 重置相位仪主动能力状态
 	PhaseInstrumentAbilities.reset_state()
+	# v6.7: 清空相位师排名星级缓存（恢复 3★ 基准，避免影响下一场战斗）
+	if PhaseInstrumentManager and PhaseInstrumentManager.has_method("clear_rank_cache"):
+		PhaseInstrumentManager.clear_rank_cache()
 
 	# 性能优化：清理空间分区系统
 	_cleanup_spatial_grid()

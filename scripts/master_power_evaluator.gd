@@ -369,8 +369,8 @@ static func _eval_traits(master: Dictionary) -> float:
 	if traits.is_empty():
 		return 0.0
 	var score: float = 0.0
-	for trait in traits:
-		var effects: Dictionary = trait.get("effects", {})
+	for t_def in traits:
+		var effects: Dictionary = t_def.get("effects", {})
 		for effect_key in effects:
 			var weight: float = TRAIT_EFFECT_WEIGHTS.get(effect_key, 30.0)
 			var value = effects[effect_key]

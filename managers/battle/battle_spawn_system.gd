@@ -808,7 +808,35 @@ func _create_enemy_unit_with_id(arch_id: String) -> Node:
 	var scene = preload("res://scenes/units/enemy_unit.tscn")
 	var u = scene.instantiate()
 	u.setup(false, enemy_wave_index, arch_id)
+	# v6.7: 相位师 boss 对战时，给敌方单位应用排名差异化加成（与玩家方对称）
+	_apply_enemy_phase_master_bonus_if_active(u)
 	return u
+
+## v6.7: 仅在相位师 boss 对战时给敌方单位应用排名加成
+## 普通波次小怪不受影响（保持原数值）
+func _apply_enemy_phase_master_bonus_if_active(unit: Node) -> void:
+	if unit == null or not is_instance_valid(unit):
+		return
+	var bm = Engine.get_main_loop() as SceneTree
+	if bm == null or bm.root == null:
+		return
+	var battle_mgr: Node = bm.root.get_node_or_null("BattleManager")
+	if battle_mgr == null or not ("_is_phase_master_battle" in battle_mgr):
+		return
+	if not bool(battle_mgr.get("_is_phase_master_battle")):
+		return
+	# 仅对有 stats 的单位应用（enemy_unit 的 stats 在 setup 中构建）
+	var stats: Variant = unit.get("stats") if "stats" in unit else null
+	if stats == null or not (stats is UnitStats):
+		return
+	if _phase_instrument != null and _phase_instrument.has_method("apply_enemy_phase_master_bonus_to_unit_stats"):
+		var enemy_stars: int = 3
+		if "_cached_enemy_rank_stars" in _phase_instrument:
+			enemy_stars = int(_phase_instrument._cached_enemy_rank_stars)
+		_phase_instrument.apply_enemy_phase_master_bonus_to_unit_stats(stats, enemy_stars)
+	# 同步单位节点的派生字段（hp/max_hp 等），让 UI 血条与 stats 一致
+	if unit.has_method("_update_hp_bar"):
+		unit._update_hp_bar()
 
 func _ensure_swarm_controller() -> Node:
 	if _enemy_units_node == null or not is_instance_valid(_enemy_units_node):
@@ -869,6 +897,9 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 		for k in keys:
 			kv_parts.append("%s=%.6f" % [String(k), float(pf_bonus[k])])
 		pf_bonus_key = ",".join(kv_parts)
+		# v6.7: 排名星级也纳入缓存 key（星级变化时加成系数变化，必须失效旧缓存）
+		if "_cached_player_rank_stars" in _phase_instrument:
+			pf_bonus_key += "|ps%d" % int(_phase_instrument._cached_player_rank_stars)
 
 	# === 势力变体查询（需在缓存 key 之前，因 key 包含势力信息） ===
 	var effective_card: CardResource = platform_card

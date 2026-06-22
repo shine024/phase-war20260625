@@ -66,6 +66,29 @@ var phase_field_allocations: Dictionary = {}
 var _loadouts_cache: Array = []
 var _loadouts_dirty: bool = true
 var _runtime_instrument_defs: Dictionary = {} # instrument_id -> Dictionary
+
+# ═══════════════════════════════════════════════════════════
+# v6.7: 相位师排名差异化加成
+# 战斗开始时算出玩家/敌方的相位师星级（1-7★），转排名系数乘到加成上。
+# 3★=1.0 基准（向后兼容），低星略降，高星最多 +25%。
+# ═══════════════════════════════════════════════════════════
+const RANK_STAR_COEFFICIENTS: Dictionary = {
+	1: 0.85,  # 新锐
+	2: 0.92,  # 精英
+	3: 1.00,  # 高手（基准）
+	4: 1.08,  # 大师
+	5: 1.15,  # 宗师
+	6: 1.20,  # 传说
+	7: 1.25,  # 神话
+}
+## 当前战斗缓存的玩家相位师星级（start_battle 时算一次，整场不变）
+var _cached_player_rank_stars: int = 3
+## 当前战斗缓存的敌方 boss 相位师星级（仅 boss 对战时设置）
+var _cached_enemy_rank_stars: int = 3
+
+## 相位师星级 → 排名加成系数（0.85~1.25）
+static func get_rank_coefficient(stars: int) -> float:
+	return float(RANK_STAR_COEFFICIENTS.get(clampi(stars, 1, 7), 1.0))
 var _drop_serial_counter: int = 0
 var _plm: Node
 
@@ -275,6 +298,13 @@ func apply_phase_field_bonus_to_unit_stats(stats: UnitStats) -> void:
 	var total_atk_mult: float = atk_bonus + pi_atk * 0.05  # pi_atk 每点+5% 攻击
 	var total_def_mult: float = def_bonus + pi_def * 0.05  # pi_def 每点+5% 防御
 
+	# v6.7: 乘上玩家相位师排名系数（星级越高，加成越强）
+	# 3★=1.0 基准（等于改动前），低星略降，高星最多 +25%
+	var rank_coeff: float = get_rank_coefficient(_cached_player_rank_stars)
+	total_hp_mult *= rank_coeff
+	total_atk_mult *= rank_coeff
+	total_def_mult *= rank_coeff
+
 	if total_hp_mult > 0.0:
 		stats.max_hp = maxf(1.0, stats.max_hp * (1.0 + total_hp_mult))
 
@@ -294,6 +324,51 @@ func apply_phase_field_bonus_to_unit_stats(stats: UnitStats) -> void:
 
 	if total_def_mult > 0.0:
 		stats.damage_reduction = clampf(stats.damage_reduction + total_def_mult, 0.0, 0.8)
+
+# ═══════════════════════════════════════════════════════════
+# v6.7: 相位师排名加成 —— 敌方 boss 镜像 + 星级缓存管理
+# ═══════════════════════════════════════════════════════════
+
+## v6.7: 敌方 boss 单位加成（与玩家方对称）
+## 仅在 _is_phase_master_battle 时由 battle_spawn_system 调用。
+## 用敌方 boss 星级算排名系数，乘到敌方单位 stats 上。
+## 注：敌方单位不走 apply_phase_field_bonus_to_unit_stats（那条路径读玩家相位仪），
+##     此处独立应用一个量级相当的乘算，保持"敌我双方对称"。
+func apply_enemy_phase_master_bonus_to_unit_stats(stats: UnitStats, enemy_stars: int) -> void:
+	if stats == null:
+		return
+	var coeff: float = get_rank_coefficient(enemy_stars)
+	# 基准乘算量级（与玩家方满相位场点数+相位仪7星时相当，约 0.15~0.20）
+	# 排名系数调整这个基准：3★=0.17，7★=0.17×1.25≈0.21，1★=0.17×0.85≈0.14
+	var base_mult: float = 0.17 * coeff
+	stats.max_hp = maxf(1.0, stats.max_hp * (1.0 + base_mult))
+	stats.attack_damage = maxf(0.1, stats.attack_damage * (1.0 + base_mult))
+	stats.attack_light = maxf(0.1, stats.attack_light * (1.0 + base_mult))
+	stats.attack_armor = maxf(0.1, stats.attack_armor * (1.0 + base_mult))
+	stats.attack_air = maxf(0.1, stats.attack_air * (1.0 + base_mult))
+	# 武器槽位伤害同步（与玩家方一致，覆盖 weapon_slots 与 weapons 两套）
+	if stats.has_method("_sync_weapon_slots_damage"):
+		stats._sync_weapon_slots_damage(1.0 + base_mult)
+	for i in range(stats.weapons.size()):
+		var w: Variant = stats.weapons[i]
+		if w is Dictionary:
+			var wd: Dictionary = w
+			wd["damage"] = maxf(0.1, float(wd.get("damage", 0.0)) * (1.0 + base_mult))
+			stats.weapons[i] = wd
+	stats.damage_reduction = clampf(stats.damage_reduction + base_mult, 0.0, 0.8)
+
+## v6.7: 战斗开始时缓存玩家相位师星级（整场战斗不变）
+func set_player_rank_stars(stars: int) -> void:
+	_cached_player_rank_stars = clampi(stars, 1, 7)
+
+## v6.7: 战斗开始时缓存敌方 boss 相位师星级
+func set_enemy_rank_stars(stars: int) -> void:
+	_cached_enemy_rank_stars = clampi(stars, 1, 7)
+
+## v6.7: 战斗结束时清空缓存（恢复 3★ 基准，避免影响非战斗场景）
+func clear_rank_cache() -> void:
+	_cached_player_rank_stars = 3
+	_cached_enemy_rank_stars = 3
 
 func _set_default_instrument_if_needed() -> void:
 	# 仅在「未选择」或「当前 ID 已非法/未解锁」时重选；否则每次 get_current_instrument 会把选择覆盖成默认 ID，导致无法切换相位仪
