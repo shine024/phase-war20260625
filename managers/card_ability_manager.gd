@@ -105,7 +105,10 @@ static func _get_all_units_in_group(origin: Node2D, target_group: String) -> Arr
 	var units: Array = []
 	if origin == null or not is_instance_valid(origin):
 		return units
-	# origin 可能尚未加入场景树（setup 阶段被 AuraManager 调用）
+	# origin 可能尚未加入场景树（setup 阶段被 AuraManager 调用）；
+	# is_inside_tree 守卫避免 get_tree() 触发 C++ "data.tree is null" 断言。
+	if not origin.is_inside_tree():
+		return units
 	var tree: SceneTree = origin.get_tree()
 	if tree == null:
 		return units

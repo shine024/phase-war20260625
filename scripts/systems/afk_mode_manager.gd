@@ -94,12 +94,12 @@ func init(main_node: Node, battle_setup: MainBattleSetup) -> void:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_PREDELETE:
-		if _signal_bus:
-			if _signal_bus.battle_ended.is_connected(_on_battle_ended_from_bus):
-				_signal_bus.battle_ended.disconnect(_on_battle_ended_from_bus)
-			if _signal_bus.battle_started.is_connected(_on_battle_started_from_bus):
-				_signal_bus.battle_started.disconnect(_on_battle_started_from_bus)
+	# 注意：不在此处手动断开 SignalBus 连接。
+	# PREDELETE 时 self 正在销毁，任何 Callable(self, ...) 的解析（含 is_connected/is_valid）
+	# 都可能报 "Invalid access on null instance"。而 SignalBus 作为 autoload，其销毁时
+	# 引擎会自动断开所有连接；RefCounted 引用归零销毁时，Callable 也会自然失效。
+	# 故手动 disconnect 在 PREDELETE 阶段既不安全也不必要。
+	pass
 
 
 # ── 公开方法 ──
@@ -108,21 +108,27 @@ func _notification(what: int) -> void:
 func start_afk() -> bool:
 	if is_running:
 		return false
-	
+
+	var lp = get_node_or_null("/root/LevelProgressManager")
 	var valid = _get_valid_slots()
 	if valid.is_empty():
 		return false
-	
+
 	# 推图模式：检查当前关卡是否已解锁
 	if mode == Mode.PUSH:
-		var lp = get_node_or_null("/root/LevelProgressManager")
 		if lp and lp.has_method("get_max_unlocked_level"):
 			var max_unlocked = lp.get_max_unlocked_level()
 			if push_level > max_unlocked:
 				push_level = max_unlocked
 			if push_level < 1:
 				push_level = 1
-	
+	else:
+		# 循环模式：剔除未解锁的 slot 关卡，避免挂机进入未解锁关。
+		# 注意：仅在启动时校验，运行中新解锁的关不会自动加入（停止重启后生效）。
+		var unlocked_slots := _get_unlocked_valid_slots(lp)
+		if unlocked_slots.is_empty():
+			return false
+
 	state = State.RUNNING
 	is_running = true
 
@@ -136,8 +142,10 @@ func start_afk() -> bool:
 	if mode == Mode.PUSH:
 		_pending_level = push_level
 	else:
+		# 循环模式：从已解锁的 slot 集合取首关，current_slot_index 对齐到该集合
 		current_slot_index = 0
-		_pending_level = slots[current_slot_index] if current_slot_index < slots.size() else 0
+		var unlocked := _get_unlocked_valid_slots(lp)
+		_pending_level = unlocked[0] if not unlocked.is_empty() else 0
 
 	afk_started.emit()
 	state_changed.emit(state)
@@ -289,6 +297,21 @@ func _get_valid_slots() -> Array[int]:
 	return result
 
 
+## 返回已关联且已解锁的 slot 关卡列表（循环模式战斗推进专用）。
+## lp 为 LevelProgressManager 节点；为 null 或缺 is_level_unlocked 方法时回退为不过滤（保持旧行为）。
+## 注意：与 _get_valid_slots() 区分——后者仅过滤"已关联"（slots[i]>0），用于 UI 计数显示。
+func _get_unlocked_valid_slots(lp: Node) -> Array[int]:
+	var result: Array[int] = []
+	if lp == null or not lp.has_method("is_level_unlocked"):
+		# LevelProgressManager 不可用（测试/异常环境），退化为原始 _get_valid_slots，
+		# 避免阻断挂机功能。正常运行时 lp 必然存在。
+		return _get_valid_slots()
+	for lvl in _get_valid_slots():
+		if lp.is_level_unlocked(int(lvl)):
+			result.append(lvl)
+	return result
+
+
 ## 战斗结束信号回调 — 挂机核心循环
 func _on_battle_ended_from_bus(player_won: bool) -> void:
 	if not is_running:
@@ -323,14 +346,15 @@ func _advance_to_next_level() -> void:
 			stop_afk()
 			return
 	else:
-		# 循环模式
-		var valid = _get_valid_slots()
-		current_slot_index += 1
-		if current_slot_index >= valid.size():
-			current_slot_index = 0
+		# 循环模式：用已解锁 slot 集合推进，避免进入未解锁关
+		var lp = get_node_or_null("/root/LevelProgressManager")
+		var valid = _get_unlocked_valid_slots(lp)
 		if valid.is_empty():
 			stop_afk()
 			return
+		current_slot_index += 1
+		if current_slot_index >= valid.size():
+			current_slot_index = 0
 		_pending_level = valid[current_slot_index]
 
 	# 延迟一帧进入下一关，确保当前战斗完全清理
@@ -392,7 +416,9 @@ func _on_battle_started_from_bus() -> void:
 	if pim and pim.has_method("get_loadouts"):
 		for loadout in pim.get_loadouts():
 			var platform = loadout.get("platform")
-			if platform != null and platform.get("card_id") != null:
+			# platform 是 CardResource（Resource），其 card_id 为 String 属性，
+			# 不可用 Dictionary 的 .get(key, default)；直接属性访问。
+			if platform != null and "card_id" in platform and not String(platform.card_id).is_empty():
 				_auto_deploy_pending.append(platform)
 	# 战斗开始后延迟一小段时间再开始部署，等能量/战场稳定
 	_auto_deploy_timer = _AUTO_DEPLOY_INITIAL_DELAY
@@ -415,7 +441,8 @@ func _deploy_next_from_queue() -> void:
 	if _auto_deploy_pending.is_empty():
 		return
 	var platform = _auto_deploy_pending[0]
-	var card_id: String = String(platform.get("card_id", ""))
+	# platform 是 CardResource（Resource），card_id 是 String 属性，直接访问。
+	var card_id: String = String(platform.card_id) if "card_id" in platform else ""
 	if card_id.is_empty():
 		_auto_deploy_pending.pop_front()
 		return

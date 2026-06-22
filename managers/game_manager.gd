@@ -479,7 +479,8 @@ func _on_battle_ended(player_won: bool) -> void:
 	# 让 AFKModeManager 的 call_deferred 下一关启动时战场已清理、phase 已重置。
 	# 必须在 claim_drops() 之前调用 accumulate_pending_drops()，把掉落计入累计奖励总账。
 	if _is_afk_running():
-		var afk_mgr: Node = main_scene._afk_manager if (main_scene != null and "_afk_manager" in main_scene) else null
+		# AFKModeManager 是 RefCounted（非 Node），故 afk_mgr 用 Variant 不标 Node 类型。
+		var afk_mgr = main_scene._afk_manager if (main_scene != null and "_afk_manager" in main_scene) else null
 		if afk_mgr != null and afk_mgr.has_method("accumulate_pending_drops"):
 			afk_mgr.accumulate_pending_drops()
 		var dm_afk: Node = get_node_or_null("/root/DropManager")

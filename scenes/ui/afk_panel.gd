@@ -47,6 +47,8 @@ const _NORMAL_BG := Color(0.06, 0.1, 0.18, 0.85)
 @onready var preview_label: Label = $Panel/MarginContainer/MainVBox/PreviewArea/PreviewLabel
 ## 缓存的战斗 SubViewport（取 ViewportTexture 的源）
 var _battle_viewport: SubViewport = null
+## 缓存的 AtlasTexture：TextureRect 不支持 region，用 atlas 包装 ViewportTexture 取交战带子区域
+var _preview_atlas: AtlasTexture = null
 
 # 子面板引用
 var _afk_manager: AFKModeManager = null
@@ -57,6 +59,7 @@ var _main_scene: Node = null
 
 # v6.6(挂机): 关卡信息实例缓存（get_level_display_name 是实例方法，不能静态调用）
 const _LevelInfoScript = preload("res://data/level_information.gd")
+const _AFKSettlementDialog = preload("res://scenes/ui/afk_settlement_dialog.gd")
 var _level_info: LevelInformation = null
 
 
@@ -162,6 +165,9 @@ func _cache_battle_viewport() -> void:
 
 ## v6.6(挂机缩略图): 刷新战场缩略图——从战斗视口取 ViewportTexture 赋给 TextureRect。
 ## 仅在挂机运行中显示缩略图；待机/失败态显示占位文字。
+## region_rect 动态对齐战场实际部署带（敌我单位所在 y 范围），
+## 让缩略图精准框选交战行而非视口中段（单位在视口约 80% 处，非 50%）。
+const _PREVIEW_LANE_PADDING: float = 60.0  # 上下各留 60px，确保单位不被贴边裁切
 func _refresh_battle_preview() -> void:
 	if battle_preview == null or preview_label == null:
 		return
@@ -186,8 +192,49 @@ func _refresh_battle_preview() -> void:
 		preview_label.visible = true
 		return
 	battle_preview.texture = tex
+	# TextureRect 无 region_enabled / region_rect（那是 Sprite2D 属性，赋值会报
+	# "Invalid assignment of property 'region_enabled'"）。取交战带子区域改用
+	# AtlasTexture 包装 ViewportTexture：region 设为部署带 y 范围即可框选交战行。
+	var tex_w: float = float(tex.get_width())
+	var tex_h: float = float(tex.get_height())
+	if tex_w <= 0 or tex_h <= 0:
+		# ViewportTexture 首帧尺寸可能为 0，回退用 SubViewport.size；仍为 0 则显示全图
+		tex_w = float(_battle_viewport.size.x)
+		tex_h = float(_battle_viewport.size.y)
+	if tex_w > 0 and tex_h > 0:
+		if _preview_atlas == null:
+			_preview_atlas = AtlasTexture.new()
+		_preview_atlas.atlas = tex
+		_preview_atlas.region = _compute_battle_region(tex_w, tex_h)
+		battle_preview.texture = _preview_atlas
 	battle_preview.visible = true
 	preview_label.visible = false
+
+
+## 根据战场实际部署带计算缩略图 region_rect。
+## 取 Battlefield.get_deploy_y_bounds() 的 y 范围，上下各加 padding，
+## clamp 到纹理边界，返回以交战行为中心的矩形。
+func _compute_battle_region(tex_w: float, tex_h: float) -> Rect2:
+	var y_min: float = 0.0
+	var y_max: float = tex_h
+	if _main_scene != null and _main_scene.has_method("_get_battlefield"):
+		var bf: Node = _main_scene._get_battlefield()
+		if bf != null and bf.has_method("get_deploy_y_bounds"):
+			var bounds: Vector2 = bf.get_deploy_y_bounds()
+			# bounds = (deploy_y_min, deploy_y_max)，上下各加 padding
+			y_min = clampf(bounds.x - _PREVIEW_LANE_PADDING, 0.0, tex_h)
+			y_max = clampf(bounds.y + _PREVIEW_LANE_PADDING, 0.0, tex_h)
+			# 若 clamp 后高度过小（部署带极窄），向下扩展到至少 140px
+			if y_max - y_min < 140.0:
+				var mid: float = (y_min + y_max) * 0.5
+				y_min = clampf(mid - 70.0, 0.0, tex_h)
+				y_max = clampf(mid + 70.0, 0.0, tex_h)
+	# 宽度取纹理实际宽度，保证不超界
+	# 最终保险：确保 y_min < y_max（clamp 可能导致反转）
+	if y_min >= y_max:
+		y_min = 0.0
+		y_max = tex_h
+	return Rect2(0.0, y_min, tex_w, maxf(1.0, y_max - y_min))
 
 
 func _open() -> void:
@@ -221,23 +268,29 @@ func _on_slot_gui_input(event: InputEvent, slot_idx: int) -> void:
 
 
 func _show_level_selector(slot_idx: int) -> void:
-	# 异步加载关卡选择器
+	# 首次打开才实例化 + 连接信号；后续复用同一实例，避免重复 connect 报错。
 	if _level_selector == null:
 		var resource = ResourceLoader.load_threaded_get("res://scenes/ui/afk_level_selector.tscn")
 		if resource is PackedScene:
 			_level_selector = resource.instantiate()
-			get_tree().root.add_child(_level_selector)
-	
-	if _level_selector == null:
-		# 同步加载作为 fallback
-		var scene = load("res://scenes/ui/afk_level_selector.tscn")
-		if scene:
-			_level_selector = scene.instantiate()
-			get_tree().root.add_child(_level_selector)
-	
+
+		if _level_selector == null:
+			# 同步加载作为 fallback
+			var scene = load("res://scenes/ui/afk_level_selector.tscn")
+			if scene:
+				_level_selector = scene.instantiate()
+
+		if _level_selector:
+			# 挂到 PopupLayer（layer=100），与项目其它弹出层一致，
+			# 确保 z-order 高于主场景且不被 HudLayer(40) 遮挡。
+			var popup: Node = get_node_or_null("/root/Main/PopupLayer")
+			if popup == null:
+				popup = get_tree().root  # 回退兜底
+			popup.add_child(_level_selector)
+			_level_selector.level_selected.connect(_on_level_selected)
+			_level_selector.cancelled.connect(_on_level_selector_cancel)
+
 	if _level_selector:
-		_level_selector.level_selected.connect(_on_level_selected)
-		_level_selector.cancelled.connect(_on_level_selector_cancel)
 		_level_selector.show_selector(self, slot_idx)
 
 
@@ -270,16 +323,20 @@ func _set_mode(m: AFKModeManager.Mode) -> void:
 
 
 func _set_mode_button_style(btn: Button, active: bool) -> void:
+	# 使用独立 StyleBox 副本（duplicate），避免 get_theme_stylebox 返回的主题共享资源
+	# 被直接修改而污染所有使用该主题的按钮。
+	var style := StyleBoxFlat.new()
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(8)
 	if active:
 		btn.add_theme_color_override("font_color", _HIGHLIGHT)
-		var style := btn.get_theme_stylebox("normal")
-		if style is StyleBoxFlat:
-			(style as StyleBoxFlat).bg_color = _HIGHLIGHT
+		style.bg_color = _HIGHLIGHT
+		style.border_color = _HIGHLIGHT
 	else:
 		btn.add_theme_color_override("font_color", _NORMAL_FONT)
-		var style := btn.get_theme_stylebox("normal")
-		if style is StyleBoxFlat:
-			(style as StyleBoxFlat).bg_color = _NORMAL_BG
+		style.bg_color = _NORMAL_BG
+		style.border_color = Color(0.2, 0.45, 0.75, 0.4)
+	btn.add_theme_stylebox_override("normal", style)
 
 
 # ── 开始/停止 ──
@@ -287,12 +344,28 @@ func _set_mode_button_style(btn: Button, active: bool) -> void:
 func _on_start() -> void:
 	if not _afk_manager:
 		return
-	
+
+	# 循环模式必须至少关联 1 个 slot；推图模式依赖 push_level（始终有值），
+	# 但若推图关卡也未解锁，start_afk 内部会 clamp，仍可能进入。
+	var valid_count := _afk_manager.get_valid_slot_count()
+	if _afk_manager.mode == AFKModeManager.Mode.CYCLE and valid_count == 0:
+		_notify("请先在槽位关联至少一关")
+		return
+
 	var success = _afk_manager.start_afk()
-	if success:
-		_update_stats_display()
-		# 立即进入第一关
-		_afk_manager.enter_next_battle()
+	if not success:
+		_notify("无法开始挂机，请检查槽位关联")
+		return
+	_update_stats_display()
+	# 立即进入第一关
+	_afk_manager.enter_next_battle()
+
+
+## 通过 SignalBus.show_toast 弹出提示（ToastManager 已连接该信号）。
+func _notify(message: String) -> void:
+	var sb: Node = get_node_or_null("/root/SignalBus")
+	if sb != null and sb.has_signal("show_toast"):
+		sb.show_toast.emit(message)
 
 
 func _on_stop() -> void:
@@ -333,15 +406,44 @@ func _on_afk_settled(rewards: Dictionary) -> void:
 	_update_stats_display()
 	# v6.6(挂机缩略图): 停止后恢复占位文字（is_running 已为 false，_refresh 会切回 PreviewLabel）
 	_refresh_battle_preview()
-	# 若有累计奖励，在状态栏汇总显示（最多列出条目数）
+	# 状态栏汇总（保留原文字提示，供面板未关闭时查看）
+	var total_count: int = 0
+	for key in rewards:
+		total_count += int(rewards[key])
 	if rewards.is_empty():
 		status_label.text = "状态: 已结束（无奖励）"
 	else:
-		var total_items := rewards.size()
-		var total_count: int = 0
-		for key in rewards:
-			total_count += int(rewards[key])
-		status_label.text = "状态: 已结束 | 累计 %d 种 / %d 件" % [total_items, total_count]
+		status_label.text = "状态: 已结束 | 累计 %d 种 / %d 件" % [rewards.size(), total_count]
+	# 弹出结算汇总弹窗（显示完整掉落明细 + 战绩）
+	_show_settlement_dialog(rewards)
+
+
+## 弹出挂机结算弹窗。挂到 PopupLayer（layer=100），确保覆盖所有 UI。
+func _show_settlement_dialog(rewards: Dictionary) -> void:
+	# 判定是否为失败结束：当前状态为 FAILED
+	var failed: bool = _afk_manager != null and _afk_manager.state == AFKModeManager.State.FAILED
+	var wins: int = _afk_manager.total_wins if _afk_manager != null else 0
+	var losses: int = _afk_manager.total_losses if _afk_manager != null else 0
+	var result := {
+		"wins": wins,
+		"losses": losses,
+		"rewards": rewards,
+		"failed": failed,
+	}
+	# 定位 PopupLayer：优先 _main_scene，回退遍历场景树根
+	var popup: Node = null
+	if _main_scene != null:
+		popup = _main_scene.get_node_or_null("PopupLayer")
+	if popup == null:
+		var root: Node = get_tree().root if get_tree() != null else null
+		if root != null:
+			for c in root.get_children():
+				if c.has_node("PopupLayer"):
+					popup = c.get_node("PopupLayer")
+					break
+	if popup == null:
+		popup = get_tree().root  # 最终回退
+	_AFKSettlementDialog.create(popup, result)
 
 
 # ── 显示更新 ──

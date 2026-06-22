@@ -323,6 +323,7 @@ func _connect_panel_closed_signals() -> void:
 		"settings":           $PopupLayer/SettingsOverlay/CenterContainer/SettingsPanel,
 		"info":               $PopupLayer/IntelligenceOverlay/CenterContainer/IntelligenceHubPanel,
 		"growth":             get_node_or_null("PopupLayer/GrowthOverlay/CenterContainer/GrowthPanel"),
+		"afk":                get_node_or_null("PopupLayer/AFKOverlay/CenterContainer/AFKPanel"),
 	}
 	for key in panels:
 		var panel = panels[key]
@@ -368,6 +369,12 @@ func _open_overlay(overlay: Control, panel_key: String = "") -> void:
 		if gp and gp.has_method("show_panel"):
 			print("[Main] Calling GrowthPanel.show_panel")
 			gp.show_panel(null)
+	elif panel_key == "afk":
+		# AFKPanel 在 _ready 中将自身 visible 置 false（依赖 _open() 控制），
+		# 故 overlay 可见后必须显式调用面板 _open()，否则面板主体与 Backdrop 均不显示。
+		var ap: Node = overlay.get_node_or_null("CenterContainer/AFKPanel")
+		if ap and ap.has_method("_open"):
+			ap._open()
 	# 性能优化：非战斗中打开面板时，冻结 SubViewport 避免无谓渲染
 	if panel_key != "growth":
 		_freeze_subviewport_if_not_in_battle()
@@ -383,6 +390,12 @@ func _close_overlay(overlay: Control, panel_key: String = "") -> void:
 			mp = manufacture_overlay.find_child("CardEnhancementPanel", true, false)
 		if mp and mp.has_method("close_embedded_popups"):
 			mp.close_embedded_popups()
+	# AFKPanel 与 overlay 的可见性分离（_ready 强制 visible=false）。
+	# 注意：此处不可调用 ap._close()——它发 closed 信号，而本函数常由 closed
+	# 信号经 _on_panel_closed 触达，会形成无限递归（stack overflow）。
+	# 统一走 _reset_afk_panel_visibility 复位三节点可见性，与 _open() 对称。
+	if panel_key == "afk":
+		_reset_afk_panel_visibility(false)
 	if overlay:
 		overlay.visible = false
 	if panel_key != "" and bottom_function_bar:
@@ -795,12 +808,35 @@ func _close_all_overlays() -> void:
 		# run_start_battle_sequence 每场战斗开头会调此方法，跳过 afk_overlay 才能持续预览。
 		if ov == afk_overlay and _afk_manager != null and _afk_manager.is_running:
 			continue
+		# AFKOverlay 与内部 AFKPanel 可见性分离（_ready 强制 visible=false），
+		# 须统一复位面板/backdrop 可见性，避免下次打开时状态错乱。
+		if ov == afk_overlay:
+			_reset_afk_panel_visibility(false)
 		ov.visible = false
 	# PopupPanel 类型的排行榜单独处理
 	if leaderboard_panel:
 		leaderboard_panel.hide()
 	if bottom_function_bar:
 		bottom_function_bar.notify_panel_closed("")
+
+
+## v6.6(挂机): 统一复位 AFKPanel/backdrop/panel 三个节点的可见性。
+## AFKPanel._ready 强制 visible=false，其 _open()/_close() 又分别管理这三个节点，
+## 故 overlay 层的开关逻辑须统一走此方法，避免 AFKOverlay.visible 与内部状态不同步。
+## open=true 时设全部可见（对应 _open）；open=false 时全部隐藏（对应 _close 的可见性部分）。
+func _reset_afk_panel_visibility(open: bool) -> void:
+	if afk_overlay == null:
+		return
+	var ap: Node = afk_overlay.get_node_or_null("CenterContainer/AFKPanel")
+	if not (ap is Control):
+		return
+	(ap as Control).visible = open
+	var bd: Node = (ap as Control).get_node_or_null("Backdrop")
+	if bd is Control:
+		(bd as Control).visible = open
+	var pn: Node = (ap as Control).get_node_or_null("Panel")
+	if pn is Control:
+		(pn as Control).visible = open
 
 # ── 战场显示控制 ─────────────────────────────────────────────
 func _show_battle() -> void:

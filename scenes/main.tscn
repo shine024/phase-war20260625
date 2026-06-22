@@ -25,8 +25,8 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/story_dialogue_panel.tscn" id="36_story_dialogue"]
 [ext_resource type="PackedScene" path="res://scenes/ui/story_chapter_select.tscn" id="37_story_select"]
 [ext_resource type="PackedScene" path="res://scenes/city_map.tscn" id="38_city_map"]
-[ext_resource type="Script" path="res://scenes/ui/ending_panel.gd" id="39_ending",
-[ext_resource type="PackedScene" path="res://scenes/ui/afk_panel.tscn" id="39_afk_panel"]]
+[ext_resource type="Script" path="res://scenes/ui/ending_panel.gd" id="39_ending"]
+[ext_resource type="PackedScene" path="res://scenes/ui/afk_panel.tscn" id="39_afk_panel"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_level_display"]
 font_size = 24

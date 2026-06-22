@@ -240,10 +240,10 @@ func _apply_phase_law_passives() -> void:
 		_base_move_speed = move_speed
 		_base_attack_interval = attack_interval
 		_base_stats_ready = true
-	var plm := get_node_or_null("/root/PhaseLawManager")
-	if not plm or not plm.has_method("get_passive_runtime_tags_for_side"):
+	# PhaseLawManager 是 autoload 单例，直接引用（节点未入树时也安全）。
+	if PhaseLawManager == null or not PhaseLawManager.has_method("get_passive_runtime_tags_for_side"):
 		return
-	var tags: Array = plm.get_passive_runtime_tags_for_side(false)
+	var tags: Array = PhaseLawManager.get_passive_runtime_tags_for_side(false)
 	var hp_mult: float = 1.0
 	var dmg_mult: float = 1.0
 	var move_mult: float = 1.0
@@ -318,12 +318,14 @@ func _apply_archetype_stats() -> void:
 ## 仅对敌方单位生效（_is_player=false 的 enemy_unit），玩家单位不受影响
 ## 同时更新裸字段和 UnitStats 对象，确保 AttackCalculator 读取一致的数值
 func _apply_ng_plus_scaling() -> void:
-	var gm: Node = get_node_or_null("/root/GameManager")
-	if gm == null or not gm.has_method("is_ng_plus_active"):
+	# 本方法可能在 setup() 中、节点尚未加入场景树时被调用，
+	# 故不能用 get_node_or_null("/root/...")（绝对路径要求节点已在树中）。
+	# GameManager 是 autoload 单例，直接用全局标识符访问。
+	if GameManager == null or not GameManager.has_method("is_ng_plus_active"):
 		return
-	if not gm.is_ng_plus_active():
+	if not GameManager.is_ng_plus_active():
 		return
-	var mult: float = float(gm.get_ng_plus_enemy_mult()) if gm.has_method("get_ng_plus_enemy_mult") else 1.2
+	var mult: float = float(GameManager.get_ng_plus_enemy_mult()) if GameManager.has_method("get_ng_plus_enemy_mult") else 1.2
 	if mult <= 1.0:
 		return
 	# 裸字段（战斗中直接读取的属性）

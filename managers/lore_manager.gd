@@ -131,6 +131,16 @@ const LORE_DATABASE: Dictionary = {
 			"description": "一份关于步兵特种改造的秘密配方，将光学迷彩技术与步兵护甲结合的方案。这种隐匿技术不在标准进化图谱中，属于非对称作战的特殊路线。",
 			"flavor_text": "\"看不见的士兵，才是战场上最致命的威胁。\"",
 		},
+		# v6.6: 隐藏情报 — 空中炮艇路线（火炮+航空）核心配方
+		# 由 artillery_secret_2 / air_secret_2 揭示事件奖励，此前缺失导致 push_error。
+		"secret_recipe_air_gunship": {
+			"id": "secret_recipe_air_gunship",
+			"name": "秘密配方·空中炮艇",
+			"era": 4,
+			"category": "intelligence",
+			"description": "一份关于空中炮艇装载系统的秘密配方——如何在飞行平台上稳定发射重型火炮。这种跨类型武器融合了航空机动与火炮火力，是隐藏进化路线【空中炮艇】的关键解锁条件。",
+			"flavor_text": "\"当大炮长出翅膀，地面再无安全之处。\"",
+		},
 		# v6.6: 隐藏情报 — 来自 intel_reveal_events.gd 揭示事件奖励
 		# cipher_fragment_01~07 分别由 7 个敌种的"机密档案·神秘代码"揭示事件奖励，
 		# 每个 fragment 对应一个敌方秘密计划代号。07 之外此前缺失，导致揭示时 push_error。

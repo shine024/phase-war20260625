@@ -1,4 +1,4 @@
-[gdscene format=3 uid="uid://afk_panel_scn"]
+[gd_scene format=3 uid="uid://afk_panel_scn"]
 
 [ext_resource type="Script" path="res://scenes/ui/afk_panel.gd" id="1_afk_panel"]
 
@@ -121,9 +121,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 expand_mode = 2
-stretch_mode = 6
-region_enabled = true
-region_rect = Rect2(0, 290, 1280, 140)
+stretch_mode = 5
 visible = false
 
 [node name="PreviewLabel" type="Label" parent="Panel/MarginContainer/MainVBox/PreviewArea"]
