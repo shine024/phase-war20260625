@@ -1,62 +1,45 @@
 extends RefCounted
 class_name IntelDimensions
-## v6.0: 情报维度定义
-## 将情报从单一进度条扩展为4个独立维度，每个维度有独立的揭示事件和奖励
+## v6.7: 情报维度定义（单维度化）
+## 原 v6.0 的 4 维（basic/tactical/material/secret）已合并为单一情报进度。
+## 所有奖励（弱点加成/掉落加成/EOM/进化分支）改为按 4 档阈值触发。
 ##
-## 维度说明：
-##   basic    — 基础侦察：HP/攻击/防御等数值属性
-##   tactical — 战术分析：行为模式/技能/弱点
-##   material — 素材研究：可掉落的专属材料信息
-##   secret   — 机密档案：隐藏进化线索/传奇配方
+## 保留 ALL_DIMENSIONS / DIM_* 常量名以兼容旧调用点，运行时只有单一维度 "intel"。
+## 旧 4 维权重分配表（DIMENSION_WEIGHTS/calc_dimension_weights/calc_weighted_average）已移除，
+## 存档迁移改用 merge_legacy_dimensions（取4维最大值合并到单标量）。
 
-# ── 维度ID ─────────────────────────────────────────────────────────
+# ── 维度ID（兼容旧常量名，统一指向单维度） ────────────────────────
 
-const DIM_BASIC: String = "basic"
-const DIM_TACTICAL: String = "tactical"
-const DIM_MATERIAL: String = "material"
-const DIM_SECRET: String = "secret"
+const DIM_BASIC: String = "intel"      ## 兼容别名
+const DIM_TACTICAL: String = "intel"   ## 兼容别名
+const DIM_MATERIAL: String = "intel"   ## 兼容别名
+const DIM_SECRET: String = "intel"     ## 兼容别名
+const DIM_INTEL: String = "intel"      ## 当前规范名
 
-## 所有效维度的有序列表
-const ALL_DIMENSIONS: Array[String] = [DIM_BASIC, DIM_TACTICAL, DIM_MATERIAL, DIM_SECRET]
+## 所有效维度的有序列表（单元素）
+const ALL_DIMENSIONS: Array[String] = [DIM_INTEL]
 
-# ── 维度名称 ───────────────────────────────────────────────────────
+# ── 维度名称/图标/颜色（统一为单一主题） ──────────────────────────
 
 const DIM_NAMES: Dictionary = {
-	DIM_BASIC: "基础侦察",
-	DIM_TACTICAL: "战术分析",
-	DIM_MATERIAL: "素材研究",
-	DIM_SECRET: "机密档案",
+	DIM_INTEL: "情报分析",
 }
-
-# ── 维度图标（emoji，用于战斗结算UI） ────────────────────────────
 
 const DIM_ICONS: Dictionary = {
-	DIM_BASIC: "🔵",
-	DIM_TACTICAL: "🟠",
-	DIM_MATERIAL: "🟢",
-	DIM_SECRET: "🟣",
+	DIM_INTEL: "🔵",
 }
-
-# ── 维度颜色主题 ─────────────────────────────────────────────────
 
 const DIM_COLORS: Dictionary = {
-	DIM_BASIC: Color(0.4, 0.65, 0.95),       # 蓝色
-	DIM_TACTICAL: Color(0.92, 0.58, 0.18),  # 橙色
-	DIM_MATERIAL: Color(0.25, 0.82, 0.45),  # 绿色
-	DIM_SECRET: Color(0.75, 0.3, 0.92),     # 紫色
+	DIM_INTEL: Color(0.4, 0.65, 0.95),  # 蓝色
 }
 
-## 进度条背景色（暗色版本）
 const DIM_BG_COLORS: Dictionary = {
-	DIM_BASIC: Color(0.15, 0.2, 0.3),
-	DIM_TACTICAL: Color(0.25, 0.18, 0.08),
-	DIM_MATERIAL: Color(0.1, 0.22, 0.15),
-	DIM_SECRET: Color(0.2, 0.1, 0.25),
+	DIM_INTEL: Color(0.15, 0.2, 0.3),
 }
 
 # ── 揭示阈值 ──────────────────────────────────────────────────────
 
-## 每个维度4个揭示等级的阈值
+## 4个揭示等级的阈值（不变）
 const REVEAL_THRESHOLDS: Dictionary = {
 	0: 0.25,   # Tier 1 揭示
 	1: 0.50,   # Tier 2 揭示
@@ -64,79 +47,36 @@ const REVEAL_THRESHOLDS: Dictionary = {
 	3: 1.00,   # Tier 4 揭示（满）
 }
 
-# ── 揭示等级名称 ─────────────────────────────────────────────────
+# ── 揭示等级名称（单维度4档） ─────────────────────────────────────
 
 const REVEAL_TIER_NAMES: Dictionary = {
-	DIM_BASIC: {
-		0: "名称识别",
-		1: "完整参数",
-		2: "隐藏属性",
-		3: "图鉴百科",
+	DIM_INTEL: {
+		0: "初步情报",
+		1: "深入分析",
+		2: "弱点破解",
+		3: "完全掌握",
 	},
-	DIM_TACTICAL: {
-		0: "行为概要",
-		1: "技能列表",
-		2: "弱点分析",
-		3: "AI逻辑全解",
-	},
-	DIM_MATERIAL: {
-		0: "素材类型",
-		1: "专属掉落",
-		2: "敌源改造",
-		3: "进化材料",
-	},
-	DIM_SECRET: {
-		0: "隐秘暗示",
-		1: "进化线索",
-		2: "秘密配方",
-		3: "完整机密",
-	},
-}
-
-# ── 情报维度权重（计算总情报时使用） ──────────────────────────────
-
-const DIMENSION_WEIGHTS: Dictionary = {
-	DIM_BASIC: 0.30,
-	DIM_TACTICAL: 0.30,
-	DIM_MATERIAL: 0.25,
-	DIM_SECRET: 0.15,
-}
-
-# ── 敌人类型到默认标签的映射（用于情报维度分配） ───────────────
-
-const ENEMY_TYPE_DIMENSION_HINTS: Dictionary = {
-	"infantry":   {"primary": DIM_BASIC,    "secondary": DIM_TACTICAL},
-	"flame":      {"primary": DIM_MATERIAL, "secondary": DIM_SECRET},
-	"heavy_armor": {"primary": DIM_MATERIAL, "secondary": DIM_TACTICAL},
-	"artillery":  {"primary": DIM_TACTICAL, "secondary": DIM_BASIC},
-	"stealth":    {"primary": DIM_SECRET,   "secondary": DIM_TACTICAL},
-	"scout":      {"primary": DIM_TACTICAL, "secondary": DIM_BASIC},
-	"air":        {"primary": DIM_TACTICAL, "secondary": DIM_MATERIAL},
-	"boss_nano":  {"primary": DIM_SECRET,   "secondary": DIM_MATERIAL},
-	"boss_phase": {"primary": DIM_SECRET,   "secondary": DIM_TACTICAL},
-	"medic":      {"primary": DIM_BASIC,    "secondary": DIM_MATERIAL},
-	"command":    {"primary": DIM_TACTICAL, "secondary": DIM_SECRET},
 }
 
 # ── 工具函数 ───────────────────────────────────────────────────────
 
-## 检查维度ID是否合法
+## 检查维度ID是否合法（单维度下恒为 "intel"）
 static func is_valid_dimension(dim: String) -> bool:
-	return dim in ALL_DIMENSIONS
+	return dim == DIM_INTEL
 
 ## 获取维度名称（安全）
 static func get_dim_name(dim: String) -> String:
-	return DIM_NAMES.get(dim, "未知")
+	return DIM_NAMES.get(dim, "情报分析")
 
 ## 获取维度颜色（安全）
 static func get_dim_color(dim: String) -> Color:
-	return DIM_COLORS.get(dim, Color(0.6, 0.6, 0.6))
+	return DIM_COLORS.get(dim, Color(0.4, 0.65, 0.95))
 
 ## 获取维度图标（安全）
 static func get_dim_icon(dim: String) -> String:
-	return DIM_ICONS.get(dim, "⚪")
+	return DIM_ICONS.get(dim, "🔵")
 
-## 获取当前揭示等级 (0-3)
+## 获取当前揭示等级 (0-3)，未达最低阈值返回 -1
 static func get_reveal_tier(progress: float) -> int:
 	if progress >= 1.0:  return 3
 	if progress >= 0.75: return 2
@@ -149,74 +89,15 @@ static func get_reveal_tier_name(dim: String, tier: int) -> String:
 	var names: Dictionary = REVEAL_TIER_NAMES.get(dim, {})
 	return names.get(tier, "???")
 
-## 根据情报来源和敌人类型，计算4维情报分配权重
-## 返回 {"basic": float, "tactical": float, "material": float, "secret": float}
-## 值为 0.0-1.0 的权重，调用者乘以总情报量得到各维度增长
-static func calc_dimension_weights(
-	source: String,        # "first_encounter" | "defeat_normal" | "defeat_elite" | "defeat_boss" | "recon" | "decompose"
-	enemy_type: String,    # 敌人类型标签
-	victory_stars: int = 0 # 胜利星级(0-3)，用于额外加成
-) -> Dictionary:
-	var weights: Dictionary = {
-		DIM_BASIC: 0.0,
-		DIM_TACTICAL: 0.0,
-		DIM_MATERIAL: 0.0,
-		DIM_SECRET: 0.0,
-	}
-	var hints: Dictionary = ENEMY_TYPE_DIMENSION_HINTS.get(enemy_type, {
-		"primary": DIM_BASIC, "secondary": DIM_TACTICAL
-	})
-	var primary: String = hints.get("primary", DIM_BASIC)
-	var secondary: String = hints.get("secondary", DIM_TACTICAL)
+# ── 存档迁移用：旧4维→单维度合并（仅 load_state 调用） ────────────
 
-	match source:
-		"first_encounter":
-			weights[DIM_BASIC] = 1.0
-		"defeat_normal":
-			weights[primary] = 0.40
-			weights[secondary] = 0.30
-			weights[DIM_MATERIAL] = 0.20
-			weights[DIM_SECRET] = 0.10
-		"defeat_elite":
-			weights[primary] = 0.30
-			weights[secondary] = 0.30
-			weights[DIM_MATERIAL] = 0.25
-			weights[DIM_SECRET] = 0.15
-		"defeat_boss":
-			weights[primary] = 0.25
-			weights[secondary] = 0.25
-			weights[DIM_MATERIAL] = 0.25
-			weights[DIM_SECRET] = 0.25
-		"recon":
-			weights[DIM_TACTICAL] = 0.55
-			weights[DIM_BASIC] = 0.20
-			weights[DIM_SECRET] = 0.15
-			weights[DIM_MATERIAL] = 0.10
-		"decompose":
-			weights[DIM_MATERIAL] = 0.45
-			weights[DIM_BASIC] = 0.20
-			weights[DIM_TACTICAL] = 0.20
-			weights[DIM_SECRET] = 0.15
-		_:
-			weights[DIM_BASIC] = 0.50
-			weights[DIM_TACTICAL] = 0.30
-			weights[DIM_MATERIAL] = 0.15
-			weights[DIM_SECRET] = 0.05
-
-	# 3星胜利加成：所有维度额外+10%
-	if victory_stars >= 3:
-		for dim in ALL_DIMENSIONS:
-			weights[dim] += 0.10
-
-	return weights
-
-## 计算4维情报的加权平均值（用于向后兼容的 intel_progress）
-static func calc_weighted_average(dimensions: Dictionary) -> float:
-	var total: float = 0.0
-	var weight_sum: float = 0.0
-	for dim in ALL_DIMENSIONS:
-		var val: float = float(dimensions.get(dim, 0.0))
-		var w: float = float(DIMENSION_WEIGHTS.get(dim, 0.25))
-		total += val * w
-		weight_sum += w
-	return clampf(total / maxf(weight_sum, 0.01), 0.0, 1.0)
+## 将旧 4 维情报合并为单一标量（v2→v3 存档迁移专用）
+## 采用最大值策略：单维度下任一维度达标即视为该 tier 已解锁，
+## 取最大值最能保留玩家旧进度（比加权平均更慷慨，避免降级感）
+static func merge_legacy_dimensions(legacy_dims: Dictionary) -> float:
+	var max_val: float = 0.0
+	for key in legacy_dims:
+		var v: float = float(legacy_dims[key])
+		if v > max_val:
+			max_val = v
+	return clampf(max_val, 0.0, 1.0)

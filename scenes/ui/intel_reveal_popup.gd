@@ -1,12 +1,15 @@
 extends Control
 class_name IntelRevealPopup
-## v6.0: 揭示事件弹窗
+## v6.7: 揭示事件弹窗（单维度化）
 ## 在战斗结算中，当情报揭示事件触发时弹出
 ## 支持多个揭示事件排队显示
 ##
 ## 使用方式：
 ##   var popup = IntelRevealPopup.new(parent_node)
 ##   popup.show_reveals(reveal_events_array)
+##
+## 注意：IntelDimensions preload 保留以兼容潜在的外部调用，单维度化后弹窗
+## 展示的揭示事件已不含 dimension 区分（每敌人每档仅1条事件）。
 
 const IntelDimensions = preload("res://data/intel_dimensions.gd")
 

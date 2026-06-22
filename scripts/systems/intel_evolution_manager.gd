@@ -160,6 +160,7 @@ func get_discovered_branches() -> Array[Dictionary]:
 # ── 内部工具 ──────────────────────────────────────────────────────
 
 ## 检查分支的所有情报条件是否满足
+## v6.7: 单维度化，去掉 dimension 读取，直接用该 enemy_type 的最高 intel_progress 对比 threshold
 func _check_branch_requirements(branch_id: String, im: Node) -> bool:
 	var reqs: Dictionary = IntelEvolutionBranches.get_intel_requirements(branch_id)
 	if reqs.is_empty():
@@ -169,22 +170,21 @@ func _check_branch_requirements(branch_id: String, im: Node) -> bool:
 		var req: Dictionary = reqs[enemy_type]
 		if not req is Dictionary:
 			continue
-		var dimension: String = req.get("dimension", "")
 		var threshold: float = float(req.get("threshold", 0.0))
-		if dimension.is_empty() or threshold <= 0.0:
+		if threshold <= 0.0:
 			continue
-		## 查找该敌人类型的最高情报
-		var best_progress: float = _get_best_dimension_progress_for_type(im, enemy_type, dimension)
+		## 查找该敌人类型的最高情报进度（单维度）
+		var best_progress: float = _get_best_progress_for_type(im, enemy_type)
 		if best_progress < threshold:
 			return false
 	return true
 
-## 获取某敌人类型某维度的最高情报进度
-func _get_best_dimension_progress_for_type(im: Node, enemy_type: String, dimension: String) -> float:
+## 获取某敌人类型的最高情报进度（单维度）
+func _get_best_progress_for_type(im: Node, enemy_type: String) -> float:
 	var best: float = 0.0
 	for card_id in im.get_known_card_ids():
 		var et: String = im.get_enemy_type(card_id)
 		if et == enemy_type:
-			var val: float = im.get_dimension_progress(card_id, dimension)
+			var val: float = im.get_intel_progress(card_id)
 			best = maxf(best, val)
 	return best

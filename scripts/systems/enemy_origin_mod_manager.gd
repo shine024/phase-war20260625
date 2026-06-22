@@ -144,15 +144,16 @@ func get_available_mods_for_card(card_id: String) -> Array[Dictionary]:
 			result.append(mod)
 	return result
 
-## D槽是否已解锁（需要素材情报总进度 ≥ 30%）
+## D槽是否已解锁（需要情报总进度 ≥ ENEMY_ORIGIN_MOD_SLOT_UNLOCK_INTEL）
+## v6.7: 单维度化，原读 material 维度，现直接用 intel_progress
 func is_slot_unlocked_for_card() -> bool:
 	var im: Node = get_node_or_null("/root/IntelManual")
 	if im == null:
 		return false
-	## 检查是否有任何敌人的素材情报达到阈值
+	## 检查是否有任何敌人的情报进度达到阈值
 	for card_id in im.get_known_card_ids():
-		var mat_progress: float = im.get_dimension_progress(card_id, IntelDimensions.DIM_MATERIAL)
-		if mat_progress >= GC.ENEMY_ORIGIN_MOD_SLOT_UNLOCK_INTEL:
+		var progress: float = im.get_intel_progress(card_id)
+		if progress >= GC.ENEMY_ORIGIN_MOD_SLOT_UNLOCK_INTEL:
 			return true
 	return false
 
@@ -164,23 +165,23 @@ func get_equipped_eom(card_id: String) -> String:
 	return ""
 
 ## 获取敌源MOD当前有效等级
+## v6.7: 单维度化，改用 intel_progress（原读 material 维度），阈值 0.50/0.75/1.00 不变
 func get_effective_tier(mod_id: String) -> int:
 	var mod: Dictionary = EnemyOriginMods.get_mod(mod_id)
 	if mod.is_empty():
 		return 0
 	var enemy_type: String = mod.get("source_enemy_type", "")
-	## 查找该敌人类型的素材情报进度
+	## 查找该敌人类型的最高情报进度
 	var im: Node = get_node_or_null("/root/IntelManual")
 	if im == null:
 		return 0
-	## 遍历所有已知敌人，找到匹配类型的最高素材情报
-	var best_material_intel: float = 0.0
+	var best_intel: float = 0.0
 	for card_id in im.get_known_card_ids():
 		var et: String = im.get_enemy_type(card_id)
 		if et == enemy_type or et.is_empty():
-			var mat: float = im.get_dimension_progress(card_id, IntelDimensions.DIM_MATERIAL)
-			best_material_intel = maxf(best_material_intel, mat)
-	return EnemyOriginMods.get_effective_tier(mod_id, best_material_intel)
+			var progress: float = im.get_intel_progress(card_id)
+			best_intel = maxf(best_intel, progress)
+	return EnemyOriginMods.get_effective_tier(mod_id, best_intel)
 
 # ── 装备 / 卸载 ──────────────────────────────────────────────────
 

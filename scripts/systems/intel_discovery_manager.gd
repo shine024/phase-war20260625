@@ -248,36 +248,37 @@ func generate_battle_intel_harvest(
 # ── 揭示事件检测 ──────────────────────────────────────────────────
 
 ## 检查某卡是否触发了新的揭示事件
+## v6.7: 单维度化，去掉4维迭代，直接用 intel_progress 查 {enemy_type}_{tier} 事件
 func _check_reveals(card_id: String, enemy_type: String, im: Node) -> Array:
 	var new_events: Array = []
-	for dim in IntelDimensions.ALL_DIMENSIONS:
-		var dim_progress: float = im.get_dimension_progress(card_id, dim) if im.has_method("get_dimension_progress") else 0.0
-		var current_tier: int = IntelDimensions.get_reveal_tier(dim_progress)
-		if current_tier < 0:
+	var dim: String = "intel"  ## 单维度固定标识
+	var progress: float = im.get_intel_progress(card_id) if im.has_method("get_intel_progress") else 0.0
+	var current_tier: int = IntelDimensions.get_reveal_tier(progress)
+	if current_tier < 0:
+		return new_events
+	## 检查 tier 0 到 current_tier 的所有揭示
+	for t in range(current_tier + 1):
+		var event_key: String = IntelRevealEvents.make_event_key(enemy_type, dim, t)
+		if _triggered_reveals.has(event_key):
 			continue
-		## 检查tier 0到current_tier的所有揭示
-		for t in range(current_tier + 1):
-			var event_key: String = IntelRevealEvents.make_event_key(enemy_type, dim, t)
-			if _triggered_reveals.has(event_key):
-				continue
-			if not IntelRevealEvents.has_event(enemy_type, dim, t):
-				continue
-			var event_data: Dictionary = IntelRevealEvents.get_event(enemy_type, dim, t)
-			_triggered_reveals[event_key] = true
-			new_events.append({
-				"event_key": event_key,
-				"card_id": card_id,
-				"enemy_type": enemy_type,
-				"dimension": dim,
-				"tier": t,
-				"title": event_data.get("title", ""),
-				"desc": event_data.get("desc", ""),
-				"icon": event_data.get("icon", "⭐"),
-				"rewards": event_data.get("rewards", []),
-			})
-			intel_reveal_triggered.emit(card_id, enemy_type, dim, t, event_data)
-			## 处理奖励：敌源MOD解锁
-			_process_reveal_rewards(event_data, enemy_type)
+		if not IntelRevealEvents.has_event(enemy_type, dim, t):
+			continue
+		var event_data: Dictionary = IntelRevealEvents.get_event(enemy_type, dim, t)
+		_triggered_reveals[event_key] = true
+		new_events.append({
+			"event_key": event_key,
+			"card_id": card_id,
+			"enemy_type": enemy_type,
+			"dimension": dim,
+			"tier": t,
+			"title": event_data.get("title", ""),
+			"desc": event_data.get("desc", ""),
+			"icon": event_data.get("icon", "⭐"),
+			"rewards": event_data.get("rewards", []),
+		})
+		intel_reveal_triggered.emit(card_id, enemy_type, dim, t, event_data)
+		## 处理奖励：敌源MOD解锁、弱点加成、掉落率等
+		_process_reveal_rewards(event_data, enemy_type)
 	return new_events
 
 ## 处理揭示事件的奖励
@@ -485,18 +486,13 @@ func _merge_harvests(harvests: Array) -> Dictionary:
 	return {"items": by_card.values()}
 
 ## 构建首次遭遇情报收获条目
+## v6.7: 单维度化，dimensions 固定为 {"intel": total_delta}
 func _harvest_first_encounter(harvests: Array, card_id: String, enemy_type: String, total_delta: float) -> void:
-	var dims: Dictionary = {}
-	for dim in IntelDimensions.ALL_DIMENSIONS:
-		dims[dim] = total_delta  ## 简化：首次遭遇全部加到basic
-	## 首次遭遇实际只加basic
-	dims.clear()
-	dims[IntelDimensions.DIM_BASIC] = total_delta
 	harvests.append({
 		"card_id": card_id,
 		"enemy_type": enemy_type,
 		"first_encounter": true,
-		"dimensions": dims,
+		"dimensions": {"intel": total_delta},
 	})
 
 ## 构建击败情报收获条目

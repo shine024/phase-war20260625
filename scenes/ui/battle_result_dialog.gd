@@ -24,6 +24,38 @@ static func _drop_type_is_card_lane(t: int) -> bool:
 	)
 
 
+## 扫描 DropManager 待领取掉落，统计已在"本关获得"区汇总的 MATERIAL 资源总量。
+## 这些资源（nano_materials / energy_block）会合并到顶部汇总行显示，
+## 故需从"战斗掉落"列表中过滤掉，避免同一资源在面板上重复出现。
+## 返回 {"nano_materials": int, "energy_block": int}
+static func _summarize_pending_materials(dm: Node) -> Dictionary:
+	var totals: Dictionary = {"nano_materials": 0, "energy_block": 0}
+	if dm == null or not dm.has_method("get_pending_drops"):
+		return totals
+	for dr in dm.get_pending_drops():
+		if not (dr is DropTables.DropResult):
+			continue
+		if dr.drop.type != DropTables.DropType.MATERIAL:
+			continue
+		var item_id: String = String(dr.drop.item_id)
+		# basic_nano 是旧 ID，映射到 nano_materials（与 drop_manager._add_material 一致）
+		if item_id == "basic_nano":
+			item_id = "nano_materials"
+		if totals.has(item_id):
+			totals[item_id] = int(totals[item_id]) + int(dr.count)
+	return totals
+
+
+## 判断某掉落是否属于"已在顶部汇总的 MATERIAL 资源"（需从掉落列表过滤掉）
+static func _is_summarized_material(dr) -> bool:
+	if not (dr is DropTables.DropResult):
+		return false
+	if dr.drop.type != DropTables.DropType.MATERIAL:
+		return false
+	var item_id: String = String(dr.drop.item_id)
+	return item_id == "nano_materials" or item_id == "energy_block" or item_id == "basic_nano"
+
+
 func _ready() -> void:
 	layout_mode = 1
 	anchors_preset = 8
@@ -108,19 +140,20 @@ static func create(parent: Node, player_won: bool, blueprints: Array, \
 		content_box.add_child(reward_title)
 		var reward_list := VBoxContainer.new()
 		reward_list.add_theme_constant_override("separation", 3)
-		var energy_gain: int = int(reward_summary.get("energy_block_gain", 0))
-		var basic_nano_gain: int = int(reward_summary.get("basic_nano_gain", 0))
-		var nano_material_gain: int = int(reward_summary.get("nano_material_gain", 0))
+		# 扫描 pending drops 中已汇总的 MATERIAL 资源，合并到顶部显示（避免与掉落列表重复）
+		var _dm_for_summary: Node = Engine.get_main_loop().root.get_node_or_null("DropManager")
+		var _pending_mats: Dictionary = _summarize_pending_materials(_dm_for_summary)
+		var energy_gain: int = int(reward_summary.get("energy_block_gain", 0)) + int(_pending_mats.get("energy_block", 0))
+		# 纳米材料统一显示一行（固定关卡奖励 + 随机掉落，合并总量）
+		var basic_nano_gain: int = int(reward_summary.get("basic_nano_gain", 0)) + int(_pending_mats.get("nano_materials", 0))
 		var fragment_gain_total: int = int(reward_summary.get("fragment_gain_total", 0))
-		var knowledge_gain_total: int = int(reward_summary.get("knowledge_gain_total", 0))
 		var recon_bonus_percent: int = int(reward_summary.get("recon_fragment_bonus_percent", 0))
-		var recon_multiplier: float = float(reward_summary.get("recon_fragment_multiplier", 1.0))
+		# v6.2 法则系统废弃，战斗不再产出法则知识（battle_damage_system 已禁用 _roll_law_knowledge_drops），
+		# 原"法则知识值 +N"行永远为 0，已移除避免误导
 		var reward_lines: Array[String] = [
 			"  ▸ 能量块 +%d" % energy_gain,
-			"  ▸ 基础纳米 +%d" % basic_nano_gain,
-			"  ▸ 纳米颗粒 +%d" % nano_material_gain,
-			"  ▸ 战备卡牌补给（蓝图库副本） +%d（侦查加成 %+d%%，倍率 x%.2f）" % [fragment_gain_total, recon_bonus_percent, recon_multiplier],
-			"  ▸ 法则知识值 +%d" % knowledge_gain_total,
+			"  ▸ 纳米材料 +%d" % basic_nano_gain,
+			"  ▸ 卡牌副本 +%d（侦查加成 %+d%%）" % [fragment_gain_total, recon_bonus_percent],
 			]
 		for line_text in reward_lines:
 			var reward_lbl := Label.new()
@@ -162,6 +195,10 @@ static func create(parent: Node, player_won: bool, blueprints: Array, \
 			var secondary_drops: Array = []
 			for dr in drops:
 				if not (dr is DropTables.DropResult):
+					continue
+				# 过滤已在"本关获得"区汇总的 MATERIAL 资源（nano_materials/energy_block），
+				# 避免同一资源在面板上重复显示
+				if _is_summarized_material(dr):
 					continue
 				var info0: Dictionary = dm.get_drop_info(dr) if dm.has_method("get_drop_info") else {}
 				var t0: int = int(info0.get("type", -1))

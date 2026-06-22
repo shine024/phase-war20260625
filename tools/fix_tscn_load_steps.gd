@@ -14,7 +14,6 @@ const FIX_PATTERNS = {
 	"scenes/ui/battle_hud.tscn": 4,
 	"scenes/ui/battle_info_display.tscn": 2,
 	"scenes/ui/battle_result_dialog.tscn": 1,
-	"scenes/ui/battle_result_panel.tscn": 1,
 	"scenes/ui/bottom_instrument_bar.tscn": 3,
 	"scenes/ui/card_affix_tooltip.tscn": 1,
 	"scenes/ui/card_enhancement_panel.tscn": 8,

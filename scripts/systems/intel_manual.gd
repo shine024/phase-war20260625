@@ -3,16 +3,17 @@ extends Node
 ## 管理所有敌方单位的情报数据：遭遇、击败、侦察、分解等情报获取，
 ## 情报奖励阶梯判定，存档/读档。
 ##
-## v6.0: 扩展为4维情报系统
-##   basic    — 基础侦察：HP/攻击/防御等数值属性
-##   tactical — 战术分析：行为模式/技能/弱点
-##   material — 素材研究：可掉落的专属材料信息
-##   secret   — 机密档案：隐藏进化线索/传奇配方
+## v6.7: 单维度化
+##   原 v6.0 的 4 维（basic/tactical/material/secret）已合并为单一 intel_progress。
+##   击败给进度，按次数递减（首杀 12%，每次 ×0.8，下限 1%）。
+##   进度跨 25%/50%/75%/100% 阈值触发揭示事件（由 IntelDiscoveryManager 统一检查）。
+##   原 4 维字段（intel_dimensions/revealed_tiers）在 IntelEntry 中保留以兼容旧存档，
+##   但运行时不再读写。
 ##
 ## 依赖：
 ##   - SaveUtils（存档/读档）
 ##   - SignalBus（信号通知）
-##   - IntelDimensions（情报维度定义，v6.0新增）
+##   - IntelDimensions（情报维度定义，单维度化后仅用于 get_reveal_tier）
 
 const SaveUtils = preload("res://scripts/save_utils.gd")
 const IntelDimensions = preload("res://data/intel_dimensions.gd")
@@ -20,14 +21,19 @@ const GC = preload("res://resources/game_constants.gd")
 
 # ── 常量 ──────────────────────────────────────────────────────────
 
-## 情报获取量（总量，会被按维度分配）
-const FIRST_ENCOUNTER_INTEL: float = 0.20
-const DEFEAT_NORMAL_MIN: float = 0.05
-const DEFEAT_NORMAL_MAX: float = 0.10
-const DEFEAT_ELITE_MIN: float = 0.15
-const DEFEAT_ELITE_MAX: float = 0.25
-const DEFEAT_BOSS_MIN: float = 0.25
-const DEFEAT_BOSS_MAX: float = 0.40
+## v6.7: 单维度化后的击败递减加成曲线
+## amount = BASE[rank] × DEFEAT_DECAY_FACTOR^(defeat_count-1)，下限 DEFEAT_MIN_AMOUNT
+## 首杀 12%/20%/30%，每次 ×0.8 衰减，约 12-15 次击败打满 100%
+const DEFEAT_BASE_NORMAL: float = 0.12
+const DEFEAT_BASE_ELITE: float = 0.20
+const DEFEAT_BASE_BOSS: float = 0.30
+const DEFEAT_DECAY_FACTOR: float = 0.8
+const DEFEAT_MIN_AMOUNT: float = 0.01
+
+## 首次遭遇固定加成（与第1次击败叠加，使首战收益显著）
+const FIRST_ENCOUNTER_INTEL: float = 0.12
+
+## 侦察/分解加成（保留，单维度下直接累加到 intel_progress）
 const RECON_MIN: float = 0.05
 const RECON_MAX: float = 0.15
 const DECOMPOSE_INTEL: float = 0.10
@@ -44,7 +50,7 @@ const TIER_EVOLUTION: int = 4       # 100%
 
 ## 存档文件名
 const SAVE_FILE_NAME: String = "intel_manual"
-const SAVE_VERSION: int = 2  # v1=旧单一情报, v2=4维情报
+const SAVE_VERSION: int = 3  # v1=旧单一情报, v2=4维情报, v3=单维度化（合并4维回单标量）
 
 # ── 信号 ──────────────────────────────────────────────────────────
 
@@ -72,22 +78,19 @@ var _card_to_enemy_type: Dictionary = {}
 
 class IntelEntry:
 	var card_id: String = ""
-	var intel_progress: float = 0.0          ## 总情报（4维加权平均，向后兼容）
-	var intel_dimensions: Dictionary = {}    ## 🆕 4维情报 {"basic": 0.0, "tactical": 0.0, ...}
-	var revealed_tiers: Dictionary = {}     ## 🆕 已触发的揭示等级 {"basic": 0, "tactical": -1, ...}
+	var intel_progress: float = 0.0          ## v6.7: 唯一情报进度（单维度）
+	## 以下4维字段保留以兼容旧存档读写，运行时不再使用
+	var intel_dimensions: Dictionary = {}    ## [已废弃] 旧4维情报
+	var revealed_tiers: Dictionary = {}      ## [已废弃] 旧4维揭示等级
 	var is_unlocked: bool = false
 	var first_encounter: bool = false
 	var defeat_count: int = 0
 	var recon_bonus: float = 0.0
 	var decompose_bonus: float = 0.0
-	var migrated: bool = false               ## 🆕 是否已从旧格式迁移
+	var migrated: bool = false               ## 是否已迁移到当前版本
 
 	func _init(id: String) -> void:
 		card_id = id
-		## 初始化4维情报为0
-		for dim in IntelDimensions.ALL_DIMENSIONS:
-			intel_dimensions[dim] = 0.0
-			revealed_tiers[dim] = -1  ## -1表示未触发任何揭示
 
 	func to_dict() -> Dictionary:
 		return {
@@ -112,25 +115,11 @@ class IntelEntry:
 		entry.recon_bonus = clampf(data.get("recon_bonus", 0.0), 0.0, 1.0)
 		entry.decompose_bonus = clampf(data.get("decompose_bonus", 0.0), 0.0, 1.0)
 		entry.migrated = data.get("migrated", false)
-		## 🆕 加载4维情报
+		## 旧4维字段仅原样保留（存档兼容），运行时不读取
 		if data.has("intel_dimensions") and data["intel_dimensions"] is Dictionary:
-			for dim in IntelDimensions.ALL_DIMENSIONS:
-				if data["intel_dimensions"].has(dim):
-					entry.intel_dimensions[dim] = clampf(float(data["intel_dimensions"][dim]), 0.0, 1.0)
-		else:
-			## 无4维数据：全部置零，等待迁移
-			for dim in IntelDimensions.ALL_DIMENSIONS:
-				entry.intel_dimensions[dim] = 0.0
-		## 🆕 加载揭示等级
+			entry.intel_dimensions = (data["intel_dimensions"] as Dictionary).duplicate()
 		if data.has("revealed_tiers") and data["revealed_tiers"] is Dictionary:
-			for dim in IntelDimensions.ALL_DIMENSIONS:
-				if data["revealed_tiers"].has(dim):
-					entry.revealed_tiers[dim] = int(data["revealed_tiers"][dim])
-				else:
-					entry.revealed_tiers[dim] = -1
-		else:
-			for dim in IntelDimensions.ALL_DIMENSIONS:
-				entry.revealed_tiers[dim] = -1
+			entry.revealed_tiers = (data["revealed_tiers"] as Dictionary).duplicate()
 		return entry
 
 # ── 生命周期 ──────────────────────────────────────────────────────
@@ -169,14 +158,16 @@ func load_state(data: Dictionary) -> void:
 func _apply_loaded_raw(raw: Dictionary) -> void:
 	_entries.clear()
 	_completed_cache.clear()
+	var raw_version: int = int(raw.get("_version", 1))
 	for card_id in raw:
 		if card_id == "_version" or card_id == "_completed_cache" or card_id == "_card_to_enemy_type":
 			continue  ## 跳过元数据键
 		if raw[card_id] is Dictionary:
 			var entry: IntelEntry = IntelEntry.from_dict(raw[card_id])
-			## 旧存档迁移：如果尚未迁移且有旧intel_progress
-			if not entry.migrated and entry.intel_progress > 0.0:
-				_migrate_single_entry(entry)
+			## v2→v3 迁移：把旧4维情报合并回单标量 intel_progress
+			## 判定条件：存档版本<3，或条目未迁移且4维数据非空
+			if raw_version < 3 or (not entry.migrated and not entry.intel_dimensions.is_empty()):
+				_migrate_v2_to_v3(entry)
 			_entries[card_id] = entry
 			if entry.is_unlocked:
 				_completed_cache.append(card_id)
@@ -201,20 +192,21 @@ func reset_progress() -> void:
 	_completed_cache.clear()
 	_card_to_enemy_type.clear()
 
-## 🆕 迁移旧格式条目：将单一intel_progress分配到4维度
-func _migrate_single_entry(entry: IntelEntry) -> void:
-	if entry.intel_progress <= 0.0:
-		return
-	## 按照权重分配：basic略高，secret最低
-	var old: float = entry.intel_progress
-	entry.intel_dimensions[IntelDimensions.DIM_BASIC] = clampf(old * 1.1, 0.0, 1.0)
-	entry.intel_dimensions[IntelDimensions.DIM_TACTICAL] = clampf(old * 0.85, 0.0, 1.0)
-	entry.intel_dimensions[IntelDimensions.DIM_MATERIAL] = clampf(old * 0.75, 0.0, 1.0)
-	entry.intel_dimensions[IntelDimensions.DIM_SECRET] = clampf(old * 0.3, 0.0, 1.0)
-	## 重新计算揭示等级
-	for dim in IntelDimensions.ALL_DIMENSIONS:
-		entry.revealed_tiers[dim] = IntelDimensions.get_reveal_tier(entry.intel_dimensions[dim])
+## v6.7: v2→v3 迁移——把旧4维情报合并回单标量 intel_progress
+## 采用最大值策略（取4维最大值），避免玩家进度因合并而降级。
+## 若4维数据为空但 intel_progress 已有值（v1存档），则直接保留原 intel_progress。
+func _migrate_v2_to_v3(entry: IntelEntry) -> void:
+	if not entry.intel_dimensions.is_empty():
+		var merged: float = IntelDimensions.merge_legacy_dimensions(entry.intel_dimensions)
+		## 取较大值，避免迁移导致进度回退
+		entry.intel_progress = maxf(entry.intel_progress, merged)
+		## 清空旧4维字段（减少存档体积，保留也无害但更整洁）
+		entry.intel_dimensions = {}
+		entry.revealed_tiers = {}
 	entry.migrated = true
+	## 同步 is_unlocked 状态（合并后若满100%则标记解锁）
+	if entry.intel_progress >= 1.0:
+		entry.is_unlocked = true
 
 # ── 内部工具 ──────────────────────────────────────────────────────
 
@@ -236,76 +228,40 @@ func _calc_tier(progress: float) -> int:
 	if progress >= 0.25: return TIER_BASIC_STATS
 	return TIER_NONE
 
-## 🆕 添加单维度情报量并触发信号
-func _add_dimensional_intel(card_id: String, dimension: String, amount: float, source: String) -> float:
+## v6.7: 单维度情报累加（替代旧的 _add_dimensional_intel + _add_intel_weighted）
+## 直接把 amount 加到 intel_progress，触发阶梯/完成/维度变化信号。
+## dimension 参数保留以兼容调用签名（单维度化后固定为 "intel"）。
+## 返回实际增长量。
+func _add_intel(card_id: String, amount: float, source: String, dimension: String = "intel") -> float:
 	var entry := _ensure_entry(card_id)
-	if entry.intel_dimensions.get(dimension, 0.0) >= 1.0:
-		return 0.0  ## 该维度已满
-	var old_val: float = entry.intel_dimensions.get(dimension, 0.0)
-	var old_tier: int = entry.revealed_tiers.get(dimension, -1)
-	entry.intel_dimensions[dimension] = clampf(old_val + amount, 0.0, 1.0)
-	var new_val: float = entry.intel_dimensions[dimension]
+	if entry.intel_progress >= 1.0:
+		return 0.0  ## 已满
+	var old_val: float = entry.intel_progress
+	var old_tier: int = IntelDimensions.get_reveal_tier(old_val)
+	entry.intel_progress = clampf(old_val + amount, 0.0, 1.0)
+	var new_val: float = entry.intel_progress
 	var new_tier: int = IntelDimensions.get_reveal_tier(new_val)
-	## 更新揭示等级
-	if new_tier >= 0 and new_tier != old_tier:
-		entry.revealed_tiers[dimension] = new_tier
-	## 更新总情报（加权平均）
-	var old_total: float = entry.intel_progress
-	entry.intel_progress = IntelDimensions.calc_weighted_average(entry.intel_dimensions)
 	## 检查完全解锁
 	if entry.intel_progress >= 1.0 and not entry.is_unlocked:
 		entry.is_unlocked = true
 		if not card_id in _completed_cache:
 			_completed_cache.append(card_id)
 		intel_completed.emit(card_id)
-	## 总阶梯检查
-	var old_total_tier := _calc_tier(old_total)
-	var new_total_tier := _calc_tier(entry.intel_progress)
-	if new_total_tier > old_total_tier:
-		intel_tier_up.emit(card_id, old_total_tier, new_total_tier)
-	## 发射维度信号
+	## 总阶梯检查（跨档触发）
+	if new_tier > old_tier:
+		intel_tier_up.emit(card_id, old_tier, new_tier)
+	## 发射维度变化信号（dimension 固定为 "intel"，兼容旧监听者）
 	if absf(new_val - old_val) > 0.001:
 		intel_dimension_changed.emit(card_id, dimension, old_val, new_val, source)
-	if absf(entry.intel_progress - old_total) > 0.001:
-		intel_progress_changed.emit(card_id, old_total, entry.intel_progress, source)
+		intel_progress_changed.emit(card_id, old_val, new_val, source)
 	save_data()
 	return new_val - old_val
 
-## 🆕 按维度权重分配并添加情报
-## total_amount: 总情报量
-## source: 来源描述
-## enemy_type: 敌人类型（用于权重分配）
-## victory_stars: 胜利星级(0-3)
-## 返回各维度实际增长的字典
-func _add_intel_weighted(
-	card_id: String,
-	total_amount: float,
-	source: String,
-	enemy_type: String,
-	victory_stars: int = 0
-) -> Dictionary:
-	var weights: Dictionary = IntelDimensions.calc_dimension_weights(source, enemy_type, victory_stars)
-	var result: Dictionary = {}
-	var entry := _ensure_entry(card_id)
-	## 如果总情报已满，跳过
-	if entry.intel_progress >= 1.0:
-		return result
-	for dim in IntelDimensions.ALL_DIMENSIONS:
-		var w: float = float(weights.get(dim, 0.0))
-		if w <= 0.0:
-			continue
-		var dim_amount: float = total_amount * w
-		if dim_amount <= 0.001:
-			continue
-		var actual: float = _add_dimensional_intel(card_id, dim, dim_amount, source)
-		if actual > 0.001:
-			result[dim] = actual
-	return result
-
 # ── 公开接口：情报获取 ─────────────────────────────────────────────
+## v6.7: 所有 register_* 返回 {"intel": delta}，保持与下游 _harvest_* 的 Dictionary 契约。
+## 单维度化后只有一个 key "intel"。
 
-## 首次遭遇：+20% 情报（分配到基础侦察维度为主）
-## 只在第一次遭遇时触发，返回实际获得的情报量
+## 首次遭遇：固定 +12% 情报（一次性）
 func register_first_encounter(card_id: String, enemy_type: String = "") -> float:
 	var entry := _ensure_entry(card_id)
 	if entry.first_encounter:
@@ -314,20 +270,12 @@ func register_first_encounter(card_id: String, enemy_type: String = "") -> float
 	## 缓存敌人类型映射
 	if not enemy_type.is_empty():
 		_card_to_enemy_type[card_id] = enemy_type
-	var result: Dictionary = _add_intel_weighted(
-		card_id, FIRST_ENCOUNTER_INTEL, "first_encounter",
-		enemy_type
-	)
-	var total: float = 0.0
-	for v in result.values():
-		total += float(v)
-	return total
+	return _add_intel(card_id, FIRST_ENCOUNTER_INTEL, "first_encounter")
 
-## 击败单位获得情报（4维分配）
-## unit_rank: "normal" | "elite" | "boss"
-## enemy_type: 敌人类型标签
-## victory_stars: 胜利星级(0-3)
-## 返回各维度实际增长的字典
+## 击败单位获得情报（按击败次数递减）
+## amount = BASE[rank] × DEFEAT_DECAY_FACTOR^(defeat_count-1)，下限 DEFEAT_MIN_AMOUNT
+## 3星胜利额外 +10%
+## 返回 {"intel": delta}（兼容下游 _harvest_defeat 的 Dictionary 契约）
 func register_defeat(
 	card_id: String,
 	unit_rank: String = "normal",
@@ -339,20 +287,31 @@ func register_defeat(
 	## 缓存敌人类型映射
 	if not enemy_type.is_empty():
 		_card_to_enemy_type[card_id] = enemy_type
-	var total_amount: float = 0.0
+	## 基础量按 rank
+	var base_amount: float = DEFEAT_BASE_NORMAL
 	match unit_rank:
 		"boss":
-			total_amount = _rand_range_float(DEFEAT_BOSS_MIN, DEFEAT_BOSS_MAX)
+			base_amount = DEFEAT_BASE_BOSS
 		"elite":
-			total_amount = _rand_range_float(DEFEAT_ELITE_MIN, DEFEAT_ELITE_MAX)
+			base_amount = DEFEAT_BASE_ELITE
 		_:
-			total_amount = _rand_range_float(DEFEAT_NORMAL_MIN, DEFEAT_NORMAL_MAX)
+			base_amount = DEFEAT_BASE_NORMAL
+	## 递减：×0.8^(defeat_count-1)，下限 DEFEAT_MIN_AMOUNT
+	var decayed: float = base_amount * pow(DEFEAT_DECAY_FACTOR, entry.defeat_count - 1)
+	var total_amount: float = maxf(decayed, DEFEAT_MIN_AMOUNT)
+	## 3星胜利额外 +10%
+	if victory_stars >= 3:
+		total_amount += PERFECT_VICTORY_INTEL_BONUS
 	var source: String = "defeat_" + unit_rank
-	return _add_intel_weighted(card_id, total_amount, source, enemy_type, victory_stars)
+	var actual: float = _add_intel(card_id, total_amount, source)
+	var result: Dictionary = {}
+	if actual > 0.001:
+		result["intel"] = actual
+	return result
 
 ## 侦察激活获得情报
 ## recon_bonus_pct: 侦察加成百分比 (0.0-1.0)
-## 返回各维度实际增长的字典
+## 返回 {"intel": delta}
 func register_recon(card_id: String, recon_bonus_pct: float = 0.0, enemy_type: String = "") -> Dictionary:
 	var entry := _ensure_entry(card_id)
 	var amount := _rand_range_float(RECON_MIN, RECON_MAX)
@@ -360,16 +319,24 @@ func register_recon(card_id: String, recon_bonus_pct: float = 0.0, enemy_type: S
 	amount += amount * recon_bonus_pct
 	if not enemy_type.is_empty():
 		_card_to_enemy_type[card_id] = enemy_type
-	return _add_intel_weighted(card_id, amount, "recon", enemy_type)
+	var actual: float = _add_intel(card_id, amount, "recon")
+	var result: Dictionary = {}
+	if actual > 0.001:
+		result["intel"] = actual
+	return result
 
 ## 分解重复卡获得情报
-## 返回各维度实际增长的字典
+## 返回 {"intel": delta}
 func register_decompose(card_id: String, enemy_type: String = "") -> Dictionary:
 	var entry := _ensure_entry(card_id)
 	entry.decompose_bonus += DECOMPOSE_INTEL
 	if not enemy_type.is_empty():
 		_card_to_enemy_type[card_id] = enemy_type
-	return _add_intel_weighted(card_id, DECOMPOSE_INTEL, "decompose", enemy_type)
+	var actual: float = _add_intel(card_id, DECOMPOSE_INTEL, "decompose")
+	var result: Dictionary = {}
+	if actual > 0.001:
+		result["intel"] = actual
+	return result
 
 # ── 公开接口：查询 ────────────────────────────────────────────────
 
@@ -379,38 +346,24 @@ func get_intel_progress(card_id: String) -> float:
 		return _entries[card_id].intel_progress
 	return 0.0
 
-## 🆕 获取某卡特定维度的情报进度
-func get_dimension_progress(card_id: String, dimension: String) -> float:
+## v6.7: 兼容别名——单维度下等价于 get_intel_progress
+func get_dimension_progress(card_id: String, dimension: String = "intel") -> float:
 	if _entries.has(card_id):
-		var entry: IntelEntry = _entries[card_id]
-		return float(entry.intel_dimensions.get(dimension, 0.0))
+		return _entries[card_id].intel_progress
 	return 0.0
 
-## 🆕 获取某卡全部4维情报
+## v6.7: 单维度下返回 {"intel": progress}（兼容旧调用）
 func get_all_dimensions(card_id: String) -> Dictionary:
-	if _entries.has(card_id):
-		var entry: IntelEntry = _entries[card_id]
-		return entry.intel_dimensions.duplicate()
-	var empty: Dictionary = {}
-	for dim in IntelDimensions.ALL_DIMENSIONS:
-		empty[dim] = 0.0
-	return empty
+	var progress: float = get_intel_progress(card_id)
+	return {"intel": progress}
 
-## 🆕 获取某卡某维度的揭示等级 (-1=未触发, 0-3)
-func get_revealed_tier(card_id: String, dimension: String) -> int:
-	if _entries.has(card_id):
-		var entry: IntelEntry = _entries[card_id]
-		return int(entry.revealed_tiers.get(dimension, -1))
-	return -1
+## v6.7: 兼容别名——返回基于 intel_progress 的揭示等级
+func get_revealed_tier(card_id: String, dimension: String = "intel") -> int:
+	return IntelDimensions.get_reveal_tier(get_intel_progress(card_id))
 
-## 🆕 获取某卡所有维度的揭示等级
+## v6.7: 单维度下返回 {"intel": tier}
 func get_all_revealed_tiers(card_id: String) -> Dictionary:
-	if _entries.has(card_id):
-		return _entries[card_id].revealed_tiers.duplicate()
-	var empty: Dictionary = {}
-	for dim in IntelDimensions.ALL_DIMENSIONS:
-		empty[dim] = -1
-	return empty
+	return {"intel": get_revealed_tier(card_id)}
 
 ## 🆕 获取某卡关联的敌人类型
 func get_enemy_type(card_id: String) -> String:
@@ -495,10 +448,6 @@ func unlock_all_intel() -> void:
 			var entry = _entries[card.card_id]
 			entry.intel_progress = 1.0
 			entry.is_unlocked = true
-			# 所有4维情报设为100%
-			for dim in IntelDimensions.ALL_DIMENSIONS:
-				entry.intel_dimensions[dim] = 1.0
-				entry.revealed_tiers[dim] = 4  # 最高等级
 			if not _completed_cache.has(card.card_id):
 				_completed_cache.append(card.card_id)
 	_completed_cache = _completed_cache.duplicate()  # 触发更新

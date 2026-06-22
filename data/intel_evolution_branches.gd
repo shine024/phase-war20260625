@@ -6,7 +6,8 @@ class_name IntelEvolutionBranches
 
 # ── 情报进化分支定义 ─────────────────────────────────────────────
 # intel_requirements: 多个敌人的情报条件（AND关系）
-#   key = enemy_type, value = {"dimension": str, "threshold": float}
+#   key = enemy_type, value = {"threshold": float}
+#   v6.7: 单维度化，已移除 dimension 字段，直接用总情报进度对比 threshold
 # unique_bonus: 分支的特殊奖励
 # cost_modifier: 消耗倍率（1.0=正常）
 # is_hidden: 未发现时是否可见
@@ -21,8 +22,8 @@ const INTEL_BRANCHES: Dictionary = {
 		"source_card_ids": ["ww1_mp18", "cold_ak47", "mod_marine"],
 		"target_card_id": "fut_spectre",
 		"intel_requirements": {
-			"infantry": {"dimension": "secret", "threshold": 0.75},
-			"stealth": {"dimension": "secret", "threshold": 0.50},
+			"infantry": {"threshold": 0.75},
+			"stealth": {"threshold": 0.50},
 		},
 		"unique_bonus": {
 			"inherit_ratio": 0.45,
@@ -39,8 +40,8 @@ const INTEL_BRANCHES: Dictionary = {
 		"source_card_ids": ["ww2_panzerschrek", "cold_rpg", "mod_javelin"],
 		"target_card_id": "fut_cyborg",
 		"intel_requirements": {
-			"heavy_armor": {"dimension": "tactical", "threshold": 0.80},
-			"heavy_armor_mat": {"dimension": "material", "threshold": 0.75},
+			"heavy_armor": {"threshold": 0.80},
+			"heavy_armor_mat": {"threshold": 0.75},
 		},
 		"unique_bonus": {
 			"inherit_ratio": 0.50,
@@ -58,8 +59,8 @@ const INTEL_BRANCHES: Dictionary = {
 		"source_card_ids": ["ww2_pz3", "cold_t55", "mod_m1a1"],
 		"target_card_id": "fut_heavy_mech",
 		"intel_requirements": {
-			"boss_nano": {"dimension": "material", "threshold": 0.80},
-			"flame": {"dimension": "secret", "threshold": 0.60},
+			"boss_nano": {"threshold": 0.80},
+			"flame": {"threshold": 0.60},
 		},
 		"unique_bonus": {
 			"inherit_ratio": 0.40,
@@ -78,9 +79,9 @@ const INTEL_BRANCHES: Dictionary = {
 		"source_card_ids": ["mod_m270", "fut_howitzer"],
 		"target_card_id": "fut_space_fighter",
 		"intel_requirements": {
-			"artillery": {"dimension": "secret", "threshold": 1.00},
-			"air": {"dimension": "secret", "threshold": 0.75},
-			"stealth": {"dimension": "tactical", "threshold": 0.80},
+			"artillery": {"threshold": 1.00},
+			"air": {"threshold": 0.75},
+			"stealth": {"threshold": 0.80},
 		},
 		"unique_bonus": {
 			"inherit_ratio": 0.55,

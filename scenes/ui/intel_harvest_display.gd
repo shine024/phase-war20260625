@@ -1,7 +1,7 @@
 extends PanelContainer
 class_name IntelHarvestDisplay
-## v6.0: 战斗结算中的情报收获展示组件
-## 显示每个被击败敌人的4维情报进度条 + 增长动画 + 揭示事件预览
+## v6.7: 战斗结算中的情报收获展示组件（单维度化）
+## 每个被击败敌人显示 1 条情报进度条 + 第N次击败 +X% + 揭示标签
 ##
 ## 使用方式：
 ##   var ui = IntelHarvestDisplay.new()
@@ -69,9 +69,6 @@ func _refresh_ui() -> void:
 		var card_box := _create_card_entry(entry)
 		outer.add_child(card_box)
 
-	## 敌源MOD碎片掉落预览
-	## TODO: Phase 2整合
-
 	## 情报道具掉落展示
 	if not _intel_item_drops.is_empty():
 		var item_title := Label.new()
@@ -92,13 +89,13 @@ func _refresh_ui() -> void:
 
 	add_child(outer)
 
-## 创建单个敌人的情报条目
+## 创建单个敌人的情报条目（单维度：1条进度条）
 func _create_card_entry(entry: Dictionary) -> PanelContainer:
 	var box := PanelContainer.new()
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.08, 0.12, 0.18, 0.9)
 	style.set_border_width_all(1)
-	style.set_border_color(Color(0.2, 0.35, 0.55, 0.3))
+	style.border_color = Color(0.2, 0.35, 0.55, 0.3)
 	style.set_corner_radius_all(6)
 	style.set_content_margin_all(6)
 	box.add_theme_stylebox_override("panel", style)
@@ -129,106 +126,99 @@ func _create_card_entry(entry: Dictionary) -> PanelContainer:
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_row.add_child(name_lbl)
 
+	## 击败次数（若有）
+	if _im and card_id != "":
+		var defeat_count: int = _im.get_defeat_count(card_id) if _im.has_method("get_defeat_count") else 0
+		if defeat_count > 0:
+			var count_lbl := Label.new()
+			count_lbl.text = "第%d次击败" % defeat_count
+			count_lbl.add_theme_font_size_override("font_size", 10)
+			count_lbl.add_theme_color_override("font_color", Color(0.6, 0.7, 0.8, 0.8))
+			name_row.add_child(count_lbl)
+
 	vbox.add_child(name_row)
 
-	## 4维进度条
+	## 单维度进度条
 	var dims: Dictionary = entry.get("dimensions", {})
-	for dim in IntelDimensions.ALL_DIMENSIONS:
-		var delta: float = 0.0
-		if dims.has(dim):
-			# v6.6 修复：_merge_harvests 把维度存成 {"old_val":..,"new_val":..,"delta":..} 字典，
-			# 而非直接 float。原 float(dims[dim]) 对 Dictionary 调用 float 触发
-			# "Nonexistent 'float' constructor" 运行时错误（每次战斗结算必现）。
-			# 兼容两种结构：Dictionary（合并后）取 "delta"，或直接数值（未合并）。
-			var dim_val: Variant = dims[dim]
-			if dim_val is Dictionary:
-				delta = float(dim_val.get("delta", 0.0))
-			elif dim_val is float or dim_val is int:
-				delta = float(dim_val)
+	var delta: float = 0.0
+	if dims.has("intel"):
+		## 合并后结构：{"intel": {"old_val":..,"new_val":..,"delta":..}}
+		var dim_val: Variant = dims["intel"]
+		if dim_val is Dictionary:
+			delta = float(dim_val.get("delta", 0.0))
+		elif dim_val is float or dim_val is int:
+			delta = float(dim_val)
+	elif dims.size() > 0:
+		## 兜底：旧格式可能残留多 key，取总和
+		for k in dims:
+			var v: Variant = dims[k]
+			if v is Dictionary:
+				delta += float(v.get("delta", 0.0))
+			else:
+				delta += float(v)
 
-		if delta < 0.001:
-			continue  ## 跳过无增长的维度
-
-		var dim_row := _create_dimension_bar(card_id, enemy_type, dim, delta)
-		vbox.add_child(dim_row)
+	if delta >= 0.001:
+		var progress_row := _create_progress_row(card_id, enemy_type, delta)
+		vbox.add_child(progress_row)
 
 	return box
 
-## 创建单个维度的进度条行
-func _create_dimension_bar(card_id: String, enemy_type: String, dimension: String, delta: float) -> HBoxContainer:
+## 创建单维度进度条行
+func _create_progress_row(card_id: String, enemy_type: String, delta: float) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 
-	## 维度图标
-	var icon_lbl := Label.new()
-	icon_lbl.text = IntelDimensions.get_dim_icon(dimension)
-	icon_lbl.add_theme_font_size_override("font_size", 11)
-	row.add_child(icon_lbl)
-
-	## 维度名称
-	var dim_lbl := Label.new()
-	dim_lbl.text = IntelDimensions.get_dim_name(dimension)
-	dim_lbl.add_theme_font_size_override("font_size", 10)
-	dim_lbl.custom_minimum_size.x = 56
-	dim_lbl.add_theme_color_override("font_color", IntelDimensions.get_dim_color(dimension))
-	row.add_child(dim_lbl)
-
 	## 进度条
 	var progress := ProgressBar.new()
-	progress.custom_minimum_size.x = 120
+	progress.custom_minimum_size.x = 180
 	progress.max_value = 100.0
 	progress.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	## 获取当前情报值
 	var current_pct: float = 0.0
-	var new_pct: float = 0.0
-	if _im and _im.has_method("get_dimension_progress"):
-		current_pct = _im.get_dimension_progress(card_id, dimension) * 100.0
-	new_pct = current_pct  ## delta已经被添加过了
+	if _im and _im.has_method("get_intel_progress"):
+		current_pct = _im.get_intel_progress(card_id) * 100.0
+	progress.value = current_pct
 
-	progress.value = new_pct
-
-	## 进度条颜色
+	## 进度条颜色（单维度蓝色主题）
 	var bar_style := StyleBoxFlat.new()
-	bar_style.bg_color = IntelDimensions.get_dim_color(dimension)
+	bar_style.bg_color = IntelDimensions.DIM_COLORS[IntelDimensions.DIM_INTEL]
 	bar_style.set_corner_radius_all(3)
 	progress.add_theme_stylebox_override("fill", bar_style)
 
 	var bg_style := StyleBoxFlat.new()
-	bg_style.bg_color = IntelDimensions.DIM_BG_COLORS.get(dimension, Color(0.1, 0.1, 0.1))
+	bg_style.bg_color = IntelDimensions.DIM_BG_COLORS[IntelDimensions.DIM_INTEL]
 	bg_style.set_corner_radius_all(3)
 	progress.add_theme_stylebox_override("background", bg_style)
-
 	row.add_child(progress)
 
 	## 百分比文本
 	var pct_lbl := Label.new()
-	pct_lbl.text = "%.0f%%" % new_pct
-	pct_lbl.add_theme_font_size_override("font_size", 10)
-	pct_lbl.custom_minimum_size.x = 32
+	pct_lbl.text = "%.0f%%" % current_pct
+	pct_lbl.add_theme_font_size_override("font_size", 11)
+	pct_lbl.custom_minimum_size.x = 36
 	pct_lbl.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9, 1.0))
 	row.add_child(pct_lbl)
 
 	## 增长量（绿色）
 	var delta_lbl := Label.new()
 	delta_lbl.text = "+%.0f%%" % (delta * 100.0)
-	delta_lbl.add_theme_font_size_override("font_size", 10)
-	delta_lbl.custom_minimum_size.x = 32
+	delta_lbl.add_theme_font_size_override("font_size", 11)
+	delta_lbl.custom_minimum_size.x = 40
 	delta_lbl.add_theme_color_override("font_color", Color(0.4, 0.95, 0.5, 1.0))
 	row.add_child(delta_lbl)
 
-	## 揭示检查：按 card_id + dimension 精确匹配
-	var found_reveal: Dictionary = {}
+	## 揭示检查：该敌人本次是否有新揭示
+	var has_reveal: bool = false
 	for rev in _reveal_events:
 		var rev_card: String = rev.get("card_id", "")
-		var rev_dim: String = rev.get("dimension", "")
-		if rev_card == card_id and rev_dim == dimension:
-			found_reveal = rev
+		if rev_card == card_id:
+			has_reveal = true
 			break
-	if not found_reveal.is_empty():
+	if has_reveal:
 		var rev_icon := Label.new()
 		rev_icon.text = " ✦新揭示!"
-		rev_icon.add_theme_font_size_override("font_size", 10)
+		rev_icon.add_theme_font_size_override("font_size", 11)
 		rev_icon.add_theme_color_override("font_color", Color(0.95, 0.75, 0.3, 1.0))
 		row.add_child(rev_icon)
 
