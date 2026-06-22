@@ -355,6 +355,65 @@ static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary) -
 					result["attack_light"] = int(float(result["attack_light"]) * (1.0 + effect_value))
 				elif effect_value is int:
 					result["attack_light"] += effect_value
+			# ── v6.8: 第二批软特性 key 激活（语义同源映射，复活约 18 个改造）──
+			# 射程/作战半径类 → 攻击射程
+			# air_10_drop_tank(combat_range) / air_07_dogfight_missile(close_accuracy→暴击)
+			"combat_range":
+				if not result.has("attack_range"):
+					result["attack_range"] = 0
+				result["attack_range"] += int(float(effect_value) * 120.0)
+			"close_accuracy", "enemy_confusion", "intel_speed":
+				# 近战精确/敌方混乱/情报优势 → 暴击率（精确打击语义）
+				if not result.has("crit_chance"):
+					result["crit_chance"] = 0.0
+				result["crit_chance"] = min(1.0, float(result["crit_chance"]) + float(effect_value))
+			# 弹药/持续作战类 → 攻速提升（弹药充足=持续射速，负 attack_interval）
+			# air_11_weapon_rack(ammo_capacity) / air_09_air_refuel(sustained_combat)
+			# aa_06_laser(infinite_ammo) / aa_12_fire_on_move(mobile_fire)
+			"ammo_capacity", "sustained_combat":
+				if not result.has("attack_interval"):
+					result["attack_interval"] = 1.0
+				result["attack_interval"] = max(0.1, float(result["attack_interval"]) * (1.0 - float(effect_value)))
+			"infinite_ammo", "mobile_fire":
+				# 布尔型：无限弹药/行进间射击 → 攻速小幅提升（true 时减 10% 间隔）
+				if not result.has("attack_interval"):
+					result["attack_interval"] = 1.0
+				if bool(effect_value):
+					result["attack_interval"] = max(0.1, float(result["attack_interval"]) * 0.9)
+			"accuracy_penalty":
+				# 精度惩罚（负值）→ 暴击率降低（aa_12 行进间射击的平衡项）
+				if not result.has("crit_chance"):
+					result["crit_chance"] = 0.0
+				result["crit_chance"] = max(0.0, float(result["crit_chance"]) + float(effect_value))
+			# 反装甲/反轻装类 → 对应维度伤害加成
+			# for_08_trench(enemy_armor_slow -0.50) → 对装甲；for_09_minefield(approach_damage) → 对轻装
+			"enemy_armor_slow":
+				if not result.has("attack_armor"):
+					result["attack_armor"] = 0
+				result["attack_armor"] = int(float(result["attack_armor"]) * (1.0 + absf(float(effect_value))))
+			"approach_damage":
+				if not result.has("attack_light"):
+					result["attack_light"] = 0
+				if effect_value is float:
+					result["attack_light"] = int(float(result["attack_light"]) * (1.0 + float(effect_value)))
+			# 隐蔽/反锁定类 → 闪避（负值取绝对值转为闪避增益）
+			# air_03_stealth_coating(lock_reduction -0.40) / rec_03_suppressor(fire_exposure -0.80)
+			# aa_10_camouflage(aggro_reduce -0.30)
+			"lock_reduction", "fire_exposure", "aggro_reduce":
+				if not result.has("dodge_chance"):
+					result["dodge_chance"] = 0.0
+				result["dodge_chance"] = min(1.0, float(result["dodge_chance"]) + absf(float(effect_value)))
+			# 拦截/防护类 → 减伤
+			# aa_06_laser / arm_04_aps(missile_intercept 0.30)
+			"missile_intercept":
+				if not result.has("damage_reduction"):
+					result["damage_reduction"] = 0.0
+				result["damage_reduction"] = min(0.75, float(result["damage_reduction"]) + float(effect_value))
+			# 巷战机动类 → 移动速度（inf_22/rec_09 urban_move_bonus 10/20）
+			"urban_move_bonus":
+				if not result.has("move_speed"):
+					result["move_speed"] = 0
+				result["move_speed"] += int(effect_value)
 			_:
 				if not result.has("_special"):
 					result["_special"] = {}
