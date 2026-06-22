@@ -12,6 +12,8 @@ const _ACCENT := Color(0, 0.94, 0.7, 1.0)
 const _TEXT := Color(0.8, 0.88, 1.0, 0.95)
 const _TEXT_DIM := Color(0.6, 0.7, 0.85, 0.8)
 const _BTN_BG := Color(0, 0.5, 0.38, 1.0)
+const _CARD_BG := Color(0.06, 0.12, 0.20, 0.55)
+const _CARD_BORDER := Color(0, 0.65, 1, 0.18)
 
 const _BasicResources = preload("res://data/basic_resources.gd")
 
@@ -46,7 +48,7 @@ func _build_ui() -> void:
 
 	# 居中面板
 	var panel := Panel.new()
-	panel.custom_minimum_size = Vector2(440, 0)
+	panel.custom_minimum_size = Vector2(580, 0)
 	var style := StyleBoxFlat.new()
 	style.bg_color = _BG_PANEL
 	style.border_color = _BORDER
@@ -93,17 +95,23 @@ func _build_ui() -> void:
 	rew_title.add_theme_font_size_override("font_size", 15)
 	vbox.add_child(rew_title)
 
-	# 货币明细
+	# 货币 + 战利品统一进 3 列卡片网格（5 种货币 + 战利品最多 6 个 = 整 2 行）
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 10)
+	vbox.add_child(grid)
+
 	var currencies: Dictionary = _result.get("currencies", {})
 	for id in currencies.keys():
 		var amount: int = int(currencies[id])
 		if amount > 0:
-			vbox.add_child(_make_reward_line(_currency_display_name(String(id)), amount))
+			grid.add_child(_make_reward_card(_currency_display_name(String(id)), amount))
 
-	# 掉落预估
+	# 掉落预估（并入网格，统一卡片样式）
 	var drop_count: int = int(_result.get("drop_preview_count", 0))
 	if drop_count > 0:
-		vbox.add_child(_make_reward_line("战利品（约）", drop_count))
+		grid.add_child(_make_reward_card("战利品（约）", drop_count))
 
 	# 领取按钮
 	vbox.add_child(_make_separator())
@@ -137,20 +145,36 @@ func _make_separator() -> HSeparator:
 	return sep
 
 
-func _make_reward_line(label_text: String, amount: int) -> HBoxContainer:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
+func _make_reward_card(label_text: String, amount: int) -> Panel:
+	# 单张奖励卡片：名称左对齐（12px 灰）+ 数值居中（17px 亮）
+	var card := Panel.new()
+	card.custom_minimum_size = Vector2(160, 56)
+	var cs := StyleBoxFlat.new()
+	cs.bg_color = _CARD_BG
+	cs.border_color = _CARD_BORDER
+	cs.set_border_width_all(1)
+	cs.set_corner_radius_all(6)
+	cs.content_margin_left = 10
+	cs.content_margin_right = 10
+	cs.content_margin_top = 6
+	cs.content_margin_bottom = 6
+	card.add_theme_stylebox_override("panel", cs)
+	var cvb := VBoxContainer.new()
+	cvb.set_anchors_preset(Control.PRESET_FULL_RECT)
+	cvb.add_theme_constant_override("separation", 2)
 	var name_lbl := Label.new()
-	name_lbl.text = "· " + label_text
-	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_lbl.text = label_text
 	name_lbl.add_theme_color_override("font_color", _TEXT_DIM)
-	row.add_child(name_lbl)
+	name_lbl.add_theme_font_size_override("font_size", 12)
 	var amt_lbl := Label.new()
 	amt_lbl.text = "×%d" % amount
-	amt_lbl.add_theme_color_override("font_color", _TEXT)
-	amt_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	row.add_child(amt_lbl)
-	return row
+	amt_lbl.add_theme_color_override("font_color", _ACCENT)
+	amt_lbl.add_theme_font_size_override("font_size", 17)
+	amt_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cvb.add_child(name_lbl)
+	cvb.add_child(amt_lbl)
+	card.add_child(cvb)
+	return card
 
 
 func _currency_display_name(id: String) -> String:

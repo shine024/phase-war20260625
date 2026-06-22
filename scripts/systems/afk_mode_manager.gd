@@ -114,8 +114,14 @@ func start_afk() -> bool:
 	if valid.is_empty():
 		return false
 
-	# 推图模式：检查当前关卡是否已解锁
+	# 推图模式：起始关 = slots 中最后一个已关联关卡（"最后一个选图开始"）。
+	# 复用 slot 选图入口，无需为推图单独设起始关控件。
+	# 未选任何 slot 时，start_afk 开头的 valid 校验已拦截（返回 false）。
 	if mode == Mode.PUSH:
+		for i in range(3, -1, -1):
+			if slots[i] > 0:
+				push_level = slots[i]
+				break
 		if lp and lp.has_method("get_max_unlocked_level"):
 			var max_unlocked = lp.get_max_unlocked_level()
 			if push_level > max_unlocked:
