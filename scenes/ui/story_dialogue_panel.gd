@@ -12,6 +12,13 @@ var _current_index: int = 0        ## 当前播放到第几句
 var _is_pre_battle: bool = true    ## true=战前对话, false=战后对话
 var _chapter_id: String = ""
 
+# v6.7(剧情任务): 自由模式剧情任务播放状态（与 v6.3 章节 _chapter_id 互斥使用）
+# _mission_quest_id 非空时表示当前在播自由模式剧情任务对话；完成后走轻量回调（不调 story_proceed_to_battle）
+var _mission_quest_id: String = ""
+var _mission_is_post: bool = false
+# v6.7: 同关多剧情排队播放（如第20关：tutorial_rune + story_first_guardian 依次播放）
+var _mission_queue: Array = []  # 待播队列，每项 {title, dialogues, quest_id, is_post}
+
 # v6.6(剧情): 对话选项系统（补剧情.txt 第四幕真实者分支选择）
 var _pending_quest_id: String = ""   ## 当前选择节点关联的任务 id（由 city_map 在播放前设置）
 var _choices_container: VBoxContainer = null  ## 选项按钮容器
@@ -35,6 +42,9 @@ func _ready() -> void:
 		SignalBus.story_show_pre_battle_dialogue.connect(_on_show_pre_battle)
 	if SignalBus.has_signal("story_show_post_battle_dialogue"):
 		SignalBus.story_show_post_battle_dialogue.connect(_on_show_post_battle)
+	# v6.7(剧情任务): 自由模式关卡剧情任务对话
+	if SignalBus.has_signal("story_mission_dialogue"):
+		SignalBus.story_mission_dialogue.connect(_on_story_mission_dialogue)
 
 func _exit_tree() -> void:
 	if SignalBus != null:
@@ -42,6 +52,8 @@ func _exit_tree() -> void:
 			SignalBus.story_show_pre_battle_dialogue.disconnect(_on_show_pre_battle)
 		if SignalBus.has_signal("story_show_post_battle_dialogue") and SignalBus.story_show_post_battle_dialogue.is_connected(_on_show_post_battle):
 			SignalBus.story_show_post_battle_dialogue.disconnect(_on_show_post_battle)
+		if SignalBus.has_signal("story_mission_dialogue") and SignalBus.story_mission_dialogue.is_connected(_on_story_mission_dialogue):
+			SignalBus.story_mission_dialogue.disconnect(_on_story_mission_dialogue)
 
 # ═══════════════════════════════════════════════════════════════════
 # UI 构建
@@ -157,6 +169,68 @@ func _on_show_pre_battle(chapter_id: String) -> void:
 func _on_show_post_battle(chapter_id: String) -> void:
 	_show_dialogues(chapter_id, false)
 
+# v6.7(剧情任务): 自由模式关卡剧情任务对话入口
+# 由 GameManager 在进关/过关时 emit story_mission_dialogue 信号触发
+# 同关多剧情（如第20关 tutorial + story）依次入队，播完一个自动播下一个
+func _on_story_mission_dialogue(quest_id: String, phase: String) -> void:
+	if quest_id.is_empty():
+		return
+	var QuestDefs = preload("res://data/quest_definitions.gd")
+	var def: Dictionary = QuestDefs.get_by_id(quest_id)
+	if def.is_empty():
+		return
+	var is_post: bool = (phase == "post")
+	var dialogues: Array = def.get("post_battle_dialogues", []) if is_post else def.get("pre_battle_dialogues", [])
+	if dialogues.is_empty():
+		return  # 该任务无对应阶段的对话，静默跳过
+	var title: String = "【剧情】" + def.get("title", quest_id)
+	if not is_post:
+		title = "【战前】" + title
+	else:
+		title = "【战后】" + title
+	# 若当前正在播放，加入队列等待
+	if visible and not _mission_quest_id.is_empty():
+		_mission_queue.append({"title": title, "dialogues": dialogues, "quest_id": quest_id, "is_post": is_post})
+		return
+	play_dialogues(title, dialogues, quest_id, is_post)
+
+## v6.7(剧情任务): 通用对话播放接口（解耦自 v6.3 章节流程）
+## 外部传入对话数据播放，完成后根据来源走不同回调
+func play_dialogues(title: String, dialogues: Array, quest_id: String, is_post: bool) -> void:
+	_chapter_id = ""  # 清空章节标记，标记为自由模式剧情任务
+	_mission_quest_id = quest_id
+	_mission_is_post = is_post
+	_is_pre_battle = not is_post
+	_dialogues = dialogues.duplicate(true)
+	_current_index = 0
+	_chapter_title_label.text = title
+	_choice_made = false
+	_pending_quest_id = quest_id  # 复用 v6.6 分支选择机制
+	# v6.7: 自由模式下 StoryOverlay 默认隐藏，需确保父级 overlay 可见
+	_ensure_ancestor_visible()
+	_show_current_dialogue()
+	visible = true
+
+## v6.7(剧情任务): 向上遍历祖先，把所有 Control 祖先设为 visible（确保自由模式下 StoryOverlay 不挡住面板）
+func _ensure_ancestor_visible() -> void:
+	var p: Node = get_parent()
+	while p != null:
+		if p is Control:
+			(p as Control).visible = true
+		p = p.get_parent()
+
+## v6.7(剧情任务): 自由模式下隐藏 StoryOverlay（剧情模式 STORY 由 main.gd 管理，不动）
+func _hide_mission_overlay() -> void:
+	var gm: Node = get_node_or_null("/root/GameManager")
+	if gm != null and "game_mode" in gm and gm.game_mode == gm.GameMode.STORY:
+		return  # 剧情模式不隐藏（city_map 等仍在使用 overlay）
+	var p: Node = get_parent()
+	while p != null:
+		if p is Control and p.name == "StoryOverlay":
+			(p as Control).visible = false
+			return
+		p = p.get_parent()
+
 func _show_dialogues(chapter_id: String, is_pre_battle: bool) -> void:
 	var chapter: Dictionary = StoryChaptersData.get_chapter(chapter_id)
 	if chapter.is_empty():
@@ -262,10 +336,28 @@ func _on_all_dialogues_done() -> void:
 	# v6.6(剧情): 重置选择状态（防跨对话残留）
 	_choice_made = false
 	_pending_quest_id = ""
+	# v6.7(剧情任务): 自由模式剧情任务播放完成 —— 只发 finished 信号，不调 v6.3 流程
+	# 战前对话完成后战斗已由 GameManager.go_to_battle 启动（信号 emit 后立即开战，对话是叠加演出）
+	# 战后对话完成后任务进度已由 QuestManager 更新，无需额外推进
+	var was_mission: bool = not _mission_quest_id.is_empty()
+	var mission_quest_id: String = _mission_quest_id
+	var mission_is_post: bool = _mission_is_post
+	_mission_quest_id = ""
+	_mission_is_post = false
 	# 通知对话完成
 	if SignalBus.has_signal("story_dialogue_finished"):
 		SignalBus.story_dialogue_finished.emit()
-	# 根据战前/战后执行不同后续
+	# 自由模式剧情任务路径：到此结束，不走 v6.3 章节推进
+	if was_mission:
+		# v6.7: 队列里还有待播剧情（同关多剧情），播下一个，不隐藏 overlay
+		if not _mission_queue.is_empty():
+			var next: Dictionary = _mission_queue.pop_front()
+			play_dialogues(next["title"], next["dialogues"], next["quest_id"], next["is_post"])
+			return
+		# 队列空了，隐藏由 _ensure_ancestor_visible 显示的 StoryOverlay
+		_hide_mission_overlay()
+		return
+	# v6.3 章节路径：根据战前/战后执行不同后续
 	var gm: Node = get_node_or_null("/root/GameManager")
 	if gm == null:
 		return

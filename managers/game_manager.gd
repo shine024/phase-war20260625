@@ -2,6 +2,7 @@ extends Node
 ## 游戏流程：战前准备 → 战斗 → 战后
 const DEBUG_GAME_LOG := false
 const StoryFlags := preload("res://data/story/story_flags.gd")
+const QuestDefs := preload("res://data/quest_definitions.gd")  # v6.7(剧情任务): 关卡剧情查询
 
 enum GamePhase {
 	PRE_BATTLE,
@@ -39,6 +40,13 @@ var _is_phase_master_battle: bool = false   # 是否在与相位师战斗
 var game_mode: GameMode = GameMode.FREE
 var current_chapter_id: String = ""         ## 当前进行中的章节ID
 var _story_custom_battle: Dictionary = {}   ## 剧情Boss章的自定义战斗配置（覆盖普通相位师检测）
+
+# v6.7(剧情任务): 自由模式关卡剧情任务触发状态
+# 进关时收集本关所有应触发的剧情（tutorial 自动 + story 已接取），形成队列依次播放
+# _story_mission_queue: 本次战斗待播放战前对话的 quest_id 列表（tutorial 在前，story 在后）
+# _story_mission_played: 本关实际播放过战前对话的 quest_id（过关后用于触发对应战后对话）
+var _story_mission_queue: Array = []
+var _story_mission_played: Array = []
 
 # v6.6(剧情): 必败战机制 — 序章噩梦/守护者失败重试等场景
 # 开启后 BattleManager 会启动倒计时，到时强制判负；玩家正常胜利路径被禁用
@@ -332,6 +340,11 @@ func go_to_battle() -> void:
 
 	last_battle_reward_summary = {}
 	_snapshot_battle_reward_baselines()
+	# v6.7(剧情任务): 自由模式关卡剧情战前对话触发
+	# 只在自由模式/NG+ 触发（剧情模式 STORY 走自己的 _story_handle_battle_end 流程）
+	# 若该关有 active story quest，emit 战前对话信号，由 story_dialogue_panel 播放
+	if game_mode != GameMode.STORY:
+		_check_story_mission_pre_battle()
 	# 检查是否遭遇相位师
 	check_phase_master_encounter()
 	if battle_scene == null:
@@ -429,6 +442,9 @@ func _on_battle_ended(player_won: bool) -> void:
 		# 与已解锁关卡的「最前沿」对齐，否则 save.json 里 game.current_level 会永远停在 1（读档像没进度）
 		if level_progress and level_progress.has_method("get_max_unlocked_level"):
 			set_current_level(level_progress.get_max_unlocked_level())
+		# v6.7(剧情任务): 自由模式关卡剧情战后对话触发（在关卡进度更新后，任务进度已刷新）
+		# 用 _story_mission_pending_level 记录刚通关的关卡号，避免 set_current_level 切换后丢失
+		_check_story_mission_post_battle()
 
 	# v6.6: 接线排行榜 — 战斗结束时更新统计（之前 update_* 方法零调用，排行榜永远为空）
 	ManagerLazyLoader.ensure_loaded("leaderboard")
@@ -1018,3 +1034,98 @@ func _build_story_master_config(custom: Dictionary) -> Dictionary:
 		"enemy_faction": faction,
 		"is_story_boss": true,
 	}
+
+# ════════════════════════════════════════════════════════════════════
+# v6.7(剧情任务): 自由模式关卡剧情任务触发（docs/补剧情.txt 关卡映射）
+# ════════════════════════════════════════════════════════════════════
+
+## 进关前检查：收集本关所有应触发的剧情任务，依次 emit 战前对话信号
+## tutorial 类：自动触发（无需接取），用 StoryManager 标记防重复，每个只播一次
+## story 类：只查已接取、未完成的任务
+## 同关多剧情：tutorial 先于 story，依次入队，由 story_dialogue_panel 队列播放
+func _check_story_mission_pre_battle() -> void:
+	_story_mission_queue.clear()
+	_story_mission_played.clear()
+	var quests_at_level: Array = QuestDefs.get_all_triggerable_at_level(current_level)
+	if quests_at_level.is_empty():
+		return
+	# 分离 tutorial 和 story
+	var tutorial_ids: Array = []
+	var story_ids: Array = []
+	var qm: Node = get_node_or_null("/root/QuestManager")
+	for q in quests_at_level:
+		var qid: String = q.get("id", "")
+		var cat: String = q.get("category", "commission")
+		if cat == "tutorial":
+			# tutorial：未触发过的才入队
+			if not _is_tutorial_triggered(qid):
+				tutorial_ids.append(qid)
+		elif cat == "story":
+			# v6.7: 进关时自动揭示该关的 story 任务（让玩家在面板看到并接取）
+			# 自由模式无 city_map/NPC，NPC 支线任务必须靠关卡触发才能揭示
+			if qm and qm.has_method("reveal_quest"):
+				qm.reveal_quest(qid)
+			# 只有已接取、未完成、且有战前对话的才入播放假列
+			if _is_story_quest_active(qid) and not q.get("pre_battle_dialogues", []).is_empty():
+				story_ids.append(qid)
+	# tutorial 在前，story 在后
+	_story_mission_queue = tutorial_ids + story_ids
+	if _story_mission_queue.is_empty():
+		return
+	# tutorial 任务：立即标记已触发（防重播）+ 发放一次性奖励
+	for qid in tutorial_ids:
+		_mark_tutorial_triggered(qid)
+		_grant_tutorial_reward(qid)
+	# 依次 emit（story_dialogue_panel 监听后排队播放）
+	for qid in _story_mission_queue:
+		if SignalBus and SignalBus.has_signal("story_mission_dialogue"):
+			SignalBus.story_mission_dialogue.emit(qid, "pre")
+
+## v6.7(剧情任务): 发放 tutorial 引导奖励（一次性纳米材料）
+func _grant_tutorial_reward(quest_id: String) -> void:
+	var def: Dictionary = QuestDefs.get_by_id(quest_id)
+	if def.is_empty():
+		return
+	var rewards: Dictionary = def.get("rewards", {})
+	var nano: int = int(rewards.get("nano_materials", 0))
+	if nano > 0 and BasicResourceManager and BasicResourceManager.has_method("add_resource"):
+		BasicResourceManager.add_resource("nano_materials", nano)
+
+## 过关后检查：对本关已接取的 story 任务，emit 战后对话信号
+## tutorial 无战后对话（引导只在战前）；story 有战前+战后
+func _check_story_mission_post_battle() -> void:
+	# 注意：此时 current_level 可能已被 set_current_level 切换，用 _story_mission_queue 里记录的 story 任务
+	for qid in _story_mission_queue:
+		var def: Dictionary = QuestDefs.get_by_id(qid)
+		if def.is_empty():
+			continue
+		# 只对 story 类（有 post_battle_dialogues 的）触发战后对话
+		if def.get("category", "commission") != "story":
+			continue
+		if not def.get("post_battle_dialogues", []).is_empty():
+			if SignalBus and SignalBus.has_signal("story_mission_dialogue"):
+				SignalBus.story_mission_dialogue.emit(qid, "post")
+	_story_mission_queue.clear()
+	_story_mission_played.clear()
+
+## v6.7(剧情任务): tutorial 是否已触发过（用 StoryManager 节点标记防重复）
+func _is_tutorial_triggered(quest_id: String) -> bool:
+	var sm: Node = get_node_or_null("/root/StoryManager")
+	if sm == null or not sm.has_method("is_node_triggered"):
+		return false
+	return sm.is_node_triggered("tutorial_" + quest_id)
+
+## v6.7(剧情任务): 标记 tutorial 已触发（对话开始播放时调用，防重复）
+func _mark_tutorial_triggered(quest_id: String) -> void:
+	var sm: Node = get_node_or_null("/root/StoryManager")
+	if sm != null and sm.has_method("mark_node_triggered"):
+		sm.mark_node_triggered("tutorial_" + quest_id)
+
+## v6.7(剧情任务): story 任务是否已接取且未完成
+func _is_story_quest_active(quest_id: String) -> bool:
+	var qm: Node = get_node_or_null("/root/QuestManager")
+	if qm == null:
+		return false
+	if not qm.has_method("is_accepted") or not qm.has_method("is_quest_done"):
+		return false
+	return qm.is_accepted(quest_id) and not qm.is_quest_done(quest_id)

@@ -132,6 +132,11 @@ signal story_chapter_selected(chapter_id: String)             ## 玩家选择了
 signal story_campaign_completed()                             ## 剧情模式全部完成
 signal story_dialogue_finished()                              ## 对话播放完毕
 
+# v6.7(剧情任务): 自由模式关卡剧情任务（docs/补剧情.txt 关卡映射）
+# GameManager 在进关/过关时 emit，story_dialogue_panel 监听后播放对应任务的对话
+# phase = "pre"（战前）/ "post"（战后）
+signal story_mission_dialogue(quest_id: String, phase: String)
+
 # v6.6(剧情): docs/补剧情.txt 城市循环模式专用信号
 signal city_day_started(day: int)                              ## 每天开始（DayClock.day_started 镜像转发）
 signal city_emergency(announcement: String)                    ## 全城紧急事件（如海伦宣告倒计时）

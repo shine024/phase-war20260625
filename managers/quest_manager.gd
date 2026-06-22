@@ -223,16 +223,20 @@ func abandon_quest(quest_id: String) -> void:
 
 ## 任务是否当前可接（可见且未完成）
 ## hidden=true 的任务需先 reveal_quest 揭示；prereq 任务需先完成
+## v6.7(剧情任务): category=="story" 的任务，前置 prereq 一旦完成即自动 reveal（不依赖 NPC）
 func is_quest_available(quest_id: String) -> bool:
 	var def: Dictionary = QuestDefs.get_by_id(quest_id)
 	if def.is_empty():
 		return false
-	# hidden 且未揭示 → 不可接
-	if bool(def.get("hidden", false)) and not _revealed_quest_ids.has(quest_id):
-		return false
 	# prereq 任务未完成 → 不可接
 	var prereq: String = String(def.get("prereq", ""))
 	if not prereq.is_empty() and not is_completed_ever(prereq):
+		return false
+	# story 任务前置完成后自动揭示（自由模式无 city_map / NPC，剧情任务不应卡 reveal）
+	if def.get("category", "commission") == "story" and not _revealed_quest_ids.has(quest_id):
+		_revealed_quest_ids.append(quest_id)
+	# hidden 且未揭示 → 不可接（其他 hidden 任务仍走 NPC reveal 路径）
+	if bool(def.get("hidden", false)) and not _revealed_quest_ids.has(quest_id):
 		return false
 	return true
 
@@ -535,3 +539,31 @@ func get_quest_target_faction(quest_id: String) -> String:
 
 func is_mission_quest_done(quest_id: String) -> bool:
 	return get_quest_progress_for_mission(quest_id) >= 1
+
+# ──────────────── v6.7(剧情任务): 自由模式剧情任务查询接口 ────────────────
+
+## 返回指定 category 的全部任务定义（委托/剧情/日常）
+func get_quests_by_category(category: String) -> Array:
+	var out: Array = []
+	for qid in QuestDefs.get_available_ids():
+		var def: Dictionary = QuestDefs.get_by_id(qid)
+		if def.is_empty():
+			continue
+		if def.get("category", "commission") == category:
+			out.append(def)
+	return out
+
+## 返回某剧情任务的触发关卡号（category=="story"）；非剧情任务返回 0
+func trigger_level_for_quest(quest_id: String) -> int:
+	var def: Dictionary = QuestDefs.get_by_id(quest_id)
+	if def.is_empty() or def.get("category", "commission") != "story":
+		return 0
+	return int(def.get("trigger_level", 0))
+
+## 查询当前关卡是否有已接取、未完成的剧情任务（供 GameManager 进关触发战前对话）
+## 返回 quest_id，无则空字符串
+func get_active_story_quest_at_level(level: int) -> String:
+	for qid in _accepted.keys():
+		if trigger_level_for_quest(qid) == level and not is_quest_done(qid):
+			return qid
+	return ""

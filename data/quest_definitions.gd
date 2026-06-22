@@ -27,6 +27,12 @@ static func _load_json_array(path: String, fallback: Array) -> Array:
 ##   - defend_faction→{defend_faction: 势力ID, attacker_master: 相位师名}
 ## rewards: { nano_materials; unlock_blueprint; ... }
 ## company_rep 与 FactionSystemManager 声望同源（任务奖励仍可用 company_rep 键名）
+##
+## v6.7(剧情任务): 自由模式剧情任务字段（向后兼容，缺省值不影响旧任务）
+##   category: 任务分类，"commission"(委托,默认) / "story"(剧情) / "daily"(日常)
+##   trigger_level: 剧情任务绑定的关卡号（仅 category=="story" 用）
+##   pre_battle_dialogues: 战前对话队列，每项 {speaker, text, choices?}
+##   post_battle_dialogues: 战后对话队列，每项 {speaker, text, choices?}
 
 const LEGACY_QUESTS: Array[Dictionary] = [
 	# ==================== 原有任务 ====================
@@ -753,7 +759,8 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 	# hidden=true 的任务初始不可见，由 NPC 对话 reveal_quest 揭示后才能接取
 	# branches 定义玩家选择（加入/拒绝/拖延）后的后续任务链
 
-	# 真实者的邀请 — 第25天由真实者 NPC 对话揭示（realist_first_contact）
+	# 真实者的邀请 — 第10关进关自动揭示（自由模式无 city_map/NPC，改触发关揭示）
+	# v6.7: 归入剧情标签，trigger_level=10 进关时自动揭示，玩家在任务面板接取
 	{
 		"id": "q_realist_invite",
 		"title": "真实者的邀请",
@@ -765,6 +772,8 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 			"nano_materials": 50,
 			"company_rep": {"void_research": 25},
 		},
+		"category": "story",
+		"trigger_level": 10,
 		"hidden": true,
 		"prereq": "",
 		"branches": {
@@ -773,7 +782,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 			"delay":  {"next_quest": "q_realist_delay"},
 		},
 	},
-	# 分支A：加入真实者
+	# 分支A：加入真实者（v6.7: 归入剧情，靠 prereq 链揭示）
 	{
 		"id": "q_realist_join",
 		"title": "觉醒者的道路",
@@ -785,10 +794,11 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 			"nano_materials": 80,
 			"company_rep": {"void_research": 40},
 		},
+		"category": "story",
 		"hidden": true,
 		"prereq": "q_realist_invite",
 	},
-	# 分支B：拒绝真实者
+	# 分支B：拒绝真实者（v6.7: 归入剧情）
 	{
 		"id": "q_realist_reject",
 		"title": "忠诚的相位师",
@@ -800,10 +810,11 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 			"nano_materials": 60,
 			"company_rep": {"iron_wall_corp": 50},
 		},
+		"category": "story",
 		"hidden": true,
 		"prereq": "q_realist_invite",
 	},
-	# 分支C：拖延（中立线）
+	# 分支C：拖延（中立线）（v6.7: 归入剧情）
 	{
 		"id": "q_realist_delay",
 		"title": "骑墙的代价",
@@ -815,11 +826,12 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 			"nano_materials": 70,
 			"company_rep": {"aether_dynamics": 30, "void_research": 15},
 		},
+		"category": "story",
 		"hidden": true,
 		"prereq": "q_realist_invite",
 	},
 
-	# 林薇支线任务 — 第40天由林薇归来对话揭示（linwei_return）
+	# 林薇支线任务 — 第15关进关自动揭示（v6.7: 归入剧情，trigger_level=15）
 	{
 		"id": "q_linwei_secret",
 		"title": "E-10946的秘密",
@@ -831,11 +843,13 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 			"nano_materials": 55,
 			"company_rep": {"helix_recon": 35},
 		},
+		"category": "story",
+		"trigger_level": 15,
 		"hidden": true,
 		"prereq": "",
 	},
 
-	# 扎克支线任务 — 第100天由扎克48关真相对话揭示（zack_engineer_memory）
+	# 扎克支线任务 — 第40关进关自动揭示（v6.7: 归入剧情，trigger_level=40）
 	{
 		"id": "q_zack_beyond_48",
 		"title": "替扎克看看48关之后",
@@ -847,10 +861,493 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 			"nano_materials": 100,
 			"company_rep": {"frontier_union": 50},
 		},
+		"category": "story",
+		"trigger_level": 40,
 		"hidden": true,
 		"prereq": "",
 	},
+
+	# ==================== v6.7(剧情任务): 自由模式关卡剧情任务（docs/补剧情.txt 关卡映射）====================
+	# category="story" + trigger_level 标记关卡剧情；前置 prereq 完成后自动揭示
+	# 对话脚本依据补剧情.txt 第六~第十幕编写
+
+	# 第六幕·第一个守护者 — 第20关 Boss战（铁血男爵）
+	{
+		"id": "q_story_first_guardian",
+		"title": "第一个守护者",
+		"description": "第20关的能量罩后，传说中的第一个守护者即将现身。林薇递来一枚修复晶核，说它能在关键时刻救你一命。",
+		"objective_type": "clear_level",
+		"target": 20,
+		"company_id": "iron_wall_corp",
+		"rewards": {
+			"nano_materials": 120,
+			"company_rep": {"iron_wall_corp": 40},
+		},
+		"category": "story",
+		"trigger_level": 20,
+		"prereq": "q_story_city_15",
+		"hidden": true,
+		"pre_battle_dialogues": [
+			{"speaker": "林薇", "text": "E-10947，前面就是第20关了。听老人说，门后面是第一个守护者——铁血男爵。"},
+			{"speaker": "林薇", "text": "拿着这枚修复晶核。如果撑不住，它能救你的相位仪一次。"},
+			{"speaker": "陈末", "text": "你为什么帮我？我们是朋友，可你连自己能量球的裂纹都还没修好。"},
+			{"speaker": "林薇", "text": "……有些事比裂纹更重要。去吧，证明无限城不止有洛克一个人能走到这里。"},
+		],
+		"post_battle_dialogues": [
+			{"speaker": "旁白", "text": "铁血男爵崩解成一束光，钻进了你的相位仪。"},
+			{"speaker": "陈末", "text": "这是……法则符文？"},
+			{"speaker": "林薇", "text": "第一枚符文。恭喜你，真正成为了无限城的守护者之一。"},
+		],
+	},
+
+	# 第八幕·守护者的低语 — 第60关（冷战时代守护者开始说话）
+	{
+		"id": "q_story_truth_60",
+		"title": "守护者的低语",
+		"description": "第60关的守护者不再沉默。它在战斗前对你说话，声音里带着一种奇怪的温度。这是无限城从未有过的记录。",
+		"objective_type": "clear_level",
+		"target": 60,
+		"company_id": "aether_dynamics",
+		"rewards": {
+			"nano_materials": 220,
+			"company_rep": {"aether_dynamics": 60},
+		},
+		"category": "story",
+		"trigger_level": 60,
+		"prereq": "q_story_first_guardian",
+		"hidden": true,
+		"pre_battle_dialogues": [
+			{"speaker": "守护者", "text": "……你来了。E-10947。我等你很久了。"},
+			{"speaker": "陈末", "text": "守护者会说话？前几个都是直接开战的。"},
+			{"speaker": "守护者", "text": "它们是程序。我是被遗忘的……守门人。我看过无数次循环，你是少数能站在这里的相位师。"},
+			{"speaker": "守护者", "text": "击败我，你将获得第二枚符文。但请记住——入侵是真实的。那个叫'真实者'的人，只是在逃避。"},
+			{"speaker": "守护者", "text": "感受你的相位仪——每过一关，裂缝就宽一分。时间越久，入侵就越强。这是事实，不是循环。"},
+		],
+		"post_battle_dialogues": [
+			{"speaker": "守护者", "text": "做得好……孩子。比洛克走得更远。"},
+			{"speaker": "陈末", "text": "它知道洛克？还有……'入侵是真实的'，它指的是什么？"},
+			{"speaker": "旁白", "text": "守护者化作深蓝符文。相位仪深处传来一阵尖锐的共振——那不是真相的回响，是入侵的波动。它在加速。"},
+		],
+	},
+
+	# 第七幕·扎克的四十八 — 第48关（陈末替扎克看门后）
+	{
+		"id": "q_story_zack_48",
+		"title": "替扎克看看48关之后",
+		"description": "扎克停在48关三年。他对你说：「走到48关时，替我看看门后面到底是什么。」这是一个老工程师最后的执念。",
+		"objective_type": "clear_level",
+		"target": 48,
+		"company_id": "frontier_union",
+		"rewards": {
+			"nano_materials": 180,
+			"company_rep": {"frontier_union": 70},
+		},
+		"category": "story",
+		"trigger_level": 48,
+		"prereq": "q_story_first_guardian",
+		"hidden": true,
+		"pre_battle_dialogues": [
+			{"speaker": "扎克", "text": "陈末。你也走到48关了。"},
+			{"speaker": "扎克", "text": "三年前我停在这里。不是打不过——是我不敢看门后面是什么。"},
+			{"speaker": "陈末", "text": "你在害怕什么？"},
+			{"speaker": "扎克", "text": "我曾是工程师，我记得……一些片段。门后面也许有我自己的过去。替我看看，行吗？"},
+			{"speaker": "陈末", "text": "我答应你。"},
+		],
+		"post_battle_dialogues": [
+			{"speaker": "旁白", "text": "门后没有扎克的过去。只有一片纯粹的虚空，和一盏等待下一个通关者的灯。"},
+			{"speaker": "陈末", "text": "扎克……48关后面什么都没有。只是一条更长的路。"},
+			{"speaker": "扎克", "text": "（沉默良久）……谢谢你。也许，那才是我真正不敢面对的。"},
+		],
+	},
+
+	# 第八幕·洛克止步之地 — 第83关（守护者模拟洛克形态）
+	{
+		"id": "q_story_locke_83",
+		"title": "洛克止步之地",
+		"description": "第83关——洛克曾经停下的地方。传说这里的守护者会模拟挑战者的形态，而它选中的，是洛克的影子。",
+		"objective_type": "clear_level",
+		"target": 83,
+		"company_id": "iron_wall_corp",
+		"rewards": {
+			"nano_materials": 320,
+			"company_rep": {"iron_wall_corp": 80},
+		},
+		"category": "story",
+		"trigger_level": 83,
+		"prereq": "q_story_truth_60",
+		"hidden": true,
+		"pre_battle_dialogues": [
+			{"speaker": "洛克", "text": "83关。我到过这里，陈末。然后我转身了。"},
+			{"speaker": "陈末", "text": "你为什么不继续？"},
+			{"speaker": "洛克", "text": "因为门后面站着的是我自己。我没法击败自己——那时候我太在意输赢了。"},
+			{"speaker": "旁白", "text": "守护者浮现。它的脸，是洛克年轻时的样子。"},
+			{"speaker": "守护者", "text": "（洛克的声音）你愿意为通关付出什么？"},
+		],
+		"post_battle_dialogues": [
+			{"speaker": "守护者", "text": "（消散前）……你做得比我好，陈末。"},
+			{"speaker": "洛克", "text": "（门外，声音颤抖）谢谢你。替我走到了那一步。"},
+			{"speaker": "陈末", "text": "前面还有17关。我们一起走完。"},
+		],
+	},
+
+	# 第九幕·镜像自己 — 第99关（镜像守护者复制玩家）
+	{
+		"id": "q_story_mirror_99",
+		"title": "镜像自己",
+		"description": "第99关的守护者不模拟任何人——它模拟你。它复制你的卡组、你的相位仪、你的战斗风格。这场战斗唯一的敌人，是另一个你。",
+		"objective_type": "clear_level",
+		"target": 99,
+		"company_id": "aether_dynamics",
+		"rewards": {
+			"nano_materials": 450,
+			"company_rep": {"aether_dynamics": 100},
+		},
+		"category": "story",
+		"trigger_level": 99,
+		"prereq": "q_story_countdown_90",
+		"hidden": true,
+		"pre_battle_dialogues": [
+			{"speaker": "海伦", "text": "E-10947。第99关。这是最后一道关卡——之后就是相位之主的领域。"},
+			{"speaker": "海伦", "text": "提醒你：这里的守护者会读取你的相位仪。它将使用和你完全相同的卡组。"},
+			{"speaker": "陈末", "text": "和另一个我打……有意思。"},
+			{"speaker": "海伦", "text": "它没有你的犹豫，也没有你的执念。祝你好运。"},
+		],
+		"post_battle_dialogues": [
+			{"speaker": "镜像", "text": "（倒下前）……原来这就是『愿意付出一切』的感觉。"},
+			{"speaker": "陈末", "text": "我也是你。我们都在同一条路上。"},
+			{"speaker": "旁白", "text": "镜像消散。第100关的门，缓缓打开。"},
+		],
+	},
+
+	# 第十幕·最后的试炼 — 第100关（相位之主最终Boss）
+	# v6.7重构: 相位之主战前揭穿"入侵是真的、重启是真的、真实者在骗自己"
+	# 战后三重揭穿：真实者自我欺骗 + 海伦AI融合身份 + 裂口未关与双重跳跃由来
+	{
+		"id": "q_story_final_100",
+		"title": "最后的试炼",
+		"description": "第100关——相位之主的领域。它见证了入侵的真相，也见证了海伦的秘密。它问你：「你愿意为通关付出什么？」",
+		"objective_type": "clear_level",
+		"target": 100,
+		"company_id": "iron_wall_corp",
+		"rewards": {
+			"nano_materials": 1000,
+			"company_rep": {"iron_wall_corp": 150, "aether_dynamics": 100, "frontier_union": 80},
+		},
+		"category": "story",
+		"trigger_level": 100,
+		"prereq": "q_story_mirror_99",
+		"hidden": true,
+		"pre_battle_dialogues": [
+			{"speaker": "旁白", "text": "第100关。场景是你记忆中的城市——办公楼、小区、那条你每天走的路。但天空有一道裂口，比之前任何一关都宽。"},
+			{"speaker": "相位之主", "text": "欢迎，E-10947。我是相位之主，另一条时间线上的你。"},
+			{"speaker": "陈末", "text": "另一条时间线……"},
+			{"speaker": "相位之主", "text": "我曾走到这里，然后选择了放弃。但在我告诉你真相之前——忘掉那个叫'真实者'的人说的话。"},
+			{"speaker": "相位之主", "text": "入侵是真实的。那道裂口是真的，异虫是真的，所有死去的相位师也是真的。所谓的5742次重启，是真的——每一次，都是海伦为保留你们的战力，强行把时间线拉了回来。"},
+			{"speaker": "相位之主", "text": "真实者不敢面对这个残酷的事实，所以他骗自己说'那不是真的'。而你——你愿意为通关付出什么？"},
+			{"speaker": "陈末", "text": "我已经没什么可失去了。那就……全部。"},
+		],
+		"post_battle_dialogues": [
+			{"speaker": "相位之主", "text": "（崩解中）恭喜——你是5742次重启中，第7个走到这里的人。"},
+			{"speaker": "陈末", "text": "等等。海伦的声音——第90关那次失真，'内环防线'……她到底是什么人？"},
+			{"speaker": "相位之主", "text": "你注意到了。海伦，曾经是这座城市的传奇指挥官。当入侵第一次撕开裂口时，她带领所有人扛了整整三年。"},
+			{"speaker": "相位之主", "text": "但人类扛不住那么久。最后，她放弃了肉体，把自己的意识与城市系统融合——成了你现在听到的那个声音。城市的每一声播报，都是她残留的意识在燃烧。"},
+			{"speaker": "陈末", "text": "她……放弃了生命？"},
+			{"speaker": "相位之主", "text": "为了守住你们。而且——你打败了异虫，但裂口没有关闭。它还在撕开。所以海伦设计了双重跳跃：把通关者的战力保存到下一次循环，直到有人能彻底关上那道裂口。"},
+			{"speaker": "相位之主", "text": "去吧，陈末。替我们所有人，看一眼门后的光——然后，替海伦，把那道裂口关上。"},
+			{"speaker": "旁白", "text": "相位之主消散成漫天星尘。你拿到了最后一枚符文。海伦的声音在广播里轻轻响起：'谢谢你，E-10947。'"},
+		],
+	},
+
+	# ==================== v6.7(剧情任务·扩展): 补全补剧情.txt 关卡锚点 ====================
+
+	# 第四幕·真实者初次接触 — 第10关（真实者第一次出现）
+	# v6.7重构: 真实者是自我欺骗者——他不敢面对入侵的残酷，选择相信"重启是假的"
+	# 台词保留"重启是假的"的说法（玩家被误导），但加入自我动摇的破绽（让敏锐的玩家察觉异样）
+	{
+		"id": "q_story_realist_10",
+		"title": "真实者的阴影",
+		"description": "第10关前，一个自称'真实者'的人第一次出现。他声称看穿了无限城的循环真相——说5742次重启是假的。但他的眼神里，有一种奇怪的逃避。",
+		"objective_type": "clear_level",
+		"target": 10,
+		"company_id": "void_research",
+		"rewards": {
+			"nano_materials": 60,
+			"company_rep": {"void_research": 30},
+		},
+		"category": "story",
+		"trigger_level": 10,
+		"prereq": "",
+		"hidden": true,
+		"pre_battle_dialogues": [
+			{"speaker": "真实者", "text": "E-10947。我等你很久了。"},
+			{"speaker": "陈末", "text": "你是谁？怎么知道我的编号？"},
+			{"speaker": "真实者", "text": "我是'真实者'。我看穿了这个城市的循环——所谓的5742次重启……那不是真的。那不可能是真的。"},
+			{"speaker": "陈末", "text": "你听起来……不太确定？"},
+			{"speaker": "真实者", "text": "我确定！我选择相信那不是真的——否则这一切就太残酷了。记住我的话，第60关之后，你会明白的。"},
+		],
+		"post_battle_dialogues": [
+			{"speaker": "旁白", "text": "真实者消失了，像从未出现过。但'我选择相信'这四个字，像一根刺扎进了你的相位仪——他在说服自己，不是在说服你。"},
+		],
+	},
+
+	# 第二幕·城市功能解锁 — 第15关（林薇商店/训练场/势力声望引入）
+	{
+		"id": "q_story_city_15",
+		"title": "城市的轮廓",
+		"description": "第15关。你已经熟悉了无限城的节奏。林薇的商店、扎克的训练场、势力声望——这座城市的轮廓逐渐清晰。",
+		"objective_type": "clear_level",
+		"target": 15,
+		"company_id": "helix_recon",
+		"rewards": {
+			"nano_materials": 90,
+			"company_rep": {"helix_recon": 25, "iron_wall_corp": 15},
+		},
+		"category": "story",
+		"trigger_level": 15,
+		"prereq": "q_story_realist_10",
+		"hidden": true,
+		"pre_battle_dialogues": [
+			{"speaker": "林薇", "text": "陈末，第15关了。该正式认识一下这座城了。"},
+			{"speaker": "林薇", "text": "我的'四叶草'商店在东区——你打到的多余卡牌可以卖给我，我也能给你换些好东西。"},
+			{"speaker": "扎克", "text": "训练场在我这儿。想变强，除了打关，还得练。"},
+			{"speaker": "林薇", "text": "还有势力声望——你帮哪个势力打关，他们就会给你资源、卡牌、甚至独家技术。多留意。"},
+		],
+		"post_battle_dialogues": [
+			{"speaker": "旁白", "text": "城市的功能向你敞开。前方的第20关，传说中第一个守护者的领地。"},
+		],
+	},
+
+	# 时代Boss·钢铁元帅 — 第40关（二战时代守护者）
+	{
+		"id": "q_story_steel_marshal_40",
+		"title": "钢铁洪流",
+		"description": "第40关。钢铁元帅——二战时代的相位师主宰，统帅钢铁洪流碾碎过无数挑战者。他比铁血男爵更强。",
+		"objective_type": "clear_level",
+		"target": 40,
+		"company_id": "iron_wall_corp",
+		"rewards": {
+			"nano_materials": 260,
+			"company_rep": {"iron_wall_corp": 70},
+		},
+		"category": "story",
+		"trigger_level": 40,
+		"prereq": "q_story_first_guardian",
+		"hidden": true,
+		"pre_battle_dialogues": [
+			{"speaker": "钢铁元帅", "text": "你击败了铁血男爵？有趣。但我是完全不同级别的对手。"},
+			{"speaker": "陈末", "text": "又一个相位师……你这架势，比男爵凶多了。"},
+			{"speaker": "钢铁元帅", "text": "我是钢铁元帅。我的装甲师团碾碎过整条时间线的反抗者。"},
+			{"speaker": "钢铁元帅", "text": "弱者的道德！让我看看你的相位有多强！"},
+		],
+		"post_battle_dialogues": [
+			{"speaker": "旁白", "text": "钢铁元帅倒下，他的相位核心爆炸，撕裂出通往冷战时代的裂缝。"},
+			{"speaker": "陈末", "text": "两个守护者了……符文在共鸣。"},
+		],
+	},
+
+	# 时代Boss·虚空领主 — 第80关（现代时代守护者）
+	{
+		"id": "q_story_void_lord_80",
+		"title": "虚空之主",
+		"description": "第80关。虚空领主——现代时代的相位师主宰，操控虚空能量扭曲现实。传闻它并非人类，而是相位能量的具象化。",
+		"objective_type": "clear_level",
+		"target": 80,
+		"company_id": "aether_dynamics",
+		"rewards": {
+			"nano_materials": 400,
+			"company_rep": {"aether_dynamics": 90},
+		},
+		"category": "story",
+		"trigger_level": 80,
+		"prereq": "q_story_truth_60",
+		"hidden": true,
+		"pre_battle_dialogues": [
+			{"speaker": "虚空领主", "text": "……相位师。你带来的能量，让我饥饿。"},
+			{"speaker": "陈末", "text": "它……不像之前的守护者。它在漂浮。"},
+			{"speaker": "虚空领主", "text": "我不是人类。我是相位能量的具象——但我的源头，是入侵撕开的裂口。"},
+			{"speaker": "虚空领主", "text": "我能感到源头在膨胀。时间越久，它就越饥饿，越强大。你以为你在通关？不——你在追赶一道正在变宽的裂口。"},
+			{"speaker": "虚空领主", "text": "击败我，你将触及虚空的边缘。但记住——裂口，也在看着你。"},
+		],
+		"post_battle_dialogues": [
+			{"speaker": "旁白", "text": "虚空领主崩解成纯粹的相位能量，被你的相位仪吸收。"},
+			{"speaker": "陈末", "text": "这是……第四枚符文。但它说的'裂口'……入侵的源头，到底是什么？"},
+			{"speaker": "旁白", "text": "第83关——洛克止步之地——就在前方。裂口的波动，比刚才更强了。"},
+		],
+	},
+
+	# 第九幕前奏·海伦宣告倒计时 — 第90关（全城紧急事件）
+	# v6.7重构: 海伦埋身世伏笔——脱口而出老指挥官术语，声音出现失真；同时强调入侵加速
+	{
+		"id": "q_story_countdown_90",
+		"title": "倒计时",
+		"description": "第90关。海伦的宣告响彻全城——倒计时开始了。奖励翻倍，传送门全天开放。但她的声音，似乎有什么不对。",
+		"objective_type": "clear_level",
+		"target": 90,
+		"company_id": "iron_wall_corp",
+		"rewards": {
+			"nano_materials": 500,
+			"company_rep": {"iron_wall_corp": 60, "aether_dynamics": 60},
+		},
+		"category": "story",
+		"trigger_level": 90,
+		"prereq": "q_story_locke_83",
+		"hidden": true,
+		"pre_battle_dialogues": [
+			{"speaker": "海伦", "text": "全体相位师注意。我是海伦。倒计时正式开始——所有单位收缩到内环防线，传送门全天开放。"},
+			{"speaker": "陈末", "text": "……内环防线？海伦，你是播报员，什么时候用过这种战术术语？"},
+			{"speaker": "海伦", "text": "（声音出现一瞬间的失真，像是两个声音重叠）……没什么。口误。入侵的波动已突破阈值——每延迟一天，裂口就宽一分。必须抢在它完全撕开前通关。"},
+			{"speaker": "海伦", "text": "无限城的最终考验——第100关的相位之主，即将完全觉醒。"},
+			{"speaker": "陈末", "text": "等等，你的声音刚才……"},
+			{"speaker": "海伦", "text": "没什么。E-10947，你是最有希望的候选人。去吧——为了所有人。"},
+		],
+		"post_battle_dialogues": [
+			{"speaker": "旁白", "text": "第90关通过。海伦的声音在广播里渐渐消散，但那个'两个声音重叠'的瞬间，你记得很清楚。"},
+			{"speaker": "陈末", "text": "海伦……你到底是谁？"},
+			{"speaker": "旁白", "text": "第99关——镜像守护者——是最后的门槛。"},
+		],
+	},
+
+	# ==================== v6.7(引导剧情): 系统教学关卡剧情 ====================
+	# category="tutorial"：自动触发、不进任务面板、播过一次不重复、不占任务栏名额
+	# pre_battle_dialogues 完成后自动给一次性纳米材料奖励
+
+	# 引导1·第1关 — 相位仪与卡牌装配（首次战斗教学）
+	{
+		"id": "q_tutorial_equip_1",
+		"title": "相位仪与卡牌",
+		"description": "无限城的第一战。洛克教你把卡牌装进相位仪。",
+		"objective_type": "win_battles",
+		"target": 1,
+		"company_id": "",
+		"rewards": {"nano_materials": 20},
+		"category": "tutorial",
+		"trigger_level": 1,
+		"prereq": "",
+		"hidden": true,
+		"pre_battle_dialogues": [
+			{"speaker": "洛克", "text": "E-10947，欢迎来到无限城。看那个发光的球体——那是你的相位仪。"},
+			{"speaker": "洛克", "text": "相位仪有四个槽位：红、蓝、绿、黄。每个颜色对应不同的战术职能。"},
+			{"speaker": "洛克", "text": "战斗前，先打开背包，把卡牌拖进相位仪的槽位。没有卡牌，相位仪就是一块废铁。"},
+			{"speaker": "陈末", "text": "我手上这张……铁壁护盾？"},
+			{"speaker": "洛克", "text": "那是你的第一张卡。装上它，然后我们去打第一场。别担心——第一关的虫子很弱。"},
+		],
+	},
+
+	# 引导2·第5关 — 卡牌强化（提升等级）
+	{
+		"id": "q_tutorial_enhance_5",
+		"title": "卡牌强化",
+		"description": "虫子变硬了。洛克教你用纳米材料强化卡牌等级。",
+		"objective_type": "win_battles",
+		"target": 1,
+		"company_id": "",
+		"rewards": {"nano_materials": 30},
+		"category": "tutorial",
+		"trigger_level": 5,
+		"prereq": "",
+		"hidden": true,
+		"pre_battle_dialogues": [
+			{"speaker": "洛克", "text": "等一下。你注意到没有？前几关的虫子越来越硬了。"},
+			{"speaker": "陈末", "text": "是。我的铁壁护盾有点扛不住了。"},
+			{"speaker": "洛克", "text": "该强化了。打开强化面板，消耗纳米材料提升卡牌等级。等级越高，属性越强。"},
+			{"speaker": "洛克", "text": "但记住——强化有失败概率。失败的卡会掉级。所以，强化前先看看成功率。"},
+			{"speaker": "洛克", "text": "我给你一点纳米材料。去试试。强化完，我们再打第5关。"},
+		],
+	},
+
+	# 引导3·第10关 — 卡牌改造（安装模块）
+	{
+		"id": "q_tutorial_modify_10",
+		"title": "卡牌改造",
+		"description": "单纯的等级不够了。洛克教你给卡牌安装改造模块。",
+		"objective_type": "win_battles",
+		"target": 1,
+		"company_id": "",
+		"rewards": {"nano_materials": 40},
+		"category": "tutorial",
+		"trigger_level": 10,
+		"prereq": "",
+		"hidden": true,
+		"pre_battle_dialogues": [
+			{"speaker": "洛克", "text": "第10关。从这里开始，光靠等级堆不过去。"},
+			{"speaker": "陈末", "text": "那怎么办？"},
+			{"speaker": "洛克", "text": "改造。卡牌上有改造槽，可以装各种模块——穿甲、装甲、火力、侦察……每个模块都改变一张卡的战斗方式。"},
+			{"speaker": "洛克", "text": "打开改造面板，给你的主战卡装一个模块。注意槽位类型和模块类型要匹配。"},
+			{"speaker": "洛克", "text": "改造比强化稳——不失败，但要消耗合金。我给你一些资源。去试试。"},
+		],
+	},
+
+	# 引导4·第15关 — 卡牌进化（升阶形态）
+	{
+		"id": "q_tutorial_evolve_15",
+		"title": "卡牌进化",
+		"description": "你的卡牌可以进化了。洛克教你把卡牌升阶到更高形态。",
+		"objective_type": "win_battles",
+		"target": 1,
+		"company_id": "",
+		"rewards": {"nano_materials": 50},
+		"category": "tutorial",
+		"trigger_level": 15,
+		"prereq": "",
+		"hidden": true,
+		"pre_battle_dialogues": [
+			{"speaker": "洛克", "text": "到第15关了。你的铁壁护盾——其实只是个起点形态。"},
+			{"speaker": "陈末", "text": "起点形态？"},
+			{"speaker": "洛克", "text": "卡牌能进化。满足条件后，一张普通卡可以变成更强的形态——新属性、新能力，甚至新外观。"},
+			{"speaker": "洛克", "text": "打开进化面板。如果条件满足，你会看到进化选项。进化是单向的，想清楚再点。"},
+			{"speaker": "洛克", "text": "有些进化路径是隐藏的，需要通过情报系统解锁。这个以后再说。先——试试基础的。"},
+		],
+	},
+
+	# 引导5·第21关 — 法则符文（打完第20关守护者获得符文后，教如何使用）
+	{
+		"id": "q_tutorial_rune_21",
+		"title": "法则符文",
+		"description": "你从铁血男爵那里获得了第一枚法则符文。林薇教你怎么使用它。",
+		"objective_type": "win_battles",
+		"target": 1,
+		"company_id": "",
+		"rewards": {"nano_materials": 60},
+		"category": "tutorial",
+		"trigger_level": 21,
+		"prereq": "",
+		"hidden": true,
+		"pre_battle_dialogues": [
+			{"speaker": "林薇", "text": "陈末，恭喜你击败了铁血男爵——你的相位仪吸收了一枚法则符文。"},
+			{"speaker": "陈末", "text": "符文？就是刚才那道光？我该怎么用？"},
+			{"speaker": "林薇", "text": "法则符文是相位仪最强大的强化。每个符文对应一条法则——钢铁、烈焰、雷霆、虚空。"},
+			{"speaker": "林薇", "text": "打开法则面板，研究你刚获得的那条。研究需要研究点。装备符文后战斗风格会大幅改变。"},
+			{"speaker": "林薇", "text": "钢铁法则偏防御，烈焰偏爆发。选适合你的——后面的关会越来越难。"},
+		],
+	},
 ]
+
+## v6.7(剧情任务): 返回该关卡对应的剧情任务列表（category=="story" 且 trigger_level 匹配）
+## 注意：只返回 story 类（world_map 用来显示★标记，tutorial 不应显示标记）
+static func get_quests_by_trigger_level(level: int) -> Array:
+	var out: Array = []
+	for q in QUESTS:
+		if q.get("category", "commission") == "story" and int(q.get("trigger_level", 0)) == level:
+			out.append(q.duplicate(true))
+	return out
+
+## v6.7(引导剧情): 返回该关卡所有可触发的剧情（story + tutorial）
+## 供 GameManager 进关钩子使用，收集本关所有应播放的剧情对话
+static func get_all_triggerable_at_level(level: int) -> Array:
+	var out: Array = []
+	for q in QUESTS:
+		var cat: String = q.get("category", "commission")
+		if (cat == "story" or cat == "tutorial") and int(q.get("trigger_level", 0)) == level:
+			out.append(q.duplicate(true))
+	return out
+
+## v6.7(剧情任务): 返回指定 category 的任务 id 列表
+static func get_ids_by_category(category: String) -> Array:
+	var out: Array = []
+	for q in QUESTS:
+		if q.get("category", "commission") == category:
+			out.append(q.get("id", ""))
+	return out
 
 static func get_all() -> Array:
 	var out: Array = []
