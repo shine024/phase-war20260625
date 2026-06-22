@@ -149,8 +149,8 @@ func _initialize_characters() -> void:
 	_characters["helen"] = {
 		"id": "helen",
 		"name": "海伦",
-		"title": "城市播报者",
-		"description": "无限城的管理者/播报者，每日发布城市状态。隐藏着关于5742次重启的秘密。",
+		"title": "传奇指挥官 / 城市意识",
+		"description": "曾经的传奇指挥官海伦。当入侵第一次撕开裂口，她带领全城扛了三年，最终放弃肉体，将意识与城市系统融合。这座城的每一声播报，都是她残留的意识在燃烧。",
 		"portrait": "",
 		"personality": {"neutrality": 95, "authority": 85, "mystery": 90},
 		"unlocked": false,

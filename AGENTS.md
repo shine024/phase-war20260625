@@ -394,3 +394,148 @@ User-driven collaboration. Every task follows: **Question → Options → Decisi
 3. H1 保留 lazy_loader 配置（4处 ensure_loaded 调用依赖），仅加注释澄清——删除会破坏现有调用链
 
 **文档同步:** AGENTS.md autoload 数量(19→24)、schema(v5→v6)、迁移链补 v6、情报系统说明；balance-check SKILL.md era 倍率(1.45/1.70→1.40/1.65)
+
+## v6.7 自由模式剧情任务系统 (2026-06-22)
+
+**目标**: 在自由模式中为关键关卡挂载剧情任务（对话面板演出），任务面板加"剧情"标签页。剧情模式原样保留，两套并存。
+
+**核心策略**: 复用 QuestManager（不新建 manager）+ 数据扩展 + 触发器钩子 + 对话面板解耦。
+
+**数据扩展（向后兼容）** — quest 定义新增 4 个可选字段（`def.get()` 读，默认值不影响旧任务）:
+- `category`: `"commission"`(委托,默认) / `"story"`(剧情) / `"daily"`(日常)
+- `trigger_level`: 剧情任务绑定的关卡号（仅 story 用）
+- `pre_battle_dialogues` / `post_battle_dialogues`: 对话队列，每项 `{speaker, text, choices?}`
+
+**6 个剧情任务（取自 docs/补剧情.txt 关卡映射）:**
+
+| 任务 ID | 触发关 | 标题 | 剧情幕 |
+|---------|-------|------|--------|
+| q_story_first_guardian | 20 | 第一个守护者 | 第六幕·铁血男爵 |
+| q_story_zack_48 | 48 | 替扎克看看48关之后 | 第七幕·扎克的四十八 |
+| q_story_truth_60 | 60 | 守护者的低语 | 第八幕·守护者说话 |
+| q_story_locke_83 | 83 | 洛克止步之地 | 第八幕·洛克与83 |
+| q_story_mirror_99 | 99 | 镜像自己 | 第九幕·镜像守护者 |
+| q_story_final_100 | 100 | 最后的试炼 | 第十幕·相位之主 |
+
+剧情任务通过 prereq 链串联（20→48/60→83→99→100），前置完成后自动揭示（不依赖 NPC，自由模式无 city_map）。
+
+**触发流程:**
+1. 玩家在任务面板"剧情"Tab 接取剧情任务
+2. 进关时 GameManager.go_to_battle 检查该关是否有已接取的剧情任务 → emit `story_mission_dialogue(quest_id, "pre")`
+3. story_dialogue_panel 监听信号，播放战前对话（复用 v6.3 对话格式 + v6.6 分支选项）
+4. 战斗进行（objective_type=clear_level 自动追踪进度）
+5. 过关后 GameManager emit `story_mission_dialogue(quest_id, "post")` → 播放战后对话 → 任务自动完成
+
+**关键文件:**
+- `data/quest_definitions.gd` — +4 字段注释、+6 story 任务、+get_quests_by_trigger_level/get_ids_by_category
+- `data/json/quest_definitions.json` — 补 v6.6 支线 + 6 story 任务（修复 JSON/GDScript 不同步：原 JSON 缺真实者/林薇/扎克支线，运行时不加载）
+- `managers/quest_manager.gd` — +get_quests_by_category/trigger_level_for_quest/get_active_story_quest_at_level；is_quest_available 对 story 任务自动揭示
+- `managers/game_manager.gd` — go_to_battle/on_battle_ended 加 _check_story_mission_pre/post_battle 钩子；+_pending_story_mission_quest 字段
+- `scripts/signal_bus.gd` — +story_mission_dialogue(quest_id, phase) 信号
+- `scenes/ui/story_dialogue_panel.gd` — +play_dialogues 通用方法、+_on_story_mission_dialogue 监听、+_ensure_ancestor_visible/_hide_mission_overlay（自由模式 overlay 可见性管理）、_on_all_dialogues_done 分流（mission 路径不调 v6.3 story_proceed_to_battle）
+- `scenes/ui/quest_panel.tscn` — 重构为 TabContainer（委托/剧情/日常三标签），CompanySummary 移入委托 Tab
+- `scenes/ui/quest_panel.gd` — _refresh_list 按 category 分流；剧情任务紫色边框 + ★ 标题前缀 + 触发关卡提示
+- `scenes/world_map.gd` — _make_level_button 查剧情任务，加紫色左边框 + ★ 前缀 + tooltip
+
+**设计决策:**
+1. 复用 quest 系统不新建 manager — QuestManager 已有 hidden/prereq/branches/progress 全套
+2. category 默认 "commission" — 现有所有委托任务行为零变化，向后兼容
+3. 对话面板解耦而非新建 — story_dialogue_panel 已支持分支选项/角色配色/多句队列，去 v6.3 硬绑定即可
+4. 触发器钩子放 game_manager — go_to_battle/on_battle_ended 是所有战斗必经单点
+5. JSON 同步是前置 bug 修复 — v6.6 剧情任务在 GDScript 写好但 JSON 缺失，运行时不加载，本次顺带修复
+6. 剧情任务自动揭示 — 不依赖 city_map/NPC（自由模式没有），前置 prereq 完成即 reveal
+
+**不做的事:**
+- 不删/不改剧情模式（city_map、StoryModeButton、v6.3 章节代码全部保留）
+- 不动 DailyTaskManager（日常 Tab 第一期空置提示）
+- 不做结局分支（结局归剧情模式管）
+
+**验证:** Godot headless --check-only 成功启动到 DefaultCards 构建（133卡），无语法错误；Grep 静态核对通过（4 字段全链路拼写一致、story_mission_dialogue 信号 emit×2 + connect/disconnect + 定义完整、6 个新方法定义/调用配对、quest_panel 7 个 @onready 路径与 tscn 节点全匹配）。
+
+## v6.7 引导剧情扩展（系统教学）(2026-06-22)
+
+**目标**: 在关键关卡（第1/5/10/15/21关）自动触发系统教学对话，引导玩家学习相位仪装配、强化、改造、进化、符文五大系统。与主线剧情并存。
+
+**category 新增取值 "tutorial"** — 引导剧情任务，与 "commission"/"story"/"daily" 并列：
+- **自动触发**：进关即播，不进任务面板、不需手动接取、不占任务栏名额
+- **一次性**：用 StoryManager 标记（`tutorial_<quest_id>`）防重复，每个只播一次
+- **仅战前对话**：引导只教系统（战前），无战后对话
+- **即时奖励**：触发时立即发放纳米材料（不通过任务完成流程）
+
+**5 个引导剧情任务:**
+
+| 任务 ID | 触发关 | 标题 | 教学系统 |
+|---------|-------|------|---------|
+| q_tutorial_equip_1 | 1 | 相位仪与卡牌 | 相位仪槽位 + 卡牌装配 |
+| q_tutorial_enhance_5 | 5 | 卡牌强化 | 纳米材料强化卡牌等级 |
+| q_tutorial_modify_10 | 10 | 卡牌改造 | 安装改造模块 |
+| q_tutorial_evolve_15 | 15 | 卡牌进化 | 卡牌升阶形态 |
+| q_tutorial_rune_21 | 21 | 法则符文 | 相位仪法则研究（打完第20关守护者获得符文后） |
+
+**同关多剧情依次播放机制:**
+同一关可能挂载多个剧情任务（如某关同时有 tutorial + story，或主线 + NPC 支线）。触发顺序：tutorial 先于 story，依次入 `_story_mission_queue`，story_dialogue_panel 用 `_mission_queue` 排队播放——播完一个自动播下一个，不互相覆盖。
+
+**关键文件（本次扩展）:**
+- `data/quest_definitions.gd` — +5 tutorial 任务定义、+get_all_triggerable_at_level（返回 story+tutorial，区别于 get_quests_by_trigger_level 只返回 story）
+- `data/json/quest_definitions.json` — 同步 5 个 tutorial 任务（66→71）
+- `managers/game_manager.gd` — _check_story_mission_pre_battle 重构（收集 tutorial+story 形成队列）；+_is_tutorial_triggered/_mark_tutorial_triggered/_grant_tutorial_reward/_is_story_quest_active；_story_mission_queue/_story_mission_played 替代 _pending_story_mission_quest
+- `scenes/ui/story_dialogue_panel.gd` — +_mission_queue 队列播放（同关多剧情依次播放，播完一个自动播下一个）
+- `scenes/ui/quest_panel.gd` — _refresh_list 过滤 tutorial（不进任何 Tab）
+
+**设计决策:**
+1. tutorial 不进任务面板 — 纯自动触发，避免玩家困惑（看到任务却无法接取/无明确目标）
+2. tutorial 触发即标记 + 发奖 — 不依赖对话播完（防中途退出重播，奖励保证给到）
+3. get_all_triggerable_at_level vs get_quests_by_trigger_level — 前者含 tutorial（GameManager 用），后者只 story（world_map 用，避免教学关显示★）
+4. 队列播放而非覆盖 — 同关多剧情用队列依次播放，避免后发信号覆盖前者
+
+**验证:** Godot headless --check-only 通过（无语法错误）；JSON tutorial 任务字段完整；Grep 确认 get_all_triggerable_at_level/_story_mission_queue 链路一致。
+
+## v6.7 剧情任务全面扩展（补剧情.txt 关卡锚点全铺满 + NPC 支线归剧情）(2026-06-22)
+
+**目标**: 把 docs/补剧情.txt 的关卡锚点全部铺满，并把原有 6 个 NPC 支线（真实者/林薇/扎克）从 city_map 依赖改造为自由模式关卡触发。
+
+**A. 新增 5 个主线剧情任务（补全时代 Boss + 主线节点）:**
+
+| 任务 ID | 触发关 | 标题 | 剧情幕 |
+|---------|-------|------|--------|
+| q_story_realist_10 | 10 | 真实者的阴影 | 第四幕·真实者初次接触 |
+| q_story_city_15 | 15 | 城市的轮廓 | 第二幕·城市功能解锁 |
+| q_story_steel_marshal_40 | 40 | 钢铁洪流 | 时代Boss·钢铁元帅（二战） |
+| q_story_void_lord_80 | 80 | 虚空之主 | 时代Boss·虚空领主（现代） |
+| q_story_countdown_90 | 90 | 倒计时 | 第九幕前奏·海伦宣告 |
+
+**B. NPC 支线归入剧情标签（6 个，触发关绑定）:**
+
+| 任务 ID | 触发关 | 原揭示方式 | 现揭示方式 |
+|---------|-------|-----------|-----------|
+| q_realist_invite | 10 | city_map NPC 对话 | 进第10关自动揭示 |
+| q_realist_join/reject/delay | - | 分支后续（prereq 链） | 完成 q_realist_invite 后分支揭示 |
+| q_linwei_secret | 15 | city_map NPC 对话 | 进第15关自动揭示 |
+| q_zack_beyond_48 | 40 | city_map NPC 对话 | 进第40关自动揭示 |
+
+**主线 prereq 链（完整通关路径）:**
+```
+L10 真实者阴影 → L15 城市轮廓 → L20 铁血男爵 → L40 钢铁元帅
+→ L48 扎克48关 → L60 守护者低语 → L80 虚空领主 → L83 洛克止步
+→ L90 倒计时 → L99 镜像自己 → L100 相位之主
+```
+
+**关键改造点:**
+- `managers/game_manager.gd` `_check_story_mission_pre_battle`：进关时对该关所有 story 任务调 `qm.reveal_quest(qid)` 自动揭示（自由模式无 city_map/NPC，NPC 支线必须靠关卡触发揭示）；只有"已接取 + 未完成 + 有 pre_battle_dialogues"的才入播放队列
+- NPC 支线（q_realist_invite 等）无 pre_battle_dialogues，进关只揭示不播对话，玩家在任务面板接取后按各自 objective_type 完成（win_battles/collect_cards/clear_level/reach_reputation）
+
+**剧情任务总量（v6.7 完整版）:**
+
+| 类型 | 数量 | 说明 |
+|------|------|------|
+| 引导剧情 tutorial | 5 | 第1/5/10/15/21关，自动触发，系统教学 |
+| 主线剧情 story（有对话） | 11 | 第10/15/20/40/48/60/80/83/90/99/100关 |
+| NPC支线 story（无对话） | 6 | 真实者4 + 林薇1 + 扎克1，进关揭示 |
+| **合计** | **22** | 覆盖补剧情.txt 全部关卡锚点 |
+
+**关键文件（本次扩展）:**
+- `data/quest_definitions.gd` — +5 主线任务定义、6 个 NPC 支线加 category/trigger_level、3 个现有任务 prereq 更新
+- `data/json/quest_definitions.json` — 同步（71→76 任务；story 17 个、tutorial 5 个、commission 54 个）
+- `managers/game_manager.gd` — _check_story_mission_pre_battle 加 story 任务自动揭示
+
+**验证:** Godot headless --check-only 通过；JSON 76 任务字段完整；Grep 确认 reveal_quest 钩子调用正确。

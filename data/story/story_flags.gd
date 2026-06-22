@@ -51,7 +51,7 @@ const PASSED_83: String = "passed_83"                                ## 83关通
 # 终局
 # ═══════════════════════════════════════════════════════════════════
 const HELEN_COUNTDOWN_ANNOUNCED: String = "helen_countdown_announced"  ## 海伦宣告倒计时25天
-const TRUTH_REVEALED: String = "truth_revealed"                      ## 海伦坦白"5742次重启是假的"
+const TRUTH_REVEALED: String = "truth_revealed"                      ## 海伦坦白真相：入侵是真的，她是传奇指挥官+AI融合体
 const PASSED_99: String = "passed_99"                                ## 99关镜像战通过
 const PASSED_100: String = "passed_100"                              ## 100关最终试炼通过
 const ENDING_CHOICE_GOOD: String = "ending_choice_good"              ## 好结局：接受双重跳跃
