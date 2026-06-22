@@ -256,6 +256,9 @@ static func _map_legacy_module_id(old_id: String) -> String:
 static func _apply_mod_stat_effects(stats: UnitStats, mods: Array) -> void:
 	if stats == null or mods.is_empty():
 		return
+	# v6.8: 提取 ally_* 光环配置存到 stats meta（供 construct_unit setup 时
+	# 复制到节点，ModAuraHandler 读取后给全体友军广播 buff）
+	_extract_aura_summary_to_meta(stats, mods)
 	# 构建 base 字典（UnitStats → Dictionary）
 	var base_dict: Dictionary = {
 		"max_hp": stats.max_hp,
@@ -325,6 +328,61 @@ static func _apply_mod_stat_effects(stats: UnitStats, mods: Array) -> void:
 	# _special 里的效果暂不处理（如 smoke_ignore 等无直接stat对应）
 	# 同步旧兼容字段
 	stats.attack_damage = stats.attack_light
+
+
+## v6.8: 扫描 mods，提取 ally_* 光环配置存到 stats meta
+## 供 construct_unit setup 时复制到节点，ModAuraHandler 读取后广播给全体友军
+## ally_* 效果不进入 modification_registry 的 stat match（它们是"给友军"而非"给自己"）
+## mods 格式: [{id, level}, ...] 或 [String, ...]，effects 通过 ModificationRegistry.get_data 查
+static func _extract_aura_summary_to_meta(stats: UnitStats, mods: Array) -> void:
+	var aura_keys := {
+		"ally_hit_bonus": "crit_chance", "formation_bonus": "crit_chance", "network_bonus": "crit_chance",
+		"ally_hp_regen": "hp_regen", "ally_fort_regen": "hp_regen",
+		"ally_ammo": "attack_interval", "command_efficiency": "attack_interval",
+		"ally_detection": "dodge_chance",
+		"ally_arty_bonus": "attack_armor",
+		"ally_river_bonus": "move_speed",
+		"ally_bonus": "attack_all",
+	}
+	var summary: Dictionary = {}  # {stat_field: {op, raw}}
+	for mod_entry in mods:
+		var mod_id: String = ""
+		if mod_entry is Dictionary:
+			mod_id = String(mod_entry.get("id", ""))
+			# 跳过已禁用的改造（与 modification_registry.apply_with_level 一致）
+			if mod_entry.has("enabled") and not bool(mod_entry.get("enabled", true)):
+				continue
+		else:
+			mod_id = String(mod_entry)
+		if mod_id.is_empty():
+			continue
+		# 通过 registry 查改造数据拿 effects
+		var mod_data: Dictionary = ModificationRegistry.get_data(mod_id)
+		if mod_data.is_empty():
+			continue
+		var effects: Dictionary = mod_data.get("effects", {})
+		for effect_key in effects:
+			if not aura_keys.has(effect_key):
+				continue
+			var stat_field: String = aura_keys[effect_key]
+			var raw: float = float(effects[effect_key])
+			# 按 op 分类聚合
+			var op: String = "add"
+			match effect_key:
+				"ally_ammo", "command_efficiency":
+					op = "ammo"
+				"ally_detection":
+					op = "abs_add"
+				"ally_arty_bonus", "ally_bonus":
+					op = "mult_int"
+				"ally_river_bonus":
+					op = "river"
+			if not summary.has(stat_field):
+				summary[stat_field] = {"op": op, "raw": 0.0}
+			summary[stat_field]["raw"] += raw
+			summary[stat_field]["op"] = op
+	if not summary.is_empty():
+		stats.set_meta("mod_aura_summary", summary)
 
 
 ## 战斗定位固有修正（替代旧 apply_platform_innate_modifiers）

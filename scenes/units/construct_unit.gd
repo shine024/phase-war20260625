@@ -5,6 +5,7 @@ extends CharacterBody2D
 const GC = preload("res://resources/game_constants.gd")
 const BulletScene = preload("res://scenes/units/bullet.tscn")
 const ModuleEffectHandler = preload("res://scripts/battle/module_effect_handler.gd")
+const ModAuraHandler = preload("res://scripts/battle/mod_aura_handler.gd")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const EnemyUnitManifest = preload("res://data/enemy_unit_manifest.gd")
 const RankRules = preload("res://data/rank_rules.gd")
@@ -161,6 +162,12 @@ func setup(p_is_player: bool, p_stats: UnitStats, forced_enemy_visual_archetype_
 		var rune_sp = stats.get_meta("rune_specials")
 		if rune_sp is Array and not rune_sp.is_empty():
 			set_meta("rune_specials", rune_sp)
+	# v6.8: 复制改造光环配置 meta（由 _apply_mod_stat_effects 填充）
+	# ModAuraHandler 读取节点 meta 后给全体友军广播 buff
+	if stats != null and stats.has_meta("mod_aura_summary"):
+		var aura_summary = stats.get_meta("mod_aura_summary")
+		if aura_summary is Dictionary and not aura_summary.is_empty():
+			set_meta("mod_aura_summary", aura_summary)
 	hp = stats.max_hp
 	_base_max_hp = stats.max_hp
 	_base_attack_damage = stats.attack_damage
@@ -224,7 +231,11 @@ func setup(p_is_player: bool, p_stats: UnitStats, forced_enemy_visual_archetype_
 			8:
 				aura_mgr.register_aura(self, aura_mgr.AuraType.CARRIER_REPAIR)
 			12:
-				aura_mgr.register_aura(self, aura_mgr.AuraType.COMMAND_GLOBAL)
+					aura_mgr.register_aura(self, aura_mgr.AuraType.COMMAND_GLOBAL)
+
+	# v6.8: 改造光环（ally_* 类改造）— 复用全体广播，给所有同阵营友军加 buff
+	# 单位已加入 player_units/enemy_units 分组（上方 add_to_group），广播可正常查询
+	ModAuraHandler.apply_mod_auras(self)
 
 	# 性能优化：初始化卡牌能力缓存（setup时一次性查询）
 	_has_regen_frame = CardAbilityManager.has_platform_card(stats.platform_card_id, "regen_frame")
@@ -1168,6 +1179,9 @@ func _die() -> void:
 	var aura_die: Node = _resolve_autoload(&"AuraManager")
 	if aura_die:
 		aura_die.unregister_all_auras(self)
+
+	# v6.8: 撤销改造光环 buff（反向清除之前给友军施加的 ally_* 增益）
+	ModAuraHandler.remove_mod_auras(self)
 
 	# 卡牌特殊能力：僚机重生
 	if has_meta("is_wingman") and bool(get_meta("is_wingman")):
