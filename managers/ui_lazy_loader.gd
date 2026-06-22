@@ -72,12 +72,6 @@ func _ready() -> void:
 			"node_name": "StoryDialoguePanel",
 			"autoload": false
 		},
-		"story_chapter_select": {
-			"scene": "res://scenes/ui/story_chapter_select.tscn",
-			"parent_path": "PopupLayer/StoryOverlay/CenterContainer",
-			"node_name": "StoryChapterSelect",
-			"autoload": false
-		},
 		"affix": {
 			"scene": "res://scenes/ui/affix_panel.tscn",
 			"parent_path": "PopupLayer/AffixOverlay/CenterContainer",

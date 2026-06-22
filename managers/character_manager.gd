@@ -1,7 +1,6 @@
 extends Node
 ## 角色管理器：管理游戏中的角色和关系
-
-const NPCDialogues := preload("res://data/story/npc_dialogues.gd")
+## v6.8: 删除剧情模式后移除 NPCDialogues 依赖（city_map 专属，已删）
 
 var _characters: Dictionary = {}
 var _player_character: Dictionary = {}
@@ -259,29 +258,19 @@ func is_character_dialogue_available(character_id: String) -> bool:
 
 	return char_data.get("unlocked", false)
 
-## 获取角色对话
-## v6.6(剧情): 对于 is_story_npc 的角色（洛克/林薇/扎克/海伦/真实者），
-## 委托给 NPCDialogues 按天数/好感度/story_flags 查询；legacy 角色（thomas等）保留硬编码。
-## context 参数支持传 Dictionary：{"day":int, "relationship":int, "story_flags":Dictionary, "used_ids":Array}
+## 获取角色对话（legacy 硬编码占位）
+## v6.8: 删除剧情模式后，story_npc 角色（洛克/林薇/扎克/海伦/真实者）的
+## 数据驱动对话（NPCDialogues）随 city_map 一并移除；此处仅保留 legacy 占位。
+## story_npc 角色无数据源时返回空数组。
 func get_character_dialogue(character_id: String, _context = "") -> Array:
 	if not is_character_dialogue_available(character_id):
 		return []
 
 	var char_data = _characters.get(character_id, {})
 
-	# v6.6(剧情): 新角色走数据驱动查询
+	# v6.6 story_npc 角色的数据驱动对话已随 city_map 移除，暂返回空
 	if char_data.get("is_story_npc", false):
-		var ctx: Dictionary = _context if _context is Dictionary else {}
-		var day: int = int(ctx.get("day", 1))
-		var rel: int = get_relationship_value(character_id)
-		var sm: Node = get_node_or_null("/root/StoryManager")
-		var flags: Dictionary = sm.get_all_story_flags() if (sm and sm.has_method("get_all_story_flags")) else {}
-		var used: Array = _collect_used_dialog_ids(flags)
-		var entry: Dictionary = NPCDialogues.get_dialogue(character_id, day, rel, flags, used)
-		if entry.is_empty():
-			return []
-		# 返回 lines 数组（实际播放与副作用应用由 NPCDialogSystem 负责）
-		return entry.get("lines", [])
+		return []
 
 	# legacy 角色：硬编码占位对话
 	var dialogues = []
@@ -302,32 +291,6 @@ func get_character_dialogue(character_id: String, _context = "") -> Array:
 			dialogues = ["你好！"]
 
 	return dialogues
-
-## v6.6(剧情): 从 story_flags 中收集已播放的对话 id
-## 对话播完后由 NPCDialogSystem 写入 "dialog_used_<id>" 标记
-func _collect_used_dialog_ids(story_flags: Dictionary) -> Array:
-	var used: Array = []
-	for key in story_flags:
-		if String(key).begins_with("dialog_used_") and bool(story_flags[key]):
-			used.append(String(key).substr(len("dialog_used_")))
-	return used
-
-## v6.6(剧情): 按当前天数自动解锁应登场的 story NPC
-## 由 city_map 在每天开始时调用
-func unlock_story_npcs_for_day(day: int) -> Array:
-	var newly_unlocked: Array = []
-	for char_id in _characters:
-		var char_data = _characters[char_id]
-		if not char_data.get("is_story_npc", false):
-			continue
-		if char_data.get("unlocked", false):
-			continue
-		var unlock_day: int = int(char_data.get("unlock_day", 0))
-		if unlock_day > 0 and day >= unlock_day:
-			char_data["unlocked"] = true
-			newly_unlocked.append(char_id)
-			character_unlocked.emit(char_id)
-	return newly_unlocked
 
 ## v6.6(剧情): 判断角色是否为 story NPC
 func is_story_npc(character_id: String) -> bool:

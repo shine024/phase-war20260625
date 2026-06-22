@@ -82,12 +82,6 @@ signal card_obtained(card_id: String)
 signal card_max_level(card_id: String)
 signal collection_milestone_reached(milestone: Dictionary)
 
-# 故事系统
-signal story_chapter_started(chapter_id: String)
-signal story_node_reached(node_index: int)
-signal story_choice_made(choice_result: String)
-signal story_chapter_completed(chapter_id: String)
-
 # 角色系统
 signal relationship_changed(character_id: String, new_value: int)
 signal character_unlocked(character_id: String)
@@ -120,28 +114,12 @@ signal level_selected(level: int)
 # signal tower_state_changed(state: int)
 # signal tower_relic_obtained(relic_id: String)
 
-# 故事 UI
-signal show_story_ui(chapter: String, first_node: int)
-signal show_story_node(node_index: int)
-
-# v6.3: 剧情模式信号
-signal story_show_pre_battle_dialogue(chapter_id: String)     ## 显示战前对话
-signal story_show_post_battle_dialogue(chapter_id: String)    ## 显示战后对话
-signal story_show_chapter_select()                            ## 显示章节选择面板
-signal story_chapter_selected(chapter_id: String)             ## 玩家选择了某章节
-signal story_campaign_completed()                             ## 剧情模式全部完成
+# v6.7(剧情任务): 关卡剧情任务（docs/补剧情.txt 关卡映射）
 signal story_dialogue_finished()                              ## 对话播放完毕
 
-# v6.7(剧情任务): 自由模式关卡剧情任务（docs/补剧情.txt 关卡映射）
 # GameManager 在进关/过关时 emit，story_dialogue_panel 监听后播放对应任务的对话
 # phase = "pre"（战前）/ "post"（战后）
 signal story_mission_dialogue(quest_id: String, phase: String)
-
-# v6.6(剧情): docs/补剧情.txt 城市循环模式专用信号
-signal city_day_started(day: int)                              ## 每天开始（DayClock.day_started 镜像转发）
-signal city_emergency(announcement: String)                    ## 全城紧急事件（如海伦宣告倒计时）
-signal helen_guidance(message: String)                         ## 海伦主动引导提示
-signal npc_event(npc_id: String, event_key: String)            ## NPC 剧情事件（林薇归来/洛克失踪等）
 
 # 通用 UI 反馈
 signal show_toast(message: String)

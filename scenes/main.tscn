@@ -23,9 +23,6 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/intelligence_hub_panel.tscn" id="34_intelligence_hub"]
 [ext_resource type="PackedScene" uid="uid://b8xk3l2m5n6o" path="res://scenes/ui/card_info_panel.tscn" id="35_card_info_panel"]
 [ext_resource type="PackedScene" path="res://scenes/ui/story_dialogue_panel.tscn" id="36_story_dialogue"]
-[ext_resource type="PackedScene" path="res://scenes/ui/story_chapter_select.tscn" id="37_story_select"]
-[ext_resource type="PackedScene" path="res://scenes/city_map.tscn" id="38_city_map"]
-[ext_resource type="Script" path="res://scenes/ui/ending_panel.gd" id="39_ending"]
 [ext_resource type="PackedScene" path="res://scenes/ui/afk_panel.tscn" id="39_afk_panel"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_level_display"]
@@ -578,22 +575,6 @@ grow_vertical = 2
 
 [node name="StoryDialoguePanel" parent="PopupLayer/StoryOverlay/CenterContainer" instance=ExtResource("36_story_dialogue")]
 visible = false
-
-[node name="StoryChapterSelect" parent="PopupLayer/StoryOverlay/CenterContainer" instance=ExtResource("37_story_select")]
-visible = false
-
-[node name="CityMap" parent="PopupLayer/StoryOverlay/CenterContainer" instance=ExtResource("38_city_map")]
-visible = false
-
-[node name="EndingPanel" type="Control" parent="PopupLayer/StoryOverlay/CenterContainer"]
-visible = false
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-script = ExtResource("39_ending")
 
 [node name="CenterContainer" type="CenterContainer" parent="PopupLayer/LevelSelectOverlay"]
 layout_mode = 1

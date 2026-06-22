@@ -163,8 +163,6 @@ func _deferred_non_critical_init() -> void:
 	_init_daily_tasks()
 	# 空闲期预加载高频弹窗，降低首次打开卡顿
 	_preload_common_panels()
-	# v6.3: 剧情模式检测 — 如果从标题界面选择了剧情模式，显示章节选择
-	_check_story_mode_entry()
 	# 连接蓝图升星信号，用于刷新词条面板
 	if BlueprintManager and BlueprintManager.has_signal("blueprint_star_upgraded") and not BlueprintManager.blueprint_star_upgraded.is_connected(_on_blueprint_star_upgraded):
 		BlueprintManager.blueprint_star_upgraded.connect(_on_blueprint_star_upgraded)
@@ -183,32 +181,6 @@ func _preload_common_panels() -> void:
 func _mark_main_interactive() -> void:
 	if PerformanceMetricsManager and PerformanceMetricsManager.has_method("mark_main_interactive"):
 		PerformanceMetricsManager.mark_main_interactive()
-
-## v6.3: 检测是否从标题界面选择了剧情模式，若是则显示章节选择
-func _check_story_mode_entry() -> void:
-	if GameManager == null or not ("game_mode" in GameManager):
-		return
-	if GameManager.game_mode != GameManager.GameMode.STORY:
-		return
-	# 延迟一帧显示章节选择（确保场景树就绪）
-	call_deferred("_show_story_chapter_select")
-
-func _show_story_chapter_select() -> void:
-	if story_overlay == null:
-		return
-	story_overlay.visible = true
-	# v6.4: 显示城市地图（替换章节选择）
-	var dlg: Node = story_overlay.get_node_or_null("CenterContainer/StoryDialoguePanel")
-	var sel: Node = story_overlay.get_node_or_null("CenterContainer/StoryChapterSelect")
-	var city: Node = story_overlay.get_node_or_null("CenterContainer/CityMap")
-	if dlg:
-		dlg.visible = false
-	if sel:
-		sel.visible = false
-	if city:
-		city.visible = true
-		if city.has_method("show_city_map"):
-			city.show_city_map()
 
 func _prune_preloaded_panels() -> void:
 	var overlay_to_container_path := {
@@ -512,7 +484,6 @@ func _overlay_for_panel_key(panel_key: String) -> Control:
 		"phase_law": return phase_law_overlay
 		"rune": return phase_law_overlay
 		"story_dialogue": return story_overlay
-		"story_chapter_select": return story_overlay
 		"growth": return growth_overlay
 		"faction": return faction_overlay
 		"map": return map_overlay

@@ -10,11 +10,10 @@ enum GamePhase {
 	POST_BATTLE
 }
 
-# v6.3: 游戏模式
+# 游戏模式（v6.8: 删除剧情模式 STORY，仅保留自由模式 + 二周目）
 enum GameMode {
-	FREE,            ## 自由模式（原有玩法，自由选关）
-	STORY,           ## 剧情模式（线性章节，含对话+Boss战）
-	NEW_GAME_PLUS,   ## v6.6(剧情): 二周目（补剧情.txt 第十二幕，敌人属性×1.2）
+	FREE,            ## 自由模式（自由选关 + v6.7 关卡剧情任务）
+	NEW_GAME_PLUS,   ## 二周目（敌人属性×1.2）
 }
 
 # v6.6(剧情): 二周目难度配置（补剧情.txt L186: 关卡进度重置，但难度提升×1.2）
@@ -36,10 +35,7 @@ signal current_level_changed(level: int)
 var _current_phase_master: Dictionary = {}  # 当前战斗的相位师配置
 var _is_phase_master_battle: bool = false   # 是否在与相位师战斗
 
-# v6.3: 剧情模式状态
 var game_mode: GameMode = GameMode.FREE
-var current_chapter_id: String = ""         ## 当前进行中的章节ID
-var _story_custom_battle: Dictionary = {}   ## 剧情Boss章的自定义战斗配置（覆盖普通相位师检测）
 
 # v6.7(剧情任务): 自由模式关卡剧情任务触发状态
 # 进关时收集本关所有应触发的剧情（tutorial 自动 + story 已接取），形成队列依次播放
@@ -340,11 +336,9 @@ func go_to_battle() -> void:
 
 	last_battle_reward_summary = {}
 	_snapshot_battle_reward_baselines()
-	# v6.7(剧情任务): 自由模式关卡剧情战前对话触发
-	# 只在自由模式/NG+ 触发（剧情模式 STORY 走自己的 _story_handle_battle_end 流程）
+	# v6.7(剧情任务): 关卡剧情战前对话触发
 	# 若该关有 active story quest，emit 战前对话信号，由 story_dialogue_panel 播放
-	if game_mode != GameMode.STORY:
-		_check_story_mission_pre_battle()
+	_check_story_mission_pre_battle()
 	# 检查是否遭遇相位师
 	check_phase_master_encounter()
 	if battle_scene == null:
@@ -374,11 +368,6 @@ func _on_battle_ended(player_won: bool) -> void:
 			clear_force_defeat_state()
 	# v6.6(剧情): 清理最终战标记（防跨战斗残留）
 	clear_final_battle_state()
-
-	# v6.3: 剧情模式 — 战斗结束后走剧情专用流程
-	if game_mode == GameMode.STORY:
-		_story_handle_battle_end(player_won)
-		return
 
 	# v6.5: 战斗结束后同步战力星级到所有卡牌实例（防御性，确保存档前数据一致）
 	if BlueprintManager and BlueprintManager.has_method("sync_battle_stars_to_cards"):
@@ -898,142 +887,8 @@ func is_final_battle() -> bool:
 
 ## 清除最终战状态（end_battle 时调用防残留）
 func clear_final_battle_state() -> void:
-	_is_final_battle = false
+		_is_final_battle = false
 
-
-# ═══════════════════════════════════════════════════════════════════
-# v6.3: 剧情模式流程
-# ═══════════════════════════════════════════════════════════════════
-
-const StoryChaptersData = preload("res://data/story_chapters.gd")
-
-## 开始剧情章节：设置关卡 → 触发战前对话
-func start_story_chapter(chapter_id: String) -> void:
-	var chapter: Dictionary = StoryChaptersData.get_chapter(chapter_id)
-	if chapter.is_empty():
-		push_warning("[GameManager] 未找到剧情章节: %s" % chapter_id)
-		return
-	current_chapter_id = chapter_id
-	game_mode = GameMode.STORY
-	# 设置关卡
-	set_current_level(int(chapter.get("level_override", 1)))
-	# Boss章节：设置自定义相位师配置
-	if chapter.get("is_boss_chapter", false):
-		var custom: Dictionary = chapter.get("custom_battle", {})
-		_story_custom_battle = custom
-		_is_phase_master_battle = true
-		_current_phase_master = _build_story_master_config(custom)
-	else:
-		_story_custom_battle = {}
-		_is_phase_master_battle = false
-		_current_phase_master = {}
-	# 触发战前对话信号
-	if SignalBus.has_signal("story_show_pre_battle_dialogue"):
-		SignalBus.story_show_pre_battle_dialogue.emit(chapter_id)
-
-## 战前对话播放完毕后调用：正式进入战斗
-func story_proceed_to_battle() -> void:
-	if game_mode != GameMode.STORY or current_chapter_id.is_empty():
-		return
-	# 复用现有 go_to_battle 流程
-	go_to_battle()
-
-## 战斗结束后（剧情模式）：触发战后对话
-func story_on_battle_won() -> void:
-	if game_mode != GameMode.STORY or current_chapter_id.is_empty():
-		return
-	# 清理自定义Boss配置
-	_story_custom_battle = {}
-	_is_phase_master_battle = false
-	# 标记章节完成
-	var sm: Node = get_node_or_null("/root/StoryManager")
-	if sm and sm.has_method("complete_chapter"):
-		sm.complete_chapter(current_chapter_id)
-	# 触发战后对话信号
-	if SignalBus.has_signal("story_show_post_battle_dialogue"):
-		SignalBus.story_show_post_battle_dialogue.emit(current_chapter_id)
-
-## 战后对话播放完毕后调用：解锁下一章或完成剧情
-func story_advance_to_next() -> void:
-	if game_mode != GameMode.STORY:
-		return
-	var next_id: String = StoryChaptersData.get_next_chapter_id(current_chapter_id)
-	if next_id.is_empty():
-		# 剧情模式全部完成
-		_on_story_completed()
-		return
-	# 解锁下一章
-	var sm: Node = get_node_or_null("/root/StoryManager")
-	if sm and sm.has_method("unlock_chapter"):
-		sm.unlock_chapter(next_id)
-	# 显示章节选择面板（让玩家继续）
-	if SignalBus.has_signal("story_show_chapter_select"):
-		SignalBus.story_show_chapter_select.emit()
-
-## 剧情模式全部完成
-func _on_story_completed() -> void:
-	if SignalBus.has_signal("story_campaign_completed"):
-		SignalBus.story_campaign_completed.emit()
-	# 返回章节选择（玩家可重玩）
-	if SignalBus.has_signal("story_show_chapter_select"):
-		SignalBus.story_show_chapter_select.emit()
-
-## 剧情模式战斗结束处理（仍发放奖励，然后触发战后对话）
-func _story_handle_battle_end(player_won: bool) -> void:
-	# 剧情模式仍发放正常奖励（资源/经验/符文等），复用现有逻辑但跳过选关流程
-	if BlueprintManager and BlueprintManager.has_method("sync_battle_stars_to_cards"):
-		BlueprintManager.sync_battle_stars_to_cards()
-	# 发放基础资源
-	_grant_basic_resources_for_current_level()
-	# 发放相位场XP
-	_grant_phase_field_xp_for_victory()
-	# 保存 — v6.6: 使用延迟保存（0.3秒后），与自由模式一致，避免同步 I/O 卡顿
-	var sm_save: Node = get_node_or_null("/root/SaveManager")
-	if sm_save and sm_save.has_method("save_game"):
-		var tree := get_tree()
-		if tree:
-			var t := tree.create_timer(0.3)
-			t.timeout.connect(func() -> void:
-				if sm_save and sm_save.has_method("save_game"):
-					sm_save.save_game()
-			)
-	# 如果胜利，触发战后对话；失败则返回章节选择
-	if player_won:
-		story_on_battle_won()
-	else:
-		# 失败：返回章节选择让玩家重试
-		if SignalBus.has_signal("story_show_chapter_select"):
-			SignalBus.story_show_chapter_select.emit()
-
-## 退出剧情模式，切换到自由模式
-func exit_story_mode() -> void:
-	game_mode = GameMode.FREE
-	current_chapter_id = ""
-	_story_custom_battle = {}
-	_is_phase_master_battle = false
-
-## 构建剧情Boss的相位师配置（复用现有PhaseMaster格式）
-func _build_story_master_config(custom: Dictionary) -> Dictionary:
-	var master_name: String = custom.get("master_name", "剧情Boss")
-	var faction: String = custom.get("faction", "void")
-	var era: int = int(custom.get("era", 0))
-	var stats: Dictionary = custom.get("stats", {})
-	# 复用 _enrich_master_config 的格式
-	return {
-		"name": master_name,
-		"faction": faction,
-		"era": era,
-		"id": "story_boss_%s" % master_name,
-		"level": current_level,
-		"difficulty": 1.5,
-		"stats": stats,
-		"equipment": {},  # 使用默认装备
-		"traits": [],
-		"active_spells": [],
-		"passive_spells": [],
-		"enemy_faction": faction,
-		"is_story_boss": true,
-	}
 
 # ════════════════════════════════════════════════════════════════════
 # v6.7(剧情任务): 自由模式关卡剧情任务触发（docs/补剧情.txt 关卡映射）

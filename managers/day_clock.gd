@@ -99,12 +99,10 @@ func reset_for_new_loop() -> void:
 	year_completed = false
 	total_loops += 1
 
-## v6.6(剧情): 统一的 day_started 发射器，同时镜像转发到 SignalBus.city_day_started
-## 供 city_map / npc_dialog_system 等订阅 SignalBus 的系统使用
+## 统一的 day_started 发射器
+## v6.8: city_map 删除后不再镜像转发到 SignalBus（原 city_day_started 信号已移除）
 func _emit_day_started(day: int) -> void:
 	day_started.emit(day)
-	if SignalBus != null and SignalBus.has_signal("city_day_started"):
-		SignalBus.city_day_started.emit(day)
 
 ## 完全重置（新游戏）
 func full_reset() -> void:
