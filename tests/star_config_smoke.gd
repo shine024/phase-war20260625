@@ -30,18 +30,20 @@ func _initialize() -> void:
 	if StarConfig.get_max_mod_times("common") != 3:
 		push_error("common max mod times expected 3")
 		code = 1
-	# 时代：平台 HP ×(1+0.15×era)，步枪伤害 ×(1+0.25×era)（era=1 时守卫 100→115，步枪 8→10）
+	# 时代缩放：GUARD(_PLATFORM_BASE hp=110) × era_hp_multiplier，RIFLE(_WEAPON_BASE dmg=14) × era_damage_multiplier
+	# era_hp_multiplier(e) = 1.0 + e × 0.15  → era1: 110×1.15 = 126.5
+	# era_damage_multiplier = [1.00, 1.20, 1.40, 1.65, 1.80]  → era1: 14×1.20 = 16.8
 	var st_e1: UnitStats = UnitStatsTable.build_multi_stats(1, [1], 1)  # GUARD, RIFLE
-	if not is_equal_approx(st_e1.max_hp, 115.0):
-		push_error("era1 guard hp expected 115 got %s" % str(st_e1.max_hp))
+	if not is_equal_approx(st_e1.max_hp, 126.5):
+		push_error("era1 guard hp expected 126.5 got %s" % str(st_e1.max_hp))
 		code = 1
 	# 新的多维战斗系统：使用 attack_light 字段
-	if not is_equal_approx(st_e1.attack_light, 10.0):
-		push_error("era1 rifle damage expected 10 got %s" % str(st_e1.attack_light))
+	if not is_equal_approx(st_e1.attack_light, 16.8):
+		push_error("era1 rifle damage expected 16.8 got %s" % str(st_e1.attack_light))
 		code = 1
 	var st_e0: UnitStats = UnitStatsTable.build_multi_stats(1, [1], 0)  # GUARD, RIFLE
-	if not is_equal_approx(st_e0.max_hp, 100.0):
-		push_error("era0 guard hp expected 100 got %s" % str(st_e0.max_hp))
+	if not is_equal_approx(st_e0.max_hp, 110.0):
+		push_error("era0 guard hp expected 110.0 got %s" % str(st_e0.max_hp))
 		code = 1
 	if code == 0:
 		print("star_config_smoke: OK")

@@ -1,6 +1,8 @@
 import requests, json, os, time
 
-API_KEY = "***"
+API_KEY = os.environ.get("AGNES_API_KEY", "")
+if not API_KEY:
+    raise SystemExit("AGNES_API_KEY 环境变量未设置。请先 `set AGNES_API_KEY=<your_key>` 再运行。")
 BASE_URL = "https://apihub.agnes-ai.com/v1"
 
 output_dir = r"F:\godot fair duet\create\phase-war\docs\rune_design_comparison"
@@ -22,19 +24,23 @@ RARITIES = [
     {"name": "legendary", "glow": "very strong", "bg": "dark gold #1a1500"},
 ]
 
-PLAN1_PREFIX = "Plan1_Minimalist_Geometric_Rune,"
+PLAN2_PREFIX = "Plan2_Magic_Seal_Rune,"
 
 def generate_prompt(rune, rarity, plan_prefix):
     return f"""{plan_prefix}
-A single RPG rune icon for "{rune['name']}" ({rune['id']}), 
+A single RPG rune icon for "{rune['name']}" ({rune['id']}),
 {rune['shape_desc']},
-monochromatic {rune['color']} color scheme ({rune['color_hex']}), 
-dark circular background ({rarity['bg']}), 
-{rarity['glow']} neon glow on edges, 
-minimalist geometric style, 2-4 clean shapes only, 
-flat vector style, transparent background, 
-high contrast, sharp edges, no gradients, no textures, no 3D effects, 
-no ornamental details, no borders, no frames, no watermarks, no text,
+monochromatic {rune['color']} color scheme ({rune['color_hex']}),
+dark circular background ({rarity['bg']}),
+{rarity['glow']} neon glow on edges,
+magic seal style with concentric circular bands, wedge-shaped notches on rings,
+dot markers and short dash lines distributed on the rings,
+central core symbol ({rune['shape_desc']}),
+stone or metal texture on the rings,
+glowing magical energy emanating from center,
+tiered ring design: 1 ring for common, 2 rings for rare, 3 rings for epic, 4 rings for legendary,
+high contrast, sharp edges, flat vector style,
+no borders, no frames, no watermarks, no text,
 centered composition, 1024x1024px square canvas"""
 
 generated = []
@@ -42,10 +48,10 @@ failed = []
 
 for rune in RUNES:
     for rarity in RARITIES:
-        filename = f"plan1_{rune['id']}_{rarity['name']}.png"
+        filename = f"plan2_{rune['id']}_{rarity['name']}.png"
         filepath = os.path.join(output_dir, filename)
         
-        prompt = generate_prompt(rune, rarity, PLAN1_PREFIX)
+        prompt = generate_prompt(rune, rarity, PLAN2_PREFIX)
         
         payload = {
             "model": "agnes-image-2.0-flash",
