@@ -502,7 +502,7 @@ static func _make_foe_row(card_id: String) -> Dictionary:
 			"attack_air": s.attack_air,
 			"attack_range": s.rng,
 			"attack_interval": s.ivl,
-			"combat_kind": s.kind,
+			"combat_kind": _manifest_kind_to_combat_kind(s.kind),
 			"weapon_label": s.weapon,
 			"weapon_type": int(s.weapon_type),
 			# v6.3: 三维防御（完整透传，不再坍缩成单一 defense）
@@ -618,6 +618,20 @@ static func _tags_for_kind(kind: int) -> Array:
 		4: return ["fortress", "immobile"]  # v5.0 堡垒
 		1: return ["vehicle", "armored"]
 		_: return ["frontline"]
+
+
+## manifest 的 kind（0=frontline步兵/1=vehicle装甲/2=turret火炮/3=support支援/4=fortress堡垒）
+## → CombatKind（0=LIGHT/1=ARMOR/2=SUPPORT/3=AIR/4=FORT）
+## 关键：manifest kind:3 的语义是"支援"，不是 CombatKind.AIR(3)；数值相同但含义不同。
+## 不做映射的话，地面支援单位（BMP-1/维修框架/运载）会被错判成空中单位（缩放+悬浮）。
+static func _manifest_kind_to_combat_kind(kind: int) -> int:
+	match kind:
+		0: return GC.CombatKind.LIGHT
+		1: return GC.CombatKind.ARMOR
+		2: return GC.CombatKind.SUPPORT
+		3: return GC.CombatKind.SUPPORT   # manifest 的"支援"归 CombatKind.SUPPORT，绝不能是 AIR
+		4: return GC.CombatKind.FORT
+		_: return GC.CombatKind.LIGHT
 
 
 static func _get_foe_display_name(card_id: String) -> String:

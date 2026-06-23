@@ -7,6 +7,7 @@ const StarConfig = preload("res://data/blueprint_star_config.gd")
 const ModRegistry = preload("res://scripts/systems/modification_registry.gd")
 const ModSlotScene: PackedScene = preload("res://scenes/ui/mod_slot_item.tscn")
 const EvoPathRegistry = preload("res://scripts/systems/evolution_path_registry.gd")
+const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
 const UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")
 
 signal closed
@@ -314,8 +315,9 @@ func _on_evo_pressed() -> void:
 		return
 	_open_target_panel("evolution")
 
-## 关闭自身后打开目标面板（等关闭动画完成再切）
+## 关闭自身后打开目标面板，并预选当前卡牌（复用 main.gd 情报中心→成长的预选模式）
 func _open_target_panel(panel_key: String) -> void:
+	var card_to_select: CardResource = _selected_card
 	if _is_open:
 		_is_open = false
 		modulate.a = 0.0
@@ -325,7 +327,38 @@ func _open_target_panel(panel_key: String) -> void:
 	if main and main.has_method("_toggle_overlay"):
 		var overlay = main._overlay_for_panel_key(panel_key) if main.has_method("_overlay_for_panel_key") else null
 		if overlay:
+			# 先触发懒加载实例化目标面板，再预选当前卡牌
 			main._toggle_overlay(overlay, panel_key)
+			_preselect_target_card(overlay, panel_key, card_to_select)
+
+## 跳转后在目标面板预选当前卡牌（按 panel_key 匹配预选方法签名）
+func _preselect_target_card(overlay: Control, panel_key: String, card: CardResource) -> void:
+	if card == null or overlay == null:
+		return
+	# 节点名见 ui_lazy_loader.gd 的 node_name 配置
+	var panel: Node = overlay.get_node_or_null("CenterContainer/%s" % _target_panel_node_name(panel_key))
+	if panel == null:
+		# tscn 未内联时兜底查找（懒加载实例化的面板挂在 CenterContainer 下）
+		panel = overlay.find_child(_target_panel_node_name(panel_key), true, false)
+	if panel == null:
+		return
+	match panel_key:
+		"enhancement":
+			# CardEnhancementPanel.select_card_by_id 入参为 card_id 字符串
+			if panel.has_method("select_card_by_id"):
+				panel.select_card_by_id(card.card_id)
+		"modification", "evolution":
+			# ModificationPanel / EvolutionPanel.set_selected_card 入参为 CardResource
+			if panel.has_method("set_selected_card"):
+				panel.set_selected_card(card)
+
+## 目标面板在 overlay/CenterContainer 下的节点名（与 ui_lazy_loader.gd node_name 一致）
+func _target_panel_node_name(panel_key: String) -> String:
+	match panel_key:
+		"enhancement": return "CardEnhancementPanel"
+		"modification": return "ModificationPanel"
+		"evolution": return "EvolutionPanel"
+	return ""
 
 # ========== 卡牌列表 ==========
 
@@ -738,7 +771,9 @@ func _refresh_evolution_section() -> void:
 				if evo_target_lv:
 					evo_target_lv.text = ""
 
-	# 进化条件
+	# 进化条件 — 直接用 BlueprintManager.can_evolve_blueprint 真实校验结果
+	# v6.7 修复：原实现用 base_hp×1.5 估算战力门槛、硬编码"合金500"、虚假"星级≥4"，
+	# 与真实校验（强化等级/MOD数/进化图纸/敌源MOD/势力等级）完全脱节，导致两条面板口径矛盾。
 	if evo_requirements_label:
 		if evo_paths.is_empty():
 			evo_requirements_label.text = "无可用进化路线"
@@ -749,47 +784,48 @@ func _refresh_evolution_section() -> void:
 		if evo_requirements_panel:
 			evo_requirements_panel.visible = true
 
-		# 构建分色条件文本
+		var target_id_evo: String = String(evo_paths[0])
 		var parts: Array = []
-		var current_power := c.get_current_power()
-		var evo_star := _calculate_star()
-
-		# 条件1：星级
-		if evo_star >= 4:
-			parts.append({"text": "\u2713 星级 \u2265 4", "is_ok": true})
+		var bp = get_node_or_null("/root/BlueprintManager")
+		if bp and bp.has_method("can_evolve_blueprint"):
+			var can_info: Dictionary = bp.can_evolve_blueprint(c.card_id, target_id_evo)
+			var can_ok: bool = bool(can_info.get("ok", false))
+			# 进化图纸持有状态（can_evolve_blueprint 内部已校验，失败 reason 会反映）
+			var evo_blueprint_id := BlueprintDefinitions.get_evolution_blueprint_id(c.card_id, target_id_evo)
+			var has_evo_blueprint := false
+			var _iib = Engine.get_main_loop().get_root().get_node_or_null("IntelItemBag")
+			if _iib and not evo_blueprint_id.is_empty():
+				has_evo_blueprint = _iib.has_item(evo_blueprint_id)
+			parts.append({
+				"text": ("\u2713 进化图纸" if has_evo_blueprint else "\u2717 进化图纸（未获得）"),
+				"is_ok": has_evo_blueprint,
+			})
+			# 强化等级门槛（成功时 can_info 带明细）
+			var enh_req: int = int(can_info.get("enhance_requirement", 0))
+			if enh_req > 0:
+				var cur_enh: int = int(can_info.get("current_enhance", c.enhance_level))
+				parts.append({
+					"text": ("\u2713 强化 Lv.\u2265%d (%d)" if cur_enh >= enh_req else "\u2717 强化 Lv.\u2265%d (%d)") % [enh_req, cur_enh],
+					"is_ok": cur_enh >= enh_req,
+				})
+			# 改造数量门槛
+			var mod_req: int = int(can_info.get("mod_requirement", 0))
+			if mod_req > 0:
+				var cur_mod: int = int(can_info.get("current_mod_count", c.mods.size()))
+				parts.append({
+					"text": ("\u2713 改造 \u2265%d (%d)" if cur_mod >= mod_req else "\u2717 改造 \u2265%d (%d)") % [mod_req, cur_mod],
+					"is_ok": cur_mod >= mod_req,
+				})
+			# 失败时若有未覆盖的 reason_zh，追加提示（如敌源MOD/势力等级/战力等门槛）
+			if not can_ok:
+				var reason_zh: String = String(can_info.get("reason_zh", ""))
+				# 过滤已被上面三项覆盖的 reason（enhance/mod/blueprint）
+				var reason: String = String(can_info.get("reason", ""))
+				if reason != "enhance_not_enough" and reason != "mod_not_enough" and reason != "evo_blueprint_missing" \
+						and not reason_zh.is_empty() and reason != "ok":
+					parts.append({"text": "\u26a0 %s" % reason_zh, "is_ok": false})
 		else:
-			parts.append({"text": "\u2717 星级 \u2265 4 (%d)" % evo_star, "is_ok": false})
-
-		# 条件2：战力
-		var target_power_val: int = maxi(int(c.base_hp * 1.5), 800)
-		if current_power >= target_power_val:
-			parts.append({"text": "\u2713 战力 \u2265 %d" % target_power_val, "is_ok": true})
-		else:
-			parts.append({"text": "\u2717 战力 \u2265 %d (%d)" % [target_power_val, current_power], "is_ok": false})
-
-		# 进化资源条件
-		var evo_data: Dictionary = EvoPathRegistry.get_evolution_path(c.card_id)
-		if not evo_data.is_empty():
-			var main_line = evo_data.get("main_line", {})
-			for stage_key in main_line.keys():
-				var stage = main_line[stage_key]
-				if stage.get("card_id", "") != c.card_id:
-					var requirements: Dictionary = stage.get("requirements", {})
-					var res_req = requirements.get("resources", {})
-					if not res_req.is_empty():
-						var alloy_need: int = int(res_req.get("res_alloy", 500))
-						var res_mgr = get_node_or_null("/root/BasicResourceManager")
-						var has_alloy: int = res_mgr.get_total("res_alloy") if res_mgr else 0
-						if has_alloy >= alloy_need:
-							parts.append({"text": "\u2713 合金 \u2265 %s" % _format_number(alloy_need), "is_ok": true})
-						else:
-							parts.append({"text": "\u2717 合金 \u2265 %s (%s)" % [_format_number(alloy_need), _format_number(has_alloy)], "is_ok": false})
-					var intel_req = requirements.get("intel_level", 0)
-					if intel_req > 0:
-						parts.append({"text": "\u2713 素材情报 \u2265 %d" % intel_req, "is_ok": true})
-					break
-		else:
-			parts.append({"text": "\u2717 合金 500", "is_ok": false})
+			parts.append({"text": "\u2717 进化系统未加载", "is_ok": false})
 
 		# 构建带 BBCode 分色的文本
 		var bbcode_parts: Array = []

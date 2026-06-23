@@ -9,6 +9,11 @@ const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 const VisualEffects = preload("res://scenes/effects/visual_effects_manager.gd")
 const PhaseLawCastEffect = preload("res://scenes/effects/phase_law_cast_effect.gd")
 const ScreenShakeScript = preload("res://scenes/effects/screen_shake.gd")
+## v6.6: 超级火炮连击复用正式火炮曲射弹道
+const BulletScene = preload("res://scenes/units/bullet.tscn")
+## 曲射炮击起点偏移：目标正上方 + 左右随机，保证从屏幕外抛物线飞入
+const ARTILLERY_SHOT_OFFSET_Y: float = -800.0
+const ARTILLERY_SHOT_OFFSET_X: float = 300.0
 
 ## 当前激活的能力（战斗开始时从相位仪读取，战斗中不变）
 static var _active_ability: Dictionary = {}
@@ -154,19 +159,27 @@ static func _fire_artillery_shot() -> void:
 	var enemies: Array = _get_enemy_units()
 	if enemies.is_empty():
 		return
-	# 随机选一个敌方单位造成伤害（按平均攻击力 × 倍率）
+	# 随机选一个敌方单位（"不确定的敌方单位"）
 	var target: Node = enemies[randi() % enemies.size()]
+	if target == null or not is_instance_valid(target) or not (target is Node2D):
+		return
 	var dmg: float = _compute_artillery_damage()
-	# v6.6 正式动画：红色炮弹轨迹 + 爆炸
-	if target is Node2D:
-		var tpos: Vector2 = (target as Node2D).global_position
-		# 炮弹轨迹：从战场顶部红色粒子下落
-		_create_artillery_trajectory(tpos)
-		# 命中爆炸：橙红色大爆炸
-		VisualEffects.create_explosion(_battlefield, tpos, 1.8, Color(1.0, 0.3, 0.1, 1.0))
-		CombatFeedback.show_damage(tpos, dmg, target, false, "normal")
-	if target and target.has_method("take_damage"):
-		target.take_damage(dmg, null)
+	# v6.6 超级火炮连击：复用正式火炮曲射弹道（INDIRECT），从屏幕外抛物线飞入
+	var bullet: Node2D = ObjectPoolManager.get_object("bullets") if ObjectPoolManager != null else null
+	if bullet == null:
+		bullet = BulletScene.instantiate()
+	# 起点：目标正上方 + 左右随机偏移，保证从屏幕外飞入且有横向弧度
+	var tpos: Vector2 = (target as Node2D).global_position
+	bullet.global_position = tpos + Vector2(randf_range(-ARTILLERY_SHOT_OFFSET_X, ARTILLERY_SHOT_OFFSET_X), ARTILLERY_SHOT_OFFSET_Y)
+	# weapon_type=1 (INDIRECT) → 曲射弹道；我方攻击；抑制炮口火焰（屏幕外无炮口）
+	bullet.setup(target, dmg, true, 1, null, null, false, "")
+	bullet.suppress_muzzle = true
+	# 挂到场景树（对象池取出时不在树中）
+	var current_parent: Node = bullet.get_parent()
+	if current_parent != _battlefield:
+		if current_parent != null:
+			current_parent.remove_child(bullet)
+		_battlefield.add_child(bullet)
 
 static func _compute_artillery_damage() -> float:
 	# 基于我方单位平均攻击力的固定倍率，避免太弱或太强
@@ -326,38 +339,6 @@ static func _trigger_screen_shake(intensity: float, duration: float) -> void:
 # ─────────────────────────────────────────────
 #  正式动画函数（v6.6）
 # ─────────────────────────────────────────────
-
-## 火炮连发：红色炮弹轨迹
-static func _create_artillery_trajectory(target_pos: Vector2) -> void:
-	"""从战场顶部生成红色粒子下落轨迹"""
-	if _battlefield == null or not (_battlefield is Node2D):
-		return
-	var trail := Node2D.new()
-	trail.position = Vector2(target_pos.x, target_pos.y - 300.0)  # 从上方300像素处开始
-	_battlefield.add_child(trail)
-	
-	# 炮弹粒子：红色高速下落
-	var p := CPUParticles2D.new()
-	p.emitting = true
-	p.lifetime = 0.6
-	p.amount = 15
-	p.one_shot = true
-	p.explosiveness = 0.3
-	p.direction = Vector2.DOWN
-	p.spread = 30.0
-	p.initial_velocity_min = 200.0
-	p.initial_velocity_max = 350.0
-	p.gravity = Vector2(0, 300)
-	p.scale_amount_min = 2.0
-	p.scale_amount_max = 3.0
-	p.color = Color(1.0, 0.2, 0.1, 1.0)
-	trail.add_child(p)
-	
-	# 拖尾光点
-	var tw := trail.create_tween()
-	tw.tween_property(p, "scale", Vector2(0.5, 0.5), 0.6)
-	tw.tween_interval(0.1)
-	tw.tween_callback(func(): trail.queue_free())
 
 ## 酸雨云：大范围绿色粒子覆盖
 static func _create_acid_rain_cloud(center: Vector2) -> void:

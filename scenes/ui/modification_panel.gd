@@ -278,14 +278,10 @@ func _update_card_info() -> void:
 	if installed_list:
 		_refresh_installed_list(installed_list)
 
-	# 更新资源标签
+	# 更新资源标签：仅显示纳米（图纸是否持有在改造详情页逐项判断，顶部总数无决策价值）
 	if research_label:
 		var nano_amount = BasicResourceManager.get_total(BasicResources.ID_NANO_MATERIALS)
-		var total_blueprints = 0
-		var _iib = Engine.get_main_loop().get_root().get_node_or_null("IntelItemBag")
-		if _iib:
-			total_blueprints = _iib.get_total_count()
-		research_label.text = "纳米：%d | 图纸总数：%d" % [nano_amount, total_blueprints]
+		research_label.text = "纳米：%d" % nano_amount
 
 func _refresh_installed_list(installed_list: Control) -> void:
 	# 同步移除（remove_child + free），不要用 queue_free：InstalledList 不在 ScrollContainer 内

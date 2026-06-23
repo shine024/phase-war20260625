@@ -93,7 +93,7 @@ func _ready() -> void:
 	if mod_offense_btn:
 		mod_offense_btn.pressed.connect(_on_open_modification_pressed)
 		mod_offense_btn.disabled = false
-		mod_offense_btn.text = "🔧 改造工坊"
+		mod_offense_btn.text = "🔧 前往改造工坊"
 	if mod_defense_btn:
 		# 复用为同一入口的提示按钮，避免视觉空缺；隐藏防御/辅助两个死按钮
 		mod_defense_btn.visible = false

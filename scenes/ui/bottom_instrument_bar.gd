@@ -790,6 +790,16 @@ func _update_instrument_tooltip(cfg: Dictionary) -> void:
 		lines.append("特殊特性:")
 		for t in traits:
 			lines.append("  ✦ %s" % String(t))
+	# v6.7: 主动特殊能力（active_ability）— 7星相位仪招牌技能，原装配后 tooltip 漏显示
+	var ability: Dictionary = cfg.get("active_ability", {})
+	if not ability.is_empty():
+		var ability_name: String = String(ability.get("name", ""))
+		var ability_desc: String = String(ability.get("description", ""))
+		var ability_text: String = ability_desc if not ability_desc.is_empty() else ability_name
+		if not ability_name.is_empty() and not ability_desc.is_empty():
+			ability_text = "%s：%s" % [ability_name, ability_desc]
+		lines.append("主动能力:")
+		lines.append("  ⚡ %s" % ability_text)
 	# v6.2: 追加符文之语 + 相位场属性点加成
 	_append_bonus_tooltip_lines(lines)
 	target.tooltip_text = "\n".join(lines)

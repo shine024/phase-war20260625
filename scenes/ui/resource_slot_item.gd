@@ -36,10 +36,12 @@ func _ready() -> void:
 	# 但显式确认避免被主题覆盖。仅 RUNE 类型连接 gui_input。
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	gui_input.connect(_on_gui_input)
-	var vbox = get_node_or_null("VBox")
+	# v6.7 修复：节点路径前缀缺 "Margin/"，导致 VBox/Icon 尺寸初始化全部被跳过，
+	# TextureRect 宽度坍缩为 0，符文图标不可见（texture 已正确加载但无渲染区域）
+	var vbox = get_node_or_null("Margin/VBox")
 	if vbox:
 		vbox.custom_minimum_size = SLOT_SIZE
-	var icon_rect: TextureRect = get_node_or_null("VBox/Icon") as TextureRect
+	var icon_rect: TextureRect = get_node_or_null("Margin/VBox/Icon") as TextureRect
 	if icon_rect:
 		icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -182,8 +184,12 @@ func _refresh_rune(rune_id: String, count: int, name_label: Label, amount_label:
 			rune_tex = UiAssetLoader.rune_icon(rune_id)
 		if rune_tex != null:
 			icon_rect.texture = rune_tex
-			icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			# v6.7 修复：EXPAND_IGNORE_SIZE 会让 TextureRect 忽略纹理固有尺寸，
+			# 在 SHRINK_CENTER + custom_minimum_size.x=0 下宽度坍缩为 0，图标不可见。
+			# 改用 EXPAND_FIT_WIDTH + 给一个最小宽度，确保有渲染区域。
+			icon_rect.expand_mode = TextureRect.EXPAND_FIT_WIDTH
 			icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			icon_rect.custom_minimum_size = Vector2(36, 32)
 			icon_rect.visible = true
 
 ## 获取情报默认名称

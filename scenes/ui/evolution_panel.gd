@@ -130,14 +130,15 @@ func _refresh_card_selector() -> void:
 	card_selector.clear()
 	_card_list.clear()
 
-	# 添加所有卡牌到选择器
+	# 添加所有卡牌到选择器（前缀兵种名，便于在 110+ 张卡中定位）
 	for id_raw in BlueprintManager.get_all_blueprint_ids():
 		var card_id: String = str(id_raw)
 		var card: CardResource = DefaultCards.get_card_by_id(card_id)
 		if card == null:
 			continue
 		_card_list.append(card)
-		card_selector.add_item(card.display_name)
+		var kind_name: String = CardResource.get_combat_kind_name(card.combat_kind)
+		card_selector.add_item("[%s] %s" % [kind_name, card.display_name])
 
 	# 选中第一张卡
 	if _card_list.size() > 0:
@@ -374,54 +375,54 @@ func _update_detail_panel() -> void:
 	_set_stat_compare(stat_range, "射程", cur_stats.get("attack_range", 0), new_stats.get("attack_range", 0))
 	_set_stat_compare(stat_speed, "移速", cur_stats.get("move_speed", 0), new_stats.get("move_speed", 0))
 
-	# 显示资源信息
-	var nano_amount = BasicResourceManager.get_total(BasicResources.ID_NANO_MATERIALS)
-	var nano_cost = int(target_card.power * 2.0)
+	# 显示资源/门槛信息
+	# v6.7 修复：进化本身不消耗任何资源（图纸永久持有），真实门槛为
+	# 进化图纸 + 强化等级 + 改造数量（由 can_evolve_blueprint 校验）。
+	# 原面板显示的"纳米消耗 = 目标卡战力×2"是误抄死代码 evolve_card 的公式，
+	# 与实际执行的 evolve_blueprint（零消耗）不符，会让玩家误判无法进化。
+	var has_blueprint := false
+	var evo_blueprint_id := BlueprintDefinitions.get_evolution_blueprint_id(selected_card.card_id, selected_target_id)
+	var _iib = Engine.get_main_loop().get_root().get_node_or_null("IntelItemBag")
+	if _iib:
+		has_blueprint = _iib.has_item(evo_blueprint_id)
+	var can_ok: bool = bool(check_result.get("ok", false))
 
 	if resource_details:
-		var res_text = ""
-		if nano_amount >= nano_cost:
-			res_text += "✓ 纳米材料：%d / %d（充足）\n" % [nano_amount, nano_cost]
+		var res_text := ""
+		# 进化图纸（持有即可，不消耗）
+		res_text += "✓ 进化图纸：已拥有\n" if has_blueprint else "✗ 进化图纸：未获得（战斗掉落）\n"
+		# 真实门槛：从 can_info 读取（成功时返回明细，失败时只显示 reason_zh）
+		if can_ok:
+			var enh_req: int = int(check_result.get("enhance_requirement", 0))
+			var mod_req: int = int(check_result.get("mod_requirement", 0))
+			var cur_enh: int = int(check_result.get("current_enhance", 0))
+			var cur_mod: int = int(check_result.get("current_mod_count", 0))
+			if enh_req > 0:
+				res_text += "✓ 强化等级：%d / %d\n" % [cur_enh, enh_req]
+			if mod_req > 0:
+				res_text += "✓ 改造数量：%d / %d\n" % [cur_mod, mod_req]
 		else:
-			res_text += "✗ 纳米材料：%d / %d（不足）\n" % [nano_amount, nano_cost]
-
-		var evo_blueprint_id = BlueprintDefinitions.get_evolution_blueprint_id(selected_card.card_id, selected_target_id)
-		var has_blueprint = false
-		var _iib = Engine.get_main_loop().get_root().get_node_or_null("IntelItemBag")
-		if _iib:
-			has_blueprint = _iib.has_item(evo_blueprint_id)
-		var _evo_text = "✓ 已拥有"
-		if not has_blueprint:
-			_evo_text = "✗ 未获得"
-		res_text += "进化图纸：" + _evo_text
+			# 失败：reason_zh 已是中文（如"强化等级不足（基础进化需Lv5...）"）
+			var reason_zh := String(check_result.get("reason_zh", "条件未满足"))
+			res_text += "⚠ %s\n" % reason_zh
+		res_text += "进化不消耗资源（图纸永久持有）"
 
 		resource_details.text = res_text
-		if has_blueprint and nano_amount >= nano_cost:
+		if can_ok and has_blueprint:
 			resource_details.add_theme_color_override("font_color", Color(0.3, 0.9, 0.4))
 		else:
 			resource_details.add_theme_color_override("font_color", Color(0.9, 0.4, 0.3))
 
-	# 进化按钮
+	# 进化按钮：只看图纸持有 + can_evolve_blueprint 结果（不再校验纳米）
 	if evolve_button:
-		var evo_blueprint_id = BlueprintDefinitions.get_evolution_blueprint_id(selected_card.card_id, selected_target_id)
-		var has_blueprint = false
-		var _iib = Engine.get_main_loop().get_root().get_node_or_null("IntelItemBag")
-		if _iib:
-			has_blueprint = _iib.has_item(evo_blueprint_id)
-
-		var has_nano = nano_amount >= nano_cost
-
 		if not has_blueprint:
 			evolve_button.text = "缺少进化图纸"
 			evolve_button.disabled = true
-		elif not has_nano:
-			evolve_button.text = "纳米材料不足（需要 %d）" % nano_cost
-			evolve_button.disabled = true
-		elif not check_result.get("ok", false):
+		elif not can_ok:
 			evolve_button.text = "进化条件未满足"
 			evolve_button.disabled = true
 		else:
-			evolve_button.text = "执行进化（消耗 %d 纳米）" % nano_cost
+			evolve_button.text = "执行进化"
 			evolve_button.disabled = false
 
 		if not evolve_button.pressed.is_connected(_evolve_callable):

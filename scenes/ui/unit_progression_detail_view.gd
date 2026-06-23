@@ -13,6 +13,9 @@ const CardProgressionSettings = preload("res://data/card_progression_settings.gd
 const CompanyDefinitions = preload("res://data/company_definitions.gd")
 const EvolutionGraphBuilder = preload("res://scripts/progression/evolution_graph_builder.gd")
 const UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")
+# v6.7: 改造/强化具体加成展示
+const ModificationRegistry = preload("res://scripts/systems/modification_registry.gd")
+const ModuleDefinitions = preload("res://data/module_definitions.gd")
 
 var _card_id: String = ""
 var _scroll: ScrollContainer
@@ -140,6 +143,8 @@ func _add_progress_block() -> void:
 	_add_line("蓝图：%s" % ("已解锁" if unlocked else "未解锁"), Color(0.8, 0.85, 0.9))
 	_add_line("星级：%d / %d" % [star, CardProgressionSettings.STAR_MAX], Color(0.9, 0.88, 0.55))
 	_add_line("改装：%d / %d" % [mod_count, CardProgressionSettings.MOD_MAX], Color(0.85, 0.75, 1.0))
+	# v6.7: 改造具体加成 — 原只显示数字，补充已装改造的中文名 + 效果
+	_add_mod_detail_lines()
 	if BlueprintManager.has_method("get_rank_info"):
 		var rank_info: Dictionary = BlueprintManager.get_rank_info(_card_id)
 		_add_line(
@@ -149,12 +154,67 @@ func _add_progress_block() -> void:
 				],
 			Color(0.95, 0.85, 0.45)
 		)
+	# v6.7: 强化词条加成 — 原只显示星级数字，补充已选词条的效果描述
+	_add_enhance_module_lines()
 	var rarity: String = "common"
 	if DefaultCards.get_card_by_id(_card_id) != null:
 		rarity = String(DefaultCards.get_card_by_id(_card_id).rarity).to_lower()
 	var next_rp: int = StarConfig.get_research_cost_for_next_star(star, rarity) if star < CardProgressionSettings.STAR_MAX else 0
 	if next_rp > 0:
 		_add_line("下一星研究点：%d" % next_rp, Color(0.7, 0.65, 0.95))
+
+
+## v6.7: 列出已装改造的具体名称（从 blueprint_mods 读，用 ModificationRegistry 转中文名）
+func _add_mod_detail_lines() -> void:
+	if BlueprintManager == null or not ("blueprint_mods" in BlueprintManager):
+		return
+	var mods: Array = BlueprintManager.blueprint_mods.get(_card_id, [])
+	if mods.is_empty():
+		return
+	for entry in mods:
+		var mod_id: String = ""
+		if entry is Dictionary:
+			mod_id = String(entry.get("id", ""))
+		else:
+			mod_id = String(entry)
+		if mod_id.is_empty():
+			continue
+		# ModificationRegistry 查中文名 + 效果（统一数据源，避免显示英文 ID）
+		var md: Dictionary = {}
+		if ModificationRegistry != null:
+			md = ModificationRegistry.get_data(mod_id)
+		var mod_name: String = String(md.get("name", mod_id)) if not md.is_empty() else mod_id
+		_add_line("  · %s" % mod_name, Color(0.78, 0.72, 0.95), 11)
+
+
+## v6.7: 列出强化词条的具体效果（从 CardEnhancementManager.get_module_slots 读）
+func _add_enhance_module_lines() -> void:
+	var cem: Node = Engine.get_main_loop().get_root().get_node_or_null("CardEnhancementManager")
+	if cem == null or not cem.has_method("get_module_slots"):
+		return
+	var slots: Array = cem.get_module_slots(_card_id)
+	if slots.is_empty():
+		return
+	for slot in slots:
+		if slot == null:
+			continue
+		var desc: String = ""
+		# ModuleSlot 对象优先用其效果描述 API
+		if slot.has_method("get_effect_description"):
+			desc = String(slot.get_effect_description())
+		if desc.is_empty() and slot.has_method("get_module_name"):
+			var mn: String = String(slot.get_module_name())
+			if not mn.is_empty():
+				desc = mn
+		if desc.is_empty():
+			# 兼容 Dictionary 格式
+			if slot is Dictionary:
+				var mid: String = String(slot.get("module_id", ""))
+				var lvl: int = int(slot.get("level", 1))
+				if not mid.is_empty():
+					desc = "%s Lv.%d" % [ModuleDefinitions.get_module_name(mid), lvl]
+		if not desc.is_empty():
+			_add_line("  ✦ %s" % desc, Color(0.55, 0.95, 0.65), 11)
 
 
 func _add_predecessor_block() -> void:

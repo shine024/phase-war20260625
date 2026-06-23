@@ -665,6 +665,23 @@ func _build_instrument_row(cfg: Dictionary, fsm: Node) -> PanelContainer:
 			trait_label.custom_minimum_size = Vector2(350, 0)
 			trait_label.visible = true
 
+	# v6.7: 主动特殊能力（active_ability）— 7星相位仪的招牌技能，原商店漏显示
+	# 与 phase_instrument_selector.gd:331 的展示格式保持一致
+	var ability_label: Label = row_panel.get_node_or_null("M2/HB2/VB2/AbilityLabel")
+	if ability_label and cfg.has("active_ability"):
+		var ability: Dictionary = cfg.get("active_ability", {})
+		if not ability.is_empty():
+			var ability_name: String = String(ability.get("name", ""))
+			var ability_desc: String = String(ability.get("description", ""))
+			if not ability_name.is_empty() and not ability_desc.is_empty():
+				ability_label.text = "⚡ %s：%s" % [ability_name, ability_desc]
+			elif not ability_desc.is_empty():
+				ability_label.text = "⚡ %s" % ability_desc
+			else:
+				ability_label.text = "⚡ %s" % ability_name
+			ability_label.custom_minimum_size = Vector2(350, 0)
+			ability_label.visible = true
+
 	# 购买按钮
 	var btn2: Button = row_panel.get_node("M2/HB2/BuyBtn")
 	if owned:

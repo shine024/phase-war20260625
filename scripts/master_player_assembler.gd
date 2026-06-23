@@ -50,7 +50,7 @@ static func build_player_master_dict(pm: Node) -> Dictionary:
 	var instr_cfg: Dictionary = {}
 	if pm.has_method("get_current_instrument"):
 		instr_cfg = pm.get_current_instrument()
-	var instr_id: String = String(instr_cfg.get("id", ""))
+	var instr_id: String = str(instr_cfg.get("id", ""))
 	var instr_star: int = int(instr_cfg.get("star", 1))
 
 	# 2. 战斗卡 —— green 槽的战斗卡映射到 equipment.platforms/weapons/energy_cards
@@ -111,7 +111,7 @@ static func build_player_master_dict(pm: Node) -> Dictionary:
 		# 兜底：直接用 RunewordMatcher 匹配
 		active_runewords = RunewordMatcher.check_active_runewords(rune_slots, slot_count)
 	for rw in active_runewords:
-		var rw_id: String = String(rw.get("id", ""))
+		var rw_id: String = str(rw.get("id", ""))
 		if rw_id.is_empty():
 			continue
 		engraved_affixes.append({
@@ -180,7 +180,7 @@ static func evaluate_player_stars(pm: Node) -> Dictionary:
 	return {
 		"stars": int(star_info.get("stars", 1)),
 		"total_score": total,
-		"star_name": String(star_info.get("name", "")),
+		"star_name": str(star_info.get("name", "")),
 		"scores": scores,
 	}
 
@@ -224,14 +224,18 @@ static func _eval_engravings_player(master: Dictionary) -> float:
 		if rune_def.is_empty():
 			total += 30.0  # 查不到也给个保底分
 			continue
-		var rarity: String = String(rune_def.get("rarity", "common"))
+		var rarity: String = str(rune_def.get("rarity", "common"))
 		total += float(RUNE_RARITY_POWER.get(rarity, 40.0))
 	# 符文数量加成（每符文 +25，与 evaluator 原版递减逻辑对齐）
 	total += active_rune_count * 25.0
 
 	# 每个激活的符文之语一个分值（按 tier）
 	for rw in active_runewords:
-		var tier: String = String(rw.get("tier", "tier_2"))
-		total += float(RUNEWORD_TIER_POWER.get(tier, 90.0))
+		# v6.7 修复：tier 是 int（TIER_2..TIER_5），原代码用 String(Variant) 转换
+		# 在 Godot 4.5 当 Variant 持有 int 时运行时崩溃（String 构造函数不支持 int）。
+		# 改用 str() 安全转换，并兼容 tier 为 "tier_N" 字符串的旧格式。
+		var tier_raw: Variant = rw.get("tier", 2)
+		var tier_key: String = "tier_" + str(tier_raw) if typeof(tier_raw) == TYPE_INT else str(tier_raw)
+		total += float(RUNEWORD_TIER_POWER.get(tier_key, 90.0))
 
 	return total

@@ -151,6 +151,13 @@ static func resolve_classic_enemy(archetype_id: String, ctx: EnemyStatContext) -
 	var def_a: float
 	var def_air: float
 	var combat_kind: int = int(cfg.get("combat_kind", 0))
+	# v6.8: tags 含 "aircraft" 的敌人（飞机/直升机/无人机）一律判为 AIR。
+	# 历史 JSON/era 配置只标了 tags 没标 combat_kind，回退到 LIGHT 会导致飞机被当步兵缩放且不悬浮。
+	# 注意：必须在防御派生（L161 match）和输出（L205）之前修正，保证攻防分类与显示分类一致。
+	if combat_kind != GC.CombatKind.AIR:
+		var tags_var: Variant = cfg.get("tags", [])
+		if tags_var is Array and (tags_var as Array).has("aircraft"):
+			combat_kind = GC.CombatKind.AIR
 	if cfg.has("defense_light") or cfg.has("defense_armor") or cfg.has("defense_air"):
 		def_l = float(cfg.get("defense_light", 0.0))
 		def_a = float(cfg.get("defense_armor", 0.0))

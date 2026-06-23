@@ -12,6 +12,7 @@ class_name IntelRevealPopup
 ## 展示的揭示事件已不含 dimension 区分（每敌人每档仅1条事件）。
 
 const IntelDimensions = preload("res://data/intel_dimensions.gd")
+const EnemyOriginMods = preload("res://data/enemy_origin_mods.gd")
 
 signal all_reveals_shown()
 
@@ -270,7 +271,9 @@ func _reward_to_text(reward: Dictionary) -> String:
 			return "掉落率+%.0f%%" % [pct * 100.0]
 		"eom_unlock":
 			var mod_id: String = reward.get("mod_id", "")
-			return "解锁敌源改造【%s】" % [mod_id]
+			# v6.7: mod_id 是英文 ID（如 EOM_INFANTRY_01），转中文名避免显示原始 ID
+			var mod_name: String = _eom_display_name(mod_id)
+			return "解锁敌源改造【%s】" % mod_name
 		"eom_unlock_hint":
 			return "发现敌源改造线索"
 		"intel_branch_hint":
@@ -286,3 +289,12 @@ func _reward_to_text(reward: Dictionary) -> String:
 ## 是否正在显示
 func is_showing() -> bool:
 	return _is_showing
+
+## v6.7: 敌源改造 mod_id 转中文名（原代码直接显示英文 ID）
+func _eom_display_name(mod_id: String) -> String:
+	if mod_id.is_empty():
+		return "未知改造"
+	var def: Dictionary = EnemyOriginMods.ENEMY_ORIGIN_MODS.get(mod_id, {})
+	if not def.is_empty():
+		return String(def.get("name", mod_id))
+	return mod_id

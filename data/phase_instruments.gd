@@ -130,8 +130,9 @@ static func build_default_shop_properties(star: int) -> Array[Dictionary]:
 #  低星配降级版（数值减半/间隔更长/持续时间更短）
 # ─────────────────────────────────────────────
 
-## 1. 火炮连发（新星势力）
-## 每 interval 秒连发 shots 发，每发间隔 shot_interval 秒，对敌方随机单位造成伤害
+## 1. 超级火炮连击（新星势力）
+## 每 interval 秒从屏幕外连击 shots 发，每发间隔 shot_interval 秒，
+## 复用火炮曲射弹道与命中爆炸特效，随机打击敌方单位
 static func ability_artillery_barrage(star: int) -> Dictionary:
 	var interval: float = 10.0
 	var shots: int = 7
@@ -141,10 +142,10 @@ static func ability_artillery_barrage(star: int) -> Dictionary:
 		6: interval = 15.0; shots = 5; shot_interval = 1.2
 	return {
 		"id": "artillery_barrage",
-		"name": "火炮连发",
+		"name": "超级火炮连击",
 		"type": "periodic",
 		"params": {"interval": interval, "shots": shots, "shot_interval": shot_interval, "target": "enemy_random"},
-		"description": "每%d秒连发%d发，每发间隔%.1f秒" % [int(interval), shots, shot_interval],
+		"description": "每%d秒从屏幕外发起%d发火炮曲射，每发间隔%.1f秒，随机打击敌方单位" % [int(interval), shots, shot_interval],
 	}
 
 ## 2. 幻影克隆（螺旋势力）— 同一战斗卡可放2个单位，克隆体+攻/血

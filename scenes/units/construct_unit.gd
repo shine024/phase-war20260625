@@ -285,9 +285,17 @@ func _maybe_apply_card_grid_presentation() -> void:
 	var spr: Sprite2D = get_node_or_null("Sprite") as Sprite2D
 	var walk_sprite: AnimatedSprite2D = get_node_or_null("WalkSprite") as AnimatedSprite2D
 	var poly: Polygon2D = get_node_or_null("Shape") as Polygon2D
-	if spr != null and tex != null:
-		var rl: int = CardGridUnitVisuals.rank_level_from_id(rank_id)
-		CardGridUnitVisuals.apply_battle_unit_presentation(self, spr, card_res, tex, true, rl, int(stats.combat_kind))
+	# 格子战必须统一走 presentation（按 combat_kind 缩放 + 底部基线对齐）。
+	# 关键修复：tex 解析失败时不能跳过 presentation，否则会残留 _update_visual() 设的
+	# 敌方原型 visual_scale（每个 archetype 不同），导致同名卡两张一大一小。
+	# tex 为 null 时用 _update_visual 已设到 spr.texture 的纹理兜底，保证 scale 一致。
+	if spr != null:
+		var use_tex: Texture2D = tex
+		if use_tex == null:
+			use_tex = spr.texture
+		if use_tex != null:
+			var rl: int = CardGridUnitVisuals.rank_level_from_id(rank_id)
+			CardGridUnitVisuals.apply_battle_unit_presentation(self, spr, card_res, use_tex, true, rl, int(stats.combat_kind))
 	if walk_sprite != null:
 		walk_sprite.visible = false
 	if poly != null:

@@ -32,6 +32,8 @@ var _pre_calculated: bool = false  # 伤害已完整计算（防御/强化不再
 var _weapon_name: String = ""  # v6.0: 武器名（用于 VFX 贴图查找）
 ## v6.4: 重型武器标记（曲射/爆炸类启用拖尾与炮口火焰）
 var _is_heavy: bool = false
+## v6.6: 抑制曲射炮口火焰（相位仪「超级火炮连击」从屏幕外飞入，无需炮口火）
+var suppress_muzzle: bool = false
 
 # 行为参数：由武器类型决定
 var pierce_count: int = 0          # 可额外穿透多少个目标（LASER/SNIPER 用）
@@ -453,9 +455,10 @@ func _process_indirect(delta: float) -> void:
 	_direction = (global_position - _indirect_prev_pos).normalized() if global_position != _indirect_prev_pos else _direction
 
 	# v6.4: 曲射发射炮口火焰（仅首帧，重型武器）
+	# v6.6: suppress_muzzle 时跳过（相位仪炮击从屏幕外飞入，无炮口）
 	if not _muzzle_spawned:
 		_muzzle_spawned = true
-		if _is_heavy:
+		if _is_heavy and not suppress_muzzle:
 			_spawn_muzzle_effect(_indirect_start)
 
 	# v6.4: 曲射弹道拖尾跟随飞行切线方向
@@ -719,6 +722,7 @@ func reset_pool_object() -> void:
 	pellet_count = 1
 	spread_angle_deg = 0.0
 	_is_heavy = false  # v6.4: 重型武器标记重置
+	suppress_muzzle = false  # v6.6: 炮口火抑制重置
 
 	_start_position = Vector2.ZERO
 	_direction = Vector2.RIGHT

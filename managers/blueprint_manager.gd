@@ -1227,78 +1227,10 @@ func replace_modification(card: CardResource, old_mod_id: String, new_mod_id: St
 
 	return result
 
-## 进化卡牌（改造保留到新卡牌）
-## 进化需要：纳米材料 + 进化图纸
-func evolve_card(card: CardResource, target_card_id: String) -> Dictionary:
-	var result = {success = false, new_card = null, message = ""}
-
-	# 检查进化条件
-	var check_result = card.check_evolution_requirements(target_card_id)
-	if not check_result.passed:
-		result.message = "进化条件未满足：" + ", ".join(check_result.missing)
-		return result
-
-	# 计算特定进化蓝图ID
-	var evo_blueprint_id = BlueprintDefinitions.get_evolution_blueprint_id(card.card_id, target_card_id)
-
-	# 检查进化图纸（通过ManagerLazyLoader获取IntelItemBag）
-	var bag = get_node_or_null("/root/IntelItemBag")
-	if bag == null or not bag.has_item(evo_blueprint_id):
-		result.message = "缺少进化图纸：%s → %s" % [card.display_name, target_card_id]
-		return result
-
-	# 计算纳米材料消耗（基于目标卡牌战力）
-	var target_card = _get_card_from_library(target_card_id)
-	if target_card == null:
-		result.message = "找不到目标卡牌：%s" % target_card_id
-		return result
-
-	var nano_cost = int(target_card.power * 2.0)  # 进化消耗目标战力2倍的纳米材料
-
-	## v7.1: 直接调用 BasicResourceManager 而非 has_method(self) 检查
-	if not BasicResourceManager.can_afford("nano", nano_cost):
-		result.message = "纳米材料不足（需要%d）" % nano_cost
-		return result
-
-	# 记录旧改造
-	var preserved_mods = card.mods.duplicate(true)
-
-	# 记录进化历史
-	card.record_evolution(card.card_id, target_card_id, preserved_mods)
-
-	# 创建新卡牌（通过DefaultCards）
-	var new_card = target_card  # 使用已获取的卡牌
-
-	# v6.0: 同步武器槽位（继承/替换）
-	if EvolutionPathRegistry and EvolutionPathRegistry.has_method("evolve_weapon_slots"):
-		var evolved_slots = EvolutionPathRegistry.evolve_weapon_slots(card, target_card_id, true)
-		for i in range(evolved_slots.size()):
-			var slot = evolved_slots[i]
-			if slot is WeaponResource:
-				new_card.weapon_slots.append(slot)
-
-	# 转移改造到新卡牌
-	new_card.mods = preserved_mods
-
-	# 继承强化等级
-	new_card.enhance_level = card.enhance_level
-
-	# 消耗资源
-	BasicResourceManager.consume("nano", nano_cost)
-	# 进化图纸不消耗，获得一次后永久可用
-
-	# 更新blueprint数据
-	_remove_blueprint(card.card_id)
-	_add_blueprint(target_card_id, new_card.enhance_level, new_card.mods)
-
-	result.success = true
-	result.new_card = new_card
-	result.message = "进化成功：%s → %s" % [card.display_name, new_card.display_name]
-
-	# 自动保存
-	_auto_save("evolution")
-
-	return result
+# v6.7：死代码 evolve_card 已删除。
+# 该函数（原 1230-1301 行）全项目无调用方，且其"进化消耗纳米 = 目标战力×2"
+# 公式被 evolution_panel.gd 误抄，导致面板显示与实际零消耗的 evolve_blueprint 不符。
+# 进化统一走 evolve_blueprint（→ CardEvolutionManager.evolve_blueprint）。
 
 ## 获取卡牌的当前军衔称号（新接口）
 func get_card_military_title(card: CardResource) -> Dictionary:

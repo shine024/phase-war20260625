@@ -184,8 +184,10 @@ func apply_card_grid_enemy_presentation() -> void:
 			pscore = maxf(50.0, max_hp * 0.28 + (ad / ai) * 2.2)
 		var rank_id: String = RankRules.get_rank_by_power("corporal", pscore)
 		var rl: int = CardGridUnitVisuals.rank_level_from_id(rank_id)
+		# 单位类型（用于按类型缩放卡图 + 空中悬浮）：优先 stats.combat_kind，回退 archetype cfg
+		var ck: int = stats.combat_kind if stats != null else int(cfg.get("combat_kind", 0))
 		sprite_ok = CardGridUnitVisuals.apply_battle_unit_presentation(
-			self, spr, card_res, tex, false, rl
+			self, spr, card_res, tex, false, rl, ck
 		)
 	if poly != null:
 		poly.visible = not sprite_ok
