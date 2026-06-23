@@ -141,14 +141,14 @@ const DATA: Dictionary = {
 		name_en = "Artillery UAV",
 		icon = "res://assets/ui/icons/mod_icons/mod_recon.png",
 		prototype = "RQ-7影子",
-		description = "无人机校射，命中率和视野提升",
+		description = "无人机校射，命中提升+炮兵攻速提升",
 		rarity = "epic",
 	power_mult = 1.6,
 		cost_research = 350,
 		cost_install = 175,
 		slot_type = "recon",
 		conflict_group = "recon",
-		effects = {accuracy_bonus = 0.20, obstacle_ignore = true},
+		effects = {accuracy_bonus = 0.20, attack_interval = -0.15},
 		unlock_conditions = {required_level = 6}
 	},
 

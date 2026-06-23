@@ -296,10 +296,10 @@ const DATA: Dictionary = {
 	# ─── 特殊环境改造 ───────────────────────
 	"arm_13_deep_wading" = {
 		id = ARM_13_DEEP_WADING,
-		name = "深涉渡套件",
-		name_en = "Deep Wading Kit",
-		prototype = "DD坦克",
-		description = "河流地形移动不减速",
+		name = "火控计算机",
+		name_en = "Fire Control Computer",
+		prototype = "M1艾布拉姆斯火控系统",
+		description = "弹道计算机实时解算，开火节奏加快",
 		icon = "res://assets/ui/icons/mod_icons/mod_environment.png",
 		rarity = "uncommon",
 	power_mult = 1.0,
@@ -308,7 +308,7 @@ const DATA: Dictionary = {
 		slot_type = "environment",
 		conflict_group = "environment",
 		effects = {
-			river_no_penalty = true,  # 河流无减速
+			attack_interval = -0.15,  # 火控解算快→开火间隔缩短
 		},
 		unlock_conditions = {
 			required_level = 2,

@@ -29,11 +29,11 @@ const DATA: Dictionary = {
 	"aa_02_iff" = {
 		id = AA_02_IFF, name = "敌我识别器", name_en = "IFF",
 		icon = "res://assets/ui/icons/mod_icons/mod_electronics.png",
-		prototype = "IFF Mark X", description = "防止误击友军",
+		prototype = "IFF Mark X", description = "精准识别轻装目标，对轻装伤害提升",
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 80, cost_install = 40,
 		slot_type = "electronics", conflict_group = "electronics",
-		effects = {no_friendly_fire = true},
+		effects = {attack_light = 0.15},
 		unlock_conditions = {required_level = 1}
 	},
 	"aa_03_missile_rail" = {
@@ -79,11 +79,11 @@ const DATA: Dictionary = {
 	"aa_07_aesa" = {
 		id = AA_07_AESA, name = "相控阵雷达", name_en = "AESA Radar",
 		icon = "res://assets/ui/icons/mod_icons/mod_radar.png",
-		prototype = "AN/MPQ-65", description = "多目标锁定，射程提升",
+		prototype = "AN/MPQ-65", description = "多目标锁定，大范围溅射+射程提升",
 		rarity = "legendary",
 	power_mult = 2.0, cost_research = 450, cost_install = 225,
 		slot_type = "radar", conflict_group = "radar",
-		effects = {multi_target = 3, attack_range = 60},
+		effects = {splash_damage = 0.4, splash_radius = 0.4, attack_range = 60},
 		unlock_conditions = {required_level = 7}
 	},
 	"aa_08_power_gen" = {

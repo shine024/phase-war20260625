@@ -27,11 +27,11 @@ const DATA: Dictionary = {
 	"for_02_tunnel" = {
 		id = FOR_02_TUNNEL, name = "地下坑道", name_en = "Underground Tunnel",
 		icon = "res://assets/ui/icons/mod_icons/mod_network.png",
-		prototype = "马奇诺防线", description = "单位间支援提升，被摧毁50%回收",
+		prototype = "马奇诺防线", description = "地下工事全方位防御，对轻/空/炮伤害减免",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 280, cost_install = 140,
 		slot_type = "network", conflict_group = "network",
-		effects = {network_bonus = 0.30, destroy_recovery = 0.50},
+		effects = {defense_light = 0.20, defense_air = 0.20, defense_armor = 0.15},
 		unlock_conditions = {required_level = 4}
 	},
 	"for_03_auto_turret" = {

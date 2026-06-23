@@ -15,13 +15,13 @@ const ENG_10_CAMOUFLAGE = "eng_10_camouflage"
 
 const DATA: Dictionary = {
 	"eng_01_mine_sweeper" = {
-		id = ENG_01_MINE_SWEEPER, name = "扫雷索", name_en = "Mine Sweeper",
+		id = ENG_01_MINE_SWEEPER, name = "反应装甲", name_en = "Reactive Armor",
 		icon = "res://assets/ui/icons/mod_icons/mod_engineering.png",
-		prototype = "坦克扫雷装置", description = "清除地雷，轻微减速",
+		prototype = "Kontakt-5爆炸反应装甲", description = "破甲弹命中时爆炸反制，大幅减免伤害",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 140, cost_install = 70,
 		slot_type = "engineering", conflict_group = "engineering",
-		effects = {mine_clear = true, move_speed = -5},
+		effects = {defense_armor = 0.25, damage_reduction = 0.10},
 		unlock_conditions = {required_level = 2}
 	},
 	"eng_02_explosives" = {
@@ -65,13 +65,13 @@ const DATA: Dictionary = {
 		unlock_conditions = {required_level = 1}
 	},
 	"eng_06_crane" = {
-		id = ENG_06_CRANE, name = "起重机", name_en = "Recovery Crane",
+		id = ENG_06_CRANE, name = "间隙装甲", name_en = "Spaced Armor",
 		icon = "res://assets/ui/icons/mod_icons/mod_recovery.png",
-		prototype = "装甲回收车", description = "战损单位50%回收",
+		prototype = "谢尔曼/四号附加装甲板", description = "外挂间隙装甲板，提前引爆来袭弹丸",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 180, cost_install = 90,
 		slot_type = "recovery", conflict_group = "recovery",
-		effects = {salvage_rate = 0.50},
+		effects = {defense_armor = 0.20, max_hp = 0.08},
 		unlock_conditions = {required_level = 3}
 	},
 	"eng_07_generator" = {

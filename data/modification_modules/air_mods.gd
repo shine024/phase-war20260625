@@ -51,11 +51,11 @@ const DATA: Dictionary = {
 	"air_04_aesa" = {
 		id = AIR_04_AESA, name = "有源相控阵雷达", name_en = "AESA Radar",
 		icon = "res://assets/ui/icons/mod_icons/mod_radar.png",
-		prototype = "AN/APG-77", description = "多目标锁定，射程提升",
+		prototype = "AN/APG-77", description = "多目标锁定，大范围溅射+射程提升",
 		rarity = "legendary",
 	power_mult = 2.0, cost_research = 480, cost_install = 240,
 		slot_type = "radar", conflict_group = "radar",
-		effects = {multi_target = 4, attack_range = 60},
+		effects = {splash_damage = 0.5, splash_radius = 0.5, attack_range = 60},
 		unlock_conditions = {required_level = 7}
 	},
 	"air_05_helmet_sight" = {
@@ -139,13 +139,13 @@ const DATA: Dictionary = {
 		unlock_conditions = {required_level = 6}
 	},
 	"air_13_ejection_seat" = {
-		id = AIR_13_EJECTION_SEAT, name = "弹射座椅", name_en = "Ejection Seat",
+		id = AIR_13_EJECTION_SEAT, name = "钛合金浴缸座舱", name_en = "Titanium Bathtub Cockpit",
 		icon = "res://assets/ui/icons/mod_icons/mod_survival.png",
-		prototype = "ACES II", description = "被击落50%返还资源",
+		prototype = "A-10钛合金装甲浴缸", description = "钛合金装甲包裹座舱，抗弹能力大幅提升",
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 120, cost_install = 60,
 		slot_type = "survival", conflict_group = "survival",
-		effects = {refund_on_loss = 0.50},
+		effects = {defense_armor = 0.25, max_hp = 0.10},
 		unlock_conditions = {required_level = 2}
 	},
 	"air_14_swing_wing" = {
