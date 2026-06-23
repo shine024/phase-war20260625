@@ -26,13 +26,14 @@ static func get_card_rarity(card_id: String) -> String:
 	return get_card_base_rarity(card_id)
 
 static func get_rarity_multiplier(card_id: String) -> float:
+	# v6.8: 稀有度乘区压缩（6档），避免稀有度过度主导战力
 	var r: String = get_card_rarity(card_id)
 	match r:
-		"uncommon":  return 1.1
-		"rare":      return 1.25
-		"legendary": return 1.5
-		"mythic":    return 1.8
-		"epic":      return 1.4
+		"uncommon":  return 1.04
+		"rare":      return 1.08
+		"epic":      return 1.12
+		"legendary": return 1.16
+		"mythic":    return 1.20
 		_:           return 1.0
 
 static func get_effective_power_multiplier(card_id: String, bpm_ref: Node) -> float:
@@ -104,8 +105,8 @@ static func _apply_evolution_hp_floor(stats: UnitStats, platform_card_id: String
 	var floor_base: float = float(bpm_ref.blueprint_evolution_hp_floor.get(platform_card_id, 0.0))
 	if floor_base <= 0.0:
 		return
-	var era_mul: float = BattleCardV3.era_hp_multiplier(clampi(era, 0, 4)) if era >= 0 else 1.0
-	stats.max_hp = maxf(stats.max_hp, floor_base * era_mul)
+	# v6.8: 时代缩放已移除，进化 HP 下限直接用 floor_base（不再乘时代倍率）
+	stats.max_hp = maxf(stats.max_hp, floor_base)
 
 ## ─────────── 军衔 ───────────
 

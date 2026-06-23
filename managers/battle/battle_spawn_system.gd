@@ -8,8 +8,6 @@ const GC = preload("res://resources/game_constants.gd")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const UnitStatsTable = preload("res://resources/unit_stats_table.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
-const FactionCardGenerator = preload("res://managers/faction/faction_card_generator.gd")
-const FactionCardBonuses = preload("res://data/faction_card_bonuses.gd")
 const SwarmEnemyControllerScript = preload("res://scenes/units/swarm_enemy_controller.gd")
 const _CardGridSlotsPerSide: int = BattleSlotGrid.SLOT_COUNT
 const _DamageNumberDisplayScript = preload("res://scenes/effects/damage_number_display.gd")
@@ -901,27 +899,9 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 		if "_cached_player_rank_stars" in _phase_instrument:
 			pf_bonus_key += "|ps%d" % int(_phase_instrument._cached_player_rank_stars)
 
-	# === 势力变体查询（需在缓存 key 之前，因 key 包含势力信息） ===
+	# v6.8: 势力变体加成已停用（effective_card 直接使用原始 platform_card，势力不影响战斗数值）
 	var effective_card: CardResource = platform_card
-	var faction_bonus_dict: Dictionary = {}
 	var active_faction_cache_key: String = ""
-	if not platform_card.is_faction_variant:
-		var fsm: Node = _get_autoload_node("FactionSystemManager")
-		if fsm and fsm.has_method("get_active_faction"):
-			var active_faction: String = fsm.get_active_faction()
-			if not active_faction.is_empty():
-				var faction_level: int = fsm.get_faction_level(active_faction)
-				if faction_level > 0:
-					active_faction_cache_key = "%s:%d" % [active_faction, faction_level]
-					var variant: CardResource = FactionCardGenerator.generate_faction_variant(
-						platform_card.card_id, active_faction, faction_level
-					)
-					if variant != null:
-						effective_card = variant
-						faction_bonus_dict = FactionCardBonuses.get_bonus(active_faction, faction_level)
-	else:
-		active_faction_cache_key = "%s:%d" % [platform_card.faction_id, platform_card.faction_level]
-		faction_bonus_dict = FactionCardBonuses.get_bonus(platform_card.faction_id, platform_card.faction_level)
 
 	# v6.6: 注入强化词条（CardEnhancementManager 的 module_slots → effective_card）
 	# 战斗读取 card.module_slots，但玩家选择的词条存在 CardEnhancementManager.card_module_slots
@@ -952,15 +932,7 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 
 	var stats = UnitStatsTable.build_stats_from_card(effective_card, battle_era)
 
-	# 势力特殊属性注入到 UnitStats（闪避/暴击/命中/回复/减伤/法则效果）
-	if not faction_bonus_dict.is_empty():
-		FactionCardGenerator.apply_faction_special_to_stats(stats, faction_bonus_dict)
-	# === 势力技能树加成注入 ===
-	var fsm_skill: Node = _get_autoload_node("FactionSystemManager")
-	if fsm_skill and fsm_skill.has_method("get_active_faction_skill_effects"):
-		var skill_effects: Dictionary = fsm_skill.get_active_faction_skill_effects()
-		if not skill_effects.is_empty():
-			_apply_skill_tree_effects(stats, skill_effects)
+	# v6.8: 势力特殊属性 / 势力技能树加成已停用（势力不影响战斗数值）
 	var bm_growth: Node = _get_autoload_node("BlueprintManager")
 	if bm_growth and bm_growth.has_method("apply_growth_to_stats"):
 		bm_growth.apply_growth_to_stats(stats, platform_card, weapon_cards)
@@ -971,10 +943,7 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 	# v6.2: 符文之语全局加成注入（所有玩家单位共享）
 	if _phase_instrument and _phase_instrument.has_method("get_rune_bonus"):
 		_apply_rune_bonus_to_stats(stats, _phase_instrument.get_rune_bonus())
-	# v6.6: 敌源MOD（D槽）效果注入（仅装备了EOM的卡生效；apply 内部按 card_id 查装备）
-	var eom_mgr = _get_autoload_node("EnemyOriginModManager")
-	if eom_mgr and eom_mgr.has_method("apply_eom_to_stats"):
-		eom_mgr.apply_eom_to_stats(platform_card.card_id, stats)
+	# v6.8: 敌源MOD（D槽）战斗加成已停用（EOM 面板/掉落/存档保留）
 	_stats_cache[key] = stats.duplicate()
 	return stats
 
@@ -1051,49 +1020,4 @@ func _get_autoload_node(name: String) -> Node:
 			return tree.root.get_node_or_null(name)
 	return null
 
-## 应用势力技能树效果到UnitStats
-func _apply_skill_tree_effects(stats: Node, effects: Dictionary) -> void:
-	# 属性加成（百分比）
-	var sb: Dictionary = effects.get("stat_bonus", {})
-	if sb.has("hp") and float(sb["hp"]) != 0.0:
-		stats.max_hp *= (1.0 + float(sb["hp"]))
-	if sb.has("atk_light") and float(sb["atk_light"]) != 0.0:
-		stats.attack_light *= (1.0 + float(sb["atk_light"]))
-	if sb.has("atk_armor") and float(sb["atk_armor"]) != 0.0:
-		stats.attack_armor *= (1.0 + float(sb["atk_armor"]))
-	if sb.has("atk_air") and float(sb["atk_air"]) != 0.0:
-		stats.attack_air *= (1.0 + float(sb["atk_air"]))
-	if sb.has("def_light") and float(sb["def_light"]) != 0.0:
-		stats.defense_light *= (1.0 + float(sb["def_light"]))
-	if sb.has("def_armor") and float(sb["def_armor"]) != 0.0:
-		stats.defense_armor *= (1.0 + float(sb["def_armor"]))
-	if sb.has("def_air") and float(sb["def_air"]) != 0.0:
-		stats.defense_air *= (1.0 + float(sb["def_air"]))
-	if sb.has("attack_speed") and float(sb["attack_speed"]) != 0.0:
-		var spd_mult: float = 1.0 + float(sb["attack_speed"])
-		stats.attack_light_speed *= spd_mult
-		stats.attack_armor_speed *= spd_mult
-		stats.attack_air_speed *= spd_mult
-	if sb.has("dodge") and float(sb["dodge"]) != 0.0:
-		stats.dodge_chance = minf(stats.dodge_chance + float(sb["dodge"]), 0.80)
-	if sb.has("crit_chance") and float(sb["crit_chance"]) != 0.0:
-		stats.crit_chance = minf(stats.crit_chance + float(sb["crit_chance"]), 1.0)
-	if sb.has("crit_damage") and float(sb["crit_damage"]) != 0.0:
-		stats.crit_damage_bonus += float(sb["crit_damage"])
-	if sb.has("accuracy") and float(sb["accuracy"]) != 0.0:
-		stats.faction_accuracy_bonus = minf(stats.faction_accuracy_bonus + float(sb["accuracy"]), 0.50)
-	if sb.has("effect") and float(sb["effect"]) != 0.0:
-		stats.faction_effect_bonus *= (1.0 + float(sb["effect"]))
-	if sb.has("hp_regen") and float(sb["hp_regen"]) != 0.0:
-		stats.hp_regen += float(sb["hp_regen"])
-	if sb.has("damage_reduction") and float(sb["damage_reduction"]) != 0.0:
-		stats.damage_reduction = minf(stats.damage_reduction + float(sb["damage_reduction"]), 0.50)
-	if sb.has("move_speed") and float(sb["move_speed"]) != 0.0:
-		stats.move_speed *= (1.0 + float(sb["move_speed"]))
-	if sb.has("range") and int(sb["range"]) != 0:
-		stats.attack_range += int(sb["range"])
-	# 部署加成（在部署阶段使用）
-	# 特殊效果标记（由战斗系统读取处理）
-	var specials: Array = effects.get("special", [])
-	if not specials.is_empty():
-		stats.skill_tree_specials = specials
+

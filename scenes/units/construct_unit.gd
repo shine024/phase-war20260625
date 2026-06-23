@@ -72,14 +72,6 @@ var _attack_phase_timer: float = 0.0
 var target: Node2D = null
 var _weapon_cfgs: Array = []
 var _move_target: Vector2 = Vector2.INF
-var _law_regen_per_sec: float = 0.0
-var _base_stats_ready: bool = false
-var _base_max_hp: float = 100.0
-var _base_attack_damage: float = 10.0
-var _base_move_speed: float = 0.0
-var _base_attack_interval: float = 1.0
-## 部署时各武器槽基础伤害，与相位法则伤害倍率相乘（多槽与 attack_damage 主行一致）
-var _base_weapon_damages: Array = []
 # 性能优化：缓存 HP 比率，避免每帧更新 UI
 var _cached_hp_ratio: float = -1.0
 # P0 性能优化：缓存战斗模式判定，避免每帧 has_method + is_card_grid_battle 反射调用链
@@ -141,11 +133,7 @@ func _ready() -> void:
 	if SignalBus:
 		if not SignalBus.unit_move_command.is_connected(_on_unit_move_command):
 			SignalBus.unit_move_command.connect(_on_unit_move_command)
-		if SignalBus.has_signal("phase_law_runtime_changed"):
-			if not SignalBus.phase_law_runtime_changed.is_connected(_on_phase_law_runtime_changed):
-				SignalBus.phase_law_runtime_changed.connect(_on_phase_law_runtime_changed)
-	# 应用相位法则的被动加成（如装甲增益）
-	_apply_phase_law_passives()
+	# v6.8: 相位法则被动加成（我方）已停用；敌方减益不受影响
 
 func setup(p_is_player: bool, p_stats: UnitStats, forced_enemy_visual_archetype_id: String = "") -> void:
 	is_player = p_is_player
@@ -169,11 +157,6 @@ func setup(p_is_player: bool, p_stats: UnitStats, forced_enemy_visual_archetype_
 		if aura_summary is Dictionary and not aura_summary.is_empty():
 			set_meta("mod_aura_summary", aura_summary)
 	hp = stats.max_hp
-	_base_max_hp = stats.max_hp
-	_base_attack_damage = stats.attack_damage
-	_base_move_speed = stats.move_speed
-	_base_attack_interval = stats.attack_interval
-	_base_stats_ready = true
 	velocity = Vector2.ZERO
 	_weapon_cfgs.clear()
 	if stats != null and stats.weapons.size() > 0:
@@ -190,12 +173,6 @@ func setup(p_is_player: bool, p_stats: UnitStats, forced_enemy_visual_archetype_
 		# 确保 _weapon_cfgs 至少有一个占位项（兼容旧逻辑）
 		var fallback: Dictionary = {"timer": 0.0, "weapon_type": GC.WeaponType.DIRECT, "damage": 0.0, "phase": AttackPhase.IDLE, "phase_timer": 0.0}
 		_weapon_cfgs.append(fallback)
-	_base_weapon_damages.clear()
-	for w in stats.weapons:
-		var d0 := 0.0
-		if w is Dictionary:
-			d0 = float((w as Dictionary).get("damage", 0.0))
-		_base_weapon_damages.append(d0)
 	remove_from_group("player_units")
 	remove_from_group("enemy_units")
 	if is_player:
@@ -310,7 +287,7 @@ func _maybe_apply_card_grid_presentation() -> void:
 	var poly: Polygon2D = get_node_or_null("Shape") as Polygon2D
 	if spr != null and tex != null:
 		var rl: int = CardGridUnitVisuals.rank_level_from_id(rank_id)
-		CardGridUnitVisuals.apply_battle_unit_presentation(self, spr, card_res, tex, true, rl)
+		CardGridUnitVisuals.apply_battle_unit_presentation(self, spr, card_res, tex, true, rl, int(stats.combat_kind))
 	if walk_sprite != null:
 		walk_sprite.visible = false
 	if poly != null:
@@ -378,7 +355,7 @@ func apply_card_grid_enemy_presentation() -> void:
 	var tex: Texture2D = CardGridUnitVisuals.resolve_battle_icon_texture(card_res, arch_for_icon, cfg)
 	if spr != null and tex != null:
 		sprite_ok = CardGridUnitVisuals.apply_battle_unit_presentation(
-			self, spr, card_res, tex, false, rank_level
+			self, spr, card_res, tex, false, rank_level, int(stats.combat_kind)
 		)
 	if walk_sprite != null:
 		walk_sprite.visible = false
@@ -498,67 +475,6 @@ func _sync_weapon_cfgs_from_stats() -> void:
 			cfg["damage"] = float(sw["damage"])
 		_weapon_cfgs[i] = cfg
 
-
-func _apply_phase_law_passives() -> void:
-	if stats == null:
-		return
-	if not _base_stats_ready:
-		_base_max_hp = stats.max_hp
-		_base_attack_damage = stats.attack_damage
-		_base_move_speed = stats.move_speed
-		_base_attack_interval = stats.attack_interval
-		_base_stats_ready = true
-	var plm: Node = _resolve_autoload(&"PhaseLawManager")
-	if not plm or not plm.has_method("get_passive_runtime_tags_for_side"):
-		return
-	var tags: Array = plm.get_passive_runtime_tags_for_side(true)
-	var hp_mult: float = 1.0
-	var dmg_mult: float = 1.0
-	var move_mult: float = 1.0
-	var atkspd_mult: float = 1.0
-	_law_regen_per_sec = 0.0
-	for t in tags:
-		if not t is Dictionary:
-			continue
-		var effect: String = String(t.get("effect", ""))
-		var v: float = float(t.get("value", 0.0))
-		match effect:
-			"armor_buff", "aegis_link", "fortify_protocol", "resonant_plate":
-				hp_mult *= 1.0 + max(0.0, v)
-			"afterburn", "entropy_lens":
-				dmg_mult *= 1.0 + max(0.0, v)
-			"arc_beacon":
-				atkspd_mult *= 1.0 + max(0.0, v)
-			"surge_drive", "phase_cloak":
-				move_mult *= 1.0 + max(0.0, v)
-			"regen_out_of_combat":
-				_law_regen_per_sec += max(0.0, v)
-			_:
-				pass
-
-	var old_max_hp: float = maxf(1.0, stats.max_hp)
-	var hp_ratio: float = clampf(hp / old_max_hp, 0.0, 1.0)
-	stats.max_hp = _base_max_hp * hp_mult
-	stats.attack_damage = _base_attack_damage * dmg_mult
-	if _base_weapon_damages.size() == stats.weapons.size() and not stats.weapons.is_empty():
-		for i in range(stats.weapons.size()):
-			var w: Dictionary = stats.weapons[i] as Dictionary
-			w["damage"] = maxf(0.0, float(_base_weapon_damages[i]) * dmg_mult)
-			stats.weapons[i] = w
-	elif stats.weapons.size() == 1:
-		var w1: Dictionary = stats.weapons[0] as Dictionary
-		w1["damage"] = stats.attack_damage
-		stats.weapons[0] = w1
-	stats.move_speed = _base_move_speed * move_mult
-	stats.attack_interval = max(0.1, _base_attack_interval / atkspd_mult)
-	_sync_weapon_cfgs_from_stats()
-	hp = maxf(1.0, stats.max_hp * hp_ratio)
-
-func _on_phase_law_runtime_changed() -> void:
-	if stats == null:
-		return
-	_apply_phase_law_passives()
-	_update_hp_bar()
 
 func _update_shape() -> void:
 	var poly: Polygon2D = $Shape as Polygon2D
@@ -922,9 +838,6 @@ func _physics_process(delta: float) -> void:
 	# 性能优化：静止单位跳过空间网格更新
 	if velocity != Vector2.ZERO:
 		_update_in_spatial_grid()
-	if _law_regen_per_sec > 0.0 and target == null and hp < stats.max_hp:
-		hp = minf(stats.max_hp, hp + _law_regen_per_sec * delta)
-		_update_hp_bar()  # 回血时更新 HP 条
 	# 卡牌特殊能力：平台效果（累加器降低调用频率，每0.2s结算一次）
 	if _has_regen_frame or _has_abrams_mk2 or _has_storm_rider or _has_repair_fortress:
 		if target == null:
@@ -1248,8 +1161,6 @@ func _cleanup_before_destroy() -> void:
 	if SignalBus:
 		if SignalBus.has_signal("unit_move_command") and SignalBus.unit_move_command.is_connected(_on_unit_move_command):
 			SignalBus.unit_move_command.disconnect(_on_unit_move_command)
-		if SignalBus.has_signal("phase_law_runtime_changed") and SignalBus.phase_law_runtime_changed.is_connected(_on_phase_law_runtime_changed):
-			SignalBus.phase_law_runtime_changed.disconnect(_on_phase_law_runtime_changed)
 
 ## =========================================================================
 ## 性能优化：空间分区系统集成

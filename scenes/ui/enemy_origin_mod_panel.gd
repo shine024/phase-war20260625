@@ -8,7 +8,7 @@ class_name EnemyOriginModPanel
 ## 数据流：
 ##   - 已解锁EOM列表、装备状态：EnemyOriginModManager
 ##   - 装备写入：BlueprintManager.blueprint_enemy_origin_mod[card_id]
-##   - 战斗生效：battle_spawn_system._build_stats_cached → apply_eom_to_stats
+##   - 战斗加成：v6.8 已停用（EOM 仅保留 UI/装备/掉落/存档）
 ##
 ## 使用方式：
 ##   var panel = EnemyOriginModPanel.create(popup_layer)

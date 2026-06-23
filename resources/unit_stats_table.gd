@@ -57,13 +57,7 @@ static func build_stats_from_card(card: CardResource, era_override: int = -1) ->
 	stats.defense_armor = recal_def["defense_armor"]
 	stats.defense_air = recal_def["defense_air"]
 
-	# 时代缩放
-	if e >= 0:
-		stats.max_hp *= BattleCardV3.era_hp_multiplier(clampi(e, 0, 4))
-		stats.attack_light *= BattleCardV3.era_damage_multiplier(clampi(e, 0, 4))
-		stats.attack_armor *= BattleCardV3.era_damage_multiplier(clampi(e, 0, 4))
-		stats.attack_air *= BattleCardV3.era_damage_multiplier(clampi(e, 0, 4))
-		stats.attack_range *= BattleCardV3.era_range_multiplier(clampi(e, 0, 4))
+	# v6.8: 时代缩放已移除（我方单位不按时代放大数值，敌方走独立的 wave/level 难度曲线）
 
 	# 多武器（如果有）
 	stats.weapons.clear()
@@ -71,9 +65,6 @@ static func build_stats_from_card(card: CardResource, era_override: int = -1) ->
 		for w_entry in card.multi_weapons:
 			var entry: Dictionary = w_entry.duplicate()
 			entry["timer"] = 0.0
-			if e >= 0:
-				entry["damage"] = float(entry.get("damage", 0.0)) * BattleCardV3.era_damage_multiplier(clampi(e, 0, 4))
-				entry["range"] = float(entry.get("range", 0.0)) * BattleCardV3.era_range_multiplier(clampi(e, 0, 4))
 			stats.weapons.append(entry)
 
 	# ═══════════════════════════════════════════════════════════
@@ -91,10 +82,6 @@ static func build_stats_from_card(card: CardResource, era_override: int = -1) ->
 	for weapon in card.weapon_slots:
 		if weapon is WeaponResource and weapon.enabled:
 			var w_copy = weapon.clone()
-			# 应用时代伤害缩放
-			if e >= 0:
-				w_copy.damage *= BattleCardV3.era_damage_multiplier(clampi(e, 0, 4))
-				w_copy.range_value = int(float(w_copy.range_value) * BattleCardV3.era_range_multiplier(clampi(e, 0, 4)))
 			tmp_slots.append(w_copy)
 		else:
 			# 添加空槽位占位
