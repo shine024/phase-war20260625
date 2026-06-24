@@ -1279,7 +1279,7 @@ func _format_module_effect(effect_key: String, base_val: float, effect_type: Str
 		"attack_range": "射程", "attack_interval": "攻速", "dodge_chance": "闪避",
 		"faction_accuracy_bonus": "命中",
 	}
-	var label := name_map.get(effect_key, effect_key)
+	var label: String = name_map.get(effect_key, effect_key)
 	# 百分比类统一换算：×100，≥1% 显示整数、<1% 保留1位小数（避免 hp_regen=0.003→+0%）
 	var pct_str := func(p: float) -> String:
 		var pct := p * 100.0
