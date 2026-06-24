@@ -52,8 +52,9 @@ func test_siege_enhance_growth_bias_exceeds_scout() -> void:
 	add_child(cem)
 	var siege_card: CardResource = DefaultCards.get_card_by_id("platform_ww2_siege")
 	var scout_card: CardResource = DefaultCards.get_card_by_id("platform_ww2_light")
-	cem.card_enhancement_level[siege_card.card_id] = 9
-	cem.card_enhancement_level[scout_card.card_id] = 9
+	# v6.11：强化等级实际存储在卡牌的 enhance_level 字段（非 cem.card_enhancement_level）
+	siege_card.enhance_level = 9
+	scout_card.enhance_level = 9
 	var st_siege: UnitStats = UnitStatsTable.build_multi_stats(
 		siege_card.platform_type, [siege_card.default_weapon_type], 0
 	)

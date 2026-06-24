@@ -290,10 +290,9 @@ func _update_current_card_info() -> void:
 	if current_card_info == null or selected_card == null:
 		return
 
-	var rank_info = selected_card.get_military_rank()
 	var power = _get_current_power_score()
-	current_card_info.text = "🏅 %s   ⚡ 战力 %d   🔧 改造 %d/9" % [
-		rank_info.name, power, selected_card.mods.size()
+	current_card_info.text = "⬆ 强化 Lv.%d   ⚡ 战力 %d   🔧 改造 %d/9" % [
+		selected_card.enhance_level, power, selected_card.mods.size()
 	]
 
 ## 获取当前卡牌的战力评分
@@ -336,10 +335,9 @@ func _update_detail_panel() -> void:
 
 	# 更新基础信息
 	if info_details:
-		var rank_info = target_card.get_military_rank()
 		# v6.2: 目标战力用统一估算（含强化+改造基准），与对比栏一致
 		var target_pw = _get_target_power_score(selected_target_id)
-		info_details.text = "军衔：%s | 战力：%d\n" % [rank_info.name, target_pw]
+		info_details.text = "强化 Lv.%d | 战力：%d\n" % [target_card.enhance_level, target_pw]
 		info_details.text += "时代：%s | 类型：%s\n" % [target_card.era, target_card.combat_kind]
 		info_details.text += "武器：%s\n" % target_card.weapon_type
 

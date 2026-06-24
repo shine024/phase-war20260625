@@ -1232,10 +1232,6 @@ func replace_modification(card: CardResource, old_mod_id: String, new_mod_id: St
 # 公式被 evolution_panel.gd 误抄，导致面板显示与实际零消耗的 evolve_blueprint 不符。
 # 进化统一走 evolve_blueprint（→ CardEvolutionManager.evolve_blueprint）。
 
-## 获取卡牌的当前军衔称号（新接口）
-func get_card_military_title(card: CardResource) -> Dictionary:
-	return card.get_military_rank()
-
 ## 获取可用的改造列表（按卡牌ID精筛）
 func get_available_modifications(card: CardResource) -> Array:
 	# ModificationRegistry是autoload，直接访问

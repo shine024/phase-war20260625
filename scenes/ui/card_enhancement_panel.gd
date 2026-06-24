@@ -1114,8 +1114,9 @@ func _show_module_selection_popup(card_id: String, enhance_level: int) -> void:
 		var mid := String(module_id)
 		var module_name: String = ModuleDefinitions.get_module_name(mid)
 		var effect_key: String = ModuleDefinitions.get_effect_key(mid)
+		var effect_type: String = ModuleDefinitions.get_effect_type(mid)
 		var base_val: float = ModuleDefinitions.get_base_value(mid)
-		var effect_desc: String = _format_module_effect(effect_key, base_val)
+		var effect_desc: String = _format_module_effect(effect_key, base_val, effect_type)
 		var btn := Button.new()
 		btn.text = "%s  (%s)" % [module_name, effect_desc]
 		btn.custom_minimum_size = Vector2(0, 36)
@@ -1265,18 +1266,34 @@ func _safe_refresh_after_module_popup() -> void:
 	_update_detail_panel()
 	_update_resource_labels()
 
-## 格式化词条效果描述
-func _format_module_effect(effect_key: String, base_val: float) -> String:
-	var labels: Dictionary = {
-		"max_hp": "生命+%d", "attack_light": "轻攻+%d", "attack_armor": "重攻+%d",
-		"attack_air": "防空+%d", "defense_light": "轻防+%d", "defense_armor": "重防+%d",
-		"defense_air": "空防+%d", "damage_reduction": "减伤+%.0f%%", "crit_chance": "暴击+%.0f%%",
-		"crit_damage_bonus": "暴伤+%.0f%%", "lifesteal": "吸血+%.0f%%", "splash_damage": "溅射+%.0f%%",
-		"armor_penetration": "穿甲+%.0f%%", "chain_chance": "连锁+%.0f%%", "shield_on_kill": "击杀护盾+%.0f%%",
-		"hp_regen": "回血+%.0f%%", "move_speed": "移速+%d", "attack_range": "射程+%d",
-		"dodge_chance": "闪避+%.0f%%", "faction_accuracy_bonus": "命中+%.0f%%",
+## 格式化词条效果描述（v6.10: 用 effect_type 精确格式化，修复"生命+0"——
+## base_value 全是小数百分比如 max_hp=0.12，旧逻辑 int(0.12)=0 导致显示+0）
+func _format_module_effect(effect_key: String, base_val: float, effect_type: String = "") -> String:
+	var name_map := {
+		"max_hp": "生命", "attack_damage": "攻击", "attack_light": "轻攻", "attack_armor": "重攻",
+		"attack_air": "防空", "defense": "防御", "defense_light": "轻防", "defense_armor": "重防",
+		"defense_air": "空防", "damage_reduction": "减伤", "crit_chance": "暴击",
+		"crit_damage_bonus": "暴伤", "lifesteal": "吸血", "splash_damage": "溅射",
+		"armor_penetration": "穿甲", "chain_chance": "连锁", "shield_on_kill": "击杀护盾",
+		"hp_regen": "回血", "deploy_speed": "部署", "move_speed": "移速",
+		"attack_range": "射程", "attack_interval": "攻速", "dodge_chance": "闪避",
+		"faction_accuracy_bonus": "命中",
 	}
-	var tmpl: String = labels.get(effect_key, "%s+%.1f" % [effect_key, base_val])
-	if tmpl.find("%%") >= 0:
-		return tmpl % (base_val * 100.0)
-	return tmpl % int(base_val)
+	var label := name_map.get(effect_key, effect_key)
+	# 百分比类统一换算：×100，≥1% 显示整数、<1% 保留1位小数（避免 hp_regen=0.003→+0%）
+	var pct_str := func(p: float) -> String:
+		var pct := p * 100.0
+		if abs(pct) >= 1.0:
+			return "%+.0f%%" % pct
+		return "%+.1f%%" % pct
+	# 按 effect_type 决定数值格式（百分比类 ×100，固定值类直接整数）
+	match effect_type:
+		"percent_mult", "percent_flat", "range_mult", "interval_mult":
+			return "%s%s" % [label, pct_str.call(base_val)]
+		"flat_add", "speed_add":
+			return "%s%+d" % [label, int(base_val)]
+		_:
+			# 兜底：小数按百分比，整数按固定值（向后兼容无 effect_type 的调用）
+			if abs(base_val) < 1.0 and base_val != 0.0:
+				return "%s%s" % [label, pct_str.call(base_val)]
+			return "%s%+d" % [label, int(base_val)]

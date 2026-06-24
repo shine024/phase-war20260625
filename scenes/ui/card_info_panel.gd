@@ -634,10 +634,7 @@ func _build_nurture_text(card: CardResource) -> String:
 		return ""
 	var parts: Array[String] = []
 	if card.card_type == GC.CardType.COMBAT_UNIT:
-		var rank_info: Dictionary = card.get_military_rank() if card.has_method("get_military_rank") else {}
-		var rank_name: String = str(rank_info.get("name", ""))
-		if not rank_name.is_empty():
-			parts.append("军衔：%s" % rank_name)
+		parts.append("强化 Lv.%d" % card.enhance_level)
 		var power: int = card.get_current_power() if card.has_method("get_current_power") else 0
 		parts.append("战力：%d" % power)
 	if BlueprintManager.has_method("get_card_xp_progress"):

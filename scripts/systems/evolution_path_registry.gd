@@ -158,12 +158,16 @@ static func check_evolution_requirements(card: Dictionary, target_card_id: Strin
 	var power_ratio = requirements.get("power_ratio", 1.0)
 	var card_id = card.get("id", "")
 	var base_power = card.get("power", 0)
-	var current_power = card.get("level", 1)
+	var enhance_level = card.get("level", 1)
 	var target_power = target_node.get("power", 0)
 	var min_power = int(target_power * power_ratio)
 
-	# 计算实际战力（包含强化和改造加成）
-	var actual_power = MilitaryTitleRegistry.calculate_current_power(base_power, current_power, _identify_unit_type(card_id))
+	# v6.11：计算实际战力（包含强化和改造加成）
+	# 原 MilitaryTitleRegistry.calculate_current_power 已随称号系统移除，此处内联等价计算：
+	# 实际战力 = base_power × 强化倍率 + 改造战力加成
+	var level_mult := UnifiedRankSystem.get_power_multiplier(enhance_level)
+	var mod_bonus := _estimate_modifications_power_bonus(card.get("installed_modifications", []))
+	var actual_power := int(base_power * level_mult) + mod_bonus
 
 	if actual_power < min_power:
 		result.passed = false
@@ -214,9 +218,10 @@ static func calculate_evolved_stats(old_card: Dictionary, target_card_id: String
 		defense_air = target_node.get("defense_air", 0),
 	}
 
-	# 继承旧改造加成
+	# 继承旧改造加成（普通改造 + 强化词条都继承，与 card_evolution_manager.evolve_blueprint 的全量复制一致）
+	# v6.10: 改用 apply_with_level（支持 level_effects，强化词条加成才能在预览里正确反映）
 	var old_mods = old_card.get("installed_modifications", [])
-	var mod_bonus = ModificationRegistry.apply_effects({}, old_mods)
+	var mod_bonus = ModificationRegistry.apply_with_level({}, old_mods)
 
 	# 应用继承比例
 	for key in mod_bonus.keys():
@@ -347,6 +352,19 @@ static func _count_eom_modifications(modifications: Array) -> int:
 		if mod_id.begins_with("EOM_"):
 			count += 1
 	return count
+
+## v6.11：估算改造对战力的加成（替代已移除的 MilitaryTitleRegistry.get_modifications_power_bonus）
+## 改造加成 = 各改造 power_mult 之和 × 10（与 CardResource._get_modifications_power_bonus 口径一致）
+static func _estimate_modifications_power_bonus(modifications: Array) -> int:
+	var bonus := 0
+	for mod_entry in modifications:
+		var mod_id = mod_entry.get("id", "") if mod_entry is Dictionary else String(mod_entry)
+		if mod_id.is_empty():
+			continue
+		var mod_data = ModificationRegistry.get_data(mod_id)
+		var power_mult = float(mod_data.get("power_mult", 1.0))
+		bonus += int(power_mult * 10)
+	return bonus
 
 ## ─── 武器槽位系统支持 ───
 

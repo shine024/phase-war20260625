@@ -105,17 +105,8 @@ static func migrate_blueprint_data(old_blueprint: Dictionary) -> Dictionary:
 		var unit_type = new_blueprint.get("combat_kind", 0)
 		new_blueprint.mods = migrate_modifications(new_blueprint.mods, unit_type)
 
-	# 计算军衔（仅用于显示，不存储）
-	if new_blueprint.has("card_id"):
-		var card_id = new_blueprint.card_id
-		var level = new_blueprint.get("enhance_level", 1)
-		var power = new_blueprint.get("power", 0)
-
-		# 军衔是动态计算的，这里仅用于验证
-		var current_power = power * (1.0 + (level - 1) * 0.05)
-		var unit_type = new_blueprint.get("combat_kind", 0)
-		var title_info = MilitaryTitleRegistry.get_military_title(power, int(current_power), unit_type)
-		new_blueprint.military_title = title_info.name
+	# v6.11：军衔称号系统已移除，不再写入 military_title 字段
+	# （旧存档若含此字段，读取时会被忽略，向后兼容）
 
 	return new_blueprint
 

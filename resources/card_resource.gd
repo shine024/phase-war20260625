@@ -460,88 +460,12 @@ func _get_modifications_power_bonus() -> int:
 		bonus += int(power_mult * 10)
 	return bonus
 
-## 获取军衔信息（动态计算）
-func get_military_rank() -> Dictionary:
-	var base_p = power
-	var current_p = get_current_power()
-	var unit_type = combat_kind
-
-	# 通过MilitaryTitleRegistry获取数据（autoload，直接访问）
-	return MilitaryTitleRegistry.get_military_title(base_p, current_p, unit_type)
-
-## 备用：根据倍率获取等级
-func _get_rank_by_ratio(ratio: float) -> int:
-	if ratio < 1.05: return 1
-	elif ratio < 1.10: return 2
-	elif ratio < 1.15: return 3
-	elif ratio < 1.20: return 4
-	elif ratio < 1.25: return 5
-	elif ratio < 1.30: return 6
-	elif ratio < 1.35: return 7
-	elif ratio < 1.50: return 8
-	elif ratio < 1.60: return 9
-	else: return 10
-
-## 备用：获取军衔名称
-func _get_rank_name(unit_type: int, level: int) -> String:
-	match unit_type:
-		0:  # 步兵
-			match level:
-				1: return "征召兵"
-				2: return "合格步兵"
-				3: return "老兵"
-				4: return "精锐"
-				5: return "士官"
-				6: return "战斗老兵"
-				7: return "三级军士长"
-				8: return "二级军士长"
-				9: return "一级军士长"
-				10: return "战斗大师"
-				_: return "步兵Lv%d" % level
-		1:  # 装甲
-			match level:
-				1: return "装填手"
-				2: return "驾驶员"
-				3: return "炮手"
-				4: return "车长"
-				5: return "排长"
-				6: return "连长"
-				7: return "营长"
-				8: return "装甲兵总监"
-				9: return "装甲兵上将"
-				10: return "钢铁战神"
-				_: return "装甲Lv%d" % level
-		_: return "军衔%d" % level
-
-## 获取下一级军衔信息
-func get_next_rank_info() -> Dictionary:
-	var base_p = power
-	var current_p = get_current_power()
-	var unit_type = combat_kind
-
-	# 通过MilitaryTitleRegistry获取数据（autoload，直接访问）
-	return MilitaryTitleRegistry.get_next_rank_info(base_p, current_p, unit_type)
-
-## 获取军衔进度（0-1）
+## 获取强化进度（0-1，基于 enhance_level 0-10）
+## v6.11：原军衔称号系统已移除，进度改为直接按强化等级线性计算
 func get_rank_progress() -> float:
-	var base_p = power
-	var current_p = get_current_power()
-	if base_p <= 0:
-		return 0.0
-	var current_rank = _get_rank_by_ratio(float(current_p) / float(base_p))
-
-	if current_rank >= 10:
+	if enhance_level >= 10:
 		return 1.0
-
-	# 简化计算
-	var current_min = base_p * (1.0 + (current_rank - 1) * 0.05)
-	var next_min = base_p * (1.0 + current_rank * 0.05)
-
-	if next_min <= current_min:
-		return 1.0
-
-	var progress = (current_p - current_min) / (next_min - current_min)
-	return clamp(progress, 0.0, 1.0)
+	return float(enhance_level) / 10.0
 
 ## 检查改造冲突
 func can_install_modification(mod_id: String) -> Dictionary:
@@ -618,8 +542,9 @@ func get_modified_stats() -> Dictionary:
 		deploy_speed = deploy_speed,
 	}
 
-	# 通过ModificationRegistry应用改造效果（autoload，直接访问）
-	return ModificationRegistry.apply_effects(base_stats, mods)
+	# v6.10: 改用 apply_with_level（支持 level_effects，强化词条才会在面板预览生效）
+	# 旧路径 apply_effects 只读 effects 字段，强化词条全用 level_effects，导致面板预览属性全 +0
+	return ModificationRegistry.apply_with_level(base_stats, mods)
 
 ## 获取可进化目标列表
 func get_evolution_targets() -> Array:

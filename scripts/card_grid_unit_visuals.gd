@@ -14,8 +14,6 @@ const CapturedUnitCards = preload("res://data/captured_unit_cards.gd")
 const EnemyUnitManifest = preload("res://data/enemy_unit_manifest.gd")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const GC = preload("res://resources/game_constants.gd")
-const BattleUnitSizeRules = preload("res://scripts/battle_unit_size_rules.gd")
-const CardFootAnchors = preload("res://data/card_foot_anchors.gd")
 
 
 ## `face_right`：原画朝左；我方 true（负 scale.x 镜像朝右），敌方 false（保持朝左）。
@@ -67,60 +65,30 @@ static func resolve_battle_icon_texture(
 
 
 ## 立绘 + 势力底 + 稀有度框 + 军衔条（与背包简略卡面一致）
-## combat_kind：单位战斗定位（CombatKind），用于按类型缩放卡图 + 空中单位悬浮。
-##              -1 表示未知，按 1.0 倍率（不缩放、不悬浮）。
 static func apply_battle_unit_presentation(
 	host: Node2D,
 	unit_spr: Sprite2D,
 	card: CardResource,
 	tex: Texture2D,
 	face_right: bool,
-	rank_level: int,
-	combat_kind: int = -1
+	rank_level: int
 ) -> bool:
 	if host == null or unit_spr == null or tex == null:
 		return false
 	unit_spr.visible = true
 	unit_spr.modulate = Color.WHITE
-	var size_mul: float = BattleUnitSizeRules.get_size_multiplier(combat_kind)
-	# 空中单位悬浮偏移（让空中单位高于地面单位一行，纯视觉，不改逻辑坐标）
-	var hover_y: float = 0.0
-	if BattleUnitSizeRules.is_hovering_kind(combat_kind):
-		hover_y = BattleUnitSizeRules.get_air_hover_offset_px()
-	# 先定 scale（apply_uniform_card_sprite 内部完成），再据"卡"的视觉高度算底部基线对齐
-	apply_uniform_card_sprite(unit_spr, tex, face_right, size_mul)
-	# 底图基线：以卡的"外壳"（势力底图/稀有度框，5:8 比例）高度为基准，底图底部对齐到地面线（单位原点=车道 Y）。
-	# 大卡 card_h 大、中心更高，小卡 card_h 小、中心更低，但底图底部齐平。
-	var card_w: float = CardGridBattleLayout.battle_card_width_px() * maxf(size_mul, 0.0001)
-	var card_h: float = card_w * 8.0 / 5.0
-	var chrome_y: float = -card_h * 0.5 + hover_y
-	# 步骤1：先把立绘 position 设到底图基线，供 chrome（底图/稀有度框）对齐
-	unit_spr.position = Vector2(unit_spr.position.x, chrome_y)
+	# 统一卡图大小：所有单位同一缩放（按纹理宽度归一到固定卡宽），不按类型缩放。
+	apply_uniform_card_sprite(unit_spr, tex, face_right)
+	# 立绘居中（position 默认原点），不悬浮、不按脚线对齐。
+	unit_spr.position = Vector2(unit_spr.position.x, 0.0)
 	if card != null:
-		apply_battle_card_chrome(host, unit_spr, card, size_mul)
-	# rank_strip（卡顶）与 name_strip（卡底）用底图尺寸定位，此时立绘 position = 底图基线
+		apply_battle_card_chrome(host, unit_spr, card)
 	sync_rank_strip(host, rank_level, unit_spr)
 	sync_name_strip(host, unit_spr, card, face_right)
-	# 步骤2：把立绘 position 调整为"脚对齐地面线"，消除抠图脚位参差。
-	# 底图/框/strip 已在步骤1固定（它们用 chrome_y 或独立 card_h 定位，不随立绘 position 二次变动）。
-	# foot_frac = 脚距纹理底部比例（0.0=脚贴底）；从纹理 resource_path 提取文件名查脚部锚点表。
-	# centered 立绘的脚在世界 Y = position.y + tex_h*|scale.y|*(0.5 - foot_frac)；
-	# 要脚落在地面线（原点 Y），则 position.y = -tex_h*|scale.y|*(0.5 - foot_frac) + hover_y。
-	var foot_y: float = chrome_y
-	if unit_spr.texture != null:
-		var tex_h: float = float(unit_spr.texture.get_height())
-		var disp_h: float = tex_h * absf(unit_spr.scale.y)
-		var rpath: String = unit_spr.texture.resource_path
-		var file_name: String = rpath.get_file().get_basename()
-		var foot_frac: float = CardFootAnchors.get_foot_frac(file_name)
-		foot_y = -disp_h * (0.5 - foot_frac) + hover_y
-	unit_spr.position = Vector2(unit_spr.position.x, foot_y)
 	return true
 
 
 ## v6.5: 在卡片立绘底部绘制单位名称条（我方青 / 敌方橙），补齐格子战可读性。
-## 卡宽/卡高由 unit_spr 的纹理尺寸 × 缩放计算（已含按类型 size_mul 放大）；定位与 sync_rank_strip 对称（卡顶/卡底）。
-## 立绘 position.y 已含底部基线偏移 + 空中悬浮，名称条贴卡底 = 立绘中心 + half_h。
 static func sync_name_strip(host: Node2D, unit_spr: Sprite2D, card: CardResource, is_player: bool) -> void:
 	if host == null or unit_spr == null or unit_spr.texture == null:
 		return
@@ -142,16 +110,12 @@ static func sync_name_strip(host: Node2D, unit_spr: Sprite2D, card: CardResource
 		card_w = float(bg_spr.texture.get_width()) * absf(bg_spr.scale.x)
 		card_h = float(bg_spr.texture.get_height()) * absf(bg_spr.scale.y)
 	strip.rebuild(display_name, is_player, card_w, card_h)
-	# 卡底定位：卡的底部（底图底）= 底图基线(CardBattleBg.position.y) + card_h/2；名称条贴其下
-	# 修复 H2：原用 unit_spr.position.y（立绘脚位 foot_y），大脚部锚点单位脚位高于底图基线，
-	# 导致名称条与 buff_strip（用底图基线）错层。统一到底图基线，与 rank_strip/buff_strip 对称。
-	# 注：底图 position 在 apply_battle_card_chrome 里钉在 chrome_y，不随后续立绘脚位变动。
+	# 卡底定位：立绘居中（position.y=0），底图跟随立绘，名称条贴卡底 = 立绘中心 + half_h
 	var half_h: float = card_h * 0.5
-	var base_y: float = bg_spr.position.y if (bg_spr != null and bg_spr.texture != null) else unit_spr.position.y
-	strip.position = Vector2(unit_spr.position.x, base_y + half_h + 2.0)
+	strip.position = Vector2(unit_spr.position.x, unit_spr.position.y + half_h + 2.0)
 
 
-static func apply_uniform_card_sprite(spr: Sprite2D, tex: Texture2D, face_right: bool = false, size_mul: float = 1.0) -> float:
+static func apply_uniform_card_sprite(spr: Sprite2D, tex: Texture2D, face_right: bool = false) -> float:
 	if spr == null:
 		return 0.1
 	if tex != null:
@@ -159,7 +123,6 @@ static func apply_uniform_card_sprite(spr: Sprite2D, tex: Texture2D, face_right:
 	var sc: float = CardGridThumbnailScale.compute_battlefield_uniform_width_scale(
 		spr.texture if spr.texture != null else tex
 	)
-	sc *= maxf(size_mul, 0.0001)
 	spr.offset = Vector2.ZERO
 	var sx: float = -sc if face_right else sc
 	spr.scale = Vector2(sx, sc)
@@ -179,11 +142,10 @@ static func _ensure_battle_chrome_sprite(host: Node2D, node_name: String, z: int
 
 
 ## 格子战立绘：5:8 势力底 + 单位图 + 稀有度框（与 UI 槽一致）
-## size_mul：按类型缩放卡图时，底图/稀有度框同步放大，避免大立绘配小底框错位。
-static func apply_battle_card_chrome(host: Node2D, unit_spr: Sprite2D, card: CardResource, size_mul: float = 1.0) -> void:
+static func apply_battle_card_chrome(host: Node2D, unit_spr: Sprite2D, card: CardResource) -> void:
 	if host == null or unit_spr == null or card == null:
 		return
-	var card_w: float = CardGridBattleLayout.battle_card_width_px() * maxf(size_mul, 0.0001)
+	var card_w: float = CardGridBattleLayout.battle_card_width_px()
 	var card_h: float = card_w * 8.0 / 5.0
 	var bg_tex: Texture2D = CardBackgroundUi.load_background(
 		CardBackgroundUi.resolve_faction_id_for_card(card)

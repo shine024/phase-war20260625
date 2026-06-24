@@ -96,19 +96,13 @@ static func _configure_card_grid_player_hp_bar(u: CharacterBody2D, spr: Sprite2D
 		return
 	if hb is CanvasItem:
 		(hb as CanvasItem).visible = true
-	# 血条定位基于"卡的底部"（势力底图 CardBattleBg 的底），与底图底部对齐，大小不缩放（保持可读）
-	# 注意：立绘 spr.position.y 已改为"脚对齐地面线"，不再等于底图基线；
-	# 血条应跟随底图（卡的外壳），故读底图节点 CardBattleBg 的 position.y（已含悬浮，= chrome_y + hover）。
+	# 血条贴卡底：立绘居中（position.y=0），血条放在立绘下半边下方。
 	var half_h: float = 0.0
-	var base_y: float = 0.0
-	var bg_spr := u.get_node_or_null("CardBattleBg") as Sprite2D
-	if bg_spr != null and bg_spr.texture != null:
-		half_h = float(bg_spr.texture.get_height()) * absf(bg_spr.scale.y) * 0.5
-		base_y = bg_spr.position.y
-	elif spr != null and spr.texture != null:
+	var spr_y: float = 0.0
+	if spr != null and spr.texture != null:
 		half_h = float(spr.texture.get_height()) * absf(spr.scale.y) * 0.5
-		base_y = spr.position.y
-	hb.position = Vector2(0.0, base_y + half_h + 8.0)
+		spr_y = spr.position.y
+	hb.position = Vector2(0.0, spr_y + half_h + 8.0)
 	if hb.has_method("set_side"):
 		hb.set_side(true)
 	if hb.has_method("set_folded"):

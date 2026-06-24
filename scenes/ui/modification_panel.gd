@@ -266,10 +266,9 @@ func _update_card_info() -> void:
 
 	var info_label = card_info_panel.get_node_or_null("CardView/InfoLabel")
 	if info_label:
-		var rank_info = selected_card.get_military_rank()
-		info_label.text = "%s\n军衔：%s | 改造：%d/9" % [
+		info_label.text = "%s\n强化 Lv.%d | 改造：%d/9" % [
 			selected_card.display_name,
-			rank_info.name,
+			selected_card.enhance_level,
 			selected_card.mods.size()
 		]
 
@@ -305,7 +304,6 @@ func _refresh_installed_list(installed_list: Control) -> void:
 			enabled = bool(mod_entry["enabled"])
 
 		var item := PanelContainer.new()
-		item.custom_minimum_size = Vector2(0, 28)
 		var sb := StyleBoxFlat.new()
 		sb.bg_color = Color(0.1, 0.12, 0.2, 0.5) if enabled else Color(0.08, 0.08, 0.1, 0.5)
 		sb.border_width_left = 2
@@ -316,6 +314,10 @@ func _refresh_installed_list(installed_list: Control) -> void:
 		sb.content_margin_right = 8
 		sb.content_margin_bottom = 3
 		item.add_theme_stylebox_override("panel", sb)
+
+		# v6.10: 改造列表每项用 VBox——第一行名字+图标+切换，第二行完整效果
+		var vbox := VBoxContainer.new()
+		vbox.add_theme_constant_override("separation", 2)
 
 		var hbox := HBoxContainer.new()
 		hbox.add_theme_constant_override("separation", 6)
@@ -354,7 +356,23 @@ func _refresh_installed_list(installed_list: Control) -> void:
 			)
 			hbox.add_child(toggle_btn)
 
-		item.add_child(hbox)
+		vbox.add_child(hbox)
+
+		# v6.10: 第二行——显示完整改造效果（复用已修好的 _format_effects_for_display）
+		# 让玩家一眼看到"装了什么、加什么"，而不只是改造名字
+		var effect_lines := _format_effects_for_display(mod_data)
+		if not effect_lines.is_empty():
+			var effect_lbl := Label.new()
+			effect_lbl.text = " · ".join(effect_lines)
+			effect_lbl.add_theme_font_size_override("font_size", 10)
+			if enabled:
+				effect_lbl.add_theme_color_override("font_color", Color(0.65, 0.78, 0.62, 0.95))
+			else:
+				effect_lbl.add_theme_color_override("font_color", Color(0.45, 0.5, 0.45, 0.6))
+			effect_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			vbox.add_child(effect_lbl)
+
+		item.add_child(vbox)
 		installed_list.add_child(item)
 		mod_index += 1
 
@@ -511,13 +529,14 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 func _translate_effect_key(key: String) -> String:
 	match key:
 		# ── 主属性：攻击/防御/生命/速度/射程/间隔 ──
-		"attack_light": return "对直射攻击"
-		"attack_armor": return "对曲射攻击"
-		"attack_air": return "对空攻击"
+		# 维度语义 = 目标类型（与 unit_stats.gd 字段注释、attack_calculator 战斗逻辑对齐）
+		"attack_light": return "对轻装攻击"
+		"attack_armor": return "对装甲攻击"
+		"attack_air": return "对空中攻击"
 		"attack_fort": return "对堡垒攻击"
-		"defense_light": return "对直射防御"
-		"defense_armor": return "对曲射防御"
-		"defense_air": return "对空防御"
+		"defense_light": return "防轻装单位"
+		"defense_armor": return "防装甲单位"
+		"defense_air": return "防空中单位"
 		"max_hp": return "生命值"
 		"move_speed": return "部署速度"
 		"deploy_speed": return "部署速度"
@@ -530,9 +549,9 @@ func _translate_effect_key(key: String) -> String:
 		"crit_damage_bonus": return "暴击伤害"
 		"dodge_chance": return "闪避率"
 		"armor_penetration": return "穿甲"
-		"armor_pen_vs_light": return "穿甲(直射)"
-		"armor_pen_vs_armor": return "穿甲(曲射)"
-		"armor_pen_vs_air": return "穿甲(对空)"
+		"armor_pen_vs_light": return "穿甲(对轻装)"
+		"armor_pen_vs_armor": return "穿甲(对装甲)"
+		"armor_pen_vs_air": return "穿甲(对空中)"
 		# ── 生存/吸血/护盾 ──
 		"damage_reduction": return "减伤"
 		"lifesteal": return "吸血"

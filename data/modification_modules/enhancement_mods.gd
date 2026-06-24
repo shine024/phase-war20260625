@@ -7,9 +7,9 @@ class_name EnhancementModifications
 const DATA: Dictionary = {
 	# ─── 基础池（7个） ───
 	"enh_hp_up" = {
-		id = "enh_hp_up", name = "铁甲强化", name_en = "HP Up",
+		id = "enh_hp_up", name = "体质训练", name_en = "HP Up",
 		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
-		prototype = "纳米护甲", description = "HP提升",
+		prototype = "体能强化训练", description = "HP提升",
 		rarity = "uncommon",
 		power_mult = 1.2, cost_research = 100, cost_install = 50,
 		slot_type = "enhancement", conflict_group = "enh_hp",
@@ -20,9 +20,9 @@ const DATA: Dictionary = {
 		unlock_conditions = {required_level = 1}
 	},
 	"enh_dmg_up" = {
-		id = "enh_dmg_up", name = "穿透弹头", name_en = "Damage Up",
+		id = "enh_dmg_up", name = "火力训练", name_en = "Damage Up",
 		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
-		prototype = "穿甲弹", description = "三维攻击提升",
+		prototype = "火力压制训练", description = "三维攻击提升",
 		rarity = "uncommon",
 		power_mult = 1.2, cost_research = 100, cost_install = 50,
 		slot_type = "enhancement", conflict_group = "enh_dmg",
@@ -35,9 +35,9 @@ const DATA: Dictionary = {
 		unlock_conditions = {required_level = 1}
 	},
 	"enh_def_up" = {
-		id = "enh_def_up", name = "纳米装甲", name_en = "Damage Reduction",
+		id = "enh_def_up", name = "防护训练", name_en = "Damage Reduction",
 		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
-		prototype = "纳米装甲层", description = "伤害减免",
+		prototype = "防护战术训练", description = "伤害减免",
 		rarity = "uncommon",
 		power_mult = 1.2, cost_research = 100, cost_install = 50,
 		slot_type = "enhancement", conflict_group = "enh_def",
@@ -48,9 +48,9 @@ const DATA: Dictionary = {
 		unlock_conditions = {required_level = 1}
 	},
 	"enh_def_flat" = {
-		id = "enh_def_flat", name = "复合装甲", name_en = "Defense Flat",
+		id = "enh_def_flat", name = "坚壁训练", name_en = "Defense Flat",
 		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
-		prototype = "复合装甲板", description = "三维防御提升",
+		prototype = "阵地防御训练", description = "三维防御提升",
 		rarity = "uncommon",
 		power_mult = 1.2, cost_research = 100, cost_install = 50,
 		slot_type = "enhancement", conflict_group = "enh_def_flat",
@@ -63,9 +63,9 @@ const DATA: Dictionary = {
 		unlock_conditions = {required_level = 1}
 	},
 	"enh_speed_up" = {
-		id = "enh_speed_up", name = "动力引擎", name_en = "Speed Up",
+		id = "enh_speed_up", name = "机动训练", name_en = "Speed Up",
 		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
-		prototype = "高效动力组", description = "移动速度提升",
+		prototype = "机动突击训练", description = "移动速度提升",
 		rarity = "uncommon",
 		power_mult = 1.2, cost_research = 100, cost_install = 50,
 		slot_type = "enhancement", conflict_group = "enh_speed",
@@ -76,9 +76,9 @@ const DATA: Dictionary = {
 		unlock_conditions = {required_level = 1}
 	},
 	"enh_range_up" = {
-		id = "enh_range_up", name = "光学瞄准", name_en = "Range Up",
+		id = "enh_range_up", name = "索敌训练", name_en = "Range Up",
 		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
-		prototype = "瞄准光学组", description = "射程提升",
+		prototype = "侦察索敌训练", description = "射程提升",
 		rarity = "uncommon",
 		power_mult = 1.2, cost_research = 100, cost_install = 50,
 		slot_type = "enhancement", conflict_group = "enh_range",
@@ -89,9 +89,9 @@ const DATA: Dictionary = {
 		unlock_conditions = {required_level = 1}
 	},
 	"enh_atkspd_up" = {
-		id = "enh_atkspd_up", name = "供弹系统", name_en = "Attack Speed Up",
+		id = "enh_atkspd_up", name = "反应训练", name_en = "Attack Speed Up",
 		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
-		prototype = "快拆弹匣", description = "攻速提升（间隔降低）",
+		prototype = "快速反应训练", description = "攻速提升（间隔降低）",
 		rarity = "uncommon",
 		power_mult = 1.2, cost_research = 100, cost_install = 50,
 		slot_type = "enhancement", conflict_group = "enh_atkspd",
@@ -103,9 +103,9 @@ const DATA: Dictionary = {
 	},
 	# ─── 进阶池（6个） ───
 	"enh_crit" = {
-		id = "enh_crit", name = "精密瞄准镜", name_en = "Crit Scope",
+		id = "enh_crit", name = "弱点洞察", name_en = "Crit Scope",
 		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
-		prototype = "高精度瞄准镜", description = "暴击率提升",
+		prototype = "弱点识别训练", description = "暴击率提升",
 		rarity = "rare",
 		power_mult = 1.35, cost_research = 200, cost_install = 100,
 		slot_type = "enhancement", conflict_group = "enh_crit",
@@ -116,9 +116,9 @@ const DATA: Dictionary = {
 		unlock_conditions = {required_level = 2}
 	},
 	"enh_lifesteal" = {
-		id = "enh_lifesteal", name = "纳米修复", name_en = "Lifesteal",
+		id = "enh_lifesteal", name = "战场汲取", name_en = "Lifesteal",
 		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
-		prototype = "纳米修复蜂群", description = "吸血",
+		prototype = "战场补给训练", description = "吸血",
 		rarity = "rare",
 		power_mult = 1.35, cost_research = 200, cost_install = 100,
 		slot_type = "enhancement", conflict_group = "enh_lifesteal",
@@ -129,9 +129,9 @@ const DATA: Dictionary = {
 		unlock_conditions = {required_level = 2}
 	},
 	"enh_splash" = {
-		id = "enh_splash", name = "高爆弹药", name_en = "Splash",
+		id = "enh_splash", name = "爆破战技", name_en = "Splash",
 		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
-		prototype = "高爆战斗部", description = "溅射伤害",
+		prototype = "区域压制战技", description = "溅射伤害",
 		rarity = "rare",
 		power_mult = 1.35, cost_research = 200, cost_install = 100,
 		slot_type = "enhancement", conflict_group = "enh_splash",
@@ -142,9 +142,9 @@ const DATA: Dictionary = {
 		unlock_conditions = {required_level = 2}
 	},
 	"enh_penetration" = {
-		id = "enh_penetration", name = "穿甲核心", name_en = "Penetration",
+		id = "enh_penetration", name = "破甲专精", name_en = "Penetration",
 		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
-		prototype = "钨合金穿甲", description = "穿甲提升",
+		prototype = "反装甲战技", description = "穿甲提升",
 		rarity = "rare",
 		power_mult = 1.35, cost_research = 200, cost_install = 100,
 		slot_type = "enhancement", conflict_group = "enh_penetration",
@@ -155,9 +155,9 @@ const DATA: Dictionary = {
 		unlock_conditions = {required_level = 2}
 	},
 	"enh_regen" = {
-		id = "enh_regen", name = "自修复系统", name_en = "HP Regen",
+		id = "enh_regen", name = "野战急救", name_en = "HP Regen",
 		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
-		prototype = "自修复纳米", description = "每秒回血",
+		prototype = "战场急救训练", description = "每秒回血",
 		rarity = "rare",
 		power_mult = 1.35, cost_research = 200, cost_install = 100,
 		slot_type = "enhancement", conflict_group = "enh_regen",
@@ -168,9 +168,9 @@ const DATA: Dictionary = {
 		unlock_conditions = {required_level = 2}
 	},
 	"enh_chain" = {
-		id = "enh_chain", name = "链式反应", name_en = "Chain",
+		id = "enh_chain", name = "连锁战术", name_en = "Chain",
 		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
-		prototype = "链式电弧", description = "连锁概率",
+		prototype = "多目标接战训练", description = "连锁概率",
 		rarity = "rare",
 		power_mult = 1.35, cost_research = 200, cost_install = 100,
 		slot_type = "enhancement", conflict_group = "enh_chain",
@@ -182,9 +182,9 @@ const DATA: Dictionary = {
 	},
 	# ─── 终极池（3个） ───
 	"enh_shield_kill" = {
-		id = "enh_shield_kill", name = "击杀护盾", name_en = "Shield on Kill",
+		id = "enh_shield_kill", name = "收割本能", name_en = "Shield on Kill",
 		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
-		prototype = "击杀力场", description = "击杀获得护盾",
+		prototype = "战意觉醒", description = "击杀获得护盾",
 		rarity = "epic",
 		power_mult = 1.5, cost_research = 400, cost_install = 200,
 		slot_type = "enhancement", conflict_group = "enh_shield_kill",
@@ -195,9 +195,9 @@ const DATA: Dictionary = {
 		unlock_conditions = {required_level = 3}
 	},
 	"enh_dodge" = {
-		id = "enh_dodge", name = "相位闪避", name_en = "Dodge",
+		id = "enh_dodge", name = "本能闪避", name_en = "Dodge",
 		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
-		prototype = "相位规避", description = "闪避率提升",
+		prototype = "危机感知训练", description = "闪避率提升",
 		rarity = "epic",
 		power_mult = 1.5, cost_research = 400, cost_install = 200,
 		slot_type = "enhancement", conflict_group = "enh_dodge",
@@ -208,9 +208,9 @@ const DATA: Dictionary = {
 		unlock_conditions = {required_level = 3}
 	},
 	"enh_crit_dmg" = {
-		id = "enh_crit_dmg", name = "致命强化", name_en = "Crit Damage",
+		id = "enh_crit_dmg", name = "致命精通", name_en = "Crit Damage",
 		icon = "res://assets/ui/icons/mod_icons/mod_enhancement.png",
-		prototype = "致命弹药", description = "暴击伤害加成",
+		prototype = "致命打击精通", description = "暴击伤害加成",
 		rarity = "epic",
 		power_mult = 1.5, cost_research = 400, cost_install = 200,
 		slot_type = "enhancement", conflict_group = "enh_crit_dmg",

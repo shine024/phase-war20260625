@@ -95,10 +95,9 @@ func _create_card_item(card: CardResource) -> Control:
 	item.add_theme_stylebox_override("normal", _make_sb(THEME_BG_CARD * Color(1, 1, 1, 0.6), THEME_BORDER_DIM, 1, 5, Color(0, 0, 0, 0), 0, 10, 6, 10, 6))
 	item.add_theme_stylebox_override("hover", _make_sb(THEME_GREEN * Color(1, 1, 1, 0.1), THEME_GREEN_SOFT * Color(1, 1, 1, 0.6), 1, 5, Color(0, 0, 0, 0), 0, 10, 6, 10, 6))
 
-	# 获取当前军衔
-	var rank_info = card.get_military_rank()
+	# v6.11：军衔称号已移除，tooltip 改为显示强化等级 + 战力
 	var level = card.enhance_level
-	item.tooltip_text = "Lv%d · %s\n战力：%d" % [level, rank_info.name, card.get_current_power()]
+	item.tooltip_text = "强化 Lv.%d\n战力：%d" % [level, card.get_current_power()]
 
 	item.pressed.connect(func(): _on_card_selected(card))
 	return item
@@ -118,9 +117,18 @@ func _update_detail_panel() -> void:
 		detail_vbox.visible = true
 		_clear_dyn(detail_vbox)
 
-	# 获取军衔信息
-	var rank_info = selected_card.get_military_rank()
-	var next_rank_info = selected_card.get_next_rank_info()
+	# v6.11：军衔称号已移除，改为基于强化等级构造显示信息
+	var cur_level: int = selected_card.enhance_level
+	var rank_info: Dictionary = {
+		"name": "强化 Lv.%d" % cur_level,
+		"desc": "战力 %d" % selected_card.get_current_power(),
+	}
+	var next_rank_info: Dictionary = {}
+	if cur_level < 10:
+		next_rank_info = {
+			"next_name": "强化 Lv.%d" % (cur_level + 1),
+			"progress": selected_card.get_rank_progress(),
+		}
 
 	# 更新UI文本
 	_update_card_info()
@@ -201,7 +209,7 @@ func _update_reinforce_button(rank_info: Dictionary) -> void:
 	var current_level = selected_card.enhance_level
 	if current_level >= 10:
 		reinforce_button.disabled = true
-		reinforce_button.text = "★ 已达最高军衔"
+		reinforce_button.text = "★ 已达最高强化等级"
 		return
 
 	reinforce_button.disabled = false
@@ -234,7 +242,7 @@ func _on_reinforce_pressed() -> void:
 	var result = BlueprintManager.apply_reinforcement(selected_card, next_level)
 
 	if result.success:
-		_show_result("强化成功！%s → %s" % [result.message, selected_card.get_military_rank().name])
+		_show_result("强化成功！%s（当前 Lv.%d）" % [result.message, selected_card.enhance_level])
 		_update_detail_panel()
 	else:
 		_show_result("强化失败：%s" % result.message)

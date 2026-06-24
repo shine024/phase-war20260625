@@ -1,12 +1,10 @@
 ## 新系统集成测试
-## 测试改造系统、军衔系统和注册表
+## 测试改造系统和注册表（v6.11：军衔称号系统已移除）
 
 extends SceneTree
 
 const ModificationRegistry = preload("res://scripts/systems/modification_registry.gd")
-const MilitaryTitleRegistry = preload("res://scripts/systems/military_title_registry.gd")
 const InfantryModifications = preload("res://data/modification_modules/infantry_mods.gd")
-const UnifiedRankSystem = preload("res://data/military_titles/unified_rank_system.gd")
 
 func _init() -> void:
 	print("=== 新系统集成测试 ===")
@@ -17,22 +15,17 @@ func _test_all() -> void:
 	var errors = []
 
 	# 1. 测试改造注册表
-	print("\n[1/4] 测试改造注册表...")
+	print("\n[1/3] 测试改造注册表...")
 	if not _test_modification_registry():
 		errors.append("改造注册表测试失败")
 
-	# 2. 测试军衔系统
-	print("\n[2/4] 测试军衔系统...")
-	if not _test_rank_system():
-		errors.append("军衔系统测试失败")
-
-	# 3. 测试改造数据访问
-	print("\n[3/4] 测试改造数据访问...")
+	# 2. 测试改造数据访问
+	print("\n[2/3] 测试改造数据访问...")
 	if not _test_mod_data_access():
 		errors.append("改造数据访问测试失败")
 
-	# 4. 测试ID格式验证
-	print("\n[4/4] 测试ID格式验证...")
+	# 3. 测试ID格式验证
+	print("\n[3/3] 测试ID格式验证...")
 	if not _test_id_format():
 		errors.append("ID格式验证失败")
 
@@ -58,27 +51,6 @@ func _test_modification_registry() -> bool:
 		return false
 
 	print("  ✓ 改造注册表正常")
-	return true
-
-func _test_rank_system() -> bool:
-	# 测试战力比到军衔转换
-	var test_cases = [
-		{ratio = 1.0, expected = 1},
-		{ratio = 1.05, expected = 2},
-		{ratio = 1.24, expected = 5},  # 1.20 ≤ ratio < 1.25 = level 5
-		{ratio = 1.25, expected = 6},  # 1.25 ≤ ratio < 1.30 = level 6
-		{ratio = 1.49, expected = 8},  # 1.35 ≤ ratio < 1.50 = level 8
-		{ratio = 1.50, expected = 9},  # 1.50 ≤ ratio < 1.60 = level 9
-		{ratio = 2.0, expected = 10},
-	]
-
-	for case in test_cases:
-		var result = UnifiedRankSystem.get_rank_by_power_ratio(case.ratio)
-		if result != case.expected:
-			print("  ✗ 战力比%.2f应得军衔%d，实际%d" % [case.ratio, case.expected, result])
-			return false
-
-	print("  ✓ 军衔系统正常")
 	return true
 
 func _test_mod_data_access() -> bool:

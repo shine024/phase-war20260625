@@ -49,7 +49,7 @@ const LEVEL_FACTORS: Dictionary = {
 const MODULE_TABLE: Dictionary = {
 	# ── 基础池（Lv2起可用，7个）──
 	"module_hp_up": {
-		"name": "铁甲强化",
+		"name": "体质训练",
 		"description": "HP提升",
 		"effect_key": "max_hp",
 		"effect_type": "percent_mult",
@@ -60,7 +60,7 @@ const MODULE_TABLE: Dictionary = {
 		"cap_value": 3.0,
 	},
 	"module_dmg_up": {
-		"name": "穿透弹芯",
+		"name": "火力训练",
 		"description": "攻击提升",
 		"effect_key": "attack_damage",
 		"effect_type": "percent_mult",
@@ -71,7 +71,7 @@ const MODULE_TABLE: Dictionary = {
 		"cap_value": 3.0,
 	},
 	"module_def_up": {
-		"name": "纳米装甲",
+		"name": "防护训练",
 		"description": "伤害减免",
 		"effect_key": "damage_reduction",
 		"effect_type": "percent_flat",
@@ -82,7 +82,7 @@ const MODULE_TABLE: Dictionary = {
 		"cap_value": 0.60,
 	},
 	"module_def_flat": {
-		"name": "复合装甲",
+		"name": "坚壁训练",
 		"description": "防御提升",
 		"effect_key": "defense",
 		"effect_type": "flat_add",
@@ -93,7 +93,7 @@ const MODULE_TABLE: Dictionary = {
 		"cap_value": 0.0,
 	},
 	"module_speed_up": {
-		"name": "疾行引擎",
+		"name": "机动训练",
 		"description": "部署速度+1",
 		"effect_key": "deploy_speed",
 		"effect_type": "speed_add",
@@ -104,7 +104,7 @@ const MODULE_TABLE: Dictionary = {
 		"cap_value": 0.0,
 	},
 	"module_range_up": {
-		"name": "延伸枪管",
+		"name": "索敌训练",
 		"description": "射程提升",
 		"effect_key": "attack_range",
 		"effect_type": "range_mult",
@@ -115,7 +115,7 @@ const MODULE_TABLE: Dictionary = {
 		"cap_value": 0.0,
 	},
 	"module_atkspd_up": {
-		"name": "速射改装",
+		"name": "反应训练",
 		"description": "攻击加速",
 		"effect_key": "attack_interval",
 		"effect_type": "interval_mult",
@@ -128,7 +128,7 @@ const MODULE_TABLE: Dictionary = {
 
 	# ── 进阶池（Lv6起可用，5个）──
 	"module_crit": {
-		"name": "精准打击",
+		"name": "弱点洞察",
 		"description": "暴击率提升",
 		"effect_key": "crit_chance",
 		"effect_type": "percent_flat",
@@ -139,7 +139,7 @@ const MODULE_TABLE: Dictionary = {
 		"cap_value": 0.60,
 	},
 	"module_lifesteal": {
-		"name": "汲能吸血",
+		"name": "战场汲取",
 		"description": "造成伤害回复HP",
 		"effect_key": "lifesteal",
 		"effect_type": "percent_flat",
@@ -150,7 +150,7 @@ const MODULE_TABLE: Dictionary = {
 		"cap_value": 0.50,
 	},
 	"module_splash": {
-		"name": "爆裂弹头",
+		"name": "爆破战技",
 		"description": "溅射伤害",
 		"effect_key": "splash_damage",
 		"effect_type": "percent_flat",
@@ -161,7 +161,7 @@ const MODULE_TABLE: Dictionary = {
 		"cap_value": 0.60,
 	},
 	"module_penetration": {
-		"name": "穿甲射击",
+		"name": "破甲专精",
 		"description": "穿甲提升",
 		"effect_key": "armor_penetration",
 		"effect_type": "percent_flat",
@@ -172,7 +172,7 @@ const MODULE_TABLE: Dictionary = {
 		"cap_value": 0.60,
 	},
 	"module_regen": {
-		"name": "纳米自愈",
+		"name": "野战急救",
 		"description": "每秒回复HP",
 		"effect_key": "hp_regen",
 		"effect_type": "percent_flat",
@@ -185,7 +185,7 @@ const MODULE_TABLE: Dictionary = {
 
 	# ── 特殊池（Lv10起可用，4个）──
 	"module_chain": {
-		"name": "链式放电",
+		"name": "连锁战术",
 		"description": "闪电链攻击",
 		"effect_key": "chain_chance",
 		"effect_type": "percent_flat",
@@ -196,7 +196,7 @@ const MODULE_TABLE: Dictionary = {
 		"cap_value": 0.50,
 	},
 	"module_shield_kill": {
-		"name": "歼灭护盾",
+		"name": "收割本能",
 		"description": "击杀获得护盾",
 		"effect_key": "shield_on_kill",
 		"effect_type": "percent_flat",
@@ -207,7 +207,7 @@ const MODULE_TABLE: Dictionary = {
 		"cap_value": 0.0,
 	},
 	"module_dodge": {
-		"name": "相位闪避",
+		"name": "本能闪避",
 		"description": "闪避率提升",
 		"effect_key": "dodge_chance",
 		"effect_type": "percent_flat",
@@ -218,10 +218,10 @@ const MODULE_TABLE: Dictionary = {
 		"cap_value": 0.40,
 	},
 	"module_crit_dmg": {
-		"name": "致命一击",
+		"name": "致命精通",
 		"description": "暴击伤害加成",
 		"effect_key": "crit_damage_bonus",
-		"effect_type": "flat_add",
+		"effect_type": "percent_flat",
 		"base_value": 0.20,
 		"pool_tier": POOL_SPECIAL,
 		"category": "damage",

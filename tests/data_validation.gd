@@ -15,7 +15,6 @@ const UNIVERSAL_MODS = preload("res://data/modification_modules/universal_mods.g
 
 const MODIFICATION_REGISTRY = preload("res://scripts/systems/modification_registry.gd")
 const UNIFIED_RANK_SYSTEM = preload("res://data/military_titles/unified_rank_system.gd")
-const TITLE_DISPLAY_NAMES = preload("res://data/military_titles/title_display_names.gd")
 
 ## ─────────────────────────────────────────────
 ##  验证接口
@@ -30,8 +29,8 @@ func _validate_all() -> void:
 	var errors = []
 	var warnings = []
 
-	# 1. 军衔系统验证
-	print("\n[1/5] 验证军衔系统...")
+	# 1. 强化倍率验证
+	print("\n[1/5] 验证强化倍率系统...")
 	var rank_errors = _validate_rank_system()
 	errors.append_array(rank_errors)
 
@@ -76,20 +75,14 @@ func _validate_all() -> void:
 func _validate_rank_system() -> Array:
 	var errors = []
 
-	# 检查等级1-10都有数据
+	# v6.11：军衔称号已移除，验证强化倍率/消耗倍率数值
 	for level in range(1, 11):
-		var data = UNIFIED_RANK_SYSTEM.get_rank_data(level)
-		if data.is_empty():
-			errors.append("Lv%d军衔数据为空" % level)
-			continue
-
-		# 检查必需字段
-		if not data.has("level"):
-			errors.append("Lv%d缺少level字段" % level)
-		if not data.has("power_ratio_min"):
-			errors.append("Lv%d缺少power_ratio_min字段" % level)
-		if not data.has("cost_multiplier"):
-			errors.append("Lv%d缺少cost_multiplier字段" % level)
+		var mult = UNIFIED_RANK_SYSTEM.get_power_multiplier(level)
+		if mult < 1.0 or mult > 2.0:
+			errors.append("Lv%d战力倍率异常：%f" % [level, mult])
+		var cost = UNIFIED_RANK_SYSTEM.get_cost_multiplier(level)
+		if cost < 0.0:
+			errors.append("Lv%d消耗倍率异常：%f" % [level, cost])
 
 	return errors
 
