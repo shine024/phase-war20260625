@@ -41,7 +41,7 @@ signal card_added_to_backpack(card: CardResource)
 
 # 蓝图（敌人掉落等）
 signal blueprint_unlocked(card_id: String)
-signal blueprint_star_upgraded(card_id: String, new_star: int)
+# v6.11: blueprint_star_upgraded 信号已移除（战力星级系统②已删）
 signal blueprint_obtained(card_id: String, count: int)
 
 # 战斗掉落领取

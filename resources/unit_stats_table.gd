@@ -112,26 +112,46 @@ static func build_stats_from_card(card: CardResource, era_override: int = -1) ->
 	if card.module_slots.size() > 0:
 		apply_module_effects(stats, card.module_slots, card.enhance_level)
 
-	# v6.5: 应用战力星级加成（固定数值 + 特殊能力，叠加在强化之上）
-	apply_battle_star_bonus(stats, card)
+	# v6.11: 应用强化等级加成（原战力星级②系统合并至此——星级0-7映射到强化0-10）
+	apply_enhance_level_bonus(stats, card)
 
 	return stats
 
 
-## v6.5: 战力星级加成 — 固定数值（按兵种差异化）+ 特殊能力（复用 Affix effect_key）
-static func apply_battle_star_bonus(stats: UnitStats, card: CardResource) -> void:
+## v6.11: 强化等级加成 — 固定数值（按兵种差异化）+ 特殊能力
+## 取代已删除的战力星级系统（apply_battle_star_bonus），数据源从 battle_star 改为 enhance_level
+## 满级(★10)总加成 ≈ 原满星(★7)，系数按 7/10 折算避免数值膨胀
+static func apply_enhance_level_bonus(stats: UnitStats, card: CardResource) -> void:
 	if stats == null or card == null:
 		return
-	var star: int = int(card.battle_star) if "battle_star" in card else 0
-	if star <= 0:
+	var lvl: int = int(card.enhance_level) if "enhance_level" in card else 0
+	if lvl <= 0:
 		return
-	var BattleStarCfg = preload("res://data/battle_star_config.gd")
-	# 1. 固定数值加成
-	var bonus: Dictionary = BattleStarCfg.get_stat_bonus_per_star(stats.combat_kind)
-	var star_f: float = float(star)
-	stats.max_hp *= (1.0 + bonus.hp_pct * star_f)
-	# 攻击力加成（乘算到三维 + weapons）
-	var atk_mult: float = bonus.atk_pct * star_f
+	var lvl_f: float = float(lvl)
+	# 兵种差异化每级加成（原每星系数 × 7/10，保持满级总加成≈原满星）
+	match stats.combat_kind:
+		0:  # 轻装
+			_apply_enhance_fixed(stats, lvl_f, 0.021, 0.028, "dodge", 0.0105)
+			_apply_enhance_abilities(stats, 0, lvl)
+		1:  # 装甲
+			_apply_enhance_fixed(stats, lvl_f, 0.035, 0.021, "damage_reduction", 0.007)
+			_apply_enhance_abilities(stats, 1, lvl)
+		2:  # 支援
+			_apply_enhance_fixed(stats, lvl_f, 0.028, 0.021, "hp_regen", 0.014)
+			_apply_enhance_abilities(stats, 2, lvl)
+		3:  # 空中
+			_apply_enhance_fixed(stats, lvl_f, 0.0175, 0.035, "move_speed", 0.0105)
+			_apply_enhance_abilities(stats, 3, lvl)
+		4:  # 堡垒
+			_apply_enhance_fixed(stats, lvl_f, 0.042, 0.0105, "damage_reduction", 0.014)
+			_apply_enhance_abilities(stats, 4, lvl)
+		_:
+			_apply_enhance_fixed(stats, lvl_f, 0.021, 0.021, "", 0.0)
+
+## v6.11: 强化固定数值加成（HP/攻击/兵种特殊）
+static func _apply_enhance_fixed(stats: UnitStats, lvl_f: float, hp_pct: float, atk_pct: float, extra_key: String, extra_per_lvl: float) -> void:
+	stats.max_hp *= (1.0 + hp_pct * lvl_f)
+	var atk_mult: float = atk_pct * lvl_f
 	stats.attack_light *= (1.0 + atk_mult)
 	stats.attack_armor *= (1.0 + atk_mult)
 	stats.attack_air *= (1.0 + atk_mult)
@@ -140,9 +160,7 @@ static func apply_battle_star_bonus(stats: UnitStats, card: CardResource) -> voi
 		if wd.has("damage"):
 			wd["damage"] = float(wd["damage"]) * (1.0 + atk_mult)
 			stats.weapons[i] = wd
-	# 兵种特殊数值
-	var extra_key: String = bonus.extra_key
-	var extra_val: float = bonus.extra_per_star * star_f
+	var extra_val: float = extra_per_lvl * lvl_f
 	match extra_key:
 		"dodge":
 			stats.dodge_chance = minf(0.75, stats.dodge_chance + extra_val)
@@ -152,28 +170,71 @@ static func apply_battle_star_bonus(stats: UnitStats, card: CardResource) -> voi
 			stats.hp_regen += extra_val
 		"move_speed":
 			stats.move_speed *= (1.0 + extra_val)
-	# 2. 特殊能力（复用 Affix effect_key 逻辑）
-	var abilities: Array[Dictionary] = BattleStarCfg.get_unlocked_abilities(stats.combat_kind, star)
-	for ab in abilities:
-		var ek: String = String(ab.get("effect_key", ""))
-		var ev: float = float(ab.get("value", 0.0))
-		match ek:
-			"crit_chance":
-				stats.crit_chance = minf(0.75, stats.crit_chance + ev)
-			"lifesteal":
-				stats.lifesteal = minf(0.60, stats.lifesteal + ev)
-			"armor_penetration":
-				stats.armor_penetration = minf(0.80, stats.armor_penetration + ev)
-			"damage_reduction":
-				stats.damage_reduction = minf(0.75, stats.damage_reduction + ev)
-			"splash_damage":
-				stats.splash_damage = minf(0.80, stats.splash_damage + ev)
-			"hp_regen":
-				stats.hp_regen += ev
-			"chain_chance":
-				stats.chain_chance = minf(0.60, stats.chain_chance + ev)
-			"shield_on_kill":
-				stats.shield_on_kill += ev
+
+## v6.11: 强化等级解锁的特殊能力（原星级3/5/7解锁 → 强化4/7/10解锁）
+static func _apply_enhance_abilities(stats: UnitStats, combat_kind: int, lvl: int) -> void:
+	# 每兵种最多3个能力，分别在强化4/7/10级解锁
+	var unlocks: Array[int] = [4, 7, 10]
+	match combat_kind:
+		0:  # 轻装
+			var defs: Array = [
+				{"ek": "crit_chance", "ev": 0.10},
+				{"ek": "lifesteal", "ev": 0.08},
+				{"ek": "armor_penetration", "ev": 0.20},
+			]
+			_apply_ability_list(stats, defs, unlocks, lvl)
+		1:  # 装甲
+			var defs: Array = [
+				{"ek": "damage_reduction", "ev": 0.05},
+				{"ek": "shield_on_kill", "ev": 30.0},
+				{"ek": "damage_reduction", "ev": 0.10},
+			]
+			_apply_ability_list(stats, defs, unlocks, lvl)
+		2:  # 支援
+			var defs: Array = [
+				{"ek": "splash_damage", "ev": 0.10},
+				{"ek": "hp_regen", "ev": 5.0},
+				{"ek": "splash_damage", "ev": 0.20},
+			]
+			_apply_ability_list(stats, defs, unlocks, lvl)
+		3:  # 空中
+			var defs: Array = [
+				{"ek": "crit_chance", "ev": 0.10},
+				{"ek": "chain_chance", "ev": 0.10},
+				{"ek": "armor_penetration", "ev": 0.20},
+			]
+			_apply_ability_list(stats, defs, unlocks, lvl)
+		4:  # 堡垒
+			var defs: Array = [
+				{"ek": "damage_reduction", "ev": 0.05},
+				{"ek": "hp_regen", "ev": 3.0},
+				{"ek": "damage_reduction", "ev": 0.10},
+			]
+			_apply_ability_list(stats, defs, unlocks, lvl)
+
+## v6.11: 应用能力列表（按解锁等级阈值）
+static func _apply_ability_list(stats: UnitStats, defs: Array, unlocks: Array[int], lvl: int) -> void:
+	for i in range(defs.size()):
+		if i < unlocks.size() and lvl >= unlocks[i]:
+			var ek: String = String(defs[i].ek)
+			var ev: float = float(defs[i].ev)
+			match ek:
+				"crit_chance":
+					stats.crit_chance = minf(0.75, stats.crit_chance + ev)
+				"lifesteal":
+					stats.lifesteal = minf(0.60, stats.lifesteal + ev)
+				"armor_penetration":
+					stats.armor_penetration = minf(0.80, stats.armor_penetration + ev)
+				"damage_reduction":
+					stats.damage_reduction = minf(0.75, stats.damage_reduction + ev)
+				"splash_damage":
+					stats.splash_damage = minf(0.80, stats.splash_damage + ev)
+				"hp_regen":
+					stats.hp_regen += ev
+				"chain_chance":
+					stats.chain_chance = minf(0.60, stats.chain_chance + ev)
+				"shield_on_kill":
+					stats.shield_on_kill += ev
 
 
 ## v6.4: 将强化词条效果应用到 UnitStats（统一管线）

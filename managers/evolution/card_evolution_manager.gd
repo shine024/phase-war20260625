@@ -167,7 +167,7 @@ static func evolve_blueprint(card_id: String, target_card_id: String, bpm_ref: N
 	var can_info: Dictionary = can_evolve_blueprint(card_id, target_card_id, bpm_ref)
 	if not bool(can_info.get("ok", false)):
 		return false
-	var old_star: int = bpm_ref.get_blueprint_star(card_id)
+	# v6.11: old_star 已废弃（星级系统移除，原 L178 唯一消费点已注释）
 	var inherit_ratio: float = float(can_info.get("inherit_ratio", 0.30))
 	var old_bonus: float = float(bpm_ref.blueprint_inherit_bonus.get(card_id, 0.0))
 	var merged_bonus: float = clampf(old_bonus + inherit_ratio, 0.0, 0.9)
@@ -185,14 +185,17 @@ static func evolve_blueprint(card_id: String, target_card_id: String, bpm_ref: N
 
 	## v5.0 Phase 4 进化执行规则:
 	## - 改造完全继承（mods 从源复制到目标，源清空）
-	## - 强化重置（enhance_level=0 在 CardResource 层面）
-	## - 品质保留（星级已通过 max 继承）
+	## - 强化彻底清零（enhance_level + 词条槽，源卡残留一并清除）
 	## - 情报保留（blueprint_intel 字段，Phase 5 数据层预留）
 	var source_mods: Array = bpm_ref.blueprint_mods.get(card_id, [])
 	bpm_ref.blueprint_mods[target_card_id] = source_mods.duplicate()
 	bpm_ref.blueprint_mods[card_id] = []
 	## 进化后清理源卡副本（避免仍可制造旧卡）
 	bpm_ref.blueprint_copies[card_id] = 0
+	## v6.11: 强化彻底清零——清除源卡词条槽 + 重置 enhance_level（之前注释声称清零但从未实现）
+	var cem: Node = _get_autoload_node("CardEnhancementManager")
+	if cem and cem.has_method("clear_card_enhancement"):
+		cem.clear_card_enhancement(card_id)
 
 	## Phase 5 预留: 情报继承 — 进化后保留目标情报进度
 	## var source_intel: float = float(bpm_ref.blueprint_intel.get(card_id, 0.0))

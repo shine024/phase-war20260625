@@ -326,6 +326,16 @@ func load_state(data: Dictionary) -> void:
 		if slots.size() > 0:
 			card_module_slots[card_id] = slots
 
+## v6.11: 清除单张卡牌的强化数据（进化后调用，确保源卡强化彻底清零）
+## 清空 card_module_slots[card_id]（词条槽）+ 重置 CardResource.enhance_level=0
+## 注：之前 card_evolution_manager 注释声称"强化重置"但从未实现，源卡强化残留内存
+func clear_card_enhancement(card_id: String) -> void:
+	card_module_slots.erase(card_id)
+	var card = DefaultCards.get_card_by_id(card_id)
+	if card != null:
+		card.enhance_level = 0
+		card.module_slots = []
+
 func reset_to_defaults() -> void:
 	card_module_slots.clear()
 	var all_ids = DefaultCards.get_all_blueprint_ids()

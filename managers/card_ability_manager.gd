@@ -599,13 +599,14 @@ static func _get_unit_star(unit: Node2D) -> int:
 		return 1
 	if unit.has_meta("enhance_level"):
 		return int(unit.get_meta("enhance_level"))
+	# v6.11: 从废弃的 get_blueprint_star 迁移到真实 enhance_level
 	if "stats" in unit and unit.stats != null and not unit.stats.platform_card_id.is_empty():
 		var loop = Engine.get_main_loop()
 		if loop is SceneTree:
-			var bm: Node = (loop as SceneTree).root.get_node_or_null("BlueprintManager")
-			if bm != null and bm.has_method("get_blueprint_star"):
-				var star: int = int(bm.get_blueprint_star(unit.stats.platform_card_id))
-				unit.set_meta("enhance_level", star)
-				return star
+			var cem: Node = (loop as SceneTree).root.get_node_or_null("CardEnhancementManager")
+			if cem and cem.has_method("get_card_enhancement_level"):
+				var lvl: int = int(cem.get_card_enhancement_level(unit.stats.platform_card_id))
+				unit.set_meta("enhance_level", lvl)
+				return lvl
 	unit.set_meta("enhance_level", 1)
 	return 1

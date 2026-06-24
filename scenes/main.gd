@@ -163,9 +163,7 @@ func _deferred_non_critical_init() -> void:
 	_init_daily_tasks()
 	# 空闲期预加载高频弹窗，降低首次打开卡顿
 	_preload_common_panels()
-	# 连接蓝图升星信号，用于刷新词条面板
-	if BlueprintManager and BlueprintManager.has_signal("blueprint_star_upgraded") and not BlueprintManager.blueprint_star_upgraded.is_connected(_on_blueprint_star_upgraded):
-		BlueprintManager.blueprint_star_upgraded.connect(_on_blueprint_star_upgraded)
+	# v6.11: blueprint_star_upgraded 连接已移除（信号已删）
 
 func _preload_common_panels() -> void:
 	var panel_paths: Array[String] = [
@@ -591,8 +589,7 @@ func _on_intelligence_open_progression(card_id: String) -> void:
 		panel.select_card_by_id(card_id)
 
 
-func _on_blueprint_star_upgraded(card_id: String, new_star: int) -> void:
-	pass
+# v6.11: _on_blueprint_star_upgraded 回调已移除（战力星级系统②已删）
 
 func _on_faction_pressed() -> void:
 	_play_sfx("button")

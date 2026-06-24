@@ -6,7 +6,7 @@ extends Node
 ## 信号名保留 fragments_changed 以兼容外部（30+ 引用）
 ## 实际含义已变为「蓝图数据变更」（副本/星级/研究点/改装等）
 signal fragments_changed
-signal blueprint_star_upgraded(card_id: String, new_star: int)
+# v6.11: blueprint_star_upgraded 信号已移除（战力星级系统②已删）
 signal blueprint_obtained(card_id: String, count: int)
 signal card_manufactured(card_id: String, star: int)
 
@@ -85,8 +85,7 @@ var blueprint_intel_branch_bonus: Dictionary = {}
 ## card_id -> 自定义武器槽位配置（用于进化/改造后的武器）
 var blueprint_weapon_slots: Dictionary = {}
 
-## v6.5 战力星级追踪：card_id → {star: int, power: float}
-var card_battle_stars: Dictionary = {}
+## v6.11: card_battle_stars 字段已移除（战力星级系统②已合并到强化等级①）
 
 ## 纳米材料已迁移到 BasicResourceManager（autoload）
 
@@ -345,52 +344,8 @@ func get_blueprint_star(card_id: String) -> int:
 	# [DEPRECATED] 星级系统已废弃，固定返回1
 	return 1
 
-# ── v6.5 战力星级系统 ──
-
-## 获取卡牌的战力星级（0-7）
-func get_battle_star(card_id: String) -> int:
-	var entry: Dictionary = card_battle_stars.get(card_id, {})
-	if entry.is_empty():
-		return 0
-	return int(entry.get("star", 0))
-
-## 获取卡牌的累计击溃战力
-func get_battle_star_power(card_id: String) -> float:
-	var entry: Dictionary = card_battle_stars.get(card_id, {})
-	if entry.is_empty():
-		return 0.0
-	return float(entry.get("power", 0.0))
-
-## 累加击溃战力，检查是否升星。返回 {leveled_up: bool, new_star: int, old_star: int}
-func add_battle_star_power(card_id: String, power: float) -> Dictionary:
-	if power <= 0.0:
-		return {"leveled_up": false, "new_star": get_battle_star(card_id), "old_star": get_battle_star(card_id)}
-	var BattleStarCfg = preload("res://data/battle_star_config.gd")
-	var entry: Dictionary = card_battle_stars.get(card_id, {"star": 0, "power": 0.0})
-	var old_star: int = int(entry.get("star", 0))
-	var cur_power: float = float(entry.get("power", 0.0)) + power
-	var new_star: int = BattleStarCfg.get_star_from_power(cur_power)
-	entry["power"] = cur_power
-	entry["star"] = new_star
-	card_battle_stars[card_id] = entry
-	# 同步到 CardResource 实例
-	var card: CardResource = _get_card_from_library(card_id)
-	if card != null:
-		card.battle_star = new_star
-		card.battle_star_power = cur_power
-	var leveled_up: bool = new_star > old_star
-	if leveled_up:
-		SignalBus.blueprint_star_upgraded.emit(card_id, new_star)
-	return {"leveled_up": leveled_up, "new_star": new_star, "old_star": old_star}
-
-## 战斗结束时同步所有 card_battle_stars 到 CardResource 实例
-func sync_battle_stars_to_cards() -> void:
-	for card_id in card_battle_stars.keys():
-		var entry: Dictionary = card_battle_stars[card_id]
-		var card: CardResource = _get_card_from_library(card_id)
-		if card != null:
-			card.battle_star = int(entry.get("star", 0))
-			card.battle_star_power = float(entry.get("power", 0.0))
+# ── v6.11: 战力星级系统②已移除（合并到强化等级①），get_battle_star/get_battle_star_power/
+#           add_battle_star_power/sync_battle_stars_to_cards 已删 ──
 
 ## 获取法则蓝图星级（别名）
 func get_law_blueprint_level(law_id: String) -> int:
@@ -476,61 +431,10 @@ func get_card_breakthroughs(_card_id: String) -> int:
 
 ## ─────────── 默认强化列表 ───────────
 
-## 获取某星级对应的默认强化列表
-func get_default_enhancements(card_id: String, star: int) -> Array:
-	var enhancements: Array = []
-	if star <= 0:
-		return enhancements
-	var card: CardResource = DefaultCards.get_card_by_id(card_id)
-	if card == null:
-		return enhancements
-	var pool: Array = StarConfig.get_pool_for_card_type(card.card_type)
-	if pool.is_empty():
-		return enhancements
-	var is_mythic: bool = card.rarity == "mythic"
-	for i in range(star):
-		var stable_key: int = int(hash(String(card_id) + "|" + str(star) + "|" + str(i)))
-		var entry: Dictionary = StarConfig.roll_affix_at(pool, is_mythic, stable_key)
-		if not entry.is_empty():
-			enhancements.append(entry)
-	return enhancements
-
-## 获取指定卡牌在当前星级已生效的强化文案
-func get_star_enhancement_lines(card_id: String, star: int = -1) -> Array[String]:
-	var lines: Array[String] = []
-	if card_id.is_empty():
-		return lines
-	var applied_star: int = star if star > 0 else get_blueprint_star(card_id)
-	if applied_star <= 0:
-		return lines
-	var enhancements: Array = get_default_enhancements(card_id, applied_star)
-	if enhancements.is_empty():
-		var c0: CardResource = DefaultCards.get_card_by_id(card_id)
-		if c0 != null:
-			var pool_fb: Array = StarConfig.get_pool_for_card_type(c0.card_type)
-			if not pool_fb.is_empty():
-				var e0: Dictionary = StarConfig.roll_affix_at(
-					pool_fb,
-					str(c0.rarity).to_lower() == "mythic",
-					int(hash(String(card_id) + "|fb|" + str(applied_star)))
-				)
-				if not e0.is_empty():
-					enhancements.append(e0)
-	for e_raw in enhancements:
-		if not (e_raw is Dictionary):
-			continue
-		var e: Dictionary = e_raw
-		var name_text: String = String(e.get("name", e.get("id", "强化")))
-		var base_v: float = float(e.get("value_base", 0.0))
-		var per_star_v: float = float(e.get("value_per_star", 0.0))
-		var final_v: float = base_v + maxf(0.0, float(applied_star - 1)) * per_star_v
-		lines.append("%s +%s" % [name_text, _format_enhancement_value(final_v)])
-	return lines
-
-func _format_enhancement_value(v: float) -> String:
-	if absf(v - round(v)) < 0.001:
-		return str(int(round(v)))
-	return ("%.1f" % v)
+## v6.11: 以下星级强化函数已移除（废弃的星级系统，强化改走 enhance_level + module_slots）：
+##   - get_default_enhancements（基于已移除的 StarConfig 星级池）
+##   - get_star_enhancement_lines（基于已移除的星级系统，无外部调用）
+##   - _format_enhancement_value（仅被上述两函数内部调用）
 
 ## ─────────── 资源管理（纳米材料 / 研究点） ───────────
 
@@ -811,14 +715,7 @@ func save_state() -> Dictionary:
 					})
 			weapon_slots_dict[k2] = slots_array
 
-	# v6.5 战力星级数据
-	var battle_stars_dict: Dictionary = {}
-	for k in card_battle_stars.keys():
-		var bs_entry: Dictionary = card_battle_stars[k]
-		battle_stars_dict[String(k)] = {
-			"star": int(bs_entry.get("star", 0)),
-			"power": float(bs_entry.get("power", 0.0)),
-		}
+	# v6.11: 战力星级数据 card_battle_stars 已移除（不再存档）
 
 	return {
 		"unlocked": unlocked_blueprint_ids.duplicate(),
@@ -830,7 +727,6 @@ func save_state() -> Dictionary:
 		"blueprint_enemy_origin_mod": eom_dict,
 		"blueprint_intel_branch_bonus": intel_bonus_dict,
 		"blueprint_weapon_slots": weapon_slots_dict,
-		"card_battle_stars": battle_stars_dict,
 		"legacy_default_energy_copies_migrated": _legacy_default_energy_copies_migrated,
 	}
 
@@ -909,19 +805,9 @@ func load_state(data: Dictionary) -> void:
 							slots_array.append(w)
 					blueprint_weapon_slots[cid_w] = slots_array
 
-		# v6.5 战力星级数据加载
-		if data.has("card_battle_stars") and data["card_battle_stars"] is Dictionary:
-			card_battle_stars.clear()
-			for k in data["card_battle_stars"]:
-				var bs: Dictionary = data["card_battle_stars"][k]
-				if bs is Dictionary:
-					card_battle_stars[String(k)] = {
-						"star": int(bs.get("star", 0)),
-						"power": float(bs.get("power", 0.0)),
-					}
-			sync_battle_stars_to_cards()
+			# v6.11: 战力星级数据加载已移除（card_battle_stars 不再存档，旧字段被忽略）
 
-	# 兼容旧存档的 fragments → blueprint_copies 迁移
+		# 兼容旧存档的 fragments → blueprint_copies 迁移
 	if not data.has("blueprint_copies") and data.has("fragments") and data["fragments"] is Dictionary:
 		blueprint_copies.clear()
 		for k in data["fragments"]:
@@ -978,7 +864,7 @@ func reset_to_defaults() -> void:
 	blueprint_enemy_origin_mod.clear()
 	blueprint_intel_branch_bonus.clear()
 	blueprint_weapon_slots.clear()
-	card_battle_stars.clear()
+	# v6.11: card_battle_stars.clear() 已移除（字段已删）
 	_legacy_default_energy_copies_migrated = false
 	_unlock_default_blueprints()
 

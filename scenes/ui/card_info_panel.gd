@@ -620,23 +620,35 @@ func _build_card_affix_summary(card: CardResource) -> String:
 		return _build_affix_summary_lines(stats)
 	return ""
 
+## v6.11: 强化详情（情报 Tab）——显示真实强化等级 + 词条效果
+## 弃用废弃的 get_star_enhancement_lines（基于已移除的星级系统）
 func _build_star_lines(card: CardResource) -> String:
-	if BlueprintManager == null or not BlueprintManager.has_method("get_star_enhancement_lines"):
+	var detail_star: int = int(card.enhance_level) if "enhance_level" in card else 0
+	if detail_star <= 0:
 		return ""
-	var detail_star: int = int(card.enhance_level)
-	var lines: Array[String] = BlueprintManager.get_star_enhancement_lines(card.card_id, detail_star)
-	if lines.is_empty():
-		return "★%d（无加成）" % detail_star
-	return "★%d\n- %s" % [detail_star, "\n- ".join(lines)]
+	var cem: Node = get_node_or_null("/root/CardEnhancementManager")
+	if cem and cem.has_method("get_module_effect_lines"):
+		var lines: Array = cem.get_module_effect_lines(card.card_id)
+		if not lines.is_empty():
+			return "强化 ★%d\n- %s" % [detail_star, "\n- ".join(lines)]
+	return "强化 ★%d" % detail_star
 
 func _build_nurture_text(card: CardResource) -> String:
 	if card == null or BlueprintManager == null:
 		return ""
 	var parts: Array[String] = []
 	if card.card_type == GC.CardType.COMBAT_UNIT:
-		parts.append("强化 Lv.%d" % card.enhance_level)
+		parts.append("强化 ★%d" % card.enhance_level)
 		var power: int = card.get_current_power() if card.has_method("get_current_power") else 0
 		parts.append("战力：%d" % power)
+	# v6.11: 强化词条效果行（调用现成的 get_module_effect_lines，之前是孤儿接口从未被调用）
+	var enhance_effect_text: String = ""
+	if card.card_type == GC.CardType.COMBAT_UNIT:
+		var cem: Node = get_node_or_null("/root/CardEnhancementManager")
+		if cem and cem.has_method("get_module_effect_lines"):
+			var eff_lines: Array = cem.get_module_effect_lines(card.card_id)
+			if not eff_lines.is_empty():
+				enhance_effect_text = "\n词条效果：" + " · ".join(eff_lines)
 	if BlueprintManager.has_method("get_card_xp_progress"):
 		var prog: Dictionary = BlueprintManager.get_card_xp_progress(card.card_id)
 		var lvl: int = int(prog.get("level", 1))
@@ -650,10 +662,10 @@ func _build_nurture_text(card: CardResource) -> String:
 		var stage: String = str(card.evolution_stage)
 		if not stage.is_empty():
 			parts.append("进化 %s" % stage)
-	# v6.5: 情报标签下显示已获得改造的具体名称列表
+	# v6.11: 情报标签下显示已获得改造的名称 + 效果摘要（让玩家看到装了什么、加什么）
 	var mod_list_text: String = ""
 	if card.card_type == GC.CardType.COMBAT_UNIT and "mods" in card:
-		var mod_names: Array[String] = []
+		var mod_lines: Array[String] = []
 		for mod_entry in card.mods:
 			var mod_id: String = ""
 			var mod_disabled: bool = false
@@ -666,29 +678,92 @@ func _build_nurture_text(card: CardResource) -> String:
 			if not mod_id.is_empty():
 				var mod_data: Dictionary = ModificationRegistry.get_data(mod_id)
 				var mod_name: String = String(mod_data.get("name", mod_id)) if not mod_data.is_empty() else mod_id
+				# 追加效果摘要（复用 modification_panel 的格式化逻辑）
+				var mod_text: String = mod_name
+				if not mod_data.is_empty() and mod_data.has("effects"):
+					var eff_lines: PackedStringArray = _format_mod_effects_brief(mod_data)
+					if not eff_lines.is_empty():
+						mod_text += "（%s）" % " · ".join(eff_lines)
+				elif not mod_data.is_empty() and mod_data.has("level_effects"):
+					var eff_lines: PackedStringArray = _format_mod_effects_brief(mod_data)
+					if not eff_lines.is_empty():
+						mod_text += "（%s）" % " · ".join(eff_lines)
 				# v6.5: 禁用的武器改造标注（禁用）
 				if mod_disabled:
-					mod_name += "（禁用）"
-				mod_names.append(mod_name)
-		parts.append("改造 %d/9" % mod_names.size())
-		if not mod_names.is_empty():
-			mod_list_text = "\n已装改造：\n    · " + "\n    · ".join(mod_names)
-	# v6.5: 战力星级信息
-	var battle_star_text: String = ""
-	var bs: int = int(card.battle_star) if "battle_star" in card else 0
-	var bsp: float = float(card.battle_star_power) if "battle_star_power" in card else 0.0
-	if bs > 0:
-		var BattleStarCfg = preload("res://data/battle_star_config.gd")
-		var star_display: String = "⭐" + "★".repeat(bs)
-		var bonus_text: String = BattleStarCfg.format_stat_bonus_text(card.combat_kind, bs)
-		var next_thresh: float = BattleStarCfg.get_next_star_threshold(bs)
-		var progress_text: String = ""
-		if next_thresh > 0.0:
-			progress_text = "\n累计战力 %d / %d" % [int(bsp), int(next_thresh)]
-		battle_star_text = "\n战力星级 %s\n    %s%s" % [star_display, bonus_text, progress_text]
+					mod_text += "（禁用）"
+				mod_lines.append(mod_text)
+		parts.append("改造 %d/9" % mod_lines.size())
+		if not mod_lines.is_empty():
+			mod_list_text = "\n已装改造：\n    · " + "\n    · ".join(mod_lines)
+	# v6.11: 战力星级信息已移除（系统②合并到强化等级①，详见 _build_star_lines 的强化加成）
 	if not parts.is_empty():
-		return " · ".join(parts) + mod_list_text + battle_star_text
+		return " · ".join(parts) + enhance_effect_text + mod_list_text
 	return ""
+
+## v6.11: 格式化改造效果摘要（用于情报面板已装改造列表，紧凑单行）
+## 兼容 effects（单档）和 level_effects（取最高档），取前3条避免过长
+func _format_mod_effects_brief(mod_data: Dictionary) -> PackedStringArray:
+	var lines: PackedStringArray = []
+	var eff: Dictionary = {}
+	if mod_data.has("effects") and (mod_data["effects"] as Dictionary).size() > 0:
+		eff = mod_data["effects"]
+	elif mod_data.has("level_effects") and (mod_data["level_effects"] as Dictionary).size() > 0:
+		var le: Dictionary = mod_data["level_effects"]
+		var sorted_levels = le.keys()
+		sorted_levels.sort()
+		eff = le[sorted_levels[sorted_levels.size() - 1]]
+	else:
+		return lines
+	for key in eff.keys():
+		var val = eff[key]
+		var disp: String = _translate_mod_key(String(key))
+		if val is float and val >= 0.01 and val < 100.0:
+			lines.append("%s+%d%%" % [disp, int(val * 100)])
+		elif val is float and val <= -0.01:
+			lines.append("%s%d%%" % [disp, int(val * 100)])
+		elif val is int:
+			lines.append("%s%+d" % [disp, val])
+		elif val is bool and val:
+			lines.append("✓%s" % disp)
+		else:
+			lines.append("%s" % disp)
+		if lines.size() >= 3:
+			break
+	return lines
+
+## v6.11: 改造效果键翻译（情报面板用，与 modification_panel 的 _translate_effect_key 保持一致但更简短）
+func _translate_mod_key(key: String) -> String:
+	match key:
+		"attack_light": return "轻攻"
+		"attack_armor": return "重攻"
+		"attack_air": return "防空"
+		"attack_fort": return "攻坚"
+		"defense_light": return "轻防"
+		"defense_armor": return "重防"
+		"defense_air": return "空防"
+		"max_hp": return "生命"
+		"move_speed": return "部署"
+		"attack_range": return "射程"
+		"attack_interval": return "攻速"
+		"crit_chance": return "暴击"
+		"crit_damage_bonus": return "暴伤"
+		"dodge_chance": return "闪避"
+		"armor_penetration": return "穿甲"
+		"armor_pen_vs_light": return "穿甲(轻)"
+		"armor_pen_vs_armor": return "穿甲(重)"
+		"armor_pen_vs_air": return "穿甲(空)"
+		"damage_reduction": return "减伤"
+		"lifesteal": return "吸血"
+		"hp_regen": return "回血"
+		"shield_on_kill": return "护盾"
+		"splash_damage": return "溅射"
+		"splash_radius": return "溅射范围"
+		"accuracy_bonus": return "命中"
+		"night_bonus": return "夜战"
+		"mine_immunity": return "避雷"
+		"missile_intercept": return "拦截"
+		"missile_dodge": return "反导"
+		_: return key
 
 ## ── 战场单位显示刷新 ─────────────────────────────────────────
 

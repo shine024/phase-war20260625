@@ -187,22 +187,23 @@ func get_slot_targets(unit: Node2D, is_global: bool, is_player: bool) -> Array:
 		targets.append(node)
 	return targets
 
-## 获取单位星级（从 BlueprintManager 读取，缓存到 meta 避免重复查询）
+## 获取单位强化等级（v6.11: 从废弃的 get_blueprint_star 迁移到真实 enhance_level）
+## 缓存到 meta 避免重复查询
 static func get_unit_star(unit: Node2D) -> int:
 	if unit == null:
 		return 1
 	if unit.has_meta("enhance_level"):
 		return int(unit.get_meta("enhance_level"))
-	# 首次访问时从 BlueprintManager 查询并缓存
+	# 首次访问时从 CardEnhancementManager 查询真实强化等级并缓存
 	if "stats" in unit and unit.stats != null and not unit.stats.platform_card_id.is_empty():
-		var bm: Node = null
+		var cem: Node = null
 		var loop = Engine.get_main_loop()
 		if loop is SceneTree:
-			bm = (loop as SceneTree).root.get_node_or_null("BlueprintManager")
-		if bm != null and bm.has_method("get_blueprint_star"):
-			var star: int = int(bm.get_blueprint_star(unit.stats.platform_card_id))
-			unit.set_meta("enhance_level", star)
-			return star
+			cem = (loop as SceneTree).root.get_node_or_null("CardEnhancementManager")
+		if cem and cem.has_method("get_card_enhancement_level"):
+			var lvl: int = int(cem.get_card_enhancement_level(unit.stats.platform_card_id))
+			unit.set_meta("enhance_level", lvl)
+			return lvl
 	unit.set_meta("enhance_level", 1)
 	return 1
 

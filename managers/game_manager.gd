@@ -163,12 +163,11 @@ func calculate_power_rating() -> int:
 	if lp and lp.has_method("get_max_unlocked_level"):
 		max_level = lp.get_max_unlocked_level()
 	power += max_level * 3
-	# 2. 卡牌星级加成：所有拥有卡牌的 battle_star 之和
+	# 2. 卡牌战力加成：按拥有的卡牌副本数贡献（v6.11: 原 battle_star 已移除）
 	if BlueprintManager and BlueprintManager.has_method("get_all_blueprint_ids_with_copies"):
 		var card_map: Dictionary = BlueprintManager.get_all_blueprint_ids_with_copies()
 		for card_id in card_map:
 			var copies: int = int(card_map[card_id])
-			# 每张卡按 battle_star 贡献（取蓝图星级，无接口则按拥有数粗估）
 			power += copies
 	# 3. 相位仪加成：每级相位场经验 +1
 	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
@@ -369,9 +368,7 @@ func _on_battle_ended(player_won: bool) -> void:
 	# v6.6(剧情): 清理最终战标记（防跨战斗残留）
 	clear_final_battle_state()
 
-	# v6.5: 战斗结束后同步战力星级到所有卡牌实例（防御性，确保存档前数据一致）
-	if BlueprintManager and BlueprintManager.has_method("sync_battle_stars_to_cards"):
-		BlueprintManager.sync_battle_stars_to_cards()
+	# v6.11: sync_battle_stars_to_cards 调用已移除（战力星级系统②已删）
 
 	# 获取战斗结果数据
 	var victory_stars: int = 0

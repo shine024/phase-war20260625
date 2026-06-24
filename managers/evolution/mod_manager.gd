@@ -8,11 +8,11 @@ const StarConfig = preload("res://data/blueprint_star_config.gd")
 const BasicResources = preload("res://data/basic_resources.gd")
 
 ## 获取卡牌基础战力（不含改造加成），用于改造消耗公式
+## v6.11: 原 star 来自废弃的 get_blueprint_star（恒1），改用固定值1，数值不变
 static func get_base_power_for_mod_cost(card_id: String, bpm_ref: Node) -> float:
-	var star: int = bpm_ref.get_blueprint_star(card_id)
 	var rarity_mul: float = EvolutionHelpers.get_rarity_multiplier(card_id)
 	var inherit_bonus: float = float(bpm_ref.blueprint_inherit_bonus.get(card_id, 0.0))
-	return (80.0 + float(star) * 28.0) * rarity_mul * (1.0 + inherit_bonus)
+	return (80.0 + 28.0) * rarity_mul * (1.0 + inherit_bonus)
 
 ## 获取当前已装改造数量
 static func get_modification_count(card_id: String, mods_dict: Dictionary) -> int:

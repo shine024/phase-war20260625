@@ -2,12 +2,13 @@ class_name SaveMigration
 extends RefCounted
 ## 存档迁移、校验、清洗工具（从 save_manager.gd 提取）
 
-const SAVE_SCHEMA_VERSION := 6
+const SAVE_SCHEMA_VERSION := 7
 const DEBUG_LOG := false
 
 const SaveMigrationV4 = preload("res://scripts/systems/save_migration_v4.gd")
 const SaveMigrationV5 = preload("res://scripts/systems/save_migration_v5.gd")
 const SaveMigrationV6 = preload("res://scripts/systems/save_migration_v6.gd")
+const SaveMigrationV7 = preload("res://scripts/systems/save_migration_v7.gd")
 
 ## 存档数据迁移（链式执行：逐步从 from_version 升级到 SAVE_SCHEMA_VERSION）
 static func migrate_save_data(data: Dictionary, from_version: int, debug_log: bool = false) -> void:
@@ -37,6 +38,10 @@ static func migrate_save_data(data: Dictionary, from_version: int, debug_log: bo
 				SaveMigrationV6.migrate_v5_to_v6(data, debug_log)
 				ver = 6
 				data[SaveConstants.SK_SCHEMA_VERSION] = 6
+			6:  # v6 → v7: 清除战力星级 card_battle_stars（系统②合并到强化等级①）
+				SaveMigrationV7.migrate_v6_to_v7(data, debug_log)
+				ver = 7
+				data[SaveConstants.SK_SCHEMA_VERSION] = 7
 			_:  # 未知版本，停止迁移
 				push_warning("Unknown save schema version: %d" % ver)
 				break

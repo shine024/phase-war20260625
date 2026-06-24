@@ -142,12 +142,8 @@ var weapon_slots: Array = []
 # ─────────────────────────────────────────────
 
 ## 强化等级 0-10（v5.0 替代旧 star_level；star_level 已废弃见 L160）
+## v6.11: 原 battle_star/battle_star_power 字段已移除（战力星级系统②合并到强化等级①）
 var enhance_level: int = 0
-
-## v6.5 战力星级 0-7（通过战斗中击杀敌人累计击溃战力提升，叠加在强化等级之上）
-var battle_star: int = 0
-## v6.5 累计击溃战力（用于计算战力星级）
-var battle_star_power: float = 0.0
 
 ## 改造ID列表（最多9个 MOD_XX）
 var mods: Array = []

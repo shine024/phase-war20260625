@@ -16,7 +16,9 @@ enum Category {
 
 ## 星级乘数：1.0 + (star - 1) * 0.1，即 ★1=1.0, ★5=1.4, ★9=1.8
 static func star_multiplier(star: int) -> float:
-	return 1.0 + float(maxi(1, star) - 1) * 0.1
+	# v6.11: 系数 0.1→0.05（迁移到 enhance_level 0-10，避免高强化光环过强）
+	# 原 star 1-9 → 现 enhance_level 0-10：★10=1.45（原★9=1.8），★5=1.20
+	return 1.0 + float(maxi(1, star) - 1) * 0.05
 
 ## 光环范围判定
 ## v6.2: 所有光环（含普通光环）均影响我方全体，不再受槽位距离限制

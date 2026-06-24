@@ -426,53 +426,10 @@ func _on_unit_died(unit: Node, is_player: bool) -> void:
 		_damage_system.process_kill_rewards(unit)
 		## v6.0: record defeated enemy for intel system
 		_record_defeated_enemy(unit)
-		## v6.5: 战力星级 — 击杀者累计被杀敌人的战力
-		_record_battle_star_kill(unit)
 	_check_win_lose()
 
 
-## v6.5: 从被杀敌人获取击杀者，累计击溃战力到击杀者的卡牌
-func _record_battle_star_kill(killed_unit: Node) -> void:
-	if killed_unit == null or not is_instance_valid(killed_unit):
-		return
-	# 从 last_damage_source 获取击杀者（玩家单位）
-	var killer: Node = null
-	if "last_damage_source" in killed_unit:
-		killer = killed_unit.get("last_damage_source")
-	if killer == null or not is_instance_valid(killer):
-		return
-	# 取击杀者的卡牌ID
-	var card_id: String = ""
-	if "stats" in killer and killer.get("stats") != null:
-		var killer_stats = killer.get("stats")
-		if "platform_card_id" in killer_stats:
-			card_id = String(killer_stats.platform_card_id)
-	if card_id.is_empty():
-		return
-	# 计算被杀敌人的战力（与 enemy_unit.gd power_score 公式一致）
-	var enemy_power: float = 50.0
-	if "stats" in killed_unit and killed_unit.get("stats") != null:
-		var estats = killed_unit.get("stats")
-		# estats 是 UnitStats（Resource），直接用属性访问
-		var e_hp: float = float(estats.max_hp)
-		var e_range: float = float(estats.attack_range)
-		var e_atk_l: float = float(estats.attack_light)
-		var e_atk_a: float = float(estats.attack_armor)
-		var e_atk_air: float = float(estats.attack_air)
-		var e_interval: float = maxf(float(estats.attack_interval), 0.05)
-		var dps_l: float = e_atk_l / e_interval if e_atk_l > 0.0 else 0.0
-		var dps_a: float = e_atk_a / e_interval if e_atk_a > 0.0 else 0.0
-		var dps_air: float = e_atk_air / e_interval if e_atk_air > 0.0 else 0.0
-		var best_dps: float = maxf(dps_l, maxf(dps_a, dps_air))
-		enemy_power = maxf(50.0, e_hp * 0.28 + best_dps * 2.2 + e_range * 0.22)
-	else:
-		# v6.6 修复：原 float(killed_unit.get("max_hp")) 在属性存在但值为 null 时
-		# 触发 "Nonexistent 'float' constructor" 运行时错误（偶发，特定敌人被击杀时）。
-		# get() 默认值仅在 key/属性不存在时生效，值为 null 时返回 null，float(null) 报错。
-		var e_hp_raw: Variant = killed_unit.get("max_hp") if "max_hp" in killed_unit else null
-		var e_hp_alt: float = float(e_hp_raw) if (e_hp_raw is float or e_hp_raw is int) else 100.0
-		enemy_power = maxf(50.0, e_hp_alt * 0.28)
-	BlueprintManager.add_battle_star_power(card_id, enemy_power)
+## v6.11: _record_battle_star_kill 已移除（战力星级系统②已合并到强化等级①）
 
 
 func _check_win_lose() -> void:
