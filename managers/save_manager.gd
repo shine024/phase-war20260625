@@ -957,6 +957,12 @@ func consume_pending_backpack_card_id(card_id: String) -> bool:
 	var idx: int = _pending_backpack_ids.find(card_id)
 	if idx >= 0:
 		_pending_backpack_ids.remove_at(idx)
+		# 同步从 last_known 移除一份，保持两队列同步。
+		# 否则 last_known 会单调递增（只 enqueue 不 consume），load_pending_cards 的差值补齐
+		# 逻辑会把多出的份额兑现成多一张卡（"买一张得两张"bug 的根因之一）。
+		var idx_last: int = _last_known_extra_ids.find(card_id)
+		if idx_last >= 0:
+			_last_known_extra_ids.remove_at(idx_last)
 		return true
 	return false
 

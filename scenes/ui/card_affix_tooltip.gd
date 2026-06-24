@@ -220,7 +220,7 @@ func _add_affix_row(affix: AffixResource) -> void:
 	if affix.is_mutated and not affix.mutation_description.is_empty():
 		var mut_desc := Label.new()
 		mut_desc.text = "  ↳ %s" % affix.mutation_description
-		mut_desc.add_theme_font_size_override("font_size", 9)
+		mut_desc.add_theme_font_size_override("font_size", 10)
 		mut_desc.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3, 0.85))
 		info_vbox.add_child(mut_desc)
 

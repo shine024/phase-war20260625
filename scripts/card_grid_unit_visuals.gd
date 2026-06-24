@@ -15,6 +15,7 @@ const EnemyUnitManifest = preload("res://data/enemy_unit_manifest.gd")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const GC = preload("res://resources/game_constants.gd")
 const BattleUnitSizeRules = preload("res://scripts/battle_unit_size_rules.gd")
+const CardFootAnchors = preload("res://data/card_foot_anchors.gd")
 
 
 ## `face_right`：原画朝左；我方 true（负 scale.x 镜像朝右），敌方 false（保持朝左）。
@@ -88,20 +89,32 @@ static func apply_battle_unit_presentation(
 		hover_y = BattleUnitSizeRules.get_air_hover_offset_px()
 	# 先定 scale（apply_uniform_card_sprite 内部完成），再据"卡"的视觉高度算底部基线对齐
 	apply_uniform_card_sprite(unit_spr, tex, face_right, size_mul)
-	# 底部基线对齐：以卡的"外壳"（势力底图/稀有度框，5:8 比例）高度为基准。
-	# 底图才是卡的真正形状（立绘只是框内图案），所有卡的底图底部对齐到同一基线（单位原点 = 车道 Y）。
+	# 底图基线：以卡的"外壳"（势力底图/稀有度框，5:8 比例）高度为基准，底图底部对齐到地面线（单位原点=车道 Y）。
 	# 大卡 card_h 大、中心更高，小卡 card_h 小、中心更低，但底图底部齐平。
-	# 立绘（正方形）跟随同一中心，在底图内居中（这是正常卡牌设计：立绘居中、底图包边）。
 	var card_w: float = CardGridBattleLayout.battle_card_width_px() * maxf(size_mul, 0.0001)
 	var card_h: float = card_w * 8.0 / 5.0
-	var baseline_y: float = -card_h * 0.5
-	# chrome 会读取 unit_spr.position 对齐底图/框，故先设好 position 再调 chrome
-	unit_spr.position = Vector2(unit_spr.position.x, baseline_y + hover_y)
+	var chrome_y: float = -card_h * 0.5 + hover_y
+	# 步骤1：先把立绘 position 设到底图基线，供 chrome（底图/稀有度框）对齐
+	unit_spr.position = Vector2(unit_spr.position.x, chrome_y)
 	if card != null:
 		apply_battle_card_chrome(host, unit_spr, card, size_mul)
-	# rank_strip（卡顶）与 name_strip（卡底）相对立绘中心定位，立绘 position.y 已含底部基线+悬浮
+	# rank_strip（卡顶）与 name_strip（卡底）用底图尺寸定位，此时立绘 position = 底图基线
 	sync_rank_strip(host, rank_level, unit_spr)
 	sync_name_strip(host, unit_spr, card, face_right)
+	# 步骤2：把立绘 position 调整为"脚对齐地面线"，消除抠图脚位参差。
+	# 底图/框/strip 已在步骤1固定（它们用 chrome_y 或独立 card_h 定位，不随立绘 position 二次变动）。
+	# foot_frac = 脚距纹理底部比例（0.0=脚贴底）；从纹理 resource_path 提取文件名查脚部锚点表。
+	# centered 立绘的脚在世界 Y = position.y + tex_h*|scale.y|*(0.5 - foot_frac)；
+	# 要脚落在地面线（原点 Y），则 position.y = -tex_h*|scale.y|*(0.5 - foot_frac) + hover_y。
+	var foot_y: float = chrome_y
+	if unit_spr.texture != null:
+		var tex_h: float = float(unit_spr.texture.get_height())
+		var disp_h: float = tex_h * absf(unit_spr.scale.y)
+		var rpath: String = unit_spr.texture.resource_path
+		var file_name: String = rpath.get_file().get_basename()
+		var foot_frac: float = CardFootAnchors.get_foot_frac(file_name)
+		foot_y = -disp_h * (0.5 - foot_frac) + hover_y
+	unit_spr.position = Vector2(unit_spr.position.x, foot_y)
 	return true
 
 
@@ -129,9 +142,13 @@ static func sync_name_strip(host: Node2D, unit_spr: Sprite2D, card: CardResource
 		card_w = float(bg_spr.texture.get_width()) * absf(bg_spr.scale.x)
 		card_h = float(bg_spr.texture.get_height()) * absf(bg_spr.scale.y)
 	strip.rebuild(display_name, is_player, card_w, card_h)
-	# 卡底定位：卡的底部（底图底）= 立绘中心(unit_spr.position.y) + card_h/2；名称条贴其下
+	# 卡底定位：卡的底部（底图底）= 底图基线(CardBattleBg.position.y) + card_h/2；名称条贴其下
+	# 修复 H2：原用 unit_spr.position.y（立绘脚位 foot_y），大脚部锚点单位脚位高于底图基线，
+	# 导致名称条与 buff_strip（用底图基线）错层。统一到底图基线，与 rank_strip/buff_strip 对称。
+	# 注：底图 position 在 apply_battle_card_chrome 里钉在 chrome_y，不随后续立绘脚位变动。
 	var half_h: float = card_h * 0.5
-	strip.position = Vector2(unit_spr.position.x, unit_spr.position.y + half_h + 2.0)
+	var base_y: float = bg_spr.position.y if (bg_spr != null and bg_spr.texture != null) else unit_spr.position.y
+	strip.position = Vector2(unit_spr.position.x, base_y + half_h + 2.0)
 
 
 static func apply_uniform_card_sprite(spr: Sprite2D, tex: Texture2D, face_right: bool = false, size_mul: float = 1.0) -> float:
@@ -249,9 +266,16 @@ static func sync_buff_strip(host: Node2D, unit: Node, spr: Sprite2D) -> void:
 	strip.rebuild(kinds, card_w)
 	var half_h: float = card_h * 0.5
 	var hp_gap: float = 8.0
-	var hp_h: float = 8.0
+	# 血条高度读真实折叠态（修复 H1：原硬编码 8.0 与未选中单位 4px 折叠态脱钩，导致 buff 条错位）
+	# 敌方血条不可见时 hp_h=0（敌方不显示头顶血条）
+	var hp_h: float = 0.0
 	var hb := host.get_node_or_null("HpBar")
 	if hb != null and (hb as CanvasItem).visible:
-		hp_h = 8.0
-	# 卡底下方定位：卡的底部（底图底）= 立绘中心(spr.position.y) + card_h/2；buff 条再往下
-	strip.position = Vector2(0.0, spr.position.y + half_h + hp_gap + hp_h + card_w * 0.03)
+		if hb.has_method("get_bar_height"):
+			hp_h = float(hb.get_bar_height())
+		else:
+			hp_h = 8.0  # 回退默认展开高度
+	# 卡底下方定位：卡的底部（底图底）= 底图基线(CardBattleBg.position.y) + card_h/2；buff 条再往下
+	# 注意：立绘 spr.position.y 已改为"脚对齐"，不等于底图基线；buff 条跟随底图（卡的外壳）。
+	var base_y: float = bg_spr.position.y if (bg_spr != null and bg_spr.texture != null) else spr.position.y
+	strip.position = Vector2(0.0, base_y + half_h + hp_gap + hp_h + card_w * 0.03)

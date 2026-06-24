@@ -56,13 +56,14 @@ theme_override_font_sizes/font_size = 12
 text = "HP 0 / 100"
 
 [node name="ProgressBarBg" type="PanelContainer" parent="."]
-custom_minimum_size = Vector2(100, 14)
+custom_minimum_size = Vector2(120, 16)
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_bg")
 
 [node name="ProgressBar" type="ProgressBar" parent="ProgressBarBg"]
-custom_minimum_size = Vector2(96, 10)
+custom_minimum_size = Vector2(116, 12)
 layout_mode = 2
 max_value = 100.0
 value = 100.0
 show_percentage = false
+theme_override_styles/fill = SubResource("StyleBoxFlat_fill")

@@ -1094,7 +1094,7 @@ func _create_equipment_section(equipment: Dictionary) -> Control:
 			if not pspecial.is_empty():
 				var tags_lbl = Label.new()
 				tags_lbl.text = "  ".join(pspecial)
-				tags_lbl.add_theme_font_size_override("font_size", 9)
+				tags_lbl.add_theme_font_size_override("font_size", 10)
 				tags_lbl.add_theme_color_override("font_color", Color(0.5, 0.6, 0.7, 0.8))
 				tags_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 				tags_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL

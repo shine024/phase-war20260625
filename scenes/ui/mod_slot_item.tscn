@@ -25,7 +25,7 @@ layout_mode = 2
 text = "S1"
 horizontal_alignment = 1
 custom_minimum_size = Vector2(0, 14)
-theme_override_font_sizes/font_size = 8
+theme_override_font_sizes/font_size = 10
 theme_override_colors/font_color = Color(0.333, 0.4, 0.467, 1)
 
 [node name="Icon" type="TextureRect" parent="Margin/VBox"]
@@ -40,7 +40,7 @@ text = ""
 horizontal_alignment = 1
 autowrap_mode = 3
 custom_minimum_size = Vector2(0, 16)
-theme_override_font_sizes/font_size = 9
+theme_override_font_sizes/font_size = 10
 theme_override_colors/font_color = Color(0.533, 0.608, 0.678, 1)
 clip_text = true
 
@@ -49,5 +49,5 @@ layout_mode = 2
 text = ""
 horizontal_alignment = 1
 custom_minimum_size = Vector2(0, 12)
-theme_override_font_sizes/font_size = 8
+theme_override_font_sizes/font_size = 10
 theme_override_colors/font_color = Color(0.533, 0.608, 0.678, 1)

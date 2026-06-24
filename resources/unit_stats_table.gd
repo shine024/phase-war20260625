@@ -276,6 +276,8 @@ static func _apply_mod_stat_effects(stats: UnitStats, mods: Array) -> void:
 		"attack_fort_bonus": stats.attack_fort_bonus,
 		"splash_radius_bonus": stats.splash_radius_bonus,
 		"single_target_penalty": stats.single_target_penalty,
+		# v6.9: move_speed 类改造重定向为部署延迟百分比（move_speed 种子值保留供写回，不被 effects 增量）
+		"deploy_delay_bonus": stats.deploy_delay_bonus,
 	}
 	# 统一应用（支持 level_effects + effects 两种格式）
 	var result: Dictionary = ModificationRegistry.apply_with_level(base_dict, mods)
@@ -308,6 +310,8 @@ static func _apply_mod_stat_effects(stats: UnitStats, mods: Array) -> void:
 	stats.attack_fort_bonus = float(result.get("attack_fort_bonus", stats.attack_fort_bonus))
 	stats.splash_radius_bonus = float(result.get("splash_radius_bonus", stats.splash_radius_bonus))
 	stats.single_target_penalty = float(result.get("single_target_penalty", stats.single_target_penalty))
+	# v6.9: 部署延迟百分比加成写回（move_speed 类改造经 registry 重定向后落到此字段）
+	stats.deploy_delay_bonus = float(result.get("deploy_delay_bonus", stats.deploy_delay_bonus))
 	# v6.5→v6.6: 武器类改造改变武器型号，写入 legacy_weapon_type（不污染 weapon_type 弹道字段）
 	# bullet 的 VFX/弹道 match 读 legacy_weapon_type，AI 曲射判断读 weapon_type
 	if result.has("legacy_weapon_type"):

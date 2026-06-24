@@ -140,6 +140,6 @@ horizontal_alignment = 1
 [node name="XpLabel" type="Label" parent="MarginContainer/VBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.5, 0.8, 1, 0.9)
-theme_override_font_sizes/font_size = 9
+theme_override_font_sizes/font_size = 10
 text = ""
 horizontal_alignment = 1

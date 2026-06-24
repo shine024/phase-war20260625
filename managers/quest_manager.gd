@@ -20,6 +20,7 @@ extends Node
 const QuestDefs = preload("res://data/quest_definitions.gd")
 const LevelInfoClass = preload("res://data/level_information.gd")
 const CardDropGrantsScript = preload("res://scripts/card_drop_grants.gd")
+const FactionQuestGenerator = preload("res://data/faction_quest_generator.gd")  # v6.9: 势力动态任务生成
 
 signal quest_accepted(quest_id: String)
 signal quest_progress_changed(quest_id: String)
@@ -430,7 +431,15 @@ func _try_complete(quest_id: String) -> void:
 	if not is_quest_done(quest_id):
 		return
 	var def: Dictionary = QuestDefs.get_by_id(quest_id)
+	# v6.9: 任务随机结果——若定义了 outcome_table，按权重抽取一个结果变体
 	var rewards: Dictionary = def.get("rewards", {})
+	var outcome_label: String = ""
+	var outcome_table: Array = def.get("outcome_table", [])
+	if not outcome_table.is_empty():
+		var picked: Dictionary = _roll_outcome(outcome_table)
+		if not picked.is_empty():
+			rewards = picked.get("rewards", rewards)
+			outcome_label = String(picked.get("label", ""))
 	_grant_rewards(rewards)
 	_accepted.erase(quest_id)
 	if quest_id not in _completed_ids:
@@ -439,6 +448,34 @@ func _try_complete(quest_id: String) -> void:
 	quest_progress_changed.emit(quest_id)
 	# v6.6: 同步镜像到 SignalBus（audio/全局监听者订阅的是 SignalBus 版本）
 	SignalBus.quest_completed.emit(quest_id, rewards)
+	# v6.9: 随机结果提示（让玩家知道抽到了什么结果）
+	if not outcome_label.is_empty() and SignalBus.has_signal("show_toast"):
+		var qtitle: String = String(def.get("title", quest_id))
+		SignalBus.show_toast.emit("%s：%s" % [qtitle, outcome_label])
+	# v6.9: 动态任务完成后从注册表移除（避免 get_available_ids 堆积已完成任务）
+	if bool(def.get("is_dynamic", false)):
+		QuestDefs.unregister_dynamic_quest(quest_id)
+
+## v6.9: 按 weight 权重抽取一个结果变体
+## [param outcome_table] [{weight, label, rewards}, ...]
+## [return] 抽中的变体 Dictionary；输入空或异常返回空字典
+static func _roll_outcome(outcome_table: Array) -> Dictionary:
+	if outcome_table.is_empty():
+		return {}
+	var total_weight: int = 0
+	for o in outcome_table:
+		if o is Dictionary:
+			total_weight += maxi(1, int(o.get("weight", 1)))
+	if total_weight <= 0:
+		return {}
+	var roll: int = randi() % total_weight
+	for o in outcome_table:
+		if not (o is Dictionary):
+			continue
+		roll -= maxi(1, int(o.get("weight", 1)))
+		if roll < 0:
+			return o
+	return outcome_table[outcome_table.size() - 1] if outcome_table[outcome_table.size() - 1] is Dictionary else {}
 
 func _grant_rewards(rewards: Dictionary) -> void:
 	var bm = get_node_or_null("/root/BlueprintManager")
@@ -477,6 +514,8 @@ func save_state() -> Dictionary:
 		"completed_ids": _completed_ids.duplicate(),
 		# v6.6(剧情): 持久化已揭示的隐藏任务（补剧情.txt 真实者支线）
 		"revealed_quest_ids": _revealed_quest_ids.duplicate(),
+		# v6.9: 持久化动态任务定义（未完成的动态任务读档后恢复）
+		"dynamic_quests": QuestDefs.get_all_dynamic_quest_defs(),
 	}
 
 func load_state(data: Dictionary) -> void:
@@ -488,6 +527,21 @@ func load_state(data: Dictionary) -> void:
 	_revealed_quest_ids.clear()
 	for qid in data.get("revealed_quest_ids", []):
 		_revealed_quest_ids.append(String(qid))
+	# v6.9: 恢复动态任务定义（读档前清空，避免重复；旧存档无此字段时为空数组）
+	QuestDefs.clear_dynamic_quests()
+	for def in data.get("dynamic_quests", []):
+		if def is Dictionary:
+			# 直接回填（已含 is_dynamic 标记），跳过 register 的冲突检查
+			var qid: String = String(def.get("id", ""))
+			if not qid.is_empty():
+				QuestDefs.register_dynamic_quest(def)
+	# 清理已完成但仍在注册表的动态任务（防御性：存档时刚好完成的边界情况）
+	var stale_dynamic: Array = []
+	for qid in QuestDefs.get_dynamic_quest_ids():
+		if is_completed_ever(String(qid)):
+			stale_dynamic.append(String(qid))
+	for sid in stale_dynamic:
+		QuestDefs.unregister_dynamic_quest(sid)
 
 # ──────────────── 进攻/防守任务辅助 ────────────────
 
@@ -567,3 +621,69 @@ func get_active_story_quest_at_level(level: int) -> String:
 		if trigger_level_for_quest(qid) == level and not is_quest_done(qid):
 			return qid
 	return ""
+
+# ──────────────── v6.9: 势力动态任务系统 ────────────────
+
+## 刷新某势力的动态任务（进入势力领地/声望升级时由 GameManager 调用）
+## 生成1个新动态任务并注册到 QuestDefs，同时揭示让玩家可见可接
+## [param faction_id] 势力ID（空或未知则不生成）
+## [param max_active_per_faction] 同势力同时存在的动态任务上限，避免堆积
+func refresh_faction_quests(faction_id: String, max_active_per_faction: int = 2) -> String:
+	if faction_id.is_empty():
+		return ""
+	var fsm = get_node_or_null("/root/FactionSystemManager")
+	var flevel: int = 1
+	if fsm and fsm.has_method("get_faction_level"):
+		flevel = int(fsm.get_faction_level(faction_id))
+	# 清理该势力已完成的动态任务（unregister，避免堆积）
+	_cleanup_completed_dynamic_quests_for_faction(faction_id)
+	# 控制同势力动态任务数量
+	var existing: int = _count_active_dynamic_quests_for_faction(faction_id)
+	if existing >= max_active_per_faction:
+		return ""
+	# 生成新任务
+	var def: Dictionary = FactionQuestGenerator.generate_quest(faction_id, flevel)
+	if def.is_empty():
+		return ""
+	var qid: String = QuestDefs.register_dynamic_quest(def)
+	if qid.is_empty():
+		return ""
+	# 动态任务自动揭示（不依赖 NPC，进领地即可见）
+	reveal_quest(qid)
+	if SignalBus.has_signal("show_toast"):
+		var fsm2 = get_node_or_null("/root/FactionSystemManager")
+		var fname: String = faction_id
+		if fsm2 and fsm2.has_method("get_faction_info"):
+			fname = String(fsm2.get_faction_info(faction_id).get("name", faction_id))
+		SignalBus.show_toast.emit("%s发布了新委托" % fname)
+	quest_progress_changed.emit(qid)
+	return qid
+
+## 统计某势力当前已注册且未完成的动态任务数
+func _count_active_dynamic_quests_for_faction(faction_id: String) -> int:
+	var count: int = 0
+	for qid in QuestDefs.get_dynamic_quest_ids():
+		if is_completed_ever(String(qid)):
+			continue
+		var def: Dictionary = QuestDefs.get_by_id(String(qid))
+		if String(def.get("company_id", "")) == faction_id:
+			count += 1
+	return count
+
+## 清理某势力已完成的动态任务（从注册表移除，保持集合精简）
+func _cleanup_completed_dynamic_quests_for_faction(faction_id: String) -> void:
+	var to_remove: Array = []
+	for qid in QuestDefs.get_dynamic_quest_ids():
+		var sid = String(qid)
+		if not is_completed_ever(sid):
+			continue
+		var def: Dictionary = QuestDefs.get_by_id(sid)
+		if String(def.get("company_id", "")) == faction_id:
+			to_remove.append(sid)
+	for sid in to_remove:
+		QuestDefs.unregister_dynamic_quest(sid)
+
+## 判断任务是否为动态生成（供 UI 区分展示）
+func is_dynamic_quest(quest_id: String) -> bool:
+	var def: Dictionary = QuestDefs.get_by_id(quest_id)
+	return bool(def.get("is_dynamic", false))

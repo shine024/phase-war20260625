@@ -141,9 +141,11 @@ func _on_card_added(card: CardResource) -> void:
 	# silent=true：由本函数自身控制刷新，避免 cards_changed 信号触发
 	# _on_model_cards_changed 时被 _suppress_next_cards_changed_refresh 吞掉导致漏刷新。
 	_data.add_extra_card(card.card_id, true)
-	# 同步写入 last_known_extra_ids，确保下次面板重建时能恢复
-	if SaveManager and SaveManager.has_method("enqueue_backpack_card_id"):
-		SaveManager.enqueue_backpack_card_id(card.card_id)
+	# 注意：此处不能再调用 enqueue_backpack_card_id。
+	# card_added_to_backpack 信号有两个监听者——本函数(presenter) 和 SaveManager 兜底。
+	# SaveManager 兜底已经 enqueue 一次（pending+last_known 各+1）；若 presenter 再 enqueue，
+	# 会导致 last_known 比真实多记一份，下次 load_pending_cards 的差值补齐会把它兑现成多一张卡。
+	# presenter 存活时只管真实数据 _data，pending 由上面的 consume 消费掉即可。
 	if not _is_view_visible():
 		_grid_dirty_while_hidden = true
 	else:

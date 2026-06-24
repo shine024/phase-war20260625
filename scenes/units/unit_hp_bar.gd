@@ -106,6 +106,11 @@ func set_folded(folded: bool) -> void:
 	_update_view()
 	_sync_process_state()
 
+## 查询当前血条渲染高度（折叠=4px / 展开=8px）
+## 供 buff_strip 等卡底元素计算避让间距用，避免硬编码与折叠态脱钩
+func get_bar_height() -> float:
+	return HEIGHT_COMPACT if _folded else HEIGHT_EXPANDED
+
 func set_side(is_player: bool) -> void:
 	_is_player = is_player
 	_update_view()

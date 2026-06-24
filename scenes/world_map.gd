@@ -33,6 +33,18 @@ const DefaultCardsData = preload("res://data/default_cards.gd")
 const PhaseLawsData = preload("res://data/phase_laws.gd")
 const DropTablesPreview = preload("res://resources/drop_tables.gd")
 const QuestDefs = preload("res://data/quest_definitions.gd")  # v6.7(剧情任务): 关卡剧情标记
+const FactionConquestBuffs = preload("res://data/faction_conquest_buffs.gd")  # v6.9: 占领势力加成描述
+
+# v6.10: 关卡按钮占领色标用的势力配色（与 occupation_panel.gd 的 FACTION_COLORS 保持一致）
+const _OCCUPATION_BORDER_COLORS: Dictionary = {
+	"iron_wall_corp": Color(0.62, 0.58, 0.55, 0.9),
+	"nova_arms": Color(0.92, 0.45, 0.25, 0.9),
+	"aether_dynamics": Color(0.35, 0.75, 0.95, 0.9),
+	"quantum_logistics": Color(0.4, 0.85, 0.55, 0.9),
+	"helix_recon": Color(0.7, 0.4, 0.92, 0.9),
+	"void_research": Color(0.55, 0.4, 0.85, 0.9),
+	"frontier_union": Color(0.85, 0.78, 0.35, 0.9),
+}
 const LEVEL_COUNT: int = LevelEras.LEVEL_COUNT
 const LEVELS_PER_ROW: int = 10
 const ERA_SIZE: int = 20  # 每时代 20 关
@@ -98,6 +110,9 @@ func _ready() -> void:
 	call_deferred("_build_level_map")
 	visibility_changed.connect(_on_visibility_changed)
 	_on_visibility_changed()
+	# v6.10: 监听占领变化，刷新关卡按钮色标（攻克易主后实时更新）
+	if SignalBus and SignalBus.has_signal("occupation_changed"):
+		SignalBus.occupation_changed.connect(_on_occupation_changed_refresh)
 
 	# 多种方式尝试找到返回按钮
 	var back_btn: Button = get_node_or_null("Margin/VBox/BackToTitleButton")
@@ -193,6 +208,24 @@ func _build_level_map() -> void:
 	content_vbox.add_theme_constant_override("separation", 12)
 	scroll.add_child(content_vbox)
 
+	# v6.10: 顶部"势力领地图"按钮入口（打开占领可视化面板）
+	var territory_btn := Button.new()
+	territory_btn.text = "◆ 势力领地图"
+	territory_btn.tooltip_text = "查看100关当前占领状态（势力领地分布）"
+	territory_btn.custom_minimum_size = Vector2(0, 32)
+	var tbs := StyleBoxFlat.new()
+	tbs.bg_color = Color(0.06, 0.1, 0.17, 0.9)
+	tbs.border_width_left = 1; tbs.border_width_top = 1
+	tbs.border_width_right = 1; tbs.border_width_bottom = 1
+	tbs.border_color = Color(0.0, 0.75, 0.85, 0.6)
+	tbs.corner_radius_top_left = 5; tbs.corner_radius_top_right = 5
+	tbs.corner_radius_bottom_right = 5; tbs.corner_radius_bottom_left = 5
+	territory_btn.add_theme_stylebox_override("normal", tbs)
+	territory_btn.add_theme_color_override("font_color", Color(0, 0.94, 1, 1))
+	territory_btn.add_theme_font_size_override("font_size", 13)
+	territory_btn.pressed.connect(_on_territory_map_button)
+	content_vbox.add_child(territory_btn)
+
 	var current_level: int = GameManager.current_level if GameManager else 1
 	var _btn_count: int = 0
 
@@ -279,6 +312,10 @@ func refresh_levels() -> void:
 	_cached_level_map_template = null
 	_build_level_map()
 
+## v6.10: 占领变化时刷新地图（让关卡按钮的占领色标实时更新）
+func _on_occupation_changed_refresh(_level: int, _old_f: String, _new_f: String) -> void:
+	refresh_levels()
+
 func _make_level_button(level_index: int, _era_idx: int, era_info: Dictionary, current_level: int) -> Button:
 	var btn := Button.new()
 	# v6.7(剧情任务): 有剧情任务的关卡加 ★ 前缀
@@ -327,6 +364,22 @@ func _make_level_button(level_index: int, _era_idx: int, era_info: Dictionary, c
 		btn_style.border_width_left = 4
 		btn_style.border_color = Color(0.75, 0.45, 0.95, 0.9)
 
+	# v6.10: 占领色标——右边框显示占领势力色（与剧情关紫色左边框不冲突）
+	var occupation_fid: String = _get_level_occupation_safe(level_index)
+	if not occupation_fid.is_empty():
+		var occ_color: Color = _OCCUPATION_BORDER_COLORS.get(occupation_fid, Color(0.7, 0.7, 0.7, 0.8))
+		btn_style.border_width_right = 4
+		btn_style.border_color = occ_color  # 右边框用势力色（覆盖默认细边框）
+		# tooltip 追加占领信息
+		var occ_name: String = occupation_fid
+		var fsm = get_node_or_null("/root/FactionSystemManager")
+		if fsm and fsm.has_method("get_faction_info"):
+			occ_name = String(fsm.get_faction_info(occupation_fid).get("name", occupation_fid))
+		if btn.tooltip_text.is_empty():
+			btn.tooltip_text = "占领：%s" % occ_name
+		else:
+			btn.tooltip_text += "\n占领：%s" % occ_name
+
 	btn_style.corner_radius_top_left = 4
 	btn_style.corner_radius_top_right = 4
 	btn_style.corner_radius_bottom_right = 4
@@ -347,6 +400,15 @@ func _make_level_button(level_index: int, _era_idx: int, era_info: Dictionary, c
 
 	btn.pressed.connect(func() -> void: _on_level_selected(level_index))
 	return btn
+
+## v6.10: 安全查询关卡占领势力（FSM 优先动态，未加载/无方法时回退静态 level_information）
+func _get_level_occupation_safe(level: int) -> String:
+	var fsm = get_node_or_null("/root/FactionSystemManager")
+	if fsm and fsm.has_method("get_level_occupation"):
+		return String(fsm.get_level_occupation(level))
+	# 回退静态
+	var li = LevelInformation.new()
+	return li.get_level_faction(level)
 
 func _process(_delta: float) -> void:
 	pass
@@ -379,6 +441,24 @@ func _on_back_to_title() -> void:
 		return
 	# 独立场景模式：直接切换回主场景
 	get_tree().change_scene_to_file("res://scenes/main.tscn")
+
+## v6.10: 打开势力领地图面板
+func _on_territory_map_button() -> void:
+	var lazy_loader = get_node_or_null("/root/UILazyLoader")
+	if lazy_loader == null:
+		return
+	if not lazy_loader.has_method("ensure_loaded"):
+		return
+	# 懒加载 occupation 面板
+	lazy_loader.ensure_loaded("occupation")
+	# 显示 Overlay
+	var overlay = get_node_or_null("/root/Main/PopupLayer/OccupationOverlay")
+	if overlay == null:
+		return
+	overlay.visible = true
+	var panel = overlay.get_node_or_null("CenterContainer/OccupationPanel")
+	if panel and panel.has_method("_refresh_all"):
+		panel._refresh_all()
 
 func _on_level_selected(level_index: int) -> void:
 	_show_level_info_popup(level_index)
@@ -421,6 +501,25 @@ func _show_level_info_popup(level_index: int) -> void:
 	title.add_theme_font_size_override("font_size", 20)
 	title.add_theme_color_override("font_color", Color(0, 0.94, 1, 1))
 	vbox.add_child(title)
+
+	# v6.9: 驻防势力行（占领势力 + 对敌人加成）
+	var garrison := Label.new()
+	var garrison_faction_id: String = String(info.get("garrison_faction_id", ""))
+	var garrison_text: String = String(info.get("garrison_text", "无主之地"))
+	var garrison_buff_text: String = String(info.get("garrison_buff_text", ""))
+	var garrison_color: Color = info.get("garrison_color", Color(0.7, 0.75, 0.8, 0.9))
+	if garrison_faction_id.is_empty():
+		# 无主之地：灰色，提示教学时代
+		garrison.text = "驻防势力: %s" % garrison_text
+	else:
+		# 占领势力：橙色，显示加成
+		var buff_part: String = ""
+		if not garrison_buff_text.is_empty() and garrison_buff_text != "无加成":
+			buff_part = "  [敌方加成: %s]" % garrison_buff_text
+		garrison.text = "驻防势力: %s%s" % [garrison_text, buff_part]
+	garrison.add_theme_font_size_override("font_size", 14)
+	garrison.add_theme_color_override("font_color", garrison_color)
+	vbox.add_child(garrison)
 
 	var desc := Label.new()
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -664,6 +763,23 @@ func _collect_level_info(level_index: int) -> Dictionary:
 				drop_preview_text = "%s（每场战功卡随机）" % sample_txt
 			else:
 				drop_preview_text = "%s · 战功卡池示例: %s" % [drop_preview_text, sample_txt]
+	# v6.9/v6.10: 查询关卡驻防势力（动态占领优先，回退静态）
+	# v6.10: 玩家攻克易主后，驻防显示跟随动态占领状态
+	var garrison_faction_id: String = _get_level_occupation_safe(level_index)
+	var garrison_text: String = "无主之地（无占领势力，无敌方加成）"
+	var garrison_buff_text: String = ""
+	var garrison_color: Color = Color(0.7, 0.75, 0.8, 0.9)
+	if not garrison_faction_id.is_empty():
+		var fsm = get_node_or_null("/root/FactionSystemManager")
+		if fsm and fsm.has_method("get_faction_info"):
+			var finfo: Dictionary = fsm.get_faction_info(garrison_faction_id)
+			var fname: String = String(finfo.get("name", garrison_faction_id))
+			var flevel: int = int(finfo.get("level", 1))
+			garrison_text = "%s（Lv.%d）" % [fname, flevel]
+			# 显示该势力对该关敌人的加成（来自 faction_conquest_buffs.gd）
+			if FactionConquestBuffs != null:
+				garrison_buff_text = FactionConquestBuffs.describe_buff(garrison_faction_id, flevel)
+				garrison_color = Color(1.0, 0.7, 0.4, 1.0)  # 橙红：占领势力，威胁提示
 	var out: Dictionary = {
 		"display_name": String(li.get("display_name", "第%d关" % level_index)),
 		"description": String(li.get("description", "")),
@@ -681,6 +797,11 @@ func _collect_level_info(level_index: int) -> Dictionary:
 		"enemy_preview": ", ".join(enemy_names),
 		"enemy_drop_preview": drop_preview_text,
 		"law_preview": law_preview,
+		# v6.9: 驻防势力信息
+		"garrison_faction_id": garrison_faction_id,
+		"garrison_text": garrison_text,
+		"garrison_buff_text": garrison_buff_text,
+		"garrison_color": garrison_color,
 	}
 	return out
 

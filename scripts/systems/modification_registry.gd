@@ -229,7 +229,14 @@ static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary) -
 					result[effect_key] = int(float(result[effect_key]) * (1.0 + effect_value))
 				elif effect_value is int:
 					result[effect_key] += effect_value
-			"move_speed", "attack_range":
+			# v6.9: move_speed → 重定向为部署延迟百分比（玩家单位格子战术不移动，move_speed 为死属性）
+			# 系数 0.005：+30px → -0.15 → 减 15% 部署延迟；-20px → +0.10 → 增 10% 延迟
+			# 数据层 move_speed 数值保留原样（语义注释为原始设计值），仅在此闸门重定向
+			"move_speed":
+				if not result.has("deploy_delay_bonus"):
+					result["deploy_delay_bonus"] = 0.0
+				result["deploy_delay_bonus"] += float(effect_value) * 0.005
+			"attack_range":
 				if not result.has(effect_key):
 					result[effect_key] = 0
 				result[effect_key] += effect_value

@@ -84,6 +84,13 @@ func _ready() -> void:
 			"node_name": "FactionPanel",
 			"autoload": false
 		},
+		# v6.10: 势力领地图面板（世界视角，100关占领状态可视化）
+		"occupation": {
+			"scene": "res://scenes/ui/occupation_panel.tscn",
+			"parent_path": "PopupLayer/OccupationOverlay/CenterContainer",
+			"node_name": "OccupationPanel",
+			"autoload": false
+		},
 		# v6.6: 移除 "map" 配置 —— world_map_panel.tscn 不存在，
 		# 世界地图功能由 main.tscn 内联的 WorldMapPanel 节点承担，
 		# _ensure_lazy_panel 的子节点复用短路逻辑使此 lazy-load 永不触发

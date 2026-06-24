@@ -23,15 +23,19 @@ const NPC_PHASE_MASTERS: Array = [
 	{"name": "边境开拓者", "faction": "frontier_union",    "era": "ww2",      "platform": "platform_ww2_light"},
 ]
 
-# 各公司势力领地范围（静态配置）
+# 各公司势力领地范围（静态配置，仅用于 FSM 不可用时的 fallback + NPC 相位师进度对齐）
+# v6.9: 关卡占领以 level_information.gd 的 faction_id 为准（1-20关无主之地，21关起归各势力）
+#   - 主路径（FSM 可用）：用 get_all_factions_info().controlled_levels，自动跟随 level_information
+#   - 本表 start=end=0 表示该势力无固有领地（钢壁/边境），fallback 计算 total=0
+#   - NPC 相位师进度仍按此表对齐（钢壁的"寒霜壁垒"NPC 展示在二战区域进度附近）
 const FACTION_RANGES: Array = [
-	{"fid": "iron_wall_corp",    "start": 1,  "end": 20,  "name": "钢壁防务"},
+	{"fid": "iron_wall_corp",    "start": 0,  "end": 0,   "name": "钢壁防务"},  # v6.9: 1-20关已改无主之地，钢壁无固有领地
 	{"fid": "nova_arms",         "start": 21, "end": 40,  "name": "新星兵工"},
 	{"fid": "aether_dynamics",   "start": 41, "end": 60,  "name": "以太动力"},
 	{"fid": "quantum_logistics", "start": 61, "end": 80,  "name": "量子后勤"},
 	{"fid": "helix_recon",       "start": 81, "end": 90,  "name": "螺旋侦察"},
 	{"fid": "void_research",     "start": 91, "end": 100, "name": "虚空相位"},
-	{"fid": "frontier_union",    "start": 1,  "end": 10,  "name": "边境联合"},
+	{"fid": "frontier_union",    "start": 0,  "end": 0,   "name": "边境联合"},  # 通用势力，无固有领地
 ]
 
 # NPC相位师预设（按排名顺序）
@@ -153,7 +157,8 @@ func _initialize_faction_data() -> void:
 		for sd in FACTION_RANGES:
 			var s: int = sd["start"]
 			var e: int = sd["end"]
-			var total: int = max(0, e - s + 1) if e >= s else 0
+			# v6.9: start<=0 或 end<=0 表示无固有领地（钢壁/边境），total=0
+			var total: int = max(0, e - s + 1) if (e >= s and s > 0) else 0
 			var cleared: int = clampi(cleared_max - s + 1, 0, total) if s > 0 else 0
 			_faction_data.append({
 				"name": sd["name"],
@@ -178,12 +183,14 @@ func _initialize_player_data() -> void:
 		var faction = FACTION_RANGES[i]
 		var f_start: int = faction["start"]
 		var f_end: int = faction["end"]
-		var total: int = max(0, f_end - f_start + 1)
+		# v6.9: start<=0 表示无固有领地（钢壁/边境），total=0，NPC 显示在默认起点
+		var total: int = max(0, f_end - f_start + 1) if (f_end >= f_start and f_start > 0) else 0
 
 		var ratio: float = NPC_PROGRESS_RATIOS[i] if i < NPC_PROGRESS_RATIOS.size() else 0.2
-		var cleared: int = max(1, int(total * ratio))
+		var cleared: int = max(1, int(total * ratio)) if total > 0 else 0
 		cleared = clampi(cleared, 1, total) if total > 0 else 0
-		var current_level: int = (f_start + cleared - 1) if total > 0 else f_start
+		# 无领地势力（start<=0）的 NPC 显示在关卡 1（表示尚在活动初期）
+		var current_level: int = (f_start + cleared - 1) if total > 0 else 1
 
 		_player_data.append({
 			"rank": i + 1,
@@ -207,8 +214,10 @@ func _init_faction_dynamic_state() -> void:
 	var rng = RandomNumberGenerator.new()
 	rng.randomize()
 	for sd in FACTION_RANGES:
-		var total = max(0, sd["end"] - sd["start"] + 1)
-		var initial_cleared = int(total * rng.randf_range(0.2, 0.5))
+		# v6.9: start<=0 表示无固有领地，total=0
+		var s: int = sd["start"]
+		var total = max(0, sd["end"] - s + 1) if (sd["end"] >= s and s > 0) else 0
+		var initial_cleared = int(total * rng.randf_range(0.2, 0.5)) if total > 0 else 0
 		_faction_dynamic_state[sd["fid"]] = {
 			"total": total,
 			"cleared": initial_cleared,

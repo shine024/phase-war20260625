@@ -4,6 +4,8 @@ class_name EnemyStatResolver
 
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const GC = preload("res://resources/game_constants.gd")
+const LevelInfoClass = preload("res://data/level_information.gd")
+const FactionConquestBuffs = preload("res://data/faction_conquest_buffs.gd")
 
 
 static func wave_hp_multiplier(wave_index: int) -> float:
@@ -26,16 +28,21 @@ static func master_attack_multiplier(master_stats: Dictionary) -> float:
 	var atk: float = float(master_stats.get("attack_power", 0.0))
 	if atk <= 0.0:
 		return 1.0
-	# v6.2: 提升敌方攻击威胁(0.0005→0.002)，配合召唤上限让战斗更激烈但更短
-	return 1.0 + atk * 0.002
+	# v6.2 曾提升威胁(0.0005→0.002)；v6.11 回调至 0.0005：
+	# 1) 0.002 使 master001(120)→1.24x、master030(1000)→3.0x，跨度与量级过大
+	# 2) v6.11 让普通敌兵也吃 master_stats（见 make_default_context），叠加排名加成后必须收敛系数避免爆炸
+	# 3) 新系数下 master001→1.06x、master030→1.5x，温和可控
+	return 1.0 + atk * 0.0005
 
 
 static func master_defense_hp_multiplier(master_stats: Dictionary) -> float:
 	var dfn: float = float(master_stats.get("defense", 0.0))
 	if dfn <= 0.0:
 		return 1.0
-	# v6.2: 削弱敌方血量加成(0.0003→0.0001)，战斗单位更脆、战斗更快
-	return 1.0 + dfn * 0.0001
+	# v6.2 曾削弱血量加成(0.0003→0.0001)；v6.11 恢复 0.0003：
+	# 0.0001 时最高防御(master016 def200)仅 1.02x，"防御"属性对敌兵几乎无效
+	# 恢复后 master016 def200→1.06x，攻防对称（与 m_atk 0.0005 的 attack_power400→1.20x 量级相当）
+	return 1.0 + dfn * 0.0003
 
 
 static func _pressure_mul(pressure: Dictionary, key: String) -> float:
@@ -58,7 +65,46 @@ static func make_default_context(wave_index: int) -> EnemyStatContext:
 		if gm != null and "current_level" in gm:
 			ctx.level = maxi(1, int(gm.current_level))
 	ctx.player_pressure = collect_player_pressure()
+	# v6.9: 占领势力对敌人的加成（无主之地/未知势力留空 → 视为全 1.0）
+	# 复用 make_default_context 的 tree 句柄，避免重复 Engine.get_main_loop()
+	ctx.faction_buff = _collect_faction_buff(ctx.level, tree)
+	# v6.11: 相位师遭遇时，普通敌兵/蜂群也吃 master_stats 加成。
+	# 经典敌兵(enemy_unit)与蜂群(swarm_enemy_slot)都经此函数 → resolve_classic_enemy，
+	# 修复前 ctx.master_stats 恒空 → m_atk/m_hp=1.0，相位师属性对普通敌兵完全空转
+	# （仅相位师召唤的产兵走 apply_phase_master_to_unit_stats 才生效）。
+	# 非相位师战时 _phase_master_config 为空 → ms 空 → master_stats 保持默认空，普通波次行为零变化。
+	if tree != null and tree.root != null:
+		var bm: Node = tree.root.get_node_or_null("BattleManager")
+		if bm != null and "_is_phase_master_battle" in bm and bool(bm.get("_is_phase_master_battle")):
+			# 注：Node.get() 无 fallback 参数，先查属性存在再取值
+			if "_phase_master_config" in bm:
+				var master_cfg: Dictionary = bm.get("_phase_master_config")
+				var master_stats_raw: Dictionary = master_cfg.get("stats", {})
+				if not master_stats_raw.is_empty():
+					ctx.master_stats = master_stats_raw
 	return ctx
+
+
+## v6.9/v6.10: 按当前关卡占领势力 + 势力等级，计算敌方加成
+## v6.10: 数据源从静态 level_information 切到动态 get_level_occupation（玩家攻克易主后生效）
+## 无主之地（faction_id 为空）返回空字典（无加成）
+static func _collect_faction_buff(level: int, tree: SceneTree) -> Dictionary:
+	if tree == null or tree.root == null:
+		return {}
+	var fsm: Node = tree.root.get_node_or_null("FactionSystemManager")
+	# v6.10: 优先用动态占领查询（玩家攻克易主后生效）；FSM 未加载或无该方法时回退静态
+	var faction_id: String = ""
+	if fsm != null and fsm.has_method("get_level_occupation"):
+		faction_id = fsm.get_level_occupation(level)
+	else:
+		var level_info := LevelInfoClass.new()
+		faction_id = level_info.get_level_faction(level)
+	if faction_id.is_empty():
+		return {}
+	if fsm == null or not fsm.has_method("get_faction_level"):
+		return {}
+	var flevel: int = int(fsm.get_faction_level(faction_id))
+	return FactionConquestBuffs.get_buff(faction_id, flevel)
 
 
 ## 返回 Dictionary：含三维攻防 + 单一 defense（格子战用）+ 其他属性
@@ -74,9 +120,13 @@ static func resolve_classic_enemy(archetype_id: String, ctx: EnemyStatContext) -
 	var p_spd: float = _pressure_mul(ctx.player_pressure, "speed_mul")
 	var m_hp: float = master_defense_hp_multiplier(ctx.master_stats)
 	var m_atk: float = master_attack_multiplier(ctx.master_stats)
-	# 通用乘算链系数（攻击/HP 各自）
-	var dmg_mul_chain: float = w_dmg * lvl * p_atk * m_atk
-	var hp_mul_chain: float = w_hp * lvl * p_hp * m_hp
+	# v6.9: 占领势力对敌人的加成（无主之地/未知势力 → _pressure_mul 返回 1.0，无影响）
+	var f_hp: float = _pressure_mul(ctx.faction_buff, "hp_mul")
+	var f_atk: float = _pressure_mul(ctx.faction_buff, "attack_mul")
+	var f_spd: float = _pressure_mul(ctx.faction_buff, "speed_mul")
+	# 通用乘算链系数（攻击/HP 各自）；v6.9 末尾乘上 faction_buff
+	var dmg_mul_chain: float = w_dmg * lvl * p_atk * m_atk * f_atk
+	var hp_mul_chain: float = w_hp * lvl * p_hp * m_hp * f_hp
 
 	if cfg.is_empty():
 		var hp_lin: float = (60.0 + float(ctx.wave_index) * 15.0) * hp_mul_chain
@@ -198,7 +248,11 @@ static func resolve_classic_enemy(archetype_id: String, ctx: EnemyStatContext) -
 	# 格子战单一 defense：取三维中最大值（与 build_stats_from_card 一致）
 	var def_out: float = maxf(def_l, maxf(def_a, def_air))
 	# v6.3 修复：move_speed 读 cfg.speed（而非硬编码 0.0）
-	var move_speed_out: float = float(cfg.get("speed", -60.0))
+	# v6.9: speed 乘区接入（p_spd 历史 + f_spd 新增势力加成）；move_speed 为负（向左），
+	# 速度更快=绝对值更大，所以用 |speed|×乘子 再取负；maxf 保护速度不低于原始值避免变慢
+	var base_speed: float = float(cfg.get("speed", -60.0))
+	var spd_mul: float = p_spd * f_spd
+	var move_speed_out: float = -absf(base_speed) * spd_mul if base_speed < 0.0 else base_speed * spd_mul
 	return {
 		"hp": hp_out,
 		"attack_damage": atk_out,  # 兼容旧字段

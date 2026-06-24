@@ -608,7 +608,7 @@ func _ensure_compact_slot_structure(icon_row: Control, name_label: Label, cost_l
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_label.custom_minimum_size = Vector2(0, 14)
 	name_label.remove_theme_font_size_override("font_size")
-	name_label.add_theme_font_size_override("font_size", 9)
+	name_label.add_theme_font_size_override("font_size", 10)
 	name_label.add_theme_color_override("font_color", Color(0.92, 0.94, 0.98, 1.0))
 	cost_label.name = "CostLabel"
 	cost_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -617,7 +617,7 @@ func _ensure_compact_slot_structure(icon_row: Control, name_label: Label, cost_l
 	cost_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cost_label.custom_minimum_size = Vector2(0, 14)
 	cost_label.remove_theme_font_size_override("font_size")
-	cost_label.add_theme_font_size_override("font_size", 9)
+	cost_label.add_theme_font_size_override("font_size", 10)
 	cost_label.add_theme_color_override("font_color", Color(0.95, 0.82, 0.35, 1.0))
 	text_v.add_child(name_label)
 	text_v.add_child(cost_label)
@@ -726,7 +726,7 @@ func _ensure_mtg_preview_structure(icon_row: Control, name_label: Label) -> void
 	name_hdr.autowrap_mode = TextServer.AUTOWRAP_OFF
 	name_hdr.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	name_hdr.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	name_hdr.add_theme_font_size_override("font_size", 9)
+	name_hdr.add_theme_font_size_override("font_size", 10)
 	var rank_hdr := HBoxContainer.new()
 	rank_hdr.name = "MtgRankRow"
 	rank_hdr.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -737,7 +737,7 @@ func _ensure_mtg_preview_structure(icon_row: Control, name_label: Label) -> void
 	cost_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cost_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	cost_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	cost_lbl.add_theme_font_size_override("font_size", 9)
+	cost_lbl.add_theme_font_size_override("font_size", 10)
 	cost_lbl.add_theme_color_override("font_color", Color(0.95, 0.82, 0.35, 1.0))
 	header.add_child(name_hdr)
 	header.add_child(rank_hdr)

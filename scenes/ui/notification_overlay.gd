@@ -88,7 +88,7 @@ class NotificationItem extends Control:
 			var time_label = Label.new()
 			var datetime = Time.get_datetime_dict_from_unix_time(timestamp)
 			time_label.text = "%02d:%02d" % [datetime.hour, datetime.minute]
-			time_label.add_theme_font_size_override("font_size", 9)
+			time_label.add_theme_font_size_override("font_size", 10)
 			time_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
 			content_vbox.add_child(time_label)
 

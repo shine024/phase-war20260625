@@ -8,6 +8,10 @@ var wave_index: int = 0
 var master_stats: Dictionary = {}
 ## 可选：我方对敌难度修正 { "hp_mul": 1.0, "attack_mul": 1.0, "speed_mul": 1.0 }，缺省键视为 1.0
 var player_pressure: Dictionary = {}
+## v6.9: 占领势力对敌人的加成 { "hp_mul": 1.0, "attack_mul": 1.0, "speed_mul": 1.0 }
+## 由 make_default_context 按 LevelInformation.get_level_faction() + FactionSystemManager.get_faction_level() 填充
+## 无主之地（1-20关）或未知势力留空，resolve_classic_enemy 视为全 1.0（无加成）
+var faction_buff: Dictionary = {}
 
 
 func _init(p_level: int = 1, p_wave: int = 0) -> void:

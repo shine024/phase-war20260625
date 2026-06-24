@@ -32,6 +32,11 @@ var weapon_type: int = 0
 
 ## 部署速度（0-7，越大越快进入战场）
 var deploy_speed: int = 3
+## v6.9: 部署延迟百分比加成（负值=部署更快）
+## 由 move_speed 类改造映射而来（玩家单位走格子战术，move_speed 为死属性，
+## 故原"移动速度"改造统一重定向为部署延迟百分比）。系数 0.005，如 +30px → -15% 延迟。
+## calculate_deploy_delay 末尾乘 (1 + deploy_delay_bonus)，下限 0.3 秒防极端。
+var deploy_delay_bonus: float = 0.0
 
 ## 攻击维度（对不同类型单位的伤害）
 @export var attack_light: float = 0.0   # 对轻装

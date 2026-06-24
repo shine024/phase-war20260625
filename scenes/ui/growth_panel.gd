@@ -432,12 +432,12 @@ func refresh_card_list(unlocked_ids: Array[String]) -> void:
 			star_str += "\u2605" if s < star_count else "\u2606"
 		var star_label := Label.new()
 		star_label.text = star_str
-		star_label.add_theme_font_size_override("font_size", 9)
+		star_label.add_theme_font_size_override("font_size", 10)
 		star_label.add_theme_color_override("font_color", Color(1.0, 0.84, 0.0, 0.7))
 		meta_row.add_child(star_label)
 		var level_label := Label.new()
 		level_label.text = "Lv.%d" % card.enhance_level
-		level_label.add_theme_font_size_override("font_size", 9)
+		level_label.add_theme_font_size_override("font_size", 10)
 		level_label.add_theme_color_override("font_color", Color(0.5, 0.5, 0.6, 0.6))
 		meta_row.add_child(level_label)
 

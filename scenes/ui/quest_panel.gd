@@ -146,6 +146,8 @@ func _make_quest_row(quest_id: String, def: Dictionary, is_accepted: bool) -> Co
 	var is_completed: bool = not is_accepted and quest_mgr.is_completed_ever(quest_id) if quest_mgr else false
 	var category: String = def.get("category", "commission")
 	var is_story: bool = (category == "story")
+	# v6.9: 动态任务（势力委托）视觉标记
+	var is_dynamic: bool = bool(def.get("is_dynamic", false))
 	# 根据状态确定边框颜色
 	var border_color: Color
 	var bg_color: Color
@@ -155,6 +157,10 @@ func _make_quest_row(quest_id: String, def: Dictionary, is_accepted: bool) -> Co
 	elif is_completed:
 		border_color = Color(0.3, 0.35, 0.45, 0.3)
 		bg_color     = Color(0.04, 0.05, 0.08, 0.75)
+	elif is_dynamic:
+		# v6.9: 势力动态委托用橙红边框（占领势力主题色）
+		border_color = Color(0.95, 0.6, 0.25, 0.65)
+		bg_color     = Color(0.10, 0.07, 0.04, 0.9)
 	elif is_story:
 		# v6.7(剧情任务): 剧情任务用紫色边框突出
 		border_color = Color(0.55, 0.35, 0.85, 0.6)
@@ -197,6 +203,9 @@ func _make_quest_row(quest_id: String, def: Dictionary, is_accepted: bool) -> Co
 		title_color = Color(0.5, 1.0, 0.7, 1)
 	elif is_completed:
 		title_color = Color(0.55, 0.6, 0.65, 0.7)
+	elif is_dynamic:
+		# v6.9: 势力动态委托标题用暖橙，体现"势力委托"主题
+		title_color = Color(1.0, 0.78, 0.4, 1)
 	else:
 		title_color = Color(0.85, 0.9, 1.0, 1)
 	title_l.add_theme_color_override("font_color", title_color)

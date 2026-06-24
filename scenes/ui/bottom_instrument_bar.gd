@@ -433,7 +433,7 @@ func _build_slot_panel(entry: Dictionary) -> PanelContainer:
 	name_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	name_lbl.add_theme_font_size_override("font_size", 9)
+	name_lbl.add_theme_font_size_override("font_size", 10)
 	name_lbl.add_theme_color_override("font_color", Color(0.92, 0.94, 0.98, 1.0))
 	var cost_lbl := Label.new()
 	cost_lbl.name = "SlotCostLabel"
@@ -442,7 +442,7 @@ func _build_slot_panel(entry: Dictionary) -> PanelContainer:
 	cost_lbl.clip_text = true
 	cost_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cost_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	cost_lbl.add_theme_font_size_override("font_size", 9)
+	cost_lbl.add_theme_font_size_override("font_size", 10)
 	cost_lbl.add_theme_color_override("font_color", Color(0.95, 0.82, 0.35, 1.0))
 	text_v.add_child(name_lbl)
 	text_v.add_child(cost_lbl)

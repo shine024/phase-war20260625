@@ -11,11 +11,19 @@ static func calculate_deploy_delay(stats: UnitStats) -> float:
 	if stats == null:
 		return 1.0
 	var speed: int = stats.deploy_speed
+	var base_delay: float
 	if speed <= 0:
-		return 0.0  # 堡垒/要塞瞬间部署
-	if speed >= 7:
-		return 0.5
-	return (8.0 - float(speed)) * 1.5
+		base_delay = 0.0  # 堡垒/要塞瞬间部署
+	elif speed >= 7:
+		base_delay = 0.5
+	else:
+		base_delay = (8.0 - float(speed)) * 1.5
+	# v6.9: move_speed 类改造重定向为部署延迟百分比加成
+	# （玩家单位格子战术不移动，move_speed 为死属性，改造值经 registry 映射到此处）
+	# 瞬部署（base=0）的堡垒/要塞跳过加成（无延迟可减）；其他档位乘 (1 + bonus)，下限 0.3 秒
+	if base_delay <= 0.0:
+		return 0.0
+	return maxf(0.3, base_delay * (1.0 + stats.deploy_delay_bonus))
 
 ## 启动部署虚影模式
 static func start_as_deploy_ghost(u: CharacterBody2D, materialize_after_sec: float = -1.0) -> void:
@@ -88,17 +96,19 @@ static func _configure_card_grid_player_hp_bar(u: CharacterBody2D, spr: Sprite2D
 		return
 	if hb is CanvasItem:
 		(hb as CanvasItem).visible = true
-	# 血条定位基于"卡的底部"（势力底图 CardBattleBg 的底），与卡图底部对齐，大小不缩放（保持可读）
+	# 血条定位基于"卡的底部"（势力底图 CardBattleBg 的底），与底图底部对齐，大小不缩放（保持可读）
+	# 注意：立绘 spr.position.y 已改为"脚对齐地面线"，不再等于底图基线；
+	# 血条应跟随底图（卡的外壳），故读底图节点 CardBattleBg 的 position.y（已含悬浮，= chrome_y + hover）。
 	var half_h: float = 0.0
-	var spr_y: float = 0.0
+	var base_y: float = 0.0
 	var bg_spr := u.get_node_or_null("CardBattleBg") as Sprite2D
 	if bg_spr != null and bg_spr.texture != null:
 		half_h = float(bg_spr.texture.get_height()) * absf(bg_spr.scale.y) * 0.5
-		spr_y = spr.position.y if spr != null else 0.0
+		base_y = bg_spr.position.y
 	elif spr != null and spr.texture != null:
 		half_h = float(spr.texture.get_height()) * absf(spr.scale.y) * 0.5
-		spr_y = spr.position.y
-	hb.position = Vector2(0.0, spr_y + half_h + 8.0)
+		base_y = spr.position.y
+	hb.position = Vector2(0.0, base_y + half_h + 8.0)
 	if hb.has_method("set_side"):
 		hb.set_side(true)
 	if hb.has_method("set_folded"):

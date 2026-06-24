@@ -12,6 +12,14 @@ const COLOR_HEALTH := Color(0.2, 0.9, 0.4, 1)            # Green health
 const COLOR_ENERGY := Color(0.9, 0.6, 0.1, 1)            # Orange energy
 const COLOR_DANGER := Color(0.9, 0.2, 0.2, 1)            # Red danger
 
+# 补充语义色（v6.10 审核：收敛 3 兄妹面板的重复 THEME_ 常量，为后续新代码提供唯一归宿）
+# 数值取自 card_enhancement/evolution/reinforcement 三面板事实标准，避免"绿色3套值、暗文本灰7套值"的发散
+const COLOR_GOLD := Color(1.0, 0.85, 0.35, 1)            # 金色（升级/稀有/货币强调）
+const COLOR_GREEN_BRIGHT := Color(0.3, 0.92, 0.5, 1)     # 亮绿（增强/提升语义，区别于血量绿）
+const COLOR_TEXT_DIM := Color(0.6, 0.66, 0.78, 1)        # 暗文本灰（次要信息/标签）
+const COLOR_TEXT_BRIGHT := Color(0.88, 0.92, 0.98, 1)    # 亮文本白（面板正文，区别于纯白）
+const COLOR_BORDER := Color(0.25, 0.35, 0.42, 0.7)       # 暗边框（槽位/分隔）
+
 # Typography sizes (base)
 const FONT_SIZE_SMALL := 12
 const FONT_SIZE_MEDIUM := 16
@@ -61,6 +69,8 @@ static func get_accent_color(accent_type: String, high_contrast: bool = HIGH_CON
 			"health": return COLOR_HEALTH
 			"energy": return COLOR_ENERGY
 			"danger": return COLOR_DANGER
+			"gold": return COLOR_GOLD
+			"green_bright": return COLOR_GREEN_BRIGHT
 			_: return COLOR_ACCENT_CYAN_HIGH_CONTRAST
 	else:
 		match accent_type:
@@ -69,6 +79,8 @@ static func get_accent_color(accent_type: String, high_contrast: bool = HIGH_CON
 			"health": return COLOR_HEALTH
 			"energy": return COLOR_ENERGY
 			"danger": return COLOR_DANGER
+			"gold": return COLOR_GOLD
+			"green_bright": return COLOR_GREEN_BRIGHT
 			_: return COLOR_ACCENT_CYAN
 
 static func get_bg_color(high_contrast: bool = HIGH_CONTRAST_ENABLED) -> Color:

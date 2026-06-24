@@ -455,22 +455,7 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 
 		var effects_label = details_panel.get_node_or_null("DetailVBox/EffectsLabel")
 		if effects_label:
-			var effects = mod_data.get("effects", {})
-			var effect_texts = []
-			for key in effects.keys():
-				var val = effects[key]
-				## 将效果键翻译为中文
-				var key_display = _translate_effect_key(key)
-				if val is float and val >= 0.01 and val < 100.0:
-					effect_texts.append("%s +%d%%" % [key_display, int(val * 100)])
-				elif val is float and val <= -0.01:
-					effect_texts.append("%s %d%%" % [key_display, int(val * 100)])
-				elif val is int:
-					effect_texts.append("%s +%d" % [key_display, val])
-				elif val is bool and val:
-					effect_texts.append("✓ %s" % key_display)
-				else:
-						effect_texts.append("%s: %d" % [key_display, int(val)])
+			var effect_texts = _format_effects_for_display(mod_data)
 			effects_label.text = "效果：\n" + "\n".join(effect_texts) if effect_texts.size() > 0 else "无具体数值效果"
 
 		# 消耗可视化
@@ -521,32 +506,146 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 			var install_callable = func(): _install_modification(selected_mod_id)
 			install_btn.pressed.connect(install_callable)
 
-## v7.1: 效果键翻译
+## v7.2: 效果键翻译（覆盖全部 71 个 effect key + 7 个 slot 武器槽 key）
+## 与 modification_registry._apply_single_mod_effects 的 match 分支保持一致
 func _translate_effect_key(key: String) -> String:
 	match key:
+		# ── 主属性：攻击/防御/生命/速度/射程/间隔 ──
 		"attack_light": return "对直射攻击"
 		"attack_armor": return "对曲射攻击"
 		"attack_air": return "对空攻击"
+		"attack_fort": return "对堡垒攻击"
 		"defense_light": return "对直射防御"
 		"defense_armor": return "对曲射防御"
 		"defense_air": return "对空防御"
 		"max_hp": return "生命值"
-		"move_speed": return "移动速度"
+		"move_speed": return "部署速度"
+		"deploy_speed": return "部署速度"
+		"deploy_delay_bonus": return "部署速度"
 		"attack_range": return "射程"
 		"attack_interval": return "攻击间隔"
-		"deploy_speed": return "部署速度"
+		# ── 暴击/闪避/穿透 ──
 		"crit_chance": return "暴击率"
-		"dodge_chance": return "闪避率"
 		"crit_resist": return "暴抗"
-		"smoke_ignore": return "烟雾无视"
-		"mine_immunity": return "地雷免疫"
-		"river_no_penalty": return "涉渡无损"
-		"missile_intercept": return "导弹拦截"
-		"heat_immunity_once": return "HEAT首击免疫"
-		"heat_resist": return "HEAT抗性"
-		"ally_hit_bonus": return "友军命中加成"
+		"crit_damage_bonus": return "暴击伤害"
+		"dodge_chance": return "闪避率"
+		"armor_penetration": return "穿甲"
+		"armor_pen_vs_light": return "穿甲(直射)"
+		"armor_pen_vs_armor": return "穿甲(曲射)"
+		"armor_pen_vs_air": return "穿甲(对空)"
+		# ── 生存/吸血/护盾 ──
+		"damage_reduction": return "减伤"
+		"lifesteal": return "吸血"
+		"hp_regen": return "生命回复"
+		"shield_on_kill": return "击杀护盾"
+		"splash_damage": return "溅射伤害"
+		"splash_radius": return "溅射半径"
+		"single_target_penalty": return "主目标伤害"
+		"chain_chance": return "连锁概率"
+		# ── 命中/还击/持续射击 ──
+		"accuracy_bonus": return "命中加成"
+		"accuracy_penalty": return "命中惩罚"
+		"counter_bonus": return "还击加成"
+		"sustained_fire": return "持续射击"
+		# ── 视野/射程/侦测 ──
 		"vision": return "视野"
+		"vision_bonus": return "视野加成"
+		"combat_range": return "作战半径"
+		"detection_range": return "侦测范围"
+		"detection_reduce": return "隐蔽(减侦测)"
+		"stealth_detect": return "隐身侦测"
+		"intel_speed": return "情报速度"
+		# ── 夜视/烟雾/热防护/三防 ──
+		"night_bonus": return "夜战加成"
+		"smoke_ignore": return "烟雾无视"
+		"thermal_immunity": return "热成像免疫"
+		"heat_resist": return "HEAT抗性"
+		"heat_immunity_once": return "HEAT首击免疫"
+		"mine_immunity": return "地雷免疫"
+		"mine_damage_reduction": return "地雷减伤"
+		"nbq_immunity": return "三防(核生化)"
+		# ── 反装甲/近战/拦截 ──
+		"enemy_armor_slow": return "敌装甲减速"
+		"approach_damage": return "近距伤害"
+		"urban_attack_bonus": return "巷战攻击"
+		"urban_move_bonus": return "巷战机动"
+		"missile_dodge": return "反导闪避"
+		"missile_intercept": return "导弹拦截"
+		# ── 弹药/持续作战/移动射击 ──
+		"ammo_capacity": return "弹药容量"
+		"sustained_combat": return "持续作战"
+		"infinite_ammo": return "无限弹药"
+		"mobile_fire": return "行进间射击"
+		# ── 隐蔽/反锁定 ──
+		"lock_reduction": return "锁定降低"
+		"fire_exposure": return "开火暴露"
+		"aggro_reduce": return "仇恨降低"
+		"close_accuracy": return "近距精度"
+		"enemy_confusion": return "敌方混乱"
+		# ── 指挥/阵型/盟友协同 ──
+		"command_efficiency": return "指挥效率"
+		"formation_bonus": return "阵型加成"
+		"ally_bonus": return "盟友加成"
+		"ally_hit_bonus": return "盟友命中加成"
+		"ally_ammo": return "盟友弹药"
+		"ally_hp_regen": return "盟友生命回复"
+		"ally_fort_regen": return "堡垒生命回复"
+		"ally_detection": return "盟友侦测"
+		"ally_river_bonus": return "盟友涉渡"
+		"ally_arty_bonus": return "盟友炮火支援"
+		"ifak_heal": return "急救包回复"
+		# ── 武器型号 ──
+		"weapon_type": return "武器型号"
+		"legacy_weapon_type": return "武器型号"
+		# ── 武器槽类(slot_*)──
+		"slot_damage_mult": return "槽位伤害倍率"
+		"slot_damage_add": return "槽位伤害"
+		"slot_attack_speed_mult": return "槽位攻速倍率"
+		"slot_range_bonus": return "槽位射程"
+		"slot_windup_reduce": return "槽位起射缩短"
+		"slot_active_reduce": return "槽位激活缩短"
+		"slot_weapon_type": return "槽位武器型号"
 		_: return key
+
+
+## v7.2: 格式化改造效果为展示文本（兼容 effects 单档 + level_effects 多档）
+## 返回行数组（供 effects_label 展示）
+func _format_effects_for_display(mod_data: Dictionary) -> PackedStringArray:
+	var lines: PackedStringArray = []
+	# 优先 effects（单档），其次 level_effects（Lv1/2/3 多档，enhancement 词条用）
+	if mod_data.has("effects") and (mod_data["effects"] as Dictionary).size() > 0:
+		var eff: Dictionary = mod_data["effects"]
+		for key in eff.keys():
+			lines.append(_format_one_effect(String(key), eff[key]))
+	elif mod_data.has("level_effects") and (mod_data["level_effects"] as Dictionary).size() > 0:
+		var le: Dictionary = mod_data["level_effects"]
+		# level_effects = {1: {...}, 2: {...}, 3: {...}}，取最高档展示（max_level 对应满级数值）
+		var sorted_levels = le.keys()
+		sorted_levels.sort()
+		var top_level = sorted_levels[sorted_levels.size() - 1]
+		var top_eff: Dictionary = le[top_level]
+		lines.append("—— Lv.%d（满级）——" % int(top_level))
+		for key in top_eff.keys():
+			lines.append(_format_one_effect(String(key), top_eff[key]))
+	return lines
+
+
+## v7.2: 格式化单条效果（key + value）为一行文本
+## 数值格式化沿用 v7.1 逻辑：小数百分比 / 整数加成 / 布尔勾选 / 其他
+func _format_one_effect(key: String, val) -> String:
+	var key_display = _translate_effect_key(key)
+	if val is float and val >= 0.01 and val < 100.0:
+		return "%s +%d%%" % [key_display, int(val * 100)]
+	elif val is float and val <= -0.01:
+		return "%s %d%%" % [key_display, int(val * 100)]
+	elif val is int:
+		if val >= 0:
+			return "%s +%d" % [key_display, val]
+		return "%s %d" % [key_display, val]
+	elif val is bool and val:
+		return "✓ %s" % key_display
+	else:
+		return "%s: %d" % [key_display, int(val)]
 
 
 ## 供外部调用的接口

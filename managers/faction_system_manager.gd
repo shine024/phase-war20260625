@@ -13,6 +13,7 @@ const DEBUG_LOG := false
 const CompanyDefinitions = preload("res://data/company_definitions.gd")
 const LevelInformation = preload("res://data/level_information.gd")
 const PhaseInstruments = preload("res://data/phase_instruments.gd")
+const FactionStatus = preload("res://data/faction_status.gd")  # v6.10: 派生势力状态
 const BasicResources = preload("res://data/basic_resources.gd")
 const FactionCardGenerator = preload("res://managers/faction/faction_card_generator.gd")
 const FactionSkillManager = preload("res://managers/faction/faction_skill_manager.gd")
@@ -120,6 +121,8 @@ signal faction_store_updated(faction_id: String)
 signal active_faction_changed(faction_id: String)
 signal faction_skill_unlocked(faction_id: String, skill_id: String)
 signal faction_event_generated(event: Dictionary)
+# v6.10: 占领状态机——关卡领地易主
+signal occupation_changed(level: int, old_faction: String, new_faction: String)
 
 ## 全局声望数据：faction_id -> 声望值（0-10000）
 var faction_reputation: Dictionary = {}
@@ -139,6 +142,10 @@ var faction_variants_unlocked: Array = []
 
 ## v6.6: 已发放的势力独占卡ID列表（避免升级时重复发放）
 var exclusive_cards_granted: Array = []
+
+## v6.10: 运行时关卡占领状态 { level: faction_id }，缺省=无主之地（回退静态 level_information）
+## 新游戏为空字典，get_level_occupation 自然回退静态表；攻克后动态变化
+var level_occupation: Dictionary = {}
 
 ## 关卡信息实例
 var level_info: LevelInformation
@@ -176,6 +183,9 @@ func _ready() -> void:
 		active_faction_changed.connect(sb.active_faction_changed.emit)
 		faction_skill_unlocked.connect(sb.faction_skill_unlocked.emit)
 		faction_event_generated.connect(sb.faction_event_generated.emit)
+		# v6.10: 占领状态转发（world_map/occupation_panel 监听刷新）
+		if sb.has_signal("occupation_changed"):
+			occupation_changed.connect(sb.occupation_changed.emit)
 
 func _init_faction_data() -> void:
 	var factions = CompanyDefinitions.get_all()
@@ -274,6 +284,73 @@ func _grant_exclusive_cards_on_level_up(faction_id: String, new_level: int) -> v
 	if granted_any and sm and sm.has_method("save_game"):
 		sm.call_deferred("save_game")
 
+# ─────────────────────────────────────────────
+#  v6.10: 占领状态机
+# ─────────────────────────────────────────────
+
+## 查询关卡当前占领势力（动态优先，回退静态 level_information）
+## [return] faction_id；无主之地（如1-20关教学区）返回空字符串
+func get_level_occupation(level: int) -> String:
+	# 兼容存档往返：JSON 序列化后 int key 可能变 string，双 key 探测（int + str）兜底
+	if level_occupation.has(level):
+		return String(level_occupation[level])
+	var level_str: String = str(level)
+	if level_occupation.has(level_str):
+		return String(level_occupation[level_str])
+	if level_info:
+		return level_info.get_level_faction(level)
+	return ""
+
+## 初始化占领状态（从静态表回填，新游戏时调用一次，让 level_occupation 反映初始归属）
+## 注意：load_state 时若存档有 level_occupation 则不调用（保留玩家解放的关卡）
+func _init_level_occupation() -> void:
+	level_occupation.clear()
+	if level_info == null:
+		return
+	for level in range(1, 101):
+		var fid: String = level_info.get_level_faction(level)
+		if not fid.is_empty():
+			level_occupation[level] = fid
+
+## 占领转移（攻克后调用）：玩家激活势力接管，无激活则变无主之地（解放）
+## [return] {"level":int, "old_faction":String, "new_faction":String}；无变化返回空字典
+func transfer_occupation(level: int) -> Dictionary:
+	var old_fid: String = get_level_occupation(level)
+	var new_fid: String = active_faction  # 玩家激活势力接管；空=解放为无主之地
+	if old_fid == new_fid:
+		return {}
+	if new_fid.is_empty():
+		# 解放：移除动态记录，回退静态（静态为空=无主之地）
+		level_occupation.erase(level)
+	else:
+		level_occupation[level] = new_fid
+	occupation_changed.emit(level, old_fid, new_fid)
+	return {"level": level, "old_faction": old_fid, "new_faction": new_fid}
+
+## 统计某势力当前占领关卡数（动态）
+func get_territory_count(faction_id: String) -> int:
+	var count: int = 0
+	for level in level_occupation.keys():
+		if String(level_occupation[level]) == faction_id:
+			count += 1
+	return count
+
+## v6.10: 派生势力状态（占领数+声望实时计算，不存储）
+## [return] FactionStatus.Status 枚举值
+func get_faction_status(faction_id: String) -> int:
+	return FactionStatus.derive_status(
+		get_territory_count(faction_id),
+		get_faction_reputation(faction_id)
+	)
+
+## v6.10: 派生势力状态名称（中文，UI 用）
+func get_faction_status_name(faction_id: String) -> String:
+	return FactionStatus.get_status_name(get_faction_status(faction_id))
+
+## v6.10: 派生势力状态配色（UI 用）
+func get_faction_status_color(faction_id: String) -> Color:
+	return FactionStatus.get_status_color(get_faction_status(faction_id))
+
 ## 主角攻克关卡后的势力反应计算
 func on_level_conquered(level_conquered: int) -> Dictionary:
 	var result: Dictionary = {}
@@ -283,6 +360,11 @@ func on_level_conquered(level_conquered: int) -> Dictionary:
 		conquered_faction = level_info.get_level_faction(level_conquered)
 
 	if conquered_faction.is_empty():
+		# v6.10: 静态无主之地（1-20关）不触发声望反应，但仍执行占领转移
+		# （玩家激活势力可接管任何被攻克的关卡）
+		var transfer_empty: Dictionary = transfer_occupation(level_conquered)
+		if not transfer_empty.is_empty():
+			result["occupation_transfer"] = transfer_empty
 		return result
 
 	# 计算所有势力反应
@@ -300,6 +382,10 @@ func on_level_conquered(level_conquered: int) -> Dictionary:
 					pass
 					# [LOG-v5.1] print("[FactionSystem] 势力 %s（与 %s 为 %s）声望 %+d" % [faction_id, conquered_faction, rel_type, delta])
 
+	# v6.10: 占领转移（玩家攻克即易主——激活势力接管，无激活则解放）
+	var transfer: Dictionary = transfer_occupation(level_conquered)
+	if not transfer.is_empty():
+		result["occupation_transfer"] = transfer
 	return result
 
 func get_faction_reputation(faction_id: String) -> int:
@@ -402,9 +488,22 @@ func get_faction_info(faction_id: String) -> Dictionary:
 		"level": get_faction_level(faction_id),
 		"level_progress": get_faction_progress_to_next_level(faction_id),
 		"store_inventory": get_faction_store_inventory(faction_id),
-		"controlled_levels": level_info.get_levels_for_faction(faction_id),
+		# v6.10: 切到动态占领（玩家攻克易主后领地跟随变化），与势力状态/敌方加成数据源统一
+		"controlled_levels": get_controlled_levels(faction_id),
 		"is_active": (faction_id == active_faction),
 	}
+
+## v6.10: 动态查询某势力当前占领的所有关卡（动态优先，回退静态）
+## 与 get_level_occupation 同源：遍历 1-100 关，按动态占领状态归属判定
+## [return] 该势力占领的关卡号数组（int，升序）；无领地返回空数组
+func get_controlled_levels(faction_id: String) -> Array:
+	if faction_id.is_empty():
+		return []
+	var result: Array = []
+	for level in range(1, 101):
+		if get_level_occupation(level) == faction_id:
+			result.append(level)
+	return result
 
 # ─────────────────────────────────────────────
 #  势力激活与变体查询
@@ -568,6 +667,8 @@ func save_state() -> Dictionary:
 		"faction_event_state": event_state,
 		"synthesis_state": synthesis_state,
 		"exclusive_cards_granted": exclusive_cards_granted.duplicate(),
+		# v6.10: 占领状态（运行时领地归属）
+		"level_occupation": level_occupation.duplicate(true),
 	}
 
 func load_state(data: Dictionary) -> void:
@@ -577,6 +678,8 @@ func load_state(data: Dictionary) -> void:
 		active_faction = ""
 		faction_variants_unlocked.clear()
 		exclusive_cards_granted.clear()
+		# v6.10: 新游戏初始化占领状态为静态表（level_information 初始归属）
+		_init_level_occupation()
 		return
 	if data.has("faction_reputation") and data["faction_reputation"] is Dictionary:
 		faction_reputation = (data["faction_reputation"] as Dictionary).duplicate(true)
@@ -616,6 +719,15 @@ func load_state(data: Dictionary) -> void:
 		exclusive_cards_granted = (data["exclusive_cards_granted"] as Array).duplicate()
 	else:
 		exclusive_cards_granted = []
+	# v6.10: 占领状态（旧存档无此字段→初始化为静态表；有则读取保留玩家解放的关卡）
+	# 注意：JSON 往返后 int key 会变 string，需转回 int，否则 get_level_occupation(int) 查不到
+	if data.has("level_occupation") and data["level_occupation"] is Dictionary and not (data["level_occupation"] as Dictionary).is_empty():
+		var raw_occupation: Dictionary = data["level_occupation"] as Dictionary
+		level_occupation.clear()
+		for k in raw_occupation.keys():
+			level_occupation[int(k)] = String(raw_occupation[k])
+	else:
+		_init_level_occupation()
 	# 重建已发放的独占卡到 DefaultCards 动态缓存（使背包/装备可用）
 	call_deferred("_rebuild_exclusive_cards_cache")
 	_ensure_faction_keys_after_load()

@@ -517,6 +517,19 @@ func set_current_level(level: int) -> void:
 	if _plm and _plm.has_method("update_env_for_level"):
 		_plm.update_env_for_level(current_level)
 	current_level_changed.emit(current_level)
+	# v6.9: 进入势力领地关卡时，刷新该势力的动态委托
+	_maybe_refresh_faction_quests_for_level(current_level)
+
+## v6.9: 若当前关卡属于某势力领地（21关起），刷新该势力的动态委托
+func _maybe_refresh_faction_quests_for_level(level: int) -> void:
+	var qm: Node = get_node_or_null("/root/QuestManager")
+	if qm == null or not qm.has_method("refresh_faction_quests"):
+		return
+	var LevelInfo = preload("res://data/level_information.gd").new()
+	var faction_id: String = LevelInfo.get_level_faction(level)
+	if faction_id.is_empty():
+		return  # 1-20关无主之地，不生成动态任务
+	qm.refresh_faction_quests(faction_id)
 
 ## 攻克关卡后触发势力反应
 func _apply_faction_reaction_for_conquest() -> void:

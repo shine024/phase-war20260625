@@ -4,6 +4,11 @@ class_name QuestDefinitions
 const _QUESTS_JSON_PATH := "res://data/json/quest_definitions.json"
 static var QUESTS: Array = _load_json_array(_QUESTS_JSON_PATH, LEGACY_QUESTS)
 
+## v6.9: 动态任务集合（运行时注册，不写入静态 QUESTS）
+## 由 QuestManager.register_dynamic_quest 委托填充；get_by_id/get_available_ids 自动同时查询两个集合
+## 存档由 QuestManager.save_state 持久化（保存定义 + 注册状态），读档后回填到这里
+static var _DYNAMIC_QUESTS: Dictionary = {}  # quest_id -> quest_def Dictionary
+
 static func _load_json_array(path: String, fallback: Array) -> Array:
 	if not FileAccess.file_exists(path):
 		return fallback
@@ -33,6 +38,13 @@ static func _load_json_array(path: String, fallback: Array) -> Array:
 ##   trigger_level: 剧情任务绑定的关卡号（仅 category=="story" 用）
 ##   pre_battle_dialogues: 战前对话队列，每项 {speaker, text, choices?}
 ##   post_battle_dialogues: 战后对话队列，每项 {speaker, text, choices?}
+##
+## v6.9(势力占领): 动态任务与随机结果字段（向后兼容，缺省值不影响旧任务）
+##   is_dynamic: 是否运行时生成的动态任务（由 FactionQuestGenerator 生成，QuestManager 注册）
+##   outcome_table: 结果变体表（可选），完成时按权重抽取替代固定 rewards，体现"任务结果不确定"
+##     格式: [{weight:int, label:String, rewards:Dictionary}, ...]
+##     label 用于完成提示（如"情报行动：部分成功"），rewards 走 _grant_rewards 标准链路
+##     缺省 outcome_table（或空数组）→ 走固定 rewards（向后兼容所有现有任务）
 
 const LEGACY_QUESTS: Array[Dictionary] = [
 	# ==================== 原有任务 ====================
@@ -1359,10 +1371,59 @@ static func get_by_id(quest_id: String) -> Dictionary:
 	for q in QUESTS:
 		if q.get("id", "") == quest_id:
 			return q.duplicate(true)
+	# v6.9: 回退查动态任务集合
+	if _DYNAMIC_QUESTS.has(quest_id):
+		return (_DYNAMIC_QUESTS[quest_id] as Dictionary).duplicate(true)
 	return {}
 
 static func get_available_ids() -> Array:
 	var arr: Array = []
 	for q in QUESTS:
 		arr.append(q.get("id", ""))
+	# v6.9: 合并动态任务 id
+	for qid in _DYNAMIC_QUESTS.keys():
+		arr.append(String(qid))
 	return arr
+
+# ──────────────── v6.9: 动态任务注册接口 ────────────────
+
+## 注册一个动态任务到全局集合（不写入静态 QUESTS）
+## [param def] 完整任务定义（需含 id/objective_type/target/rewards 等字段，与静态任务同结构）
+## [return] 注册成功返回 quest_id；id 冲突（静态或动态已存在）返回空字符串
+static func register_dynamic_quest(def: Dictionary) -> String:
+	var qid: String = String(def.get("id", ""))
+	if qid.is_empty():
+		return ""
+	# 不允许覆盖静态任务
+	for q in QUESTS:
+		if q.get("id", "") == qid:
+			return ""
+	# 不允许覆盖已注册的动态任务
+	if _DYNAMIC_QUESTS.has(qid):
+		return ""
+	# 强制标记为动态 + category 缺省 commission（委托）
+	var safe_def: Dictionary = def.duplicate(true)
+	safe_def["is_dynamic"] = true
+	if not safe_def.has("category"):
+		safe_def["category"] = "commission"
+	_DYNAMIC_QUESTS[qid] = safe_def
+	return qid
+
+## 注销单个动态任务（任务完成/过期时调用）
+static func unregister_dynamic_quest(quest_id: String) -> void:
+	_DYNAMIC_QUESTS.erase(quest_id)
+
+## 获取所有动态任务 id（供存档/调试）
+static func get_dynamic_quest_ids() -> Array:
+	return _DYNAMIC_QUESTS.keys()
+
+## 获取所有动态任务定义（供存档持久化）
+static func get_all_dynamic_quest_defs() -> Array:
+	var out: Array = []
+	for qid in _DYNAMIC_QUESTS.keys():
+		out.append((_DYNAMIC_QUESTS[qid] as Dictionary).duplicate(true))
+	return out
+
+## 清空动态任务集合（存档读取前重置，避免重复注册）
+static func clear_dynamic_quests() -> void:
+	_DYNAMIC_QUESTS.clear()

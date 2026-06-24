@@ -108,7 +108,9 @@ func _add_ww1_levels() -> void:
 
 	for i in range(1, 21):
 		var level_num = i
-		var faction_id = "iron_wall_corp"
+		# v6.9: 前20关（一战教学时代）为无主之地，无势力占领/势力加成/势力相位师
+		# 21关起启用势力占领机制（见 faction_conquest_buffs.gd + enemy_stat_resolver.gd）
+		var faction_id = ""
 		# 一战法则限制：逐步开放家族
 		var families: Array = []
 		if i <= 5:

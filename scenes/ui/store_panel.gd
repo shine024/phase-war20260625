@@ -31,6 +31,8 @@ signal closed
 
 var _current_company_id: String = ""
 var _feedback_tween: Tween
+## 购买防抖锁：购买流程（含 0.4s 反馈动画）期间禁止重复触发，避免快速连点导致多次 emit 多发卡。
+var _buy_in_progress: bool = false
 
 ## 缓存样式
 var _row_style_normal: StyleBoxFlat
@@ -706,6 +708,9 @@ func _build_instrument_row(cfg: Dictionary, fsm: Node) -> PanelContainer:
 	return row_panel
 
 func _on_buy_pressed(card_id: String, card_count: int, price_nano: int, row_node: Control) -> void:
+	# 防抖：购买流程（含反馈动画）期间禁止重复触发，避免快速连点多次 emit 导致多发卡。
+	if _buy_in_progress:
+		return
 	if not BasicResourceManager:
 		return
 	if not BasicResourceManager.has_method("get_total") or not BasicResourceManager.has_method("add_resource"):
@@ -715,6 +720,7 @@ func _on_buy_pressed(card_id: String, card_count: int, price_nano: int, row_node
 		# 余额不足闪烁提示
 		_flash_row(row_node, Color(1, 0.3, 0.3, 0.6))
 		return
+	_buy_in_progress = true
 	# 扣除资源并直接发放卡牌到背包
 	BasicResourceManager.add_resource(BasicResources.ID_NANO_MATERIALS, -price_nano)
 	if card_id.begins_with("permit_"):
@@ -739,6 +745,7 @@ func _on_buy_pressed(card_id: String, card_count: int, price_nano: int, row_node
 	_refresh_balance()
 	# 延迟刷新，让购买反馈动画先完成
 	await get_tree().create_timer(0.4).timeout
+	_buy_in_progress = false
 	if is_instance_valid(row_node):
 		_refresh_items()
 
