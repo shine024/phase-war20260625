@@ -28,21 +28,20 @@ static func master_attack_multiplier(master_stats: Dictionary) -> float:
 	var atk: float = float(master_stats.get("attack_power", 0.0))
 	if atk <= 0.0:
 		return 1.0
-	# v6.2 曾提升威胁(0.0005→0.002)；v6.11 回调至 0.0005：
-	# 1) 0.002 使 master001(120)→1.24x、master030(1000)→3.0x，跨度与量级过大
-	# 2) v6.11 让普通敌兵也吃 master_stats（见 make_default_context），叠加排名加成后必须收敛系数避免爆炸
-	# 3) 新系数下 master001→1.06x、master030→1.5x，温和可控
-	return 1.0 + atk * 0.0005
+	# v6.2 曾提升威胁(0.0005→0.002)；v6.11 回调至 0.0005（普通敌兵也开始吃 master_stats）；
+	# v6.12 增强至 0.0008：配合敌方产兵改用真实 archetype 数据，让敌方有足够威胁。
+	# 新系数下 master001(120)→1.096x、master016(400)→1.32x、master030(1000)→1.80x。
+	return 1.0 + atk * 0.0008
 
 
 static func master_defense_hp_multiplier(master_stats: Dictionary) -> float:
 	var dfn: float = float(master_stats.get("defense", 0.0))
 	if dfn <= 0.0:
 		return 1.0
-	# v6.2 曾削弱血量加成(0.0003→0.0001)；v6.11 恢复 0.0003：
-	# 0.0001 时最高防御(master016 def200)仅 1.02x，"防御"属性对敌兵几乎无效
-	# 恢复后 master016 def200→1.06x，攻防对称（与 m_atk 0.0005 的 attack_power400→1.20x 量级相当）
-	return 1.0 + dfn * 0.0003
+	# v6.2 曾削弱血量加成(0.0003→0.0001)；v6.11 恢复 0.0003；v6.12 增强至 0.0006：
+	# 配合 m_atk 0.0008 的增强，让敌方产兵不再过脆。
+	# 新系数下 master016 def200→1.12x、master030 def200→1.12x，攻防对称。
+	return 1.0 + dfn * 0.0006
 
 
 static func _pressure_mul(pressure: Dictionary, key: String) -> float:

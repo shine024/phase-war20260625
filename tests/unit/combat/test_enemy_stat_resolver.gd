@@ -42,22 +42,23 @@ func test_master_multipliers_on_unit_stats() -> void:
 	stats.weapons = [{"damage": 20.0, "weapon_type": 0, "range": 80.0, "interval": 0.5, "timer": 0.0}]
 	var master: Dictionary = {"attack_power": 200.0, "defense": 300.0}
 	EnemyStatResolver.apply_phase_master_to_unit_stats(stats, master)
-	assert_float(stats.attack_damage).is_equal(20.0 * 1.1)
-	assert_float(float((stats.weapons[0] as Dictionary)["damage"])).is_equal(20.0 * 1.1)
-	assert_float(stats.max_hp).is_equal(100.0 * (1.0 + 300.0 * 0.0003))
+	# v6.12: 系数 0.0008/0.0006，attack_power200→1.16x，defense300→1.18x
+	assert_float(stats.attack_damage).is_equal(20.0 * 1.16)
+	assert_float(float((stats.weapons[0] as Dictionary)["damage"])).is_equal(20.0 * 1.16)
+	assert_float(stats.max_hp).is_equal(100.0 * (1.0 + 300.0 * 0.0006))
 
 
-# v6.11: 锁定 master 乘数新系数（0.0005 / 0.0003），防止回归到 v6.2 的 0.002/0.0001。
-# 旧系数 0.002 使 master030(attack_power1000)→3.0x 过猛，且与叠加的排名加成冲突。
+# v6.11: 锁定 master 乘数系数（v6.11 为 0.0005/0.0003，v6.12 增强为 0.0008/0.0006），
+# 防止回归到 v6.2 的 0.002/0.0001（master030→3.0x 过猛）。
 func test_master_multipliers_new_coefficients() -> void:
-	# attack_power 200 → 1 + 200*0.0005 = 1.10
-	assert_float(EnemyStatResolver.master_attack_multiplier({"attack_power": 200.0})).is_equal(1.10)
-	# attack_power 1000（master030）→ 1.50（v6.2 的 0.002 会是 3.0，过猛）
-	assert_float(EnemyStatResolver.master_attack_multiplier({"attack_power": 1000.0})).is_equal(1.50)
-	# defense 300 → 1 + 300*0.0003 = 1.09
-	assert_float(EnemyStatResolver.master_defense_hp_multiplier({"defense": 300.0})).is_equal(1.09)
-	# defense 200（master016）→ 1.06（v6.2 的 0.0001 仅 1.02，防御属性几乎无效）
-	assert_float(EnemyStatResolver.master_defense_hp_multiplier({"defense": 200.0})).is_equal(1.06)
+	# attack_power 200 → 1 + 200*0.0008 = 1.16
+	assert_float(EnemyStatResolver.master_attack_multiplier({"attack_power": 200.0})).is_equal(1.16)
+	# attack_power 1000（master030）→ 1.80
+	assert_float(EnemyStatResolver.master_attack_multiplier({"attack_power": 1000.0})).is_equal(1.80)
+	# defense 300 → 1 + 300*0.0006 = 1.18
+	assert_float(EnemyStatResolver.master_defense_hp_multiplier({"defense": 300.0})).is_equal(1.18)
+	# defense 200（master016）→ 1.12
+	assert_float(EnemyStatResolver.master_defense_hp_multiplier({"defense": 200.0})).is_equal(1.12)
 	# 空 master_stats 应返回 1.0（普通波次行为）
 	assert_float(EnemyStatResolver.master_attack_multiplier({})).is_equal(1.0)
 	assert_float(EnemyStatResolver.master_defense_hp_multiplier({})).is_equal(1.0)
@@ -83,9 +84,9 @@ func test_resolve_classic_enemy_with_master_stats() -> void:
 	ctx_master.master_stats = {"attack_power": 400.0, "defense": 200.0}
 	var r_master: Dictionary = EnemyStatResolver.resolve_classic_enemy("enemy_ww1_infantry_basic", ctx_master)
 
-	# m_atk = 1 + 400*0.0005 = 1.20；m_hp = 1 + 200*0.0003 = 1.06
+	# v6.12: m_atk = 1 + 400*0.0008 = 1.32；m_hp = 1 + 200*0.0006 = 1.12
 	# 用比值验证：master战后 / 基准 应精确等于乘数
 	var hp_ratio: float = float(r_master.get("hp", 0.0)) / base_hp
 	var atk_ratio: float = float(r_master.get("attack_light", 0.0)) / base_atk_l
-	assert_float(hp_ratio).is_equal(1.06)
-	assert_float(atk_ratio).is_equal(1.20)
+	assert_float(hp_ratio).is_equal(1.12)
+	assert_float(atk_ratio).is_equal(1.32)

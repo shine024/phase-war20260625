@@ -1017,7 +1017,9 @@ func _build_affix_tag_list(card: CardResource) -> Array:
 	return tags
 
 func _enemy_surface_combat_stats(unit: Node) -> Array:
-	var hp: float = float(unit.get("hp")) if "hp" in unit else 0.0
+	# v6.11: 优先读 max_hp（满血上限），让残血敌人的血量显示稳定，符合"这个敌人有多少血"的直觉；
+	# 单位无 max_hp 字段时回退 hp（防御性，兼容所有单位类型）
+	var hp: float = float(unit.get("max_hp")) if "max_hp" in unit else (float(unit.get("hp")) if "hp" in unit else 0.0)
 	var dmg: float = float(unit.get("attack_damage")) if "attack_damage" in unit else 0.0
 	var rng: float = float(unit.get("attack_range")) if "attack_range" in unit else 0.0
 	var itv: float = float(unit.get("attack_interval")) if "attack_interval" in unit else 1.0
@@ -1317,8 +1319,17 @@ func _show_generic_enemy_unit(unit: Node) -> void:
 	# v6.2c: 武装显示——有武器给具体名字，没武器显示"无"
 	# 敌方原型的 weapon_type 是旧 12 值 WeaponTypeLegacy，必须用 weapon_kind_short 查表
 	# 判断"有没有武器"：weapon_type >= 0 且 attack_damage > 0
-	if weapon_type_val >= 0 and attack_damage_val > 0.0:
-		type_text += "\n武装：%s" % RealWorldUnitLabels.weapon_kind_short(weapon_type_val)
+	# v6.11: 三级回退，杜绝"武装：无"误显示——当 archetype cfg 查不到（动态生成时序/
+	# manifest 未合并/某些 archetype）时，回退到单位节点自身的 stats（经典敌人与蜂群都同步了
+	# stats.weapon_type + stats.attack_damage），确保有武器的单位不会误显示"无"。
+	var show_wt: int = weapon_type_val
+	var show_atk: float = attack_damage_val
+	if show_wt < 0 or show_atk <= 0.0:
+		if "stats" in unit and unit.stats != null:
+			show_wt = int(unit.stats.weapon_type)
+			show_atk = float(unit.stats.attack_damage)
+	if show_wt >= 0 and show_atk > 0.0:
+		type_text += "\n武装：%s" % RealWorldUnitLabels.weapon_kind_short(show_wt)
 	else:
 		type_text += "\n武装：无"
 	if type_label: type_label.text = type_text

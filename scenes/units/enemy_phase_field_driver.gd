@@ -255,7 +255,11 @@ func _produce_unit_with_equipment() -> void:
 		return
 
 	## 构建 UnitStats
-	var stats: UnitStats = UnitStatsTable.build_multi_stats(platform_type_int, weapon_types, era)
+	# v6.12: 用真实 archetype 数据构建（替代通用平台表 build_multi_stats），让敌方产兵强度对齐
+	# 同类型真实敌人。复用 _pick_visual_archetype_for_platform 的平台→archetype 映射取真实 cfg，
+	# 查不到时回退通用表（永不破坏游戏）。
+	var platform_type_str: String = String(platform_data.get("type", ""))
+	var stats: UnitStats = _build_stats_from_archetype(era, platform_type_str, platform_type_int, weapon_types)
 
 	## 用装备数据覆写基础属性（让不同装备的差异化体现）
 	var plat_stats: Dictionary = platform_data.get("stats", {})
@@ -271,7 +275,7 @@ func _produce_unit_with_equipment() -> void:
 	## 生成 ConstructUnit
 	var unit: Node2D = ConstructUnitScene.instantiate()
 	# v7.1: 按平台类型匹配卡图（替代仅按时代选取，避免不同平台显示同一张图）
-	var platform_type_str: String = String(platform_data.get("type", ""))
+	# v6.12: platform_type_str 已在上方 stats 构建处声明，复用之
 	var visual_archetype_id: String = _pick_visual_archetype_for_platform(era, platform_type_str)
 	if unit.has_method("setup_with_enemy_visual"):
 		unit.setup_with_enemy_visual(false, stats, visual_archetype_id)
@@ -450,3 +454,54 @@ func _pick_visual_archetype_for_platform(era: int, platform_type: String) -> Str
 	# 用平台类型哈希确定性选取（同一类型每次出同一张图，避免战斗中卡图闪烁）
 	var pick: int = absi(platform_type.hash()) % candidates.size()
 	return String(candidates[pick])
+
+
+## v6.12: 用真实 archetype 数据构建 UnitStats（替代通用平台表 build_multi_stats）。
+## 复用 _pick_visual_archetype_for_platform 的平台→archetype 映射取真实 cfg，
+## 让敌方产兵基础值与同类型真实敌人一致；archetype 查不到时回退通用表。
+func _build_stats_from_archetype(era: int, platform_type_str: String, fallback_platform_int: int, fallback_weapon_types: Array) -> UnitStats:
+	var archetype_id: String = _pick_visual_archetype_for_platform(era, platform_type_str)
+	var cfg: Dictionary = EnemyArchetypes.get_config(archetype_id)
+	if cfg.is_empty():
+		# 兜底：archetype 查不到时回退原通用表（永不破坏游戏）
+		return UnitStatsTable.build_multi_stats(fallback_platform_int, fallback_weapon_types, era)
+	var c := CardResource.new()
+	c.card_type = GC.CardType.COMBAT_UNIT
+	c.era = int(cfg.get("era", era))
+	c.combat_kind = _archetype_combat_kind(cfg, fallback_platform_int)
+	c.legacy_weapon_type = int(cfg.get("weapon_type", 1))
+	c.weapon_type = int(cfg.get("weapon_type", 1))
+	c.base_hp = float(cfg.get("hp", 100.0))
+	# archetype speed 是负值（朝左行进），build_stats_from_card 需要绝对值
+	c.base_speed = absf(float(cfg.get("speed", -80.0)))
+	c.range_value = max(1, int(round(float(cfg.get("attack_range", 120.0)) / 100.0)))
+	var interval: float = float(cfg.get("attack_interval", 1.0))
+	c.attack_speed = 1.0 / maxf(0.001, interval)
+	var dmg: float = float(cfg.get("attack_damage", 10.0))
+	# 三维攻击派生（复用 build_multi_stats 的同款比例：轻1.0/甲0.8/空0.7）
+	c.attack_light = dmg
+	c.attack_armor = dmg * 0.8
+	c.attack_air = dmg * 0.7
+	# 三维防御沿用平台通用表（archetype 无防御字段）
+	var pd: float = float(UnitStatsTable._PLATFORM_DEFENSE.get(fallback_platform_int, 8))
+	c.defense_light = pd
+	c.defense_armor = pd * 1.2
+	c.defense_air = pd * 0.6
+	var stats := UnitStatsTable.build_stats_from_card(c, era)
+	stats.platform_type = fallback_platform_int
+	return stats
+
+
+## v6.12: 根据 archetype tags 推断 combat_kind；查不到用平台映射兜底
+func _archetype_combat_kind(cfg: Dictionary, fallback_platform_int: int) -> int:
+	var tags: Array = cfg.get("tags", [])
+	if tags.has("infantry"):
+		return int(GC.CombatKind.LIGHT)
+	if tags.has("vehicle") or tags.has("armor") or tags.has("tank"):
+		return int(GC.CombatKind.ARMOR)
+	if tags.has("turret") or tags.has("fort") or tags.has("fortress"):
+		return int(GC.CombatKind.FORT)
+	if tags.has("air") or tags.has("aircraft"):
+		return int(GC.CombatKind.AIR)
+	# 兜底：沿用平台→combat_kind 映射
+	return int(UnitStatsTable.PLATFORM_TO_COMBAT_KIND.get(fallback_platform_int, GC.CombatKind.LIGHT))
