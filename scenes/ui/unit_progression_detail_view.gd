@@ -163,6 +163,8 @@ func _add_progress_block() -> void:
 	var rarity: String = "common"
 	if DefaultCards.get_card_by_id(_card_id) != null:
 		rarity = String(DefaultCards.get_card_by_id(_card_id).rarity).to_lower()
+	# v6.11: 星级系统已废弃（固定返回1），保留查询以显示"下一星研究点"信息
+	var star: int = BlueprintManager.get_blueprint_star(_card_id) if (BlueprintManager != null and BlueprintManager.has_method("get_blueprint_star")) else 1
 	var next_rp: int = StarConfig.get_research_cost_for_next_star(star, rarity) if star < CardProgressionSettings.STAR_MAX else 0
 	if next_rp > 0:
 		_add_line("下一星研究点：%d" % next_rp, Color(0.7, 0.65, 0.95))
