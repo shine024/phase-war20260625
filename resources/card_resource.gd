@@ -141,8 +141,14 @@ var weapon_slots: Array = []
 #  v5.0 养成字段（运行时状态，不序列化为@export）
 # ─────────────────────────────────────────────
 
+## v7.0 实例化养成：卡牌实例唯一ID（格式 card_id#序号，如 cold_t72#1）
+## 空字符串 = 模板（DefaultCards 单例，不带养成）；非空 = 实例（独立养成）
+## 由 InstanceRegistry.create_instance 分配
+var instance_id: String = ""
+
 ## 强化等级 0-10（v5.0 替代旧 star_level；star_level 已废弃见 L160）
 ## v6.11: 原 battle_star/battle_star_power 字段已移除（战力星级系统②合并到强化等级①）
+## v7.0: 实例化后存在实例对象本身（不再写 DefaultCards 单例模板）
 var enhance_level: int = 0
 
 ## 改造ID列表（最多9个 MOD_XX）
@@ -388,6 +394,8 @@ func clone() -> CardResource:
 		if weapon != null and weapon.has_method("clone"):
 			new_card.weapon_slots.append(weapon.clone())
 	# v5.0 养成字段
+	# v7.0: instance_id 默认不透传（clone 出来的新对象应是空模板，避免误复制实例身份）
+	# 需要"克隆实例保持身份"的场景应显式赋值 clone.instance_id = source.instance_id
 	new_card.enhance_level = enhance_level
 	new_card.mods = mods.duplicate()
 	new_card.evolution_paths = evolution_paths.duplicate()

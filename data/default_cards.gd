@@ -327,6 +327,21 @@ static func get_card_by_id(card_id: String) -> CardResource:
 		return _id_lookup_cache[card_id] as CardResource
 	return null
 
+## v7.0: 克隆一份模板卡的副本用于实例化（不污染单例缓存）
+## 返回独立 CardResource 对象，instance_id 为空（待 InstanceRegistry 分配）
+static func clone_for_instance(card_id: String) -> CardResource:
+	var template: CardResource = get_card_by_id(card_id)
+	if template == null:
+		return null
+	var clone: CardResource = template.clone()
+	# 确保养成字段是干净的初始状态（防御性：模板可能被旧代码污染）
+	clone.instance_id = ""
+	clone.enhance_level = 0
+	clone.mods = []
+	clone.module_slots = []
+	clone.weapon_slots = Array()
+	return clone
+
 ## 注册动态生成的卡（混血卡/敌源变体等）到缓存，使 get_card_by_id 可用
 ## 用于运行时生成的卡牌，不参与 create_all() 的静态表
 static func register_dynamic_card(card: CardResource) -> void:
