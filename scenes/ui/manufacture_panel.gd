@@ -245,9 +245,15 @@ func _on_assemble_single() -> void:
 				# 继承蓝图星级（已废弃，enhance_level 由养成系统管理）
 				#if BlueprintManager.has_method("get_blueprint_star"):
 				#	manufactured_card.star_level = BlueprintManager.get_blueprint_star(card_id)
+				# v7.0: 实例化制造的卡（独立养成身份）
+				var ir: Node = get_node_or_null("/root/InstanceRegistry")
+				var instance_card: CardResource = manufactured_card
+				if ir != null and ir.has_method("create_instance_from_template"):
+					instance_card = ir.create_instance_from_template(manufactured_card)
 				if SignalBus:
-					_enqueue_backpack_fallback_if_needed(String(manufactured_card.card_id))
-					SignalBus.card_added_to_backpack.emit(manufactured_card)
+					var emit_id: String = instance_card.instance_id if not instance_card.instance_id.is_empty() else String(instance_card.card_id)
+					_enqueue_backpack_fallback_if_needed(emit_id)
+					SignalBus.card_added_to_backpack.emit(instance_card)
 				# [LOG-v5.1] print("[ManufacturePanel] 制造成功: ", DefaultCards.safe_name(manufactured_card))
 		return
 
@@ -256,13 +262,19 @@ func _on_assemble_single() -> void:
 	# 继承蓝图星级（已废弃，enhance_level 由养成系统管理）
 	#if BlueprintManager and BlueprintManager.has_method("get_blueprint_star"):
 	#	card.star_level = BlueprintManager.get_blueprint_star(card.card_id)
+		# v7.0: 实例化制造的战斗卡（独立养成身份），并对其授 affix
+		var ir2: Node = get_node_or_null("/root/InstanceRegistry")
+		var instance_card2: CardResource = card
+		if ir2 != null and ir2.has_method("create_instance"):
+			instance_card2 = ir2.create_instance(card.card_id)
 		var am: Node = get_node_or_null("/root/AffixManager")
 		if am and am.has_method("grant_initial_affixes_for_card"):
 			# 避开制造点击同帧的 UI 重建，减轻主线程尖峰。
-			am.call_deferred("grant_initial_affixes_for_card", card)
+			am.call_deferred("grant_initial_affixes_for_card", instance_card2)
 		if SignalBus:
-			_enqueue_backpack_fallback_if_needed(String(card.card_id))
-			SignalBus.card_added_to_backpack.emit(card)
+			var emit_id2: String = instance_card2.instance_id if not instance_card2.instance_id.is_empty() else String(instance_card2.card_id)
+			_enqueue_backpack_fallback_if_needed(emit_id2)
+			SignalBus.card_added_to_backpack.emit(instance_card2)
 
 func refresh() -> void:
 	_selected_platform_card = null

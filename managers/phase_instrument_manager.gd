@@ -616,7 +616,9 @@ func equip_card(slot_index: int, card: CardResource, _energy_manager: Node = nul
 	if old_card != null:
 		SignalBus.card_added_to_backpack.emit(old_card)
 	_emit_slots_changed()
-	SignalBus.card_equipped.emit(slot_index, card.card_id, _card_type_name(card))
+	# v7.0: card_equipped 第2参数改传 instance_id（实例化养成身份）；无 instance_id 回退 card_id
+	var equip_id: String = card.instance_id if not card.instance_id.is_empty() else card.card_id
+	SignalBus.card_equipped.emit(slot_index, equip_id, _card_type_name(card))
 	var DebugLog = get_node_or_null("/root/DebugLog")
 	if DebugLog:
 		DebugLog.agent_log("phase_instrument_manager.gd", "equip_ok", {
@@ -708,13 +710,20 @@ func get_loadouts() -> Array:
 func get_loadout_by_platform_card_id(platform_card_id: String) -> Dictionary:
 	if platform_card_id.is_empty():
 		return {}
+	# v7.0: 优先按 instance_id 精确匹配（实例化后两张同名卡可区分）
+	# 回退按 card_id 匹配（兼容旧路径，返回第一个匹配）
+	var fallback: Dictionary = {}
 	for ld in get_loadouts():
 		if not (ld is Dictionary):
 			continue
 		var plat: CardResource = ld.get("platform", null)
-		if plat != null and plat.card_id == platform_card_id:
+		if plat == null:
+			continue
+		if not plat.instance_id.is_empty() and plat.instance_id == platform_card_id:
 			return ld
-	return {}
+		if plat.card_id == platform_card_id and fallback.is_empty():
+			fallback = ld
+	return fallback
 
 func get_slot_card_ids() -> Array:
 	var ids: Array = []
@@ -732,7 +741,10 @@ func get_slot_card_ids() -> Array:
 			if c == null:
 				ids.append("")
 				continue
-			var cid: String = c.card_id
+			# v7.0: 优先存 instance_id（实例化养成身份）；无 instance_id 时回退 card_id（兼容旧卡）
+			var cid: String = c.instance_id
+			if cid.is_empty():
+				cid = c.card_id
 			# 与 PhaseLaws/DefaultCards 一致：槽位存档用无前缀 law_id，读档时也可用 law: 兼容
 			if c.card_type == GC.CardType.LAW and cid.begins_with("law:"):
 				cid = cid.substr(4)
@@ -789,6 +801,7 @@ func set_slots_from_card_ids(card_ids: Array) -> void:
 		push_warning("[PhaseInstrumentManager] 槽位数量不匹配（存档 %d vs 当前 %d），尽力恢复..." % [card_ids.size(), expected_total])
 
 	# 尽力逐个恢复：按当前槽位数遍历，存档中多余的忽略，不足的留空
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
 	var ptr: int = 0
 	for color in SLOT_COLOR_ORDER:
 		var arr: Array = instrument_slots.get(color, [])
@@ -797,7 +810,16 @@ func set_slots_from_card_ids(card_ids: Array) -> void:
 			if ptr < card_ids.size() and card_ids[ptr] != null:
 				id_val = str(card_ids[ptr])
 			ptr += 1
-			arr[i] = _get_default_cards().get_card_by_id(id_val) if not id_val.is_empty() else null
+			if id_val.is_empty():
+				arr[i] = null
+				continue
+			# v7.0: 优先用 instance_id 取实例（含养成数据），取不到回退 card_id 取模板
+			var restored: CardResource = null
+			if ir != null and ir.has_method("get_instance"):
+				restored = ir.get_instance(id_val)
+			if restored == null:
+				restored = _get_default_cards().get_card_by_id(id_val)
+			arr[i] = restored
 		instrument_slots[color] = arr
 
 	_emit_slots_changed()
@@ -817,22 +839,36 @@ func clear_slots_for_new_game() -> void:
 ## 新游戏自动装备一套初始卡牌到空槽位
 ## 绿色槽：放入初始平台卡；黄色槽：放入初始能量卡
 func _equip_starter_cards_for_new_game() -> void:
+	# v7.0: 初始卡也实例化（独立 instance_id + 养成数据），不污染 DefaultCards 模板
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
 	# 绿色槽：尝试填入初始平台卡（omega_platform 是默认解锁的高级蓝图）
 	var green_arr: Array = instrument_slots.get("green", [])
-	var starter_platform: CardResource = _get_default_cards().get_card_by_id("omega_platform")
-	if starter_platform != null:
+	if not green_arr.is_empty():
 		for i in range(green_arr.size()):
 			if green_arr[i] == null:
-				green_arr[i] = starter_platform.clone()
+				var starter_platform: CardResource = null
+				if ir != null and ir.has_method("create_instance"):
+					starter_platform = ir.create_instance("omega_platform")
+				else:
+					var tpl: CardResource = _get_default_cards().get_card_by_id("omega_platform")
+					starter_platform = tpl.clone() if tpl != null else null
+				if starter_platform != null:
+					green_arr[i] = starter_platform
 	instrument_slots["green"] = green_arr
 
 	# 黄色槽：尝试填入初始能量卡（战前能量 IV 为默认演示档位）
 	var yellow_arr: Array = instrument_slots.get("yellow", [])
-	var starter_energy: CardResource = _get_default_cards().get_card_by_id("energy_start_4")
-	if starter_energy != null:
+	if not yellow_arr.is_empty():
 		for i in range(yellow_arr.size()):
 			if yellow_arr[i] == null:
-				yellow_arr[i] = starter_energy.clone()
+				var starter_energy: CardResource = null
+				if ir != null and ir.has_method("create_instance"):
+					starter_energy = ir.create_instance("energy_start_4")
+				else:
+					var etpl: CardResource = _get_default_cards().get_card_by_id("energy_start_4")
+					starter_energy = etpl.clone() if etpl != null else null
+				if starter_energy != null:
+					yellow_arr[i] = starter_energy
 	instrument_slots["yellow"] = yellow_arr
 
 	# [LOG-v5.1] print("[PhaseInstrumentManager] 新游戏初始卡牌已自动装备")

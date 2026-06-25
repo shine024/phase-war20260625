@@ -157,15 +157,24 @@ func _add_dropped_card(card_id: String, count: int) -> void:
 	if _is_default_pool_platform_or_weapon_card_id(card_id):
 		push_warning("[DropManager] 已拦截默认平台/武器成品卡掉落: %s" % card_id)
 		return
-	var card = DefaultCards.get_card_by_id(card_id)
-	if card == null:
+	var template = DefaultCards.get_card_by_id(card_id)
+	if template == null:
 		push_error("无法找到掉落卡牌: " + card_id)
 		return
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
 	# v3 后所有战斗卡都是 COMBAT_UNIT，无需拦截 WEAPON 类型（该类型已废弃）
 	# 原错误代码拦截了 COMBAT_UNIT 导致所有战斗卡掉落被拦，现已移除
 	var n: int = maxi(1, int(count))
 	for _i in range(n):
-		var dropped_card: CardResource = card.clone()
+		# v7.0: 实例化掉落卡（每张独立 instance_id + 养成数据）
+		var dropped_card: CardResource = null
+		if ir != null and ir.has_method("create_instance"):
+			dropped_card = ir.create_instance(card_id)
+		else:
+			dropped_card = template.clone()
+			dropped_card.instance_id = ""
+		if dropped_card == null:
+			continue
 		dropped_card.is_dropped_card = true
 		# v6.4: 掉落星级映射到 enhance_level，让高星掉落卡有属性优势
 		# star 1-3 → enhance_level 0（普通），4-6 → 1（强化），7-9 → 2（精锐）
@@ -210,8 +219,13 @@ func _add_card_to_backpack(card_id: String) -> void:
 	if _is_default_pool_platform_or_weapon_card_id(card_id):
 		push_warning("[DropManager] 已拦截默认平台/武器卡背包奖励: %s" % card_id)
 		return
-	# 将card_id转换为CardResource对象后再发送信号
-	var card = DefaultCards.get_card_by_id(card_id)
+	# v7.0: 实例化卡牌（独立 instance_id + 养成数据）
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	var card: CardResource = null
+	if ir != null and ir.has_method("create_instance"):
+		card = ir.create_instance(card_id)
+	else:
+		card = DefaultCards.get_card_by_id(card_id)
 	if card:
 		SignalBus.card_added_to_backpack.emit(card)
 	else:
@@ -324,8 +338,17 @@ func _add_law_blueprint(law_id: String, count: int) -> void:
 			return
 
 	# 新规则：法则作为普通卡牌掉落，不再走蓝图碎片
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
 	for i in range(maxi(1, count)):
-		var law_card: CardResource = DefaultCards.create_law_card_resource(law_id)
+		# v7.0: 法则卡实例化（create_law_card_resource 返回模板，用 create_instance_from_template 包装）
+		var law_template: CardResource = DefaultCards.create_law_card_resource(law_id)
+		if law_template == null:
+			continue
+		var law_card: CardResource = null
+		if ir != null and ir.has_method("create_instance_from_template"):
+			law_card = ir.create_instance_from_template(law_template)
+		else:
+			law_card = law_template
 		if law_card and SignalBus:
 			SignalBus.card_added_to_backpack.emit(law_card)
 	# [LOG-v5.1] print("[DropManager] 获得法则卡: ", law_id, " x", count)
@@ -356,13 +379,20 @@ func _add_law_card(law_id: String, count: int) -> void:
 		else:
 			return
 
-	var card: CardResource = DefaultCards.create_law_card_resource(law_id)
-	if card:
+	var law_template: CardResource = DefaultCards.create_law_card_resource(law_id)
+	if law_template:
 		# DEPRECATED: star_level is no longer assigned; star_rating system replaces it
 		# card.star_level = 1
+		var ir: Node = get_node_or_null("/root/InstanceRegistry")
 		for i in range(maxi(1, count)):
 			if SignalBus:
-				SignalBus.card_added_to_backpack.emit(card.clone() if card.has_method("clone") else card)
+				# v7.0: 法则卡实例化
+				var law_card: CardResource = null
+				if ir != null and ir.has_method("create_instance_from_template"):
+					law_card = ir.create_instance_from_template(law_template)
+				else:
+					law_card = law_template.clone() if law_template.has_method("clone") else law_template
+				SignalBus.card_added_to_backpack.emit(law_card)
 		# [LOG-v5.1] print("[DropManager] 获得法则卡: ", card.display_name, " x", count)
 	else:
 		push_error("[DropManager] 无法创建法则卡: " + law_id)

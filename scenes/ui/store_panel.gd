@@ -730,9 +730,15 @@ func _on_buy_pressed(card_id: String, card_count: int, price_nano: int, row_node
 		if template_card == null:
 			template_card = null
 		# [LOG-v5.1] print("[StorePanel] _on_buy_pressed: Buying card_id=%s template_card=%s" % [card_id, template_card != null])
+		# v7.0: 商店购买的卡牌实例化（独立养成身份）
+		var ir: Node = get_node_or_null("/root/InstanceRegistry")
 		for i in range(maxi(1, card_count)):
 			if template_card != null and SignalBus:
-				var out_card: CardResource = template_card.clone() if template_card.has_method("clone") else template_card
+				var out_card: CardResource = null
+				if ir != null and ir.has_method("create_instance"):
+					out_card = ir.create_instance(card_id)
+				else:
+					out_card = template_card.clone() if template_card.has_method("clone") else template_card
 				# [LOG-v5.1] print("[StorePanel] _on_buy_pressed: Emitting card_added_to_backpack for card_id=%s (i=%d)" % [out_card.card_id, i])
 				SignalBus.card_added_to_backpack.emit(out_card)
 				# [LOG-v5.1] print("[StorePanel] _on_buy_pressed: Signal emitted")

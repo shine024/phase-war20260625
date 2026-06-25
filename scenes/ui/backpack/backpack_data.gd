@@ -61,11 +61,22 @@ func get_all_cards() -> Array[CardResource]:
 	if not _cards_cache_dirty:
 		return _all_cards_cache
 	_all_cards_cache.clear()
+	# v7.0: 优先用 InstanceRegistry 取独立实例（含养成）；回退到 DefaultCards 取模板
+	var ir: Node = null
+	var tree = Engine.get_main_loop()
+	if tree and tree.root:
+		ir = tree.root.get_node_or_null("InstanceRegistry")
 	for id_val in _extra_card_ids:
 		var sid: String = str(id_val) if id_val != null else ""
 		if sid.is_empty():
 			continue
-		var card: CardResource = DefaultCardsData.get_card_by_id(sid)
+		var card: CardResource = null
+		# 先按 instance_id 取实例
+		if ir != null and ir.has_method("get_instance"):
+			card = ir.get_instance(sid)
+		# 取不到（可能存的是裸 card_id，兼容旧路径）回退 DefaultCards
+		if card == null:
+			card = DefaultCardsData.get_card_by_id(sid)
 		if card == null and sid.begins_with("law:"):
 			sid = sid.substr(4)
 		if card == null:

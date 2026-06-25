@@ -105,12 +105,18 @@ func synthesize(card_id_a: String, card_id_b: String) -> Dictionary:
 	}
 	# 注册到 DefaultCards 动态缓存，使 get_card_by_id 能找到它
 	DefaultCards.register_dynamic_card(hybrid)
+	# v7.0: 合成卡实例化（独立养成身份），用 instance_id 入队背包
+	var hybrid_instance: CardResource = hybrid
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	if ir != null and ir.has_method("create_instance_from_template"):
+		hybrid_instance = ir.create_instance_from_template(hybrid)
+	var enqueue_id: String = hybrid_instance.instance_id if not hybrid_instance.instance_id.is_empty() else check["hybrid_id"]
 	# 加入玩家背包
 	var sm: Node = get_node_or_null("/root/SaveManager")
 	if sm and sm.has_method("enqueue_backpack_card_id"):
-		sm.enqueue_backpack_card_id(check["hybrid_id"])
+		sm.enqueue_backpack_card_id(enqueue_id)
 	synthesis_completed.emit(check["hybrid_id"])
-	return {"ok": true, "hybrid_card": hybrid, "hybrid_id": check["hybrid_id"]}
+	return {"ok": true, "hybrid_card": hybrid_instance, "hybrid_id": check["hybrid_id"]}
 
 ## 检查并扣除合成资源（返回 false 表示资源不足）
 func _check_and_spend_cost(brm: Node, cost: Dictionary) -> bool:

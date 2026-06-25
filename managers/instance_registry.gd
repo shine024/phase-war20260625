@@ -50,15 +50,39 @@ var _intel_branch_bonus: Dictionary = {}
 ## 创建一个新实例（制造/掉落/购买/初始时调用）
 ## card_id: 卡牌模板 ID（如 "cold_t72"）
 ## 返回：带 instance_id 的独立 CardResource clone（养成数据为初始空状态）
+## 注：仅支持已注册到 DefaultCards 缓存的卡（绝大多数战斗卡/能量卡）。
+## 法则卡/缴获卡/混血卡等动态卡用 create_instance_from_template。
 func create_instance(card_id: String) -> CardResource:
 	var clone: CardResource = DefaultCards.clone_for_instance(card_id)
 	if clone == null:
 		push_error("[InstanceRegistry] 找不到卡牌模板: %s" % card_id)
 		return null
+	return _register_clone(clone, card_id)
+
+
+## 从任意 CardResource 模板创建实例（法则卡/缴获卡/混血卡等动态卡用）
+## template: 已构建好的 CardResource 模板对象（不会被修改，内部 clone）
+## 返回：带 instance_id 的独立 CardResource clone
+func create_instance_from_template(template: CardResource) -> CardResource:
+	if template == null:
+		push_error("[InstanceRegistry] create_instance_from_template: 模板为空")
+		return null
+	var clone: CardResource = template.clone()
+	# 养成字段重置为干净初始状态（防御性）
+	clone.enhance_level = 0
+	clone.mods = []
+	clone.module_slots = []
+	clone.weapon_slots = Array()
+	if clone.weapon_slots.is_empty() and clone.has_method("_ensure_weapon_slots_initialized"):
+		clone._ensure_weapon_slots_initialized()
+	return _register_clone(clone, template.card_id)
+
+
+## 内部：注册一个 clone 到实例表并分配 instance_id
+func _register_clone(clone: CardResource, card_id: String) -> CardResource:
 	var instance_id := _allocate_instance_id(card_id)
 	clone.instance_id = instance_id
-	# 确保武器槽位初始化（武器槽是战斗必需的）
-	if clone.has_method("_ensure_weapon_slots_initialized"):
+	if clone.weapon_slots.is_empty() and clone.has_method("_ensure_weapon_slots_initialized"):
 		clone._ensure_weapon_slots_initialized()
 	_instances[instance_id] = clone
 	instance_created.emit(instance_id, card_id)

@@ -40,6 +40,8 @@ const NONCRITICAL_SAVE_INTERVAL_MS := 10000
 const ENABLE_DETAILED_LOAD_VALIDATION := false
 const DEFERRED_LOAD_BATCH_SIZE := 5
 const CRITICAL_MANAGER_LOADS: Array = [
+	# v7.0: InstanceRegistry 必须最先加载——背包/相位仪/养成消费者恢复时依赖实例表
+	["/root/InstanceRegistry", "instances"],
 	["/root/BlueprintManager", "blueprint"],
 	["/root/PhaseInstrumentManager", "phase_instrument"],
 	["/root/PhaseLawManager", "phase_law"],
@@ -114,6 +116,8 @@ const RESETTABLE_MANAGERS := [
 
 ## ─── 存档数据键名常量（别名，定义见 scripts/systems/save_constants.gd）───
 const SK_SCHEMA_VERSION: String = SaveConstants.SK_SCHEMA_VERSION
+# v7.0: 卡牌实例表（必须最先加载）
+const SK_INSTANCES: String = SaveConstants.SK_INSTANCES
 const SK_BLUEPRINT: String = SaveConstants.SK_BLUEPRINT
 const SK_BASIC_RESOURCES: String = SaveConstants.SK_BASIC_RESOURCES
 const SK_PHASE_LAW: String = SaveConstants.SK_PHASE_LAW
@@ -231,7 +235,10 @@ func _ensure_backpack_signal_hook() -> void:
 func _on_card_added_to_backpack_fallback(card: CardResource) -> void:
 	if card == null:
 		return
-	var cid: String = String(card.card_id)
+	# v7.0: 用 instance_id 作身份；无 instance_id 回退 card_id（兼容）
+	var cid: String = String(card.instance_id)
+	if cid.is_empty():
+		cid = String(card.card_id)
 	if cid.is_empty():
 		return
 	enqueue_backpack_card_id(cid)
@@ -588,6 +595,8 @@ func save_game() -> bool:
 		_is_saving = false
 		return false
 	var data: Dictionary = {SK_SCHEMA_VERSION: SAVE_SCHEMA_VERSION}
+	# v7.0: InstanceRegistry 必须最先收集（实例表是背包/相位仪/养成的数据源）
+	_collect_manager_state(data, "/root/InstanceRegistry", SK_INSTANCES)
 	if bm.has_method("save_state"):
 		data[SK_BLUEPRINT] = bm.save_state()
 	_collect_manager_state(data, "/root/BasicResourceManager", SK_BASIC_RESOURCES)
@@ -757,10 +766,15 @@ func clear_pending_backpack_ids() -> void:
 
 ## 新存档初始背包卡牌 + 初始资源
 func _enqueue_starter_backpack_cards() -> void:
-	# 初始卡牌
-	enqueue_backpack_card_id("omega_platform")
-	enqueue_backpack_card_id("energy_start_1")
-	enqueue_backpack_card_id("energy_start_2")
+	# v7.0: 初始卡牌实例化（独立养成身份）
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	for cid in ["omega_platform", "energy_start_1", "energy_start_2"]:
+		var starter_id: String = cid
+		if ir != null and ir.has_method("create_instance"):
+			var inst: CardResource = ir.create_instance(cid)
+			if inst != null and not inst.instance_id.is_empty():
+				starter_id = inst.instance_id
+		enqueue_backpack_card_id(starter_id)
 	# 初始资源：各资源100000点
 	if BasicResourceManager:
 		BasicResourceManager.add_resource("nano_materials", 100000)
@@ -1000,6 +1014,10 @@ func start_new_game() -> void:
 	# 清除待处理的背包ID（开始新游戏时）
 	_pending_backpack_ids.clear()
 	_last_known_extra_ids.clear()
+	# v7.0: 清空实例表（新游戏从干净状态开始）
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	if ir != null and ir.has_method("clear_all"):
+		ir.clear_all()
 	# v6.6(挂机): 重置 AFK 状态（manager 是 RefCounted，经 Main 桥接调用 reset_progress）
 	var afk_mgr_reset: RefCounted = _get_afk_manager()
 	if afk_mgr_reset != null and afk_mgr_reset.has_method("reset_progress"):
@@ -1183,6 +1201,7 @@ func _load_from_path(path: String) -> bool:
 	# 注意：仅将不在默认卡池中的卡标记为额外卡；默认池中的卡（如 omega_platform、energy_start_4）
 	# 是初始装备卡，不应出现在背包中（它们属于相位仪槽位）
 	# 追加到 _pending_backpack_ids 和 _last_known_extra_ids，不覆盖已有数据
+	var ir_load: Node = get_node_or_null("/root/InstanceRegistry")
 	if pm != null and pm.has_method("get_slot_card_ids"):
 		var restored_slot_ids: Array = pm.get_slot_card_ids()
 		for sid_raw in restored_slot_ids:
@@ -1190,7 +1209,11 @@ func _load_from_path(path: String) -> bool:
 			if sid.is_empty():
 				continue
 			# 跳过初始装备卡（这些是相位仪自带的默认卡，不是玩家额外获取的）
-			if sid == "omega_platform" or sid == "energy_start_4":
+			# v7.0: sid 可能是 instance_id（omega_platform#1），解析出 card_id 再比较
+			var base_card_id: String = sid
+			if ir_load != null and ir_load.has_method("get_card_id_of"):
+				base_card_id = ir_load.get_card_id_of(sid)
+			if base_card_id == "omega_platform" or base_card_id == "energy_start_4":
 				continue
 			if not _pending_backpack_ids.has(sid):
 				_pending_backpack_ids.append(sid)

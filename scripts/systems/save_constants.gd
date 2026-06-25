@@ -4,6 +4,8 @@ extends RefCounted
 
 ## ─── 存档数据键名常量 ───
 const SK_SCHEMA_VERSION: String = "__schema_version"
+# v7.0: 卡牌实例表（必须最先加载，背包/相位仪/养成消费者依赖它）
+const SK_INSTANCES: String = "instances"
 const SK_BLUEPRINT: String = "blueprint"
 const SK_BASIC_RESOURCES: String = "basic_resources"
 const SK_PHASE_LAW: String = "phase_law"

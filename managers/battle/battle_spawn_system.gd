@@ -903,27 +903,28 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 	var effective_card: CardResource = platform_card
 	var active_faction_cache_key: String = ""
 
-	# v6.6: 注入强化词条（CardEnhancementManager 的 module_slots → effective_card）
-	# 战斗读取 card.module_slots，但玩家选择的词条存在 CardEnhancementManager.card_module_slots
-	# 此前两者未同步，导致词条效果在战斗中从未生效。此处补齐同步。
-	var cem: Node = _get_autoload_node("CardEnhancementManager")
-	if cem and cem.has_method("get_module_slots"):
-		var enhance_slots: Array = cem.get_module_slots(platform_card.card_id)
-		if not enhance_slots.is_empty():
-			# 同步强化等级（do_enhance 写入 DefaultCards 卡的 enhance_level，此处确保 effective_card 一致）
-			var enhance_lvl: int = 0
-			if cem.has_method("get_card_enhancement_level"):
-				enhance_lvl = cem.get_card_enhancement_level(platform_card.card_id)
-			if effective_card.enhance_level != enhance_lvl or effective_card.module_slots.is_empty():
-				# clone 避免污染共享单例（DefaultCards 缓存卡）
-				var card_clone: CardResource = effective_card.clone()
-				card_clone.enhance_level = enhance_lvl
-				card_clone.module_slots = enhance_slots
-				effective_card = card_clone
+	# v7.0: 实例化养成——若 platform_card 已是实例（instance_id 非空），养成数据直接在对象上，
+	# 无需再查 CardEnhancementManager。仅对非实例卡（兼容旧路径）做查表注入。
+	var instance_id_key: String = platform_card.instance_id if platform_card != null else ""
+	if instance_id_key.is_empty():
+		# 旧路径兼容：非实例卡，按 card_id 查 CardEnhancementManager 注入养成
+		var cem: Node = _get_autoload_node("CardEnhancementManager")
+		if cem and cem.has_method("get_module_slots"):
+			var enhance_slots: Array = cem.get_module_slots(platform_card.card_id)
+			if not enhance_slots.is_empty():
+				var enhance_lvl: int = 0
+				if cem.has_method("get_card_enhancement_level"):
+					enhance_lvl = cem.get_card_enhancement_level(platform_card.card_id)
+				if effective_card.enhance_level != enhance_lvl or effective_card.module_slots.is_empty():
+					var card_clone: CardResource = effective_card.clone()
+					card_clone.enhance_level = enhance_lvl
+					card_clone.module_slots = enhance_slots
+					effective_card = card_clone
 
-	# 缓存 key 包含势力变体信息，避免不同势力下命中错误缓存
+	# 缓存 key：v7.0 实例卡用 instance_id（避免两张同名实例共享缓存），非实例卡用 card_id
+	var card_key: String = instance_id_key if not instance_id_key.is_empty() else platform_card.card_id
 	var key: String = "%s|%s|%s|%d|%s|%s" % [
-		platform_card.card_id, ",".join(weapon_ids), weapon_types_key, battle_era, pf_bonus_key,
+		card_key, ",".join(weapon_ids), weapon_types_key, battle_era, pf_bonus_key,
 		active_faction_cache_key
 	]
 	if _stats_cache.has(key):

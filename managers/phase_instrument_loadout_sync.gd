@@ -230,7 +230,9 @@ func equip_card(slot_index: int, card: CardResource, _energy_manager: Node = nul
 	if old_card != null:
 		SignalBus.card_added_to_backpack.emit(old_card)
 	_emit_slots_changed()
-	SignalBus.card_equipped.emit(slot_index, card.card_id, _card_type_name(card))
+	# v7.0: card_equipped 第2参数改传 instance_id；无 instance_id 回退 card_id
+	var equip_id: String = card.instance_id if not card.instance_id.is_empty() else card.card_id
+	SignalBus.card_equipped.emit(slot_index, equip_id, _card_type_name(card))
 	return true
 
 ## ── 卸下槽位卡牌 ──

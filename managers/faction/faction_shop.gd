@@ -324,26 +324,37 @@ static func deliver_item(item: StoreItem) -> bool:
 			const PhaseLawsRef = preload("res://data/phase_laws.gd")
 			const EnemyBlueprintsRef = preload("res://data/enemy_blueprints.gd")
 			var cid: String = item.item_id
+			# v7.0: 购买的卡牌全部实例化（独立养成身份）
+			var ir := _get_autoload("/root/InstanceRegistry", run_id, "v70")
 			# v6.4: 法则卡通过 PhaseLaws 生成
 			if cid.begins_with("steel_") or cid.begins_with("flame_") \
 				or cid.begins_with("thunder_") or cid.begins_with("void_"):
 				if not PhaseLawsRef.get_by_id(cid).is_empty():
 					var law_card: CardResource = DefaultCardsData.create_law_card_resource(cid)
 					if law_card:
-						SignalBus.card_added_to_backpack.emit(law_card)
+						var law_inst: CardResource = law_card
+						if ir != null and ir.has_method("create_instance_from_template"):
+							law_inst = ir.create_instance_from_template(law_card)
+						SignalBus.card_added_to_backpack.emit(law_inst)
 						return true
 				return false
 			# v6.4: 缴获卡通过 EnemyBlueprints 发放
 			if cid.begins_with("bp_"):
 				var bp_card: CardResource = EnemyBlueprintsRef.get_card_by_id(cid)
 				if bp_card:
-					SignalBus.card_added_to_backpack.emit(bp_card)
+					var bp_inst: CardResource = bp_card
+					if ir != null and ir.has_method("create_instance_from_template"):
+						bp_inst = ir.create_instance_from_template(bp_card)
+					SignalBus.card_added_to_backpack.emit(bp_inst)
 					return true
 				return false
 			# 战斗卡
 			var card: CardResource = DefaultCardsData.get_card_by_id(cid)
 			if card:
-				SignalBus.card_added_to_backpack.emit(card)
+				var card_inst: CardResource = card
+				if ir != null and ir.has_method("create_instance"):
+					card_inst = ir.create_instance(cid)
+				SignalBus.card_added_to_backpack.emit(card_inst)
 				return true
 			else:
 				push_error("[FactionShop] 商店找不到卡牌: " + cid)

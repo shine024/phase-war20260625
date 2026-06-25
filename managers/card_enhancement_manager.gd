@@ -70,15 +70,36 @@ func _ready() -> void:
 # ─────────────────────────────────────────────
 
 ## 获取卡牌当前强化等级
-func get_card_enhancement_level(card_id: String) -> int:
-	var card = DefaultCards.get_card_by_id(card_id)
-	if card != null:
-		return maxi(card.enhance_level, 0)
+## v7.0: 参数改为 instance_id（实例化养成）；无 instance_id 时按 card_id 回退单例（兼容旧路径）
+func get_card_enhancement_level(card_id_or_instance: String) -> int:
+	var inst = _get_instance_card(card_id_or_instance)
+	if inst != null:
+		return maxi(inst.enhance_level, 0)
+	# 回退：按 card_id 查模板（兼容未实例化场景）
+	var template = DefaultCards.get_card_by_id(card_id_or_instance)
+	if template != null:
+		return maxi(template.enhance_level, 0)
 	return 0
 
+## v7.0: 按 instance_id 取实例对象（找不到返回 null）
+func _get_instance_card(id_str: String) -> CardResource:
+	if id_str.is_empty():
+		return null
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	if ir != null and ir.has_method("get_instance"):
+		var inst: CardResource = ir.get_instance(id_str)
+		if inst != null:
+			return inst
+	return null
+
 ## 获取卡牌的词条槽位数组
-func get_module_slots(card_id: String) -> Array:
-	return card_module_slots.get(card_id, [])
+## v7.0: 参数改为 instance_id；无实例时回退 card_module_slots[card_id]（兼容）
+func get_module_slots(card_id_or_instance: String) -> Array:
+	# 优先从实例对象读 module_slots
+	var inst = _get_instance_card(card_id_or_instance)
+	if inst != null:
+		return inst.module_slots
+	return card_module_slots.get(card_id_or_instance, [])
 
 ## 获取卡牌的当前有效词条（合并 BlueprintManager 中的）
 func get_effective_module_slots(card_id: String) -> Array:
@@ -172,29 +193,34 @@ func can_enhance(card_id: String, nano_available: int) -> bool:
 
 ## 执行强化升级（消耗纳米，提升等级）
 ## 返回 action: "new_slot" / "upgrade_slot" / "none"
-func do_enhance(card_id: String, nano_available: int) -> Dictionary:
-	if not can_enhance(card_id, nano_available):
+## v7.0: 参数改为 instance_id；强化等级写到实例对象（不再污染 DefaultCards 单例）
+func do_enhance(card_id_or_instance: String, nano_available: int) -> Dictionary:
+	if not can_enhance(card_id_or_instance, nano_available):
 		return {"ok": false, "action": "none", "reason": "无法强化"}
 
-	var card = DefaultCards.get_card_by_id(card_id)
+	# v7.0: 优先取实例对象；无实例回退模板（兼容）
+	var card = _get_instance_card(card_id_or_instance)
+	if card == null:
+		card = DefaultCards.get_card_by_id(card_id_or_instance)
 	if card == null:
 		return {"ok": false, "action": "none", "reason": "卡牌不存在"}
 
-	var current_level = get_card_enhancement_level(card_id)
+	var current_level = get_card_enhancement_level(card_id_or_instance)
 	var target_level = current_level + 1
-	var nano_cost = get_enhance_nano_cost(card_id, target_level)
+	var nano_cost = get_enhance_nano_cost(card_id_or_instance, target_level)
 
 	# 纳米消耗在调用方处理（UI统一扣费）
 	card.enhance_level = target_level
 
 	var action = ModuleDefinitions.get_level_action(target_level)
 
-	emit_signal("enhancement_completed", true, card_id, action,
+	emit_signal("enhancement_completed", true, card_id_or_instance, action,
 		"强化成功！等级提升至 Lv.%d" % target_level)
 
 	return {"ok": true, "action": action, "level": target_level}
 
 ## 选择词条（新槽位时调用）
+## v7.0: 参数 card_id 实际是 instance_id；词条写到实例对象（不再污染单例）
 func choose_module(card_id: String, module_id: String) -> Dictionary:
 	var slots = get_module_slots(card_id)
 	var level = get_card_enhancement_level(card_id)
@@ -230,7 +256,7 @@ func choose_module(card_id: String, module_id: String) -> Dictionary:
 	slot.level = 1
 	slot.slot_index = slot_index
 	slots[slot_index] = slot
-	card_module_slots[card_id] = slots
+	_set_module_slots(card_id, slots)
 
 	emit_signal("module_chosen", card_id, slot_index, module_id, 1)
 	return {"ok": true, "slot_index": slot_index, "module_id": module_id, "level": 1}
@@ -250,6 +276,7 @@ func upgrade_module(card_id: String, slot_index: int) -> Dictionary:
 			return {"ok": false, "reason": "词条已满级"}
 		old_level = slot.level
 		slot.level += 1
+		_set_module_slots(card_id, slots)  # v7.0: 同步到实例
 		var new_level = slot.level
 		emit_signal("module_upgraded", card_id, slot_index, old_level, new_level)
 		return {"ok": true, "slot_index": slot_index, "module_id": slot.module_id,
@@ -262,7 +289,7 @@ func upgrade_module(card_id: String, slot_index: int) -> Dictionary:
 		if old_level >= 3:
 			return {"ok": false, "reason": "词条已满级"}
 		slot["level"] = old_level + 1
-		card_module_slots[card_id] = slots
+		_set_module_slots(card_id, slots)  # v7.0: 同步到实例
 		emit_signal("module_upgraded", card_id, slot_index, old_level, old_level + 1)
 		return {"ok": true, "slot_index": slot_index, "module_id": mid,
 			"old_level": old_level, "new_level": old_level + 1}
@@ -276,18 +303,26 @@ func reset_module(card_id: String, slot_index: int) -> Dictionary:
 		return {"ok": false, "reason": "无效槽位"}
 
 	slots[slot_index] = null
-	card_module_slots[card_id] = slots
 	# 清理尾部空槽位
 	while slots.size() > 0 and slots[slots.size() - 1] == null:
 		slots.pop_back()
+	_set_module_slots(card_id, slots)  # v7.0: 同步到实例
 	emit_signal("module_reset", card_id, slot_index)
 	return {"ok": true}
 
 ## 全部重置（清空所有词条，保持强化等级）
 func reset_all_modules(card_id: String) -> Dictionary:
-	card_module_slots[card_id] = []
+	_set_module_slots(card_id, [])  # v7.0: 同步到实例
 	emit_signal("module_reset", card_id, -1)
 	return {"ok": true}
+
+## v7.0: 统一写入词条槽位——有实例写实例对象，无实例写 card_module_slots 字典（兼容）
+func _set_module_slots(card_id_or_instance: String, slots: Array) -> void:
+	var inst = _get_instance_card(card_id_or_instance)
+	if inst != null:
+		inst.module_slots = slots
+	else:
+		card_module_slots[card_id_or_instance] = slots
 
 # ─────────────────────────────────────────────
 #  存档

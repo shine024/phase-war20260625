@@ -81,10 +81,17 @@ static func grant_law_cards_to_backpack(law_id: String, amount: int) -> void:
 		return
 	if typeof(SignalBus) == TYPE_NIL:
 		return
+	# v7.0: 法则卡实例化（独立养成身份）
+	var ir: Node = null
+	var tree = Engine.get_main_loop()
+	if tree and tree.root:
+		ir = tree.root.get_node_or_null("InstanceRegistry")
 	var n: int = maxi(1, int(amount))
 	for _i in range(n):
 		var c: CardResource
-		if template.has_method("clone"):
+		if ir != null and ir.has_method("create_instance_from_template"):
+			c = ir.create_instance_from_template(template)
+		elif template.has_method("clone"):
 			c = template.clone() as CardResource
 		else:
 			c = (template as Resource).duplicate(true) as CardResource

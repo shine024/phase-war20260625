@@ -1024,7 +1024,8 @@ func install_modification(card: CardResource, mod_id: String, slot: int = -1) ->
 	result.message = "改造安装成功：%s" % mod_data.get("name", mod_id)
 
 	# 更新blueprint_mods缓存
-	_update_blueprint_mods_cache(card.card_id)
+	# v7.0: 用 instance_id 做 key（实例化养成），直接存实例的 mods（不再查模板）
+	_update_blueprint_mods_cache_for_card(card)
 
 	# 通知外部
 	emit_signal("fragments_changed")
@@ -1036,8 +1037,9 @@ func install_modification(card: CardResource, mod_id: String, slot: int = -1) ->
 
 ## v6.5: 切换武器类改造的启用/禁用状态
 ## 仅对武器类改造（slot_type 为 "weapon" 或 "gun"）有效，禁用后跳过效果但仍占用槽位
+## v7.0: 参数 card_id 实际是 instance_id；优先取实例对象
 func set_mod_enabled(card_id: String, mod_index: int, enabled: bool) -> bool:
-	var card: CardResource = _get_card_from_library(card_id)
+	var card: CardResource = _get_card_for_mods(card_id)
 	if card == null:
 		return false
 	if mod_index < 0 or mod_index >= card.mods.size():
@@ -1054,14 +1056,15 @@ func set_mod_enabled(card_id: String, mod_index: int, enabled: bool) -> bool:
 		return false  # 仅武器类改造可启用/禁用
 	mod_entry["enabled"] = enabled
 	card.mods[mod_index] = mod_entry
-	_update_blueprint_mods_cache(card_id)
+	_update_blueprint_mods_cache_for_card(card)
 	emit_signal("fragments_changed")
 	_auto_save("modification_toggle")
 	return true
 
 ## v6.5: 获取改造的启用状态（无 enabled 字段时默认 true）
+## v7.0: 参数 card_id 实际是 instance_id；优先取实例对象
 func is_mod_enabled(card_id: String, mod_index: int) -> bool:
-	var card: CardResource = _get_card_from_library(card_id)
+	var card: CardResource = _get_card_for_mods(card_id)
 	if card == null:
 		return true
 	if mod_index < 0 or mod_index >= card.mods.size():
@@ -1072,6 +1075,18 @@ func is_mod_enabled(card_id: String, mod_index: int) -> bool:
 	if mod_entry.has("enabled"):
 		return bool(mod_entry["enabled"])
 	return true
+
+## v7.0: 按 instance_id 取实例对象（找实例）；无实例回退 _get_card_from_library（模板）
+## 供改造读写使用
+func _get_card_for_mods(id_str: String) -> CardResource:
+	if id_str.is_empty():
+		return null
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	if ir != null and ir.has_method("get_instance"):
+		var inst: CardResource = ir.get_instance(id_str)
+		if inst != null:
+			return inst
+	return _get_card_from_library(id_str)
 
 ## 替换改造（新接口）
 func replace_modification(card: CardResource, old_mod_id: String, new_mod_id: String) -> Dictionary:
@@ -1190,12 +1205,25 @@ func _get_card_from_library(card_id: String) -> CardResource:
 	return DefaultCards.get_card_by_id(card_id)
 
 ## 更新blueprint_mods缓存（始终同步 card.mods → blueprint_mods）
+## v7.0: 兼容旧接口（按 card_id 查模板），新代码应优先用 _update_blueprint_mods_cache_for_card
 func _update_blueprint_mods_cache(card_id: String) -> void:
 	var card = _get_card_from_library(card_id)
 	if card and not card.mods.is_empty():
 		blueprint_mods[card_id] = card.mods.duplicate(true)
 	elif card and card.mods.is_empty():
 		blueprint_mods.erase(card_id)
+
+## v7.0: 用实例对象更新 blueprint_mods 缓存
+## key 优先用 instance_id（实例化养成），无 instance_id 回退 card_id
+## 直接存实例的 mods，不查模板（模板的 mods 始终为空）
+func _update_blueprint_mods_cache_for_card(card: CardResource) -> void:
+	if card == null:
+		return
+	var key: String = card.instance_id if not card.instance_id.is_empty() else card.card_id
+	if not card.mods.is_empty():
+		blueprint_mods[key] = card.mods.duplicate(true)
+	else:
+		blueprint_mods.erase(key)
 
 ## ─── 武器槽位管理 ───
 

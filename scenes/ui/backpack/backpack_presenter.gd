@@ -135,12 +135,14 @@ func _on_card_added(card: CardResource) -> void:
 		return
 	if _data == null:
 		return
+	# v7.0: 用 instance_id 作为背包身份（实例化养成）；无 instance_id 时回退 card_id（兼容旧卡）
+	var inst_id: String = card.instance_id if not card.instance_id.is_empty() else card.card_id
 	# 从pending中移除该卡牌ID（标记为已处理）
 	if SaveManager and SaveManager.has_method("consume_pending_backpack_card_id"):
-		SaveManager.consume_pending_backpack_card_id(card.card_id)
+		SaveManager.consume_pending_backpack_card_id(inst_id)
 	# silent=true：由本函数自身控制刷新，避免 cards_changed 信号触发
 	# _on_model_cards_changed 时被 _suppress_next_cards_changed_refresh 吞掉导致漏刷新。
-	_data.add_extra_card(card.card_id, true)
+	_data.add_extra_card(inst_id, true)
 	# 注意：此处不能再调用 enqueue_backpack_card_id。
 	# card_added_to_backpack 信号有两个监听者——本函数(presenter) 和 SaveManager 兜底。
 	# SaveManager 兜底已经 enqueue 一次（pending+last_known 各+1）；若 presenter 再 enqueue，
@@ -151,7 +153,7 @@ func _on_card_added(card: CardResource) -> void:
 	else:
 		_refresh_card_grid()
 	if _view and _view.has_method("highlight_last_card_by_id"):
-		_view.highlight_last_card_by_id(card.card_id)
+		_view.highlight_last_card_by_id(inst_id)
 
 func _on_card_equipped(_slot_index: int, card_id: String, _card_type: String) -> void:
 	var can_incremental: bool = _view and _view.has_method("remove_last_card_by_id")
