@@ -335,6 +335,11 @@ func _update_detail_panel() -> void:
 	if target_name_label:
 		target_name_label.text = "→ " + target_card.display_name
 
+	# 条件检查（提升到函数作用域，后续多处使用）
+	# v7.0: 传 instance_id（实例化养成身份）
+	var src_id_ck: String = selected_card.instance_id if (selected_card and not selected_card.instance_id.is_empty()) else (selected_card.card_id if selected_card else "")
+	var check_result = BlueprintManager.can_evolve_blueprint(src_id_ck, selected_target_id)
+
 	# 更新基础信息
 	if info_details:
 		# v6.2: 目标战力用统一估算（含强化+改造基准），与对比栏一致
@@ -342,11 +347,6 @@ func _update_detail_panel() -> void:
 		info_details.text = "强化 Lv.%d | 战力：%d\n" % [target_card.enhance_level, target_pw]
 		info_details.text += "时代：%s | 类型：%s\n" % [target_card.era, target_card.combat_kind]
 		info_details.text += "武器：%s\n" % target_card.weapon_type
-
-		# 显示条件检查
-		# v7.0: 传 instance_id（实例化养成身份）
-		var src_id_ck: String = selected_card.instance_id if (selected_card and not selected_card.instance_id.is_empty()) else (selected_card.card_id if selected_card else "")
-		var check_result = BlueprintManager.can_evolve_blueprint(src_id_ck, selected_target_id)
 	if req_details:
 		if check_result.get("ok", false):
 			req_details.text = "✓ 所有条件满足，可以进化"
