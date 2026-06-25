@@ -152,7 +152,9 @@ func _on_card_selector_changed(index: int) -> void:
 
 ## 创建大型进化节点
 func _create_evolution_node(target: Dictionary) -> Control:
-	var check_result = BlueprintManager.can_evolve_blueprint(selected_card.card_id, target.target_id)
+	# v7.0: 传 instance_id（实例化养成身份）
+	var src_id: String = selected_card.instance_id if (selected_card and not selected_card.instance_id.is_empty()) else (selected_card.card_id if selected_card else "")
+	var check_result = BlueprintManager.can_evolve_blueprint(src_id, target.target_id)
 	var can_evo: bool = bool(check_result.get("ok", false))
 	var target_card = DefaultCards.get_card_by_id(target.target_id)
 	# v6.2 修复：战力对比双方统一用估算分（含强化+改造），原 current 含强化、target 仅基础导致基准不公平
@@ -341,8 +343,10 @@ func _update_detail_panel() -> void:
 		info_details.text += "时代：%s | 类型：%s\n" % [target_card.era, target_card.combat_kind]
 		info_details.text += "武器：%s\n" % target_card.weapon_type
 
-	# 显示条件检查
-	var check_result = BlueprintManager.can_evolve_blueprint(selected_card.card_id, selected_target_id)
+		# 显示条件检查
+		# v7.0: 传 instance_id（实例化养成身份）
+		var src_id_ck: String = selected_card.instance_id if (selected_card and not selected_card.instance_id.is_empty()) else (selected_card.card_id if selected_card else "")
+		var check_result = BlueprintManager.can_evolve_blueprint(src_id_ck, selected_target_id)
 	if req_details:
 		if check_result.get("ok", false):
 			req_details.text = "✓ 所有条件满足，可以进化"
@@ -472,11 +476,21 @@ func _on_evolve_pressed() -> void:
 		return
 
 	if BlueprintManager and BlueprintManager.has_method("can_evolve_blueprint") and BlueprintManager.has_method("evolve_blueprint"):
-		var ok: bool = BlueprintManager.evolve_blueprint(selected_card.card_id, selected_target_id)
+		# v7.0: 进化传 instance_id（实例化养成身份）；无 instance_id 回退 card_id
+		var source_id: String = selected_card.instance_id if not selected_card.instance_id.is_empty() else selected_card.card_id
+		var ok: bool = BlueprintManager.evolve_blueprint(source_id, selected_target_id)
 		if ok:
 			_show_result("进化成功：%s → %s" % [selected_card.display_name, DefaultCards.get_safe_display_name(selected_target_id)])
 			# 刷新UI - 选中进化后的新卡
-			var new_card: CardResource = DefaultCards.get_card_by_id(selected_target_id)
+			# v7.0: 进化创建目标新实例，优先从 InstanceRegistry 取
+			var new_card: CardResource = null
+			var ir: Node = get_node_or_null("/root/InstanceRegistry")
+			if ir != null and ir.has_method("get_instances_by_card_id"):
+				var new_ids: Array = ir.get_instances_by_card_id(selected_target_id)
+				if not new_ids.is_empty():
+					new_card = ir.get_instance(String(new_ids[new_ids.size() - 1]))
+			if new_card == null:
+				new_card = DefaultCards.get_card_by_id(selected_target_id)
 			if new_card:
 				selected_card = new_card
 				# 更新选择器
@@ -489,7 +503,7 @@ func _on_evolve_pressed() -> void:
 			_update_evolution_tree()
 			_clear_detail_panel()
 		else:
-			var fail_info: Dictionary = BlueprintManager.can_evolve_blueprint(selected_card.card_id, selected_target_id)
+			var fail_info: Dictionary = BlueprintManager.can_evolve_blueprint(source_id, selected_target_id)
 			var fail_reason: String = String(fail_info.get("reason_zh", "条件未满足"))
 			_show_result("进化失败：%s" % fail_reason)
 	else:

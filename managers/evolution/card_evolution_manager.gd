@@ -52,10 +52,47 @@ static func _evolve_check_denied(reason: String) -> Dictionary:
 		"reason_zh": UnitLineageConfig.localize_evolve_reason(reason),
 	}
 
+## v7.0: 从参数中解析出 card_id（支持 instance_id 和裸 card_id）
+## "cold_t72#1" → "cold_t72"，"cold_t72" → "cold_t72"
+static func _resolve_card_id(id_str: String) -> String:
+	if id_str.is_empty():
+		return ""
+	var ir: Node = _get_autoload_node("InstanceRegistry")
+	if ir != null and ir.has_method("get_card_id_of"):
+		var base: String = ir.get_card_id_of(id_str)
+		if not base.is_empty():
+			return base
+	return id_str
+
+## v7.0: 获取实例的 ID（优先 instance_id，回退 card_id）
+## 用于区分传进来的是实例 id 还是裸 card_id
+static func _is_instance_id(id_str: String) -> bool:
+	return id_str.contains("#")
+
+## v7.0: 获取源卡的增强等级——优先实例对象，回退 CardEnhancementManager
+static func _get_source_enhance_level(card_id_or_instance: String) -> int:
+	var ir: Node = _get_autoload_node("InstanceRegistry")
+	if ir != null and ir.has_method("get_instance"):
+		var inst: CardResource = ir.get_instance(card_id_or_instance)
+		if inst != null:
+			return maxi(inst.enhance_level, 0)
+	# 回退：按 card_id 查模板
+	var tree = Engine.get_main_loop()
+	if tree and tree.root:
+		var cem: Node = tree.root.get_node_or_null("CardEnhancementManager")
+		if cem != null and cem.has_method("get_card_enhancement_level"):
+			return maxi(cem.get_card_enhancement_level(card_id_or_instance), 0)
+	return 0
+
 ## 进化条件检查
-static func can_evolve_blueprint(card_id: String, target_card_id: String, bpm_ref: Node) -> Dictionary:
-	if card_id.is_empty() or target_card_id.is_empty():
+## v7.0: card_id 参数支持 instance_id（实例化养成身份）
+static func can_evolve_blueprint(card_id_or_instance: String, target_card_id: String, bpm_ref: Node) -> Dictionary:
+	if card_id_or_instance.is_empty() or target_card_id.is_empty():
 		return _evolve_check_denied("invalid")
+	# v7.0: 支持 instance_id，解析出 card_id 用于模板查表
+	var card_id: String = _resolve_card_id(card_id_or_instance)
+	var is_instance: bool = _is_instance_id(card_id_or_instance)
+
 	if not bpm_ref.is_blueprint_unlocked(card_id):
 		return _evolve_check_denied("card_locked")
 	if DefaultCards.get_card_by_id(target_card_id) == null and PhaseLaws.get_by_id(target_card_id).is_empty():
@@ -100,7 +137,8 @@ static func can_evolve_blueprint(card_id: String, target_card_id: String, bpm_re
 	## v5.0 Phase 4: 战力达标检查（培养后战力 >= 目标基础战力）
 	var target_base_power: int = UnitLineageConfig.get_target_base_power(target_card_id)
 	if target_base_power > 0:
-		var current_power: float = EvolutionHelpers.estimate_power_score(card_id, bpm_ref)
+		# v7.0: 战力估算传 instance_id（让估算读到实例的养成数据）
+		var current_power: float = EvolutionHelpers.estimate_power_score(card_id_or_instance, bpm_ref)
 		if current_power < float(target_base_power):
 			return _evolve_check_denied("power_not_enough")
 
@@ -113,8 +151,20 @@ static func can_evolve_blueprint(card_id: String, target_card_id: String, bpm_re
 	var stage: String = UnitLineageConfig.get_stage(card_id, target_card_id)
 
 	## v6.0: 新门槛 — 强化等级 + MOD数量 + 敌源MOD
-	var enhance_lvl: int = _get_card_enhance_level(card_id, bpm_ref)
-	var mod_count: int = ModManager.get_modification_count(card_id, bpm_ref.blueprint_mods)
+	# v7.0: 优先从实例对象读 enhance_level 和 mods；实例不存在回退 blueprint_mods 字典
+	var enhance_lvl: int = 0
+	var mod_count: int = 0
+	if is_instance:
+		var ir: Node = _get_autoload_node("InstanceRegistry")
+		if ir != null and ir.has_method("get_instance"):
+			var inst: CardResource = ir.get_instance(card_id_or_instance)
+			if inst != null:
+				enhance_lvl = maxi(inst.enhance_level, 0)
+				mod_count = inst.mods.size()
+	else:
+		enhance_lvl = _get_card_enhance_level(card_id, bpm_ref)
+		mod_count = ModManager.get_modification_count(card_id, bpm_ref.blueprint_mods)
+	
 	if enhance_lvl < UnitLineageConfig.get_enhance_requirement(stage):
 		return _evolve_check_denied("enhance_not_enough")
 	if mod_count < UnitLineageConfig.get_mod_requirement(stage):
@@ -163,19 +213,29 @@ static func can_evolve_blueprint(card_id: String, target_card_id: String, bpm_re
 	return out
 
 ## 进化执行
-static func evolve_blueprint(card_id: String, target_card_id: String, bpm_ref: Node) -> bool:
-	var can_info: Dictionary = can_evolve_blueprint(card_id, target_card_id, bpm_ref)
+## v7.0: card_id_or_instance 支持 instance_id（实例化养成身份）
+## 实例化语义：源实例 dispose → 创建目标新实例 → 养成迁移到目标实例
+## 非实例（旧路径）：按 card_id 索引 blueprint_* 字典（保持兼容）
+static func evolve_blueprint(card_id_or_instance: String, target_card_id: String, bpm_ref: Node) -> bool:
+	var can_info: Dictionary = can_evolve_blueprint(card_id_or_instance, target_card_id, bpm_ref)
 	if not bool(can_info.get("ok", false)):
 		return false
-	# v6.11: old_star 已废弃（星级系统移除，原 L178 唯一消费点已注释）
+
+	var card_id: String = _resolve_card_id(card_id_or_instance)
+	var is_instance: bool = _is_instance_id(card_id_or_instance)
+
+	# v7.0: 实例化路径——源实例 dispose + 目标实例创建 + 养成迁移
+	var ir: Node = _get_autoload_node("InstanceRegistry")
+	if is_instance and ir != null:
+		return _evolve_instance(card_id_or_instance, target_card_id, card_id, can_info, bpm_ref, ir)
+
+	# ── 旧路径兼容（按 card_id 操作 blueprint_* 字典）──
 	var inherit_ratio: float = float(can_info.get("inherit_ratio", 0.30))
 	var old_bonus: float = float(bpm_ref.blueprint_inherit_bonus.get(card_id, 0.0))
 	var merged_bonus: float = clampf(old_bonus + inherit_ratio, 0.0, 0.9)
 	if not bpm_ref.is_blueprint_unlocked(target_card_id):
 		bpm_ref.unlock_blueprint(target_card_id)
 	bpm_ref.blueprint_copies[target_card_id] = max(1, int(bpm_ref.blueprint_copies.get(target_card_id, 0)))
-	# [DEPRECATED] blueprint_stars 写入已禁用 — 星级系统废弃，固定为1
-	# bpm_ref.blueprint_stars[target_card_id] = max(int(bpm_ref.blueprint_stars.get(target_card_id, 1)), old_star)
 	bpm_ref.blueprint_inherit_bonus[target_card_id] = merged_bonus
 	var old_hp: float = EvolutionHelpers.compute_platform_preview_hp(card_id, 0, bpm_ref)
 	if old_hp > 0.0:
@@ -183,46 +243,95 @@ static func evolve_blueprint(card_id: String, target_card_id: String, bpm_ref: N
 		var prev_floor: float = float(bpm_ref.blueprint_evolution_hp_floor.get(target_card_id, 0.0))
 		bpm_ref.blueprint_evolution_hp_floor[target_card_id] = maxf(prev_floor, floor_hp)
 
-	## v5.0 Phase 4 进化执行规则:
-	## - 改造完全继承（mods 从源复制到目标，源清空）
-	## - 强化彻底清零（enhance_level + 词条槽，源卡残留一并清除）
-	## - 情报保留（blueprint_intel 字段，Phase 5 数据层预留）
 	var source_mods: Array = bpm_ref.blueprint_mods.get(card_id, [])
 	bpm_ref.blueprint_mods[target_card_id] = source_mods.duplicate()
 	bpm_ref.blueprint_mods[card_id] = []
-	## 进化后清理源卡副本（避免仍可制造旧卡）
 	bpm_ref.blueprint_copies[card_id] = 0
-	## v6.11: 强化彻底清零——清除源卡词条槽 + 重置 enhance_level（之前注释声称清零但从未实现）
 	var cem: Node = _get_autoload_node("CardEnhancementManager")
 	if cem and cem.has_method("clear_card_enhancement"):
 		cem.clear_card_enhancement(card_id)
 
-	## Phase 5 预留: 情报继承 — 进化后保留目标情报进度
-	## var source_intel: float = float(bpm_ref.blueprint_intel.get(card_id, 0.0))
-	## bpm_ref.blueprint_intel[target_card_id] = maxf(float(bpm_ref.blueprint_intel.get(target_card_id, 0.0)), source_intel)
+	_apply_intel_branch_bonus(card_id, target_card_id, can_info, bpm_ref)
 
 	bpm_ref.emit_signal("fragments_changed")
-	# [DEPRECATED] blueprint_star_upgraded 信号已废弃，不再基于星级变化
-	# bpm_ref.emit_signal("blueprint_star_upgraded", target_card_id, int(bpm_ref.blueprint_stars[target_card_id]))
-	## v6.6: 情报进化分支奖励应用 + 自动 claim
+	return true
+
+
+## v7.0: 实例化进化——源实例 dispose + 目标实例创建 + 养成迁移
+static func _evolve_instance(source_instance_id: String, target_card_id: String, source_card_id: String, can_info: Dictionary, bpm_ref: Node, ir: Node) -> bool:
+	if ir == null:
+		return false
+
+	# 1. 读取源实例的养成数据
+	var source_inst: CardResource = ir.get_instance(source_instance_id)
+	if source_inst == null:
+		return false
+
+	var source_mods: Array = source_inst.mods.duplicate(true)
+	var source_enhance_lvl: int = source_inst.enhance_level
+	var source_module_slots: Array = source_inst.module_slots.duplicate(true)
+	var source_eom: String = ir.get_enemy_origin_mod(source_instance_id)
+	var source_intel_bonus: Dictionary = ir.get_intel_branch_bonus(source_instance_id)
+
+	var inherit_ratio: float = float(can_info.get("inherit_ratio", 0.30))
+	var old_bonus: float = ir.get_inherit_bonus(source_instance_id)
+	var merged_bonus: float = clampf(old_bonus + inherit_ratio, 0.0, 0.9)
+	var old_hp: float = EvolutionHelpers.compute_platform_preview_hp(source_card_id, 0, bpm_ref)
+	var floor_hp: float = 0.0
+	if old_hp > 0.0:
+		floor_hp = old_hp * 1.10
+
+	# 2. 创建目标实例
+	var target_inst: CardResource = ir.create_instance(target_card_id)
+	if target_inst == null:
+		return false
+
+	# 3. 迁移养成数据到目标实例
+	target_inst.enhance_level = source_enhance_lvl        # 强化等级继承
+	target_inst.mods = source_mods                         # 改造完全继承
+	target_inst.module_slots = source_module_slots          # 词条槽继承
+
+	ir.set_inherit_bonus(target_inst.instance_id, merged_bonus)
+	if floor_hp > 0.0:
+		var prev_floor: float = ir.get_evolution_hp_floor(target_inst.instance_id)
+		ir.set_evolution_hp_floor(target_inst.instance_id, maxf(prev_floor, floor_hp))
+
+	# 敌源MOD + 情报分支奖励迁移
+	if not source_eom.is_empty():
+		ir.set_enemy_origin_mod(target_inst.instance_id, source_eom)
+	if not source_intel_bonus.is_empty():
+		ir.set_intel_branch_bonus(target_inst.instance_id, source_intel_bonus.duplicate(true))
+
+	# 4. 解锁目标卡蓝图（如果尚未解锁）
+	if not bpm_ref.is_blueprint_unlocked(target_card_id):
+		bpm_ref.unlock_blueprint(target_card_id)
+
+	# 5. dispose 源实例
+	ir.dispose_instance(source_instance_id)
+
+	# 6. 情报分支奖励应用
+	_apply_intel_branch_bonus(source_card_id, target_card_id, can_info, bpm_ref)
+
+	bpm_ref.emit_signal("fragments_changed")
+	return true
+
+
+## v6.6/v7.0: 应用情报进化分支奖励（提取自原 evolve_blueprint）
+static func _apply_intel_branch_bonus(card_id: String, target_card_id: String, can_info: Dictionary, bpm_ref: Node) -> void:
 	var intel_branch_id: String = String(can_info.get("intel_branch_id", ""))
 	if not intel_branch_id.is_empty():
-		# 自动 claim 分支（标记为已领取）
 		var iem: Node = _get_autoload_node("IntelEvolutionManager")
 		if iem and iem.has_method("claim_branch"):
 			iem.claim_branch(card_id, intel_branch_id)
-		# 额外改造槽：通过 meta 标记目标卡（ModManager 读取此 meta 决定槽位数）
 		if can_info.get("extra_mod_slot", false):
 			if not bpm_ref.blueprint_intel_branch_bonus.has(target_card_id):
 				bpm_ref.blueprint_intel_branch_bonus[target_card_id] = {}
 			bpm_ref.blueprint_intel_branch_bonus[target_card_id]["extra_mod_slot"] = true
-		# 特殊能力：写入目标卡的特殊能力标记（供战斗系统消费）
 		var ability: String = String(can_info.get("special_ability", ""))
 		if not ability.is_empty():
 			if not bpm_ref.blueprint_intel_branch_bonus.has(target_card_id):
 				bpm_ref.blueprint_intel_branch_bonus[target_card_id] = {}
 			bpm_ref.blueprint_intel_branch_bonus[target_card_id]["special_ability"] = ability
-	return true
 
 ## 获取卡片强化等级（通过 CardEnhancementManager Autoload）
 static func _get_card_enhance_level(card_id: String, bpm_ref: Node) -> int:

@@ -130,23 +130,66 @@ static func get_rank_info(card_id: String, bpm_ref: Node) -> Dictionary:
 ## ─────────── 战力估算 ───────────
 
 ## 平台/武器/合成卡用 UnitStats 推导；能量/法则用养成向公式
-static func estimate_power_score(card_id: String, bpm_ref: Node) -> float:
+## v7.0: card_id 支持 instance_id（实例化养成，实战力估算读到实例养成数据）
+static func estimate_power_score(card_id_or_instance: String, bpm_ref: Node) -> float:
+	# v7.0: 解析 card_id（instance_id → card_id）
+	var card_id: String = card_id_or_instance
+	var ir: Node = _get_instance_registry()
+	if ir != null and ir.has_method("get_card_id_of"):
+		var resolved: String = ir.get_card_id_of(card_id_or_instance)
+		if not resolved.is_empty():
+			card_id = resolved
 	var card: CardResource = DefaultCards.get_card_by_id(card_id)
 	if card == null:
-		return estimate_power_score_meta_only(card_id, bpm_ref)
+		return estimate_power_score_meta_only(card_id_or_instance, bpm_ref)
 	if card.card_type == GC.CardType.ENERGY or card.card_type == GC.CardType.LAW:
-		return estimate_power_score_meta_only(card_id, bpm_ref)
+		return estimate_power_score_meta_only(card_id_or_instance, bpm_ref)
 	var stats: UnitStats = build_unit_stats_for_power_preview(card, bpm_ref)
 	if stats == null:
-		return estimate_power_score_meta_only(card_id, bpm_ref)
+		return estimate_power_score_meta_only(card_id_or_instance, bpm_ref)
 	return combat_power_from_unit_stats(stats)
 
-static func estimate_power_score_meta_only(card_id: String, bpm_ref: Node) -> float:
-	var enhance: int = _get_card_enhance_level(card_id)
-	var mod_count: int = ModManager.get_modification_count(card_id, bpm_ref.blueprint_mods)
-	var rarity_mul: float = get_rarity_multiplier(card_id)
-	var inherit_bonus: float = float(bpm_ref.blueprint_inherit_bonus.get(card_id, 0.0))
+## v7.0: 支持 instance_id——从实例对象读 enhance/mods，从 blueprint 读 inherit_bonus
+static func estimate_power_score_meta_only(card_id_or_instance: String, bpm_ref: Node) -> float:
+	var enhance: int = 0
+	var mod_count: int = 0
+	var inherit_bonus: float = 0.0
+	var rarity_mul: float = 1.0
+	var card_id: String = card_id_or_instance
+
+	var ir: Node = _get_instance_registry()
+	if ir != null and ir.has_method("get_instance"):
+		var inst: CardResource = ir.get_instance(card_id_or_instance)
+		if inst != null:
+			# 实例存在：从实例读养成
+			enhance = maxi(inst.enhance_level, 0)
+			mod_count = inst.mods.size()
+			inherit_bonus = ir.get_inherit_bonus(card_id_or_instance)
+			card_id = inst.card_id
+		else:
+			# 非实例：按 card_id 查 blueprint_* 字典
+			enhance = _get_card_enhance_level(card_id_or_instance)
+			mod_count = ModManager.get_modification_count(card_id_or_instance, bpm_ref.blueprint_mods)
+			inherit_bonus = float(bpm_ref.blueprint_inherit_bonus.get(card_id_or_instance, 0.0))
+			if ir != null and ir.has_method("get_card_id_of"):
+				var resolved: String = ir.get_card_id_of(card_id_or_instance)
+				if not resolved.is_empty():
+					card_id = resolved
+	else:
+		# 没有 InstanceRegistry：旧路径
+		enhance = _get_card_enhance_level(card_id_or_instance)
+		mod_count = ModManager.get_modification_count(card_id_or_instance, bpm_ref.blueprint_mods)
+		inherit_bonus = float(bpm_ref.blueprint_inherit_bonus.get(card_id_or_instance, 0.0))
+
+	rarity_mul = get_rarity_multiplier(card_id)
 	return (80.0 + float(enhance) * 28.0 + float(mod_count) * 22.0) * rarity_mul * (1.0 + inherit_bonus)
+
+## v7.0: 安全获取 InstanceRegistry 节点
+static func _get_instance_registry() -> Node:
+	var tree = Engine.get_main_loop()
+	if tree and tree.root:
+		return tree.root.get_node_or_null("InstanceRegistry")
+	return null
 
 static func build_unit_stats_for_power_preview(card: CardResource, bpm_ref: Node) -> UnitStats:
 	if card == null:
