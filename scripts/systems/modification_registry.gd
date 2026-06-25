@@ -463,14 +463,64 @@ static func get_all_ids() -> Array:
 ## weapon: WeaponResource - 基础武器
 ## modifications: Array - 改造ID列表
 ## slot_idx: int - 槽位索引（0=轻装, 1=装甲, 2=对空）
+## source_stats: UnitStats - 载体单位属性（v6.13: grant_slot 派生对空基础伤害用，读 attack_armor 等）
 ## 返回：修改后的 WeaponResource
-static func apply_to_weapon_slot(weapon: WeaponResource, modifications: Array, slot_idx: int = -1) -> WeaponResource:
+static func apply_to_weapon_slot(weapon: WeaponResource, modifications: Array, slot_idx: int = -1, source_stats: UnitStats = null) -> WeaponResource:
 	_ensure_initialized()
-	if weapon == null or not weapon.enabled:
+	if weapon == null:
 		return weapon
 
-	var result = weapon.clone()
-	
+	# v6.13: 先处理 grant_slot——改造可激活空槽位（赋予新攻击维度）
+	# 例：炮射导弹(arm_07)激活对空槽，以 attack_armor 为基准派生对空伤害
+	# 必须在 enabled 检查之前处理，否则空槽(enabled=false)会被直接 return
+	# 语义：grant 仅激活空槽；若槽位已有有效武器(原卡自带)，保留原值不覆盖。
+	var result: WeaponResource = weapon
+	var slot_granted := false
+	for mod_entry in modifications:
+		if mod_entry is Dictionary:
+			if mod_entry.has("enabled") and not bool(mod_entry.get("enabled", true)):
+				continue
+		var mod_id = mod_entry.get("id", "") if mod_entry is Dictionary else String(mod_entry)
+		var mod_data = get_data(mod_id)
+		if mod_data.is_empty():
+			continue
+		var grant: Dictionary = mod_data.get("grant_slot", {})
+		if grant.is_empty():
+			continue
+		# 仅处理针对当前槽位的 grant
+		if slot_idx < 0 or int(grant.get("slot", -1)) != slot_idx:
+			continue
+		# 槽位已有有效武器（原卡自带，如反坦克组的对装甲槽）→ 跳过 grant，保留原值
+		if weapon.enabled and weapon.damage > 0:
+			continue
+		# 首次 grant：克隆基座（此时 weapon 必为空槽）
+		if not slot_granted:
+			result = weapon.clone()
+			slot_granted = true
+		# 激活槽位并填充 grant 参数
+		result.enabled = true
+		# 基础伤害：从 source_stats 的指定字段派生
+		var base_field: String = String(grant.get("base_damage", "attack_armor"))
+		var base_val: float = _read_stat_field(source_stats, base_field)
+		if base_val <= 0.0:
+			# 基准字段为0（如步兵无 attack_armor），回退到 attack_light 避免赋予0伤害
+			base_val = _read_stat_field(source_stats, "attack_light")
+		var ratio: float = float(grant.get("damage_ratio", 0.7))
+		result.damage = maxf(1.0, base_val * ratio)
+		result.attack_speed = maxf(0.05, float(grant.get("speed", 0.33)))
+		result.windup = maxf(0.05, float(grant.get("windup", 0.6)))
+		result.active = maxf(0.05, float(grant.get("active", 0.15)))
+		result.weapon_type = int(grant.get("weapon_type", 9))  # 默认 MISSILE
+		result.range_value = int(grant.get("range_value", 3))
+		var dn: String = String(grant.get("display_name", ""))
+		if not dn.is_empty():
+			result.display_name = dn
+
+	# 若槽位未被激活且原本未启用，直接返回（保留原 apply_to_weapon_slot 的守卫语义）
+	if not slot_granted and not weapon.enabled:
+		return weapon
+
+	# 应用其余 slot_* 效果（damage_mult/add/speed_mult/weapon_type 等）
 	for mod_entry in modifications:
 		# v6.5: 跳过已禁用的改造
 		if mod_entry is Dictionary:
@@ -517,25 +567,37 @@ static func apply_to_weapon_slot(weapon: WeaponResource, modifications: Array, s
 				_:
 					# 其他特殊效果存储到武器 _mod_effects（已在 WeaponResource 声明，clone 时复制）
 					result._mod_effects[effect_key] = effect_value
-	
+
 	return result
+
+## v6.13: 从 UnitStats 读取指定字段（grant_slot 基准伤害用）
+## 字段名宽松匹配：attack_light/attack_armor/attack_air 等
+static func _read_stat_field(stats: UnitStats, field: String) -> float:
+	if stats == null:
+		return 0.0
+	match field:
+		"attack_light": return float(stats.attack_light)
+		"attack_armor": return float(stats.attack_armor)
+		"attack_air": return float(stats.attack_air)
+		"attack_damage": return float(stats.attack_damage)
+		"max_hp": return float(stats.max_hp)
+		_: return 0.0
 
 ## 批量应用改造到所有武器槽位
 ## weapon_slots: Array[WeaponResource] - 武器槽位数组
 ## modifications: Array - 改造ID列表
+## source_stats: UnitStats - 载体单位属性（v6.13: grant_slot 派生对空基础伤害用）
 ## 返回：修改后的槽位数组（Array[WeaponResource]，与 unit_stats_table.tmp_slots 类型匹配，
 ##   避免普通 Array 赋给 typed Array[WeaponResource] 报错）
-static func apply_to_weapon_slots(weapon_slots: Array, modifications: Array) -> Array:
+static func apply_to_weapon_slots(weapon_slots: Array, modifications: Array, source_stats: UnitStats = null) -> Array[WeaponResource]:
 	_ensure_initialized()
 	var result: Array[WeaponResource] = []
 
 	for i in range(weapon_slots.size()):
 		var weapon = weapon_slots[i]
-		if weapon is WeaponResource and weapon.enabled:
-			result.append(apply_to_weapon_slot(weapon, modifications, i))
-		elif weapon is WeaponResource:
-			# 未启用槽位：原样保留（仍是 WeaponResource，类型安全）
-			result.append(weapon)
+		if weapon is WeaponResource:
+			# v6.13: 无论 enabled 与否都走 apply_to_weapon_slot（grant_slot 需要激活空槽）
+			result.append(apply_to_weapon_slot(weapon, modifications, i, source_stats))
 		else:
 			# 非 WeaponResource 占位：用空槽位补齐，保证 typed Array[WeaponResource] 不报错
 			result.append(WeaponResource.create_empty_slot(i))

@@ -87,12 +87,15 @@ static func build_stats_from_card(card: CardResource, era_override: int = -1) ->
 			# 添加空槽位占位
 			tmp_slots.append(WeaponResource.create_empty_slot(tmp_slots.size()))
 
-	# v6.0: 应用改造效果到武器槽位
+	# v6.0/v6.13: 应用改造效果
+	# 时序：先应用 stat 效果（attack_armor 等），再处理武器槽。
+	# 原因：grant_slot 以载体 attack_armor 为基准派生对空伤害，必须读到加成后的值。
 	if card.mods and not card.mods.is_empty():
-		if ModificationRegistry and ModificationRegistry.has_method("apply_to_weapon_slots"):
-			tmp_slots = ModificationRegistry.apply_to_weapon_slots(tmp_slots, card.mods)
-		# v6.2: 应用改造的 stat 效果（穿甲/条件穿甲等）到 UnitStats
+		# v6.2: 先应用改造的 stat 效果（穿甲/条件穿甲/attack_armor 百分比等）到 UnitStats
 		_apply_mod_stat_effects(stats, card.mods)
+		# v6.0/v6.13: 再应用改造效果到武器槽位（传入 stats 作 source_stats，grant_slot 据此派生伤害）
+		if ModificationRegistry and ModificationRegistry.has_method("apply_to_weapon_slots"):
+			tmp_slots = ModificationRegistry.apply_to_weapon_slots(tmp_slots, card.mods, stats)
 
 	stats.weapon_slots = tmp_slots
 

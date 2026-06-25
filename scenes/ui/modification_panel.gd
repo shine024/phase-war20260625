@@ -646,6 +646,9 @@ func _format_effects_for_display(mod_data: Dictionary) -> PackedStringArray:
 		lines.append("—— Lv.%d（满级）——" % int(top_level))
 		for key in top_eff.keys():
 			lines.append(_format_one_effect(String(key), top_eff[key]))
+	# v6.13: grant_slot 赋予新攻击维度（如炮射导弹激活对空槽）
+	if mod_data.has("grant_slot") and (mod_data["grant_slot"] as Dictionary).size() > 0:
+		lines.append(_format_grant_slot(mod_data["grant_slot"]))
 	return lines
 
 
@@ -665,6 +668,21 @@ func _format_one_effect(key: String, val) -> String:
 		return "✓ %s" % key_display
 	else:
 		return "%s: %d" % [key_display, int(val)]
+
+
+## v6.13: 格式化 grant_slot（赋予新攻击维度）为一行展示文本
+## grant = {slot, base_damage, damage_ratio, speed, weapon_type, display_name, ...}
+func _format_grant_slot(grant: Dictionary) -> String:
+	const SLOT_NAMES := {0: "轻装", 1: "装甲", 2: "对空"}
+	var slot_idx: int = int(grant.get("slot", -1))
+	var slot_name: String = SLOT_NAMES.get(slot_idx, "未知")
+	var dn: String = String(grant.get("display_name", "新武器"))
+	var base_field: String = String(grant.get("base_damage", "attack_armor"))
+	var ratio: int = int(round(float(grant.get("damage_ratio", 0.7)) * 100.0))
+	# base_damage 字段名转中文
+	const FIELD_CN := {"attack_light": "对轻装", "attack_armor": "对装甲", "attack_air": "对空", "attack_damage": "主攻击"}
+	var base_cn: String = FIELD_CN.get(base_field, base_field)
+	return "✦ 赋予%s攻击：%s（以%s攻击×%d%%为基准）" % [slot_name, dn, base_cn, ratio]
 
 
 ## 供外部调用的接口

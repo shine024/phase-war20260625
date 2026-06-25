@@ -129,21 +129,35 @@ const DATA: Dictionary = {
 		name = "穿甲弹",
 		name_en = "Armor-Piercing Ammunition",
 		prototype = "M993钨芯弹",
-		description = "钨芯穿透弹头，专为应对现代复合装甲设计",
+		description = "钨芯穿透弹头，让步兵能对抗装甲目标",
 		icon = "res://assets/ui/icons/mod_icons/mod_ammunition.png",
 		rarity = "epic",
 	power_mult = 1.6,
-		cost_research = 200,
-		cost_install = 100,
-		slot_type = "ammunition",
-		conflict_group = "ammunition",
-		effects = {
-			attack_armor = 0.25,   # +25%
-			attack_light = -0.10,   # -10% 副作用
-		},
-		unlock_conditions = {
-			required_level = 3,
-		}
+	cost_research = 200,
+	cost_install = 100,
+	slot_type = "ammunition",
+	conflict_group = "ammunition",
+	effects = {
+		attack_light = -0.10,   # -10% 副作用（穿甲弹对软目标效果差）
+	},
+	# v6.13: grant_slot 激活对装甲武器槽（修复原 attack_armor=0.25 对步枪兵 base=0 失效的 bug）
+	# 步枪兵装穿甲弹 → 获得对装甲能力（反坦克步枪语义）
+	# 以 attack_light 为基准 ×0.5 派生对装甲伤害，步枪式射速
+	# 平衡：mod_marine(attack_light=140)→对装甲70；远弱于专用反坦克组(panzerschrek 90/javelin 250)
+	grant_slot = {
+		slot = 1,                      # 对装甲槽位（0=轻装, 1=装甲, 2=对空）
+		base_damage = "attack_light",  # 基准字段：载体单位的对轻装伤害（步枪主火力）
+		damage_ratio = 0.5,            # 基准 × 此系数 = 对装甲基础伤害
+		speed = 0.67,                  # 攻速（次/秒，反坦克步枪式）
+		windup = 0.3,                  # 前摇（秒）
+		active = 0.15,                 # 动作（秒）
+		weapon_type = 6,               # SNIPER（旧型号6，穿甲弹道）
+		range_value = 3,               # 射程（格，与步枪一致）
+		display_name = "穿甲弹",
+	},
+	unlock_conditions = {
+		required_level = 3,
+	}
 	},
 
 	"inf_06_hp_ammo" = {

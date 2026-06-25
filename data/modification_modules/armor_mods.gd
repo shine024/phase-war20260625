@@ -171,17 +171,30 @@ const DATA: Dictionary = {
 		icon = "res://assets/ui/icons/mod_icons/mod_gun.png",
 		rarity = "legendary",
 	power_mult = 2.0,
-		cost_research = 400,
-		cost_install = 200,
-		slot_type = "gun",
-		conflict_group = "gun",
-		effects = {
-			attack_air = 0.20,     # +20% 对空（从0提升）
-			attack_armor = 0.20,   # +20%
-		},
-		unlock_conditions = {
-			required_level = 6,
-		}
+	cost_research = 400,
+	cost_install = 200,
+	slot_type = "gun",
+	conflict_group = "gun",
+	effects = {
+		attack_armor = 0.20,   # +20% 对装甲
+	},
+	# v6.13: grant_slot 直接激活对空武器槽（修复原 attack_air=0.20 对 base=0 失效的 bug）
+	# 以载体 attack_armor 为基准 ×0.8 派生对空基础伤害，导弹式低射速高单发
+	# 平衡：装T-72→对空144；装M1A2→对空240（接近 mod_stinger 220，弱于 mod_m6 840）
+	grant_slot = {
+		slot = 2,                      # 对空槽位（0=轻装, 1=装甲, 2=对空）
+		base_damage = "attack_armor",  # 基准字段：载体单位的对装甲伤害
+		damage_ratio = 0.8,            # 基准 × 此系数 = 对空基础伤害
+		speed = 0.33,                  # 攻速（次/秒，导弹式低射速高单发）
+		windup = 0.6,                  # 前摇（秒，导弹发射准备）
+		active = 0.15,                 # 动作（秒）
+		weapon_type = 9,               # MISSILE（旧型号9，弹道VFX用）
+		range_value = 3,               # 射程（格，与主炮一致）
+		display_name = "炮射导弹",
+	},
+	unlock_conditions = {
+		required_level = 6,
+	}
 	},
 
 	# ─── 机动性改造 ─────────────────────────
