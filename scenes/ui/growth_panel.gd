@@ -263,7 +263,7 @@ func _load_unlocked_cards() -> void:
 	_last_unlocked_ids = all_ids
 	refresh_card_list(all_ids)
 	if not _selected_card and not all_ids.is_empty():
-		var first_card = DefaultCards.get_card_by_id(all_ids[0])
+		var first_card = _resolve_card(all_ids[0])
 		if first_card:
 			_selected_card = first_card
 
@@ -344,9 +344,10 @@ func _preselect_target_card(overlay: Control, panel_key: String, card: CardResou
 		return
 	match panel_key:
 		"enhancement":
-			# CardEnhancementPanel.select_card_by_id 入参为 card_id 字符串
+			# v7.0: 传 instance_id（实例化养成身份）；无 instance_id 回退 card_id
 			if panel.has_method("select_card_by_id"):
-				panel.select_card_by_id(card.card_id)
+				var sel_id: String = card.instance_id if not card.instance_id.is_empty() else card.card_id
+				panel.select_card_by_id(sel_id)
 		"modification", "evolution":
 			# ModificationPanel / EvolutionPanel.set_selected_card 入参为 CardResource
 			if panel.has_method("set_selected_card"):
@@ -361,6 +362,23 @@ func _target_panel_node_name(panel_key: String) -> String:
 	return ""
 
 # ========== 卡牌列表 ==========
+
+## v7.0: 按 instance_id 解析模板 CardResource（instance_id → card_id → 模板）
+## 优先返回实例对象（带养成），无实例回退模板
+func _resolve_card(id_str: String) -> CardResource:
+	if id_str.is_empty():
+		return null
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	# 优先取实例（带养成数据，展示用）
+	if ir != null and ir.has_method("get_instance"):
+		var inst: CardResource = ir.get_instance(id_str)
+		if inst != null:
+			return inst
+	# 回退：解析 card_id 查模板
+	var base_card_id: String = id_str
+	if ir != null and ir.has_method("get_card_id_of"):
+		base_card_id = ir.get_card_id_of(id_str)
+	return DefaultCards.get_card_by_id(base_card_id)
 
 func refresh_card_list(unlocked_ids: Array[String]) -> void:
 	if not card_list_container:
@@ -378,7 +396,7 @@ func refresh_card_list(unlocked_ids: Array[String]) -> void:
 
 	for i in range(unlocked_ids.size()):
 		var card_id: String = unlocked_ids[i]
-		var card = DefaultCards.get_card_by_id(card_id)
+		var card = _resolve_card(card_id)
 		if not card:
 			continue
 
@@ -476,7 +494,7 @@ func _on_card_selected(card: CardResource) -> void:
 func select_card_by_id(card_id: String) -> void:
 	if card_id.is_empty():
 		return
-	var card = DefaultCards.get_card_by_id(card_id)
+	var card = _resolve_card(card_id)
 	if card:
 		_selected_card = card
 		if visible:

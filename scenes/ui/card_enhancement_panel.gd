@@ -232,12 +232,19 @@ func _init_card_list() -> void:
 		filtered_ids.append(sid)
 	all_card_ids = filtered_ids
 
-	for card_id in all_card_ids:
+	# v7.0: 实例化养成——id 可能是 instance_id（cold_t72#1），查模板前先解析 card_id
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	for id_val in all_card_ids:
+		var card_id: String = String(id_val)
 		if card_id.is_empty():
 			continue
-		var card_data = DefaultCards.get_card_by_id(card_id)
+		# 解析 instance_id → card_id（取模板用）
+		var base_card_id: String = card_id
+		if ir != null and ir.has_method("get_card_id_of"):
+			base_card_id = ir.get_card_id_of(card_id)
+		var card_data = DefaultCards.get_card_by_id(base_card_id)
 		if card_data == null:
-			card_data = EnemyBlueprints.get_card_by_id(card_id)
+			card_data = EnemyBlueprints.get_card_by_id(base_card_id)
 		if card_data == null:
 			continue
 
@@ -269,11 +276,31 @@ func _get_card_display_name(card_id: String, card_data: Variant) -> String:
 	var card_enh_mgr = get_node_or_null("/root/CardEnhancementManager")
 	if card_enh_mgr:
 		level = card_enh_mgr.get_card_enhancement_level(card_id)
+	# v7.0: 同名卡区分——若 card_id 含 #序号（instance_id），追加序号后缀
+	var seq_suffix: String = ""
+	var hash_idx: int = card_id.rfind("#")
+	if hash_idx >= 0:
+		seq_suffix = " #%s" % card_id.substr(hash_idx + 1)
 
-	return "%s (Lv.%d)" % [name_str, level]
+	return "%s%s (Lv.%d)" % [name_str, seq_suffix, level]
 
 func _on_card_item_selected(card_id: String) -> void:
 	select_card_by_id(card_id)
+
+
+## v7.0: 按 instance_id 解析出模板 CardResource（查 DefaultCards/EnemyBlueprints）
+## instance_id（cold_t72#1）→ card_id（cold_t72）→ 模板对象
+func _resolve_card_data(id_str: String) -> CardResource:
+	if id_str.is_empty():
+		return null
+	var base_card_id: String = id_str
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	if ir != null and ir.has_method("get_card_id_of"):
+		base_card_id = ir.get_card_id_of(id_str)
+	var card_data = DefaultCards.get_card_by_id(base_card_id)
+	if card_data == null:
+		card_data = EnemyBlueprints.get_card_by_id(base_card_id)
+	return card_data
 
 
 ## 外部面板跳转时预选卡牌（如情报中心）
@@ -321,9 +348,7 @@ func _update_detail_panel() -> void:
 	# 清空动态内容
 	_clear_dynamic_detail()
 
-	var card_data = DefaultCards.get_card_by_id(selected_card_id)
-	if card_data == null:
-		card_data = EnemyBlueprints.get_card_by_id(selected_card_id)
+	var card_data = _resolve_card_data(selected_card_id)
 
 	if card_data == null:
 		return
@@ -576,7 +601,7 @@ func _on_evolution_branch_selected(index: int) -> void:
 		return
 	_pending_evolution_target_id = _pending_evolution_candidates[index]
 	# 分支切换后刷新提示和按钮状态
-	_update_evolution_section(DefaultCards.get_card_by_id(selected_card_id))
+	_update_evolution_section(_resolve_card_data(selected_card_id))
 
 func _reset_modification_section() -> void:
 	if mod_status_label:

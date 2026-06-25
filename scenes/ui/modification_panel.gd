@@ -382,7 +382,8 @@ func _on_weapon_mod_toggled(mod_index: int, enable: bool) -> void:
 	if selected_card == null:
 		return
 	if BlueprintManager and BlueprintManager.has_method("set_mod_enabled"):
-		var ok: bool = BlueprintManager.set_mod_enabled(selected_card.card_id, mod_index, enable)
+		# v7.0: 用 instance_id 操作（实例化养成）；无 instance_id 回退 card_id
+		var ok: bool = BlueprintManager.set_mod_enabled(_selected_id(), mod_index, enable)
 		if ok:
 			# 刷新已安装列表
 			var installed_list = card_info_panel.get_node_or_null("CardView/InstalledList") if card_info_panel else null
@@ -390,22 +391,31 @@ func _on_weapon_mod_toggled(mod_index: int, enable: bool) -> void:
 				_refresh_installed_list(installed_list)
 
 
+## v7.0: 取当前选中卡的身份标识（优先 instance_id，回退 card_id）
+func _selected_id() -> String:
+	if selected_card == null:
+		return ""
+	return selected_card.instance_id if not selected_card.instance_id.is_empty() else selected_card.card_id
+
+
 ## ─────────────────────────────────────────────
-##  改造操作
+## 改造操作
 ## ─────────────────────────────────────────────
 
 func _is_mod_installed(mod_id: String) -> bool:
 	if not selected_card:
 		return false
 	# 优先从 BlueprintManager 的持久存储读取（比 card.mods 更可靠）
-	if BlueprintManager and BlueprintManager.blueprint_mods.has(selected_card.card_id):
-		var saved_mods = BlueprintManager.blueprint_mods[selected_card.card_id] as Array
+	# v7.0: 用 instance_id 查（blueprint_mods key 已改 instance_id）
+	var sid: String = _selected_id()
+	if BlueprintManager and BlueprintManager.blueprint_mods.has(sid):
+		var saved_mods = BlueprintManager.blueprint_mods[sid] as Array
 		if saved_mods:
 			for entry in saved_mods:
 				var eid = entry.get("id", "") if entry is Dictionary else ""
 				if eid == mod_id:
 					return true
-	# 回退到 card.mods（模板）
+	# 回退到 card.mods（实例对象）
 	for mod_entry in selected_card.mods:
 		var entry_id = mod_entry.get("id", "") if mod_entry is Dictionary else ""
 		if entry_id == mod_id:

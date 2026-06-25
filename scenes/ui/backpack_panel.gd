@@ -231,11 +231,13 @@ func _fallback_init_from_save_manager() -> void:
 func _fallback_on_card_added(card: CardResource) -> void:
 	if card == null or _data == null:
 		return
+	# v7.0: 用 instance_id 作身份（实例化养成）；无 instance_id 回退 card_id
+	var inst_id: String = card.instance_id if not card.instance_id.is_empty() else card.card_id
 	if SaveManager and SaveManager.has_method("consume_pending_backpack_card_id"):
-		SaveManager.consume_pending_backpack_card_id(card.card_id)
-	_data.add_extra_card(card.card_id, false)
+		SaveManager.consume_pending_backpack_card_id(inst_id)
+	_data.add_extra_card(inst_id, false)
 	if SaveManager and SaveManager.has_method("enqueue_backpack_card_id"):
-		SaveManager.enqueue_backpack_card_id(card.card_id)
+		SaveManager.enqueue_backpack_card_id(inst_id)
 
 func _fallback_on_cards_changed() -> void:
 	if _data == null:
@@ -460,6 +462,7 @@ func add_card(card: CardResource, at_top: bool = false) -> void:
 				sc.scroll_vertical = int(sb.max_value)
 
 ## 从网格中移除一张匹配 card_id 的卡（默认移除最后一张，兼容同 ID 重复卡）
+## v7.0: card_id 参数实际是 instance_id；优先匹配 instance_id，回退 card_id
 func remove_last_card_by_id(card_id: String) -> bool:
 	if card_id.is_empty():
 		return false
@@ -476,7 +479,7 @@ func remove_last_card_by_id(card_id: String) -> bool:
 			continue
 		if child.has_method("set_card"):
 			var card: CardResource = child.card if "card" in child else null
-			if card != null and card.card_id == card_id:
+			if card != null and _card_matches_id(card, card_id):
 				target = child
 	if target == null:
 		return false
@@ -499,10 +502,18 @@ func highlight_last_card_by_id(card_id: String) -> void:
 			continue
 		if child.has_method("set_card"):
 			var card: CardResource = child.card if "card" in child else null
-			if card != null and card.card_id == card_id:
+			if card != null and _card_matches_id(card, card_id):
 				target = child
 	if target:
 		_highlight_card_item(target)
+
+## v7.0: 卡牌身份匹配——优先 instance_id 精确匹配，回退 card_id（兼容）
+func _card_matches_id(card: CardResource, id_str: String) -> bool:
+	if card == null or id_str.is_empty():
+		return false
+	if not card.instance_id.is_empty():
+		return card.instance_id == id_str
+	return card.card_id == id_str
 
 ## 将顶级能量卡移动到网格最前面
 func pin_top_energy_to_front() -> void:
