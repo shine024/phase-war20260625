@@ -1090,41 +1090,41 @@ func _show_enemy_phase_driver(unit: Node) -> void:
 	var lines: Array[String] = []
 	lines.append("摧毁敌方相位场驱动器即可获胜；对方会持续生产战斗单位。")
 	if GameManager and GameManager.has_method("get_current_phase_master"):
-			var cfg: Dictionary = GameManager.get_current_phase_master()
-			if not cfg.is_empty():
-				var disp: String = str(cfg.get("name", mname))
-				if disp != mname and not disp.is_empty():
-					lines.append("档案名：%s" % disp)
-				# v6.14: 显示等级
-				var mlvl: int = int(cfg.get("level", 0))
-				if mlvl > 0:
-					lines.append("等级：Lv.%d" % mlvl)
-				var fac: String = str(cfg.get("faction", ""))
-				if not fac.is_empty():
-					lines.append("所属势力：%s" % fac)
-				var title: String = str(cfg.get("title", ""))
-				if not title.is_empty():
-					lines.append("称号：%s" % title)
-				# v6.14: 取 enriched equipment（程序化派生 runes/spawn_sequence）
-				var pm_id: String = str(cfg.get("id", ""))
-				var eq: Dictionary = cfg.get("equipment", {}) as Dictionary
-				if not pm_id.is_empty() and EnemyPhaseMasters != null:
-					var enriched_eq: Dictionary = EnemyPhaseMasters.get_enriched_equipment(pm_id)
-					if not enriched_eq.is_empty():
-						eq = enriched_eq
-				var plats: Array = eq.get("platforms", []) as Array
-				var weps: Array = eq.get("weapons", []) as Array
-				if not plats.is_empty() or not weps.is_empty():
-					lines.append("上场装备：平台种类 %d · 武器种类 %d（由其基地持续部署）" % [plats.size(), weps.size()])
-				# v6.14: 显示相位仪名
-				var inst_id: String = str(eq.get("phase_instrument", ""))
-				var inst_name: String = _get_enemy_instrument_display_name(inst_id)
-				if not inst_name.is_empty():
-					lines.append("相位仪：%s" % inst_name)
-				# v6.14: 显示符文
-				var runes: Array = eq.get("runes", []) as Array
-				if not runes.is_empty():
-					lines.append("符文：%s" % _format_enemy_runes(runes))
+		var cfg: Dictionary = GameManager.get_current_phase_master()
+		if not cfg.is_empty():
+			var disp: String = str(cfg.get("name", mname))
+			if disp != mname and not disp.is_empty():
+				lines.append("档案名：%s" % disp)
+			# v6.14: 显示等级
+			var mlvl: int = int(cfg.get("level", 0))
+			if mlvl > 0:
+				lines.append("等级：Lv.%d" % mlvl)
+			var fac: String = str(cfg.get("faction", ""))
+			if not fac.is_empty():
+				lines.append("所属势力：%s" % fac)
+			var title: String = str(cfg.get("title", ""))
+			if not title.is_empty():
+				lines.append("称号：%s" % title)
+			# v6.14: 取 enriched equipment（程序化派生 runes/spawn_sequence）
+			var pm_id: String = str(cfg.get("id", ""))
+			var eq: Dictionary = cfg.get("equipment", {}) as Dictionary
+			if not pm_id.is_empty() and EnemyPhaseMasters != null:
+				var enriched_eq: Dictionary = EnemyPhaseMasters.get_enriched_equipment(pm_id)
+				if not enriched_eq.is_empty():
+					eq = enriched_eq
+			var plats: Array = eq.get("platforms", []) as Array
+			var weps: Array = eq.get("weapons", []) as Array
+			if not plats.is_empty() or not weps.is_empty():
+				lines.append("上场装备：平台种类 %d · 武器种类 %d（由其基地持续部署）" % [plats.size(), weps.size()])
+			# v6.14: 显示相位仪名
+			var inst_id: String = str(eq.get("phase_instrument", ""))
+			var inst_name: String = _get_enemy_instrument_display_name(inst_id)
+			if not inst_name.is_empty():
+				lines.append("相位仪：%s" % inst_name)
+			# v6.14: 显示符文
+			var runes: Array = eq.get("runes", []) as Array
+			if not runes.is_empty():
+				lines.append("符文：%s" % _format_enemy_runes(runes))
 	if desc_label: desc_label.text = "\n".join(lines)
 	if flavor_label: flavor_label.text = "“相位师的意志锚定在这片场上。”"
 	_clear_non_summary_info_sections()
