@@ -10,6 +10,7 @@ const ConstructUnitScene = preload("res://scenes/units/construct_unit.tscn")
 const EnemyUnitScene = preload("res://scenes/units/enemy_unit.tscn")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const EnemyStatResolver = preload("res://data/enemy_stat_resolver.gd")
+const RuneDefs = preload("res://data/runes.gd")
 const BattleSlotGrid = preload("res://scenes/battlefield/battle_slot_grid.gd")
 
 ## 兜底：EnemyArchetypes 生成（当没有装备数据时使用）
@@ -41,6 +42,10 @@ var _equipment: Dictionary = {}
 var _master_stats: Dictionary = {}
 var _unit_limit: int = 6
 var _has_equipment: bool = false
+# v6.14: 相位师符文 + 出兵序列（程序化派生，见 EnemyPhaseMasters.get_enriched_equipment）
+var _master_runes: Array = []           # 相位师自带符文 id 列表
+var _spawn_sequence: Array = []         # 出兵序列 [{platform, type}, ...]
+var _spawn_seq_index: int = 0           # 当前序列游标
 ## v6.2: 累计召唤计数 + 疲劳标记（达 TOTAL_SPAWN_CAP 后切换到 FATIGUED_SPAWN_INTERVAL）
 var _total_spawned: int = 0
 var _spawn_fatigued: bool = false
@@ -107,6 +112,17 @@ func setup(master_config: Dictionary) -> void:
 	## 尝试获取装备数据
 	_equipment = master_config.get("equipment", {})
 	_master_stats = master_config.get("stats", {})
+	# v6.14: 用 EnemyPhaseMasters 程序化派生增强装备（补全 runes / spawn_sequence）。
+	# 若 master_config 带 id 且 EnemyPhaseMasters 能查到，则取 enriched equipment。
+	var _master_id: String = String(master_config.get("id", ""))
+	if not _master_id.is_empty():
+		var _enriched: Dictionary = EnemyPhaseMasters.get_enriched_equipment(_master_id)
+		if not _enriched.is_empty():
+			_equipment = _enriched
+	# 缓存派生的 runes / spawn_sequence（供产兵序列和符文加成使用）
+	_master_runes = _equipment.get("runes", [])
+	_spawn_sequence = _equipment.get("spawn_sequence", [])
+	_spawn_seq_index = 0
 	_unit_limit = int(_master_stats.get("unit_limit", 5))
 	# 格子战场敌方仅 6 个可用槽位（SLOT_COUNT - 1）。数据表 unit_limit 可达 7~15，
 	# 超出会导致产兵越过 6 上限、多单位挤同格。统一钳制到格子可用槽位数。
@@ -227,8 +243,20 @@ func _produce_unit_with_equipment() -> void:
 	if valid_platforms.is_empty():
 		return
 
-	## 随机选平台
-	var platform_id: String = valid_platforms[randi() % valid_platforms.size()]
+	# v6.14: 按 spawn_sequence 序列选平台（替代纯随机），序列耗尽则循环。
+	# 序列为空时回退纯随机（向后兼容）。
+	var platform_id: String = ""
+	var seq_entry_type: String = "normal"
+	if not _spawn_sequence.is_empty():
+		var entry: Dictionary = _spawn_sequence[_spawn_seq_index % _spawn_sequence.size()]
+		_spawn_seq_index += 1
+		platform_id = String(entry.get("platform", ""))
+		seq_entry_type = String(entry.get("type", "normal"))
+		# 验证平台有效（序列里的平台可能不在 valid_platforms，回退随机）
+		if not valid_platforms.has(platform_id):
+			platform_id = String(valid_platforms[randi() % valid_platforms.size()])
+	else:
+		platform_id = String(valid_platforms[randi() % valid_platforms.size()])
 	var platform_data: Dictionary = EnemyPhaseEquipment.get_war_platform(platform_id)
 	if platform_data.is_empty():
 		return
@@ -270,6 +298,22 @@ func _produce_unit_with_equipment() -> void:
 			stats.defense = float(plat_stats["defense"])
 
 	EnemyStatResolver.apply_phase_master_to_unit_stats(stats, _master_stats)
+	# v6.13: 叠加战场难度乘区（wave × level × faction_buff）。
+	# 产兵此前只吃 master 加成，缺经典敌兵同款的 wave/level/faction 三个乘区，
+	# 导致产兵攻击力比同关经典敌兵低 2~3 倍。此处补全，让产兵与经典敌兵共享难度曲线。
+	var wave_idx: int = 0
+	if BattleManager != null and BattleManager.has_method("get_enemy_wave_index"):
+		wave_idx = BattleManager.get_enemy_wave_index()
+	var ctx := EnemyStatResolver.make_default_context(wave_idx)
+	EnemyStatResolver.apply_field_multipliers_to_unit_stats(stats, ctx)
+	# v6.14: 相位师符文加成 —— 把 master 自带符文的 primary_effect 应用到产兵 stats。
+	# 符文影响产兵（玩家选择"显示+影响产兵"），与 master 等级/势力呼应。
+	_apply_master_rune_bonus(stats)
+	# v6.14: 出兵序列 elite/boss 标记加成 —— 序列里标记 elite 的产兵额外+25%攻/血，boss +50%。
+	# 让序列不只是"出什么平台"，还有强度节奏（精英/boss 波次更强）。
+	_apply_sequence_entry_bonus(stats, seq_entry_type)
+	# v6.14: 相位师相位仪加成 —— 接入 _get_enemy_phase_instrument_bonus（此前字段空转，v6.14 已补全数据）
+	_apply_enemy_phase_instrument_bonus(stats)
 	stats.platform_card_id = platform_id
 
 	## 生成 ConstructUnit
@@ -469,8 +513,13 @@ func _build_stats_from_archetype(era: int, platform_type_str: String, fallback_p
 	c.card_type = GC.CardType.COMBAT_UNIT
 	c.era = int(cfg.get("era", era))
 	c.combat_kind = _archetype_combat_kind(cfg, fallback_platform_int)
-	c.legacy_weapon_type = int(cfg.get("weapon_type", 1))
-	c.weapon_type = int(cfg.get("weapon_type", 1))
+	# v6.13: archetype 表的 weapon_type 是 legacy 12 值（SMG=0…OMEGA=10），
+	# 不能直接当新 4 值 WeaponType（DIRECT/INDIRECT/AERIAL/SUPPORT）用——
+	# 否则 MG(2) 被误判成 AERIAL(2) → 信息卡显示"空射武器"。
+	# legacy 原值存入 legacy_weapon_type（弹道/bullet 复用），新枚举经映射后写入 weapon_type。
+	var legacy_wt: int = int(cfg.get("weapon_type", 1))
+	c.legacy_weapon_type = legacy_wt
+	c.weapon_type = _legacy_weapon_to_new_weapon_type(legacy_wt, cfg)
 	c.base_hp = float(cfg.get("hp", 100.0))
 	# archetype speed 是负值（朝左行进），build_stats_from_card 需要绝对值
 	c.base_speed = absf(float(cfg.get("speed", -80.0)))
@@ -505,3 +554,107 @@ func _archetype_combat_kind(cfg: Dictionary, fallback_platform_int: int) -> int:
 		return int(GC.CombatKind.AIR)
 	# 兜底：沿用平台→combat_kind 映射
 	return int(UnitStatsTable.PLATFORM_TO_COMBAT_KIND.get(fallback_platform_int, GC.CombatKind.LIGHT))
+
+
+## v6.13: archetype 表的 weapon_type 是 legacy 12 值（WeaponTypeLegacy），
+## 这里映射到新 4 值 WeaponType（DIRECT/INDIRECT/AERIAL/SUPPORT）。
+## 规则：
+## - 空中平台（tags 含 aircraft/air）的主武 → AERIAL（无论具体枪型）
+## - 曲射类 legacy（ROCKET=3/FLAK=7/MISSILE=9/RAIL=11）→ INDIRECT
+## - 直射类 legacy（SMG=0/RIFLE=1/MG=2/PISTOL=4/SHOTGUN=5/SNIPER=6/LASER=8/OMEGA=10）→ DIRECT
+## 与 game_constants.is_indirect_weapon_type 的曲射判定保持一致。
+func _legacy_weapon_to_new_weapon_type(legacy_wt: int, cfg: Dictionary) -> int:
+	var tags: Array = cfg.get("tags", [])
+	if tags.has("air") or tags.has("aircraft"):
+		return int(GC.WeaponType.AERIAL)
+	# 曲射（与 GC.is_indirect_weapon_type 对齐：ROCKET=3/FLAK=7/MISSILE=9/RAIL=11）
+	if legacy_wt == 3 or legacy_wt == 7 or legacy_wt == 9 or legacy_wt == 11:
+		return int(GC.WeaponType.INDIRECT)
+	return int(GC.WeaponType.DIRECT)
+
+
+## v6.14: 应用相位师自带符文的加成到产兵 stats。
+## 读每个 rune 的 primary_effect（{stat, value}），value 为百分比（0.12 = +12%）。
+## stat 映射：attack→三维攻击, defense→三维防御, hp→max_hp, attack_speed→提速。
+## 与玩家符文之语不同，相位师符文只取 primary_effect（简化版，避免复刻整套敌方符文引擎）。
+func _apply_master_rune_bonus(stats: UnitStats) -> void:
+	if _master_runes.is_empty():
+		return
+	for rune_id in _master_runes:
+		var rune: Dictionary = RuneDefs.get_rune(String(rune_id))
+		if rune.is_empty():
+			continue
+		var fx: Dictionary = rune.get("primary_effect", {})
+		if fx.is_empty():
+			continue
+		var stat: String = String(fx.get("stat", ""))
+		var val: float = float(fx.get("value", 0.0))
+		if val == 0.0:
+			continue
+		var mult: float = 1.0 + val
+		match stat:
+			"attack":
+				stats.attack_light *= mult
+				stats.attack_armor *= mult
+				stats.attack_air *= mult
+				stats.attack_damage *= mult
+			"defense":
+				stats.defense_light *= mult
+				stats.defense_armor *= mult
+				stats.defense_air *= mult
+				stats.defense *= mult
+			"hp":
+				stats.max_hp *= mult
+			"attack_speed":
+				stats.attack_light_speed /= mult
+				stats.attack_armor_speed /= mult
+				stats.attack_air_speed /= mult
+				stats.attack_interval /= mult
+
+
+## v6.14: 出兵序列 elite/boss 标记加成。
+## 序列里标记的 elite/boss 产兵额外加成，让出兵有强度节奏（非所有产兵都一样强）。
+func _apply_sequence_entry_bonus(stats: UnitStats, entry_type: String) -> void:
+	match entry_type:
+		"elite":
+			stats.attack_light *= 1.25
+			stats.attack_armor *= 1.25
+			stats.attack_air *= 1.25
+			stats.attack_damage *= 1.25
+			stats.max_hp *= 1.25
+		"boss":
+			stats.attack_light *= 1.50
+			stats.attack_armor *= 1.50
+			stats.attack_air *= 1.50
+			stats.attack_damage *= 1.50
+			stats.max_hp *= 1.50
+			stats.defense *= 1.50
+
+
+## v6.14: 相位师相位仪加成（接入 v6.14 补全的 atk_bonus/hp_bonus/def_bonus 数据）。
+## 与 phase_instrument_manager._get_enemy_phase_instrument_bonus 同款逻辑（×0.05 作百分比），
+## 直接在 driver 内读数据，避免改 phase_instrument_manager 的私有方法可见性。
+func _apply_enemy_phase_instrument_bonus(stats: UnitStats) -> void:
+	var instrument_id: String = String(_equipment.get("phase_instrument", ""))
+	if instrument_id.is_empty():
+		return
+	var cfg: Dictionary = EnemyPhaseEquipment.get_phase_instrument(instrument_id)
+	if cfg.is_empty():
+		return
+	var atk_pct: float = float(cfg.get("atk_bonus", 0.0)) * 0.05
+	var hp_pct: float = float(cfg.get("hp_bonus", 0.0)) * 0.05
+	var def_pct: float = float(cfg.get("def_bonus", 0.0)) * 0.05
+	if atk_pct > 0.0:
+		stats.attack_light *= (1.0 + atk_pct)
+		stats.attack_armor *= (1.0 + atk_pct)
+		stats.attack_air *= (1.0 + atk_pct)
+		stats.attack_damage *= (1.0 + atk_pct)
+	if hp_pct > 0.0:
+		stats.max_hp *= (1.0 + hp_pct)
+	if def_pct > 0.0:
+		stats.defense *= (1.0 + def_pct)
+		stats.defense_light *= (1.0 + def_pct)
+		stats.defense_armor *= (1.0 + def_pct)
+		stats.defense_air *= (1.0 + def_pct)
+
+

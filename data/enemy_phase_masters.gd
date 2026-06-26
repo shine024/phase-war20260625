@@ -22,6 +22,8 @@ const _WW2    = preload("res://data/enemy_phase_masters_ww2.gd")
 const _COLD   = preload("res://data/enemy_phase_masters_cold.gd")
 const _MODERN = preload("res://data/enemy_phase_masters_modern.gd")
 const _FUTURE = preload("res://data/enemy_phase_masters_future.gd")
+# v6.14: 相位师符文派生用
+const _RuneDefs = preload("res://data/runes.gd")
 
 ## 从子文件合并所有时代数据（兼容原 LEGACY_ENEMY_MASTERS）
 static var LEGACY_ENEMY_MASTERS: Array = (
@@ -166,6 +168,91 @@ static func get_master_equipment(master_id: String) -> Dictionary:
 	if not master.is_empty():
 		return master.get("equipment", {})
 	return {}
+
+## v6.14: 获取相位师的"增强装备"——在原 equipment 基础上程序化派生 runes 和 spawn_sequence。
+## 数据文件中 equipment 可能没有 runes/spawn_sequence 字段（向后兼容），本函数按 level/faction
+## 程序化补全，让每个相位师都有符文配置和出兵序列，无需手填 30 条数据。
+##
+## 派生规则：
+## - runes：按 level 选稀有度（Lv5-9→common+rare，Lv10-19→rare+epic，Lv20+→epic+legendary），
+##          从 generic 池随机选 2-4 个（level 越高越多）。若数据已含 runes 则用原值。
+## - spawn_sequence：按 platforms 列表生成循环序列（带 level 相关的精英/boss 平台标记），
+##                   若数据已含 spawn_sequence 则用原值。
+##
+## [return] 增强后的 equipment 字典（原 equipment 的深拷贝 + 派生字段）
+static func get_enriched_equipment(master_id: String) -> Dictionary:
+	var master: Dictionary = get_master_by_id(master_id)
+	if master.is_empty():
+		return {}
+	var equip: Dictionary = master.get("equipment", {}).duplicate(true)
+	var level: int = int(master.get("level", 5))
+	# runes
+	if not equip.has("runes") or equip.get("runes", []).is_empty():
+		equip["runes"] = _derive_runes(level, String(master.get("faction", "")))
+	# spawn_sequence
+	if not equip.has("spawn_sequence") or equip.get("spawn_sequence", []).is_empty():
+		equip["spawn_sequence"] = _derive_spawn_sequence(equip.get("platforms", []), level)
+	return equip
+
+
+## v6.14: 按 level 派生相位师符文。从 generic 池按稀有度梯度选 2-4 个。
+static func _derive_runes(level: int, faction_family: String) -> Array:
+	# 稀有度池：level 越高，高稀有度比例越大
+	var pool: Array[Dictionary] = []
+	pool.append_array(_RuneDefs.get_generic_runes())
+	if pool.is_empty():
+		return []
+	# 按 level 确定候选稀有度
+	var rarities: Array[String] = []
+	if level <= 9:
+		rarities = [_RuneDefs.RARITY_COMMON, _RuneDefs.RARITY_RARE]
+	elif level <= 19:
+		rarities = [_RuneDefs.RARITY_RARE, _RuneDefs.RARITY_EPIC]
+	else:
+		rarities = [_RuneDefs.RARITY_EPIC, _RuneDefs.RARITY_LEGENDARY]
+	# 筛出候选稀有度的符文
+	var candidates: Array[Dictionary] = []
+	for r in pool:
+		if r.get("rarity", "") in rarities:
+			candidates.append(r)
+	if candidates.is_empty():
+		candidates = pool  # 兜底
+	# 用 master_id 相关种子选（保证同相位师每次相同，跨战斗一致）
+	# 注意：此处不带种子（randi），因 callers 通常在战斗开始时调一次；如需严格一致可由调用方缓存
+	var count: int = clampi(2 + int(level / 10), 2, 4)  # Lv5→2, Lv15→3, Lv25→4
+	var picked: Array[String] = []
+	var remaining: Array = candidates.duplicate()
+	for _i in range(mini(count, remaining.size())):
+		var idx: int = randi() % remaining.size()
+		picked.append(String(remaining[idx].get("id", "")))
+		remaining.remove_at(idx)
+	return picked
+
+
+## v6.14: 按 platforms 派生出兵序列。
+## 序列结构：[{platform, type}, ...]，type 为 "normal"/"elite"/"boss"，
+## 决定该次产兵的平台和是否附带精英/boss 标记（产兵时叠加额外加成）。
+## 规则：循环遍历 platforms，每 4 个插入一个 "elite"，序列末尾插一个 "boss"（若有 boss 平台）。
+static func _derive_spawn_sequence(platforms: Array, level: int) -> Array:
+	if platforms.is_empty():
+		return []
+	var seq: Array = []
+	var pos: int = 0
+	var seq_len: int = clampi(6 + level / 4, 6, 14)  # Lv5→7, Lv30→13
+	for i in range(seq_len):
+		var pid: String = String(platforms[pos % platforms.size()])
+		var entry_type: String = "normal"
+		# 每 4 步出一个 elite（level 越高越频繁）
+		var elite_every: int = 5 if level < 15 else 4
+		if i > 0 and i % elite_every == 0:
+			entry_type = "elite"
+		seq.append({"platform": pid, "type": entry_type})
+		pos += 1
+	# 序列末尾加 boss（用最后一个平台）
+	if not platforms.is_empty():
+		seq.append({"platform": String(platforms[platforms.size() - 1]), "type": "boss"})
+	return seq
+
 
 ## 获取敌方相位师的属性
 static func get_master_stats(master_id: String) -> Dictionary:

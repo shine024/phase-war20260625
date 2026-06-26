@@ -18,6 +18,7 @@ extends RefCounted
 
 const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
 const ModificationRegistry = preload("res://scripts/systems/modification_registry.gd")
+const PowerTiers = preload("res://data/power_tiers.gd")
 
 ## ── 商店可售卖的蓝图列表 ────────────────────────────────────
 
@@ -101,15 +102,31 @@ static func get_rarity_name(rarity: String) -> String:
 ## 随机掉落一个改造蓝图（基于敌人类型）
 ## enemy_type: "infantry", "armor", "artillery", "air", "recon", etc.
 ## rank: "normal" / "elite" / "boss"
-static func roll_random_mod_blueprint(enemy_type: String, rank: String) -> Dictionary:
+## power_tier: v6.14 可选，PowerTiers.Tier 枚举值（-1 表示不启用，走原 rank 逻辑）。
+##             非空时用它决定的稀有度梯度覆盖 rank 的稀有度权重，实现"不同战力敌人掉不同改造"。
+## bias_unit_types: v6.14 可选，占领势力偏好的改造类型（ModificationRegistry unit_type 字符串数组）。
+##                  非空时：70% 概率从 bias 类型池抽（势力占领偏好），30% 走原 enemy_type 池（保留多样性）。
+static func roll_random_mod_blueprint(enemy_type: String, rank: String, power_tier: int = -1, bias_unit_types: Array = []) -> Dictionary:
 	# ModificationRegistry 已在类顶部 const 声明，无需重复声明
 
-	# 获取该敌人类型可掉落的改造列表
-	var unit_type = _enemy_type_to_unit_type(enemy_type)
-	var available_mods = ModificationRegistry.get_for_unit_type(unit_type)
+	# v6.14: 占领势力 bias —— 若指定 bias_unit_types，70% 概率改用 bias 池
+	# unit_type 是 int（CombatKind：0=LIGHT, 1=ARMOR, 2=SUPPORT, 3=AIR, 4=FORT...）
+	var effective_unit_type: int = _enemy_type_to_unit_type(enemy_type)
+	if not bias_unit_types.is_empty() and randf() < 0.70:
+		# 从 bias 里随机选一个类型名，转 int
+		var bias_pick: String = String(bias_unit_types[randi() % bias_unit_types.size()])
+		var bias_int: int = _unit_type_name_to_int(bias_pick)
+		if bias_int >= 0:
+			effective_unit_type = bias_int
+
+	# 获取该单位类型可掉落的改造列表
+	var available_mods = ModificationRegistry.get_for_unit_type(effective_unit_type)
 
 	if available_mods.is_empty():
-		return {}
+		# bias 池为空时回退原 enemy_type 池
+		available_mods = ModificationRegistry.get_for_unit_type(_enemy_type_to_unit_type(enemy_type))
+		if available_mods.is_empty():
+			return {}
 
 	# 根据稀有度权重随机选择
 	var weighted_pool = []
@@ -117,6 +134,9 @@ static func roll_random_mod_blueprint(enemy_type: String, rank: String) -> Dicti
 		var mod_data = ModificationRegistry.get_data(mod_id)
 		var rarity = mod_data.get("rarity", "common")
 		var weight = _get_rarity_drop_weight(rarity, rank)
+		# v6.14: 战力档位对稀有度权重做梯度调整（高档位抬高高稀有度权重）
+		if power_tier >= 0:
+			weight = _apply_power_tier_to_weight(weight, rarity, power_tier)
 		if weight > 0:
 			weighted_pool.append({"mod_id": mod_id, "weight": weight})
 
@@ -267,6 +287,19 @@ static func _enemy_type_to_unit_type(enemy_type: String) -> int:
 		"fort", "boss_nano", "boss_phase": return 4  # FORT（堡垒/Boss 归堡垒）
 		_: return 0  # 默认 LIGHT
 
+## v6.14: 改造类型名（faction_conquest_buffs.FACTION_MOD_BIAS 用的 key）→ unit_type int。
+## 与 _enemy_type_to_unit_type 的 CombatKind 取值对齐（0/1/2/3/4）。
+## universal 表示通用池（返回 -1 触发回退逻辑），unknown 返回 -1。
+static func _unit_type_name_to_int(type_name: String) -> int:
+	match type_name:
+		"infantry", "recon": return 0   # LIGHT
+		"armor": return 1               # ARMOR
+		"artillery", "engineer", "anti_air": return 2  # SUPPORT
+		"air": return 3                 # AIR
+		"fort": return 4                # FORT
+		"universal": return -1          # 通用：调用方走 enemy_type 默认池
+		_: return -1
+
 static func _get_rarity_drop_weight(rarity: String, rank: String) -> int:
 	# 根据稀有度和敌人等级返回掉落权重
 	var base = 0
@@ -282,6 +315,45 @@ static func _get_rarity_drop_weight(rarity: String, rank: String) -> int:
 		"boss": return base * 3
 		"elite": return base * 2
 		_: return base
+
+
+## v6.14: 战力档位对改造稀有度权重做梯度调整。
+## 档位越高（CHAMPION/OVERLORD），高稀有度（rare/epic/legendary）权重越高，
+## 低稀有度（common）权重越低，体现"强敌掉好货"。
+## 设计为温和乘子，不改变 rank 的基础量级，只做梯度偏移。
+static func _apply_power_tier_to_weight(base_weight: int, rarity: String, power_tier: int) -> int:
+	if base_weight <= 0:
+		return 0
+	# 档位梯度：GRUNT/VETERAN 不调整；ELITE 略提稀有；CHAMPION 明显提稀有；OVERLORD 强提稀有
+	var shift: float = 1.0
+	match power_tier:
+		PowerTiers.Tier.GRUNT, PowerTiers.Tier.VETERAN:
+			shift = 1.0
+		PowerTiers.Tier.ELITE:
+			match rarity:
+				"common": shift = 0.85
+				"rare", "epic": shift = 1.20
+				"legendary": shift = 1.40
+				_: shift = 1.0
+		PowerTiers.Tier.CHAMPION:
+			match rarity:
+				"common": shift = 0.65
+				"uncommon": shift = 0.90
+				"rare": shift = 1.30
+				"epic": shift = 1.60
+				"legendary": shift = 1.80
+				_: shift = 1.0
+		PowerTiers.Tier.OVERLORD:
+			match rarity:
+				"common": shift = 0.45
+				"uncommon": shift = 0.70
+				"rare": shift = 1.40
+				"epic": shift = 1.90
+				"legendary": shift = 2.40
+				_: shift = 1.0
+		_:
+			shift = 1.0
+	return maxi(0, int(round(float(base_weight) * shift)))
 
 ## ── 蓝图定义查询 ───────────────────────────────────────────
 

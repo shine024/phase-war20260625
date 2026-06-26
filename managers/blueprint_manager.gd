@@ -35,6 +35,7 @@ const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
 const ModManager = preload("res://managers/evolution/mod_manager.gd")
 const CardEvolutionManager = preload("res://managers/evolution/card_evolution_manager.gd")
 const EvolutionHelpers = preload("res://managers/evolution/evolution_helpers.gd")
+const PowerTiers = preload("res://data/power_tiers.gd")
 
 const MAX_BLUEPRINT_LEVEL: int = 9
 const LAW_BLUEPRINT_PREFIX: String = "law:"
@@ -779,35 +780,36 @@ func load_state(data: Dictionary) -> void:
 			if data["blueprint_intel_branch_bonus"][k] is Dictionary:
 				blueprint_intel_branch_bonus[String(k)] = (data["blueprint_intel_branch_bonus"][k] as Dictionary).duplicate(true)
 
-		# 武器槽位配置加载
-		if data.has("blueprint_weapon_slots") and data["blueprint_weapon_slots"] is Dictionary:
-			blueprint_weapon_slots.clear()
-			for k in data["blueprint_weapon_slots"]:
-				var cid_w: String = String(k)
-				if data["blueprint_weapon_slots"][k] is Array:
-					var slots_array: Array[WeaponResource] = []
-					for w_data in data["blueprint_weapon_slots"][k]:
-						if w_data is Dictionary:
-							var w = WeaponResource.new()
-							w.weapon_id = w_data.get("weapon_id", "")
-							w.slot_type = w_data.get("slot_type", 0)
-							w.display_name = w_data.get("display_name", "")
-							w.enabled = w_data.get("enabled", true)
-							w.damage = w_data.get("damage", 0.0)
-							w.attack_speed = w_data.get("attack_speed", 1.0)
-							w.windup = w_data.get("windup", 0.2)
-							w.active = w_data.get("active", 0.1)
-							w.weapon_type = w_data.get("weapon_type", 0)
-							w.range_value = w_data.get("range_value", 3)
-							w.projectile_scene = w_data.get("projectile_scene", "")
-							w.hit_effect_scene = w_data.get("hit_effect_scene", "")
-							w.sound_id = w_data.get("sound_id", "")
-							slots_array.append(w)
-					blueprint_weapon_slots[cid_w] = slots_array
+	# v6.6 修复: 武器槽位配置加载（原错误嵌套在 intel_branch_bonus 条件内，
+	# 导致无该字段的存档加载时武器槽被静默丢弃。此处退回顶层 load_state 级别独立加载）
+	if data.has("blueprint_weapon_slots") and data["blueprint_weapon_slots"] is Dictionary:
+		blueprint_weapon_slots.clear()
+		for k in data["blueprint_weapon_slots"]:
+			var cid_w: String = String(k)
+			if data["blueprint_weapon_slots"][k] is Array:
+				var slots_array: Array[WeaponResource] = []
+				for w_data in data["blueprint_weapon_slots"][k]:
+					if w_data is Dictionary:
+						var w = WeaponResource.new()
+						w.weapon_id = w_data.get("weapon_id", "")
+						w.slot_type = w_data.get("slot_type", 0)
+						w.display_name = w_data.get("display_name", "")
+						w.enabled = w_data.get("enabled", true)
+						w.damage = w_data.get("damage", 0.0)
+						w.attack_speed = w_data.get("attack_speed", 1.0)
+						w.windup = w_data.get("windup", 0.2)
+						w.active = w_data.get("active", 0.1)
+						w.weapon_type = w_data.get("weapon_type", 0)
+						w.range_value = w_data.get("range_value", 3)
+						w.projectile_scene = w_data.get("projectile_scene", "")
+						w.hit_effect_scene = w_data.get("hit_effect_scene", "")
+						w.sound_id = w_data.get("sound_id", "")
+						slots_array.append(w)
+				blueprint_weapon_slots[cid_w] = slots_array
 
-			# v6.11: 战力星级数据加载已移除（card_battle_stars 不再存档，旧字段被忽略）
+	# v6.11: 战力星级数据加载已移除（card_battle_stars 不再存档，旧字段被忽略）
 
-		# 兼容旧存档的 fragments → blueprint_copies 迁移
+	# 兼容旧存档的 fragments → blueprint_copies 迁移
 	if not data.has("blueprint_copies") and data.has("fragments") and data["fragments"] is Dictionary:
 		blueprint_copies.clear()
 		for k in data["fragments"]:
@@ -860,6 +862,7 @@ func reset_to_defaults() -> void:
 	blueprint_copies.clear()
 	blueprint_mods.clear()
 	blueprint_inherit_bonus.clear()
+	blueprint_evolution_hp_floor.clear()
 	blueprint_rank_cache.clear()
 	blueprint_enemy_origin_mod.clear()
 	blueprint_intel_branch_bonus.clear()
@@ -1001,6 +1004,16 @@ func install_modification(card: CardResource, mod_id: String, slot: int = -1) ->
 	# 检查纳米材料
 	if not BasicResourceManager.can_afford("nano", nano_cost):
 		result.message = "纳米材料不足（需要%d）" % nano_cost
+		return result
+
+	# v6.14: 检查卡牌战力档位是否满足改造门槛（不同战力装不同改造）
+	# 按 rarity 派生门槛：common→无门槛, rare→需ELITE档, legendary→需OVERLORD档
+	var _card_power: float = _estimate_power_score(card.card_id)
+	var _card_tier: int = PowerTiers.get_tier_by_power(_card_power)
+	var _mod_min_tier: int = ModManager.get_min_power_tier_for_mod(mod_id)
+	if not PowerTiers.meets_requirement(_card_tier, _mod_min_tier):
+		result.message = "卡牌战力不足（需%s档，当前%s档）" % [
+			PowerTiers.get_tier_name(_mod_min_tier), PowerTiers.get_tier_name(_card_tier)]
 		return result
 
 	# 应用改造

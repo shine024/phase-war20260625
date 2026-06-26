@@ -38,6 +38,11 @@ func get_multiplier() -> float:
 func reset_multiplier() -> void:
 	_story_reward_multiplier = 1.0
 
+## v6.6 修复: 新游戏重置。清空未领取掉落（避免新游戏继承上一局 pending_drops）。
+## 注意：刻意不清 _story_reward_multiplier —— 倒计时×3 剧情倍率设计为跨周目持续生效。
+func reset_to_defaults() -> void:
+	pending_drops.clear()
+
 ## 生成战斗掉落
 func generate_battle_drops(era: int, level: int, player_won: bool, victory_stars: int = 0) -> Array:
 	var drops = drop_tables.generate_drops(era, level, player_won, victory_stars)
@@ -98,6 +103,8 @@ func _process_single_drop(drop: DropTables.DropResult) -> void:
 			_add_law_card(drop.drop.item_id, drop.count)
 		DropTables.DropType.ENERGY_DATA, DropTables.DropType.ENERGY_BLUEPRINT:
 			_add_energy_blueprint(drop.drop.item_id, drop.count)
+		DropTables.DropType.MOD_BLUEPRINT:
+			_add_mod_blueprint(drop.drop.item_id, drop.count)
 
 ## 添加基础素材
 func _add_material(material_id: String, count: int) -> void:
@@ -423,3 +430,14 @@ func _add_energy_blueprint(_item_id: String, count: int) -> void:
 	if BlueprintManager != null and BlueprintManager.has_method("add_research_points"):
 		BlueprintManager.add_research_points(12 * n)
 	# [LOG-v5.1] print("[DropManager] 获得能量卡: ", energy_id, " x", n)
+
+## v6.14: 改造蓝图掉落 → 写入 IntelItemBag（与 intel_discovery_manager 路径一致）
+## item_id 为 blueprint_<mod_id> 形式，count 为数量（蓝图永久持有，多次获得无害）
+func _add_mod_blueprint(item_id: String, count: int) -> void:
+	var bag: Node = get_node_or_null("/root/IntelItemBag")
+	if bag == null or not bag.has_method("add_item"):
+		return
+	var n: int = maxi(1, count)
+	for _i in range(n):
+		bag.add_item(item_id, 1)
+

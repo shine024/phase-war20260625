@@ -21,6 +21,7 @@ enum DropType {
 	LAW_BLUEPRINT,      # 法则侧蓝图/碎片条目（与 LAW_DATA 展示一致）
 	ENERGY_BLUEPRINT,    # 能量蓝图条目（与 ENERGY_DATA 展示一致）
 	RUNE,               # v6.2 符文（替代法则系统的核心掉落物）
+	MOD_BLUEPRINT,      # v6.14 改造蓝图（与 IntelItemBag 打通，claim 时写入蓝图背包）
 }
 
 ## 掉落物条目

@@ -16,6 +16,8 @@ const DefaultCards = preload("res://data/default_cards.gd")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
 const EnemyPhaseMasters = preload("res://data/enemy_phase_masters.gd")
+const RuneDefs = preload("res://data/runes.gd")
+const EnemyPhaseEquipment = preload("res://data/enemy_phase_equipment.gd")
 const UnitStatsTable = preload("res://resources/unit_stats_table.gd")
 const BackpackCombatPreview = preload("res://scenes/ui/backpack_combat_preview.gd")
 const RankDisplayUi = preload("res://scripts/rank_display_ui.gd")
@@ -1045,32 +1047,83 @@ func _format_enemy_combat_summary(unit: Node, scombat: Array, extra_suffix: Stri
 
 ## ── 敌方相位驱动器 ──
 
+## v6.14: 获取敌方相位仪显示名（解析 enemy_phase_instruments 数据）
+func _get_enemy_instrument_display_name(instrument_id: String) -> String:
+	if instrument_id.is_empty():
+		return ""
+	var cfg: Dictionary = EnemyPhaseEquipment.get_phase_instrument(instrument_id)
+	if cfg.is_empty():
+		return instrument_id  # 查不到返回 ID 兜底
+	return str(cfg.get("name", instrument_id))
+
+## v6.14: 格式化敌方相位师符文列表为可读字符串（"符文名×稀有度"）
+func _format_enemy_runes(rune_ids: Array) -> String:
+	if rune_ids.is_empty():
+		return ""
+	var parts: Array[String] = []
+	for rid in rune_ids:
+		var rd: Dictionary = RuneDefs.get_rune(str(rid))
+		if rd.is_empty():
+			parts.append(str(rid))
+		else:
+			var rn: String = str(rd.get("id", rid))
+			var rarity: String = str(rd.get("rarity", ""))
+			var rarity_short: String = ""
+			match rarity:
+				"common": rarity_short = "常见"
+				"rare": rarity_short = "稀有"
+				"epic": rarity_short = "史诗"
+				"legendary": rarity_short = "传说"
+			if not rarity_short.is_empty():
+				parts.append("%s(%s)" % [rn, rarity_short])
+			else:
+				parts.append(rn)
+	return "、".join(parts)
+
 func _show_enemy_phase_driver(unit: Node) -> void:
 	var mname: String = str(unit.get("master_name")) if "master_name" in unit else "相位师"
 	if name_label: name_label.text = "敌方相位师基地"
-	if type_label: type_label.text = "【%s】· 相位场驱动器" % mname
-	var cur_hp: float = float(unit.get("hp")) if "hp" in unit else 0.0
+	if type_label: type_label.text = "【%s】· 相位场驱动器" % mname	var cur_hp: float = float(unit.get("hp")) if "hp" in unit else 0.0
 	var mx_hp: float = float(unit.get("max_hp")) if "max_hp" in unit else 1.0
 	if summary_label: summary_label.text = "基地 HP %d / %d" % [int(cur_hp), int(mx_hp)]
 	var lines: Array[String] = []
 	lines.append("摧毁敌方相位场驱动器即可获胜；对方会持续生产战斗单位。")
-	if GameManager and GameManager.has_method("get_current_phase_master"):
-		var cfg: Dictionary = GameManager.get_current_phase_master()
-		if not cfg.is_empty():
-			var disp: String = str(cfg.get("name", mname))
-			if disp != mname and not disp.is_empty():
-				lines.append("档案名：%s" % disp)
-			var fac: String = str(cfg.get("faction", ""))
-			if not fac.is_empty():
-				lines.append("所属势力：%s" % fac)
-			var title: String = str(cfg.get("title", ""))
-			if not title.is_empty():
-				lines.append("称号：%s" % title)
-			var eq: Dictionary = cfg.get("equipment", {}) as Dictionary
-			var plats: Array = eq.get("platforms", []) as Array
-			var weps: Array = eq.get("weapons", []) as Array
-			if not plats.is_empty() or not weps.is_empty():
-				lines.append("上场装备：平台种类 %d · 武器种类 %d（由其基地持续部署）" % [plats.size(), weps.size()])
+		if GameManager and GameManager.has_method("get_current_phase_master"):
+			var cfg: Dictionary = GameManager.get_current_phase_master()
+			if not cfg.is_empty():
+				var disp: String = str(cfg.get("name", mname))
+				if disp != mname and not disp.is_empty():
+					lines.append("档案名：%s" % disp)
+				# v6.14: 显示等级
+				var mlvl: int = int(cfg.get("level", 0))
+				if mlvl > 0:
+					lines.append("等级：Lv.%d" % mlvl)
+				var fac: String = str(cfg.get("faction", ""))
+				if not fac.is_empty():
+					lines.append("所属势力：%s" % fac)
+				var title: String = str(cfg.get("title", ""))
+				if not title.is_empty():
+					lines.append("称号：%s" % title)
+				# v6.14: 取 enriched equipment（程序化派生 runes/spawn_sequence）
+				var pm_id: String = str(cfg.get("id", ""))
+				var eq: Dictionary = cfg.get("equipment", {}) as Dictionary
+				if not pm_id.is_empty() and EnemyPhaseMasters != null:
+					var enriched_eq: Dictionary = EnemyPhaseMasters.get_enriched_equipment(pm_id)
+					if not enriched_eq.is_empty():
+						eq = enriched_eq
+				var plats: Array = eq.get("platforms", []) as Array
+				var weps: Array = eq.get("weapons", []) as Array
+				if not plats.is_empty() or not weps.is_empty():
+					lines.append("上场装备：平台种类 %d · 武器种类 %d（由其基地持续部署）" % [plats.size(), weps.size()])
+				# v6.14: 显示相位仪名
+				var inst_id: String = str(eq.get("phase_instrument", ""))
+				var inst_name: String = _get_enemy_instrument_display_name(inst_id)
+				if not inst_name.is_empty():
+					lines.append("相位仪：%s" % inst_name)
+				# v6.14: 显示符文
+				var runes: Array = eq.get("runes", []) as Array
+				if not runes.is_empty():
+					lines.append("符文：%s" % _format_enemy_runes(runes))
 	if desc_label: desc_label.text = "\n".join(lines)
 	if flavor_label: flavor_label.text = "“相位师的意志锚定在这片场上。”"
 	_clear_non_summary_info_sections()
@@ -1124,6 +1177,14 @@ func _show_enemy_construct_unit(unit: Node) -> void:
 	var platform_name := dn if not dn.is_empty() else (safe_name if not safe_name.is_empty() else DefaultCards.get_platform_display_name(stats.platform_type))
 	# v6.5: 优先用 card.weapon_names[] 显示具体武器型号，而非笼统的战斗方式
 	var weapon_label_text: String = _build_weapon_label_text(card_res, stats)
+	# v6.13: 产兵 platform_card_id 是敌方装备平台 ID（不在 DefaultCards 表）→ card_res 为 null，
+	# _build_weapon_label_text 会落到第3兜底只给笼统"直射/曲射/空射"。
+	# 此处用 stats.legacy_weapon_type（具体枪型，如 MG=2/MISSILE=9）查具体名"车载机枪/导弹"，
+	# 比"空射武器"等笼统名更准确（legacy 值由产兵 _build_stats_from_archetype 从 archetype 透传）。
+	if card_res == null and not weapon_label_text.is_empty():
+		var legacy_wt: int = int(stats.legacy_weapon_type)
+		if legacy_wt >= 0:
+			weapon_label_text = RealWorldUnitLabels.weapon_kind_short(legacy_wt)
 	if type_label:
 		type_label.text = "相位师部署 · %s / %s" % [platform_name, weapon_label_text]
 	var cur_hp: float = float(unit.get("hp")) if "hp" in unit else stats.max_hp
@@ -1247,6 +1308,23 @@ func _show_enemy_phase_master_unit(unit: Node, master_name: String) -> void:
 	var base_desc := "敌方相位师单位，拥有强大的战斗力。"
 	if not trait_lines.is_empty():
 		base_desc += "\n\n【相位师特性】\n" + "\n".join(trait_lines)
+	# v6.14: 补全相位仪名 + 符文显示（与基地分支信息一致）
+	if not master_cfg.is_empty():
+		var pm_id_m: String = str(master_cfg.get("id", ""))
+		var eq_m: Dictionary = master_cfg.get("equipment", {}) as Dictionary
+		if not pm_id_m.is_empty() and EnemyPhaseMasters != null:
+			var enriched_eq_m: Dictionary = EnemyPhaseMasters.get_enriched_equipment(pm_id_m)
+			if not enriched_eq_m.is_empty():
+				eq_m = enriched_eq_m
+		var inst_id_m: String = str(eq_m.get("phase_instrument", ""))
+		var inst_name_m: String = _get_enemy_instrument_display_name(inst_id_m)
+		var runes_m: Array = eq_m.get("runes", []) as Array
+		if not inst_name_m.is_empty() or not runes_m.is_empty():
+			base_desc += "\n\n【相位师装备】"
+			if not inst_name_m.is_empty():
+				base_desc += "\n相位仪：%s" % inst_name_m
+			if not runes_m.is_empty():
+				base_desc += "\n符文：%s" % _format_enemy_runes(runes_m)
 	if law_label:
 		var passive := _build_phase_law_effects_for_unit(unit, false)
 		var active := _build_active_law_effects_for_unit(unit, false)

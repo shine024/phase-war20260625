@@ -72,6 +72,8 @@ func _notification(what: int) -> void:
 
 const SaveUtils = preload("res://scripts/save_utils.gd")
 const STATE_SAVE_NAME: String = "intel_discovery_state"
+const PowerTiers = preload("res://data/power_tiers.gd")
+const FactionConquestBuffs = preload("res://data/faction_conquest_buffs.gd")
 
 ## v6.6: 统一存档接口（供 SaveManager 调用，无视脏标记——SaveManager 调用即权威保存点）
 func save_state() -> Dictionary:
@@ -538,6 +540,7 @@ const IntelManualItems = preload("res://data/intel_manual_items.gd")
 
 ## 根据击败敌人和星级，随机掉落蓝图
 ## 改造蓝图（基于敌人类型）/ 进化蓝图（精英/Boss）
+## v6.14: 注入占领势力掉落维度——当前关占领势力的 drop_mul 调整掉率，mod_pool_bias 调整改造类型偏好
 func _roll_intel_item_drops(
 	defeated_enemies: Array,
 	victory_stars: int,
@@ -550,6 +553,20 @@ func _roll_intel_item_drops(
 		base_chance = 0.22
 	elif victory_stars >= 2:
 		base_chance = 0.17
+
+	# v6.14: 查当前关占领势力掉落 buff（drop_mul + mod_pool_bias）
+	var occupation_drop_mul: float = 1.0
+	var occupation_mod_bias: Array = []
+	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
+	var gm: Node = get_node_or_null("/root/GameManager")
+	if fsm != null and fsm.has_method("get_level_occupation") and gm != null:
+		var cur_level: int = int(gm.get("current_level")) if "current_level" in gm else 1
+		var occ_fid: String = String(fsm.get_level_occupation(cur_level))
+		if not occ_fid.is_empty() and fsm.has_method("get_faction_level"):
+			var flvl: int = int(fsm.get_faction_level(occ_fid))
+			var buff: Dictionary = FactionConquestBuffs.get_buff(occ_fid, flvl)
+			occupation_drop_mul = float(buff.get("drop_mul", 1.0))
+			occupation_mod_bias = buff.get("mod_pool_bias", [])
 
 	for enemy_info in defeated_enemies:
 		if not enemy_info is Dictionary:
@@ -566,7 +583,9 @@ func _roll_intel_item_drops(
 			_:
 				rank_mult = 1.0
 
-		if randf() > base_chance * rank_mult:
+		# v6.14: 占领势力 drop_mul 乘进掉率（≤1.5，与星级/势力等级共同作用）
+		var effective_chance: float = base_chance * rank_mult * occupation_drop_mul
+		if randf() > effective_chance:
 			continue
 
 		## 随机选择掉落改造蓝图或进化蓝图
@@ -578,7 +597,9 @@ func _roll_intel_item_drops(
 			item = IntelManualItems.roll_random_evolution_blueprint(rank)
 		else:
 			## 改造蓝图（基于敌人类型）
-			item = IntelManualItems.roll_random_mod_blueprint(enemy_type, rank)
+			# v6.14: 传入 power_tier（rank 映射）和占领势力 mod_pool_bias
+			var power_tier: int = PowerTiers.get_tier_by_rank(rank)
+			item = IntelManualItems.roll_random_mod_blueprint(enemy_type, rank, power_tier, occupation_mod_bias)
 
 		if not item.is_empty():
 			drops.append(item)

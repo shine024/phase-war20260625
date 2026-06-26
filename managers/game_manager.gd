@@ -34,6 +34,10 @@ signal current_level_changed(level: int)
 # 相位师对战相关
 var _current_phase_master: Dictionary = {}  # 当前战斗的相位师配置
 var _is_phase_master_battle: bool = false   # 是否在与相位师战斗
+# v7.1 相位师遭遇软兜底：连续未触发计数器（≥5 则概率递增，避免长期不遇）
+var _phase_master_drought_count: int = 0
+# v7.1 新手保护期：前 10 关不触发随机相位师遭遇
+const PHASE_MASTER_GRACE_LEVELS: int = 10
 
 var game_mode: GameMode = GameMode.FREE
 
@@ -53,15 +57,31 @@ var _force_defeat_reason: String = ""       ## 必败战的剧情标识（如 "p
 # v6.6(剧情): 最终战标记（补剧情.txt 第十幕 第100关/相位之主/噬时者）
 var _is_final_battle: bool = false          ## 当前战斗是否为最终战（触发记忆场景视觉+专属Boss）
 
-## 检查是否遭遇相位师（每场战斗15%概率）
+## 检查是否遭遇相位师（基础15%概率 + 软兜底）
+## v7.1 软兜底：①前 PHASE_MASTER_GRACE_LEVELS(10) 关新手保护期不触发；
+##              ②连续 5 关未触发后概率递增（0.15→0.25→0.4），避免长期不遇。
 ## 逻辑：优先遭遇当前关卡所属势力的相位师（用于防守任务）
 func check_phase_master_encounter() -> Dictionary:
 	# 第49关固定为相位师战斗；其余关卡使用常量概率
 	var force_phase_master_battle: bool = (current_level == 49)
-	if not force_phase_master_battle and randf() > GC.PHASE_MASTER_ENCOUNTER_CHANCE:
-		_is_phase_master_battle = false
-		_current_phase_master = {}
-		return {}
+	if not force_phase_master_battle:
+		# v7.1 新手保护期：前 N 关不触发随机遭遇（第49关固定战不受影响）
+		if current_level <= PHASE_MASTER_GRACE_LEVELS:
+			_is_phase_master_battle = false
+			_current_phase_master = {}
+			# 仍累计 drought（保护期内未触发也算，保证出保护期后递增生效）
+			_phase_master_drought_count += 1
+			return {}
+		# v7.1 递增保底：连续未触发次数越多，遭遇概率越高
+		var cur_chance: float = GC.PHASE_MASTER_ENCOUNTER_CHANCE
+		if _phase_master_drought_count >= 5:
+			# 每多连续未触发 1 次，概率 +0.10，上限 0.5
+			cur_chance = minf(0.5, GC.PHASE_MASTER_ENCOUNTER_CHANCE + (_phase_master_drought_count - 4) * 0.10)
+		if randf() > cur_chance:
+			_is_phase_master_battle = false
+			_current_phase_master = {}
+			_phase_master_drought_count += 1
+			return {}
 	if force_phase_master_battle:
 		if DEBUG_GAME_LOG:
 			pass  # LOG: 第49关固定触发相位师战斗
@@ -126,6 +146,8 @@ func check_phase_master_encounter() -> Dictionary:
 		var enriched_config = _enrich_master_config(selected_master)
 		_current_phase_master = enriched_config
 		_is_phase_master_battle = true
+		# v7.1: 成功触发，重置连续未触发计数
+		_phase_master_drought_count = 0
 		return _current_phase_master
 
 	_is_phase_master_battle = false
@@ -593,39 +615,49 @@ func _grant_phase_master_victory_reward(master_name: String) -> void:
 				pass  # LOG: 平台卡奖励
 	# 4. v6.2: 相位大师击败 → 符文掉落（替代废弃的法则卡奖励）
 	# 原逻辑：从势力法则家族随机选3条法则卡 → 已废弃
-	# 新逻辑：必掉1个稀有符文，30%概率额外掉1个史诗符文
+	# v6.14 改进：优先从相位师"自带符文"池抽取（装什么掉什么），池空才回退 generic 池。
+	# 仍保留：必掉1稀有，30%额外史诗，5%传说。
 	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
 	if pim and pim.has_method("add_owned_rune"):
 		var RuneDefs = preload("res://data/runes.gd")
-		# 必掉稀有符文
-		var rare_runes: Array[Dictionary] = RuneDefs.get_runes_by_rarity(RuneDefs.RARITY_RARE)
-		var generic_rare: Array[Dictionary] = []
-		for r in rare_runes:
-			if r.get("faction_id", "") == RuneDefs.FACTION_GENERIC:
-				generic_rare.append(r)
-		if not generic_rare.is_empty():
-			var picked = generic_rare[randi() % generic_rare.size()]
-			pim.add_owned_rune(picked["id"])
+		# v6.14: 取相位师自带符文池（enriched equipment 的 runes）
+		var _master_runes_pool: Array = []
+		var _pm_id: String = String(_current_phase_master.get("id", ""))
+		if not _pm_id.is_empty():
+			var EnemyPhaseMasters = preload("res://data/enemy_phase_masters.gd")
+			var _enriched_eq: Dictionary = EnemyPhaseMasters.get_enriched_equipment(_pm_id)
+			_master_runes_pool = _enriched_eq.get("runes", [])
+		# 必掉稀有符文（优先 master 自带池）
+		var _granted_rune: String = _pick_rune_from_pool_or_generic(_master_runes_pool, RuneDefs, RuneDefs.RARITY_RARE)
+		if not _granted_rune.is_empty():
+			pim.add_owned_rune(_granted_rune)
 		# 30%概率额外掉史诗符文
 		if randf() < 0.30:
-			var epic_runes: Array[Dictionary] = RuneDefs.get_runes_by_rarity(RuneDefs.RARITY_EPIC)
-			var generic_epic: Array[Dictionary] = []
-			for r in epic_runes:
-				if r.get("faction_id", "") == RuneDefs.FACTION_GENERIC:
-					generic_epic.append(r)
-			if not generic_epic.is_empty():
-				var picked_e = generic_epic[randi() % generic_epic.size()]
-				pim.add_owned_rune(picked_e["id"])
+			var _granted_e: String = _pick_rune_from_pool_or_generic(_master_runes_pool, RuneDefs, RuneDefs.RARITY_EPIC)
+			if not _granted_e.is_empty():
+				pim.add_owned_rune(_granted_e)
 		# 5%概率掉传说符文（极稀有）
 		if randf() < 0.05:
-			var leg_runes: Array[Dictionary] = RuneDefs.get_runes_by_rarity(RuneDefs.RARITY_LEGENDARY)
-			var generic_leg: Array[Dictionary] = []
-			for r in leg_runes:
-				if r.get("faction_id", "") == RuneDefs.FACTION_GENERIC:
-					generic_leg.append(r)
-			if not generic_leg.is_empty():
-				var picked_l = generic_leg[randi() % generic_leg.size()]
-				pim.add_owned_rune(picked_l["id"])
+			var _granted_l: String = _pick_rune_from_pool_or_generic(_master_runes_pool, RuneDefs, RuneDefs.RARITY_LEGENDARY)
+			if not _granted_l.is_empty():
+				pim.add_owned_rune(_granted_l)
+
+	# v6.14: 相位师击败 → 改造蓝图掉落（此前相位师无保底改造掉落，只有通用击杀概率）。
+	# 必掉1个改造蓝图（按 master level 决定稀有度梯度），30%概率额外1个。
+	var IntelManualItems = preload("res://data/intel_manual_items.gd")
+	var _master_level: int = int(_current_phase_master.get("level", 15))
+	var _drop_bag: Node = get_node_or_null("/root/IntelItemBag")
+	var _pm_enemy_type: String = "infantry"  # 相位师无单一敌人类型，用通用兜底
+	var _pm_power_tier: int = preload("res://data/power_tiers.gd").get_tier_by_power(float(_master_level) * 40.0)
+	# 必掉
+	var _mod_drop: Dictionary = IntelManualItems.roll_random_mod_blueprint(_pm_enemy_type, "boss", _pm_power_tier)
+	if not _mod_drop.is_empty() and _drop_bag and _drop_bag.has_method("add_item"):
+		_drop_bag.add_item(String(_mod_drop.get("item_type", "")), 1)
+	# 30% 额外
+	if randf() < 0.30:
+		var _mod_drop2: Dictionary = IntelManualItems.roll_random_mod_blueprint(_pm_enemy_type, "boss", _pm_power_tier)
+		if not _mod_drop2.is_empty() and _drop_bag and _drop_bag.has_method("add_item"):
+			_drop_bag.add_item(String(_mod_drop2.get("item_type", "")), 1)
 
 	# 5. 势力声望提升（战胜相位师，该势力获得声望）
 	var faction_id: String = ""
@@ -647,6 +679,34 @@ func _grant_phase_master_victory_reward(master_name: String) -> void:
 	last_battle_reward_summary["phase_master_victory"] = master_name
 	last_battle_reward_summary["extra_nano"] = extra_nano_total if extra_nano_total > 0 else 50
 	last_battle_reward_summary["extra_energy"] = extra_energy_total if extra_energy_total > 0 else 10
+
+## v6.14: 从相位师自带符文池抽取，池空或不含目标稀有度时回退 generic 池。
+## [param master_runes_pool] 相位师自带符文 id 列表（可能含各稀有度）
+## [param rune_defs] RuneDefinitions 类引用
+## [param target_rarity] 期望的稀有度（rare/epic/legendary）
+## [return] 符文 id 字符串，无可用则返回 ""
+func _pick_rune_from_pool_or_generic(master_runes_pool: Array, rune_defs, target_rarity: String) -> String:
+	# 先尝试从 master 自带池筛目标稀有度的符文
+	if not master_runes_pool.is_empty():
+		var matched: Array = []
+		for rid in master_runes_pool:
+			var rd: Dictionary = rune_defs.get_rune(String(rid))
+			if not rd.is_empty() and String(rd.get("rarity", "")) == target_rarity:
+				matched.append(String(rid))
+		if not matched.is_empty():
+			return String(matched[randi() % matched.size()])
+		# 自带池无目标稀有度，但有其他符文：50% 概率直接抽一个自带符文（装什么掉什么，即便稀有度不符）
+		if randf() < 0.50:
+			return String(master_runes_pool[randi() % master_runes_pool.size()])
+	# 回退 generic 池（按目标稀有度）
+	var pool: Array[Dictionary] = rune_defs.get_runes_by_rarity(target_rarity)
+	var generic: Array[Dictionary] = []
+	for r in pool:
+		if r.get("faction_id", "") == rune_defs.FACTION_GENERIC:
+			generic.append(r)
+	if not generic.is_empty():
+		return String(generic[randi() % generic.size()]["id"])
+	return ""
 
 ## 敌方势力 -> 法则家族映射
 static func _get_law_families_for_faction(enemy_faction: String) -> Array:

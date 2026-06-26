@@ -8,6 +8,7 @@ const GC = preload("res://resources/game_constants.gd")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const UnitStatsTable = preload("res://resources/unit_stats_table.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
+const LevelSpawnSequences = preload("res://data/level_spawn_sequences.gd")
 const SwarmEnemyControllerScript = preload("res://scenes/units/swarm_enemy_controller.gd")
 const _CardGridSlotsPerSide: int = BattleSlotGrid.SLOT_COUNT
 const _DamageNumberDisplayScript = preload("res://scenes/effects/damage_number_display.gd")
@@ -131,6 +132,30 @@ func _card_grid_next_free_enemy_slot_index() -> int:
 	return -1
 
 
+## v6.14: 按波次序列的 bias_tags 从 archetype 池中偏好抽签。
+## - bias_tags 为空：池内均匀随机（与原行为一致）
+## - bias_tags 非空：70% 概率从匹配 tag 的 archetype 中抽，30% 概率全池随机（保留扰动）
+## - 匹配池为空时回退全池随机
+func _pick_archetype_with_bias(pool: Array, bias_tags: Array) -> String:
+	if pool.is_empty():
+		return ""
+	if bias_tags.is_empty():
+		return String(pool[randi() % pool.size()])
+	# 筛出匹配 bias_tags 的 archetype
+	var biased: Array = []
+	for aid in pool:
+		var cfg: Dictionary = EnemyArchetypes.get_config(String(aid))
+		var tags: Array = cfg.get("tags", [])
+		for bt in bias_tags:
+			if tags.has(bt):
+				biased.append(aid)
+				break
+	if not biased.is_empty() and randf() < 0.70:
+		return String(biased[randi() % biased.size()])
+	# 回退全池随机（保留扰动）
+	return String(pool[randi() % pool.size()])
+
+
 ## 按单位射程选敌方槽位：长程(>=阈值)放远端(slot N-2 起倒序)，短程放近端(slot 0 起顺序)
 ## 敌方仅 slot N-1（位置 15）禁放，可用 slot 0~N-2
 ## 短程直射单位放近端才够得到玩家；长程/曲射放远端供玩家曲射打击
@@ -220,21 +245,46 @@ func spawn_card_grid_enemy_wave(current_level: int) -> bool:
 		else:
 			basic_ids.append(aid)
 
+	# v6.14: 读关卡波次序列决定本波类型倾向（替代原 is_last_wave/is_elite_wave 启发式）
+	# 序列为空（生成失败）时回退原启发式，保证向后兼容
+	var wave_spec: Dictionary = LevelSpawnSequences.get_wave_spec(current_level, enemy_wave_index)
+	var use_sequence: bool = not wave_spec.is_empty()
+
 	var is_last_wave: bool = (_enemy_wave_total > 0 and enemy_wave_index >= _enemy_wave_total)
 	var is_elite_wave: bool = (enemy_wave_index > 1 and enemy_wave_index % 3 == 0)
+
+	# bias_tags：本波偏好的 archetype tag（如 ["infantry"]），空=不限
+	var bias_tags: Array = wave_spec.get("archetype_bias_tags", []) if use_sequence else []
 
 	for _i in range(to_spawn):
 		if enemy_unit_count >= _enemy_field_unit_cap():
 			break
 		var archetype_id: String = ""
-		if is_last_wave and _enemy_wave_total > 3 and not boss_ids.is_empty():
-			archetype_id = String(boss_ids[randi() % boss_ids.size()])
-		elif is_elite_wave and not elite_ids.is_empty():
-			archetype_id = String(elite_ids[randi() % elite_ids.size()])
-		elif not basic_ids.is_empty():
-			archetype_id = String(basic_ids[randi() % basic_ids.size()])
-		elif not era_archetypes.is_empty():
-			archetype_id = String(era_archetypes[randi() % era_archetypes.size()])
+
+		# 决定本个单位类型：序列模式用 composition 抽签，否则走原启发式
+		var type_pick: String = "basic"
+		if use_sequence:
+			type_pick = LevelSpawnSequences.pick_type_for_wave(wave_spec, not elite_ids.is_empty(), not boss_ids.is_empty())
+		else:
+			if is_last_wave and _enemy_wave_total > 3 and not boss_ids.is_empty():
+				type_pick = "boss"
+			elif is_elite_wave and not elite_ids.is_empty():
+				type_pick = "elite"
+
+		# 选池
+		var pool: Array = basic_ids
+		match type_pick:
+			"boss":
+				pool = boss_ids
+			"elite":
+				pool = elite_ids
+			_:
+				pool = basic_ids
+		if pool.is_empty():
+			pool = era_archetypes  # 对应池空时回退全时代池
+
+		# v6.14: 若有序列 bias_tags，优先从池中筛出匹配 tag 的 archetype（保留扰动）
+		archetype_id = _pick_archetype_with_bias(pool, bias_tags)
 
 		# 蜂群单位视为短程，部署到近端
 		if not archetype_id.is_empty() and EnemyArchetypes.should_spawn_as_swarm(archetype_id):
@@ -808,7 +858,51 @@ func _create_enemy_unit_with_id(arch_id: String) -> Node:
 	u.setup(false, enemy_wave_index, arch_id)
 	# v6.7: 相位师 boss 对战时，给敌方单位应用排名差异化加成（与玩家方对称）
 	_apply_enemy_phase_master_bonus_if_active(u)
+	# v7.2: 普通关敌兵档位加成（非相位师战时，按时代进度选低/中/高配）
+	# 相位师战由 _apply_enemy_phase_master_bonus_if_active 已处理（默认高配档）
+	_apply_enemy_loadout_tier_if_normal_battle(u)
 	return u
+
+## v7.2: 普通关敌兵档位加成（3/6/9改造档，等量我方养成）
+## 按当前关卡在时代内的进度选档：前1/3低配、中段中配、后期高配
+func _apply_enemy_loadout_tier_if_normal_battle(unit: Node) -> void:
+	if unit == null or not is_instance_valid(unit):
+		return
+	# 相位师战不在此处理（产兵函数已默认高配档）
+	var tree = Engine.get_main_loop() as SceneTree
+	if tree == null or tree.root == null:
+		return
+	var battle_mgr: Node = tree.root.get_node_or_null("BattleManager")
+	if battle_mgr == null or not ("_is_phase_master_battle" in battle_mgr):
+		return
+	if bool(battle_mgr.get("_is_phase_master_battle")):
+		return  # 相位师战，跳过（产兵函数处理）
+	var stats: Variant = unit.get("stats") if "stats" in unit else null
+	if stats == null or not (stats is UnitStats):
+		return
+	# 按关卡号算时代进度（每20关一个时代，时代内进度 0.0~1.0）
+	var current_level: int = 1
+	if GameManager != null and ("current_level" in GameManager):
+		current_level = int(GameManager.current_level)
+	var era_local_level: int = ((current_level - 1) % 20) + 1  # 时代内关卡 1~20
+	var era_progress: float = float(era_local_level - 1) / 19.0  # 0.0~1.0
+	var EnemyLoadoutTiers = preload("res://data/enemy_loadout_tiers.gd")
+	var tier: int = EnemyLoadoutTiers.get_tier_for_level_progress(era_progress, false)
+	var tier_bonus: Dictionary = EnemyLoadoutTiers.get_bonus_for_tier(tier)
+	var atk_mult: float = float(tier_bonus.get("atk_pct", 0.0))
+	var hp_mult: float = float(tier_bonus.get("hp_pct", 0.0))
+	if hp_mult > 0.0:
+		stats.max_hp = maxf(1.0, stats.max_hp * (1.0 + hp_mult))
+	if atk_mult > 0.0:
+		stats.attack_damage = maxf(0.1, stats.attack_damage * (1.0 + atk_mult))
+		stats.attack_light = maxf(0.1, stats.attack_light * (1.0 + atk_mult))
+		stats.attack_armor = maxf(0.1, stats.attack_armor * (1.0 + atk_mult))
+		stats.attack_air = maxf(0.1, stats.attack_air * (1.0 + atk_mult))
+		if stats.has_method("_sync_weapon_slots_damage"):
+			stats._sync_weapon_slots_damage(1.0 + atk_mult)
+	# 同步单位节点的派生字段（hp/max_hp 等）
+	if unit.has_method("_update_hp_bar"):
+		unit._update_hp_bar()
 
 ## v6.7: 仅在相位师 boss 对战时给敌方单位应用排名加成
 ## 普通波次小怪不受影响（保持原数值）
@@ -900,8 +994,22 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 			pf_bonus_key += "|ps%d" % int(_phase_instrument._cached_player_rank_stars)
 
 	# v6.8: 势力变体加成已停用（effective_card 直接使用原始 platform_card，势力不影响战斗数值）
+	# v6.14: 重接——势力技能树的 stat_bonus 作为"玩家主动构筑"注入我方单位（非变体加成）
 	var effective_card: CardResource = platform_card
 	var active_faction_cache_key: String = ""
+	# v6.14: 取激活势力技能效果（stat_bonus），用于注入我方单位 + 纳入缓存 key
+	var _active_faction_fx: Dictionary = {}
+	var _fsm_node: Node = _get_autoload_node("FactionSystemManager")
+	if _fsm_node != null and _fsm_node.has_method("get_active_faction_skill_effects"):
+		_active_faction_fx = _fsm_node.get_active_faction_skill_effects()
+	if not _active_faction_fx.is_empty():
+		# 激活势力 + 已解锁技能数作为缓存 key 片段（技能变化时缓存失效）
+		var _unlocked: Array = []
+		if _fsm_node != null and _fsm_node.has_method("get"):
+			var _af: String = String(_fsm_node.get("active_faction"))
+			if not _af.is_empty() and _fsm_node.has_method("get") and _fsm_node.get("faction_skill_states").has(_af):
+				_unlocked = _fsm_node.get("faction_skill_states")[_af].get("unlocked_skills", [])
+		active_faction_cache_key = "%s:%d" % [String(_fsm_node.get("active_faction")), _unlocked.size()]
 
 	# v7.0: 实例化养成——若 platform_card 已是实例（instance_id 非空），养成数据直接在对象上，
 	# 无需再查 CardEnhancementManager。仅对非实例卡（兼容旧路径）做查表注入。
@@ -933,10 +1041,15 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 
 	var stats = UnitStatsTable.build_stats_from_card(effective_card, battle_era)
 
-	# v6.8: 势力特殊属性 / 势力技能树加成已停用（势力不影响战斗数值）
+	# v6.14: 重接势力技能注入——玩家"主动构筑"的激活势力 stat_bonus 应用到我方单位。
+	# 注意：v6.8 停用的是"势力变体生成路径"，此处注入的是技能树的数值加成（玩家选择投入技能点获得），
+	# 与变体无关，所有我方单位共享（体现玩家构筑的势力偏好）。stat_bonus 字段映射到 UnitStats。
 	var bm_growth: Node = _get_autoload_node("BlueprintManager")
 	if bm_growth and bm_growth.has_method("apply_growth_to_stats"):
 		bm_growth.apply_growth_to_stats(stats, platform_card, weapon_cards)
+	# v6.14: 注入激活势力技能 stat_bonus（非空才注入，避免无势力时多余计算）
+	if not _active_faction_fx.is_empty():
+		_apply_active_faction_stat_bonus(stats, _active_faction_fx.get("stat_bonus", {}))
 	# v6.0: 词条效果已由 UnitStatsTable.build_stats_from_card 内部处理
 	# 不再需要额外调用 AffixManager.apply_affixes_to_stats
 	if _phase_instrument and _phase_instrument.has_method("apply_phase_field_bonus_to_unit_stats"):
@@ -1012,6 +1125,50 @@ func _apply_rune_bonus_to_stats(stats: UnitStats, bonus: Dictionary) -> void:
 	if stat_map.has("damage_reduction") and float(stat_map["damage_reduction"]) != 0.0:
 		stats.damage_reduction = clampf(stats.damage_reduction + float(stat_map["damage_reduction"]), 0.0, 0.8)
 	# 注：特殊效果已在函数开头写入 meta，此处无需重复
+
+## v6.14: 应用激活势力技能树的 stat_bonus 到我方单位。
+## stat_bonus 字段（见 faction_skill_tree.gd）按维度细分：
+##   atk_light/atk_armor/atk_air → 三维攻击乘区（1.0 + 加成）
+##   def_light/def_armor/def_air → 三维防御乘区
+##   hp → max_hp 乘区
+##   attack_speed → 降低 attack_interval（提速）
+## 与 _apply_rune_bonus_to_stats 模式一致：加成为百分比（0.10 = +10%）。
+func _apply_active_faction_stat_bonus(stats: UnitStats, stat_bonus: Dictionary) -> void:
+	if stat_bonus.is_empty():
+		return
+	# 三维攻击
+	var atk_keys: Array = ["atk_light", "atk_armor", "atk_air"]
+	for i in range(atk_keys.size()):
+		var k: String = atk_keys[i]
+		if stat_bonus.has(k) and float(stat_bonus[k]) != 0.0:
+			var mult: float = 1.0 + float(stat_bonus[k])
+			match i:
+				0: stats.attack_light *= mult
+				1: stats.attack_armor *= mult
+				2: stats.attack_air *= mult
+			# atk_light 同时是 attack_damage 的主源（别名），需同步
+			if i == 0:
+				stats.attack_damage *= mult
+	# 三维防御
+	var def_keys: Array = ["def_light", "def_armor", "def_air"]
+	for i in range(def_keys.size()):
+		var k: String = def_keys[i]
+		if stat_bonus.has(k) and float(stat_bonus[k]) != 0.0:
+			var mult: float = 1.0 + float(stat_bonus[k])
+			match i:
+				0: stats.defense_light *= mult
+				1: stats.defense_armor *= mult
+				2: stats.defense_air *= mult
+	# HP
+	if stat_bonus.has("hp") and float(stat_bonus["hp"]) != 0.0:
+		stats.max_hp *= (1.0 + float(stat_bonus["hp"]))
+	# 攻击速度（提速）
+	if stat_bonus.has("attack_speed") and float(stat_bonus["attack_speed"]) != 0.0:
+		var speed_mult: float = 1.0 + float(stat_bonus["attack_speed"])
+		stats.attack_light_speed /= speed_mult
+		stats.attack_armor_speed /= speed_mult
+		stats.attack_air_speed /= speed_mult
+		stats.attack_interval /= speed_mult
 
 func _get_autoload_node(name: String) -> Node:
 	var loop := Engine.get_main_loop()
