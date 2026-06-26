@@ -1083,12 +1083,13 @@ func _format_enemy_runes(rune_ids: Array) -> String:
 func _show_enemy_phase_driver(unit: Node) -> void:
 	var mname: String = str(unit.get("master_name")) if "master_name" in unit else "相位师"
 	if name_label: name_label.text = "敌方相位师基地"
-	if type_label: type_label.text = "【%s】· 相位场驱动器" % mname	var cur_hp: float = float(unit.get("hp")) if "hp" in unit else 0.0
+	if type_label: type_label.text = "【%s】· 相位场驱动器" % mname
+	var cur_hp: float = float(unit.get("hp")) if "hp" in unit else 0.0
 	var mx_hp: float = float(unit.get("max_hp")) if "max_hp" in unit else 1.0
 	if summary_label: summary_label.text = "基地 HP %d / %d" % [int(cur_hp), int(mx_hp)]
 	var lines: Array[String] = []
 	lines.append("摧毁敌方相位场驱动器即可获胜；对方会持续生产战斗单位。")
-		if GameManager and GameManager.has_method("get_current_phase_master"):
+	if GameManager and GameManager.has_method("get_current_phase_master"):
 			var cfg: Dictionary = GameManager.get_current_phase_master()
 			if not cfg.is_empty():
 				var disp: String = str(cfg.get("name", mname))
