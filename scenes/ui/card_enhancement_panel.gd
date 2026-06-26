@@ -19,8 +19,6 @@ const CompanyDefinitions = preload("res://data/company_definitions.gd")
 const BasicResources = preload("res://data/basic_resources.gd")
 const UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")
 
-const MOD_SLOT_LABELS: PackedStringArray = ["A", "B", "C", "D", "E", "F", "G", "H", "I"]
-
 # === 主题色（绿色强化主题） ===
 const THEME_GREEN := Color(0.3, 0.92, 0.5, 1)
 const THEME_GREEN_SOFT := Color(0.2, 0.7, 0.38, 1)
@@ -35,8 +33,6 @@ const THEME_BG_SLOT := Color(0.05, 0.08, 0.11, 0.95)
 const THEME_BORDER_DIM := Color(0.25, 0.35, 0.42, 0.7)
 
 signal closed
-## v6.6: 请求打开改造工坊面板（由 Main 连接，跳转到 modification_panel）
-signal open_modification_requested
 
 # UI 组件引用 - 新布局结构
 @onready var card_list_container = $VBoxContainer/MainSplit/LeftPanel/ScrollContainer/CardListContainer
@@ -45,12 +41,6 @@ signal open_modification_requested
 @onready var detail_scroll = $VBoxContainer/MainSplit/RightPanel/DetailScroll
 @onready var detail_panel = $VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel
 @onready var star_upgrade_button = $VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/StarUpgradeSection/StarUpgradeVBox/StarUpgradeButton
-@onready var mod_section = $VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/ModSection
-@onready var mod_status_label = $VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/ModSection/ModVBox/ModStatusLabel
-@onready var mod_req_label = $VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/ModSection/ModVBox/ModReqLabel
-@onready var mod_offense_btn = $VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/ModSection/ModVBox/ModButtonsHBox/ModOffenseBtn
-@onready var mod_defense_btn = $VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/ModSection/ModVBox/ModButtonsHBox/ModDefenseBtn
-@onready var mod_utility_btn = $VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/ModSection/ModVBox/ModButtonsHBox/ModUtilityBtn
 @onready var enhancement_button = $VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/EnhancementSection/EnhancementVBox/EnhancementButton
 @onready var evolve_button = $VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/EvolutionSection/EvolutionVBox/EvolveButton
 @onready var evolution_branch_selector: OptionButton = $VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/EvolutionSection/EvolutionVBox/EvolutionBranchSelector
@@ -86,19 +76,6 @@ func _ready() -> void:
 
 	if star_upgrade_button:
 		star_upgrade_button.pressed.connect(_on_star_upgrade_button_pressed)
-	# v6.6: 原 3 个改造分支按钮（offense/defense/utility）是死代码——传入的 option_id
-	# 在 ModEffects.MOD_DATA（仅 MOD_01~20）中查不到，apply_modification 永远失败。
-	# 改造功能已由 modification_panel（走 ModificationRegistry 140+ 模块系统）完整实现。
-	# 这里改为：3 个按钮统一指向 _on_open_modification_pressed，触发跳转信号。
-	if mod_offense_btn:
-		mod_offense_btn.pressed.connect(_on_open_modification_pressed)
-		mod_offense_btn.disabled = false
-		mod_offense_btn.text = "🔧 前往改造工坊"
-	if mod_defense_btn:
-		# 复用为同一入口的提示按钮，避免视觉空缺；隐藏防御/辅助两个死按钮
-		mod_defense_btn.visible = false
-	if mod_utility_btn:
-		mod_utility_btn.visible = false
 	if BasicResourceManager and BasicResourceManager.has_signal("resources_changed"):
 		if not BasicResourceManager.resources_changed.is_connected(_on_nano_materials_changed):
 			BasicResourceManager.resources_changed.connect(_on_nano_materials_changed)
@@ -144,12 +121,8 @@ func _exit_tree() -> void:
 func _apply_section_title_icons() -> void:
 	# 强化：mod_enhancement.png 在 mod_icons 子目录
 	var enh_tex := UiAssetLoader.load_tex("res://assets/ui/icons/mod_icons/mod_enhancement.png")
-	# 改装/进化：根目录 svg
-	var mod_tex := UiAssetLoader.ui_icon("icon_modification")
+	# 进化：根目录 svg
 	var evo_tex := UiAssetLoader.ui_icon("icon_blueprint")
-	_prepend_icon_to_label(
-		get_node_or_null("VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/ModSection/ModVBox/ModTitle"),
-		mod_tex, "改装系统")
 	_prepend_icon_to_label(
 		get_node_or_null("VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/EnhancementSection/EnhancementVBox/EnhancementTitle"),
 		enh_tex, "强化系统")
@@ -185,7 +158,7 @@ func _is_detail_panel_persist_child(child: Node) -> bool:
 		return false
 	var n: String = child.name
 	return n == "CardInfoSection" or n == "StarUpgradeSection" \
-		or n == "ModSection" or n == "EnhancementSection" \
+		or n == "EnhancementSection" \
 		or n == "EvolutionSection"
 
 ## 仅清除 detail_panel 中动态添加的子节点，保留 tscn Section
@@ -197,7 +170,7 @@ func _clear_dynamic_detail() -> void:
 				detail_panel.remove_child(child)
 				child.free()
 		# 清理 persist Section 内部的动态内容（进度条/槽位/tips 等）
-		for rel in ["ModSection/ModVBox", "EnhancementSection/EnhancementVBox", "EvolutionSection/EvolutionVBox"]:
+		for rel in ["EnhancementSection/EnhancementVBox", "EvolutionSection/EvolutionVBox"]:
 			var vbox = detail_panel.get_node_or_null(rel)
 			if vbox:
 				_clear_dyn(vbox)
@@ -336,7 +309,6 @@ func _update_detail_panel() -> void:
 		if evolution_branch_selector:
 			evolution_branch_selector.disabled = true
 			evolution_branch_selector.clear()
-		_reset_modification_section()
 		return
 
 	# 选中了卡牌：隐藏 NoSelection，显示 DetailScroll
@@ -388,7 +360,6 @@ func _update_detail_panel() -> void:
 	detail_panel.move_child(header, 0)
 
 	_update_star_upgrade_section()
-	_update_modification_section()
 
 	# 获取强化信息
 	var card_enh_mgr = get_node_or_null("/root/CardEnhancementManager")
@@ -603,34 +574,6 @@ func _on_evolution_branch_selected(index: int) -> void:
 	# 分支切换后刷新提示和按钮状态
 	_update_evolution_section(_resolve_card_data(selected_card_id))
 
-func _reset_modification_section() -> void:
-	if mod_status_label:
-		mod_status_label.text = "改装进度：—"
-	if mod_req_label:
-		mod_req_label.text = ""
-	_set_mod_branch_buttons_enabled(false)
-	# 清理动态槽位可视化
-	var mod_vbox = get_node_or_null("VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/ModSection/ModVBox")
-	if mod_vbox:
-		_clear_dyn(mod_vbox)
-
-func _set_mod_branch_buttons_enabled(enabled: bool) -> void:
-	if mod_offense_btn:
-		mod_offense_btn.disabled = not enabled
-	if mod_defense_btn:
-		mod_defense_btn.disabled = not enabled
-	if mod_utility_btn:
-		mod_utility_btn.disabled = not enabled
-
-func _mod_option_display_name(option_id: String) -> String:
-	## v6.5: 改用 ModificationRegistry 查找（新 MOD ID 格式为 inf_01_xxx/arm_01_xxx 等，
-	## 旧 ModEffects 只认 MOD_01~MOD_20，导致新 ID 查不到中文名而回退到原始 ID）。
-	const ModReg = preload("res://scripts/systems/modification_registry.gd")
-	var mod_data: Dictionary = ModReg.get_data(option_id)
-	if not mod_data.is_empty():
-		return mod_data.get("name", option_id)
-	return option_id
-
 func _permit_display_name(permit_id: String) -> String:
 	var def: Dictionary = BasicResources.get_def(permit_id)
 	return String(def.get("name", permit_id))
@@ -638,61 +581,6 @@ func _permit_display_name(permit_id: String) -> String:
 # v6.6: _format_mod_requirements 和 _build_permit_gap_text 已移除（死代码）。
 # 原改造消耗展示依赖旧系统 get_modification_requirements（已删），现改造消耗由
 # modification_panel 内部通过 install_modification 动态计算并提示。
-
-func _update_modification_section() -> void:
-	if mod_status_label == null or BlueprintManager == null:
-		return
-	if selected_card_id.is_empty():
-		_reset_modification_section()
-		return
-	var applied: Array = BlueprintManager.blueprint_mods.get(selected_card_id, [])
-	var applied_parts: PackedStringArray = PackedStringArray()
-	for i in range(applied.size()):
-		var slot: String = MOD_SLOT_LABELS[i] if i < MOD_SLOT_LABELS.size() else "?"
-		# applied[i] 是 Dictionary 格式 {"id": "MOD_XX"}，需要先获取 id
-		var entry = applied[i]
-		var mod_id: String = ""
-		var mod_disabled: bool = false
-		if entry is Dictionary:
-			mod_id = String(entry.get("id", ""))
-			# v6.5: 检查启用状态
-			if entry.has("enabled") and not bool(entry.get("enabled", true)):
-				mod_disabled = true
-		else:
-			mod_id = String(entry)  # 兼容旧格式
-		var display_name: String = _mod_option_display_name(mod_id)
-		if mod_disabled:
-			display_name += "（禁用）"
-		applied_parts.append("%s:%s" % [slot, display_name])
-	# v6.5: mod_status_label 同时显示进度和已装改造完整名称列表，避免"看不到改造名字"
-	var progress_text: String = "改装进度：%d / 9" % applied.size()
-	if applied_parts.size() > 0:
-		progress_text += "\n已装：%s" % " / ".join(applied_parts)
-	mod_status_label.text = progress_text
-	# 9 槽位可视化
-	var mod_vbox = get_node_or_null("VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/ModSection/ModVBox")
-	if mod_vbox:
-		_clear_dyn(mod_vbox)
-		var slots_viz = _render_mod_slots(selected_card_id)
-		mod_vbox.add_child(slots_viz)
-		var status_idx: int = mod_status_label.get_index() if mod_status_label else 1
-		mod_vbox.move_child(slots_viz, status_idx + 1)
-	var max_times: int = 9  # v5.1: 改造次数固定为9次
-	var mod_index: int = applied.size()
-	if mod_index >= max_times:
-		if mod_req_label:
-			mod_req_label.text = "已完成全部改装槽位。可在改造工坊中替换。"
-	else:
-		if mod_req_label:
-			mod_req_label.text = "点击【🔧 改造工坊】安装改造模块（共 %d / 9 槽位）" % mod_index
-	# v6.6: 跳转按钮始终可用（改造工坊内部自行校验资源/冲突）
-	_set_mod_branch_buttons_enabled(true)
-
-## v6.6: 跳转到改造工坊面板（modification_panel）。
-## 原 _on_mod_option_pressed 是死代码（offense/defense/utility 在 ModEffects 查不到），
-## 改造功能已由 modification_panel 通过 ModificationRegistry（140+ 模块）完整实现。
-func _on_open_modification_pressed() -> void:
-	open_modification_requested.emit()
 
 func _update_star_upgrade_section() -> void:
 	# v5.1: star_level system removed - hide the entire section
@@ -930,7 +818,6 @@ func _render_affix_slots(card_id: String, current_level: int) -> Control:
 	unlock_label.add_theme_font_size_override("font_size", 12)
 	unlock_label.add_theme_color_override("font_color", THEME_CYAN)
 	# 解锁规则：Lv2/4/6/8/10 解锁槽1-5
-	var ModuleDefinitions = preload("res://data/module_definitions.gd")
 	var max_slots := ModuleDefinitions.get_max_slots_for_level(current_level)
 	var card_enh_mgr = get_node_or_null("/root/CardEnhancementManager")
 	var slots: Array = []
@@ -961,66 +848,50 @@ func _render_affix_slots(card_id: String, current_level: int) -> Control:
 		if not unlocked:
 			cell_label.text = "🔒"
 			cell_label.add_theme_color_override("font_color", THEME_TEXT_DIM * Color(1, 1, 1, 0.5))
-		elif i < slots.size():
-			cell_label.text = "✦%d" % (i + 1)
-			cell_label.add_theme_color_override("font_color", THEME_GREEN)
 		else:
-			cell_label.text = "空"
-			cell_label.add_theme_color_override("font_color", THEME_GREEN_SOFT * Color(1, 1, 1, 0.7))
+			var disp := _slot_display(slots, i)
+			if disp.is_empty():
+				# 已解锁但无词条
+				cell_label.text = "空"
+				cell_label.add_theme_color_override("font_color", THEME_GREEN_SOFT * Color(1, 1, 1, 0.7))
+			else:
+				# 有词条：显示词条名 + 等级
+				cell_label.text = disp
+				cell_label.add_theme_color_override("font_color", THEME_GREEN)
 		slot_cell.add_child(cell_label)
 		grid.add_child(slot_cell)
 	wrap.add_child(grid)
 	return wrap
 
-## 创建改装槽位可视化（9槽 A-I，竖向列表确保名称完整显示）
-func _render_mod_slots(card_id: String) -> Control:
-	var wrap := VBoxContainer.new()
-	wrap.name = "_dyn_mod_slots"
-	wrap.add_theme_constant_override("separation", 3)
-	var applied: Array = BlueprintManager.blueprint_mods.get(card_id, []) if BlueprintManager else []
-	# v6.5: 改为竖向列表，每行一个槽位，名称有足够空间完整显示
-	for i in range(9):
-		var filled := i < applied.size()
-		var slot_id: String = MOD_SLOT_LABELS[i] if i < MOD_SLOT_LABELS.size() else "?"
-		var mod_id: String = ""
-		var mod_name: String = ""
-		var mod_disabled: bool = false
-		if filled:
-			var entry = applied[i]
-			if entry is Dictionary:
-				mod_id = String(entry.get("id", ""))
-				if entry.has("enabled") and not bool(entry.get("enabled", true)):
-					mod_disabled = true
-			else:
-				mod_id = String(entry)
-			mod_name = _mod_option_display_name(mod_id)
-			if mod_disabled:
-				mod_name += "（禁用）"
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 8)
-		# 槽位标签（固定宽度）
-		var slot_label := Label.new()
-		slot_label.text = "[%s]" % slot_id
-		slot_label.custom_minimum_size = Vector2(36, 0)
-		slot_label.add_theme_font_size_override("font_size", 12)
-		slot_label.add_theme_color_override("font_color", THEME_GOLD if filled else THEME_TEXT_DIM)
-		row.add_child(slot_label)
-		# 改造名称（展开填充，完整显示）
-		var name_label := Label.new()
-		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		name_label.add_theme_font_size_override("font_size", 12)
-		if filled:
-			name_label.text = mod_name
-			if mod_disabled:
-				name_label.add_theme_color_override("font_color", THEME_TEXT_DIM * Color(1, 1, 1, 0.6))
-			else:
-				name_label.add_theme_color_override("font_color", THEME_PURPLE)
-		else:
-			name_label.text = "（空）"
-			name_label.add_theme_color_override("font_color", THEME_TEXT_DIM * Color(1, 1, 1, 0.4))
-		row.add_child(name_label)
-		wrap.add_child(row)
-	return wrap
+## 字符串超长截断并加省略号（避免中文被半截）
+func _truncate_with_ellipsis(text: String, max_len: int) -> String:
+	if text.length() <= max_len:
+		return text
+	return text.substr(0, max_len) + "…"
+
+## 解析第 i 个槽位的词条显示文本（"词条名 Lv.x"）；无词条返回空串
+## slot 可能是 ModuleSlot 对象（.module_id/.level）或 Dictionary（module_id/level）
+func _slot_display(slots: Array, i: int) -> String:
+	if i >= slots.size():
+		return ""
+	var s = slots[i]
+	if s == null:
+		return ""
+	var mid: String = ""
+	var lvl: int = 1
+	if s is Dictionary:
+		mid = String(s.get("module_id", ""))
+		lvl = int(s.get("level", 1))
+	elif "module_id" in s:
+		mid = String(s.module_id)
+		lvl = int(s.level)
+	if mid.is_empty():
+		return ""
+	var name: String = ModuleDefinitions.get_module_name(mid)
+	# 词条名过长时截断（槽位宽度有限），保留等级后缀
+	if name.length() > 4:
+		name = _truncate_with_ellipsis(name, 4)
+	return "%s Lv.%d" % [name, lvl]
 
 ## 卡牌列表项样式（选中/未选中）
 func _card_item_stylebox(selected: bool) -> StyleBoxFlat:
@@ -1177,6 +1048,14 @@ func _show_module_upgrade_popup(card_id: String) -> void:
 			continue
 		upgradable.append({"slot_index": i, "module_id": mid, "level": lvl})
 	if upgradable.is_empty():
+		# v6.13: 所有词条已满级Lv3，本次升级无可升级项 —— 给明确提示，
+		# 之前静默 return 导致玩家扣了纳米却看不到任何反馈
+		var msg := "所有词条均已满级，本次强化无可升级词条（强化等级已提升）"
+		if result_label:
+			result_label.text = msg
+			result_label.add_theme_color_override("font_color", Color(1.0, 0.7, 0.3, 1))
+		if SignalBus and SignalBus.has_signal("show_toast"):
+			SignalBus.show_toast.emit(msg)
 		return
 	var overlay := _create_module_overlay("↑ 升级词条", "本次强化可升级一个已有词条，请选择：")
 	var list_box: VBoxContainer = overlay["list_box"]
@@ -1267,6 +1146,8 @@ func _on_module_selected(card_id: String, module_id: String, popup_root: Control
 			_close_module_popup(popup_root)
 			_safe_refresh_after_module_popup()
 			return
+		# 失败：显示原因（之前静默无提示，玩家体感"点了没反应"）
+		_report_module_action_failure(r, "选择词条")
 	# 失败：保持弹窗，玩家可重选
 
 ## 升级已有词条
@@ -1278,6 +1159,19 @@ func _on_module_upgrade(card_id: String, slot_index: int, popup_root: Control) -
 			_close_module_popup(popup_root)
 			_safe_refresh_after_module_popup()
 			return
+		# 失败：显示原因
+		_report_module_action_failure(r, "升级词条")
+
+## 词条操作失败时统一反馈（v6.13: 修复"点了词条没反应"——
+## choose_module/upgrade_module 返回 ok:false 时原本静默，现显示 reason）
+func _report_module_action_failure(result: Dictionary, action_label: String) -> void:
+	var reason: String = String(result.get("reason", "未知原因"))
+	var msg: String = "%s失败：%s" % [action_label, reason]
+	if result_label:
+		result_label.text = msg
+		result_label.add_theme_color_override("font_color", Color(1.0, 0.45, 0.45, 1))
+	if SignalBus and SignalBus.has_signal("show_toast"):
+		SignalBus.show_toast.emit(msg)
 
 ## 关闭词条弹窗
 func _close_module_popup(popup_root: Control) -> void:

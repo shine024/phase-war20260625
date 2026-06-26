@@ -76,7 +76,7 @@ const DATA := {
 	"elite_cold_t72": {
 		"era": 2,
 		"display_name": "T-72坦克",
-		"hp": 250.0,
+		"hp": 375.0,
 		"speed": -60.0,
 		"attack_damage": 40.0,
 		"attack_range": 160.0,
@@ -92,7 +92,7 @@ const DATA := {
 	"boss_cold_mig": {
 		"era": 2,
 		"display_name": "米格-29",
-		"hp": 450.0,
+		"hp": 750.0,
 		"speed": -150.0,
 		"attack_damage": 55.0,
 		"attack_range": 210.0,
@@ -176,7 +176,7 @@ const DATA := {
 	"elite_modern_abrams": {
 		"era": 3,
 		"display_name": "M1A2坦克",
-		"hp": 300.0,
+		"hp": 450.0,
 		"speed": -60.0,
 		"attack_damage": 45.0,
 		"attack_range": 200.0,
@@ -206,7 +206,7 @@ const DATA := {
 	"boss_modern_command": {
 		"era": 3,
 		"display_name": "指挥中枢",
-		"hp": 700.0,
+		"hp": 1200.0,
 		"speed": 0.0,
 		"attack_damage": 70.0,
 		"attack_range": 220.0,

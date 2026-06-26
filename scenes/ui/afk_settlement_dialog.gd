@@ -212,5 +212,9 @@ func _display_name(item_id: String) -> String:
 			return "能量块"
 		_BasicResources.ID_RESEARCH_POINTS, "research_points":
 			return "研究点"
+	# afk_mode_manager 对无 item_id 的掉落用占位 key "other" 累计，这里映射显示名
+	match item_id:
+		"other":
+			return "其它"
 	# 蓝图碎片/卡牌——复用 battle_result_dialog 的解析路径
 	return _DefaultCards.get_safe_display_name(item_id)

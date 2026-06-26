@@ -106,7 +106,10 @@ static func _make_wave_spec(wave_index: int, wave_total: int, is_tutorial: bool,
 				boss = boss / _sum * (1.0 - basic)
 
 	# archetype tag 偏好：教学关偏 infantry，进度高时引入 vehicle/air 多样性
-	var bias_tags: Array[String] = []
+	# 注：用普通 Array 而非 Array[String] —— 三元表达式中含空数组分支（else []）会让 GDScript
+	# 把整体推断为无类型 Array，赋值给 Array[String] 变量会触发运行时报错（见 v6.14 回归）。
+	# 消费方 _pick_archetype_with_bias(pool, bias_tags: Array) 也是普通 Array，保持一致。
+	var bias_tags: Array = []
 	if is_tutorial:
 		bias_tags = ["infantry"]
 	else:

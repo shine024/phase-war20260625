@@ -111,23 +111,34 @@ func start_afk() -> bool:
 
 	var lp = get_node_or_null("/root/LevelProgressManager")
 	var valid = _get_valid_slots()
-	if valid.is_empty():
+	# 循环模式必须有已关联 slot；推图模式以 GameManager.current_level 为起始关，
+	# 不依赖 slot 关联。
+	if mode == Mode.CYCLE and valid.is_empty():
 		return false
 
-	# 推图模式：起始关 = slots 中最后一个已关联关卡（"最后一个选图开始"）。
-	# 复用 slot 选图入口，无需为推图单独设起始关控件。
-	# 未选任何 slot 时，start_afk 开头的 valid 校验已拦截（返回 false）。
+	# 推图模式：起始关 = 玩家最后选定关（GameManager.current_level）。
+	# 这样玩家在地图上选到哪一关，推图就从哪一关开始逐关推进，
+	# 而不是从默认值 1 或 slot 关联的低关卡开始。
+	# 读不到 GameManager/current_level 时回退 max_unlocked，再不行回退 1。
 	if mode == Mode.PUSH:
-		for i in range(3, -1, -1):
-			if slots[i] > 0:
-				push_level = slots[i]
-				break
-		if lp and lp.has_method("get_max_unlocked_level"):
+		var gm = get_node_or_null("/root/GameManager")
+		var start_lvl: int = 0
+		if gm != null and "current_level" in gm:
+			start_lvl = int(gm.current_level)
+		if start_lvl < 1:
+			# current_level 无效，回退已解锁最前沿
+			if lp != null and lp.has_method("get_max_unlocked_level"):
+				start_lvl = lp.get_max_unlocked_level()
+			else:
+				start_lvl = 1
+		# 钳制到已解锁上限：推图不应从玩家尚未解锁的关开始
+		if lp != null and lp.has_method("get_max_unlocked_level"):
 			var max_unlocked = lp.get_max_unlocked_level()
-			if push_level > max_unlocked:
-				push_level = max_unlocked
-			if push_level < 1:
-				push_level = 1
+			if start_lvl > max_unlocked:
+				start_lvl = max_unlocked
+			if start_lvl < 1:
+				start_lvl = 1
+		push_level = start_lvl
 	else:
 		# 循环模式：剔除未解锁的 slot 关卡，避免挂机进入未解锁关。
 		# 注意：仅在启动时校验，运行中新解锁的关不会自动加入（停止重启后生效）。

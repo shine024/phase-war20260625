@@ -65,40 +65,95 @@ func _refresh_card_list() -> void:
 		child.queue_free()
 
 	var DefaultCards = preload("res://data/default_cards.gd")
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+
 	## v7.1: 同时显示蓝图中有副本的卡和当前背包中的卡
-	var card_id_set: Dictionary = {}
+	## 用 Dictionary 存 { card_id: { card: CardResource, instance_ids: Array } }
+	var card_entries: Dictionary = {}
+
 	## 来源1：蓝图有副本的
 	for id_raw in BlueprintManager.get_all_blueprint_ids():
 		var card_id: String = str(id_raw)
-		card_id_set[card_id] = true
-	## 来源2：背包中的
+		if not card_entries.has(card_id):
+			card_entries[card_id] = { "card": null, "instance_ids": [] }
+
+	## 来源2：背包中的（可能是 instance_id 如 "cold_t72#1"）
 	var sm: Node = get_node_or_null("/root/SaveManager")
+	var all_backpack_ids: Array = []
 	if sm and sm.has_method("get_pending_backpack_ids"):
-		for idv in sm.get_pending_backpack_ids():
-			var sid: String = String(idv)
-			if not sid.is_empty():
-				card_id_set[sid] = true
+		all_backpack_ids.append_array(sm.get_pending_backpack_ids())
 	if sm and sm.has_method("get_last_known_backpack_ids"):
-		for idv in sm.get_last_known_backpack_ids():
-			var sid: String = String(idv)
-			if not sid.is_empty():
-				card_id_set[sid] = true
-	for card_id in card_id_set:
+		all_backpack_ids.append_array(sm.get_last_known_backpack_ids())
+
+	for idv in all_backpack_ids:
+		var sid: String = String(idv)
+		if sid.is_empty():
+			continue
+		# 解析 instance_id → card_id
+		var base_id: String = sid
+		if ir != null and ir.has_method("get_card_id_of"):
+			base_id = ir.get_card_id_of(sid)
+		else:
+			var hash_idx: int = sid.rfind("#")
+			if hash_idx >= 0:
+				base_id = sid.substr(0, hash_idx)
+		# 记录 instance_id
+		if not card_entries.has(base_id):
+			card_entries[base_id] = { "card": null, "instance_ids": [] }
+		card_entries[base_id]["instance_ids"].append(sid)
+
+	## 按 card_id 加载模板 CardResource
+	for card_id in card_entries:
 		var card: CardResource = DefaultCards.get_card_by_id(card_id)
 		if card == null:
 			continue
 		if card.card_type != GC.CardType.COMBAT_UNIT:
 			continue
-		var item = _create_card_item(card)
-		card_list_container.add_child(item)
+		card_entries[card_id]["card"] = card
 
-func _create_card_item(card: CardResource) -> Control:
+	## 为每个 card_id 生成一个或多个列表项
+	for card_id in card_entries:
+		var entry = card_entries[card_id]
+		var card: CardResource = entry["card"]
+		if card == null:
+			continue
+		var instance_ids: Array = entry["instance_ids"]
+		if not instance_ids.is_empty():
+			# 有实例：为每个实例生成一个条目（带独立养成数据）
+			for inst_id in instance_ids:
+				var inst_card: CardResource = null
+				if ir != null and ir.has_method("get_instance"):
+					inst_card = ir.get_instance(inst_id)
+				var item = _create_card_item(card, inst_card)
+				card_list_container.add_child(item)
+		else:
+			# 无实例：仅显示模板（蓝图解锁但未入包的卡）
+			var item = _create_card_item(card, null)
+			card_list_container.add_child(item)
+
+func _create_card_item(card: CardResource, instance_card: CardResource = null) -> Control:
 	var btn := Button.new()
 	btn.custom_minimum_size = Vector2(0, 52)
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn.text = ""
 	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	btn.add_theme_color_override("font_color", Color(0.91, 0.93, 0.96, 1))
+
+	# v7.1: 使用实例数据（如有），否则用模板
+	var display_card: CardResource = instance_card if instance_card != null else card
+	var display_name: String = card.display_name if card.display_name else card.card_id
+	var display_level: int = display_card.enhance_level if display_card else 0
+	var display_mods: Array = display_card.mods if display_card else []
+	var display_rarity: String = str(card.rarity) if card.has_method("get") else "common"
+	# 兼容 CardResource 字段
+	# 注意：Object.get() 只接受 1 个参数（属性名），需手动处理默认值
+	if display_card != null and display_card is Object and "rarity" in display_card:
+		display_rarity = str(display_card.rarity)
+	elif card is Object and "rarity" in card:
+		display_rarity = str(card.rarity)
+	var display_instance_id: String = ""
+	if display_card != null and display_card is Object and "instance_id" in display_card:
+		display_instance_id = str(display_card.instance_id)
 
 	var sb_n := StyleBoxFlat.new()
 	sb_n.bg_color = Color(0.06, 0.10, 0.18, 0.6)
@@ -108,7 +163,7 @@ func _create_card_item(card: CardResource) -> Control:
 	sb_n.content_margin_top = 5
 	sb_n.content_margin_right = 8
 	sb_n.content_margin_bottom = 5
-	if selected_card and selected_card.card_id == card.card_id:
+	if selected_card and selected_card.instance_id == display_instance_id:
 		sb_n.border_color = Color(0, 0.94, 1, 0.8)
 		sb_n.border_width_left = 2
 		sb_n.bg_color = Color(0, 0.94, 1, 0.1)
@@ -130,24 +185,32 @@ func _create_card_item(card: CardResource) -> Control:
 	name_row.add_theme_constant_override("separation", 6)
 	name_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	name_row.add_child(_make_label(_get_unit_icon(card), 15, _get_kind_color(card.combat_kind), false))
-	name_row.add_child(_make_label(card.display_name, 13, Color(0.91, 0.93, 0.96, 1), true))
+	name_row.add_child(_make_label(display_name, 13, Color(0.91, 0.93, 0.96, 1), true))
+	# v7.1: 同名多实例显示序号后缀
+	var inst_seq: String = ""
+	if instance_card != null and instance_card.instance_id != null and not str(instance_card.instance_id).is_empty():
+		var iid: String = str(instance_card.instance_id)
+		var h: int = iid.rfind("#")
+		if h >= 0:
+			inst_seq = " #%s" % iid.substr(h + 1)
+	name_row.add_child(_make_label(inst_seq, 11, Color(0.6, 0.6, 0.7, 0.8), false))
 	vbox.add_child(name_row)
 
 	var meta_row := HBoxContainer.new()
 	meta_row.add_theme_constant_override("separation", 8)
 	meta_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var star_count: int = StarConfig.calculate_star(card.enhance_level * 2, card.rarity)
+	var star_count: int = StarConfig.calculate_star(display_level * 2, card.rarity)
 	var star_str := ""
 	for s in range(5):
 		star_str += "★" if s < star_count else "☆"
 	meta_row.add_child(_make_label(star_str, 10, Color(1.0, 0.84, 0.0, 0.85), false))
-	meta_row.add_child(_make_label("改造 %d/9" % card.mods.size(), 10, Color(0, 0.94, 1, 0.9), false))
-	meta_row.add_child(_make_label("Lv.%d" % card.enhance_level, 10, Color(0.5, 0.5, 0.6, 0.7), false))
+	meta_row.add_child(_make_label("改造 %d/9" % display_mods.size(), 10, Color(0, 0.94, 1, 0.9), false))
+	meta_row.add_child(_make_label("Lv.%d" % display_level, 10, Color(0.5, 0.5, 0.6, 0.7), false))
 	vbox.add_child(meta_row)
 
 	btn.add_child(vbox)
-	btn.tooltip_text = "改造：%d/9" % card.mods.size()
-	btn.pressed.connect(func(): _on_card_selected(card))
+	btn.tooltip_text = "改造：%d/9" % display_mods.size()
+	btn.pressed.connect(func(): _on_card_selected(display_card))
 	return btn
 
 ## v7.1: 显示未安装的改造（仅显示对应兵种可用的）

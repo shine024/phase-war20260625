@@ -764,8 +764,12 @@ func _ensure_faction_keys_after_load() -> void:
 			faction_reputation[fid] = FactionReputation.DEFAULT_STARTING_REPUTATION
 		else:
 			faction_reputation[fid] = int(faction_reputation[fid])
-		if not faction_level.has(fid):
-			faction_level[fid] = FactionReputation.get_level_from_reputation(int(faction_reputation[fid]))
+		# M6 加固: faction_level 是 reputation 的派生值，消除双源不同步风险——
+		# 存档里的 level 必须与从 reputation 派生的一致，否则以派生值为准。
+		# （v6.10 设计原则：派生状态不存储。此处保留存储字段兼容旧存档，但强制以派生值为准）
+		var derived_level: int = FactionReputation.get_level_from_reputation(int(faction_reputation[fid]))
+		if not faction_level.has(fid) or int(faction_level[fid]) != derived_level:
+			faction_level[fid] = derived_level
 		else:
 			faction_level[fid] = int(faction_level[fid])
 		if not faction_store_inventory.has(fid):

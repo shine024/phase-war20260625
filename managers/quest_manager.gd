@@ -48,6 +48,17 @@ func _ready() -> void:
 		if SignalBus.has_signal("unit_died"):
 			if not SignalBus.unit_died.is_connected(_on_unit_died):
 				SignalBus.unit_died.connect(_on_unit_died)
+	# v6.6 修复: enhancement_completed 原 emit 无 connect，强化类教学任务永远不推进。
+	# CardEnhancementManager 是 lazy-load，deferred 到下一帧再查找连接，避免时序竞争。
+	call_deferred("_connect_enhancement_signal")
+
+## v6.6: 延迟连接 CardEnhancementManager.enhancement_completed（lazy-load 安全）
+func _connect_enhancement_signal() -> void:
+	var cem = get_node_or_null("/root/CardEnhancementManager")
+	if cem == null:
+		return
+	if not cem.enhancement_completed.is_connected(_on_enhancement_completed):
+		cem.enhancement_completed.connect(_on_enhancement_completed)
 
 # ──────────────── 信号处理器 ────────────────
 
@@ -63,7 +74,7 @@ func _on_unit_died(_unit: Node, is_player: bool) -> void:
 	_notify_enemy_killed()
 
 
-func _on_enhancement_completed(success: bool, _card_id: String, _stats: Dictionary, _message: String) -> void:
+func _on_enhancement_completed(success: bool, _card_id: String, _action: String, _message: String) -> void:
 	if not success:
 		return
 	for qid in _accepted.keys():

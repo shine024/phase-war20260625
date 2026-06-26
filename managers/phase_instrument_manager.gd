@@ -81,6 +81,17 @@ const RANK_STAR_COEFFICIENTS: Dictionary = {
 	6: 1.20,  # 传说
 	7: 1.25,  # 神话
 }
+
+# ═══════════════════════════════════════════════════════════
+# v7.2: 相位师镜像对称系数
+# 敌方产兵加成镜像我方公式。这两个系数把敌方相位师的 attack_power/defense
+# 换算成等量于我方"相位场属性点"的加成比例。校准依据：我方满相位场（约16点
+# 分配到 atk/hp/def）在 PHASE_FIELD_GROWTH_RULES 下约贡献 atk+10%/hp+10%。
+# 敌方满级相位师 attack_power~1000/defense~200，取系数使其贡献量级相当。
+# ═══════════════════════════════════════════════════════════
+const MIRROR_LEVEL_ATK_COEFF: float = 0.00010  # attack_power 1000 → +10% 攻击（等量我方满相位场）
+const MIRROR_LEVEL_HP_COEFF: float = 0.00050   # defense 200 → +10% HP（等量我方满相位场）
+
 ## 当前战斗缓存的玩家相位师星级（start_battle 时算一次，整场不变）
 var _cached_player_rank_stars: int = 3
 ## 当前战斗缓存的敌方 boss 相位师星级（仅 boss 对战时设置）
@@ -337,16 +348,44 @@ func apply_phase_field_bonus_to_unit_stats(stats: UnitStats) -> void:
 func apply_enemy_phase_master_bonus_to_unit_stats(stats: UnitStats, enemy_stars: int) -> void:
 	if stats == null:
 		return
+	# v7.2: 等级维度加成 —— 读相位师 master_stats.attack_power/defense，镜像我方相位场属性点。
+	# 注意：符文/相位仪/改造维度由 enemy_phase_field_driver 的 v6.14 函数处理
+	# （_apply_master_rune_bonus / _apply_enemy_phase_instrument_bonus / _apply_sequence_entry_bonus），
+	# 此处只负责等级维度，避免双重叠加。无 master_config 时回退旧标量（向后兼容）。
+	var master_cfg: Dictionary = _get_current_enemy_master_config()
+	if master_cfg.is_empty():
+		_apply_enemy_bonus_legacy_scalar(stats, enemy_stars)
+		return
+	var rank_coeff: float = get_rank_coefficient(enemy_stars)
+	var master_stats: Dictionary = master_cfg.get("stats", {})
+	var atk_from_level: float = float(master_stats.get("attack_power", 0.0)) * MIRROR_LEVEL_ATK_COEFF * rank_coeff
+	var hp_from_level: float = float(master_stats.get("defense", 0.0)) * MIRROR_LEVEL_HP_COEFF * rank_coeff
+	# 应用等级加成（atk/hp，与我方相位场属性点对称）
+	if hp_from_level > 0.0:
+		stats.max_hp = maxf(1.0, stats.max_hp * (1.0 + hp_from_level))
+	if atk_from_level > 0.0:
+		stats.attack_damage = maxf(0.1, stats.attack_damage * (1.0 + atk_from_level))
+		stats.attack_light = maxf(0.1, stats.attack_light * (1.0 + atk_from_level))
+		stats.attack_armor = maxf(0.1, stats.attack_armor * (1.0 + atk_from_level))
+		stats.attack_air = maxf(0.1, stats.attack_air * (1.0 + atk_from_level))
+		if stats.has_method("_sync_weapon_slots_damage"):
+			stats._sync_weapon_slots_damage(1.0 + atk_from_level)
+		for i in range(stats.weapons.size()):
+			var w: Variant = stats.weapons[i]
+			if w is Dictionary:
+				var wd: Dictionary = w
+				wd["damage"] = maxf(0.1, float(wd.get("damage", 0.0)) * (1.0 + atk_from_level))
+				stats.weapons[i] = wd
+
+## v7.2: 旧单一标量加成（master_config 不可用时的回退路径，保持向后兼容）
+func _apply_enemy_bonus_legacy_scalar(stats: UnitStats, enemy_stars: int) -> void:
 	var coeff: float = get_rank_coefficient(enemy_stars)
-	# 基准乘算量级（与玩家方满相位场点数+相位仪7星时相当，约 0.15~0.20）
-	# 排名系数调整这个基准：3★=0.17，7★=0.17×1.25≈0.21，1★=0.17×0.85≈0.14
 	var base_mult: float = 0.17 * coeff
 	stats.max_hp = maxf(1.0, stats.max_hp * (1.0 + base_mult))
 	stats.attack_damage = maxf(0.1, stats.attack_damage * (1.0 + base_mult))
 	stats.attack_light = maxf(0.1, stats.attack_light * (1.0 + base_mult))
 	stats.attack_armor = maxf(0.1, stats.attack_armor * (1.0 + base_mult))
 	stats.attack_air = maxf(0.1, stats.attack_air * (1.0 + base_mult))
-	# 武器槽位伤害同步（与玩家方一致，覆盖 weapon_slots 与 weapons 两套）
 	if stats.has_method("_sync_weapon_slots_damage"):
 		stats._sync_weapon_slots_damage(1.0 + base_mult)
 	for i in range(stats.weapons.size()):
@@ -356,6 +395,17 @@ func apply_enemy_phase_master_bonus_to_unit_stats(stats: UnitStats, enemy_stars:
 			wd["damage"] = maxf(0.1, float(wd.get("damage", 0.0)) * (1.0 + base_mult))
 			stats.weapons[i] = wd
 	stats.damage_reduction = clampf(stats.damage_reduction + base_mult, 0.0, 0.8)
+
+## v7.2: 从 BattleManager 取当前敌方相位师配置
+func _get_current_enemy_master_config() -> Dictionary:
+	var tree = Engine.get_main_loop() as SceneTree
+	if tree == null or tree.root == null:
+		return {}
+	var bm: Node = tree.root.get_node_or_null("BattleManager")
+	if bm == null or not ("_phase_master_config" in bm):
+		return {}
+	var cfg: Dictionary = bm.get("_phase_master_config")
+	return cfg if not cfg.is_empty() else {}
 
 ## v6.7: 战斗开始时缓存玩家相位师星级（整场战斗不变）
 func set_player_rank_stars(stars: int) -> void:

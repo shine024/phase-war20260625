@@ -20,6 +20,7 @@ const AttackCalculator = preload("res://scripts/battle/attack_calculator.gd")
 const RuneSpecialHandler = preload("res://managers/rune_special_handler.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 const EnemyPhaseEquipment = preload("res://data/enemy_phase_equipment.gd")
+const FortShieldAuraScript = preload("res://scripts/battle/fort_shield_aura.gd")
 # ObjectPoolManager 为 autoload
 const BATTLE_MIN_X: float = 40.0
 const BATTLE_MAX_X: float = 1240.0
@@ -64,6 +65,16 @@ var is_player: bool = true
 var stats: UnitStats
 var hp: float = 100.0
 var shield: float = 0.0  # 护盾值
+## v7.1: 堡垒类(combat_kind==FORT)专属防护光环——纯视觉，让"在防护"可见化。
+## 站场上一动不动的防御单位会被玩家误以为"没作用"，此光环持续呼吸 + 受击闪亮强化。
+var _fort_shield_aura: Node2D = null
+var _is_fort_aura_unit: bool = false  # 缓存判定，避免每帧查 stats.combat_kind
+## 受击强化值（0~1）：受击瞬间置1，每帧衰减；驱动护盾环短暂扩张+闪亮
+var _fort_aura_hit_boost: float = 0.0
+## v7.2: 护盾状态光环（青色外层环）——shield>0 时显示，耗尽消失。
+## 巨型能量罩(20000)/符文护盾/法则护盾等所有护盾源都走此路径，让"有护盾"可见化。
+var _shield_aura: Node2D = null
+var _shield_aura_hit_boost: float = 0.0  # 护盾吸收伤害时的承压闪光
 var attack_timer: float = 0.0
 ## v5.0 攻速分离: 三阶段攻击状态机 (idle → windup → active → cooldown → idle)
 enum AttackPhase { IDLE, WINDUP, ACTIVE, COOLDOWN }
@@ -221,6 +232,9 @@ func setup(p_is_player: bool, p_stats: UnitStats, forced_enemy_visual_archetype_
 	_has_repair_fortress = CardAbilityManager.has_platform_card(stats.platform_card_id, "drop_repair_fortress")
 	_has_titan_mk2 = CardAbilityManager.has_platform_card(stats.platform_card_id, "titan_mk2")
 	_has_bulwark = CardAbilityManager.has_platform_card(stats.platform_card_id, "bulwark")
+
+	# v7.1: 堡垒类防护光环——纯视觉，让防御单位"在防护"可见化
+	_ensure_fort_shield_aura()
 
 func setup_with_enemy_visual(p_is_player: bool, p_stats: UnitStats, p_visual_archetype_id: String) -> void:
 	# 必须在 setup 内第一次 _update_visual 之前就带上缴获外观 id，否则会短暂套用 unit_sprites 我方机甲图
@@ -492,6 +506,87 @@ func _update_shape() -> void:
 	poly.polygon = pts
 	# 我方蓝色，敌方红色（用于相位师等复用构装体场景的敌方单位）
 	poly.color = Color(0.2, 0.4, 0.9) if is_player else Color(0.85, 0.2, 0.2)
+
+# ═════════════════════════════════════════════════════════════════
+#  v7.1: 堡垒类防护光环（纯视觉）
+#  防御单位站场不动易被误以为"没作用"，加持续呼吸的护盾环 + 受击闪亮，
+#  让"在防护"可见化。零数值影响，绘制由 FortShieldAura 子节点承担。
+# ═════════════════════════════════════════════════════════════════
+
+## 判定并创建堡垒防护光环。堡垒类(combat_kind==FORT)才挂，其他单位 _is_fort_aura_unit 保持 false。
+func _ensure_fort_shield_aura() -> void:
+	_is_fort_aura_unit = false
+	if is_preview_mode or is_deploy_ghost:
+		return
+	if stats == null:
+		return
+	if stats.combat_kind != GC.CombatKind.FORT:
+		return
+	_is_fort_aura_unit = true
+	if _fort_shield_aura != null and is_instance_valid(_fort_shield_aura):
+		# 已创建（setup 可能在重置时重入）：重置受击强化，复用现有节点
+		_fort_aura_hit_boost = 0.0
+		return
+	var aura: Node2D = Node2D.new()
+	aura.set_script(FortShieldAuraScript)
+	aura.name = "FortShieldAura"
+	aura.z_index = -1  # 画在单位本体之下，作为环绕光晕
+	aura.set_meta(&"mode", "fort")
+	add_child(aura)
+	_fort_shield_aura = aura
+
+## v7.2: 创建护盾状态光环（shield>0 时懒创建）
+func _ensure_shield_aura() -> void:
+	if _shield_aura != null and is_instance_valid(_shield_aura):
+		return
+	var aura: Node2D = Node2D.new()
+	aura.set_script(FortShieldAuraScript)
+	aura.name = "ShieldAura"
+	aura.z_index = -2  # 护盾环画在堡垒环之外（更外层"罩"）
+	aura.set_meta(&"mode", "shield")
+	aura.visible = false  # 默认隐藏，shield>0 时才显示
+	add_child(aura)
+	_shield_aura = aura
+
+## 每帧驱动光环呼吸 + 衰减受击强化。
+## 堡垒环仅堡垒单位生效；护盾环对任何 shield>0 的单位生效（耗尽自动隐藏）。
+func _update_fort_shield_aura(delta: float) -> void:
+	# 预览/虚影态不显示任何光环
+	if is_preview_mode or is_deploy_ghost:
+		if _fort_shield_aura != null and is_instance_valid(_fort_shield_aura):
+			_fort_shield_aura.visible = false
+		if _shield_aura != null and is_instance_valid(_shield_aura):
+			_shield_aura.visible = false
+		return
+
+	# ── 堡垒职业环 ──
+	if _is_fort_aura_unit and _fort_shield_aura != null and is_instance_valid(_fort_shield_aura):
+		_fort_shield_aura.visible = true
+		if _fort_aura_hit_boost > 0.0:
+			_fort_aura_hit_boost = maxf(0.0, _fort_aura_hit_boost - delta * 2.0)
+		_fort_shield_aura.set_meta(&"is_player", is_player)
+		_fort_shield_aura.set_meta(&"hit_boost", _fort_aura_hit_boost)
+		_fort_shield_aura.queue_redraw()
+
+	# ── 护盾状态环（v7.2）──
+	# shield>0 才显示，耗尽隐藏；护盾吸收伤害时(_shield_aura_hit_boost)承压闪光
+	var has_shield: bool = shield > 0.0
+	if has_shield:
+		if _shield_aura == null or not is_instance_valid(_shield_aura):
+			_ensure_shield_aura()
+		if _shield_aura != null and is_instance_valid(_shield_aura):
+			_shield_aura.visible = true
+			if _shield_aura_hit_boost > 0.0:
+				_shield_aura_hit_boost = maxf(0.0, _shield_aura_hit_boost - delta * 2.0)
+			# 护盾比例（基于 max_hp*2 上限，与 add_shield 的 clamp 一致）
+			var shield_cap: float = stats.max_hp * 2.0 if stats != null else 200.0
+			var shield_ratio: float = clampf(shield / shield_cap, 0.0, 1.0) if shield_cap > 0.0 else 0.0
+			_shield_aura.set_meta(&"shield_ratio", shield_ratio)
+			_shield_aura.set_meta(&"hit_boost", _shield_aura_hit_boost)
+			_shield_aura.queue_redraw()
+	elif _shield_aura != null and is_instance_valid(_shield_aura):
+		_shield_aura.visible = false  # 护盾耗尽，隐藏（节点保留，下次获得护盾复用）
+
 
 ## 缓存 load()：同一资源路径只加载一次，后续从内存字典取
 func _cached_load(path: String, type_hint: int = -1) -> Resource:
@@ -839,6 +934,8 @@ func _physics_process(delta: float) -> void:
 	_move_target = Vector2.INF
 	ConstructUnitAI.process_attack(self, delta)
 	_update_animation()
+	# v7.1: 堡垒防护光环呼吸动画（仅堡垒类单位，非堡垒时 _is_fort_aura_unit=false 直接返回）
+	_update_fort_shield_aura(delta)
 	move_and_slide()
 	_clamp_inside_battlefield()
 	if not is_player and _cached_is_card_grid:
@@ -1039,6 +1136,8 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		var absorbed: float = min(shield, hp_loss)
 		shield -= absorbed
 		hp_loss -= absorbed
+		# v7.2: 护盾承压闪光（护盾环扩张+变亮，让玩家感知"护盾在挡伤害"）
+		_shield_aura_hit_boost = 1.0
 		_update_hp_bar()
 	hp -= hp_loss
 
@@ -1053,6 +1152,9 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 	# 受击闪白/抖动反馈（仅存活单位；死亡时 queue_free 后 tween 会写 freed instance）
 	_play_hit_flash()
 	_play_hit_shake()
+	# v7.1: 堡垒防护光环受击强化（扩张+闪亮）
+	if _is_fort_aura_unit:
+		_fort_aura_hit_boost = 1.0
 
 ## 治疗方法（用于词条吸血效果）
 func heal(amount: float) -> void:
@@ -1063,7 +1165,16 @@ func heal(amount: float) -> void:
 
 ## 添加护盾（用于词条效果）
 func add_shield(amount: float) -> void:
+	if amount <= 0.0:
+		return
+	var old_shield = shield
 	shield = min(shield + amount, stats.max_hp * 2.0)  # 护盾上限为双倍 HP
+	# 更新护盾条显示
+	var hpbar = get_node_or_null("HpBar") as Node2D
+	if hpbar and hpbar.has_method("set_shield") and hpbar.has_method("trigger_shield_gain"):
+		hpbar.set_shield(shield, stats.max_hp)
+		if old_shield <= 0.0 or old_shield < shield * 0.5:  # 首次获得或大幅增加时触发闪光
+			hpbar.trigger_shield_gain(amount, stats.max_hp)
 
 ## 扣除伤害时先扣护盾（护盾的防御优先级高）
 ## 返回实际扣除的 HP

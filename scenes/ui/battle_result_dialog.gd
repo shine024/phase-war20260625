@@ -191,8 +191,14 @@ static func create(parent: Node, player_won: bool, blueprints: Array, \
 			drop_title.add_theme_font_size_override("font_size", 13)
 			drop_title.add_theme_color_override("font_color", Color(0.55, 0.9, 1.0, 1.0))
 			content_box.add_child(drop_title)
+			# 性能优化：get_drop_info 内部会查 DefaultCards(133卡表)/PhaseLaws，
+			# 每次 sort 比较重复调用是 O(n²) 量级（掉落多时结算帧可卡几十 ms）。
+			# 在此一次性预建每个 drop 的 info 缓存（按对象 instance_id 索引），
+			# 分类/排序/渲染三处复用，把 drop_tables 查询从 ~3·N + 2·N·logN 次降到 ~N 次。
 			var primary_drops: Array = []
 			var secondary_drops: Array = []
+			var info_cache: Dictionary = {}  # instance_id -> info Dictionary
+			var has_get_info: bool = dm != null and dm.has_method("get_drop_info")
 			for dr in drops:
 				if not (dr is DropTables.DropResult):
 					continue
@@ -200,15 +206,17 @@ static func create(parent: Node, player_won: bool, blueprints: Array, \
 				# 避免同一资源在面板上重复显示
 				if _is_summarized_material(dr):
 					continue
-				var info0: Dictionary = dm.get_drop_info(dr) if dm.has_method("get_drop_info") else {}
+				var info0: Dictionary = dm.get_drop_info(dr) if has_get_info else {}
+				info_cache[dr.get_instance_id()] = info0
 				var t0: int = int(info0.get("type", -1))
 				if _drop_type_is_card_lane(t0):
 					primary_drops.append(dr)
 				else:
 					secondary_drops.append(dr)
+			# 排序比较器只查缓存，不再触发 drop_tables 查询
 			var _sort_by_name := func(a, b) -> bool:
-				var ia: Dictionary = dm.get_drop_info(a)
-				var ib: Dictionary = dm.get_drop_info(b)
+				var ia: Dictionary = info_cache.get(a.get_instance_id(), {})
+				var ib: Dictionary = info_cache.get(b.get_instance_id(), {})
 				return String(ia.get("name", "")) < String(ib.get("name", ""))
 			primary_drops.sort_custom(_sort_by_name)
 			secondary_drops.sort_custom(_sort_by_name)
@@ -224,12 +232,12 @@ static func create(parent: Node, player_won: bool, blueprints: Array, \
 				drop_list.add_child(sh)
 				for dr in rows:
 					var line_text: String = "  ▸ 未知掉落"
-					if dm.has_method("get_drop_info"):
-						var info: Dictionary = dm.get_drop_info(dr)
-						var n: String = String(info.get("name", "未知"))
-						var c: int = int(info.get("count", 1))
-						var s: String = String(info.get("source", "battle"))
-						line_text = "  ▸ %s ×%d（%s）" % [n, c, s]
+					# 渲染行直接复用缓存，不再重复调 get_drop_info
+					var info: Dictionary = info_cache.get(dr.get_instance_id(), {})
+					var n: String = String(info.get("name", "未知"))
+					var c: int = int(info.get("count", 1))
+					var s: String = String(info.get("source", "battle"))
+					line_text = "  ▸ %s ×%d（%s）" % [n, c, s]
 					var dl := Label.new()
 					dl.text = line_text
 					dl.add_theme_font_size_override("font_size", 12)

@@ -1205,7 +1205,8 @@ static func get_description(rune_id: String) -> String:
 	return primary
 
 ## 符文图标路径：res://assets/runes/{rarity}/rune_{id}.png
-## 稀有度从符文定义读取；路径不存在时返回 ""（调用方按 fallback 处理，例如回退到颜色染色）
+## 稀有度从符文定义读取；自身稀有度文件夹查不到时按 rarity 顺序回退（部分符文 PNG 落在了与
+## 自身稀有度不一致的文件夹，legendary 是全套兜底）；全部找不到才返回 ""。
 static func icon_path_for(rune_id: String) -> String:
 	var rune: Dictionary = get_rune(rune_id)
 	if rune.is_empty():
@@ -1214,6 +1215,13 @@ static func icon_path_for(rune_id: String) -> String:
 	var path: String = "res://assets/runes/%s/rune_%s.png" % [rarity, rune_id]
 	if ResourceLoader.exists(path, "Texture2D"):
 		return path
+	# 跨稀有度文件夹回退查找（legendary 为全套兜底）
+	for alt_rarity in ["legendary", "common", "rare", "epic"]:
+		if alt_rarity == rarity:
+			continue
+		path = "res://assets/runes/%s/rune_%s.png" % [alt_rarity, rune_id]
+		if ResourceLoader.exists(path, "Texture2D"):
+			return path
 	return ""
 
 ## 获取所有符文ID列表

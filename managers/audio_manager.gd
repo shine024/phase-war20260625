@@ -53,6 +53,11 @@ func _ready() -> void:
 		if SignalBus.has_signal("achievement_unlocked"):
 			if not SignalBus.achievement_unlocked.is_connected(_on_achievement_unlocked):
 				SignalBus.achievement_unlocked.connect(_on_achievement_unlocked)
+		# v6.6 修复: play_sound 信号原 emit 无 connect，战斗/UI 音效静默失效。
+		# 直接桥接到 play_sfx（签名匹配：都接收音效名 String）
+		if SignalBus.has_signal("play_sound"):
+			if not SignalBus.play_sound.is_connected(play_sfx):
+				SignalBus.play_sound.connect(play_sfx)
 
 ## 播放音效
 func play_sfx(name: String) -> void:

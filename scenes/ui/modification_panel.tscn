@@ -191,8 +191,8 @@ theme_override_constants/separation = 0
 
 [node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer/HBoxContainer"]
 layout_mode = 2
-size_flags_horizontal = 3
-size_flags_stretch_ratio = 0.9
+custom_minimum_size = Vector2(240, 0)
+size_flags_horizontal = 1
 theme_override_styles/panel = SubResource("StyleBoxFlat_scroll_bg")
 
 [node name="CardListContainer" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/ScrollContainer"]

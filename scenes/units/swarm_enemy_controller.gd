@@ -19,6 +19,9 @@ var _death_fx_root: Node = null
 var _fallback_cache_timer: float = 0.0
 var _fallback_player_units: Array = []
 var _fallback_phase_drivers: Array = []
+# P1 性能优化: 缓存 is_card_grid_battle 结果（每帧只查一次，避免逐槽逐帧反射链）
+# _physics_process 开头刷新，_tick_slot/_clamp_slot 读缓存
+var _cached_is_card_grid: bool = false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_PAUSABLE
@@ -113,6 +116,12 @@ func _physics_process(delta: float) -> void:
 	var tree := get_tree()
 	if tree == null or tree.paused:
 		return
+	# P1: 每帧只查一次 is_card_grid_battle，所有槽复用（原逐槽逐帧反射）
+	_cached_is_card_grid = (
+		GameManager != null
+		and GameManager.has_method("is_card_grid_battle")
+		and GameManager.is_card_grid_battle()
+	)
 	_fallback_cache_timer += delta
 	if _fallback_cache_timer >= 0.35:
 		_refresh_fallback_targets_cache()
@@ -138,11 +147,8 @@ func _tick_slot(s: Node2D, delta: float) -> void:
 	if should_find:
 		_find_target_for_slot(s)
 
-	var card_grid_no_march: bool = (
-		GameManager != null
-		and GameManager.has_method("is_card_grid_battle")
-		and GameManager.is_card_grid_battle()
-	)
+	# P1: 读 controller 每帧刷新的缓存，避免逐槽反射
+	var card_grid_no_march: bool = _cached_is_card_grid
 	if not card_grid_no_march:
 		if s.target != null and is_instance_valid(s.target):
 			var d: float = s.global_position.distance_to(s.target.global_position)
@@ -224,14 +230,16 @@ func _refresh_fallback_targets_cache() -> void:
 	_fallback_phase_drivers = tree.get_nodes_in_group("phase_driver")
 
 func _deploy_y_bounds_for_clamp() -> Vector2:
-	if GameManager and GameManager.has_method("is_card_grid_battle") and GameManager.is_card_grid_battle():
+	# P1: 读 controller 缓存（原反射 GameManager.is_card_grid_battle）
+	if _cached_is_card_grid:
 		if BattleManager and BattleManager.battlefield and BattleManager.battlefield.has_method("get_deploy_y_bounds"):
 			return BattleManager.battlefield.get_deploy_y_bounds()
 	return Vector2(BATTLE_MIN_Y, BATTLE_MAX_Y)
 
 
 func _clamp_slot(s: Node2D) -> void:
-	if GameManager and GameManager.is_card_grid_battle():
+	# P1: 读 controller 缓存（原逐槽逐帧反射 GameManager.is_card_grid_battle）
+	if _cached_is_card_grid:
 		var esi: int = int(s.get_meta("card_grid_enemy_slot", -1))
 		if esi >= 0 and BattleManager and BattleManager.battlefield:
 			var bf: Node = BattleManager.battlefield

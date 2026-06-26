@@ -15,6 +15,7 @@ const DefaultCards = preload("res://data/default_cards.gd")
 const TargetSelection = preload("res://scripts/battle/target_selection.gd")
 const DamageAttenuation = preload("res://scripts/battle/damage_attenuation.gd")
 const AttackCalculator = preload("res://scripts/battle/attack_calculator.gd")
+const FortShieldAuraScript = preload("res://scripts/battle/fort_shield_aura.gd")
 const BATTLE_MIN_X: float = 40.0
 const BATTLE_MAX_X: float = 1240.0
 const BATTLE_MIN_Y: float = 280.0
@@ -28,6 +29,10 @@ const ENABLE_ENEMY_VISUAL_EXTENT_CLAMP := true
 var is_player: bool = false
 var hp: float = 80.0
 var max_hp: float = 80.0
+## v7.1: 堡垒类(combat_kind==FORT)专属防护光环——纯视觉，让"在防护"可见化。
+var _fort_shield_aura: Node2D = null
+var _is_fort_aura_unit: bool = false
+var _fort_aura_hit_boost: float = 0.0
 var attack_damage: float = 10.0
 var attack_range: float = 100.0
 var attack_interval: float = 1.0
@@ -416,6 +421,43 @@ func _build_enemy_unit_stats(r: Dictionary, cfg: Dictionary) -> void:
 	s.weapon_slots.clear()
 	_ensure_enemy_weapon_slots(s)
 	stats = s
+	# v7.1: stats 就绪后判定并创建堡垒防护光环
+	_ensure_fort_shield_aura()
+
+
+# ═════════════════════════════════════════════════════════════════
+#  v7.1: 堡垒类防护光环（纯视觉）— 与 construct_unit 对称实现
+# ═════════════════════════════════════════════════════════════════
+
+## 判定并创建防护光环。堡垒类(combat_kind==FORT)才挂。
+func _ensure_fort_shield_aura() -> void:
+	_is_fort_aura_unit = false
+	if stats == null:
+		return
+	if stats.combat_kind != GC.CombatKind.FORT:
+		return
+	_is_fort_aura_unit = true
+	if _fort_shield_aura != null and is_instance_valid(_fort_shield_aura):
+		_fort_aura_hit_boost = 0.0
+		return
+	var aura: Node2D = Node2D.new()
+	aura.set_script(FortShieldAuraScript)
+	aura.name = "FortShieldAura"
+	aura.z_index = -1
+	add_child(aura)
+	_fort_shield_aura = aura
+
+## 每帧驱动光环呼吸 + 衰减受击强化。非堡垒单位直接返回（零开销）。
+func _update_fort_shield_aura(delta: float) -> void:
+	if not _is_fort_aura_unit:
+		return
+	if _fort_shield_aura == null or not is_instance_valid(_fort_shield_aura):
+		return
+	if _fort_aura_hit_boost > 0.0:
+		_fort_aura_hit_boost = maxf(0.0, _fort_aura_hit_boost - delta * 2.0)
+	_fort_shield_aura.set_meta(&"is_player", false)  # 敌方光环用红色系
+	_fort_shield_aura.set_meta(&"hit_boost", _fort_aura_hit_boost)
+	_fort_shield_aura.queue_redraw()
 
 
 ## v6.3: 为敌人 UnitStats 初始化3个武器槽位（轻装/装甲/对空），复用三维攻击值
@@ -602,6 +644,8 @@ func _physics_process(delta: float) -> void:
 		_process_attack_timing(delta)
 	move_and_slide()
 	_clamp_inside_battlefield()
+	# v7.1: 堡垒防护光环呼吸动画（仅堡垒类单位）
+	_update_fort_shield_aura(delta)
 	# P2 性能优化：静止单位跳过空间网格更新（格子战敌人 velocity=0，原每帧无谓 update）
 	if velocity != Vector2.ZERO:
 		_update_in_spatial_grid()
@@ -902,6 +946,9 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 	if hp > 0 and final_loss > 0:
 		_play_hit_flash()
 		_play_hit_shake()
+		# v7.1: 堡垒防护光环受击强化（扩张+闪亮）
+		if _is_fort_aura_unit:
+			_fort_aura_hit_boost = 1.0
 	# 性能优化：在 HP 变化时更新 HP 条
 	_update_hp_bar()
 	if SignalBus:

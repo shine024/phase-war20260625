@@ -288,3 +288,52 @@ static func apply_phase_master_to_unit_stats(stats: UnitStats, master_stats: Dic
 	if hp_m != 1.0:
 		stats.max_hp *= hp_m
 		stats.defense *= hp_m
+
+
+## v6.13: 给相位师产兵叠加战场难度乘区（wave × level × faction_buff）。
+##
+## 背景：产兵走 _build_stats_from_archetype → build_stats_from_card，只吃 archetype 基础值 +
+## apply_phase_master_to_unit_stats（master 加成），缺经典敌兵 resolve_classic_enemy 同款的
+## wave_dmg/level/faction 三个乘区，导致产兵攻击力比同关经典敌兵低 2~3 倍（显示十几点）。
+##
+## 本函数复用 resolve_classic_enemy 完全相同的乘区公式，让产兵与经典敌兵共享难度曲线。
+## 传入的 ctx 由 make_default_context 构造（含 level/wave/faction_buff），master 乘区已由
+## apply_phase_master_to_unit_stats 单独应用，此处不重复。
+##
+## 乘算范围：三维攻击（attack_light/armor/air）+ HP + 防御 + 武器伤害；移速单独走 speed_mul。
+## 与 resolve_classic_enemy 的 dmg_mul_chain/hp_mul_chain 完全一致。
+static func apply_field_multipliers_to_unit_stats(stats: UnitStats, ctx: EnemyStatContext) -> void:
+	if stats == null or ctx == null:
+		return
+	var w_hp: float = wave_hp_multiplier(ctx.wave_index)
+	var w_dmg: float = wave_damage_multiplier(ctx.wave_index)
+	var lvl: float = level_stat_multiplier(ctx.level)
+	var p_hp: float = _pressure_mul(ctx.player_pressure, "hp_mul")
+	var p_atk: float = _pressure_mul(ctx.player_pressure, "attack_mul")
+	var p_spd: float = _pressure_mul(ctx.player_pressure, "speed_mul")
+	var f_hp: float = _pressure_mul(ctx.faction_buff, "hp_mul")
+	var f_atk: float = _pressure_mul(ctx.faction_buff, "attack_mul")
+	var f_spd: float = _pressure_mul(ctx.faction_buff, "speed_mul")
+	var dmg_mul: float = w_dmg * lvl * p_atk * f_atk
+	var hp_mul: float = w_hp * lvl * p_hp * f_hp
+	var spd_mul: float = p_spd * f_spd
+	stats.attack_light *= dmg_mul
+	stats.attack_armor *= dmg_mul
+	stats.attack_air *= dmg_mul
+	stats.max_hp *= hp_mul
+	stats.defense *= hp_mul
+	stats.defense_light *= hp_mul
+	stats.defense_armor *= hp_mul
+	stats.defense_air *= hp_mul
+	# 多武器伤害同步缩放（与 apply_phase_master_to_unit_stats 同款遍历）
+	for i in range(stats.weapons.size()):
+		var w: Variant = stats.weapons[i]
+		if w is Dictionary:
+			var wd: Dictionary = w
+			if wd.has("damage"):
+				wd["damage"] = float(wd["damage"]) * dmg_mul
+				stats.weapons[i] = wd
+	# 移速：archetype 用绝对值（朝左），乘区不改变方向
+	if spd_mul != 1.0 and stats.move_speed > 0.001:
+		stats.move_speed *= spd_mul
+

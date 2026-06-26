@@ -154,12 +154,14 @@ theme_override_colors/font_color = Color(0.8, 0.65, 1, 0.98)
 [node name="MainSplit" type="HSplitContainer" parent="VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
-split_offset = 280
+split_offset = 240
+draggable = false
 theme_override_constants/separation = 0
 
 [node name="LeftPanel" type="VBoxContainer" parent="VBoxContainer/MainSplit"]
 layout_mode = 2
-size_flags_horizontal = 3
+custom_minimum_size = Vector2(240, 0)
+size_flags_horizontal = 1
 theme_override_constants/separation = 0
 
 [node name="LeftTitle" type="PanelContainer" parent="VBoxContainer/MainSplit/LeftPanel"]
@@ -267,80 +269,6 @@ theme_override_colors/font_hover_color = Color(1, 0.95, 0.5, 1)
 theme_override_font_sizes/font_size = 18
 theme_override_styles/normal = SubResource("StyleBoxFlat_close_btn")
 theme_override_styles/hover = SubResource("StyleBoxFlat_close_btn_hover")
-
-[node name="ModSection" type="PanelContainer" parent="VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 120)
-theme_override_styles/panel = SubResource("StyleBoxFlat_section_bg")
-
-[node name="ModVBox" type="VBoxContainer" parent="VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/ModSection"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 10
-theme_override_constants/margin_left = 15
-theme_override_constants/margin_top = 15
-theme_override_constants/margin_right = 15
-theme_override_constants/margin_bottom = 15
-
-[node name="ModTitle" type="Label" parent="VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/ModSection/ModVBox"]
-layout_mode = 2
-text = "🔧 改装系统"
-theme_override_font_sizes/font_size = 17
-theme_override_colors/font_color = Color(0.82, 0.76, 1, 1)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 0.55)
-theme_override_constants/outline_size = 2
-
-[node name="ModStatusLabel" type="Label" parent="VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/ModSection/ModVBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.75, 0.7, 0.95, 1)
-theme_override_font_sizes/font_size = 13
-text = "改装进度：—"
-autowrap_mode = 3
-custom_minimum_size = Vector2(0, 60)
-
-[node name="ModReqLabel" type="Label" parent="VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/ModSection/ModVBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.65, 0.75, 0.9, 1)
-theme_override_font_sizes/font_size = 14
-text = ""
-autowrap_mode = 3
-
-[node name="ModButtonsHBox" type="HBoxContainer" parent="VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/ModSection/ModVBox"]
-layout_mode = 2
-theme_override_constants/separation = 10
-
-[node name="ModOffenseBtn" type="Button" parent="VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/ModSection/ModVBox/ModButtonsHBox"]
-layout_mode = 2
-size_flags_horizontal = 3
-custom_minimum_size = Vector2(0, 36)
-text = "火力改装"
-theme_override_colors/font_color = Color(1, 0.55, 0.45, 1)
-theme_override_font_sizes/font_size = 14
-theme_override_styles/normal = SubResource("StyleBoxFlat_close_btn")
-theme_override_styles/hover = SubResource("StyleBoxFlat_close_btn_hover")
-disabled = true
-
-[node name="ModDefenseBtn" type="Button" parent="VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/ModSection/ModVBox/ModButtonsHBox"]
-layout_mode = 2
-size_flags_horizontal = 3
-custom_minimum_size = Vector2(0, 36)
-text = "防护改装"
-theme_override_colors/font_color = Color(0.45, 0.85, 1, 1)
-theme_override_font_sizes/font_size = 14
-theme_override_styles/normal = SubResource("StyleBoxFlat_close_btn")
-theme_override_styles/hover = SubResource("StyleBoxFlat_close_btn_hover")
-disabled = true
-
-[node name="ModUtilityBtn" type="Button" parent="VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/ModSection/ModVBox/ModButtonsHBox"]
-layout_mode = 2
-size_flags_horizontal = 3
-custom_minimum_size = Vector2(0, 36)
-text = "功能改装"
-theme_override_colors/font_color = Color(0.55, 1, 0.65, 1)
-theme_override_font_sizes/font_size = 14
-theme_override_styles/normal = SubResource("StyleBoxFlat_close_btn")
-theme_override_styles/hover = SubResource("StyleBoxFlat_close_btn_hover")
-disabled = true
 
 [node name="EnhancementSection" type="PanelContainer" parent="VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel"]
 layout_mode = 2

@@ -64,7 +64,7 @@ const DEFERRED_MANAGER_LOADS: Array = [
 	["/root/CardEnhancementManager", "card_enhancement"],
 	["/root/TutorialProgressionManager", "tutorial_progress"],
 	["/root/StoryManager", "story_progress"],
-	["/root/DayClock", "day_clock"],
+	["/root/DayClock", SK_DAY_CLOCK],
 	["/root/CharacterManager", "characters"],
 	["/root/ChallengeModeManager", "challenge_records"],
 	["/root/CardCollectionManager", "card_collection"],
@@ -112,6 +112,8 @@ const RESETTABLE_MANAGERS := [
 	"IntelDiscoveryManager",
 	"IntelEvolutionManager",
 	"EnemyOriginModManager",
+	# v6.6 修复: 新游戏清空未领取掉落（原 load_state({}) 无法清 pending_drops）
+	"DropManager",
 ]
 
 ## ─── 存档数据键名常量（别名，定义见 scripts/systems/save_constants.gd）───
@@ -142,6 +144,7 @@ const SK_LORE: String = SaveConstants.SK_LORE
 const SK_STAT_BOOST: String = SaveConstants.SK_STAT_BOOST
 const SK_ACHIEVEMENT: String = SaveConstants.SK_ACHIEVEMENT
 const SK_DAILY_TASK: String = SaveConstants.SK_DAILY_TASK
+const SK_DAY_CLOCK: String = SaveConstants.SK_DAY_CLOCK
 const SK_STATISTICS: String = SaveConstants.SK_STATISTICS
 const SK_CARD_ENHANCEMENT: String = SaveConstants.SK_CARD_ENHANCEMENT
 const SK_LAW_SHARDS: String = SaveConstants.SK_LAW_SHARDS
@@ -517,7 +520,7 @@ func _collect_noncritical_save_data(data: Dictionary, now_ms: int) -> void:
 		_collect_manager_state(fresh, "/root/CardEnhancementManager", SK_CARD_ENHANCEMENT)
 		_collect_manager_state(fresh, "/root/TutorialProgressionManager", SK_TUTORIAL_PROGRESS)
 		_collect_manager_state(fresh, "/root/StoryManager", SK_STORY_PROGRESS)
-		_collect_manager_state(fresh, "/root/DayClock", "day_clock")
+		_collect_manager_state(fresh, "/root/DayClock", SK_DAY_CLOCK)
 		_collect_manager_state(fresh, "/root/CharacterManager", SK_CHARACTERS)
 		_collect_manager_state(fresh, "/root/ChallengeModeManager", SK_CHALLENGE_RECORDS)
 		_collect_manager_state(fresh, "/root/CardCollectionManager", SK_CARD_COLLECTION)

@@ -92,7 +92,7 @@ const DATA := {
 	"boss_ww1_av7": {
 		"era": 0,
 		"display_name": "圣沙蒙坦克",
-		"hp": 300.0,
+		"hp": 600.0,
 		"speed": -30.0,
 		"attack_damage": 25.0,
 		"attack_range": 150.0,
@@ -193,7 +193,7 @@ const DATA := {
 	"boss_ww2_kingtiger": {
 		"era": 1,
 		"display_name": "虎王坦克",
-		"hp": 400.0,
+		"hp": 800.0,
 		"speed": -30.0,
 		"attack_damage": 40.0,
 		"attack_range": 160.0,

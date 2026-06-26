@@ -577,9 +577,19 @@ static func _make_pool_row(index: int) -> Dictionary:
 
 
 ## E 段：堡垒类别（固定阵地，combat_kind=4）
+## v6.13: 修复 0 血瞬死 BUG —— 原版 hp/攻防全写死 0（注释承诺"从 default_cards 读取"从未实现），
+## 导致堡垒被抽中即瞬死、看不到出战也无掉落。现从 captured_card_stats 读取真实缴获卡数值，
+## 与 _make_foe_row/_make_pool_row 同源同口径。
 static func _make_fort_row(fort_id: String) -> Dictionary:
 	var era: int = _era_from_fort_id(fort_id)
 	var display_name: String = _get_fort_display_name(fort_id)
+	var captured_id: String = CAPTURED_PREFIX + fort_id  # "captured_fort_ww1_pillbox"
+	var s: Dictionary = CapturedCardStats.get_stats(captured_id)
+	var hp: float = float(s.get("base_hp", 600.0))
+	var rng: float = float(s.get("range_value", 1)) * 100.0       # 格转像素（1格=100px，与 unit_stats_table 一致）
+	var atk_spd: float = float(s.get("attack_speed", 0.0))
+	# 攻速 0 = 纯防御单位（雷达站/能量护盾），无攻击行为，避免除零
+	var ivl: float = (1.0 / atk_spd) if atk_spd > 0.0 else 0.0
 	return {
 		"archetype_id": fort_id,
 		"display_name": display_name,
@@ -592,14 +602,19 @@ static func _make_fort_row(fort_id: String) -> Dictionary:
 		"archetype_config": {
 			"era": era,
 			"display_name": display_name,
-			"hp": 0.0,  # 从 default_cards 读取
-			"speed": 0.0,
-			"attack_damage": 0.0,
-			"attack_range": 0.0,
-			"attack_interval": 0.0,
+			"hp": hp,
+			"speed": 0.0,                                            # 堡垒不动
+			"attack_light": float(s.get("attack_light", 0.0)),
+			"attack_armor": float(s.get("attack_armor", 0.0)),
+			"attack_air": float(s.get("attack_air", 0.0)),
+			"attack_range": rng,
+			"attack_interval": ivl,
 			"combat_kind": 4,  # 堡垒
-			"weapon_label": "",
-			"defense": 0.0,
+			"weapon_label": String(s.get("weapon_label", "")),
+			"weapon_type": int(s.get("weapon_type", 0)),
+			"defense_light": float(s.get("defense_light", 0.0)),
+			"defense_armor": float(s.get("defense_armor", 0.0)),
+			"defense_air": float(s.get("defense_air", 0.0)),
 			"tags": ["fortress", "immobile"],
 			"swarm_unit": false,
 			"drops": [{"card_id": captured_card_id_for(fort_id), "chance": 0.12}],

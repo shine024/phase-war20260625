@@ -76,7 +76,7 @@ const DATA := {
 	"elite_future_colossus": {
 		"era": 4,
 		"display_name": "巨神机甲",
-		"hp": 400.0,
+		"hp": 600.0,
 		"speed": -60.0,
 		"attack_damage": 55.0,
 		"attack_range": 250.0,
@@ -92,7 +92,7 @@ const DATA := {
 	"boss_future_nexus": {
 		"era": 4,
 		"display_name": "风暴核心",
-		"hp": 900.0,
+		"hp": 1800.0,
 		"speed": -30.0,
 		"attack_damage": 90.0,
 		"attack_range": 300.0,

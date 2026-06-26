@@ -32,6 +32,18 @@ Desktop.ini
 ehthumbs.db
 $RECYCLE.BIN/
 
+# ── Windows 保留设备名误生成（Git Bash 下 `> nul` 会创建文件而非丢弃）──
+nul
+nul_
+
+# ── 命令误重定向产生的垃圾文件（数字/特殊字符文件名）──
+0)
+0{c++
+531
+_s3_test.txt
+C:Users*
+
+
 # ── Claude Code 本地配置 ──
 .claude/settings.local.json
 .claude/agent-memory/

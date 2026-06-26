@@ -150,8 +150,13 @@ func get_module_effect_lines(card_id: String) -> Array:
 # ─────────────────────────────────────────────
 
 ## 是否为可强化的战斗卡
-func _is_combat_card(card_id: String) -> bool:
-	var card = DefaultCards.get_card_by_id(card_id)
+## v7.1: 参数可能是 instance_id（如 "cold_t72#1"），需先解析为 card_id 再查模板
+func _is_combat_card(card_id_or_instance: String) -> bool:
+	var base_id: String = card_id_or_instance
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	if ir != null and ir.has_method("get_card_id_of"):
+		base_id = ir.get_card_id_of(card_id_or_instance)
+	var card = DefaultCards.get_card_by_id(base_id)
 	if card == null:
 		return false
 	return card.card_type == GC.CardType.COMBAT_UNIT
@@ -161,10 +166,15 @@ func get_era_multiplier(era: int) -> float:
 	return float(ERA_MULTIPLIER.get(clampi(era, 0, 4), 1.0))
 
 ## 计算强化消耗（纳米材料）
-func get_enhance_nano_cost(card_id: String, target_level: int) -> int:
+## v7.1: 参数可能是 instance_id，需先解析为 card_id 再查模板获取 era
+func get_enhance_nano_cost(card_id_or_instance: String, target_level: int) -> int:
 	var config = enhancement_config.get(target_level, {})
 	var level_mult = float(config.get("level_cost_multiplier", 1.0))
-	var card = DefaultCards.get_card_by_id(card_id)
+	var base_id: String = card_id_or_instance
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	if ir != null and ir.has_method("get_card_id_of"):
+		base_id = ir.get_card_id_of(card_id_or_instance)
+	var card = DefaultCards.get_card_by_id(base_id)
 	var era: int = 0
 	if card != null:
 		era = card.era
@@ -221,15 +231,19 @@ func do_enhance(card_id_or_instance: String, nano_available: int) -> Dictionary:
 
 ## 选择词条（新槽位时调用）
 ## v7.0: 参数 card_id 实际是 instance_id；词条写到实例对象（不再污染单例）
+## v6.13: 修复"吸血等进阶池(Lv6+)词条点了没反应" —— 原版重新读等级校验池，
+## 但实例解析一旦出问题(时序/存档)会读到旧等级(0)，导致进阶池词条被误判"不在可用池中"。
+## 弹窗 _show_module_selection_popup 已用 do_enhance 返回的正确等级拉取并展示词条，
+## 数据层信任该池，不再重读等级校验（仅校验 module_id 合法性）。
 func choose_module(card_id: String, module_id: String) -> Dictionary:
 	var slots = get_module_slots(card_id)
 	var level = get_card_enhancement_level(card_id)
 	var max_slots = ModuleDefinitions.get_max_slots_for_level(level)
 
-	# 验证词条在当前池中可用
-	var available = ModuleDefinitions.get_available_modules(level)
-	if module_id not in available:
-		return {"ok": false, "reason": "词条不在可用池中"}
+	# v6.13: 仅校验 module_id 是合法词条定义（不再重读等级做池校验）
+	# —— 池校验已在弹窗层完成，避免实例解析时序问题导致进阶池词条被误拒
+	if not ModuleDefinitions.is_valid_module(module_id):
+		return {"ok": false, "reason": "无效词条"}
 
 	# 找到第一个空槽位
 	var slot_index: int = -1

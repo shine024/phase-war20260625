@@ -238,6 +238,11 @@ const MODULE_TABLE: Dictionary = {
 static func get_module_data(module_id: String) -> Dictionary:
 	return MODULE_TABLE.get(module_id, {})
 
+## 校验 module_id 是否为合法词条定义（用于数据层防御性校验）
+## v6.13: choose_module 用此替代旧的"等级→池"校验，避免实例解析时序问题误拒
+static func is_valid_module(module_id: String) -> bool:
+	return MODULE_TABLE.has(module_id)
+
 ## 获取词条名称
 static func get_module_name(module_id: String) -> String:
 	var d: Dictionary = MODULE_TABLE.get(module_id, {})

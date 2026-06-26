@@ -673,12 +673,14 @@ func refresh_intel_tab() -> void:
 		var mod_data: Dictionary = ModificationRegistryRef.get_data(mod_id)
 		var display_name: String = String(mod_data.get("name", mod_id)) if not mod_data.is_empty() else mod_id
 		var rarity: String = String(mod_data.get("rarity", "common")) if not mod_data.is_empty() else "common"
+		var icon_path: String = String(mod_data.get("icon", "")) if not mod_data.is_empty() else ""
 		var is_installed: bool = installed_mod_ids.has(mod_id)
 		acquired_blueprints.append({
 			"item_type": item_type,
 			"mod_id": mod_id,
 			"name": display_name,
 			"rarity": rarity,
+			"icon": icon_path,
 			"count": count,
 			"installed": is_installed,
 		})
@@ -698,6 +700,7 @@ func refresh_intel_tab() -> void:
 			var status_mark: String = "✓ " if bp.installed else "○ "
 			var extra_data: Dictionary = {
 				"name": status_mark + bp.name,
+				"icon": String(bp.get("icon", "")),
 				"description": "改造图纸（永久解锁）\n稀有度：%s\n状态：%s" % [
 					IntelManualItemsRef.get_rarity_name(bp.rarity),
 					"已装配" if bp.installed else "未装配",

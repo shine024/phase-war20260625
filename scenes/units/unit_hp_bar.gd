@@ -12,6 +12,8 @@ var _is_player: bool = true
 var _bg: Polygon2D
 var _fill: Polygon2D
 var _glow: Polygon2D
+var _shield_bg: Polygon2D
+var _shield_fill: Polygon2D
 var _damage_flash: float = 0.0
 var _heal_flash: float = 0.0
 var _tween: Tween = null
@@ -19,6 +21,9 @@ var _tween: Tween = null
 var _fill_pts: PackedVector2Array = PackedVector2Array([Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO])
 var _bg_pts: PackedVector2Array = PackedVector2Array([Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO])
 var _glow_pts: PackedVector2Array = PackedVector2Array([Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO])
+var _shield_pts: PackedVector2Array = PackedVector2Array([Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO])
+var _shield_bg_pts: PackedVector2Array = PackedVector2Array([Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO])
+var _shield_gain: float = 0.0  # 护盾获得时的闪光值（0-1）
 
 ## 血条颜色配置
 var _player_colors: Dictionary = {
@@ -40,6 +45,8 @@ func _ready() -> void:
 	_bg = get_node_or_null("Bg") as Polygon2D
 	_fill = get_node_or_null("Fill") as Polygon2D
 	_glow = get_node_or_null("Glow") as Polygon2D
+	_shield_bg = get_node_or_null("ShieldBg") as Polygon2D
+	_shield_fill = get_node_or_null("ShieldFill") as Polygon2D
 	_update_view()
 	set_process(false)
 
@@ -47,6 +54,8 @@ func _needs_active_process() -> bool:
 	if absf(_ratio - _target_ratio) > 0.001:
 		return true
 	if _damage_flash > 0.0 or _heal_flash > 0.0:
+		return true
+	if _shield_gain > 0.0:
 		return true
 	# 低血量脉动发光依赖每帧刷新
 	if _ratio <= 0.3:
@@ -76,6 +85,13 @@ func _process(delta: float) -> void:
 		if _heal_flash < 0:
 			_heal_flash = 0
 		_update_heal_effect()
+
+	# 处理护盾增益闪光
+	if _shield_gain > 0:
+		_shield_gain -= delta * 3.0
+		if _shield_gain < 0:
+			_shield_gain = 0
+		_update_shield_gain_effect()
 
 	_sync_process_state()
 
@@ -189,3 +205,56 @@ func _update_heal_effect() -> void:
 	if _fill:
 		var heal_color = Color(0.4, 1.0, 0.6, 1.0)
 		_fill.color = heal_color.lerp(_fill.color, 1.0 - _heal_flash)
+
+## ─────────────────────────────────────────────
+##  护盾条渲染
+## ─────────────────────────────────────────────
+
+## 设置护盾值（基于 max_hp 的比例）
+func set_shield(shield_value: float, max_hp: float) -> void:
+	if _shield_bg == null or _shield_fill == null:
+		return
+	if max_hp <= 0:
+		return
+
+	var shield_ratio: float = shield_value / (max_hp * 2.0)  # 上限为 max_hp * 2
+	shield_ratio = clampf(shield_ratio, 0.0, 1.0)
+
+	var half_w: float = BAR_WIDTH * 0.5
+	var shield_h: float = 1.0  # 护盾条高度
+
+	# 更新护盾背景
+	var sb_pts: PackedVector2Array = _shield_bg_pts
+	sb_pts.set(0, Vector2(-half_w, -shield_h - 4.5))
+	sb_pts.set(1, Vector2(half_w, -shield_h - 4.5))
+	sb_pts.set(2, Vector2(half_w, -shield_h - 2.5))
+	sb_pts.set(3, Vector2(-half_w, -shield_h - 2.5))
+	_shield_bg.polygon = sb_pts
+
+	# 更新护盾填充
+	var shield_fill_w: float = BAR_WIDTH * shield_ratio - 1.0
+	if shield_fill_w < 0.0:
+		shield_fill_w = 0.0
+	var sf_pts: PackedVector2Array = _shield_pts
+	sf_pts.set(0, Vector2(-half_w + 0.5, -shield_h - 3.9))
+	sf_pts.set(1, Vector2(-half_w + 0.5 + shield_fill_w, -shield_h - 3.9))
+	sf_pts.set(2, Vector2(-half_w + 0.5 + shield_fill_w, -shield_h - 4.1))
+	sf_pts.set(3, Vector2(-half_w + 0.5, -shield_h - 4.1))
+	_shield_fill.polygon = sf_pts
+
+	# 护盾颜色：始终蓝色系，随比例渐变
+	var shield_color: Color = Color(0.3, 0.7, 1.0, 0.9)
+	_shield_fill.color = shield_color
+
+func _update_shield_gain_effect() -> void:
+	if _shield_fill == null or _shield_gain <= 0.0:
+		return
+	# 护盾获得时闪白光
+	var flash_color: Color = Color.WHITE.lerp(Color(0.3, 0.7, 1.0, 0.9), 1.0 - _shield_gain)
+	_shield_fill.color = flash_color
+	_shield_fill.modulate = Color(1.0, 1.0, 1.0, 0.5 + _shield_gain * 0.5)
+
+func trigger_shield_gain(amount: float, max_hp: float) -> void:
+	"""护盾增加时触发闪光动画"""
+	_shield_gain = 1.0
+	set_process(true)

@@ -203,6 +203,19 @@ static func _deal_damage_to_unit(unit: Node, damage: float, source: Node = null)
 static func _find_nearby_enemies(center: Node, radius: float) -> Array:
 	if center == null or not is_instance_valid(center):
 		return []
+	# P3 性能优化: 优先用 spatial_grid.query_enemies（bounding-box 只遍历覆盖格子），
+	# 替代原 get_nodes_in_group 全组遍历 + 逐个 distance_to。
+	# center 的 is_player 决定找哪方（玩家找敌人 is_player=false）
+	var is_player_center: bool = false
+	if "is_player" in center:
+		is_player_center = bool(center.is_player)
+	if BattleManager != null and BattleManager.spatial_grid != null and is_instance_valid(BattleManager.spatial_grid):
+		var enemies = BattleManager.spatial_grid.query_enemies(center.global_position, radius, is_player_center)
+		# query_enemies 可能包含 center 自身（同阵营），过滤掉
+		if center in enemies:
+			enemies.erase(center)
+		return enemies
+	# 防御性回退: spatial_grid 不可用时用原全组遍历
 	var targets: Array = []
 	var tree = center.get_tree()
 	if tree == null:

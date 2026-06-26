@@ -124,6 +124,13 @@ func _ready() -> void:
 		SignalBus.blueprint_unlocked.connect(_on_blueprint_unlocked)
 		SignalBus.active_law_cast_at.connect(_on_active_law_cast_at)
 		SignalBus.battle_ended.connect(_on_battle_ended_clear_pending)
+		# v6.6 修复: toggle_* 信号原 emit 无 connect，教程引导的"打开面板"动作失效。
+		if SignalBus.has_signal("toggle_backpack") and not SignalBus.toggle_backpack.is_connected(_on_backpack_pressed):
+			SignalBus.toggle_backpack.connect(_on_backpack_pressed)
+		if SignalBus.has_signal("toggle_factions") and not SignalBus.toggle_factions.is_connected(_on_faction_pressed):
+			SignalBus.toggle_factions.connect(_on_faction_pressed)
+		if SignalBus.has_signal("toggle_phase_instrument") and not SignalBus.toggle_phase_instrument.is_connected(_on_toggle_phase_instrument_from_tutorial):
+			SignalBus.toggle_phase_instrument.connect(_on_toggle_phase_instrument_from_tutorial)
 		SignalBus.player_deploy_failed.connect(_on_player_deploy_failed)
 
 	# 全局 UI 贴图：关闭按钮等（依赖 PopupLayer 子树已实例化）
@@ -595,6 +602,11 @@ func _on_faction_pressed() -> void:
 	_play_sfx("button")
 	_toggle_overlay(faction_overlay, "faction")
 
+## v6.6: 教程引导"打开相位仪面板"的无参包装（复用相位仪法则 overlay）
+func _on_toggle_phase_instrument_from_tutorial() -> void:
+	_play_sfx("button")
+	_toggle_overlay(phase_law_overlay, "rune")
+
 func _on_quest_pressed() -> void:
 	_toggle_overlay(quest_overlay, "quest")
 
@@ -625,16 +637,6 @@ func _ensure_card_enhancement_panel() -> void:
 	cc.add_child(panel)
 	if panel.has_signal("closed") and not panel.closed.is_connected(_on_panel_closed.bind("progression")):
 		panel.closed.connect(_on_panel_closed.bind("progression"))
-	# v6.6: 强化面板请求跳转改造工坊 → 切换到 modification overlay
-	if panel.has_signal("open_modification_requested") and not panel.open_modification_requested.is_connected(_on_open_modification_from_enhancement):
-		panel.open_modification_requested.connect(_on_open_modification_from_enhancement)
-
-## v6.6: 从强化面板跳转到改造工坊
-func _on_open_modification_from_enhancement() -> void:
-	# 先关闭强化面板所在的 manufacture overlay
-	_close_overlay(manufacture_overlay, "progression")
-	# 打开改造工坊
-	_toggle_overlay(modification_overlay, "modification")
 
 func _on_map_pressed() -> void:
 	_play_sfx("button")

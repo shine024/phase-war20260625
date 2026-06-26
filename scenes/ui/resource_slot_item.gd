@@ -123,11 +123,20 @@ func _refresh_lore(lore_id: String, count: int, name_label: Label, amount_label:
 	if amount_label:
 		amount_label.text = ""
 	if icon_rect:
-		# 情报使用金色图标
+		# 情报使用金色图标（无贴图时的默认染色）
 		icon_rect.modulate = Color(0.8, 0.6, 0.2, 1.0)
-		# 如果有自定义图标，尝试加载
-		if not custom_icon.is_empty() and ResourceLoader.exists(custom_icon):
+		# 如果有自定义图标，尝试加载（背包"改造"标签依赖此分支显示改造图标）
+		if not custom_icon.is_empty() and ResourceLoader.exists(custom_icon, "Texture2D"):
 			icon_rect.texture = load(custom_icon)
+			# 加载了真实贴图后恢复原色（贴图自身已有颜色，金色 modulate 会让它偏黄失真）
+			icon_rect.modulate = Color.WHITE
+			# v6.14 修复：_ready 默认 EXPAND_IGNORE_SIZE + SHRINK_CENTER + 无最小尺寸
+			# 会让 TextureRect 宽度坍缩为 0，贴图加载成功却不可见（与 _refresh_rune 同类 bug）。
+			# 切到 EXPAND_FIT_WIDTH 并给最小尺寸，确保有渲染区域。
+			icon_rect.expand_mode = TextureRect.EXPAND_FIT_WIDTH
+			icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			icon_rect.custom_minimum_size = Vector2(36, 32)
+			icon_rect.visible = true
 
 ## 刷新属性提升显示
 func _refresh_stat_boost(boost_id: String, count: int, name_label: Label, amount_label: Label, icon_rect: TextureRect) -> void:
