@@ -34,6 +34,9 @@ const _TOOLTIP_DESC_MAX := 140
 const _TOOLTIP_ENHANCE_MAX := 24
 ## 合并同帧内多次 phase_slots_changed，只刷新一次 UI
 var _slots_refresh_coalesce: bool = false
+# v7.3 性能优化：tooltip 签名缓存。_update_instrument_tooltip 遍历符文之语+多行拼接，
+# phase_slots_changed 每次都重建。相同 (instrument_id, lv) 跳过重建。
+var _tooltip_last_sig: String = ""
 
 @onready var instrument_section: HBoxContainer = $Margin/HBox/InstrumentSection
 @onready var instrument_icon: TextureRect = $Margin/HBox/InstrumentSection/InstrumentIcon
@@ -203,10 +206,31 @@ func _update_slot_panel(panel: Control, entry: Dictionary) -> void:
 	panel.set_meta("law_id", law_id)
 	panel.set_meta("law_kind", law_kind)
 	# 更新样式
-	var sb: StyleBoxFlat = panel.get_theme_stylebox("panel") as StyleBoxFlat
-	if sb:
-		sb.bg_color = _slot_bg(color)
-		sb.border_color = _slot_border(color)
+	# v7.3 修复+性能：每个槽位 panel 用独立的 StyleBoxFlat override，而非改共享 theme stylebox。
+	# 原实现 get_theme_stylebox("panel") 返回 theme 共享实例，直接改 bg_color/border_color 会污染所有
+	# 同主题节点（视觉 bug）+ 无谓触发全局重绘。改为每 panel 缓存独立 stylebox（首次创建，之后复用改色）。
+	var sb: StyleBoxFlat = panel.get_meta("own_stylebox", null)
+	if sb == null or not is_instance_valid(sb):
+		sb = StyleBoxFlat.new()
+		# 复制基础样式（边框宽度等）
+		var base_sb: StyleBoxFlat = panel.get_theme_stylebox("panel") as StyleBoxFlat
+		if base_sb and base_sb is StyleBoxFlat:
+			sb.border_width_left = base_sb.border_width_left
+			sb.border_width_right = base_sb.border_width_right
+			sb.border_width_top = base_sb.border_width_top
+			sb.border_width_bottom = base_sb.border_width_bottom
+			sb.corner_radius_top_left = base_sb.corner_radius_top_left
+			sb.corner_radius_top_right = base_sb.corner_radius_top_right
+			sb.corner_radius_bottom_left = base_sb.corner_radius_bottom_left
+			sb.corner_radius_bottom_right = base_sb.corner_radius_bottom_right
+			sb.content_margin_left = base_sb.content_margin_left
+			sb.content_margin_right = base_sb.content_margin_right
+			sb.content_margin_top = base_sb.content_margin_top
+			sb.content_margin_bottom = base_sb.content_margin_bottom
+		panel.add_theme_stylebox_override("panel", sb)
+		panel.set_meta("own_stylebox", sb)
+	sb.bg_color = _slot_bg(color)
+	sb.border_color = _slot_border(color)
 	if _slot_name_label(panel) == null:
 		return
 	# 处理 DeployIndicator：仅在战斗卡时存在
@@ -742,8 +766,12 @@ func _refresh_phase_level() -> void:
 	else:
 		phase_level_label.text = "%s Lv.%d %d/%d" % [head, lv, cur_xp, next_xp]
 	_refresh_instrument_stats()
-	# 在名称区域设置完整属性 tooltip
-	_update_instrument_tooltip(cfg)
+	# v7.3 性能优化：tooltip 签名缓存。相同 (instrument_id, lv) 跳过 _update_instrument_tooltip 的符文遍历+多行拼接。
+	# 原 phase_slots_changed 每次都重建 tooltip 字符串，战斗中频繁装备时累积开销。
+	var tooltip_sig: String = "%s|%d" % [String(cfg.get("id", "")), lv]
+	if tooltip_sig != _tooltip_last_sig:
+		_tooltip_last_sig = tooltip_sig
+		_update_instrument_tooltip(cfg)
 
 func _update_instrument_tooltip(cfg: Dictionary) -> void:
 	var target: Control = _phase_level_label_container if (_phase_level_label_container and is_instance_valid(_phase_level_label_container)) else name_section

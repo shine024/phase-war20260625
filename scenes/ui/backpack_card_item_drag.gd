@@ -11,10 +11,10 @@ const UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")
 ## 拖拽预览外框同槽位；内图标竖向略小于外框
 const DRAG_PREVIEW_ICON_DISPLAY_MIN := Vector2(36, 56)
 
-## 检查拖拽状态（process_frame 回调）
+## 检查拖拽状态（process_frame 回调，v7.3: 仅拖拽中连接）
 static func check_drag_state(item: PanelContainer) -> void:
 	if not is_instance_valid(item) or not item.is_inside_tree():
-		disconnect_drag_frame_hook(item)
+		item._disconnect_drag_frame()
 		return
 	if item._is_dragging:
 		var mouse_pos = item.get_global_mouse_position()
@@ -24,13 +24,13 @@ static func check_drag_state(item: PanelContainer) -> void:
 			end_drag(item)
 	else:
 		item._is_dragging = false
-		disconnect_drag_frame_hook(item)
+		item._disconnect_drag_frame()
 		item.process_mode = Node.PROCESS_MODE_INHERIT
 
-## 断开 process_frame 拖拽钩子
+## 断开 process_frame 拖拽钩子（v7.3: 委托给 item 按需断开）
 static func disconnect_drag_frame_hook(item: PanelContainer) -> void:
-	## 拖拽由 backpack_card_item._check_drag_state 桥接，无需在此断开全局信号
-	pass
+	if is_instance_valid(item):
+		item._disconnect_drag_frame()
 
 ## 检查全局鼠标移动（拖拽过程中）
 static func check_global_mouse_movement(item: PanelContainer) -> void:
@@ -78,8 +78,8 @@ static func start_drag(item: PanelContainer) -> void:
 	item._is_dragging = true
 	item._drag_started_ms = Time.get_ticks_msec()
 
-	# 拖拽中需持续接收 process_frame（由 backpack_card_item._check_drag_state 桥接）
-	# 不再重复连接 process_frame 信号
+	# v7.3 性能优化：按需连接 process_frame（仅在拖拽期间监听，结束即断开，消除空闲空跑）
+	item._connect_drag_frame()
 
 	# 创建轻量拖拽预览
 	item._drag_preview = PanelContainer.new()
@@ -193,6 +193,8 @@ static func end_drag(item: PanelContainer) -> void:
 		return
 
 	item._is_dragging = false
+	# v7.3: 拖拽结束立即断开 process_frame（不等下一帧 check_drag_state）
+	item._disconnect_drag_frame()
 
 	# 先清理拖拽预览
 	if item._drag_preview and is_instance_valid(item._drag_preview):

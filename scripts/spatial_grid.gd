@@ -167,6 +167,9 @@ func query_nearest_target(position: Vector2, is_player: bool, max_range: float =
 
 ## 查询目标（支持从近到远或从远到近）
 ## @param targeting_mode: 0=NEAREST_FIRST（从近到远）, 1=FARTHEST_FIRST（从远到近）
+## v7.3 性能优化：改线性扫描（O(覆盖格数×格内单位数)），不分配 Dictionary、不排序。
+## 原实现为每个候选构造 {"unit":...,"distance_sq":...} 再 sort_custom（O(m log m) + 大量临时字典），
+## 但实际只取 [0]（最近或最远一个）。NEAREST_FIRST 记录最小 d2，FARTHEST_FIRST 记录最大 d2。
 func query_nearest_target_with_mode(
 	position: Vector2,
 	is_player: bool,
@@ -175,9 +178,13 @@ func query_nearest_target_with_mode(
 ) -> Node2D:
 	_query_count += 1
 
-	## 获取范围内所有敌方单位
-	var candidates: Array = []
-	var r2: float = max_range * max_range
+	const GC = preload("res://resources/game_constants.gd")
+	var want_farthest: bool = (targeting_mode == GC.TargetingMode.FARTHEST_FIRST)
+	var best: Node2D = null
+	var best_d2: float = max_range * max_range  # NEAREST_FIRST 的上界
+	if want_farthest:
+		best_d2 = -1.0  # FARTHEST_FIRST 的下界
+
 	var min_c: Vector2i = _get_cell_coords(position - Vector2(max_range, max_range))
 	var max_c: Vector2i = _get_cell_coords(position + Vector2(max_range, max_range))
 
@@ -194,22 +201,18 @@ func query_nearest_target_with_mode(
 				if "is_player" in unit and unit.is_player == is_player:
 					continue
 				var d2: float = unit.global_position.distance_squared_to(position)
-				if d2 <= r2:
-					candidates.append({"unit": unit, "distance_sq": d2})
+				if d2 > max_range * max_range:
+					continue
+				if want_farthest:
+					if d2 > best_d2:
+						best_d2 = d2
+						best = unit
+				else:
+					if d2 < best_d2:
+						best_d2 = d2
+						best = unit
 
-	if candidates.is_empty():
-		return null
-
-	## 根据索敌方式排序
-	const GC = preload("res://resources/game_constants.gd")
-	if targeting_mode == GC.TargetingMode.FARTHEST_FIRST:
-		## 从远到近
-		candidates.sort_custom(func(a, b): return a.distance_sq > b.distance_sq)
-	else:
-		## 从近到远
-		candidates.sort_custom(func(a, b): return a.distance_sq < b.distance_sq)
-
-	return candidates[0].unit
+	return best
 
 ## 获取网格统计信息
 func get_stats() -> Dictionary:

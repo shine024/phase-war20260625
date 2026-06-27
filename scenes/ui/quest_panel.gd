@@ -301,8 +301,14 @@ func _format_progress(quest_id: String, def: Dictionary) -> String:
 			return "击毁 %d / %d" % [cur, int(target)]
 		"clear_level":
 			return "已通关" if done else "目标：第 %d 关" % int(target)
+		"clear_boss_count":
+			return "Boss关 %d / %d" % [cur, int(target)]
+		"clear_all_era":
+			return "时代 %d / %d" % [cur, int(target)]
 		"collect_fragments":
-			return "蓝图 %d / %d" % [cur, int(target) if target is int else 1]
+			# v7.3 修复 BUG-8: target 可能是 int 或 {total:N}
+			var frag_tgt: int = int(target) if target is int else int(target.get("total", 1)) if target is Dictionary else 1
+			return "蓝图 %d / %d" % [cur, frag_tgt]
 		"enhance":
 			return "强化 %d / %d" % [cur, int(target)]
 		"collect_cards":
@@ -314,12 +320,18 @@ func _format_progress(quest_id: String, def: Dictionary) -> String:
 		"buy_items":
 			return "购买 %d / %d" % [cur, int(target)]
 		"quick_win":
+			# v7.3 完善 BUG-9: 显示目标阈值秒数
+			var qw_tgt: float = float(target)
 			if cur <= 0:
-				return "未达成"
+				return "目标：≤%.0f秒" % qw_tgt
 			var best_time: float = 0.0
 			if quest_mgr:
 				best_time = float(quest_mgr.get_quest_progress(quest_id).get("progress", {}).get("best_time", 0.0))
-			return "最快 %.1f秒" % best_time if best_time > 0 else "已达成"
+			if best_time > 0 and best_time <= qw_tgt:
+				return "已达成 %.1f秒（≤%.0f）" % [best_time, qw_tgt]
+			elif best_time > 0:
+				return "最快 %.1f秒（需≤%.0f）" % [best_time, qw_tgt]
+			return "目标：≤%.0f秒" % qw_tgt
 		"perfect_battle":
 			return "三星 %d / %d" % [cur, int(target)]
 		"survive_waves":

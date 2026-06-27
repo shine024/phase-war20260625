@@ -75,6 +75,13 @@ var _fort_aura_hit_boost: float = 0.0
 ## 巨型能量罩(20000)/符文护盾/法则护盾等所有护盾源都走此路径，让"有护盾"可见化。
 var _shield_aura: Node2D = null
 var _shield_aura_hit_boost: float = 0.0  # 护盾吸收伤害时的承压闪光
+# v7.3 性能优化：光环降频 redraw + 仅变化时 set_meta。
+# 原实现每帧 set_meta×2 + queue_redraw（_draw 分配40段PackedVector2Array），20个护盾单位=20次重绘/帧。
+# 改为：hit_boost>0（承压闪光）时每帧 redraw；正常态每4帧 redraw 一次（呼吸2s周期，肉眼无感）。
+# is_player 恒定（仅首次设），shield_ratio 仅变化超阈值才 set_meta。
+var _aura_low_freq_frame: int = 0
+var _shield_aura_last_ratio: float = -1.0
+var _fort_aura_player_meta_set: bool = false
 var attack_timer: float = 0.0
 ## v5.0 攻速分离: 三阶段攻击状态机 (idle → windup → active → cooldown → idle)
 enum AttackPhase { IDLE, WINDUP, ACTIVE, COOLDOWN }
@@ -564,9 +571,14 @@ func _update_fort_shield_aura(delta: float) -> void:
 		_fort_shield_aura.visible = true
 		if _fort_aura_hit_boost > 0.0:
 			_fort_aura_hit_boost = maxf(0.0, _fort_aura_hit_boost - delta * 2.0)
-		_fort_shield_aura.set_meta(&"is_player", is_player)
+		# v7.3: is_player 恒定，仅首次设置（原每帧 set_meta）
+		if not _fort_aura_player_meta_set:
+			_fort_shield_aura.set_meta(&"is_player", is_player)
+			_fort_aura_player_meta_set = true
 		_fort_shield_aura.set_meta(&"hit_boost", _fort_aura_hit_boost)
-		_fort_shield_aura.queue_redraw()
+		# v7.3: 承压闪光时每帧 redraw，正常态每4帧一次（呼吸动画降频）
+		if _fort_aura_hit_boost > 0.0 or (_aura_low_freq_frame % 4) == 0:
+			_fort_shield_aura.queue_redraw()
 
 	# ── 护盾状态环（v7.2）──
 	# shield>0 才显示，耗尽隐藏；护盾吸收伤害时(_shield_aura_hit_boost)承压闪光
@@ -581,11 +593,18 @@ func _update_fort_shield_aura(delta: float) -> void:
 			# 护盾比例（基于 max_hp*2 上限，与 add_shield 的 clamp 一致）
 			var shield_cap: float = stats.max_hp * 2.0 if stats != null else 200.0
 			var shield_ratio: float = clampf(shield / shield_cap, 0.0, 1.0) if shield_cap > 0.0 else 0.0
-			_shield_aura.set_meta(&"shield_ratio", shield_ratio)
+			# v7.3: shield_ratio 仅变化超0.02才 set_meta（原每帧 set_meta）
+			if absf(shield_ratio - _shield_aura_last_ratio) > 0.02:
+				_shield_aura.set_meta(&"shield_ratio", shield_ratio)
+				_shield_aura_last_ratio = shield_ratio
 			_shield_aura.set_meta(&"hit_boost", _shield_aura_hit_boost)
-			_shield_aura.queue_redraw()
+			# v7.3: 承压闪光或比例变化时每帧 redraw，正常态每4帧一次
+			if _shield_aura_hit_boost > 0.0 or (_aura_low_freq_frame % 4) == 0:
+				_shield_aura.queue_redraw()
 	elif _shield_aura != null and is_instance_valid(_shield_aura):
 		_shield_aura.visible = false  # 护盾耗尽，隐藏（节点保留，下次获得护盾复用）
+	# v7.3: 帧计数推进（用于降频 redraw）
+	_aura_low_freq_frame += 1
 
 
 ## 缓存 load()：同一资源路径只加载一次，后续从内存字典取

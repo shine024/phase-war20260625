@@ -445,6 +445,25 @@ func has_save_slot(slot: int) -> bool:
 		return true
 	return false
 
+## 删除指定存档位的全部文件（主档+备份+临时）。
+## 仅删除磁盘文件，不重置当前内存中的管理器状态——删除后调用方按需自行重置。
+## 返回 true 表示该槽位原本有存档（并已删除），false 表示槽位本就为空。
+func delete_slot(slot: int) -> bool:
+	slot = clampi(slot, 1, MAX_SLOTS)
+	var had_save := has_save_slot(slot)
+	_remove_file_at_user(_slot_file(slot))
+	_remove_file_at_user(_slot_backup_file(slot))
+	_remove_file_at_user(_slot_temp_file(slot))
+	# 旧单存档（save.json）也归 slot 1
+	if slot == 1:
+		_remove_file_at_user(SAVE_FILE_USER)
+	_slot_info_cache_valid = false
+	return had_save
+
+## 强制刷新槽位信息缓存（外部直接操作存档文件后调用，如存档面板的导入功能）。
+func force_slot_info_refresh() -> void:
+	_slot_info_cache_valid = false
+
 ## 自动备份当前存档
 func _backup_current_save() -> void:
 	var now_ms: int = Time.get_ticks_msec()
@@ -581,6 +600,14 @@ func save_game() -> bool:
 		return true
 	if _is_saving:
 		return false
+	# v7.3 修复 B2/H1: DEFERRED 管理器延迟加载窗口内禁止 save_game。
+	# DEFERRED manager（Lore/StatBoost/Achievement/Statistics/CardEnhancement 等）load_state
+	# 在 call_deferred 队列中分批完成（数帧）。若此窗口内触发 save_game（如返回标题），
+	# 会对尚未 load_state 的 DEFERRED manager 调 save_state，写出空/默认数据覆盖存档。
+	# 延迟到 DEFERRED 全部加载完再存（_is_exiting 时仍强制存以防数据完全丢失）。
+	if not _is_exiting and (_load_game_deferred_phase_open or not _deferred_manager_queue.is_empty()):
+		_schedule_deferred_save()
+		return true
 	var now_ms: int = Time.get_ticks_msec()
 	if not _is_exiting and now_ms - _last_save_ms < SAVE_MIN_INTERVAL_MS:
 		_schedule_deferred_save()

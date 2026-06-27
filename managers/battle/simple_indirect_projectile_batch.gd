@@ -190,38 +190,32 @@ func _physics_process(delta: float) -> void:
 	_sync_multimesh_layers()
 
 func _sync_multimesh_layers() -> void:
-	var counts: Dictionary = {}
+	# v7.3 性能优化：单遍分桶（原两遍遍历 _proj：count + write）
+	var buckets: Dictionary = {}
 	for wt: int in _BATCH_WEAPON_TYPES:
-		counts[wt] = 0
+		buckets[wt] = []
 	for r: Dictionary in _proj:
 		var wt_r: int = int(r["wt"])
-		if counts.has(wt_r):
-			counts[wt_r] += 1
+		if buckets.has(wt_r):
+			(buckets[wt_r] as Array).append(r)
 	var tint := _PLAYER_TINT if is_player_side else _ENEMY_TINT
-	var cursors: Dictionary = {}
 	for wt: int in _BATCH_WEAPON_TYPES:
-		var n: int = int(counts[wt])
 		var mmi: MultiMeshInstance2D = _layers[wt]
 		var mm: MultiMesh = mmi.multimesh
+		var arr: Array = buckets[wt]
 		# 优化：跳过空层
-		if n == 0:
+		if arr.is_empty():
 			if mm.instance_count > 0:
 				mm.instance_count = 0
 			continue
-		mm.instance_count = n
-		cursors[wt] = 0
-	for r: Dictionary in _proj:
-		var wt_r: int = int(r["wt"])
-		if not _layers.has(wt_r):
-			continue
-		var idx: int = int(cursors[wt_r])
-		cursors[wt_r] = idx + 1
-		var dir: Vector2 = r.get("dir", Vector2.RIGHT) as Vector2
-		var mm2: MultiMesh = (_layers[wt_r] as MultiMeshInstance2D).multimesh
-		var global_pos: Vector2 = r["pos"]
-		var local_pos: Vector2 = to_local(global_pos)
-		mm2.set_instance_transform_2d(idx, Transform2D(dir.angle(), local_pos))
-		mm2.set_instance_color(idx, tint)
+		mm.instance_count = arr.size()
+		var idx: int = 0
+		for r: Dictionary in arr:
+			var dir: Vector2 = r.get("dir", Vector2.RIGHT) as Vector2
+			var local_pos: Vector2 = to_local(r["pos"])
+			mm.set_instance_transform_2d(idx, Transform2D(dir.angle(), local_pos))
+			mm.set_instance_color(idx, tint)
+			idx += 1
 
 func _apply_hit(r: Dictionary) -> void:
 	var raw_tgt: Variant = r.get("tgt")

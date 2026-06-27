@@ -65,7 +65,13 @@ func _connect_enhancement_signal() -> void:
 func _on_battle_ended(player_won: bool) -> void:
 	if player_won:
 		var gm = get_node_or_null("/root/GameManager")
-		var level: int = gm.current_level if gm and gm.get("current_level") != null else 1
+		# v7.3 修复 BUG-1: 优先读 GameManager._pending_battle_level（go_to_battle 时记录的刚打的关号），
+		# 避免 set_current_level 切到下一关后读 current_level 得到错误关号。
+		var level: int = 1
+		if gm and "_pending_battle_level" in gm and int(gm._pending_battle_level) > 0:
+			level = int(gm._pending_battle_level)
+		elif gm and gm.get("current_level") != null:
+			level = int(gm.current_level)
 		_notify_battle_won(level)
 
 func _on_unit_died(_unit: Node, is_player: bool) -> void:
@@ -225,6 +231,11 @@ func accept_quest(quest_id: String) -> bool:
 	_accepted[quest_id] = {"progress": {}, "cleared_levels": []}
 	quest_accepted.emit(quest_id)
 	quest_progress_changed.emit(quest_id)
+	# v7.3 修复 BUG-6: 补 SignalBus 镜像（全局监听者订阅 SignalBus 版本）
+	if SignalBus.has_signal("quest_accepted"):
+		SignalBus.quest_accepted.emit(quest_id)
+	if SignalBus.has_signal("quest_progress_changed"):
+		SignalBus.quest_progress_changed.emit(quest_id)
 	return true
 
 func abandon_quest(quest_id: String) -> void:
@@ -322,6 +333,21 @@ func get_current_progress_for_quest(quest_id: String) -> int:
 		var level: int = int(target_val)
 		var cleared: Array = data.get("cleared_levels", [])
 		return 1 if level in cleared else 0
+	# v7.3 修复 BUG-7: 新增两个累计型进度（击败Boss关数 / 通关时代数）
+	if otype == "clear_boss_count":
+		var cleared_b: Array = data.get("cleared_levels", [])
+		var cnt_b: int = 0
+		for bl in [20, 40, 60, 80, 100]:
+			if int(bl) in cleared_b:
+				cnt_b += 1
+		return cnt_b
+	if otype == "clear_all_era":
+		var cleared_e: Array = data.get("cleared_levels", [])
+		var cnt_e: int = 0
+		for ep in [20, 40, 60, 80, 100]:
+			if int(ep) in cleared_e:
+				cnt_e += 1
+		return cnt_e
 	if otype == "collect_fragments":
 		return mini(_count_player_cards(), 100)
 	if otype == "enhance":
@@ -380,6 +406,26 @@ func is_quest_done(quest_id: String) -> bool:
 		return int(progress.get("kill_enemies", 0)) >= int(target_val)
 	if otype == "clear_level":
 		return int(target_val) in data.get("cleared_levels", [])
+	# v7.3 修复 BUG-7: clear_boss_count — 击败 N 个 Boss 关卡（每时代终点关 20/40/60/80/100）。
+	# 原 bug：q_battle_boss_3 用 clear_level+target=3，被判定为"第3关是否通关"，语义错配。
+	if otype == "clear_boss_count":
+		var cleared: Array = data.get("cleared_levels", [])
+		var boss_levels: Array = [20, 40, 60, 80, 100]
+		var count: int = 0
+		for bl in boss_levels:
+			if int(bl) in cleared:
+				count += 1
+		return count >= int(target_val)
+	# v7.3 修复 BUG-7: clear_all_era — 通关所有 5 个时代（每时代至少一关）。
+	# 原 bug：q_battle_all_era 用 clear_level+target=5，被判定为"第5关是否通关"。
+	if otype == "clear_all_era":
+		var cleared2: Array = data.get("cleared_levels", [])
+		var era_endpoints: Array = [20, 40, 60, 80, 100]
+		var era_count: int = 0
+		for ep in era_endpoints:
+			if int(ep) in cleared2:
+				era_count += 1
+		return era_count >= int(target_val)
 	if otype == "attack_faction":
 		var t: Dictionary = def.get("target", {})
 		return t.get("target_master", "") in data.get("defeated_masters", [])
@@ -394,8 +440,14 @@ func is_quest_done(quest_id: String) -> bool:
 			return false
 		return data.get("defeated_masters", []).size() > 0
 	if otype == "collect_fragments":
-		var need: int = int(target_val) if target_val is int else 1
-		return _count_player_cards() >= need
+		# v7.3 修复 BUG-8: target 可能是 int 或 {total: N}（q_collect_fragments_50 用了 dict）。
+		# 原 bug: target_val is int else 1 → dict 时 need 恒=1，接取即完成。
+		var frag_need: int = 1
+		if target_val is int:
+			frag_need = int(target_val)
+		elif target_val is Dictionary:
+			frag_need = int(target_val.get("total", 1))
+		return _count_player_cards() >= frag_need
 	if otype == "enhance":
 		return int(progress.get("enhance_count", 0)) >= int(target_val)
 	if otype == "collect_cards":

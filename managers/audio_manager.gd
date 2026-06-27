@@ -53,6 +53,11 @@ func _ready() -> void:
 		if SignalBus.has_signal("achievement_unlocked"):
 			if not SignalBus.achievement_unlocked.is_connected(_on_achievement_unlocked):
 				SignalBus.achievement_unlocked.connect(_on_achievement_unlocked)
+		# v7.3 修复 BUG-5: 任务完成音效——补 connect（原 handler 存在但从未连接，是死代码）。
+		# SignalBus.quest_completed 在 QuestManager._try_complete 镜像 emit（quest_manager.gd）。
+		if SignalBus.has_signal("quest_completed"):
+			if not SignalBus.quest_completed.is_connected(_on_quest_completed):
+				SignalBus.quest_completed.connect(_on_quest_completed)
 		# v6.6 修复: play_sound 信号原 emit 无 connect，战斗/UI 音效静默失效。
 		# 直接桥接到 play_sfx（签名匹配：都接收音效名 String）
 		if SignalBus.has_signal("play_sound"):
@@ -151,7 +156,9 @@ func _on_enhancement_completed(success: bool, _card_id: String, _new_stats: Dict
 func _on_achievement_unlocked(_achievement_id: String, _achievement_name: String) -> void:
 	play_sfx("achievement")
 
-func _on_quest_completed(_quest_id: String) -> void:
+# v7.3 修复 BUG-5: 签名改为双参数匹配 SignalBus.quest_completed(quest_id, rewards)。
+# 原 handler 单参数，即使 connect 也会因参数不匹配报错；且原代码从未 connect（死代码）。
+func _on_quest_completed(_quest_id: String, _rewards: Dictionary) -> void:
 	play_sfx("quest_complete")
 
 ## 播放射击音效

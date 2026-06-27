@@ -864,11 +864,24 @@ func set_slots_from_card_ids(card_ids: Array) -> void:
 				arr[i] = null
 				continue
 			# v7.0: 优先用 instance_id 取实例（含养成数据），取不到回退 card_id 取模板
+			# v7.3: 回退链路修复——裸 card_id 查 get_instance 必返回 null（key 是 card_id#序号），
+			#   旧存档槽位若存了裸 card_id（迁移/边界），原逻辑静默回退到无养成的模板，
+			#   导致"装备后强化/改造消失"。改为：先尝试同名实例回退查找，仍找不到才用模板并告警。
 			var restored: CardResource = null
 			if ir != null and ir.has_method("get_instance"):
 				restored = ir.get_instance(id_val)
+			if restored == null and ir != null and ir.has_method("get_instances_by_card_id"):
+				# 裸 card_id 回退：查该卡的所有实例，取第一个（旧存档无序号信息时尽力恢复）
+				var _candidates: Array = ir.get_instances_by_card_id(id_val)
+				if not _candidates.is_empty():
+					restored = ir.get_instance(String(_candidates[0]))
+					if restored != null:
+						push_warning("[PhaseInstrumentManager] 槽位存档 ID '%s' 是裸 card_id，已回退到首个同名实例 '%s'" % [id_val, restored.instance_id])
 			if restored == null:
 				restored = _get_default_cards().get_card_by_id(id_val)
+				if restored != null:
+					# 明确告警：槽位持有的是无养成的模板（非实例），便于发现真实断裂点
+					push_warning("[PhaseInstrumentManager] 槽位存档 ID '%s' 找不到实例，回退到模板（无强化/改造数据）" % id_val)
 			arr[i] = restored
 		instrument_slots[color] = arr
 

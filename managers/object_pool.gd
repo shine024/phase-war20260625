@@ -25,7 +25,7 @@ class PoolConfig:
 class ObjectPool extends Node:
 	var scene: PackedScene
 	var available: Array = []  # 可用对象
-	var in_use: Array = []  # 使用中对象
+	var in_use: Dictionary = {}  # 使用中对象（v7.3: Dictionary 实现，has/erase 为 O(1)，避免高频归还的线性查找）
 	var config: PoolConfig
 	var total_created: int = 0  # 总创建数量统计
 	var is_initialized: bool = false
@@ -94,7 +94,7 @@ class ObjectPool extends Node:
 			obj.set_process(true)
 		if obj.has_method("set_physics_process"):
 			obj.set_physics_process(true)
-		in_use.append(obj)
+		in_use[obj] = true
 		return obj
 
 	func return_object(obj: Node) -> void:

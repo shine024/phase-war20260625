@@ -20,7 +20,6 @@ enum DropType {
 	BLUEPRINT_FRAGMENT, # 敌方蓝图碎片（与 CARD_DATA 语义相同，UI/领取用显式类型）
 	LAW_BLUEPRINT,      # 法则侧蓝图/碎片条目（与 LAW_DATA 展示一致）
 	ENERGY_BLUEPRINT,    # 能量蓝图条目（与 ENERGY_DATA 展示一致）
-	RUNE,               # v6.2 符文（替代法则系统的核心掉落物）
 	MOD_BLUEPRINT,      # v6.14 改造蓝图（与 IntelItemBag 打通，claim 时写入蓝图背包）
 }
 
@@ -200,7 +199,7 @@ func _build_era_drops() -> void:
 		DropEntry.new("alloy", DropType.MATERIAL, 3.0, 40, 80),
 		DropEntry.new("crystal", DropType.MATERIAL, 2.0, 15, 35),
 		DropEntry.new("energy_block", DropType.MATERIAL, 1.8, 8, 15),
-		DropEntry.new("permit_general", DropType.MATERIAL, 1.5, 1, 2),
+		# v7.3: permit_general 掉落已删除（许可证系统移除）
 		DropEntry.new("stat_boost_hp", DropType.STAT_BOOST, 0.5, 1, 1),
 		DropEntry.new("stat_boost_damage", DropType.STAT_BOOST, 0.5, 1, 1),
 	]
@@ -434,11 +433,7 @@ func get_drop_display_name(entry: DropEntry) -> String:
 				"nano_materials": return "纳米材料"
 				"alloy": return "合金"
 				"crystal": return "晶体"
-				"permit_general": return "改造许可函·通用"
-				"permit_type_assault": return "改造许可函·突击型"
-				"permit_type_heavy": return "改造许可函·重装型"
-				"permit_type_support": return "改造许可函·支援型"
-				"permit_type_law": return "改造许可函·法则型"
+				# v7.3: permit_general/permit_type_* 显示名已删除（许可证系统移除）
 				_ when entry.item_id.begins_with("permit_card_"):
 					var target_id: String = entry.item_id.trim_prefix("permit_card_")
 					var target_card = DefaultCards.get_card_by_id(target_id)

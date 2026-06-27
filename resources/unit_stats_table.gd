@@ -92,7 +92,9 @@ static func build_stats_from_card(card: CardResource, era_override: int = -1) ->
 	# 原因：grant_slot 以载体 attack_armor 为基准派生对空伤害，必须读到加成后的值。
 	if card.mods and not card.mods.is_empty():
 		# v6.2: 先应用改造的 stat 效果（穿甲/条件穿甲/attack_armor 百分比等）到 UnitStats
+		var _dbg_hp_before_mods: float = stats.max_hp
 		_apply_mod_stat_effects(stats, card.mods)
+		print("[BuildStats DEBUG] AFTER mods: card_id='", card.card_id, "' mods.size=", card.mods.size(), " hp ", _dbg_hp_before_mods, "->", stats.max_hp, " atk_light=", stats.attack_light, " atk_armor=", stats.attack_armor)
 		# v6.0/v6.13: 再应用改造效果到武器槽位（传入 stats 作 source_stats，grant_slot 据此派生伤害）
 		if ModificationRegistry and ModificationRegistry.has_method("apply_to_weapon_slots"):
 			tmp_slots = ModificationRegistry.apply_to_weapon_slots(tmp_slots, card.mods, stats)
@@ -113,10 +115,14 @@ static func build_stats_from_card(card: CardResource, era_override: int = -1) ->
 
 	# v6.0: 应用强化词条效果（如有 module_slots）
 	if card.module_slots.size() > 0:
+		var _dbg_hp_before_slots: float = stats.max_hp
 		apply_module_effects(stats, card.module_slots, card.enhance_level)
+		print("[BuildStats DEBUG] AFTER module_slots: card_id='", card.card_id, "' slots.size=", card.module_slots.size(), " hp ", _dbg_hp_before_slots, "->", stats.max_hp)
 
 	# v6.11: 应用强化等级加成（原战力星级②系统合并至此——星级0-7映射到强化0-10）
+	var _dbg_hp_before_lvl: float = stats.max_hp
 	apply_enhance_level_bonus(stats, card)
+	print("[BuildStats DEBUG] AFTER enhance_level_bonus: card_id='", card.card_id, "' enhance_level=", card.enhance_level, " hp ", _dbg_hp_before_lvl, "->", stats.max_hp)
 
 	return stats
 
@@ -127,7 +133,10 @@ static func build_stats_from_card(card: CardResource, era_override: int = -1) ->
 static func apply_enhance_level_bonus(stats: UnitStats, card: CardResource) -> void:
 	if stats == null or card == null:
 		return
-	var lvl: int = int(card.enhance_level) if "enhance_level" in card else 0
+	# v7.4: 修复强化等级加成失效——原用 `"enhance_level" in card` 判断，但 `in` 操作符
+	# 对 Object/RefCounted 恒返回 false（除非实现 _get），导致 lvl 永远 0，
+	# 强化等级加成（HP/攻击/防御/特殊能力）完全不生效。直接读 card.enhance_level 字段。
+	var lvl: int = int(card.enhance_level)
 	if lvl <= 0:
 		return
 	var lvl_f: float = float(lvl)
@@ -170,7 +179,8 @@ static func _apply_enhance_fixed(stats: UnitStats, lvl_f: float, hp_pct: float, 
 		"damage_reduction":
 			stats.damage_reduction = minf(0.75, stats.damage_reduction + extra_val)
 		"hp_regen":
-			stats.hp_regen += extra_val
+			# v7.x: 加上限保护，与 _apply_ability_list 的 hp_regen 分支一致
+			stats.hp_regen = minf(0.20, stats.hp_regen + extra_val)
 		"move_speed":
 			stats.move_speed *= (1.0 + extra_val)
 
@@ -189,14 +199,14 @@ static func _apply_enhance_abilities(stats: UnitStats, combat_kind: int, lvl: in
 		1:  # 装甲
 			var defs: Array = [
 				{"ek": "damage_reduction", "ev": 0.05},
-				{"ek": "shield_on_kill", "ev": 30.0},
+				{"ek": "shield_on_kill", "ev": 0.30},   # 击杀护盾 30%HP（v7.x 修复：原误写 30.0 → 3000%）
 				{"ek": "damage_reduction", "ev": 0.10},
 			]
 			_apply_ability_list(stats, defs, unlocks, lvl)
 		2:  # 支援
 			var defs: Array = [
 				{"ek": "splash_damage", "ev": 0.10},
-				{"ek": "hp_regen", "ev": 5.0},
+				{"ek": "hp_regen", "ev": 0.05},   # 每秒回血 5%HP（v7.x 修复：原误写 5.0 → 500%/秒）
 				{"ek": "splash_damage", "ev": 0.20},
 			]
 			_apply_ability_list(stats, defs, unlocks, lvl)
@@ -210,7 +220,7 @@ static func _apply_enhance_abilities(stats: UnitStats, combat_kind: int, lvl: in
 		4:  # 堡垒
 			var defs: Array = [
 				{"ek": "damage_reduction", "ev": 0.05},
-				{"ek": "hp_regen", "ev": 3.0},
+				{"ek": "hp_regen", "ev": 0.03},   # 每秒回血 3%HP（v7.x 修复：原误写 3.0 → 300%/秒，第49关相位师产兵每秒回满血3次）
 				{"ek": "damage_reduction", "ev": 0.10},
 			]
 			_apply_ability_list(stats, defs, unlocks, lvl)
@@ -233,11 +243,13 @@ static func _apply_ability_list(stats: UnitStats, defs: Array, unlocks: Array[in
 				"splash_damage":
 					stats.splash_damage = minf(0.80, stats.splash_damage + ev)
 				"hp_regen":
-					stats.hp_regen += ev
+					# v7.x: 加上限保护（防止单位/数据写错导致回血失控），与其他字段的 minf(...) 同模式
+					stats.hp_regen = minf(0.20, stats.hp_regen + ev)
 				"chain_chance":
 					stats.chain_chance = minf(0.60, stats.chain_chance + ev)
 				"shield_on_kill":
-					stats.shield_on_kill += ev
+					# v7.x: 加上限保护（与 damage_reduction 同量级）
+					stats.shield_on_kill = minf(0.50, stats.shield_on_kill + ev)
 
 
 ## v6.4: 将强化词条效果应用到 UnitStats（统一管线）

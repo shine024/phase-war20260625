@@ -345,8 +345,18 @@ func _preselect_target_card(overlay: Control, panel_key: String, card: CardResou
 	match panel_key:
 		"enhancement":
 			# v7.0: 传 instance_id（实例化养成身份）；无 instance_id 回退 card_id
+			# v7.4: 修复"强化面板词条槽显示空"——card 可能是裸模板（无 instance_id），
+			# 此时传裸 card_id 给强化面板会找不到实例养成数据。先尝试从 InstanceRegistry
+			# 解析该 card_id 的实例，存在则传 instance_id（养成数据挂在实例上）。
 			if panel.has_method("select_card_by_id"):
 				var sel_id: String = card.instance_id if not card.instance_id.is_empty() else card.card_id
+				if card.instance_id.is_empty():
+					# 裸 card_id：尝试取该 card_id 的第一个实例（养成数据所在）
+					var ir: Node = get_node_or_null("/root/InstanceRegistry")
+					if ir != null and ir.has_method("get_instances_by_card_id"):
+						var insts: Array = ir.get_instances_by_card_id(card.card_id)
+						if not insts.is_empty():
+							sel_id = String(insts[0])
 				panel.select_card_by_id(sel_id)
 		"modification", "evolution":
 			# ModificationPanel / EvolutionPanel.set_selected_card 入参为 CardResource
@@ -365,6 +375,9 @@ func _target_panel_node_name(panel_key: String) -> String:
 
 ## v7.0: 按 instance_id 解析模板 CardResource（instance_id → card_id → 模板）
 ## 优先返回实例对象（带养成），无实例回退模板
+## v7.4: 修复"成长面板强化区块显示空"——裸 card_id（无 #序号）经 ir.get_instance 必返回 null，
+## 原逻辑直接回退模板（空养成），导致成长面板自身的强化等级/词条/属性全部显示为空/0。
+## 修复：裸 card_id 时再尝试取该 card_id 的第一个实例（养成数据所在），找不到才回退模板。
 func _resolve_card(id_str: String) -> CardResource:
 	if id_str.is_empty():
 		return null
@@ -378,6 +391,15 @@ func _resolve_card(id_str: String) -> CardResource:
 	var base_card_id: String = id_str
 	if ir != null and ir.has_method("get_card_id_of"):
 		base_card_id = ir.get_card_id_of(id_str)
+	# v7.4: 若 id_str 是裸 card_id（无 #序号），先尝试取该 card_id 的第一个实例
+	# （养成数据挂在实例上，模板永远是空养成）
+	var hash_idx: int = id_str.rfind("#")
+	if hash_idx < 0 and ir != null and ir.has_method("get_instances_by_card_id"):
+		var insts: Array = ir.get_instances_by_card_id(base_card_id)
+		if not insts.is_empty():
+			var first_inst: CardResource = ir.get_instance(String(insts[0]))
+			if first_inst != null:
+				return first_inst
 	return DefaultCards.get_card_by_id(base_card_id)
 
 func refresh_card_list(unlocked_ids: Array[String]) -> void:

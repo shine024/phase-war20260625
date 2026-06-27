@@ -33,6 +33,8 @@ var _legend_container: VBoxContainer = null
 var _territory_container: VBoxContainer = null
 var _detail_label: Label = null
 var _active_faction_label: Label = null
+# v7.3 性能优化：脏标志，面板不可见时只置位，下次可见时刷新
+var _dirty: bool = false
 
 
 func _ready() -> void:
@@ -52,7 +54,16 @@ func _ready() -> void:
 		if not SignalBus.faction_reputation_changed.is_connected(_on_reputation_changed):
 			SignalBus.faction_reputation_changed.connect(_on_reputation_changed)
 
+	# v7.3 性能优化：可见时若脏则刷新
+	visibility_changed.connect(_on_visibility_changed)
+
 	_refresh_all()
+
+
+func _on_visibility_changed() -> void:
+	if visible and _dirty:
+		_dirty = false
+		_refresh_all()
 
 
 func _on_close() -> void:
@@ -60,10 +71,18 @@ func _on_close() -> void:
 
 
 func _on_occupation_changed(_level: int, _old_f: String, _new_f: String) -> void:
+	# v7.3 性能优化：面板不可见时只置脏标志，避免重建100个关卡按钮（下次显示时刷新）
+	if not is_visible_in_tree():
+		_dirty = true
+		return
 	_refresh_all()
 
 
 func _on_reputation_changed(_fid: String, _delta: int, _new_val: int) -> void:
+	# v7.3 性能优化：面板不可见时只置脏标志
+	if not is_visible_in_tree():
+		_dirty = true
+		return
 	# 声望变化影响派生状态标签，刷新图例
 	_refresh_legend()
 

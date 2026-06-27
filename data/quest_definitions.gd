@@ -434,7 +434,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"id": "q_battle_boss_3",
 		"title": "Boss猎手",
 		"description": "击败3个Boss关卡（每时代第20关）。",
-		"objective_type": "clear_level",
+		"objective_type": "clear_boss_count",
 		"target": 3,
 		"company_id": "frontier_union",
 		"rewards": {
@@ -446,7 +446,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"id": "q_battle_all_era",
 		"title": "时空穿越者",
 		"description": "在所有5个时代都取得过胜利。",
-		"objective_type": "clear_level",
+		"objective_type": "clear_all_era",
 		"target": 5,
 		"company_id": "void_research",
 		"rewards": {
@@ -647,7 +647,7 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"id": "q_challenge_all_era_boss",
 		"title": "Boss征服者",
 		"description": "击败所有5个时代的Boss关卡。",
-		"objective_type": "clear_level",
+		"objective_type": "clear_boss_count",
 		"target": 5,
 		"company_id": "frontier_union",
 		"rewards": {

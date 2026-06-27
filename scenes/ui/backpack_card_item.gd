@@ -80,11 +80,9 @@ func _ready() -> void:
 	CardBackgroundUi.ensure_overlay(self)
 	CardFrameUi.ensure_overlay(self)
 
-
-	# 监听全局输入以捕获拖拽结束
-	var tree = get_tree()
-	if tree and is_instance_valid(tree):
-		tree.process_frame.connect(_check_drag_state)
+	# v7.3 性能优化：process_frame 不在 _ready 无条件连接。
+	# 原实现每个卡牌条目都 connect SceneTree.process_frame，背包几十张卡 = 每帧几十次回调（即使不拖拽也空跑），
+	# 且对象池回收时不断开，游离 item 持续触发。改为按需连接：start_drag 时连，end_drag/exit_tree 时断。
 
 
 ## 卡图等比缩放到固定槽位（不随贴图像素尺寸撑开布局）
@@ -105,6 +103,20 @@ func _apply_icon_texture_rect_fixed(icon_rect: TextureRect, min_size: Vector2) -
 
 
 
+## v7.3: 仅在拖拽开始时连接 process_frame（按需连接，消除空跑开销）
+func _connect_drag_frame() -> void:
+	var tree = get_tree()
+	if tree and is_instance_valid(tree):
+		if not tree.process_frame.is_connected(_check_drag_state):
+			tree.process_frame.connect(_check_drag_state)
+
+## v7.3: 拖拽结束时断开 process_frame
+func _disconnect_drag_frame() -> void:
+	var tree = get_tree()
+	if tree and is_instance_valid(tree):
+		if tree.process_frame.is_connected(_check_drag_state):
+			tree.process_frame.disconnect(_check_drag_state)
+
 func _check_drag_state() -> void:
 	BackpackCardItemDrag.check_drag_state(self)
 
@@ -112,6 +124,8 @@ func _disconnect_drag_frame_hook() -> void:
 	BackpackCardItemDrag.disconnect_drag_frame_hook(self)
 
 func _exit_tree() -> void:
+	# v7.3: 退出树时确保断开 process_frame（防对象池游离节点持续触发）
+	_disconnect_drag_frame()
 	BackpackCardItemDrag.exit_tree_cleanup(self)
 
 ## 检查全局鼠标移动（用于拖拽过程中）

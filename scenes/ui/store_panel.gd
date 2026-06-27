@@ -14,13 +14,6 @@ const LEGACY_BLUEPRINT_DISPLAY_NAMES: Dictionary = {
 	"emp_pulse": "干扰手枪",
 	"energy_leech": "光束步枪·续航型",
 }
-const PERMIT_DISPLAY_NAMES: Dictionary = {
-	"permit_general": "改造许可函·通用",
-	"permit_type_assault": "改造许可函·突击型",
-	"permit_type_heavy": "改造许可函·重装型",
-	"permit_type_support": "改造许可函·支援型",
-	"permit_type_law": "改造许可函·法则型",
-}
 
 signal closed
 
@@ -220,8 +213,6 @@ func _refresh_items() -> void:
 				var target_card: CardResource = DefaultCards.get_card_by_id(target_id)
 				var target_name: String = target_card.display_name if target_card != null else target_id
 				card_name = "改造许可函·%s专属" % target_name
-			elif PERMIT_DISPLAY_NAMES.has(card_id):
-				card_name = String(PERMIT_DISPLAY_NAMES[card_id])
 			elif LEGACY_BLUEPRINT_DISPLAY_NAMES.has(card_id):
 				card_name = String(LEGACY_BLUEPRINT_DISPLAY_NAMES[card_id])
 		# v3 后所有战斗卡都是 COMBAT_UNIT，可以正常在商店售卖

@@ -13,11 +13,8 @@ const ID_ALLOY := "alloy"
 const ID_CRYSTAL := "crystal"
 const ID_ENERGY_BLOCK := "energy_block"
 const ID_RESEARCH_POINTS := "research_points"
-const ID_PERMIT_GENERAL := "permit_general"
-const ID_PERMIT_TYPE_ASSAULT := "permit_type_assault"
-const ID_PERMIT_TYPE_HEAVY := "permit_type_heavy"
-const ID_PERMIT_TYPE_SUPPORT := "permit_type_support"
-const ID_PERMIT_TYPE_LAW := "permit_type_law"
+# v7.3: 许可证系统已删除（5种资源全项目零消耗，是死系统）。
+# 原 ID_PERMIT_GENERAL / ID_PERMIT_TYPE_ASSAULT/HEAVY/SUPPORT/LAW 已移除。
 
 # 兼容性常量（保留用于向后兼容）
 const ID_BASIC_NANO := "basic_nano"  # 已弃用，请使用 ID_NANO_MATERIALS
@@ -53,36 +50,7 @@ const DEFINITIONS: Dictionary = {
 		"desc": "用于卡牌升星与改装的专用资源。",
 		"icon": "res://assets/resources/crystal.png",
 	},
-	ID_PERMIT_GENERAL: {
-		"id": ID_PERMIT_GENERAL,
-		"name": "改造许可函·通用",
-		"desc": "用于卡牌改造的通用许可。",
-		"icon": "res://assets/resources/crystal.png",
-	},
-	ID_PERMIT_TYPE_ASSAULT: {
-		"id": ID_PERMIT_TYPE_ASSAULT,
-		"name": "改造许可函·突击型",
-		"desc": "用于突击型战斗卡的改造前置许可。",
-		"icon": "res://assets/resources/crystal.png",
-	},
-	ID_PERMIT_TYPE_HEAVY: {
-		"id": ID_PERMIT_TYPE_HEAVY,
-		"name": "改造许可函·重装型",
-		"desc": "用于重装型战斗卡的改造前置许可。",
-		"icon": "res://assets/resources/crystal.png",
-	},
-	ID_PERMIT_TYPE_SUPPORT: {
-		"id": ID_PERMIT_TYPE_SUPPORT,
-		"name": "改造许可函·支援型",
-		"desc": "用于支援型战斗卡的改造前置许可。",
-		"icon": "res://assets/resources/crystal.png",
-	},
-	ID_PERMIT_TYPE_LAW: {
-		"id": ID_PERMIT_TYPE_LAW,
-		"name": "改造许可函·法则型",
-		"desc": "用于法则卡改造的前置许可。",
-		"icon": "res://assets/resources/crystal.png",
-	},
+	# v7.3: 5 种许可证定义已删除（死系统）
 	# 兼容性定义（映射到新ID）
 	ID_BASIC_NANO: {
 		"id": ID_NANO_MATERIALS,  # 映射到新的纳米材料ID

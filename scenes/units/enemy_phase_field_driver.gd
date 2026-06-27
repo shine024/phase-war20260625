@@ -96,6 +96,18 @@ const _PLATFORM_TYPE_TO_TAG: Dictionary = {
 	"stealth": "infantry",
 	"mage": "infantry",
 }
+## v7.3: 平台类型 → 匹配 tag 列表（多 tag 匹配，让 titan 平台也能匹配 tank/armored 精英兵种）
+## 相位师产兵优先选高基础值兵种，多 tag 匹配确保 elite/boss 级高HP兵种能被选中。
+const _PLATFORM_TYPE_TO_TAGS: Dictionary = {
+	"fortress": ["turret", "support"],
+	"titan": ["vehicle", "tank", "armored"],
+	"raider": ["vehicle", "fast"],
+	"siege": ["vehicle", "artillery"],
+	"striker": ["infantry", "frontline"],
+	"sniper": ["infantry", "elite"],
+	"stealth": ["infantry", "fast"],
+	"mage": ["infantry", "elite"],
+}
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_PAUSABLE
@@ -289,13 +301,15 @@ func _produce_unit_with_equipment() -> void:
 	var platform_type_str: String = String(platform_data.get("type", ""))
 	var stats: UnitStats = _build_stats_from_archetype(era, platform_type_str, platform_type_int, weapon_types)
 
-	## 用装备数据覆写基础属性（让不同装备的差异化体现）
-	var plat_stats: Dictionary = platform_data.get("stats", {})
-	if not plat_stats.is_empty():
-		stats.max_hp = float(plat_stats.get("hp", stats.max_hp))
-		stats.move_speed = 0.0
-		if plat_stats.has("defense"):
-			stats.defense = float(plat_stats["defense"])
+	# v7.3: 移除平台 stats 对 HP/defense/move_speed 的覆写。
+	# 原逻辑用 platform.stats（如 steel_titan_expert.hp=3500/defense=200）覆写真实 archetype 值，
+	# 但 platform.stats 是"平台作为可部署防御工事"的设计值（几千），用在"产兵"上语义错配，
+	# 导致产兵 HP 失控（第49关单个产兵 HP 达 7400~11000，是同关普通敌兵 ~186 的 40~60 倍）。
+	# v6.12"用真实 archetype 数据"的意图被此覆写抵消。现移除覆写，产兵 HP/防御/速度
+	# 全部使用 _build_stats_from_archetype 构建的真实 archetype 值（如 enemy_cold_btr hp=120），
+	# 与普通波次敌兵对齐量级。master_stats/战场难度/符文/相位仪/序列等加成乘区不变。
+	# platform_data 仍用于：平台类型判定（_map_platform_type）、视觉 archetype 选取（_pick_visual_archetype_for_platform）、
+	# 以及 platform_id 记录（stats.platform_card_id）。平台间的差异化由这些维度 + master 装备配置体现。
 
 	EnemyStatResolver.apply_phase_master_to_unit_stats(stats, _master_stats)
 	# v6.13: 叠加战场难度乘区（wave × level × faction_buff）。
@@ -314,6 +328,30 @@ func _produce_unit_with_equipment() -> void:
 	_apply_sequence_entry_bonus(stats, seq_entry_type)
 	# v6.14: 相位师相位仪加成 —— 接入 _get_enemy_phase_instrument_bonus（此前字段空转，v6.14 已补全数据）
 	_apply_enemy_phase_instrument_bonus(stats)
+	# v7.3: 高配档加成（等量我方改造9槽+符文满配的总加成）。
+	# 相位师战固定走高配档（TIER_HIGH: atk+35%/hp+30%/def+15%），与我方满改造+满符文对称。
+	# 注：EnemyLoadoutTiers.TIER_MODIFICATIONS 里的改造ID（e_mod_t*）未在 ModificationRegistry 注册，
+	# 无法走 _apply_mod_stat_effects 真实改造链路，故用 TIER_BONUS 数值直接乘（等量我方同档总加成）。
+	# 配合上方的 enhance_level=9（等量强化），产兵达成"和我方战力差不多"的对称平衡。
+	var _ELT = preload("res://data/enemy_loadout_tiers.gd")
+	var _high_bonus: Dictionary = _ELT.get_bonus_for_tier(_ELT.TIER_HIGH)
+	var _tier_hp: float = float(_high_bonus.get("hp_pct", 0.0))
+	var _tier_atk: float = float(_high_bonus.get("atk_pct", 0.0))
+	var _tier_def: float = float(_high_bonus.get("def_pct", 0.0))
+	if _tier_hp > 0.0:
+		stats.max_hp = maxf(1.0, stats.max_hp * (1.0 + _tier_hp))
+	if _tier_atk > 0.0:
+		stats.attack_damage = maxf(0.1, stats.attack_damage * (1.0 + _tier_atk))
+		stats.attack_light = maxf(0.1, stats.attack_light * (1.0 + _tier_atk))
+		stats.attack_armor = maxf(0.1, stats.attack_armor * (1.0 + _tier_atk))
+		stats.attack_air = maxf(0.1, stats.attack_air * (1.0 + _tier_atk))
+		if stats.has_method("_sync_weapon_slots_damage"):
+			stats._sync_weapon_slots_damage(1.0 + _tier_atk)
+	if _tier_def > 0.0:
+		stats.defense = maxf(0.0, stats.defense * (1.0 + _tier_def))
+		stats.defense_light = maxf(0.0, stats.defense_light * (1.0 + _tier_def))
+		stats.defense_armor = maxf(0.0, stats.defense_armor * (1.0 + _tier_def))
+		stats.defense_air = maxf(0.0, stats.defense_air * (1.0 + _tier_def))
 	stats.platform_card_id = platform_id
 
 	## 生成 ConstructUnit
@@ -478,9 +516,11 @@ func _pick_visual_archetype_for_era(target_era: int) -> String:
 
 ## v7.1: 按平台类型匹配卡图（替代仅按时代的硬编码列表，避免不同平台显示同一张图）
 ## 返回该时代下与平台类型 tag 匹配、且有有效卡图的 archetype ID
+## v7.3: 相位师产兵优先选高基础值兵种（让Boss战敌方用 elite/boss 级高HP兵种卡，
+## 拉近敌我差距；同一平台类型候选里取 HP 最高的，而非随机/哈希选取）。
 func _pick_visual_archetype_for_platform(era: int, platform_type: String) -> String:
-	var target_tag: String = _PLATFORM_TYPE_TO_TAG.get(platform_type, "")
-	if target_tag.is_empty():
+	var target_tags: Array = _PLATFORM_TYPE_TO_TAGS.get(platform_type, [])
+	if target_tags.is_empty():
 		return _pick_visual_archetype_for_era(era)  # 未知平台类型回退
 	var candidates: Array = []
 	for archetype_id in EnemyArchetypes.get_ids_for_era(era):
@@ -488,16 +528,25 @@ func _pick_visual_archetype_for_platform(era: int, platform_type: String) -> Str
 		if cfg.is_empty():
 			continue
 		var tags: Array = cfg.get("tags", [])
-		if not tags.has(target_tag):
+		# 匹配任一目标 tag（v7.3: titan/raider/siege 同时匹配 vehicle/tank/armored）
+		var matched: bool = false
+		for tt in target_tags:
+			if tags.has(tt):
+				matched = true
+				break
+		if not matched:
 			continue
 		if EnemyArchetypes.resolve_card_icon_texture_path(archetype_id, cfg, archetype_id).is_empty():
 			continue
 		candidates.append(archetype_id)
 	if candidates.is_empty():
 		return _pick_visual_archetype_for_era(era)  # 该类型无候选，回退原逻辑
-	# 用平台类型哈希确定性选取（同一类型每次出同一张图，避免战斗中卡图闪烁）
-	var pick: int = absi(platform_type.hash()) % candidates.size()
-	return String(candidates[pick])
+	# v7.3: 优先选基础 HP 最高的候选（让Boss战产兵用高基础兵种卡，如 elite_cold_t72 而非 enemy_cold_btr）
+	candidates.sort_custom(func(a_id: String, b_id: String) -> bool:
+		var a_hp: float = float(EnemyArchetypes.get_config(a_id).get("hp", 0.0))
+		var b_hp: float = float(EnemyArchetypes.get_config(b_id).get("hp", 0.0))
+		return a_hp > b_hp)
+	return String(candidates[0])
 
 
 ## v6.12: 用真实 archetype 数据构建 UnitStats（替代通用平台表 build_multi_stats）。
@@ -513,6 +562,12 @@ func _build_stats_from_archetype(era: int, platform_type_str: String, fallback_p
 	c.card_type = GC.CardType.COMBAT_UNIT
 	c.era = int(cfg.get("era", era))
 	c.combat_kind = _archetype_combat_kind(cfg, fallback_platform_int)
+	# v7.3: 相位师产兵填充等量强化等级（对称我方强化系统）。
+	# build_stats_from_card 内部会调用 apply_enhance_level_bonus，按 combat_kind 应用
+	# 等量我方的 hp/atk/特殊能力加成（装甲9级=hp×1.315/atk×1.189+dmg_reduction+6.3%）。
+	# 相位师战固定走高配档（TIER_HIGH.enhance_level=9），与我方满强化对称。
+	var EnemyLoadoutTiers = preload("res://data/enemy_loadout_tiers.gd")
+	c.enhance_level = int(EnemyLoadoutTiers.get_bonus_for_tier(EnemyLoadoutTiers.TIER_HIGH).get("enhance_level", 0))
 	# v6.13: archetype 表的 weapon_type 是 legacy 12 值（SMG=0…OMEGA=10），
 	# 不能直接当新 4 值 WeaponType（DIRECT/INDIRECT/AERIAL/SUPPORT）用——
 	# 否则 MG(2) 被误判成 AERIAL(2) → 信息卡显示"空射武器"。
@@ -538,6 +593,39 @@ func _build_stats_from_archetype(era: int, platform_type_str: String, fallback_p
 	c.defense_air = pd * 0.6
 	var stats := UnitStatsTable.build_stats_from_card(c, era)
 	stats.platform_type = fallback_platform_int
+	# v7.3: 防御对齐真实敌兵量级。
+	# build_stats_from_card 内部的 derive_defense_by_unit_type 用的是"我方单位防御模板"
+	# （堡垒防装甲140×era、装甲防装甲90×era 等），量级是敌兵的 10~30 倍——
+	# 普通敌兵 resolve_classic_enemy 从 cfg.defense（通常5~15）派生三维防御。
+	# 产兵复用 build_stats_from_card 会导致防御失控（第49关产兵防御达数百甚至上千）。
+	# 现用 EnemyStatResolver.resolve_classic_enemy 同款逻辑覆盖三维防御：
+	# 取 archetype 的单一 defense（无则 compute_defense_from_config 推导，量级 ~5~15），
+	# 按 combat_kind 派生低量级三维防御，与普通敌兵对齐。
+	var single_def: int = EnemyArchetypes.compute_defense_from_config(cfg)
+	var ck: int = c.combat_kind
+	# tags 含 aircraft 的判为 AIR（与 resolve_classic_enemy L194 一致）
+	var cfg_tags: Array = cfg.get("tags", [])
+	if ck != GC.CombatKind.AIR and cfg_tags.has("aircraft"):
+		ck = GC.CombatKind.AIR
+	var def_l: float = float(single_def)
+	var def_a: float = float(single_def)
+	var def_air: float = float(single_def)
+	match ck:
+		GC.CombatKind.LIGHT:
+			def_l = float(single_def); def_a = float(single_def) * 0.5; def_air = float(single_def) * 0.3
+		GC.CombatKind.ARMOR:
+			def_l = float(single_def) * 0.7; def_a = float(single_def); def_air = float(single_def) * 0.6
+		GC.CombatKind.SUPPORT:
+			def_l = float(single_def) * 0.5; def_a = float(single_def) * 0.7; def_air = float(single_def) * 0.3
+		GC.CombatKind.AIR:
+			def_l = float(single_def) * 0.6; def_a = float(single_def) * 0.4; def_air = float(single_def)
+		GC.CombatKind.FORT:
+			def_l = float(single_def) * 1.3; def_a = float(single_def) * 1.5; def_air = float(single_def) * 0.8
+	stats.defense_light = def_l
+	stats.defense_armor = def_a
+	stats.defense_air = def_air
+	# 综合防御取三维最大值（与 build_stats_from_card 末尾逻辑一致，供格子战护甲公式用）
+	stats.defense = maxf(def_l, maxf(def_a, def_air))
 	return stats
 
 

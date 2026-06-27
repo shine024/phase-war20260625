@@ -104,32 +104,6 @@ var _deferred_unlock_notify_ids: Array = []
 
 ## ─────────── 内部辅助 ───────────
 
-func _get_card_for_permit(card_id: String) -> CardResource:
-	var card: CardResource = DefaultCards.get_card_by_id(card_id)
-	if card != null:
-		return card
-	if card_id.begins_with("law:"):
-		var lid: String = card_id.substr(4)
-		return DefaultCards.create_law_card_resource(lid)
-	return null
-
-func _get_mod_category_permit_id(card_id: String) -> String:
-	var card: CardResource = _get_card_for_permit(card_id)
-	if card == null:
-		return BasicResources.ID_PERMIT_TYPE_ASSAULT
-	if card.card_type == GC.CardType.LAW:
-		return BasicResources.ID_PERMIT_TYPE_LAW
-	if card.card_type == GC.CardType.ENERGY:
-		return BasicResources.ID_PERMIT_TYPE_SUPPORT
-	if card.card_type == GC.CardType.COMBAT_UNIT:
-		## v3兼容：旧platform_type已废弃，改用combat_kind
-		var ckind: int = card.combat_kind if card.combat_kind >= 0 else 0
-		if ckind == GC.CombatKind.ARMOR or ckind == GC.CombatKind.SUPPORT:
-			return BasicResources.ID_PERMIT_TYPE_HEAVY
-		# 默认轻装单位为突击类型
-		return BasicResources.ID_PERMIT_TYPE_ASSAULT
-	return BasicResources.ID_PERMIT_TYPE_ASSAULT
-
 func _is_excluded_war_platform_id(card_id: String) -> bool:
 	if card_id.is_empty():
 		return false
@@ -666,8 +640,8 @@ func _apply_platform_enhance_growth_bias(stats: UnitStats, platform_card_id: Str
 	EvolutionHelpers._apply_platform_enhance_growth_bias(stats, platform_card_id, self)
 
 
-func _apply_evolution_hp_floor(stats: UnitStats, platform_card_id: String, era: int) -> void:
-	EvolutionHelpers._apply_evolution_hp_floor(stats, platform_card_id, era, self)
+func _apply_evolution_hp_floor(stats: UnitStats, platform_card: CardResource, era: int) -> void:
+	EvolutionHelpers._apply_evolution_hp_floor(stats, platform_card, era, self)
 
 ## ─────────── 存档 ───────────
 
@@ -1008,7 +982,11 @@ func install_modification(card: CardResource, mod_id: String, slot: int = -1) ->
 
 	# v6.14: 检查卡牌战力档位是否满足改造门槛（不同战力装不同改造）
 	# 按 rarity 派生门槛：common→无门槛, rare→需ELITE档, legendary→需OVERLORD档
-	var _card_power: float = _estimate_power_score(card.card_id)
+	# v7.3 修复 B1: 传 instance_id（实例存在时）而非 card_id。
+	# 原代码传 card.card_id（模板），estimate_power_score 用模板 build stats（enhance_level=0/mods=[]），
+	# 导致高稀有改造永远被误拒（白板战力达不到 ELITE/CHAMPION/OVERLORD 档）。
+	var _power_key: String = String(card.instance_id) if (not String(card.instance_id).is_empty()) else card.card_id
+	var _card_power: float = _estimate_power_score(_power_key)
 	var _card_tier: int = PowerTiers.get_tier_by_power(_card_power)
 	var _mod_min_tier: int = ModManager.get_min_power_tier_for_mod(mod_id)
 	if not PowerTiers.meets_requirement(_card_tier, _mod_min_tier):

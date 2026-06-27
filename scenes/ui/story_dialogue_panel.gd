@@ -540,6 +540,16 @@ func _get_speaker_color(speaker: String) -> Color:
 		"铁血男爵", "钢铁元帅", "相位之主":
 			# Boss角色：红色系
 			return DesignTokens.COLOR_DANGER
+		# v7.3 修复配色缺漏: 补守护者/虚空领主/镜像配色（原落到默认红，语义偏差）
+		"守护者":
+			# 中立/引导：青蓝色（神秘但非反派）
+			return Color(0.3, 0.7, 0.9)
+		"虚空领主":
+			# 虚空系Boss：深紫红（危险但区别于普通红Boss）
+			return Color(0.7, 0.2, 0.6)
+		"镜像", "镜像守护者":
+			# 玩家镜像：冷银色（复制/虚幻）
+			return Color(0.75, 0.78, 0.85)
 		_:
 			# 默认：Boss/未知角色用红色系
 			return DesignTokens.COLOR_DANGER

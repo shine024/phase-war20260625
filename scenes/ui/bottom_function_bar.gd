@@ -22,6 +22,7 @@ signal btn_save_pressed
 signal btn_afk_pressed
 signal btn_start_battle_pressed
 signal btn_pause_pressed
+signal btn_retreat_pressed
 signal btn_back_pressed
 ## 兼容旧场景连接：当前版本法则入口改由底部仪表栏格子点击处理
 signal btn_law_pressed
@@ -50,6 +51,7 @@ const BTN_ICON_BY_KEY: Dictionary = {
 const BATTLE_BTN_ICON_BY_KEY: Dictionary = {
 	"start_battle": "icon_start_battle",
 	"pause": "icon_pause",
+	"retreat": "icon_retreat",
 	"back": "icon_arrow_left",
 }
 
@@ -68,10 +70,11 @@ const BTN_CONFIGS: Array = [
 	["afk",          "挂机",   "btn_afk_pressed"],
 ]
 
-# 右侧战斗控制按钮（开始/暂停/返回）
+# 右侧战斗控制按钮（开始/暂停/撤退/返回）
 const BATTLE_BTN_CONFIGS: Array = [
 	["start_battle", "开始战斗", "btn_start_battle_pressed"],
 	["pause",        "暂停",     "btn_pause_pressed"],
+	["retreat",      "撤退",     "btn_retreat_pressed"],
 	["back",         "返回",     "btn_back_pressed"],
 ]
 
@@ -129,6 +132,8 @@ func _build_right_buttons() -> void:
 			_style_battle_button(btn, Color(0.0, 0.94, 0.7, 1.0), Color(0.0, 0.15, 0.12, 0.9))
 		elif key == "pause":
 			_style_battle_button(btn, Color(1.0, 0.85, 0.3, 1.0), Color(0.2, 0.15, 0.05, 0.85))
+		elif key == "retreat":
+			_style_battle_button(btn, Color(1.0, 0.4, 0.4, 1.0), Color(0.25, 0.06, 0.06, 0.88))
 		elif key == "back":
 			_style_battle_button(btn, Color(0.75, 0.75, 0.8, 0.85), Color(0.08, 0.08, 0.1, 0.85))
 		btn.pressed.connect(func():
@@ -212,7 +217,7 @@ func _set_active_btn(key: String) -> void:
 			active_style.set_corner_radius_all(5)
 			btn.add_theme_stylebox_override("normal", active_style)
 			btn.add_theme_color_override("font_color", Color(0.0, 0.94, 1.0, 1.0))
-		elif k not in ["start_battle", "back", "pause", "save"]:
+		elif k not in ["start_battle", "back", "pause", "retreat", "save"]:
 			# 恢复默认样式
 			var normal_style := StyleBoxFlat.new()
 			normal_style.bg_color = Color(0.06, 0.10, 0.18, 0.85)

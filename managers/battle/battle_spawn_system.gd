@@ -1014,6 +1014,8 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 	# v7.0: 实例化养成——若 platform_card 已是实例（instance_id 非空），养成数据直接在对象上，
 	# 无需再查 CardEnhancementManager。仅对非实例卡（兼容旧路径）做查表注入。
 	var instance_id_key: String = platform_card.instance_id if platform_card != null else ""
+	# v7.4 DEBUG: 诊断"战斗中卡牌未强化/未改造"——确认 platform_card 进来时的养成数据
+	print("[BattleSpawn DEBUG] _build_stats_cached card_id='", platform_card.card_id, "' instance_id='", platform_card.instance_id, "' enhance_level=", platform_card.enhance_level, " mods.size=", platform_card.mods.size(), " module_slots.size=", platform_card.module_slots.size())
 	if instance_id_key.is_empty():
 		# 旧路径兼容：非实例卡，按 card_id 查 CardEnhancementManager 注入养成
 		var cem: Node = _get_autoload_node("CardEnhancementManager")

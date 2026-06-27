@@ -103,6 +103,7 @@ func _ready() -> void:
 		bottom_function_bar.btn_afk_pressed.connect(_on_afk_pressed)
 		bottom_function_bar.btn_start_battle_pressed.connect(_on_start_battle)
 		bottom_function_bar.btn_pause_pressed.connect(_on_pause_pressed)
+		bottom_function_bar.btn_retreat_pressed.connect(_on_retreat_pressed)
 		bottom_function_bar.btn_back_pressed.connect(_on_back_to_title)
 
 	# 连接各面板 closed 信号
@@ -754,6 +755,103 @@ func _on_pause_pressed() -> void:
 	tree.paused = not tree.paused
 	if bottom_function_bar:
 		bottom_function_bar.set_pause_text("继续" if tree.paused else "暂停")
+
+# ── 撤退（放弃本场战斗，判定为失败） ───────────────────────────
+# 用一个实例字段追踪当前确认框，避免重复弹出
+var _retreat_confirm: Control = null
+
+func _on_retreat_pressed() -> void:
+	# 仅战斗中允许撤退（布阵/结算态点击无意义）
+	var in_battle: bool = BattleManager != null and "battle_active" in BattleManager and BattleManager.battle_active
+	if not in_battle:
+		return
+	# 已有确认框打开时不重复弹出
+	if _retreat_confirm != null and is_instance_valid(_retreat_confirm):
+		return
+	# 暂停状态下先恢复，避免结算弹窗被暂停树卡住
+	var tree := get_tree()
+	if tree and tree.paused:
+		tree.paused = false
+		if bottom_function_bar:
+			bottom_function_bar.set_pause_text("暂停")
+	_retreat_confirm = _build_retreat_confirm_dialog()
+	popup_layer.add_child(_retreat_confirm)
+
+## 构建撤退确认对话框（自绘全屏遮罩，AcceptDialog 在 CanvasLayer 下不可显示）
+func _build_retreat_confirm_dialog() -> Control:
+	var overlay := Control.new()
+	overlay.name = "RetreatConfirmOverlay"
+	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.55)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.add_child(center)
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(380, 0)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.08, 0.05, 0.07, 0.97)
+	sb.border_color = Color(1.0, 0.35, 0.35, 0.85)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(8)
+	sb.content_margin_left = 20
+	sb.content_margin_right = 20
+	sb.content_margin_top = 18
+	sb.content_margin_bottom = 18
+	panel.add_theme_stylebox_override("panel", sb)
+	center.add_child(panel)
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 14)
+	panel.add_child(vbox)
+	var title := Label.new()
+	title.text = "撤退"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 20)
+	title.add_theme_color_override("font_color", Color(1.0, 0.45, 0.45, 1.0))
+	vbox.add_child(title)
+	var body := Label.new()
+	body.text = "本场战斗将判定为失败，确定撤退吗？"
+	body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	body.add_theme_font_size_override("font_size", 14)
+	body.add_theme_color_override("font_color", Color(0.88, 0.9, 0.94, 1.0))
+	vbox.add_child(body)
+	var btn_row := HBoxContainer.new()
+	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	btn_row.add_theme_constant_override("separation", 16)
+	vbox.add_child(btn_row)
+	var confirm_btn := Button.new()
+	confirm_btn.text = "确认撤退"
+	confirm_btn.custom_minimum_size = Vector2(120, 38)
+	confirm_btn.add_theme_color_override("font_color", Color(1.0, 0.85, 0.85, 1.0))
+	var c_style := StyleBoxFlat.new()
+	c_style.bg_color = Color(0.5, 0.12, 0.12, 0.95)
+	c_style.border_color = Color(1.0, 0.4, 0.4, 0.9)
+	c_style.set_border_width_all(1)
+	c_style.set_corner_radius_all(5)
+	confirm_btn.add_theme_stylebox_override("normal", c_style)
+	btn_row.add_child(confirm_btn)
+	var cancel_btn := Button.new()
+	cancel_btn.text = "取消"
+	cancel_btn.custom_minimum_size = Vector2(120, 38)
+	btn_row.add_child(cancel_btn)
+	# 关闭确认框
+	var close := func() -> void:
+		if _retreat_confirm != null and is_instance_valid(_retreat_confirm):
+			_retreat_confirm.queue_free()
+		_retreat_confirm = null
+	confirm_btn.pressed.connect(func():
+		close.call()
+		# 判定战斗失败，走正常结算流程（battle_ended(false) → GameManager 失败结算）
+		if BattleManager != null and BattleManager.has_method("end_battle"):
+			BattleManager.end_battle(false)
+	)
+	cancel_btn.pressed.connect(close)
+	return overlay
 
 func _on_back_to_title() -> void:
 	if SaveManager:

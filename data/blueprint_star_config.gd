@@ -67,15 +67,7 @@ static func get_mod_cost(_rarity: String, mod_index: int) -> int:
 	return _MOD_RESEARCH_FLAT[idx]
 
 
-## 第 mod_index 次改装所需许可：general / category / specific 数量（v3 §5.1）
-static func get_mod_permit_rule(mod_index: int) -> Dictionary:
-	match mod_index:
-		0:
-			return {"general": 1, "category": 1, "specific": 0}
-		1:
-			return {"general": 1, "category": 1, "specific": 0}
-		_:
-			return {"general": 2, "category": 1, "specific": 1}
+# v7.3: get_mod_permit_rule 已删除（许可证系统移除，原定义"改造所需许可数量"但从未被调用）
 
 
 static func get_max_mod_times(_rarity: String) -> int:

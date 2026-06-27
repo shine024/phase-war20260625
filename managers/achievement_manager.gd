@@ -15,7 +15,8 @@ const DefaultCards = preload("res://data/default_cards.gd")
 signal achievement_unlocked(achievement_id: String, achievement_name: String)
 signal achievement_progress_updated(achievement_id: String, current_progress: int, max_progress: int)
 signal all_achievements_completed()
-## milestone_reached 已迁移至 SignalBus: SignalBus.milestone_reached(milestone_id, milestone_name)
+## v7.x 数据一致性核对：原注释谎称"milestone_reached 已迁移至 SignalBus"，实际 SignalBus.milestone_reached
+## 从未 emit/connect（预留声明）。里程碑若需全局推送，应在此 manager 发里程碑时补 SignalBus.milestone_reached.emit。
 
 ## 成就统计追踪
 var battle_stats: Dictionary = {

@@ -18,7 +18,10 @@ const LEGACY_PHASE_INSTRUMENTS: Dictionary = {
 			"energy_regen": 1.0,
 			"defense": 20
 		},
-		"special_effects": ["steel_skin_basic"]
+		"special_effects": ["steel_skin_basic"],
+		"atk_bonus": 1.67,
+		"hp_bonus": 1.25,
+		"def_bonus": 1.0
 	},
 	"steel_guardian_mk2": {
 		"id": "steel_guardian_mk2",
@@ -32,7 +35,10 @@ const LEGACY_PHASE_INSTRUMENTS: Dictionary = {
 			"energy_regen": 1.5,
 			"defense": 35
 		},
-		"special_effects": ["steel_skin_advanced", "fortress_aura"]
+		"special_effects": ["steel_skin_advanced", "fortress_aura"],
+		"atk_bonus": 4.4,
+		"hp_bonus": 3.3,
+		"def_bonus": 2.64
 	},
 	"steel_guardian_mk3": {
 		"id": "steel_guardian_mk3",
@@ -46,7 +52,10 @@ const LEGACY_PHASE_INSTRUMENTS: Dictionary = {
 			"energy_regen": 2.0,
 			"defense": 50
 		},
-		"special_effects": ["steel_skin_expert", "fortress_mastery", "industrial_aura"]
+		"special_effects": ["steel_skin_expert", "fortress_mastery", "industrial_aura"],
+		"atk_bonus": 7.5,
+		"hp_bonus": 5.62,
+		"def_bonus": 4.5
 	},
 	"steel_guardian_mk4": {
 		"id": "steel_guardian_mk4",
@@ -60,7 +69,10 @@ const LEGACY_PHASE_INSTRUMENTS: Dictionary = {
 			"energy_regen": 2.5,
 			"defense": 80
 		},
-		"special_effects": ["steel_skin_master", "immortal_fortress", "steel_mountain"]
+		"special_effects": ["steel_skin_master", "immortal_fortress", "steel_mountain"],
+		"atk_bonus": 13.33,
+		"hp_bonus": 10.0,
+		"def_bonus": 8.0
 	},
 
 	# ==================== 烈焰势力相位仪 ====================
@@ -76,7 +88,10 @@ const LEGACY_PHASE_INSTRUMENTS: Dictionary = {
 			"energy_regen": 1.2,
 			"attack_power": 15
 		},
-		"special_effects": ["burning_aura_basic"]
+		"special_effects": ["burning_aura_basic"],
+		"atk_bonus": 2.0,
+		"hp_bonus": 1.5,
+		"def_bonus": 1.2
 	},
 	"flame_destroyer_mk2": {
 		"id": "flame_destroyer_mk2",
@@ -90,7 +105,10 @@ const LEGACY_PHASE_INSTRUMENTS: Dictionary = {
 			"energy_regen": 1.8,
 			"attack_power": 25
 		},
-		"special_effects": ["burning_aura_advanced", "heat_wave"]
+		"special_effects": ["burning_aura_advanced", "heat_wave"],
+		"atk_bonus": 4.77,
+		"hp_bonus": 3.58,
+		"def_bonus": 2.86
 	},
 	"flame_destroyer_mk3": {
 		"id": "flame_destroyer_mk3",
@@ -104,7 +122,10 @@ const LEGACY_PHASE_INSTRUMENTS: Dictionary = {
 			"energy_regen": 2.3,
 			"attack_power": 40
 		},
-		"special_effects": ["burning_aura_expert", "hellfire", "immolation"]
+		"special_effects": ["burning_aura_expert", "hellfire", "immolation"],
+		"atk_bonus": 7.92,
+		"hp_bonus": 5.94,
+		"def_bonus": 4.75
 	},
 	"flame_destroyer_mk4": {
 		"id": "flame_destroyer_mk4",
@@ -118,7 +139,10 @@ const LEGACY_PHASE_INSTRUMENTS: Dictionary = {
 			"energy_regen": 3.0,
 			"attack_power": 60
 		},
-		"special_effects": ["eternal_flame", "world_burning", "phoenix_aura"]
+		"special_effects": ["eternal_flame", "world_burning", "phoenix_aura"],
+		"atk_bonus": 13.87,
+		"hp_bonus": 10.4,
+		"def_bonus": 8.32
 	},
 
 	# ==================== 雷霆势力相位仪 ====================
@@ -134,7 +158,10 @@ const LEGACY_PHASE_INSTRUMENTS: Dictionary = {
 			"energy_regen": 1.3,
 			"attack_speed": 0.1
 		},
-		"special_effects": ["static_field_basic"]
+		"special_effects": ["static_field_basic"],
+		"atk_bonus": 2.33,
+		"hp_bonus": 1.75,
+		"def_bonus": 1.4
 	},
 	"thunder_storm_mk2": {
 		"id": "thunder_storm_mk2",
@@ -148,7 +175,10 @@ const LEGACY_PHASE_INSTRUMENTS: Dictionary = {
 			"energy_regen": 1.9,
 			"attack_speed": 0.2
 		},
-		"special_effects": ["static_field_advanced", "chain_lightning_passive"]
+		"special_effects": ["static_field_advanced", "chain_lightning_passive"],
+		"atk_bonus": 5.13,
+		"hp_bonus": 3.85,
+		"def_bonus": 3.08
 	},
 	"thunder_storm_mk3": {
 		"id": "thunder_storm_mk3",
@@ -162,7 +192,10 @@ const LEGACY_PHASE_INSTRUMENTS: Dictionary = {
 			"energy_regen": 2.5,
 			"attack_speed": 0.3
 		},
-		"special_effects": ["static_field_expert", "lightning_speed", "overcharge"]
+		"special_effects": ["static_field_expert", "lightning_speed", "overcharge"],
+		"atk_bonus": 8.33,
+		"hp_bonus": 6.25,
+		"def_bonus": 5.0
 	},
 	"thunder_storm_mk4": {
 		"id": "thunder_storm_mk4",
@@ -176,7 +209,10 @@ const LEGACY_PHASE_INSTRUMENTS: Dictionary = {
 			"energy_regen": 3.2,
 			"attack_speed": 0.5
 		},
-		"special_effects": ["omnipresent_lightning", "conductive_world", "thunder_god_aura"]
+		"special_effects": ["omnipresent_lightning", "conductive_world", "thunder_god_aura"],
+		"atk_bonus": 14.4,
+		"hp_bonus": 10.8,
+		"def_bonus": 8.64
 	},
 
 	# ==================== 虚空势力相位仪 ====================
@@ -192,7 +228,10 @@ const LEGACY_PHASE_INSTRUMENTS: Dictionary = {
 			"energy_regen": 1.1,
 			"magic_power": 20
 		},
-		"special_effects": ["entropy_aura_basic"]
+		"special_effects": ["entropy_aura_basic"],
+		"atk_bonus": 2.67,
+		"hp_bonus": 2.0,
+		"def_bonus": 1.6
 	},
 	"void_walker_mk2": {
 		"id": "void_walker_mk2",
@@ -206,7 +245,10 @@ const LEGACY_PHASE_INSTRUMENTS: Dictionary = {
 			"energy_regen": 1.7,
 			"magic_power": 35
 		},
-		"special_effects": ["entropy_aura_advanced", "phase_shift"]
+		"special_effects": ["entropy_aura_advanced", "phase_shift"],
+		"atk_bonus": 5.5,
+		"hp_bonus": 4.12,
+		"def_bonus": 3.3
 	},
 	"void_walker_mk3": {
 		"id": "void_walker_mk3",
@@ -220,7 +262,10 @@ const LEGACY_PHASE_INSTRUMENTS: Dictionary = {
 			"energy_regen": 2.2,
 			"magic_power": 55
 		},
-		"special_effects": ["entropy_aura_expert", "reality_tear", "void_embrace"]
+		"special_effects": ["entropy_aura_expert", "reality_tear", "void_embrace"],
+		"atk_bonus": 8.75,
+		"hp_bonus": 6.56,
+		"def_bonus": 5.25
 	},
 	"void_walker_mk4": {
 		"id": "void_walker_mk4",
@@ -234,7 +279,10 @@ const LEGACY_PHASE_INSTRUMENTS: Dictionary = {
 			"energy_regen": 2.8,
 			"magic_power": 80
 		},
-		"special_effects": ["void_lord", "reality_breakdown", "void_mastery_ultimate"]
+		"special_effects": ["void_lord", "reality_breakdown", "void_mastery_ultimate"],
+		"atk_bonus": 14.93,
+		"hp_bonus": 11.2,
+		"def_bonus": 8.96
 	},
 
 	# ==================== 混合势力相位仪 ====================
@@ -251,7 +299,10 @@ const LEGACY_PHASE_INSTRUMENTS: Dictionary = {
 			"defense": 40,
 			"attack_power": 30
 		},
-		"special_effects": ["molten_aura", "tempered_skin"]
+		"special_effects": ["molten_aura", "tempered_skin"],
+		"atk_bonus": 6.67,
+		"hp_bonus": 5.0,
+		"def_bonus": 4.0
 	},
 	"hybrid_thunder_steel_mk1": {
 		"id": "hybrid_thunder_steel_mk1",
@@ -266,7 +317,10 @@ const LEGACY_PHASE_INSTRUMENTS: Dictionary = {
 			"defense": 45,
 			"attack_speed": 0.25
 		},
-		"special_effects": ["conductive_armor", "energized_shield"]
+		"special_effects": ["conductive_armor", "energized_shield"],
+		"atk_bonus": 7.08,
+		"hp_bonus": 5.31,
+		"def_bonus": 4.25
 	},
 	"hybrid_void_flame_mk1": {
 		"id": "hybrid_void_flame_mk1",
@@ -281,7 +335,10 @@ const LEGACY_PHASE_INSTRUMENTS: Dictionary = {
 			"magic_power": 45,
 			"attack_power": 35
 		},
-		"special_effects": ["chaos_aura", "entropy_flame_passive"]
+		"special_effects": ["chaos_aura", "entropy_flame_passive"],
+		"atk_bonus": 7.5,
+		"hp_bonus": 5.62,
+		"def_bonus": 4.5
 	},
 
 	# ==================== 神级相位仪 ====================
@@ -297,7 +354,10 @@ const LEGACY_PHASE_INSTRUMENTS: Dictionary = {
 			"energy_regen": 4.0,
 			"defense": 100
 		},
-		"special_effects": ["divine_protection", "godly_aura", "immortal_fortress"]
+		"special_effects": ["divine_protection", "godly_aura", "immortal_fortress"],
+		"atk_bonus": 15.47,
+		"hp_bonus": 11.6,
+		"def_bonus": 9.28
 	},
 	"flame_destroyer_god": {
 		"id": "flame_destroyer_god",
@@ -311,7 +371,10 @@ const LEGACY_PHASE_INSTRUMENTS: Dictionary = {
 			"energy_regen": 4.5,
 			"attack_power": 100
 		},
-		"special_effects": ["immortal_flame", "world_burning", "hell_on_earth"]
+		"special_effects": ["immortal_flame", "world_burning", "hell_on_earth"],
+		"atk_bonus": 16.0,
+		"hp_bonus": 12.0,
+		"def_bonus": 9.6
 	},
 	"thunder_storm_god": {
 		"id": "thunder_storm_god",
@@ -326,7 +389,10 @@ const LEGACY_PHASE_INSTRUMENTS: Dictionary = {
 			"attack_power": 120,
 			"attack_speed": 0.6
 		},
-		"special_effects": ["god_of_thunder", "infinite_energy", "thunder_dome_passive"]
+		"special_effects": ["god_of_thunder", "infinite_energy", "thunder_dome_passive"],
+		"atk_bonus": 16.0,
+		"hp_bonus": 12.0,
+		"def_bonus": 9.6
 	},
 	"void_walker_god": {
 		"id": "void_walker_god",
@@ -340,7 +406,10 @@ const LEGACY_PHASE_INSTRUMENTS: Dictionary = {
 			"energy_regen": 4.2,
 			"magic_power": 120
 		},
-		"special_effects": ["void_goddess", "night_everlasting", "reality_erasure"]
+		"special_effects": ["void_goddess", "night_everlasting", "reality_erasure"],
+		"atk_bonus": 16.0,
+		"hp_bonus": 12.0,
+		"def_bonus": 9.6
 	},
 	"omega_instrument": {
 		"id": "omega_instrument",
@@ -354,7 +423,10 @@ const LEGACY_PHASE_INSTRUMENTS: Dictionary = {
 			"energy_regen": 6.0,
 			"all_stats_boost": 50
 		},
-		"special_effects": ["perfect_harmony", "master_of_all", "infinite_potential"]
+		"special_effects": ["perfect_harmony", "master_of_all", "infinite_potential"],
+		"atk_bonus": 16.0,
+		"hp_bonus": 12.0,
+		"def_bonus": 9.6
 	},
 	"hybrid_steel_thunder_mk1": {
 		"id": "hybrid_steel_thunder_mk1",
@@ -369,7 +441,10 @@ const LEGACY_PHASE_INSTRUMENTS: Dictionary = {
 			"defense": 55,
 			"attack_speed": 0.35
 		},
-		"special_effects": ["conductive_armor", "energized_shield", "storm_forged"]
+		"special_effects": ["conductive_armor", "energized_shield", "storm_forged"],
+		"atk_bonus": 11.2,
+		"hp_bonus": 8.4,
+		"def_bonus": 6.72
 	},
 	"hybrid_flame_void_mk1": {
 		"id": "hybrid_flame_void_mk1",
@@ -384,7 +459,10 @@ const LEGACY_PHASE_INSTRUMENTS: Dictionary = {
 			"magic_power": 55,
 			"attack_power": 50
 		},
-		"special_effects": ["chaos_aura", "entropy_flame_passive", "dimensional_burn"]
+		"special_effects": ["chaos_aura", "entropy_flame_passive", "dimensional_burn"],
+		"atk_bonus": 11.67,
+		"hp_bonus": 8.75,
+		"def_bonus": 7.0
 	}
 }
 

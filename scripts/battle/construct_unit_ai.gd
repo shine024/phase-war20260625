@@ -44,18 +44,24 @@ static func find_target(u: CharacterBody2D, _delta: float) -> void:
 	if u.stats != null:
 		targeting_mode = GC.get_targeting_mode_for_combat_kind(u.stats.combat_kind)
 
-	# 卡牌网格战斗：使用槽位系统快速查找
-	if GameManager != null:
-		var slot_target = _find_target_by_card_grid(u, targeting_mode)
-		if slot_target != null:
-			u.target = slot_target
-			return
+	# 卡牌网格战斗：曲射/空射单位用槽位扫描（从远到近的语义需要槽位系统）
+	# v7.3 性能优化：直射单位优先走 spatial_grid（O(覆盖格数)，比 card_grid 全组 O(N) 遍历快），
+	# card_grid 作 fallback。原实现无论直射曲射都恒走 card_grid，spatial_grid 形同虚设，
+	# 每0.3s 全组遍历+select_target 子遍历造成同步尖峰（20+20单位时每秒~1300次反射+距离比较）。
+	var is_indirect_unit: bool = false
+	if u.stats != null:
+		if GC.is_indirect_weapon_type(u.stats.weapon_type):
+			is_indirect_unit = true
+		else:
+			for _ws in u.stats.weapon_slots:
+				if _ws is WeaponResource and _ws.enabled and GC.is_indirect_weapon_type(_ws.weapon_type):
+					is_indirect_unit = true
+					break
 
-	# 传统战场：使用空间分区系统
-	if BattleManager and BattleManager.spatial_grid:
+	# 直射单位：优先 spatial_grid
+	if not is_indirect_unit and BattleManager and BattleManager.spatial_grid:
 		var spatial_grid = BattleManager.spatial_grid
 		if spatial_grid:
-			# 限制查询范围，避免过大范围导致性能问题
 			var max_range: float = mini(acquisition_range(u), 250.0)
 			var nearest_target = spatial_grid.query_nearest_target_with_mode(
 				u.global_position,
@@ -65,6 +71,28 @@ static func find_target(u: CharacterBody2D, _delta: float) -> void:
 			)
 			if nearest_target != null:
 				u.target = nearest_target
+				return
+
+	# 曲射/空射单位，或 spatial_grid 未命中时：用卡牌网格槽位系统
+	if GameManager != null:
+		var slot_target = _find_target_by_card_grid(u, targeting_mode)
+		if slot_target != null:
+			u.target = slot_target
+			return
+
+	# 传统战场回退：空间分区系统（直射单位且上面 spatial_grid 未命中时的二次尝试）
+	if is_indirect_unit and BattleManager and BattleManager.spatial_grid:
+		var spatial_grid2 = BattleManager.spatial_grid
+		if spatial_grid2:
+			var max_range2: float = mini(acquisition_range(u), 250.0)
+			var nearest_target2 = spatial_grid2.query_nearest_target_with_mode(
+				u.global_position,
+				u.is_player,
+				max_range2,
+				targeting_mode
+			)
+			if nearest_target2 != null:
+				u.target = nearest_target2
 				return
 
 	# 回退到传统方法（使用新索敌函数）
@@ -445,16 +473,32 @@ static func _process_multi_weapons(u: CharacterBody2D, delta: float) -> void:
 		var phase_timer: float = float(w.get("phase_timer", 0.0))
 
 		# v6.1 FIX: 统一从武器槽位获取 weapon_type / timing / range
+		# v7.3 性能优化：timing/range/wt 缓存到 w 字典，武器引用不变时复用，避免每帧每武器
+		# 调 get_weapon_attack_timing（新建Dictionary）+ get_weapon_range（has_method 反射）。
+		# 20单位×2武器 = 每帧~40次字典分配+反射 → 改为武器变化时才算一次。
 		var timing: Dictionary
 		var w_range: float
 		var w_weapon: WeaponResource
 		var w_wt: int = GC.WeaponType.DIRECT
+		var need_recompute: bool = true
 		if i < u.stats.weapon_slots.size():
 			w_weapon = u.stats.weapon_slots[i] as WeaponResource
 			if w_weapon and w_weapon.enabled:
-				timing = AttackCalculator.get_weapon_attack_timing(w_weapon)
-				w_range = AttackCalculator.get_weapon_range(w_weapon)
-				w_wt = w_weapon.weapon_type
+				# 检查武器引用是否变化（同一对象则复用缓存）
+				if w.get("cached_weapon_ref", null) == w_weapon:
+					timing = w.get("cached_timing", {})
+					w_range = float(w.get("cached_range", 0.0))
+					w_wt = int(w.get("cached_wt", GC.WeaponType.DIRECT))
+					if not timing.is_empty():
+						need_recompute = false
+				if need_recompute:
+					timing = AttackCalculator.get_weapon_attack_timing(w_weapon)
+					w_range = AttackCalculator.get_weapon_range(w_weapon)
+					w_wt = w_weapon.weapon_type
+					w["cached_weapon_ref"] = w_weapon
+					w["cached_timing"] = timing
+					w["cached_range"] = w_range
+					w["cached_wt"] = w_wt
 			else:
 				timing = AttackCalculator.get_attack_timing(u.stats, target_kind)
 				w_range = u.stats.attack_range

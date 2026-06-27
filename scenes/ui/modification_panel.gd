@@ -210,7 +210,10 @@ func _create_card_item(card: CardResource, instance_card: CardResource = null) -
 
 	btn.add_child(vbox)
 	btn.tooltip_text = "改造：%d/9" % display_mods.size()
-	btn.pressed.connect(func(): _on_card_selected(display_card))
+	# v7.3: 选中绑定用实例对象（含养成）。实例取不到时传 null，
+	# _on_card_selected 会拒绝选中（避免改造写到无养成的模板污染单例）。
+	# display_card 仅用于列表项显示（含回退模板的展示），不参与养成写入。
+	btn.pressed.connect(func(): _on_card_selected(instance_card))
 	return btn
 
 ## v7.1: 显示未安装的改造（仅显示对应兵种可用的）
@@ -495,6 +498,12 @@ func _can_install_mod(mod_id: String) -> bool:
 func _install_modification(mod_id: String) -> void:
 	if not selected_card:
 		return
+	# v7.3: 双重保险——改造必须写到实例对象。无 instance_id 的卡是模板/残留，
+	# install_modification 会把改造写到模板污染单例。在此拦截，与 _on_card_selected 的守卫呼应。
+	if selected_card.instance_id.is_empty():
+		push_warning("[modification_panel] _install_modification: 选中卡 '%s' 无 instance_id，拒绝安装（避免污染模板）" % selected_card.card_id)
+		_show_result("该卡牌实例不可用，无法改造")
+		return
 
 	var result = BlueprintManager.install_modification(selected_card, mod_id)
 
@@ -510,6 +519,13 @@ func _install_modification(mod_id: String) -> void:
 ## ─────────────────────────────────────────────
 
 func _on_card_selected(card: CardResource) -> void:
+	# v7.3: 实例化养成——改造必须写到实例对象。选中无 instance_id 的卡（模板/残留）
+	# 会把改造写到模板污染单例，导致背包/装备读的实例（空）与改造脱节。
+	# 拒绝选中此类卡并明确告警。
+	if card != null and card.instance_id.is_empty():
+		push_warning("[modification_panel] 选中卡 '%s' 无 instance_id（非实例，可能为模板），拒绝选中以避免改造污染模板" % card.card_id)
+		_show_result("该卡牌实例不可用，无法改造（请重新获取该卡）")
+		return
 	selected_card = card
 	selected_mod_id = ""
 	_refresh_mod_list()
@@ -760,6 +776,10 @@ func _format_grant_slot(grant: Dictionary) -> String:
 
 ## 供外部调用的接口
 func set_selected_card(card: CardResource) -> void:
+	# v7.3: 实例化养成——拒绝无 instance_id 的卡（模板/残留），避免改造污染单例
+	if card != null and card.instance_id.is_empty():
+		push_warning("[modification_panel] set_selected_card: 卡 '%s' 无 instance_id，拒绝选中" % card.card_id)
+		return
 	selected_card = card
 	selected_mod_id = ""
 	if has_node("VBoxContainer/HBoxContainer/DetailPanel"):

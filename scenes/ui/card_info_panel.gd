@@ -30,6 +30,11 @@ var current_card: CardResource = null
 var _current_unit: Node = null
 var _current_mode: int = PanelMode.MODE_BACKPACK
 var _context_data: Dictionary = {}
+# v7.3 性能优化：单次 show_card_info 内复用的 UnitStats 缓存。
+# 原 _refresh_stat_cards 和 _build_affix_tag_list 各自调 _build_display_stats（含 build_stats_from_card 重操作），
+# 一次点卡跑2遍。改为 _refresh_info_sections 顶部构建一次，子函数共用。
+var _cached_display_stats: UnitStats = null
+var _cached_display_stats_key: String = ""
 
 # 节点引用
 var action_buttons_container: HBoxContainer = null
@@ -445,6 +450,8 @@ func _refresh_header(card: CardResource) -> void:
 func _refresh_info_sections(card: CardResource) -> void:
 	if card == null:
 		return
+	# v7.3 性能优化：顶部构建一次 UnitStats 缓存，子函数共用（原各调一次 _build_display_stats = build_stats_from_card 跑2遍）
+	_prepare_display_stats_cache(card)
 	# v6.4: 三维攻防——图形化三列数值卡
 	_refresh_stat_cards(card)
 	# 词条（标签化）
@@ -532,8 +539,38 @@ func _refresh_stat_cards(card: CardResource) -> void:
 		var avg_spd: float = stats.attack_interval if stats.attack_interval > 0 else 1.0
 		_extra_stat_label.text = "攻速 %.1f/s · DPS %d · 移速 %d" % [best_speed, int(dps), int(stats.move_speed)]
 
+## v7.3 性能优化：在 _refresh_info_sections 顶部构建一次 UnitStats 缓存，供子函数共用。
+## 避免 _refresh_stat_cards 和 _build_affix_tag_list 各自调 _build_display_stats（build_stats_from_card 重操作）跑2遍。
+func _prepare_display_stats_cache(card: CardResource) -> void:
+	_cached_display_stats = _build_display_stats(card)
+	# 缓存键：card 身份 + 当前战斗态（era 影响构建结果）
+	var era_key: String = ""
+	var bm_node_check: Node = null
+	var tree_c := Engine.get_main_loop() as SceneTree
+	if tree_c != null and tree_c.root != null:
+		bm_node_check = tree_c.root.get_node_or_null("BattleManager")
+		if bm_node_check != null and "battle_active" in bm_node_check and bm_node_check.battle_active:
+			var gm_check: Node = tree_c.root.get_node_or_null("GameManager")
+			if gm_check != null and "current_level" in gm_check:
+				era_key = str(int(gm_check.current_level))
+	var id_str: String = String(card.instance_id) if (card != null and "instance_id" in card and not String(card.instance_id).is_empty()) else (String(card.card_id) if card != null else "")
+	_cached_display_stats_key = id_str + "|" + era_key
+
 ## v6.4: 构建 UnitStats（含时代缩放 + growth + affix），供三维卡显示
 func _build_display_stats(card: CardResource) -> UnitStats:
+	# v7.3 性能优化：若缓存键匹配（同一卡同一战斗态），直接返回缓存，避免重复 build_stats_from_card
+	var id_str: String = String(card.instance_id) if ("instance_id" in card and not String(card.instance_id).is_empty()) else String(card.card_id)
+	var era_key: String = ""
+	var tree_e := Engine.get_main_loop() as SceneTree
+	if tree_e != null and tree_e.root != null:
+		var bm_e: Node = tree_e.root.get_node_or_null("BattleManager")
+		if bm_e != null and "battle_active" in bm_e and bm_e.battle_active:
+			var gm_e: Node = tree_e.root.get_node_or_null("GameManager")
+			if gm_e != null and "current_level" in gm_e:
+				era_key = str(int(gm_e.current_level))
+	if _cached_display_stats != null and _cached_display_stats_key == (id_str + "|" + era_key):
+		return _cached_display_stats
+
 	var tree := Engine.get_main_loop() as SceneTree
 	if tree == null or tree.root == null:
 		return null
@@ -622,6 +659,17 @@ func _build_card_affix_summary(card: CardResource) -> String:
 		return _build_affix_summary_lines(stats)
 	return ""
 
+## v7.3: 取卡牌养成身份 ID——优先 instance_id（实例化养成），空时回退 card_id（兼容旧卡）
+## 养成相关 manager（CardEnhancementManager/BlueprintManager.blueprint_mods 等）的查询必须用实例身份，
+## 否则用裸 card_id 查 InstanceRegistry 必返回 null（key 是 card_id#序号），回退到无养成的模板，
+## 导致"强化/改造词条显示为空"。此函数统一收敛这条身份解析逻辑。
+func _card_identity_id(card: CardResource) -> String:
+	if card == null:
+		return ""
+	if "instance_id" in card and not String(card.instance_id).is_empty():
+		return String(card.instance_id)
+	return String(card.card_id)
+
 ## v6.11: 强化详情（情报 Tab）——显示真实强化等级 + 词条效果
 ## 弃用废弃的 get_star_enhancement_lines（基于已移除的星级系统）
 func _build_star_lines(card: CardResource) -> String:
@@ -630,7 +678,8 @@ func _build_star_lines(card: CardResource) -> String:
 		return ""
 	var cem: Node = get_node_or_null("/root/CardEnhancementManager")
 	if cem and cem.has_method("get_module_effect_lines"):
-		var lines: Array = cem.get_module_effect_lines(card.card_id)
+		# v7.3: 用实例身份查词条（实例化养成后词条存实例对象，按裸 card_id 查永远空）
+		var lines: Array = cem.get_module_effect_lines(_card_identity_id(card))
 		if not lines.is_empty():
 			return "强化 ★%d\n- %s" % [detail_star, "\n- ".join(lines)]
 	return "强化 ★%d" % detail_star
@@ -648,7 +697,8 @@ func _build_nurture_text(card: CardResource) -> String:
 	if card.card_type == GC.CardType.COMBAT_UNIT:
 		var cem: Node = get_node_or_null("/root/CardEnhancementManager")
 		if cem and cem.has_method("get_module_effect_lines"):
-			var eff_lines: Array = cem.get_module_effect_lines(card.card_id)
+			# v7.3: 用实例身份查词条（实例化养成后词条存实例对象，按裸 card_id 查永远空）
+			var eff_lines: Array = cem.get_module_effect_lines(_card_identity_id(card))
 			if not eff_lines.is_empty():
 				enhance_effect_text = "\n词条效果：" + " · ".join(eff_lines)
 	if BlueprintManager.has_method("get_card_xp_progress"):

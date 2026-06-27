@@ -599,6 +599,16 @@ func _on_enhance_button_pressed() -> void:
 	if selected_card_id.is_empty() or not card_enh_mgr:
 		return
 
+	# v7.4: 关键修复——缓存 selected_card_id 到局部变量。
+	# 原因：do_enhance 内部同步 emit enhancement_completed 信号 → _on_enhancement_completed
+	# 回调里调 _init_card_list()，会把成员变量 selected_card_id 清空成 ""。
+	# 回到本函数后续逻辑时 selected_card_id 已是空，导致：
+	#   1) _show_module_selection_popup(selected_card_id="") 弹窗 bind 空字符串
+	#   2) 用户选词条 → choose_module("") → 词条写进 card_module_slots[""]（垃圾键）
+	#   3) 实例永远拿不到词条 → 强化面板词条槽显示"空"
+	# 用局部变量 card_id_cached 锁定操作目标，不受信号回调清空成员变量影响。
+	var card_id_cached: String = selected_card_id
+
 	# 获取纳米材料数量（从 BasicResourceManager）
 	var current_nano: int = 0
 	if BasicResourceManager and BasicResourceManager.has_method("get_total"):
@@ -607,7 +617,7 @@ func _on_enhance_button_pressed() -> void:
 		current_nano = int(BlueprintManager.get_nano_materials())
 
 	# 执行强化（v6.0：使用 do_enhance）
-	var result = card_enh_mgr.do_enhance(selected_card_id, current_nano)
+	var result = card_enh_mgr.do_enhance(card_id_cached, current_nano)
 	if not result.get("ok", false):
 		if result_label:
 			result_label.text = "强化失败：" + str(result.get("reason", "纳米材料不足"))
@@ -615,21 +625,23 @@ func _on_enhance_button_pressed() -> void:
 		return
 
 	# 扣费：通过 BasicResourceManager 消耗纳米材料
-	var nano_cost: int = card_enh_mgr.get_enhance_nano_cost(selected_card_id, int(result.get("level", 0)))
+	var nano_cost: int = card_enh_mgr.get_enhance_nano_cost(card_id_cached, int(result.get("level", 0)))
 	if BasicResourceManager and BasicResourceManager.has_method("spend_resource"):
 		BasicResourceManager.spend_resource(BasicResources.ID_NANO_MATERIALS, nano_cost)
 	elif BlueprintManager and BlueprintManager.has_method("add_nano_materials"):
 		BlueprintManager.add_nano_materials(-nano_cost)
 
-	# v6.6: 强化到新槽位/升级槽位等级时，弹出词条选择
+	# v6.6: 强化到新槽位/升级槽位等级时，弹出词条选择（用缓存的 card_id，非可能被清空的成员变量）
 	var action: String = String(result.get("action", "none"))
 	if action == "new_slot":
-		_show_module_selection_popup(selected_card_id, int(result.get("level", 0)))
+		_show_module_selection_popup(card_id_cached, int(result.get("level", 0)))
 	elif action == "upgrade_slot":
-		_show_module_upgrade_popup(selected_card_id)
+		_show_module_upgrade_popup(card_id_cached)
 
-	# 刷新面板
+	# 刷新面板（_init_card_list 会清空 selected_card_id，刷新后用缓存值重新选中）
 	_init_card_list()
+	selected_card_id = card_id_cached  # 恢复选中（_init_card_list 已清空）
+	_refresh_card_selection_style()
 	_update_detail_panel()
 	_update_resource_labels()
 
@@ -871,6 +883,10 @@ func _truncate_with_ellipsis(text: String, max_len: int) -> String:
 
 ## 解析第 i 个槽位的词条显示文本（"词条名 Lv.x"）；无词条返回空串
 ## slot 可能是 ModuleSlot 对象（.module_id/.level）或 Dictionary（module_id/level）
+## v7.4: 修复"已强化卡词条槽显示空"——原用 `elif "module_id" in s:` 判断，但 `in`
+## 操作符对 RefCounted/Object 只在 Dictionary 上有意义，对 ModuleSlot 实例恒返回 false，
+## 导致两个分支都不进、mid 保持空串 → 返回空 → 槽位显示"空"。改为显式类型+属性检查。
+## 防御：用多路读取（属性/方法/get），任一拿到 module_id 即返回显示文本。
 func _slot_display(slots: Array, i: int) -> String:
 	if i >= slots.size():
 		return ""
@@ -882,9 +898,18 @@ func _slot_display(slots: Array, i: int) -> String:
 	if s is Dictionary:
 		mid = String(s.get("module_id", ""))
 		lvl = int(s.get("level", 1))
-	elif "module_id" in s:
+	elif s is ModuleSlot:
+		# ModuleSlot 对象：直接读属性（不再用 `in` 判断）
 		mid = String(s.module_id)
 		lvl = int(s.level)
+	elif s is Object:
+		# 兜底：其它对象——优先用 get() 取属性（Object.get("prop") 适用于脚本变量）
+		var mid_val = s.get("module_id")
+		if mid_val != null:
+			mid = String(mid_val)
+		var lvl_val = s.get("level")
+		if lvl_val != null:
+			lvl = int(lvl_val)
 	if mid.is_empty():
 		return ""
 	var name: String = ModuleDefinitions.get_module_name(mid)
@@ -1041,7 +1066,8 @@ func _show_module_upgrade_popup(card_id: String) -> void:
 		if s is Dictionary:
 			mid = String(s.get("module_id", ""))
 			lvl = int(s.get("level", 1))
-		elif "module_id" in s:
+		elif s is ModuleSlot:
+			# v7.4: 同 _slot_display 修复——`in` 操作符对 RefCounted 恒 false，改用类型判断
 			mid = String(s.module_id)
 			lvl = int(s.level)
 		if mid.is_empty() or lvl >= 3:

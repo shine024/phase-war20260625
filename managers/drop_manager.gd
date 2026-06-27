@@ -43,8 +43,15 @@ func reset_multiplier() -> void:
 func reset_to_defaults() -> void:
 	pending_drops.clear()
 
+## v7.3 修复 B3: 生成新掉落前，若仍有未领取的 pending_drops，先自动领取（发放），避免覆盖丢失。
+## 原 bug：generate_battle_drops 直接 pending_drops = drops 覆盖，上一场未领取的掉落永久丢失。
+func _auto_claim_pending_if_any() -> void:
+	if not pending_drops.is_empty():
+		claim_drops()
+
 ## 生成战斗掉落
 func generate_battle_drops(era: int, level: int, player_won: bool, victory_stars: int = 0) -> Array:
+	_auto_claim_pending_if_any()
 	var drops = drop_tables.generate_drops(era, level, player_won, victory_stars)
 	pending_drops = drops
 	drops_generated.emit(drops)
@@ -52,6 +59,7 @@ func generate_battle_drops(era: int, level: int, player_won: bool, victory_stars
 
 ## 生成Boss战掉落
 func generate_boss_drops(era: int, boss_id: String) -> Array:
+	_auto_claim_pending_if_any()
 	var drops = drop_tables.generate_boss_drops(era, boss_id)
 	pending_drops = drops
 	drops_generated.emit(drops)

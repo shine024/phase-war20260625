@@ -82,14 +82,32 @@ func get_card_enhancement_level(card_id_or_instance: String) -> int:
 	return 0
 
 ## v7.0: 按 instance_id 取实例对象（找不到返回 null）
+## v7.4: 修复"强化面板词条槽显示空"——成长面板/情报中心可能传裸 card_id（无 #序号）进来，
+## 此时 ir.get_instance(裸card_id) 必返回 null，导致 get_module_slots/get_card_enhancement_level
+## 全部回退到空模板，已强化的卡词条槽全部显示"空"。
+## 修复：裸 card_id 时回退取该 card_id 的第一个实例（养成数据挂在实例上）。
 func _get_instance_card(id_str: String) -> CardResource:
 	if id_str.is_empty():
 		return null
 	var ir: Node = get_node_or_null("/root/InstanceRegistry")
-	if ir != null and ir.has_method("get_instance"):
+	if ir == null:
+		return null
+	# 1) 直接按 instance_id 查（含 #序号，正常路径）
+	if ir.has_method("get_instance"):
 		var inst: CardResource = ir.get_instance(id_str)
 		if inst != null:
 			return inst
+	# 2) 兜底：id_str 是裸 card_id（无 #序号）时，取该 card_id 的第一个实例
+	#    仅当 id_str 不含 #（避免把真实 instance_id 误当 card_id 反复回退）
+	var hash_idx: int = id_str.rfind("#")
+	if hash_idx < 0 and ir.has_method("get_instances_by_card_id"):
+		var insts: Array = ir.get_instances_by_card_id(id_str)
+		if not insts.is_empty():
+			var first_id: String = String(insts[0])
+			if not first_id.is_empty() and ir.has_method("get_instance"):
+				var fallback_inst: CardResource = ir.get_instance(first_id)
+				if fallback_inst != null:
+					return fallback_inst
 	return null
 
 ## 获取卡牌的词条槽位数组
@@ -204,16 +222,18 @@ func can_enhance(card_id: String, nano_available: int) -> bool:
 ## 执行强化升级（消耗纳米，提升等级）
 ## 返回 action: "new_slot" / "upgrade_slot" / "none"
 ## v7.0: 参数改为 instance_id；强化等级写到实例对象（不再污染 DefaultCards 单例）
+## v7.3: 杜绝污染模板——_get_instance_card 返回 null 时不再回退到 DefaultCards 模板，
+##   而是返回失败。原因：回退到模板后 card.enhance_level = target_level 会污染单例，
+##   导致背包/装备读的实例（空）与强化的模板（有值）脱节，表现为"强化没生效"。
 func do_enhance(card_id_or_instance: String, nano_available: int) -> Dictionary:
 	if not can_enhance(card_id_or_instance, nano_available):
 		return {"ok": false, "action": "none", "reason": "无法强化"}
 
-	# v7.0: 优先取实例对象；无实例回退模板（兼容）
+	# v7.3: 强制要求实例——养成数据必须写到实例对象，禁止回退模板污染单例
 	var card = _get_instance_card(card_id_or_instance)
 	if card == null:
-		card = DefaultCards.get_card_by_id(card_id_or_instance)
-	if card == null:
-		return {"ok": false, "action": "none", "reason": "卡牌不存在"}
+		push_warning("[CardEnhancementManager] do_enhance 找不到实例 '%s'，拒绝强化（避免污染模板）" % card_id_or_instance)
+		return {"ok": false, "action": "none", "reason": "找不到卡牌实例，无法强化"}
 
 	var current_level = get_card_enhancement_level(card_id_or_instance)
 	var target_level = current_level + 1

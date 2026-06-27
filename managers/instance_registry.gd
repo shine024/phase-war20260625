@@ -336,6 +336,9 @@ func _serialize_weapon_slots(slots: Array) -> Array:
 				"projectile_scene": String(w.projectile_scene),
 				"hit_effect_scene": String(w.hit_effect_scene),
 				"sound_id": String(w.sound_id),
+				# v7.3 修复: 补 _mod_effects（改造模块写入的武器级动态效果，如 slot_damage_mult）。
+				# 原遗漏导致存档-读档后武器改造加成丢失，进化时不继承。
+				"mod_effects": (w.get("_mod_effects") as Dictionary).duplicate(true) if w.get("_mod_effects") != null else {},
 			})
 	return out
 
@@ -363,6 +366,10 @@ func _deserialize_weapon_slots(data: Array) -> Array:
 		w.projectile_scene = String(wd_dict.get("projectile_scene", ""))
 		w.hit_effect_scene = String(wd_dict.get("hit_effect_scene", ""))
 		w.sound_id = String(wd_dict.get("sound_id", ""))
+		# v7.3 修复: 恢复 _mod_effects（武器级改造加成）
+		var me: Dictionary = wd_dict.get("mod_effects", {})
+		if me is Dictionary and not me.is_empty():
+			w._mod_effects = me.duplicate(true)
 		out.append(w)
 	return out
 

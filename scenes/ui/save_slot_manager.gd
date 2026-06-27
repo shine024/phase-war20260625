@@ -1,25 +1,31 @@
 extends Control
-## 存档槽管理器：提供多存档槽管理界面
+## 存档槽管理器：基于 SaveManager 的真实多槽位 API（MAX_SLOTS=3）。
+## v7.3 重写：原版调用 14 个不存在的 SaveManager 方法（has_save_in_slot /
+## load_game_from_slot / save_game_to_slot / get_save_slot_info / get_save_file_size /
+## delete_save / import_save / export_save / cleanup_old_saves / get_all_save_slots /
+## configure_auto_save / quick_save / quick_load 等）全部静默失败。
+## 现统一走真实 API：set_slot(int)/get_slot_info()/load_game()/save_game()/delete_slot()。
 
 ## 信号定义
-signal slot_selected(slot_id: String)
-signal slot_deleted(slot_id: String)
-signal slot_copied(source_slot: String, target_slot: String)
+signal slot_selected(slot_num: int)
+signal slot_deleted(slot_num: int)
 signal manager_closed()
 
-## UI组件引用
+## UI组件引用（路径与 save_slot_manager.tscn 一致）
 @onready var slot_container: GridContainer = $VBox/SlotContainer
 @onready var import_button: Button = $VBox/Toolbar/ImportButton
 @onready var export_button: Button = $VBox/Toolbar/ExportButton
 @onready var cleanup_button: Button = $VBox/Toolbar/CleanupButton
 @onready var close_button: Button = $VBox/CloseButton
 
-var selected_slot: String = ""
+## 导入/导出文件对话框选中槽位（默认当前槽）
+var _io_slot: int = 1
 
 func _ready() -> void:
 	if SaveManager == null:
 		push_error("[SaveSlotManager] 无法找到存档管理器")
-
+		return
+	_io_slot = SaveManager.get_slot()
 	_setup_connections()
 	_refresh_all_slots()
 
@@ -27,71 +33,54 @@ func _ready() -> void:
 func _setup_connections() -> void:
 	if import_button != null:
 		import_button.pressed.connect(_on_import_pressed)
-
 	if export_button != null:
 		export_button.pressed.connect(_on_export_pressed)
-
 	if cleanup_button != null:
 		cleanup_button.pressed.connect(_on_cleanup_pressed)
-
 	if close_button != null:
 		close_button.pressed.connect(_on_close_pressed)
 
-## 刷新所有存档槽
+## 刷新所有存档槽（真实 API：get_slot_info() 返回 Array[{slot,exists,level}]）
 func _refresh_all_slots() -> void:
 	if slot_container == null or SaveManager == null:
 		return
-
-	# 清空现有内容
 	for child in slot_container.get_children():
 		child.queue_free()
-
-	# 等待清空完成
-	await get_tree().process_frame
-
-	# 获取存档槽信息
-	var save_slots = {}
-	if SaveManager.has_method("get_all_save_slots"):
-		save_slots = SaveManager.get_all_save_slots()
-	else:
-		# 使用默认槽
-		save_slots = {
-			"slot_1": {"slot_id": "slot_1", "slot_name": "存档槽 1"},
-			"slot_2": {"slot_id": "slot_2", "slot_name": "存档槽 2"},
-			"slot_3": {"slot_id": "slot_3", "slot_name": "存档槽 3"}
-		}
-
-	# 为每个存档槽创建UI
-	for slot_id in save_slots:
-		var slot_info = save_slots[slot_id]
-		var slot_panel = _create_slot_panel(slot_info)
-		slot_container.add_child(slot_panel)
+	var slot_infos: Array = SaveManager.get_slot_info()
+	# get_slot_info() 可能未含当前槽之外的排序保证，按 slot 字段排序确保 1/2/3 顺序
+	slot_infos.sort_custom(func(a, b): return int(a.get("slot", 0)) < int(b.get("slot", 0)))
+	for info in slot_infos:
+		var slot_num: int = int(info.get("slot", 0))
+		if slot_num <= 0:
+			continue
+		slot_container.add_child(_create_slot_panel(slot_num, info))
 
 ## 创建存档槽面板
-func _create_slot_panel(slot_info: Dictionary) -> Control:
-	var slot_id = slot_info.get("slot_id", "")
-	var slot_name = slot_info.get("slot_name", "未知槽位")
+func _create_slot_panel(slot_num: int, info: Dictionary) -> Control:
+	var is_current: bool = (slot_num == SaveManager.get_slot())
+	var exists: bool = bool(info.get("exists", false))
+	var level: int = int(info.get("level", 0))
 
 	var panel = Panel.new()
-	panel.custom_minimum_size = Vector2(200, 150)
+	panel.custom_minimum_size = Vector2(240, 160)
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 
 	var vbox = VBoxContainer.new()
 	vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	vbox.add_theme_constant_override("separation", 6)
 	panel.add_child(vbox)
 
-	# 槽位名称
+	# 槽位标题
 	var name_label = Label.new()
-	name_label.text = slot_name
+	name_label.text = "存档槽 %d%s" % [slot_num, " (当前)" if is_current else ""]
 	name_label.add_theme_font_size_override("font_size", 16)
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(name_label)
 
-	# 存档信息
+	# 存档信息文本
 	var info_label = Label.new()
-	var info_text = _get_slot_info_text(slot_id)
-	info_label.text = info_text
+	info_label.text = _get_slot_info_text(slot_num, exists, level)
 	info_label.add_theme_font_size_override("font_size", 11)
 	info_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	vbox.add_child(info_label)
@@ -100,251 +89,163 @@ func _create_slot_panel(slot_info: Dictionary) -> Control:
 	var button_box = HBoxContainer.new()
 	vbox.add_child(button_box)
 
-	# 加载按钮
 	var load_button = Button.new()
 	load_button.text = "加载"
 	load_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	load_button.pressed.connect(_on_load_slot.bind(slot_id))
+	load_button.disabled = not exists
+	load_button.pressed.connect(_on_load_slot.bind(slot_num))
 	button_box.add_child(load_button)
 
-	# 保存按钮
 	var save_button = Button.new()
 	save_button.text = "保存"
 	save_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	save_button.pressed.connect(_on_save_slot.bind(slot_id))
+	save_button.pressed.connect(_on_save_slot.bind(slot_num))
 	button_box.add_child(save_button)
 
-	# 删除按钮（跳过自动存档和快速存档）
-	if slot_id != "auto_save" and slot_id != "quick_save":
-		var delete_button = Button.new()
-		delete_button.text = "删除"
-		delete_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		delete_button.pressed.connect(_on_delete_slot.bind(slot_id))
-		button_box.add_child(delete_button)
+	var delete_button = Button.new()
+	delete_button.text = "删除"
+	delete_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	delete_button.disabled = not exists
+	delete_button.pressed.connect(_on_delete_slot.bind(slot_num))
+	button_box.add_child(delete_button)
 
 	return panel
 
-## 获取存档槽信息文本
-func _get_slot_info_text(slot_id: String) -> String:
-	if SaveManager == null:
-		return "无存档信息"
-
-	# 检查是否有存档
-	var has_save = false
-	if SaveManager.has_method("has_save_in_slot"):
-		has_save = SaveManager.has_save_in_slot(slot_id)
-	else:
-		has_save = SaveManager.has_method("has_save") and SaveManager.has_save()
-
-	if not has_save:
+## 获取存档槽信息文本（真实 API：get_slot_info 提供 level；文件大小直读磁盘）
+func _get_slot_info_text(slot_num: int, exists: bool, level: int) -> String:
+	if not exists:
 		return "空槽位"
+	var lines: PackedStringArray = []
+	if level > 0:
+		lines.append("最高关卡: %d" % level)
+	# 文件大小：直接读取槽位主文件
+	var path := "user://save_slot_%d.json" % slot_num
+	if FileAccess.file_exists(path):
+		var f := FileAccess.open(path, FileAccess.READ)
+		if f != null:
+			var size_bytes := int(f.get_length())
+			f.close()
+			if size_bytes > 0:
+				lines.append("文件大小: %d KB" % (size_bytes / 1024))
+	return "\n".join(lines) if not lines.is_empty() else "存档存在"
 
-	# 获取详细信息
-	var info_lines = []
-
-	if SaveManager.has_method("get_save_slot_info"):
-		var slot_info = SaveManager.get_save_slot_info(slot_id)
-		var preview = slot_info.get("preview_data", {})
-
-		var last_modified = slot_info.get("last_modified", 0)
-		if last_modified > 0:
-			var datetime = Time.get_datetime_dict_from_unix_time(last_modified)
-			var date_str = "%04d-%02d-%02d %02d:%02d" % [
-				datetime.year, datetime.month, datetime.day,
-				datetime.hour, datetime.minute
-			]
-			info_lines.append("保存时间: " + date_str)
-
-		if not preview.is_empty():
-			if preview.has("max_level"):
-				info_lines.append("等级: %d" % preview["max_level"])
-			if preview.has("playtime_minutes"):
-				var playtime = preview["playtime_minutes"]
-				var hours = playtime / 60
-				var minutes = playtime % 60
-				info_lines.append("游戏时间: %dh %dm" % [hours, minutes])
-			if preview.has("achievements_unlocked"):
-				info_lines.append("成就: %d" % preview["achievements_unlocked"])
-
-	# 获取文件大小
-	if SaveManager.has_method("get_save_file_size"):
-		var file_size = SaveManager.get_save_file_size(slot_id)
-		if file_size > 0:
-			var size_kb = file_size / 1024
-			info_lines.append("文件大小: %d KB" % size_kb)
-
-	return "\n".join(info_lines) if not info_lines.is_empty() else "存档损坏"
-
-## 加载存档槽
-func _on_load_slot(slot_id: String) -> void:
+## 加载存档槽（真实 API：set_slot + load_game）
+func _on_load_slot(slot_num: int) -> void:
 	if SaveManager == null:
 		return
-
-	var success = false
-	if SaveManager.has_method("load_game_from_slot"):
-		success = SaveManager.load_game_from_slot(slot_id)
-	elif SaveManager.has_method("load_game"):
-		success = SaveManager.load_game()
-
+	SaveManager.set_slot(slot_num)
+	var success: bool = SaveManager.load_game()
 	if success:
-		# [LOG-v5.1] print("[SaveSlotManager] 成功加载存档槽: ", slot_id)
-		slot_selected.emit(slot_id)
+		slot_selected.emit(slot_num)
 		_refresh_all_slots()
 	else:
-		push_error("[SaveSlotManager] 加载存档槽失败: ", slot_id)
+		push_error("[SaveSlotManager] 加载存档槽 %d 失败" % slot_num)
 
-## 保存到存档槽
-func _on_save_slot(slot_id: String) -> void:
+## 保存到存档槽（真实 API：set_slot + save_game）
+func _on_save_slot(slot_num: int) -> void:
 	if SaveManager == null:
 		return
-
-	var success = false
-	if SaveManager.has_method("save_game_to_slot"):
-		success = SaveManager.save_game_to_slot(slot_id)
-	elif SaveManager.has_method("save_game"):
-		success = SaveManager.save_game()
-
+	var prev_slot := SaveManager.get_slot()
+	SaveManager.set_slot(slot_num)
+	var success: bool = SaveManager.save_game()
 	if success:
-		# [LOG-v5.1] print("[SaveSlotManager] 成功保存到槽位: ", slot_id)
+		slot_selected.emit(slot_num)
 		_refresh_all_slots()
 	else:
-		push_error("[SaveSlotManager] 保存到槽位失败: ", slot_id)
+		# 保存失败回退槽位
+		SaveManager.set_slot(prev_slot)
+		push_error("[SaveSlotManager] 保存到槽位 %d 失败" % slot_num)
 
-## 删除存档槽
-func _on_delete_slot(slot_id: String) -> void:
+## 删除存档槽（真实 API：delete_slot）
+func _on_delete_slot(slot_num: int) -> void:
 	if SaveManager == null:
 		return
+	SaveManager.delete_slot(slot_num)
+	slot_deleted.emit(slot_num)
+	_refresh_all_slots()
 
-	# 确认删除
-	# 这里可以添加确认对话框
-
-	var success = false
-	if SaveManager.has_method("delete_save"):
-		success = SaveManager.delete_save(slot_id)
-
-	if success:
-		# [LOG-v5.1] print("[SaveSlotManager] 成功删除存档槽: ", slot_id)
-		slot_deleted.emit(slot_id)
-		_refresh_all_slots()
-	else:
-		push_error("[SaveSlotManager] 删除存档槽失败: ", slot_id)
-
-## 导入存档
+## ─── 导入存档 ───
+## 直接文件复制到目标槽位的 user://save_slot_N.json（绕过 SaveManager 内部状态，
+## 导入后玩家点"加载"该槽即可应用）。
 func _on_import_pressed() -> void:
-	# 打开文件选择对话框
 	var dialog = FileDialog.new()
 	dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
 	dialog.title = "选择要导入的存档文件"
 	dialog.add_filter("*.json", "JSON存档文件")
-	dialog.access = FileDialog.ACCESS_USERDATA
+	dialog.access = FileDialog.ACCESS_FILESYSTEM
 	dialog.file_selected.connect(_on_import_file_selected.bind(dialog))
 	add_child(dialog)
-	dialog.popup_centered()
+	dialog.popup_centered(Vector2i(600, 400))
 
-## 导入文件选择处理
 func _on_import_file_selected(file_path: String, dialog: FileDialog) -> void:
 	dialog.queue_free()
-
 	if SaveManager == null:
 		return
-
-	# 选择目标槽位
-	var target_slot = "slot_1"  # 默认槽位
-	# 这里可以添加槽位选择对话框
-
-	var success = false
-	if SaveManager.has_method("import_save"):
-		success = SaveManager.import_save(file_path, target_slot)
-
-	if success:
-		# [LOG-v5.1] print("[SaveSlotManager] 成功导入存档到: ", target_slot)
+	var target := _io_slot
+	var dest := "user://save_slot_%d.json" % target
+	var err := DirAccess.copy_absolute(file_path, ProjectSettings.globalize_path(dest))
+	if err == OK:
+		# 清缓存让 get_slot_info 重读
+		SaveManager.force_slot_info_refresh()
 		_refresh_all_slots()
 	else:
-		push_error("[SaveSlotManager] 导入存档失败")
+		push_error("[SaveSlotManager] 导入存档失败 (错误码 %d)" % err)
 
-## 导出存档
+## ─── 导出存档 ───
+## 复制当前槽位主文件到玩家选择的目标路径。
 func _on_export_pressed() -> void:
-	# 打开文件保存对话框
+	var source := "user://save_slot_%d.json" % _io_slot
+	if not FileAccess.file_exists(source):
+		push_warning("[SaveSlotManager] 当前槽位 %d 无存档可导出" % _io_slot)
+		return
 	var dialog = FileDialog.new()
 	dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
 	dialog.title = "选择导出存档的位置"
 	dialog.add_filter("*.json", "JSON存档文件")
-	dialog.access = FileDialog.ACCESS_USERDATA
-
-	# 默认文件名
-	var current_time = Time.get_datetime_dict_from_system()
-	var default_filename = "save_%04d%02d%02d_%02d%02d.json" % [
+	dialog.access = FileDialog.ACCESS_FILESYSTEM
+	var current_time := Time.get_datetime_dict_from_system()
+	dialog.current_file = "save_slot_%d_%04d%02d%02d_%02d%02d.json" % [
+		_io_slot,
 		current_time.year, current_time.month, current_time.day,
 		current_time.hour, current_time.minute
 	]
-	dialog.current_file = default_filename
-
-	dialog.file_selected.connect(_on_export_file_selected.bind(dialog))
+	dialog.file_selected.connect(_on_export_file_selected.bind(dialog, source))
 	add_child(dialog)
-	dialog.popup_centered()
+	dialog.popup_centered(Vector2i(600, 400))
 
-## 导出文件选择处理
-func _on_export_file_selected(file_path: String, dialog: FileDialog) -> void:
+func _on_export_file_selected(file_path: String, dialog: FileDialog, source: String) -> void:
 	dialog.queue_free()
+	var err := DirAccess.copy_absolute(ProjectSettings.globalize_path(source), file_path)
+	if err != OK:
+		push_error("[SaveSlotManager] 导出存档失败 (错误码 %d)" % err)
 
-	if SaveManager == null:
-		return
-
-	# 导出当前槽位
-	var source_slot = "slot_1"  # 默认槽位
-	# 这里可以使用当前选中的槽位
-
-	var success = false
-	if SaveManager.has_method("export_save"):
-		success = SaveManager.export_save(source_slot, file_path)
-
-	if success:
-		pass
-		# [LOG-v5.1] print("[SaveSlotManager] 成功导出存档: ", file_path)
-	else:
-		push_error("[SaveSlotManager] 导出存档失败")
-
-## 清理旧存档
+## ─── 清理备份文件 ───
+## SaveManager 每 SAVE_BACKUP_INTERVAL_MS 生成 *_backup.json；本按钮清理所有槽位的备份档
+## （主档不受影响）。原版的 cleanup_old_saves(max_age_days) 不存在，已替换为真实清理。
 func _on_cleanup_pressed() -> void:
-	# 确认清理
-	# 这里可以添加确认对话框
-
 	if SaveManager == null:
 		return
-
-	var max_age_days = 30  # 默认清理30天前的存档
-	# 这里可以添加年龄设置对话框
-
-	if SaveManager.has_method("cleanup_old_saves"):
-		SaveManager.cleanup_old_saves(max_age_days)
-		# [LOG-v5.1] print("[SaveSlotManager] 清理旧存档完成")
+	var max_slots := 3
+	if "MAX_SLOTS" in SaveManager:
+		max_slots = int(SaveManager.MAX_SLOTS)
+	var dir := DirAccess.open("user://")
+	if dir == null:
+		push_warning("[SaveSlotManager] 无法打开 user:// 目录")
+		return
+	var removed := 0
+	dir.list_dir_begin()
+	var fname := dir.get_next()
+	while fname != "":
+		# 匹配 save_slot_N_backup.json
+		if fname.begins_with("save_slot_") and fname.ends_with("_backup.json"):
+			if dir.remove(fname) == OK:
+				removed += 1
+		fname = dir.get_next()
+	dir.list_dir_end()
+	if removed > 0:
 		_refresh_all_slots()
 
 ## 关闭管理器
 func _on_close_pressed() -> void:
 	manager_closed.emit()
 	queue_free()
-
-## 获取存档统计信息
-func get_save_statistics() -> Dictionary:
-	if SaveManager != null and SaveManager.has_method("get_save_statistics"):
-		return SaveManager.get_save_statistics()
-	return {}
-
-## 自动存档配置
-func configure_auto_save(enabled: bool, interval_minutes: int) -> void:
-	if SaveManager != null and SaveManager.has_method("configure_auto_save"):
-		SaveManager.configure_auto_save(enabled, interval_minutes)
-		# [LOG-v5.1] print("[SaveSlotManager] 自动存档配置: %s, 间隔: %d 分钟" % [enabled, interval_minutes])
-
-## 快速存档
-func quick_save() -> bool:
-	if SaveManager != null and SaveManager.has_method("quick_save"):
-		return SaveManager.quick_save()
-	return false
-
-## 快速读档
-func quick_load() -> bool:
-	if SaveManager != null and SaveManager.has_method("quick_load"):
-		return SaveManager.quick_load()
-	return false

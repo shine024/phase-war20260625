@@ -969,7 +969,11 @@ func _play_hit_flash() -> void:
 
 ## v6.4: 受击缩放抖动反馈（复用 Tween，避免每击 new）
 func _play_hit_shake() -> void:
-	var base_scale := scale
+	# 基准必须固定为 (1,1) 并在每次抖动前重置（与 construct_unit._play_hit_shake 对齐）。
+	# 否则连续高频受击时旧 Tween 被 kill 在缩小中途，base_scale 会读取偏小的中间值
+	# 并持续累积，导致敌人越打越小（单位 scale 累积漂移 bug）。
+	var base_scale := Vector2.ONE
+	scale = base_scale
 	if _hit_shake_tween != null and _hit_shake_tween.is_valid():
 		_hit_shake_tween.kill()
 	_hit_shake_tween = create_tween()

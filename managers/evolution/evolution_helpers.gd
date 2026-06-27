@@ -99,10 +99,20 @@ static func _apply_platform_enhance_growth_bias(stats: UnitStats, platform_card_
 	if bias.has("def_bias"):
 		stats.defense += tiers * float(bias["def_bias"]) * 2.0
 
-static func _apply_evolution_hp_floor(stats: UnitStats, platform_card_id: String, era: int, bpm_ref: Node) -> void:
-	if stats == null or platform_card_id.is_empty():
+## v7.3 修复 B3: 签名改为接收 CardResource，优先从 InstanceRegistry（按 instance_id）读 hp_floor。
+## 原 signature 接收 card_id 字符串，按 card_id 查 BlueprintManager 字典，实例化进化数据读不到。
+static func _apply_evolution_hp_floor(stats: UnitStats, platform_card: CardResource, era: int, bpm_ref: Node) -> void:
+	if stats == null or platform_card == null or platform_card.card_id.is_empty():
 		return
-	var floor_base: float = float(bpm_ref.blueprint_evolution_hp_floor.get(platform_card_id, 0.0))
+	var floor_base: float = 0.0
+	var inst_id_str: String = String(platform_card.instance_id) if ("instance_id" in platform_card) else ""
+	var ir_ref: Node = _get_instance_registry()
+	# 优先从实例读（实例化进化数据存这里）
+	if ir_ref != null and not inst_id_str.is_empty() and ir_ref.has_method("get_evolution_hp_floor"):
+		floor_base = ir_ref.get_evolution_hp_floor(inst_id_str)
+	# 回退 BlueprintManager 字典（兼容未实例化卡/旧数据）
+	if floor_base <= 0.0:
+		floor_base = float(bpm_ref.blueprint_evolution_hp_floor.get(platform_card.card_id, 0.0))
 	if floor_base <= 0.0:
 		return
 	# v6.8: 时代缩放已移除，进化 HP 下限直接用 floor_base（不再乘时代倍率）
@@ -144,7 +154,16 @@ static func estimate_power_score(card_id_or_instance: String, bpm_ref: Node) -> 
 		return estimate_power_score_meta_only(card_id_or_instance, bpm_ref)
 	if card.card_type == GC.CardType.ENERGY or card.card_type == GC.CardType.LAW:
 		return estimate_power_score_meta_only(card_id_or_instance, bpm_ref)
-	var stats: UnitStats = build_unit_stats_for_power_preview(card, bpm_ref)
+	# v7.3 修复 B2: 优先用实例对象（含养成）build stats，而非模板（enhance_level=0/mods=[]）。
+	# 原代码传模板给 build_unit_stats_for_power_preview，实例化卡的强化/改造/进化加成全部丢失，
+	# 导致战力评分恒偏低、军衔永不晋升、改造门槛误判。
+	var card_for_preview: CardResource = card
+	var ir_ref2: Node = _get_instance_registry()
+	if ir_ref2 != null and ir_ref2.has_method("get_instance"):
+		var inst_card: CardResource = ir_ref2.get_instance(card_id_or_instance)
+		if inst_card != null:
+			card_for_preview = inst_card
+	var stats: UnitStats = build_unit_stats_for_power_preview(card_for_preview, bpm_ref)
 	if stats == null:
 		return estimate_power_score_meta_only(card_id_or_instance, bpm_ref)
 	return combat_power_from_unit_stats(stats)
@@ -251,20 +270,32 @@ static func apply_growth_to_stats(stats: UnitStats, platform_card: CardResource,
 	stats.max_hp *= hp_mul
 	_multiply_attack_damage_and_weapon_slots(stats, dmg_mul)
 	if platform_card != null and not platform_card.card_id.is_empty():
-		var inherit_bonus: float = float(bpm_ref.blueprint_inherit_bonus.get(platform_card.card_id, 0.0))
+		# v7.3 修复 B3/B4: 实例化养成读取——优先从 InstanceRegistry（按 instance_id）读 inherit_bonus/hp_floor，
+		# 而非从 BlueprintManager 字典（按 card_id）。实例化进化后养成数据存在 InstanceRegistry，
+		# 原代码按 card_id 查 BlueprintManager 字典读不到 → inherit_bonus/hp_floor 对进化过的实例化卡失效。
+		var inst_id_str: String = String(platform_card.instance_id) if ("instance_id" in platform_card) else ""
+		var ir_ref: Node = _get_instance_registry()
+		var inherit_bonus: float = 0.0
+		if ir_ref != null and not inst_id_str.is_empty() and ir_ref.has_method("get_inherit_bonus"):
+			inherit_bonus = ir_ref.get_inherit_bonus(inst_id_str)
+		if inherit_bonus <= 0.0:
+			# 回退 BlueprintManager 字典（兼容未实例化卡/旧数据）
+			inherit_bonus = float(bpm_ref.blueprint_inherit_bonus.get(platform_card.card_id, 0.0))
 		if inherit_bonus > 0.0:
 			var inh_mul: float = 1.0 + inherit_bonus
 			stats.max_hp *= inh_mul
 			_multiply_attack_damage_and_weapon_slots(stats, inh_mul)
 		if apply_rank_bonus:
-			var rank_info: Dictionary = get_rank_info(platform_card.card_id, bpm_ref)
+			# v7.3 修复 B2/B4: get_rank_info 用 instance_id（有实例时），让战力估算读到实例养成
+			var rank_key: String = inst_id_str if not inst_id_str.is_empty() else platform_card.card_id
+			var rank_info: Dictionary = get_rank_info(rank_key, bpm_ref)
 			var rank_id: String = String(rank_info.get("rank_id", ""))
 			var rank_bonus: Dictionary = RankRules.get_rank_bonus(rank_id)
 			stats.max_hp *= float(rank_bonus.get("hp_mul", 1.0))
 			var rank_dmg: float = float(rank_bonus.get("dmg_mul", 1.0))
 			_multiply_attack_damage_and_weapon_slots(stats, rank_dmg)
 		_apply_platform_enhance_growth_bias(stats, platform_card.card_id, bpm_ref)
-		_apply_evolution_hp_floor(stats, platform_card.card_id, _preview_battle_era(), bpm_ref)
+		_apply_evolution_hp_floor(stats, platform_card, _preview_battle_era(), bpm_ref)
 	_sync_single_weapon_damage_from_attack(stats)
 
 ## 计算 era0 预览 HP

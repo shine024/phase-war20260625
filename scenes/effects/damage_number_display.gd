@@ -57,7 +57,14 @@ var damage_type: String = "normal"  # normal, critical, heal, shield, dot, miss
 var _fade_duration: float = 1.2
 var _lifetime: float = 0.0
 var _label: Label = null
-var _pop_tween: Tween = null  ## v6.4: 弹跳入场 Tween
+var _pop_tween: Tween = null  ## v6.4: 弹跳入场 Tween（v7.3: 弃用，改手写动画）
+# v7.3 性能优化：手写 scale 弹出动画（替代每实例 create_tween）。
+# 原 _play_pop_tween 每个伤害数字 create_tween，密集伤害时 20+ Tween 并存，创建/kill 有开销。
+var _pop_age: float = 0.0
+var _pop_duration: float = 0.19  # 0.09(放大) + 0.10(回落)
+var _target_scale: float = 1.0
+var _overshoot: float = 1.25
+var _pop_active: bool = false
 var _float_y: float = 0.0  ## v6.4: 上浮累计偏移（_process 中应用）
 
 func _ready() -> void:
@@ -90,17 +97,16 @@ func prepare_for_display(damage: int, crit: bool, type_str: String) -> void:
 
 ## v6.4: 弹跳入场动画——从 0.4 放大 overshoot 到目标 scale 再回落，给伤害数字"砸出"的冲击感
 func _play_pop_tween() -> void:
+	# v7.3 性能优化：改手写动画（原 create_tween 每实例一个 Tween，密集伤害时 GC 压力）
 	if _pop_tween != null and _pop_tween.is_valid():
 		_pop_tween.kill()
+		_pop_tween = null
 	var style: Dictionary = DAMAGE_STYLES.get(damage_type, DAMAGE_STYLES["normal"]) as Dictionary
-	var target_scale: float = float(style.get("scale", 1.0))
-	# 暴击/穿甲 overshoot 更夸张
-	var overshoot: float = 1.45 if damage_type in ["critical", "pierce"] else 1.25
-	scale = Vector2(target_scale * 0.4, target_scale * 0.4)
-	_pop_tween = create_tween()
-	_pop_tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
-	_pop_tween.tween_property(self, "scale", Vector2(target_scale * overshoot, target_scale * overshoot), 0.09).set_ease(Tween.EASE_OUT)
-	_pop_tween.tween_property(self, "scale", Vector2(target_scale, target_scale), 0.10).set_ease(Tween.EASE_IN_OUT)
+	_target_scale = float(style.get("scale", 1.0))
+	_overshoot = 1.45 if damage_type in ["critical", "pierce"] else 1.25
+	scale = Vector2(_target_scale * 0.4, _target_scale * 0.4)
+	_pop_age = 0.0
+	_pop_active = true
 
 func _create_damage_label() -> void:
 	var style: Dictionary = DAMAGE_STYLES.get(damage_type, DAMAGE_STYLES["normal"]) as Dictionary
@@ -133,6 +139,27 @@ func _get_display_text() -> String:
 
 func _process(delta: float) -> void:
 	_lifetime += delta
+	# v7.3: 手写 scale 弹出动画（替代 Tween）
+	if _pop_active:
+		_pop_age += delta
+		# 阶段1 (0~0.09s): 0.4→overshoot，EASE_OUT
+		# 阶段2 (0.09~0.19s): overshoot→1.0，EASE_IN_OUT
+		var peak_scale: float = _target_scale * _overshoot
+		var s: float
+		if _pop_age < 0.09:
+			var t: float = clampf(_pop_age / 0.09, 0.0, 1.0)
+			# EASE_OUT 近似：1-(1-t)^2
+			t = 1.0 - (1.0 - t) * (1.0 - t)
+			s = lerpf(_target_scale * 0.4, peak_scale, t)
+		elif _pop_age < _pop_duration:
+			var t2: float = clampf((_pop_age - 0.09) / 0.10, 0.0, 1.0)
+			# EASE_IN_OUT 近似：t*t*(3-2t)
+			t2 = t2 * t2 * (3.0 - 2.0 * t2)
+			s = lerpf(peak_scale, _target_scale, t2)
+		else:
+			s = _target_scale
+			_pop_active = false
+		scale = Vector2(s, s)
 	# v6.4: 持续上浮漂移（前半段快，后半段慢），y 减小即向上
 	var float_speed: float = 36.0 if _lifetime < _fade_duration * 0.5 else 14.0
 	global_position.y -= float_speed * delta
@@ -153,7 +180,10 @@ func reset_pool_object() -> void:
 	_lifetime = 0.0
 	_float_y = 0.0
 	modulate = Color(1.0, 1.0, 1.0, 1.0)
-	# v6.4: 归还时终止弹跳 tween，避免复用节点被旧 tween 干扰
+	# v7.3: 重置手写弹出动画状态
+	_pop_active = false
+	_pop_age = 0.0
+	# v6.4 兼容：若仍有残留 tween 则终止
 	if _pop_tween != null and _pop_tween.is_valid():
 		_pop_tween.kill()
 	_pop_tween = null

@@ -445,90 +445,6 @@
       "required_rep": 12
     },
     {
-      "company_id": "iron_wall_corp",
-      "card_id": "permit_general",
-      "fragment_amount": 1,
-      "price_nano_materials": 180,
-      "required_rep": 0
-    },
-    {
-      "company_id": "iron_wall_corp",
-      "card_id": "permit_type_heavy",
-      "fragment_amount": 1,
-      "price_nano_materials": 320,
-      "required_rep": 20
-    },
-    {
-      "company_id": "nova_arms",
-      "card_id": "permit_general",
-      "fragment_amount": 1,
-      "price_nano_materials": 180,
-      "required_rep": 0
-    },
-    {
-      "company_id": "nova_arms",
-      "card_id": "permit_type_assault",
-      "fragment_amount": 1,
-      "price_nano_materials": 320,
-      "required_rep": 20
-    },
-    {
-      "company_id": "aether_dynamics",
-      "card_id": "permit_general",
-      "fragment_amount": 1,
-      "price_nano_materials": 180,
-      "required_rep": 0
-    },
-    {
-      "company_id": "aether_dynamics",
-      "card_id": "permit_type_support",
-      "fragment_amount": 1,
-      "price_nano_materials": 320,
-      "required_rep": 20
-    },
-    {
-      "company_id": "quantum_logistics",
-      "card_id": "permit_general",
-      "fragment_amount": 1,
-      "price_nano_materials": 180,
-      "required_rep": 0
-    },
-    {
-      "company_id": "quantum_logistics",
-      "card_id": "permit_type_support",
-      "fragment_amount": 1,
-      "price_nano_materials": 320,
-      "required_rep": 18
-    },
-    {
-      "company_id": "helix_recon",
-      "card_id": "permit_general",
-      "fragment_amount": 1,
-      "price_nano_materials": 180,
-      "required_rep": 0
-    },
-    {
-      "company_id": "helix_recon",
-      "card_id": "permit_type_assault",
-      "fragment_amount": 1,
-      "price_nano_materials": 320,
-      "required_rep": 18
-    },
-    {
-      "company_id": "void_research",
-      "card_id": "permit_general",
-      "fragment_amount": 1,
-      "price_nano_materials": 220,
-      "required_rep": 10
-    },
-    {
-      "company_id": "void_research",
-      "card_id": "permit_type_law",
-      "fragment_amount": 1,
-      "price_nano_materials": 420,
-      "required_rep": 30
-    },
-    {
       "company_id": "void_research",
       "card_id": "permit_card_omega_platform",
       "fragment_amount": 1,
@@ -562,13 +478,6 @@
       "fragment_amount": 1,
       "price_nano_materials": 640,
       "required_rep": 58
-    },
-    {
-      "company_id": "frontier_union",
-      "card_id": "permit_general",
-      "fragment_amount": 1,
-      "price_nano_materials": 170,
-      "required_rep": 0
     }
   ]
 }

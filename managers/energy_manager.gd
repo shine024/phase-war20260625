@@ -9,6 +9,10 @@ var _max: float = GC.ENERGY_MAX
 var _base_start: float = GC.ENERGY_START
 var _regen_per_sec: float = 0.0
 var _in_battle: bool = false
+# v7.3 修复 B2: 战后能量块补能的跨战斗结转加成。
+# 原 bug：补能写 current，但 start_battle 每次重置 current = clampf(_base_start) → 补能被丢弃，纯损失能量块。
+# 改为写入 _carryover_bonus，start_battle 时累加到 current，让补能跨战斗生效。
+var _carryover_bonus: float = 0.0
 # P0 性能优化：缓存上次 emit 的整数能量值，避免每帧 emit energy_changed
 var _last_emitted_int: int = -1
 var _last_emitted_max: int = -1
@@ -37,7 +41,9 @@ func start_battle() -> void:
 		_base_start = GC.ENERGY_START
 	# 能量上限由能量卡蓝图星级决定（1级=100, 2级=200, ...7级=700）
 	# 未装能量卡时上限为 GC.ENERGY_MAX (100)
-	current = clampf(_base_start, 0.0, _max)
+	current = clampf(_base_start + _carryover_bonus, 0.0, _max)
+	# v7.3: 结转加成用完即清零（只影响下场开局一次，避免无限累加）
+	_carryover_bonus = 0.0
 	if SignalBus:
 		SignalBus.energy_changed.emit(current, _max)
 
@@ -57,7 +63,12 @@ func _auto_recharge_from_energy_blocks() -> void:
 	if spend_blocks <= 0:
 		return
 	BasicResourceManager.add_resource(BasicResources.ID_ENERGY_BLOCK, -spend_blocks)
-	current = clampf(current + float(spend_blocks), 0.0, _max)
+	# v7.3 修复 B2: 补能结果写入 _carryover_bonus（下场战斗开局额外能量），而非 current 或 _base_start。
+	# current 被 start_battle 重置；_base_start 被能量卡重算覆盖。_carryover_bonus 在 start_battle 累加到 current 后清零，
+	# 让补能的跨战斗价值真正生效（下场开局能量更高），玩家消耗能量块不再纯损失。
+	var recharged: float = float(spend_blocks)
+	_carryover_bonus += recharged
+	current = clampf(current + recharged, 0.0, _max)
 	if SignalBus:
 		SignalBus.energy_changed.emit(current, _max)
 

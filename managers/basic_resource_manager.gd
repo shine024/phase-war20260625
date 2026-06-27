@@ -41,8 +41,6 @@ func add_resource(id: String, amount: int) -> void:
 		BasicResources.ID_RESEARCH_POINTS:
 			var before_r := total_research_points
 			total_research_points = max(0, total_research_points + amount)
-		BasicResources.ID_PERMIT_GENERAL, BasicResources.ID_PERMIT_TYPE_ASSAULT, BasicResources.ID_PERMIT_TYPE_HEAVY, BasicResources.ID_PERMIT_TYPE_SUPPORT, BasicResources.ID_PERMIT_TYPE_LAW:
-			custom_totals[id] = max(0, int(custom_totals.get(id, 0)) + amount)
 		_:
 			# 动态资源（如专属改造许可函 permit_card_xxx）
 			custom_totals[id] = max(0, int(custom_totals.get(id, 0)) + amount)
@@ -70,8 +68,6 @@ func add_basic_resource(id: String, amount: int) -> void:
 		"research_points":
 			var before_r := total_research_points
 			total_research_points = max(0, total_research_points + amount)
-		"permit_general", "permit_type_assault", "permit_type_heavy", "permit_type_support", "permit_type_law":
-			custom_totals[id] = max(0, int(custom_totals.get(id, 0)) + amount)
 		_:
 			custom_totals[id] = max(0, int(custom_totals.get(id, 0)) + amount)
 	resources_changed.emit()

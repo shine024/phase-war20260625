@@ -47,6 +47,13 @@ var game_mode: GameMode = GameMode.FREE
 # _story_mission_played: 本关实际播放过战前对话的 quest_id（过关后用于触发对应战后对话）
 var _story_mission_queue: Array = []
 var _story_mission_played: Array = []
+# v7.3 修复 BUG-1: 记录"本次战斗实际打的关卡号"，避免 battle_ended 时序错位。
+# 原 bug：battle_ended emit 后 GameManager 先于 QuestManager 执行（autoload 顺序），
+#   GameManager 在 _on_battle_ended 里 set_current_level(max_unlocked) 把 current_level 更新成下一关，
+#   之后 QuestManager 读 gm.current_level 得到的是下一关号 → cleared_levels 写入错误 →
+#   首次通关第N关时 target=N 的剧情任务无法完成判定。
+# 修复：go_to_battle 时记录刚要打的关号，QuestManager 优先读它。
+var _pending_battle_level: int = 0
 
 # v6.6(剧情): 必败战机制 — 序章噩梦/守护者失败重试等场景
 # 开启后 BattleManager 会启动倒计时，到时强制判负；玩家正常胜利路径被禁用
@@ -354,6 +361,8 @@ func go_to_battle() -> void:
 	if DEBUG_GAME_LOG:
 		pass  # LOG: go_to_battle 被调用
 	current_phase = GamePhase.BATTLE
+	# v7.3 修复 BUG-1: 记录本次战斗实际打的关号（set_current_level 切关前）
+	_pending_battle_level = current_level
 
 	last_battle_reward_summary = {}
 	_snapshot_battle_reward_baselines()
@@ -579,10 +588,12 @@ func _grant_phase_master_victory_reward(master_name: String) -> void:
 		var res: DropTables.DropResult = drop
 		match res.drop.type:
 			DropTables.DropType.MATERIAL:
-				# 许可类：作为通用许可资源发放（permit_card_* 和 permit_type_* 均映射到 permit_general）
+				# v7.3: 许可证资源系统已删除。permit_card_*（特殊卡掉落，原降级为通用许可）改为等价纳米材料补偿。
+				# permit_general/permit_type_* 已从掉落表移除，不会进入此分支。
 				if res.drop.item_id.begins_with("permit_"):
 					if BasicResourceManager.has_method("add_resource"):
-						BasicResourceManager.add_resource(BasicResources.ID_PERMIT_GENERAL, res.count)
+						BasicResourceManager.add_resource(BasicResources.ID_NANO_MATERIALS, res.count * 50)
+						extra_nano_total += res.count * 50
 				else:
 					# 材料类：直接加资源（item_id 与 BasicResources ID 字符串一致）
 					if BasicResourceManager.has_method("add_resource"):
@@ -990,9 +1001,18 @@ func _check_story_mission_pre_battle() -> void:
 			# 自由模式无 city_map/NPC，NPC 支线任务必须靠关卡触发才能揭示
 			if qm and qm.has_method("reveal_quest"):
 				qm.reveal_quest(qid)
-			# 只有已接取、未完成、且有战前对话的才入播放假列
-			if _is_story_quest_active(qid) and not q.get("pre_battle_dialogues", []).is_empty():
-				story_ids.append(qid)
+			# v7.3 修复 BUG-3.5: 主线 story 任务首次进关时自动接取（让战前对话能播放）。
+			# 原 bug：story 任务进关只 reveal（揭示≠接取），_is_story_quest_active 要求已接取，
+			# 导致玩家首次进入触发关时任务未接取 → 战前对话不播放，主线剧情演出缺失。
+			# 修复：对有 pre_battle_dialogues 的 story 任务，已揭示且未接取则自动接取（仅当 is_quest_available）。
+			if not q.get("pre_battle_dialogues", []).is_empty():
+				if qm and qm.has_method("is_accepted") and not qm.is_accepted(qid):
+					if qm.has_method("is_quest_available") and qm.is_quest_available(qid):
+						if qm.has_method("accept_quest"):
+							qm.accept_quest(qid)
+				# 只有已接取、未完成、且有战前对话的才入播放队列
+				if _is_story_quest_active(qid):
+					story_ids.append(qid)
 	# tutorial 在前，story 在后
 	_story_mission_queue = tutorial_ids + story_ids
 	if _story_mission_queue.is_empty():

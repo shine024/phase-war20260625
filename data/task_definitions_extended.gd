@@ -95,6 +95,12 @@ const LEGACY_OBJECTIVE_TYPES = {
 		"event_type": "card_enhanced",
 		"check_condition": "enhancement_level >= target"
 	},
+	# v7.x 数据一致性：补回 JSON 有而 LEGACY 缺失的 synthesize_items（防御性兜底同步）
+	"synthesize_items": {
+		"name": "合成物品",
+		"description_template": "合成{target}个物品",
+		"event_type": "item_synthesized"
+	},
 	# 探索相关
 	"reach_level": {
 		"name": "到达关卡",

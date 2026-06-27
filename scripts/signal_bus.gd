@@ -8,6 +8,10 @@ signal energy_insufficient(amount: float)
 
 # 相位仪 / 装备
 signal card_equipped(slot_index: int, card_id: String, card_type: String)
+# v7.x 现状：card_unequipped 由 phase_instrument_manager/phase_instrument_loadout_sync 在卸下时 emit，
+# 但无 SignalBus 订阅者——卸下时"卡归还背包"的状态同步实际由同一处的 card_added_to_backpack.emit 覆盖
+# （save_manager/backpack_presenter 均订阅 card_added_to_backpack）。此信号保留供需要"按槽位感知卸载"的
+# 订阅者使用，属合法预留，非 bug。
 signal card_unequipped(slot_index: int)
 signal phase_slots_changed(slots: Array)
 signal phase_field_xp_changed(source: String, delta: int, total: int)
@@ -32,6 +36,10 @@ signal phase_driver_hp_changed(current: float, maximum: float)
 signal phase_driver_destroyed()
 
 # 敌方相位场驱动器（相位师基地）
+# v7.x 现状：enemy_phase_driver_hp_changed 由 enemy_phase_field_driver emit，但无 SignalBus 订阅者——
+# 敌方血条 UI（card_info_panel._show_enemy_phase_driver）走"点击时按需读节点"机制，不订阅信号。
+# 玩家方 phase_driver_hp_changed 的订阅者（battle_hud._on_phase_driver_hp_changed）也是 pass 空实现（血条由 main.tscn 独立面板处理）。
+# 此信号保留供未来需要"敌方血量实时推送"的订阅者使用，属合法预留，非 bug。
 signal enemy_phase_driver_hp_changed(current: float, maximum: float)
 signal enemy_phase_driver_destroyed()
 
@@ -45,6 +53,9 @@ signal blueprint_unlocked(card_id: String)
 signal blueprint_obtained(card_id: String, count: int)
 
 # 战斗掉落领取
+# v7.x 现状：battle_damage_system 在掉落生成后 emit，但无 SignalBus 订阅者——
+# 掉落领取 UI（drops_inventory_panel）走 backpack_changed 刷新，post_battle 掉落经 battle_ended → GameManager 流程处理。
+# 此信号保留供未来"掉落就绪即时推送通知"的订阅者使用，属合法预留，非 bug。
 signal drops_ready_to_claim(drops: Array)
 
 # 主动法则施放：点击法则后进入选点模式，再点战场即在此信号中传出
@@ -63,13 +74,24 @@ signal phase_law_cast(law_id: String, position: Vector2, family: String)
 # 成就系统
 signal achievement_unlocked(achievement_id: String, achievement_name: String)
 signal achievement_progress_updated(achievement_id: String, current_progress: int, max_progress: int)
+# v7.x 数据一致性核对：milestone_reached 当前为预留声明（无 emit/connect）。
+# achievement_manager.gd 顶部注释曾谎称"已迁移至 SignalBus.milestone_reached"，与代码不符，已修正。
+# 如需启用，应在 AchievementManager 发里程碑时 emit。
 signal milestone_reached(milestone_id: String, milestone_name: String)
 
 # 日常任务系统
 signal daily_tasks_refreshed()
 signal quest_completed(quest_id: String, rewards: Dictionary)
+# v7.3 修复 BUG-6: 补 quest_accepted/quest_progress_changed 镜像信号。
+# 原 SignalBus 只有 quest_completed，QuestManager 的 quest_accepted/quest_progress_changed 无全局镜像，
+# 违背 v6.6 "全局监听者订阅 SignalBus 版本" 的设计意图。
+# v7.x 现状：quest_manager 已 emit 这两个镜像信号；当前直接订阅者（quest_panel）仍连 manager 本地信号，
+# 此镜像供"不直接持有 QuestManager 的全局订阅者"使用，属合法预留，非 bug。
+signal quest_accepted(quest_id: String)
+signal quest_progress_changed(quest_id: String)
 signal task_completed(task: Dictionary)
-signal task_reward_granted(task: Dictionary)
+# v7.x 数据一致性核对：原 task_reward_granted 为死声明（与 daily_task_reward_granted 同义重复，从未 emit），
+# 已删除。日常任务奖励发放统一用 daily_task_reward_granted（daily_task_manager emit）。
 signal all_tasks_completed()
 
 # 挑战模式
