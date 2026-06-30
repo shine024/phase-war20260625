@@ -48,6 +48,14 @@ func _ready() -> void:
 		if SignalBus.has_signal("unit_died"):
 			if not SignalBus.unit_died.is_connected(_on_unit_died):
 				SignalBus.unit_died.connect(_on_unit_died)
+		# v7.x 修复(H5): quest_progress_changed 本地 signal 有 9 处 emit，但 SignalBus 镜像
+		# 此前只在 _accept_quest 一处手动补。改为转发连接——本地 signal 每次 emit 自动镜像到
+		# SignalBus，全局监听者（订阅 SignalBus 版本）不再漏事件。quest_accepted 同理。
+		# （原单点手补的 SignalBus.quest_progress_changed.emit 留着无妨——转发后多发一次幂等。）
+		if SignalBus.has_signal("quest_progress_changed") and not quest_progress_changed.is_connected(_forward_progress_to_signal_bus):
+			quest_progress_changed.connect(_forward_progress_to_signal_bus)
+		if SignalBus.has_signal("quest_accepted") and not quest_accepted.is_connected(_forward_accepted_to_signal_bus):
+			quest_accepted.connect(_forward_accepted_to_signal_bus)
 	# v6.6 修复: enhancement_completed 原 emit 无 connect，强化类教学任务永远不推进。
 	# CardEnhancementManager 是 lazy-load，deferred 到下一帧再查找连接，避免时序竞争。
 	call_deferred("_connect_enhancement_signal")
@@ -59,6 +67,17 @@ func _connect_enhancement_signal() -> void:
 		return
 	if not cem.enhancement_completed.is_connected(_on_enhancement_completed):
 		cem.enhancement_completed.connect(_on_enhancement_completed)
+
+
+## v7.x 修复(H5): 本地 quest_progress_changed/quest_accepted 信号转发到 SignalBus，
+## 让任何不直接持有 QuestManager、订阅 SignalBus 版本的全局监听者都能收到全部进度/接取事件。
+func _forward_progress_to_signal_bus(quest_id: String) -> void:
+	if SignalBus != null and SignalBus.has_signal("quest_progress_changed"):
+		SignalBus.quest_progress_changed.emit(quest_id)
+
+func _forward_accepted_to_signal_bus(quest_id: String) -> void:
+	if SignalBus != null and SignalBus.has_signal("quest_accepted"):
+		SignalBus.quest_accepted.emit(quest_id)
 
 # ──────────────── 信号处理器 ────────────────
 

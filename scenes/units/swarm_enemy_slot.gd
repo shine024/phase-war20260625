@@ -190,7 +190,11 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 				GC.CombatKind.AIR:
 					eff_defense = stats.defense_air
 		var eff_def: float = CardGridDamage.effective_defense(eff_defense, pen)
-		hp_loss = float(CardGridDamage.resolve_hit(amount, eff_def).get("hp_loss", amount))
+		# v7.5: 接入 dodge 和 damage_reduction（此前 swarm 全程无闪避/无减伤结算）
+		var swarm_dodge: float = float(stats.dodge_chance) if stats != null else 0.0
+		var swarm_red: float = float(stats.damage_reduction) if stats != null else 0.0
+		swarm_red = minf(0.60, swarm_red + float(damage_reduction))
+		hp_loss = float(CardGridDamage.resolve_hit(amount, eff_def, swarm_dodge, swarm_red).get("hp_loss", amount))
 	if attacker != null and is_instance_valid(attacker) and attacker is Node and attacker.is_in_group("player_units"):
 		last_damage_source = attacker
 	# v6.6 修复：_incoming_damage_mul 同样需作用于伤害数字显示，保持飘字与血条扣血一致

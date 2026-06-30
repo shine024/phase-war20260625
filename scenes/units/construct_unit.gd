@@ -1134,7 +1134,9 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 				base_def = maxf(stats.defense_light, maxf(stats.defense_armor, stats.defense_air))
 		var eff_def: float = CardGridDamage.effective_defense(base_def, pen)
 		var dodge: float = float(stats.dodge_chance)
-		var hit: Dictionary = CardGridDamage.resolve_hit(amount, eff_def, dodge)
+		# v7.5: 传入 damage_reduction（此前全链路空转，现 resolve_hit 接入）
+		var dmg_red: float = float(stats.damage_reduction)
+		var hit: Dictionary = CardGridDamage.resolve_hit(amount, eff_def, dodge, dmg_red)
 		hp_loss = float(hit.get("hp_loss", amount))
 		if bool(hit.get("apply_recoil", false)):
 			_play_card_hit_recoil()

@@ -321,6 +321,14 @@ func _serialize_weapon_slots(slots: Array) -> Array:
 	for w in slots:
 		if w != null and w.has_method("clone"):
 			# WeaponResource 无内置 to_dict，用字段提取
+			# v7.x 健壮性: _mod_effects 先单独取并做类型校验——异常 mod 写入可能塞入非
+			# Dictionary 值（如 Array），`as Dictionary` 会得 null，再 .duplicate(true) 将
+			# null 解引用崩溃，中断整个 save_state 导致所有实例养成数据丢失。
+			# 非 Dictionary 一律存 {}，保证存档永不因此字段中断。
+			var _me_raw = w.get("_mod_effects")
+			var _me_out: Dictionary = {}
+			if _me_raw != null and typeof(_me_raw) == TYPE_DICTIONARY:
+				_me_out = (_me_raw as Dictionary).duplicate(true)
 			out.append({
 				"weapon_id": String(w.weapon_id),
 				"slot_type": int(w.slot_type),
@@ -337,8 +345,7 @@ func _serialize_weapon_slots(slots: Array) -> Array:
 				"hit_effect_scene": String(w.hit_effect_scene),
 				"sound_id": String(w.sound_id),
 				# v7.3 修复: 补 _mod_effects（改造模块写入的武器级动态效果，如 slot_damage_mult）。
-				# 原遗漏导致存档-读档后武器改造加成丢失，进化时不继承。
-				"mod_effects": (w.get("_mod_effects") as Dictionary).duplicate(true) if w.get("_mod_effects") != null else {},
+				"mod_effects": _me_out,
 			})
 	return out
 

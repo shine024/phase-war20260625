@@ -128,7 +128,8 @@ const SK_FACTION_SYSTEM: String = SaveConstants.SK_FACTION_SYSTEM
 const SK_AFFIX_DATA: String = SaveConstants.SK_AFFIX_DATA
 const SK_LEVEL_PROGRESS: String = SaveConstants.SK_LEVEL_PROGRESS
 const SK_DROP_MANAGER: String = SaveConstants.SK_DROP_MANAGER
-const SK_INTEL_ITEM_BAG: String = "intel_item_bag"
+# v7.x: SK_INTEL_ITEM_BAG 改为引用 SaveConstants（集中化，与其余4个情报键一致）
+const SK_INTEL_ITEM_BAG: String = SaveConstants.SK_INTEL_ITEM_BAG
 # v6.6: 情报系统存档键（与 DEFERRED/CRITICAL_MANAGER_LOADS 的 data_key 一致）
 const SK_INTEL_MANUAL: String = SaveConstants.SK_INTEL_MANUAL
 const SK_INTEL_DISCOVERY: String = SaveConstants.SK_INTEL_DISCOVERY
@@ -147,7 +148,7 @@ const SK_DAILY_TASK: String = SaveConstants.SK_DAILY_TASK
 const SK_DAY_CLOCK: String = SaveConstants.SK_DAY_CLOCK
 const SK_STATISTICS: String = SaveConstants.SK_STATISTICS
 const SK_CARD_ENHANCEMENT: String = SaveConstants.SK_CARD_ENHANCEMENT
-const SK_LAW_SHARDS: String = SaveConstants.SK_LAW_SHARDS
+# v7.x: SK_LAW_SHARDS 别名已删除（SaveConstants 常量本身已删，全项目零引用）
 const SK_TUTORIAL_PROGRESS: String = SaveConstants.SK_TUTORIAL_PROGRESS
 const SK_STORY_PROGRESS: String = SaveConstants.SK_STORY_PROGRESS
 const SK_CHARACTERS: String = SaveConstants.SK_CHARACTERS
@@ -182,6 +183,11 @@ func _ready() -> void:
 	# v6.6: 预加载 ToastManager，使其 _ready 连接 SignalBus.show_toast，
 	# 否则仅当打开势力商店时才会实例化，期间所有 toast 提示静默失效
 	call_deferred("_ensure_toast_manager")
+	# 注：DebugLog 配在 ManagerLazyLoader（node_name=DebugLogManager），调用方统一用
+	# /root/DebugLogManager 引用。v7.x(M6) 曾尝试在此 ensure_loaded("debug_log") 预加载，
+	# 但 ManagerLazyLoader._instantiate_manager 对该脚本 .new() 失败（base GDScript 无 new），
+	# 破坏启动。DebugLog 属诊断增强，非功能必需——保持按需/可选，不强制预加载。
+	# 如需启用调试日志，可手动 ensure_loaded("debug_log") 或将其改为 autoload。
 
 func _ensure_toast_manager() -> void:
 	if ManagerLazyLoader and ManagerLazyLoader.has_method("ensure_loaded"):
@@ -797,30 +803,33 @@ func clear_pending_backpack_ids() -> void:
 ## 新存档初始背包卡牌 + 初始资源
 func _enqueue_starter_backpack_cards() -> void:
 	# v7.0: 初始卡牌实例化（独立养成身份）
+	# v7.x: 能量卡系统移除，初始背包只发战斗卡（ww1_ft17，匹配第1关主题）。
+	# 能量上限改由相位仪星级决定，无需初始能量卡。
 	var ir: Node = get_node_or_null("/root/InstanceRegistry")
-	for cid in ["omega_platform", "energy_start_1", "energy_start_2"]:
+	for cid in ["ww1_ft17"]:
 		var starter_id: String = cid
 		if ir != null and ir.has_method("create_instance"):
 			var inst: CardResource = ir.create_instance(cid)
 			if inst != null and not inst.instance_id.is_empty():
 				starter_id = inst.instance_id
 		enqueue_backpack_card_id(starter_id)
-	# 初始资源：各资源100000点
+	# 初始资源：新手起步量（原 100000 每种是开发期"无限资源测试"残留，
+	# 架空了经济系统——单次强化仅需 ~100-500 纳米，玩家可无脑满级所有卡。
+	# 改为合理起步量：够初期体验几张卡强化，但需要通过战斗/任务/掉落积累。）
 	if BasicResourceManager:
-		BasicResourceManager.add_resource("nano_materials", 100000)
-		BasicResourceManager.add_resource("alloy", 100000)
-		BasicResourceManager.add_resource("crystal", 100000)
-		BasicResourceManager.add_resource("energy_block", 100000)
-		BasicResourceManager.add_resource("research_points", 100000)
+		BasicResourceManager.add_resource("nano_materials", 1500)
+		BasicResourceManager.add_resource("alloy", 800)
+		BasicResourceManager.add_resource("crystal", 500)
+		BasicResourceManager.add_resource("energy_block", 1000)
+		BasicResourceManager.add_resource("research_points", 500)
 
-	# 初始情报：解锁所有情报
-		# 初始情报：解锁所有情报（通过ManagerLazyLoader获取）
+	# 初始情报：逐步发现（原"解锁所有情报"是测试残留，破坏探索乐趣）
+		# 情报应在战斗中击败敌人后逐步揭示（IntelDiscoveryManager），不再开局全解锁。
+		# 保留 ManagerLazyLoader 引用以确保后续 ensure_loaded 调用正常。
 		var ml = get_node_or_null("/root/ManagerLazyLoader")
 		if ml and ml.has_method("ensure_loaded"):
+			# 仅确保 IntelManual 加载，不再 unlock_all_intel（情报逐步发现）
 			ml.ensure_loaded("intel_manual")
-			var im = get_node_or_null("/root/IntelManual")
-			if im and im.has_method("unlock_all_intel"):
-				im.unlock_all_intel()
 
 	# 初始蓝图：授予起步改造图纸 + 进化蓝图（其余改造图纸靠战斗掉落解锁）
 		# v7.1: 不再开局全送所有改造图纸，仅授予 IntelManualItems.ALL_TYPES 中的基础起步图纸
@@ -856,27 +865,33 @@ func _enqueue_starter_backpack_cards() -> void:
 	# 不再需要"材料库存"概念。下方"测试模式：开局全送"已通过 IntelItemBag
 	# 发放所有蓝图，等效覆盖了原 TODO 的意图。
 
-	# ===== 测试模式：开局全送（后续如需关闭，注释掉本段即可） =====
+	# ===== 测试模式：开局全送（v7.x 上线前关闭） =====
+	# 原配置新游戏无条件全送所有改造蓝图/进化蓝图/符文，架空了掉落获取循环，
+	# 让游戏从"养成收集"变成"全送平推"。v7.1 已把改造/进化蓝图改回正常掉落解锁，
+	# 但本测试段又把它们全送回来——前后矛盾。上线前关闭，恢复正常游戏循环：
+	# 改造/进化蓝图靠战斗掉落（intel_manual_items.roll_random_mod_blueprint +
+	# 精英/Boss 掉落），符文靠战斗掉落/势力商店。
+	#
 	# 1) 所有改造蓝图：覆盖 ModificationRegistry 全部 140+ mod
-	const ModificationRegistry = preload("res://scripts/systems/modification_registry.gd")
-	const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
-	var bag = get_node_or_null("/root/IntelItemBag")
-	if bag:
-		for mod_id in ModificationRegistry.get_all_ids():
-			var bp_id := BlueprintDefinitions.get_mod_blueprint_id(mod_id)
-			if not bag.has_item(bp_id):
-				bag.add_item(bp_id, 1)
-
+	#const ModificationRegistry = preload("res://scripts/systems/modification_registry.gd")
+	#const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
+	#var bag = get_node_or_null("/root/IntelItemBag")
+	#if bag:
+	#	for mod_id in ModificationRegistry.get_all_ids():
+	#		var bp_id := BlueprintDefinitions.get_mod_blueprint_id(mod_id)
+	#		if not bag.has_item(bp_id):
+	#			bag.add_item(bp_id, 1)
+	#
 	# 2) 所有进化蓝图：复用已实现的遍历（8 条进化路径 + 隐藏分支）
-	_grant_all_evolution_blueprints()
-
+	#_grant_all_evolution_blueprints()
+	#
 	# 3) 所有符文（持有，需手动装备到槽位才生效）
-	const RuneDefinitions = preload("res://data/runes.gd")
-	var pim = get_node_or_null("/root/PhaseInstrumentManager")
-	if pim and pim.has_method("add_owned_rune"):
-		for rune_id in RuneDefinitions.get_all_ids():
-			if not pim.has_rune(rune_id):
-				pim.add_owned_rune(rune_id)
+	#const RuneDefinitions = preload("res://data/runes.gd")
+	#var pim = get_node_or_null("/root/PhaseInstrumentManager")
+	#if pim and pim.has_method("add_owned_rune"):
+	#	for rune_id in RuneDefinitions.get_all_ids():
+	#		if not pim.has_rune(rune_id):
+	#			pim.add_owned_rune(rune_id)
 	# ===== 测试模式结束 =====
 
 	# v6.6: 关键道具系统尚未实现（reserved），未来若新增消耗型关键道具，
@@ -1239,11 +1254,12 @@ func _load_from_path(path: String) -> bool:
 			if sid.is_empty():
 				continue
 			# 跳过初始装备卡（这些是相位仪自带的默认卡，不是玩家额外获取的）
-			# v7.0: sid 可能是 instance_id（omega_platform#1），解析出 card_id 再比较
+			# v7.0: sid 可能是 instance_id（ww1_ft17#1），解析出 card_id 再比较
+			# v7.x: 初始卡改为 ww1_ft17（能量卡 energy_start_1 已移除，残留由迁移清理）
 			var base_card_id: String = sid
 			if ir_load != null and ir_load.has_method("get_card_id_of"):
 				base_card_id = ir_load.get_card_id_of(sid)
-			if base_card_id == "omega_platform" or base_card_id == "energy_start_4":
+			if base_card_id == "ww1_ft17":
 				continue
 			if not _pending_backpack_ids.has(sid):
 				_pending_backpack_ids.append(sid)

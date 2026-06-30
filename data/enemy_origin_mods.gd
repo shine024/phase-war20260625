@@ -246,7 +246,7 @@ const ENEMY_ORIGIN_MODS: Dictionary = {
 		"id": "EOM_SCOUT_01",
 		"name": "战术侦察套件",
 		"desc": "从侦察交战中学来的战场感知技术",
-		"source_enemy_type": "scout",
+		"source_enemy_type": "stealth",  # v7.x 修复 B6：原 "scout" 在游戏7种enemy_type中不存在→永不掉落/解锁，改归 stealth（侦察/隐蔽语义相近）
 		"required_material_intel": 0.50,
 		"tiers": [
 			{
@@ -277,7 +277,7 @@ const ENEMY_ORIGIN_MODS: Dictionary = {
 		"id": "EOM_COMMAND_01",
 		"name": "战术指挥网络",
 		"desc": "从敌方指挥系统中学来的协同作战技术",
-		"source_enemy_type": "command",
+		"source_enemy_type": "boss_nano",  # v7.x 修复 B6：原 "command" 不存在→永不掉落/解锁，改归 boss_nano（指挥系统来自Boss级敌人）
 		"required_material_intel": 0.50,
 		"tiers": [
 			{

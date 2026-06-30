@@ -96,13 +96,40 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 0
 
-[node name="Footer" type="HBoxContainer" parent="Margin/VBox"]
+[node name="SummaryPanel" type="HBoxContainer" parent="Margin/VBox"]
 layout_mode = 2
-custom_minimum_size = Vector2(0, 28)
+custom_minimum_size = Vector2(0, 32)
+theme_override_constants/separation = 12
 
-[node name="StatsLabel" type="Label" parent="Margin/VBox/Footer"]
+[node name="TotalLabel" type="Label" parent="Margin/VBox/SummaryPanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.82, 0.88, 1)
+theme_override_font_sizes/font_size = 13
+text = "总成就数: 0"
+
+[node name="UnlockedLabel" type="Label" parent="Margin/VBox/SummaryPanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.9, 0.6, 1)
+theme_override_font_sizes/font_size = 13
+text = "已解锁: 0"
+
+[node name="ProgressBar" type="ProgressBar" parent="Margin/VBox/SummaryPanel"]
+custom_minimum_size = Vector2(120, 0)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.6, 0.65, 0.75, 1)
-theme_override_font_sizes/font_size = 12
-text = "完成进度：0/25"
+max_value = 100.0
+value = 0.0
+show_percentage = false
+
+[node name="ClaimableLabel" type="Label" parent="Margin/VBox/SummaryPanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.8, 0.4, 1)
+theme_override_font_sizes/font_size = 13
+text = "可领取奖励: 0"
+
+[node name="ClaimAllButton" type="Button" parent="Margin/VBox/SummaryPanel"]
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "全部领取"
+disabled = true

@@ -287,6 +287,10 @@ static func get_phase_slot_controls(instrument_section: Node) -> Array:
 ## 缓存槽位控件
 static func cache_slot_controls_for_drag(item: PanelContainer) -> void:
 	item._cached_slot_controls.clear()
+	# v7.x 修复（换相位仪后拖卡到面板槽位名字空）：原实现仅收集战斗底部栏的槽位，
+	# 当玩家在相位仪面板界面（非战斗）拖卡时，底部栏不在场景树 → 缓存为空 → 装配失败。
+	# 现在也收集相位仪装配面板（PhaseInstrumentPanel）里的 phase_slot 槽位。
+	# 战斗底部栏槽位（先收集，战斗中优先匹配）
 	var bottom_bar = item.get_node_or_null("/root/Main/HudLayer/BattleBottomBar/BottomInstrumentBar")
 	if bottom_bar == null:
 		bottom_bar = item.get_node_or_null("/root/Main/HudLayer/BottomInstrumentBar")
@@ -294,14 +298,22 @@ static func cache_slot_controls_for_drag(item: PanelContainer) -> void:
 		var main_root: Node = item.get_node_or_null("/root/Main")
 		if main_root != null:
 			bottom_bar = main_root.find_child("BottomInstrumentBar", true, false)
-	if not bottom_bar or not is_instance_valid(bottom_bar):
-		return
-	var section = bottom_bar.get("instrument_section")
-	if section == null:
-		section = bottom_bar.get_node_or_null("Margin/HBox/InstrumentSection")
-	if section == null:
-		return
-	item._cached_slot_controls = get_phase_slot_controls(section)
+	if bottom_bar and is_instance_valid(bottom_bar):
+		var section = bottom_bar.get("instrument_section")
+		if section == null:
+			section = bottom_bar.get_node_or_null("Margin/HBox/InstrumentSection")
+		if section != null:
+			item._cached_slot_controls.append_array(get_phase_slot_controls(section))
+	# 相位仪装配面板槽位（phase_panel 仅含 green 槽，slot_color/slot_index meta 由面板实例化时设置）
+	var phase_panel: Node = item.get_tree().get_first_node_in_group("phase_instrument_panel") if item.get_tree() != null else null
+	if phase_panel == null:
+		phase_panel = item.get_node_or_null("/root/BottomInstrumentBar/PhaseInstrumentPanel")
+	if phase_panel == null:
+		var main_root2: Node = item.get_node_or_null("/root/Main")
+		if main_root2 != null:
+			phase_panel = main_root2.find_child("PhaseInstrumentPanel", true, false)
+	if phase_panel != null and is_instance_valid(phase_panel):
+		item._cached_slot_controls.append_array(get_phase_slot_controls(phase_panel))
 
 ## 清除槽位缓存
 static func clear_drag_slot_cache(item: PanelContainer) -> void:

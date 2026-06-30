@@ -47,7 +47,7 @@ const DATA: Dictionary = {
 	"eng_04_bridge" = {
 		id = ENG_04_BRIDGE, name = "架桥设备", name_en = "Bridge Layer",
 		icon = "res://assets/ui/icons/mod_icons/mod_bridge.png",
-		prototype = "坦克架桥车", description = "友军河流地形速度提升",
+		prototype = "坦克架桥车", description = "部署加速5%",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 300, cost_install = 150,
 		slot_type = "bridge", conflict_group = "bridge",

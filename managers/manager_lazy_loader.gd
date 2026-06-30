@@ -148,6 +148,9 @@ func _ensure_configs_initialized() -> void:
 			"description": "卡牌收集"
 		},
 		"card_enhancement": {
+			# 注：CardEnhancementManager 在 project.godot 已是 autoload（启动即创建），
+			# 此处保留配置作 ensure_loaded("card_enhancement") 别名入口（多处调用依赖），
+			# _instantiate_manager 的 get_node_or_null 防重检查会复用 autoload 节点。
 			"node_name": "CardEnhancementManager",
 			"script_path": "res://managers/card_enhancement_manager.gd",
 			"priority": 4,
@@ -219,7 +222,7 @@ func _ensure_configs_initialized() -> void:
 			"description": "版本管理"
 		},
 		"debug_log": {
-			"node_name": "DebugLog",
+			"node_name": "DebugLogManager",
 			"script_path": "res://managers/debug_log_manager.gd",
 			"priority": 99,
 			"description": "调试日志"

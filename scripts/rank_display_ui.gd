@@ -128,7 +128,7 @@ static func apply_to_host(host: Control, info: Dictionary, icon_px: int = 18) ->
 	host.add_child(badge)
 
 
-static func attach_corner_badge(panel: Control, info: Dictionary, icon_px: int = 14) -> void:
+static func attach_corner_badge(panel: Control, info: Dictionary, icon_px: int = 14, top_right: bool = false) -> void:
 	if panel == null:
 		return
 	var old: Node = panel.get_node_or_null("RankCornerBadge")
@@ -140,9 +140,18 @@ static func attach_corner_badge(panel: Control, info: Dictionary, icon_px: int =
 	var badge: Control = create_badge(rank_id, false, icon_px)
 	badge.name = "RankCornerBadge"
 	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	badge.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	badge.offset_left = 2.0
-	badge.offset_top = 2.0
-	badge.offset_right = 2.0 + float(icon_px) + 2.0
-	badge.offset_bottom = 2.0 + float(icon_px) + 2.0
+	# v7.x：费用角标占左上角，段位移右上角（top_right=true）避免遮挡。
+	if top_right:
+		badge.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+		badge.offset_left = -2.0 - float(icon_px) - 2.0
+		badge.offset_top = 2.0
+		badge.offset_right = -2.0
+		badge.offset_bottom = 2.0 + float(icon_px) + 2.0
+		badge.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	else:
+		badge.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		badge.offset_left = 2.0
+		badge.offset_top = 2.0
+		badge.offset_right = 2.0 + float(icon_px) + 2.0
+		badge.offset_bottom = 2.0 + float(icon_px) + 2.0
 	panel.add_child(badge)

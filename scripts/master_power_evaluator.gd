@@ -11,11 +11,17 @@ class_name MasterPowerEvaluator
 ##
 ## 评估维度（加权）：
 ##   A. 相位仪基础属性（15%） — 仪器的 HP/ATK/DEF/Energy/UnitLimit
-##   B. 刻印词条（25%）       — 已刻录的进化词条（含进度）
+##   B. 刻印词条（15%）       — 已刻录的进化词条（含进度）
 ##   C. 特质强度（10%）       — 相位师固有特质
-##   D. 主动技能（15%）       — 爆发与实用技能
+##   D. 主动技能（10%）       — 爆发与实用技能
 ##   E. 被动技能（10%）       — 持续战斗优势
-##   F. 装备槽位（25%）        — 平台/武器/能量卡种类
+##   F. 载卡战力（20%）        — 相位仪里装的平台卡战力（敌方=平台卡×unit_limit；玩家=卡战力×3）
+##   G. 军团本体战力（15%）    — master.stats（敌方相位师本体 HP/ATK/DEF/Regen/UnitLimit）
+##   H. 单符文战力（6%）        — 装备的符文（稀有度基础分 + primary/secondary effect）
+##   I. 符文之语战力（6%）      — 激活的符文之语（按 TIER 加权 + effects 求和）
+##      v7.x 第二轮重构：把"相位师总战力"对齐为用户设想的 4 分量（卡+相位仪+符文+载卡）。
+##      第三轮：把原合并 H 维（符文+符文之语）拆成 H（单符文）+ I（符文之语）两个独立维，
+##      符文和符文之语在评分表里各自有分，分别计权重。
 ##
 ## 星级：1★~7★，纯由总分决定，无等级概念
 
@@ -24,25 +30,32 @@ class_name MasterPowerEvaluator
 # ─────────────────────────────────────────────
 
 const STAR_TIERS: Array[Dictionary] = [
-	{"stars": 1, "name": "新锐",   "min_score": 0,    "max_score": 250,   "color": "#88CCFF"},
-	{"stars": 2, "name": "精英",   "min_score": 250,  "max_score": 600,   "color": "#44FF88"},
-	{"stars": 3, "name": "高手",   "min_score": 600,  "max_score": 1200,  "color": "#FFCC00"},
-	{"stars": 4, "name": "大师",   "min_score": 1200, "max_score": 2200,  "color": "#FF8800"},
-	{"stars": 5, "name": "宗师",   "min_score": 2200, "max_score": 3800,  "color": "#FF4466"},
-	{"stars": 6, "name": "传说",   "min_score": 3800, "max_score": 6000,  "color": "#CC44FF"},
-	{"stars": 7, "name": "神话",   "min_score": 6000, "max_score": 99999, "color": "#FFD700"},
+	{"stars": 1, "name": "新锐",   "min_score": 0,    "max_score": 450,   "color": "#88CCFF"},
+	{"stars": 2, "name": "精英",   "min_score": 450,  "max_score": 540,   "color": "#44FF88"},
+	{"stars": 3, "name": "高手",   "min_score": 540,  "max_score": 650,   "color": "#FFCC00"},
+	{"stars": 4, "name": "大师",   "min_score": 650,  "max_score": 780,   "color": "#FF8800"},
+	{"stars": 5, "name": "宗师",   "min_score": 780,  "max_score": 950,   "color": "#FF4466"},
+	{"stars": 6, "name": "传说",   "min_score": 950,  "max_score": 1600,  "color": "#CC44FF"},
+	{"stars": 7, "name": "神话",   "min_score": 1600, "max_score": 99999, "color": "#FFD700"},
 ]
+## v7.x 校准说明：阈值基于 30 个真实相位师总分分布（434~2210）按分位数标定。
+## 加 G维(本体)和 H维(符文)后总分结构变化，旧阈值(250/600/1200/2200/3800/6000)
+## 让 6★/7★ 永远为空、4★/5★ 割裂。新阈值让分布钟形覆盖全 7 档（1/9/8/6/3/1/2）。
 
 # ─────────────────────────────────────────────
 #  维度权重
 # ─────────────────────────────────────────────
 
 const W_INSTRUMENT: float = 0.15   # 相位仪基础属性
-const W_ENGRAVINGS: float = 0.25   # 刻印词条
+const W_ENGRAVINGS: float = 0.08   # 刻印词条（v7.x: 0.25→0.20→0.10→0.08，让位 H/I 维）
 const W_TRAITS: float = 0.10       # 特质
-const W_ACTIVE_SPELLS: float = 0.15 # 主动技能
+const W_ACTIVE_SPELLS: float = 0.10 # 主动技能
 const W_PASSIVE_SPELLS: float = 0.10 # 被动技能
-const W_EQUIPMENT_SLOTS: float = 0.25 # 装备槽位
+const W_EQUIPMENT_SLOTS: float = 0.20 # F 维：载卡战力（重构：原槽数×60 → 卡牌战力加权）
+const W_MASTER_STATS: float = 0.15 # G 维：军团本体战力
+const W_RUNES: float = 0.06        # H 维：单符文战力（v7.x: 0.10→0.06，拆出 I 维）
+const W_RUNEWORDS: float = 0.06    # I 维：符文之语战力（v7.x 新增，与 H 维独立计分）
+# 权重总和 = 0.15+0.08+0.10+0.10+0.10+0.20+0.15+0.06+0.06 = 1.00 ✓
 
 # ─────────────────────────────────────────────
 #  A. 相位仪属性评估参数
@@ -193,8 +206,31 @@ const INSTRUMENT_RARITY_SCORE: Dictionary = {
 	"common": 50, "uncommon": 120, "rare": 250, "epic": 450, "mythic": 800,
 }
 
+# ─────────────────────────────────────────────
+#  G. 军团本体战力评估参数（v7.x 新增）
+#     读 master.stats：max_hp/attack_power/defense/energy_regen/unit_limit
+#     （敌方相位师顶层字段；我方相位师无此字段 → G 维回退 0）
+# ─────────────────────────────────────────────
+
+## 各属性参考基准值（取 30 条相位师 stats 的中位数附近，使中等相位师 G 维≈500）
+const MASTER_REF_HP: float = 3000.0          # 一战1100→近未来10000，中位~3000
+const MASTER_REF_ATTACK: float = 400.0       # 120→1000，中位~400
+const MASTER_REF_DEFENSE: float = 100.0      # 45→230，中位~100
+const MASTER_REF_ENERGY_REGEN: float = 3.5   # 2.0→8.0，中位~3.5
+const MASTER_REF_UNIT_LIMIT: float = 8.0     # 5→15，中位~8
+
+## 属性内部权重：HP/ATK 最高（时代区分度最强 9×/8×），DEF/EREG/ULIM 次之
+const MSW_HP: float = 0.30
+const MSW_ATTACK: float = 0.30
+const MSW_DEFENSE: float = 0.15
+const MSW_ENERGY_REGEN: float = 0.10
+const MSW_UNIT_LIMIT: float = 0.15
+
 const EnergyFieldEngravings = preload("res://data/energy_field_engravings.gd")
 const EnemyPhaseEquipment = preload("res://data/enemy_phase_equipment.gd")
+const RuneDefinitions = preload("res://data/runes.gd")
+const RunewordDefinitions = preload("res://data/runewords.gd")
+const RunewordMatcher = preload("res://managers/runeword_matcher.gd")
 
 
 # ═════════════════════════════════════════════
@@ -225,7 +261,10 @@ static func evaluate(master: Dictionary) -> Dictionary:
 	scores.traits = _eval_traits(master)
 	scores.active_spells = _eval_active_spells(master)
 	scores.passive_spells = _eval_passive_spells(master)
-	scores.equipment_slots = _eval_equipment_slots(master)
+	scores.equipment_slots = _eval_equipment_slots(master)   # F 维（重构为载卡战力）
+	scores.master_stats = _eval_master_stats(master)         # G 维
+	scores.runes = _eval_runes(master)                        # H 维（单符文战力）
+	scores.runewords = _eval_runewords(master)                # I 维（符文之语战力，独立）
 
 	var total: float = (
 		scores.instrument * W_INSTRUMENT +
@@ -233,7 +272,10 @@ static func evaluate(master: Dictionary) -> Dictionary:
 		scores.traits * W_TRAITS +
 		scores.active_spells * W_ACTIVE_SPELLS +
 		scores.passive_spells * W_PASSIVE_SPELLS +
-		scores.equipment_slots * W_EQUIPMENT_SLOTS
+		scores.equipment_slots * W_EQUIPMENT_SLOTS +
+		scores.master_stats * W_MASTER_STATS +
+		scores.runes * W_RUNES +
+		scores.runewords * W_RUNEWORDS
 	)
 
 	var star_info: Dictionary = _score_to_stars(total)
@@ -460,15 +502,178 @@ static func _eval_passive_spells(master: Dictionary) -> float:
 # ═════════════════════════════════════════════
 
 static func _eval_equipment_slots(master: Dictionary) -> float:
+	# v7.x 重构：从"槽数×固定值"改为"载卡战力加权"。
+	# 敌方：equipment.platforms 各平台卡轻量战力求和 × unit_limit（带兵上限乘子）
+	# 玩家：若 platforms 是真实卡ID则按卡牌战力×3（可重复部署的经验权重），否则回退旧逻辑
 	var equip: Dictionary = master.get("equipment", {})
 	var platforms: Array = equip.get("platforms", [])
-	var weapons: Array = equip.get("weapons", [])
-	var energy_cards: Array = equip.get("energy_cards", [])
-	return (
-		platforms.size() * PLATFORM_COUNT_BONUS +
-		weapons.size() * WEAPON_COUNT_BONUS +
-		energy_cards.size() * ENERGY_CARD_BONUS
-	)
+	if platforms.is_empty():
+		# 无平台卡时回退旧"槽数×固定值"（武器/能量卡仍有分，避免归零）
+		var weapons: Array = equip.get("weapons", [])
+		var energy_cards: Array = equip.get("energy_cards", [])
+		return (
+			weapons.size() * WEAPON_COUNT_BONUS +
+			energy_cards.size() * ENERGY_CARD_BONUS
+		)
+	# 尝试判定敌我：敌方有顶层 stats.max_hp（master.stats），玩家无
+	var is_enemy: bool = master.has("stats") and (master.get("stats", {}) as Dictionary).has("max_hp")
+	var card_power_sum: float = 0.0
+	for pid_var in platforms:
+		var pid: String = String(pid_var)
+		if pid.is_empty():
+			continue
+		card_power_sum += _platform_power_light(pid, is_enemy)
+	if is_enemy:
+		# 敌方：载卡战力 × unit_limit（带兵上限反映"整场能出多少兵"）
+		var ulim: float = float(master.get("stats", {}).get("unit_limit", 5))
+		return card_power_sum * maxf(ulim, 1.0)
+	else:
+		# 玩家：一张卡整场约上阵 3 次（可重复部署的经验权重）
+		return card_power_sum * 3.0
+
+
+## v7.x: 平台卡轻量战力（敌方平台卡只有原始 stats 字典，无 UnitStats/range/interval，不能套完整公式）。
+## 敌方平台卡读 EnemyPhaseEquipment.get_war_platform(id).stats（hp/attack/defense/move_speed/attack_speed）。
+## 量级校准：与 combat_power_from_unit_stats 同档（~100-500）。
+## 玩家真实卡ID（非敌方平台卡）查不到时回退固定基础分。
+static func _platform_power_light(platform_id: String, is_enemy: bool) -> float:
+	if is_enemy:
+		var pd: Dictionary = EnemyPhaseEquipment.get_war_platform(platform_id)
+		if pd.is_empty():
+			return 80.0  # 查不到给基础分
+		var ps: Dictionary = pd.get("stats", {})
+		var hp: float = float(ps.get("hp", 0))
+		var atk: float = float(ps.get("attack", 0))
+		var def_f: float = float(ps.get("defense", 0))
+		# 轻量公式：hp×0.5 + atk×3 + def×1.5（attack 权重高，因平台卡 attack 是综合攻击力）
+		return hp * 0.5 + atk * 3.0 + def_f * 1.5
+	else:
+		# 玩家真实卡：理论上应调 EvolutionHelpers.combat_power_from_unit_stats，
+		# 但需 build_stats + InstanceRegistry 依赖，运行时复杂；本轮玩家侧先给基础分，
+		# 真实卡战力评估留待 to_master_dict 适配器（范围外）。
+		return 100.0
+
+
+# ═════════════════════════════════════════════
+#  G. 军团本体战力评估（v7.x 新增）
+#     读 master.stats 五项，复用 A 维的"标准化×500×内部权重 + 非线性加成"模式。
+#     我方相位师无 master.stats 字段时返回 0（行为零变化）。
+# ═════════════════════════════════════════════
+
+static func _eval_master_stats(master: Dictionary) -> float:
+	var stats: Dictionary = master.get("stats", {})
+	if stats.is_empty():
+		# 兼容：少数数据可能把属性放在顶层（unit_limit 已在 A 维兜底），无则返回 0
+		return 0.0
+	var hp: float = float(stats.get("max_hp", 0))
+	var atk: float = float(stats.get("attack_power", 0))
+	var def_f: float = float(stats.get("defense", 0))
+	var ereg: float = float(stats.get("energy_regen", 0))
+	var ulim: float = float(stats.get("unit_limit", 0))
+
+	var score: float = 0.0
+	score += (hp / MASTER_REF_HP) * 500.0 * MSW_HP
+	score += (atk / MASTER_REF_ATTACK) * 500.0 * MSW_ATTACK
+	score += (def_f / MASTER_REF_DEFENSE) * 500.0 * MSW_DEFENSE
+	score += (ereg / MASTER_REF_ENERGY_REGEN) * 500.0 * MSW_ENERGY_REGEN
+	score += (ulim / MASTER_REF_UNIT_LIMIT) * 500.0 * MSW_UNIT_LIMIT
+
+	# 非线性加成：极高属性额外加分（一战→近未来拉开差距）
+	if hp > 5000.0:
+		score += (hp - 5000.0) * 0.03
+	if atk > 600.0:
+		score += (atk - 600.0) * 0.20
+	if ulim > 10.0:
+		score += (ulim - 10.0) * 60.0
+
+	return score
+
+
+# ═════════════════════════════════════════════
+#  H. 符文 + 符文之语战力评估（v7.x 新增）
+#     读 master.equipment.runes（ID数组）或顶层 runes。
+#     单符文：primary_effect.value × RUNE_STAT_WEIGHT + 稀有度基础分。
+#     符文之语：RunewordMatcher 查激活词，按 TIER 加权（T2×100/T3×200/T4×350/T5×600）
+#              + 各 effect.value 求和 × RUNEWORD_EFFECT_WEIGHT。
+#     敌方 _derive_runes 经 v7.x 改造后必然组成符文之语，故 H 维对敌方有效。
+# ═════════════════════════════════════════════
+
+## 符文之语 TIER 基础分（越高 TIER 加成越大）
+const RUNEWORD_TIER_BASE: Dictionary = {
+	2: 100.0,   # TIER_2
+	3: 200.0,   # TIER_3
+	4: 350.0,   # TIER_4
+	5: 600.0,   # TIER_5
+}
+## 单符文属性 effect 权重（primary_effect.value 通常 0.05~0.20，×200=10~40/项，合理量级）
+const RUNE_STAT_WEIGHT: float = 200.0
+## 符文稀有度基础分
+const RUNE_RARITY_BASE: Dictionary = {
+	"common": 15.0, "rare": 35.0, "epic": 70.0, "legendary": 140.0,
+}
+## 符文之语 effect 权重（数值加成项 value 求和）—— I 维用
+const RUNEWORD_EFFECT_WEIGHT: float = 150.0
+
+## H 维：单符文战力（v7.x: 从原合并 H 维拆出，与符文之语 I 维独立计分）。
+## 稀有度基础分 + primary_effect.value × RUNE_STAT_WEIGHT + secondary_effect × 0.5。
+static func _eval_runes(master: Dictionary) -> float:
+	# 符文ID列表：优先 equipment.runes（敌方 enriched），回退顶层 runes
+	var equip: Dictionary = master.get("equipment", {})
+	var rune_ids: Array = equip.get("runes", [])
+	if rune_ids.is_empty():
+		rune_ids = master.get("runes", [])
+	if rune_ids.is_empty():
+		return 0.0
+
+	var score: float = 0.0
+	for rid_var in rune_ids:
+		var rid: String = String(rid_var)
+		if rid.is_empty():
+			continue
+		var rd: Dictionary = RuneDefinitions.get_rune(rid)
+		if rd.is_empty():
+			continue
+		# 稀有度基础分
+		var rarity: String = String(rd.get("rarity", "common"))
+		score += RUNE_RARITY_BASE.get(rarity, 20.0)
+		# primary_effect 数值（符文定义里可能显式为 null，需类型守卫）
+		var pe_raw = rd.get("primary_effect", {})
+		var pe: Dictionary = pe_raw if pe_raw is Dictionary else {}
+		if not pe.is_empty():
+			score += float(pe.get("value", 0.0)) * RUNE_STAT_WEIGHT
+		# secondary_effect（如有，常为 null）
+		var se_raw = rd.get("secondary_effect", {})
+		var se: Dictionary = se_raw if se_raw is Dictionary else {}
+		if not se.is_empty():
+			score += float(se.get("value", 0.0)) * RUNE_STAT_WEIGHT * 0.5
+	return minf(score, 500.0)   # clamp 上限，与 A/G 维量级同档
+
+
+## I 维：符文之语战力（v7.x 新增，与 H 维单符文独立计分）。
+## RunewordMatcher 查激活词，按 TIER 加权（T2×100/T3×200/T4×350/T5×600）
+## + 各 effect.value 求和 × RUNEWORD_EFFECT_WEIGHT。clamp 600 上限防多词叠加爆分。
+static func _eval_runewords(master: Dictionary) -> float:
+	var equip: Dictionary = master.get("equipment", {})
+	var rune_ids: Array = equip.get("runes", [])
+	if rune_ids.is_empty():
+		rune_ids = master.get("runes", [])
+	if rune_ids.is_empty():
+		return 0.0
+
+	var slot_count: int = maxi(rune_ids.size(), 2)
+	var active_words: Array[Dictionary] = RunewordMatcher.check_active_runewords(rune_ids, slot_count)
+	if active_words.is_empty():
+		return 0.0
+
+	var score: float = 0.0
+	for rw in active_words:
+		var tier: int = int(rw.get("tier", 2))
+		score += RUNEWORD_TIER_BASE.get(tier, 100.0)
+		# 符文之语 effects 求和（数值加成项）
+		for effect in rw.get("effects", []):
+			if effect.has("value"):
+				score += float(effect["value"]) * RUNEWORD_EFFECT_WEIGHT
+	return minf(score, 600.0)
 
 
 # ═════════════════════════════════════════════
@@ -532,6 +737,9 @@ static func _build_details(master: Dictionary, scores: Dictionary,
 		"active_spells_score": roundf(scores.active_spells),
 		"passive_spells_score": roundf(scores.passive_spells),
 		"equipment_slots_score": roundf(scores.equipment_slots),
+		"master_stats_score": roundf(scores.master_stats),   # v7.x G 维
+		"runes_score": roundf(scores.runes),   # v7.x H 维（单符文）
+		"runewords_score": roundf(scores.runewords),   # v7.x I 维（符文之语）
 	}
 
 

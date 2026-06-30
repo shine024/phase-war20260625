@@ -284,20 +284,15 @@ func _make_law_row(law_id: String, cfg: Dictionary, st: Dictionary, is_equipped:
 	# 右侧按钮
 	var slot_hint: Label = null
 	if not unlocked:
+		# v7.x: 法则系统已废弃（red/blue 槽改用符文槽），研究按钮永久禁用避免玩家白耗知识。
+		# 原 btn.disabled = not can_research 会让玩家点了"研究"消耗知识却发现法则无法装备使用。
 		var btn := Button.new()
 		btn.text = "研究"
 		btn.custom_minimum_size = Vector2(72, 30)
 		btn.add_theme_font_size_override("font_size", 12)
-		btn.disabled = not can_research
-		if can_research:
-			btn.add_theme_color_override("font_color", Color(0.3, 1.0, 0.6, 1))
-		else:
-			btn.add_theme_color_override("font_color", Color(0.45, 0.45, 0.5, 0.6))
-		btn.pressed.connect(func() -> void:
-			if _plm and _plm.has_method("research_law"):
-				if _plm.research_law(law_id):
-					_refresh_law_row_after_research(law_id)
-		)
+		btn.disabled = true  # 法则废弃，禁用研究
+		btn.tooltip_text = "法则系统已废弃，请使用符文系统（迁移中）"
+		btn.add_theme_color_override("font_color", Color(0.45, 0.45, 0.5, 0.6))
 		row.add_child(btn)
 	else:
 		slot_hint = Label.new()

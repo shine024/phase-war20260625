@@ -100,7 +100,9 @@ static func create(parent: Node, player_won: bool, blueprints: Array, \
 		icon_lbl.text = "✗ 失败…"
 		icon_lbl.add_theme_color_override("font_color", Color(1, 0.3, 0.3, 1))
 		desc_lbl.text = "阵地失守…重新整备后再战。"
-		ok_btn.text = "重试"
+		# 文案修正：实际行为是返回准备界面整备（_on_result_confirmed 清场回 prep），
+		# 并非原地重开战斗。原"重试"误导玩家以为会立刻再战，改为"返回整备"如实表述。
+		ok_btn.text = "返回整备"
 		ok_btn.add_theme_color_override("font_color", Color(1, 0.7, 0.2, 1))
 	bg_style.border_width_left = 2; bg_style.border_width_top = 2
 	bg_style.border_width_right = 2; bg_style.border_width_bottom = 2

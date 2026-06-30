@@ -41,7 +41,7 @@ const INTEL_BRANCHES: Dictionary = {
 		"target_card_id": "fut_cyborg",
 		"intel_requirements": {
 			"heavy_armor": {"threshold": 0.80},
-			"heavy_armor_mat": {"threshold": 0.75},
+			"artillery": {"threshold": 0.75},  # v7.x 修复 B7：原 "heavy_armor_mat" 是不存在的enemy_type→进度永远凑不齐，改 artillery（穿甲/破甲与火炮同源）
 		},
 		"unique_bonus": {
 			"inherit_ratio": 0.50,

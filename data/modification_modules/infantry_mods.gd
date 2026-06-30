@@ -526,7 +526,7 @@ const DATA: Dictionary = {
 		slot_type = "environment",
 		conflict_group = "environment",
 		effects = {
-			# 特殊：城市地形 move_speed +10px/s, attack_interval -5%
+			# v7.5: urban_move_bonus 重定向为部署延迟减少（原 move_speed 死字段）
 			urban_move_bonus = 10,
 			urban_attack_bonus = -0.05,
 		},

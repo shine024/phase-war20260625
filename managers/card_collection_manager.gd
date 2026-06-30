@@ -3,25 +3,23 @@ extends Node
 
 const DefaultCards = preload("res://data/default_cards.gd")
 
-## 稀有度卡牌映射
+## 稀有度卡牌映射（v7.x: 移除能量卡条目）
 const RARITY_CARD_MAP = {
 	"普通": [
 		"platform_ww1_light", "platform_ww1_medium",
 		"platform_ww2_light", "platform_ww2_medium",
 		"platform_cold_light", "platform_cold_medium",
 		"platform_modern_light",
-		"energy_start_1", "energy_start_2", "energy_start_3",
 	],
 	"稀有": [
 		"platform_ww1_fort", "platform_ww2_heavy",
 		"platform_cold_ifv",
 		"platform_future_light",
-		"energy_start_4", "energy_start_5",
 	],
 	"史诗": [
 		"platform_modern_medium", "platform_modern_spg",
 		"platform_future_medium", "platform_future_heavy",
-		"energy_start_6", "energy_start_7", "law_passive_test"
+		"law_passive_test"
 	],
 	"传说": [
 		"omega_platform", "law_active_test"

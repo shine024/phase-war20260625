@@ -1,8 +1,13 @@
 extends Node
-## 能量管理：总量由黄色槽决定；战内不可自然回复（仅战后补能）
+## 能量管理：能量上限由相位仪星级决定（v7.x 移除能量卡后改版）
+## 战内可自然回复（基础1.0/s + 相位仪 recovery_rate）
 
 const GC = preload("res://resources/game_constants.gd")
 const BasicResources = preload("res://data/basic_resources.gd")
+
+## v7.x：能量上限系数。能量上限 = ENERGY_MAX(100) + 相位仪star × ENERGY_CAP_PER_STAR
+## 1星=300, 4星=900, 7星=1500（对标原装多张高星能量卡的量级）
+const ENERGY_CAP_PER_STAR: float = 200.0
 
 var current: float = 0.0
 var _max: float = GC.ENERGY_MAX
@@ -27,20 +32,18 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if Engine.is_editor_hint() or not _in_battle:
 		return
-	# 能量回复：每秒自然回复 = 基础回复 + 能量卡加成 - 相位仪消耗
+	# 能量回复：每秒自然回复 = 基础回复 + 相位仪恢复属性 - 相位仪消耗
 	var net_regen: float = GC.ENERGY_REGEN_PER_SEC + _regen_per_sec - GC.PHASE_BASE_DRAIN_PER_SEC
 	if net_regen > 0.0:
 		_add_energy(net_regen * delta)
 
 func start_battle() -> void:
-	_apply_equipped_energy_cards()
+	_apply_instrument_energy()
 	_in_battle = true
 	set_process(true)
-	# 未装黄色能量卡时 _base_start 为 0，会导致主动法则的 battle_cost.energy 永远无法支付
+	# v7.x: 能量上限由相位仪星级决定，开局满能量（_base_start = _max）
 	if _base_start <= 0.0:
 		_base_start = GC.ENERGY_START
-	# 能量上限由能量卡蓝图星级决定（1级=100, 2级=200, ...7级=700）
-	# 未装能量卡时上限为 GC.ENERGY_MAX (100)
 	current = clampf(_base_start + _carryover_bonus, 0.0, _max)
 	# v7.3: 结转加成用完即清零（只影响下场开局一次，避免无限累加）
 	_carryover_bonus = 0.0
@@ -77,51 +80,25 @@ func _reset_to_start() -> void:
 	_max = GC.ENERGY_MAX
 	_base_start = GC.ENERGY_START
 
-func _apply_equipped_energy_cards() -> void:
-	_base_start = 0.0
+## v7.x：能量上限/开局能量由相位仪星级决定（移除能量卡后改版）
+## 能量上限 = ENERGY_MAX(100) + 相位仪star × ENERGY_CAP_PER_STAR(200)
+## 开局能量 = 能量上限（满能量开局）
+func _apply_instrument_energy() -> void:
 	_regen_per_sec = 0.0
-	_max = GC.ENERGY_MAX  # 默认无卡时上限100
-	var slot_count = 0
-	var total_energy_star: int = 0
-	var energy_card_count: int = 0
-	if PhaseInstrumentManager.has_method("get_slots"):
-		for c_raw in PhaseInstrumentManager.get_slots():
-			if c_raw is CardResource:
-				slot_count += 1
-				var card: CardResource = c_raw
-				if card.card_type != GC.CardType.ENERGY:
-					continue
-				energy_card_count += 1
-				# v7.1: 从卡ID解析等级（替代已废弃的 BlueprintManager.get_blueprint_star，原API固定返回1）
-				total_energy_star += _parse_energy_card_star(card.card_id)
-				# energy_start_*: 开局能量（唯一能量卡类型）
-				if card.card_id.begins_with("energy_start_"):
-					_base_start += maxf(0.0, card.energy_grant)
-	# 能量上限 = 基础100 + 所有能量卡等级各自×100 求和
-	# 例：2级卡(200) + 7级卡(700) + 基础100 = 1000
-	if total_energy_star > 0:
-		_max = GC.ENERGY_MAX + float(total_energy_star) * 100.0
-	# v7.1: 接入相位仪"回复能量"属性（get_energy_recovery_rate 原为死代码，从未被调用）
+	_max = GC.ENERGY_MAX
+	var pi_star: int = 1
+	if PhaseInstrumentManager.has_method("get_current_instrument"):
+		var ins: Dictionary = PhaseInstrumentManager.get_current_instrument()
+		pi_star = clampi(int(ins.get("star", 1)), 1, 7)
+	# 能量上限 = 基础100 + 相位仪star×200（1星=300, 7星=1500）
+	_max = GC.ENERGY_MAX + float(pi_star) * ENERGY_CAP_PER_STAR
+	# 开局满能量（最直观，无需玩家管理开局能量）
+	_base_start = _max
+	# 相位仪"能量恢复"属性接入每秒回复
 	if PhaseInstrumentManager.has_method("get_energy_recovery_rate"):
 		_regen_per_sec += PhaseInstrumentManager.get_energy_recovery_rate()
-	# 顶级相位仪（4个以上能量槽）能量回复乘5
-	if slot_count >= 4:
-		_regen_per_sec *= 5.0
 	if _base_start <= 0.0:
 		_base_start = GC.ENERGY_START
-
-## v7.1: 从能量卡ID解析星级（energy_start_1~7 → 1~7）
-## 静态方法，供 UI 和本类共用同一份公式（避免前后端逻辑脱节）
-static func parse_energy_card_star(card_id: String) -> int:
-	if card_id.begins_with("energy_start_"):
-		var suffix := card_id.substr("energy_start_".length())
-		if suffix.is_valid_int():
-			return clampi(int(suffix), 1, 7)
-	return 1
-
-## 实例包装器（兼容内部调用）
-func _parse_energy_card_star(card_id: String) -> int:
-	return parse_energy_card_star(card_id)
 
 func _add_energy(amount: float) -> void:
 	current = clampf(current + amount, 0.0, _max)

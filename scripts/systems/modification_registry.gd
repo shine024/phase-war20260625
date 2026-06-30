@@ -229,21 +229,28 @@ static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary) -
 					result[effect_key] = int(float(result[effect_key]) * (1.0 + effect_value))
 				elif effect_value is int:
 					result[effect_key] += effect_value
-			# v6.9: move_speed → 重定向为部署延迟百分比（玩家单位格子战术不移动，move_speed 为死属性）
-			# 系数 0.005：+30px → -0.15 → 减 15% 部署延迟；-20px → +0.10 → 增 10% 延迟
+			# v6.9→v7.5: move_speed → 重定向为部署延迟百分比（玩家单位格子战术不移动，move_speed 为死属性）
+			# 系数 0.005：+30px → -0.15 → 减 15% 部署延迟（单位更快→部署更快）
+			# v7.5 修正符号：原 v6.9 用 += 导致 +speed 反而增加延迟（与注释"减延迟"矛盾），改为 -=
 			# 数据层 move_speed 数值保留原样（语义注释为原始设计值），仅在此闸门重定向
 			"move_speed":
 				if not result.has("deploy_delay_bonus"):
 					result["deploy_delay_bonus"] = 0.0
-				result["deploy_delay_bonus"] += float(effect_value) * 0.005
+				result["deploy_delay_bonus"] -= float(effect_value) * 0.005
 			"attack_range":
 				if not result.has(effect_key):
 					result[effect_key] = 0
 				result[effect_key] += effect_value
 			"attack_interval":
-				if not result.has(effect_key):
-					result[effect_key] = 1.0
-				result[effect_key] = max(0.1, float(result[effect_key]) * (1.0 + effect_value))
+				# v7.5: attack_interval 是死字段（v5.0 起战斗读 per-target attack_*_speed）
+				# 负 interval bonus（如 -0.30）转成 speed 增益：speed *= (1 - bonus) = 1.30
+				# 同时写入三个 per-target speed，覆盖所有攻击目标维度
+				var _iv: float = float(effect_value)
+				var _speed_mult: float = maxf(0.1, 1.0 - _iv)  # interval↑ → speed↓；下限保护
+				for _sk in ["attack_light_speed", "attack_armor_speed", "attack_air_speed"]:
+					if not result.has(_sk):
+						result[_sk] = 1.0
+					result[_sk] = maxf(0.1, float(result[_sk]) * _speed_mult)
 			"deploy_speed":
 				if not result.has(effect_key):
 					result[effect_key] = 0
@@ -269,38 +276,52 @@ static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary) -
 				if not result.has("single_target_penalty"):
 					result["single_target_penalty"] = 0.0
 				result["single_target_penalty"] += float(effect_value)
-			# v6.6: 补全高频失效的软特性 key（映射到已有 stat）
-			# accuracy_bonus：命中提升 → 映射为暴击率（命中系统简化，6个炮兵/防空/空战核心改造用它）
+			# v7.5: accuracy_bonus 命中提升 → 暴击伤害加成（"打得更准"=暴击更疼）
+			# 原 v6.6 映射为 crit_chance（暴击率）数值偏爆表（0.25~0.50），改 crit_damage_bonus 更温和
+			# 涉及 aa_01/aa_02/aa_06/aa_11/art_01/art_09/air_06 等核心火控改造
 			"accuracy_bonus":
-				if not result.has("crit_chance"):
-					result["crit_chance"] = 0.0
-				result["crit_chance"] = min(1.0, float(result["crit_chance"]) + float(effect_value))
+				if not result.has("crit_damage_bonus"):
+					result["crit_damage_bonus"] = 0.0
+				result["crit_damage_bonus"] += float(effect_value)
 			# ifak_heal：急救包 → 映射为持续回血
 			"ifak_heal":
 				if not result.has("hp_regen"):
 					result["hp_regen"] = 0.0
 				result["hp_regen"] += float(effect_value)
-			# mine_immunity / nbq_immunity：免疫类 → 映射为减伤
-			"mine_immunity", "nbq_immunity":
+			# v7.5: mine_immunity 防地雷 → 三维防御全加（原映射 damage_reduction 空转：take_damage 从不读 damage_reduction）
+			# gen_07_mine_resistant 布尔型（true），激活时给三维防御各 +0.15（≈ enh_def_flat Lv1 量级）
+			"mine_immunity":
+				var _mine_def_val: float = 0.15 if bool(effect_value) else 0.0
+				for _dk in ["defense_light", "defense_armor", "defense_air"]:
+					if not result.has(_dk):
+						result[_dk] = 0
+					result[_dk] = int(float(result[_dk]) * (1.0 + _mine_def_val))
+			# nbq_immunity：三防免疫 → 减伤（语义保留，防护类）
+			"nbq_immunity":
 				if not result.has("damage_reduction"):
 					result["damage_reduction"] = 0.0
 				result["damage_reduction"] = min(0.75, float(result["damage_reduction"]) + float(effect_value))
-			# sustained_fire：持续射击 → 映射为攻速提升（负 attack_interval）
+			# sustained_fire：持续射击 → 攻速提升（v7.5: 转写三个 per-target speed）
+			# 正值（如 0.50）→ speed *= (1 + value) = 1.50
 			"sustained_fire":
-				if not result.has("attack_interval"):
-					result["attack_interval"] = 1.0
-				result["attack_interval"] = max(0.1, float(result["attack_interval"]) * (1.0 - float(effect_value)))
+				var _sf_mult: float = maxf(0.1, 1.0 + float(effect_value))
+				for _sfk in ["attack_light_speed", "attack_armor_speed", "attack_air_speed"]:
+					if not result.has(_sfk):
+						result[_sfk] = 1.0
+					result[_sfk] = maxf(0.1, float(result[_sfk]) * _sf_mult)
 			# v6.6: missile_dodge → 映射为通用闪避（反导主题改造：gen_09/aa_09/air_08）
 			# 当前弹道无"导弹 vs 其他"区分维度，干净映射为 dodge_chance
 			"missile_dodge":
 				if not result.has("dodge_chance"):
 					result["dodge_chance"] = 0.0
-				result["dodge_chance"] = min(1.0, float(result["dodge_chance"]) + float(effect_value))
-			# v6.6: counter_bonus → 映射为暴击率（反炮兵雷达 art_05，"精确还击"语义）
+				# v7.x: 闪避上限 0.50（统一所有闪避映射口径）
+				result["dodge_chance"] = min(0.50, float(result["dodge_chance"]) + float(effect_value))
+			# v7.5: counter_bonus 精确还击 → 暴击伤害加成（与 accuracy_bonus 同口径，"打得更准"=暴击更疼）
+			# 原 v6.6 映射 crit_chance，现统一为 crit_damage_bonus
 			"counter_bonus":
-				if not result.has("crit_chance"):
-					result["crit_chance"] = 0.0
-				result["crit_chance"] = min(1.0, float(result["crit_chance"]) + float(effect_value))
+				if not result.has("crit_damage_bonus"):
+					result["crit_damage_bonus"] = 0.0
+				result["crit_damage_bonus"] += float(effect_value)
 			"damage_reduction":
 				if not result.has(effect_key):
 					result[effect_key] = 0.0
@@ -327,13 +348,14 @@ static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary) -
 			# （UnitStats/WeaponResource 均有此字段，bullet 的 VFX/弹道 match 读它）
 			"weapon_type", "legacy_weapon_type":
 				result["legacy_weapon_type"] = int(effect_value)
-			# ── v6.8: 第一批软特性 key 激活（语义同源映射，零新字段，复活 18 个改造）──
-			# 视野/侦察类 → 攻击射程延伸（视野≈索敌范围≈射程）
+			# ── v7.5: 视野/侦察类 → 暴击率（"看得更清"=命中要害概率提升）
+			# 原 v6.8 映射为 attack_range（射程延伸），现改为 crit_chance
 			# gen_01_comms / gen_06_laser_designator / rec_05_uav / for_06_radar
+			# detection_range 是负值（rec_01 -0.50），取绝对值转为正增益
 			"vision", "vision_bonus", "stealth_detect", "detection_range":
-				if not result.has("attack_range"):
-					result["attack_range"] = 0
-				result["attack_range"] += int(float(effect_value) * 120.0)
+				if not result.has("crit_chance"):
+					result["crit_chance"] = 0.0
+				result["crit_chance"] = min(1.0, float(result["crit_chance"]) + absf(float(effect_value)))
 			# 夜视/烟雾穿透类 → 暴击率（精确射击语义）
 			# inf_20_night_vision / rec_08_nvg / arm_12_thermal_sight / inf_21_thermal
 			"night_bonus", "smoke_ignore":
@@ -341,18 +363,28 @@ static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary) -
 					result["crit_chance"] = 0.0
 				result["crit_chance"] = min(1.0, float(result["crit_chance"]) + float(effect_value))
 			# 热防护/三防类 → 减伤（防护语义同源）
-			# rec_02_ir_suppression / arm_02_composite_armor / arm_03_reactive_armor / gen_07_mine_resistant
-			"thermal_immunity", "heat_resist", "heat_immunity_once", "mine_damage_reduction":
+			# rec_02_ir_suppression / arm_02_composite_armor / arm_03_reactive_armor
+			"thermal_immunity", "heat_resist", "heat_immunity_once":
 				if not result.has("damage_reduction"):
 					result["damage_reduction"] = 0.0
 				result["damage_reduction"] = min(0.75, float(result["damage_reduction"]) + float(effect_value))
+			# v7.5: mine_damage_reduction 防地雷伤害 → 三维防御全加
+			# 原 v6.8 映射 damage_reduction 空转（take_damage 从不读 damage_reduction）
+			# universal gen_07 值为 -0.80（负值偏大），取绝对值 ×0.25 缩放（≈0.20，对齐 enh_def_flat Lv2）
+			"mine_damage_reduction":
+				var _mdr_def_val: float = absf(float(effect_value)) * 0.25
+				for _dk2 in ["defense_light", "defense_armor", "defense_air"]:
+					if not result.has(_dk2):
+						result[_dk2] = 0
+					result[_dk2] = int(float(result[_dk2]) * (1.0 + _mdr_def_val))
 			# 隐蔽/低可探测类 → 闪避（难被发现=难被命中）
-			# rec_01_optical_camouflage / gen_03_camouflage / for_07_camouflage
+			# gen_03_camouflage / for_07_camouflage
 			"detection_reduce":
 				if not result.has("dodge_chance"):
 					result["dodge_chance"] = 0.0
 				# detection_reduce 是负值（-0.20），取绝对值映射为闪避增益
-				result["dodge_chance"] = min(1.0, float(result["dodge_chance"]) + absf(float(effect_value)))
+				# v7.x: 闪避上限 0.50（防消音器-0.80 类映射出 0.80 半无敌闪避）
+				result["dodge_chance"] = min(0.50, float(result["dodge_chance"]) + absf(float(effect_value)))
 			# 巷战加成类 → 对轻装伤害（巷战主要打击步兵/轻装）
 			# inf_22_breaching / rec_09_breaching
 			"urban_attack_bonus":
@@ -362,15 +394,20 @@ static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary) -
 					result["attack_light"] = int(float(result["attack_light"]) * (1.0 + effect_value))
 				elif effect_value is int:
 					result["attack_light"] += effect_value
-			# ── v6.8: 第二批软特性 key 激活（语义同源映射，复活约 18 个改造）──
-			# 射程/作战半径类 → 攻击射程
-			# air_10_drop_tank(combat_range) / air_07_dogfight_missile(close_accuracy→暴击)
+			# ── v7.5: 视野/作战半径类 → 暴击率（与第一批视野类同口径）
+			# air_10_drop_tank(combat_range) 原 v6.8 映射 attack_range，现改 crit_chance
 			"combat_range":
-				if not result.has("attack_range"):
-					result["attack_range"] = 0
-				result["attack_range"] += int(float(effect_value) * 120.0)
-			"close_accuracy", "enemy_confusion", "intel_speed":
-				# 近战精确/敌方混乱/情报优势 → 暴击率（精确打击语义）
+				if not result.has("crit_chance"):
+					result["crit_chance"] = 0.0
+				result["crit_chance"] = min(1.0, float(result["crit_chance"]) + absf(float(effect_value)))
+			# v7.5: close_accuracy 近距精确 → 暴击伤害（与 accuracy_bonus/counter_bonus 同口径）
+			# air_07_dogfight_missile，原 v6.8 映射 crit_chance，现统一为 crit_damage_bonus
+			"close_accuracy":
+				if not result.has("crit_damage_bonus"):
+					result["crit_damage_bonus"] = 0.0
+				result["crit_damage_bonus"] += float(effect_value)
+			"enemy_confusion", "intel_speed":
+				# 敌方混乱/情报优势 → 暴击率（精确打击语义，保留原映射）
 				if not result.has("crit_chance"):
 					result["crit_chance"] = 0.0
 				result["crit_chance"] = min(1.0, float(result["crit_chance"]) + float(effect_value))
@@ -378,15 +415,19 @@ static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary) -
 			# air_11_weapon_rack(ammo_capacity) / air_09_air_refuel(sustained_combat)
 			# aa_06_laser(infinite_ammo) / aa_12_fire_on_move(mobile_fire)
 			"ammo_capacity", "sustained_combat":
-				if not result.has("attack_interval"):
-					result["attack_interval"] = 1.0
-				result["attack_interval"] = max(0.1, float(result["attack_interval"]) * (1.0 - float(effect_value)))
+				# v7.5: 转写三个 per-target speed（原写 attack_interval 死字段）
+				var _ac_mult: float = maxf(0.1, 1.0 + float(effect_value))
+				for _ack in ["attack_light_speed", "attack_armor_speed", "attack_air_speed"]:
+					if not result.has(_ack):
+						result[_ack] = 1.0
+					result[_ack] = maxf(0.1, float(result[_ack]) * _ac_mult)
 			"infinite_ammo", "mobile_fire":
-				# 布尔型：无限弹药/行进间射击 → 攻速小幅提升（true 时减 10% 间隔）
-				if not result.has("attack_interval"):
-					result["attack_interval"] = 1.0
+				# 布尔型：无限弹药/行进间射击 → 攻速小幅提升（true 时 speed ×1.10）
 				if bool(effect_value):
-					result["attack_interval"] = max(0.1, float(result["attack_interval"]) * 0.9)
+					for _iak in ["attack_light_speed", "attack_armor_speed", "attack_air_speed"]:
+						if not result.has(_iak):
+							result[_iak] = 1.0
+						result[_iak] = maxf(0.1, float(result[_iak]) * 1.10)
 			"accuracy_penalty":
 				# 精度惩罚（负值）→ 暴击率降低（aa_12 行进间射击的平衡项）
 				if not result.has("crit_chance"):
@@ -406,21 +447,85 @@ static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary) -
 			# 隐蔽/反锁定类 → 闪避（负值取绝对值转为闪避增益）
 			# air_03_stealth_coating(lock_reduction -0.40) / rec_03_suppressor(fire_exposure -0.80)
 			# aa_10_camouflage(aggro_reduce -0.30)
+			# v7.x: 闪避上限 0.50（防消音器-0.80 映射出 0.80 半无敌闪避）
 			"lock_reduction", "fire_exposure", "aggro_reduce":
 				if not result.has("dodge_chance"):
 					result["dodge_chance"] = 0.0
-				result["dodge_chance"] = min(1.0, float(result["dodge_chance"]) + absf(float(effect_value)))
+				result["dodge_chance"] = min(0.50, float(result["dodge_chance"]) + absf(float(effect_value)))
 			# 拦截/防护类 → 减伤
 			# aa_06_laser / arm_04_aps(missile_intercept 0.30)
 			"missile_intercept":
 				if not result.has("damage_reduction"):
 					result["damage_reduction"] = 0.0
 				result["damage_reduction"] = min(0.75, float(result["damage_reduction"]) + float(effect_value))
-			# 巷战机动类 → 移动速度（inf_22/rec_09 urban_move_bonus 10/20）
+			# v7.5: urban_move_bonus 巷战机动 → 部署延迟百分比（原写 move_speed 死字段）
+			# 与 move_speed effect 同口径（系数 0.005），正值→部署更快
 			"urban_move_bonus":
-				if not result.has("move_speed"):
-					result["move_speed"] = 0
-				result["move_speed"] += int(effect_value)
+					if not result.has("deploy_delay_bonus"):
+						result["deploy_delay_bonus"] = 0.0
+					result["deploy_delay_bonus"] -= float(effect_value) * 0.005
+			# ── v7.x: 光环协同类（ally_*/formation_bonus/command_efficiency）重映射为装载单位自身加成 ──
+			# 原 effect 按"给周围多友军加 buff"设计，但项目无光环系统，全部落 default→_special 空转。
+			# 改为给装载单位自身加成。所有值 ×0.5 缩放（原值按多受益设计，自身单受益需减半平衡）。
+			# "命中"类（无独立命中系统）→ 暴击率（复用 v6.6 视野/精度类口径）
+			"ally_bonus", "ally_hit_bonus":
+				if not result.has("crit_chance"):
+					result["crit_chance"] = 0.0
+				result["crit_chance"] = min(1.0, float(result["crit_chance"]) + float(effect_value) * 0.5)
+			# 弹药补给 → 三维攻速（复用 ammo_capacity 模式）
+			"ally_ammo":
+				var _aa_mult: float = maxf(0.1, 1.0 + float(effect_value) * 0.5)
+				for _aak in ["attack_light_speed", "attack_armor_speed", "attack_air_speed"]:
+					if not result.has(_aak):
+						result[_aak] = 1.0
+					result[_aak] = maxf(0.1, float(result[_aak]) * _aa_mult)
+			# 急救站回血 → hp_regen（直接加成）
+			"ally_hp_regen":
+				if not result.has("hp_regen"):
+					result["hp_regen"] = 0.0
+				result["hp_regen"] += float(effect_value) * 0.5
+			# 发电机（堡垒回血）→ 三维防御（二次缩放×0.25：堡垒回血给非堡垒单位自身再折半）
+			"ally_fort_regen":
+				var _afr_mult: float = maxf(0.1, 1.0 + float(effect_value) * 0.25)
+				for _afrk in ["defense_light", "defense_armor", "defense_air"]:
+					if not result.has(_afrk):
+						result[_afrk] = 0
+					result[_afrk] = int(float(result[_afrk]) * _afr_mult)
+			# 伪装网（被发现降低）→ 闪避（复用 detection_reduce 模式，负值取绝对值）
+			"ally_detection":
+				if not result.has("dodge_chance"):
+					result["dodge_chance"] = 0.0
+				# v7.x: 闪避上限 0.50
+				result["dodge_chance"] = min(0.50, float(result["dodge_chance"]) + absf(float(effect_value)) * 0.5)
+			# 架桥设备（涉渡加速）→ 部署延迟
+			# v7.x: 系数从 0.005*0.5(=0.0025) 提到 0.05——原值 ally_river_bonus=1.00 是百分比(100%)，
+			#        ×0.0025=0.25% 部署加速几乎无用；×0.05=5% 部署加速，匹配 epic 稀有度体感
+			"ally_river_bonus":
+				if not result.has("deploy_delay_bonus"):
+					result["deploy_delay_bonus"] = 0.0
+				result["deploy_delay_bonus"] -= float(effect_value) * 0.05
+			# 激光指示器（炮火支援）→ 对装甲伤害
+			"ally_arty_bonus":
+				if not result.has("attack_armor"):
+					result["attack_armor"] = 0
+				if effect_value is float:
+					result["attack_armor"] = int(float(result["attack_armor"]) * (1.0 + float(effect_value) * 0.5))
+				elif effect_value is int:
+					result["attack_armor"] += int(float(effect_value) * 0.5)
+			# 数据链（编队协同，全属性微升）→ 三维攻击全加
+			"formation_bonus":
+				var _fb_mult: float = maxf(0.1, 1.0 + float(effect_value) * 0.5)
+				for _fbk in ["attack_light", "attack_armor", "attack_air"]:
+					if not result.has(_fbk):
+						result[_fbk] = 0
+					result[_fbk] = int(float(result[_fbk]) * _fb_mult)
+			# 数字化单兵（指挥效率）→ 三维防御全加
+			"command_efficiency":
+				var _ce_mult: float = maxf(0.1, 1.0 + float(effect_value) * 0.5)
+				for _cek in ["defense_light", "defense_armor", "defense_air"]:
+					if not result.has(_cek):
+						result[_cek] = 0
+					result[_cek] = int(float(result[_cek]) * _ce_mult)
 			_:
 				if not result.has("_special"):
 					result["_special"] = {}

@@ -19,7 +19,7 @@ const DATA: Dictionary = {
 	"rec_01_optical_camouflage" = {
 		id = REC_01_OPTICAL_CAMOUFLAGE, name = "光学伪装", name_en = "Optical Camouflage",
 		icon = "res://assets/ui/icons/mod_icons/mod_stealth.png",
-		prototype = "吉利服", description = "降低被发现的距离",
+		prototype = "吉利服", description = "隐蔽接敌，暴击+50%",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 140, cost_install = 70,
 		slot_type = "stealth", conflict_group = "stealth",
@@ -29,7 +29,7 @@ const DATA: Dictionary = {
 	"rec_02_ir_suppression" = {
 		id = REC_02_IR_SUPPRESSION, name = "红外抑制", name_en = "IR Suppression",
 		icon = "res://assets/ui/icons/mod_icons/mod_stealth.png",
-		prototype = "热信号遮蔽", description = "热成像免疫，大幅降低被发现",
+		prototype = "热信号遮蔽", description = "减伤提升",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 280, cost_install = 140,
 		slot_type = "stealth", conflict_group = "stealth",
@@ -39,7 +39,7 @@ const DATA: Dictionary = {
 	"rec_03_suppressor" = {
 		id = REC_03_SUPPRESSOR, name = "消音器", name_en = "Suppressor",
 		icon = "res://assets/ui/icons/mod_icons/mod_weapon.png",
-		prototype = "抑制器", description = "开火暴露距离大幅降低",
+		prototype = "抑制器", description = "闪避+50%",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 160, cost_install = 80,
 		slot_type = "weapon", conflict_group = "weapon",
@@ -59,7 +59,7 @@ const DATA: Dictionary = {
 	"rec_05_uav" = {
 		id = REC_05_UAV, name = "无人侦察机", name_en = "Recon UAV",
 		icon = "res://assets/ui/icons/mod_icons/mod_drone.png",
-		prototype = "RQ-11大乌鸦", description = "无人机侦察，视野和反隐提升",
+		prototype = "RQ-11大乌鸦", description = "无人机侦察，暴击率提升",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 320, cost_install = 160,
 		slot_type = "drone", conflict_group = "drone",
@@ -99,7 +99,7 @@ const DATA: Dictionary = {
 	"rec_09_breaching" = {
 		id = REC_09_BREACHING, name = "破门工具", name_en = "Breaching Tools",
 		icon = "res://assets/ui/icons/mod_icons/mod_environment.png",
-		prototype = "霰弹枪/破门锤", description = "城市战机动提升",
+		prototype = "霰弹枪/破门锤", description = "城市战部署更快",
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 100, cost_install = 50,
 		slot_type = "environment", conflict_group = "environment",

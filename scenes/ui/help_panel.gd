@@ -31,7 +31,8 @@ func show_panel() -> void:
 	_is_open = true
 	visible = true
 	var tween := create_tween()
-	tween.tween_property(self, "modulate:a", 1.0, _anim_duration).set_trans(Tween.TRANS_FADE)
+	# Godot 4 已移除 TRANS_FADE 枚举, modulate:a 渐变本身即线性 fade, 无需 set_trans
+	tween.tween_property(self, "modulate:a", 1.0, _anim_duration)
 	# 轻微缩放动画
 	scale = Vector2(0.9, 0.9)
 	tween.parallel().tween_property(self, "scale", Vector2(1.0, 1.0), _anim_duration).set_trans(Tween.TRANS_BACK)
@@ -42,7 +43,8 @@ func hide_panel() -> void:
 		return
 	_is_open = false
 	var tween := create_tween()
-	tween.tween_property(self, "modulate:a", 0.0, _anim_duration).set_trans(Tween.TRANS_FADE)
+	# Godot 4 已移除 TRANS_FADE 枚举, modulate:a 渐变本身即线性 fade, 无需 set_trans
+	tween.tween_property(self, "modulate:a", 0.0, _anim_duration)
 	tween.parallel().tween_property(self, "scale", Vector2(0.9, 0.9), _anim_duration).set_trans(Tween.TRANS_QUAD)
 	tween.tween_callback(func(): visible = false)
 

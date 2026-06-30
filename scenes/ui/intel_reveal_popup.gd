@@ -262,13 +262,6 @@ func _reward_to_text(reward: Dictionary) -> String:
 				"skill_list": return "技能列表已解析"
 				"equipment_type": return "装备类型已确认"
 				_: return "属性信息已解锁"
-		"weakness_bonus":
-			var target: String = reward.get("target_type", "")
-			var bonus: float = reward.get("bonus_damage", 0.0)
-			return "对%s造成额外%.0f%%伤害" % [target, bonus * 100.0]
-		"drop_rate_bonus":
-			var pct: float = reward.get("bonus_pct", 0.0)
-			return "掉落率+%.0f%%" % [pct * 100.0]
 		"eom_unlock":
 			var mod_id: String = reward.get("mod_id", "")
 			# v6.7: mod_id 是英文 ID（如 EOM_INFANTRY_01），转中文名避免显示原始 ID

@@ -74,7 +74,27 @@ func get_all_cards() -> Array[CardResource]:
 		# 先按 instance_id 取实例
 		if ir != null and ir.has_method("get_instance"):
 			card = ir.get_instance(sid)
-		# 取不到（可能存的是裸 card_id，兼容旧路径）回退 DefaultCards
+		# v7.x 修复（Bug1）：实例查不到时，重建并注册新实例（而非对带 #序号 的 instance_id 查 get_card_by_id 必失败导致卡消失）。
+		# 根因：势力卡裸 card_id / 旧档迁移 / load_state 模板查不到静默跳过 等场景，会使 Registry 缺失该实例。
+		# 重建后卡不消失、可继续养成（原养成数据若 Registry 本就没存，从0开始，但至少能正常游戏）。
+		# v7.x 重复修复：原逻辑无脑 create_instance 新建实例（如 omega_platform#2），导致 Registry 多出同名实例、
+		# 成长/背包面板显示重复。改为：优先复用同名实例，只有该 card_id 一个实例都没有时才新建。
+		if card == null and ir != null and ir.has_method("get_card_id_of"):
+			var base_id: String = ir.get_card_id_of(sid)  # cold_t72#1 → cold_t72（无序号时返回原值）
+			if not base_id.is_empty():
+				# 优先复用已有的同名实例
+				if ir.has_method("get_instances_by_card_id"):
+					var _existing: Array = ir.get_instances_by_card_id(base_id)
+					if not _existing.is_empty():
+						card = ir.get_instance(String(_existing[0]))
+						if card != null:
+							push_warning("[BackpackData] get_all_cards: 实例 '%s' 缺失，已复用同名实例 '%s'" % [sid, card.instance_id])
+				# 该 card_id 一个实例都没有 → 才新建
+				if card == null and ir.has_method("create_instance"):
+					card = ir.create_instance(base_id)
+					if card != null:
+						push_warning("[BackpackData] get_all_cards: 实例 '%s' 不存在且无同名实例，已新建 '%s'（养成从0开始）" % [sid, card.instance_id])
+		# 最终兜底：ir 不存在或 create_instance 失败（非战斗卡/法则卡），回退 DefaultCards 模板
 		if card == null:
 			card = DefaultCardsData.get_card_by_id(sid)
 		if card == null and sid.begins_with("law:"):

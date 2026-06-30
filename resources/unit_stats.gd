@@ -131,6 +131,12 @@ var weapon_card_ids: Array[String] = []
 ## 暴击伤害加成（来自 crit_dmg_up 词条；基础暴击1.5x，每级+0.2x）
 @export var crit_damage_bonus: float = 0.0
 
+## 暴击抗性（0.0~1.0，来自 crit_resist 词条；v7.x 新增实装）
+## 语义：作为被攻击方，降低被暴击的概率（从攻击者 crit_chance 中扣减，下限 0）。
+## 此前 modification_registry 写入 result 但 UnitStats 无字段、unit_stats_table 不回写，
+## 唯一含此效果的改造（infantry_mods inf 暴抗+0.10）完全空转。v7.x 补全数据链 + 战斗消费。
+@export var crit_resist: float = 0.0
+
 ## 吸血率（0.0~1.0，来自 lifesteal 词条）
 @export var lifesteal: float = 0.0
 
@@ -239,3 +245,23 @@ func get_weapon_for_target(target_combat_kind: int) -> WeaponResource:
 			return weapon_slots[2] if weapon_slots.size() > 2 else null
 		_:
 			return weapon_slots[0] if weapon_slots.size() > 0 else null
+
+## 把攻击乘区同步到 weapon_slots[].damage。
+## 战斗 AI/AttackCalculator 的伤害结算（calculate_damage_with_weapon base_damage = weapon.damage）
+## 读的是 weapon_slots[i].damage（WeaponResource 对象），而非 attack_damage/attack_*。
+## 此前各乘区（强化/稀有度/军衔/相位场/符文/势力）只乘 attack_*/weapons[]，漏了 weapon_slots，
+## 导致养成加成在实际开火伤害里失效（我方 DPS 偏低）。
+## 此方法让 battle_spawn_system:913 / phase_instrument_manager:371/389 的
+## has_method("_sync_weapon_slots_damage") 守卫真正生效，与敌方 _sync_enemy_weapon_slot_damage 对等。
+## factor 语义：乘法累积（在当前 damage 基础上再乘 factor，如 1.0+atk_pct）。
+func _sync_weapon_slots_damage(factor: float) -> void:
+	if factor == 1.0:
+		return
+	for i in range(weapon_slots.size()):
+		var w = weapon_slots[i]
+		if w == null:
+			continue
+		# WeaponResource 是 Resource（非 Dictionary），用 "in" + 字段访问
+		if "damage" in w:
+			w.damage = maxf(0.1, float(w.damage) * factor)
+

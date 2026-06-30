@@ -20,7 +20,7 @@ var _pending_slots_data: Array = []
 var rune_slot_count_cache: int = 0  # v6.2: 符文槽位数（用于显示提示）
 
 func _dbg_agent(hypothesis_id: String, message: String, data: Dictionary) -> void:
-	var DebugLog = get_node_or_null("/root/DebugLog")
+	var DebugLog = get_node_or_null("/root/DebugLogManager")
 	if DebugLog:
 		DebugLog.agent_log("phase_instrument_panel.gd", message, data, hypothesis_id, "95dad8")
 
@@ -66,10 +66,16 @@ func _rebuild_slots() -> void:
 			# 但在 phase_level 标签中显示总槽位数
 			rune_slot_count_cache = int(sc.get("rune", 0))
 
-	var total_slots: int = green_n + yellow_n  # v6.2: 仅卡牌槽位（战斗卡+能量卡）
+	var total_slots: int = green_n  # v7.x: 仅战斗卡槽位（能量槽已移除）
 	for i in range(total_slots):
 		var slot = PhaseSlotScene.instantiate()
 		slot.call_deferred("set", "slot_index", i)
+		# v7.x 修复（换相位仪后拖卡到面板槽位名字空）：phase_slot 缺 slot_color/slot_index meta，
+		# 导致背包拖放系统（BackpackCardItemDrag）无法识别它，拖卡到面板槽位时装配失败。
+		# 这里补上 meta，让背包拖放系统能收集并装备到该槽位。
+		# 注意：phase_panel 仅含 green 槽（red/blue 法则在独立面板，rune 在 rune_panel）。
+		slot.set_meta("slot_color", "green")
+		slot.set_meta("slot_index", i)
 		var sig_drop = slot.get("slot_drop_requested")
 		if sig_drop:
 			sig_drop.connect(_on_slot_drop)

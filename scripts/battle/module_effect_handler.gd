@@ -17,6 +17,12 @@ const GC = preload("res://resources/game_constants.gd")
 
 ## 弹道命中时综合处理
 ## 返回最终伤害值（0 表示被闪避）
+##
+## @deprecated v7.5: 本方法全项目零调用方（实际命中走 apply_on_hit_side_effects，
+## 暴击/穿甲在 bullet.gd 计算，减伤/闪避在 take_damage→CardGridDamage.resolve_hit 计算）。
+## 内部 _apply_target_reduction / _check_dodge 是 damage_reduction/dodge 的旧消费点，
+## v7.5 起 damage_reduction 已统一接入 resolve_hit，此处逻辑仅作历史保留。
+## 新代码不应调用本方法；如需命中副作用请用 apply_on_hit_side_effects。
 static func on_bullet_hit(attacker: Node, target: Node, base_damage: float) -> float:
 	var stats = _get_attacker_stats(attacker)
 	var target_stats = _get_target_stats(target)
@@ -66,9 +72,26 @@ static func apply_on_hit_side_effects(attacker: Node, target: Node, deal_damage:
 	var stats = _get_attacker_stats(attacker)
 	if stats == null or deal_damage <= 0.0:
 		return
+	# v7.x 修复：single_target_penalty（子母弹等范围武器的主目标减伤平衡项）此前仅在已废弃的
+	# on_bullet_hit（零调用）中读取，活动命中路径完全不消费它 → 减伤空转。
+	# 调用方在 take_damage(全额) 之后才调本函数，故对主目标做"减伤补偿"：
+	# 恢复 多扣的血量 = deal_damage × |penalty|，使主目标净伤害 = deal_damage × (1+penalty)。
+	if stats.single_target_penalty != 0.0:
+		var penalty_abs: float = absf(stats.single_target_penalty)
+		if penalty_abs > 0.0 and target != null and is_instance_valid(target):
+			var heal_amount: float = deal_damage * penalty_abs
+			_apply_main_target_compensation(target, heal_amount)
 	_apply_lifesteal(attacker, deal_damage, stats)
 	_apply_splash(attacker, target, deal_damage, stats)
 	_apply_chain(attacker, target, deal_damage, stats)
+
+## v7.x: 主目标减伤补偿（single_target_penalty 的落地）。对目标恢复 heal_amount 血量。
+## 直接操作 hp 字段并 clamp 到 max_hp，避免触发 take_damage 的反击/信号链路。
+static func _apply_main_target_compensation(target: Node, heal_amount: float) -> void:
+	if heal_amount <= 0.0:
+		return
+	if "hp" in target and "max_hp" in target:
+		target.hp = minf(float(target.hp) + heal_amount, float(target.max_hp))
 
 # ─────────────────────────────────────────────
 #  击杀处理

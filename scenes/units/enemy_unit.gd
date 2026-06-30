@@ -924,7 +924,13 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		var dodge: float = 0.0
 		if stats != null:
 			dodge = float(stats.dodge_chance)
-		var hit: Dictionary = CardGridDamage.resolve_hit(amount, eff_def, dodge)
+		# v7.5: 传入 damage_reduction（此前全链路空转，现 resolve_hit 接入）
+		# 优先 stats.damage_reduction（改造/词条加成），叠加节点 damage_reduction（卡牌能力 debuff）
+		var dmg_red: float = 0.0
+		if stats != null:
+			dmg_red = float(stats.damage_reduction)
+		dmg_red = minf(0.60, dmg_red + float(damage_reduction))
+		var hit: Dictionary = CardGridDamage.resolve_hit(amount, eff_def, dodge, dmg_red)
 		hp_loss = float(hit.get("hp_loss", amount))
 		if bool(hit.get("apply_recoil", false)) and _presentation_card_grid:
 			_play_card_hit_recoil()

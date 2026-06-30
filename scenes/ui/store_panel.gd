@@ -591,7 +591,8 @@ func _build_instrument_row(cfg: Dictionary, fsm: Node) -> PanelContainer:
 	var star: int = int(cfg.get("star", 1))
 	var req_rep: int = int(cfg.get("required_rep", 0))
 	var price_eb: int = int(cfg.get("price_energy_block", 0))
-	var output_rate: float = float(cfg.get("energy_output_rate", 1.0))
+	# v7.x: 移除 energy_output_rate，改显示能量恢复
+	var recovery_rate: float = float(cfg.get("energy_recovery_rate", 0.3))
 	var spawn_ratio: float = float(cfg.get("spawn_range_ratio", 0.3))
 	var can: Dictionary = fsm.can_buy_instrument(_current_company_id, cfg) if fsm.has_method("can_buy_instrument") else {"ok": false}
 	var reason: String = String(can.get("reason", ""))
@@ -612,7 +613,7 @@ func _build_instrument_row(cfg: Dictionary, fsm: Node) -> PanelContainer:
 	var attr_label: Label = row_panel.get_node("M2/HB2/VB2/AttrLabel")
 	var attr_parts: Array[String] = []
 	attr_parts.append("星级 %d" % star)
-	attr_parts.append("能量输出 %.2f(实际%.1f)" % [output_rate, output_rate * 5.0])
+	attr_parts.append("能量恢复 %.2f(实际%.1f/s)" % [recovery_rate, recovery_rate * 3.0])
 	attr_parts.append("部署范围 %.0f%%" % (spawn_ratio * 100))
 	attr_label.text = "  |  ".join(attr_parts)
 	attr_label.custom_minimum_size = Vector2(350, 0)
@@ -638,9 +639,6 @@ func _build_instrument_row(cfg: Dictionary, fsm: Node) -> PanelContainer:
 		if cfg.has("xp_bonus"):
 			var bonus = float(cfg.xp_bonus)
 			if bonus > 0: advanced_parts.append("经验+%.0f%%" % (bonus * 100))
-		if cfg.has("drop_bonus"):
-			var bonus = float(cfg.drop_bonus)
-			if bonus > 0: advanced_parts.append("掉落+%.0f%%" % (bonus * 100))
 		if cfg.has("energy_cost_reduction"):
 			var reduction = int(cfg.energy_cost_reduction)
 			if reduction > 0: advanced_parts.append("能量消耗-%d" % reduction)

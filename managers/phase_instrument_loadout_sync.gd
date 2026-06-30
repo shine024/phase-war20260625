@@ -306,8 +306,9 @@ func get_loadout_by_platform_card_id(platform_card_id: String) -> Dictionary:
 func _can_equip_card_to_color(card: CardResource, color: String) -> bool:
 	if color == "green":
 		return card.card_type == GC.CardType.COMBAT_UNIT
+	# v7.x: yellow 能量槽已移除（能量卡系统移除），不再接受任何卡
 	if color == "yellow":
-		return card.card_type == GC.CardType.ENERGY
+		return false
 	if color == "red" or color == "blue":
 		if card.card_type != GC.CardType.LAW:
 			return false

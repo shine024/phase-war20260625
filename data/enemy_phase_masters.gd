@@ -24,15 +24,37 @@ const _MODERN = preload("res://data/enemy_phase_masters_modern.gd")
 const _FUTURE = preload("res://data/enemy_phase_masters_future.gd")
 # v6.14: 相位师符文派生用
 const _RuneDefs = preload("res://data/runes.gd")
+# v7.x: 符文之语驱动派生（敌方符文必然组成符文之语）
+const _RunewordDefs = preload("res://data/runewords.gd")
+# v7.x: 等级派生用（总战力 → Lv）
+const _MasterPowerEvaluator = preload("res://scripts/master_power_evaluator.gd")
 
 ## 从子文件合并所有时代数据（兼容原 LEGACY_ENEMY_MASTERS）
-static var LEGACY_ENEMY_MASTERS: Array = (
-	_WW1.ERA_MASTERS + _WW2.ERA_MASTERS + _COLD.ERA_MASTERS
-	+ _MODERN.ERA_MASTERS + _FUTURE.ERA_MASTERS
-)
+## 注：曾经用静态 var 直接拼接子文件 ERA_MASTERS，但 GDScript 静态 var 求值时序在
+##     --script/无 autoload 模式下不可靠（子文件 const 可能尚未就绪 → 拼接得空）。
+##     改为 getter 懒加载：首次访问 ENEMY_MASTERS/LEGACY_ENEMY_MASTERS 时才填充，
+##     此时所有 preload 子文件必然已编译完成。对外 API（EnemyPhaseMasters.ENEMY_MASTERS）不变。
+static var _legacy_cache: Array = []
+static var _legacy_inited: bool = false
+static var LEGACY_ENEMY_MASTERS: Array:
+	get:
+		if not _legacy_inited:
+			_legacy_inited = true
+			_legacy_cache = (
+				_WW1.ERA_MASTERS + _WW2.ERA_MASTERS + _COLD.ERA_MASTERS
+				+ _MODERN.ERA_MASTERS + _FUTURE.ERA_MASTERS
+			)
+		return _legacy_cache
 
 ## 优先加载 JSON，不存在则回退到内联数据
-static var ENEMY_MASTERS: Array = _load_json_data(_MASTERS_JSON_PATH, LEGACY_ENEMY_MASTERS)
+static var _masters_cache: Array = []
+static var _masters_inited: bool = false
+static var ENEMY_MASTERS: Array:
+	get:
+		if not _masters_inited:
+			_masters_inited = true
+			_masters_cache = _load_json_data(_MASTERS_JSON_PATH, LEGACY_ENEMY_MASTERS)
+		return _masters_cache
 
 static func _load_json_data(path: String, fallback):
 	if not FileAccess.file_exists(path):
@@ -188,21 +210,68 @@ static func get_enriched_equipment(master_id: String) -> Dictionary:
 	var level: int = int(master.get("level", 5))
 	# runes
 	if not equip.has("runes") or equip.get("runes", []).is_empty():
-		equip["runes"] = _derive_runes(level, String(master.get("faction", "")))
+		equip["runes"] = _derive_runes(level, String(master.get("faction", "")), master_id)
 	# spawn_sequence
 	if not equip.has("spawn_sequence") or equip.get("spawn_sequence", []).is_empty():
 		equip["spawn_sequence"] = _derive_spawn_sequence(equip.get("platforms", []), level)
 	return equip
 
 
-## v6.14: 按 level 派生相位师符文。从 generic 池按稀有度梯度选 2-4 个。
-static func _derive_runes(level: int, faction_family: String) -> Array:
-	# 稀有度池：level 越高，高稀有度比例越大
-	var pool: Array[Dictionary] = []
-	pool.append_array(_RuneDefs.get_generic_runes())
+## v6.14: 按 level 派生相位师符文。
+## v7.x 重构：从"随机抽 generic 符文"改为"符文之语驱动"——先按 level 选一个符文之语，
+## 取它的 required_runes 作为装备符文（必然能组成该词），槽位富余再补 generic 符文。
+## 这样敌方符文战力（MasterPowerEvaluator H维）才真正反映符文之语加成，而非散装符文。
+## 沿用 H3：用 master_id 哈希种子保证同相位师每次派生一致。
+static func _derive_runes(level: int, faction_family: String, master_id: String = "") -> Array:
+	var rng := RandomNumberGenerator.new()
+	# master_id 为空（理论不发生，兜底）时退化为 level 种子，仍可复现
+	var _seed_val: int = hash(master_id) if not master_id.is_empty() else level * 2654435761
+	rng.seed = _seed_val
+
+	# 1. 按 level 选符文之语 TIER：Lv≤9→T2, Lv10-19→T2/T3, Lv20-29→T3/T4, Lv30→T4/T5
+	var tier: int = _RunewordDefs.TIER_2
+	if level <= 9:
+		tier = _RunewordDefs.TIER_2
+	elif level <= 19:
+		tier = _RunewordDefs.TIER_2 if rng.randf() < 0.5 else _RunewordDefs.TIER_3
+	elif level <= 29:
+		tier = _RunewordDefs.TIER_3 if rng.randf() < 0.5 else _RunewordDefs.TIER_4
+	else:
+		tier = _RunewordDefs.TIER_4 if rng.randf() < 0.5 else _RunewordDefs.TIER_5
+
+	# 2. 从该 TIER 随机选一个符文之语，取它的 required_runes 作为装备符文
+	var pool: Array[Dictionary] = _RunewordDefs.get_runewords_by_tier(tier)
+	if pool.is_empty():
+		# 兜底：无该 TIER 词则退回原 generic 随机
+		return _derive_runes_generic_fallback(level, master_id)
+	var chosen_rw: Dictionary = pool[rng.randi() % pool.size()]
+	var picked: Array[String] = []
+	for rid in chosen_rw.get("required_runes", []):
+		var rid_s: String = String(rid)
+		if not rid_s.is_empty() and not picked.has(rid_s):
+			picked.append(rid_s)
+
+	# 3. 槽位富余则补 generic 符文填满（数量仍按 level：2 + level/10，clamp 2-4）
+	var max_count: int = clampi(2 + int(level / 10), 2, 4)
+	if picked.size() < max_count:
+		var generic_pool: Array[Dictionary] = _RuneDefs.get_generic_runes()
+		var remaining: Array = []
+		for r in generic_pool:
+			var rid_s: String = String(r.get("id", ""))
+			if not rid_s.is_empty() and not picked.has(rid_s):
+				remaining.append(r)
+		for _i in range(mini(max_count - picked.size(), remaining.size())):
+			var idx: int = rng.randi() % remaining.size()
+			picked.append(String(remaining[idx].get("id", "")))
+			remaining.remove_at(idx)
+	return picked
+
+
+## v7.x 兜底：无符文之语数据时退回 generic 随机（理论上不会触发，防御性）。
+static func _derive_runes_generic_fallback(level: int, master_id: String = "") -> Array:
+	var pool: Array[Dictionary] = _RuneDefs.get_generic_runes()
 	if pool.is_empty():
 		return []
-	# 按 level 确定候选稀有度
 	var rarities: Array[String] = []
 	if level <= 9:
 		rarities = [_RuneDefs.RARITY_COMMON, _RuneDefs.RARITY_RARE]
@@ -210,20 +279,20 @@ static func _derive_runes(level: int, faction_family: String) -> Array:
 		rarities = [_RuneDefs.RARITY_RARE, _RuneDefs.RARITY_EPIC]
 	else:
 		rarities = [_RuneDefs.RARITY_EPIC, _RuneDefs.RARITY_LEGENDARY]
-	# 筛出候选稀有度的符文
 	var candidates: Array[Dictionary] = []
 	for r in pool:
 		if r.get("rarity", "") in rarities:
 			candidates.append(r)
 	if candidates.is_empty():
-		candidates = pool  # 兜底
-	# 用 master_id 相关种子选（保证同相位师每次相同，跨战斗一致）
-	# 注意：此处不带种子（randi），因 callers 通常在战斗开始时调一次；如需严格一致可由调用方缓存
-	var count: int = clampi(2 + int(level / 10), 2, 4)  # Lv5→2, Lv15→3, Lv25→4
+		candidates = pool
+	var count: int = clampi(2 + int(level / 10), 2, 4)
 	var picked: Array[String] = []
 	var remaining: Array = candidates.duplicate()
+	var rng := RandomNumberGenerator.new()
+	var _seed_val: int = hash(master_id) if not master_id.is_empty() else level * 2654435761
+	rng.seed = _seed_val
 	for _i in range(mini(count, remaining.size())):
-		var idx: int = randi() % remaining.size()
+		var idx: int = rng.randi() % remaining.size()
 		picked.append(String(remaining[idx].get("id", "")))
 		remaining.remove_at(idx)
 	return picked
@@ -267,6 +336,28 @@ static func get_recommended_level(master_id: String) -> int:
 	if not master.is_empty():
 		return master.get("level", 1)
 	return 1
+
+## v7.x: 由相位师总战力派生展示等级（Lv5-30）。
+## 与原始手填 level（底层 _derive_runes/_derive_spawn_sequence/_era_from_level 继续读）解耦：
+##   - 展示 Lv 代表"战力等级"，用于 UI 显示和 game_manager 掉落梯度；
+##   - 原始 level 代表"设计基准"，用于符文稀有度/出兵序列/时代号。
+## 两者语义不同，派生 Lv ≠ 原始 level 属正常（如某高一战相位师展示 Lv12 但底层仍按 Lv5 派生）。
+## 映射规则：线性，区间贴合 30 相位师真实总分分布（最弱~434 → 最强~2210）。
+##   434 分→Lv5，2210 分→Lv30，区间外 clamp。
+## 区间随 STAR_TIERS 阈值校准同步更新（v7.x 第三轮）。
+static func compute_display_level(master: Dictionary) -> int:
+	var er: Dictionary = _MasterPowerEvaluator.evaluate(master)
+	var total: float = float(er.get("total_score", 0.0))
+	# 区间贴合实际分布：434(最弱)→Lv5，2210(最强)→Lv30
+	var lvl: int = roundi(5 + (total - 434.0) / (2210.0 - 434.0) * 25.0)
+	return clampi(lvl, 5, 30)
+
+## v7.x: 便捷重载——按 master_id 取展示等级（内部先查 master 再调 compute_display_level）。
+static func get_display_level_by_id(master_id: String) -> int:
+	var master: Dictionary = get_master_by_id(master_id)
+	if master.is_empty():
+		return 15   # 兜底中位
+	return compute_display_level(master)
 
 ## 创建敌方相位师实例
 static func create_master_instance(master_id: String) -> Dictionary:

@@ -47,6 +47,15 @@ func _ready() -> void:
 		if achievement_manager.has_signal("achievement_progress_updated"):
 			achievement_manager.achievement_progress_updated.connect(_on_progress_updated)
 
+## v7.x 修复 W6：面板释放时断开 autoload 信号，避免残留死 Callable
+func _exit_tree() -> void:
+	if achievement_manager == null:
+		return
+	if achievement_manager.has_signal("achievement_unlocked") and achievement_manager.achievement_unlocked.is_connected(_on_achievement_unlocked):
+		achievement_manager.achievement_unlocked.disconnect(_on_achievement_unlocked)
+	if achievement_manager.has_signal("achievement_progress_updated") and achievement_manager.achievement_progress_updated.is_connected(_on_progress_updated):
+		achievement_manager.achievement_progress_updated.disconnect(_on_progress_updated)
+
 func refresh() -> void:
 	_refresh_summary()
 	_refresh_achievement_list()

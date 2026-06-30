@@ -19,7 +19,7 @@ const DATA: Dictionary = {
 	"aa_01_radar" = {
 		id = AA_01_RADAR, name = "炮瞄雷达", name_en = "Fire Control Radar",
 		icon = "res://assets/ui/icons/mod_icons/mod_radar.png",
-		prototype = "SCR-584", description = "自动跟踪，命中和射速提升",
+		prototype = "SCR-584", description = "自动跟踪，暴击伤害和射速提升",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 180, cost_install = 90,
 		slot_type = "radar", conflict_group = "radar",
@@ -59,7 +59,7 @@ const DATA: Dictionary = {
 	"aa_05_proximity_fuze" = {
 		id = AA_05_PROXIMITY_FUZE, name = "近炸引信", name_en = "Proximity Fuze",
 		icon = "res://assets/ui/icons/mod_icons/mod_fuze.png",
-		prototype = "二战重大发明", description = "命中率和溅射提升",
+		prototype = "二战重大发明", description = "暴击伤害和溅射提升",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 300, cost_install = 150,
 		slot_type = "fuze", conflict_group = "fuze",
@@ -99,7 +99,7 @@ const DATA: Dictionary = {
 	"aa_09_smoke_launcher" = {
 		id = AA_09_SMOKE_LAUNCHER, name = "烟幕弹发射器", name_en = "Smoke Launcher",
 		icon = "res://assets/ui/icons/mod_icons/mod_countermeasure.png",
-		prototype = "76mm烟幕", description = "闪避制导武器",
+		prototype = "76mm烟幕", description = "闪避提升30%",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 160, cost_install = 80,
 		slot_type = "countermeasure", conflict_group = "countermeasure",
@@ -119,7 +119,7 @@ const DATA: Dictionary = {
 	"aa_11_auto_fc" = {
 		id = AA_11_AUTO_FC, name = "自动化火控", name_en = "Auto Fire Control",
 		icon = "res://assets/ui/icons/mod_icons/mod_fire_control.png",
-		prototype = "天空卫士", description = "全自动火控，射速和精度提升",
+		prototype = "天空卫士", description = "全自动火控，射速和暴击伤害提升",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 320, cost_install = 160,
 		slot_type = "fire_control", conflict_group = "fire_control",

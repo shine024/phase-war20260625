@@ -119,7 +119,6 @@ func _ensure_cache() -> void:
 ##   "is_complete": bool,
 ##   "first_encountered": bool,
 ##   "defeat_count": int,
-##   "drop_bonus": float,        # 1.0 或 1.5
 ##   "is_new": bool,             # 进度 > 0 且首次遭遇后尚未查看过
 ## }
 func get_card_summary(card_id: String) -> Dictionary:
@@ -140,7 +139,6 @@ func get_card_summary(card_id: String) -> Dictionary:
 		"is_complete": _manual.is_complete(card_id),
 		"first_encountered": entry.get("first_encounter", false),
 		"defeat_count": entry.get("defeat_count", 0),
-		"drop_bonus": _manual.get_drop_bonus_multiplier(card_id),
 		"is_new": entry.get("first_encounter", false) and progress < 1.0,
 	}
 
@@ -228,6 +226,5 @@ func _empty_summary(card_id: String) -> Dictionary:
 		"is_complete": false,
 		"first_encountered": false,
 		"defeat_count": 0,
-		"drop_bonus": 1.0,
 		"is_new": false,
 	}

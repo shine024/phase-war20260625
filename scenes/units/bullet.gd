@@ -573,10 +573,11 @@ func _on_hit(primary: Node2D) -> void:
 		_on_hit_basic(primary)
 		return
 
-	# 格子战：百分比护甲减伤与闪避在 take_damage（CardGridDamage）结算；穿甲仍作用于 shooter_stats
+	# v7.5: 删除误导性死分支（原 `if GameManager == null: defender_reduction = ...`）。
+	# GameManager 是 autoload 永不为 null，该分支从未执行，导致 damage_reduction 看似在
+	# bullet 消费实际全链路空转。现格子战的 damage_reduction 已在 take_damage→resolve_hit
+	# 正确结算，bullet 这里不再处理减伤。保留 defender_reduction=0 让下方公式行为不变。
 	var defender_reduction: float = 0.0
-	if GameManager == null:
-		defender_reduction = primary.damage_reduction if primary != null and "damage_reduction" in primary else 0.0
 	# v5.0: 击穿检查 + 三维防御减免（仅当伤害未预计算时）
 	if not _pre_calculated:
 		var primary_stats: UnitStats = primary.get("stats") as UnitStats if primary != null else null
@@ -598,8 +599,14 @@ func _on_hit(primary: Node2D) -> void:
 	# 词缀战斗效果已移除：直接使用已计算的 damage 值
 	var final_damage: float = damage * (1.0 - defender_reduction)
 	# v6.3: 真实暴击判定（基于 crit_chance；基础1.5x + crit_damage_bonus 每级+0.2x）
+	# v7.x: 目标的 crit_resist 降低被暴击概率（暴抗从攻击者 crit_chance 中扣减，下限 0）
 	var is_crit: bool = false
-	if shooter_stats.crit_chance > 0.0 and randf() < shooter_stats.crit_chance:
+	var effective_crit: float = shooter_stats.crit_chance
+	if effective_crit > 0.0 and primary != null:
+		var target_stats_v: UnitStats = primary.get("stats") as UnitStats if "stats" in primary else null
+		if target_stats_v != null and target_stats_v.crit_resist > 0.0:
+			effective_crit = maxf(0.0, effective_crit - target_stats_v.crit_resist)
+	if effective_crit > 0.0 and randf() < effective_crit:
 		is_crit = true
 		final_damage *= (1.5 + shooter_stats.crit_damage_bonus)
 
@@ -620,9 +627,8 @@ func _on_hit(primary: Node2D) -> void:
 	# 范围伤害
 	if explosion_radius > 0.0:
 		for child in _get_aoe_damage_targets(global_position, explosion_radius, primary):
+			# v7.5: 删除原 `if GameManager == null: splash_red = ...` 死分支（同主目标修复理由）
 			var splash_red: float = 0.0
-			if GameManager == null:
-				splash_red = child.damage_reduction if child != null and "damage_reduction" in child else 0.0
 			var splash_base: float = damage * shooter_stats.splash_damage
 			# v5.0: 溅射目标也做击穿检查+防御减免
 			var child_stats: UnitStats = child.get("stats") as UnitStats if child != null else null

@@ -551,16 +551,73 @@ func get_modified_stats() -> Dictionary:
 	return ModificationRegistry.apply_with_level(base_stats, mods)
 
 ## 获取可进化目标列表
+## v7.x 数据断裂修复：原读 evolution_paths/*.gd（与 LINEAGES 分叉，导致显示的目标无法进化），
+## 改为以 LINEAGES 为唯一权威——通过运行时 autoload 调 BlueprintManager.get_evolution_options
+## （已聚合主线+势力+情报三类来源），让"显示"与"判定/执行"读同一套数据。
+## 注意：用运行时获取而非静态类名/preload，避免与 CardEvolutionManager/UnitLineageConfig 形成循环依赖
+## （两者经 DefaultCards 间接 preload 了 CardResource）。返回结构与原接口一致 [{target_id, name, stage, path_type}]。
 func get_evolution_targets() -> Array:
-	var card_dict = {
-		id = card_id,
-		level = enhance_level,
-		installed_modifications = mods,
-		power = power,
-		combat_kind = combat_kind,
+	var result: Array = []
+	# 运行时获取 BlueprintManager autoload（非运行时为 null，返回空列表）
+	var bpm: Node = null
+	var tree = Engine.get_main_loop()
+	if tree and tree.has_method("get_root"):
+		bpm = tree.root.get_node_or_null("BlueprintManager")
+	if bpm == null or not bpm.has_method("get_evolution_options"):
+		return result
+
+	var opts: Dictionary = bpm.get_evolution_options(card_id)
+	var seen_targets: Dictionary = {}  # 按 target_id 去重（同一目标可能同时是主线和某分支）
+
+	# 主线进化目标（evolution_1）
+	var evo_1: String = String(opts.get("evolution_1", ""))
+	if not evo_1.is_empty() and not seen_targets.has(evo_1):
+		result.append(_build_evo_target(evo_1, "main"))
+		seen_targets[evo_1] = true
+
+	# 势力分支目标（faction_branches: {faction_id: target_card_id}）
+	var branches: Dictionary = opts.get("faction_branches", {})
+	for faction_id in branches.keys():
+		var branch_target: String = String(branches.get(faction_id, ""))
+		if branch_target.is_empty() or seen_targets.has(branch_target):
+			continue
+		result.append(_build_evo_target(branch_target, "faction"))
+		seen_targets[branch_target] = true
+
+	# 情报分支目标（仅已发现的隐藏分支）
+	var intel_branches: Array = opts.get("intel_branches", [])
+	for ib in intel_branches:
+		if not ib is Dictionary:
+			continue
+		var ib_target: String = String(ib.get("target_card_id", ""))
+		if ib_target.is_empty() or seen_targets.has(ib_target):
+			continue
+		result.append(_build_evo_target(ib_target, "intel"))
+		seen_targets[ib_target] = true
+
+	return result
+
+## 构造单个进化目标条目（与原 EvolutionPathRegistry 返回结构一致）
+## 运行时获取 DefaultCards（避免循环依赖），stage 用 get_stage 走 LINEAGES
+func _build_evo_target(target_id: String, path_type: String) -> Dictionary:
+	var target_name: String = target_id
+	var stage_str: String = "e1"
+	var tree = Engine.get_main_loop()
+	if tree and tree.has_method("get_root"):
+		var dc_script = load("res://data/default_cards.gd")
+		if dc_script:
+			var target_card = dc_script.get_card_by_id(target_id)
+			if target_card:
+				target_name = target_card.display_name
+		var ulc_script = load("res://data/unit_lineage_config.gd")
+		if ulc_script:
+			stage_str = ulc_script.get_stage(card_id, target_id)
+	return {
+		"target_id": target_id,
+		"name": target_name,
+		"stage": stage_str,
+		"path_type": path_type,
 	}
-	# 通过EvolutionPathRegistry获取数据（autoload，直接访问）
-	return EvolutionPathRegistry.get_evolution_targets(card_dict)
 
 ## 检查进化条件
 func check_evolution_requirements(target_card_id: String) -> Dictionary:

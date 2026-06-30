@@ -257,7 +257,8 @@ func get_panel(panel_id: String) -> Control:
 	if panel == null:
 		print("[UILazyLoader] ERROR: scene.instantiate() returned null for ", panel_id)
 		return null
-	print("[UILazyLoader] Instantiated panel for ", panel_id, " : ", panel)
+	if DEBUG_UI_LAZY_LOG:
+		print("[UILazyLoader] Instantiated panel for ", panel_id, " : ", panel)
 	var explicit_name: String = config.get("node_name", "")
 	if not explicit_name.is_empty():
 		panel.name = explicit_name
@@ -265,9 +266,11 @@ func get_panel(panel_id: String) -> Control:
 		panel.name = panel_id + "_panel"
 
 	# 添加到场景树
-	print("[UILazyLoader] Adding panel to: ", parent_path)
+	if DEBUG_UI_LAZY_LOG:
+		print("[UILazyLoader] Adding panel to: ", parent_path)
 	parent_node.add_child(panel)
-	print("[UILazyLoader] Panel added successfully")
+	if DEBUG_UI_LAZY_LOG:
+		print("[UILazyLoader] Panel added successfully")
 
 	# 存储引用
 	_loaded_panels[panel_id] = panel

@@ -8,7 +8,8 @@ const DefaultCards = preload("res://data/default_cards.gd")
 const LEGACY_FRAGMENT_REWARD_POOLS: Dictionary = {
 	"common_fragment": ["bp_ww1_001", "bp_ww1_011", "bp_ww2_003"],
 	"rare_fragment": ["bp_ww2_004", "bp_cold_002", "bp_modern_006"],
-	"epic_fragment": ["bp_modern_010", "bp_near_005", "energy_start_7"],
+		# v7.x: 能量卡移除，epic_fragment 池改为现代精英卡
+		"epic_fragment": ["bp_modern_010", "bp_near_005", "bp_modern_011"],
 	"legendary_fragment": ["titan_mk2", "storm_rider", "abrams_mk2"],
 }
 

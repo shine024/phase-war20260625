@@ -456,6 +456,10 @@ func _on_battle_ended(player_won: bool) -> void:
 			level_progress.complete_level(current_level, victory_stars)
 			if DEBUG_GAME_LOG:
 				pass  # LOG: 关卡进度已更新
+			# v7.x 修复 B3：记录关卡进度成就统计（progress 类成就，如 max_level/perfect_levels）
+			var _am_evo = get_node_or_null("/root/AchievementManager")
+			if _am_evo and _am_evo.has_method("record_level_progress"):
+				_am_evo.record_level_progress(current_level, victory_stars)
 		# 与已解锁关卡的「最前沿」对齐，否则 save.json 里 game.current_level 会永远停在 1（读档像没进度）
 		if level_progress and level_progress.has_method("get_max_unlocked_level"):
 			set_current_level(level_progress.get_max_unlocked_level())
@@ -521,7 +525,15 @@ func _on_battle_ended(player_won: bool) -> void:
 			dm_afk.claim_drops()
 		return_to_prep()
 	elif main_scene and main_scene.has_method("show_battle_result"):
-		main_scene.show_battle_result(player_won)
+		# v7.x 性能：延迟到下一帧再构建结算面板。
+		# 根因：_on_battle_ended 是 battle_ended 信号第一个监听者，原在其回调栈内同步
+		# instantiate BattleResultDialog + 构建 UI（掉落列表逐行 Label.new() +
+		# IntelHarvestDisplay 按击败敌人数建节点 + 海量 theme override），与后续 8+ 监听者
+		# （Audio/Faction/Quest/Achievement/SaveManager/HUD...）挤同一帧，渲染线程要等整条链
+		# 结束才能画下一帧——这是"面板出来前卡一下"的主因。
+		# call_deferred 让奖励计算先在本帧完成，剩余监听者处理完，渲染一帧（玩家看到胜利瞬间），
+		# 再在下一帧构建面板并淡入。reward_summary 已在上方 488-506 组装完毕，延迟安全。
+		main_scene.call_deferred("show_battle_result", player_won)
 	elif player_won:
 		var dm_fallback: Node = get_node_or_null("/root/DropManager")
 		if dm_fallback != null and dm_fallback.has_method("get_pending_drops_count") and dm_fallback.has_method("claim_drops"):
@@ -606,6 +618,14 @@ func _grant_phase_master_victory_reward(master_name: String) -> void:
 				# Boss 卡牌数据 → 成品卡发放
 				if not res.drop.item_id.is_empty() and BlueprintManager:
 					CardDropGrants.grant_enemy_style_card(BlueprintManager, res.drop.item_id, era_pm, 2)
+			DropTables.DropType.STAT_BOOST:
+				# v7.x 修复：Boss/相位师的属性提升掉落此前被静默丢弃（match 缺此分支）。
+				# 现 lazy-load StatBoostManager 并应用 boost（与 DropManager._apply_stat_boost 同口径）。
+				if not res.drop.item_id.is_empty():
+					ManagerLazyLoader.ensure_loaded("stat_boost")
+					var sbm = get_node_or_null("/root/StatBoostManager")
+					if sbm and sbm.has_method("apply_boost"):
+						sbm.apply_boost(res.drop.item_id)
 
 	# 2. v6.4: 固定 +10 能量块已由 Boss 掉落表（boss_drops 含 energy_block）提供，此处移除避免重复
 
@@ -654,12 +674,16 @@ func _grant_phase_master_victory_reward(master_name: String) -> void:
 				pim.add_owned_rune(_granted_l)
 
 	# v6.14: 相位师击败 → 改造蓝图掉落（此前相位师无保底改造掉落，只有通用击杀概率）。
-	# 必掉1个改造蓝图（按 master level 决定稀有度梯度），30%概率额外1个。
+	# 必掉1个改造蓝图（按相位师星级决定稀有度梯度），30%概率额外1个。
+	# v7.x: 改用 MasterPowerEvaluator 星级映射 Tier（替代原 level*40 的 ad-hoc 换算），
+	#       让掉落真正跟随相位师战力——高战力相位师掉高稀有度改造。
 	var IntelManualItems = preload("res://data/intel_manual_items.gd")
-	var _master_level: int = int(_current_phase_master.get("level", 15))
+	var _MPE = preload("res://scripts/master_power_evaluator.gd")
+	var _PT = preload("res://data/power_tiers.gd")
+	var _stars: int = int(_MPE.evaluate(_current_phase_master).get("stars", 3))
 	var _drop_bag: Node = get_node_or_null("/root/IntelItemBag")
 	var _pm_enemy_type: String = "infantry"  # 相位师无单一敌人类型，用通用兜底
-	var _pm_power_tier: int = preload("res://data/power_tiers.gd").get_tier_by_power(float(_master_level) * 40.0)
+	var _pm_power_tier: int = _PT.get_tier_by_stars(_stars)
 	# 必掉
 	var _mod_drop: Dictionary = IntelManualItems.roll_random_mod_blueprint(_pm_enemy_type, "boss", _pm_power_tier)
 	if not _mod_drop.is_empty() and _drop_bag and _drop_bag.has_method("add_item"):

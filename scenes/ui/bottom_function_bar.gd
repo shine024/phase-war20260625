@@ -30,8 +30,9 @@ signal btn_law_pressed
 # 当前高亮的按钮 key
 var _active_btn_key: String = ""
 
-## 设为 true 时左侧功能按钮不显示中文，便于只看图标；确认无误后改回 false。
-const DEBUG_HIDE_BOTTOM_BAR_TEXT := true
+## 设为 true 时左侧功能按钮不显示中文，便于只看图标。
+## 上线/正常游玩必须为 false——新手无法仅凭图标分辨 11 个功能（背包/成长/商店等）。
+const DEBUG_HIDE_BOTTOM_BAR_TEXT := false
 
 ## 底部功能键 → `assets/ui/icons/<name>.svg`（优先；若无则 `.png`；无映射则仅文字）
 const BTN_ICON_BY_KEY: Dictionary = {

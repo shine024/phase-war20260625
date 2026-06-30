@@ -1,0 +1,13 @@
+{
+  "total": 478,
+  "found": 472,
+  "missing_count": 6,
+  "missing": [
+    "assets/backgrounds/*.png",
+    "assets/sfx/button.ogg",
+    "assets/unit_sprites/omega_platform.png",
+    "audio/sfx/interface_sound.tres",
+    "models/characters/player_model.tscn",
+    "textures/ui/ui_theme.tres"
+  ]
+}

@@ -64,6 +64,11 @@ static func _multiply_attack_damage_and_weapon_slots(stats: UnitStats, factor: f
 		if w.has("damage"):
 			w["damage"] = float(w["damage"]) * factor
 			stats.weapons[i] = w
+	# v7.x 修复: 同步 weapon_slots[].damage（战斗 AI 读的是这里，非 weapons[]/attack_damage）
+	# 此前函数名虽带 "weapon_slots" 但只改 weapons[]（Dictionary），漏了 weapon_slots（WeaponResource），
+	# 导致强化/稀有度/inherit/军衔 4 个乘区对实际开火伤害失效。
+	if stats.has_method("_sync_weapon_slots_damage"):
+		stats._sync_weapon_slots_damage(factor)
 
 static func _preview_battle_era() -> int:
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
@@ -225,6 +230,9 @@ static func build_unit_stats_for_power_preview(card: CardResource, bpm_ref: Node
 	return null
 
 ## 与 RankRules 阈值（约 120~780）同量级
+## v7.x 修复射程失控：原 `range_f * 0.22` 用的是像素值（attack_range = range_value×100），
+## 火炮 range_value=99 → 9900像素 → 射程项 2178，单这一项就破元帅(1450)，是步兵的33倍。
+## 改用 sqrt(格数) × 8.0 压平：步兵3格→13.9，火炮99格→79.6，比例1:5.7（保留区分度但不碾压）。
 static func combat_power_from_unit_stats(stats: UnitStats) -> float:
 	if stats == null:
 		return 0.0
@@ -233,10 +241,13 @@ static func combat_power_from_unit_stats(stats: UnitStats) -> float:
 	var hp: float = maxf(float(stats.max_hp), 0.0)
 	var range_f: float = maxf(float(stats.attack_range), 0.0)
 	var spd: float = maxf(float(stats.move_speed), 0.0)
+	# 射程项：格数（像素/100）开方压平，避免远射单位战力失控
+	var range_cells: float = maxf(range_f / 100.0, 0.0)
+	var range_score: float = sqrt(range_cells) * 8.0
 	var out: float = (
 		hp * 0.28
 		+ dps * 2.2
-		+ range_f * 0.22
+		+ range_score
 		+ spd * 0.08
 		+ float(stats.damage_reduction) * 80.0
 		+ float(stats.crit_chance) * 120.0

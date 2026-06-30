@@ -85,15 +85,14 @@ static func validate_card_data(card_data: Dictionary) -> bool:
 
 ## 验证相位仪数据字典
 static func validate_instrument_data(instrument_data: Dictionary) -> bool:
-	var required_keys = ["id", "name", "star", "slot_counts", "energy_output_rate"]
+	# v7.x: 移除 energy_output_rate 必填校验（属性已删除）
+	var required_keys = ["id", "name", "star", "slot_counts"]
 	if not validate_dict_keys(instrument_data, required_keys, "Instrument Data"):
 		return false
 
 	if not validate_string(instrument_data.get("id", ""), "Instrument ID"):
 		return false
 	if not validate_int_range(instrument_data.get("star", 1), 1, 7, "Instrument Star"):
-		return false
-	if not validate_energy_value(instrument_data.get("energy_output_rate", 0.0)):
 		return false
 
 	# 验证槽位数量

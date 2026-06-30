@@ -459,7 +459,15 @@ func request_player_deploy(platform_card_id: String, world_pos: Vector2, battle_
 	if live_count >= max_units:
 		_emit_deploy_failed("max_units", "我方单位数量已达上限（%d/%d）。" % [live_count, max_units])
 		return false
-	if _reach_alive_limit_for_card(platform_card_id):
+	# v7.x 修复（同名卡部署属性相同）：调用方现在可能传 instance_id（cold_t72#1）或裸 card_id。
+	# "同卡上限"检查需要裸 card_id（统计同名卡装备数/存活数），故先剥离 #序号 得到 base_card_id。
+	# loadout 查找仍用原 platform_card_id（get_loadout_by_platform_card_id 会优先按 instance_id
+	# 精确匹配，找不到再按 card_id 回退——保证同名卡各自取到自己的实例）。
+	var base_card_id: String = platform_card_id
+	var _hi: int = platform_card_id.rfind("#")
+	if _hi > 0:
+		base_card_id = platform_card_id.substr(0, _hi)
+	if _reach_alive_limit_for_card(base_card_id):
 		_emit_deploy_failed("unit_on_field", "该单位同配置已全部在场上，请待其离场后再部署。")
 		return false
 	var loadout: Dictionary = {}
@@ -503,16 +511,12 @@ func request_player_deploy(platform_card_id: String, world_pos: Vector2, battle_
 		world_pos = (grid as Node2D).to_global(grid.get_player_slot_center(si))
 	else:
 		world_pos = grid.get_player_slot_center(si)
-	var output_rate: float = 1.0
-	if _phase_instrument.has_method("get_energy_output_rate"):
-		output_rate = maxf(0.1, float(_phase_instrument.get_energy_output_rate()))
+	# v7.x: 移除 energy_output_rate / deploy_time 死代码（output_rate 半失效，deploy_time 从未被使用）
 	# 无武器版：部署费用仅由平台卡决定
 	var deploy_energy_cost: float = maxf(1.0, float(platform_card.energy_cost))
-	var deploy_time: float = deploy_energy_cost / output_rate
 	# v6.6: 免能量能力（free_energy）— 应用部署成本倍率（0=全免）
 	var deploy_cost_mult: float = _get_free_energy_multiplier()
 	deploy_energy_cost = deploy_energy_cost * deploy_cost_mult
-	deploy_time = deploy_time * deploy_cost_mult
 	if _energy_manager and _energy_manager.has_method("spend"):
 		# cost 为 0 时跳过消耗（免能量）
 		if deploy_energy_cost > 0.0 and not _energy_manager.spend(deploy_energy_cost):
@@ -531,6 +535,10 @@ func request_player_deploy(platform_card_id: String, world_pos: Vector2, battle_
 		_emit_deploy_failed("internal", "部署失败，请重试。")
 		return false
 	unit.set_meta("source_card_id", platform_card.card_id)
+	# v7.x：额外存 source_instance_id——战场点单位显示情报时用它从 InstanceRegistry 精确取回实例卡
+	# （带 enhance_level/mods 养成），否则显示侧只能取共享模板（养成=0），看不到强化/改造。
+	# 非实例卡（旧路径）instance_id 为空，meta 存空串，显示侧回退到模板卡。
+	unit.set_meta("source_instance_id", platform_card.instance_id if (platform_card != null and not platform_card.instance_id.is_empty()) else "")
 	# v6.6: 幻影克隆 — 若本次部署是同卡的第2个单位（克隆体），应用克隆加成
 	if _is_phantom_clone_for_card(platform_card.card_id):
 		_apply_phantom_clone_buff(unit)
@@ -1002,20 +1010,25 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 	var _fsm_node: Node = _get_autoload_node("FactionSystemManager")
 	if _fsm_node != null and _fsm_node.has_method("get_active_faction_skill_effects"):
 		_active_faction_fx = _fsm_node.get_active_faction_skill_effects()
-	if not _active_faction_fx.is_empty():
-		# 激活势力 + 已解锁技能数作为缓存 key 片段（技能变化时缓存失效）
-		var _unlocked: Array = []
-		if _fsm_node != null and _fsm_node.has_method("get"):
-			var _af: String = String(_fsm_node.get("active_faction"))
-			if not _af.is_empty() and _fsm_node.has_method("get") and _fsm_node.get("faction_skill_states").has(_af):
-				_unlocked = _fsm_node.get("faction_skill_states")[_af].get("unlocked_skills", [])
-		active_faction_cache_key = "%s:%d" % [String(_fsm_node.get("active_faction")), _unlocked.size()]
+		if not _active_faction_fx.is_empty():
+			# 激活势力 + 已解锁技能数作为缓存 key 片段（技能变化时缓存失效）
+			var _unlocked: Array = []
+			# v7.x 健壮性: faction_skill_states 可能在势力切换/重置瞬间被清空，
+			# 链式 .has() 作用在 null 上会崩溃（中断 _build_stats_cached → 玩家单位无法部署）。
+			# 先取状态字典并校验，缺失/非 Dictionary 时 _unlocked 留空，缓存 key 仍能生成。
+			if _fsm_node != null and _fsm_node.has_method("get"):
+				var _af: String = String(_fsm_node.get("active_faction"))
+				if not _af.is_empty():
+					var _fss = _fsm_node.get("faction_skill_states")
+					if _fss != null and typeof(_fss) == TYPE_DICTIONARY and _fss.has(_af):
+						var _af_state = _fss[_af]
+						if _af_state != null and typeof(_af_state) == TYPE_DICTIONARY:
+							_unlocked = _af_state.get("unlocked_skills", [])
+				active_faction_cache_key = "%s:%d" % [String(_fsm_node.get("active_faction")), _unlocked.size()]
 
 	# v7.0: 实例化养成——若 platform_card 已是实例（instance_id 非空），养成数据直接在对象上，
 	# 无需再查 CardEnhancementManager。仅对非实例卡（兼容旧路径）做查表注入。
 	var instance_id_key: String = platform_card.instance_id if platform_card != null else ""
-	# v7.4 DEBUG: 诊断"战斗中卡牌未强化/未改造"——确认 platform_card 进来时的养成数据
-	print("[BattleSpawn DEBUG] _build_stats_cached card_id='", platform_card.card_id, "' instance_id='", platform_card.instance_id, "' enhance_level=", platform_card.enhance_level, " mods.size=", platform_card.mods.size(), " module_slots.size=", platform_card.module_slots.size())
 	if instance_id_key.is_empty():
 		# 旧路径兼容：非实例卡，按 card_id 查 CardEnhancementManager 注入养成
 		var cem: Node = _get_autoload_node("CardEnhancementManager")
@@ -1052,8 +1065,12 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 	# v6.14: 注入激活势力技能 stat_bonus（非空才注入，避免无势力时多余计算）
 	if not _active_faction_fx.is_empty():
 		_apply_active_faction_stat_bonus(stats, _active_faction_fx.get("stat_bonus", {}))
-	# v6.0: 词条效果已由 UnitStatsTable.build_stats_from_card 内部处理
-	# 不再需要额外调用 AffixManager.apply_affixes_to_stats
+	# v7.x 修复 B1（affix 战斗空转）：原注释误称"词条已由 build_stats_from_card 内部处理"，
+	# 但 build_stats_from_card / apply_growth_to_stats 实际都不读 affix，导致词条养成在实战完全失效。
+	# 在养成加成之后、相位仪/符文加成之前应用词条（与 UI 预览面板调用方式一致）。
+	var _am = _get_autoload_node("AffixManager")
+	if _am and _am.has_method("apply_affixes_to_stats"):
+		_am.apply_affixes_to_stats(stats, platform_card, weapon_cards)
 	if _phase_instrument and _phase_instrument.has_method("apply_phase_field_bonus_to_unit_stats"):
 		_phase_instrument.apply_phase_field_bonus_to_unit_stats(stats)
 	# v6.2: 符文之语全局加成注入（所有玩家单位共享）
@@ -1087,6 +1104,9 @@ func _apply_rune_bonus_to_stats(stats: UnitStats, bonus: Dictionary) -> void:
 			for w in weapons:
 				if w is Dictionary and w.has("damage"):
 					w["damage"] = float(w["damage"]) * mult
+		# v7.x 修复: 同步 weapon_slots[].damage（战斗 AI 读的是这里）
+		if stats.has_method("_sync_weapon_slots_damage"):
+			stats._sync_weapon_slots_damage(mult)
 	# 防御力加成（影响所有防御维度）
 	if stat_map.has("defense") and float(stat_map["defense"]) != 0.0:
 		var def_mult: float = 1.0 + float(stat_map["defense"])
@@ -1126,6 +1146,9 @@ func _apply_rune_bonus_to_stats(stats: UnitStats, bonus: Dictionary) -> void:
 	# 伤害减免加成
 	if stat_map.has("damage_reduction") and float(stat_map["damage_reduction"]) != 0.0:
 		stats.damage_reduction = clampf(stats.damage_reduction + float(stat_map["damage_reduction"]), 0.0, 0.8)
+	# v7.x 修复 W1：穿甲加成（原符文 attack_penetration 副效果无消费分支，"破甲"符文完全不生效）
+	if stat_map.has("attack_penetration") and float(stat_map["attack_penetration"]) != 0.0:
+		stats.armor_penetration = clampf(stats.armor_penetration + float(stat_map["attack_penetration"]), 0.0, 1.0)
 	# 注：特殊效果已在函数开头写入 meta，此处无需重复
 
 ## v6.14: 应用激活势力技能树的 stat_bonus 到我方单位。
@@ -1151,6 +1174,12 @@ func _apply_active_faction_stat_bonus(stats: UnitStats, stat_bonus: Dictionary) 
 			# atk_light 同时是 attack_damage 的主源（别名），需同步
 			if i == 0:
 				stats.attack_damage *= mult
+			# v7.x 修复: 分维度同步 weapon_slots[i].damage（槽位 i 对应维度 i）
+			# 战斗 AI 读 weapon_slots[i].damage，此前势力技能加成对实际开火伤害失效
+			if i < stats.weapon_slots.size():
+				var ws = stats.weapon_slots[i]
+				if ws != null and "damage" in ws:
+					ws.damage = maxf(0.1, float(ws.damage) * mult)
 	# 三维防御
 	var def_keys: Array = ["def_light", "def_armor", "def_air"]
 	for i in range(def_keys.size()):

@@ -33,9 +33,21 @@ func _ready() -> void:
 		faction_mgr.faction_reputation_changed.connect(_on_faction_reputation_changed)
 		faction_mgr.faction_level_up.connect(_on_faction_level_up)
 		faction_mgr.faction_store_updated.connect(_on_faction_store_updated)
-	
+
 	# 初始化势力列表
 	_init_faction_list()
+
+## v7.x 修复 W6：面板释放时断开 autoload 信号，避免残留死 Callable（内存泄漏/脏连接）
+func _exit_tree() -> void:
+	var faction_mgr = get_node_or_null("/root/FactionSystemManager")
+	if faction_mgr == null:
+		return
+	if faction_mgr.has_signal("faction_reputation_changed") and faction_mgr.faction_reputation_changed.is_connected(_on_faction_reputation_changed):
+		faction_mgr.faction_reputation_changed.disconnect(_on_faction_reputation_changed)
+	if faction_mgr.has_signal("faction_level_up") and faction_mgr.faction_level_up.is_connected(_on_faction_level_up):
+		faction_mgr.faction_level_up.disconnect(_on_faction_level_up)
+	if faction_mgr.has_signal("faction_store_updated") and faction_mgr.faction_store_updated.is_connected(_on_faction_store_updated):
+		faction_mgr.faction_store_updated.disconnect(_on_faction_store_updated)
 	
 	# 选择第一个势力
 	if faction_items.size() > 0:

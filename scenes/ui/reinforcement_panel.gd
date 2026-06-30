@@ -74,19 +74,87 @@ func _refresh_card_list() -> void:
 	for child in card_list_container.get_children():
 		child.queue_free()
 
-	# 获取所有蓝图卡牌
+	# v7.x 修复：对齐 modification_panel——以 InstanceRegistry 实例为数据源，每个实例一行
+	# （同名卡 #1/#2 各自独立，各自强化等级不同）。原只读 BlueprintManager+DefaultCards 模板，
+	# 同名卡只显示一条无序号模板行，且强化会污染共享模板。
+	# 蓝图仅补"已解锁但未拥有任何实例"的卡（显示无养成模板行）。
 	var DefaultCards = preload("res://data/default_cards.gd")
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	var sm: Node = get_node_or_null("/root/SaveManager")
+
+	# 收集每个 base card_id 的实例列表（Registry 全集 + SaveManager 队列兜底）
+	var card_entries: Dictionary = {}  # { base_card_id: { "template": CardResource, "instance_ids": Array } }
+	# 来源1：Registry 实例
+	if ir != null and ir.has_method("get_all_instance_ids"):
+		for iid in ir.get_all_instance_ids():
+			var sid: String = String(iid)
+			if sid.is_empty():
+				continue
+			var base_id: String = ir.get_card_id_of(sid) if ir.has_method("get_card_id_of") else sid
+			if not card_entries.has(base_id):
+				card_entries[base_id] = { "template": null, "instance_ids": [] }
+			if not card_entries[base_id]["instance_ids"].has(sid):
+				card_entries[base_id]["instance_ids"].append(sid)
+	# 来源2：SaveManager 队列兜底（presenter 未存活/旧档）
+	if sm != null and sm.has_method("get_pending_backpack_ids"):
+		for idv in sm.get_pending_backpack_ids() + (sm.get_last_known_backpack_ids() if sm.has_method("get_last_known_backpack_ids") else []):
+			var sid: String = String(idv)
+			if sid.is_empty():
+				continue
+			var base_id: String = sid
+			if ir != null and ir.has_method("get_card_id_of"):
+				base_id = ir.get_card_id_of(sid)
+			else:
+				var hi: int = sid.rfind("#")
+				if hi > 0:
+					base_id = sid.substr(0, hi)
+			if not card_entries.has(base_id):
+				card_entries[base_id] = { "template": null, "instance_ids": [] }
+			if not card_entries[base_id]["instance_ids"].has(sid):
+				card_entries[base_id]["instance_ids"].append(sid)
+	# 来源3：蓝图（补无实例的卡）
 	for id_raw in BlueprintManager.get_all_blueprint_ids():
 		var card_id: String = str(id_raw)
-		var card: CardResource = DefaultCards.get_card_by_id(card_id)
-		if card == null:
-			continue
-		var item = _create_card_item(card)
-		card_list_container.add_child(item)
+		if not card_entries.has(card_id):
+			card_entries[card_id] = { "template": null, "instance_ids": [] }
 
-func _create_card_item(card: CardResource) -> Control:
+	# 加载模板 CardResource，生成列表项
+	for card_id in card_entries:
+		var entry = card_entries[card_id]
+		var template_card: CardResource = DefaultCards.get_card_by_id(card_id)
+		if template_card == null:
+			continue
+		# 仅显示战斗卡（强化只对战斗卡有意义）。GC.CardType.COMBAT_UNIT = 0
+		if template_card.card_type != 0:
+			continue
+		var instance_ids: Array = entry["instance_ids"]
+		if not instance_ids.is_empty():
+			# 有实例：每个实例一行（带各自强化等级）
+			for inst_id in instance_ids:
+				var inst_card: CardResource = null
+				if ir != null and ir.has_method("get_instance"):
+					inst_card = ir.get_instance(String(inst_id))
+				var item = _create_card_item(template_card, inst_card)
+				card_list_container.add_child(item)
+		else:
+			# 无实例：仅显示模板（蓝图解锁但未入包）
+			var item = _create_card_item(template_card, null)
+			card_list_container.add_child(item)
+
+func _create_card_item(template_card: CardResource, instance_card: CardResource = null) -> Control:
+	# v7.x：显示/选中用 instance_card（带养成）；无实例时回退模板。
+	# 选中实例卡，强化才写到该实例（不污染共享模板）。
+	var display_card: CardResource = instance_card if instance_card != null else template_card
 	var item = Button.new()
-	item.text = card.display_name
+	# 显示名 + 序号后缀（同名多实例区分 #1/#2）
+	var base_name: String = template_card.display_name if template_card.display_name else template_card.card_id
+	var seq_suffix: String = ""
+	if instance_card != null and not str(instance_card.instance_id).is_empty():
+		var iid: String = str(instance_card.instance_id)
+		var h: int = iid.rfind("#")
+		if h >= 0:
+			seq_suffix = " " + iid.substr(h)  # " #1"
+	item.text = base_name + seq_suffix
 	item.custom_minimum_size = Vector2(200, 42)
 	item.add_theme_font_size_override("font_size", 14)
 	item.clip_text = true
@@ -95,11 +163,12 @@ func _create_card_item(card: CardResource) -> Control:
 	item.add_theme_stylebox_override("normal", _make_sb(THEME_BG_CARD * Color(1, 1, 1, 0.6), THEME_BORDER_DIM, 1, 5, Color(0, 0, 0, 0), 0, 10, 6, 10, 6))
 	item.add_theme_stylebox_override("hover", _make_sb(THEME_GREEN * Color(1, 1, 1, 0.1), THEME_GREEN_SOFT * Color(1, 1, 1, 0.6), 1, 5, Color(0, 0, 0, 0), 0, 10, 6, 10, 6))
 
-	# v6.11：军衔称号已移除，tooltip 改为显示强化等级 + 战力
-	var level = card.enhance_level
-	item.tooltip_text = "强化 Lv.%d\n战力：%d" % [level, card.get_current_power()]
+	# v6.11：军衔称号已移除，tooltip 改为显示强化等级 + 战力（用实例数据）
+	var level = display_card.enhance_level
+	item.tooltip_text = "强化 Lv.%d\n战力：%d" % [level, display_card.get_current_power()]
 
-	item.pressed.connect(func(): _on_card_selected(card))
+	# v7.x：选中实例卡（而非模板）——强化写入实例，避免污染共享模板导致所有同名卡被改
+	item.pressed.connect(func(): _on_card_selected(display_card))
 	return item
 
 func _update_detail_panel() -> void:
@@ -231,6 +300,11 @@ func _on_card_selected(card: CardResource) -> void:
 
 func _on_reinforce_pressed() -> void:
 	if not selected_card:
+		return
+	# v7.x 守卫：强化必须落在实例卡上（instance_id 非空），避免写到 DefaultCards 共享模板
+	# 导致所有同名卡被污染。无实例卡（蓝图模板）拒绝强化并提示。
+	if selected_card.instance_id.is_empty():
+		_show_result("该卡尚未入包（无实例），无法强化。请先从背包/掉落获取该卡。")
 		return
 
 	var current_level = selected_card.enhance_level

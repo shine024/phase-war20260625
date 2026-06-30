@@ -96,14 +96,13 @@ func _load_assets() -> void:
 	current_phase = LaunchPhase.LOADING_ASSETS
 
 	# 预加载关键资源
+	# 注：原 resource_queue 是空实现 stub（_create_resource_queue 注释自承认"简化版本直接返回"），
+	#     且引用的 ui_theme.tres/interface_sound.tres/player_model.tscn 三个文件磁盘均不存在。
+	#     这 3 行 add_resource 是死代码（stub 的 is_done() 恒 true，while 循环立即退出）。
+	#     保留 _create_resource_queue 骨架以备后续实装，但移除对不存在资源的死引用。
 	var resource_queue = _create_resource_queue()
 
-	# 添加要预加载的资源
-	resource_queue.add_resource("res://textures/ui/ui_theme.tres")
-	resource_queue.add_resource("res://audio/sfx/interface_sound.tres")
-	resource_queue.add_resource("res://models/characters/player_model.tscn")
-
-	# 等待资源加载完成
+	# 等待资源加载完成（stub 实现下 is_done() 恒 true，立即通过）
 	while not resource_queue.is_done():
 		await get_tree().process_frame
 		loading_progress = 0.25 * resource_queue.get_progress()

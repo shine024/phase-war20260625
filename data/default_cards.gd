@@ -28,7 +28,8 @@ static func _ensure_card_cache() -> void:
 		else:
 			push_error("[DefaultCards] create_all() 返回了非 CardResource 对象: %s" % str(c))
 	_cache_building = false
-	print("[DefaultCards] 缓存构建完成,共 %d 张卡牌" % _all_cards_cache.size())
+	if OS.is_debug_build():
+		print("[DefaultCards] 缓存构建完成,共 %d 张卡牌" % _all_cards_cache.size())
 
 ## 参数:id, name, era(0-4), combat_kind(0-4), power, deploy_speed, range, energy_cost, hp,
 ##      attack_light, attack_light_speed, attack_light_windup, attack_light_active,
@@ -258,14 +259,9 @@ static func create_all() -> Array:
 	list.append(_unit("fort_future_ion", "离子炮台", 4, 4, 1200, 0, 7, 45, 2500, 200, 0.67, 0.25, 0.12, 300, 0.5, 0.3, 0.15, 150, 0.67, 0.25, 0.12,150,200,150, "离子炮", "离子炮阵列", "多管近防炮/88mm防空炮"))
 	list.append(_unit("fort_future_shield", "能量护盾发生器", 4, 4, 1000, 0, 0, 30, 3000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,200,250,200, "", "", ""))
 
-	# ==================== 能量卡(战前能量 1～7 级)====================
-	list.append(_energy_start("energy_start_1", "战前能量 I", 5, 100.0, "common"))
-	list.append(_energy_start("energy_start_2", "战前能量 II", 10, 150.0, "common"))
-	list.append(_energy_start("energy_start_3", "战前能量 III", 15, 200.0, "common"))
-	list.append(_energy_start("energy_start_4", "战前能量 IV", 20, 250.0, "uncommon"))
-	list.append(_energy_start("energy_start_5", "战前能量 V", 25, 300.0, "uncommon"))
-	list.append(_energy_start("energy_start_6", "战前能量 VI", 30, 350.0, "rare"))
-	list.append(_energy_start("energy_start_7", "战前能量 VII", 35, 400.0, "rare"))
+	# v7.x: 能量卡系统移除（能量上限改由相位仪星级决定，见 EnergyManager._apply_instrument_energy）
+	# 原 7 张 energy_start_* 卡及 _energy_start() 生成函数已删除。
+	# 旧存档里的能量卡由 SaveManager 迁移清理（见 phase_instrument_manager.set_slots_from_card_ids 守卫）。
 
 	# ─── 势力专属卡(14张)───
 	var EC = preload("res://data/faction_exclusive_cards.gd")
@@ -480,6 +476,20 @@ static func safe_name(card: CardResource) -> String:
 		return card.card_id  # 最后回退到ID,避免完全空白
 	return fallback
 
+## v7.x：从卡牌 instance_id 提取序号后缀（同名卡区分用）。
+## instance_id 形如 "cold_t72#1" → 返回 " #1"；空 instance_id（共享模板）返回 ""。
+## 用于背包/相位仪/情报面板等显示卡牌名时统一追加序号。
+static func seq_suffix(card: CardResource) -> String:
+	if card == null:
+		return ""
+	var iid: String = String(card.instance_id)
+	if iid.is_empty():
+		return ""
+	var h: int = iid.rfind("#")
+	if h < 0:
+		return ""
+	return " #%s" % iid.substr(h + 1)
+
 ## 判断一个字符串是否看起来像内部 ID 而非人类可读名称
 static func _looks_like_id(s: String) -> bool:
 	if s.is_empty():
@@ -499,18 +509,3 @@ static func _looks_like_id(s: String) -> bool:
 		if has_underscore and has_digit:
 			return true
 	return false
-
-## 生成战前能量卡
-static func _energy_start(id: String, name: String, cost: float, bonus: float, rarity: String = "common") -> CardResource:
-	var c = CardResource.new()
-	c.card_id = id
-	c.display_name = name
-	c.card_type = GC.CardType.ENERGY
-	c.energy_cost = cost
-	c.energy_grant = bonus
-	c.rarity = rarity
-	c.type_line = "战前 — 能量储备"
-	c.summary_line = "开局额外 +%d⚡" % int(bonus)
-	c.description = "作为准备卡装入相位仪时,战斗开始时你的初始能量 +%d 点,可叠加多张。" % int(bonus)
-	c.flavor_text = "把能量灌满电枢再出击。"
-	return c

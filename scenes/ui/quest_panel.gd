@@ -10,6 +10,7 @@ signal closed
 @onready var company_list: VBoxContainer = $Margin/VBox/TabContainer/CommissionTab/CompanySummary/Margin/CompanyList
 @onready var commission_list: VBoxContainer = $Margin/VBox/TabContainer/CommissionTab/CommissionScroll/CommissionList
 @onready var story_list: VBoxContainer = $Margin/VBox/TabContainer/StoryTab/StoryScroll/StoryList
+@onready var story_header: Label = $Margin/VBox/TabContainer/StoryTab/StoryHeader
 @onready var daily_list: VBoxContainer = $Margin/VBox/TabContainer/DailyTab/DailyScroll/DailyList
 @onready var accepted_label: Label = $Margin/VBox/AcceptedLabel
 @onready var close_btn: Button = $Margin/VBox/CloseButton
@@ -24,6 +25,16 @@ func _ready() -> void:
 		QuestManager.quest_completed.connect(_on_quest_completed)
 	_refresh_company_summary()
 	_refresh_list()
+
+## v7.x 修复 W6：面板释放时断开 autoload 信号，避免残留死 Callable
+func _exit_tree() -> void:
+	var QuestManager = get_node_or_null("/root/QuestManager")
+	if QuestManager == null:
+		return
+	if QuestManager.has_signal("quest_progress_changed") and QuestManager.quest_progress_changed.is_connected(_on_quest_changed):
+		QuestManager.quest_progress_changed.disconnect(_on_quest_changed)
+	if QuestManager.has_signal("quest_completed") and QuestManager.quest_completed.is_connected(_on_quest_completed):
+		QuestManager.quest_completed.disconnect(_on_quest_completed)
 
 func _on_close() -> void:
 	closed.emit()
@@ -126,18 +137,22 @@ func _refresh_list() -> void:
 				daily_list.add_child(row)
 			_:
 				commission_list.add_child(row)
-	# 剧情标签无任务时显示空提示
-	if story_list.get_child_count() == 0:
-		story_list.add_child(_make_empty_hint("暂无剧情任务。完成前置关卡后会自动解锁新剧情。"))
+	# v7.x: 剧情Tab 顶部标题动态显示已揭示数（让玩家看到剧情进度脉络）
+	var story_visible_count: int = story_list.get_child_count()
+	if story_header:
+		story_header.text = "◆ 主线剧情 · 已揭示 %d 项（进入对应关卡自动开始对话，完成前置解锁新章节）" % story_visible_count
+	# 剧情标签无任务时显示空提示（紫色系，呼应剧情Tab主题）
+	if story_visible_count == 0:
+		story_list.add_child(_make_empty_hint("暂无剧情任务。\n完成前置关卡后会自动解锁新剧情，进入触发关卡即自动开始对话。", Color(0.75, 0.5, 0.95, 0.85)))
 	if daily_list.get_child_count() == 0:
-		daily_list.add_child(_make_empty_hint("日常任务将在每日刷新时出现。"))
+		daily_list.add_child(_make_empty_hint("日常任务将在每日刷新时出现。", Color(0.5, 0.55, 0.6, 0.75)))
 
-## v6.7(剧情任务): 空列表提示
-func _make_empty_hint(text: String) -> Control:
+## v6.7(剧情任务): 空列表提示（v7.x: 加可选强调色，提升可读性）
+func _make_empty_hint(text: String, color: Color = Color(0.5, 0.55, 0.6, 0.75)) -> Control:
 	var lbl := Label.new()
 	lbl.text = text
 	lbl.add_theme_font_size_override("font_size", 12)
-	lbl.add_theme_color_override("font_color", Color(0.5, 0.55, 0.6, 0.6))
+	lbl.add_theme_color_override("font_color", color)
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	return lbl
 

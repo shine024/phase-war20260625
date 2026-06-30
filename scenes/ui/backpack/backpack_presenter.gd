@@ -11,7 +11,6 @@ extends RefCounted
 ##   - 处理用户交互（点击卡牌、装备按钮等）
 ##   - 不直接操作 UI 节点，通过 View 接口方法间接操作
 
-const DefaultCardsData = preload("res://data/default_cards.gd")
 const BasicResources = preload("res://data/basic_resources.gd")
 const StarConfig = preload("res://data/blueprint_star_config.gd")
 const GC = preload("res://resources/game_constants.gd")
@@ -200,14 +199,8 @@ func _on_stat_boost_applied(_boost_id: String, _boost_name: String, _total_count
 func on_card_clicked(card: CardResource, source_item: Control) -> void:
 	if card == null:
 		return
-	# 即时能量卡：点击即加能量并消耗
-	if card.card_type == GC.CardType.ENERGY and card.card_id == "energy_s":
-		_consume_instant_energy_card(card, source_item)
-		return
-	# 非即时能量卡：尝试直接装备到相位仪
-	if card.card_type == GC.CardType.ENERGY and card.card_id != "energy_s":
-		if _try_equip_energy_card(card):
-			return
+	# v7.x: 能量卡系统移除，原能量卡点击处理（即时消耗/装备）已删除。
+	# ENERGY 类型的残留卡（理论上不会出现）走详情弹窗兜底。
 	# 其他卡：显示详情弹窗
 	if _view and _view.has_method("show_card_detail"):
 		_view.show_card_detail(card, source_item)
@@ -226,11 +219,23 @@ func on_dismantle_button_pressed(card: CardResource) -> void:
 		return
 	if _data == null or not _data.has_method("remove_extra_card_strict"):
 		return
+	# v7.x 修复：背包额外卡以 instance_id（如 cold_t72#1）存储，必须用 instance_id 匹配。
+	# 裸 card_id（cold_t72）在 _extra_card_ids.find() 中永远找不到，导致拆解静默失败。
+	# 无 instance_id 的旧卡回退 card_id（兼容）。
+	var inst_id: String = card.instance_id if not card.instance_id.is_empty() else card.card_id
 	# 仅允许拆解背包中的“额外卡”；不存在则不执行，防止重复领取资源。
-	var removed: bool = bool(_data.remove_extra_card_strict(card.card_id))
+	var removed: bool = bool(_data.remove_extra_card_strict(inst_id))
 	if not removed:
 		_show_toast_error("该卡不在背包中，无法拆解")
 		return
+
+	# v7.x 修复：同步清理 InstanceRegistry 实例 + SaveManager 队列，
+	# 否则实例残留/队列未清，重开背包会通过 load_pending_cards 把卡重新补回（“拆了又回来”）。
+	var ir: Node = _get_autoload_node("InstanceRegistry")
+	if ir != null and ir.has_method("dispose_instance") and not card.instance_id.is_empty():
+		ir.dispose_instance(card.instance_id)
+	if SaveManager and SaveManager.has_method("consume_pending_backpack_card_id"):
+		SaveManager.consume_pending_backpack_card_id(inst_id)
 
 	var gains: Dictionary = _calculate_dismantle_gains(card)
 	var research_gain: int = int(gains.get("research", 0))
@@ -250,8 +255,9 @@ func on_dismantle_button_pressed(card: CardResource) -> void:
 				brm.add_resource(BasicResources.ID_NANO_MATERIALS, nano_gain)
 
 	# 刷新网格（不需要再调用 hide_card_detail，因为按钮回调已经延迟隐藏了）
+	# v7.x 修复：View 层 _card_matches_id 也需要 instance_id 精确匹配实例卡。
 	if _view and _view.has_method("remove_last_card_by_id"):
-		var removed_from_view: bool = _view.remove_last_card_by_id(card.card_id)
+		var removed_from_view: bool = _view.remove_last_card_by_id(inst_id)
 		if not removed_from_view:
 			_refresh_card_grid()
 	else:

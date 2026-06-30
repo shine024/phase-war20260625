@@ -4,7 +4,7 @@ extends PanelContainer
 const PhaseLaws = preload("res://data/phase_laws.gd")
 
 func _active_law_ui_log(message: String, data: Dictionary, hypothesis_id: String) -> void:
-	var DebugLog = get_node_or_null("/root/DebugLog")
+	var DebugLog = get_node_or_null("/root/DebugLogManager")
 	if DebugLog:
 		DebugLog.agent_log("active_law_cast_panel.gd", message, data, hypothesis_id, "H3")
 

@@ -362,6 +362,13 @@ func _on_rune_pressed(rune_id: String) -> void:
 		return
 	if _selected_slot_index < 0 or _selected_slot_index >= slot_count:
 		_selected_slot_index = 0
+	# v7.x 修复 W2：若点击的符文正是当前选中槽位已装备的，则卸下它（提供卸下入口，原只能换装覆盖）
+	if _pim.has_method("get_rune_at") and _pim.get_rune_at(_selected_slot_index) == rune_id:
+		if _pim.has_method("unequip_rune"):
+			_pim.unequip_rune(_selected_slot_index)
+			_refresh_all()
+			_show_detail_hint("已卸下符文：%s" % rune_id)
+			return
 	var success: bool = _pim.equip_rune(_selected_slot_index, rune_id)
 	if success:
 		_refresh_all()

@@ -47,6 +47,8 @@ func refresh_display() -> void:
 	if c == null:
 		CardFrameUi.clear_overlay(self)
 		CardBackgroundUi.clear_overlay(self)
+		# v7.x：费用移到左上角角标，空槽位清除角标
+		CardFrameUi.clear_cost_corner_badge(self)
 		if icon:
 			icon.texture = null
 			icon.visible = false
@@ -71,6 +73,8 @@ func refresh_display() -> void:
 		var display_name: String = "能量" if c.card_type == GameConstants.CardType.ENERGY else DefaultCards.safe_name(c)
 		if display_name.length() > 6:
 			display_name = display_name.substr(0, 6)
+		# v7.x：同名卡追加序号后缀（#1/#2…），截断后追加
+		display_name += DefaultCards.seq_suffix(c)
 		name_label.text = display_name
 		name_label.visible = true
 		match c.rarity:
@@ -84,8 +88,11 @@ func refresh_display() -> void:
 				name_label.add_theme_color_override("font_color", Color(0.9, 0.93, 1.0, 1))
 
 	if cost_label:
-		cost_label.text = "%d⚡" % int(c.energy_cost)
-		cost_label.visible = true
+		cost_label.text = ""
+	# v7.x：费用从底部 cost_label 移到左上角角标气泡
+	var _cost_badge = CardFrameUi.ensure_cost_corner_badge(self)
+	if _cost_badge != null:
+		_cost_badge.text = "%d⚡" % int(c.energy_cost)
 
 	if xp_label:
 		if weight_capacity > 0:

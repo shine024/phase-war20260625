@@ -254,7 +254,9 @@ func _add_intel(card_id: String, amount: float, source: String, dimension: Strin
 	if absf(new_val - old_val) > 0.001:
 		intel_dimension_changed.emit(card_id, dimension, old_val, new_val, source)
 		intel_progress_changed.emit(card_id, old_val, new_val, source)
-	save_data()
+	## v7.x 修复 W7：移除每条情报的同步写盘 save_data()——v6.6 起情报已并入统一存档（SaveManager
+	## 调 save_state），此处重复写独立文件既冗余又造成战斗结算批量解锁时的 I/O 抖动。
+	## 持久化由 SaveManager 自动存档（战斗结束+15s备份）统一负责。
 	return new_val - old_val
 
 # ── 公开接口：情报获取 ─────────────────────────────────────────────
@@ -430,13 +432,6 @@ func get_total_entries() -> int:
 ## 获取已完成情报的总数
 func get_total_completed() -> int:
 	return _completed_cache.size()
-
-# ── 掉落率加成 ────────────────────────────────────────────────────
-
-## 获取某卡的掉落率加成倍率
-## 情报100%时掉落率+50%，即返回 1.5；否则返回 1.0
-func get_drop_bonus_multiplier(card_id: String) -> float:
-	return 1.5 if is_complete(card_id) else 1.0
 
 ## 解锁所有情报（用于新游戏初始资源）
 func unlock_all_intel() -> void:

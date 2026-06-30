@@ -466,13 +466,13 @@ func _on_level_selected(level_index: int) -> void:
 func _show_level_info_popup(level_index: int) -> void:
 	if _level_info_popup and is_instance_valid(_level_info_popup):
 		_level_info_popup.queue_free()
-	var popup := Window.new()
+	var popup := AcceptDialog.new()
 	popup.title = "关卡情报"
-	popup.size = Vector2i(620, 640)
-	popup.unresizable = false
-	popup.min_size = Vector2i(580, 560)
+	# 关闭 AcceptDialog 自带的 OK/Cancel 按钮条，使用自定义按钮
+	popup.set_ok_button_text("")
+	popup.set_cancel_button_text("")
 	# 同步 queue_free 可能在输入分发中途拆掉 Window 视口，触发 Viewport::_push_unhandled_input_internal 断言
-	popup.close_requested.connect(_close_popup_safe.bind(popup))
+	popup.canceled.connect(_close_popup_safe.bind(popup))
 	add_child(popup)
 	_level_info_popup = popup
 
@@ -665,7 +665,8 @@ func _collect_level_info(level_index: int) -> Dictionary:
 			law_names.append(String(cfg_law.get("name", String(law_id))))
 		law_preview = ", ".join(law_names)
 	var bg_idx: int = ((level_index - 1) % 10) + 1
-	var bg_path: String = "res://assets/backgrounds/bg_%02d.png" % bg_idx
+	# 实际磁盘文件命名为 bg_level_NN.png (bg_level_01~bg_level_100), 原 bg_%02d.png 不存在导致全部回退空背景
+	var bg_path: String = "res://assets/backgrounds/bg_level_%02d.png" % bg_idx
 	var bg_exists: bool = ResourceLoader.exists(bg_path)
 	var fallback_exists: bool = ResourceLoader.exists(DEFAULT_BG_PATH)
 	var selected_bg_path: String = bg_path if bg_exists else (DEFAULT_BG_PATH if fallback_exists else "")

@@ -18,7 +18,7 @@ const DATA: Dictionary = {
 	"gen_01_comms" = {
 		id = GEN_01_COMMS, name = "战场通讯", name_en = "Field Comms",
 		icon = "res://assets/ui/icons/mod_icons/mod_comms.png",
-		prototype = "SCR-536对讲机", description = "基础通讯，射速和视野微升",
+		prototype = "SCR-536对讲机", description = "基础通讯，射速和暴击微升",
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 60, cost_install = 30,
 		slot_type = "comms", conflict_group = "comms",
@@ -29,7 +29,7 @@ const DATA: Dictionary = {
 	"gen_02_digital" = {
 		id = GEN_02_DIGITAL, name = "数字化单兵", name_en = "Digital Soldier System",
 		icon = "res://assets/ui/icons/mod_icons/mod_system.png",
-		prototype = "陆地勇士系统", description = "指挥效率提升",
+		prototype = "陆地勇士系统", description = "三维防御提升7.5%",
 		rarity = "rare",
 		power_mult = 1.3, cost_research = 140, cost_install = 70,
 		slot_type = "system", conflict_group = "system",
@@ -84,7 +84,7 @@ const DATA: Dictionary = {
 	"gen_07_mine_resistant" = {
 		id = GEN_07_MINE_RESISTANT, name = "防雷座椅", name_en = "Mine-Resistant Seat",
 		icon = "res://assets/ui/icons/mod_icons/mod_survival.png",
-		prototype = "悬挂防雷座椅", description = "地雷伤害大幅降低",
+		prototype = "悬挂防雷座椅", description = "强化底盘，三维防御大幅提升",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 260, cost_install = 130,
 		slot_type = "survival", conflict_group = "survival",

@@ -573,12 +573,15 @@ static func _should_auto_add_platform_drop(id: String, cfg: Dictionary, drops: A
 	var is_air_only: bool = tags.has("aircraft") and not tags.has("vehicle")
 	if is_air_only:
 		return false
+	# v7.x 修复：原循环体只 continue 不判断，最后无条件 return true，导致已配置卡牌掉落
+	# (card_id 以 bp_ 开头的平台/武器蓝图) 的敌人仍被追加一张自动平台掉落 → 重复发放。
+	# 修复：遍历 drops，若已有 bp_ 卡牌掉落，则不再追加自动平台。
 	for d in drops:
 		if not (d is Dictionary):
 			continue
 		var card_id: String = String((d as Dictionary).get("card_id", ""))
-		if card_id.is_empty():
-			continue
+		if not card_id.is_empty() and card_id.begins_with("bp_"):
+			return false
 	return true
 
 static func _should_auto_add_weapon_drop(id: String, cfg: Dictionary, drops: Array) -> bool:

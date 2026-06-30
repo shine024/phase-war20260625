@@ -140,13 +140,13 @@ func test_start_battle() -> void:
 	_manager.current = 0.0
 	_manager.start_battle()
 	assert_bool(_manager._in_battle).is_true()
-	# start_battle 调用 _apply_equipped_energy_cards（依赖 autoload）
-	# 当 PhaseInstrumentManager 不存在时，_base_start 被重置为 0
-	# 然后 fallback 逻辑设置 _base_start = GC.ENERGY_START
+	# v7.x: start_battle 调用 _apply_instrument_energy（能量上限改由相位仪星级决定）
+	# 当 PhaseInstrumentManager 不存在时，回退 ENERGY_MAX/ENERGY_START 默认值
+	# 注：GdUnit4 在 Godot 4.5 有兼容性问题，本测试可能无法运行；断言反映旧模型，待重写
 	assert_float(_manager.current).is_equal(GC.ENERGY_START)
 
 
-## start_battle 无能量卡时使用默认值
+## start_battle 无相位仪时使用默认值
 func test_start_battle_no_energy_cards_uses_defaults() -> void:
 	# PhaseInstrumentManager 不存在时
 	_manager.start_battle()

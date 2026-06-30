@@ -57,7 +57,8 @@ const PHASE_FIELD_GROWTH_RULES: Dictionary = {
 	"atk_pct": {"label": "攻击", "per_point": 0.02, "display_unit": "%"},
 	"def_pct": {"label": "防御", "per_point": 0.02, "display_unit": "%"},
 	"hp_pct": {"label": "生命", "per_point": 0.03, "display_unit": "%"},
-	"energy_output_pct": {"label": "能量输出", "per_point": 0.02, "display_unit": "%"},
+	# v7.x: key 保留 energy_output_pct（存档兼容），语义改为"能量恢复"
+	"energy_output_pct": {"label": "能量恢复", "per_point": 0.02, "display_unit": "%"},
 }
 
 var phase_field_xp: int = 0
@@ -152,7 +153,6 @@ func _ensure_properties_with_legacy_fallback(cfg: Dictionary) -> Array:
 	add_legacy.call("pi_atk", float(cfg.get("card_damage_bonus", 0.0)))
 	add_legacy.call("pi_def", float(cfg.get("defense_bonus", 0.0)))
 	add_legacy.call("pi_xp", float(cfg.get("xp_bonus", 0.0)))
-	add_legacy.call("pi_drop", float(cfg.get("drop_bonus", 0.0)))
 	var cost_reduce: int = int(cfg.get("energy_cost_reduction", 0))
 	if cost_reduce <= 0:
 		cost_reduce = int(PhaseInstruments.get_standard_property_value("pi_energy_cost", star, String(cfg.get("source", PhaseInstruments.SOURCE_SHOP))))
@@ -186,7 +186,7 @@ func _ready() -> void:
 	_rebuild_slots()
 	_rebuild_rune_slots()  # v6.2: 初始化符文槽位
 	var cfg: Dictionary = get_current_instrument()
-	var DebugLog = get_node_or_null("/root/DebugLog")
+	var DebugLog = get_node_or_null("/root/DebugLogManager")
 	if DebugLog:
 		DebugLog.agent_log("phase_instrument_manager.gd", "_ready", {
 			"selected_instrument_id": selected_instrument_id,
@@ -332,6 +332,9 @@ func apply_phase_field_bonus_to_unit_stats(stats: UnitStats) -> void:
 			var wd: Dictionary = w
 			wd["damage"] = maxf(0.1, float(wd.get("damage", 0.0)) * (1.0 + total_atk_mult))
 			stats.weapons[i] = wd
+		# v7.x 修复: 同步 weapon_slots[].damage（战斗 AI 读的是这里）
+		if stats.has_method("_sync_weapon_slots_damage"):
+			stats._sync_weapon_slots_damage(1.0 + total_atk_mult)
 
 	if total_def_mult > 0.0:
 		stats.damage_reduction = clampf(stats.damage_reduction + total_def_mult, 0.0, 0.8)
@@ -435,7 +438,7 @@ func _set_default_instrument_if_needed() -> void:
 			best_star = s
 			best_id = String(cfg.get("id", best_id))
 	selected_instrument_id = best_id
-	var DebugLog = get_node_or_null("/root/DebugLog")
+	var DebugLog = get_node_or_null("/root/DebugLogManager")
 	if DebugLog:
 		DebugLog.agent_log("phase_instrument_manager.gd", "_set_default_instrument", {
 				"default_id": selected_instrument_id,
@@ -601,7 +604,7 @@ func equip_card(slot_index: int, card: CardResource, _energy_manager: Node = nul
 	var color: String = String(loc.get("color", ""))
 	var color_index: int = int(loc.get("index", -1))
 	if color.is_empty() or color_index < 0 or card == null:
-		var DebugLog = get_node_or_null("/root/DebugLog")
+		var DebugLog = get_node_or_null("/root/DebugLogManager")
 		if DebugLog:
 			DebugLog.agent_log("phase_instrument_manager.gd", "equip_invalid", {
 				"slot_index": slot_index,
@@ -623,7 +626,7 @@ func equip_card(slot_index: int, card: CardResource, _energy_manager: Node = nul
 						if alt_flat >= 0 and _recursion_depth < MAX_EQUIP_RECURSION:
 							return equip_card(alt_flat, card, _energy_manager, _recursion_depth + 1)
 						break
-				var DebugLog = get_node_or_null("/root/DebugLog")
+				var DebugLog = get_node_or_null("/root/DebugLogManager")
 				if DebugLog:
 					DebugLog.agent_log("phase_instrument_manager.gd", "equip_can_equip_fail", {
 				"slot_index": slot_index,
@@ -669,7 +672,7 @@ func equip_card(slot_index: int, card: CardResource, _energy_manager: Node = nul
 	# v7.0: card_equipped 第2参数改传 instance_id（实例化养成身份）；无 instance_id 回退 card_id
 	var equip_id: String = card.instance_id if not card.instance_id.is_empty() else card.card_id
 	SignalBus.card_equipped.emit(slot_index, equip_id, _card_type_name(card))
-	var DebugLog = get_node_or_null("/root/DebugLog")
+	var DebugLog = get_node_or_null("/root/DebugLogManager")
 	if DebugLog:
 		DebugLog.agent_log("phase_instrument_manager.gd", "equip_ok", {
 			"slot_index": slot_index,
@@ -863,6 +866,15 @@ func set_slots_from_card_ids(card_ids: Array) -> void:
 			if id_val.is_empty():
 				arr[i] = null
 				continue
+			# v7.x: 能量卡系统移除——旧存档槽位里的 energy_start_* 不再装备，留空并记录待补偿。
+			# 解析出 base_card_id（energy_start_1#3 → energy_start_1）判断。
+			var _id_base: String = id_val
+			if ir != null and ir.has_method("get_card_id_of"):
+				_id_base = ir.get_card_id_of(id_val)
+			if _id_base.begins_with("energy_start_"):
+				arr[i] = null
+				_compensate_removed_energy_card(_id_base)
+				continue
 			# v7.0: 优先用 instance_id 取实例（含养成数据），取不到回退 card_id 取模板
 			# v7.3: 回退链路修复——裸 card_id 查 get_instance 必返回 null（key 是 card_id#序号），
 			#   旧存档槽位若存了裸 card_id（迁移/边界），原逻辑静默回退到无养成的模板，
@@ -877,6 +889,25 @@ func set_slots_from_card_ids(card_ids: Array) -> void:
 					restored = ir.get_instance(String(_candidates[0]))
 					if restored != null:
 						push_warning("[PhaseInstrumentManager] 槽位存档 ID '%s' 是裸 card_id，已回退到首个同名实例 '%s'" % [id_val, restored.instance_id])
+			# v7.x 修复（Bug1）：实例查不到时，重建并注册新实例（而非对带 #序号 的 instance_id 查 get_card_by_id 必失败，
+			# 导致槽位回退无养成模板或留空）。根因：势力卡裸 card_id / 旧档迁移 / load_state 模板查不到静默跳过 等场景 Registry 缺失该实例。
+			# v7.x 重复修复：原逻辑无脑 create_instance 新建实例（如 omega_platform#2），导致 Registry 多出同名实例，
+			# 成长面板显示重复。改为：先用 _base_id 查同名实例复用，只有该 card_id 一个实例都没有时才新建。
+			if restored == null and ir != null and ir.has_method("get_card_id_of"):
+				var _base_id: String = ir.get_card_id_of(id_val)  # cold_t72#1 → cold_t72（无序号返回原值）
+				if not _base_id.is_empty():
+					# 优先复用已有的同名实例（避免多建，如槽位存 omega_platform#1 但 Registry 只剩 omega_platform#2）
+					if ir.has_method("get_instances_by_card_id"):
+						var _existing: Array = ir.get_instances_by_card_id(_base_id)
+						if not _existing.is_empty():
+							restored = ir.get_instance(String(_existing[0]))
+							if restored != null:
+								push_warning("[PhaseInstrumentManager] 槽位存档 ID '%s' 的实例缺失，已复用同名实例 '%s'" % [id_val, restored.instance_id])
+					# 该 card_id 一个实例都没有 → 才新建（首次获得该卡/旧档完全无此实例）
+					if restored == null and ir.has_method("create_instance"):
+						restored = ir.create_instance(_base_id)
+						if restored != null:
+							push_warning("[PhaseInstrumentManager] 槽位存档 ID '%s' 找不到任何同名实例，已新建实例 '%s'（养成从0开始）" % [id_val, restored.instance_id])
 			if restored == null:
 				restored = _get_default_cards().get_card_by_id(id_val)
 				if restored != null:
@@ -886,6 +917,58 @@ func set_slots_from_card_ids(card_ids: Array) -> void:
 		instrument_slots[color] = arr
 
 	_emit_slots_changed()
+
+## v7.x: 旧存档能量卡清理补偿
+## 能量卡系统移除后，旧存档槽位/背包里的 energy_start_* 卡被清理，按星级补偿纳米材料。
+## 补偿规则：nano_materials += 100 + star × 50（1星=150，7星=450）
+## 每张卡只补偿一次（用 _compensated_energy_cards 集合去重，防多槽位同卡重复补偿）
+var _compensated_energy_cards: Dictionary = {}  # card_id(instance级) → true
+func _compensate_removed_energy_card(base_card_id: String) -> void:
+	if _compensated_energy_cards.has(base_card_id):
+		return
+	_compensated_energy_cards[base_card_id] = true
+	# 从卡ID解析星级（energy_start_1~7 → 1~7）
+	var star: int = 1
+	var suffix := base_card_id.substr("energy_start_".length())
+	if suffix.is_valid_int():
+		star = clampi(int(suffix), 1, 7)
+	var comp: int = 100 + star * 50
+	if BasicResourceManager and BasicResourceManager.has_method("add_resource"):
+		BasicResourceManager.add_resource("nano_materials", comp)
+	if SignalBus and SignalBus.has_signal("show_toast"):
+		SignalBus.show_toast.emit("能量卡系统已移除，%s 补偿 %d 纳米材料" % [base_card_id, comp])
+
+## v7.x: 遍历 InstanceRegistry，清理所有 energy_start_* 实例（背包残留）并逐个补偿。
+## 用 _compensated_energy_cards 去重（槽位守卫可能已补偿过同卡），避免重复发奖。
+func _cleanup_removed_energy_card_instances() -> void:
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	if ir == null or not ir.has_method("get_all_instance_ids"):
+		return
+	if not ir.has_method("dispose_instance") or not ir.has_method("get_card_id_of"):
+		return
+	var all_ids: Array = ir.get_all_instance_ids()
+	var to_remove: Array = []
+	for iid in all_ids:
+		var base_id: String = ir.get_card_id_of(String(iid))
+		if base_id.begins_with("energy_start_"):
+			to_remove.append(String(iid))
+	for iid in to_remove:
+		ir.dispose_instance(iid)
+		# 补偿（去重：_compensated_energy_cards 按卡种记录，同种只补一次
+		# —— 但背包里可能有多张同名卡实例，应每张都补偿，所以用 instance_id 作 key）
+		if not _compensated_energy_cards.has(iid):
+			_compensated_energy_cards[iid] = true
+			var base_id: String = ir.get_card_id_of(iid)
+			var star: int = 1
+			var suffix := base_id.substr("energy_start_".length())
+			if suffix.is_valid_int():
+				star = clampi(int(suffix), 1, 7)
+			var comp: int = 100 + star * 50
+			if BasicResourceManager and BasicResourceManager.has_method("add_resource"):
+				BasicResourceManager.add_resource("nano_materials", comp)
+	# 通知背包刷新（能量卡实例被移除）
+	if not to_remove.is_empty() and SignalBus and SignalBus.has_signal("backpack_changed"):
+		SignalBus.backpack_changed.emit()
 
 func clear_slots_for_new_game() -> void:
 	unlocked_instrument_ids.clear()
@@ -900,39 +983,30 @@ func clear_slots_for_new_game() -> void:
 	_emit_slots_changed()
 
 ## 新游戏自动装备一套初始卡牌到空槽位
-## 绿色槽：放入初始平台卡；黄色槽：放入初始能量卡
+## 绿色槽：放入初始平台卡（一战时代 FT-17，与第1关主题匹配）；黄色槽：放入初始能量卡
+## 注：原配置用 omega_platform（近未来终极单位）+ energy_start_4（20星 +2100能量上限），
+## 是开发期演示残留——新手开局拿到后期最强单位+海量能量，第1关毫无难度且与一战关卡主题错配。
+## 改为 FT-17（一战坦克）+ energy_start_1（5星 +500能量上限），让新手体验正常的养成曲线。
 func _equip_starter_cards_for_new_game() -> void:
 	# v7.0: 初始卡也实例化（独立 instance_id + 养成数据），不污染 DefaultCards 模板
 	var ir: Node = get_node_or_null("/root/InstanceRegistry")
-	# 绿色槽：尝试填入初始平台卡（omega_platform 是默认解锁的高级蓝图）
+	# 绿色槽：填入一战初始平台卡（FT-17 轻型坦克，era=0 一战）
 	var green_arr: Array = instrument_slots.get("green", [])
 	if not green_arr.is_empty():
 		for i in range(green_arr.size()):
 			if green_arr[i] == null:
 				var starter_platform: CardResource = null
 				if ir != null and ir.has_method("create_instance"):
-					starter_platform = ir.create_instance("omega_platform")
+					starter_platform = ir.create_instance("ww1_ft17")
 				else:
-					var tpl: CardResource = _get_default_cards().get_card_by_id("omega_platform")
+					var tpl: CardResource = _get_default_cards().get_card_by_id("ww1_ft17")
 					starter_platform = tpl.clone() if tpl != null else null
 				if starter_platform != null:
 					green_arr[i] = starter_platform
 	instrument_slots["green"] = green_arr
 
-	# 黄色槽：尝试填入初始能量卡（战前能量 IV 为默认演示档位）
-	var yellow_arr: Array = instrument_slots.get("yellow", [])
-	if not yellow_arr.is_empty():
-		for i in range(yellow_arr.size()):
-			if yellow_arr[i] == null:
-				var starter_energy: CardResource = null
-				if ir != null and ir.has_method("create_instance"):
-					starter_energy = ir.create_instance("energy_start_4")
-				else:
-					var etpl: CardResource = _get_default_cards().get_card_by_id("energy_start_4")
-					starter_energy = etpl.clone() if etpl != null else null
-				if starter_energy != null:
-					yellow_arr[i] = starter_energy
-	instrument_slots["yellow"] = yellow_arr
+	# v7.x: 黄色能量槽已移除（能量卡系统移除），不再装备初始能量卡。
+	# 能量上限改由相位仪星级决定（见 EnergyManager._apply_instrument_energy）。
 
 	# [LOG-v5.1] print("[PhaseInstrumentManager] 新游戏初始卡牌已自动装备")
 
@@ -991,6 +1065,9 @@ func load_state(data: Dictionary) -> void:
 	var rune_state: Variant = data.get("rune_state", {})
 	if rune_state is Dictionary:
 		load_rune_state(rune_state)
+	# v7.x: 能量卡系统移除——清理 Registry 里所有 energy_start_* 实例（背包残留）并补偿纳米材料。
+	# 槽位里的能量卡已由 set_slots_from_card_ids 守卫处理；此处清理背包里的实例。
+	_cleanup_removed_energy_card_instances()
 
 func _emit_slots_changed() -> void:
 	_mark_loadouts_dirty()
@@ -1122,17 +1199,15 @@ func get_slot_layout() -> Array[Dictionary]:
 			out.append(e)
 	return out
 
-func get_energy_output_rate() -> float:
-	var cfg: Dictionary = get_current_instrument()
-	var base_rate: float = float(cfg.get("energy_output_rate", 1.0))
-	var phase_field_bonus: Dictionary = get_phase_field_total_bonus()
-	var output_bonus: float = float(phase_field_bonus.get("energy_output_pct", 0.0))
-	return base_rate * (1.0 + output_bonus) * 5.0  # 能量输出速度乘上5
-
+## v7.x: 移除 get_energy_output_rate()（半失效死代码，battle_spawn 的 deploy_time 从未被使用）
+## 能量恢复速率：base（按star派生）× 3，再叠加 phase_field 的"能量恢复"点数加成
 func get_energy_recovery_rate() -> float:
 	var cfg: Dictionary = get_current_instrument()
 	var base_rate: float = float(cfg.get("energy_recovery_rate", 0.35))
-	return base_rate * 3.0  # 能量获得速度乘上3
+	var phase_field_bonus: Dictionary = get_phase_field_total_bonus()
+	# phase_field 的 energy_output_pct 点数（存档兼容 key）现在提升能量恢复
+	var recovery_bonus: float = float(phase_field_bonus.get("energy_output_pct", 0.0))
+	return base_rate * (1.0 + recovery_bonus) * 3.0  # 能量获得速度乘上3
 
 func get_spawn_range_ratio() -> float:
 	var cfg: Dictionary = get_current_instrument()
@@ -1307,8 +1382,9 @@ func _slot_to_flat_index(color: String, color_index: int) -> int:
 func _can_equip_card_to_color(card: CardResource, color: String) -> bool:
 	if color == "green":
 		return card.card_type == GC.CardType.COMBAT_UNIT
+	# v7.x: yellow 能量槽已移除（能量卡系统移除），不再接受任何卡
 	if color == "yellow":
-		return card.card_type == GC.CardType.ENERGY
+		return false
 	if color == "red" or color == "blue":
 		if card.card_type != GC.CardType.LAW:
 			return false

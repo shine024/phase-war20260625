@@ -157,6 +157,14 @@ func _create_evolution_node(target: Dictionary) -> Control:
 	var check_result = BlueprintManager.can_evolve_blueprint(src_id, target.target_id)
 	var can_evo: bool = bool(check_result.get("ok", false))
 	var target_card = DefaultCards.get_card_by_id(target.target_id)
+	# v7.x 防御：目标卡数据缺失（无效 card_id）时返回占位节点，避免后续访问 target_card.era 等空指针崩溃
+	if target_card == null:
+		var ph := Label.new()
+		ph.text = "⚠ 无效进化目标：%s（数据缺失）" % String(target.get("target_id", "???"))
+		ph.add_theme_font_size_override("font_size", 13)
+		ph.add_theme_color_override("font_color", Color(0.9, 0.4, 0.3))
+		ph.modulate.a = 0.6
+		return ph
 	# v6.2 修复：战力对比双方统一用估算分（含强化+改造），原 current 含强化、target 仅基础导致基准不公平
 	var current_power = _get_current_power_score()
 	var target_power = _get_target_power_score(target.target_id)

@@ -216,32 +216,54 @@ static func roll_random_evolution_blueprint(rank: String) -> Dictionary:
 
 ## v7.1: 收集所有进化路径的进化跳（每条路径的相邻节点配对）
 ## 返回: [{from, to, to_era}, ...]
+## v7.x 数据断裂修复：原从 evolution_paths/*.gd 取进化跳（与 LINEAGES 分叉，含15个不存在的卡），
+## 改为以 LINEAGES 为唯一权威——从 UnitLineageConfig.get_merged_lineages() 遍历提取所有 from→to 跳，
+## 保证掉落的进化蓝图全部指向判定认可的路径，玩家拿到的蓝图一定能用上。
 static func _collect_all_evolution_steps() -> Array:
 	var steps: Array = []
-	# 8 类进化路径
-	var path_classes: Array = [
-		preload("res://data/evolution_paths/infantry_evolution.gd"),
-		preload("res://data/evolution_paths/armor_evolution.gd"),
-		preload("res://data/evolution_paths/artillery_evolution.gd"),
-		preload("res://data/evolution_paths/anti_air_evolution.gd"),
-		preload("res://data/evolution_paths/air_evolution.gd"),
-		preload("res://data/evolution_paths/recon_evolution.gd"),
-		preload("res://data/evolution_paths/engineer_evolution.gd"),
-		preload("res://data/evolution_paths/fort_evolution.gd"),
-	]
-	for path_class in path_classes:
-		# 主线
-		if path_class.has_method("get_main_line"):
-			_append_steps_from_path(steps, path_class.get_main_line())
-		# 副线（装甲/空军/堡垒有）
-		if path_class.has_method("get_secondary_line"):
-			_append_steps_from_path(steps, path_class.get_secondary_line())
-		# 隐藏分支
-		if path_class.has_method("get_hidden_branches"):
-			var hidden = path_class.get_hidden_branches()
-			for branch_name in hidden:
-				_append_steps_from_path(steps, hidden[branch_name])
+	var lineages: Dictionary = UnitLineageConfig.get_merged_lineages()
+	var seen_pairs: Dictionary = {}  # "from\x1fto" 去重（势力分支可能产生重复对）
+	for source_id in lineages.keys():
+		var cfg: Dictionary = lineages[source_id]
+		if cfg.is_empty():
+			continue
+		# 主线跳（evolution_1）
+		var evo_1: String = String(cfg.get("evolution_1", ""))
+		if not evo_1.is_empty():
+			_add_evo_step(steps, seen_pairs, String(source_id), evo_1)
+		# 势力分支跳（faction_branches: {faction_id: target_card_id}）
+		var branches: Dictionary = cfg.get("faction_branches", {})
+		for faction_id in branches.keys():
+			var target: String = String(branches[faction_id])
+			if not target.is_empty():
+				_add_evo_step(steps, seen_pairs, String(source_id), target)
 	return steps
+
+## v7.x: 添加单条进化跳（去重 + era 推断）
+static func _add_evo_step(steps: Array, seen_pairs: Dictionary, from_id: String, to_id: String) -> void:
+	var pair_key: String = from_id + "\u001f" + to_id  # 单元分隔符防止 card_id 拼接歧义
+	if seen_pairs.has(pair_key):
+		return
+	seen_pairs[pair_key] = true
+	steps.append({
+		"from": from_id,
+		"to": to_id,
+		"to_era": _infer_era_from_card_id(to_id),
+	})
+
+## v7.x: 从 card_id 前缀推断时代字符串（LINEAGES 无 era 字段，复用 _era_to_rarity 映射）
+static func _infer_era_from_card_id(card_id: String) -> String:
+	if card_id.begins_with("ww1_"):
+		return "WW1"
+	if card_id.begins_with("ww2_"):
+		return "WW2"
+	if card_id.begins_with("cold_"):
+		return "Cold"
+	if card_id.begins_with("mod_") or card_id.begins_with("omega_"):
+		return "Modern"
+	if card_id.begins_with("fut_"):
+		return "Future"
+	return "WW1"  # 默认（保守，走最低稀有度权重）
 
 ## v7.1: 从单条进化路径（Dictionary，按stage排序）中提取相邻卡配对
 static func _append_steps_from_path(steps: Array, path: Dictionary) -> void:

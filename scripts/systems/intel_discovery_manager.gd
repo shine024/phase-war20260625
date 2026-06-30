@@ -40,10 +40,6 @@ var _unlocked_eom: Dictionary = {}
 var _eom_fragments: Dictionary = {}
 
 ## v6.6: 揭示事件奖励状态（持久化）
-## 弱点伤害加成: enemy_type -> 累计 bonus_damage (0.0-1.0+)
-var _weakness_bonuses: Dictionary = {}
-## 掉落率加成: enemy_type -> 累计 bonus_pct (0.0-1.0+)
-var _drop_rate_bonuses: Dictionary = {}
 ## 属性可见性等级: enemy_type -> 最高可见性 value (name_and_type/full_stats/hidden_stats/behavior_summary/skill_list/equipment_type)
 var _stat_visibility: Dictionary = {}
 ## 已解锁的世界观页面ID集合: page_id -> true
@@ -81,8 +77,6 @@ func save_state() -> Dictionary:
 		"triggered_reveals": _triggered_reveals.duplicate(),
 		"unlocked_eom": _unlocked_eom.duplicate(),
 		"eom_fragments": _eom_fragments.duplicate(),
-		"weakness_bonuses": _weakness_bonuses.duplicate(),
-		"drop_rate_bonuses": _drop_rate_bonuses.duplicate(),
 		"stat_visibility": _stat_visibility.duplicate(),
 		"unlocked_lore_pages": _unlocked_lore_pages.duplicate(),
 	}
@@ -97,8 +91,6 @@ func load_state(data: Dictionary) -> void:
 	_triggered_reveals = src.get("triggered_reveals", {})
 	_unlocked_eom = src.get("unlocked_eom", {})
 	_eom_fragments = src.get("eom_fragments", {})
-	_weakness_bonuses = src.get("weakness_bonuses", {})
-	_drop_rate_bonuses = src.get("drop_rate_bonuses", {})
 	_stat_visibility = src.get("stat_visibility", {})
 	_unlocked_lore_pages = src.get("unlocked_lore_pages", {})
 
@@ -135,8 +127,6 @@ func reset_progress() -> void:
 	_triggered_reveals.clear()
 	_unlocked_eom.clear()
 	_eom_fragments.clear()
-	_weakness_bonuses.clear()
-	_drop_rate_bonuses.clear()
 	_stat_visibility.clear()
 	_unlocked_lore_pages.clear()
 	_state_dirty = false
@@ -300,18 +290,6 @@ func _process_reveal_rewards(event_data: Dictionary, enemy_type: String) -> void
 					var eom_mgr: Node = get_node_or_null("/root/EnemyOriginModManager")
 					if eom_mgr and eom_mgr.has_method("unlock_mod"):
 						eom_mgr.unlock_mod(mod_id)
-			"weakness_bonus":
-				# 累加弱点伤害加成（对特定敌人类型）
-				var target: String = reward.get("target_type", enemy_type)
-				var bonus: float = float(reward.get("bonus_damage", 0.0))
-				if not target.is_empty() and bonus > 0.0:
-					_weakness_bonuses[target] = float(_weakness_bonuses.get(target, 0.0)) + bonus
-			"drop_rate_bonus":
-				# 累加掉落率加成（对特定敌人类型，target_type 缺省则全局）
-				var target2: String = reward.get("target_type", enemy_type)
-				var pct: float = float(reward.get("bonus_pct", 0.0))
-				if pct > 0.0:
-					_drop_rate_bonuses[target2] = float(_drop_rate_bonuses.get(target2, 0.0)) + pct
 			"stat_visibility":
 				# 记录属性可见性等级（取较高优先级）
 				var vis: String = reward.get("value", "")
@@ -340,14 +318,6 @@ func _process_reveal_rewards(event_data: Dictionary, enemy_type: String) -> void
 	call_deferred("_deferred_save_if_dirty")
 
 # ── 奖励查询接口（供战斗/掉落系统消费） ───────────────────────────
-
-## 获取对某敌人类型的弱点伤害加成（0.0+，0=无加成）
-func get_weakness_bonus(enemy_type: String) -> float:
-	return float(_weakness_bonuses.get(enemy_type, 0.0))
-
-## 获取对某敌人类型的掉落率加成（0.0-1.0+，0=无加成）
-func get_drop_rate_bonus(enemy_type: String) -> float:
-	return float(_drop_rate_bonuses.get(enemy_type, 0.0))
 
 ## 获取某敌人类型的属性可见性等级（空字符串=不可见）
 func get_stat_visibility(enemy_type: String) -> String:

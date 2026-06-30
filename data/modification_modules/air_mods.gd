@@ -71,7 +71,7 @@ const DATA: Dictionary = {
 	"air_06_bvr_missile" = {
 		id = AIR_06_BVR_MISSILE, name = "超视距导弹", name_en = "BVR Missile",
 		icon = "res://assets/ui/icons/mod_icons/mod_missile.png",
-		prototype = "AIM-120C", description = "远程导弹，射程和精度提升",
+		prototype = "AIM-120C", description = "远程导弹，射程和暴击伤害提升",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 350, cost_install = 175,
 		slot_type = "missile", conflict_group = "missile",
@@ -81,7 +81,7 @@ const DATA: Dictionary = {
 	"air_07_dogfight_missile" = {
 		id = AIR_07_DOGFIGHT_MISSILE, name = "格斗弹舱", name_en = "Dogfight Missile",
 		icon = "res://assets/ui/icons/mod_icons/mod_missile.png",
-		prototype = "AIM-9X", description = "近距格斗导弹，近战命中提升",
+		prototype = "AIM-9X", description = "近距格斗导弹，暴击伤害提升",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 320, cost_install = 160,
 		slot_type = "missile", conflict_group = "missile",
@@ -111,7 +111,7 @@ const DATA: Dictionary = {
 	"air_10_drop_tank" = {
 		id = AIR_10_DROP_TANK, name = "副油箱", name_en = "Drop Tank",
 		icon = "res://assets/ui/icons/mod_icons/mod_logistics.png",
-		prototype = "增加燃料", description = "增加燃料，航程提升",
+		prototype = "增加燃料", description = "增加燃料，暴击率提升",
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 100, cost_install = 50,
 		slot_type = "logistics", conflict_group = "logistics",

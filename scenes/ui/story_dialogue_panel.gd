@@ -44,15 +44,45 @@ var _body_label: RichTextLabel = null          ## 对话正文
 var _nameplate_panel: Panel = null             ## 说话者名牌（钉条带上沿）
 var _nameplate_label: Label = null
 var _portrait_badge: Panel = null              ## 头像徽章（探出条带左上）
-var _portrait_label: Label = null              ## 徽章中心首字
+var _portrait_label: Label = null              ## 徽章中心首字（fallback）
+var _portrait_sprite: Sprite2D = null          ## 实际头像图片
 var _continue_label: Label = null              ## 右下"继续 ▼"指示器
 var _blink_tween: Tween = null                 ## 指示器闪烁动画
 
 # ── 布局常量（屏幕坐标，基于 1280x720）──
+# v7.x 布局修复：条带浮在中场，避让底部 HUD（BattleBottomBar 占 y=596~720，高 124px）
+# _STRIP_BOTTOM_GAP=150 → 条带底边 y=570（HUD 顶部 596 之上，零重叠）
+# _STRIP_H 由 196 压到 168 → 条带顶边 y≈402（远离战场顶部状态栏，且长文不溢出）
 const _STRIP_W := 920.0
-const _STRIP_H := 196.0
-const _STRIP_BOTTOM_GAP := 30.0
-const _BADGE_SIZE := 100.0
+const _STRIP_H := 168.0
+const _STRIP_BOTTOM_GAP := 150.0
+const _BADGE_SIZE := 96.0
+# 底部 HUD 高度（dim_layer 在此高度以下留出透明通道，不压暗 HUD）
+const _HUD_BOTTOM_CLEARANCE := 124.0
+
+## 角色名 → portrait路径映射表
+const _PORTRAIT_MAP := {
+	"指挥官": "res://ui/portraits/player.png",
+	"陈末": "res://ui/portraits/player.png",
+	"托马斯": "res://ui/portraits/thomas.png",
+	"soldier_thomas": "res://ui/portraits/soldier_thomas.png",
+	"索菲亚": "res://ui/portraits/sophia.png",
+	"维克多": "res://ui/portraits/victor.png",
+	"艾莉亚": "res://ui/portraits/aria.png",
+	"诺瓦": "res://ui/portraits/nova.png",
+	"洛克": "res://ui/portraits/locke.png",
+	"林薇": "res://ui/portraits/linwei.png",
+	"扎克": "res://ui/portraits/zack.png",
+	"海伦": "res://ui/portraits/helen.png",
+	"真实者": "res://ui/portraits/realist.png",
+	"铁血男爵": "res://ui/portraits/boss_baron.png",
+	"钢铁元帅": "res://ui/portraits/boss_marshall.png",
+	"相位之主": "res://ui/portraits/boss_phase_lord.png",
+	"守护者": "res://ui/portraits/boss_guardian.png",
+	"虚空领主": "res://ui/portraits/boss_void_lord.png",
+	"镜像": "res://ui/portraits/boss_mirror.png",
+	"镜像守护者": "res://ui/portraits/boss_mirror.png",
+}
 
 func _ready() -> void:
 	_build_ui()
@@ -77,10 +107,12 @@ func _build_ui() -> void:
 	set_custom_minimum_size(Vector2(900, 400))
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
-	# 全屏暗化层（v6.8: 0.85→0.5，让战场隐约可见；同时承担"点击推进"）
+	# 暗化层（v7.x: 底部留出 _HUD_BOTTOM_CLEARANCE 通道，避让 BattleBottomBar；
+	# alpha 0.5→0.65 提升长文对比度；承担"点击推进"，覆盖中场上半屏 + 条带区域）
 	_dim_layer = ColorRect.new()
 	_dim_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_dim_layer.color = Color(0.02, 0.04, 0.08, 0.5)
+	_dim_layer.offset_bottom = -_HUD_BOTTOM_CLEARANCE  # 底边停在 y=596，HUD 区域不被压暗
+	_dim_layer.color = Color(0.02, 0.04, 0.08, 0.65)
 	_dim_layer.mouse_filter = Control.MOUSE_FILTER_STOP
 	_dim_layer.gui_input.connect(_on_advance_input)
 	add_child(_dim_layer)
@@ -105,10 +137,11 @@ func _build_ui() -> void:
 	add_child(_strip)
 
 	# 对话正文（直接放在条带上，左侧留出徽章宽度，关闭 fit_content 用显式锚定，避免容器尺寸打架）
+	# v7.x: 正文字号 20→16（中文长句更舒展，配合 _STRIP_H 收窄后不溢出）
 	_body_label = RichTextLabel.new()
 	_body_label.bbcode_enabled = true
 	_body_label.fit_content = false
-	_body_label.add_theme_font_size_override("normal_font_size", DesignTokens.FONT_SIZE_LARGE)
+	_body_label.add_theme_font_size_override("normal_font_size", DesignTokens.FONT_SIZE_MEDIUM)
 	_body_label.add_theme_color_override("default_color", DesignTokens.COLOR_TEXT)
 	_body_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# 相对条带：左留徽章宽度，右留 24 内边距，上留 24，下留 40（给指示器让位）
@@ -136,6 +169,15 @@ func _build_ui() -> void:
 	_portrait_label.add_theme_color_override("font_color", DesignTokens.COLOR_ACCENT_CYAN)
 	_portrait_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_portrait_badge.add_child(_portrait_label)
+
+	# 头像图片（覆盖在徽章上，有图片时隐藏首字）
+	_portrait_sprite = Sprite2D.new()
+	_portrait_sprite.scale = Vector2(_BADGE_SIZE / 512.0, _BADGE_SIZE / 512.0)
+	_portrait_sprite.offset = Vector2(-256.0, -256.0)
+	# Sprite2D 继承自 Node2D，无 mouse_filter 属性（Control 专属）；
+	# 父徽章 _portrait_badge 已设为 MOUSE_FILTER_IGNORE，Sprite2D 本身不接收点击事件，无需单独设置。
+	_portrait_sprite.visible = false
+	_portrait_badge.add_child(_portrait_sprite)
 
 	# 说话者名牌（钉条带上沿，徽章右侧，按角色变色；纯 Panel + 直接放标签，避免 PanelContainer 与固定 placement 混用）
 	_nameplate_panel = Panel.new()
@@ -239,19 +281,20 @@ func _make_badge_style(accent: Color) -> StyleBoxFlat:
 	s.shadow_size = 10
 	return s
 
-## 名牌 StyleBox（角色色半透明底 + 小圆角）
+## 名牌 StyleBox（v7.x: 收敛为深色底 + 角色色描边，避免大面积角色铺色与紫青主调撞色）
 func _make_nameplate_style(accent: Color) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
-	s.bg_color = Color(accent.r, accent.g, accent.b, 0.85)
-	s.border_width_left = 1
-	s.border_width_right = 1
-	s.border_width_top = 1
-	s.border_width_bottom = 1
-	s.border_color = Color(1, 1, 1, 0.35)
+	s.bg_color = Color(0.06, 0.08, 0.14, 0.92)  # 与条带背景同源深色
+	s.border_width_left = 2
+	s.border_width_right = 2
+	s.border_width_top = 2
+	s.border_width_bottom = 2
+	s.border_color = accent  # 角色色仅用于描边区分说话者
 	s.corner_radius_top_left = 4
 	s.corner_radius_top_right = 4
 	s.corner_radius_bottom_left = 4
 	s.corner_radius_bottom_right = 4
+	return s
 	return s
 
 ## 四角宝石（小菱形，旋转 45°，霓虹点缀）
@@ -366,16 +409,31 @@ func _show_current_dialogue() -> void:
 		_clear_choices()
 		_set_continue_text()
 
-## 更新名牌（说话者名字 + 角色色底）
+## 更新名牌（v7.x: 深色底 + 角色色描边 + 角色色文字，角色标识鲜明且不撞主调）
 func _update_nameplate(speaker: String) -> void:
 	var accent: Color = _get_speaker_color(speaker)
 	_nameplate_label.text = speaker
+	_nameplate_label.add_theme_color_override("font_color", accent)
 	_nameplate_panel.add_theme_stylebox_override("panel", _make_nameplate_style(accent))
 
-## 更新头像徽章（角色色描边 + 首字）
+## 更新头像徽章（角色色描边 + 首字/实际图片）
 func _update_portrait_badge(speaker: String) -> void:
 	var accent: Color = _get_speaker_color(speaker)
 	_portrait_badge.add_theme_stylebox_override("panel", _make_badge_style(accent))
+	
+	# 查找portrait路径
+	var portrait_path: String = _PORTRAIT_MAP.get(speaker, "")
+	if portrait_path and ResourceLoader.exists(portrait_path):
+		var tex = load(portrait_path) as Texture2D
+		if tex != null:
+			_portrait_sprite.texture = tex
+			_portrait_sprite.visible = true
+			_portrait_label.visible = false
+			return
+	
+	# Fallback: 显示首字徽章
+	_portrait_sprite.visible = false
+	_portrait_label.visible = true
 	_portrait_label.text = _get_initial_char(speaker)
 	_portrait_label.add_theme_color_override("font_color", accent)
 

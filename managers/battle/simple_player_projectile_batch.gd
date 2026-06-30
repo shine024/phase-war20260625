@@ -2,7 +2,6 @@ extends Node2D
 ## 玩家轻武器弹道批处理：直线导引、无穿透/爆炸时用 MultiMesh 绘制，减轻 Bullet 节点数量。
 ## 仿照 simple_enemy_projectile_batch.gd，玩家版无护盾墙减伤。
 
-const GC = preload("res://resources/game_constants.gd")
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 const WeaponProjectileVfx = preload("res://scripts/weapon_projectile_vfx.gd")
 

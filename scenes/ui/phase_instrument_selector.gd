@@ -266,16 +266,14 @@ func _create_instrument_item(cfg: Dictionary, is_equipped: bool) -> Control:
 	var stats_row = HBoxContainer.new()
 	vbox.add_child(stats_row)
 
-	var output_rate = float(cfg.get("energy_output_rate", 1.0))
+	# v7.x: 移除 energy_output_rate 显示，仅保留能量恢复
 	var recovery_rate = float(cfg.get("energy_recovery_rate", 0.3))
 	var spawn_ratio = float(cfg.get("spawn_range_ratio", 0.3))
 
-	var actual_output = output_rate * 5.0
 	var actual_recovery = recovery_rate * 3.0
 
 	var stats_parts: Array = []
 	stats_parts.append("可上场: %d单位" % green_count)
-	stats_parts.append("能量输出: %.2f (实际: %.1f/秒)" % [output_rate, actual_output])
 	stats_parts.append("能量恢复: %.2f (实际: %.1f/秒)" % [recovery_rate, actual_recovery])
 	stats_parts.append("部署范围: %.0f%%" % (spawn_ratio * 100))
 
@@ -300,8 +298,6 @@ func _create_instrument_item(cfg: Dictionary, is_equipped: bool) -> Control:
 			advanced_parts.append("[相位仪] 防御+%.0f%%" % (float(cfg.defense_bonus) * 100))
 		if cfg.has("xp_bonus") and float(cfg.xp_bonus) > 0:
 			advanced_parts.append("[相位仪] 相位场经验+%.0f%%" % (float(cfg.xp_bonus) * 100))
-		if cfg.has("drop_bonus") and float(cfg.drop_bonus) > 0:
-			advanced_parts.append("[相位仪] 掉落+%.0f%%" % (float(cfg.drop_bonus) * 100))
 		if cfg.has("energy_cost_reduction") and int(cfg.energy_cost_reduction) > 0:
 			advanced_parts.append("[相位仪] 能耗-%d" % int(cfg.energy_cost_reduction))
 

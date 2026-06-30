@@ -78,8 +78,14 @@ func _refresh_card_list() -> void:
 			card_entries[card_id] = { "card": null, "instance_ids": [] }
 
 	## 来源2：背包中的（可能是 instance_id 如 "cold_t72#1"）
+	## v7.x 修复（铁律2）：优先读 InstanceRegistry 实例全集（真·实例数据源，永不被 consume）。
+	## 原 ONLY 读 SaveManager 队列（pending+last_known），但该队列在 backpack_presenter 存活时
+	## 会被 consume_pending_backpack_card_id 掏空，导致新买的卡看不到。SaveManager 队列降级为兜底。
 	var sm: Node = get_node_or_null("/root/SaveManager")
 	var all_backpack_ids: Array = []
+	if ir != null and ir.has_method("get_all_instance_ids"):
+		for iid in ir.get_all_instance_ids():
+			all_backpack_ids.append(String(iid))
 	if sm and sm.has_method("get_pending_backpack_ids"):
 		all_backpack_ids.append_array(sm.get_pending_backpack_ids())
 	if sm and sm.has_method("get_last_known_backpack_ids"):
@@ -100,7 +106,11 @@ func _refresh_card_list() -> void:
 		# 记录 instance_id
 		if not card_entries.has(base_id):
 			card_entries[base_id] = { "card": null, "instance_ids": [] }
-		card_entries[base_id]["instance_ids"].append(sid)
+		# v7.x 修复（改造面板卡片重复）：pending 与 last_known 通常含同一 instance_id，
+		# 原直接 append 会导致同一实例渲染两次。按 instance_id 去重后再入列。
+		var _inst_arr: Array = card_entries[base_id]["instance_ids"]
+		if not _inst_arr.has(sid):
+			_inst_arr.append(sid)
 
 	## 按 card_id 加载模板 CardResource
 	for card_id in card_entries:
@@ -782,6 +792,12 @@ func set_selected_card(card: CardResource) -> void:
 		return
 	selected_card = card
 	selected_mod_id = ""
+	# v7.x 修复（Bug2）：非嵌入模式下进入面板时补刷卡片列表。
+	# 根因：面板被 ui_lazy_loader 缓存（整个会话只实例化一次），_refresh_card_list 只在首帧 _ready 跑一次。
+	# 从 growth_panel 跳转进来走 set_selected_card（而非 show_panel），原版不刷列表，导致卡片列表永远停留在首帧快照。
+	# 嵌入模式（card_info_panel 内嵌）下卡片列表本就被 _apply_embedded_layout 隐藏，无需刷新。
+	if not _embedded_mode and card_list_container != null:
+		_refresh_card_list()
 	if has_node("VBoxContainer/HBoxContainer/DetailPanel"):
 		_update_card_info()
 	if has_node("VBoxContainer/HBoxContainer/ModScrollContainer"):

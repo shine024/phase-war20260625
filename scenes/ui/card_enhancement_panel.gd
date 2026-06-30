@@ -189,7 +189,15 @@ func _init_card_list() -> void:
 	card_items.clear()
 
 	var all_card_ids: Array = []
-	# 仅展示"背包中的卡牌"
+	# v7.x 修复（铁律2）：优先读 InstanceRegistry 实例全集（真·实例数据源，永不被 consume）。
+	# 原 ONLY 读 SaveManager 队列（pending+last_known），但该队列在 backpack_presenter 存活时
+	# 会被 consume_pending_backpack_card_id 掏空（买卡信号双监听），导致新买的卡看不到。
+	# SaveManager 队列降级为兜底（presenter 未存活/旧档迁移）。
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	if ir != null and ir.has_method("get_all_instance_ids"):
+		for iid in ir.get_all_instance_ids():
+			all_card_ids.append(String(iid))
+	# 来源2：SaveManager 队列兜底
 	if SaveManager and SaveManager.has_method("get_pending_backpack_ids"):
 		all_card_ids.append_array(SaveManager.get_pending_backpack_ids())
 	if SaveManager and SaveManager.has_method("get_last_known_backpack_ids"):
@@ -206,7 +214,7 @@ func _init_card_list() -> void:
 	all_card_ids = filtered_ids
 
 	# v7.0: 实例化养成——id 可能是 instance_id（cold_t72#1），查模板前先解析 card_id
-	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	# ir 已在上方声明（InstanceRegistry 实例全集数据源）
 	for id_val in all_card_ids:
 		var card_id: String = String(id_val)
 		if card_id.is_empty():

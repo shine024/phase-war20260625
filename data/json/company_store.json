@@ -60,20 +60,6 @@
       "required_rep": 60
     },
     {
-      "company_id": "iron_wall_corp",
-      "card_id": "energy_start_2",
-      "fragment_amount": 1,
-      "price_nano_materials": 280,
-      "required_rep": 10
-    },
-    {
-      "company_id": "iron_wall_corp",
-      "card_id": "energy_start_5",
-      "fragment_amount": 1,
-      "price_nano_materials": 320,
-      "required_rep": 15
-    },
-    {
       "company_id": "nova_arms",
       "card_id": "platform_ww2_medium",
       "fragment_amount": 1,
@@ -107,20 +93,6 @@
       "fragment_amount": 1,
       "price_nano_materials": 700,
       "required_rep": 60
-    },
-    {
-      "company_id": "nova_arms",
-      "card_id": "energy_start_3",
-      "fragment_amount": 1,
-      "price_nano_materials": 350,
-      "required_rep": 15
-    },
-    {
-      "company_id": "nova_arms",
-      "card_id": "energy_start_6",
-      "fragment_amount": 1,
-      "price_nano_materials": 300,
-      "required_rep": 10
     },
     {
       "company_id": "aether_dynamics",
@@ -159,55 +131,6 @@
     },
     {
       "company_id": "aether_dynamics",
-      "card_id": "energy_start_1",
-      "fragment_amount": 1,
-      "price_nano_materials": 150,
-      "required_rep": 0
-    },
-    {
-      "company_id": "aether_dynamics",
-      "card_id": "energy_start_2",
-      "fragment_amount": 1,
-      "price_nano_materials": 250,
-      "required_rep": 10
-    },
-    {
-      "company_id": "aether_dynamics",
-      "card_id": "energy_start_3",
-      "fragment_amount": 1,
-      "price_nano_materials": 350,
-      "required_rep": 20
-    },
-    {
-      "company_id": "aether_dynamics",
-      "card_id": "energy_start_4",
-      "fragment_amount": 1,
-      "price_nano_materials": 200,
-      "required_rep": 8
-    },
-    {
-      "company_id": "aether_dynamics",
-      "card_id": "energy_start_5",
-      "fragment_amount": 1,
-      "price_nano_materials": 300,
-      "required_rep": 15
-    },
-    {
-      "company_id": "aether_dynamics",
-      "card_id": "energy_start_6",
-      "fragment_amount": 1,
-      "price_nano_materials": 400,
-      "required_rep": 25
-    },
-    {
-      "company_id": "aether_dynamics",
-      "card_id": "energy_start_7",
-      "fragment_amount": 1,
-      "price_nano_materials": 450,
-      "required_rep": 30
-    },
-    {
-      "company_id": "aether_dynamics",
       "card_id": "thunder_arc_beacon",
       "fragment_amount": 1,
       "price_nano_materials": 480,
@@ -229,38 +152,10 @@
     },
     {
       "company_id": "quantum_logistics",
-      "card_id": "energy_start_4",
-      "fragment_amount": 1,
-      "price_nano_materials": 120,
-      "required_rep": 0
-    },
-    {
-      "company_id": "quantum_logistics",
-      "card_id": "energy_start_5",
-      "fragment_amount": 1,
-      "price_nano_materials": 220,
-      "required_rep": 10
-    },
-    {
-      "company_id": "quantum_logistics",
-      "card_id": "energy_start_6",
-      "fragment_amount": 1,
-      "price_nano_materials": 320,
-      "required_rep": 20
-    },
-    {
-      "company_id": "quantum_logistics",
       "card_id": "steel_quick_repair",
       "fragment_amount": 1,
       "price_nano_materials": 520,
       "required_rep": 30
-    },
-    {
-      "company_id": "quantum_logistics",
-      "card_id": "energy_start_7",
-      "fragment_amount": 1,
-      "price_nano_materials": 400,
-      "required_rep": 20
     },
     {
       "company_id": "helix_recon",
@@ -375,13 +270,6 @@
       "required_rep": 70
     },
     {
-      "company_id": "void_research",
-      "card_id": "energy_start_7",
-      "fragment_amount": 1,
-      "price_nano_materials": 480,
-      "required_rep": 25
-    },
-    {
       "company_id": "frontier_union",
       "card_id": "platform_ww2_light",
       "fragment_amount": 1,
@@ -429,20 +317,6 @@
       "fragment_amount": 1,
       "price_nano_materials": 450,
       "required_rep": 25
-    },
-    {
-      "company_id": "frontier_union",
-      "card_id": "energy_start_2",
-      "fragment_amount": 1,
-      "price_nano_materials": 240,
-      "required_rep": 10
-    },
-    {
-      "company_id": "frontier_union",
-      "card_id": "energy_start_5",
-      "fragment_amount": 1,
-      "price_nano_materials": 280,
-      "required_rep": 12
     },
     {
       "company_id": "void_research",

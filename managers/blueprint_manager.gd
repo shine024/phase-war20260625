@@ -53,11 +53,8 @@ func _ensure_plm() -> Node:
 		_plm = get_node_or_null("/root/PhaseLawManager")
 	return _plm
 
-## 默认解锁的基础能量蓝图（新存档与一次性迁移会补足）
-const DEFAULT_ENERGY_BLUEPRINT_IDS: Array[String] = [
-	"energy_start_1", "energy_start_2", "energy_start_3", "energy_start_4",
-	"energy_start_5", "energy_start_6", "energy_start_7",
-]
+## v7.x: 能量卡系统移除，能量蓝图列表清空（保留常量名避免多处引用报错，遍历天然跳过）
+const DEFAULT_ENERGY_BLUEPRINT_IDS: Array[String] = []
 
 ## ─────────── 核心数据 ───────────
 
@@ -74,7 +71,7 @@ var blueprint_mods: Dictionary = {}
 ## card_id -> 进化继承属性倍率（累计），如 0.30 表示 +30%
 var blueprint_inherit_bonus: Dictionary = {}
 
-## card_id -> 进化后 era0 有效 HP 下限（含养成乘区，战斗时按时代缩放）
+## card_id -> 进化后 era0 有效 HP 下限（含养成乘区；v6.8 起战斗不再按时代缩放，下限直接用此值）
 var blueprint_evolution_hp_floor: Dictionary = {}
 
 ## card_id -> 最近一次军衔缓存 {rank_id, rank_name, power_score}
@@ -200,36 +197,10 @@ func _unlock_default_blueprints() -> void:
 			if plm and plm.has_method("ensure_law_unlocked"):
 				plm.ensure_law_unlocked(law_id)
 
-	_ensure_starter_copies_for_default_energy_blueprints()
-
-func _ensure_starter_copies_for_default_energy_blueprints() -> void:
-	for eid in DEFAULT_ENERGY_BLUEPRINT_IDS:
-		if not unlocked_blueprint_ids.has(eid):
-			continue
-		if get_blueprint_copies(eid) < 1:
-			add_blueprint_copy(eid, 1)
-	# 全装型初始1份副本（新存档背包直接给，此处确保蓝图面板也可见）
+	# v7.x: 能量卡系统移除，_ensure_starter_copies_for_default_energy_blueprints 调用已删除。
+	# 全装型初始1份副本逻辑保留（非能量卡）。
 	if is_blueprint_unlocked("omega_platform") and get_blueprint_copies("omega_platform") < 1:
 		add_blueprint_copy("omega_platform", 1)
-	# 初始能量卡设为2★
-	# [DEPRECATED] 初始能量卡设星级逻辑已禁用
-	#for eid in ["energy_start_1", "energy_start_2"]:
-
-## 旧存档：已解锁的默认能量蓝图若 0 副本则补到 1（每个存档只执行一次）
-func _migrate_legacy_default_energy_starter_copies() -> void:
-	var changed := false
-	for eid in DEFAULT_ENERGY_BLUEPRINT_IDS:
-		if not is_blueprint_unlocked(eid):
-			continue
-		if int(blueprint_copies.get(eid, 0)) >= 1:
-			continue
-		blueprint_copies[eid] = 1
-		# var rarity: String = get_card_rarity(eid)
-		changed = true
-	if changed:
-		if DEBUG_BLUEPRINT_LOG:
-			pass  # LOG: 旧存档迁移：已为默认能量蓝图补足首份副本
-		emit_signal("fragments_changed")
 
 ## ─────────── 蓝图解锁 ───────────
 
@@ -790,9 +761,9 @@ func load_state(data: Dictionary) -> void:
 			var cid: String = String(k)
 			if not _is_excluded_war_platform_id(cid):
 				blueprint_copies[cid] = int(data["fragments"][k])
-	if not _legacy_default_energy_copies_migrated:
-		_migrate_legacy_default_energy_starter_copies()
-		_legacy_default_energy_copies_migrated = true
+	# v7.x: 能量卡迁移函数已删除（DEFAULT_ENERGY_BLUEPRINT_IDS 清空，迁移天然空操作）
+	# 保留 _legacy_default_energy_copies_migrated 标志位防止重复执行残留逻辑
+	_legacy_default_energy_copies_migrated = true
 	_migrate_v3_law_copies_to_knowledge()
 	# 将 blueprint_mods 反向同步到 CardResource 模板，确保 UI 和冲突检测正常
 	_sync_blueprint_mods_to_templates()
@@ -920,18 +891,20 @@ func apply_reinforcement(card: CardResource, target_level: int) -> Dictionary:
 
 	return result
 
-## 备用：获取等级消耗倍率
+## 备用：获取等级消耗倍率（reinforcement_panel 旧路径用）
+## v7.x 修复 W4：原 Lv1=0.0 导致首强化完全免费（白嫖），与 CardEnhancementManager.get_enhance_nano_cost
+## 的 Lv1=0.5 倍率不一致。统一为 0.5，与实例化强化路径口径对齐。
 func _get_rank_cost_multiplier(level: int) -> float:
 	match level:
-		1: return 0.0
-		2: return 0.5
-		3: return 1.0
-		4: return 1.5
-		5: return 2.0
-		6: return 2.5
-		7: return 3.0
-		8: return 3.5
-		9: return 4.5
+		1: return 0.5
+		2: return 1.0
+		3: return 1.5
+		4: return 2.0
+		5: return 2.5
+		6: return 3.0
+		7: return 3.5
+		8: return 4.0
+		9: return 5.0
 		10: return 6.0
 		_: return 1.0
 

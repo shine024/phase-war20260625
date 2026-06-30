@@ -92,9 +92,7 @@ static func build_stats_from_card(card: CardResource, era_override: int = -1) ->
 	# 原因：grant_slot 以载体 attack_armor 为基准派生对空伤害，必须读到加成后的值。
 	if card.mods and not card.mods.is_empty():
 		# v6.2: 先应用改造的 stat 效果（穿甲/条件穿甲/attack_armor 百分比等）到 UnitStats
-		var _dbg_hp_before_mods: float = stats.max_hp
 		_apply_mod_stat_effects(stats, card.mods)
-		print("[BuildStats DEBUG] AFTER mods: card_id='", card.card_id, "' mods.size=", card.mods.size(), " hp ", _dbg_hp_before_mods, "->", stats.max_hp, " atk_light=", stats.attack_light, " atk_armor=", stats.attack_armor)
 		# v6.0/v6.13: 再应用改造效果到武器槽位（传入 stats 作 source_stats，grant_slot 据此派生伤害）
 		if ModificationRegistry and ModificationRegistry.has_method("apply_to_weapon_slots"):
 			tmp_slots = ModificationRegistry.apply_to_weapon_slots(tmp_slots, card.mods, stats)
@@ -115,14 +113,10 @@ static func build_stats_from_card(card: CardResource, era_override: int = -1) ->
 
 	# v6.0: 应用强化词条效果（如有 module_slots）
 	if card.module_slots.size() > 0:
-		var _dbg_hp_before_slots: float = stats.max_hp
 		apply_module_effects(stats, card.module_slots, card.enhance_level)
-		print("[BuildStats DEBUG] AFTER module_slots: card_id='", card.card_id, "' slots.size=", card.module_slots.size(), " hp ", _dbg_hp_before_slots, "->", stats.max_hp)
 
 	# v6.11: 应用强化等级加成（原战力星级②系统合并至此——星级0-7映射到强化0-10）
-	var _dbg_hp_before_lvl: float = stats.max_hp
 	apply_enhance_level_bonus(stats, card)
-	print("[BuildStats DEBUG] AFTER enhance_level_bonus: card_id='", card.card_id, "' enhance_level=", card.enhance_level, " hp ", _dbg_hp_before_lvl, "->", stats.max_hp)
 
 	return stats
 
@@ -334,9 +328,15 @@ static func _apply_mod_stat_effects(stats: UnitStats, mods: Array) -> void:
 		"move_speed": stats.move_speed,
 		"attack_range": stats.attack_range,
 		"attack_interval": stats.attack_interval,
+		# v7.5: per-target 攻速（attack_interval 死字段后，攻速改造改写这三个）
+		"attack_light_speed": stats.attack_light_speed,
+		"attack_armor_speed": stats.attack_armor_speed,
+		"attack_air_speed": stats.attack_air_speed,
 		"deploy_speed": stats.deploy_speed,
 		"crit_chance": stats.crit_chance,
 		"crit_damage_bonus": stats.crit_damage_bonus,
+		# v7.x: crit_resist 补全（modification_registry:258 已写入 result，此处补 base + 回写）
+		"crit_resist": stats.crit_resist,
 		"dodge_chance": stats.dodge_chance,
 		"damage_reduction": stats.damage_reduction,
 		"armor_penetration": stats.armor_penetration,
@@ -368,9 +368,15 @@ static func _apply_mod_stat_effects(stats: UnitStats, mods: Array) -> void:
 	stats.move_speed = float(result.get("move_speed", stats.move_speed))
 	stats.attack_range = float(result.get("attack_range", stats.attack_range))
 	stats.attack_interval = float(result.get("attack_interval", stats.attack_interval))
+	# v7.5: per-target 攻速写回（attack_interval 死字段后，攻速改造经 registry 转写至此）
+	stats.attack_light_speed = float(result.get("attack_light_speed", stats.attack_light_speed))
+	stats.attack_armor_speed = float(result.get("attack_armor_speed", stats.attack_armor_speed))
+	stats.attack_air_speed = float(result.get("attack_air_speed", stats.attack_air_speed))
 	stats.deploy_speed = int(result.get("deploy_speed", stats.deploy_speed))
 	stats.crit_chance = float(result.get("crit_chance", stats.crit_chance))
 	stats.crit_damage_bonus = float(result.get("crit_damage_bonus", stats.crit_damage_bonus))
+	# v7.x: crit_resist 回写（暴抗改造生效）
+	stats.crit_resist = float(result.get("crit_resist", stats.crit_resist))
 	stats.dodge_chance = float(result.get("dodge_chance", stats.dodge_chance))
 	stats.damage_reduction = float(result.get("damage_reduction", stats.damage_reduction))
 	stats.armor_penetration = float(result.get("armor_penetration", stats.armor_penetration))

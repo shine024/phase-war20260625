@@ -44,7 +44,8 @@ static func extract_evolution_info(blueprint_id: String) -> Dictionary:
 	var known_prefixes = ["fort_", "ww1_", "ww2_", "cold_", "mod_", "fut_", "fe_", "ac"]
 	var parts = rest.split("_")
 	if parts.size() < 2:
-		print("[BlueprintDefinitions] 解析失败：parts太少 %s" % [parts])
+		if OS.is_debug_build():
+			print("[BlueprintDefinitions] 解析失败：parts太少 %s" % [parts])
 		return {}
 
 	# 从后往前找最后一个已知前缀的位置（找到第一个就停止）
@@ -61,7 +62,8 @@ static func extract_evolution_info(blueprint_id: String) -> Dictionary:
 	if last_prefix_idx <= 0:
 		# 如果找不到明确的前缀，使用简单策略：最后两个部分为to，其余为from
 		if parts.size() < 4:
-			print("[BlueprintDefinitions] 解析失败：无法找到分界点 %s" % [parts])
+			if OS.is_debug_build():
+				print("[BlueprintDefinitions] 解析失败：无法找到分界点 %s" % [parts])
 			return {}
 		var to_card = parts[parts.size() - 2] + "_" + parts[parts.size() - 1]
 		var from_parts = parts.slice(0, parts.size() - 2)
@@ -70,7 +72,8 @@ static func extract_evolution_info(blueprint_id: String) -> Dictionary:
 			if i > 0:
 				from_card += "_"
 			from_card += from_parts[i]
-		print("[BlueprintDefinitions] 简单解析: from=%s to=%s" % [from_card, to_card])
+		if OS.is_debug_build():
+			print("[BlueprintDefinitions] 简单解析: from=%s to=%s" % [from_card, to_card])
 		return {"from": from_card, "to": to_card}
 
 	# 找到了前缀，从该位置开始构建to_card
@@ -89,7 +92,8 @@ static func extract_evolution_info(blueprint_id: String) -> Dictionary:
 			from_card += "_"
 		from_card += from_parts[i]
 
-	print("[BlueprintDefinitions] 前缀解析: from=%s to=%s" % [from_card, to_card])
+	if OS.is_debug_build():
+		print("[BlueprintDefinitions] 前缀解析: from=%s to=%s" % [from_card, to_card])
 	return {"from": from_card, "to": to_card}
 
 ## 检查是否为改造蓝图

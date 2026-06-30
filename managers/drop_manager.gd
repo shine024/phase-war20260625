@@ -101,16 +101,20 @@ func _process_single_drop(drop: DropTables.DropResult) -> void:
 			_unlock_lore(drop.drop.item_id)
 		DropTables.DropType.CARD_REWARD:
 			_add_card_to_backpack(drop.drop.item_id)
+		# v7.x: 能量卡系统移除，ENERGY_CARD 掉落降级为研究点补偿（避免空回报）
 		DropTables.DropType.ENERGY_CARD:
-			_add_card_to_backpack(drop.drop.item_id)
+			if BlueprintManager != null and BlueprintManager.has_method("add_research_points"):
+				BlueprintManager.add_research_points(15 * drop.count)
 		DropTables.DropType.STAT_BOOST:
 			_apply_stat_boost(drop.drop.item_id)
 		DropTables.DropType.LAW_DATA, DropTables.DropType.LAW_BLUEPRINT:
 			_add_law_blueprint(drop.drop.item_id, drop.count)
 		DropTables.DropType.LAW_CARD:
 			_add_law_card(drop.drop.item_id, drop.count)
+		# v7.x: 能量卡系统移除，ENERGY_DATA/ENERGY_BLUEPRINT 掉落降级为研究点补偿
 		DropTables.DropType.ENERGY_DATA, DropTables.DropType.ENERGY_BLUEPRINT:
-			_add_energy_blueprint(drop.drop.item_id, drop.count)
+			if BlueprintManager != null and BlueprintManager.has_method("add_research_points"):
+				BlueprintManager.add_research_points(15 * drop.count)
 		DropTables.DropType.MOD_BLUEPRINT:
 			_add_mod_blueprint(drop.drop.item_id, drop.count)
 
@@ -411,33 +415,6 @@ func _add_law_card(law_id: String, count: int) -> void:
 		# [LOG-v5.1] print("[DropManager] 获得法则卡: ", card.display_name, " x", count)
 	else:
 		push_error("[DropManager] 无法创建法则卡: " + law_id)
-
-## 能量卡数据条目：直接发对应时代的能量卡到背包（并保证可制造），附带少量研究点
-func _add_energy_blueprint(_item_id: String, count: int) -> void:
-	if not BlueprintManager or not SignalBus:
-		return
-	var energy_id: String = ""
-	var era: int = 0
-	if "current_level" in GameManager:
-		if GameConstants:
-			era = GameConstants.get_era_for_level(int(GameManager.current_level))
-
-	match era:
-		0: energy_id = "energy_start_1"
-		1: energy_id = "energy_start_2"
-		2: energy_id = "energy_start_3"
-		3: energy_id = "energy_start_5"
-		4: energy_id = "energy_start_7"
-		_: energy_id = "energy_start_1"
-
-	var n: int = maxi(1, count)
-	for _i in range(n):
-		_add_card_to_backpack(energy_id)
-	if BlueprintManager and BlueprintManager.has_method("apply_card_drop_first_copy"):
-		BlueprintManager.apply_card_drop_first_copy(energy_id)
-	if BlueprintManager != null and BlueprintManager.has_method("add_research_points"):
-		BlueprintManager.add_research_points(12 * n)
-	# [LOG-v5.1] print("[DropManager] 获得能量卡: ", energy_id, " x", n)
 
 ## v6.14: 改造蓝图掉落 → 写入 IntelItemBag（与 intel_discovery_manager 路径一致）
 ## item_id 为 blueprint_<mod_id> 形式，count 为数量（蓝图永久持有，多次获得无害）

@@ -260,9 +260,12 @@ func set_card(c: CardResource) -> void:
 		_apply_card_icon_rect(icon_rect, c, CARD_LIST_ICON_DISPLAY_MIN)
 
 	# ── 能量费用 ──────────────────────────────────────────────
+	# v7.x：费用从 StatsRow/CostLabel 移到左上角角标气泡（CostCornerBadge）
 	if cost_label:
-		cost_label.text = "%d" % int(c.energy_cost)
-		cost_label.visible = true
+		cost_label.text = ""
+	var _cost_badge_n = CardFrameUi.ensure_cost_corner_badge(self)
+	if _cost_badge_n != null:
+		_cost_badge_n.text = "%d⚡" % int(c.energy_cost)
 
 	# ── 承载 / 重量 ───────────────────────────────────────────
 	if weight_label:
@@ -306,6 +309,8 @@ func set_card(c: CardResource) -> void:
 	tooltip_text = ""
 
 func _set_empty_style(type_bar, name_label, cost_label, weight_label, lv_label, xp_fill, icon_rect) -> void:
+	# v7.x：空格子清除费用角标，避免旧角标残留
+	CardFrameUi.clear_cost_corner_badge(self)
 	if _icon_row_has_compact_layout():
 		if type_bar:
 			type_bar.visible = false
@@ -666,7 +671,8 @@ func _compact_display_name(c: CardResource) -> String:
 	if display_name.length() > 6:
 		# v6.2 修复 L3：超长名截断加省略号（原 substr 直接截断，中文可能残缺）
 		display_name = display_name.substr(0, 6) + "…"
-	return display_name
+	# v7.x：同名卡追加序号后缀（#1/#2…），在截断之后追加，避免序号被截断
+	return display_name + DefaultCards.seq_suffix(c)
 
 
 func _set_compact_slot_view(c: CardResource, type_bar, name_label, cost_label, weight_label, lv_label, xp_bar, xp_fill, icon_rect) -> void:
@@ -701,8 +707,11 @@ func _set_compact_slot_view(c: CardResource, type_bar, name_label, cost_label, w
 	name_label.text = _compact_display_name(c)
 	name_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	name_label.max_lines_visible = 1
-	cost_label.visible = true
-	cost_label.text = "%d⚡" % int(c.energy_cost)
+	# v7.x：费用从 CompactTextVBox/CostLabel 移到左上角角标气泡（CostCornerBadge）
+	cost_label.text = ""
+	var _cost_badge_c = CardFrameUi.ensure_cost_corner_badge(self)
+	if _cost_badge_c != null:
+		_cost_badge_c.text = "%d⚡" % int(c.energy_cost)
 	tooltip_text = ""
 	_apply_card_chrome(c)
 	if art_clip:
@@ -896,6 +905,10 @@ func _set_mtg_minimal_card_view(c: CardResource, type_bar, name_label, cost_labe
 	if cost_label:
 		cost_label.visible = false
 		cost_label.text = ""
+	# v7.x：费用移到左上角角标气泡（CostCornerBadge）
+	var _cost_badge_mm = CardFrameUi.ensure_cost_corner_badge(self)
+	if _cost_badge_mm != null:
+		_cost_badge_mm.text = "%d⚡" % int(c.energy_cost)
 	if weight_label:
 		weight_label.visible = false
 		weight_label.text = ""
@@ -939,7 +952,11 @@ func _set_mtg_minimal_card_view(c: CardResource, type_bar, name_label, cost_labe
 		if rank_hdr:
 			rank_hdr.add_theme_font_size_override("font_size", clampi(int(ceil(SLOT_SIZE.y * 0.026)), 8, 17))
 	if cost_hdr:
-		cost_hdr.text = "%d⚡" % int(c.energy_cost)
+		# v7.x：费用从 MtgHeader/MtgCostLabel 移到左上角角标气泡（CostCornerBadge）
+		cost_hdr.text = ""
+	var _cost_badge_m = CardFrameUi.ensure_cost_corner_badge(self)
+	if _cost_badge_m != null:
+		_cost_badge_m.text = "%d⚡" % int(c.energy_cost)
 		cost_hdr.add_theme_font_size_override("font_size", clampi(int(ceil(SLOT_SIZE.y * 0.028)), 9, 18))
 	_apply_mtg_header_rarity_colors(c, name_hdr, rank_hdr)
 	if icon_rect:

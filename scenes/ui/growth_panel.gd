@@ -234,32 +234,69 @@ func show_panel(card: CardResource) -> void:
 	tw.tween_callback(func(): _refresh_data())
 
 func _load_unlocked_cards() -> void:
-	## 从背包读取卡牌（与 backpack_presenter / card_enhancement_panel 一致）
+	## v7.x 设计：列表"每个实例一行"——同名卡 cold_t72#1 / #2 各自独立显示（各自养成不同）。
+	##
+	## 数据源优先级（关键修复：SaveManager 的 pending/last_known 队列在背包 presenter
+	## 存活时会被 consume 掉，导致买卡后队列变空、列表看不到新卡。真正可信的"玩家拥有的卡"
+	## 是 InstanceRegistry 里已注册的实例——买卡时 create_instance 注册，不会因 presenter
+	## 消费而消失）：
+	##   1. InstanceRegistry.get_all_instance_ids()（真·实例全集，主数据源）
+	##   2. SaveManager pending/last_known（兜底：presenter 未存活/旧档迁移场景）
+	##   3. BlueprintManager 蓝图（已解锁但未拥有任何实例的卡，补一条无养成模板行）
+	## 去重：完整 instance_id 去重；蓝图裸 card_id 仅在该卡无任何实例时补。
 	var all_ids: Array[String] = []
-	var seen: Dictionary = {}
+	var seen_full: Dictionary = {}      # 完整 instance_id 去重
+	var seen_base: Dictionary = {}      # base card_id 集合（判断蓝图是否需要补条目）
 	var _sm = get_node_or_null("/root/SaveManager")
+	var _ir = get_node_or_null("/root/InstanceRegistry")
+	var _normalize := func(raw_id: String) -> String:
+		if _ir != null and _ir.has_method("get_card_id_of"):
+			return _ir.get_card_id_of(raw_id)  # cold_t72#1 → cold_t72（无序号返回原值）
+		var hi: int = raw_id.rfind("#")
+		return raw_id.substr(0, hi) if hi >= 0 else raw_id
+	# 主数据源：InstanceRegistry 全部实例
+	if _ir != null and _ir.has_method("get_all_instance_ids"):
+		for iid in _ir.get_all_instance_ids():
+			var sid: String = String(iid)
+			if sid.is_empty():
+				continue
+			if not seen_full.has(sid):
+				all_ids.append(sid)
+				seen_full[sid] = true
+				seen_base[String(_normalize.call(sid))] = true
+	# 兜底：SaveManager 队列（presenter 未存活/旧档迁移，补充 Registry 未覆盖的卡）
+	# v7.x 去重修复：队列里可能混入裸 card_id（如 "omega_platform"，来自相位仪槽位模板回退/
+	# 旧档迁移），而 InstanceRegistry 里是带 #序号的实例（"omega_platform#1"）。
+	# 原逻辑只查 seen_full（完整字符串）→ 裸id与实例id都进 all_ids → 成长面板渲染成2行同名卡。
+	# 修复：normalize 剥序号后若该 card_id 已有实例/代表条目被收录（seen_base 命中）则跳过。
 	if _sm:
 		var pending: Array = _sm.get_pending_backpack_ids() if _sm.has_method("get_pending_backpack_ids") else []
 		var last_known: Array = _sm.get_last_known_backpack_ids() if _sm.has_method("get_last_known_backpack_ids") else []
-		for id in pending:
+		for id in pending + last_known:
 			var sid: String = String(id)
-			if not sid.is_empty() and not seen.has(sid):
-				all_ids.append(sid)
-				seen[sid] = true
-		for id in last_known:
-			var sid: String = String(id)
-			if not sid.is_empty() and not seen.has(sid):
-				all_ids.append(sid)
-				seen[sid] = true
-	# 补充 BlueprintManager 中已解锁但不在背包中的蓝图
+			if sid.is_empty():
+				continue
+			if seen_full.has(sid):
+				continue
+			var base_id: String = String(_normalize.call(sid))
+			# 该 card_id 已有任何实例（带#序号）被收录 → 队列里的同卡条目（含裸id）是残留，跳过
+			if seen_base.has(base_id):
+				continue
+			all_ids.append(sid)
+			seen_full[sid] = true
+			seen_base[base_id] = true
+	# 补充 BlueprintManager 中已解锁但未拥有任何实例的蓝图（裸 card_id）
 	var bp = get_node_or_null("/root/BlueprintManager")
 	if bp:
 		var bp_ids: Array = bp.get_all_blueprint_ids() if bp.has_method("get_all_blueprint_ids") else bp.get_unlocked_blueprint_ids()
 		for id in bp_ids:
 			var sid: String = String(id)
-			if not sid.is_empty() and not seen.has(sid):
+			if sid.is_empty():
+				continue
+			if not seen_base.has(sid) and not seen_full.has(sid):
 				all_ids.append(sid)
-				seen[sid] = true
+				seen_full[sid] = true
+				seen_base[sid] = true
 	_last_unlocked_ids = all_ids
 	refresh_card_list(all_ids)
 	if not _selected_card and not all_ids.is_empty():

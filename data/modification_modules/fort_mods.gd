@@ -47,7 +47,7 @@ const DATA: Dictionary = {
 	"for_04_filtration" = {
 		id = FOR_04_FILTRATION, name = "通风过滤系统", name_en = "Filtration System",
 		icon = "res://assets/ui/icons/mod_icons/mod_protection.png",
-		prototype = "核生化防护", description = "免疫生化攻击",
+		prototype = "核生化防护", description = "减伤提升",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 320, cost_install = 160,
 		slot_type = "protection", conflict_group = "protection",
@@ -67,7 +67,7 @@ const DATA: Dictionary = {
 	"for_06_radar" = {
 		id = FOR_06_RADAR, name = "雷达天线", name_en = "Radar Array",
 		icon = "res://assets/ui/icons/mod_icons/mod_radar.png",
-		prototype = "远程预警雷达", description = "发现隐形单位",
+		prototype = "远程预警雷达", description = "精准索敌，暴击率提升",
 		rarity = "legendary",
 	power_mult = 2.0, cost_research = 400, cost_install = 200,
 		slot_type = "radar", conflict_group = "radar",

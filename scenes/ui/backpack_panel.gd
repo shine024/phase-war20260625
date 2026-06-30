@@ -516,20 +516,12 @@ func _card_matches_id(card: CardResource, id_str: String) -> bool:
 	return card.card_id == id_str
 
 ## 将顶级能量卡移动到网格最前面
+## v7.x: 能量卡系统移除，此函数降级为仅刷新网格布局（保留函数签名避免破坏调用方）
 func pin_top_energy_to_front() -> void:
 	var grid = _combat_cards_grid
 	if grid == null:
 		return
 	_apply_backpack_grid_layout(grid)
-	for child in grid.get_children():
-		if child.has_meta("is_resource_slot") and child.get_meta("is_resource_slot"):
-			continue
-		var card: CardResource = child.card if "card" in child else null
-		if card == null:
-			continue
-		if card.card_id == "energy_start_3" or card.card_id == "energy_start_7":
-			grid.move_child(child, 0)
-			return
 
 ## 在 CardDetailPopup 内引用已嵌入的统一情报面板（.tscn 子场景实例）
 func _init_detail_info_panel(popup: PopupPanel) -> void:

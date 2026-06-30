@@ -4,8 +4,6 @@ extends RefCounted
 ## 所有函数为 static，通过 bpm_ref（BlueprintManager 实例）或 mods_dict 访问核心数据
 
 const ModEffects = preload("res://data/mod_effects.gd")
-const StarConfig = preload("res://data/blueprint_star_config.gd")
-const BasicResources = preload("res://data/basic_resources.gd")
 const PowerTiers = preload("res://data/power_tiers.gd")
 const ModificationRegistry = preload("res://scripts/systems/modification_registry.gd")
 
@@ -45,8 +43,18 @@ static func can_install_by_power_tier(card_power_tier: int, mod_id: String) -> b
 	return PowerTiers.meets_requirement(card_power_tier, min_tier)
 
 ## 获取当前已装改造数量
+## v7.x 修复(M2): blueprint_mods 的 key 可能是 instance_id（cold_t72#1，由
+## _update_blueprint_mods_cache_for_card 写入）或裸 card_id（cold_t72，旧路径写入）。
+## 调用方传的 key 不一定是写入时的同款——传 card_id 查实例 key 会漏。
+## 这里查两次：先按传入 key 直查，没命中再按"去掉 #序号后缀"的 base key 查，
+## 覆盖 instance→base 与 base→instance 两种错配。
 static func get_modification_count(card_id: String, mods_dict: Dictionary) -> int:
 	var mods: Array = mods_dict.get(card_id, [])
+	if mods.is_empty():
+		# v7.x M2: 直查未命中，尝试 base card_id 形式（去掉 #N 后缀）
+		var hi: int = card_id.rfind("#")
+		if hi > 0:
+			mods = mods_dict.get(card_id.substr(0, hi), [])
 	return mods.size()
 
 ## 获取最大改造次数
@@ -62,8 +70,13 @@ static func get_max_mod_slots() -> int:
 # ModEffects.MOD_DATA（MOD_01~20）保留供 save_migration_v6 的老存档迁移映射使用。
 
 ## 检查卡片是否已安装敌源改造模块（EOM_前缀）
+## v7.x 修复(M2): 与 get_modification_count 同款双 key 兼容（instance_id 与裸 card_id）。
 static func has_enemy_origin_mod(card_id: String, mods_dict: Dictionary) -> bool:
 	var mods: Array = mods_dict.get(card_id, [])
+	if mods.is_empty():
+		var hi: int = card_id.rfind("#")
+		if hi > 0:
+			mods = mods_dict.get(card_id.substr(0, hi), [])
 	if mods is Array:
 		for m in mods:
 			var entry_id = m.get("id", "") if m is Dictionary else String(m)

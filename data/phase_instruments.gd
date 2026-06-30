@@ -10,7 +10,6 @@ const STANDARD_PROPERTY_POOL: Array[Dictionary] = [
 	{"id":"pi_def","name":"防御+%","rarity":"Common","min_star":1},
 	{"id":"pi_hp","name":"生命+%","rarity":"Common","min_star":1},
 	{"id":"pi_xp","name":"经验+%","rarity":"Common","min_star":1},
-	{"id":"pi_drop","name":"掉落+%","rarity":"Common","min_star":1},
 	{"id":"pi_energy_out","name":"能量输出+%","rarity":"Common","min_star":1},
 	{"id":"pi_energy_rec","name":"能量恢复+%","rarity":"Common","min_star":1},
 	{"id":"pi_energy_cost","name":"能量消耗-X","rarity":"Uncommon","min_star":3},
@@ -58,8 +57,6 @@ static func get_standard_property_value(property_id: String, star: int, source: 
 			return _round2(float(s) * 0.015 * mult)
 		"pi_xp":
 			return _round2(float(s) * 0.03 * mult)
-		"pi_drop":
-			return _round2(float(s) * 0.02 * mult)
 		"pi_energy_out":
 			return _round2(float(s) * 0.02 * mult)
 		"pi_energy_rec":
@@ -84,7 +81,6 @@ static func build_property_display(property_id: String, value: float) -> String:
 		"pi_def": return "防御 +%s%%" % _format_percent(value)
 		"pi_hp": return "生命 +%s%%" % _format_percent(value)
 		"pi_xp": return "经验 +%s%%" % _format_percent(value)
-		"pi_drop": return "掉落 +%s%%" % _format_percent(value)
 		"pi_energy_out": return "能量输出 +%s%%" % _format_percent(value)
 		"pi_energy_rec": return "能量恢复 +%s%%" % _format_percent(value)
 		"pi_energy_cost": return "能量消耗 -%d" % int(round(value))
@@ -260,77 +256,80 @@ static func ability_fortress_bulwark(star: int) -> Dictionary:
 
 ## 通用相位仪布局（平衡型）
 ## v6.2：移除 red/blue 法则槽，新增 rune 符文槽（替代法则系统）
-## 槽位类型：green=战斗卡(max6), yellow=能量卡(max2), rune=符文(max6)
+## v7.x：移除 yellow 能量槽（能量卡系统移除，能量上限改由相位仪星级决定）
+## 槽位类型：green=战斗卡(max6), rune=符文(max6)
 ## 每个星级的分配不同，体现策略变化——不是每级都平均增长
+## 7星 = 10格（green6 + rune4），符合"格子上限10格"设计
 const _STAR_LAYOUT := {
-	1: {"green": 1, "yellow": 1, "rune": 1, "spawn_range_ratio": 0.30},   # 3格：起步
-	2: {"green": 2, "yellow": 1, "rune": 1, "spawn_range_ratio": 0.40},   # 4格：+1战斗
-	3: {"green": 2, "yellow": 1, "rune": 3, "spawn_range_ratio": 0.55},   # 6格：侧重符文
-	4: {"green": 3, "yellow": 2, "rune": 2, "spawn_range_ratio": 0.70},   # 7格：侧重战斗+能量
-	5: {"green": 4, "yellow": 1, "rune": 4, "spawn_range_ratio": 0.82},   # 9格：均衡扩展
-	6: {"green": 3, "yellow": 2, "rune": 5, "spawn_range_ratio": 0.92},   # 10格：侧重符文
-	7: {"green": 6, "yellow": 2, "rune": 4, "spawn_range_ratio": 1.00},   # 12格：侧重战斗（高星追求火力）
+	1: {"green": 1, "rune": 1, "spawn_range_ratio": 0.30},   # 2格：起步
+	2: {"green": 2, "rune": 1, "spawn_range_ratio": 0.40},   # 3格：+1战斗
+	3: {"green": 2, "rune": 3, "spawn_range_ratio": 0.55},   # 5格：侧重符文
+	4: {"green": 3, "rune": 2, "spawn_range_ratio": 0.70},   # 5格：侧重战斗
+	5: {"green": 4, "rune": 4, "spawn_range_ratio": 0.82},   # 8格：均衡扩展
+	6: {"green": 3, "rune": 5, "spawn_range_ratio": 0.92},   # 8格：侧重符文
+	7: {"green": 6, "rune": 4, "spawn_range_ratio": 1.00},   # 10格：侧重战斗（高星追求火力）
 }
 
 ## 势力专属布局 - 每个势力有独特的格子分配特点
 ## v6.2：red/blue 法则槽全部改为 rune 符文槽
+## v7.x：移除 yellow 能量槽，7星统一为 10格（green + rune）
 ## 每个势力的槽位分配有独特侧重——不全是满配6+6，有取舍
 
-# aether_dynamics (神盾): 防御特化 - 偏能量+符文，战斗卡少
+# aether_dynamics (神盾): 防御特化 - 偏符文，战斗卡少
 const _FACTION_LAYOUT_AEGIS := {
-	2: {"green": 1, "yellow": 2, "rune": 2, "spawn_range_ratio": 0.40},
-	4: {"green": 2, "yellow": 2, "rune": 3, "spawn_range_ratio": 0.70},
-	6: {"green": 3, "yellow": 2, "rune": 4, "spawn_range_ratio": 0.92},
-	7: {"green": 4, "yellow": 2, "rune": 6, "spawn_range_ratio": 1.00},   # 12格：极限符文
+	2: {"green": 1, "rune": 2, "spawn_range_ratio": 0.40},
+	4: {"green": 2, "rune": 3, "spawn_range_ratio": 0.70},
+	6: {"green": 3, "rune": 4, "spawn_range_ratio": 0.92},
+	7: {"green": 4, "rune": 6, "spawn_range_ratio": 1.00},   # 10格：极限符文
 }
 
 # helix_recon (螺旋): 侦查特化 - 极限战斗卡，符文少
 const _FACTION_LAYOUT_HELIX := {
-	1: {"green": 2, "yellow": 1, "rune": 1, "spawn_range_ratio": 0.30},
-	3: {"green": 4, "yellow": 1, "rune": 1, "spawn_range_ratio": 0.55},
-	5: {"green": 6, "yellow": 1, "rune": 2, "spawn_range_ratio": 0.82},   # 9格：满战斗卡
-	7: {"green": 6, "yellow": 2, "rune": 4, "spawn_range_ratio": 1.00},   # v6.6: 12格（幻影核，满战斗卡）
+	1: {"green": 2, "rune": 1, "spawn_range_ratio": 0.30},
+	3: {"green": 4, "rune": 1, "spawn_range_ratio": 0.55},
+	5: {"green": 6, "rune": 2, "spawn_range_ratio": 0.82},   # 8格：满战斗卡
+	7: {"green": 6, "rune": 4, "spawn_range_ratio": 1.00},   # v6.6: 10格（幻影核，满战斗卡）
 }
 
-# nova_arms (新星): 火力特化 - 战斗+符文均衡，能量少
+# nova_arms (新星): 火力特化 - 战斗+符文均衡
 const _FACTION_LAYOUT_NOVA := {
-	2: {"green": 2, "yellow": 1, "rune": 2, "spawn_range_ratio": 0.40},
-	4: {"green": 3, "yellow": 1, "rune": 3, "spawn_range_ratio": 0.70},
-	6: {"green": 4, "yellow": 1, "rune": 4, "spawn_range_ratio": 0.92},
-	7: {"green": 6, "yellow": 1, "rune": 5, "spawn_range_ratio": 1.00},   # 12格：战斗+符文双高
+	2: {"green": 2, "rune": 2, "spawn_range_ratio": 0.40},
+	4: {"green": 3, "rune": 3, "spawn_range_ratio": 0.70},
+	6: {"green": 4, "rune": 4, "spawn_range_ratio": 0.92},
+	7: {"green": 6, "rune": 4, "spawn_range_ratio": 1.00},   # 10格：战斗+符文双高
 }
 
-# iron_wall_corp (铁幕): 坦克特化 - 偏能量+战斗，符文中等
+# iron_wall_corp (铁幕): 坦克特化 - 偏战斗，符文中等
 const _FACTION_LAYOUT_IRON := {
-	3: {"green": 3, "yellow": 2, "rune": 2, "spawn_range_ratio": 0.55},
-	5: {"green": 4, "yellow": 2, "rune": 3, "spawn_range_ratio": 0.82},
-	7: {"green": 6, "yellow": 2, "rune": 4, "spawn_range_ratio": 1.00},   # 12格：堆战斗+能量（满战斗卡）
+	3: {"green": 3, "rune": 2, "spawn_range_ratio": 0.55},
+	5: {"green": 4, "rune": 3, "spawn_range_ratio": 0.82},
+	7: {"green": 6, "rune": 4, "spawn_range_ratio": 1.00},   # 10格：堆战斗（满战斗卡）
 }
 
 # void_research (影幕): 爆发特化 - 极限符文，战斗卡少
 const _FACTION_LAYOUT_UMBRA := {
-	1: {"green": 1, "yellow": 1, "rune": 2, "spawn_range_ratio": 0.30},
-	3: {"green": 1, "yellow": 1, "rune": 4, "spawn_range_ratio": 0.55},
-	6: {"green": 2, "yellow": 1, "rune": 6, "spawn_range_ratio": 0.92},   # 9格：满符文
-	7: {"green": 4, "yellow": 2, "rune": 6, "spawn_range_ratio": 1.00},   # v6.6: 12格（虚空穿，满符文）
+	1: {"green": 1, "rune": 2, "spawn_range_ratio": 0.30},
+	3: {"green": 1, "rune": 4, "spawn_range_ratio": 0.55},
+	6: {"green": 2, "rune": 6, "spawn_range_ratio": 0.92},   # 8格：满符文
+	7: {"green": 4, "rune": 6, "spawn_range_ratio": 1.00},   # v6.6: 10格（虚空穿，满符文）
 }
 
-# quantum_logistics (擎天): 资源特化 - 战斗+能量均衡，符文少
+# quantum_logistics (擎天): 资源特化 - 战斗均衡，符文少
 const _FACTION_LAYOUT_ATLAS := {
-	2: {"green": 2, "yellow": 2, "rune": 1, "spawn_range_ratio": 0.40},
-	4: {"green": 3, "yellow": 2, "rune": 2, "spawn_range_ratio": 0.70},
-	6: {"green": 4, "yellow": 2, "rune": 3, "spawn_range_ratio": 0.92},
-	7: {"green": 6, "yellow": 2, "rune": 4, "spawn_range_ratio": 1.00},   # v6.6: 12格（零点能）
+	2: {"green": 2, "rune": 1, "spawn_range_ratio": 0.40},
+	4: {"green": 3, "rune": 2, "spawn_range_ratio": 0.70},
+	6: {"green": 4, "rune": 3, "spawn_range_ratio": 0.92},
+	7: {"green": 6, "rune": 4, "spawn_range_ratio": 1.00},   # v6.6: 10格（零点能）
 }
 
-# frontier_union (永纪): 时间特化 - 三类均衡
+# frontier_union (永纪): 时间特化 - 均衡
 const _FACTION_LAYOUT_EON := {
-	2: {"green": 2, "yellow": 1, "rune": 2, "spawn_range_ratio": 0.40},
-	5: {"green": 3, "yellow": 2, "rune": 3, "spawn_range_ratio": 0.82},
-	7: {"green": 6, "yellow": 2, "rune": 4, "spawn_range_ratio": 1.00},   # 12格：均衡（v6.6 统一7星12格）
+	2: {"green": 2, "rune": 2, "spawn_range_ratio": 0.40},
+	5: {"green": 3, "rune": 3, "spawn_range_ratio": 0.82},
+	7: {"green": 6, "rune": 4, "spawn_range_ratio": 1.00},   # 10格：均衡（v7.x 统一7星10格）
 }
 
-static func _make_def(id: String, name: String, faction_id: String, is_generic: bool, star: int, output_rate: float, acquire_rule: String, special_traits: Array = [], active_ability: Dictionary = {}) -> Dictionary:
+static func _make_def(id: String, name: String, faction_id: String, is_generic: bool, star: int, acquire_rule: String, special_traits: Array = [], active_ability: Dictionary = {}) -> Dictionary:
 	# 根据势力选择布局
 	var layout: Dictionary
 	if is_generic:
@@ -357,14 +356,14 @@ static func _make_def(id: String, name: String, faction_id: String, is_generic: 
 
 	var rep_req: int = 0 if is_generic else int(star) * 600
 	var energy_block_price: int = 20 + int(star) * 15
-	# 提高能量恢复倍率：从 0.35 提高到 0.55
-	var recovery_rate: float = float(snapped(output_rate * 0.55, 0.01))
+	# v7.x: 能量恢复速率按 star 派生（原依赖已删除的 output_rate）
+	# 1星=0.50, 4星=0.95, 7星=1.40
+	var recovery_rate: float = float(snapped(0.35 + float(clampi(star, 1, 7)) * 0.15, 0.01))
 
 	var properties: Array[Dictionary] = build_default_shop_properties(star)
 	var card_damage_bonus: float = get_standard_property_value("pi_atk", star, SOURCE_SHOP)
 	var defense_bonus: float = get_standard_property_value("pi_def", star, SOURCE_SHOP)
 	var xp_bonus: float = get_standard_property_value("pi_xp", star, SOURCE_SHOP)
-	var drop_bonus: float = get_standard_property_value("pi_drop", star, SOURCE_SHOP)
 	var energy_cost_reduction: int = int(get_standard_property_value("pi_energy_cost", star, SOURCE_SHOP))
 
 	return {
@@ -374,14 +373,15 @@ static func _make_def(id: String, name: String, faction_id: String, is_generic: 
 		"is_generic": is_generic,
 		"star": star,
 		# v6.2: 槽位结构（red/blue 法则槽废弃，改用 rune 符文槽）
+		# v7.x: yellow 能量槽移除（能量卡系统移除），恒为0（保留键供旧存档兼容）
 		"slot_counts": {
 			"green": int(layout.get("green", 1)),
-			"yellow": int(layout.get("yellow", 1)),
+			"yellow": 0,
 			"rune": int(layout.get("rune", 1)),
 		},
 		# 兼容字段：保留 red=0/blue=0 防止老代码报错（渐进迁移）
 		"rune_slot_count": int(layout.get("rune", 1)),
-		"energy_output_rate": output_rate,
+		# v7.x: 移除 energy_output_rate（半失效死代码，battle_spawn 的 deploy_time 从未使用）
 		"energy_recovery_rate": recovery_rate,
 		"spawn_range_ratio": float(layout.get("spawn_range_ratio", 0.3)),
 		"acquire_rule": acquire_rule,
@@ -394,7 +394,6 @@ static func _make_def(id: String, name: String, faction_id: String, is_generic: 
 		"card_damage_bonus": card_damage_bonus,
 		"defense_bonus": defense_bonus,
 		"xp_bonus": xp_bonus,
-		"drop_bonus": drop_bonus,
 		"energy_cost_reduction": energy_cost_reduction,
 		# 独特特性
 		"special_traits": special_traits,
@@ -405,61 +404,61 @@ static func _make_def(id: String, name: String, faction_id: String, is_generic: 
 static func _build_all() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	# 通用 12 款（覆盖 1-7 星），每个都有独特特性
-	out.append(_make_def("pi_generic_01", "巡航I型", "generic", true, 1, 0.80, "generic_store", ["新手友好：战斗胜利后额外获得5点相位经验"]))
-	out.append(_make_def("pi_generic_02", "巡航II型", "generic", true, 2, 0.95, "generic_store", ["能量循环：每10秒恢复1点能量"]))
-	out.append(_make_def("pi_generic_03", "巡航III型", "generic", true, 3, 1.10, "generic_store", ["快速部署：部署范围提升10%"]))
-	out.append(_make_def("pi_generic_04", "锋线III型", "generic", true, 3, 1.18, "generic_store", ["攻击优化：平台卡和武器卡伤害+5%"]))
-	out.append(_make_def("pi_generic_05", "锋线IV型", "generic", true, 4, 1.30, "generic_store", ["战斗大师：卡牌伤害+8%，防御+4%"]))
-	out.append(_make_def("pi_generic_06", "壁垒IV型", "generic", true, 4, 1.22, "generic_store", ["坚固防御：所有单位防御+8%，受到的伤害-5%"], ability_mega_shield(4)))
-	out.append(_make_def("pi_generic_07", "壁垒V型", "generic", true, 5, 1.35, "generic_store", ["钢铁意志：防御+10%，能量消耗-1"]))
-	out.append(_make_def("pi_generic_08", "脉冲V型", "generic", true, 5, 1.45, "generic_store", ["能量激流：能量输出+15%，能量恢复+20%"]))
-	out.append(_make_def("pi_generic_09", "脉冲VI型", "generic", true, 6, 1.62, "generic_store", ["过载模式：卡牌伤害+12%，能量消耗-2"], ability_mega_shield(6)))
-	out.append(_make_def("pi_generic_10", "星链VI型", "generic", true, 6, 1.74, "generic_store", ["资源富集：经验获取+20%，掉落率+15%"]))
-	out.append(_make_def("pi_generic_11", "星链VII型", "generic", true, 7, 1.92, "generic_store", ["全能战士：所有属性+10%，能量消耗-3"]))
-	out.append(_make_def("pi_generic_12", "天穹VII型", "generic", true, 7, 2.05, "generic_store", ["天界祝福：卡牌伤害+15%，防御+10%，经验+25%，掉落+20%"], ability_mega_shield(7)))
+	out.append(_make_def("pi_generic_01", "巡航I型", "generic", true, 1, "generic_store", ["新手友好：战斗胜利后额外获得5点相位经验"]))
+	out.append(_make_def("pi_generic_02", "巡航II型", "generic", true, 2, "generic_store", ["能量循环：每10秒恢复1点能量"]))
+	out.append(_make_def("pi_generic_03", "巡航III型", "generic", true, 3, "generic_store", ["快速部署：部署范围提升10%"]))
+	out.append(_make_def("pi_generic_04", "锋线III型", "generic", true, 3, "generic_store", ["攻击优化：平台卡和武器卡伤害+5%"]))
+	out.append(_make_def("pi_generic_05", "锋线IV型", "generic", true, 4, "generic_store", ["战斗大师：卡牌伤害+8%，防御+4%"]))
+	out.append(_make_def("pi_generic_06", "壁垒IV型", "generic", true, 4, "generic_store", ["坚固防御：所有单位防御+8%，受到的伤害-5%"], ability_mega_shield(4)))
+	out.append(_make_def("pi_generic_07", "壁垒V型", "generic", true, 5, "generic_store", ["钢铁意志：防御+10%，能量消耗-1"]))
+	out.append(_make_def("pi_generic_08", "脉冲V型", "generic", true, 5, "generic_store", ["能量激流：能量恢复+20%"]))
+	out.append(_make_def("pi_generic_09", "脉冲VI型", "generic", true, 6, "generic_store", ["过载模式：卡牌伤害+12%，能量消耗-2"], ability_mega_shield(6)))
+	out.append(_make_def("pi_generic_10", "星链VI型", "generic", true, 6, "generic_store", ["资源富集：经验获取+20%，掉落率+15%"]))
+	out.append(_make_def("pi_generic_11", "星链VII型", "generic", true, 7, "generic_store", ["全能战士：所有属性+10%，能量消耗-3"]))
+	out.append(_make_def("pi_generic_12", "天穹VII型", "generic", true, 7, "generic_store", ["天界祝福：卡牌伤害+15%，防御+10%，经验+25%，掉落+20%"], ability_mega_shield(7)))
 	# 势力专属 23 款（7 势力，每个 3~4 款），每个都有独特的势力特性
 	# 神盾系列 - 防御特化
-	out.append(_make_def("pi_aegis_01", "神盾-前哨", "aether_dynamics", false, 2, 1.00, "faction_reputation_or_quest", ["神盾力场：防御+6%，受到的伤害-3%"]))
-	out.append(_make_def("pi_aegis_02", "神盾-方阵", "aether_dynamics", false, 4, 1.28, "faction_reputation_or_quest", ["方阵防御：防御+10%，每15秒获得1点临时护盾"], ability_acid_rain(4)))
-	out.append(_make_def("pi_aegis_03", "神盾-穹顶", "aether_dynamics", false, 6, 1.66, "faction_reputation_or_quest", ["穹顶庇护：防御+15%，受到的伤害-10%，能量消耗-2"], ability_acid_rain(6)))
-	out.append(_make_def("pi_aegis_04", "神盾-壁垒核", "aether_dynamics", false, 7, 1.94, "faction_reputation_or_quest", ["绝对防御：防御+20%，受到的伤害-15%，每10秒恢复2点能量"], ability_acid_rain(7)))
+	out.append(_make_def("pi_aegis_01", "神盾-前哨", "aether_dynamics", false, 2, "faction_reputation_or_quest", ["神盾力场：防御+6%，受到的伤害-3%"]))
+	out.append(_make_def("pi_aegis_02", "神盾-方阵", "aether_dynamics", false, 4, "faction_reputation_or_quest", ["方阵防御：防御+10%，每15秒获得1点临时护盾"], ability_acid_rain(4)))
+	out.append(_make_def("pi_aegis_03", "神盾-穹顶", "aether_dynamics", false, 6, "faction_reputation_or_quest", ["穹顶庇护：防御+15%，受到的伤害-10%，能量消耗-2"], ability_acid_rain(6)))
+	out.append(_make_def("pi_aegis_04", "神盾-壁垒核", "aether_dynamics", false, 7, "faction_reputation_or_quest", ["绝对防御：防御+20%，受到的伤害-15%，每10秒恢复2点能量"], ability_acid_rain(7)))
 
 	# 螺旋系列 - 侦查与机动
-	out.append(_make_def("pi_helix_01", "螺旋-猎线", "helix_recon", false, 1, 0.88, "faction_reputation_or_quest", ["猎手直觉：经验获取+8%"]))
-	out.append(_make_def("pi_helix_02", "螺旋-织网", "helix_recon", false, 3, 1.16, "faction_reputation_or_quest", ["神经网络：部署范围+15%，经验+12%"], ability_phantom_clone(3)))
-	out.append(_make_def("pi_helix_03", "螺旋-神经束", "helix_recon", false, 5, 1.44, "faction_reputation_or_quest", ["神经加速：能量恢复+25%，经验+18%，部署范围+10%"], ability_phantom_clone(5)))
+	out.append(_make_def("pi_helix_01", "螺旋-猎线", "helix_recon", false, 1, "faction_reputation_or_quest", ["猎手直觉：经验获取+8%"]))
+	out.append(_make_def("pi_helix_02", "螺旋-织网", "helix_recon", false, 3, "faction_reputation_or_quest", ["神经网络：部署范围+15%，经验+12%"], ability_phantom_clone(3)))
+	out.append(_make_def("pi_helix_03", "螺旋-神经束", "helix_recon", false, 5, "faction_reputation_or_quest", ["神经加速：能量恢复+25%，经验+18%，部署范围+10%"], ability_phantom_clone(5)))
 	# v6.6 新增：螺旋7星-幻影核（幻影克隆完整版）
-	out.append(_make_def("pi_helix_04", "螺旋-幻影核", "helix_recon", false, 7, 2.00, "faction_reputation_or_quest", ["幻影核心：克隆体攻击+100%、血量+80%"], ability_phantom_clone(7)))
+	out.append(_make_def("pi_helix_04", "螺旋-幻影核", "helix_recon", false, 7, "faction_reputation_or_quest", ["幻影核心：克隆体攻击+100%、血量+80%"], ability_phantom_clone(7)))
 
 	# 新星系列 - 火力输出
-	out.append(_make_def("pi_nova_01", "新星-回路", "nova_arms", false, 2, 1.04, "faction_reputation_or_quest", ["回路超频：卡牌伤害+8%"]))
-	out.append(_make_def("pi_nova_02", "新星-灼流", "nova_arms", false, 4, 1.34, "faction_reputation_or_quest", ["灼流爆发：卡牌伤害+15%，能量输出+10%"], ability_artillery_barrage(4)))
-	out.append(_make_def("pi_nova_03", "新星-超弦", "nova_arms", false, 7, 2.10, "faction_reputation_or_quest", ["超弦毁灭：卡牌伤害+25%，能量输出+20%，能量消耗-3"], ability_artillery_barrage(7)))
-	out.append(_make_def("pi_nova_04", "新星-裂变庭", "nova_arms", false, 6, 1.76, "faction_reputation_or_quest", ["裂变反应：卡牌伤害+20%，每击杀一个敌人恢复1点能量"], ability_artillery_barrage(6)))
+	out.append(_make_def("pi_nova_01", "新星-回路", "nova_arms", false, 2, "faction_reputation_or_quest", ["回路超频：卡牌伤害+8%"]))
+	out.append(_make_def("pi_nova_02", "新星-灼流", "nova_arms", false, 4, "faction_reputation_or_quest", ["灼流爆发：卡牌伤害+15%，能量恢复+10%"], ability_artillery_barrage(4)))
+	out.append(_make_def("pi_nova_03", "新星-超弦", "nova_arms", false, 7, "faction_reputation_or_quest", ["超弦毁灭：卡牌伤害+25%，能量恢复+20%，能量消耗-3"], ability_artillery_barrage(7)))
+	out.append(_make_def("pi_nova_04", "新星-裂变庭", "nova_arms", false, 6, "faction_reputation_or_quest", ["裂变反应：卡牌伤害+20%，每击杀一个敌人恢复1点能量"], ability_artillery_barrage(6)))
 
 	# 铁幕系列 - 坦克与生存
-	out.append(_make_def("pi_iron_01", "铁幕-重锚", "iron_wall_corp", false, 3, 1.08, "faction_reputation_or_quest", ["重锚稳固：防御+8%，最大生命+10%"]))
-	out.append(_make_def("pi_iron_02", "铁幕-铸链", "iron_wall_corp", false, 5, 1.36, "faction_reputation_or_quest", ["铸链锁甲：防御+14%，受到的伤害-8%，能量消耗-1"]))
-	out.append(_make_def("pi_iron_03", "铁幕-王座", "iron_wall_corp", false, 7, 1.98, "faction_reputation_or_quest", ["王座威严：防御+20%，受到的伤害-12%，最大生命+25%"], ability_fortress_bulwark(7)))
+	out.append(_make_def("pi_iron_01", "铁幕-重锚", "iron_wall_corp", false, 3, "faction_reputation_or_quest", ["重锚稳固：防御+8%，最大生命+10%"]))
+	out.append(_make_def("pi_iron_02", "铁幕-铸链", "iron_wall_corp", false, 5, "faction_reputation_or_quest", ["铸链锁甲：防御+14%，受到的伤害-8%，能量消耗-1"]))
+	out.append(_make_def("pi_iron_03", "铁幕-王座", "iron_wall_corp", false, 7, "faction_reputation_or_quest", ["王座威严：防御+20%，受到的伤害-12%，最大生命+25%"], ability_fortress_bulwark(7)))
 
 	# 影幕系列 - 潜行与爆发
-	out.append(_make_def("pi_umbra_01", "影幕-薄刃", "void_research", false, 1, 0.92, "faction_reputation_or_quest", ["薄刃一击：首次攻击伤害+20%"]))
-	out.append(_make_def("pi_umbra_02", "影幕-折光", "void_research", false, 3, 1.20, "faction_reputation_or_quest", ["折光隐匿：卡牌伤害+10%，暴击率+8%"], ability_piercing_shot(3)))
-	out.append(_make_def("pi_umbra_03", "影幕-寂静域", "void_research", false, 6, 1.70, "faction_reputation_or_quest", ["寂静杀场：卡牌伤害+18%，暴击率+15%，暴击伤害+25%"], ability_piercing_shot(6)))
+	out.append(_make_def("pi_umbra_01", "影幕-薄刃", "void_research", false, 1, "faction_reputation_or_quest", ["薄刃一击：首次攻击伤害+20%"]))
+	out.append(_make_def("pi_umbra_02", "影幕-折光", "void_research", false, 3, "faction_reputation_or_quest", ["折光隐匿：卡牌伤害+10%，暴击率+8%"], ability_piercing_shot(3)))
+	out.append(_make_def("pi_umbra_03", "影幕-寂静域", "void_research", false, 6, "faction_reputation_or_quest", ["寂静杀场：卡牌伤害+18%，暴击率+15%，暴击伤害+25%"], ability_piercing_shot(6)))
 	# v6.6 新增：影幕7星-虚空穿（直射穿透完整版）
-	out.append(_make_def("pi_umbra_04", "影幕-虚空穿", "void_research", false, 7, 2.06, "faction_reputation_or_quest", ["虚空贯穿：100%穿透，每穿一个目标衰减10%"], ability_piercing_shot(7)))
+	out.append(_make_def("pi_umbra_04", "影幕-虚空穿", "void_research", false, 7, "faction_reputation_or_quest", ["虚空贯穿：100%穿透，每穿一个目标衰减10%"], ability_piercing_shot(7)))
 
 	# 擎天系列 - 支援与资源
-	out.append(_make_def("pi_atlas_01", "擎天-工蜂", "quantum_logistics", false, 2, 0.98, "faction_reputation_or_quest", ["工蜂采集：掉落率+10%"]))
-	out.append(_make_def("pi_atlas_02", "擎天-梁柱", "quantum_logistics", false, 4, 1.26, "faction_reputation_or_quest", ["梁柱支撑：掉落率+18%，经验+10%"], ability_free_energy(4)))
-	out.append(_make_def("pi_atlas_03", "擎天-桥核", "quantum_logistics", false, 6, 1.64, "faction_reputation_or_quest", ["桥核链接：掉落率+25%，经验+20%，每15秒获得1点免费能量"], ability_free_energy(6)))
+	out.append(_make_def("pi_atlas_01", "擎天-工蜂", "quantum_logistics", false, 2, "faction_reputation_or_quest", ["工蜂采集：掉落率+10%"]))
+	out.append(_make_def("pi_atlas_02", "擎天-梁柱", "quantum_logistics", false, 4, "faction_reputation_or_quest", ["梁柱支撑：掉落率+18%，经验+10%"], ability_free_energy(4)))
+	out.append(_make_def("pi_atlas_03", "擎天-桥核", "quantum_logistics", false, 6, "faction_reputation_or_quest", ["桥核链接：掉落率+25%，经验+20%，每15秒获得1点免费能量"], ability_free_energy(6)))
 	# v6.6 新增：擎天7星-零点能（免能量完整版）
-	out.append(_make_def("pi_atlas_04", "擎天-零点能", "quantum_logistics", false, 7, 1.98, "faction_reputation_or_quest", ["零点能源：所有卡片部署免能量"], ability_free_energy(7)))
+	out.append(_make_def("pi_atlas_04", "擎天-零点能", "quantum_logistics", false, 7, "faction_reputation_or_quest", ["零点能源：所有卡片部署免能量"], ability_free_energy(7)))
 
 	# 永纪系列 - 时间与控制
-	out.append(_make_def("pi_eon_01", "永纪-秒针", "frontier_union", false, 2, 1.02, "faction_reputation_or_quest", ["秒针精算：能量恢复+15%"], ability_nuclear_bombardment(2)))
-	out.append(_make_def("pi_eon_02", "永纪-时阶", "frontier_union", false, 5, 1.48, "faction_reputation_or_quest", ["时阶掌控：能量恢复+30%，能量消耗-2，所有技能冷却-10%"], ability_nuclear_bombardment(5)))
-	out.append(_make_def("pi_eon_03", "永纪-终式", "frontier_union", false, 7, 2.08, "faction_reputation_or_quest", ["终式预言：能量恢复+40%，能量消耗-3，每5秒有20%几率获得额外回合"], ability_nuclear_bombardment(7)))
+	out.append(_make_def("pi_eon_01", "永纪-秒针", "frontier_union", false, 2, "faction_reputation_or_quest", ["秒针精算：能量恢复+15%"], ability_nuclear_bombardment(2)))
+	out.append(_make_def("pi_eon_02", "永纪-时阶", "frontier_union", false, 5, "faction_reputation_or_quest", ["时阶掌控：能量恢复+30%，能量消耗-2，所有技能冷却-10%"], ability_nuclear_bombardment(5)))
+	out.append(_make_def("pi_eon_03", "永纪-终式", "frontier_union", false, 7, "faction_reputation_or_quest", ["终式预言：能量恢复+40%，能量消耗-3，每5秒有20%几率获得额外回合"], ability_nuclear_bombardment(7)))
 	return out
 
 static func get_all() -> Array[Dictionary]:

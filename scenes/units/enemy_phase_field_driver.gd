@@ -345,8 +345,9 @@ func _produce_unit_with_equipment() -> void:
 		stats.attack_light = maxf(0.1, stats.attack_light * (1.0 + _tier_atk))
 		stats.attack_armor = maxf(0.1, stats.attack_armor * (1.0 + _tier_atk))
 		stats.attack_air = maxf(0.1, stats.attack_air * (1.0 + _tier_atk))
-		if stats.has_method("_sync_weapon_slots_damage"):
-			stats._sync_weapon_slots_damage(1.0 + _tier_atk)
+		# v7.x H2: 同步武器槽伤害（原调 stats._sync_weapon_slots_damage 但该方法在 UnitStats 上
+		# 从未定义——has_method 守卫恒 false，调用永远空转，tier 加成也不进实际伤害）。
+		_sync_enemy_weapon_slot_damage(stats, 1.0 + _tier_atk)
 	if _tier_def > 0.0:
 		stats.defense = maxf(0.0, stats.defense * (1.0 + _tier_def))
 		stats.defense_light = maxf(0.0, stats.defense_light * (1.0 + _tier_def))
@@ -686,6 +687,10 @@ func _apply_master_rune_bonus(stats: UnitStats) -> void:
 				stats.attack_armor *= mult
 				stats.attack_air *= mult
 				stats.attack_damage *= mult
+				# v7.x 修复(H2): attack 乘区同步到 weapon_slots[].damage——
+				# AI/AttackCalculator 的伤害结算读 weapon_slots[i].damage（非 attack_damage），
+				# 原漏同步导致符文/序列/仪器加成不进实际伤害。
+				_sync_enemy_weapon_slot_damage(stats, mult)
 			"defense":
 				stats.defense_light *= mult
 				stats.defense_armor *= mult
@@ -710,13 +715,20 @@ func _apply_sequence_entry_bonus(stats: UnitStats, entry_type: String) -> void:
 			stats.attack_air *= 1.25
 			stats.attack_damage *= 1.25
 			stats.max_hp *= 1.25
+			_sync_enemy_weapon_slot_damage(stats, 1.25)  # v7.x H2: 同步武器槽伤害
 		"boss":
 			stats.attack_light *= 1.50
 			stats.attack_armor *= 1.50
 			stats.attack_air *= 1.50
 			stats.attack_damage *= 1.50
 			stats.max_hp *= 1.50
+			# v7.x 修复(H1): 补齐三维防御（原只乘标量 defense，与 elite/instrument 分支不一致；
+			# 防御实际由三维驱动，单乘标量导致 boss 防御加成不完整）。
 			stats.defense *= 1.50
+			stats.defense_light *= 1.50
+			stats.defense_armor *= 1.50
+			stats.defense_air *= 1.50
+			_sync_enemy_weapon_slot_damage(stats, 1.50)
 
 
 ## v6.14: 相位师相位仪加成（接入 v6.14 补全的 atk_bonus/hp_bonus/def_bonus 数据）。
@@ -737,6 +749,7 @@ func _apply_enemy_phase_instrument_bonus(stats: UnitStats) -> void:
 		stats.attack_armor *= (1.0 + atk_pct)
 		stats.attack_air *= (1.0 + atk_pct)
 		stats.attack_damage *= (1.0 + atk_pct)
+		_sync_enemy_weapon_slot_damage(stats, 1.0 + atk_pct)  # v7.x H2: 同步武器槽伤害
 	if hp_pct > 0.0:
 		stats.max_hp *= (1.0 + hp_pct)
 	if def_pct > 0.0:
@@ -744,5 +757,25 @@ func _apply_enemy_phase_instrument_bonus(stats: UnitStats) -> void:
 		stats.defense_light *= (1.0 + def_pct)
 		stats.defense_armor *= (1.0 + def_pct)
 		stats.defense_air *= (1.0 + def_pct)
+
+
+## v7.x 修复(H2): 把攻击乘区同步到 weapon_slots[].damage。
+## AI/AttackCalculator 的伤害结算（calculate_damage_with_weapon L208 base_damage = weapon.damage）
+## 读的是 UnitStats.weapon_slots[i].damage（WeaponResource 对象），而非 stats.attack_damage。
+## 此前的 rune/sequence/instrument/tier 乘区只乘 attack_damage/attack_*，漏了 weapon_slots，
+## 导致敌方产兵的这些加成在实际开火伤害里失效（敌方 DPS 偏低）。
+## 复用 evolution_helpers._multiply_attack_damage_and_weapon_slots 的同款逻辑：
+## 遍历 weapon_slots，逐个乘 factor（带 enabled/对象校验，缺字段不崩）。
+func _sync_enemy_weapon_slot_damage(stats: UnitStats, factor: float) -> void:
+	if stats == null or factor == 1.0:
+		return
+	var slots: Array = stats.weapon_slots
+	for i in range(slots.size()):
+		var w = slots[i]
+		if w == null:
+			continue
+		# WeaponResource 是 Resource（非 Dictionary），用 set/get 访问 damage 字段
+		if "damage" in w:
+			w.damage = float(w.damage) * factor
 
 

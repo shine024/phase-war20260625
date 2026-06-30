@@ -141,6 +141,14 @@ offset_top = 176.0
 offset_right = 200.0
 offset_bottom = 396.0
 
+[node name="ResourceInfoPanel" parent="HudLayer/TopLeftMeta" instance=ExtResource("29_resource_info")]
+layout_mode = 1
+anchors_preset = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 192.0
+offset_bottom = 220.0
+
 [node name="TopRightMeta" type="Control" parent="HudLayer"]
 layout_mode = 1
 anchors_preset = 1
@@ -151,14 +159,6 @@ offset_top = 8.0
 offset_right = -8.0
 offset_bottom = 228.0
 grow_horizontal = 0
-
-[node name="ResourceInfoPanel" parent="HudLayer/TopRightMeta" instance=ExtResource("29_resource_info")]
-layout_mode = 1
-anchors_preset = 0
-offset_left = 0.0
-offset_top = 0.0
-offset_right = 160.0
-offset_bottom = 180.0
 
 [node name="TopCenterMeta" type="Control" parent="HudLayer"]
 layout_mode = 1

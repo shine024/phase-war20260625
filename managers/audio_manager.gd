@@ -58,6 +58,11 @@ func _ready() -> void:
 		if SignalBus.has_signal("quest_completed"):
 			if not SignalBus.quest_completed.is_connected(_on_quest_completed):
 				SignalBus.quest_completed.connect(_on_quest_completed)
+		# v7.x 修复: daily_task 完成（含 SignalBus 镜像 emit）此前零订阅者，任务完成无音效。
+		# 与 quest_completed/achievement_unlocked 对齐，让任务完成也播放音效。
+		if SignalBus.has_signal("task_completed"):
+			if not SignalBus.task_completed.is_connected(_on_task_completed):
+				SignalBus.task_completed.connect(_on_task_completed)
 		# v6.6 修复: play_sound 信号原 emit 无 connect，战斗/UI 音效静默失效。
 		# 直接桥接到 play_sfx（签名匹配：都接收音效名 String）
 		if SignalBus.has_signal("play_sound"):
@@ -159,6 +164,11 @@ func _on_achievement_unlocked(_achievement_id: String, _achievement_name: String
 # v7.3 修复 BUG-5: 签名改为双参数匹配 SignalBus.quest_completed(quest_id, rewards)。
 # 原 handler 单参数，即使 connect 也会因参数不匹配报错；且原代码从未 connect（死代码）。
 func _on_quest_completed(_quest_id: String, _rewards: Dictionary) -> void:
+	play_sfx("quest_complete")
+
+# v7.x: daily_task 完成音效，签名匹配 SignalBus.task_completed(task: Dictionary)。
+# 复用 quest_complete 音效（日常任务/委托性质相近，无需独立音效资源）。
+func _on_task_completed(_task: Dictionary) -> void:
 	play_sfx("quest_complete")
 
 ## 播放射击音效

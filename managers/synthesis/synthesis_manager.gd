@@ -5,7 +5,6 @@ const SynthesisRecipes = preload("res://data/synthesis_recipes.gd")
 const FactionCardBonuses = preload("res://data/faction_card_bonuses.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 const ExclusiveCards = preload("res://data/faction_exclusive_cards.gd")
-const FactionSkillManager = preload("res://managers/faction/faction_skill_manager.gd")
 
 signal synthesis_completed(hybrid_card_id: String)
 signal synthesis_failed(reason: String)

@@ -30,7 +30,7 @@ static func master_attack_multiplier(master_stats: Dictionary) -> float:
 		return 1.0
 	# v6.2 曾提升威胁(0.0005→0.002)；v6.11 回调至 0.0005（普通敌兵也开始吃 master_stats）；
 	# v6.12 增强至 0.0008：配合敌方产兵改用真实 archetype 数据，让敌方有足够威胁。
-	# 新系数下 master001(120)→1.096x、master016(400)→1.32x、master030(1000)→1.80x。
+	# 新系数下 master001(atk120)→1.096x、master016(atk400)→1.32x、master030(atk1000)→1.80x。
 	return 1.0 + atk * 0.0008
 
 
@@ -40,7 +40,7 @@ static func master_defense_hp_multiplier(master_stats: Dictionary) -> float:
 		return 1.0
 	# v6.2 曾削弱血量加成(0.0003→0.0001)；v6.11 恢复 0.0003；v6.12 增强至 0.0006：
 	# 配合 m_atk 0.0008 的增强，让敌方产兵不再过脆。
-	# 新系数下 master016 def200→1.12x、master030 def200→1.12x，攻防对称。
+	# 新系数下 master016(def200)→1.12x、master030(def200)→1.12x，攻防对称。
 	return 1.0 + dfn * 0.0006
 
 

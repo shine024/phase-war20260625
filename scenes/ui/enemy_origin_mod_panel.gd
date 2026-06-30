@@ -186,19 +186,30 @@ func _refresh_card_list(highlight: String = "") -> void:
 
 	var DefaultCards = preload("res://data/default_cards.gd")
 	var card_ids: Array = []
+	# v7.x 修复（卡片重复）：背包存 instance_id（cold_t72#1），蓝图存裸 card_id（cold_t72），
+	# 按完整字符串去重会视为两条。归一化到 base card_id 后合并。
+	var _ir: Node = get_node_or_null("/root/InstanceRegistry")
+	var _norm := func(raw_id: String) -> String:
+		if _ir != null and _ir.has_method("get_card_id_of"):
+			return _ir.get_card_id_of(raw_id)
+		var hi: int = raw_id.rfind("#")
+		return raw_id.substr(0, hi) if hi >= 0 else raw_id
 	# 来源1：蓝图有副本的卡
 	if BlueprintManager and BlueprintManager.has_method("get_all_blueprint_ids"):
 		for id_raw in BlueprintManager.get_all_blueprint_ids():
 			var card_id := String(id_raw)
 			if not card_ids.has(card_id):
 				card_ids.append(card_id)
-	# 来源2：背包中的卡
+	# 来源2：背包中的卡（instance_id 归一化到 base card_id 后去重）
 	var sm: Node = get_node_or_null("/root/SaveManager")
 	if sm and sm.has_method("get_pending_backpack_ids"):
 		for idv in sm.get_pending_backpack_ids():
 			var sid := String(idv)
-			if not sid.is_empty() and not card_ids.has(sid):
-				card_ids.append(sid)
+			if sid.is_empty():
+				continue
+			var base := String(_norm.call(sid))
+			if not card_ids.has(base):
+				card_ids.append(base)
 
 	for card_id in card_ids:
 		var card: CardResource = DefaultCards.get_card_by_id(card_id)

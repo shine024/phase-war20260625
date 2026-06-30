@@ -16,6 +16,7 @@ const DefaultCards = preload("res://data/default_cards.gd")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
 const EnemyPhaseMasters = preload("res://data/enemy_phase_masters.gd")
+const MasterPowerEvaluator = preload("res://scripts/master_power_evaluator.gd")
 const RuneDefs = preload("res://data/runes.gd")
 const EnemyPhaseEquipment = preload("res://data/enemy_phase_equipment.gd")
 const UnitStatsTable = preload("res://resources/unit_stats_table.gd")
@@ -394,7 +395,9 @@ func _refresh_header(card: CardResource) -> void:
 		RankDisplayUi.clear_host(rank_badge_host)
 		rank_badge_host.visible = false
 	if name_label:
-		name_label.text = card.display_name if not card.display_name.is_empty() else DefaultCards.get_safe_display_name(card.card_id)
+		# v7.x：同名卡追加序号后缀（#1/#2…），区分同名实例
+		var _hdr_name: String = card.display_name if not card.display_name.is_empty() else DefaultCards.get_safe_display_name(card.card_id)
+		name_label.text = _hdr_name + DefaultCards.seq_suffix(card)
 	# v6.4: 头部星级（★N，金色），仅战斗卡/能量卡显示
 	if star_label:
 		var star_val: int = int(card.enhance_level) if "enhance_level" in card else 0
@@ -784,8 +787,11 @@ func _format_mod_effects_brief(mod_data: Dictionary) -> PackedStringArray:
 	return lines
 
 ## v6.11: 改造效果键翻译（情报面板用，与 modification_panel 的 _translate_effect_key 保持一致但更简短）
+## v7.x: 补齐至全 70 effect key 全覆盖（原仅 29 条，44 个 key 裸露显示英文）。
+##        key 集合与 modification_panel._translate_effect_key 对齐，文案用情报面板简短风格。
 func _translate_mod_key(key: String) -> String:
 	match key:
+		# ── 主属性 ──
 		"attack_light": return "轻攻"
 		"attack_armor": return "重攻"
 		"attack_air": return "防空"
@@ -795,26 +801,83 @@ func _translate_mod_key(key: String) -> String:
 		"defense_air": return "空防"
 		"max_hp": return "生命"
 		"move_speed": return "部署"
+		"deploy_speed": return "部署"
+		"deploy_delay_bonus": return "部署"
 		"attack_range": return "射程"
 		"attack_interval": return "攻速"
+		# ── 暴击/闪避/穿透 ──
 		"crit_chance": return "暴击"
+		"crit_resist": return "暴抗"
 		"crit_damage_bonus": return "暴伤"
 		"dodge_chance": return "闪避"
 		"armor_penetration": return "穿甲"
 		"armor_pen_vs_light": return "穿甲(轻)"
 		"armor_pen_vs_armor": return "穿甲(重)"
 		"armor_pen_vs_air": return "穿甲(空)"
+		# ── 生存/吸血/护盾 ──
 		"damage_reduction": return "减伤"
 		"lifesteal": return "吸血"
 		"hp_regen": return "回血"
 		"shield_on_kill": return "护盾"
 		"splash_damage": return "溅射"
 		"splash_radius": return "溅射范围"
+		"single_target_penalty": return "主目标"
+		"chain_chance": return "连锁"
+		# ── 命中/还击/持续射击 ──
 		"accuracy_bonus": return "命中"
+		"accuracy_penalty": return "命中惩罚"
+		"counter_bonus": return "还击"
+		"sustained_fire": return "持续射击"
+		# ── 视野/射程/侦测 ──
+		"vision": return "视野"
+		"vision_bonus": return "视野加成"
+		"combat_range": return "作战半径"
+		"detection_range": return "侦测范围"
+		"detection_reduce": return "隐蔽"
+		"stealth_detect": return "隐身侦测"
+		"intel_speed": return "情报速度"
+		# ── 夜视/烟雾/热防护/三防 ──
 		"night_bonus": return "夜战"
+		"smoke_ignore": return "烟雾无视"
+		"thermal_immunity": return "热成像"
+		"heat_resist": return "HEAT抗性"
+		"heat_immunity_once": return "HEAT首免"
 		"mine_immunity": return "避雷"
+		"mine_damage_reduction": return "地雷减伤"
+		"nbq_immunity": return "三防"
+		# ── 反装甲/近战/拦截 ──
+		"enemy_armor_slow": return "敌甲减速"
+		"approach_damage": return "近距伤害"
+		"urban_attack_bonus": return "巷战攻击"
+		"urban_move_bonus": return "巷战机动"
 		"missile_intercept": return "拦截"
 		"missile_dodge": return "反导"
+		# ── 弹药/持续作战/移动射击 ──
+		"ammo_capacity": return "弹药容量"
+		"sustained_combat": return "持续作战"
+		"infinite_ammo": return "无限弹药"
+		"mobile_fire": return "行进射击"
+		# ── 隐蔽/反锁定 ──
+		"lock_reduction": return "锁定降低"
+		"fire_exposure": return "开火暴露"
+		"aggro_reduce": return "仇恨降低"
+		"close_accuracy": return "近距精度"
+		"enemy_confusion": return "敌方混乱"
+		# ── 指挥/阵型/盟友协同 ──
+		"command_efficiency": return "指挥效率"
+		"formation_bonus": return "阵型"
+		"ally_bonus": return "盟友加成"
+		"ally_hit_bonus": return "盟友命中"
+		"ally_ammo": return "盟友弹药"
+		"ally_hp_regen": return "盟友回血"
+		"ally_fort_regen": return "堡垒回血"
+		"ally_detection": return "盟友侦测"
+		"ally_river_bonus": return "盟友涉渡"
+		"ally_arty_bonus": return "盟友炮火"
+		"ifak_heal": return "急救包"
+		# ── 武器型号 ──
+		"weapon_type": return "武器型号"
+		"legacy_weapon_type": return "武器型号"
 		_: return key
 
 ## ── 战场单位显示刷新 ─────────────────────────────────────────
@@ -1145,10 +1208,12 @@ func _show_enemy_phase_driver(unit: Node) -> void:
 			var disp: String = str(cfg.get("name", mname))
 			if disp != mname and not disp.is_empty():
 				lines.append("档案名：%s" % disp)
-			# v6.14: 显示等级
-			var mlvl: int = int(cfg.get("level", 0))
+			# v7.x: 显示派生等级（由总战力派生）+ 总战力/星级
+			var mlvl: int = EnemyPhaseMasters.compute_display_level(cfg)
 			if mlvl > 0:
 				lines.append("等级：Lv.%d" % mlvl)
+			var _er: Dictionary = MasterPowerEvaluator.evaluate(cfg)
+			lines.append("总战力：%d · %s" % [int(_er.get("total_score", 0)), MasterPowerEvaluator.get_stars_display(cfg)])
 			var fac: String = str(cfg.get("faction", ""))
 			if not fac.is_empty():
 				lines.append("所属势力：%s" % fac)
@@ -1255,13 +1320,49 @@ func _show_enemy_construct_unit(unit: Node) -> void:
 
 ## ── 我方单位 ──
 
+## v7.x：从战场单位反查带养成的实例卡（强化/改造数据所在）。
+## 回退链：① unit 的 source_instance_id meta → InstanceRegistry.get_instance（精确）
+##       ② 裸 card_id → get_instances_by_card_id 取首个实例（旧单位无 instance_id meta 时）
+##       ③ 全失败 → DefaultCards 模板（无养成，仅显示基础信息，不会是常态）
+## 非实例卡/旧存档单位 instance_id 为空 → 直接走 ②/③，行为与改动前一致。
+func _resolve_source_instance_card(unit: Node) -> CardResource:
+	if unit == null or not is_instance_valid(unit):
+		return null
+	var platform_card_id: String = ""
+	if "stats" in unit and unit.stats != null:
+		platform_card_id = String(unit.stats.platform_card_id)
+	var inst_id: String = String(unit.get_meta("source_instance_id", ""))
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	# ① instance_id 精确取
+	if ir != null and ir.has_method("get_instance") and not inst_id.is_empty():
+		var inst: CardResource = ir.get_instance(inst_id)
+		if inst != null:
+			return inst
+	# ② 裸 card_id → 该 card_id 的首个实例
+	if ir != null and ir.has_method("get_instances_by_card_id") and not platform_card_id.is_empty():
+		var insts: Array = ir.get_instances_by_card_id(platform_card_id)
+		if not insts.is_empty() and ir.has_method("get_instance"):
+			var fb: CardResource = ir.get_instance(String(insts[0]))
+			if fb != null:
+				return fb
+	# ③ 兜底：共享模板（无养成）
+	if not platform_card_id.is_empty():
+		return DefaultCards.get_card_by_id(platform_card_id)
+	return null
+
 func _show_player_unit(unit: Node) -> void:
 	var stats: UnitStats = unit.stats
-	var card_res: CardResource = DefaultCards.get_card_by_id(stats.platform_card_id)
+	# v7.x：优先取带养成的实例卡（强化/改造数据在实例对象上，模板卡为空），
+	# 让 nurture_label 能显示"强化 ★N / 改造 N/9 / 已装改造列表"。stats（HP/攻防）已含养成不变。
+	var card_res: CardResource = _resolve_source_instance_card(unit)
+	if card_res == null:
+		card_res = DefaultCards.get_card_by_id(stats.platform_card_id)
 	var safe_name := DefaultCards.get_safe_display_name(stats.platform_card_id)
 	var dn := DefaultCards.safe_name(card_res)
 	if name_label:
-		name_label.text = dn if not dn.is_empty() else (safe_name if not safe_name.is_empty() else "我方单位")
+		# v7.x：同名卡追加序号后缀（#1/#2…），用实例卡 card_res 提取 instance_id
+		var _unit_name: String = dn if not dn.is_empty() else (safe_name if not safe_name.is_empty() else "我方单位")
+		name_label.text = _unit_name + DefaultCards.seq_suffix(card_res)
 	var platform_name := dn if not dn.is_empty() else (safe_name if not safe_name.is_empty() else DefaultCards.get_platform_display_name(stats.platform_type))
 	# v6.5: 优先用 card.weapon_names[] 显示具体武器型号
 	var weapon_label_text: String = _build_weapon_label_text(card_res, stats)
@@ -1273,6 +1374,10 @@ func _show_player_unit(unit: Node) -> void:
 		affix_label.text = _build_affix_summary_lines(stats)
 	if _star_detail_label:
 		_star_detail_label.text = _build_star_enhancement_effects_for_stats(stats)
+	# v7.x：显示养成（强化等级/战力/改造列表）——复用卡牌模式同款 _build_nurture_text，
+	# 读实例卡的 enhance_level/mods/get_current_power()。此前战场单位此区块恒为空。
+	if nurture_label:
+		nurture_label.text = _build_nurture_text(card_res) if card_res != null else ""
 	if law_label:
 		law_label.text = _build_phase_law_effects_for_unit(unit, true)
 	if desc_label:
@@ -1302,6 +1407,7 @@ func _show_enemy_phase_master_unit(unit: Node, master_name: String) -> void:
 	var master_title: String = ""
 	var master_level: int = 0
 	var master_faction: String = ""
+	var master_power_text: String = ""   # v7.x: 总战力 · 星级 显示文本
 	var trait_lines: Array[String] = []
 	if GameManager and GameManager.has_method("get_current_phase_master"):
 		master_cfg = GameManager.get_current_phase_master()
@@ -1311,8 +1417,12 @@ func _show_enemy_phase_master_unit(unit: Node, master_name: String) -> void:
 	if not master_cfg.is_empty():
 		master_disp_name = str(master_cfg.get("name", ""))
 		master_title = str(master_cfg.get("title", ""))
-		master_level = int(master_cfg.get("level", 0))
+		# v7.x: 等级改用派生值（由总战力派生）
+		master_level = EnemyPhaseMasters.compute_display_level(master_cfg)
 		master_faction = str(master_cfg.get("faction", ""))
+		# v7.x: 计算总战力/星级显示
+		var _er_m: Dictionary = MasterPowerEvaluator.evaluate(master_cfg)
+		master_power_text = "总战力：%d · %s" % [int(_er_m.get("total_score", 0)), MasterPowerEvaluator.get_stars_display(master_cfg)]
 		var traits: Array = master_cfg.get("traits", []) as Array
 		for t in traits:
 			if t is Dictionary:
@@ -1357,6 +1467,8 @@ func _show_enemy_phase_master_unit(unit: Node, master_name: String) -> void:
 	if summary_label:
 		summary_label.text = _format_enemy_combat_summary(unit, scombat)
 	var base_desc := "敌方相位师单位，拥有强大的战斗力。"
+	if not master_power_text.is_empty():
+		base_desc += "\n" + master_power_text
 	if not trait_lines.is_empty():
 		base_desc += "\n\n【相位师特性】\n" + "\n".join(trait_lines)
 	# v6.14: 补全相位仪名 + 符文显示（与基地分支信息一致）

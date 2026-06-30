@@ -316,7 +316,8 @@ func _open_overlay(overlay: Control, panel_key: String = "") -> void:
 		print("[Main] _open_overlay: overlay is null for key=", panel_key)
 		return
 	_ensure_lazy_panel(panel_key)
-	print("[Main] _open_overlay: showing overlay for key=", panel_key)
+	if DEBUG_MAIN_LOG:
+		print("[Main] _open_overlay: showing overlay for key=", panel_key)
 	# 先显示，再fade in
 	overlay.visible = true
 	# 防止子级曾被误 hide（例如旧版设置关闭只藏了 CenterContainer）
@@ -345,7 +346,8 @@ func _open_overlay(overlay: Control, panel_key: String = "") -> void:
 		if gp == null:
 			gp = overlay.find_child("GrowthPanel", true, false)
 		if gp and gp.has_method("show_panel"):
-			print("[Main] Calling GrowthPanel.show_panel")
+			if DEBUG_MAIN_LOG:
+				print("[Main] Calling GrowthPanel.show_panel")
 			gp.show_panel(null)
 	elif panel_key == "afk":
 		# AFKPanel 在 _ready 中将自身 visible 置 false（依赖 _open() 控制），
@@ -617,7 +619,8 @@ func _on_store_pressed() -> void:
 
 func _on_progression_pressed() -> void:
 	_play_sfx("button")
-	print("[Main] _on_progression_pressed called, growth_overlay=", growth_overlay)
+	if DEBUG_MAIN_LOG:
+		print("[Main] _on_progression_pressed called, growth_overlay=", growth_overlay)
 	_toggle_overlay(growth_overlay, "growth")
 
 func _ensure_card_enhancement_panel() -> void:

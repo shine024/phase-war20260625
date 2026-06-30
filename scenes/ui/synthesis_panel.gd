@@ -206,6 +206,14 @@ func _refresh_card_list() -> void:
 	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
 	var candidates: Array = []  # [{card_id, name, faction, base_id}]
 	# 收集玩家拥有的卡
+	# v7.x 修复（卡片重复）：背包存 instance_id（cold_t72#1），蓝图存裸 card_id（cold_t72），
+	# 按完整字符串作 dict key 会视为两条。归一化到 base card_id 后合并。
+	var _ir: Node = get_node_or_null("/root/InstanceRegistry")
+	var _norm := func(raw_id: String) -> String:
+		if _ir != null and _ir.has_method("get_card_id_of"):
+			return _ir.get_card_id_of(raw_id)
+		var hi: int = raw_id.rfind("#")
+		return raw_id.substr(0, hi) if hi >= 0 else raw_id
 	var card_ids: Dictionary = {}
 	if BlueprintManager and BlueprintManager.has_method("get_all_blueprint_ids"):
 		for id_raw in BlueprintManager.get_all_blueprint_ids():
@@ -215,7 +223,7 @@ func _refresh_card_list() -> void:
 		for idv in sm.get_pending_backpack_ids():
 			var sid := String(idv)
 			if not sid.is_empty():
-				card_ids[sid] = true
+				card_ids[String(_norm.call(sid))] = true
 
 	for card_id in card_ids:
 		var card: CardResource = DefaultCards.get_card_by_id(card_id)

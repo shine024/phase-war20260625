@@ -53,7 +53,15 @@ signal task_completed(task: Dictionary)
 signal all_tasks_completed()
 
 func _ready() -> void:
-	_check_refresh_needed()
+	# v7.x 修复 W5：原 _ready 立即调 _check_refresh_needed，此时 load_state 尚未执行，
+	# _last_refresh_time 还是初始值 0 → now-0>=86400 恒真 → 每次冷启动强制刷新，已接任务进度丢失。
+	# 改为等待存档加载（deferred manager 在主场景 ready 后批量加载）。用标志位避免与 load_state 重复刷新。
+	await get_tree().create_timer(2.0).timeout
+	if not _load_triggered:
+		# 存档加载未触发（新存档/首次启动）→ 此时检查刷新（last_refresh 仍为0→会刷新，符合新存档应有任务）
+		_check_refresh_needed()
+
+var _load_triggered: bool = false
 
 ## 检查是否需要刷新任务
 func _check_refresh_needed() -> void:
@@ -367,6 +375,7 @@ func save_state() -> Dictionary:
 
 ## 加载状态（给SaveManager用）
 func load_state(data: Dictionary) -> void:
+	_load_triggered = true  # v7.x W5: 标记已加载，阻止 _ready 的延迟检查重复刷新
 	_daily_tasks = data.get("tasks", [])
 	_last_refresh_time = data.get("last_refresh", 0)
 	# 检查是否需要刷新

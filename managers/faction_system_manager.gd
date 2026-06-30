@@ -278,7 +278,15 @@ func _grant_exclusive_cards_on_level_up(faction_id: String, new_level: int) -> v
 				DefaultCards.register_dynamic_card(card)
 			# 发放到玩家背包
 			if sm and sm.has_method("enqueue_backpack_card_id"):
-				sm.enqueue_backpack_card_id(card_id)
+				# v7.x 修复（Bug1）：势力专属卡必须实例化后用 instance_id 入队（对齐 synthesis_manager.gd:113）。
+				# 原版传裸 card_id，导致该卡在 InstanceRegistry 不存在，背包显示/强化/装配全部走重建兜底路径。
+				var ir: Node = get_node_or_null("/root/InstanceRegistry")
+				var enqueue_id: String = card_id
+				if ir != null and ir.has_method("create_instance_from_template") and card != null:
+					var inst: CardResource = ir.create_instance_from_template(card)
+					if inst != null and not inst.instance_id.is_empty():
+						enqueue_id = inst.instance_id
+				sm.enqueue_backpack_card_id(enqueue_id)
 			exclusive_cards_granted.append(card_id)
 			granted_any = true
 	if granted_any and sm and sm.has_method("save_game"):

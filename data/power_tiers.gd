@@ -52,8 +52,12 @@ const MOD_DROP_TIER: Dictionary = {
 
 ## 连续战力分值 → 档位 阈值（上界，与 evolution_helpers.estimate_power_score_meta_only 量级对齐）
 ## 分值公式参考：(80 + enhance_level×28 + mod_count×22) × rarity_mul × (1 + inherit_bonus)
-## GRUNT < 150 < VETERAN < 300 < ELITE < 600 < CHAMPION < 1000 < OVERLORD
-const POWER_THRESHOLDS: Array = [150, 300, 600, 1000]
+## v7.x 校准(H4): 原阈值 [150,300,600,1000] 过严——满强化(enhance10)+4mod 的普通卡≈464，
+## 稀有卡≈502，仍够不到 ELITE(600)，导致 rare/epic/legendary 改造几乎装不上，
+## 与"不同战力装不同改造"（鼓励养成而非封死）的设计意图相悖。
+## 新阈值让常规养成曲线能逐级解锁：满强化普通卡够 VETERAN、稀有卡满强化够 ELITE、
+## 稀有+继承/多mod 的精养卡够 CHAMPION/OVERLORD。
+const POWER_THRESHOLDS: Array = [150, 260, 420, 720]
 
 
 ## 按现有 rank（normal/elite/boss）映射到档位。未知值回退 GRUNT。
@@ -80,6 +84,24 @@ static func get_tier_by_power(power_score: float) -> int:
 		if ps < POWER_THRESHOLDS[i]:
 			return i
 	return POWER_THRESHOLDS.size()  # 超过最高阈值 → OVERLORD
+
+
+## v7.x: 按相位师星级（MasterPowerEvaluator 1-7★）映射到档位。
+## 用于 game_manager 相位师击败后的改造蓝图掉落梯度（替代原 level*40 的 ad-hoc 换算）。
+## 映射：1★→GRUNT, 2★→VETERAN, 3★→ELITE, 4★/5★→CHAMPION, 6★/7★→OVERLORD。
+## 越界值 clamp 到 [1, 7]。
+static func get_tier_by_stars(stars: int) -> int:
+	match clampi(stars, 1, 7):
+		1:
+			return Tier.GRUNT
+		2:
+			return Tier.VETERAN
+		3:
+			return Tier.ELITE
+		4, 5:
+			return Tier.CHAMPION
+		_:
+			return Tier.OVERLORD   # 6, 7
 
 
 ## 档位中文名。

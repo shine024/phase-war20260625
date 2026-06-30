@@ -123,6 +123,8 @@ func _format_card_slot_tooltip(color: String, card: CardResource) -> String:
 	if card == null:
 		return ""
 	var display_name: String = "能量卡" if card.card_type == GC.CardType.ENERGY else DefaultCardsData.get_safe_display_name(card.card_id)
+	# v7.x：同名卡追加序号后缀（#1/#2…）
+	display_name += DefaultCardsData.seq_suffix(card)
 	var cost_text: String = "%d⚡" % int(card.energy_cost)
 	var detail_lines: Array[String] = []
 	detail_lines.append("%s 槽：%s" % [_slot_name(color), display_name])
@@ -198,10 +200,16 @@ func _update_slot_panel(panel: Control, entry: Dictionary) -> void:
 	var card: Variant = entry.get("card", null)
 	# 仅当确为 CardResource 时才视为有效卡（rune 槽的 String 不应走卡牌渲染分支）
 	var has_card: bool = card != null and card is CardResource
+	# v7.x：非战斗卡（法则/符文/空槽）清除费用角标，避免旧角标残留
+	if not has_card:
+		CardFrameUi.clear_cost_corner_badge(panel)
 	var law_id: String = String(entry.get("law_id", ""))
 	var law_kind: String = String(entry.get("law_kind", ""))
 	panel.set_meta("slot_color", color)
 	panel.set_meta("card_id", card.card_id if has_card else "")
+	# v7.x 修复（情报面板看不到强化/改造）：额外存 instance_id，显示路径用它精确实例取回（带养成数据）。
+	# card_id meta 不变（部署指示器 L109/L247 比对 _deployed_card_ids 仍用裸 card_id）。
+	panel.set_meta("instance_id", card.instance_id if (has_card and card.instance_id != null and not card.instance_id.is_empty()) else "")
 	panel.set_meta("card_type", int(card.card_type) if has_card else -1)
 	panel.set_meta("law_id", law_id)
 	panel.set_meta("law_kind", law_kind)
@@ -209,7 +217,9 @@ func _update_slot_panel(panel: Control, entry: Dictionary) -> void:
 	# v7.3 修复+性能：每个槽位 panel 用独立的 StyleBoxFlat override，而非改共享 theme stylebox。
 	# 原实现 get_theme_stylebox("panel") 返回 theme 共享实例，直接改 bg_color/border_color 会污染所有
 	# 同主题节点（视觉 bug）+ 无谓触发全局重绘。改为每 panel 缓存独立 stylebox（首次创建，之后复用改色）。
-	var sb: StyleBoxFlat = panel.get_meta("own_stylebox", null)
+	var sb: StyleBoxFlat = null
+	if panel.has_meta("own_stylebox"):
+		sb = panel.get_meta("own_stylebox") as StyleBoxFlat
 	if sb == null or not is_instance_valid(sb):
 		sb = StyleBoxFlat.new()
 		# 复制基础样式（边框宽度等）
@@ -251,6 +261,14 @@ func _update_slot_panel(panel: Control, entry: Dictionary) -> void:
 	if has_card:
 		_apply_slot_card_labels(panel, card)
 		panel.tooltip_text = _format_card_slot_tooltip(color, card)
+		# v7.x 修复：has_card 分支必须 return，否则会继续执行到 L314 的
+		# _apply_slot_bottom_text(panel, "空", "") 把刚设好的卡名覆盖成"空"
+		# （费用角标独立设置不受影响，导致"名字空+费用有"的诡异现象）
+		_sync_slot_icon(panel, card, law_id)
+		_sync_slot_rank_badge(panel, card)
+		_sync_slot_card_background(panel, card)
+		_sync_slot_card_frame(panel, card)
+		return
 	elif not law_id.is_empty():
 		var PhaseLaws_local = PhaseLaws
 		var cfg: Dictionary = PhaseLaws_local.get_by_id(law_id) if PhaseLaws_local else {}
@@ -336,7 +354,7 @@ func _sync_slot_rank_badge(panel: Control, card: CardResource) -> void:
 		if old != null:
 			old.queue_free()
 		return
-	RankDisplayUi.attach_corner_badge(panel, RankDisplayUi.resolve_from_card_resource(card), 13)
+	RankDisplayUi.attach_corner_badge(panel, RankDisplayUi.resolve_from_card_resource(card), 13, true)
 
 
 func _slot_name_label(panel: Control) -> Label:
@@ -368,7 +386,13 @@ func _apply_slot_card_labels(panel: Control, card: CardResource) -> void:
 		display_name = DefaultCardsData.get_safe_display_name(card.card_id)
 	if display_name.length() > 6:
 		display_name = display_name.substr(0, 6)
-	_apply_slot_bottom_text(panel, display_name, "%d⚡" % int(card.energy_cost))
+	# v7.x：同名卡追加序号后缀（#1/#2…），截断后追加
+	display_name += DefaultCardsData.seq_suffix(card)
+	# v7.x：费用从底部文本移到左上角角标气泡（CostCornerBadge）
+	_apply_slot_bottom_text(panel, display_name, "")
+	var cost_badge = CardFrameUi.ensure_cost_corner_badge(panel)
+	if cost_badge != null:
+		cost_badge.text = "%d⚡" % int(card.energy_cost)
 
 
 func _sync_slot_card_frame(panel: Control, card: CardResource) -> void:
@@ -501,6 +525,8 @@ func _build_slot_panel(entry: Dictionary) -> PanelContainer:
 		return panel
 	if has_card:
 		panel.set_meta("card_id", card.card_id)
+		# v7.x 修复：同步存 instance_id（与 _update_slot_panel L207 一致），显示路径用它精确实例取回
+		panel.set_meta("instance_id", card.instance_id if (card.instance_id != null and not card.instance_id.is_empty()) else "")
 		panel.set_meta("card_type", int(card.card_type))
 		panel.set_meta("law_id", "")
 		panel.set_meta("law_kind", "")
@@ -589,10 +615,24 @@ func _build_slot_panel(entry: Dictionary) -> PanelContainer:
 	panel.gui_input.connect(_on_slot_gui_input.bind(panel))
 	return panel
 
-func _show_instrument_slot_card_detail(card_id: String, source_panel: Control) -> bool:
+func _show_instrument_slot_card_detail(card_id: String, instance_id: String, source_panel: Control) -> bool:
 	if card_id.is_empty():
 		return false
-	var card: CardResource = DefaultCardsData.get_card_by_id(card_id)
+	# v7.x 修复（情报面板看不到强化/改造）：优先用 instance_id 从 InstanceRegistry 取实例对象（带 enhance_level/mods 养成数据）。
+	# 根因：原版直接 DefaultCardsData.get_card_by_id(card_id) 取共享模板，模板 enhance_level=0/mods=[]，
+	# 导致战斗中点开装配卡显示"未强化/无改造"。
+	var card: CardResource = null
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	if ir != null and ir.has_method("get_instance") and not instance_id.is_empty():
+		card = ir.get_instance(instance_id)
+	# instance_id 取不到（旧面板 meta 无 instance_id / 实例被释放）：回退取该 card_id 的首个实例
+	if card == null and ir != null and ir.has_method("get_instances_by_card_id"):
+		var _insts: Array = ir.get_instances_by_card_id(card_id)
+		if not _insts.is_empty():
+			card = ir.get_instance(String(_insts[0]))
+	# 最终回退：模板（无养成，仅用于显示卡牌基础信息，不会是常态）
+	if card == null:
+		card = DefaultCardsData.get_card_by_id(card_id)
 	if card == null and PhaseInstrumentManager and PhaseInstrumentManager.has_method("get_card_by_id"):
 		card = PhaseInstrumentManager.get_card_by_id(card_id)
 	if card == null:
@@ -619,6 +659,8 @@ func _on_slot_gui_input(ev: InputEvent, panel: Control) -> void:
 	var m_color: String = String(panel.get_meta("slot_color", ""))
 	var m_index: int = int(panel.get_meta("slot_index", -1))
 	var m_card_id: String = String(panel.get_meta("card_id", ""))
+	# v7.x 修复：读取 instance_id（显示路径用它精确实例取回带养成的实例）
+	var m_instance_id: String = String(panel.get_meta("instance_id", ""))
 	var m_law_id: String = String(panel.get_meta("law_id", ""))
 	var m_law_kind: String = String(panel.get_meta("law_kind", ""))
 	var m_card_type: int = int(panel.get_meta("card_type", -1))
@@ -635,10 +677,14 @@ func _on_slot_gui_input(ev: InputEvent, panel: Control) -> void:
 			if can_deploy and SignalBus:
 				BattleInputState.pending_cast_law_id = ""
 				BattleInputState.pending_cast_law_origin_global = Vector2.ZERO
-				BattleInputState.pending_deploy_platform_card_id = m_card_id
+				# v7.x 修复（同名卡部署属性相同）：优先传 instance_id（cold_t72#1），让
+				# get_loadout_by_platform_card_id 精确匹配到点击的那张实例（含其独立强化/改造）。
+				# 原传裸 card_id（cold_t72），同名卡都命中"回退取首个匹配"，导致两张同名卡
+				# 部署的是同一个实例 → 战场上强化/改造相同。无 instance_id 时回退 card_id（兼容旧卡）。
+				BattleInputState.pending_deploy_platform_card_id = m_instance_id if not m_instance_id.is_empty() else m_card_id
 				BattleInputState.pending_deploy_origin_global = panel.get_global_rect().get_center()
 				return
-			if _show_instrument_slot_card_detail(m_card_id, panel):
+			if _show_instrument_slot_card_detail(m_card_id, m_instance_id, panel):
 				return
 		if (m_color == "red" or m_color == "blue") and not m_law_id.is_empty():
 			if m_law_kind == "active":
@@ -781,12 +827,9 @@ func _update_instrument_tooltip(cfg: Dictionary) -> void:
 		target.tooltip_text = ""
 		return
 	var lines: Array[String] = []
-	# 能量属性
-	var output_rate: float = float(cfg.get("energy_output_rate", 1.0))
+	# 能量属性（v7.x: 移除 energy_output_rate，仅保留能量恢复）
 	var recovery_rate: float = float(cfg.get("energy_recovery_rate", 0.3))
-	var output_ps: float = output_rate * 5.0
 	var recovery_ps: float = recovery_rate * 3.0
-	lines.append("能量输出: %.1f/秒" % output_ps)
 	lines.append("能量恢复: %.1f/秒" % recovery_ps)
 	# 部署范围
 	var spawn_ratio: float = float(cfg.get("spawn_range_ratio", 0.3))
@@ -951,41 +994,25 @@ func _build_rune_bonus_summary() -> String:
 		result += " ×%d语" % runeword_count
 	return result
 
-## v7.1: 计算并返回能量预览信息字符串
-## 显示：能量上限(含能量卡贡献) | 初始能量 | 净回复/秒 | 相位仪回复值
-## 注意：战前独立遍历槽位计算，与 EnergyManager._apply_equipped_energy_cards 保持公式一致
+## v7.x: 计算并返回能量预览信息字符串
+## 显示：能量上限(相位仪星级) | 初始能量(=上限) | 净回复/秒 | 相位仪回复值
+## 注意：与 EnergyManager._apply_instrument_energy 保持公式一致
 func _build_energy_preview_line() -> String:
-	if PhaseInstrumentManager == null or not PhaseInstrumentManager.has_method("get_slots"):
+	if PhaseInstrumentManager == null or not PhaseInstrumentManager.has_method("get_current_instrument"):
 		return ""
-	var total_star: int = 0
-	var base_start: float = 0.0
-	var slot_count: int = 0
-	for c_raw in PhaseInstrumentManager.get_slots():
-		if c_raw is CardResource:
-			slot_count += 1
-			var card: CardResource = c_raw
-			if card.card_type != GC.CardType.ENERGY:
-				continue
-			total_star += EnergyManager.parse_energy_card_star(card.card_id)
-			if card.card_id.begins_with("energy_start_"):
-				base_start += maxf(0.0, card.energy_grant)
-	# 能量上限 = 基础100 + 能量卡等级×100
-	var energy_max: float = GC.ENERGY_MAX
-	if total_star > 0:
-		energy_max = GC.ENERGY_MAX + float(total_star) * 100.0
-	# 初始能量（无能量卡时回落到默认起步值）
-	var energy_start: float = base_start if base_start > 0.0 else GC.ENERGY_START
+	# 能量上限 = 基础100 + 相位仪star×200（与 EnergyManager.ENERGY_CAP_PER_STAR 一致）
+	var ins: Dictionary = PhaseInstrumentManager.get_current_instrument()
+	var pi_star: int = clampi(int(ins.get("star", 1)), 1, 7)
+	var energy_max: float = GC.ENERGY_MAX + float(pi_star) * 200.0
+	# 初始能量 = 能量上限（满能量开局）
+	var energy_start: float = energy_max
 	# 相位仪回复值
 	var pi_regen: float = 0.0
 	if PhaseInstrumentManager.has_method("get_energy_recovery_rate"):
 		pi_regen = PhaseInstrumentManager.get_energy_recovery_rate()
-	# 4槽全装回复×5（与 EnergyManager 后端一致）
-	var pi_regen_display: float = pi_regen
-	if slot_count >= 4:
-		pi_regen_display *= 5.0
 	# 净回复 = 基础1.0 + 相位仪回复 − 消耗0.5
-	var net_regen: float = GC.ENERGY_REGEN_PER_SEC + pi_regen_display - GC.PHASE_BASE_DRAIN_PER_SEC
-	return " | ⚡上限%d 初始%d 回复%.1f/s(相位%.1f)" % [int(energy_max), int(energy_start), net_regen, pi_regen_display]
+	var net_regen: float = GC.ENERGY_REGEN_PER_SEC + pi_regen - GC.PHASE_BASE_DRAIN_PER_SEC
+	return " | ⚡上限%d 初始%d 回复%.1f/s(相位%.1f)" % [int(energy_max), int(energy_start), net_regen, pi_regen]
 
 func _collect_cfg_property_lines(cfg: Dictionary) -> Array[String]:
 	var out: Array[String] = []
@@ -1004,12 +1031,10 @@ func _collect_cfg_property_lines(cfg: Dictionary) -> Array[String]:
 	var dmg: float = float(cfg.get("card_damage_bonus", 0.0))
 	var def: float = float(cfg.get("defense_bonus", 0.0))
 	var xp_b: float = float(cfg.get("xp_bonus", 0.0))
-	var drop_b: float = float(cfg.get("drop_bonus", 0.0))
 	var ecr: int = int(cfg.get("energy_cost_reduction", 0))
 	if dmg > 0.0: out.append("卡伤 +%.0f%%" % (dmg * 100.0))
 	if def > 0.0: out.append("防御 +%.0f%%" % (def * 100.0))
 	if xp_b > 0.0: out.append("相位场经验 +%.0f%%" % (xp_b * 100.0))
-	if drop_b > 0.0: out.append("掉落 +%.0f%%" % (drop_b * 100.0))
 	if ecr > 0: out.append("能耗 -%d" % ecr)
 	return out
 

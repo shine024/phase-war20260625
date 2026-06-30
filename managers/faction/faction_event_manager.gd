@@ -205,7 +205,7 @@ func get_event_history() -> Array:
 func save_state() -> Dictionary:
 	return {
 		"battle_count_since_last": battle_count_since_last,
-		"loyalty": loyalty.duplicate(),
+		"loyalty": loyalty.duplicate(true),
 		"event_history": event_history.duplicate(true),
 		"active_bonus_events": active_bonus_events.duplicate(true),
 	}
@@ -214,11 +214,13 @@ func save_state() -> Dictionary:
 func load_state(data: Dictionary) -> void:
 	battle_count_since_last = int(data.get("battle_count_since_last", 0))
 	if data.has("loyalty") and data["loyalty"] is Dictionary:
-		loyalty = data["loyalty"].duplicate()
+		# v7.x 修复: 与 save_state 对齐用深拷贝，防止读档后多个键共享内部引用互相污染
+		loyalty = data["loyalty"].duplicate(true)
 	else:
 		_init_loyalty()
 	if data.has("event_history") and data["event_history"] is Array:
-		event_history = data["event_history"].duplicate()
+		# v7.x 修复: event_history 元素是字典，浅拷贝会共享内部引用，改深拷贝对齐 save_state
+		event_history = data["event_history"].duplicate(true)
 	else:
 		event_history = []
 	if data.has("active_bonus_events") and data["active_bonus_events"] is Dictionary:

@@ -95,7 +95,7 @@ const TUTORIALS: Dictionary = {
 				"highlight": "cost_label"
 			},
 			{
-				"text": "等级达到10后可以进行突破，提升稀有度！",
+				"text": "强化等级越高，单位在战斗中越强（满级 Lv.10）。后续可通过进化系统升阶形态！",
 				"position": "center",
 				"highlight": null
 			}
