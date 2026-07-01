@@ -418,6 +418,10 @@ func _add_law_card(law_id: String, count: int) -> void:
 
 ## v6.14: 改造蓝图掉落 → 写入 IntelItemBag（与 intel_discovery_manager 路径一致）
 ## item_id 为 blueprint_<mod_id> 形式，count 为数量（蓝图永久持有，多次获得无害）
+## ⚠️ v7.x 审计澄清：本 claim 分支为预留扩展位，drop_tables.generate_drops 当前【不产出】
+##    DropType.MOD_BLUEPRINT；改造蓝图实际走 intel_discovery_manager._roll_intel_item_drops
+##    和 game_manager 相位师掉落两条独立路径（直接调 IntelItemBag.add_item）。保留分支以兼容
+##    存档 load_state 或未来接入统一 DropManager 流。详见 v7.x 掉落链路审查报告。
 func _add_mod_blueprint(item_id: String, count: int) -> void:
 	var bag: Node = get_node_or_null("/root/IntelItemBag")
 	if bag == null or not bag.has_method("add_item"):

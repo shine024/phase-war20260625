@@ -558,7 +558,7 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 
 		var name_label = details_panel.get_node_or_null("DetailVBox/NameLabel")
 		if name_label:
-			var rarity_names := {"common": "普通", "uncommon": "精良", "rare": "稀有", "epic": "史诗", "legendary": "传说"}
+			var rarity_names := {"common": "普通", "uncommon": "优秀", "rare": "稀有", "epic": "史诗", "legendary": "传说"}
 			var mod_rarity: String = String(mod_data.get("rarity", "common"))
 			name_label.text = "%s [%s]" % [mod_data.get("name", ""), rarity_names.get(mod_rarity, mod_rarity)]
 

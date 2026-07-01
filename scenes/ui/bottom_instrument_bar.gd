@@ -25,7 +25,7 @@ signal law_slot_clicked(law_id: String, kind: String, origin_global: Vector2)
 
 var _slot_panels: Array = []
 var _deployed_card_ids: Array = []
-const SLOT_FIXED_SIZE := Vector2(68, 64)
+const SLOT_FIXED_SIZE := Vector2(90, 64)
 const BAR_FIXED_HEIGHT := SLOT_FIXED_SIZE.y
 ## 槽底双行文字区高度（名称 + 费用），卡图只占上方区域避免遮挡
 const _SLOT_BOTTOM_TEXT_H := 30
@@ -342,7 +342,8 @@ func _update_name_section_width() -> void:
 	var viewport_width: float = get_viewport_rect().size.x
 	if viewport_width <= 1.0:
 		return
-	name_section.custom_minimum_size.x = floor(viewport_width * 0.25)
+	# 信息区（图标+名称+情报）占屏宽 3/13；NameSection 需扣除图标宽度
+	name_section.custom_minimum_size.x = floor(viewport_width * 3.0 / 13.0 - 48.0)
 
 
 func _sync_slot_rank_badge(panel: Control, card: CardResource) -> void:
@@ -354,7 +355,8 @@ func _sync_slot_rank_badge(panel: Control, card: CardResource) -> void:
 		if old != null:
 			old.queue_free()
 		return
-	RankDisplayUi.attach_corner_badge(panel, RankDisplayUi.resolve_from_card_resource(card), 13, true)
+	# v7.x：费用角标在右上角，段位让到左上角避免冲突
+	RankDisplayUi.attach_corner_badge(panel, RankDisplayUi.resolve_from_card_resource(card), 13, false)
 
 
 func _slot_name_label(panel: Control) -> Label:
@@ -388,11 +390,11 @@ func _apply_slot_card_labels(panel: Control, card: CardResource) -> void:
 		display_name = display_name.substr(0, 6)
 	# v7.x：同名卡追加序号后缀（#1/#2…），截断后追加
 	display_name += DefaultCardsData.seq_suffix(card)
-	# v7.x：费用从底部文本移到左上角角标气泡（CostCornerBadge）
+	# v7.x：费用从底部文本移到右上角（CostBadge 用 set_as_top_level + _draw 绕过 PanelContainer 布局）
 	_apply_slot_bottom_text(panel, display_name, "")
-	var cost_badge = CardFrameUi.ensure_cost_corner_badge(panel)
+	var cost_badge = CardFrameUi.ensure_cost_corner_badge(panel, true)
 	if cost_badge != null:
-		cost_badge.text = "%d⚡" % int(card.energy_cost)
+		cost_badge.energy_value = int(card.energy_cost)
 
 
 func _sync_slot_card_frame(panel: Control, card: CardResource) -> void:

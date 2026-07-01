@@ -93,7 +93,7 @@ static func get_rarity_color(rarity: String) -> Color:
 static func get_rarity_name(rarity: String) -> String:
 	match rarity:
 		"common": return "普通"
-		"uncommon": return "精良"
+		"uncommon": return "优秀"
 		"rare": return "稀有"
 		"epic": return "史诗"
 		"legendary": return "传说"

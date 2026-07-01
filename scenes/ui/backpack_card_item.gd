@@ -263,9 +263,9 @@ func set_card(c: CardResource) -> void:
 	# v7.x：费用从 StatsRow/CostLabel 移到左上角角标气泡（CostCornerBadge）
 	if cost_label:
 		cost_label.text = ""
-	var _cost_badge_n = CardFrameUi.ensure_cost_corner_badge(self)
+	var _cost_badge_n = CardFrameUi.ensure_cost_corner_badge(self, true)
 	if _cost_badge_n != null:
-		_cost_badge_n.text = "%d⚡" % int(c.energy_cost)
+		_cost_badge_n.energy_value = int(c.energy_cost)
 
 	# ── 承载 / 重量 ───────────────────────────────────────────
 	if weight_label:
@@ -709,9 +709,9 @@ func _set_compact_slot_view(c: CardResource, type_bar, name_label, cost_label, w
 	name_label.max_lines_visible = 1
 	# v7.x：费用从 CompactTextVBox/CostLabel 移到左上角角标气泡（CostCornerBadge）
 	cost_label.text = ""
-	var _cost_badge_c = CardFrameUi.ensure_cost_corner_badge(self)
+	var _cost_badge_c = CardFrameUi.ensure_cost_corner_badge(self, true)
 	if _cost_badge_c != null:
-		_cost_badge_c.text = "%d⚡" % int(c.energy_cost)
+		_cost_badge_c.energy_value = int(c.energy_cost)
 	tooltip_text = ""
 	_apply_card_chrome(c)
 	if art_clip:
@@ -906,9 +906,9 @@ func _set_mtg_minimal_card_view(c: CardResource, type_bar, name_label, cost_labe
 		cost_label.visible = false
 		cost_label.text = ""
 	# v7.x：费用移到左上角角标气泡（CostCornerBadge）
-	var _cost_badge_mm = CardFrameUi.ensure_cost_corner_badge(self)
+	var _cost_badge_mm = CardFrameUi.ensure_cost_corner_badge(self, true)
 	if _cost_badge_mm != null:
-		_cost_badge_mm.text = "%d⚡" % int(c.energy_cost)
+		_cost_badge_mm.energy_value = int(c.energy_cost)
 	if weight_label:
 		weight_label.visible = false
 		weight_label.text = ""
@@ -954,9 +954,9 @@ func _set_mtg_minimal_card_view(c: CardResource, type_bar, name_label, cost_labe
 	if cost_hdr:
 		# v7.x：费用从 MtgHeader/MtgCostLabel 移到左上角角标气泡（CostCornerBadge）
 		cost_hdr.text = ""
-	var _cost_badge_m = CardFrameUi.ensure_cost_corner_badge(self)
+	var _cost_badge_m = CardFrameUi.ensure_cost_corner_badge(self, true)
 	if _cost_badge_m != null:
-		_cost_badge_m.text = "%d⚡" % int(c.energy_cost)
+		_cost_badge_m.energy_value = int(c.energy_cost)
 		cost_hdr.add_theme_font_size_override("font_size", clampi(int(ceil(SLOT_SIZE.y * 0.028)), 9, 18))
 	_apply_mtg_header_rarity_colors(c, name_hdr, rank_hdr)
 	if icon_rect:

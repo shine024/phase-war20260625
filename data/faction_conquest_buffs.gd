@@ -115,7 +115,7 @@ static func get_buff(faction_id: String, faction_level: int) -> Dictionary:
 
 
 ## v6.14: 占领势力对改造掉落的影响。
-## drop_mul：改造掉率倍率（1.0~1.5，随势力等级递增）
+## drop_mul：改造掉率倍率（1.0~1.3，随势力等级递增；势力等级封顶10，实际最大1.3）
 ## mod_pool_bias：偏好改造类型（ModificationRegistry 的 unit_type 字符串数组），
 ##                掉落时优先从这些类型抽（钢壁→装甲、新星→步兵/直射等，呼应势力设定）
 const FACTION_MOD_BIAS: Dictionary = {
@@ -130,7 +130,7 @@ const FACTION_MOD_BIAS: Dictionary = {
 
 
 static func _get_drop_buff(faction_id: String, faction_level: int) -> Dictionary:
-	# drop_mul：基础 1.0，每3级 +0.10，上限 1.5
+	# drop_mul：基础 1.0，每3级 +0.10；势力等级封顶10 → clampi(10/3=3,0,5)*0.10，实际最大 1.3
 	var drop_mul: float = 1.0 + clampi((faction_level / 3), 0, 5) * 0.10
 	var bias: Array = FACTION_MOD_BIAS.get(faction_id, [])
 	return {

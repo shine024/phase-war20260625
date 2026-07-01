@@ -45,7 +45,7 @@ const RARITY_COLORS: Dictionary = {
 }
 
 const RARITY_NAMES: Dictionary = {
-	RARITY_COMMON: "常见",
+	RARITY_COMMON: "普通",
 	RARITY_RARE: "稀有",
 	RARITY_EPIC: "史诗",
 	RARITY_LEGENDARY: "传说",

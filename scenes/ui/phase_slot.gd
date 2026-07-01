@@ -17,6 +17,8 @@ var used_weight: int = 0
 var weight_capacity: int = 0
 var _is_weight_capped: bool = false
 var _tween = null
+## v7.x: 待绘制的费用文字（_draw 里画），空字符串不画
+var _cost_draw_text: String = ""
 
 signal slot_clicked(slot_index: int, mouse_button_index: int)
 signal slot_drop_requested(slot_index, card)
@@ -47,9 +49,11 @@ func refresh_display() -> void:
 	if c == null:
 		CardFrameUi.clear_overlay(self)
 		CardBackgroundUi.clear_overlay(self)
-		# v7.x：费用移到左上角角标，空槽位清除角标
-		CardFrameUi.clear_cost_corner_badge(self)
+		# v7.x：空槽位清除费用绘制
+		_cost_draw_text = ""
+		queue_redraw()
 		if icon:
+			CardFrameUi.clear_cost_corner_badge(icon)
 			icon.texture = null
 			icon.visible = false
 		if name_label:
@@ -89,10 +93,9 @@ func refresh_display() -> void:
 
 	if cost_label:
 		cost_label.text = ""
-	# v7.x：费用从底部 cost_label 移到左上角角标气泡
-	var _cost_badge = CardFrameUi.ensure_cost_corner_badge(self)
-	if _cost_badge != null:
-		_cost_badge.text = "%d⚡" % int(c.energy_cost)
+	# v7.x：费用用 _draw 直接画在卡牌左上角（绕过 PanelContainer 布局强制）
+	_cost_draw_text = "%d⚡" % int(c.energy_cost)
+	queue_redraw()
 
 	if xp_label:
 		if weight_capacity > 0:
@@ -101,6 +104,23 @@ func refresh_display() -> void:
 		else:
 			xp_label.text = ""
 			xp_label.visible = false
+
+func _draw() -> void:
+	# v7.x：费用文字直接画在卡牌左上角（绕过 PanelContainer 对子节点的布局强制管理）
+	if _cost_draw_text.is_empty():
+		return
+	var font := get_theme_default_font()
+	if font == null:
+		return
+	var fs: int = 10
+	var ts: Vector2 = font.get_string_size(_cost_draw_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
+	# 左上角，留 2px 边距，在文字下层画个半透明深色小方块增强可读性
+	var pos: Vector2 = Vector2(2.0, 2.0 + ts.y - 1.0)
+	var box_rect: Rect2 = Rect2(1.0, 2.0, ts.x + 3.0, ts.y + 1.0)
+	draw_rect(box_rect, Color(0.0, 0.0, 0.0, 0.55), true)
+	# 金黄色费用文字 + 深色描边
+	font.draw_string_outline(get_canvas_item(), pos, _cost_draw_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 1, Color(0.0, 0.0, 0.0, 0.95))
+	font.draw_string(get_canvas_item(), pos, _cost_draw_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1.0, 0.85, 0.30, 1.0))
 
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:

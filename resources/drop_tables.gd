@@ -281,28 +281,24 @@ func generate_drops(era: int, level: int, player_won: bool, victory_stars: int =
 		0:
 			drop_pool = ww1_common_drops
 			guarantee = [
-				DropEntry.new("nano_materials", DropType.MATERIAL, 1.0, int(30 * lvl_mult), int(50 * lvl_mult)),
-				DropEntry.new("", DropType.CARD_DATA, 0.0, 0, 0)
+				DropEntry.new("nano_materials", DropType.MATERIAL, 1.0, int(30 * lvl_mult), int(50 * lvl_mult))
 			]
 		1:
 			drop_pool = ww2_common_drops
 			guarantee = [
-				DropEntry.new("nano_materials", DropType.MATERIAL, 1.0, int(50 * lvl_mult), int(80 * lvl_mult)),
-				DropEntry.new("", DropType.CARD_DATA, 0.0, 0, 0)
+				DropEntry.new("nano_materials", DropType.MATERIAL, 1.0, int(50 * lvl_mult), int(80 * lvl_mult))
 			]
 		2:
 			drop_pool = cold_war_common_drops
 			guarantee = [
 				DropEntry.new("nano_materials", DropType.MATERIAL, 1.0, int(70 * lvl_mult), int(100 * lvl_mult)),
-				DropEntry.new("alloy", DropType.MATERIAL, 1.0, int(15 * lvl_mult), int(20 * lvl_mult)),
-				DropEntry.new("", DropType.CARD_DATA, 0.0, 0, 0)
+				DropEntry.new("alloy", DropType.MATERIAL, 1.0, int(15 * lvl_mult), int(20 * lvl_mult))
 			]
 		3:
 			drop_pool = modern_common_drops
 			guarantee = [
 				DropEntry.new("nano_materials", DropType.MATERIAL, 1.0, int(90 * lvl_mult), int(120 * lvl_mult)),
-				DropEntry.new("alloy", DropType.MATERIAL, 1.0, int(20 * lvl_mult), int(25 * lvl_mult)),
-				DropEntry.new("", DropType.CARD_DATA, 0.0, 0, 0)
+				DropEntry.new("alloy", DropType.MATERIAL, 1.0, int(20 * lvl_mult), int(25 * lvl_mult))
 			]
 		4:
 			drop_pool = near_future_common_drops

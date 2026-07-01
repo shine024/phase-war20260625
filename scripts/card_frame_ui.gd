@@ -4,6 +4,7 @@ class_name CardFrameUi
 
 const UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")
 const CardBackgroundUi = preload("res://scripts/card_background_ui.gd")
+const _CostBadgeScript = preload("res://scripts/cost_badge.gd")
 
 static func frame_path_for(rarity: String) -> String:
 	return UiAssetLoader.card_frame_path_for(rarity)
@@ -106,51 +107,25 @@ static func apply_slot_chrome(host: PanelContainer, card: CardResource) -> void:
 
 # ── v7.x 费用角标（左上角黄底小气泡，显示 N⚡）──
 # 与 RankCornerBadge（右上角段位）分占左右上角，互不遮挡。
-# 用法：ensure_cost_corner_badge(panel).text = "%d⚡" % cost；空槽位 clear_cost_corner_badge(panel)。
+# 用法：ensure_cost_corner_badge(panel).energy_value = cost；空槽位 clear_cost_corner_badge(panel)。
 
-static var _cost_badge_style: StyleBoxFlat = null
-
-static func _cost_badge_stylebox() -> StyleBoxFlat:
-	if _cost_badge_style == null:
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = Color(1.0, 0.82, 0.20, 0.95)  # 能量金黄
-		sb.border_color = Color(0.20, 0.15, 0.05, 0.9)
-		sb.set_border_width_all(1)
-		# 圆形：corner_radius 设为半边（正方形角标 → 真圆）
-		sb.set_corner_radius_all(10)
-		sb.content_margin_left = 0.0
-		sb.content_margin_right = 0.0
-		sb.content_margin_top = 0.0
-		sb.content_margin_bottom = 0.0
-		_cost_badge_style = sb
-	return _cost_badge_style
-
-## 在 host 左上角创建/复用费用角标（返回 Label，调用方设置 .text）。
+## 在 host 左上角创建/复用费用角标（返回 Control，调用方设置 energy_value）。
 ## 若已存在则复用，避免反复 free/new 抖动。
-## v7.x：圆形角标（20×20 正方形 + corner_radius=10 → 真圆）。
-static func ensure_cost_corner_badge(host: Control) -> Label:
+## v7.x：CostBadge 用 _draw 画文字 + set_as_top_level 脱离父节点坐标系，
+## 彻底绕过 PanelContainer 对子节点的布局强制管理。
+## anchor_right=true 时费用在 host 右上角（否则左上角）。
+## 返回 Control（cost_badge.gd 实例），调用方设 .energy_value。
+static func ensure_cost_corner_badge(host: Control, anchor_right: bool = false) -> Control:
 	if host == null:
 		return null
-	var lbl: Label = host.get_node_or_null("CostCornerBadge") as Label
-	if lbl == null:
-		lbl = Label.new()
-		lbl.name = "CostCornerBadge"
-		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		lbl.clip_text = false
-		lbl.add_theme_font_size_override("font_size", 9)
-		lbl.add_theme_color_override("font_color", Color(0.10, 0.07, 0.02, 1.0))
-		lbl.add_theme_stylebox_override("normal", _cost_badge_stylebox())
-		# 正方形 20×20（左上角，圆形）
-		lbl.set_anchors_preset(Control.PRESET_TOP_LEFT)
-		lbl.offset_left = 2.0
-		lbl.offset_top = 2.0
-		lbl.offset_right = 22.0
-		lbl.offset_bottom = 22.0
-		lbl.z_index = 35
-		host.add_child(lbl)
-	return lbl
+	var badge: Control = host.get_node_or_null("CostCornerBadge") as Control
+	if badge == null:
+		badge = _CostBadgeScript.new()
+		badge.name = "CostCornerBadge"
+		host.add_child(badge)
+	if badge.has_method("follow_host"):
+		badge.follow_host(host, anchor_right)
+	return badge
 
 ## 清除费用角标（空槽位时调用）。
 static func clear_cost_corner_badge(host: Control) -> void:

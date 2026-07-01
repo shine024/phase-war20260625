@@ -80,10 +80,11 @@ const RARITY_COLORS := {
 	"rare": Color(0.4, 0.7, 1.0, 1),
 	"epic": Color(0.8, 0.5, 1.0, 1),
 	"legendary": Color(1.0, 0.6, 0.9, 1),
+	"mythic": Color(1.0, 0.42, 0.62, 1),
 }
 const RARITY_DISPLAY := {
 	"common": "普通", "uncommon": "优秀", "rare": "稀有",
-	"epic": "史诗", "legendary": "传说",
+	"epic": "史诗", "legendary": "传说", "mythic": "神话",
 }
 
 var _plm: Node = null
@@ -390,6 +391,18 @@ func _apply_header_rarity_band(rarity_key: String) -> void:
 	sb.corner_radius_bottom_right = 4
 	header.add_theme_stylebox_override("panel", sb)
 
+## v7.x 修复：刷新稀有度色带 + 标签（文本/颜色）。
+## 卡牌模式(_refresh_header)与战场单位模式(_show_player_unit)共用，
+## 避免战场单位漏刷 rarity_label 导致"相位仪显示稀有、战场显示普通"的残留 bug。
+func _apply_header_rarity_for_card(card: CardResource) -> void:
+	if card == null:
+		return
+	var r_key: String = card.rarity if card.rarity else "common"
+	_apply_header_rarity_band(r_key)
+	if rarity_label:
+		rarity_label.text = RARITY_DISPLAY.get(r_key, r_key)
+		rarity_label.add_theme_color_override("font_color", RARITY_COLORS.get(r_key, Color(0.75, 0.78, 0.85, 1)))
+
 func _refresh_header(card: CardResource) -> void:
 	if rank_badge_host:
 		RankDisplayUi.clear_host(rank_badge_host)
@@ -403,11 +416,7 @@ func _refresh_header(card: CardResource) -> void:
 		var star_val: int = int(card.enhance_level) if "enhance_level" in card else 0
 		star_label.text = "★%d" % star_val if star_val > 0 else ""
 	# v6.4: 稀有度色带——染色 HeaderPanel 左侧边框
-	var r_key: String = card.rarity if card.rarity else "common"
-	_apply_header_rarity_band(r_key)
-	if rarity_label:
-		rarity_label.text = RARITY_DISPLAY.get(r_key, r_key)
-		rarity_label.add_theme_color_override("font_color", RARITY_COLORS.get(r_key, Color(0.75, 0.78, 0.85, 1)))
+	_apply_header_rarity_for_card(card)
 	if cost_label:
 		if card.card_type == GC.CardType.ENERGY:
 			# v6.2 修复 M8：能量卡应显示提供量（energy_grant）而非部署消耗（energy_cost）
@@ -878,6 +887,14 @@ func _translate_mod_key(key: String) -> String:
 		# ── 武器型号 ──
 		"weapon_type": return "武器型号"
 		"legacy_weapon_type": return "武器型号"
+		# ── 武器槽类(slot_*)——补齐与 modification_panel 对齐（v7.x 一致性修复）──
+		"slot_damage_mult": return "槽位伤害倍率"
+		"slot_damage_add": return "槽位伤害"
+		"slot_attack_speed_mult": return "槽位攻速"
+		"slot_range_bonus": return "槽位射程"
+		"slot_windup_reduce": return "起射缩短"
+		"slot_active_reduce": return "激活缩短"
+		"slot_weapon_type": return "槽位武器"
 		_: return key
 
 ## ── 战场单位显示刷新 ─────────────────────────────────────────
@@ -1363,6 +1380,16 @@ func _show_player_unit(unit: Node) -> void:
 		# v7.x：同名卡追加序号后缀（#1/#2…），用实例卡 card_res 提取 instance_id
 		var _unit_name: String = dn if not dn.is_empty() else (safe_name if not safe_name.is_empty() else "我方单位")
 		name_label.text = _unit_name + DefaultCards.seq_suffix(card_res)
+	# v7.x 修复：战场单位也要刷新稀有度标签/色带/星级，否则残留上次卡牌模式或 tscn 默认值
+	# （此前相位仪显示"稀有"、战场却显示"普通"的根因：本函数从不设置 rarity_label）
+	_apply_header_rarity_for_card(card_res)
+	# 头部强化星级（★N）跟随实例卡养成显示
+	if star_label:
+		var _star_val: int = int(card_res.enhance_level) if card_res != null and "enhance_level" in card_res else 0
+		star_label.text = "★%d" % _star_val if _star_val > 0 else ""
+	# 战场单位已部署，费用无意义，清空避免残留
+	if cost_label:
+		cost_label.text = ""
 	var platform_name := dn if not dn.is_empty() else (safe_name if not safe_name.is_empty() else DefaultCards.get_platform_display_name(stats.platform_type))
 	# v6.5: 优先用 card.weapon_names[] 显示具体武器型号
 	var weapon_label_text: String = _build_weapon_label_text(card_res, stats)

@@ -674,21 +674,38 @@ func _grant_phase_master_victory_reward(master_name: String) -> void:
 				pim.add_owned_rune(_granted_l)
 
 	# v6.14: 相位师击败 → 改造蓝图掉落（此前相位师无保底改造掉落，只有通用击杀概率）。
-	# 必掉1个改造蓝图（按相位师星级决定稀有度梯度），30%概率额外1个。
 	# v7.x: 改用 MasterPowerEvaluator 星级映射 Tier（替代原 level*40 的 ad-hoc 换算），
 	#       让掉落真正跟随相位师战力——高战力相位师掉高稀有度改造。
+	# v7.x 修复:
+	#   ① enemy_type 按相位师所属势力偏好派生（原硬编码"infantry"，非步兵玩家拿不到对口改造）
+	#   ② 掉落数量按星级梯度（原1★和7★都只掉1个，数量梯度为0与"7倍强度"预期不符）
 	var IntelManualItems = preload("res://data/intel_manual_items.gd")
 	var _MPE = preload("res://scripts/master_power_evaluator.gd")
 	var _PT = preload("res://data/power_tiers.gd")
+	var _FCB = preload("res://data/faction_conquest_buffs.gd")
 	var _stars: int = int(_MPE.evaluate(_current_phase_master).get("stars", 3))
 	var _drop_bag: Node = get_node_or_null("/root/IntelItemBag")
-	var _pm_enemy_type: String = "infantry"  # 相位师无单一敌人类型，用通用兜底
+	# enemy_type 按相位师所属势力的改造偏好派生；势力无偏好/查不到时回退 infantry
+	var _pm_faction: String = String(_current_phase_master.get("faction", ""))
+	var _pm_enemy_type: String = "infantry"
+	var _bias: Array = _FCB.FACTION_MOD_BIAS.get(_pm_faction, [])
+	if not _bias.is_empty():
+		_pm_enemy_type = String(_bias[0])
 	var _pm_power_tier: int = _PT.get_tier_by_stars(_stars)
-	# 必掉
-	var _mod_drop: Dictionary = IntelManualItems.roll_random_mod_blueprint(_pm_enemy_type, "boss", _pm_power_tier)
-	if not _mod_drop.is_empty() and _drop_bag and _drop_bag.has_method("add_item"):
-		_drop_bag.add_item(String(_mod_drop.get("item_type", "")), 1)
-	# 30% 额外
+	# 必掉数量按星级梯度：基础1 + 3★+1 + 5★+2 + 7★+3
+	var _pm_guaranteed: int = 1
+	if _stars >= 7:
+		_pm_guaranteed = 4
+	elif _stars >= 5:
+		_pm_guaranteed = 3
+	elif _stars >= 3:
+		_pm_guaranteed = 2
+	# 发放必掉
+	for _i in range(_pm_guaranteed):
+		var _mod_drop: Dictionary = IntelManualItems.roll_random_mod_blueprint(_pm_enemy_type, "boss", _pm_power_tier)
+		if not _mod_drop.is_empty() and _drop_bag and _drop_bag.has_method("add_item"):
+			_drop_bag.add_item(String(_mod_drop.get("item_type", "")), 1)
+	# 30% 额外1个
 	if randf() < 0.30:
 		var _mod_drop2: Dictionary = IntelManualItems.roll_random_mod_blueprint(_pm_enemy_type, "boss", _pm_power_tier)
 		if not _mod_drop2.is_empty() and _drop_bag and _drop_bag.has_method("add_item"):

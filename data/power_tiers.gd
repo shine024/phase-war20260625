@@ -77,6 +77,33 @@ static func get_tier_by_rank(rank: String) -> int:
 			return Tier.GRUNT
 
 
+## v7.x: rank + 关卡进度 混合档位 —— 让普通关卡的改造蓝图稀有度随关卡进度提升。
+## 解决"第1关和第100关打杂兵，改造蓝图稀有度完全一样"的失衡：
+## 杂兵 rank 恒为 normal→GRUNT，但高关杂兵理应掉更好的改造。
+##
+## 关卡偏移（前20关一战教学不加，避免新手过早拿到高档改造）：
+##   level 1-20  → +0（一战时代，掉落最朴素）
+##   level 21-40 → +1（二战时代）
+##   level 41-70 → +2（冷战/现代）
+##   level 71-100 → +3（近未来，杂兵也能掉 epic 为主）
+##
+## 与 rank 叠加后 clamp 到 OVERLORD，保证不会超过真正的 boss。
+## 注意：boss rank 本身已是 OVERLORD，叠加 level 偏移后仍为 OVERLORD，行为不变。
+static func get_tier_by_rank_and_level(rank: String, level: int) -> int:
+	var base_tier: int = get_tier_by_rank(rank)
+	var lvl_offset: int = 0
+	var lvl: int = maxi(1, int(level))
+	if lvl <= 20:
+		lvl_offset = 0
+	elif lvl <= 40:
+		lvl_offset = 1
+	elif lvl <= 70:
+		lvl_offset = 2
+	else:
+		lvl_offset = 3
+	return clampi(base_tier + lvl_offset, Tier.GRUNT, Tier.OVERLORD)
+
+
 ## 按连续战力分值映射到档位。
 static func get_tier_by_power(power_score: float) -> int:
 	var ps: float = float(power_score)

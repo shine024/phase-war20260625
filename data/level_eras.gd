@@ -43,6 +43,9 @@ const ERA_WAVE_INTERVAL: Dictionary = {
 }
 
 ## 掉落率倍数（时代越靠后掉落越高）
+## ⚠️ v7.x 审计澄清：本倍数【仅作用于击杀时掉落】（battle_damage_system.roll_blueprint_drops
+##    的卡牌碎片掉率、_roll_rune_drops 的符文掉率），【不作用于战斗结算的整体掉落表】
+##    （drop_tables.generate_drops 的保底/随机抽取不读此值）。命名易误导，保留以兼容击杀路径。
 const ERA_DROP_MULTIPLIER: Dictionary = {
 	Era.WW1: 0.85,
 	Era.WW2: 1.0,

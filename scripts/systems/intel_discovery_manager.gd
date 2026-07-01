@@ -527,10 +527,12 @@ func _roll_intel_item_drops(
 	# v6.14: 查当前关占领势力掉落 buff（drop_mul + mod_pool_bias）
 	var occupation_drop_mul: float = 1.0
 	var occupation_mod_bias: Array = []
+	var cur_level: int = 1
 	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
 	var gm: Node = get_node_or_null("/root/GameManager")
+	if gm != null:
+		cur_level = int(gm.get("current_level")) if "current_level" in gm else 1
 	if fsm != null and fsm.has_method("get_level_occupation") and gm != null:
-		var cur_level: int = int(gm.get("current_level")) if "current_level" in gm else 1
 		var occ_fid: String = String(fsm.get_level_occupation(cur_level))
 		if not occ_fid.is_empty() and fsm.has_method("get_faction_level"):
 			var flvl: int = int(fsm.get_faction_level(occ_fid))
@@ -567,8 +569,9 @@ func _roll_intel_item_drops(
 			item = IntelManualItems.roll_random_evolution_blueprint(rank)
 		else:
 			## 改造蓝图（基于敌人类型）
-			# v6.14: 传入 power_tier（rank 映射）和占领势力 mod_pool_bias
-			var power_tier: int = PowerTiers.get_tier_by_rank(rank)
+			# v7.x: power_tier 改用 rank+level 混合档位，让高关杂兵也能掉更高稀有度改造
+			# （原 get_tier_by_rank 只看 rank，导致第1关和第100关改造蓝图稀有度完全相同）
+			var power_tier: int = PowerTiers.get_tier_by_rank_and_level(rank, cur_level)
 			item = IntelManualItems.roll_random_mod_blueprint(enemy_type, rank, power_tier, occupation_mod_bias)
 
 		if not item.is_empty():
