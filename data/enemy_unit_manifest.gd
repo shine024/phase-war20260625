@@ -227,7 +227,7 @@ static func _get_foe_stats(card_id: String) -> Dictionary:
 			        "defense_light": 11.0, "defense_armor": 9.0, "defense_air": 9.0,
 			        "rng": 155.0, "ivl": 0.95, "spd": 0.0, "weapon": "步枪"}
 		"platform_cold_carrier":
-			return {"kind": 3, "hp": 140.0, "weapon_type": 2, "deploy_speed": 2,
+			return {"kind": 3, "hp": 140.0, "weapon_type": 0, "deploy_speed": 2,
 			        "attack_light": 7.0, "attack_armor": 4.0, "attack_air": 5.0,
 			        "defense_light": 8.0, "defense_armor": 6.0, "defense_air": 6.0,
 			        "rng": 160.0, "ivl": 0.25, "spd": 50.0, "weapon": "机枪"}
@@ -258,7 +258,7 @@ static func _get_foe_stats(card_id: String) -> Dictionary:
 			        "defense_light": 5.0, "defense_armor": 4.0, "defense_air": 4.0,
 			        "rng": 95.0, "ivl": 0.38, "spd": 115.0, "weapon": "冲锋枪"}
 		"platform_modern_guard_heavy":
-			return {"kind": 1, "hp": 110.0, "weapon_type": 1, "deploy_speed": 2,
+			return {"kind": 1, "hp": 110.0, "weapon_type": 0, "deploy_speed": 2,
 			        "attack_light": 140.0, "attack_armor": 100.0, "attack_air": 90.0,
 			        "defense_light": 9.0, "defense_armor": 7.0, "defense_air": 7.0,
 			        "rng": 240.0, "ivl": 1.65, "spd": 75.0, "weapon": "轨道炮"}
@@ -310,12 +310,12 @@ static func _get_foe_stats(card_id: String) -> Dictionary:
 			        "defense_light": 11.0, "defense_armor": 9.0, "defense_air": 9.0,
 			        "rng": 185.0, "ivl": 0.50, "spd": 0.0, "weapon": "光束步枪"}
 		"platform_future_heavy":
-			return {"kind": 1, "hp": 200.0, "weapon_type": 1, "deploy_speed": 1,
+			return {"kind": 1, "hp": 200.0, "weapon_type": 0, "deploy_speed": 1,
 			        "attack_light": 220.0, "attack_armor": 180.0, "attack_air": 160.0,
 			        "defense_light": 13.0, "defense_armor": 11.0, "defense_air": 10.0,
 			        "rng": 250.0, "ivl": 2.2, "spd": 40.0, "weapon": "米加粒子炮"}
 		"omega_platform":
-			return {"kind": 1, "hp": 240.0, "weapon_type": 1, "deploy_speed": 1,
+			return {"kind": 1, "hp": 240.0, "weapon_type": 0, "deploy_speed": 1,
 			        "attack_light": 220.0, "attack_armor": 180.0, "attack_air": 160.0,
 			        "defense_light": 15.0, "defense_armor": 12.0, "defense_air": 11.0,
 			        "rng": 250.0, "ivl": 2.2, "spd": 30.0, "weapon": "米加粒子炮"}
@@ -331,12 +331,12 @@ static func _get_foe_stats(card_id: String) -> Dictionary:
 			        "defense_light": 15.0, "defense_armor": 12.0, "defense_air": 11.0,
 			        "rng": 215.0, "ivl": 2.00, "spd": 35.0, "weapon": "导弹"}
 		"storm_rider":
-			return {"kind": 0, "hp": 60.0, "weapon_type": 2, "deploy_speed": 5,
+			return {"kind": 0, "hp": 60.0, "weapon_type": 0, "deploy_speed": 5,
 			        "attack_light": 28.0, "attack_armor": 19.0, "attack_air": 17.0,
 			        "defense_light": 5.0, "defense_armor": 4.0, "defense_air": 4.0,
 			        "rng": 240.0, "ivl": 1.60, "spd": 120.0, "weapon": "狙击枪"}
 		"heavy_carrier":
-			return {"kind": 3, "hp": 160.0, "weapon_type": 2, "deploy_speed": 2,
+			return {"kind": 3, "hp": 160.0, "weapon_type": 0, "deploy_speed": 2,
 			        "attack_light": 7.0, "attack_armor": 5.0, "attack_air": 5.0,
 			        "defense_light": 9.0, "defense_armor": 7.0, "defense_air": 7.0,
 			        "rng": 160.0, "ivl": 0.25, "spd": 50.0, "weapon": "机枪"}
@@ -346,7 +346,7 @@ static func _get_foe_stats(card_id: String) -> Dictionary:
 			        "defense_light": 6.0, "defense_armor": 5.0, "defense_air": 5.0,
 			        "rng": 85.0, "ivl": 0.45, "spd": 75.0, "weapon": "手枪"}
 		"abrams_mk2":
-			return {"kind": 1, "hp": 220.0, "weapon_type": 1, "deploy_speed": 2,
+			return {"kind": 1, "hp": 220.0, "weapon_type": 0, "deploy_speed": 2,
 			        "attack_light": 140.0, "attack_armor": 100.0, "attack_air": 90.0,
 			        "defense_light": 12.0, "defense_armor": 10.0, "defense_air": 9.0,
 			        "rng": 240.0, "ivl": 1.65, "spd": 65.0, "weapon": "轨道炮"}
@@ -378,7 +378,7 @@ static func _pool_stats_for_kind(kind: int) -> Dictionary:
 		          "attack_light": 25.0, "attack_armor": 18.0, "attack_air": 16.0,
 		          "defense_light": 14.0, "defense_armor": 11.0, "defense_air": 11.0,
 		          "rng": 180.0, "ivl": 1.50, "spd": 0.0, "weapon": "迫击炮"}
-		3: return {"hp": 90.0, "weapon_type": 2, "deploy_speed": 3,
+		3: return {"hp": 90.0, "weapon_type": 0, "deploy_speed": 3,
 		          "attack_light": 8.0, "attack_armor": 6.0, "attack_air": 5.0,
 		          "defense_light": 6.0, "defense_armor": 5.0, "defense_air": 5.0,
 		          "rng": 130.0, "ivl": 0.40, "spd": 70.0, "weapon": "手枪"}

@@ -17,6 +17,7 @@
       "attack_range": 80.0,
       "attack_interval": 0.25,
       "weapon_type": 0,
+      "weapon_label": "冲锋枪",
       "tags": [
         "infantry",
         "frontline"
@@ -35,6 +36,7 @@
       "attack_range": 150.0,
       "attack_interval": 0.67,
       "weapon_type": 1,
+      "weapon_label": "步枪",
       "tags": [
         "infantry",
         "backline"
@@ -55,6 +57,7 @@
       "attack_range": 120.0,
       "attack_interval": 0.33,
       "weapon_type": 2,
+      "weapon_label": "重机枪",
       "tags": [
         "turret",
         "sustained"
@@ -76,6 +79,7 @@
       "attack_range": 180.0,
       "attack_interval": 2.0,
       "weapon_type": 3,
+      "weapon_label": "迫击炮",
       "tags": [
         "artillery",
         "backline"
@@ -97,6 +101,7 @@
       "attack_range": 80.0,
       "attack_interval": 0.25,
       "weapon_type": 0,
+      "weapon_label": "冲锋枪",
       "tags": [
         "elite",
         "infantry",
@@ -124,6 +129,7 @@
       "attack_range": 120.0,
       "attack_interval": 0.55,
       "weapon_type": 2,
+      "weapon_label": "车载机枪",
       "tags": [
         "elite",
         "vehicle",
@@ -151,6 +157,7 @@
       "attack_range": 150.0,
       "attack_interval": 1.5,
       "weapon_type": 3,
+      "weapon_label": "坦克炮",
       "tags": [
         "boss",
         "tank",
@@ -179,6 +186,7 @@
       "attack_range": 85.0,
       "attack_interval": 0.22,
       "weapon_type": 0,
+      "weapon_label": "冲锋枪",
       "tags": [
         "infantry",
         "frontline"
@@ -200,6 +208,7 @@
       "attack_range": 160.0,
       "attack_interval": 0.5,
       "weapon_type": 1,
+      "weapon_label": "步枪",
       "tags": [
         "infantry",
         "backline"
@@ -220,6 +229,7 @@
       "attack_range": 130.0,
       "attack_interval": 0.2,
       "weapon_type": 2,
+      "weapon_label": "重机枪",
       "tags": [
         "turret",
         "sustained"
@@ -241,6 +251,7 @@
       "attack_range": 140.0,
       "attack_interval": 2.5,
       "weapon_type": 3,
+      "weapon_label": "火箭筒",
       "tags": [
         "infantry",
         "antitank"
@@ -262,6 +273,7 @@
       "attack_range": 90.0,
       "attack_interval": 0.22,
       "weapon_type": 0,
+      "weapon_label": "冲锋枪",
       "tags": [
         "elite",
         "infantry",
@@ -289,6 +301,7 @@
       "attack_range": 150.0,
       "attack_interval": 0.9,
       "weapon_type": 3,
+      "weapon_label": "坦克炮",
       "tags": [
         "elite",
         "tank",
@@ -316,6 +329,7 @@
       "attack_range": 160.0,
       "attack_interval": 1.0,
       "weapon_type": 3,
+      "weapon_label": "坦克炮",
       "tags": [
         "boss",
         "tank",
@@ -344,6 +358,7 @@
       "attack_range": 140.0,
       "attack_interval": 0.33,
       "weapon_type": 1,
+      "weapon_label": "步枪",
       "tags": [
         "infantry",
         "frontline"
@@ -365,6 +380,7 @@
       "attack_range": 150.0,
       "attack_interval": 0.25,
       "weapon_type": 2,
+      "weapon_label": "机枪",
       "tags": [
         "infantry",
         "frontline"
@@ -385,6 +401,7 @@
       "attack_range": 130.0,
       "attack_interval": 0.3,
       "weapon_type": 2,
+      "weapon_label": "车载机枪",
       "tags": [
         "vehicle",
         "armored"
@@ -406,6 +423,7 @@
       "attack_range": 120.0,
       "attack_interval": 0.35,
       "weapon_type": 2,
+      "weapon_label": "车载机枪",
       "tags": [
         "vehicle",
         "support"
@@ -427,6 +445,7 @@
       "attack_range": 220.0,
       "attack_interval": 1.25,
       "weapon_type": 6,
+      "weapon_label": "狙击枪",
       "tags": [
         "elite",
         "infantry",
@@ -454,6 +473,7 @@
       "attack_range": 160.0,
       "attack_interval": 0.8,
       "weapon_type": 3,
+      "weapon_label": "坦克炮",
       "tags": [
         "elite",
         "tank",
@@ -481,6 +501,7 @@
       "attack_range": 210.0,
       "attack_interval": 0.8,
       "weapon_type": 9,
+      "weapon_label": "空空导弹",
       "tags": [
         "boss",
         "aircraft",
@@ -509,6 +530,7 @@
       "attack_range": 150.0,
       "attack_interval": 0.29,
       "weapon_type": 1,
+      "weapon_label": "步枪",
       "tags": [
         "infantry",
         "frontline"
@@ -529,6 +551,7 @@
       "attack_range": 130.0,
       "attack_interval": 0.3,
       "weapon_type": 2,
+      "weapon_label": "车载机枪",
       "tags": [
         "vehicle",
         "fast"
@@ -550,6 +573,7 @@
       "attack_range": 150.0,
       "attack_interval": 0.35,
       "weapon_type": 2,
+      "weapon_label": "车载机枪",
       "tags": [
         "vehicle",
         "armored"
@@ -571,6 +595,7 @@
       "attack_range": 250.0,
       "attack_interval": 2.0,
       "weapon_type": 3,
+      "weapon_label": "火箭炮",
       "tags": [
         "artillery",
         "backline"
@@ -592,6 +617,7 @@
       "attack_range": 150.0,
       "attack_interval": 0.29,
       "weapon_type": 1,
+      "weapon_label": "步枪",
       "tags": [
         "elite",
         "infantry",
@@ -619,6 +645,7 @@
       "attack_range": 200.0,
       "attack_interval": 0.8,
       "weapon_type": 3,
+      "weapon_label": "坦克炮",
       "tags": [
         "elite",
         "tank",
@@ -646,6 +673,7 @@
       "attack_range": 250.0,
       "attack_interval": 0.6,
       "weapon_type": 9,
+      "weapon_label": "火箭弹",
       "tags": [
         "elite",
         "aircraft",
@@ -673,6 +701,7 @@
       "attack_range": 220.0,
       "attack_interval": 1.2,
       "weapon_type": 2,
+      "weapon_label": "火炮系统",
       "tags": [
         "boss",
         "support"
@@ -700,6 +729,7 @@
       "attack_range": 180.0,
       "attack_interval": 0.4,
       "weapon_type": 8,
+      "weapon_label": "激光武器",
       "tags": [
         "aircraft",
         "fast"
@@ -721,6 +751,7 @@
       "attack_range": 160.0,
       "attack_interval": 0.25,
       "weapon_type": 8,
+      "weapon_label": "激光武器",
       "tags": [
         "infantry",
         "frontline"
@@ -741,6 +772,7 @@
       "attack_range": 150.0,
       "attack_interval": 0.67,
       "weapon_type": 8,
+      "weapon_label": "能量武器",
       "tags": [
         "vehicle",
         "armored"
@@ -762,6 +794,7 @@
       "attack_range": 250.0,
       "attack_interval": 0.5,
       "weapon_type": 8,
+      "weapon_label": "能量武器",
       "tags": [
         "vehicle",
         "armored",
@@ -784,6 +817,7 @@
       "attack_range": 210.0,
       "attack_interval": 0.4,
       "weapon_type": 8,
+      "weapon_label": "能量武器",
       "tags": [
         "elite",
         "infantry",
@@ -811,6 +845,7 @@
       "attack_range": 250.0,
       "attack_interval": 1.0,
       "weapon_type": 8,
+      "weapon_label": "能量武器",
       "tags": [
         "elite",
         "tank",
@@ -838,6 +873,7 @@
       "attack_range": 300.0,
       "attack_interval": 0.9,
       "weapon_type": 10,
+      "weapon_label": "粒子炮",
       "tags": [
         "boss",
         "ultimate"

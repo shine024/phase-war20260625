@@ -1199,11 +1199,13 @@ func _format_enemy_runes(rune_ids: Array) -> String:
 			var rn: String = str(rd.get("id", rid))
 			var rarity: String = str(rd.get("rarity", ""))
 			var rarity_short: String = ""
-			match rarity:
-				"common": rarity_short = "常见"
-				"rare": rarity_short = "稀有"
-				"epic": rarity_short = "史诗"
-				"legendary": rarity_short = "传说"
+				match rarity:
+					"common": rarity_short = "常见"
+					"uncommon": rarity_short = "优秀"
+					"rare": rarity_short = "稀有"
+					"epic": rarity_short = "史诗"
+					"legendary": rarity_short = "传说"
+					"mythic": rarity_short = "神话"
 			if not rarity_short.is_empty():
 				parts.append("%s(%s)" % [rn, rarity_short])
 			else:
@@ -1585,19 +1587,50 @@ func _show_generic_enemy_unit(unit: Node) -> void:
 	if not tags_text.is_empty():
 		type_text += "\n类型：%s" % tags_text
 	# v6.2c: 武装显示——有武器给具体名字，没武器显示"无"
-	# 敌方原型的 weapon_type 是旧 12 值 WeaponTypeLegacy，必须用 weapon_kind_short 查表
-	# 判断"有没有武器"：weapon_type >= 0 且 attack_damage > 0
-	# v6.11: 三级回退，杜绝"武装：无"误显示——当 archetype cfg 查不到（动态生成时序/
-	# manifest 未合并/某些 archetype）时，回退到单位节点自身的 stats（经典敌人与蜂群都同步了
-	# stats.weapon_type + stats.attack_damage），确保有武器的单位不会误显示"无"。
+	# v7.x 修复"碉堡显示冲锋枪"：weapon_type 字段在不同数据源用了两套互斥的枚举语义——
+	#   ① enemy_archetypes_*.gd 固定敌人用 12 值 WeaponTypeLegacy（0=冲锋枪…11=轨道炮）
+	#   ② enemy_unit_manifest / captured_card_stats 用 4 值 WeaponType（0=直射/1=曲射/2=空射/3=支援）
+	# 显示层不能再无脑按 12 值 legacy 查表（会把 4 值语义的 0=直射 错译成"冲锋枪"）。
+	# 新的显示优先级：
+	#   ① weapon_label（具体武器名，如"机枪"/"88mm高射炮"）——最可靠，manifest/缴获卡已补全
+	#   ② stats.legacy_weapon_type > 0 → 按 12 值 legacy 查 weapon_kind_short（改造指定型号）
+	#   ③ weapon_type ∈ [0,11] 且来源是固定敌人（无 weapon_label）→ 按 12 值 legacy 查表
+	#      （机枪巢=2=车载机枪 这种正确显示要保留）
+	#   ④ 否则按 4 值语义给出泛称（0=直射武器/1=曲射武器/2=对空武器/3=支援设备）
 	var show_wt: int = weapon_type_val
 	var show_atk: float = attack_damage_val
+	var show_label: String = ""
+	# 取 archetype cfg 的 weapon_label（若有）
+	if "archetype_id" in unit and unit.archetype_id is String:
+		var _cfg2 = EnemyArchetypes.get_config(unit.archetype_id)
+		if not _cfg2.is_empty():
+			show_label = String(_cfg2.get("weapon_label", ""))
 	if show_wt < 0 or show_atk <= 0.0:
 		if "stats" in unit and unit.stats != null:
 			show_wt = int(unit.stats.weapon_type)
 			show_atk = float(unit.stats.attack_damage)
+			if show_label.is_empty():
+				show_label = String(unit.stats.get("weapon_label", ""))
 	if show_wt >= 0 and show_atk > 0.0:
-		type_text += "\n武装：%s" % RealWorldUnitLabels.weapon_kind_short(show_wt)
+		var weapon_text := ""
+		# ① 优先用具体武器名
+		if not show_label.is_empty():
+			weapon_text = show_label
+		# ② legacy_weapon_type > 0 按 12 值 legacy 查表（改造型号优先）
+		elif "stats" in unit and unit.stats != null and int(unit.stats.get("legacy_weapon_type", 0)) > 0:
+			weapon_text = RealWorldUnitLabels.weapon_kind_short(int(unit.stats.legacy_weapon_type))
+		# ③ weapon_type ∈ [0,11] 按 12 值 legacy 查表（兼容固定敌人 legacy 语义）
+		elif show_wt >= 0 and show_wt <= 11:
+			weapon_text = RealWorldUnitLabels.weapon_kind_short(show_wt)
+		# ④ 兜底泛称（理论上 show_wt 已在 [0,11] 不会走到这）
+		else:
+			match show_wt:
+				0: weapon_text = "直射武器"
+				1: weapon_text = "曲射武器"
+				2: weapon_text = "对空武器"
+				3: weapon_text = "支援设备"
+				_: weapon_text = "武器"
+		type_text += "\n武装：%s" % weapon_text
 	else:
 		type_text += "\n武装：无"
 	if type_label: type_label.text = type_text
