@@ -105,10 +105,6 @@ func _update_level_info() -> void:
 func _on_enter_button_pressed() -> void:
 	"""进入关卡按钮被按�?""
 	if current_level > 0:
-		# 触发进入关卡事件
-		if SignalBus:
-			SignalBus.emit_signal("level_selected", current_level)
-
 		# 隐藏或关闭此面板
 		hide()
 

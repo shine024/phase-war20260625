@@ -326,10 +326,9 @@ func _on_apply_pressed() -> void:
 			bp.save_card_weapon_slots(_selected_card)
 	# 通知其他系统
 	var sb = get_node_or_null("/root/SignalBus")
-	if sb and sb.has_signal("growth_panel_saved"):
-		sb.growth_panel_saved.emit(_selected_card)
-	if sb and sb.has_signal("card_data_changed"):
-		sb.card_data_changed.emit(_selected_card.card_id)
+	# v7.x: 原 growth_panel_saved/card_data_changed 无监听者（死信号），改 emit backpack_changed 通知背包刷新
+	if sb and sb.has_signal("backpack_changed"):
+		sb.backpack_changed.emit()
 
 func _on_close_pressed() -> void:
 	hide_panel()

@@ -10,23 +10,8 @@ radius = 20.0
 collision_layer = 2
 script = ExtResource("1_script")
 
-[node name="PreviewBackground" type="Sprite2D" parent="."]
-visible = false
-z_index = -100
-position = Vector2(580, -194)
-
-[node name="Shape" type="Polygon2D" parent="."]
-
-[node name="AnimatedSprite2D2" type="Node2D" parent="."]
-visible = false
-z_index = 2
-
 [node name="Sprite2D" type="Sprite2D" parent="."]
 z_index = 1
-
-[node name="AnimatedSprite2D" type="Node2D" parent="."]
-visible = false
-z_index = 2
 
 [node name="HpBar" parent="." instance=ExtResource("2_hpbar")]
 

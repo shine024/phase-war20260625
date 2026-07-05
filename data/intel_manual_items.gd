@@ -87,6 +87,7 @@ static func get_rarity_color(rarity: String) -> Color:
 		"rare": return Color(0.3, 0.5, 1.0, 1.0)
 		"epic": return Color(0.7, 0.3, 0.9, 1.0)
 		"legendary": return Color(1.0, 0.6, 0.2, 1.0)
+		"mythic": return Color(1.0, 0.42, 0.62, 1.0)
 		_: return Color.WHITE
 
 ## 获取稀有度名称
@@ -97,6 +98,7 @@ static func get_rarity_name(rarity: String) -> String:
 		"rare": return "稀有"
 		"epic": return "史诗"
 		"legendary": return "传说"
+		"mythic": return "神话"
 		_: return "未知"
 
 ## 随机掉落一个改造蓝图（基于敌人类型）

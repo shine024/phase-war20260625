@@ -261,7 +261,8 @@ func start_battle(battle_scene: Node) -> void:
 		PhaseInstrumentManager.sync_law_cards_to_phase_law_manager()
 
 	# 初始化战斗能量
-	energy_manager.start_battle()
+	if energy_manager:
+		energy_manager.start_battle()
 
 	if SignalBus:
 		SignalBus.battle_started.emit()
@@ -305,7 +306,8 @@ func end_battle(player_won: bool) -> void:
 	# 清理预览单位
 	_spawn_system.clear_preview_units()
 	# 结束能量系统
-	energy_manager.end_battle()
+	if energy_manager:
+		energy_manager.end_battle()
 	# 战斗胜利时奖励
 	if player_won:
 		_damage_system.try_grant_battle_affixes(phase_instrument)

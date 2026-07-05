@@ -11,45 +11,92 @@ extends RefCounted
 ## 旧ID → 新ID映射表
 const UNIT_ID_MIGRATION_MAP: Dictionary = {
 	# ==================== 一战单位 ====================
-	"platform_ww1_light": "ww1_rolls",              # 罗尔斯装甲车（轻型侦察）
-	"platform_ww1_medium": "ww1_ft17",              # FT-17轻型坦克（中型坦克）
-	"platform_ww1_fort": "ww1_77mm",                 # 77mm野战炮（固定炮台）
-	"platform_ww1_radar": "ww1_cavalry",             # 骑兵斥候（侦察）
-	"platform_ww1_medic": "ww1_engineer",            # 工兵班（支援）
-	
+	"platform_ww1_light": "ww1_arm_rolls",          # 罗尔斯装甲车（轻型侦察）
+	"platform_ww1_medium": "ww1_arm_ft17",          # FT-17轻型坦克（中型坦克）
+	"platform_ww1_fort": "ww1_arty_77mm",           # 77mm野战炮（固定炮台）
+	"platform_ww1_radar": "ww1_inf_cavalry",        # 骑兵斥候（侦察）
+	"platform_ww1_medic": "ww1_sup_engineer",       # 工兵班（支援）
+
 	# ==================== 二战单位 ====================
-	"platform_ww2_light": "ww2_hellcat",            # M18地狱猫（轻型装甲车）
-	"platform_ww2_medium": "ww2_sherman",           # M4谢尔曼（中型坦克）
-	"platform_ww2_heavy": "ww2_tiger",              # 虎式坦克（重型坦克）
-	"platform_ww2_raider": "ww2_bazooka",            # 巴祖卡组（轻型突击）
-	"platform_ww2_radar": "ww2_panzerschrek",        # 铁拳反坦克组（侦察）
-	"platform_ww2_siege": "ww2_m81 mortar",          # 81mm迫击炮（攻城）
-	"platform_ww2_fortress": "ww1_m81",              # 81mm迫击炮组（固定阵地）
-	
+	"platform_ww2_light": "ww2_inf_hellcat",        # M18地狱猫（轻型装甲车）
+	"platform_ww2_medium": "ww2_arm_sherman",       # M4谢尔曼（中型坦克）
+	"platform_ww2_heavy": "ww2_arm_tiger",          # 虎式坦克（重型坦克）
+	"platform_ww2_raider": "ww2_inf_bazooka",       # 巴祖卡组（轻型突击）
+	"platform_ww2_radar": "ww2_inf_panzerschrek",   # 铁拳反坦克组（侦察）
+	"platform_ww2_siege": "ww2_arty_m81",           # 81mm迫击炮（攻城）
+	"platform_ww2_fortress": "ww1_arty_m81",        # 81mm迫击炮组（固定阵地）
+
 	# ==================== 冷战单位 ====================
-	"platform_cold_light": "cold_btr60",             # BTR-60装甲车（轻型侦察）
-	"platform_cold_medium": "cold_t55",               # T-55坦克（中型坦克）
-	"platform_cold_ifv": "cold_bmp1",                # BMP-1步战车（步战车）
-	"platform_cold_scout": "cold_m113",              # M113装甲车（侦察）
-	"platform_cold_radar": "cold_zsu23",             # ZSU-23-4（雷达/防空）
-	"platform_cold_carrier": "cold_bmp1",            # BMP-1步战车（载具）
-	
+	"platform_cold_light": "cold_inf_btr60",        # BTR-60装甲车（轻型侦察）
+	"platform_cold_medium": "cold_arm_t55",         # T-55坦克（中型坦克）
+	"platform_cold_ifv": "cold_inf_bmp1",           # BMP-1步战车（步战车）
+	"platform_cold_scout": "cold_sup_m113",         # M113装甲车（侦察）
+	"platform_cold_radar": "cold_sup_zsu23",        # ZSU-23-4（雷达/防空）
+	"platform_cold_carrier": "cold_inf_bmp1",       # BMP-1步战车（载具）
+
 	# ==================== 现代单位 ====================
-	"platform_modern_light": "mod_technical",         # 武装皮卡（轻型侦察）
-	"platform_modern_medium": "mod_m1a1",             # M1A1坦克（中型坦克）
-	"platform_modern_radar": "mod_m6",                # 自行高炮M6（雷达）
-	"platform_modern_spg": "mod_m270",               # M270火箭炮（自行火炮）
-	"platform_modern_stealth": "fut_scout_drone",     # 侦察无人机（隐匿）
-	"platform_modern_guard_heavy": "mod_m1a2sep",     # M1A2 SEP（重型护卫）
-	
+	"platform_modern_light": "mod_inf_technical",   # 武装皮卡（轻型侦察）
+	"platform_modern_medium": "mod_arm_m1a1",       # M1A1坦克（中型坦克）
+	"platform_modern_radar": "mod_sup_m6",          # 自行高炮M6（雷达）
+	"platform_modern_spg": "mod_arty_m270",         # M270火箭炮（自行火炮）
+	"platform_modern_stealth": "mod_inf_scout_drone", # 侦察无人机（隐匿）
+	"platform_modern_guard_heavy": "mod_arm_m1a2sep", # M1A2 SEP（重型护卫）
+
 	# ==================== 近未来单位 ====================
-	"platform_future_light": "fut_scout_mech",       # 侦察机甲（轻型）
-	"platform_future_medium": "fut_hovertank",        # 悬浮坦克（中型）
-	"platform_future_radar": "fut_prism",             # 光棱坦克（雷达）
-	"platform_future_heavy": "fut_heavy_mech",        # 重装机甲（重型）
-	
+	"platform_future_light": "fut_inf_scout_mech",  # 侦察机甲（轻型）
+	"platform_future_medium": "fut_arm_hovertank",  # 悬浮坦克（中型）
+	"platform_future_radar": "fut_arm_prism",       # 光棱坦克（雷达）
+	"platform_future_heavy": "fut_arm_heavy_mech",  # 重装机甲（重型）
+
 	# ==================== 终极单位 ====================
-	"omega_platform": "fut_nexus",                    # 虚空领主（终极单位）
+	"omega_platform": "fut_arm_omega",              # 全装型机动舱（原 fut_nexus → fut_arm_omega）
+
+	# ==================== v7.x 规范化重命名：上一代ID → 最新ID（40个）====================
+	# 卡牌ID按兵种类型加前缀（inf/arm/arty/sup/fort），旧存档/旧引用需迁移
+	# 一战
+	"ww1_rolls": "ww1_arm_rolls",
+	"ww1_ft17": "ww1_arm_ft17",
+	"ww1_77mm": "ww1_arty_77mm",
+	"ww1_m81": "ww1_arty_m81",
+	"ww1_cavalry": "ww1_inf_cavalry",
+	"ww1_engineer": "ww1_sup_engineer",
+	# 二战
+	"ww2_tiger": "ww2_arm_tiger",
+	"ww2_sherman": "ww2_arm_sherman",
+	"ww2_hellcat": "ww2_inf_hellcat",
+	"ww2_bazooka": "ww2_inf_bazooka",
+	"ww2_panzerschrek": "ww2_inf_panzerschrek",
+	"ww2_m81": "ww2_arty_m81",
+	# 冷战
+	"cold_btr60": "cold_inf_btr60",
+	"cold_bmp1": "cold_inf_bmp1",
+	"cold_m113": "cold_sup_m113",
+	"cold_t55": "cold_arm_t55",
+	"cold_zsu23": "cold_sup_zsu23",
+	# 现代
+	"mod_technical": "mod_inf_technical",
+	"mod_m1a1": "mod_arm_m1a1",
+	"mod_m1a2sep": "mod_arm_m1a2sep",
+	"mod_m270": "mod_arty_m270",
+	"mod_m6": "mod_sup_m6",
+	# 近未来
+	"fut_scout_drone": "mod_inf_scout_drone",
+	"fut_scout_mech": "fut_inf_scout_mech",
+	"fut_hovertank": "fut_arm_hovertank",
+	"fut_prism": "fut_arm_prism",
+	"fut_nexus": "fut_arm_omega",
+	"fut_heavy_mech": "fut_arm_heavy_mech",
+	# 要塞（fort_前缀 → 时代前缀_fort_）
+	"fort_cold_missile": "cold_fort_missile",
+	"fort_cold_radar": "cold_fort_radar",
+	"fort_future_ion": "fut_fort_ion",
+	"fort_future_shield": "fut_fort_shield",
+	"fort_modern_citadel": "mod_fort_citadel",
+	"fort_modern_phalanx": "mod_fort_phalanx",
+	"fort_ww1_artillery": "ww1_fort_artillery",
+	"fort_ww1_pillbox": "ww1_fort_pillbox",
+	"fort_ww2_bunker": "ww2_fort_bunker",
+	"fort_ww2_flak": "ww2_fort_flak",
 }
 
 ## 新ID → 旧ID反向映射（用于兼容检查）
@@ -77,8 +124,9 @@ static func get_new_id(old_id: String) -> String:
 	return old_id
 
 ## 检查是否需要迁移
+## v7.x：除了 platform_* 旧系统ID，还包括 40 个被规范化重命名的上一代ID
 static func needs_migration(card_id: String) -> bool:
-	return card_id.begins_with("platform_") or card_id == "omega_platform"
+	return UNIT_ID_MIGRATION_MAP.has(card_id)
 
 ## 批量迁移ID列表
 static func migrate_id_list(old_ids: Array) -> Array:

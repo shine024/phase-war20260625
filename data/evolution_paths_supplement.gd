@@ -73,12 +73,12 @@ const SUPPLEMENTARY_LINEAGES: Dictionary = {
 
 	# 反坦克步枪线：李恩菲尔德 → 巴祖卡 → RPG → 标枪 → 重型突击兵
 	"ww1_enfield": {
-		"evolution_1": "ww2_bazooka",
+		"evolution_1": "ww2_inf_bazooka",
 		"faction_branches": {
-			"iron_wall_corp": "ww2_panzerschrek",
+			"iron_wall_corp": "ww2_inf_panzerschrek",
 		},
 	},
-	"ww2_bazooka": {
+	"ww2_inf_bazooka": {
 		"evolution_1": "cold_rpg",
 		"faction_branches": {
 			"frontier_union": "cold_rpg",
@@ -86,10 +86,10 @@ const SUPPLEMENTARY_LINEAGES: Dictionary = {
 	},
 
 	# 工兵线：工兵 → 先锋 → 工兵 → 战斗工兵 → 蜂群机甲
-	"ww1_engineer": {
+	"ww1_sup_engineer": {
 		"evolution_1": "ww2_mp40",  # 临时连接到火焰线
 		"faction_branches": {
-			"aether_dynamics": "ww2_bazooka",
+			"aether_dynamics": "ww2_inf_bazooka",
 		},
 	},
 
@@ -127,14 +127,14 @@ const SUPPLEMENTARY_LINEAGES: Dictionary = {
 	"ww1_a7v": {
 		"evolution_1": "ww2_pz4",
 		"faction_branches": {
-			"iron_wall_corp": "ww2_tiger",
+			"iron_wall_corp": "ww2_arm_tiger",
 			"nova_arms": "ww2_panther",
 		},
 	},
 	"ww2_pz4": {
 		"evolution_1": "cold_t62",
 		"faction_branches": {
-			"frontier_union": "cold_t55",
+			"frontier_union": "cold_arm_t55",
 			"iron_wall_corp": "cold_t72",
 		},
 	},
@@ -142,18 +142,18 @@ const SUPPLEMENTARY_LINEAGES: Dictionary = {
 		"evolution_1": "cold_t62",
 		"faction_branches": {
 			"aether_dynamics": "cold_leo1",
-			"frontier_union": "cold_t55",
+			"frontier_union": "cold_arm_t55",
 		},
 	},
 
 	# 谢尔曼线：Mark IV → 谢尔曼 → M1 → M1A2 → 突击机甲
 	"ww1_mark4": {
-		"evolution_1": "ww2_sherman",
+		"evolution_1": "ww2_arm_sherman",
 		"faction_branches": {
 			"frontier_union": "ww2_t34_76",
 		},
 	},
-	"ww2_sherman": {
+	"ww2_arm_sherman": {
 		"evolution_1": "cold_m1",
 		"faction_branches": {
 			"aether_dynamics": "cold_leo1",
@@ -163,7 +163,7 @@ const SUPPLEMENTARY_LINEAGES: Dictionary = {
 	"cold_m1": {
 		"evolution_1": "mod_m1a2",
 		"faction_branches": {
-			"nova_arms": "mod_m1a2sep",
+			"nova_arms": "mod_arm_m1a2sep",
 		},
 	},
 
@@ -177,7 +177,7 @@ const SUPPLEMENTARY_LINEAGES: Dictionary = {
 	"ww2_t34_85": {
 		"evolution_1": "cold_t62",
 		"faction_branches": {
-			"frontier_union": "cold_t55",
+			"frontier_union": "cold_arm_t55",
 		},
 	},
 
@@ -197,14 +197,14 @@ const SUPPLEMENTARY_LINEAGES: Dictionary = {
 	},
 
 	# 装甲车线：罗尔斯 → 半履带车 → BTR-60 → 布雷德利 → 侦察机甲
-	"ww1_rolls": {
-		"evolution_1": "ww2_sherman",  # 需要添加半履带车
+	"ww1_arm_rolls": {
+		"evolution_1": "ww2_arm_sherman",  # 需要添加半履带车
 		"faction_branches": {
-			"frontier_union": "ww2_sherman",
+			"frontier_union": "ww2_arm_sherman",
 		},
 	},
 	"ww1_lanchest": {
-		"evolution_1": "ww2_sherman",  # 需要添加半履带车
+		"evolution_1": "ww2_arm_sherman",  # 需要添加半履带车
 		"faction_branches": {},
 	},
 
@@ -219,7 +219,7 @@ const SUPPLEMENTARY_LINEAGES: Dictionary = {
 			"frontier_union": "mod_challenger2",
 		},
 	},
-	"cold_btr60": {
+	"cold_inf_btr60": {
 		"evolution_1": "mod_stryker_m2",
 		"faction_branches": {
 			"aether_dynamics": "cold_bradley",
@@ -228,7 +228,7 @@ const SUPPLEMENTARY_LINEAGES: Dictionary = {
 	"cold_bradley": {
 		"evolution_1": "mod_stryker_m2",
 		"faction_branches": {
-			"nova_arms": "fut_scout_mech",
+			"nova_arms": "fut_inf_scout_mech",
 		},
 	},
 	"cold_rpk": {
@@ -238,7 +238,7 @@ const SUPPLEMENTARY_LINEAGES: Dictionary = {
 	"cold_sam7": {
 		"evolution_1": "mod_stinger",
 		"faction_branches": {
-			"frontier_union": "mod_m6",
+			"frontier_union": "mod_sup_m6",
 		},
 	},
 	"cold_f4": {
@@ -253,28 +253,28 @@ const SUPPLEMENTARY_LINEAGES: Dictionary = {
 	# ═══════════════════════════════════════════════════════════
 
 	"mod_leo2a6": {
-		"evolution_1": "fut_prism",
+		"evolution_1": "fut_arm_prism",
 		"faction_branches": {
-			"iron_wall_corp": "fut_heavy_mech",
+			"iron_wall_corp": "fut_arm_heavy_mech",
 			"nova_arms": "fut_assault_mech",
 		},
 	},
 	"mod_t90": {
-		"evolution_1": "fut_prism",
+		"evolution_1": "fut_arm_prism",
 		"faction_branches": {
-			"void_research": "fut_nexus",
+			"void_research": "fut_arm_nexus",
 		},
 	},
 	"mod_challenger2": {
 		"evolution_1": "fut_colossus",
 		"faction_branches": {
-			"aether_dynamics": "fut_heavy_mech",
+			"aether_dynamics": "fut_arm_heavy_mech",
 		},
 	},
 	"mod_m1a2": {
 		"evolution_1": "fut_assault_mech",
 		"faction_branches": {
-			"nova_arms": "fut_hovertank",
+			"nova_arms": "fut_arm_hovertank",
 		},
 	},
 	"mod_uh60": {
@@ -298,13 +298,13 @@ const SUPPLEMENTARY_LINEAGES: Dictionary = {
 		"faction_branches": {},
 	},
 	"mod_stryker_m2": {
-		"evolution_1": "fut_scout_mech",
+		"evolution_1": "fut_inf_scout_mech",
 		"faction_branches": {
 			"helix_recon": "fut_nano_drone",
 		},
 	},
 	"mod_stryker_mgs": {
-		"evolution_1": "fut_scout_mech",
+		"evolution_1": "fut_inf_scout_mech",
 		"faction_branches": {
 			"nova_arms": "fut_assault_mech",
 		},
@@ -320,9 +320,9 @@ const SUPPLEMENTARY_LINEAGES: Dictionary = {
 		"faction_branches": {},
 	},
 	"ww2_m120": {
-		"evolution_1": "cold_m113",  # 需要添加冷战迫击炮
+		"evolution_1": "cold_sup_m113",  # 需要添加冷战迫击炮
 		"faction_branches": {
-			"frontier_union": "cold_m113",
+			"frontier_union": "cold_sup_m113",
 		},
 	},
 
@@ -333,8 +333,8 @@ const SUPPLEMENTARY_LINEAGES: Dictionary = {
 			"frontier_union": "ww2_m120",
 		},
 	},
-	"ww1_77mm": {
-		"evolution_1": "ww2_m81",  # 需要添加二战88mm
+	"ww1_arty_77mm": {
+		"evolution_1": "ww2_arty_m81",  # 需要添加二战88mm
 		"faction_branches": {},
 	},
 
@@ -343,21 +343,21 @@ const SUPPLEMENTARY_LINEAGES: Dictionary = {
 	# ═══════════════════════════════════════════════════════════
 
 	# 辅助功能单位（不需要进化）
-	"fort_ww1_artillery": {
+	"ww1_fort_artillery": {
 		"is_utility": true,  # 标记为辅助单位
 	},
-	"fort_cold_radar": {
+	"cold_fort_radar": {
 		"is_utility": true,  # 标记为辅助单位
 	},
 
 	# 终端节点（进化链末端）
-	"fort_future_ion": {
+	"fut_fort_ion": {
 		"is_terminal": true,  # 标记为终端节点
 	},
-	"fort_future_shield": {
+	"fut_fort_shield": {
 		"is_terminal": true,  # 标记为终端节点
 	},
-	"omega_platform": {
+	"fut_arm_omega": {
 		"is_terminal": true,  # 标记为终端节点
 	},
 
@@ -369,10 +369,10 @@ const SUPPLEMENTARY_LINEAGES: Dictionary = {
 	"fut_spectre": {
 		"is_terminal": true,  # 幽灵特工为终端
 	},
-	"fut_heavy_mech": {
+	"fut_arm_heavy_mech": {
 		"is_terminal": true,  # 重型机甲为终端
 	},
-	"fut_hovertank": {
+	"fut_arm_hovertank": {
 		"is_terminal": true,  # 悬浮坦克为终端
 	},
 	"fut_howitzer": {
@@ -398,17 +398,17 @@ const SUPPLEMENTARY_LINEAGES: Dictionary = {
 	"fut_heavy_trooper": {
 		"evolution_1": "fut_colossus",
 		"faction_branches": {
-			"void_research": "fut_nexus",
+			"void_research": "fut_arm_nexus",
 		},
 	},
 	"fut_assault_mech": {
 		"evolution_1": "fut_colossus",
 		"faction_branches": {
-			"nova_arms": "fut_heavy_mech",
+			"nova_arms": "fut_arm_heavy_mech",
 		},
 	},
-	"fut_scout_mech": {
-		"evolution_1": "fut_prism",
+	"fut_inf_scout_mech": {
+		"evolution_1": "fut_arm_prism",
 		"faction_branches": {
 			"helix_recon": "fut_nano_drone",
 		},
@@ -417,10 +417,10 @@ const SUPPLEMENTARY_LINEAGES: Dictionary = {
 		"evolution_1": "fut_swarm",
 		"faction_branches": {},
 	},
-	"fut_nexus": {
+	"fut_arm_nexus": {
 		"is_terminal": true,  # 联结核心为终端
 	},
-	"fut_prism": {
+	"fut_arm_prism": {
 		"is_terminal": true,  # 棱镜机甲为终端
 	},
 	"fut_swarm": {
@@ -434,10 +434,10 @@ const SUPPLEMENTARY_LINEAGES: Dictionary = {
 	},
 
 	# 骑兵线
-	"ww1_cavalry": {
-		"evolution_1": "ww2_sherman",  # 需要添加半履带车
+	"ww1_inf_cavalry": {
+		"evolution_1": "ww2_arm_sherman",  # 需要添加半履带车
 		"faction_branches": {
-			"frontier_union": "ww2_sherman",
+			"frontier_union": "ww2_arm_sherman",
 		},
 	},
 
@@ -450,7 +450,7 @@ const SUPPLEMENTARY_LINEAGES: Dictionary = {
 	},
 
 	# 地狱猫线
-	"ww2_hellcat": {
+	"ww2_inf_hellcat": {
 		"evolution_1": "cold_m60t",
 		"faction_branches": {
 			"nova_arms": "mod_ah1",

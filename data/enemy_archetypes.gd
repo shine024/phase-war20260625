@@ -86,46 +86,46 @@ const UNIT_KIND_LABEL: Array[String] = ["步兵", "载具", "阵地", "支援"]
 const DEFAULT_VISUAL_SCALE: float = 1.0
 const ARCHETYPE_VISUAL_SCALE_OVERRIDES: Dictionary = {
 	# WW1
-	"enemy_ww1_infantry_basic": 0.378,
-	"enemy_ww1_infantry_rifle": 0.474,
-	"enemy_ww1_mg_nest": 0.318,
-	"enemy_ww1_mortar": 0.33,
-	"elite_ww1_storm": 0.432,
-	"elite_ww1_armored": 0.6,
-	"boss_ww1_av7": 0.66,
+	"ww1_inf_mp18": 0.378,
+	"ww1_inf_rifle": 0.474,
+	"ww1_sup_mg_nest": 0.318,
+	"ww1_arty_mortar": 0.33,
+	"ww1_inf_storm_e": 0.432,
+	"ww1_arm_rolls_e": 0.6,
+	"ww1_boss_av7": 0.66,
 	# WW2
-	"enemy_ww2_infantry": 0.312,
-	"enemy_ww2_rifleman": 0.324,
-	"enemy_ww2_mg42": 0.318,
-	"enemy_ww2_panzerschreck": 0.324,
-	"elite_ww2_paratrooper": 0.36,
-	"elite_ww2_panther": 1.38,
-	"boss_ww2_kingtiger": 0.66,
+	"ww2_inf_thompson": 0.312,
+	"ww2_inf_garand": 0.324,
+	"ww2_sup_mg42": 0.318,
+	"ww2_inf_panzerschreck_e": 0.324,
+	"ww2_inf_para_e": 0.36,
+	"ww2_arm_panther_e": 1.38,
+	"ww2_boss_kingtiger": 0.66,
 	# Cold War
-	"enemy_cold_ak": 0.39,
-	"enemy_cold_m60": 0.342,
-	"enemy_cold_btr": 0.552,
-	"enemy_cold_m113": 0.612,
-	"elite_cold_spetsnaz": 0.438,
-	"elite_cold_t72": 0.66,
-	"boss_cold_mig": 1.44,
+	"cold_inf_ak": 0.39,
+	"cold_inf_m60": 0.342,
+	"cold_arm_btr_e": 0.552,
+	"cold_air_m113_e": 0.612,
+	"cold_inf_spetsnaz_e": 0.438,
+	"cold_arm_t72_e": 0.66,
+	"cold_boss_mig": 1.44,
 	# Modern
-	"enemy_modern_marine": 0.456,
-	"enemy_modern_technical": 0.312,
-	"enemy_modern_stryker": 0.75,
-	"enemy_modern_mlrs": 0.84,
-	"elite_modern_delta": 0.552,
-	"elite_modern_abrams": 0.36,
-	"elite_modern_apache": 0.78,
-	"boss_modern_command": 0.78,
+	"mod_inf_marine": 0.456,
+	"mod_air_technical_e": 0.312,
+	"mod_arm_stryker_e": 0.75,
+	"mod_arty_mlrs_e": 0.84,
+	"mod_inf_delta_e": 0.552,
+	"mod_arm_abrams_e": 0.36,
+	"mod_air_apache_e": 0.78,
+	"mod_boss_command": 0.78,
 	# Future
-	"enemy_future_drone": 0.9,
-	"enemy_future_cyborg": 0.66,
-	"enemy_future_mech": 0.642,
-	"enemy_future_hovertank": 0.66,
-	"elite_future_spectre": 0.36,
-	"elite_future_colossus": 0.66,
-	"boss_future_nexus": 0.78,
+	"fut_air_drone": 0.9,
+	"fut_inf_cyborg": 0.66,
+	"fut_arm_mech_e": 0.642,
+	"fut_arm_hovertank_e": 0.66,
+	"fut_inf_spectre_e": 0.36,
+	"fut_arm_colossus_e": 0.66,
+	"fut_boss_nexus": 0.78,
 }
 ## 若你希望所有敌人都显示完整精灵动画而非蜂群几何体，保持 false。
 ## 需要压测性能时可改回 true（仅对配置了 swarm_unit=true 的敌人生效）。
@@ -424,11 +424,11 @@ const _CARD_ICON_DIR_WORK := "res://assets/card_icons/work_全卡面加工/"
 
 ## 与 `enemy_unit.gd` 生成敌人 ID（enemy_<era>_<n>）共用：美术回退到固定模板 archetype
 const GENERATED_ENEMY_VISUAL_TEMPLATE_MAP := {
-	"ww1": ["enemy_ww1_infantry_basic", "elite_ww1_armored", "enemy_ww1_mg_nest", "enemy_ww1_mortar"],
-	"ww2": ["enemy_ww2_infantry", "elite_ww2_panther", "enemy_ww2_mg42", "enemy_ww2_panzerschreck"],
-	"cold": ["enemy_cold_ak", "enemy_cold_btr", "enemy_cold_m113", "enemy_cold_m60"],
-	"modern": ["enemy_modern_marine", "enemy_modern_stryker", "enemy_modern_mlrs", "enemy_modern_technical"],
-	"near": ["enemy_future_cyborg", "enemy_future_hovertank", "enemy_future_mech", "enemy_future_drone"],
+	"ww1": ["ww1_inf_mp18", "ww1_arm_rolls_e", "ww1_sup_mg_nest", "ww1_arty_mortar"],
+	"ww2": ["ww2_inf_thompson", "ww2_arm_panther_e", "ww2_sup_mg42", "ww2_inf_panzerschreck_e"],
+	"cold": ["cold_inf_ak", "cold_arm_btr_e", "cold_air_m113_e", "cold_inf_m60"],
+	"modern": ["mod_inf_marine", "mod_arm_stryker_e", "mod_arty_mlrs_e", "mod_air_technical_e"],
+	"near": ["fut_inf_cyborg", "fut_arm_hovertank_e", "fut_arm_mech_e", "fut_air_drone"],
 }
 
 static func get_generated_enemy_visual_template_id(id_key: String) -> String:
@@ -458,7 +458,7 @@ static func resolve_card_icon_texture_path(archetype_id: String, cfg: Dictionary
 	var explicit: String = String(cfg.get("card_icon_path", "")).strip_edges()
 	if not explicit.is_empty() and ResourceLoader.exists(explicit):
 		return explicit
-	var manifest_unit: String = EnemyUnitManifest.get_unit_icon_path_for_archetype(archetype_id)
+	var manifest_unit: String = EnemyUnitManifest.get_unit_icon_path_for_archetype(archetype_id, false)
 	if not manifest_unit.is_empty():
 		return manifest_unit
 	for dir in [_CARD_ICON_DIR_PRIMARY, _CARD_ICON_DIR_WORK]:
@@ -468,12 +468,6 @@ static func resolve_card_icon_texture_path(archetype_id: String, cfg: Dictionary
 	var sp: String = String(cfg.get("sprite_path", "")).strip_edges()
 	if not sp.is_empty() and ResourceLoader.exists(sp):
 		return sp
-	var p_sheet: String = "res://assets/enemies/Sprite Sheet/%s.png" % lid
-	if ResourceLoader.exists(p_sheet):
-		return p_sheet
-	var p_root: String = "res://assets/enemies/%s.png" % lid
-	if ResourceLoader.exists(p_root):
-		return p_root
 	var tpl: String = get_generated_enemy_visual_template_id(archetype_id)
 	if not tpl.is_empty() and tpl != lid:
 		var tcfg: Dictionary = get_config(tpl)

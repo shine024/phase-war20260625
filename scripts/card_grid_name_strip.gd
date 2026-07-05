@@ -1,7 +1,8 @@
 extends Node2D
 class_name CardGridNameStrip
-## 格子战卡底名称条：在卡片立绘正下方绘制单位名称（我方青色 / 敌方橙红）。
+## 格子战卡内名称条：在卡片立绘底部"卡框内部"绘制单位名称（我方青色 / 敌方橙红）。
 ## 与 CardGridRankStrip（卡顶军衔图标）对称，补齐"战场上看不出是哪个单位"的可读性缺口。
+## 注：定位由宿主 CardGridUnitVisuals.sync_name_strip() 设置（紧贴卡底边内侧）；本类只负责绘制。
 
 const CardGridBattleLayout = preload("res://scripts/card_grid_battle_layout.gd")
 
@@ -9,8 +10,6 @@ const CardGridBattleLayout = preload("res://scripts/card_grid_battle_layout.gd")
 const NAME_BAR_HEIGHT_FRAC: float = 0.30
 ## 字号占卡宽比例
 const FONT_SIZE_FRAC: float = 0.20
-## 名称条相对卡片底部的下移量（卡高的一半 + 少量间隙）
-const OFFSET_BELOW_CARD_FRAC: float = 0.55
 
 const COLOR_PLAYER: Color = Color(0.30, 0.92, 1.00, 1.0)
 const COLOR_ENEMY: Color = Color(1.00, 0.55, 0.40, 1.0)

@@ -123,6 +123,8 @@ func _apply_embedded_layout() -> void:
 ## ─────────────────────────────────────────────
 
 ## 刷新卡牌选择器
+## v7.x（铁律2）：数据源改读 InstanceRegistry 实例全集（主）+ BlueprintManager 蓝图补无实例卡（兜底）。
+## 同名卡每实例一行（带 #N 序号），选中实例后进化走 _evolve_instance 路径自动迁移养成。
 func _refresh_card_selector() -> void:
 	if card_selector == null:
 		return
@@ -130,15 +132,36 @@ func _refresh_card_selector() -> void:
 	card_selector.clear()
 	_card_list.clear()
 
-	# 添加所有卡牌到选择器（前缀兵种名，便于在 110+ 张卡中定位）
-	for id_raw in BlueprintManager.get_all_blueprint_ids():
-		var card_id: String = str(id_raw)
-		var card: CardResource = DefaultCards.get_card_by_id(card_id)
-		if card == null:
-			continue
-		_card_list.append(card)
-		var kind_name: String = CardResource.get_combat_kind_name(card.combat_kind)
-		card_selector.add_item("[%s] %s" % [kind_name, card.display_name])
+	# ① 主数据源：InstanceRegistry 实例全集（按完整 instance_id 去重）
+	var seen_full: Dictionary = {}
+	var seen_base: Dictionary = {}  # 裸 card_id 去重（蓝图兜底用）
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	if ir != null and ir.has_method("get_all_instance_ids"):
+		for iid_raw in ir.get_all_instance_ids():
+			var iid: String = str(iid_raw)
+			if iid.is_empty() or seen_full.has(iid):
+				continue
+			var inst: CardResource = ir.get_instance(iid) if ir.has_method("get_instance") else null
+			if inst == null:
+				continue
+			seen_full[iid] = true
+			seen_base[inst.card_id] = true
+			_card_list.append(inst)
+			var kind_name: String = CardResource.get_combat_kind_name(inst.combat_kind)
+			card_selector.add_item("[%s] %s%s" % [kind_name, inst.display_name, DefaultCards.seq_suffix(inst)])
+
+	# ② 兜底：已解锁但尚无实例的卡，补一条模板行（进化会拒模板 instance_id 守卫，但至少可见）
+	if BlueprintManager and BlueprintManager.has_method("get_all_blueprint_ids"):
+		for bid_raw in BlueprintManager.get_all_blueprint_ids():
+			var bid: String = str(bid_raw)
+			if bid.is_empty() or seen_base.has(bid):
+				continue
+			var card: CardResource = DefaultCards.get_card_by_id(bid)
+			if card == null:
+				continue
+			_card_list.append(card)
+			var kind_name: String = CardResource.get_combat_kind_name(card.combat_kind)
+			card_selector.add_item("[%s] %s" % [kind_name, card.display_name])
 
 	# 选中第一张卡
 	if _card_list.size() > 0:
@@ -503,9 +526,11 @@ func _on_evolve_pressed() -> void:
 				selected_card = new_card
 				# 更新选择器
 				_refresh_card_selector()
-				# 找到新卡的索引并选中
+				# 找到新卡的索引并选中（v7.x：优先匹配新实例 instance_id，其次 card_id）
+				var new_iid: String = new_card.instance_id if (new_card and not new_card.instance_id.is_empty()) else ""
 				for i in range(_card_list.size()):
-					if _card_list[i].card_id == selected_target_id:
+					var lc: CardResource = _card_list[i]
+					if (not new_iid.is_empty() and lc.instance_id == new_iid) or lc.card_id == selected_target_id:
 						card_selector.selected = i
 						break
 			_update_evolution_tree()

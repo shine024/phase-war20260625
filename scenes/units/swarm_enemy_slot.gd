@@ -7,7 +7,7 @@ const GC = preload("res://resources/game_constants.gd")
 const CardGridDamage = preload("res://scripts/card_grid_damage.gd")
 
 var is_player: bool = false
-var archetype_id: String = "enemy_ww1_infantry_basic"
+var archetype_id: String = "ww1_inf_mp18"
 var hp: float = 40.0
 var max_hp: float = 40.0
 var attack_damage: float = 8.0

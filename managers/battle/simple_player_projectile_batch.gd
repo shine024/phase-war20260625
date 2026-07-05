@@ -103,6 +103,10 @@ func _physics_process(delta: float) -> void:
 		if write != read_idx:
 			_proj[write] = r
 		write += 1
+	# Fix: _apply_hit 回调链可能帧中途清空 _proj（同 simple_enemy_projectile_batch.gd），
+	# 此时 resize(write) 会以 null 填充数组导致下一帧 for r: Dictionary 崩溃。
+	if _proj.is_empty():
+		write = 0
 	_proj.resize(write)
 	_sync_multimesh_layers()
 

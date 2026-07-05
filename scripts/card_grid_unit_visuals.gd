@@ -16,7 +16,8 @@ const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const GC = preload("res://resources/game_constants.gd")
 
 
-## `face_right`：原画朝左；我方 true（负 scale.x 镜像朝右），敌方 false（保持朝左）。
+## `face_right`：v7.x 起图本身已携带朝向（vis_player=我方翻转图，vis_enemy=敌方原图），
+## 不再靠 scale.x 翻转。此参数仅保留给 sync_name_strip 区分敌我颜色（我方青/敌方橙）。
 ## 敌我格子战共用：从 archetype / 缴获清单 / drops 解析 CardResource（框与底图用）
 static func resolve_card_for_archetype(archetype_id: String) -> CardResource:
 	var aid: String = archetype_id.strip_edges()
@@ -50,12 +51,15 @@ static func synthetic_card_for_archetype(archetype_id: String, cfg: Dictionary) 
 	return c
 
 
+## 战场单位取图。`for_player=true`（我方）取 vis_player 翻转图；`for_player=false`（敌方）取 vis_enemy 原图。
+## 我方走 card_icon_path_for（UI 路径，默认 vis_player）；敌方跳过该路径直接走 resolve_card_icon_texture_path（vis_enemy）。
 static func resolve_battle_icon_texture(
 	card: CardResource,
 	archetype_id: String,
-	cfg: Dictionary = {}
+	cfg: Dictionary = {},
+	for_player: bool = true
 ) -> Texture2D:
-	if card != null:
+	if for_player and card != null:
 		var from_card: Texture2D = UiAssetLoader.load_tex(UiAssetLoader.card_icon_path_for(card))
 		if from_card != null:
 			return from_card
@@ -98,7 +102,7 @@ static func sync_name_strip(host: Node2D, unit_spr: Sprite2D, card: CardResource
 		strip = NameStripClass.new()
 		strip.name = "CardGridNameStrip"
 		host.add_child(strip)
-	strip.z_index = 13
+	strip.z_index = 15
 	var display_name: String = ""
 	if card != null:
 		display_name = card.display_name
@@ -110,9 +114,11 @@ static func sync_name_strip(host: Node2D, unit_spr: Sprite2D, card: CardResource
 		card_w = float(bg_spr.texture.get_width()) * absf(bg_spr.scale.x)
 		card_h = float(bg_spr.texture.get_height()) * absf(bg_spr.scale.y)
 	strip.rebuild(display_name, is_player, card_w, card_h)
-	# 卡底定位：立绘居中（position.y=0），底图跟随立绘，名称条贴卡底 = 立绘中心 + half_h
+	# 名称条改为"卡框内部下部"：紧贴卡底边内侧（立绘中心 + half_h - 条高），不再悬于卡外。
+	# 条高与 CardGridNameStrip.rebuild() 内部公式一致（max(card_w × 0.30, 14)），用于反向定位。
 	var half_h: float = card_h * 0.5
-	strip.position = Vector2(unit_spr.position.x, unit_spr.position.y + half_h + 2.0)
+	var bar_h: float = maxf(card_w * 0.30, 14.0)
+	strip.position = Vector2(unit_spr.position.x, unit_spr.position.y + half_h - bar_h)
 
 
 static func apply_uniform_card_sprite(spr: Sprite2D, tex: Texture2D, face_right: bool = false) -> float:
@@ -124,8 +130,9 @@ static func apply_uniform_card_sprite(spr: Sprite2D, tex: Texture2D, face_right:
 		spr.texture if spr.texture != null else tex
 	)
 	spr.offset = Vector2.ZERO
-	var sx: float = -sc if face_right else sc
-	spr.scale = Vector2(sx, sc)
+	# v7.x: 图本身已携带朝向（vis_player=翻转/我方，vis_enemy=原图/敌方），不再 scale 翻转。
+	# face_right 参数保留仅用于 sync_name_strip 的敌我颜色区分，不影响贴图朝向。
+	spr.scale = Vector2(sc, sc)
 	return abs(sc)
 
 

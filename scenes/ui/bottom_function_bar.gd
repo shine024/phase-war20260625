@@ -156,12 +156,13 @@ func _apply_bar_icon(btn: Button, icon_basename: Variant) -> void:
 	btn.icon = t
 	btn.expand_icon = true
 	btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	btn.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
 
 
 func _make_func_button(label_text: String) -> Button:
 	var btn := Button.new()
 	btn.text = label_text
-	btn.custom_minimum_size = Vector2(72, 44)
+	btn.custom_minimum_size = Vector2(72, 56)
 	btn.add_theme_font_size_override("font_size", 13)
 	btn.add_theme_color_override("font_color", Color(0.75, 0.85, 1.0, 0.9))
 	var normal_style := StyleBoxFlat.new()

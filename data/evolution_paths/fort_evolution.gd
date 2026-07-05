@@ -7,14 +7,14 @@ class_name FortEvolution
 
 const DEFENSE_LINE: Dictionary = {
 	E0 = {
-		stage = 0, card_id = "fort_ww1_pillbox", name = "机枪碉堡",
+		stage = 0, card_id = "ww1_fort_pillbox", name = "机枪碉堡",
 		era = "WW1", power = 80, max_hp = 600,
 		attack_light = 60, attack_armor = 0, attack_air = 40,
 		defense_light = 50, defense_armor = 40, defense_air = 30,
 		inherit_multiplier = 0.0,
 	},
 	E1 = {
-		stage = 1, card_id = "fort_ww2_bunker", name = "混凝土碉堡",
+		stage = 1, card_id = "ww2_fort_bunker", name = "混凝土碉堡",
 		era = "WW2", power = 200, max_hp = 1000,
 		attack_light = 80, attack_armor = 0, attack_air = 60,
 		defense_light = 80, defense_armor = 70, defense_air = 50,
@@ -22,7 +22,7 @@ const DEFENSE_LINE: Dictionary = {
 		requirements = {level = 5, mods_count = 2, intel_basic = 50, power_ratio = 0.8},
 	},
 	E2 = {
-		stage = 2, card_id = "fort_cold_missile", name = "导弹发射井",
+		stage = 2, card_id = "cold_fort_missile", name = "导弹发射井",
 		era = "Cold", power = 500, max_hp = 1200,
 		attack_light = 120, attack_armor = 200, attack_air = 100,
 		defense_light = 100, defense_armor = 90, defense_air = 70,
@@ -30,7 +30,7 @@ const DEFENSE_LINE: Dictionary = {
 		requirements = {level = 8, mods_count = 5, eom_count = 1, intel_basic = 75, power_ratio = 0.9},
 	},
 	E3 = {
-		stage = 3, card_id = "fort_modern_citadel", name = "要塞核心",
+		stage = 3, card_id = "mod_fort_citadel", name = "要塞核心",
 		era = "Modern", power = 800, max_hp = 2000,
 		attack_light = 120, attack_armor = 150, attack_air = 80,
 		defense_light = 150, defense_armor = 140, defense_air = 100,
@@ -38,7 +38,7 @@ const DEFENSE_LINE: Dictionary = {
 		requirements = {level = 10, mods_count = 8, eom_count = 2, intel_basic = 90, power_ratio = 1.0},
 	},
 	E4 = {
-		stage = 4, card_id = "fort_future_ion", name = "离子炮台",
+		stage = 4, card_id = "fut_fort_ion", name = "离子炮台",
 		era = "Future", power = 1200, max_hp = 2500,
 		attack_light = 200, attack_armor = 300, attack_air = 150,
 		defense_light = 200, defense_armor = 180, defense_air = 130,
@@ -50,14 +50,14 @@ const DEFENSE_LINE: Dictionary = {
 ## 主线二：防空路线
 const SHIELD_LINE: Dictionary = {
 	E0 = {
-		stage = 0, card_id = "fort_ww2_flak", name = "88mm防空塔",
+		stage = 0, card_id = "ww2_fort_flak", name = "88mm防空塔",
 		era = "WW2", power = 220, max_hp = 800,
 		attack_light = 40, attack_armor = 30, attack_air = 200,
 		defense_light = 60, defense_armor = 50, defense_air = 100,
 		inherit_multiplier = 0.0,
 	},
 	E1 = {
-		stage = 1, card_id = "fort_modern_phalanx", name = "近防炮系统",
+		stage = 1, card_id = "mod_fort_phalanx", name = "近防炮系统",
 		era = "Modern", power = 600, max_hp = 1000,
 		attack_light = 50, attack_armor = 20, attack_air = 300,
 		defense_light = 80, defense_armor = 60, defense_air = 120,
@@ -65,7 +65,7 @@ const SHIELD_LINE: Dictionary = {
 		requirements = {level = 8, mods_count = 5, eom_count = 1, intel_basic = 75, power_ratio = 0.9},
 	},
 	E2 = {
-		stage = 2, card_id = "fort_future_shield", name = "能量护盾发生器",
+		stage = 2, card_id = "fut_fort_shield", name = "能量护盾发生器",
 		era = "Future", power = 1000, max_hp = 3000,
 		attack_light = 0, attack_armor = 0, attack_air = 0,
 		defense_light = 200, defense_armor = 180, defense_air = 200,
@@ -78,7 +78,7 @@ const SHIELD_LINE: Dictionary = {
 ## 隐藏分支：雷达站
 const RADAR_BRANCH: Dictionary = {
 	E2_RADAR = {
-		stage = 2, card_id = "fort_cold_radar", name = "雷达站",
+		stage = 2, card_id = "cold_fort_radar", name = "雷达站",
 		era = "Cold", power = 350, max_hp = 500,
 		attack_light = 0, attack_armor = 0, attack_air = 0,
 		defense_light = 40, defense_armor = 30, defense_air = 40,

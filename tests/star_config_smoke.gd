@@ -24,24 +24,20 @@ func _initialize() -> void:
 	if StarConfig.get_mod_cost("common", 0) != 200 or StarConfig.get_mod_cost("rare", 2) != 800:
 		push_error("mod flat costs mismatch")
 		code = 1
-	if int(StarConfig.get_mod_permit_rule(2).get("general", 0)) != 2:
-		push_error("third mod general permits expected 2")
-		code = 1
+	# v7.3: 许可证系统已移除（get_mod_permit_rule 已删除），跳过该断言
 	if StarConfig.get_max_mod_times("common") != 3:
 		push_error("common max mod times expected 3")
 		code = 1
-	# 时代缩放：GUARD(_PLATFORM_BASE hp=110) × era_hp_multiplier，RIFLE(_WEAPON_BASE dmg=14) × era_damage_multiplier
-	# era_hp_multiplier(e) = 1.0 + e × 0.15  → era1: 110×1.15 = 126.5
-	# era_damage_multiplier = [1.00, 1.20, 1.40, 1.65, 1.80]  → era1: 14×1.20 = 16.8
-	var st_e1: UnitStats = UnitStatsTable.build_multi_stats(1, [1], 1)  # GUARD, RIFLE
-	if not is_equal_approx(st_e1.max_hp, 126.5):
-		push_error("era1 guard hp expected 126.5 got %s" % str(st_e1.max_hp))
+	# v6.8: 我方单位时代缩放已移除——GUARD 平台 hp=110、RIFLE damage=14，任何时代都不再放大。
+	# era1 与 era0 数值应完全相同（验证缩放确实已移除，而非旧的 110×1.15=126.5 / 14×1.20=16.8）。
+	var st_e1: UnitStats = UnitStatsTable.build_multi_stats(1, [1], 1)  # GUARD, RIFLE, era1
+	if not is_equal_approx(st_e1.max_hp, 110.0):
+		push_error("era1 guard hp expected 110.0 (时代缩放已移除) got %s" % str(st_e1.max_hp))
 		code = 1
-	# 新的多维战斗系统：使用 attack_light 字段
-	if not is_equal_approx(st_e1.attack_light, 16.8):
-		push_error("era1 rifle damage expected 16.8 got %s" % str(st_e1.attack_light))
+	if not is_equal_approx(st_e1.attack_light, 14.0):
+		push_error("era1 rifle damage expected 14.0 (时代缩放已移除) got %s" % str(st_e1.attack_light))
 		code = 1
-	var st_e0: UnitStats = UnitStatsTable.build_multi_stats(1, [1], 0)  # GUARD, RIFLE
+	var st_e0: UnitStats = UnitStatsTable.build_multi_stats(1, [1], 0)  # GUARD, RIFLE, era0
 	if not is_equal_approx(st_e0.max_hp, 110.0):
 		push_error("era0 guard hp expected 110.0 got %s" % str(st_e0.max_hp))
 		code = 1

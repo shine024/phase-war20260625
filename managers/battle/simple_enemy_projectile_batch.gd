@@ -100,6 +100,12 @@ func _physics_process(delta: float) -> void:
 		if write != read_idx:
 			_proj[write] = r
 		write += 1
+	# Fix: _apply_hit 的回调链（take_damage → apply_on_hit_side_effects）可能在帧中途
+	# 触发 clear_all() 清空 _proj。此时 write 仍 > 0，直接 resize(write) 会把数组从 0
+	# 扩容到 write 并以 null 填充，下一帧 for r: Dictionary in _proj 遇到 nil 即崩溃。
+	# 与 simple_indirect_projectile_batch.gd 一致：清空时把 write 归零，避免 null 污染。
+	if _proj.is_empty():
+		write = 0
 	_proj.resize(write)
 	_sync_multimesh_layers()
 

@@ -17,6 +17,7 @@ signal filter_changed()  ## 筛选/排序条件变化
 const DefaultCardsData = preload("res://data/default_cards.gd")
 const PhaseLawsData = preload("res://data/phase_laws.gd")
 const GC = preload("res://resources/game_constants.gd")
+const UnitIdMigration = preload("res://data/unit_id_migration_config.gd")
 
 ## 背包最大卡槽数
 const MAX_CARD_SLOTS: int = 50
@@ -97,6 +98,13 @@ func get_all_cards() -> Array[CardResource]:
 		# 最终兜底：ir 不存在或 create_instance 失败（非战斗卡/法则卡），回退 DefaultCards 模板
 		if card == null:
 			card = DefaultCardsData.get_card_by_id(sid)
+		# v7.x：旧存档/旧引用可能用上一代ID（卡牌规范化重命名前），查不到时尝试迁移
+		if card == null and UnitIdMigration.needs_migration(sid):
+			var migrated_id: String = UnitIdMigration.get_new_id(sid)
+			if migrated_id != sid:
+				card = DefaultCardsData.get_card_by_id(migrated_id)
+				if card != null:
+					push_warning("[BackpackData] get_all_cards: 旧ID '%s' 已迁移为 '%s'" % [sid, migrated_id])
 		if card == null and sid.begins_with("law:"):
 			sid = sid.substr(4)
 		if card == null:

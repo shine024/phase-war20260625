@@ -30,7 +30,7 @@ const MAIN_LINE: Dictionary = {
 	},
 	E3 = {
 		stage = 3, card_id = "mod_m270", name = "M270火箭炮",
-		era = "Modern", power = 480, max_hp = 250,
+		era = "Modern", power = 480, max_hp = 320,
 		attack_light = 180, attack_armor = 120, attack_air = 0,
 		defense_light = 40, defense_armor = 30, defense_air = 20,
 		inherit_multiplier = 0.30,
@@ -46,33 +46,13 @@ const MAIN_LINE: Dictionary = {
 	},
 }
 
-## 隐藏分支：空中炮艇
-const GUNSHIP_BRANCH: Dictionary = {
-	E3_GS = {
-		stage = 3, card_id = "ac130", name = "AC-130炮艇机",
-		era = "Modern", power = 520, max_hp = 280,
-		attack_light = 200, attack_armor = 150, attack_air = 0,
-		defense_light = 30, defense_armor = 25, defense_air = 20,
-		inherit_multiplier = 0.40,
-		special = {attack_interval = -0.20},
-		requirements = {level = 10, mods_count = 8, intel_artillery = 80, intel_air = 80, power_ratio = 1.0},
-	},
-	E4_GS = {
-		stage = 4, card_id = "fut_gunship", name = "空天炮艇",
-		era = "Future", power = 900, max_hp = 350,
-		attack_light = 300, attack_armor = 250, attack_air = 0,
-		defense_light = 50, defense_armor = 40, defense_air = 35,
-		inherit_multiplier = 0.45,
-		special = {attack_range = 200},
-		requirements = {level = 10, mods_count = 9, intel_artillery = 100, intel_air = 100, power_ratio = 1.2},
-	},
-}
+## v7.x: 空中炮艇隐藏分支已移除（ac130/fut_gunship 全部为 default_cards 不存在的死链）
 
 static func get_main_line() -> Dictionary:
 	return MAIN_LINE.duplicate(true)
 
 static func get_hidden_branches() -> Dictionary:
-	return {gunship = GUNSHIP_BRANCH.duplicate(true)}
+	return {}
 
 static func check_requirements(card: Dictionary, target_stage: String) -> Dictionary:
 	return {passed = true, missing = []}

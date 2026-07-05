@@ -498,16 +498,15 @@ func _build_store_item_row(
 		var info_parts: Array[String] = []
 		match info_card.card_type:
 			GC.CardType.COMBAT_UNIT: info_parts.append("战斗卡")
-			GC.CardType.COMBAT_UNIT:   info_parts.append("战斗卡")
-			GC.CardType.ENERGY:   info_parts.append("能量卡")
-			GC.CardType.COMBAT_UNIT: info_parts.append("战斗卡")
-			GC.CardType.LAW:      info_parts.append("法则卡")
+			GC.CardType.ENERGY:      info_parts.append("能量卡")
+			GC.CardType.LAW:         info_parts.append("法则卡")
 		var rarity_text := ""
 		match info_card.rarity:
 			"uncommon":  rarity_text = "优秀"
 			"rare":      rarity_text = "稀有"
 			"epic":      rarity_text = "史诗"
 			"legendary": rarity_text = "传说"
+			"mythic":    rarity_text = "神话"
 		if not rarity_text.is_empty():
 			info_parts.append(rarity_text)
 		if info_card.energy_cost > 0:

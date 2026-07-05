@@ -7,7 +7,7 @@ const DATA := {
 	# ==================== 近未来敌人（7种） ====================
 
 	# 基础敌人（4种）
-	"enemy_future_drone": {
+	"fut_air_drone": {
 		"swarm_unit": true,
 		"era": 4,
 		"display_name": "无人机群",
@@ -20,7 +20,7 @@ const DATA := {
 		"tags": ["aircraft", "fast"],
 		"drops": [],
 	},
-	"enemy_future_cyborg": {
+	"fut_inf_cyborg": {
 		"swarm_unit": true,
 		"era": 4,
 		"display_name": "机械步兵",
@@ -33,7 +33,7 @@ const DATA := {
 		"tags": ["infantry", "frontline"],
 		"drops": [],
 	},
-	"enemy_future_mech": {
+	"fut_arm_mech_e": {
 		"era": 4,
 		"display_name": "机甲步兵",
 		"hp": 180.0,
@@ -45,7 +45,7 @@ const DATA := {
 		"tags": ["vehicle", "armored"],
 		"drops": [],
 	},
-	"enemy_future_hovertank": {
+	"fut_arm_hovertank_e": {
 		"era": 4,
 		"display_name": "悬浮坦克",
 		"hp": 250.0,
@@ -59,7 +59,7 @@ const DATA := {
 	},
 
 	# 精英敌人（2种）
-	"elite_future_spectre": {
+	"fut_inf_spectre_e": {
 		"era": 4,
 		"display_name": "幽灵特工",
 		"hp": 120.0,
@@ -73,7 +73,7 @@ const DATA := {
 			{"card_id": "bp_near_001", "chance": 0.4},
 		],
 	},
-	"elite_future_colossus": {
+	"fut_arm_colossus_e": {
 		"era": 4,
 		"display_name": "巨神机甲",
 		"hp": 600.0,
@@ -89,7 +89,7 @@ const DATA := {
 	},
 
 	# 头目（1种）
-	"boss_future_nexus": {
+	"fut_boss_nexus": {
 		"era": 4,
 		"display_name": "风暴核心",
 		"hp": 1800.0,

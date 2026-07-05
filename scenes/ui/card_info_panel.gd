@@ -26,6 +26,7 @@ const ReinforcePanelScene = preload("res://scenes/ui/reinforcement_panel.tscn")
 const ModifyPanelScene = preload("res://scenes/ui/modification_panel.tscn")
 const EvolvePanelScene = preload("res://scenes/ui/evolution_panel.tscn")
 const ModificationRegistry = preload("res://scripts/systems/modification_registry.gd")
+const ModEffectLabels = preload("res://scripts/ui/mod_effect_labels.gd")
 
 var current_card: CardResource = null
 var _current_unit: Node = null
@@ -765,7 +766,9 @@ func _build_nurture_text(card: CardResource) -> String:
 	return ""
 
 ## v6.11: 格式化改造效果摘要（用于情报面板已装改造列表，紧凑单行）
-## 兼容 effects（单档）和 level_effects（取最高档），取前3条避免过长
+## 兼容 effects（单档）和 level_effects（取最高档）。
+## v7.x 修复：① 追加 grant_slot（赋予新攻击维度）显示；② 条数上限 3→6 避免关键效果被吞；
+##            ③ else 分支补回数值（像素值整数如 vision:50 不再丢数值）。
 func _format_mod_effects_brief(mod_data: Dictionary) -> PackedStringArray:
 	var lines: PackedStringArray = []
 	var eff: Dictionary = {}
@@ -776,8 +779,6 @@ func _format_mod_effects_brief(mod_data: Dictionary) -> PackedStringArray:
 		var sorted_levels = le.keys()
 		sorted_levels.sort()
 		eff = le[sorted_levels[sorted_levels.size() - 1]]
-	else:
-		return lines
 	for key in eff.keys():
 		var val = eff[key]
 		var disp: String = _translate_mod_key(String(key))
@@ -790,112 +791,18 @@ func _format_mod_effects_brief(mod_data: Dictionary) -> PackedStringArray:
 		elif val is bool and val:
 			lines.append("✓%s" % disp)
 		else:
-			lines.append("%s" % disp)
-		if lines.size() >= 3:
+			lines.append("%s: %d" % [disp, int(val)])
+		if lines.size() >= 6:
 			break
+	# v7.x: grant_slot（赋予新攻击维度，如炮射导弹激活对空槽）——此前完全被跳过
+	if mod_data.has("grant_slot") and (mod_data["grant_slot"] as Dictionary).size() > 0:
+		lines.append(ModEffectLabels.format_grant_slot(mod_data["grant_slot"]))
 	return lines
 
-## v6.11: 改造效果键翻译（情报面板用，与 modification_panel 的 _translate_effect_key 保持一致但更简短）
-## v7.x: 补齐至全 70 effect key 全覆盖（原仅 29 条，44 个 key 裸露显示英文）。
-##        key 集合与 modification_panel._translate_effect_key 对齐，文案用情报面板简短风格。
+## 改造效果键翻译（薄封装，委托 ModEffectLabels 共享表）。
+## v7.x 统一：情报/改造/强化三面板共用 ModEffectLabels.translate，消除多套分叉表。
 func _translate_mod_key(key: String) -> String:
-	match key:
-		# ── 主属性 ──
-		"attack_light": return "轻攻"
-		"attack_armor": return "重攻"
-		"attack_air": return "防空"
-		"attack_fort": return "攻坚"
-		"defense_light": return "轻防"
-		"defense_armor": return "重防"
-		"defense_air": return "空防"
-		"max_hp": return "生命"
-		"move_speed": return "部署"
-		"deploy_speed": return "部署"
-		"deploy_delay_bonus": return "部署"
-		"attack_range": return "射程"
-		"attack_interval": return "攻速"
-		# ── 暴击/闪避/穿透 ──
-		"crit_chance": return "暴击"
-		"crit_resist": return "暴抗"
-		"crit_damage_bonus": return "暴伤"
-		"dodge_chance": return "闪避"
-		"armor_penetration": return "穿甲"
-		"armor_pen_vs_light": return "穿甲(轻)"
-		"armor_pen_vs_armor": return "穿甲(重)"
-		"armor_pen_vs_air": return "穿甲(空)"
-		# ── 生存/吸血/护盾 ──
-		"damage_reduction": return "减伤"
-		"lifesteal": return "吸血"
-		"hp_regen": return "回血"
-		"shield_on_kill": return "护盾"
-		"splash_damage": return "溅射"
-		"splash_radius": return "溅射范围"
-		"single_target_penalty": return "主目标"
-		"chain_chance": return "连锁"
-		# ── 命中/还击/持续射击 ──
-		"accuracy_bonus": return "命中"
-		"accuracy_penalty": return "命中惩罚"
-		"counter_bonus": return "还击"
-		"sustained_fire": return "持续射击"
-		# ── 视野/射程/侦测 ──
-		"vision": return "视野"
-		"vision_bonus": return "视野加成"
-		"combat_range": return "作战半径"
-		"detection_range": return "侦测范围"
-		"detection_reduce": return "隐蔽"
-		"stealth_detect": return "隐身侦测"
-		"intel_speed": return "情报速度"
-		# ── 夜视/烟雾/热防护/三防 ──
-		"night_bonus": return "夜战"
-		"smoke_ignore": return "烟雾无视"
-		"thermal_immunity": return "热成像"
-		"heat_resist": return "HEAT抗性"
-		"heat_immunity_once": return "HEAT首免"
-		"mine_immunity": return "避雷"
-		"mine_damage_reduction": return "地雷减伤"
-		"nbq_immunity": return "三防"
-		# ── 反装甲/近战/拦截 ──
-		"enemy_armor_slow": return "敌甲减速"
-		"approach_damage": return "近距伤害"
-		"urban_attack_bonus": return "巷战攻击"
-		"urban_move_bonus": return "巷战机动"
-		"missile_intercept": return "拦截"
-		"missile_dodge": return "反导"
-		# ── 弹药/持续作战/移动射击 ──
-		"ammo_capacity": return "弹药容量"
-		"sustained_combat": return "持续作战"
-		"infinite_ammo": return "无限弹药"
-		"mobile_fire": return "行进射击"
-		# ── 隐蔽/反锁定 ──
-		"lock_reduction": return "锁定降低"
-		"fire_exposure": return "开火暴露"
-		"aggro_reduce": return "仇恨降低"
-		"close_accuracy": return "近距精度"
-		"enemy_confusion": return "敌方混乱"
-		# ── 指挥/阵型/盟友协同 ──
-		"command_efficiency": return "指挥效率"
-		"formation_bonus": return "阵型"
-		"ally_bonus": return "盟友加成"
-		"ally_hit_bonus": return "盟友命中"
-		"ally_ammo": return "盟友弹药"
-		"ally_hp_regen": return "盟友回血"
-		"ally_fort_regen": return "堡垒回血"
-		"ally_detection": return "盟友侦测"
-		"ally_river_bonus": return "盟友涉渡"
-		"ally_arty_bonus": return "盟友炮火"
-		"ifak_heal": return "急救包"
-		# ── 武器型号 ──
-		"weapon_type": return "武器型号"
-		"legacy_weapon_type": return "武器型号"
-		# ── 武器槽类(slot_*)——补齐与 modification_panel 对齐（v7.x 一致性修复）──
-		"slot_damage_mult": return "槽位伤害倍率"
-		"slot_damage_add": return "槽位伤害"
-		"slot_attack_speed_mult": return "槽位攻速"
-		"slot_range_bonus": return "槽位射程"
-		"slot_windup_reduce": return "起射缩短"
-		"slot_active_reduce": return "激活缩短"
-		"slot_weapon_type": return "槽位武器"
-		_: return key
+	return ModEffectLabels.translate(key)
 
 ## ── 战场单位显示刷新 ─────────────────────────────────────────
 
@@ -1199,13 +1106,13 @@ func _format_enemy_runes(rune_ids: Array) -> String:
 			var rn: String = str(rd.get("id", rid))
 			var rarity: String = str(rd.get("rarity", ""))
 			var rarity_short: String = ""
-				match rarity:
-					"common": rarity_short = "常见"
-					"uncommon": rarity_short = "优秀"
-					"rare": rarity_short = "稀有"
-					"epic": rarity_short = "史诗"
-					"legendary": rarity_short = "传说"
-					"mythic": rarity_short = "神话"
+			match rarity:
+				"common": rarity_short = "常见"
+				"uncommon": rarity_short = "优秀"
+				"rare": rarity_short = "稀有"
+				"epic": rarity_short = "史诗"
+				"legendary": rarity_short = "传说"
+				"mythic": rarity_short = "神话"
 			if not rarity_short.is_empty():
 				parts.append("%s(%s)" % [rn, rarity_short])
 			else:

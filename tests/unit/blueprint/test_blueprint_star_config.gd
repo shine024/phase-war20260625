@@ -28,12 +28,5 @@ func test_mod_research_flat_v3() -> void:
 	assert_int(StarConfig.get_mod_cost("mythic", 2)).is_equal(800)
 
 
-func test_mod_permit_third_requires_two_general() -> void:
-	var rule: Dictionary = StarConfig.get_mod_permit_rule(2)
-	assert_int(int(rule.get("general", 0))).is_equal(2)
-	assert_int(int(rule.get("category", 0))).is_equal(1)
-	assert_int(int(rule.get("specific", 0))).is_equal(1)
-
-
 func test_max_mod_times_is_three_for_common() -> void:
 	assert_int(StarConfig.get_max_mod_times("common")).is_equal(3)

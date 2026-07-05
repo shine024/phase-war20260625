@@ -3,7 +3,7 @@
   "source": "data/enemy_archetypes.gd",
   "key": "ARCHETYPES",
   "data": {
-    "enemy_ww1_infantry_basic": {
+    "ww1_inf_mp18": {
       "swarm_unit": true,
       "era": 0,
       "display_name": "步兵班·MP18",
@@ -25,7 +25,7 @@
       "drops": [],
       "defense": 3
     },
-    "enemy_ww1_infantry_rifle": {
+    "ww1_inf_rifle": {
       "swarm_unit": true,
       "era": 0,
       "display_name": "步兵班·步枪",
@@ -47,7 +47,7 @@
       "anim_attack": "attack",
       "defense": 5
     },
-    "enemy_ww1_mg_nest": {
+    "ww1_sup_mg_nest": {
       "era": 0,
       "display_name": "机枪巢",
       "visual_scale": 0.318,
@@ -69,7 +69,7 @@
       "swarm_unit": false,
       "defense": 9
     },
-    "enemy_ww1_mortar": {
+    "ww1_arty_mortar": {
       "era": 0,
       "display_name": "迫击炮组",
       "visual_scale": 0.33,
@@ -91,7 +91,7 @@
       "swarm_unit": false,
       "defense": 10
     },
-    "elite_ww1_storm": {
+    "ww1_inf_storm_e": {
       "era": 0,
       "display_name": "暴风突击队",
       "visual_scale": 0.432,
@@ -119,7 +119,7 @@
       "swarm_unit": false,
       "defense": 10
     },
-    "elite_ww1_armored": {
+    "ww1_arm_rolls_e": {
       "era": 0,
       "display_name": "装甲车",
       "visual_scale": 0.6,
@@ -137,7 +137,7 @@
       ],
       "drops": [
         {
-          "card_id": "bulwark",
+          "card_id": "fut_sup_bulwark",
           "chance": 0.2
         }
       ],
@@ -147,7 +147,7 @@
       "swarm_unit": false,
       "defense": 12
     },
-    "boss_ww1_av7": {
+    "ww1_boss_av7": {
       "era": 0,
       "display_name": "圣沙蒙坦克",
       "visual_scale": 0.66,
@@ -165,7 +165,7 @@
       ],
       "drops": [
         {
-          "card_id": "titan_mk2",
+          "card_id": "fut_arm_titan_mk2",
           "chance": 1.0
         }
       ],
@@ -175,7 +175,7 @@
       "swarm_unit": false,
       "defense": 24
     },
-    "enemy_ww2_infantry": {
+    "ww2_inf_thompson": {
       "swarm_unit": true,
       "era": 1,
       "display_name": "步兵班·汤普森",
@@ -197,7 +197,7 @@
       "anim_attack": "attack",
       "defense": 4
     },
-    "enemy_ww2_rifleman": {
+    "ww2_inf_garand": {
       "swarm_unit": true,
       "era": 1,
       "display_name": "步枪班·加兰德",
@@ -219,7 +219,7 @@
       "anim_attack": "attack",
       "defense": 7
     },
-    "enemy_ww2_mg42": {
+    "ww2_sup_mg42": {
       "era": 1,
       "display_name": "MG42机枪组",
       "visual_scale": 0.318,
@@ -241,7 +241,7 @@
       "swarm_unit": false,
       "defense": 8
     },
-    "enemy_ww2_panzerschreck": {
+    "ww2_inf_panzerschreck_e": {
       "era": 1,
       "display_name": "反坦克组",
       "visual_scale": 0.324,
@@ -263,7 +263,7 @@
       "swarm_unit": false,
       "defense": 15
     },
-    "elite_ww2_paratrooper": {
+    "ww2_inf_para_e": {
       "era": 1,
       "display_name": "伞兵精英",
       "visual_scale": 0.36,
@@ -291,7 +291,7 @@
       "swarm_unit": false,
       "defense": 12
     },
-    "elite_ww2_panther": {
+    "ww2_arm_panther_e": {
       "era": 1,
       "display_name": "黑豹坦克",
       "visual_scale": 1.38,
@@ -309,7 +309,7 @@
       ],
       "drops": [
         {
-          "card_id": "storm_rider",
+          "card_id": "fut_inf_storm_rider",
           "chance": 0.25
         }
       ],
@@ -319,7 +319,7 @@
       "swarm_unit": false,
       "defense": 26
     },
-    "boss_ww2_kingtiger": {
+    "ww2_boss_kingtiger": {
       "era": 1,
       "display_name": "虎王坦克",
       "visual_scale": 0.66,
@@ -337,7 +337,7 @@
       ],
       "drops": [
         {
-          "card_id": "heavy_carrier",
+          "card_id": "fut_air_heavy_carrier",
           "chance": 1.0
         }
       ],
@@ -347,7 +347,7 @@
       "swarm_unit": false,
       "defense": 36
     },
-    "enemy_cold_ak": {
+    "cold_inf_ak": {
       "swarm_unit": true,
       "era": 2,
       "display_name": "苏军步兵",
@@ -369,7 +369,7 @@
       "anim_attack": "attack",
       "defense": 6
     },
-    "enemy_cold_m60": {
+    "cold_inf_m60": {
       "swarm_unit": true,
       "era": 2,
       "display_name": "美军步兵",
@@ -391,7 +391,7 @@
       "anim_attack": "attack",
       "defense": 7
     },
-    "enemy_cold_btr": {
+    "cold_arm_btr_e": {
       "era": 2,
       "display_name": "BTR装甲车",
       "visual_scale": 0.552,
@@ -413,7 +413,7 @@
       "swarm_unit": false,
       "defense": 10
     },
-    "enemy_cold_m113": {
+    "cold_air_m113_e": {
       "era": 2,
       "display_name": "M113装甲车",
       "visual_scale": 0.612,
@@ -435,7 +435,7 @@
       "swarm_unit": false,
       "defense": 7
     },
-    "elite_cold_spetsnaz": {
+    "cold_inf_spetsnaz_e": {
       "era": 2,
       "display_name": "特种部队",
       "visual_scale": 0.438,
@@ -463,7 +463,7 @@
       "swarm_unit": false,
       "defense": 14
     },
-    "elite_cold_t72": {
+    "cold_arm_t72_e": {
       "era": 2,
       "display_name": "T-72坦克",
       "visual_scale": 0.66,
@@ -481,7 +481,7 @@
       ],
       "drops": [
         {
-          "card_id": "regen_frame",
+          "card_id": "fut_air_regen_frame",
           "chance": 0.3
         }
       ],
@@ -491,7 +491,7 @@
       "swarm_unit": false,
       "defense": 26
     },
-    "boss_cold_mig": {
+    "cold_boss_mig": {
       "era": 2,
       "display_name": "米格-29",
       "visual_scale": 1.44,
@@ -519,7 +519,7 @@
       "swarm_unit": false,
       "defense": 40
     },
-    "enemy_modern_marine": {
+    "mod_inf_marine": {
       "swarm_unit": true,
       "era": 3,
       "display_name": "海军陆战队",
@@ -541,7 +541,7 @@
       "anim_attack": "attack",
       "defense": 7
     },
-    "enemy_modern_technical": {
+    "mod_air_technical_e": {
       "era": 3,
       "display_name": "皮卡武装",
       "visual_scale": 0.312,
@@ -563,7 +563,7 @@
       "swarm_unit": false,
       "defense": 9
     },
-    "enemy_modern_stryker": {
+    "mod_arm_stryker_e": {
       "era": 3,
       "display_name": "斯特赖克装甲车",
       "visual_scale": 0.75,
@@ -585,7 +585,7 @@
       "swarm_unit": false,
       "defense": 12
     },
-    "enemy_modern_mlrs": {
+    "mod_arty_mlrs_e": {
       "era": 3,
       "display_name": "火箭炮车",
       "visual_scale": 0.84,
@@ -607,7 +607,7 @@
       "swarm_unit": false,
       "defense": 17
     },
-    "elite_modern_delta": {
+    "mod_inf_delta_e": {
       "era": 3,
       "display_name": "三角洲部队",
       "visual_scale": 0.552,
@@ -635,7 +635,7 @@
       "swarm_unit": false,
       "defense": 16
     },
-    "elite_modern_abrams": {
+    "mod_arm_abrams_e": {
       "era": 3,
       "display_name": "M1A2坦克",
       "visual_scale": 0.36,
@@ -653,7 +653,7 @@
       ],
       "drops": [
         {
-          "card_id": "abrams_mk2",
+          "card_id": "mod_arm_abrams_mk2",
           "chance": 0.4
         }
       ],
@@ -663,7 +663,7 @@
       "swarm_unit": false,
       "defense": 29
     },
-    "elite_modern_apache": {
+    "mod_air_apache_e": {
       "era": 3,
       "display_name": "阿帕奇直升机",
       "visual_scale": 0.78,
@@ -691,7 +691,7 @@
       "swarm_unit": false,
       "defense": 24
     },
-    "boss_modern_command": {
+    "mod_boss_command": {
       "era": 3,
       "display_name": "指挥中枢",
       "visual_scale": 0.78,
@@ -718,7 +718,7 @@
       "swarm_unit": false,
       "defense": 40
     },
-    "enemy_future_drone": {
+    "fut_air_drone": {
       "swarm_unit": true,
       "era": 4,
       "display_name": "无人机群",
@@ -740,7 +740,7 @@
       "anim_attack": "attack",
       "defense": 5
     },
-    "enemy_future_cyborg": {
+    "fut_inf_cyborg": {
       "swarm_unit": true,
       "era": 4,
       "display_name": "机械步兵",
@@ -762,7 +762,7 @@
       "anim_attack": "attack",
       "defense": 10
     },
-    "enemy_future_mech": {
+    "fut_arm_mech_e": {
       "era": 4,
       "display_name": "机甲步兵",
       "visual_scale": 0.642,
@@ -784,7 +784,7 @@
       "swarm_unit": false,
       "defense": 16
     },
-    "enemy_future_hovertank": {
+    "fut_arm_hovertank_e": {
       "era": 4,
       "display_name": "悬浮坦克",
       "visual_scale": 0.66,
@@ -807,7 +807,7 @@
       "swarm_unit": false,
       "defense": 22
     },
-    "elite_future_spectre": {
+    "fut_inf_spectre_e": {
       "era": 4,
       "display_name": "幽灵特工",
       "visual_scale": 0.36,
@@ -835,7 +835,7 @@
       "anim_attack": "attack",
       "defense": 22
     },
-    "elite_future_colossus": {
+    "fut_arm_colossus_e": {
       "era": 4,
       "display_name": "巨神机甲",
       "visual_scale": 0.66,
@@ -863,7 +863,7 @@
       "swarm_unit": false,
       "defense": 35
     },
-    "boss_future_nexus": {
+    "fut_boss_nexus": {
       "era": 4,
       "display_name": "风暴核心",
       "visual_scale": 0.78,

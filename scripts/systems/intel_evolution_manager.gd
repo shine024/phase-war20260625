@@ -56,11 +56,16 @@ func load_state(data: Dictionary) -> void:
 	if data.is_empty():
 		var legacy: Dictionary = SaveUtils.load_data_from_file(STATE_SAVE_NAME)
 		if not legacy.is_empty():
-			_discovered = legacy.get("discovered", {})
-			_claimed = legacy.get("claimed", {})
+			_discovered = _coerce_dict(legacy.get("discovered", {}))
+			_claimed = _coerce_dict(legacy.get("claimed", {}))
 		return
-	_discovered = data.get("discovered", {})
-	_claimed = data.get("claimed", {})
+	_discovered = _coerce_dict(data.get("discovered", {}))
+	_claimed = _coerce_dict(data.get("claimed", {}))
+
+# v7.x 存档守卫：旧档/损坏档字段类型异常（非 Dictionary）时回退空字典，
+# 防止破坏强类型成员变量导致整个 load_state 抛错丢失该 manager 状态。
+static func _coerce_dict(value) -> Dictionary:
+	return value if value is Dictionary else {}
 
 func _save_state() -> void:
 	SaveUtils.save_data_to_file(save_state(), STATE_SAVE_NAME)

@@ -88,11 +88,16 @@ func load_state(data: Dictionary) -> void:
 		src = SaveUtils.load_data_from_file(STATE_SAVE_NAME)
 		if src.is_empty():
 			return
-	_triggered_reveals = src.get("triggered_reveals", {})
-	_unlocked_eom = src.get("unlocked_eom", {})
-	_eom_fragments = src.get("eom_fragments", {})
-	_stat_visibility = src.get("stat_visibility", {})
-	_unlocked_lore_pages = src.get("unlocked_lore_pages", {})
+	_triggered_reveals = _coerce_dict(src.get("triggered_reveals", {}))
+	_unlocked_eom = _coerce_dict(src.get("unlocked_eom", {}))
+	_eom_fragments = _coerce_dict(src.get("eom_fragments", {}))
+	_stat_visibility = _coerce_dict(src.get("stat_visibility", {}))
+	_unlocked_lore_pages = _coerce_dict(src.get("unlocked_lore_pages", {}))
+
+# v7.x 存档守卫：旧档/损坏档字段类型异常（非 Dictionary）时回退空字典，
+# 防止破坏强类型成员变量导致整个 load_state 抛错丢失该 manager 状态。
+static func _coerce_dict(value) -> Dictionary:
+	return value if value is Dictionary else {}
 
 func _save_state() -> void:
 	if not _state_dirty:
@@ -142,7 +147,8 @@ func generate_battle_intel_harvest(
 	defeated_enemies: Array,
 	victory_stars: int,
 	has_recon_unit: bool,
-	wave_env: Dictionary
+	wave_env: Dictionary,
+	p_disable_mod_blueprint: bool = false
 ) -> Dictionary:
 	var harvests: Array = []         ## 情报维度增长列表
 	var reveal_events: Array = []    ## 触发的揭示事件
@@ -199,7 +205,8 @@ func generate_battle_intel_harvest(
 	var merged: Dictionary = _merge_harvests(harvests)
 
 	## v6.0: 情报道具掉落
-	intel_item_drops = _roll_intel_item_drops(defeated_enemies, victory_stars, im)
+	## v7.x: p_disable_mod_blueprint=true 时（相位师战）跳过改造蓝图，避免与相位师专属掉落双爆
+	intel_item_drops = _roll_intel_item_drops(defeated_enemies, victory_stars, im, p_disable_mod_blueprint)
 	## 发放到IntelItemBag
 	for item in intel_item_drops:
 		if item is Dictionary:
@@ -514,7 +521,8 @@ const IntelManualItems = preload("res://data/intel_manual_items.gd")
 func _roll_intel_item_drops(
 	defeated_enemies: Array,
 	victory_stars: int,
-	im: Node
+	im: Node,
+	disable_mod_blueprint: bool = false
 ) -> Array:
 	var drops: Array = []
 	## 基础掉落率：每个敌人独立判定
@@ -569,6 +577,10 @@ func _roll_intel_item_drops(
 			item = IntelManualItems.roll_random_evolution_blueprint(rank)
 		else:
 			## 改造蓝图（基于敌人类型）
+			## v7.x: 相位师战时（disable_mod_blueprint=true）跳过——
+			## 相位师专属掉落已必掉1-4个改造蓝图，这里再掉会双爆
+			if disable_mod_blueprint:
+				continue
 			# v7.x: power_tier 改用 rank+level 混合档位，让高关杂兵也能掉更高稀有度改造
 			# （原 get_tier_by_rank 只看 rank，导致第1关和第100关改造蓝图稀有度完全相同）
 			var power_tier: int = PowerTiers.get_tier_by_rank_and_level(rank, cur_level)

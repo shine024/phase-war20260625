@@ -7,7 +7,7 @@ const DATA := {
 	# ==================== 冷战敌人（7种） ====================
 
 	# 基础敌人（4种）
-	"enemy_cold_ak": {
+	"cold_inf_ak": {
 		"swarm_unit": true,
 		"era": 2,
 		"display_name": "苏军步兵",
@@ -20,7 +20,7 @@ const DATA := {
 		"tags": ["infantry", "frontline"],
 		"drops": [],
 	},
-	"enemy_cold_m60": {
+	"cold_inf_m60": {
 		"swarm_unit": true,
 		"era": 2,
 		"display_name": "美军步兵",
@@ -33,7 +33,7 @@ const DATA := {
 		"tags": ["infantry", "frontline"],
 		"drops": [],
 	},
-	"enemy_cold_btr": {
+	"cold_arm_btr_e": {
 		"era": 2,
 		"display_name": "BTR装甲车",
 		"hp": 120.0,
@@ -45,7 +45,7 @@ const DATA := {
 		"tags": ["vehicle", "armored"],
 		"drops": [],
 	},
-	"enemy_cold_m113": {
+	"cold_air_m113_e": {
 		"era": 2,
 		"display_name": "M113装甲车",
 		"hp": 110.0,
@@ -59,7 +59,7 @@ const DATA := {
 	},
 
 	# 精英敌人（2种）
-	"elite_cold_spetsnaz": {
+	"cold_inf_spetsnaz_e": {
 		"era": 2,
 		"display_name": "特种部队",
 		"hp": 90.0,
@@ -73,7 +73,7 @@ const DATA := {
 			{"card_id": "bp_cold_001", "chance": 0.3},
 		],
 	},
-	"elite_cold_t72": {
+	"cold_arm_t72_e": {
 		"era": 2,
 		"display_name": "T-72坦克",
 		"hp": 375.0,
@@ -84,12 +84,12 @@ const DATA := {
 		"weapon_type": 3,
 		"tags": ["elite", "tank", "armored"],
 		"drops": [
-			{"card_id": "regen_frame", "chance": 0.3},
+			{"card_id": "fut_air_regen_frame", "chance": 0.3},
 		],
 	},
 
 	# 头目（1种）
-	"boss_cold_mig": {
+	"cold_boss_mig": {
 		"era": 2,
 		"display_name": "米格-29",
 		"hp": 750.0,
@@ -108,7 +108,7 @@ const DATA := {
 	# ==================== 现代敌人（8种） ====================
 
 	# 基础敌人（4种）
-	"enemy_modern_marine": {
+	"mod_inf_marine": {
 		"swarm_unit": true,
 		"era": 3,
 		"display_name": "海军陆战队",
@@ -121,7 +121,7 @@ const DATA := {
 		"tags": ["infantry", "frontline"],
 		"drops": [],
 	},
-	"enemy_modern_technical": {
+	"mod_air_technical_e": {
 		"era": 3,
 		"display_name": "皮卡武装",
 		"hp": 90.0,
@@ -133,7 +133,7 @@ const DATA := {
 		"tags": ["vehicle", "fast"],
 		"drops": [],
 	},
-	"enemy_modern_stryker": {
+	"mod_arm_stryker_e": {
 		"era": 3,
 		"display_name": "斯特赖克装甲车",
 		"hp": 150.0,
@@ -145,7 +145,7 @@ const DATA := {
 		"tags": ["vehicle", "armored"],
 		"drops": [],
 	},
-	"enemy_modern_mlrs": {
+	"mod_arty_mlrs_e": {
 		"era": 3,
 		"display_name": "火箭炮车",
 		"hp": 100.0,
@@ -159,7 +159,7 @@ const DATA := {
 	},
 
 	# 精英敌人（3种）
-	"elite_modern_delta": {
+	"mod_inf_delta_e": {
 		"era": 3,
 		"display_name": "三角洲部队",
 		"hp": 100.0,
@@ -173,7 +173,7 @@ const DATA := {
 			{"card_id": "bp_modern_001", "chance": 0.3},
 		],
 	},
-	"elite_modern_abrams": {
+	"mod_arm_abrams_e": {
 		"era": 3,
 		"display_name": "M1A2坦克",
 		"hp": 450.0,
@@ -184,10 +184,10 @@ const DATA := {
 		"weapon_type": 3,
 		"tags": ["elite", "tank", "armored"],
 		"drops": [
-			{"card_id": "abrams_mk2", "chance": 0.4},
+			{"card_id": "mod_arm_abrams_mk2", "chance": 0.4},
 		],
 	},
-	"elite_modern_apache": {
+	"mod_air_apache_e": {
 		"era": 3,
 		"display_name": "阿帕奇直升机",
 		"hp": 220.0,
@@ -203,7 +203,7 @@ const DATA := {
 	},
 
 	# 头目（1种）
-	"boss_modern_command": {
+	"mod_boss_command": {
 		"era": 3,
 		"display_name": "指挥中枢",
 		"hp": 1200.0,

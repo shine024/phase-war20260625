@@ -702,12 +702,12 @@ func _grant_phase_master_victory_reward(master_name: String) -> void:
 		_pm_guaranteed = 2
 	# 发放必掉
 	for _i in range(_pm_guaranteed):
-		var _mod_drop: Dictionary = IntelManualItems.roll_random_mod_blueprint(_pm_enemy_type, "boss", _pm_power_tier)
+		var _mod_drop: Dictionary = IntelManualItems.roll_random_mod_blueprint(_pm_enemy_type, "boss", _pm_power_tier, _bias)
 		if not _mod_drop.is_empty() and _drop_bag and _drop_bag.has_method("add_item"):
 			_drop_bag.add_item(String(_mod_drop.get("item_type", "")), 1)
 	# 30% 额外1个
 	if randf() < 0.30:
-		var _mod_drop2: Dictionary = IntelManualItems.roll_random_mod_blueprint(_pm_enemy_type, "boss", _pm_power_tier)
+		var _mod_drop2: Dictionary = IntelManualItems.roll_random_mod_blueprint(_pm_enemy_type, "boss", _pm_power_tier, _bias)
 		if not _mod_drop2.is_empty() and _drop_bag and _drop_bag.has_method("add_item"):
 			_drop_bag.add_item(String(_mod_drop2.get("item_type", "")), 1)
 

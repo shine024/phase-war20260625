@@ -66,11 +66,16 @@ func load_state(data: Dictionary) -> void:
 		# 向后兼容：首次从独立文件迁移时读取旧存档
 		var legacy: Dictionary = SaveUtils.load_data_from_file(STATE_SAVE_NAME)
 		if not legacy.is_empty():
-			_unlocked = legacy.get("unlocked", {})
-			_fragments = legacy.get("fragments", {})
+			_unlocked = _coerce_dict(legacy.get("unlocked", {}))
+			_fragments = _coerce_dict(legacy.get("fragments", {}))
 		return
-	_unlocked = data.get("unlocked", {})
-	_fragments = data.get("fragments", {})
+	_unlocked = _coerce_dict(data.get("unlocked", {}))
+	_fragments = _coerce_dict(data.get("fragments", {}))
+
+# v7.x 存档守卫：旧档/损坏档字段类型异常（非 Dictionary）时回退空字典，
+# 防止破坏强类型成员变量导致整个 load_state 抛错丢失该 manager 状态。
+static func _coerce_dict(value) -> Dictionary:
+	return value if value is Dictionary else {}
 
 ## 退出时写入独立文件（双保险，SaveManager 已统一保存）
 func _save_state() -> void:

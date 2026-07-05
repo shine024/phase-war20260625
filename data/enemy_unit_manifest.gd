@@ -14,67 +14,67 @@ const CAPTURED_PREFIX: String = "captured_"
 ## A 段：新时代单位 → 敌人 archetype 前缀 foe_（28张，v3更新）
 const FOE_PLATFORM_CARD_IDS: Array[String] = [
 	# 一战（5个）
-	"ww1_rolls", "ww1_ft17", "ww1_77mm", "ww1_cavalry", "ww1_engineer",
+	"ww1_arm_rolls", "ww1_arm_ft17", "ww1_arty_77mm", "ww1_inf_cavalry", "ww1_sup_engineer",
 	# 二战（7个）
-	"ww2_hellcat", "ww2_sherman", "ww2_tiger", "ww2_bazooka", "ww2_panzerschrek",
-	"ww2_m81", "ww1_m81",
+	"ww2_inf_hellcat", "ww2_arm_sherman", "ww2_arm_tiger", "ww2_inf_bazooka", "ww2_inf_panzerschrek",
+	"ww2_arty_m81", "ww1_arty_m81",
 	# 冷战（5个）
-	"cold_btr60", "cold_t55", "cold_bmp1", "cold_m113", "cold_zsu23",
+	"cold_inf_btr60", "cold_arm_t55", "cold_inf_bmp1", "cold_sup_m113", "cold_sup_zsu23",
 	# 现代系统（6个）
-	"mod_technical", "mod_m1a1", "mod_m6", "mod_m270", "fut_scout_drone",
-	"mod_m1a2sep",
+	"mod_inf_technical", "mod_arm_m1a1", "mod_sup_m6", "mod_arty_m270", "mod_inf_scout_drone",
+	"mod_arm_m1a2sep",
 	# 近未来（4个）
-	"fut_scout_mech", "fut_hovertank", "fut_prism", "fut_heavy_mech",
+	"fut_inf_scout_mech", "fut_arm_hovertank", "fut_arm_prism", "fut_arm_heavy_mech",
 	# 终极单位
-	"fut_nexus",
+	"fut_arm_nexus",
 ]
 
 ## B 段：原精英掉落平台（6张）
 const FOE_SPECIAL_CARD_IDS: Array[String] = [
-	"bulwark", "titan_mk2", "storm_rider", "heavy_carrier", "regen_frame", "abrams_mk2",
+	"fut_sup_bulwark", "fut_arm_titan_mk2", "fut_inf_storm_rider", "fut_air_heavy_carrier", "fut_air_regen_frame", "mod_arm_abrams_mk2",
 ]
 
 ## C' 段：缴获卡面映射（C段固定敌人的玩家视角版本，14张）
 const CAPTURED_ENEMY_IDS: Array[String] = [
-	"enemy_ww1_infantry_basic", "enemy_ww1_infantry_rifle", "enemy_ww1_mg_nest", "enemy_ww1_mortar",
-	"elite_ww1_storm", "elite_ww1_armored", "boss_ww1_av7",
-	"enemy_ww2_infantry", "enemy_ww2_rifleman", "enemy_ww2_mg42", "enemy_ww2_panzerschreck",
-	"elite_ww2_paratrooper", "elite_ww2_panther", "boss_ww2_kingtiger",
+	"ww1_inf_mp18", "ww1_inf_rifle", "ww1_sup_mg_nest", "ww1_arty_mortar",
+	"ww1_inf_storm_e", "ww1_arm_rolls_e", "ww1_boss_av7",
+	"ww2_inf_thompson", "ww2_inf_garand", "ww2_sup_mg42", "ww2_inf_panzerschreck_e",
+	"ww2_inf_para_e", "ww2_arm_panther_e", "ww2_boss_kingtiger",
 ]
 
 ## E 段：堡垒类别（固定阵地类型，10张）
 const FORT_ENEMY_IDS: Array[String] = [
-	"fort_ww1_pillbox", "fort_ww1_artillery",
-	"fort_ww2_bunker", "fort_ww2_flak",
-	"fort_cold_missile", "fort_cold_radar",
-	"fort_modern_citadel", "fort_modern_phalanx",
-	"fort_future_ion", "fort_future_shield",
+	"ww1_fort_pillbox", "ww1_fort_artillery",
+	"ww2_fort_bunker", "ww2_fort_flak",
+	"cold_fort_missile", "cold_fort_radar",
+	"mod_fort_citadel", "mod_fort_phalanx",
+	"fut_fort_ion", "fut_fort_shield",
 ]
 
 ## C 段：固定敌人（与 enemy_archetypes.json 一致，36张）
 ## 前14张（索引0-13）缴获卡面 → vis_player_036~049（C'段已接入）
 ## 后22张（索引14-35）缴获卡面 → vis_player_050~071（需生成素材后接入）
 const FIXED_ENEMY_IDS: Array[String] = [
-	"enemy_ww1_infantry_basic", "enemy_ww1_infantry_rifle", "enemy_ww1_mg_nest", "enemy_ww1_mortar",
-	"elite_ww1_storm", "elite_ww1_armored", "boss_ww1_av7",
-	"enemy_ww2_infantry", "enemy_ww2_rifleman", "enemy_ww2_mg42", "enemy_ww2_panzerschreck",
-	"elite_ww2_paratrooper", "elite_ww2_panther", "boss_ww2_kingtiger",
-	"enemy_cold_ak", "enemy_cold_m60", "enemy_cold_btr", "enemy_cold_m113",
-	"elite_cold_spetsnaz", "elite_cold_t72", "boss_cold_mig",
-	"enemy_modern_marine", "enemy_modern_technical", "enemy_modern_stryker", "enemy_modern_mlrs",
-	"elite_modern_delta", "elite_modern_abrams", "elite_modern_apache", "boss_modern_command",
-	"enemy_future_drone", "enemy_future_cyborg", "enemy_future_mech", "enemy_future_hovertank",
-	"elite_future_spectre", "elite_future_colossus", "boss_future_nexus",
+	"ww1_inf_mp18", "ww1_inf_rifle", "ww1_sup_mg_nest", "ww1_arty_mortar",
+	"ww1_inf_storm_e", "ww1_arm_rolls_e", "ww1_boss_av7",
+	"ww2_inf_thompson", "ww2_inf_garand", "ww2_sup_mg42", "ww2_inf_panzerschreck_e",
+	"ww2_inf_para_e", "ww2_arm_panther_e", "ww2_boss_kingtiger",
+	"cold_inf_ak", "cold_inf_m60", "cold_arm_btr_e", "cold_air_m113_e",
+	"cold_inf_spetsnaz_e", "cold_arm_t72_e", "cold_boss_mig",
+	"mod_inf_marine", "mod_air_technical_e", "mod_arm_stryker_e", "mod_arty_mlrs_e",
+	"mod_inf_delta_e", "mod_arm_abrams_e", "mod_air_apache_e", "mod_boss_command",
+	"fut_air_drone", "fut_inf_cyborg", "fut_arm_mech_e", "fut_arm_hovertank_e",
+	"fut_inf_spectre_e", "fut_arm_colossus_e", "fut_boss_nexus",
 ]
 
 ## D 段：补充敌人（29张）
 const POOL_ENEMY_IDS: Array[String] = [
-	"foe_pool_001", "foe_pool_002", "foe_pool_003", "foe_pool_004", "foe_pool_005",
-	"foe_pool_006", "foe_pool_007", "foe_pool_008", "foe_pool_009", "foe_pool_010",
-	"foe_pool_011", "foe_pool_012", "foe_pool_013", "foe_pool_014", "foe_pool_015",
-	"foe_pool_016", "foe_pool_017", "foe_pool_018", "foe_pool_019", "foe_pool_020",
-	"foe_pool_021", "foe_pool_022", "foe_pool_023", "foe_pool_024", "foe_pool_025",
-	"foe_pool_026", "foe_pool_027", "foe_pool_028", "foe_pool_029",
+	"ww1_inf_enfield", "ww1_arm_rolls_mk2", "ww1_sup_vickers", "ww1_sup_ford_ambulance", "ww1_inf_mp18_x",
+	"ww2_arm_garand_para", "ww2_arty_hummel", "ww2_arty_pak40", "ww2_sup_gmc_truck", "ww2_inf_kar98k",
+	"cold_arty_bmd1", "cold_sup_bmp1_x", "cold_inf_metis", "cold_arm_p18", "cold_arty_brem1",
+	"mod_sup_m4_carbine", "mod_inf_patriot", "mod_arm_himars", "mod_arty_rq7", "mod_sup_growler",
+	"fut_inf_neural", "fut_arm_hk07", "fut_arty_hel30", "fut_sup_nrepair", "fut_inf_x9",
+	"fut_inf_c96", "fut_arm_sdkfz", "fut_arty_ssc1", "fut_sup_ps9",
 ]
 
 ## D段显示名
@@ -90,7 +90,17 @@ const POOL_DISPLAY_NAMES: Array[String] = [
 static var _entries_cache: Array = []
 static var _unit_icon_by_archetype: Dictionary = {}
 
-const UNITS_ICON_DIR := "res://assets/card_icons/units/"
+const UNITS_ICON_DIR := "res://assets/card_icons/"
+## 根据 visual_id + 敌我确定子目录：
+## - vis_player_/vis_enemy_ 前缀：按前缀定目录（for_player 可改写前缀）
+## - 非 vis_ 前缀（如 D 段新 id cold_inf_metis）：按 for_player 分流到 player/enemy
+static func _icon_subdir(visual_id: String, for_player: bool = true) -> String:
+	if visual_id.begins_with("vis_player_"):
+		return "player/"
+	if visual_id.begins_with("vis_enemy_"):
+		return "enemy/"
+	# 非 vis_ 前缀：直接按敌我分流（图文件名为 <新id>.png）
+	return "player/" if for_player else "enemy/"
 
 # ─────────────────────────────────────────────
 #  A/B段敌人卡属性表（直接定义，不从旧平台卡克隆）
@@ -104,35 +114,35 @@ const UNITS_ICON_DIR := "res://assets/card_icons/units/"
 
 ## FOE_PLATFORM_CARD_IDS 直接 ID → 已有 platform_* 属性键映射
 const _FOE_ID_TO_PLATFORM: Dictionary = {
-	"ww1_rolls": "platform_ww1_medium",
-	"ww1_ft17": "platform_ww1_medium",
-	"ww1_77mm": "platform_ww1_fort",
-	"ww1_cavalry": "platform_ww1_light",
-	"ww1_engineer": "platform_ww1_medic",
-	"ww2_hellcat": "platform_ww2_raider",
-	"ww2_sherman": "platform_ww2_medium",
-	"ww2_tiger": "platform_ww2_heavy",
-	"ww2_bazooka": "platform_ww2_light",
-	"ww2_panzerschrek": "platform_ww2_light",
-	"ww2_m81": "platform_ww2_fortress",
-	"ww1_m81": "platform_ww1_fort",
-	"cold_btr60": "platform_cold_ifv",
-	"cold_t55": "platform_cold_medium",
-	"cold_bmp1": "platform_cold_ifv",
-	"cold_m113": "platform_cold_carrier",
-	"cold_zsu23": "platform_cold_radar",
-	"fut_scout_mech": "platform_future_light",
-	"fut_hovertank": "platform_future_medium",
-	"fut_prism": "platform_future_heavy",
-	"fut_heavy_mech": "platform_future_heavy",
-	"fut_nexus": "omega_platform",
+	"ww1_arm_rolls": "platform_ww1_medium",
+	"ww1_arm_ft17": "platform_ww1_medium",
+	"ww1_arty_77mm": "platform_ww1_fort",
+	"ww1_inf_cavalry": "platform_ww1_light",
+	"ww1_sup_engineer": "platform_ww1_medic",
+	"ww2_inf_hellcat": "platform_ww2_raider",
+	"ww2_arm_sherman": "platform_ww2_medium",
+	"ww2_arm_tiger": "platform_ww2_heavy",
+	"ww2_inf_bazooka": "platform_ww2_light",
+	"ww2_inf_panzerschrek": "platform_ww2_light",
+	"ww2_arty_m81": "platform_ww2_fortress",
+	"ww1_arty_m81": "platform_ww1_fort",
+	"cold_inf_btr60": "platform_cold_ifv",
+	"cold_arm_t55": "platform_cold_medium",
+	"cold_inf_bmp1": "platform_cold_ifv",
+	"cold_sup_m113": "platform_cold_carrier",
+	"cold_sup_zsu23": "platform_cold_radar",
+	"fut_inf_scout_mech": "platform_future_light",
+	"fut_arm_hovertank": "platform_future_medium",
+	"fut_arm_prism": "platform_future_heavy",
+	"fut_arm_heavy_mech": "platform_future_heavy",
+	"fut_arm_nexus": "fut_arm_omega",
 		# 现代时代（FOE_PLATFORM_CARD_IDS 现代段）
-		"mod_technical": "platform_modern_light",
-		"mod_m1a1": "platform_modern_medium",
-		"mod_m6": "platform_modern_radar",
-		"mod_m270": "platform_modern_spg",
-		"fut_scout_drone": "platform_modern_stealth",
-		"mod_m1a2sep": "platform_modern_guard_heavy",
+		"mod_inf_technical": "platform_modern_light",
+		"mod_arm_m1a1": "platform_modern_medium",
+		"mod_sup_m6": "platform_modern_radar",
+		"mod_arty_m270": "platform_modern_spg",
+		"mod_inf_scout_drone": "platform_modern_stealth",
+		"mod_arm_m1a2sep": "platform_modern_guard_heavy",
 	}
 
 static func _get_foe_stats(card_id: String) -> Dictionary:
@@ -141,258 +151,264 @@ static func _get_foe_stats(card_id: String) -> Dictionary:
 		# 一战 A段
 		"platform_ww1_light":
 			return {"kind": 0, "hp": 65.0, "weapon_type": 0, "deploy_speed": 4,
-			        "attack_light": 35.0, "attack_armor": 0.0, "attack_air": 0.0,
-			        "defense_light": 8.0, "defense_armor": 5.0, "defense_air": 3.0,
-			        "rng": 95.0, "ivl": 0.67, "spd": 115.0, "weapon": "冲锋枪"}
+					"attack_light": 35.0, "attack_armor": 0.0, "attack_air": 0.0,
+					"defense_light": 8.0, "defense_armor": 5.0, "defense_air": 3.0,
+					"rng": 95.0, "ivl": 0.67, "spd": 115.0, "weapon": "冲锋枪"}
 		"platform_ww1_medium":
 			return {"kind": 1, "hp": 200.0, "weapon_type": 0, "deploy_speed": 3,
-			        "attack_light": 25.0, "attack_armor": 40.0, "attack_air": 0.0,
-			        "defense_light": 18.0, "defense_armor": 22.0, "defense_air": 10.0,
-			        "rng": 160.0, "ivl": 0.8, "spd": 40.0, "weapon": "机枪"}
+					"attack_light": 25.0, "attack_armor": 40.0, "attack_air": 0.0,
+					"defense_light": 18.0, "defense_armor": 22.0, "defense_air": 10.0,
+					"rng": 160.0, "ivl": 0.8, "spd": 40.0, "weapon": "机枪"}
 		"platform_ww1_fort":
 			return {"kind": 2, "hp": 260.0, "weapon_type": 0, "deploy_speed": 0,
-			        "attack_light": 45.0, "attack_armor": 0.0, "attack_air": 25.0,
-			        "defense_light": 12.0, "defense_armor": 8.0, "defense_air": 10.0,
-			        "rng": 160.0, "ivl": 0.5, "spd": 0.0, "weapon": "机枪"}
+					"attack_light": 45.0, "attack_armor": 0.0, "attack_air": 25.0,
+					"defense_light": 12.0, "defense_armor": 8.0, "defense_air": 10.0,
+					"rng": 160.0, "ivl": 0.5, "spd": 0.0, "weapon": "机枪"}
 		"platform_ww1_radar":
 			return {"kind": 2, "hp": 180.0, "weapon_type": 0, "deploy_speed": 0,
-			        "attack_light": 40.0, "attack_armor": 0.0, "attack_air": 22.0,
-			        "defense_light": 12.0, "defense_armor": 8.0, "defense_air": 10.0,
-			        "rng": 155.0, "ivl": 0.56, "spd": 0.0, "weapon": "机枪"}
+					"attack_light": 40.0, "attack_armor": 0.0, "attack_air": 22.0,
+					"defense_light": 12.0, "defense_armor": 8.0, "defense_air": 10.0,
+					"rng": 155.0, "ivl": 0.56, "spd": 0.0, "weapon": "机枪"}
 		"platform_ww1_medic":
 			return {"kind": 2, "hp": 80.0, "weapon_type": 0, "deploy_speed": 4,
-			        "attack_light": 30.0, "attack_armor": 25.0, "attack_air": 0.0,
-			        "defense_light": 10.0, "defense_armor": 8.0, "defense_air": 5.0,
-			        "rng": 85.0, "ivl": 1.0, "spd": 75.0, "weapon": "步枪"}
+					"attack_light": 30.0, "attack_armor": 25.0, "attack_air": 0.0,
+					"defense_light": 10.0, "defense_armor": 8.0, "defense_air": 5.0,
+					"rng": 85.0, "ivl": 1.0, "spd": 75.0, "weapon": "步枪"}
 		# 二战 A段
 		"platform_ww2_light":
 			return {"kind": 0, "hp": 50.0, "weapon_type": 0, "deploy_speed": 5,
-			        "attack_light": 8.0, "attack_armor": 4.0, "attack_air": 4.0,
-			        "defense_light": 4.0, "defense_armor": 3.0, "defense_air": 3.0,
-			        "rng": 95.0, "ivl": 0.38, "spd": 135.0, "weapon": "冲锋枪"}
+					"attack_light": 8.0, "attack_armor": 4.0, "attack_air": 4.0,
+					"defense_light": 4.0, "defense_armor": 3.0, "defense_air": 3.0,
+					"rng": 95.0, "ivl": 0.38, "spd": 135.0, "weapon": "冲锋枪"}
 		"platform_ww2_medium":
 			return {"kind": 1, "hp": 110.0, "weapon_type": 0, "deploy_speed": 3,
-			        "attack_light": 14.0, "attack_armor": 8.0, "attack_air": 7.0,
-			        "defense_light": 9.0, "defense_armor": 7.0, "defense_air": 7.0,
-			        "rng": 155.0, "ivl": 0.95, "spd": 75.0, "weapon": "步枪"}
+					"attack_light": 14.0, "attack_armor": 8.0, "attack_air": 7.0,
+					"defense_light": 9.0, "defense_armor": 7.0, "defense_air": 7.0,
+					"rng": 155.0, "ivl": 0.95, "spd": 75.0, "weapon": "步枪"}
 		"platform_ww2_heavy":
 			return {"kind": 1, "hp": 200.0, "weapon_type": 1, "deploy_speed": 1,
-			        "attack_light": 30.0, "attack_armor": 18.0, "attack_air": 15.0,
-			        "defense_light": 13.0, "defense_armor": 10.0, "defense_air": 10.0,
-			        "rng": 195.0, "ivl": 1.70, "spd": 40.0, "weapon": "迫击炮"}
+					"attack_light": 30.0, "attack_armor": 18.0, "attack_air": 15.0,
+					"defense_light": 13.0, "defense_armor": 10.0, "defense_air": 10.0,
+					"rng": 195.0, "ivl": 1.70, "spd": 40.0, "weapon": "迫击炮"}
 		"platform_ww2_raider":
 			return {"kind": 0, "hp": 90.0, "weapon_type": 0, "deploy_speed": 4,
-			        "attack_light": 7.0, "attack_armor": 3.0, "attack_air": 3.0,
-			        "defense_light": 7.0, "defense_armor": 5.0, "defense_air": 5.0,
-			        "rng": 160.0, "ivl": 0.25, "spd": 100.0, "weapon": "机枪"}
+					"attack_light": 7.0, "attack_armor": 3.0, "attack_air": 3.0,
+					"defense_light": 7.0, "defense_armor": 5.0, "defense_air": 5.0,
+					"rng": 160.0, "ivl": 0.25, "spd": 100.0, "weapon": "机枪"}
 		"platform_ww2_radar":
 			return {"kind": 2, "hp": 180.0, "weapon_type": 0, "deploy_speed": 0,
-			        "attack_light": 14.0, "attack_armor": 8.0, "attack_air": 7.0,
-			        "defense_light": 11.0, "defense_armor": 9.0, "defense_air": 9.0,
-			        "rng": 155.0, "ivl": 0.95, "spd": 0.0, "weapon": "步枪"}
+					"attack_light": 14.0, "attack_armor": 8.0, "attack_air": 7.0,
+					"defense_light": 11.0, "defense_armor": 9.0, "defense_air": 9.0,
+					"rng": 155.0, "ivl": 0.95, "spd": 0.0, "weapon": "步枪"}
 		"platform_ww2_siege":
 			return {"kind": 2, "hp": 300.0, "weapon_type": 1, "deploy_speed": 0,
-			        "attack_light": 30.0, "attack_armor": 18.0, "attack_air": 15.0,
-			        "defense_light": 14.0, "defense_armor": 11.0, "defense_air": 11.0,
-			        "rng": 195.0, "ivl": 1.70, "spd": 0.0, "weapon": "迫击炮"}
+					"attack_light": 30.0, "attack_armor": 18.0, "attack_air": 15.0,
+					"defense_light": 14.0, "defense_armor": 11.0, "defense_air": 11.0,
+					"rng": 195.0, "ivl": 1.70, "spd": 0.0, "weapon": "迫击炮"}
 		"platform_ww2_fortress":
 			return {"kind": 2, "hp": 260.0, "weapon_type": 0, "deploy_speed": 0,
-			        "attack_light": 7.0, "attack_armor": 3.0, "attack_air": 3.0,
-			        "defense_light": 20.0, "defense_armor": 16.0, "defense_air": 16.0,
-			        "rng": 160.0, "ivl": 0.25, "spd": 0.0, "weapon": "机枪"}
+					"attack_light": 7.0, "attack_armor": 3.0, "attack_air": 3.0,
+					"defense_light": 20.0, "defense_armor": 16.0, "defense_air": 16.0,
+					"rng": 160.0, "ivl": 0.25, "spd": 0.0, "weapon": "机枪"}
 		# 冷战 A段
 		"platform_cold_light":
 			return {"kind": 0, "hp": 65.0, "weapon_type": 0, "deploy_speed": 5,
-			        "attack_light": 8.0, "attack_armor": 5.0, "attack_air": 4.0,
-			        "defense_light": 5.0, "defense_armor": 4.0, "defense_air": 4.0,
-			        "rng": 95.0, "ivl": 0.38, "spd": 115.0, "weapon": "冲锋枪"}
+					"attack_light": 8.0, "attack_armor": 5.0, "attack_air": 4.0,
+					"defense_light": 5.0, "defense_armor": 4.0, "defense_air": 4.0,
+					"rng": 95.0, "ivl": 0.38, "spd": 115.0, "weapon": "冲锋枪"}
 		"platform_cold_medium":
 			return {"kind": 1, "hp": 200.0, "weapon_type": 1, "deploy_speed": 2,
-			        "attack_light": 30.0, "attack_armor": 20.0, "attack_air": 16.0,
-			        "defense_light": 13.0, "defense_armor": 11.0, "defense_air": 10.0,
-			        "rng": 195.0, "ivl": 1.70, "spd": 40.0, "weapon": "迫击炮"}
+					"attack_light": 30.0, "attack_armor": 20.0, "attack_air": 16.0,
+					"defense_light": 13.0, "defense_armor": 11.0, "defense_air": 10.0,
+					"rng": 195.0, "ivl": 1.70, "spd": 40.0, "weapon": "迫击炮"}
 		"platform_cold_ifv":
 			return {"kind": 3, "hp": 140.0, "weapon_type": 0, "deploy_speed": 3,
-			        "attack_light": 7.0, "attack_armor": 4.0, "attack_air": 4.0,
-			        "defense_light": 8.0, "defense_armor": 6.0, "defense_air": 6.0,
-			        "rng": 160.0, "ivl": 0.25, "spd": 50.0, "weapon": "机枪"}
+					"attack_light": 7.0, "attack_armor": 4.0, "attack_air": 4.0,
+					"defense_light": 8.0, "defense_armor": 6.0, "defense_air": 6.0,
+					"rng": 160.0, "ivl": 0.25, "spd": 50.0, "weapon": "机枪"}
 		"platform_cold_scout":
 			return {"kind": 0, "hp": 50.0, "weapon_type": 0, "deploy_speed": 6,
-			        "attack_light": 8.0, "attack_armor": 4.0, "attack_air": 4.0,
-			        "defense_light": 4.0, "defense_armor": 3.0, "defense_air": 3.0,
-			        "rng": 95.0, "ivl": 0.38, "spd": 135.0, "weapon": "冲锋枪"}
+					"attack_light": 8.0, "attack_armor": 4.0, "attack_air": 4.0,
+					"defense_light": 4.0, "defense_armor": 3.0, "defense_air": 3.0,
+					"rng": 95.0, "ivl": 0.38, "spd": 135.0, "weapon": "冲锋枪"}
 		"platform_cold_radar":
 			return {"kind": 2, "hp": 180.0, "weapon_type": 0, "deploy_speed": 0,
-			        "attack_light": 14.0, "attack_armor": 10.0, "attack_air": 9.0,
-			        "defense_light": 11.0, "defense_armor": 9.0, "defense_air": 9.0,
-			        "rng": 155.0, "ivl": 0.95, "spd": 0.0, "weapon": "步枪"}
+					"attack_light": 14.0, "attack_armor": 10.0, "attack_air": 9.0,
+					"defense_light": 11.0, "defense_armor": 9.0, "defense_air": 9.0,
+					"rng": 155.0, "ivl": 0.95, "spd": 0.0, "weapon": "步枪"}
 		"platform_cold_carrier":
 			return {"kind": 3, "hp": 140.0, "weapon_type": 0, "deploy_speed": 2,
-			        "attack_light": 7.0, "attack_armor": 4.0, "attack_air": 5.0,
-			        "defense_light": 8.0, "defense_armor": 6.0, "defense_air": 6.0,
-			        "rng": 160.0, "ivl": 0.25, "spd": 50.0, "weapon": "机枪"}
+					"attack_light": 7.0, "attack_armor": 4.0, "attack_air": 5.0,
+					"defense_light": 8.0, "defense_armor": 6.0, "defense_air": 6.0,
+					"rng": 160.0, "ivl": 0.25, "spd": 50.0, "weapon": "机枪"}
 		# 现代 A段
 		"platform_modern_light":
 			return {"kind": 0, "hp": 65.0, "weapon_type": 0, "deploy_speed": 5,
-			        "attack_light": 8.0, "attack_armor": 5.0, "attack_air": 5.0,
-			        "defense_light": 5.0, "defense_armor": 4.0, "defense_air": 4.0,
-			        "rng": 95.0, "ivl": 0.38, "spd": 115.0, "weapon": "冲锋枪"}
+					"attack_light": 8.0, "attack_armor": 5.0, "attack_air": 5.0,
+					"defense_light": 5.0, "defense_armor": 4.0, "defense_air": 4.0,
+					"rng": 95.0, "ivl": 0.38, "spd": 115.0, "weapon": "冲锋枪"}
 		"platform_modern_medium":
 			return {"kind": 1, "hp": 110.0, "weapon_type": 1, "deploy_speed": 3,
-			        "attack_light": 30.0, "attack_armor": 20.0, "attack_air": 18.0,
-			        "defense_light": 9.0, "defense_armor": 7.0, "defense_air": 7.0,
-			        "rng": 195.0, "ivl": 1.70, "spd": 75.0, "weapon": "迫击炮"}
+					"attack_light": 30.0, "attack_armor": 20.0, "attack_air": 18.0,
+					"defense_light": 9.0, "defense_armor": 7.0, "defense_air": 7.0,
+					"rng": 195.0, "ivl": 1.70, "spd": 75.0, "weapon": "迫击炮"}
 		"platform_modern_radar":
 			return {"kind": 2, "hp": 180.0, "weapon_type": 0, "deploy_speed": 0,
-			        "attack_light": 14.0, "attack_armor": 10.0, "attack_air": 9.0,
-			        "defense_light": 11.0, "defense_armor": 9.0, "defense_air": 9.0,
-			        "rng": 155.0, "ivl": 0.95, "spd": 0.0, "weapon": "步枪"}
+					"attack_light": 14.0, "attack_armor": 10.0, "attack_air": 9.0,
+					"defense_light": 11.0, "defense_armor": 9.0, "defense_air": 9.0,
+					"rng": 155.0, "ivl": 0.95, "spd": 0.0, "weapon": "步枪"}
 		"platform_modern_spg":
 			return {"kind": 2, "hp": 300.0, "weapon_type": 1, "deploy_speed": 0,
-			        "attack_light": 30.0, "attack_armor": 20.0, "attack_air": 18.0,
-			        "defense_light": 14.0, "defense_armor": 11.0, "defense_air": 11.0,
-			        "rng": 195.0, "ivl": 1.70, "spd": 0.0, "weapon": "迫击炮"}
+					"attack_light": 30.0, "attack_armor": 20.0, "attack_air": 18.0,
+					"defense_light": 14.0, "defense_armor": 11.0, "defense_air": 11.0,
+					"rng": 195.0, "ivl": 1.70, "spd": 0.0, "weapon": "迫击炮"}
 		"platform_modern_stealth":
 			return {"kind": 0, "hp": 50.0, "weapon_type": 0, "deploy_speed": 6,
-			        "attack_light": 8.0, "attack_armor": 5.0, "attack_air": 5.0,
-			        "defense_light": 5.0, "defense_armor": 4.0, "defense_air": 4.0,
-			        "rng": 95.0, "ivl": 0.38, "spd": 115.0, "weapon": "冲锋枪"}
+					"attack_light": 8.0, "attack_armor": 5.0, "attack_air": 5.0,
+					"defense_light": 5.0, "defense_armor": 4.0, "defense_air": 4.0,
+					"rng": 95.0, "ivl": 0.38, "spd": 115.0, "weapon": "冲锋枪"}
 		"platform_modern_guard_heavy":
 			return {"kind": 1, "hp": 110.0, "weapon_type": 0, "deploy_speed": 2,
-			        "attack_light": 140.0, "attack_armor": 100.0, "attack_air": 90.0,
-			        "defense_light": 9.0, "defense_armor": 7.0, "defense_air": 7.0,
-			        "rng": 240.0, "ivl": 1.65, "spd": 75.0, "weapon": "轨道炮"}
+					"attack_light": 140.0, "attack_armor": 100.0, "attack_air": 90.0,
+					"defense_light": 9.0, "defense_armor": 7.0, "defense_air": 7.0,
+					"rng": 240.0, "ivl": 1.65, "spd": 75.0, "weapon": "轨道炮"}
 		# 现代 A段 - 直接使用的 ID
-		"mod_technical":
+		"mod_inf_technical":
 			return {"kind": 0, "hp": 90.0, "weapon_type": 0, "deploy_speed": 4,
-			        "attack_light": 18.0, "attack_armor": 5.0, "attack_air": 5.0,
-			        "defense_light": 7.0, "defense_armor": 5.0, "defense_air": 5.0,
-			        "rng": 130.0, "ivl": 0.30, "spd": 120.0, "weapon": "机枪"}
-		"mod_m1a1":
+					"attack_light": 18.0, "attack_armor": 5.0, "attack_air": 5.0,
+					"defense_light": 7.0, "defense_armor": 5.0, "defense_air": 5.0,
+					"rng": 130.0, "ivl": 0.30, "spd": 120.0, "weapon": "机枪"}
+		"mod_arm_m1a1":
 			return {"kind": 1, "hp": 220.0, "weapon_type": 1, "deploy_speed": 2,
-			        "attack_light": 50.0, "attack_armor": 40.0, "attack_air": 35.0,
-			        "defense_light": 15.0, "defense_armor": 12.0, "defense_air": 12.0,
-			        "rng": 240.0, "ivl": 1.80, "spd": 60.0, "weapon": "火炮"}
-		"mod_m6":
+					"attack_light": 50.0, "attack_armor": 40.0, "attack_air": 35.0,
+					"defense_light": 15.0, "defense_armor": 12.0, "defense_air": 12.0,
+					"rng": 240.0, "ivl": 1.80, "spd": 60.0, "weapon": "火炮"}
+		"mod_sup_m6":
 			return {"kind": 2, "hp": 160.0, "weapon_type": 0, "deploy_speed": 0,
-			        "attack_light": 25.0, "attack_armor": 15.0, "attack_air": 35.0,
-			        "defense_light": 12.0, "defense_armor": 10.0, "defense_air": 12.0,
-			        "rng": 280.0, "ivl": 0.15, "spd": 0.0, "weapon": "机枪"}
-		"mod_m270":
+					"attack_light": 25.0, "attack_armor": 15.0, "attack_air": 35.0,
+					"defense_light": 12.0, "defense_armor": 10.0, "defense_air": 12.0,
+					"rng": 280.0, "ivl": 0.15, "spd": 0.0, "weapon": "机枪"}
+		"mod_arty_m270":
 			return {"kind": 2, "hp": 200.0, "weapon_type": 1, "deploy_speed": 0,
-			        "attack_light": 40.0, "attack_armor": 30.0, "attack_air": 20.0,
-			        "defense_light": 10.0, "defense_armor": 8.0, "defense_air": 8.0,
-			        "rng": 400.0, "ivl": 2.50, "spd": 0.0, "weapon": "火箭炮"}
-		"fut_scout_drone":
+					"attack_light": 40.0, "attack_armor": 30.0, "attack_air": 20.0,
+					"defense_light": 10.0, "defense_armor": 8.0, "defense_air": 8.0,
+					"rng": 400.0, "ivl": 2.50, "spd": 0.0, "weapon": "火箭炮"}
+		"mod_inf_scout_drone":
 			return {"kind": 3, "hp": 50.0, "weapon_type": 0, "deploy_speed": 6,
-			        "attack_light": 8.0, "attack_armor": 8.0, "attack_air": 8.0,
-			        "defense_light": 3.0, "defense_armor": 3.0, "defense_air": 3.0,
-			        "rng": 150.0, "ivl": 0.35, "spd": 135.0, "weapon": "机枪"}
-		"mod_m1a2sep":
+					"attack_light": 8.0, "attack_armor": 8.0, "attack_air": 8.0,
+					"defense_light": 3.0, "defense_armor": 3.0, "defense_air": 3.0,
+					"rng": 150.0, "ivl": 0.35, "spd": 135.0, "weapon": "机枪"}
+		"mod_arm_m1a2sep":
 			return {"kind": 1, "hp": 240.0, "weapon_type": 1, "deploy_speed": 2,
-			        "attack_light": 55.0, "attack_armor": 45.0, "attack_air": 40.0,
-			        "defense_light": 16.0, "defense_armor": 13.0, "defense_air": 13.0,
-			        "rng": 250.0, "ivl": 1.70, "spd": 65.0, "weapon": "火炮"}
+					"attack_light": 55.0, "attack_armor": 45.0, "attack_air": 40.0,
+					"defense_light": 16.0, "defense_armor": 13.0, "defense_air": 13.0,
+					"rng": 250.0, "ivl": 1.70, "spd": 65.0, "weapon": "火炮"}
 		# 近未来 A段
 		"platform_future_light":
 			return {"kind": 0, "hp": 50.0, "weapon_type": 0, "deploy_speed": 5,
-			        "attack_light": 13.0, "attack_armor": 9.0, "attack_air": 9.0,
-			        "defense_light": 5.0, "defense_armor": 4.0, "defense_air": 4.0,
-			        "rng": 185.0, "ivl": 0.50, "spd": 115.0, "weapon": "光束步枪"}
+					"attack_light": 13.0, "attack_armor": 9.0, "attack_air": 9.0,
+					"defense_light": 5.0, "defense_armor": 4.0, "defense_air": 4.0,
+					"rng": 185.0, "ivl": 0.50, "spd": 115.0, "weapon": "光束步枪"}
 		"platform_future_medium":
 			return {"kind": 1, "hp": 90.0, "weapon_type": 0, "deploy_speed": 4,
-			        "attack_light": 13.0, "attack_armor": 9.0, "attack_air": 9.0,
-			        "defense_light": 7.0, "defense_armor": 6.0, "defense_air": 6.0,
-			        "rng": 185.0, "ivl": 0.50, "spd": 100.0, "weapon": "光束步枪"}
+					"attack_light": 13.0, "attack_armor": 9.0, "attack_air": 9.0,
+					"defense_light": 7.0, "defense_armor": 6.0, "defense_air": 6.0,
+					"rng": 185.0, "ivl": 0.50, "spd": 100.0, "weapon": "光束步枪"}
 		"platform_future_radar":
 			return {"kind": 2, "hp": 180.0, "weapon_type": 0, "deploy_speed": 0,
-			        "attack_light": 13.0, "attack_armor": 9.0, "attack_air": 9.0,
-			        "defense_light": 11.0, "defense_armor": 9.0, "defense_air": 9.0,
-			        "rng": 185.0, "ivl": 0.50, "spd": 0.0, "weapon": "光束步枪"}
+					"attack_light": 13.0, "attack_armor": 9.0, "attack_air": 9.0,
+					"defense_light": 11.0, "defense_armor": 9.0, "defense_air": 9.0,
+					"rng": 185.0, "ivl": 0.50, "spd": 0.0, "weapon": "光束步枪"}
 		"platform_future_heavy":
 			return {"kind": 1, "hp": 200.0, "weapon_type": 0, "deploy_speed": 1,
-			        "attack_light": 220.0, "attack_armor": 180.0, "attack_air": 160.0,
-			        "defense_light": 13.0, "defense_armor": 11.0, "defense_air": 10.0,
-			        "rng": 250.0, "ivl": 2.2, "spd": 40.0, "weapon": "米加粒子炮"}
-		"omega_platform":
+					"attack_light": 220.0, "attack_armor": 180.0, "attack_air": 160.0,
+					"defense_light": 13.0, "defense_armor": 11.0, "defense_air": 10.0,
+					"rng": 250.0, "ivl": 2.2, "spd": 40.0, "weapon": "米加粒子炮"}
+		"fut_arm_omega":
 			return {"kind": 1, "hp": 240.0, "weapon_type": 0, "deploy_speed": 1,
-			        "attack_light": 220.0, "attack_armor": 180.0, "attack_air": 160.0,
-			        "defense_light": 15.0, "defense_armor": 12.0, "defense_air": 11.0,
-			        "rng": 250.0, "ivl": 2.2, "spd": 30.0, "weapon": "米加粒子炮"}
+					"attack_light": 220.0, "attack_armor": 180.0, "attack_air": 160.0,
+					"defense_light": 15.0, "defense_armor": 12.0, "defense_air": 11.0,
+					"rng": 250.0, "ivl": 2.2, "spd": 30.0, "weapon": "米加粒子炮"}
 		# B段 特殊卡
-		"bulwark":
+		"fut_sup_bulwark":
 			return {"kind": 2, "hp": 300.0, "weapon_type": 0, "deploy_speed": 0,
-			        "attack_light": 22.0, "attack_armor": 15.0, "attack_air": 13.0,
-			        "defense_light": 20.0, "defense_armor": 16.0, "defense_air": 16.0,
-			        "rng": 60.0, "ivl": 0.85, "spd": 0.0, "weapon": "霰弹枪"}
-		"titan_mk2":
+					"attack_light": 22.0, "attack_armor": 15.0, "attack_air": 13.0,
+					"defense_light": 20.0, "defense_armor": 16.0, "defense_air": 16.0,
+					"rng": 60.0, "ivl": 0.85, "spd": 0.0, "weapon": "霰弹枪"}
+		"fut_arm_titan_mk2":
 			return {"kind": 1, "hp": 250.0, "weapon_type": 1, "deploy_speed": 2,
-			        "attack_light": 38.0, "attack_armor": 26.0, "attack_air": 23.0,
-			        "defense_light": 15.0, "defense_armor": 12.0, "defense_air": 11.0,
-			        "rng": 215.0, "ivl": 2.00, "spd": 35.0, "weapon": "导弹"}
-		"storm_rider":
+					"attack_light": 38.0, "attack_armor": 26.0, "attack_air": 23.0,
+					"defense_light": 15.0, "defense_armor": 12.0, "defense_air": 11.0,
+					"rng": 215.0, "ivl": 2.00, "spd": 35.0, "weapon": "导弹"}
+		"fut_inf_storm_rider":
 			return {"kind": 0, "hp": 60.0, "weapon_type": 0, "deploy_speed": 5,
-			        "attack_light": 28.0, "attack_armor": 19.0, "attack_air": 17.0,
-			        "defense_light": 5.0, "defense_armor": 4.0, "defense_air": 4.0,
-			        "rng": 240.0, "ivl": 1.60, "spd": 120.0, "weapon": "狙击枪"}
-		"heavy_carrier":
+					"attack_light": 28.0, "attack_armor": 19.0, "attack_air": 17.0,
+					"defense_light": 5.0, "defense_armor": 4.0, "defense_air": 4.0,
+					"rng": 240.0, "ivl": 1.60, "spd": 120.0, "weapon": "狙击枪"}
+		"fut_air_heavy_carrier":
 			return {"kind": 3, "hp": 160.0, "weapon_type": 0, "deploy_speed": 2,
-			        "attack_light": 7.0, "attack_armor": 5.0, "attack_air": 5.0,
-			        "defense_light": 9.0, "defense_armor": 7.0, "defense_air": 7.0,
-			        "rng": 160.0, "ivl": 0.25, "spd": 50.0, "weapon": "机枪"}
-		"regen_frame":
+					"attack_light": 7.0, "attack_armor": 5.0, "attack_air": 5.0,
+					"defense_light": 9.0, "defense_armor": 7.0, "defense_air": 7.0,
+					"rng": 160.0, "ivl": 0.25, "spd": 50.0, "weapon": "机枪"}
+		"fut_air_regen_frame":
 			return {"kind": 3, "hp": 100.0, "weapon_type": 0, "deploy_speed": 3,
-			        "attack_light": 7.0, "attack_armor": 5.0, "attack_air": 4.0,
-			        "defense_light": 6.0, "defense_armor": 5.0, "defense_air": 5.0,
-			        "rng": 85.0, "ivl": 0.45, "spd": 75.0, "weapon": "手枪"}
-		"abrams_mk2":
+					"attack_light": 7.0, "attack_armor": 5.0, "attack_air": 4.0,
+					"defense_light": 6.0, "defense_armor": 5.0, "defense_air": 5.0,
+					"rng": 85.0, "ivl": 0.45, "spd": 75.0, "weapon": "手枪"}
+		"mod_arm_abrams_mk2":
 			return {"kind": 1, "hp": 220.0, "weapon_type": 0, "deploy_speed": 2,
-			        "attack_light": 140.0, "attack_armor": 100.0, "attack_air": 90.0,
-			        "defense_light": 12.0, "defense_armor": 10.0, "defense_air": 9.0,
-			        "rng": 240.0, "ivl": 1.65, "spd": 65.0, "weapon": "轨道炮"}
+					"attack_light": 140.0, "attack_armor": 100.0, "attack_air": 90.0,
+					"defense_light": 12.0, "defense_armor": 10.0, "defense_air": 9.0,
+					"rng": 240.0, "ivl": 1.65, "spd": 65.0, "weapon": "轨道炮"}
 		# D段 池子卡默认（按 kind 0-3 循环）
 		"_pool_default":
 			return {"kind": 1, "hp": 100.0, "weapon_type": 0, "deploy_speed": 4,
-			        "attack_light": 14.0, "attack_armor": 10.0, "attack_air": 9.0,
-			        "defense_light": 8.0, "defense_armor": 6.0, "defense_air": 6.0,
-			        "rng": 155.0, "ivl": 0.95, "spd": 75.0, "weapon": "步枪"}
+					"attack_light": 14.0, "attack_armor": 10.0, "attack_air": 9.0,
+					"defense_light": 8.0, "defense_armor": 6.0, "defense_air": 6.0,
+					"rng": 155.0, "ivl": 0.95, "spd": 75.0, "weapon": "步枪"}
 		_:
 			return {"kind": 1, "hp": 100.0, "weapon_type": 0, "deploy_speed": 4,
-			        "attack_light": 14.0, "attack_armor": 10.0, "attack_air": 9.0,
-			        "defense_light": 8.0, "defense_armor": 6.0, "defense_air": 6.0,
-			        "rng": 155.0, "ivl": 0.95, "spd": 75.0, "weapon": "步枪"}
+					"attack_light": 14.0, "attack_armor": 10.0, "attack_air": 9.0,
+					"defense_light": 8.0, "defense_armor": 6.0, "defense_air": 6.0,
+					"rng": 155.0, "ivl": 0.95, "spd": 75.0, "weapon": "步枪"}
 
 
 ## D段池子卡按 kind 的属性修正
 static func _pool_stats_for_kind(kind: int) -> Dictionary:
 	match kind:
 		0: return {"hp": 55.0, "weapon_type": 0, "deploy_speed": 5,
-		          "attack_light": 10.0, "attack_armor": 7.0, "attack_air": 6.0,
-		          "defense_light": 4.0, "defense_armor": 3.0, "defense_air": 3.0,
-		          "rng": 110.0, "ivl": 0.50, "spd": 120.0, "weapon": "冲锋枪"}
+				  "attack_light": 10.0, "attack_armor": 7.0, "attack_air": 6.0,
+				  "defense_light": 4.0, "defense_armor": 3.0, "defense_air": 3.0,
+				  "rng": 110.0, "ivl": 0.50, "spd": 120.0, "weapon": "冲锋枪"}
 		1: return {"hp": 120.0, "weapon_type": 0, "deploy_speed": 3,
-		          "attack_light": 16.0, "attack_armor": 11.0, "attack_air": 10.0,
-		          "defense_light": 10.0, "defense_armor": 8.0, "defense_air": 8.0,
-		          "rng": 155.0, "ivl": 0.90, "spd": 60.0, "weapon": "步枪"}
+				  "attack_light": 16.0, "attack_armor": 11.0, "attack_air": 10.0,
+				  "defense_light": 10.0, "defense_armor": 8.0, "defense_air": 8.0,
+				  "rng": 155.0, "ivl": 0.90, "spd": 60.0, "weapon": "步枪"}
 		2: return {"hp": 200.0, "weapon_type": 1, "deploy_speed": 0,
-		          "attack_light": 25.0, "attack_armor": 18.0, "attack_air": 16.0,
-		          "defense_light": 14.0, "defense_armor": 11.0, "defense_air": 11.0,
-		          "rng": 180.0, "ivl": 1.50, "spd": 0.0, "weapon": "迫击炮"}
+				  "attack_light": 25.0, "attack_armor": 18.0, "attack_air": 16.0,
+				  "defense_light": 14.0, "defense_armor": 11.0, "defense_air": 11.0,
+				  "rng": 180.0, "ivl": 1.50, "spd": 0.0, "weapon": "迫击炮"}
 		3: return {"hp": 90.0, "weapon_type": 0, "deploy_speed": 3,
-		          "attack_light": 8.0, "attack_armor": 6.0, "attack_air": 5.0,
-		          "defense_light": 6.0, "defense_armor": 5.0, "defense_air": 5.0,
-		          "rng": 130.0, "ivl": 0.40, "spd": 70.0, "weapon": "手枪"}
+				  "attack_light": 8.0, "attack_armor": 6.0, "attack_air": 5.0,
+				  "defense_light": 6.0, "defense_armor": 5.0, "defense_air": 5.0,
+				  "rng": 130.0, "ivl": 0.40, "spd": 70.0, "weapon": "手枪"}
 		_: return {"hp": 100.0, "weapon_type": 0, "deploy_speed": 4,
-		          "attack_light": 14.0, "attack_armor": 10.0, "attack_air": 9.0,
-		          "defense_light": 8.0, "defense_armor": 6.0, "defense_air": 6.0,
-		          "rng": 155.0, "ivl": 0.95, "spd": 75.0, "weapon": "步枪"}
+				  "attack_light": 14.0, "attack_armor": 10.0, "attack_air": 9.0,
+				  "defense_light": 8.0, "defense_armor": 6.0, "defense_air": 6.0,
+				  "rng": 155.0, "ivl": 0.95, "spd": 75.0, "weapon": "步枪"}
 
 
 # ─────────────────────────────────────────────
 #  公开接口
 # ─────────────────────────────────────────────
 
-static func get_unit_icon_path_for_archetype(archetype_id: String) -> String:
+## 返回该 archetype 的卡图标文件路径。
+## `for_player=true`（默认）：我方/UI 用，返回 vis_player_*（敌方原图的水平翻转图）。
+## `for_player=false`：敌方战场单位用，返回 vis_enemy_*（原图）。
+## 设计：落实"我方卡 = 敌方图水平反转"——敌我取图分流于文件名前缀。
+##   vis_enemy_NNN = 敌方原图；vis_player_NNN = 其水平翻转（由 tools/generate_mirrored_player_icons.py 生成）。
+##   _visual_id_for_source_id 已统一以 vis_player 命名我方映射；for_player=false 时把 vis_player 改写成 vis_enemy。
+static func get_unit_icon_path_for_archetype(archetype_id: String, for_player: bool = true) -> String:
 	var aid := String(archetype_id).strip_edges()
 	if aid.is_empty():
 		return ""
@@ -400,7 +416,11 @@ static func get_unit_icon_path_for_archetype(archetype_id: String) -> String:
 	var rel: String = String(_unit_icon_by_archetype.get(aid, ""))
 	if rel.is_empty():
 		return ""
-	var full := "%s%s.png" % [UNITS_ICON_DIR, rel]
+	# 敌方取原图：把 vis_player 翻转图改写为 vis_enemy 原图（编号不变）。
+	if not for_player and rel.begins_with("vis_player_"):
+		rel = "vis_enemy_" + rel.substr(len("vis_player_"))
+	var subdir := _icon_subdir(rel, for_player)
+	var full := "%s%s%s.png" % [UNITS_ICON_DIR, subdir, rel]
 	return full if ResourceLoader.exists(full) else ""
 
 
@@ -546,7 +566,7 @@ static func _make_pool_row(index: int) -> Dictionary:
 		"archetype_id": aid,
 		"display_name": display_name,
 		"era": era,
-		"visual_id": "vis_pool_%03d" % (index + 1),
+		"visual_id": aid,
 		"drop_card_id": captured_card_id_for(aid),
 		"template_card_id": "",
 		"drop_trigger": "on_kill",
@@ -583,7 +603,7 @@ static func _make_pool_row(index: int) -> Dictionary:
 static func _make_fort_row(fort_id: String) -> Dictionary:
 	var era: int = _era_from_fort_id(fort_id)
 	var display_name: String = _get_fort_display_name(fort_id)
-	var captured_id: String = CAPTURED_PREFIX + fort_id  # "captured_fort_ww1_pillbox"
+	var captured_id: String = CAPTURED_PREFIX + fort_id  # "captured_ww1_fort_pillbox"
 	var s: Dictionary = CapturedCardStats.get_stats(captured_id)
 	var hp: float = float(s.get("base_hp", 600.0))
 	var rng: float = float(s.get("range_value", 1)) * 100.0       # 格转像素（1格=100px，与 unit_stats_table 一致）
@@ -594,7 +614,7 @@ static func _make_fort_row(fort_id: String) -> Dictionary:
 		"archetype_id": fort_id,
 		"display_name": display_name,
 		"era": era,
-		"visual_id": "vis_enemy_%03d" % (72 + FORT_ENEMY_IDS.find(fort_id)),
+		"visual_id": "vis_player_%03d" % (72 + FORT_ENEMY_IDS.find(fort_id)),
 		"drop_card_id": captured_card_id_for(fort_id),
 		"template_card_id": "",
 		"drop_trigger": "on_kill",
@@ -669,35 +689,35 @@ static func _get_foe_display_name(card_id: String) -> String:
 		"platform_cold_scout": return "BRDM-2侦察车"
 		"platform_cold_radar": return "电子对抗站"
 		"platform_cold_carrier": return "BMP步战车"
-		"mod_technical": return "皮卡武装"
-		"mod_m1a1": return "M1A1主战坦克"
-		"mod_m6": return "自行高炮M6"
-		"mod_m270": return "M270火箭炮"
-		"fut_scout_drone": return "侦察无人机"
-		"mod_m1a2sep": return "M1A2 SEP主战坦克"
+		"mod_inf_technical": return "皮卡武装"
+		"mod_arm_m1a1": return "M1A1主战坦克"
+		"mod_sup_m6": return "自行高炮M6"
+		"mod_arty_m270": return "M270火箭炮"
+		"mod_inf_scout_drone": return "侦察无人机"
+		"mod_arm_m1a2sep": return "M1A2 SEP主战坦克"
 		# 直接 ID 显示名（与 default_cards 对齐）
-		"ww1_rolls": return "罗尔斯装甲车"
-		"ww1_ft17": return "FT-17轻型坦克"
-		"ww1_77mm": return "77mm野战炮"
-		"ww1_cavalry": return "骑兵斥候"
-		"ww1_engineer": return "工兵班"
-		"ww2_hellcat": return "M18地狱猫"
-		"ww2_sherman": return "M4谢尔曼"
-		"ww2_tiger": return "虎式坦克"
-		"ww2_bazooka": return "巴祖卡组"
-		"ww2_panzerschrek": return "铁拳反坦克组"
-		"ww2_m81": return "81mm迫击炮"
-		"ww1_m81": return "81mm迫击炮组"
-		"cold_btr60": return "BTR-60装甲车"
-		"cold_t55": return "T-55坦克"
-		"cold_bmp1": return "BMP-1步战车"
-		"cold_m113": return "M113装甲车"
-		"cold_zsu23": return "ZSU-23-4自行高炮"
-		"fut_scout_mech": return "侦察机甲"
-		"fut_hovertank": return "悬浮坦克"
-		"fut_prism": return "光棱坦克"
-		"fut_heavy_mech": return "重装机甲"
-		"fut_nexus": return "虚空领主"
+		"ww1_arm_rolls": return "罗尔斯装甲车"
+		"ww1_arm_ft17": return "FT-17轻型坦克"
+		"ww1_arty_77mm": return "77mm野战炮"
+		"ww1_inf_cavalry": return "骑兵斥候"
+		"ww1_sup_engineer": return "工兵班"
+		"ww2_inf_hellcat": return "M18地狱猫"
+		"ww2_arm_sherman": return "M4谢尔曼"
+		"ww2_arm_tiger": return "虎式坦克"
+		"ww2_inf_bazooka": return "巴祖卡组"
+		"ww2_inf_panzerschrek": return "铁拳反坦克组"
+		"ww2_arty_m81": return "81mm迫击炮"
+		"ww1_arty_m81": return "81mm迫击炮组"
+		"cold_inf_btr60": return "BTR-60装甲车"
+		"cold_arm_t55": return "T-55坦克"
+		"cold_inf_bmp1": return "BMP-1步战车"
+		"cold_sup_m113": return "M113装甲车"
+		"cold_sup_zsu23": return "ZSU-23-4自行高炮"
+		"fut_inf_scout_mech": return "侦察机甲"
+		"fut_arm_hovertank": return "悬浮坦克"
+		"fut_arm_prism": return "光棱坦克"
+		"fut_arm_heavy_mech": return "重装机甲"
+		"fut_arm_nexus": return "虚空领主"
 		"platform_modern_light": return "北极星全地形车"
 		"platform_modern_medium": return "艾布拉姆斯坦克"
 		"platform_modern_radar": return "相控阵雷达车"
@@ -708,13 +728,13 @@ static func _get_foe_display_name(card_id: String) -> String:
 		"platform_future_medium": return "悬浮坦克"
 		"platform_future_radar": return "量子感知平台"
 		"platform_future_heavy": return "机甲步行者"
-		"omega_platform": return "全装型机动舱"
-		"bulwark": return "壁垒"
-		"titan_mk2": return "泰坦Mk.II"
-		"storm_rider": return "暴风骑士"
-		"heavy_carrier": return "重装母舰"
-		"regen_frame": return "再生骨架"
-		"abrams_mk2": return "艾布拉姆斯Mk.II"
+		"fut_arm_omega": return "全装型机动舱"
+		"fut_sup_bulwark": return "壁垒"
+		"fut_arm_titan_mk2": return "泰坦Mk.II"
+		"fut_inf_storm_rider": return "暴风骑士"
+		"fut_air_heavy_carrier": return "重装母舰"
+		"fut_air_regen_frame": return "再生骨架"
+		"mod_arm_abrams_mk2": return "艾布拉姆斯Mk.II"
 		_: return card_id
 
 
@@ -763,7 +783,7 @@ static func _era_from_platform_id(card_id: String) -> int:
 		return 2
 	if card_id.contains("modern") or card_id.begins_with("mod_"):
 		return 3
-	if card_id.contains("future") or card_id.begins_with("fut_") or card_id == "omega_platform":
+	if card_id.contains("future") or card_id.begins_with("fut_") or card_id == "fut_arm_omega":
 		return 4
 	return 0
 
@@ -798,16 +818,16 @@ static func _era_from_fort_id(fort_id: String) -> int:
 
 static func _get_fort_display_name(fort_id: String) -> String:
 	match fort_id:
-		"fort_ww1_pillbox": return "混凝土机枪碉堡"
-		"fort_ww1_artillery": return "要塞炮台"
-		"fort_ww2_bunker": return "混凝土碉堡"
-		"fort_ww2_flak": return "88mm防空塔"
-		"fort_cold_missile": return "导弹发射井"
-		"fort_cold_radar": return "雷达站"
-		"fort_modern_citadel": return "要塞核心"
-		"fort_modern_phalanx": return "近防炮系统"
-		"fort_future_ion": return "离子炮台"
-		"fort_future_shield": return "能量护盾发生器"
+		"ww1_fort_pillbox": return "混凝土机枪碉堡"
+		"ww1_fort_artillery": return "要塞炮台"
+		"ww2_fort_bunker": return "混凝土碉堡"
+		"ww2_fort_flak": return "88mm防空塔"
+		"cold_fort_missile": return "导弹发射井"
+		"cold_fort_radar": return "雷达站"
+		"mod_fort_citadel": return "要塞核心"
+		"mod_fort_phalanx": return "近防炮系统"
+		"fut_fort_ion": return "离子炮台"
+		"fut_fort_shield": return "能量护盾发生器"
 		_: return fort_id
 
 
@@ -832,10 +852,10 @@ static func _default_drop_chance(tier: String) -> float:
 ## 与 docs/card_icon_manifest_100_agent_prompts.md 编号一致
 static func _visual_id_for_source_id(source_id: String) -> String:
 	var sid: String = source_id.strip_edges()
-	## 堡垒类别 → vis_enemy_072~081
+	## 堡垒类别 → vis_player_072~081（我方翻转图；敌方经 for_player=false 改写为 vis_enemy_072~081 原图）
 	for i in range(FORT_ENEMY_IDS.size()):
 		if sid == FORT_ENEMY_IDS[i]:
-			return "vis_enemy_%03d" % (72 + i)
+			return "vis_player_%03d" % (72 + i)
 	## 缴获卡面 → vis_player_036~049
 	for i in range(CAPTURED_ENEMY_IDS.size()):
 		if sid == CAPTURED_ENEMY_IDS[i]:
@@ -846,10 +866,10 @@ static func _visual_id_for_source_id(source_id: String) -> String:
 	var fixed_idx: int = FIXED_ENEMY_IDS.find(sid)
 	if fixed_idx >= 0:
 		return "vis_player_%03d" % (36 + fixed_idx)
-	## 补充池 → vis_pool_001~029
+	## 补充池 → 直接用新 id 作图名（enemy/<新id>.png + player/<新id>.png）
 	var pool_idx: int = POOL_ENEMY_IDS.find(sid)
 	if pool_idx >= 0:
-		return "vis_pool_%03d" % (pool_idx + 1)
+		return sid
 	## 特殊/精英 → vis_player_030~035
 	var special_idx: int = FOE_SPECIAL_CARD_IDS.find(sid)
 	if special_idx >= 0:

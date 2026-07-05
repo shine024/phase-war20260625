@@ -46,8 +46,19 @@ func unlock_boss(boss_id: String) -> void:
 # ─────────────────────────────────────────────
 
 ## 获取某强化类型的词条key
-func _get_affix_key(card_id: String, affix_type: int) -> String:
-	return "%s_%d" % [card_id, affix_type]
+## identity 可为 instance_id（如 "cold_t72#1"，v7.x 实例化）或裸 card_id（旧卡兼容）。
+## key 格式恒为 "{identity}_{type}"。调用方应优先传 instance_id。
+func _get_affix_key(identity: String, affix_type: int) -> String:
+	return "%s_%d" % [identity, affix_type]
+
+## v7.x：统一身份解析——优先 instance_id（实例化养成隔离），空则回退 card_id（兼容旧卡/模板）。
+## 所有"收 CardResource"的入口都用它派生 affix_key，确保同名卡（cold_t72#1/#2）词条各自独立。
+func _card_identity(card: CardResource) -> String:
+	if card == null:
+		return ""
+	if "instance_id" in card and not String(card.instance_id).is_empty():
+		return String(card.instance_id)
+	return String(card.card_id)
 
 ## 安全获取词条数组（防止存档数据类型异常导致崩溃）
 func _get_affix_array(affix_key: String) -> Array:
@@ -229,12 +240,11 @@ func reroll_affix(affix_key: String, slot_index: int) -> bool:
 	if affix.is_locked:
 		return false
 
-	# 从 affix_key 解析 card_id 和 affix_type
-	var parts: Array = affix_key.split("_")
-	if parts.size() < 2:
+	# 从 affix_key 解析 affix_type（key 格式 "{identity}_{type}"，identity 可能含 _，故用 rfind）
+	var sep_idx: int = affix_key.rfind("_")
+	if sep_idx < 0:
 		return false
-	var card_id: String = parts[0]
-	var affix_type: int = int(parts[parts.size() - 1])
+	var affix_type: int = int(affix_key.substr(sep_idx + 1))
 	# 旧实现会基于等级重新 roll 稀有度；新方案为“同层池”，保持该词条当前稀有度不变
 
 	# 消耗纳米材料
@@ -343,11 +353,11 @@ func batch_reroll_affixes(affix_key: String) -> bool:
 		return false
 	bm.add_nano_materials(-total_cost)
 
-	# 从 affix_key 解析 affix_type（0=机体, 1=武器）
-	var parts: Array = affix_key.split("_")
-	if parts.size() < 2:
+	# 从 affix_key 解析 affix_type（0=机体, 1=武器）。identity 可能含 _，故用 rfind
+	var sep_idx: int = affix_key.rfind("_")
+	if sep_idx < 0:
 		return false
-	var affix_type: int = int(parts[parts.size() - 1])
+	var affix_type: int = int(affix_key.substr(sep_idx + 1))
 
 	for i in range(affixes.size()):
 		var affix: AffixResource = affixes[i] as AffixResource
@@ -479,9 +489,11 @@ func grant_initial_affixes_for_card(card: CardResource) -> void:
 		return
 	# v5.1: star_level deprecated, use fixed star=1
 	var star: int = 1
+	# v7.x: 词条按实例隔离——用 instance_id 作 identity（空回退 card_id）
+	var identity: String = _card_identity(card)
 	# 双轨统一：所有可强化卡都具有机体/武器两套词条槽，数量按总星级一致
-	_seed_affixes_by_star(card.card_id, 0, star)
-	_seed_affixes_by_star(card.card_id, 1, star)
+	_seed_affixes_by_star(identity, 0, star)
+	_seed_affixes_by_star(identity, 1, star)
 
 func _get_root_node_or_null(node_name: String) -> Node:
 	if node_name.is_empty():
@@ -511,7 +523,15 @@ func save_state() -> Dictionary:
 
 func load_state(data: Dictionary) -> void:
 	_card_affixes.clear()
-	_unlocked_bosses = data.get("unlocked_bosses", []).duplicate()
+	# v7.x 存档守卫：旧档/损坏档 unlocked_bosses 类型异常（非 Array）时回退空数组，
+	# 防止 .duplicate() 在 null 上崩溃导致整个 load_state 抛错丢失该 manager 状态。
+	var ub = data.get("unlocked_bosses", [])
+	_unlocked_bosses = ub.duplicate() if ub is Array else []
+
+	# v7.x 迁移：旧存档 affix_key = "{card_id}_{type}"（按 card_id 共享）。
+	# 实例化后应为 "{instance_id}_{type}"。检测 identity 不含 # 的旧 key，
+	# 按 card_id 查 InstanceRegistry 取首个实例重写 key；无实例则保留原 key 兜底（不丢数据）。
+	var ir: Node = _get_root_node_or_null("InstanceRegistry")
 
 	for affix_key in data.keys():
 		if affix_key == "unlocked_bosses":
@@ -535,8 +555,28 @@ func load_state(data: Dictionary) -> void:
 			if affix.is_mutated:
 				affix.mutation_description = AffixDefs.get_mutation_description(affix_id)
 			affixes.append(affix)
-		if not affixes.is_empty():
+		if affixes.is_empty():
+			continue
+
+		# 解析 key 的 identity 与 type（用 rfind 防 identity 含 _）
+		var sep_idx: int = affix_key.rfind("_")
+		if sep_idx < 0:
 			_card_affixes[affix_key] = affixes
+			continue
+		var old_identity: String = affix_key.substr(0, sep_idx)
+		var type_str: String = affix_key.substr(sep_idx + 1)
+
+		# identity 已含 #（已是实例化格式）→ 直接用
+		# identity 不含 #（旧格式）→ 查 InstanceRegistry 取首个实例重写
+		var new_identity: String = old_identity
+		if not old_identity.find("#") >= 0 and ir != null and ir.has_method("get_instances_by_card_id"):
+			var iids: Array = ir.get_instances_by_card_id(old_identity)
+			if not iids.is_empty():
+				new_identity = str(iids[0])
+		# 无实例时 new_identity 保持 old_identity（裸 card_id 兜底，词条不丢）
+
+		var new_key: String = "%s_%s" % [new_identity, type_str]
+		_card_affixes[new_key] = affixes
 
 func reset_to_defaults() -> void:
 	_card_affixes.clear()
@@ -574,7 +614,7 @@ func apply_affixes_to_stats(stats: UnitStats, platform_card: CardResource, weapo
 
 	# 机体词条 (affix_type = 0)
 	if platform_card != null and not platform_card.card_id.is_empty():
-		var platform_key: String = _get_affix_key(platform_card.card_id, 0)
+		var platform_key: String = _get_affix_key(_card_identity(platform_card), 0)
 		_apply_card_affixes(stats, platform_key)
 
 	# 武器卡词条 (affix_type = 1)
@@ -584,7 +624,7 @@ func apply_affixes_to_stats(stats: UnitStats, platform_card: CardResource, weapo
 		var wc: CardResource = wc_raw
 		if wc.card_id.is_empty():
 			continue
-		var weapon_key: String = _get_affix_key(wc.card_id, 1)
+		var weapon_key: String = _get_affix_key(_card_identity(wc), 1)
 		_apply_card_affixes(stats, weapon_key)
 
 ## 应用单张卡牌的词条到 stats
@@ -603,6 +643,8 @@ func _apply_card_affixes(stats: UnitStats, affix_key: String) -> void:
 				# 同步 weapons 列表中的伤害
 				for i in range(stats.weapons.size()):
 					var w: Dictionary = stats.weapons[i] as Dictionary
+					if w == null:
+						continue
 					if w.has("damage"):
 						w["damage"] = float(w["damage"]) * (1.0 + val)
 						stats.weapons[i] = w
@@ -610,6 +652,8 @@ func _apply_card_affixes(stats: UnitStats, affix_key: String) -> void:
 				stats.attack_range *= (1.0 + val)
 				for i in range(stats.weapons.size()):
 					var w: Dictionary = stats.weapons[i] as Dictionary
+					if w == null:
+						continue
 					if w.has("range"):
 						w["range"] = float(w["range"]) * (1.0 + val)
 						stats.weapons[i] = w
@@ -619,6 +663,8 @@ func _apply_card_affixes(stats: UnitStats, affix_key: String) -> void:
 				stats.attack_interval *= factor
 				for i in range(stats.weapons.size()):
 					var w: Dictionary = stats.weapons[i] as Dictionary
+					if w == null:
+						continue
 					if w.has("interval"):
 						w["interval"] = float(w["interval"]) * factor
 						stats.weapons[i] = w

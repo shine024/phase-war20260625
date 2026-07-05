@@ -34,11 +34,9 @@ static func register_into_default_cards_cache() -> void:
 		var card: CardResource = _build_captured_card(drop_id, display_name, cfg)
 		if card == null:
 			continue
-		# 写入 DefaultCards 缓存（如果可用）
-		if DefaultCards and DefaultCards.has_method("_ensure_card_cache"):
-			if not DefaultCards._id_lookup_cache.has(drop_id):
-				DefaultCards._all_cards_cache.append(card)
-				DefaultCards._id_lookup_cache[drop_id] = card
+		# 写入 DefaultCards 缓存（受控入口：register_dynamic_card 同步更新 lookup + all_cards）
+		if DefaultCards and DefaultCards.has_method("register_dynamic_card"):
+			DefaultCards.register_dynamic_card(card)
 	_cache_built = true
 	_building = false
 
@@ -62,7 +60,7 @@ static func _build_captured_card(
 	# 如果 cfg 为空，尝试从 EnemyArchetypes 获取真实数据
 	if cfg.is_empty():
 		var EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
-		# drop_id 格式是 "captured_elite_ww1_storm"，需要提取 "elite_ww1_storm"
+		# drop_id 格式是 "captured_ww1_inf_storm_e"，需要提取 "ww1_inf_storm_e"
 		var archetype_id: String = drop_id.trim_prefix("captured_")
 		cfg = EnemyArchetypes.get_config(archetype_id)
 		if cfg is Dictionary:

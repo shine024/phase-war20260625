@@ -7,7 +7,7 @@ const DATA := {
 	# ==================== 一战敌人（7种） ====================
 
 	# 基础敌人（4种）
-	"enemy_ww1_infantry_basic": {
+	"ww1_inf_mp18": {
 		"swarm_unit": true,
 		"era": 0,
 		"display_name": "步兵班·MP18",
@@ -20,7 +20,7 @@ const DATA := {
 		"tags": ["infantry", "frontline"],
 		"drops": [],
 	},
-	"enemy_ww1_infantry_rifle": {
+	"ww1_inf_rifle": {
 		"swarm_unit": true,
 		"era": 0,
 		"display_name": "步兵班·步枪",
@@ -33,7 +33,7 @@ const DATA := {
 		"tags": ["infantry", "backline"],
 		"drops": [],
 	},
-	"enemy_ww1_mg_nest": {
+	"ww1_sup_mg_nest": {
 		"era": 0,
 		"display_name": "机枪巢",
 		"hp": 80.0,
@@ -45,7 +45,7 @@ const DATA := {
 		"tags": ["turret", "sustained"],
 		"drops": [],
 	},
-	"enemy_ww1_mortar": {
+	"ww1_arty_mortar": {
 		"era": 0,
 		"display_name": "迫击炮组",
 		"hp": 60.0,
@@ -59,7 +59,7 @@ const DATA := {
 	},
 
 	# 精英敌人（2种）
-	"elite_ww1_storm": {
+	"ww1_inf_storm_e": {
 		"era": 0,
 		"display_name": "暴风突击队",
 		"hp": 70.0,
@@ -73,7 +73,7 @@ const DATA := {
 			{"card_id": "bp_ww1_001", "chance": 0.2},
 		],
 	},
-	"elite_ww1_armored": {
+	"ww1_arm_rolls_e": {
 		"era": 0,
 		"display_name": "装甲车",
 		"hp": 120.0,
@@ -84,12 +84,12 @@ const DATA := {
 		"weapon_type": 2,
 		"tags": ["elite", "vehicle", "armored"],
 		"drops": [
-			{"card_id": "bulwark", "chance": 0.2},
+			{"card_id": "fut_sup_bulwark", "chance": 0.2},
 		],
 	},
 
 	# 头目（1种）
-	"boss_ww1_av7": {
+	"ww1_boss_av7": {
 		"era": 0,
 		"display_name": "圣沙蒙坦克",
 		"hp": 600.0,
@@ -100,7 +100,7 @@ const DATA := {
 		"weapon_type": 3,
 		"tags": ["boss", "tank", "armored"],
 		"drops": [
-			{"card_id": "titan_mk2", "chance": 1.0},
+			{"card_id": "fut_arm_titan_mk2", "chance": 1.0},
 		],
 	},
 
@@ -108,7 +108,7 @@ const DATA := {
 	# ==================== 二战敌人（7种） ====================
 
 	# 基础敌人（4种）
-	"enemy_ww2_infantry": {
+	"ww2_inf_thompson": {
 		"swarm_unit": true,
 		"era": 1,
 		"display_name": "步兵班·汤普森",
@@ -121,7 +121,7 @@ const DATA := {
 		"tags": ["infantry", "frontline"],
 		"drops": [],
 	},
-	"enemy_ww2_rifleman": {
+	"ww2_inf_garand": {
 		"swarm_unit": true,
 		"era": 1,
 		"display_name": "步枪班·加兰德",
@@ -134,7 +134,7 @@ const DATA := {
 		"tags": ["infantry", "backline"],
 		"drops": [],
 	},
-	"enemy_ww2_mg42": {
+	"ww2_sup_mg42": {
 		"era": 1,
 		"display_name": "MG42机枪组",
 		"hp": 90.0,
@@ -146,7 +146,7 @@ const DATA := {
 		"tags": ["turret", "sustained"],
 		"drops": [],
 	},
-	"enemy_ww2_panzerschreck": {
+	"ww2_inf_panzerschreck_e": {
 		"era": 1,
 		"display_name": "反坦克组",
 		"hp": 70.0,
@@ -160,7 +160,7 @@ const DATA := {
 	},
 
 	# 精英敌人（2种）
-	"elite_ww2_paratrooper": {
+	"ww2_inf_para_e": {
 		"era": 1,
 		"display_name": "伞兵精英",
 		"hp": 80.0,
@@ -174,7 +174,7 @@ const DATA := {
 			{"card_id": "bp_ww2_001", "chance": 0.25},
 		],
 	},
-	"elite_ww2_panther": {
+	"ww2_arm_panther_e": {
 		"era": 1,
 		"display_name": "黑豹坦克",
 		"hp": 200.0,
@@ -185,12 +185,12 @@ const DATA := {
 		"weapon_type": 3,
 		"tags": ["elite", "tank", "armored"],
 		"drops": [
-			{"card_id": "storm_rider", "chance": 0.25},
+			{"card_id": "fut_inf_storm_rider", "chance": 0.25},
 		],
 	},
 
 	# 头目（1种）
-	"boss_ww2_kingtiger": {
+	"ww2_boss_kingtiger": {
 		"era": 1,
 		"display_name": "虎王坦克",
 		"hp": 800.0,
@@ -201,7 +201,7 @@ const DATA := {
 		"weapon_type": 3,
 		"tags": ["boss", "tank", "armored"],
 		"drops": [
-			{"card_id": "heavy_carrier", "chance": 1.0},
+			{"card_id": "fut_air_heavy_carrier", "chance": 1.0},
 		],
 	},
 }

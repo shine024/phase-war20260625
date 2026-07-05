@@ -1,19 +1,26 @@
 extends Control
-## 剧情对话面板（v6.8 底部条带·沉浸式重做）
+## 剧情对话面板（v6.8 底部条带·沉浸式重做 / v7.x 美化增强）
 ##
 ## 显示角色对话，支持多句队列播放、分支选项、同关多剧情排队。
 ## v6.8: 删除剧情模式后，本面板仅服务 v6.7 自由模式关卡剧情任务
 ## （由 GameManager._check_story_mission_pre/post_battle 通过 story_mission_dialogue 信号触发）。
+## v7.x 美化:
+##   - 头像统一圆形遮罩（修复 200px/512px 混合尺寸导致"一张大一张小"）
+##   - 左侧角色色光带 + 章节banner + 打字机逐字 + 徽章入场动画
 ##
 ## 布局（底部条带·沉浸式，参考 JRPG 底部对话框范式，配色用 Phase War 霓虹深色）:
-##   - 战场在上半屏始终可见（暗化层 alpha 仅 0.5，对话叠加演出）
-##   - 对话条带锚定屏幕底部居中，霓虹青紫描边 + 阴影发光
-##   - 头像徽章从条带左上角探出（负边距溢出框外）
+##   - 战场在上半屏始终可见（暗化层 alpha 0.65，对话叠加演出）
+##   - 对话条带锚定屏幕底部居中，霓虹青紫描边 + 阴影发光 + 左侧角色色光带
+##   - 头像徽章从条带左上角探出（圆形遮罩，角色色描边 + 外发光）
+##   - 章节标题（半透明banner）浮在条带正上方
 ##   - 说话者名牌钉在条带上沿，按角色变色
+##   - 对话正文逐字浮现（打字机），点击可跳过补全
 ##   - 四角宝石点缀，右下闪烁"继续 ▼"指示器
 ##   - 点击屏幕任意处推进对话（选项节点显示时禁用，防误触）
 
 const DesignTokens = preload("res://resources/design_tokens.gd")
+## 圆形头像遮罩 shader（方形纹理裁圆，配合徽章角色色描边）
+const _CircleMaskShader := preload("res://shaders/portrait_circle_mask.gdshader")
 
 var _dialogues: Array = []         ## 待播放的对话队列
 var _current_index: int = 0        ## 当前播放到第几句
@@ -38,16 +45,21 @@ signal story_choice_made(quest_id: String, branch_key: String)
 
 # ── UI 元素引用 ──
 var _dim_layer: ColorRect = null               ## 全屏暗化层（点击推进 + 战场压暗）
-var _chapter_title_label: Label = null         ## 章节标题（浮在条带上方）
+var _chapter_title_label: Label = null         ## 章节标题（浮在 banner 上）
+var _chapter_banner: Panel = null              ## 章节 banner 底条（v7.x 美化）
 var _strip: Panel = null                       ## 底部对话条带（纯 Panel，手工放置，避免容器自动尺寸冲突）
+var _left_accent_bar: ColorRect = null         ## 左侧角色色光带（v7.x 美化，随说话者变色）
 var _body_label: RichTextLabel = null          ## 对话正文
 var _nameplate_panel: Panel = null             ## 说话者名牌（钉条带上沿）
 var _nameplate_label: Label = null
 var _portrait_badge: Panel = null              ## 头像徽章（探出条带左上）
 var _portrait_label: Label = null              ## 徽章中心首字（fallback）
-var _portrait_sprite: Sprite2D = null          ## 实际头像图片
+var _portrait_rect: TextureRect = null         ## 头像图片（v7.x: TextureRect + 圆形遮罩，统一尺寸）
 var _continue_label: Label = null              ## 右下"继续 ▼"指示器
 var _blink_tween: Tween = null                 ## 指示器闪烁动画
+var _typewriter_tween: Tween = null            ## 打字机逐字动画（v7.x 美化）
+var _badge_enter_tween: Tween = null           ## 徽章入场动画（v7.x 美化）
+var _is_typing: bool = false                   ## 当前是否正在逐字播放（点击时跳过补全）
 
 # ── 布局常量（屏幕坐标，基于 1280x720）──
 # v7.x 布局修复：条带浮在中场，避让底部 HUD（BattleBottomBar 占 y=596~720，高 124px）
@@ -57,8 +69,11 @@ const _STRIP_W := 920.0
 const _STRIP_H := 168.0
 const _STRIP_BOTTOM_GAP := 150.0
 const _BADGE_SIZE := 96.0
+const _ACCENT_BAR_W := 5.0           ## 左侧角色色光带宽度（v7.x 美化）
 # 底部 HUD 高度（dim_layer 在此高度以下留出透明通道，不压暗 HUD）
 const _HUD_BOTTOM_CLEARANCE := 124.0
+# 打字机逐字速度（秒/字，v7.x 美化）
+const _TYPEWRITER_SEC_PER_CHAR := 0.025
 
 ## 角色名 → portrait路径映射表
 const _PORTRAIT_MAP := {
@@ -97,6 +112,10 @@ func _exit_tree() -> void:
 			SignalBus.story_mission_dialogue.disconnect(_on_story_mission_dialogue)
 	if _blink_tween != null and _blink_tween.is_valid():
 		_blink_tween.kill()
+	if _typewriter_tween != null and _typewriter_tween.is_valid():
+		_typewriter_tween.kill()
+	if _badge_enter_tween != null and _badge_enter_tween.is_valid():
+		_badge_enter_tween.kill()
 
 # ═══════════════════════════════════════════════════════════════════
 # UI 构建（v6.8 底部条带·沉浸式）
@@ -118,15 +137,27 @@ func _build_ui() -> void:
 	add_child(_dim_layer)
 
 	# ── 以下装饰节点统一锚定"底部中心点"，用像素偏移定位到条带区域 ──
-	# 章节标题（浮在条带正上方，居中）
+	# 章节 banner（半透明深色底条 + 角色色细描边，浮在条带正上方居中，v7.x 美化）
+	_chapter_banner = Panel.new()
+	_anchor_bottom_center(_chapter_banner)
+	_place_rect(_chapter_banner, -330.0, 330.0, -(_STRIP_H + _STRIP_BOTTOM_GAP + 60.0), -(_STRIP_H + _STRIP_BOTTOM_GAP + 24.0))
+	_chapter_banner.add_theme_stylebox_override("panel", _make_chapter_banner_style())
+	_chapter_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_chapter_banner)
+
+	# 章节标题（浮在 banner 正中）
 	_chapter_title_label = Label.new()
-	_anchor_bottom_center(_chapter_title_label)
-	_place_rect(_chapter_title_label, -300, 300, -(_STRIP_H + _STRIP_BOTTOM_GAP + 58), -(_STRIP_H + _STRIP_BOTTOM_GAP + 24))
+	_chapter_title_label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_chapter_title_label.offset_left = 12.0
+	_chapter_title_label.offset_right = -12.0
+	_chapter_title_label.offset_top = 0.0
+	_chapter_title_label.offset_bottom = 0.0
 	_chapter_title_label.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_LARGE)
 	_chapter_title_label.add_theme_color_override("font_color", DesignTokens.COLOR_ACCENT_CYAN)
 	_chapter_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_chapter_title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_chapter_title_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_chapter_title_label)
+	_chapter_banner.add_child(_chapter_title_label)
 
 	# 底部对话条带（纯 Panel，霓虹描边 + 阴影发光；内部标签手工放置，规避 fit_content 与容器尺寸冲突）
 	_strip = Panel.new()
@@ -136,17 +167,29 @@ func _build_ui() -> void:
 	_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_strip)
 
-	# 对话正文（直接放在条带上，左侧留出徽章宽度，关闭 fit_content 用显式锚定，避免容器尺寸打架）
+	# 左侧角色色光带（条带最左缘竖条，随说话者变色，v7.x 美化）
+	_left_accent_bar = ColorRect.new()
+	_left_accent_bar.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_left_accent_bar.offset_left = 0.0
+	_left_accent_bar.offset_right = _ACCENT_BAR_W
+	_left_accent_bar.offset_top = 0.0
+	_left_accent_bar.offset_bottom = 0.0
+	_left_accent_bar.color = DesignTokens.COLOR_ACCENT_CYAN
+	_left_accent_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_strip.add_child(_left_accent_bar)
+
+	# 对话正文（直接放在条带上，左侧留出徽章宽度 + 光带宽度，关闭 fit_content 用显式锚定，避免容器尺寸打架）
 	# v7.x: 正文字号 20→16（中文长句更舒展，配合 _STRIP_H 收窄后不溢出）
+	# v7.x: offset_left 增加 _ACCENT_BAR_W 给左侧角色色光带让位
 	_body_label = RichTextLabel.new()
 	_body_label.bbcode_enabled = true
 	_body_label.fit_content = false
 	_body_label.add_theme_font_size_override("normal_font_size", DesignTokens.FONT_SIZE_MEDIUM)
 	_body_label.add_theme_color_override("default_color", DesignTokens.COLOR_TEXT)
 	_body_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# 相对条带：左留徽章宽度，右留 24 内边距，上留 24，下留 40（给指示器让位）
+	# 相对条带：左留徽章宽度+光带，右留 24 内边距，上留 24，下留 40（给指示器让位）
 	_body_label.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_body_label.offset_left = _BADGE_SIZE - 4
+	_body_label.offset_left = _BADGE_SIZE + _ACCENT_BAR_W - 4
 	_body_label.offset_right = -DesignTokens.PADDING_LARGE
 	_body_label.offset_top = DesignTokens.PADDING_LARGE + 6
 	_body_label.offset_bottom = -40
@@ -170,14 +213,25 @@ func _build_ui() -> void:
 	_portrait_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_portrait_badge.add_child(_portrait_label)
 
-	# 头像图片（覆盖在徽章上，有图片时隐藏首字）
-	_portrait_sprite = Sprite2D.new()
-	_portrait_sprite.scale = Vector2(_BADGE_SIZE / 512.0, _BADGE_SIZE / 512.0)
-	_portrait_sprite.offset = Vector2(-256.0, -256.0)
-	# Sprite2D 继承自 Node2D，无 mouse_filter 属性（Control 专属）；
-	# 父徽章 _portrait_badge 已设为 MOUSE_FILTER_IGNORE，Sprite2D 本身不接收点击事件，无需单独设置。
-	_portrait_sprite.visible = false
-	_portrait_badge.add_child(_portrait_sprite)
+	# 头像图片（v7.x: TextureRect + 圆形遮罩 shader，统一渲染为 96×96 圆形）
+	# 取代原 Sprite2D（硬编码 512 导致 200px/512px 混合尺寸显示一大一小）。
+	# IGNORE_SIZE 忽略源纹理尺寸，KEEP_ASPECT_COVERED 让任意比例图片 cover 填满不变形，
+	# 圆形遮罩 shader 把方形裁成正圆，与徽章角色色描边完美贴合。
+	_portrait_rect = TextureRect.new()
+	_portrait_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_portrait_rect.offset_left = 0.0
+	_portrait_rect.offset_right = 0.0
+	_portrait_rect.offset_top = 0.0
+	_portrait_rect.offset_bottom = 0.0
+	_portrait_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_portrait_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	_portrait_rect.custom_minimum_size = Vector2(_BADGE_SIZE, _BADGE_SIZE)
+	var mask_mat := ShaderMaterial.new()
+	mask_mat.shader = _CircleMaskShader
+	_portrait_rect.material = mask_mat
+	_portrait_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_portrait_rect.visible = false
+	_portrait_badge.add_child(_portrait_rect)
 
 	# 说话者名牌（钉条带上沿，徽章右侧，按角色变色；纯 Panel + 直接放标签，避免 PanelContainer 与固定 placement 混用）
 	_nameplate_panel = Panel.new()
@@ -241,6 +295,7 @@ func _place_rect(c: Control, left: float, right: float, top: float, bottom: floa
 	c.offset_bottom = bottom
 
 ## 对话条带 StyleBox（深色面板 + 青紫双描边 + 阴影发光 + 大圆角）
+## v7.x: shadow_size 14→16 增强霓虹氛围
 func _make_strip_style() -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	s.bg_color = Color(0.08, 0.10, 0.16, 0.96)
@@ -256,11 +311,28 @@ func _make_strip_style() -> StyleBoxFlat:
 	s.corner_radius_bottom_right = 14
 	# 霓虹发光阴影
 	s.shadow_color = DesignTokens.COLOR_ACCENT_PURPLE
-	s.shadow_size = 14
+	s.shadow_size = 16
 	s.content_margin_left = DesignTokens.PADDING_MEDIUM
 	s.content_margin_right = DesignTokens.PADDING_MEDIUM
 	s.content_margin_top = DesignTokens.PADDING_SMALL
 	s.content_margin_bottom = DesignTokens.PADDING_SMALL
+	return s
+
+## 章节 banner StyleBox（半透明深色底 + 青色细描边 + 小圆角，v7.x 美化）
+func _make_chapter_banner_style() -> StyleBoxFlat:
+	var s := StyleBoxFlat.new()
+	s.bg_color = Color(0.06, 0.09, 0.15, 0.92)
+	s.border_width_left = 1
+	s.border_width_right = 1
+	s.border_width_top = 1
+	s.border_width_bottom = 1
+	s.border_color = DesignTokens.COLOR_ACCENT_CYAN
+	s.corner_radius_top_left = 8
+	s.corner_radius_top_right = 8
+	s.corner_radius_bottom_left = 8
+	s.corner_radius_bottom_right = 8
+	s.shadow_color = DesignTokens.COLOR_ACCENT_CYAN
+	s.shadow_size = 8
 	return s
 
 ## 头像徽章 StyleBox（圆形，角色色描边 + 深色填充）
@@ -294,7 +366,6 @@ func _make_nameplate_style(accent: Color) -> StyleBoxFlat:
 	s.corner_radius_top_right = 4
 	s.corner_radius_bottom_left = 4
 	s.corner_radius_bottom_right = 4
-	return s
 	return s
 
 ## 四角宝石（小菱形，旋转 45°，霓虹点缀）
@@ -396,7 +467,10 @@ func _show_current_dialogue() -> void:
 	var text: String = dlg.get("text", "")
 	_update_nameplate(speaker)
 	_update_portrait_badge(speaker)
+	_update_accent_bar(speaker)  # v7.x 美化：左侧光带随说话者变色
 	_body_label.text = text
+	# v7.x 美化：打字机逐字显示
+	_start_typewriter(text)
 	# v6.6(剧情): 检测选项节点（choices 字段存在时显示选项按钮，隐藏继续指示器）
 	var choices: Array = dlg.get("choices", [])
 	if not choices.is_empty() and not _choice_made:
@@ -405,9 +479,57 @@ func _show_current_dialogue() -> void:
 		_show_choices(choices)
 	else:
 		_choices_active = false
-		_continue_label.visible = true
+		# 打字机播完前不显示继续指示器（_start_typewriter 内 _on_typewriter_done 会显示）
+		if not _is_typing:
+			_continue_label.visible = true
 		_clear_choices()
 		_set_continue_text()
+
+## v7.x 美化：打字机逐字显示对话正文（可点击跳过补全）
+func _start_typewriter(text: String) -> void:
+	_stop_typewriter()
+	var char_count := text.length()
+	if char_count <= 0:
+		_is_typing = false
+		return
+	_is_typing = true
+	_continue_label.visible = false  # 播放期间隐藏继续指示器
+	_body_label.visible_characters = 0
+	_body_label.visible_ratio = 0.0
+	var duration := char_count * _TYPEWRITER_SEC_PER_CHAR
+	_typewriter_tween = create_tween()
+	_typewriter_tween.tween_property(_body_label, "visible_ratio", 1.0, duration).set_ease(Tween.EASE_IN_OUT)
+	_typewriter_tween.tween_callback(_on_typewriter_done)
+
+## 打字机播完：显示继续指示器
+func _on_typewriter_done() -> void:
+	_is_typing = false
+	_body_label.visible_ratio = 1.0
+	# 仅在非选项分支时显示继续指示器（选项分支由 _show_choices 管理可见性）
+	if not _choices_active:
+		_continue_label.visible = true
+
+## 停止打字机（清理 tween，不重置文字）
+func _stop_typewriter() -> void:
+	if _typewriter_tween != null and _typewriter_tween.is_valid():
+		_typewriter_tween.kill()
+		_typewriter_tween = null
+
+## v7.x 美化：打字机跳过补全（点击时若正在逐字显示，直接显示全文，不推进对话）
+## 返回 true 表示本次点击用于跳过（已补全），调用方不再推进
+func _skip_typewriter_if_typing() -> bool:
+	if _is_typing:
+		_stop_typewriter()
+		_body_label.visible_ratio = 1.0
+		_is_typing = false
+		if not _choices_active:
+			_continue_label.visible = true
+		return true
+	return false
+
+## v7.x 美化：左侧角色色光带随说话者变色（与名牌/徽章描边同色，角色色贯穿三处）
+func _update_accent_bar(speaker: String) -> void:
+	_left_accent_bar.color = _get_speaker_color(speaker)
 
 ## 更新名牌（v7.x: 深色底 + 角色色描边 + 角色色文字，角色标识鲜明且不撞主调）
 func _update_nameplate(speaker: String) -> void:
@@ -416,26 +538,44 @@ func _update_nameplate(speaker: String) -> void:
 	_nameplate_label.add_theme_color_override("font_color", accent)
 	_nameplate_panel.add_theme_stylebox_override("panel", _make_nameplate_style(accent))
 
-## 更新头像徽章（角色色描边 + 首字/实际图片）
+## 更新头像徽章（角色色描边 + 圆形遮罩图片/首字 + 入场弹入动画）
 func _update_portrait_badge(speaker: String) -> void:
 	var accent: Color = _get_speaker_color(speaker)
 	_portrait_badge.add_theme_stylebox_override("panel", _make_badge_style(accent))
-	
+
 	# 查找portrait路径
 	var portrait_path: String = _PORTRAIT_MAP.get(speaker, "")
 	if portrait_path and ResourceLoader.exists(portrait_path):
 		var tex = load(portrait_path) as Texture2D
 		if tex != null:
-			_portrait_sprite.texture = tex
-			_portrait_sprite.visible = true
+			# v7.x: TextureRect 自动处理任意源图尺寸（200px/512px 都 cover 填充为统一圆形）
+			_portrait_rect.texture = tex
+			_portrait_rect.visible = true
 			_portrait_label.visible = false
+			_play_badge_enter()
 			return
-	
+
 	# Fallback: 显示首字徽章
-	_portrait_sprite.visible = false
+	_portrait_rect.visible = false
 	_portrait_label.visible = true
 	_portrait_label.text = _get_initial_char(speaker)
 	_portrait_label.add_theme_color_override("font_color", accent)
+	_play_badge_enter()
+
+## v7.x 美化：徽章入场动画（切换说话者时 scale 0.85→1.0 + 透明度 0.3→1.0，150ms 弹入）
+func _play_badge_enter() -> void:
+	if _badge_enter_tween != null and _badge_enter_tween.is_valid():
+		_badge_enter_tween.kill()
+	# pivot 设到徽章中心，让 scale 绕中心缩放
+	_portrait_badge.pivot_offset = Vector2(_BADGE_SIZE / 2.0, _BADGE_SIZE / 2.0)
+	_portrait_badge.scale = Vector2(0.85, 0.85)
+	_portrait_badge.modulate.a = 0.3
+	_badge_enter_tween = create_tween()
+	_badge_enter_tween.set_parallel(true)
+	_badge_enter_tween.tween_property(_portrait_badge, "scale", Vector2.ONE, 0.18).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	_badge_enter_tween.tween_property(_portrait_badge, "modulate:a", 1.0, 0.15).set_ease(Tween.EASE_OUT)
+	# 动画结束后还原 scale，避免累积漂移
+	_badge_enter_tween.chain().tween_callback(func(): _portrait_badge.scale = Vector2.ONE)
 
 ## 角色名首字（徽章中心显示，如"林薇"→"林"）
 func _get_initial_char(speaker: String) -> String:
@@ -527,12 +667,17 @@ func _on_choice_selected(branch_key: String, response: Array) -> void:
 		_on_all_dialogues_done()
 
 ## v6.8(沉浸式): 点击屏幕任意处推进对话（选项节点显示时禁用，防误触）
+## v7.x: 若正在打字机逐字显示，第一次点击只跳过补全，不推进对话（符合 JRPG 习惯）
 func _on_advance_input(event: InputEvent) -> void:
 	if not visible or _choices_active:
 		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if _skip_typewriter_if_typing():
+			return  # 本次点击用于跳过打字机，不推进
 		_advance()
 	elif event is InputEventScreenTouch and event.pressed:
+		if _skip_typewriter_if_typing():
+			return
 		_advance()
 
 func _advance() -> void:
@@ -544,6 +689,8 @@ func _advance() -> void:
 
 func _on_all_dialogues_done() -> void:
 	visible = false
+	_stop_typewriter()  # v7.x: 清理打字机 tween
+	_is_typing = false
 	_dialogues.clear()
 	_clear_choices()
 	_choices_active = false

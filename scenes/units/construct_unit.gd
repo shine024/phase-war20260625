@@ -29,7 +29,7 @@ const BATTLE_MAX_Y: float = 440.0
 ## 我方单位前进上限（留出屏幕边缘余量）
 var PLAYER_MAX_ADVANCE_X: float = BATTLE_MAX_X - 80.0
 ## 全装型静态回退：已对齐 manifest vis_player_029
-const OMEGA_SPRITE_PATH := "res://assets/card_icons/units/vis_player_029.png"
+const OMEGA_SPRITE_PATH := "res://assets/card_icons/player/vis_player_029.png"
 static var _omega_tex_cache: Texture2D = null
 ## 与 EnemyUnit 一致：允许 1024 卡面，仍拒绝整张地图级贴图
 const MAX_ENEMY_FRAME_TEX_DIM := 1280
@@ -44,22 +44,21 @@ static func _resolve_autoload(autoload_name: StringName) -> Node:
 			return root.get_node_or_null(NodePath(autoload_name))
 	return null
 const MAX_ENEMY_VISUAL_EXTENT_PX := 220.0
-const ENEMY_VISUAL_ASSET_BASE := "res://assets/enemies"
-## 我方平台类型 -> 用于显示的敌方原型 id（与 EnemyUnit 同源，直接读 ENEMY_VISUAL_ASSET_BASE，不再使用 player_from_enemy 副本目录）
+## 我方平台类型 -> 用于显示的敌方原型 id
 const PLAYER_MIRROR_ARCHETYPE_BY_PLATFORM := {
-	0: "enemy_ww1_infantry_basic",
-	1: "enemy_ww2_infantry",
-	2: "elite_ww1_armored",
-	3: "enemy_ww1_mg_nest",
-	4: "enemy_modern_stryker",
-	5: "enemy_cold_btr",
-	6: "enemy_future_hovertank",
-	7: "enemy_ww1_mortar",
-	8: "enemy_cold_m113",
-	9: "enemy_modern_marine",
-	10: "elite_future_spectre",
-	11: "enemy_future_mech",
-	12: "enemy_modern_marine",  # 临时复用，后续替换专用图
+	0: "ww1_inf_mp18",
+	1: "ww2_inf_thompson",
+	2: "ww1_arm_rolls_e",
+	3: "ww1_sup_mg_nest",
+	4: "mod_arm_stryker_e",
+	5: "cold_arm_btr_e",
+	6: "fut_arm_hovertank_e",
+	7: "ww1_arty_mortar",
+	8: "cold_air_m113_e",
+	9: "mod_inf_marine",
+	10: "fut_inf_spectre_e",
+	11: "fut_arm_mech_e",
+	12: "mod_inf_marine",  # 临时复用，后续替换专用图
 }
 var is_player: bool = true
 var stats: UnitStats
@@ -97,8 +96,6 @@ var _cached_is_card_grid: bool = true
 # 性能优化：目标查找计时器，减少频繁查找
 var _target_find_timer: float = 0.0
 const TARGET_FIND_INTERVAL: float = 0.3  # 每300ms重新查找一次目标
-# 性能优化：缓存动画状态，避免重复设置
-var _current_walk_anim_state: bool = false  # 当前是否在播放行走动画
 var _using_enemy_archetype_visual: bool = false
 var _visual_archetype_id: String = ""
 ## 部署虚影：可被敌方攻击、不移动、不还击；计时结束后实体化
@@ -121,8 +118,6 @@ var _has_storm_rider: bool = false
 var _has_repair_fortress: bool = false
 var _has_titan_mk2: bool = false
 var _has_bulwark: bool = false
-var _rank_name: String = ""
-var _mod_color: Color = Color(0.5, 0.8, 1, 0.45)
 ## 卡牌格子战术
 var _presentation_card_grid: bool = false
 var _hit_stun_left: float = 0.0
@@ -204,7 +199,6 @@ func setup(p_is_player: bool, p_stats: UnitStats, forced_enemy_visual_archetype_
 	_update_visual()
 	_maybe_apply_card_grid_presentation()
 	_update_hp_bar()
-	_update_rank_and_aura_visual()
 
 	# 性能优化：插入到空间分区网格
 	_register_to_spatial_grid()
@@ -233,12 +227,12 @@ func setup(p_is_player: bool, p_stats: UnitStats, forced_enemy_visual_archetype_
 	ModAuraHandler.apply_mod_auras(self)
 
 	# 性能优化：初始化卡牌能力缓存（setup时一次性查询）
-	_has_regen_frame = CardAbilityManager.has_platform_card(stats.platform_card_id, "regen_frame")
-	_has_abrams_mk2 = CardAbilityManager.has_platform_card(stats.platform_card_id, "abrams_mk2")
-	_has_storm_rider = CardAbilityManager.has_platform_card(stats.platform_card_id, "storm_rider")
+	_has_regen_frame = CardAbilityManager.has_platform_card(stats.platform_card_id, "fut_air_regen_frame")
+	_has_abrams_mk2 = CardAbilityManager.has_platform_card(stats.platform_card_id, "mod_arm_abrams_mk2")
+	_has_storm_rider = CardAbilityManager.has_platform_card(stats.platform_card_id, "fut_inf_storm_rider")
 	_has_repair_fortress = CardAbilityManager.has_platform_card(stats.platform_card_id, "drop_repair_fortress")
-	_has_titan_mk2 = CardAbilityManager.has_platform_card(stats.platform_card_id, "titan_mk2")
-	_has_bulwark = CardAbilityManager.has_platform_card(stats.platform_card_id, "bulwark")
+	_has_titan_mk2 = CardAbilityManager.has_platform_card(stats.platform_card_id, "fut_arm_titan_mk2")
+	_has_bulwark = CardAbilityManager.has_platform_card(stats.platform_card_id, "fut_sup_bulwark")
 
 	# v7.1: 堡垒类防护光环——纯视觉，让防御单位"在防护"可见化
 	_ensure_fort_shield_aura()
@@ -283,8 +277,6 @@ func apply_card_grid_combat_started() -> void:
 
 func _maybe_apply_card_grid_presentation() -> void:
 	if stats == null:
-		return
-	if not _cached_is_card_grid:
 		return
 	if not is_player:
 		return
@@ -351,8 +343,6 @@ func _configure_card_grid_player_hp_bar(spr: Sprite2D) -> void:
 func apply_card_grid_enemy_presentation() -> void:
 	if stats == null:
 		return
-	if not _cached_is_card_grid:
-		return
 	if is_player:
 		return
 	_presentation_card_grid = true
@@ -381,7 +371,7 @@ func apply_card_grid_enemy_presentation() -> void:
 		card_res = CardGridUnitVisuals.resolve_card_for_archetype(arch_for_icon)
 	if card_res == null:
 		card_res = CardGridUnitVisuals.synthetic_card_for_archetype(arch_for_icon, cfg)
-	var tex: Texture2D = CardGridUnitVisuals.resolve_battle_icon_texture(card_res, arch_for_icon, cfg)
+	var tex: Texture2D = CardGridUnitVisuals.resolve_battle_icon_texture(card_res, arch_for_icon, cfg, false)
 	if spr != null and tex != null:
 		sprite_ok = CardGridUnitVisuals.apply_battle_unit_presentation(
 			self, spr, card_res, tex, false, rank_level
@@ -658,7 +648,7 @@ func _update_visual() -> void:
 
 	var is_omega := stats != null and stats.platform_type == 11
 	if is_player:
-		# 我方：全装型与敌方「机甲步兵」同源精灵（enemy_future_mech），仅朝右；缺镜像时再回退静态 fallback
+		# 我方：全装型与敌方「机甲步兵」同源精灵（fut_arm_mech_e），仅朝右；缺镜像时再回退静态 fallback
 		if is_omega:
 			if _try_apply_player_mirrored_enemy_visual(sprite, walk_sprite, poly):
 				_using_enemy_archetype_visual = true
@@ -684,7 +674,7 @@ static func _load_omega_fallback_texture() -> Texture2D:
 	return _omega_tex_cache
 
 
-## 优先用平台卡 id 查 manifest 卡图（omega_platform → vis_player_029），再退回兵种镜像表
+## 优先用平台卡 id 查 manifest 卡图（fut_arm_omega → vis_player_029），再退回兵种镜像表
 func _player_platform_visual_archetype_id() -> String:
 	if stats == null:
 		return ""
@@ -704,7 +694,7 @@ func _apply_omega_static_player_visual(sprite: Sprite2D, walk_sprite: AnimatedSp
 	if sprite != null and tex != null:
 		sprite.texture = tex
 		sprite.visible = true
-		_scale_static_sprite_to_enemy_archetype(sprite, "foe_omega_platform")
+		_scale_static_sprite_to_enemy_archetype(sprite, "foe_fut_arm_omega")
 		_apply_enemy_visual_facing(sprite, walk_sprite)
 	if poly != null:
 		poly.visible = false
@@ -718,45 +708,6 @@ func _apply_geometry_fallback_visual(sprite: Sprite2D, walk_sprite: AnimatedSpri
 		sprite.visible = false
 	if poly != null:
 		poly.visible = true
-
-func _update_rank_and_aura_visual() -> void:
-	if _presentation_card_grid:
-		return
-	var aura_ring: Line2D = get_node_or_null("AuraRing")
-	var rank_badge: Label = get_node_or_null("RankBadge")
-	if aura_ring == null or rank_badge == null:
-		return
-	if stats == null or stats.platform_card_id.is_empty() or BlueprintManager == null:
-		aura_ring.visible = false
-		rank_badge.visible = false
-		return
-	var mod_count: int = BlueprintManager.get_modification_count(stats.platform_card_id) if BlueprintManager.has_method("get_modification_count") else 0
-	_mod_color = _get_mod_aura_color(mod_count)
-	aura_ring.default_color = _mod_color
-	aura_ring.width = 2.0 + float(mod_count)
-	# 近似圆环，避免新贴图资产依赖
-	var radius: float = 22.0 + float(mod_count) * 1.5
-	var pts: PackedVector2Array = PackedVector2Array()
-	var seg: int = 28
-	for i in range(seg + 1):
-		var a: float = TAU * float(i) / float(seg)
-		pts.append(Vector2(cos(a), sin(a)) * radius)
-	aura_ring.points = pts
-	aura_ring.visible = mod_count > 0
-	var rank_info: Dictionary = BlueprintManager.get_rank_info(stats.platform_card_id) if BlueprintManager.has_method("get_rank_info") else {}
-	_rank_name = String(rank_info.get("rank_name", ""))
-	if _rank_name.is_empty():
-		rank_badge.visible = false
-	else:
-		rank_badge.text = _rank_name
-		rank_badge.visible = true
-
-func _get_mod_aura_color(mod_count: int) -> Color:
-	match mod_count:
-		1: return Color(0.45, 0.85, 1.0, 0.55) # A光环
-		2: return Color(0.55, 1.0, 0.55, 0.58) # B光环
-		3: return Color(1.0, 0.72, 0.45, 0.62) # C光环
-		_: return Color(0.5, 0.8, 1.0, 0.45)
 
 func _apply_enemy_archetype_visual(sprite: Sprite2D, walk_sprite: AnimatedSprite2D, poly: Polygon2D) -> bool:
 	if _visual_archetype_id.is_empty():
@@ -818,24 +769,6 @@ func _enemy_visual_resource_path_suspicious(path: String) -> bool:
 	return "background" in p or "/bg_" in p or "bg_level" in p or "/backgrounds/" in p
 
 
-func _clamp_enemy_archetype_walk_extent(anim: AnimatedSprite2D) -> void:
-	if anim == null or not anim.visible or anim.sprite_frames == null:
-		return
-	if not anim.sprite_frames.has_animation(String(anim.animation)):
-		return
-	if anim.sprite_frames.get_frame_count(String(anim.animation)) <= 0:
-		return
-	var ft: Texture2D = anim.sprite_frames.get_frame_texture(String(anim.animation), anim.frame)
-	if ft == null:
-		return
-	var w := float(ft.get_width()) * absf(anim.scale.x)
-	var h := float(ft.get_height()) * absf(anim.scale.y)
-	var m := maxf(w, h)
-	if m <= 1.0 or m <= MAX_ENEMY_VISUAL_EXTENT_PX:
-		return
-	anim.scale *= MAX_ENEMY_VISUAL_EXTENT_PX / m
-
-
 func _clamp_enemy_archetype_sprite_extent(spr: Sprite2D) -> void:
 	if spr == null or not spr.visible or spr.texture == null:
 		return
@@ -845,27 +778,6 @@ func _clamp_enemy_archetype_sprite_extent(spr: Sprite2D) -> void:
 	if m <= 1.0 or m <= MAX_ENEMY_VISUAL_EXTENT_PX:
 		return
 	spr.scale *= MAX_ENEMY_VISUAL_EXTENT_PX / m
-
-func _update_animation() -> void:
-	if _presentation_card_grid:
-		return
-	if _using_enemy_archetype_visual:
-		return
-	var walk_sprite: AnimatedSprite2D = get_node_or_null("WalkSprite")
-	if walk_sprite == null or walk_sprite.sprite_frames == null:
-		return
-	if not walk_sprite.sprite_frames.has_animation("walk"):
-		return
-
-	var moving := absf(velocity.x) > 1.0
-	# 性能优化：只在动画状态变化时更新
-	if moving != _current_walk_anim_state:
-		_current_walk_anim_state = moving
-		if moving:
-			if not walk_sprite.is_playing():
-				walk_sprite.play("walk")
-		else:
-			walk_sprite.stop()
 
 func _shape_points() -> PackedVector2Array:
 	var s = 24.0
@@ -952,7 +864,6 @@ func _physics_process(delta: float) -> void:
 	velocity = Vector2.ZERO
 	_move_target = Vector2.INF
 	ConstructUnitAI.process_attack(self, delta)
-	_update_animation()
 	# v7.1: 堡垒防护光环呼吸动画（仅堡垒类单位，非堡垒时 _is_fort_aura_unit=false 直接返回）
 	_update_fort_shield_aura(delta)
 	move_and_slide()

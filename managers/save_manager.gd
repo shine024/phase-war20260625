@@ -865,34 +865,6 @@ func _enqueue_starter_backpack_cards() -> void:
 	# 不再需要"材料库存"概念。下方"测试模式：开局全送"已通过 IntelItemBag
 	# 发放所有蓝图，等效覆盖了原 TODO 的意图。
 
-	# ===== 测试模式：开局全送（v7.x 上线前关闭） =====
-	# 原配置新游戏无条件全送所有改造蓝图/进化蓝图/符文，架空了掉落获取循环，
-	# 让游戏从"养成收集"变成"全送平推"。v7.1 已把改造/进化蓝图改回正常掉落解锁，
-	# 但本测试段又把它们全送回来——前后矛盾。上线前关闭，恢复正常游戏循环：
-	# 改造/进化蓝图靠战斗掉落（intel_manual_items.roll_random_mod_blueprint +
-	# 精英/Boss 掉落），符文靠战斗掉落/势力商店。
-	#
-	# 1) 所有改造蓝图：覆盖 ModificationRegistry 全部 140+ mod
-	#const ModificationRegistry = preload("res://scripts/systems/modification_registry.gd")
-	#const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
-	#var bag = get_node_or_null("/root/IntelItemBag")
-	#if bag:
-	#	for mod_id in ModificationRegistry.get_all_ids():
-	#		var bp_id := BlueprintDefinitions.get_mod_blueprint_id(mod_id)
-	#		if not bag.has_item(bp_id):
-	#			bag.add_item(bp_id, 1)
-	#
-	# 2) 所有进化蓝图：复用已实现的遍历（8 条进化路径 + 隐藏分支）
-	#_grant_all_evolution_blueprints()
-	#
-	# 3) 所有符文（持有，需手动装备到槽位才生效）
-	#const RuneDefinitions = preload("res://data/runes.gd")
-	#var pim = get_node_or_null("/root/PhaseInstrumentManager")
-	#if pim and pim.has_method("add_owned_rune"):
-	#	for rune_id in RuneDefinitions.get_all_ids():
-	#		if not pim.has_rune(rune_id):
-	#			pim.add_owned_rune(rune_id)
-	# ===== 测试模式结束 =====
 
 	# v6.6: 关键道具系统尚未实现（reserved），未来若新增消耗型关键道具，
 	# 在此发放初始库存。当前游戏内无关键道具，故留空。

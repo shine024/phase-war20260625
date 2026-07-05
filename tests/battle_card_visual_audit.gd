@@ -7,18 +7,18 @@ const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 
 const MIRROR_BY_PLATFORM: Dictionary = {
-	0: "enemy_ww1_infantry_basic",
-	1: "enemy_ww2_infantry",
-	2: "elite_ww1_armored",
-	3: "enemy_ww1_mg_nest",
-	4: "enemy_modern_stryker",
-	5: "enemy_cold_btr",
-	6: "enemy_future_hovertank",
-	7: "enemy_ww1_mortar",
-	8: "enemy_cold_m113",
-	9: "enemy_modern_marine",
-	10: "elite_future_spectre",
-	11: "enemy_future_mech",
+	0: "ww1_inf_mp18",
+	1: "ww2_inf_thompson",
+	2: "ww1_arm_rolls_e",
+	3: "ww1_sup_mg_nest",
+	4: "mod_arm_stryker_e",
+	5: "cold_arm_btr_e",
+	6: "fut_arm_hovertank_e",
+	7: "ww1_arty_mortar",
+	8: "cold_air_m113_e",
+	9: "mod_inf_marine",
+	10: "fut_inf_spectre_e",
+	11: "fut_arm_mech_e",
 }
 
 
@@ -47,7 +47,7 @@ func _initialize() -> void:
 	ids.sort()
 	for cid in DefaultCards.get_all_blueprint_ids():
 		var s: String = String(cid)
-		if s.begins_with("platform_") or s == "omega_platform":
+		if s.begins_with("platform_") or s == "fut_arm_omega":
 			if not ids.has(s):
 				ids.append(s)
 	ids.sort()
@@ -75,7 +75,7 @@ func _initialize() -> void:
 			continue
 
 		if int(card.platform_type) == int(11):
-			if ResourceLoader.exists("res://assets/unit_sprites/omega_platform.png"):
+			if ResourceLoader.exists("res://assets/unit_sprites/fut_arm_omega.png"):
 				asset_ok.append("%s | omega_static_png" % card_id)
 			else:
 				asset_bad.append("%s | omega_png_missing" % card_id)

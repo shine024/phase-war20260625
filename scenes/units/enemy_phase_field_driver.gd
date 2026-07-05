@@ -78,11 +78,11 @@ const _WEAPON_TYPE_MAP: Dictionary = {
 	"gravity": 6,
 }
 const _ERA_VISUAL_ARCHETYPES: Dictionary = {
-	0: ["enemy_ww1_infantry_basic", "elite_ww1_armored", "enemy_ww1_mg_nest", "enemy_ww1_mortar"],
-	1: ["enemy_ww2_infantry", "elite_ww2_panther", "enemy_ww2_mg42", "enemy_ww2_panzerschreck"],
-	2: ["enemy_cold_ak", "enemy_cold_btr", "enemy_cold_m113", "enemy_cold_m60"],
-	3: ["enemy_modern_marine", "enemy_modern_stryker", "enemy_modern_mlrs", "enemy_modern_technical"],
-	4: ["enemy_future_cyborg", "enemy_future_hovertank", "enemy_future_mech", "enemy_future_drone"],
+	0: ["ww1_inf_mp18", "ww1_arm_rolls_e", "ww1_sup_mg_nest", "ww1_arty_mortar"],
+	1: ["ww2_inf_thompson", "ww2_arm_panther_e", "ww2_sup_mg42", "ww2_inf_panzerschreck_e"],
+	2: ["cold_inf_ak", "cold_arm_btr_e", "cold_air_m113_e", "cold_inf_m60"],
+	3: ["mod_inf_marine", "mod_arm_stryker_e", "mod_arty_mlrs_e", "mod_air_technical_e"],
+	4: ["fut_inf_cyborg", "fut_arm_hovertank_e", "fut_arm_mech_e", "fut_air_drone"],
 }
 ## v7.1: 平台类型 → archetype tag 映射（用于选取与平台类型匹配的卡图）
 ## fortress=要塞/阵地, titan/raider/siege=载具系, striker/sniper/stealth/mage=步兵系
@@ -245,12 +245,23 @@ func _produce_unit_with_equipment() -> void:
 	if platforms.is_empty():
 		return
 
-	# 验证平台数据有效性（保留所有平台类型，含 striker/sniper/stealth/mage）
+	# v7.x: platforms 字段现在直接存 archetype id（旧平台卡层已删除）。
+	# 兼容回退：若 id 在 EnemyArchetypes 查不到 cfg，再尝试当平台卡 id 查（_legacy_platforms 路径）。
 	var valid_platforms: Array = []
+	var direct_archetype_ids: Dictionary = {}  # pid -> archetype_id（直引模式）
+	var legacy_platform_ids: Array = []         # 旧平台卡模式
 	for pid in platforms:
-		var pdata := EnemyPhaseEquipment.get_war_platform(String(pid))
-		if not pdata.is_empty():
-			valid_platforms.append(String(pid))
+		var pid_str := String(pid)
+		var arch_cfg := EnemyArchetypes.get_config(pid_str)
+		if not arch_cfg.is_empty():
+			# 直引 archetype 模式
+			valid_platforms.append(pid_str)
+			direct_archetype_ids[pid_str] = pid_str
+		else:
+			var pdata := EnemyPhaseEquipment.get_war_platform(pid_str)
+			if not pdata.is_empty():
+				valid_platforms.append(pid_str)
+				legacy_platform_ids.append(pid_str)
 
 	if valid_platforms.is_empty():
 		return
@@ -269,44 +280,66 @@ func _produce_unit_with_equipment() -> void:
 			platform_id = String(valid_platforms[randi() % valid_platforms.size()])
 	else:
 		platform_id = String(valid_platforms[randi() % valid_platforms.size()])
-	var platform_data: Dictionary = EnemyPhaseEquipment.get_war_platform(platform_id)
-	if platform_data.is_empty():
-		return
+
+	# v7.x: 分流——直引 archetype vs 旧平台卡
+	var direct_archetype_id: String = String(direct_archetype_ids.get(platform_id, ""))
+	var platform_data: Dictionary = {}
+	if direct_archetype_id.is_empty():
+		# 旧平台卡模式：查平台数据
+		platform_data = EnemyPhaseEquipment.get_war_platform(platform_id)
+		if platform_data.is_empty():
+			return
 
 	## 平台卡默认武器（非随机）；表无字段时在装备武器列表中按 id 排序取首项作为确定性回退
-	var wid: String = EnemyPhaseEquipment.get_default_weapon_id_for_platform(platform_id)
-	if wid.is_empty():
-		if weapons.is_empty():
+	var wt_int: int = -1
+	var weapon_types: Array = []
+	var platform_type_int: int = -1
+	var platform_type_str: String = ""
+	var direct_cfg: Dictionary = {}
+	if not direct_archetype_id.is_empty():
+		# v7.x 直引 archetype 模式：武器/平台类型从 archetype cfg 推导，跳过平台卡/武器表查询。
+		direct_cfg = EnemyArchetypes.get_config(direct_archetype_id)
+		var legacy_wt: int = int(direct_cfg.get("weapon_type", 1))
+		wt_int = _legacy_weapon_to_new_weapon_type(legacy_wt, direct_cfg)
+		if wt_int < 0:
 			return
-		var sorted_w: Array = weapons.duplicate()
-		sorted_w.sort()
-		wid = String(sorted_w[0])
-	var wdata: Dictionary = EnemyPhaseEquipment.get_war_weapon(wid)
-	if wdata.is_empty():
-		return
-	var wt_int: int = _map_weapon_type(wdata.get("type", ""))
-	if wt_int < 0:
-		return
-	var weapon_types: Array = [wt_int]
-
-	## 映射平台类型
-	var platform_type_int: int = _map_platform_type(platform_data.get("type", ""))
-	if platform_type_int < 0:
-		return
+		weapon_types = [legacy_wt]  # build_stats_from_archetype 内部读 legacy 值
+		# platform_type 由 archetype 的 tags 推导（复用 _archetype_combat_kind 的 tag 判断）
+		platform_type_int = _archetype_combat_kind(direct_cfg, 1)
+		platform_type_str = ""  # 直引模式不依赖平台 type 字符串
+	else:
+		# 旧平台卡模式（_legacy_platforms 回退）：武器走平台默认武器 + 装备武器列表
+		var wid: String = EnemyPhaseEquipment.get_default_weapon_id_for_platform(platform_id)
+		if wid.is_empty():
+			if weapons.is_empty():
+				return
+			var sorted_w: Array = weapons.duplicate()
+			sorted_w.sort()
+			wid = String(sorted_w[0])
+		var wdata: Dictionary = EnemyPhaseEquipment.get_war_weapon(wid)
+		if wdata.is_empty():
+			return
+		wt_int = _map_weapon_type(wdata.get("type", ""))
+		if wt_int < 0:
+			return
+		weapon_types = [wt_int]
+		## 映射平台类型
+		platform_type_str = String(platform_data.get("type", ""))
+		platform_type_int = _map_platform_type(platform_type_str)
+		if platform_type_int < 0:
+			return
 
 	## 构建 UnitStats
-	# v6.12: 用真实 archetype 数据构建（替代通用平台表 build_multi_stats），让敌方产兵强度对齐
-	# 同类型真实敌人。复用 _pick_visual_archetype_for_platform 的平台→archetype 映射取真实 cfg，
-	# 查不到时回退通用表（永不破坏游戏）。
-	var platform_type_str: String = String(platform_data.get("type", ""))
-	var stats: UnitStats = _build_stats_from_archetype(era, platform_type_str, platform_type_int, weapon_types)
+	# v7.x: 直引 archetype 时直接用该 archetype cfg；旧平台卡模式复用 _pick_visual_archetype_for_platform 映射。
+	# 让敌方产兵强度对齐同类型真实敌人；archetype 查不到时回退通用表（永不破坏游戏）。
+	var stats: UnitStats = _build_stats_from_archetype(era, platform_type_str, platform_type_int, weapon_types, direct_archetype_id)
 
 	# v7.3: 移除平台 stats 对 HP/defense/move_speed 的覆写。
 	# 原逻辑用 platform.stats（如 steel_titan_expert.hp=3500/defense=200）覆写真实 archetype 值，
 	# 但 platform.stats 是"平台作为可部署防御工事"的设计值（几千），用在"产兵"上语义错配，
 	# 导致产兵 HP 失控（第49关单个产兵 HP 达 7400~11000，是同关普通敌兵 ~186 的 40~60 倍）。
 	# v6.12"用真实 archetype 数据"的意图被此覆写抵消。现移除覆写，产兵 HP/防御/速度
-	# 全部使用 _build_stats_from_archetype 构建的真实 archetype 值（如 enemy_cold_btr hp=120），
+	# 全部使用 _build_stats_from_archetype 构建的真实 archetype 值（如 cold_arm_btr_e hp=120），
 	# 与普通波次敌兵对齐量级。master_stats/战场难度/符文/相位仪/序列等加成乘区不变。
 	# platform_data 仍用于：平台类型判定（_map_platform_type）、视觉 archetype 选取（_pick_visual_archetype_for_platform）、
 	# 以及 platform_id 记录（stats.platform_card_id）。平台间的差异化由这些维度 + master 装备配置体现。
@@ -357,9 +390,8 @@ func _produce_unit_with_equipment() -> void:
 
 	## 生成 ConstructUnit
 	var unit: Node2D = ConstructUnitScene.instantiate()
-	# v7.1: 按平台类型匹配卡图（替代仅按时代选取，避免不同平台显示同一张图）
-	# v6.12: platform_type_str 已在上方 stats 构建处声明，复用之
-	var visual_archetype_id: String = _pick_visual_archetype_for_platform(era, platform_type_str)
+	# v7.x: 直引 archetype 模式用 direct_archetype_id；旧平台卡模式按平台类型匹配卡图。
+	var visual_archetype_id: String = direct_archetype_id if not direct_archetype_id.is_empty() else _pick_visual_archetype_for_platform(era, platform_type_str)
 	if unit.has_method("setup_with_enemy_visual"):
 		unit.setup_with_enemy_visual(false, stats, visual_archetype_id)
 	else:
@@ -542,7 +574,7 @@ func _pick_visual_archetype_for_platform(era: int, platform_type: String) -> Str
 		candidates.append(archetype_id)
 	if candidates.is_empty():
 		return _pick_visual_archetype_for_era(era)  # 该类型无候选，回退原逻辑
-	# v7.3: 优先选基础 HP 最高的候选（让Boss战产兵用高基础兵种卡，如 elite_cold_t72 而非 enemy_cold_btr）
+	# v7.3: 优先选基础 HP 最高的候选（让Boss战产兵用高基础兵种卡，如 cold_arm_t72_e 而非 cold_arm_btr_e）
 	candidates.sort_custom(func(a_id: String, b_id: String) -> bool:
 		var a_hp: float = float(EnemyArchetypes.get_config(a_id).get("hp", 0.0))
 		var b_hp: float = float(EnemyArchetypes.get_config(b_id).get("hp", 0.0))
@@ -551,10 +583,13 @@ func _pick_visual_archetype_for_platform(era: int, platform_type: String) -> Str
 
 
 ## v6.12: 用真实 archetype 数据构建 UnitStats（替代通用平台表 build_multi_stats）。
-## 复用 _pick_visual_archetype_for_platform 的平台→archetype 映射取真实 cfg，
-## 让敌方产兵基础值与同类型真实敌人一致；archetype 查不到时回退通用表。
-func _build_stats_from_archetype(era: int, platform_type_str: String, fallback_platform_int: int, fallback_weapon_types: Array) -> UnitStats:
-	var archetype_id: String = _pick_visual_archetype_for_platform(era, platform_type_str)
+## v7.x: direct_archetype_id 非空时直接用该 archetype（删除平台卡层后直引模式），
+## 否则复用 _pick_visual_archetype_for_platform 的平台→archetype 映射取真实 cfg（旧平台卡回退）。
+## archetype 查不到时回退通用表。
+func _build_stats_from_archetype(era: int, platform_type_str: String, fallback_platform_int: int, fallback_weapon_types: Array, direct_archetype_id: String = "") -> UnitStats:
+	var archetype_id: String = direct_archetype_id
+	if archetype_id.is_empty():
+		archetype_id = _pick_visual_archetype_for_platform(era, platform_type_str)
 	var cfg: Dictionary = EnemyArchetypes.get_config(archetype_id)
 	if cfg.is_empty():
 		# 兜底：archetype 查不到时回退原通用表（永不破坏游戏）

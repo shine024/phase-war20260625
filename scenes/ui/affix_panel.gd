@@ -13,6 +13,7 @@ const GC = preload("res://resources/game_constants.gd")
 const AffixRowScene = preload("res://scenes/ui/affix_row.tscn")
 
 var _selected_card_id: String = ""
+var _selected_instance_id: String = ""  # v7.x：实例化词条隔离——affix_key 用它（空回退 card_id）
 var _selected_affix_type: int = 0  # 0=机体, 1=武器
 
 # 静态布局节点（已移至 affix_panel.tscn）
@@ -96,37 +97,48 @@ func _refresh_card_list() -> void:
 	# 更新纳米材料显示
 	_refresh_nano_label()
 
-	# 直接从 BlueprintManager 获取已解锁蓝图列表
-	var ids: Array = []
+	# v7.x：数据源改读 InstanceRegistry 实例全集（铁律2），同名卡每实例一行。
+	# 优先级：① InstanceRegistry 实例全集 → ② BlueprintManager 蓝图（兜底无实例卡）。
+	var entries: Array = []  # 每项 = {instance_id, card_id, display_card}
+	var seen_full: Dictionary = {}  # 完整 instance_id 去重
+	var seen_base: Dictionary = {}  # 裸 card_id 去重（蓝图兜底用）
 
-	if BlueprintManager:
-		ids = BlueprintManager.get_unlocked_blueprint_ids()
-
-	# 也从 BackpackPanel 获取额外制造的合成卡
-	var bp: Node = get_node_or_null("/root/Main/PopupLayer/BackpackOverlay/BackpackVBox/CenterRow/BackpackCenter/BackpackPanel")
-	if bp == null:
-		bp = get_node_or_null("/root/Main/PopupLayer/BackpackOverlay/BackpackVBox/CenterRow/BackpackCenter/backpack_panel")
-	if bp and bp.has_method("get_extra_card_ids"):
-		var extra_ids: Array = bp.get_extra_card_ids()
-		for eid in extra_ids:
-			var eid_s: String = str(eid)
-			if not eid_s.is_empty() and not ids.has(eid_s):
-				ids.append(eid_s)
-
-	# 过滤掉能量卡和法则卡
-	var filtered: Array = []
-	for id in ids:
-		var id_s: String = str(id)
-		if id_s.is_empty():
-			continue
-		if id_s.begins_with("energy"):
-			continue
-		if BlueprintManager and BlueprintManager.has_method("is_law_blueprint_id"):
-			if BlueprintManager.is_law_blueprint_id(id_s):
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	if ir != null and ir.has_method("get_all_instance_ids"):
+		for iid_raw in ir.get_all_instance_ids():
+			var iid: String = str(iid_raw)
+			if iid.is_empty() or seen_full.has(iid):
 				continue
-		filtered.append(id_s)
+			seen_full[iid] = true
+			var inst: CardResource = ir.get_instance(iid) if ir.has_method("get_instance") else null
+			if inst == null:
+				continue
+			# 过滤能量卡/法则卡
+			if inst.card_type != GC.CardType.COMBAT_UNIT:
+				continue
+			var base_id: String = inst.card_id
+			entries.append({"instance_id": iid, "card_id": base_id, "display_card": inst})
 
-	if filtered.is_empty():
+	# 蓝图兜底：已解锁但尚无实例的卡，补一条模板行（词条操作会拒模板，但至少可见）
+	if BlueprintManager and BlueprintManager.has_method("get_unlocked_blueprint_ids"):
+		for bid_raw in BlueprintManager.get_unlocked_blueprint_ids():
+			var bid: String = str(bid_raw)
+			if bid.is_empty() or seen_base.has(bid):
+				continue
+			if bid.begins_with("energy"):
+				continue
+			if BlueprintManager.has_method("is_law_blueprint_id") and BlueprintManager.is_law_blueprint_id(bid):
+				continue
+			# 该 card_id 已有实例则不补蓝图行
+			if ir != null and ir.has_method("get_instances_by_card_id"):
+				if not ir.get_instances_by_card_id(bid).is_empty():
+					continue
+			seen_base[bid] = true
+			var tpl: CardResource = DefaultCards.get_card_by_id(bid) if DefaultCards else null
+			if tpl != null and tpl.card_type == GC.CardType.COMBAT_UNIT:
+				entries.append({"instance_id": "", "card_id": bid, "display_card": tpl})
+
+	if entries.is_empty():
 		var hint := Label.new()
 		hint.text = "暂无可用卡牌"
 		hint.add_theme_font_size_override("font_size", 12)
@@ -134,15 +146,16 @@ func _refresh_card_list() -> void:
 		_card_list.add_child(hint)
 		return
 
-	for card_id in filtered:
-		var btn := _make_card_list_btn(card_id)
+	for entry in entries:
+		var btn := _make_card_list_btn(str(entry.instance_id), str(entry.card_id), entry.display_card)
 		_card_list.add_child(btn)
 
-func _make_card_list_btn(card_id: String) -> Button:
+func _make_card_list_btn(instance_id: String, card_id: String, card: CardResource) -> Button:
 	var btn := Button.new()
-	btn.name = "CardBtn_%s" % card_id
+	btn.name = "CardBtn_%s" % (instance_id if not instance_id.is_empty() else card_id)
 
-	var lines: Array[String] = _build_affix_card_lines(card_id)
+	# v7.x：列表项显示带 #N 序号（实例卡），便于区分同名卡
+	var lines: Array[String] = _build_affix_card_lines(card, instance_id)
 	btn.text = "\n".join(lines)
 
 	btn.add_theme_font_size_override("font_size", 12)
@@ -152,7 +165,10 @@ func _make_card_list_btn(card_id: String) -> Button:
 	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	btn.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 
-	var is_selected: bool = (_selected_card_id == card_id)
+	# v7.x：选中判断用 instance_id（实例卡）或 card_id（模板兜底）
+	var self_id: String = instance_id if not instance_id.is_empty() else card_id
+	var sel_id: String = _selected_instance_id if not _selected_instance_id.is_empty() else _selected_card_id
+	var is_selected: bool = (self_id == sel_id)
 	if is_selected:
 		btn.add_theme_color_override("font_color", Color(0.90, 0.60, 1.0, 1.0))
 	else:
@@ -161,38 +177,35 @@ func _make_card_list_btn(card_id: String) -> Button:
 	btn.add_theme_stylebox_override("hover", _hover_style)
 	btn.add_theme_stylebox_override("pressed", _pressed_style)
 
-	btn.pressed.connect(func() -> void: _on_card_selected(card_id))
+	btn.pressed.connect(func() -> void: _on_card_selected(instance_id, card_id))
 	return btn
 
-func _build_affix_card_lines(card_id: String) -> Array[String]:
+func _build_affix_card_lines(card: CardResource, instance_id: String = "") -> Array[String]:
 	var lines: Array[String] = []
-	if card_id.is_empty():
-		lines.append("未知机体")
-		return lines
-	var card: CardResource = _resolve_card_for_affix_list(card_id)
 	if card == null:
-		lines.append(card_id)
+		lines.append("未知机体")
 		return lines
 
 	var machine_name: String = DefaultCards.safe_name(card)
+	# v7.x：实例卡追加 #N 序号后缀
+	if not instance_id.is_empty():
+		machine_name += DefaultCards.seq_suffix(card)
 	var weapon_names: Array[String] = []
 
 	if card.card_type == GC.CardType.COMBAT_UNIT:
 		if not card.source_platform_id.is_empty():
 			machine_name = _resolve_card_name_by_id(card.source_platform_id)
+			if not instance_id.is_empty():
+				machine_name += DefaultCards.seq_suffix(card)
 		for wid_raw in card.source_weapon_ids:
 			var wid: String = str(wid_raw)
 			if wid.is_empty():
 				continue
 			weapon_names.append(_resolve_card_name_by_id(wid))
-	elif card.card_type == GC.CardType.COMBAT_UNIT:
-		machine_name = DefaultCards.safe_name(card)
-		weapon_names.append(_suggest_weapon_name_for_platform(card))
-	elif card.card_type == GC.CardType.COMBAT_UNIT:
-		machine_name = "通用机体"
-		weapon_names.append(DefaultCards.safe_name(card))
 	else:
 		machine_name = DefaultCards.safe_name(card)
+		if not instance_id.is_empty():
+			machine_name += DefaultCards.seq_suffix(card)
 
 	lines.append(machine_name)
 	for weapon_name in weapon_names:
@@ -223,11 +236,16 @@ func _suggest_weapon_name_for_platform(platform_card: CardResource) -> String:
 	var weapon_name: String = _resolve_card_name_by_id(weapon_id)
 	return weapon_name if not weapon_name.is_empty() else "通用机枪"
 
-## 获取词条的唯一key（卡牌ID + 强化类型）
-func _get_affix_key(card_id: String, affix_type: int) -> String:
-	return "%s_%d" % [card_id, affix_type]
+## 获取词条的唯一key（v7.x：优先 instance_id，空回退 card_id）
+func _get_affix_key(identity: String, affix_type: int) -> String:
+	return "%s_%d" % [identity, affix_type]
 
-func _on_card_selected(card_id: String) -> void:
+## v7.x：当前选中卡的 affix 身份（instance_id 优先，空回退 card_id）
+func _selected_identity() -> String:
+	return _selected_instance_id if not _selected_instance_id.is_empty() else _selected_card_id
+
+func _on_card_selected(instance_id: String, card_id: String) -> void:
+	_selected_instance_id = instance_id
 	_selected_card_id = card_id
 	# 默认选择平台强化
 	_selected_affix_type = 0
@@ -257,7 +275,7 @@ func _refresh_affix_detail() -> void:
 			child.queue_free()
 
 	# 更新卡牌名称
-	if _selected_card_id.is_empty():
+	if _selected_identity().is_empty():
 		_selected_card_lbl.text = "← 选择一张卡牌"
 	else:
 		var display_name: String = _selected_card_id
@@ -266,19 +284,26 @@ func _refresh_affix_detail() -> void:
 		if BlueprintManager and BlueprintManager.has_method("get_card_level"):
 			level = BlueprintManager.get_card_level(_selected_card_id)
 
-		if DefaultCards != null:
-			var card: CardResource = DefaultCards.get_card_by_id(_selected_card_id)
-			if card:
-				display_name = DefaultCards.safe_name(card)
+		# v7.x：优先取实例卡显示名（带养成数据），其次模板
+		var show_card: CardResource = null
+		var ir2: Node = get_node_or_null("/root/InstanceRegistry")
+		if ir2 != null and not _selected_instance_id.is_empty() and ir2.has_method("get_instance"):
+			show_card = ir2.get_instance(_selected_instance_id)
+		if show_card == null and DefaultCards != null:
+			show_card = DefaultCards.get_card_by_id(_selected_card_id)
+		if show_card:
+			display_name = DefaultCards.safe_name(show_card)
+			if not _selected_instance_id.is_empty():
+				display_name += DefaultCards.seq_suffix(show_card)
 
 		var type_str: String = "机体" if _selected_affix_type == 0 else "武器"
 		_selected_card_lbl.text = "📋 %s [%s] Lv%d" % [display_name, type_str, level]
 
-	# 获取当前类型的词条
-	var affix_key: String = _get_affix_key(_selected_card_id, _selected_affix_type)
+	# 获取当前类型的词条（v7.x：用 instance_id 派生 key）
+	var affix_key: String = _get_affix_key(_selected_identity(), _selected_affix_type)
 	var affixes: Array = []
 	var affix_mgr = get_node_or_null("/root/AffixManager")
-	if affix_mgr and not _selected_card_id.is_empty():
+	if affix_mgr and not _selected_identity().is_empty():
 		affixes = affix_mgr.get_card_affixes(affix_key)
 
 	# 更新词条数量显示
@@ -372,11 +397,11 @@ func _refresh_nano_label() -> void:
 		_nano_label.text = "纳米: %d" % int(BlueprintManager.get_nano_materials())
 
 func _refresh_batch_cost_bar() -> void:
-	if _selected_card_id.is_empty():
+	if _selected_identity().is_empty():
 		_batch_cost_lbl.text = "基础: 0  锁定额外: 0  合计: 0"
 		_batch_reroll_btn.disabled = true
 		return
-	var affix_key: String = _get_affix_key(_selected_card_id, _selected_affix_type)
+	var affix_key: String = _get_affix_key(_selected_identity(), _selected_affix_type)
 	var affix_mgr = get_node_or_null("/root/AffixManager")
 	if affix_mgr == null or not affix_mgr.has_method("get_batch_reroll_cost"):
 		_batch_reroll_btn.disabled = true
@@ -402,9 +427,9 @@ func _on_batch_reroll_pressed() -> void:
 	var affix_mgr = get_node_or_null("/root/AffixManager")
 	if affix_mgr == null or not affix_mgr.has_method("batch_reroll_affixes"):
 		return
-	if _selected_card_id.is_empty():
+	if _selected_identity().is_empty():
 		return
-	var affix_key: String = _get_affix_key(_selected_card_id, _selected_affix_type)
+	var affix_key: String = _get_affix_key(_selected_identity(), _selected_affix_type)
 	var ok: bool = affix_mgr.batch_reroll_affixes(affix_key)
 	if ok:
 		_refresh_affix_detail()
@@ -430,8 +455,16 @@ func _on_affix_changed(card_id: String) -> void:
 	_refresh_batch_cost_bar()
 
 ## 供蓝图库联动：直接打开指定卡牌与强化轨道
+## v7.x：card_id 可传 instance_id（实例卡）或裸 card_id（自动取该卡首个实例，无实例则用 card_id 兜底）
 func open_for_card(card_id: String, affix_type: int = 0) -> void:
 	_selected_card_id = card_id
+	_selected_instance_id = ""
+	# 尝试按 card_id 解析到首个实例（词条按实例隔离）
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	if ir != null and ir.has_method("get_instances_by_card_id"):
+		var iids: Array = ir.get_instances_by_card_id(card_id)
+		if not iids.is_empty():
+			_selected_instance_id = str(iids[0])
 	_selected_affix_type = 0 if affix_type != 1 else 1
 	_refresh_card_list()
 	_update_type_buttons()

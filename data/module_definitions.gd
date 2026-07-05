@@ -511,40 +511,44 @@ static func get_module_summary(module_slots: Array, enhance_level: int) -> Dicti
 
 ## 构建词条效果文本行（用于 info panel / tooltip）
 static func build_effect_lines(summary: Dictionary) -> Array:
+	# v7.x: 属性名统一走 ModEffectLabels 简短词口径（与情报/改造/强化面板一致），
+	#       消除此前硬编码的"HP/闪电链/击杀护盾"等独立口径。
+	#       数值格式保留（这里是多词条聚合后的总倍率，语义与单条改造效果不同）。
+	const ModEffectLabels = preload("res://scripts/ui/mod_effect_labels.gd")
 	var lines: Array = []
 	if summary.get("hp_mult", 1.0) > 1.001:
-		lines.append("HP ×%.2f" % summary["hp_mult"])
+		lines.append("%s ×%.2f" % [ModEffectLabels.translate("max_hp"), summary["hp_mult"]])
 	if summary.get("dmg_mult", 1.0) > 1.001:
-		lines.append("攻击 ×%.2f" % summary["dmg_mult"])
+		lines.append("%s ×%.2f" % [ModEffectLabels.translate("attack_damage"), summary["dmg_mult"]])
 	if summary.get("damage_reduction", 0.0) > 0.001:
-		lines.append("减伤 %.1f%%" % (summary["damage_reduction"] * 100.0))
+		lines.append("%s %.1f%%" % [ModEffectLabels.translate("damage_reduction"), summary["damage_reduction"] * 100.0])
 	if summary.get("crit_chance", 0.0) > 0.001:
 		var dmg_str: String = ""
 		if summary.get("crit_damage_bonus", 0.0) > 0.001:
 			dmg_str = " (%.1fx)" % (1.5 + summary["crit_damage_bonus"])
-		lines.append("暴击 %.1f%%%s" % [summary["crit_chance"] * 100.0, dmg_str])
+		lines.append("%s %.1f%%%s" % [ModEffectLabels.translate("crit_chance"), summary["crit_chance"] * 100.0, dmg_str])
 	if summary.get("lifesteal", 0.0) > 0.001:
-		lines.append("吸血 %.1f%%" % (summary["lifesteal"] * 100.0))
+		lines.append("%s %.1f%%" % [ModEffectLabels.translate("lifesteal"), summary["lifesteal"] * 100.0])
 	if summary.get("splash_damage", 0.0) > 0.001:
-		lines.append("溅射 %.1f%%" % (summary["splash_damage"] * 100.0))
+		lines.append("%s %.1f%%" % [ModEffectLabels.translate("splash_damage"), summary["splash_damage"] * 100.0])
 	if summary.get("armor_penetration", 0.0) > 0.001:
-		lines.append("穿甲 %.1f%%" % (summary["armor_penetration"] * 100.0))
+		lines.append("%s %.1f%%" % [ModEffectLabels.translate("armor_penetration"), summary["armor_penetration"] * 100.0])
 	if summary.get("chain_chance", 0.0) > 0.001:
-		lines.append("闪电链 %.1f%%" % (summary["chain_chance"] * 100.0))
+		lines.append("%s %.1f%%" % [ModEffectLabels.translate("chain_chance"), summary["chain_chance"] * 100.0])
 	if summary.get("shield_on_kill", 0.0) > 0.001:
-		lines.append("击杀护盾 %.1f%%HP" % (summary["shield_on_kill"] * 100.0))
+		lines.append("%s %.1f%%%s" % [ModEffectLabels.translate("shield_on_kill"), summary["shield_on_kill"] * 100.0, ModEffectLabels.translate("max_hp")])
 	if summary.get("hp_regen", 0.0) > 0.0001:
-		lines.append("每秒回血 %.2f%%HP" % (summary["hp_regen"] * 100.0))
+		lines.append("%s %.2f%%%s" % [ModEffectLabels.translate("hp_regen"), summary["hp_regen"] * 100.0, ModEffectLabels.translate("max_hp")])
 	if summary.get("dodge_chance", 0.0) > 0.001:
-		lines.append("闪避 %.1f%%" % (summary["dodge_chance"] * 100.0))
+		lines.append("%s %.1f%%" % [ModEffectLabels.translate("dodge_chance"), summary["dodge_chance"] * 100.0])
 	if summary.get("defense_flat", 0.0) > 0.001:
-		lines.append("防御 +%d" % int(summary["defense_flat"]))
+		lines.append("%s +%d" % [ModEffectLabels.translate("defense"), int(summary["defense_flat"])])
 	if summary.get("deploy_speed_add", 0) > 0:
-		lines.append("部署速度 +%d" % summary["deploy_speed_add"])
+		lines.append("%s +%d" % [ModEffectLabels.translate("deploy_speed"), summary["deploy_speed_add"]])
 	if summary.get("range_mult", 1.0) > 1.001:
-		lines.append("射程 ×%.2f" % summary["range_mult"])
+		lines.append("%s ×%.2f" % [ModEffectLabels.translate("attack_range"), summary["range_mult"]])
 	if summary.get("interval_mult", 0.0) < -0.001:
-		lines.append("攻速加速 %d%%" % int(abs(summary["interval_mult"] * 100.0)))
+		lines.append("%s %d%%" % [ModEffectLabels.translate("attack_interval"), int(abs(summary["interval_mult"] * 100.0))])
 	return lines
 
 # ─────────────────────────────────────────────

@@ -6,7 +6,7 @@ const EnemyUnitManifest = preload("res://data/enemy_unit_manifest.gd")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const GC = preload("res://resources/game_constants.gd")
 
-const UNITS_ICON_DIR := "res://assets/card_icons/units/"
+const UNITS_ICON_DIR := "res://assets/card_icons/"
 
 ## 兵种聚合键 → manifest A 段代表图（根目录聚合 PNG 归档后的回退）
 ## 英文角色名 + 中文 combat_kind 短名双键（get_shape_key() 返回中文）
@@ -75,7 +75,7 @@ static func _era_kind_fallback_path(era: int, combat_kind: int) -> String:
 	var vis_id: String = String(ERA_KIND_FALLBACK_ICON.get(key, ""))
 	if vis_id.is_empty():
 		return ""
-	var path: String = "%s%s.png" % [UNITS_ICON_DIR, vis_id]
+	var path: String = "%splayer/%s.png" % [UNITS_ICON_DIR, vis_id]
 	return path if ResourceLoader.exists(path, "Texture2D") else ""
 
 
@@ -85,7 +85,7 @@ static func _path_for_shape_key(shape_key: String) -> String:
 		return ""
 	var vis_id: String = String(SHAPE_KEY_UNIT_ICON.get(key, ""))
 	if not vis_id.is_empty():
-		var unit_p: String = "%s%s.png" % [UNITS_ICON_DIR, vis_id]
+		var unit_p: String = "%splayer/%s.png" % [UNITS_ICON_DIR, vis_id]
 		if ResourceLoader.exists(unit_p, "Texture2D"):
 			return unit_p
 	var legacy: String = "res://assets/card_icons/%s.png" % key
@@ -149,14 +149,18 @@ static func rune_icon(rune_id: String) -> Texture2D:
 ## 背包/槽位：优先 `card_id` 对应卡面，否则退回 `get_shape_key()` 聚合图。
 
 const CARD_FRAME_RARITIES: Array[String] = [
-	"common", "uncommon", "rare", "epic", "legendary",
+	"common", "uncommon", "rare", "epic", "legendary", "mythic",
 ]
 
 
-## 稀有度 PNG 卡框（5:8，透明中心）`assets/cards/frames/<rarity>.png`
+## 稀有度 PNG 卡框（5:8，透明中心）`res://assets/cards/frames/<rarity>.png`
+## 注意：项目暂无 mythic.png 素材。mythic（神话）比 legendary 更稀有，
+## 回退到 legendary 框（金色高级系，视觉最接近），而非 common（会导致神话卡显示普通框）。
 static func card_frame_path_for(rarity: String) -> String:
 	var r := rarity.strip_edges().to_lower()
-	if r not in CARD_FRAME_RARITIES:
+	if r == "mythic":
+		r = "legendary"
+	elif r not in CARD_FRAME_RARITIES:
 		r = "common"
 	return "res://assets/cards/frames/%s.png" % r
 
@@ -230,14 +234,11 @@ static func _vis_player_path_for_bp_platform(card_id: String) -> String:
 	var era_idx: int = ["ww1","ww2","cold","modern","near"].find(era_key)
 	if era_idx < 0:
 		return ""
-	var plat_cap: int = 0
-	if seq > plat_cap:
-		return ""
 	var vis_idx: int = 1
 	for e in range(era_idx):
 		vis_idx += 0
 	vis_idx += seq - 1
-	var full: String = "res://assets/card_icons/units/vis_player_%03d.png" % vis_idx
+	var full: String = "res://assets/card_icons/player/vis_player_%03d.png" % vis_idx
 	return full if ResourceLoader.exists(full, "Texture2D") else ""
 
 
@@ -346,11 +347,13 @@ static func setup_texrect_icon(tr: TextureRect, tex: Texture2D, px: Vector2) -> 
 		tr.visible = false
 
 
-## 清单原画默认朝左；`face_right` 为 true 时水平翻转（我方背包/相位仪/右向战场单位）。
+## v7.x: 图本身已携带朝向（vis_player=我方翻转图，vis_enemy=敌方原图），
+## UI 取图经 card_icon_path_for 默认拿到 vis_player，故不再需要 flip_h 翻转。
+## 保留 face_right 参数仅为兼容现有调用点，实际为 no-op。
 static func apply_card_icon_facing(tr: TextureRect, face_right: bool) -> void:
 	if tr == null:
 		return
-	tr.flip_h = face_right
+	tr.flip_h = false
 
 
 static func setup_card_unit_icon(tr: TextureRect, tex: Texture2D, px: Vector2, face_right: bool = true) -> void:

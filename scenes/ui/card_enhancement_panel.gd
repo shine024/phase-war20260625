@@ -18,6 +18,7 @@ const CompanyDefinitions = preload("res://data/company_definitions.gd")
 # StarConfig removed - star_level system deprecated in v5.1
 const BasicResources = preload("res://data/basic_resources.gd")
 const UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")
+const ModEffectLabels = preload("res://scripts/ui/mod_effect_labels.gd")
 
 # === 主题色（绿色强化主题） ===
 const THEME_GREEN := Color(0.3, 0.92, 0.5, 1)
@@ -1221,18 +1222,10 @@ func _safe_refresh_after_module_popup() -> void:
 
 ## 格式化词条效果描述（v6.10: 用 effect_type 精确格式化，修复"生命+0"——
 ## base_value 全是小数百分比如 max_hp=0.12，旧逻辑 int(0.12)=0 导致显示+0）
+## v7.x: label 翻译复用 ModEffectLabels 共享表（与情报/改造面板统一简短词口径），
+##       此函数只保留数值格式化（effect_type 判断百分比/固定值）这一独有职责。
 func _format_module_effect(effect_key: String, base_val: float, effect_type: String = "") -> String:
-	var name_map := {
-		"max_hp": "生命", "attack_damage": "攻击", "attack_light": "轻攻", "attack_armor": "重攻",
-		"attack_air": "防空", "defense": "防御", "defense_light": "轻防", "defense_armor": "重防",
-		"defense_air": "空防", "damage_reduction": "减伤", "crit_chance": "暴击",
-		"crit_damage_bonus": "暴伤", "lifesteal": "吸血", "splash_damage": "溅射",
-		"armor_penetration": "穿甲", "chain_chance": "连锁", "shield_on_kill": "击杀护盾",
-		"hp_regen": "回血", "deploy_speed": "部署", "move_speed": "移速",
-		"attack_range": "射程", "attack_interval": "攻速", "dodge_chance": "闪避",
-		"faction_accuracy_bonus": "命中",
-	}
-	var label: String = name_map.get(effect_key, effect_key)
+	var label: String = ModEffectLabels.translate(effect_key)
 	# 百分比类统一换算：×100，≥1% 显示整数、<1% 保留1位小数（避免 hp_regen=0.003→+0%）
 	var pct_str := func(p: float) -> String:
 		var pct := p * 100.0

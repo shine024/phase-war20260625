@@ -14,14 +14,14 @@ func test_wave_multipliers_match_legacy_constants() -> void:
 
 func test_resolve_infantry_basic_wave1() -> void:
 	var ctx := EnemyStatContext.new(1, 1)
-	var r: Dictionary = EnemyStatResolver.resolve_classic_enemy("enemy_ww1_infantry_basic", ctx)
+	var r: Dictionary = EnemyStatResolver.resolve_classic_enemy("ww1_inf_mp18", ctx)
 	assert_float(float(r.get("hp", 0.0))).is_equal(40.0)
 	assert_float(float(r.get("attack_damage", 0.0))).is_equal(8.0)
 
 
 func test_resolve_infantry_basic_wave5() -> void:
 	var ctx := EnemyStatContext.new(1, 5)
-	var r: Dictionary = EnemyStatResolver.resolve_classic_enemy("enemy_ww1_infantry_basic", ctx)
+	var r: Dictionary = EnemyStatResolver.resolve_classic_enemy("ww1_inf_mp18", ctx)
 	var expected_hp: float = 40.0 * EnemyStatResolver.wave_hp_multiplier(5)
 	var expected_atk: float = 8.0 * EnemyStatResolver.wave_damage_multiplier(5)
 	assert_float(float(r.get("hp", 0.0))).is_equal(expected_hp)
@@ -69,11 +69,11 @@ func test_master_multipliers_new_coefficients() -> void:
 # 导致经典敌兵/蜂群的 m_atk/m_hp 恒为 1.0。此处用裸 EnemyStatContext 直接验证乘区接入。
 # （make_default_context 的注入逻辑依赖 BattleManager 运行时环境，由集成测试覆盖。）
 func test_resolve_classic_enemy_with_master_stats() -> void:
-	# 第1关、第1波，enemy_ww1_infantry_basic
+	# 第1关、第1波，ww1_inf_mp18
 	# 注：archetype 基础值可能被运行时 manifest 合并改写，故用「无master基准 vs 有master」的比值验证，
 	# 比值应精确等于 m_atk/m_hp，与绝对值无关。
 	var ctx_baseline := EnemyStatContext.new(1, 1)
-	var r_baseline: Dictionary = EnemyStatResolver.resolve_classic_enemy("enemy_ww1_infantry_basic", ctx_baseline)
+	var r_baseline: Dictionary = EnemyStatResolver.resolve_classic_enemy("ww1_inf_mp18", ctx_baseline)
 	var base_hp: float = float(r_baseline.get("hp", 0.0))
 	var base_atk_l: float = float(r_baseline.get("attack_light", 0.0))
 	assert_float(base_hp).is_greater(0.0)
@@ -82,7 +82,7 @@ func test_resolve_classic_enemy_with_master_stats() -> void:
 	# 注入相位师 master_stats（attack_power 400 / defense 200，对应 master016 量级）
 	var ctx_master := EnemyStatContext.new(1, 1)
 	ctx_master.master_stats = {"attack_power": 400.0, "defense": 200.0}
-	var r_master: Dictionary = EnemyStatResolver.resolve_classic_enemy("enemy_ww1_infantry_basic", ctx_master)
+	var r_master: Dictionary = EnemyStatResolver.resolve_classic_enemy("ww1_inf_mp18", ctx_master)
 
 	# v6.12: m_atk = 1 + 400*0.0008 = 1.32；m_hp = 1 + 200*0.0006 = 1.12
 	# 用比值验证：master战后 / 基准 应精确等于乘数

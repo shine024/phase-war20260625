@@ -170,7 +170,7 @@ func apply_card_grid_enemy_presentation() -> void:
 	var card_res: CardResource = CardGridUnitVisuals.resolve_card_for_archetype(archetype_id)
 	if card_res == null:
 		card_res = CardGridUnitVisuals.synthetic_card_for_archetype(archetype_id, cfg)
-	var tex: Texture2D = CardGridUnitVisuals.resolve_battle_icon_texture(card_res, archetype_id, cfg)
+	var tex: Texture2D = CardGridUnitVisuals.resolve_battle_icon_texture(card_res, archetype_id, cfg, false)
 	var sprite_ok: bool = false
 	if spr != null and tex != null and not _texture_exceeds_max_dim(tex, MAX_ENEMY_FRAME_TEX_DIM):
 		var ad: float = attack_damage
@@ -541,24 +541,9 @@ func _finalize_enemy_sprite_transforms(sprite_ok: bool) -> void:
 	if not sprite_ok:
 		return
 	var spr: Sprite2D = $Sprite2D as Sprite2D
-	var poly: Polygon2D = $Shape as Polygon2D
 	if spr == null:
 		return
-	if _presentation_card_grid:
-		return
-	_apply_facing(spr, null)
-	_apply_era_and_type_visuals(poly, spr, null)
-	_clamp_unit_visual_extent(spr, null)
-	_apply_facing(spr, null)
-
-func _apply_facing(spr: Sprite2D, anim: Variant) -> void:
-	# 资源统一按"朝右"制作；运行时按阵营翻转：我方朝右、敌方朝左。
-	var facing_right: bool = is_player
-	if anim != null:
-		anim.flip_h = not facing_right
-	if spr != null:
-		var sx: float = absf(spr.scale.x)
-		spr.scale.x = sx if facing_right else -sx
+	# 格子战由 apply_card_grid_enemy_presentation 接管视觉，此处无需传统朝向/时代着色
 
 func _update_shape() -> void:
 	var poly: Polygon2D = $Shape as Polygon2D
@@ -1072,58 +1057,6 @@ func _on_phase_law_runtime_changed() -> void:
 	_apply_phase_law_passives()
 	_update_hp_bar()
 
-## 按时代和类型应用视觉区分
-func _apply_era_and_type_visuals(poly: Polygon2D, spr: Sprite2D, anim: Variant) -> void:
-	var level_for_era: int = maxi(1, wave_index)
-	if GameManager:
-		level_for_era = maxi(1, GameManager.current_level)
-	var era = GC.get_era_for_level(level_for_era) if GC else 0
-	var tags: Array = []
-
-	# 获取敌人类型标签
-	var scale_cfg: Dictionary = EnemyArchetypes.get_config(_visual_scale_archetype_id)
-	var cfg = EnemyArchetypes.get_config(archetype_id)
-	if not cfg.is_empty():
-		tags = cfg.get("tags", [])
-
-	# 定义时代颜色
-	var era_colors = {
-		0: Color(0.8, 0.7, 0.5),  # 一战：土黄
-		1: Color(0.5, 0.6, 0.4),  # 二战：军绿
-		2: Color(0.5, 0.6, 0.75), # 冷战：灰蓝
-		3: Color(0.6, 0.6, 0.65), # 现代：灰
-		4: Color(0.3, 0.7, 0.9)   # 近未来：科技蓝
-	}
-
-	var base_color = era_colors.get(era, Color.WHITE)
-
-	# 检查是否是Boss或精英
-	var is_boss = tags.has("boss")
-	var is_elite = tags.has("elite")
-
-	# 体型统一由数据层管理（支持 visual_scale 覆盖 + 标签默认比例）
-	var base_scale: float = EnemyArchetypes.get_visual_scale_for_archetype(_visual_scale_archetype_id, scale_cfg)
-	# Boss: 偏红（尺寸不再按分类额外放大）
-	if is_boss:
-		base_color = Color(1.0, 0.4, 0.4)
-	# 精英: 偏金（尺寸不再按分类额外放大）
-	elif is_elite:
-		base_color = Color(1.0, 0.85, 0.3)
-
-	var final_scale: float = base_scale
-
-	# 应用颜色和缩放
-	if spr:
-		spr.modulate = base_color
-		# 保留朝向（x 正负），只改绝对缩放尺寸
-		var sx_sign: float = -1.0 if spr.scale.x < 0.0 else 1.0
-		spr.scale = Vector2(final_scale * sx_sign, final_scale)
-	elif poly:
-		poly.color = base_color
-		poly.scale = Vector2(final_scale, final_scale)
-	# AnimatedSprite2D 翻转已由 _apply_facing 处理，此处仅设置尺寸
-	if anim and anim.visible:
-		anim.scale = Vector2(final_scale, final_scale)
 
 
 func _sprite_resource_path_suspicious(path: String) -> bool:
@@ -1133,35 +1066,6 @@ func _sprite_resource_path_suspicious(path: String) -> bool:
 
 func _texture_exceeds_max_dim(tex: Texture2D, max_dim: int) -> bool:
 	return tex.get_width() > max_dim or tex.get_height() > max_dim
-
-
-func _clamp_unit_visual_extent(spr: Sprite2D, anim: Variant) -> void:
-	if not ENABLE_ENEMY_VISUAL_EXTENT_CLAMP:
-		return
-	_clamp_visible_tex_node_extent(spr as Node2D, MAX_ENEMY_VISUAL_EXTENT_PX)
-	_clamp_visible_tex_node_extent(anim as Node2D, MAX_ENEMY_VISUAL_EXTENT_PX)
-
-
-func _clamp_visible_tex_node_extent(node: Node2D, max_extent: float) -> void:
-	if node == null or not node.visible:
-		return
-	var tex: Texture2D = null
-	if node is Sprite2D:
-		tex = (node as Sprite2D).texture
-	elif node is AnimatedSprite2D:
-		var an := node as AnimatedSprite2D
-		if an.sprite_frames != null and an.sprite_frames.has_animation(String(an.animation)):
-			if an.sprite_frames.get_frame_count(String(an.animation)) > 0:
-				tex = an.sprite_frames.get_frame_texture(String(an.animation), an.frame)
-	if tex == null:
-		return
-	var w := float(tex.get_width()) * absf(node.scale.x)
-	var h := float(tex.get_height()) * absf(node.scale.y)
-	var m := maxf(w, h)
-	if m <= 1.0 or m <= max_extent:
-		return
-	var r := max_extent / m
-	node.scale *= r
 
 
 ## =========================================================================

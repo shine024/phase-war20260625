@@ -405,6 +405,7 @@ const INSTRUMENT_SLOTS: Dictionary = {
 	"uncommon": 3,
 	"rare": 4,
 	"epic": 5,
+	"legendary": 5,
 	"mythic": 6,
 }
 
@@ -414,6 +415,7 @@ const AFFIX_RARITY_POWER: Dictionary = {
 	"uncommon": 60,
 	"rare": 120,
 	"epic": 220,
+	"legendary": 350,
 	"mythic": 400,
 }
 

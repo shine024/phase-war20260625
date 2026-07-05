@@ -468,9 +468,11 @@ func _show_level_info_popup(level_index: int) -> void:
 		_level_info_popup.queue_free()
 	var popup := AcceptDialog.new()
 	popup.title = "关卡情报"
-	# 关闭 AcceptDialog 自带的 OK/Cancel 按钮条，使用自定义按钮
+	# 隐藏 AcceptDialog 自带的 OK 按钮，使用自定义按钮。
+	# 注意：AcceptDialog 仅有 OK 按钮（无 Cancel），set_cancel_button_text 是 ConfirmationDialog 的方法。
 	popup.set_ok_button_text("")
-	popup.set_cancel_button_text("")
+	if popup.get_ok_button() != null:
+		popup.get_ok_button().visible = false
 	# 同步 queue_free 可能在输入分发中途拆掉 Window 视口，触发 Viewport::_push_unhandled_input_internal 断言
 	popup.canceled.connect(_close_popup_safe.bind(popup))
 	add_child(popup)

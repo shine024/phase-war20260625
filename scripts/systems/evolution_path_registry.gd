@@ -246,15 +246,15 @@ static func _identify_unit_type(card_id: String) -> int:
 		return 0
 
 	# 装甲 (MEDIUM)
-	if card_id.begins_with("ww1_ft17") or card_id.begins_with("ww1_saint"):
+	if card_id.begins_with("ww1_arm_ft17") or card_id.begins_with("ww1_saint"):
 		return 1
-	if card_id.begins_with("ww2_pz3") or card_id.begins_with("ww2_tiger"):
+	if card_id.begins_with("ww2_pz3") or card_id.begins_with("ww2_arm_tiger"):
 		return 1
-	if card_id.begins_with("cold_t55") or card_id.begins_with("cold_t72") or card_id.begins_with("cold_leo1"):
+	if card_id.begins_with("cold_arm_t55") or card_id.begins_with("cold_t72") or card_id.begins_with("cold_leo1"):
 		return 1
-	if card_id.begins_with("mod_m1a1") or card_id.begins_with("mod_m1a2sep") or card_id.begins_with("mod_leo2a6"):
+	if card_id.begins_with("mod_arm_m1a1") or card_id.begins_with("mod_arm_m1a2sep") or card_id.begins_with("mod_leo2a6"):
 		return 1
-	if card_id.begins_with("fut_hovertank") or card_id.begins_with("fut_heavy_mech") or card_id.begins_with("fut_prism"):
+	if card_id.begins_with("fut_arm_hovertank") or card_id.begins_with("fut_arm_heavy_mech") or card_id.begins_with("fut_arm_prism"):
 		return 1
 
 	# 空中 (HEAVY)
@@ -270,25 +270,23 @@ static func _identify_unit_type(card_id: String) -> int:
 	# 火炮 (HEAVY)
 	if card_id.begins_with("mod_katyusha") or card_id.begins_with("mod_self_propelled"):
 		return 3
-	if card_id.begins_with("fort_cold_missile"):
-		return 3
-	if card_id.begins_with("fort_modern_cannon") or card_id.begins_with("fort_future_cannon"):
+	if card_id.begins_with("cold_fort_missile"):
 		return 3
 
 	# 要塞 (HEAVY)
-	if card_id.begins_with("fort_ww1_pillbox") or card_id.begins_with("fort_ww2_bunker"):
+	if card_id.begins_with("ww1_fort_pillbox") or card_id.begins_with("ww2_fort_bunker"):
 		return 4
-	if card_id.begins_with("fort_ww2_flak"):
+	if card_id.begins_with("ww2_fort_flak"):
 		return 4
-	if card_id.begins_with("fort_cold_missile") or card_id.begins_with("fort_cold_radar"):
+	if card_id.begins_with("cold_fort_missile") or card_id.begins_with("cold_fort_radar"):
 		return 4
-	if card_id.begins_with("fort_modern_citadel") or card_id.begins_with("fort_modern_phalanx"):
+	if card_id.begins_with("mod_fort_citadel") or card_id.begins_with("mod_fort_phalanx"):
 		return 4
-	if card_id.begins_with("fort_future_ion") or card_id.begins_with("fort_future_shield"):
+	if card_id.begins_with("fut_fort_ion") or card_id.begins_with("fut_fort_shield"):
 		return 4
 
 	# 侦察 (SUPPORT)
-	if card_id.begins_with("ww1_cavalry") or card_id.begins_with("ww2_motorcycle"):
+	if card_id.begins_with("ww1_inf_cavalry") or card_id.begins_with("ww2_motorcycle"):
 		return 5
 	if card_id.begins_with("cold_spetsnaz"):
 		return 5
@@ -306,7 +304,7 @@ static func _identify_unit_type(card_id: String) -> int:
 		return 6
 
 	# 反空 (HEAVY)
-	if card_id.begins_with("mod_flak") or card_id.begins_with("fort_ww2_flak"):
+	if card_id.begins_with("mod_flak") or card_id.begins_with("ww2_fort_flak"):
 		return 7
 
 	# 默认返回步兵

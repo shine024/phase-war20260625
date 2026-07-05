@@ -164,29 +164,6 @@ const SPECIAL_BRANCH: Dictionary = {
 	},
 	E4_ALT = {
 		stage = 4,
-		card_id = "fe_nova_ghost_sniper",
-		name = "幽灵狙击组",
-		era = "Future",
-		power = 580,
-		max_hp = 280,
-		attack_light = 180,
-		attack_armor = 30,
-		attack_air = 0,
-		defense_light = 70,
-		defense_armor = 50,
-		defense_air = 30,
-		inherit_multiplier = 0.40,
-		special = {crit_chance = 0.15, attack_range = 50},
-		requirements = {
-			level = 10,
-			mods_count = 8,
-			intel_stealth = 90,
-			intel_basic = 75,
-			power_ratio = 1.1,
-		}
-	},
-	E5_ALT = {
-		stage = 5,
 		card_id = "fut_spectre",
 		name = "幽灵特工",
 		era = "Ultimate",
@@ -281,103 +258,10 @@ const AT_BRANCH: Dictionary = {
 			power_ratio = 1.2,
 		}
 	},
-	E5_AT = {
-		stage = 5,
-		card_id = "fut_cyborg_at",
-		name = "机械步兵·破甲型",
-		era = "Future",
-		power = 520,
-		max_hp = 420,
-		attack_light = 50,
-		attack_armor = 350,
-		attack_air = 0,
-		defense_light = 80,
-		defense_armor = 70,
-		defense_air = 50,
-		inherit_multiplier = 0.55,
-		special = {attack_armor = 350},
-		requirements = {
-			level = 10,
-			mods_count = 9,
-			intel_armor = 100,
-			intel_tech = 100,
-			power_ratio = 1.3,
-		}
-	},
 }
 
-## 隐藏分支3：狙击手路线
-const SNIPER_BRANCH: Dictionary = {
-	E2_SNIPER = {
-		stage = 2,
-		card_id = "cold_sniper",
-		name = "SVD狙击组",
-		era = "Cold",
-		power = 175,
-		max_hp = 160,
-		attack_light = 85,
-		attack_armor = 15,
-		attack_air = 0,
-		defense_light = 25,
-		defense_armor = 20,
-		defense_air = 15,
-		inherit_multiplier = 0.35,
-		special = {attack_range = 100, crit_chance = 0.10},
-		requirements = {
-			level = 8,
-			mods_count = 5,
-			combat_rating = "A+",
-			intel_recon = 80,
-			power_ratio = 1.0,
-		}
-	},
-	E3_SNIPER = {
-		stage = 3,
-		card_id = "mod_m24",
-		name = "M24狙击组",
-		era = "Modern",
-		power = 350,
-		max_hp = 240,
-		attack_light = 130,
-		attack_armor = 30,
-		attack_air = 0,
-		defense_light = 45,
-		defense_armor = 30,
-		defense_air = 25,
-		inherit_multiplier = 0.40,
-		special = {attack_range = 150, crit_damage = 0.3},
-		requirements = {
-			level = 10,
-			mods_count = 8,
-			combat_rating = "S",
-			intel_recon = 90,
-			power_ratio = 1.1,
-		}
-	},
-	E4_SNIPER = {
-		stage = 4,
-		card_id = "fut_nexus_archer",
-		name = "虚空射手",
-		era = "Future",
-		power = 580,
-		max_hp = 300,
-		attack_light = 200,
-		attack_armor = 100,
-		attack_air = 0,
-		defense_light = 70,
-		defense_armor = 60,
-		defense_air = 50,
-		inherit_multiplier = 0.50,
-		special = {always_hit = true},
-		requirements = {
-			level = 10,
-			mods_count = 9,
-			combat_rating = "S+",
-			intel_recon = 100,
-			power_ratio = 1.2,
-		}
-	},
-}
+## v7.x: 原 AT_BRANCH 的 E5_AT fut_cyborg_at 已移除（死链），标枪导弹兵为反坦克线终端
+## v7.x: 原 SNIPER_BRANCH 狙击手路线已移除（cold_sniper/mod_m24/fut_nexus_archer 全部为死链）
 
 ## ─────────────────────────────────────────────
 ##  查询接口
@@ -388,11 +272,11 @@ static func get_main_line() -> Dictionary:
 	return MAIN_LINE.duplicate(true)
 
 ## 获取隐藏分支节点
+## v7.x: sniper 分支已移除（死链），仅保留 special（特种作战）和 at（反坦克猎手）
 static func get_hidden_branches() -> Dictionary:
 	return {
 		special = SPECIAL_BRANCH.duplicate(true),
 		at = AT_BRANCH.duplicate(true),
-		sniper = SNIPER_BRANCH.duplicate(true),
 	}
 
 ## 检查进化条件

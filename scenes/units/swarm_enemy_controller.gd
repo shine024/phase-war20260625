@@ -147,16 +147,6 @@ func _tick_slot(s: Node2D, delta: float) -> void:
 	if should_find:
 		_find_target_for_slot(s)
 
-	# P1: 读 controller 每帧刷新的缓存，避免逐槽反射
-	var card_grid_no_march: bool = _cached_is_card_grid
-	if not card_grid_no_march:
-		if s.target != null and is_instance_valid(s.target):
-			var d: float = s.global_position.distance_to(s.target.global_position)
-			if d > s.attack_range:
-				s.global_position.x -= s.move_speed * delta
-		else:
-			s.global_position.x -= s.move_speed * delta
-
 	_clamp_slot(s)
 	s.grid_update_timer -= delta
 	if s.grid_update_timer <= 0.0:

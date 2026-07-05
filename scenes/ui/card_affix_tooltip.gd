@@ -97,21 +97,23 @@ func _refresh_content() -> void:
 		_affix_manager = get_node_or_null("/root/AffixManager")
 	if _content_vbox == null or _card == null or _affix_manager == null:
 		return
-	if _cached_card_id == _card.card_id and _content_vbox.get_child_count() > 0:
+	# v7.x：词条按实例隔离，用 instance_id 派生 key（空回退 card_id）
+	var _identity := _card.instance_id if (not String(_card.instance_id).is_empty()) else _card.card_id
+	if _cached_card_id == _identity and _content_vbox.get_child_count() > 0:
 		return
-	
+
 	# 清除旧内容
 	for child in _content_vbox.get_children():
 		child.queue_free()
-	
+
 	# 获取词条（合并机体_0 + 武器_1 两套）
 	var all_affixes: Array = []
 	for at in [0, 1]:
-		var key := "%s_%d" % [_card.card_id, at]
+		var key := "%s_%d" % [_identity, at]
 		var sub: Array = _affix_manager.get_card_affixes(key)
 		all_affixes.append_array(sub)
 	var affixes: Array = all_affixes
-	_cached_card_id = _card.card_id
+	_cached_card_id = _identity
 	
 	# 卡牌名称标题
 	var title_hbox := HBoxContainer.new()

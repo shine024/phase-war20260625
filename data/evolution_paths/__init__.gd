@@ -31,26 +31,26 @@ static func get_evolution_path(card_id: String) -> Dictionary:
 			main_line = ArtilleryEvolution.get_main_line(),
 			hidden_branches = ArtilleryEvolution.get_hidden_branches(),
 		}
-	# 防空 (ww1_37mm, ww2_flak, cold_zsu23 等)
+	# 防空 (ww1_37mm, cold_zsu23 等)
 	if _is_anti_air(card_id):
 		return {
 			main_line = AntiAirEvolution.get_main_line(),
 			hidden_branches = AntiAirEvolution.get_hidden_branches(),
 		}
-	# 空中 (cold_mig21, mod_f16, mod_ah1, mod_ah64 等)
+	# 空中 (cold_mig21, mod_ah1, mod_ah64 等)
 	if _is_air(card_id):
 		return {
 			main_line = AirEvolution.get_main_line(),
 			secondary_line = AirEvolution.get_secondary_line(),
 			hidden_branches = AirEvolution.get_hidden_branches(),
 		}
-	# 侦察 (ww1_cavalry, ww2_motorcycle 等)
+	# 侦察 (ww1_cavalry 等)
 	if _is_recon(card_id):
 		return {
 			main_line = ReconEvolution.get_main_line(),
 			hidden_branches = ReconEvolution.get_hidden_branches(),
 		}
-	# 工程 (ww1_engineer, ww2_engineer 等)
+	# 工程 (ww1_engineer 等)
 	if _is_engineer(card_id):
 		return {
 			main_line = EngineerEvolution.get_main_line(),
@@ -135,24 +135,23 @@ static func _is_artillery(card_id: String) -> bool:
 		or card_id.begins_with("fut_howitzer")
 
 static func _is_anti_air(card_id: String) -> bool:
-	return card_id.begins_with("ww1_37mm") or card_id.begins_with("ww2_flak") \
+	return card_id.begins_with("ww1_37mm") \
 		or card_id.begins_with("cold_zsu23") or card_id.begins_with("mod_m6") \
 		or card_id.begins_with("fut_aa_hover")
 
 static func _is_air(card_id: String) -> bool:
-	return card_id.begins_with("cold_mig21") or card_id.begins_with("mod_f16") \
+	return card_id.begins_with("cold_mig21") \
 		or card_id.begins_with("mod_ah1") or card_id.begins_with("mod_ah64") \
-		or card_id.begins_with("fut_f22") or card_id.begins_with("fut_attack_drone") \
+		or card_id.begins_with("fut_attack_drone") \
 		or card_id.begins_with("fut_swarm") or card_id.begins_with("fut_space_fighter")
 
 static func _is_recon(card_id: String) -> bool:
-	return card_id.begins_with("ww1_cavalry") or card_id.begins_with("ww2_motorcycle") \
+	return card_id.begins_with("ww1_cavalry") \
 		or card_id.begins_with("cold_spetsnaz") or card_id.begins_with("mod_ranger") \
 		or card_id.begins_with("fut_spectre") or card_id.begins_with("fut_scout_mech")
 
 static func _is_engineer(card_id: String) -> bool:
-	return card_id.begins_with("ww1_engineer") or card_id.begins_with("ww2_engineer") \
-		or card_id.begins_with("cold_avlb") or card_id.begins_with("mod_m9ace") \
+	return card_id.begins_with("ww1_engineer") \
 		or card_id.begins_with("fut_nano_drone")
 
 static func _is_fort(card_id: String) -> bool:

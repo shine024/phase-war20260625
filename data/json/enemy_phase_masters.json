@@ -75,8 +75,8 @@
         "phase_instrument": "steel_guardian_mk1",
         "level": 5,
         "platforms": [
-          "steel_fortress_basic",
-          "steel_titan_basic"
+          "ww1_sup_mg_nest",
+          "ww1_arm_rolls_e"
         ],
         "weapons": [
           "steel_machinegun_basic",
@@ -84,6 +84,10 @@
         ],
         "energy_cards": [
           "steel_energy_basic"
+        ],
+        "_legacy_platforms": [
+          "steel_fortress_basic",
+          "steel_titan_basic"
         ]
       },
       "stats": {
@@ -167,8 +171,9 @@
         "phase_instrument": "flame_destroyer_mk1",
         "level": 6,
         "platforms": [
-          "flame_raider_basic",
-          "flame_siege_basic"
+          "ww1_arty_mortar",
+          "ww1_inf_storm_e",
+          "ww1_arm_rolls_e"
         ],
         "weapons": [
           "flame_thrower_basic",
@@ -176,6 +181,10 @@
         ],
         "energy_cards": [
           "flame_energy_basic"
+        ],
+        "_legacy_platforms": [
+          "flame_raider_basic",
+          "flame_siege_basic"
         ]
       },
       "stats": {
@@ -257,8 +266,10 @@
         "phase_instrument": "thunder_storm_mk1",
         "level": 7,
         "platforms": [
-          "thunter_striker_basic",
-          "thunter_sniper_basic"
+          "ww1_inf_mp18",
+          "ww1_inf_rifle",
+          "ww1_inf_storm_e",
+          "ww1_arm_rolls_e"
         ],
         "weapons": [
           "tesla_coil_basic",
@@ -266,6 +277,10 @@
         ],
         "energy_cards": [
           "thunder_energy_basic"
+        ],
+        "_legacy_platforms": [
+          "thunter_striker_basic",
+          "thunter_sniper_basic"
         ]
       },
       "stats": {
@@ -345,8 +360,10 @@
         "phase_instrument": "void_walker_mk1",
         "level": 8,
         "platforms": [
-          "void_stealth_basic",
-          "void_mage_basic"
+          "ww1_inf_mp18",
+          "ww1_inf_rifle",
+          "ww1_inf_storm_e",
+          "ww1_arm_rolls_e"
         ],
         "weapons": [
           "void_lance_basic",
@@ -354,6 +371,10 @@
         ],
         "energy_cards": [
           "void_energy_basic"
+        ],
+        "_legacy_platforms": [
+          "void_stealth_basic",
+          "void_mage_basic"
         ]
       },
       "stats": {
@@ -433,8 +454,8 @@
         "phase_instrument": "steel_guardian_mk2",
         "level": 10,
         "platforms": [
-          "steel_fortress_advanced",
-          "steel_titan_advanced"
+          "ww1_sup_mg_nest",
+          "ww1_arm_rolls_e"
         ],
         "weapons": [
           "steel_minigun_advanced",
@@ -442,6 +463,10 @@
         ],
         "energy_cards": [
           "steel_energy_advanced"
+        ],
+        "_legacy_platforms": [
+          "steel_fortress_advanced",
+          "steel_titan_advanced"
         ]
       },
       "stats": {
@@ -523,8 +548,9 @@
         "phase_instrument": "flame_destroyer_mk2",
         "level": 12,
         "platforms": [
-          "flame_raider_advanced",
-          "flame_siege_advanced"
+          "ww1_arty_mortar",
+          "ww1_inf_storm_e",
+          "ww1_arm_rolls_e"
         ],
         "weapons": [
           "flame_thrower_advanced",
@@ -532,6 +558,10 @@
         ],
         "energy_cards": [
           "flame_energy_advanced"
+        ],
+        "_legacy_platforms": [
+          "flame_raider_advanced",
+          "flame_siege_advanced"
         ]
       },
       "stats": {
@@ -611,8 +641,10 @@
         "phase_instrument": "thunder_storm_mk2",
         "level": 13,
         "platforms": [
-          "thunter_striker_advanced",
-          "thunter_sniper_advanced"
+          "ww1_inf_mp18",
+          "ww1_inf_rifle",
+          "ww1_inf_storm_e",
+          "ww1_arm_rolls_e"
         ],
         "weapons": [
           "tesla_coil_advanced",
@@ -620,6 +652,10 @@
         ],
         "energy_cards": [
           "thunder_energy_advanced"
+        ],
+        "_legacy_platforms": [
+          "thunter_striker_advanced",
+          "thunter_sniper_advanced"
         ]
       },
       "stats": {
@@ -700,8 +736,10 @@
         "phase_instrument": "void_walker_mk2",
         "level": 14,
         "platforms": [
-          "void_stealth_advanced",
-          "void_mage_advanced"
+          "ww1_inf_mp18",
+          "ww1_inf_rifle",
+          "ww1_inf_storm_e",
+          "ww1_arm_rolls_e"
         ],
         "weapons": [
           "void_lance_advanced",
@@ -709,6 +747,10 @@
         ],
         "energy_cards": [
           "void_energy_advanced"
+        ],
+        "_legacy_platforms": [
+          "void_stealth_advanced",
+          "void_mage_advanced"
         ]
       },
       "stats": {
@@ -791,8 +833,8 @@
         "phase_instrument": "steel_guardian_mk3",
         "level": 16,
         "platforms": [
-          "steel_fortress_expert",
-          "steel_titan_expert"
+          "ww1_sup_mg_nest",
+          "ww1_arm_rolls_e"
         ],
         "weapons": [
           "steel_gatling_expert",
@@ -800,6 +842,10 @@
         ],
         "energy_cards": [
           "steel_energy_expert"
+        ],
+        "_legacy_platforms": [
+          "steel_fortress_expert",
+          "steel_titan_expert"
         ]
       },
       "stats": {
@@ -881,8 +927,9 @@
         "phase_instrument": "flame_destroyer_mk3",
         "level": 17,
         "platforms": [
-          "flame_raider_expert",
-          "flame_siege_expert"
+          "ww1_arty_mortar",
+          "ww1_inf_storm_e",
+          "ww1_arm_rolls_e"
         ],
         "weapons": [
           "flame_thrower_expert",
@@ -890,6 +937,10 @@
         ],
         "energy_cards": [
           "flame_energy_expert"
+        ],
+        "_legacy_platforms": [
+          "flame_raider_expert",
+          "flame_siege_expert"
         ]
       },
       "stats": {
@@ -970,8 +1021,10 @@
         "phase_instrument": "thunder_storm_mk3",
         "level": 18,
         "platforms": [
-          "thunter_striker_expert",
-          "thunter_sniper_expert"
+          "ww1_inf_mp18",
+          "ww1_inf_rifle",
+          "ww1_inf_storm_e",
+          "ww1_arm_rolls_e"
         ],
         "weapons": [
           "tesla_coil_expert",
@@ -979,6 +1032,10 @@
         ],
         "energy_cards": [
           "thunder_energy_expert"
+        ],
+        "_legacy_platforms": [
+          "thunter_striker_expert",
+          "thunter_sniper_expert"
         ]
       },
       "stats": {
@@ -1060,8 +1117,10 @@
         "phase_instrument": "void_walker_mk3",
         "level": 19,
         "platforms": [
-          "void_stealth_expert",
-          "void_mage_expert"
+          "ww1_inf_mp18",
+          "ww1_inf_rifle",
+          "ww1_inf_storm_e",
+          "ww1_arm_rolls_e"
         ],
         "weapons": [
           "void_lance_expert",
@@ -1069,6 +1128,10 @@
         ],
         "energy_cards": [
           "void_energy_expert"
+        ],
+        "_legacy_platforms": [
+          "void_stealth_expert",
+          "void_mage_expert"
         ]
       },
       "stats": {
@@ -1153,8 +1216,10 @@
         "phase_instrument": "hybrid_steel_flame_mk1",
         "level": 18,
         "platforms": [
-          "steel_fortress_expert",
-          "flame_raider_expert"
+          "ww1_sup_mg_nest",
+          "ww1_arty_mortar",
+          "ww1_inf_storm_e",
+          "ww1_arm_rolls_e"
         ],
         "weapons": [
           "steel_gatling_expert",
@@ -1162,6 +1227,10 @@
         ],
         "energy_cards": [
           "hybrid_energy_basic"
+        ],
+        "_legacy_platforms": [
+          "steel_fortress_expert",
+          "flame_raider_expert"
         ]
       },
       "stats": {
@@ -1244,8 +1313,10 @@
         "phase_instrument": "hybrid_thunder_steel_mk1",
         "level": 19,
         "platforms": [
-          "steel_titan_expert",
-          "thunter_striker_expert"
+          "ww1_inf_mp18",
+          "ww1_inf_rifle",
+          "ww1_sup_mg_nest",
+          "ww1_inf_storm_e"
         ],
         "weapons": [
           "steel_railcannon_advanced",
@@ -1253,6 +1324,10 @@
         ],
         "energy_cards": [
           "hybrid_energy_basic"
+        ],
+        "_legacy_platforms": [
+          "steel_titan_expert",
+          "thunter_striker_expert"
         ]
       },
       "stats": {
@@ -1337,8 +1412,10 @@
         "phase_instrument": "hybrid_void_flame_mk1",
         "level": 20,
         "platforms": [
-          "void_mage_expert",
-          "flame_siege_expert"
+          "ww1_inf_mp18",
+          "ww1_inf_rifle",
+          "ww1_arty_mortar",
+          "ww1_inf_storm_e"
         ],
         "weapons": [
           "entropy_caster_expert",
@@ -1346,6 +1423,10 @@
         ],
         "energy_cards": [
           "hybrid_energy_advanced"
+        ],
+        "_legacy_platforms": [
+          "void_mage_expert",
+          "flame_siege_expert"
         ]
       },
       "stats": {
@@ -1425,8 +1506,8 @@
         "phase_instrument": "steel_guardian_mk4",
         "level": 22,
         "platforms": [
-          "steel_fortress_expert",
-          "steel_titan_expert"
+          "ww2_sup_mg42",
+          "ww2_arm_panther_e"
         ],
         "weapons": [
           "steel_gatling_expert",
@@ -1434,6 +1515,10 @@
         ],
         "energy_cards": [
           "steel_energy_expert"
+        ],
+        "_legacy_platforms": [
+          "steel_fortress_expert",
+          "steel_titan_expert"
         ]
       },
       "stats": {
@@ -1515,8 +1600,7 @@
         "phase_instrument": "flame_destroyer_mk4",
         "level": 23,
         "platforms": [
-          "flame_raider_expert",
-          "flame_siege_expert"
+          "ww2_inf_para_e"
         ],
         "weapons": [
           "flame_thrower_expert",
@@ -1524,6 +1608,10 @@
         ],
         "energy_cards": [
           "flame_energy_expert"
+        ],
+        "_legacy_platforms": [
+          "flame_raider_expert",
+          "flame_siege_expert"
         ]
       },
       "stats": {
@@ -1604,8 +1692,10 @@
         "phase_instrument": "thunder_storm_mk4",
         "level": 24,
         "platforms": [
-          "thunter_striker_expert",
-          "thunter_sniper_expert"
+          "ww2_inf_thompson",
+          "ww2_inf_garand",
+          "ww2_inf_panzerschreck_e",
+          "ww2_inf_para_e"
         ],
         "weapons": [
           "tesla_coil_expert",
@@ -1613,6 +1703,10 @@
         ],
         "energy_cards": [
           "thunder_energy_expert"
+        ],
+        "_legacy_platforms": [
+          "thunter_striker_expert",
+          "thunter_sniper_expert"
         ]
       },
       "stats": {
@@ -1692,8 +1786,10 @@
         "phase_instrument": "void_walker_mk4",
         "level": 25,
         "platforms": [
-          "void_stealth_expert",
-          "void_mage_expert"
+          "ww2_inf_thompson",
+          "ww2_inf_garand",
+          "ww2_inf_panzerschreck_e",
+          "ww2_inf_para_e"
         ],
         "weapons": [
           "void_lance_expert",
@@ -1701,6 +1797,10 @@
         ],
         "energy_cards": [
           "void_energy_expert"
+        ],
+        "_legacy_platforms": [
+          "void_stealth_expert",
+          "void_mage_expert"
         ]
       },
       "stats": {
@@ -1788,8 +1888,10 @@
         "phase_instrument": "hybrid_steel_thunder_mk1",
         "level": 24,
         "platforms": [
-          "steel_fortress_expert",
-          "thunter_striker_expert"
+          "ww2_inf_thompson",
+          "ww2_inf_garand",
+          "ww2_sup_mg42",
+          "ww2_inf_panzerschreck_e"
         ],
         "weapons": [
           "steel_gatling_expert",
@@ -1797,6 +1899,10 @@
         ],
         "energy_cards": [
           "hybrid_energy_advanced"
+        ],
+        "_legacy_platforms": [
+          "steel_fortress_expert",
+          "thunter_striker_expert"
         ]
       },
       "stats": {
@@ -1884,8 +1990,10 @@
         "phase_instrument": "hybrid_flame_void_mk1",
         "level": 25,
         "platforms": [
-          "flame_siege_expert",
-          "void_mage_expert"
+          "ww2_inf_thompson",
+          "ww2_inf_garand",
+          "ww2_inf_panzerschreck_e",
+          "ww2_inf_para_e"
         ],
         "weapons": [
           "plasma_cannon_expert",
@@ -1893,6 +2001,10 @@
         ],
         "energy_cards": [
           "hybrid_energy_advanced"
+        ],
+        "_legacy_platforms": [
+          "flame_siege_expert",
+          "void_mage_expert"
         ]
       },
       "stats": {
@@ -1974,8 +2086,8 @@
         "phase_instrument": "steel_guardian_mk4",
         "level": 26,
         "platforms": [
-          "steel_fortress_expert",
-          "steel_titan_expert"
+          "ww2_sup_mg42",
+          "ww2_arm_panther_e"
         ],
         "weapons": [
           "steel_gatling_expert",
@@ -1983,6 +2095,10 @@
         ],
         "energy_cards": [
           "steel_energy_expert"
+        ],
+        "_legacy_platforms": [
+          "steel_fortress_expert",
+          "steel_titan_expert"
         ]
       },
       "stats": {
@@ -2065,8 +2181,7 @@
         "phase_instrument": "flame_destroyer_mk4",
         "level": 27,
         "platforms": [
-          "flame_raider_expert",
-          "flame_siege_expert"
+          "ww2_inf_para_e"
         ],
         "weapons": [
           "flame_thrower_expert",
@@ -2074,6 +2189,10 @@
         ],
         "energy_cards": [
           "flame_energy_expert"
+        ],
+        "_legacy_platforms": [
+          "flame_raider_expert",
+          "flame_siege_expert"
         ]
       },
       "stats": {
@@ -2155,8 +2274,10 @@
         "phase_instrument": "thunder_storm_mk4",
         "level": 27,
         "platforms": [
-          "thunter_striker_expert",
-          "thunter_sniper_expert"
+          "ww2_inf_thompson",
+          "ww2_inf_garand",
+          "ww2_inf_panzerschreck_e",
+          "ww2_inf_para_e"
         ],
         "weapons": [
           "tesla_coil_expert",
@@ -2164,6 +2285,10 @@
         ],
         "energy_cards": [
           "thunder_energy_expert"
+        ],
+        "_legacy_platforms": [
+          "thunter_striker_expert",
+          "thunter_sniper_expert"
         ]
       },
       "stats": {
@@ -2243,8 +2368,10 @@
         "phase_instrument": "void_walker_mk4",
         "level": 28,
         "platforms": [
-          "void_stealth_expert",
-          "void_mage_expert"
+          "ww2_inf_thompson",
+          "ww2_inf_garand",
+          "ww2_inf_panzerschreck_e",
+          "ww2_inf_para_e"
         ],
         "weapons": [
           "void_lance_expert",
@@ -2252,6 +2379,10 @@
         ],
         "energy_cards": [
           "void_energy_expert"
+        ],
+        "_legacy_platforms": [
+          "void_stealth_expert",
+          "void_mage_expert"
         ]
       },
       "stats": {
@@ -2340,8 +2471,8 @@
         "phase_instrument": "steel_guardian_god",
         "level": 28,
         "platforms": [
-          "steel_fortress_expert",
-          "steel_titan_expert"
+          "ww2_sup_mg42",
+          "ww2_arm_panther_e"
         ],
         "weapons": [
           "steel_gatling_expert",
@@ -2349,6 +2480,10 @@
         ],
         "energy_cards": [
           "steel_energy_god"
+        ],
+        "_legacy_platforms": [
+          "steel_fortress_expert",
+          "steel_titan_expert"
         ]
       },
       "stats": {
@@ -2438,8 +2573,7 @@
         "phase_instrument": "flame_destroyer_god",
         "level": 29,
         "platforms": [
-          "flame_raider_expert",
-          "flame_siege_expert"
+          "ww2_inf_para_e"
         ],
         "weapons": [
           "flame_thrower_expert",
@@ -2447,6 +2581,10 @@
         ],
         "energy_cards": [
           "flame_energy_god"
+        ],
+        "_legacy_platforms": [
+          "flame_raider_expert",
+          "flame_siege_expert"
         ]
       },
       "stats": {
@@ -2539,8 +2677,10 @@
         "phase_instrument": "thunder_storm_god",
         "level": 29,
         "platforms": [
-          "thunter_striker_expert",
-          "thunter_sniper_expert"
+          "ww2_inf_thompson",
+          "ww2_inf_garand",
+          "ww2_inf_panzerschreck_e",
+          "ww2_inf_para_e"
         ],
         "weapons": [
           "tesla_coil_expert",
@@ -2548,6 +2688,10 @@
         ],
         "energy_cards": [
           "thunder_energy_god"
+        ],
+        "_legacy_platforms": [
+          "thunter_striker_expert",
+          "thunter_sniper_expert"
         ]
       },
       "stats": {
@@ -2636,8 +2780,10 @@
         "phase_instrument": "void_walker_god",
         "level": 30,
         "platforms": [
-          "void_stealth_expert",
-          "void_mage_expert"
+          "ww2_inf_thompson",
+          "ww2_inf_garand",
+          "ww2_inf_panzerschreck_e",
+          "ww2_inf_para_e"
         ],
         "weapons": [
           "void_lance_expert",
@@ -2645,6 +2791,10 @@
         ],
         "energy_cards": [
           "void_energy_god"
+        ],
+        "_legacy_platforms": [
+          "void_stealth_expert",
+          "void_mage_expert"
         ]
       },
       "stats": {
@@ -2733,8 +2883,10 @@
         "phase_instrument": "omega_instrument",
         "level": 30,
         "platforms": [
-          "steel_titan_expert",
-          "flame_siege_expert"
+          "ww2_inf_thompson",
+          "ww2_inf_garand",
+          "ww2_sup_mg42",
+          "ww2_inf_panzerschreck_e"
         ],
         "weapons": [
           "railgun_expert",
@@ -2742,6 +2894,10 @@
         ],
         "energy_cards": [
           "hybrid_energy_god"
+        ],
+        "_legacy_platforms": [
+          "steel_titan_expert",
+          "flame_siege_expert"
         ]
       },
       "stats": {

@@ -38,7 +38,7 @@ static func extract_evolution_info(blueprint_id: String) -> Dictionary:
 		return {}
 	var rest = blueprint_id.substr(15)  # 去掉 "blueprint_evol_" 前缀
 	# 格式: blueprint_evol_<from_card_id>_<to_card_id>
-	# card_id可能的格式: ww1_mp18, cold_ak47, fort_ww1_pillbox, mod_marine, fut_colossus
+	# card_id可能的格式: ww1_mp18, cold_ak47, ww1_fort_pillbox, mod_marine, fut_colossus
 	# 策略: 使用已知前缀来找到from和to的分界点
 	# 已知前缀（按优先级排序，长的在前）
 	var known_prefixes = ["fort_", "ww1_", "ww2_", "cold_", "mod_", "fut_", "fe_", "ac"]

@@ -11,7 +11,7 @@ enum PreviewAnim {
 	ATTACK,
 }
 
-@export var preview_archetype_id: String = "enemy_ww1_infantry_basic":
+@export var preview_archetype_id: String = "ww1_inf_mp18":
 	set(value):
 		preview_archetype_id = value
 		_request_refresh()

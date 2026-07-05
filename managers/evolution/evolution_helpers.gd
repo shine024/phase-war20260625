@@ -52,6 +52,8 @@ static func _sync_single_weapon_damage_from_attack(stats: UnitStats) -> void:
 	if stats == null or stats.weapons.size() != 1:
 		return
 	var w: Dictionary = stats.weapons[0] as Dictionary
+	if w == null:
+		return
 	w["damage"] = stats.attack_damage
 	stats.weapons[0] = w
 
@@ -61,6 +63,7 @@ static func _multiply_attack_damage_and_weapon_slots(stats: UnitStats, factor: f
 	stats.attack_damage *= factor
 	for i in range(stats.weapons.size()):
 		var w: Dictionary = stats.weapons[i] as Dictionary
+		if w == null: continue
 		if w.has("damage"):
 			w["damage"] = float(w["damage"]) * factor
 			stats.weapons[i] = w
@@ -98,6 +101,8 @@ static func _apply_platform_enhance_growth_bias(stats: UnitStats, platform_card_
 		stats.attack_range *= range_mul
 		for i in range(stats.weapons.size()):
 			var w: Dictionary = stats.weapons[i] as Dictionary
+			if w == null:
+				continue
 			if w.has("range"):
 				w["range"] = float(w["range"]) * range_mul
 				stats.weapons[i] = w

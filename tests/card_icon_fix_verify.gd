@@ -28,10 +28,10 @@ func _init() -> void:
 		"fut_space_fighter", "fut_spectre", "fut_nano_drone", "fut_shield",
 		"fut_colossus", "fut_stormcore",
 		
-		"fort_ww1_pillbox", "fort_ww1_artillery", "fort_ww2_bunker",
-		"fort_ww2_flak", "fort_cold_missile", "fort_cold_radar",
-		"fort_modern_citadel", "fort_modern_phalanx", "fort_future_ion",
-		"fort_future_shield",
+		"ww1_fort_pillbox", "ww1_fort_artillery", "ww2_fort_bunker",
+		"ww2_fort_flak", "cold_fort_missile", "cold_fort_radar",
+		"mod_fort_citadel", "mod_fort_phalanx", "fut_fort_ion",
+		"fut_fort_shield",
 	]
 	
 	print("\n============================================================")

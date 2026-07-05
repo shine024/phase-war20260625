@@ -399,8 +399,14 @@ func generate_battle_completion_drops(player_won: bool, elapsed_time: float, wav
 			var gm_level: Variant = gm.current_level if "current_level" in gm else 1
 			current_env = BattleEnvs.get_for_level(int(gm_level))
 		var has_recon: bool = _get_recon_fragment_bonus_multiplier() > 0.0
+		# v7.x: 相位师战时屏蔽情报道具的改造蓝图掉落——
+		# 相位师专属掉落（game_manager._grant_phase_master_victory_reward）已必掉1-4个改造蓝图，
+		# 此处再掉会造成改造蓝图双爆。进化蓝图/情报增量/EOM碎片不受影响（它们不与相位师掉落重叠）。
+		# 注意：此时 BattleManager._is_phase_master_battle 尚未清零（在 end_battle 末尾才清），可安全读取。
+		var pm_battle_bm: Node = _get_autoload_node("BattleManager")
+		var is_phase_master_battle: bool = bool(pm_battle_bm.get("_is_phase_master_battle")) if pm_battle_bm != null else false
 		var intel_harvest: Dictionary = idm.generate_battle_intel_harvest(
-			defeated_list, victory_stars, has_recon, current_env
+			defeated_list, victory_stars, has_recon, current_env, is_phase_master_battle
 		)
 		battle_result["intel_harvest"] = intel_harvest
 		# 敌源MOD碎片

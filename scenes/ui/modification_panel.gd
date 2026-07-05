@@ -10,6 +10,7 @@ const IntelManualItems = preload("res://data/intel_manual_items.gd")
 const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
 const StarConfig = preload("res://data/blueprint_star_config.gd")
 const GC = preload("res://resources/game_constants.gd")
+const ModEffectLabels = preload("res://scripts/ui/mod_effect_labels.gd")
 
 # UI 组件引用
 @onready var card_list_container = get_node_or_null("VBoxContainer/HBoxContainer/ScrollContainer/CardListContainer")
@@ -558,7 +559,7 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 
 		var name_label = details_panel.get_node_or_null("DetailVBox/NameLabel")
 		if name_label:
-			var rarity_names := {"common": "普通", "uncommon": "优秀", "rare": "稀有", "epic": "史诗", "legendary": "传说"}
+			var rarity_names := {"common": "普通", "uncommon": "优秀", "rare": "稀有", "epic": "史诗", "legendary": "传说", "mythic": "神话"}
 			var mod_rarity: String = String(mod_data.get("rarity", "common"))
 			name_label.text = "%s [%s]" % [mod_data.get("name", ""), rarity_names.get(mod_rarity, mod_rarity)]
 
@@ -623,107 +624,11 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 			var install_callable = func(): _install_modification(selected_mod_id)
 			install_btn.pressed.connect(install_callable)
 
-## v7.2: 效果键翻译（覆盖全部 71 个 effect key + 7 个 slot 武器槽 key）
-## 与 modification_registry._apply_single_mod_effects 的 match 分支保持一致
+## 效果键翻译（薄封装，委托 ModEffectLabels 共享表）。
+## v7.x 统一：情报/改造/强化三面板共用 ModEffectLabels.translate（简短词口径），
+## 消除原先与 card_info_panel 的"完整词 vs 简短词"分叉。
 func _translate_effect_key(key: String) -> String:
-	match key:
-		# ── 主属性：攻击/防御/生命/速度/射程/间隔 ──
-		# 维度语义 = 目标类型（与 unit_stats.gd 字段注释、attack_calculator 战斗逻辑对齐）
-		"attack_light": return "对轻装攻击"
-		"attack_armor": return "对装甲攻击"
-		"attack_air": return "对空中攻击"
-		"attack_fort": return "对堡垒攻击"
-		"defense_light": return "防轻装单位"
-		"defense_armor": return "防装甲单位"
-		"defense_air": return "防空中单位"
-		"max_hp": return "生命值"
-		"move_speed": return "部署速度"
-		"deploy_speed": return "部署速度"
-		"deploy_delay_bonus": return "部署速度"
-		"attack_range": return "射程"
-		"attack_interval": return "攻击间隔"
-		# ── 暴击/闪避/穿透 ──
-		"crit_chance": return "暴击率"
-		"crit_resist": return "暴抗"
-		"crit_damage_bonus": return "暴击伤害"
-		"dodge_chance": return "闪避率"
-		"armor_penetration": return "穿甲"
-		"armor_pen_vs_light": return "穿甲(对轻装)"
-		"armor_pen_vs_armor": return "穿甲(对装甲)"
-		"armor_pen_vs_air": return "穿甲(对空中)"
-		# ── 生存/吸血/护盾 ──
-		"damage_reduction": return "减伤"
-		"lifesteal": return "吸血"
-		"hp_regen": return "生命回复"
-		"shield_on_kill": return "击杀护盾"
-		"splash_damage": return "溅射伤害"
-		"splash_radius": return "溅射半径"
-		"single_target_penalty": return "主目标伤害"
-		"chain_chance": return "连锁概率"
-		# ── 命中/还击/持续射击 ──
-		"accuracy_bonus": return "命中加成"
-		"accuracy_penalty": return "命中惩罚"
-		"counter_bonus": return "还击加成"
-		"sustained_fire": return "持续射击"
-		# ── 视野/射程/侦测 ──
-		"vision": return "视野"
-		"vision_bonus": return "视野加成"
-		"combat_range": return "作战半径"
-		"detection_range": return "侦测范围"
-		"detection_reduce": return "隐蔽(减侦测)"
-		"stealth_detect": return "隐身侦测"
-		"intel_speed": return "情报速度"
-		# ── 夜视/烟雾/热防护/三防 ──
-		"night_bonus": return "夜战加成"
-		"smoke_ignore": return "烟雾无视"
-		"thermal_immunity": return "热成像免疫"
-		"heat_resist": return "HEAT抗性"
-		"heat_immunity_once": return "HEAT首击免疫"
-		"mine_immunity": return "地雷免疫"
-		"mine_damage_reduction": return "地雷减伤"
-		"nbq_immunity": return "三防(核生化)"
-		# ── 反装甲/近战/拦截 ──
-		"enemy_armor_slow": return "敌装甲减速"
-		"approach_damage": return "近距伤害"
-		"urban_attack_bonus": return "巷战攻击"
-		"urban_move_bonus": return "巷战机动"
-		"missile_dodge": return "反导闪避"
-		"missile_intercept": return "导弹拦截"
-		# ── 弹药/持续作战/移动射击 ──
-		"ammo_capacity": return "弹药容量"
-		"sustained_combat": return "持续作战"
-		"infinite_ammo": return "无限弹药"
-		"mobile_fire": return "行进间射击"
-		# ── 隐蔽/反锁定 ──
-		"lock_reduction": return "锁定降低"
-		"fire_exposure": return "开火暴露"
-		"aggro_reduce": return "仇恨降低"
-		"close_accuracy": return "近距精度"
-		"enemy_confusion": return "敌方混乱"
-		# ── 指挥/阵型/盟友协同 ──
-		"command_efficiency": return "指挥效率"
-		"formation_bonus": return "阵型加成"
-		"ally_bonus": return "盟友加成"
-		"ally_hit_bonus": return "盟友命中加成"
-		"ally_ammo": return "盟友弹药"
-		"ally_hp_regen": return "盟友生命回复"
-		"ally_fort_regen": return "堡垒生命回复"
-		"ally_detection": return "盟友侦测"
-		"ally_river_bonus": return "盟友涉渡"
-		"ally_arty_bonus": return "盟友炮火支援"
-		"ifak_heal": return "急救包回复"
-		# ── 武器型号 ──
-		"weapon_type": return "武器型号"
-		"legacy_weapon_type": return "武器型号"
-		# ── 武器槽类(slot_*)──
-		"slot_damage_mult": return "槽位伤害倍率"
-		"slot_damage_add": return "槽位伤害"
-		"slot_attack_speed_mult": return "槽位攻速倍率"
-		"slot_range_bonus": return "槽位射程"
-		"slot_windup_reduce": return "槽位起射缩短"
-		"slot_active_reduce": return "槽位激活缩短"
-		"slot_weapon_type": return "槽位武器型号"
-		_: return key
+	return ModEffectLabels.translate(key)
 
 
 ## v7.2: 格式化改造效果为展示文本（兼容 effects 单档 + level_effects 多档）
@@ -770,18 +675,10 @@ func _format_one_effect(key: String, val) -> String:
 
 
 ## v6.13: 格式化 grant_slot（赋予新攻击维度）为一行展示文本
+## v7.x: 复用 ModEffectLabels.format_grant_slot，与情报面板 grant 文案完全一致。
 ## grant = {slot, base_damage, damage_ratio, speed, weapon_type, display_name, ...}
 func _format_grant_slot(grant: Dictionary) -> String:
-	const SLOT_NAMES := {0: "轻装", 1: "装甲", 2: "对空"}
-	var slot_idx: int = int(grant.get("slot", -1))
-	var slot_name: String = SLOT_NAMES.get(slot_idx, "未知")
-	var dn: String = String(grant.get("display_name", "新武器"))
-	var base_field: String = String(grant.get("base_damage", "attack_armor"))
-	var ratio: int = int(round(float(grant.get("damage_ratio", 0.7)) * 100.0))
-	# base_damage 字段名转中文
-	const FIELD_CN := {"attack_light": "对轻装", "attack_armor": "对装甲", "attack_air": "对空", "attack_damage": "主攻击"}
-	var base_cn: String = FIELD_CN.get(base_field, base_field)
-	return "✦ 赋予%s攻击：%s（以%s攻击×%d%%为基准）" % [slot_name, dn, base_cn, ratio]
+	return ModEffectLabels.format_grant_slot(grant)
 
 
 ## 供外部调用的接口
@@ -866,4 +763,5 @@ func _rarity_color(rarity: String) -> Color:
 		"rare": return Color(0.3, 0.6, 0.95)
 		"epic": return Color(0.7, 0.4, 0.95)
 		"legendary": return Color(1.0, 0.78, 0.2)
+		"mythic": return Color(1.0, 0.42, 0.62)
 		_: return Color(0.5, 0.5, 0.55)
