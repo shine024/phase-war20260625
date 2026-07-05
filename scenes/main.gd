@@ -172,6 +172,12 @@ func _deferred_non_critical_init() -> void:
 	# 空闲期预加载高频弹窗，降低首次打开卡顿
 	_preload_common_panels()
 	# v6.11: blueprint_star_upgraded 连接已移除（信号已删）
+	# v7.x（关卡详情"自动部署"按钮）：world_map 用 Engine meta 传递意图，
+	# 进 main 场景后自动切 AFK 推图模式 + start_afk（从指定关开始自动布阵战斗）。
+	if Engine.has_meta("world_map_auto_deploy_level"):
+		var _auto_lvl: int = int(Engine.get_meta("world_map_auto_deploy_level"))
+		Engine.remove_meta("world_map_auto_deploy_level")
+		call_deferred("_auto_start_afk_from_world_map", _auto_lvl)
 
 func _preload_common_panels() -> void:
 	var panel_paths: Array[String] = [
@@ -683,6 +689,26 @@ func _init_afk_manager() -> void:
 		# v6.6(挂机缩略图): 注入主场景引用，供面板定位 BattleContainer 取 ViewportTexture
 		if afk_panel_node.has_method("set_main_scene"):
 			afk_panel_node.set_main_scene(self)
+
+## v7.x（关卡详情"自动部署"按钮）：world_map 设的 Engine meta 触发，
+## 进 main 后切 AFK 推图模式 + start_afk，从指定关自动布阵战斗。
+## 用 call_deferred 调用，确保 _ready 中所有 manager 已初始化。
+func _auto_start_afk_from_world_map(level: int) -> void:
+	if _afk_manager == null:
+		return
+	# 钳制到已解锁上限，避免从未解锁关开始
+	var lp = get_node_or_null("/root/LevelProgressManager")
+	var max_unlocked: int = level
+	if lp != null and lp.has_method("get_max_unlocked_level"):
+		max_unlocked = lp.get_max_unlocked_level()
+	var target_lvl: int = clampi(level, 1, maxi(1, max_unlocked))
+	if GameManager != null and GameManager.has_method("set_current_level"):
+		GameManager.set_current_level(target_lvl)
+	# 切推图模式（从 current_level 开始逐关推进）
+	_afk_manager.set_mode(AFKModeManagerScript.Mode.PUSH)
+	# 启动 AFK：内部会用 GameManager.current_level 作为推图起点，
+	# 自动 _afk_start_battle → process_auto_deploy 自动布阵
+	_afk_manager.start_afk()
 
 ## v6.6(挂机): 暴露 AFK manager 给 SaveManager 桥接访问（RefCounted 非 autoload）。
 ## SaveManager 的 save/load/reset 经此 getter 访问 AFK 状态。

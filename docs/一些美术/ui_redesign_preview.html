@@ -1,0 +1,547 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Phase War UI Redesign Preview</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+  
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    width: 1280px;
+    height: 720px;
+    overflow: hidden;
+    font-family: 'Rajdhani', sans-serif;
+    background: linear-gradient(180deg, #1a2a1a 0%, #2a3a20 30%, #3a4a30 60%, #4a5a40 100%);
+    position: relative;
+  }
+  
+  /* Battlefield background simulation */
+  .battlefield {
+    position: absolute;
+    inset: 0;
+    background: 
+      radial-gradient(ellipse at 50% 80%, rgba(0,180,100,0.15) 0%, transparent 60%),
+      linear-gradient(180deg, #8ab4c4 0%, #a8c8d8 20%, #c8e0c0 40%, #8aaa60 60%, #5a7a3a 80%, #3a5a2a 100%);
+  }
+  
+  /* Mountains silhouette */
+  .mountains {
+    position: absolute;
+    bottom: 35%;
+    left: 0;
+    right: 0;
+    height: 200px;
+    background: 
+      linear-gradient(135deg, transparent 33%, #4a6a3a 33%, #4a6a3a 66%, transparent 66%),
+      linear-gradient(225deg, transparent 33%, #3a5a2a 33%, #3a5a2a 66%, transparent 66%);
+    opacity: 0.5;
+  }
+  
+  /* ===== TOP HUD BAR ===== */
+  .top-hud {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    background: linear-gradient(180deg, rgba(8,12,24,0.92) 0%, rgba(8,12,24,0.7) 80%, transparent 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+  }
+  
+  .level-display {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+    color: #ffffff;
+    text-shadow: 0 0 20px rgba(0,200,255,0.5), 0 2px 4px rgba(0,0,0,0.8);
+    letter-spacing: 4px;
+  }
+  
+  /* ===== LEFT RESOURCE PANEL ===== */
+  .resource-panel {
+    position: absolute;
+    top: 64px;
+    left: 12px;
+    width: 200px;
+    z-index: 10;
+  }
+  
+  .resource-panel-inner {
+    background: linear-gradient(135deg, rgba(10,15,30,0.92) 0%, rgba(15,20,40,0.88) 100%);
+    border: 1px solid rgba(0,180,255,0.25);
+    border-radius: 10px;
+    padding: 14px;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+  
+  .resource-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  
+  .resource-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(0,200,255,0.8);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+  
+  .resource-toggle {
+    background: linear-gradient(135deg, rgba(0,150,255,0.3) 0%, rgba(0,100,200,0.2) 100%);
+    border: 1px solid rgba(0,180,255,0.4);
+    border-radius: 4px;
+    color: rgba(0,220,255,0.9);
+    font-size: 10px;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    padding: 3px 10px;
+    cursor: pointer;
+    letter-spacing: 1px;
+  }
+  
+  .resource-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  
+  .resource-item:last-child { border-bottom: none; }
+  
+  .resource-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+  }
+  
+  .resource-icon.energy { background: rgba(255,180,0,0.2); border: 1px solid rgba(255,180,0,0.4); }
+  .resource-icon.nano { background: rgba(0,200,180,0.15); border: 1px solid rgba(0,200,180,0.3); }
+  
+  .resource-label {
+    font-size: 11px;
+    color: rgba(180,200,220,0.6);
+    flex: 1;
+  }
+  
+  .resource-value {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.95);
+  }
+  
+  .resource-value.energy-val { color: rgba(255,200,50,0.95); }
+  .resource-value.nano-val { color: rgba(0,220,200,0.95); }
+  
+  /* ===== BOTTOM BAR ===== */
+  .bottom-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+  }
+  
+  /* Instrument bar */
+  .instrument-bar {
+    height: 60px;
+    background: linear-gradient(180deg, rgba(8,14,28,0.85) 0%, rgba(6,10,22,0.95) 100%);
+    border-top: 1px solid rgba(0,180,255,0.15);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 16px;
+  }
+  
+  .instrument-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+  }
+  
+  .instrument-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, rgba(0,150,255,0.2) 0%, rgba(0,80,180,0.15) 100%);
+    border: 1px solid rgba(0,180,255,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    box-shadow: 0 0 12px rgba(0,150,255,0.15);
+  }
+  
+  .instrument-details {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  
+  .instrument-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: rgba(0,200,255,0.85);
+    letter-spacing: 2px;
+  }
+  
+  .instrument-stats {
+    font-size: 10px;
+    color: rgba(150,180,210,0.6);
+  }
+  
+
+  
+  /* Function bar */
+  .function-bar {
+    height: 56px;
+    background: linear-gradient(180deg, rgba(6,10,20,0.95) 0%, rgba(4,8,16,0.98) 100%);
+    border-top: 1px solid rgba(0,150,255,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+  }
+  
+  .func-buttons {
+    display: flex;
+    gap: 6px;
+  }
+  
+  .func-btn {
+    width: 52px;
+    height: 40px;
+    border-radius: 8px;
+    border: 1px solid rgba(0,150,255,0.2);
+    background: linear-gradient(180deg, rgba(15,25,50,0.8) 0%, rgba(10,18,35,0.9) 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .func-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(0,180,255,0.05) 0%, transparent 50%);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  
+  .func-btn:hover::before { opacity: 1; }
+  
+  .func-btn:hover {
+    border-color: rgba(0,200,255,0.5);
+    box-shadow: 0 0 12px rgba(0,150,255,0.2);
+  }
+  
+  .func-btn.active {
+    border-color: rgba(0,220,255,0.7);
+    background: linear-gradient(180deg, rgba(0,60,120,0.5) 0%, rgba(0,40,80,0.6) 100%);
+    box-shadow: 0 0 16px rgba(0,180,255,0.3), inset 0 1px 0 rgba(0,200,255,0.2);
+  }
+  
+  .func-btn-icon {
+    font-size: 16px;
+    line-height: 1;
+  }
+  
+  .func-btn-label {
+    font-size: 8px;
+    color: rgba(150,180,210,0.7);
+    letter-spacing: 0.5px;
+    font-weight: 600;
+  }
+  
+  .func-btn.active .func-btn-label {
+    color: rgba(0,220,255,0.9);
+  }
+  
+  .battle-controls {
+    display: flex;
+    gap: 4px;
+  }
+  
+  .battle-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    border: 1px solid rgba(0,150,255,0.15);
+    background: rgba(10,15,30,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  
+  .battle-btn:hover {
+    border-color: rgba(0,200,255,0.4);
+    background: rgba(0,40,80,0.4);
+  }
+  
+  /* ===== CARD ROW AT BOTTOM ===== */
+  .card-row {
+    position: absolute;
+    bottom: 116px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 5;
+  }
+  
+  .card {
+    width: 90px;
+    height: 64px;
+    border-radius: 8px;
+    border: 2px solid rgba(0,180,255,0.3);
+    background: linear-gradient(135deg, rgba(15,25,50,0.9) 0%, rgba(10,15,35,0.95) 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  }
+  
+  .card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(0,200,255,0.4), transparent);
+  }
+  
+  .card:hover {
+    border-color: rgba(0,220,255,0.6);
+    box-shadow: 0 4px 16px rgba(0,150,255,0.3);
+  }
+  
+  .card-star {
+    position: absolute;
+    top: 3px;
+    left: 5px;
+    font-size: 8px;
+    color: rgba(255,200,50,0.8);
+  }
+  
+  .card-level {
+    position: absolute;
+    top: 3px;
+    right: 5px;
+    font-size: 8px;
+    color: rgba(0,200,255,0.6);
+    font-family: 'Orbitron', sans-serif;
+  }
+  
+  .card-icon {
+    font-size: 22px;
+    margin-top: 4px;
+  }
+  
+  .card-name {
+    font-size: 7px;
+    color: rgba(180,200,220,0.7);
+    margin-top: 2px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+  
+  .card.empty {
+    border-style: dashed;
+    border-color: rgba(0,150,255,0.1);
+    background: rgba(5,10,20,0.5);
+  }
+  
+  .card.empty .card-name {
+    color: rgba(100,130,160,0.3);
+  }
+  
+  /* Card with special frame */
+  .card.special {
+    border-color: rgba(120,60,255,0.5);
+    background: linear-gradient(135deg, rgba(30,15,60,0.9) 0%, rgba(20,10,45,0.95) 100%);
+    box-shadow: 0 4px 16px rgba(80,30,200,0.3), 0 0 20px rgba(100,50,255,0.15);
+  }
+  
+  .card.special::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, rgba(120,60,255,0.3), rgba(60,120,255,0.2), rgba(120,60,255,0.3));
+    z-index: -1;
+    animation: shimmer 3s ease-in-out infinite;
+  }
+  
+  @keyframes shimmer {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+  <!-- Background -->
+  <div class="battlefield"></div>
+  
+  <!-- Top HUD -->
+  <div class="top-hud">
+    <div class="level-display">第 1 关</div>
+  </div>
+  
+  <!-- Left Resource Panel -->
+  <div class="resource-panel">
+    <div class="resource-panel-inner">
+      <div class="resource-header">
+        <span class="resource-title">资源</span>
+        <button class="resource-toggle">展开</button>
+      </div>
+      <div class="resource-item">
+        <div class="resource-icon energy">⚡</div>
+        <span class="resource-label">能量块</span>
+        <span class="resource-value energy-val">1.0K</span>
+      </div>
+      <div class="resource-item">
+        <div class="resource-icon nano">◆</div>
+        <span class="resource-label">纳米材料</span>
+        <span class="resource-value nano-val">0</span>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Card Row -->
+  <div class="card-row">
+    <div class="card special">
+      <span class="card-star">★★★</span>
+      <span class="card-level">LV.1</span>
+      <div class="card-icon">🎴</div>
+      <div class="card-name">FT-17 轻</div>
+    </div>
+    <div class="card">
+      <span class="card-star">★★☆</span>
+      <span class="card-level">LV.1</span>
+      <div class="card-icon">🎴</div>
+      <div class="card-name">FT-17 轻</div>
+    </div>
+    <div class="card">
+      <span class="card-star">★★☆</span>
+      <span class="card-level">LV.1</span>
+      <div class="card-icon">🎴</div>
+      <div class="card-name">77mm野战</div>
+    </div>
+    <div class="card">
+      <span class="card-star">★★☆</span>
+      <span class="card-level">LV.1</span>
+      <div class="card-icon">🎴</div>
+      <div class="card-name">虎式坦克</div>
+    </div>
+    <div class="card special">
+      <span class="card-star">★★★</span>
+      <span class="card-level">LV.1</span>
+      <div class="card-icon">🎴</div>
+      <div class="card-name">T-55坦克</div>
+    </div>
+    <div class="card special">
+      <span class="card-star">★★★</span>
+      <span class="card-level">LV.1</span>
+      <div class="card-icon">🎴</div>
+      <div class="card-name">M1A1坦克</div>
+    </div>
+    <div class="card empty"><div class="card-name">空</div></div>
+    <div class="card empty"><div class="card-name">空</div></div>
+    <div class="card empty"><div class="card-name">空</div></div>
+    <div class="card empty"><div class="card-name">空</div></div>
+  </div>
+  
+  <!-- Bottom Instrument Bar -->
+  <div class="bottom-bar">
+    <div class="instrument-bar">
+      <div class="instrument-info">
+        <div class="instrument-icon">🌀</div>
+        <div class="instrument-details">
+          <div class="instrument-name">星锚VIII型 ×7</div>
+          <div class="instrument-stats">输出 85 | 回复 42 | 护盾 120</div>
+        </div>
+      </div>
+
+    </div>
+    
+    <!-- Function Bar -->
+    <div class="function-bar">
+      <div class="func-buttons">
+        <div class="func-btn">
+          <span class="func-btn-icon">🎒</span>
+          <span class="func-btn-label">背包</span>
+        </div>
+        <div class="func-btn active">
+          <span class="func-btn-icon">🌀</span>
+          <span class="func-btn-label">相位仪</span>
+        </div>
+        <div class="func-btn">
+          <span class="func-btn-icon">🏴</span>
+          <span class="func-btn-label">势力</span>
+        </div>
+        <div class="func-btn">
+          <span class="func-btn-icon">📋</span>
+          <span class="func-btn-label">任务</span>
+        </div>
+        <div class="func-btn">
+          <span class="func-btn-icon">🏪</span>
+          <span class="func-btn-label">商店</span>
+        </div>
+        <div class="func-btn">
+          <span class="func-btn-icon">⚙️</span>
+          <span class="func-btn-label">改造</span>
+        </div>
+        <div class="func-btn">
+          <span class="func-btn-icon">✨</span>
+          <span class="func-btn-label">进化</span>
+        </div>
+        <div class="func-btn">
+          <span class="func-btn-icon">💎</span>
+          <span class="func-btn-label">淬炼</span>
+        </div>
+        <div class="func-btn">
+          <span class="func-btn-icon">🗺️</span>
+          <span class="func-btn-label">地图</span>
+        </div>
+      </div>
+      
+      <div class="battle-controls">
+        <div class="battle-btn">▶</div>
+        <div class="battle-btn">⏸</div>
+        <div class="battle-btn">⏭</div>
+        <div class="battle-btn">⏮</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

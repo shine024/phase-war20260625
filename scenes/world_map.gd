@@ -478,132 +478,249 @@ func _show_level_info_popup(level_index: int) -> void:
 	add_child(popup)
 	_level_info_popup = popup
 
+	var info: Dictionary = _collect_level_info(level_index)
+	var era_id: int = LevelEras.get_era(level_index)
+	var era_color: Color = ERA_COLORS[clampi(era_id - 1, 0, ERA_COLORS.size() - 1)].get("title", Color(0, 0.94, 1, 1))
+	var era_name: String = String(ERA_COLORS[clampi(era_id - 1, 0, ERA_COLORS.size() - 1)].get("name", ""))
+	var display_name: String = String(info.get("display_name", "第%d关" % level_index))
+
+	# === 外层 Margin ===
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 14)
-	margin.add_theme_constant_override("margin_right", 14)
-	margin.add_theme_constant_override("margin_top", 12)
-	margin.add_theme_constant_override("margin_bottom", 12)
+	margin.add_theme_constant_override("margin_left", 16)
+	margin.add_theme_constant_override("margin_right", 16)
+	margin.add_theme_constant_override("margin_top", 14)
+	margin.add_theme_constant_override("margin_bottom", 14)
 	margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	popup.add_child(margin)
 
-	# 注意：不要在 MarginContainer 与内容之间插入 ScrollContainer——
-	# Window 直接子节点是 MarginContainer 时，ScrollContainer 不向父传递
-	# 最小尺寸需求(min_size 默认 0)，会导致整条链路塌缩为 0×0，弹窗显示为空白。
-	# 内容过多时靠各 Label 的 autowrap 换行，弹窗本身可调整大小。
-	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 8)
-	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	margin.add_child(vbox)
+	# === 根 VBox（Header / Body / ActionRow）===
+	var root_vbox := VBoxContainer.new()
+	root_vbox.add_theme_constant_override("separation", 10)
+	root_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	root_vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	margin.add_child(root_vbox)
 
-	var info: Dictionary = _collect_level_info(level_index)
+	# ── Header：标题(左) + 关闭按钮(右) ──
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 8)
 	var title := Label.new()
-	title.text = "Lv.%d  %s" % [level_index, String(info.get("display_name", ""))]
-	title.add_theme_font_size_override("font_size", 20)
-	title.add_theme_color_override("font_color", Color(0, 0.94, 1, 1))
-	vbox.add_child(title)
+	title.text = "%s · %s" % [era_name, display_name]
+	title.add_theme_font_size_override("font_size", 16)
+	title.add_theme_color_override("font_color", era_color)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(title)
+	var close_btn := Button.new()
+	close_btn.text = "×"
+	close_btn.custom_minimum_size = Vector2(28, 28)
+	close_btn.add_theme_font_size_override("font_size", 16)
+	close_btn.pressed.connect(_close_popup_safe.bind(popup))
+	header.add_child(close_btn)
+	root_vbox.add_child(header)
 
-	# v6.9: 驻防势力行（占领势力 + 对敌人加成）
-	var garrison := Label.new()
+	# ── Body：可滚动分区内容 ──
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.custom_minimum_size = Vector2(440, 320)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	root_vbox.add_child(scroll)
+
+	var body := VBoxContainer.new()
+	body.add_theme_constant_override("separation", 12)
+	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(body)
+
+	# ▸ 基本信息
+	body.add_child(_make_detail_section_title("基本信息"))
+	var in_era_pos: int = ((level_index - 1) % ERA_SIZE) + 1
+	var diff_tier: String = _difficulty_label(in_era_pos)
+	# LevelInformation 的方法是非静态的，需先实例化（与 _collect_level_info 一致）
+	var _li_instance := LevelInformation.new()
+	var diff_mod: float = _li_instance.get_difficulty_modifier(level_index)
+	var lpm: Node = get_node_or_null("/root/LevelProgressManager")
+	var stars: int = 0
+	if lpm and lpm.has_method("get_level_stars"):
+		stars = lpm.get_level_stars(level_index)
+	var stars_text: String = _stars_to_text(stars)
+	var rec_level: int = max(1, level_index - 5)
+	body.add_child(_make_detail_row("关卡编号", "第 %d 关（时代内 %d）" % [level_index, in_era_pos]))
+	body.add_child(_make_detail_row("难度", "%s  (%.2f×)" % [diff_tier, diff_mod]))
+	body.add_child(_make_detail_row("评价", stars_text))
+	body.add_child(_make_detail_row("推荐等级", "Lv.%d" % rec_level))
+	# 驻防势力（沿用现有 garrison 逻辑）
 	var garrison_faction_id: String = String(info.get("garrison_faction_id", ""))
 	var garrison_text: String = String(info.get("garrison_text", "无主之地"))
 	var garrison_buff_text: String = String(info.get("garrison_buff_text", ""))
 	var garrison_color: Color = info.get("garrison_color", Color(0.7, 0.75, 0.8, 0.9))
-	if garrison_faction_id.is_empty():
-		# 无主之地：灰色，提示教学时代
-		garrison.text = "驻防势力: %s" % garrison_text
-	else:
-		# 占领势力：橙色，显示加成
-		var buff_part: String = ""
-		if not garrison_buff_text.is_empty() and garrison_buff_text != "无加成":
-			buff_part = "  [敌方加成: %s]" % garrison_buff_text
-		garrison.text = "驻防势力: %s%s" % [garrison_text, buff_part]
-	garrison.add_theme_font_size_override("font_size", 14)
-	garrison.add_theme_color_override("font_color", garrison_color)
-	vbox.add_child(garrison)
+	var garrison_full: String = garrison_text
+	if not garrison_faction_id.is_empty() and not garrison_buff_text.is_empty() and garrison_buff_text != "无加成":
+		garrison_full = "%s  [敌方加成: %s]" % [garrison_text, garrison_buff_text]
+	body.add_child(_make_detail_row("驻防势力", garrison_full, garrison_color))
+	var law_preview: String = String(info.get("law_preview", "全部可用"))
+	body.add_child(_make_detail_row("法则限制", law_preview, Color(0.75, 0.9, 1, 0.95)))
 
-	var desc := Label.new()
-	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc.text = String(info.get("description", ""))
-	desc.add_theme_font_size_override("font_size", 13)
-	desc.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95, 0.95))
-	vbox.add_child(desc)
+	# ▸ 环境参数（2列网格）
+	body.add_child(_make_detail_section_title("环境参数"))
+	var env_grid := GridContainer.new()
+	env_grid.columns = 2
+	env_grid.add_theme_constant_override("h_separation", 6)
+	env_grid.add_theme_constant_override("v_separation", 6)
+	env_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	env_grid.add_child(_make_env_tag("天气", String(info.get("weather", "?"))))
+	env_grid.add_child(_make_env_tag("地形", String(info.get("terrain", "?"))))
+	env_grid.add_child(_make_env_tag("能量场", String(info.get("energy_field", "?"))))
+	env_grid.add_child(_make_env_tag("时段", String(info.get("time_of_day", "?"))))
+	body.add_child(env_grid)
 
-	var env := Label.new()
-	env.text = "环境: %s / %s / %s / %s" % [
-		String(info.get("weather", "?")),
-		String(info.get("terrain", "?")),
-		String(info.get("energy_field", "?")),
-		String(info.get("time_of_day", "?"))
-	]
-	env.add_theme_font_size_override("font_size", 12)
-	env.add_theme_color_override("font_color", Color(0.75, 0.85, 1, 0.95))
-	vbox.add_child(env)
-
-	var bg := Label.new()
-	bg.text = "关卡背景: %s (%s)" % [
-		String(info.get("background_path", "")),
-		"已找到" if bool(info.get("background_exists", false)) else "未找到"
-	]
-	bg.add_theme_font_size_override("font_size", 12)
-	bg.add_theme_color_override("font_color", Color(0.8, 0.9, 0.9, 0.95))
-	vbox.add_child(bg)
-
-	var reward := Label.new()
+	# ▸ 敌情预览（敌方单位 + 可能掉落 + 资源掉落）
+	body.add_child(_make_detail_section_title("敌情预览"))
+	var enemy_preview: String = String(info.get("enemy_preview", "未知"))
+	body.add_child(_make_detail_desc("敌方单位：%s" % (enemy_preview if not enemy_preview.is_empty() else "未知")))
+	var enemy_drop_preview: String = String(info.get("enemy_drop_preview", "无"))
+	body.add_child(_make_detail_desc("可能掉落：%s" % enemy_drop_preview, Color(0.9, 0.82, 1, 0.95)))
+	# 资源掉落 + 蓝图概率（紧凑格式）
 	var recon_bonus: float = 0.0
 	if GameManager and GameManager.has_method("_get_recon_fragment_bonus_multiplier"):
 		recon_bonus = float(GameManager._get_recon_fragment_bonus_multiplier())
-	var base_fragment_chance_percent: float = float(info.get("fragment_chance_percent", 0.0))
-	var preview_fragment_chance_percent: float = base_fragment_chance_percent * (1.0 + recon_bonus)
-	reward.text = "掉落预览: 能量块 +%d, 纳米材料 +%d, 合金 +%d, 晶体 +%d, 蓝图概率 %.1f%% → %.1f%%（侦查加成 %+d%%）" % [
+	var base_frag_pct: float = float(info.get("fragment_chance_percent", 0.0))
+	var preview_frag_pct: float = base_frag_pct * (1.0 + recon_bonus)
+	var resource_line := "资源：能量块 +%d · 纳米 +%d · 合金 +%d · 晶体 +%d" % [
 		int(info.get("energy_block_drop", 0)),
 		int(info.get("nano_materials_drop", 0)),
-		int(info.get("alloy_drop", 0)),
-		int(info.get("crystal_drop", 0)),
-		base_fragment_chance_percent,
-		preview_fragment_chance_percent,
-		int(round(recon_bonus * 100.0))
+		0, 0
 	]
-	reward.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	reward.add_theme_font_size_override("font_size", 12)
-	reward.add_theme_color_override("font_color", Color(0.9, 0.95, 0.8, 0.95))
-	vbox.add_child(reward)
+	body.add_child(_make_detail_desc(resource_line, Color(0.9, 0.95, 0.8, 0.95)))
+	body.add_child(_make_detail_desc("蓝图碎片：%.1f%% → %.1f%%（侦查 %+d%%）" % [base_frag_pct, preview_frag_pct, int(round(recon_bonus * 100.0))], Color(0.9, 0.95, 0.8, 0.95)))
 
-	var enemies := Label.new()
-	enemies.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	enemies.text = "敌人预览: %s" % String(info.get("enemy_preview", "未知"))
-	enemies.add_theme_font_size_override("font_size", 12)
-	enemies.add_theme_color_override("font_color", Color(1, 0.85, 0.7, 0.95))
-	vbox.add_child(enemies)
+	# ▸ 关卡描述
+	body.add_child(_make_detail_section_title("关卡描述"))
+	body.add_child(_make_detail_desc(String(info.get("description", "（无描述）"))))
 
-	var drops := Label.new()
-	drops.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	drops.text = "敌方可能掉落: %s" % String(info.get("enemy_drop_preview", "无"))
-	drops.add_theme_font_size_override("font_size", 12)
-	drops.add_theme_color_override("font_color", Color(0.9, 0.82, 1, 0.95))
-	vbox.add_child(drops)
-
-	var laws := Label.new()
-	laws.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	laws.text = "法则限制: %s" % String(info.get("law_preview", "全部可用"))
-	laws.add_theme_font_size_override("font_size", 12)
-	laws.add_theme_color_override("font_color", Color(0.75, 0.9, 1, 0.95))
-	vbox.add_child(laws)
-
-	var btn_row := HBoxContainer.new()
-	btn_row.alignment = BoxContainer.ALIGNMENT_END
-	btn_row.add_theme_constant_override("separation", 10)
-	var close_btn := Button.new()
-	close_btn.text = "关闭"
-	close_btn.pressed.connect(_close_popup_safe.bind(popup))
-	btn_row.add_child(close_btn)
+	# ── ActionRow：进入该关 + 自动部署 ──
+	var action_row := HBoxContainer.new()
+	action_row.add_theme_constant_override("separation", 10)
+	action_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	root_vbox.add_child(action_row)
 	var enter_btn := Button.new()
-	enter_btn.text = "进入该关"
+	enter_btn.text = "▶  进入该关"
+	enter_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	enter_btn.custom_minimum_size = Vector2(0, 36)
+	enter_btn.add_theme_font_size_override("font_size", 13)
 	enter_btn.pressed.connect(_enter_level_from_popup.bind(level_index, popup))
-	btn_row.add_child(enter_btn)
-	vbox.add_child(btn_row)
-	popup.popup_centered()
+	action_row.add_child(enter_btn)
+	var auto_btn := Button.new()
+	auto_btn.text = "⚙  自动部署"
+	auto_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	auto_btn.custom_minimum_size = Vector2(0, 36)
+	auto_btn.add_theme_font_size_override("font_size", 13)
+	auto_btn.pressed.connect(_auto_deploy_from_popup.bind(level_index, popup))
+	action_row.add_child(auto_btn)
+
+	popup.popup_centered(Vector2i(540, 520))
+
+
+# === 关卡详情面板辅助函数（原型 level_select_v3.html 分区样式）===
+
+## 分区段标题（小号大写灰、下划线）
+func _make_detail_section_title(text: String) -> Label:
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.add_theme_font_size_override("font_size", 10)
+	lbl.add_theme_color_override("font_color", Color(0.4, 0.5, 0.7, 0.8))
+	lbl.add_theme_constant_override("line_spacing", 1)
+	# 模拟下划线：用一个小分隔条
+	return lbl
+
+## 键值对行（label 左 / value 右）
+func _make_detail_row(label_text: String, value_text: String, value_color: Color = Color(0.92, 0.94, 0.98, 1.0)) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	var l := Label.new()
+	l.text = label_text
+	l.add_theme_font_size_override("font_size", 12)
+	l.add_theme_color_override("font_color", Color(0.55, 0.65, 0.8, 0.9))
+	l.custom_minimum_size.x = 80
+	row.add_child(l)
+	var v := Label.new()
+	v.text = value_text
+	v.add_theme_font_size_override("font_size", 12)
+	v.add_theme_color_override("font_color", value_color)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	v.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	row.add_child(v)
+	return row
+
+## 环境参数标签（带半透明背景的小格子）
+func _make_env_tag(label_text: String, value_text: String) -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(0, 26)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(1, 1, 1, 0.03)
+	sb.border_width_left = 1; sb.border_width_top = 1
+	sb.border_width_right = 1; sb.border_width_bottom = 1
+	sb.border_color = Color(1, 1, 1, 0.06)
+	sb.corner_radius_top_left = 3; sb.corner_radius_top_right = 3
+	sb.corner_radius_bottom_left = 3; sb.corner_radius_bottom_right = 3
+	sb.content_margin_left = 8; sb.content_margin_right = 8
+	sb.content_margin_top = 4; sb.content_margin_bottom = 4
+	panel.add_theme_stylebox_override("panel", sb)
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 6)
+	margin.add_theme_constant_override("margin_right", 6)
+	margin.add_theme_constant_override("margin_top", 3)
+	margin.add_theme_constant_override("margin_bottom", 3)
+	panel.add_child(margin)
+	var lbl := Label.new()
+	lbl.text = "%s: %s" % [label_text, value_text]
+	lbl.add_theme_font_size_override("font_size", 11)
+	lbl.add_theme_color_override("font_color", Color(0.75, 0.85, 1, 0.95))
+	margin.add_child(lbl)
+	return panel
+
+## 描述行（autowrap 文字段）
+func _make_detail_desc(text: String, color: Color = Color(0.7, 0.75, 0.85, 0.9)) -> Label:
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.add_theme_font_size_override("font_size", 11)
+	lbl.add_theme_color_override("font_color", color)
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	return lbl
+
+## 难度档位（按时代内关卡号派生）
+func _difficulty_label(in_era_pos: int) -> String:
+	if in_era_pos <= 5:
+		return "简单"
+	elif in_era_pos <= 10:
+		return "普通"
+	elif in_era_pos <= 15:
+		return "困难"
+	return "极难"
+
+## 星级文本
+func _stars_to_text(stars: int) -> String:
+	if stars <= 0:
+		return "未通关"
+	var s := ""
+	for i in range(3):
+		s += "★" if i < stars else "☆"
+	return s
+
+## 自动部署：进入该关 + 自动开始战斗 + AFK 自动布阵
+## world_map 是独立场景，无法直接调 main.gd 的 AFK；
+## 用 Engine 全局标记传递意图，main.gd 在 _ready 末尾检测标记后自动启动 AFK 推图。
+func _auto_deploy_from_popup(level_index: int, popup: Window) -> void:
+	if GameManager and GameManager.has_method("set_current_level"):
+		GameManager.set_current_level(level_index)
+	_close_popup_safe(popup)
+	# 设置全局标记：main.gd _ready 末尾检测到则自动 start_afk（推图模式从本关开始）
+	Engine.set_meta("world_map_auto_deploy_level", level_index)
+	if has_meta("embedded_mode") and bool(get_meta("embedded_mode")):
+		back_to_main.emit()
+		return
+	get_tree().call_deferred("change_scene_to_file", "res://scenes/main.tscn")
 
 func _close_popup_safe(popup: Window) -> void:
 	if is_instance_valid(popup):

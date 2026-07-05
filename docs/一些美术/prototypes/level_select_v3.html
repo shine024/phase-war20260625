@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Phase War - 大地图关卡选择面板 设计原型 v3</title>
+<style>
+:root {
+  --bg-primary: #060a14;
+  --bg-panel: rgba(10, 18, 35, 0.95);
+  --bg-card: rgba(15, 25, 50, 0.85);
+  --bg-card-hover: rgba(25, 45, 80, 0.9);
+  --border-color: rgba(0, 180, 220, 0.25);
+  --accent-cyan: #00d4ff;
+  --accent-gold: #ffd700;
+  --text-secondary: #8899bb;
+  --text-muted: #556688;
+  --era-ww1: #d4a420;
+  --era-ww2: #44cc66;
+  --era-cold: #4488ff;
+  --era-modern: #00ddcc;
+  --era-future: #aa55ff;
+  --radius: 6px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  background: var(--bg-primary);
+  color: #e8f0ff;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+canvas#starfield { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+.scanlines {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 999; pointer-events: none;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+}
+
+/* ===== TOP BAR ===== */
+.topbar {
+  position: relative; z-index: 10;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 20px;
+  background: rgba(0,0,0,0.5);
+  border-bottom: 1px solid rgba(0,180,220,0.2);
+  flex-shrink: 0;
+}
+.topbar-title {
+  font-size: 16px; font-weight: 700; letter-spacing: 2px;
+  color: var(--accent-cyan);
+  text-shadow: 0 0 10px rgba(0,212,255,0.3);
+}
+.topbar-stats {
+  display: flex; gap: 18px; font-size: 11px; color: var(--text-secondary);
+}
+.topbar-stats .val { color: var(--accent-gold); font-weight: 600; }
+
+/* ===== ERA TABS ===== */
+.era-tabs {
+  position: relative; z-index: 10;
+  display: flex; gap: 2px;
+  padding: 0 20px;
+  background: rgba(0,0,0,0.3);
+  border-bottom: 1px solid rgba(0,180,220,0.1);
+  flex-shrink: 0;
+}
+.era-tab {
+  padding: 8px 18px;
+  font-size: 12px; font-weight: 600;
+  cursor: pointer;
+  border: none; border-radius: var(--radius) var(--radius) 0 0;
+  background: rgba(15,25,50,0.5);
+  color: var(--text-secondary);
+  transition: all 0.2s;
+  display: flex; align-items: center; gap: 6px;
+}
+.era-tab:hover { background: rgba(25,45,80,0.6); color: #e8f0ff; }
+.era-tab.active {
+  background: var(--bg-panel);
+  color: var(--accent-cyan);
+  border-bottom-color: var(--bg-panel);
+}
+.era-tab .era-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+}
+
+/* ===== MAIN LAYOUT ===== */
+.main-area {
+  position: relative; z-index: 10;
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* LEFT: Era Panels */
+.left-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 12px 16px;
+}
+.left-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+.left-title {
+  font-size: 14px; font-weight: 700;
+  display: flex; align-items: center; gap: 8px;
+}
+.left-title .dot { width: 8px; height: 8px; border-radius: 50%; }
+.quick-btn {
+  padding: 5px 12px; border-radius: 4px;
+  font-size: 11px; font-weight: 600; cursor: pointer;
+  border: 1px solid rgba(0,180,220,0.3);
+  background: rgba(0,180,220,0.1);
+  color: var(--accent-cyan);
+  transition: all 0.2s;
+}
+.quick-btn:hover { background: rgba(0,180,220,0.25); }
+
+/* Era panel container */
+.era-panels-scroll {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-right: 4px;
+}
+.era-panels-scroll::-webkit-scrollbar { width: 4px; }
+.era-panels-scroll::-webkit-scrollbar-track { background: transparent; }
+.era-panels-scroll::-webkit-scrollbar-thumb { background: rgba(0,180,220,0.2); border-radius: 2px; }
+
+/* Single Era Panel */
+.era-panel {
+  border-radius: var(--radius);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  background: var(--bg-panel);
+  transition: border-color 0.2s;
+}
+.era-panel:hover { border-color: rgba(0,180,220,0.4); }
+
+.era-panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+.era-panel-title {
+  font-size: 13px; font-weight: 700;
+  display: flex; align-items: center; gap: 8px;
+}
+.era-panel-title .icon { font-size: 16px; }
+.era-panel-title .name { }
+.era-panel-title .range { font-size: 10px; color: var(--text-muted); margin-left: 4px; }
+.era-panel-meta {
+  display: flex; gap: 12px; font-size: 10px; color: var(--text-secondary);
+}
+.era-panel-meta .done { color: #44ff88; }
+.era-panel-meta .stars { color: var(--accent-gold); }
+
+/* Progress bar */
+.era-panel-progress {
+  height: 3px; background: rgba(255,255,255,0.06);
+}
+.era-panel-progress-fill {
+  height: 100%; transition: width 0.4s ease;
+}
+
+/* Level cards inside era panel */
+.era-panel-body {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  gap: 4px;
+  padding: 8px;
+  min-height: 280px;
+}
+
+/* Level thumbnail card */
+.lv-thumb {
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: var(--bg-card);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  min-height: 58px;
+}
+.lv-thumb:hover {
+  border-color: var(--accent-cyan);
+  background: var(--bg-card-hover);
+  transform: scale(1.06);
+  z-index: 5;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5), 0 0 8px rgba(0,212,255,0.15);
+}
+.lv-thumb.selected {
+  border-color: var(--accent-cyan);
+  background: rgba(0,180,220,0.15);
+  box-shadow: 0 0 12px rgba(0,212,255,0.25);
+}
+.lv-thumb.locked {
+  opacity: 0.35; cursor: default;
+  border-color: rgba(255,255,255,0.02);
+}
+.lv-thumb.locked:hover {
+  transform: none; box-shadow: none;
+  border-color: rgba(255,255,255,0.06);
+  background: var(--bg-card);
+}
+
+/* Thumbnail image area */
+.thumb-img {
+  height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+.thumb-img-bg {
+  position: absolute; inset: 0;
+  opacity: 0.3;
+}
+.thumb-img-icon {
+  position: relative; z-index: 1;
+  font-size: 14px;
+  filter: drop-shadow(0 0 3px rgba(0,0,0,0.8));
+}
+.thumb-img .lock-overlay {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.4);
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+/* Card info area */
+.thumb-info {
+  padding: 2px 4px 3px;
+  display: flex; flex-direction: column; gap: 1px;
+  flex: 1;
+}
+.thumb-name {
+  font-size: 9px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  color: #e8f0ff;
+}
+.thumb-sub {
+  font-size: 8px; color: var(--text-muted);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.thumb-stars {
+  font-size: 7px; letter-spacing: 0.5px; color: var(--accent-gold);
+}
+.thumb-badge {
+  position: absolute;
+  font-size: 7px; font-weight: 700;
+  padding: 0 2px; border-radius: 2px;
+  top: 1px;
+}
+.thumb-badge.boss-badge {
+  right: 2px;
+  background: #ffa500; color: #000;
+}
+.thumb-badge.story-badge {
+  left: 2px;
+  color: #aa55ff;
+}
+
+/* Boss row highlight */
+.era-panel-body.boss-row {
+  grid-template-columns: repeat(1, 1fr);
+  grid-template-rows: 1fr;
+}
+.era-panel-body.boss-row .lv-thumb {
+  min-height: 44px;
+  border-color: rgba(255,165,0,0.3);
+}
+
+/* RIGHT: Detail Panel */
+.right-panel {
+  width: 300px;
+  flex-shrink: 0;
+  background: var(--bg-panel);
+  border-left: 1px solid var(--border-color);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.right-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+}
+.right-title { font-size: 14px; font-weight: 700; }
+.right-close {
+  width: 24px; height: 24px; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: transparent; color: var(--text-secondary);
+  cursor: pointer; font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+}
+.right-close:hover { border-color: #ff4444; color: #ff4444; }
+.right-body {
+  padding: 14px 16px;
+  flex: 1; overflow-y: auto;
+}
+.right-body::-webkit-scrollbar { width: 3px; }
+.right-body::-webkit-scrollbar-thumb { background: rgba(0,180,220,0.2); border-radius: 2px; }
+
+.detail-section { margin-bottom: 14px; }
+.detail-section-title {
+  font-size: 9px; text-transform: uppercase;
+  color: var(--text-muted); letter-spacing: 1.5px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  padding-bottom: 3px;
+}
+.detail-row {
+  display: flex; justify-content: space-between;
+  padding: 3px 0; font-size: 12px;
+}
+.detail-row .label { color: var(--text-secondary); }
+.detail-row .value { color: #e8f0ff; font-weight: 500; }
+.detail-desc {
+  font-size: 11px; color: var(--text-secondary);
+  line-height: 1.6;
+}
+.env-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+  margin-top: 4px;
+}
+.env-tag {
+  padding: 4px 8px; border-radius: 3px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.05);
+  font-size: 10px; color: var(--text-secondary);
+}
+.env-tag .tl { color: var(--text-muted); }
+.action-row {
+  display: flex; gap: 8px; margin-top: 12px;
+  flex-shrink: 0;
+}
+.action-row .btn {
+  flex: 1; text-align: center; padding: 8px;
+  border-radius: 4px; font-size: 12px; font-weight: 600;
+  cursor: pointer; border: 1px solid;
+  transition: all 0.2s;
+}
+.btn-enter {
+  background: rgba(0,212,255,0.12);
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+.btn-enter:hover { background: rgba(0,212,255,0.25); }
+.btn-auto {
+  background: rgba(68,255,136,0.08);
+  border-color: rgba(68,255,136,0.4);
+  color: #44ff88;
+}
+.btn-auto:hover { background: rgba(68,255,136,0.18); }
+
+.empty-state {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  height: 100%; color: var(--text-muted);
+  font-size: 12px; gap: 8px;
+}
+.empty-state .icon { font-size: 32px; opacity: 0.3; }
+
+/* Bottom bar */
+.bottom-bar {
+  position: relative; z-index: 10;
+  display: flex; align-items: center; gap: 16px;
+  padding: 5px 20px;
+  background: rgba(0,0,0,0.4);
+  border-top: 1px solid rgba(0,180,220,0.1);
+  font-size: 10px; color: var(--text-muted);
+  flex-shrink: 0;
+}
+.legend-dot { width: 5px; height: 5px; border-radius: 50%; display: inline-block; }
+</style>
+</head>
+<body>
+
+<div class="scanlines"></div>
+<canvas id="starfield"></canvas>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-title">WAR MAP</div>
+  <div class="topbar-stats">
+    <span>总进度 <span class="val">47/100</span></span>
+    <span>总星数 <span class="val">98/300</span></span>
+    <span>侦察加成 <span class="val" style="color:#44ff88">+12%</span></span>
+  </div>
+</div>
+
+<!-- ERA TABS -->
+<div class="era-tabs" id="eraTabs"></div>
+
+<!-- MAIN: LEFT PANELS + RIGHT DETAIL -->
+<div class="main-area">
+  <!-- LEFT: Era panels with level thumbnails -->
+  <div class="left-panel">
+    <div class="left-header">
+      <div class="left-title">
+        <span class="dot" id="eraDot"></span>
+        <span id="eraLabel">二战时代</span>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="quick-btn" onclick="enterNext()">&#x25B6; 下一关</button>
+        <button class="quick-btn" style="border-color:rgba(255,165,0,0.4);color:#ffa500;background:rgba(255,165,0,0.1);" onclick="enterBoss()">&#x26A1; Boss</button>
+      </div>
+    </div>
+    <div class="era-panels-scroll" id="eraPanelsScroll">
+      <!-- Era panels injected by JS -->
+    </div>
+  </div>
+
+  <!-- RIGHT: Detail Panel -->
+  <div class="right-panel" id="rightPanel">
+    <div class="empty-state" id="emptyState">
+      <div class="icon">&#x1F5FA;</div>
+      <div>选择关卡查看详情</div>
+    </div>
+    <div id="detailView" style="display:none;flex-direction:column;height:100%;">
+      <div class="right-header">
+        <div class="right-title" id="detailTitle">-</div>
+        <button class="right-close" onclick="closeDetail()">&times;</button>
+      </div>
+      <div class="right-body">
+        <div class="detail-section">
+          <div class="detail-section-title">基本信息</div>
+          <div class="detail-row"><span class="label">关卡编号</span><span class="value" id="dNum">-</span></div>
+          <div class="detail-row"><span class="label">难度</span><span class="value" id="dDiff">-</span></div>
+          <div class="detail-row"><span class="label">评价</span><span class="value" id="dStars">-</span></div>
+          <div class="detail-row"><span class="label">推荐等级</span><span class="value" id="dRec">-</span></div>
+          <div class="detail-row"><span class="label">驻防势力</span><span class="value" id="dFaction">-</span></div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-section-title">环境参数</div>
+          <div class="env-grid" id="dEnv"></div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-section-title">敌情预览</div>
+          <div class="detail-desc" id="dEnemy">-</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-section-title">关卡描述</div>
+          <div class="detail-desc" id="dDesc">-</div>
+        </div>
+      </div>
+      <div class="action-row">
+        <button class="btn btn-enter" onclick="enterSel()">&#x25B6; 进入该关</button>
+        <button class="btn btn-auto" onclick="autoDeploy()">&#x2699; 自动部署</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BOTTOM LEGEND -->
+<div class="bottom-bar">
+  <span><span class="legend-dot" style="background:#aa55ff"></span> 剧情任务</span>
+  <span><span class="legend-dot" style="background:#ffa500"></span> 占领势力</span>
+  <span><span class="legend-dot" style="background:#ffa500"></span> Boss 关</span>
+  <span><span class="legend-dot" style="background:#44ff88"></span> 已通关</span>
+  <span><span class="legend-dot" style="background:var(--accent-cyan)"></span> 当前关卡</span>
+</div>
+
+<script>
+// ===== DATA =====
+const ERAS = [
+  { id:1, name:'一战', icon:'\u2694', range:'1-20', color:'#d4a420',
+    bgGrad:'linear-gradient(135deg,#2a1f0a,#1a1205)',
+    desc:'堑壕战、毒气战、早期坦克' },
+  { id:2, name:'二战', icon:'\u2708', range:'21-40', color:'#44cc66',
+    bgGrad:'linear-gradient(135deg,#0a1f0a,#051a05)',
+    desc:'闪电战、航母战、原子弹' },
+  { id:3, name:'冷战', icon:'\u2622', range:'41-60', color:'#4488ff',
+    bgGrad:'linear-gradient(135deg,#0a0a2a,#05051a)',
+    desc:'核威慑、太空竞赛、代理战争' },
+  { id:4, name:'现代', icon:'\U0001F680', range:'61-80', color:'#00ddcc',
+    bgGrad:'linear-gradient(135deg,#0a1a1a,#051010)',
+    desc:'精确打击、网络战、无人机' },
+  { id:5, name:'未来', icon:'\u26A1', range:'81-100', color:'#aa55ff',
+    bgGrad:'linear-gradient(135deg,#1a0a2a,#100520)',
+    desc:'AI觉醒、量子武器、太空战争' },
+];
+
+const UNIT_ICONS = ['\u{1F6E1}','\u{1F691}','\u{1F694}','\u{2708}\uFE0F','\u{1F688}','\u{1F525}','\u{1F3AF}','\u{2699}\uFE0F'];
+const LEVEL_NAMES = [
+  '马恩河','凡尔登','索姆河','帕斯尚尔','康布雷',
+  '坦能堡','布鲁西洛夫','日德兰','兴登堡','春季攻势',
+  '阿登森林','诺曼底','市场花园','突出部','斯大林格勒',
+  '库尔斯克','柏林战役','东京湾','硫磺岛','冲绳',
+  '古巴危机','越南战争','阿富汗','海湾战争','科索沃',
+  '车臣','伊拉克','叙利亚','也门','阿富汗II',
+  '南海','网络战','无人机群','精确打击','反恐行动',
+  '马六甲','中东维稳','北极航道','非洲维和','印太',
+  '火星前哨','月球基地','小行星带','轨道武器','深空防线',
+  '半人马座','天狼星','暗物质','奇点协议','终焉之战',
+];
+
+function seededRand(seed) {
+  let s = seed;
+  return function() { s = (s*16807)%2147483647; return (s-1)/2147483646; };
+}
+
+const LV = {};
+const SEEDS = [42,137,256,512,1024];
+const TERRAINS = ['平原','山地','沙漠','雨林','雪地','废墟','城市','沼泽'];
+const WEATHERS = ['晴','多云','暴雨','沙尘暴','暴风雪','浓雾','雷暴'];
+const ENVS = ['稳定','紊乱','增强','衰减','脉冲'];
+const TIMES = ['黎明','白天','黄昏','深夜'];
+const FACTIONS = ['','铁壁 corp','','量子物流','','虚空研究','前沿联盟','',''];
+const ENEMY_POOL = [
+  '轻型步兵','装甲车','迫击炮组','狙击手','工程兵','防空车','火箭炮','侦察机',
+  '主战坦克','直升机','无人机','电磁炮','机械步兵','隐形战机','轨道炮'
+];
+
+ERAS.forEach((era, ei) => {
+  const rng = seededRand(SEEDS[ei]);
+  for (let lv = (era.id-1)*20+1; lv <= era.id*20; lv++) {
+    const pos = lv - (era.id-1)*20;
+    const isBoss = (pos === 20);
+    const isStory = (lv % 7 === 0) || (lv === 1);
+    const completed = lv <= 47;
+    const current = (lv === 48);
+    const unlocked = lv <= 48;
+    const stars = completed ? Math.floor(rng()*3)+1 : 0;
+    const diffs = ['简单','简单','简单','普通','普通','普通','困难','困难','困难','极难'];
+    const diff = diffs[Math.min(Math.floor((pos-1)/5), 3)];
+    const faction = FACTIONS[Math.floor(rng()*FACTIONS.length)];
+    const nEnemies = 3 + Math.floor(rng()*4);
+    const enemies = [];
+    for (let i = 0; i < nEnemies; i++) enemies.push(ENEMY_POOL[Math.floor(rng()*ENEMY_POOL.length)]);
+    const unitIcon = UNIT_ICONS[Math.floor(rng()*UNIT_ICONS.length)];
+    const lvName = LEVEL_NAMES[lv-1] || ('作战区'+pos);
+
+    LV[lv] = {
+      era: era.id, eraName: era.name, eraColor: era.color,
+      num: lv, pos, isBoss, isStory, completed, current, unlocked, stars,
+      difficulty: diff,
+      terrain: TERRAINS[Math.floor(rng()*TERRAINS.length)],
+      weather: WEATHERS[Math.floor(rng()*WEATHERS.length)],
+      energyField: ENVS[Math.floor(rng()*ENVS.length)],
+      timeOfDay: TIMES[Math.floor(rng()*TIMES.length)],
+      faction,
+      recLevel: Math.max(1, lv - 5 + Math.floor(rng()*10)),
+      enemies: [...new Set(enemies)].slice(0, 5),
+      unitIcon,
+      lvName,
+    };
+  }
+});
+
+let activeEra = 2;
+let selLevel = null;
+
+// ===== ERA TABS =====
+function renderTabs() {
+  const c = document.getElementById('eraTabs');
+  c.innerHTML = '';
+  ERAS.forEach(era => {
+    const start = (era.id-1)*20+1, end = era.id*20;
+    let done = 0;
+    for (let lv = start; lv <= end; lv++) if (LV[lv].completed) done++;
+    const tab = document.createElement('button');
+    tab.className = 'era-tab' + (era.id === activeEra ? ' active' : '');
+    tab.innerHTML = `<span class="era-dot" style="background:${era.color}"></span>${era.icon} ${era.name}<span style="font-size:10px;opacity:0.6">${done}/20</span>`;
+    tab.onclick = () => switchEra(era.id);
+    c.appendChild(tab);
+  });
+}
+
+// ===== ERA PANELS =====
+function renderPanels() {
+  const scroll = document.getElementById('eraPanelsScroll');
+  scroll.innerHTML = '';
+
+  const era = ERAS.find(e => e.id === activeEra);
+  document.getElementById('eraLabel').textContent = era.name + '时代';
+  document.getElementById('eraDot').style.background = era.color;
+
+  // Build one era panel for the active era
+  const panel = document.createElement('div');
+  panel.className = 'era-panel';
+
+  const start = (era.id-1)*20+1, end = era.id*20;
+  let done = 0, totalStars = 0;
+  for (let lv = start; lv <= end; lv++) {
+    if (LV[lv].completed) done++;
+    totalStars += LV[lv].stars;
+  }
+  const pct = Math.round(done/20*100);
+
+  // Header
+  const header = document.createElement('div');
+  header.className = 'era-panel-header';
+  header.innerHTML = `
+    <div class="era-panel-title">
+      <span class="icon">${era.icon}</span>
+      <span class="name" style="color:${era.color}">${era.name}</span>
+      <span class="range">${era.range}</span>
+    </div>
+    <div class="era-panel-meta">
+      <span class="done">${done}/20 通关</span>
+      <span class="stars">&#x2B50;${totalStars}/60</span>
+      <span>${pct}%</span>
+    </div>
+  `;
+  panel.appendChild(header);
+
+  // Progress bar
+  const prog = document.createElement('div');
+  prog.className = 'era-panel-progress';
+  prog.innerHTML = `<div class="era-panel-progress-fill" style="width:${pct}%;background:${era.color}"></div>`;
+  panel.appendChild(prog);
+
+  // Body: 5 cols x 4 rows
+  const body = document.createElement('div');
+  body.className = 'era-panel-body';
+
+  for (let lv = start; lv <= end; lv++) {
+    const d = LV[lv];
+    const isBoss = (d.pos === 20);
+    const cell = document.createElement('div');
+    let cls = 'lv-thumb';
+    if (!d.unlocked) cls += ' locked';
+    if (d.completed) cls += ' completed';
+    if (d.current) cls += ' selected';
+    if (isBoss) cls += ' boss';
+    if (d.isStory) cls += ' story';
+    cell.className = cls;
+    cell.dataset.lv = lv;
+
+    // Thumbnail image area with era-colored background
+    let imgContent = '';
+    if (!d.unlocked) {
+      imgContent = `<div class="thumb-img-bg" style="background:${era.bgGrad}"></div>
+        <div class="lock-overlay">&#x1F512;</div>`;
+    } else {
+      // Generate a simple colored thumbnail based on era + level
+      const hueShift = (d.pos / 20) * 40;
+      const sat = d.isBoss ? 80 : 40 + hueShift;
+      const light = d.current ? 40 : 25 + hueShift;
+      imgContent = `<div class="thumb-img-bg" style="background:linear-gradient(135deg,
+        ${era.color}${d.current ? '40' : '20'},
+        ${era.color}${d.completed ? '15' : '08'});
+        ${d.isBoss ? 'filter:hue-rotate(30deg);' : ''}"></div>
+        <span class="thumb-img-icon">${d.unitIcon}</span>`;
+      if (d.isBoss) imgContent += `<div class="thumb-badge boss-badge">BOSS</div>`;
+      if (d.isStory) imgContent += `<div class="thumb-badge story-badge">&#x2605;</div>`;
+    }
+
+    // Stars and difficulty
+    let starsHtml = '';
+    let subHtml = '';
+    if (d.unlocked) {
+      starsHtml = `<span class="thumb-stars">${'&#x2B50;'.repeat(d.stars)}${'&#x2606;'.repeat(3-d.stars)}</span>`;
+      subHtml = `<span style="font-size:8px;color:var(--text-muted)">${d.difficulty}</span>`;
+    }
+
+    cell.innerHTML = `
+      <div class="thumb-img">${imgContent}</div>
+      <div class="thumb-info">
+        <div class="thumb-name">${d.lvName}</div>
+        <div class="thumb-sub">
+          ${starsHtml}
+          ${subHtml}
+        </div>
+      </div>
+    `;
+
+    cell.onclick = () => selectCell(lv);
+    body.appendChild(cell);
+  }
+
+  panel.appendChild(body);
+  scroll.appendChild(panel);
+}
+
+// ===== SELECT CELL =====
+function selectCell(lv) {
+  const d = LV[lv];
+  if (!d || !d.unlocked) return;
+  selLevel = lv;
+
+  // Highlight
+  document.querySelectorAll('.lv-thumb').forEach(c => c.classList.remove('selected'));
+  const cell = document.querySelector(`.lv-thumb[data-lv="${lv}"]`);
+  if (cell) cell.classList.add('selected');
+
+  // Show detail
+  document.getElementById('emptyState').style.display = 'none';
+  const dv = document.getElementById('detailView');
+  dv.style.display = 'flex';
+
+  document.getElementById('detailTitle').textContent = `${d.eraName} · ${d.lvName}`;
+  document.getElementById('detailTitle').style.color = d.eraColor;
+  document.getElementById('dNum').textContent = `第 ${lv} 关 (${d.pos})`;
+  document.getElementById('dDiff').textContent = d.difficulty + (d.isBoss ? ' [BOSS]' : '');
+  document.getElementById('dStars').innerHTML = d.stars > 0 ? '&#x2B50;'.repeat(d.stars)+'&#x2606;'.repeat(3-d.stars) : '<span style="color:var(--text-muted)">未通关</span>';
+  document.getElementById('dRec').textContent = d.recLevel;
+  document.getElementById('dFaction').textContent = d.faction || '无主之地';
+  document.getElementById('dFaction').style.color = d.faction ? '#ffa500' : 'var(--text-muted)';
+
+  document.getElementById('dEnv').innerHTML =
+    `<div class="env-tag"><span class="tl">天气:</span> ${d.weather}</div>` +
+    `<div class="env-tag"><span class="tl">地形:</span> ${d.terrain}</div>` +
+    `<div class="env-tag"><span class="tl">能量场:</span> ${d.energyField}</div>` +
+    `<div class="env-tag"><span class="tl">时段:</span> ${d.timeOfDay}</div>`;
+
+  document.getElementById('dEnemy').innerHTML =
+    '敌方单位：' + d.enemies.join('、') + '<br>' +
+    '可能掉落：纳米材料、能量块、合金' + (d.completed ? ' <span style="color:#44ff88">&#x2713;</span>' : '');
+
+  document.getElementById('dDesc').textContent =
+    d.isBoss ? `该时代最终Boss关「${d.lvName}」！建议等级 ${d.recLevel} 以上。环境条件恶劣，敌方增援频繁。` :
+    d.isStory ? `剧情任务关卡「${d.lvName}」。完成此关将推进主线剧情，解锁新势力关系。` :
+    `标准作战关卡「${d.lvName}」。${d.weather}条件下进行${d.terrain}地形作战。${d.faction ? '该区域已被 '+d.faction+' 占领。' : ''}`;
+}
+
+function closeDetail() {
+  selLevel = null;
+  document.querySelectorAll('.lv-thumb').forEach(c => c.classList.remove('selected'));
+  document.getElementById('emptyState').style.display = 'flex';
+  document.getElementById('detailView').style.display = 'none';
+}
+
+function switchEra(id) {
+  activeEra = id;
+  selLevel = null;
+  renderTabs();
+  renderPanels();
+  closeDetail();
+}
+
+function enterNext() {
+  for (let lv = 1; lv <= 100; lv++) {
+    if (LV[lv] && LV[lv].current) {
+      alert('当前在第 ' + lv + ' 关，准备进入下一关');
+      return;
+    }
+  }
+}
+function enterBoss() {
+  const era = ERAS.find(e => e.id === activeEra);
+  selectCell(era.id * 20);
+}
+function enterSel() {
+  if (selLevel) alert('进入第 ' + selLevel + ' 关');
+}
+function autoDeploy() {
+  if (selLevel) alert('自动部署至第 ' + selLevel + ' 关');
+}
+
+// ===== STARFIELD =====
+(function(){
+  const canvas = document.getElementById('starfield');
+  const ctx = canvas.getContext('2d');
+  let stars = [];
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    stars = [];
+    for (let i = 0; i < 80; i++) {
+      stars.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, r: Math.random()*1+0.3, a: Math.random()*0.3+0.1 });
+    }
+  }
+  function draw() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    stars.forEach(s => {
+      ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+      ctx.fillStyle = `rgba(180,210,255,${s.a})`; ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  window.addEventListener('resize', resize);
+  resize(); draw();
+})();
+
+// ===== INIT =====
+renderTabs();
+renderPanels();
+</script>
+</body>
+</html>
