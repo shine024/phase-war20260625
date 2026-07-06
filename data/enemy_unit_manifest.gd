@@ -795,9 +795,11 @@ static func _era_from_enemy_id(enemy_id: String) -> int:
 		return 1
 	if enemy_id.contains("cold"):
 		return 2
-	if enemy_id.contains("modern"):
+	# v7.x 修复：mod_ 前缀（如 mod_fort_*）不会 contains("modern")，需显式前缀判定
+	if enemy_id.contains("modern") or enemy_id.begins_with("mod_"):
 		return 3
-	if enemy_id.contains("future") or enemy_id.contains("near"):
+	# v7.x 修复：fut_ 前缀（如 fut_fort_*）不会 contains("future")，需显式前缀判定
+	if enemy_id.contains("future") or enemy_id.contains("near") or enemy_id.begins_with("fut_"):
 		return 4
 	return 0
 
@@ -809,9 +811,14 @@ static func _era_from_fort_id(fort_id: String) -> int:
 		return 1
 	if fort_id.contains("cold"):
 		return 2
-	if fort_id.contains("modern"):
+	# v7.x 修复：堡垒 id 用 mod_ 前缀（mod_fort_citadel/mod_fort_phalanx），不含 "modern" 子串——
+	# 原仅 contains("modern") 判定会让 mod_fort_* 全部回退到 era=0（一战），现代堡垒混入一战池。
+	if fort_id.contains("modern") or fort_id.begins_with("mod_"):
 		return 3
-	if fort_id.contains("future"):
+	# v7.x 修复：堡垒 id 用 fut_ 前缀（fut_fort_ion/fut_fort_shield），不含 "future" 子串——
+	# 原仅 contains("future") 判定会让 fut_fort_*（含 3000 血能量护盾）全部回退到 era=0（一战），
+	# 近未来堡垒混入第 1 关。补 begins_with("fut_") 前缀判定。
+	if fort_id.contains("future") or fort_id.begins_with("fut_"):
 		return 4
 	return 0
 

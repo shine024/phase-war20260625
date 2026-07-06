@@ -283,8 +283,22 @@ func _get_nearby_units(origin: Node2D, radius: float, target_group: String) -> A
 	var is_player: bool = target_group == "player_units"
 	return get_slot_targets(origin, false, is_player)
 
+## v7.x: 查询某单位当前激活的光环类型列表（供 UI 显示用）
+## 返回 Array[int]，每项为 AuraType 枚举值；单位无光环返回空数组。用于情报面板查询某单位当前激活的光环类型列表（供 UI 显示）。
+func get_unit_aura_types(unit: Node2D) -> Array[int]:
+	var empty: Array[int] = []
+	if unit == null or not is_instance_valid(unit):
+		return empty
+	var unit_id: int = unit.get_instance_id()
+	if not _unit_auras.has(unit_id):
+		return empty
+	var aura_map: Dictionary = _unit_auras[unit_id]
+	var result: Array[int] = []
+	for aura_type in aura_map.keys():
+		result.append(int(aura_type))
+	return result
+
 ## 清理所有光环
-func clear_all() -> void:
 	if _global_tick_timer != null and is_instance_valid(_global_tick_timer):
 		_global_tick_timer.stop()
 	_aura_timers.clear()

@@ -37,17 +37,6 @@ text = "势力控制"
 [node name="DifficultyLabel" type="Label" parent="VBoxContainer"]
 text = "难度倍数"
 
-[node name="LawLabel" type="Label" parent="VBoxContainer"]
-text = "可用战争魔法"
-
-[node name="LawScrollContainer" type="ScrollContainer" parent="VBoxContainer"]
-size_flags_vertical = 3
-custom_minimum_size = Vector2(0, 100)
-
-[node name="LawListContainer" type="VBoxContainer" parent="VBoxContainer/LawScrollContainer"]
-size_flags_horizontal = 2
-size_flags_vertical = 3
-
 [node name="EnterButton" type="Button" parent="VBoxContainer"]
 text = "进入关卡"
 custom_minimum_size = Vector2(0, 50)

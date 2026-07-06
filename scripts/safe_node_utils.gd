@@ -8,7 +8,7 @@ static func safe_queue_free(node: Node) -> void:
 	if not is_instance_valid(node):
 		return
 	# 检查节点是否已经在释放队列中
-	if not is_inside_tree():
+	if not node.is_inside_tree():
 		return
 	node.queue_free()
 
@@ -122,5 +122,6 @@ static func create_auto_cleanup_timer(delay: float, callback: Callable) -> Timer
 	timer.timeout.connect(func():
 		# Timer会在timeout后自动被父节点清理
 		# 不需要显式queue_free
+		pass
 	)
 	return timer

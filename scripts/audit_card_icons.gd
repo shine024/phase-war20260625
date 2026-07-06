@@ -28,25 +28,26 @@ static func _resource_exists(path: String) -> bool:
 	return ResourceLoader.exists(path)
 
 static func _main() -> void:
-	var all_cards := DefaultCards.get_all_cards()
+	var all_ids: Array = DefaultCards.get_all_blueprint_ids()
 	# [LOG-v5.1] print("=== 战斗卡 Icon 诊断 ===")
-	# [LOG-v5.1] print("总计: %d 张" % all_cards.size())
+	# [LOG-v5.1] print("总计: %d 张" % all_ids.size())
 	# [LOG-v5.1] print()
-	
+
 	var mismatch_count := 0
 	var ok_count := 0
 	var error_count := 0
 	var placeholder_count := 0
-	
-	for card in all_cards:
+
+	for card_id_raw in all_ids:
+		var card: CardResource = DefaultCards.get_card_by_id(String(card_id_raw))
 		if card == null or not (card is CardResource):
 			continue
 		if card.card_type != GC.CardType.COMBAT_UNIT:
 			continue
-		
-		var card_id := card.card_id
-		var platform_id := card.source_platform_id
-		var archetype_id := card_id
+
+		var card_id: String = card.card_id
+		var platform_id: String = String(card.source_platform_id)
+		var archetype_id: String = card_id
 		
 		# 尝试解析图标路径
 		var icon_path := UiAssetLoader.card_icon_path_for(card)
@@ -55,11 +56,11 @@ static func _main() -> void:
 		var details := ""
 		
 		if icon_path.is_empty():
-			status := "MISSING"
+			status = "MISSING"
 			details = "无解析路径"
 			error_count += 1
 		elif "_enemy_placeholder" in icon_path:
-			status := "PLACEHOLDER"
+			status = "PLACEHOLDER"
 			details = "使用默认占位图"
 			placeholder_count += 1
 		elif "/units/" in icon_path:
@@ -67,29 +68,29 @@ static func _main() -> void:
 			var parts := icon_path.split("/")
 			var fname := parts[-1].get_basename()
 			if fname.begins_with("vis_enemy"):
-				status := "ENEMY_VIS"
+				status = "ENEMY_VIS"
 				details = fname
 				mismatch_count += 1
 			elif fname.begins_with("vis_player"):
-				status := "PLAYER_VIS"
+				status = "PLAYER_VIS"
 				details = fname
 				ok_count += 1
 			elif fname.begins_with("foe_"):
-				status := "FOE_ALIAS"
+				status = "FOE_ALIAS"
 				details = fname
 				mismatch_count += 1
 			else:
-				status := "UNITS_FILE"
+				status = "UNITS_FILE"
 				details = fname
 				ok_count += 1
 		elif "/card_icons/" in icon_path and not "units" in icon_path:
 			var parts := icon_path.split("/")
 			var fname := parts[-1].get_basename()
-			status := "ROOT_FILE"
+			status = "ROOT_FILE"
 			details = fname
 			ok_count += 1
 		else:
-			status := "OTHER"
+			status = "OTHER"
 			details = icon_path
 		
 		# 输出有问题的卡

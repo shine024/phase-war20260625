@@ -375,30 +375,6 @@ theme_override_colors/font_color = Color(0.88, 0.82, 0.65, 1)
 theme_override_font_sizes/font_size = 12
 autowrap_mode = 2
 
-[node name="LawSection" type="PanelContainer" parent="Margin/VBox/TabBar/TabInfo/InfoVBox"]
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_section")
-
-[node name="LawVBox" type="VBoxContainer" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/LawSection"]
-layout_mode = 2
-theme_override_constants/separation = 4
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 6
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 6
-
-[node name="LawTitle" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/LawSection/LawVBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.4, 0.7, 1, 1)
-theme_override_font_sizes/font_size = 13
-text = "法则影响"
-
-[node name="LawLabel" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/LawSection/LawVBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.75, 0.8, 0.9, 1)
-theme_override_font_sizes/font_size = 12
-autowrap_mode = 2
-
 [node name="NurtureSection" type="PanelContainer" parent="Margin/VBox/TabBar/TabInfo/InfoVBox"]
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_section")

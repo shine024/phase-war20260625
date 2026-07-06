@@ -114,10 +114,20 @@ func _refresh_card_list() -> void:
 			_inst_arr.append(sid)
 
 	## 按 card_id 加载模板 CardResource
+	## v7.x 修复：原版 DefaultCards.get_card_by_id 查不到模板就 continue，导致动态卡/迁移卡
+	## （InstanceRegistry 里有实例，但模板未注册进 DefaultCards 缓存）被静默丢弃——
+	## 背包能看到这些卡（走实例），但改造面板看不到。现在模板查不到时回退取首个实例，
+	## 用实例的模板字段（display_name/combat_kind/rarity）渲染。
 	for card_id in card_entries:
 		var card: CardResource = DefaultCards.get_card_by_id(card_id)
 		if card == null:
-			continue
+			# 模板查不到 → 回退取 Registry 首个同名实例（实例 clone 自模板，模板字段都在）
+			if ir != null and ir.has_method("get_instances_by_card_id"):
+				var _fb_ids: Array = ir.get_instances_by_card_id(card_id)
+				if not _fb_ids.is_empty() and ir.has_method("get_instance"):
+					card = ir.get_instance(String(_fb_ids[0]))
+			if card == null:
+				continue
 		if card.card_type != GC.CardType.COMBAT_UNIT:
 			continue
 		card_entries[card_id]["card"] = card
@@ -227,7 +237,11 @@ func _create_card_item(card: CardResource, instance_card: CardResource = null) -
 	btn.pressed.connect(func(): _on_card_selected(instance_card))
 	return btn
 
-## v7.1: 显示未安装的改造（仅显示对应兵种可用的）
+## v7.x 重构：显示所有已解锁（持有图纸）的改造，选了战斗卡时用状态标识区分可用性。
+## 数据源从 ModificationRegistry.get_mods_for_card（硬编码 card_id 前缀白名单，不全）
+## 改为从 IntelItemBag 读所有改造图纸（与背包"改造"Tab 同口径）——
+## 这样背包里有的改造在面板里一定能看到，不会再出现"背包有、面板没有"。
+## 兵种适用性由 _create_mod_item 的"⊘该兵种不适用"灰态标识，不再从列表里剔除。
 func _refresh_mod_list() -> void:
 	if not selected_card:
 		return
@@ -235,22 +249,38 @@ func _refresh_mod_list() -> void:
 	for child in mod_list_container.get_children():
 		child.queue_free()
 
-	## 获取可用改造（先精确匹配card_id，再按unit_type匹配）
-	var available_mods: Array = []
-	if ModificationRegistry and ModificationRegistry.has_method("get_mods_for_card"):
-		available_mods = ModificationRegistry.get_mods_for_card(selected_card.card_id)
-	if available_mods.is_empty() and ModificationRegistry and ModificationRegistry.has_method("get_for_unit_type"):
-		available_mods = ModificationRegistry.get_for_unit_type(selected_card.combat_kind)
-	if available_mods.is_empty():
+	## 从 IntelItemBag 读所有已解锁改造图纸（照搬 backpack_panel.refresh_intel_tab 的口径）
+	var bag = get_node_or_null("/root/IntelItemBag")
+	var unlocked_mod_ids: Array = []
+	if bag and bag.has_method("get_all_inventory"):
+		var inv: Dictionary = bag.get_all_inventory()
+		for item_type in inv.keys():
+			if int(inv[item_type]) <= 0:
+				continue
+			# 仅处理改造图纸（blueprint_ 前缀，排除 blueprint_evol_ 进化图纸）
+			if not IntelManualItems.is_mod_blueprint(item_type):
+				continue
+			var mod_id: String = BlueprintDefinitions.extract_mod_id(item_type)
+			if not mod_id.is_empty() and not unlocked_mod_ids.has(mod_id):
+				unlocked_mod_ids.append(mod_id)
+
+	if unlocked_mod_ids.is_empty():
 		var empty_label = Label.new()
-		empty_label.text = "该兵种暂无可用改造"
+		empty_label.text = "暂无已解锁改造\n（获得改造图纸后，所有已解锁改造会显示于此）"
 		empty_label.add_theme_font_size_override("font_size", 12)
 		empty_label.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.8))
 		mod_list_container.add_child(empty_label)
 		return
 
-	for mod_id in available_mods:
+	## 按稀有度排序（高→低），让玩家先看到珍贵改造
+	unlocked_mod_ids.sort_custom(func(a: String, b: String):
+		return _rarity_sort_value(String(ModificationRegistry.get_data(a).get("rarity", "common"))) \
+			> _rarity_sort_value(String(ModificationRegistry.get_data(b).get("rarity", "common"))))
+
+	for mod_id in unlocked_mod_ids:
 		var mod_data = ModificationRegistry.get_data(mod_id)
+		if mod_data.is_empty():
+			continue  # 找不到改造数据（旧/无效 mod_id），跳过避免渲染异常
 		var item = _create_mod_item(mod_id, mod_data)
 		mod_list_container.add_child(item)
 
@@ -265,7 +295,12 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 	var rarity: String = String(mod_data.get("rarity", "common"))
 	var rarity_col := _rarity_color(rarity)
 	var is_installed := _is_mod_installed(mod_id)
-	var can_install := _can_install_mod(mod_id)
+	var is_applicable := _is_mod_applicable_to_card(mod_id)
+	# 不适用时跳过 can_install_modification（它会因改造数据存在但兵种不符而返回误判），
+	# 直接 block_reason = "不适用该兵种"；适用时才查具体 block 原因（冲突/槽满/情报不足）。
+	var block_reason := ""
+	if is_applicable and not is_installed:
+		block_reason = _get_install_block_reason(mod_id)
 
 	var sb_n := StyleBoxFlat.new()
 	sb_n.bg_color = Color(0.06, 0.10, 0.18, 0.6)
@@ -303,14 +338,18 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 		tex_rect.tooltip_text = mod_data.get("name", mod_id)
 		row1.add_child(tex_rect)
 	row1.add_child(_make_label(mod_data.get("name", mod_id), 13, Color(0.91, 0.93, 0.96, 1), true))
+	# v7.x 四态状态标识：已安装 / 可安装 / ⊘该兵种不适用 / ✗冲突·槽满·情报不足
 	var status_col := Color(0, 0.94, 1, 0.9)
 	var status_text := "可安装"
 	if is_installed:
 		status_col = Color(0.2, 0.9, 0.4, 1)
 		status_text = "✓已安装"
-	elif not can_install:
+	elif not is_applicable:
+		status_col = Color(0.5, 0.5, 0.55, 0.7)
+		status_text = "⊘该兵种不适用"
+	elif not block_reason.is_empty():
 		status_col = Color(0.9, 0.3, 0.3, 1)
-		status_text = "✗冲突"
+		status_text = "✗%s" % block_reason
 	row1.add_child(_make_label(status_text, 10, status_col, false))
 	vbox.add_child(row1)
 
@@ -319,10 +358,36 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 		vbox.add_child(_make_label("原型：%s" % proto, 10, Color(0.5, 0.55, 0.65, 0.85), true))
 
 	btn.add_child(vbox)
-	btn.disabled = is_installed or not can_install
+	# 禁用规则：已安装、不适用、或被 block（冲突/槽满/情报不足）时禁用点击
+	btn.disabled = is_installed or not is_applicable or not block_reason.is_empty()
 	btn.tooltip_text = "%s\n%s\n稀有度：%s" % [proto, String(mod_data.get("description", "")), rarity]
 	btn.pressed.connect(func(): _on_mod_selected(mod_id, mod_data))
 	return btn
+
+## 判断改造是否适用于选中卡的兵种。
+## v7.x：数据源切到 IntelItemBag 后，列表会显示所有已解锁改造（不限兵种），
+## 此函数用于在 _create_mod_item 里给不适用的改造标灰"⊘该兵种不适用"。
+## 复用 ModificationRegistry 的 get_mods_for_card（card_id 精筛）+ get_for_unit_type（combat_kind 兜底）。
+func _is_mod_applicable_to_card(mod_id: String) -> bool:
+	if not selected_card:
+		return true  # 无选中卡时不拦截，统一显示为"可安装"
+	if ModificationRegistry and ModificationRegistry.has_method("get_mods_for_card"):
+		if mod_id in ModificationRegistry.get_mods_for_card(selected_card.card_id):
+			return true
+	if ModificationRegistry and ModificationRegistry.has_method("get_for_unit_type"):
+		if mod_id in ModificationRegistry.get_for_unit_type(selected_card.combat_kind):
+			return true
+	return false
+
+## 获取改造安装的阻断原因（空串表示可安装）。
+## v7.x：透传 can_install_modification 的 reason，让"✗冲突"细分为冲突/槽满/情报不足。
+func _get_install_block_reason(mod_id: String) -> String:
+	if not selected_card:
+		return ""
+	var check_result: Dictionary = selected_card.can_install_modification(mod_id)
+	if check_result.get("can_install", true):
+		return ""
+	return String(check_result.get("reason", "冲突"))
 
 func _update_card_info() -> void:
 	if card_info_panel == null:
@@ -530,14 +595,16 @@ func _install_modification(mod_id: String) -> void:
 ## ─────────────────────────────────────────────
 
 func _on_card_selected(card: CardResource) -> void:
-	# v7.3: 实例化养成——改造必须写到实例对象。选中无 instance_id 的卡（模板/残留）
-	# 会把改造写到模板污染单例，导致背包/装备读的实例（空）与改造脱节。
-	# 拒绝选中此类卡并明确告警。
-	if card != null and card.instance_id.is_empty():
-		push_warning("[modification_panel] 选中卡 '%s' 无 instance_id（非实例，可能为模板），拒绝选中以避免改造污染模板" % card.card_id)
+	# v7.x 修复：原版收到 instance_id 为空的卡（模板/残留）直接 return 并报错，
+	# 导致独立改造面板点击"无实例但列表里显示的卡"时毫无反应。
+	# 列表项绑定的 instance_card（_create_card_item:227）在 Registry 缺失该实例
+	# （但 SaveManager 兜底队列里有）时为 null → 回退到模板 → 被原守卫拦死。
+	# 现复用 _resolve_instance_or_warn 回退查同名实例；仍查不到才真的拒绝。
+	var resolved_card: CardResource = _resolve_instance_or_warn(card)
+	if resolved_card == null:
 		_show_result("该卡牌实例不可用，无法改造（请重新获取该卡）")
 		return
-	selected_card = card
+	selected_card = resolved_card
 	selected_mod_id = ""
 	_refresh_mod_list()
 	_update_card_info()
@@ -681,13 +748,38 @@ func _format_grant_slot(grant: Dictionary) -> String:
 	return ModEffectLabels.format_grant_slot(grant)
 
 
+## 解析卡牌为实例：instance_id 非空直接用；为空（模板/残留）则回退查 Registry 同名实例。
+## 返回 null 表示确实无可用实例（此时调用方 return）。
+## v7.x 修复：原 set_selected_card/_on_card_selected 收到 instance_id 为空的卡直接 return，
+## 导致改造 Tab 永远空。但背包 backpack_data 在 Registry 缺失某实例时会回退到 DefaultCards 模板
+## （instance_id 空），而该 card_id 的实例可能其实存在于 Registry（只是引用对不上）——
+## 改造数据挂在实例上，不回退就永远读不到。此处复用战场 _resolve_source_instance_card 的回退链模式。
+func _resolve_instance_or_warn(card: CardResource) -> CardResource:
+	if card == null:
+		return null
+	if not card.instance_id.is_empty():
+		return card
+	# instance_id 为空（模板/残留）→ 按 card_id 查首个同名实例
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	if ir != null and ir.has_method("get_instances_by_card_id") and not card.card_id.is_empty():
+		var insts: Array = ir.get_instances_by_card_id(card.card_id)
+		if not insts.is_empty() and ir.has_method("get_instance"):
+			var fb: CardResource = ir.get_instance(String(insts[0]))
+			if fb != null:
+				push_warning("[modification_panel] 卡 '%s' 无 instance_id，已回退到同名实例 '%s'" % [card.card_id, fb.instance_id])
+				return fb
+	push_warning("[modification_panel] 卡 '%s' 无 instance_id 且 Registry 无同名实例，拒绝选中" % card.card_id)
+	return null
+
 ## 供外部调用的接口
 func set_selected_card(card: CardResource) -> void:
-	# v7.3: 实例化养成——拒绝无 instance_id 的卡（模板/残留），避免改造污染单例
-	if card != null and card.instance_id.is_empty():
-		push_warning("[modification_panel] set_selected_card: 卡 '%s' 无 instance_id，拒绝选中" % card.card_id)
+	# v7.x 修复：原版收到 instance_id 为空的卡直接 return，导致嵌入模式（背包→情报面板改造 Tab）
+	# 改造 Tab 永远空。现回退查同名实例（Registry 缺失某实例但 backpack_data 回退到模板的场景）。
+	var resolved_card: CardResource = _resolve_instance_or_warn(card)
+	if resolved_card == null:
+		_show_result("该卡牌实例不可用，无法改造（请重新获取该卡）")
 		return
-	selected_card = card
+	selected_card = resolved_card
 	selected_mod_id = ""
 	# v7.x 修复（Bug2）：非嵌入模式下进入面板时补刷卡片列表。
 	# 根因：面板被 ui_lazy_loader 缓存（整个会话只实例化一次），_refresh_card_list 只在首帧 _ready 跑一次。
@@ -765,3 +857,14 @@ func _rarity_color(rarity: String) -> Color:
 		"legendary": return Color(1.0, 0.78, 0.2)
 		"mythic": return Color(1.0, 0.42, 0.62)
 		_: return Color(0.5, 0.5, 0.55)
+
+## 稀有度排序权重（mythic 最大，用于已解锁改造列表按稀有度降序排列）
+func _rarity_sort_value(rarity: String) -> int:
+	match rarity:
+		"common": return 1
+		"uncommon": return 2
+		"rare": return 3
+		"epic": return 4
+		"legendary": return 5
+		"mythic": return 6
+		_: return 0

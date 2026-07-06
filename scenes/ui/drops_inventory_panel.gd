@@ -142,7 +142,7 @@ func _add_lore_item(grid: GridContainer, lore_data: Dictionary) -> void:
 	# 描述
 	var desc_label = Label.new()
 	desc_label.text = lore_data.get("description", "")
-	desc_label.autowrap_mode = TextServer.AUTOWORD
+	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc_label.custom_minimum_size = Vector2(180, 0)
 	desc_label.add_theme_font_size_override("font_size", 10)
 	desc_label.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85, 0.9))
@@ -225,7 +225,7 @@ func _add_lore_item_compact(grid: GridContainer, lore_data: Dictionary) -> void:
 	var name_label = Label.new()
 	name_label.text = lore_data.get("name", "未知情报")
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_label.autowrap_mode = TextServer.AUTOWORD
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	name_label.custom_minimum_size = Vector2(100, 0)
 	name_label.add_theme_font_size_override("font_size", 10)
 	name_label.add_theme_color_override("font_color", Color(0.95, 0.85, 0.5, 1.0))
@@ -243,7 +243,7 @@ func _add_material_item(grid: GridContainer, item_id: String, amount: int) -> vo
 
 	var icon = TextureRect.new()
 	icon.custom_minimum_size = Vector2(40, 40)
-	icon.expand_mode = TextureRect.EXPAND_FIT_WIDTH_RATIO
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	vbox.add_child(icon)
 
 	var label = Label.new()
@@ -263,7 +263,7 @@ func _add_blueprint_item(grid: GridContainer, card_id: String, count: int) -> vo
 
 	var icon = TextureRect.new()
 	icon.custom_minimum_size = Vector2(40, 40)
-	icon.expand_mode = TextureRect.EXPAND_FIT_WIDTH_RATIO
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	vbox.add_child(icon)
 
 	var card_name = _get_blueprint_fragment_display_name(card_id)

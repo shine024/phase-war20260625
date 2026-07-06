@@ -1,5 +1,5 @@
 extends Control
-## 剧情对话面板（v6.8 底部条带·沉浸式重做 / v7.x 美化增强）
+## 剧情对话面板（v6.8 底部条带·沉浸式重做 / v7.x 美化增强 / v7.x 双立绘规范化）
 ##
 ## 显示角色对话，支持多句队列播放、分支选项、同关多剧情排队。
 ## v6.8: 删除剧情模式后，本面板仅服务 v6.7 自由模式关卡剧情任务
@@ -7,11 +7,17 @@ extends Control
 ## v7.x 美化:
 ##   - 头像统一圆形遮罩（修复 200px/512px 混合尺寸导致"一张大一张小"）
 ##   - 左侧角色色光带 + 章节banner + 打字机逐字 + 徽章入场动画
+## v7.x 双立绘规范化（Galgame 范式）:
+##   - 左右各一个全身立绘位（540×720），我方陈末恒在左、NPC/Boss 恒在右
+##   - 当前说话者立绘全亮前移，未说话者暗化后退；中立 speaker 两侧都暗化
+##   - 96 圆形徽章位置随说话者方位浮动（player→条带左上, npc/enemy→条带右上）
+##   - speaker→阵营/方位/立绘/配色由 SpeakerRegistry 集中管理，对话数据零改动
 ##
-## 布局（底部条带·沉浸式，参考 JRPG 底部对话框范式，配色用 Phase War 霓虹深色）:
-##   - 战场在上半屏始终可见（暗化层 alpha 0.65，对话叠加演出）
+## 布局（双立绘 + 底部对话框，配色用 Phase War 霓虹深色）:
+##   - 战场在中场可见（暗化层 alpha 0.65，对话叠加演出）
+##   - 左右立绘贴屏幕两侧（不挡中部 920 宽底部对话框）
 ##   - 对话条带锚定屏幕底部居中，霓虹青紫描边 + 阴影发光 + 左侧角色色光带
-##   - 头像徽章从条带左上角探出（圆形遮罩，角色色描边 + 外发光）
+##   - 头像徽章从条带左上/右上角探出（按说话者方位浮动，圆形遮罩 + 角色色描边）
 ##   - 章节标题（半透明banner）浮在条带正上方
 ##   - 说话者名牌钉在条带上沿，按角色变色
 ##   - 对话正文逐字浮现（打字机），点击可跳过补全
@@ -19,6 +25,8 @@ extends Control
 ##   - 点击屏幕任意处推进对话（选项节点显示时禁用，防误触）
 
 const DesignTokens = preload("res://resources/design_tokens.gd")
+## speaker 注册表（阵营/方位/立绘路径/配色集中管理）
+const SpeakerRegistry = preload("res://data/speaker_registry.gd")
 ## 圆形头像遮罩 shader（方形纹理裁圆，配合徽章角色色描边）
 const _CircleMaskShader := preload("res://shaders/portrait_circle_mask.gdshader")
 
@@ -61,6 +69,16 @@ var _typewriter_tween: Tween = null            ## 打字机逐字动画（v7.x �
 var _badge_enter_tween: Tween = null           ## 徽章入场动画（v7.x 美化）
 var _is_typing: bool = false                   ## 当前是否正在逐字播放（点击时跳过补全）
 
+# v7.x 双立绘：左右立绘层（贴屏幕左右两侧，全身立绘 540×720）
+var _left_stage: Control = null                ## 左立绘容器（我方陈末）
+var _left_portrait: TextureRect = null         ## 左立绘图片
+var _right_stage: Control = null               ## 右立绘容器（NPC/Boss）
+var _right_portrait: TextureRect = null        ## 右立绘图片
+var _stage_tween: Tween = null                 ## 立绘切换过渡动画
+# 立绘层最后绑定的 speaker（避免同 speaker 重复触发过渡动画）
+var _left_stage_speaker: String = ""
+var _right_stage_speaker: String = ""
+
 # ── 布局常量（屏幕坐标，基于 1280x720）──
 # v7.x 布局修复：条带浮在中场，避让底部 HUD（BattleBottomBar 占 y=596~720，高 124px）
 # _STRIP_BOTTOM_GAP=150 → 条带底边 y=570（HUD 顶部 596 之上，零重叠）
@@ -74,30 +92,15 @@ const _ACCENT_BAR_W := 5.0           ## 左侧角色色光带宽度（v7.x 美�
 const _HUD_BOTTOM_CLEARANCE := 124.0
 # 打字机逐字速度（秒/字，v7.x 美化）
 const _TYPEWRITER_SEC_PER_CHAR := 0.025
-
-## 角色名 → portrait路径映射表
-const _PORTRAIT_MAP := {
-	"指挥官": "res://ui/portraits/player.png",
-	"陈末": "res://ui/portraits/player.png",
-	"托马斯": "res://ui/portraits/thomas.png",
-	"soldier_thomas": "res://ui/portraits/soldier_thomas.png",
-	"索菲亚": "res://ui/portraits/sophia.png",
-	"维克多": "res://ui/portraits/victor.png",
-	"艾莉亚": "res://ui/portraits/aria.png",
-	"诺瓦": "res://ui/portraits/nova.png",
-	"洛克": "res://ui/portraits/locke.png",
-	"林薇": "res://ui/portraits/linwei.png",
-	"扎克": "res://ui/portraits/zack.png",
-	"海伦": "res://ui/portraits/helen.png",
-	"真实者": "res://ui/portraits/realist.png",
-	"铁血男爵": "res://ui/portraits/boss_baron.png",
-	"钢铁元帅": "res://ui/portraits/boss_marshall.png",
-	"相位之主": "res://ui/portraits/boss_phase_lord.png",
-	"守护者": "res://ui/portraits/boss_guardian.png",
-	"虚空领主": "res://ui/portraits/boss_void_lord.png",
-	"镜像": "res://ui/portraits/boss_mirror.png",
-	"镜像守护者": "res://ui/portraits/boss_mirror.png",
-}
+# v7.x 双立绘规范：全身立绘规格（产出标准，旧图任意尺寸自动适配）
+const _STAGE_W := 540.0              ## 立绘宽（占屏幕 540/1280 ≈ 42%）
+const _STAGE_H := 720.0              ## 立绘高（满屏高）
+# 立绘状态：说话者全亮前移 / 非说话者暗化后退
+const _STAGE_ACTIVE_MODULATE := 1.0
+const _STAGE_DIM_MODULATE := 0.35
+const _STAGE_ACTIVE_SCALE := 1.0
+const _STAGE_DIM_SCALE := 0.95
+const _STAGE_TRANSITION_SEC := 0.2
 
 func _ready() -> void:
 	_build_ui()
@@ -116,6 +119,8 @@ func _exit_tree() -> void:
 		_typewriter_tween.kill()
 	if _badge_enter_tween != null and _badge_enter_tween.is_valid():
 		_badge_enter_tween.kill()
+	if _stage_tween != null and _stage_tween.is_valid():
+		_stage_tween.kill()
 
 # ═══════════════════════════════════════════════════════════════════
 # UI 构建（v6.8 底部条带·沉浸式）
@@ -135,6 +140,10 @@ func _build_ui() -> void:
 	_dim_layer.mouse_filter = Control.MOUSE_FILTER_STOP
 	_dim_layer.gui_input.connect(_on_advance_input)
 	add_child(_dim_layer)
+
+	# v7.x 双立绘：左右立绘层贴屏幕左右两侧（在条带/banner/徽章之前添加，确保位于底部图层）
+	_build_left_stage()
+	_build_right_stage()
 
 	# ── 以下装饰节点统一锚定"底部中心点"，用像素偏移定位到条带区域 ──
 	# 章节 banner（半透明深色底条 + 角色色细描边，浮在条带正上方居中，v7.x 美化）
@@ -293,6 +302,130 @@ func _place_rect(c: Control, left: float, right: float, top: float, bottom: floa
 	c.offset_right = right
 	c.offset_top = top
 	c.offset_bottom = bottom
+
+# ═══════════════════════════════════════════════════════════════════
+# v7.x 双立绘层构建与切换
+# ═══════════════════════════════════════════════════════════════════
+
+## 构建左立绘层（占屏幕左侧 540×720 竖条，纹理居中保持比例）
+## 关键：限制 stage 自身区域为屏幕左 540px，立绘 TextureRect 在该区域内居中，
+## 避免左右两侧立绘都跑到屏幕中央互相覆盖。
+func _build_left_stage() -> void:
+	_left_stage = Control.new()
+	_left_stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# 锚定屏幕左侧竖条：x=[0, 540], y=[0, 720]（屏幕 1280×720）
+	# offset 定位：anchor 全 0（左上角原点），offset 直接是像素坐标
+	_left_stage.anchor_left = 0.0
+	_left_stage.anchor_top = 0.0
+	_left_stage.anchor_right = 0.0
+	_left_stage.anchor_bottom = 0.0
+	_left_stage.offset_left = 0.0
+	_left_stage.offset_top = 0.0
+	_left_stage.offset_right = _STAGE_W  # 540
+	_left_stage.offset_bottom = _STAGE_H  # 720
+	add_child(_left_stage)
+	_left_portrait = _make_stage_portrait()
+	_left_stage.add_child(_left_portrait)
+
+## 构建右立绘层（占屏幕右侧 540×720 竖条，纹理居中保持比例）
+func _build_right_stage() -> void:
+	_right_stage = Control.new()
+	_right_stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# 锚定屏幕右侧竖条：x=[740, 1280], y=[0, 720]（中间 540~740 留 200px 给对话框）
+	_right_stage.anchor_left = 0.0
+	_right_stage.anchor_top = 0.0
+	_right_stage.anchor_right = 0.0
+	_right_stage.anchor_bottom = 0.0
+	_right_stage.offset_left = 1280.0 - _STAGE_W  # 740
+	_right_stage.offset_top = 0.0
+	_right_stage.offset_right = 1280.0  # 屏幕右边
+	_right_stage.offset_bottom = _STAGE_H  # 720
+	add_child(_right_stage)
+	_right_portrait = _make_stage_portrait()
+	_right_stage.add_child(_right_portrait)
+
+## 创建一个立绘 TextureRect（贴屏幕一侧、纵向占满 720、横向 540 居中保持比例）
+func _make_stage_portrait() -> TextureRect:
+	var tex := TextureRect.new()
+	tex.set_anchors_preset(Control.PRESET_FULL_RECT)  # 占满父级（父级是 FULL_RECT 的 _left/_right_stage）
+	tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE  # 忽略源图尺寸（适配任意大小）
+	tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED  # 保持比例居中
+	tex.custom_minimum_size = Vector2(_STAGE_W, _STAGE_H)
+	tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tex.visible = false  # 默认隐藏，speaker 切换时显示
+	tex.modulate = Color(1, 1, 1, _STAGE_DIM_MODULATE)  # 默认暗化
+	return tex
+
+## 切换说话者时更新左右立绘状态（亮/暗/scale + 立绘图片加载）
+## 由 _show_current_dialogue 调用
+func _update_portrait_stages(speaker: String) -> void:
+	var side: String = SpeakerRegistry.get_side(speaker)
+	var portrait_path: String = SpeakerRegistry.get_portrait_path(speaker)
+
+	# ── 加载立绘图片到对应侧（仅当 speaker 有立绘且与当前该侧 speaker 不同时切换）──
+	# 左侧立绘仅装 player 阵营 speaker
+	if side == "left":
+		if _left_stage_speaker != speaker:
+			_load_stage_texture(_left_portrait, portrait_path)
+			_left_stage_speaker = speaker
+	# 右侧立绘装 npc/enemy speaker
+	elif side == "right":
+		if _right_stage_speaker != speaker:
+			_load_stage_texture(_right_portrait, portrait_path)
+			_right_stage_speaker = speaker
+
+	# ── 计算两侧目标状态 ──
+	# active=说话者侧全亮+前移, dim=另一侧暗化+后退, neutral=两侧都暗化
+	var left_active: bool = (side == "left")
+	var right_active: bool = (side == "right")
+	# 立绘不可见的侧直接置 dim（避免空立绘位突兀亮起）
+	if not _left_portrait.visible:
+		left_active = false
+	if not _right_portrait.visible:
+		right_active = false
+
+	_tween_stage(_left_portrait, left_active)
+	_tween_stage(_right_portrait, right_active)
+
+## 加载立绘路径到 TextureRect（路径空或不存在则隐藏该侧立绘）
+func _load_stage_texture(tex: TextureRect, portrait_path: String) -> void:
+	if portrait_path.is_empty() or not ResourceLoader.exists(portrait_path):
+		tex.visible = false
+		tex.texture = null
+		return
+	var loaded = load(portrait_path) as Texture2D
+	if loaded == null:
+		tex.visible = false
+		tex.texture = null
+		return
+	tex.texture = loaded
+	tex.visible = true
+
+## 用 tween 过渡立绘的 modulate.a 和 scale（active 全亮前移 / dim 暗化后退）
+func _tween_stage(tex: TextureRect, active: bool) -> void:
+	if not tex.visible:
+		return
+	if _stage_tween != null and _stage_tween.is_valid():
+		_stage_tween.kill()
+	_stage_tween = create_tween()
+	_stage_tween.set_parallel(true)
+	# scale 围绕底部中心（立绘脚位）缩放，避免上下漂移
+	# pivot 用 stage 容器尺寸（540×720）而非 tex.size（布局前可能为 0）
+	var target_scale := _STAGE_ACTIVE_SCALE if active else _STAGE_DIM_SCALE
+	var target_alpha := _STAGE_ACTIVE_MODULATE if active else _STAGE_DIM_MODULATE
+	tex.pivot_offset = Vector2(_STAGE_W / 2.0, _STAGE_H)
+	tex.scale = Vector2(target_scale, target_scale)
+	_stage_tween.tween_property(tex, "modulate:a", target_alpha, _STAGE_TRANSITION_SEC).set_ease(Tween.EASE_OUT)
+	_stage_tween.tween_property(tex, "scale", Vector2(target_scale, target_scale), _STAGE_TRANSITION_SEC).set_ease(Tween.EASE_OUT)
+
+## 隐藏所有立绘层（对话结束时调用，避免下一轮对话残留上一轮立绘）
+func _clear_stages() -> void:
+	_left_portrait.visible = false
+	_left_portrait.texture = null
+	_left_stage_speaker = ""
+	_right_portrait.visible = false
+	_right_portrait.texture = null
+	_right_stage_speaker = ""
 
 ## 对话条带 StyleBox（深色面板 + 青紫双描边 + 阴影发光 + 大圆角）
 ## v7.x: shadow_size 14→16 增强霓虹氛围
@@ -465,6 +598,7 @@ func _show_current_dialogue() -> void:
 	var dlg: Dictionary = _dialogues[_current_index]
 	var speaker: String = dlg.get("speaker", "???")
 	var text: String = dlg.get("text", "")
+	_update_portrait_stages(speaker)  # v7.x 双立绘：左右立绘按 speaker 阵营亮/暗切换
 	_update_nameplate(speaker)
 	_update_portrait_badge(speaker)
 	_update_accent_bar(speaker)  # v7.x 美化：左侧光带随说话者变色
@@ -539,12 +673,15 @@ func _update_nameplate(speaker: String) -> void:
 	_nameplate_panel.add_theme_stylebox_override("panel", _make_nameplate_style(accent))
 
 ## 更新头像徽章（角色色描边 + 圆形遮罩图片/首字 + 入场弹入动画）
+## v7.x 双立绘：徽章位置随说话者方位浮动（player→条带左上, npc/enemy→条带右上, neutral→左上默认）
 func _update_portrait_badge(speaker: String) -> void:
 	var accent: Color = _get_speaker_color(speaker)
 	_portrait_badge.add_theme_stylebox_override("panel", _make_badge_style(accent))
+	# v7.x 双立绘：徽章随说话者方位浮动（与全身立绘侧一致，强化左右方位感）
+	_position_badge_by_side(SpeakerRegistry.get_side(speaker))
 
-	# 查找portrait路径
-	var portrait_path: String = _PORTRAIT_MAP.get(speaker, "")
+	# v7.x: 立绘路径改查 SpeakerRegistry（替代原内联 _PORTRAIT_MAP）
+	var portrait_path: String = SpeakerRegistry.get_portrait_path(speaker)
 	if portrait_path and ResourceLoader.exists(portrait_path):
 		var tex = load(portrait_path) as Texture2D
 		if tex != null:
@@ -561,6 +698,29 @@ func _update_portrait_badge(speaker: String) -> void:
 	_portrait_label.text = _get_initial_char(speaker)
 	_portrait_label.add_theme_color_override("font_color", accent)
 	_play_badge_enter()
+
+## v7.x 双立绘：按说话者方位重定位 96 圆形徽章
+## side="left"  → 条带左上角探出（默认，我方陈末）
+## side="right" → 条带右上角探出（NPC/Boss）
+## side="center"→ 左上默认（中立叙述，无方位归属）
+func _position_badge_by_side(side: String) -> void:
+	_anchor_bottom_center(_portrait_badge)
+	var strip_top: float = -(_STRIP_H + _STRIP_BOTTOM_GAP)
+	var probe: float = 40.0  # 探出条带顶部的偏移
+	if side == "right":
+		# 右上角：右缘对齐条带右边 - 12px 内缩
+		_place_rect(_portrait_badge, \
+			_STRIP_W / 2.0 - 12.0 - _BADGE_SIZE, \
+			_STRIP_W / 2.0 - 12.0, \
+			strip_top - probe, \
+			strip_top - probe + _BADGE_SIZE)
+	else:
+		# 左上角（left/center 默认）：左缘对齐条带左边 + 12px 内缩
+		_place_rect(_portrait_badge, \
+			-_STRIP_W / 2.0 + 12.0, \
+			-_STRIP_W / 2.0 + 12.0 + _BADGE_SIZE, \
+			strip_top - probe, \
+			strip_top - probe + _BADGE_SIZE)
 
 ## v7.x 美化：徽章入场动画（切换说话者时 scale 0.85→1.0 + 透明度 0.3→1.0，150ms 弹入）
 func _play_badge_enter() -> void:
@@ -692,6 +852,7 @@ func _on_all_dialogues_done() -> void:
 	_stop_typewriter()  # v7.x: 清理打字机 tween
 	_is_typing = false
 	_dialogues.clear()
+	_clear_stages()  # v7.x 双立绘：清理左右立绘，避免下一轮对话残留
 	_clear_choices()
 	_choices_active = false
 	# v6.6(剧情): 重置选择状态（防跨对话残留）
@@ -715,46 +876,6 @@ func _on_all_dialogues_done() -> void:
 # ═══════════════════════════════════════════════════════════════════
 
 func _get_speaker_color(speaker: String) -> Color:
-	# 按角色返回不同的头像色块
-	match speaker:
-		"指挥官", "陈末":
-			# 主角：青色（陈末是主角真名，与"指挥官"同身份）
-			return DesignTokens.COLOR_ACCENT_CYAN
-		"参谋长":
-			return DesignTokens.COLOR_HEALTH
-		"情报官":
-			return DesignTokens.COLOR_ACCENT_PURPLE
-		"旁白":
-			return Color(0.5, 0.5, 0.55)
-		# v6.6(剧情): docs/补剧情.txt 新角色配色
-		"洛克":
-			# 引导者：青绿色（沉稳）
-			return Color(0.2, 0.8, 0.65)
-		"林薇":
-			# 四叶草店主：粉色（温柔）
-			return Color(0.95, 0.55, 0.7)
-		"扎克":
-			# 训练场教官：橙色（刚毅）
-			return Color(0.95, 0.65, 0.2)
-		"海伦":
-			# 城市播报者：金色（权威/中性）
-			return Color(0.9, 0.8, 0.3)
-		"真实者":
-			# 反派：深紫色（神秘/危险）
-			return Color(0.55, 0.25, 0.75)
-		"铁血男爵", "钢铁元帅", "相位之主":
-			# Boss角色：红色系
-			return DesignTokens.COLOR_DANGER
-		# v7.3 修复配色缺漏: 补守护者/虚空领主/镜像配色（原落到默认红，语义偏差）
-		"守护者":
-			# 中立/引导：青蓝色（神秘但非反派）
-			return Color(0.3, 0.7, 0.9)
-		"虚空领主":
-			# 虚空系Boss：深紫红（危险但区别于普通红Boss）
-			return Color(0.7, 0.2, 0.6)
-		"镜像", "镜像守护者":
-			# 玩家镜像：冷银色（复制/虚幻）
-			return Color(0.75, 0.78, 0.85)
-		_:
-			# 默认：Boss/未知角色用红色系
-			return DesignTokens.COLOR_DANGER
+	# v7.x 双立绘规范化：配色改由 SpeakerRegistry 集中管理（替代原内联 match）
+	# 注册表覆盖所有已注册 speaker + 别名，未注册 speaker 默认红色（与历史 fallback 一致）
+	return SpeakerRegistry.get_color(speaker)

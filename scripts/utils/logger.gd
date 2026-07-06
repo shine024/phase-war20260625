@@ -59,9 +59,9 @@ func _format(tag: String, msg: String) -> String:
 
 ## ─── 静态便捷接口（无需实例化） ───
 
-static var _instance: RefCounted = null
+static var _instance: Node = null
 
-static func _get_instance() -> RefCounted:
+static func _get_instance() -> Node:
 	if _instance == null:
 		_instance = new()
 	return _instance

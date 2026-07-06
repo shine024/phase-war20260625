@@ -118,7 +118,7 @@ class UICacheManager:
 	var cache_miss_count: int = 0
 
 	## 获取缓存值
-	func get(key: String, default_value: Variant = null) -> Variant:
+	func get_value(key: String, default_value: Variant = null) -> Variant:
 		if cache.has(key):
 			cache_hit_count += 1
 			return cache[key]
@@ -127,7 +127,7 @@ class UICacheManager:
 		return default_value
 
 	## 设置缓存值
-	func set(key: String, value: Variant) -> void:
+	func set_value(key: String, value: Variant) -> void:
 		cache[key] = value
 
 	## 清除缓存
@@ -191,11 +191,11 @@ static func batch_update(callbacks: Array) -> void:
 
 ## 获取缓存值
 static func get_cached(key: String, default_value: Variant = null) -> Variant:
-	return cache_manager.get(key, default_value)
+	return cache_manager.get_value(key, default_value)
 
 ## 设置缓存值
 static func set_cached(key: String, value: Variant) -> void:
-	cache_manager.set(key, value)
+	cache_manager.set_value(key, value)
 
 ## 清除缓存
 static func clear_cache(key: String = "") -> void:

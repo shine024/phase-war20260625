@@ -53,6 +53,10 @@ const NPC_PHASE_MASTERS: Array = [
 	{"name": "量子幽灵",   "faction": "quantum_logistics", "era": "modern",   "platform": "platform_modern_medium"},
 	{"name": "虚空低语",   "faction": "helix_recon",       "era": "future",   "platform": "platform_future_light"},
 	{"name": "边境开拓者", "faction": "frontier_union",    "era": "ww2",      "platform": "platform_ww2_light"},
+	# v7.x 时代筛选修复：补 2 个一战相位师 NPC，让前 20 关（一战）能抽到同代相位师，
+	# 避免触发全池随机抽到 future 相位师 → 产兵跨时代出现近未来堡垒。
+	{"name": "铁壁先锋",   "faction": "iron_wall_corp",    "era": "ww1",      "platform": "platform_ww1_heavy"},
+	{"name": "旧日雷霆",   "faction": "frontier_union",    "era": "ww1",      "platform": "platform_ww1_medium"},
 ]
 
 ## 获取当前活跃的相位师配置（基于排行榜前几名的NPC）

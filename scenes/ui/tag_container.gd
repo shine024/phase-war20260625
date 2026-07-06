@@ -10,7 +10,7 @@ class_name TagContainer
 
 func _ready() -> void:
 	name = "TagContainer"
-	theme_override_constants.separation = 4
+	add_theme_constant_override("separation", 4)
 	_refresh_tags()
 
 func _refresh_tags() -> void:

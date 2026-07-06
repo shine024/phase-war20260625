@@ -116,9 +116,9 @@ static func get_affix_rarity_name(rarity: String) -> String:
 		"uncommon":  return "优秀"
 		"rare":      return "稀有"
 		"epic":      return "史诗"
-			"legendary": return "传说"
-			"mythic":    return "神话"
-			_:           return "普通"
+		"legendary": return "传说"
+		"mythic":    return "神话"
+		_:           return "普通"
 
 # ─────────────────────────────────────────────
 #  法则相关翻译

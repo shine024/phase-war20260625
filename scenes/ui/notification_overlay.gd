@@ -207,14 +207,17 @@ func _execute_notification_action(action: Dictionary) -> void:
 ## 打开面板
 func _open_panel(panel_name: String) -> void:
 	# 实现打开面板的逻辑
+	pass
 
 ## 导航到目标
 func _navigate_to(target: String) -> void:
 	# 实现导航逻辑
+	pass
 
 ## 运行命令
 func _run_command(command: String) -> void:
 	# 实现命令执行逻辑
+	pass
 
 ## 移除最旧的通知
 func _remove_oldest_notification() -> void:

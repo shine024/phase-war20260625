@@ -18,9 +18,8 @@ var _original_modulate: Color
 # 各卡片类型对应的顶部色条颜色
 const TYPE_BAR_COLORS := {
 	GC.CardType.COMBAT_UNIT: Color(0.1, 0.5, 0.9, 1.0),
-	GC.CardType.COMBAT_UNIT:   Color(0.85, 0.45, 0.1, 1.0),
-	GC.CardType.COMBAT_UNIT: Color(0.55, 0.25, 0.9, 1.0),
-	GC.CardType.ENERGY:   Color(0.15, 0.75, 0.35, 1.0),
+	GC.CardType.ENERGY:      Color(0.15, 0.75, 0.35, 1.0),
+	GC.CardType.LAW:         Color(0.55, 0.25, 0.9, 1.0),
 }
 
 func _ready() -> void:
@@ -33,14 +32,17 @@ func _ready() -> void:
 func set_card(c: CardResource) -> void:
 	card = c
 	# ... 保持原有的 set_card 逻辑 ...
+	pass
 
 func _on_mouse_entered() -> void:
 	if _is_dragging:
 		return
 	# 保持原有的悬停逻辑 ...
+	pass
 
 func _on_mouse_exited() -> void:
 	# 保持原有的悬停逻辑 ...
+	pass
 
 func _on_gui_input(ev: InputEvent) -> void:
 	if card == null:

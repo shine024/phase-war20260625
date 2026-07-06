@@ -238,9 +238,9 @@ func _on_assemble_single() -> void:
 				# 同步解锁法则到 PhaseLawManager
 				if manufactured_card.card_type == GC.CardType.LAW:
 					var law_id: String = manufactured_card.linked_law_id if manufactured_card.linked_law_id else manufactured_card.card_id
-				var plm := get_node_or_null("/root/PhaseLawManager")
-				if plm and plm.has_method("ensure_law_unlocked"):
-					plm.ensure_law_unlocked(law_id)
+					var plm := get_node_or_null("/root/PhaseLawManager")
+					if plm and plm.has_method("ensure_law_unlocked"):
+						plm.ensure_law_unlocked(law_id)
 						# [LOG-v5.1] print("[ManufacturePanel] 法则已解锁: ", law_id)
 				# 继承蓝图星级（已废弃，enhance_level 由养成系统管理）
 				#if BlueprintManager.has_method("get_blueprint_star"):

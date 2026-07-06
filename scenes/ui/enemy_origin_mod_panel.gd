@@ -51,7 +51,7 @@ func _ready() -> void:
 func open_for_card(card_id: String) -> void:
 	_selected_card_id = card_id
 	if is_inside_tree():
-		_refresh_card_list(highlight=card_id)
+		_refresh_card_list(card_id)
 		_refresh_eom_list()
 		_refresh_slot_status()
 
@@ -95,7 +95,7 @@ func _build_ui() -> void:
 
 	# 标题行
 	var title_row := HBoxContainer.new()
-	title_row.alignment = BoxContainer.ALIGNMENT_FILL
+	title_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	var title_lbl := Label.new()
 	title_lbl.text = "⚙ 敌源改造 (D槽)"
 	title_lbl.add_theme_font_size_override("font_size", 17)
@@ -260,7 +260,7 @@ func _refresh_eom_list() -> void:
 		return
 
 	# 卸载按钮（如果已装备）
-	var equipped := eom_mgr.get_equipped_eom(_selected_card_id)
+	var equipped: Dictionary = eom_mgr.get_equipped_eom(_selected_card_id)
 	if not equipped.is_empty():
 		var unequip_btn := Button.new()
 		unequip_btn.text = "🚫 卸载当前改造"
@@ -284,7 +284,7 @@ func _refresh_eom_list() -> void:
 		return
 
 	for mod in available:
-		_eom_list_box.add_child(_make_eom_button(mod, equipped))
+		_eom_list_box.add_child(_make_eom_button(mod, String(equipped.get("id", ""))))
 
 func _make_eom_button(mod: Dictionary, currently_equipped: String) -> Control:
 	var mod_id := String(mod.get("id", ""))
@@ -361,7 +361,7 @@ func _format_tier_desc(mod: Dictionary, tier: int) -> String:
 
 func _on_card_selected(card_id: String) -> void:
 	_selected_card_id = card_id
-	_refresh_card_list(highlight=card_id)
+	_refresh_card_list(card_id)
 	_refresh_eom_list()
 
 func _on_eom_selected(mod_id: String) -> void:
@@ -370,9 +370,9 @@ func _on_eom_selected(mod_id: String) -> void:
 	var eom_mgr := _get_eom_mgr()
 	if eom_mgr == null:
 		return
-	var ok := eom_mgr.equip_eom(_selected_card_id, mod_id)
+	var ok: bool = eom_mgr.equip_eom(_selected_card_id, mod_id)
 	if ok:
-		_refresh_card_list(highlight=_selected_card_id)
+		_refresh_card_list(_selected_card_id)
 		_refresh_eom_list()
 		# 装备后触发存档
 		var sm := get_node_or_null("/root/SaveManager")
@@ -388,7 +388,7 @@ func _on_unequip() -> void:
 	if eom_mgr == null:
 		return
 	eom_mgr.unequip_eom(_selected_card_id)
-	_refresh_card_list(highlight=_selected_card_id)
+	_refresh_card_list(_selected_card_id)
 	_refresh_eom_list()
 	var sm := get_node_or_null("/root/SaveManager")
 	if sm and sm.has_method("save_game"):

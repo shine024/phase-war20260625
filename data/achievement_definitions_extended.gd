@@ -1,5 +1,5 @@
 extends RefCounted
-class_name AchievementDefinitions
+class_name AchievementDefinitionsExtended
 ## 扩展成就系统定义：包含100+成就，覆盖所有游戏内容
 
 ## 数据子模块预加载
@@ -50,6 +50,13 @@ static func get_achievement(achievement_id: String) -> Dictionary:
 	if _get_achievements().has(achievement_id):
 		return _get_achievements()[achievement_id]
 	return {}
+
+## 获取全部成就（返回数组形式，供面板使用）
+static func get_all_achievements() -> Array:
+	var result: Array = []
+	for achievement_id in _get_achievements():
+		result.append(_get_achievements()[achievement_id])
+	return result
 
 ## 获取分类成就
 static func get_achievements_by_category(category: String) -> Array:

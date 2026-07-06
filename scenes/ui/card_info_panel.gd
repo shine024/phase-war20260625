@@ -18,6 +18,7 @@ const PhaseLaws = preload("res://data/phase_laws.gd")
 const EnemyPhaseMasters = preload("res://data/enemy_phase_masters.gd")
 const MasterPowerEvaluator = preload("res://scripts/master_power_evaluator.gd")
 const RuneDefs = preload("res://data/runes.gd")
+const RunewordDefs = preload("res://data/runewords.gd")
 const EnemyPhaseEquipment = preload("res://data/enemy_phase_equipment.gd")
 const UnitStatsTable = preload("res://resources/unit_stats_table.gd")
 const BackpackCombatPreview = preload("res://scenes/ui/backpack_combat_preview.gd")
@@ -46,7 +47,9 @@ var type_label: Label = null
 var summary_label: Label = null
 var affix_label: Label = null
 var star_label: Label = null
-var law_label: Label = null
+var _star_detail_label: Label = null
+var _star_section: PanelContainer = null
+var _nurture_section: PanelContainer = null
 var nurture_label: Label = null
 var status_label: Label = null
 var desc_label: Label = null
@@ -67,7 +70,6 @@ var _extra_stat_label: Label = null
 var _stats_section: PanelContainer = null
 var _stat_cards_row: HBoxContainer = null
 var _affix_flow: VBoxContainer = null
-var _star_detail_label: Label = null
 
 # 子面板实例（懒加载）
 var _reinforce_instance: Control = null
@@ -127,7 +129,8 @@ func _resolve_nodes() -> void:
 	_affix_flow = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/AffixSection/AffixVBox/AffixFlow") as VBoxContainer
 	affix_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/AffixSection/AffixVBox/AffixLabel") as Label
 	_star_detail_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StarSection/StarVBox/StarLabel") as Label
-	law_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/LawSection/LawVBox/LawLabel") as Label
+	_star_section = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StarSection") as PanelContainer
+	_nurture_section = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/NurtureSection") as PanelContainer
 	nurture_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/NurtureSection/NurtureVBox/NurtureLabel") as Label
 	status_section = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StatusSection") as PanelContainer
 	status_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StatusSection/StatusVBox/StatusLabel") as Label
@@ -463,6 +466,9 @@ func _refresh_header(card: CardResource) -> void:
 func _refresh_info_sections(card: CardResource) -> void:
 	if card == null:
 		return
+	# v7.x：卡牌模式恢复所有 section 可见性（战场单位模式可能 visible=false 残留）
+	if _star_section: _star_section.visible = true
+	if _nurture_section: _nurture_section.visible = true
 	# v7.3 性能优化：顶部构建一次 UnitStats 缓存，子函数共用（原各调一次 _build_display_stats = build_stats_from_card 跑2遍）
 	_prepare_display_stats_cache(card)
 	# v6.4: 三维攻防——图形化三列数值卡
@@ -472,9 +478,6 @@ func _refresh_info_sections(card: CardResource) -> void:
 	# 星级强化详情（情报 Tab 内，非头部星级）
 	if _star_detail_label:
 		_star_detail_label.text = _build_star_lines(card)
-	# 法则影响
-	if law_label:
-		law_label.text = ""  # 卡牌模式无法则影响行（战场单位才会有）
 	# 养成摘要
 	if nurture_label:
 		nurture_label.text = _build_nurture_text(card)
@@ -869,59 +872,6 @@ func _resolve_unit_is_player(unit: Node, hinted: bool) -> bool:
 		return bool(unit.is_player)
 	return hinted
 
-## 判断单位是否为载具类型（装甲/支援/堡垒）
-func _is_vehicle_unit(unit: Node) -> bool:
-	if unit == null or not is_instance_valid(unit):
-		return false
-	if "stats" in unit:
-		var stats: UnitStats = unit.stats
-		if stats != null:
-			# v5.0: 使用 combat_kind 判断是否为载具类型（装甲/支援/堡垒）
-			return stats.combat_kind in [GC.CombatKind.ARMOR, GC.CombatKind.SUPPORT, GC.CombatKind.FORT]
-	return true
-
-func _law_targets_this_unit(rt: Dictionary, unit: Node, is_player_side: bool) -> bool:
-	var target_side: String = String(rt.get("target_side", "ALLY"))
-	if target_side == "ALLY" and not is_player_side:
-		return false
-	if target_side == "ENEMY" and is_player_side:
-		return false
-	var target_type: String = String(rt.get("target_type", "ALL"))
-	if target_type == "ALL":
-		return true
-	if target_type == "VEHICLE":
-		return _is_vehicle_unit(unit)
-	return false
-
-func _format_effect_line(law_name: String, effect: String, value: float, duration: float, radius: float) -> String:
-	match effect:
-		"armor_buff": return "%s：最大生命 +%d%%" % [law_name, int(value * 100.0)]
-		"aegis_link": return "%s：最大生命 +%d%%（护阵联结）" % [law_name, int(value * 100.0)]
-		"fortify_protocol": return "%s：最大生命 +%d%%（固壁）" % [law_name, int(value * 100.0)]
-		"resonant_plate": return "%s：最大生命 +%d%%（共振）" % [law_name, int(value * 100.0)]
-		"regen_out_of_combat": return "%s：脱战回复 %.1f/秒" % [law_name, value]
-		"afterburn": return "%s：伤害 +%d%%" % [law_name, int(value * 100.0)]
-		"entropy_lens": return "%s：伤害 +%d%%（熵镜）" % [law_name, int(value * 100.0)]
-		"arc_beacon": return "%s：攻速提升（约 +%d%%）" % [law_name, int(value * 100.0)]
-		"burn_on_hit": return "%s：受击伤害提高（系数 +%.0f%%）" % [law_name, value * 5.0]
-		"aoe_emp": return "%s：范围EMP 伤害 %.1f，半径 %.0f，持续 %.1fs" % [law_name, value, radius, duration]
-		"line_bombard": return "%s：线性轰炸 伤害 %.1f，长度 %.0f" % [law_name, value, radius]
-		"chain_lightning": return "%s：链式放电 总伤害 %.1f，半径 %.0f" % [law_name, value, radius]
-		"burn_mark": return "%s：灼烧标记 %.1f/s，持续 %.1fs，半径 %.0f" % [law_name, value, duration, radius]
-		"global_time_slow": return "%s：全局时缓 %.0f%%，持续 %.1fs" % [law_name, value * 100.0, duration]
-		"spawn_shield_wall": return "%s：护盾墙 减伤 %.0f%%，持续 %.1fs，半径 %.0f" % [law_name, value * 100.0, duration, radius]
-		"hp_shield_shift": return "%s：护盾转移 %.0f%%，持续 %.1fs，半径 %.0f" % [law_name, value * 100.0, duration, radius]
-		"anchor_field": return "%s：锚定减速 %.0f%%，持续 %.1fs，半径 %.0f" % [law_name, value * 100.0, duration, radius]
-		"scorch_wave": return "%s：灼浪伤害 %.1f，半径 %.0f" % [law_name, value, radius]
-		"ember_screen": return "%s：灰烬护幕 护盾 %.0f%%，持续 %.1fs，半径 %.0f" % [law_name, value * 100.0, duration, radius]
-		"core_rupture": return "%s：核心破裂 伤害 %.1f，半径 %.0f" % [law_name, value, radius]
-		"ion_net": return "%s：离子网 减速 %.0f%%，持续 %.1fs，半径 %.0f" % [law_name, value * 100.0, duration, radius]
-		"surge_drive": return "%s：激涌驱动 速度/攻速 +%.0f%%，持续 %.1fs" % [law_name, value * 100.0, duration]
-		"static_domain": return "%s：静电域 伤害 %.1f，持续 %.1fs，半径 %.0f" % [law_name, value, duration, radius]
-		"phase_cloak": return "%s：相位披幕 护盾 %.0f%%，持续 %.1fs，半径 %.0f" % [law_name, value * 100.0, duration, radius]
-		"gravity_well": return "%s：引力井 束缚 %.0f%%，持续 %.1fs，半径 %.0f" % [law_name, value * 100.0, duration, radius]
-		_: return "%s：效果 %s，数值 %.2f" % [law_name, effect, value]
-
 func _is_construct_unit_script(unit: Node) -> bool:
 	var sc: Variant = unit.get_script()
 	if sc == null:
@@ -1173,8 +1123,9 @@ func _show_enemy_phase_driver(unit: Node) -> void:
 func _clear_non_summary_info_sections() -> void:
 	if affix_label: affix_label.text = ""
 	if _star_detail_label: _star_detail_label.text = ""
-	if law_label: law_label.text = ""
+	_set_section_visible_by_content(_star_section, "")
 	if nurture_label: nurture_label.text = ""
+	_set_section_visible_by_content(_nurture_section, "")
 
 ## v6.5: 构建武器名标签文本。
 ## 优先级：card.weapon_names[]（具体型号）> weapon_id 名称 > 战斗方式（直射/曲射等）
@@ -1235,10 +1186,15 @@ func _show_enemy_construct_unit(unit: Node) -> void:
 	var base_desc := "由敌方相位师基地生产的构装单位，自动推进并攻击我方。"
 	if affix_label:
 		affix_label.text = _build_affix_summary_lines(stats)
+	# v7.x：敌方产兵无玩家养成，强化 section 置空并隐藏（避免占位）。
+	# 原 _build_star_enhancement_effects_for_stats 是 v5.1 废弃的孤儿函数恒返回空。
 	if _star_detail_label:
-		_star_detail_label.text = _build_star_enhancement_effects_for_stats(stats)
-	if law_label:
-		law_label.text = _build_phase_law_effects_for_unit(unit, false)
+		_star_detail_label.text = ""
+	_set_section_visible_by_content(_star_section, "")
+	# v7.x：敌方不显示玩家光环/符文（无玩家相位仪），nurture 置空并隐藏 section。
+	if nurture_label:
+		nurture_label.text = ""
+	_set_section_visible_by_content(_nurture_section, "")
 	if desc_label:
 		desc_label.text = base_desc
 	if flavor_label:
@@ -1308,14 +1264,21 @@ func _show_player_unit(unit: Node) -> void:
 		summary_label.text = _format_unit_stats_summary(stats)
 	if affix_label:
 		affix_label.text = _build_affix_summary_lines(stats)
+	# v7.x 修复：战场单位强化详情改用 _build_star_lines（读实例卡养成），
+	# 原 _build_star_enhancement_effects_for_stats(stats) 是 v5.1 废弃的孤儿函数恒返回空。
+	# 内容为空时整个 StarSection 隐藏，避免空 section 占位。
+	var star_detail_text := _build_star_lines(card_res) if card_res != null else ""
 	if _star_detail_label:
-		_star_detail_label.text = _build_star_enhancement_effects_for_stats(stats)
-	# v7.x：显示养成（强化等级/战力/改造列表）——复用卡牌模式同款 _build_nurture_text，
-	# 读实例卡的 enhance_level/mods/get_current_power()。此前战场单位此区块恒为空。
+		_star_detail_label.text = star_detail_text
+	_set_section_visible_by_content(_star_section, star_detail_text)
+	# v7.x：显示养成（强化等级/战力/改造列表 + 当前光环 + 相位仪符文）。
+	# 光环仅我方单位有（construct_unit 注册），符文读 PhaseInstrumentManager。
+	var nurture_text := _build_nurture_text(card_res) if card_res != null else ""
+	nurture_text += _build_aura_text(unit)
+	nurture_text += _build_rune_text()
 	if nurture_label:
-		nurture_label.text = _build_nurture_text(card_res) if card_res != null else ""
-	if law_label:
-		law_label.text = _build_phase_law_effects_for_unit(unit, true)
+		nurture_label.text = nurture_text
+	_set_section_visible_by_content(_nurture_section, nurture_text)
 	if desc_label:
 		desc_label.text = "自动向敌侧推进，在射程内交战。选中后可点击地面微调站位。"
 	if flavor_label:
@@ -1424,16 +1387,7 @@ func _show_enemy_phase_master_unit(unit: Node, master_name: String) -> void:
 				base_desc += "\n相位仪：%s" % inst_name_m
 			if not runes_m.is_empty():
 				base_desc += "\n符文：%s" % _format_enemy_runes(runes_m)
-	if law_label:
-		var passive := _build_phase_law_effects_for_unit(unit, false)
-		var active := _build_active_law_effects_for_unit(unit, false)
-		var law_text := ""
-		if not passive.is_empty():
-			law_text += "【被动法则影响】\n" + passive
-		if not active.is_empty():
-			if not law_text.is_empty(): law_text += "\n\n"
-			law_text += "【敌方被动法则】\n" + active
-		law_label.text = law_text
+	# 敌方相位师的本体属性/装备/符文已在 base_desc 里展示。
 	if desc_label:
 		desc_label.text = base_desc
 	if flavor_label:
@@ -1443,7 +1397,9 @@ func _show_enemy_phase_master_unit(unit: Node, master_name: String) -> void:
 func _clear_other_unit_sections() -> void:
 	if affix_label: affix_label.text = ""
 	if _star_detail_label: _star_detail_label.text = ""
+	_set_section_visible_by_content(_star_section, "")
 	if nurture_label: nurture_label.text = ""
+	_set_section_visible_by_content(_nurture_section, "")
 
 func _show_generic_enemy_unit(unit: Node) -> void:
 	var display_name := "敌方单位"
@@ -1555,66 +1511,117 @@ func _show_generic_enemy_unit(unit: Node) -> void:
 		desc_label.text = "向左推进的敌方单位，会优先攻击我方单位，其次攻击相位场驱动器。"
 	if "stats" in unit and unit.stats != null:
 		if affix_label: affix_label.text = _build_affix_summary_lines(unit.stats)
-	if law_label:
-		law_label.text = _build_phase_law_effects_for_unit(unit, false)
 	if flavor_label:
 		flavor_label.text = "“相位裂隙的另一侧，总有人在看着你。”"
+	# v7.x：敌方普通单位无玩家养成，强化/养成 section 置空并隐藏（避免占位）
 	if _star_detail_label: _star_detail_label.text = ""
+	_set_section_visible_by_content(_star_section, "")
 	if nurture_label: nurture_label.text = ""
+	_set_section_visible_by_content(_nurture_section, "")
 
 ## ── 法则效果构建 ──
 
-func _build_phase_law_effects_for_unit(unit: Node, is_player_side: bool) -> String:
-	var plm := _ensure_plm()
-	if not plm or not ("equipped_passive_laws" in plm):
-		return ""
-	var law_ids: Array = plm.equipped_passive_laws
-	if law_ids.is_empty():
-		return ""
-	var lines: Array[String] = []
-	for law_id in law_ids:
-		var cfg: Dictionary = PhaseLaws.get_by_id(String(law_id))
-		if cfg.is_empty(): continue
-		var rt: Dictionary = cfg.get("runtime_tags", {})
-		if rt.is_empty(): continue
-		var affects_unit: bool = _law_targets_this_unit(rt, unit, is_player_side)
-		if not affects_unit: continue
-		var effect: String = String(rt.get("effect", ""))
-		var value: float = float(rt.get("value", 0.0))
-		var duration: float = float(rt.get("duration", 0.0))
-		var radius: float = float(rt.get("radius", 0.0))
-		var law_name: String = String(cfg.get("name", law_id))
-		lines.append(_format_effect_line(law_name, effect, value, duration, radius))
-	return "\n".join(lines)
+# v7.x: 按 label 文本是否为空，决定其所在 section（父 PanelContainer）的可见性。
+# 用于战场单位模式：强化/养成等 section 内容为空时整个隐藏，避免空 section 占位。
+func _set_section_visible_by_content(section: PanelContainer, text: String) -> void:
+	if section:
+		section.visible = not text.is_empty()
 
-func _build_active_law_effects_for_unit(unit: Node, is_player_side: bool) -> String:
-	var plm := _ensure_plm()
-	if not plm or not ("equipped_active_laws" in plm):
+# v7.x: 战场单位光环文本——查 AuraManager 中该单位激活的光环列表。
+# 仅我方单位会注册光环（construct_unit 调 register_aura），敌方查不到。
+# 返回空串表示无光环；非空形如 "\n当前光环：医疗光环 · 雷达侦测"。
+func _build_aura_text(unit: Node) -> String:
+	if unit == null or not is_instance_valid(unit):
 		return ""
-	var law_ids: Array = plm.equipped_active_laws
-	if law_ids.is_empty():
+	var am: Node = get_node_or_null("/root/AuraManager")
+	if am == null or not am.has_method("get_unit_aura_types"):
 		return ""
-	var lines: Array[String] = []
-	for law_id in law_ids:
-		var cfg: Dictionary = PhaseLaws.get_by_id(String(law_id))
-		if cfg.is_empty(): continue
-		var rt: Dictionary = cfg.get("runtime_tags", {})
-		var affects_unit: bool = _law_targets_this_unit(rt, unit, is_player_side)
-		if not affects_unit: continue
-		var law_name: String = String(cfg.get("name", law_id))
-		var desc: String = String(cfg.get("description", ""))
-		var cost: Dictionary = cfg.get("battle_cost", {})
-		var nano_cost: int = int(cost.get("nano", 0))
-		var energy_cost: float = float(cost.get("energy", 0))
-		var value: float = float(rt.get("value", 0.0))
-		var duration: float = float(rt.get("duration", 0.0))
-		var radius: float = float(rt.get("radius", 0.0))
-		var line := _format_effect_line(law_name, String(rt.get("effect", "")), value, duration, radius)
-		if nano_cost > 0: line += " (消耗%d纳米)" % nano_cost
-		if energy_cost > 0: line += " (消耗%d能量)" % int(energy_cost)
-		if not desc.is_empty(): line += "：%s" % desc
-		lines.append(line)
-	return "\n".join(lines)
+	# AuraManager.AuraType 枚举值（aura_manager.gd:7）：0..5
+	var aura_types: Array[int] = am.get_unit_aura_types(unit)
+	if aura_types.is_empty():
+		return ""
+	# v7.x: 内联 AuraType 中文名（避免循环依赖 enum，AuraType 是 manager 内部枚举）。
+	# index 对应枚举序号。
+	const AURA_NAMES := [
+		"医疗光环",      # 0 MEDIC_HEAL
+		"运输维修",      # 1 CARRIER_REPAIR
+		"侦查暴击",      # 2 SCOUT_CRIT
+		"雷达侦测",      # 3 RADAR_RANGE
+		"堡垒防御",      # 4 FORTRESS_DEF
+		"指挥全局",      # 5 COMMAND_GLOBAL
+	]
+	var names: Array[String] = []
+	for t in aura_types:
+		var idx: int = int(t)
+		if idx >= 0 and idx < AURA_NAMES.size():
+			names.append(AURA_NAMES[idx])
+	if names.is_empty():
+		return ""
+	return "\n当前光环：" + " · ".join(names)
+
+# v7.x: 玩家相位仪符文文本——读 PhaseInstrumentManager 的符文槽位 + 激活的符文之语。
+# 返回空串表示无任何符文；非空形如：
+#   "\n相位仪符文：攻击符文Ⅰ(稀有) · 防御符文Ⅰ(稀有)\n激活符文之语：锐利(2符文之语)"
+func _build_rune_text() -> String:
+	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
+	if pim == null:
+		return ""
+	# 单符文槽位（String | null 数组）
+	var rune_slots: Array = pim.get_rune_slots() if pim.has_method("get_rune_slots") else []
+	var rune_names: Array[String] = []
+	for slot_v in rune_slots:
+		if slot_v == null:
+			continue
+		var rune_id: String = String(slot_v)
+		if rune_id.is_empty():
+			continue
+		var rd: Dictionary = RuneDefs.get_rune(rune_id)
+		if rd.is_empty():
+			rune_names.append(rune_id)
+			continue
+		var rn: String = String(rd.get("name", rune_id))
+		var rarity: String = String(rd.get("rarity", ""))
+		var rarity_short: String = _rune_rarity_short(rarity)
+		if not rarity_short.is_empty():
+			rune_names.append("%s(%s)" % [rn, rarity_short])
+		else:
+			rune_names.append(rn)
+	# 激活的符文之语
+	var active_rw: Array = pim.get_active_runewords() if pim.has_method("get_active_runewords") else []
+	var rw_names: Array[String] = []
+	for rw in active_rw:
+		if not rw is Dictionary:
+			continue
+		var rw_id: String = String(rw.get("id", ""))
+		if rw_id.is_empty():
+			continue
+		var disp_name: String = String(RunewordDefs.RUNEWORD_NAMES.get(rw_id, rw_id))
+		var tier: int = int(rw.get("tier", 0))
+		var tier_name: String = String(RunewordDefs.TIER_NAMES.get(tier, ""))
+		if not tier_name.is_empty():
+			rw_names.append("%s(%s)" % [disp_name, tier_name])
+		else:
+			rw_names.append(disp_name)
+	# 组装
+	var parts: Array[String] = []
+	if not rune_names.is_empty():
+		parts.append("相位仪符文：" + " · ".join(rune_names))
+	if not rw_names.is_empty():
+		parts.append("激活符文之语：" + " · ".join(rw_names))
+	if parts.is_empty():
+		return ""
+	return "\n" + "\n".join(parts)
+
+# v7.x: 符文稀有度转中文短名（复用 _format_enemy_runes 的映射口径）。
+func _rune_rarity_short(rarity: String) -> String:
+	match rarity:
+		"common": return "常见"
+		"uncommon": return "优秀"
+		"rare": return "稀有"
+		"epic": return "史诗"
+		"legendary": return "传说"
+		"mythic": return "神话"
+		_: return ""
 
 func _build_star_enhancement_effects_for_stats(stats: UnitStats) -> String:
 	# v5.1: star_level system removed

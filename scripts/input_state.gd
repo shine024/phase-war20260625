@@ -4,4 +4,4 @@ extends Node
 ## 在 project.godot 中注册为 Autoload（名称：BattleInputState）。
 
 # --- 主动法则施放 ---
-var pending_cast_law_id: String =
+var pending_cast_law_id: String = ""

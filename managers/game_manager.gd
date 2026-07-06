@@ -123,31 +123,34 @@ func check_phase_master_encounter() -> Dictionary:
 			{"name": "量子幽灵",   "faction": "quantum_logistics", "era": "modern",   "platform": "platform_modern_medium"},
 			{"name": "虚空低语",   "faction": "helix_recon",       "era": "future",   "platform": "platform_future_light"},
 			{"name": "边境开拓者", "faction": "frontier_union",    "era": "ww2",      "platform": "platform_ww2_light"},
+			# v7.x 时代筛选修复：与 leaderboard_panel.gd 的 NPC_PHASE_MASTERS 同步补 2 个一战 NPC
+			{"name": "铁壁先锋",   "faction": "iron_wall_corp",    "era": "ww1",      "platform": "platform_ww1_heavy"},
+			{"name": "旧日雷霆",   "faction": "frontier_union",    "era": "ww1",      "platform": "platform_ww1_medium"},
 		]
 		if DEBUG_GAME_LOG:
 			pass  # LOG: LeaderboardPanel 节点未找到，使用内嵌相位师数据
 
 	if not all_masters.is_empty():
-		var selected_master: Dictionary = {}
+		# v7.x 时代筛选：低级关不应抽到高时代相位师（否则产兵跨时代，如一战关出近未来堡垒）。
+		# 三层回退：①era ≤ 关卡era 的子池（严格同代）→ ②相邻下一时代(era+1)子池 → ③全池（最终兜底）。
+		# 每层池内仍优先匹配 current_faction（势力防守逻辑保留），faction 匹配不到再池内随机。
+		var level_era_ceiling: int = GC.get_era_for_level(current_level)
+		var same_era_pool: Array = _filter_masters_by_era_ceiling(all_masters, level_era_ceiling)
+		var selected_master: Dictionary = _pick_master_with_faction_priority(same_era_pool, current_faction)
 
-		# 优先尝试抽取当前关卡势力的相位师（防守任务需要）
-		if not current_faction.is_empty():
-			var faction_masters: Array = []
-			for master in all_masters:
-				if master.get("faction", "") == current_faction:
-					faction_masters.append(master)
-			if not faction_masters.is_empty():
-				var idx = randi() % faction_masters.size()
-				selected_master = faction_masters[idx]
-				if DEBUG_GAME_LOG:
-					pass  # LOG: 遭遇防守方相位师
-
-		# 如果没有找到对应势力的相位师（或没拿到），则随机抽取
+		# 同代池为空 → 退到相邻下一时代（保证前 20 关也能刷出相位师，不至于因补的 NPC 未命中而空转）
 		if selected_master.is_empty():
-			var idx = randi() % all_masters.size()
-			selected_master = all_masters[idx]
-			if DEBUG_GAME_LOG:
-				pass  # LOG: 遭遇随机相位师
+			var next_era_ceiling: int = mini(level_era_ceiling + 1, 4)
+			if next_era_ceiling != level_era_ceiling:
+				var adjacent_pool: Array = _filter_masters_by_era_ceiling(all_masters, next_era_ceiling)
+				selected_master = _pick_master_with_faction_priority(adjacent_pool, current_faction)
+
+		# 最终兜底：全池随机（含 faction 优先），永不破坏游戏
+		if selected_master.is_empty():
+			selected_master = _pick_master_with_faction_priority(all_masters, current_faction)
+
+		if DEBUG_GAME_LOG and not selected_master.is_empty():
+			pass  # LOG: 遭遇相位师（时代=%s）
 
 		## 尝试从 EnemyPhaseMasters 获取完整装备数据
 		var enriched_config = _enrich_master_config(selected_master)
@@ -345,6 +348,35 @@ static func _era_string_to_int(era_str: String) -> int:
 		"modern": return 3
 		"future", "near_future": return 4
 		_: return 4
+
+## v7.x 时代筛选：从相位师池筛出 era ≤ era_ceiling 的子集。
+## 用于 check_phase_master_encounter——防止低级关抽到高时代相位师导致产兵跨时代
+## （如一战关卡抽到 future 相位师 → 产近未来堡垒）。
+## era 缺省按 future(4) 处理（保守归入高时代，不污染低时代子池）。
+static func _filter_masters_by_era_ceiling(masters: Array, era_ceiling: int) -> Array:
+	var out: Array = []
+	for master in masters:
+		if not (master is Dictionary):
+			continue
+		var era_str: String = String(master.get("era", ""))
+		var master_era: int = _era_string_to_int(era_str) if not era_str.is_empty() else 4
+		if master_era <= era_ceiling:
+			out.append(master)
+	return out
+
+## v7.x 从相位师池抽一个：优先匹配 current_faction（防守任务），匹配不到则池内随机。
+## 空池返回空字典（调用方三层回退）。
+static func _pick_master_with_faction_priority(pool: Array, current_faction: String) -> Dictionary:
+	if pool.is_empty():
+		return {}
+	if not current_faction.is_empty():
+		var faction_matches: Array = []
+		for master in pool:
+			if String(master.get("faction", "")) == current_faction:
+				faction_matches.append(master)
+		if not faction_matches.is_empty():
+			return faction_matches[randi() % faction_matches.size()]
+	return pool[randi() % pool.size()]
 
 func _ready() -> void:
 	if Engine.is_editor_hint():

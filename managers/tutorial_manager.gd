@@ -114,11 +114,13 @@ func get_progress() -> Dictionary:
 
 ## 保存完成的引导
 func _save_completed_tutorials() -> void:
-		# SaveManager会自动保存TutorialProgressionManager的状态
+	# SaveManager会自动保存TutorialProgressionManager的状态
+	pass
 
 ## 加载完成的引导
 func _load_completed_tutorials() -> void:
-		# SaveManager会自动加载TutorialProgressionManager的状态
+	# SaveManager会自动加载TutorialProgressionManager的状态
+	pass
 
 ## 获取下一个待完成的引导
 func get_next_tutorial() -> Dictionary:

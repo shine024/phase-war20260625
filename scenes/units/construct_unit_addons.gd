@@ -1,4 +1,4 @@
-
+extends Node2D
 ## 显示伤害数字（战斗反馈系统）
 ## 性能优化：预加载脚本，避免运行时 load()
 const DamageNumberDisplay = preload("res://scenes/effects/damage_number_display.gd")

@@ -294,11 +294,11 @@ func play_attack_effect(attacker: Node2D, target: Node2D, attack_type: String = 
 
 	match attack_type:
 		"melee":
-		_play_melee_attack_effect(attacker, target)
+			_play_melee_attack_effect(attacker, target)
 		"ranged":
-		_play_ranged_attack_effect(attacker, target)
+			_play_ranged_attack_effect(attacker, target)
 		"magic":
-		_play_magic_attack_effect(attacker, target)
+			_play_magic_attack_effect(attacker, target)
 
 ## 播放近战攻击特效
 func _play_melee_attack_effect(attacker: Node2D, target: Node2D) -> void:
@@ -603,7 +603,7 @@ func _create_damage_label(damage: int, damage_type: String, is_critical: bool) -
 	label.add_theme_font_size_override("font_size", 24 if is_critical else 18)
 	label.add_theme_color_override("font_color", _get_damage_color(damage_type))
 	label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 1))
-	label.add_theme_color_override("font_shadow_offset", Vector2(2, 2))
+	label.add_theme_vector2_override("font_shadow_offset", Vector2(2, 2))
 
 	if is_critical:
 		label.add_theme_outline_size(2)
@@ -630,7 +630,7 @@ func _get_damage_color(damage_type: String) -> Color:
 		"heal":
 			return Color(0.3, 1.0, 0.3, 1.0)
 		_:
-		return Color(1.0, 1.0, 1.0, 1.0)
+			return Color(1.0, 1.0, 1.0, 1.0)
 
 ## 伤害数字动画
 func _animate_damage_number(label: Label, is_critical: bool) -> void:
@@ -692,7 +692,7 @@ func _get_buff_color(buff_type: String) -> Color:
 		"generic":
 			return Color(0.8, 0.8, 0.8, 0.4)
 		_:
-		return Color(1.0, 1.0, 1.0, 0.4)
+			return Color(1.0, 1.0, 1.0, 0.4)
 
 ## 创建发光特效
 func _create_glow_effect(radius: float, color: Color) -> Node2D:
@@ -860,9 +860,9 @@ func _apply_screen_shake(intensity: float, duration: float) -> void:
 			randf_range(-shake_amount, shake_amount),
 			randf_range(-shake_amount, shake_amount)
 		)
-	_shake_tween.tween_property(camera, "offset", original_offset + shake_offset, 0.016)
+		_shake_tween.tween_property(camera, "offset", original_offset + shake_offset, 0.016)
 
-# 恢复原位
+	# 恢复原位
 	_shake_tween.tween_property(camera, "offset", original_offset, 0.1)
 
 ## 应用慢动作

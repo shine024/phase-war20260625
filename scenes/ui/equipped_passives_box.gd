@@ -126,19 +126,9 @@ func _on_active_slot_gui_input(event: InputEvent, law_id: String) -> void:
 	var mouse_event := event as InputEventMouseButton if is_mouse else null
 	var pressed := is_mouse and mouse_event.pressed
 	var button := mouse_event.button_index if is_mouse else -1
-	_war_magic_log("active_slot_gui_input", {
-		"law_id": law_id,
-		"is_mouse": is_mouse,
-		"pressed": pressed,
-		"button": button,
-	}, "H_click")
 	if not (is_mouse and pressed and button == MOUSE_BUTTON_LEFT):
 		return
 	var in_battle: bool = (BattleManager != null and "battle_active" in BattleManager and BattleManager.battle_active)
-	_war_magic_log("active_slot_clicked", {
-		"law_id": law_id,
-		"in_battle": in_battle,
-	}, "H_click")
 	if not in_battle:
 		return
 	# 与 Main 入口一致：先同步再兜底补入，避免 can_cast 判定“未装配”

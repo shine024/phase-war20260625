@@ -64,8 +64,8 @@ var animation_config: Dictionary = {
 	"enable_blur": true
 }
 
-## UI根节点
-var ui_root: Control = null
+## UI根节点（SceneTree.root 是 Window，非 Control；用 Node 兜底类型）
+var ui_root: Node = null
 
 ## 当前活动动画
 var active_animations: Dictionary = {}
@@ -73,7 +73,7 @@ var active_animations: Dictionary = {}
 func _ready() -> void:
 	ui_root = get_tree().root
 	_initialize_ui_system()
-	_apply_theme(current_theme)
+	apply_theme(current_theme)
 
 ## 初始化UI系统
 func _initialize_ui_system() -> void:
@@ -131,7 +131,7 @@ func _setup_label_styles(theme: Theme) -> void:
 	var title_font = FontFile.new()
 	# 这里需要加载实际字体文件
 
-	theme.set_font("Label", "font_size", 16)
+	theme.set_font_size("Label", "font_size", 16)
 	theme.set_color("Label", "font_color", THEMES["default"]["text_color"])
 
 ## 设置面板样式
@@ -198,7 +198,7 @@ func _apply_color_theme(theme_data: Dictionary) -> void:
 	var root = get_tree().root
 
 	# 更新所有Control节点
-	for child in root.find_children("*", false, true):
+	for child in root.find_children("*", "Control", true, true):
 		if child is Control:
 			_update_control_theme(child, theme_data)
 
@@ -213,7 +213,7 @@ func _update_control_theme(control: Control, theme_data: Dictionary) -> void:
 
 	# 更新标签颜色
 	if control.has_method("set_modulate"):
-		for child in control.find_children("*", false, true):
+		for child in control.find_children("*", "", true, true):
 			if child is Label:
 				child.add_theme_color_override("font_color", theme_data["text_color"])
 
@@ -448,22 +448,25 @@ func _zoom_transition(from_screen: Control, to_screen: Control) -> void:
 func apply_blur(control: Control, blur_amount: float = 5.0) -> void:
 	if not animation_config["enable_blur"]:
 		return
-
-	var blur = BlurRect.new()
+	# Godot 4.5 没有 BlurRect 原生类型；用半透明 ColorRect 兜底占位
+	var blur := ColorRect.new()
+	blur.color = Color(0.0, 0.0, 0.0, clampf(blur_amount * 0.02, 0.0, 0.5))
 	blur.size = control.size
 	blur.position = Vector2(0, 0)
+	blur.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	control.add_child(blur)
 
 	var tween = create_tween()
-	tween.tween_property(blur, "amount", blur_amount, 0.2)
+	tween.tween_property(blur, "color:a", clampf(blur_amount * 0.02, 0.0, 0.5), 0.2)
 
 	# 自动清理
-	tween.tween_callback(blur.queue_free)# DELAY: 2.0)
+	tween.tween_callback(blur.queue_free)
 
 ## 移除模糊效果
 func remove_blur(control: Control) -> void:
 	for child in control.get_children():
-		if child is BlurRect:
+		# 兼容旧 BlurRect 命名（已改用 ColorRect 兜底）
+		if child is ColorRect and child.get_meta("is_blur", false):
 			child.queue_free()
 
 ## 添加粒子效果
@@ -503,7 +506,8 @@ func _create_sparkle_material() -> ParticleProcessMaterial:
 
 	material.gravity = Vector3(0, 98, 0)
 	material.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
-	material.emission_box_extents = Vector3(control.size.x, 50.0, 0)
+	# 原代码引用了未传入的 control；用固定范围兜底（调用方可自行调整）
+	material.emission_box_extents = Vector3(50.0, 50.0, 0)
 	material.direction = Vector3(0, -1, 0)
 	material.spread = 0.3
 	material.initial_velocity_min = 20.0
@@ -581,7 +585,7 @@ func _create_confetti_material() -> ParticleProcessMaterial:
 ## 更新所有面板
 func _update_all_panels() -> void:
 	# 更新所有PanelContainer的样式
-	var panels = ui_root.find_children("PanelContainer", true, true)
+	var panels = ui_root.find_children("", "PanelContainer", true, true)
 	for panel in panels:
 		_update_panel_style(panel)
 
@@ -596,7 +600,7 @@ func _update_panel_style(panel: PanelContainer) -> void:
 		panel_style.border_color = theme_data["border_color"]
 
 	# 更新子控件主题
-	for child in panel.find_children("*", false, true):
+	for child in panel.find_children("*", "", true, true):
 		if child is Control:
 			_update_control_theme(child, theme_data)
 
@@ -673,24 +677,24 @@ func create_animation_sequence(animations: Array) -> void:
 		var parameters = anim_data.get("parameters", {})
 
 		match animation_type:
-		"fade_in":
-			fade_in(control, duration)
-		"fade_out":
-			fade_out(control, duration)
-		"slide_in":
-			slide_in(control, parameters.get("direction", Vector2.RIGHT), duration)
-		"slide_out":
-			slide_out(control, parameters.get("direction", Vector2.RIGHT), duration)
-		"scale":
-			scale_animation(control, parameters.get("scale", Vector2.ONE), duration)
-		"rotate":
-			rotate_animation(control, parameters.get("rotation", 0.0), duration)
-		"bounce":
-			bounce_animation(control, duration)
-		"shake":
-			shake_animation(control, parameters.get("intensity", 5.0), duration)
-		"pulse":
-			pulse_animation(control, duration)
+			"fade_in":
+				fade_in(control, duration)
+			"fade_out":
+				fade_out(control, duration)
+			"slide_in":
+				slide_in(control, parameters.get("direction", Vector2.RIGHT), duration)
+			"slide_out":
+				slide_out(control, parameters.get("direction", Vector2.RIGHT), duration)
+			"scale":
+				scale_animation(control, parameters.get("scale", Vector2.ONE), duration)
+			"rotate":
+				rotate_animation(control, parameters.get("rotation", 0.0), duration)
+			"bounce":
+				bounce_animation(control, duration)
+			"shake":
+				shake_animation(control, parameters.get("intensity", 5.0), duration)
+			"pulse":
+				pulse_animation(control, duration)
 
 ## 预设动画组合
 func play_appear_animation(control: Control) -> void:

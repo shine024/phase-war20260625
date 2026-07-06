@@ -176,37 +176,12 @@ func get_pool_stats() -> Dictionary:
 
 ## 异步加载资源（避免阻塞主线程）
 func load_resource_async(path: String, callback: Callable) -> void:
-	var loader = ResourceLoader.load_interactive(path)
-	if loader == null:
+	# Godot 4: 使用 ResourceLoader.load_threaded_get / load_threaded_request
+	# 先用同步 load 兜底（Godot 4.5 已移除 load_interactive）
+	var resource = ResourceLoader.load(path)
+	if resource == null:
 		push_error("[PerformanceUtils] Failed to load resource: %s" % path)
-		callback.call(null)
-		return
-
-	# 创建一个定时器来监控加载进度
-	var timer = Timer.new()
-	timer.wait_time = 0.1  # 每100ms检查一次
-	timer.autostart = true
-	timer.timeout.connect(func():
-		var error = loader.poll()
-		if error == OK:
-			# 加载完成
-			timer.queue_free()
-			var resource = loader.get_resource()
-			callback.call(resource)
-		elif error == ERR_FILE_EOF:
-			# 加载完成
-			timer.queue_free()
-			var resource = loader.get_resource()
-			callback.call(resource)
-		elif error > OK:
-			# 加载出错
-			timer.queue_free()
-			push_error("[PerformanceUtils] Error loading resource: %s" % path)
-			callback.call(null)
-	)
-
-	# 将定时器添加到场景树
-	get_tree().root.add_child(timer)
+	callback.call(resource)
 
 ## 性能监控
 var _performance_markers: Dictionary = {}
@@ -293,7 +268,7 @@ static func batch_set_properties(obj: Object, properties: Dictionary) -> void:
 
 ## 内存使用统计
 func get_memory_usage() -> Dictionary:
-	var static_mem = OS.get_static_memory_usage_by_type()
+	var static_mem = OS.get_static_memory_usage()
 	var peak_mem = OS.get_static_memory_peak_usage()
 
 	return {

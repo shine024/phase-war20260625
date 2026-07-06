@@ -396,8 +396,23 @@ func _preselect_target_card(overlay: Control, panel_key: String, card: CardResou
 				panel.select_card_by_id(sel_id)
 		"modification", "evolution":
 			# ModificationPanel / EvolutionPanel.set_selected_card 入参为 CardResource
+			# v7.x 修复：原版直接传 _selected_card，若它是裸模板（无 instance_id，来自 show_panel
+			# 外部传入或 _resolve_card 的模板兜底），目标面板读 mods/enhance_level 会读到模板的空值，
+			# 导致"成长面板→改造面板看不到已装改造"。此处与 enhancement 分支一致，先解析该 card_id
+			# 的实例（养成数据所在）再传。目标面板侧（ModificationPanel.set_selected_card）已有
+			# _resolve_instance_or_warn 二次回退，这里解析是为了把"正确实例"传过去，避免回退到首个
+			# 同名实例（多实例时可能取错）。
+			var card_to_pass: CardResource = card
+			if card.instance_id.is_empty():
+				var ir: Node = get_node_or_null("/root/InstanceRegistry")
+				if ir != null and ir.has_method("get_instances_by_card_id"):
+					var insts: Array = ir.get_instances_by_card_id(card.card_id)
+					if not insts.is_empty() and ir.has_method("get_instance"):
+						var resolved: CardResource = ir.get_instance(String(insts[0]))
+						if resolved != null:
+							card_to_pass = resolved
 			if panel.has_method("set_selected_card"):
-				panel.set_selected_card(card)
+				panel.set_selected_card(card_to_pass)
 
 ## 目标面板在 overlay/CenterContainer 下的节点名（与 ui_lazy_loader.gd node_name 一致）
 func _target_panel_node_name(panel_key: String) -> String:
@@ -568,12 +583,34 @@ func select_card(card: CardResource) -> void:
 func _refresh_data() -> void:
 	if not _selected_card:
 		return
+	# v7.x 修复：成长面板各区块（改造/强化/进化）读的是 _selected_card.mods / enhance_level / evolution_paths
+	# 等养成字段，这些数据只挂在实例对象上（模板永远是空养成）。若 _selected_card 是裸模板
+	# （show_panel 外部传入、或战场/背包回退到模板），改造区块会全显空槽、强化显示 Lv0。
+	# 此处在刷新前把 _selected_card 解析为实例，下游所有 _refresh_* 都读到真实养成数据。
+	_selected_card = _ensure_selected_is_instance(_selected_card)
 	_refresh_header()
 	_refresh_star_section()
 	_refresh_enhance_section()
 	_refresh_mod_section()
 	_refresh_evolution_section()
 	_refresh_footer()
+
+## 确保 _selected_card 是实例对象（带养成数据）。已是实例直接返回；模板则回退取 Registry 首个同名实例；
+## 都失败则返回原 card（保持旧行为，至少能显示模板字段）。复用 _resolve_card 的回退思路。
+func _ensure_selected_is_instance(card: CardResource) -> CardResource:
+	if card == null:
+		return card
+	if not card.instance_id.is_empty():
+		return card
+	# 模板（instance_id 空）→ 取 Registry 该 card_id 的首个实例
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	if ir != null and ir.has_method("get_instances_by_card_id") and not card.card_id.is_empty():
+		var insts: Array = ir.get_instances_by_card_id(card.card_id)
+		if not insts.is_empty() and ir.has_method("get_instance"):
+			var inst: CardResource = ir.get_instance(String(insts[0]))
+			if inst != null:
+				return inst
+	return card
 
 # ---------- Header ----------
 

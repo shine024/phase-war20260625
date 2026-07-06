@@ -27,8 +27,8 @@ var use_extended_definitions: bool = false
 func _ready() -> void:
 	achievement_manager = get_node_or_null("/root/AchievementManager")
 
-	# 检查是否使用扩展成就定义
-	use_extended_definitions = AchievementDefsExtended != null and AchievementDefsExtended.has_method("get_all_achievements")
+	# 检查是否使用扩展成就定义（AchievementDefsExtended 是 preload 脚本对象）
+	use_extended_definitions = AchievementDefsExtended != null
 
 	if close_button:
 		close_button.pressed.connect(_on_close)
@@ -139,9 +139,9 @@ func _get_filtered_achievements() -> Array:
 	var all_achievements = []
 
 	# 优先使用扩展成就定义
-	if use_extended_definitions and AchievementDefsExtended.has_method("get_all_achievements"):
+	if use_extended_definitions:
 		all_achievements = AchievementDefsExtended.get_all_achievements()
-	elif AchievementDefs.has_method("get_all_achievements"):
+	else:
 		all_achievements = AchievementDefs.get_all_achievements()
 
 	# 如果使用成就管理器，从管理器获取

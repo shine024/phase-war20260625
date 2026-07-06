@@ -269,7 +269,7 @@ const DATA: Dictionary = {
 		"id": "special_perfect_collection",
 		"name": "完美收藏",
 		"description": "拥有所有传说级卡牌的满强化版本",
-			"category": "special",
+		"category": "special",
 		"rarity": "LEGENDARY",
 		"requirements": {"type": "perfect_mythic_collection"},
 		"reward": {"nano_materials": 15000, "mythic_card": 15, "title": "完美收藏家"},
@@ -284,7 +284,7 @@ const DATA: Dictionary = {
 		"category": "special",
 		"rarity": "EPIC",
 		"requirements": {"type": "ultra_fast_win", "seconds": 30},
-		reward": {"nano_materials": 700},
+		"reward": {"nano_materials": 700},
 		"icon": "💨",
 		"hidden": false,
 		"flavor_text": "你的速度快得不可思议。"

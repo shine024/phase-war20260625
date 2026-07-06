@@ -225,7 +225,8 @@ func _refresh_card_list() -> void:
 			if not sid.is_empty():
 				card_ids[String(_norm.call(sid))] = true
 
-	for card_id in card_ids:
+	for card_id_raw in card_ids:
+		var card_id: String = String(card_id_raw)
 		var card: CardResource = DefaultCards.get_card_by_id(card_id)
 		if card == null:
 			continue

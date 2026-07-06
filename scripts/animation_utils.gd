@@ -132,7 +132,7 @@ static func number_scroll(label: Label, from_value: int, to_value: int, duration
 	tween.tween_method(_update_label_text.bind(label), from_value, to_value, duration).set_ease(Tween.EASE_OUT)
 	return tween
 
-func _update_label_text(label: Label, value: int) -> void:
+static func _update_label_text(label: Label, value: int) -> void:
 	label.text = str(value)
 
 ## 进度条动画
@@ -202,7 +202,7 @@ static func stop_all_animations(node: Node) -> void:
 		return
 
 	for child in node.get_children():
-		if child has_method("kill"):
+		if child.has_method("kill"):
 			child.kill()
 
 ## 清理动画

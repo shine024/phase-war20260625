@@ -1171,3 +1171,51 @@ inf_19单兵电台(ally_bonus)、arm_15数据链(ally_hit_bonus)、for_10指挥�
 - `data/modification_modules/universal_mods.gd` — 1 个描述更新
 
 **验证:** Godot --check-only 通过（exit 0）；运行时验证 5 项全 PASS（消音器 0.80→0.50、伪装迷彩 0.20 不变、架桥 0.0025→0.05、烟幕 0.30 不变、红外干扰机 0.25 不变）。
+
+## v7.x 剧情对话面板双立绘规范化 (2026-07-05)
+
+**背景:** 用户要求剧情面板规范设计——左右方各确定是我方还是其他 NPC，立绘图片大小要有要求。调查发现当前是单 speaker 底部条带（JRPG 范式，96 圆形徽章探出条带左上角），speaker→立绘路径耦合在内联 `_PORTRAIT_MAP`（20 条，但实际只有 12 个 speaker，且部分指向不存在的 png），无阵营/方位概念，立绘无统一尺寸规格（200px/512px 混合）。
+
+**决策（与用户确认）:** Galgame 范式双立绘对位（我方左 / NPC右）+ 全身立绘 540×720 + speaker 注册表集中管理元数据。
+
+**3 个改动点:**
+
+| # | 改动 | 详情 |
+|---|------|------|
+| 1 | **新建 speaker 注册表** | `data/speaker_registry.gd` 集中维护每个 speaker 的 {display_name, faction(player/npc/enemy/neutral), portrait_path, color}。提供 get_entry/get_faction/get_side/get_portrait_path/get_color/get_display_name。阵营→方位派生：player→left, npc/enemy→right, neutral→center。含别名表（指挥官→陈末、镜像守护者→镜像、托马斯→洛克 等历史遗留 speaker 自动归位） |
+| 2 | **双立绘层 + 徽章方位浮动** | story_dialogue_panel.gd 新增左右立绘层（540×720 竖条贴屏幕左右两侧，中间 200px 留给底部对话框）。说话者立绘 modulate=1.0+scale=1.0 全亮前移，非说话者 modulate=0.35+scale=0.95 暗化后退；中立 speaker 两侧都暗化。96 圆形徽章位置随说话者方位浮动（player→条带左上, npc/enemy→条带右上） |
+| 3 | **立绘尺寸规格 + 资产说明** | 全身立绘 540×720 PNG 透明背景为产出标准；TextureRect 用 EXPAND_IGNORE_SIZE + STRETCH_KEEP_ASPECT_CENTERED，旧图任意尺寸自动适配。`ui/portraits/README.md` 写明规格/命名规范/已注册 speaker 表/新增 NPC 步骤 |
+
+**关键设计决策:**
+1. **Galgame 双立绘对位而非左右气泡**——视觉冲击强，全身立绘占满屏幕高度，符合用户"左右方各确定我方/NPC"诉求
+2. **立绘层限定 540×720 竖条而非 FULL_RECT**——关键修复：原版用 PRESET_FULL_RECT 导致两张图都跑到屏幕中央互相覆盖（用户反馈"中间会出现大图"），改为锚定左 0~540 / 右 740~1280 竖条，立绘在各自区域内居中
+3. **speaker 注册表而非对话项加 side/portrait 字段**——80+ 条对话数据零改动（仍只有 speaker+text），新增 NPC 只改注册表一处；别名机制兼容所有历史遗留 speaker
+4. **保留底部对话框条带**——打字机/选项/章节 banner/四角宝石/点击推进/队列播放/choices 分支全部不动，重构只加立绘层，回退简单
+5. **徽章位置随方位浮动**——player→条带左上、npc/enemy→条带右上，与全身立绘侧一致，强化左右方位感
+6. **立绘资产不强制立即重绘**——TextureRect 自动适配任意尺寸，现有 13 张立绘继续用，新图按 540×720 规格产出（参见 ui/portraits/README.md）
+7. **`_PORTRAIT_MAP` 与 `_get_speaker_color` 内联 match 全部移除**——单点维护到 SpeakerRegistry，避免映射表与实际数据脱节（原 _PORTRAIT_MAP 有 8 个未使用的 speaker 别名条目，且 thomas/sophia/victor 等映射指向不存在的 png）
+
+**阵营方位映射:**
+
+| speaker | 阵营 | 方位 | 立绘 | 配色 |
+|---------|------|------|------|------|
+| 陈末/指挥官 | player | 左 | player.png | 青 |
+| 林薇/扎克/洛克/海伦/真实者 | npc | 右 | 各自 png | 角色色 |
+| 铁血男爵/钢铁元帅/相位之主/虚空领主/镜像 | enemy | 右 | boss_*.png | 红/紫红/银 |
+| 守护者 | neutral | 中（两侧暗化）| boss_guardian.png | 青蓝 |
+| 旁白 | neutral | 中（无立绘，首字徽章）| — | 灰 |
+
+**关键文件:**
+- `data/speaker_registry.gd`（新增）— speaker 元数据集中表 + 别名机制 + 阵营→方位派生
+- `scenes/ui/story_dialogue_panel.gd` — 删 `_PORTRAIT_MAP` + 删 `_get_speaker_color` 内联 match；新增左右立绘层构建/切换/清理；徽章方位浮动；`_get_speaker_color` 转发到注册表
+- `ui/portraits/README.md`（新增）— 立绘资产规格/命名规范/已注册 speaker 表/新增 NPC 步骤
+
+**向后兼容性:**
+- 对话数据（quest_definitions.gd/.json）零改动
+- choices 分支系统、story_choice_made 信号、关卡剧情任务队列播放全部保留
+- 旧立绘（任意尺寸）通过 TextureRect 自动适配渲染
+- 历史遗留 speaker 别名（指挥官/参谋长/情报官/镜像守护者/托马斯/索菲亚/维克多/艾莉亚/诺瓦）在注册表里映射到对应主 speaker，行为不变
+
+**验证:** Godot headless 启动到 DefaultCards 构建（126 张卡，autoload 链含新 speaker_registry.gd 编译通过无语法错误；--script 模式 ModificationRegistry 报错是项目既有 autoload 时序问题，与本次改动无关）。Grep 静态核对：SpeakerRegistry 5 处调用（get_side/get_portrait_path/get_color）配对完整，注册表 8 个公共方法定义齐全，`_PORTRAIT_MAP` 已无残留引用（仅注释提及历史）。**实机验证（待手动）:** 触发第10/20/60/100关剧情，确认左右立绘按阵营正确显示、说话者高亮前移、徽章随方位浮动、旁白两侧暗化。
+
+**已知技术债:** `_left_stage`/`_right_stage` 区域用硬编码 1280×720 屏幕坐标，未来若改分辨率需同步调整（当前项目固定 1280×720，可接受）。

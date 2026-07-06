@@ -1,20 +1,11 @@
 
-const _OBJECTIVES_JSON_PATH := "res://data/json/task_objective_types.json"
-const _TASKS_JSON_PATH := "res://data/json/task_definitions_extended.json"
-static var OBJECTIVE_TYPES: Dictionary = _load_json_dict(_OBJECTIVES_JSON_PATH, LEGACY_OBJECTIVE_TYPES)
-static var EXTENDED_TASKS: Dictionary = _load_json_dict(_TASKS_JSON_PATH, LEGACY_EXTENDED_TASKS)
-
-static func _load_json_dict(path: String, fallback: Dictionary) -> Dictionary:
-	if not FileAccess.file_exists(path):
-		return fallback
-	var parsed = JSON.parse_string(FileAccess.get_file_as_string(path))
-	if typeof(parsed) != TYPE_DICTIONARY or int(parsed.get("schema_version", 0)) != 1:
-		return fallback
-	var data = parsed.get("data", fallback)
-	return data if typeof(data) == TYPE_DICTIONARY else fallback
-
 extends Node
 ## 扩展任务定义：提供更多样化和丰富的任务内容
+
+const _OBJECTIVES_JSON_PATH := "res://data/json/task_objective_types.json"
+const _TASKS_JSON_PATH := "res://data/json/task_definitions_extended.json"
+
+## 任务目标类型定义
 
 ## 任务目标类型定义
 const LEGACY_OBJECTIVE_TYPES = {
@@ -450,6 +441,20 @@ const LEGACY_EXTENDED_TASKS = {
 	}
 }
 
+## 运行时合并缓存（从 JSON 加载，失败回退 LEGACY 表）
+static var OBJECTIVE_TYPES: Dictionary = _load_json_dict(_OBJECTIVES_JSON_PATH, LEGACY_OBJECTIVE_TYPES)
+static var EXTENDED_TASKS: Dictionary = _load_json_dict(_TASKS_JSON_PATH, LEGACY_EXTENDED_TASKS)
+
+## 从 JSON 加载字典；schema 不匹配或文件缺失时回退到 fallback
+static func _load_json_dict(path: String, fallback: Dictionary) -> Dictionary:
+	if not FileAccess.file_exists(path):
+		return fallback
+	var parsed = JSON.parse_string(FileAccess.get_file_as_string(path))
+	if typeof(parsed) != TYPE_DICTIONARY or int(parsed.get("schema_version", 0)) != 1:
+		return fallback
+	var data = parsed.get("data", fallback)
+	return data if typeof(data) == TYPE_DICTIONARY else fallback
+
 ## 获取扩展任务
 static func get_extended_tasks() -> Dictionary:
 	return EXTENDED_TASKS.duplicate()
@@ -534,7 +539,7 @@ static func generate_daily_task(difficulty: String = "normal") -> Dictionary:
 		"sort_order": 3000
 	}
 
-	// 添加目标描述
+	# 添加目标描述
 	task_data["objectives"][0]["description"] = _generate_objective_description(selected_type)
 
 	return task_data
@@ -602,7 +607,7 @@ static func get_task_chain(chain_id: String) -> Array:
 static func get_recommended_tasks_for_progress(player_level: int, completed_tasks: Array) -> Array:
 	var recommended = []
 
-	// 根据等级推荐主线任务
+	# 根据等级推荐主线任务
 	if player_level < 10:
 		recommended.append("main_001")
 	elif player_level < 20:
@@ -610,7 +615,7 @@ static func get_recommended_tasks_for_progress(player_level: int, completed_task
 	else:
 		recommended.append("story_chapter_2")
 
-	// 推荐简单的每日任务
+	# 推荐简单的每日任务
 	recommended.append("daily_win_3")
 	recommended.append("daily_resource_collector")
 

@@ -134,17 +134,17 @@ func _create_store_item_ui(item: Variant) -> Control:
 	desc_label.modulate = Color(0.7, 0.7, 0.7)
 	vbox.add_child(desc_label)
 
-		# 获取并显示物品详细属性
-		var details_text = _get_item_details_text(item)
-		if not details_text.is_empty():
-			var details_label = Label.new()
-			details_label.text = details_text
-			details_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			details_label.add_theme_font_size_override("font_size", 11)
-			details_label.modulate = Color(0.5, 0.8, 1.0)
-			vbox.add_child(details_label)
+	# 获取并显示物品详细属性
+	var details_text = _get_item_details_text(item)
+	if not details_text.is_empty():
+		var details_label = Label.new()
+		details_label.text = details_text
+		details_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		details_label.add_theme_font_size_override("font_size", 11)
+		details_label.modulate = Color(0.5, 0.8, 1.0)
+		vbox.add_child(details_label)
 
-		# 等级要求
+	# 等级要求
 	if item.required_level > 1:
 		var level_label = Label.new()
 		level_label.text = "需要等级: %d" % item.required_level
@@ -291,7 +291,6 @@ func _get_item_details_text(item: Variant) -> String:
 						base_attrs.append("承载 %d 重量" % card.weight_capacity)
 					if card.max_weapons > 0:
 						base_attrs.append("武器槽 %d" % card.max_weapons)
-				GC.CardType.COMBAT_UNIT:
 					if card.weight > 0:
 						base_attrs.append("重量 %d" % card.weight)
 				GC.CardType.ENERGY:
@@ -299,10 +298,7 @@ func _get_item_details_text(item: Variant) -> String:
 						base_attrs.append("能量消耗 %d" % card.energy_cost)
 					if card.energy_grant > 0:
 						base_attrs.append("能量提供 %d⚡" % int(card.energy_grant))
-			GC.CardType.COMBAT_UNIT:
-				if card.weight_capacity > 0:
-					base_attrs.append("承载 %d 重量" % card.weight_capacity)
-			GC.CardType.LAW:
+				GC.CardType.LAW:
 					if card.energy_cost > 0:
 						base_attrs.append("能量消耗 %d⚡" % card.energy_cost)
 

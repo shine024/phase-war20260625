@@ -80,10 +80,11 @@ func _output_to_console(entry: Dictionary) -> void:
 			push_warning(output)
 		_:
 			# [LOG-v5.1] print(output)
+			pass
 	var data = entry.get("data", {})
 	if not data.is_empty():
-		pass
 		# [LOG-v5.1] print("  Data: ", data)
+		pass
 
 func _buffer_log_entry(entry: Dictionary) -> void:
 	log_buffer.append(entry)
