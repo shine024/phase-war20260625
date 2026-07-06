@@ -197,3 +197,6 @@ signal card_data_changed(card_id: String)
 signal card_evolved(source_card_id: String, target_card_id: String)
 signal evolution_failed(source_card_id: String, target_card_id: String, reason: String)
 signal evolution_path_unlocked(card_id: String, branch_name: String)
+
+# v7.x 实例生命周期（转发 InstanceRegistry.instance_disposed，供背包/存档清理幽灵 instance_id）
+signal instance_disposed(instance_id: String)

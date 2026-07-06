@@ -293,6 +293,8 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 	btn.add_theme_color_override("font_color", Color(0.91, 0.93, 0.96, 1))
 
 	var rarity: String = String(mod_data.get("rarity", "common"))
+	var rarity_names := {"common": "普通", "uncommon": "优秀", "rare": "稀有", "epic": "史诗", "legendary": "传说", "mythic": "神话"}
+	var rarity_cn: String = rarity_names.get(rarity, rarity)
 	var rarity_col := _rarity_color(rarity)
 	var is_installed := _is_mod_installed(mod_id)
 	var is_applicable := _is_mod_applicable_to_card(mod_id)
@@ -360,7 +362,7 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 	btn.add_child(vbox)
 	# 禁用规则：已安装、不适用、或被 block（冲突/槽满/情报不足）时禁用点击
 	btn.disabled = is_installed or not is_applicable or not block_reason.is_empty()
-	btn.tooltip_text = "%s\n%s\n稀有度：%s" % [proto, String(mod_data.get("description", "")), rarity]
+	btn.tooltip_text = "%s\n%s\n稀有度：%s" % [proto, String(mod_data.get("description", "")), rarity_cn]
 	btn.pressed.connect(func(): _on_mod_selected(mod_id, mod_data))
 	return btn
 
@@ -643,6 +645,36 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 			var effect_texts = _format_effects_for_display(mod_data)
 			effects_label.text = "效果：\n" + "\n".join(effect_texts) if effect_texts.size() > 0 else "无具体数值效果"
 
+		# 新增：元信息（槽位/冲突组/倍率）
+		var meta_label = details_panel.get_node_or_null("DetailVBox/MetaInfoLabel")
+		if meta_label:
+			var slot_type: String = String(mod_data.get("slot_type", ""))
+			var conflict: String = String(mod_data.get("conflict_group", ""))
+			var power_mult: float = float(mod_data.get("power_mult", 1.0))
+			var parts: Array = []
+			if not slot_type.is_empty():
+				parts.append("槽位：%s" % slot_type)
+			if not conflict.is_empty():
+				parts.append("冲突组：%s" % conflict)
+			if power_mult != 1.0:
+				parts.append("战力倍率×%.1f" % power_mult)
+			meta_label.text = " — ".join(parts) if not parts.is_empty() else "—"
+
+		# 新增：属性变化预览（基于选中卡的当前属性计算）
+		var stat_delta_label = details_panel.get_node_or_null("DetailVBox/StatDeltaLabel")
+		if stat_delta_label:
+			stat_delta_label.text = _build_stat_delta_preview(mod_data)
+
+		# 新增：解锁条件
+		var unlock_label = details_panel.get_node_or_null("DetailVBox/UnlockLabel")
+		if unlock_label:
+			var unlock = mod_data.get("unlock_conditions", {})
+			if unlock is Dictionary and unlock.has("required_level"):
+				var req_lv = int(unlock["required_level"])
+				unlock_label.text = "解锁要求：强化等级 ≥ %d" % req_lv
+			else:
+				unlock_label.text = ""
+
 		# 消耗可视化
 		# v6.2 修复：用基础战力（与实际扣费 BlueprintManager.install_modification 的 get_base_power_for_mod_cost 一致），
 		# 原用 get_current_power（含强化+改造）导致显示成本虚高
@@ -690,6 +722,55 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 					install_btn.pressed.disconnect(conn.callable)
 			var install_callable = func(): _install_modification(selected_mod_id)
 			install_btn.pressed.connect(install_callable)
+
+## 构建属性变化预览：对比安装改造前后各属性的变化
+func _build_stat_delta_preview(mod_data: Dictionary) -> String:
+	if selected_card == null:
+		return ""
+	# 读取当前卡的属性（含已有改造加成）
+	var current_stats: Dictionary = selected_card.get_modified_stats()
+	if current_stats.is_empty():
+		return ""
+	var eff: Dictionary = mod_data.get("effects", {})
+	if eff.is_empty():
+		return ""
+	var le: Dictionary = mod_data.get("level_effects", {})
+	# 如果有等级效果，取最高档
+	if not le.is_empty():
+		var levels = le.keys()
+		levels.sort()
+		eff = le[levels[levels.size() - 1]]
+	# 计算变化
+	var lines: Array = []
+	for key in eff.keys():
+		var val = eff[key]
+		var cn = ModEffectLabels.translate(key)
+		var cur_val = current_stats.get(key, 0)
+		var delta_str = _format_delta(cn, cur_val, val)
+		lines.append(delta_str)
+	if lines.is_empty():
+		return ""
+	return "属性预览：\n" + "\n".join(lines)
+
+## 格式化单条属性变化
+func _format_delta(stat_name: String, current_val, change_val) -> String:
+	if change_val is float:
+		if change_val > 0:
+			return "▶ %s: %s +%.0f%%" % [stat_name, _val_display(current_val, change_val), change_val * 100]
+		elif change_val < 0:
+			return "▶ %s: %s %d%%" % [stat_name, _val_display(current_val, change_val), int(change_val * 100)]
+	elif change_val is int:
+		return "▶ %s: %s +%d" % [stat_name, _val_display(current_val, change_val), change_val]
+	elif change_val is bool and change_val:
+		return "▶ %s: ✓ 解锁" % stat_name
+	return "▶ %s: %s" % [stat_name, str(change_val)]
+
+## 数值显示：根据当前值格式化变化后结果
+func _val_display(current, change) -> String:
+	if current is int or current is float:
+		var new_val = current + (change if change is int else int(float(current) * (1.0 + change)))
+		return "%d→%d" % [int(current), int(new_val)]
+	return ""
 
 ## 效果键翻译（薄封装，委托 ModEffectLabels 共享表）。
 ## v7.x 统一：情报/改造/强化三面板共用 ModEffectLabels.translate（简短词口径），

@@ -92,6 +92,11 @@ func _connect_global_signals() -> void:
 		if SignalBus.backpack_changed.is_connected(_on_backpack_changed):
 			SignalBus.backpack_changed.disconnect(_on_backpack_changed)
 		SignalBus.backpack_changed.connect(_on_backpack_changed)
+		# v7.x：监听实例销毁，清理背包列表里的幽灵 instance_id（进化消耗/拆解/相位仪清理触发）
+		if SignalBus.has_signal("instance_disposed"):
+			if SignalBus.instance_disposed.is_connected(_on_instance_disposed):
+				SignalBus.instance_disposed.disconnect(_on_instance_disposed)
+			SignalBus.instance_disposed.connect(_on_instance_disposed)
 
 	var brm: Node = _get_autoload_node("BasicResourceManager")
 	if brm != null and brm.has_signal("resources_changed"):
@@ -121,6 +126,8 @@ func _disconnect_global_signals() -> void:
 			SignalBus.card_equipped.disconnect(_on_card_equipped)
 		if SignalBus.backpack_changed.is_connected(_on_backpack_changed):
 			SignalBus.backpack_changed.disconnect(_on_backpack_changed)
+		if SignalBus.has_signal("instance_disposed") and SignalBus.instance_disposed.is_connected(_on_instance_disposed):
+			SignalBus.instance_disposed.disconnect(_on_instance_disposed)
 
 # 注意：不主动断开 Manager 信号，因为 Presenter 生命周期通常与场景一致。
 # 如果需要完全清理，可以在 cleanup 中实现。
@@ -153,6 +160,21 @@ func _on_card_added(card: CardResource) -> void:
 		_refresh_card_grid()
 	if _view and _view.has_method("highlight_last_card_by_id"):
 		_view.highlight_last_card_by_id(inst_id)
+
+## v7.x：实例被销毁时（进化消耗/拆解/相位仪清理），从背包列表移除对应的幽灵 instance_id。
+## 根因：dispose_instance 只清 InstanceRegistry，不通知背包列表，导致 _extra_card_ids 残留
+## 已销毁的 instance_id（如进化前的源卡），下次 get_all_cards 触发"实例缺失，复用同名实例"告警。
+func _on_instance_disposed(instance_id: String) -> void:
+	if instance_id.is_empty() or _data == null:
+		return
+	# remove_extra_card_strict：仅当列表里真有该 id 时才移除并返回 true，避免误删
+	var removed: bool = bool(_data.remove_extra_card_strict(instance_id, true))
+	# SaveManager 的 pending/last_known 队列也要同步清理（presenter 存活时 pending 通常已 consume，
+	# 但 last_known 可能残留；读档时若该 id 还在存档，会重新进 pending）
+	if SaveManager and SaveManager.has_method("purge_backpack_card_id"):
+		SaveManager.purge_backpack_card_id(instance_id)
+	if removed and _is_view_visible():
+		_refresh_card_grid()
 
 func _on_card_equipped(_slot_index: int, card_id: String, _card_type: String) -> void:
 	var can_incremental: bool = _view and _view.has_method("remove_last_card_by_id")

@@ -239,7 +239,18 @@ func _ensure_backpack_signal_hook() -> void:
 	if SignalBus.has_signal("card_equipped"):
 		if not SignalBus.card_equipped.is_connected(_on_card_equipped_remove_fallback):
 			SignalBus.card_equipped.connect(_on_card_equipped_remove_fallback)
+	# v7.x：监听实例销毁，清理 pending/last_known 队列里的幽灵 instance_id
+	# （进化消耗/拆解/相位仪清理触发，确保任何场景下存档不再写出已销毁的实例 id）
+	if SignalBus.has_signal("instance_disposed"):
+		if not SignalBus.instance_disposed.is_connected(_on_instance_disposed_purge):
+			SignalBus.instance_disposed.connect(_on_instance_disposed_purge)
 	_backpack_signal_hooked = true
+
+## v7.x：实例销毁时清理 pending/last_known 里的幽灵 instance_id
+func _on_instance_disposed_purge(instance_id: String) -> void:
+	if instance_id.is_empty():
+		return
+	purge_backpack_card_id(instance_id)
 
 func _on_card_added_to_backpack_fallback(card: CardResource) -> void:
 	if card == null:
@@ -1003,6 +1014,23 @@ func add_pending_backpack_card_id(card_id: String) -> void:
 		return
 	if not _pending_backpack_ids.has(card_id):
 		_pending_backpack_ids.append(card_id)
+
+## v7.x：无条件从 pending + last_known 两个队列清除一个卡牌ID（实例销毁时清理幽灵 id 用）。
+## 与 consume_pending_backpack_card_id 的区别：consume 只在 pending 里有该 id 时才清 last_known，
+## 而实例销毁场景下该 id 可能早已不在 pending（买卡时已 consume），但仍残留在 last_known 里。
+## purge 两个队列都扫，确保幽灵 id 彻底清除，避免下次存档又把它写回 SK_BACKPACK_EXTRA_IDS。
+func purge_backpack_card_id(card_id: String) -> void:
+	if card_id.is_empty():
+		return
+	var idx_p: int = _pending_backpack_ids.find(card_id)
+	if idx_p >= 0:
+		_pending_backpack_ids.remove_at(idx_p)
+	# last_known 可能有多份同名 id（历史 bug 可能重复入队），循环清除全部
+	while true:
+		var idx_l: int = _last_known_extra_ids.find(card_id)
+		if idx_l < 0:
+			break
+		_last_known_extra_ids.remove_at(idx_l)
 
 ## 开始新游戏：重置所有管理器状态
 func start_new_game() -> void:

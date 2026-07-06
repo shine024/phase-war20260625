@@ -124,6 +124,13 @@ func dispose_instance(instance_id: String) -> void:
 	_enemy_origin_mod.erase(instance_id)
 	_intel_branch_bonus.erase(instance_id)
 	instance_disposed.emit(instance_id)
+	# v7.x：转发到 SignalBus，让背包列表/存档队列同步清理该 instance_id，
+	# 避免出现"背包列表有幽灵 id 但 Registry 无实例"的不一致（表现为 get_all_cards 告警+复用同名实例）。
+	# 进化消耗源实例（card_evolution_manager）、相位仪清理能量卡（phase_instrument_manager）、
+	# 背包拆解（backpack_presenter）三条路径都走 dispose_instance，在此统一通知最可靠。
+	var sb = get_node_or_null("/root/SignalBus")
+	if sb != null and sb.has_signal("instance_disposed"):
+		sb.instance_disposed.emit(instance_id)
 
 
 ## 判断实例是否存在

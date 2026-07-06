@@ -558,8 +558,6 @@ func _show_level_info_popup(level_index: int) -> void:
 	if not garrison_faction_id.is_empty() and not garrison_buff_text.is_empty() and garrison_buff_text != "无加成":
 		garrison_full = "%s  [敌方加成: %s]" % [garrison_text, garrison_buff_text]
 	body.add_child(_make_detail_row("驻防势力", garrison_full, garrison_color))
-	var law_preview: String = String(info.get("law_preview", "全部可用"))
-	body.add_child(_make_detail_row("法则限制", law_preview, Color(0.75, 0.9, 1, 0.95)))
 
 	# ▸ 环境参数（2列网格）
 	body.add_child(_make_detail_section_title("环境参数"))
@@ -568,10 +566,10 @@ func _show_level_info_popup(level_index: int) -> void:
 	env_grid.add_theme_constant_override("h_separation", 6)
 	env_grid.add_theme_constant_override("v_separation", 6)
 	env_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	env_grid.add_child(_make_env_tag("天气", String(info.get("weather", "?"))))
-	env_grid.add_child(_make_env_tag("地形", String(info.get("terrain", "?"))))
-	env_grid.add_child(_make_env_tag("能量场", String(info.get("energy_field", "?"))))
-	env_grid.add_child(_make_env_tag("时段", String(info.get("time_of_day", "?"))))
+	env_grid.add_child(_make_env_tag("天气", _translate_env("weather", info.get("weather", "?"))))
+	env_grid.add_child(_make_env_tag("地形", _translate_env("terrain", info.get("terrain", "?"))))
+	env_grid.add_child(_make_env_tag("能量场", _translate_env("energy_field", info.get("energy_field", "?"))))
+	env_grid.add_child(_make_env_tag("时段", _translate_env("time_of_day", info.get("time_of_day", "?"))))
 	body.add_child(env_grid)
 
 	# ▸ 敌情预览（敌方单位 + 可能掉落 + 资源掉落）
@@ -679,6 +677,40 @@ func _make_env_tag(label_text: String, value_text: String) -> PanelContainer:
 	margin.add_child(lbl)
 	return panel
 
+## 环境值翻译：将英文 key 转为中文显示
+static func _translate_env(key: String, raw: String) -> String:
+	var maps: Dictionary = {
+		"weather": {
+			"clear": "晴朗",
+			"rain": "降雨",
+			"storm": "风暴",
+			"fog": "迷雾",
+		},
+		"terrain": {
+			"plain": "平原",
+			"city": "城市",
+			"mountain": "山地",
+			"forest": "森林",
+			"desert": "荒漠",
+		},
+		"energy_field": {
+			"normal": "常规",
+			"high_field": "高能",
+			"nano_fog": "纳米雾",
+			"void_rift": "虚空裂隙",
+		},
+		"time_of_day": {
+			"dawn": "黎明",
+			"day": "白天",
+			"dusk": "黄昏",
+			"night": "夜晚",
+		},
+	}
+	var group: Dictionary = maps.get(key, {})
+	if group.has(raw):
+		return String(group[raw])
+	return raw
+
 ## 描述行（autowrap 文字段）
 func _make_detail_desc(text: String, color: Color = Color(0.7, 0.75, 0.85, 0.9)) -> Label:
 	var lbl := Label.new()
@@ -775,16 +807,8 @@ func _collect_level_info(level_index: int) -> Dictionary:
 					continue
 				if not drop_ids_all.has(cid_all):
 					drop_ids_all.append(cid_all)
-	var allowed_laws: Array = info_db.get_available_laws_for_level(level_index)
-	var law_preview: String = "全部可用"
-	if not allowed_laws.is_empty():
-		var law_names: Array = []
-		for law_id in allowed_laws:
-			var cfg_law: Dictionary = PhaseLawsData.get_by_id(String(law_id))
-			law_names.append(String(cfg_law.get("name", String(law_id))))
-		law_preview = ", ".join(law_names)
-	var bg_idx: int = ((level_index - 1) % 10) + 1
 	# 实际磁盘文件命名为 bg_level_NN.png (bg_level_01~bg_level_100), 原 bg_%02d.png 不存在导致全部回退空背景
+	var bg_idx: int = ((level_index - 1) % 10) + 1
 	var bg_path: String = "res://assets/backgrounds/bg_level_%02d.png" % bg_idx
 	var bg_exists: bool = ResourceLoader.exists(bg_path)
 	var fallback_exists: bool = ResourceLoader.exists(DEFAULT_BG_PATH)
@@ -916,7 +940,6 @@ func _collect_level_info(level_index: int) -> Dictionary:
 		"fragment_chance_percent": (0.25 + level_index * 0.002) * 100.0,
 		"enemy_preview": ", ".join(enemy_names),
 		"enemy_drop_preview": drop_preview_text,
-		"law_preview": law_preview,
 		# v6.9: 驻防势力信息
 		"garrison_faction_id": garrison_faction_id,
 		"garrison_text": garrison_text,
