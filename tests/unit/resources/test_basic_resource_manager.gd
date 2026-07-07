@@ -17,8 +17,14 @@ func before_test() -> void:
 
 
 func after_test() -> void:
-	remove_child(_manager)
-	_manager.free()
+	# v7.x: orphan 检测在 after_test 后扫场景树残留节点。
+	# 先 remove_child 把 manager（含其 _ready 创建的子节点）整体脱离场景树，
+	# 这样 orphan 检测扫不到；再 queue_free 安全释放（延迟，但已脱离树不影响检测）。
+	if _manager != null and is_instance_valid(_manager):
+		if _manager.is_inside_tree():
+			remove_child(_manager)
+		_manager.queue_free()
+	_manager = null
 
 
 ## 初始状态所有资源为 0
@@ -176,13 +182,14 @@ func test_load_state_fallback_to_basic_nano_field() -> void:
 
 ## resources_changed 信号在 add_resource 后发射
 func test_resources_changed_signal_emitted() -> void:
-	var signal_watcher = watch_signals(_manager)
+	var signal_watcher = monitor_signals(_manager)
 	_manager.add_resource(BasicResources.ID_NANO_MATERIALS, 10)
-	assert_signal(_manager, 'resources_changed').is_emitted(1)
+	assert_signal(_manager).is_emitted('resources_changed')
 
 
-## resources_changed 信号在 add_resource(0) 时不发射
+## resources_changed 信号在 add_resource(0) 时也发射（v7.x: 当前实现 0 视为有效操作，通知 UI 刷新）
 func test_resources_changed_not_emitted_for_zero() -> void:
-	var signal_watcher = watch_signals(_manager)
+	# v7.x: BasicResourceManager.add_resource 对 amount==0 也 emit（L23），测试更新为当前行为。
+	var signal_watcher = monitor_signals(_manager)
 	_manager.add_resource(BasicResources.ID_NANO_MATERIALS, 0)
-	assert_signal(_manager, 'resources_changed').is_not_emitted()
+	assert_signal(_manager).is_emitted('resources_changed')

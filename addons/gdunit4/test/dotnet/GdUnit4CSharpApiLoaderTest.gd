@@ -5,7 +5,7 @@ class_name GdUnit4CSharpApiLoaderTest
 extends GdUnitTestSuite
 
 # TestSuite generated from
-const GdUnitTools := preload("res://addons/gdUnit4/src/core/GdUnitTools.gd")
+const GdUnitTools := preload("res://addons/gdunit4/src/core/GdUnitTools.gd")
 
 
 @warning_ignore("unused_parameter")
@@ -30,7 +30,7 @@ func test_api_version() -> void:
 
 func test_create_test_suite() -> void:
 	var temp := create_temp_dir("examples")
-	var result := GdUnitFileAccess.copy_file("res://addons/gdUnit4/test/resources/core/sources/TestPerson.cs", temp)
+	var result := GdUnitFileAccess.copy_file("res://addons/gdunit4/test/resources/core/sources/TestPerson.cs", temp)
 	assert_result(result).is_success()
 
 	var example_source_cs := result.value_as_string()
@@ -49,7 +49,7 @@ class TestRunListener extends Node:
 
 
 func test_discover_tests() -> void:
-	var script: Script = load("res://addons/gdUnit4/test/dotnet/ExampleTestSuite.cs")
+	var script: Script = load("res://addons/gdunit4/test/dotnet/ExampleTestSuite.cs")
 	var tests := GdUnit4CSharpApiLoader.discover_tests(script)
 
 	assert_array(tests).has_size(14)\

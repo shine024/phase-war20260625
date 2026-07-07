@@ -27,7 +27,7 @@ corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 
 [node name="SettingsPanel" type="PanelContainer"]
-custom_minimum_size = Vector2(360, 260)
+custom_minimum_size = Vector2(480, 540)
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 script = ExtResource("1_script")
@@ -39,29 +39,39 @@ theme_override_constants/margin_top = 20
 theme_override_constants/margin_right = 20
 theme_override_constants/margin_bottom = 20
 
-[node name="VBox" type="VBoxContainer" parent="Margin"]
+[node name="Scroll" type="ScrollContainer" parent="Margin"]
 layout_mode = 2
-theme_override_constants/separation = 16
 
-[node name="Title" type="Label" parent="Margin/VBox"]
+[node name="VBox" type="VBoxContainer" parent="Margin/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 14
+
+[node name="Title" type="Label" parent="Margin/Scroll/VBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0, 0.941, 1, 1)
 theme_override_font_sizes/font_size = 22
 text = "设置 SETTINGS"
 horizontal_alignment = 1
 
-[node name="MasterVolumeRow" type="HBoxContainer" parent="Margin/VBox"]
+[node name="SectionAudio" type="Label" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.9, 1.0, 0.9)
+theme_override_font_sizes/font_size = 14
+text = "—— 音频 ——"
+
+[node name="MasterVolumeRow" type="HBoxContainer" parent="Margin/Scroll/VBox"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="MasterLabel" type="Label" parent="Margin/VBox/MasterVolumeRow"]
-custom_minimum_size = Vector2(100, 0)
+[node name="MasterLabel" type="Label" parent="Margin/Scroll/VBox/MasterVolumeRow"]
+custom_minimum_size = Vector2(110, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.85, 0.9, 0.95, 1)
 theme_override_font_sizes/font_size = 14
 text = "主音量"
 
-[node name="MasterSlider" type="HSlider" parent="Margin/VBox/MasterVolumeRow"]
+[node name="MasterSlider" type="HSlider" parent="Margin/Scroll/VBox/MasterVolumeRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 min_value = 0.0
@@ -69,24 +79,165 @@ max_value = 1.0
 step = 0.05
 value = 1.0
 
-[node name="FullscreenRow" type="HBoxContainer" parent="Margin/VBox"]
+[node name="SfxVolumeRow" type="HBoxContainer" parent="Margin/Scroll/VBox"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="FullscreenLabel" type="Label" parent="Margin/VBox/FullscreenRow"]
-custom_minimum_size = Vector2(100, 0)
+[node name="SfxLabel" type="Label" parent="Margin/Scroll/VBox/SfxVolumeRow"]
+custom_minimum_size = Vector2(110, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.9, 0.95, 1)
+theme_override_font_sizes/font_size = 14
+text = "音效"
+
+[node name="SfxSlider" type="HSlider" parent="Margin/Scroll/VBox/SfxVolumeRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 1.0
+step = 0.05
+value = 1.0
+
+[node name="BgmVolumeRow" type="HBoxContainer" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="BgmLabel" type="Label" parent="Margin/Scroll/VBox/BgmVolumeRow"]
+custom_minimum_size = Vector2(110, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.9, 0.95, 1)
+theme_override_font_sizes/font_size = 14
+text = "音乐"
+
+[node name="BgmSlider" type="HSlider" parent="Margin/Scroll/VBox/BgmVolumeRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 1.0
+step = 0.05
+value = 0.7
+
+[node name="BgmHint" type="Label" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.66, 0.78, 0.8)
+theme_override_font_sizes/font_size = 11
+text = "（音乐待补音频包，当前静音）"
+
+[node name="SectionGame" type="Label" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.9, 1.0, 0.9)
+theme_override_font_sizes/font_size = 14
+text = "—— 游戏 ——"
+
+[node name="DifficultyRow" type="HBoxContainer" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="DifficultyLabel" type="Label" parent="Margin/Scroll/VBox/DifficultyRow"]
+custom_minimum_size = Vector2(110, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.9, 0.95, 1)
+theme_override_font_sizes/font_size = 14
+text = "难度"
+
+[node name="DifficultyOption" type="OptionButton" parent="Margin/Scroll/VBox/DifficultyRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+item_count = 3
+popup/item_0/text = "轻松（敌方 -15%）"
+popup/item_0/id = 0
+popup/item_1/text = "普通"
+popup/item_1/id = 1
+popup/item_2/text = "困难（敌方 +15%）"
+popup/item_2/id = 2
+
+[node name="DifficultyHint" type="Label" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.66, 0.78, 0.8)
+theme_override_font_sizes/font_size = 11
+text = "（下一场战斗生效，仅缩放敌方血量与攻击）"
+
+[node name="SectionFullscreen" type="Label" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.9, 1.0, 0.9)
+theme_override_font_sizes/font_size = 14
+text = "—— 显示 ——"
+
+[node name="FullscreenRow" type="HBoxContainer" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="FullscreenLabel" type="Label" parent="Margin/Scroll/VBox/FullscreenRow"]
+custom_minimum_size = Vector2(110, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.85, 0.9, 0.95, 1)
 theme_override_font_sizes/font_size = 14
 text = "全屏"
 
-[node name="FullscreenCheck" type="CheckButton" parent="Margin/VBox/FullscreenRow"]
+[node name="FullscreenCheck" type="CheckButton" parent="Margin/Scroll/VBox/FullscreenRow"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.85, 0.9, 0.95, 1)
 theme_override_font_sizes/font_size = 14
 text = "全屏模式"
 
-[node name="CloseButton" type="Button" parent="Margin/VBox"]
+[node name="SectionA11y" type="Label" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.9, 1.0, 0.9)
+theme_override_font_sizes/font_size = 14
+text = "—— 可访问性 ——"
+
+[node name="HighContrastRow" type="HBoxContainer" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="HighContrastLabel" type="Label" parent="Margin/Scroll/VBox/HighContrastRow"]
+custom_minimum_size = Vector2(110, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.9, 0.95, 1)
+theme_override_font_sizes/font_size = 14
+text = "高对比度"
+
+[node name="HighContrastCheck" type="CheckButton" parent="Margin/Scroll/VBox/HighContrastRow"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.9, 0.95, 1)
+theme_override_font_sizes/font_size = 14
+text = "更高亮度/对比"
+
+[node name="LargeTypeRow" type="HBoxContainer" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="LargeTypeLabel" type="Label" parent="Margin/Scroll/VBox/LargeTypeRow"]
+custom_minimum_size = Vector2(110, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.9, 0.95, 1)
+theme_override_font_sizes/font_size = 14
+text = "大字号"
+
+[node name="LargeTypeCheck" type="CheckButton" parent="Margin/Scroll/VBox/LargeTypeRow"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.9, 0.95, 1)
+theme_override_font_sizes/font_size = 14
+text = "字号放大 25%"
+
+[node name="MotionReduceRow" type="HBoxContainer" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="MotionReduceLabel" type="Label" parent="Margin/Scroll/VBox/MotionReduceRow"]
+custom_minimum_size = Vector2(110, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.9, 0.95, 1)
+theme_override_font_sizes/font_size = 14
+text = "减少动效"
+
+[node name="MotionReduceCheck" type="CheckButton" parent="Margin/Scroll/VBox/MotionReduceRow"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.9, 0.95, 1)
+theme_override_font_sizes/font_size = 14
+text = "关闭屏幕震动"
+
+[node name="CloseButton" type="Button" parent="Margin/Scroll/VBox"]
 custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)

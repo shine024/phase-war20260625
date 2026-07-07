@@ -228,13 +228,24 @@ func _apply_hit(r: Dictionary) -> void:
 
 	# 生成命中特效
 	var proj_is_player: bool = bool(r.get("is_player", true))
+	# v7.x: 从目标提取 combat_kind 实现按目标类型差异化命中色调/缩放
+	var _tgt_kind: int = -1
+	if tgt != null and "stats" in tgt:
+		var _ts: UnitStats = tgt.get("stats") as UnitStats
+		if _ts != null:
+			_tgt_kind = int(_ts.combat_kind)
 	if not bool(r.get("forced_miss", false)):
-		_spawn_impact_explosion(hit_pos, proj_is_player, wt)
+		_spawn_impact_explosion(hit_pos, proj_is_player, wt, _tgt_kind)
 		# v6.4: 曲射爆炸触发中等屏幕震动
+		# v7.x: 优先用 combat_kind 的震动参数（对空重震/对装甲中震/对轻装轻震）
 		var tree := get_tree()
 		var bm: Node = tree.root.get_node_or_null("BattleManager") if tree else null
 		if bm != null and is_instance_valid(bm) and bm.has_method("request_screen_shake"):
-			bm.request_screen_shake(5.0, 0.25)
+			var _shake: Vector2 = WeaponProjectileVfx.impact_shake_for_kind(_tgt_kind) if _tgt_kind >= 0 else Vector2(5.0, 0.25)
+			if _shake.x > 0.0:
+				bm.request_screen_shake(_shake.x, _shake.y)
+			else:
+				bm.request_screen_shake(5.0, 0.25)
 
 	# 造成伤害
 	if bool(r.get("forced_miss", false)):
@@ -376,7 +387,8 @@ func _get_aoe_targets(center: Vector2, radius: float, primary: Node2D) -> Array:
 
 ## 爆炸特效
 ## v6.2: 按 weapon_type 选不同贴图（迫击炮/导弹/高射炮/Omega/电磁炮各有专属外观）
-func _spawn_impact_explosion(pos: Vector2, is_player_proj: bool = true, weapon_type: int = 1) -> void:
+## v7.x: target_combat_kind 驱动按目标类型差异化色调/缩放（-1 走原逻辑）
+func _spawn_impact_explosion(pos: Vector2, is_player_proj: bool = true, weapon_type: int = 1, target_combat_kind: int = -1) -> void:
 	var tex: Texture2D = WeaponProjectileVfx.explosion_impact_texture(weapon_type)
 	if tex == null:
 		return
@@ -387,11 +399,18 @@ func _spawn_impact_explosion(pos: Vector2, is_player_proj: bool = true, weapon_t
 	fx.texture = tex
 	fx.centered = true
 	# v6.2: 曲射/空射爆炸特效放大(初始 0.75→1.0，放大倍率 1.5→2.25)
-	fx.scale = Vector2(1.0, 1.0)
+	# v7.x: 按 combat_kind 叠加缩放倍率（对轻装小/对装甲中/对空大）
+	var _base_scale: float = 1.0
+	if target_combat_kind >= 0 and WeaponProjectileVfx.IMPACT_SCALE_MUL_BY_KIND.has(target_combat_kind):
+		_base_scale *= float(WeaponProjectileVfx.IMPACT_SCALE_MUL_BY_KIND[target_combat_kind])
+	fx.scale = Vector2(_base_scale, _base_scale)
 	fx.global_position = pos
 	fx.z_as_relative = false
 	fx.z_index = 4
-	if not is_player_proj:
+	# v7.x: 按 combat_kind 叠加色调（火花/碎屑/空爆色调差异）；敌方子弹保持原红色调（次优先级）
+	if target_combat_kind >= 0 and WeaponProjectileVfx.IMPACT_TINT_BY_KIND.has(target_combat_kind):
+		fx.modulate = WeaponProjectileVfx.IMPACT_TINT_BY_KIND[target_combat_kind]
+	elif not is_player_proj:
 		fx.modulate = Color(1.0, 0.45, 0.55)
 	fx.show()
 	add_child(fx)
@@ -399,3 +418,5 @@ func _spawn_impact_explosion(pos: Vector2, is_player_proj: bool = true, weapon_t
 	tw.tween_property(fx, "scale", fx.scale * 2.25, 0.15)
 	tw.parallel().tween_property(fx, "modulate:a", 0.0, 0.3)
 	tw.finished.connect(func(): WeaponProjectileVfx._release_impact_sprite(fx))
+	# v7.x: 曲射批处理爆炸叠加冲击波环 + 火花
+	WeaponProjectileVfx._spawn_impact_shockwave(self, pos, fx.scale.x * 1.5, is_player_proj, target_combat_kind)

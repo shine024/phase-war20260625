@@ -17,8 +17,12 @@ func before_test() -> void:
 
 
 func after_test() -> void:
-	remove_child(_bm)
-	_bm.free()
+	# v7.x: 守卫 remove_child，queue_free 更安全。
+	if _bm != null and is_instance_valid(_bm):
+		if _bm.is_inside_tree():
+			remove_child(_bm)
+		_bm.queue_free()
+	_bm = null
 
 
 func test_evolution_hp_floor_applied_after_growth() -> void:

@@ -103,7 +103,7 @@ Here is a [Link](https://example.com/ "Optional link title").
 
 ------ image ------
 Inline-style:
-![alt text](res://addons/gdUnit4/test/update/resources/icon48.png "Logo Title Text 1")
+![alt text](res://addons/gdunit4/test/update/resources/icon48.png "Logo Title Text 1")
 
 ![alt text](https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png)
 
@@ -111,7 +111,7 @@ Inline-style:
 Reference-style:
 ![alt text][logo]
 
-[logo]:res://addons/gdUnit4/test/update/resources/icon48.png "Logo Title Text 2"
+[logo]:res://addons/gdunit4/test/update/resources/icon48.png "Logo Title Text 2"
 
 
 ------ Horizontal Rules ------

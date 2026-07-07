@@ -5,11 +5,11 @@ class_name TestSuiteTemplateTest
 extends GdUnitTestSuite
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/ui/templates/TestSuiteTemplate.gd'
+const __source = 'res://addons/gdunit4/src/ui/templates/TestSuiteTemplate.gd'
 
 
 func test_show() -> void:
-	var template :Variant = spy("res://addons/gdUnit4/src/ui/templates/TestSuiteTemplate.tscn")
+	var template :Variant = spy("res://addons/gdunit4/src/ui/templates/TestSuiteTemplate.tscn")
 	scene_runner(template)
 
 	# verify the followup functions are called by _ready()
@@ -21,7 +21,7 @@ func test_show() -> void:
 
 
 func test_load_template_gd() -> void:
-	var runner := scene_runner("res://addons/gdUnit4/src/ui/templates/TestSuiteTemplate.tscn")
+	var runner := scene_runner("res://addons/gdunit4/src/ui/templates/TestSuiteTemplate.tscn")
 	runner.invoke("load_template", GdUnitTestSuiteTemplate.TEMPLATE_ID_GD)
 
 	assert_int(runner.get_property("_selected_template")).is_equal(GdUnitTestSuiteTemplate.TEMPLATE_ID_GD)
@@ -29,7 +29,7 @@ func test_load_template_gd() -> void:
 
 
 func test_load_template_cs() -> void:
-	var runner := scene_runner("res://addons/gdUnit4/src/ui/templates/TestSuiteTemplate.tscn")
+	var runner := scene_runner("res://addons/gdunit4/src/ui/templates/TestSuiteTemplate.tscn")
 	runner.invoke("load_template", GdUnitTestSuiteTemplate.TEMPLATE_ID_CS)
 
 	assert_int(runner.get_property("_selected_template")).is_equal(GdUnitTestSuiteTemplate.TEMPLATE_ID_CS)

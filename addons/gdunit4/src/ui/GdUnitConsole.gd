@@ -1,7 +1,7 @@
 @tool
 extends Control
 
-const GdUnitUpdateClient = preload("res://addons/gdUnit4/src/update/GdUnitUpdateClient.gd")
+const GdUnitUpdateClient = preload("res://addons/gdunit4/src/update/GdUnitUpdateClient.gd")
 const TITLE = "gdUnit4 ${version} Console"
 
 @onready var header := $VBoxContainer/Header

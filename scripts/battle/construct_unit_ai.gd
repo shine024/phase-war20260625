@@ -276,7 +276,13 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 		return
 	var dist_t := u.global_position.distance_to(u.target.global_position)
 	var miss := false
-	var wt: int = weapon_type_override if weapon_type_override >= 0 else (u.stats.weapon_type if u.stats else 0)
+	# v7.x: wt 优先读当前槽位 weapon_resource.weapon_type（按目标类型差异化的弹道），
+	# 让对装甲/对空槽的穿甲/导弹弹道真正参与路由判定与子弹 VFX。
+	# 回退链：槽位 weapon_type → 单位级 stats.weapon_type → 0(DIRECT)
+	var _slot_wt: int = -1
+	if weapon_resource and weapon_resource is WeaponResource and weapon_resource.weapon_type >= 0:
+		_slot_wt = int(weapon_resource.weapon_type)
+	var wt: int = weapon_type_override if weapon_type_override >= 0 else (_slot_wt if _slot_wt >= 0 else (u.stats.weapon_type if u.stats else 0))
 
 	# 射程检查：优先使用 WeaponResource 字段
 	var range_val: float = 0.0
@@ -365,9 +371,14 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 		if bullet == null:
 			bullet = BulletScene.instantiate()
 		bullet.global_position = u.global_position
-		# v6.6: 优先传 legacy_weapon_type（改造指定的型号，决定 VFX/弹道），
-		# 否则回退到 weapon_type（基础弹道类型）
-		var _vfx_wt: int = (u.stats.legacy_weapon_type if u.stats and u.stats.legacy_weapon_type > 0 else wt)
+		# v7.x: 子弹 VFX 弹道类型优先用槽位 weapon_resource.weapon_type（按目标类型差异化），
+		# 回退单位级 legacy_weapon_type（effects.weapon_type 改造保留的单位级默认），
+		# 再回退到 wt（路由判定值）。
+		var _vfx_wt: int = wt
+		if _slot_wt >= 0:
+			_vfx_wt = _slot_wt
+		elif u.stats and u.stats.legacy_weapon_type > 0:
+			_vfx_wt = u.stats.legacy_weapon_type
 		bullet.setup(u.target, pellet_dmg, u.is_player, _vfx_wt, u, u.stats, miss, w_name, p_pre_calculated)
 		var current_parent: Node = bullet.get_parent()
 		if current_parent != root_2d:

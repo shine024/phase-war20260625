@@ -3,7 +3,7 @@ class_name GdUnitObjectAssertImplTest
 extends GdUnitTestSuite
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/asserts/GdUnitObjectAssertImpl.gd'
+const __source = 'res://addons/gdunit4/src/asserts/GdUnitObjectAssertImpl.gd'
 
 
 func test_is_equal() -> void:

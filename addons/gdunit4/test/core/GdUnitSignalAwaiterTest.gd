@@ -5,7 +5,7 @@ class_name GdUnitSignalAwaiterTest
 extends GdUnitTestSuite
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/core/GdUnitSignalAwaiter.gd'
+const __source = 'res://addons/gdunit4/src/core/GdUnitSignalAwaiter.gd'
 
 
 class Monster extends Node:

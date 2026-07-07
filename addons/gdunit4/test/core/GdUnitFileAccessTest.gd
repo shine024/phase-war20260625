@@ -4,7 +4,7 @@ extends GdUnitTestSuite
 @warning_ignore('return_value_discarded')
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/core/GdUnitFileAccess.gd'
+const __source = 'res://addons/gdunit4/src/core/GdUnitFileAccess.gd'
 
 
 var file_to_save :String
@@ -22,14 +22,14 @@ func _create_file(p_path :String, p_name :String) -> void:
 
 func test_copy_directory() -> void:
 	var temp_dir := create_temp_dir("test_copy_directory")
-	assert_bool(GdUnitFileAccess.copy_directory("res://addons/gdUnit4/test/core/resources/copy_test/folder_a/", temp_dir)).is_true()
+	assert_bool(GdUnitFileAccess.copy_directory("res://addons/gdunit4/test/core/resources/copy_test/folder_a/", temp_dir)).is_true()
 	assert_file("%s/file_a.txt" % temp_dir).exists()
 	assert_file("%s/file_b.txt" % temp_dir).exists()
 
 
 func test_copy_directory_recursive() -> void:
 	var temp_dir := create_temp_dir("test_copy_directory_recursive")
-	assert_bool(GdUnitFileAccess.copy_directory("res://addons/gdUnit4/test/core/resources/copy_test/", temp_dir, true)).is_true()
+	assert_bool(GdUnitFileAccess.copy_directory("res://addons/gdunit4/test/core/resources/copy_test/", temp_dir, true)).is_true()
 	assert_file("%s/folder_a/file_a.txt" % temp_dir).exists()
 	assert_file("%s/folder_a/file_b.txt" % temp_dir).exists()
 	assert_file("%s/folder_b/file_a.txt" % temp_dir).exists()
@@ -204,7 +204,7 @@ func test_delete_directory_content_only() -> void:
 func test_extract_package() -> void:
 	clean_temp_dir()
 	var tmp_path := GdUnitFileAccess.create_temp_dir("test_update")
-	var source := "res://addons/gdUnit4/test/update/resources/update.zip"
+	var source := "res://addons/gdunit4/test/update/resources/update.zip"
 
 	# the temp should be inital empty
 	assert_array(GdUnitFileAccess.scan_dir(tmp_path)).is_empty()
@@ -221,7 +221,7 @@ func test_extract_package() -> void:
 func test_extract_package_invalid_package() -> void:
 	clean_temp_dir()
 	var tmp_path := GdUnitFileAccess.create_temp_dir("test_update")
-	var source := "res://addons/gdUnit4/test/update/resources/update_invalid.zip"
+	var source := "res://addons/gdunit4/test/update/resources/update_invalid.zip"
 
 	# the temp should be inital empty
 	assert_array(GdUnitFileAccess.scan_dir(tmp_path)).is_empty()

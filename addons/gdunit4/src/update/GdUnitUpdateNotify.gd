@@ -3,9 +3,9 @@ extends MarginContainer
 
 #signal request_completed(response)
 
-const GdMarkDownReader = preload("res://addons/gdUnit4/src/update/GdMarkDownReader.gd")
-const GdUnitUpdateClient = preload("res://addons/gdUnit4/src/update/GdUnitUpdateClient.gd")
-const GdUnitUpdateProgress = preload("res://addons/gdUnit4/src/update/GdUnitUpdate.gd")
+const GdMarkDownReader = preload("res://addons/gdunit4/src/update/GdMarkDownReader.gd")
+const GdUnitUpdateClient = preload("res://addons/gdunit4/src/update/GdUnitUpdateClient.gd")
+const GdUnitUpdateProgress = preload("res://addons/gdunit4/src/update/GdUnitUpdate.gd")
 
 @onready var _md_reader: GdMarkDownReader = GdMarkDownReader.new()
 @onready var _update_client: GdUnitUpdateClient = $GdUnitUpdateClient
@@ -95,7 +95,7 @@ func show_update() -> void:
 	var content: String
 	if _debug_mode:
 		await get_tree().create_timer(.2).timeout
-		var template := FileAccess.open("res://addons/gdUnit4/test/update/resources/http_response_releases.txt", FileAccess.READ).get_as_text()
+		var template := FileAccess.open("res://addons/gdunit4/test/update/resources/http_response_releases.txt", FileAccess.READ).get_as_text()
 		content = await _md_reader.to_bbcode(template)
 	else:
 		var response :GdUnitUpdateClient.HttpResponse = await _update_client.request_releases()
@@ -163,10 +163,10 @@ func _on_update_pressed() -> void:
 		ScriptEditorControls.close_open_editor_scripts()
 	# copy update source to a temp because the update is deleting the whole gdUnit folder
 	DirAccess.make_dir_absolute("res://addons/.gdunit_update")
-	DirAccess.copy_absolute("res://addons/gdUnit4/src/update/GdUnitUpdate.tscn", "res://addons/.gdunit_update/GdUnitUpdate.tscn")
-	DirAccess.copy_absolute("res://addons/gdUnit4/src/update/GdUnitUpdate.gd", "res://addons/.gdunit_update/GdUnitUpdate.gd")
-	var source := FileAccess.open("res://addons/gdUnit4/src/update/GdUnitUpdate.tscn", FileAccess.READ)
-	var content := source.get_as_text().replace("res://addons/gdUnit4/src/update/GdUnitUpdate.gd", "res://addons/.gdunit_update/GdUnitUpdate.gd")
+	DirAccess.copy_absolute("res://addons/gdunit4/src/update/GdUnitUpdate.tscn", "res://addons/.gdunit_update/GdUnitUpdate.tscn")
+	DirAccess.copy_absolute("res://addons/gdunit4/src/update/GdUnitUpdate.gd", "res://addons/.gdunit_update/GdUnitUpdate.gd")
+	var source := FileAccess.open("res://addons/gdunit4/src/update/GdUnitUpdate.tscn", FileAccess.READ)
+	var content := source.get_as_text().replace("res://addons/gdunit4/src/update/GdUnitUpdate.gd", "res://addons/.gdunit_update/GdUnitUpdate.gd")
 	var dest := FileAccess.open("res://addons/.gdunit_update/GdUnitUpdate.tscn", FileAccess.WRITE)
 	dest.store_string(content)
 	_update_progress.set_visible(true)

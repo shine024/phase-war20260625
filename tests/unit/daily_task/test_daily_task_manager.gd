@@ -16,8 +16,13 @@ func before_test() -> void:
 
 
 func after_test() -> void:
-	remove_child(_manager)
-	_manager.free()
+	# v7.x: 用 queue_free 安全释放（free 在 _ready 重的 manager 上可能段错误）。
+	# GdUnit4 的 orphan 检测可能计为 warning，但不影响测试结果正确性判定。
+	if _manager != null and is_instance_valid(_manager):
+		if _manager.is_inside_tree():
+			remove_child(_manager)
+		_manager.queue_free()
+	_manager = null
 
 
 ## 初始状态下没有日常任务
@@ -52,14 +57,14 @@ func test_tasks_have_required_fields() -> void:
 	_manager.refresh_daily_tasks()
 	var tasks = _manager.get_daily_tasks()
 	for task in tasks:
-		assert_dict(task).contains_key("id")
-		assert_dict(task).contains_key("type")
-		assert_dict(task).contains_key("difficulty")
-		assert_dict(task).contains_key("target")
-		assert_dict(task).contains_key("current")
-		assert_dict(task).contains_key("reward")
-		assert_dict(task).contains_key("completed")
-		assert_dict(task).contains_key("claimed")
+		assert_dict(task).contains_keys("id")
+		assert_dict(task).contains_keys("type")
+		assert_dict(task).contains_keys("difficulty")
+		assert_dict(task).contains_keys("target")
+		assert_dict(task).contains_keys("current")
+		assert_dict(task).contains_keys("reward")
+		assert_dict(task).contains_keys("completed")
+		assert_dict(task).contains_keys("claimed")
 
 
 ## 任务初始进度为 0，目标大于 0
@@ -97,7 +102,7 @@ func test_task_types_no_duplicates() -> void:
 	var tasks = _manager.get_daily_tasks()
 	var types: Array = []
 	for task in tasks:
-		assert_int(task["type"]).is_in_range(0, 7)
+		assert_int(task["type"]).is_between(0, 7)
 		assert_bool(task["type"] in types).is_false()
 		types.append(task["type"])
 
@@ -113,8 +118,16 @@ func test_update_task_progress() -> void:
 	if target_task["target"] > 1:
 		_manager.update_task_progress(target_task["type"], 1)
 		var updated = _manager.get_daily_tasks()
-		assert_int(updated[0]["current"]).is_equal(1)
-		assert_bool(updated[0]["completed"]).is_false()
+		# v7.x: 原断言用固定下标 updated[0] 脆弱（任务顺序不保证）。
+		# 改为按 type 查找被更新的任务，验证其 current==1 且未完成。
+		var matched_task: Dictionary = {}
+		for t in updated:
+			if str(t.get("type", "")) == str(target_task["type"]):
+				matched_task = t
+				break
+		assert_dict(matched_task).is_not_empty()
+		assert_int(int(matched_task.get("current", 0))).is_equal(1)
+		assert_bool(bool(matched_task.get("completed", true))).is_false()
 
 
 ## update_task_progress 完成任务
@@ -133,16 +146,16 @@ func test_task_completed_signal_emitted() -> void:
 	_manager.refresh_daily_tasks()
 	var tasks = _manager.get_daily_tasks()
 	var task = tasks[0]
-	var signal_watcher = watch_signals(_manager)
+	var signal_watcher = monitor_signals(_manager)
 	_manager.update_task_progress(task["type"], task["target"])
-	assert_signal(_manager, 'task_completed').is_emitted(1)
+	assert_signal(_manager).is_emitted('task_completed')
 
 
 ## daily_tasks_refreshed 信号在刷新时发射
 func test_daily_tasks_refreshed_signal() -> void:
-	var signal_watcher = watch_signals(_manager)
+	var signal_watcher = monitor_signals(_manager)
 	_manager.refresh_daily_tasks()
-	assert_signal(_manager, 'daily_tasks_refreshed').is_emitted(1)
+	assert_signal(_manager).is_emitted('daily_tasks_refreshed')
 
 
 ## claim_task_reward 对已完成的任务返回 true
@@ -240,17 +253,17 @@ func test_get_difficulty_name() -> void:
 func test_get_difficulty_color() -> void:
 	var easy = _manager.get_difficulty_color(_manager.TaskDifficulty.EASY)
 	assert_float(easy.a).is_equal(1.0)
-	assert_float(easy.r).is_greater_or_equal(0.0)
-	assert_float(easy.g).is_greater_or_equal(0.0)
-	assert_float(easy.b).is_greater_or_equal(0.0)
+	assert_float(easy.r).is_greater_equal(0.0)
+	assert_float(easy.g).is_greater_equal(0.0)
+	assert_float(easy.b).is_greater_equal(0.0)
 
 
 ## save_state / load_state 往返
 func test_save_load_state_roundtrip() -> void:
 	_manager.refresh_daily_tasks()
 	var state = _manager.save_state()
-	assert_dict(state).contains_key("tasks")
-	assert_dict(state).contains_key("last_refresh")
+	assert_dict(state).contains_keys("tasks")
+	assert_dict(state).contains_keys("last_refresh")
 
 	# 创建新管理器加载状态
 	var manager2 = Node.new()

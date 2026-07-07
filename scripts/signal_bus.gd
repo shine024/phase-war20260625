@@ -200,3 +200,7 @@ signal evolution_path_unlocked(card_id: String, branch_name: String)
 
 # v7.x 实例生命周期（转发 InstanceRegistry.instance_disposed，供背包/存档清理幽灵 instance_id）
 signal instance_disposed(instance_id: String)
+
+# v7.x(A3): 可访问性运行时变更。由 DesignTokens.set_accessibility 经由本总线广播，
+# 已打开的面板/血条/能量条等监听以即时重绘（GDScript 不支持 static signal，故走 autoload）。
+signal accessibility_changed()

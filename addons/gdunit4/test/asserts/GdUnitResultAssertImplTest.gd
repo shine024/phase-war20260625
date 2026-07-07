@@ -4,7 +4,7 @@ extends GdUnitTestSuite
 
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/asserts/GdUnitResultAssertImpl.gd'
+const __source = 'res://addons/gdunit4/src/asserts/GdUnitResultAssertImpl.gd'
 
 
 func test_is_null() -> void:

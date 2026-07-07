@@ -3,7 +3,7 @@ class_name GdUnitAssertImplTest
 extends GdUnitTestSuite
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/asserts/GdUnitAssertImpl.gd'
+const __source = 'res://addons/gdunit4/src/asserts/GdUnitAssertImpl.gd'
 
 
 func before() -> void:

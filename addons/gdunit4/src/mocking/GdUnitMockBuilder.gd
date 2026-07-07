@@ -1,8 +1,8 @@
 class_name GdUnitMockBuilder
 extends GdUnitClassDoubler
 
-const GdUnitTools := preload("res://addons/gdUnit4/src/core/GdUnitTools.gd")
-const MOCK_TEMPLATE :GDScript = preload("res://addons/gdUnit4/src/mocking/GdUnitMockImpl.gd")
+const GdUnitTools := preload("res://addons/gdunit4/src/core/GdUnitTools.gd")
+const MOCK_TEMPLATE :GDScript = preload("res://addons/gdunit4/src/mocking/GdUnitMockImpl.gd")
 
 
 static func is_push_errors() -> bool:

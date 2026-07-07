@@ -41,7 +41,9 @@ const DATA: Dictionary = {
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 300, cost_install = 150,
 		slot_type = "automation", conflict_group = "automation",
-		effects = {attack_interval = -0.20},
+		# v7.x: per-slot 弹道——对装甲槽改 SNIPER 要塞炮穿甲
+		condition_slot = 1,
+		effects = {attack_interval = -0.20, slot_weapon_type = 6},  # v7.x: 对装甲槽穿甲弹道（要塞炮）,
 		unlock_conditions = {required_level = 5}
 	},
 	"for_04_filtration" = {
@@ -61,7 +63,9 @@ const DATA: Dictionary = {
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 180, cost_install = 90,
 		slot_type = "ammunition", conflict_group = "ammunition",
-		effects = {attack_light = 0.20},
+		# v7.x: per-slot 弹道——对轻装槽改 MG 机枪压制（弹药充足持续射击）
+		condition_slot = 0,
+		effects = {attack_light = 0.20, slot_weapon_type = 2},  # v7.x: 对轻装槽机枪弹道,
 		unlock_conditions = {required_level = 3}
 	},
 	"for_06_radar" = {

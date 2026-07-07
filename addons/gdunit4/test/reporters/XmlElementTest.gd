@@ -5,7 +5,7 @@ class_name XmlElementTest
 extends GdUnitTestSuite
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/report/XmlElement.gd'
+const __source = 'res://addons/gdunit4/src/report/XmlElement.gd'
 
 
 func test_attribute() -> void:

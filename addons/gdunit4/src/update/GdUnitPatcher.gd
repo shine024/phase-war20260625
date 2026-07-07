@@ -2,7 +2,7 @@ class_name GdUnitPatcher
 extends RefCounted
 
 
-const _base_dir := "res://addons/gdUnit4/src/update/patches/"
+const _base_dir := "res://addons/gdunit4/src/update/patches/"
 
 var _patches := Dictionary()
 

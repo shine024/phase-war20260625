@@ -15,8 +15,12 @@ func before_test() -> void:
 
 
 func after_test() -> void:
-	remove_child(_manager)
-	_manager.free()
+	# v7.x: 守卫 remove_child（manager _ready 异常时 parent 关系可能未建立），queue_free 更安全。
+	if _manager != null and is_instance_valid(_manager):
+		if _manager.is_inside_tree():
+			remove_child(_manager)
+		_manager.queue_free()
+	_manager = null
 
 
 func test_spend_then_add_returns_expected_balance() -> void:
@@ -26,6 +30,7 @@ func test_spend_then_add_returns_expected_balance() -> void:
 
 
 func test_spend_insufficient_preserves_balance() -> void:
-	var before := _manager.current
+	# v7.x: Godot 4.5 无法从动态 _manager 属性推断类型，显式标注 float。
+	var before: float = _manager.current
 	assert_bool(_manager.spend(999.0)).is_false()
 	assert_float(_manager.current).is_equal(before)

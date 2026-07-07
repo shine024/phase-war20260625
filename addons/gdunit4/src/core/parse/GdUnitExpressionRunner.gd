@@ -30,7 +30,7 @@ func execute(src_script: GDScript, value: Variant) -> Variant:
 			return object.callv("new", args)
 
 	var script := GDScript.new()
-	var resource_path := "res://addons/gdUnit4/src/Fuzzers.gd" if src_script.resource_path.is_empty() else src_script.resource_path
+	var resource_path := "res://addons/gdunit4/src/Fuzzers.gd" if src_script.resource_path.is_empty() else src_script.resource_path
 	script.source_code = CLASS_TEMPLATE.dedent()\
 		.replace("${clazz_path}", resource_path)\
 		.replace("$expression", expression)

@@ -2,7 +2,7 @@
 extends GdUnitTestSuite
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/asserts/GdUnitArrayAssertImpl.gd'
+const __source = 'res://addons/gdunit4/src/asserts/GdUnitArrayAssertImpl.gd'
 
 var _saved_report_assert_warnings :Variant
 

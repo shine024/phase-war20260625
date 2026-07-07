@@ -4,15 +4,15 @@
 script/source = "# a small helper to debug the GdUnitCmdTool
 extends Node
 
-const CmdTool := preload(\"res://addons/gdUnit4/bin/GdUnitCmdTool.gd\")
-const CopyLog := preload(\"res://addons/gdUnit4/bin/GdUnitCopyLog.gd\")
+const CmdTool := preload(\"res://addons/gdunit4/bin/GdUnitCmdTool.gd\")
+const CopyLog := preload(\"res://addons/gdunit4/bin/GdUnitCopyLog.gd\")
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	#var tool := CmdTool.new()
 
 	var runner := GdUnitTestCIRunner.new()
-	runner._debug_cmd_args = [\"GdUnitCmdTool.gd\", \"--add\", \"res://addons/gdUnit4/test/core/parse/GdUnitTestParameterSetResolverTest.gd\", \"--continue\", \"-rc\", \"1\"]
+	runner._debug_cmd_args = [\"GdUnitCmdTool.gd\", \"--add\", \"res://addons/gdunit4/test/core/parse/GdUnitTestParameterSetResolverTest.gd\", \"--continue\", \"-rc\", \"1\"]
 
 	add_child(runner)
 

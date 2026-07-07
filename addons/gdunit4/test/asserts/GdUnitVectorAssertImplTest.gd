@@ -5,7 +5,7 @@ extends GdUnitTestSuite
 @warning_ignore('return_value_discarded')
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/asserts/GdUnitVectorAssertImpl.gd'
+const __source = 'res://addons/gdunit4/src/asserts/GdUnitVectorAssertImpl.gd'
 
 
 var _test_seta := [

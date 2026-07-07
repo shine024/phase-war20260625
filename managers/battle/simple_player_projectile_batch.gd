@@ -150,10 +150,16 @@ func _apply_hit(r: Dictionary) -> void:
 		return
 	var hit_pos: Vector2 = Vector2(r["pos"])
 	var wt: int = int(r["wt"])
+	# v7.x: 从目标提取 combat_kind 实现按目标类型差异化命中色调/缩放
+	var _tgt_kind: int = -1
+	if tgt != null and "stats" in tgt:
+		var _ts: UnitStats = tgt.get("stats") as UnitStats
+		if _ts != null:
+			_tgt_kind = int(_ts.combat_kind)
 	if bool(r.get("forced_miss", false)):
 		CombatFeedback.show_miss(tgt.global_position, tgt)
 	else:
-		WeaponProjectileVfx.spawn_impact(self, hit_pos, wt, true)
+		WeaponProjectileVfx.spawn_impact_with_kind(self, hit_pos, wt, true, _tgt_kind)
 	var raw: float = float(r["dmg"])
 	var shooter_raw: Variant = r["shooter"]
 	var shooter: Node2D = shooter_raw if shooter_raw != null and is_instance_valid(shooter_raw) and shooter_raw is Node2D else null

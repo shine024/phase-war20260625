@@ -122,6 +122,9 @@ func _refresh_list() -> void:
 		# v6.7(引导剧情): tutorial 类自动触发、不进任务面板
 		if def.get("category", "commission") == "tutorial":
 			continue
+		# 主线剧情已关闭（已有 tutorial 引导替代）：story 任务不进任务面板
+		if def.get("category", "commission") == "story" and QuestDefs.STORY_DISABLED:
+			continue
 		var is_accepted: bool = quest_mgr.is_accepted(qid)
 		# v6.6(剧情): 隐藏任务在 reveal 前不出现在任务板（补剧情.txt 真实者支线）
 		# 已接的任务无论 hidden 都显示（防止接取后 reveal 状态丢失导致任务消失）

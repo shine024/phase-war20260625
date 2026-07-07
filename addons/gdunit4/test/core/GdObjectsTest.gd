@@ -249,31 +249,31 @@ func extract_class_name(value :Variant) -> GdUnitResult:
 
 func test_get_class_name_from_class_path() -> void:
 	# extract class name by resoure path
-	assert_result(extract_class_name("res://addons/gdUnit4/test/resources/core/Person.gd"))\
+	assert_result(extract_class_name("res://addons/gdunit4/test/resources/core/Person.gd"))\
 		.is_success().is_value("Person")
-	assert_result(extract_class_name("res://addons/gdUnit4/test/resources/core/CustomClass.gd"))\
+	assert_result(extract_class_name("res://addons/gdunit4/test/resources/core/CustomClass.gd"))\
 		.is_success().is_value("CustomClass")
-	assert_result(extract_class_name("res://addons/gdUnit4/test/mocker/resources/CustomNodeTestClass.gd"))\
+	assert_result(extract_class_name("res://addons/gdunit4/test/mocker/resources/CustomNodeTestClass.gd"))\
 		.is_success().is_value("CustomNodeTestClass")
-	assert_result(extract_class_name("res://addons/gdUnit4/test/mocker/resources/CustomResourceTestClass.gd"))\
+	assert_result(extract_class_name("res://addons/gdunit4/test/mocker/resources/CustomResourceTestClass.gd"))\
 		.is_success().is_value("CustomResourceTestClass")
-	assert_result(extract_class_name("res://addons/gdUnit4/test/mocker/resources/OverridenGetClassTestClass.gd"))\
+	assert_result(extract_class_name("res://addons/gdunit4/test/mocker/resources/OverridenGetClassTestClass.gd"))\
 		.is_success().is_value("OverridenGetClassTestClass")
 
 
 func test_get_class_name_from_snake_case_class_path() -> void:
-	assert_result(extract_class_name("res://addons/gdUnit4/test/core/resources/naming_conventions/snake_case_with_class_name.gd"))\
+	assert_result(extract_class_name("res://addons/gdunit4/test/core/resources/naming_conventions/snake_case_with_class_name.gd"))\
 		.is_success().is_value("SnakeCaseWithClassName")
 	# without class_name
-	assert_result(extract_class_name("res://addons/gdUnit4/test/core/resources/naming_conventions/snake_case_without_class_name.gd"))\
+	assert_result(extract_class_name("res://addons/gdunit4/test/core/resources/naming_conventions/snake_case_without_class_name.gd"))\
 		.is_success().is_value("SnakeCaseWithoutClassName")
 
 
 func test_get_class_name_from_pascal_case_class_path() -> void:
-	assert_result(extract_class_name("res://addons/gdUnit4/test/core/resources/naming_conventions/PascalCaseWithClassName.gd"))\
+	assert_result(extract_class_name("res://addons/gdunit4/test/core/resources/naming_conventions/PascalCaseWithClassName.gd"))\
 		.is_success().is_value("PascalCaseWithClassName")
 	# without class_name
-	assert_result(extract_class_name("res://addons/gdUnit4/test/core/resources/naming_conventions/PascalCaseWithoutClassName.gd"))\
+	assert_result(extract_class_name("res://addons/gdunit4/test/core/resources/naming_conventions/PascalCaseWithoutClassName.gd"))\
 		.is_success().is_value("PascalCaseWithoutClassName")
 
 
@@ -320,7 +320,7 @@ func test_extract_class_name_from_instance() -> void:
 	assert_result(extract_class_name(Person.new())).is_equal("Person")
 	assert_result(extract_class_name(ClassWithNameA.new())).is_equal("ClassWithNameA")
 	assert_result(extract_class_name(ClassWithNameB.new())).is_equal("ClassWithNameB")
-	var classWithoutNameA := load("res://addons/gdUnit4/test/mocker/resources/ClassWithoutNameA.gd")
+	var classWithoutNameA := load("res://addons/gdunit4/test/mocker/resources/ClassWithoutNameA.gd")
 	assert_result(extract_class_name(classWithoutNameA.new())).is_equal("ClassWithoutNameA")
 	assert_result(extract_class_name(CustomNodeTestClass.new())).is_equal("CustomNodeTestClass")
 	assert_result(extract_class_name(CustomResourceTestClass.new())).is_equal("CustomResourceTestClass")
@@ -357,33 +357,33 @@ func test_extract_class_path_by_clazz() -> void:
 
 	# script classes
 	assert_array(GdObjects.extract_class_path(Person))\
-		.contains_exactly(["res://addons/gdUnit4/test/resources/core/Person.gd"])
+		.contains_exactly(["res://addons/gdunit4/test/resources/core/Person.gd"])
 	assert_array(GdObjects.extract_class_path(CustomClass))\
-		.contains_exactly(["res://addons/gdUnit4/test/resources/core/CustomClass.gd"])
+		.contains_exactly(["res://addons/gdunit4/test/resources/core/CustomClass.gd"])
 	assert_array(GdObjects.extract_class_path(CustomNodeTestClass))\
-		.contains_exactly(["res://addons/gdUnit4/test/mocker/resources/CustomNodeTestClass.gd"])
+		.contains_exactly(["res://addons/gdunit4/test/mocker/resources/CustomNodeTestClass.gd"])
 	assert_array(GdObjects.extract_class_path(CustomResourceTestClass))\
-		.contains_exactly(["res://addons/gdUnit4/test/mocker/resources/CustomResourceTestClass.gd"])
+		.contains_exactly(["res://addons/gdunit4/test/mocker/resources/CustomResourceTestClass.gd"])
 	assert_array(GdObjects.extract_class_path(OverridenGetClassTestClass))\
-		.contains_exactly(["res://addons/gdUnit4/test/mocker/resources/OverridenGetClassTestClass.gd"])
+		.contains_exactly(["res://addons/gdunit4/test/mocker/resources/OverridenGetClassTestClass.gd"])
 
 	# script inner classes
 	assert_array(GdObjects.extract_class_path(CustomClass.InnerClassA))\
-		.contains_exactly(["res://addons/gdUnit4/test/resources/core/CustomClass.gd", "InnerClassA"])
+		.contains_exactly(["res://addons/gdunit4/test/resources/core/CustomClass.gd", "InnerClassA"])
 	assert_array(GdObjects.extract_class_path(CustomClass.InnerClassB))\
-		.contains_exactly(["res://addons/gdUnit4/test/resources/core/CustomClass.gd", "InnerClassB"])
+		.contains_exactly(["res://addons/gdunit4/test/resources/core/CustomClass.gd", "InnerClassB"])
 	assert_array(GdObjects.extract_class_path(CustomClass.InnerClassC))\
-		.contains_exactly(["res://addons/gdUnit4/test/resources/core/CustomClass.gd", "InnerClassC"])
+		.contains_exactly(["res://addons/gdunit4/test/resources/core/CustomClass.gd", "InnerClassC"])
 	assert_array(GdObjects.extract_class_path(AdvancedTestClass.SoundData))\
-		.contains_exactly(["res://addons/gdUnit4/test/mocker/resources/AdvancedTestClass.gd", "SoundData"])
+		.contains_exactly(["res://addons/gdunit4/test/mocker/resources/AdvancedTestClass.gd", "SoundData"])
 	assert_array(GdObjects.extract_class_path(AdvancedTestClass.AtmosphereData))\
-		.contains_exactly(["res://addons/gdUnit4/test/mocker/resources/AdvancedTestClass.gd", "AtmosphereData"])
+		.contains_exactly(["res://addons/gdunit4/test/mocker/resources/AdvancedTestClass.gd", "AtmosphereData"])
 	assert_array(GdObjects.extract_class_path(AdvancedTestClass.Area4D))\
-	.contains_exactly(["res://addons/gdUnit4/test/mocker/resources/AdvancedTestClass.gd", "Area4D"])
+	.contains_exactly(["res://addons/gdunit4/test/mocker/resources/AdvancedTestClass.gd", "Area4D"])
 
 	# inner inner class
 	assert_array(GdObjects.extract_class_path(CustomClass.InnerClassD.InnerInnerClassA))\
-		.contains_exactly(["res://addons/gdUnit4/test/resources/core/CustomClass.gd", "InnerClassD", "InnerInnerClassA"])
+		.contains_exactly(["res://addons/gdunit4/test/resources/core/CustomClass.gd", "InnerClassD", "InnerInnerClassA"])
 
 
 #func __test_can_instantiate():
@@ -445,7 +445,7 @@ func test_is_instance_scene() -> void:
 	assert_bool(GdObjects.is_instance_scene(auto_free(Control.new()))).is_false()
 
 	# now check checked a loaded scene
-	var resource := load("res://addons/gdUnit4/test/mocker/resources/scenes/TestScene.tscn")
+	var resource := load("res://addons/gdunit4/test/mocker/resources/scenes/TestScene.tscn")
 	assert_bool(GdObjects.is_instance_scene(resource)).is_false()
 	# checked a instance of a scene
 	assert_bool(GdObjects.is_instance_scene(auto_free(resource.instantiate()))).is_true()
@@ -457,10 +457,10 @@ func test_is_scene_resource_path() -> void:
 	assert_bool(GdObjects.is_scene_resource_path(auto_free(Control.new()))).is_false()
 
 	# check checked a loaded scene
-	var resource := load("res://addons/gdUnit4/test/mocker/resources/scenes/TestScene.tscn")
+	var resource := load("res://addons/gdunit4/test/mocker/resources/scenes/TestScene.tscn")
 	assert_bool(GdObjects.is_scene_resource_path(resource)).is_false()
 	# checked resource path
-	assert_bool(GdObjects.is_scene_resource_path("res://addons/gdUnit4/test/mocker/resources/scenes/TestScene.tscn")).is_true()
+	assert_bool(GdObjects.is_scene_resource_path("res://addons/gdunit4/test/mocker/resources/scenes/TestScene.tscn")).is_true()
 
 
 func test_extract_class_functions() -> void:
@@ -469,7 +469,7 @@ func test_extract_class_functions() -> void:
 		if f["name"] == "get_path":
 			assert_str(GdFunctionDescriptor.extract_from(f)._to_string()).is_equal("[Line:-1] func get_path() -> String:")
 
-	functions = GdObjects.extract_class_functions("CustomResourceTestClass", ["res://addons/gdUnit4/test/mocker/resources/CustomResourceTestClass.gd"])
+	functions = GdObjects.extract_class_functions("CustomResourceTestClass", ["res://addons/gdunit4/test/mocker/resources/CustomResourceTestClass.gd"])
 	for f :Dictionary in functions:
 		if f["name"] == "get_path":
 			assert_str(GdFunctionDescriptor.extract_from(f)._to_string()).is_equal("[Line:-1] func get_path() -> String:")
@@ -521,7 +521,7 @@ class ObjectWithSceneReferece:
 
 
 func test_is_equal_on_scene_embedded_script() -> void:
-	var node: Node = auto_free(load("res://addons/gdUnit4/test/core/resources/scenes/SceneWithEmbeddedScript.tscn").instantiate())
+	var node: Node = auto_free(load("res://addons/gdunit4/test/core/resources/scenes/SceneWithEmbeddedScript.tscn").instantiate())
 
 	GdObjects.equals(ObjectWithSceneReferece.new(node), ObjectWithSceneReferece.new(node), false)
 	assert_object(ObjectWithSceneReferece.new(node)).is_equal(ObjectWithSceneReferece.new(node))

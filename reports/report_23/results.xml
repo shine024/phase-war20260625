@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites id="2026-07-07" name="report_23" tests="111" failures="4" skipped="0" flaky="0" time="0.000">
+	<testsuite id="0" name="test_blueprint_star_config" package="tests/unit/blueprint" timestamp="2026-07-06T19:30:35" hostname="localhost" tests="5" failures="0" errors="0" skipped="0" flaky="0" time="0.251">
+		<testcase name="test_next_star_research_common_matches_v3_table_total" classname="test_blueprint_star_config" time="0.030">
+		</testcase>
+		<testcase name="test_next_star_research_mythic_matches_v3_table_total" classname="test_blueprint_star_config" time="0.032">
+		</testcase>
+		<testcase name="test_next_star_at_max_returns_zero" classname="test_blueprint_star_config" time="0.033">
+		</testcase>
+		<testcase name="test_mod_research_flat_v3" classname="test_blueprint_star_config" time="0.033">
+		</testcase>
+		<testcase name="test_max_mod_times_is_three_for_common" classname="test_blueprint_star_config" time="0.033">
+		</testcase>
+	</testsuite>
+	<testsuite id="1" name="test_affix_scaling" package="tests/unit/combat" timestamp="2026-07-06T19:30:35" hostname="localhost" tests="2" failures="0" errors="0" skipped="0" flaky="0" time="0.119">
+		<testcase name="test_enhance_count_grows_with_level" classname="test_affix_scaling" time="0.045">
+		</testcase>
+		<testcase name="test_apply_affixes_to_stats_accepts_empty_cards" classname="test_affix_scaling" time="0.029">
+		</testcase>
+	</testsuite>
+	<testsuite id="2" name="test_card_grid_damage" package="tests/unit/combat" timestamp="2026-07-06T19:30:35" hostname="localhost" tests="2" failures="0" errors="0" skipped="0" flaky="0" time="0.116">
+		<testcase name="test_defense_damage_multiplier_at_bounds" classname="test_card_grid_damage" time="0.044">
+		</testcase>
+		<testcase name="test_resolve_hit_percent_mitigation" classname="test_card_grid_damage" time="0.033">
+		</testcase>
+	</testsuite>
+	<testsuite id="3" name="test_damage_calculation" package="tests/unit/combat" timestamp="2026-07-06T19:30:35" hostname="localhost" tests="2" failures="0" errors="0" skipped="0" flaky="0" time="0.118">
+		<testcase name="test_calculate_victory_stars_perfect_result_is_three" classname="test_damage_calculation" time="0.047">
+		</testcase>
+		<testcase name="test_calculate_victory_stars_can_drop_on_losses" classname="test_damage_calculation" time="0.032">
+		</testcase>
+	</testsuite>
+	<testsuite id="4" name="test_enemy_stat_resolver" package="tests/unit/combat" timestamp="2026-07-06T19:30:35" hostname="localhost" tests="7" failures="0" errors="0" skipped="0" flaky="0" time="0.355">
+		<testcase name="test_wave_multipliers_match_legacy_constants" classname="test_enemy_stat_resolver" time="0.034">
+		</testcase>
+		<testcase name="test_resolve_infantry_basic_wave1" classname="test_enemy_stat_resolver" time="0.033">
+		</testcase>
+		<testcase name="test_resolve_infantry_basic_wave5" classname="test_enemy_stat_resolver" time="0.032">
+		</testcase>
+		<testcase name="test_resolve_empty_archetype_linear_fallback" classname="test_enemy_stat_resolver" time="0.033">
+		</testcase>
+		<testcase name="test_master_multipliers_on_unit_stats" classname="test_enemy_stat_resolver" time="0.033">
+		</testcase>
+		<testcase name="test_master_multipliers_new_coefficients" classname="test_enemy_stat_resolver" time="0.034">
+		</testcase>
+		<testcase name="test_resolve_classic_enemy_with_master_stats" classname="test_enemy_stat_resolver" time="0.033">
+		</testcase>
+	</testsuite>
+	<testsuite id="5" name="test_daily_task_manager" package="tests/unit/daily_task" timestamp="2026-07-06T19:30:36" hostname="localhost" tests="26" failures="0" errors="0" skipped="0" flaky="0" time="1.339">
+		<testcase name="test_initial_state_no_tasks" classname="test_daily_task_manager" time="0.030">
+		</testcase>
+		<testcase name="test_initial_completion_rate_zero" classname="test_daily_task_manager" time="0.029">
+		</testcase>
+		<testcase name="test_refresh_generates_seven_tasks" classname="test_daily_task_manager" time="0.029">
+		</testcase>
+		<testcase name="test_after_refresh_no_completed_tasks" classname="test_daily_task_manager" time="0.027">
+		</testcase>
+		<testcase name="test_tasks_have_required_fields" classname="test_daily_task_manager" time="0.029">
+		</testcase>
+		<testcase name="test_task_initial_progress_and_target" classname="test_daily_task_manager" time="0.029">
+		</testcase>
+		<testcase name="test_difficulty_distribution" classname="test_daily_task_manager" time="0.029">
+		</testcase>
+		<testcase name="test_task_types_no_duplicates" classname="test_daily_task_manager" time="0.028">
+		</testcase>
+		<testcase name="test_update_task_progress" classname="test_daily_task_manager" time="0.029">
+		</testcase>
+		<testcase name="test_update_task_progress_completes_task" classname="test_daily_task_manager" time="0.028">
+		</testcase>
+		<testcase name="test_task_completed_signal_emitted" classname="test_daily_task_manager" time="0.046">
+		</testcase>
+		<testcase name="test_daily_tasks_refreshed_signal" classname="test_daily_task_manager" time="0.050">
+		</testcase>
+		<testcase name="test_claim_task_reward_completed" classname="test_daily_task_manager" time="0.033">
+		</testcase>
+		<testcase name="test_claim_sets_claimed_flag" classname="test_daily_task_manager" time="0.029">
+		</testcase>
+		<testcase name="test_claim_incomplete_task_returns_false" classname="test_daily_task_manager" time="0.029">
+		</testcase>
+		<testcase name="test_claim_already_claimed_returns_false" classname="test_daily_task_manager" time="0.028">
+		</testcase>
+		<testcase name="test_claim_nonexistent_task_returns_false" classname="test_daily_task_manager" time="0.027">
+		</testcase>
+		<testcase name="test_completion_rate_after_partial" classname="test_daily_task_manager" time="0.027">
+		</testcase>
+		<testcase name="test_get_task_stats" classname="test_daily_task_manager" time="0.029">
+		</testcase>
+		<testcase name="test_get_task_type_name" classname="test_daily_task_manager" time="0.029">
+		</testcase>
+		<testcase name="test_get_difficulty_name" classname="test_daily_task_manager" time="0.027">
+		</testcase>
+		<testcase name="test_get_difficulty_color" classname="test_daily_task_manager" time="0.030">
+		</testcase>
+		<testcase name="test_save_load_state_roundtrip" classname="test_daily_task_manager" time="0.029">
+		</testcase>
+		<testcase name="test_get_task_target_known_combinations" classname="test_daily_task_manager" time="0.028">
+		</testcase>
+		<testcase name="test_force_refresh_resets_tasks" classname="test_daily_task_manager" time="0.029">
+		</testcase>
+		<testcase name="test_multiple_refreshes_no_errors" classname="test_daily_task_manager" time="0.028">
+		</testcase>
+	</testsuite>
+	<testsuite id="6" name="modification_modules_test" package="tests/unit/data" timestamp="2026-07-06T19:30:37" hostname="localhost" tests="8" failures="0" errors="0" skipped="0" flaky="0" time="0.406">
+		<testcase name="test_infantry_modifications_count" classname="modification_modules_test" time="0.036">
+		</testcase>
+		<testcase name="test_infantry_modifications_data_completeness" classname="modification_modules_test" time="0.025">
+		</testcase>
+		<testcase name="test_armor_modifications_count" classname="modification_modules_test" time="0.033">
+		</testcase>
+		<testcase name="test_modification_id_uniqueness" classname="modification_modules_test" time="0.033">
+		</testcase>
+		<testcase name="test_conflict_groups" classname="modification_modules_test" time="0.032">
+		</testcase>
+		<testcase name="test_modification_for_unit_type" classname="modification_modules_test" time="0.033">
+		</testcase>
+		<testcase name="test_effects_structure" classname="modification_modules_test" time="0.033">
+		</testcase>
+		<testcase name="test_total_modification_count" classname="modification_modules_test" time="0.032">
+		</testcase>
+	</testsuite>
+	<testsuite id="7" name="test_battle_card_v3" package="tests/unit/data" timestamp="2026-07-06T19:30:38" hostname="localhost" tests="6" failures="0" errors="0" skipped="0" flaky="0" time="0.315">
+		<testcase name="test_era_multipliers_at_bounds" classname="test_battle_card_v3" time="0.044">
+		</testcase>
+		<testcase name="test_star_stat_multiplier" classname="test_battle_card_v3" time="0.032">
+		</testcase>
+		<testcase name="test_enhance_stat_multiplier" classname="test_battle_card_v3" time="0.031">
+		</testcase>
+		<testcase name="test_evolution_inherit_bonus_clamped" classname="test_battle_card_v3" time="0.033">
+		</testcase>
+		<testcase name="test_unit_stats_table_era_scales_hp_and_weapon_damage" classname="test_battle_card_v3" time="0.032">
+		</testcase>
+		<testcase name="test_siege_enhance_growth_bias_exceeds_scout" classname="test_battle_card_v3" time="0.033">
+		</testcase>
+	</testsuite>
+	<testsuite id="8" name="test_enemy_archetypes" package="tests/unit/data" timestamp="2026-07-06T19:30:38" hostname="localhost" tests="2" failures="0" errors="0" skipped="0" flaky="0" time="0.119">
+		<testcase name="test_archetypes_dictionary_is_not_empty" classname="test_enemy_archetypes" time="0.047">
+		</testcase>
+		<testcase name="test_archetype_entries_have_base_fields" classname="test_enemy_archetypes" time="0.033">
+		</testcase>
+	</testsuite>
+	<testsuite id="9" name="test_level_information" package="tests/unit/data" timestamp="2026-07-06T19:30:38" hostname="localhost" tests="2" failures="0" errors="0" skipped="0" flaky="0" time="0.118">
+		<testcase name="test_level_info_returns_dictionary" classname="test_level_information" time="0.047">
+		</testcase>
+		<testcase name="test_level_info_contains_expected_fields" classname="test_level_information" time="0.032">
+		</testcase>
+	</testsuite>
+	<testsuite id="10" name="test_drop_tables" package="tests/unit/economy" timestamp="2026-07-06T19:30:38" hostname="localhost" tests="2" failures="0" errors="0" skipped="0" flaky="0" time="0.118">
+		<testcase name="test_generate_drops_returns_array" classname="test_drop_tables" time="0.047">
+		</testcase>
+		<testcase name="test_generate_boss_drops_returns_array" classname="test_drop_tables" time="0.032">
+		</testcase>
+	</testsuite>
+	<testsuite id="11" name="test_energy_economy" package="tests/unit/economy" timestamp="2026-07-06T19:30:38" hostname="localhost" tests="2" failures="0" errors="0" skipped="0" flaky="0" time="0.116">
+		<testcase name="test_spend_then_add_returns_expected_balance" classname="test_energy_economy" time="0.042">
+		</testcase>
+		<testcase name="test_spend_insufficient_preserves_balance" classname="test_energy_economy" time="0.028">
+		</testcase>
+	</testsuite>
+	<testsuite id="12" name="test_energy_manager" package="tests/unit/energy" timestamp="2026-07-06T19:30:38" hostname="localhost" tests="17" failures="4" errors="0" skipped="0" flaky="0" time="0.889">
+		<testcase name="test_initial_energy" classname="test_energy_manager" time="0.030">
+		</testcase>
+		<testcase name="test_getters" classname="test_energy_manager" time="0.029">
+		</testcase>
+		<testcase name="test_can_afford_true" classname="test_energy_manager" time="0.029">
+		</testcase>
+		<testcase name="test_can_afford_false" classname="test_energy_manager" time="0.029">
+		</testcase>
+		<testcase name="test_can_afford_exact" classname="test_energy_manager" time="0.027">
+		</testcase>
+		<testcase name="test_spend_success" classname="test_energy_manager" time="0.029">
+		</testcase>
+		<testcase name="test_spend_insufficient" classname="test_energy_manager" time="0.029">
+		</testcase>
+		<testcase name="test_spend_does_not_go_below_zero" classname="test_energy_manager" time="0.029">
+			<failure message="FAILED: res://tests/unit/energy/test_energy_manager.gd:93" type="FAILURE">
+<![CDATA[
+Expecting:
+ '0.000000'
+ but was
+ '5.000000'
+]]>
+			</failure>
+		</testcase>
+		<testcase name="test_add_energy" classname="test_energy_manager" time="0.033">
+		</testcase>
+		<testcase name="test_add_energy_clamps_to_max" classname="test_energy_manager" time="0.029">
+		</testcase>
+		<testcase name="test_add_negative_energy_clamps_to_zero" classname="test_energy_manager" time="0.028">
+		</testcase>
+		<testcase name="test_spend_zero" classname="test_energy_manager" time="0.028">
+		</testcase>
+		<testcase name="test_reset_to_start" classname="test_energy_manager" time="0.030">
+		</testcase>
+		<testcase name="test_start_battle" classname="test_energy_manager" time="0.029">
+			<failure message="FAILED: res://tests/unit/energy/test_energy_manager.gd:150" type="FAILURE">
+<![CDATA[
+Expecting:
+ '100.000000'
+ but was
+ '1500.000000'
+]]>
+			</failure>
+		</testcase>
+		<testcase name="test_start_battle_no_energy_cards_uses_defaults" classname="test_energy_manager" time="0.022">
+			<failure message="FAILED: res://tests/unit/energy/test_energy_manager.gd:157" type="FAILURE">
+<![CDATA[
+Expecting:
+ '100.000000'
+ but was
+ '1500.000000'
+]]>
+			</failure>
+			<failure message="FAILED: res://tests/unit/energy/test_energy_manager.gd:158" type="FAILURE">
+<![CDATA[
+Expecting:
+ '100.000000'
+ but was
+ '1500.000000'
+]]>
+			</failure>
+		</testcase>
+		<testcase name="test_end_battle" classname="test_energy_manager" time="0.015">
+		</testcase>
+		<testcase name="test_start_battle_guarantees_base_start_positive" classname="test_energy_manager" time="0.029">
+		</testcase>
+	</testsuite>
+	<testsuite id="13" name="test_evolution_hp_floor" package="tests/unit/progression" timestamp="2026-07-06T19:30:39" hostname="localhost" tests="2" failures="0" errors="0" skipped="0" flaky="0" time="0.115">
+		<testcase name="test_evolution_hp_floor_applied_after_growth" classname="test_evolution_hp_floor" time="0.043">
+		</testcase>
+		<testcase name="test_ww1_to_ww2_evolve_floor_not_below_prior_effective_hp" classname="test_evolution_hp_floor" time="0.029">
+		</testcase>
+	</testsuite>
+	<testsuite id="14" name="test_basic_resource_manager" package="tests/unit/resources" timestamp="2026-07-06T19:30:40" hostname="localhost" tests="22" failures="0" errors="0" skipped="0" flaky="0" time="1.134">
+		<testcase name="test_initial_state_all_zero" classname="test_basic_resource_manager" time="0.030">
+		</testcase>
+		<testcase name="test_add_resource_nano_materials" classname="test_basic_resource_manager" time="0.027">
+		</testcase>
+		<testcase name="test_add_resource_alloy" classname="test_basic_resource_manager" time="0.029">
+		</testcase>
+		<testcase name="test_add_resource_crystal" classname="test_basic_resource_manager" time="0.028">
+		</testcase>
+		<testcase name="test_add_resource_energy_block" classname="test_basic_resource_manager" time="0.027">
+		</testcase>
+		<testcase name="test_add_resource_zero_does_nothing" classname="test_basic_resource_manager" time="0.027">
+		</testcase>
+		<testcase name="test_add_resource_unknown_id_ignored" classname="test_basic_resource_manager" time="0.028">
+		</testcase>
+		<testcase name="test_add_resource_negative_clamps_to_zero" classname="test_basic_resource_manager" time="0.029">
+		</testcase>
+		<testcase name="test_get_total_returns_correct_value" classname="test_basic_resource_manager" time="0.028">
+		</testcase>
+		<testcase name="test_get_total_unknown_id_returns_zero" classname="test_basic_resource_manager" time="0.028">
+		</testcase>
+		<testcase name="test_get_total_legacy_id_basic_nano" classname="test_basic_resource_manager" time="0.029">
+		</testcase>
+		<testcase name="test_add_resource_legacy_id_basic_nano" classname="test_basic_resource_manager" time="0.027">
+		</testcase>
+		<testcase name="test_add_nano_syncs_basic_nano_compat_var" classname="test_basic_resource_manager" time="0.028">
+		</testcase>
+		<testcase name="test_add_basic_resource_works" classname="test_basic_resource_manager" time="0.028">
+		</testcase>
+		<testcase name="test_add_resource_multiple_times" classname="test_basic_resource_manager" time="0.025">
+		</testcase>
+		<testcase name="test_get_all_totals" classname="test_basic_resource_manager" time="0.024">
+		</testcase>
+		<testcase name="test_save_state" classname="test_basic_resource_manager" time="0.028">
+		</testcase>
+		<testcase name="test_load_state" classname="test_basic_resource_manager" time="0.029">
+		</testcase>
+		<testcase name="test_load_state_missing_fields_default_to_zero" classname="test_basic_resource_manager" time="0.029">
+		</testcase>
+		<testcase name="test_load_state_fallback_to_basic_nano_field" classname="test_basic_resource_manager" time="0.028">
+		</testcase>
+		<testcase name="test_resources_changed_signal_emitted" classname="test_basic_resource_manager" time="0.047">
+		</testcase>
+		<testcase name="test_resources_changed_not_emitted_for_zero" classname="test_basic_resource_manager" time="0.050">
+		</testcase>
+	</testsuite>
+	<testsuite id="15" name="test_save_integrity" package="tests/unit/save" timestamp="2026-07-06T19:30:41" hostname="localhost" tests="2" failures="0" errors="0" skipped="0" flaky="0" time="0.120">
+		<testcase name="test_slot_set_and_get_roundtrip" classname="test_save_integrity" time="0.045">
+		</testcase>
+		<testcase name="test_slot_file_path_contains_slot_number" classname="test_save_integrity" time="0.028">
+		</testcase>
+	</testsuite>
+	<testsuite id="16" name="test_save_migration" package="tests/unit/save" timestamp="2026-07-06T19:30:41" hostname="localhost" tests="2" failures="0" errors="0" skipped="0" flaky="0" time="0.121">
+		<testcase name="test_legacy_paths_are_stable_strings" classname="test_save_migration" time="0.045">
+		</testcase>
+		<testcase name="test_migration_hook_executes_without_throwing" classname="test_save_migration" time="0.028">
+		</testcase>
+	</testsuite>
+</testsuites>

@@ -11,8 +11,8 @@ func test_${func_name}() -> void:
 
 # we exclude the gdunit source directorys by default
 const exclude_scan_directories = [
-	"res://addons/gdUnit4/bin",
-	"res://addons/gdUnit4/src",
+	"res://addons/gdunit4/bin",
+	"res://addons/gdunit4/src",
 	"res://reports"]
 
 

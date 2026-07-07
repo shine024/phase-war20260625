@@ -3,7 +3,7 @@ class_name InspectorTreeMainPanelTest
 extends GdUnitTestSuite
 
 # TestSuite generated from
-const InspectorTreeMainPanel := preload('res://addons/gdUnit4/src/ui/parts/InspectorTreeMainPanel.gd')
+const InspectorTreeMainPanel := preload('res://addons/gdunit4/src/ui/parts/InspectorTreeMainPanel.gd')
 
 const FAILED := InspectorTreeMainPanel.STATE.FAILED
 const ERROR := InspectorTreeMainPanel.STATE.ERROR
@@ -26,7 +26,7 @@ var _inspector: InspectorTreeMainPanel
 
 func before_test() -> void:
 	@warning_ignore("unsafe_method_access")
-	_inspector = load("res://addons/gdUnit4/src/ui/parts/InspectorTreePanel.tscn").instantiate()
+	_inspector = load("res://addons/gdunit4/src/ui/parts/InspectorTreePanel.tscn").instantiate()
 	_inspector.disable_test_recovery()
 	add_child(_inspector)
 	_inspector.init_tree()
@@ -52,9 +52,9 @@ func discover_sink(test_case: GdUnitTestCase) -> void:
 
 
 func setup_test_env() -> void:
-	var suite_a := GdUnitTestResourceLoader.load_gd_script("res://addons/gdUnit4/test/ui/parts/resources/foo/ExampleTestSuiteA.resource", true)
-	var suite_b := GdUnitTestResourceLoader.load_gd_script("res://addons/gdUnit4/test/ui/parts/resources/foo/ExampleTestSuiteB.resource", true)
-	var suite_c := GdUnitTestResourceLoader.load_gd_script("res://addons/gdUnit4/test/ui/parts/resources/foo/ExampleTestSuiteC.resource", true)
+	var suite_a := GdUnitTestResourceLoader.load_gd_script("res://addons/gdunit4/test/ui/parts/resources/foo/ExampleTestSuiteA.resource", true)
+	var suite_b := GdUnitTestResourceLoader.load_gd_script("res://addons/gdunit4/test/ui/parts/resources/foo/ExampleTestSuiteB.resource", true)
+	var suite_c := GdUnitTestResourceLoader.load_gd_script("res://addons/gdunit4/test/ui/parts/resources/foo/ExampleTestSuiteC.resource", true)
 
 
 	GdUnitTestDiscoverer.discover_tests(suite_a, func(discover_test: GdUnitTestCase) -> void:
@@ -103,7 +103,7 @@ func get_item_state(parent :TreeItem, item_name :String = "") -> int:
 
 
 func test_find_item_by_id() -> void:
-	var suite_script := GdUnitTestResourceLoader.load_gd_script("res://addons/gdUnit4/test/ui/parts/resources/bar/ExampleTestSuiteA.resource", true)
+	var suite_script := GdUnitTestResourceLoader.load_gd_script("res://addons/gdunit4/test/ui/parts/resources/bar/ExampleTestSuiteA.resource", true)
 	var discovered_tests := {}
 	GdUnitTestDiscoverer.discover_tests(suite_script, func(discover_test: GdUnitTestCase) -> void:
 		discover_sink(discover_test)
@@ -116,7 +116,7 @@ func test_find_item_by_id() -> void:
 
 # Tests a special case, the test is named equal to the test suite
 func test_find_item_by_id_GD809() -> void:
-	var suite_script := GdUnitTestResourceLoader.load_gd_script("res://addons/gdUnit4/test/ui/parts/resources/gd_809/test_example.resource")
+	var suite_script := GdUnitTestResourceLoader.load_gd_script("res://addons/gdunit4/test/ui/parts/resources/gd_809/test_example.resource")
 	var discovered_tests := {}
 	GdUnitTestDiscoverer.discover_tests(suite_script, func(discover_test: GdUnitTestCase) -> void:
 		discover_sink(discover_test)
@@ -130,7 +130,7 @@ func test_find_item_by_id_GD809() -> void:
 
 # Tests a special case, the test is named equal to the test suite
 func test_find_item_by_path_GD809() -> void:
-	var suite_script := GdUnitTestResourceLoader.load_gd_script("res://addons/gdUnit4/test/ui/parts/resources/gd_809/test_example.resource")
+	var suite_script := GdUnitTestResourceLoader.load_gd_script("res://addons/gdunit4/test/ui/parts/resources/gd_809/test_example.resource")
 	var discovered_tests := {}
 	GdUnitTestDiscoverer.discover_tests(suite_script, func(discover_test: GdUnitTestCase) -> void:
 		discover_sink(discover_test)
@@ -354,7 +354,7 @@ func test_suite_text_responds_to_test_case_events() -> void:
 # test coverage for issue GD-117
 func test_update_test_case_on_multiple_test_suite_with_same_name() -> void:
 	# add a second test suite where has same name as suite_a_item
-	var suite_script := GdUnitTestResourceLoader.load_gd_script("res://addons/gdUnit4/test/ui/parts/resources/bar/ExampleTestSuiteA.resource", true)
+	var suite_script := GdUnitTestResourceLoader.load_gd_script("res://addons/gdunit4/test/ui/parts/resources/bar/ExampleTestSuiteA.resource", true)
 	var discovered_tests := {}
 	GdUnitTestDiscoverer.discover_tests(suite_script, func(discover_test: GdUnitTestCase) -> void:
 		discover_sink(discover_test)
@@ -397,7 +397,7 @@ func test_update_test_case_on_multiple_test_suite_with_same_name() -> void:
 
 # Test coverage for issue GD-278: GdUnit Inspector: Test marks as passed if both warning and error
 func test_update_icon_state() -> void:
-	var suite_script := GdUnitTestResourceLoader.load_gd_script("res://addons/gdUnit4/test/core/resources/testsuites/TestSuiteFailAndOrpahnsDetected.resource", true)
+	var suite_script := GdUnitTestResourceLoader.load_gd_script("res://addons/gdunit4/test/core/resources/testsuites/TestSuiteFailAndOrpahnsDetected.resource", true)
 	var discovered_tests := {}
 	GdUnitTestDiscoverer.discover_tests(suite_script, func(discover_test: GdUnitTestCase) -> void:
 		discover_sink(discover_test)
@@ -568,9 +568,9 @@ func test_discover_tests() -> void:
 
 func test_on_test_case_discover_added() -> void:
 	_inspector.init_tree()
-	_inspector.on_test_case_discover_added(GdUnitTestCase.from("res://addons/gdUnit4/test/dir_a/dir_b/my_test_suite.gd", "res://addons/gdUnit4/test/dir_a/dir_b/my_test_suite.gd", 0, "test_foo"))
-	_inspector.on_test_case_discover_added(GdUnitTestCase.from("res://addons/gdUnit4/test/dir_a/dir_b/my_test_suite.gd", "res://addons/gdUnit4/test/dir_a/dir_b/my_test_suite.gd", 0, "test_bar"))
-	_inspector.on_test_case_discover_added(GdUnitTestCase.from("res://addons/gdUnit4/test/dir_a/dir_x/my_test_suite2.gd", "res://addons/gdUnit4/test/dir_a/dir_x/my_test_suite2.gd", 0, "test_foo"))
+	_inspector.on_test_case_discover_added(GdUnitTestCase.from("res://addons/gdunit4/test/dir_a/dir_b/my_test_suite.gd", "res://addons/gdunit4/test/dir_a/dir_b/my_test_suite.gd", 0, "test_foo"))
+	_inspector.on_test_case_discover_added(GdUnitTestCase.from("res://addons/gdunit4/test/dir_a/dir_b/my_test_suite.gd", "res://addons/gdunit4/test/dir_a/dir_b/my_test_suite.gd", 0, "test_bar"))
+	_inspector.on_test_case_discover_added(GdUnitTestCase.from("res://addons/gdunit4/test/dir_a/dir_x/my_test_suite2.gd", "res://addons/gdunit4/test/dir_a/dir_x/my_test_suite2.gd", 0, "test_foo"))
 	_inspector.on_test_case_discover_added(GdUnitTestCase.from("res://my_test_suite3.gd", "res://my_test_suite3.gd", 0, "test_foo"))
 
 	# create expected tree
@@ -594,8 +594,8 @@ func test_on_test_case_discover_added() -> void:
 
 func test_add_parameterized_test_case() -> void:
 	_inspector.init_tree()
-	_inspector.on_test_case_discover_added(GdUnitTestCase.from("res://addons/gdUnit4/test/dir_a/dir_b/my_test_suite.gd", "res://addons/gdUnit4/test/dir_a/dir_b/my_test_suite.gd", 0, "test_parameterized", 0, "1.2"))
-	_inspector.on_test_case_discover_added(GdUnitTestCase.from("res://addons/gdUnit4/test/dir_a/dir_b/my_test_suite.gd", "res://addons/gdUnit4/test/dir_a/dir_b/my_test_suite.gd", 0, "test_parameterized", 1, "2.2"))
+	_inspector.on_test_case_discover_added(GdUnitTestCase.from("res://addons/gdunit4/test/dir_a/dir_b/my_test_suite.gd", "res://addons/gdunit4/test/dir_a/dir_b/my_test_suite.gd", 0, "test_parameterized", 0, "1.2"))
+	_inspector.on_test_case_discover_added(GdUnitTestCase.from("res://addons/gdunit4/test/dir_a/dir_b/my_test_suite.gd", "res://addons/gdunit4/test/dir_a/dir_b/my_test_suite.gd", 0, "test_parameterized", 1, "2.2"))
 
 	# create expected tree
 	var tree: Tree = auto_free(Tree.new())
@@ -613,7 +613,7 @@ func test_add_parameterized_test_case() -> void:
 
 
 func test_collect_test_cases() -> void:
-	var script := load_non_cached("res://addons/gdUnit4/test/core/discovery/resources/DiscoverExampleTestSuite.gd")
+	var script := load_non_cached("res://addons/gdunit4/test/core/discovery/resources/DiscoverExampleTestSuite.gd")
 	var tests_by_id := {}
 	GdUnitTestDiscoverer.discover_tests(script, func(test_to_discover: GdUnitTestCase) -> void:
 		discover_sink(test_to_discover)
@@ -652,7 +652,7 @@ func test_collect_test_cases() -> void:
 
 func test_collect_test_cases_GD_872(_do_skip := not GdUnit4CSharpApiLoader.is_api_loaded(), _skip_reason := "Do run only for Godot .Net version") -> void:
 	var tests_by_id := {}
-	var resource_path := "res://addons/gdUnit4/test/ui/parts/resources/gd_872/"
+	var resource_path := "res://addons/gdunit4/test/ui/parts/resources/gd_872/"
 	for suite_path: String in ["ATests.cs", "AZTests.cs"]:
 		var script := cs_load_non_cached(resource_path + suite_path)
 		GdUnitTestDiscoverer.discover_tests(script, func(test_to_discover: GdUnitTestCase) -> void:

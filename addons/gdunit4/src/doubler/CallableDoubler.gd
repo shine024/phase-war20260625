@@ -11,7 +11,7 @@
 class_name CallableDoubler
 
 
-const doubler_script :Script =  preload("res://addons/gdUnit4/src/doubler/CallableDoubler.gd")
+const doubler_script :Script =  preload("res://addons/gdunit4/src/doubler/CallableDoubler.gd")
 
 var _cb: Callable
 

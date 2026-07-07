@@ -63,7 +63,9 @@ const DATA: Dictionary = {
 		cost_install = 200,
 		slot_type = "guidance",
 		conflict_group = "guidance",
-		effects = {accuracy_bonus = 0.50, crit_chance = 0.15, weapon_type = 9},  # v6.5 MISSILE,
+		# v7.x: per-slot 弹道——对装甲槽改 MISSILE 制导
+		condition_slot = 1,
+		effects = {accuracy_bonus = 0.50, crit_chance = 0.15, weapon_type = 9, slot_weapon_type = 9},  # v6.5 MISSILE + v7.x 对装甲槽制导,
 		unlock_conditions = {required_level = 6}
 	},
 
@@ -80,7 +82,9 @@ const DATA: Dictionary = {
 		cost_install = 140,
 		slot_type = "ammunition",
 		conflict_group = "ammunition",
-		effects = {splash_radius = 0.50, single_target_penalty = -0.20, weapon_type = 9},  # v6.5 MISSILE,
+		# v7.x: per-slot 弹道——对装甲槽改 MISSILE 撒布
+		condition_slot = 1,
+		effects = {splash_radius = 0.50, single_target_penalty = -0.20, weapon_type = 9, slot_weapon_type = 9},  # v6.5 MISSILE + v7.x 对装甲槽撒布,
 		unlock_conditions = {required_level = 5}
 	},
 
@@ -199,7 +203,9 @@ const DATA: Dictionary = {
 		cost_install = 225,
 		slot_type = "ammunition",
 		conflict_group = "ammunition",
-		effects = {attack_fort = 0.50},
+		# v7.x: per-slot 弹道——对装甲槽改 ROCKET 火箭（温压弹头重型爆破）
+		condition_slot = 1,
+		effects = {attack_fort = 0.50, slot_weapon_type = 3},  # v7.x: 对装甲槽火箭弹道（ROCKET）
 		unlock_conditions = {required_level = 7}
 	},
 

@@ -52,11 +52,11 @@ if !errorlevel! equ 0 (
 )
 
 :: Run the tests with the filtered arguments
-"!godot_binary!" --path . -s -d res://addons/gdUnit4/bin/GdUnitCmdTool.gd !filtered_args!
+"!godot_binary!" --path . -s -d res://addons/gdunit4/bin/GdUnitCmdTool.gd !filtered_args!
 set exit_code=%ERRORLEVEL%
 echo Run tests ends with %exit_code%
 
 :: Run the copy log command
-"!godot_binary!" --headless --path . --quiet -s res://addons/gdUnit4/bin/GdUnitCopyLog.gd !filtered_args! > nul
+"!godot_binary!" --headless --path . --quiet -s res://addons/gdunit4/bin/GdUnitCopyLog.gd !filtered_args! > nul
 set exit_code2=%ERRORLEVEL%
 exit /b %exit_code%

@@ -8,7 +8,9 @@ var current_log_level: int = LogLevel.DEBUG
 var log_target: int = LogTarget.BOTH
 var log_file_path: String = "user://debug.log"
 var log_buffer: Array = []
-var buffer_size: int = 50
+# v7.x(B2): 缩小缓冲 50→20，减少异常退出时丢失的日志条数；
+# 代价是 flush 频率略增（按 1s Timer 周期），可接受。
+var buffer_size: int = 20
 var last_flush_time: int = 0
 var flush_interval: int = 1000
 var _log_file: FileAccess = null
@@ -27,6 +29,16 @@ func _ready() -> void:
 	flush_timer.timeout.connect(_on_flush_timer_timeout)
 	flush_timer.autostart = true
 	add_child(flush_timer)
+	# v7.x(B2): about_to_quit 比 _exit_tree 更早触发（窗口关闭/quit() 都会发），
+	# 在此强制刷盘，与 _exit_tree 形成双保险，尽量减少日志缓冲丢失。
+	# 用字符串名 connect 规避 --check-only 静态分析对信号属性的误报。
+	var tree := get_tree()
+	if tree != null and tree.has_signal("about_to_quit"):
+		tree.connect("about_to_quit", _on_about_to_quit)
+
+func _on_about_to_quit() -> void:
+	flush_log_buffer()
+	close_log_file()
 
 func _on_flush_timer_timeout() -> void:
 	flush_log_buffer()

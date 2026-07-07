@@ -409,7 +409,7 @@ func test_load_source_code_inner_class_AtmosphereData() -> void:
 	var base_class := AdvancedTestClass.new()
 	@warning_ignore("unsafe_cast")
 	var rows := _parser._load_inner_class(base_class.get_script() as GDScript, "AtmosphereData")
-	var file_content := resource_as_string("res://addons/gdUnit4/test/core/resources/AtmosphereData.txt")
+	var file_content := resource_as_string("res://addons/gdunit4/test/core/resources/AtmosphereData.txt")
 	assert_that(rows).is_equal(file_content)
 
 
@@ -417,7 +417,7 @@ func test_load_source_code_inner_class_SoundData() -> void:
 	var base_class := AdvancedTestClass.new()
 	@warning_ignore("unsafe_cast")
 	var rows := _parser._load_inner_class(base_class.get_script() as GDScript, "SoundData")
-	var file_content := resource_as_string("res://addons/gdUnit4/test/core/resources/SoundData.txt")
+	var file_content := resource_as_string("res://addons/gdunit4/test/core/resources/SoundData.txt")
 	assert_that(rows).is_equal(file_content)
 
 
@@ -425,12 +425,12 @@ func test_load_source_code_inner_class_Area4D() -> void:
 	var base_class := AdvancedTestClass.new()
 	@warning_ignore("unsafe_cast")
 	var rows := _parser._load_inner_class(base_class.get_script() as GDScript, "Area4D")
-	var file_content := resource_as_string("res://addons/gdUnit4/test/core/resources/Area4D.txt")
+	var file_content := resource_as_string("res://addons/gdunit4/test/core/resources/Area4D.txt")
 	assert_that(rows).is_equal(file_content)
 
 
 func test_extract_function_signature() -> void:
-	var script :GDScript = load("res://addons/gdUnit4/test/mocker/resources/ClassWithCustomFormattings.gd")
+	var script :GDScript = load("res://addons/gdunit4/test/mocker/resources/ClassWithCustomFormattings.gd")
 	var rows := script.source_code.split("\n")
 
 	assert_that(_parser.extract_func_signature(rows, 12))\
@@ -513,7 +513,7 @@ func test_parse_func_description() -> void:
 
 
 func test_get_function_descriptors_return_type_enum() -> void:
-	var script: GDScript = load("res://addons/gdUnit4/test/mocker/resources/ClassWithEnumReturnTypes.gd")
+	var script: GDScript = load("res://addons/gdunit4/test/mocker/resources/ClassWithEnumReturnTypes.gd")
 	var fds := _parser.get_function_descriptors(script, ["get_enum"])
 
 	assert_that(fds[0])\
@@ -524,7 +524,7 @@ func test_get_function_descriptors_return_type_enum() -> void:
 
 
 func test_parse_func_description_return_type_internal_class_enum() -> void:
-	var script: GDScript = load("res://addons/gdUnit4/test/mocker/resources/ClassWithEnumReturnTypes.gd")
+	var script: GDScript = load("res://addons/gdunit4/test/mocker/resources/ClassWithEnumReturnTypes.gd")
 	var fds := _parser.get_function_descriptors(script, ["get_inner_class_enum"])
 
 	assert_that(fds[0])\
@@ -535,7 +535,7 @@ func test_parse_func_description_return_type_internal_class_enum() -> void:
 
 
 func test_parse_func_description_return_type_external_class_enum() -> void:
-	var script: GDScript = load("res://addons/gdUnit4/test/mocker/resources/ClassWithEnumReturnTypes.gd")
+	var script: GDScript = load("res://addons/gdunit4/test/mocker/resources/ClassWithEnumReturnTypes.gd")
 	var fds := _parser.get_function_descriptors(script, ["get_external_class_enum"])
 
 	assert_that(fds[0])\
@@ -558,35 +558,35 @@ func test_parse_class_inherits() -> void:
 	assert_bool(clazz_desccriptor.is_inner_class()).is_false()
 	assert_array(clazz_desccriptor.functions())\
 		.contains_exactly([
-			GdFunctionDescriptor.create("foo2", "res://addons/gdUnit4/test/mocker/resources/CustomClassExtendsCustomClass.gd", 6, GdObjects.TYPE_VARIANT),
-			GdFunctionDescriptor.create("bar2", "res://addons/gdUnit4/test/mocker/resources/CustomClassExtendsCustomClass.gd", 9, TYPE_STRING),
-			GdFunctionDescriptor.create("foo", "res://addons/gdUnit4/test/mocker/resources/CustomResourceTestClass.gd", 4, TYPE_STRING),
-			GdFunctionDescriptor.create("foo_void", "res://addons/gdUnit4/test/mocker/resources/CustomResourceTestClass.gd", 10, GdObjects.TYPE_VOID),
-			GdFunctionDescriptor.create("bar", "res://addons/gdUnit4/test/mocker/resources/CustomResourceTestClass.gd", 13, TYPE_STRING, [
+			GdFunctionDescriptor.create("foo2", "res://addons/gdunit4/test/mocker/resources/CustomClassExtendsCustomClass.gd", 6, GdObjects.TYPE_VARIANT),
+			GdFunctionDescriptor.create("bar2", "res://addons/gdunit4/test/mocker/resources/CustomClassExtendsCustomClass.gd", 9, TYPE_STRING),
+			GdFunctionDescriptor.create("foo", "res://addons/gdunit4/test/mocker/resources/CustomResourceTestClass.gd", 4, TYPE_STRING),
+			GdFunctionDescriptor.create("foo_void", "res://addons/gdunit4/test/mocker/resources/CustomResourceTestClass.gd", 10, GdObjects.TYPE_VOID),
+			GdFunctionDescriptor.create("bar", "res://addons/gdunit4/test/mocker/resources/CustomResourceTestClass.gd", 13, TYPE_STRING, [
 				GdFunctionArgument.new("arg1", TYPE_INT),
 				GdFunctionArgument.new("arg2", TYPE_INT, 23),
 				GdFunctionArgument.new("name", TYPE_STRING, "test"),
 			]),
-			GdFunctionDescriptor.create("foo5", "res://addons/gdUnit4/test/mocker/resources/CustomResourceTestClass.gd", 17, GdObjects.TYPE_VOID),
+			GdFunctionDescriptor.create("foo5", "res://addons/gdunit4/test/mocker/resources/CustomResourceTestClass.gd", 17, GdObjects.TYPE_VOID),
 		])
 
 
 func test_get_class_name_pascal_case() -> void:
-	assert_str(_parser.get_class_name(load("res://addons/gdUnit4/test/core/resources/naming_conventions/PascalCaseWithClassName.gd") as GDScript))\
+	assert_str(_parser.get_class_name(load("res://addons/gdunit4/test/core/resources/naming_conventions/PascalCaseWithClassName.gd") as GDScript))\
 		.is_equal("PascalCaseWithClassName")
-	assert_str(_parser.get_class_name(load("res://addons/gdUnit4/test/core/resources/naming_conventions/PascalCaseWithoutClassName.gd") as GDScript))\
+	assert_str(_parser.get_class_name(load("res://addons/gdunit4/test/core/resources/naming_conventions/PascalCaseWithoutClassName.gd") as GDScript))\
 		.is_equal("PascalCaseWithoutClassName")
 
 
 func test_get_class_name_snake_case() -> void:
-	assert_str(_parser.get_class_name(load("res://addons/gdUnit4/test/core/resources/naming_conventions/snake_case_with_class_name.gd") as GDScript))\
+	assert_str(_parser.get_class_name(load("res://addons/gdunit4/test/core/resources/naming_conventions/snake_case_with_class_name.gd") as GDScript))\
 		.is_equal("SnakeCaseWithClassName")
-	assert_str(_parser.get_class_name(load("res://addons/gdUnit4/test/core/resources/naming_conventions/snake_case_without_class_name.gd") as GDScript))\
+	assert_str(_parser.get_class_name(load("res://addons/gdunit4/test/core/resources/naming_conventions/snake_case_without_class_name.gd") as GDScript))\
 		.is_equal("SnakeCaseWithoutClassName")
 
 
 func test_get_class_with_extends_in_same_line() -> void:
-	assert_str(_parser.get_class_name(load("res://addons/gdUnit4/test/core/resources/naming_conventions/extends_on_same_line.gd") as GDScript))\
+	assert_str(_parser.get_class_name(load("res://addons/gdunit4/test/core/resources/naming_conventions/extends_on_same_line.gd") as GDScript))\
 		.is_equal("ClassNameExtendsInSameLine")
 
 

@@ -1,6 +1,6 @@
 extends GdUnitFileAssert
 
-const GdUnitTools := preload("res://addons/gdUnit4/src/core/GdUnitTools.gd")
+const GdUnitTools := preload("res://addons/gdunit4/src/core/GdUnitTools.gd")
 
 var _base: GdUnitAssertImpl
 

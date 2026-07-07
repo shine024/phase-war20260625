@@ -259,3 +259,11 @@ const INTEL_DIMENSION_WEIGHTS: Dictionary = {
 }
 
 const PERFECT_VICTORY_INTEL_BONUS: float = 0.10
+
+# v7.x(A4): 全局玩家难度选择器单一真理源。enemy_stat_resolver 在乘区链末尾乘上对应值。
+# 仅缩放敌方 HP 与攻击（不动 wave 数/掉落/经验），最小侵入平衡。默认 normal=1.0 行为零变化。
+const DIFFICULTY_MULTIPLIERS: Dictionary = {
+	"easy": 0.85,
+	"normal": 1.0,
+	"hard": 1.15,
+}

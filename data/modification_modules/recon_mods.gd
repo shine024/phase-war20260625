@@ -53,7 +53,9 @@ const DATA: Dictionary = {
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 300, cost_install = 150,
 		slot_type = "optics", conflict_group = "optics",
-		effects = {attack_range = 60, crit_chance = 0.10},
+		# v7.x: per-slot 弹道——对轻装槽改 SNIPER 精确射击
+		condition_slot = 0,
+		effects = {attack_range = 60, crit_chance = 0.10, slot_weapon_type = 6},  # v7.x: 对轻装槽狙击弹道,
 		unlock_conditions = {required_level = 5}
 	},
 	"rec_05_uav" = {
@@ -103,7 +105,9 @@ const DATA: Dictionary = {
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 100, cost_install = 50,
 		slot_type = "environment", conflict_group = "environment",
-		effects = {urban_move_bonus = 20},
+		# v7.x: per-slot 弹道——对轻装槽改 SHOTGUN 霰弹（破门近战）
+		condition_slot = 0,
+		effects = {urban_move_bonus = 20, slot_weapon_type = 5},  # v7.x: 对轻装槽霰弹弹道,
 		unlock_conditions = {required_level = 2}
 	},
 	"rec_10_medkit" = {

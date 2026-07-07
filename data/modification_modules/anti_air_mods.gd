@@ -23,7 +23,9 @@ const DATA: Dictionary = {
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 180, cost_install = 90,
 		slot_type = "radar", conflict_group = "radar",
-		effects = {accuracy_bonus = 0.30, attack_interval = -0.30},  # v6.0 平衡性调整: -50% → -30%
+		# v7.x: per-slot 弹道——对空槽改 FLAK 雷达引导高炮
+		condition_slot = 2,
+		effects = {accuracy_bonus = 0.30, attack_interval = -0.30, slot_weapon_type = 7},  # v6.0 -30% + v7.x 对空槽 FLAK,
 		unlock_conditions = {required_level = 3}
 	},
 	"aa_02_iff" = {
@@ -43,7 +45,9 @@ const DATA: Dictionary = {
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 280, cost_install = 140,
 		slot_type = "missile", conflict_group = "missile",
-		effects = {attack_air = 0.40},
+		# v7.x: per-slot 弹道——对空槽改 MISSILE 导弹
+		condition_slot = 2,
+		effects = {attack_air = 0.40, slot_weapon_type = 9},  # v7.x: 对空槽导弹弹道,
 		unlock_conditions = {required_level = 4}
 	},
 	"aa_04_quad_mount" = {
@@ -63,7 +67,9 @@ const DATA: Dictionary = {
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 300, cost_install = 150,
 		slot_type = "fuze", conflict_group = "fuze",
-		effects = {accuracy_bonus = 0.40, splash_radius = 0.30},
+		# v7.x: per-slot 弹道——对空槽改 FLAK 高炮（近炸空爆）
+		condition_slot = 2,
+		effects = {accuracy_bonus = 0.40, splash_radius = 0.30, slot_weapon_type = 7},  # v7.x: 对空槽 FLAK,
 		unlock_conditions = {required_level = 5}
 	},
 	"aa_06_laser" = {
@@ -83,7 +89,9 @@ const DATA: Dictionary = {
 		rarity = "legendary",
 	power_mult = 2.0, cost_research = 450, cost_install = 225,
 		slot_type = "radar", conflict_group = "radar",
-		effects = {splash_damage = 0.4, splash_radius = 0.4, attack_range = 60},
+		# v7.x: per-slot 弹道——对空槽改 MISSILE 导弹（相控阵引导）
+		condition_slot = 2,
+		effects = {splash_damage = 0.4, splash_radius = 0.4, attack_range = 60, slot_weapon_type = 9},  # v7.x: 对空槽导弹,
 		unlock_conditions = {required_level = 7}
 	},
 	"aa_08_power_gen" = {

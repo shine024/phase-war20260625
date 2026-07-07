@@ -2,10 +2,10 @@
 class_name GdUnitToolsTest
 extends GdUnitTestSuite
 
-const GdUnitTools := preload("res://addons/gdUnit4/src/core/GdUnitTools.gd")
+const GdUnitTools := preload("res://addons/gdunit4/src/core/GdUnitTools.gd")
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/core/GdUnitTools.gd'
+const __source = 'res://addons/gdunit4/src/core/GdUnitTools.gd'
 
 
 class InnerTestNodeClass extends Node:

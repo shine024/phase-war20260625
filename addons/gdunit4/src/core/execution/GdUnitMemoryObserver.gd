@@ -4,7 +4,7 @@ extends RefCounted
 
 const TAG_OBSERVE_INSTANCE := "GdUnit4_observe_instance_"
 const TAG_AUTO_FREE = "GdUnit4_marked_auto_free"
-const GdUnitTools = preload("res://addons/gdUnit4/src/core/GdUnitTools.gd")
+const GdUnitTools = preload("res://addons/gdunit4/src/core/GdUnitTools.gd")
 
 
 var _store :Array[Variant] = []

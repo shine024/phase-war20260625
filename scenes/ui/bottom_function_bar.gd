@@ -18,6 +18,7 @@ signal btn_leaderboard_pressed
 signal btn_info_pressed
 signal btn_map_pressed
 signal btn_settings_pressed
+signal btn_collection_pressed
 signal btn_save_pressed
 signal btn_afk_pressed
 signal btn_start_battle_pressed
@@ -67,6 +68,7 @@ const BTN_CONFIGS: Array = [
 	["info",         "情报",   "btn_info_pressed"],
 	["map",          "地图",   "btn_map_pressed"],
 	["settings",     "设置",   "btn_settings_pressed"],
+	["collection",   "图鉴",   "btn_collection_pressed"],
 	["save",         "存档",   "btn_save_pressed"],
 	["afk",          "挂机",   "btn_afk_pressed"],
 ]

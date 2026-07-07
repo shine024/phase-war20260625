@@ -3,7 +3,7 @@ class_name AnyArgumentMatcherTest
 extends GdUnitTestSuite
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/matchers/AnyArgumentMatcher.gd'
+const __source = 'res://addons/gdunit4/src/matchers/AnyArgumentMatcher.gd'
 
 
 func test_is_match() -> void:

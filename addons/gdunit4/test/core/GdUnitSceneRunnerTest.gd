@@ -4,12 +4,12 @@ class_name GdUnitSceneRunnerTest
 extends GdUnitTestSuite
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/core/GdUnitSceneRunnerImpl.gd'
+const __source = 'res://addons/gdunit4/src/core/GdUnitSceneRunnerImpl.gd'
 
 
 # loads the test runner and register for auto freeing after test
 func load_test_scene() -> Node:
-	return auto_free(load("res://addons/gdUnit4/test/mocker/resources/scenes/TestScene.tscn").instantiate())
+	return auto_free(load("res://addons/gdunit4/test/mocker/resources/scenes/TestScene.tscn").instantiate())
 
 
 func before() -> void:
@@ -140,7 +140,7 @@ func test_simulate_scene_inteaction_in_combination_with_spy() -> void:
 
 
 func test_simulate_scene_interact_with_buttons() -> void:
-	var spyed_scene :Variant = spy("res://addons/gdUnit4/test/mocker/resources/scenes/TestScene.tscn")
+	var spyed_scene :Variant = spy("res://addons/gdunit4/test/mocker/resources/scenes/TestScene.tscn")
 	var runner := scene_runner(spyed_scene)
 	# test button 1 interaction
 	await await_millis(1000)
@@ -268,7 +268,7 @@ func test_runner_by_invalid_resource_path() -> void:
 	assert_object(scene_runner("res://test_scene.tscn")._current_scene).is_null()
 	# not a path to a scene
 	@warning_ignore("unsafe_property_access")
-	assert_object(scene_runner("res://addons/gdUnit4/test/core/resources/scenes/simple_scene.gd")._current_scene).is_null()
+	assert_object(scene_runner("res://addons/gdunit4/test/core/resources/scenes/simple_scene.gd")._current_scene).is_null()
 
 
 func test_runner_by_invalid_uid_path() -> void:
@@ -278,7 +278,7 @@ func test_runner_by_invalid_uid_path() -> void:
 
 
 func test_runner_by_uid_path() -> void:
-	# uid is for res://addons/gdUnit4/test/core/resources/scenes/simple_scene.tscn
+	# uid is for res://addons/gdunit4/test/core/resources/scenes/simple_scene.tscn
 	var runner := scene_runner("uid://cn8ucy2rheu0f")
 	assert_object(runner.scene()).is_instanceof(Node2D)
 
@@ -293,7 +293,7 @@ func test_runner_by_uid_path() -> void:
 
 
 func test_runner_by_binary_resource_path() -> void:
-	var runner := scene_runner("res://addons/gdUnit4/test/core/resources/scenes/simple_scene.scn")
+	var runner := scene_runner("res://addons/gdunit4/test/core/resources/scenes/simple_scene.scn")
 	assert_object(runner.scene()).is_instanceof(Node2D)
 
 	# verify the scene is freed when the runner is freed
@@ -307,7 +307,7 @@ func test_runner_by_binary_resource_path() -> void:
 
 
 func test_runner_by_resource_path() -> void:
-	var runner := scene_runner("res://addons/gdUnit4/test/core/resources/scenes/simple_scene.tscn")
+	var runner := scene_runner("res://addons/gdunit4/test/core/resources/scenes/simple_scene.tscn")
 	assert_object(runner.scene()).is_instanceof(Node2D)
 
 	# verify the scene is freed when the runner is freed
@@ -327,7 +327,7 @@ func test_runner_by_invalid_scene_instance() -> void:
 
 
 func test_runner_by_scene_instance() -> void:
-	var scene :Node = load("res://addons/gdUnit4/test/core/resources/scenes/simple_scene.tscn").instantiate()
+	var scene :Node = load("res://addons/gdunit4/test/core/resources/scenes/simple_scene.tscn").instantiate()
 	var runner := scene_runner(scene)
 	assert_object(runner.scene()).is_instanceof(Node2D)
 
@@ -342,7 +342,7 @@ func test_runner_by_scene_instance() -> void:
 
 
 func test_mouse_drag_and_drop() -> void:
-	var spy_scene :Variant = spy("res://addons/gdUnit4/test/core/resources/scenes/drag_and_drop/DragAndDropTestScene.tscn")
+	var spy_scene :Variant = spy("res://addons/gdunit4/test/core/resources/scenes/drag_and_drop/DragAndDropTestScene.tscn")
 	var runner := scene_runner(spy_scene)
 
 	var slot_left :TextureRect = $"/root/DragAndDropScene/left/TextureRect"
@@ -375,7 +375,7 @@ func test_mouse_drag_and_drop() -> void:
 
 
 func test_touch_drag_and_drop_relative() -> void:
-	var spy_scene :Variant = spy("res://addons/gdUnit4/test/core/resources/scenes/drag_and_drop/DragAndDropTestScene.tscn")
+	var spy_scene :Variant = spy("res://addons/gdunit4/test/core/resources/scenes/drag_and_drop/DragAndDropTestScene.tscn")
 	var runner := scene_runner(spy_scene)
 
 	var slot_left :TextureRect = $"/root/DragAndDropScene/left/TextureRect"
@@ -401,7 +401,7 @@ func test_touch_drag_and_drop_relative() -> void:
 
 
 func test_touch_drag_and_drop_absolute() -> void:
-	var spy_scene :Variant = spy("res://addons/gdUnit4/test/core/resources/scenes/drag_and_drop/DragAndDropTestScene.tscn")
+	var spy_scene :Variant = spy("res://addons/gdunit4/test/core/resources/scenes/drag_and_drop/DragAndDropTestScene.tscn")
 	var runner := scene_runner(spy_scene)
 
 	var slot_left :TextureRect = $"/root/DragAndDropScene/left/TextureRect"
@@ -427,7 +427,7 @@ func test_touch_drag_and_drop_absolute() -> void:
 
 
 func test_touch_drag_and_drop() -> void:
-	var spy_scene :Variant = spy("res://addons/gdUnit4/test/core/resources/scenes/drag_and_drop/DragAndDropTestScene.tscn")
+	var spy_scene :Variant = spy("res://addons/gdunit4/test/core/resources/scenes/drag_and_drop/DragAndDropTestScene.tscn")
 	var runner := scene_runner(spy_scene)
 	var slot_left :TextureRect = $"/root/DragAndDropScene/left/TextureRect"
 	var slot_right :TextureRect = $"/root/DragAndDropScene/right/TextureRect"
@@ -445,7 +445,7 @@ func test_touch_drag_and_drop() -> void:
 func test_runner_GD_356() -> void:
 	# to avoid reporting the expected push_error as test failure we disable it
 	ProjectSettings.set_setting(GdUnitSettings.REPORT_PUSH_ERRORS, false)
-	var runner := scene_runner("res://addons/gdUnit4/test/core/resources/scenes/simple_scene.tscn")
+	var runner := scene_runner("res://addons/gdunit4/test/core/resources/scenes/simple_scene.tscn")
 	var player: Object = runner.invoke("find_child", "Player", true, false)
 	assert_that(player).is_not_null()
 	await assert_func(player, "is_on_floor").wait_until(500).is_true()
@@ -457,7 +457,7 @@ func test_runner_GD_356() -> void:
 
 
 func test_move_window_to_foreground() -> void:
-	var runner := scene_runner("res://addons/gdUnit4/test/core/resources/scenes/simple_scene.tscn")
+	var runner := scene_runner("res://addons/gdunit4/test/core/resources/scenes/simple_scene.tscn")
 	# we set inital to background
 	runner.move_window_to_background()
 	await runner.simulate_frames(1)

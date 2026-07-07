@@ -31,7 +31,7 @@ func test_sync_cache() -> void:
 
 
 func test_discover_new_suite_GDScript() -> void:
-	var script: GDScript = load("res://addons/gdUnit4/test/core/discovery/resources/DiscoverExampleTestSuite.gd")
+	var script: GDScript = load("res://addons/gdunit4/test/core/discovery/resources/DiscoverExampleTestSuite.gd")
 	assert_that(script).is_not_null()
 	if script == null:
 		return
@@ -72,7 +72,7 @@ func test_discover_new_suite_GDScript() -> void:
 
 
 func test_discover_deleted_test_GDScript() -> void:
-	var script := load_non_cached("res://addons/gdUnit4/test/core/discovery/resources/DiscoverExampleTestSuite.gd")
+	var script := load_non_cached("res://addons/gdunit4/test/core/discovery/resources/DiscoverExampleTestSuite.gd")
 	# using debug mode to true to collect the change set
 	var discoverer: GdUnitTestDiscoverGuard = auto_free(GdUnitTestDiscoverGuard.new(true))
 
@@ -128,7 +128,7 @@ func test_discover_deleted_test_GDScript() -> void:
 
 
 func test_discover_added_test_GDScript() -> void:
-	var script := load_non_cached("res://addons/gdUnit4/test/core/discovery/resources/DiscoverExampleTestSuite.gd")
+	var script := load_non_cached("res://addons/gdunit4/test/core/discovery/resources/DiscoverExampleTestSuite.gd")
 	# using debug mode to true to collect the change set
 	var discoverer: GdUnitTestDiscoverGuard = auto_free(GdUnitTestDiscoverGuard.new(true))
 
@@ -192,7 +192,7 @@ func test_discover_added_test_GDScript() -> void:
 
 
 func test_discover_renamed_test_GDScript() -> void:
-	var script := load_non_cached("res://addons/gdUnit4/test/core/discovery/resources/DiscoverExampleTestSuite.gd")
+	var script := load_non_cached("res://addons/gdunit4/test/core/discovery/resources/DiscoverExampleTestSuite.gd")
 	# using debug mode to true to collect the change set
 	var discoverer: GdUnitTestDiscoverGuard = auto_free(GdUnitTestDiscoverGuard.new(true))
 
@@ -249,7 +249,7 @@ func test_discover_renamed_test_GDScript() -> void:
 
 
 func test_discover_moved_test_GDScript() -> void:
-	var script := load_non_cached("res://addons/gdUnit4/test/core/discovery/resources/DiscoverExampleTestSuite.gd")
+	var script := load_non_cached("res://addons/gdunit4/test/core/discovery/resources/DiscoverExampleTestSuite.gd")
 	# using debug mode to true to collect the change set
 	var discoverer: GdUnitTestDiscoverGuard = auto_free(GdUnitTestDiscoverGuard.new(true))
 
@@ -327,7 +327,7 @@ func test_discover_moved_test_GDScript() -> void:
 func test_discover_on_csharp_script(_do_skip := !GdUnit4CSharpApiLoader.is_api_loaded()) -> void:
 	var discoverer :GdUnitTestDiscoverGuard = auto_free(GdUnitTestDiscoverGuard.new())
 	var discovered_tests: Array[GdUnitTestCase] = []
-	var script := load_non_cached("res://addons/gdUnit4/test/core/discovery/resources/DiscoverExampleTestSuite.cs")
+	var script := load_non_cached("res://addons/gdunit4/test/core/discovery/resources/DiscoverExampleTestSuite.cs")
 	# simulate initial discovery of a new test suite
 	# we overwrite the default discover sync to catch the tests and not emit `gdunit_test_discovered`
 	await discoverer.discover(script, func(test_case: GdUnitTestCase) -> void:

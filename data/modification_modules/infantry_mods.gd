@@ -45,18 +45,21 @@ const DATA: Dictionary = {
 		icon = "res://assets/ui/icons/mod_icons/mod_weapon.png",
 		rarity = "rare",
 	power_mult = 1.3,
-		cost_research = 100,
-		cost_install = 50,
-		slot_type = "weapon",
-		conflict_group = "fire_rate",
-		effects = {
-			attack_interval = -0.15,  # -15%
-			weapon_type = 5,  # v6.5 SHOTGUN spread
-		},
-		unlock_conditions = {
-			required_level = 1,
-		}
+	cost_research = 100,
+	cost_install = 50,
+	slot_type = "weapon",
+	conflict_group = "fire_rate",
+	# v7.x: per-slot 弹道——对轻装槽改 SHOTGUN 散射弹道
+	condition_slot = 0,
+	effects = {
+		attack_interval = -0.15,  # -15%
+		weapon_type = 5,  # v6.5 SHOTGUN spread（单位级默认）
+		slot_weapon_type = 5,  # v7.x: 对轻装槽散射化
 	},
+	unlock_conditions = {
+		required_level = 1,
+	}
+},
 
 	"inf_02_assault_rifle" = {
 		id = INF_02_ASSAULT_RIFLE,
@@ -69,16 +72,19 @@ const DATA: Dictionary = {
 	power_mult = 1.3,
 		cost_research = 120,
 		cost_install = 60,
-		slot_type = "weapon",
-		conflict_group = "damage",
-		effects = {
-			attack_light = 0.15,  # +15%
-			weapon_type = 0,  # v6.5 DIRECT
-		},
-		unlock_conditions = {
-			required_level = 2,
-		}
+	slot_type = "weapon",
+	conflict_group = "damage",
+	# v7.x: per-slot 弹道——对轻装槽改 DIRECT 直射
+	condition_slot = 0,
+	effects = {
+		attack_light = 0.15,  # +15%
+		weapon_type = 0,  # v6.5 DIRECT（单位级默认）
+		slot_weapon_type = 0,  # v7.x: 对轻装槽直射化
 	},
+	unlock_conditions = {
+		required_level = 2,
+	}
+},
 
 	"inf_03_small_caliber" = {
 		id = INF_03_SMALL_CALIBER,
@@ -137,8 +143,11 @@ const DATA: Dictionary = {
 	cost_install = 100,
 	slot_type = "ammunition",
 	conflict_group = "ammunition",
+	# v7.x: per-slot 弹道——对装甲槽 SNIPER 穿甲（grant_slot 已激活槽位，此处补 slot_weapon_type 双保险）
+	condition_slot = 1,
 	effects = {
 		attack_light = -0.10,   # -10% 副作用（穿甲弹对软目标效果差）
+		slot_weapon_type = 6,  # v7.x: 对装甲槽穿甲弹道（SNIPER）
 	},
 	# v6.13: grant_slot 激活对装甲武器槽（修复原 attack_armor=0.25 对步枪兵 base=0 失效的 bug）
 	# 步枪兵装穿甲弹 → 获得对装甲能力（反坦克步枪语义）
@@ -258,16 +267,19 @@ const DATA: Dictionary = {
 	power_mult = 1.6,
 		cost_research = 250,
 		cost_install = 125,
-		slot_type = "weapon",
-		conflict_group = "fire_rate",
-		effects = {
-			attack_light = 0.20,      # +20%
-			move_speed = -10,         # -10px/s 副作用
-		},
-		unlock_conditions = {
-			required_level = 4,
-		}
+	slot_type = "weapon",
+	conflict_group = "fire_rate",
+	# v7.x: per-slot 弹道——对轻装槽改 MG(2) 机枪压制弹道
+	condition_slot = 0,
+	effects = {
+		attack_light = 0.20,      # +20%
+		move_speed = -10,         # -10px/s 副作用
+		slot_weapon_type = 2,     # v7.x: 对轻装槽机枪化（MG）
 	},
+	unlock_conditions = {
+		required_level = 4,
+	}
+},
 
 	# ─── 防护改造（影响防御属性 + HP）────────
 	"inf_11_armor_insert" = {

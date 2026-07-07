@@ -1,6 +1,6 @@
-[font_size=22]Header 1 Text[/font_size][img=4000x2]res://addons/gdUnit4/src/update/assets/horizontal-line2.png[/img]
+[font_size=22]Header 1 Text[/font_size][img=4000x2]res://addons/gdunit4/src/update/assets/horizontal-line2.png[/img]
 
-[font_size=20]Header 2 Text[/font_size][img=4000x2]res://addons/gdUnit4/src/update/assets/horizontal-line2.png[/img]
+[font_size=20]Header 2 Text[/font_size][img=4000x2]res://addons/gdunit4/src/update/assets/horizontal-line2.png[/img]
 
 [font_size=18]Header 3 Text[/font_size]
 

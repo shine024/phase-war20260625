@@ -31,7 +31,9 @@ const DATA: Dictionary = {
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 260, cost_install = 130,
 		slot_type = "demolition", conflict_group = "demolition",
-		effects = {attack_fort = 0.40},
+		# v7.x: per-slot 弹道——对装甲槽改 ROCKET 火箭爆破
+		condition_slot = 1,
+		effects = {attack_fort = 0.40, slot_weapon_type = 3},  # v7.x: 对装甲槽火箭弹道（爆破）,
 		unlock_conditions = {required_level = 4}
 	},
 	"eng_03_welding" = {

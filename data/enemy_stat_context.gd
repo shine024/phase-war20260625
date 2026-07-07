@@ -12,6 +12,10 @@ var player_pressure: Dictionary = {}
 ## 由 make_default_context 按 LevelInformation.get_level_faction() + FactionSystemManager.get_faction_level() 填充
 ## 无主之地（1-20关）或未知势力留空，resolve_classic_enemy 视为全 1.0（无加成）
 var faction_buff: Dictionary = {}
+## v7.x(A4): 全局玩家难度系数（easy 0.85 / normal 1.0 / hard 1.15），仅缩放敌方 HP+攻击。
+## 由 make_default_context 从 settings.cfg 读取并填充；resolve_classic_enemy 在乘区链末尾乘上。
+## 默认 1.0 → 单元测试用 EnemyStatContext.new() 不传难度时行为与历史版本完全一致（纯函数）。
+var difficulty_multiplier: float = 1.0
 
 
 func _init(p_level: int = 1, p_wave: int = 0) -> void:

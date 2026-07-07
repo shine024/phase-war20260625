@@ -1,8 +1,8 @@
 extends Control
 
-const GdUnitTools := preload("res://addons/gdUnit4/src/core/GdUnitTools.gd")
-const GdMarkDownReader := preload("res://addons/gdUnit4/src/update/GdMarkDownReader.gd")
-const GdUnitUpdateClient := preload("res://addons/gdUnit4/src/update/GdUnitUpdateClient.gd")
+const GdUnitTools := preload("res://addons/gdunit4/src/core/GdUnitTools.gd")
+const GdMarkDownReader := preload("res://addons/gdunit4/src/update/GdMarkDownReader.gd")
+const GdUnitUpdateClient := preload("res://addons/gdunit4/src/update/GdUnitUpdateClient.gd")
 
 @onready var _input: TextEdit = $HSplitContainer/TextEdit
 @onready var _text: RichTextLabel = $HSplitContainer/RichTextLabel
@@ -15,7 +15,7 @@ var _md_reader := GdMarkDownReader.new()
 func _ready() -> void:
 	_md_reader.set_http_client(_update_client)
 	#GdUnitFonts.init_fonts(_text)
-	var source := GdUnitFileAccess.resource_as_string("res://addons/gdUnit4/test/update/resources/http_response_releases.txt")
+	var source := GdUnitFileAccess.resource_as_string("res://addons/gdunit4/test/update/resources/http_response_releases.txt")
 	_input.text = source
 
 	await set_bbcode(source)

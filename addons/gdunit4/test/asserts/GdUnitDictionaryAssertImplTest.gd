@@ -2,7 +2,7 @@
 extends GdUnitTestSuite
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/asserts/GdUnitDictionaryAssertImpl.gd'
+const __source = 'res://addons/gdunit4/src/asserts/GdUnitDictionaryAssertImpl.gd'
 
 
 func test_must_fail_has_invlalid_type() -> void:

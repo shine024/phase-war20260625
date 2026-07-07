@@ -171,6 +171,12 @@ func _ready() -> void:
 			"parent_path": "PopupLayer/GrowthOverlay/CenterContainer",
 			"node_name": "GrowthPanel",
 			"autoload": false
+		},
+		"collection": {
+			"scene": "res://scenes/ui/collection_panel.tscn",
+			"parent_path": "PopupLayer/CollectionOverlay/CenterContainer",
+			"node_name": "CollectionPanel",
+			"autoload": false
 		}
 	}
 

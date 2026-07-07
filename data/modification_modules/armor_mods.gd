@@ -127,13 +127,16 @@ const DATA: Dictionary = {
 	power_mult = 1.6,
 		cost_research = 260,
 		cost_install = 130,
-		slot_type = "gun",
-		conflict_group = "gun",
-		effects = {
-			attack_armor = 0.25,   # +25%
-			attack_range = 30,     # +30px
-				weapon_type = 0,  # v6.5 DIRECT
-		},
+	slot_type = "gun",
+	conflict_group = "gun",
+	# v7.x: per-slot 弹道——对装甲槽改 DIRECT 直射（滑膛炮直瞄）
+	condition_slot = 1,
+	effects = {
+		attack_armor = 0.25,   # +25%
+		attack_range = 30,     # +30px
+			weapon_type = 0,  # v6.5 DIRECT（单位级默认）
+			slot_weapon_type = 0,  # v7.x: 对装甲槽直射化
+	},
 		unlock_conditions = {
 			required_level = 4,
 		}
@@ -150,13 +153,16 @@ const DATA: Dictionary = {
 	power_mult = 1.6,
 		cost_research = 320,
 		cost_install = 160,
-		slot_type = "ammunition",
-		conflict_group = "ammunition",
-		effects = {
-			attack_armor = 0.30,   # +30% (v6.0 平衡性调整: +35% → +30%)
-				weapon_type = 6,  # v6.5 SNIPER pierce
-			attack_light = -0.15,   # -15% 副作用
-		},
+	slot_type = "ammunition",
+	conflict_group = "ammunition",
+	# v7.x: per-slot 弹道——对装甲槽 SNIPER 穿甲（尾翼稳定脱壳）
+	condition_slot = 1,
+	effects = {
+		attack_armor = 0.30,   # +30% (v6.0 平衡性调整: +35% → +30%)
+			weapon_type = 6,  # v6.5 SNIPER pierce（单位级默认）
+			slot_weapon_type = 6,  # v7.x: 对装甲槽穿甲弹道
+		attack_light = -0.15,   # -15% 副作用
+	},
 		unlock_conditions = {
 			required_level = 5,
 		}
@@ -175,8 +181,11 @@ const DATA: Dictionary = {
 	cost_install = 200,
 	slot_type = "gun",
 	conflict_group = "gun",
+	# v7.x: per-slot 弹道——对空槽 MISSILE 导弹（grant_slot 已激活槽位，此处补 slot_weapon_type 双保险）
+	condition_slot = 2,
 	effects = {
 		attack_armor = 0.20,   # +20% 对装甲
+		slot_weapon_type = 9,  # v7.x: 对空槽导弹弹道（MISSILE）
 	},
 	# v6.13: grant_slot 直接激活对空武器槽（修复原 attack_air=0.20 对 base=0 失效的 bug）
 	# 以载体 attack_armor 为基准 ×0.8 派生对空基础伤害，导弹式低射速高单发

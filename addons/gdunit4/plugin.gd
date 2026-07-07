@@ -31,11 +31,11 @@ func _enter_tree() -> void:
 		return
 	GdUnitSettings.setup()
 	# Install the GdUnit Inspector
-	_gd_inspector = (load("res://addons/gdUnit4/src/ui/GdUnitInspector.tscn") as PackedScene).instantiate()
+	_gd_inspector = (load("res://addons/gdunit4/src/ui/GdUnitInspector.tscn") as PackedScene).instantiate()
 	_add_context_menus()
 	add_control_to_dock(EditorPlugin.DOCK_SLOT_LEFT_UR, _gd_inspector)
 	# Install the GdUnit Console
-	_gd_console = (load("res://addons/gdUnit4/src/ui/GdUnitConsole.tscn") as PackedScene).instantiate()
+	_gd_console = (load("res://addons/gdunit4/src/ui/GdUnitConsole.tscn") as PackedScene).instantiate()
 	var control: Control = add_control_to_bottom_panel(_gd_console, "gdUnitConsole")
 	@warning_ignore("unsafe_method_access")
 	await _gd_console.setup_update_notification(control)
@@ -60,7 +60,7 @@ func _exit_tree() -> void:
 	if is_instance_valid(_gd_console):
 		remove_control_from_bottom_panel(_gd_console)
 		_gd_console.free()
-	var gdUnitTools: GDScript = load("res://addons/gdUnit4/src/core/GdUnitTools.gd")
+	var gdUnitTools: GDScript = load("res://addons/gdunit4/src/core/GdUnitTools.gd")
 	@warning_ignore("unsafe_method_access")
 	gdUnitTools.dispose_all(true)
 	prints("Unload GdUnit4 Plugin success")
@@ -75,17 +75,17 @@ func check_running_in_test_env() -> bool:
 func _add_context_menus() -> void:
 	if Engine.get_version_info().hex >= 0x40400:
 		# With Godot 4.4 we have to use the 'add_context_menu_plugin' to register editor context menus
-		_gd_filesystem_context_menu = _preload_gdx_script("res://addons/gdUnit4/src/ui/menu/EditorFileSystemContextMenuHandlerV44.gdx")
+		_gd_filesystem_context_menu = _preload_gdx_script("res://addons/gdunit4/src/ui/menu/EditorFileSystemContextMenuHandlerV44.gdx")
 		call_deferred("add_context_menu_plugin", CONTEXT_SLOT_FILESYSTEM, _gd_filesystem_context_menu)
 		# the CONTEXT_SLOT_SCRIPT_EDITOR is adding to the script panel instead of script editor see https://github.com/godotengine/godot/pull/100556
-		#_gd_scripteditor_context_menu = _preload("res://addons/gdUnit4/src/ui/menu/ScriptEditorContextMenuHandlerV44.gdx")
+		#_gd_scripteditor_context_menu = _preload("res://addons/gdunit4/src/ui/menu/ScriptEditorContextMenuHandlerV44.gdx")
 		#call_deferred("add_context_menu_plugin", CONTEXT_SLOT_SCRIPT_EDITOR, _gd_scripteditor_context_menu)
 		# so we use the old hacky way to add the context menu
-		_gd_inspector.add_child(preload("res://addons/gdUnit4/src/ui/menu/ScriptEditorContextMenuHandler.gd").new())
+		_gd_inspector.add_child(preload("res://addons/gdunit4/src/ui/menu/ScriptEditorContextMenuHandler.gd").new())
 	else:
 		# TODO Delete it if the minimum requirement for the plugin is set to Godot 4.4.
-		_gd_inspector.add_child(preload("res://addons/gdUnit4/src/ui/menu/EditorFileSystemContextMenuHandler.gd").new())
-		_gd_inspector.add_child(preload("res://addons/gdUnit4/src/ui/menu/ScriptEditorContextMenuHandler.gd").new())
+		_gd_inspector.add_child(preload("res://addons/gdunit4/src/ui/menu/EditorFileSystemContextMenuHandler.gd").new())
+		_gd_inspector.add_child(preload("res://addons/gdunit4/src/ui/menu/ScriptEditorContextMenuHandler.gd").new())
 
 
 func _remove_context_menus() -> void:

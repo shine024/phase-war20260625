@@ -5,7 +5,7 @@ extends GdUnitTestSuite
 @warning_ignore('return_value_discarded')
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/monitor/ErrorLogEntry.gd'
+const __source = 'res://addons/gdunit4/src/monitor/ErrorLogEntry.gd'
 
 const error_report = """
 	USER ERROR: this is an error
@@ -13,7 +13,7 @@ const error_report = """
 	"""
 const script_error = """
 	USER SCRIPT ERROR: Trying to call a function on a previously freed instance.
-	   at: GdUnitScriptTypeTest.test_xx (res://addons/gdUnit4/test/GdUnitScriptTypeTest.gd:22)
+	   at: GdUnitScriptTypeTest.test_xx (res://addons/gdunit4/test/GdUnitScriptTypeTest.gd:22)
 """
 
 

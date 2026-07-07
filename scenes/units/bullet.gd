@@ -35,6 +35,10 @@ var _is_heavy: bool = false
 ## v6.6: 抑制曲射炮口火焰（相位仪「超级火炮连击」从屏幕外飞入，无需炮口火）
 var suppress_muzzle: bool = false
 
+## v7.x: 目标的 combat_kind（命中时从 target.stats 提取，驱动命中色调/缩放/震动差异化）
+## -1 = 未提取（走原逻辑，向后兼容）
+var _target_combat_kind: int = -1
+
 # 行为参数：由武器类型决定
 var pierce_count: int = 0          # 可额外穿透多少个目标（LASER/SNIPER 用）
 var explosion_radius: float = 0.0  # >0 时命中产生范围伤害（ROCKET/MISSILE/FLAK）
@@ -234,13 +238,57 @@ func _apply_visual() -> void:
 		_sprite.visible = not use_beam
 		if not use_beam:
 			_sprite.color = bullet_color
-			var pts: PackedVector2Array = PackedVector2Array([Vector2(-2,-2)*size_scale, Vector2(4,0)*size_scale, Vector2(-2,2)*size_scale])
-			_sprite.polygon = pts
+			## v7.x: 程序化子弹形状替代简陋三角箭头（弹头形 + 按武器类型差异化）
+			_apply_bullet_shape(size_scale)
 	if _beam_line:
 		_beam_line.visible = use_beam
 		if use_beam:
 			_beam_line.default_color = beam_color
 			_beam_line.width = 3.0 if weapon_type == 6 else 4.5
+
+
+## v7.x: 程序化生成子弹多边形（替代原 3 点三角形）
+## 形状 = 弹体（平底矩形段）+ 弹头（锥形过渡段），指向 +X（飞行方向）
+## 按 weapon_type 差异化比例，让不同武器视觉上有辨识度
+func _apply_bullet_shape(size_scale: float) -> void:
+	if _sprite == null:
+		return
+	var s := size_scale
+	# 默认弹头形基准（size_scale=1.0）
+	var body_len: float = 6.0 * s   # 弹体长度
+	var nose_len: float = 4.0 * s   # 弹头锥形长度
+	var half_h: float = 2.0 * s     # 弹体半高
+	# 按武器类型调整比例
+	match weapon_type:
+		5:  # SHOTGUN — 圆胖霰弹丸
+			body_len = 5.0 * s
+			nose_len = 2.0 * s
+			half_h = 2.8 * s
+		3, 9:  # ROCKET / MISSILE — 长粗导弹
+			body_len = 10.0 * s
+			nose_len = 5.0 * s
+			half_h = 2.5 * s
+		10, 11:  # OMEGA / RAIL — 细长高能弹
+			body_len = 8.0 * s
+			nose_len = 6.0 * s
+			half_h = 1.2 * s
+		7:  # FLAK — 短粗高炮弹
+			body_len = 5.0 * s
+			nose_len = 3.5 * s
+			half_h = 2.4 * s
+	var tip_x: float = body_len + nose_len  # 弹头顶点 X
+	# 7 点顺时针多边形（从弹体底部后端起）：
+	# 后端平底 → 弹体底前 → 锥面收窄 → 弹尖 → 锥面展开 → 弹体顶前 → 后端平顶
+	var pts: PackedVector2Array = PackedVector2Array([
+		Vector2(0.0,        -half_h),   # 弹体底部后端
+		Vector2(body_len,   -half_h),   # 弹体底部前端
+		Vector2(body_len,   -nose_len * 0.4),  # 弹头底部锥面（下）
+		Vector2(tip_x,       0.0),      # 弹头顶点
+		Vector2(body_len,    nose_len * 0.4),  # 弹头底部锥面（上）
+		Vector2(body_len,    half_h),   # 弹体顶部前端
+		Vector2(0.0,         half_h),   # 弹体顶部后端
+	])
+	_sprite.polygon = pts
 
 
 func _apply_tex_sprite_visual(is_player: bool) -> void:
@@ -325,10 +373,11 @@ func _spawn_tex_impact_at(world_pos: Vector2) -> void:
 		return
 
 	# v6.0: 武器名查 VFX → 旧 weapon_type 回退
+	# v7.x: 透传 _target_combat_kind 实现按目标类型差异化命中色调/缩放
 	if not _weapon_name.is_empty():
 		_spawn_impact_v2(parent, world_pos, _weapon_name)
 	else:
-		WeaponProjectileVfx.spawn_impact(parent, world_pos, weapon_type, shooter_is_player)
+		WeaponProjectileVfx.spawn_impact_with_kind(parent, world_pos, weapon_type, shooter_is_player, _target_combat_kind)
 
 
 ## v6.0: 新版命中特效（按武器名）— 使用 WeaponProjectileVfx 对象池
@@ -499,23 +548,43 @@ func _spawn_impact_explosion(pos: Vector2) -> void:
 	fx.texture = tex
 	fx.centered = true
 	# v6.2: 曲射/空射爆炸特效放大(初始 0.75→1.0，放大倍率 1.5→2.25)
-	fx.scale = Vector2(1.0, 1.0)
+	# v7.x: 按 combat_kind 叠加缩放倍率（对轻装小/对装甲中/对空大）
+	var _base_scale: float = 1.0
+	if _target_combat_kind >= 0 and WeaponProjectileVfx.IMPACT_SCALE_MUL_BY_KIND.has(_target_combat_kind):
+		_base_scale *= float(WeaponProjectileVfx.IMPACT_SCALE_MUL_BY_KIND[_target_combat_kind])
+	fx.scale = Vector2(_base_scale, _base_scale)
 	fx.global_position = pos
-	if not shooter_is_player:
+	# v7.x: 按 combat_kind 叠加色调（火花/碎屑/空爆色调差异）
+	if _target_combat_kind >= 0 and WeaponProjectileVfx.IMPACT_TINT_BY_KIND.has(_target_combat_kind):
+		fx.modulate = WeaponProjectileVfx.IMPACT_TINT_BY_KIND[_target_combat_kind]
+	elif not shooter_is_player:
 		fx.scale.x = -fx.scale.x
 	get_parent().add_child(fx)
 	var tw := fx.create_tween()
 	tw.tween_property(fx, "scale", fx.scale * 2.25, 0.15)
 	tw.parallel().tween_property(fx, "modulate:a", 0.0, 0.3)
 	tw.finished.connect(func(): WeaponProjectileVfx._release_impact_sprite(fx))
+	# v7.x: 重型武器爆炸叠加冲击波环 + 火花（放大版）
+	WeaponProjectileVfx._spawn_impact_shockwave(get_parent(), pos, fx.scale.x * 1.5, shooter_is_player, _target_combat_kind)
 
 
 ## v6.4: 命中时触发屏幕震动——曲射/爆炸类中震动，直射轻震动
+## v7.x: 优先用 combat_kind 的震动参数（对轻装轻震/对装甲中震/对空重震），无 combat_kind 走原逻辑
 func _request_hit_shake() -> void:
 	if BattleManager == null or not is_instance_valid(BattleManager):
 		return
 	if not BattleManager.has_method("request_screen_shake"):
 		return
+	# v7.x: 有 combat_kind 时按目标类型定震动强度
+	if _target_combat_kind >= 0:
+		var shake: Vector2 = WeaponProjectileVfx.impact_shake_for_kind(_target_combat_kind)
+		if shake.x > 0.0:
+			# 爆炸/曲射类增强：combat_kind 基础值 + 爆炸加成
+			var mag: float = shake.x
+			if _is_indirect or explosion_radius > 0.0:
+				mag = maxf(mag, 5.0)
+			BattleManager.request_screen_shake(mag, shake.y)
+			return
 	if _is_indirect or explosion_radius > 0.0:
 		BattleManager.request_screen_shake(5.0, 0.25)
 	else:
@@ -553,6 +622,11 @@ func _get_aoe_damage_targets(center: Vector2, radius: float, primary: Node2D) ->
 	return targets
 
 func _on_hit(primary: Node2D) -> void:
+	# v7.x: 提取目标 combat_kind（用于命中特效按目标类型差异化色调/缩放/震动）
+	if primary != null:
+		var _ts: UnitStats = primary.get("stats") as UnitStats if "stats" in primary else null
+		if _ts != null:
+			_target_combat_kind = int(_ts.combat_kind)
 	if forced_miss:
 		var miss_pos: Vector2 = primary.global_position if primary else global_position
 		CombatFeedback.show_miss(miss_pos, primary)

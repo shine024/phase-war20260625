@@ -67,6 +67,7 @@ func _debug_log(hypothesis_id: String, location: String, message: String, data: 
 @onready var manufacture_overlay: Control      = $PopupLayer/ManufactureOverlay
 @onready var intelligence_overlay: Control     = $PopupLayer/IntelligenceOverlay
 @onready var growth_overlay: Control           = $PopupLayer/GrowthOverlay
+@onready var collection_overlay: Control       = $PopupLayer/CollectionOverlay
 @onready var enhancement_overlay: Control     = $PopupLayer/EnhancementOverlay
 @onready var modification_overlay: Control    = $PopupLayer/ModificationOverlay
 @onready var evolution_overlay: Control       = $PopupLayer/EvolutionOverlay
@@ -99,6 +100,7 @@ func _ready() -> void:
 		bottom_function_bar.btn_info_pressed.connect(_on_info_pressed)
 		bottom_function_bar.btn_map_pressed.connect(_on_map_pressed)
 		bottom_function_bar.btn_settings_pressed.connect(_on_settings_pressed)
+		bottom_function_bar.btn_collection_pressed.connect(_on_collection_pressed)
 		bottom_function_bar.btn_save_pressed.connect(_on_manual_save_pressed)
 		bottom_function_bar.btn_afk_pressed.connect(_on_afk_pressed)
 		bottom_function_bar.btn_start_battle_pressed.connect(_on_start_battle)
@@ -307,6 +309,7 @@ func _connect_panel_closed_signals() -> void:
 		"settings":           $PopupLayer/SettingsOverlay/CenterContainer/SettingsPanel,
 		"info":               $PopupLayer/IntelligenceOverlay/CenterContainer/IntelligenceHubPanel,
 		"growth":             get_node_or_null("PopupLayer/GrowthOverlay/CenterContainer/GrowthPanel"),
+		"collection":         get_node_or_null("PopupLayer/CollectionOverlay/CenterContainer/CollectionPanel"),
 		"afk":                get_node_or_null("PopupLayer/AFKOverlay/CenterContainer/AFKPanel"),
 	}
 	for key in panels:
@@ -414,6 +417,7 @@ func _on_panel_closed(key: String) -> void:
 				bottom_function_bar.notify_panel_closed("leaderboard")
 		"backpack":           _close_overlay(backpack_overlay, "backpack")
 		"growth":             _close_overlay(growth_overlay, "growth")
+		"collection":         _close_overlay(collection_overlay, "collection")
 		"info":               _close_overlay(intelligence_overlay, "info")
 		"enhancement":        _close_overlay(enhancement_overlay, "enhancement")
 		"modification":       _close_overlay(modification_overlay, "modification")
@@ -655,6 +659,10 @@ func _on_map_pressed() -> void:
 func _on_settings_pressed() -> void:
 	_play_sfx("button")
 	_toggle_overlay(settings_overlay, "settings")
+
+func _on_collection_pressed() -> void:
+	_play_sfx("button")
+	_toggle_overlay(collection_overlay, "collection")
 
 func _on_manual_save_pressed() -> void:
 	_play_sfx("button")
@@ -1068,12 +1076,31 @@ func _setup_new_managers() -> void:
 				# [LOG-v5.1] print("[Main] 管理器未找到: ", manager_name)
 
 ## 启动新手教程（如果是新游戏）
-## 注意：教程系统的展示 UI 尚未实现（tutorial_data 无任何面板消费），
-## 因此暂时保留短路。修复教程 UI 后再启用此入口。
+## v7.x(A5): 接线 tutorial_overlay —— 新存档首次进入主界面时实例化覆盖层。
+## overlay 自身在 _ready 检查 should_show_tutorial，教程已结束（FREEDOM_MODE）会自 queue_free。
+## 完成首步后 current_step 推进，后续不会再弹（除非 settings 里 reset）。
 func _start_tutorial_if_needed() -> void:
 	var tutorial_manager = get_node_or_null("/root/TutorialProgressionManager")
-	if tutorial_manager and tutorial_manager.has_method("should_show_tutorial") and tutorial_manager.should_show_tutorial():
-		pass  # 教程展示 UI 未实现，暂不自动启动
+	if tutorial_manager == null or not tutorial_manager.has_method("should_show_tutorial"):
+		return
+	if not tutorial_manager.should_show_tutorial():
+		return
+	# 仅在 current_step == NONE（全新存档，从未看过教程）时触发，避免每次进主界面都弹。
+	if "current_step" in tutorial_manager and int(tutorial_manager.current_step) != 0:
+		return
+	# 推进到首步，让 overlay 取得到内容。
+	if tutorial_manager.has_method("get_tutorial_content"):
+		tutorial_manager.get_tutorial_content()  # 副作用：NONE → INTRO_WELCOME
+	# 实例化 overlay 到 HudLayer（z_index 高，覆盖战场下方 UI）。
+	var TutorialOverlayScene := load("res://scenes/ui/tutorial_overlay.tscn") as PackedScene
+	if TutorialOverlayScene == null:
+		return
+	var overlay := TutorialOverlayScene.instantiate()
+	var hud := get_node_or_null("HudLayer")
+	if hud != null:
+		hud.add_child(overlay)
+	else:
+		add_child(overlay)
 
 ## 初始化日常任务
 func _init_daily_tasks() -> void:

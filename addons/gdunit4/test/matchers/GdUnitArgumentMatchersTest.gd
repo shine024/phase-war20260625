@@ -3,7 +3,7 @@ class_name GdUnitArgumentMatchersTest
 extends GdUnitTestSuite
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/matchers/GdUnitArgumentMatchers.gd'
+const __source = 'res://addons/gdunit4/src/matchers/GdUnitArgumentMatchers.gd'
 
 
 func test_arguments_to_chained_matcher() -> void:

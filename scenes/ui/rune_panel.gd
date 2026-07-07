@@ -18,6 +18,9 @@ const RunewordMatcher = preload("res://managers/runeword_matcher.gd")
 var _pim: Node = null  # PhaseInstrumentManager 引用
 var _selected_slot_index: int = 0  # 当前选中的符文槽位
 
+## 关闭信号（由标题栏关闭按钮触发，main.gd _on_panel_closed 监听关闭 overlay）
+signal closed
+
 # UI元素引用
 var _slot_container: HBoxContainer = null
 var _rune_grid: GridContainer = null
@@ -58,8 +61,9 @@ func _exit_tree() -> void:
 # ═══════════════════════════════════════════════════════════════════
 
 func _build_ui() -> void:
-	# 根容器
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# 根容器：固定尺寸，由父级 CenterContainer 居中。
+	# 注：勿用 PRESET_FULL_RECT——CenterContainer 不尊重子节点锚点，
+	# 设 FULL_RECT 会导致内容溢出屏幕外（UI 在屏幕外的根因）。
 	set_custom_minimum_size(Vector2(840, 580))
 	
 	var root := VBoxContainer.new()
@@ -100,7 +104,7 @@ func _build_ui() -> void:
 
 func _build_title_bar() -> HBoxContainer:
 	var bar := HBoxContainer.new()
-	bar.alignment = BoxContainer.ALIGNMENT_CENTER
+	bar.add_theme_constant_override("separation", 8)
 	var title := Label.new()
 	title.text = "⚡ 符文之语"
 	title.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_TITLE)
@@ -110,8 +114,28 @@ func _build_title_bar() -> HBoxContainer:
 	hint.text = "  (点击符文装备到选中槽位)"
 	hint.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
 	hint.add_theme_color_override("font_color", DesignTokens.COLOR_TEXT)
+	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bar.add_child(hint)
+	# 关闭按钮（emit closed 信号，由 main.gd _on_panel_closed 关闭 overlay）
+	var close_btn := Button.new()
+	close_btn.text = "✕ 关闭"
+	close_btn.custom_minimum_size = Vector2(72, 32)
+	close_btn.add_theme_font_size_override("font_size", DesignTokens.FONT_SIZE_SMALL)
+	close_btn.pressed.connect(_on_close)
+	bar.add_child(close_btn)
 	return bar
+
+func _on_close() -> void:
+	closed.emit()
+	# 双保险：直接向上隐藏 PhaseLawOverlay 祖先。
+	# 不依赖 main.gd 的信号连接是否建立（_connect_panel_closed_signals 的 is_connected 判断在 bind 场景下不可靠），
+	# 确保关闭按钮在任何打开路径下都能立即关闭面板。
+	var p: Node = get_parent()
+	while p != null:
+		if p is Control and p.name == "PhaseLawOverlay":
+			(p as Control).visible = false
+			break
+		p = p.get_parent()
 
 func _build_slot_row() -> HBoxContainer:
 	var row := HBoxContainer.new()

@@ -3,7 +3,7 @@ class_name GdUnitFloatAssertImplTest
 extends GdUnitTestSuite
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/asserts/GdUnitFloatAssertImpl.gd'
+const __source = 'res://addons/gdunit4/src/asserts/GdUnitFloatAssertImpl.gd'
 
 
 func test_is_null() -> void:

@@ -5,7 +5,7 @@ class_name GdDiffToolTest
 extends GdUnitTestSuite
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/core/GdDiffTool.gd'
+const __source = 'res://addons/gdunit4/src/core/GdDiffTool.gd'
 
 
 func test_string_diff_empty() -> void:

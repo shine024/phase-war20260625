@@ -261,8 +261,8 @@ static func ability_fortress_bulwark(star: int) -> Dictionary:
 ## 每个星级的分配不同，体现策略变化——不是每级都平均增长
 ## 7星 = 10格（green6 + rune4），符合"格子上限10格"设计
 const _STAR_LAYOUT := {
-	1: {"green": 1, "rune": 1, "spawn_range_ratio": 0.30},   # 2格：起步
-	2: {"green": 2, "rune": 1, "spawn_range_ratio": 0.40},   # 3格：+1战斗
+	1: {"green": 1, "rune": 2, "spawn_range_ratio": 0.30},   # 3格：起步（2符文槽，可激活T2符文之语）
+	2: {"green": 2, "rune": 2, "spawn_range_ratio": 0.40},   # 4格：+1战斗（2符文槽，保持单调）
 	3: {"green": 2, "rune": 3, "spawn_range_ratio": 0.55},   # 5格：侧重符文
 	4: {"green": 3, "rune": 2, "spawn_range_ratio": 0.70},   # 5格：侧重战斗
 	5: {"green": 4, "rune": 4, "spawn_range_ratio": 0.82},   # 8格：均衡扩展

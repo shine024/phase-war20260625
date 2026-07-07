@@ -1,6 +1,8 @@
 extends Camera2D
 ## 屏幕震动效果：为战斗提供视觉冲击
 
+const DT = preload("res://resources/design_tokens.gd")
+
 var shake_intensity: float = 0.0
 var shake_duration: float = 0.0
 var shake_timer: float = 0.0
@@ -42,6 +44,12 @@ func _process(delta: float) -> void:
 
 ## 开始震动
 func start_shake(intensity: float, duration: float, decay: bool = true) -> void:
+	# v7.x(A3): 减少动效开启时短路所有震动（前庭敏感用户的可访问性选项）。
+	if DT.is_motion_reduce():
+		shake_duration = 0.0
+		shake_timer = 0.0
+		offset = original_offset
+		return
 	shake_intensity = intensity
 	shake_duration = duration
 	shake_decay = decay

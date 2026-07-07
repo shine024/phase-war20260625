@@ -1,8 +1,8 @@
 @tool
 extends Container
 
-const GdUnitTools := preload("res://addons/gdUnit4/src/core/GdUnitTools.gd")
-const GdUnitUpdateClient := preload("res://addons/gdUnit4/src/update/GdUnitUpdateClient.gd")
+const GdUnitTools := preload("res://addons/gdunit4/src/core/GdUnitTools.gd")
+const GdUnitUpdateClient := preload("res://addons/gdunit4/src/update/GdUnitUpdateClient.gd")
 const GDUNIT_TEMP := "user://tmp"
 
 @onready var _progress_content: RichTextLabel = %message
@@ -83,7 +83,7 @@ func run_update() -> void:
 	await update_progress("Uninstall GdUnit4.")
 	disable_gdUnit()
 	if not _debug_mode:
-		GdUnitFileAccess.delete_directory("res://addons/gdUnit4/")
+		GdUnitFileAccess.delete_directory("res://addons/gdunit4/")
 	# give editor time to react on deleted files
 	await get_tree().create_timer(1).timeout
 
@@ -106,7 +106,7 @@ func run_update() -> void:
 	restart_godot()
 
 
-func patch_uids(path := "res://addons/gdUnit4/src/") -> void:
+func patch_uids(path := "res://addons/gdunit4/src/") -> void:
 	var to_reimport: PackedStringArray
 	for file in DirAccess.get_files_at(path):
 		var file_path := path.path_join(file)
@@ -170,8 +170,8 @@ func enable_gdUnit() -> void:
 	var enabled_plugins := PackedStringArray()
 	if ProjectSettings.has_setting("editor_plugins/enabled"):
 		enabled_plugins = ProjectSettings.get_setting("editor_plugins/enabled")
-	if not enabled_plugins.has("res://addons/gdUnit4/plugin.cfg"):
-		enabled_plugins.append("res://addons/gdUnit4/plugin.cfg")
+	if not enabled_plugins.has("res://addons/gdunit4/plugin.cfg"):
+		enabled_plugins.append("res://addons/gdunit4/plugin.cfg")
 	ProjectSettings.set_setting("editor_plugins/enabled", enabled_plugins)
 	ProjectSettings.save()
 

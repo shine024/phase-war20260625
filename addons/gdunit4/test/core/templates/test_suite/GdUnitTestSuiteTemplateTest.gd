@@ -5,7 +5,7 @@ class_name GdUnitTestSuiteTemplateTest
 extends GdUnitTestSuite
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/core/templates/test_suite/GdUnitTestSuiteTemplate.gd'
+const __source = 'res://addons/gdunit4/src/core/templates/test_suite/GdUnitTestSuiteTemplate.gd'
 
 const CUSTOM_TEMPLATE = """
 	# GdUnit generated TestSuite
@@ -29,7 +29,7 @@ func test_default_template() -> void:
 
 
 func test_build_template_default() -> void:
-	var template := GdUnitTestSuiteTemplate.build_template("res://addons/gdUnit4/test/core/resources/script_with_class_name.gd")
+	var template := GdUnitTestSuiteTemplate.build_template("res://addons/gdunit4/test/core/resources/script_with_class_name.gd")
 	var expected := """
 		# GdUnit generated TestSuite
 		class_name ScriptWithClassNameTest
@@ -38,7 +38,7 @@ func test_build_template_default() -> void:
 		@warning_ignore('return_value_discarded')
 
 		# TestSuite generated from
-		const __source: String = 'res://addons/gdUnit4/test/core/resources/script_with_class_name.gd'
+		const __source: String = 'res://addons/gdunit4/test/core/resources/script_with_class_name.gd'
 		""".dedent().trim_prefix("\n")
 	assert_str(template).is_equal(expected)
 
@@ -46,7 +46,7 @@ func test_build_template_default() -> void:
 # checked source with class_name definition
 func test_build_template_custom1() -> void:
 	GdUnitTestSuiteTemplate.save_template(GdUnitTestSuiteTemplate.TEMPLATE_ID_GD, CUSTOM_TEMPLATE)
-	var template := GdUnitTestSuiteTemplate.build_template("res://addons/gdUnit4/test/core/resources/script_with_class_name.gd")
+	var template := GdUnitTestSuiteTemplate.build_template("res://addons/gdunit4/test/core/resources/script_with_class_name.gd")
 	var expected := """
 		# GdUnit generated TestSuite
 		class_name ScriptWithClassNameTest
@@ -56,7 +56,7 @@ func test_build_template_custom1() -> void:
 
 		func before() -> void:
 			var script_with_class_name_1 := ScriptWithClassName.new()
-			var script_with_class_name_2 = load("res://addons/gdUnit4/test/core/resources/script_with_class_name.gd")
+			var script_with_class_name_2 = load("res://addons/gdunit4/test/core/resources/script_with_class_name.gd")
 		""".dedent().trim_prefix("\n")
 	assert_str(template).is_equal(expected)
 
@@ -64,7 +64,7 @@ func test_build_template_custom1() -> void:
 # checked source without class_name definition
 func test_build_template_custom2() -> void:
 	GdUnitTestSuiteTemplate.save_template(GdUnitTestSuiteTemplate.TEMPLATE_ID_GD, CUSTOM_TEMPLATE)
-	var template := GdUnitTestSuiteTemplate.build_template("res://addons/gdUnit4/test/core/resources/script_without_class_name.gd")
+	var template := GdUnitTestSuiteTemplate.build_template("res://addons/gdunit4/test/core/resources/script_without_class_name.gd")
 	var expected := """
 		# GdUnit generated TestSuite
 		class_name ScriptWithoutClassNameTest
@@ -74,7 +74,7 @@ func test_build_template_custom2() -> void:
 
 		func before() -> void:
 			var script_without_class_name_1 := ScriptWithoutClassName.new()
-			var script_without_class_name_2 = load("res://addons/gdUnit4/test/core/resources/script_without_class_name.gd")
+			var script_without_class_name_2 = load("res://addons/gdunit4/test/core/resources/script_without_class_name.gd")
 		""".dedent().trim_prefix("\n")
 	assert_str(template).is_equal(expected)
 
@@ -82,7 +82,7 @@ func test_build_template_custom2() -> void:
 # checked source with class_name definition pascal_case
 func test_build_template_custom3() -> void:
 	GdUnitTestSuiteTemplate.save_template(GdUnitTestSuiteTemplate.TEMPLATE_ID_GD, CUSTOM_TEMPLATE)
-	var template := GdUnitTestSuiteTemplate.build_template("res://addons/gdUnit4/test/core/resources/naming_conventions/PascalCaseWithClassName.gd")
+	var template := GdUnitTestSuiteTemplate.build_template("res://addons/gdunit4/test/core/resources/naming_conventions/PascalCaseWithClassName.gd")
 	var expected := """
 		# GdUnit generated TestSuite
 		class_name PascalCaseWithClassNameTest
@@ -92,6 +92,6 @@ func test_build_template_custom3() -> void:
 
 		func before() -> void:
 			var pascal_case_with_class_name_1 := PascalCaseWithClassName.new()
-			var pascal_case_with_class_name_2 = load("res://addons/gdUnit4/test/core/resources/naming_conventions/PascalCaseWithClassName.gd")
+			var pascal_case_with_class_name_2 = load("res://addons/gdunit4/test/core/resources/naming_conventions/PascalCaseWithClassName.gd")
 		""".dedent().trim_prefix("\n")
 	assert_str(template).is_equal(expected)

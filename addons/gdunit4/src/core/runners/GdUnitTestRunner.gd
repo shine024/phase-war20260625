@@ -1,4 +1,4 @@
-extends "res://addons/gdUnit4/src/core/runners/GdUnitTestSessionRunner.gd"
+extends "res://addons/gdunit4/src/core/runners/GdUnitTestSessionRunner.gd"
 ## Runner implementation used by the editor UI.[br]
 ## [br]
 ## This runner connects to a GdUnit server via TCP to report test results.[br]

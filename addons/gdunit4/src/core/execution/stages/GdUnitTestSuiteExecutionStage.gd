@@ -2,7 +2,7 @@
 class_name GdUnitTestSuiteExecutionStage
 extends IGdUnitExecutionStage
 
-const GdUnitTools := preload("res://addons/gdUnit4/src/core/GdUnitTools.gd")
+const GdUnitTools := preload("res://addons/gdunit4/src/core/GdUnitTools.gd")
 
 var _stage_before :IGdUnitExecutionStage = GdUnitTestSuiteBeforeStage.new()
 var _stage_after :IGdUnitExecutionStage = GdUnitTestSuiteAfterStage.new()

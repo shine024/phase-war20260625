@@ -3,7 +3,7 @@ class_name GdUnit4VersionTest
 extends GdUnitTestSuite
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/core/.gd'
+const __source = 'res://addons/gdunit4/src/core/.gd'
 
 
 func test_parse() -> void:

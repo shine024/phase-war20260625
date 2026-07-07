@@ -5,7 +5,7 @@ signal run_overall_pressed(debug: bool)
 signal run_pressed(debug: bool)
 signal stop_pressed()
 
-const  InspectorTreeMainPanel := preload("res://addons/gdUnit4/src/ui/parts/InspectorTreeMainPanel.gd")
+const  InspectorTreeMainPanel := preload("res://addons/gdunit4/src/ui/parts/InspectorTreeMainPanel.gd")
 
 @onready var _version_label: Control = %version
 @onready var _button_wiki: Button = %help
@@ -109,7 +109,7 @@ func _on_wiki_pressed() -> void:
 func _on_btn_tool_pressed() -> void:
 	var settings_dlg: Window = EditorInterface.get_base_control().find_child("GdUnitSettingsDialog", false, false)
 	if settings_dlg == null:
-		settings_dlg = preload("res://addons/gdUnit4/src/ui/settings/GdUnitSettingsDialog.tscn").instantiate()
+		settings_dlg = preload("res://addons/gdunit4/src/ui/settings/GdUnitSettingsDialog.tscn").instantiate()
 		EditorInterface.get_base_control().add_child(settings_dlg, true)
 	settings_dlg.popup_centered_ratio(.60)
 

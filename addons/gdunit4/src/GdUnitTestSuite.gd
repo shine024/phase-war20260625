@@ -10,7 +10,7 @@
 ## [/codeblock]
 ## @tutorial:  https://mikeschulze.github.io/gdUnit4/faq/test-suite/
 
-@icon("res://addons/gdUnit4/src/ui/settings/logo.png")
+@icon("res://addons/gdunit4/src/ui/settings/logo.png")
 class_name GdUnitTestSuite
 extends Node
 
@@ -34,27 +34,27 @@ func __lazy_load(script_path :String) -> GDScript:
 
 
 func __gdunit_assert() -> GDScript:
-	return __lazy_load("res://addons/gdUnit4/src/asserts/GdUnitAssertImpl.gd")
+	return __lazy_load("res://addons/gdunit4/src/asserts/GdUnitAssertImpl.gd")
 
 
 func __gdunit_tools() -> GDScript:
-	return __lazy_load("res://addons/gdUnit4/src/core/GdUnitTools.gd")
+	return __lazy_load("res://addons/gdunit4/src/core/GdUnitTools.gd")
 
 
 func __gdunit_file_access() -> GDScript:
-	return __lazy_load("res://addons/gdUnit4/src/core/GdUnitFileAccess.gd")
+	return __lazy_load("res://addons/gdunit4/src/core/GdUnitFileAccess.gd")
 
 
 func __gdunit_awaiter() -> Object:
-	return __lazy_load("res://addons/gdUnit4/src/GdUnitAwaiter.gd").new()
+	return __lazy_load("res://addons/gdunit4/src/GdUnitAwaiter.gd").new()
 
 
 func __gdunit_argument_matchers() -> GDScript:
-	return __lazy_load("res://addons/gdUnit4/src/matchers/GdUnitArgumentMatchers.gd")
+	return __lazy_load("res://addons/gdunit4/src/matchers/GdUnitArgumentMatchers.gd")
 
 
 func __gdunit_object_interactions() -> GDScript:
-	return __lazy_load("res://addons/gdUnit4/src/doubler/GdUnitObjectInteractions.gd")
+	return __lazy_load("res://addons/gdunit4/src/doubler/GdUnitObjectInteractions.gd")
 
 
 ## This function is called before a test suite starts[br]
@@ -201,7 +201,7 @@ func await_millis(timeout :int) -> void:
 ##    var runner := scene_runner("res://foo/my_scne.tscn")
 ## [/codeblock]
 func scene_runner(scene :Variant, verbose := false) -> GdUnitSceneRunner:
-	return auto_free(__lazy_load("res://addons/gdUnit4/src/core/GdUnitSceneRunnerImpl.gd").new(scene, verbose))
+	return auto_free(__lazy_load("res://addons/gdunit4/src/core/GdUnitSceneRunnerImpl.gd").new(scene, verbose))
 
 
 # === Mocking  & Spy ===========================================================
@@ -218,13 +218,13 @@ const RETURN_DEEP_STUB = GdUnitMock.RETURN_DEEP_STUB
 ## Creates a mock for given class name
 func mock(clazz :Variant, mock_mode := RETURN_DEFAULTS) -> Variant:
 	@warning_ignore("unsafe_method_access")
-	return __lazy_load("res://addons/gdUnit4/src/mocking/GdUnitMockBuilder.gd").build(clazz, mock_mode)
+	return __lazy_load("res://addons/gdunit4/src/mocking/GdUnitMockBuilder.gd").build(clazz, mock_mode)
 
 
 ## Creates a spy checked given object instance
 func spy(instance :Variant) -> Variant:
 	@warning_ignore("unsafe_method_access")
-	return __lazy_load("res://addons/gdUnit4/src/spy/GdUnitSpyBuilder.gd").build(instance)
+	return __lazy_load("res://addons/gdunit4/src/spy/GdUnitSpyBuilder.gd").build(instance)
 
 
 ## Configures a return value for the specified function and used arguments.[br]
@@ -275,7 +275,7 @@ func reset(obj :Variant) -> void:
 ##	[/codeblock]
 func monitor_signals(source :Object, _auto_free := true) -> Object:
 	@warning_ignore("unsafe_method_access")
-	__lazy_load("res://addons/gdUnit4/src/core/thread/GdUnitThreadManager.gd")\
+	__lazy_load("res://addons/gdunit4/src/core/thread/GdUnitThreadManager.gd")\
 		.get_current_context()\
 		.get_signal_collector()\
 		.register_emitter(source, true) # force recreate to start with a fresh monitoring
@@ -503,7 +503,7 @@ func any_class(clazz :Object) -> GdUnitArgumentMatcher:
 # === value extract utils ======================================================
 ## Builds an extractor by given function name and optional arguments
 func extr(func_name :String, args := Array()) -> GdUnitValueExtractor:
-	return __lazy_load("res://addons/gdUnit4/src/extractors/GdUnitFuncValueExtractor.gd").new(func_name, args)
+	return __lazy_load("res://addons/gdunit4/src/extractors/GdUnitFuncValueExtractor.gd").new(func_name, args)
 
 
 ## Constructs a tuple by given arguments
@@ -550,22 +550,22 @@ func assert_that(current :Variant) -> GdUnitAssert:
 
 ## An assertion tool to verify boolean values.
 func assert_bool(current :Variant) -> GdUnitBoolAssert:
-	return __lazy_load("res://addons/gdUnit4/src/asserts/GdUnitBoolAssertImpl.gd").new(current)
+	return __lazy_load("res://addons/gdunit4/src/asserts/GdUnitBoolAssertImpl.gd").new(current)
 
 
 ## An assertion tool to verify String values.
 func assert_str(current :Variant) -> GdUnitStringAssert:
-	return __lazy_load("res://addons/gdUnit4/src/asserts/GdUnitStringAssertImpl.gd").new(current)
+	return __lazy_load("res://addons/gdunit4/src/asserts/GdUnitStringAssertImpl.gd").new(current)
 
 
 ## An assertion tool to verify integer values.
 func assert_int(current :Variant) -> GdUnitIntAssert:
-	return __lazy_load("res://addons/gdUnit4/src/asserts/GdUnitIntAssertImpl.gd").new(current)
+	return __lazy_load("res://addons/gdunit4/src/asserts/GdUnitIntAssertImpl.gd").new(current)
 
 
 ## An assertion tool to verify float values.
 func assert_float(current :Variant) -> GdUnitFloatAssert:
-	return __lazy_load("res://addons/gdUnit4/src/asserts/GdUnitFloatAssertImpl.gd").new(current)
+	return __lazy_load("res://addons/gdunit4/src/asserts/GdUnitFloatAssertImpl.gd").new(current)
 
 
 ## An assertion tool to verify Vector values.[br]
@@ -575,41 +575,41 @@ func assert_float(current :Variant) -> GdUnitFloatAssert:
 ##		assert_vector(Vector2(1.2, 1.000001)).is_equal(Vector2(1.2, 1.000001))
 ##     [/codeblock]
 func assert_vector(current :Variant, type_check := true) -> GdUnitVectorAssert:
-	return __lazy_load("res://addons/gdUnit4/src/asserts/GdUnitVectorAssertImpl.gd").new(current, type_check)
+	return __lazy_load("res://addons/gdunit4/src/asserts/GdUnitVectorAssertImpl.gd").new(current, type_check)
 
 
 ## An assertion tool to verify arrays.
 func assert_array(current :Variant, type_check := true) -> GdUnitArrayAssert:
-	return __lazy_load("res://addons/gdUnit4/src/asserts/GdUnitArrayAssertImpl.gd").new(current, type_check)
+	return __lazy_load("res://addons/gdunit4/src/asserts/GdUnitArrayAssertImpl.gd").new(current, type_check)
 
 
 ## An assertion tool to verify dictionaries.
 func assert_dict(current :Variant) -> GdUnitDictionaryAssert:
-	return __lazy_load("res://addons/gdUnit4/src/asserts/GdUnitDictionaryAssertImpl.gd").new(current)
+	return __lazy_load("res://addons/gdunit4/src/asserts/GdUnitDictionaryAssertImpl.gd").new(current)
 
 
 ## An assertion tool to verify FileAccess.
 func assert_file(current :Variant) -> GdUnitFileAssert:
-	return __lazy_load("res://addons/gdUnit4/src/asserts/GdUnitFileAssertImpl.gd").new(current)
+	return __lazy_load("res://addons/gdunit4/src/asserts/GdUnitFileAssertImpl.gd").new(current)
 
 
 ## An assertion tool to verify Objects.
 func assert_object(current :Variant) -> GdUnitObjectAssert:
-	return __lazy_load("res://addons/gdUnit4/src/asserts/GdUnitObjectAssertImpl.gd").new(current)
+	return __lazy_load("res://addons/gdunit4/src/asserts/GdUnitObjectAssertImpl.gd").new(current)
 
 
 func assert_result(current :Variant) -> GdUnitResultAssert:
-	return __lazy_load("res://addons/gdUnit4/src/asserts/GdUnitResultAssertImpl.gd").new(current)
+	return __lazy_load("res://addons/gdunit4/src/asserts/GdUnitResultAssertImpl.gd").new(current)
 
 
 ## An assertion tool that waits until a certain time for an expected function return value
 func assert_func(instance :Object, func_name :String, args := Array()) -> GdUnitFuncAssert:
-	return __lazy_load("res://addons/gdUnit4/src/asserts/GdUnitFuncAssertImpl.gd").new(instance, func_name, args)
+	return __lazy_load("res://addons/gdunit4/src/asserts/GdUnitFuncAssertImpl.gd").new(instance, func_name, args)
 
 
 ## An assertion tool to verify for emitted signals until a certain time.
 func assert_signal(instance :Object) -> GdUnitSignalAssert:
-	return __lazy_load("res://addons/gdUnit4/src/asserts/GdUnitSignalAssertImpl.gd").new(instance)
+	return __lazy_load("res://addons/gdunit4/src/asserts/GdUnitSignalAssertImpl.gd").new(instance)
 
 
 ## An assertion tool to test for failing assertions.[br]
@@ -621,7 +621,7 @@ func assert_signal(instance :Object) -> GdUnitSignalAssert:
 ##     [/codeblock]
 func assert_failure(assertion :Callable) -> GdUnitFailureAssert:
 	@warning_ignore("unsafe_method_access")
-	return __lazy_load("res://addons/gdUnit4/src/asserts/GdUnitFailureAssertImpl.gd").new().execute(assertion)
+	return __lazy_load("res://addons/gdunit4/src/asserts/GdUnitFailureAssertImpl.gd").new().execute(assertion)
 
 
 ## An assertion tool to test for failing assertions.[br]
@@ -633,7 +633,7 @@ func assert_failure(assertion :Callable) -> GdUnitFailureAssert:
 ##     [/codeblock]
 func assert_failure_await(assertion :Callable) -> GdUnitFailureAssert:
 	@warning_ignore("unsafe_method_access")
-	return await __lazy_load("res://addons/gdUnit4/src/asserts/GdUnitFailureAssertImpl.gd").new().execute_and_await(assertion)
+	return await __lazy_load("res://addons/gdunit4/src/asserts/GdUnitFailureAssertImpl.gd").new().execute_and_await(assertion)
 
 
 ## An assertion tool to verify Godot errors.[br]
@@ -649,7 +649,7 @@ func assert_failure_await(assertion :Callable) -> GdUnitFailureAssert:
 ##		    .is_push_error('test error')
 ##     [/codeblock]
 func assert_error(current :Callable) -> GdUnitGodotErrorAssert:
-	return __lazy_load("res://addons/gdUnit4/src/asserts/GdUnitGodotErrorAssertImpl.gd").new(current)
+	return __lazy_load("res://addons/gdunit4/src/asserts/GdUnitGodotErrorAssertImpl.gd").new(current)
 
 
 ## Explicitly fails the current test indicating that the feature is not yet implemented.[br]

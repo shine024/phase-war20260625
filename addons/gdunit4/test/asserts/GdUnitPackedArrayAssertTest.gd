@@ -2,7 +2,7 @@
 extends GdUnitTestSuite
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/asserts/GdUnitArrayAssertImpl.gd'
+const __source = 'res://addons/gdunit4/src/asserts/GdUnitArrayAssertImpl.gd'
 
 
 @warning_ignore("unused_parameter")

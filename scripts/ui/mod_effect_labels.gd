@@ -108,7 +108,7 @@ static func translate(key: String) -> String:
 		"slot_range_bonus": return "槽位射程"
 		"slot_windup_reduce": return "起射缩短"
 		"slot_active_reduce": return "激活缩短"
-		"slot_weapon_type": return "槽位武器"
+		"slot_weapon_type": return "弹道型号"
 		# 卡牌强化面板历史兼容（attack_damage/defense/faction_accuracy_bonus 非改造 effect key，但强化面板 name_map 曾覆盖）
 		"attack_damage": return "攻击"
 		"defense": return "防御"

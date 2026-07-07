@@ -3,7 +3,7 @@ class_name GdUnitTestSuiteTest
 extends GdUnitTestSuite
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/GdUnitTestSuite.gd'
+const __source = 'res://addons/gdunit4/src/GdUnitTestSuite.gd'
 
 var _events :Array[GdUnitEvent] = []
 var _retry_count := 0

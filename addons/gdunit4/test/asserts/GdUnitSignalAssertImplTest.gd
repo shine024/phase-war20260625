@@ -6,8 +6,8 @@ class_name GdUnitSignalAssertImplTest
 extends GdUnitTestSuite
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/asserts/GdUnitSignalAssertImpl.gd'
-const GdUnitTools = preload("res://addons/gdUnit4/src/core/GdUnitTools.gd")
+const __source = 'res://addons/gdunit4/src/asserts/GdUnitSignalAssertImpl.gd'
+const GdUnitTools = preload("res://addons/gdunit4/src/core/GdUnitTools.gd")
 
 
 class TestEmitter extends Node:

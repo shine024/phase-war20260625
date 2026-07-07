@@ -5,7 +5,7 @@ signal gdunit_runner_start()
 signal gdunit_runner_stop(client_id :int)
 
 
-const GdUnitTools := preload("res://addons/gdUnit4/src/core/GdUnitTools.gd")
+const GdUnitTools := preload("res://addons/gdunit4/src/core/GdUnitTools.gd")
 
 const CMD_RUN_OVERALL = "Debug Overall TestSuites"
 const CMD_RUN_TESTCASE = "Run TestCases"
@@ -328,7 +328,7 @@ func cmd_discover_tests() -> void:
 
 
 func run_debug_mode() -> void:
-	EditorInterface.play_custom_scene("res://addons/gdUnit4/src/core/runners/GdUnitTestRunner.tscn")
+	EditorInterface.play_custom_scene("res://addons/gdunit4/src/core/runners/GdUnitTestRunner.tscn")
 	_is_running = true
 
 
@@ -339,7 +339,7 @@ func run_release_mode() -> void:
 	arguments.append("--no-window")
 	arguments.append("--path")
 	arguments.append(ProjectSettings.globalize_path("res://"))
-	arguments.append("res://addons/gdUnit4/src/core/runners/GdUnitTestRunner.tscn")
+	arguments.append("res://addons/gdunit4/src/core/runners/GdUnitTestRunner.tscn")
 	_current_runner_process_id = OS.create_process(OS.get_executable_path(), arguments, false);
 	_is_running = true
 

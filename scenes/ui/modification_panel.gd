@@ -653,9 +653,9 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 			var power_mult: float = float(mod_data.get("power_mult", 1.0))
 			var parts: Array = []
 			if not slot_type.is_empty():
-				parts.append("槽位：%s" % slot_type)
+				parts.append("槽位：%s" % _translate_slot_type(slot_type))
 			if not conflict.is_empty():
-				parts.append("冲突组：%s" % conflict)
+				parts.append("冲突组：%s" % _translate_conflict(conflict))
 			if power_mult != 1.0:
 				parts.append("战力倍率×%.1f" % power_mult)
 			meta_label.text = " — ".join(parts) if not parts.is_empty() else "—"
@@ -771,6 +771,92 @@ func _val_display(current, change) -> String:
 		var new_val = current + (change if change is int else int(float(current) * (1.0 + change)))
 		return "%d→%d" % [int(current), int(new_val)]
 	return ""
+
+## 槽位类型翻译
+func _translate_slot_type(raw: String) -> String:
+	var maps: Dictionary = {
+		"weapon": "武器",
+		"weapons": "武器",
+		"armor": "装甲",
+		"gun": "火炮",
+		"ammunition": "弹药",
+		"active": "主动",
+		"aerodynamics": "气动",
+		"autoloader": "自动装填",
+		"automation": "自动化",
+		"barrel": "枪管",
+		"bridge": "舰桥",
+		"command": "指挥",
+		"comms": "通信",
+		"countermeasure": "对抗",
+		"deception": "欺骗",
+		"demolition": "爆破",
+		"designator": "指示",
+		"digging": "挖掘",
+		"drone": "无人机",
+		"ecm": "电子对抗",
+		"electronics": "电子",
+		"engine": "引擎",
+		"engineering": "工程",
+		"enhancement": "强化",
+		"environment": "环境",
+		"ergonomics": "人体工学",
+		"exoskeleton": "外骨骼",
+		"fire_control": "火控",
+		"fortification": "筑城",
+		"fuze": "引信",
+		"guidance": "制导",
+		"helmet": "头盔",
+		"laser": "激光",
+		"logistics": "后勤",
+		"medical": "医疗",
+		"minefield": "布雷",
+		"missile": "导弹",
+		"mobility": "机动",
+		"mount": "炮塔",
+		"navigation": "导航",
+		"network": "网络",
+		"obstacle": "障碍",
+		"optics": "光学",
+		"power": "动力",
+		"protection": "防护",
+		"radar": "雷达",
+		"recon": "侦察",
+		"recovery": "抢修",
+		"repair": "维修",
+		"shield": "盾牌",
+		"stealth": "隐身",
+		"survival": "生存",
+		"system": "系统",
+		"thrust": "推力",
+	}
+	return maps.get(raw, raw)
+
+## 冲突组翻译
+func _translate_conflict(raw: String) -> String:
+	var maps: Dictionary = {
+		"fire_rate": "射速",
+		"armor": "装甲",
+		"damage": "伤害",
+		"environment": "环境",
+		"enh_atkspd": "攻速强化",
+		"enh_chain": "连锁强化",
+		"enh_crit": "暴击强化",
+		"enh_crit_dmg": "暴伤强化",
+		"enh_def": "防御强化",
+		"enh_def_flat": "平防强化",
+		"enh_dmg": "伤害强化",
+		"enh_dodge": "闪避强化",
+		"enh_hp": "生命强化",
+		"enh_lifesteal": "吸血强化",
+		"enh_penetration": "穿透强化",
+		"enh_range": "射程强化",
+		"enh_regen": "回复强化",
+		"enh_shield_kill": "护盾强化",
+		"enh_speed": "速度强化",
+		"enh_splash": "溅射强化",
+	}
+	return maps.get(raw, raw)
 
 ## 效果键翻译（薄封装，委托 ModEffectLabels 共享表）。
 ## v7.x 统一：情报/改造/强化三面板共用 ModEffectLabels.translate（简短词口径），

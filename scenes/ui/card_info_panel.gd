@@ -887,13 +887,18 @@ func _format_unit_stats_summary(stats: UnitStats, cur_hp: float = -1.0, extra_su
 	else:
 		hp_text = "HP %d" % int(stats.max_hp)
 	
-	# 获取武器名称
+	# 获取武器名称（v7.x: 附带 per-slot 弹道类型后缀）
 	var weapon_names: Array[String] = ["", "", ""]
 	if not stats.weapon_slots.is_empty():
 		for i in range(min(stats.weapon_slots.size(), 3)):
 			var w = stats.weapon_slots[i]
 			if w is WeaponResource and w.enabled:
-				weapon_names[i] = w.display_name
+				var _wname: String = w.display_name
+				# v7.x: 追加弹道类型短名（如"直射/穿甲/导弹"），让玩家看到 per-slot 弹道差异
+				var _traj: String = RealWorldUnitLabels.weapon_kind_short(int(w.weapon_type))
+				if not _traj.is_empty() and _traj != "未知":
+					_wname += "［" + _traj + "］"
+				weapon_names[i] = _wname
 	
 	var atk_light: float = stats.attack_light if stats.attack_light > 0.001 else 0.0
 	var atk_armor: float = stats.attack_armor if stats.attack_armor > 0.001 else 0.0

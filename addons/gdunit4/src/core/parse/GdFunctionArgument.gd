@@ -2,7 +2,7 @@ class_name GdFunctionArgument
 extends RefCounted
 
 
-const GdUnitTools := preload("res://addons/gdUnit4/src/core/GdUnitTools.gd")
+const GdUnitTools := preload("res://addons/gdunit4/src/core/GdUnitTools.gd")
 const UNDEFINED: String = "<-NO_ARG->"
 const ARG_PARAMETERIZED_TEST := ["test_parameters", "_test_parameters"]
 

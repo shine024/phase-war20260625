@@ -2,7 +2,7 @@ class_name GdUnitMockerTest
 extends GdUnitTestSuite
 
 
-var resource_path := "res://addons/gdUnit4/test/mocker/resources/"
+var resource_path := "res://addons/gdunit4/test/mocker/resources/"
 
 var _saved_report_error_settings :Variant
 
@@ -138,7 +138,7 @@ func test_mock_Node() -> void:
 
 @warning_ignore("unsafe_method_access")
 func test_mock_source_with_class_name_by_resource_path() -> void:
-	var resource_path_ := 'res://addons/gdUnit4/test/mocker/resources/GD-256/world.gd'
+	var resource_path_ := 'res://addons/gdunit4/test/mocker/resources/GD-256/world.gd'
 	var m: Variant = mock(resource_path_)
 	var head :String = m.get_script().source_code.substr(0, 500)
 	assert_str(head)\
@@ -148,7 +148,7 @@ func test_mock_source_with_class_name_by_resource_path() -> void:
 
 @warning_ignore("unsafe_method_access")
 func test_mock_source_with_class_name_by_class() -> void:
-	var resource_path_ := 'res://addons/gdUnit4/test/mocker/resources/GD-256/world.gd'
+	var resource_path_ := 'res://addons/gdunit4/test/mocker/resources/GD-256/world.gd'
 	var m: Variant = mock(Munderwood_Pathing_World)
 	var head :String = m.get_script().source_code.substr(0, 500)
 	assert_str(head)\
@@ -283,7 +283,7 @@ func test_mock_custom_class_by_class_name() -> void:
 
 @warning_ignore("unsafe_method_access")
 func test_mock_custom_class_by_resource_path() -> void:
-	var m: Variant = mock("res://addons/gdUnit4/test/mocker/resources/CustomResourceTestClass.gd")
+	var m: Variant = mock("res://addons/gdunit4/test/mocker/resources/CustomResourceTestClass.gd")
 	assert_that(m).is_not_null()
 
 	# test we have initial no interactions checked this mock
@@ -1046,14 +1046,14 @@ func test_verify_no_more_interactions_but_has() -> void:
 
 @warning_ignore("unsafe_method_access")
 func test_mock_snake_case_named_class_by_resource_path() -> void:
-	var mock_a: Variant = mock("res://addons/gdUnit4/test/mocker/resources/snake_case.gd")
+	var mock_a: Variant = mock("res://addons/gdunit4/test/mocker/resources/snake_case.gd")
 	assert_object(mock_a).is_not_null()
 
 	mock_a.custom_func()
 	verify(mock_a).custom_func()
 	verify_no_more_interactions(mock_a)
 
-	var mock_b: Variant = mock("res://addons/gdUnit4/test/mocker/resources/snake_case_class_name.gd")
+	var mock_b: Variant = mock("res://addons/gdunit4/test/mocker/resources/snake_case_class_name.gd")
 	assert_object(mock_b).is_not_null()
 
 	mock_b.custom_func()
@@ -1149,7 +1149,7 @@ func test_mock_virtual_function_is_not_called_twice() -> void:
 
 @warning_ignore("unsafe_method_access")
 func test_mock_scene_by_path() -> void:
-	var mocked_scene: Variant = mock("res://addons/gdUnit4/test/mocker/resources/scenes/TestScene.tscn")
+	var mocked_scene: Variant = mock("res://addons/gdunit4/test/mocker/resources/scenes/TestScene.tscn")
 	assert_object(mocked_scene).is_not_null()
 	assert_object(mocked_scene.get_script()).is_not_null()
 	assert_str(mocked_scene.get_script().resource_name).starts_with("MockTestScene")
@@ -1159,7 +1159,7 @@ func test_mock_scene_by_path() -> void:
 
 @warning_ignore("unsafe_method_access")
 func test_mock_scene_by_resource() -> void:
-	var resource: Object = load("res://addons/gdUnit4/test/mocker/resources/scenes/TestScene.tscn")
+	var resource: Object = load("res://addons/gdunit4/test/mocker/resources/scenes/TestScene.tscn")
 	var mocked_scene: Variant = mock(resource)
 	assert_object(mocked_scene).is_not_null()
 	assert_object(mocked_scene.get_script()).is_not_null()
@@ -1170,7 +1170,7 @@ func test_mock_scene_by_resource() -> void:
 
 @warning_ignore("unsafe_method_access")
 func test_mock_scene_by_instance() -> void:
-	var resource := load("res://addons/gdUnit4/test/mocker/resources/scenes/TestScene.tscn")
+	var resource := load("res://addons/gdunit4/test/mocker/resources/scenes/TestScene.tscn")
 	var instance :Control = auto_free(resource.instantiate())
 	var mocked_scene: Variant = mock(instance)
 	# must fail mock an instance is not allowed
@@ -1178,13 +1178,13 @@ func test_mock_scene_by_instance() -> void:
 
 
 func test_mock_scene_by_path_fail_has_no_script_attached() -> void:
-	var mocked_scene: Variant = mock("res://addons/gdUnit4/test/mocker/resources/scenes/TestSceneWithoutScript.tscn")
+	var mocked_scene: Variant = mock("res://addons/gdunit4/test/mocker/resources/scenes/TestSceneWithoutScript.tscn")
 	assert_object(mocked_scene).is_null()
 
 
 @warning_ignore("unsafe_method_access")
 func test_mock_scene_variables_is_set() -> void:
-	var mocked_scene: Variant = mock("res://addons/gdUnit4/test/mocker/resources/scenes/TestScene.tscn")
+	var mocked_scene: Variant = mock("res://addons/gdunit4/test/mocker/resources/scenes/TestScene.tscn")
 	assert_object(mocked_scene).is_not_null()
 
 	# Add as child to a node to trigger _ready to initalize all variables
@@ -1204,7 +1204,7 @@ func test_mock_scene_variables_is_set() -> void:
 
 @warning_ignore("unsafe_method_access")
 func test_mock_scene_execute_func_yielded() -> void:
-	var mocked_scene: Variant = mock("res://addons/gdUnit4/test/mocker/resources/scenes/TestScene.tscn")
+	var mocked_scene: Variant = mock("res://addons/gdunit4/test/mocker/resources/scenes/TestScene.tscn")
 	assert_object(mocked_scene).is_not_null()
 	@warning_ignore("unsafe_cast")
 	add_child(mocked_scene as Node)

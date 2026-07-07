@@ -2,7 +2,7 @@ extends GdUnitTestSuite
 
 
 func test_discover_many_test() -> void:
-	var script: GDScript = load("res://addons/gdUnit4/test/core/discovery/resources/DiscoverExampleTestSuite.gd")
+	var script: GDScript = load("res://addons/gdunit4/test/core/discovery/resources/DiscoverExampleTestSuite.gd")
 
 	var discovered_tests := []
 	GdUnitTestDiscoverer.discover_tests(script,
@@ -23,7 +23,7 @@ func test_discover_many_test() -> void:
 
 
 func test_discover_parameterized_test() -> void:
-	var script: GDScript = load("res://addons/gdUnit4/test/core/discovery/resources/DiscoverExampleTestSuite.gd")
+	var script: GDScript = load("res://addons/gdunit4/test/core/discovery/resources/DiscoverExampleTestSuite.gd")
 
 	var discovered_tests := []
 	GdUnitTestDiscoverer.discover_tests(script,
@@ -42,7 +42,7 @@ func test_discover_parameterized_test() -> void:
 
 
 func test_discover_tests() -> void:
-	var script: GDScript = load("res://addons/gdUnit4/test/core/discovery/resources/DiscoverExampleTestSuite.gd")
+	var script: GDScript = load("res://addons/gdunit4/test/core/discovery/resources/DiscoverExampleTestSuite.gd")
 
 	var discovered_tests := []
 	GdUnitTestDiscoverer.discover_tests(script,\
@@ -69,7 +69,7 @@ func test_discover_tests() -> void:
 
 
 func test_discover_tests_on_GdUnitTestSuite() -> void:
-	var script: GDScript = load("res://addons/gdUnit4/src/GdUnitTestSuite.gd")
+	var script: GDScript = load("res://addons/gdunit4/src/GdUnitTestSuite.gd")
 
 	var discovered_tests := []
 	GdUnitTestDiscoverer.discover_tests(script,\
@@ -82,7 +82,7 @@ func test_discover_tests_on_GdUnitTestSuite() -> void:
 
 
 func test_discover_tests_inherited() -> void:
-	var script: GDScript = load("res://addons/gdUnit4/test/core/resources/scan_testsuite_inheritance/by_class_name/ExtendsExtendedTest.gd")
+	var script: GDScript = load("res://addons/gdunit4/test/core/resources/scan_testsuite_inheritance/by_class_name/ExtendsExtendedTest.gd")
 
 	var discovered_tests := []
 	GdUnitTestDiscoverer.discover_tests(script,\
@@ -101,7 +101,7 @@ func test_discover_tests_inherited() -> void:
 
 #if GDUNIT4NET_API_V5
 func test_discover_csharp_tests(_do_skip := !GdUnit4CSharpApiLoader.is_api_loaded()) -> void:
-	var script :Script = load("res://addons/gdUnit4/test/core/discovery/resources/DiscoverExampleTestSuite.cs")
+	var script :Script = load("res://addons/gdunit4/test/core/discovery/resources/DiscoverExampleTestSuite.cs")
 	var discovered_tests := []
 	GdUnitTestDiscoverer.discover_tests(script,\
 		func discover(test_case: GdUnitTestCase) -> void:
@@ -118,7 +118,7 @@ func test_discover_csharp_tests(_do_skip := !GdUnit4CSharpApiLoader.is_api_loade
 
 func test_scan_test_directories() -> void:
 	assert_array(GdUnitTestDiscoverer.scan_test_directories("res://", "test", [])).contains_exactly([
-		"res://addons/gdUnit4/test"
+		"res://addons/gdunit4/test"
 	])
 	# for root folders
 	assert_array(GdUnitTestDiscoverer.scan_test_directories("res://", "", [])).contains_exactly([
@@ -147,7 +147,7 @@ func test_scan_all_test_directories() -> void:
 	assert_array(GdUnitTestDiscoverer.scan_all_test_directories("res://")).contains_exactly(["res://"])
 
 	# Test when test_root_folder is set to a specific folder
-	assert_array(GdUnitTestDiscoverer.scan_all_test_directories("test")).contains_exactly(["res://addons/gdUnit4/test"])
+	assert_array(GdUnitTestDiscoverer.scan_all_test_directories("test")).contains_exactly(["res://addons/gdunit4/test"])
 
 	# Test when test_root_folder is set to something which doesn't exist
 	assert_array(GdUnitTestDiscoverer.scan_all_test_directories("notest")).is_empty()

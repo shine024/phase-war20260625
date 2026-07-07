@@ -2,8 +2,8 @@
 extends GdUnitTestSuite
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/core/parse/GdUnitTestParameterSetResolver.gd'
-const GdUnitTools := preload("res://addons/gdUnit4/src/core/GdUnitTools.gd")
+const __source = 'res://addons/gdunit4/src/core/parse/GdUnitTestParameterSetResolver.gd'
+const GdUnitTools := preload("res://addons/gdunit4/src/core/GdUnitTools.gd")
 
 var _test_param1 := 10
 var _test_param2 := 20
@@ -131,7 +131,7 @@ func test_load_parameter_with_comments() -> void:
 
 
 func test_validate_test_parameter_set() -> void:
-	var test_suite :GdUnitTestSuite = auto_free(GdUnitTestResourceLoader.load_test_suite("res://addons/gdUnit4/test/core/resources/testsuites/TestSuiteInvalidParameterizedTests.resource"))
+	var test_suite :GdUnitTestSuite = auto_free(GdUnitTestResourceLoader.load_test_suite("res://addons/gdunit4/test/core/resources/testsuites/TestSuiteInvalidParameterizedTests.resource"))
 
 	assert_is_not_skipped(test_suite, "test_no_parameters")
 	assert_is_not_skipped(test_suite, "test_parameterized_success", 0)

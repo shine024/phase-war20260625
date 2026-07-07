@@ -4,7 +4,7 @@ class_name GdUnitTestSuiteAfterStage
 extends IGdUnitExecutionStage
 
 
-const GdUnitTools := preload("res://addons/gdUnit4/src/core/GdUnitTools.gd")
+const GdUnitTools := preload("res://addons/gdunit4/src/core/GdUnitTools.gd")
 
 
 func _execute(context :GdUnitExecutionContext) -> void:

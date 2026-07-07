@@ -5,7 +5,7 @@ extends GdUnitTestSuite
 @warning_ignore('return_value_discarded')
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/core/GdArrayTools.gd'
+const __source = 'res://addons/gdunit4/src/core/GdArrayTools.gd'
 
 
 @warning_ignore('unused_parameter')

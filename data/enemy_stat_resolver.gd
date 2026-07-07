@@ -81,7 +81,22 @@ static func make_default_context(wave_index: int) -> EnemyStatContext:
 				var master_stats_raw: Dictionary = master_cfg.get("stats", {})
 				if not master_stats_raw.is_empty():
 					ctx.master_stats = master_stats_raw
+	# v7.x(A4): 从 settings.cfg 读玩家难度，填充到 ctx（resolver 保持纯函数，不直接读全局设置）。
+	ctx.difficulty_multiplier = _read_difficulty_multiplier()
 	return ctx
+
+
+# v7.x(A4): 读 settings.cfg 的玩家难度档位 → 返回乘区系数（easy 0.85 / normal 1.0 / hard 1.15）。
+# 仅在 make_default_context 调用一次，写入 ctx.difficulty_multiplier，resolver 乘区链读 ctx。
+# settings 缺失或键缺省时返回 1.0（normal），行为与历史版本一致。
+static func _read_difficulty_multiplier() -> float:
+	var cfg := ConfigFile.new()
+	if cfg.load("user://settings.cfg") != OK:
+		return 1.0
+	var idx: int = cfg.get_value("settings", "difficulty_idx", 1)
+	const IDS := ["easy", "normal", "hard"]
+	idx = clampi(idx, 0, IDS.size() - 1)
+	return float(GC.DIFFICULTY_MULTIPLIERS.get(IDS[idx], 1.0))
 
 
 ## v6.9/v6.10: 按当前关卡占领势力 + 势力等级，计算敌方加成
@@ -106,6 +121,8 @@ static func _collect_faction_buff(level: int, tree: SceneTree) -> Dictionary:
 	return FactionConquestBuffs.get_buff(faction_id, flevel)
 
 
+
+
 ## 返回 Dictionary：含三维攻防 + 单一 defense（格子战用）+ 其他属性
 ## v6.3: 输出三维攻防（attack_light/armor/air + defense_light/armor/air），不再只有 attack_damage/defense
 ## 同时修复 move_speed:0 bug（改读 cfg.speed）
@@ -123,9 +140,13 @@ static func resolve_classic_enemy(archetype_id: String, ctx: EnemyStatContext) -
 	var f_hp: float = _pressure_mul(ctx.faction_buff, "hp_mul")
 	var f_atk: float = _pressure_mul(ctx.faction_buff, "attack_mul")
 	var f_spd: float = _pressure_mul(ctx.faction_buff, "speed_mul")
-	# 通用乘算链系数（攻击/HP 各自）；v6.9 末尾乘上 faction_buff
-	var dmg_mul_chain: float = w_dmg * lvl * p_atk * m_atk * f_atk
-	var hp_mul_chain: float = w_hp * lvl * p_hp * m_hp * f_hp
+	# v7.x(A4): 玩家全局难度（easy 0.85 / normal 1.0 / hard 1.15），仅缩放敌方 HP+攻击。
+	# 从 ctx.difficulty_multiplier 读（由 make_default_context 填充），resolver 保持纯函数。
+	# 默认 1.0（单元测试不传难度时行为与历史版本一致）。
+	var d_mul: float = ctx.difficulty_multiplier if ctx.difficulty_multiplier > 0.0 else 1.0
+	# 通用乘算链系数（攻击/HP 各自）；v6.9 末尾乘 faction_buff；v7.x(A4) 末尾乘难度
+	var dmg_mul_chain: float = w_dmg * lvl * p_atk * m_atk * f_atk * d_mul
+	var hp_mul_chain: float = w_hp * lvl * p_hp * m_hp * f_hp * d_mul
 
 	if cfg.is_empty():
 		var hp_lin: float = (60.0 + float(ctx.wave_index) * 15.0) * hp_mul_chain

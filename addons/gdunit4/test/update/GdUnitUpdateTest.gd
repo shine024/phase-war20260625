@@ -3,10 +3,10 @@ class_name GdUnitUpdateTest
 extends GdUnitTestSuite
 
 # TestSuite generated from
-const GdUnitUpdate = preload('res://addons/gdUnit4/src/update/GdUnitUpdate.gd')
+const GdUnitUpdate = preload('res://addons/gdunit4/src/update/GdUnitUpdate.gd')
 
 # Store original content to restore after test execution
-const testResource := "res://addons/gdUnit4/test/update/resources/ExampleSceneWithUids.txt"
+const testResource := "res://addons/gdunit4/test/update/resources/ExampleSceneWithUids.txt"
 var original_content: String
 
 func before() -> void:
@@ -32,7 +32,7 @@ func test_remove_uids_from_file() -> void:
 
 	# Verify
 	var patched_content := get_content(testResource)
-	var expected_content := get_content("res://addons/gdUnit4/test/update/resources/ExampleScenePached.txt")
+	var expected_content := get_content("res://addons/gdunit4/test/update/resources/ExampleScenePached.txt")
 	assert_str(patched_content).is_equal(expected_content)
 
 

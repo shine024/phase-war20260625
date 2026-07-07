@@ -4,6 +4,11 @@ class_name QuestDefinitions
 const _QUESTS_JSON_PATH := "res://data/json/quest_definitions.json"
 static var QUESTS: Array = _load_json_array(_QUESTS_JSON_PATH, LEGACY_QUESTS)
 
+## 主线剧情（category=="story"）全局开关。
+## true=关闭主线剧情（已有 tutorial 引导替代），story 任务不显示★标记、不触发战前战后对话、不进任务面板。
+## tutorial 引导任务不受此开关影响。改回 false 即恢复。
+const STORY_DISABLED := true
+
 ## v6.9: 动态任务集合（运行时注册，不写入静态 QUESTS）
 ## 由 QuestManager.register_dynamic_quest 委托填充；get_by_id/get_available_ids 自动同时查询两个集合
 ## 存档由 QuestManager.save_state 持久化（保存定义 + 注册状态），读档后回填到这里
@@ -1238,10 +1243,10 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 		"hidden": true,
 		"pre_battle_dialogues": [
 			{"speaker": "洛克", "text": "E-10947，欢迎来到无限城。看那个发光的球体——那是你的相位仪。"},
-			{"speaker": "洛克", "text": "相位仪有四个槽位：红、蓝、绿、黄。绿色槽位装载作战单位，黄色装载能量卡。我已经帮你装好初始配置了。"},
+			{"speaker": "洛克", "text": "相位仪有两种槽位：绿色的战斗槽装载作战单位，紫色的符文槽装载符文。我已经帮你装好初始配置了。"},
 			{"speaker": "陈末", "text": "已经装好了？那张 FT-17 坦克……"},
 			{"speaker": "洛克", "text": "没错。战斗开始后，点击底部绿色槽位选中单位，再点战场上的格子部署它。能量充足才能部署。"},
-			{"speaker": "洛克", "text": "别担心——第一关的虫子很弱。熟悉一下操作，我们去打第一场。"},
+			{"speaker": "洛克", "text": "我还送了你两枚基础符文——力量和坚韧，装上能激活「强袭」符文之语。别担心，第一关的虫子很弱，我们去打第一场。"},
 		],
 	},
 
@@ -1336,7 +1341,10 @@ const LEGACY_QUESTS: Array[Dictionary] = [
 
 ## v6.7(剧情任务): 返回该关卡对应的剧情任务列表（category=="story" 且 trigger_level 匹配）
 ## 注意：只返回 story 类（world_map 用来显示★标记，tutorial 不应显示标记）
+## 受 STORY_DISABLED 开关控制：关闭时返回空数组（不显示★标记）
 static func get_quests_by_trigger_level(level: int) -> Array:
+	if STORY_DISABLED:
+		return []
 	var out: Array = []
 	for q in QUESTS:
 		if q.get("category", "commission") == "story" and int(q.get("trigger_level", 0)) == level:
@@ -1345,11 +1353,13 @@ static func get_quests_by_trigger_level(level: int) -> Array:
 
 ## v6.7(引导剧情): 返回该关卡所有可触发的剧情（story + tutorial）
 ## 供 GameManager 进关钩子使用，收集本关所有应播放的剧情对话
+## 受 STORY_DISABLED 开关控制：关闭时只返回 tutorial（story 不触发）
 static func get_all_triggerable_at_level(level: int) -> Array:
 	var out: Array = []
 	for q in QUESTS:
 		var cat: String = q.get("category", "commission")
-		if (cat == "story" or cat == "tutorial") and int(q.get("trigger_level", 0)) == level:
+		var include: bool = (cat == "tutorial" or (cat == "story" and not STORY_DISABLED)) and int(q.get("trigger_level", 0)) == level
+		if include:
 			out.append(q.duplicate(true))
 	return out
 

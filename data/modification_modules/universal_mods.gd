@@ -22,7 +22,9 @@ const DATA: Dictionary = {
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 60, cost_install = 30,
 		slot_type = "comms", conflict_group = "comms",
-		effects = {attack_interval = -0.05, vision = 0.20},
+		# v7.x: per-slot 弹道——对轻装槽改 DIRECT 直射协调
+		condition_slot = 0,
+		effects = {attack_interval = -0.05, vision = 0.20, slot_weapon_type = 0},  # v7.x: 对轻装槽直射化,
 		applicable_types = [0],  # LIGHT（含侦察子类，_guess_combat_kind 把 recon 归为 LIGHT）
 		unlock_conditions = {required_level = 1}
 	},
@@ -121,7 +123,9 @@ const DATA: Dictionary = {
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 90, cost_install = 45,
 		slot_type = "ammunition", conflict_group = "ammunition",
-		effects = {sustained_fire = 0.30},
+		# v7.x: per-slot 弹道——全槽（condition_slot=-1）直射强化（弹药充足）
+		condition_slot = -1,
+		effects = {sustained_fire = 0.30, slot_weapon_type = 0},  # v7.x: 全槽直射弹道,
 		applicable_types = [0, 1, 2, 3, 4],  # ALL（CombatKind 合法值 0-4）
 		unlock_conditions = {required_level = 1}
 	},

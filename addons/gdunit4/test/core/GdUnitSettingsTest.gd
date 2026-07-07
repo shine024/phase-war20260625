@@ -3,7 +3,7 @@ class_name GdUnitSettingsTest
 extends GdUnitTestSuite
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/core/GdUnitSettings.gd'
+const __source = 'res://addons/gdunit4/src/core/GdUnitSettings.gd'
 
 const MAIN_CATEGORY = "unit_test"
 const CATEGORY_A = MAIN_CATEGORY + "/category_a"

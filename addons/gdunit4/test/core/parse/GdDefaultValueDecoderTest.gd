@@ -5,7 +5,7 @@ extends GdUnitTestSuite
 @warning_ignore('return_value_discarded')
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/core/parse/GdDefaultValueDecoder.gd'
+const __source = 'res://addons/gdunit4/src/core/parse/GdDefaultValueDecoder.gd'
 
 
 var _tested_types := {}

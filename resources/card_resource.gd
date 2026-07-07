@@ -690,7 +690,9 @@ func _create_slot_from_legacy(slot_idx: int, base_damage: float, base_speed: flo
 	w.attack_speed = base_speed if base_speed > 0 else 1.0
 	w.windup = base_windup
 	w.active = base_active
-	w.weapon_type = weapon_type  # Fix-10: 继承卡牌的weapon_type（野战炮=INDIRECT）
+	# v7.x: 三槽按目标类型分配默认弹道（对轻装直射/对装甲穿甲/对空导弹）
+	# 曲射单位（火炮 range≥99，weapon_type=INDIRECT）例外：三槽都保留曲射弹道
+	w.weapon_type = _default_weapon_type_for_slot(slot_idx)
 	w.range_value = range_value
 	w.enabled = base_damage > 0  # 仅当伤害>0时启用
 
@@ -705,6 +707,27 @@ func _create_slot_from_legacy(slot_idx: int, base_damage: float, base_speed: flo
 			2: w.display_name = "对空武器"
 
 	return w
+
+## v7.x: 按 slot_idx 分配默认 weapon_type（弹道类型）
+## slot 0（轻装槽）→ DIRECT(0) 直射曳光
+## slot 1（装甲槽）→ SNIPER(6) 穿甲单发
+## slot 2（对空槽）→ MISSILE(9) 导弹抛物线
+## 曲射单位（weapon_type == INDIRECT）例外：所有槽都保留 INDIRECT(1)
+## （火炮/迫击炮对任何目标都是曲射落地）
+func _default_weapon_type_for_slot(slot_idx: int) -> int:
+	var GC = preload("res://resources/game_constants.gd")
+	# 曲射单位（火炮/迫击炮 range≥99）三槽都保留曲射弹道
+	if weapon_type == GC.WeaponType.INDIRECT:
+		return GC.WeaponType.INDIRECT
+	match slot_idx:
+		0:
+			return GC.WeaponType.DIRECT  # 对轻装：直射曳光
+		1:
+			return 6  # SNIPER：对装甲穿甲
+		2:
+			return 9  # MISSILE：对空导弹
+		_:
+			return GC.WeaponType.DIRECT
 
 ## 获取武器槽位名称（v6.0：从 weapon_names 数组读取）
 func get_weapon_name_for_slot(slot_idx: int) -> String:

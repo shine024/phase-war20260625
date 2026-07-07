@@ -1,7 +1,7 @@
 @tool
 extends RefCounted
 
-const GdUnitUpdateClient = preload("res://addons/gdUnit4/src/update/GdUnitUpdateClient.gd")
+const GdUnitUpdateClient = preload("res://addons/gdunit4/src/update/GdUnitUpdateClient.gd")
 
 const FONT_H1 := 22
 const FONT_H2 := 20
@@ -10,11 +10,11 @@ const FONT_H4 := 16
 const FONT_H5 := 14
 const FONT_H6 := 12
 
-const HORIZONTAL_RULE := "[img=4000x2]res://addons/gdUnit4/src/update/assets/horizontal-line2.png[/img]"
+const HORIZONTAL_RULE := "[img=4000x2]res://addons/gdunit4/src/update/assets/horizontal-line2.png[/img]"
 const HEADER_RULE := "[font_size=%d]$1[/font_size]"
 const HEADER_CENTERED_RULE := "[font_size=%d][center]$1[/center][/font_size]"
 
-const image_download_folder := "res://addons/gdUnit4/tmp-update/"
+const image_download_folder := "res://addons/gdunit4/tmp-update/"
 
 const exclude_font_size := "\b(?!(?:(font_size))\b)"
 
@@ -66,7 +66,7 @@ var md_replace_patterns := [
 	[regex("(https://github.*/?/(\\S+))"), '[url={"url":"$1", "tool_tip":"$1"}]#$2[/url]'],
 
 	# embeded text
-	[regex("(?m)^[ ]{0,3}>(.*?)$"), "[img=50x14]res://addons/gdUnit4/src/update/assets/embedded.png[/img][i]$1[/i]"],
+	[regex("(?m)^[ ]{0,3}>(.*?)$"), "[img=50x14]res://addons/gdunit4/src/update/assets/embedded.png[/img][i]$1[/i]"],
 
 	# italic + bold font
 	[regex("[_]{3}(.*?)[_]{3}"), "[i][b]$1[/b][/i]"],
@@ -137,7 +137,7 @@ func _notification(what: int) -> void:
 
 
 func list_replace(indent: int) -> String:
-	var replace_pattern := "[img=12x12]res://addons/gdUnit4/src/update/assets/dot2.png[/img]" if indent %2 else "[img=12x12]res://addons/gdUnit4/src/update/assets/dot1.png[/img]"
+	var replace_pattern := "[img=12x12]res://addons/gdunit4/src/update/assets/dot2.png[/img]" if indent %2 else "[img=12x12]res://addons/gdunit4/src/update/assets/dot1.png[/img]"
 	replace_pattern += " $1"
 
 	for index in indent:
@@ -148,9 +148,9 @@ func list_replace(indent: int) -> String:
 func code_block(replace: String, border: bool = false) -> String:
 	if border:
 		return """
-			[img=1400x14]res://addons/gdUnit4/src/update/assets/border_top.png[/img]
+			[img=1400x14]res://addons/gdunit4/src/update/assets/border_top.png[/img]
 			[indent][color=GRAY][font_size=16]%s[/font_size][/color][/indent]
-			[img=1400x14]res://addons/gdUnit4/src/update/assets/border_bottom.png[/img]
+			[img=1400x14]res://addons/gdunit4/src/update/assets/border_bottom.png[/img]
 			""".dedent() % replace
 	return "[code][bgcolor=DARK_SLATE_GRAY][color=GRAY][font_size=16]%s[/font_size][/color][/bgcolor][/code]" % replace
 

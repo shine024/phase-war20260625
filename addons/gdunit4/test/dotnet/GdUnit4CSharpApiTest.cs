@@ -31,7 +31,7 @@ public partial class GdUnit4CSharpApiTest
     [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope")]
     public void DiscoverTestsFromScript()
     {
-        var script = GD.Load<CSharpScript>("res://addons/gdUnit4/test/dotnet/ExampleTestSuite.cs");
+        var script = GD.Load<CSharpScript>("res://addons/gdunit4/test/dotnet/ExampleTestSuite.cs");
         var fullScriptPath = Path.GetFullPath(ProjectSettings.GlobalizePath(script.ResourcePath));
         var tests = GdUnit4CSharpApi.DiscoverTests(script);
 
@@ -54,7 +54,7 @@ public partial class GdUnit4CSharpApiTest
                 new Dictionary
                 {
                     ["test_name"] = "IsFoo",
-                    ["source_file"] = "res://addons/gdUnit4/test/dotnet/ExampleTestSuite.cs",
+                    ["source_file"] = "res://addons/gdunit4/test/dotnet/ExampleTestSuite.cs",
                     ["line_number"] = 16,
                     ["attribute_index"] = 0,
                     ["require_godot_runtime"] = true,
@@ -67,7 +67,7 @@ public partial class GdUnit4CSharpApiTest
                 new Dictionary
                 {
                     ["test_name"] = "ParameterizedTest",
-                    ["source_file"] = "res://addons/gdUnit4/test/dotnet/ExampleTestSuite.cs",
+                    ["source_file"] = "res://addons/gdunit4/test/dotnet/ExampleTestSuite.cs",
                     ["line_number"] = 32,
                     ["attribute_index"] = 0,
                     ["require_godot_runtime"] = true,
@@ -79,7 +79,7 @@ public partial class GdUnit4CSharpApiTest
                 new Dictionary
                 {
                     ["test_name"] = "ParameterizedTest",
-                    ["source_file"] = "res://addons/gdUnit4/test/dotnet/ExampleTestSuite.cs",
+                    ["source_file"] = "res://addons/gdunit4/test/dotnet/ExampleTestSuite.cs",
                     ["line_number"] = 32,
                     ["attribute_index"] = 11,
                     ["require_godot_runtime"] = true,
@@ -93,7 +93,7 @@ public partial class GdUnit4CSharpApiTest
     [TestCase]
     public void BuildTestSuiteNodeFrom()
     {
-        var script = GD.Load<CSharpScript>("res://addons/gdUnit4/test/dotnet/ExampleTestSuite.cs");
+        var script = GD.Load<CSharpScript>("res://addons/gdunit4/test/dotnet/ExampleTestSuite.cs");
         var tests = GdUnit4CSharpApi.DiscoverTests(script);
 
         // convert the discovered tests into a test suite node
@@ -107,7 +107,7 @@ public partial class GdUnit4CSharpApiTest
     [TestCase]
     public async Task ExecuteAsync()
     {
-        var script = GD.Load<CSharpScript>("res://addons/gdUnit4/test/dotnet/ExampleTestSuite.cs");
+        var script = GD.Load<CSharpScript>("res://addons/gdunit4/test/dotnet/ExampleTestSuite.cs");
         var tests = GdUnit4CSharpApi.DiscoverTests(script);
 
         // Create a list to track received events

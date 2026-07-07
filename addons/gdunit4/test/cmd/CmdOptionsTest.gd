@@ -3,7 +3,7 @@ class_name CmdOptionsTest
 extends GdUnitTestSuite
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/cmd/CmdOptions.gd'
+const __source = 'res://addons/gdunit4/src/cmd/CmdOptions.gd'
 
 
 var option_a := CmdOption.new("-a", "some help text a", "some description a")

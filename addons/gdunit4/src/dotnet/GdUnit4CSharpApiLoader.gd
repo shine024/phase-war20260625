@@ -67,7 +67,7 @@ static func is_api_loaded() -> bool:
 		return false
 
 	# Finally load the wrapper and check if the GdUnit4 assembly can be found
-	_gdUnit4NetWrapper = load("res://addons/gdUnit4/src/dotnet/GdUnit4CSharpApi.cs")
+	_gdUnit4NetWrapper = load("res://addons/gdunit4/src/dotnet/GdUnit4CSharpApi.cs")
 	@warning_ignore("unsafe_method_access")
 	return _gdUnit4NetWrapper.call("IsApiLoaded")
 

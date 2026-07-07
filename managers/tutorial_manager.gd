@@ -1,5 +1,13 @@
 extends Node
 class_name TutorialManager
+## ⚠️ v7.x(A5) 已弃用：本管理器（B 系统）从未被 autoload，且 game_launcher 引用的
+## tutorial id（"basic_gameplay"）在 TutorialDefs 中不存在，属历史死代码。
+## 当前生效的教程系统是：
+##   - A 系统（autoload TutorialProgressionManager + scenes/ui/tutorial_overlay.gd/.tscn）
+##     负责主界面首次操作引导（欢迎/卡牌/装备/首战/势力/法则）。
+##   - C 系统（quest_definitions.gd 的 category="tutorial" 任务 + story_dialogue_panel）
+##     负责进阶系统教学（强化/改造/进化/符文，进关对话形式）。
+## 本文件保留以防外部引用 class_name，但不应再被新代码使用。
 ## 新手引导管理器：控制引导流程和显示
 
 const TutorialDefs = preload("res://data/tutorial_definitions.gd")

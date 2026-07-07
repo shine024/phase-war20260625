@@ -3,7 +3,7 @@ class_name AnyBuildInTypeArgumentMatcherTest
 extends GdUnitTestSuite
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/matchers/AnyBuildInTypeArgumentMatcher.gd'
+const __source = 'res://addons/gdunit4/src/matchers/AnyBuildInTypeArgumentMatcher.gd'
 
 
 func test_is_match_bool() -> void:

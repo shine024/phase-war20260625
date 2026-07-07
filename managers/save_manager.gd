@@ -183,6 +183,13 @@ func _ready() -> void:
 	# v6.6: 预加载 ToastManager，使其 _ready 连接 SignalBus.show_toast，
 	# 否则仅当打开势力商店时才会实例化，期间所有 toast 提示静默失效
 	call_deferred("_ensure_toast_manager")
+	# v7.x(B2): about_to_quit 覆盖 get_tree().quit() 路径（程序化退出不会触发
+	# WM_CLOSE_REQUEST，但会发 about_to_quit）。与 _notification(WM_CLOSE_REQUEST)
+	# 形成双保险，确保任意退出路径都收尾存档。
+	# 用字符串名 connect 规避 --check-only 静态分析对信号属性的误报。
+	var tree := get_tree()
+	if tree != null and tree.has_signal("about_to_quit"):
+		tree.connect("about_to_quit", _on_about_to_quit)
 	# 注：DebugLog 配在 ManagerLazyLoader（node_name=DebugLogManager），调用方统一用
 	# /root/DebugLogManager 引用。v7.x(M6) 曾尝试在此 ensure_loaded("debug_log") 预加载，
 	# 但 ManagerLazyLoader._instantiate_manager 对该脚本 .new() 失败（base GDScript 无 new），
@@ -306,6 +313,12 @@ func _notification(what: int) -> void:
 		# 否则直接关窗口不存档，下次打开会用旧时间戳计算离线奖励（或=0 不弹窗）。
 		# save_game 内部因 _is_exiting=true 会绕过 throttle/battle-active 守卫强制写入。
 		save_game()
+
+# v7.x(B2): 程序化退出（get_tree().quit()）走这里——quit() 不触发 WM_CLOSE_REQUEST，
+# 但会发 about_to_quit 信号。设 _is_exiting 让 save_game 绕过守卫强制收尾存档。
+func _on_about_to_quit() -> void:
+	_is_exiting = true
+	save_game()
 
 func _exit_tree() -> void:
 	_is_exiting = true
@@ -879,6 +892,15 @@ func _enqueue_starter_backpack_cards() -> void:
 
 	# v6.6: 关键道具系统尚未实现（reserved），未来若新增消耗型关键道具，
 	# 在此发放初始库存。当前游戏内无关键道具，故留空。
+
+	# v7.x: 初始符文——赠送最基础的 common 符文，可组成「强袭」符文之语
+	# （attack_01 力量 + defense_01 坚韧 → rw_2_05 强袭：攻击+18%/HP+18%）。
+	# 1星相位仪已有2个符文槽，开局即可装备激活。
+	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
+	if pim and pim.has_method("add_owned_rune"):
+		for rune_id in ["attack_01", "defense_01"]:
+			if pim.has_method("has_rune") and not pim.has_rune(rune_id):
+				pim.add_owned_rune(rune_id)
 
 ## 辅助函数：为单个进化路径生成蓝图
 func _process_evolution_blueprint_path(path_data: Dictionary) -> void:

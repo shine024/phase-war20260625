@@ -5,7 +5,7 @@ extends GdUnitTestSuite
 @warning_ignore('return_value_discarded')
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/ui/GdUnitUiTools.gd'
+const __source = 'res://addons/gdunit4/src/ui/GdUnitUiTools.gd'
 
 
 func test__merge_images_same_size() -> void:

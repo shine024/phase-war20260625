@@ -1,7 +1,7 @@
 class_name GdUnitRunnerConfig
 extends Resource
 
-const GdUnitTools := preload("res://addons/gdUnit4/src/core/GdUnitTools.gd")
+const GdUnitTools := preload("res://addons/gdunit4/src/core/GdUnitTools.gd")
 
 const CONFIG_VERSION = "5.0"
 const VERSION = "version"
@@ -9,7 +9,7 @@ const TESTS = "tests"
 const SERVER_PORT = "server_port"
 const EXIT_FAIL_FAST = "exit_on_first_fail"
 
-const CONFIG_FILE = "res://addons/gdUnit4/GdUnitRunner.cfg"
+const CONFIG_FILE = "res://addons/gdunit4/GdUnitRunner.cfg"
 
 var _config := {
 		VERSION : CONFIG_VERSION,

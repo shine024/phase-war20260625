@@ -4,7 +4,7 @@ class_name GdUnitSpyBuilderTest
 extends GdUnitTestSuite
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/spy/GdUnitSpyBuilder.gd'
+const __source = 'res://addons/gdunit4/src/spy/GdUnitSpyBuilder.gd'
 
 
 class NodeWithOutVirtualFunc extends Node:
@@ -25,7 +25,7 @@ func test_spy_on_script_respect_virtual_functions() -> void:
 
 func test_spy_on_scene_with_onready_parameters() -> void:
 	# setup a scene with holding parameters
-	var scene: TestSceneWithProperties = load("res://addons/gdUnit4/test/spy/resources/TestSceneWithProperties.tscn").instantiate()
+	var scene: TestSceneWithProperties = load("res://addons/gdunit4/test/spy/resources/TestSceneWithProperties.tscn").instantiate()
 	add_child(scene)
 
 	# precheck the parameters are original set

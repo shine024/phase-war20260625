@@ -1,8 +1,8 @@
 class_name GdUnitSpyBuilder
 extends GdUnitClassDoubler
 
-const GdUnitTools := preload("res://addons/gdUnit4/src/core/GdUnitTools.gd")
-const SPY_TEMPLATE :GDScript = preload("res://addons/gdUnit4/src/spy/GdUnitSpyImpl.gd")
+const GdUnitTools := preload("res://addons/gdunit4/src/core/GdUnitTools.gd")
+const SPY_TEMPLATE :GDScript = preload("res://addons/gdunit4/src/spy/GdUnitSpyImpl.gd")
 const EXCLUDE_PROPERTIES_TO_COPY = ["script", "type"]
 
 

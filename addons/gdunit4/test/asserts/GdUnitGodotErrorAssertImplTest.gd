@@ -5,7 +5,7 @@ extends GdUnitTestSuite
 @warning_ignore('return_value_discarded')
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/asserts/GdUnitGodotErrorAssertImpl.gd'
+const __source = 'res://addons/gdunit4/src/asserts/GdUnitGodotErrorAssertImpl.gd'
 
 var _save_is_report_push_errors :bool
 var _save_is_report_script_errors :bool
@@ -141,12 +141,12 @@ func produce_assert_error() -> void:
 		if Engine.get_version_info().hex >= 0x40400:
 			prints("""
 				SCRIPT ERROR: Assertion failed: this is an assert error
-				   at: GodotErrorTestClass.test (res://addons/gdUnit4/test/asserts/GdUnitGodotErrorAssertImplTest.gd:18)
+				   at: GodotErrorTestClass.test (res://addons/gdunit4/test/asserts/GdUnitGodotErrorAssertImplTest.gd:18)
 			""".dedent())
 		else:
 			prints("""
 				USER SCRIPT ERROR: Assertion failed: this is an assert error
-				   at: GodotErrorTestClass.test (res://addons/gdUnit4/test/asserts/GdUnitGodotErrorAssertImplTest.gd:18)
+				   at: GodotErrorTestClass.test (res://addons/gdunit4/test/asserts/GdUnitGodotErrorAssertImplTest.gd:18)
 			""".dedent())
 	else:
 		assert(false, "this is an assert error" )
@@ -166,12 +166,12 @@ func produce_runtime_error() -> void:
 		if Engine.get_version_info().hex >= 0x40400:
 			prints("""
 				SCRIPT ERROR: Division by zero error in operator '/'.
-				   at: GodotErrorTestClass.test (res://addons/gdUnit4/test/asserts/GdUnitGodotErrorAssertImplTest.gd:32)
+				   at: GodotErrorTestClass.test (res://addons/gdunit4/test/asserts/GdUnitGodotErrorAssertImplTest.gd:32)
 			""".dedent())
 		else:
 			prints("""
 				USER SCRIPT ERROR: Division by zero error in operator '/'.
-				   at: GodotErrorTestClass.test (res://addons/gdUnit4/test/asserts/GdUnitGodotErrorAssertImplTest.gd:32)
+				   at: GodotErrorTestClass.test (res://addons/gdunit4/test/asserts/GdUnitGodotErrorAssertImplTest.gd:32)
 			""".dedent())
 	else:
 		var a := 0

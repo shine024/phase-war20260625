@@ -3,7 +3,7 @@ class_name GdFunctionDescriptorTest
 extends GdUnitTestSuite
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/core/parse/GdFunctionDescriptor.gd'
+const __source = 'res://addons/gdunit4/src/core/parse/GdFunctionDescriptor.gd'
 
 
 # helper to get method descriptor

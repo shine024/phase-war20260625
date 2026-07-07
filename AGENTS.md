@@ -33,7 +33,15 @@ Add `--rendering-driver opengl3` if Vulkan issues (applies to `--headless` / `--
 
 ## Architecture
 
-### Autoload Singletons (24 total, in project.godot load order)
+### Autoload Singletons (实际 42 个，project.godot load order)
+
+> ⚠️ 下表为 v6.x 时期的"核心 autoload"概览（列 20 个核心），**未涵盖全部 42 个**。
+> 实际 autoload 数量以 `project.godot` 的 `[autoload]` 段为准（v7.x 已增至 42 个，
+> 含 LoreManager/AchievementManager/DailyTaskManager/StatisticsManager/StoryManager/
+> CharacterManager/ChallengeModeManager/CardCollectionManager/LeaderboardManager/StatBoostManager 等）。
+> 表中部分 manager 同时在 ManagerLazyLoader 有 ensure_loaded 别名（双层设计，非 bug）。
+> 启动性能提示：42 autoload 全量加载 + DefaultCards 133 卡构建已让 headless `--check-only` 接近 5 分钟超时，
+> 优化空间需配合"lazy manager 创建后主动请求 SaveManager 补 load_state"机制（待后续架构任务）。
 
 **Core autoloaded singletons (always loaded at startup):**
 | # | Singleton | File | Role |

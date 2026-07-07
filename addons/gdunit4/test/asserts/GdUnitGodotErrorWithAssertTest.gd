@@ -21,11 +21,11 @@ func do_a_fail() -> void:
 		if Engine.get_version_info().hex >= 0x40400:
 			prints("""
 			SCRIPT ERROR: Assertion failed: test
-			   at: do_a_fail (res://addons/gdUnit4/test/asserts/GdUnitErrorAssertTest.gd:20)""".dedent())
+			   at: do_a_fail (res://addons/gdunit4/test/asserts/GdUnitErrorAssertTest.gd:20)""".dedent())
 		else:
 			prints("""
 			USER SCRIPT ERROR: Assertion failed: test
-			   at: do_a_fail (res://addons/gdUnit4/test/asserts/GdUnitErrorAssertTest.gd:20)""".dedent())
+			   at: do_a_fail (res://addons/gdunit4/test/asserts/GdUnitErrorAssertTest.gd:20)""".dedent())
 	else:
 		@warning_ignore("assert_always_false")
 		assert(3 == 1, 'test')

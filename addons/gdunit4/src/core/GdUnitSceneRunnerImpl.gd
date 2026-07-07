@@ -3,7 +3,7 @@ class_name GdUnitSceneRunnerImpl
 extends GdUnitSceneRunner
 
 
-var GdUnitFuncAssertImpl: GDScript = ResourceLoader.load("res://addons/gdUnit4/src/asserts/GdUnitFuncAssertImpl.gd", "GDScript", ResourceLoader.CACHE_MODE_REUSE)
+var GdUnitFuncAssertImpl: GDScript = ResourceLoader.load("res://addons/gdunit4/src/asserts/GdUnitFuncAssertImpl.gd", "GDScript", ResourceLoader.CACHE_MODE_REUSE)
 
 
 # mapping of mouse buttons and his masks

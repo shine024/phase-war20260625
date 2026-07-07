@@ -1,6 +1,6 @@
 #warning-ignore-all:return_value_discarded
 class_name GdUnitTestCIRunner
-extends "res://addons/gdUnit4/src/core/runners/GdUnitTestSessionRunner.gd"
+extends "res://addons/gdunit4/src/core/runners/GdUnitTestSessionRunner.gd"
 ## Command line test runner implementation.[br]
 ## [br]
 ## This runner is designed for CI/CD pipelines and command line test execution.[br]
@@ -20,7 +20,7 @@ extends "res://addons/gdUnit4/src/core/runners/GdUnitTestSessionRunner.gd"
 ## runtest -a <directory> -i <testsuite:test_name>
 ## [/codeblock]
 
-const GdUnitTools := preload("res://addons/gdUnit4/src/core/GdUnitTools.gd")
+const GdUnitTools := preload("res://addons/gdunit4/src/core/GdUnitTools.gd")
 
 var _console := GdUnitCSIMessageWriter.new()
 var _console_reporter: GdUnitConsoleTestReporter
@@ -216,7 +216,7 @@ func show_version() -> void:
 		Color.DARK_SALMON
 	)
 	var config := ConfigFile.new()
-	config.load("addons/gdUnit4/plugin.cfg")
+	config.load("addons/gdunit4/plugin.cfg")
 	console_info(
 		"GdUnit4 %s" % config.get_value("plugin", "version") as String,
 		Color.DARK_SALMON
@@ -302,11 +302,15 @@ func show_advanced_help() -> void:
 
 
 ## Gets command line arguments.[br]
-## Returns debug args if set, otherwise actual command line args.
+## Returns debug args if set, otherwise actual command line args.[br]
+## Godot 4.5 splits user args (after `--`) into get_cmdline_user_args();
+## merge them so `-s ... -- -a <dir>` is parsed correctly under 4.5+.
 func get_cmdline_args() -> PackedStringArray:
-	if _debug_cmd_args.is_empty():
-		return OS.get_cmdline_args()
-	return _debug_cmd_args
+	if not _debug_cmd_args.is_empty():
+		return _debug_cmd_args
+	var args := OS.get_cmdline_args()
+	args.append_array(OS.get_cmdline_user_args())
+	return args
 
 
 ## Initializes the test runner and processes command line arguments.

@@ -3,8 +3,8 @@ extends GdUnitTestSuite
 
 func test_from() -> void:
 	var test := GdUnitTestCase.from(
-		"res://addons/gdUnit4/test/ui/parts/InspectorTreeMainPanelTest.gd",
-		"res://addons/gdUnit4/test/ui/parts/InspectorTreeMainPanelTest.gd",
+		"res://addons/gdunit4/test/ui/parts/InspectorTreeMainPanelTest.gd",
+		"res://addons/gdunit4/test/ui/parts/InspectorTreeMainPanelTest.gd",
 		0,
 		"test_foo")
 

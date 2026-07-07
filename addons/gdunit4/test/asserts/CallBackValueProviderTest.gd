@@ -5,7 +5,7 @@ class_name CallBackValueProviderTest
 extends GdUnitTestSuite
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/asserts/CallBackValueProvider.gd'
+const __source = 'res://addons/gdunit4/src/asserts/CallBackValueProvider.gd'
 
 
 func next_value() -> String:

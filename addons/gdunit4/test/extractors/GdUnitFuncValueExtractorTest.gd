@@ -3,7 +3,7 @@ class_name GdUnitFuncValueExtractorTest
 extends GdUnitTestSuite
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/extractors/GdUnitFuncValueExtractor.gd'
+const __source = 'res://addons/gdunit4/src/extractors/GdUnitFuncValueExtractor.gd'
 
 
 class TestNode extends Resource:

@@ -5,7 +5,7 @@ extends GdUnitTestSuite
 @warning_ignore('return_value_discarded')
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/asserts/GdUnitFailureAssertImpl.gd'
+const __source = 'res://addons/gdunit4/src/asserts/GdUnitFailureAssertImpl.gd'
 
 
 func last_assert() -> Variant:

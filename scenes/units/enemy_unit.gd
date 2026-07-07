@@ -796,12 +796,15 @@ func _do_attack() -> void:
 	var wt: int = GC.WeaponType.DIRECT
 	var dmg_out: float = attack_damage
 	var pre_calc := false
+	# v7.x: 记录槽位 weapon_type，用于子弹 VFX 弹道差异化（按目标类型）
+	var _slot_wt: int = -1
 	if stats != null:
 		var target_stats = target.get("stats") as UnitStats
 		var target_kind: int = target_stats.combat_kind if target_stats != null else 0
 		var weapon = AttackCalculator.get_weapon_for_target(stats, target_kind)
 		if weapon and weapon.enabled:
 			wt = weapon.weapon_type
+			_slot_wt = int(weapon.weapon_type)  # 槽位弹道类型（用于子弹 VFX）
 			weapon_name_str = weapon.display_name
 			dmg_out = AttackCalculator.calculate_damage_with_weapon(
 				stats, target_stats, dist_t, weapon, 0, [], is_card_grid, is_card_grid
@@ -837,8 +840,13 @@ func _do_attack() -> void:
 		if bullet == null:
 			bullet = BulletScene.instantiate()
 		bullet.global_position = global_position
-		# v6.6: 优先传 legacy_weapon_type（决定 VFX/弹道），否则回退到 weapon_type
-		var _vfx_wt: int = (stats.legacy_weapon_type if stats and stats.legacy_weapon_type > 0 else wt)
+		# v7.x: 子弹 VFX 优先用槽位 weapon_type（按目标类型差异化弹道），
+		# 回退单位级 legacy_weapon_type（改造单位级默认），再回退 wt。
+		var _vfx_wt: int = wt
+		if _slot_wt >= 0:
+			_vfx_wt = _slot_wt
+		elif stats and stats.legacy_weapon_type > 0:
+			_vfx_wt = stats.legacy_weapon_type
 		bullet.setup(target, pellet_dmg, false, _vfx_wt, self, stats, miss, weapon_name_str, pre_calc)
 		var current_parent: Node = bullet.get_parent()
 		if current_parent != root_2d:

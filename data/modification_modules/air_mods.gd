@@ -55,7 +55,9 @@ const DATA: Dictionary = {
 		rarity = "legendary",
 	power_mult = 2.0, cost_research = 480, cost_install = 240,
 		slot_type = "radar", conflict_group = "radar",
-		effects = {splash_damage = 0.5, splash_radius = 0.5, attack_range = 60},
+		# v7.x: per-slot 弹道——对装甲槽改 ROCKET 集束炸弹
+		condition_slot = 1,
+		effects = {splash_damage = 0.5, splash_radius = 0.5, attack_range = 60, slot_weapon_type = 3},  # v7.x: 对装甲槽火箭（集束）,
 		unlock_conditions = {required_level = 7}
 	},
 	"air_05_helmet_sight" = {
@@ -75,7 +77,9 @@ const DATA: Dictionary = {
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 350, cost_install = 175,
 		slot_type = "missile", conflict_group = "missile",
-		effects = {attack_range = 90, accuracy_bonus = 0.25},
+		# v7.x: per-slot 弹道——对空槽改 MISSILE 空空导弹
+		condition_slot = 2,
+		effects = {attack_range = 90, accuracy_bonus = 0.25, slot_weapon_type = 9},  # v7.x: 对空槽导弹（空战）,
 		unlock_conditions = {required_level = 6}
 	},
 	"air_07_dogfight_missile" = {
@@ -85,7 +89,9 @@ const DATA: Dictionary = {
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 320, cost_install = 160,
 		slot_type = "missile", conflict_group = "missile",
-		effects = {close_accuracy = 0.35},
+		# v7.x: per-slot 弹道——对空槽改 MISSILE 格斗导弹
+		condition_slot = 2,
+		effects = {close_accuracy = 0.35, slot_weapon_type = 9},  # v7.x: 对空槽导弹（近距格斗）,
 		unlock_conditions = {required_level = 5}
 	},
 	"air_08_ecm" = {

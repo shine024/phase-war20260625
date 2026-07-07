@@ -7,23 +7,23 @@ func hook_service() -> GdUnitTestSessionHookService:
 
 
 func test_load_hook_not_exists() -> void:
-	var hook := hook_service().load_hook("res://addons/gdUnit4/test/core/hooks/InvalidTestSessionHook.gd")
+	var hook := hook_service().load_hook("res://addons/gdunit4/test/core/hooks/InvalidTestSessionHook.gd")
 
 	assert_result(hook)\
 		.is_error()\
-		.contains_message("The hook 'res://addons/gdUnit4/test/core/hooks/InvalidTestSessionHook.gd' not exists.")
+		.contains_message("The hook 'res://addons/gdunit4/test/core/hooks/InvalidTestSessionHook.gd' not exists.")
 
 
 func test_load_hook_not_inherits_hook() -> void:
-	var hook := hook_service().load_hook("res://addons/gdUnit4/test/core/hooks/GdUnitTestSessionHookServiceTest.gd")
+	var hook := hook_service().load_hook("res://addons/gdunit4/test/core/hooks/GdUnitTestSessionHookServiceTest.gd")
 
 	assert_result(hook)\
 		.is_error()\
-		.contains_message("The hook 'res://addons/gdUnit4/test/core/hooks/GdUnitTestSessionHookServiceTest.gd' must inhertit from 'GdUnitTestSessionHook'.")
+		.contains_message("The hook 'res://addons/gdunit4/test/core/hooks/GdUnitTestSessionHookServiceTest.gd' must inhertit from 'GdUnitTestSessionHook'.")
 
 
 func test_load_hook_success() -> void:
-	var hook := hook_service().load_hook("res://addons/gdUnit4/test/core/hooks/ExampleTestSessionHookA.gd")
+	var hook := hook_service().load_hook("res://addons/gdunit4/test/core/hooks/ExampleTestSessionHookA.gd")
 
 	assert_result(hook).is_success()
 	assert_object(hook.value())\
@@ -44,7 +44,7 @@ func test_register_hook() -> void:
 	var result := service.register(hook)
 	assert_result(result)\
 		.is_error()\
-		.contains_message("A hook instance of 'res://addons/gdUnit4/test/core/hooks/ExampleTestSessionHookA.gd' is already registered.")
+		.contains_message("A hook instance of 'res://addons/gdunit4/test/core/hooks/ExampleTestSessionHookA.gd' is already registered.")
 	assert_array(service.enigne_hooks).contains_exactly([hook])
 
 

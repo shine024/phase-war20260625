@@ -24,7 +24,7 @@ const T2 = 2
 
 signal source_changed( text:String )
 
-@onready var name_label := load("res://addons/gdUnit4/test/mocker/resources/ClassWithNameA.gd")
+@onready var name_label := load("res://addons/gdunit4/test/mocker/resources/ClassWithNameA.gd")
 
 @export var path: NodePath = ".."
 

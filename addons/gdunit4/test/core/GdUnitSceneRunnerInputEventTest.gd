@@ -3,7 +3,7 @@
 extends GdUnitTestSuite
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/core/GdUnitSceneRunner.gd'
+const __source = 'res://addons/gdunit4/src/core/GdUnitSceneRunner.gd'
 
 
 var _runner :GdUnitSceneRunner
@@ -11,7 +11,7 @@ var _scene_spy :Node
 
 
 func before_test() -> void:
-	_scene_spy = spy("res://addons/gdUnit4/test/mocker/resources/scenes/TestScene.tscn")
+	_scene_spy = spy("res://addons/gdunit4/test/mocker/resources/scenes/TestScene.tscn")
 	_runner = scene_runner(_scene_spy)
 	# do handle outstanding events
 	await _runner.await_input_processed()
@@ -62,7 +62,7 @@ func assert_inital_mouse_state() -> void:
 
 
 func test_reset_to_inital_state_on_release() -> void:
-	var runner := scene_runner("res://addons/gdUnit4/test/mocker/resources/scenes/TestScene.tscn")
+	var runner := scene_runner("res://addons/gdunit4/test/mocker/resources/scenes/TestScene.tscn")
 	# simulate mouse buttons and key press but we never released it
 	runner.simulate_action_press("ui_up")
 	runner.simulate_mouse_button_press(MOUSE_BUTTON_LEFT)
@@ -207,7 +207,7 @@ func test_simulate_keypressed_as_action() -> void:
 	event.keycode = KEY_SPACE
 	InputMap.add_action("player_jump")
 	InputMap.action_add_event("player_jump", event)
-	var runner := scene_runner("res://addons/gdUnit4/test/core/resources/scenes/input_actions/InputEventTestScene.tscn")
+	var runner := scene_runner("res://addons/gdunit4/test/core/resources/scenes/input_actions/InputEventTestScene.tscn")
 
 	# precondition checks
 	var action_event := InputMap.action_get_events("player_jump")

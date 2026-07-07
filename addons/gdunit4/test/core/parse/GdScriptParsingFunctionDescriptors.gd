@@ -12,7 +12,7 @@ func after() -> void:
 
 
 func test_default_args_dictionary() -> void:
-	var script: GDScript = load("res://addons/gdUnit4/test/core/resources/parsing/functions/container_build_in_types/ClassWithDictionaryDefaultArguments.gd")
+	var script: GDScript = load("res://addons/gdunit4/test/core/resources/parsing/functions/container_build_in_types/ClassWithDictionaryDefaultArguments.gd")
 
 	var fds := _parser.get_function_descriptors(script, [])
 	assert_that(fds[0])\
@@ -54,7 +54,7 @@ func test_default_args_dictionary() -> void:
 
 
 func test_default_args_array() -> void:
-	var script: GDScript = load("res://addons/gdUnit4/test/core/resources/parsing/functions/container_build_in_types/ClassWithArrayDefaultArguments.gd")
+	var script: GDScript = load("res://addons/gdunit4/test/core/resources/parsing/functions/container_build_in_types/ClassWithArrayDefaultArguments.gd")
 
 	var fds := _parser.get_function_descriptors(script, [])
 	assert_that(fds[0])\
@@ -96,7 +96,7 @@ func test_default_args_array() -> void:
 
 
 func test_default_args_callable() -> void:
-	var script: GDScript = load("res://addons/gdUnit4/test/core/resources/parsing/functions/container_build_in_types/ClassWithCallableDefaultArguments.gd")
+	var script: GDScript = load("res://addons/gdunit4/test/core/resources/parsing/functions/container_build_in_types/ClassWithCallableDefaultArguments.gd")
 
 	var fds := _parser.get_function_descriptors(script, [])
 	assert_that(fds[0])\
@@ -126,7 +126,7 @@ func test_default_args_callable() -> void:
 
 
 func test_default_args_variant() -> void:
-	var script: GDScript = load("res://addons/gdUnit4/test/core/resources/parsing/functions/ClassWithVariantTypeDefaultArguments.gd")
+	var script: GDScript = load("res://addons/gdunit4/test/core/resources/parsing/functions/ClassWithVariantTypeDefaultArguments.gd")
 
 	var fds := _parser.get_function_descriptors(script, [])
 	assert_that(fds[0])\
@@ -147,7 +147,7 @@ func test_default_args_variant() -> void:
 
 # Basic build-in-types
 func test_default_args_basic_type_int() -> void:
-	var script: GDScript = load("res://addons/gdUnit4/test/core/resources/parsing/functions/basic_build_in_types/ClassWithBasicTypeIntDefaultArguments.gd")
+	var script: GDScript = load("res://addons/gdunit4/test/core/resources/parsing/functions/basic_build_in_types/ClassWithBasicTypeIntDefaultArguments.gd")
 
 	var fds := _parser.get_function_descriptors(script, [])
 	assert_that(fds[0])\
@@ -171,7 +171,7 @@ func test_default_args_basic_type_int() -> void:
 
 
 func test_default_args_basic_type_float() -> void:
-	var script: GDScript = load("res://addons/gdUnit4/test/core/resources/parsing/functions/basic_build_in_types/ClassWithBasicTypeFloatDefaultArguments.gd")
+	var script: GDScript = load("res://addons/gdunit4/test/core/resources/parsing/functions/basic_build_in_types/ClassWithBasicTypeFloatDefaultArguments.gd")
 
 	var fds := _parser.get_function_descriptors(script, [])
 	assert_that(fds[0])\
@@ -195,7 +195,7 @@ func test_default_args_basic_type_float() -> void:
 
 
 func test_default_args_basic_type_bool() -> void:
-	var script: GDScript = load("res://addons/gdUnit4/test/core/resources/parsing/functions/basic_build_in_types/ClassWithBasicTypeBoolDefaultArguments.gd")
+	var script: GDScript = load("res://addons/gdunit4/test/core/resources/parsing/functions/basic_build_in_types/ClassWithBasicTypeBoolDefaultArguments.gd")
 
 	var fds := _parser.get_function_descriptors(script, [])
 	assert_that(fds[0])\
@@ -219,7 +219,7 @@ func test_default_args_basic_type_bool() -> void:
 
 
 func test_default_args_basic_type_string() -> void:
-	var script: GDScript = load("res://addons/gdUnit4/test/core/resources/parsing/functions/basic_build_in_types/ClassWithBasicTypeStringDefaultArguments.gd")
+	var script: GDScript = load("res://addons/gdunit4/test/core/resources/parsing/functions/basic_build_in_types/ClassWithBasicTypeStringDefaultArguments.gd")
 
 	var fds := _parser.get_function_descriptors(script, [])
 	assert_that(fds[0])\
@@ -243,7 +243,7 @@ func test_default_args_basic_type_string() -> void:
 
 
 func test_default_args_basic_type_string_name() -> void:
-	var script: GDScript = load("res://addons/gdUnit4/test/core/resources/parsing/functions/basic_build_in_types/ClassWithBasicTypeStringNameDefaultArguments.gd")
+	var script: GDScript = load("res://addons/gdunit4/test/core/resources/parsing/functions/basic_build_in_types/ClassWithBasicTypeStringNameDefaultArguments.gd")
 
 	var fds := _parser.get_function_descriptors(script, [])
 	assert_that(fds[0])\
@@ -267,7 +267,7 @@ func test_default_args_basic_type_string_name() -> void:
 
 
 func test_default_args_basic_type_node_path() -> void:
-	var script: GDScript = load("res://addons/gdUnit4/test/core/resources/parsing/functions/basic_build_in_types/ClassWithBasicTypeNodePathDefaultArguments.gd")
+	var script: GDScript = load("res://addons/gdunit4/test/core/resources/parsing/functions/basic_build_in_types/ClassWithBasicTypeNodePathDefaultArguments.gd")
 
 	var fds := _parser.get_function_descriptors(script, [])
 	assert_that(fds[0])\
@@ -297,7 +297,7 @@ func test_default_args_basic_type_node_path() -> void:
 
 
 func test_default_args_basic_type_vector2() -> void:
-	var script: GDScript = load("res://addons/gdUnit4/test/core/resources/parsing/functions/basic_build_in_types/ClassWithBasicTypeVector2DefaultArguments.gd")
+	var script: GDScript = load("res://addons/gdunit4/test/core/resources/parsing/functions/basic_build_in_types/ClassWithBasicTypeVector2DefaultArguments.gd")
 
 	var fds := _parser.get_function_descriptors(script, [])
 	assert_that(fds[0])\
@@ -321,7 +321,7 @@ func test_default_args_basic_type_vector2() -> void:
 
 
 func test_default_args_basic_type_vector2i() -> void:
-	var script: GDScript = load("res://addons/gdUnit4/test/core/resources/parsing/functions/basic_build_in_types/ClassWithBasicTypeVector2iDefaultArguments.gd")
+	var script: GDScript = load("res://addons/gdunit4/test/core/resources/parsing/functions/basic_build_in_types/ClassWithBasicTypeVector2iDefaultArguments.gd")
 
 	var fds := _parser.get_function_descriptors(script, [])
 	assert_that(fds[0])\
@@ -345,7 +345,7 @@ func test_default_args_basic_type_vector2i() -> void:
 
 
 func test_default_args_basic_type_vector3() -> void:
-	var script: GDScript = load("res://addons/gdUnit4/test/core/resources/parsing/functions/basic_build_in_types/ClassWithBasicTypeVector3DefaultArguments.gd")
+	var script: GDScript = load("res://addons/gdunit4/test/core/resources/parsing/functions/basic_build_in_types/ClassWithBasicTypeVector3DefaultArguments.gd")
 
 	var fds := _parser.get_function_descriptors(script, [])
 	assert_that(fds[0])\
@@ -369,7 +369,7 @@ func test_default_args_basic_type_vector3() -> void:
 
 
 func test_default_args_basic_type_vector3i() -> void:
-	var script: GDScript = load("res://addons/gdUnit4/test/core/resources/parsing/functions/basic_build_in_types/ClassWithBasicTypeVector3iDefaultArguments.gd")
+	var script: GDScript = load("res://addons/gdunit4/test/core/resources/parsing/functions/basic_build_in_types/ClassWithBasicTypeVector3iDefaultArguments.gd")
 
 	var fds := _parser.get_function_descriptors(script, [])
 	assert_that(fds[0])\
@@ -393,7 +393,7 @@ func test_default_args_basic_type_vector3i() -> void:
 
 
 func test_default_args_basic_type_vector4() -> void:
-	var script: GDScript = load("res://addons/gdUnit4/test/core/resources/parsing/functions/basic_build_in_types/ClassWithBasicTypeVector4DefaultArguments.gd")
+	var script: GDScript = load("res://addons/gdunit4/test/core/resources/parsing/functions/basic_build_in_types/ClassWithBasicTypeVector4DefaultArguments.gd")
 
 	var fds := _parser.get_function_descriptors(script, [])
 	assert_that(fds[0])\
@@ -417,7 +417,7 @@ func test_default_args_basic_type_vector4() -> void:
 
 
 func test_default_args_basic_type_vector4i() -> void:
-	var script: GDScript = load("res://addons/gdUnit4/test/core/resources/parsing/functions/basic_build_in_types/ClassWithBasicTypeVector4iDefaultArguments.gd")
+	var script: GDScript = load("res://addons/gdunit4/test/core/resources/parsing/functions/basic_build_in_types/ClassWithBasicTypeVector4iDefaultArguments.gd")
 
 	var fds := _parser.get_function_descriptors(script, [])
 	assert_that(fds[0])\
@@ -441,7 +441,7 @@ func test_default_args_basic_type_vector4i() -> void:
 
 
 func test_default_args_basic_type_rect2() -> void:
-	var script: GDScript = load("res://addons/gdUnit4/test/core/resources/parsing/functions/basic_build_in_types/ClassWithBasicTypeRect2DefaultArguments.gd")
+	var script: GDScript = load("res://addons/gdunit4/test/core/resources/parsing/functions/basic_build_in_types/ClassWithBasicTypeRect2DefaultArguments.gd")
 
 	var fds := _parser.get_function_descriptors(script, [])
 	assert_that(fds[0])\
@@ -477,7 +477,7 @@ func test_default_args_basic_type_rect2() -> void:
 
 
 func test_default_args_basic_type_transform2d() -> void:
-	var script: GDScript = load("res://addons/gdUnit4/test/core/resources/parsing/functions/basic_build_in_types/ClassWithBasicTypeTransform2DDefaultArguments.gd")
+	var script: GDScript = load("res://addons/gdunit4/test/core/resources/parsing/functions/basic_build_in_types/ClassWithBasicTypeTransform2DDefaultArguments.gd")
 
 	var fds := _parser.get_function_descriptors(script, [])
 	assert_that(fds[0])\

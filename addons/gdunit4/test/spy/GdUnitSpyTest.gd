@@ -54,13 +54,13 @@ func test_spy_on_Node() -> void:
 
 
 func test_spy_source_with_class_name_by_resource_path() -> void:
-	var instance :Object = auto_free(_load('res://addons/gdUnit4/test/mocker/resources/GD-256/world.gd').new())
+	var instance :Object = auto_free(_load('res://addons/gdunit4/test/mocker/resources/GD-256/world.gd').new())
 	var m :Variant = spy(instance)
 	@warning_ignore("unsafe_method_access")
 	var head :String = m.get_script().source_code.substr(0, 500)
 	assert_str(head)\
 		.contains("class_name DoubledSpyClassMunderwoodPathingWorld")\
-		.contains("extends 'res://addons/gdUnit4/test/mocker/resources/GD-256/world.gd'")
+		.contains("extends 'res://addons/gdunit4/test/mocker/resources/GD-256/world.gd'")
 
 
 func test_spy_source_with_class_name_by_class() -> void:
@@ -69,7 +69,7 @@ func test_spy_source_with_class_name_by_class() -> void:
 	var head :String = m.get_script().source_code.substr(0, 500)
 	assert_str(head)\
 		.contains("class_name DoubledSpyClassMunderwoodPathingWorld")\
-		.contains("extends 'res://addons/gdUnit4/test/mocker/resources/GD-256/world.gd'")
+		.contains("extends 'res://addons/gdunit4/test/mocker/resources/GD-256/world.gd'")
 
 
 func test_spy_extends_godot_class() -> void:
@@ -130,7 +130,7 @@ func test_spy_on_custom_class() -> void:
 
 # GD-291 https://github.com/MikeSchulze/gdUnit4/issues/291
 func test_spy_class_with_custom_formattings() -> void:
-	var resource := _load("res://addons/gdUnit4/test/mocker/resources/ClassWithCustomFormattings.gd")
+	var resource := _load("res://addons/gdunit4/test/mocker/resources/ClassWithCustomFormattings.gd")
 	var do_spy :Variant = spy(auto_free(resource.new("test")))
 	@warning_ignore("unsafe_method_access")
 	do_spy.a1("set_name", "", true)
@@ -143,7 +143,7 @@ func test_spy_class_with_custom_formattings() -> void:
 
 
 func test_spy_copied_class_members() -> void:
-	var instance: TestPerson = auto_free(_load("res://addons/gdUnit4/test/mocker/resources/TestPerson.gd").new("user-x", "street", 56616))
+	var instance: TestPerson = auto_free(_load("res://addons/gdunit4/test/mocker/resources/TestPerson.gd").new("user-x", "street", 56616))
 	assert_that(instance._name).is_equal("user-x")
 	assert_that(instance._value).is_equal(1024)
 	assert_that(instance._address._street).is_equal("street")
@@ -449,7 +449,7 @@ func test_create_spy_static_func_untyped() -> void:
 
 
 func test_spy_snake_case_named_class_by_resource_path() -> void:
-	var instance_a :Object = _load("res://addons/gdUnit4/test/mocker/resources/snake_case.gd").new()
+	var instance_a :Object = _load("res://addons/gdunit4/test/mocker/resources/snake_case.gd").new()
 	var spy_a :Variant = spy(instance_a)
 	assert_object(spy_a).is_not_null()
 
@@ -459,7 +459,7 @@ func test_spy_snake_case_named_class_by_resource_path() -> void:
 	verify(spy_a).custom_func()
 	verify_no_more_interactions(spy_a)
 
-	var instance_b :Object = _load("res://addons/gdUnit4/test/mocker/resources/snake_case_class_name.gd").new()
+	var instance_b :Object = _load("res://addons/gdunit4/test/mocker/resources/snake_case_class_name.gd").new()
 	var spy_b :Variant = spy(instance_b)
 	assert_object(spy_b).is_not_null()
 
@@ -495,8 +495,8 @@ func test_spy_snake_case_named_class_by_class() -> void:
 	verify_no_more_interactions(spy_tcp_server)
 
 
-const Issue = preload("res://addons/gdUnit4/test/resources/issues/gd-166/issue.gd")
-const Type = preload("res://addons/gdUnit4/test/resources/issues/gd-166/types.gd")
+const Issue = preload("res://addons/gdunit4/test/resources/issues/gd-166/issue.gd")
+const Type = preload("res://addons/gdunit4/test/resources/issues/gd-166/types.gd")
 
 
 func test_spy_preload_class_GD_166() -> void:
@@ -627,7 +627,7 @@ func test_spy_func_with_default_build_in_type() -> void:
 
 
 func test_spy_scene_by_resource_path() -> void:
-	var spy_scene :Variant = spy("res://addons/gdUnit4/test/mocker/resources/scenes/TestScene.tscn")
+	var spy_scene :Variant = spy("res://addons/gdunit4/test/mocker/resources/scenes/TestScene.tscn")
 	assert_object(spy_scene)\
 		.is_not_null()\
 		.is_not_instanceof(PackedScene)\
@@ -639,7 +639,7 @@ func test_spy_scene_by_resource_path() -> void:
 
 
 func test_spy_on_PackedScene() -> void:
-	var resource := load("res://addons/gdUnit4/test/mocker/resources/scenes/TestScene.tscn")
+	var resource := load("res://addons/gdunit4/test/mocker/resources/scenes/TestScene.tscn")
 	var original_script :Script = resource.get_script()
 	assert_object(resource).is_instanceof(PackedScene)
 
@@ -661,7 +661,7 @@ func test_spy_on_PackedScene() -> void:
 
 
 func test_spy_scene_by_instance() -> void:
-	var resource: PackedScene = load("res://addons/gdUnit4/test/mocker/resources/scenes/TestScene.tscn")
+	var resource: PackedScene = load("res://addons/gdunit4/test/mocker/resources/scenes/TestScene.tscn")
 	var instance :Control = resource.instantiate()
 	var original_script :Script = instance.get_script()
 	var spy_scene :Variant = spy(instance)
@@ -682,7 +682,7 @@ func test_spy_scene_by_instance() -> void:
 
 
 func test_spy_scene_by_path_fail_has_no_script_attached() -> void:
-	var resource: PackedScene = load("res://addons/gdUnit4/test/mocker/resources/scenes/TestSceneWithoutScript.tscn")
+	var resource: PackedScene = load("res://addons/gdunit4/test/mocker/resources/scenes/TestSceneWithoutScript.tscn")
 	var instance :Control = auto_free(resource.instantiate())
 
 	# has to fail and return null
@@ -691,7 +691,7 @@ func test_spy_scene_by_path_fail_has_no_script_attached() -> void:
 
 
 func test_spy_scene_initalize() -> void:
-	var spy_scene :Variant = spy("res://addons/gdUnit4/test/mocker/resources/scenes/TestScene.tscn")
+	var spy_scene :Variant = spy("res://addons/gdunit4/test/mocker/resources/scenes/TestScene.tscn")
 	assert_object(spy_scene).is_not_null()
 
 	# Add as child to a scene tree to trigger _ready to initalize all variables

@@ -1,0 +1,339 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites id="2026-07-07" name="report_9" tests="54" failures="25" skipped="0" flaky="0" time="0.000">
+	<testsuite id="0" name="test_blueprint_star_config" package="tests/unit/blueprint" timestamp="2026-07-06T19:09:41" hostname="localhost" tests="5" failures="0" errors="0" skipped="0" flaky="0" time="0.272">
+		<testcase name="test_next_star_research_common_matches_v3_table_total" classname="test_blueprint_star_config" time="0.039">
+		</testcase>
+		<testcase name="test_next_star_research_mythic_matches_v3_table_total" classname="test_blueprint_star_config" time="0.033">
+		</testcase>
+		<testcase name="test_next_star_at_max_returns_zero" classname="test_blueprint_star_config" time="0.032">
+		</testcase>
+		<testcase name="test_mod_research_flat_v3" classname="test_blueprint_star_config" time="0.033">
+		</testcase>
+		<testcase name="test_max_mod_times_is_three_for_common" classname="test_blueprint_star_config" time="0.033">
+		</testcase>
+	</testsuite>
+	<testsuite id="1" name="test_affix_scaling" package="tests/unit/combat" timestamp="2026-07-06T19:09:41" hostname="localhost" tests="2" failures="0" errors="0" skipped="0" flaky="0" time="0.118">
+		<testcase name="test_enhance_count_grows_with_level" classname="test_affix_scaling" time="0.050">
+		</testcase>
+		<testcase name="test_apply_affixes_to_stats_accepts_empty_cards" classname="test_affix_scaling" time="0.033">
+		</testcase>
+	</testsuite>
+	<testsuite id="2" name="test_card_grid_damage" package="tests/unit/combat" timestamp="2026-07-06T19:09:42" hostname="localhost" tests="2" failures="0" errors="0" skipped="0" flaky="0" time="0.118">
+		<testcase name="test_defense_damage_multiplier_at_bounds" classname="test_card_grid_damage" time="0.050">
+		</testcase>
+		<testcase name="test_resolve_hit_percent_mitigation" classname="test_card_grid_damage" time="0.033">
+		</testcase>
+	</testsuite>
+	<testsuite id="3" name="test_damage_calculation" package="tests/unit/combat" timestamp="2026-07-06T19:09:42" hostname="localhost" tests="2" failures="0" errors="2" skipped="0" flaky="0" time="0.119">
+		<testcase name="test_calculate_victory_stars_perfect_result_is_three" classname="test_damage_calculation" time="0.051">
+			<error message="ERROR: res://tests/unit/combat/test_damage_calculation.gd:22" type="ABORT">
+<![CDATA[
+Godot Runtime Error !
+	'at: DamageCalculationTest.test_calculate_victory_stars_perfect_result_is_three (res://tests/unit/combat/test_damage_calculation.gd:22)'
+Error: 'Invalid call. Nonexistent function 'calculate_victory_stars' in base 'Node'.'
+]]>
+			</error>
+		</testcase>
+		<testcase name="test_calculate_victory_stars_can_drop_on_losses" classname="test_damage_calculation" time="0.033">
+			<error message="ERROR: res://tests/unit/combat/test_damage_calculation.gd:28" type="ABORT">
+<![CDATA[
+Godot Runtime Error !
+	'at: DamageCalculationTest.test_calculate_victory_stars_can_drop_on_losses (res://tests/unit/combat/test_damage_calculation.gd:28)'
+Error: 'Invalid call. Nonexistent function 'calculate_victory_stars' in base 'Node'.'
+]]>
+			</error>
+		</testcase>
+	</testsuite>
+	<testsuite id="4" name="test_enemy_stat_resolver" package="tests/unit/combat" timestamp="2026-07-06T19:09:42" hostname="localhost" tests="7" failures="6" errors="0" skipped="0" flaky="0" time="0.368">
+		<testcase name="test_wave_multipliers_match_legacy_constants" classname="test_enemy_stat_resolver" time="0.051">
+		</testcase>
+		<testcase name="test_resolve_infantry_basic_wave1" classname="test_enemy_stat_resolver" time="0.033">
+			<failure message="FAILED: res://tests/unit/combat/test_enemy_stat_resolver.gd:18" type="FAILURE">
+<![CDATA[
+Expecting:
+ '40.000000'
+ but was
+ '32.560000'
+]]>
+			</failure>
+			<failure message="FAILED: res://tests/unit/combat/test_enemy_stat_resolver.gd:19" type="FAILURE">
+<![CDATA[
+Expecting:
+ '8.000000'
+ but was
+ '6.512000'
+]]>
+			</failure>
+		</testcase>
+		<testcase name="test_resolve_infantry_basic_wave5" classname="test_enemy_stat_resolver" time="0.033">
+			<failure message="FAILED: res://tests/unit/combat/test_enemy_stat_resolver.gd:27" type="FAILURE">
+<![CDATA[
+Expecting:
+ '59.200000'
+ but was
+ '48.188800'
+]]>
+			</failure>
+			<failure message="FAILED: res://tests/unit/combat/test_enemy_stat_resolver.gd:28" type="FAILURE">
+<![CDATA[
+Expecting:
+ '10.560000'
+ but was
+ '8.595840'
+]]>
+			</failure>
+		</testcase>
+		<testcase name="test_resolve_empty_archetype_linear_fallback" classname="test_enemy_stat_resolver" time="0.033">
+			<failure message="FAILED: res://tests/unit/combat/test_enemy_stat_resolver.gd:34" type="FAILURE">
+<![CDATA[
+Expecting:
+ '90.000000'
+ but was
+ '82.051200'
+]]>
+			</failure>
+			<failure message="FAILED: res://tests/unit/combat/test_enemy_stat_resolver.gd:35" type="FAILURE">
+<![CDATA[
+Expecting:
+ '14.000000'
+ but was
+ '12.307680'
+]]>
+			</failure>
+		</testcase>
+		<testcase name="test_master_multipliers_on_unit_stats" classname="test_enemy_stat_resolver" time="0.032">
+		</testcase>
+		<testcase name="test_master_multipliers_new_coefficients" classname="test_enemy_stat_resolver" time="0.033">
+		</testcase>
+		<testcase name="test_resolve_classic_enemy_with_master_stats" classname="test_enemy_stat_resolver" time="0.033">
+		</testcase>
+	</testsuite>
+	<testsuite id="5" name="test_battle_card_v3" package="tests/unit/data" timestamp="2026-07-06T19:09:42" hostname="localhost" tests="6" failures="10" errors="0" skipped="0" flaky="0" time="0.317">
+		<testcase name="test_era_multipliers_at_bounds" classname="test_battle_card_v3" time="0.050">
+			<failure message="FAILED: res://tests/unit/data/test_battle_card_v3.gd:12" type="FAILURE">
+<![CDATA[
+Expecting:
+ '2.000000'
+ but was
+ '1.800000'
+]]>
+			</failure>
+		</testcase>
+		<testcase name="test_star_stat_multiplier" classname="test_battle_card_v3" time="0.033">
+			<failure message="FAILED: res://tests/unit/data/test_battle_card_v3.gd:19" type="FAILURE">
+<![CDATA[
+Expecting:
+ '1.640000'
+ but was
+ '1.640000'
+]]>
+			</failure>
+			<failure message="FAILED: res://tests/unit/data/test_battle_card_v3.gd:20" type="FAILURE">
+<![CDATA[
+Expecting:
+ '1.960000'
+ but was
+ '1.960000'
+]]>
+			</failure>
+		</testcase>
+		<testcase name="test_enhance_stat_multiplier" classname="test_battle_card_v3" time="0.031">
+			<failure message="FAILED: res://tests/unit/data/test_battle_card_v3.gd:24" type="FAILURE">
+<![CDATA[
+Expecting:
+ '1.630000'
+ but was
+ '1.630000'
+]]>
+			</failure>
+			<failure message="FAILED: res://tests/unit/data/test_battle_card_v3.gd:25" type="FAILURE">
+<![CDATA[
+Expecting:
+ '1.990000'
+ but was
+ '1.990000'
+]]>
+			</failure>
+		</testcase>
+		<testcase name="test_evolution_inherit_bonus_clamped" classname="test_battle_card_v3" time="0.033">
+		</testcase>
+		<testcase name="test_unit_stats_table_era_scales_hp_and_weapon_damage" classname="test_battle_card_v3" time="0.033">
+			<failure message="FAILED: res://tests/unit/data/test_battle_card_v3.gd:34" type="FAILURE">
+<![CDATA[
+Expecting:
+ '115.000000'
+ but was
+ '110.000000'
+]]>
+			</failure>
+			<failure message="FAILED: res://tests/unit/data/test_battle_card_v3.gd:35" type="FAILURE">
+<![CDATA[
+Expecting:
+ '15.000000'
+ but was
+ '14.000000'
+]]>
+			</failure>
+			<failure message="FAILED: res://tests/unit/data/test_battle_card_v3.gd:37" type="FAILURE">
+<![CDATA[
+Expecting:
+ '100.000000'
+ but was
+ '110.000000'
+]]>
+			</failure>
+			<failure message="FAILED: res://tests/unit/data/test_battle_card_v3.gd:38" type="FAILURE">
+<![CDATA[
+Expecting:
+ '12.000000'
+ but was
+ '14.000000'
+]]>
+			</failure>
+		</testcase>
+		<testcase name="test_siege_enhance_growth_bias_exceeds_scout" classname="test_battle_card_v3" time="0.033">
+			<failure message="FAILED: res://tests/unit/data/test_battle_card_v3.gd:68" type="FAILURE">
+<![CDATA[
+Expecting to be greater than:
+ '7.780000' but was '1.818182'
+]]>
+			</failure>
+		</testcase>
+	</testsuite>
+	<testsuite id="6" name="test_enemy_archetypes" package="tests/unit/data" timestamp="2026-07-06T19:09:43" hostname="localhost" tests="2" failures="1" errors="0" skipped="0" flaky="0" time="0.118">
+		<testcase name="test_archetypes_dictionary_is_not_empty" classname="test_enemy_archetypes" time="0.051">
+		</testcase>
+		<testcase name="test_archetype_entries_have_base_fields" classname="test_enemy_archetypes" time="0.033">
+			<failure message="FAILED: res://tests/unit/data/test_enemy_archetypes.gd:14" type="FAILURE">
+<![CDATA[
+Expecting contains keys:
+ '["swarm_unit", "era", "display_name", "anim_idle", "anim_move", "anim_attack", "visual_scale", "hp", "speed", "attack_damage", "attack_range", "attack_interval", "weapon_type", "weapon_label", "tags", "drops", "defense"]'
+ to contains:
+ '["display_name", "rarity"]'
+ but can't find key's:
+ '["rarity"]'
+]]>
+			</failure>
+		</testcase>
+	</testsuite>
+	<testsuite id="7" name="test_energy_manager" package="tests/unit/energy" timestamp="2026-07-06T19:09:43" hostname="localhost" tests="17" failures="4" errors="0" skipped="0" flaky="0" time="0.868">
+		<testcase name="test_initial_energy" classname="test_energy_manager" time="0.050">
+		</testcase>
+		<testcase name="test_getters" classname="test_energy_manager" time="0.032">
+		</testcase>
+		<testcase name="test_can_afford_true" classname="test_energy_manager" time="0.033">
+		</testcase>
+		<testcase name="test_can_afford_false" classname="test_energy_manager" time="0.033">
+		</testcase>
+		<testcase name="test_can_afford_exact" classname="test_energy_manager" time="0.033">
+		</testcase>
+		<testcase name="test_spend_success" classname="test_energy_manager" time="0.033">
+		</testcase>
+		<testcase name="test_spend_insufficient" classname="test_energy_manager" time="0.032">
+		</testcase>
+		<testcase name="test_spend_does_not_go_below_zero" classname="test_energy_manager" time="0.033">
+			<failure message="FAILED: res://tests/unit/energy/test_energy_manager.gd:89" type="FAILURE">
+<![CDATA[
+Expecting:
+ '0.000000'
+ but was
+ '5.000000'
+]]>
+			</failure>
+		</testcase>
+		<testcase name="test_add_energy" classname="test_energy_manager" time="0.033">
+		</testcase>
+		<testcase name="test_add_energy_clamps_to_max" classname="test_energy_manager" time="0.032">
+		</testcase>
+		<testcase name="test_add_negative_energy_clamps_to_zero" classname="test_energy_manager" time="0.032">
+		</testcase>
+		<testcase name="test_spend_zero" classname="test_energy_manager" time="0.032">
+		</testcase>
+		<testcase name="test_reset_to_start" classname="test_energy_manager" time="0.033">
+		</testcase>
+		<testcase name="test_start_battle" classname="test_energy_manager" time="0.033">
+			<failure message="FAILED: res://tests/unit/energy/test_energy_manager.gd:146" type="FAILURE">
+<![CDATA[
+Expecting:
+ '100.000000'
+ but was
+ '1500.000000'
+]]>
+			</failure>
+		</testcase>
+		<testcase name="test_start_battle_no_energy_cards_uses_defaults" classname="test_energy_manager" time="0.033">
+			<failure message="FAILED: res://tests/unit/energy/test_energy_manager.gd:153" type="FAILURE">
+<![CDATA[
+Expecting:
+ '100.000000'
+ but was
+ '1500.000000'
+]]>
+			</failure>
+			<failure message="FAILED: res://tests/unit/energy/test_energy_manager.gd:154" type="FAILURE">
+<![CDATA[
+Expecting:
+ '100.000000'
+ but was
+ '1500.000000'
+]]>
+			</failure>
+		</testcase>
+		<testcase name="test_end_battle" classname="test_energy_manager" time="0.032">
+		</testcase>
+		<testcase name="test_start_battle_guarantees_base_start_positive" classname="test_energy_manager" time="0.033">
+		</testcase>
+	</testsuite>
+	<testsuite id="8" name="test_evolution_hp_floor" package="tests/unit/progression" timestamp="2026-07-06T19:09:44" hostname="localhost" tests="2" failures="0" errors="0" skipped="0" flaky="0" time="0.119">
+		<testcase name="test_evolution_hp_floor_applied_after_growth" classname="test_evolution_hp_floor" time="0.050">
+		</testcase>
+		<testcase name="test_ww1_to_ww2_evolve_floor_not_below_prior_effective_hp" classname="test_evolution_hp_floor" time="0.033">
+		</testcase>
+	</testsuite>
+	<testsuite id="9" name="test_unit_lineage_config" package="tests/unit/progression" timestamp="2026-07-06T19:09:44" hostname="localhost" tests="7" failures="4" errors="0" skipped="0" flaky="0" time="0.367">
+		<testcase name="test_localize_evolve_reason_known_keys" classname="test_unit_lineage_config" time="0.051">
+		</testcase>
+		<testcase name="test_localize_evolve_reason_unknown_passthrough" classname="test_unit_lineage_config" time="0.032">
+		</testcase>
+		<testcase name="test_validate_lineage_targets_all_resolvable" classname="test_unit_lineage_config" time="0.034">
+		</testcase>
+		<testcase name="test_lineage_count_includes_era_ladder_entries" classname="test_unit_lineage_config" time="0.032">
+		</testcase>
+		<testcase name="test_ww1_medium_has_evolution_path" classname="test_unit_lineage_config" time="0.034">
+			<failure message="FAILED: res://tests/unit/progression/test_unit_lineage_config.gd:27" type="FAILURE">
+<![CDATA[
+Expecting: 'true' but is 'false'
+]]>
+			</failure>
+			<failure message="FAILED: res://tests/unit/progression/test_unit_lineage_config.gd:28" type="FAILURE">
+<![CDATA[
+Expecting:
+ 'platform_ww2_medium'
+ but was
+ 'platform_ww2_medium'
+]]>
+			</failure>
+		</testcase>
+		<testcase name="test_evolution_graph_builder_lists_units_by_era" classname="test_unit_lineage_config" time="0.033">
+		</testcase>
+		<testcase name="test_predecessors_for_ww2_light" classname="test_unit_lineage_config" time="0.033">
+			<failure message="FAILED: res://tests/unit/progression/test_unit_lineage_config.gd:47" type="FAILURE">
+<![CDATA[
+Expecting to be greater than or equal:
+ '1' but was '0'
+]]>
+			</failure>
+			<failure message="FAILED: res://tests/unit/progression/test_unit_lineage_config.gd:53" type="FAILURE">
+<![CDATA[
+Expecting: 'true' but is 'false'
+]]>
+			</failure>
+		</testcase>
+	</testsuite>
+	<testsuite id="10" name="test_save_migration" package="tests/unit/save" timestamp="2026-07-06T19:09:44" hostname="localhost" tests="2" failures="0" errors="0" skipped="0" flaky="0" time="0.118">
+		<testcase name="test_legacy_paths_are_stable_strings" classname="test_save_migration" time="0.050">
+		</testcase>
+		<testcase name="test_migration_hook_executes_without_throwing" classname="test_save_migration" time="0.033">
+		</testcase>
+	</testsuite>
+</testsuites>

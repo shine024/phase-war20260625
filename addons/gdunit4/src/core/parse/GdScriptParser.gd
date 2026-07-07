@@ -1,7 +1,7 @@
 class_name GdScriptParser
 extends RefCounted
 
-const GdUnitTools := preload("res://addons/gdUnit4/src/core/GdUnitTools.gd")
+const GdUnitTools := preload("res://addons/gdunit4/src/core/GdUnitTools.gd")
 
 const TYPE_VOID = GdObjects.TYPE_VOID
 const TYPE_VARIANT = GdObjects.TYPE_VARIANT
@@ -648,7 +648,7 @@ func _enrich_function_descriptor(script: GDScript, fds: Array[GdFunctionDescript
 	var script_to_scan := script
 	while script_to_scan != null:
 		# do not scan the test suite base class itself
-		if script_to_scan.resource_path == "res://addons/gdUnit4/src/GdUnitTestSuite.gd":
+		if script_to_scan.resource_path == "res://addons/gdunit4/src/GdUnitTestSuite.gd":
 			break
 
 		var rows := script_to_scan.source_code.split("\n")

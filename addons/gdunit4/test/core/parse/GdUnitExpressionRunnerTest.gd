@@ -5,9 +5,9 @@ extends GdUnitTestSuite
 @warning_ignore('return_value_discarded')
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/core/parse/GdUnitExpressionRunner.gd'
+const __source = 'res://addons/gdunit4/src/core/parse/GdUnitExpressionRunner.gd'
 
-const TestFuzzers := preload("res://addons/gdUnit4/test/fuzzers/TestFuzzers.gd")
+const TestFuzzers := preload("res://addons/gdunit4/test/fuzzers/TestFuzzers.gd")
 
 
 func test_create_fuzzer_argument_default() -> void:

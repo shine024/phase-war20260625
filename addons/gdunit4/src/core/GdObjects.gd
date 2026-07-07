@@ -2,7 +2,7 @@
 class_name GdObjects
 extends Resource
 
-const GdUnitTools := preload("res://addons/gdUnit4/src/core/GdUnitTools.gd")
+const GdUnitTools := preload("res://addons/gdunit4/src/core/GdUnitTools.gd")
 
 
 # introduced with Godot 4.3.beta1

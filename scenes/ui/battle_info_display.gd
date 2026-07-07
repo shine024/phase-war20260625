@@ -30,6 +30,9 @@ var _unit_count_refresh_accum: float = 0.0
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_apply_design_tokens()
+	# v7.x(A3): 可访问性运行时切换后即时重绘（经 SignalBus 广播）。
+	if SignalBus and SignalBus.has_signal("accessibility_changed"):
+		SignalBus.accessibility_changed.connect(_apply_design_tokens)
 	_update_display()
 
 	if SignalBus:
@@ -79,9 +82,11 @@ func _process(delta: float) -> void:
 			_update_display()
 
 func _apply_design_tokens() -> void:
+	# v7.x(A3): 原硬编码 true（永远高对比）；改为读实时开关，让设置可切换。
+	var hc: bool = DT.is_high_contrast()
 	# 应用设计令牌样式
 	var panel_style = StyleBoxFlat.new()
-	panel_style.bg_color = DT.get_panel_color(true)
+	panel_style.bg_color = DT.get_panel_color(hc)
 	panel_style.corner_radius_top_left = 8
 	panel_style.corner_radius_top_right = 8
 	panel_style.corner_radius_bottom_right = 8
@@ -97,8 +102,8 @@ func _apply_design_tokens() -> void:
 	# 设置标签字体
 	for child in $VBoxContainer/BattleStats.get_children():
 		if child is Label:
-			child.add_theme_font_size_override("font_size", DT.get_font_size(DT.FONT_SIZE_SMALL))
-			child.add_theme_color_override("font_color", DT.get_text_color(true))
+			child.add_theme_font_size_override("font_size", DT.current_font_size(DT.FONT_SIZE_SMALL))
+			child.add_theme_color_override("font_color", DT.get_text_color(hc))
 
 func _on_battle_started() -> void:
 	_battle_active = true

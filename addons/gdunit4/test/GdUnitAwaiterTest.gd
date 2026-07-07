@@ -5,7 +5,7 @@ class_name GdUnitAwaiterTest
 extends GdUnitTestSuite
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/GdUnitAwaiter.gd'
+const __source = 'res://addons/gdunit4/src/GdUnitAwaiter.gd'
 
 signal test_signal_a()
 signal test_signal_b()

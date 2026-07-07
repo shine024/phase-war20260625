@@ -5,7 +5,7 @@ class_name GodotGdErrorMonitorTest
 extends GdUnitTestSuite
 
 # TestSuite generated from
-const __source = 'res://addons/gdUnit4/src/monitor/GodotGdErrorMonitor.gd'
+const __source = 'res://addons/gdunit4/src/monitor/GodotGdErrorMonitor.gd'
 
 
 const PUSH_WARNING_MESSAGE := """
@@ -18,7 +18,7 @@ USER ERROR: this is an error
 """
 const SCRIPT_ERROR_MESSAGE := """
 USER SCRIPT ERROR: Trying to call a function on a previously freed instance.
-   at: GdUnitScriptTypeTest.test_xx (res://addons/gdUnit4/test/GdUnitScriptTypeTest.gd:22)
+   at: GdUnitScriptTypeTest.test_xx (res://addons/gdunit4/test/GdUnitScriptTypeTest.gd:22)
 """
 
 # With Godot 4.4 the pattern has changed
@@ -32,7 +32,7 @@ ERROR: this is an error
 """
 const SCRIPT_ERROR_MESSAGE_4x4 := """
 SCRIPT ERROR: Trying to call a function on a previously freed instance.
-   at: GdUnitScriptTypeTest.test_xx (res://addons/gdUnit4/test/GdUnitScriptTypeTest.gd:22)
+   at: GdUnitScriptTypeTest.test_xx (res://addons/gdunit4/test/GdUnitScriptTypeTest.gd:22)
 """
 
 
@@ -129,7 +129,7 @@ func test_scan_for_script_errors() -> void:
 
 	var entry := ErrorLogEntry.new(ErrorLogEntry.TYPE.PUSH_ERROR, 22,
 		"Trying to call a function on a previously freed instance.",
-		"at: GdUnitScriptTypeTest.test_xx (res://addons/gdUnit4/test/GdUnitScriptTypeTest.gd:22)")
+		"at: GdUnitScriptTypeTest.test_xx (res://addons/gdunit4/test/GdUnitScriptTypeTest.gd:22)")
 	var expected_report := GodotGdErrorMonitor._to_report(entry)
 	monitor._eof = 0
 	await monitor.scan()

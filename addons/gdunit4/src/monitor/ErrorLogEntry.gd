@@ -9,7 +9,7 @@ enum TYPE {
 }
 
 
-const GdUnitTools := preload("res://addons/gdUnit4/src/core/GdUnitTools.gd")
+const GdUnitTools := preload("res://addons/gdunit4/src/core/GdUnitTools.gd")
 
 const PATTERN_SCRIPT_ERROR := "USER SCRIPT ERROR:"
 const PATTERN_PUSH_ERROR := "USER ERROR:"
