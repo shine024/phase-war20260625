@@ -102,7 +102,7 @@ const IMPACT_TEX_SCALE: Dictionary = {
 }
 
 const REF_TEX_PX: float = 512.0
-const PROJ_DISPLAY_SCALE_MUL: float = 0.5
+const PROJ_DISPLAY_SCALE_MUL: float = 0.05
 
 
 ## ========== v6.0: 按武器名称查贴图 ==========
@@ -228,32 +228,36 @@ static func proj_scale(weapon_type: int) -> float:
 
 
 static func proj_quad_size(weapon_type: int) -> Vector2:
-	# v7.x: 按贴图实际宽高比返回矩形（而非正方形），避免把细长子弹压成方块
-	# base_h 为基准高度（像素），aspect 为宽/高比
-	var s := proj_scale(weapon_type) * REF_TEX_PX
-	var base_h: float = s
-	var aspect: float = 4.0  # 默认细长
-	# 按 weapon_type 选合适的宽高比（与裁剪后贴图的实际比例匹配）
+	# v7.x 修复：QuadMesh 尺寸必须与 Sprite2D 显示尺寸一致
+	# Sprite2D 显示尺寸 = texture_pixel_size * proj_scale
+	# proj_scale = PROJ_TEX_SCALE[type] * PROJ_DISPLAY_SCALE_MUL
+	# 因此 quad size = 贴图实际像素 * proj_scale
+	# 由于无法在编译期获取贴图像素尺寸，改用以下等价公式：
+	# quad_h = proj_scale * REF_TEX_PX * (tex_height / REF_TEX_PX)
+	#        = proj_scale * tex_height
+	# 我们已知各武器对应的贴图高度，直接硬编码计算：
+	var s := proj_scale(weapon_type)
 	match weapon_type:
-		0, 4:      # DIRECT/SMG/PISTOL — 标准细长弹
-			aspect = 5.0
-		1:         # INDIRECT/artillery — 曲射炮弹
-			aspect = 6.0
-		2:         # AERIAL/missile — 空射导弹
-			aspect = 4.5
-		5:         # SHOTGUN — 近方形霰弹丸
-			aspect = 1.6
-		3, 9:      # ROCKET/MISSILE
-			aspect = 5.5
-		6:         # SNIPER — 超细长
-			aspect = 7.8
-		7:         # FLAK
-			aspect = 5.5
-		8:         # LASER
-			aspect = 4.5
-		10, 11:    # OMEGA/RAIL — 细长高能弹
-			aspect = 5.0
-	return Vector2(base_h * aspect, base_h)
+		0, 4:     # DIRECT/SMG/PISTOL — tex 673x121 / 567x131
+			return Vector2(s * 673, s * 121)
+		1:        # INDIRECT/artillery — tex 1122x184
+			return Vector2(s * 1122, s * 184)
+		2, 9:     # AERIAL/MISSILE — tex 1127x251
+			return Vector2(s * 1127, s * 251)
+		3, 7:     # ROCKET/FLAK — tex 1202x203
+			return Vector2(s * 1202, s * 203)
+		5:        # SHOTGUN — tex 737x472
+			return Vector2(s * 737, s * 472)
+		6:        # SNIPER — tex 629x80
+			return Vector2(s * 629, s * 80)
+		8:        # LASER — tex 365x77
+			return Vector2(s * 365, s * 77)
+		10:       # OMEGA — tex 1071x191
+			return Vector2(s * 1071, s * 191)
+		11:       # RAIL — tex 974x208
+			return Vector2(s * 974, s * 208)
+		_:
+			return Vector2(s * 512, s * 128)
 
 
 static func impact_texture(weapon_type: int) -> Texture2D:
@@ -420,14 +424,14 @@ static func _spawn_impact_sparks(parent: Node2D, world_pos: Vector2, intensity: 
 
 static var _active_sparks: int = 0
 
-static func _acquire_spark() -> Polygon2D:
-	while not _spark_pool.is_empty():
-		var p: Polygon2D = _spark_pool.pop_back()
-		if p != null and is_instance_valid(p):
-			p.visible = true
-			p.modulate = Color.WHITE
-			return p
-	return Polygon2D.new()
+	static func _acquire_spark() -> Polygon2D:
+		while not _spark_pool.is_empty():
+			var p: Polygon2D = _spark_pool.pop_back()
+			if p != null and is_instance_valid(p) and not p.is_queued_for_deletion():
+				p.visible = true
+				p.modulate = Color.WHITE
+				return p
+		return Polygon2D.new()
 
 static func _release_spark(spark: Polygon2D) -> void:
 	if spark == null or not is_instance_valid(spark):

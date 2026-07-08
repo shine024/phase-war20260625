@@ -5,8 +5,6 @@
 extends RefCounted
 
 const FIX_PATTERNS = {
-	"scenes/ui/active_law_cast_panel.tscn": 2,
-	"scenes/ui/affix_panel.tscn": 4,
 	"scenes/ui/backpack_card_item.tscn": 10,
 	"scenes/ui/backpack_panel.tscn": 8,
 	"scenes/ui/backpack_scroll.tscn": 1,
@@ -35,7 +33,6 @@ const FIX_PATTERNS = {
 	"scenes/ui/level_info_panel.tscn": 1,
 	"scenes/ui/level_select_panel.tscn": 1,
 	"scenes/ui/modification_panel.tscn": 1,
-	"scenes/ui/phase_instrument_panel.tscn": 8,
 	"scenes/ui/phase_instrument_selector.tscn": 1,
 	"scenes/ui/player_spawn_hud.tscn": 2,
 	"scenes/ui/reinforcement_panel.tscn": 1,

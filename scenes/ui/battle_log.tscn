@@ -1,0 +1,11 @@
+[gd_scene load_steps=2 format=3 uid="uid://bbattlelog7x"]
+
+[ext_resource type="Script" path="res://scenes/ui/battle_log.gd" id="1_battle_log"]
+
+[node name="BattleLogBar" type="PanelContainer"]
+offset_left = 8.0
+offset_top = -224.0
+offset_right = -8.0
+offset_bottom = -128.0
+mouse_filter = 2
+script = ExtResource("1_battle_log")

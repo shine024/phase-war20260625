@@ -204,6 +204,9 @@ func start_battle(battle_scene: Node) -> void:
 		_is_phase_master_battle = GameManager.is_phase_master_battle()
 		if _is_phase_master_battle and GameManager.has_method("get_current_phase_master"):
 			_phase_master_config = GameManager.get_current_phase_master()
+			# v7.x 战场视觉反馈：相位师登场广播（Announcer/Spectacle 播报 + 登场特效）
+			if SignalBus and not _phase_master_config.is_empty():
+				SignalBus.phase_master_appeared.emit(_phase_master_config.duplicate(true))
 			if DEBUG_BATTLE_LOG:
 				pass
 				# [LOG-v5.1] print("[BattleManager] 相位师对战配置: %s" % _phase_master_config)

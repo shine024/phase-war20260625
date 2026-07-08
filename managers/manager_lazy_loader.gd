@@ -162,13 +162,9 @@ func _ensure_configs_initialized() -> void:
 			"priority": 4,
 			"description": "属性提升"
 		},
-		# ── 统计和排行榜 (priority 5) ──
-		"statistics": {
-			"node_name": "StatisticsManager",
-			"script_path": "res://managers/statistics_manager.gd",
-			"priority": 5,
-			"description": "统计系统"
-		},
+		# ── 排行榜 (priority 5) ──
+		# v7.x: statistics 配置已删除——StatisticsManager 数据全项目无 record_* 调用者
+		# （数据恒为 0），整个统计系统为死代码，已连同 statistics_panel 一并移除。
 		"leaderboard": {
 			"node_name": "LeaderboardManager",
 			"script_path": "res://managers/leaderboard_manager.gd",

@@ -160,9 +160,11 @@ func apply_card_grid_enemy_presentation() -> void:
 	_presentation_card_grid = true
 	_rest_position = position
 	velocity = Vector2.ZERO
-	var spr: Sprite2D = $Sprite2D as Sprite2D
-	var anim: AnimatedSprite2D = $AnimatedSprite2D as AnimatedSprite2D
-	var poly: Polygon2D = $Shape as Polygon2D
+	# 注意：Shape(旧Polygon2D占位)/AnimatedSprite2D(已弃用序列帧) 已从场景移除，
+	# 用 get_node_or_null 防御性访问，避免场景缺少节点时 "Node not found" 报错。
+	var spr: Sprite2D = get_node_or_null("Sprite2D") as Sprite2D
+	var anim: AnimatedSprite2D = get_node_or_null("AnimatedSprite2D") as AnimatedSprite2D
+	var poly: Polygon2D = get_node_or_null("Shape") as Polygon2D
 	if anim != null:
 		anim.visible = false
 		anim.sprite_frames = null
@@ -192,6 +194,8 @@ func apply_card_grid_enemy_presentation() -> void:
 		sprite_ok = CardGridUnitVisuals.apply_battle_unit_presentation(
 			self, spr, card_res, tex, false, rl
 		)
+		# v7.x 战场视觉反馈：敌方改造图标条（从 archetype tags 推断）
+		CardGridUnitVisuals.sync_mod_strip(self, self, spr)
 	if poly != null:
 		poly.visible = not sprite_ok
 	var hb := get_node_or_null("HpBar") as CanvasItem
@@ -483,9 +487,9 @@ func _ensure_enemy_weapon_slots(s: UnitStats) -> void:
 
 func _apply_visual_from_archetype(cfg: Dictionary) -> void:
 	_suppress_stray_editor_visual_nodes()
-	var poly: Polygon2D = $Shape as Polygon2D
-	var spr: Sprite2D = $Sprite2D as Sprite2D
-	var anim: AnimatedSprite2D = $AnimatedSprite2D as AnimatedSprite2D
+	var poly: Polygon2D = get_node_or_null("Shape") as Polygon2D
+	var spr: Sprite2D = get_node_or_null("Sprite2D") as Sprite2D
+	var anim: AnimatedSprite2D = get_node_or_null("AnimatedSprite2D") as AnimatedSprite2D
 	if spr == null:
 		return
 	if anim != null:
@@ -540,13 +544,13 @@ func _apply_visual_from_archetype(cfg: Dictionary) -> void:
 func _finalize_enemy_sprite_transforms(sprite_ok: bool) -> void:
 	if not sprite_ok:
 		return
-	var spr: Sprite2D = $Sprite2D as Sprite2D
+	var spr: Sprite2D = get_node_or_null("Sprite2D") as Sprite2D
 	if spr == null:
 		return
 	# 格子战由 apply_card_grid_enemy_presentation 接管视觉，此处无需传统朝向/时代着色
 
 func _update_shape() -> void:
-	var poly: Polygon2D = $Shape as Polygon2D
+	var poly: Polygon2D = get_node_or_null("Shape") as Polygon2D
 	if poly == null:
 		return
 	# 敌方：小红圆 → 用多边形近似
@@ -882,6 +886,9 @@ func _update_hp_bar() -> void:
 		bar.set_folded(BattleInputState.current_selected_unit != self)
 
 func take_damage(amount: float, attacker: Variant = null) -> void:
+	# v7.x 战场视觉反馈：记录最后攻击者，供 unit_killed 信号携带（击杀定帧/连杀提示依赖）
+	if attacker != null and is_instance_valid(attacker):
+		set_meta("_last_attacker", attacker)
 	var hp_loss: float = amount
 	if _cached_is_card_grid:
 		var pen: float = 0.0
@@ -999,6 +1006,11 @@ func _die() -> void:
 		if BattleInputState.current_selected_unit == self:
 			BattleInputState.current_selected_unit = null
 		SignalBus.unit_died.emit(self, false)
+		# v7.x 战场视觉反馈：emit unit_killed（含击杀者），供 BattleSpectacle/BattleLog/MVP
+		var _killer: Variant = get_meta("_last_attacker", null)
+		if _killer != null and not is_instance_valid(_killer):
+			_killer = null
+		SignalBus.unit_killed.emit(self, _killer, false)
 	# v6.4: 死亡淡出动画（缩放+透明度），逻辑结算已完成，仅做视觉收尾
 	_play_death_fadeout()
 

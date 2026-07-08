@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3]
+[gd_scene load_steps=19 format=3]
 
 [ext_resource type="Script" path="res://scenes/ui/growth_panel.gd" id="1_growth"]
 
@@ -40,19 +40,37 @@ content_margin_bottom = 4.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_portrait"]
 bg_color = Color(0.10, 0.16, 0.26, 1)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
 border_color = Color(0, 0.94, 1, 0.85)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
 content_margin_left = 0
 content_margin_top = 0
 content_margin_right = 0
 content_margin_bottom = 0
+shadow_color = Color(0, 0.94, 1, 0.35)
+shadow_size = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_era_badge"]
+bg_color = Color(1.0, 0.596, 0.0, 0.25)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1.0, 0.596, 0.0, 0.7)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+content_margin_left = 8
+content_margin_top = 2
+content_margin_right = 8
+content_margin_bottom = 2
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_atk"]
 bg_color = Color(0.22, 0.07, 0.09, 0.35)
@@ -221,14 +239,14 @@ corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_prog_fill_star"]
-bg_color = Color(0, 0.94, 1, 0.75)
+bg_color = Color(0, 0.94, 1, 0.9)
 corner_radius_top_left = 3
 corner_radius_top_right = 3
 corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_prog_fill_enhance"]
-bg_color = Color(0.55, 0.35, 0.96, 0.75)
+bg_color = Color(0.55, 0.35, 0.96, 0.9)
 corner_radius_top_left = 3
 corner_radius_top_right = 3
 corner_radius_bottom_right = 3
@@ -365,7 +383,7 @@ theme_override_constants/separation = 14
 
 [node name="Portrait" type="PanelContainer" parent="RootVBox/DetailHBox/DetailCol/DetailHeader/DetailHeaderInner"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(52, 52)
+custom_minimum_size = Vector2(72, 72)
 size_flags_horizontal = 0
 size_flags_vertical = 0
 theme_override_constants/margin_left = 0
@@ -379,8 +397,9 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "?"
 horizontal_alignment = 1
-custom_minimum_size = Vector2(0, 44)
-theme_override_font_sizes/font_size = 24
+vertical_alignment = 1
+custom_minimum_size = Vector2(0, 64)
+theme_override_font_sizes/font_size = 36
 
 [node name="HeaderInfo" type="VBoxContainer" parent="RootVBox/DetailHBox/DetailCol/DetailHeader/DetailHeaderInner"]
 layout_mode = 2
@@ -389,12 +408,12 @@ spacing = 2
 [node name="UnitName" type="Label" parent="RootVBox/DetailHBox/DetailCol/DetailHeader/DetailHeaderInner/HeaderInfo"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "CARD_ID"
+text = "卡牌名称"
 horizontal_alignment = 0
-custom_minimum_size = Vector2(0, 18)
+custom_minimum_size = Vector2(0, 22)
 autowrap_mode = 3
-theme_override_font_sizes/font_size = 16
-theme_override_colors/font_color = Color(0.91, 0.93, 0.96, 1)
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 
 [node name="SubtitleHBox" type="HBoxContainer" parent="RootVBox/DetailHBox/DetailCol/DetailHeader/DetailHeaderInner/HeaderInfo"]
 layout_mode = 2
@@ -403,18 +422,22 @@ spacing = 8
 [node name="Subtitle" type="Label" parent="RootVBox/DetailHBox/DetailCol/DetailHeader/DetailHeaderInner/HeaderInfo/SubtitleHBox"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "名称"
+text = "CARD_ID"
 custom_minimum_size = Vector2(0, 0)
-theme_override_font_sizes/font_size = 12
-theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 1)
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.5, 0.5, 0.6, 0.7)
 
 [node name="EraBadge" type="Label" parent="RootVBox/DetailHBox/DetailCol/DetailHeader/DetailHeaderInner/HeaderInfo/SubtitleHBox"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "ERA"
 custom_minimum_size = Vector2(0, 0)
+theme_override_colors/font_color = Color(1.0, 0.95, 0.85, 1)
+theme_override_colors/font_hover_color = Color(1.0, 1.0, 1.0, 1)
+theme_override_colors/font_outline_color = Color(1.0, 0.596, 0.0, 0.9)
+theme_override_constants/outline_size = 1
 theme_override_font_sizes/font_size = 11
-theme_override_colors/font_color = Color(1.0, 0.596, 0.0, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_era_badge")
 
 [node name="TagsContainer" type="HBoxContainer" parent="RootVBox/DetailHBox/DetailCol/DetailHeader/DetailHeaderInner/HeaderInfo"]
 unique_name_in_owner = true
@@ -875,10 +898,10 @@ theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 1)
 [node name="EvoArrow" type="Label" parent="RootVBox/DetailHBox/DetailCol/GridBody/Row2HBox/EvoSection2/EvoVBox/EvoPath"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "→"
+text = "⟶"
 custom_minimum_size = Vector2(0, 0)
-theme_override_font_sizes/font_size = 18
-theme_override_colors/font_color = Color(1.0, 0.596, 0.0, 1)
+theme_override_font_sizes/font_size = 22
+theme_override_colors/font_color = Color(1.0, 0.84, 0.0, 1)
 
 [node name="EvoTarget" type="VBoxContainer" parent="RootVBox/DetailHBox/DetailCol/GridBody/Row2HBox/EvoSection2/EvoVBox/EvoPath"]
 layout_mode = 2
@@ -982,8 +1005,8 @@ theme_override_constants/separation = 8
 unique_name_in_owner = true
 layout_mode = 2
 text = "⬆ 强化"
-custom_minimum_size = Vector2(100, 32)
-theme_override_font_sizes/font_size = 12
+custom_minimum_size = Vector2(120, 32)
+theme_override_font_sizes/font_size = 13
 theme_override_colors/font_color = Color(0.91, 0.93, 0.96, 1)
 theme_override_colors/font_hover_color = Color(1.0, 1.0, 1.0, 1)
 theme_override_styles/normal = SubResource("StyleBoxFlat_action_btn")
@@ -993,8 +1016,8 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_action_btn_hover")
 unique_name_in_owner = true
 layout_mode = 2
 text = "⚙ 改造"
-custom_minimum_size = Vector2(100, 32)
-theme_override_font_sizes/font_size = 12
+custom_minimum_size = Vector2(120, 32)
+theme_override_font_sizes/font_size = 13
 theme_override_colors/font_color = Color(0.91, 0.93, 0.96, 1)
 theme_override_colors/font_hover_color = Color(1.0, 1.0, 1.0, 1)
 theme_override_styles/normal = SubResource("StyleBoxFlat_action_btn")
@@ -1004,8 +1027,8 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_action_btn_hover")
 unique_name_in_owner = true
 layout_mode = 2
 text = "⟐ 进化"
-custom_minimum_size = Vector2(100, 32)
-theme_override_font_sizes/font_size = 12
+custom_minimum_size = Vector2(120, 32)
+theme_override_font_sizes/font_size = 13
 theme_override_colors/font_color = Color(0.91, 0.93, 0.96, 1)
 theme_override_colors/font_hover_color = Color(1.0, 1.0, 1.0, 1)
 theme_override_styles/normal = SubResource("StyleBoxFlat_action_btn")
@@ -1015,7 +1038,7 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_action_btn_hover")
 unique_name_in_owner = true
 layout_mode = 2
 text = "应用保存"
-custom_minimum_size = Vector2(120, 32)
+custom_minimum_size = Vector2(140, 32)
 theme_override_font_sizes/font_size = 13
 theme_override_colors/font_color = Color(0.91, 0.93, 0.96, 1)
 theme_override_colors/font_hover_color = Color(1.0, 1.0, 1.0, 1)

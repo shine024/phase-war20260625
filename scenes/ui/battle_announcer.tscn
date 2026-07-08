@@ -1,0 +1,11 @@
+[gd_scene load_steps=2 format=3 uid="uid://fn6oglhr20pr"]
+
+[ext_resource type="Script" path="res://scenes/ui/battle_announcer.gd" id="1_announcer"]
+
+[node name="TopCenterAnnouncer" type="PanelContainer"]
+offset_left = 440.0
+offset_top = 50.0
+offset_right = 840.0
+offset_bottom = 100.0
+mouse_filter = 2
+script = ExtResource("1_announcer")

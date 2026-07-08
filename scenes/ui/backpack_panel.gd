@@ -46,16 +46,17 @@ var _detail_info_panel: Control = null
 const FilterSortSub = preload("res://scripts/systems/backpack_filter_sort.gd")
 var _filter_sort: BackpackFilterSort = null
 
-## 与相位仪槽位、背包卡条目同尺寸（见 PhaseSlot.SLOT_SIZE）
-const CARD_SLOT_MIN: Vector2 = PhaseSlot.SLOT_SIZE
+## v8.0: 背包卡牌独立大卡面尺寸（80x120），不再跟随战场 PhaseSlot.SLOT_SIZE(50x80)。
+## 战场槽位保持原尺寸，背包用大卡面展示，拖拽对齐由 backpack_card_item_drag 处理。
+const CARD_SLOT_MIN: Vector2 = Vector2(80, 120)
 ## 背包卡槽上限，与 BackpackData.MAX_CARD_SLOTS 保持单一真相源（统计与 UI 必须一致）
 const MAX_CARD_SLOTS := 50
 ## 与 `backpack_panel.tscn` 中 CardGrid 的 `h_separation` 一致（勿与主题脱节）
 const BACKPACK_GRID_H_SEP := 6
-## 与 `backpack_panel.tscn` 中 BackpackPanel `custom_minimum_size.x` 对齐，按竖向槽位宽度取整列数
-const BACKPACK_PANEL_DESIGN_WIDTH := 1000
-## 每行列数：floor((W + sep) / (slot_w + sep))，与 PhaseSlot 竖向格宽一致
-const BACKPACK_GRID_COLUMNS: int = (BACKPACK_PANEL_DESIGN_WIDTH + BACKPACK_GRID_H_SEP) / (int(PhaseSlot.SLOT_SIZE.x) + BACKPACK_GRID_H_SEP)
+## v8.0: 面板可用宽度（8 列 × 80px + 7 × 6px 间距 = 642px，留出滚动条与内边距）
+const BACKPACK_PANEL_DESIGN_WIDTH := 680
+## 每行列数：8 列大卡面（80x120），视觉更舒适、每张卡更突出
+const BACKPACK_GRID_COLUMNS: int = 8
 
 # MVP 引用
 var _presenter: BackpackPresenter = null
@@ -73,6 +74,9 @@ var _resources_grid: GridContainer = null
 var _intel_grid: GridContainer = null
 var _stat_boosts_grid: GridContainer = null
 var _runes_grid: GridContainer = null  ## v6.2: 符文格子
+## v7.x: 符文右侧信息栏引用（从 rune_panel 合并而来）
+var _rune_bonus_label: RichTextLabel = null
+var _runeword_list_inner: VBoxContainer = null
 
 ## 相位仪快捷栏已移除（不再在背包内显示）
 
@@ -115,7 +119,10 @@ func _ready() -> void:
 	_resources_grid = get_node_or_null("VBoxOuter/TabContainer/ResourcesTab/ResourcesScroll/ResourcesGrid") as GridContainer
 	_intel_grid = get_node_or_null("VBoxOuter/TabContainer/IntelTab/IntelScroll/IntelGrid") as GridContainer
 	_stat_boosts_grid = get_node_or_null("VBoxOuter/TabContainer/StatBoostsTab/StatBoostsScroll/StatBoostsGrid") as GridContainer
-	_runes_grid = get_node_or_null("VBoxOuter/TabContainer/RunesTab/RunesScroll/RunesGrid") as GridContainer
+	_runes_grid = get_node_or_null("VBoxOuter/TabContainer/RunesTab/RunesHSplit/RunesScroll/RunesGrid") as GridContainer
+	# v7.x: 符文右侧信息栏（加成 + 符文之语），从 rune_panel 迁移合并而来
+	_rune_bonus_label = get_node_or_null("VBoxOuter/TabContainer/RunesTab/RunesHSplit/RuneInfoPanel/BonusLabel") as RichTextLabel
+	_runeword_list_inner = get_node_or_null("VBoxOuter/TabContainer/RunesTab/RunesHSplit/RuneInfoPanel/RunewordScroll/RunewordList") as VBoxContainer
 
 	# 必须先锁定列数再 setup（setup 会立刻 rebuild，不能在 rebuild 之后才设 columns）
 	if _combat_cards_grid:
@@ -272,7 +279,7 @@ func _on_tab_changed(tab_index: int) -> void:
 			# 属性提升标签页切换时刷新
 			refresh_stat_boosts_tab()
 		TabIndex.RUNES:
-			# v6.2: 符文标签页刷新
+			# v6.2: 符文标签页刷新（内部会连带刷新右侧信息栏）
 			refresh_runes_tab()
 
 ## ============================================================
@@ -835,6 +842,94 @@ func refresh_runes_tab() -> void:
 		var count: int = int(rune_counts[rune_id])
 		_add_rune_item(_runes_grid, rune_id, count, equipped_runes.has(rune_id))
 	_schedule_sync_card_grid_scroll_size_for_grid(_runes_grid)
+	# v7.x: 连带刷新右侧加成/符文之语信息栏（合并自 rune_panel，所有 refresh_runes_tab 调用点自动生效）
+	refresh_rune_info_panel()
+
+
+## v7.x: 刷新右侧符文信息栏（加成总览 + 已激活符文之语列表）
+## 逻辑迁移自 rune_panel.gd 的 _refresh_detail + _refresh_runeword_list。
+## 读 PhaseInstrumentManager 的 get_rune_bonus / get_active_runewords API 拼装展示文本。
+func refresh_rune_info_panel() -> void:
+	if _rune_bonus_label == null and _runeword_list_inner == null:
+		return
+	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
+	if pim == null:
+		return
+	# ── 加成总览（单符文 + 符文之语数值合并展示）──
+	if _rune_bonus_label != null:
+		var bonus: Dictionary = pim.get_rune_bonus() if pim.has_method("get_rune_bonus") else {}
+		var rune_stats: Dictionary = bonus.get("rune_stats", {})
+		var rune_specials: Array = bonus.get("rune_specials", [])
+		var runeword_bonuses: Array = bonus.get("runeword_bonuses", [])
+		if rune_stats.is_empty() and rune_specials.is_empty() and runeword_bonuses.is_empty():
+			_rune_bonus_label.text = "[color=gray]当前无符文加成[/color]"
+		else:
+			var lines: PackedStringArray = []
+			if not rune_stats.is_empty() or not rune_specials.is_empty():
+				lines.append("[b]单符文加成：[/b]")
+				for key in rune_stats:
+					var pct := int(round(float(rune_stats[key]) * 100.0))
+					if String(key) == "energy_cost_reduction" or String(key) == "damage_reduction":
+						lines.append("  %s -%d%%" % [RuneDefinitions.stat_display_name(String(key)), pct])
+					else:
+						lines.append("  %s +%d%%" % [RuneDefinitions.stat_display_name(String(key)), pct])
+				for sp in rune_specials:
+					var chance := int(round(float(sp.get("chance", 1.0)) * 100.0))
+					lines.append("  %s (%d%%概率)" % [RuneDefinitions.special_display_name(String(sp.get("special", ""))), chance])
+			if not runeword_bonuses.is_empty():
+				lines.append("[b]符文之语加成：[/b]")
+				for rw in runeword_bonuses:
+					var rw_name: String = String(rw.get("name", ""))
+					var rw_stats: Dictionary = rw.get("stats", {})
+					var rw_parts: Array[String] = []
+					for key in rw_stats:
+						var pct := int(round(float(rw_stats[key]) * 100.0))
+						if String(key) == "energy_cost_reduction" or String(key) == "damage_reduction":
+							rw_parts.append("%s -%d%%" % [RuneDefinitions.stat_display_name(String(key)), pct])
+						else:
+							rw_parts.append("%s +%d%%" % [RuneDefinitions.stat_display_name(String(key)), pct])
+					for sp in rw.get("specials", []):
+						var chance := int(round(float(sp.get("chance", 1.0)) * 100.0))
+						rw_parts.append("%s (%d%%概率)" % [RuneDefinitions.special_display_name(String(sp.get("special", ""))), chance])
+					if not rw_parts.is_empty():
+						lines.append("  [color=#c9a0ff][%s][/color] %s" % [rw_name, " | ".join(rw_parts)])
+			_rune_bonus_label.text = "\n".join(lines)
+	# ── 已激活符文之语列表 ──
+	if _runeword_list_inner != null:
+		for child in _runeword_list_inner.get_children():
+			child.queue_free()
+		var active: Array = pim.get_active_runewords() if pim.has_method("get_active_runewords") else []
+		if active.is_empty():
+			var empty_label := Label.new()
+			empty_label.text = "（暂无激活的符文之语）"
+			empty_label.add_theme_font_size_override("font_size", 12)
+			empty_label.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85, 1))
+			_runeword_list_inner.add_child(empty_label)
+		else:
+			for rw in active:
+				var entry := VBoxContainer.new()
+				entry.add_theme_constant_override("separation", 2)
+				var rw_id: String = String(rw.get("id", ""))
+				var tier: int = int(rw.get("tier", 2))
+				var tier_color: Color = RunewordDefinitions.TIER_COLORS.get(tier, Color(0.545, 0.361, 0.965))
+				var name_label := Label.new()
+				name_label.text = "★ %s (T%d)" % [RunewordDefinitions.get_runeword_name(rw_id), tier]
+				name_label.add_theme_font_size_override("font_size", 13)
+				name_label.add_theme_color_override("font_color", tier_color)
+				entry.add_child(name_label)
+				var effect_label := Label.new()
+				effect_label.text = RunewordDefinitions.get_effects_description(rw_id)
+				effect_label.add_theme_font_size_override("font_size", 11)
+				effect_label.add_theme_color_override("font_color", Color(0.75, 0.82, 0.9, 1))
+				effect_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+				entry.add_child(effect_label)
+				_runeword_list_inner.add_child(entry)
+
+
+## v7.x: 外部入口（main.gd 底部栏"法则区"点击 / 教程引导调用）：打开背包并切到符文 Tab
+func switch_to_runes_tab() -> void:
+	if _tab_container != null:
+		_tab_container.current_tab = TabIndex.RUNES
 
 ## 单个符文格子渲染
 func _add_rune_item(grid: GridContainer, rune_id: String, count: int, is_equipped: bool) -> void:

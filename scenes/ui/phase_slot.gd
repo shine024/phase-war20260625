@@ -41,9 +41,6 @@ func get_card():
 
 func refresh_display() -> void:
 	var icon: TextureRect = get_node_or_null("MarginContainer/VBox/Icon") as TextureRect
-	var name_label: Label = get_node_or_null("MarginContainer/VBox/NameLabel") as Label
-	var cost_label: Label = get_node_or_null("MarginContainer/VBox/CostLabel") as Label
-	var xp_label: Label = get_node_or_null("MarginContainer/VBox/XpLabel") as Label
 
 	var c: CardResource = current_card as CardResource
 	if c == null:
@@ -56,54 +53,20 @@ func refresh_display() -> void:
 			CardFrameUi.clear_cost_corner_badge(icon)
 			icon.texture = null
 			icon.visible = false
-		if name_label:
-			name_label.text = "空"
-			name_label.visible = true
-		if cost_label:
-			cost_label.text = ""
-		if xp_label:
-			xp_label.text = ""
 		return
 
 	CardFrameUi.apply_slot_chrome(self, c)
 
 	if icon:
-		var art_h: float = maxf(18.0, float(SLOT_SIZE.y) - float(COMPACT_BOTTOM_TEXT_H) - 8.0)
+		# v7.x：精简模式无底部文字区，图标占满整个槽位（留 8px 边距）
+		var art_h: float = maxf(18.0, float(SLOT_SIZE.y) - 8.0)
 		var art_w: float = float(SLOT_SIZE.x) - 8.0
 		var tex: Texture2D = UiAssetLoader.load_tex(UiAssetLoader.card_icon_path_for(c))
 		UiAssetLoader.setup_card_unit_icon(icon, tex, Vector2(art_w, art_h), true)
 
-	if name_label:
-		var display_name: String = "能量" if c.card_type == GameConstants.CardType.ENERGY else DefaultCards.safe_name(c)
-		if display_name.length() > 6:
-			display_name = display_name.substr(0, 6)
-		# v7.x：同名卡追加序号后缀（#1/#2…），截断后追加
-		display_name += DefaultCards.seq_suffix(c)
-		name_label.text = display_name
-		name_label.visible = true
-		match c.rarity:
-			"uncommon":
-				name_label.add_theme_color_override("font_color", Color(0.4, 1.0, 0.6, 1))
-			"rare":
-				name_label.add_theme_color_override("font_color", Color(0.4, 0.7, 1.0, 1))
-			"legendary":
-				name_label.add_theme_color_override("font_color", Color(1.0, 0.6, 0.9, 1))
-			_:
-				name_label.add_theme_color_override("font_color", Color(0.9, 0.93, 1.0, 1))
-
-	if cost_label:
-		cost_label.text = ""
 	# v7.x：费用用 _draw 直接画在卡牌左上角（绕过 PanelContainer 布局强制）
 	_cost_draw_text = "%d⚡" % int(c.energy_cost)
 	queue_redraw()
-
-	if xp_label:
-		if weight_capacity > 0:
-			xp_label.text = "%d/%d" % [used_weight, weight_capacity]
-			xp_label.visible = true
-		else:
-			xp_label.text = ""
-			xp_label.visible = false
 
 func _draw() -> void:
 	# v7.x：费用文字直接画在卡牌左上角（绕过 PanelContainer 对子节点的布局强制管理）

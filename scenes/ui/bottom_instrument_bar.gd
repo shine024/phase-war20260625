@@ -241,7 +241,8 @@ func _update_slot_panel(panel: Control, entry: Dictionary) -> void:
 		panel.set_meta("own_stylebox", sb)
 	sb.bg_color = _slot_bg(color)
 	sb.border_color = _slot_border(color)
-	if _slot_name_label(panel) == null:
+	# v7.x：精简模式不再有 SlotTextVBox，直接用 SlotIconClip 判定槽位结构完整性
+	if _slot_icon_rect(panel) == null:
 		return
 	# 处理 DeployIndicator：仅在战斗卡时存在
 	var needs_indicator: bool = has_card and card.card_type == GC.CardType.COMBAT_UNIT
@@ -311,7 +312,8 @@ func _update_slot_panel(panel: Control, entry: Dictionary) -> void:
 		var rune_tr: TextureRect = _slot_icon_rect(panel)
 		var rune_tex: Texture2D = UiAssetLoader.rune_icon(rune_id)
 		var slot_h: float = panel.size.y if panel.size.y > 4.0 else float(SLOT_FIXED_SIZE.y)
-		var art_h: float = maxf(18.0, slot_h - float(_SLOT_BOTTOM_TEXT_H) - 4.0)
+		# v7.x：精简模式无底部文字区，图标占满（留 4px 边距）
+		var art_h: float = maxf(18.0, slot_h - 4.0)
 		var art_w: float = SLOT_FIXED_SIZE.x - 6.0
 		UiAssetLoader.setup_texrect_icon(rune_tr, rune_tex, Vector2(art_w, art_h))
 		_sync_slot_card_background(panel, null)
@@ -372,6 +374,8 @@ func _slot_icon_rect(panel: Control) -> TextureRect:
 
 
 func _apply_slot_bottom_text(panel: Control, name_text: String, cost_text: String) -> void:
+	# v7.x：精简模式槽位已无 SlotNameLabel/SlotCostLabel（节点删除），此函数保留仅为兼容旧调用点，
+	# 内部安全空转（名称/成本信息已转移到 tooltip + 费用角标）
 	var name_l: Label = _slot_name_label(panel)
 	var cost_l: Label = _slot_cost_label(panel)
 	if name_l:
@@ -383,15 +387,8 @@ func _apply_slot_bottom_text(panel: Control, name_text: String, cost_text: Strin
 func _apply_slot_card_labels(panel: Control, card: CardResource) -> void:
 	if card == null:
 		return
-	var display_name: String = "能量" if card.card_type == GC.CardType.ENERGY else String(card.display_name)
-	if display_name.is_empty():
-		display_name = DefaultCardsData.get_safe_display_name(card.card_id)
-	if display_name.length() > 6:
-		display_name = display_name.substr(0, 6)
-	# v7.x：同名卡追加序号后缀（#1/#2…），截断后追加
-	display_name += DefaultCardsData.seq_suffix(card)
-	# v7.x：费用从底部文本移到右上角（CostBadge 用 set_as_top_level + _draw 绕过 PanelContainer 布局）
-	_apply_slot_bottom_text(panel, display_name, "")
+	# v7.x：精简模式槽位不再显示底部名称，只设置费用角标（tooltip 提供完整信息）
+	# 保留原名称计算逻辑仅用于 tooltip（_format_card_slot_tooltip 已覆盖），此处只设角标
 	var cost_badge = CardFrameUi.ensure_cost_corner_badge(panel, true)
 	if cost_badge != null:
 		cost_badge.energy_value = int(card.energy_cost)
@@ -422,7 +419,8 @@ func _sync_slot_icon(panel: Control, card: CardResource, law_id: String) -> void
 	elif not law_id.is_empty():
 		tex = UiAssetLoader.load_tex(UiAssetLoader.law_slot_icon_path(law_id))
 	var slot_h: float = panel.size.y if panel.size.y > 4.0 else float(SLOT_FIXED_SIZE.y)
-	var art_h: float = maxf(18.0, slot_h - float(_SLOT_BOTTOM_TEXT_H) - 4.0)
+	# v7.x：精简模式槽位无底部文字区，图标占满整个可用高度（留 4px 上下边距）
+	var art_h: float = maxf(18.0, slot_h - 4.0)
 	var art_w: float = SLOT_FIXED_SIZE.x - 6.0
 	if card != null:
 		UiAssetLoader.setup_card_unit_icon(tr, tex, Vector2(art_w, art_h), true)
@@ -468,36 +466,8 @@ func _build_slot_panel(entry: Dictionary) -> PanelContainer:
 	slot_icon_tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	slot_icon_tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	icon_clip.add_child(slot_icon_tr)
-	var text_v := VBoxContainer.new()
-	text_v.name = "SlotTextVBox"
-	text_v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	text_v.size_flags_vertical = Control.SIZE_SHRINK_END
-	text_v.custom_minimum_size.y = _SLOT_BOTTOM_TEXT_H
-	text_v.add_theme_constant_override("separation", 0)
-	text_v.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var name_lbl := Label.new()
-	name_lbl.name = "SlotNameLabel"
-	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
-	name_lbl.clip_text = true
-	name_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	name_lbl.add_theme_font_size_override("font_size", 10)
-	name_lbl.add_theme_color_override("font_color", Color(0.92, 0.94, 0.98, 1.0))
-	var cost_lbl := Label.new()
-	cost_lbl.name = "SlotCostLabel"
-	cost_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	cost_lbl.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-	cost_lbl.clip_text = true
-	cost_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	cost_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	cost_lbl.add_theme_font_size_override("font_size", 10)
-	cost_lbl.add_theme_color_override("font_color", Color(0.95, 0.82, 0.35, 1.0))
-	text_v.add_child(name_lbl)
-	text_v.add_child(cost_lbl)
+	# v7.x：精简模式删除 SlotTextVBox（名称+成本），只保留图标+费用角标
 	root_v.add_child(icon_clip)
-	root_v.add_child(text_v)
 	panel.add_child(root_v)
 	# v6.2c: 符文槽位（card 字段是 rune_id String，不是 CardResource，必须单独处理）
 	var rune_id: String = String(entry.get("rune_id", ""))
@@ -517,7 +487,8 @@ func _build_slot_panel(entry: Dictionary) -> PanelContainer:
 		var rune_tr: TextureRect = _slot_icon_rect(panel)
 		var rune_tex: Texture2D = UiAssetLoader.rune_icon(rune_id)
 		var slot_h: float = panel.size.y if panel.size.y > 4.0 else float(SLOT_FIXED_SIZE.y)
-		var art_h: float = maxf(18.0, slot_h - float(_SLOT_BOTTOM_TEXT_H) - 4.0)
+		# v7.x：精简模式无底部文字区，图标占满（留 4px 边距）
+		var art_h: float = maxf(18.0, slot_h - 4.0)
 		var art_w: float = SLOT_FIXED_SIZE.x - 6.0
 		UiAssetLoader.setup_texrect_icon(rune_tr, rune_tex, Vector2(art_w, art_h))
 		_sync_slot_rank_badge(panel, null)

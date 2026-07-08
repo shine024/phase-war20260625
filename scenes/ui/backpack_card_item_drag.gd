@@ -305,6 +305,8 @@ static func cache_slot_controls_for_drag(item: PanelContainer) -> void:
 		if section != null:
 			item._cached_slot_controls.append_array(get_phase_slot_controls(section))
 	# 相位仪装配面板槽位（phase_panel 仅含 green 槽，slot_color/slot_index meta 由面板实例化时设置）
+	# v7.x: phase_instrument_panel.tscn 已删除（被 bottom_instrument_bar 取代），以下三路径恒返回 null；
+	# 保留查找逻辑是为了将来若复活独立相位仪装配面板时可无缝兼容。当前相位仪装配走战斗底部栏路径。
 	var phase_panel: Node = item.get_tree().get_first_node_in_group("phase_instrument_panel") if item.get_tree() != null else null
 	if phase_panel == null:
 		phase_panel = item.get_node_or_null("/root/BottomInstrumentBar/PhaseInstrumentPanel")

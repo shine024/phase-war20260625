@@ -9,6 +9,11 @@ static var QUESTS: Array = _load_json_array(_QUESTS_JSON_PATH, LEGACY_QUESTS)
 ## tutorial 引导任务不受此开关影响。改回 false 即恢复。
 const STORY_DISABLED := true
 
+## 引导剧情（category=="tutorial"）全局开关。
+## true=关闭进关时的 tutorial 引导对话（相位仪/强化/改造/进化/符文系统教学），进关不再自动弹对话、不发奖励。
+## story 剧情任务不受此开关影响（由 STORY_DISABLED 单独控制）。改回 false 即恢复。
+const TUTORIAL_DISABLED := true
+
 ## v6.9: 动态任务集合（运行时注册，不写入静态 QUESTS）
 ## 由 QuestManager.register_dynamic_quest 委托填充；get_by_id/get_available_ids 自动同时查询两个集合
 ## 存档由 QuestManager.save_state 持久化（保存定义 + 注册状态），读档后回填到这里
@@ -1353,13 +1358,17 @@ static func get_quests_by_trigger_level(level: int) -> Array:
 
 ## v6.7(引导剧情): 返回该关卡所有可触发的剧情（story + tutorial）
 ## 供 GameManager 进关钩子使用，收集本关所有应播放的剧情对话
-## 受 STORY_DISABLED 开关控制：关闭时只返回 tutorial（story 不触发）
+## 受 STORY_DISABLED / TUTORIAL_DISABLED 开关分别控制
 static func get_all_triggerable_at_level(level: int) -> Array:
 	var out: Array = []
 	for q in QUESTS:
 		var cat: String = q.get("category", "commission")
-		var include: bool = (cat == "tutorial" or (cat == "story" and not STORY_DISABLED)) and int(q.get("trigger_level", 0)) == level
-		if include:
+		var include: bool = false
+		if cat == "tutorial" and not TUTORIAL_DISABLED:
+			include = true
+		elif cat == "story" and not STORY_DISABLED:
+			include = true
+		if include and int(q.get("trigger_level", 0)) == level:
 			out.append(q.duplicate(true))
 	return out
 

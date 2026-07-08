@@ -204,3 +204,15 @@ signal instance_disposed(instance_id: String)
 # v7.x(A3): 可访问性运行时变更。由 DesignTokens.set_accessibility 经由本总线广播，
 # 已打开的面板/血条/能量条等监听以即时重绘（GDScript 不支持 static signal，故走 autoload）。
 signal accessibility_changed()
+
+# v7.x 战场视觉反馈（克制版）
+# 击杀事件：含击杀者，供 BattleSpectacle/BattleLog/MVP 使用。killer 可能为 null（环境死/超时死）。
+signal unit_killed(victim: Node, killer: Node, is_player_victim: bool)
+# BOSS 波次开始：本波 boss archetype_id 列表，供 BattleSpectacle 播放 BOSS 登场特效。
+signal boss_wave_started(boss_archetype_ids: Array)
+# 相位师登场：相位师战开始时广播 master_config，供 Announcer/Spectacle 播报。
+signal phase_master_appeared(master_config: Dictionary)
+# 符文之语激活：RunewordMatcher 命中时广播，供 Announcer 播报。
+signal runeword_triggered(rw_id: String, unit: Node)
+# 通用高光事件（连杀/特殊触发等），payload 含 event_id + 自定义字段。
+signal combat_highlight(event_id: String, payload: Dictionary)

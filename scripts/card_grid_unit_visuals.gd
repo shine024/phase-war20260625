@@ -4,6 +4,7 @@ class_name CardGridUnitVisuals
 const CardGridThumbnailScale = preload("res://scripts/card_grid_thumbnail_scale.gd")
 const CardGridRankStrip = preload("res://scripts/card_grid_rank_strip.gd")
 const CardGridBuffStrip = preload("res://scripts/card_grid_buff_strip.gd")
+const CardGridModStrip = preload("res://scripts/card_grid_mod_strip.gd")
 const CardGridBattleLayout = preload("res://scripts/card_grid_battle_layout.gd")
 const RankRules = preload("res://data/rank_rules.gd")
 const CardFrameUi = preload("res://scripts/card_frame_ui.gd")
@@ -89,6 +90,10 @@ static func apply_battle_unit_presentation(
 		apply_battle_card_chrome(host, unit_spr, card)
 	sync_rank_strip(host, rank_level, unit_spr)
 	sync_name_strip(host, unit_spr, card, face_right)
+	# v7.x 战场视觉反馈：单位头顶增强——稀有度角标 + 等级标签
+	if card != null:
+		sync_rarity_badge(host, unit_spr, card)
+	sync_level_tag(host, unit_spr, card)
 	return true
 
 
@@ -248,3 +253,101 @@ static func sync_buff_strip(host: Node2D, unit: Node, spr: Sprite2D) -> void:
 	# 注意：立绘 spr.position.y 已改为"脚对齐"，不等于底图基线；buff 条跟随底图（卡的外壳）。
 	var base_y: float = bg_spr.position.y if (bg_spr != null and bg_spr.texture != null) else spr.position.y
 	strip.position = Vector2(0.0, base_y + half_h + hp_gap + hp_h + card_w * 0.03)
+
+
+# ============================================================================
+#  v7.x 战场视觉反馈：单位头顶增强（稀有度角标 + 等级标签 + 改造图标条）
+# ============================================================================
+
+## 稀有度小角标：卡框右上角的 12px 三角形，颜色按稀有度（敌方也显示，肉眼识别精英）
+static func sync_rarity_badge(host: Node2D, unit_spr: Sprite2D, card: CardResource) -> void:
+	if host == null or card == null:
+		return
+	var badge := host.get_node_or_null("RarityBadge") as Polygon2D
+	# common 不显示（避免视觉噪音）
+	var is_common := (card.rarity == "common" or card.rarity.is_empty())
+	if is_common:
+		if badge != null:
+			badge.visible = false
+		return
+	if badge == null:
+		badge = Polygon2D.new()
+		badge.name = "RarityBadge"
+		badge.z_index = 16
+		host.add_child(badge)
+	# 三角形（向下的稀有度标记）
+	var s: float = 6.0
+	badge.polygon = PackedVector2Array([
+		Vector2(-s, -s),
+		Vector2(s, -s),
+		Vector2(0.0, s * 0.6),
+	])
+	badge.color = GC.get_rarity_color(card.rarity)
+	# 定位：卡框右上角（立绘上方）
+	var card_h: float = CardGridBattleLayout.battle_card_width_px() * 8.0 / 5.0
+	badge.position = Vector2(CardGridBattleLayout.battle_card_width_px() * 0.42, unit_spr.position.y - card_h * 0.5 - s)
+	badge.visible = true
+
+
+## 等级小标签：卡框左上角 "Lv.X"（我方读 enhance_level，敌方无则隐藏）
+static func sync_level_tag(host: Node2D, unit_spr: Sprite2D, card: CardResource) -> void:
+	if host == null:
+		return
+	var level: int = 0
+	# 我方：读 enhance_level meta（aura_manager 缓存写入）
+	if host.has_meta("enhance_level"):
+		level = int(host.get_meta("enhance_level"))
+	elif card != null and "enhance_level" in card:
+		level = int(card.enhance_level)
+	var label := host.get_node_or_null("LevelTag") as Label
+	if level <= 0:
+		if label != null:
+			label.visible = false
+		return
+	if label == null:
+		label = Label.new()
+		label.name = "LevelTag"
+		label.z_index = 16
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var ls := LabelSettings.new()
+		ls.font_size = 10
+		ls.font_color = Color(1.0, 0.85, 0.35, 1.0)
+		ls.outline_color = Color(0, 0, 0, 0.85)
+		ls.outline_size = 3
+		label.label_settings = ls
+		host.add_child(label)
+	label.text = "Lv.%d" % level
+	# 定位：卡框左上角
+	var card_h: float = CardGridBattleLayout.battle_card_width_px() * 8.0 / 5.0
+	label.position = Vector2(-CardGridBattleLayout.battle_card_width_px() * 0.42 - 24.0, unit_spr.position.y - card_h * 0.5 - 8.0)
+	label.visible = true
+
+
+## 改造图标条：装备改造的单位卡底显示图标（与 buff_strip 错位，放在更下方）
+static func sync_mod_strip(host: Node2D, unit: Node, spr: Sprite2D) -> void:
+	if host == null or unit == null or spr == null or spr.texture == null:
+		return
+	var kinds: Array[CardGridModStrip.ModKind] = CardGridModStrip.collect_mod_kinds(unit)
+	var strip: CardGridModStrip = host.get_node_or_null("CardGridModStrip") as CardGridModStrip
+	if kinds.is_empty():
+		if strip != null:
+			strip.rebuild([])
+			strip.visible = false
+		return
+	if strip == null:
+		strip = CardGridModStrip.new()
+		strip.name = "CardGridModStrip"
+		host.add_child(strip)
+	strip.z_index = 13
+	var card_w: float = CardGridBattleLayout.battle_card_width_px()
+	var card_h: float = card_w * 8.0 / 5.0
+	var bg_spr := host.get_node_or_null("CardBattleBg") as Sprite2D
+	if bg_spr != null and bg_spr.texture != null:
+		card_w = float(bg_spr.texture.get_width()) * absf(bg_spr.scale.x)
+		card_h = float(bg_spr.texture.get_height()) * absf(bg_spr.scale.y)
+	strip.rebuild(kinds, card_w)
+	var half_h: float = card_h * 0.5
+	# 定位：buff_strip 下方（buff_strip 高约 card_w*0.22，留 2px 间距）
+	var buff_strip_h: float = card_w * 0.22 + 2.0
+	var base_y: float = bg_spr.position.y if (bg_spr != null and bg_spr.texture != null) else spr.position.y
+	strip.position = Vector2(0.0, base_y + half_h + 8.0 + 8.0 + buff_strip_h)

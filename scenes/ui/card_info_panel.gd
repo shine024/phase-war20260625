@@ -553,7 +553,7 @@ func _refresh_stat_cards(card: CardResource) -> void:
 			best_speed = stats.attack_air_speed if stats.attack_air_speed > 0 else 1.0
 		var dps: float = best_atk * best_speed
 		var avg_spd: float = stats.attack_interval if stats.attack_interval > 0 else 1.0
-		_extra_stat_label.text = "攻速 %.1f/s · DPS %d · 移速 %d" % [best_speed, int(dps), int(stats.move_speed)]
+		_extra_stat_label.text = "攻速 %.1f/s · 秒伤 %d · 移速 %d" % [best_speed, int(dps), int(stats.move_speed)]
 
 ## v7.3 性能优化：在 _refresh_info_sections 顶部构建一次 UnitStats 缓存，供子函数共用。
 ## 避免 _refresh_stat_cards 和 _build_affix_tag_list 各自调 _build_display_stats（build_stats_from_card 重操作）跑2遍。
@@ -883,9 +883,9 @@ func _format_unit_stats_summary(stats: UnitStats, cur_hp: float = -1.0, extra_su
 		return ""
 	var hp_text: String
 	if cur_hp >= 0.0:
-		hp_text = "HP %d/%d" % [int(cur_hp), int(stats.max_hp)]
+		hp_text = "生命 %d/%d" % [int(cur_hp), int(stats.max_hp)]
 	else:
-		hp_text = "HP %d" % int(stats.max_hp)
+		hp_text = "生命 %d" % int(stats.max_hp)
 	
 	# 获取武器名称（v7.x: 附带 per-slot 弹道类型后缀）
 	var weapon_names: Array[String] = ["", "", ""]
@@ -950,9 +950,9 @@ func _build_affix_summary_lines(stats: UnitStats) -> String:
 	if stats.chain_chance > 0.001:
 		parts.append("连锁 %d%%" % int(stats.chain_chance * 100.0))
 	if stats.shield_on_kill > 0.001:
-		parts.append("击杀护盾 %d%%HP" % int(stats.shield_on_kill * 100.0))
+		parts.append("击杀护盾 %d%%生命" % int(stats.shield_on_kill * 100.0))
 	if stats.hp_regen > 0.001:
-		parts.append("每秒回血 %d%%HP" % int(stats.hp_regen * 100.0))
+		parts.append("每秒回血 %d%%生命" % int(stats.hp_regen * 100.0))
 	var mutations: Array[String] = []
 	if stats.has_weapon_dmg_mutation: mutations.append("伤害变异")
 	if stats.has_weapon_atkspd_mutation: mutations.append("攻速变异")
@@ -996,9 +996,9 @@ func _build_affix_tag_list(card: CardResource) -> Array:
 	if stats.chain_chance > 0.001:
 		tags.append({text = "连锁 %d%%" % int(stats.chain_chance * 100.0), color = C_AOE})
 	if stats.shield_on_kill > 0.001:
-		tags.append({text = "击杀护盾 %d%%HP" % int(stats.shield_on_kill * 100.0), color = C_SHIELD})
+			tags.append({text = "击杀护盾 %d%%生命" % int(stats.shield_on_kill * 100.0), color = C_SHIELD})
 	if stats.hp_regen > 0.001:
-		tags.append({text = "每秒回血 %d%%HP" % int(stats.hp_regen * 100.0), color = C_SHIELD})
+		tags.append({text = "每秒回血 %d%%生命" % int(stats.hp_regen * 100.0), color = C_SHIELD})
 	var mutations: Array[String] = []
 	if stats.has_weapon_dmg_mutation: mutations.append("伤害变异")
 	if stats.has_weapon_atkspd_mutation: mutations.append("攻速变异")
@@ -1035,7 +1035,7 @@ func _format_enemy_combat_summary(unit: Node, scombat: Array, extra_suffix: Stri
 	var def: float = float(scombat[4]) if scombat.size() > 4 else 0.0
 	if "stats" in unit and unit.stats != null:
 		return _format_unit_stats_summary(unit.stats as UnitStats, hp, extra_suffix)
-	return "HP %d｜防 %d｜攻 %d｜射程 %d｜攻速 %.2f%s" % [int(hp), int(def), int(dmg), int(rng), itv, extra_suffix]
+	return "生命 %d｜防 %d｜攻 %d｜射程 %d｜攻速 %.2f%s" % [int(hp), int(def), int(dmg), int(rng), itv, extra_suffix]
 
 ## ── 敌方相位驱动器 ──
 
@@ -1080,7 +1080,7 @@ func _show_enemy_phase_driver(unit: Node) -> void:
 	if type_label: type_label.text = "【%s】· 相位场驱动器" % mname
 	var cur_hp: float = float(unit.get("hp")) if "hp" in unit else 0.0
 	var mx_hp: float = float(unit.get("max_hp")) if "max_hp" in unit else 1.0
-	if summary_label: summary_label.text = "基地 HP %d / %d" % [int(cur_hp), int(mx_hp)]
+	if summary_label: summary_label.text = "基地生命 %d / %d" % [int(cur_hp), int(mx_hp)]
 	var lines: Array[String] = []
 	lines.append("摧毁敌方相位场驱动器即可获胜；对方会持续生产战斗单位。")
 	if GameManager and GameManager.has_method("get_current_phase_master"):

@@ -17,8 +17,8 @@ var _drag_threshold := 5.0  # 移动5像素才开始拖拽
 var ENABLE_MINIMAL_CARD_RENDER := true
 const BACKPACK_USE_MTG_CARD_FACE := false
 const BACKPACK_MTG_ART_PCT := 58.0
-## 与 bottom_instrument_bar._SLOT_BOTTOM_TEXT_H 一致
-const COMPACT_BOTTOM_TEXT_H := 30
+## v8.0: 底部信息栏高度（顶行卡名+底行详情，36px 适配 80x120 卡面）
+const COMPACT_BOTTOM_TEXT_H := 36
 const ENABLE_IMAGE_DRAG_PREVIEW := true
 var _last_drag_log_ms: int = 0
 var _drag_started_ms: int = 0
@@ -29,10 +29,15 @@ const BackpackCombatPreview = preload("res://scenes/ui/backpack_combat_preview.g
 const RankDisplayUi = preload("res://scripts/rank_display_ui.gd")
 const CardFrameUi = preload("res://scripts/card_frame_ui.gd")
 const CardBackgroundUi = preload("res://scripts/card_background_ui.gd")
-## 与相位仪槽位 `PhaseSlot.SLOT_SIZE` 一致，便于拖拽与装备时视觉对齐
-var SLOT_SIZE: Vector2 = PhaseSlot.SLOT_SIZE
-## 列表内卡图：与 backpack_card_item.tscn 中 Icon 一致，竖向窄格内居中
-var CARD_LIST_ICON_DISPLAY_MIN: Vector2 = Vector2(28, 28)
+## v8.0: 背包卡牌独立大卡面尺寸（80x120），不再与战场相位仪槽位(50x80)共用。
+## 拖拽到相位仪槽位时视觉对齐由 backpack_card_item_drag 处理（预览缩放）。
+var SLOT_SIZE: Vector2 = Vector2(80, 120)
+## 兼容别名（部分历史代码引用 BACKPACK_CARD_SIZE）
+const BACKPACK_CARD_SIZE := Vector2(80, 120)
+## 信息栏高度（底部 30% 区域）
+const INFO_BAR_HEIGHT := 36
+## 列表内卡图：图标区填满 70% 高度
+var CARD_LIST_ICON_DISPLAY_MIN: Vector2 = Vector2(72, 72)
 ## 拖拽预览外框同槽位；内图标竖向略小于外框
 const DRAG_PREVIEW_ICON_DISPLAY_MIN := Vector2(36, 56)
 var _icon_cache: Dictionary = {}
@@ -184,176 +189,65 @@ func set_card(c: CardResource) -> void:
 			_restore_icon_row_from_mtg_preview(icon_row_sync)
 		if icon_row_sync.get_meta("_compact_slot_built", false) and want_mtg:
 			_restore_compact_slot_structure(icon_row_sync)
-	var type_bar: Panel = get_node_or_null("VBox/TypeBar")
 	var icon_rect: TextureRect = _find_icon_row_icon()
 	var name_label: Label = _find_slot_name_label()
-	var cost_label: Label = _find_slot_cost_label()
-	var weight_label: Label = get_node_or_null("VBox/ContentMargin/InnerVBox/StatsRow/WeightLabel")
-	var lv_label: Label = get_node_or_null("VBox/ContentMargin/InnerVBox/LevelRow/LvLabel")
-	var xp_bar: Panel = get_node_or_null("VBox/ContentMargin/InnerVBox/LevelRow/XpBar")
-	var xp_fill: Panel = get_node_or_null("VBox/ContentMargin/InnerVBox/LevelRow/XpBar/XpFill")
+	var lv_label: Label = get_node_or_null("VBox/ContentMargin/InnerVBox/LvLabel") as Label
 
 	if c == null:
-		_set_empty_style(type_bar, name_label, cost_label, weight_label, lv_label, xp_fill, icon_rect)
+		_set_empty_style(name_label, lv_label, icon_rect)
 		return
 
 	if ENABLE_MINIMAL_CARD_RENDER:
-		_set_minimal_card_view(c, type_bar, name_label, cost_label, weight_label, lv_label, xp_bar, xp_fill, icon_rect)
+		_set_minimal_card_view(c, name_label, lv_label, icon_rect)
 		return
-
-	var stats_row_full: Control = get_node_or_null("VBox/ContentMargin/InnerVBox/StatsRow") as Control
-	var level_row_full: Control = get_node_or_null("VBox/ContentMargin/InnerVBox/LevelRow") as Control
-	if stats_row_full:
-		stats_row_full.visible = true
-	if level_row_full:
-		level_row_full.visible = true
-
-	# ── 类型色条 ──────────────────────────────────────────────
-	if type_bar:
-		var type_key: String = str(c.card_type)
-		if not _type_bar_style_cache.has(type_key):
-			var bar_color: Color = TYPE_BAR_COLORS.get(c.card_type, Color(0.4, 0.4, 0.4, 1.0))
-			var bar_style := StyleBoxFlat.new()
-			bar_style.bg_color = bar_color
-			bar_style.corner_radius_top_left = 5
-			bar_style.corner_radius_top_right = 5
-			_type_bar_style_cache[type_key] = bar_style
-		type_bar.add_theme_stylebox_override("panel", _type_bar_style_cache[type_key])
-		type_bar.visible = true
 
 	# ── 卡名 ─────────────────────────────────────────────────
 	if name_label:
-		name_label.remove_theme_font_size_override("font_size")
-		name_label.clip_text = false
-		name_label.custom_minimum_size = Vector2(0, 22)
-		name_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		var display_name: String = DefaultCards.safe_name(c)
-
-		# 星级（与蓝图库一致：按累计副本换算）+ （副本）数量
-		var star_text := ""
-		var copies_text := ""
-
-		if BlueprintManager and BlueprintManager.has_method("get_star_progress"):
-			var sp: Dictionary = BlueprintManager.get_star_progress(c.card_id)
-			var cs: int = int(sp.get("current_star", 0))
-			var mx: int = int(sp.get("max_star", 9))
-			if mx <= 0:
-				mx = 9
-			star_text = " %d/%d" % [mini(cs, mx), mx]
-			if BlueprintManager.has_method("get_blueprint_copies"):
-				var copies: int = BlueprintManager.get_blueprint_copies(c.card_id)
-				if copies > 0:
-					copies_text = " （副本）%d" % copies
-
-		name_label.text = display_name + star_text + copies_text
+		name_label.clip_text = true
+		name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		name_label.max_lines_visible = 1
+		name_label.text = _compact_display_name(c)
 		name_label.visible = true
 		name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		# 字体颜色跟随稀有度
-		match c.rarity:
-			"uncommon": name_label.add_theme_color_override("font_color", Color(0.4, 1.0, 0.6, 1))
-			"rare":     name_label.add_theme_color_override("font_color", Color(0.4, 0.7, 1.0, 1))
-			"legendary":   name_label.add_theme_color_override("font_color", Color(1.0, 0.6, 0.9, 1))
-			_:          name_label.add_theme_color_override("font_color", Color(0.9, 0.93, 1.0, 1))
+		# 字体颜色跟随稀有度（统一到 GC.get_rarity_color）
+		name_label.add_theme_color_override("font_color", GC.get_rarity_color(c.rarity))
 
 	# ── 图标 ──────────────────────────────────────────────────
 	if icon_rect:
 		_apply_card_icon_rect(icon_rect, c, CARD_LIST_ICON_DISPLAY_MIN)
 
-	# ── 能量费用 ──────────────────────────────────────────────
-	# v7.x：费用从 StatsRow/CostLabel 移到左上角角标气泡（CostCornerBadge）
-	if cost_label:
-		cost_label.text = ""
+	# ── 能量费用（左上角角标气泡）──────────────────────────────
 	var _cost_badge_n = CardFrameUi.ensure_cost_corner_badge(self, true)
 	if _cost_badge_n != null:
 		_cost_badge_n.energy_value = int(c.energy_cost)
 
-	# ── 承载 / 重量 ───────────────────────────────────────────
-	if weight_label:
-		match c.card_type:
-			GC.CardType.COMBAT_UNIT:
-				if c.weight_capacity > 0:
-					weight_label.text = "%d" % int(c.weight_capacity)
-					weight_label.add_theme_color_override("font_color", Color(0.5, 0.85, 1.0, 1))
-				elif c.weight > 0:
-					weight_label.text = "%d" % int(c.weight)
-					weight_label.add_theme_color_override("font_color", Color(1.0, 0.75, 0.35, 1))
-				else:
-					weight_label.text = ""
-			_:
-				weight_label.text = ""
-		weight_label.visible = true
-
-	# 等级 + 经验进度
-	if lv_label and BlueprintManager and BlueprintManager.has_method("get_card_xp_progress"):
-		var prog: Dictionary = BlueprintManager.get_card_xp_progress(c.card_id)
-		var lvl: int = int(prog.get("level", 1))
-		var cur_xp: int = int(prog.get("cur_xp", 0))
-		var next_xp: int = int(prog.get("next_xp", 0))
-		var max_level: bool = next_xp <= 0 or lvl >= BlueprintManager.MAX_BLUEPRINT_LEVEL
-		lv_label.text = "Lv.%d" % lvl
-		lv_label.visible = true
-		if xp_bar:
-			xp_bar.visible = not max_level
-		if xp_fill and not max_level and next_xp > 0:
-			var ratio: float = clamp(float(cur_xp) / float(next_xp), 0.0, 1.0)
-			xp_fill.anchor_right = ratio
-			xp_fill.offset_right = 0.0
-	elif lv_label:
-		lv_label.text = ""
-		lv_label.visible = false
-		if xp_bar:
-			xp_bar.visible = false
+	# ── 等级（名称下方紧凑小字）────────────────────────────────
+	if lv_label:
+		if BlueprintManager and BlueprintManager.has_method("get_card_xp_progress"):
+			var prog: Dictionary = BlueprintManager.get_card_xp_progress(c.card_id)
+			var lvl: int = int(prog.get("level", 1))
+			lv_label.text = "Lv.%d" % lvl
+			lv_label.visible = true
+		else:
+			lv_label.text = ""
+			lv_label.visible = false
 
 	_apply_card_chrome(c)
 
 	tooltip_text = ""
 
-func _set_empty_style(type_bar, name_label, cost_label, weight_label, lv_label, xp_fill, icon_rect) -> void:
+func _set_empty_style(name_label, lv_label, icon_rect) -> void:
 	# v7.x：空格子清除费用角标，避免旧角标残留
 	CardFrameUi.clear_cost_corner_badge(self)
-	if _icon_row_has_compact_layout():
-		if type_bar:
-			type_bar.visible = false
-		var empty_name: Label = _find_slot_name_label()
-		var empty_cost: Label = _find_slot_cost_label()
-		if empty_name:
-			empty_name.text = ""
-			empty_name.visible = false
-		if empty_cost:
-			empty_cost.text = ""
-			empty_cost.visible = false
-		if icon_rect:
-			icon_rect.texture = null
-			icon_rect.visible = false
-		add_theme_stylebox_override("panel", _get_empty_card_panel_style())
-		return
-	var stats_row_e: Control = get_node_or_null("VBox/ContentMargin/InnerVBox/StatsRow") as Control
-	var level_row_e: Control = get_node_or_null("VBox/ContentMargin/InnerVBox/LevelRow") as Control
-	if stats_row_e:
-		stats_row_e.visible = not ENABLE_MINIMAL_CARD_RENDER
-	if level_row_e:
-		level_row_e.visible = not ENABLE_MINIMAL_CARD_RENDER
-	if type_bar:
-		type_bar.add_theme_stylebox_override("panel", _get_empty_type_bar_style())
 	if name_label:
 		name_label.text = ""
-		name_label.add_theme_color_override("font_color", Color(0.3, 0.35, 0.45, 0.6))
-		name_label.visible = not ENABLE_MINIMAL_CARD_RENDER
-		name_label.remove_theme_font_size_override("font_size")
-		name_label.clip_text = false
-		name_label.custom_minimum_size = Vector2.ZERO
-		name_label.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	if cost_label:
-		cost_label.text = ""
-	if weight_label:
-		weight_label.text = ""
+		name_label.visible = false
 	if lv_label:
 		lv_label.text = ""
-	if xp_fill:
-		xp_fill.anchor_right = 0.0
+		lv_label.visible = false
 	if icon_rect:
 		icon_rect.texture = null
-	# 空槽使用暗淡边框
+		icon_rect.visible = false
 	add_theme_stylebox_override("panel", _get_empty_card_panel_style())
 	CardFrameUi.clear_overlay(self)
 	CardBackgroundUi.clear_overlay(self)
@@ -376,11 +270,11 @@ func _get_frame_panel_style() -> StyleBoxFlat:
 	return CardFrameUi.subtle_panel_style()
 
 
-func _set_minimal_card_view(c: CardResource, type_bar, name_label, cost_label, weight_label, lv_label, xp_bar, xp_fill, icon_rect) -> void:
+func _set_minimal_card_view(c: CardResource, name_label, lv_label, icon_rect) -> void:
 	if _backpack_uses_mtg_face():
-		_set_mtg_minimal_card_view(c, type_bar, name_label, cost_label, weight_label, lv_label, xp_bar, xp_fill, icon_rect)
+		_set_mtg_minimal_card_view(c, name_label, lv_label, icon_rect)
 		return
-	_set_compact_slot_view(c, type_bar, name_label, cost_label, weight_label, lv_label, xp_bar, xp_fill, icon_rect)
+	_set_compact_slot_view(c, name_label, lv_label, icon_rect)
 
 
 func _apply_card_chrome(c: CardResource) -> void:
@@ -430,6 +324,10 @@ func _apply_card_icon_rect(icon_rect: TextureRect, c: CardResource, min_size: Ve
 	UiAssetLoader.setup_card_unit_icon(icon_rect, _get_cached_icon_texture(tex_path), min_size, true)
 
 
+## v8.0: 稀有度增强边框 + 发光效果
+## common: 1px 灰边无光 | uncommon: 1px 绿边 + 2px柔光
+## rare: 2px 蓝边 + 3px光 | epic: 2px 紫边 + 4px光
+## legendary: 2px 金边 + 6px光 | mythic: 2px 粉边 + 8px光
 func _apply_card_border_flat(c: CardResource) -> void:
 	var cache_key: String = "%d_%s" % [int(c.card_type), str(c.rarity)]
 	if _card_border_style_cache.has(cache_key):
@@ -437,28 +335,31 @@ func _apply_card_border_flat(c: CardResource) -> void:
 		return
 	var panel_style := StyleBoxFlat.new()
 	panel_style.bg_color = Color(0.06, 0.10, 0.17, 0.95)
-	panel_style.corner_radius_top_left = 5
-	panel_style.corner_radius_top_right = 5
-	panel_style.corner_radius_bottom_right = 5
-	panel_style.corner_radius_bottom_left = 5
-	panel_style.border_width_left = 1
-	panel_style.border_width_top = 1
-	panel_style.border_width_right = 1
-	panel_style.border_width_bottom = 1
-	match c.card_type:
-		GC.CardType.COMBAT_UNIT:
-			panel_style.border_color = Color(0.15, 0.55, 0.9, 0.55)
-		GC.CardType.ENERGY:
-			panel_style.border_color = Color(0.2, 0.8, 0.4, 0.55)
-		GC.CardType.LAW:
-			panel_style.border_color = Color(0.85, 0.2, 0.5, 0.55)
-		_:
-			panel_style.border_color = Color(0.25, 0.35, 0.5, 0.5)
-
-	# 稀有度增强边框
+	panel_style.set_corner_radius_all(6)
+	# 稀有度统一配色（GC.get_rarity_color 作为单一数据源）
+	var rarity_col: Color = GC.get_rarity_color(c.rarity)
+	# 默认边框（common 基准）
+	var bw: int = 1
+	var shadow_alpha: float = 0.0
+	var shadow_size: int = 0
 	match c.rarity:
-		"rare":   panel_style.border_width_left = 2; panel_style.border_width_top = 2; panel_style.border_width_right = 2; panel_style.border_width_bottom = 2
-		"legendary": panel_style.border_width_left = 2; panel_style.border_width_top = 2; panel_style.border_width_right = 2; panel_style.border_width_bottom = 2; panel_style.shadow_color = Color(1.0, 0.6, 0.9, 0.3); panel_style.shadow_size = 4
+		"common":
+			bw = 1; shadow_alpha = 0.0; shadow_size = 0
+		"uncommon":
+			bw = 1; shadow_alpha = 0.30; shadow_size = 2
+		"rare":
+			bw = 2; shadow_alpha = 0.35; shadow_size = 3
+		"epic":
+			bw = 2; shadow_alpha = 0.45; shadow_size = 4
+		"legendary":
+			bw = 2; shadow_alpha = 0.55; shadow_size = 6
+		"mythic":
+			bw = 2; shadow_alpha = 0.65; shadow_size = 8
+	panel_style.border_color = Color(rarity_col.r, rarity_col.g, rarity_col.b, 0.90)
+	panel_style.set_border_width_all(bw)
+	if shadow_size > 0:
+		panel_style.shadow_color = Color(rarity_col.r, rarity_col.g, rarity_col.b, shadow_alpha)
+		panel_style.shadow_size = shadow_size
 	_card_border_style_cache[cache_key] = panel_style
 	add_theme_stylebox_override("panel", panel_style)
 
@@ -481,10 +382,7 @@ func _get_empty_card_panel_style() -> StyleBoxFlat:
 	_empty_card_panel_style.border_width_right = 1
 	_empty_card_panel_style.border_width_bottom = 1
 	_empty_card_panel_style.border_color = Color(0.2, 0.25, 0.35, 0.3)
-	_empty_card_panel_style.corner_radius_top_left = 5
-	_empty_card_panel_style.corner_radius_top_right = 5
-	_empty_card_panel_style.corner_radius_bottom_right = 5
-	_empty_card_panel_style.corner_radius_bottom_left = 5
+	_empty_card_panel_style.set_corner_radius_all(6)
 	return _empty_card_panel_style
 
 
@@ -533,24 +431,15 @@ func _restore_compact_slot_structure(icon_row: Control) -> void:
 		art_clip.queue_free()
 	var text_v: Node = icon_row.get_node_or_null("CompactTextVBox")
 	var name_lbl: Label = null
-	var cost_lbl: Label = null
 	if text_v:
 		name_lbl = text_v.get_node_or_null("NameLabel") as Label
-		cost_lbl = text_v.get_node_or_null("CostLabel") as Label
 		if name_lbl:
 			text_v.remove_child(name_lbl)
-		if cost_lbl:
-			text_v.remove_child(cost_lbl)
 		text_v.queue_free()
 	if icon and icon.get_parent() != icon_row:
 		icon_row.add_child(icon)
 	if name_lbl and name_lbl.get_parent() != icon_row:
 		icon_row.add_child(name_lbl)
-	if cost_lbl:
-		var stats_row: Control = get_node_or_null("VBox/ContentMargin/InnerVBox/StatsRow") as Control
-		if stats_row and cost_lbl.get_parent() != stats_row:
-			stats_row.add_child(cost_lbl)
-			cost_lbl.visible = false
 	if icon:
 		icon_row.move_child(icon, 0)
 	if name_lbl and is_instance_valid(name_lbl):
@@ -575,22 +464,22 @@ func _cleanup_icon_row_children(icon_row: Control) -> void:
 			node.queue_free()
 
 
-func _ensure_compact_slot_structure(icon_row: Control, name_label: Label, cost_label: Label) -> void:
-	if icon_row == null or name_label == null or cost_label == null:
+func _ensure_compact_slot_structure(icon_row: Control, name_label: Label) -> void:
+	if icon_row == null or name_label == null:
 		return
 	if icon_row.get_meta("_compact_slot_built", false):
 		return
 	if icon_row.get_node_or_null("CompactArtClip") != null:
 		icon_row.set_meta("_compact_slot_built", true)
 		return
-	
+
 	# 修复两层面板问题：在创建新结构之前，完全清理icon_row中的所有子节点
 	# 避免新旧UI结构叠加
 	_cleanup_icon_row_children(icon_row)
-	
+
 	if icon_row.get_meta("_mtg_preview_built", false):
 		_restore_icon_row_from_mtg_preview(icon_row)
-	
+
 	var icon: TextureRect = icon_row.find_child("Icon", true, false) as TextureRect
 	if icon == null:
 		return
@@ -598,9 +487,6 @@ func _ensure_compact_slot_structure(icon_row: Control, name_label: Label, cost_l
 		icon_row.remove_child(icon)
 	if name_label.get_parent() == icon_row:
 		icon_row.remove_child(name_label)
-	var stats_row: Control = get_node_or_null("VBox/ContentMargin/InnerVBox/StatsRow") as Control
-	if cost_label.get_parent() == stats_row:
-		stats_row.remove_child(cost_label)
 	var art_clip := Control.new()
 	art_clip.name = "CompactArtClip"
 	art_clip.clip_contents = true
@@ -629,17 +515,7 @@ func _ensure_compact_slot_structure(icon_row: Control, name_label: Label, cost_l
 	name_label.remove_theme_font_size_override("font_size")
 	name_label.add_theme_font_size_override("font_size", 10)
 	name_label.add_theme_color_override("font_color", Color(0.92, 0.94, 0.98, 1.0))
-	cost_label.name = "CostLabel"
-	cost_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	cost_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-	cost_label.clip_text = true
-	cost_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	cost_label.custom_minimum_size = Vector2(0, 14)
-	cost_label.remove_theme_font_size_override("font_size")
-	cost_label.add_theme_font_size_override("font_size", 10)
-	cost_label.add_theme_color_override("font_color", Color(0.95, 0.82, 0.35, 1.0))
 	text_v.add_child(name_label)
-	text_v.add_child(cost_label)
 	icon_row.add_child(art_clip)
 	icon_row.add_child(text_v)
 	icon_row.set_meta("_compact_slot_built", true)
@@ -655,13 +531,29 @@ func _layout_compact_art_clip(art_clip: Control) -> void:
 	var icon := art_clip.get_node_or_null("Icon") as TextureRect
 	if icon == null:
 		return
-	var art_w: float = maxf(art_clip.size.x - 4.0, 20.0)
-	var art_h: float = maxf(art_clip.size.y - 2.0, 18.0)
-	if art_clip.size.x < 2.0:
-		art_w = maxf(float(SLOT_SIZE.x) - 8.0, 20.0)
-	if art_clip.size.y < 2.0:
-		art_h = maxf(float(SLOT_SIZE.y) - float(COMPACT_BOTTOM_TEXT_H) - 10.0, 18.0)
-	UiAssetLoader.setup_texrect_icon(icon, icon.texture, Vector2(art_w, art_h))
+	# v8.0 修复：图标在 CompactArtClip 内用 FULL_RECT 填满，不强制 custom_minimum_size。
+	# 仅更新纹理和拉伸模式，尺寸由容器布局决定（STRETCH_KEEP_ASPECT_CENTERED 保持比例）。
+	var tex: Texture2D = icon.texture
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	if tex == null:
+		icon.visible = false
+
+
+## v8.0: 把图标纹理应用到 CompactArtClip 内的 Icon（不设最小尺寸，纯靠容器裁切）
+func _apply_card_icon_to_clip(icon_rect: TextureRect, c: CardResource) -> void:
+	if icon_rect == null or c == null:
+		return
+	var tex_path := _card_icon_tex_path(c)
+	var tex: Texture2D = _get_cached_icon_texture(tex_path)
+	if tex == null:
+		icon_rect.texture = null
+		icon_rect.visible = false
+		return
+	icon_rect.texture = tex
+	icon_rect.visible = true
+	icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 
 
 func _compact_display_name(c: CardResource) -> String:
@@ -675,40 +567,34 @@ func _compact_display_name(c: CardResource) -> String:
 	return display_name + DefaultCards.seq_suffix(c)
 
 
-func _set_compact_slot_view(c: CardResource, type_bar, name_label, cost_label, weight_label, lv_label, xp_bar, xp_fill, icon_rect) -> void:
-	if type_bar:
-		type_bar.visible = false
+## v8.0: 80x120 大卡面紧凑视图——图标区(70%) + 双行信息栏(30%)
+## 顶行：★★★★★ 卡名  Cost角标 | 底行：兵种 Lv.x/10 🔧x/y 战力
+func _set_compact_slot_view(c: CardResource, name_label, lv_label, icon_rect) -> void:
 	var icon_row: Control = _find_icon_row()
 	if icon_row:
 		icon_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var stats_row: Control = get_node_or_null("VBox/ContentMargin/InnerVBox/StatsRow") as Control
-	var level_row: Control = get_node_or_null("VBox/ContentMargin/InnerVBox/LevelRow") as Control
-	if stats_row:
-		stats_row.visible = false
-	if level_row:
-		level_row.visible = false
-	if weight_label:
-		weight_label.visible = false
-		weight_label.text = ""
 	if lv_label:
-		lv_label.visible = false
-		lv_label.text = ""
-	if xp_bar:
-		xp_bar.visible = false
-	if xp_fill:
-		xp_fill.anchor_right = 0.0
-	if icon_row == null or name_label == null or cost_label == null:
+		# 底行信息：兵种|等级|改造|战力 —— 横向紧凑排列
+		lv_label.text = _build_bottom_info_line(c)
+		lv_label.visible = true
+		lv_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lv_label.add_theme_font_size_override("font_size", 8)
+		lv_label.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85, 0.95))
+	if icon_row == null or name_label == null:
 		return
-	_ensure_compact_slot_structure(icon_row, name_label, cost_label)
+	_ensure_compact_slot_structure(icon_row, name_label)
 	var art_clip: Control = icon_row.get_node_or_null("CompactArtClip") as Control
 	if icon_rect:
-		_apply_card_icon_rect(icon_rect, c, CARD_LIST_ICON_DISPLAY_MIN)
+		# v8.0 修复：图标不设强制最小尺寸，纯靠 CompactArtClip 容器裁切 + FULL_RECT 自适应。
+		# 原传 CARD_LIST_ICON_DISPLAY_MIN(72x72) 会强制撑爆容器导致卡图溢出卡外。
+		_apply_card_icon_to_clip(icon_rect, c)
 	name_label.visible = true
-	name_label.text = _compact_display_name(c)
+	# 顶行：星级前缀 + 卡名
+	var star_str: String = _build_star_prefix(c)
+	name_label.text = star_str + _compact_display_name(c)
 	name_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	name_label.max_lines_visible = 1
-	# v7.x：费用从 CompactTextVBox/CostLabel 移到左上角角标气泡（CostCornerBadge）
-	cost_label.text = ""
+	# 费用用左上角角标气泡（CostCornerBadge）
 	var _cost_badge_c = CardFrameUi.ensure_cost_corner_badge(self, true)
 	if _cost_badge_c != null:
 		_cost_badge_c.energy_value = int(c.energy_cost)
@@ -716,6 +602,65 @@ func _set_compact_slot_view(c: CardResource, type_bar, name_label, cost_label, w
 	_apply_card_chrome(c)
 	if art_clip:
 		call_deferred("_layout_compact_art_clip", art_clip)
+
+
+## v8.0: 构建星级前缀字符串（金色★，最多显示5星避免撑爆）
+func _build_star_prefix(c: CardResource) -> String:
+	var stars: int = 0
+	if BlueprintManager and BlueprintManager.has_method("get_card_xp_progress"):
+		var prog: Dictionary = BlueprintManager.get_card_xp_progress(c.card_id)
+		stars = int(prog.get("level", 0))
+	else:
+		stars = int(c.enhance_level)
+	stars = clampi(stars, 0, 5)
+	if stars <= 0:
+		return ""
+	# v6.8 收敛后稀有度压缩，星级仍是养成进度主指标
+	return "★".repeat(stars) + " "
+
+
+## v8.0: 构建底行信息——兵种|等级|改造|战力
+func _build_bottom_info_line(c: CardResource) -> String:
+	var parts: Array[String] = []
+	# 兵种标识（仅战斗卡）
+	if c.card_type == GC.CardType.COMBAT_UNIT:
+		parts.append(CardResource.get_combat_kind_short(c.combat_kind))
+	# 强化等级 Lv.x/10
+	var enhance_lvl: int = int(c.enhance_level)
+	parts.append("Lv%d/10" % enhance_lvl)
+	# 改造槽位 🔧N/M
+	if c.card_type == GC.CardType.COMBAT_UNIT:
+		var mod_count: int = _get_mod_count_for_card(c)
+		var slot_total: int = c.module_slots.size() if c.module_slots != null else 0
+		if slot_total > 0:
+			parts.append("改%d/%d" % [mod_count, slot_total])
+	# 战力分（千位取整）
+	var power: int = int(_get_card_power_score(c))
+	if power > 0:
+		parts.append("力%d" % power)
+	return "  ".join(parts)
+
+
+## v8.0: 安全获取改造数量（兼容实例/模板）
+func _get_mod_count_for_card(c: CardResource) -> int:
+	if c == null:
+		return 0
+	if c.mods != null:
+		return c.mods.size()
+	if BlueprintManager and BlueprintManager.has_method("get_modification_count"):
+		return BlueprintManager.get_modification_count(c.card_id)
+	return 0
+
+
+## v8.0: 安全获取战力分（复用 evolution_helpers）
+func _get_card_power_score(c: CardResource) -> float:
+	if c == null:
+		return 0.0
+	# 优先用实例感知的 estimate_power（含养成/改造/进化加成）
+	var id_for_power: String = c.instance_id if not c.instance_id.is_empty() else c.card_id
+	if BlueprintManager and BlueprintManager.has_method("_estimate_power_score_meta_only"):
+		return BlueprintManager._estimate_power_score_meta_only(id_for_power)
+	return 0.0
 
 
 func _ensure_mtg_preview_structure(icon_row: Control, name_label: Label) -> void:
@@ -889,36 +834,25 @@ func _apply_mtg_header_rarity_colors(c: CardResource, name_hdr: Label, rank_hdr:
 		rank_hdr.add_theme_color_override("font_color", Color(col.r * 0.92, col.g * 0.92, col.b * 0.92, col.a))
 
 
-func _set_mtg_minimal_card_view(c: CardResource, type_bar, name_label, cost_label, weight_label, lv_label, xp_bar, xp_fill, icon_rect) -> void:
+func _set_mtg_minimal_card_view(c: CardResource, name_label, lv_label, icon_rect) -> void:
 	# 线框式竖卡：顶栏为「全名 | 军衔 | 费用」，不占单独色条
-	if type_bar:
-		type_bar.visible = false
 	var icon_row: Control = get_node_or_null("VBox/ContentMargin/InnerVBox/IconRow") as Control
 	if icon_row:
 		icon_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var stats_row: Control = get_node_or_null("VBox/ContentMargin/InnerVBox/StatsRow") as Control
-	var level_row: Control = get_node_or_null("VBox/ContentMargin/InnerVBox/LevelRow") as Control
-	if stats_row:
-		stats_row.visible = false
-	if level_row:
-		level_row.visible = false
-	if cost_label:
-		cost_label.visible = false
-		cost_label.text = ""
-	# v7.x：费用移到左上角角标气泡（CostCornerBadge）
+	# 费用用左上角角标气泡（CostCornerBadge）
 	var _cost_badge_mm = CardFrameUi.ensure_cost_corner_badge(self, true)
 	if _cost_badge_mm != null:
 		_cost_badge_mm.energy_value = int(c.energy_cost)
-	if weight_label:
-		weight_label.visible = false
-		weight_label.text = ""
 	if lv_label:
-		lv_label.visible = false
-		lv_label.text = ""
-	if xp_bar:
-		xp_bar.visible = false
-	if xp_fill:
-		xp_fill.anchor_right = 0.0
+		# MTG 模式下等级显示在 InnerVBox 下方
+		if BlueprintManager and BlueprintManager.has_method("get_card_xp_progress"):
+			var prog: Dictionary = BlueprintManager.get_card_xp_progress(c.card_id)
+			var lvl: int = int(prog.get("level", 1))
+			lv_label.text = "Lv.%d" % lvl
+			lv_label.visible = true
+		else:
+			lv_label.text = ""
+			lv_label.visible = false
 	if icon_row == null or name_label == null:
 		return
 	_ensure_mtg_preview_structure(icon_row, name_label)
@@ -954,10 +888,6 @@ func _set_mtg_minimal_card_view(c: CardResource, type_bar, name_label, cost_labe
 	if cost_hdr:
 		# v7.x：费用从 MtgHeader/MtgCostLabel 移到左上角角标气泡（CostCornerBadge）
 		cost_hdr.text = ""
-	var _cost_badge_m = CardFrameUi.ensure_cost_corner_badge(self, true)
-	if _cost_badge_m != null:
-		_cost_badge_m.energy_value = int(c.energy_cost)
-		cost_hdr.add_theme_font_size_override("font_size", clampi(int(ceil(SLOT_SIZE.y * 0.028)), 9, 18))
 	_apply_mtg_header_rarity_colors(c, name_hdr, rank_hdr)
 	if icon_rect:
 		_apply_card_icon_rect(icon_rect, c, CARD_LIST_ICON_DISPLAY_MIN)
@@ -977,15 +907,8 @@ func _set_mtg_minimal_card_view(c: CardResource, type_bar, name_label, cost_labe
 		name_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		name_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-		match c.rarity:
-			"uncommon":
-				name_label.add_theme_color_override("font_color", Color(0.55, 0.85, 0.65, 1))
-			"rare":
-				name_label.add_theme_color_override("font_color", Color(0.55, 0.75, 0.95, 1))
-			"legendary":
-				name_label.add_theme_color_override("font_color", Color(0.95, 0.7, 0.88, 1))
-			_:
-				name_label.add_theme_color_override("font_color", Color(0.72, 0.76, 0.88, 0.95))
+		# 统一稀有度配色到 GC.get_rarity_color
+		name_label.add_theme_color_override("font_color", GC.get_rarity_color(c.rarity))
 		name_label.visible = true
 	var stars_row: HBoxContainer = icon_row.get_node_or_null("MtgStarsRow") as HBoxContainer if icon_row else null
 	if stars_row:

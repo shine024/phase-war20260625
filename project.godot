@@ -52,7 +52,6 @@ InstanceRegistry="*res://managers/instance_registry.gd"
 LoreManager="*res://managers/lore_manager.gd"
 AchievementManager="*res://managers/achievement_manager.gd"
 DailyTaskManager="*res://managers/daily_task_manager.gd"
-StatisticsManager="*res://managers/statistics_manager.gd"
 TutorialProgressionManager="*res://managers/tutorial_progression_manager.gd"
 StoryManager="*res://managers/story_manager.gd"
 CharacterManager="*res://managers/character_manager.gd"
@@ -60,6 +59,7 @@ ChallengeModeManager="*res://managers/challenge_mode_manager.gd"
 CardCollectionManager="*res://managers/card_collection_manager.gd"
 LeaderboardManager="*res://managers/leaderboard_manager.gd"
 StatBoostManager="*res://managers/stat_boost_manager.gd"
+BattleSpectacle="*res://managers/battle/battle_spectacle.gd"
 
 [display]
 

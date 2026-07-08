@@ -322,10 +322,7 @@ func _cleanup_before_exit() -> void:
 	if settings_mgr != null and settings_mgr.has_method("save_settings"):
 		settings_mgr.save_settings()
 
-	# 保存统计
-	var stats_mgr = get_node_or_null("/root/StatisticsManager")
-	if stats_mgr != null and stats_mgr.has_method("save_statistics"):
-		stats_mgr.save_statistics()
+	# v7.x: StatisticsManager 已删除（死代码：record_* 全无调用者，数据恒为 0）
 
 ## 获取启动配置
 func get_launch_config() -> Dictionary:

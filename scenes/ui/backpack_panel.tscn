@@ -70,7 +70,7 @@ shadow_color = Color(0, 0.941, 1, 0.2)
 shadow_size = 8
 
 [node name="BackpackPanel" type="PanelContainer"]
-custom_minimum_size = Vector2(1000, 520)
+custom_minimum_size = Vector2(1180, 560)
 layout_mode = 2
 script = ExtResource("1_script")
 theme_override_styles/panel = SubResource("StyleBoxFlat_bg")
@@ -137,7 +137,7 @@ size_flags_horizontal = 3
 size_flags_vertical = 0
 theme_override_constants/h_separation = 6
 theme_override_constants/v_separation = 6
-columns = 12
+columns = 8
 
 [node name="ResourcesTab" type="Control" parent="VBoxOuter/TabContainer"]
 layout_mode = 2
@@ -161,7 +161,7 @@ custom_minimum_size = Vector2(0, 0)
 size_flags_horizontal = 3
 theme_override_constants/h_separation = 6
 theme_override_constants/v_separation = 6
-columns = 12
+columns = 8
 
 [node name="IntelTab" type="Control" parent="VBoxOuter/TabContainer"]
 layout_mode = 2
@@ -185,7 +185,7 @@ custom_minimum_size = Vector2(0, 0)
 size_flags_horizontal = 3
 theme_override_constants/h_separation = 6
 theme_override_constants/v_separation = 6
-columns = 12
+columns = 8
 
 [node name="StatBoostsTab" type="Control" parent="VBoxOuter/TabContainer"]
 layout_mode = 2
@@ -209,31 +209,74 @@ custom_minimum_size = Vector2(0, 0)
 size_flags_horizontal = 3
 theme_override_constants/h_separation = 6
 theme_override_constants/v_separation = 6
-columns = 12
+columns = 8
 
 [node name="RunesTab" type="Control" parent="VBoxOuter/TabContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="RunesScroll" type="ScrollContainer" parent="VBoxOuter/TabContainer/RunesTab"]
-clip_contents = true
+[node name="RunesHSplit" type="HSplitContainer" parent="VBoxOuter/TabContainer/RunesTab"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+split_offset = 720
+
+[node name="RunesScroll" type="ScrollContainer" parent="VBoxOuter/TabContainer/RunesTab/RunesHSplit"]
+clip_contents = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
 horizontal_scroll_mode = 0
 vertical_scroll_mode = 2
 
-[node name="RunesGrid" type="GridContainer" parent="VBoxOuter/TabContainer/RunesTab/RunesScroll"]
+[node name="RunesGrid" type="GridContainer" parent="VBoxOuter/TabContainer/RunesTab/RunesHSplit/RunesScroll"]
 layout_mode = 2
 custom_minimum_size = Vector2(0, 0)
 size_flags_horizontal = 3
 theme_override_constants/h_separation = 6
 theme_override_constants/v_separation = 6
-columns = 12
+columns = 8
+
+[node name="RuneInfoPanel" type="VBoxContainer" parent="VBoxOuter/TabContainer/RunesTab/RunesHSplit"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="BonusTitle" type="Label" parent="VBoxOuter/TabContainer/RunesTab/RunesHSplit/RuneInfoPanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.545, 0.361, 0.965, 1)
+theme_override_font_sizes/font_size = 16
+text = "✦ 符文加成"
+
+[node name="BonusLabel" type="RichTextLabel" parent="VBoxOuter/TabContainer/RunesTab/RunesHSplit/RuneInfoPanel"]
+custom_minimum_size = Vector2(0, 120)
+layout_mode = 2
+size_flags_horizontal = 3
+bbcode_enabled = true
+text = "（暂无符文加成）"
+fit_content = false
+scroll_active = false
+
+[node name="RunewordTitle" type="Label" parent="VBoxOuter/TabContainer/RunesTab/RunesHSplit/RuneInfoPanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.545, 0.361, 0.965, 1)
+theme_override_font_sizes/font_size = 16
+text = "⚡ 已激活符文之语"
+
+[node name="RunewordScroll" type="ScrollContainer" parent="VBoxOuter/TabContainer/RunesTab/RunesHSplit/RuneInfoPanel"]
+custom_minimum_size = Vector2(0, 200)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="RunewordList" type="VBoxContainer" parent="VBoxOuter/TabContainer/RunesTab/RunesHSplit/RuneInfoPanel/RunewordScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
 
 [node name="CardDetailPopup" type="PopupPanel" parent="."]
 size = Vector2i(560, 720)

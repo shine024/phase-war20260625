@@ -333,6 +333,8 @@ func _update_card_grid_buff_strip(force: bool = false) -> void:
 	_buff_strip_signature = sig
 	var spr: Sprite2D = get_node_or_null("Sprite") as Sprite2D
 	CardGridUnitVisuals.sync_buff_strip(self, self, spr)
+	# v7.x 战场视觉反馈：改造图标条（与 buff_strip 错位，放在更下方）
+	CardGridUnitVisuals.sync_mod_strip(self, self, spr)
 
 
 func _configure_card_grid_player_hp_bar(spr: Sprite2D) -> void:
@@ -376,6 +378,8 @@ func apply_card_grid_enemy_presentation() -> void:
 		sprite_ok = CardGridUnitVisuals.apply_battle_unit_presentation(
 			self, spr, card_res, tex, false, rank_level
 		)
+		# v7.x 战场视觉反馈：敌方改造图标条（从 archetype tags 推断）
+		CardGridUnitVisuals.sync_mod_strip(self, self, spr)
 	if walk_sprite != null:
 		walk_sprite.visible = false
 	if poly != null:
@@ -495,10 +499,10 @@ func _sync_weapon_cfgs_from_stats() -> void:
 		_weapon_cfgs[i] = cfg
 
 
-func _update_shape() -> void:
-	var poly: Polygon2D = $Shape as Polygon2D
-	if poly == null:
-		return
+	func _update_shape() -> void:
+		var poly: Polygon2D = get_node_or_null("Shape") as Polygon2D
+		if poly == null:
+			return
 	var pts: PackedVector2Array = _shape_points()
 	poly.polygon = pts
 	# 我方蓝色，敌方红色（用于相位师等复用构装体场景的敌方单位）
@@ -1017,6 +1021,9 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 	# 预览模式不会受到伤害
 	if is_preview_mode:
 		return
+	# v7.x 战场视觉反馈：记录最后攻击者，供 unit_killed 信号携带（击杀定帧/连杀提示依赖）
+	if attacker != null and is_instance_valid(attacker):
+		set_meta("_last_attacker", attacker)
 	var hp_loss: float = amount
 	if stats != null and _cached_is_card_grid:
 		var pen: float = 0.0
@@ -1169,6 +1176,11 @@ func _die() -> void:
 		if BattleInputState.current_selected_unit == self:
 			BattleInputState.current_selected_unit = null
 		SignalBus.unit_died.emit(self, is_player)
+		# v7.x 战场视觉反馈：emit unit_killed（含击杀者），供 BattleSpectacle/BattleLog/MVP
+		var _killer: Variant = get_meta("_last_attacker", null)
+		if _killer != null and not is_instance_valid(_killer):
+			_killer = null
+		SignalBus.unit_killed.emit(self, _killer, is_player)
 	# v6.2: 符文之语特殊效果 — 敌方单位死亡时，触发玩家方单位的击杀回能
 	if not is_player:
 		_trigger_allied_kill_rewards()

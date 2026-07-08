@@ -1,6 +1,6 @@
 extends RefCounted
 ## 平台卡 → 默认武器 ID 映射
-## 供 affix_panel 等面板查询平台卡绑定的默认武器名称
+## 供 card_enhancement_panel 等面板查询平台卡绑定的默认武器名称
 
 const EnemyPhaseEquipment = preload("res://data/enemy_phase_equipment.gd")
 const DefaultCards = preload("res://data/default_cards.gd")

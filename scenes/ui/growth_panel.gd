@@ -68,9 +68,6 @@ var apply_btn: Button
 var card_list_container: VBoxContainer
 var card_list_scroll: ScrollContainer
 var card_list_hint: Label
-var footer_res_labels: Array[Label]
-
-# ---- 操作按钮 ----
 var enhance_btn: Button
 var mod_btn: Button
 var evo_btn: Button
@@ -146,17 +143,13 @@ func _ready() -> void:
 	if evo_btn:
 		evo_btn.pressed.connect(_on_evo_pressed)
 
-	# 卡牌列表
-	card_list_container = get_node_or_null("%CardListContainer")
-	card_list_scroll = get_node_or_null("%CardListScroll")
-	card_list_hint = get_node_or_null("%CardListHint")
-	footer_res_labels = [
-		get_node_or_null("%FooterRes1"),
-		get_node_or_null("%FooterRes2"),
-		get_node_or_null("%FooterRes3"),
-	]
+		# 卡牌列表
+		card_list_container = get_node_or_null("%CardListContainer")
+		card_list_scroll = get_node_or_null("%CardListScroll")
+		card_list_hint = get_node_or_null("%CardListHint")
+		# footer_res_labels 已移除（v7.x 美化：与 DetailFooter currency_labels 重复）
 
-	if close_btn:
+		if close_btn:
 		close_btn.pressed.connect(_on_close_pressed)
 
 	# 视觉样式美化
@@ -185,13 +178,40 @@ func _apply_visual_styles() -> void:
 		sb_h.set_corner_radius_all(4)
 		cbtn.add_theme_stylebox_override("hover", sb_h)
 
-	# --- 进度条 ---
+	# --- 进度条（高度 6→8，更具存在感） ---
 	var sp = get_node_or_null("%StarProgress")
 	if sp:
-		sp.custom_minimum_size = Vector2(0, 6)
+		sp.custom_minimum_size = Vector2(0, 8)
 	var ep = get_node_or_null("%EnhanceProgress")
 	if ep:
-		ep.custom_minimum_size = Vector2(0, 6)
+		ep.custom_minimum_size = Vector2(0, 8)
+
+	# --- 四大区块顶部彩色顶线（主题色区分：星级金/强化青/MOD紫/进化橙） ---
+	_apply_section_theme_border("%StarSection", Color(1.0, 0.84, 0.0, 0.9))
+	_apply_section_theme_border("%EnhanceSection", Color(0, 0.94, 1, 0.9))
+	_apply_section_theme_border("%ModSection2", Color(0.55, 0.35, 0.96, 0.9))
+	_apply_section_theme_border("%EvoSection2", Color(1.0, 0.596, 0.0, 0.9))
+
+## 为单个 Section 应用主题色顶线（保留原 bg/corner，只改顶部边框宽度+颜色）
+func _apply_section_theme_border(node_path: String, theme_color: Color) -> void:
+	var section = get_node_or_null(node_path)
+	if section == null:
+		return
+	var base_sb: StyleBoxFlat = section.get_theme_stylebox("panel")
+	var sb: StyleBoxFlat
+	if base_sb is StyleBoxFlat:
+		sb = (base_sb as StyleBoxFlat).duplicate() as StyleBoxFlat
+	else:
+		sb = StyleBoxFlat.new()
+		sb.bg_color = Color(0.06, 0.10, 0.18, 0.8)
+		sb.content_margin_left = 14
+		sb.content_margin_top = 12
+		sb.content_margin_right = 14
+		sb.content_margin_bottom = 12
+	sb.border_width_top = 3
+	sb.border_color = theme_color
+	sb.set_corner_radius_all(6)
+	section.add_theme_stylebox_override("panel", sb)
 
 # ========== 改造系统入口按钮图标 ==========
 
@@ -467,100 +487,171 @@ func refresh_card_list(unlocked_ids: Array[String]) -> void:
 	if card_list_hint:
 		card_list_hint.visible = false
 
-	for i in range(unlocked_ids.size()):
-		var card_id: String = unlocked_ids[i]
-		var card = _resolve_card(card_id)
+	for iid in unlocked_ids:
+		var card = _resolve_card(iid)
 		if not card:
 			continue
-
-		# 卡牌列表项：PanelContainer 包裹 VBoxContainer
-		var item_panel := PanelContainer.new()
-		item_panel.custom_minimum_size = Vector2(0, 34)
-		item_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var item_sb := StyleBoxFlat.new()
-		item_sb.bg_color = Color(0, 0, 0, 0)
-		item_sb.border_color = Color(0, 0, 0, 0)
-		item_sb.set_border_width_all(0)
-		item_sb.set_corner_radius_all(3)
-		item_sb.content_margin_left = 8
-		item_sb.content_margin_top = 5
-		item_sb.content_margin_right = 8
-		item_sb.content_margin_bottom = 5
-		item_panel.add_theme_stylebox_override("panel", item_sb)
-
-		var item_vbox := VBoxContainer.new()
-		item_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		item_vbox.add_theme_constant_override("separation", 1)
-
-		var btn := Button.new()
-		btn.custom_minimum_size = Vector2(0, 26)
-		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		btn.add_theme_font_size_override("font_size", 12)
-		btn.add_theme_color_override("font_color", Color(0.75, 0.8, 0.87))
-		btn.add_theme_color_override("font_hover_color", Color(0.0, 0.9, 0.46))
-		btn.text = card.display_name if card.display_name else card.card_id
-
-		# 选中高亮
-		if _selected_card and _selected_card.card_id == card_id:
-			btn.add_theme_color_override("font_color", Color(0, 0.94, 1, 1))
-			var highlight_sb := StyleBoxFlat.new()
-			highlight_sb.bg_color = Color(0, 0.94, 1, 0.14)
-			highlight_sb.border_color = Color(0, 0.94, 1, 0.45)
-			highlight_sb.set_border_width_all(1)
-			highlight_sb.set_corner_radius_all(3)
-			highlight_sb.content_margin_left = 8
-			highlight_sb.content_margin_top = 5
-			highlight_sb.content_margin_right = 8
-			highlight_sb.content_margin_bottom = 5
-			item_panel.add_theme_stylebox_override("panel", highlight_sb)
-
-		# 星星 + 等级 meta 行
-		var meta_row := HBoxContainer.new()
-		meta_row.add_theme_constant_override("separation", 3)
-		var star_count: int = StarConfig.calculate_star(card.enhance_level * 2, card.rarity)
-		var star_str = ""
-		for s in range(5):
-			star_str += "\u2605" if s < star_count else "\u2606"
-		var star_label := Label.new()
-		star_label.text = star_str
-		star_label.add_theme_font_size_override("font_size", 10)
-		star_label.add_theme_color_override("font_color", Color(1.0, 0.84, 0.0, 0.7))
-		meta_row.add_child(star_label)
-		var level_label := Label.new()
-		level_label.text = "Lv.%d" % card.enhance_level
-		level_label.add_theme_font_size_override("font_size", 10)
-		level_label.add_theme_color_override("font_color", Color(0.5, 0.5, 0.6, 0.6))
-		meta_row.add_child(level_label)
-
-		item_vbox.add_child(btn)
-		item_vbox.add_child(meta_row)
-
-		item_panel.add_child(item_vbox)
-		btn.pressed.connect(_on_card_selected.bind(card))
-		card_list_container.add_child(item_panel)
-
-	# M5: 底部资源实际更新
-	_refresh_card_list_footer(unlocked_ids)
-
-func _refresh_card_list_footer(unlocked_ids: Array[String]) -> void:
-	if footer_res_labels.size() < 3:
-		return
-	var res_mgr = get_node_or_null("/root/BasicResourceManager")
-	if not res_mgr:
-		return
-	var res_ids := ["res_nano", "res_alloy", "res_crystal"]
-	var res_symbols := ["纳米", "合金", "晶体"]
-	var res_names := ["纳米", "合金", "晶体"]
-	for i in range(mini(3, footer_res_labels.size())):
-		if footer_res_labels[i]:
-			var amt: int = res_mgr.get_total(res_ids[i])
-			footer_res_labels[i].text = "%s %s" % [res_symbols[i], _format_number(amt)]
+		var item = _create_card_list_item(card, iid)
+		card_list_container.add_child(item)
 
 func _on_card_selected(card: CardResource) -> void:
 	_selected_card = card
 	if not _last_unlocked_ids.is_empty():
 		refresh_card_list(_last_unlocked_ids)
 	select_card(card)
+
+# ========== 列表项渲染（参考 modification_panel 卡片式范式） ==========
+
+## 创建单个卡牌列表项：PanelContainer 内含 HBox（兵种色标 + 图标 + 卡名/元信息）
+func _create_card_list_item(card: CardResource, instance_id_raw: Variant) -> Control:
+	var iid: String = String(instance_id_raw)
+	var btn := Button.new()
+	btn.custom_minimum_size = Vector2(0, 52)
+	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	btn.text = ""
+	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	btn.add_theme_font_size_override("font_size", 13)
+	btn.add_theme_color_override("font_color", Color(0.91, 0.93, 0.96, 1))
+
+	# ---- 选中态判断（instance_id 精确匹配，蓝图兜底回退 card_id） ----
+	var is_selected := false
+	if _selected_card != null:
+		var sel_iid := String(_selected_card.instance_id)
+		if not sel_iid.is_empty():
+			is_selected = (sel_iid == iid)
+		else:
+			is_selected = (iid.is_empty() or iid.split("#")[0] == _selected_card.card_id)
+
+	# ---- 按钮样式（normal / hover / selected 三色态） ----
+	var sb_n := StyleBoxFlat.new()
+	sb_n.bg_color = Color(0.06, 0.10, 0.18, 0.6)
+	sb_n.set_border_width_all(1)
+	sb_n.set_corner_radius_all(6)
+	sb_n.content_margin_left = 6
+	sb_n.content_margin_top = 5
+	sb_n.content_margin_right = 6
+	sb_n.content_margin_bottom = 5
+	var sb_h := sb_n.duplicate() as StyleBoxFlat
+	sb_h.bg_color = Color(0.12, 0.08, 0.22, 0.7)
+	sb_h.border_color = Color(0.55, 0.35, 0.96, 0.5)
+	var sb_s := sb_n.duplicate() as StyleBoxFlat
+	sb_s.border_color = Color(0, 0.94, 1, 0.8)
+	sb_s.border_width_left = 3
+	sb_s.bg_color = Color(0, 0.94, 1, 0.1)
+
+	if is_selected:
+		btn.add_theme_stylebox_override("normal", sb_s)
+		sb_h.bg_color = Color(0, 0.94, 1, 0.06)
+	else:
+		btn.add_theme_stylebox_override("normal", sb_n)
+	btn.add_theme_stylebox_override("hover", sb_h)
+
+	# ---- 内容结构：HBoxContainer（兵种色标 + 图标 + 信息列） ----
+	var outer_vbox := VBoxContainer.new()
+	outer_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	outer_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	outer_vbox.add_theme_constant_override("separation", 0)
+
+	var info_hbox := HBoxContainer.new()
+	info_hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	info_hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	info_hbox.add_theme_constant_override("separation", 6)
+
+	# 兵种色标条（4px 宽竖条）
+	var kind_color := _get_kind_color(card.combat_kind)
+	var color_bar := PanelContainer.new()
+	color_bar.custom_minimum_size = Vector2(4, 0)
+	color_bar.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var bar_sb := StyleBoxFlat.new()
+	bar_sb.bg_color = kind_color
+	bar_sb.set_border_width_all(0)
+	bar_sb.content_margin_left = 0
+	bar_sb.content_margin_top = 0
+	bar_sb.content_margin_right = 0
+	bar_sb.content_margin_bottom = 0
+	color_bar.add_theme_stylebox_override("panel", bar_sb)
+	info_hbox.add_child(color_bar)
+
+	# 兵种图标（20px Unicode）
+	var icon_label := Label.new()
+	icon_label.text = _get_unit_icon(card)
+	icon_label.custom_minimum_size = Vector2(24, 24)
+	icon_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	icon_label.add_theme_font_size_override("font_size", 20)
+	icon_label.add_theme_color_override("font_color", kind_color)
+	info_hbox.add_child(icon_label)
+
+	# 信息列（卡名 + 元信息）
+	var info_vbox := VBoxContainer.new()
+	info_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	info_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	info_vbox.add_theme_constant_override("separation", 1)
+
+	# 第一行：卡名 + 实例序号
+	var name_hbox := HBoxContainer.new()
+	name_hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	name_hbox.add_theme_constant_override("separation", 6)
+	var name_label := Label.new()
+	name_label.text = card.display_name if card.display_name else card.card_id
+	name_label.add_theme_font_size_override("font_size", 13)
+	name_label.add_theme_color_override("font_color", Color(0.91, 0.93, 0.96, 1))
+	name_label.add_theme_font_override("bold", true)
+	name_hbox.add_child(name_label)
+
+	# 实例序号后缀（如 #2）
+	var inst_seq := ""
+	if not iid.is_empty() and iid.find("#") >= 0:
+		var parts := iid.split("#")
+		if parts.size() >= 2:
+			inst_seq = " #" + parts[1]
+	if not inst_seq.is_empty():
+		var seq_label := Label.new()
+		seq_label.text = inst_seq
+		seq_label.add_theme_font_size_override("font_size", 11)
+		seq_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.7, 0.8))
+		name_hbox.add_child(seq_label)
+
+	info_vbox.add_child(name_hbox)
+
+	# 第二行：星星 + 等级 + 改造数
+	var meta_hbox := HBoxContainer.new()
+	meta_hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	meta_hbox.add_theme_constant_override("separation", 8)
+
+	var star_count: int = StarConfig.calculate_star(card.enhance_level * 2, card.rarity)
+	var star_str := ""
+	for s in range(5):
+		star_str += "\u2605" if s < star_count else "\u2606"
+	var star_label := Label.new()
+	star_label.text = star_str
+	star_label.add_theme_font_size_override("font_size", 10)
+	star_label.add_theme_color_override("font_color", Color(1.0, 0.84, 0.0, 0.85))
+	meta_hbox.add_child(star_label)
+
+	var level_label := Label.new()
+	level_label.text = "Lv.%d" % card.enhance_level
+	level_label.add_theme_font_size_override("font_size", 10)
+	level_label.add_theme_color_override("font_color", Color(0.0, 0.73, 0.855, 0.9))
+	meta_hbox.add_child(level_label)
+
+	var mod_count: int = card.mods.size() if card.has_method("get") or card is Dictionary else 0
+	# 兼容 CardResource mods 字段
+	if card is Object and "mods" in card:
+		var mods_arr = card.mods
+		mod_count = mods_arr.size() if mods_arr is Array else 0
+	var mod_label := Label.new()
+	mod_label.text = "MOD %d/9" % mod_count
+	mod_label.add_theme_font_size_override("font_size", 10)
+	mod_label.add_theme_color_override("font_color", Color(0, 0.94, 1, 0.9))
+	meta_hbox.add_child(mod_label)
+
+	info_vbox.add_child(meta_hbox)
+	info_hbox.add_child(info_vbox)
+	outer_vbox.add_child(info_hbox)
+	btn.add_child(outer_vbox)
+
+	btn.pressed.connect(_on_card_selected.bind(card))
+	return btn
 
 # ========== 旧方法（兼容） ==========
 
@@ -619,7 +710,7 @@ func _refresh_header() -> void:
 	if not c:
 		return
 
-	# 头像图标和边框
+	# 头像图标和边框（72×72，边框色随兵种）
 	if portrait_icon:
 		portrait_icon.text = _get_unit_icon(c)
 		var portrait_panel = get_node_or_null("%Portrait")
@@ -627,14 +718,17 @@ func _refresh_header() -> void:
 			var icon_sb := StyleBoxFlat.new()
 			icon_sb.bg_color = Color(0.102, 0.157, 0.267, 1)
 			icon_sb.border_color = _get_kind_color(c.combat_kind)
-			icon_sb.set_border_width_all(2)
-			icon_sb.set_corner_radius_all(8)
+			icon_sb.set_border_width_all(3)
+			icon_sb.set_corner_radius_all(10)
+			icon_sb.shadow_color = _get_kind_color(c.combat_kind)
+			icon_sb.shadow_size = 8
 			portrait_panel.add_theme_stylebox_override("panel", icon_sb)
 
+	# 主标题：display_name（18px 加粗白色）；副标题：card_id（11px 灰色）
 	if unit_name_label:
-		unit_name_label.text = c.card_id.to_upper()
+		unit_name_label.text = c.display_name if c.display_name else c.card_id
 	if unit_subtitle_label:
-		unit_subtitle_label.text = c.display_name
+		unit_subtitle_label.text = c.card_id.to_upper()
 	if era_badge:
 		var era_name = GameConstants.get_era_name(c.era)
 		era_badge.text = era_name if era_name else ""
@@ -820,14 +914,18 @@ func _refresh_mod_section() -> void:
 					mod_data["icon"] = md.get("icon", "")
 			if slot.has_method("set_mod"):
 				slot.set_mod(mod_data)
+			# tooltip：鼠标悬停显示改造名 + tier
+			var tt_name: String = String(mod_data.get("name", mod_id_str))
+			var tt_tier: String = String(mod_data.get("tier", ""))
+			slot.tooltip_text = "%s%s" % [tt_name, (" [" + tt_tier + "]") if not tt_tier.is_empty() else ""]
 		else:
-			# 空槽位 - 虚线边框
+			# 空槽位 - 虚线边框（紫色风格与 MOD 区块主题色呼应）
 			var placeholder := PanelContainer.new()
 			placeholder.custom_minimum_size = Vector2(80, 56)
 			placeholder.name = "PlaceholderSlot"
 			var placeholder_sb := StyleBoxFlat.new()
 			placeholder_sb.bg_color = Color(0.1, 0.137, 0.2, 0.15)
-			placeholder_sb.border_color = Color(1, 1, 1, 0.05)
+			placeholder_sb.border_color = Color(0.55, 0.35, 0.96, 0.25)
 			placeholder_sb.set_border_width_all(1)
 			placeholder_sb.set_corner_radius_all(3)
 			# 虚线效果
@@ -837,8 +935,8 @@ func _refresh_mod_section() -> void:
 			plus_label.text = "+"
 			plus_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			plus_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-			plus_label.add_theme_font_size_override("font_size", 16)
-			plus_label.add_theme_color_override("font_color", Color(0.4, 0.5, 0.55, 0.4))
+			plus_label.add_theme_font_size_override("font_size", 20)
+			plus_label.add_theme_color_override("font_color", Color(0.55, 0.35, 0.96, 0.5))
 			placeholder.add_child(plus_label)
 			mod_grid.add_child(placeholder)
 
@@ -972,7 +1070,8 @@ func _add_tag(text: String) -> void:
 
 	var tag_label := Label.new()
 	tag_label.text = text
-	tag_label.add_theme_font_size_override("font_size", 12)
+	tag_label.add_theme_font_size_override("font_size", 11)
+	tag_label.add_theme_color_override("font_color", Color(0.85, 0.95, 1.0, 0.95))
 	tag_panel.add_child(tag_label)
 	stat_tags.add_child(tag_panel)
 
@@ -1056,10 +1155,11 @@ func _format_number(n: int) -> String:
 
 func _init_cached_styleboxes() -> void:
 	_tag_stylebox = StyleBoxFlat.new()
-	_tag_stylebox.bg_color = Color(0, 0.94, 1, 0.08)
-	_tag_stylebox.border_color = Color(0, 0.94, 1, 0.3)
-	_tag_stylebox.set_corner_radius_all(2)
-	_tag_stylebox.content_margin_left = 6
-	_tag_stylebox.content_margin_top = 1
-	_tag_stylebox.content_margin_right = 6
-	_tag_stylebox.content_margin_bottom = 1
+	_tag_stylebox.bg_color = Color(0, 0.94, 1, 0.18)
+	_tag_stylebox.border_color = Color(0, 0.94, 1, 0.5)
+	_tag_stylebox.set_border_width_all(1)
+	_tag_stylebox.set_corner_radius_all(8)
+	_tag_stylebox.content_margin_left = 8
+	_tag_stylebox.content_margin_top = 3
+	_tag_stylebox.content_margin_right = 8
+	_tag_stylebox.content_margin_bottom = 3

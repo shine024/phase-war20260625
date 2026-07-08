@@ -163,8 +163,33 @@ func _refresh_lore() -> void:
 		_update_label("lore", lore_data.size())
 
 func _update_label(key: String, value: int) -> void:
-	if _labels.has(key):
-		_labels[key].text = _format_number(value)
+	if not _labels.has(key):
+		return
+	var lbl: Label = _labels[key]
+	# v7.x 战场视觉反馈：数字滚动动画（克制：0.3s EASE_OUT，旧值→新值插值）
+	# 记录上次显示值，用 tween 平滑过渡；同值/首次赋值直接显示
+	var prev: int = int(lbl.get_meta("displayed_value", value))
+	if prev == value:
+		lbl.text = _format_number(value)
+		lbl.set_meta("displayed_value", value)
+		return
+		# 杀掉进行中的 tween（避免叠加）
+		var old_tw = lbl.get_meta("roll_tween", null) if lbl.has_meta("roll_tween") else null
+		if old_tw != null and old_tw is Tween and (old_tw as Tween).is_valid():
+			(old_tw as Tween).kill()
+	var tw: Tween = create_tween()
+	var duration: float = 0.3
+	tw.tween_method(
+		func(v: float) -> void: lbl.text = _format_number(int(round(v))),
+		float(prev),
+		float(value),
+		duration
+	).set_ease(Tween.EASE_OUT)
+	tw.tween_callback(func():
+		lbl.text = _format_number(value)
+		lbl.set_meta("displayed_value", value)
+	)
+	lbl.set_meta("roll_tween", tw)
 
 func _format_number(num: int) -> String:
 	if num >= 1000000:

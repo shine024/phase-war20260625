@@ -1,4 +1,4 @@
-[gd_scene load_steps=28 format=3 uid="uid://main"]
+[gd_scene load_steps=31 format=3 uid="uid://main"]
 
 [ext_resource type="Script" uid="uid://d0jpdmko5mrnu" path="res://scenes/main.gd" id="1_script"]
 [ext_resource type="PackedScene" uid="uid://battlefield" path="res://scenes/battlefield/battlefield.tscn" id="2_battlefield"]
@@ -7,7 +7,6 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/enemy_spawn_hud.tscn" id="9_enemy_hud"]
 [ext_resource type="Script" uid="uid://crrqivol5erqy" path="res://scenes/ui/battle_click_overlay.gd" id="10_overlay"]
 [ext_resource type="PackedScene" path="res://scenes/ui/quest_panel.tscn" id="13_quest_panel"]
-[ext_resource type="PackedScene" path="res://scenes/ui/rune_panel.tscn" id="14_rune_panel"]
 [ext_resource type="PackedScene" path="res://scenes/ui/store_panel.tscn" id="17_store_panel"]
 [ext_resource type="PackedScene" uid="uid://d0ekxsdbvfjpy" path="res://scenes/ui/faction_panel.tscn" id="21_faction_panel"]
 [ext_resource type="PackedScene" path="res://scenes/ui/occupation_panel.tscn" id="22_occupation_panel"]
@@ -25,6 +24,9 @@
 [ext_resource type="PackedScene" uid="uid://b8xk3l2m5n6o" path="res://scenes/ui/card_info_panel.tscn" id="35_card_info_panel"]
 [ext_resource type="PackedScene" path="res://scenes/ui/story_dialogue_panel.tscn" id="36_story_dialogue"]
 [ext_resource type="PackedScene" path="res://scenes/ui/afk_panel.tscn" id="39_afk_panel"]
+[ext_resource type="PackedScene" path="res://scenes/ui/battle_announcer.tscn" id="40_battle_announcer"]
+[ext_resource type="PackedScene" path="res://scenes/ui/battle_log.tscn" id="41_battle_log"]
+[ext_resource type="PackedScene" path="res://scenes/ui/unit_hover_info.tscn" id="42_unit_hover_info"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_level_display"]
 font_size = 24
@@ -188,6 +190,17 @@ text = "第 1 关"
 horizontal_alignment = 1
 mouse_filter = 2
 
+[node name="TopCenterAnnouncer" parent="HudLayer" instance=ExtResource("40_battle_announcer")]
+layout_mode = 1
+anchors_preset = 10
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -200.0
+offset_top = 50.0
+offset_right = 200.0
+offset_bottom = 100.0
+grow_horizontal = 2
+
 [node name="BattleBottomBar" type="VBoxContainer" parent="HudLayer"]
 layout_mode = 1
 anchors_preset = 12
@@ -204,6 +217,19 @@ layout_mode = 2
 
 [node name="BottomFunctionBar" parent="HudLayer/BattleBottomBar" instance=ExtResource("27_function_bar")]
 layout_mode = 2
+
+[node name="BattleLogBar" parent="HudLayer" instance=ExtResource("41_battle_log")]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = -224.0
+offset_right = -8.0
+offset_bottom = -128.0
+grow_horizontal = 2
+grow_vertical = 0
 
 [node name="UnitInfoPanel" parent="HudLayer" instance=ExtResource("6_unit_info")]
 layout_mode = 1
@@ -226,6 +252,11 @@ layer = 90
 layout_mode = 1
 anchors_preset = 0
 
+[node name="UnitHoverInfo" parent="InfoPanelLayer" instance=ExtResource("42_unit_hover_info")]
+layout_mode = 1
+anchors_preset = 0
+visible = false
+
 
 [node name="QuestOverlay" type="Control" parent="PopupLayer"]
 visible = false
@@ -235,6 +266,16 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+[node name="Backdrop" type="ColorRect" parent="PopupLayer/QuestOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.55)
+mouse_filter = 0
+
 
 [node name="CenterContainer" type="CenterContainer" parent="PopupLayer/QuestOverlay"]
 layout_mode = 1
@@ -254,6 +295,16 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+[node name="Backdrop" type="ColorRect" parent="PopupLayer/StoreOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.55)
+mouse_filter = 0
+
 
 [node name="CenterContainer" type="CenterContainer" parent="PopupLayer/StoreOverlay"]
 layout_mode = 1
@@ -265,25 +316,6 @@ grow_vertical = 2
 
 [node name="StorePanel" parent="PopupLayer/StoreOverlay/CenterContainer" instance=ExtResource("17_store_panel")]
 
-[node name="PhaseLawOverlay" type="Control" parent="PopupLayer"]
-visible = false
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="CenterContainer" type="CenterContainer" parent="PopupLayer/PhaseLawOverlay"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="RunePanel" parent="PopupLayer/PhaseLawOverlay/CenterContainer" instance=ExtResource("14_rune_panel")]
-
 [node name="BackpackOverlay" type="Control" parent="PopupLayer"]
 visible = false
 layout_mode = 3
@@ -292,6 +324,16 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+[node name="Backdrop" type="ColorRect" parent="PopupLayer/BackpackOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.55)
+mouse_filter = 0
+
 
 [node name="BackpackVBox" type="VBoxContainer" parent="PopupLayer/BackpackOverlay"]
 layout_mode = 1
@@ -304,7 +346,7 @@ grow_vertical = 2
 [node name="TopSpacer" type="Control" parent="PopupLayer/BackpackOverlay/BackpackVBox"]
 layout_mode = 2
 size_flags_vertical = 3
-size_flags_stretch_ratio = 0.45
+size_flags_stretch_ratio = 0.3
 
 [node name="CenterRow" type="HBoxContainer" parent="PopupLayer/BackpackOverlay/BackpackVBox"]
 layout_mode = 2
@@ -319,7 +361,7 @@ size_flags_vertical = 4
 [node name="BottomSpacer" type="Control" parent="PopupLayer/BackpackOverlay/BackpackVBox"]
 layout_mode = 2
 size_flags_vertical = 3
-size_flags_stretch_ratio = 0.9
+size_flags_stretch_ratio = 1.4
 
 
 [node name="FactionOverlay" type="Control" parent="PopupLayer"]
@@ -330,6 +372,16 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+[node name="Backdrop" type="ColorRect" parent="PopupLayer/FactionOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.55)
+mouse_filter = 0
+
 
 [node name="CenterContainer" type="CenterContainer" parent="PopupLayer/FactionOverlay"]
 layout_mode = 1
@@ -349,6 +401,16 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+[node name="Backdrop" type="ColorRect" parent="PopupLayer/OccupationOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.55)
+mouse_filter = 0
+
 
 [node name="CenterContainer" type="CenterContainer" parent="PopupLayer/OccupationOverlay"]
 layout_mode = 1
@@ -368,6 +430,16 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+[node name="Backdrop" type="ColorRect" parent="PopupLayer/ManufactureOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.55)
+mouse_filter = 0
+
 
 [node name="CenterContainer" type="CenterContainer" parent="PopupLayer/ManufactureOverlay"]
 layout_mode = 1
@@ -407,6 +479,16 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+[node name="Backdrop" type="ColorRect" parent="PopupLayer/SettingsOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.55)
+mouse_filter = 0
+
 
 [node name="CenterContainer" type="CenterContainer" parent="PopupLayer/SettingsOverlay"]
 layout_mode = 1
@@ -453,6 +535,16 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 0
+[node name="Backdrop" type="ColorRect" parent="PopupLayer/IntelligenceOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.55)
+mouse_filter = 0
+
 
 [node name="CenterContainer" type="CenterContainer" parent="PopupLayer/IntelligenceOverlay"]
 layout_mode = 1
@@ -482,23 +574,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="StatisticsOverlay" type="Control" parent="PopupLayer"]
-visible = false
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="CenterContainer" type="CenterContainer" parent="PopupLayer/StatisticsOverlay"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-
 [node name="EnhancementOverlay" type="Control" parent="PopupLayer"]
 visible = false
 layout_mode = 3
@@ -507,6 +582,16 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+[node name="Backdrop" type="ColorRect" parent="PopupLayer/EnhancementOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.55)
+mouse_filter = 0
+
 
 [node name="CenterContainer" type="CenterContainer" parent="PopupLayer/EnhancementOverlay"]
 layout_mode = 1
@@ -524,6 +609,16 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+[node name="Backdrop" type="ColorRect" parent="PopupLayer/DropsInventoryOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.55)
+mouse_filter = 0
+
 
 [node name="CenterContainer" type="CenterContainer" parent="PopupLayer/DropsInventoryOverlay"]
 layout_mode = 1
@@ -541,6 +636,16 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+[node name="Backdrop" type="ColorRect" parent="PopupLayer/EvolutionOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.55)
+mouse_filter = 0
+
 
 [node name="CenterContainer" type="CenterContainer" parent="PopupLayer/EvolutionOverlay"]
 layout_mode = 1
@@ -558,6 +663,16 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+[node name="Backdrop" type="ColorRect" parent="PopupLayer/HelpOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.55)
+mouse_filter = 0
+
 
 [node name="CenterContainer" type="CenterContainer" parent="PopupLayer/HelpOverlay"]
 layout_mode = 1
@@ -584,6 +699,16 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+[node name="Backdrop" type="ColorRect" parent="PopupLayer/StoryOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.55)
+mouse_filter = 0
+
 
 ; v6.8: 节点名保留 CenterContainer 以兼容 ui_lazy_loader 的 parent_path，
 ; 但类型改为 Control —— CenterContainer 会强制子节点按最小尺寸居中，导致剧情面板无法底部锚定。
@@ -614,6 +739,16 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+[node name="Backdrop" type="ColorRect" parent="PopupLayer/ModificationOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.55)
+mouse_filter = 0
+
 
 [node name="CenterContainer" type="CenterContainer" parent="PopupLayer/ModificationOverlay"]
 layout_mode = 1
@@ -640,23 +775,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="AffixOverlay" type="Control" parent="PopupLayer"]
-visible = false
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="CenterContainer" type="CenterContainer" parent="PopupLayer/AffixOverlay"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-
 [node name="GrowthOverlay" type="Control" parent="PopupLayer"]
 visible = false
 layout_mode = 1
@@ -666,6 +784,16 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+[node name="Backdrop" type="ColorRect" parent="PopupLayer/GrowthOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.55)
+mouse_filter = 0
+
 
 [node name="CenterContainer" type="CenterContainer" parent="PopupLayer/GrowthOverlay"]
 layout_mode = 1
@@ -684,6 +812,16 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+[node name="Backdrop" type="ColorRect" parent="PopupLayer/CollectionOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.55)
+mouse_filter = 0
+
 
 [node name="CenterContainer" type="CenterContainer" parent="PopupLayer/CollectionOverlay"]
 layout_mode = 1

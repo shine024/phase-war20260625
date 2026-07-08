@@ -35,6 +35,8 @@ var enemy_wave_index: int = 0
 var enemy_wave_timer: float = 0.0
 var _enemy_wave_interval: float = 12.0
 var _enemy_wave_total: int = 0
+# v7.x 战场视觉反馈：本波实际生成的 boss archetype_id 列表（boss_wave_started 信号 payload）
+var _wave_boss_spawns: Array = []
 var _last_deploy_fail_key: String = ""
 var _last_deploy_fail_ts_ms: int = -999999
 var _stats_cache: Dictionary = {}
@@ -286,6 +288,10 @@ func spawn_card_grid_enemy_wave(current_level: int) -> bool:
 		# v6.14: 若有序列 bias_tags，优先从池中筛出匹配 tag 的 archetype（保留扰动）
 		archetype_id = _pick_archetype_with_bias(pool, bias_tags)
 
+		# v7.x 战场视觉反馈：追踪本波实际生成的 boss archetype（BOSS 登场特效依赖）
+		if type_pick == "boss" and not archetype_id.is_empty() and archetype_id not in _wave_boss_spawns:
+			_wave_boss_spawns.append(archetype_id)
+
 		# 蜂群单位视为短程，部署到近端
 		if not archetype_id.is_empty() and EnemyArchetypes.should_spawn_as_swarm(archetype_id):
 			var swarm_slot: int = _pick_enemy_slot_by_range(150.0)
@@ -313,6 +319,10 @@ func spawn_card_grid_enemy_wave(current_level: int) -> bool:
 				unit.queue_free()
 			continue
 
+	# v7.x 战场视觉反馈：本波生成了 boss → 广播 BOSS 波次开始（BattleSpectacle 播放登场特效）
+	if _signal_bus and not _wave_boss_spawns.is_empty():
+		_signal_bus.boss_wave_started.emit(_wave_boss_spawns.duplicate())
+	_wave_boss_spawns.clear()
 	return true
 
 

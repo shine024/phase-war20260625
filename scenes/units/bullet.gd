@@ -250,32 +250,33 @@ func _apply_visual() -> void:
 ## v7.x: 程序化生成子弹多边形（替代原 3 点三角形）
 ## 形状 = 弹体（平底矩形段）+ 弹头（锥形过渡段），指向 +X（飞行方向）
 ## 按 weapon_type 差异化比例，让不同武器视觉上有辨识度
+## 注意：整体尺寸需与原三角形 (6×4*scale) 保持一致，不可放大
 func _apply_bullet_shape(size_scale: float) -> void:
 	if _sprite == null:
 		return
 	var s := size_scale
-	# 默认弹头形基准（size_scale=1.0）
-	var body_len: float = 6.0 * s   # 弹体长度
-	var nose_len: float = 4.0 * s   # 弹头锥形长度
-	var half_h: float = 2.0 * s     # 弹体半高
+	# 基准尺寸与原三角形一致：总长约 6*scale，高约 4*scale
+	var body_len: float = 4.0 * s   # 弹体长度
+	var nose_len: float = 2.0 * s   # 弹头锥形长度
+	var half_h: float = 1.5 * s     # 弹体半高
 	# 按武器类型调整比例
 	match weapon_type:
 		5:  # SHOTGUN — 圆胖霰弹丸
-			body_len = 5.0 * s
-			nose_len = 2.0 * s
-			half_h = 2.8 * s
+			body_len = 3.0 * s
+			nose_len = 1.5 * s
+			half_h = 2.0 * s
 		3, 9:  # ROCKET / MISSILE — 长粗导弹
-			body_len = 10.0 * s
-			nose_len = 5.0 * s
-			half_h = 2.5 * s
+			body_len = 4.5 * s
+			nose_len = 2.0 * s
+			half_h = 2.0 * s
 		10, 11:  # OMEGA / RAIL — 细长高能弹
-			body_len = 8.0 * s
-			nose_len = 6.0 * s
-			half_h = 1.2 * s
+			body_len = 4.0 * s
+			nose_len = 2.0 * s
+			half_h = 0.8 * s
 		7:  # FLAK — 短粗高炮弹
-			body_len = 5.0 * s
-			nose_len = 3.5 * s
-			half_h = 2.4 * s
+			body_len = 2.5 * s
+			nose_len = 1.5 * s
+			half_h = 1.8 * s
 	var tip_x: float = body_len + nose_len  # 弹头顶点 X
 	# 7 点顺时针多边形（从弹体底部后端起）：
 	# 后端平底 → 弹体底前 → 锥面收窄 → 弹尖 → 锥面展开 → 弹体顶前 → 后端平顶

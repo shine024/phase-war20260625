@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=3 uid="uid://ceuemk61grqos"]
+[gd_scene load_steps=7 format=3 uid="uid://ceuemk61grqos"]
 
 [ext_resource type="Script" uid="uid://u1stqk3quara" path="res://scenes/title_screen.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://scenes/ui/settings_panel.tscn" id="2_settings"]
@@ -186,7 +186,6 @@ text = "切换存档 SAVE SLOT"
 layout_mode = 2
 theme_override_colors/font_color = Color(0.45, 0.45, 0.55, 1)
 theme_override_font_sizes/font_size = 11
-text = ""
 
 [node name="VersionLabel" type="Label" parent="CenterContainer/MainVBox"]
 layout_mode = 2

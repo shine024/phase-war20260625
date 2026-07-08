@@ -26,9 +26,27 @@ func show_battle_result(player_won: bool) -> void:
 	var reward_summary: Dictionary = {}
 	if GameManager != null and ("last_battle_reward_summary" in GameManager):
 		reward_summary = GameManager.last_battle_reward_summary
-	BattleResultDialog.create(main, player_won, main._blueprints_unlocked_this_battle, \
-		main._phase_field_xp_before_battle, main._phase_field_level_before_battle, reward_summary)
-	main._blueprints_unlocked_this_battle.clear()
+	# v7.x 战场视觉反馈：先弹 MVP 战绩面板，玩家看战绩后点"查看奖励"切换到 BattleResultDialog
+	# 挂机模式跳过 MVP（自动 claim_drops，无需玩家交互）
+	if not _is_afk_running():
+		var MvpPanel := preload("res://scenes/ui/mvp_panel.gd")
+		MvpPanel.create(main, player_won, main._blueprints_unlocked_this_battle, \
+			main._phase_field_xp_before_battle, main._phase_field_level_before_battle, reward_summary)
+		main._blueprints_unlocked_this_battle.clear()
+	else:
+		BattleResultDialog.create(main, player_won, main._blueprints_unlocked_this_battle, \
+			main._phase_field_xp_before_battle, main._phase_field_level_before_battle, reward_summary)
+		main._blueprints_unlocked_this_battle.clear()
+
+
+## 挂机模式是否正在运行（避免在挂机结算时弹需要玩家交互的面板）
+func _is_afk_running() -> bool:
+	# AFKModeManager 是非 autoload，通过 main 场景的 PopupLayer/AfkOverlay 可见性判断
+	if main != null:
+		var afk_panel = main.get_node_or_null("PopupLayer/AFKOverlay")
+		if afk_panel != null and afk_panel.visible:
+			return true
+	return false
 
 ## 结果确认后返回准备界面
 func on_result_confirmed() -> void:

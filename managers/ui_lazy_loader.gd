@@ -60,22 +60,10 @@ func _ready() -> void:
 			"node_name": "StorePanel",
 			"autoload": false
 		},
-		"rune": {
-			"scene": "res://scenes/ui/rune_panel.tscn",
-			"parent_path": "PopupLayer/PhaseLawOverlay/CenterContainer",
-			"node_name": "RunePanel",
-			"autoload": false
-		},
 		"story_dialogue": {
 			"scene": "res://scenes/ui/story_dialogue_panel.tscn",
 			"parent_path": "PopupLayer/StoryOverlay/CenterContainer",
 			"node_name": "StoryDialoguePanel",
-			"autoload": false
-		},
-		"affix": {
-			"scene": "res://scenes/ui/affix_panel.tscn",
-			"parent_path": "PopupLayer/AffixOverlay/CenterContainer",
-			"node_name": "AffixPanel",
 			"autoload": false
 		},
 		"faction": {
@@ -110,12 +98,6 @@ func _ready() -> void:
 			"scene": "res://scenes/ui/achievement_panel.tscn",
 			"parent_path": "PopupLayer/AchievementOverlay/CenterContainer",
 			"node_name": "AchievementPanel",
-			"autoload": false
-		},
-		"statistics": {
-			"scene": "res://scenes/ui/statistics_panel.tscn",
-			"parent_path": "PopupLayer/StatisticsOverlay/CenterContainer",
-			"node_name": "StatisticsPanel",
 			"autoload": false
 		},
 		"enhancement": {

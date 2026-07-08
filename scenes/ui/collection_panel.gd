@@ -1,7 +1,7 @@
 extends PanelContainer
 ## 卡牌图鉴面板 v7.x(A1)
 ## 数据源：CardCollectionManager（收集状态/里程碑）+ DefaultCards（全集）+ InstanceRegistry（实际拥有兜底）
-## 范式参考：affix_panel.gd（左列表+右详情）、modification_panel.gd（signal closed / show_panel）
+## 范式参考：modification_panel.gd（左列表+右详情，signal closed / show_panel）
 
 signal closed
 

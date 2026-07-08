@@ -45,6 +45,13 @@ const DAMAGE_STYLES: Dictionary = {
 		"color": Color(0.6, 0.6, 0.6, 0.7),
 		"outline_color": Color(0.2, 0.2, 0.2, 0.6),
 		"scale": 0.85
+	},
+	# v7.x：大额伤害（>500）专用——金色 outline + 更大 scale，强化"重击"感
+	"big_crit": {
+		"font_size": 28,
+		"color": Color(1.0, 0.85, 0.35, 1.0),
+		"outline_color": Color(0.5, 0.3, 0.0, 0.95),
+		"scale": 1.5
 	}
 }
 
@@ -201,13 +208,36 @@ static func create_damage_number(parent: Node, world_pos: Vector2, damage: int, 
 		return
 	if display.has_method("set_process"):
 		display.set_process(false)
+	# v7.x 战场视觉反馈：大额伤害（>500）走 big_crit 样式（金 outline + 更大 scale）
+	var effective_type: String = type
+	if type == "normal" and damage > 500:
+		effective_type = "big_crit"
+		is_crit = true  # 大额伤害也触发粒子和暴击标记
 	if display.has_method("prepare_for_display"):
-		display.call("prepare_for_display", damage, is_crit, type)
+		display.call("prepare_for_display", damage, is_crit, effective_type)
 	parent.add_child(display)
 	if display is Node2D:
 		(display as Node2D).global_position = world_pos + Vector2(randf_range(-15, 15), randf_range(-10, 10))
+	# v7.x：暴击/大额伤害附加辐射粒子（克制：3-5片，强化打击感）
+	if is_crit:
+		_spawn_crit_sparks(parent, world_pos, is_crit)
 	if display.has_method("set_process"):
 		display.set_process(true)
+
+
+## v7.x：暴击/大额伤害的辐射粒子（复用 WeaponProjectileVfx 的 sparks 池）
+static func _spawn_crit_sparks(parent: Node, world_pos: Vector2, is_full_crit: bool) -> void:
+	# parent 必须是 Node2D（sparks 是 Polygon2D）
+	if not (parent is Node2D):
+		# fallback：用 display 的父（通常也是 Node2D，如 PlayerUnits/EnemyUnits）
+		var dp := parent.get_parent()
+		if dp == null or not (dp is Node2D):
+			return
+		parent = dp
+	# 复用 WeaponProjectileVfx._spawn_impact_sparks（intensity 0.5-0.8 适中）
+	var intensity: float = 0.8 if is_full_crit else 0.5
+	var WeaponProjectileVfx = load("res://scripts/weapon_projectile_vfx.gd")
+	WeaponProjectileVfx._spawn_impact_sparks(parent as Node2D, world_pos, intensity, true, -1)
 
 static func create_critical_damage(parent: Node, world_pos: Vector2, damage: int) -> void:
 	create_damage_number(parent, world_pos, damage, true, "critical")

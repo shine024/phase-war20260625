@@ -24,9 +24,9 @@ static func _format_combat_stats_summary(stats: UnitStats, cur_hp: float = -1.0)
 		return ""
 	var hp_text: String
 	if cur_hp >= 0.0:
-		hp_text = "HP %d/%d" % [int(cur_hp), int(stats.max_hp)]
+		hp_text = "生命 %d/%d" % [int(cur_hp), int(stats.max_hp)]
 	else:
-		hp_text = "HP %d" % int(stats.max_hp)
+		hp_text = "生命 %d" % int(stats.max_hp)
 	
 	# 获取武器名称
 	var weapon_names: Array[String] = ["", "", ""]

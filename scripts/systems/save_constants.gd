@@ -25,7 +25,9 @@ const SK_STAT_BOOST: String = "stat_boost"
 const SK_ACHIEVEMENT: String = "achievement"
 const SK_DAILY_TASK: String = "daily_task"
 const SK_DAY_CLOCK: String = "day_clock"
-const SK_STATISTICS: String = "statistics"
+# v7.x 数据一致性核对：SK_STATISTICS（"statistics"）已删除——StatisticsManager 全项目
+# 无 record_* 调用者（数据恒为 0），整个统计系统为死代码已移除。save_manager.gd 保留
+# 字面量 "statistics" 仅用于兼容旧存档读取（load_state 忽略缺失键）。
 const SK_CARD_ENHANCEMENT: String = "card_enhancement"
 # v7.x 数据一致性核对：SK_LAW_SHARDS（"law_shards"）已删除——全项目零引用，疑似旧"法则碎片"系统残留。
 const SK_TUTORIAL_PROGRESS: String = "tutorial_progress"

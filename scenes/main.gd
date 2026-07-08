@@ -58,7 +58,7 @@ func _debug_log(hypothesis_id: String, location: String, message: String, data: 
 # Overlays（在 PopupLayer 下）
 @onready var quest_overlay: Control              = $PopupLayer/QuestOverlay
 @onready var store_overlay: Control              = $PopupLayer/StoreOverlay
-@onready var phase_law_overlay: Control          = $PopupLayer/PhaseLawOverlay
+# v7.x: PhaseLawOverlay 已删除——符文管理合并到背包 RunesTab,底部栏"法则区"点击改为打开背包符文 Tab
 @onready var backpack_overlay: Control           = $PopupLayer/BackpackOverlay
 @onready var faction_overlay: Control            = $PopupLayer/FactionOverlay
 @onready var map_overlay: Control                = $PopupLayer/MapOverlay
@@ -184,7 +184,6 @@ func _deferred_non_critical_init() -> void:
 func _preload_common_panels() -> void:
 	var panel_paths: Array[String] = [
 		"res://scenes/ui/backpack_panel.tscn",
-		"res://scenes/ui/rune_panel.tscn",
 		"res://scenes/ui/quest_panel.tscn",
 	]
 	for path in panel_paths:
@@ -203,7 +202,6 @@ func _prune_preloaded_panels() -> void:
 		"growth": "CenterContainer",
 		"quest": "CenterContainer",
 		"store": "CenterContainer",
-		"phase_law": "CenterContainer",
 		"faction": "CenterContainer",
 		"settings": "CenterContainer",
 	}
@@ -301,7 +299,6 @@ func _connect_panel_closed_signals() -> void:
 	var panels := {
 		"quest":              $PopupLayer/QuestOverlay/CenterContainer/QuestPanel,
 		"store":              $PopupLayer/StoreOverlay/CenterContainer/StorePanel,
-		"phase_law":          get_node_or_null("PopupLayer/PhaseLawOverlay/CenterContainer/RunePanel"),
 		"faction":            $PopupLayer/FactionOverlay/CenterContainer/FactionPanel,
 		"leaderboard":        $PopupLayer/LeaderboardPanel,
 		"backpack":           get_node_or_null("PopupLayer/BackpackOverlay/BackpackVBox/CenterRow/BackpackCenter/BackpackPanel"),
@@ -405,10 +402,6 @@ func _on_panel_closed(key: String) -> void:
 	match key:
 		"quest":              _close_overlay(quest_overlay, "quest")
 		"store":              _close_overlay(store_overlay, "store")
-		"phase_law":
-			_close_overlay(phase_law_overlay, "law")
-			if bottom_instrument_bar and bottom_instrument_bar.has_method("refresh"):
-				bottom_instrument_bar.refresh()
 		"faction":            _close_overlay(faction_overlay, "faction")
 		"map":                _close_overlay(map_overlay, "map")
 		"settings":           _close_overlay(settings_overlay, "settings")
@@ -451,9 +444,19 @@ func _on_phase_level_label_clicked() -> void:
 	_open_phase_instrument_selector()
 
 func _on_law_area_clicked() -> void:
-	# v6.2: 法则系统废弃，改为打开符文面板
-	# 原"法则区域"点击入口现在用于打开符文管理界面
-	_open_overlay(phase_law_overlay, "rune")
+	# v7.x: 独立 rune_panel 已删除，符文管理合并到背包 RunesTab
+	# 底部栏"法则区"点击改为打开背包并切到符文 Tab
+	_open_backpack_runes_tab()
+
+## v7.x: 打开背包并切到符文 Tab（底部栏法则区 / 教程引导共用入口）
+func _open_backpack_runes_tab() -> void:
+	_play_sfx("button")
+	_open_overlay(backpack_overlay, "backpack")
+	var bp: Node = backpack_overlay.get_node_or_null("BackpackVBox/CenterRow/BackpackCenter/BackpackPanel")
+	if bp == null:
+		bp = backpack_overlay.find_child("BackpackPanel", true, false)
+	if bp and bp.has_method("switch_to_runes_tab"):
+		bp.switch_to_runes_tab()
 
 func _on_law_slot_clicked(law_id: String, kind: String, origin_global: Vector2) -> void:
 	# 战斗中点击主动法则格子：进入选点释放模式
@@ -498,9 +501,6 @@ func _overlay_for_panel_key(panel_key: String) -> Control:
 		"progression": return manufacture_overlay
 		"quest": return quest_overlay
 		"store": return store_overlay
-		"law": return phase_law_overlay
-		"phase_law": return phase_law_overlay
-		"rune": return phase_law_overlay
 		"story_dialogue": return story_overlay
 		"growth": return growth_overlay
 		"faction": return faction_overlay
@@ -528,12 +528,6 @@ func _ensure_lazy_panel(panel_key: String) -> void:
 			lazy_id = "quest"
 		"store":
 			lazy_id = "store"
-		"law":
-			lazy_id = "rune"  # v6.2: 法则面板废弃，重定向到符文面板
-		"phase_law":
-			lazy_id = "rune"  # v6.2: 法则面板废弃，重定向到符文面板
-		"rune":
-			lazy_id = "rune"
 		"faction":
 			lazy_id = "faction"
 		"map":
@@ -615,10 +609,9 @@ func _on_faction_pressed() -> void:
 	_play_sfx("button")
 	_toggle_overlay(faction_overlay, "faction")
 
-## v6.6: 教程引导"打开相位仪面板"的无参包装（复用相位仪法则 overlay）
+## v6.6/v7.x: 教程引导"打开相位仪/符文面板"——改指向背包符文 Tab（独立 rune_panel 已删除）
 func _on_toggle_phase_instrument_from_tutorial() -> void:
-	_play_sfx("button")
-	_toggle_overlay(phase_law_overlay, "rune")
+	_open_backpack_runes_tab()
 
 func _on_quest_pressed() -> void:
 	_toggle_overlay(quest_overlay, "quest")
@@ -901,7 +894,7 @@ func _on_world_map() -> void:
 # ── 关闭所有弹出面板 ─────────────────────────────────────────
 func _close_all_overlays() -> void:
 	var overlays := [
-		quest_overlay, store_overlay, phase_law_overlay,
+		quest_overlay, store_overlay,
 		backpack_overlay, faction_overlay,
 		map_overlay, settings_overlay, intelligence_overlay,
 		growth_overlay, afk_overlay,
@@ -953,7 +946,7 @@ func _get_battlefield() -> Node2D:
 ## 非战斗时打开/关闭 overlay，冻结/恢复 SubViewport 渲染（减少 GPU 负载）
 func _is_any_overlay_open() -> bool:
 	for o in [backpack_overlay, quest_overlay,
-			store_overlay, phase_law_overlay, faction_overlay,
+			store_overlay, faction_overlay,
 			map_overlay, settings_overlay, manufacture_overlay, afk_overlay]:
 		if o and o.visible:
 			return true

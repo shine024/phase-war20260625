@@ -17,6 +17,14 @@ var _is_processing: bool = false  ## set_process(false) 空闲优化
 var _plm: Node = null  ## 安全引用：PhaseLawManager 本地缓存
 var _cast_toast = null
 
+# v7.x 战场视觉反馈：单位悬浮信息窗
+var _hover_info: PanelContainer = null
+var _hover_timer: float = 0.0
+var _hover_current_unit: Node = null
+var _hover_check_acc: float = 0.0  # 悬停检测节流（每 0.1s 一次）
+const _HOVER_DELAY_SEC: float = 0.3
+const _HOVER_CHECK_INTERVAL_SEC: float = 0.1
+
 func _ensure_plm() -> void:
 	if _plm != null and is_instance_valid(_plm):
 		return
@@ -26,11 +34,16 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	z_index = 5
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	# v7.x：查找 UnitHoverInfo（挂在 InfoPanelLayer）
+	_hover_info = get_node_or_null("/root/Main/InfoPanelLayer/UnitHoverInfo") as PanelContainer
+	# 启用 _process 用于悬停检测（原 set_process(false) 在 _process 内空闲优化保留给选点逻辑，
+	# 但悬停检测需要常驻，这里通过独立计时逻辑处理）
+	set_process(true)
+
 
 ## 避免在脱离场景树或视口无效时调用 set_input_as_handled（Viewport::_push_unhandled_input_internal 断言）
 func _safe_set_input_handled() -> void:
 	if not is_inside_tree():
-		# #endregion
 		return
 	var vp: Viewport = get_viewport()
 	if vp == null or not is_instance_valid(vp) or not vp.is_inside_tree():
@@ -46,7 +59,11 @@ func _show_cast_fail_toast(message: String) -> void:
 	var parent_node: Node = get_parent() if get_parent() != null else self
 	_cast_toast.show_toast(parent_node, message, true)
 
-func _process(_delta: float) -> void:
+
+func _process(delta: float) -> void:
+	# === v7.x 悬停检测（常驻，每 0.1s 一次）===
+	_process_hover(delta)
+	# === 原 _process 逻辑（选点/部署指示器）===
 	var has_pending := not BattleInputState.pending_cast_law_id.is_empty() or not BattleInputState.pending_deploy_platform_card_id.is_empty()
 	if not has_pending:
 		if _had_pending_input:
@@ -54,7 +71,7 @@ func _process(_delta: float) -> void:
 			_clear_deploy_target_indicator()
 			_had_pending_input = false
 			_is_processing = false
-			set_process(false)
+		# 注意：原 set_process(false) 已移除（悬停检测需要常驻）
 		return
 	if not _is_processing:
 		_is_processing = true
@@ -70,6 +87,69 @@ func _process(_delta: float) -> void:
 	else:
 		_clear_law_target_indicator()
 		_clear_deploy_target_indicator()
+
+
+## v7.x 悬停检测：每 0.1s 检查鼠标下单位，悬停 0.3s 显示悬浮窗
+func _process_hover(delta: float) -> void:
+	if _hover_info == null:
+		return
+	# 选点/部署模式中不显示悬浮窗（避免干扰）
+	var in_pick_mode: bool = (SignalBus != null and (
+		not BattleInputState.pending_cast_law_id.is_empty() or
+		not BattleInputState.pending_deploy_platform_card_id.is_empty()))
+	if in_pick_mode:
+		_hide_hover()
+		return
+	_hover_check_acc += delta
+	if _hover_check_acc < _HOVER_CHECK_INTERVAL_SEC:
+		return
+	_hover_check_acc = 0.0
+	# 获取鼠标位置对应的战场视口坐标
+	var mouse_global: Vector2 = get_global_mouse_position()
+	var viewport_pos: Variant = _global_to_battle_viewport_pos(mouse_global)
+	if viewport_pos == null or not (viewport_pos is Vector2):
+		_hover_timer = 0.0
+		_hide_hover_if_changed(null)
+		return
+	# 检测鼠标下单位
+	var unit: Node = _pick_unit_for_hover(viewport_pos)
+	if unit == _hover_current_unit and unit != null:
+		# 同一单位继续悬停，累计计时
+		_hover_timer += _HOVER_CHECK_INTERVAL_SEC
+		if _hover_timer >= _HOVER_DELAY_SEC and not _hover_info.visible:
+			_hover_info.show_for_unit(unit, mouse_global)
+	elif unit != null:
+		# 切换到新单位，重置计时
+		_hover_current_unit = unit
+		_hover_timer = _HOVER_CHECK_INTERVAL_SEC
+	else:
+		# 鼠标移出单位
+		_hover_timer = 0.0
+		_hide_hover_if_changed(null)
+
+
+func _hide_hover_if_changed(new_unit: Node) -> void:
+	if new_unit == _hover_current_unit:
+		return
+	_hover_current_unit = new_unit
+	if _hover_info != null and _hover_info.visible:
+		_hover_info.hide_delayed()
+
+
+func _hide_hover() -> void:
+	_hover_timer = 0.0
+	_hover_current_unit = null
+	if _hover_info != null:
+		_hover_info.hide_immediate()
+
+
+## 悬停用的单位拾取（复用 Battlefield.get_unit_at_position，轻量版不做施法判定）
+func _pick_unit_for_hover(viewport_pos: Vector2) -> Node:
+	var battlefield := _get_battlefield()
+	if battlefield == null or not battlefield.has_method("get_unit_at_position"):
+		return null
+	var result: Dictionary = battlefield.get_unit_at_position(viewport_pos)
+	return result.get("unit", null)
 
 ## 暂停时 _gui_input 可能不会被调用，用 _input 兜底（本节点 PROCESS_MODE_ALWAYS）
 ## 同时处理从底部栏拖到战场的释放事件（gui_input 无法跨控件接收）
@@ -202,6 +282,8 @@ func _do_unit_pick(viewport_pos: Vector2) -> bool:
 		return false
 	var result: Dictionary = bf.get_unit_at_position(viewport_pos)
 	if not result.is_empty():
+		# v7.x：单击单位时立即隐藏悬浮窗（让位给全屏 CardInfoPanel）
+		_hide_hover()
 		# 发射信号给选中高亮等监听者（UnitInfoPanel 会显示战场情报面板）
 		if SignalBus:
 			SignalBus.unit_selected.emit(result.unit, result.is_player, Vector2.ZERO)
