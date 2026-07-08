@@ -6,7 +6,8 @@ class_name OfflineIdleManager
 ##   游戏关闭 → save_game() 记录 last_active_at (epoch 秒)
 ##   游戏重开 → load_game() → 计算 elapsed = now - last_active_at
 ##   离线超阈值 → 按波次估算 battles_per_hour × capped 时长 = 战斗次数 N
-##   聚合货币(get_drops_for_level × N) + 掉落模拟(generate_battle_drops 抽样)
+##   聚合货币(get_drops_for_level × N) + 相位仪经验(base_xp × N)
+##   + 关卡推进(每场推一关) + 掉落模拟(generate_battle_drops 抽样)
 ##   弹"欢迎回来"窗 → 玩家领取 → 入账
 
 
@@ -25,6 +26,10 @@ const BATTLE_OVERHEAD_SEC: float = 20.0
 const DROP_SIM_MAX_BATTLES: int = 50
 ## battles_per_hour 下限保护（避免极短战斗导致离线奖励爆炸）
 const MIN_BATTLES_PER_HOUR: float = 10.0
+## 离线关卡推进默认星级（无战斗数据，取中间值）
+const OFFLINE_DEFAULT_STARS: int = 2
+## 关卡总数上限（与 LevelProgressManager 一致）
+const MAX_LEVEL: int = 100
 
 
 # ── 引用 ──
@@ -43,13 +48,15 @@ func init(main_node: Node) -> void:
 ## 计算离线奖励（不实际入账，返回聚合结果供 UI 显示）。
 ## 返回空字典表示无离线奖励（离线不足/无时间戳）；否则返回:
 ##   {
-##     "elapsed_sec": int,      # 实际离线秒数（未封顶）
-##     "capped_sec": int,       # 封顶后用于计算的秒数
-##     "battles": int,          # 折算战斗次数
-##     "level": int,            # 奖励来源关卡
-##     "era": int,              # 关卡时代
+##     "elapsed_sec": int,         # 实际离线秒数（未封顶）
+##     "capped_sec": int,          # 封顶后用于计算的秒数
+##     "battles": int,             # 折合战斗次数
+##     "level": int,               # 奖励来源关卡
+##     "era": int,                 # 关卡时代
 ##     "currencies": {id: count},  # 货币聚合（确定性）
-##     "drop_preview_count": int,  # 掉落预估总件数（实际入账会重新生成）
+##     "drop_preview_count": int,  # 掉落预估总件数（= 实际入账件数，不放大）
+##     "phase_field_xp": int,      # 相位仪经验（确定性）
+##     "levels_unlocked": Array,   # 新解锁关卡号列表（可能为空）
 ##   }
 func compute_offline_rewards(last_active_at: int, now: int) -> Dictionary:
 	# 无时间戳（旧档）或时间异常 → 不弹窗
@@ -71,8 +78,15 @@ func compute_offline_rewards(last_active_at: int, now: int) -> Dictionary:
 	for id in drops_per.keys():
 		currencies[id] = int(drops_per[id]) * battles
 
-	# 掉落预估件数：抽样模拟少量战斗，按比例放大，仅用于显示
-	var drop_preview_count: int = _estimate_drop_count(era, level, battles)
+	# 掉落预估件数：v7.x 修正——预估值与实际入账量一致（都按 min(battles, MAX) 场
+	# 抽样），不再按 battles 场放大，避免"预估 300 件实际只给 50 场掉落"的误导。
+	var drop_preview_count: int = _estimate_drop_count(era, level, mini(battles, DROP_SIM_MAX_BATTLES))
+
+	# 相位仪经验：get_base_xp_for_level × battles（确定性，与货币一致）
+	var phase_field_xp: int = int(LevelEras.get_base_xp_for_level(level)) * battles
+
+	# 关卡推进：从 reward_level 开始每场推一关（保守，上限 100 关）
+	var levels_unlocked: Array = _compute_offline_level_progress(level, battles)
 
 	return {
 		"elapsed_sec": elapsed,
@@ -82,11 +96,14 @@ func compute_offline_rewards(last_active_at: int, now: int) -> Dictionary:
 		"era": era,
 		"currencies": currencies,
 		"drop_preview_count": drop_preview_count,
+		"phase_field_xp": phase_field_xp,
+		"levels_unlocked": levels_unlocked,
 	}
 
 
 ## 实际入账离线奖励（玩家点领取后调用）。
-## 货币按聚合值精确入账；掉落实际重新生成（带随机性，符合游戏惯例）。
+## 货币/经验按聚合值精确入账；掉落实际重新生成（带随机性，符合游戏惯例）；
+## 关卡推进走 LevelProgressManager.complete_level 全链路（星级/首次奖励/时代解锁一致）。
 func grant_rewards(result: Dictionary) -> void:
 	if result.is_empty():
 		return
@@ -105,7 +122,32 @@ func grant_rewards(result: Dictionary) -> void:
 			if amount > 0:
 				brm.add_resource(String(id), amount)
 
-	# 2. 掉落入账：实际生成 min(battles, DROP_SIM_MAX_BATTLES) 场掉落并 claim。
+	# 2. 相位仪经验入账（确定性，与弹窗显示一致）
+	var xp: int = int(result.get("phase_field_xp", 0))
+	if xp > 0:
+		var pim: Node = _get_node("/root/PhaseInstrumentManager")
+		if pim != null and pim.has_method("grant_phase_field_xp"):
+			pim.grant_phase_field_xp("offline_idle", xp)
+
+	# 3. 关卡推进入账：对每个新解锁关卡调 complete_level（默认 OFFLINE_DEFAULT_STARS 星）。
+	# complete_level 内部会：更新星级、首次完成奖励、解锁下一关、检查时代解锁、发信号。
+	# 离线推进的关卡都是已能稳定通关的（reward_level 起始），保守假设全部胜利。
+	var levels_unlocked: Array = []
+	var raw_levels: Variant = result.get("levels_unlocked", [])
+	if raw_levels is Array:
+		levels_unlocked = raw_levels
+	var lpm: Node = _get_node("/root/LevelProgressManager")
+	if lpm != null and lpm.has_method("complete_level") and not levels_unlocked.is_empty():
+		for lvl in levels_unlocked:
+			lpm.complete_level(int(lvl), OFFLINE_DEFAULT_STARS)
+		# 推进完成后同步 GameManager.current_level 到最前沿
+		if lpm.has_method("get_max_unlocked_level"):
+			var new_max: int = lpm.get_max_unlocked_level()
+			var gm: Node = _get_node("/root/GameManager")
+			if gm != null and gm.has_method("set_current_level"):
+				gm.set_current_level(new_max)
+
+	# 4. 掉落入账：实际生成 min(battles, DROP_SIM_MAX_BATTLES) 场掉落并 claim。
 	# 注意：generate_battle_drops 会覆盖 pending_drops（pending_drops = drops），
 	# 故必须累加返回的 Array，最后一次性塞回 pending 再 claim，否则只保留最后一场。
 	# 不做放大（少生成 = 少掉落，保守）。离线掉落本就是额外福利。
@@ -173,7 +215,9 @@ func _estimate_battles_per_hour(level: int) -> float:
 	return maxf(MIN_BATTLES_PER_HOUR, bph)
 
 
-## 掉落预估总件数（抽样模拟少量战斗，按比例放大用于显示）
+## 掉落预估总件数（v7.x 修正：预估值 = 实际入账量）
+## battles 参数已由调用方 clamp 到 DROP_SIM_MAX_BATTLES，故此处的抽样放大直接覆盖
+## 全部 battles 场，与 grant_rewards 的实际生成量一致，杜绝"预估远大于实际"的误导。
 func _estimate_drop_count(era: int, level: int, battles: int) -> int:
 	var dm: Node = _get_node("/root/DropManager")
 	if dm == null or not dm.has_method("generate_battle_drops"):
@@ -184,7 +228,7 @@ func _estimate_drop_count(era: int, level: int, battles: int) -> int:
 		saved_pending = (dm.pending_drops as Array).duplicate()
 		dm.pending_drops.clear()
 
-	# 抽样：模拟少量场，统计件数，按比例放大
+	# 抽样：模拟少量场，按比例放大到 battles 场（battles 已 ≤ DROP_SIM_MAX_BATTLES）
 	var sample_n: int = mini(battles, 10)
 	var sample_count: int = 0
 	for _i in range(sample_n):
@@ -196,9 +240,35 @@ func _estimate_drop_count(era: int, level: int, battles: int) -> int:
 
 	if sample_n <= 0:
 		return 0
-	# 按比例放大到 battles 场
+	# 按比例放大到 battles 场（battles 已被调用方 clamp，不会超过实际生成量）
 	var per_battle: float = float(sample_count) / float(sample_n)
 	return int(per_battle * float(battles))
+
+
+## 离线关卡推进计算：从 reward_level 开始每场推一关，返回新解锁关卡号列表。
+## 保守假设离线期间全部胜利（与货币/XP 的一致性假设相同）。
+## 上限 MAX_LEVEL（100），每场推一关（不模拟同关重打），避免离线直接推到满级。
+func _compute_offline_level_progress(reward_level: int, battles: int) -> Array:
+	if battles <= 0:
+		return []
+	var lpm: Node = _get_node("/root/LevelProgressManager")
+	if lpm == null or not lpm.has_method("get_max_unlocked_level"):
+		return []
+	var max_unlocked: int = lpm.get_max_unlocked_level()
+	# 推进起点：当前最高解锁关 + 1（尚未解锁的才需要推）
+	var start: int = maxi(1, max_unlocked + 1)
+	# 推进终点：起点 + battles - 1，上限 MAX_LEVEL
+	var end: int = mini(start + battles - 1, MAX_LEVEL)
+	if start > end:
+		return []
+	var result: Array = []
+	for lvl in range(start, end + 1):
+		# 只返回尚未解锁的关卡（防御性：避免重复 complete_level 已解锁关）
+		if lpm.has_method("is_level_unlocked") and not lpm.is_level_unlocked(lvl):
+			result.append(lvl)
+		elif not lpm.has_method("is_level_unlocked"):
+			result.append(lvl)
+	return result
 
 
 # ── 辅助 ──

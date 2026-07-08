@@ -1,7 +1,8 @@
 # 离线挂机 - 功能设计文档
 
-> 版本: 1.0
+> 版本: 2.0
 > 创建日期: 2026-06-21
+> 更新日期: 2026-07-08（v7.x 扩展：XP + 关卡推进 + 预估值修正）
 > 状态: 已实现
 
 ---
@@ -13,8 +14,59 @@
 **核心特性：**
 - 纯数值计算（不实际模拟战斗），读档即时结算
 - 奖励关卡来源：在线挂机配置（CYCLE→第一个有效 slot / PUSH→push_level），未配过回退最高解锁关
-- 奖励种类：基础货币（确定性）+ 掉落模拟（随机）
+- 奖励种类：基础货币（确定性）+ 相位仪经验（确定性）+ 关卡推进（确定性）+ 掉落模拟（随机）
 - 战斗频率：按关卡波次配置估算单场时长，反推每小时场次
+
+---
+
+## v7.x 扩展（2026-07-08）
+
+### 新增：相位仪经验（phase_field_xp）
+
+离线期间每场虚拟战斗按 `LevelEras.get_base_xp_for_level(level)` 计算 XP，总额 `= base_xp × battles`。
+- **确定性**：弹窗显示值 = 实际入账值（与货币一致，不走随机）
+- **入账路径**：`PhaseInstrumentManager.grant_phase_field_xp("offline_idle", xp)`
+- XP 升级后自动发放 unspent_phase_field_points（走与在线完全相同的升级链路）
+
+### 新增：关卡推进（levels_unlocked）
+
+离线期间从当前最高解锁关 +1 开始，每场虚拟战斗推进一关：
+- **保守估计**：每场推一关（不模拟同关重打），上限 100 关
+- **全部胜利假设**：与货币/XP 计算一致（离线=已能稳定通关关的自动刷）
+- **默认 2 星**：无战斗数据取中间值（1 星过低影响首次奖励，3 星过慷慨）
+- **复用 complete_level**：走 `LevelProgressManager.complete_level(lvl, 2)` 全链路
+  - 星级更新 / 首次完成奖励 / 解锁下一关 / 时代解锁 / 信号触发全部一致
+- 推进完成后同步 `GameManager.set_current_level(max_unlocked)`
+
+### 修正：掉落预估值与实际入账一致
+
+v1.0 预估值按 battles 场放大，但实际 grant 只生成 `min(battles, 50)` 场掉落，
+导致"预估 300 件实际只给 50 场掉落"的误导。
+
+v2.0 修正：预估值直接用 `min(battles, DROP_SIM_MAX_BATTLES)` 场抽样，与实际生成量一致。
+
+---
+
+## 二、核心机制
+
+```
+游戏关闭 → save_game() 记录 last_active_at = Time.get_unix_time_from_system()
+                                                    │
+游戏重开 → load_game() → 计算 elapsed = now - last_active_at
+                          │
+                   elapsed > 阈值(5分钟)?
+                     ├─ 否 → 不弹窗
+                     └─ 是 → capped = min(elapsed, 8小时)
+                             │
+                    battles = capped × battles_per_hour / 3600
+                             │
+                    聚合货币(get_drops_for_level × battles)
+                    + 相位仪经验(base_xp × battles)
+                    + 关卡推进(max_unlocked+1 .. +battles)
+                    + 掉落预估(min(battles,50) 场抽样)
+                             │
+                    弹"欢迎回来"窗 → 领取 → 入账
+```
 
 ---
 
@@ -76,6 +128,8 @@ battles_per_hour = 3600 / battle_duration_sec
 | `BATTLE_OVERHEAD_SEC` | 20.0 | 单场部署/结算固定开销 |
 | `DROP_SIM_MAX_BATTLES` | 50 | 掉落模拟上限（超过不放大，保守） |
 | `MIN_BATTLES_PER_HOUR` | 10.0 | 场次/小时下限保护 |
+| `OFFLINE_DEFAULT_STARS` | 2 | 离线关卡推进默认星级（v7.x 新增） |
+| `MAX_LEVEL` | 100 | 关卡总数上限（v7.x 新增） |
 
 ---
 
@@ -110,4 +164,6 @@ battles_per_hour = 3600 / battle_duration_sec
 | 玩家改系统时间作弊 | 仅按 epoch 差计算，改时间可刷——单机游戏接受 |
 | 离线奖励过大 | 8 小时封顶 + 场次受波次约束，可调常量 |
 | 模拟掉落性能 | `DROP_SIM_MAX_BATTLES=50` 上限，不做放大 |
-| `pending_drops` 污染 | 计算时快照/清空/恢复 pending；货币不入 pending |
+| `pending_drops` 污染 | 计算时快照/清空/恢复 pending；货币/XP不入 pending |
+| 离线关卡推进过快 | 每场推一关 + 上限100关 + 默认2星（保守），避免离线直接满级 |
+| 离线推进跳过 boss 时代解锁 | complete_level 内部处理时代解锁，走与在线完全相同链路 |

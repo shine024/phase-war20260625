@@ -225,6 +225,8 @@ func setup(p_is_player: bool, p_stats: UnitStats, forced_enemy_visual_archetype_
 	# v6.8: 改造光环（ally_* 类改造）— 复用全体广播，给所有同阵营友军加 buff
 	# 单位已加入 player_units/enemy_units 分组（上方 add_to_group），广播可正常查询
 	ModAuraHandler.apply_mod_auras(self)
+	# v7.x: 改造光环施加后刷新 buff_strip，让受影响友军立即显示光环图标
+	_update_card_grid_buff_strip(true)
 
 	# 性能优化：初始化卡牌能力缓存（setup时一次性查询）
 	_has_regen_frame = CardAbilityManager.has_platform_card(stats.platform_card_id, "fut_air_regen_frame")
@@ -499,10 +501,10 @@ func _sync_weapon_cfgs_from_stats() -> void:
 		_weapon_cfgs[i] = cfg
 
 
-	func _update_shape() -> void:
-		var poly: Polygon2D = get_node_or_null("Shape") as Polygon2D
-		if poly == null:
-			return
+func _update_shape() -> void:
+	var poly: Polygon2D = get_node_or_null("Shape") as Polygon2D
+	if poly == null:
+		return
 	var pts: PackedVector2Array = _shape_points()
 	poly.polygon = pts
 	# 我方蓝色，敌方红色（用于相位师等复用构装体场景的敌方单位）

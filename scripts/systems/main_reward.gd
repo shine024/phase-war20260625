@@ -5,7 +5,9 @@ extends RefCounted
 ## 主场景引用，由 main.gd 在 _ready 中赋值
 var main: Control = null
 
-const BattleResultDialog = preload("res://scenes/ui/battle_result_dialog.gd")
+# 注：原 BattleResultDialog 已删除——v7.x 起统一走整合结算面板（mvp_panel.gd）。
+# battle_result_dialog.gd/.tscn 存在自循环 preload 依赖（.gd preload .tscn，.tscn ext_resource .gd），
+# 在 Godot 4.5.1 触发 "Busy" 解析错误，且已无任何运行时引用，故彻底删除。
 
 ## 战斗结束回调：清理待处理输入、停止持续渲染
 func on_battle_ended_clear_pending(_player_won: bool) -> void:
@@ -21,22 +23,19 @@ func on_blueprint_unlocked(card_id: String) -> void:
 	if not main._blueprints_unlocked_this_battle.has(card_id):
 		main._blueprints_unlocked_this_battle.append(card_id)
 
-## 显示战斗结果弹窗
+## 显示战斗结果弹窗（整合面板：战绩 + 奖励一次展示）
 func show_battle_result(player_won: bool) -> void:
 	var reward_summary: Dictionary = {}
 	if GameManager != null and ("last_battle_reward_summary" in GameManager):
 		reward_summary = GameManager.last_battle_reward_summary
-	# v7.x 战场视觉反馈：先弹 MVP 战绩面板，玩家看战绩后点"查看奖励"切换到 BattleResultDialog
-	# 挂机模式跳过 MVP（自动 claim_drops，无需玩家交互）
-	if not _is_afk_running():
-		var MvpPanel := preload("res://scenes/ui/mvp_panel.gd")
-		MvpPanel.create(main, player_won, main._blueprints_unlocked_this_battle, \
-			main._phase_field_xp_before_battle, main._phase_field_level_before_battle, reward_summary)
-		main._blueprints_unlocked_this_battle.clear()
-	else:
-		BattleResultDialog.create(main, player_won, main._blueprints_unlocked_this_battle, \
-			main._phase_field_xp_before_battle, main._phase_field_level_before_battle, reward_summary)
-		main._blueprints_unlocked_this_battle.clear()
+	# 统一走整合结算面板——胜利/失败、挂机/手操都用同一面板。
+	# 挂机模式跳过战绩区域（is_afk=true），直接展示奖励摘要。
+	var is_afk: bool = _is_afk_running()
+	var MvpPanel := preload("res://scenes/ui/mvp_panel.gd")
+	MvpPanel.create(main, player_won, main._blueprints_unlocked_this_battle, \
+		main._phase_field_xp_before_battle, main._phase_field_level_before_battle, \
+		reward_summary, is_afk)
+	main._blueprints_unlocked_this_battle.clear()
 
 
 ## 挂机模式是否正在运行（避免在挂机结算时弹需要玩家交互的面板）

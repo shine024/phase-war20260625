@@ -245,6 +245,8 @@ func save_state() -> Dictionary:
 		"slots": slots.duplicate(),
 		"push_level": push_level,
 		"accumulated_rewards": accumulated_rewards.duplicate(true),
+		"total_wins": total_wins,
+		"total_losses": total_losses,
 	}
 
 
@@ -268,6 +270,9 @@ func load_state(data: Dictionary) -> void:
 	var loaded_rewards: Variant = data.get("accumulated_rewards", {})
 	if loaded_rewards is Dictionary:
 		accumulated_rewards = (loaded_rewards as Dictionary).duplicate(true)
+	# v7.x(统计存档): 恢复胜负计数，避免读档后面板显示 0/0 与累计奖励不一致
+	total_wins = maxi(0, int(data.get("total_wins", 0)))
+	total_losses = maxi(0, int(data.get("total_losses", 0)))
 
 
 ## 新游戏重置（由 SaveManager.start_new_game 经 Main 桥接调用）
@@ -357,6 +362,10 @@ func _on_battle_ended_from_bus(player_won: bool) -> void:
 
 ## 推进到下一关（仅在胜利时调用）。失败处理见 _on_battle_ended_from_bus。
 func _advance_to_next_level() -> void:
+	# v7.x(防崩溃丢奖励): 此刻位于两场战斗之间（上一场 battle_ended 已发出，
+	# 下一场尚未 start），battle_active=false，天然通过 SaveManager 的战斗守卫。
+	# 触发存档把累计奖励/统计/进度落盘，避免崩溃丢失本轮挂机全部收益。
+	_trigger_afk_save()
 	if mode == Mode.PUSH:
 		_pending_level += 1
 		if _pending_level > 100:
@@ -395,6 +404,9 @@ func _afk_failed() -> void:
 	# 失败前结算上一场尚未 claim 的掉落（game_manager 的 AFK 分支已处理 claim，
 	# 但若失败场未走该分支，这里兜底快照累计）
 	accumulate_pending_drops()
+	# v7.x(防崩溃丢奖励): 失败停止前落盘，确保累计奖励/统计/推图进度不丢。
+	# 此时 battle_active=false（失败场已结束），存档可通过守卫。
+	_trigger_afk_save()
 	state = State.FAILED
 	is_running = false
 	afk_failed.emit()
@@ -458,8 +470,14 @@ func _deploy_next_from_queue() -> void:
 	if _auto_deploy_pending.is_empty():
 		return
 	var platform = _auto_deploy_pending[0]
-	# platform 是 CardResource（Resource），card_id 是 String 属性，直接访问。
-	var card_id: String = String(platform.card_id) if "card_id" in platform else ""
+	# platform 是 CardResource（Resource）。优先传 instance_id（铁律3：同名卡按
+	# instance_id 精确匹配各自实例，避免 loadout 回退到"首个匹配"的错位实例），
+	# 实例卡无 instance_id 时回退裸 card_id（兼容旧卡/测试卡）。
+	var card_id: String = ""
+	if "instance_id" in platform and not String(platform.instance_id).is_empty():
+		card_id = String(platform.instance_id)
+	elif "card_id" in platform:
+		card_id = String(platform.card_id)
 	if card_id.is_empty():
 		_auto_deploy_pending.pop_front()
 		return
@@ -514,6 +532,16 @@ func _find_free_slot_world_pos(bf: Node2D) -> Vector2:
 		if not occupied:
 			return bf.get_card_grid_player_slot_global(si)
 	return Vector2.INF
+
+
+## v7.x(防崩溃丢奖励): 在两场战斗之间触发一次存档，把累计奖励/统计/进度落盘。
+## 调用时机由调用方保证为"上一场已结束、下一场未开始"（battle_active=false），
+## 故天然通过 SaveManager 的战斗守卫，无需特殊绕过。null 安全：SaveManager 不可
+## 用时静默跳过（不影响挂机主流程）。
+func _trigger_afk_save() -> void:
+	var sm: Node = get_node_or_null("/root/SaveManager")
+	if sm != null and sm.has_method("save_game"):
+		sm.save_game()
 
 
 ## 获取节点辅助

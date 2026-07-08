@@ -9,7 +9,7 @@ enum Category {
 	MEDIC_HEAL,       # 0  医疗：治疗所有友军
 	CARRIER_REPAIR,   # 1  维修：仅治疗机械类
 	SCOUT_CRIT,       # 2  侦查：暴击+命中
-	RADAR_RANGE,      # 3  雷达：射程加成
+	RADAR_RANGE,      # 3  雷达：暴击率加成
 	FORTRESS_DEF,     # 4  堡垒：减伤+防御
 	COMMAND_GLOBAL    # 5  指挥：全场攻/速/暴（不攻击）
 }
@@ -30,9 +30,9 @@ static func is_in_aura_range(source_slot: int, target_slot: int, is_global: bool
 static func is_mechanical_platform(platform_type: int) -> bool:
 	match platform_type:
 		2, 3, 7, 4, 8, 11, 12:  # TITAN, FORTRESS, SIEGE, RADAR, CARRIER, OMEGA_PLATFORM, COMMAND
-			return true
+				return true
 		_:
-			return false
+				return false
 
 ## 光环是否为全场类型
 static func is_global_aura(category: int) -> bool:
@@ -64,7 +64,7 @@ static func get_aura_params(category: int, star: int) -> Dictionary:
 			}
 		Category.RADAR_RANGE:
 			return {
-				"range_bonus": 15.0 * m,     # ★1=+15, ★9=+27
+				"crit_bonus": 0.10 * m,      # ★1=+10%, ★9=+20%
 				"is_global": false,
 			}
 		Category.FORTRESS_DEF:

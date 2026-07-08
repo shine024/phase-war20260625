@@ -391,7 +391,7 @@ static func apply_radar_range_aura(unit: Node2D, delta: float) -> void:
 	var is_player: bool = unit.is_player if "is_player" in unit else true
 	var star: int = _get_unit_star(unit)
 	var params: Dictionary = _get_aura_data().get_aura_params(_get_aura_data().Category.RADAR_RANGE, star)
-	var range_bonus: float = float(params.get("range_bonus", 15.0))
+	var crit_bonus: float = float(params.get("crit_bonus", 0.05))
 	var allies: Array = _get_nearby_allies(unit, 180.0, is_player)
 	for ally in allies:
 		if not is_instance_valid(ally) or ally == unit:
@@ -400,14 +400,10 @@ static func apply_radar_range_aura(unit: Node2D, delta: float) -> void:
 			continue
 		if not ally.has_meta("radar_buffed"):
 			ally.set_meta("radar_buffed", true)
-			ally.set_meta("radar_orig_range", ally.stats.attack_range)
-			ally.stats.attack_range += range_bonus
-			# 同时更新多武器射程
-			for w in ally.stats.weapons:
-				if w.has("range"):
-					w["range"] = float(w["range"]) + range_bonus
+			ally.set_meta("radar_orig_crit", ally.stats.crit_chance)
+			ally.stats.crit_chance = clampf(ally.stats.crit_chance + crit_bonus, 0.0, 1.0)
 
-## RADAR 光环清理：单位死亡时恢复友军射程
+## RADAR 光环清理：单位死亡时恢复友军暴击率
 static func remove_radar_range_aura(unit: Node2D) -> void:
 	if unit == null:
 		return
@@ -419,14 +415,11 @@ static func remove_radar_range_aura(unit: Node2D) -> void:
 		if not is_instance_valid(ally) or ally == unit:
 			continue
 		if ally.has_meta("radar_buffed"):
-			var orig_range: float = float(ally.get_meta("radar_orig_range"))
+			var orig_crit: float = float(ally.get_meta("radar_orig_crit"))
 			if "stats" in ally and ally.stats != null:
-				ally.stats.attack_range = orig_range
-				for w in ally.stats.weapons:
-					if w.has("range"):
-						w["range"] = float(w["range"]) - (ally.stats.attack_range - orig_range)
+				ally.stats.crit_chance = orig_crit
 			ally.remove_meta("radar_buffed")
-			ally.remove_meta("radar_orig_range")
+			ally.remove_meta("radar_orig_crit")
 
 ## SCOUT/STEALTH 侦查光环：暴击+命中（按槽位判定范围）
 static func apply_scout_crit_aura(unit: Node2D, delta: float) -> void:

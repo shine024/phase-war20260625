@@ -424,7 +424,7 @@ static func _spawn_impact_sparks(parent: Node2D, world_pos: Vector2, intensity: 
 
 static var _active_sparks: int = 0
 
-	static func _acquire_spark() -> Polygon2D:
+static func _acquire_spark() -> Polygon2D:
 		while not _spark_pool.is_empty():
 			var p: Polygon2D = _spark_pool.pop_back()
 			if p != null and is_instance_valid(p) and not p.is_queued_for_deletion():

@@ -11,10 +11,15 @@ const BackpackCombatPreview = preload("res://scenes/ui/backpack_combat_preview.g
 const RankDisplayUi = preload("res://scripts/rank_display_ui.gd")
 const CardFrameUi = preload("res://scripts/card_frame_ui.gd")
 const CardBackgroundUi = preload("res://scripts/card_background_ui.gd")
+const AutoDeployController = preload("res://scenes/ui/auto_deploy_controller.gd")
 const DEBUG_BOTTOM_BAR_LOG := false
 ## ── 子系统：槽位拖放 ──
 const DragSub = preload("res://scenes/ui/instrument_bar_drag.gd")
 var _drag_system: InstrumentBarDrag = null
+
+## ── 子系统：战斗内自动部署（从左到右铺满 + 死亡补阵）──
+var _auto_deploy: AutoDeployController = null
+var _auto_deploy_btn: Button = null
 
 signal instrument_area_clicked
 signal phase_level_label_clicked
@@ -22,6 +27,8 @@ signal phase_level_label_clicked
 signal law_area_clicked
 ## 战斗中点击主动法则格 → 直接进入施放模式；参数：法则ID、"active"/"passive"
 signal law_slot_clicked(law_id: String, kind: String, origin_global: Vector2)
+## 自动部署开关切换（战斗内：从左到右自动铺满 + 死亡补阵）
+signal auto_deploy_toggled(enabled: bool)
 
 var _slot_panels: Array = []
 var _deployed_card_ids: Array = []
@@ -55,9 +62,99 @@ func _ready() -> void:
 	_update_name_section_width()
 	_connect_signals()
 	_make_phase_level_label_clickable()
+	_setup_auto_deploy()
 	_refresh_all()
 	# 布局完成后，让格子高度精确填满条的可用空间
 	call_deferred("_fit_slots_to_bar")
+
+
+## 每帧驱动自动部署控制器（RefCounted 无 _process，由本 Control 节点转发）
+func _process(delta: float) -> void:
+	if _auto_deploy != null:
+		_auto_deploy.process(delta)
+
+
+## v7.x(自动部署)：在 InstrumentSection 最前面创建"自动"toggle 按钮 + 初始化控制器。
+## 按钮仅在战斗中可点击；开启后从左到右自动铺满战斗卡，单位死亡立即补阵。
+## 仅当前战斗生效（battle_ended 自动关闭）。
+func _setup_auto_deploy() -> void:
+	# 控制器需要主场景引用（定位 Battlefield）
+	var main_node: Node = _find_main_scene()
+	_auto_deploy = AutoDeployController.new()
+	_auto_deploy.setup(main_node)
+	_auto_deploy.state_changed.connect(_on_auto_deploy_state_changed)
+	# 按钮插到 InstrumentSection 最前面（InstrumentIcon 之前）
+	_auto_deploy_btn = Button.new()
+	_auto_deploy_btn.name = "AutoDeployBtn"
+	_auto_deploy_btn.text = "自动"
+	_auto_deploy_btn.custom_minimum_size = Vector2(48, BAR_FIXED_HEIGHT - 4)
+	_auto_deploy_btn.add_theme_font_size_override("font_size", 11)
+	_auto_deploy_btn.tooltip_text = "自动部署：从左到右铺满战斗卡\n单位死亡后自动补阵\n仅当前战斗生效"
+	_auto_deploy_btn.toggle_mode = true
+	_apply_auto_deploy_btn_style(false)
+	_auto_deploy_btn.pressed.connect(_on_auto_deploy_btn_pressed)
+	instrument_section.add_child(_auto_deploy_btn)
+	instrument_section.move_child(_auto_deploy_btn, 0)  # 移到最前面
+
+
+func _find_main_scene() -> Node:
+	var p: Node = get_parent()
+	while p != null:
+		if p.has_method("_get_battlefield"):
+			return p
+		p = p.get_parent()
+	# 回退：通过 autoload 查找
+	var tree: SceneTree = get_tree()
+	if tree != null and tree.root != null:
+		for c in tree.root.get_children():
+			if c.has_method("_get_battlefield"):
+				return c
+	return null
+
+
+func _on_auto_deploy_btn_pressed() -> void:
+	if _auto_deploy == null:
+		return
+	# 战斗中才允许开启；非战斗态点击强制弹回关闭
+	var in_battle: bool = BattleManager != null and "battle_active" in BattleManager and BattleManager.battle_active
+	if not in_battle:
+		_auto_deploy_btn.set_pressed_no_signal(false)
+		_apply_auto_deploy_btn_style(false)
+		if _auto_deploy.is_enabled():
+			_auto_deploy.disable()
+		return
+	if _auto_deploy_btn.is_pressed():
+		_auto_deploy.enable()
+	else:
+		_auto_deploy.disable()
+
+
+func _on_auto_deploy_state_changed(enabled: bool) -> void:
+	# 同步按钮视觉（防止代码触发与按钮状态不同步）
+	if _auto_deploy_btn != null and is_instance_valid(_auto_deploy_btn):
+		_auto_deploy_btn.set_pressed_no_signal(enabled)
+		_apply_auto_deploy_btn_style(enabled)
+	auto_deploy_toggled.emit(enabled)
+
+
+## 按钮样式：关闭态灰色、开启态绿色高亮
+func _apply_auto_deploy_btn_style(active: bool) -> void:
+	if _auto_deploy_btn == null or not is_instance_valid(_auto_deploy_btn):
+		return
+	var style := StyleBoxFlat.new()
+	style.set_corner_radius_all(4)
+	style.set_border_width_all(1)
+	style.content_margin_left = 4
+	style.content_margin_right = 4
+	if active:
+		style.bg_color = Color(0, 0.5, 0.38, 0.95)
+		style.border_color = Color(0, 0.94, 0.7, 1.0)
+		_auto_deploy_btn.add_theme_color_override("font_color", Color(1, 1, 1, 1))
+	else:
+		style.bg_color = Color(0.08, 0.12, 0.18, 0.85)
+		style.border_color = Color(0.25, 0.45, 0.65, 0.4)
+		_auto_deploy_btn.add_theme_color_override("font_color", Color(0.6, 0.7, 0.85, 0.9))
+	_auto_deploy_btn.add_theme_stylebox_override("normal", style)
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
@@ -79,6 +176,10 @@ func _on_battle_ended(_won: bool) -> void:
 	_deployed_card_ids.clear()
 	_refresh_slot_layout()
 	_refresh_phase_level()
+	# 自动部署按钮复位（仅当前战斗生效，下场需重新开启）
+	if _auto_deploy_btn != null and is_instance_valid(_auto_deploy_btn):
+		_auto_deploy_btn.set_pressed_no_signal(false)
+		_apply_auto_deploy_btn_style(false)
 
 func _on_unit_spawned(unit: Node, is_player: bool) -> void:
 	if not is_player:
@@ -344,8 +445,10 @@ func _update_name_section_width() -> void:
 	var viewport_width: float = get_viewport_rect().size.x
 	if viewport_width <= 1.0:
 		return
-	# 信息区（图标+名称+情报）占屏宽 3/13；NameSection 需扣除图标宽度
-	name_section.custom_minimum_size.x = floor(viewport_width * 3.0 / 13.0 - 48.0)
+	# 信息区（自动按钮+图标+名称+情报）占屏宽 3/13；NameSection 需扣除自动按钮(48)+图标(48)宽度
+	# v7.x: 新增自动部署按钮(48px)，需从 NameSection 预留空间
+	var reserved: float = 48.0 + 48.0 + 48.0  # 自动按钮 + 图标 + 分隔线余量
+	name_section.custom_minimum_size.x = floor(viewport_width * 3.0 / 13.0 - reserved)
 
 
 func _sync_slot_rank_badge(panel: Control, card: CardResource) -> void:

@@ -14,8 +14,14 @@ extends RefCounted
 ## 与现有平台光环（CardAbilityManager.apply_scout_crit_aura 等）隔离：
 ##   - 用独立的 meta key "mod_aura_applied" 记录已施加的 buff，便于死亡时精确撤销
 ##   - 不复用 radar_orig_range / scout_orig_crit 等现有 meta，零冲突
+##
+## 视觉反馈：
+##   - 接收光环 buff 的友军会在自身 meta 中记录 "mod_aura_applied"
+##   - CardGridBuffStrip 读取该 meta 显示光环图标
+##   - card_info_panel._build_aura_text() 读取该 meta 显示详细效果
 
 ## 在单位 setup 时调用：读取节点的 mod_aura_summary meta，给全体友军加 buff
+## 受影响的友军会在自身 meta 中记录 mod_aura_applied，供 buff_strip 和情报面板显示
 static func apply_mod_auras(unit: Node) -> void:
 	if unit == null or not is_instance_valid(unit):
 		return
@@ -26,8 +32,10 @@ static func apply_mod_auras(unit: Node) -> void:
 	var allies := _get_all_allies(unit)
 	for ally in allies:
 		_apply_buffs_to_unit(ally, summary, true)
+		# 记录该友军接收了来自 unit 的光环 buff（供 buff_strip 和情报面板显示）
+		_record_aura_receiver(ally, unit)
 
-## 在单位 _die 时调用：撤销之前给友军施加的 buff
+## 在单位 _die 时调用：撤销之前给友军施加的 buff，清除光环接收记录
 static func remove_mod_auras(unit: Node) -> void:
 	if unit == null:
 		return
@@ -41,6 +49,8 @@ static func remove_mod_auras(unit: Node) -> void:
 	var allies := _get_all_allies(unit)
 	for ally in allies:
 		_apply_buffs_to_unit(ally, summary, false)
+		# 清除该友军接收的来自 unit 的光环记录
+		_remove_aura_receiver(ally, unit)
 
 # ─────────────────────────────────────────────
 # 内部实现
@@ -139,3 +149,67 @@ static func _apply_buffs_to_unit(ally: Node, summary: Dictionary, apply: bool) -
 				var speed_delta: int = int(raw * 80.0)
 				var cur_spd: int = int(stats.get(stat_field))
 				stats.set(stat_field, maxi(0, cur_spd + (speed_delta if apply else -speed_delta)))
+
+
+# ─────────────────────────────────────────────
+#  mod_aura 接收者追踪（供 buff_strip / 情报面板显示）
+# ─────────────────────────────────────────────
+
+## 记录 ally 接收了来自 source_unit 的光环 buff
+## meta key: "mod_aura_applied" → Array[{source: source_instance_id, summary: {stat_field: {op, raw}}} ]
+static func _record_aura_receiver(ally: Node, source_unit: Node) -> void:
+	if ally == null or not is_instance_valid(ally):
+		return
+	var source_id: String = ""
+	if source_unit.has_meta("source_instance_id"):
+		source_id = String(source_unit.get_meta("source_instance_id"))
+	elif is_instance_valid(source_unit):
+		source_id = str(source_unit.get_instance_id())
+	if source_id.is_empty():
+		return
+	var summary: Dictionary = _get_aura_summary(source_unit)
+	if summary.is_empty():
+		return
+	# 读取现有记录或创建新数组
+	var applied: Array = []
+	if ally.has_meta("mod_aura_applied"):
+		var existing = ally.get_meta("mod_aura_applied")
+		if existing is Array:
+			applied = existing
+	# 检查是否已存在同一 source 的记录
+	var found := false
+	for entry in applied:
+		if entry is Dictionary and entry.get("source") == source_id:
+			# 已有记录，更新 summary
+			entry["summary"] = summary
+			found = true
+			break
+	# 未找到匹配记录，新增一条
+	if not found:
+		applied.append({"source": source_id, "summary": summary})
+	ally.set_meta("mod_aura_applied", applied)
+
+## 清除 ally 接收的来自 source_unit 的光环 buff 记录
+static func _remove_aura_receiver(ally: Node, source_unit: Node) -> void:
+	if ally == null or not is_instance_valid(ally):
+		return
+	var source_id: String = ""
+	if source_unit.has_meta("source_instance_id"):
+		source_id = String(source_unit.get_meta("source_instance_id"))
+	elif is_instance_valid(source_unit):
+		source_id = str(source_unit.get_instance_id())
+	if source_id.is_empty():
+		return
+	if not ally.has_meta("mod_aura_applied"):
+		return
+	var applied: Array = ally.get_meta("mod_aura_applied")
+	if applied is Array:
+		var filtered: Array = []
+		for entry in applied:
+			if entry is Dictionary and entry.get("source") == source_id:
+				continue  # 移除该条记录
+			filtered.append(entry)
+		if filtered.is_empty():
+			ally.remove_meta("mod_aura_applied")
+		else:
+			ally.set_meta("mod_aura_applied", filtered)

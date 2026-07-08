@@ -111,7 +111,20 @@ func _build_ui() -> void:
 	# 掉落预估（并入网格，统一卡片样式）
 	var drop_count: int = int(_result.get("drop_preview_count", 0))
 	if drop_count > 0:
-		grid.add_child(_make_reward_card("战利品（约）", drop_count))
+		grid.add_child(_make_reward_card("战利品", drop_count))
+
+	# 相位仪经验（v7.x 离线扩展：确定性，显示值 = 入账值）
+	var xp: int = int(_result.get("phase_field_xp", 0))
+	if xp > 0:
+		grid.add_child(_make_reward_card("相位仪经验", xp))
+
+	# 关卡推进（v7.x 离线扩展：显示新解锁关卡范围）
+	var levels_unlocked: Array = _result.get("levels_unlocked", [])
+	if not levels_unlocked.is_empty():
+		var first_l: int = int(levels_unlocked[0])
+		var last_l: int = int(levels_unlocked[levels_unlocked.size() - 1])
+		var lvl_text: String = "第 %d 关" % first_l if first_l == last_l else "第 %d-%d 关" % [first_l, last_l]
+		grid.add_child(_make_reward_card("解锁关卡", lvl_text, true))
 
 	# 领取按钮
 	vbox.add_child(_make_separator())
@@ -145,8 +158,9 @@ func _make_separator() -> HSeparator:
 	return sep
 
 
-func _make_reward_card(label_text: String, amount: int) -> Panel:
+func _make_reward_card(label_text: String, value, is_text: bool = false) -> Panel:
 	# 单张奖励卡片：名称左对齐（12px 灰）+ 数值居中（17px 亮）
+	# value 为 int 时显示 "×N"，is_text=true 或 value 为 String 时显示原文本
 	var card := Panel.new()
 	card.custom_minimum_size = Vector2(160, 56)
 	var cs := StyleBoxFlat.new()
@@ -167,9 +181,13 @@ func _make_reward_card(label_text: String, amount: int) -> Panel:
 	name_lbl.add_theme_color_override("font_color", _TEXT_DIM)
 	name_lbl.add_theme_font_size_override("font_size", 12)
 	var amt_lbl := Label.new()
-	amt_lbl.text = "×%d" % amount
+	if is_text or value is String:
+		amt_lbl.text = String(value)
+		amt_lbl.add_theme_font_size_override("font_size", 15)
+	else:
+		amt_lbl.text = "×%d" % int(value)
+		amt_lbl.add_theme_font_size_override("font_size", 17)
 	amt_lbl.add_theme_color_override("font_color", _ACCENT)
-	amt_lbl.add_theme_font_size_override("font_size", 17)
 	amt_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	cvb.add_child(name_lbl)
 	cvb.add_child(amt_lbl)

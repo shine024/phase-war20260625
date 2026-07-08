@@ -10,6 +10,7 @@ enum BuffKind {
 	FORTRESS,
 	COMMAND,
 	CARRIER,
+	MOD_AURA,  # v7.x: 改造光环（ally_* 类改造广播的 buff）
 }
 
 const ICON_WIDTH_FRAC: float = 0.22
@@ -21,6 +22,7 @@ const _BUFF_ORDER: Array[BuffKind] = [
 	BuffKind.FORTRESS,
 	BuffKind.COMMAND,
 	BuffKind.CARRIER,
+	BuffKind.MOD_AURA,
 ]
 
 const _BUFF_COLORS: Dictionary = {
@@ -29,6 +31,7 @@ const _BUFF_COLORS: Dictionary = {
 	BuffKind.FORTRESS: Color(1.0, 0.68, 0.28, 0.95),
 	BuffKind.COMMAND: Color(0.92, 0.72, 1.0, 0.95),
 	BuffKind.CARRIER: Color(0.3, 0.85, 1.0, 0.95),
+	BuffKind.MOD_AURA: Color(0.85, 0.55, 1.0, 0.95),  # 紫色，与 mod_strip 光环类一致
 }
 
 var _card_art_width: float = 0.0
@@ -51,6 +54,11 @@ static func collect_buff_kinds(unit: Node) -> Array[BuffKind]:
 		kinds.append(BuffKind.COMMAND)
 	if unit.has_meta("carrier_repair_buffed") and bool(unit.get_meta("carrier_repair_buffed")):
 		kinds.append(BuffKind.CARRIER)
+	# v7.x: 改造光环 — 读取 mod_aura_applied meta
+	if unit.has_meta("mod_aura_applied"):
+		var applied = unit.get_meta("mod_aura_applied")
+		if applied is Array and not applied.is_empty():
+			kinds.append(BuffKind.MOD_AURA)
 	return kinds
 
 
@@ -120,6 +128,8 @@ func _draw() -> void:
 				_draw_command_icon(cx, cy, s, col)
 			BuffKind.CARRIER:
 				_draw_carrier_icon(cx, cy, s, col)
+			BuffKind.MOD_AURA:
+				_draw_mod_aura_icon(cx, cy, s, col)
 
 
 func _draw_radar_icon(cx: float, cy: float, s: float, col: Color) -> void:
@@ -175,3 +185,15 @@ func _draw_carrier_icon(cx: float, cy: float, s: float, col: Color) -> void:
 	draw_circle(Vector2(cx, cy + s * 0.85), dot_r, col)
 	draw_circle(Vector2(cx - s * 0.85, cy), dot_r, col)
 	draw_circle(Vector2(cx + s * 0.85, cy), dot_r, col)
+
+
+# 改造光环：辐射波纹（同心半圆向外扩散，紫色）
+func _draw_mod_aura_icon(cx: float, cy: float, s: float, col: Color) -> void:
+	# 中心圆点
+	draw_circle(Vector2(cx, cy), s * 0.15, col)
+	# 内圈波纹（上半圆）
+	draw_arc(Vector2(cx, cy), s * 0.5, -PI, 0.0, 12, col, 1.4, true)
+	# 外圈波纹（上半圆）
+	draw_arc(Vector2(cx, cy), s * 0.85, -PI, 0.0, 16, col, 1.2, true)
+	# 底部直线表示"地面传播"
+	draw_line(Vector2(cx - s * 0.95, cy), Vector2(cx + s * 0.95, cy), col, 1.0, true)

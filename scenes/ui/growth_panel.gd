@@ -140,8 +140,8 @@ func _ready() -> void:
 		enhance_btn.pressed.connect(_on_enhance_pressed)
 	if mod_btn:
 		mod_btn.pressed.connect(_on_mod_pressed)
-	if evo_btn:
-		evo_btn.pressed.connect(_on_evo_pressed)
+		if evo_btn:
+			evo_btn.pressed.connect(_on_evo_pressed)
 
 		# 卡牌列表
 		card_list_container = get_node_or_null("%CardListContainer")
@@ -150,9 +150,9 @@ func _ready() -> void:
 		# footer_res_labels 已移除（v7.x 美化：与 DetailFooter currency_labels 重复）
 
 		if close_btn:
-		close_btn.pressed.connect(_on_close_pressed)
+			close_btn.pressed.connect(_on_close_pressed)
 
-	# 视觉样式美化
+		# 视觉样式美化
 	_apply_visual_styles()
 	# 改造系统入口按钮挂图标（强化/改装/进化）
 	_apply_action_btn_icons()
@@ -595,7 +595,7 @@ func _create_card_list_item(card: CardResource, instance_id_raw: Variant) -> Con
 	name_label.text = card.display_name if card.display_name else card.card_id
 	name_label.add_theme_font_size_override("font_size", 13)
 	name_label.add_theme_color_override("font_color", Color(0.91, 0.93, 0.96, 1))
-	name_label.add_theme_font_override("bold", true)
+	name_label.add_theme_font_override("bold", ThemeDB.fallback_font)
 	name_hbox.add_child(name_label)
 
 	# 实例序号后缀（如 #2）
@@ -634,8 +634,7 @@ func _create_card_list_item(card: CardResource, instance_id_raw: Variant) -> Con
 	level_label.add_theme_color_override("font_color", Color(0.0, 0.73, 0.855, 0.9))
 	meta_hbox.add_child(level_label)
 
-	var mod_count: int = card.mods.size() if card.has_method("get") or card is Dictionary else 0
-	# 兼容 CardResource mods 字段
+	var mod_count: int = 0
 	if card is Object and "mods" in card:
 		var mods_arr = card.mods
 		mod_count = mods_arr.size() if mods_arr is Array else 0

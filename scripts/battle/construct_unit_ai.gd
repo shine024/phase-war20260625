@@ -12,6 +12,10 @@ const TargetSelection = preload("res://scripts/battle/target_selection.gd")
 const DamageAttenuation = preload("res://scripts/battle/damage_attenuation.gd")
 const AttackCalculator = preload("res://scripts/battle/attack_calculator.gd")
 
+## v7.x: 光环/指挥单位的 platform_type 集合（与 construct_unit.gd 光环注册对齐）
+## FORTRESS=3, RADAR=4, SCOUT=5, CARRIER=8, MEDIC=9, STEALTH=10, COMMAND=12
+const AURA_PLATFORM_TYPES := [3, 4, 5, 8, 9, 10, 12]
+
 ## 主循环攻击处理：由 construct_unit._physics_process 调用
 ## 返回值暂未使用，保留以备扩展
 static func process_attack(u: CharacterBody2D, delta: float) -> void:
@@ -200,14 +204,105 @@ static func _get_unit_slot_index(n: Node) -> int:
 
 
 ## 槽位编号扫描索敌（曲射/空射用）
+## v7.x: 四级优先级降级链（每级同级取距离最近）：
+##   L1 指挥单位（platform_type==12）→ L2 光环单位（AURA_PLATFORM_TYPES）
+##   → L3 输出最高单位（DPS 最高，并列取最近）→ L4 最后排单位（槽位远→近兜底）
+## L3 在任意有存活敌方时总能选出一个，L4 为安全兜底
+static func _scan_slot_targets(u: CharacterBody2D, gr: Array) -> Node2D:
+	var valid: Array = []
+	for n in gr:
+		if CombatTargeting.is_attackable_combat_unit(n):
+			valid.append(n)
+	if valid.is_empty():
+		return null
+
+	var origin: Vector2 = u.global_position
+
+	# L1 指挥单位
+	var commanders: Array = valid.filter(func(n):
+		return _is_command_unit(n.get("stats") as UnitStats))
+	if not commanders.is_empty():
+		return _nearest_of(origin, commanders)
+
+	# L2 光环单位
+	var aura_units: Array = valid.filter(func(n):
+		return _is_aura_unit(n.get("stats") as UnitStats))
+	if not aura_units.is_empty():
+		return _nearest_of(origin, aura_units)
+
+	# L3 输出最高单位（DPS 最高，并列容差内取最近）
+	var best: Node2D = _highest_dps_unit(origin, valid)
+	if best != null:
+		return best
+
+	# L4 最后排单位（槽位远→近，原逻辑兜底）
+	return _farthest_slot_unit(u, valid)
+
+
+## 是否为指挥单位（platform_type==12, GameConstants.PlatformType.COMMAND）
+static func _is_command_unit(stats: UnitStats) -> bool:
+	return stats != null and stats.platform_type == 12
+
+
+## 是否为光环单位（与 construct_unit.gd 光环注册集合对齐，含指挥）
+static func _is_aura_unit(stats: UnitStats) -> bool:
+	return stats != null and stats.platform_type in AURA_PLATFORM_TYPES
+
+
+## 单位 DPS：三维攻击取最大 / 攻击间隔（与敌方 best_dps 口径一致，防除零）
+static func _unit_dps(stats: UnitStats) -> float:
+	if stats == null:
+		return 0.0
+	var best_atk: float = maxf(stats.attack_light, maxf(stats.attack_armor, stats.attack_air))
+	var interval: float = maxf(stats.attack_interval, 0.01)
+	return best_atk / interval
+
+
+## 候选列表中距离最近的有效单位（distance_squared_to 单遍扫描）
+static func _nearest_of(origin: Vector2, candidates: Array) -> Node2D:
+	var best: Node2D = null
+	var best_d2: float = INF
+	for c in candidates:
+		if c == null or not is_instance_valid(c):
+			continue
+		var d2: float = origin.distance_squared_to((c as Node2D).global_position)
+		if d2 < best_d2:
+			best_d2 = d2
+			best = c
+	return best
+
+
+## DPS 最高的单位；DPS 在 5% 容差内并列时取距离最近
+static func _highest_dps_unit(origin: Vector2, candidates: Array) -> Node2D:
+	var best: Node2D = null
+	var best_dps: float = -1.0
+	var best_d2: float = INF
+	const DPS_TOL: float = 0.05  # 5% 容差
+	for c in candidates:
+		if c == null or not is_instance_valid(c):
+			continue
+		var dps: float = _unit_dps(c.get("stats") as UnitStats)
+		var d2: float = origin.distance_squared_to((c as Node2D).global_position)
+		if best == null or dps > best_dps * (1.0 + DPS_TOL):
+			# 明显更高 DPS，直接选
+			best = c
+			best_dps = dps
+			best_d2 = d2
+		elif absf(dps - best_dps) <= best_dps * DPS_TOL:
+			# DPS 并列（容差内），取距离最近
+			if d2 < best_d2:
+				best = c
+				best_dps = dps
+				best_d2 = d2
+	return best
+
+
+## 最后排单位（槽位远→近，第一个存活单位）
 ## 布局：玩家7槽(左带, slot0最左→slot6靠中线) | 中间空带 | 敌方7槽(右带, slot0靠中线→slot6最右)
 ## 玩家方扫敌方 slot 6→0（远→近）；敌方方扫玩家 slot 0→6（远→近）
-## 第一个有存活单位的槽位即目标（纯顺序，不考虑克制）
-static func _scan_slot_targets(u: CharacterBody2D, gr: Array) -> Node2D:
+static func _farthest_slot_unit(u: CharacterBody2D, candidates: Array) -> Node2D:
 	var slot_units: Dictionary = {}  # slot -> Array
-	for n in gr:
-		if not CombatTargeting.is_attackable_combat_unit(n):
-			continue
+	for n in candidates:
 		var s: int = _get_unit_slot_index(n)
 		if s < 0:
 			continue
@@ -226,7 +321,6 @@ static func _scan_slot_targets(u: CharacterBody2D, gr: Array) -> Node2D:
 	for s in slots:
 		for unit in slot_units[s]:
 			if is_instance_valid(unit):
-				# P0 修复：删除热路径裸 print（每次索敌同步 IO 卡顿）
 				return unit
 	return null
 

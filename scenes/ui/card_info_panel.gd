@@ -1538,31 +1538,95 @@ func _set_section_visible_by_content(section: PanelContainer, text: String) -> v
 func _build_aura_text(unit: Node) -> String:
 	if unit == null or not is_instance_valid(unit):
 		return ""
+	var lines: Array[String] = []
+	
+	# ── 平台光环（从 AuraManager 读取） ──
 	var am: Node = get_node_or_null("/root/AuraManager")
-	if am == null or not am.has_method("get_unit_aura_types"):
+	if am != null and am.has_method("get_unit_aura_types"):
+		var aura_types: Array[int] = am.get_unit_aura_types(unit)
+		if not aura_types.is_empty():
+			const AURA_NAMES := [
+				"医疗光环",      # 0 MEDIC_HEAL
+				"运输维修",      # 1 CARRIER_REPAIR
+				"侦查暴击",      # 2 SCOUT_CRIT
+				"雷达侦测",      # 3 RADAR_RANGE
+				"堡垒防御",      # 4 FORTRESS_DEF
+				"指挥全局",      # 5 COMMAND_GLOBAL
+			]
+			var names: Array[String] = []
+			for t in aura_types:
+				var idx: int = int(t)
+				if idx >= 0 and idx < AURA_NAMES.size():
+					names.append(AURA_NAMES[idx])
+			if not names.is_empty():
+				lines.append("当前光环：" + " · ".join(names))
+	
+	# ── 改造光环（从 mod_aura_applied meta 读取） ──
+	if unit.has_meta("mod_aura_applied"):
+		var applied = unit.get_meta("mod_aura_applied")
+		if applied is Array and not applied.is_empty():
+			var mod_details: Array[String] = []
+			for entry in applied:
+				if entry is Dictionary:
+					var summary: Dictionary = entry.get("summary", {})
+					if not summary.is_empty():
+						var effects: Array[String] = []
+						for sf in summary:
+							var rule: Dictionary = summary[sf]
+							var op: String = rule.get("op", "add")
+							var raw: float = float(rule.get("raw", 0.0))
+							var sign: String = "+" if raw > 0 else ""
+							var desc: String = _mod_aura_stat_desc(sf, op, raw)
+							effects.append(desc)
+						if not effects.is_empty():
+							mod_details.append("改造光环：[" + ", ".join(effects) + "]")
+			if not mod_details.is_empty():
+				lines.append("改造光环：" + "\n  ".join(mod_details))
+	
+	if lines.is_empty():
 		return ""
-	# AuraManager.AuraType 枚举值（aura_manager.gd:7）：0..5
-	var aura_types: Array[int] = am.get_unit_aura_types(unit)
-	if aura_types.is_empty():
-		return ""
-	# v7.x: 内联 AuraType 中文名（避免循环依赖 enum，AuraType 是 manager 内部枚举）。
-	# index 对应枚举序号。
-	const AURA_NAMES := [
-		"医疗光环",      # 0 MEDIC_HEAL
-		"运输维修",      # 1 CARRIER_REPAIR
-		"侦查暴击",      # 2 SCOUT_CRIT
-		"雷达侦测",      # 3 RADAR_RANGE
-		"堡垒防御",      # 4 FORTRESS_DEF
-		"指挥全局",      # 5 COMMAND_GLOBAL
-	]
-	var names: Array[String] = []
-	for t in aura_types:
-		var idx: int = int(t)
-		if idx >= 0 and idx < AURA_NAMES.size():
-			names.append(AURA_NAMES[idx])
-	if names.is_empty():
-		return ""
-	return "\n当前光环：" + " · ".join(names)
+	return "\n" + "\n".join(lines)
+
+## 将 mod_aura stat_field 转换为可读描述（如"攻击+10%"、"暴击率+5%"）
+func _mod_aura_stat_desc(stat_field: String, op: String, raw: float) -> String:
+	# 映射 stat_field 到中文名称
+	const STAT_NAMES := {
+		"attack_light": "轻攻",
+		"attack_armor": "重攻",
+		"attack_air": "空攻",
+		"attack_all": "全攻",
+		"defense_light": "轻防",
+		"defense_armor": "重防",
+		"defense_air": "空防",
+		"defense_all": "全防",
+		"attack_light_speed": "轻攻速",
+		"attack_armor_speed": "重攻速",
+		"attack_air_speed": "空攻速",
+		"crit_chance": "暴击率",
+		"dodge_chance": "闪避率",
+		"armor_penetration": "穿甲率",
+		"hp_regen": "生命恢复",
+		"lifesteal": "吸血",
+		"move_speed": "移速",
+		"attack_range": "射程",
+		"vision": "视野",
+		"attack_interval": "攻速间隔",
+		"detection": "侦测",
+	}
+	var name: String = STAT_NAMES.get(stat_field, stat_field)
+	if op == "add" or op == "abs_add":
+		if raw > 0:
+			return "%s+%d%%" % [name, int(raw * 100)]
+		return "%s%d%%" % [name, int(raw * 100)]
+	elif op == "mult_int":
+		var pct: float = raw * 100.0
+		return "%s×%.0f%%" % [name, pct]
+	elif op == "ammo":
+		var pct: float = raw * 100.0
+		return "%s-%.0f%%" % [name, pct]
+	elif op == "river":
+		return "%s+%d" % [name, int(raw * 80)]
+	return "%s:%.1f" % [name, raw]
 
 # v7.x: 玩家相位仪符文文本——读 PhaseInstrumentManager 的符文槽位 + 激活的符文之语。
 # 返回空串表示无任何符文；非空形如：
