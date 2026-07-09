@@ -223,7 +223,11 @@ func _get_progress(qid: String, key: String) -> int:
 	return int(data.get("progress", {}).get(key, 0))
 
 func _set_progress(qid: String, key: String, value: Variant) -> void:
-	var data: Dictionary = _accepted.get(qid, {})
+	# v7.x 守卫：未接受的任务不应记录进度。
+	# 原 _accepted.get(qid, {}) 在 qid 不存在时绑定临时空字典，写入会静默丢失（虽目前调用方约束在 _accepted 内，但函数边界脆弱）
+	if not _accepted.has(qid):
+		return
+	var data: Dictionary = _accepted[qid]
 	if not data.has("progress"):
 		data["progress"] = {}
 	data["progress"][key] = value

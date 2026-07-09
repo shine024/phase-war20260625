@@ -72,6 +72,19 @@ enum WeaponType {
 static func is_indirect_weapon_type(wt: int) -> bool:
 	return wt == WeaponType.INDIRECT or wt == WeaponType.AERIAL or wt in [3, 7, 9]
 
+# v7.x: legacy 12 值武器类型（WeaponTypeLegacy）→ 新 4 值 WeaponType 映射。
+# 敌方 archetype 配的是 legacy 值（0/1/2/3/7/9…），而 TargetSelection.select_target
+# 用新枚举（0=DIRECT/1=INDIRECT/2=AERIAL）分派。这里集中映射，避免敌兵(enemy_unit.gd)
+# 与相位师产兵(enemy_phase_field_driver.gd)各维护一份漂移。
+# 规则：空中平台(is_aircraft=true)→AERIAL；曲射类(ROCKET=3/FLAK=7/MISSILE=9/RAIL=11)→INDIRECT；其余→DIRECT
+# 与 is_indirect_weapon_type 的曲射判定保持一致（RAIL=11 仅在此处算 INDIRECT，因索敌需要差异化）。
+static func legacy_weapon_to_new_weapon_type(legacy_wt: int, is_aircraft: bool = false) -> int:
+	if is_aircraft:
+		return int(WeaponType.AERIAL)
+	if legacy_wt == 3 or legacy_wt == 7 or legacy_wt == 9 or legacy_wt == 11:
+		return int(WeaponType.INDIRECT)
+	return int(WeaponType.DIRECT)
+
 # 战斗定位枚举（单位类型）
 # v6.2: 攻防维度对齐后，攻防计算上 SUPPORT 归入 LIGHT、FORT 归入 ARMOR
 #       （参见 AttackCalculator.get_attack_vs / get_defense_vs 的 match 分组）

@@ -10,6 +10,7 @@ const LeaderboardData = preload("res://scenes/ui/leaderboard/leaderboard_data.gd
 const EnemyPhaseLeaderboard = preload("res://data/enemy_phase_leaderboard.gd")
 const LeaderboardEntry = preload("res://data/leaderboard_entry.gd")
 const EnemyPhaseEquipment = preload("res://data/enemy_phase_equipment.gd")
+const CompanyDefs = preload("res://data/company_definitions.gd")  # 统一阵营色来源
 
 # 行模板场景
 const FactionRowScene = preload("res://scenes/ui/leaderboard/faction_row.tscn")
@@ -22,16 +23,8 @@ static func _get_skill_panel_style() -> StyleBox:
 		return StyleBoxFlat.new()
 	return load("res://scenes/ui/leaderboard/skill_panel_style.tres") as StyleBox
 
-# 每个势力 ID 对应的显示颜色（按公司定义顺序）
-const FACTION_COLORS: Dictionary = {
-	"iron_wall_corp":    Color(0.7,  0.85, 1.0,  1),
-	"nova_arms":         Color(1.0,  0.4,  0.2,  1),
-	"aether_dynamics":   Color(0.2,  0.8,  1.0,  1),
-	"quantum_logistics": Color(1.0,  0.843, 0.0, 1),
-	"helix_recon":       Color(0.5,  1.0,  0.2,  1),
-	"void_research":     Color(0.7,  0.3,  1.0,  1),
-	"frontier_union":    Color(1.0,  0.2,  0.8,  1),
-}
+# 势力色统一来源：CompanyDefinitions.get_faction_color()（Palette B 高饱和）
+# 各 row 脚本（faction_row.gd/player_row.gd）直接调用该函数，不再经 Presenter 中转。
 
 var _data: LeaderboardData
 var _enemy_leaderboard: EnemyPhaseLeaderboard
@@ -69,9 +62,9 @@ func get_enemy_top_entries(count: int = 15) -> Array:
 func get_enemy_master_details(master_id: String) -> Dictionary:
 	return _enemy_leaderboard.get_master_details(master_id)
 
-## 获取势力显示颜色
+## 获取势力显示颜色（委托给统一数据源 CompanyDefinitions）
 func get_faction_color(fid: String) -> Color:
-	return FACTION_COLORS.get(fid, Color.WHITE)
+	return CompanyDefs.get_faction_color(fid)
 
 # ── 公司势力行构建 ──────────────────────────────────────────
 

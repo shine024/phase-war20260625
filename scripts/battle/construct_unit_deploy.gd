@@ -58,6 +58,8 @@ static func materialize_deploy_ghost(u: CharacterBody2D) -> void:
 	CardAbilityManager.on_unit_materialized(u)
 	u._register_to_spatial_grid()
 	u._update_card_grid_buff_strip(true)
+	# v6.14: 实体化后播阵营泛光（我方单位 + 有激活势力时）
+	u._play_faction_glow_pulse()
 	# 隐藏进度条
 	if u._deploy_bar:
 		u._deploy_bar.set_visible(false)

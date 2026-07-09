@@ -105,10 +105,13 @@ static func _load_and_migrate_file(file_name: String, debug_log: bool) -> Dictio
 	var data = json.data
 	# 类型安全：仅接受非空 Dictionary（旧独立存档应为字典结构）
 	if data is Dictionary and not data.is_empty():
+		# v7.x: 删除旧独立存档前先备份为 .bak（原无备份，若迁移后新流程写入失败则旧数据永久丢失无法回滚）
+		var bak_path: String = save_path + ".bak"
+		DirAccess.copy_absolute(save_path, bak_path)
 		DirAccess.remove_absolute(save_path)
 		if debug_log and DEBUG_LOG:
 			pass
-			# [LOG-v5.1] print("[SaveMigration] 已删除旧文件: %s" % save_path)
+			# [LOG-v5.1] print("[SaveMigration] 已删除旧文件(备份至 .bak): %s" % save_path)
 		return data
 	else:
 		return {}

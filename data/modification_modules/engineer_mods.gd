@@ -145,4 +145,5 @@ static func _matches_card(card_id: String) -> bool:
 			return true
 	return false
 
-const _CARD_PREFIXES: Array = ["ww1_engineer", "cold_avlb", "mod_m9ace", "fut_nano_drone"]
+# v7.x: ww1_engineer→ww1_sup_engineer; cold_avlb/mod_m9ace 是死链（default_cards 无定义，见 engineer_evolution.gd:5 注释）已删除
+const _CARD_PREFIXES: Array = ["ww1_sup_engineer", "fut_nano_drone"]

@@ -34,17 +34,10 @@ const PhaseLawsData = preload("res://data/phase_laws.gd")
 const DropTablesPreview = preload("res://resources/drop_tables.gd")
 const QuestDefs = preload("res://data/quest_definitions.gd")  # v6.7(剧情任务): 关卡剧情标记
 const FactionConquestBuffs = preload("res://data/faction_conquest_buffs.gd")  # v6.9: 占领势力加成描述
+const CompanyDefs = preload("res://data/company_definitions.gd")  # v6.14: 统一阵营色来源
 
-# v6.10: 关卡按钮占领色标用的势力配色（与 occupation_panel.gd 的 FACTION_COLORS 保持一致）
-const _OCCUPATION_BORDER_COLORS: Dictionary = {
-	"iron_wall_corp": Color(0.62, 0.58, 0.55, 0.9),
-	"nova_arms": Color(0.92, 0.45, 0.25, 0.9),
-	"aether_dynamics": Color(0.35, 0.75, 0.95, 0.9),
-	"quantum_logistics": Color(0.4, 0.85, 0.55, 0.9),
-	"helix_recon": Color(0.7, 0.4, 0.92, 0.9),
-	"void_research": Color(0.55, 0.4, 0.85, 0.9),
-	"frontier_union": Color(0.85, 0.78, 0.35, 0.9),
-}
+# v6.10: 关卡按钮占领色标——势力色统一从 CompanyDefinitions.get_faction_color() 读取（Palette B）
+# 无主之地兜底（右边框半透明灰）
 const LEVEL_COUNT: int = LevelEras.LEVEL_COUNT
 const LEVELS_PER_ROW: int = 10
 const ERA_SIZE: int = 20  # 每时代 20 关
@@ -367,7 +360,8 @@ func _make_level_button(level_index: int, _era_idx: int, era_info: Dictionary, c
 	# v6.10: 占领色标——右边框显示占领势力色（与剧情关紫色左边框不冲突）
 	var occupation_fid: String = _get_level_occupation_safe(level_index)
 	if not occupation_fid.is_empty():
-		var occ_color: Color = _OCCUPATION_BORDER_COLORS.get(occupation_fid, Color(0.7, 0.7, 0.7, 0.8))
+		var occ_color: Color = CompanyDefs.get_faction_color(occupation_fid)
+		occ_color.a = 0.9  # 右边框半透明，避免过抢
 		btn_style.border_width_right = 4
 		btn_style.border_color = occ_color  # 右边框用势力色（覆盖默认细边框）
 		# tooltip 追加占领信息

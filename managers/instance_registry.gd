@@ -29,6 +29,9 @@ const GC = preload("res://resources/game_constants.gd")
 ## instance_id -> CardResource（独立 clone 对象，带完整养成）
 var _instances: Dictionary = {}
 
+## 加载失败的 instance_id（模板找不到），供调试/诊断用
+var _load_failed_ids: Array = []
+
 ## card_id -> 当前最大序号（用于分配下一个序号）
 var _counter: Dictionary = {}
 
@@ -38,6 +41,10 @@ var _inherit_bonus: Dictionary = {}
 ## instance_id -> float（进化后 era0 HP 下限）
 var _evolution_hp_floor: Dictionary = {}
 ## instance_id -> String（敌源MOD ID）
+## v7.x 现状说明：实际 EOM 装备走 BlueprintManager.blueprint_enemy_origin_mod（card_id 字典），
+## 本字段从未被 EnemyOriginModManager.equip_eom 写入，当前为预留/未接入死字段。
+## card_evolution_manager 进化迁移读此字段，因无写入方故恒读到空串（迁移空转，无害）。
+## 若未来 EOM 重接战斗注入，需把 equip_eom 改为写本字段（走 instance 级隔离）。
 var _enemy_origin_mod: Dictionary = {}
 ## instance_id -> Dictionary（情报进化分支奖励 {extra_mod_slot, special_ability}）
 var _intel_branch_bonus: Dictionary = {}
@@ -258,7 +265,10 @@ func _load_one_instance(instance_id: String, inst_data: Dictionary) -> void:
 		return
 	var clone: CardResource = DefaultCards.clone_for_instance(card_id)
 	if clone == null:
-		push_warning("[InstanceRegistry] 加载实例 %s 找不到模板 %s" % [instance_id, card_id])
+		# v7.x: 模板找不到意味着养成数据将永久丢失（该实例无法重建），用 push_error 暴露问题
+		# （原 push_warning 易被忽略，旧存档卡模板被删/改名时玩家无感知）
+		push_error("[InstanceRegistry] 加载实例 %s 失败：找不到卡牌模板 %s（养成数据将丢失）" % [instance_id, card_id])
+		_load_failed_ids.append(instance_id)
 		return
 	clone.instance_id = instance_id
 	clone.enhance_level = int(inst_data.get("enhance_level", 0))

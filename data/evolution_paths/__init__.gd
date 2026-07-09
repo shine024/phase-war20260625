@@ -111,48 +111,82 @@ static func calculate_evolved_stats(old_card: Dictionary, target_card_id: String
 	return {}
 
 ## ─────────── card_id 分类辅助 ───────────
+## v7.x: 卡牌 ID 规范化后（加兵种中缀），前缀已同步更新。
+## 与 modification_modules 的兵种划分保持一致。
 
 static func _is_infantry(card_id: String) -> bool:
+	# cold_m60(步兵机枪) 与 cold_m60t(装甲坦克) 前缀冲突，排除装甲卡
+	if card_id == "cold_m60t":
+		return false
 	return card_id.begins_with("ww1_mp18") or card_id.begins_with("ww1_mauser") \
 		or card_id.begins_with("ww1_enfield") or card_id.begins_with("ww1_storm") \
 		or card_id.begins_with("ww1_flame") or card_id.begins_with("ww2_thompson") \
 		or card_id.begins_with("ww2_garand") or card_id.begins_with("ww2_mp40") \
-		or card_id.begins_with("ww2_ppsh") or card_id.begins_with("cold_ak47") \
-		or card_id.begins_with("cold_m14") or card_id.begins_with("mod_marine") \
-		or card_id.begins_with("fut_cyborg") or card_id.begins_with("fut_heavy_trooper")
+		or card_id.begins_with("ww2_ppsh") or card_id.begins_with("ww2_inf_panzerschrek") \
+		or card_id.begins_with("ww2_inf_bazooka") or card_id.begins_with("cold_ak47") \
+		or card_id.begins_with("cold_m14") or card_id.begins_with("cold_m60") \
+		or card_id.begins_with("cold_rpk") or card_id.begins_with("cold_rpg") \
+		or card_id.begins_with("mod_marine") or card_id.begins_with("mod_javelin") \
+		or card_id.begins_with("mod_inf_technical") or card_id.begins_with("mod_hummer_m2") \
+		or card_id.begins_with("mod_hummer_tow") or card_id.begins_with("fut_cyborg") \
+		or card_id.begins_with("fut_heavy_trooper")
 
 static func _is_armor(card_id: String) -> bool:
-	return card_id.begins_with("ww1_ft17") or card_id.begins_with("ww1_saint") \
-		or card_id.begins_with("ww2_pz3") or card_id.begins_with("ww2_tiger") \
-		or card_id.begins_with("cold_t55") or card_id.begins_with("cold_t72") \
-		or card_id.begins_with("cold_leo1") or card_id.begins_with("mod_m1a1") \
-		or card_id.begins_with("mod_m1a2") or card_id.begins_with("fut_hovertank") \
-		or card_id.begins_with("fut_heavy_mech") or card_id.begins_with("fut_prism")
+	# cold_m1(装甲) 与 cold_m14(步兵) 前缀冲突，排除步兵卡
+	if card_id == "cold_m14":
+		return false
+	return card_id.begins_with("ww1_arm_rolls") or card_id.begins_with("ww1_lanchest") \
+		or card_id.begins_with("ww1_arm_ft17") or card_id.begins_with("ww1_saint") \
+		or card_id.begins_with("ww1_a7v") or card_id.begins_with("ww1_mark4") \
+		or card_id.begins_with("ww2_pz3") or card_id.begins_with("ww2_pz4") \
+		or card_id.begins_with("ww2_panther") or card_id.begins_with("ww2_arm_tiger") \
+		or card_id.begins_with("ww2_kingtiger") or card_id.begins_with("ww2_t34") \
+		or card_id.begins_with("ww2_is2") or card_id.begins_with("ww2_arm_sherman") \
+		or card_id.begins_with("ww2_inf_hellcat") or card_id.begins_with("cold_inf_btr60") \
+		or card_id.begins_with("cold_inf_bmp1") or card_id.begins_with("cold_bradley") \
+		or card_id.begins_with("cold_arm_t55") or card_id.begins_with("cold_t62") \
+		or card_id.begins_with("cold_t72") or card_id.begins_with("cold_m60t") \
+		or card_id.begins_with("cold_m1") or card_id.begins_with("cold_leo1") \
+		or card_id.begins_with("cold_chieftain") or card_id.begins_with("mod_stryker") \
+		or card_id.begins_with("mod_arm_m1a") or card_id.begins_with("mod_m1a2") \
+		or card_id.begins_with("mod_t90") or card_id.begins_with("mod_leo2a6") \
+		or card_id.begins_with("mod_challenger2") or card_id.begins_with("fut_assault_mech") \
+		or card_id.begins_with("fut_arm_heavy_mech") or card_id.begins_with("fut_arm_hovertank") \
+		or card_id.begins_with("fut_arm_prism") or card_id.begins_with("fut_colossus") \
+		or card_id.begins_with("fut_arm_nexus") or card_id.begins_with("fut_arm_omega")
 
 static func _is_artillery(card_id: String) -> bool:
-	return card_id.begins_with("ww1_m81") or card_id.begins_with("ww2_m81") \
-		or card_id.begins_with("cold_m113") or card_id.begins_with("mod_m270") \
-		or card_id.begins_with("fut_howitzer")
+	return card_id.begins_with("ww1_arty_m81") or card_id.begins_with("ww1_m76") \
+		or card_id.begins_with("ww1_arty_77mm") or card_id.begins_with("ww1_105mm") \
+		or card_id.begins_with("ww1_mg08") or card_id.begins_with("ww1_vickers") \
+		or card_id.begins_with("ww2_arty_m81") or card_id.begins_with("ww2_m120") \
+		or card_id.begins_with("ww2_mg42") or card_id.begins_with("ww2_browning") \
+		or card_id.begins_with("cold_sup_m113") or card_id.begins_with("mod_arty_m270") \
+		or card_id.begins_with("fut_howitzer") or card_id.begins_with("fut_stormcore")
 
 static func _is_anti_air(card_id: String) -> bool:
 	return card_id.begins_with("ww1_37mm") \
-		or card_id.begins_with("cold_zsu23") or card_id.begins_with("mod_m6") \
+		or card_id.begins_with("cold_sup_zsu23") or card_id.begins_with("cold_sam7") \
+		or card_id.begins_with("mod_sup_m6") or card_id.begins_with("mod_stinger") \
 		or card_id.begins_with("fut_aa_hover")
 
 static func _is_air(card_id: String) -> bool:
-	return card_id.begins_with("cold_mig21") \
+	# 注：fut_nano_drone 虽 combat_kind=3，但属工兵进化线终点，走 _is_engineer（分发顺序 air 在 engineer 前，此处不放）
+	return card_id.begins_with("cold_mig21") or card_id.begins_with("cold_f4") \
 		or card_id.begins_with("mod_ah1") or card_id.begins_with("mod_ah64") \
-		or card_id.begins_with("fut_attack_drone") \
-		or card_id.begins_with("fut_swarm") or card_id.begins_with("fut_space_fighter")
+		or card_id.begins_with("mod_uh60") or card_id.begins_with("fut_attack_drone") \
+		or card_id.begins_with("fut_swarm") or card_id.begins_with("mod_inf_scout_drone") \
+		or card_id.begins_with("fut_space_fighter") or card_id.begins_with("fut_stealth_bomber")
 
 static func _is_recon(card_id: String) -> bool:
-	return card_id.begins_with("ww1_cavalry") \
+	return card_id.begins_with("ww1_inf_cavalry") \
 		or card_id.begins_with("cold_spetsnaz") or card_id.begins_with("mod_ranger") \
-		or card_id.begins_with("fut_spectre") or card_id.begins_with("fut_scout_mech")
+		or card_id.begins_with("fut_spectre") or card_id.begins_with("fut_inf_scout_mech")
 
 static func _is_engineer(card_id: String) -> bool:
-	return card_id.begins_with("ww1_engineer") \
+	return card_id.begins_with("ww1_sup_engineer") \
 		or card_id.begins_with("fut_nano_drone")
 
 static func _is_fort(card_id: String) -> bool:
-	return card_id.begins_with("fort_")
+	# 堡垒卡 ID 是 {era}_fort_* 中缀形式（如 ww1_fort_pillbox），用 find 判定
+	return card_id.find("_fort_") > 0

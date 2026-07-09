@@ -672,46 +672,110 @@ func _find_target(_delta: float) -> void:
 		return
 	target = null
 
-	# 性能优化：优先使用空间分区系统
-	if BattleManager and BattleManager.spatial_grid:
-		var spatial_grid = BattleManager.spatial_grid
-		if spatial_grid:
-			# 使用空间网格查询最近目标（O(1)复杂度）
-			var nearest_target = spatial_grid.query_nearest_target(
-				global_position,
-				false,  # 敌方单位
-				acq
-			)
-			if nearest_target != null:
-				target = nearest_target
-				return
+	# v7.x: 取武器类型用于索敌分流（与 _do_attack 的取值口径一致）
+	var wt: int = _get_weapon_type_for_targeting()
 
-	# 回退到传统方法（如果空间网格不可用）
-	var tree = get_tree()
-	if tree == null:
-		return
+	# 直射单位：优先空间分区（O(1) 最近目标，与 select_target_direct 结果等价，零行为变化）
+	# 曲射/空射单位：走差异化索敌（迫击炮打克制 / 防空打空中 / 导弹按克制）
+	if not GC.is_indirect_weapon_type(wt):
+		# 性能优化：优先使用空间分区系统
+		if BattleManager and BattleManager.spatial_grid:
+			var spatial_grid = BattleManager.spatial_grid
+			if spatial_grid:
+				# 使用空间网格查询最近目标（O(1)复杂度）
+				var nearest_target = spatial_grid.query_nearest_target(
+					global_position,
+					false,  # 敌方单位
+					acq
+				)
+				if nearest_target != null:
+					target = nearest_target
+					return
 
-	# 性能优化：使用距离平方比较，避免昂贵的平方根计算
-	var attack_range_sq := acq * acq
-	var gr: Array = BattleManager.get_cached_nodes_in_group("player_units") if BattleManager else get_tree().get_nodes_in_group("player_units")
-	var found_alive: bool = false
-	for n in gr:
-		if not CombatTargeting.is_attackable_combat_unit(n):
-			continue
-		found_alive = true
-		var dist_sq := global_position.distance_squared_to(n.global_position)
-		if dist_sq <= attack_range_sq:
-			target = n as Node2D
+		# 回退到传统方法（如果空间网格不可用）
+		var tree = get_tree()
+		if tree == null:
 			return
 
-	# 我方场上无单位时，攻击我方相位场
-	if not found_alive:
+		# 性能优化：使用距离平方比较，避免昂贵的平方根计算
+		var attack_range_sq := acq * acq
+		var gr: Array = BattleManager.get_cached_nodes_in_group("player_units") if BattleManager else get_tree().get_nodes_in_group("player_units")
+		var found_alive: bool = false
+		for n in gr:
+			if not CombatTargeting.is_attackable_combat_unit(n):
+				continue
+			found_alive = true
+			var dist_sq := global_position.distance_squared_to(n.global_position)
+			if dist_sq <= attack_range_sq:
+				target = n as Node2D
+				return
+
+		# 我方场上无单位时，攻击我方相位场
+		if not found_alive:
+			var phase_field: Node2D = CombatTargeting.find_opponent_phase_field(
+				global_position, false, BattleManager, -1.0
+			)
+			if phase_field != null:
+				target = phase_field
+				return
+		return
+
+	# —— 曲射/空射单位：差异化索敌 ——
+	var candidates: Array = _collect_player_candidates(acq)
+	if not candidates.is_empty():
+		var mapped_wt: int = GC.legacy_weapon_to_new_weapon_type(wt, _is_aircraft_unit())
+		var selected: Node2D = TargetSelection.select_target(self, candidates, mapped_wt)
+		if selected != null:
+			target = selected
+			return
+
+	# 射程内无可攻击的我方单位：若场上完全无我方单位，攻击我方相位场
+	var has_alive_player: bool = false
+	var gr2: Array = BattleManager.get_cached_nodes_in_group("player_units") if BattleManager else []
+	for n in gr2:
+		if CombatTargeting.is_attackable_combat_unit(n):
+			has_alive_player = true
+			break
+	if not has_alive_player:
 		var phase_field: Node2D = CombatTargeting.find_opponent_phase_field(
 			global_position, false, BattleManager, -1.0
 		)
 		if phase_field != null:
 			target = phase_field
 			return
+
+
+## v7.x: 索敌用的武器类型（与 _do_attack 口径一致：stats.weapon_type > cfg.weapon_type > DIRECT）
+## 注意 _cached_weapon_type 在目标变化时才更新，索敌发生更早，故独立取值而非读缓存。
+func _get_weapon_type_for_targeting() -> int:
+	if stats != null:
+		return stats.weapon_type
+	var cfg: Dictionary = _cached_archetype_cfg
+	return int(cfg.get("weapon_type", GC.WeaponType.DIRECT))
+
+
+## v7.x: 收集射程内可攻击的我方单位候选（曲射/空射索敌用）
+func _collect_player_candidates(acq: float) -> Array:
+	var result: Array = []
+	var attack_range_sq := acq * acq
+	var gr: Array = BattleManager.get_cached_nodes_in_group("player_units") if BattleManager else get_tree().get_nodes_in_group("player_units")
+	for n in gr:
+		if not CombatTargeting.is_attackable_combat_unit(n):
+			continue
+		var dist_sq := global_position.distance_squared_to(n.global_position)
+		if dist_sq <= attack_range_sq:
+			result.append(n as Node2D)
+	return result
+
+
+## v7.x: 判定空中单位（索敌映射 AERIAL 用）
+## 优先 stats.combat_kind==AIR；无 stats 时回退 archetype cfg tags
+func _is_aircraft_unit() -> bool:
+	if stats != null and stats.combat_kind == GC.CombatKind.AIR:
+		return true
+	var cfg: Dictionary = _cached_archetype_cfg
+	var tags: Array = cfg.get("tags", [])
+	return tags.has("aircraft") or tags.has("air")
 
 ## v5.0 攻速分离: 三阶段攻击状态机
 ## idle(0) → windup(1) → active(2,发射) → cooldown(3) → idle(0)

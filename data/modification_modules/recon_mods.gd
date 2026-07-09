@@ -169,4 +169,5 @@ static func _matches_card(card_id: String) -> bool:
 			return true
 	return false
 
-const _CARD_PREFIXES: Array = ["ww1_cavalry", "cold_spetsnaz", "mod_ranger", "fut_spectre", "fut_scout_mech", "fut_scout_drone"]
+# v7.x: ww1_cavalry→ww1_inf_cavalry, fut_scout_mech→fut_inf_scout_mech, fut_scout_drone→mod_inf_scout_drone
+const _CARD_PREFIXES: Array = ["ww1_inf_cavalry", "cold_spetsnaz", "mod_ranger", "fut_spectre", "fut_inf_scout_mech", "mod_inf_scout_drone"]

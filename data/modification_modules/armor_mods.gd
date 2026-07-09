@@ -412,9 +412,15 @@ static func get_for_card(card_id: String) -> Array:
 	return []
 
 static func _matches_card(card_id: String) -> bool:
+	# cold_m1(装甲) 与 cold_m14(步兵) 前缀冲突：begins_with("cold_m1") 会误匹配 cold_m14，
+	# 此处显式排除步兵卡 cold_m14。
+	if card_id == "cold_m14":
+		return false
 	for prefix in _CARD_PREFIXES:
 		if card_id.begins_with(prefix):
 			return true
 	return false
 
-const _CARD_PREFIXES: Array = ["ww1_rolls", "ww1_lanchest", "ww1_ft17", "ww1_saint", "ww1_a7v", "ww1_mark4", "ww2_pz", "ww2_tiger", "ww2_kingtiger", "ww2_t34", "ww2_is2", "ww2_sherman", "ww2_hellcat", "cold_btr60", "cold_bmp1", "cold_bradley", "cold_t55", "cold_t62", "cold_t72", "cold_m60t", "cold_m1", "cold_leo1", "cold_chieftain", "mod_stryker", "mod_m1a", "mod_t90", "mod_leo2", "mod_challenger", "fut_assault_mech", "fut_heavy_mech", "fut_hovertank", "fut_prism", "fut_colossus", "fut_nexus", "omega_platform"]
+# v7.x: 卡牌 ID 规范化后（加 _arm_/_inf_ 等兵种中缀），前缀表已同步更新。
+# mod_arm_m1a 覆盖 mod_arm_m1a1/mod_arm_m1a2sep；mod_m1a2 是独立卡单独列出。
+const _CARD_PREFIXES: Array = ["ww1_arm_rolls", "ww1_lanchest", "ww1_arm_ft17", "ww1_saint", "ww1_a7v", "ww1_mark4", "ww2_pz", "ww2_panther", "ww2_arm_tiger", "ww2_kingtiger", "ww2_t34", "ww2_is2", "ww2_arm_sherman", "ww2_inf_hellcat", "cold_inf_btr60", "cold_inf_bmp1", "cold_bradley", "cold_arm_t55", "cold_t62", "cold_t72", "cold_m60t", "cold_m1", "cold_leo1", "cold_chieftain", "mod_stryker", "mod_arm_m1a", "mod_m1a2", "mod_t90", "mod_leo2a6", "mod_challenger2", "fut_assault_mech", "fut_arm_heavy_mech", "fut_arm_hovertank", "fut_arm_prism", "fut_colossus", "fut_arm_nexus", "fut_arm_omega"]

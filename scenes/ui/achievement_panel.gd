@@ -12,7 +12,8 @@ const AchievementDefsExtended = preload("res://data/achievement_definitions_exte
 # UI组件引用
 @onready var close_button: Button = $Margin/VBox/Header/CloseButton
 @onready var category_tabs: TabContainer = $Margin/VBox/Body/CategoryTabs
-@onready var achievement_list: ScrollContainer = $Margin/VBox/Body/AchievementList/AchievementList
+# 注：路径解析到的是 ScrollContainer 下的同名 VBoxContainer 子节点（用于 add_child 排列成就条目）
+@onready var achievement_list: VBoxContainer = $Margin/VBox/Body/AchievementList/AchievementList
 @onready var summary_panel: Control = $Margin/VBox/SummaryPanel
 @onready var total_label: Label = $Margin/VBox/SummaryPanel/TotalLabel
 @onready var unlocked_label: Label = $Margin/VBox/SummaryPanel/UnlockedLabel

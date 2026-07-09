@@ -147,4 +147,5 @@ static func _matches_card(card_id: String) -> bool:
 			return true
 	return false
 
-const _CARD_PREFIXES: Array = ["fort_"]
+# v7.x: 堡垒卡 ID 是 {era}_fort_* 中缀形式，"fort_" 前缀匹配 0 张卡，改为列出完整 ID
+const _CARD_PREFIXES: Array = ["ww1_fort_pillbox", "ww1_fort_artillery", "ww2_fort_bunker", "ww2_fort_flak", "cold_fort_missile", "cold_fort_radar", "mod_fort_citadel", "mod_fort_phalanx", "fut_fort_ion", "fut_fort_shield"]

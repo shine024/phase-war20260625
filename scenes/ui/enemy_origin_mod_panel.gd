@@ -200,7 +200,14 @@ func _refresh_card_list(highlight: String = "") -> void:
 			var card_id := String(id_raw)
 			if not card_ids.has(card_id):
 				card_ids.append(card_id)
-	# 来源2：背包中的卡（instance_id 归一化到 base card_id 后去重）
+	# v7.x（铁律2）：优先读 InstanceRegistry 实例全集（真·实例数据源，永不被 consume 掏空）。
+	# SaveManager 队列降级为兜底（presenter 未存活/旧档迁移场景）。
+	if _ir != null and _ir.has_method("get_all_instance_ids"):
+		for iid in _ir.get_all_instance_ids():
+			var base := String(_norm.call(String(iid)))
+			if not base.is_empty() and not card_ids.has(base):
+				card_ids.append(base)
+	# 来源3：背包中的卡（instance_id 归一化到 base card_id 后去重，兜底）
 	var sm: Node = get_node_or_null("/root/SaveManager")
 	if sm and sm.has_method("get_pending_backpack_ids"):
 		for idv in sm.get_pending_backpack_ids():

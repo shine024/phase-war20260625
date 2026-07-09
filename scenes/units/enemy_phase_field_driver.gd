@@ -682,19 +682,17 @@ func _archetype_combat_kind(cfg: Dictionary, fallback_platform_int: int) -> int:
 
 ## v6.13: archetype 表的 weapon_type 是 legacy 12 值（WeaponTypeLegacy），
 ## 这里映射到新 4 值 WeaponType（DIRECT/INDIRECT/AERIAL/SUPPORT）。
-## 规则：
-## - 空中平台（tags 含 aircraft/air）的主武 → AERIAL（无论具体枪型）
+## v7.x: 映射真身已上移到 GameConstants.legacy_weapon_to_new_weapon_type，
+## 此处仅保留本文件签名（cfg 参数），从 cfg 判 is_aircraft 后委托 GC 版，
+## 保证敌方标准敌兵(enemy_unit.gd)与相位师产兵两路径共用一处真身，避免漂移。
+## 规则（详见 GC.legacy_weapon_to_new_weapon_type 注释）：
+## - 空中平台（tags 含 aircraft/air）→ AERIAL
 ## - 曲射类 legacy（ROCKET=3/FLAK=7/MISSILE=9/RAIL=11）→ INDIRECT
-## - 直射类 legacy（SMG=0/RIFLE=1/MG=2/PISTOL=4/SHOTGUN=5/SNIPER=6/LASER=8/OMEGA=10）→ DIRECT
-## 与 game_constants.is_indirect_weapon_type 的曲射判定保持一致。
+## - 其余 → DIRECT
 func _legacy_weapon_to_new_weapon_type(legacy_wt: int, cfg: Dictionary) -> int:
 	var tags: Array = cfg.get("tags", [])
-	if tags.has("air") or tags.has("aircraft"):
-		return int(GC.WeaponType.AERIAL)
-	# 曲射（与 GC.is_indirect_weapon_type 对齐：ROCKET=3/FLAK=7/MISSILE=9/RAIL=11）
-	if legacy_wt == 3 or legacy_wt == 7 or legacy_wt == 9 or legacy_wt == 11:
-		return int(GC.WeaponType.INDIRECT)
-	return int(GC.WeaponType.DIRECT)
+	var is_aircraft: bool = tags.has("air") or tags.has("aircraft")
+	return GC.legacy_weapon_to_new_weapon_type(legacy_wt, is_aircraft)
 
 
 ## v6.14: 应用相位师自带符文的加成到产兵 stats。

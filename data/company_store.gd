@@ -24,6 +24,9 @@ static func _load_json_array(path: String, fallback: Array) -> Array:
 
 const CompanyDefs = preload("res://data/company_definitions.gd")
 
+# 设计说明：company_store.json 是唯一数据源（50 条商品），LEGACY_ITEMS 保持空。
+# 与其他模块（masters/archetypes 等有完整 LEGACY 兜底）不同——若 JSON 加载失败，
+# 势力商店会变空，但加载失败极罕见（内置资源非 user://）。如需强健可手填兜底。
 const LEGACY_ITEMS: Array[Dictionary] = []
 
 static func get_items_for_company(company_id: String) -> Array[Dictionary]:

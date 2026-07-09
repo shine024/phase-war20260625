@@ -582,9 +582,16 @@ static func get_for_card(card_id: String) -> Array:
 	return []
 
 static func _matches_card(card_id: String) -> bool:
+	# cold_m60(步兵机枪) 与 cold_m60t(装甲坦克) 前缀冲突：begins_with("cold_m60") 会误匹配 cold_m60t，
+	# 此处显式排除装甲卡 cold_m60t。
+	if card_id == "cold_m60t":
+		return false
 	for prefix in _CARD_PREFIXES:
 		if card_id.begins_with(prefix):
 			return true
 	return false
 
-const _CARD_PREFIXES: Array = ["ww1_mp18", "ww1_mauser", "ww1_enfield", "ww1_storm", "ww1_flame", "ww2_thompson", "ww2_garand", "ww2_mp40", "ww2_ppsh", "ww2_panzerschrek", "ww2_bazooka", "cold_ak47", "cold_m14", "cold_m60", "cold_rpk", "cold_rpg", "mod_marine", "mod_technical", "mod_hummer_m2", "mod_hummer_tow", "fut_cyborg", "fut_heavy_trooper", "fut_scout_mech"]
+# v7.x: ww2_panzerschrek→ww2_inf_panzerschrek, ww2_bazooka→ww2_inf_bazooka,
+# mod_technical→mod_inf_technical, fut_scout_mech→fut_inf_scout_mech
+# 补 mod_javelin（标枪导弹兵，原表遗漏）
+const _CARD_PREFIXES: Array = ["ww1_mp18", "ww1_mauser", "ww1_enfield", "ww1_storm", "ww1_flame", "ww2_thompson", "ww2_garand", "ww2_mp40", "ww2_ppsh", "ww2_inf_panzerschrek", "ww2_inf_bazooka", "cold_ak47", "cold_m14", "cold_m60", "cold_rpk", "cold_rpg", "mod_marine", "mod_javelin", "mod_inf_technical", "mod_hummer_m2", "mod_hummer_tow", "fut_cyborg", "fut_heavy_trooper", "fut_inf_scout_mech"]

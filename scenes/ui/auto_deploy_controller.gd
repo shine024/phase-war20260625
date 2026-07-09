@@ -122,10 +122,12 @@ func _on_unit_died(_unit: Node, is_player: bool) -> void:
 		return
 	if not _enabled or not _battle_active:
 		return
-	# 死亡后立即重新填充部署队列（若队列已空才填，避免重复堆叠）
-	if _deploy_queue.is_empty():
-		_start_deploy_round()
-		_deploy_timer = DEPLOY_INTERVAL  # 短暂延迟后开始补
+	# v7.x: 死亡后始终重新收集队列，确保补阵能感知当前战场状态
+	# （哪些实例已在场上、哪些卡槽已空出）
+	_deploy_queue.clear()
+	_fail_streak = 0
+	_start_deploy_round()
+	_deploy_timer = DEPLOY_INTERVAL  # 短暂延迟后开始补
 
 
 # ── 每帧驱动（由 bottom_instrument_bar._process 转发）──
@@ -168,6 +170,7 @@ func _start_deploy_round() -> void:
 
 
 ## 部署队列里的下一张卡到第一个空槽（从左到右）
+## v7.x: 改为轮转尝试——遍历队列找第一个能部署成功的卡，避免 FIFO 阻塞
 func _deploy_next() -> void:
 	if _deploy_queue.is_empty():
 		return
@@ -184,26 +187,32 @@ func _deploy_next() -> void:
 		_deploy_queue.clear()
 		_fail_streak = 0
 		return
-	var platform = _deploy_queue[0]
-	# instance_id 优先（铁律3：同名卡按 instance_id 精确匹配各自实例）
-	var card_id: String = ""
-	if "instance_id" in platform and not String(platform.instance_id).is_empty():
-		card_id = String(platform.instance_id)
-	elif "card_id" in platform:
-		card_id = String(platform.card_id)
-	if card_id.is_empty():
-		_deploy_queue.pop_front()
-		return
-	var ok: bool = false
-	if bm.has_method("request_player_deploy_at"):
-		ok = bm.request_player_deploy_at(card_id, pos)
-	if ok:
-		_deploy_queue.pop_front()
+	# 轮转尝试：遍历队列找第一张能部署成功的卡
+	var deployed_index: int = -1
+	for i in range(_deploy_queue.size()):
+		var platform = _deploy_queue[i]
+		var card_id: String = ""
+		if "instance_id" in platform and not String(platform.instance_id).is_empty():
+			card_id = String(platform.instance_id)
+		elif "card_id" in platform:
+			card_id = String(platform.card_id)
+		if card_id.is_empty():
+			deployed_index = i
+			break
+		var ok: bool = false
+		if bm.has_method("request_player_deploy_at"):
+			ok = bm.request_player_deploy_at(card_id, pos)
+		if ok:
+			deployed_index = i
+			break
+	if deployed_index >= 0:
+		_deploy_queue.remove_at(deployed_index)
 		_fail_streak = 0
 	else:
-		# 部署失败（多为能量不足）—— 队列不清空，下次重试
+		# 全部失败（多为能量不足）—— 整轮重试
 		_fail_streak += 1
 		if _fail_streak > FAIL_GIVEUP:
+			# 放弃队列头（最久无法部署的卡），避免永久阻塞
 			_deploy_queue.pop_front()
 			_fail_streak = 0
 

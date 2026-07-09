@@ -171,6 +171,23 @@ func _connect_signals() -> void:
 			SignalBus.unit_spawned.connect(_on_unit_spawned)
 		if SignalBus.has_signal("unit_died"):
 			SignalBus.unit_died.connect(_on_unit_died)
+		# v7.x: 接入能量不足/相位场升级提示（原信号 emit 无监听，玩家无反馈）
+		if SignalBus.has_signal("energy_insufficient"):
+			SignalBus.energy_insufficient.connect(_on_energy_insufficient)
+		if SignalBus.has_signal("phase_field_level_up"):
+			SignalBus.phase_field_level_up.connect(_on_phase_field_level_up)
+
+func _on_energy_insufficient(_cost: float) -> void:
+	# 能量不足时给红色警告 toast（部署失败无其他视觉反馈）
+	var tm: Node = get_node_or_null("/root/ToastManager")
+	if tm and tm.has_method("show_error"):
+		tm.show_error("能量不足，无法部署")
+
+func _on_phase_field_level_up(old_level: int, new_level: int, unspent_points: int) -> void:
+	# 相位场升级给正面提示（玩家可能未察觉等级提升）
+	var tm: Node = get_node_or_null("/root/ToastManager")
+	if tm and tm.has_method("show_success"):
+		tm.show_success("相位场提升至 Lv%d！获得 %d 点（累计待用 %d）" % [new_level, new_level - old_level, unspent_points])
 
 func _on_battle_ended(_won: bool) -> void:
 	_deployed_card_ids.clear()

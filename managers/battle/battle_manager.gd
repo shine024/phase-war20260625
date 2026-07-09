@@ -311,21 +311,10 @@ func end_battle(player_won: bool) -> void:
 	# 结束能量系统
 	if energy_manager:
 		energy_manager.end_battle()
-	# 战斗胜利时奖励
-	if player_won:
-		_damage_system.try_grant_battle_affixes(phase_instrument)
-		_battle_result = _damage_system.generate_battle_completion_drops(
-			true,
-			_battle_elapsed_time,
-			_spawn_system.get_enemy_wave_total(),
-			_spawn_system.get_enemy_wave_interval(),
-			_spawn_system.get_max_player_units_deployed(),
-			_spawn_system.get_player_units_lost()
-		)
 	# 清空节点引用，防止悬空指针
 	player_units_node = null
 	enemy_units_node = null
-	# 清理战场单位
+	# 清理战场单位（queue_free 仅入队，帧末才真正释放，不阻塞本帧）
 	if DEBUG_BATTLE_LOG:
 		pass
 		# [LOG-v5.1] print("[BattleManager] Calling clear_all_units")
@@ -337,23 +326,50 @@ func end_battle(player_won: bool) -> void:
 		PerformanceMetricsManager.end_battle_sampling()
 	if BlueprintManager and BlueprintManager.has_method("flush_deferred_unlock_notifications"):
 		BlueprintManager.flush_deferred_unlock_notifications()
-	if SignalBus:
-		call_deferred("_emit_battle_ended", player_won)
-	# 通知任务系统
+	# v6.6(剧情): 清理必败战状态（防止跨战斗残留，无下游依赖）
+	_force_defeat = false
+	_force_defeat_timer = 0.0
+	# v7.x 性能：把掉落生成 / 任务通知 / battle_ended 信号广播（18+ 监听者）等重活
+	# 延迟到下一帧。根因：胜利判定走 _process → _check_win_lose → end_battle，全部
+	# 在"最后一个敌人倒下"那一帧同步执行；generate_battle_completion_drops 遍历所有
+	# 击败敌人做情报掷骰（最重），叠加 18 个 battle_ended 监听者同步广播，渲染线程
+	# 要等整条链结束才能画下一帧——这就是"胜利前卡一下"的主因。
+	# 延迟后：本帧只剩轻量收尾（清缓存 + queue_free 入队），立即渲染胜利瞬间；
+	# 下一帧再算掉落 + 广播信号。依赖安全性已核实：_defeated_enemies / spawn_system
+	# 的 5 个累计 getter（wave_total/interval/max_deployed/units_lost/wave_index）
+	# 都不被 clear_all_units 触碰；battle_active=false 后 _process 首行 return，
+	# _battle_elapsed_time 不再增长；各入口有 battle_active 守卫，延迟期间不重入。
+	call_deferred("_deferred_end_battle_finalize", player_won)
+
+
+# v7.x 性能：原 end_battle 末尾的重负载部分，延迟到下一帧执行以消除胜利瞬间卡顿。
+# 顺序约束：①掉落生成（依赖 _is_phase_master_battle 仍未清零，用于屏蔽相位师战
+# 改造蓝图双爆，见 battle_damage_system.gd 的 generate_battle_completion_drops）
+# → ②任务通知（读 _battle_result.victory_stars，必须在掉落生成之后）
+# → ③清理相位师战斗状态（必须在掉落生成之后，否则双爆回归）
+# → ④广播 battle_ended（18+ 监听者本帧跑，但已是胜利后第二帧，玩家无感知）。
+func _deferred_end_battle_finalize(player_won: bool) -> void:
+	# ①掉落生成
+	if player_won:
+		_damage_system.try_grant_battle_affixes(phase_instrument)
+		_battle_result = _damage_system.generate_battle_completion_drops(
+			true,
+			_battle_elapsed_time,
+			_spawn_system.get_enemy_wave_total(),
+			_spawn_system.get_enemy_wave_interval(),
+			_spawn_system.get_max_player_units_deployed(),
+			_spawn_system.get_player_units_lost()
+		)
+	# ②通知任务系统（读 _battle_result.victory_stars，必须在掉落生成之后）
 	ManagerLazyLoader.ensure_loaded("quest")
 	var qm = get_node_or_null("/root/QuestManager")
 	if qm and qm.has_method("notify_battle_result"):
 		var stars: int = _battle_result.get("victory_stars", 0)
 		qm.notify_battle_result(_battle_elapsed_time, stars, _spawn_system.get_enemy_wave_index())
-	# 清理相位师战斗状态
+	# ③清理相位师战斗状态（必须在掉落生成之后，保证相位师战改造蓝图屏蔽生效）
 	_phase_master_config = {}
 	_is_phase_master_battle = false
-	# v6.6(剧情): 清理必败战状态（防止跨战斗残留）
-	_force_defeat = false
-	_force_defeat_timer = 0.0
-
-
-func _emit_battle_ended(player_won: bool) -> void:
+	# ④广播战斗结束信号（原 _emit_battle_ended 合并于此，无需再套一层 deferred）
 	if SignalBus:
 		SignalBus.battle_ended.emit(player_won)
 

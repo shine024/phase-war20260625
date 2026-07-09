@@ -9,10 +9,10 @@ const StarConfig = preload("res://data/blueprint_star_config.gd")
 
 ## UI引用
 @onready var _tabs_container: TabContainer = $VBoxOuter/TabsContainer
-@onready var _all_items_grid: GridContainer = $VBoxOuter/TabsContainer/AllItems/ItemsGrid
-@onready var _materials_grid: GridContainer = $VBoxOuter/TabsContainer/Materials/MaterialsGrid
-@onready var _blueprints_grid: GridContainer = $VBoxOuter/TabsContainer/Blueprints/BlueprintsGrid
-@onready var _lore_grid: GridContainer = $VBoxOuter/TabsContainer/Lore/LoreGrid
+@onready var _all_items_grid: GridContainer = $VBoxOuter/TabsContainer/AllItems/ScrollContainer/ItemsGrid
+@onready var _materials_grid: GridContainer = $VBoxOuter/TabsContainer/Materials/ScrollContainer/MaterialsGrid
+@onready var _blueprints_grid: GridContainer = $VBoxOuter/TabsContainer/Blueprints/ScrollContainer/BlueprintsGrid
+@onready var _lore_grid: GridContainer = $VBoxOuter/TabsContainer/Lore/ScrollContainer/LoreGrid
 
 ## 数据
 var _all_drops: Array = []  # 存储所有掉落物品

@@ -256,4 +256,6 @@ static func _matches_card(card_id: String) -> bool:
 			return true
 	return false
 
-const _CARD_PREFIXES: Array = ["ww1_m81", "ww1_m76", "ww1_77mm", "ww1_105mm", "ww1_mg08", "ww1_vickers", "ww2_m81", "ww2_m120", "ww2_mg42", "ww2_browning", "cold_m113", "mod_m270", "fut_howitzer", "fut_stormcore"]
+# v7.x: ww1_m81→ww1_arty_m81, ww1_77mm→ww1_arty_77mm, ww2_m81→ww2_arty_m81,
+# cold_m113→cold_sup_m113, mod_m270→mod_arty_m270
+const _CARD_PREFIXES: Array = ["ww1_arty_m81", "ww1_m76", "ww1_arty_77mm", "ww1_105mm", "ww1_mg08", "ww1_vickers", "ww2_arty_m81", "ww2_m120", "ww2_mg42", "ww2_browning", "cold_sup_m113", "mod_arty_m270", "fut_howitzer", "fut_stormcore"]

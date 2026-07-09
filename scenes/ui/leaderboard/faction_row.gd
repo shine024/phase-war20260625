@@ -3,6 +3,8 @@ extends PanelContainer
 ## 节点结构: PanelContainer > MarginContainer > HBox
 ##   HBox > RankLabel, NameLabel, TerritoryLabel, ReputationLabel
 
+const CompanyDefs = preload("res://data/company_definitions.gd")  # 统一阵营色来源
+
 @onready var _rank_label: Label = %RankLabel
 @onready var _name_label: Label = %NameLabel
 @onready var _ter_label: Label = %TerritoryLabel
@@ -22,7 +24,7 @@ func setup(rank: int, data: Dictionary) -> void:
 	var fid: String = data.get("faction_id", "")
 	_name_label.text = data.get("name", "未知")
 	_name_label.add_theme_color_override("font_color",
-		LeaderboardPresenter.FACTION_COLORS.get(fid, Color.WHITE))
+		CompanyDefs.get_faction_color(fid))
 
 	# 已攻克/总关卡
 	var cleared: int = data.get("score", 0)

@@ -3,6 +3,8 @@ extends PanelContainer
 ## 节点结构: PanelContainer > MarginContainer > HBox
 ##   HBox > RankLabel, NameLabel, LevelLabel, FactionLabel, WinsLabel
 
+const CompanyDefs = preload("res://data/company_definitions.gd")  # 统一阵营色来源
+
 @onready var _rank_label: Label = %RankLabel
 @onready var _name_label: Label = %NameLabel
 @onready var _lv_label: Label = %LevelLabel
@@ -25,7 +27,7 @@ func setup(data: Dictionary) -> void:
 	var fid: String = data.get("preferred_faction", "")
 	_name_label.text = data.get("name", "未知玩家")
 	_name_label.add_theme_color_override("font_color",
-		LeaderboardPresenter.FACTION_COLORS.get(fid, Color.WHITE))
+		CompanyDefs.get_faction_color(fid))
 
 	# 当前关卡
 	var cur_lv: int = data.get("current_level", 0)
@@ -47,7 +49,7 @@ func setup(data: Dictionary) -> void:
 	# 所属势力
 	_fac_label.text = data.get("faction_name", fid)
 	_fac_label.add_theme_color_override("font_color",
-		LeaderboardPresenter.FACTION_COLORS.get(fid, Color.GRAY).lightened(0.3))
+		CompanyDefs.get_faction_color(fid).lightened(0.3))
 
 	# 胜场
 	_wins_label.text = str(data.get("wins", 0))

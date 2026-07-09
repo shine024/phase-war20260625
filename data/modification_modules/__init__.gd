@@ -81,25 +81,29 @@ static func get_mods_for_card(card_id: String) -> Array:
 	return result
 
 ## 从 card_id 前缀推算 combat_kind
+## v7.x: 卡牌 ID 规范化后（加兵种中缀），前缀已同步更新。
 static func _guess_combat_kind(card_id: String) -> int:
-	if card_id.begins_with("fort_"): return 4
+	# 堡垒卡 ID 是 {era}_fort_* 中缀形式，用 find 判定（begins_with("fort_") 匹配 0 张）
+	if card_id.find("_fort_") > 0: return 4
 	if card_id.begins_with("cold_mig21") or card_id.begins_with("cold_f4"): return 3
 	if card_id.begins_with("mod_ah") or card_id.begins_with("mod_uh60"): return 3
-	if card_id.begins_with("fut_swarm") or card_id.begins_with("fut_scout_drone") or card_id.begins_with("fut_attack_drone"): return 3
+	if card_id.begins_with("fut_swarm") or card_id.begins_with("mod_inf_scout_drone") or card_id.begins_with("fut_attack_drone"): return 3
 	if card_id.begins_with("fut_stealth_bomber") or card_id.begins_with("fut_space_fighter"): return 3
 	if card_id.begins_with("fut_nano_drone"): return 3
-	# Armor: ww1_rolls/lanchest/ft17/saint/a7v/mark4, ww2_tank/pz/tiger, cold_tank/bmp/bradley etc
-	if card_id.begins_with("ww1_rolls") or card_id.begins_with("ww1_lanchest") or card_id.begins_with("ww1_ft17") or card_id.begins_with("ww1_saint") or card_id.begins_with("ww1_a7v") or card_id.begins_with("ww1_mark4"): return 1
-	if card_id.begins_with("ww2_pz") or card_id.begins_with("ww2_tiger") or card_id.begins_with("ww2_kingtiger") or card_id.begins_with("ww2_t34") or card_id.begins_with("ww2_is2") or card_id.begins_with("ww2_sherman") or card_id.begins_with("ww2_hellcat"): return 1
-	if card_id.begins_with("cold_btr60") or card_id.begins_with("cold_bmp") or card_id.begins_with("cold_bradley"): return 1
-	if card_id.begins_with("cold_t") or card_id.begins_with("cold_m60t") or card_id.begins_with("cold_m1") or card_id.begins_with("cold_leo1") or card_id.begins_with("cold_chieftain"): return 1
-	if card_id.begins_with("mod_stryker") or card_id.begins_with("mod_m1a") or card_id.begins_with("mod_t90") or card_id.begins_with("mod_leo2") or card_id.begins_with("mod_challenger"): return 1
-	if card_id.begins_with("fut_assault_mech") or card_id.begins_with("fut_heavy_mech") or card_id.begins_with("fut_hovertank") or card_id.begins_with("fut_prism") or card_id.begins_with("fut_colossus") or card_id.begins_with("fut_nexus") or card_id.begins_with("omega_platform"): return 1
+	# Armor
+	if card_id.begins_with("ww1_arm_rolls") or card_id.begins_with("ww1_lanchest") or card_id.begins_with("ww1_arm_ft17") or card_id.begins_with("ww1_saint") or card_id.begins_with("ww1_a7v") or card_id.begins_with("ww1_mark4"): return 1
+	if card_id.begins_with("ww2_pz") or card_id.begins_with("ww2_panther") or card_id.begins_with("ww2_arm_tiger") or card_id.begins_with("ww2_kingtiger") or card_id.begins_with("ww2_t34") or card_id.begins_with("ww2_is2") or card_id.begins_with("ww2_arm_sherman") or card_id.begins_with("ww2_inf_hellcat"): return 1
+	if card_id.begins_with("cold_inf_btr60") or card_id.begins_with("cold_inf_bmp1") or card_id.begins_with("cold_bradley"): return 1
+	if card_id.begins_with("cold_arm_t") or card_id.begins_with("cold_t62") or card_id.begins_with("cold_t72") or card_id.begins_with("cold_m60t") or card_id.begins_with("cold_leo1") or card_id.begins_with("cold_chieftain"): return 1
+	# cold_m1 是装甲卡，但 begins_with("cold_m1") 会误匹配 cold_m14(步兵)，需排除
+	if card_id == "cold_m1" or (card_id.begins_with("cold_m1") and card_id != "cold_m14"): return 1
+	if card_id.begins_with("mod_stryker") or card_id.begins_with("mod_arm_m1a") or card_id.begins_with("mod_m1a2") or card_id.begins_with("mod_t90") or card_id.begins_with("mod_leo2a6") or card_id.begins_with("mod_challenger2"): return 1
+	if card_id.begins_with("fut_assault_mech") or card_id.begins_with("fut_arm_heavy_mech") or card_id.begins_with("fut_arm_hovertank") or card_id.begins_with("fut_arm_prism") or card_id.begins_with("fut_colossus") or card_id.begins_with("fut_arm_nexus") or card_id.begins_with("fut_arm_omega"): return 1
 	# Support (kind=2): mg nests, mortars, aa, engineer
-	if card_id.begins_with("ww1_mg08") or card_id.begins_with("ww1_vickers") or card_id.begins_with("ww1_m81") or card_id.begins_with("ww1_m76") or card_id.begins_with("ww1_77mm") or card_id.begins_with("ww1_105mm") or card_id.begins_with("ww1_37mm") or card_id.begins_with("ww1_engineer"): return 2
-	if card_id.begins_with("ww2_mg") or card_id.begins_with("ww2_m81") or card_id.begins_with("ww2_m120"): return 2
-	if card_id.begins_with("cold_m113") or card_id.begins_with("cold_zsu23") or card_id.begins_with("cold_sam7") or card_id.begins_with("cold_avlb"): return 2
-	if card_id.begins_with("mod_m270") or card_id.begins_with("mod_m6") or card_id.begins_with("mod_m9ace"): return 2
+	if card_id.begins_with("ww1_mg08") or card_id.begins_with("ww1_vickers") or card_id.begins_with("ww1_arty_m81") or card_id.begins_with("ww1_m76") or card_id.begins_with("ww1_arty_77mm") or card_id.begins_with("ww1_105mm") or card_id.begins_with("ww1_37mm") or card_id.begins_with("ww1_sup_engineer"): return 2
+	if card_id.begins_with("ww2_mg") or card_id.begins_with("ww2_browning") or card_id.begins_with("ww2_arty_m81") or card_id.begins_with("ww2_m120"): return 2
+	if card_id.begins_with("cold_sup_m113") or card_id.begins_with("cold_sup_zsu23") or card_id.begins_with("cold_sam7"): return 2
+	if card_id.begins_with("mod_arty_m270") or card_id.begins_with("mod_sup_m6") or card_id.begins_with("mod_stinger"): return 2
 	if card_id.begins_with("fut_howitzer") or card_id.begins_with("fut_aa_hover") or card_id.begins_with("fut_shield") or card_id.begins_with("fut_stormcore"): return 2
 	# Default: LIGHT (0) for infantry/recon
 	return 0

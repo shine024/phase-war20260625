@@ -2,6 +2,8 @@ extends PopupPanel
 ## 排行榜面板：显示公司势力排名和相位师排名
 ## 注意：本面板 extends PopupPanel，弹出使用 popup_centered()，关闭使用 hide()
 
+const CompanyDefs = preload("res://data/company_definitions.gd")  # 统一阵营色来源
+
 signal closed
 signal master_selected(master_id: String)  # 相位师选择信号
 ##
@@ -11,16 +13,7 @@ signal master_selected(master_id: String)  # 相位师选择信号
 ##   次要指标 = 该公司总领地数（territories_total）
 ##   声望（reputation）是玩家对该公司的个人好感度，不参与排名
 
-# 每个势力 ID 对应的显示颜色（按公司定义顺序）
-const FACTION_COLORS: Dictionary = {
-	"iron_wall_corp":    Color(0.7,  0.85, 1.0,  1),  # 钢壁防务 — 钢蓝
-	"nova_arms":         Color(1.0,  0.4,  0.2,  1),  # 新星兵工 — 火焰橙
-	"aether_dynamics":   Color(0.2,  0.8,  1.0,  1),  # 以太动力 — 青色
-	"quantum_logistics": Color(1.0,  0.843, 0.0, 1),  # 量子后勤 — 金色
-	"helix_recon":       Color(0.5,  1.0,  0.2,  1),  # 螺旋侦察 — 绿色
-	"void_research":     Color(0.7,  0.3,  1.0,  1),  # 虚空相位 — 紫色
-	"frontier_union":    Color(1.0,  0.2,  0.8,  1),  # 边境联合 — 品红
-}
+# 势力色统一来源：CompanyDefinitions.get_faction_color()（Palette B 高饱和）
 
 # 行模板场景（场景化：替代 .new() 链）
 const FactionRowScene = preload("res://scenes/ui/leaderboard/faction_row.tscn")

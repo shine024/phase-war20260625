@@ -193,4 +193,5 @@ static func _matches_card(card_id: String) -> bool:
 			return true
 	return false
 
-const _CARD_PREFIXES: Array = ["cold_mig21", "cold_f4", "mod_ah64", "mod_ah1", "mod_uh60", "fut_swarm", "fut_scout_drone", "fut_attack_drone", "fut_stealth_bomber", "fut_space_fighter"]
+# v7.x: fut_scout_drone 已重命名为 mod_inf_scout_drone；补 fut_nano_drone(combat_kind=3)
+const _CARD_PREFIXES: Array = ["cold_mig21", "cold_f4", "mod_ah64", "mod_ah1", "mod_uh60", "fut_swarm", "mod_inf_scout_drone", "fut_attack_drone", "fut_stealth_bomber", "fut_space_fighter", "fut_nano_drone"]

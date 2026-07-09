@@ -477,7 +477,7 @@ func request_player_deploy(platform_card_id: String, world_pos: Vector2, battle_
 	var _hi: int = platform_card_id.rfind("#")
 	if _hi > 0:
 		base_card_id = platform_card_id.substr(0, _hi)
-	if _reach_alive_limit_for_card(base_card_id):
+	if _reach_alive_limit_for_card(base_card_id, platform_card_id):
 		_emit_deploy_failed("unit_on_field", "该单位同配置已全部在场上，请待其离场后再部署。")
 		return false
 	var loadout: Dictionary = {}
@@ -550,7 +550,7 @@ func request_player_deploy(platform_card_id: String, world_pos: Vector2, battle_
 	# 非实例卡（旧路径）instance_id 为空，meta 存空串，显示侧回退到模板卡。
 	unit.set_meta("source_instance_id", platform_card.instance_id if (platform_card != null and not platform_card.instance_id.is_empty()) else "")
 	# v6.6: 幻影克隆 — 若本次部署是同卡的第2个单位（克隆体），应用克隆加成
-	if _is_phantom_clone_for_card(platform_card.card_id):
+	if _is_phantom_clone_for_card(platform_card.instance_id if platform_card != null and not platform_card.instance_id.is_empty() else platform_card.card_id):
 		_apply_phantom_clone_buff(unit)
 		unit.set_meta("is_phantom_clone", true)
 	# v6.6: 钢铁壁垒 — 装甲/堡垒类单位部署时最大HP翻倍（耐久加倍）
@@ -747,16 +747,44 @@ func _count_equipped_loadouts_from_card(card_id: String) -> int:
 			count += 1
 	return count
 
-func _reach_alive_limit_for_card(card_id: String) -> bool:
-	if card_id.is_empty():
+func _has_alive_player_unit_from_instance_id(inst_id: String) -> bool:
+	if inst_id.is_empty() or _player_units_node == null:
 		return false
-	var equipped_count: int = _count_equipped_loadouts_from_card(card_id)
+	for n in _player_units_node.get_children():
+		if n != null and is_instance_valid(n) and String(n.get_meta("source_instance_id", "")) == inst_id:
+			return true
+	return false
+
+
+func _count_alive_player_units_from_instance_id(inst_id: String) -> int:
+	if inst_id.is_empty() or _player_units_node == null:
+		return 0
+	var count: int = 0
+	for n in _player_units_node.get_children():
+		if n != null and is_instance_valid(n) and String(n.get_meta("source_instance_id", "")) == inst_id:
+			count += 1
+	return count
+
+
+## v7.x: 按实例（卡槽）统计存活上限。
+## platform_card_id 含 # 时按 instance_id 统计（每个卡槽最多 ×幻影倍率 个）；
+## 不含 # 时（旧兼容路径）按裸 card_id 统计原逻辑。
+func _reach_alive_limit_for_card(base_card_id: String, platform_card_id: String) -> bool:
+	if base_card_id.is_empty():
+		return false
+	if platform_card_id.find("#") > 0:
+		# 实例卡路径：每个 instance_id 最多 1 个（×幻影倍率）
+		var phantom_mul: int = _get_phantom_deploy_multiplier()
+		var alive_count: int = _count_alive_player_units_from_instance_id(platform_card_id)
+		return alive_count >= phantom_mul
+	# 旧兼容路径（裸 card_id，无 instance_id）
+	var equipped_count: int = _count_equipped_loadouts_from_card(base_card_id)
 	if equipped_count <= 0:
-		# 回退旧行为：未知装配信息时，仍保持“同卡最多一台”保护
-		return _has_alive_player_unit_from_card(card_id)
+		# 回退旧行为：未知装配信息时，仍保持"同卡最多一台"保护
+		return _has_alive_player_unit_from_card(base_card_id)
 	# v6.6: 幻影克隆（phantom_clone）— 同卡可放2个单位
 	var alive_limit: int = equipped_count * _get_phantom_deploy_multiplier()
-	var alive_count: int = _count_alive_player_units_from_card(card_id)
+	var alive_count: int = _count_alive_player_units_from_card(base_card_id)
 	return alive_count >= alive_limit
 
 ## v6.6: 获取免能量部署的成本倍率（0=全免，1=正常，0.5=半价）
@@ -780,11 +808,13 @@ func _get_phantom_deploy_multiplier() -> int:
 	return int(params.get("deploy_count", 1))
 
 ## v6.6: 判断新部署的单位是否为克隆体（第2个），若是则应用克隆加成
-func _is_phantom_clone_for_card(card_id: String) -> bool:
+## v7.x: inst_id 含 # 时按 instance_id 统计（实例卡槽），否则按裸 card_id 统计（旧兼容）
+func _is_phantom_clone_for_card(inst_id: String) -> bool:
 	if _get_phantom_deploy_multiplier() < 2:
 		return false
-	# 当同卡已有1个存活单位时，这次部署的是第2个=克隆体
-	return _count_alive_player_units_from_card(card_id) >= 1
+	if inst_id.find("#") > 0:
+		return _count_alive_player_units_from_instance_id(inst_id) >= 1
+	return _count_alive_player_units_from_card(inst_id) >= 1
 
 ## v6.6: 应用幻影克隆加成到克隆体单位（攻击+%，血量+%）
 func _apply_phantom_clone_buff(unit: Node) -> void:

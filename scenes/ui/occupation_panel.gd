@@ -15,17 +15,8 @@ const CompanyDefs = preload("res://data/company_definitions.gd")
 const FactionConquestBuffs = preload("res://data/faction_conquest_buffs.gd")
 const FactionStatus = preload("res://data/faction_status.gd")
 
-## 势力代表色（与势力设定呼应，用于按钮着色）
-const FACTION_COLORS: Dictionary = {
-	"iron_wall_corp": Color(0.62, 0.58, 0.55, 1.0),    # 钢灰：钢壁防务
-	"nova_arms": Color(0.92, 0.45, 0.25, 1.0),         # 火橙：新星兵工
-	"aether_dynamics": Color(0.35, 0.75, 0.95, 1.0),   # 天蓝：以太动力
-	"quantum_logistics": Color(0.4, 0.85, 0.55, 1.0),  # 翠绿：量子后勤
-	"helix_recon": Color(0.7, 0.4, 0.92, 1.0),         # 紫罗兰：螺旋侦察
-	"void_research": Color(0.55, 0.4, 0.85, 1.0),      # 暗紫：虚空相位
-	"frontier_union": Color(0.85, 0.78, 0.35, 1.0),    # 沙金：边境联合
-}
-
+## 势力代表色统一来源：CompanyDefinitions.get_faction_color()（Palette B 高饱和）
+## 无主之地兜底色
 const NEUTRAL_COLOR: Color = Color(0.38, 0.4, 0.44, 0.7)  # 无主之地：暗灰
 const ERA_NAMES: Array = ["一战 WWI", "二战 WWII", "冷战 COLD WAR", "现代 MODERN", "近未来 NEAR FUTURE"]
 
@@ -130,7 +121,7 @@ func _refresh_legend() -> void:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 6)
 		# 色块
-		var swatch := _make_color_swatch(FACTION_COLORS.get(fid, Color(0.7, 0.7, 0.7)))
+		var swatch := _make_color_swatch(CompanyDefs.get_faction_color(fid))
 		row.add_child(swatch)
 		# 名称
 		var name_l := Label.new()
@@ -214,7 +205,7 @@ func _make_territory_button(level: int, fsm: Node) -> Button:
 	var border_color: Color = Color(0.3, 0.32, 0.36, 0.5)
 	var font_color: Color = Color(0.7, 0.72, 0.78, 0.85)
 	if not fid.is_empty():
-		bg_color = FACTION_COLORS.get(fid, Color(0.7, 0.7, 0.7))
+		bg_color = CompanyDefs.get_faction_color(fid)
 		border_color = bg_color.lightened(0.2)
 		font_color = Color(0.05, 0.05, 0.08, 1.0)  # 深色字配亮底
 	# 样式

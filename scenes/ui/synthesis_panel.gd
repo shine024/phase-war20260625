@@ -218,6 +218,13 @@ func _refresh_card_list() -> void:
 	if BlueprintManager and BlueprintManager.has_method("get_all_blueprint_ids"):
 		for id_raw in BlueprintManager.get_all_blueprint_ids():
 			card_ids[String(id_raw)] = true
+	# v7.x（铁律2）：优先读 InstanceRegistry 实例全集（真·实例数据源，永不被 consume 掏空）。
+	# SaveManager 队列降级为兜底（presenter 未存活/旧档迁移场景）。
+	if _ir != null and _ir.has_method("get_all_instance_ids"):
+		for iid in _ir.get_all_instance_ids():
+			var base := String(_norm.call(String(iid)))
+			if not base.is_empty():
+				card_ids[base] = true
 	var sm: Node = get_node_or_null("/root/SaveManager")
 	if sm and sm.has_method("get_pending_backpack_ids"):
 		for idv in sm.get_pending_backpack_ids():

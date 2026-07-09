@@ -21,6 +21,7 @@ const RuneSpecialHandler = preload("res://managers/rune_special_handler.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 const EnemyPhaseEquipment = preload("res://data/enemy_phase_equipment.gd")
 const FortShieldAuraScript = preload("res://scripts/battle/fort_shield_aura.gd")
+const CompanyDefs = preload("res://data/company_definitions.gd")  # v6.14: 部署阵营泛光用
 # ObjectPoolManager 为 autoload
 const BATTLE_MIN_X: float = 40.0
 const BATTLE_MAX_X: float = 1240.0
@@ -127,6 +128,10 @@ var _hit_flash_tween: Tween = null
 var _hit_shake_tween: Tween = null
 var _death_fade_tween: Tween = null  ## v6.4: 死亡淡出 Tween
 var _is_dying: bool = false  ## v6.4: 死亡中标志，防止 _die 重复触发
+## v6.14: 部署阵营泛光——实体化瞬间单位泛出激活势力色（0.5s 渐隐回白）
+## 仅我方单位 + 有激活势力时触发，让"阵营技能在生效"可见化
+var _faction_glow_tween: Tween = null
+var _faction_glow_color: Color = Color.WHITE  ## setup 时缓存，materialize 时读取
 var _card_grid_rest_x: float = NAN  ## 格子战术中卡片的归位 X（首次 nudge 时记录）
 ## 卡牌能力冷却 CD（本地 float，避免每帧 meta 字典读写）
 var _medic_aura_cd: float = 0.0
@@ -238,6 +243,16 @@ func setup(p_is_player: bool, p_stats: UnitStats, forced_enemy_visual_archetype_
 
 	# v7.1: 堡垒类防护光环——纯视觉，让防御单位"在防护"可见化
 	_ensure_fort_shield_aura()
+
+	# v6.14: 缓存激活势力色（仅我方单位），供实体化时泛光使用
+	# 一次查询避免每单位反射；无激活势力（前20关/未选）时留 WHITE，materialize 时跳过泛光
+	_faction_glow_color = Color.WHITE
+	if is_player:
+		var fsm_node: Node = _resolve_autoload(&"FactionSystemManager")
+		if fsm_node != null:
+			var active_fid: String = String(fsm_node.get("active_faction")) if "active_faction" in fsm_node else ""
+			if not active_fid.is_empty():
+				_faction_glow_color = CompanyDefs.get_faction_color(active_fid)
 
 func setup_with_enemy_visual(p_is_player: bool, p_stats: UnitStats, p_visual_archetype_id: String) -> void:
 	# 必须在 setup 内第一次 _update_visual 之前就带上缴获外观 id，否则会短暂套用 unit_sprites 我方机甲图
@@ -453,6 +468,28 @@ func _play_phantom_clone_spawn_pulse() -> void:
 	var start_scale := scale
 	tw.tween_property(self, "scale", start_scale * 1.18, 0.12).set_ease(Tween.EASE_OUT)
 	tw.chain().tween_property(self, "scale", start_scale, 0.25).set_ease(Tween.EASE_IN_OUT)
+
+
+## v6.14: 部署阵营泛光——实体化后单位泛出激活势力色，0.5s 渐隐回白
+## 仅我方单位 + 有激活势力（_faction_glow_color 非 WHITE）时触发
+## 让"阵营技能在生效"可见化（阵营 stat_bonus 此前完全静默应用，玩家无感知）
+func _play_faction_glow_pulse() -> void:
+	if not is_instance_valid(self) or is_preview_mode:
+		return
+	# 无激活势力（前20关/未选）→ 不泛光，零开销
+	if _faction_glow_color == Color.WHITE:
+		return
+	# 克隆体已有自己的青色入场脉冲，跳过避免色调冲突
+	if modulate != Color.WHITE:
+		return
+	# 先染阵营色（提高亮度让泛光醒目，不遮挡单位本身），再渐隐回白
+	var glow := Color(_faction_glow_color.r, _faction_glow_color.g, _faction_glow_color.b, 1.0)
+	glow = glow.lightened(0.35)  # 提亮，避免深色阵营色把单位染暗
+	modulate = glow
+	if _faction_glow_tween != null and _faction_glow_tween.is_valid():
+		_faction_glow_tween.kill()
+	_faction_glow_tween = create_tween()
+	_faction_glow_tween.tween_property(self, "modulate", Color.WHITE, 0.5).set_ease(Tween.EASE_OUT)
 
 
 ## 受击缩放抖动反馈（复用Tween，避免每击new）
