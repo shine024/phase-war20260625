@@ -2,6 +2,7 @@ extends Node2D
 ## 子弹/激光/导弹等：按武器类型显示不同攻击动画，飞向目标造成伤害
 
 const GC = preload("res://resources/game_constants.gd")
+const DT = preload("res://resources/design_tokens.gd")
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 const ActiveLawEffects = preload("res://managers/active_law_effects.gd")
 const CardAbilityManager = preload("res://managers/card_ability_manager.gd")
@@ -39,6 +40,11 @@ var suppress_muzzle: bool = false
 ## -1 = 未提取（走原逻辑，向后兼容）
 var _target_combat_kind: int = -1
 
+## v8.1: 命中特效待生效标记（在 _on_hit 判定时设，_spawn_tex_impact_at 读取后清）
+var _pending_crit: bool = false
+var _pending_pierce: bool = false
+var _pierce_dir: Vector2 = Vector2.RIGHT  # 穿透光线方向
+
 # 行为参数：由武器类型决定
 var pierce_count: int = 0          # 可额外穿透多少个目标（LASER/SNIPER 用）
 var explosion_radius: float = 0.0  # >0 时命中产生范围伤害（ROCKET/MISSILE/FLAK）
@@ -62,6 +68,7 @@ var _sprite: Polygon2D
 var _beam_line: Line2D
 var _tex_sprite: Sprite2D
 var _trail_sprite: Sprite2D
+var _trail_particles: CPUParticles2D  # v8.1: 粒子拖尾（替代/补充静态 TrailSprite）
 var _use_tex_sprite: bool = false
 var _direction: Vector2 = Vector2.RIGHT
 var _beam_visual_phase: int = 0
@@ -111,6 +118,7 @@ func setup(p_target: Node2D, p_damage: float, p_is_player: bool, p_weapon_type: 
 	_beam_line = get_node_or_null("BeamLine") as Line2D
 	_tex_sprite = get_node_or_null("TexSprite") as Sprite2D
 	_trail_sprite = get_node_or_null("TrailSprite") as Sprite2D
+	_trail_particles = get_node_or_null("TrailParticles") as CPUParticles2D
 	_apply_visual()
 	_configure_behavior()
 	_beam_visual_phase = 0
@@ -325,22 +333,60 @@ func _hide_tex_sprite_visual() -> void:
 
 ## v6.4: 重型武器拖尾配置（仅在 _is_heavy 时启用，否则隐藏）
 ## 拖尾贴图置于弹体后方，运行时随 _direction 旋转（见 _process / _process_indirect）
+## v8.1: 新增粒子拖尾——重型武器强粒子（导弹/火炮），轻武器微弱粒子（机枪/步枪增运动感）
 func _apply_trail() -> void:
-	if _trail_sprite == null:
-		return
-	if not _is_heavy:
-		_trail_sprite.visible = false
-		return
-	_trail_sprite.visible = true
-	_trail_sprite.texture = HEAVY_TRAIL_TEX
-	_trail_sprite.centered = true
-	# 拖尾贴图较大，统一缩放到与弹体视觉匹配的尺寸
-	_trail_sprite.scale = Vector2(0.35, 0.35)
-	_trail_sprite.modulate = Color.WHITE if shooter_is_player else Color(1.0, 0.55, 0.45)
-	_trail_sprite.material = _get_add_blend_mat()
-	# 初始方向朝右（与 _direction 默认一致），运行时由 _update_trail_transform 旋转
-	_trail_sprite.rotation = 0.0
-	_trail_sprite.position = Vector2.ZERO
+	# 静态贴图拖尾（保留给重型武器）
+	if _trail_sprite != null:
+		if not _is_heavy:
+			_trail_sprite.visible = false
+		else:
+			_trail_sprite.visible = true
+			_trail_sprite.texture = HEAVY_TRAIL_TEX
+			_trail_sprite.centered = true
+			_trail_sprite.scale = Vector2(0.35, 0.35)
+			_trail_sprite.modulate = Color.WHITE if shooter_is_player else Color(1.0, 0.55, 0.45)
+			_trail_sprite.material = _get_add_blend_mat()
+			_trail_sprite.rotation = 0.0
+			_trail_sprite.position = Vector2.ZERO
+	# v8.1: 粒子拖尾配置
+	if _trail_particles != null:
+		_trail_particles.material = _get_add_blend_mat()
+		if DT.is_motion_reduce():
+			# 减少动效模式：禁用粒子拖尾
+			_trail_particles.emitting = false
+			_trail_particles.visible = false
+			return
+		if _is_heavy:
+			# 重型武器：强拖尾（v8.2：加长到可清晰看见尾焰）
+			_trail_particles.amount = 14
+			_trail_particles.lifetime = 0.50
+			_trail_particles.initial_velocity_min = 15.0
+			_trail_particles.initial_velocity_max = 35.0
+			_trail_particles.scale_amount_min = 3.0
+			_trail_particles.scale_amount_max = 5.5
+			_trail_particles.color = _trail_color_for_weapon()
+		else:
+			# 轻武器：微弱拖尾（v8.2：0.14→0.30 / amount 4→8，原几乎看不见）
+			_trail_particles.amount = 8
+			_trail_particles.lifetime = 0.30
+			_trail_particles.initial_velocity_min = 6.0
+			_trail_particles.initial_velocity_max = 12.0
+			_trail_particles.scale_amount_min = 1.0
+			_trail_particles.scale_amount_max = 2.0
+			_trail_particles.color = _trail_color_for_weapon()
+		_trail_particles.emitting = true
+		_trail_particles.visible = true
+
+
+## v8.1: 按武器类型获取拖尾粒子颜色
+func _trail_color_for_weapon() -> Color:
+	if not shooter_is_player:
+		return Color(1.0, 0.45, 0.5, 0.7)  # 敌方粉红
+	match weapon_type:
+		8:  return Color(0.3, 0.8, 1.0, 0.8)   # LASER 蓝
+		10, 11: return Color(0.5, 0.9, 1.0, 0.8)  # OMEGA/RAIL 青
+		3, 7, 9, 1, 2: return Color(1.0, 0.55, 0.2, 0.8)  # 爆炸类 橙
+		_: return Color(1.0, 0.95, 0.6, 0.7)   # 枪械 黄白
 
 
 ## v6.4: 每帧更新拖尾朝向。Bullet 节点已旋转到 _direction，
@@ -366,42 +412,37 @@ func _spawn_tex_impact_at(world_pos: Vector2) -> void:
 	if parent == null:
 		return
 
+	# v8.1: 构造命中特效 opts（暴击/穿透标记），读取后清零
+	var opts: Dictionary = {}
+	if _pending_crit:
+		opts["is_crit"] = true
+	if _pending_pierce:
+		opts["is_pierce"] = true
+		opts["direction"] = _pierce_dir
+	_pending_crit = false
+	_pending_pierce = false
+
 	# 曲射/空射/火箭/导弹 → 使用完整爆炸特效
 	# 新枚举: INDIRECT=1, AERIAL=2
 	# 旧枚举: ROCKET=3, FLAK=7, MISSILE=9
 	if weapon_type in [1, 2, 3, 7, 9]:  # INDIRECT, AERIAL, ROCKET, FLAK, MISSILE
-		_spawn_impact_explosion(world_pos)
+		_spawn_impact_explosion(world_pos, opts)
 		return
 
 	# v6.0: 武器名查 VFX → 旧 weapon_type 回退
 	# v7.x: 透传 _target_combat_kind 实现按目标类型差异化命中色调/缩放
+	# v8.1: 透传 opts（暴击/穿透）
 	if not _weapon_name.is_empty():
-		_spawn_impact_v2(parent, world_pos, _weapon_name)
+		_spawn_impact_v2(parent, world_pos, _weapon_name, opts)
 	else:
-		WeaponProjectileVfx.spawn_impact_with_kind(parent, world_pos, weapon_type, shooter_is_player, _target_combat_kind)
+		WeaponProjectileVfx.spawn_impact_with_kind(parent, world_pos, weapon_type, shooter_is_player, _target_combat_kind, opts)
 
 
-## v6.0: 新版命中特效（按武器名）— 使用 WeaponProjectileVfx 对象池
-func _spawn_impact_v2(parent: Node2D, world_pos: Vector2, weapon_name: String) -> void:
-	var tex: Texture2D = WeaponProjectileVfx.impact_texture_by_name(weapon_name)
-	if tex == null:
-		return
-	if WeaponProjectileVfx._active_impacts >= WeaponProjectileVfx.MAX_ACTIVE_IMPACTS:
-		return
-	WeaponProjectileVfx._active_impacts += 1
-	var fx: Sprite2D = WeaponProjectileVfx._acquire_impact_sprite()
-	fx.texture = tex
-	fx.centered = true
-	var sc := WeaponProjectileVfx.impact_scale_by_name(weapon_name)
-	fx.scale = Vector2.ONE * sc
-	fx.global_position = world_pos
-	if not shooter_is_player:
-		fx.modulate = Color(1.0, 0.45, 0.55)
-	parent.add_child(fx)
-	var tw := fx.create_tween()
-	tw.tween_property(fx, "scale", fx.scale * 1.22, 0.07)
-	tw.parallel().tween_property(fx, "modulate:a", 0.0, 0.20)
-	tw.finished.connect(func(): WeaponProjectileVfx._release_impact_sprite(fx))
+## v6.0/v8.0: 新版命中特效（按武器名）— 粒子化，零贴图绑定
+## v8.1: 透传 opts（暴击/穿透）
+func _spawn_impact_v2(parent: Node2D, world_pos: Vector2, weapon_name: String, opts: Dictionary = {}) -> void:
+	# v8.0: 统一走 spawn_impact_with_kind（内部自动选颜色+粒子）
+	WeaponProjectileVfx.spawn_impact_with_kind(parent, world_pos, weapon_type, shooter_is_player, _target_combat_kind, opts)
 
 
 func _finish_tex_bullet() -> void:
@@ -523,50 +564,17 @@ func _process_indirect(delta: float) -> void:
 		pass
 
 func _spawn_muzzle_effect(pos: Vector2) -> void:
-	if ARTILLERY_MUZZLE_TEX == null:
+	# v7.4: 炮口火焰改用 VfxImpactFactory 的 spark 池（原每次 new CPUParticles2D+Gradient）
+	# parent 用 get_parent()（子弹父节点，通常是 PlayerUnits/EnemyUnits 容器）
+	var host: Node = get_parent()
+	if host == null or not (host is Node2D):
 		return
-	WeaponProjectileVfx._active_impacts += 1
-	var fx: Sprite2D = WeaponProjectileVfx._acquire_impact_sprite()
-	fx.texture = ARTILLERY_MUZZLE_TEX
-	fx.centered = true
-	fx.scale = Vector2(0.60, 0.60)
-	fx.global_position = pos
-	if not shooter_is_player:
-		fx.scale.x = -fx.scale.x
-	get_parent().add_child(fx)
-	var tw := fx.create_tween()
-	tw.tween_property(fx, "scale", fx.scale * 1.3, 0.12)
-	tw.parallel().tween_property(fx, "modulate:a", 0.0, 0.25)
-	tw.finished.connect(func(): WeaponProjectileVfx._release_impact_sprite(fx))
+	VfxImpactFactory.spawn_muzzle_flash(host, pos, shooter_is_player)
 
-func _spawn_impact_explosion(pos: Vector2) -> void:
-	# v6.2: 按武器类型选不同爆炸贴图（迫击炮/导弹/高射炮/Omega/电磁炮各有专属外观）
-	var tex: Texture2D = WeaponProjectileVfx.explosion_impact_texture(weapon_type)
-	if tex == null:
-		return
-	WeaponProjectileVfx._active_impacts += 1
-	var fx: Sprite2D = WeaponProjectileVfx._acquire_impact_sprite()
-	fx.texture = tex
-	fx.centered = true
-	# v6.2: 曲射/空射爆炸特效放大(初始 0.75→1.0，放大倍率 1.5→2.25)
-	# v7.x: 按 combat_kind 叠加缩放倍率（对轻装小/对装甲中/对空大）
-	var _base_scale: float = 1.0
-	if _target_combat_kind >= 0 and WeaponProjectileVfx.IMPACT_SCALE_MUL_BY_KIND.has(_target_combat_kind):
-		_base_scale *= float(WeaponProjectileVfx.IMPACT_SCALE_MUL_BY_KIND[_target_combat_kind])
-	fx.scale = Vector2(_base_scale, _base_scale)
-	fx.global_position = pos
-	# v7.x: 按 combat_kind 叠加色调（火花/碎屑/空爆色调差异）
-	if _target_combat_kind >= 0 and WeaponProjectileVfx.IMPACT_TINT_BY_KIND.has(_target_combat_kind):
-		fx.modulate = WeaponProjectileVfx.IMPACT_TINT_BY_KIND[_target_combat_kind]
-	elif not shooter_is_player:
-		fx.scale.x = -fx.scale.x
-	get_parent().add_child(fx)
-	var tw := fx.create_tween()
-	tw.tween_property(fx, "scale", fx.scale * 2.25, 0.15)
-	tw.parallel().tween_property(fx, "modulate:a", 0.0, 0.3)
-	tw.finished.connect(func(): WeaponProjectileVfx._release_impact_sprite(fx))
-	# v7.x: 重型武器爆炸叠加冲击波环 + 火花（放大版）
-	WeaponProjectileVfx._spawn_impact_shockwave(get_parent(), pos, fx.scale.x * 1.5, shooter_is_player, _target_combat_kind)
+func _spawn_impact_explosion(pos: Vector2, opts: Dictionary = {}) -> void:
+	# v8.0: 统一走 spawn_impact_with_kind（粒子化，零贴图绑定）
+	# v8.1: 透传 opts（暴击/穿透）
+	WeaponProjectileVfx.spawn_impact_with_kind(self, pos, weapon_type, shooter_is_player, _target_combat_kind, opts)
 
 
 ## v6.4: 命中时触发屏幕震动——曲射/爆炸类中震动，直射轻震动
@@ -673,6 +681,24 @@ func _on_hit(primary: Node2D) -> void:
 			damage *= enhance_mult
 	# 词缀战斗效果已移除：直接使用已计算的 damage 值
 	var final_damage: float = damage * (1.0 - defender_reduction)
+	# v8.1: 穿透检测——命中特效紫色穿甲光线 + pierce 伤害数字样式
+	# 检测相位仪 piercing_shot 能力 或 符文 on_attack_penetration（与 attack_calculator 逻辑对齐）
+	if not _pending_pierce:
+		var pen_ratio: float = 0.0
+		# 相位仪直射穿透
+		var ability: Dictionary = PhaseInstrumentAbilities.get_active_ability()
+		if not ability.is_empty() and String(ability.get("id", "")) == "piercing_shot":
+			pen_ratio = maxf(pen_ratio, float(ability.get("params", {}).get("pen_ratio", 0.0)))
+		# 符文穿透
+		if shooter_stats != null and shooter_stats.has_meta("rune_specials"):
+			var specials = shooter_stats.get_meta("rune_specials")
+			if specials is Array:
+				for sp in specials:
+					if sp is Dictionary and sp.get("special", "") == "on_attack_penetration":
+						pen_ratio = maxf(pen_ratio, float(sp.get("value", 0)) / 100.0)
+		if pen_ratio > 0.0:
+			_pending_pierce = true
+			_pierce_dir = _direction
 	# v6.3: 真实暴击判定（基于 crit_chance；基础1.5x + crit_damage_bonus 每级+0.2x）
 	# v7.x: 目标的 crit_resist 降低被暴击概率（暴抗从攻击者 crit_chance 中扣减，下限 0）
 	var is_crit: bool = false
@@ -684,6 +710,7 @@ func _on_hit(primary: Node2D) -> void:
 	if effective_crit > 0.0 and randf() < effective_crit:
 		is_crit = true
 		final_damage *= (1.5 + shooter_stats.crit_damage_bonus)
+		_pending_crit = true  # v8.1: 命中特效暴击光环标记
 
 	# 武器伤害变异：15% 概率双倍伤害
 	if shooter_stats.has_weapon_dmg_mutation and randf() < 0.15:
@@ -701,6 +728,10 @@ func _on_hit(primary: Node2D) -> void:
 
 	# 范围伤害
 	if explosion_radius > 0.0:
+		# v8.1: AOE 爆炸冲击波环（半径=爆炸范围），强化范围感
+		var aoe_parent := get_parent() as Node2D
+		if aoe_parent != null:
+			VfxImpactFactory.spawn_shockwave(aoe_parent, global_position, explosion_radius)
 		for child in _get_aoe_damage_targets(global_position, explosion_radius, primary):
 			# v7.5: 删除原 `if GameManager == null: splash_red = ...` 死分支（同主目标修复理由）
 			var splash_red: float = 0.0
@@ -727,6 +758,9 @@ func _on_hit(primary: Node2D) -> void:
 	# 导致暴击数字与血条实际扣血矛盾。
 	if is_crit and is_instance_valid(primary):
 		primary.set_meta("_vfx_crit_pending", true)
+	# v8.1: 穿透 meta——take_damage → unit_damaged 时据此用紫色 pierce 样式显示伤害数字
+	if _pending_pierce and is_instance_valid(primary):
+		primary.set_meta("_vfx_pierce_pending", true)
 
 	# 直击伤害
 	if primary.has_method("take_damage"):
@@ -739,11 +773,20 @@ func _on_hit(primary: Node2D) -> void:
 			# v6.6: 应用改造命中副作用（吸血/连锁/溅射）——补全低速直射路径缺失的效果
 			ModuleEffectHandler.apply_on_hit_side_effects(shooter, primary, final_after_wall)
 	# 兜底：若目标无 take_damage（不应发生），meta 不会经信号清除，此处手动清避免残留
-	elif is_crit and is_instance_valid(primary) and primary.has_meta("_vfx_crit_pending"):
-		primary.remove_meta("_vfx_crit_pending")
+	elif is_instance_valid(primary):
+		if is_crit and primary.has_meta("_vfx_crit_pending"):
+			primary.remove_meta("_vfx_crit_pending")
+		if _pending_pierce and primary.has_meta("_vfx_pierce_pending"):
+			primary.remove_meta("_vfx_pierce_pending")
 
 	# v6.4: 命中屏幕震动（曲射/爆炸中震动，直射轻震动）
 	_request_hit_shake()
+	# v8.1: 能量武器(LASER/OMEGA/RAIL)命中光束余晖——shooter→命中点发光线段
+	if weapon_type in [8, 10, 11] and is_instance_valid(shooter) and primary is Node2D:
+		var fx_parent := get_parent() as Node2D
+		if fx_parent != null:
+			var beam_color := Color(0.3, 0.8, 1.0, 0.9) if weapon_type == 8 else Color(0.5, 0.9, 1.0, 0.9)
+			VfxImpactFactory.spawn_laser_beam(fx_parent, shooter.global_position, (primary as Node2D).global_position, beam_color)
 
 	# 卡牌特殊能力：命中后施加效果（同上，避免已释放 shooter）
 	if is_instance_valid(shooter):
@@ -805,6 +848,12 @@ func reset_pool_object() -> void:
 	_is_heavy = false  # v6.4: 重型武器标记重置
 	suppress_muzzle = false  # v6.6: 炮口火抑制重置
 
+	# v8.1: 命中特效 pending 标记重置（防对象池复用残留）
+	_pending_crit = false
+	_pending_pierce = false
+	_pierce_dir = Vector2.RIGHT
+	_target_combat_kind = -1
+
 	_start_position = Vector2.ZERO
 	_direction = Vector2.RIGHT
 	_beam_visual_phase = 0
@@ -826,6 +875,10 @@ func reset_pool_object() -> void:
 	# v6.4: 拖尾节点隐藏（_apply_trail 已由 _hide_tex_sprite_visual 调用，此处兜底）
 	if _trail_sprite:
 		_trail_sprite.visible = false
+	# v8.1: 粒子拖尾也停止发射
+	if _trail_particles:
+		_trail_particles.emitting = false
+		_trail_particles.visible = false
 	if _sprite:
 		_sprite.visible = true
 	if _beam_line:

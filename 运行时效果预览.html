@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>相位战争 - 运行时效果预览</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0e17;color:#e0e6f0;font-family:"Microsoft YaHei",sans-serif;padding:16px;overflow-x:hidden}
+h1{text-align:center;color:#00e5ff;font-size:24px;margin:12px 0 4px}
+.sub{text-align:center;color:#607d8b;font-size:12px;margin-bottom:20px}
+h2{color:#00e5ff;border-left:3px solid #00e5ff;padding-left:10px;margin:28px 0 12px;font-size:18px}
+h3{color:#7c4dff;margin:20px 0 8px;font-size:15px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:16px}
+.card{background:#131a2b;border:1px solid #1e2d4a;border-radius:6px;overflow:hidden}
+.card:hover{border-color:#00e5ff}
+.card .canvas-wrap{width:100%;height:120px;background:#0d1220;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.card .info{padding:8px 10px}
+.card .num{font-size:10px;color:#455a64;font-weight:bold}
+.card .name{font-size:13px;color:#b0bec5;margin-top:2px}
+.card .desc{font-size:10px;color:#607d8b;margin-top:4px;line-height:1.5}
+.tag{display:inline-block;font-size:9px;padding:1px 5px;border-radius:3px;margin-top:4px}
+.tag-player{background:#1a3a5c;color:#4fc3f7}
+.tag-enemy{background:#3a1a1a;color:#ef5350}
+.tag-law{background:#2a1a3a;color:#ce93d8}
+.tag-indirect{background:#2a3a1a;color:#aed581}
+canvas{image-rendering:auto}
+.anim-canvas{width:100%;height:100%}
+</style>
+</head>
+<body>
+<h1>相位战争 · 运行时效果预览</h1>
+<p class="sub">基于 bullet.gd / WeaponProjectileVfx.gd / phase_law_cast_effect.gd 的实际渲染逻辑模拟</p>
+
+<!-- ==================== SECTION 1: 直射弹道 ==================== -->
+<h2>一、直射弹道（Bullet._apply_bullet_shape + 贴图 Sprite2D）</h2>
+<p style="font-size:11px;color:#607d8b;margin-bottom:10px">
+玩家弹体：黄白色 #F5E64D | 敌方弹体：橙红色 #FF6433 | 所有弹体使用加性混合(BLEND_MODE_ADD)
+</p>
+
+<div class="grid">
+<div class="card">
+<div class="canvas-wrap"><canvas class="anim-canvas" id="c_direct_p"></canvas></div>
+<div class="info"><div class="num">#1 玩家直射弹体</div><div class="name">武器类型 DIRECT (SMG/RIFLE)</div><div class="desc">Polygon2D 弹头形多边形，加性混合发光。速度720px/s，射程1200</div><span class="tag tag-player">玩家方</span></div>
+</div>
+<div class="card">
+<div class="canvas-wrap"><canvas class="anim-canvas" id="c_direct_e"></canvas></div>
+<div class="info"><div class="num">#2 敌方直射弹体</div><div class="name">武器类型 DIRECT (SMG/RIFLE)</div><div class="desc">同形状但橙色 tint，加性混合发光。敌方用红橙色调</div><span class="tag tag-enemy">敌方</span></div>
+</div>
+</div>
+
+<h3>1.1 各武器类型弹体形状与颜色</h3>
+<div class="grid">
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_smg"></canvas></div><div class="info"><div class="num">#3</div><div class="name">冲锋枪弹体</div><div class="desc">标准弹头形 6x4*scale | 速度720 | 射程1200</div><span class="tag tag-player">黄白</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_rifle"></canvas></div><div class="info"><div class="num">#4</div><div class="name">步枪弹体</div><div class="desc">标准弹头形 6x4*scale | 速度720 | 射程1200</div><span class="tag tag-player">黄白</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_mg"></canvas></div><div class="info"><div class="num">#5</div><div class="name">机枪弹体</div><div class="desc">标准弹头形 6x4*scale | 速度720 | 射程1200</div><span class="tag tag-player">黄白</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_pistol"></canvas></div><div class="info"><div class="num">#6</div><div class="name">手枪弹体</div><div class="desc">标准弹头形 6x4*scale | 速度720 | 射程1200</div><span class="tag tag-player">黄白</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_shotgun"></canvas></div><div class="info"><div class="num">#7</div><div class="name">霰弹弹体</div><div class="desc">圆胖丸形 4.5x4*scale | 6发散射18度 | 速度650</div><span class="tag tag-player">黄白</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_sniper"></canvas></div><div class="info"><div class="num">#8</div><div class="name">狙击弹体</div><div class="desc">细长高能弹 6x1.6*scale | 穿透1个目标 | 速度1100</div><span class="tag tag-player">蓝白光束</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_rocket"></canvas></div><div class="info"><div class="num">#9</div><div class="name">火箭弹弹体</div><div class="desc">长粗导弹 6.3x4*scale | 爆炸半径40 | 速度420</div><span class="tag tag-player">橙红</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_flak"></canvas></div><div class="info"><div class="num">#10</div><div class="name">高射炮弹体</div><div class="desc">短粗炮弹 4x3.6*scale | 爆炸半径36 | 速度520</div><span class="tag tag-player">浅棕</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_laser"></canvas></div><div class="info"><div class="num">#11</div><div class="name">激光弹体</div><div class="desc">Line2D光束 | 宽3px | 穿透3个目标 | 速度1400</div><span class="tag tag-player">青色光束</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_missile"></canvas></div><div class="info"><div class="num">#12</div><div class="name">导弹弹体</div><div class="desc">长粗导弹 6.3x4*scale | 爆炸半径55 | 速度380</div><span class="tag tag-player">深橙</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_omega"></canvas></div><div class="info"><div class="num">#13</div><div class="name">Omega加农炮弹体</div><div class="desc">细长高能弹 6x1.6*scale | 穿透2个 | 爆炸半径70 | 速度520</div><span class="tag tag-player">能量蓝</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_rail"></canvas></div><div class="info"><div class="num">#14</div><div class="name">电磁轨道炮弹体</div><div class="desc">细长高能弹 6x1.6*scale | 穿透1个 | 爆炸半径58 | 速度560</div><span class="tag tag-player">电磁青</span></div></div>
+</div>
+
+<h3>1.2 重型武器拖尾（HEAVY_TRAIL_TEX 加性叠加）</h3>
+<div class="grid">
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_trail_p"></canvas></div><div class="info"><div class="num">#15</div><div class="name">玩家重型弹道拖尾</div><div class="desc">omega_platform_projectile_trail.png | 缩放0.35 | 加性混合 | 位于弹体后方-28px</div><span class="tag tag-player">玩家方</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_trail_e"></canvas></div><div class="info"><div class="num">#16</div><div class="name">敌方重型弹道拖尾</div><div class="desc">同贴图但粉红 tint | 缩放0.35 | 加性混合</div><span class="tag tag-enemy">敌方</span></div></div>
+</div>
+
+<!-- ==================== SECTION 2: 曲射弹道 ==================== -->
+<h2>二、曲射弹道（抛物线飞行 + 炮口火焰 + 爆炸命中）</h2>
+<p style="font-size:11px;color:#607d8b;margin-bottom:10px">
+INDIRECT(AERIAL) 使用贝塞尔曲线抛物线，不同武器弧线高度不同：迫击炮最高→火箭筒最低
+</p>
+
+<div class="grid">
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_indirect_p"></canvas></div><div class="info"><div class="num">#17</div><div class="name">玩家曲射弹道（迫击炮）</div><div class="desc">二次贝塞尔曲线 | 弧线倍率1.6x | 速度800 | 射程1600 | 发射炮口火焰</div><span class="tag tag-player">玩家方</span><span class="tag tag-indirect">曲射</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_indirect_e"></canvas></div><div class="info"><div class="num">#18</div><div class="name">敌方曲射弹道</div><div class="desc">同抛物线但橙色调 | 弧线倍率1.0x | 速度800</div><span class="tag tag-enemy">敌方</span><span class="tag tag-indirect">曲射</span></div></div>
+</div>
+
+<h3>2.1 曲射弧线高度对比</h3>
+<div class="grid">
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_arc_mortar"></canvas></div><div class="info"><div class="num">#19</div><div class="name">迫击炮弧线</div><div class="desc">倍率1.6x | 最高抛物线</div><span class="tag tag-indirect">曲射</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_arc_flak"></canvas></div><div class="info"><div class="num">#20</div><div class="name">高射炮弧线</div><div class="desc">倍率1.3x | 较高抛物线</div><span class="tag tag-indirect">曲射</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_arc_missile"></canvas></div><div class="info"><div class="num">#21</div><div class="name">导弹弧线</div><div class="desc">倍率1.0x | 中等抛物线</div><span class="tag tag-indirect">曲射</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_arc_aerial"></canvas></div><div class="info"><div class="num">#22</div><div class="name">空射弧线</div><div class="desc">倍率0.5x | 低弧线俯冲</div><span class="tag tag-indirect">曲射</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_arc_rocket"></canvas></div><div class="info"><div class="num">#23</div><div class="name">火箭筒弧线</div><div class="desc">倍率0.3x | 最接近平射</div><span class="tag tag-indirect">曲射</span></div></div>
+</div>
+
+<!-- ==================== SECTION 3: 命中特效 ==================== -->
+<h2>三、命中/爆炸特效（CPUParticles2D 粒子系统）</h2>
+<p style="font-size:11px;color:#607d8b;margin-bottom:10px">
+v8.0后全部改为 CPUParticles2D 粒子化，零贴图绑定。按武器类型和敌方 combat_kind 差异化色调/震动。
+</p>
+
+<div class="grid">
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_impact_smg"></canvas></div><div class="info"><div class="num">#24</div><div class="name">轻武器命中火花</div><div class="desc">粒子色#F2EB80 | 18粒子 | 0.28s生命周期 | 加性混合 | 无震动(LIGHT)</div><span class="tag tag-player">SMG/RIFLE/PISTOL/MG</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_impact_shotgun"></canvas></div><div class="info"><div class="num">#25</div><div class="name">霰弹命中火花</div><div class="desc">粒子色#FFB34D | 18粒子 | 橙色更大范围</div><span class="tag tag-player">SHOTGUN</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_impact_sniper"></canvas></div><div class="info"><div class="num">#26</div><div class="name">狙击命中火花</div><div class="desc">粒子色#FFF299 | 22粒子 | 亮黄色尖刺</div><span class="tag tag-player">SNIPER/LASER</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_impact_rocket"></canvas></div><div class="info"><div class="num">#27</div><div class="name">火箭弹命中爆炸</div><div class="desc">粒子色#FF8C33 | 28粒子(重型翻倍) | 橙红大爆炸</div><span class="tag tag-player">ROCKET/FLAK</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_impact_missile"></canvas></div><div class="info"><div class="num">#28</div><div class="name">导弹命中爆炸</div><div class="desc">粒子色#FF7326 | 28粒子(重型翻倍) | 深橙爆炸</div><span class="tag tag-player">MISSILE</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_impact_laser"></canvas></div><div class="info"><div class="num">#29</div><div class="name">激光命中火花</div><div class="desc">粒子色#4DCFFF | 22粒子 | 蓝白色能量火花</div><span class="tag tag-player">LASER</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_impact_omega"></canvas></div><div class="info"><div class="num">#30</div><div class="name">Omega加农炮命中</div><div class="desc">粒子色#6699FF | 28粒子(重型翻倍) | 能量蓝大爆炸</div><span class="tag tag-player">OMEGA_CANNON</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_impact_rail"></canvas></div><div class="info"><div class="num">#31</div><div class="name">电磁轨道炮命中</div><div class="desc">粒子色#80E6FF | 28粒子(重型翻倍) | 电磁青火花</div><span class="tag tag-player">RAIL_CANNON</span></div></div>
+</div>
+
+<h3>3.1 按目标 combat_kind 差异化命中色调</h3>
+<div class="grid">
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_impact_light"></canvas></div><div class="info"><div class="num">#32</div><div class="name">命中轻型单位</div><div class="desc">色调#FFF280 | 轻微震动(1.8, 0.10s)</div><span class="tag tag-player">LIGHT/SUPPORT</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_impact_armor"></canvas></div><div class="info"><div class="num">#33</div><div class="name">命中装甲单位</div><div class="desc">色调#FF8C40 | 中等震动(3.2, 0.18s) | 橙红金属碎屑</div><span class="tag tag-player">ARMOR/FORT</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_impact_air"></canvas></div><div class="info"><div class="num">#34</div><div class="name">命中空中单位</div><div class="desc">纯白色调(保留原色) | 强烈震动(5.0, 0.25s)</div><span class="tag tag-player">AIR</span></div></div>
+</div>
+
+<!-- ==================== SECTION 4: 法则特效 ==================== -->
+<h2>四、相位法则施放特效（phase_law_cast_effect.gd）</h2>
+<p style="font-size:11px;color:#607d8b;margin-bottom:10px">
+每条法则施放时生成：①8条闪电闪电线段 ②30个电火花粒子 ③地面扩散圆环。按家族色系着色。</p>
+
+<div class="grid">
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_law_steel"></canvas></div><div class="info"><div class="num">#35</div><div class="name">钢铁家族法则施放</div><div class="desc">银灰色 #BDBDBD | 8条闪电放射 + 30火花 + 地面扩散圆环 | 持续1.8s</div><span class="tag tag-law">STEEL · 银灰</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_law_flame"></canvas></div><div class="info"><div class="num">#36</div><div class="name">烈焰家族法则施放</div><div class="desc">橙红色 #FF6B35 | 同上闪电+火花+圆环结构 | 橙红配色</div><span class="tag tag-law">FLAME · 橙红</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_law_thunder"></canvas></div><div class="info"><div class="num">#37</div><div class="name">雷霆家族法则施放</div><div class="desc">蓝白色 #82B1FF | 同上闪电+火花+圆环结构 | 蓝白配色</div><span class="tag tag-law">THUNDER · 蓝白</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_law_void"></canvas></div><div class="info"><div class="num">#38</div><div class="name">虚空家族法则施放</div><div class="desc">暗紫色 #EA80FC | 同上闪电+火花+圆环结构 | 紫罗兰配色</div><span class="tag tag-law">VOID · 暗紫</span></div></div>
+</div>
+
+<!-- ==================== SECTION 5: 相位仪技能 ==================== -->
+<h2>五、相位仪7星主动特殊能力（运行时效果示意）</h2>
+<p style="font-size:11px;color:#607d8b;margin-bottom:10px">
+以下技能在战斗中触发时的实际视觉效果（部分复用已有弹道/命中特效）</p>
+
+<div class="grid">
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_pi_artillery"></canvas></div><div class="info"><div class="num">#39</div><div class="name">超级火炮连击</div><div class="desc">每N秒从屏幕外发起7发火炮曲射，复用火炮弹道+命中爆炸特效，随机打击敌方单位</div><span class="tag tag-ability" style="background:#1a2a3a;color:#4dd0e1">新星势力 · 周期触发</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_pi_clone"></canvas></div><div class="info"><div class="num">#40</div><div class="name">幻影克隆</div><div class="desc">部署时生成半透明克隆单位（紫色轮廓闪烁），克隆体攻击+100%血量+80%</div><span class="tag tag-ability" style="background:#1a2a3a;color:#4dd0e1">螺旋势力 · 被动</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_pi_pierce"></canvas></div><div class="info"><div class="num">#41</div><div class="name">直射穿透</div><div class="desc">弹体穿透时无额外特效（100%穿透），每穿过一个目标伤害衰减10%</div><span class="tag tag-ability" style="background:#1a2a3a;color:#4dd0e1">影幕势力 · 被动</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_pi_free"></canvas></div><div class="info"><div class="num">#42</div><div class="name">免能量部署</div><div class="desc">部署时无能量消耗特效（7星完全免费），单位出现时绿色光环</div><span class="tag tag-ability" style="background:#1a2a3a;color:#4dd0e1">擎天势力 · 被动</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_pi_nuke"></canvas></div><div class="info"><div class="num">#43</div><div class="name">核子轰炸</div><div class="desc">对敌方全体造成AOE伤害，全屏红色脉冲波 + 粒子爆发，伤害基于攻击力倍率</div><span class="tag tag-ability" style="background:#1a2a3a;color:#4dd0e1">永纪势力 · 周期触发</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_pi_nano"></canvas></div><div class="info"><div class="num">#44</div><div class="name">纳米虫群</div><div class="desc">开局释放紫色纳米虫群覆盖敌方区域，持续N秒每秒掉血2%，紫色粒子飘浮</div><span class="tag tag-ability" style="background:#1a2a3a;color:#4dd0e1">神盾势力 · 开局一次性</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_pi_shield"></canvas></div><div class="info"><div class="num">#45</div><div class="name">巨型能量罩</div><div class="desc">开局我方全体获得3000血量护盾，每个单位周围出现蓝色护盾光晕</div><span class="tag tag-ability" style="background:#1a2a3a;color:#4dd0e1">通用 · 开局一次性</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas class="anim-canvas" id="c_pi_fortress"></canvas></div><div class="info"><div class="num">#46</div><div class="name">钢铁壁垒</div><div class="desc">装甲/堡垒单位部署时HP翻倍，金色光芒环绕单位，耐久加倍效果</div><span class="tag tag-ability" style="background:#1a2a3a;color:#4dd0e1">铁幕势力 · 被动</span></div></div>
+</div>
+
+<script>
+// ===== Utility =====
+function setupCanvas(id, w, h) {
+    const c = document.getElementById(id);
+    if (!c) return null;
+    c.width = w || 200;
+    c.height = h || 120;
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0, 0, c.width, c.height);
+    return { canvas: c, ctx };
+}
+
+// ===== Draw bullet shapes =====
+function drawBulletShape(ctx, cx, cy, wt, color, scale) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    
+    let bodyLen, noseLen, halfH;
+    const s = scale || 1.0;
+    
+    switch(wt) {
+        case 5: // SHOTGUN - round
+            bodyLen = 3*s; noseLen = 1.5*s; halfH = 2*s; break;
+        case 3: case 9: // ROCKET/MISSILE - long thick
+            bodyLen = 4.5*s; noseLen = 2*s; halfH = 2*s; break;
+        case 10: case 11: // OMEGA/RAIL - thin tall
+            bodyLen = 4*s; noseLen = 2*s; halfH = 0.8*s; break;
+        case 7: // FLAK - short fat
+            bodyLen = 2.5*s; noseLen = 1.5*s; halfH = 1.8*s; break;
+        default: // SMG/RIFLE/MG/PISTOL/DIRECT
+            bodyLen = 4*s; noseLen = 2*s; halfH = 1.5*s;
+    }
+    
+    const tipX = bodyLen + noseLen;
+    const pts = [
+        [0, -halfH],
+        [bodyLen, -halfH],
+        [bodyLen, -noseLen*0.4],
+        [tipX, 0],
+        [bodyLen, noseLen*0.4],
+        [bodyLen, halfH],
+        [0, halfH]
+    ];
+    
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+    ctx.closePath();
+    
+    ctx.fillStyle = color;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 8;
+    ctx.fill();
+    ctx.restore();
+}
+
+// ===== Draw beam (laser/sniper) =====
+function drawBeam(ctx, x1, y1, x2, y2, color, width) {
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width || 3;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+    ctx.restore();
+}
+
+// ===== Particle burst simulation =====
+function drawParticles(ctx, cx, cy, count, baseColor, isHeavy) {
+    ctx.save();
+    for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 20 + Math.random() * (isHeavy ? 80 : 50);
+        const px = cx + Math.cos(angle) * speed;
+        const py = cy + Math.sin(angle) * speed;
+        const size = 1 + Math.random() * 3;
+        const alpha = 0.3 + Math.random() * 0.7;
+        
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = baseColor;
+        ctx.shadowColor = baseColor;
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.arc(px, py, size, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    ctx.restore();
+}
+
+// ===== Animation loop =====
+const anims = [];
+function animate(id, drawFn, fps) {
+    const obj = setupCanvas(id, 200, 120);
+    if (!obj) return;
+    const {ctx, canvas} = obj;
+    let t = 0;
+    const interval = 1000 / (fps || 30);
+    function frame() {
+        ctx.clearRect(0, 0, 200, 120);
+        drawFn(ctx, t, 200, 120);
+        t += interval;
+        anims.push({id, fn: frame});
+    }
+    setTimeout(frame, 0);
+}
+
+// ===== 1. Direct projectiles =====
+animate('c_direct_p', (ctx, t, w, h) => {
+    const x = 30 + (t % 1400) / 1400 * 150;
+    drawBulletShape(ctx, x, h/2, 0, '#F5E64D', 1.2);
+    // glow trail
+    ctx.globalAlpha = 0.3;
+    ctx.fillStyle = '#F5E64D';
+    ctx.fillRect(x - 20, h/2 - 1, 15, 2);
+    ctx.globalAlpha = 1;
+}, 60);
+
+animate('c_direct_e', (ctx, t, w, h) => {
+    const x = 170 - (t % 1400) / 1400 * 150;
+    drawBulletShape(ctx, x, h/2, 0, '#FF6433', 1.2);
+    ctx.globalAlpha = 0.3;
+    ctx.fillStyle = '#FF6433';
+    ctx.fillRect(x + 5, h/2 - 1, 15, 2);
+    ctx.globalAlpha = 1;
+}, 60);
+
+// 1.1 Individual weapon types
+const weaponDefs = [
+    {id:'c_smg', wt:0, name:'SMG', color:'#F5E64D'},
+    {id:'c_rifle', wt:0, name:'RIFLE', color:'#F5E64D'},
+    {id:'c_mg', wt:0, name:'MG', color:'#F5E64D'},
+    {id:'c_pistol', wt:0, name:'PISTOL', color:'#F5E64D'},
+    {id:'c_shotgun', wt:5, name:'SHOTGUN', color:'#F5E64D'},
+    {id:'c_sniper', wt:6, name:'SNIPER', color:'#4DCFFF'},
+    {id:'c_rocket', wt:3, name:'ROCKET', color:'#FF8C33'},
+    {id:'c_flak', wt:7, name:'FLAK', color:'#C2B280'},
+    {id:'c_laser', wt:8, name:'LASER', color:'#4DCFFF'},
+    {id:'c_missile', wt:9, name:'MISSILE', color:'#FF7326'},
+    {id:'c_omega', wt:10, name:'OMEGA', color:'#6699FF'},
+    {id:'c_rail', wt:11, name:'RAIL', color:'#80E6FF'},
+];
+
+weaponDefs.forEach(d => {
+    animate(d.id, (ctx, t, w, h) => {
+        const pulse = 1 + Math.sin(t / 300) * 0.1;
+        if (d.wt === 6 || d.wt === 8) { // SNIPER/LASER - beam
+            drawBeam(ctx, 20, h/2, w-20, h/2, d.color, d.wt===8?4.5:3);
+            drawBeam(ctx, 20, h/2, w-20, h/2, '#FFFFFF', 1);
+        } else {
+            drawBulletShape(ctx, w/2, h/2, d.wt, d.color, 1.2 * pulse);
+        }
+    }, 30);
+});
+
+// 1.2 Heavy trails
+animate('c_trail_p', (ctx, t, w, h) => {
+    const x = 30 + (t % 1400)/1400 * 150;
+    drawBulletShape(ctx, x, h/2, 3, '#F5E64D', 1.2);
+    // trail behind
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = '#F5E64D';
+    for (let i = 0; i < 8; i++) {
+        const tx = x - 10 - i * 6;
+        const ty = h/2 + Math.sin(t/100 + i) * 2;
+        ctx.beginPath();
+        ctx.arc(tx, ty, 2 - i*0.15, 0, Math.PI*2);
+        ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+}, 60);
+
+animate('c_trail_e', (ctx, t, w, h) => {
+    const x = 170 - (t % 1400)/1400 * 150;
+    drawBulletShape(ctx, x, h/2, 3, '#FF6433', 1.2);
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = '#FF6433';
+    for (let i = 0; i < 8; i++) {
+        const tx = x + 10 + i * 6;
+        const ty = h/2 + Math.sin(t/100 + i) * 2;
+        ctx.beginPath();
+        ctx.arc(tx, ty, 2 - i*0.15, 0, Math.PI*2);
+        ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+}, 60);
+
+// 2. Indirect projectile
+animate('c_indirect_p', (ctx, t, w, h) => {
+    const prog = (t % 2000) / 2000;
+    const start = Vector2(20, h - 20);
+    const end = Vector2(w - 20, h - 20);
+    const mid = Vector2((start.x+end.x)/2, (start.y+end.y)/2);
+    const apex = Vector2(mid.x, mid.y - 60);
+    const pt = (1-prog)*(1-prog)*start + 2*(1-prog)*prog*apex + prog*prog*end;
+    
+    // trail
+    ctx.globalAlpha = 0.3;
+    ctx.fillStyle = '#FF8C33';
+    for (let i = 0; i < 5; i++) {
+        const tp = Math.max(0, prog - i*0.03);
+        const tx = (1-tp)*(1-tp)*start.x + 2*(1-tp)*tp*apex.x + tp*tp*end.x;
+        const ty = (1-tp)*(1-tp)*start.y + 2*(1-tp)*tp*apex.y + tp*tp*end.y;
+        ctx.beginPath(); ctx.arc(tx, ty, 2, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    
+    drawBulletShape(ctx, pt.x, pt.y, 3, '#FF8C33', 1.0);
+}, 60);
+
+animate('c_indirect_e', (ctx, t, w, h) => {
+    const prog = (t % 2000) / 2000;
+    const start = Vector2(w-20, h-20);
+    const end = Vector2(20, h-20);
+    const mid = Vector2((start.x+end.x)/2, (start.y+end.y)/2);
+    const apex = Vector2(mid.x, mid.y - 40);
+    const pt = (1-prog)*(1-prog)*start + 2*(1-prog)*prog*apex + prog*prog*end;
+    
+    drawBulletShape(ctx, pt.x, pt.y, 3, '#FF6433', 1.0);
+}, 60);
+
+function Vector2(x,y){return{x,y}}
+
+// 2.1 Arc height comparison
+const arcs = [
+    {id:'c_arc_mortar', mult:1.6, label:'1.6x'},
+    {id:'c_arc_flak', mult:1.3, label:'1.3x'},
+    {id:'c_arc_missile', mult:1.0, label:'1.0x'},
+    {id:'c_arc_aerial', mult:0.5, label:'0.5x'},
+    {id:'c_arc_rocket', mult:0.3, label:'0.3x'},
+];
+
+arcs.forEach(a => {
+    animate(a.id, (ctx, t, w, h) => {
+        const prog = (t % 2000) / 2000;
+        const start = Vector2(20, h-15);
+        const end = Vector2(w-20, h-15);
+        const mid = Vector2((start.x+end.x)/2, (start.y+end.y)/2);
+        const apex = Vector2(mid.x, mid.y - 50 * parseFloat(a.mult));
+        const pt = (1-prog)*(1-prog)*start + 2*(1-prog)*prog*apex + prog*prog*end;
+        
+        // draw full arc path
+        ctx.globalAlpha = 0.2;
+        ctx.strokeStyle = '#4FC3F7';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3,3]);
+        ctx.beginPath();
+        for(let p=0;p<=1;p+=0.02){
+            const pp = (1-p)*(1-p)*start + 2*(1-p)*p*apex + p*p*end;
+            if(p===0) ctx.moveTo(pp.x, pp.y); else ctx.lineTo(pp.x, pp.y);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 1;
+        
+        // dot at current position
+        ctx.fillStyle = '#4FC3F7';
+        ctx.beginPath(); ctx.arc(pt.x, pt.y, 3, 0, Math.PI*2); ctx.fill();
+        
+        // label
+        ctx.fillStyle = '#607D8B';
+        ctx.font = '9px sans-serif';
+        ctx.fillText(a.label, mid.x - 10, mid.y - 50*parseFloat(a.mult) - 5);
+    }, 30);
+});
+
+// 3. Impact effects
+const impacts = [
+    {id:'c_impact_smg', color:'#F2EB80', count:18, heavy:false, kind:-1},
+    {id:'c_impact_shotgun', color:'#FFB34D', count:18, heavy:false, kind:-1},
+    {id:'c_impact_sniper', color:'#FFF299', count:22, heavy:false, kind:-1},
+    {id:'c_impact_rocket', color:'#FF8C33', count:28, heavy:true, kind:-1},
+    {id:'c_impact_missile', color:'#FF7326', count:28, heavy:true, kind:-1},
+    {id:'c_impact_laser', color:'#4DCFFF', count:22, heavy:false, kind:-1},
+    {id:'c_impact_omega', color:'#6699FF', count:28, heavy:true, kind:-1},
+    {id:'c_impact_rail', color:'#80E6FF', count:28, heavy:true, kind:-1},
+];
+
+impacts.forEach(im => {
+    animate(im.id, (ctx, t, w, h) => {
+        const burst = (t % 600) / 600;
+        if (burst < 0.1) {
+            // flash
+            ctx.globalAlpha = (1 - burst/0.1) * 0.8;
+            ctx.fillStyle = '#FFFFFF';
+            ctx.beginPath(); ctx.arc(w/2, h/2, 15 * burst/0.1, 0, Math.PI*2); ctx.fill();
+            ctx.globalAlpha = 1;
+            
+            // particles flying out
+            for(let i=0;i<im.count;i++){
+                const angle = (Math.PI*2/im.count)*i + burst*0.5;
+                const dist = burst * (im.heavy ? 60 : 40);
+                const px = w/2 + Math.cos(angle)*dist;
+                const py = h/2 + Math.sin(angle)*dist;
+                const alpha = 1 - burst;
+                const size = (1-burst) * (1 + Math.random());
+                ctx.globalAlpha = alpha * 0.8;
+                ctx.fillStyle = im.color;
+                ctx.shadowColor = im.color;
+                ctx.shadowBlur = 6;
+                ctx.beginPath(); ctx.arc(px, py, Math.max(0.5,size), 0, Math.PI*2); ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+            ctx.shadowBlur = 0;
+        }
+    }, 30);
+});
+
+// 3.1 Combat kind impacts
+const kindImpacts = [
+    {id:'c_impact_light', color:'#FFF280', shake:1.8, label:'震动 1.8px'},
+    {id:'c_impact_armor', color:'#FF8C40', shake:3.2, label:'震动 3.2px'},
+    {id:'c_impact_air', color:'#FFFFFF', shake:5.0, label:'震动 5.0px'},
+];
+
+kindImpacts.forEach(ki => {
+    animate(ki.id, (ctx, t, w, h) => {
+        const burst = (t % 800) / 800;
+        const shakeX = Math.sin(t/50) * ki.shake * (1-burst);
+        const shakeY = Math.cos(t/40) * ki.shake * (1-burst);
+        
+        ctx.save();
+        ctx.translate(shakeX, shakeY);
+        
+        if (burst < 0.15) {
+            ctx.globalAlpha = (1-burst/0.15)*0.8;
+            ctx.fillStyle = '#FFFFFF';
+            ctx.beginPath(); ctx.arc(w/2,h/2,20*burst/0.15,0,Math.PI*2); ctx.fill();
+            ctx.globalAlpha = 1;
+            
+            for(let i=0;i<20;i++){
+                const a=(Math.PI*2/20)*i+burst*0.3;
+                const d=burst*(ki.shake>3?70:45);
+                ctx.globalAlpha=(1-burst)*0.8;
+                ctx.fillStyle=ki.color;
+                ctx.shadowColor=ki.color;ctx.shadowBlur=6;
+                ctx.beginPath();ctx.arc(w/2+Math.cos(a)*d,h/2+Math.sin(a)*d,2-burst*2,0,Math.PI*2);ctx.fill();
+            }
+            ctx.globalAlpha=1;ctx.shadowBlur=0;
+        }
+        ctx.restore();
+        
+        ctx.fillStyle='#607D8B';ctx.font='9px sans-serif';
+        ctx.fillText(ki.label, 4, 112);
+    }, 30);
+});
+
+// 4. Law effects
+const laws = [
+    {id:'c_law_steel', color:'#BDBDBD', family:'STEEL'},
+    {id:'c_law_flame', color:'#FF6B35', family:'FLAME'},
+    {id:'c_law_thunder', color:'#82B1FF', family:'THUNDER'},
+    {id:'c_law_void', color:'#EA80FC', family:'VOID'},
+];
+
+laws.forEach(lw => {
+    animate(lw.id, (ctx, t, w, h) => {
+        const cycle = t % 1800;
+        const flash = Math.min(1, cycle / 300);
+        const fade = cycle > 1500 ? (1800-cycle)/300 : 1;
+        
+        // 1. Lightning bolts (8 lines)
+        ctx.globalAlpha = flash * fade;
+        ctx.strokeStyle = lw.color;
+        ctx.lineWidth = 2;
+        ctx.shadowColor = lw.color;
+        ctx.shadowBlur = 10;
+        
+        for(let i=0; i<8; i++){
+            const angle = (Math.PI*2/8)*i + Math.random()*0.2;
+            const len = 30 + Math.random()*30;
+            ctx.beginPath();
+            let lx=w/2, ly=h/2;
+            ctx.moveTo(lx,ly);
+            const segs = 5;
+            for(let s=1;s<=segs;s++){
+                const t2 = s/segs;
+                lx = w/2 + Math.cos(angle)*len*t2 + (Math.random()-0.5)*10*t2;
+                ly = h/2 + Math.sin(angle)*len*t2 + (Math.random()-0.5)*10*t2;
+                ctx.lineTo(lx,ly);
+            }
+            ctx.stroke();
+        }
+        
+        // 2. Spark particles
+        for(let i=0;i<20;i++){
+            const a=Math.random()*Math.PI*2;
+            const d=Math.random()*40;
+            ctx.globalAlpha = flash*fade*(1-Math.random()*0.5);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.beginPath(); ctx.arc(w/2+Math.cos(a)*d, h/2+Math.sin(a)*d, 1+Math.random(), 0, Math.PI*2); ctx.fill();
+        }
+        
+        // 3. Ground ring expanding
+        if(flash > 0.3 && fade > 0.3){
+            const ringProgress = Math.min(1, (flash-0.3)/0.7);
+            ctx.globalAlpha = (1-ringProgress)*fade*0.5;
+            ctx.strokeStyle = lw.color;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(w/2, h/2, ringProgress*50, 0, Math.PI*2);
+            ctx.stroke();
+        }
+        
+        ctx.globalAlpha = 1;
+        ctx.shadowBlur = 0;
+        
+        // label
+        ctx.fillStyle = '#607D8B';
+        ctx.font = '9px sans-serif';
+        ctx.fillText(lw.family, 4, 112);
+    }, 60);
+});
+
+// 5. Phase instrument abilities
+// 5.1 Artillery barrage
+animate('c_pi_artillery', (ctx, t, w, h) => {
+    const cycle = t % 3000;
+    // 7 shots over time
+    for(let i=0;i<7;i++){
+        const shotTime = i * 300 + 200;
+        if(cycle > shotTime && cycle < shotTime + 500){
+            const progress = (cycle - shotTime) / 500;
+            const sx = w + 10;
+            const ex = 30 + Math.random()*(w-60);
+            const midy = 20 + Math.random()*30;
+            const px = (1-progress)*(1-progress)*sx + 2*(1-progress)*progress*Vector2((sx+ex)/2, midy).x + progress*progress*ex;
+            const py = (1-progress)*(1-progress)*(h-10) + 2*(1-progress)*progress*midy + progress*progress*(h-10);
+            
+            ctx.globalAlpha = 1-progress;
+            ctx.fillStyle = '#FF8C33';
+            ctx.shadowColor = '#FF8C33';
+            ctx.shadowBlur = 8;
+            ctx.beginPath(); ctx.arc(px, py, 3, 0, Math.PI*2); ctx.fill();
+            
+            // impact flash at end
+            if(progress > 0.9){
+                ctx.globalAlpha = (1-progress)/0.1 * 0.8;
+                ctx.fillStyle = '#FFFFFF';
+                ctx.beginPath(); ctx.arc(ex, h-10, 10*(1-progress)/0.1, 0, Math.PI*2); ctx.fill();
+            }
+        }
+    }
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+}, 30);
+
+// 5.2 Phantom clone
+animate('c_pi_clone', (ctx, t, w, h) => {
+    // Original unit
+    ctx.fillStyle = '#4FC3F7';
+    ctx.shadowColor = '#4FC3F7';
+    ctx.shadowBlur = 6;
+    ctx.fillRect(60, 40, 20, 40);
+    
+    // Clone (semi-transparent purple)
+    const alpha = 0.3 + Math.sin(t/400)*0.2;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = '#EA80FC';
+    ctx.shadowColor = '#EA80FC';
+    ctx.fillRect(120, 40, 20, 40);
+    
+    // Outline flash
+    ctx.globalAlpha = 0.5 + Math.sin(t/300)*0.5;
+    ctx.strokeStyle = '#EA80FC';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(120, 40, 20, 40);
+    
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+}, 30);
+
+// 5.3 Piercing shot
+animate('c_pi_pierce', (ctx, t, w, h) => {
+    const x = (t % 1500) / 1500 * (w - 20) + 10;
+    // Beam going through
+    ctx.strokeStyle = '#EA80FC';
+    ctx.shadowColor = '#EA80FC';
+    ctx.shadowBlur = 8;
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(x-30, h/2); ctx.lineTo(x+30, h/2); ctx.stroke();
+    
+    // Target silhouettes being pierced
+    for(let i=0;i<3;i++){
+        const tx = 50 + i * 60;
+        ctx.globalAlpha = 0.4;
+        ctx.fillStyle = '#EF5350';
+        ctx.fillRect(tx, h/2-15, 12, 30);
+        // Pierce hole
+        if(Math.abs(x-tx)<20){
+            ctx.globalAlpha = 0.8;
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(tx+4, h/2-2, 4, 4);
+        }
+    }
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+}, 60);
+
+// 5.4 Free energy deploy
+animate('c_pi_free', (ctx, t, w, h) => {
+    const pulse = Math.sin(t/500)*0.3+0.7;
+    // Green aura around unit
+    ctx.globalAlpha = pulse * 0.5;
+    ctx.fillStyle = '#4CAF50';
+    ctx.shadowColor = '#4CAF50';
+    ctx.shadowBlur = 15;
+    ctx.beginPath(); ctx.arc(w/2, h/2, 30, 0, Math.PI*2); ctx.fill();
+    
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#4FC3F7';
+    ctx.fillRect(w/2-10, h/2-15, 20, 30);
+    
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+}, 30);
+
+// 5.5 Nuclear bombardment
+animate('c_pi_nuke', (ctx, t, w, h) => {
+    const cycle = t % 2000;
+    // Screen-wide pulse
+    if(cycle < 400){
+        const p = cycle/400;
+        ctx.globalAlpha = (1-p)*0.6;
+        ctx.fillStyle = '#FF1744';
+        ctx.shadowColor = '#FF1744';
+        ctx.shadowBlur = 20;
+        ctx.fillRect(0, 0, w, h);
+    }
+    // Damage numbers falling
+    ctx.globalAlpha = Math.max(0, 1 - cycle/2000);
+    ctx.fillStyle = '#FF6B35';
+    ctx.shadowColor = '#FF6B35';
+    ctx.shadowBlur = 4;
+    for(let i=0;i<5;i++){
+        const dx = 20+i*40;
+        const dy = 20+(cycle/2000)*60+Math.sin(i+t/200)*5;
+        ctx.font = '10px sans-serif';
+        ctx.fillText('-'+Math.floor(10+Math.random()*20), dx, dy);
+    }
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+}, 30);
+
+// 5.6 Nano swarm
+animate('c_pi_nano', (ctx, t, w, h) => {
+    // Purple particles floating over area
+    ctx.fillStyle = '#EA80FC';
+    ctx.shadowColor = '#EA80FC';
+    ctx.shadowBlur = 4;
+    for(let i=0;i<25;i++){
+        const px = 20 + ((i*37+t*0.05)%160);
+        const py = 20 + Math.sin((i+t/300)*2)*30 + 30;
+        ctx.globalAlpha = 0.4 + Math.sin(i+t/200)*0.3;
+        ctx.beginPath(); ctx.arc(px, py, 1.5, 0, Math.PI*2); ctx.fill();
+    }
+    // HP drain indicator
+    ctx.globalAlpha = 0.6;
+    ctx.fillStyle = '#EA80FC';
+    ctx.font = '9px sans-serif';
+    ctx.fillText('HP -2%/s', w/2-20, 15);
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+}, 30);
+
+// 5.7 Mega shield
+animate('c_pi_shield', (ctx, t, w, h) => {
+    // Blue shield orbs around units
+    const units = [[40,60],[80,50],[120,65],[160,55]];
+    units.forEach(([ux,uy])=>{
+        const r = 18 + Math.sin(t/500+ux)*3;
+        ctx.globalAlpha = 0.4 + Math.sin(t/400)*0.15;
+        ctx.strokeStyle = '#4FC3F7';
+        ctx.shadowColor = '#4FC3F7';
+        ctx.shadowBlur = 8;
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(ux, uy, r, 0, Math.PI*2); ctx.stroke();
+        
+        ctx.globalAlpha = 0.7;
+        ctx.fillStyle = '#4FC3F7';
+        ctx.fillRect(ux-5, uy-8, 10, 16);
+    });
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+}, 30);
+
+// 5.8 Fortress bulwark
+animate('c_pi_fortress', (ctx, t, w, h) => {
+    // Gold aura on armor unit
+    const pulse = Math.sin(t/400)*0.3+0.7;
+    ctx.globalAlpha = pulse * 0.5;
+    ctx.fillStyle = '#FFD54F';
+    ctx.shadowColor = '#FFD54F';
+    ctx.shadowBlur = 15;
+    ctx.beginPath(); ctx.arc(w/2, h/2, 35, 0, Math.PI*2); ctx.fill();
+    
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#FFD54F';
+    ctx.fillRect(w/2-12, h/2-18, 24, 36);
+    
+    // HP x2 indicator
+    ctx.fillStyle = '#FFD54F';
+    ctx.font = 'bold 10px sans-serif';
+    ctx.fillText('HP x2.0', w/2-15, 15);
+    ctx.shadowBlur = 0;
+}, 30);
+
+</script>
+</body>
+</html>

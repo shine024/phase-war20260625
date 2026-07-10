@@ -44,6 +44,7 @@ func _create_lightning_bolts() -> void:
 func _create_spark_particles() -> void:
 	var particles := CPUParticles2D.new()
 	particles.emitting = true
+	particles.one_shot = true  # 一次性发射，避免在 effect_duration 内循环发射
 	particles.lifetime = 0.8
 	particles.amount = 30
 	particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE

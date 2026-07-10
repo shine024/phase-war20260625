@@ -69,6 +69,93 @@ const ERA_KIND_FALLBACK_ICON: Dictionary = {
 	"4_4": "vis_player_025",  # Future Fortress → fut_hovertank
 }
 
+## v7.x 我方战斗卡 → 专属 vis_player 图 override（74条）
+## 背景：我方 card_id（如 ww2_panther）与敌方 card_id（如 ww2_arm_panther_e）命名体系不同，
+## manifest 的 foe_* 映射查不到这些我方 ID，导致它们此前走 ERA_KIND 通用回退（如 7 种二战坦克
+## 全显示成谢尔曼）。本表为每张我方卡指定语义最匹配的专属图编号，在 manifest 查询失败后、
+## ERA_KIND 回退前生效。已 manifest 命中的 38 张卡不受影响。
+const PLAYER_ICON_OVERRIDE: Dictionary = {
+	# 一战
+	"ww1_lanchest": "vis_player_001",   # 兰彻斯特装甲车 → 罗尔斯装甲车（同期轮式装甲车）
+	"ww1_105mm": "vis_player_003",      # 105mm榴弹炮 → 77mm野战炮（重型火炮）
+	"ww1_37mm": "vis_player_003",       # 37mm高射炮 → 77mm野战炮（火炮通用）
+	"ww1_mp18": "vis_player_036",       # MP18突击班 → 步兵班·MP18 ★完美同名
+	"ww1_mauser": "vis_player_037",     # 毛瑟步枪班 → 步兵班·步枪
+	"ww1_enfield": "vis_player_037",    # 李恩菲尔德班 → 步兵班·步枪
+	"ww1_mg08": "vis_player_038",       # MG08机枪巢 → 机枪巢 ★完美同名
+	"ww1_vickers": "vis_player_038",    # 维克斯机枪巢 → 机枪巢
+	"ww1_m76": "vis_player_039",        # 76mm迫击炮组 → 迫击炮组 ★完美同名
+	"ww1_storm": "vis_player_040",      # 暴风突击队 → 暴风突击队 ★完美同名
+	"ww1_flame": "vis_player_036",      # 火焰喷射兵 → 步兵班·MP18（步兵通用）
+	"ww1_mark4": "vis_player_041",      # 马克IV型坦克 → 装甲车（同期装甲）
+	"ww1_a7v": "vis_player_042",        # A7V重型坦克 → 圣沙蒙坦克（同期重坦）
+	"ww1_saint": "vis_player_042",      # 圣沙蒙坦克 → 圣沙蒙坦克 ★完美同名
+	# 二战
+	"ww2_pz3": "vis_player_007",        # 三号坦克 → M4谢尔曼（中型坦克通用）
+	"ww2_pz4": "vis_player_007",        # 四号坦克 → M4谢尔曼
+	"ww2_t34_76": "vis_player_007",     # T-34/76 → M4谢尔曼
+	"ww2_t34_85": "vis_player_007",     # T-34/85 → M4谢尔曼
+	"ww2_is2": "vis_player_008",        # IS-2重型坦克 → 虎式坦克（重型坦克）
+	"ww2_m120": "vis_player_011",       # 120mm重迫击炮 → 81mm迫击炮
+	"ww2_mp40": "vis_player_043",       # MP40班 → 步兵班·汤普森（冲锋枪班）
+	"ww2_ppsh": "vis_player_043",       # 波波沙班 → 步兵班·汤普森
+	"ww2_thompson": "vis_player_043",   # 汤普森班 → 步兵班·汤普森 ★完美同名
+	"ww2_garand": "vis_player_044",     # 加兰德班 → 步枪班·加兰德 ★完美同名
+	"ww2_mg42": "vis_player_045",       # MG42机枪组 → MG42机枪组 ★完美同名
+	"ww2_browning": "vis_player_045",   # 勃朗宁机枪组 → MG42机枪组（机枪通用）
+	"ww2_panther": "vis_player_048",    # 黑豹坦克 → 黑豹坦克 ★完美同名
+	"ww2_kingtiger": "vis_player_049",  # 虎王坦克 → 虎王坦克 ★完美同名
+	# 冷战
+	"cold_sam7": "vis_player_017",      # 萨姆-7防空组 → ZSU-23-4自行高炮（防空）
+	"cold_rpg": "vis_player_046",       # RPG火箭筒组 → 反坦克组
+	"cold_m60": "vis_player_045",       # M60机枪班 → MG42机枪组（机枪通用）
+	"cold_rpk": "vis_player_045",       # RPK机枪班 → MG42机枪组
+	"cold_ak47": "vis_player_050",      # AK-47步兵班 → 苏军步兵
+	"cold_m14": "vis_player_051",       # M14步兵班 → 美军步兵
+	"cold_leo1": "vis_player_052",      # 豹1坦克 → BTR装甲车（西方装甲）
+	"cold_m1": "vis_player_052",        # M1主战坦克 → BTR装甲车
+	"cold_m60t": "vis_player_052",      # M60坦克 → BTR装甲车
+	"cold_bradley": "vis_player_053",   # M2布雷德利 → M113装甲车（步战车）
+	"cold_spetsnaz": "vis_player_054",  # 阿尔法特种部队 → 特种部队 ★完美同名
+	"cold_chieftain": "vis_player_055", # 酋长坦克 → T-72坦克（重型坦克）
+	"cold_t62": "vis_player_055",       # T-62坦克 → T-72坦克（苏系坦克）
+	"cold_t72": "vis_player_055",       # T-72坦克 → T-72坦克 ★完美同名
+	"cold_f4": "vis_player_056",        # F-4鬼怪战机 → 米格-29（战机）
+	"cold_mig21": "vis_player_056",     # 米格-21战机 → 米格-29（米格系列）
+	# 现代
+	"mod_t90": "vis_player_055",        # T-90坦克 → T-72坦克（苏系现代坦克）
+	"mod_marine": "vis_player_057",     # 海军陆战队 → 海军陆战队 ★完美同名
+	"mod_hummer_m2": "vis_player_058",  # 悍马·M2 → 皮卡武装（轮式车辆）
+	"mod_hummer_tow": "vis_player_058", # 悍马·陶式 → 皮卡武装
+	"mod_stryker_m2": "vis_player_059", # 斯特赖克M2 → 斯特赖克装甲车 ★完美同名
+	"mod_stryker_mgs": "vis_player_059",# 斯特赖克MGS → 斯特赖克装甲车
+	"fut_aa_hover": "vis_player_060",   # 防空悬浮车 → 火箭炮车（自行火炮）
+	"fut_howitzer": "vis_player_060",   # 悬浮自行火炮 → 火箭炮车
+	"mod_ranger": "vis_player_061",     # 游骑兵 → 三角洲部队（精锐步兵）
+	"mod_challenger2": "vis_player_062",# 挑战者2 → M1A2坦克（西方主战坦克）
+	"mod_leo2a6": "vis_player_062",     # 豹2A6 → M1A2坦克
+	"mod_m1a2": "vis_player_062",       # M1A2艾布拉姆斯 → M1A2坦克 ★完美同名
+	"mod_ah1": "vis_player_063",        # AH-1眼镜蛇 → 阿帕奇直升机（武装直升机）
+	"mod_ah64": "vis_player_063",       # AH-64阿帕奇 → 阿帕奇直升机 ★完美同名
+	"mod_stinger": "vis_player_063",    # 毒刺导弹兵 → 阿帕奇直升机（防空/飞行器）
+	"mod_uh60": "vis_player_063",       # UH-60黑鹰 → 阿帕奇直升机（直升机通用）
+	"mod_javelin": "vis_player_046",    # 标枪导弹兵 → 反坦克组（导弹步兵）
+	# 近未来
+	"fut_attack_drone": "vis_player_065",   # 攻击无人机 → 无人机群
+	"fut_nano_drone": "vis_player_065",     # 纳米修复机 → 无人机群
+	"fut_space_fighter": "vis_player_065",  # 空天战斗机 → 无人机群（飞行器）
+	"fut_stealth_bomber": "vis_player_065", # 隐形轰炸机 → 无人机群
+	"fut_swarm": "vis_player_065",          # 蜂群无人机 → 无人机群 ★完美同名
+	"fut_cyborg": "vis_player_066",         # 机械步兵 → 机械步兵 ★完美同名
+	"fut_heavy_trooper": "vis_player_066",  # 重装机兵 → 机械步兵
+	"fut_assault_mech": "vis_player_067",   # 突击机甲 → 机甲步兵
+	"fut_spectre": "vis_player_069",        # 幽灵特工 → 幽灵特工 ★完美同名
+	"fut_arm_omega": "vis_player_070",      # 全装型机动舱 → 巨神机甲（重型机甲）
+	"fut_colossus": "vis_player_070",       # 巨神机甲 → 巨神机甲 ★完美同名
+	"fut_stormcore": "vis_player_071",      # 风暴核心原型 → 风暴核心 ★完美同名
+	"fut_shield": "vis_player_081",         # 力场发生器 → 能量护盾发生器 ★完美同名
+}
+
 
 static func _era_kind_fallback_path(era: int, combat_kind: int) -> String:
 	var key: String = "%d_%d" % [clampi(era, 0, 4), clampi(combat_kind, 0, 4)]
@@ -255,6 +342,13 @@ static func card_icon_path_for(c: CardResource) -> String:
 		var plat_p: String = manifest_icon_path_for_platform_card_id(_platform_card_id_for_icon(c))
 		if not plat_p.is_empty():
 			return plat_p
+		# 1.5) v7.x 我方卡 override：我方 card_id 与敌方命名体系不同，manifest foe_* 查不到时，
+		# 按本表取语义最匹配的专属 vis_player 图（避免走 ERA_KIND 通用回退导致大量撞图）
+		var override_vis: String = String(PLAYER_ICON_OVERRIDE.get(c.card_id, ""))
+		if not override_vis.is_empty():
+			var override_p: String = "%splayer/%s.png" % [UNITS_ICON_DIR, override_vis]
+			if ResourceLoader.exists(override_p, "Texture2D"):
+				return override_p
 	# 2) 缴获/敌人 archetype → units/<visual_id>.png
 	var arch: String = archetype_id_for_card_icon(c)
 	if not arch.is_empty():

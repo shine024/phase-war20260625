@@ -5,6 +5,8 @@ class_name WeaponProjectileVfx
 
 const GC = preload("res://resources/game_constants.gd")
 const WeaponVfxMapping: GDScript = preload("res://data/weapon_vfx_mapping.gd")
+# v8.1: 命中特效委托给分层化工厂（冲击波环+主火花+碎片烟尘）
+const VfxFactory = preload("res://scripts/battle/vfx_impact_factory.gd")
 
 const TEX_DIR := "res://assets/effects/projectiles/weapons_realistic/"
 
@@ -33,31 +35,31 @@ const PROJ_TEX_NEW: Dictionary = {
 	2: preload(TEX_DIR + "weapon_missile_projectile.png"),   # AERIAL -> 空射导弹
 }
 
-const IMPACT_TEX_SMALL := preload(TEX_DIR + "weapon_impact_small_arms.png")
-const IMPACT_TEX_SHOTGUN := preload(TEX_DIR + "weapon_impact_shotgun.png")
-const IMPACT_TEX_SNIPER := preload(TEX_DIR + "weapon_impact_sniper.png")
-const IMPACT_TEX_EXPLOSIVE := preload(TEX_DIR + "weapon_impact_explosive.png")
-## v6.2: 曲射专属落地爆炸（迫击炮/榴弹炮，与 IMPACT_TEX_EXPLOSIVE 区分）
-const IMPACT_TEX_ARTILLERY := preload(TEX_DIR + "weapon_artillery_impact.png")
-## v6.2: 能量/电磁类武器命中（Omega 炮 / 电磁炮）
-const IMPACT_TEX_OMEGA := preload(TEX_DIR + "weapon_impact_omega.png")
+# ── 命中特效粒子颜色配置（替代贴图） ──
+# 按 weapon_type 分类的粒子主色，命中时通过 color_ramp 渐变
+const IMPACT_COLOR_BY_WT: Dictionary = {
+	0: Color(0.95, 0.92, 0.5, 1.0),   # DIRECT/SMG  黄白火花
+	4: Color(0.95, 0.92, 0.5, 1.0),   # PISTOL      同 SMG
+	5: Color(1.0, 0.7, 0.3, 1.0),     # SHOTGUN     橙
+	6: Color(1.0, 0.95, 0.6, 1.0),    # SNIPER      亮黄
+	3: Color(1.0, 0.55, 0.2, 1.0),    # ROCKET      橙红
+	7: Color(1.0, 0.55, 0.2, 1.0),    # FLAK        同 ROCKET
+	9: Color(1.0, 0.45, 0.15, 1.0),   # MISSILE     深橙
+	1: Color(1.0, 0.5, 0.15, 1.0),    # INDIRECT    曲射爆炸
+	2: Color(1.0, 0.4, 0.1, 1.0),     # AERIAL      空射导弹
+	8: Color(0.3, 0.8, 1.0, 1.0),     # LASER       蓝
+	10: Color(0.4, 0.6, 1.0, 1.0),    # OMEGA       能量蓝
+	11: Color(0.5, 0.9, 1.0, 1.0),    # RAIL        电磁青
+}
 
-## v7.x: 按目标 combat_kind 的命中修饰（色调/缩放倍率/震动强度）
-## 复用现有贴图，仅叠加 Color modulate + scale 倍率实现"火花/碎屑/空爆"视觉差异
-## LIGHT/SUPPORT → 黄白火花（小）；ARMOR/FORT → 橙红金属碎屑（中）；AIR → 空爆（大）
+## v7.x: 按目标 combat_kind 的命中修饰（色调/震动强度）
+## v8.0: 缩放倍率已废弃（粒子系统无 scale 概念），仅保留色调和震动
 const IMPACT_TINT_BY_KIND: Dictionary = {
 	0: Color(1.0, 0.95, 0.6),   # LIGHT 黄白火花
 	2: Color(1.0, 0.95, 0.6),   # SUPPORT 归入 LIGHT
 	1: Color(1.0, 0.55, 0.25),  # ARMOR 橙红金属碎屑
 	4: Color(1.0, 0.55, 0.25),  # FORT 归入 ARMOR
 	3: Color(1.0, 1.0, 1.0),    # AIR 保留原色（空爆贴图已足够）
-}
-const IMPACT_SCALE_MUL_BY_KIND: Dictionary = {
-	0: 0.85,  # LIGHT 小火花
-	2: 0.85,  # SUPPORT
-	1: 1.15,  # ARMOR 中等碎屑
-	4: 1.15,  # FORT
-	3: 1.35,  # AIR 大空爆
 }
 ## combat_kind → 屏幕震动 (幅度, 时长)。AIR 最强，ARMOR 中等，LIGHT 轻微
 const IMPACT_SHAKE_BY_KIND: Dictionary = {
@@ -110,36 +112,86 @@ const PROJ_DISPLAY_SCALE_MUL: float = 0.05
 ## v6.1 性能优化：武器名贴图静态缓存，避免每发子弹 ResourceLoader.exists() + load()
 static var _proj_name_cache: Dictionary = {}
 static var _impact_name_cache: Dictionary = {}
-## v6.2 性能优化：命中特效 Sprite2D 对象池，替代每帧 new/queue_free
-static var _impact_pool: Array = []  # 可复用 Sprite2D
+## v8.0 性能优化：命中特效从 Sprite2D+贴图 改为 CPUParticles2D（零贴图绑定、零 Sprite2D new/free）
+## v8.1：命中特效委托 VfxImpactFactory 三层组合（冲击波环+主火花+碎片烟尘）
+static var _impact_particles: Array = []  # 可复用 CPUParticles2D 池
 static var _active_impacts: int = 0
-const MAX_ACTIVE_IMPACTS: int = 64  # 从 32 增加到 64，支持曲射单位同时攻击
+const MAX_ACTIVE_IMPACTS: int = 200  # v8.1：128→200（视觉优先，三层特效共用池）
 
-## 从池中获取（或新建）Sprite2D
-## 跳过已释放实例：战斗清理 queue_free 特效 Sprite 后，静态池仍可能持有悬空引用
-static func _acquire_impact_sprite() -> Sprite2D:
-	while _impact_pool.size() > 0:
-		var fx: Sprite2D = _impact_pool.pop_back()
-		if fx != null and is_instance_valid(fx):
-			fx.visible = true
-			fx.modulate = Color.WHITE
-			return fx
-	return Sprite2D.new()
+# ── 预建粒子色带缓存（CPUParticles2D 直接吃 Gradient，无需 Material） ──
+# 注：v8.0 命中特效从 Sprite2D 改为 CPUParticles2D，原实现误用 ParticleProcessMaterial
+# （那是 GPUParticles2D 的材质）赋给 process_material 属性（CPUParticles2D 不存在该属性），
+# 导致 "Nonexistent property 'process_material'" 运行时崩溃。CPUParticles2D 的所有粒子
+# 参数都是节点自身的直接属性，color_ramp 期望的是 Gradient 而非 GradientTexture1D。
+static var _cached_impact_ramps: Dictionary = {}  # key(weapon_type+color) -> Gradient
 
-## 归还 Sprite2D 到池
-static func _release_impact_sprite(fx: Sprite2D) -> void:
-	if fx == null or not is_instance_valid(fx):
+static func _get_impact_ramp(weapon_type: int, base_color: Color) -> Gradient:
+	var key := "%d_%02x%02x%02x" % [weapon_type, int(base_color.r*255), int(base_color.g*255), int(base_color.b*255)]
+	if _cached_impact_ramps.has(key):
+		return _cached_impact_ramps[key]
+	var gradient := Gradient.new()
+	gradient.add_point(0, Color(1.0, 1.0, 1.0, 1.0))
+	gradient.add_point(0.3, base_color)
+	gradient.add_point(1.0, Color(base_color.r, base_color.g, base_color.b, 0.0))
+	_cached_impact_ramps[key] = gradient
+	return gradient
+
+## 从池中获取（或新建）CPUParticles2D
+## 注：取用时必须从池中移除，否则同一粒子会被多次取用（释放时又 append 回池，
+## 造成重复引用），且失效/已 free 的引用会残留在池中。原实现遍历返回但未 remove，
+## 是 spawn_impact_with_kind 中 p 为 Nil 的根因。
+static func _acquire_impact_particle() -> CPUParticles2D:
+	# 从池尾向前取，命中即移除并返回；失效引用就地丢弃
+	var i := _impact_particles.size() - 1
+	while i >= 0:
+		var candidate = _impact_particles[i]
+		_impact_particles.remove_at(i)
+		if candidate != null and is_instance_valid(candidate) and not candidate.is_queued_for_deletion():
+			candidate.visible = true
+			candidate.emitting = true
+			candidate.restart()  # one_shot 模式下必须 restart 才能重新发射
+			return candidate
+		i -= 1
+	# 池空或全是失效引用，新建
+	var p := CPUParticles2D.new()
+	p.one_shot = true
+	p.explosiveness = 1.0
+	p.lifetime = 0.28
+	p.amount = 18
+	# CPUParticles2D 的发射参数都是节点直接属性（非材质）。取用时再按武器类型覆盖。
+	p.gravity = Vector2(0, 0)
+	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
+	p.emission_sphere_radius = 2.0
+	p.direction = Vector2(0, 0)
+	p.spread = 360.0
+	p.initial_velocity_min = 40.0
+	p.initial_velocity_max = 120.0
+	p.scale_amount_min = 1.5
+	p.scale_amount_max = 3.0
+	p.color = Color(1.0, 0.95, 0.6, 1.0)  # 粒子主色（color_ramp 会在此基础上渐变）
+	p.color_ramp = _get_impact_ramp(0, Color(0.95, 0.92, 0.5))
+	# 加性混合让火花更亮（命中特效是发光火花）
+	var mat := CanvasItemMaterial.new()
+	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	p.material = mat
+	p.emitting = true
+	return p
+
+## 归还粒子到池
+static func _release_impact_particle(p: CPUParticles2D) -> void:
+	if p == null or not is_instance_valid(p):
 		_active_impacts -= 1
 		return
-	if fx.is_inside_tree() and fx.get_parent():
-		fx.get_parent().remove_child(fx)
-	fx.visible = false
-	fx.modulate = Color.WHITE
+	if p.is_inside_tree() and p.get_parent():
+		p.get_parent().remove_child(p)
+	p.emitting = false
+	p.visible = false
+	p.position = Vector2.ZERO
 	_active_impacts -= 1
-	if _impact_pool.size() < MAX_ACTIVE_IMPACTS:
-		_impact_pool.append(fx)
+	if _impact_particles.size() < MAX_ACTIVE_IMPACTS:
+		_impact_particles.append(p)
 	else:
-		fx.queue_free()
+		p.queue_free()
 
 
 static func has_proj_texture_by_name(weapon_name: String) -> bool:
@@ -260,200 +312,27 @@ static func proj_quad_size(weapon_type: int) -> Vector2:
 			return Vector2(s * 512, s * 128)
 
 
-static func impact_texture(weapon_type: int) -> Texture2D:
-	# New enum: 0=DIRECT, 1=INDIRECT, 2=AERIAL
-	if weapon_type == 1 or weapon_type == 2:  # INDIRECT / AERIAL -> explosive
-		return IMPACT_TEX_EXPLOSIVE
-	# Legacy
-	match weapon_type:
-		5:
-			return IMPACT_TEX_SHOTGUN
-		6, 8:
-			return IMPACT_TEX_SNIPER
-		3, 9, 7, 11, 10:
-			return IMPACT_TEX_EXPLOSIVE
-		_:
-			return IMPACT_TEX_SMALL
-
-
-## v6.2: 爆炸类武器的命中贴图（按武器类型差异化）
-## 用于 bullet._spawn_impact_explosion 与 indirect_batch._spawn_impact_explosion
-## 让迫击炮(抛物线落地)/空射导弹/火箭/高射炮/Omega/电磁炮各有不同外观
-static func explosion_impact_texture(weapon_type: int) -> Texture2D:
-	match weapon_type:
-		1:  # INDIRECT (新枚举) -> 迫击炮/榴弹炮：曲射落地专属爆炸
-			return IMPACT_TEX_ARTILLERY
-		10, 11:  # OMEGA_CANNON / RAIL_CANNON -> 能量/电磁类命中
-			return IMPACT_TEX_OMEGA
-		2, 3, 7, 9:  # AERIAL / ROCKET / FLAK / MISSILE -> 通用爆炸
-			return IMPACT_TEX_EXPLOSIVE
-		_:
-			return IMPACT_TEX_EXPLOSIVE
-
-
 static func impact_scale(weapon_type: int) -> float:
+	# v8.0: 命中特效已改为粒子系统，此函数仅保留兼容旧调用（如 CardGridFx）
 	return float(IMPACT_TEX_SCALE.get(weapon_type, 0.11))
 
 
-## ========== 命中特效生成 ==========
+## ========== 命中特效生成（v8.0：CPUParticles2D，零贴图绑定）==========
 
 static func spawn_impact(parent: Node2D, world_pos: Vector2, weapon_type: int, is_player_shot: bool) -> void:
 	spawn_impact_with_kind(parent, world_pos, weapon_type, is_player_shot, -1)
 
-## v7.x: 带 combat_kind 的命中特效（按目标类型差异化色调/缩放）
-## combat_kind = -1 时走原逻辑（向后兼容所有现有调用点）
-## combat_kind >= 0 时叠加 IMPACT_TINT_BY_KIND 色调 + IMPACT_SCALE_MUL_BY_KIND 缩放倍率
-static func spawn_impact_with_kind(parent: Node2D, world_pos: Vector2, weapon_type: int, is_player_shot: bool, target_combat_kind: int = -1) -> void:
+## v7.x/v8.0: 带 combat_kind 的命中特效（粒子化）
+## v8.1: 委托 VfxImpactFactory 三层组合特效（签名不变，所有调用方零改动）
+## combat_kind = -1 时走原逻辑；>=0 时叠加 IMPACT_TINT_BY_KIND 色调
+## opts（v8.1 新增，可选）：{"is_crit":bool, "is_pierce":bool, "direction":Vector2}
+static func spawn_impact_with_kind(parent: Node2D, world_pos: Vector2, weapon_type: int, is_player_shot: bool, target_combat_kind: int = -1, opts: Dictionary = {}) -> void:
 	if parent == null:
 		return
-	if _active_impacts >= MAX_ACTIVE_IMPACTS:
-		return
-	var tex: Texture2D = impact_texture(weapon_type)
-	if tex == null:
-		return
-	_active_impacts += 1
-	var fx: Sprite2D = _acquire_impact_sprite()
-	fx.texture = tex
-	fx.centered = true
-	var sc := impact_scale(weapon_type)
-	# v7.x: 按 combat_kind 叠加缩放倍率（火花小/碎屑中/空博大）
-	if target_combat_kind >= 0 and IMPACT_SCALE_MUL_BY_KIND.has(target_combat_kind):
-		sc *= float(IMPACT_SCALE_MUL_BY_KIND[target_combat_kind])
-	fx.scale = Vector2.ONE * sc
-	fx.global_position = world_pos
-	# v7.x: 按 combat_kind 叠加色调；敌方子弹保持原红色调（优先级低于 combat_kind）
-	if target_combat_kind >= 0 and IMPACT_TINT_BY_KIND.has(target_combat_kind):
-		fx.modulate = IMPACT_TINT_BY_KIND[target_combat_kind]
-	elif not is_player_shot:
-		fx.modulate = Color(1.0, 0.45, 0.55)
-	parent.add_child(fx)
-	var tw := fx.create_tween()
-	tw.tween_property(fx, "scale", fx.scale * 1.22, 0.07)
-	tw.parallel().tween_property(fx, "modulate:a", 0.0, 0.20)
-	tw.finished.connect(func(): _release_impact_sprite(fx))
-	# v7.x: 冲击波环 + 火花叠加（仅爆炸/曲射类，轻武器跳过避免性能浪费）
-	if weapon_type in [1, 2, 3, 7, 9, 10, 11]:
-		_spawn_impact_shockwave(parent, world_pos, fx.scale.x, is_player_shot, target_combat_kind)
-	elif not weapon_type in [0, 4]:  # 非轻武器也加少量火花
-		_spawn_impact_sparks(parent, world_pos, fx.scale.x * 0.6, is_player_shot, target_combat_kind)
-
-
-## v7.x: 冲击波环 — 一个扩散并淡出的圆环（用 Line2D 画）
-## 仅重型武器触发，让爆炸有"冲击波"层次感
-static func _spawn_impact_shockwave(parent: Node2D, world_pos: Vector2, base_scale: float, is_player_shot: bool, target_combat_kind: int) -> void:
-	if parent == null:
-		return
-	var ring := Line2D.new()
-	ring.width = 2.0
-	ring.sharp_limit = 2.0
-	# 圆环颜色：按 combat_kind 取主冲击色调
-	var ring_color := Color(1.0, 0.9, 0.5)
-	if target_combat_kind >= 0 and IMPACT_TINT_BY_KIND.has(target_combat_kind):
-		ring_color = IMPACT_TINT_BY_KIND[target_combat_kind]
-	elif not is_player_shot:
-		ring_color = Color(1.0, 0.45, 0.55)
-	ring.default_color = ring_color
-	ring.z_as_relative = false
-	ring.z_index = 5
-	ring.material = _get_shockwave_mat()
-	# 生成 16 点圆环（半径初始 8，放大到 base_scale * 40）
-	var start_r: float = 8.0
-	var pts := PackedVector2Array()
-	for i in 16:
-		var a: float = TAU * float(i) / 16.0
-		pts.append(Vector2(cos(a), sin(a)) * start_r)
-	pts.append(pts[0])  # 闭合
-	ring.points = pts
-	parent.add_child(ring)
-	ring.global_position = world_pos
-	var end_r: float = maxf(40.0, base_scale * 40.0)
-	var tw := ring.create_tween()
-	# 扩散 + 淡出
-	tw.set_parallel(true)
-	tw.tween_method(func(r: float):
-		var p: PackedVector2Array = PackedVector2Array()
-		for i in 17:
-			var a: float = TAU * float(i % 16) / 16.0
-			p.append(Vector2(cos(a), sin(a)) * r)
-		ring.points = p, start_r, end_r, 0.22)
-	tw.tween_property(ring, "modulate:a", 0.0, 0.22)
-	tw.chain().tween_callback(ring.queue_free)
-	# 同步撒一把火花
-	_spawn_impact_sparks(parent, world_pos, base_scale * 0.7, is_player_shot, target_combat_kind)
-
-
-## v7.x: 火花飞溅 — 几个小三角形向外飞出后淡出
-## 用 Polygon2D 对象池替代每发 new（复用 _impact_pool 模式）
-static var _spark_pool: Array = []
-const MAX_SPARKS: int = 96  # 全局火花上限
-
-static func _spawn_impact_sparks(parent: Node2D, world_pos: Vector2, intensity: float, is_player_shot: bool, target_combat_kind: int) -> void:
-	if parent == null or _spark_pool.size() == 0 and _active_sparks >= MAX_SPARKS:
-		return
-	var spark_color := Color(1.0, 0.95, 0.5)
-	if target_combat_kind >= 0 and IMPACT_TINT_BY_KIND.has(target_combat_kind):
-		spark_color = IMPACT_TINT_BY_KIND[target_combat_kind]
-	elif not is_player_shot:
-		spark_color = Color(1.0, 0.45, 0.55)
-	# 火花数 = clamp(intensity * 4, 3, 6)
-	var count: int = int(clamp(intensity * 4.0, 3.0, 6.0))
-	for i in count:
-		if _active_sparks >= MAX_SPARKS:
-			break
-		var spark: Polygon2D = _acquire_spark()
-		if spark == null:
-			break
-		_active_sparks += 1
-		# 小三角形（朝右，旋转随机角度后向外飞）
-		spark.polygon = PackedVector2Array([Vector2(-1, -1), Vector2(2, 0), Vector2(-1, 1)])
-		spark.color = spark_color
-		spark.material = _get_shockwave_mat()
-		parent.add_child(spark)
-		spark.global_position = world_pos
-		var angle: float = randf() * TAU
-		var dist: float = randf_range(12.0, 28.0) * maxf(0.6, intensity)
-		var target_pos: Vector2 = world_pos + Vector2(cos(angle), sin(angle)) * dist
-		var rot_end: float = angle + randf_range(-1.5, 1.5)
-		spark.rotation = angle
-		var tw := spark.create_tween()
-		tw.set_parallel(true)
-		tw.tween_property(spark, "global_position", target_pos, 0.25).set_ease(Tween.EASE_OUT)
-		tw.tween_property(spark, "rotation", rot_end, 0.25)
-		tw.tween_property(spark, "modulate:a", 0.0, 0.25)
-		tw.chain().tween_callback(_release_spark.bind(spark))
-
-static var _active_sparks: int = 0
-
-static func _acquire_spark() -> Polygon2D:
-		while not _spark_pool.is_empty():
-			var p: Polygon2D = _spark_pool.pop_back()
-			if p != null and is_instance_valid(p) and not p.is_queued_for_deletion():
-				p.visible = true
-				p.modulate = Color.WHITE
-				return p
-		return Polygon2D.new()
-
-static func _release_spark(spark: Polygon2D) -> void:
-	if spark == null or not is_instance_valid(spark):
-		_active_sparks -= 1
-		return
-	if spark.is_inside_tree() and spark.get_parent():
-		spark.get_parent().remove_child(spark)
-	spark.visible = false
-	spark.modulate = Color.WHITE
-	_active_sparks -= 1
-	if _spark_pool.size() < MAX_SPARKS:
-		_spark_pool.append(spark)
-	else:
-		spark.queue_free()
-
-static var _shockwave_mat: CanvasItemMaterial
-static func _get_shockwave_mat() -> CanvasItemMaterial:
-	if _shockwave_mat == null:
-		var m := CanvasItemMaterial.new()
-		m.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-		_shockwave_mat = m
-	return _shockwave_mat
+	# v8.1: 委托 VfxImpactFactory 三层组合特效
+	# 注：SMG(0)/PISTOL(4) 的跳过守卫仍在 bullet._spawn_tex_impact_at 维护；
+	# batch 路径（轻武器密集命中）不跳过——工厂配方表对轻武器用小快特效，命中反馈必要。
+	VfxFactory.spawn_layered_impact(parent, world_pos, weapon_type, is_player_shot, target_combat_kind, opts)
 
 ## v7.x: 按 combat_kind 返回屏幕震动参数 (幅度, 时长)，无匹配返回 Vector2.ZERO
 static func impact_shake_for_kind(target_combat_kind: int) -> Vector2:

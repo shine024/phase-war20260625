@@ -1,0 +1,132 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>我方战斗卡卡图审查</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Microsoft YaHei",sans-serif;background:#0d1117;color:#c9d1d9;padding:16px}
+h1{text-align:center;color:#58a6ff;font-size:22px;margin-bottom:4px}
+.sub{text-align:center;color:#8b949e;font-size:13px;margin-bottom:16px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:#161b22;color:#58a6ff;padding:8px 6px;border-bottom:2px solid #30363d;position:sticky;top:0;text-align:left}
+td{padding:6px;border-bottom:1px solid #21262d;vertical-align:middle}
+tr:hover{background:#161b22}
+.num{color:#f0883e;font-weight:bold;font-family:monospace}
+.cid{color:#8b949e;font-family:monospace;font-size:11px}
+.name{color:#f0f6fc;font-weight:bold}
+img{width:80px;height:80px;object-fit:contain;background:#0d1117;border-radius:4px;vertical-align:middle}
+.imgwrap{display:inline-block}
+.legend{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px;line-height:1.7}
+.legend code{background:#0d1117;padding:2px 6px;border-radius:4px;color:#f0883e}
+</style></head><body>
+<h1>我方战斗卡卡图审查（对照敌方原图）</h1>
+<p class="sub">共 109 张 | 每行：审查表标注 → 我方实际加载图(player) → 敌方原图(enemy) | 两图应为水平翻转关系</p>
+<div class="legend">说明：<code>player 图</code> = 我方卡在游戏里显示的图（敌方原图的水平翻转）。<br>核对方法：看 <code>审查表标注名</code> 是否与 <code>player 图</code> 的实际内容一致。若不一致，说明该编号的 enemy 原图内容放错了位置。</div>
+<table><thead><tr><th>编号</th><th>card_id</th><th>审查表标注</th><th>我方图(player)</th><th>敌方原图(enemy)</th></tr></thead><tbody>
+<tr><td class="num">#001</td><td class="cid">ww1_arm_rolls</td><td class="name">罗尔斯装甲车</td><td><img src="img/player_vis_player_001.png"></td><td><img src="img/enemy_vis_enemy_001.png"></td></tr>
+<tr><td class="num">#002</td><td class="cid">ww1_arm_ft17</td><td class="name">FT-17轻型坦克</td><td><img src="img/player_vis_player_002.png"></td><td><img src="img/enemy_vis_enemy_002.png"></td></tr>
+<tr><td class="num">#003</td><td class="cid">ww1_arty_77mm</td><td class="name">77mm野战炮</td><td><img src="img/player_vis_player_003.png"></td><td><img src="img/enemy_vis_enemy_003.png"></td></tr>
+<tr><td class="num">#004</td><td class="cid">ww1_inf_cavalry</td><td class="name">骑兵斥候</td><td><img src="img/player_vis_player_004.png"></td><td><img src="img/enemy_vis_enemy_004.png"></td></tr>
+<tr><td class="num">#005</td><td class="cid">ww1_sup_engineer</td><td class="name">工兵班</td><td><img src="img/player_vis_player_005.png"></td><td><img src="img/enemy_vis_enemy_005.png"></td></tr>
+<tr><td class="num">#006</td><td class="cid">ww2_inf_hellcat</td><td class="name">M18地狱猫</td><td><img src="img/player_vis_player_006.png"></td><td><img src="img/enemy_vis_enemy_006.png"></td></tr>
+<tr><td class="num">#007</td><td class="cid">ww2_arm_sherman</td><td class="name">M4谢尔曼</td><td><img src="img/player_vis_player_007.png"></td><td><img src="img/enemy_vis_enemy_007.png"></td></tr>
+<tr><td class="num">#008</td><td class="cid">ww2_arm_tiger</td><td class="name">虎式坦克</td><td><img src="img/player_vis_player_008.png"></td><td><img src="img/enemy_vis_enemy_008.png"></td></tr>
+<tr><td class="num">#009</td><td class="cid">ww2_inf_bazooka</td><td class="name">巴祖卡组</td><td><img src="img/player_vis_player_009.png"></td><td><img src="img/enemy_vis_enemy_009.png"></td></tr>
+<tr><td class="num">#010</td><td class="cid">ww2_inf_panzerschrek</td><td class="name">铁拳反坦克组</td><td><img src="img/player_vis_player_010.png"></td><td><img src="img/enemy_vis_enemy_010.png"></td></tr>
+<tr><td class="num">#011</td><td class="cid">ww2_arty_m81</td><td class="name">81mm迫击炮</td><td><img src="img/player_vis_player_011.png"></td><td><img src="img/enemy_vis_enemy_011.png"></td></tr>
+<tr><td class="num">#012</td><td class="cid">ww1_arty_m81</td><td class="name">81mm迫击炮组</td><td><img src="img/player_vis_player_012.png"></td><td><img src="img/enemy_vis_enemy_012.png"></td></tr>
+<tr><td class="num">#013</td><td class="cid">cold_inf_btr60</td><td class="name">BTR-60装甲车</td><td><img src="img/player_vis_player_013.png"></td><td><img src="img/enemy_vis_enemy_013.png"></td></tr>
+<tr><td class="num">#014</td><td class="cid">cold_arm_t55</td><td class="name">T-55坦克</td><td><img src="img/player_vis_player_014.png"></td><td><img src="img/enemy_vis_enemy_014.png"></td></tr>
+<tr><td class="num">#015</td><td class="cid">cold_inf_bmp1</td><td class="name">BMP-1步战车</td><td><img src="img/player_vis_player_015.png"></td><td><img src="img/enemy_vis_enemy_015.png"></td></tr>
+<tr><td class="num">#016</td><td class="cid">cold_sup_m113</td><td class="name">M113装甲车</td><td><img src="img/player_vis_player_016.png"></td><td><img src="img/enemy_vis_enemy_016.png"></td></tr>
+<tr><td class="num">#017</td><td class="cid">cold_sup_zsu23</td><td class="name">ZSU-23-4自行高炮</td><td><img src="img/player_vis_player_017.png"></td><td><img src="img/enemy_vis_enemy_017.png"></td></tr>
+<tr><td class="num">#018</td><td class="cid">mod_inf_technical</td><td class="name">皮卡武装</td><td><img src="img/player_vis_player_018.png"></td><td><img src="img/enemy_vis_enemy_018.png"></td></tr>
+<tr><td class="num">#019</td><td class="cid">mod_arm_m1a1</td><td class="name">M1A1主战坦克</td><td><img src="img/player_vis_player_019.png"></td><td><img src="img/enemy_vis_enemy_019.png"></td></tr>
+<tr><td class="num">#020</td><td class="cid">mod_sup_m6</td><td class="name">自行高炮M6</td><td><img src="img/player_vis_player_020.png"></td><td><img src="img/enemy_vis_enemy_020.png"></td></tr>
+<tr><td class="num">#021</td><td class="cid">mod_arty_m270</td><td class="name">M270火箭炮</td><td><img src="img/player_vis_player_021.png"></td><td><img src="img/enemy_vis_enemy_021.png"></td></tr>
+<tr><td class="num">#022</td><td class="cid">mod_inf_scout_drone</td><td class="name">侦察无人机</td><td><img src="img/player_vis_player_022.png"></td><td><img src="img/enemy_vis_enemy_022.png"></td></tr>
+<tr><td class="num">#023</td><td class="cid">mod_arm_m1a2sep</td><td class="name">M1A2 SEP主战坦克</td><td><img src="img/player_vis_player_023.png"></td><td><img src="img/enemy_vis_enemy_023.png"></td></tr>
+<tr><td class="num">#024</td><td class="cid">fut_inf_scout_mech</td><td class="name">侦察机甲</td><td><img src="img/player_vis_player_024.png"></td><td><img src="img/enemy_vis_enemy_024.png"></td></tr>
+<tr><td class="num">#025</td><td class="cid">fut_arm_hovertank</td><td class="name">悬浮坦克</td><td><img src="img/player_vis_player_025.png"></td><td><img src="img/enemy_vis_enemy_025.png"></td></tr>
+<tr><td class="num">#026</td><td class="cid">fut_arm_prism</td><td class="name">光棱坦克</td><td><img src="img/player_vis_player_026.png"></td><td><img src="img/enemy_vis_enemy_026.png"></td></tr>
+<tr><td class="num">#027</td><td class="cid">fut_arm_heavy_mech</td><td class="name">重装机甲</td><td><img src="img/player_vis_player_027.png"></td><td><img src="img/enemy_vis_enemy_027.png"></td></tr>
+<tr><td class="num">#028</td><td class="cid">fut_arm_nexus</td><td class="name">虚空领主</td><td><img src="img/player_vis_player_028.png"></td><td><img src="img/enemy_vis_enemy_028.png"></td></tr>
+<tr><td class="num">#030</td><td class="cid">fut_sup_bulwark</td><td class="name">壁垒</td><td><img src="img/player_vis_player_030.png"></td><td><img src="img/enemy_vis_enemy_030.png"></td></tr>
+<tr><td class="num">#031</td><td class="cid">fut_arm_titan_mk2</td><td class="name">泰坦Mk.II</td><td><img src="img/player_vis_player_031.png"></td><td><img src="img/enemy_vis_enemy_031.png"></td></tr>
+<tr><td class="num">#032</td><td class="cid">fut_inf_storm_rider</td><td class="name">暴风骑士</td><td><img src="img/player_vis_player_032.png"></td><td><img src="img/enemy_vis_enemy_032.png"></td></tr>
+<tr><td class="num">#033</td><td class="cid">fut_air_heavy_carrier</td><td class="name">重装母舰</td><td><img src="img/player_vis_player_033.png"></td><td><img src="img/enemy_vis_enemy_033.png"></td></tr>
+<tr><td class="num">#034</td><td class="cid">fut_air_regen_frame</td><td class="name">再生骨架</td><td><img src="img/player_vis_player_034.png"></td><td><img src="img/enemy_vis_enemy_034.png"></td></tr>
+<tr><td class="num">#035</td><td class="cid">mod_arm_abrams_mk2</td><td class="name">艾布拉姆斯Mk.II</td><td><img src="img/player_vis_player_035.png"></td><td><img src="img/enemy_vis_enemy_035.png"></td></tr>
+<tr><td class="num">#036</td><td class="cid">ww1_inf_mp18</td><td class="name">步兵班·MP18</td><td><img src="img/player_vis_player_036.png"></td><td><img src="img/enemy_vis_enemy_036.png"></td></tr>
+<tr><td class="num">#037</td><td class="cid">ww1_inf_rifle</td><td class="name">步兵班·步枪</td><td><img src="img/player_vis_player_037.png"></td><td><img src="img/enemy_vis_enemy_037.png"></td></tr>
+<tr><td class="num">#038</td><td class="cid">ww1_sup_mg_nest</td><td class="name">机枪巢</td><td><img src="img/player_vis_player_038.png"></td><td><img src="img/enemy_vis_enemy_038.png"></td></tr>
+<tr><td class="num">#039</td><td class="cid">ww1_arty_mortar</td><td class="name">迫击炮组</td><td><img src="img/player_vis_player_039.png"></td><td><img src="img/enemy_vis_enemy_039.png"></td></tr>
+<tr><td class="num">#040</td><td class="cid">ww1_inf_storm_e</td><td class="name">暴风突击队</td><td><img src="img/player_vis_player_040.png"></td><td><img src="img/enemy_vis_enemy_040.png"></td></tr>
+<tr><td class="num">#041</td><td class="cid">ww1_arm_rolls_e</td><td class="name">装甲车</td><td><img src="img/player_vis_player_041.png"></td><td><img src="img/enemy_vis_enemy_041.png"></td></tr>
+<tr><td class="num">#042</td><td class="cid">ww1_boss_av7</td><td class="name">圣沙蒙坦克</td><td><img src="img/player_vis_player_042.png"></td><td><img src="img/enemy_vis_enemy_042.png"></td></tr>
+<tr><td class="num">#043</td><td class="cid">ww2_inf_thompson</td><td class="name">步兵班·汤普森</td><td><img src="img/player_vis_player_043.png"></td><td><img src="img/enemy_vis_enemy_043.png"></td></tr>
+<tr><td class="num">#044</td><td class="cid">ww2_inf_garand</td><td class="name">步枪班·加兰德</td><td><img src="img/player_vis_player_044.png"></td><td><img src="img/enemy_vis_enemy_044.png"></td></tr>
+<tr><td class="num">#045</td><td class="cid">ww2_sup_mg42</td><td class="name">MG42机枪组</td><td><img src="img/player_vis_player_045.png"></td><td><img src="img/enemy_vis_enemy_045.png"></td></tr>
+<tr><td class="num">#046</td><td class="cid">ww2_inf_panzerschreck_e</td><td class="name">反坦克组</td><td><img src="img/player_vis_player_046.png"></td><td><img src="img/enemy_vis_enemy_046.png"></td></tr>
+<tr><td class="num">#047</td><td class="cid">ww2_inf_para_e</td><td class="name">伞兵精英</td><td><img src="img/player_vis_player_047.png"></td><td><img src="img/enemy_vis_enemy_047.png"></td></tr>
+<tr><td class="num">#048</td><td class="cid">ww2_arm_panther_e</td><td class="name">黑豹坦克</td><td><img src="img/player_vis_player_048.png"></td><td><img src="img/enemy_vis_enemy_048.png"></td></tr>
+<tr><td class="num">#049</td><td class="cid">ww2_boss_kingtiger</td><td class="name">虎王坦克</td><td><img src="img/player_vis_player_049.png"></td><td><img src="img/enemy_vis_enemy_049.png"></td></tr>
+<tr><td class="num">#050</td><td class="cid">cold_inf_ak</td><td class="name">苏军步兵</td><td><img src="img/player_vis_player_050.png"></td><td><img src="img/enemy_vis_enemy_050.png"></td></tr>
+<tr><td class="num">#051</td><td class="cid">cold_inf_m60</td><td class="name">美军步兵</td><td><img src="img/player_vis_player_051.png"></td><td><img src="img/enemy_vis_enemy_051.png"></td></tr>
+<tr><td class="num">#052</td><td class="cid">cold_arm_btr_e</td><td class="name">BTR装甲车</td><td><img src="img/player_vis_player_052.png"></td><td><img src="img/enemy_vis_enemy_052.png"></td></tr>
+<tr><td class="num">#053</td><td class="cid">cold_air_m113_e</td><td class="name">M113装甲车</td><td><img src="img/player_vis_player_053.png"></td><td><img src="img/enemy_vis_enemy_053.png"></td></tr>
+<tr><td class="num">#054</td><td class="cid">cold_inf_spetsnaz_e</td><td class="name">特种部队</td><td><img src="img/player_vis_player_054.png"></td><td><img src="img/enemy_vis_enemy_054.png"></td></tr>
+<tr><td class="num">#055</td><td class="cid">cold_arm_t72_e</td><td class="name">T-72坦克</td><td><img src="img/player_vis_player_055.png"></td><td><img src="img/enemy_vis_enemy_055.png"></td></tr>
+<tr><td class="num">#056</td><td class="cid">cold_boss_mig</td><td class="name">米格-29</td><td><img src="img/player_vis_player_056.png"></td><td><img src="img/enemy_vis_enemy_056.png"></td></tr>
+<tr><td class="num">#057</td><td class="cid">mod_inf_marine</td><td class="name">海军陆战队</td><td><img src="img/player_vis_player_057.png"></td><td><img src="img/enemy_vis_enemy_057.png"></td></tr>
+<tr><td class="num">#058</td><td class="cid">mod_air_technical_e</td><td class="name">皮卡武装</td><td><img src="img/player_vis_player_058.png"></td><td><img src="img/enemy_vis_enemy_058.png"></td></tr>
+<tr><td class="num">#059</td><td class="cid">mod_arm_stryker_e</td><td class="name">斯特赖克装甲车</td><td><img src="img/player_vis_player_059.png"></td><td><img src="img/enemy_vis_enemy_059.png"></td></tr>
+<tr><td class="num">#060</td><td class="cid">mod_arty_mlrs_e</td><td class="name">火箭炮车</td><td><img src="img/player_vis_player_060.png"></td><td><img src="img/enemy_vis_enemy_060.png"></td></tr>
+<tr><td class="num">#061</td><td class="cid">mod_inf_delta_e</td><td class="name">三角洲部队</td><td><img src="img/player_vis_player_061.png"></td><td><img src="img/enemy_vis_enemy_061.png"></td></tr>
+<tr><td class="num">#062</td><td class="cid">mod_arm_abrams_e</td><td class="name">M1A2坦克</td><td><img src="img/player_vis_player_062.png"></td><td><img src="img/enemy_vis_enemy_062.png"></td></tr>
+<tr><td class="num">#063</td><td class="cid">mod_air_apache_e</td><td class="name">阿帕奇直升机</td><td><img src="img/player_vis_player_063.png"></td><td><img src="img/enemy_vis_enemy_063.png"></td></tr>
+<tr><td class="num">#064</td><td class="cid">mod_boss_command</td><td class="name">指挥中枢</td><td><img src="img/player_vis_player_064.png"></td><td><img src="img/enemy_vis_enemy_064.png"></td></tr>
+<tr><td class="num">#065</td><td class="cid">fut_air_drone</td><td class="name">无人机群</td><td><img src="img/player_vis_player_065.png"></td><td><img src="img/enemy_vis_enemy_065.png"></td></tr>
+<tr><td class="num">#066</td><td class="cid">fut_inf_cyborg</td><td class="name">机械步兵</td><td><img src="img/player_vis_player_066.png"></td><td><img src="img/enemy_vis_enemy_066.png"></td></tr>
+<tr><td class="num">#067</td><td class="cid">fut_arm_mech_e</td><td class="name">机甲步兵</td><td><img src="img/player_vis_player_067.png"></td><td><img src="img/enemy_vis_enemy_067.png"></td></tr>
+<tr><td class="num">#068</td><td class="cid">fut_arm_hovertank_e</td><td class="name">悬浮坦克</td><td><img src="img/player_vis_player_068.png"></td><td><img src="img/enemy_vis_enemy_068.png"></td></tr>
+<tr><td class="num">#069</td><td class="cid">fut_inf_spectre_e</td><td class="name">幽灵特工</td><td><img src="img/player_vis_player_069.png"></td><td><img src="img/enemy_vis_enemy_069.png"></td></tr>
+<tr><td class="num">#070</td><td class="cid">fut_arm_colossus_e</td><td class="name">巨神机甲</td><td><img src="img/player_vis_player_070.png"></td><td><img src="img/enemy_vis_enemy_070.png"></td></tr>
+<tr><td class="num">#071</td><td class="cid">fut_boss_nexus</td><td class="name">风暴核心</td><td><img src="img/player_vis_player_071.png"></td><td><img src="img/enemy_vis_enemy_071.png"></td></tr>
+<tr><td class="num">#072</td><td class="cid">ww1_fort_pillbox</td><td class="name">混凝土机枪碉堡</td><td><img src="img/player_vis_player_072.png"></td><td><img src="img/enemy_vis_enemy_072.png"></td></tr>
+<tr><td class="num">#073</td><td class="cid">ww1_fort_artillery</td><td class="name">要塞炮台</td><td><img src="img/player_vis_player_073.png"></td><td><img src="img/enemy_vis_enemy_073.png"></td></tr>
+<tr><td class="num">#074</td><td class="cid">ww2_fort_bunker</td><td class="name">混凝土碉堡</td><td><img src="img/player_vis_player_074.png"></td><td><img src="img/enemy_vis_enemy_074.png"></td></tr>
+<tr><td class="num">#075</td><td class="cid">ww2_fort_flak</td><td class="name">88mm防空塔</td><td><img src="img/player_vis_player_075.png"></td><td><img src="img/enemy_vis_enemy_075.png"></td></tr>
+<tr><td class="num">#076</td><td class="cid">cold_fort_missile</td><td class="name">导弹发射井</td><td><img src="img/player_vis_player_076.png"></td><td><img src="img/enemy_vis_enemy_076.png"></td></tr>
+<tr><td class="num">#077</td><td class="cid">cold_fort_radar</td><td class="name">雷达站</td><td><img src="img/player_vis_player_077.png"></td><td><img src="img/enemy_vis_enemy_077.png"></td></tr>
+<tr><td class="num">#078</td><td class="cid">mod_fort_citadel</td><td class="name">要塞核心</td><td><img src="img/player_vis_player_078.png"></td><td><img src="img/enemy_vis_enemy_078.png"></td></tr>
+<tr><td class="num">#079</td><td class="cid">mod_fort_phalanx</td><td class="name">近防炮系统</td><td><img src="img/player_vis_player_079.png"></td><td><img src="img/enemy_vis_enemy_079.png"></td></tr>
+<tr><td class="num">#080</td><td class="cid">fut_fort_ion</td><td class="name">离子炮台</td><td><img src="img/player_vis_player_080.png"></td><td><img src="img/enemy_vis_enemy_080.png"></td></tr>
+<tr><td class="num">#081</td><td class="cid">fut_fort_shield</td><td class="name">能量护盾发生器</td><td><img src="img/player_vis_player_081.png"></td><td><img src="img/enemy_vis_enemy_081.png"></td></tr>
+<tr><td class="num">(同名)</td><td class="cid">cold_arm_p18</td><td class="name">P-18 雷达警戒车</td><td><img src="img/player_cold_arm_p18.png"></td><td><img src="img/enemy_cold_arm_p18.png"></td></tr>
+<tr><td class="num">(同名)</td><td class="cid">cold_arty_bmd1</td><td class="name">BMD-1 空降战车</td><td><img src="img/player_cold_arty_bmd1.png"></td><td><img src="img/enemy_cold_arty_bmd1.png"></td></tr>
+<tr><td class="num">(同名)</td><td class="cid">cold_arty_brem1</td><td class="name">BREM-1 装甲抢修车</td><td><img src="img/player_cold_arty_brem1.png"></td><td><img src="img/enemy_cold_arty_brem1.png"></td></tr>
+<tr><td class="num">(同名)</td><td class="cid">cold_inf_metis</td><td class="name">9K111 法特导弹组</td><td><img src="img/player_cold_inf_metis.png"></td><td><img src="img/enemy_cold_inf_metis.png"></td></tr>
+<tr><td class="num">(同名)</td><td class="cid">cold_sup_bmp1_x</td><td class="name">BMP-1 步兵战车</td><td><img src="img/player_cold_sup_bmp1_x.png"></td><td><img src="img/enemy_cold_sup_bmp1_x.png"></td></tr>
+<tr><td class="num">(同名)</td><td class="cid">fut_arm_hk07</td><td class="name">HK-07 量产机兵</td><td><img src="img/player_fut_arm_hk07.png"></td><td><img src="img/enemy_fut_arm_hk07.png"></td></tr>
+<tr><td class="num">(同名)</td><td class="cid">fut_arm_sdkfz</td><td class="name">Sd.Kfz.251/1 半履带车</td><td><img src="img/player_fut_arm_sdkfz.png"></td><td><img src="img/enemy_fut_arm_sdkfz.png"></td></tr>
+<tr><td class="num">(同名)</td><td class="cid">fut_arty_hel30</td><td class="name">HEL-30 激光炮阵列</td><td><img src="img/player_fut_arty_hel30.png"></td><td><img src="img/enemy_fut_arty_hel30.png"></td></tr>
+<tr><td class="num">(同名)</td><td class="cid">fut_arty_ssc1</td><td class="name">SS-C-1 岸防导弹组</td><td><img src="img/player_fut_arty_ssc1.png"></td><td><img src="img/enemy_fut_arty_ssc1.png"></td></tr>
+<tr><td class="num">(同名)</td><td class="cid">fut_inf_c96</td><td class="name">毛瑟 C96 征召兵排</td><td><img src="img/player_fut_inf_c96.png"></td><td><img src="img/enemy_fut_inf_c96.png"></td></tr>
+<tr><td class="num">(同名)</td><td class="cid">fut_inf_neural</td><td class="name">神经接口突击兵</td><td><img src="img/player_fut_inf_neural.png"></td><td><img src="img/enemy_fut_inf_neural.png"></td></tr>
+<tr><td class="num">(同名)</td><td class="cid">fut_inf_x9</td><td class="name">X-9 猎杀者渗透组</td><td><img src="img/player_fut_inf_x9.png"></td><td><img src="img/enemy_fut_inf_x9.png"></td></tr>
+<tr><td class="num">(同名)</td><td class="cid">fut_sup_nrepair</td><td class="name">N-Repair 纳米工程车</td><td><img src="img/player_fut_sup_nrepair.png"></td><td><img src="img/enemy_fut_sup_nrepair.png"></td></tr>
+<tr><td class="num">(同名)</td><td class="cid">fut_sup_ps9</td><td class="name">PS-9 相位中继站</td><td><img src="img/player_fut_sup_ps9.png"></td><td><img src="img/enemy_fut_sup_ps9.png"></td></tr>
+<tr><td class="num">(同名)</td><td class="cid">mod_arm_himars</td><td class="name">HIMARS 火箭炮组</td><td><img src="img/player_mod_arm_himars.png"></td><td><img src="img/enemy_mod_arm_himars.png"></td></tr>
+<tr><td class="num">(同名)</td><td class="cid">mod_arty_rq7</td><td class="name">RQ-7 影子无人机班</td><td><img src="img/player_mod_arty_rq7.png"></td><td><img src="img/enemy_mod_arty_rq7.png"></td></tr>
+<tr><td class="num">(同名)</td><td class="cid">mod_inf_patriot</td><td class="name">爱国者 PAC-3 发射车</td><td><img src="img/player_mod_inf_patriot.png"></td><td><img src="img/enemy_mod_inf_patriot.png"></td></tr>
+<tr><td class="num">(同名)</td><td class="cid">mod_sup_growler</td><td class="name">EA-18G 电子战小组</td><td><img src="img/player_mod_sup_growler.png"></td><td><img src="img/enemy_mod_sup_growler.png"></td></tr>
+<tr><td class="num">(同名)</td><td class="cid">mod_sup_m4_carbine</td><td class="name">M4 卡宾特遣班</td><td><img src="img/player_mod_sup_m4_carbine.png"></td><td><img src="img/enemy_mod_sup_m4_carbine.png"></td></tr>
+<tr><td class="num">(同名)</td><td class="cid">ww1_arm_rolls_mk2</td><td class="name">劳斯莱斯 Mk.II 装甲车</td><td><img src="img/player_ww1_arm_rolls_mk2.png"></td><td><img src="img/enemy_ww1_arm_rolls_mk2.png"></td></tr>
+<tr><td class="num">(同名)</td><td class="cid">ww1_inf_enfield</td><td class="name">李-恩菲尔德志愿兵排</td><td><img src="img/player_ww1_inf_enfield.png"></td><td><img src="img/enemy_ww1_inf_enfield.png"></td></tr>
+<tr><td class="num">(同名)</td><td class="cid">ww1_inf_mp18_x</td><td class="name">MP18 突击队</td><td><img src="img/player_ww1_inf_mp18_x.png"></td><td><img src="img/enemy_ww1_inf_mp18_x.png"></td></tr>
+<tr><td class="num">(同名)</td><td class="cid">ww1_sup_ford_ambulance</td><td class="name">福特 T 型战地救护车</td><td><img src="img/player_ww1_sup_ford_ambulance.png"></td><td><img src="img/enemy_ww1_sup_ford_ambulance.png"></td></tr>
+<tr><td class="num">(同名)</td><td class="cid">ww1_sup_vickers</td><td class="name">维克斯 .303 机枪阵地</td><td><img src="img/player_ww1_sup_vickers.png"></td><td><img src="img/enemy_ww1_sup_vickers.png"></td></tr>
+<tr><td class="num">(同名)</td><td class="cid">ww2_arm_garand_para</td><td class="name">M1 加兰德伞兵班</td><td><img src="img/player_ww2_arm_garand_para.png"></td><td><img src="img/enemy_ww2_arm_garand_para.png"></td></tr>
+<tr><td class="num">(同名)</td><td class="cid">ww2_arty_hummel</td><td class="name">黄蜂 Hummel 自行火炮</td><td><img src="img/player_ww2_arty_hummel.png"></td><td><img src="img/enemy_ww2_arty_hummel.png"></td></tr>
+<tr><td class="num">(同名)</td><td class="cid">ww2_arty_pak40</td><td class="name">PaK 40 反坦克炮组</td><td><img src="img/player_ww2_arty_pak40.png"></td><td><img src="img/enemy_ww2_arty_pak40.png"></td></tr>
+<tr><td class="num">(同名)</td><td class="cid">ww2_inf_kar98k</td><td class="name">毛瑟 Kar98k 狙击组</td><td><img src="img/player_ww2_inf_kar98k.png"></td><td><img src="img/enemy_ww2_inf_kar98k.png"></td></tr>
+<tr><td class="num">(同名)</td><td class="cid">ww2_sup_gmc_truck</td><td class="name">GMC 2.5t 补给卡车</td><td><img src="img/player_ww2_sup_gmc_truck.png"></td><td><img src="img/enemy_ww2_sup_gmc_truck.png"></td></tr>
+</tbody></table></body></html>

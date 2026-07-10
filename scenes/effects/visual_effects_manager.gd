@@ -238,7 +238,7 @@ static func create_hit_effect(parent: Node, position: Vector2, is_critical: bool
 	p.amount = 12 if is_critical else 8
 	p.one_shot = true
 	p.explosiveness = 1.0
-	p.lifetime = 0.25
+	p.lifetime = 0.40  # v8.2: 0.25→0.40，hit 粒子原太短
 	p.direction = Vector2.UP
 	p.spread = 180.0
 	p.initial_velocity_min = 80.0
@@ -262,11 +262,14 @@ static func create_hit_effect(parent: Node, position: Vector2, is_critical: bool
 	shockwave.modulate.a = 1.0
 	shockwave.scale = Vector2.ONE
 
-	# 闪烁动画
+	# 闪烁动画（补 tween_interval 余量：one_shot 粒子末段淡出需 lifetime 之外的时间，
+	# 否则在 parallel 模式下 callback 于 0.28s 触发会掐掉 ~0.25~0.5s 的粒子尾巴。
+	# 参照 create_explosion :161 的 tween_interval 写法）
 	var tween = hit_effect.create_tween()
 	tween.set_parallel(true)
 	tween.tween_property(shockwave, "scale", Vector2(2.6, 2.6), 0.28).set_ease(Tween.EASE_OUT)
 	tween.tween_property(shockwave, "modulate:a", 0.0, 0.28).set_ease(Tween.EASE_IN)
+	tween.tween_interval(0.3)
 	tween.tween_callback(func(): _release_effect("hit", hit_effect))
 
 func _create_shockwave(is_critical: bool = false) -> Node2D:

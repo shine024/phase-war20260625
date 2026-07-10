@@ -225,19 +225,15 @@ static func create_damage_number(parent: Node, world_pos: Vector2, damage: int, 
 		display.set_process(true)
 
 
-## v7.x：暴击/大额伤害的辐射粒子（复用 WeaponProjectileVfx 的 sparks 池）
+## v7.x：暴击/大额伤害的辐射粒子。v7.4: 改用 VfxImpactFactory 的 spark 池（原每次 new CPUParticles2D+Gradient+load）
 static func _spawn_crit_sparks(parent: Node, world_pos: Vector2, is_full_crit: bool) -> void:
-	# parent 必须是 Node2D（sparks 是 Polygon2D）
+	# parent 必须是 Node2D（sparks 挂在 Node2D 下）
 	if not (parent is Node2D):
-		# fallback：用 display 的父（通常也是 Node2D，如 PlayerUnits/EnemyUnits）
 		var dp := parent.get_parent()
 		if dp == null or not (dp is Node2D):
 			return
 		parent = dp
-	# 复用 WeaponProjectileVfx._spawn_impact_sparks（intensity 0.5-0.8 适中）
-	var intensity: float = 0.8 if is_full_crit else 0.5
-	var WeaponProjectileVfx = load("res://scripts/weapon_projectile_vfx.gd")
-	WeaponProjectileVfx._spawn_impact_sparks(parent as Node2D, world_pos, intensity, true, -1)
+	VfxImpactFactory.spawn_crit_sparks(parent, world_pos, is_full_crit)
 
 static func create_critical_damage(parent: Node, world_pos: Vector2, damage: int) -> void:
 	create_damage_number(parent, world_pos, damage, true, "critical")

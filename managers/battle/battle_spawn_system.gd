@@ -722,6 +722,8 @@ func _has_alive_player_unit_from_card(card_id: String) -> bool:
 		return false
 	for n in _player_units_node.get_children():
 		if n != null and is_instance_valid(n) and String(n.get_meta("source_card_id", "")) == card_id:
+			if "_is_dying" in n and n._is_dying:
+				continue
 			return true
 	return false
 
@@ -731,6 +733,8 @@ func _count_alive_player_units_from_card(card_id: String) -> int:
 	var count: int = 0
 	for n in _player_units_node.get_children():
 		if n != null and is_instance_valid(n) and String(n.get_meta("source_card_id", "")) == card_id:
+			if "_is_dying" in n and n._is_dying:
+				continue
 			count += 1
 	return count
 
@@ -752,6 +756,8 @@ func _has_alive_player_unit_from_instance_id(inst_id: String) -> bool:
 		return false
 	for n in _player_units_node.get_children():
 		if n != null and is_instance_valid(n) and String(n.get_meta("source_instance_id", "")) == inst_id:
+			if "_is_dying" in n and n._is_dying:
+				continue
 			return true
 	return false
 
@@ -762,27 +768,28 @@ func _count_alive_player_units_from_instance_id(inst_id: String) -> int:
 	var count: int = 0
 	for n in _player_units_node.get_children():
 		if n != null and is_instance_valid(n) and String(n.get_meta("source_instance_id", "")) == inst_id:
+			if "_is_dying" in n and n._is_dying:
+				continue
 			count += 1
 	return count
 
 
-## v7.x: 按实例（卡槽）统计存活上限。
-## platform_card_id 含 # 时按 instance_id 统计（每个卡槽最多 ×幻影倍率 个）；
-## 不含 # 时（旧兼容路径）按裸 card_id 统计原逻辑。
-func _reach_alive_limit_for_card(base_card_id: String, platform_card_id: String) -> bool:
+## v7.x: 按 base card_id 统一统计存活上限（v8.1b 修复同名卡部署）。
+## 上限 = 该卡在绿槽的装备槽位数 × 幻影倍率；
+## 存活统计按 base card_id（实例卡 ww1_ft17#1 和裸卡 ww1_ft17 统一用 ww1_ft17 计数）。
+##
+## 背景：原实例路径按 instance_id 统计"每实例最多1个"，但用户可把同一实例装到多个槽
+## （或同名卡的两张实例 #1/#2 都装槽），此时每实例1个的上限会错误拦截第二张部署。
+## 正确口径：装了几个槽就允许部署几个（×幻影倍率），与卡的实例化状态无关。
+func _reach_alive_limit_for_card(base_card_id: String, _platform_card_id: String) -> bool:
 	if base_card_id.is_empty():
 		return false
-	if platform_card_id.find("#") > 0:
-		# 实例卡路径：每个 instance_id 最多 1 个（×幻影倍率）
-		var phantom_mul: int = _get_phantom_deploy_multiplier()
-		var alive_count: int = _count_alive_player_units_from_instance_id(platform_card_id)
-		return alive_count >= phantom_mul
-	# 旧兼容路径（裸 card_id，无 instance_id）
+	# 按 base card_id 统计绿槽装备数（ww1_ft17#1 和 ww1_ft17#2 都匹配 base ww1_ft17）
 	var equipped_count: int = _count_equipped_loadouts_from_card(base_card_id)
 	if equipped_count <= 0:
 		# 回退旧行为：未知装配信息时，仍保持"同卡最多一台"保护
 		return _has_alive_player_unit_from_card(base_card_id)
-	# v6.6: 幻影克隆（phantom_clone）— 同卡可放2个单位
+	# 幻影克隆（phantom_clone）— 同卡可放倍率个单位
 	var alive_limit: int = equipped_count * _get_phantom_deploy_multiplier()
 	var alive_count: int = _count_alive_player_units_from_card(base_card_id)
 	return alive_count >= alive_limit

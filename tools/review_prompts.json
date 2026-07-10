@@ -1,0 +1,656 @@
+{
+  "ww1_arm_rolls": {
+    "display_name": "罗尔斯装甲车",
+    "era_desc": "WW1 era military, trench warfare, early 20th century",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "ww1_arm_ft17": {
+    "display_name": "FT-17轻型坦克",
+    "era_desc": "WW1 era military, trench warfare, early 20th century",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "ww1_arty_77mm": {
+    "display_name": "77mm野战炮",
+    "era_desc": "WW1 era military, trench warfare, early 20th century",
+    "kind_desc": "support weapon or artillery piece silhouette",
+    "is_boss": false
+  },
+  "ww1_inf_cavalry": {
+    "display_name": "骑兵斥候",
+    "era_desc": "WW1 era military, trench warfare, early 20th century",
+    "kind_desc": "infantry soldier silhouette",
+    "is_boss": false
+  },
+  "ww1_sup_engineer": {
+    "display_name": "工兵班",
+    "era_desc": "WW1 era military, trench warfare, early 20th century",
+    "kind_desc": "support weapon or artillery piece silhouette",
+    "is_boss": false
+  },
+  "ww2_inf_hellcat": {
+    "display_name": "M18地狱猫",
+    "era_desc": "WW2 era military, 1940s warfare",
+    "kind_desc": "infantry soldier silhouette",
+    "is_boss": false
+  },
+  "ww2_arm_sherman": {
+    "display_name": "M4谢尔曼",
+    "era_desc": "WW2 era military, 1940s warfare",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "ww2_arm_tiger": {
+    "display_name": "虎式坦克",
+    "era_desc": "WW2 era military, 1940s warfare",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "ww2_inf_bazooka": {
+    "display_name": "巴祖卡组",
+    "era_desc": "WW2 era military, 1940s warfare",
+    "kind_desc": "infantry soldier silhouette",
+    "is_boss": false
+  },
+  "ww2_inf_panzerschrek": {
+    "display_name": "铁拳反坦克组",
+    "era_desc": "WW2 era military, 1940s warfare",
+    "kind_desc": "infantry soldier silhouette",
+    "is_boss": false
+  },
+  "ww2_arty_m81": {
+    "display_name": "81mm迫击炮",
+    "era_desc": "WW2 era military, 1940s warfare",
+    "kind_desc": "support weapon or artillery piece silhouette",
+    "is_boss": false
+  },
+  "ww1_arty_m81": {
+    "display_name": "81mm迫击炮组",
+    "era_desc": "WW1 era military, trench warfare, early 20th century",
+    "kind_desc": "support weapon or artillery piece silhouette",
+    "is_boss": false
+  },
+  "cold_inf_btr60": {
+    "display_name": "BTR-60装甲车",
+    "era_desc": "Cold War era military, 1960s-1980s",
+    "kind_desc": "infantry soldier silhouette",
+    "is_boss": false
+  },
+  "cold_arm_t55": {
+    "display_name": "T-55坦克",
+    "era_desc": "Cold War era military, 1960s-1980s",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "cold_inf_bmp1": {
+    "display_name": "BMP-1步战车",
+    "era_desc": "Cold War era military, 1960s-1980s",
+    "kind_desc": "infantry soldier silhouette",
+    "is_boss": false
+  },
+  "cold_sup_m113": {
+    "display_name": "M113装甲车",
+    "era_desc": "Cold War era military, 1960s-1980s",
+    "kind_desc": "support weapon or artillery piece silhouette",
+    "is_boss": false
+  },
+  "cold_sup_zsu23": {
+    "display_name": "ZSU-23-4自行高炮",
+    "era_desc": "Cold War era military, 1960s-1980s",
+    "kind_desc": "support weapon or artillery piece silhouette",
+    "is_boss": false
+  },
+  "mod_inf_technical": {
+    "display_name": "皮卡武装",
+    "era_desc": "Modern era military, 21st century warfare",
+    "kind_desc": "infantry soldier silhouette",
+    "is_boss": false
+  },
+  "mod_arm_m1a1": {
+    "display_name": "M1A1主战坦克",
+    "era_desc": "Modern era military, 21st century warfare",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "mod_sup_m6": {
+    "display_name": "自行高炮M6",
+    "era_desc": "Modern era military, 21st century warfare",
+    "kind_desc": "support weapon or artillery piece silhouette",
+    "is_boss": false
+  },
+  "mod_arty_m270": {
+    "display_name": "M270火箭炮",
+    "era_desc": "Modern era military, 21st century warfare",
+    "kind_desc": "support weapon or artillery piece silhouette",
+    "is_boss": false
+  },
+  "mod_inf_scout_drone": {
+    "display_name": "侦察无人机",
+    "era_desc": "Modern era military, 21st century warfare",
+    "kind_desc": "infantry soldier silhouette",
+    "is_boss": false
+  },
+  "mod_arm_m1a2sep": {
+    "display_name": "M1A2 SEP主战坦克",
+    "era_desc": "Modern era military, 21st century warfare",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "fut_inf_scout_mech": {
+    "display_name": "侦察机甲",
+    "era_desc": "Near-future sci-fi military, advanced technology",
+    "kind_desc": "infantry soldier silhouette",
+    "is_boss": false
+  },
+  "fut_arm_hovertank": {
+    "display_name": "悬浮坦克",
+    "era_desc": "Near-future sci-fi military, advanced technology",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "fut_arm_prism": {
+    "display_name": "光棱坦克",
+    "era_desc": "Near-future sci-fi military, advanced technology",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "fut_arm_heavy_mech": {
+    "display_name": "重装机甲",
+    "era_desc": "Near-future sci-fi military, advanced technology",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "fut_arm_nexus": {
+    "display_name": "虚空领主",
+    "era_desc": "Near-future sci-fi military, advanced technology",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": true
+  },
+  "fut_sup_bulwark": {
+    "display_name": "壁垒",
+    "era_desc": "Near-future sci-fi military, advanced technology",
+    "kind_desc": "support weapon or artillery piece silhouette",
+    "is_boss": false
+  },
+  "fut_arm_titan_mk2": {
+    "display_name": "泰坦Mk.II",
+    "era_desc": "Near-future sci-fi military, advanced technology",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "fut_inf_storm_rider": {
+    "display_name": "暴风骑士",
+    "era_desc": "Near-future sci-fi military, advanced technology",
+    "kind_desc": "infantry soldier silhouette",
+    "is_boss": false
+  },
+  "fut_air_heavy_carrier": {
+    "display_name": "重装母舰",
+    "era_desc": "Near-future sci-fi military, advanced technology",
+    "kind_desc": "aircraft or drone silhouette",
+    "is_boss": false
+  },
+  "fut_air_regen_frame": {
+    "display_name": "再生骨架",
+    "era_desc": "Near-future sci-fi military, advanced technology",
+    "kind_desc": "aircraft or drone silhouette",
+    "is_boss": false
+  },
+  "mod_arm_abrams_mk2": {
+    "display_name": "艾布拉姆斯Mk.II",
+    "era_desc": "Modern era military, 21st century warfare",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "ww1_inf_mp18": {
+    "display_name": "步兵班·MP18",
+    "era_desc": "WW1 era military, trench warfare, early 20th century",
+    "kind_desc": "infantry soldier silhouette",
+    "is_boss": false
+  },
+  "ww1_inf_rifle": {
+    "display_name": "步兵班·步枪",
+    "era_desc": "WW1 era military, trench warfare, early 20th century",
+    "kind_desc": "infantry soldier silhouette",
+    "is_boss": false
+  },
+  "ww1_sup_mg_nest": {
+    "display_name": "机枪巢",
+    "era_desc": "WW1 era military, trench warfare, early 20th century",
+    "kind_desc": "support weapon or artillery piece silhouette",
+    "is_boss": false
+  },
+  "ww1_arty_mortar": {
+    "display_name": "迫击炮组",
+    "era_desc": "WW1 era military, trench warfare, early 20th century",
+    "kind_desc": "support weapon or artillery piece silhouette",
+    "is_boss": false
+  },
+  "ww1_inf_storm_e": {
+    "display_name": "暴风突击队",
+    "era_desc": "WW1 era military, trench warfare, early 20th century",
+    "kind_desc": "infantry soldier silhouette",
+    "is_boss": false
+  },
+  "ww1_arm_rolls_e": {
+    "display_name": "装甲车",
+    "era_desc": "WW1 era military, trench warfare, early 20th century",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "ww1_boss_av7": {
+    "display_name": "圣沙蒙坦克",
+    "era_desc": "WW1 era military, trench warfare, early 20th century",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": true
+  },
+  "ww2_inf_thompson": {
+    "display_name": "步兵班·汤普森",
+    "era_desc": "WW2 era military, 1940s warfare",
+    "kind_desc": "infantry soldier silhouette",
+    "is_boss": false
+  },
+  "ww2_inf_garand": {
+    "display_name": "步枪班·加兰德",
+    "era_desc": "WW2 era military, 1940s warfare",
+    "kind_desc": "infantry soldier silhouette",
+    "is_boss": false
+  },
+  "ww2_sup_mg42": {
+    "display_name": "MG42机枪组",
+    "era_desc": "WW2 era military, 1940s warfare",
+    "kind_desc": "support weapon or artillery piece silhouette",
+    "is_boss": false
+  },
+  "ww2_inf_panzerschreck_e": {
+    "display_name": "反坦克组",
+    "era_desc": "WW2 era military, 1940s warfare",
+    "kind_desc": "infantry soldier silhouette",
+    "is_boss": false
+  },
+  "ww2_inf_para_e": {
+    "display_name": "伞兵精英",
+    "era_desc": "WW2 era military, 1940s warfare",
+    "kind_desc": "infantry soldier silhouette",
+    "is_boss": false
+  },
+  "ww2_arm_panther_e": {
+    "display_name": "黑豹坦克",
+    "era_desc": "WW2 era military, 1940s warfare",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "ww2_boss_kingtiger": {
+    "display_name": "虎王坦克",
+    "era_desc": "WW2 era military, 1940s warfare",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": true
+  },
+  "cold_inf_ak": {
+    "display_name": "苏军步兵",
+    "era_desc": "Cold War era military, 1960s-1980s",
+    "kind_desc": "infantry soldier silhouette",
+    "is_boss": false
+  },
+  "cold_inf_m60": {
+    "display_name": "美军步兵",
+    "era_desc": "Cold War era military, 1960s-1980s",
+    "kind_desc": "infantry soldier silhouette",
+    "is_boss": false
+  },
+  "cold_arm_btr_e": {
+    "display_name": "BTR装甲车",
+    "era_desc": "Cold War era military, 1960s-1980s",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "cold_air_m113_e": {
+    "display_name": "M113装甲车",
+    "era_desc": "Cold War era military, 1960s-1980s",
+    "kind_desc": "aircraft or drone silhouette",
+    "is_boss": false
+  },
+  "cold_inf_spetsnaz_e": {
+    "display_name": "特种部队",
+    "era_desc": "Cold War era military, 1960s-1980s",
+    "kind_desc": "infantry soldier silhouette",
+    "is_boss": false
+  },
+  "cold_arm_t72_e": {
+    "display_name": "T-72坦克",
+    "era_desc": "Cold War era military, 1960s-1980s",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "cold_boss_mig": {
+    "display_name": "米格-29",
+    "era_desc": "Cold War era military, 1960s-1980s",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": true
+  },
+  "mod_inf_marine": {
+    "display_name": "海军陆战队",
+    "era_desc": "Modern era military, 21st century warfare",
+    "kind_desc": "infantry soldier silhouette",
+    "is_boss": false
+  },
+  "mod_air_technical_e": {
+    "display_name": "皮卡武装",
+    "era_desc": "Modern era military, 21st century warfare",
+    "kind_desc": "aircraft or drone silhouette",
+    "is_boss": false
+  },
+  "mod_arm_stryker_e": {
+    "display_name": "斯特赖克装甲车",
+    "era_desc": "Modern era military, 21st century warfare",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "mod_arty_mlrs_e": {
+    "display_name": "火箭炮车",
+    "era_desc": "Modern era military, 21st century warfare",
+    "kind_desc": "support weapon or artillery piece silhouette",
+    "is_boss": false
+  },
+  "mod_inf_delta_e": {
+    "display_name": "三角洲部队",
+    "era_desc": "Modern era military, 21st century warfare",
+    "kind_desc": "infantry soldier silhouette",
+    "is_boss": false
+  },
+  "mod_arm_abrams_e": {
+    "display_name": "M1A2坦克",
+    "era_desc": "Modern era military, 21st century warfare",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "mod_air_apache_e": {
+    "display_name": "阿帕奇直升机",
+    "era_desc": "Modern era military, 21st century warfare",
+    "kind_desc": "aircraft or drone silhouette",
+    "is_boss": false
+  },
+  "mod_boss_command": {
+    "display_name": "指挥中枢",
+    "era_desc": "Modern era military, 21st century warfare",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": true
+  },
+  "fut_air_drone": {
+    "display_name": "无人机群",
+    "era_desc": "Near-future sci-fi military, advanced technology",
+    "kind_desc": "aircraft or drone silhouette",
+    "is_boss": false
+  },
+  "fut_inf_cyborg": {
+    "display_name": "机械步兵",
+    "era_desc": "Near-future sci-fi military, advanced technology",
+    "kind_desc": "infantry soldier silhouette",
+    "is_boss": false
+  },
+  "fut_arm_mech_e": {
+    "display_name": "机甲步兵",
+    "era_desc": "Near-future sci-fi military, advanced technology",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "fut_arm_hovertank_e": {
+    "display_name": "悬浮坦克",
+    "era_desc": "Near-future sci-fi military, advanced technology",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "fut_inf_spectre_e": {
+    "display_name": "幽灵特工",
+    "era_desc": "Near-future sci-fi military, advanced technology",
+    "kind_desc": "infantry soldier silhouette",
+    "is_boss": false
+  },
+  "fut_arm_colossus_e": {
+    "display_name": "巨神机甲",
+    "era_desc": "Near-future sci-fi military, advanced technology",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "fut_boss_nexus": {
+    "display_name": "风暴核心",
+    "era_desc": "Near-future sci-fi military, advanced technology",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": true
+  },
+  "ww1_inf_enfield": {
+    "display_name": "李-恩菲尔德志愿兵排",
+    "era_desc": "WW1 era military, trench warfare, early 20th century",
+    "kind_desc": "infantry soldier silhouette",
+    "is_boss": false
+  },
+  "ww1_arm_rolls_mk2": {
+    "display_name": "劳斯莱斯 Mk.II 装甲车",
+    "era_desc": "WW1 era military, trench warfare, early 20th century",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "ww1_sup_vickers": {
+    "display_name": "维克斯 .303 机枪阵地",
+    "era_desc": "WW1 era military, trench warfare, early 20th century",
+    "kind_desc": "support weapon or artillery piece silhouette",
+    "is_boss": false
+  },
+  "ww1_sup_ford_ambulance": {
+    "display_name": "福特 T 型战地救护车",
+    "era_desc": "WW1 era military, trench warfare, early 20th century",
+    "kind_desc": "support weapon or artillery piece silhouette",
+    "is_boss": false
+  },
+  "ww1_inf_mp18_x": {
+    "display_name": "MP18 突击队",
+    "era_desc": "WW1 era military, trench warfare, early 20th century",
+    "kind_desc": "infantry soldier silhouette",
+    "is_boss": false
+  },
+  "ww2_arm_garand_para": {
+    "display_name": "M1 加兰德伞兵班",
+    "era_desc": "WW2 era military, 1940s warfare",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "ww2_arty_hummel": {
+    "display_name": "黄蜂 Hummel 自行火炮",
+    "era_desc": "WW2 era military, 1940s warfare",
+    "kind_desc": "support weapon or artillery piece silhouette",
+    "is_boss": false
+  },
+  "ww2_arty_pak40": {
+    "display_name": "PaK 40 反坦克炮组",
+    "era_desc": "WW2 era military, 1940s warfare",
+    "kind_desc": "support weapon or artillery piece silhouette",
+    "is_boss": false
+  },
+  "ww2_sup_gmc_truck": {
+    "display_name": "GMC 2.5t 补给卡车",
+    "era_desc": "WW2 era military, 1940s warfare",
+    "kind_desc": "support weapon or artillery piece silhouette",
+    "is_boss": false
+  },
+  "ww2_inf_kar98k": {
+    "display_name": "毛瑟 Kar98k 狙击组",
+    "era_desc": "WW2 era military, 1940s warfare",
+    "kind_desc": "infantry soldier silhouette",
+    "is_boss": false
+  },
+  "cold_arty_bmd1": {
+    "display_name": "BMD-1 空降战车",
+    "era_desc": "Cold War era military, 1960s-1980s",
+    "kind_desc": "support weapon or artillery piece silhouette",
+    "is_boss": false
+  },
+  "cold_sup_bmp1_x": {
+    "display_name": "BMP-1 步兵战车",
+    "era_desc": "Cold War era military, 1960s-1980s",
+    "kind_desc": "support weapon or artillery piece silhouette",
+    "is_boss": false
+  },
+  "cold_inf_metis": {
+    "display_name": "9K111 法特导弹组",
+    "era_desc": "Cold War era military, 1960s-1980s",
+    "kind_desc": "infantry soldier silhouette",
+    "is_boss": false
+  },
+  "cold_arm_p18": {
+    "display_name": "P-18 雷达警戒车",
+    "era_desc": "Cold War era military, 1960s-1980s",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "cold_arty_brem1": {
+    "display_name": "BREM-1 装甲抢修车",
+    "era_desc": "Cold War era military, 1960s-1980s",
+    "kind_desc": "support weapon or artillery piece silhouette",
+    "is_boss": false
+  },
+  "mod_sup_m4_carbine": {
+    "display_name": "M4 卡宾特遣班",
+    "era_desc": "Modern era military, 21st century warfare",
+    "kind_desc": "support weapon or artillery piece silhouette",
+    "is_boss": false
+  },
+  "mod_inf_patriot": {
+    "display_name": "爱国者 PAC-3 发射车",
+    "era_desc": "Modern era military, 21st century warfare",
+    "kind_desc": "infantry soldier silhouette",
+    "is_boss": false
+  },
+  "mod_arm_himars": {
+    "display_name": "HIMARS 火箭炮组",
+    "era_desc": "Modern era military, 21st century warfare",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "mod_arty_rq7": {
+    "display_name": "RQ-7 影子无人机班",
+    "era_desc": "Modern era military, 21st century warfare",
+    "kind_desc": "support weapon or artillery piece silhouette",
+    "is_boss": false
+  },
+  "mod_sup_growler": {
+    "display_name": "EA-18G 电子战小组",
+    "era_desc": "Modern era military, 21st century warfare",
+    "kind_desc": "support weapon or artillery piece silhouette",
+    "is_boss": false
+  },
+  "fut_inf_neural": {
+    "display_name": "神经接口突击兵",
+    "era_desc": "Near-future sci-fi military, advanced technology",
+    "kind_desc": "infantry soldier silhouette",
+    "is_boss": false
+  },
+  "fut_arm_hk07": {
+    "display_name": "HK-07 量产机兵",
+    "era_desc": "Near-future sci-fi military, advanced technology",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "fut_arty_hel30": {
+    "display_name": "HEL-30 激光炮阵列",
+    "era_desc": "Near-future sci-fi military, advanced technology",
+    "kind_desc": "support weapon or artillery piece silhouette",
+    "is_boss": false
+  },
+  "fut_sup_nrepair": {
+    "display_name": "N-Repair 纳米工程车",
+    "era_desc": "Near-future sci-fi military, advanced technology",
+    "kind_desc": "aircraft or drone silhouette",
+    "is_boss": false
+  },
+  "fut_inf_x9": {
+    "display_name": "X-9 猎杀者渗透组",
+    "era_desc": "Near-future sci-fi military, advanced technology",
+    "kind_desc": "infantry soldier silhouette",
+    "is_boss": false
+  },
+  "fut_inf_c96": {
+    "display_name": "毛瑟 C96 征召兵排",
+    "era_desc": "Near-future sci-fi military, advanced technology",
+    "kind_desc": "infantry soldier silhouette",
+    "is_boss": false
+  },
+  "fut_arm_sdkfz": {
+    "display_name": "Sd.Kfz.251/1 半履带车",
+    "era_desc": "Near-future sci-fi military, advanced technology",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "fut_arty_ssc1": {
+    "display_name": "SS-C-1 岸防导弹组",
+    "era_desc": "Near-future sci-fi military, advanced technology",
+    "kind_desc": "support weapon or artillery piece silhouette",
+    "is_boss": false
+  },
+  "fut_sup_ps9": {
+    "display_name": "PS-9 相位中继站",
+    "era_desc": "Near-future sci-fi military, advanced technology",
+    "kind_desc": "support weapon or artillery piece silhouette",
+    "is_boss": false
+  },
+  "ww1_fort_pillbox": {
+    "display_name": "混凝土机枪碉堡",
+    "era_desc": "WW1 era military, trench warfare, early 20th century",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "ww1_fort_artillery": {
+    "display_name": "要塞炮台",
+    "era_desc": "WW1 era military, trench warfare, early 20th century",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "ww2_fort_bunker": {
+    "display_name": "混凝土碉堡",
+    "era_desc": "WW2 era military, 1940s warfare",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "ww2_fort_flak": {
+    "display_name": "88mm防空塔",
+    "era_desc": "WW2 era military, 1940s warfare",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "cold_fort_missile": {
+    "display_name": "导弹发射井",
+    "era_desc": "Cold War era military, 1960s-1980s",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "cold_fort_radar": {
+    "display_name": "雷达站",
+    "era_desc": "Cold War era military, 1960s-1980s",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "mod_fort_citadel": {
+    "display_name": "要塞核心",
+    "era_desc": "Modern era military, 21st century warfare",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "mod_fort_phalanx": {
+    "display_name": "近防炮系统",
+    "era_desc": "Modern era military, 21st century warfare",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "fut_fort_ion": {
+    "display_name": "离子炮台",
+    "era_desc": "Near-future sci-fi military, advanced technology",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  },
+  "fut_fort_shield": {
+    "display_name": "能量护盾发生器",
+    "era_desc": "Near-future sci-fi military, advanced technology",
+    "kind_desc": "heavy armored vehicle or tank silhouette",
+    "is_boss": false
+  }
+}

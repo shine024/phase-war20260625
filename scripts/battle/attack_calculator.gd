@@ -156,6 +156,11 @@ static func get_attack_timing(attacker_stats: UnitStats, target_combat_kind: int
 	if speed <= 0.0:
 		speed = DEFAULT_ATTACK_SPEED
 
+	# v7.x: 限制最高攻速倍率（防止过快导致卡顿和数值崩坏）
+	var MAX_ATTACK_SPEED: float = 3.0
+	if speed > MAX_ATTACK_SPEED:
+		speed = MAX_ATTACK_SPEED
+
 	var cycle = 1.0 / speed
 	return {
 		"cycle": cycle,
@@ -230,23 +235,23 @@ static func calculate_damage_with_weapon(
 	if not skip_defense_reduction:
 		# 用攻击者单位类型决定穿透哪个防御值（v6.2: 攻防维度对齐）
 		var def = get_defense_vs(target_stats, attacker_stats.combat_kind)
-		# v6.2: 符文之语攻击穿透 — 无视部分目标防御
+		# v7.x: 符文+相位仪穿透整合（使用统一上限 MAX_PENETRATION_RATIO）
 		var pen_ratio: float = _get_rune_penetration_ratio(attacker_stats)
 		# v6.6: 相位仪直射穿透能力（piercing_shot）— 追加穿透比例
-		pen_ratio = clampf(pen_ratio + _get_instrument_piercing_ratio(attacker_stats), 0.0, 0.9)
+		pen_ratio = clampf(pen_ratio + _get_instrument_piercing_ratio(attacker_stats), 0.0, MAX_PENETRATION_RATIO)
 		if pen_ratio > 0.0:
 			def = def * (1.0 - pen_ratio)
 		final_damage = base_damage * (100.0 / (100.0 + def))
 
-	# 强化加成
+	# 强化加成（v7.x: 曲线优化，低等级回报提升，高等级更平滑）
 	if attacker_enhance_level > 0:
 		var enhance_mult: float
 		if attacker_enhance_level >= 10:
-			enhance_mult = 1.60
-		elif attacker_enhance_level >= 9:
-			enhance_mult = 1.50
+			enhance_mult = 1.75  # v7.x: Lv10
+		elif attacker_enhance_level >= 8:
+			enhance_mult = 1.50  # v7.x: Lv8+
 		else:
-			enhance_mult = 1.0 + float(attacker_enhance_level) * 0.05
+			enhance_mult = 1.0 + float(attacker_enhance_level) * 0.08  # v7.x: Lv1-7
 		final_damage *= enhance_mult
 
 	# v6.4: 改造伤害加成已由 ModificationRegistry.apply_with_level 在 UnitStats 构建阶段
@@ -292,7 +297,7 @@ static func get_weapon_speed(attacker_stats: UnitStats, weapon_resource: WeaponR
 
 ## v6.2: 从攻击者 UnitStats 的符文特殊效果中读取攻击穿透比例（0.0-1.0）
 ## 返回所有 on_attack_penetration 效果中的最大值
-const MAX_PENETRATION_RATIO: float = 0.9  ## 穿透比例上限（防止100%穿透导致防御完全失效）
+const MAX_PENETRATION_RATIO: float = 0.95  ## 穿透比例上限（v7.x: 0.9→0.95，允许接近完全穿透）
 static func _get_rune_penetration_ratio(attacker_stats: UnitStats) -> float:
 	if attacker_stats == null:
 		return 0.0

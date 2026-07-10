@@ -37,6 +37,8 @@ const _WEAPON_CONFIG: Dictionary = {
 
 var _proj: Array = []
 var _layers: Dictionary = {}  # weapon_type -> MultiMeshInstance2D
+# v7.4 性能优化：buckets 提升为成员变量 + clear() 复用，消除每帧 Dictionary + Array 分配
+var _buckets: Dictionary = {}  # weapon_type -> Array（成员级复用，clear 保留 buffer 容量）
 
 func _ready() -> void:
 	# 初始化时不启用 physics_process，等有弹道时再启用
@@ -48,6 +50,7 @@ func _ready() -> void:
 		_layers[wt] = _make_layer(wt)
 		_layers[wt].show()
 		add_child(_layers[wt])
+		_buckets[wt] = []
 
 func _make_layer(wt: int) -> MultiMeshInstance2D:
 	var mmi := MultiMeshInstance2D.new()
@@ -173,6 +176,13 @@ func _physics_process(delta: float) -> void:
 		if new_pos != prev:
 			r["dir"] = (new_pos - prev).normalized()
 
+		# v8.1: 落点预警圈——progress > 0.55 时在落点 spawn 红色扩散圈（v8.1a：提前到0.55给玩家充分反应）
+		if t > 0.55 and not bool(r.get("warned", false)):
+			r["warned"] = true
+			var wt_warn: int = int(r["wt"])
+			var warn_radius: float = float(_WEAPON_CONFIG.get(wt_warn, {}).get("explosion_radius", 40.0))
+			VfxImpactFactory.spawn_shockwave(self, end, warn_radius, Color(1.0, 0.3, 0.2, 0.55))
+
 		# Fix-5: 炮口火焰已禁用（muzzle_spawned 初始化为 true）
 
 		var raw_tgt: Variant = r["tgt"]
@@ -191,18 +201,18 @@ func _physics_process(delta: float) -> void:
 
 func _sync_multimesh_layers() -> void:
 	# v7.3 性能优化：单遍分桶（原两遍遍历 _proj：count + write）
-	var buckets: Dictionary = {}
+	# v7.4 性能优化：buckets 改为成员变量 + clear() 复用，消除每帧 Dictionary + Array 分配。
 	for wt: int in _BATCH_WEAPON_TYPES:
-		buckets[wt] = []
+		(_buckets[wt] as Array).clear()
 	for r: Dictionary in _proj:
 		var wt_r: int = int(r["wt"])
-		if buckets.has(wt_r):
-			(buckets[wt_r] as Array).append(r)
+		if _buckets.has(wt_r):
+			(_buckets[wt_r] as Array).append(r)
 	var tint := _PLAYER_TINT if is_player_side else _ENEMY_TINT
 	for wt: int in _BATCH_WEAPON_TYPES:
 		var mmi: MultiMeshInstance2D = _layers[wt]
 		var mm: MultiMesh = mmi.multimesh
-		var arr: Array = buckets[wt]
+		var arr: Array = _buckets[wt]
 		# 优化：跳过空层
 		if arr.is_empty():
 			if mm.instance_count > 0:
@@ -385,38 +395,10 @@ func _get_aoe_targets(center: Vector2, radius: float, primary: Node2D) -> Array:
 					targets.append(child)
 	return targets
 
-## 爆炸特效
-## v6.2: 按 weapon_type 选不同贴图（迫击炮/导弹/高射炮/Omega/电磁炮各有专属外观）
-## v7.x: target_combat_kind 驱动按目标类型差异化色调/缩放（-1 走原逻辑）
+## 爆炸特效（v8.0：粒子化，替代 Sprite2D+贴图）
+## 曲射/空射爆炸 = 重型命中特效（更多粒子量）
 func _spawn_impact_explosion(pos: Vector2, is_player_proj: bool = true, weapon_type: int = 1, target_combat_kind: int = -1) -> void:
-	var tex: Texture2D = WeaponProjectileVfx.explosion_impact_texture(weapon_type)
-	if tex == null:
-		return
 	if WeaponProjectileVfx._active_impacts >= WeaponProjectileVfx.MAX_ACTIVE_IMPACTS:
 		return
-	WeaponProjectileVfx._active_impacts += 1
-	var fx: Sprite2D = WeaponProjectileVfx._acquire_impact_sprite()
-	fx.texture = tex
-	fx.centered = true
-	# v6.2: 曲射/空射爆炸特效放大(初始 0.75→1.0，放大倍率 1.5→2.25)
-	# v7.x: 按 combat_kind 叠加缩放倍率（对轻装小/对装甲中/对空大）
-	var _base_scale: float = 1.0
-	if target_combat_kind >= 0 and WeaponProjectileVfx.IMPACT_SCALE_MUL_BY_KIND.has(target_combat_kind):
-		_base_scale *= float(WeaponProjectileVfx.IMPACT_SCALE_MUL_BY_KIND[target_combat_kind])
-	fx.scale = Vector2(_base_scale, _base_scale)
-	fx.global_position = pos
-	fx.z_as_relative = false
-	fx.z_index = 4
-	# v7.x: 按 combat_kind 叠加色调（火花/碎屑/空爆色调差异）；敌方子弹保持原红色调（次优先级）
-	if target_combat_kind >= 0 and WeaponProjectileVfx.IMPACT_TINT_BY_KIND.has(target_combat_kind):
-		fx.modulate = WeaponProjectileVfx.IMPACT_TINT_BY_KIND[target_combat_kind]
-	elif not is_player_proj:
-		fx.modulate = Color(1.0, 0.45, 0.55)
-	fx.show()
-	add_child(fx)
-	var tw := fx.create_tween()
-	tw.tween_property(fx, "scale", fx.scale * 2.25, 0.15)
-	tw.parallel().tween_property(fx, "modulate:a", 0.0, 0.3)
-	tw.finished.connect(func(): WeaponProjectileVfx._release_impact_sprite(fx))
-	# v7.x: 曲射批处理爆炸叠加冲击波环 + 火花
-	WeaponProjectileVfx._spawn_impact_shockwave(self, pos, fx.scale.x * 1.5, is_player_proj, target_combat_kind)
+	# 复用 spawn_impact_with_kind 的粒子系统，重型武器自动加量
+	WeaponProjectileVfx.spawn_impact_with_kind(self, pos, weapon_type, is_player_proj, target_combat_kind)

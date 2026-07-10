@@ -48,20 +48,12 @@ func _connect_enhancement_signal_retry() -> void:
 	await get_tree().create_timer(2.0).timeout
 	_connect_enhancement_signal()
 
-## 单位受伤 → 暴击屏幕震动（伤害数字已由 BattleManager._on_unit_damaged_combat_feedback
-## 统一通过 CombatFeedback.show_damage 创建，含 80ms 节流；此处不再重复创建数字，
-## 否则会双数字 + 无节流刷屏。仅保留暴击屏幕震动反馈。）
-func _on_unit_damaged(unit: Node, _is_player: bool, damage: float, _position: Vector2) -> void:
-	var bfm = get_node_or_null("/root/BattleFeedbackManager")
-	# 暴击判定：由攻击弹道打的 _vfx_crit_pending meta 决定（与 CombatFeedback 口径一致）
-	var is_crit: bool = unit != null and is_instance_valid(unit) and unit.has_meta("_vfx_crit_pending")
-	if bfm and is_instance_valid(bfm) and is_crit:
-		# 暴击屏幕震动（数字由 combat_feedback 负责，这里不重复创建）
-		var bf = unit.get_parent()
-		if bf:
-			var camera = bf.get_node_or_null("Camera2D")
-			if camera:
-				bfm.shake_screen(camera, 5.0, 0.3)
+## 单位受伤 → 暴击屏幕震动（v8.1 已迁移到 BattleManager._on_unit_damaged_combat_feedback）
+## 原实现因 meta 竞态失效（battle_manager 先 connect 先清 _vfx_crit_pending meta，本处读不到），
+## 属死逻辑。暴击屏幕震动现由 battle_manager 在读取 meta 后统一触发。
+## 此处保留信号连接（避免断连报错），但函数体空操作。
+func _on_unit_damaged(_unit: Node, _is_player: bool, _damage: float, _position: Vector2) -> void:
+	pass  # v8.1: 暴击震动已迁移至 BattleManager._on_unit_damaged_combat_feedback
 
 ## 相位法则施放 → 特效（委托给 BattleFeedbackManager）+ 日常任务计数
 ## v7.x 修复 B5：施放相位法则时推进 USE_PHASE_LAWS 日常任务

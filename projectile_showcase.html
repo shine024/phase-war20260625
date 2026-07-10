@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Phase War - 弹道/命中/法则/相位仪技能 动画总览</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Microsoft YaHei","PingFang SC",sans-serif;background:#0a0e17;color:#e0e6f0;padding:16px}
+h1{text-align:center;font-size:26px;color:#00e5ff;margin-bottom:4px;letter-spacing:3px}
+.sub{text-align:center;color:#607d8b;font-size:12px;margin-bottom:24px}
+.stitle{font-size:20px;color:#00e5ff;border-left:4px solid #00e5ff;padding-left:12px;margin:32px 0 16px;font-weight:bold}
+.stitle2{font-size:15px;color:#7c4dff;margin:20px 0 10px;padding-left:8px;border-left:3px solid #7c4dff}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:16px}
+.card{background:#131a2b;border:1px solid #1e2d4a;border-radius:8px;overflow:hidden;transition:border-color .2s}
+.card:hover{border-color:#00e5ff}
+.anim-wrap{width:100%;height:140px;background:#0d1220;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+.anim-wrap img{image-rendering:pixelated;max-height:130px;max-width:100%}
+.info{padding:8px 10px}
+.num{font-size:11px;color:#455a64;font-weight:bold}
+.name{font-size:13px;color:#b0bec5;margin-top:3px}
+.tag{display:inline-block;font-size:10px;padding:2px 6px;border-radius:3px;margin-top:5px}
+.t-strike{background:#1a3a5c;color:#4fc3f7}
+.t-impact{background:#3a1a1a;color:#ef5350}
+.t-artillery{background:#2a3a1a;color:#aed581}
+.t-law{background:#2a1a3a;color:#ce93d8}
+.t-ability{background:#1a2a3a;color:#4dd0e1}
+.t-steels{color:#bdbdbd;background:#333}
+.t-flame{color:#ffab40;background:#3a2a1a}
+.t-thunder{color:#82b1ff;background:#1a2a3a}
+.t-void{color:#ea80fc;background:#2a1a3a}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 16px;font-size:11px}
+.legend-item{display:flex;align-items:center;gap:3px}
+.legend-dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.fps-ctrl{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:10px;color:#607d8b}
+.fps-ctrl select,.fps-ctrl button{background:#1e2d4a;color:#b0bec5;border:1px solid #2a3a5c;border-radius:3px;padding:1px 5px;font-size:10px;cursor:pointer}
+.fps-ctrl button:hover{border-color:#00e5ff}
+.fps-ctrl label{cursor:pointer}
+.ability-card{padding:16px}
+.ability-name{font-size:15px;font-weight:bold;margin-bottom:4px}
+.ability-faction{font-size:11px;color:#78909c;margin-bottom:4px}
+.ability-desc{font-size:11px;color:#607d8b;line-height:1.5}
+.summary{margin-top:32px;padding:14px;background:#131a2b;border-radius:8px;border:1px solid #1e2d4a;font-size:12px;color:#607d8b;line-height:1.8}
+.summary strong{color:#fff}
+/* Sprite sheet animation */
+.sprite-container{
+  position:relative;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.sprite-container img{
+  image-rendering:pixelated;
+  max-height:130px;
+  max-width:100%;
+}
+@keyframes scrollRight{
+  from{transform:translateX(0);}
+  to{transform:translateX(-100%);}
+}
+.sheet{
+  position:absolute;
+  top:0;left:0;
+  height:100%;
+  background-repeat:no-repeat;
+  image-rendering:pixelated;
+}
+.sheet.playing{
+  animation-timing-function:linear;
+  animation-iteration-count:infinite;
+  animation-name:scrollRight;
+}
+</style>
+</head>
+<body>
+
+<h1>Phase War 动画资源总览</h1>
+<p class="sub">所有弹道、命中特效、法则特效、相位仪技能 — 点击播放/暂停，可调节帧率</p>
+
+<div class="legend">
+  <div class="legend-item"><span class="legend-dot" style="background:#4fc3f7"></span>直射弹道</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#ef5350"></span>命中特效</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#aed581"></span>曲射/火炮</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#ce93d8"></span>法则特效</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#4dd0e1"></span>相位仪技能</div>
+</div>
+
+<!-- ==================== SECTION 1 ==================== -->
+<div class="stitle">一、直射弹道（武器弹体动画）</div>
+<div class="stitle2">1.1 通用预览目录弹道</div>
+<div class="grid">
+
+<div class="card">
+  <div class="anim-wrap sprite-container" id="w1-wrap">
+    <div class="sheet playing" id="w1-sheet" style="background-image:url('docs/美术资源预览/弹道与命中效果/弹道_冲锋枪.png')"></div>
+  </div>
+  <div class="info">
+    <div class="num">#1</div>
+    <div class="name">冲锋枪弹道</div>
+    <span class="tag t-strike">直射 SMG</span>
+    <div class="fps-ctrl">
+      <label><input type="checkbox" checked onchange="toggleAnim('w1',this.checked)"> 播放</label>
+      <select onchange="setFPS('w1',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option><option value="30">30fps</option></select>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="anim-wrap sprite-container" id="w2-wrap">
+    <div class="sheet playing" id="w2-sheet" style="background-image:url('docs/美术资源预览/弹道与命中效果/弹道_步枪.png')"></div>
+  </div>
+  <div class="info">
+    <div class="num">#2</div>
+    <div class="name">步枪弹道</div>
+    <span class="tag t-strike">直射 RIFLE</span>
+    <div class="fps-ctrl">
+      <label><input type="checkbox" checked onchange="toggleAnim('w2',this.checked)"> 播放</label>
+      <select onchange="setFPS('w2',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option><option value="30">30fps</option></select>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="anim-wrap sprite-container" id="w3-wrap">
+    <div class="sheet playing" id="w3-sheet" style="background-image:url('docs/美术资源预览/弹道与命中效果/弹道_机枪.png')"></div>
+  </div>
+  <div class="info">
+    <div class="num">#3</div>
+    <div class="name">机枪弹道</div>
+    <span class="tag t-strike">直射 MG</span>
+    <div class="fps-ctrl">
+      <label><input type="checkbox" checked onchange="toggleAnim('w3',this.checked)"> 播放</label>
+      <select onchange="setFPS('w3',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option><option value="30">30fps</option></select>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="anim-wrap sprite-container" id="w4-wrap">
+    <div class="sheet playing" id="w4-sheet" style="background-image:url('docs/美术资源预览/弹道与命中效果/弹道_手枪.png')"></div>
+  </div>
+  <div class="info">
+    <div class="num">#4</div>
+    <div class="name">手枪弹道</div>
+    <span class="tag t-strike">直射 PISTOL</span>
+    <div class="fps-ctrl">
+      <label><input type="checkbox" checked onchange="toggleAnim('w4',this.checked)"> 播放</label>
+      <select onchange="setFPS('w4',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option><option value="30">30fps</option></select>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="anim-wrap sprite-container" id="w5-wrap">
+    <div class="sheet playing" id="w5-sheet" style="background-image:url('docs/美术资源预览/弹道与命中效果/弹道_霰弹.png')"></div>
+  </div>
+  <div class="info">
+    <div class="num">#5</div>
+    <div class="name">霰弹弹道</div>
+    <span class="tag t-strike">直射 SHOTGUN</span>
+    <div class="fps-ctrl">
+      <label><input type="checkbox" checked onchange="toggleAnim('w5',this.checked)"> 播放</label>
+      <select onchange="setFPS('w5',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option><option value="30">30fps</option></select>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="anim-wrap sprite-container" id="w6-wrap">
+    <div class="sheet playing" id="w6-sheet" style="background-image:url('docs/美术资源预览/弹道与命中效果/弹道_狙击.png')"></div>
+  </div>
+  <div class="info">
+    <div class="num">#6</div>
+    <div class="name">狙击弹道</div>
+    <span class="tag t-strike">直射 SNIPER</span>
+    <div class="fps-ctrl">
+      <label><input type="checkbox" checked onchange="toggleAnim('w6',this.checked)"> 播放</label>
+      <select onchange="setFPS('w6',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option><option value="30">30fps</option></select>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="anim-wrap sprite-container" id="w7-wrap">
+    <div class="sheet playing" id="w7-sheet" style="background-image:url('docs/美术资源预览/弹道与命中效果/弹道_激光.png')"></div>
+  </div>
+  <div class="info">
+    <div class="num">#7</div>
+    <div class="name">激光弹道</div>
+    <span class="tag t-strike">直射 LASER</span>
+    <div class="fps-ctrl">
+      <label><input type="checkbox" checked onchange="toggleAnim('w7',this.checked)"> 播放</label>
+      <select onchange="setFPS('w7',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option><option value="30">30fps</option></select>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="anim-wrap sprite-container" id="w8-wrap">
+    <div class="sheet playing" id="w8-sheet" style="background-image:url('docs/美术资源预览/弹道与命中效果/弹道_火箭.png')"></div>
+  </div>
+  <div class="info">
+    <div class="num">#8</div>
+    <div class="name">火箭弹弹道</div>
+    <span class="tag t-strike">直射 ROCKET</span>
+    <div class="fps-ctrl">
+      <label><input type="checkbox" checked onchange="toggleAnim('w8',this.checked)"> 播放</label>
+      <select onchange="setFPS('w8',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option><option value="30">30fps</option></select>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="anim-wrap sprite-container" id="w9-wrap">
+    <div class="sheet playing" id="w9-sheet" style="background-image:url('docs/美术资源预览/弹道与命中效果/弹道_导弹.png')"></div>
+  </div>
+  <div class="info">
+    <div class="num">#9</div>
+    <div class="name">导弹弹道</div>
+    <span class="tag t-strike">直射 MISSILE</span>
+    <div class="fps-ctrl">
+      <label><input type="checkbox" checked onchange="toggleAnim('w9',this.checked)"> 播放</label>
+      <select onchange="setFPS('w9',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option><option value="30">30fps</option></select>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="anim-wrap sprite-container" id="w10-wrap">
+    <div class="sheet playing" id="w10-sheet" style="background-image:url('docs/美术资源预览/弹道与命中效果/弹道_高射炮.png')"></div>
+  </div>
+  <div class="info">
+    <div class="num">#10</div>
+    <div class="name">高射炮弹道</div>
+    <span class="tag t-strike">直射 FLAK</span>
+    <div class="fps-ctrl">
+      <label><input type="checkbox" checked onchange="toggleAnim('w10',this.checked)"> 播放</label>
+      <select onchange="setFPS('w10',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option><option value="30">30fps</option></select>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="anim-wrap sprite-container" id="w11-wrap">
+    <div class="sheet playing" id="w11-sheet" style="background-image:url('docs/美术资源预览/弹道与命中效果/弹道_电磁轨道炮.png')"></div>
+  </div>
+  <div class="info">
+    <div class="num">#11</div>
+    <div class="name">电磁轨道炮弹道</div>
+    <span class="tag t-strike">直射 RAIL_CANNON</span>
+    <div class="fps-ctrl">
+      <label><input type="checkbox" checked onchange="toggleAnim('w11',this.checked)"> 播放</label>
+      <select onchange="setFPS('w11',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option><option value="30">30fps</option></select>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="anim-wrap sprite-container" id="w12-wrap">
+    <div class="sheet playing" id="w12-sheet" style="background-image:url('docs/美术资源预览/弹道与命中效果/弹道_Omega加农炮.png')"></div>
+  </div>
+  <div class="info">
+    <div class="num">#12</div>
+    <div class="name">Omega加农炮弹道</div>
+    <span class="tag t-strike">直射 OMEGA_CANNON</span>
+    <div class="fps-ctrl">
+      <label><input type="checkbox" checked onchange="toggleAnim('w12',this.checked)"> 播放</label>
+      <select onchange="setFPS('w12',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option><option value="30">30fps</option></select>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<!-- 1.2 Realistic -->
+<div class="stitle2">1.2 写实武器弹道（assets/effects/projectiles/weapons_realistic/）</div>
+<div class="grid">
+
+<div class="card">
+  <div class="anim-wrap sprite-container" id="r1-wrap">
+    <div class="sheet playing" id="r1-sheet" style="background-image:url('assets/effects/projectiles/weapons_realistic/weapon_smg_projectile.png')"></div>
+  </div>
+  <div class="info"><div class="num">#13</div><div class="name">冲锋枪弹道（写实）</div><span class="tag t-strike">SMG</span>
+    <div class="fps-ctrl"><label><input type="checkbox" checked onchange="toggleAnim('r1',this.checked)"> 播放</label>
+    <select onchange="setFPS('r1',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option></select></div></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="r2-wrap">
+    <div class="sheet playing" id="r2-sheet" style="background-image:url('assets/effects/projectiles/weapons_realistic/weapon_rifle_projectile.png')"></div>
+  </div>
+  <div class="info"><div class="num">#14</div><div class="name">步枪弹道（写实）</div><span class="tag t-strike">RIFLE</span>
+    <div class="fps-ctrl"><label><input type="checkbox" checked onchange="toggleAnim('r2',this.checked)"> 播放</label>
+    <select onchange="setFPS('r2',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option></select></div></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="r3-wrap">
+    <div class="sheet playing" id="r3-sheet" style="background-image:url('assets/effects/projectiles/weapons_realistic/weapon_mg_projectile.png')"></div>
+  </div>
+  <div class="info"><div class="num">#15</div><div class="name">机枪弹道（写实）</div><span class="tag t-strike">MG</span>
+    <div class="fps-ctrl"><label><input type="checkbox" checked onchange="toggleAnim('r3',this.checked)"> 播放</label>
+    <select onchange="setFPS('r3',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option></select></div></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="r4-wrap">
+    <div class="sheet playing" id="r4-sheet" style="background-image:url('assets/effects/projectiles/weapons_realistic/weapon_pistol_projectile.png')"></div>
+  </div>
+  <div class="info"><div class="num">#16</div><div class="name">手枪弹道（写实）</div><span class="tag t-strike">PISTOL</span>
+    <div class="fps-ctrl"><label><input type="checkbox" checked onchange="toggleAnim('r4',this.checked)"> 播放</label>
+    <select onchange="setFPS('r4',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option></select></div></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="r5-wrap">
+    <div class="sheet playing" id="r5-sheet" style="background-image:url('assets/effects/projectiles/weapons_realistic/weapon_shotgun_projectile.png')"></div>
+  </div>
+  <div class="info"><div class="num">#17</div><div class="name">霰弹枪弹道（写实）</div><span class="tag t-strike">SHOTGUN</span>
+    <div class="fps-ctrl"><label><input type="checkbox" checked onchange="toggleAnim('r5',this.checked)"> 播放</label>
+    <select onchange="setFPS('r5',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option></select></div></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="r6-wrap">
+    <div class="sheet playing" id="r6-sheet" style="background-image:url('assets/effects/projectiles/weapons_realistic/weapon_sniper_projectile.png')"></div>
+  </div>
+  <div class="info"><div class="num">#18</div><div class="name">狙击枪弹道（写实）</div><span class="tag t-strike">SNIPER</span>
+    <div class="fps-ctrl"><label><input type="checkbox" checked onchange="toggleAnim('r6',this.checked)"> 播放</label>
+    <select onchange="setFPS('r6',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option></select></div></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="r7-wrap">
+    <div class="sheet playing" id="r7-sheet" style="background-image:url('assets/effects/projectiles/weapons_realistic/weapon_rocket_projectile.png')"></div>
+  </div>
+  <div class="info"><div class="num">#19</div><div class="name">火箭弹弹道（写实）</div><span class="tag t-strike">ROCKET</span>
+    <div class="fps-ctrl"><label><input type="checkbox" checked onchange="toggleAnim('r7',this.checked)"> 播放</label>
+    <select onchange="setFPS('r7',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option></select></div></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="r8-wrap">
+    <div class="sheet playing" id="r8-sheet" style="background-image:url('assets/effects/projectiles/weapons_realistic/weapon_flak_projectile.png')"></div>
+  </div>
+  <div class="info"><div class="num">#20</div><div class="name">高射炮弹道（写实）</div><span class="tag t-strike">FLAK</span>
+    <div class="fps-ctrl"><label><input type="checkbox" checked onchange="toggleAnim('r8',this.checked)"> 播放</label>
+    <select onchange="setFPS('r8',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option></select></div></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="r9-wrap">
+    <div class="sheet playing" id="r9-sheet" style="background-image:url('assets/effects/projectiles/weapons_realistic/weapon_laser_projectile.png')"></div>
+  </div>
+  <div class="info"><div class="num">#21</div><div class="name">激光弹道（写实）</div><span class="tag t-strike">LASER</span>
+    <div class="fps-ctrl"><label><input type="checkbox" checked onchange="toggleAnim('r9',this.checked)"> 播放</label>
+    <select onchange="setFPS('r9',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option></select></div></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="r10-wrap">
+    <div class="sheet playing" id="r10-sheet" style="background-image:url('assets/effects/projectiles/weapons_realistic/weapon_missile_projectile.png')"></div>
+  </div>
+  <div class="info"><div class="num">#22</div><div class="name">导弹弹道（写实）</div><span class="tag t-strike">MISSILE</span>
+    <div class="fps-ctrl"><label><input type="checkbox" checked onchange="toggleAnim('r10',this.checked)"> 播放</label>
+    <select onchange="setFPS('r10',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option></select></div></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="r11-wrap">
+    <div class="sheet playing" id="r11-sheet" style="background-image:url('assets/effects/projectiles/weapons_realistic/weapon_omega_cannon_projectile.png')"></div>
+  </div>
+  <div class="info"><div class="num">#23</div><div class="name">Omega加农炮弹道（写实）</div><span class="tag t-strike">OMEGA_CANNON</span>
+    <div class="fps-ctrl"><label><input type="checkbox" checked onchange="toggleAnim('r11',this.checked)"> 播放</label>
+    <select onchange="setFPS('r11',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option></select></div></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="r12-wrap">
+    <div class="sheet playing" id="r12-sheet" style="background-image:url('assets/effects/projectiles/weapons_realistic/weapon_rail_cannon_projectile.png')"></div>
+  </div>
+  <div class="info"><div class="num">#24</div><div class="name">电磁轨道炮弹道（写实）</div><span class="tag t-strike">RAIL_CANNON</span>
+    <div class="fps-ctrl"><label><input type="checkbox" checked onchange="toggleAnim('r12',this.checked)"> 播放</label>
+    <select onchange="setFPS('r12',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option></select></div></div>
+</div>
+
+</div>
+
+<!-- 1.3 Artillery -->
+<div class="stitle2">1.3 火炮动画弹道（artillery_anim/）</div>
+<div class="grid">
+<div class="card">
+  <div class="anim-wrap sprite-container" id="a1-wrap">
+    <div class="sheet playing" id="a1-sheet" style="background-image:url('assets/effects/projectiles/artillery_anim/weapon_artillery_ballistic.png')"></div>
+  </div>
+  <div class="info"><div class="num">#25</div><div class="name">火炮曲射弹道</div><span class="tag t-artillery">曲射</span>
+    <div class="fps-ctrl"><label><input type="checkbox" checked onchange="toggleAnim('a1',this.checked)"> 播放</label>
+    <select onchange="setFPS('a1',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option></select></div></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="a2-wrap">
+    <div class="sheet playing" id="a2-sheet" style="background-image:url('assets/effects/projectiles/artillery_anim/weapon_artillery_muzzle.png')"></div>
+  </div>
+  <div class="info"><div class="num">#26</div><div class="name">火炮枪口焰</div><span class="tag t-artillery">发射</span>
+    <div class="fps-ctrl"><label><input type="checkbox" checked onchange="toggleAnim('a2',this.checked)"> 播放</label>
+    <select onchange="setFPS('a2',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option></select></div></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="a3-wrap">
+    <div class="sheet playing" id="a3-sheet" style="background-image:url('assets/effects/projectiles/artillery_anim/weapon_artillery_impact.png')"></div>
+  </div>
+  <div class="info"><div class="num">#27</div><div class="name">火炮命中爆炸</div><span class="tag t-artillery">命中</span>
+    <div class="fps-ctrl"><label><input type="checkbox" checked onchange="toggleAnim('a3',this.checked)"> 播放</label>
+    <select onchange="setFPS('a3',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option></select></div></div>
+</div>
+</div>
+
+<!-- 1.4 Omega Platform -->
+<div class="stitle2">1.4 Omega平台专用弹道</div>
+<div class="grid">
+<div class="card">
+  <div class="anim-wrap sprite-container" id="o1-wrap">
+    <div class="sheet playing" id="o1-sheet" style="background-image:url('assets/effects/projectiles/omega_platform/omega_platform_projectile_core.png')"></div>
+  </div>
+  <div class="info"><div class="num">#28</div><div class="name">Omega核心弹体</div><span class="tag t-strike">特殊</span>
+    <div class="fps-ctrl"><label><input type="checkbox" checked onchange="toggleAnim('o1',this.checked)"> 播放</label>
+    <select onchange="setFPS('o1',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option></select></div></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="o2-wrap">
+    <div class="sheet playing" id="o2-sheet" style="background-image:url('assets/effects/projectiles/omega_platform/omega_platform_projectile_trail.png')"></div>
+  </div>
+  <div class="info"><div class="num">#29</div><div class="name">Omega弹道拖尾</div><span class="tag t-strike">特殊</span>
+    <div class="fps-ctrl"><label><input type="checkbox" checked onchange="toggleAnim('o2',this.checked)"> 播放</label>
+    <select onchange="setFPS('o2',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option></select></div></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="o3-wrap">
+    <div class="sheet playing" id="o3-sheet" style="background-image:url('assets/effects/projectiles/omega_platform/omega_platform_projectile_impact.png')"></div>
+  </div>
+  <div class="info"><div class="num">#30</div><div class="name">Omega命中效果</div><span class="tag t-impact">特殊</span>
+    <div class="fps-ctrl"><label><input type="checkbox" checked onchange="toggleAnim('o3',this.checked)"> 播放</label>
+    <select onchange="setFPS('o3',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option></select></div></div>
+</div>
+</div>
+
+<!-- ==================== SECTION 2 ==================== -->
+<div class="stitle">二、命中/爆炸特效</div>
+<div class="stitle2">2.1 通用命中特效</div>
+<div class="grid">
+<div class="card">
+  <div class="anim-wrap sprite-container" id="m1-wrap">
+    <div class="sheet playing" id="m1-sheet" style="background-image:url('docs/美术资源预览/弹道与命中效果/命中特效_轻武器.png')"></div>
+  </div>
+  <div class="info"><div class="num">#31</div><div class="name">轻武器命中特效</div><span class="tag t-impact">SMG/PISTOL/RIFLE/MG</span>
+    <div class="fps-ctrl"><label><input type="checkbox" checked onchange="toggleAnim('m1',this.checked)"> 播放</label>
+    <select onchange="setFPS('m1',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option></select></div></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="m2-wrap">
+    <div class="sheet playing" id="m2-sheet" style="background-image:url('docs/美术资源预览/弹道与命中效果/命中特效_霰弹.png')"></div>
+  </div>
+  <div class="info"><div class="num">#32</div><div class="name">霰弹命中特效</div><span class="tag t-impact">SHOTGUN</span>
+    <div class="fps-ctrl"><label><input type="checkbox" checked onchange="toggleAnim('m2',this.checked)"> 播放</label>
+    <select onchange="setFPS('m2',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option></select></div></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="m3-wrap">
+    <div class="sheet playing" id="m3-sheet" style="background-image:url('docs/美术资源预览/弹道与命中效果/命中特效_狙击.png')"></div>
+  </div>
+  <div class="info"><div class="num">#33</div><div class="name">狙击命中特效</div><span class="tag t-impact">SNIPER/LASER</span>
+    <div class="fps-ctrl"><label><input type="checkbox" checked onchange="toggleAnim('m3',this.checked)"> 播放</label>
+    <select onchange="setFPS('m3',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option></select></div></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="m4-wrap">
+    <div class="sheet playing" id="m4-sheet" style="background-image:url('docs/美术资源预览/弹道与命中效果/命中特效_爆炸.png')"></div>
+  </div>
+  <div class="info"><div class="num">#34</div><div class="name">爆炸命中特效</div><span class="tag t-impact">ROCKET/MISSILE/FLAK/RAIL/OMEGA</span>
+    <div class="fps-ctrl"><label><input type="checkbox" checked onchange="toggleAnim('m4',this.checked)"> 播放</label>
+    <select onchange="setFPS('m4',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option></select></div></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="m5-wrap">
+    <div class="sheet playing" id="m5-sheet" style="background-image:url('docs/美术资源预览/弹道与命中效果/命中_Omega.png')"></div>
+  </div>
+  <div class="info"><div class="num">#35</div><div class="name">Omega命中特效</div><span class="tag t-impact">Omega专属</span>
+    <div class="fps-ctrl"><label><input type="checkbox" checked onchange="toggleAnim('m5',this.checked)"> 播放</label>
+    <select onchange="setFPS('m5',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option></select></div></div>
+</div>
+</div>
+
+<div class="stitle2">2.2 曲射/火炮命中特效</div>
+<div class="grid">
+<div class="card">
+  <div class="anim-wrap sprite-container" id="c1-wrap">
+    <div class="sheet playing" id="c1-sheet" style="background-image:url('docs/美术资源预览/弹道与命中效果/曲射弹道.png')"></div>
+  </div>
+  <div class="info"><div class="num">#36</div><div class="name">曲射弹道</div><span class="tag t-artillery">火炮曲射</span>
+    <div class="fps-ctrl"><label><input type="checkbox" checked onchange="toggleAnim('c1',this.checked)"> 播放</label>
+    <select onchange="setFPS('c1',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option></select></div></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="c2-wrap">
+    <div class="sheet playing" id="c2-sheet" style="background-image:url('docs/美术资源预览/弹道与命中效果/曲射命中特效_v3_透明底.png')"></div>
+  </div>
+  <div class="info"><div class="num">#37</div><div class="name">曲射命中 v3（透明底）</div><span class="tag t-artillery">火炮命中</span>
+    <div class="fps-ctrl"><label><input type="checkbox" checked onchange="toggleAnim('c2',this.checked)"> 播放</label>
+    <select onchange="setFPS('c2',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option></select></div></div>
+</div>
+</div>
+
+<div class="stitle2">2.3 写实武器命中贴图</div>
+<div class="grid">
+<div class="card">
+  <div class="anim-wrap sprite-container" id="x1-wrap">
+    <div class="sheet playing" id="x1-sheet" style="background-image:url('assets/effects/projectiles/weapons_realistic/weapon_impact_small_arms.png')"></div>
+  </div>
+  <div class="info"><div class="num">#38</div><div class="name">轻武器命中（写实版）</div><span class="tag t-impact">SMG/PISTOL/RIFLE/MG</span>
+    <div class="fps-ctrl"><label><input type="checkbox" checked onchange="toggleAnim('x1',this.checked)"> 播放</label>
+    <select onchange="setFPS('x1',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option></select></div></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="x2-wrap">
+    <div class="sheet playing" id="x2-sheet" style="background-image:url('assets/effects/projectiles/weapons_realistic/weapon_impact_shotgun.png')"></div>
+  </div>
+  <div class="info"><div class="num">#39</div><div class="name">霰弹命中（写实版）</div><span class="tag t-impact">SHOTGUN</span>
+    <div class="fps-ctrl"><label><input type="checkbox" checked onchange="toggleAnim('x2',this.checked)"> 播放</label>
+    <select onchange="setFPS('x2',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option></select></div></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="x3-wrap">
+    <div class="sheet playing" id="x3-sheet" style="background-image:url('assets/effects/projectiles/weapons_realistic/weapon_impact_sniper.png')"></div>
+  </div>
+  <div class="info"><div class="num">#40</div><div class="name">狙击命中（写实版）</div><span class="tag t-impact">SNIPER/LASER</span>
+    <div class="fps-ctrl"><label><input type="checkbox" checked onchange="toggleAnim('x3',this.checked)"> 播放</label>
+    <select onchange="setFPS('x3',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option></select></div></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="x4-wrap">
+    <div class="sheet playing" id="x4-sheet" style="background-image:url('assets/effects/projectiles/weapons_realistic/weapon_impact_explosive.png')"></div>
+  </div>
+  <div class="info"><div class="num">#41</div><div class="name">爆炸命中（写实版）</div><span class="tag t-impact">ROCKET/MISSILE/FLAK/RAIL/OMEGA</span>
+    <div class="fps-ctrl"><label><input type="checkbox" checked onchange="toggleAnim('x4',this.checked)"> 播放</label>
+    <select onchange="setFPS('x4',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option></select></div></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="x5-wrap">
+    <div class="sheet playing" id="x5-sheet" style="background-image:url('assets/effects/projectiles/weapons_realistic/weapon_impact_omega.png')"></div>
+  </div>
+  <div class="info"><div class="num">#42</div><div class="name">Omega命中（写实版）</div><span class="tag t-impact">Omega专属</span>
+    <div class="fps-ctrl"><label><input type="checkbox" checked onchange="toggleAnim('x5',this.checked)"> 播放</label>
+    <select onchange="setFPS('x5',+this.value)"><option value="10">10fps</option><option value="15" selected>15fps</option><option value="20">20fps</option></select></div></div>
+</div>
+</div>
+
+<!-- ==================== SECTION 3 ==================== -->
+<div class="stitle">三、相位法则特效（25条，按家族分类）</div>
+<div class="stitle2">3.1 钢铁家族（Steel · 银灰色系）</div>
+<div class="grid">
+<div class="card">
+  <div class="anim-wrap sprite-container" id="l1-wrap">
+    <div class="sheet" id="l1-sheet" style="background-image:url('assets/effects/laws/sci_fi_game_VFX_art__phase_arm_2026-05-21T00-43-56.png')"></div>
+  </div>
+  <div class="info"><div class="num">#43</div><div class="name">钢铁·相位装甲</div><span class="tag t-law tag-steels">steel_phase_armor · 被动</span></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="l2-wrap">
+    <div class="sheet" id="l2-sheet" style="background-image:url('assets/effects/laws/sci_fi_game_VFX_art__fortress__2026-05-21T00-43-56.png')"></div>
+  </div>
+  <div class="info"><div class="num">#44</div><div class="name">钢铁·堡垒之墙</div><span class="tag t-law tag-steels">steel_bastion_wall · 主动</span></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="l3-wrap">
+    <div class="sheet" id="l3-sheet" style="background-image:url('assets/effects/laws/sci_fi_game_VFX_art__nanite_re_2026-05-21T00-43-56.png')"></div>
+  </div>
+  <div class="info"><div class="num">#45</div><div class="name">钢铁·快速维修</div><span class="tag t-law tag-steels">steel_quick_repair · 被动</span></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="l4-wrap">
+    <div class="sheet" id="l4-sheet" style="background-image:url('assets/effects/laws/sci_fi_game_VFX_art__shared_sh_2026-05-21T00-43-57.png')"></div>
+  </div>
+  <div class="info"><div class="num">#46</div><div class="name">钢铁·护阵联结</div><span class="tag t-law tag-steels">steel_aegis_link · 被动</span></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="l5-wrap">
+    <div class="sheet" id="l5-sheet" style="background-image:url('assets/effects/laws/sci_fi_game_VFX_art__anchor_fi_2026-05-21T00-44-24.png')"></div>
+  </div>
+  <div class="info"><div class="num">#47</div><div class="name">钢铁·锚定力场</div><span class="tag t-law tag-steels">steel_anchor_field · 主动</span></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="l6-wrap">
+    <div class="sheet" id="l6-sheet" style="background-image:url('assets/effects/laws/sci_fi_game_VFX_art__armor_har_2026-05-21T00-44-24.png')"></div>
+  </div>
+  <div class="info"><div class="num">#48</div><div class="name">钢铁·固壁协议</div><span class="tag t-law tag-steels">steel_fortify_protocol · 被动</span></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="l7-wrap">
+    <div class="sheet" id="l7-sheet" style="background-image:url('assets/effects/laws/sci_fi_game_VFX_art__resonant__2026-05-21T00-44-50.png')"></div>
+  </div>
+  <div class="info"><div class="num">#49</div><div class="name">钢铁·共振装甲</div><span class="tag t-law tag-steels">steel_resonant_plate · 被动</span></div>
+</div>
+</div>
+
+<div class="stitle2">3.2 烈焰家族（Flame · 橙红色系）</div>
+<div class="grid">
+<div class="card">
+  <div class="anim-wrap sprite-container" id="lf1-wrap">
+    <div class="sheet" id="lf1-sheet" style="background-image:url('assets/effects/laws/sci_fi_game_VFX_art__burning_p_2026-05-21T00-44-50.png')"></div>
+  </div>
+  <div class="info"><div class="num">#50</div><div class="name">烈焰·热能过载</div><span class="tag t-law t-flame">flame_heat_overload · 被动</span></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="lf2-wrap">
+    <div class="sheet" id="lf2-sheet" style="background-image:url('assets/effects/laws/sci_fi_game_VFX_art__forward_f_2026-05-21T00-44-50.png')"></div>
+  </div>
+  <div class="info"><div class="num">#51</div><div class="name">烈焰·前线火力压制</div><span class="tag t-law t-flame">flame_front_bombard · 主动</span></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="lf3-wrap">
+    <div class="sheet" id="lf3-sheet" style="background-image:url('assets/effects/laws/sci_fi_game_VFX_art__ember_par_2026-05-21T00-45-17.png')"></div>
+  </div>
+  <div class="info"><div class="num">#52</div><div class="name">烈焰·灼烧印记</div><span class="tag t-law t-flame">flame_mark · 主动</span></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="lf4-wrap">
+    <div class="sheet" id="lf4-sheet" style="background-image:url('assets/effects/laws/sci_fi_game_VFX_art__advancing_2026-05-21T00-44-51.png')"></div>
+  </div>
+  <div class="info"><div class="num">#53</div><div class="name">烈焰·灼浪推进</div><span class="tag t-law t-flame">flame_scorch_wave · 主动</span></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="lf5-wrap">
+    <div class="sheet" id="lf5-sheet" style="background-image:url('assets/effects/laws/sci_fi_game_VFX_art__afterburn_2026-05-21T00-45-17.png')"></div>
+  </div>
+  <div class="info"><div class="num">#54</div><div class="name">烈焰·灰烬幕障</div><span class="tag t-law t-flame">flame_ember_screen · 主动</span></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="lf6-wrap">
+    <div class="sheet" id="lf6-sheet" style="background-image:url('assets/effects/laws/sci_fi_game_VFX_art__ultimate__2026-05-21T00-45-17.png')"></div>
+  </div>
+  <div class="info"><div class="num">#55</div><div class="name">烈焰·核心破裂</div><span class="tag t-law t-flame">flame_core_rupture · 主动</span></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="lf7-wrap">
+    <div class="sheet" id="lf7-sheet" style="background-image:url('assets/effects/laws/sci_fi_game_VFX_art__weapon_he_2026-05-21T00-44-24.png')"></div>
+  </div>
+  <div class="info"><div class="num">#56</div><div class="name">烈焰·余烬加燃</div><span class="tag t-law t-flame">flame_afterburn · 被动</span></div>
+</div>
+</div>
+
+<div class="stitle2">3.3 雷霆家族（Thunder · 蓝白色系）</div>
+<div class="grid">
+<div class="card">
+  <div class="anim-wrap sprite-container" id="th1-wrap">
+    <div class="sheet" id="th1-sheet" style="background-image:url('assets/effects/laws/sci_fi_game_VFX_art__EMP_storm_2026-05-21T00-45-17.png')"></div>
+  </div>
+  <div class="info"><div class="num">#57</div><div class="name">雷霆·电磁风暴</div><span class="tag t-law t-thunder">thunder_emp_storm · 主动</span></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="th2-wrap">
+    <div class="sheet" id="th2-sheet" style="background-image:url('assets/effects/laws/sci_fi_game_VFX_art__chain_lig_2026-05-21T00-45-44.png')"></div>
+  </div>
+  <div class="info"><div class="num">#58</div><div class="name">雷霆·链式放电</div><span class="tag t-law t-thunder">thunder_chain_discharge · 主动</span></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="th3-wrap">
+    <div class="sheet" id="th3-sheet" style="background-image:url('assets/effects/laws/sci_fi_game_VFX_art__ion_net_a_2026-05-21T00-45-44.png')"></div>
+  </div>
+  <div class="info"><div class="num">#59</div><div class="name">雷霆·离子网</div><span class="tag t-law t-thunder">thunder_ion_net · 主动</span></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="th4-wrap">
+    <div class="sheet" id="th4-sheet" style="background-image:url('assets/effects/laws/sci_fi_game_VFX_art__arc_beaco_2026-05-21T00-45-44.png')"></div>
+  </div>
+  <div class="info"><div class="num">#60</div><div class="name">雷霆·弧光信标</div><span class="tag t-law t-thunder">thunder_arc_beacon · 被动</span></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="th5-wrap">
+    <div class="sheet" id="th5-sheet" style="background-image:url('assets/effects/laws/sci_fi_game_VFX_art__electric__2026-05-21T00-45-44.png')"></div>
+  </div>
+  <div class="info"><div class="num">#61</div><div class="name">雷霆·激涌驱动</div><span class="tag t-law t-thunder">thunder_surge_drive · 主动</span></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="th6-wrap">
+    <div class="sheet" id="th6-sheet" style="background-image:url('assets/effects/laws/sci_fi_game_VFX_art__static_el_2026-05-21T00-46-12.png')"></div>
+  </div>
+  <div class="info"><div class="num">#62</div><div class="name">雷霆·静电域</div><span class="tag t-law t-thunder">thunder_static_domain · 主动</span></div>
+</div>
+</div>
+
+<div class="stitle2">3.4 虚空家族（Void · 暗紫色系）</div>
+<div class="grid">
+<div class="card">
+  <div class="anim-wrap sprite-container" id="v1-wrap">
+    <div class="sheet" id="v1-sheet" style="background-image:url('assets/effects/laws/sci_fi_game_VFX_art__spacetime_2026-05-21T00-46-12.png')"></div>
+  </div>
+  <div class="info"><div class="num">#63</div><div class="name">虚空·时空涟漪</div><span class="tag t-law t-void">void_time_ripple · 主动</span></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="v2-wrap">
+    <div class="sheet" id="v2-sheet" style="background-image:url('assets/effects/laws/sci_fi_game_VFX_art__shield_co_2026-05-21T00-46-12.png')"></div>
+  </div>
+  <div class="info"><div class="num">#64</div><div class="name">虚空·护盾转移</div><span class="tag t-law t-void">void_barrier_shift · 主动</span></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="v3-wrap">
+    <div class="sheet" id="v3-sheet" style="background-image:url('assets/effects/laws/sci_fi_game_VFX_art__phase_clo_2026-05-21T00-46-12.png')"></div>
+  </div>
+  <div class="info"><div class="num">#65</div><div class="name">虚空·相位披幕</div><span class="tag t-law t-void">void_phase_cloak · 主动</span></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="v4-wrap">
+    <div class="sheet" id="v4-sheet" style="background-image:url('assets/effects/laws/sci_fi_game_VFX_art__entropy_l_2026-05-21T00-46-35.png')"></div>
+  </div>
+  <div class="info"><div class="num">#66</div><div class="name">虚空·熵镜</div><span class="tag t-law t-void">void_entropy_lens · 被动</span></div>
+</div>
+<div class="card">
+  <div class="anim-wrap sprite-container" id="v5-wrap">
+    <div class="sheet" id="v5-sheet" style="background-image:url('assets/effects/laws/sci_fi_game_VFX_art__gravity_w_2026-05-21T00-46-35.png')"></div>
+  </div>
+  <div class="info"><div class="num">#67</div><div class="name">虚空·引力井</div><span class="tag t-law t-void">void_gravity_well · 主动</span></div>
+</div>
+</div>
+
+<!-- ==================== SECTION 4 ==================== -->
+<div class="stitle">四、相位仪7星主动特殊能力</div>
+<div class="grid">
+<div class="card"><div class="info ability-card">
+  <div class="num">#68</div>
+  <div class="ability-name" style="color:#ffab40;">超级火炮连击</div>
+  <div class="ability-faction">势力：新星 (Nova Arms)</div>
+  <div class="ability-desc">每N秒从屏幕外发起火炮曲射，随机打击敌方单位。复用火炮曲射弹道(#25)与命中爆炸(#27)特效。</div>
+  <span class="tag t-ability">周期触发</span>
+</div></div>
+<div class="card"><div class="info ability-card">
+  <div class="num">#69</div>
+  <div class="ability-name" style="color:#ce93d8;">幻影克隆</div>
+  <div class="ability-faction">势力：螺旋 (Helix Recon)</div>
+  <div class="ability-desc">每张战斗卡可放置2个单位，克隆体攻击+100%、血量+80%（7星完整版）。</div>
+  <span class="tag t-ability">被动常驻</span>
+</div></div>
+<div class="card"><div class="info ability-card">
+  <div class="num">#70</div>
+  <div class="ability-name" style="color:#ea80fc;">直射穿透</div>
+  <div class="ability-faction">势力：影幕 (Void Research)</div>
+  <div class="ability-desc">直射攻击100%穿透，每穿透一个目标衰减10%伤害（7星完整版）。</div>
+  <span class="tag t-ability">被动常驻</span>
+</div></div>
+<div class="card"><div class="info ability-card">
+  <div class="num">#71</div>
+  <div class="ability-name" style="color:#4dd0e1;">免能量部署</div>
+  <div class="ability-faction">势力：擎天 (Quantum Logistics)</div>
+  <div class="ability-desc">部署消耗能量减至0%（7星完全免费），低星按比例减免。</div>
+  <span class="tag t-ability">被动常驻</span>
+</div></div>
+<div class="card"><div class="info ability-card">
+  <div class="num">#72</div>
+  <div class="ability-name" style="color:#ef5350;">核子轰炸</div>
+  <div class="ability-faction">势力：永纪 (Frontier Union)</div>
+  <div class="ability-desc">每N秒对敌方全体造成基于攻击力的倍率伤害（7星间隔最短、倍率最高）。</div>
+  <span class="tag t-ability">周期触发</span>
+</div></div>
+<div class="card"><div class="info ability-card">
+  <div class="num">#73</div>
+  <div class="ability-name" style="color:#81c784;">纳米虫群</div>
+  <div class="ability-faction">势力：神盾 (Aether Dynamics)</div>
+  <div class="ability-desc">开局释放紫色纳米虫群，持续N秒敌方每秒掉2%最大血量（7星持续时间最长）。</div>
+  <span class="tag t-ability">开局一次性</span>
+</div></div>
+<div class="card"><div class="info ability-card">
+  <div class="num">#74</div>
+  <div class="ability-name" style="color:#bdbdbd;">巨型能量罩</div>
+  <div class="ability-faction">通用势力（多型号可用）</div>
+  <div class="ability-desc">开局为我方全体笼罩3000血量护盾（各星级统一上限）。</div>
+  <span class="tag t-ability">开局一次性</span>
+</div></div>
+<div class="card"><div class="info ability-card">
+  <div class="num">#75</div>
+  <div class="ability-name" style="color:#ffcc02;">钢铁壁垒</div>
+  <div class="ability-faction">势力：铁幕 (Iron Wall Corp)</div>
+  <div class="ability-desc">我方装甲/堡垒单位部署时最大HP×2.0（7星完整效果），低星递减。</div>
+  <span class="tag t-ability">被动常驻</span>
+</div></div>
+</div>
+
+<div class="summary">
+  <strong style="color:#00e5ff;">统计：</strong>
+  直射弹道 12 + 写实弹道 12 + 火炮弹道 3 + Omega弹道 3 = <strong style="color:#4fc3f7;">30项弹道</strong><br>
+  通用命中 5 + 曲射命中 2 + 写实命中 5 = <strong style="color:#ef5350;">12项命中</strong><br>
+  钢铁法则 7 + 烈焰法则 7 + 雷霆法则 6 + 虚空法则 5 = <strong style="color:#ce93d8;">25条法则</strong><br>
+  相位仪技能 8 = <strong style="color:#4dd0e1;">8项技能</strong><br>
+  合计：<strong style="color:#fff;">75项</strong>（全部CSS动画播放）
+</div>
+
+<script>
+// All sprite sheet resources with their frame counts
+var SPRITE_DATA = {
+  // Section 1.1 - General projectiles (1536x1024 sprite sheets)
+  w1:{src:'docs/美术资源预览/弹道与命中效果/弹道_冲锋枪.png',frames:10},
+  w2:{src:'docs/美术资源预览/弹道与命中效果/弹道_步枪.png',frames:10},
+  w3:{src:'docs/美术资源预览/弹道与命中效果/弹道_机枪.png',frames:10},
+  w4:{src:'docs/美术资源预览/弹道与命中效果/弹道_手枪.png',frames:10},
+  w5:{src:'docs/美术资源预览/弹道与命中效果/弹道_霰弹.png',frames:10},
+  w6:{src:'docs/美术资源预览/弹道与命中效果/弹道_狙击.png',frames:10},
+  w7:{src:'docs/美术资源预览/弹道与命中效果/弹道_激光.png',frames:8},
+  w8:{src:'docs/美术资源预览/弹道与命中效果/弹道_火箭.png',frames:10},
+  w9:{src:'docs/美术资源预览/弹道与命中效果/弹道_导弹.png',frames:8},
+  w10:{src:'docs/美术资源预览/弹道与命中效果/弹道_高射炮.png',frames:10},
+  w11:{src:'docs/美术资源预览/弹道与命中效果/弹道_电磁轨道炮.png',frames:8},
+  w12:{src:'docs/美术资源预览/弹道与命中效果/弹道_Omega加农炮.png',frames:8},
+  
+  // Section 1.2 - Realistic projectiles (256x256 single frames)
+  r1:{src:'assets/effects/projectiles/weapons_realistic/weapon_smg_projectile.png',frames:1},
+  r2:{src:'assets/effects/projectiles/weapons_realistic/weapon_rifle_projectile.png',frames:1},
+  r3:{src:'assets/effects/projectiles/weapons_realistic/weapon_mg_projectile.png',frames:1},
+  r4:{src:'assets/effects/projectiles/weapons_realistic/weapon_pistol_projectile.png',frames:1},
+  r5:{src:'assets/effects/projectiles/weapons_realistic/weapon_shotgun_projectile.png',frames:1},
+  r6:{src:'assets/effects/projectiles/weapons_realistic/weapon_sniper_projectile.png',frames:1},
+  r7:{src:'assets/effects/projectiles/weapons_realistic/weapon_rocket_projectile.png',frames:1},
+  r8:{src:'assets/effects/projectiles/weapons_realistic/weapon_flak_projectile.png',frames:1},
+  r9:{src:'assets/effects/projectiles/weapons_realistic/weapon_laser_projectile.png',frames:1},
+  r10:{src:'assets/effects/projectiles/weapons_realistic/weapon_missile_projectile.png',frames:1},
+  r11:{src:'assets/effects/projectiles/weapons_realistic/weapon_omega_cannon_projectile.png',frames:1},
+  r12:{src:'assets/effects/projectiles/weapons_realistic/weapon_rail_cannon_projectile.png',frames:1},
+  
+  // Section 1.3 - Artillery (1024x1024, 20 frames)
+  a1:{src:'assets/effects/projectiles/artillery_anim/weapon_artillery_ballistic.png',frames:20},
+  a2:{src:'assets/effects/projectiles/artillery_anim/weapon_artillery_muzzle.png',frames:20},
+  a3:{src:'assets/effects/projectiles/artillery_anim/weapon_artillery_impact.png',frames:20},
+  
+  // Section 1.4 - Omega platform (1536x1024 sprite sheets)
+  o1:{src:'assets/effects/projectiles/omega_platform/omega_platform_projectile_core.png',frames:9},
+  o2:{src:'assets/effects/projectiles/omega_platform/omega_platform_projectile_trail.png',frames:26},
+  o3:{src:'assets/effects/projectiles/omega_platform/omega_platform_projectile_impact.png',frames:25},
+  
+  // Section 2 - Impact effects (1536x1024, 16 frames)
+  m1:{src:'docs/美术资源预览/弹道与命中效果/命中特效_轻武器.png',frames:16},
+  m2:{src:'docs/美术资源预览/弹道与命中效果/命中特效_霰弹.png',frames:16},
+  m3:{src:'docs/美术资源预览/弹道与命中效果/命中特效_狙击.png',frames:16},
+  m4:{src:'docs/美术资源预览/弹道与命中效果/命中特效_爆炸.png',frames:16},
+  m5:{src:'docs/美术资源预览/弹道与命中效果/命中_Omega.png',frames:16},
+  
+  c1:{src:'docs/美术资源预览/弹道与命中效果/曲射弹道.png',frames:20},
+  c2:{src:'docs/美术资源预览/弹道与命中效果/曲射命中特效_v3_透明底.png',frames:16},
+  
+  x1:{src:'assets/effects/projectiles/weapons_realistic/weapon_impact_small_arms.png',frames:16},
+  x2:{src:'assets/effects/projectiles/weapons_realistic/weapon_impact_shotgun.png',frames:16},
+  x3:{src:'assets/effects/projectiles/weapons_realistic/weapon_impact_sniper.png',frames:16},
+  x4:{src:'assets/effects/projectiles/weapons_realistic/weapon_impact_explosive.png',frames:16},
+  x5:{src:'assets/effects/projectiles/weapons_realistic/weapon_impact_omega.png',frames:16},
+  
+  // Section 3 - Law effects (single frame, no animation)
+};
+
+function initAnimations() {
+  var ids = Object.keys(SPRITE_DATA);
+  for (var i = 0; i < ids.length; i++) {
+    var id = ids[i];
+    var data = SPRITE_DATA[id];
+    var sheet = document.getElementById(id + '-sheet');
+    if (!sheet) continue;
+    
+    var img = new Image();
+    img.src = data.src;
+    
+    img.onload = function() {
+      var w = this.naturalWidth;
+      var h = this.naturalHeight;
+      var frames = data.frames;
+      var frameW = w / frames;
+      
+      // Set background size to show only one frame at a time
+      sheet.style.backgroundSize = (frameW * 100) + 'px ' + h + 'px';
+      sheet.style.width = Math.floor(frameW) + 'px';
+      sheet.style.height = h + 'px';
+      
+      // Scale down to fit container
+      var wrap = sheet.parentElement;
+      var cw = wrap.clientWidth || 200;
+      var ch = wrap.clientHeight || 140;
+      var scaleX = cw / frameW;
+      var scaleY = ch / h;
+      var scale = Math.min(scaleX, scaleY, 1);
+      
+      var displayW = Math.floor(frameW * scale);
+      var displayH = Math.floor(h * scale);
+      
+      sheet.style.width = displayW + 'px';
+      sheet.style.height = displayH + 'px';
+      sheet.style.backgroundSize = (displayW * frames) + 'px ' + displayH + 'px';
+      
+      // Start animation
+      playAnimation(id, frames);
+    };
+  }
+}
+
+function playAnimation(id, totalFrames) {
+  var sheet = document.getElementById(id + '-sheet');
+  if (!sheet) return;
+  
+  var fps = 15;
+  var playing = true;
+  var frame = 0;
+  var timer = null;
+  
+  function step() {
+    if (!playing) return;
+    var xOff = -(frame * sheet.offsetWidth);
+    sheet.style.backgroundPosition = xOff + 'px 0';
+    frame = (frame + 1) % totalFrames;
+  }
+  
+  function startLoop() {
+    stopLoop();
+    step();
+    timer = setInterval(step, Math.floor(1000 / fps));
+  }
+  
+  function stopLoop() {
+    if (timer) { clearInterval(timer); timer = null; }
+  }
+  
+  startLoop();
+  
+  window.anims = window.anims || {};
+  window.anims[id] = {
+    toggle: function(on) { playing = on; if (on) startLoop(); else stopLoop(); },
+    setFPS: function(f) { fps = f; startLoop(); }
+  };
+}
+
+function toggleAnim(id, on) {
+  if (window.anims && window.anims[id]) window.anims[id].toggle(on);
+}
+
+function setFPS(id, fps) {
+  if (window.anims && window.anims[id]) window.anims[id].setFPS(fps);
+}
+
+window.addEventListener('load', initAnimations);
+</script>
+
+</body>
+</html>

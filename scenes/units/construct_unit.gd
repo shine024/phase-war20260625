@@ -124,8 +124,13 @@ var _presentation_card_grid: bool = false
 var _hit_stun_left: float = 0.0
 var _card_tween: Tween = null
 var _card_nudge_tween: Tween = null
-var _hit_flash_tween: Tween = null
-var _hit_shake_tween: Tween = null
+# v7.4 性能优化：受击闪白/抖动改手写计时动画（原每击 create_tween 2 个 Tween，密集命中时 GC 压力）
+# 模式参考 unit_hp_bar._damage_flash（倒计时 + lerp）与 damage_number_display._pop_age（正计时 + 分段）
+var _hit_flash_t: float = 0.0           # flash 剩余时间（秒），0=未激活
+var _hit_flash_base_modulate: Color = Color.WHITE  # 触发瞬间快照，作 lerp 终点（防 faction_glow/clone 色调冲突）
+var _hit_shake_t: float = -1.0          # shake 已用时间（秒），-1=未激活，>=0=激活
+const _HIT_FLASH_DURATION: float = 0.1  # 与原 Tween 0.1s 对齐
+const _HIT_SHAKE_DURATION: float = 0.12 # 4×0.03s
 var _death_fade_tween: Tween = null  ## v6.4: 死亡淡出 Tween
 var _is_dying: bool = false  ## v6.4: 死亡中标志，防止 _die 重复触发
 ## v6.14: 部署阵营泛光——实体化瞬间单位泛出激活势力色（0.5s 渐隐回白）
@@ -439,17 +444,53 @@ func _play_card_hit_recoil() -> void:
 	_card_tween.tween_property(self, "rotation", rest_r, 0.12)
 
 
-## 受击闪白反馈（复用Tween，避免每击new）
-func _play_hit_flash() -> void:
+## v7.4: 受击闪白触发（手写计时，不再 create_tween）。仅设状态变量，动画在 _update_hit_animations 推进。
+func _trigger_hit_flash() -> void:
 	if is_preview_mode:
 		return
-	var flash_color := Color.RED if is_player else Color.WHITE
-	var original_modulate := modulate
-	modulate = flash_color
-	if _hit_flash_tween != null and _hit_flash_tween.is_valid():
-		_hit_flash_tween.kill()
-	_hit_flash_tween = create_tween()
-	_hit_flash_tween.tween_property(self, "modulate", original_modulate, 0.1)
+	# 连续命中时保留旧 base（让动画连续回原色，不被中间色截断）
+	if _hit_flash_t <= 0.0:
+		_hit_flash_base_modulate = modulate
+	_hit_flash_t = _HIT_FLASH_DURATION
+	modulate = Color.RED if is_player else Color.WHITE  # 瞬间染色
+
+
+## v7.4: 受击缩放抖动触发（手写分段计时，不再 create_tween）。
+func _trigger_hit_shake() -> void:
+	if is_preview_mode:
+		return
+	scale = Vector2.ONE  # 关键：每次重置基准（防 scale 累积漂移）
+	_hit_shake_t = 0.0   # 0.0=开始计时
+
+
+## v7.4: 受击动画推进（每 physics 帧调用）。flash 倒计时 lerp 回原色；shake 正计时分段插值。
+func _update_hit_animations(delta: float) -> void:
+	# ── flash：线性衰减回原色 ──
+	if _hit_flash_t > 0.0:
+		_hit_flash_t -= delta
+		if _hit_flash_t <= 0.0:
+			_hit_flash_t = 0.0
+			modulate = _hit_flash_base_modulate
+		else:
+			var k: float = _hit_flash_t / _HIT_FLASH_DURATION  # 1=闪色, 0=原色
+			var flash_color := Color.RED if is_player else Color.WHITE
+			modulate = flash_color.lerp(_hit_flash_base_modulate, 1.0 - k)
+	# ── shake：4 段关键帧 0.85→1.05→0.95→1.0，每段 0.03s ──
+	if _hit_shake_t >= 0.0:
+		_hit_shake_t += delta
+		if _hit_shake_t >= _HIT_SHAKE_DURATION:
+			scale = Vector2.ONE
+			_hit_shake_t = -1.0  # 停用
+		else:
+			var seg: int = int(_hit_shake_t / 0.03)
+			if seg > 3:
+				seg = 3
+			var local_t: float = (_hit_shake_t - seg * 0.03) / 0.03
+			var keys: Array = [0.85, 1.05, 0.95, 1.0]
+			var s_start: float = 1.0 if seg == 0 else keys[seg - 1]
+			var s_end: float = keys[seg]
+			var s: float = lerpf(s_start, s_end, local_t)
+			scale = Vector2(s, s)
 
 
 ## v6.6: 幻影克隆体入场脉冲——青色发光放大后回落，让玩家部署时立刻识别克隆体
@@ -490,21 +531,6 @@ func _play_faction_glow_pulse() -> void:
 		_faction_glow_tween.kill()
 	_faction_glow_tween = create_tween()
 	_faction_glow_tween.tween_property(self, "modulate", Color.WHITE, 0.5).set_ease(Tween.EASE_OUT)
-
-
-## 受击缩放抖动反馈（复用Tween，避免每击new）
-func _play_hit_shake() -> void:
-	if is_preview_mode:
-		return
-	var base_scale := Vector2.ONE
-	scale = base_scale
-	if _hit_shake_tween != null and _hit_shake_tween.is_valid():
-		_hit_shake_tween.kill()
-	_hit_shake_tween = create_tween()
-	_hit_shake_tween.tween_property(self, "scale", base_scale * 0.85, 0.03)
-	_hit_shake_tween.tween_property(self, "scale", base_scale * 1.05, 0.03)
-	_hit_shake_tween.tween_property(self, "scale", base_scale * 0.95, 0.03)
-	_hit_shake_tween.tween_property(self, "scale", base_scale, 0.03)
 
 
 ## 单武器：法则改写 `stats` 后，把唯一槽位 `_weapon_cfgs[0]` 与 `stats.weapons[0]` 与主行对齐
@@ -909,6 +935,8 @@ func _physics_process(delta: float) -> void:
 	ConstructUnitAI.process_attack(self, delta)
 	# v7.1: 堡垒防护光环呼吸动画（仅堡垒类单位，非堡垒时 _is_fort_aura_unit=false 直接返回）
 	_update_fort_shield_aura(delta)
+	# v7.4: 受击闪白/抖动手写动画推进（原 create_tween 改手写计时）
+	_update_hit_animations(delta)
 	move_and_slide()
 	_clamp_inside_battlefield()
 	if not is_player and _cached_is_card_grid:
@@ -1127,9 +1155,13 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		_die()
 		return  # 死亡后跳过受击反馈（节点即将 freed，tween 会报错）
 
-	# 受击闪白/抖动反馈（仅存活单位；死亡时 queue_free 后 tween 会写 freed instance）
-	_play_hit_flash()
-	_play_hit_shake()
+	# 受击闪白/抖动反馈（仅存活单位；死亡时 queue_free 后写 freed instance）
+	_trigger_hit_flash()
+	_trigger_hit_shake()
+	# v8.1: 血条受击闪白（接通 unit_hp_bar.trigger_damage_flash，原为未连线死功能）
+	var _hpbar := get_node_or_null("HpBar")
+	if _hpbar != null and _hpbar.has_method("trigger_damage_flash"):
+		_hpbar.trigger_damage_flash()
 	# v7.1: 堡垒防护光环受击强化（扩张+闪亮）
 	if _is_fort_aura_unit:
 		_fort_aura_hit_boost = 1.0

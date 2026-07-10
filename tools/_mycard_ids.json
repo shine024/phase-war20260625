@@ -1,0 +1,450 @@
+[
+  {
+    "card_id": "ww1_mp18",
+    "name": "MP18突击班"
+  },
+  {
+    "card_id": "ww1_mauser",
+    "name": "毛瑟步枪班"
+  },
+  {
+    "card_id": "ww1_enfield",
+    "name": "李恩菲尔德班"
+  },
+  {
+    "card_id": "ww1_mg08",
+    "name": "MG08机枪巢"
+  },
+  {
+    "card_id": "ww1_vickers",
+    "name": "维克斯机枪巢"
+  },
+  {
+    "card_id": "ww1_arty_m81",
+    "name": "81mm迫击炮组"
+  },
+  {
+    "card_id": "ww1_m76",
+    "name": "76mm迫击炮组"
+  },
+  {
+    "card_id": "ww1_storm",
+    "name": "暴风突击队"
+  },
+  {
+    "card_id": "ww1_arm_rolls",
+    "name": "罗尔斯装甲车"
+  },
+  {
+    "card_id": "ww1_lanchest",
+    "name": "兰彻斯特装甲车"
+  },
+  {
+    "card_id": "ww1_arm_ft17",
+    "name": "FT-17轻型坦克"
+  },
+  {
+    "card_id": "ww1_saint",
+    "name": "圣沙蒙坦克"
+  },
+  {
+    "card_id": "ww1_a7v",
+    "name": "A7V重型坦克"
+  },
+  {
+    "card_id": "ww1_mark4",
+    "name": "马克IV型坦克"
+  },
+  {
+    "card_id": "ww1_arty_77mm",
+    "name": "77mm野战炮"
+  },
+  {
+    "card_id": "ww1_105mm",
+    "name": "105mm榴弹炮"
+  },
+  {
+    "card_id": "ww1_37mm",
+    "name": "37mm高射炮"
+  },
+  {
+    "card_id": "ww1_inf_cavalry",
+    "name": "骑兵斥候"
+  },
+  {
+    "card_id": "ww1_flame",
+    "name": "火焰喷射兵"
+  },
+  {
+    "card_id": "ww1_sup_engineer",
+    "name": "工兵班"
+  },
+  {
+    "card_id": "ww2_thompson",
+    "name": "汤普森班"
+  },
+  {
+    "card_id": "ww2_garand",
+    "name": "加兰德班"
+  },
+  {
+    "card_id": "ww2_mp40",
+    "name": "MP40班"
+  },
+  {
+    "card_id": "ww2_ppsh",
+    "name": "波波沙班"
+  },
+  {
+    "card_id": "ww2_mg42",
+    "name": "MG42机枪组"
+  },
+  {
+    "card_id": "ww2_browning",
+    "name": "勃朗宁机枪组"
+  },
+  {
+    "card_id": "ww2_inf_panzerschrek",
+    "name": "铁拳反坦克组"
+  },
+  {
+    "card_id": "ww2_inf_bazooka",
+    "name": "巴祖卡组"
+  },
+  {
+    "card_id": "ww2_arty_m81",
+    "name": "81mm迫击炮"
+  },
+  {
+    "card_id": "ww2_m120",
+    "name": "120mm重迫击炮"
+  },
+  {
+    "card_id": "ww2_pz3",
+    "name": "三号坦克"
+  },
+  {
+    "card_id": "ww2_pz4",
+    "name": "四号坦克"
+  },
+  {
+    "card_id": "ww2_panther",
+    "name": "黑豹坦克"
+  },
+  {
+    "card_id": "ww2_arm_tiger",
+    "name": "虎式坦克"
+  },
+  {
+    "card_id": "ww2_kingtiger",
+    "name": "虎王坦克"
+  },
+  {
+    "card_id": "ww2_t34_76",
+    "name": "T-34/76坦克"
+  },
+  {
+    "card_id": "ww2_t34_85",
+    "name": "T-34/85坦克"
+  },
+  {
+    "card_id": "ww2_is2",
+    "name": "IS-2重型坦克"
+  },
+  {
+    "card_id": "ww2_arm_sherman",
+    "name": "M4谢尔曼"
+  },
+  {
+    "card_id": "ww2_inf_hellcat",
+    "name": "M18地狱猫"
+  },
+  {
+    "card_id": "cold_rpg",
+    "name": "RPG火箭筒组"
+  },
+  {
+    "card_id": "cold_ak47",
+    "name": "AK-47步兵班"
+  },
+  {
+    "card_id": "cold_m14",
+    "name": "M14步兵班"
+  },
+  {
+    "card_id": "cold_m60",
+    "name": "M60机枪班"
+  },
+  {
+    "card_id": "cold_rpk",
+    "name": "RPK机枪班"
+  },
+  {
+    "card_id": "cold_inf_btr60",
+    "name": "BTR-60装甲车"
+  },
+  {
+    "card_id": "cold_sup_m113",
+    "name": "M113装甲车"
+  },
+  {
+    "card_id": "cold_inf_bmp1",
+    "name": "BMP-1步战车"
+  },
+  {
+    "card_id": "cold_bradley",
+    "name": "M2布雷德利"
+  },
+  {
+    "card_id": "cold_arm_t55",
+    "name": "T-55坦克"
+  },
+  {
+    "card_id": "cold_t62",
+    "name": "T-62坦克"
+  },
+  {
+    "card_id": "cold_t72",
+    "name": "T-72坦克"
+  },
+  {
+    "card_id": "cold_m60t",
+    "name": "M60坦克"
+  },
+  {
+    "card_id": "cold_m1",
+    "name": "M1主战坦克"
+  },
+  {
+    "card_id": "cold_leo1",
+    "name": "豹1坦克"
+  },
+  {
+    "card_id": "cold_chieftain",
+    "name": "酋长坦克"
+  },
+  {
+    "card_id": "cold_sup_zsu23",
+    "name": "ZSU-23-4自行高炮"
+  },
+  {
+    "card_id": "cold_sam7",
+    "name": "萨姆-7防空组"
+  },
+  {
+    "card_id": "cold_mig21",
+    "name": "米格-21战机"
+  },
+  {
+    "card_id": "cold_f4",
+    "name": "F-4鬼怪战机"
+  },
+  {
+    "card_id": "cold_spetsnaz",
+    "name": "阿尔法特种部队"
+  },
+  {
+    "card_id": "mod_marine",
+    "name": "海军陆战队"
+  },
+  {
+    "card_id": "mod_ranger",
+    "name": "游骑兵"
+  },
+  {
+    "card_id": "mod_javelin",
+    "name": "标枪导弹兵"
+  },
+  {
+    "card_id": "mod_stinger",
+    "name": "毒刺导弹兵"
+  },
+  {
+    "card_id": "mod_inf_technical",
+    "name": "武装皮卡"
+  },
+  {
+    "card_id": "mod_stryker_mgs",
+    "name": "斯特赖克MGS"
+  },
+  {
+    "card_id": "mod_stryker_m2",
+    "name": "斯特赖克M2"
+  },
+  {
+    "card_id": "mod_hummer_tow",
+    "name": "悍马·陶式"
+  },
+  {
+    "card_id": "mod_hummer_m2",
+    "name": "悍马·M2"
+  },
+  {
+    "card_id": "mod_arm_m1a1",
+    "name": "M1A1坦克"
+  },
+  {
+    "card_id": "mod_m1a2",
+    "name": "M1A2艾布拉姆斯"
+  },
+  {
+    "card_id": "mod_arm_m1a2sep",
+    "name": "M1A2 SEP"
+  },
+  {
+    "card_id": "mod_t90",
+    "name": "T-90坦克"
+  },
+  {
+    "card_id": "mod_leo2a6",
+    "name": "豹2A6坦克"
+  },
+  {
+    "card_id": "mod_challenger2",
+    "name": "挑战者2坦克"
+  },
+  {
+    "card_id": "mod_ah64",
+    "name": "AH-64阿帕奇"
+  },
+  {
+    "card_id": "mod_ah1",
+    "name": "AH-1眼镜蛇"
+  },
+  {
+    "card_id": "mod_uh60",
+    "name": "UH-60黑鹰"
+  },
+  {
+    "card_id": "mod_arty_m270",
+    "name": "M270火箭炮"
+  },
+  {
+    "card_id": "mod_sup_m6",
+    "name": "自行高炮M6"
+  },
+  {
+    "card_id": "fut_swarm",
+    "name": "蜂群无人机"
+  },
+  {
+    "card_id": "mod_inf_scout_drone",
+    "name": "侦察无人机"
+  },
+  {
+    "card_id": "fut_attack_drone",
+    "name": "攻击无人机"
+  },
+  {
+    "card_id": "fut_cyborg",
+    "name": "机械步兵"
+  },
+  {
+    "card_id": "fut_heavy_trooper",
+    "name": "重装机兵"
+  },
+  {
+    "card_id": "fut_inf_scout_mech",
+    "name": "侦察机甲"
+  },
+  {
+    "card_id": "fut_assault_mech",
+    "name": "突击机甲"
+  },
+  {
+    "card_id": "fut_arm_heavy_mech",
+    "name": "重装机甲"
+  },
+  {
+    "card_id": "fut_arm_hovertank",
+    "name": "悬浮坦克"
+  },
+  {
+    "card_id": "fut_howitzer",
+    "name": "悬浮自行火炮"
+  },
+  {
+    "card_id": "fut_arm_prism",
+    "name": "光棱坦克"
+  },
+  {
+    "card_id": "fut_aa_hover",
+    "name": "防空悬浮车"
+  },
+  {
+    "card_id": "fut_stealth_bomber",
+    "name": "隐形轰炸机"
+  },
+  {
+    "card_id": "fut_space_fighter",
+    "name": "空天战斗机"
+  },
+  {
+    "card_id": "fut_spectre",
+    "name": "幽灵特工"
+  },
+  {
+    "card_id": "fut_nano_drone",
+    "name": "纳米修复机"
+  },
+  {
+    "card_id": "fut_shield",
+    "name": "力场发生器"
+  },
+  {
+    "card_id": "fut_colossus",
+    "name": "巨神机甲"
+  },
+  {
+    "card_id": "fut_stormcore",
+    "name": "风暴核心原型"
+  },
+  {
+    "card_id": "fut_arm_nexus",
+    "name": "虚空领主"
+  },
+  {
+    "card_id": "fut_arm_omega",
+    "name": "全装型机动舱"
+  },
+  {
+    "card_id": "ww1_fort_pillbox",
+    "name": "混凝土机枪碉堡"
+  },
+  {
+    "card_id": "ww1_fort_artillery",
+    "name": "要塞炮台"
+  },
+  {
+    "card_id": "ww2_fort_bunker",
+    "name": "混凝土碉堡"
+  },
+  {
+    "card_id": "ww2_fort_flak",
+    "name": "88mm防空塔"
+  },
+  {
+    "card_id": "cold_fort_missile",
+    "name": "导弹发射井"
+  },
+  {
+    "card_id": "cold_fort_radar",
+    "name": "雷达站"
+  },
+  {
+    "card_id": "mod_fort_citadel",
+    "name": "要塞核心"
+  },
+  {
+    "card_id": "mod_fort_phalanx",
+    "name": "近防炮系统"
+  },
+  {
+    "card_id": "fut_fort_ion",
+    "name": "离子炮台"
+  },
+  {
+    "card_id": "fut_fort_shield",
+    "name": "能量护盾发生器"
+  }
+]

@@ -830,11 +830,33 @@ func _cleanup_enemy_indirect_batch() -> void:
 func _on_unit_damaged_combat_feedback(unit: Node, _is_player: bool, amount: float, at_position: Vector2) -> void:
 	# v6.6: 暴击时弹道会打 _vfx_crit_pending 标记。这里据此用金色 critical 样式显示
 	# （数字仍取信号携带的 amount = 实际扣血），避免暴击数字绕过 take_damage 导致与血条矛盾。
+	# v8.1: 穿透时弹道打 _vfx_pierce_pending 标记，据此用紫色 pierce 样式显示。
+	# v8.1: 暴击屏幕震动也在此统一触发（原 new_systems_integration._on_unit_damaged 的暴击震动
+	#        因 meta 竞态失效——battle_manager 先清 meta 导致 new_systems 读不到，是死逻辑，已迁移至此）。
 	var is_crit: bool = false
-	if unit != null and is_instance_valid(unit) and unit.has_meta("_vfx_crit_pending"):
-		unit.remove_meta("_vfx_crit_pending")
-		is_crit = true
-	CombatFeedback.show_damage(at_position, amount, unit, is_crit)
+	var is_pierce: bool = false
+	if unit != null and is_instance_valid(unit):
+		if unit.has_meta("_vfx_crit_pending"):
+			unit.remove_meta("_vfx_crit_pending")
+			is_crit = true
+		if unit.has_meta("_vfx_pierce_pending"):
+			unit.remove_meta("_vfx_pierce_pending")
+			is_pierce = true
+	# 暴击优先于穿透样式（暴击视觉冲击更强）
+	if is_crit:
+		CombatFeedback.show_damage(at_position, amount, unit, true, "critical")
+		# v8.1: 暴击屏幕震动（从 new_systems_integration 迁移）
+		var bfm = get_node_or_null("/root/BattleFeedbackManager")
+		if bfm and is_instance_valid(bfm):
+			var bf = unit.get_parent()
+			if bf:
+				var camera = bf.get_node_or_null("Camera2D")
+				if camera:
+					bfm.shake_screen(camera, 5.0, 0.3)
+	elif is_pierce:
+		CombatFeedback.show_damage(at_position, amount, unit, false, "pierce")
+	else:
+		CombatFeedback.show_damage(at_position, amount, unit, false)
 
 
 # =========================================================================

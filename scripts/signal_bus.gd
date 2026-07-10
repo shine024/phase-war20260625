@@ -116,6 +116,9 @@ signal toggle_backpack()
 signal toggle_phase_instrument()
 signal toggle_factions()
 signal toggle_phase_laws()
+# v7.x 教程引导：强化/改造面板切换（main.gd _on_*_from_tutorial 监听）
+signal toggle_enhancement()
+signal toggle_modification()
 
 # 教程
 signal tutorial_completed(tutorial_id: String)
@@ -216,3 +219,8 @@ signal phase_master_appeared(master_config: Dictionary)
 signal runeword_triggered(rw_id: String, unit: Node)
 # 通用高光事件（连杀/特殊触发等），payload 含 event_id + 自定义字段。
 signal combat_highlight(event_id: String, payload: Dictionary)
+# v8.1 相位仪主动能力触发：供 BattleSpectacle 编排全屏演出。
+# ability_id: 能力标识（nuclear_bombardment/nano_swarm/mega_shield 等）
+# stage: "warning"(预警) / "impact"(命中) / "start"(开局开始) / "end"(结束)
+# params: 自定义参数（位置/伤害值/持续时间等）
+signal phase_instrument_ability_triggered(ability_id: String, stage: String, params: Dictionary)

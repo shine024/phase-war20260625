@@ -17,6 +17,8 @@ const _PLAYER_TINT := Color(0.95, 0.92, 0.5)
 
 var _proj: Array = []
 var _layers: Dictionary = {}  # weapon_type -> MultiMeshInstance2D
+# v7.4 性能优化：buckets 提升为成员变量 + clear() 复用，消除每帧 Dictionary + Array 分配
+var _buckets: Dictionary = {}  # weapon_type -> Array（成员级复用，clear 保留 buffer 容量）
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_PAUSABLE
@@ -24,6 +26,7 @@ func _ready() -> void:
 	for wt: int in _BATCH_WEAPON_TYPES:
 		_layers[wt] = _make_layer(wt)
 		add_child(_layers[wt])
+		_buckets[wt] = []
 
 func _make_layer(wt: int) -> MultiMeshInstance2D:
 	var mmi := MultiMeshInstance2D.new()
@@ -116,23 +119,21 @@ func _sync_multimesh_layers() -> void:
 			_layers[wt].multimesh.instance_count = 0
 		return
 	# v7.3 性能优化：单遍遍历 _proj 同时完成分桶（按 wt 收集到每层临时数组）。
-	# 原实现两遍遍历 _proj：第一遍 count，第二遍再遍历全量写 transform（含 int(r["wt"]) + _layers.has 重复判断）。
-	# 改为单遍分桶后，第二遍只遍历每层实际弹道，减少遍历总量与重复判断。
-	var buckets: Dictionary = {}
+	# v7.4 性能优化：buckets 改为成员变量 + clear() 复用，消除每帧 Dictionary + Array 分配。
 	for wt: int in _BATCH_WEAPON_TYPES:
-		buckets[wt] = []
+		(_buckets[wt] as Array).clear()
 	for r: Dictionary in _proj:
 		var wt_r: int = int(r["wt"])
-		if buckets.has(wt_r):
-			(buckets[wt_r] as Array).append(r)
+		if _buckets.has(wt_r):
+			(_buckets[wt_r] as Array).append(r)
 	# 设每层 instance_count
 	for wt: int in _BATCH_WEAPON_TYPES:
 		var mmi: MultiMeshInstance2D = _layers[wt]
 		var mm: MultiMesh = mmi.multimesh
-		mm.instance_count = (buckets[wt] as Array).size()
+		mm.instance_count = (_buckets[wt] as Array).size()
 	# 遍历分桶数组写 transform（只遍历实际弹道）
 	for wt: int in _BATCH_WEAPON_TYPES:
-		var arr: Array = buckets[wt]
+		var arr: Array = _buckets[wt]
 		if arr.is_empty():
 			continue
 		var mm2: MultiMesh = (_layers[wt] as MultiMeshInstance2D).multimesh

@@ -1,0 +1,547 @@
+{
+  "ww1_arm_rolls": {
+    "icon_num": 1,
+    "filename": "vis_enemy_001.png",
+    "display_name": "罗尔斯装甲车"
+  },
+  "ww1_arm_ft17": {
+    "icon_num": 2,
+    "filename": "vis_enemy_002.png",
+    "display_name": "FT-17轻型坦克"
+  },
+  "ww1_arty_77mm": {
+    "icon_num": 3,
+    "filename": "vis_enemy_003.png",
+    "display_name": "77mm野战炮"
+  },
+  "ww1_inf_cavalry": {
+    "icon_num": 4,
+    "filename": "vis_enemy_004.png",
+    "display_name": "骑兵斥候"
+  },
+  "ww1_sup_engineer": {
+    "icon_num": 5,
+    "filename": "vis_enemy_005.png",
+    "display_name": "工兵班"
+  },
+  "ww2_inf_hellcat": {
+    "icon_num": 6,
+    "filename": "vis_enemy_006.png",
+    "display_name": "M18地狱猫"
+  },
+  "ww2_arm_sherman": {
+    "icon_num": 7,
+    "filename": "vis_enemy_007.png",
+    "display_name": "M4谢尔曼"
+  },
+  "ww2_arm_tiger": {
+    "icon_num": 8,
+    "filename": "vis_enemy_008.png",
+    "display_name": "虎式坦克"
+  },
+  "ww2_inf_bazooka": {
+    "icon_num": 9,
+    "filename": "vis_enemy_009.png",
+    "display_name": "巴祖卡组"
+  },
+  "ww2_inf_panzerschrek": {
+    "icon_num": 10,
+    "filename": "vis_enemy_010.png",
+    "display_name": "铁拳反坦克组"
+  },
+  "ww2_arty_m81": {
+    "icon_num": 11,
+    "filename": "vis_enemy_011.png",
+    "display_name": "81mm迫击炮"
+  },
+  "ww1_arty_m81": {
+    "icon_num": 12,
+    "filename": "vis_enemy_012.png",
+    "display_name": "81mm迫击炮组"
+  },
+  "cold_inf_btr60": {
+    "icon_num": 13,
+    "filename": "vis_enemy_013.png",
+    "display_name": "BTR-60装甲车"
+  },
+  "cold_arm_t55": {
+    "icon_num": 14,
+    "filename": "vis_enemy_014.png",
+    "display_name": "T-55坦克"
+  },
+  "cold_inf_bmp1": {
+    "icon_num": 15,
+    "filename": "vis_enemy_015.png",
+    "display_name": "BMP-1步战车"
+  },
+  "cold_sup_m113": {
+    "icon_num": 16,
+    "filename": "vis_enemy_016.png",
+    "display_name": "M113装甲车"
+  },
+  "cold_sup_zsu23": {
+    "icon_num": 17,
+    "filename": "vis_enemy_017.png",
+    "display_name": "ZSU-23-4自行高炮"
+  },
+  "mod_inf_technical": {
+    "icon_num": 18,
+    "filename": "vis_enemy_018.png",
+    "display_name": "皮卡武装"
+  },
+  "mod_arm_m1a1": {
+    "icon_num": 19,
+    "filename": "vis_enemy_019.png",
+    "display_name": "M1A1主战坦克"
+  },
+  "mod_sup_m6": {
+    "icon_num": 20,
+    "filename": "vis_enemy_020.png",
+    "display_name": "自行高炮M6"
+  },
+  "mod_arty_m270": {
+    "icon_num": 21,
+    "filename": "vis_enemy_021.png",
+    "display_name": "M270火箭炮"
+  },
+  "mod_inf_scout_drone": {
+    "icon_num": 22,
+    "filename": "vis_enemy_022.png",
+    "display_name": "侦察无人机"
+  },
+  "mod_arm_m1a2sep": {
+    "icon_num": 23,
+    "filename": "vis_enemy_023.png",
+    "display_name": "M1A2 SEP主战坦克"
+  },
+  "fut_inf_scout_mech": {
+    "icon_num": 24,
+    "filename": "vis_enemy_024.png",
+    "display_name": "侦察机甲"
+  },
+  "fut_arm_hovertank": {
+    "icon_num": 25,
+    "filename": "vis_enemy_025.png",
+    "display_name": "悬浮坦克"
+  },
+  "fut_arm_prism": {
+    "icon_num": 26,
+    "filename": "vis_enemy_026.png",
+    "display_name": "光棱坦克"
+  },
+  "fut_arm_heavy_mech": {
+    "icon_num": 27,
+    "filename": "vis_enemy_027.png",
+    "display_name": "重装机甲"
+  },
+  "fut_arm_nexus": {
+    "icon_num": 28,
+    "filename": "vis_enemy_028.png",
+    "display_name": "虚空领主"
+  },
+  "fut_sup_bulwark": {
+    "icon_num": 30,
+    "filename": "vis_enemy_030.png",
+    "display_name": "壁垒"
+  },
+  "fut_arm_titan_mk2": {
+    "icon_num": 31,
+    "filename": "vis_enemy_031.png",
+    "display_name": "泰坦Mk.II"
+  },
+  "fut_inf_storm_rider": {
+    "icon_num": 32,
+    "filename": "vis_enemy_032.png",
+    "display_name": "暴风骑士"
+  },
+  "fut_air_heavy_carrier": {
+    "icon_num": 33,
+    "filename": "vis_enemy_033.png",
+    "display_name": "重装母舰"
+  },
+  "fut_air_regen_frame": {
+    "icon_num": 34,
+    "filename": "vis_enemy_034.png",
+    "display_name": "再生骨架"
+  },
+  "mod_arm_abrams_mk2": {
+    "icon_num": 35,
+    "filename": "vis_enemy_035.png",
+    "display_name": "艾布拉姆斯Mk.II"
+  },
+  "ww1_inf_mp18": {
+    "icon_num": 36,
+    "filename": "vis_enemy_036.png",
+    "display_name": "步兵班·MP18"
+  },
+  "ww1_inf_rifle": {
+    "icon_num": 37,
+    "filename": "vis_enemy_037.png",
+    "display_name": "步兵班·步枪"
+  },
+  "ww1_sup_mg_nest": {
+    "icon_num": 38,
+    "filename": "vis_enemy_038.png",
+    "display_name": "机枪巢"
+  },
+  "ww1_arty_mortar": {
+    "icon_num": 39,
+    "filename": "vis_enemy_039.png",
+    "display_name": "迫击炮组"
+  },
+  "ww1_inf_storm_e": {
+    "icon_num": 40,
+    "filename": "vis_enemy_040.png",
+    "display_name": "暴风突击队"
+  },
+  "ww1_arm_rolls_e": {
+    "icon_num": 41,
+    "filename": "vis_enemy_041.png",
+    "display_name": "装甲车"
+  },
+  "ww1_boss_av7": {
+    "icon_num": 42,
+    "filename": "vis_enemy_042.png",
+    "display_name": "圣沙蒙坦克"
+  },
+  "ww2_inf_thompson": {
+    "icon_num": 43,
+    "filename": "vis_enemy_043.png",
+    "display_name": "步兵班·汤普森"
+  },
+  "ww2_inf_garand": {
+    "icon_num": 44,
+    "filename": "vis_enemy_044.png",
+    "display_name": "步枪班·加兰德"
+  },
+  "ww2_sup_mg42": {
+    "icon_num": 45,
+    "filename": "vis_enemy_045.png",
+    "display_name": "MG42机枪组"
+  },
+  "ww2_inf_panzerschreck_e": {
+    "icon_num": 46,
+    "filename": "vis_enemy_046.png",
+    "display_name": "反坦克组"
+  },
+  "ww2_inf_para_e": {
+    "icon_num": 47,
+    "filename": "vis_enemy_047.png",
+    "display_name": "伞兵精英"
+  },
+  "ww2_arm_panther_e": {
+    "icon_num": 48,
+    "filename": "vis_enemy_048.png",
+    "display_name": "黑豹坦克"
+  },
+  "ww2_boss_kingtiger": {
+    "icon_num": 49,
+    "filename": "vis_enemy_049.png",
+    "display_name": "虎王坦克"
+  },
+  "cold_inf_ak": {
+    "icon_num": 50,
+    "filename": "vis_enemy_050.png",
+    "display_name": "苏军步兵"
+  },
+  "cold_inf_m60": {
+    "icon_num": 51,
+    "filename": "vis_enemy_051.png",
+    "display_name": "美军步兵"
+  },
+  "cold_arm_btr_e": {
+    "icon_num": 52,
+    "filename": "vis_enemy_052.png",
+    "display_name": "BTR装甲车"
+  },
+  "cold_air_m113_e": {
+    "icon_num": 53,
+    "filename": "vis_enemy_053.png",
+    "display_name": "M113装甲车"
+  },
+  "cold_inf_spetsnaz_e": {
+    "icon_num": 54,
+    "filename": "vis_enemy_054.png",
+    "display_name": "特种部队"
+  },
+  "cold_arm_t72_e": {
+    "icon_num": 55,
+    "filename": "vis_enemy_055.png",
+    "display_name": "T-72坦克"
+  },
+  "cold_boss_mig": {
+    "icon_num": 56,
+    "filename": "vis_enemy_056.png",
+    "display_name": "米格-29"
+  },
+  "mod_inf_marine": {
+    "icon_num": 57,
+    "filename": "vis_enemy_057.png",
+    "display_name": "海军陆战队"
+  },
+  "mod_air_technical_e": {
+    "icon_num": 58,
+    "filename": "vis_enemy_058.png",
+    "display_name": "皮卡武装"
+  },
+  "mod_arm_stryker_e": {
+    "icon_num": 59,
+    "filename": "vis_enemy_059.png",
+    "display_name": "斯特赖克装甲车"
+  },
+  "mod_arty_mlrs_e": {
+    "icon_num": 60,
+    "filename": "vis_enemy_060.png",
+    "display_name": "火箭炮车"
+  },
+  "mod_inf_delta_e": {
+    "icon_num": 61,
+    "filename": "vis_enemy_061.png",
+    "display_name": "三角洲部队"
+  },
+  "mod_arm_abrams_e": {
+    "icon_num": 62,
+    "filename": "vis_enemy_062.png",
+    "display_name": "M1A2坦克"
+  },
+  "mod_air_apache_e": {
+    "icon_num": 63,
+    "filename": "vis_enemy_063.png",
+    "display_name": "阿帕奇直升机"
+  },
+  "mod_boss_command": {
+    "icon_num": 64,
+    "filename": "vis_enemy_064.png",
+    "display_name": "指挥中枢"
+  },
+  "fut_air_drone": {
+    "icon_num": 65,
+    "filename": "vis_enemy_065.png",
+    "display_name": "无人机群"
+  },
+  "fut_inf_cyborg": {
+    "icon_num": 66,
+    "filename": "vis_enemy_066.png",
+    "display_name": "机械步兵"
+  },
+  "fut_arm_mech_e": {
+    "icon_num": 67,
+    "filename": "vis_enemy_067.png",
+    "display_name": "机甲步兵"
+  },
+  "fut_arm_hovertank_e": {
+    "icon_num": 68,
+    "filename": "vis_enemy_068.png",
+    "display_name": "悬浮坦克"
+  },
+  "fut_inf_spectre_e": {
+    "icon_num": 69,
+    "filename": "vis_enemy_069.png",
+    "display_name": "幽灵特工"
+  },
+  "fut_arm_colossus_e": {
+    "icon_num": 70,
+    "filename": "vis_enemy_070.png",
+    "display_name": "巨神机甲"
+  },
+  "fut_boss_nexus": {
+    "icon_num": 71,
+    "filename": "vis_enemy_071.png",
+    "display_name": "风暴核心"
+  },
+  "ww1_inf_enfield": {
+    "icon_num": null,
+    "filename": "ww1_inf_enfield.png",
+    "display_name": "李-恩菲尔德志愿兵排"
+  },
+  "ww1_arm_rolls_mk2": {
+    "icon_num": null,
+    "filename": "ww1_arm_rolls_mk2.png",
+    "display_name": "劳斯莱斯 Mk.II 装甲车"
+  },
+  "ww1_sup_vickers": {
+    "icon_num": null,
+    "filename": "ww1_sup_vickers.png",
+    "display_name": "维克斯 .303 机枪阵地"
+  },
+  "ww1_sup_ford_ambulance": {
+    "icon_num": null,
+    "filename": "ww1_sup_ford_ambulance.png",
+    "display_name": "福特 T 型战地救护车"
+  },
+  "ww1_inf_mp18_x": {
+    "icon_num": null,
+    "filename": "ww1_inf_mp18_x.png",
+    "display_name": "MP18 突击队"
+  },
+  "ww2_arm_garand_para": {
+    "icon_num": null,
+    "filename": "ww2_arm_garand_para.png",
+    "display_name": "M1 加兰德伞兵班"
+  },
+  "ww2_arty_hummel": {
+    "icon_num": null,
+    "filename": "ww2_arty_hummel.png",
+    "display_name": "黄蜂 Hummel 自行火炮"
+  },
+  "ww2_arty_pak40": {
+    "icon_num": null,
+    "filename": "ww2_arty_pak40.png",
+    "display_name": "PaK 40 反坦克炮组"
+  },
+  "ww2_sup_gmc_truck": {
+    "icon_num": null,
+    "filename": "ww2_sup_gmc_truck.png",
+    "display_name": "GMC 2.5t 补给卡车"
+  },
+  "ww2_inf_kar98k": {
+    "icon_num": null,
+    "filename": "ww2_inf_kar98k.png",
+    "display_name": "毛瑟 Kar98k 狙击组"
+  },
+  "cold_arty_bmd1": {
+    "icon_num": null,
+    "filename": "cold_arty_bmd1.png",
+    "display_name": "BMD-1 空降战车"
+  },
+  "cold_sup_bmp1_x": {
+    "icon_num": null,
+    "filename": "cold_sup_bmp1_x.png",
+    "display_name": "BMP-1 步兵战车"
+  },
+  "cold_inf_metis": {
+    "icon_num": null,
+    "filename": "cold_inf_metis.png",
+    "display_name": "9K111 法特导弹组"
+  },
+  "cold_arm_p18": {
+    "icon_num": null,
+    "filename": "cold_arm_p18.png",
+    "display_name": "P-18 雷达警戒车"
+  },
+  "cold_arty_brem1": {
+    "icon_num": null,
+    "filename": "cold_arty_brem1.png",
+    "display_name": "BREM-1 装甲抢修车"
+  },
+  "mod_sup_m4_carbine": {
+    "icon_num": null,
+    "filename": "mod_sup_m4_carbine.png",
+    "display_name": "M4 卡宾特遣班"
+  },
+  "mod_inf_patriot": {
+    "icon_num": null,
+    "filename": "mod_inf_patriot.png",
+    "display_name": "爱国者 PAC-3 发射车"
+  },
+  "mod_arm_himars": {
+    "icon_num": null,
+    "filename": "mod_arm_himars.png",
+    "display_name": "HIMARS 火箭炮组"
+  },
+  "mod_arty_rq7": {
+    "icon_num": null,
+    "filename": "mod_arty_rq7.png",
+    "display_name": "RQ-7 影子无人机班"
+  },
+  "mod_sup_growler": {
+    "icon_num": null,
+    "filename": "mod_sup_growler.png",
+    "display_name": "EA-18G 电子战小组"
+  },
+  "fut_inf_neural": {
+    "icon_num": null,
+    "filename": "fut_inf_neural.png",
+    "display_name": "神经接口突击兵"
+  },
+  "fut_arm_hk07": {
+    "icon_num": null,
+    "filename": "fut_arm_hk07.png",
+    "display_name": "HK-07 量产机兵"
+  },
+  "fut_arty_hel30": {
+    "icon_num": null,
+    "filename": "fut_arty_hel30.png",
+    "display_name": "HEL-30 激光炮阵列"
+  },
+  "fut_sup_nrepair": {
+    "icon_num": null,
+    "filename": "fut_sup_nrepair.png",
+    "display_name": "N-Repair 纳米工程车"
+  },
+  "fut_inf_x9": {
+    "icon_num": null,
+    "filename": "fut_inf_x9.png",
+    "display_name": "X-9 猎杀者渗透组"
+  },
+  "fut_inf_c96": {
+    "icon_num": null,
+    "filename": "fut_inf_c96.png",
+    "display_name": "毛瑟 C96 征召兵排"
+  },
+  "fut_arm_sdkfz": {
+    "icon_num": null,
+    "filename": "fut_arm_sdkfz.png",
+    "display_name": "Sd.Kfz.251/1 半履带车"
+  },
+  "fut_arty_ssc1": {
+    "icon_num": null,
+    "filename": "fut_arty_ssc1.png",
+    "display_name": "SS-C-1 岸防导弹组"
+  },
+  "fut_sup_ps9": {
+    "icon_num": null,
+    "filename": "fut_sup_ps9.png",
+    "display_name": "PS-9 相位中继站"
+  },
+  "ww1_fort_pillbox": {
+    "icon_num": 72,
+    "filename": "vis_enemy_072.png",
+    "display_name": "混凝土机枪碉堡"
+  },
+  "ww1_fort_artillery": {
+    "icon_num": 73,
+    "filename": "vis_enemy_073.png",
+    "display_name": "要塞炮台"
+  },
+  "ww2_fort_bunker": {
+    "icon_num": 74,
+    "filename": "vis_enemy_074.png",
+    "display_name": "混凝土碉堡"
+  },
+  "ww2_fort_flak": {
+    "icon_num": 75,
+    "filename": "vis_enemy_075.png",
+    "display_name": "88mm防空塔"
+  },
+  "cold_fort_missile": {
+    "icon_num": 76,
+    "filename": "vis_enemy_076.png",
+    "display_name": "导弹发射井"
+  },
+  "cold_fort_radar": {
+    "icon_num": 77,
+    "filename": "vis_enemy_077.png",
+    "display_name": "雷达站"
+  },
+  "mod_fort_citadel": {
+    "icon_num": 78,
+    "filename": "vis_enemy_078.png",
+    "display_name": "要塞核心"
+  },
+  "mod_fort_phalanx": {
+    "icon_num": 79,
+    "filename": "vis_enemy_079.png",
+    "display_name": "近防炮系统"
+  },
+  "fut_fort_ion": {
+    "icon_num": 80,
+    "filename": "vis_enemy_080.png",
+    "display_name": "离子炮台"
+  },
+  "fut_fort_shield": {
+    "icon_num": 81,
+    "filename": "vis_enemy_081.png",
+    "display_name": "能量护盾发生器"
+  }
+}

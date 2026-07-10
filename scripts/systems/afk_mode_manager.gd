@@ -114,23 +114,19 @@ func start_afk() -> bool:
 	# 循环模式必须有已关联 slot；推图模式以 GameManager.current_level 为起始关，
 	# 不依赖 slot 关联。
 	if mode == Mode.CYCLE and valid.is_empty():
+		prints("[AFK-DIAG] start_afk FAIL: 循环模式无关联 slot (slots=%s)" % str(slots))
 		return false
 
-	# 推图模式：起始关 = 玩家最后选定关（GameManager.current_level）。
-	# 这样玩家在地图上选到哪一关，推图就从哪一关开始逐关推进，
-	# 而不是从默认值 1 或 slot 关联的低关卡开始。
-	# 读不到 GameManager/current_level 时回退 max_unlocked，再不行回退 1。
+	# 推图模式：起始关 = push_level（持久化进度），覆盖三种续推场景：
+	#   - 首次挂机：push_level=默认1 或读档恢复值
+	#   - 失败续推：_afk_failed 已设 push_level=失败关-1（最高通关关），从该关重推
+	#   - 停止续推：stop_afk 已设 push_level=当前推进关
+	# world_map"自动部署"入口在调用 start_afk 前显式赋值 push_level=玩家选定关。
+	# current_level 由后续 enter_next_battle→set_current_level(_pending_level) 同步。
 	if mode == Mode.PUSH:
-		var gm = get_node_or_null("/root/GameManager")
-		var start_lvl: int = 0
-		if gm != null and "current_level" in gm:
-			start_lvl = int(gm.current_level)
+		var start_lvl: int = push_level
 		if start_lvl < 1:
-			# current_level 无效，回退已解锁最前沿
-			if lp != null and lp.has_method("get_max_unlocked_level"):
-				start_lvl = lp.get_max_unlocked_level()
-			else:
-				start_lvl = 1
+			start_lvl = 1
 		# 钳制到已解锁上限：推图不应从玩家尚未解锁的关开始
 		if lp != null and lp.has_method("get_max_unlocked_level"):
 			var max_unlocked = lp.get_max_unlocked_level()
@@ -144,6 +140,10 @@ func start_afk() -> bool:
 		# 注意：仅在启动时校验，运行中新解锁的关不会自动加入（停止重启后生效）。
 		var unlocked_slots := _get_unlocked_valid_slots(lp)
 		if unlocked_slots.is_empty():
+			var _mu := -1
+			if lp != null and lp.has_method("get_max_unlocked_level"):
+				_mu = lp.get_max_unlocked_level()
+			prints("[AFK-DIAG] start_afk FAIL: 循环模式关联关全未解锁 (slots=%s max_unlocked=%d)" % [str(slots), _mu])
 			return false
 
 	state = State.RUNNING
@@ -153,6 +153,9 @@ func start_afk() -> bool:
 	accumulated_rewards.clear()
 	_auto_deploy_pending.clear()
 	_deploy_fail_streak = 0
+	# 重置战斗等待标志：上一轮挂机若 battle_ended 未正常到达（战斗异常/手动中断），
+	# _waiting_for_battle_end 残留 true 会让本次 enter_next_battle 被守卫 skip → 挂机不启动。
+	_waiting_for_battle_end = false
 	# v6.6: 重置推图重试计数（新会话从头开始计重试）
 	push_retry_count = 0
 
@@ -166,6 +169,7 @@ func start_afk() -> bool:
 
 	afk_started.emit()
 	state_changed.emit(state)
+	prints("[AFK-DIAG] start_afk OK: mode=%d _pending_level=%d" % [int(mode), _pending_level])
 	return true
 
 
@@ -291,12 +295,14 @@ func reset_progress() -> void:
 ## 进入下一场战斗（由外部调用或信号回调触发）
 func enter_next_battle() -> void:
 	if not is_running or _pending_level < 1:
+		prints("[AFK-DIAG] enter_next_battle SKIP: is_running=%s _pending_level=%d" % [str(is_running), _pending_level])
 		return
-	
+
 	# 防止重复启动
 	if _waiting_for_battle_end:
+		prints("[AFK-DIAG] enter_next_battle SKIP: _waiting_for_battle_end=true (上一场 battle_ended 未到)")
 		return
-	
+
 	_waiting_for_battle_end = true
 	
 	# 设置关卡号到 GameManager
@@ -306,7 +312,10 @@ func enter_next_battle() -> void:
 	
 	# 通过 MainBattleSetup 启动战斗（复用现有管线）
 	if _battle_setup and _battle_setup.has_method("run_start_battle_sequence"):
+		prints("[AFK-DIAG] enter_next_battle RUN: level=%d → run_start_battle_sequence()" % _pending_level)
 		_battle_setup.run_start_battle_sequence()
+	else:
+		prints("[AFK-DIAG] enter_next_battle FAIL: _battle_setup=%s has_method=%s" % [str(_battle_setup != null), str(_battle_setup != null and _battle_setup.has_method("run_start_battle_sequence"))])
 
 
 # ── 内部逻辑 ──
@@ -443,7 +452,9 @@ func _on_battle_started_from_bus() -> void:
 	_deploy_fail_streak = 0
 	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
 	if pim and pim.has_method("get_loadouts"):
-		for loadout in pim.get_loadouts():
+		var _ld: Array = pim.get_loadouts()
+		prints("[AFK-DIAG] battle_started: get_loadouts()=%d 张可部署战斗卡 (green槽 COMBAT_UNIT)" % _ld.size())
+		for loadout in _ld:
 			var platform = loadout.get("platform")
 			# platform 是 CardResource（Resource），其 card_id 为 String 属性，
 			# 不可用 Dictionary 的 .get(key, default)；直接属性访问。

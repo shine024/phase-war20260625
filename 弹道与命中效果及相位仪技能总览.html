@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>相位战争 - 弹道/命中效果 &amp; 相位仪技能总览</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #0a0e17; color: #e0e6f0; padding: 20px; }
+h1 { text-align: center; font-size: 28px; color: #00e5ff; margin-bottom: 8px; letter-spacing: 4px; }
+.subtitle { text-align: center; color: #607d8b; font-size: 13px; margin-bottom: 30px; }
+.section-title { font-size: 22px; color: #00e5ff; border-left: 4px solid #00e5ff; padding-left: 14px; margin: 40px 0 20px; font-weight: bold; }
+.subsection-title { font-size: 17px; color: #7c4dff; margin: 25px 0 12px; padding-left: 10px; border-left: 3px solid #7c4dff; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px; }
+.card { background: #131a2b; border: 1px solid #1e2d4a; border-radius: 8px; overflow: hidden; transition: border-color 0.2s; }
+.card:hover { border-color: #00e5ff; }
+.card img { width: 100%; height: 140px; object-fit: contain; background: #0d1220; display: block; padding: 8px; }
+.card .info { padding: 10px 12px; }
+.card .num { font-size: 11px; color: #455a64; font-weight: bold; }
+.card .name { font-size: 14px; color: #b0bec5; margin-top: 4px; }
+.card .tag { display: inline-block; font-size: 10px; padding: 2px 6px; border-radius: 3px; margin-top: 6px; }
+.tag-strike { background: #1a3a5c; color: #4fc3f7; }
+.tag-impact { background: #3a1a1a; color: #ef5350; }
+.tag-artillery { background: #2a3a1a; color: #aed581; }
+.tag-law { background: #2a1a3a; color: #ce93d8; }
+.tag-ability { background: #1a2a3a; color: #4dd0e1; }
+.tag-steels { color: #bdbdbd; background: #333; }
+.tag-flame { color: #ffab40; background: #3a2a1a; }
+.tag-thunder { color: #82b1ff; background: #1a2a3a; }
+.tag-void { color: #ea80fc; background: #2a1a3a; }
+.legend { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0 20px; font-size: 12px; }
+.legend-item { display: flex; align-items: center; gap: 4px; }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+</style>
+</head>
+<body>
+
+<h1>相位战争</h1>
+<p class="subtitle">弹道与命中效果 &amp; 相位仪技能视觉资源一览</p>
+
+<div class="legend">
+  <div class="legend-item"><span class="legend-dot" style="background:#4fc3f7"></span>直射弹道</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#ef5350"></span>命中特效</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#aed581"></span>曲射弹道/命中</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#ce93d8"></span>法则特效</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#4dd0e1"></span>相位仪技能</div>
+</div>
+
+<!-- ==================== SECTION 1: 弹道效果 ==================== -->
+<div class="section-title">一、直射弹道效果（武器弹体）</div>
+
+<div class="subsection-title">1.1 通用弹道贴图（docs预览目录）</div>
+<div class="grid">
+
+<div class="card">
+  <img src="docs/美术资源预览/弹道与命中效果/弹道_冲锋枪.png" alt="弹道_冲锋枪">
+  <div class="info">
+    <div class="num">#1</div>
+    <div class="name">冲锋枪弹道</div>
+    <span class="tag tag-strike">直射 · 轻武器</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="docs/美术资源预览/弹道与命中效果/弹道_步枪.png" alt="弹道_步枪">
+  <div class="info">
+    <div class="num">#2</div>
+    <div class="name">步枪弹道</div>
+    <span class="tag tag-strike">直射 · 轻武器</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="docs/美术资源预览/弹道与命中效果/弹道_机枪.png" alt="弹道_机枪">
+  <div class="info">
+    <div class="num">#3</div>
+    <div class="name">机枪弹道</div>
+    <span class="tag tag-strike">直射 · 轻武器</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="docs/美术资源预览/弹道与命中效果/弹道_手枪.png" alt="弹道_手枪">
+  <div class="info">
+    <div class="num">#4</div>
+    <div class="name">手枪弹道</div>
+    <span class="tag tag-strike">直射 · 轻武器</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="docs/美术资源预览/弹道与命中效果/弹道_霰弹.png" alt="弹道_霰弹">
+  <div class="info">
+    <div class="num">#5</div>
+    <div class="name">霰弹弹道</div>
+    <span class="tag tag-strike">直射 · 面杀伤</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="docs/美术资源预览/弹道与命中效果/弹道_狙击.png" alt="弹道_狙击">
+  <div class="info">
+    <div class="num">#6</div>
+    <div class="name">狙击弹道</div>
+    <span class="tag tag-strike">直射 · 高精度</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="docs/美术资源预览/弹道与命中效果/弹道_激光.png" alt="弹道_激光">
+  <div class="info">
+    <div class="num">#7</div>
+    <div class="name">激光弹道</div>
+    <span class="tag tag-strike">直射 · 能量武器</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="docs/美术资源预览/弹道与命中效果/弹道_火箭.png" alt="弹道_火箭">
+  <div class="info">
+    <div class="num">#8</div>
+    <div class="name">火箭弹弹道</div>
+    <span class="tag tag-strike">直射 · 爆炸物</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="docs/美术资源预览/弹道与命中效果/弹道_导弹.png" alt="弹道_导弹">
+  <div class="info">
+    <div class="num">#9</div>
+    <div class="name">导弹弹道</div>
+    <span class="tag tag-strike">直射 · 制导</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="docs/美术资源预览/弹道与命中效果/弹道_高射炮.png" alt="弹道_高射炮">
+  <div class="info">
+    <div class="num">#10</div>
+    <div class="name">高射炮弹道</div>
+    <span class="tag tag-strike">直射 · 重炮</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="docs/美术资源预览/弹道与命中效果/弹道_电磁轨道炮.png" alt="弹道_电磁轨道炮">
+  <div class="info">
+    <div class="num">#11</div>
+    <div class="name">电磁轨道炮弹道</div>
+    <span class="tag tag-strike">直射 · 科幻武器</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="docs/美术资源预览/弹道与命中效果/弹道_Omega加农炮.png" alt="弹道_Omega加农炮">
+  <div class="info">
+    <div class="num">#12</div>
+    <div class="name">Omega加农炮弹道</div>
+    <span class="tag tag-strike">直射 · 终极武器</span>
+  </div>
+</div>
+
+</div>
+
+<div class="subsection-title">1.2 写实武器弹道（assets/effects/projectiles/weapons_realistic/）</div>
+<div class="grid">
+
+<div class="card">
+  <img src="assets/effects/projectiles/weapons_realistic/weapon_smg_projectile.png" alt="SMG弹道">
+  <div class="info">
+    <div class="num">#13</div>
+    <div class="name">冲锋枪弹道（写实版）</div>
+    <span class="tag tag-strike">SMG</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/projectiles/weapons_realistic/weapon_rifle_projectile.png" alt="Rifle弹道">
+  <div class="info">
+    <div class="num">#14</div>
+    <div class="name">步枪弹道（写实版）</div>
+    <span class="tag tag-strike">RIFLE</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/projectiles/weapons_realistic/weapon_mg_projectile.png" alt="MG弹道">
+  <div class="info">
+    <div class="num">#15</div>
+    <div class="name">机枪弹道（写实版）</div>
+    <span class="tag tag-strike">MG</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/projectiles/weapons_realistic/weapon_pistol_projectile.png" alt="Pistol弹道">
+  <div class="info">
+    <div class="num">#16</div>
+    <div class="name">手枪弹道（写实版）</div>
+    <span class="tag tag-strike">PISTOL</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/projectiles/weapons_realistic/weapon_shotgun_projectile.png" alt="Shotgun弹道">
+  <div class="info">
+    <div class="num">#17</div>
+    <div class="name">霰弹枪弹道（写实版）</div>
+    <span class="tag tag-strike">SHOTGUN</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/projectiles/weapons_realistic/weapon_sniper_projectile.png" alt="Sniper弹道">
+  <div class="info">
+    <div class="num">#18</div>
+    <div class="name">狙击枪弹道（写实版）</div>
+    <span class="tag tag-strike">SNIPER</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/projectiles/weapons_realistic/weapon_rocket_projectile.png" alt="Rocket弹道">
+  <div class="info">
+    <div class="num">#19</div>
+    <div class="name">火箭弹弹道（写实版）</div>
+    <span class="tag tag-strike">ROCKET</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/projectiles/weapons_realistic/weapon_flak_projectile.png" alt="Flak弹道">
+  <div class="info">
+    <div class="num">#20</div>
+    <div class="name">高射炮弹道（写实版）</div>
+    <span class="tag tag-strike">FLAK</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/projectiles/weapons_realistic/weapon_laser_projectile.png" alt="Laser弹道">
+  <div class="info">
+    <div class="num">#21</div>
+    <div class="name">激光弹道（写实版）</div>
+    <span class="tag tag-strike">LASER</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/projectiles/weapons_realistic/weapon_missile_projectile.png" alt="Missile弹道">
+  <div class="info">
+    <div class="num">#22</div>
+    <div class="name">导弹弹道（写实版）</div>
+    <span class="tag tag-strike">MISSILE</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/projectiles/weapons_realistic/weapon_omega_cannon_projectile.png" alt="Omega Cannon弹道">
+  <div class="info">
+    <div class="num">#23</div>
+    <div class="name">Omega加农炮弹道（写实版）</div>
+    <span class="tag tag-strike">OMEGA_CANNON</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/projectiles/weapons_realistic/weapon_rail_cannon_projectile.png" alt="Rail Cannon弹道">
+  <div class="info">
+    <div class="num">#24</div>
+    <div class="name">电磁轨道炮弹道（写实版）</div>
+    <span class="tag tag-strike">RAIL_CANNON</span>
+  </div>
+</div>
+
+</div>
+
+<div class="subsection-title">1.3 火炮动画弹道（artillery_anim/）</div>
+<div class="grid">
+
+<div class="card">
+  <img src="assets/effects/projectiles/artillery_anim/weapon_artillery_ballistic.png" alt="火炮弹道">
+  <div class="info">
+    <div class="num">#25</div>
+    <div class="name">火炮曲射弹道</div>
+    <span class="tag tag-artillery">曲射</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/projectiles/artillery_anim/weapon_artillery_muzzle.png" alt="火炮枪口焰v1">
+  <div class="info">
+    <div class="num">#26</div>
+    <div class="name">火炮枪口焰 v1</div>
+    <span class="tag tag-artillery">曲射 · 发射</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/projectiles/artillery_anim/weapon_artillery_muzzle_v2.png" alt="火炮枪口焰v2">
+  <div class="info">
+    <div class="num">#27</div>
+    <div class="name">火炮枪口焰 v2</div>
+    <span class="tag tag-artillery">曲射 · 发射</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/projectiles/artillery_anim/weapon_artillery_muzzle_v3.png" alt="火炮枪口焰v3">
+  <div class="info">
+    <div class="num">#28</div>
+    <div class="name">火炮枪口焰 v3</div>
+    <span class="tag tag-artillery">曲射 · 发射</span>
+  </div>
+</div>
+
+</div>
+
+<div class="subsection-title">1.4 Omega平台专用弹道</div>
+<div class="grid">
+
+<div class="card">
+  <img src="assets/effects/projectiles/omega_platform/omega_platform_projectile_core.png" alt="Omega核心弹体">
+  <div class="info">
+    <div class="num">#29</div>
+    <div class="name">Omega平台核心弹体</div>
+    <span class="tag tag-strike">特殊武器</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/projectiles/omega_platform/omega_platform_projectile_trail.png" alt="Omega弹道拖尾">
+  <div class="info">
+    <div class="num">#30</div>
+    <div class="name">Omega平台弹道拖尾</div>
+    <span class="tag tag-strike">特殊武器</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/projectiles/omega_platform/omega_platform_projectile_impact.png" alt="Omega命中效果">
+  <div class="info">
+    <div class="num">#31</div>
+    <div class="name">Omega平台命中效果</div>
+    <span class="tag tag-impact">特殊武器</span>
+  </div>
+</div>
+
+</div>
+
+<!-- ==================== SECTION 2: 命中效果 ==================== -->
+<div class="section-title">二、命中/爆炸特效</div>
+
+<div class="subsection-title">2.1 通用命中特效（docs预览目录）</div>
+<div class="grid">
+
+<div class="card">
+  <img src="docs/美术资源预览/弹道与命中效果/命中特效_轻武器.png" alt="命中特效_轻武器">
+  <div class="info">
+    <div class="num">#32</div>
+    <div class="name">轻武器命中特效</div>
+    <span class="tag tag-impact">SMG / PISTOL / RIFLE / MG</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="docs/美术资源预览/弹道与命中效果/命中特效_霰弹.png" alt="命中特效_霰弹">
+  <div class="info">
+    <div class="num">#33</div>
+    <div class="name">霰弹命中特效</div>
+    <span class="tag tag-impact">SHOTGUN</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="docs/美术资源预览/弹道与命中效果/命中特效_狙击.png" alt="命中特效_狙击">
+  <div class="info">
+    <div class="num">#34</div>
+    <div class="name">狙击命中特效</div>
+    <span class="tag tag-impact">SNIPER / LASER</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="docs/美术资源预览/弹道与命中效果/命中特效_爆炸.png" alt="命中特效_爆炸">
+  <div class="info">
+    <div class="num">#35</div>
+    <div class="name">爆炸命中特效</div>
+    <span class="tag tag-impact">ROCKET / MISSILE / FLAK / RAIL_CANNON / OMEGA_CANNON</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="docs/美术资源预览/弹道与命中效果/命中_Omega.png" alt="命中_Omega">
+  <div class="info">
+    <div class="num">#36</div>
+    <div class="name">Omega命中特效</div>
+    <span class="tag tag-impact">Omega加农炮专属</span>
+  </div>
+</div>
+
+</div>
+
+<div class="subsection-title">2.2 曲射命中特效</div>
+<div class="grid">
+
+<div class="card">
+  <img src="docs/美术资源预览/弹道与命中效果/曲射弹道.png" alt="曲射弹道">
+  <div class="info">
+    <div class="num">#37</div>
+    <div class="name">曲射弹道</div>
+    <span class="tag tag-artillery">火炮曲射弹道</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="docs/美术资源预览/弹道与命中效果/曲射命中特效_v3_透明底.png" alt="曲射命中特效v3">
+  <div class="info">
+    <div class="num">#38</div>
+    <div class="name">曲射命中特效 v3（透明底）</div>
+    <span class="tag tag-artillery">火炮曲射命中</span>
+  </div>
+</div>
+
+</div>
+
+<div class="subsection-title">2.3 火炮动画命中（artillery_anim/）</div>
+<div class="grid">
+
+<div class="card">
+  <img src="assets/effects/projectiles/artillery_anim/weapon_artillery_impact.png" alt="火炮命中v1">
+  <div class="info">
+    <div class="num">#39</div>
+    <div class="name">火炮命中爆炸 v1</div>
+    <span class="tag tag-artillery">曲射 · 命中</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/projectiles/artillery_anim/weapon_artillery_impact_v2.png" alt="火炮命中v2">
+  <div class="info">
+    <div class="num">#40</div>
+    <div class="name">火炮命中爆炸 v2</div>
+    <span class="tag tag-artillery">曲射 · 命中</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/projectiles/artillery_anim/weapon_artillery_impact_v3.png" alt="火炮命中v3">
+  <div class="info">
+    <div class="num">#41</div>
+    <div class="name">火炮命中爆炸 v3</div>
+    <span class="tag tag-artillery">曲射 · 命中</span>
+  </div>
+</div>
+
+</div>
+
+<div class="subsection-title">2.4 写实武器命中贴图</div>
+<div class="grid">
+
+<div class="card">
+  <img src="assets/effects/projectiles/weapons_realistic/weapon_impact_small_arms.png" alt="轻武器命中">
+  <div class="info">
+    <div class="num">#42</div>
+    <div class="name">轻武器命中（写实版）</div>
+    <span class="tag tag-impact">SMG / PISTOL / RIFLE / MG</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/projectiles/weapons_realistic/weapon_impact_shotgun.png" alt="霰弹命中">
+  <div class="info">
+    <div class="num">#43</div>
+    <div class="name">霰弹命中（写实版）</div>
+    <span class="tag tag-impact">SHOTGUN</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/projectiles/weapons_realistic/weapon_impact_sniper.png" alt="狙击命中">
+  <div class="info">
+    <div class="num">#44</div>
+    <div class="name">狙击命中（写实版）</div>
+    <span class="tag tag-impact">SNIPER / LASER</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/projectiles/weapons_realistic/weapon_impact_explosive.png" alt="爆炸命中">
+  <div class="info">
+    <div class="num">#45</div>
+    <div class="name">爆炸命中（写实版）</div>
+    <span class="tag tag-impact">ROCKET / MISSILE / FLAK / RAIL_CANNON / OMEGA_CANNON</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/projectiles/weapons_realistic/weapon_impact_omega.png" alt="Omega命中">
+  <div class="info">
+    <div class="num">#46</div>
+    <div class="name">Omega命中（写实版）</div>
+    <span class="tag tag-impact">Omega加农炮专属</span>
+  </div>
+</div>
+
+</div>
+
+<!-- ==================== SECTION 3: 法则特效 ==================== -->
+<div class="section-title">三、相位法则特效（25条，按家族分类）</div>
+
+<div class="subsection-title">3.1 钢铁家族（Steel · 银灰色系 · 铁壁公司）</div>
+<div class="grid">
+
+<div class="card">
+  <img src="assets/effects/laws/sci_fi_game_VFX_art__anchor_fi_2026-05-21T00-44-24.png" alt="相位装甲">
+  <div class="info">
+    <div class="num">#47</div>
+    <div class="name">钢铁·相位装甲</div>
+    <span class="tag tag-law tag-steels">steel_phase_armor · 被动</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/laws/sci_fi_game_VFX_art__fortress__2026-05-21T00-43-56.png" alt="堡垒之墙">
+  <div class="info">
+    <div class="num">#48</div>
+    <div class="name">钢铁·堡垒之墙</div>
+    <span class="tag tag-law tag-steels">steel_bastion_wall · 主动</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/laws/sci_fi_game_VFX_art__nanite_re_2026-05-21T00-43-56.png" alt="快速维修">
+  <div class="info">
+    <div class="num">#49</div>
+    <div class="name">钢铁·快速维修</div>
+    <span class="tag tag-law tag-steels">steel_quick_repair · 被动</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/laws/sci_fi_game_VFX_art__shared_sh_2026-05-21T00-43-57.png" alt="护阵联结">
+  <div class="info">
+    <div class="num">#50</div>
+    <div class="name">钢铁·护阵联结</div>
+    <span class="tag tag-law tag-steels">steel_aegis_link · 被动</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/laws/sci_fi_game_VFX_art__anchor_fi_2026-05-21T00-44-24.png" alt="锚定力场">
+  <div class="info">
+    <div class="num">#51</div>
+    <div class="name">钢铁·锚定力场</div>
+    <span class="tag tag-law tag-steels">steel_anchor_field · 主动</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/laws/sci_fi_game_VFX_art__armor_har_2026-05-21T00-44-24.png" alt="固壁协议">
+  <div class="info">
+    <div class="num">#52</div>
+    <div class="name">钢铁·固壁协议</div>
+    <span class="tag tag-law tag-steels">steel_fortify_protocol · 被动</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/laws/sci_fi_game_VFX_art__resonant__2026-05-21T00-44-50.png" alt="共振装甲">
+  <div class="info">
+    <div class="num">#53</div>
+    <div class="name">钢铁·共振装甲</div>
+    <span class="tag tag-law tag-steels">steel_resonant_plate · 被动</span>
+  </div>
+</div>
+
+</div>
+
+<div class="subsection-title">3.2 烈焰家族（Flame · 橙红色系 · 诺瓦军武）</div>
+<div class="grid">
+
+<div class="card">
+  <img src="assets/effects/laws/sci_fi_game_VFX_art__burning_p_2026-05-21T00-44-50.png" alt="热能过载">
+  <div class="info">
+    <div class="num">#54</div>
+    <div class="name">烈焰·热能过载</div>
+    <span class="tag tag-law tag-flame">flame_heat_overload · 被动</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/laws/sci_fi_game_VFX_art__forward_f_2026-05-21T00-44-50.png" alt="前线火力压制">
+  <div class="info">
+    <div class="num">#55</div>
+    <div class="name">烈焰·前线火力压制</div>
+    <span class="tag tag-law tag-flame">flame_front_bombard · 主动</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/laws/sci_fi_game_VFX_art__ember_par_2026-05-21T00-45-17.png" alt="灼烧印记">
+  <div class="info">
+    <div class="num">#56</div>
+    <div class="name">烈焰·灼烧印记</div>
+    <span class="tag tag-law tag-flame">flame_mark · 主动</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/laws/sci_fi_game_VFX_art__advancing_2026-05-21T00-44-51.png" alt="灼浪推进">
+  <div class="info">
+    <div class="num">#57</div>
+    <div class="name">烈焰·灼浪推进</div>
+    <span class="tag tag-law tag-flame">flame_scorch_wave · 主动</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/laws/sci_fi_game_VFX_art__afterburn_2026-05-21T00-45-17.png" alt="灰烬幕障">
+  <div class="info">
+    <div class="num">#58</div>
+    <div class="name">烈焰·灰烬幕障</div>
+    <span class="tag tag-law tag-flame">flame_ember_screen · 主动</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/laws/sci_fi_game_VFX_art__ultimate__2026-05-21T00-45-17.png" alt="核心破裂">
+  <div class="info">
+    <div class="num">#59</div>
+    <div class="name">烈焰·核心破裂</div>
+    <span class="tag tag-law tag-flame">flame_core_rupture · 主动</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/laws/sci_fi_game_VFX_art__afterburn_2026-05-21T00-45-17.png" alt="余烬加燃">
+  <div class="info">
+    <div class="num">#60</div>
+    <div class="name">烈焰·余烬加燃</div>
+    <span class="tag tag-law tag-flame">flame_afterburn · 被动</span>
+  </div>
+</div>
+
+</div>
+
+<div class="subsection-title">3.3 雷霆家族（Thunder · 蓝白色系 · 螺旋侦察）</div>
+<div class="grid">
+
+<div class="card">
+  <img src="assets/effects/laws/sci_fi_game_VFX_art__EMP_storm_2026-05-21T00-45-17.png" alt="电磁风暴">
+  <div class="info">
+    <div class="num">#61</div>
+    <div class="name">雷霆·电磁风暴</div>
+    <span class="tag tag-law tag-thunder">thunder_emp_storm · 主动</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/laws/sci_fi_game_VFX_art__chain_lig_2026-05-21T00-45-44.png" alt="链式放电">
+  <div class="info">
+    <div class="num">#62</div>
+    <div class="name">雷霆·链式放电</div>
+    <span class="tag tag-law tag-thunder">thunder_chain_discharge · 主动</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/laws/sci_fi_game_VFX_art__ion_net_a_2026-05-21T00-45-44.png" alt="离子网">
+  <div class="info">
+    <div class="num">#63</div>
+    <div class="name">雷霆·离子网</div>
+    <span class="tag tag-law tag-thunder">thunder_ion_net · 主动</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/laws/sci_fi_game_VFX_art__arc_beaco_2026-05-21T00-45-44.png" alt="弧光信标">
+  <div class="info">
+    <div class="num">#64</div>
+    <div class="name">雷霆·弧光信标</div>
+    <span class="tag tag-law tag-thunder">thunder_arc_beacon · 被动</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/laws/sci_fi_game_VFX_art__electric__2026-05-21T00-45-44.png" alt="激涌驱动">
+  <div class="info">
+    <div class="num">#65</div>
+    <div class="name">雷霆·激涌驱动</div>
+    <span class="tag tag-law tag-thunder">thunder_surge_drive · 主动</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/laws/sci_fi_game_VFX_art__static_el_2026-05-21T00-46-12.png" alt="静电域">
+  <div class="info">
+    <div class="num">#66</div>
+    <div class="name">雷霆·静电域</div>
+    <span class="tag tag-law tag-thunder">thunder_static_domain · 主动</span>
+  </div>
+</div>
+
+</div>
+
+<div class="subsection-title">3.4 虚空家族（Void · 暗紫色系 · 虚空研究所）</div>
+<div class="grid">
+
+<div class="card">
+  <img src="assets/effects/laws/sci_fi_game_VFX_art__spacetime_2026-05-21T00-46-12.png" alt="时空涟漪">
+  <div class="info">
+    <div class="num">#67</div>
+    <div class="name">虚空·时空涟漪</div>
+    <span class="tag tag-law tag-void">void_time_ripple · 主动</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/laws/sci_fi_game_VFX_art__shield_co_2026-05-21T00-46-12.png" alt="护盾转移">
+  <div class="info">
+    <div class="num">#68</div>
+    <div class="name">虚空·护盾转移</div>
+    <span class="tag tag-law tag-void">void_barrier_shift · 主动</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/laws/sci_fi_game_VFX_art__phase_clo_2026-05-21T00-46-12.png" alt="相位披幕">
+  <div class="info">
+    <div class="num">#69</div>
+    <div class="name">虚空·相位披幕</div>
+    <span class="tag tag-law tag-void">void_phase_cloak · 主动</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/laws/sci_fi_game_VFX_art__entropy_l_2026-05-21T00-46-35.png" alt="熵镜">
+  <div class="info">
+    <div class="num">#70</div>
+    <div class="name">虚空·熵镜</div>
+    <span class="tag tag-law tag-void">void_entropy_lens · 被动</span>
+  </div>
+</div>
+
+<div class="card">
+  <img src="assets/effects/laws/sci_fi_game_VFX_art__gravity_w_2026-05-21T00-46-35.png" alt="引力井">
+  <div class="info">
+    <div class="num">#71</div>
+    <div class="name">虚空·引力井</div>
+    <span class="tag tag-law tag-void">void_gravity_well · 主动</span>
+  </div>
+</div>
+
+</div>
+
+<!-- ==================== SECTION 4: 相位仪技能 ==================== -->
+<div class="section-title">四、相位仪7星主动特殊能力</div>
+
+<div class="grid">
+
+<div class="card">
+  <div class="info" style="padding: 20px;">
+    <div class="num">#72</div>
+    <div class="name" style="font-size:16px; color:#ffab40;">超级火炮连击</div>
+    <div class="name" style="font-size:12px; color:#78909c; margin-top:4px;">势力：新星 (Nova Arms)</div>
+    <div class="name" style="font-size:11px; color:#607d8b; margin-top:6px;">每N秒从屏幕外发起火炮曲射，随机打击敌方单位。复用火炮曲射弹道与命中爆炸特效。</div>
+    <span class="tag tag-ability">周期触发</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="info" style="padding: 20px;">
+    <div class="num">#73</div>
+    <div class="name" style="font-size:16px; color:#ce93d8;">幻影克隆</div>
+    <div class="name" style="font-size:12px; color:#78909c; margin-top:4px;">势力：螺旋 (Helix Recon)</div>
+    <div class="name" style="font-size:11px; color:#607d8b; margin-top:6px;">每张战斗卡可放置2个单位，克隆体攻击+100%、血量+80%（7星完整版）。</div>
+    <span class="tag tag-ability">被动常驻</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="info" style="padding: 20px;">
+    <div class="num">#74</div>
+    <div class="name" style="font-size:16px; color:#ea80fc;">直射穿透</div>
+    <div class="name" style="font-size:12px; color:#78909c; margin-top:4px;">势力：影幕 (Void Research)</div>
+    <div class="name" style="font-size:11px; color:#607d8b; margin-top:6px;">直射攻击100%穿透，每穿透一个目标衰减10%伤害（7星完整版）。</div>
+    <span class="tag tag-ability">被动常驻</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="info" style="padding: 20px;">
+    <div class="num">#75</div>
+    <div class="name" style="font-size:16px; color:#4dd0e1;">免能量部署</div>
+    <div class="name" style="font-size:12px; color:#78909c; margin-top:4px;">势力：擎天 (Quantum Logistics)</div>
+    <div class="name" style="font-size:11px; color:#607d8b; margin-top:6px;">部署消耗能量减至0%（7星完全免费），低星按比例减免。</div>
+    <span class="tag tag-ability">被动常驻</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="info" style="padding: 20px;">
+    <div class="num">#76</div>
+    <div class="name" style="font-size:16px; color:#ef5350;">核子轰炸</div>
+    <div class="name" style="font-size:12px; color:#78909c; margin-top:4px;">势力：永纪 (Frontier Union)</div>
+    <div class="name" style="font-size:11px; color:#607d8b; margin-top:6px;">每N秒对敌方全体造成基于攻击力的倍率伤害（7星间隔最短、倍率最高）。</div>
+    <span class="tag tag-ability">周期触发</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="info" style="padding: 20px;">
+    <div class="num">#77</div>
+    <div class="name" style="font-size:16px; color:#81c784;">纳米虫群</div>
+    <div class="name" style="font-size:12px; color:#78909c; margin-top:4px;">势力：神盾 (Aether Dynamics)</div>
+    <div class="name" style="font-size:11px; color:#607d8b; margin-top:6px;">开局释放紫色纳米虫群，持续N秒敌方每秒掉2%最大血量（7星持续时间最长）。</div>
+    <span class="tag tag-ability">开局一次性</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="info" style="padding: 20px;">
+    <div class="num">#78</div>
+    <div class="name" style="font-size:16px; color:#bdbdbd;">巨型能量罩</div>
+    <div class="name" style="font-size:12px; color:#78909c; margin-top:4px;">通用势力（多型号可用）</div>
+    <div class="name" style="font-size:11px; color:#607d8b; margin-top:6px;">开局为我方全体笼罩3000血量护盾（各星级统一上限）。</div>
+    <span class="tag tag-ability">开局一次性</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="info" style="padding: 20px;">
+    <div class="num">#79</div>
+    <div class="name" style="font-size:16px; color:#ffcc02;">钢铁壁垒</div>
+    <div class="name" style="font-size:12px; color:#78909c; margin-top:4px;">势力：铁幕 (Iron Wall Corp)</div>
+    <div class="name" style="font-size:11px; color:#607d8b; margin-top:6px;">我方装甲/堡垒单位部署时最大HPx2.0（7星完整效果），低星递减。</div>
+    <span class="tag tag-ability">被动常驻</span>
+  </div>
+</div>
+
+</div>
+
+<div style="margin-top:40px; padding: 16px; background: #131a2b; border-radius: 8px; border: 1px solid #1e2d4a; font-size: 12px; color: #607d8b; line-height: 1.8;">
+  <strong style="color:#00e5ff;">统计：</strong>
+  直射弹道 12 + 写实弹道 12 + 火炮弹道 4 + Omega弹道 3 = <strong style="color:#4fc3f7;">31项弹道</strong><br>
+  通用命中 5 + 曲射命中 2 + 火炮命中 3 + 写实命中 5 = <strong style="color:#ef5350;">15项命中</strong><br>
+  钢铁法则 7 + 烈焰法则 7 + 雷霆法则 6 + 虚空法则 5 = <strong style="color:#ce93d8;">25条法则</strong><br>
+  相位仪技能 8 = <strong style="color:#4dd0e1;">8项技能</strong><br>
+  合计：<strong style="color:#fff;">79项</strong>
+</div>
+
+</body>
+</html>

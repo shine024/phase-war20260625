@@ -134,6 +134,11 @@ func _ready() -> void:
 			SignalBus.toggle_factions.connect(_on_faction_pressed)
 		if SignalBus.has_signal("toggle_phase_instrument") and not SignalBus.toggle_phase_instrument.is_connected(_on_toggle_phase_instrument_from_tutorial):
 			SignalBus.toggle_phase_instrument.connect(_on_toggle_phase_instrument_from_tutorial)
+		# v7.x 教程引导：强化/改造面板切换入口
+		if SignalBus.has_signal("toggle_enhancement") and not SignalBus.toggle_enhancement.is_connected(_on_toggle_enhancement_from_tutorial):
+			SignalBus.toggle_enhancement.connect(_on_toggle_enhancement_from_tutorial)
+		if SignalBus.has_signal("toggle_modification") and not SignalBus.toggle_modification.is_connected(_on_toggle_modification_from_tutorial):
+			SignalBus.toggle_modification.connect(_on_toggle_modification_from_tutorial)
 		SignalBus.player_deploy_failed.connect(_on_player_deploy_failed)
 
 	# 全局 UI 贴图：关闭按钮等（依赖 PopupLayer 子树已实例化）
@@ -613,6 +618,16 @@ func _on_faction_pressed() -> void:
 func _on_toggle_phase_instrument_from_tutorial() -> void:
 	_open_backpack_runes_tab()
 
+## v7.x 教程引导：打开强化面板（CardEnhancementPanel）
+func _on_toggle_enhancement_from_tutorial() -> void:
+	_play_sfx("button")
+	_toggle_overlay(enhancement_overlay, "enhancement")
+
+## v7.x 教程引导：打开改造面板（ModificationPanel）
+func _on_toggle_modification_from_tutorial() -> void:
+	_play_sfx("button")
+	_toggle_overlay(modification_overlay, "modification")
+
 func _on_quest_pressed() -> void:
 	_toggle_overlay(quest_overlay, "quest")
 
@@ -705,11 +720,15 @@ func _auto_start_afk_from_world_map(level: int) -> void:
 	var target_lvl: int = clampi(level, 1, maxi(1, max_unlocked))
 	if GameManager != null and GameManager.has_method("set_current_level"):
 		GameManager.set_current_level(target_lvl)
-	# 切推图模式（从 current_level 开始逐关推进）
+	# 切推图模式
 	_afk_manager.set_mode(AFKModeManagerScript.Mode.PUSH)
-	# 启动 AFK：内部会用 GameManager.current_level 作为推图起点，
-	# 自动 _afk_start_battle → process_auto_deploy 自动布阵
+	# 显式设推图起点：start_afk 现以 push_level 为推图起点（Bug#2 修复），
+	# 不再读 GameManager.current_level，故此处须显式赋值玩家选定关。
+	_afk_manager.push_level = target_lvl
+	# 启动 AFK + 首战。Bug#1 修复：原仅 start_afk 不调 enter_next_battle，
+	# 导致 world_map 入口挂机进入 RUNNING 后永远不开打。
 	_afk_manager.start_afk()
+	_afk_manager.enter_next_battle()
 
 ## v6.6(挂机): 暴露 AFK manager 给 SaveManager 桥接访问（RefCounted 非 autoload）。
 ## SaveManager 的 save/load/reset 经此 getter 访问 AFK 状态。
@@ -763,13 +782,6 @@ func get_offline_idle_manager() -> OfflineIdleManager:
 func _on_afk_pressed() -> void:
 	_play_sfx("button")
 	_toggle_overlay(afk_overlay, "afk")
-
-func _afk_start_battle(level: int) -> void:
-	"""由 AFKModeManager 调用，直接发起战斗"""
-	if GameManager == null:
-		return
-	GameManager.set_current_level(level)
-	call_deferred("_battle_setup.run_start_battle_sequence")
 
 # ── 战斗控制 ─────────────────────────────────────────────────
 func _on_start_battle() -> void:

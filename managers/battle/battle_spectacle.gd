@@ -43,6 +43,7 @@ var _slowmo_active: bool = false
 var _overlay: ColorRect = null             # 全屏覆盖层（暗化/闪光）
 var _title_label: Label = null             # 中央大字标签（VICTORY/BOSS名）
 var _combo_label: Label = null             # 右上角连杀标签
+var _nano_rain_layer: CPUParticles2D = null  # v8.1: 纳米虫群全屏降雨粒子层
 
 
 func _ready() -> void:
@@ -54,6 +55,9 @@ func _ready() -> void:
 		SignalBus.phase_master_appeared.connect(_on_phase_master_appeared)
 		SignalBus.phase_law_cast.connect(_on_phase_law_cast)
 		SignalBus.battle_ended.connect(_on_battle_ended)
+		# v8.1: 相位仪主动能力全屏演出
+		if SignalBus.has_signal("phase_instrument_ability_triggered"):
+			SignalBus.phase_instrument_ability_triggered.connect(_on_ability_triggered)
 
 
 # =========================================================================
@@ -107,10 +111,156 @@ func _on_phase_law_cast(law_id: String, _position: Vector2, family: String) -> v
 
 
 func _on_battle_ended(player_won: bool) -> void:
+	_cleanup_ability_fx()  # v8.1: 清理技能演出残留（如纳米降雨层）
 	if player_won:
 		_play_victory()
 	else:
 		_play_defeat()
+
+
+# =========================================================================
+#  v8.1 相位仪能力全屏演出
+#  =========================================================================
+
+## 相位仪能力触发 → 按 ability_id + stage 分派演出
+func _on_ability_triggered(ability_id: String, stage: String, params: Dictionary) -> void:
+	if DT.is_motion_reduce():
+		return
+	match ability_id:
+		"nuclear_bombardment":
+			if stage == "warning":
+				_play_nuclear_warning(params)
+			elif stage == "impact":
+				_play_nuclear_impact(params)
+		"nano_swarm":
+			if stage == "start":
+				_play_nano_swarm_start(params)
+		"mega_shield":
+			if stage == "start":
+				_play_mega_shield_start(params)
+
+
+## 核子轰炸预警：全屏红色暗化 + 标题
+func _play_nuclear_warning(_params: Dictionary) -> void:
+	_ensure_overlay()
+	_ensure_title_label()
+	# 全屏红色暗化 0→0.5→0.3（0.3s 预警脉冲）
+	_overlay.color = Color(1.0, 0.1, 0.05, 0.0)
+	_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_overlay.visible = true
+	var tw: Tween = create_tween()
+	tw.tween_property(_overlay, "color:a", 0.5, 0.12)
+	tw.tween_property(_overlay, "color:a", 0.3, 0.18)
+	# 标题
+	_title_label.text = "☢ 核子轰炸"
+	_title_label.label_settings = _make_label_settings(Color(1.0, 0.3, 0.2), DT.FONT_SIZE_TITLE)
+	_title_label.visible = true
+	_title_label.modulate.a = 0.0
+	_title_label.position.x = (get_viewport().get_visible_rect().size.x - _title_label.size.x) / 2.0
+	_title_label.position.y = 110
+	var tw2: Tween = create_tween()
+	tw2.tween_property(_title_label, "modulate:a", 1.0, 0.15)
+	tw2.tween_interval(0.4)
+
+
+## 核子轰炸命中：白闪定帧 + extreme shake（v8.1a：白闪延长到0.2s，更震撼）
+func _play_nuclear_impact(params: Dictionary) -> void:
+	_ensure_overlay()
+	# 白闪定帧（v8.1a：0.04+0.16=0.2s，比原0.12s更持久震撼）
+	_overlay.color = Color(1.0, 1.0, 1.0, 0.0)
+	_overlay.visible = true
+	var tw: Tween = create_tween()
+	tw.tween_property(_overlay, "color:a", 0.95, 0.05)
+	tw.tween_property(_overlay, "color:a", 0.0, 0.15)
+	tw.tween_callback(func(): _overlay.visible = false)
+	# extreme shake（v8.1a：延长到1.0s，余震感）
+	_request_shake(16.0, 1.0)
+	# 屏幕边缘绿光衰减（overlay 绿色 0.35→0，1.2s，v8.1a：延长+加亮）
+	var tw3: Tween = create_tween()
+	tw3.tween_interval(0.12)
+	_ensure_overlay()
+	_overlay.color = Color(0.2, 1.0, 0.3, 0.0)
+	_overlay.visible = true
+	tw3.tween_property(_overlay, "color:a", 0.35, 0.06)
+	tw3.tween_property(_overlay, "color:a", 0.0, 1.1)
+	tw3.tween_callback(func(): _overlay.visible = false)
+
+
+## 纳米虫群开始：全屏紫色降雨粒子层（持续整个周期）
+func _play_nano_swarm_start(params: Dictionary) -> void:
+	var duration: float = float(params.get("duration", 30.0))
+	_create_nano_rain_layer(duration)
+	# 初始紫光脉冲
+	_ensure_overlay()
+	_overlay.color = Color(0.6, 0.2, 0.9, 0.0)
+	_overlay.visible = true
+	var tw: Tween = create_tween()
+	tw.tween_property(_overlay, "color:a", 0.2, 0.15)
+	tw.tween_property(_overlay, "color:a", 0.0, 0.5)
+	tw.tween_callback(func(): _overlay.visible = false)
+	_request_shake(5.0, 0.4)
+
+
+## 创建全屏紫色降雨粒子层
+func _create_nano_rain_layer(duration: float) -> void:
+	if _nano_rain_layer != null and is_instance_valid(_nano_rain_layer):
+		_nano_rain_layer.queue_free()
+	var vp_size: Vector2 = get_viewport().get_visible_rect().size
+	var rain := CPUParticles2D.new()
+	rain.name = "NanoSwarmRainLayer"
+	rain.amount = 120  # v8.1a：80→120，更密集的虫群雨
+	rain.lifetime = 2.2  # v8.1a：2.0→2.2
+	rain.one_shot = false
+	rain.emitting = true
+	rain.explosiveness = 0.0
+	rain.direction = Vector2(0, 1)  # 向下
+	rain.spread = 18.0
+	rain.initial_velocity_min = 180.0  # v8.1a：提速，下落更急
+	rain.initial_velocity_max = 320.0
+	rain.gravity = Vector2(0, 50.0)
+	rain.scale_amount_min = 2.0
+	rain.scale_amount_max = 4.5  # v8.1a：4→4.5
+	rain.color = Color(0.7, 0.28, 1.0, 0.85)  # v8.1a：更亮的紫
+	# 全屏发射区域（矩形发射，横向覆盖屏幕宽度）
+	# 注：emission_rect_extents 是半宽半高，所以实际区域 = 2×extents
+	rain.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	rain.emission_rect_extents = Vector2((vp_size.x + 200) * 0.5, 10.0)
+	rain.position = Vector2(vp_size.x / 2.0, -40)  # 屏幕顶部上方
+	rain.z_index = 150
+	var mat := CanvasItemMaterial.new()
+	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	rain.material = mat
+	get_tree().root.add_child(rain)
+	_nano_rain_layer = rain
+	# 持续 duration 秒后淡出移除
+	var tw: Tween = create_tween()
+	tw.tween_interval(duration)
+	tw.tween_property(rain, "modulate:a", 0.0, 0.8)
+	tw.tween_callback(func():
+		if is_instance_valid(rain):
+			rain.queue_free()
+		_nano_rain_layer = null
+	)
+
+
+## 巨型能量罩开始：全屏蓝色闪光脉冲
+func _play_mega_shield_start(_params: Dictionary) -> void:
+	_ensure_overlay()
+	# 蓝色闪光 0→0.35→0
+	_overlay.color = Color(0.3, 0.7, 1.0, 0.0)
+	_overlay.visible = true
+	var tw: Tween = create_tween()
+	tw.tween_property(_overlay, "color:a", 0.35, 0.15)
+	tw.tween_property(_overlay, "color:a", 0.0, 0.6)
+	tw.tween_callback(func(): _overlay.visible = false)
+	_request_shake(6.0, 0.4)
+
+
+## 清理技能演出残留节点（战斗结束时调用）
+func _cleanup_ability_fx() -> void:
+	if _nano_rain_layer != null and is_instance_valid(_nano_rain_layer):
+		_nano_rain_layer.queue_free()
+		_nano_rain_layer = null
 
 
 # =========================================================================
@@ -122,20 +272,20 @@ func _play_kill_flash(killer: Node) -> void:
 	if DT.is_motion_reduce():
 		return
 	_ensure_overlay()
-	# 边缘微闪：覆盖层快速青色 alpha 0→0.15→0
+	# 边缘微闪：覆盖层快速青色 alpha 0→0.15→0（v8.2：0.05+0.05→0.12+0.18，原一闪即逝看不到）
 	_overlay.color = Color(DT.COLOR_ACCENT_CYAN.r, DT.COLOR_ACCENT_CYAN.g, DT.COLOR_ACCENT_CYAN.b, 0.0)
 	_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_overlay.visible = true
 	var tw: Tween = create_tween()
-	tw.tween_property(_overlay, "color:a", 0.15, 0.05)
-	tw.tween_property(_overlay, "color:a", 0.0, 0.05)
+	tw.tween_property(_overlay, "color:a", 0.15, 0.12)
+	tw.tween_property(_overlay, "color:a", 0.0, 0.18)
 	tw.tween_callback(func(): _overlay.visible = false)
-	# 击杀者金框高亮（克制：仅 modulate 闪一下，不缩放不震动）
+	# 击杀者金框高亮（克制：仅 modulate 闪一下，不缩放不震动；v8.2：0.05+0.10→0.12+0.22）
 	if killer != null and is_instance_valid(killer):
 		var orig_mod: Color = killer.get("modulate") if "modulate" in killer else Color.WHITE
 		var kt: Tween = create_tween()
-		kt.tween_property(killer, "modulate", Color(1.3, 1.15, 0.7, 1.0), 0.05)
-		kt.tween_property(killer, "modulate", orig_mod, 0.10)
+		kt.tween_property(killer, "modulate", Color(1.3, 1.15, 0.7, 1.0), 0.12)
+		kt.tween_property(killer, "modulate", orig_mod, 0.22)
 	# 轻微屏幕震动（克制：light 档）
 	_request_shake(2.0, 0.10)
 

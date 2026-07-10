@@ -203,27 +203,25 @@ static func ability_nuclear_bombardment(star: int) -> Dictionary:
 		"description": "每%d秒对敌方全体造成核子轰炸" % [int(interval)],
 	}
 
-## 6. 致命酸雨（神盾势力）— 开局触发，持续 N 秒敌方按百分比掉血
-static func ability_acid_rain(star: int) -> Dictionary:
+## 6. 纳米虫群（神盾势力）— 开局释放紫色纳米虫群，持续 N 秒敌方按百分比掉血
+static func ability_nano_swarm(star: int) -> Dictionary:
 	var duration: float = 30.0
 	var hp_pct_per_sec: float = 0.02   # 每秒掉2%最大血量
 	match star:
 		4: duration = 12.0; hp_pct_per_sec = 0.015
 		6: duration = 20.0; hp_pct_per_sec = 0.018
 	return {
-		"id": "acid_rain",
-		"name": "致命酸雨",
+		"id": "nano_swarm",
+		"name": "纳米虫群",
 		"type": "on_battle_start",
 		"params": {"duration": duration, "hp_pct_per_sec": hp_pct_per_sec, "target": "enemy_all"},
-		"description": "开局触发致命酸雨，持续%d秒，敌方每秒掉%.1f%%最大血量" % [int(duration), hp_pct_per_sec * 100],
+		"description": "开局释放纳米虫群，持续%d秒，敌方每秒掉%.1f%%最大血量" % [int(duration), hp_pct_per_sec * 100],
 	}
 
-## 7. 巨型能量罩（通用势力）— 开局我方全体获得固定血量护盾
+## 7. 巨型能量罩（通用势力）— 开局我方全体获得固定血量护盾（每单位上限3000）
 static func ability_mega_shield(star: int) -> Dictionary:
-	var shield_amount: float = 20000.0
-	match star:
-		4: shield_amount = 5000.0
-		6: shield_amount = 10000.0
+	# 统一上限3000，星级只影响描述文本
+	var shield_amount: float = 3000.0
 	return {
 		"id": "mega_shield",
 		"name": "巨型能量罩",
@@ -419,9 +417,9 @@ static func _build_all() -> Array[Dictionary]:
 	# 势力专属 23 款（7 势力，每个 3~4 款），每个都有独特的势力特性
 	# 神盾系列 - 防御特化
 	out.append(_make_def("pi_aegis_01", "神盾-前哨", "aether_dynamics", false, 2, "faction_reputation_or_quest", ["神盾力场：防御+6%，受到的伤害-3%"]))
-	out.append(_make_def("pi_aegis_02", "神盾-方阵", "aether_dynamics", false, 4, "faction_reputation_or_quest", ["方阵防御：防御+10%，每15秒获得1点临时护盾"], ability_acid_rain(4)))
-	out.append(_make_def("pi_aegis_03", "神盾-穹顶", "aether_dynamics", false, 6, "faction_reputation_or_quest", ["穹顶庇护：防御+15%，受到的伤害-10%，能量消耗-2"], ability_acid_rain(6)))
-	out.append(_make_def("pi_aegis_04", "神盾-壁垒核", "aether_dynamics", false, 7, "faction_reputation_or_quest", ["绝对防御：防御+20%，受到的伤害-15%，每10秒恢复2点能量"], ability_acid_rain(7)))
+	out.append(_make_def("pi_aegis_02", "神盾-方阵", "aether_dynamics", false, 4, "faction_reputation_or_quest", ["方阵防御：防御+10%，每15秒获得1点临时护盾"], ability_nano_swarm(4)))
+	out.append(_make_def("pi_aegis_03", "神盾-穹顶", "aether_dynamics", false, 6, "faction_reputation_or_quest", ["穹顶庇护：防御+15%，受到的伤害-10%，能量消耗-2"], ability_nano_swarm(6)))
+	out.append(_make_def("pi_aegis_04", "神盾-壁垒核", "aether_dynamics", false, 7, "faction_reputation_or_quest", ["绝对防御：防御+20%，受到的伤害-15%，每10秒恢复2点能量"], ability_nano_swarm(7)))
 
 	# 螺旋系列 - 侦查与机动
 	out.append(_make_def("pi_helix_01", "螺旋-猎线", "helix_recon", false, 1, "faction_reputation_or_quest", ["猎手直觉：经验获取+8%"]))

@@ -1,0 +1,191 @@
+===== 112 张我方卡取图模拟 =====
+manifest专属命中: 38 | ERA_KIND回退: 74 | 无图: 0
+
+ww1_mp18                   MP18突击班          [一战/轻装] -> vis_player_004     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+ww1_mauser                 毛瑟步枪班            [一战/轻装] -> vis_player_004     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+ww1_enfield                李恩菲尔德班           [一战/轻装] -> vis_player_004     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+ww1_mg08                   MG08机枪巢          [一战/支援] -> vis_player_003     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+ww1_vickers                维克斯机枪巢           [一战/支援] -> vis_player_003     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+ww1_arty_m81               81mm迫击炮组         [一战/支援] -> vis_player_012     (manifest)
+ww1_m76                    76mm迫击炮组         [一战/支援] -> vis_player_003     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+ww1_storm                  暴风突击队            [一战/轻装] -> vis_player_004     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+ww1_arm_rolls              罗尔斯装甲车           [一战/装甲] -> vis_player_001     (manifest)
+ww1_lanchest               兰彻斯特装甲车          [一战/装甲] -> vis_player_001     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+ww1_arm_ft17               FT-17轻型坦克        [一战/装甲] -> vis_player_002     (manifest)
+ww1_saint                  圣沙蒙坦克            [一战/装甲] -> vis_player_001     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+ww1_a7v                    A7V重型坦克          [一战/装甲] -> vis_player_001     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+ww1_mark4                  马克IV型坦克          [一战/装甲] -> vis_player_001     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+ww1_arty_77mm              77mm野战炮          [一战/支援] -> vis_player_003     (manifest)
+ww1_105mm                  105mm榴弹炮         [一战/支援] -> vis_player_003     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+ww1_37mm                   37mm高射炮          [一战/支援] -> vis_player_003     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+ww1_inf_cavalry            骑兵斥候             [一战/轻装] -> vis_player_004     (manifest)
+ww1_flame                  火焰喷射兵            [一战/轻装] -> vis_player_004     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+ww1_sup_engineer           工兵班              [一战/支援] -> vis_player_005     (manifest)
+ww2_thompson               汤普森班             [二战/轻装] -> vis_player_009     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+ww2_garand                 加兰德班             [二战/轻装] -> vis_player_009     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+ww2_mp40                   MP40班            [二战/轻装] -> vis_player_009     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+ww2_ppsh                   波波沙班             [二战/轻装] -> vis_player_009     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+ww2_mg42                   MG42机枪组          [二战/支援] -> vis_player_011     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+ww2_browning               勃朗宁机枪组           [二战/支援] -> vis_player_011     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+ww2_inf_panzerschrek       铁拳反坦克组           [二战/轻装] -> vis_player_010     (manifest)
+ww2_inf_bazooka            巴祖卡组             [二战/轻装] -> vis_player_009     (manifest)
+ww2_arty_m81               81mm迫击炮          [二战/支援] -> vis_player_011     (manifest)
+ww2_m120                   120mm重迫击炮        [二战/支援] -> vis_player_011     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+ww2_pz3                    三号坦克             [二战/装甲] -> vis_player_007     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+ww2_pz4                    四号坦克             [二战/装甲] -> vis_player_007     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+ww2_panther                黑豹坦克             [二战/装甲] -> vis_player_007     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+ww2_arm_tiger              虎式坦克             [二战/装甲] -> vis_player_008     (manifest)
+ww2_kingtiger              虎王坦克             [二战/装甲] -> vis_player_007     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+ww2_t34_76                 T-34/76坦克        [二战/装甲] -> vis_player_007     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+ww2_t34_85                 T-34/85坦克        [二战/装甲] -> vis_player_007     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+ww2_is2                    IS-2重型坦克         [二战/装甲] -> vis_player_007     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+ww2_arm_sherman            M4谢尔曼            [二战/装甲] -> vis_player_007     (manifest)
+ww2_inf_hellcat            M18地狱猫           [二战/装甲] -> vis_player_006     (manifest)
+cold_rpg                   RPG火箭筒组          [冷战/轻装] -> vis_player_018     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+cold_ak47                  AK-47步兵班         [冷战/轻装] -> vis_player_018     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+cold_m14                   M14步兵班           [冷战/轻装] -> vis_player_018     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+cold_m60                   M60机枪班           [冷战/轻装] -> vis_player_018     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+cold_rpk                   RPK机枪班           [冷战/轻装] -> vis_player_018     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+cold_inf_btr60             BTR-60装甲车        [冷战/装甲] -> vis_player_013     (manifest)
+cold_sup_m113              M113装甲车          [冷战/支援] -> vis_player_016     (manifest)
+cold_inf_bmp1              BMP-1步战车         [冷战/装甲] -> vis_player_015     (manifest)
+cold_bradley               M2布雷德利           [冷战/装甲] -> vis_player_014     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+cold_arm_t55               T-55坦克           [冷战/装甲] -> vis_player_014     (manifest)
+cold_t62                   T-62坦克           [冷战/装甲] -> vis_player_014     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+cold_t72                   T-72坦克           [冷战/装甲] -> vis_player_014     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+cold_m60t                  M60坦克            [冷战/装甲] -> vis_player_014     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+cold_m1                    M1主战坦克           [冷战/装甲] -> vis_player_014     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+cold_leo1                  豹1坦克             [冷战/装甲] -> vis_player_014     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+cold_chieftain             酋长坦克             [冷战/装甲] -> vis_player_014     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+cold_sup_zsu23             ZSU-23-4自行高炮     [冷战/支援] -> vis_player_017     (manifest)
+cold_sam7                  萨姆-7防空组          [冷战/支援] -> vis_player_016     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+cold_mig21                 米格-21战机          [冷战/空中] -> vis_player_015     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+cold_f4                    F-4鬼怪战机          [冷战/空中] -> vis_player_015     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+cold_spetsnaz              阿尔法特种部队          [冷战/轻装] -> vis_player_018     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+mod_marine                 海军陆战队            [现代/轻装] -> vis_player_018     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+mod_ranger                 游骑兵              [现代/轻装] -> vis_player_018     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+mod_javelin                标枪导弹兵            [现代/轻装] -> vis_player_018     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+mod_stinger                毒刺导弹兵            [现代/支援] -> vis_player_020     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+mod_inf_technical          武装皮卡             [现代/轻装] -> vis_player_018     (manifest)
+mod_stryker_mgs            斯特赖克MGS          [现代/装甲] -> vis_player_019     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+mod_stryker_m2             斯特赖克M2           [现代/装甲] -> vis_player_019     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+mod_hummer_tow             悍马·陶式            [现代/轻装] -> vis_player_018     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+mod_hummer_m2              悍马·M2            [现代/轻装] -> vis_player_018     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+mod_arm_m1a1               M1A1坦克           [现代/装甲] -> vis_player_019     (manifest)
+mod_m1a2                   M1A2艾布拉姆斯        [现代/装甲] -> vis_player_019     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+mod_arm_m1a2sep            M1A2 SEP         [现代/装甲] -> vis_player_023     (manifest)
+mod_t90                    T-90坦克           [现代/装甲] -> vis_player_019     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+mod_leo2a6                 豹2A6坦克           [现代/装甲] -> vis_player_019     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+mod_challenger2            挑战者2坦克           [现代/装甲] -> vis_player_019     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+mod_ah64                   AH-64阿帕奇         [现代/空中] -> vis_player_022     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+mod_ah1                    AH-1眼镜蛇          [现代/空中] -> vis_player_022     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+mod_uh60                   UH-60黑鹰          [现代/空中] -> vis_player_022     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+mod_arty_m270              M270火箭炮          [现代/支援] -> vis_player_021     (manifest)
+mod_sup_m6                 自行高炮M6           [现代/支援] -> vis_player_020     (manifest)
+fut_swarm                  蜂群无人机            [近未来/空中] -> vis_player_022     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+mod_inf_scout_drone        侦察无人机            [近未来/空中] -> vis_player_022     (manifest)
+fut_attack_drone           攻击无人机            [近未来/空中] -> vis_player_022     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+fut_cyborg                 机械步兵             [近未来/轻装] -> vis_player_024     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+fut_heavy_trooper          重装机兵             [近未来/轻装] -> vis_player_024     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+fut_inf_scout_mech         侦察机甲             [近未来/轻装] -> vis_player_024     (manifest)
+fut_assault_mech           突击机甲             [近未来/装甲] -> vis_player_025     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+fut_arm_heavy_mech         重装机甲             [近未来/装甲] -> vis_player_027     (manifest)
+fut_arm_hovertank          悬浮坦克             [近未来/装甲] -> vis_player_025     (manifest)
+fut_howitzer               悬浮自行火炮           [近未来/支援] -> vis_player_020     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+fut_arm_prism              光棱坦克             [近未来/装甲] -> vis_player_026     (manifest)
+fut_aa_hover               防空悬浮车            [近未来/支援] -> vis_player_020     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+fut_stealth_bomber         隐形轰炸机            [近未来/空中] -> vis_player_022     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+fut_space_fighter          空天战斗机            [近未来/空中] -> vis_player_022     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+fut_spectre                幽灵特工             [近未来/轻装] -> vis_player_024     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+fut_nano_drone             纳米修复机            [近未来/空中] -> vis_player_022     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+fut_shield                 力场发生器            [近未来/支援] -> vis_player_020     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+fut_colossus               巨神机甲             [近未来/装甲] -> vis_player_025     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+fut_stormcore              风暴核心原型           [近未来/支援] -> vis_player_020     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+fut_arm_nexus              虚空领主             [近未来/装甲] -> vis_player_028     (manifest)
+fut_arm_omega              全装型机动舱           [近未来/装甲] -> vis_player_025     (ERA_KIND回退(时代+兵种))  ← 通用回退(无专属图)
+ww1_fort_pillbox           混凝土机枪碉堡          [一战/堡垒] -> vis_player_072     (manifest)
+ww1_fort_artillery         要塞炮台             [一战/堡垒] -> vis_player_073     (manifest)
+ww2_fort_bunker            混凝土碉堡            [二战/堡垒] -> vis_player_074     (manifest)
+ww2_fort_flak              88mm防空塔          [二战/堡垒] -> vis_player_075     (manifest)
+cold_fort_missile          导弹发射井            [冷战/堡垒] -> vis_player_076     (manifest)
+cold_fort_radar            雷达站              [冷战/堡垒] -> vis_player_077     (manifest)
+mod_fort_citadel           要塞核心             [现代/堡垒] -> vis_player_078     (manifest)
+mod_fort_phalanx           近防炮系统            [现代/堡垒] -> vis_player_079     (manifest)
+fut_fort_ion               离子炮台             [近未来/堡垒] -> vis_player_080     (manifest)
+fut_fort_shield            能量护盾发生器          [近未来/堡垒] -> vis_player_081     (manifest)
+
+===== 走回退的卡（用通用代表图，非专属）=====
+  ww1_mp18                   MP18突击班          一战/轻装 -> vis_player_004
+  ww1_mauser                 毛瑟步枪班            一战/轻装 -> vis_player_004
+  ww1_enfield                李恩菲尔德班           一战/轻装 -> vis_player_004
+  ww1_mg08                   MG08机枪巢          一战/支援 -> vis_player_003
+  ww1_vickers                维克斯机枪巢           一战/支援 -> vis_player_003
+  ww1_m76                    76mm迫击炮组         一战/支援 -> vis_player_003
+  ww1_storm                  暴风突击队            一战/轻装 -> vis_player_004
+  ww1_lanchest               兰彻斯特装甲车          一战/装甲 -> vis_player_001
+  ww1_saint                  圣沙蒙坦克            一战/装甲 -> vis_player_001
+  ww1_a7v                    A7V重型坦克          一战/装甲 -> vis_player_001
+  ww1_mark4                  马克IV型坦克          一战/装甲 -> vis_player_001
+  ww1_105mm                  105mm榴弹炮         一战/支援 -> vis_player_003
+  ww1_37mm                   37mm高射炮          一战/支援 -> vis_player_003
+  ww1_flame                  火焰喷射兵            一战/轻装 -> vis_player_004
+  ww2_thompson               汤普森班             二战/轻装 -> vis_player_009
+  ww2_garand                 加兰德班             二战/轻装 -> vis_player_009
+  ww2_mp40                   MP40班            二战/轻装 -> vis_player_009
+  ww2_ppsh                   波波沙班             二战/轻装 -> vis_player_009
+  ww2_mg42                   MG42机枪组          二战/支援 -> vis_player_011
+  ww2_browning               勃朗宁机枪组           二战/支援 -> vis_player_011
+  ww2_m120                   120mm重迫击炮        二战/支援 -> vis_player_011
+  ww2_pz3                    三号坦克             二战/装甲 -> vis_player_007
+  ww2_pz4                    四号坦克             二战/装甲 -> vis_player_007
+  ww2_panther                黑豹坦克             二战/装甲 -> vis_player_007
+  ww2_kingtiger              虎王坦克             二战/装甲 -> vis_player_007
+  ww2_t34_76                 T-34/76坦克        二战/装甲 -> vis_player_007
+  ww2_t34_85                 T-34/85坦克        二战/装甲 -> vis_player_007
+  ww2_is2                    IS-2重型坦克         二战/装甲 -> vis_player_007
+  cold_rpg                   RPG火箭筒组          冷战/轻装 -> vis_player_018
+  cold_ak47                  AK-47步兵班         冷战/轻装 -> vis_player_018
+  cold_m14                   M14步兵班           冷战/轻装 -> vis_player_018
+  cold_m60                   M60机枪班           冷战/轻装 -> vis_player_018
+  cold_rpk                   RPK机枪班           冷战/轻装 -> vis_player_018
+  cold_bradley               M2布雷德利           冷战/装甲 -> vis_player_014
+  cold_t62                   T-62坦克           冷战/装甲 -> vis_player_014
+  cold_t72                   T-72坦克           冷战/装甲 -> vis_player_014
+  cold_m60t                  M60坦克            冷战/装甲 -> vis_player_014
+  cold_m1                    M1主战坦克           冷战/装甲 -> vis_player_014
+  cold_leo1                  豹1坦克             冷战/装甲 -> vis_player_014
+  cold_chieftain             酋长坦克             冷战/装甲 -> vis_player_014
+  cold_sam7                  萨姆-7防空组          冷战/支援 -> vis_player_016
+  cold_mig21                 米格-21战机          冷战/空中 -> vis_player_015
+  cold_f4                    F-4鬼怪战机          冷战/空中 -> vis_player_015
+  cold_spetsnaz              阿尔法特种部队          冷战/轻装 -> vis_player_018
+  mod_marine                 海军陆战队            现代/轻装 -> vis_player_018
+  mod_ranger                 游骑兵              现代/轻装 -> vis_player_018
+  mod_javelin                标枪导弹兵            现代/轻装 -> vis_player_018
+  mod_stinger                毒刺导弹兵            现代/支援 -> vis_player_020
+  mod_stryker_mgs            斯特赖克MGS          现代/装甲 -> vis_player_019
+  mod_stryker_m2             斯特赖克M2           现代/装甲 -> vis_player_019
+  mod_hummer_tow             悍马·陶式            现代/轻装 -> vis_player_018
+  mod_hummer_m2              悍马·M2            现代/轻装 -> vis_player_018
+  mod_m1a2                   M1A2艾布拉姆斯        现代/装甲 -> vis_player_019
+  mod_t90                    T-90坦克           现代/装甲 -> vis_player_019
+  mod_leo2a6                 豹2A6坦克           现代/装甲 -> vis_player_019
+  mod_challenger2            挑战者2坦克           现代/装甲 -> vis_player_019
+  mod_ah64                   AH-64阿帕奇         现代/空中 -> vis_player_022
+  mod_ah1                    AH-1眼镜蛇          现代/空中 -> vis_player_022
+  mod_uh60                   UH-60黑鹰          现代/空中 -> vis_player_022
+  fut_swarm                  蜂群无人机            近未来/空中 -> vis_player_022
+  fut_attack_drone           攻击无人机            近未来/空中 -> vis_player_022
+  fut_cyborg                 机械步兵             近未来/轻装 -> vis_player_024
+  fut_heavy_trooper          重装机兵             近未来/轻装 -> vis_player_024
+  fut_assault_mech           突击机甲             近未来/装甲 -> vis_player_025
+  fut_howitzer               悬浮自行火炮           近未来/支援 -> vis_player_020
+  fut_aa_hover               防空悬浮车            近未来/支援 -> vis_player_020
+  fut_stealth_bomber         隐形轰炸机            近未来/空中 -> vis_player_022
+  fut_space_fighter          空天战斗机            近未来/空中 -> vis_player_022
+  fut_spectre                幽灵特工             近未来/轻装 -> vis_player_024
+  fut_nano_drone             纳米修复机            近未来/空中 -> vis_player_022
+  fut_shield                 力场发生器            近未来/支援 -> vis_player_020
+  fut_colossus               巨神机甲             近未来/装甲 -> vis_player_025
+  fut_stormcore              风暴核心原型           近未来/支援 -> vis_player_020
+  fut_arm_omega              全装型机动舱           近未来/装甲 -> vis_player_025

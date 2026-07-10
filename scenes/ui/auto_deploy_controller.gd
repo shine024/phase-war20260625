@@ -1,14 +1,14 @@
 extends RefCounted
 class_name AutoDeployController
-## 战斗内自动部署控制器 — 从左到右自动铺满战斗卡，单位死亡后立即补部署
+## 战斗内自动部署控制器 — 绿槽索引固定映射到战场位，单位死亡后补对应位
 ##
-## 设计要点（复用 AFK 模式验证过的部署模式）：
-##   - 找空槽：遍历玩家槽位 1..6，取第一个空位（从左到右铺满）
-##   - 部署：BattleManager.request_player_deploy_at(card_id, pos)
+## v7.x 固定映射设计：
+##   - 绿槽 0 → 战场位 1，绿槽 1 → 战场位 2，... 绿槽 N-1 → 战场位 N
+##   - 某战场位单位死亡 → 自动补该位对应的绿槽卡
+##   - 绿槽未装卡 → 对应战场位永远空着
 ##   - instance_id 优先（遵守铁律3：同名多实例卡精确匹配各自实例）
-##   - 能量等待：能量不足时卡留在队列，间隔后重试，等回能后自动铺
+##   - 能量不足时卡留在队列，间隔后重试，等回能后自动铺
 ##   - 仅当前战斗：battle_ended 自动 disable，下场战斗需重新开启
-##   - 死亡补阵：监听 unit_died(is_player=true)，死亡后立即重新填充部署队列
 
 const GC = preload("res://resources/game_constants.gd")
 
@@ -26,9 +26,8 @@ const DEPLOY_INTERVAL: float = 0.4
 const INITIAL_DELAY: float = 0.3
 ## 单张连续失败次数上限：超过则放弃该张（防死循环，如该卡能量永远不够）
 const FAIL_GIVEUP: int = 20
-## 玩家可用部署槽位范围：slot 1..6（slot 0 为屏幕边缘禁放位）
-const SLOT_RANGE_START: int = 1
-const SLOT_RANGE_END: int = 6
+## 绿槽索引 → 战场位的偏移量（绿槽0→位1, 绿槽1→位2, ...）
+const SLOT_INDEX_OFFSET: int = 1
 
 
 # ── 状态 ──
@@ -36,12 +35,18 @@ const SLOT_RANGE_END: int = 6
 var _enabled: bool = false
 var _battle_active: bool = false
 
-## 待部署的 platform CardResource 列表（从左到右顺序）
+## 待部署条目列表，每项 = {platform: CardResource, slot_index: int}
 var _deploy_queue: Array = []
 ## 部署计时器
 var _deploy_timer: float = 0.0
 ## 单卡连续失败计数
 var _fail_streak: int = 0
+## v8.1c: 槽位补阵冷却——记录每个槽位上次成功部署的时间戳，防止单位秒死后
+## 陷入"死亡→立即补→又秒死→又补"的死循环（烧能量无意义）。
+## key=slot_index, value=部署时的 Time.get_ticks_msec()
+var _slot_deploy_time: Dictionary = {}
+## v8.1c: 补阵冷却秒数：某槽位刚部署的单位若很快死亡，冷却期内不重复补该位
+const REPLOY_COOLDOWN_SEC: float = 3.0
 ## 主场景引用（定位 Battlefield）
 var _main: Node = null
 
@@ -101,6 +106,7 @@ func is_enabled() -> bool:
 
 func _on_battle_started() -> void:
 	_battle_active = true
+	_slot_deploy_time.clear()  # v8.1c: 清理跨战斗冷却残留
 	if _enabled:
 		# 战斗开始：重置队列 + 初始延迟后开始铺
 		_deploy_queue.clear()
@@ -146,16 +152,33 @@ func process(delta: float) -> void:
 
 # ── 核心逻辑 ──
 
-## 收集装备的战斗卡，填充部署队列（从左到右 = get_loadouts 返回顺序）
+## 收集装备的战斗卡，填充部署队列（保留绿槽索引用于固定映射）
+## v7.x: 过滤掉已在战场上存活的卡（不管它在哪个位置），避免手动+自动混用时报错
 func _start_deploy_round() -> void:
 	var pim: Node = _get_node("/root/PhaseInstrumentManager")
 	if pim == null or not pim.has_method("get_loadouts"):
 		return
 	var loadouts: Array = pim.get_loadouts()
-	var cards: Array = []
+	# v8.1b: 存活过滤改为按"槽位对应的战场位是否已占用"判断，而非按卡 id。
+	# 原按 instance_id/card_id 过滤会误杀"同一实例装多槽"的第二张（用户把同一张卡放两个槽
+	# 想部署两个单位，或游戏开局送的同名卡被装多槽）。固定映射下每个绿槽有独立战场位，
+	# _deploy_next 的 is_player_slot_occupied 已能精确判断该位是否需要补。
+	var bf: Node2D = _get_battlefield()
+	var grid: Node = null
+	if bf != null:
+		if bf.has_method("ensure_battle_slot_grid_ready"):
+			grid = bf.ensure_battle_slot_grid_ready()
+		if grid == null:
+			grid = bf.get_node_or_null("BattleSlotGrid")
+	var player_units: Node2D = null
+	if bf != null:
+		if bf.has_method("get_player_units_node"):
+			player_units = bf.get_player_units_node()
+		if player_units == null:
+			player_units = bf.get_node_or_null("PlayerUnits")
+	var entries: Array = []
 	for loadout in loadouts:
 		var platform = loadout.get("platform")
-		# platform 是 CardResource（Resource），card_id 是 String 属性。
 		if platform == null:
 			continue
 		if not ("card_id" in platform) or String(platform.card_id).is_empty():
@@ -163,14 +186,56 @@ func _start_deploy_round() -> void:
 		# 仅战斗单位卡可部署（过滤能量卡/法则卡）
 		if "card_type" in platform and int(platform.card_type) != GC.CardType.COMBAT_UNIT:
 			continue
-		cards.append(platform)
-	if cards.is_empty():
+		var slot_index: int = int(loadout.get("slot_index", 0))
+		# v8.1b: 该槽位对应的战场位已被占用 → 跳过（该位已有单位，无需补）
+		var battlefield_slot: int = slot_index + SLOT_INDEX_OFFSET
+		if grid != null and player_units != null and grid.has_method("is_player_slot_occupied"):
+			if grid.is_player_slot_occupied(battlefield_slot, player_units):
+				continue
+		# v8.1c: 补阵冷却——该槽位刚部署的单位若很快死亡（秒死），冷却期内不重复补，
+		# 避免"死亡→立即补→又秒死→又补"的死循环（烧能量无意义）。
+		if _slot_deploy_time.has(slot_index):
+			var elapsed_sec: float = (Time.get_ticks_msec() - float(_slot_deploy_time[slot_index])) / 1000.0
+			if elapsed_sec < REPLOY_COOLDOWN_SEC:
+				continue
+		entries.append({"platform": platform, "slot_index": slot_index})
+	if entries.is_empty():
 		return
-	_deploy_queue = cards
+	_deploy_queue = entries
 
 
-## 部署队列里的下一张卡到第一个空槽（从左到右）
-## v7.x: 改为轮转尝试——遍历队列找第一个能部署成功的卡，避免 FIFO 阻塞
+## 收集当前战场上所有存活玩家单位的卡 ID（instance_id 优先，回退 card_id）
+func _collect_alive_card_ids() -> Array:
+	var ids: Array = []
+	var bf: Node2D = _get_battlefield()
+	if bf == null:
+		return ids
+	var player_units: Node2D = null
+	if bf.has_method("get_player_units_node"):
+		player_units = bf.get_player_units_node()
+	if player_units == null:
+		player_units = bf.get_node_or_null("PlayerUnits")
+	if player_units == null:
+		return ids
+	for u in player_units.get_children():
+		if u == null or not is_instance_valid(u):
+			continue
+		# 死亡淡出期间（_is_dying=true，queue_free 尚未执行）不计入存活，
+		# 否则刚死亡的单位仍被当作存活→对应卡被跳过→补阵失败
+		if "_is_dying" in u and u._is_dying:
+			continue
+		var inst: String = String(u.get_meta("source_instance_id", ""))
+		if not inst.is_empty():
+			ids.append(inst)
+		else:
+			var cid: String = String(u.get_meta("source_card_id", ""))
+			if not cid.is_empty():
+				ids.append(cid)
+	return ids
+
+
+## v7.x 固定映射部署：遍历队列，每个条目部署到其绿槽对应的战场位
+## 绿槽 N → 战场位 N+1；该位已有单位则跳过，空闲则部署
 func _deploy_next() -> void:
 	if _deploy_queue.is_empty():
 		return
@@ -180,21 +245,37 @@ func _deploy_next() -> void:
 	var bf: Node2D = _get_battlefield()
 	if bf == null:
 		return
-	# 找第一个空槽（从左到右）
-	var pos: Vector2 = _find_free_slot_world_pos(bf)
-	if pos == Vector2.INF:
-		# 没有空槽了 → 铺满了，清空队列等死亡补阵
-		_deploy_queue.clear()
-		_fail_streak = 0
+	var grid: Node = null
+	if bf.has_method("ensure_battle_slot_grid_ready"):
+		grid = bf.ensure_battle_slot_grid_ready()
+	if grid == null:
+		grid = bf.get_node_or_null("BattleSlotGrid")
+	if grid == null:
 		return
-	# 轮转尝试：遍历队列找第一张能部署成功的卡
+	var player_units: Node2D = null
+	if bf.has_method("get_player_units_node"):
+		player_units = bf.get_player_units_node()
+	if player_units == null:
+		player_units = bf.get_node_or_null("PlayerUnits")
+	# 遍历队列，找第一个"对应战场位空闲"的条目部署
 	var deployed_index: int = -1
 	for i in range(_deploy_queue.size()):
-		var platform = _deploy_queue[i]
+		var entry: Dictionary = _deploy_queue[i]
+		var platform = entry.get("platform")
+		var slot_index: int = int(entry.get("slot_index", 0))
+		var battlefield_slot: int = slot_index + SLOT_INDEX_OFFSET
+		# 该战场位已有单位 → 跳过（不部署，不报错）
+		if grid.has_method("is_player_slot_occupied") and player_units != null:
+			if grid.is_player_slot_occupied(battlefield_slot, player_units):
+				continue
+		# 战场位空闲 → 部署到该位置
+		var pos: Vector2 = _get_slot_world_pos(bf, battlefield_slot)
+		if pos == Vector2.INF:
+			continue
 		var card_id: String = ""
-		if "instance_id" in platform and not String(platform.instance_id).is_empty():
+		if platform != null and "instance_id" in platform and not String(platform.instance_id).is_empty():
 			card_id = String(platform.instance_id)
-		elif "card_id" in platform:
+		elif platform != null and "card_id" in platform:
 			card_id = String(platform.card_id)
 		if card_id.is_empty():
 			deployed_index = i
@@ -205,41 +286,44 @@ func _deploy_next() -> void:
 		if ok:
 			deployed_index = i
 			break
+		# 部署失败（能量不足等）→ 继续尝试下一个条目
 	if deployed_index >= 0:
+		var dep_entry: Dictionary = _deploy_queue[deployed_index]
+		var dep_slot: int = int(dep_entry.get("slot_index", -1))
+		if dep_slot >= 0:
+			_slot_deploy_time[dep_slot] = Time.get_ticks_msec()  # v8.1c: 记录补阵时间用于冷却
 		_deploy_queue.remove_at(deployed_index)
 		_fail_streak = 0
 	else:
-		# 全部失败（多为能量不足）—— 整轮重试
+		# 全部失败（多为能量不足或对应位已有单位）→ 整轮重试
 		_fail_streak += 1
 		if _fail_streak > FAIL_GIVEUP:
-			# 放弃队列头（最久无法部署的卡），避免永久阻塞
-			_deploy_queue.pop_front()
+			# 连续多轮无进展 → 检查是否所有位都已占满
+			if _all_slots_occupied(grid, player_units):
+				_deploy_queue.clear()
+			else:
+				# 仍有空位但部署一直失败（如能量永远不够）→ 放弃队首
+				_deploy_queue.pop_front()
 			_fail_streak = 0
 
 
-## 遍历玩家可用槽位 1..6，返回第一个空槽的世界坐标；全占用返回 Vector2.INF
-func _find_free_slot_world_pos(bf: Node2D) -> Vector2:
+## 返回指定战场位的世界坐标；无效返回 Vector2.INF
+func _get_slot_world_pos(bf: Node2D, battlefield_slot: int) -> Vector2:
 	if bf == null or not bf.has_method("get_card_grid_player_slot_global"):
 		return Vector2.INF
-	var grid: Node = null
-	if bf.has_method("ensure_battle_slot_grid_ready"):
-		grid = bf.ensure_battle_slot_grid_ready()
-	if grid == null:
-		grid = bf.get_node_or_null("BattleSlotGrid")
-	if grid == null:
-		return Vector2.INF
-	var player_units: Node2D = null
-	if bf.has_method("get_player_units_node"):
-		player_units = bf.get_player_units_node()
-	if player_units == null:
-		player_units = bf.get_node_or_null("PlayerUnits")
-	for si in range(SLOT_RANGE_START, SLOT_RANGE_END + 1):
-		var occupied: bool = false
-		if grid.has_method("is_player_slot_occupied") and player_units != null:
-			occupied = grid.is_player_slot_occupied(si, player_units)
-		if not occupied:
-			return bf.get_card_grid_player_slot_global(si)
-	return Vector2.INF
+	return bf.get_card_grid_player_slot_global(battlefield_slot)
+
+
+## 检查所有队列条目对应的战场位是否都已占满
+func _all_slots_occupied(grid: Node, player_units: Node2D) -> bool:
+	if grid == null or not grid.has_method("is_player_slot_occupied") or player_units == null:
+		return false
+	for entry in _deploy_queue:
+		var slot_index: int = int(entry.get("slot_index", 0))
+		var battlefield_slot: int = slot_index + SLOT_INDEX_OFFSET
+		if not grid.is_player_slot_occupied(battlefield_slot, player_units):
+			return false
+	return true
 
 
 func _get_battlefield() -> Node2D:

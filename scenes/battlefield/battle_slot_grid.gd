@@ -91,6 +91,11 @@ func is_player_slot_occupied(idx: int, player_root: Node2D) -> bool:
 	for u in player_root.get_children():
 		if not is_instance_valid(u):
 			continue
+		# 死亡淡出期间（_is_dying=true，queue_free 尚未执行）不计入占用，
+		# 否则刚死亡的单位仍占用其 slot → 自动部署认为该位已满而跳过补阵（卡丢失）。
+		# 与 AutoDeployController._collect_alive_card_ids 的 _is_dying 守卫保持一致。
+		if "_is_dying" in u and bool(u.get("_is_dying")):
+			continue
 		if int(u.get_meta("card_grid_slot", -1)) == idx:
 			return true
 	return false

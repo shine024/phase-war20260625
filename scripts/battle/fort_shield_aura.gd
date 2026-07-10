@@ -19,10 +19,11 @@ const MODE_FORT := "fort"
 const MODE_SHIELD := "shield"
 
 const AURA_RADIUS: float = 38.0          # 堡垒环基础半径（略大于单位占地）
-const SHIELD_RADIUS: float = 46.0        # 护盾环半径（外层，比堡垒环大，表示"罩"在外面）
+const SHIELD_RADIUS: float = 52.0        # v7.x: 护盾环从46加大到52，更明显
 const BREATH_PERIOD: float = 2.0         # 呼吸周期（秒）
 const BREATH_AMP: float = 0.15           # 呼吸幅度
 const RING_WIDTH: float = 3.0            # 圆环线宽
+const SHIELD_RING_WIDTH: float = 4.5     # v7.x: 护盾环线宽加粗
 const SEGMENTS: int = 40                 # 圆环分段
 
 ## 堡垒环配色（按阵营）
@@ -31,8 +32,8 @@ const FORT_COLOR_ENEMY := Color(1.0, 0.45, 0.35, 0.55)
 const FORT_COLOR_HIT_PLAYER := Color(0.7, 0.95, 1.0, 0.9)
 const FORT_COLOR_HIT_ENEMY := Color(1.0, 0.75, 0.6, 0.9)
 ## 护盾环配色（青色，与堡垒蓝区分；护盾是临时状态，用更亮的青）
-const SHIELD_COLOR := Color(0.4, 0.95, 0.85, 0.6)
-const SHIELD_COLOR_HIT := Color(0.8, 1.0, 0.95, 0.9)
+const SHIELD_COLOR := Color(0.3, 1.0, 0.95, 0.75)   # v7.x: 提高透明度0.6→0.75
+const SHIELD_COLOR_HIT := Color(0.8, 1.0, 1.0, 1.0)  # v7.x: 受击时更亮
 
 
 func _draw() -> void:
@@ -81,20 +82,26 @@ func _draw_shield() -> void:
 	var hit_scale: float = 1.0 + hit_boost * 0.18
 	var radius: float = SHIELD_RADIUS * breath * hit_scale
 
-	# 透明度 = 基础透明度 × 护盾比例（满护盾最实，快耗尽时变淡）+ 受击闪亮叠加
-	var base_alpha: float = 0.35 + 0.45 * shield_ratio  # 0.35~0.8
+	# v7.x: 透明度 = 基础透明度 × 护盾比例（满护盾最实，快耗尽时变淡）+ 受击闪亮叠加
+	var base_alpha: float = 0.5 + 0.35 * shield_ratio  # v7.x: 0.35→0.5 提高最低透明度
 	var ring_color := Color(SHIELD_COLOR.r, SHIELD_COLOR.g, SHIELD_COLOR.b, base_alpha)
 	ring_color = ring_color.lerp(SHIELD_COLOR_HIT, hit_boost)
 
-	# 外层柔光晕（护盾罩的扩散感）
-	var glow_color := Color(SHIELD_COLOR.r, SHIELD_COLOR.g, SHIELD_COLOR.b, base_alpha * 0.15)
-	draw_circle(Vector2.ZERO, radius * 1.3, glow_color)
-	# 主护盾环
-	_draw_ring(radius, ring_color, RING_WIDTH)
+	# v7.x: 外层柔光晕加大加亮（护盾罩的扩散感）
+	var glow_color := Color(SHIELD_COLOR.r, SHIELD_COLOR.g, SHIELD_COLOR.b, base_alpha * 0.25)
+	draw_circle(Vector2.ZERO, radius * 1.4, glow_color)
+	
+	# v7.x: 主护盾环加粗
+	_draw_ring(radius, ring_color, SHIELD_RING_WIDTH)
+	
+	# v7.x: 内层细环增加层次感
+	var inner_color := Color(SHIELD_COLOR.r, SHIELD_COLOR.g, SHIELD_COLOR.b, base_alpha * 0.5)
+	_draw_ring(radius * 0.92, inner_color, 1.5)
+	
 	# 护盾承压时（受击）追加更亮的内描边
 	if hit_boost > 0.05:
-		var stress_color := Color(SHIELD_COLOR_HIT.r, SHIELD_COLOR_HIT.g, SHIELD_COLOR_HIT.b, hit_boost * 0.6)
-		_draw_ring(radius * 0.88, stress_color, RING_WIDTH * 0.6)
+		var stress_color := Color(SHIELD_COLOR_HIT.r, SHIELD_COLOR_HIT.g, SHIELD_COLOR_HIT.b, hit_boost * 0.7)
+		_draw_ring(radius * 0.88, stress_color, SHIELD_RING_WIDTH * 0.7)
 
 
 ## 绘制一个闭合圆环（描边）

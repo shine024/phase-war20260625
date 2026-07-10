@@ -25,8 +25,8 @@ static var _start_fired: bool = false
 static var _battle_active: bool = false
 ## 战场引用（on_battle_start 时设置）
 static var _battlefield: Node = null
-## 酸雨剩余持续时间
-static var _acid_rain_remaining: float = 0.0
+## 纳米虫群剩余持续时间
+static var _nano_swarm_remaining: float = 0.0
 ## 火炮连发队列：[{fire_at: float, shots_left: int}]
 static var _barrage_queue: Array = []
 
@@ -44,16 +44,16 @@ static func on_battle_start(phase_instrument: Node, battlefield: Node) -> void:
 	# 触发开局一次性能力
 	_fire_start_abilities()
 
-## 每帧调用：驱动周期能力（火炮连发/核子轰炸/酸雨持续）
+## 每帧调用：驱动周期能力（火炮连发/核子轰炸/纳米虫群持续）
 static func update(delta: float) -> void:
 	if not _battle_active or _active_ability.is_empty():
 		return
 	var ability_id: String = String(_active_ability.get("id", ""))
 	var atype: String = String(_active_ability.get("type", ""))
-	# 酸雨持续掉血
-	if _acid_rain_remaining > 0.0:
-		_acid_rain_remaining -= delta
-		_apply_acid_rain_tick(delta)
+	# 纳米虫群持续掉血
+	if _nano_swarm_remaining > 0.0:
+		_nano_swarm_remaining -= delta
+		_apply_nano_swarm_tick(delta)
 	# 周期能力计时
 	if atype == "periodic":
 		_update_periodic(ability_id, delta)
@@ -65,7 +65,7 @@ static func reset_state() -> void:
 	_start_fired = false
 	_battle_active = false
 	_battlefield = null
-	_acid_rain_remaining = 0.0
+	_nano_swarm_remaining = 0.0
 	_barrage_queue.clear()
 
 ## 获取当前相位仪的 active_ability（被动能力查询也用这个）
@@ -101,18 +101,21 @@ static func _fire_start_abilities() -> void:
 	if atype != "on_battle_start":
 		return
 	match ability_id:
-		"acid_rain":
-			_acid_rain_remaining = float(params.get("duration", 30.0))
-			# v6.6 正式动画：绿色酸液云覆盖战场
+		"nano_swarm":
+			_nano_swarm_remaining = float(params.get("duration", 30.0))
+			# v7.x 正式动画：紫色纳米虫群覆盖战场
 			if _battlefield is Node2D:
 				var center: Vector2 = (_battlefield as Node2D).global_position
-				# 大范围绿色粒子云
-				_create_acid_rain_cloud(center)
+				_create_nano_swarm_cloud(center)
 			_trigger_screen_shake(5.0, 0.4)
-			_show_toast("☁ 致命酸雨降临敌方阵营！")
+			_show_toast("🔮 纳米虫群降临敌方阵营！")
+			# v8.1: emit start 信号供 BattleSpectacle 创建全屏紫色降雨层
+			_emit_ability_triggered("nano_swarm", "start", {"duration": _nano_swarm_remaining})
 		"mega_shield":
 			_apply_mega_shield(params)
 			_show_toast("🛡 巨型能量罩笼罩我方全体！")
+			# v8.1: emit start 信号供 BattleSpectacle 播放全屏能量罩降临闪光
+			_emit_ability_triggered("mega_shield", "start", {"shield_amount": float(params.get("shield_amount", 3000.0))})
 
 static func _update_periodic(ability_id: String, delta: float) -> void:
 	var params: Dictionary = _active_ability.get("params", {})
@@ -213,7 +216,13 @@ static func _fire_nuclear_bombardment(params: Dictionary) -> void:
 	var base_dmg: float = _compute_nuclear_damage() * dmg_mult
 	var enemies: Array = _get_enemy_units()
 	# v6.6 正式动画：分两阶段——先紫色闪电标记（警告），延迟后绿色核爆 + 伤害结算
+	# v8.1: emit warning 信号供 BattleSpectacle 播放全屏红屏预警
+	var first_pos: Vector2 = Vector2.ZERO
+	if not enemies.is_empty() and enemies[0] is Node2D:
+		first_pos = (enemies[0] as Node2D).global_position
+	_emit_ability_triggered("nuclear_bombardment", "warning", {"damage": base_dmg, "position": first_pos, "count": enemies.size()})
 	var mark_delay: float = 0.35
+	var fired_impact: bool = false
 	for e in enemies:
 		if e == null or not is_instance_valid(e):
 			continue
@@ -233,10 +242,16 @@ static func _fire_nuclear_bombardment(params: Dictionary) -> void:
 			if is_instance_valid(captured_enemy) and captured_enemy is Node2D:
 				cur_pos = (captured_enemy as Node2D).global_position
 			VisualEffects.create_explosion(_battlefield, cur_pos, 3.0, Color(0.2, 1.0, 0.2, 1.0))
+			# v8.1: 上升烟柱粒子（核爆蘑菇云效果）
+			_spawn_smoke_column(cur_pos, Color(0.5, 0.85, 0.4, 0.6))
 			if is_instance_valid(captured_enemy):
 				CombatFeedback.show_damage(cur_pos, base_dmg, captured_enemy, true, "critical")
 				if captured_enemy.has_method("take_damage"):
 					captured_enemy.take_damage(base_dmg, null)
+			# v8.1: 首次爆炸时 emit impact 信号（供 BattleSpectacle 白闪定帧）
+			if not fired_impact:
+				fired_impact = true
+				_emit_ability_triggered("nuclear_bombardment", "impact", {"position": cur_pos, "damage": base_dmg})
 		)
 	# 全屏震动（与标记同步出现，强化预警冲击）
 	_trigger_screen_shake(10.0, 0.6)
@@ -251,8 +266,8 @@ static func _compute_nuclear_damage() -> float:
 			total_atk += float(u.stats.attack_damage)
 	return 300.0 + total_atk * 0.5  # 基础300 + 总攻击力50%
 
-# ── 酸雨（持续百分比掉血）──
-static func _apply_acid_rain_tick(delta: float) -> void:
+# ── 纳米虫群（持续百分比掉血）──
+static func _apply_nano_swarm_tick(delta: float) -> void:
 	if _battlefield == null:
 		return
 	var params: Dictionary = _active_ability.get("params", {})
@@ -274,20 +289,21 @@ static func _apply_acid_rain_tick(delta: float) -> void:
 		var dmg: float = max_hp * hp_pct * delta
 		if dmg > 0.0 and e.has_method("take_damage"):
 			e.take_damage(dmg, null)
-			# v6.6: 伤害数字由 take_damage → unit_damaged 信号统一驱动（用实际扣血），
-			# 此处不再直接 show_damage（否则双数字 + 不含 _incoming_damage_mul）。
-			# 仅保留酸液滴落视觉特效。
+			# v7.x: 伤害数字由 take_damage → unit_damaged 信号统一驱动，
+			# 仅保留纳米虫群命中视觉特效。
 			if show_vfx_this_frame and i % 3 == 0 and e is Node2D:
 				var epos: Vector2 = (e as Node2D).global_position
-				_create_acid_drip(epos)
+				_create_nano_swarm_hit(epos)
 
-# ── 巨型能量罩 ──
+## ── 巨型能量罩 ──
 static func _apply_mega_shield(params: Dictionary) -> void:
 	if _battlefield == null:
 		return
-	var shield_amount: float = float(params.get("shield_amount", 20000.0))
+	var shield_amount: float = float(params.get("shield_amount", 3000.0))
+	# 每单位上限3000护盾
+	shield_amount = minf(shield_amount, 3000.0)
 	var allies: Array = _get_player_units()
-	# v6.6 正式动画：蓝色能量罩降临每个友军 + 战场中央光环
+	# v7.x 正式动画：蓝色能量罩降临每个友军 + 战场中央光环
 	for u in allies:
 		if u == null or not is_instance_valid(u):
 			continue
@@ -324,6 +340,16 @@ static func _show_toast(msg: String) -> void:
 		if SignalBusRef and SignalBusRef.has_signal("show_toast"):
 			SignalBusRef.show_toast.emit(msg)
 
+## v8.1: emit 相位仪能力触发信号（供 BattleSpectacle 编排全屏演出）
+static func _emit_ability_triggered(ability_id: String, stage: String, params: Dictionary = {}) -> void:
+	var sb := Engine.get_main_loop() as SceneTree
+	if sb == null or sb.root == null:
+		return
+	if sb.root.has_node("/root/SignalBus"):
+		var SignalBusRef = sb.root.get_node("/root/SignalBus")
+		if SignalBusRef and SignalBusRef.has_signal("phase_instrument_ability_triggered"):
+			SignalBusRef.phase_instrument_ability_triggered.emit(ability_id, stage, params)
+
 ## v6.6 正式：触发屏幕震动（使用 ScreenShake 脚本）
 static func _trigger_screen_shake(intensity: float, duration: float) -> void:
 	if _battlefield == null:
@@ -340,119 +366,222 @@ static func _trigger_screen_shake(intensity: float, duration: float) -> void:
 #  正式动画函数（v6.6）
 # ─────────────────────────────────────────────
 
-## 酸雨云：大范围绿色粒子覆盖
-static func _create_acid_rain_cloud(center: Vector2) -> void:
-	"""在战场中央生成大范围绿色酸液云"""
+## 纳米虫群云：大范围紫色粒子覆盖（替代酸雨云）
+static func _create_nano_swarm_cloud(center: Vector2) -> void:
+	"""在战场中央生成大范围紫色纳米虫群"""
 	if _battlefield == null or not (_battlefield is Node2D):
 		return
 	var cloud := Node2D.new()
 	cloud.position = center
 	_battlefield.add_child(cloud)
 	
-	# 大范围绿色粒子云
-	var p := CPUParticles2D.new()
-	p.emitting = true
-	p.lifetime = 2.0
-	p.amount = 60
-	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
-	p.emission_sphere_radius = 150.0
-	p.direction = Vector2.DOWN
-	p.spread = 10.0
-	p.initial_velocity_min = 30.0
-	p.initial_velocity_max = 80.0
-	p.gravity = Vector2(0, 150)
-	p.scale_amount_min = 1.5
-	p.scale_amount_max = 3.0
+	# 大范围紫色纳米粒子（密集飞散效果）
+	var p1 := CPUParticles2D.new()
+	p1.emitting = true
+	p1.lifetime = 3.0
+	p1.amount = 80
+	p1.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
+	p1.emission_sphere_radius = 180.0
+	p1.direction = Vector2(0, -1)  # 向上扩散
+	p1.spread = 45.0
+	p1.initial_velocity_min = 40.0
+	p1.initial_velocity_max = 120.0
+	p1.gravity = Vector2(0, 50)   # 轻微下沉
+	p1.scale_amount_min = 0.6
+	p1.scale_amount_max = 1.8
 	
-	# 绿色渐变
+	# 紫色渐变（亮紫→暗紫→透明）
 	var gradient := Gradient.new()
-	gradient.add_point(0.0, Color(0.2, 1.0, 0.3, 1.0))
-	gradient.add_point(0.5, Color(0.4, 0.9, 0.2, 0.8))
+	gradient.add_point(0.0, Color(0.7, 0.2, 1.0, 1.0))
+	gradient.add_point(0.4, Color(0.5, 0.1, 0.8, 0.8))
+	gradient.add_point(0.8, Color(0.3, 0.05, 0.6, 0.3))
 	gradient.add_point(1.0, Color.TRANSPARENT)
-	p.color_ramp = gradient
+	p1.color_ramp = gradient
 	
-	cloud.add_child(p)
+	cloud.add_child(p1)
 	
-	# 地面腐蚀圈
+	# 第二层：慢速漂浮的纳米微粒（营造"虫群"感）
+	var p2 := CPUParticles2D.new()
+	p2.emitting = true
+	p2.lifetime = 4.0
+	p2.amount = 40
+	p2.one_shot = false
+	# 注：CPUParticles2D 没有 autofree 属性（autofree 仅存在于 RefCounted 资源）。
+	# p2 作为 cloud 的子节点，会在 cloud.queue_free() 时自动随之释放。
+	p2.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
+	p2.emission_sphere_radius = 100.0
+	p2.direction = Vector2(0, 0)  # 悬浮不动
+	p2.spread = 90.0
+	p2.initial_velocity_min = 5.0
+	p2.initial_velocity_max = 25.0
+	p2.gravity = Vector2(0, 10)
+	p2.scale_amount_min = 0.3
+	p2.scale_amount_max = 0.8
+	# 注：原代码尝试条件 preload 一个不存在的 nano_process_material.gd，
+	# 但 preload 是编译期指令，ResourceLoader.exists 守卫无法阻止其求值，
+	# 会导致 "Preload file does not exist" 报错。CPUParticles2D 无自定义
+	# process_material 时使用默认行为，配合 color_ramp 已足够，直接移除。
+
+	var grad2 := Gradient.new()
+	grad2.add_point(0.0, Color(0.9, 0.5, 1.0, 1.0))
+	grad2.add_point(0.5, Color(0.6, 0.3, 0.9, 0.6))
+	grad2.add_point(1.0, Color.TRANSPARENT)
+	p2.color_ramp = grad2
+	
+	cloud.add_child(p2)
+	
+	# 地面腐蚀圈改为纳米虫群聚集环
 	var ring := Polygon2D.new()
 	var segments := 48
 	var pts := PackedVector2Array()
 	for i in range(segments):
 		var ang := (TAU * i) / segments
-		pts.append(Vector2(cos(ang), sin(ang)) * 120.0)
+		pts.append(Vector2(cos(ang), sin(ang)) * 140.0)
 	ring.polygon = pts
-	ring.color = Color(0.2, 0.9, 0.2, 0.4)
+	ring.color = Color(0.5, 0.15, 0.9, 0.5)
 	ring.scale = Vector2(0.1, 0.1)
 	cloud.add_child(ring)
 	
 	var tw := cloud.create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(ring, "scale", Vector2(1.5, 1.5), 1.5).set_ease(Tween.EASE_OUT)
-	tw.tween_property(ring, "color:a", 0.0, 1.5).set_ease(Tween.EASE_IN)
-	tw.tween_interval(0.5)
+	tw.tween_property(ring, "scale", Vector2(2.0, 2.0), 2.0).set_ease(Tween.EASE_OUT)
+	tw.tween_property(ring, "color:a", 0.0, 2.0).set_ease(Tween.EASE_IN)
+	tw.tween_interval(1.5)
 	tw.tween_callback(func(): cloud.queue_free())
 
-## 酸液滴落：绿色腐蚀粒子
-static func _create_acid_drip(pos: Vector2) -> void:
-	"""单个酸液滴落效果"""
+## 纳米虫群命中：紫色粒子爆炸（替代酸液滴落）
+static func _create_nano_swarm_hit(pos: Vector2) -> void:
+	"""单个纳米虫群命中效果——紫色粒子向四周飞散"""
 	if _battlefield == null or not (_battlefield is Node2D):
 		return
-	var drip := Node2D.new()
-	drip.position = pos
-	_battlefield.add_child(drip)
+	var hit := Node2D.new()
+	hit.position = pos
+	_battlefield.add_child(hit)
 	
-	# 绿色酸液粒子
+	# 紫色纳米粒子爆炸
 	var p := CPUParticles2D.new()
 	p.emitting = true
-	p.lifetime = 0.5
-	p.amount = 8
+	p.lifetime = 0.6
+	p.amount = 12
 	p.one_shot = true
-	p.explosiveness = 0.8
-	p.direction = Vector2.DOWN
-	p.spread = 60.0
-	p.initial_velocity_min = 50.0
-	p.initial_velocity_max = 120.0
-	p.gravity = Vector2(0, 200)
-	p.scale_amount_min = 0.8
-	p.scale_amount_max = 1.5
-	p.color = Color(0.3, 1.0, 0.2, 1.0)
-	drip.add_child(p)
+	p.explosiveness = 0.9
+	p.direction = Vector2(0, 0)
+	p.spread = 80.0
+	p.initial_velocity_min = 30.0
+	p.initial_velocity_max = 80.0
+	p.gravity = Vector2(0, 50)
+	p.scale_amount_min = 0.5
+	p.scale_amount_max = 1.2
 	
-	var tw := drip.create_tween()
-	tw.tween_interval(0.5)
-	tw.tween_callback(func(): drip.queue_free())
+	var gradient := Gradient.new()
+	gradient.add_point(0.0, Color(0.9, 0.4, 1.0, 1.0))
+	gradient.add_point(0.5, Color(0.6, 0.2, 0.9, 0.7))
+	gradient.add_point(1.0, Color.TRANSPARENT)
+	p.color_ramp = gradient
+	
+	hit.add_child(p)
+	
+	var tw := hit.create_tween()
+	tw.tween_interval(0.6)
+	tw.tween_callback(func(): hit.queue_free())
 
-## 能量罩：蓝色护盾光环
+## 能量罩：六边形能量网格（v8.1 重设计——替代原简单圆环）
+## 绘制 7 个六边形阵列（中心1+环绕6），按 delay 依次点亮形成波纹展开效果
 static func _create_shield_dome(pos: Vector2) -> void:
-	"""蓝色能量罩降临效果"""
 	if _battlefield == null or not (_battlefield is Node2D):
 		return
 	var dome := Node2D.new()
 	dome.position = pos
 	_battlefield.add_child(dome)
-	
-	# 外圈护盾环
-	var outer := Polygon2D.new()
-	var segs := 32
-	var pts := PackedVector2Array()
-	for i in range(segs):
-		var ang := (TAU * i) / segs
-		pts.append(Vector2(cos(ang), sin(ang)) * 35.0)
-	outer.polygon = pts
-	outer.color = Color(0.2, 0.6, 1.0, 0.6)
-	dome.add_child(outer)
-	
-	# 内圈光晕
-	var inner := ColorRect.new()
-	inner.size = Vector2(70, 70)
-	inner.position = Vector2(-35, -35)
-	inner.color = Color(0.3, 0.7, 1.0, 0.15)
-	dome.add_child(inner)
-	
+	# 六边形阵列坐标：中心 + 6 环绕（v8.1a：半径22→28，加大能量罩范围）
+	var hex_positions: Array[Vector2] = [
+		Vector2(0, 0),
+		Vector2(28, 0), Vector2(-28, 0),
+		Vector2(14, 24), Vector2(-14, 24),
+		Vector2(14, -24), Vector2(-14, -24),
+	]
+	var hexes: Array[Polygon2D] = []
+	var hex_size: float = 17.0  # v8.1a：14→17，六边形更大
+	for i in range(hex_positions.size()):
+		var hex := Polygon2D.new()
+		hex.polygon = _make_hexagon_points(hex_size)
+		hex.position = hex_positions[i]
+		hex.color = Color(0.3, 0.75, 1.0, 0.0)  # 初始透明
+		hex.modulate.a = 0.0
+		# ADD 混合让网格更亮
+		var mat := CanvasItemMaterial.new()
+		mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+		hex.material = mat
+		dome.add_child(hex)
+		hexes.append(hex)
+	# 中心光晕
+	var glow := ColorRect.new()
+	glow.size = Vector2(60, 60)
+	glow.position = Vector2(-30, -30)
+	glow.color = Color(0.3, 0.7, 1.0, 0.3)
+	glow.modulate.a = 0.0
+	dome.add_child(glow)
+	# 六边形逐个点亮（波纹展开）
 	var tw := dome.create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(outer, "scale", Vector2(1.5, 1.5), 0.6).set_ease(Tween.EASE_OUT)
-	tw.tween_property(outer, "color:a", 0.0, 1.2).set_ease(Tween.EASE_IN)
-	tw.tween_property(inner, "modulate:a", 0.0, 1.0)
-	tw.tween_interval(0.3)
-	tw.tween_callback(func(): dome.queue_free())
+	tw.tween_property(glow, "modulate:a", 1.0, 0.2)
+	for i in range(hexes.size()):
+		var hex := hexes[i]
+		# 从中心向外按 delay 点亮
+		var delay := 0.05 + hex_positions[i].length() * 0.012
+		tw.tween_property(hex, "modulate:a", 1.0, 0.15).set_delay(delay)
+	# 保持 1.5s 后淡出（降临动画 2.5s 总时长）
+	tw.chain().tween_interval(1.5)
+	tw.set_parallel(true)
+	for hex in hexes:
+		tw.tween_property(hex, "modulate:a", 0.0, 0.5)
+	tw.tween_property(glow, "modulate:a", 0.0, 0.5)
+	tw.chain().tween_callback(func(): dome.queue_free())
+
+## 生成六边形顶点（平顶六边形）
+static func _make_hexagon_points(size: float) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	for i in range(6):
+		var ang := (TAU * i) / 6.0
+		pts.append(Vector2(cos(ang), sin(ang)) * size)
+	return pts
+
+## v8.1: 上升烟柱粒子（核爆蘑菇云效果）（v8.1a：加倍粒子量+加大尺寸，真蘑菇云）
+static func _spawn_smoke_column(pos: Vector2, tint: Color = Color(0.5, 0.5, 0.5, 0.5)) -> void:
+	if _battlefield == null or not is_instance_valid(_battlefield):
+		return
+	var p := CPUParticles2D.new()
+	p.position = pos
+	p.amount = 36  # v8.1a：16→36，蘑菇云密度
+	p.lifetime = 2.4  # v8.1a：1.8→2.4，烟柱持续更久
+	p.one_shot = false
+	p.emitting = true
+	p.explosiveness = 0.25
+	p.direction = Vector2(0, -1)  # 向上
+	p.spread = 30.0  # v8.1a：25→30，蘑菇头扩散
+	p.initial_velocity_min = 50.0
+	p.initial_velocity_max = 110.0  # v8.1a：提速，烟柱窜得更高
+	p.gravity = Vector2(0, -20.0)  # 持续上飘
+	p.scale_amount_min = 5.0  # v8.1a：4→5
+	p.scale_amount_max = 11.0  # v8.1a：8→11，蘑菇云更大
+	p.color = tint
+	# 烟柱渐变：底部浓→顶部淡
+	var grad := Gradient.new()
+	grad.add_point(0, Color(tint.r, tint.g, tint.b, 0.85))
+	grad.add_point(0.5, Color(tint.r, tint.g, tint.b, 0.45))
+	grad.add_point(1.0, Color(tint.r, tint.g, tint.b, 0.0))
+	p.color_ramp = grad
+	var mat := CanvasItemMaterial.new()
+	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	p.material = mat
+	_battlefield.add_child(p)
+	# 2.5s 后停止发射并回收（v8.1a：2→2.5s）
+	var tree := _battlefield.get_tree()
+	if tree != null:
+		var timer := tree.create_timer(2.5)
+		timer.timeout.connect(func():
+			p.emitting = false
+			# +0.1s 余量让残余粒子彻底淡出（虽已停发射，仍防帧率波动截断尾段）
+			var t2 := tree.create_timer(p.lifetime + 0.1)
+			t2.timeout.connect(func(): p.queue_free())
+		)

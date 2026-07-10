@@ -740,20 +740,21 @@ func get_slots() -> Array:
 	return out
 
 # 新主逻辑：绿色槽中的每张战斗卡都是一个独立部署单位
+# v7.x: 保留 slot_index（绿槽数组索引）供自动部署做"绿槽→战场位"固定映射
 func get_loadouts() -> Array:
 	if not _loadouts_dirty:
 		return _loadouts_cache
 	_loadouts_dirty = true
 	var loadouts: Array = []
 	var green_slots: Array = instrument_slots.get("green", [])
-	for c_raw in green_slots:
-		var c: CardResource = c_raw
+	for i in range(green_slots.size()):
+		var c: CardResource = green_slots[i]
 		if c == null:
 			continue
 		# 仅平台卡可部署（战斗卡）
 		if c.card_type != GC.CardType.COMBAT_UNIT:
 			continue
-		loadouts.append({"platform": c, "weapons": []})
+		loadouts.append({"platform": c, "weapons": [], "slot_index": i})
 
 	_loadouts_cache = loadouts
 	_loadouts_dirty = false

@@ -221,14 +221,14 @@ func set_shield(shield_value: float, max_hp: float) -> void:
 	shield_ratio = clampf(shield_ratio, 0.0, 1.0)
 
 	var half_w: float = BAR_WIDTH * 0.5
-	var shield_h: float = 1.0  # 护盾条高度
+	var shield_h: float = 4.0  # v7.x: 从1px加到4px，更明显
 
-	# 更新护盾背景
+	# 更新护盾背景（圆角矩形）
 	var sb_pts: PackedVector2Array = _shield_bg_pts
-	sb_pts.set(0, Vector2(-half_w, -shield_h - 4.5))
-	sb_pts.set(1, Vector2(half_w, -shield_h - 4.5))
-	sb_pts.set(2, Vector2(half_w, -shield_h - 2.5))
-	sb_pts.set(3, Vector2(-half_w, -shield_h - 2.5))
+	sb_pts.set(0, Vector2(-half_w, -shield_h - 5.5))
+	sb_pts.set(1, Vector2(half_w, -shield_h - 5.5))
+	sb_pts.set(2, Vector2(half_w, -shield_h - 1.5))
+	sb_pts.set(3, Vector2(-half_w, -shield_h - 1.5))
 	_shield_bg.polygon = sb_pts
 
 	# 更新护盾填充
@@ -236,14 +236,20 @@ func set_shield(shield_value: float, max_hp: float) -> void:
 	if shield_fill_w < 0.0:
 		shield_fill_w = 0.0
 	var sf_pts: PackedVector2Array = _shield_pts
-	sf_pts.set(0, Vector2(-half_w + 0.5, -shield_h - 3.9))
-	sf_pts.set(1, Vector2(-half_w + 0.5 + shield_fill_w, -shield_h - 3.9))
-	sf_pts.set(2, Vector2(-half_w + 0.5 + shield_fill_w, -shield_h - 4.1))
-	sf_pts.set(3, Vector2(-half_w + 0.5, -shield_h - 4.1))
+	sf_pts.set(0, Vector2(-half_w + 0.5, -shield_h - 4.9))
+	sf_pts.set(1, Vector2(-half_w + 0.5 + shield_fill_w, -shield_h - 4.9))
+	sf_pts.set(2, Vector2(-half_w + 0.5 + shield_fill_w, -shield_h - 2.1))
+	sf_pts.set(3, Vector2(-half_w + 0.5, -shield_h - 2.1))
 	_shield_fill.polygon = sf_pts
 
-	# 护盾颜色：始终蓝色系，随比例渐变
-	var shield_color: Color = Color(0.3, 0.7, 1.0, 0.9)
+	# 护盾颜色：按比例渐变——满护盾亮蓝→低护盾暗蓝→极低时偏黄
+	var shield_color: Color
+	if shield_ratio > 0.6:
+		shield_color = Color(0.2, 0.7, 1.0, 0.95)       # 亮蓝
+	elif shield_ratio > 0.3:
+		shield_color = Color(0.3, 0.85, 1.0, 0.9)        # 中蓝
+	else:
+		shield_color = Color(0.9, 0.7, 0.3, 0.85)        # 橙黄警告色
 	_shield_fill.color = shield_color
 
 func _update_shield_gain_effect() -> void:

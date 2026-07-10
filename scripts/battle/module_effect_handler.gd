@@ -184,9 +184,14 @@ static func _apply_splash(attacker: Node, target: Node, damage: float, stats: Un
 	if stats.splash_damage <= 0.0:
 		return
 	# 溅射逻辑：对目标周围其他敌人造成溅射伤害
-	var splash_dmg = damage * minf(stats.splash_damage, 0.60)
-	# v6.6: 半径支持改造加成（子母弹/近炸引信），默认 0 时与原 80px 行为一致
-	var radius: float = 80.0 * (1.0 + maxf(0.0, stats.splash_radius_bonus))
+	var splash_dmg = damage * clampf(stats.splash_damage, 0.10, 0.80)  # v7.x: 上限 60%→80%，下限 10%
+	# v7.x: 半径支持改造加成（子母弹/近炸引信），改造加成 x2 使其更显著
+	var radius: float = 80.0 * (1.0 + maxf(0.0, stats.splash_radius_bonus) * 2.0)
+	# v8.1: 溅射冲击波环——在主目标位置 spawn 地面扩散环，半径=溅射范围
+	if target != null and is_instance_valid(target) and target is Node2D:
+		var parent: Node2D = _resolve_fx_parent_node(target)
+		if parent != null:
+			VfxImpactFactory.spawn_shockwave(parent, (target as Node2D).global_position, radius)
 	var targets = _find_nearby_enemies(target, radius)
 	for t in targets:
 		if t != target and is_instance_valid(t):
@@ -198,11 +203,49 @@ static func _apply_chain(attacker: Node, target: Node, damage: float, stats: Uni
 	if randf() > stats.chain_chance:
 		return
 	var chain_dmg = damage * 0.5  # 闪电链伤害 = 50%
+	# v7.x: 闪电链增加朝向判断——优先跳向攻击者方向的目标（更智能的目标选择）
 	var targets = _find_nearby_enemies(target, 120.0)
-	for t in targets:
-		if t != target and is_instance_valid(t):
-			_deal_damage_to_unit(t, chain_dmg, attacker)
-			break  # 闪电链只跳一次
+	var best_target: Node = null
+	if attacker != null and is_instance_valid(attacker) and target is Node2D and attacker is Node2D:
+		var dir: Vector2 = (attacker as Node2D).global_position - (target as Node2D).global_position
+		if dir.length_squared() > 0.01:
+			dir = dir.normalized()
+			# 在朝向范围内（±60°）优先选择最近的敌人
+			var half_angle: float = deg_to_rad(60.0)
+			for t in targets:
+				if t == target or not is_instance_valid(t) or not (t is Node2D):
+					continue
+				var to_t: Vector2 = (t as Node2D).global_position - (target as Node2D).global_position
+				if to_t.length_squared() > 0.01:
+					var angle: float = absf(dir.angle_to(to_t.normalized()))
+					if angle <= half_angle:
+						best_target = t
+						break  # 取第一个在朝向范围内的目标
+	if best_target == null and not targets.is_empty():
+		# 朝向范围内无目标，回退到距离最近的目标
+		for t in targets:
+			if t != target and is_instance_valid(t):
+				best_target = t
+				break
+	if best_target != null and is_instance_valid(best_target):
+		# v8.1: 闪电链电弧——主目标→次目标闪电线连接
+		if target is Node2D and best_target is Node2D:
+			var parent: Node2D = _resolve_fx_parent_node(target)
+			if parent != null:
+				VfxImpactFactory.spawn_lightning_arc(parent, (target as Node2D).global_position, (best_target as Node2D).global_position)
+		_deal_damage_to_unit(best_target, chain_dmg, attacker)
+		# 闪电链只跳一次
+
+## v8.1: 解析特效挂载父节点（战场/单位容器），复用 CombatFeedback 的查找逻辑
+static func _resolve_fx_parent_node(unit: Node) -> Node2D:
+	if unit == null or not is_instance_valid(unit):
+		return null
+	var p: Node = unit.get_parent()
+	while p != null:
+		if p.name in ["Battlefield", "PlayerUnits", "EnemyUnits"]:
+			return p as Node2D
+		p = p.get_parent()
+	return unit.get_parent() as Node2D
 
 static func _apply_shield(unit: Node, amount: float) -> void:
 	if is_instance_valid(unit) and unit.has_method("add_shield"):

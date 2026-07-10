@@ -33,6 +33,9 @@ var max_hp: float = 80.0
 var _fort_shield_aura: Node2D = null
 var _is_fort_aura_unit: bool = false
 var _fort_aura_hit_boost: float = 0.0
+# v7.4: 堡垒光环降频 redraw（对齐 construct_unit：正常态每4帧，承压时每帧）
+var _aura_low_freq_frame: int = 0
+var _fort_aura_meta_set: bool = false
 var attack_damage: float = 10.0
 var attack_range: float = 100.0
 var attack_interval: float = 1.0
@@ -106,9 +109,13 @@ var _card_tween: Tween = null
 var _rest_position: Vector2 = Vector2.ZERO
 var _card_nudge_tween: Tween = null
 var _card_grid_rest_x: float = NAN  ## 格子战术中卡片的归位 X
-## v6.4: 受击视觉反馈（复用 construct_unit 的闪白/抖动模式，Tween 复用避免每击 new）
-var _hit_flash_tween: Tween = null
-var _hit_shake_tween: Tween = null
+## v7.4: 受击视觉反馈（改手写计时动画，与 construct_unit 对齐；原每击 create_tween 2 个 Tween）
+## flash 倒计时 lerp 回原色（参考 unit_hp_bar._damage_flash）；shake 正计时分段插值（参考 damage_number_display._pop_age）
+var _hit_flash_t: float = 0.0
+var _hit_flash_base_modulate: Color = Color.WHITE
+var _hit_shake_t: float = -1.0  # -1=未激活，>=0=激活
+const _HIT_FLASH_DURATION: float = 0.1
+const _HIT_SHAKE_DURATION: float = 0.12
 var _death_fade_tween: Tween = null  ## v6.4: 死亡淡出 Tween
 var _is_dying: bool = false  ## v6.4: 死亡中标志，防止 _die 重复触发
 
@@ -452,6 +459,7 @@ func _ensure_fort_shield_aura() -> void:
 	_fort_shield_aura = aura
 
 ## 每帧驱动光环呼吸 + 衰减受击强化。非堡垒单位直接返回（零开销）。
+## v7.4: 降频 redraw（对齐 construct_unit：正常态每4帧，承压闪光每帧）+ is_player meta 仅设一次
 func _update_fort_shield_aura(delta: float) -> void:
 	if not _is_fort_aura_unit:
 		return
@@ -459,9 +467,15 @@ func _update_fort_shield_aura(delta: float) -> void:
 		return
 	if _fort_aura_hit_boost > 0.0:
 		_fort_aura_hit_boost = maxf(0.0, _fort_aura_hit_boost - delta * 2.0)
-	_fort_shield_aura.set_meta(&"is_player", false)  # 敌方光环用红色系
+	# v7.4: is_player 恒为 false，仅首次设置（原每帧 set_meta）
+	if not _fort_aura_meta_set:
+		_fort_shield_aura.set_meta(&"is_player", false)  # 敌方光环用红色系
+		_fort_aura_meta_set = true
 	_fort_shield_aura.set_meta(&"hit_boost", _fort_aura_hit_boost)
-	_fort_shield_aura.queue_redraw()
+	# v7.4: 承压闪光时每帧 redraw，正常态每4帧一次（呼吸动画降频）
+	if _fort_aura_hit_boost > 0.0 or (_aura_low_freq_frame % 4) == 0:
+		_fort_shield_aura.queue_redraw()
+	_aura_low_freq_frame += 1
 
 
 ## v6.3: 为敌人 UnitStats 初始化3个武器槽位（轻装/装甲/对空），复用三维攻击值
@@ -635,6 +649,8 @@ func _physics_process(delta: float) -> void:
 	_clamp_inside_battlefield()
 	# v7.1: 堡垒防护光环呼吸动画（仅堡垒类单位）
 	_update_fort_shield_aura(delta)
+	# v7.4: 受击闪白/抖动手写动画推进（与 construct_unit 对齐）
+	_update_hit_animations(delta)
 	# P2 性能优化：静止单位跳过空间网格更新（格子战敌人 velocity=0，原每帧无谓 update）
 	if velocity != Vector2.ZERO:
 		_update_in_spatial_grid()
@@ -1014,8 +1030,12 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 	hp -= final_loss
 	# v6.4: 受击视觉反馈（复用 construct_unit 的闪白/抖动模式）
 	if hp > 0 and final_loss > 0:
-		_play_hit_flash()
-		_play_hit_shake()
+		_trigger_hit_flash()
+		_trigger_hit_shake()
+		# v8.1: 血条受击闪白（接通 unit_hp_bar.trigger_damage_flash，原为未连线死功能）
+		var _hpbar := get_node_or_null("HpBar")
+		if _hpbar != null and _hpbar.has_method("trigger_damage_flash"):
+			_hpbar.trigger_damage_flash()
 		# v7.1: 堡垒防护光环受击强化（扩张+闪亮）
 		if _is_fort_aura_unit:
 			_fort_aura_hit_boost = 1.0
@@ -1026,31 +1046,47 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 	if hp <= 0:
 		_die()
 
-## v6.4: 受击闪白反馈（复用 Tween，避免每击 new）
-func _play_hit_flash() -> void:
-	var flash_color := Color.WHITE
-	var original_modulate := modulate
-	modulate = flash_color
-	if _hit_flash_tween != null and _hit_flash_tween.is_valid():
-		_hit_flash_tween.kill()
-	_hit_flash_tween = create_tween()
-	_hit_flash_tween.tween_property(self, "modulate", original_modulate, 0.1)
+## v7.4: 受击闪白触发（手写计时，不再 create_tween）。敌方始终 WHITE。
+func _trigger_hit_flash() -> void:
+	# 连续命中时保留旧 base（让动画连续回原色，不被中间色截断）
+	if _hit_flash_t <= 0.0:
+		_hit_flash_base_modulate = modulate
+	_hit_flash_t = _HIT_FLASH_DURATION
+	modulate = Color.WHITE
 
 
-## v6.4: 受击缩放抖动反馈（复用 Tween，避免每击 new）
-func _play_hit_shake() -> void:
-	# 基准必须固定为 (1,1) 并在每次抖动前重置（与 construct_unit._play_hit_shake 对齐）。
-	# 否则连续高频受击时旧 Tween 被 kill 在缩小中途，base_scale 会读取偏小的中间值
-	# 并持续累积，导致敌人越打越小（单位 scale 累积漂移 bug）。
-	var base_scale := Vector2.ONE
-	scale = base_scale
-	if _hit_shake_tween != null and _hit_shake_tween.is_valid():
-		_hit_shake_tween.kill()
-	_hit_shake_tween = create_tween()
-	_hit_shake_tween.tween_property(self, "scale", base_scale * 0.85, 0.03)
-	_hit_shake_tween.tween_property(self, "scale", base_scale * 1.05, 0.03)
-	_hit_shake_tween.tween_property(self, "scale", base_scale * 0.95, 0.03)
-	_hit_shake_tween.tween_property(self, "scale", base_scale, 0.03)
+## v7.4: 受击缩放抖动触发（手写分段计时，不再 create_tween）。
+## 基准必须固定为 (1,1) 并每次重置——连续高频受击时若不重置，scale 累积漂移导致敌人越打越小（历史 bug）。
+func _trigger_hit_shake() -> void:
+	scale = Vector2.ONE
+	_hit_shake_t = 0.0
+
+
+## v7.4: 受击动画推进（每 physics 帧调用）。与 construct_unit._update_hit_animations 对齐。
+func _update_hit_animations(delta: float) -> void:
+	if _hit_flash_t > 0.0:
+		_hit_flash_t -= delta
+		if _hit_flash_t <= 0.0:
+			_hit_flash_t = 0.0
+			modulate = _hit_flash_base_modulate
+		else:
+			var k: float = _hit_flash_t / _HIT_FLASH_DURATION
+			modulate = Color.WHITE.lerp(_hit_flash_base_modulate, 1.0 - k)
+	if _hit_shake_t >= 0.0:
+		_hit_shake_t += delta
+		if _hit_shake_t >= _HIT_SHAKE_DURATION:
+			scale = Vector2.ONE
+			_hit_shake_t = -1.0
+		else:
+			var seg: int = int(_hit_shake_t / 0.03)
+			if seg > 3:
+				seg = 3
+			var local_t: float = (_hit_shake_t - seg * 0.03) / 0.03
+			var keys: Array = [0.85, 1.05, 0.95, 1.0]
+			var s_start: float = 1.0 if seg == 0 else keys[seg - 1]
+			var s_end: float = keys[seg]
+			var s: float = lerpf(s_start, s_end, local_t)
+			scale = Vector2(s, s)
 
 
 ## 治疗方法（用于词条吸血效果）

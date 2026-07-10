@@ -241,8 +241,29 @@ func _open() -> void:
 	visible = true
 	backdrop.visible = true
 	panel.visible = true
+	# 自动填入槽位：循环模式下若所有槽位均未关联，且 GameManager 有当前关卡，
+	# 则自动将当前关卡填入第一个空槽位。这样用户在世界地图选关后打开挂机面板
+	# 可直接开始循环，无需手动点选槽位。
+	_auto_fill_slot_from_current_level()
 	_update_slot_display()
 	_update_stats_display()
+
+
+## 循环模式无关联槽位时，自动从 GameManager.current_level 填入第一个空槽位。
+func _auto_fill_slot_from_current_level() -> void:
+	if not _afk_manager:
+		return
+	if _afk_manager.mode != AFKModeManager.Mode.CYCLE:
+		return
+	if _afk_manager.get_valid_slot_count() > 0:
+		return  # 已有关联槽位，不覆盖用户设置
+	var gm: Node = get_node_or_null("/root/GameManager")
+	if gm == null:
+		return
+	var lvl: int = int(gm.get("current_level"))
+	if lvl < 1:
+		return
+	_afk_manager.set_slot(0, lvl)
 
 
 func _close() -> void:

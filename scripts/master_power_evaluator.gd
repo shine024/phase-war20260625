@@ -168,20 +168,20 @@ const PASSIVE_EFFECT_WEIGHTS: Dictionary = {
 	"lightning_thorn": 70.0, "high_energy_attack_speed": 55.0,
 	"fire_lifesteal_chance": 80.0, "burn_slow": 45.0,
 	"unbreakable": 130.0, "steel_mountain": 60.0,
-	"phoenix_rebirth_auto": 200.0, "time_based_hp_drain": 120.0,
+	"phoenix_rebirth_auto": 180.0, "time_based_hp_drain": 110.0,  # v7.x: 200→180
 	"auto_lightning": 100.0, "global_damage_boost": 90.0,
 	"void_mastery_ultimate": 110.0, "enemy_defense_reduction": 85.0,
 	"synergy_boost": 75.0, "armor_chain_lightning": 70.0,
-	"dual_element_boost": 90.0, "immunity": 100.0,
-	"automation": 100.0, "time_based_upgrade": 120.0,
+	"dual_element_boost": 90.0, "immunity": 90.0,  # v7.x: 100→90
+	"automation": 100.0, "time_based_upgrade": 110.0,  # v7.x: 120→110
 	"fire_mastery": 85.0, "ignite_chance": 60.0,
 	"storm_speed": 65.0, "periodic_electric_shock": 70.0,
 	"teleport_behind": 80.0, "execute_damage": 90.0,
-	"cheat_death_chance": 150.0, "massive_heal_aura": 120.0,
-	"auto_resurrect": 250.0, "god_mastery": 200.0,
-	"energy_cost_reduction": 80.0, "goddess_mastery": 200.0,
-	"permanent_darkness": 130.0, "omni_mastery": 180.0,
-	"infinite_scaling": 200.0, "conductive_armor": 65.0, "overclock": 55.0,
+	"cheat_death_chance": 130.0, "massive_heal_aura": 110.0,  # v7.x: 150→130, 120→110
+	"auto_resurrect": 200.0, "god_mastery": 170.0,  # v7.x: 250→200, 200→170
+	"energy_cost_reduction": 80.0, "goddess_mastery": 170.0,  # v7.x: 200→170
+	"permanent_darkness": 110.0, "omni_mastery": 150.0,  # v7.x: 130→110, 180→150
+	"infinite_scaling": 170.0, "conductive_armor": 65.0, "overclock": 55.0,  # v7.x: 200→170
 }
 const PASSIVE_COUNT_BONUS: float = 60.0
 
@@ -481,6 +481,7 @@ static func _eval_passive_spells(master: Dictionary) -> float:
 	if spells.is_empty():
 		return 0.0
 	var score: float = 0.0
+	var high_value_count: int = 0  # v7.x: 高收益被动计数（用于组合惩罚）
 	for spell in spells:
 		var etype: String = spell.get("effect", "")
 		var params: Dictionary = spell.get("params", {})
@@ -492,9 +493,14 @@ static func _eval_passive_spells(master: Dictionary) -> float:
 				ss += float(val) * 5.0
 		if HIGH_VALUE_PASSIVES.has(etype):
 			ss += 100.0
+			high_value_count += 1
 		score += ss
 	score += spells.size() * PASSIVE_COUNT_BONUS
-	return score
+	# v7.x: 高收益被动组合惩罚（超过2个高收益被动时，每多一个扣40分）
+	# 防止复活+无敌+无限成长等组合导致战力虚高
+	if high_value_count > 2:
+		score -= (high_value_count - 2) * 40.0
+	return maxf(0.0, score)
 
 
 # ═════════════════════════════════════════════

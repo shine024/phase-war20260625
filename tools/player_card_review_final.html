@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>我方战斗卡图映射总览 - 最终验证</title>
+<style>
+body{font-family:Microsoft YaHei,sans-serif;background:#1a1a2e;color:#eee;padding:20px;margin:0}
+h1{color:#0ff;text-align:center;font-size:24px;margin-bottom:5px}
+.subtitle{text-align:center;color:#888;font-size:13px;margin-bottom:20px}
+.stats{display:flex;justify-content:center;flex-wrap:wrap;gap:10px;margin:15px 0}
+.stat{padding:10px 18px;border-radius:8px;font-size:13px;border:1px solid}
+.stat.ov{background:#0f01;color:#0f0;border-color:#0f0}
+.stat.mf{background:#0af1;color:#0af;border-color:#0af}
+.stat.dk{background:#f0a1;color:#f0a;border-color:#f0a}
+.stat.fb{background:#fa01;color:#fa0;border-color:#fa0}
+.section{margin:20px 0;padding:15px;border:1px solid #333;border-radius:8px;background:#16213e}
+.section h2{margin-top:0;color:#0ff;font-size:16px}
+.grid{display:flex;flex-wrap:wrap;gap:8px}
+.card{width:140px;border:1px solid #444;border-radius:6px;padding:6px;background:#0a1628;font-size:11px}
+.card img{width:64px;height:64px;object-fit:contain;display:block;margin:0 auto 4px}
+.card .name{font-weight:bold;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .path{color:#888;font-size:9px;text-align:center;margin-top:2px}
+.card.ov{border-color:#0f0}.card.mf{border-color:#0af}.card.dk{border-color:#f0a}.card.fb{border-color:#fa0}
+.summary{margin:20px 0;padding:15px;background:#1a1a1a;border-radius:8px;font-size:13px;line-height:1.8}
+.summary b{color:#0ff}
+.ok{color:#0f0}.bad{color:#f00}
+</style></head><body>
+<h1>我方战斗卡图映射总览 - 最终验证</h1>
+<p class="subtitle">112 张卡 2026-07-10 全部拿到专属图</p>
+<div class="stats">
+<div class="stat ov">Override 映射: <b>74</b> 张</div>
+<div class="stat mf">Manifest 命中: <b>38</b> 张</div>
+<div class="stat dk">专属图: <b>0</b> 张</div>
+<div class="stat fb">通用回退: <b>0</b> 张</div>
+</div>
+<div class="summary">
+<b>修复前</b>: 74 张卡走 ERA_KIND 通用回退，同一时代的不同卡显示相同图片（如 7 种二战坦克全显示 Sherman）<br>
+<b>修复后</b>: 74 张通过 override 拿到专属图 + 38 张 manifest 命中 + 0 张专属图 = <b>112/112 全部有专属图</b>
+</div>
+<div class="section"><h2>Override 映射（74张）- 修复的核心</h2><div class="grid">
+<div class="card ov"><img src="assets/card_icons/player/vis_player_050.png" onerror="this.style.display=none"><div class="name">cold_ak47</div><div class="path"><span class="ok">OK</span> vis_player_050</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_053.png" onerror="this.style.display=none"><div class="name">cold_bradley</div><div class="path"><span class="ok">OK</span> vis_player_053</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_055.png" onerror="this.style.display=none"><div class="name">cold_chieftain</div><div class="path"><span class="ok">OK</span> vis_player_055</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_056.png" onerror="this.style.display=none"><div class="name">cold_f4</div><div class="path"><span class="ok">OK</span> vis_player_056</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_052.png" onerror="this.style.display=none"><div class="name">cold_leo1</div><div class="path"><span class="ok">OK</span> vis_player_052</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_052.png" onerror="this.style.display=none"><div class="name">cold_m1</div><div class="path"><span class="ok">OK</span> vis_player_052</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_051.png" onerror="this.style.display=none"><div class="name">cold_m14</div><div class="path"><span class="ok">OK</span> vis_player_051</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_045.png" onerror="this.style.display=none"><div class="name">cold_m60</div><div class="path"><span class="ok">OK</span> vis_player_045</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_052.png" onerror="this.style.display=none"><div class="name">cold_m60t</div><div class="path"><span class="ok">OK</span> vis_player_052</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_056.png" onerror="this.style.display=none"><div class="name">cold_mig21</div><div class="path"><span class="ok">OK</span> vis_player_056</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_046.png" onerror="this.style.display=none"><div class="name">cold_rpg</div><div class="path"><span class="ok">OK</span> vis_player_046</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_045.png" onerror="this.style.display=none"><div class="name">cold_rpk</div><div class="path"><span class="ok">OK</span> vis_player_045</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_017.png" onerror="this.style.display=none"><div class="name">cold_sam7</div><div class="path"><span class="ok">OK</span> vis_player_017</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_054.png" onerror="this.style.display=none"><div class="name">cold_spetsnaz</div><div class="path"><span class="ok">OK</span> vis_player_054</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_055.png" onerror="this.style.display=none"><div class="name">cold_t62</div><div class="path"><span class="ok">OK</span> vis_player_055</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_055.png" onerror="this.style.display=none"><div class="name">cold_t72</div><div class="path"><span class="ok">OK</span> vis_player_055</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_060.png" onerror="this.style.display=none"><div class="name">fut_aa_hover</div><div class="path"><span class="ok">OK</span> vis_player_060</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_070.png" onerror="this.style.display=none"><div class="name">fut_arm_omega</div><div class="path"><span class="ok">OK</span> vis_player_070</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_067.png" onerror="this.style.display=none"><div class="name">fut_assault_mech</div><div class="path"><span class="ok">OK</span> vis_player_067</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_065.png" onerror="this.style.display=none"><div class="name">fut_attack_drone</div><div class="path"><span class="ok">OK</span> vis_player_065</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_070.png" onerror="this.style.display=none"><div class="name">fut_colossus</div><div class="path"><span class="ok">OK</span> vis_player_070</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_066.png" onerror="this.style.display=none"><div class="name">fut_cyborg</div><div class="path"><span class="ok">OK</span> vis_player_066</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_066.png" onerror="this.style.display=none"><div class="name">fut_heavy_trooper</div><div class="path"><span class="ok">OK</span> vis_player_066</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_060.png" onerror="this.style.display=none"><div class="name">fut_howitzer</div><div class="path"><span class="ok">OK</span> vis_player_060</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_065.png" onerror="this.style.display=none"><div class="name">fut_nano_drone</div><div class="path"><span class="ok">OK</span> vis_player_065</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_081.png" onerror="this.style.display=none"><div class="name">fut_shield</div><div class="path"><span class="ok">OK</span> vis_player_081</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_065.png" onerror="this.style.display=none"><div class="name">fut_space_fighter</div><div class="path"><span class="ok">OK</span> vis_player_065</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_069.png" onerror="this.style.display=none"><div class="name">fut_spectre</div><div class="path"><span class="ok">OK</span> vis_player_069</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_065.png" onerror="this.style.display=none"><div class="name">fut_stealth_bomber</div><div class="path"><span class="ok">OK</span> vis_player_065</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_071.png" onerror="this.style.display=none"><div class="name">fut_stormcore</div><div class="path"><span class="ok">OK</span> vis_player_071</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_065.png" onerror="this.style.display=none"><div class="name">fut_swarm</div><div class="path"><span class="ok">OK</span> vis_player_065</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_063.png" onerror="this.style.display=none"><div class="name">mod_ah1</div><div class="path"><span class="ok">OK</span> vis_player_063</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_063.png" onerror="this.style.display=none"><div class="name">mod_ah64</div><div class="path"><span class="ok">OK</span> vis_player_063</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_062.png" onerror="this.style.display=none"><div class="name">mod_challenger2</div><div class="path"><span class="ok">OK</span> vis_player_062</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_058.png" onerror="this.style.display=none"><div class="name">mod_hummer_m2</div><div class="path"><span class="ok">OK</span> vis_player_058</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_058.png" onerror="this.style.display=none"><div class="name">mod_hummer_tow</div><div class="path"><span class="ok">OK</span> vis_player_058</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_046.png" onerror="this.style.display=none"><div class="name">mod_javelin</div><div class="path"><span class="ok">OK</span> vis_player_046</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_062.png" onerror="this.style.display=none"><div class="name">mod_leo2a6</div><div class="path"><span class="ok">OK</span> vis_player_062</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_062.png" onerror="this.style.display=none"><div class="name">mod_m1a2</div><div class="path"><span class="ok">OK</span> vis_player_062</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_057.png" onerror="this.style.display=none"><div class="name">mod_marine</div><div class="path"><span class="ok">OK</span> vis_player_057</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_061.png" onerror="this.style.display=none"><div class="name">mod_ranger</div><div class="path"><span class="ok">OK</span> vis_player_061</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_063.png" onerror="this.style.display=none"><div class="name">mod_stinger</div><div class="path"><span class="ok">OK</span> vis_player_063</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_059.png" onerror="this.style.display=none"><div class="name">mod_stryker_m2</div><div class="path"><span class="ok">OK</span> vis_player_059</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_059.png" onerror="this.style.display=none"><div class="name">mod_stryker_mgs</div><div class="path"><span class="ok">OK</span> vis_player_059</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_055.png" onerror="this.style.display=none"><div class="name">mod_t90</div><div class="path"><span class="ok">OK</span> vis_player_055</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_063.png" onerror="this.style.display=none"><div class="name">mod_uh60</div><div class="path"><span class="ok">OK</span> vis_player_063</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_003.png" onerror="this.style.display=none"><div class="name">ww1_105mm</div><div class="path"><span class="ok">OK</span> vis_player_003</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_003.png" onerror="this.style.display=none"><div class="name">ww1_37mm</div><div class="path"><span class="ok">OK</span> vis_player_003</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_042.png" onerror="this.style.display=none"><div class="name">ww1_a7v</div><div class="path"><span class="ok">OK</span> vis_player_042</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_037.png" onerror="this.style.display=none"><div class="name">ww1_enfield</div><div class="path"><span class="ok">OK</span> vis_player_037</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_036.png" onerror="this.style.display=none"><div class="name">ww1_flame</div><div class="path"><span class="ok">OK</span> vis_player_036</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_001.png" onerror="this.style.display=none"><div class="name">ww1_lanchest</div><div class="path"><span class="ok">OK</span> vis_player_001</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_039.png" onerror="this.style.display=none"><div class="name">ww1_m76</div><div class="path"><span class="ok">OK</span> vis_player_039</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_041.png" onerror="this.style.display=none"><div class="name">ww1_mark4</div><div class="path"><span class="ok">OK</span> vis_player_041</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_037.png" onerror="this.style.display=none"><div class="name">ww1_mauser</div><div class="path"><span class="ok">OK</span> vis_player_037</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_038.png" onerror="this.style.display=none"><div class="name">ww1_mg08</div><div class="path"><span class="ok">OK</span> vis_player_038</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_036.png" onerror="this.style.display=none"><div class="name">ww1_mp18</div><div class="path"><span class="ok">OK</span> vis_player_036</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_042.png" onerror="this.style.display=none"><div class="name">ww1_saint</div><div class="path"><span class="ok">OK</span> vis_player_042</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_040.png" onerror="this.style.display=none"><div class="name">ww1_storm</div><div class="path"><span class="ok">OK</span> vis_player_040</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_038.png" onerror="this.style.display=none"><div class="name">ww1_vickers</div><div class="path"><span class="ok">OK</span> vis_player_038</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_045.png" onerror="this.style.display=none"><div class="name">ww2_browning</div><div class="path"><span class="ok">OK</span> vis_player_045</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_044.png" onerror="this.style.display=none"><div class="name">ww2_garand</div><div class="path"><span class="ok">OK</span> vis_player_044</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_008.png" onerror="this.style.display=none"><div class="name">ww2_is2</div><div class="path"><span class="ok">OK</span> vis_player_008</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_049.png" onerror="this.style.display=none"><div class="name">ww2_kingtiger</div><div class="path"><span class="ok">OK</span> vis_player_049</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_011.png" onerror="this.style.display=none"><div class="name">ww2_m120</div><div class="path"><span class="ok">OK</span> vis_player_011</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_045.png" onerror="this.style.display=none"><div class="name">ww2_mg42</div><div class="path"><span class="ok">OK</span> vis_player_045</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_043.png" onerror="this.style.display=none"><div class="name">ww2_mp40</div><div class="path"><span class="ok">OK</span> vis_player_043</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_048.png" onerror="this.style.display=none"><div class="name">ww2_panther</div><div class="path"><span class="ok">OK</span> vis_player_048</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_043.png" onerror="this.style.display=none"><div class="name">ww2_ppsh</div><div class="path"><span class="ok">OK</span> vis_player_043</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_007.png" onerror="this.style.display=none"><div class="name">ww2_pz3</div><div class="path"><span class="ok">OK</span> vis_player_007</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_007.png" onerror="this.style.display=none"><div class="name">ww2_pz4</div><div class="path"><span class="ok">OK</span> vis_player_007</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_007.png" onerror="this.style.display=none"><div class="name">ww2_t34_76</div><div class="path"><span class="ok">OK</span> vis_player_007</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_007.png" onerror="this.style.display=none"><div class="name">ww2_t34_85</div><div class="path"><span class="ok">OK</span> vis_player_007</div></div>
+<div class="card ov"><img src="assets/card_icons/player/vis_player_043.png" onerror="this.style.display=none"><div class="name">ww2_thompson</div><div class="path"><span class="ok">OK</span> vis_player_043</div></div>
+</div></div>
+<div class="section"><h2>Manifest 直接命中（38张）- 已有 foe_* 映射</h2><div class="grid">
+<div class="card mf"><div class="name">cold_arm_t55</div><div class="path">foe_cold_arm_t55</div></div>
+<div class="card mf"><div class="name">cold_fort_missile</div><div class="path">foe_cold_fort_missile</div></div>
+<div class="card mf"><div class="name">cold_fort_radar</div><div class="path">foe_cold_fort_radar</div></div>
+<div class="card mf"><div class="name">cold_inf_bmp1</div><div class="path">foe_cold_inf_bmp1</div></div>
+<div class="card mf"><div class="name">cold_inf_btr60</div><div class="path">foe_cold_inf_btr60</div></div>
+<div class="card mf"><div class="name">cold_sup_m113</div><div class="path">foe_cold_sup_m113</div></div>
+<div class="card mf"><div class="name">cold_sup_zsu23</div><div class="path">foe_cold_sup_zsu23</div></div>
+<div class="card mf"><div class="name">fut_arm_heavy_mech</div><div class="path">foe_fut_arm_heavy_mech</div></div>
+<div class="card mf"><div class="name">fut_arm_hovertank</div><div class="path">foe_fut_arm_hovertank</div></div>
+<div class="card mf"><div class="name">fut_arm_nexus</div><div class="path">foe_fut_arm_nexus</div></div>
+<div class="card mf"><div class="name">fut_arm_prism</div><div class="path">foe_fut_arm_prism</div></div>
+<div class="card mf"><div class="name">fut_fort_ion</div><div class="path">foe_fut_fort_ion</div></div>
+<div class="card mf"><div class="name">fut_fort_shield</div><div class="path">foe_fut_fort_shield</div></div>
+<div class="card mf"><div class="name">fut_inf_scout_mech</div><div class="path">foe_fut_inf_scout_mech</div></div>
+<div class="card mf"><div class="name">mod_arm_m1a1</div><div class="path">foe_mod_arm_m1a1</div></div>
+<div class="card mf"><div class="name">mod_arm_m1a2sep</div><div class="path">foe_mod_arm_m1a2sep</div></div>
+<div class="card mf"><div class="name">mod_arty_m270</div><div class="path">foe_mod_arty_m270</div></div>
+<div class="card mf"><div class="name">mod_fort_citadel</div><div class="path">foe_mod_fort_citadel</div></div>
+<div class="card mf"><div class="name">mod_fort_phalanx</div><div class="path">foe_mod_fort_phalanx</div></div>
+<div class="card mf"><div class="name">mod_inf_scout_drone</div><div class="path">foe_mod_inf_scout_drone</div></div>
+<div class="card mf"><div class="name">mod_inf_technical</div><div class="path">foe_mod_inf_technical</div></div>
+<div class="card mf"><div class="name">mod_sup_m6</div><div class="path">foe_mod_sup_m6</div></div>
+<div class="card mf"><div class="name">ww1_arm_ft17</div><div class="path">foe_ww1_arm_ft17</div></div>
+<div class="card mf"><div class="name">ww1_arm_rolls</div><div class="path">foe_ww1_arm_rolls</div></div>
+<div class="card mf"><div class="name">ww1_arty_77mm</div><div class="path">foe_ww1_arty_77mm</div></div>
+<div class="card mf"><div class="name">ww1_arty_m81</div><div class="path">foe_ww1_arty_m81</div></div>
+<div class="card mf"><div class="name">ww1_fort_artillery</div><div class="path">foe_ww1_fort_artillery</div></div>
+<div class="card mf"><div class="name">ww1_fort_pillbox</div><div class="path">foe_ww1_fort_pillbox</div></div>
+<div class="card mf"><div class="name">ww1_inf_cavalry</div><div class="path">foe_ww1_inf_cavalry</div></div>
+<div class="card mf"><div class="name">ww1_sup_engineer</div><div class="path">foe_ww1_sup_engineer</div></div>
+<div class="card mf"><div class="name">ww2_arm_sherman</div><div class="path">foe_ww2_arm_sherman</div></div>
+<div class="card mf"><div class="name">ww2_arm_tiger</div><div class="path">foe_ww2_arm_tiger</div></div>
+<div class="card mf"><div class="name">ww2_arty_m81</div><div class="path">foe_ww2_arty_m81</div></div>
+<div class="card mf"><div class="name">ww2_fort_bunker</div><div class="path">foe_ww2_fort_bunker</div></div>
+<div class="card mf"><div class="name">ww2_fort_flak</div><div class="path">foe_ww2_fort_flak</div></div>
+<div class="card mf"><div class="name">ww2_inf_bazooka</div><div class="path">foe_ww2_inf_bazooka</div></div>
+<div class="card mf"><div class="name">ww2_inf_hellcat</div><div class="path">foe_ww2_inf_hellcat</div></div>
+<div class="card mf"><div class="name">ww2_inf_panzerschrek</div><div class="path">foe_ww2_inf_panzerschrek</div></div>
+</div></div>
+<hr><p style="text-align:center;color:#666;font-size:12px">总计 112 张卡 | Override 74 张 + Manifest 38 张 + 专属 0 张 = 112 | 回退 0 张</p></body></html>
