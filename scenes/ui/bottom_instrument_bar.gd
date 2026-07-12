@@ -176,6 +176,9 @@ func _connect_signals() -> void:
 			SignalBus.energy_insufficient.connect(_on_energy_insufficient)
 		if SignalBus.has_signal("phase_field_level_up"):
 			SignalBus.phase_field_level_up.connect(_on_phase_field_level_up)
+		# v7.x: 玩家相位师战力变化 → 刷新底部栏等级显示
+		if SignalBus.has_signal("player_phase_master_power_changed"):
+			SignalBus.player_phase_master_power_changed.connect(_on_player_phase_master_power_changed)
 
 func _on_energy_insufficient(_cost: float) -> void:
 	# 能量不足时给红色警告 toast（部署失败无其他视觉反馈）
@@ -188,6 +191,10 @@ func _on_phase_field_level_up(old_level: int, new_level: int, unspent_points: in
 	var tm: Node = get_node_or_null("/root/ToastManager")
 	if tm and tm.has_method("show_success"):
 		tm.show_success("相位场提升至 Lv%d！获得 %d 点（累计待用 %d）" % [new_level, new_level - old_level, unspent_points])
+
+## v7.x: 玩家相位师战力变化（战斗开始算出后触发）→ 刷新底部栏显示
+func _on_player_phase_master_power_changed(_raw: float, _compressed: float, _stars: int, _star_name: String, _level: int) -> void:
+	_refresh_instrument_stats()
 
 func _on_battle_ended(_won: bool) -> void:
 	_deployed_card_ids.clear()
@@ -966,6 +973,8 @@ func _update_instrument_tooltip(cfg: Dictionary) -> void:
 		lines.append("  ⚡ %s" % ability_text)
 	# v6.2: 追加符文之语 + 相位场属性点加成
 	_append_bonus_tooltip_lines(lines)
+	# v7.x: 追加玩家相位师战力分解
+	_append_player_master_tooltip_lines(lines)
 	target.tooltip_text = "\n".join(lines)
 
 ## v6.2: 把符文之语加成和相位场加成格式化追加到 tooltip lines
@@ -1035,6 +1044,64 @@ func _append_bonus_tooltip_lines(lines: Array) -> void:
 			lines.append("相位场加成:")
 			lines.append("  " + " | ".join(pf_parts))
 
+## v7.x: 追加玩家相位师战力分解到 tooltip（hover 相位场标签时可见）
+func _append_player_master_tooltip_lines(lines: Array) -> void:
+	if PhaseInstrumentManager == null:
+		return
+	var MasterPlayerAssembler = preload("res://scripts/master_player_assembler.gd")
+	var ev: Dictionary = {}
+	# 优先读缓存（战斗中），否则现算
+	if PhaseInstrumentManager.has_method("get_cached_player_master_eval"):
+		ev = PhaseInstrumentManager.get_cached_player_master_eval()
+	if ev.is_empty():
+		ev = MasterPlayerAssembler.evaluate_player_stars(PhaseInstrumentManager)
+	if ev.is_empty():
+		return
+	var raw: float = float(ev.get("raw_total_score", 0.0))
+	var compressed: float = 0.0  # v7.x: 已移除压缩，保留变量兼容
+	var lvl: int = int(ev.get("display_level", 15))
+	var stars: int = int(ev.get("stars", 3))
+	var star_name: String = str(ev.get("star_name", ""))
+	lines.append("相位师战力:")
+	lines.append("  Lv.%d · %d★ %s" % [lvl, stars, star_name])
+	lines.append("  总战力：%d" % int(raw))
+	# 9 维分解
+	var scores: Dictionary = ev.get("scores", {})
+	if not scores.is_empty():
+		var dim_parts: Array[String] = []
+		var dim_labels: Dictionary = {
+			"instrument": "相位仪", "engravings": "符文", "traits": "特质",
+			"active_spells": "主动", "passive_spells": "被动", "equipment_slots": "载卡",
+			"master_stats": "本体", "runes": "单符文", "runewords": "符文之语",
+		}
+		for key in ["instrument", "engravings", "traits", "active_spells", "passive_spells", "equipment_slots", "master_stats", "runes", "runewords"]:
+			var s: float = float(scores.get(key, 0.0))
+			if s > 0.5:
+				dim_parts.append("%s:%d" % [String(dim_labels.get(key, key)), int(s)])
+		if not dim_parts.is_empty():
+			lines.append("  " + " | ".join(dim_parts))
+
+
+## v7.x: 构建玩家相位师等级/星级摘要（单行，供底部栏常驻显示）
+## 格式："相位师 Lv.20 4★ 大师"
+## 优先读战斗缓存；非战斗时现算（稍慢但保证可见）
+func _build_player_master_summary() -> String:
+	if PhaseInstrumentManager == null:
+		return ""
+	# 优先读战斗缓存（battle_manager 在 start_battle 时 set）
+	if PhaseInstrumentManager.has_method("get_cached_player_master_eval"):
+		var cached: Dictionary = PhaseInstrumentManager.get_cached_player_master_eval()
+		if not cached.is_empty():
+			return "相位师 Lv.%d %d★ %s" % [
+				int(cached.get("display_level", 15)),
+				int(cached.get("stars", 3)),
+				str(cached.get("star_name", "")),
+			]
+	# 非战斗场景：现算（不依赖战斗缓存）
+	var MasterPlayerAssembler = preload("res://scripts/master_player_assembler.gd")
+	return MasterPlayerAssembler.get_player_display_text(PhaseInstrumentManager)
+
+
 func _refresh_instrument_stats() -> void:
 	if instrument_stats_label == null or not is_instance_valid(instrument_stats_label):
 		return
@@ -1056,6 +1123,10 @@ func _refresh_instrument_stats() -> void:
 		instrument_stats_label.text = "%s ★%d" % [inst_name, star]
 	else:
 		instrument_stats_label.text = inst_name
+	# v7.x: 追加玩家相位师等级/星级（常驻可见）
+	var pm_text: String = _build_player_master_summary()
+	if not pm_text.is_empty():
+		instrument_stats_label.text += " · " + pm_text
 	# 加载相位仪图标
 	if instrument_icon:
 		var icon_tex: Texture2D = UiAssetLoader.instrument_icon(String(cfg.get("id", "")))

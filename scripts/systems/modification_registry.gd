@@ -230,13 +230,14 @@ static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary) -
 				elif effect_value is int:
 					result[effect_key] += effect_value
 			# v6.9→v7.5: move_speed → 重定向为部署延迟百分比（玩家单位格子战术不移动，move_speed 为死属性）
-			# 系数 0.005：+30px → -0.15 → 减 15% 部署延迟（单位更快→部署更快）
+			# v7.x 平衡修订：系数 0.005→0.02（×4）。原 0.005 让 move_speed=20→-0.1 几乎无体感；
+			# 现 move_speed=20→-0.4（明显减部署延迟），机动类改造（涡扇/燃气轮机/外骨骼）体感恢复。
 			# v7.5 修正符号：原 v6.9 用 += 导致 +speed 反而增加延迟（与注释"减延迟"矛盾），改为 -=
 			# 数据层 move_speed 数值保留原样（语义注释为原始设计值），仅在此闸门重定向
 			"move_speed":
 				if not result.has("deploy_delay_bonus"):
 					result["deploy_delay_bonus"] = 0.0
-				result["deploy_delay_bonus"] -= float(effect_value) * 0.005
+				result["deploy_delay_bonus"] -= float(effect_value) * 0.02
 			"attack_range":
 				if not result.has(effect_key):
 					result[effect_key] = 0
@@ -255,7 +256,12 @@ static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary) -
 				if not result.has(effect_key):
 					result[effect_key] = 0
 				result[effect_key] = max(0, int(result[effect_key]) + int(effect_value))
-			"crit_chance", "dodge_chance", "crit_resist", "armor_penetration", \
+			# v7.x 平衡修订：dodge_chance 单独拆出，cap 统一为 0.50（与重定向类 dodge 来源一致）
+			"dodge_chance":
+				if not result.has(effect_key):
+					result[effect_key] = 0.0
+				result[effect_key] = min(0.50, float(result[effect_key]) + float(effect_value))
+			"crit_chance", "crit_resist", "armor_penetration", \
 			"armor_pen_vs_light", "armor_pen_vs_armor", "armor_pen_vs_air":
 				if not result.has(effect_key):
 					result[effect_key] = 0.0
@@ -459,11 +465,11 @@ static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary) -
 					result["damage_reduction"] = 0.0
 				result["damage_reduction"] = min(0.75, float(result["damage_reduction"]) + float(effect_value))
 			# v7.5: urban_move_bonus 巷战机动 → 部署延迟百分比（原写 move_speed 死字段）
-			# 与 move_speed effect 同口径（系数 0.005），正值→部署更快
+			# 与 move_speed effect 同口径（系数 0.02），正值→部署更快
 			"urban_move_bonus":
 					if not result.has("deploy_delay_bonus"):
 						result["deploy_delay_bonus"] = 0.0
-					result["deploy_delay_bonus"] -= float(effect_value) * 0.005
+					result["deploy_delay_bonus"] -= float(effect_value) * 0.02
 			# ── v7.x: 光环协同类（ally_*/formation_bonus/command_efficiency）重映射为装载单位自身加成 ──
 			# 原 effect 按"给周围多友军加 buff"设计，但项目无光环系统，全部落 default→_special 空转。
 			# 改为给装载单位自身加成。所有值 ×0.5 缩放（原值按多受益设计，自身单受益需减半平衡）。

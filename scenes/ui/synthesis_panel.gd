@@ -393,7 +393,7 @@ func _on_synthesize() -> void:
 		if sm and sm.has_method("save_game"):
 			sm.call_deferred("save_game")
 	else:
-		_cost_label.text = "❌ 合成失败: %s" % result.get("reason", "unknown")
+		_cost_label.text = "❌ 合成失败: %s" % result.get("reason", "未知原因，请检查材料是否充足")
 
 func _on_close() -> void:
 	closed.emit()

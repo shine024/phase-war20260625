@@ -3,6 +3,7 @@ extends Node
 const DEBUG_GAME_LOG := false
 const StoryFlags := preload("res://data/story/story_flags.gd")
 const QuestDefs := preload("res://data/quest_definitions.gd")  # v6.7(剧情任务): 关卡剧情查询
+const PhaseMasterGarrison := preload("res://data/phase_master_garrison.gd")  # v7.x 相位师驻守映射
 
 enum GamePhase {
 	PRE_BATTLE,
@@ -69,6 +70,15 @@ var _is_final_battle: bool = false          ## 当前战斗是否为最终战（
 ##              ②连续 5 关未触发后概率递增（0.15→0.25→0.4），避免长期不遇。
 ## 逻辑：优先遭遇当前关卡所属势力的相位师（用于防守任务）
 func check_phase_master_encounter() -> Dictionary:
+	# v7.x 驻守相位师：19个关卡100%遭遇固定相位师（绕过随机机制）
+	var garrison_master_id: String = PhaseMasterGarrison.get_garrison_master_id(current_level)
+	if not garrison_master_id.is_empty():
+		var garrison_config: Dictionary = _build_garrison_config(garrison_master_id)
+		if not garrison_config.is_empty():
+			_current_phase_master = garrison_config
+			_is_phase_master_battle = true
+			_phase_master_drought_count = 0
+			return _current_phase_master
 	# 第49关固定为相位师战斗；其余关卡使用常量概率
 	var force_phase_master_battle: bool = (current_level == 49)
 	if not force_phase_master_battle:
@@ -163,6 +173,49 @@ func check_phase_master_encounter() -> Dictionary:
 	_is_phase_master_battle = false
 	_current_phase_master = {}
 	return {}
+
+## v7.x: 构建驻守相位师配置（直接从 EnemyPhaseMasters 取完整数据，绕过 _enrich_master_config 随机选择）
+## 驻守关100%遭遇指定相位师，机配卡(platforms)+相位仪(phase_instrument)已在数据中配好。
+func _build_garrison_config(master_id: String) -> Dictionary:
+	var EPMC = preload("res://data/enemy_phase_masters.gd")
+	var master: Dictionary = EPMC.get_master_by_id(master_id)
+	if master.is_empty():
+		push_warning("[GameManager] 驻守相位师未找到: %s" % master_id)
+		return {}
+	# 取 enriched equipment（含程序化派生的 runes/spawn_sequence）
+	var pm_id: String = String(master.get("id", ""))
+	var eq: Dictionary = master.get("equipment", {})
+	if not pm_id.is_empty():
+		var enriched_eq: Dictionary = EPMC.get_enriched_equipment(pm_id)
+		if not enriched_eq.is_empty():
+			eq = enriched_eq
+	# 构建完整配置（与 _enrich_master_config 输出结构一致）
+	return {
+		"id": pm_id,
+		"name": String(master.get("name", "")),
+		"title": String(master.get("title", "")),
+		"faction": String(master.get("faction", "")),
+		"enemy_faction": String(master.get("faction", "")),
+		"level": int(master.get("level", 15)),
+		"difficulty": String(master.get("difficulty", "medium")),
+		"equipment": eq,
+		"stats": master.get("stats", {}),
+		"traits": master.get("traits", []),
+		"active_spells": master.get("active_spells", []),
+		"passive_spells": master.get("passive_spells", []),
+		"era": _era_string_from_level(int(master.get("level", 15))),
+	}
+
+## v7.x: level → era 字符串（供 _build_garrison_config 填 era 字段）
+func _era_string_from_level(level: int) -> String:
+	# 驻守师的 level 是相位师等级(5-30)，用 level/6 近似映射时代
+	var era: int = clampi(int(level / 6.0), 0, 4)
+	match era:
+		0: return "ww1"
+		1: return "ww2"
+		2: return "cold"
+		3: return "modern"
+		_: return "future"
 
 ## 获取当前战斗的相位师配置
 func get_current_phase_master() -> Dictionary:

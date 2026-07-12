@@ -20,6 +20,10 @@ static func reset_throttle() -> void:
 
 static func resolve_fx_parent(unit: Node) -> Node:
 	if unit != null and is_instance_valid(unit):
+		# 节点已脱离场景树时（如即将销毁的敌人），get_tree() 会打印 C++ 警告并返回 null。
+		# 用 is_inside_tree() 提前判定，避免无意义的警告刷屏。
+		if not unit.is_inside_tree():
+			return null
 		var p: Node = unit.get_parent()
 		while p != null:
 			if p.name in ["Battlefield", "PlayerUnits", "EnemyUnits"]:
@@ -28,12 +32,11 @@ static func resolve_fx_parent(unit: Node) -> Node:
 		if unit.get_parent() != null:
 			return unit.get_parent()
 		# 动态获取 BattleManager 以避免循环依赖
-		if unit != null and is_instance_valid(unit):
-			var tree := unit.get_tree()
-			if tree != null:
-				var bm = tree.root.get_node_or_null("BattleManager")
-				if bm != null and bm.get("battlefield") != null:
-					return bm.battlefield
+		var tree := unit.get_tree()
+		if tree != null:
+			var bm = tree.root.get_node_or_null("BattleManager")
+			if bm != null and bm.get("battlefield") != null:
+				return bm.battlefield
 	return null
 
 

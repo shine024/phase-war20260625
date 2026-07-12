@@ -384,6 +384,11 @@ func _flush_rebuild_card_grid() -> void:
 		if card is CardResource:
 			_add_card_item(grid, card)
 			added_count += 1
+	# 空状态提示：无卡牌时显示占位文字（区分"空背包"与"加载中"）
+	if added_count == 0 and not _has_loading_indicator(grid):
+		_show_backpack_empty_hint(grid)
+	else:
+		_hide_backpack_empty_hint(grid)
 	_ensure_min_card_slots(grid)
 	# 诊断：检查第一个卡片 item 的视觉状态
 	var first_item = null
@@ -399,6 +404,42 @@ func _flush_rebuild_card_grid() -> void:
 		# [LOG-v5.1] print("[BP] _flush_rebuild: added=%d/%d BUT NO visible card item found! grid_children=%d" % [added_count, cards.size(), grid.get_child_count()])
 	_sync_card_grid_scroll_size_for_grid(grid)
 	_hide_loading_indicator()
+
+
+## 检查网格中是否有加载指示器（区分"加载中"与"空背包"）
+func _has_loading_indicator(grid: GridContainer) -> bool:
+	for child in grid.get_children():
+		if is_instance_valid(child) and child.has_meta("is_loading_indicator") and child.get_meta("is_loading_indicator"):
+			return true
+	return false
+
+## 显示背包空状态提示
+func _show_backpack_empty_hint(grid: GridContainer) -> void:
+	if grid == null:
+		return
+	# 已存在则跳过
+	for child in grid.get_children():
+		if is_instance_valid(child) and child.has_meta("is_empty_hint"):
+			return
+	var hint := Label.new()
+	hint.text = "背包暂无卡牌\n通过商店购买或战斗掉落获取卡牌"
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.add_theme_color_override("font_color", Color(0.6, 0.65, 0.75, 0.7))
+	hint.add_theme_font_size_override("font_size", 14)
+	hint.custom_minimum_size = Vector2(600, 120)
+	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hint.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	hint.set_meta("is_empty_hint", true)
+	grid.add_child(hint)
+
+## 隐藏背包空状态提示
+func _hide_backpack_empty_hint(grid: GridContainer) -> void:
+	if grid == null:
+		return
+	for child in grid.get_children():
+		if is_instance_valid(child) and child.has_meta("is_empty_hint"):
+			child.queue_free()
 
 
 func _diag_card_item_internals(item: Control, grid: GridContainer) -> void:
@@ -588,11 +629,47 @@ func hide_card_detail() -> void:
 func _on_detail_action_requested(action: String, card: CardResource) -> void:
 	match action:
 		"dismantle":
-			if _presenter and _presenter.has_method("on_dismantle_button_pressed"):
-				_presenter.on_dismantle_button_pressed(card)
+			_confirm_dismantle(card)
 		"equip":
 			if _presenter:
 				_presenter.on_equip_button_pressed(card)
+
+## 拆解确认弹窗（显示预览收益，确认后执行）
+func _confirm_dismantle(card: CardResource) -> void:
+	if card == null or _presenter == null:
+		return
+	if not _presenter.has_method("on_dismantle_button_pressed"):
+		return
+	# 获取拆解预览
+	var preview: Dictionary = {}
+	if _presenter.has_method("get_dismantle_preview"):
+		preview = _presenter.get_dismantle_preview(card)
+	var card_name: String = String(preview.get("name", card.card_id))
+	var research: int = int(preview.get("research", 0))
+	var nano: int = int(preview.get("nano", 0))
+
+	var dialog := ConfirmationDialog.new()
+	dialog.title = "拆解卡牌"
+	dialog.dialog_text = "确定要拆解「%s」吗？\n\n拆解后该卡牌将从背包永久移除，你将获得：\n- %d 研究点\n- %d 纳米材料\n\n此操作不可撤销。" % [card_name, research, nano]
+	dialog.ok_button_text = "确认拆解"
+	dialog.get_cancel_button().text = "取消"
+	# 用元数据绑定卡牌，确认回调取回
+	dialog.set_meta("dismantle_card", card)
+	dialog.confirmed.connect(_on_dismantle_confirmed.bind(dialog))
+	dialog.canceled.connect(_on_dismantle_canceled.bind(dialog))
+	add_child(dialog)
+	dialog.popup_centered(Vector2i(440, 220))
+
+## 拆解确认回调
+func _on_dismantle_confirmed(dialog: ConfirmationDialog) -> void:
+	var card: CardResource = dialog.get_meta("dismantle_card", null)
+	dialog.queue_free()
+	if card != null and _presenter and _presenter.has_method("on_dismantle_button_pressed"):
+		_presenter.on_dismantle_button_pressed(card)
+
+## 拆解取消回调
+func _on_dismantle_canceled(dialog: ConfirmationDialog) -> void:
+	dialog.queue_free()
 
 ## 供相位仪等外部 UI 直接打开详情
 static func open_card_detail(card: CardResource, source_item: Control = null) -> void:

@@ -9,6 +9,7 @@ const GC = preload("res://resources/game_constants.gd")
 const IntelManualItems = preload("res://data/intel_manual_items.gd")
 const StoreItemRowScene = preload("res://scenes/ui/store_item_row.tscn")
 const StoreInstrumentRowScene = preload("res://scenes/ui/store_instrument_row.tscn")
+const FormatUtil = preload("res://scripts/ui/format_util.gd")
 const LEGACY_BLUEPRINT_DISPLAY_NAMES: Dictionary = {
 	"mini_rocket": "轻型斯托克斯迫击炮",
 	"emp_pulse": "干扰手枪",
@@ -148,7 +149,7 @@ func _refresh_balance() -> void:
 	var nano: int = int(totals.get(BasicResources.ID_NANO_MATERIALS, 0))
 	var energy: int = int(totals.get(BasicResources.ID_ENERGY_BLOCK, 0))
 
-	var base_text = "⬡ 纳米材料：%d　　⚡ 能量块：%d" % [nano, energy]
+	var base_text = "⬡ 纳米材料：%s　　⚡ 能量块：%s" % [FormatUtil.format_number(nano), FormatUtil.format_number(energy)]
 
 	# 显示全局访问状态
 	if _has_global_access():

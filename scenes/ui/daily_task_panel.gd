@@ -3,17 +3,19 @@ extends Control
 
 const DailyTaskManagerClass = preload("res://managers/daily_task_manager.gd")
 
+signal closed
+
 var daily_task_manager: Node
 
 @onready var task_list = $VBox/ScrollContainer/TaskList
-@onready var header_label = $VBox/Header/HeaderLabel
+@onready var header_label = $VBox/Header/TitleRow/HeaderLabel
+@onready var close_button = $VBox/Header/TitleRow/CloseButton
 @onready var refresh_label = $VBox/Header/RefreshLabel
 @onready var progress_bar = $VBox/Header/ProgressBar
 @onready var claim_all_button = $VBox/Header/ClaimAllButton
 
 func _ready() -> void:
 	daily_task_manager = get_node_or_null("/root/DailyTaskManager")
-	size = Vector2i(750, 650)
 
 	_connect_signals()
 	_refresh_tasks()
@@ -37,6 +39,14 @@ func _connect_signals() -> void:
 	if claim_all_button:
 		claim_all_button.pressed.connect(_on_claim_all_pressed)
 
+	if close_button:
+		close_button.pressed.connect(_on_close_pressed)
+
+## 关闭面板
+func _on_close_pressed() -> void:
+	closed.emit()
+	queue_free()
+
 func _refresh_tasks() -> void:
 	if not task_list:
 		return
@@ -49,6 +59,17 @@ func _refresh_tasks() -> void:
 		return
 
 	var tasks = daily_task_manager.get_daily_tasks()
+	if tasks.is_empty():
+		# 空状态提示（区分"无任务"与"加载中"）
+		var empty_label := Label.new()
+		empty_label.text = "今日暂无任务\n请稍后再来查看"
+		empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		empty_label.add_theme_color_override("font_color", Color(0.6, 0.65, 0.75, 0.8))
+		empty_label.add_theme_font_size_override("font_size", 14)
+		empty_label.custom_minimum_size = Vector2(0, 120)
+		empty_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		empty_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		task_list.add_child(empty_label)
 	for task in tasks:
 		_add_task_item(task)
 

@@ -75,8 +75,8 @@
         "phase_instrument": "steel_guardian_mk1",
         "level": 5,
         "platforms": [
-          "ww1_sup_mg_nest",
-          "ww1_arm_rolls_e"
+          "steel_fortress_basic",
+          "steel_titan_basic"
         ],
         "weapons": [
           "steel_machinegun_basic",
@@ -171,9 +171,8 @@
         "phase_instrument": "flame_destroyer_mk1",
         "level": 6,
         "platforms": [
-          "ww1_arty_mortar",
-          "ww1_inf_storm_e",
-          "ww1_arm_rolls_e"
+          "flame_raider_basic",
+          "flame_siege_basic"
         ],
         "weapons": [
           "flame_thrower_basic",
@@ -266,10 +265,8 @@
         "phase_instrument": "thunder_storm_mk1",
         "level": 7,
         "platforms": [
-          "ww1_inf_mp18",
-          "ww1_inf_rifle",
-          "ww1_inf_storm_e",
-          "ww1_arm_rolls_e"
+          "thunter_striker_basic",
+          "thunter_sniper_basic"
         ],
         "weapons": [
           "tesla_coil_basic",
@@ -360,10 +357,8 @@
         "phase_instrument": "void_walker_mk1",
         "level": 8,
         "platforms": [
-          "ww1_inf_mp18",
-          "ww1_inf_rifle",
-          "ww1_inf_storm_e",
-          "ww1_arm_rolls_e"
+          "void_stealth_basic",
+          "void_mage_basic"
         ],
         "weapons": [
           "void_lance_basic",
@@ -454,8 +449,8 @@
         "phase_instrument": "steel_guardian_mk2",
         "level": 10,
         "platforms": [
-          "ww1_sup_mg_nest",
-          "ww1_arm_rolls_e"
+          "steel_fortress_advanced",
+          "steel_titan_advanced"
         ],
         "weapons": [
           "steel_minigun_advanced",
@@ -548,9 +543,8 @@
         "phase_instrument": "flame_destroyer_mk2",
         "level": 12,
         "platforms": [
-          "ww1_arty_mortar",
-          "ww1_inf_storm_e",
-          "ww1_arm_rolls_e"
+          "flame_raider_advanced",
+          "flame_siege_advanced"
         ],
         "weapons": [
           "flame_thrower_advanced",
@@ -641,10 +635,8 @@
         "phase_instrument": "thunder_storm_mk2",
         "level": 13,
         "platforms": [
-          "ww1_inf_mp18",
-          "ww1_inf_rifle",
-          "ww1_inf_storm_e",
-          "ww1_arm_rolls_e"
+          "thunter_striker_advanced",
+          "thunter_sniper_advanced"
         ],
         "weapons": [
           "tesla_coil_advanced",
@@ -736,10 +728,8 @@
         "phase_instrument": "void_walker_mk2",
         "level": 14,
         "platforms": [
-          "ww1_inf_mp18",
-          "ww1_inf_rifle",
-          "ww1_inf_storm_e",
-          "ww1_arm_rolls_e"
+          "void_stealth_advanced",
+          "void_mage_advanced"
         ],
         "weapons": [
           "void_lance_advanced",
@@ -833,8 +823,8 @@
         "phase_instrument": "steel_guardian_mk3",
         "level": 16,
         "platforms": [
-          "ww1_sup_mg_nest",
-          "ww1_arm_rolls_e"
+          "steel_fortress_expert",
+          "steel_titan_expert"
         ],
         "weapons": [
           "steel_gatling_expert",
@@ -927,9 +917,8 @@
         "phase_instrument": "flame_destroyer_mk3",
         "level": 17,
         "platforms": [
-          "ww1_arty_mortar",
-          "ww1_inf_storm_e",
-          "ww1_arm_rolls_e"
+          "flame_raider_expert",
+          "flame_siege_expert"
         ],
         "weapons": [
           "flame_thrower_expert",
@@ -1021,10 +1010,8 @@
         "phase_instrument": "thunder_storm_mk3",
         "level": 18,
         "platforms": [
-          "ww1_inf_mp18",
-          "ww1_inf_rifle",
-          "ww1_inf_storm_e",
-          "ww1_arm_rolls_e"
+          "thunter_striker_expert",
+          "thunter_sniper_expert"
         ],
         "weapons": [
           "tesla_coil_expert",
@@ -1117,10 +1104,8 @@
         "phase_instrument": "void_walker_mk3",
         "level": 19,
         "platforms": [
-          "ww1_inf_mp18",
-          "ww1_inf_rifle",
-          "ww1_inf_storm_e",
-          "ww1_arm_rolls_e"
+          "void_stealth_expert",
+          "void_mage_expert"
         ],
         "weapons": [
           "void_lance_expert",
@@ -1216,10 +1201,8 @@
         "phase_instrument": "hybrid_steel_flame_mk1",
         "level": 18,
         "platforms": [
-          "ww1_sup_mg_nest",
-          "ww1_arty_mortar",
-          "ww1_inf_storm_e",
-          "ww1_arm_rolls_e"
+          "steel_fortress_expert",
+          "flame_raider_expert"
         ],
         "weapons": [
           "steel_gatling_expert",
@@ -1313,10 +1296,8 @@
         "phase_instrument": "hybrid_thunder_steel_mk1",
         "level": 19,
         "platforms": [
-          "ww1_inf_mp18",
-          "ww1_inf_rifle",
-          "ww1_sup_mg_nest",
-          "ww1_inf_storm_e"
+          "steel_titan_expert",
+          "thunter_striker_expert"
         ],
         "weapons": [
           "steel_railcannon_advanced",
@@ -1412,10 +1393,8 @@
         "phase_instrument": "hybrid_void_flame_mk1",
         "level": 20,
         "platforms": [
-          "ww1_inf_mp18",
-          "ww1_inf_rifle",
-          "ww1_arty_mortar",
-          "ww1_inf_storm_e"
+          "void_mage_expert",
+          "flame_siege_expert"
         ],
         "weapons": [
           "entropy_caster_expert",
@@ -1506,8 +1485,8 @@
         "phase_instrument": "steel_guardian_mk4",
         "level": 22,
         "platforms": [
-          "ww2_sup_mg42",
-          "ww2_arm_panther_e"
+          "steel_fortress_expert",
+          "steel_titan_expert"
         ],
         "weapons": [
           "steel_gatling_expert",
@@ -1600,7 +1579,8 @@
         "phase_instrument": "flame_destroyer_mk4",
         "level": 23,
         "platforms": [
-          "ww2_inf_para_e"
+          "flame_raider_expert",
+          "flame_siege_expert"
         ],
         "weapons": [
           "flame_thrower_expert",
@@ -1692,10 +1672,8 @@
         "phase_instrument": "thunder_storm_mk4",
         "level": 24,
         "platforms": [
-          "ww2_inf_thompson",
-          "ww2_inf_garand",
-          "ww2_inf_panzerschreck_e",
-          "ww2_inf_para_e"
+          "thunter_striker_expert",
+          "thunter_sniper_expert"
         ],
         "weapons": [
           "tesla_coil_expert",
@@ -1786,10 +1764,8 @@
         "phase_instrument": "void_walker_mk4",
         "level": 25,
         "platforms": [
-          "ww2_inf_thompson",
-          "ww2_inf_garand",
-          "ww2_inf_panzerschreck_e",
-          "ww2_inf_para_e"
+          "void_stealth_expert",
+          "void_mage_expert"
         ],
         "weapons": [
           "void_lance_expert",
@@ -1888,10 +1864,8 @@
         "phase_instrument": "hybrid_steel_thunder_mk1",
         "level": 24,
         "platforms": [
-          "ww2_inf_thompson",
-          "ww2_inf_garand",
-          "ww2_sup_mg42",
-          "ww2_inf_panzerschreck_e"
+          "steel_fortress_expert",
+          "thunter_striker_expert"
         ],
         "weapons": [
           "steel_gatling_expert",
@@ -1990,10 +1964,8 @@
         "phase_instrument": "hybrid_flame_void_mk1",
         "level": 25,
         "platforms": [
-          "ww2_inf_thompson",
-          "ww2_inf_garand",
-          "ww2_inf_panzerschreck_e",
-          "ww2_inf_para_e"
+          "flame_siege_expert",
+          "void_mage_expert"
         ],
         "weapons": [
           "plasma_cannon_expert",
@@ -2086,8 +2058,8 @@
         "phase_instrument": "steel_guardian_mk4",
         "level": 26,
         "platforms": [
-          "ww2_sup_mg42",
-          "ww2_arm_panther_e"
+          "steel_fortress_expert",
+          "steel_titan_expert"
         ],
         "weapons": [
           "steel_gatling_expert",
@@ -2181,7 +2153,8 @@
         "phase_instrument": "flame_destroyer_mk4",
         "level": 27,
         "platforms": [
-          "ww2_inf_para_e"
+          "flame_raider_expert",
+          "flame_siege_expert"
         ],
         "weapons": [
           "flame_thrower_expert",
@@ -2274,10 +2247,8 @@
         "phase_instrument": "thunder_storm_mk4",
         "level": 27,
         "platforms": [
-          "ww2_inf_thompson",
-          "ww2_inf_garand",
-          "ww2_inf_panzerschreck_e",
-          "ww2_inf_para_e"
+          "thunter_striker_expert",
+          "thunter_sniper_expert"
         ],
         "weapons": [
           "tesla_coil_expert",
@@ -2368,10 +2339,8 @@
         "phase_instrument": "void_walker_mk4",
         "level": 28,
         "platforms": [
-          "ww2_inf_thompson",
-          "ww2_inf_garand",
-          "ww2_inf_panzerschreck_e",
-          "ww2_inf_para_e"
+          "void_stealth_expert",
+          "void_mage_expert"
         ],
         "weapons": [
           "void_lance_expert",
@@ -2471,8 +2440,8 @@
         "phase_instrument": "steel_guardian_god",
         "level": 28,
         "platforms": [
-          "ww2_sup_mg42",
-          "ww2_arm_panther_e"
+          "steel_fortress_expert",
+          "steel_titan_expert"
         ],
         "weapons": [
           "steel_gatling_expert",
@@ -2573,7 +2542,8 @@
         "phase_instrument": "flame_destroyer_god",
         "level": 29,
         "platforms": [
-          "ww2_inf_para_e"
+          "flame_raider_expert",
+          "flame_siege_expert"
         ],
         "weapons": [
           "flame_thrower_expert",
@@ -2677,10 +2647,8 @@
         "phase_instrument": "thunder_storm_god",
         "level": 29,
         "platforms": [
-          "ww2_inf_thompson",
-          "ww2_inf_garand",
-          "ww2_inf_panzerschreck_e",
-          "ww2_inf_para_e"
+          "thunter_striker_expert",
+          "thunter_sniper_expert"
         ],
         "weapons": [
           "tesla_coil_expert",
@@ -2780,10 +2748,8 @@
         "phase_instrument": "void_walker_god",
         "level": 30,
         "platforms": [
-          "ww2_inf_thompson",
-          "ww2_inf_garand",
-          "ww2_inf_panzerschreck_e",
-          "ww2_inf_para_e"
+          "void_stealth_expert",
+          "void_mage_expert"
         ],
         "weapons": [
           "void_lance_expert",
@@ -2883,10 +2849,8 @@
         "phase_instrument": "omega_instrument",
         "level": 30,
         "platforms": [
-          "ww2_inf_thompson",
-          "ww2_inf_garand",
-          "ww2_sup_mg42",
-          "ww2_inf_panzerschreck_e"
+          "steel_titan_expert",
+          "flame_siege_expert"
         ],
         "weapons": [
           "railgun_expert",

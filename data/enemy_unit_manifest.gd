@@ -4,9 +4,13 @@ class_name EnemyUnitManifest
 ##
 ## v3 重构：100张敌人卡自带完整属性，不再从旧平台卡克隆。
 ## captured_* 由 CapturedUnitCards 注册，不经 DropManager 对 platform_* 的拦截。
+##
+## v8.0: 数据源统一——A/B/D/E 段敌人的基础数值改从 UnifiedCardTable（统一卡牌表）读取，
+## 与玩家卡/缴获卡共享同一套数值。原 _get_foe_stats 的硬编码 match 分支保留作 fallback。
 
 const GC = preload("res://resources/game_constants.gd")
 const BattleCardV3 = preload("res://data/battle_card_v3.gd")
+const UnifiedCardTable = preload("res://data/unified_card_table.gd")
 
 const MANIFEST_VERSION: int = 2
 const CAPTURED_PREFIX: String = "captured_"
@@ -145,232 +149,59 @@ const _FOE_ID_TO_PLATFORM: Dictionary = {
 		"mod_arm_m1a2sep": "platform_modern_guard_heavy",
 	}
 
+## v8.0: 统一表条目（玩家口径）→ foe_stats 口径转换。
+## 字段映射：base_hp→hp, range_value格→rng像素(×100), atk_l_speed次/秒→ivl秒(1/speed),
+##           base_speed正值→spd正值(manifest 内部再转负), combat_kind→kind
+static func _unified_to_foe_stats(entry: Dictionary) -> Dictionary:
+	var ck: int = int(entry.get("combat_kind", 0))
+	var main_spd: float = float(entry.get("atk_l_speed", 1.0))
+	# 取主攻维度的攻速（装甲取 atk_a_speed，空中取 atk_air_speed）
+	if ck == 1:
+		var a_spd: float = float(entry.get("atk_a_speed", 0.0))
+		if a_spd > 0.0:
+			main_spd = a_spd
+	elif ck == 3:
+		var air_spd: float = float(entry.get("atk_air_speed", 0.0))
+		if air_spd > 0.0:
+			main_spd = air_spd
+	var ivl: float = (1.0 / main_spd) if main_spd > 0.0 else 1.0
+	var rng_px: float = float(entry.get("range_value", 3)) * 100.0
+	return {
+		"kind": ck,
+		"hp": float(entry.get("base_hp", 100.0)),
+		"weapon_type": int(entry.get("weapon_type", 0)),
+		"deploy_speed": int(entry.get("deploy_speed", 3)),
+		"attack_light": float(entry.get("atk_l", 0.0)),
+		"attack_armor": float(entry.get("atk_a", 0.0)),
+		"attack_air": float(entry.get("atk_air", 0.0)),
+		"defense_light": float(entry.get("def_l", 0.0)),
+		"defense_armor": float(entry.get("def_a", 0.0)),
+		"defense_air": float(entry.get("def_air", 0.0)),
+		"rng": rng_px,
+		"ivl": ivl,
+		"spd": float(entry.get("base_speed", 0.0)),
+		"weapon": String(entry.get("weapon_label", "")),
+	}
+
+
 static func _get_foe_stats(card_id: String) -> Dictionary:
-	var key: String = String(_FOE_ID_TO_PLATFORM.get(card_id, card_id))
-	match key:
-		# 一战 A段
-		"platform_ww1_light":
-			return {"kind": 0, "hp": 65.0, "weapon_type": 0, "deploy_speed": 4,
-					"attack_light": 35.0, "attack_armor": 0.0, "attack_air": 0.0,
-					"defense_light": 8.0, "defense_armor": 5.0, "defense_air": 3.0,
-					"rng": 95.0, "ivl": 0.67, "spd": 115.0, "weapon": "冲锋枪"}
-		"platform_ww1_medium":
-			return {"kind": 1, "hp": 200.0, "weapon_type": 0, "deploy_speed": 3,
-					"attack_light": 25.0, "attack_armor": 40.0, "attack_air": 0.0,
-					"defense_light": 18.0, "defense_armor": 22.0, "defense_air": 10.0,
-					"rng": 160.0, "ivl": 0.8, "spd": 40.0, "weapon": "机枪"}
-		"platform_ww1_fort":
-			return {"kind": 2, "hp": 260.0, "weapon_type": 0, "deploy_speed": 0,
-					"attack_light": 45.0, "attack_armor": 0.0, "attack_air": 25.0,
-					"defense_light": 12.0, "defense_armor": 8.0, "defense_air": 10.0,
-					"rng": 160.0, "ivl": 0.5, "spd": 0.0, "weapon": "机枪"}
-		"platform_ww1_radar":
-			return {"kind": 2, "hp": 180.0, "weapon_type": 0, "deploy_speed": 0,
-					"attack_light": 40.0, "attack_armor": 0.0, "attack_air": 22.0,
-					"defense_light": 12.0, "defense_armor": 8.0, "defense_air": 10.0,
-					"rng": 155.0, "ivl": 0.56, "spd": 0.0, "weapon": "机枪"}
-		"platform_ww1_medic":
-			return {"kind": 2, "hp": 80.0, "weapon_type": 0, "deploy_speed": 4,
-					"attack_light": 30.0, "attack_armor": 25.0, "attack_air": 0.0,
-					"defense_light": 10.0, "defense_armor": 8.0, "defense_air": 5.0,
-					"rng": 85.0, "ivl": 1.0, "spd": 75.0, "weapon": "步枪"}
-		# 二战 A段
-		"platform_ww2_light":
-			return {"kind": 0, "hp": 50.0, "weapon_type": 0, "deploy_speed": 5,
-					"attack_light": 8.0, "attack_armor": 4.0, "attack_air": 4.0,
-					"defense_light": 4.0, "defense_armor": 3.0, "defense_air": 3.0,
-					"rng": 95.0, "ivl": 0.38, "spd": 135.0, "weapon": "冲锋枪"}
-		"platform_ww2_medium":
-			return {"kind": 1, "hp": 110.0, "weapon_type": 0, "deploy_speed": 3,
-					"attack_light": 14.0, "attack_armor": 8.0, "attack_air": 7.0,
-					"defense_light": 9.0, "defense_armor": 7.0, "defense_air": 7.0,
-					"rng": 155.0, "ivl": 0.95, "spd": 75.0, "weapon": "步枪"}
-		"platform_ww2_heavy":
-			return {"kind": 1, "hp": 200.0, "weapon_type": 1, "deploy_speed": 1,
-					"attack_light": 30.0, "attack_armor": 18.0, "attack_air": 15.0,
-					"defense_light": 13.0, "defense_armor": 10.0, "defense_air": 10.0,
-					"rng": 195.0, "ivl": 1.70, "spd": 40.0, "weapon": "迫击炮"}
-		"platform_ww2_raider":
-			return {"kind": 0, "hp": 90.0, "weapon_type": 0, "deploy_speed": 4,
-					"attack_light": 7.0, "attack_armor": 3.0, "attack_air": 3.0,
-					"defense_light": 7.0, "defense_armor": 5.0, "defense_air": 5.0,
-					"rng": 160.0, "ivl": 0.25, "spd": 100.0, "weapon": "机枪"}
-		"platform_ww2_radar":
-			return {"kind": 2, "hp": 180.0, "weapon_type": 0, "deploy_speed": 0,
-					"attack_light": 14.0, "attack_armor": 8.0, "attack_air": 7.0,
-					"defense_light": 11.0, "defense_armor": 9.0, "defense_air": 9.0,
-					"rng": 155.0, "ivl": 0.95, "spd": 0.0, "weapon": "步枪"}
-		"platform_ww2_siege":
-			return {"kind": 2, "hp": 300.0, "weapon_type": 1, "deploy_speed": 0,
-					"attack_light": 30.0, "attack_armor": 18.0, "attack_air": 15.0,
-					"defense_light": 14.0, "defense_armor": 11.0, "defense_air": 11.0,
-					"rng": 195.0, "ivl": 1.70, "spd": 0.0, "weapon": "迫击炮"}
-		"platform_ww2_fortress":
-			return {"kind": 2, "hp": 260.0, "weapon_type": 0, "deploy_speed": 0,
-					"attack_light": 7.0, "attack_armor": 3.0, "attack_air": 3.0,
-					"defense_light": 20.0, "defense_armor": 16.0, "defense_air": 16.0,
-					"rng": 160.0, "ivl": 0.25, "spd": 0.0, "weapon": "机枪"}
-		# 冷战 A段
-		"platform_cold_light":
-			return {"kind": 0, "hp": 65.0, "weapon_type": 0, "deploy_speed": 5,
-					"attack_light": 8.0, "attack_armor": 5.0, "attack_air": 4.0,
-					"defense_light": 5.0, "defense_armor": 4.0, "defense_air": 4.0,
-					"rng": 95.0, "ivl": 0.38, "spd": 115.0, "weapon": "冲锋枪"}
-		"platform_cold_medium":
-			return {"kind": 1, "hp": 200.0, "weapon_type": 1, "deploy_speed": 2,
-					"attack_light": 30.0, "attack_armor": 20.0, "attack_air": 16.0,
-					"defense_light": 13.0, "defense_armor": 11.0, "defense_air": 10.0,
-					"rng": 195.0, "ivl": 1.70, "spd": 40.0, "weapon": "迫击炮"}
-		"platform_cold_ifv":
-			return {"kind": 3, "hp": 140.0, "weapon_type": 0, "deploy_speed": 3,
-					"attack_light": 7.0, "attack_armor": 4.0, "attack_air": 4.0,
-					"defense_light": 8.0, "defense_armor": 6.0, "defense_air": 6.0,
-					"rng": 160.0, "ivl": 0.25, "spd": 50.0, "weapon": "机枪"}
-		"platform_cold_scout":
-			return {"kind": 0, "hp": 50.0, "weapon_type": 0, "deploy_speed": 6,
-					"attack_light": 8.0, "attack_armor": 4.0, "attack_air": 4.0,
-					"defense_light": 4.0, "defense_armor": 3.0, "defense_air": 3.0,
-					"rng": 95.0, "ivl": 0.38, "spd": 135.0, "weapon": "冲锋枪"}
-		"platform_cold_radar":
-			return {"kind": 2, "hp": 180.0, "weapon_type": 0, "deploy_speed": 0,
-					"attack_light": 14.0, "attack_armor": 10.0, "attack_air": 9.0,
-					"defense_light": 11.0, "defense_armor": 9.0, "defense_air": 9.0,
-					"rng": 155.0, "ivl": 0.95, "spd": 0.0, "weapon": "步枪"}
-		"platform_cold_carrier":
-			return {"kind": 3, "hp": 140.0, "weapon_type": 0, "deploy_speed": 2,
-					"attack_light": 7.0, "attack_armor": 4.0, "attack_air": 5.0,
-					"defense_light": 8.0, "defense_armor": 6.0, "defense_air": 6.0,
-					"rng": 160.0, "ivl": 0.25, "spd": 50.0, "weapon": "机枪"}
-		# 现代 A段
-		"platform_modern_light":
-			return {"kind": 0, "hp": 65.0, "weapon_type": 0, "deploy_speed": 5,
-					"attack_light": 8.0, "attack_armor": 5.0, "attack_air": 5.0,
-					"defense_light": 5.0, "defense_armor": 4.0, "defense_air": 4.0,
-					"rng": 95.0, "ivl": 0.38, "spd": 115.0, "weapon": "冲锋枪"}
-		"platform_modern_medium":
-			return {"kind": 1, "hp": 110.0, "weapon_type": 1, "deploy_speed": 3,
-					"attack_light": 30.0, "attack_armor": 20.0, "attack_air": 18.0,
-					"defense_light": 9.0, "defense_armor": 7.0, "defense_air": 7.0,
-					"rng": 195.0, "ivl": 1.70, "spd": 75.0, "weapon": "迫击炮"}
-		"platform_modern_radar":
-			return {"kind": 2, "hp": 180.0, "weapon_type": 0, "deploy_speed": 0,
-					"attack_light": 14.0, "attack_armor": 10.0, "attack_air": 9.0,
-					"defense_light": 11.0, "defense_armor": 9.0, "defense_air": 9.0,
-					"rng": 155.0, "ivl": 0.95, "spd": 0.0, "weapon": "步枪"}
-		"platform_modern_spg":
-			return {"kind": 2, "hp": 300.0, "weapon_type": 1, "deploy_speed": 0,
-					"attack_light": 30.0, "attack_armor": 20.0, "attack_air": 18.0,
-					"defense_light": 14.0, "defense_armor": 11.0, "defense_air": 11.0,
-					"rng": 195.0, "ivl": 1.70, "spd": 0.0, "weapon": "迫击炮"}
-		"platform_modern_stealth":
-			return {"kind": 0, "hp": 50.0, "weapon_type": 0, "deploy_speed": 6,
-					"attack_light": 8.0, "attack_armor": 5.0, "attack_air": 5.0,
-					"defense_light": 5.0, "defense_armor": 4.0, "defense_air": 4.0,
-					"rng": 95.0, "ivl": 0.38, "spd": 115.0, "weapon": "冲锋枪"}
-		"platform_modern_guard_heavy":
-			return {"kind": 1, "hp": 110.0, "weapon_type": 0, "deploy_speed": 2,
-					"attack_light": 140.0, "attack_armor": 100.0, "attack_air": 90.0,
-					"defense_light": 9.0, "defense_armor": 7.0, "defense_air": 7.0,
-					"rng": 240.0, "ivl": 1.65, "spd": 75.0, "weapon": "轨道炮"}
-		# 现代 A段 - 直接使用的 ID
-		"mod_inf_technical":
-			return {"kind": 0, "hp": 90.0, "weapon_type": 0, "deploy_speed": 4,
-					"attack_light": 18.0, "attack_armor": 5.0, "attack_air": 5.0,
-					"defense_light": 7.0, "defense_armor": 5.0, "defense_air": 5.0,
-					"rng": 130.0, "ivl": 0.30, "spd": 120.0, "weapon": "机枪"}
-		"mod_arm_m1a1":
-			return {"kind": 1, "hp": 220.0, "weapon_type": 1, "deploy_speed": 2,
-					"attack_light": 50.0, "attack_armor": 40.0, "attack_air": 35.0,
-					"defense_light": 15.0, "defense_armor": 12.0, "defense_air": 12.0,
-					"rng": 240.0, "ivl": 1.80, "spd": 60.0, "weapon": "火炮"}
-		"mod_sup_m6":
-			return {"kind": 2, "hp": 160.0, "weapon_type": 0, "deploy_speed": 0,
-					"attack_light": 25.0, "attack_armor": 15.0, "attack_air": 35.0,
-					"defense_light": 12.0, "defense_armor": 10.0, "defense_air": 12.0,
-					"rng": 280.0, "ivl": 0.15, "spd": 0.0, "weapon": "机枪"}
-		"mod_arty_m270":
-			return {"kind": 2, "hp": 200.0, "weapon_type": 1, "deploy_speed": 0,
-					"attack_light": 40.0, "attack_armor": 30.0, "attack_air": 20.0,
-					"defense_light": 10.0, "defense_armor": 8.0, "defense_air": 8.0,
-					"rng": 400.0, "ivl": 2.50, "spd": 0.0, "weapon": "火箭炮"}
-		"mod_inf_scout_drone":
-			return {"kind": 3, "hp": 50.0, "weapon_type": 0, "deploy_speed": 6,
-					"attack_light": 8.0, "attack_armor": 8.0, "attack_air": 8.0,
-					"defense_light": 3.0, "defense_armor": 3.0, "defense_air": 3.0,
-					"rng": 150.0, "ivl": 0.35, "spd": 135.0, "weapon": "机枪"}
-		"mod_arm_m1a2sep":
-			return {"kind": 1, "hp": 240.0, "weapon_type": 1, "deploy_speed": 2,
-					"attack_light": 55.0, "attack_armor": 45.0, "attack_air": 40.0,
-					"defense_light": 16.0, "defense_armor": 13.0, "defense_air": 13.0,
-					"rng": 250.0, "ivl": 1.70, "spd": 65.0, "weapon": "火炮"}
-		# 近未来 A段
-		"platform_future_light":
-			return {"kind": 0, "hp": 50.0, "weapon_type": 0, "deploy_speed": 5,
-					"attack_light": 13.0, "attack_armor": 9.0, "attack_air": 9.0,
-					"defense_light": 5.0, "defense_armor": 4.0, "defense_air": 4.0,
-					"rng": 185.0, "ivl": 0.50, "spd": 115.0, "weapon": "光束步枪"}
-		"platform_future_medium":
-			return {"kind": 1, "hp": 90.0, "weapon_type": 0, "deploy_speed": 4,
-					"attack_light": 13.0, "attack_armor": 9.0, "attack_air": 9.0,
-					"defense_light": 7.0, "defense_armor": 6.0, "defense_air": 6.0,
-					"rng": 185.0, "ivl": 0.50, "spd": 100.0, "weapon": "光束步枪"}
-		"platform_future_radar":
-			return {"kind": 2, "hp": 180.0, "weapon_type": 0, "deploy_speed": 0,
-					"attack_light": 13.0, "attack_armor": 9.0, "attack_air": 9.0,
-					"defense_light": 11.0, "defense_armor": 9.0, "defense_air": 9.0,
-					"rng": 185.0, "ivl": 0.50, "spd": 0.0, "weapon": "光束步枪"}
-		"platform_future_heavy":
-			return {"kind": 1, "hp": 200.0, "weapon_type": 0, "deploy_speed": 1,
-					"attack_light": 220.0, "attack_armor": 180.0, "attack_air": 160.0,
-					"defense_light": 13.0, "defense_armor": 11.0, "defense_air": 10.0,
-					"rng": 250.0, "ivl": 2.2, "spd": 40.0, "weapon": "米加粒子炮"}
-		"fut_arm_omega":
-			return {"kind": 1, "hp": 240.0, "weapon_type": 0, "deploy_speed": 1,
-					"attack_light": 220.0, "attack_armor": 180.0, "attack_air": 160.0,
-					"defense_light": 15.0, "defense_armor": 12.0, "defense_air": 11.0,
-					"rng": 250.0, "ivl": 2.2, "spd": 30.0, "weapon": "米加粒子炮"}
-		# B段 特殊卡
-		"fut_sup_bulwark":
-			return {"kind": 2, "hp": 300.0, "weapon_type": 0, "deploy_speed": 0,
-					"attack_light": 22.0, "attack_armor": 15.0, "attack_air": 13.0,
-					"defense_light": 20.0, "defense_armor": 16.0, "defense_air": 16.0,
-					"rng": 60.0, "ivl": 0.85, "spd": 0.0, "weapon": "霰弹枪"}
-		"fut_arm_titan_mk2":
-			return {"kind": 1, "hp": 250.0, "weapon_type": 1, "deploy_speed": 2,
-					"attack_light": 38.0, "attack_armor": 26.0, "attack_air": 23.0,
-					"defense_light": 15.0, "defense_armor": 12.0, "defense_air": 11.0,
-					"rng": 215.0, "ivl": 2.00, "spd": 35.0, "weapon": "导弹"}
-		"fut_inf_storm_rider":
-			return {"kind": 0, "hp": 60.0, "weapon_type": 0, "deploy_speed": 5,
-					"attack_light": 28.0, "attack_armor": 19.0, "attack_air": 17.0,
-					"defense_light": 5.0, "defense_armor": 4.0, "defense_air": 4.0,
-					"rng": 240.0, "ivl": 1.60, "spd": 120.0, "weapon": "狙击枪"}
-		"fut_air_heavy_carrier":
-			return {"kind": 3, "hp": 160.0, "weapon_type": 0, "deploy_speed": 2,
-					"attack_light": 7.0, "attack_armor": 5.0, "attack_air": 5.0,
-					"defense_light": 9.0, "defense_armor": 7.0, "defense_air": 7.0,
-					"rng": 160.0, "ivl": 0.25, "spd": 50.0, "weapon": "机枪"}
-		"fut_air_regen_frame":
-			return {"kind": 3, "hp": 100.0, "weapon_type": 0, "deploy_speed": 3,
-					"attack_light": 7.0, "attack_armor": 5.0, "attack_air": 4.0,
-					"defense_light": 6.0, "defense_armor": 5.0, "defense_air": 5.0,
-					"rng": 85.0, "ivl": 0.45, "spd": 75.0, "weapon": "手枪"}
-		"mod_arm_abrams_mk2":
-			return {"kind": 1, "hp": 220.0, "weapon_type": 0, "deploy_speed": 2,
-					"attack_light": 140.0, "attack_armor": 100.0, "attack_air": 90.0,
-					"defense_light": 12.0, "defense_armor": 10.0, "defense_air": 9.0,
-					"rng": 240.0, "ivl": 1.65, "spd": 65.0, "weapon": "轨道炮"}
-		# D段 池子卡默认（按 kind 0-3 循环）
-		"_pool_default":
-			return {"kind": 1, "hp": 100.0, "weapon_type": 0, "deploy_speed": 4,
-					"attack_light": 14.0, "attack_armor": 10.0, "attack_air": 9.0,
-					"defense_light": 8.0, "defense_armor": 6.0, "defense_air": 6.0,
-					"rng": 155.0, "ivl": 0.95, "spd": 75.0, "weapon": "步枪"}
-		_:
-			return {"kind": 1, "hp": 100.0, "weapon_type": 0, "deploy_speed": 4,
-					"attack_light": 14.0, "attack_armor": 10.0, "attack_air": 9.0,
-					"defense_light": 8.0, "defense_armor": 6.0, "defense_air": 6.0,
-					"rng": 155.0, "ivl": 0.95, "spd": 75.0, "weapon": "步枪"}
+	# v8.1: 统一表为唯一数据源。所有 foe 卡（含 platform_*）已全部进 unified_card_table。
+	# 三级查询：① 直接 card_id → ② _FOE_ID_TO_PLATFORM 映射后的 platform_* → ③ 默认兜底
+	var unified: Dictionary = UnifiedCardTable.get_entry(card_id)
+	if not unified.is_empty():
+		return _unified_to_foe_stats(unified)
+	# 尝试通过 _FOE_ID_TO_PLATFORM 映射（如 ww2_arm_tiger → platform_ww2_heavy）
+	var mapped_key: String = String(_FOE_ID_TO_PLATFORM.get(card_id, ""))
+	if not mapped_key.is_empty():
+		var mapped_unified: Dictionary = UnifiedCardTable.get_entry(mapped_key)
+		if not mapped_unified.is_empty():
+			return _unified_to_foe_stats(mapped_unified)
+	# 兜底：D段池子卡默认值（理论上不应命中，所有池子卡已在统一表）
+	push_warning("[EnemyUnitManifest] _get_foe_stats: card_id '%s' not in unified table, using fallback" % card_id)
+	return {"kind": 0, "hp": 150.0, "weapon_type": 0, "deploy_speed": 4,
+			"attack_light": 30.0, "attack_armor": 10.0, "attack_air": 0.0,
+			"defense_light": 10.0, "defense_armor": 5.0, "defense_air": 3.0,
+			"rng": 150.0, "ivl": 1.0, "spd": 80.0, "weapon": "步枪"}
 
 
 ## D段池子卡按 kind 的属性修正
@@ -553,12 +384,21 @@ static func _make_fixed_row(enemy_id: String) -> Dictionary:
 
 
 ## D段：池子卡
+## v8.0: 优先从统一卡牌表读取真实数据，废弃 _pool_stats_for_kind 的 kind 统一公式
 static func _make_pool_row(index: int) -> Dictionary:
 	var aid: String = POOL_ENEMY_IDS[index]
 	var era: int = clampi(index / 5, 0, 4)
 	var kind: int = index % 4
 	var display_name: String = POOL_DISPLAY_NAMES[index] if index < POOL_DISPLAY_NAMES.size() else aid
-	var s: Dictionary = _pool_stats_for_kind(kind)
+	# v8.0: 优先从统一表读取；查不到回退 _pool_stats_for_kind（兼容兜底）
+	var s: Dictionary
+	var unified: Dictionary = UnifiedCardTable.get_entry(aid)
+	if not unified.is_empty():
+		s = _unified_to_foe_stats(unified)
+		kind = int(unified.get("combat_kind", kind))
+		era = int(unified.get("era", era))
+	else:
+		s = _pool_stats_for_kind(kind)
 	var speed: float = 0.0
 	if s.spd > 0.0:
 		speed = -maxf(40.0, float(s.spd) * 0.65)
@@ -597,19 +437,16 @@ static func _make_pool_row(index: int) -> Dictionary:
 
 
 ## E 段：堡垒类别（固定阵地，combat_kind=4）
-## v6.13: 修复 0 血瞬死 BUG —— 原版 hp/攻防全写死 0（注释承诺"从 default_cards 读取"从未实现），
-## 导致堡垒被抽中即瞬死、看不到出战也无掉落。现从 captured_card_stats 读取真实缴获卡数值，
-## 与 _make_foe_row/_make_pool_row 同源同口径。
+## v8.0: 从 UnifiedCardTable（统一卡牌表）读取数值，解除对 CapturedCardStats 的反向依赖。
+## 原 v6.13 从 captured_card_stats 读取是临时方案，现统一到单一数据源。
 static func _make_fort_row(fort_id: String) -> Dictionary:
 	var era: int = _era_from_fort_id(fort_id)
 	var display_name: String = _get_fort_display_name(fort_id)
-	var captured_id: String = CAPTURED_PREFIX + fort_id  # "captured_ww1_fort_pillbox"
-	var s: Dictionary = CapturedCardStats.get_stats(captured_id)
-	var hp: float = float(s.get("base_hp", 600.0))
-	var rng: float = float(s.get("range_value", 1)) * 100.0       # 格转像素（1格=100px，与 unit_stats_table 一致）
-	var atk_spd: float = float(s.get("attack_speed", 0.0))
-	# 攻速 0 = 纯防御单位（雷达站/能量护盾），无攻击行为，避免除零
-	var ivl: float = (1.0 / atk_spd) if atk_spd > 0.0 else 0.0
+	# v8.0: 从统一表读取（fort_id 直接是统一表 card_id）
+	var s: Dictionary = _unified_to_foe_stats(UnifiedCardTable.get_entry(fort_id))
+	var hp: float = float(s.get("hp", 600.0))
+	var rng: float = float(s.get("rng", 100.0))
+	var ivl: float = float(s.get("ivl", 0.0))
 	return {
 		"archetype_id": fort_id,
 		"display_name": display_name,
@@ -630,7 +467,7 @@ static func _make_fort_row(fort_id: String) -> Dictionary:
 			"attack_range": rng,
 			"attack_interval": ivl,
 			"combat_kind": 4,  # 堡垒
-			"weapon_label": String(s.get("weapon_label", "")),
+			"weapon_label": String(s.get("weapon", "")),
 			"weapon_type": int(s.get("weapon_type", 0)),
 			"defense_light": float(s.get("defense_light", 0.0)),
 			"defense_armor": float(s.get("defense_armor", 0.0)),

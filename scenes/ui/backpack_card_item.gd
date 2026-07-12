@@ -578,7 +578,7 @@ func _set_compact_slot_view(c: CardResource, name_label, lv_label, icon_rect) ->
 		lv_label.text = _build_bottom_info_line(c)
 		lv_label.visible = true
 		lv_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		lv_label.add_theme_font_size_override("font_size", 8)
+		lv_label.add_theme_font_size_override("font_size", 11)
 		lv_label.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85, 0.95))
 	if icon_row == null or name_label == null:
 		return
@@ -884,7 +884,7 @@ func _set_mtg_minimal_card_view(c: CardResource, name_label, lv_label, icon_rect
 		RankDisplayUi.apply_to_host(rank_row, ri, icon_px)
 		rank_hdr = rank_row.get_node_or_null("RankName") as Label
 		if rank_hdr:
-			rank_hdr.add_theme_font_size_override("font_size", clampi(int(ceil(SLOT_SIZE.y * 0.026)), 8, 17))
+			rank_hdr.add_theme_font_size_override("font_size", clampi(int(ceil(SLOT_SIZE.y * 0.026)), 11, 17))
 	if cost_hdr:
 		# v7.x：费用从 MtgHeader/MtgCostLabel 移到左上角角标气泡（CostCornerBadge）
 		cost_hdr.text = ""
@@ -899,7 +899,7 @@ func _set_mtg_minimal_card_view(c: CardResource, name_label, lv_label, icon_rect
 			name_label.max_lines_visible = clampi(int(get_meta("_pv_name_ml")), 1, 16)
 		else:
 			name_label.max_lines_visible = 8
-		name_label.add_theme_font_size_override("font_size", clampi(int(ceil(SLOT_SIZE.y * 0.022)), 7, 20))
+		name_label.add_theme_font_size_override("font_size", clampi(int(ceil(SLOT_SIZE.y * 0.022)), 11, 20))
 		if has_meta("_pv_name_mh"):
 			name_label.custom_minimum_size = Vector2(0, clampi(int(get_meta("_pv_name_mh")), 20, 420))
 		else:

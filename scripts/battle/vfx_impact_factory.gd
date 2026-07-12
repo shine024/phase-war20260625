@@ -133,7 +133,7 @@ static func spawn_crit_sparks(parent: Node2D, world_pos: Vector2, is_full_crit: 
 	var tree := p.get_tree()
 	if tree != null:
 		var timer := tree.create_timer(p.lifetime + 0.1)
-		timer.timeout.connect(func(): _release_spark_particle(p))
+		_connect_deferred_release(timer, p, _release_spark_particle)
 
 
 ## v7.4: 炮口火焰（复用 spark 池，替代 bullet.gd 每次 new CPUParticles2D+Gradient）。
@@ -163,7 +163,7 @@ static func spawn_muzzle_flash(parent: Node2D, local_pos: Vector2, facing_right:
 	var tree := p.get_tree()
 	if tree != null:
 		var timer := tree.create_timer(p.lifetime + 0.1)
-		timer.timeout.connect(func(): _release_spark_particle(p))
+		_connect_deferred_release(timer, p, _release_spark_particle)
 
 
 ## v7.4: 固定 Gradient 缓存（暴击/炮口专用，避免每次 new Gradient）
@@ -325,7 +325,24 @@ static func _spawn_sparks(parent: Node2D, pos: Vector2, recipe: Dictionary, base
 		# +0.1s 余量：timer == lifetime 时最后一批发射的粒子刚到寿命终点即被 remove_child，
 		# 帧率波动下会提前截断尾段
 		var timer := tree.create_timer(p.lifetime + 0.1)
-		timer.timeout.connect(func(): _release_spark_particle(p))
+		_connect_deferred_release(timer, p, _release_spark_particle)
+
+
+## ======================================================================
+## v7.5: 定时器回收包装器（解决 "Lambda capture was freed" 运行时错误）
+## ======================================================================
+## 问题：spawn_*_sparks/debris 把粒子加到临时父节点（如 Bullet），父节点被
+## queue_free / 归还对象池时粒子随之 free，但 SceneTreeTimer 仍持有 lambda 捕获
+## 的强引用 p，触发时引擎报 "Lambda capture at index 0 was freed. Passed null"。
+## 解法：lambda 捕获 WeakRef 而非强引用；WeakRef 不阻止对象释放，get_ref() 在
+## 对象已释放时返回 null，release 函数已有 null 守卫，安全返回。
+static func _connect_deferred_release(timer: SceneTreeTimer, node: Node, release_fn: Callable) -> void:
+	var weak: WeakRef = weakref(node)
+	timer.timeout.connect(func() -> void:
+		var n: Variant = weak.get_ref()
+		if n != null and is_instance_valid(n):
+			release_fn.call(n)
+	)
 
 
 ## 火花色带缓存（Gradient，按颜色键缓存）
@@ -375,7 +392,7 @@ static func _spawn_debris(parent: Node2D, pos: Vector2, debris_cfg: Dictionary, 
 	if tree != null:
 		# +0.1s 余量（同 _spawn_sparks，防尾段截断）
 		var timer := tree.create_timer(p.lifetime + 0.1)
-		timer.timeout.connect(func(): _release_debris_particle(p))
+		_connect_deferred_release(timer, p, _release_debris_particle)
 
 
 ## ======================================================================
@@ -504,6 +521,9 @@ static func _acquire_ring() -> Polygon2D:
 		var candidate = _ring_pool[i]
 		_ring_pool.remove_at(i)
 		if candidate != null and is_instance_valid(candidate) and not candidate.is_queued_for_deletion():
+			# v7.5: 防御性剥离残留 parent（同 _acquire_spark_particle）
+			if candidate.get_parent() != null:
+				candidate.get_parent().remove_child(candidate)
 			_active_rings += 1
 			candidate.visible = true
 			candidate.modulate.a = 1.0
@@ -545,7 +565,10 @@ static func _release_ring(ring: Polygon2D) -> void:
 		_active_rings -= 1
 		_ring_buffers.erase(ring)  # v7.4: 清理失效 buffer 缓存
 		return
-	if ring.is_inside_tree() and ring.get_parent():
+	# v7.5: 用 get_parent()!=null 判定而非 is_inside_tree()。父节点可能在战斗拆卸时
+	# 被移出场景树但尚未 free，此时 is_inside_tree()=false 会跳过 remove_child，
+	# 导致 ring 带父归还池中，下次 acquire 的 add_child 触发 "already has a parent"。
+	if ring.get_parent() != null:
 		ring.get_parent().remove_child(ring)
 	ring.visible = false
 	_active_rings -= 1
@@ -583,6 +606,9 @@ static func _acquire_beam() -> Line2D:
 		var candidate = _beam_pool[i]
 		_beam_pool.remove_at(i)
 		if candidate != null and is_instance_valid(candidate) and not candidate.is_queued_for_deletion():
+			# v7.5: 防御性剥离残留 parent（同 _acquire_spark_particle）
+			if candidate.get_parent() != null:
+				candidate.get_parent().remove_child(candidate)
 			_active_beams += 1
 			candidate.visible = true
 			candidate.modulate.a = 1.0
@@ -601,7 +627,8 @@ static func _release_beam(beam: Line2D) -> void:
 	if beam == null or not is_instance_valid(beam):
 		_active_beams -= 1
 		return
-	if beam.is_inside_tree() and beam.get_parent():
+	# v7.5: 用 get_parent()!=null 判定（同 _release_ring 注释说明）
+	if beam.get_parent() != null:
 		beam.get_parent().remove_child(beam)
 	beam.visible = false
 	beam.clear_points()
@@ -619,6 +646,9 @@ static func _acquire_debris_particle() -> CPUParticles2D:
 		var candidate = _debris_pool[i]
 		_debris_pool.remove_at(i)
 		if candidate != null and is_instance_valid(candidate) and not candidate.is_queued_for_deletion():
+			# v7.5: 防御性剥离残留 parent（同 _acquire_spark_particle）
+			if candidate.get_parent() != null:
+				candidate.get_parent().remove_child(candidate)
 			candidate.visible = true
 			candidate.emitting = true
 			candidate.restart()
@@ -637,7 +667,8 @@ static func _release_debris_particle(p: CPUParticles2D) -> void:
 	if p == null or not is_instance_valid(p):
 		_active_debris -= 1
 		return
-	if p.is_inside_tree() and p.get_parent():
+	# v7.5: 用 get_parent()!=null 判定（同 _release_ring 注释说明）
+	if p.get_parent() != null:
 		p.get_parent().remove_child(p)
 	p.emitting = false
 	p.visible = false
@@ -656,6 +687,10 @@ static func _acquire_spark_particle() -> CPUParticles2D:
 		var candidate = _spark_pool[i]
 		_spark_pool.remove_at(i)
 		if candidate != null and is_instance_valid(candidate) and not candidate.is_queued_for_deletion():
+			# v7.5: 防御——若池中残留 parent（release 漏判 / 战斗拆卸时序），
+			# 此处剥离避免 add_child "already has a parent"。
+			if candidate.get_parent() != null:
+				candidate.get_parent().remove_child(candidate)
 			candidate.visible = true
 			candidate.emitting = true
 			candidate.restart()
@@ -685,7 +720,8 @@ static func _release_spark_particle(p: CPUParticles2D) -> void:
 	if p == null or not is_instance_valid(p):
 		_active_sparks -= 1
 		return
-	if p.is_inside_tree() and p.get_parent():
+	# v7.5: 用 get_parent()!=null 判定（同 _release_ring 注释说明）
+	if p.get_parent() != null:
 		p.get_parent().remove_child(p)
 	p.emitting = false
 	p.visible = false

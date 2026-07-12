@@ -410,11 +410,13 @@ func _build_enemy_unit_stats(r: Dictionary, cfg: Dictionary) -> void:
 		"attack_armor": s.attack_armor,
 		"attack_air": s.attack_air,
 	}
-	# 三维攻速：敌人只有单一 attack_interval，三组攻速统一
-	var spd: float = 1.0 / s.attack_interval if s.attack_interval > 0.0 else 1.0
-	s.attack_light_speed = spd
-	s.attack_armor_speed = spd
-	s.attack_air_speed = spd
+	# v8.1: 三维攻速——优先读三维 interval（防空特化单位对空高频），回退单一 interval 统一
+	var ivl_l: float = float(r.get("attack_light_interval", s.attack_interval))
+	var ivl_a: float = float(r.get("attack_armor_interval", s.attack_interval))
+	var ivl_air: float = float(r.get("attack_air_interval", s.attack_interval))
+	s.attack_light_speed = (1.0 / ivl_l) if ivl_l > 0.0 else 1.0
+	s.attack_armor_speed = (1.0 / ivl_a) if ivl_a > 0.0 else 1.0
+	s.attack_air_speed = (1.0 / ivl_air) if ivl_air > 0.0 else 1.0
 	s.attack_light_windup = 0.2
 	s.attack_armor_windup = 0.2
 	s.attack_air_windup = 0.2
@@ -479,6 +481,8 @@ func _update_fort_shield_aura(delta: float) -> void:
 
 
 ## v6.3: 为敌人 UnitStats 初始化3个武器槽位（轻装/装甲/对空），复用三维攻击值
+## v8.1: 槽位 weapon_type 不再直接复制单位枚举（SUPPORT=3 会与 legacy ROCKET=3 冲突），
+##        改用与玩家卡一致的按槽位分配逻辑（_default_enemy_slot_weapon_type）。
 func _ensure_enemy_weapon_slots(s: UnitStats) -> void:
 	var GC2 = preload("res://resources/game_constants.gd")
 	# 槽位0=对轻装, 槽位1=对装甲, 槽位2=对空
@@ -487,17 +491,40 @@ func _ensure_enemy_weapon_slots(s: UnitStats) -> void:
 		{"target_kind": GC2.CombatKind.ARMOR, "dmg": s.attack_armor, "spd": s.attack_armor_speed},
 		{"target_kind": GC2.CombatKind.AIR, "dmg": s.attack_air, "spd": s.attack_air_speed},
 	]
-	for cfg_w in slot_configs:
+	for i in range(slot_configs.size()):
+		var cfg_w: Dictionary = slot_configs[i]
 		var w = WeaponResource.new()
 		w.enabled = float(cfg_w.dmg) > 0.0
 		w.damage = float(cfg_w.dmg)
 		w.attack_speed = float(cfg_w.spd)
 		w.range_value = maxi(1, int(round(s.attack_range / 100.0)))
-		w.weapon_type = s.weapon_type
+		w.weapon_type = _default_enemy_slot_weapon_type(i, s.weapon_type, GC2)
 		w.windup = 0.2
 		w.active = 0.1
 		w.display_name = s.weapon_label
 		s.weapon_slots.append(w)
+
+## v8.1: 按槽位分配敌方武器弹道类型（与玩家卡 _default_weapon_type_for_slot 对齐）
+## 解决：单位枚举 SUPPORT(3) 直接复制到槽位会被 bullet.gd 当 legacy ROCKET(3) 处理。
+## 规则：
+##   - 单位是曲射(INDIRECT=1) → 三槽全 INDIRECT（火炮对任何目标都是抛物线落地）
+##   - 单位是空射(AERIAL=2) → 三槽全 AERIAL
+##   - 单位是 SUPPORT(3) → 三槽 DIRECT（支援单位有伤害就走直射，无伤害槽位 enabled=false 自然不发弹）
+##   - 否则按槽位：轻装槽 DIRECT(0)、装甲槽 SNIPER(6) 穿甲、对空槽 MISSILE(9) 导弹
+static func _default_enemy_slot_weapon_type(slot_idx: int, unit_weapon_type: int, GC2) -> int:
+	if unit_weapon_type == GC2.WeaponType.INDIRECT:
+		return GC2.WeaponType.INDIRECT
+	if unit_weapon_type == GC2.WeaponType.AERIAL:
+		return GC2.WeaponType.AERIAL
+	match slot_idx:
+		0:
+			return GC2.WeaponType.DIRECT  # 对轻装：直射曳光
+		1:
+			return 6  # SNIPER：对装甲穿甲
+		2:
+			return 9  # MISSILE：对空导弹
+		_:
+			return GC2.WeaponType.DIRECT
 
 func _apply_visual_from_archetype(cfg: Dictionary) -> void:
 	_suppress_stray_editor_visual_nodes()
@@ -1107,7 +1134,10 @@ func _die() -> void:
 			BattleInputState.current_selected_unit = null
 		SignalBus.unit_died.emit(self, false)
 		# v7.x 战场视觉反馈：emit unit_killed（含击杀者），供 BattleSpectacle/BattleLog/MVP
-		var _killer: Variant = get_meta("_last_attacker", null)
+		# 用 has_meta 先判定，避免从未被玩家单位击中过的敌人打印 "no meta values" 警告。
+		var _killer: Variant = null
+		if has_meta("_last_attacker"):
+			_killer = get_meta("_last_attacker", null)
 		if _killer != null and not is_instance_valid(_killer):
 			_killer = null
 		SignalBus.unit_killed.emit(self, _killer, false)

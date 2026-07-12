@@ -165,13 +165,15 @@ func _process(delta: float) -> void:
 ## 玩家星级：用 MasterPlayerAssembler 从 PhaseInstrumentManager 装配 master dict
 ## 敌方星级：仅 boss 对战时算，直接用 _phase_master_config 喂评估器
 ## 任一计算失败均回落到 3★（基准=现状数值，向后兼容）
+## v7.x: 算完后 emit player_phase_master_power_changed 信号（携带 total/Lv），供 UI 更新
 func _compute_and_cache_rank_stars() -> void:
 	var player_stars: int = 3
 	var enemy_stars: int = 3
+	var player_eval: Dictionary = {}
 	# 玩家星级
 	if PhaseInstrumentManager != null:
-		var pr: Dictionary = MasterPlayerAssembler.evaluate_player_stars(PhaseInstrumentManager)
-		player_stars = int(pr.get("stars", 3))
+		player_eval = MasterPlayerAssembler.evaluate_player_stars(PhaseInstrumentManager)
+		player_stars = int(player_eval.get("stars", 3))
 	# 敌方 boss 星级（仅 boss 对战）
 	if _is_phase_master_battle and not _phase_master_config.is_empty():
 		var er: Dictionary = MasterPowerEvaluator.evaluate(_phase_master_config)
@@ -179,8 +181,22 @@ func _compute_and_cache_rank_stars() -> void:
 	if PhaseInstrumentManager and PhaseInstrumentManager.has_method("set_player_rank_stars"):
 		PhaseInstrumentManager.set_player_rank_stars(player_stars)
 		PhaseInstrumentManager.set_enemy_rank_stars(enemy_stars)
+	# v7.x: 缓存完整玩家评估结果（供 UI 读取，避免重复计算）
+	if PhaseInstrumentManager and PhaseInstrumentManager.has_method("set_cached_player_master_eval"):
+		PhaseInstrumentManager.set_cached_player_master_eval(player_eval)
+	# v7.x: 广播玩家相位师战力变化（供 bottom_instrument_bar 刷新显示）
+	if not player_eval.is_empty() and SignalBus and SignalBus.has_signal("player_phase_master_power_changed"):
+		var _pm_total: float = float(player_eval.get("total_score", 0.0))
+		SignalBus.player_phase_master_power_changed.emit(
+			_pm_total,
+			_pm_total,  # 第二参数兼容（v7.x 已移除压缩，两值相同）
+			int(player_eval.get("stars", 3)),
+			str(player_eval.get("star_name", "")),
+			int(player_eval.get("display_level", 15))
+		)
 	if DEBUG_BATTLE_LOG:
 		push_warning("[v6.7] 相位师排名星级 — 玩家:%d★ / 敌方:%d★" % [player_stars, enemy_stars])
+
 
 func start_battle(battle_scene: Node) -> void:
 	if DEBUG_BATTLE_LOG:

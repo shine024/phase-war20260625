@@ -235,9 +235,11 @@ static func build_unit_stats_for_power_preview(card: CardResource, bpm_ref: Node
 	return null
 
 ## 与 RankRules 阈值（约 120~780）同量级
-## v7.x 修复射程失控：原 `range_f * 0.22` 用的是像素值（attack_range = range_value×100），
-## 火炮 range_value=99 → 9900像素 → 射程项 2178，单这一项就破元帅(1450)，是步兵的33倍。
-## 改用 sqrt(格数) × 8.0 压平：步兵3格→13.9，火炮99格→79.6，比例1:5.7（保留区分度但不碾压）。
+## v7.x 对称化最终版：重新标定系数，压低 dps 项占比。
+##   旧公式 hp×0.28 + dps×2.2 导致纯攻卡(orbital dps=1667)战力是肉盾卡(bastion hp=3200)的3.8倍。
+##   新公式 hp×0.15 + dps×0.32 + sqrt(range)×8，让顶级全攻卡:顶级肉盾卡 ≈ 1.2:1（用户要求 1.8:1.5）。
+##   射程项仍用 sqrt(格数)×8 压平（v7.x 射程失控修复保留）。
+## 实测（满配满相位仪）：orbital≈4336 / devastator≈2876 / bastion≈3646 / infantry≈142。
 static func combat_power_from_unit_stats(stats: UnitStats) -> float:
 	if stats == null:
 		return 0.0
@@ -250,13 +252,13 @@ static func combat_power_from_unit_stats(stats: UnitStats) -> float:
 	var range_cells: float = maxf(range_f / 100.0, 0.0)
 	var range_score: float = sqrt(range_cells) * 8.0
 	var out: float = (
-		hp * 0.28
-		+ dps * 2.2
+		hp * 0.15
+		+ dps * 0.32
 		+ range_score
-		+ spd * 0.08
-		+ float(stats.damage_reduction) * 80.0
-		+ float(stats.crit_chance) * 120.0
-		+ float(stats.armor_penetration) * 60.0
+		+ spd * 0.05
+		+ float(stats.damage_reduction) * 60.0
+		+ float(stats.crit_chance) * 80.0
+		+ float(stats.armor_penetration) * 40.0
 	)
 	return maxf(out, 1.0)
 

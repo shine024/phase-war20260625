@@ -30,32 +30,36 @@ class_name MasterPowerEvaluator
 # ─────────────────────────────────────────────
 
 const STAR_TIERS: Array[Dictionary] = [
-	{"stars": 1, "name": "新锐",   "min_score": 0,    "max_score": 450,   "color": "#88CCFF"},
-	{"stars": 2, "name": "精英",   "min_score": 450,  "max_score": 540,   "color": "#44FF88"},
-	{"stars": 3, "name": "高手",   "min_score": 540,  "max_score": 650,   "color": "#FFCC00"},
-	{"stars": 4, "name": "大师",   "min_score": 650,  "max_score": 780,   "color": "#FF8800"},
-	{"stars": 5, "name": "宗师",   "min_score": 780,  "max_score": 950,   "color": "#FF4466"},
-	{"stars": 6, "name": "传说",   "min_score": 950,  "max_score": 1600,  "color": "#CC44FF"},
-	{"stars": 7, "name": "神话",   "min_score": 1600, "max_score": 99999, "color": "#FFD700"},
+	{"stars": 1, "name": "新锐",   "min_score": 0,     "max_score": 500,    "color": "#88CCFF"},
+	{"stars": 2, "name": "精英",   "min_score": 500,   "max_score": 3000,   "color": "#44FF88"},
+	{"stars": 3, "name": "高手",   "min_score": 3000,  "max_score": 10000,  "color": "#FFCC00"},
+	{"stars": 4, "name": "大师",   "min_score": 10000, "max_score": 30000,  "color": "#FF8800"},
+	{"stars": 5, "name": "宗师",   "min_score": 30000, "max_score": 60000,  "color": "#FF4466"},
+	{"stars": 6, "name": "传说",   "min_score": 60000, "max_score": 120000, "color": "#CC44FF"},
+	{"stars": 7, "name": "神话",   "min_score": 120000,"max_score": 9999999,"color": "#FFD700"},
 ]
-## v7.x 校准说明：阈值基于 30 个真实相位师总分分布（434~2210）按分位数标定。
-## 加 G维(本体)和 H维(符文)后总分结构变化，旧阈值(250/600/1200/2200/3800/6000)
-## 让 6★/7★ 永远为空、4★/5★ 割裂。新阈值让分布钟形覆盖全 7 档（1/9/8/6/3/1/2）。
+## v7.x 对称化最终版校准说明：
+## 阈值基于真实战力分布（不压缩）：新手~200 / 中配~5000-25000 / 终极DPS~180000。
+## 区间按数量级递进：1★<500（新手）→ 2★<3000 → 3★<10000（中配）→ 4★<30000 →
+## 5★<60000 → 6★<120000 → 7★≥120000（终极满配DPS军团）。
+## 敌方相位师因走轻量平台战力+无相位仪加成，总分偏低（~2000-8000），落在 2-3★。
 
 # ─────────────────────────────────────────────
-#  维度权重
+#  维度权重（v7.x 对称化最终版：删 D维技能 / I维符文之语 单独计分）
+#  用户决策：相位仪技能价值体现在相位仪战力内，符文之语价值体现在符文战力内。
+#  总战力 = F维(卡真实战力) + A维(相位仪加成战力) + H维(符文固定值) + G维(本体) + 辅助维
 # ─────────────────────────────────────────────
 
-const W_INSTRUMENT: float = 0.15   # 相位仪基础属性
-const W_ENGRAVINGS: float = 0.08   # 刻印词条（v7.x: 0.25→0.20→0.10→0.08，让位 H/I 维）
-const W_TRAITS: float = 0.10       # 特质
-const W_ACTIVE_SPELLS: float = 0.10 # 主动技能
-const W_PASSIVE_SPELLS: float = 0.10 # 被动技能
-const W_EQUIPMENT_SLOTS: float = 0.20 # F 维：载卡战力（重构：原槽数×60 → 卡牌战力加权）
+const W_INSTRUMENT: float = 0.15   # A 维：相位仪（含其给卡的加成战力）
+const W_ENGRAVINGS: float = 0.05   # B 维：刻印（保留，权重降低）
+const W_TRAITS: float = 0.10       # C 维：特质
+const W_ACTIVE_SPELLS: float = 0.0  # D 维：已删（技能价值在 A 维内）
+const W_PASSIVE_SPELLS: float = 0.10 # E 维：被动技能
+const W_EQUIPMENT_SLOTS: float = 0.35 # F 维：载卡战力（真实 combat_power，主导项）
 const W_MASTER_STATS: float = 0.15 # G 维：军团本体战力
-const W_RUNES: float = 0.06        # H 维：单符文战力（v7.x: 0.10→0.06，拆出 I 维）
-const W_RUNEWORDS: float = 0.06    # I 维：符文之语战力（v7.x 新增，与 H 维独立计分）
-# 权重总和 = 0.15+0.08+0.10+0.10+0.10+0.20+0.15+0.06+0.06 = 1.00 ✓
+const W_RUNES: float = 0.10        # H 维：符文固定值（按稀有度）
+const W_RUNEWORDS: float = 0.0     # I 维：已删（符文之语价值在 H 维内）
+# 权重总和 = 0.15+0.05+0.10+0+0.10+0.35+0.15+0.10+0 = 1.00 ✓
 
 # ─────────────────────────────────────────────
 #  A. 相位仪属性评估参数
@@ -202,8 +206,9 @@ const WEAPON_COUNT_BONUS: float = 50.0
 const ENERGY_CARD_BONUS: float = 30.0
 
 ## 相位仪稀有度分值
+# v7.x 平衡修订：补 legendary 条目（原缺，legendary 相位仪走 fallback 得错误分）
 const INSTRUMENT_RARITY_SCORE: Dictionary = {
-	"common": 50, "uncommon": 120, "rare": 250, "epic": 450, "mythic": 800,
+	"common": 50, "uncommon": 120, "rare": 250, "epic": 450, "legendary": 600, "mythic": 800,
 }
 
 # ─────────────────────────────────────────────
@@ -259,12 +264,12 @@ static func evaluate(master: Dictionary) -> Dictionary:
 	scores.instrument = _eval_instrument(master)
 	scores.engravings = _eval_engravings(master)
 	scores.traits = _eval_traits(master)
-	scores.active_spells = _eval_active_spells(master)
+	scores.active_spells = 0.0   # v7.x: D 维已删（技能价值在 A 维相位仪内）
 	scores.passive_spells = _eval_passive_spells(master)
-	scores.equipment_slots = _eval_equipment_slots(master)   # F 维（重构为载卡战力）
+	scores.equipment_slots = _eval_equipment_slots(master)   # F 维（真实 combat_power）
 	scores.master_stats = _eval_master_stats(master)         # G 维
-	scores.runes = _eval_runes(master)                        # H 维（单符文战力）
-	scores.runewords = _eval_runewords(master)                # I 维（符文之语战力，独立）
+	scores.runes = _eval_runes(master)                        # H 维（符文固定值）
+	scores.runewords = 0.0   # v7.x: I 维已删（符文之语价值在 H 维符文内）
 
 	var total: float = (
 		scores.instrument * W_INSTRUMENT +
@@ -538,26 +543,33 @@ static func _eval_equipment_slots(master: Dictionary) -> float:
 		return card_power_sum * 3.0
 
 
-## v7.x: 平台卡轻量战力（敌方平台卡只有原始 stats 字典，无 UnitStats/range/interval，不能套完整公式）。
-## 敌方平台卡读 EnemyPhaseEquipment.get_war_platform(id).stats（hp/attack/defense/move_speed/attack_speed）。
-## 量级校准：与 combat_power_from_unit_stats 同档（~100-500）。
-## 玩家真实卡ID（非敌方平台卡）查不到时回退固定基础分。
+## v7.x: 平台卡真实战力（敌方平台卡用 combat_power_from_unit_stats 同款公式）。
+## 敌方平台卡读 EnemyPhaseEquipment.get_war_platform(id).stats + 默认武器的 range/attack_speed。
+## 玩家真实卡战力由 master_player_assembler 预算后塞进 _player_platform_powers，不经过此函数。
 static func _platform_power_light(platform_id: String, is_enemy: bool) -> float:
 	if is_enemy:
 		var pd: Dictionary = EnemyPhaseEquipment.get_war_platform(platform_id)
 		if pd.is_empty():
-			return 80.0  # 查不到给基础分
+			return 300.0  # 查不到给基础分
 		var ps: Dictionary = pd.get("stats", {})
 		var hp: float = float(ps.get("hp", 0))
 		var atk: float = float(ps.get("attack", 0))
-		var def_f: float = float(ps.get("defense", 0))
-		# 轻量公式：hp×0.5 + atk×3 + def×1.5（attack 权重高，因平台卡 attack 是综合攻击力）
-		return hp * 0.5 + atk * 3.0 + def_f * 1.5
+		var aspd: float = float(ps.get("attack_speed", 1.0))
+		var spd: float = float(ps.get("move_speed", 0))
+		# range 从默认武器取
+		var wid: String = String(pd.get("default_weapon", ""))
+		var wd: Dictionary = EnemyPhaseEquipment.get_war_weapon(wid) if not wid.is_empty() else {}
+		var rng_pixels: float = float(wd.get("range", 200)) if not wd.is_empty() else 200.0
+		var range_cells: float = maxf(rng_pixels / 100.0, 0.0)
+		# combat_power_from_unit_stats 同款公式 v7.x 新系数（敌方平台无 dr/crit/pen）
+		var interval: float = maxf(aspd, 0.05)
+		var dps: float = atk / interval
+		var range_score: float = sqrt(range_cells) * 8.0
+		return hp * 0.15 + dps * 0.32 + range_score + spd * 0.05
 	else:
-		# 玩家真实卡：理论上应调 EvolutionHelpers.combat_power_from_unit_stats，
-		# 但需 build_stats + InstanceRegistry 依赖，运行时复杂；本轮玩家侧先给基础分，
-		# 真实卡战力评估留待 to_master_dict 适配器（范围外）。
-		return 100.0
+		# 玩家真实卡：由 master_player_assembler 预算塞进 _player_platform_powers
+		# 此分支不应被走到（F 维玩家侧由 assembler 重写）；兜底给基础分
+		return 300.0
 
 
 # ═════════════════════════════════════════════
@@ -613,15 +625,17 @@ const RUNEWORD_TIER_BASE: Dictionary = {
 }
 ## 单符文属性 effect 权重（primary_effect.value 通常 0.05~0.20，×200=10~40/项，合理量级）
 const RUNE_STAT_WEIGHT: float = 200.0
-## 符文稀有度基础分
-const RUNE_RARITY_BASE: Dictionary = {
-	"common": 15.0, "rare": 35.0, "epic": 70.0, "legendary": 140.0,
+## 符文战力固定值（v7.x 对称化最终版：按稀有度固定，玩家可口算）
+## 用户决策：符文基数要够大，让"6卡4符文"和"4卡6符文"都是顶级战力。
+const RUNE_RARITY_POWER: Dictionary = {
+	"common": 800.0, "rare": 1500.0, "epic": 3000.0, "legendary": 5000.0, "mythic": 7000.0,
 }
-## 符文之语 effect 权重（数值加成项 value 求和）—— I 维用
+## 符文之语 effect 权重（数值加成项 value 求和）—— I 维用（已删，保留常量兼容）
 const RUNEWORD_EFFECT_WEIGHT: float = 150.0
 
-## H 维：单符文战力（v7.x: 从原合并 H 维拆出，与符文之语 I 维独立计分）。
-## 稀有度基础分 + primary_effect.value × RUNE_STAT_WEIGHT + secondary_effect × 0.5。
+## H 维：符文战力（v7.x 对称化最终版：按稀有度固定值，不再用公式推导）
+## 每个符文按稀有度给固定战力分，玩家可直接口算。
+## 符文之语的价值已包含在符文战力内（能凑符文之语说明符文搭配好）。
 static func _eval_runes(master: Dictionary) -> float:
 	# 符文ID列表：优先 equipment.runes（敌方 enriched），回退顶层 runes
 	var equip: Dictionary = master.get("equipment", {})
@@ -638,21 +652,11 @@ static func _eval_runes(master: Dictionary) -> float:
 			continue
 		var rd: Dictionary = RuneDefinitions.get_rune(rid)
 		if rd.is_empty():
+			score += 800.0  # 查不到按 common 兜底
 			continue
-		# 稀有度基础分
 		var rarity: String = String(rd.get("rarity", "common"))
-		score += RUNE_RARITY_BASE.get(rarity, 20.0)
-		# primary_effect 数值（符文定义里可能显式为 null，需类型守卫）
-		var pe_raw = rd.get("primary_effect", {})
-		var pe: Dictionary = pe_raw if pe_raw is Dictionary else {}
-		if not pe.is_empty():
-			score += float(pe.get("value", 0.0)) * RUNE_STAT_WEIGHT
-		# secondary_effect（如有，常为 null）
-		var se_raw = rd.get("secondary_effect", {})
-		var se: Dictionary = se_raw if se_raw is Dictionary else {}
-		if not se.is_empty():
-			score += float(se.get("value", 0.0)) * RUNE_STAT_WEIGHT * 0.5
-	return minf(score, 500.0)   # clamp 上限，与 A/G 维量级同档
+		score += RUNE_RARITY_POWER.get(rarity, 800.0)
+	return score
 
 
 ## I 维：符文之语战力（v7.x 新增，与 H 维单符文独立计分）。

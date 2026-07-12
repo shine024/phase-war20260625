@@ -7,7 +7,7 @@ class_name EngineerEvolution
 
 const MAIN_LINE: Dictionary = {
 	E0 = {
-		stage = 0, card_id = "ww1_engineer", name = "工兵班",
+		stage = 0, card_id = "ww1_sup_engineer", name = "工兵班",
 		era = "WW1", power = 20, max_hp = 90,
 		attack_light = 15, attack_armor = 5, attack_air = 0,
 		defense_light = 10, defense_armor = 8, defense_air = 5,

@@ -1248,7 +1248,10 @@ func _die() -> void:
 			BattleInputState.current_selected_unit = null
 		SignalBus.unit_died.emit(self, is_player)
 		# v7.x 战场视觉反馈：emit unit_killed（含击杀者），供 BattleSpectacle/BattleLog/MVP
-		var _killer: Variant = get_meta("_last_attacker", null)
+		# 用 has_meta 先判定，避免从未被击中过的单位打印 "no meta values" 警告。
+		var _killer: Variant = null
+		if has_meta("_last_attacker"):
+			_killer = get_meta("_last_attacker", null)
 		if _killer != null and not is_instance_valid(_killer):
 			_killer = null
 		SignalBus.unit_killed.emit(self, _killer, is_player)

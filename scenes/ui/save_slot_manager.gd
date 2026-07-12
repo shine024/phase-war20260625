@@ -20,6 +20,8 @@ signal manager_closed()
 
 ## 导入/导出文件对话框选中槽位（默认当前槽）
 var _io_slot: int = 1
+## 待删除的存档槽号（确认弹窗用）
+var _pending_delete_slot: int = -1
 
 func _ready() -> void:
 	if SaveManager == null:
@@ -134,12 +136,13 @@ func _on_load_slot(slot_num: int) -> void:
 	if SaveManager == null:
 		return
 	SaveManager.set_slot(slot_num)
-	var success: bool = SaveManager.load_game()
-	if success:
-		slot_selected.emit(slot_num)
-		_refresh_all_slots()
-	else:
-		push_error("[SaveSlotManager] 加载存档槽 %d 失败" % slot_num)
+		var success: bool = SaveManager.load_game()
+		if success:
+			slot_selected.emit(slot_num)
+			_refresh_all_slots()
+		else:
+			push_error("[SaveSlotManager] 加载存档槽 %d 失败" % slot_num)
+			_show_error_toast("加载存档槽 %d 失败，文件可能已损坏" % slot_num)
 
 ## 保存到存档槽（真实 API：set_slot + save_game）
 func _on_save_slot(slot_num: int) -> void:
@@ -147,7 +150,7 @@ func _on_save_slot(slot_num: int) -> void:
 		return
 	var prev_slot := SaveManager.get_slot()
 	SaveManager.set_slot(slot_num)
-	var success: bool = SaveManager.save_game()
+		var success: bool = SaveManager.save_game()
 	if success:
 		slot_selected.emit(slot_num)
 		_refresh_all_slots()
@@ -155,14 +158,44 @@ func _on_save_slot(slot_num: int) -> void:
 		# 保存失败回退槽位
 		SaveManager.set_slot(prev_slot)
 		push_error("[SaveSlotManager] 保存到槽位 %d 失败" % slot_num)
+		_show_error_toast("保存到槽位 %d 失败，请检查存储空间" % slot_num)
 
-## 删除存档槽（真实 API：delete_slot）
+## 删除存档槽（先弹确认对话框，确认后执行真实 API：delete_slot）
 func _on_delete_slot(slot_num: int) -> void:
 	if SaveManager == null:
 		return
+	_pending_delete_slot = slot_num
+	var dialog := ConfirmationDialog.new()
+	dialog.title = "删除存档"
+	dialog.dialog_text = "确定要删除存档槽 %d 吗？\n\n此操作不可撤销，该存档的所有进度将永久丢失。" % slot_num
+	dialog.ok_button_text = "确认删除"
+	dialog.get_cancel_button().text = "取消"
+	dialog.confirmed.connect(_on_delete_confirmed)
+	dialog.canceled.connect(_on_delete_canceled)
+	add_child(dialog)
+	dialog.popup_centered(Vector2i(420, 180))
+
+## 确认删除回调
+func _on_delete_confirmed() -> void:
+	var slot_num := _pending_delete_slot
+	_pending_delete_slot = -1
+	if slot_num < 0 or SaveManager == null:
+		return
+	# 清理弹窗节点
+	for child in get_children():
+		if child is ConfirmationDialog:
+			child.queue_free()
 	SaveManager.delete_slot(slot_num)
 	slot_deleted.emit(slot_num)
 	_refresh_all_slots()
+	SignalBus.show_toast.emit("存档槽 %d 已删除" % slot_num)
+
+## 取消删除回调
+func _on_delete_canceled() -> void:
+	_pending_delete_slot = -1
+	for child in get_children():
+		if child is ConfirmationDialog:
+			child.queue_free()
 
 ## ─── 导入存档 ───
 ## 直接文件复制到目标槽位的 user://save_slot_N.json（绕过 SaveManager 内部状态，
@@ -188,8 +221,10 @@ func _on_import_file_selected(file_path: String, dialog: FileDialog) -> void:
 		# 清缓存让 get_slot_info 重读
 		SaveManager.force_slot_info_refresh()
 		_refresh_all_slots()
+		SignalBus.show_toast.emit("存档已导入到槽位 %d" % target)
 	else:
 		push_error("[SaveSlotManager] 导入存档失败 (错误码 %d)" % err)
+		_show_error_toast("导入存档失败（错误码 %d），请检查文件是否有效" % err)
 
 ## ─── 导出存档 ───
 ## 复制当前槽位主文件到玩家选择的目标路径。
@@ -197,6 +232,7 @@ func _on_export_pressed() -> void:
 	var source := "user://save_slot_%d.json" % _io_slot
 	if not FileAccess.file_exists(source):
 		push_warning("[SaveSlotManager] 当前槽位 %d 无存档可导出" % _io_slot)
+		_show_error_toast("当前槽位 %d 无存档可导出" % _io_slot)
 		return
 	var dialog = FileDialog.new()
 	dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
@@ -218,6 +254,13 @@ func _on_export_file_selected(file_path: String, dialog: FileDialog, source: Str
 	var err := DirAccess.copy_absolute(ProjectSettings.globalize_path(source), file_path)
 	if err != OK:
 		push_error("[SaveSlotManager] 导出存档失败 (错误码 %d)" % err)
+		_show_error_toast("导出存档失败（错误码 %d），请检查目标路径是否可写" % err)
+	else:
+		SignalBus.show_toast.emit("存档已导出")
+
+## 显示错误 toast（玩家可见反馈）
+func _show_error_toast(msg: String) -> void:
+	SignalBus.show_toast.emit("❌ " + msg)
 
 ## ─── 清理备份文件 ───
 ## SaveManager 每 SAVE_BACKUP_INTERVAL_MS 生成 *_backup.json；本按钮清理所有槽位的备份档

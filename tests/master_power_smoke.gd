@@ -7,6 +7,7 @@
 extends SceneTree
 
 const MasterPowerEvaluator = preload("res://scripts/master_power_evaluator.gd")
+const MasterPlayerAssembler = preload("res://scripts/master_player_assembler.gd")
 const PowerTiers = preload("res://data/power_tiers.gd")
 const EvolutionHelpers = preload("res://managers/evolution/evolution_helpers.gd")
 const UnitStatsTable = preload("res://resources/unit_stats_table.gd")
@@ -106,10 +107,7 @@ func _initialize() -> void:
 		fail.call("H维 master_001 单符文应>0，实际 %.1f" % h_ww1)
 	if h_fu <= 0.0:
 		fail.call("H维 master_030 单符文应>0，实际 %.1f" % h_fu)
-	if i_ww1 <= 0.0:
-		fail.call("I维 master_001 符文之语应>0，实际 %.1f" % i_ww1)
-	if i_fu <= 0.0:
-		fail.call("I维 master_030 符文之语应>0，实际 %.1f" % i_fu)
+	# v7.x: I维(符文之语)已删，权重=0，不再断言 i>0
 
 	# 3. F维载卡 > 0（敌方平台卡战力）
 	var f_ww1: float = float(er_ww1["scores"]["equipment_slots"])
@@ -157,11 +155,61 @@ func _initialize() -> void:
 	var i_rw: float = float(er_rw["scores"].get("runewords", 0.0))
 	if h_rw <= 0.0:
 		fail.call("rw_2_01 H维单符文应>0，实际 %.1f" % h_rw)
-	if i_rw <= 0.0:
-		fail.call("rw_2_01 I维符文之语应>0，实际 %.1f" % i_rw)
+	# v7.x: I维(符文之语)已删，权重=0，不再断言 i_rw>0
 
 	# ══════════ 汇总输出 ══════════
-	print("=== v7.x 第二轮 校验结果 ===")
+
+	# ══════════ v7.x 对称化最终版: 卡牌战力新公式 + 符文固定值验证 ══════════
+	print("=== v7.x 对称化最终版: 卡牌战力新公式 ===")
+	# 1. 新公式验证：DPS卡 vs 肉盾卡 比例 ≈ 1.2:1（用户要求 1.8:1.5）
+	# 用 build_stats 算真实战力（需 autoload，可能失败；失败则跳过）
+	var ft17 = DefaultCards.get_card_by_id("ww1_ft17")
+	if ft17 != null:
+		var ft17_stats = UnitStatsTable.build_stats_from_card(ft17, 0)
+		var ft17_power: float = EvolutionHelpers.combat_power_from_unit_stats(ft17_stats)
+		print("  ww1_ft17 基础战力: %.1f" % ft17_power)
+		if ft17_power < 1.0:
+			fail.call("ww1_ft17 战力异常: %.1f" % ft17_power)
+
+	# 2. 符文固定值验证（H维用 RUNE_RARITY_POWER）
+	var rune_power_table = MasterPowerEvaluator.RUNE_RARITY_POWER
+	print("  符文固定值: common=%d rare=%d epic=%d legendary=%d mythic=%d" % [
+		int(rune_power_table.get("common", 0)),
+		int(rune_power_table.get("rare", 0)),
+		int(rune_power_table.get("epic", 0)),
+		int(rune_power_table.get("legendary", 0)),
+		int(rune_power_table.get("mythic", 0)),
+	])
+	if int(rune_power_table.get("legendary", 0)) < 3000:
+		fail.call("符文 legendary 固定值过低: %d（应≥3000）" % int(rune_power_table.get("legendary", 0)))
+
+	# 3. D维/I维已删（权重=0）
+	if MasterPowerEvaluator.W_ACTIVE_SPELLS != 0.0:
+		fail.call("D维 W_ACTIVE_SPELLS 应为0（已删），实际 %.2f" % MasterPowerEvaluator.W_ACTIVE_SPELLS)
+	if MasterPowerEvaluator.W_RUNEWORDS != 0.0:
+		fail.call("I维 W_RUNEWORDS 应为0（已删），实际 %.2f" % MasterPowerEvaluator.W_RUNEWORDS)
+	print("  D维/I维已删（权重=0）✓")
+
+	# 4. 权重总和=1.0
+	var w_sum: float = (
+		MasterPowerEvaluator.W_INSTRUMENT + MasterPowerEvaluator.W_ENGRAVINGS +
+		MasterPowerEvaluator.W_TRAITS + MasterPowerEvaluator.W_ACTIVE_SPELLS +
+		MasterPowerEvaluator.W_PASSIVE_SPELLS + MasterPowerEvaluator.W_EQUIPMENT_SLOTS +
+		MasterPowerEvaluator.W_MASTER_STATS + MasterPowerEvaluator.W_RUNES +
+		MasterPowerEvaluator.W_RUNEWORDS
+	)
+	if absf(w_sum - 1.0) > 0.01:
+		fail.call("权重总和应为1.0，实际 %.3f" % w_sum)
+	print("  权重总和=%.2f ✓" % w_sum)
+
+	# 5. STAR_TIERS 新阈值验证（基于真实分布）
+	var t1_stars = MasterPowerEvaluator._score_to_stars(200.0)  # 新手 → 1★
+	var t3_stars = MasterPowerEvaluator._score_to_stars(5000.0)  # 中配 → 3★
+	if int(t1_stars.get("stars", 0)) > 2:
+		fail.call("新手(200分)星级应≤2★，实际 %d★" % int(t1_stars.get("stars", 0)))
+	print("  STAR_TIERS: 200分→%d★, 5000分→%d★" % [int(t1_stars.get("stars",0)), int(t3_stars.get("stars",0))])
+
+	print("=== v7.x 最终版 校验结果 ===")
 	print("[修复A] ww1_105mm 火炮战力: %.1f (修复前破元帅2178+)" % ap)
 	print("[重构B] master_001: 总分=%.0f | F载卡=%.0f G本体=%.0f H符文=%.0f I词=%.0f | %s" % [
 		float(er_ww1["total_score"]), f_ww1, g_ww1, h_ww1, i_ww1,
@@ -171,6 +219,7 @@ func _initialize() -> void:
 		MasterPowerEvaluator.get_stars_display(m_fu)])
 	print("[派生Lv] master_001=%d | master_030=%d" % [lvl_ww1, lvl_fu])
 	print("[符文之语] rw_2_01 激活=%d个 → H单符文=%.1f I符文之语=%.1f" % [active.size(), h_rw, i_rw])
+	print("[对称化最终版] 权重和=%.2f | 符文legendary=%d | D/I维已删 | STAR_TIERS新阈值" % [w_sum, int(rune_power_table.get("legendary",0))])
 	if code == 0:
 		print("✅ 全部断言通过")
 	else:

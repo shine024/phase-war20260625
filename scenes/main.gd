@@ -73,6 +73,8 @@ func _debug_log(hypothesis_id: String, location: String, message: String, data: 
 @onready var evolution_overlay: Control       = $PopupLayer/EvolutionOverlay
 @onready var story_overlay: Control           = $PopupLayer/StoryOverlay
 @onready var afk_overlay: Control             = $PopupLayer/AFKOverlay
+# v7.x: 玩家相位师详细面板（点击底部栏相位场标签打开）
+@onready var player_master_overlay: Control   = $PopupLayer/PlayerMasterOverlay
 @onready var level_display: Label = $HudLayer/TopCenterMeta/LevelDisplay
 
 func _ready() -> void:
@@ -320,6 +322,10 @@ func _connect_panel_closed_signals() -> void:
 			continue
 		if panel.has_signal("closed") and not panel.closed.is_connected(_on_panel_closed.bind(key)):
 			panel.closed.connect(_on_panel_closed.bind(key))
+	# v7.x: 玩家相位师详细面板 closed 信号 → 隐藏 overlay
+	var pm_panel: Node = get_node_or_null("PopupLayer/PlayerMasterOverlay/CenterContainer/PlayerMasterPanel")
+	if pm_panel and pm_panel.has_signal("closed") and not pm_panel.closed.is_connected(_on_player_master_panel_closed):
+		pm_panel.closed.connect(_on_player_master_panel_closed)
 
 # ── overlay 统一开关 ─────────────────────────────────────────
 func _open_overlay(overlay: Control, panel_key: String = "") -> void:
@@ -445,8 +451,8 @@ func _on_instrument_area_clicked() -> void:
 	pass
 
 func _on_phase_level_label_clicked() -> void:
-	# 点击相位仪等级标签：打开相位仪选择面板
-	_open_phase_instrument_selector()
+	# v7.x: 点击相位仪等级标签 → 打开玩家相位师详细面板（9维战力分解）
+	_open_player_master_panel()
 
 func _on_law_area_clicked() -> void:
 	# v7.x: 独立 rune_panel 已删除，符文管理合并到背包 RunesTab
@@ -1049,6 +1055,24 @@ func _open_phase_instrument_selector() -> void:
 	# 使用普通 Control 全屏遮罩，避免 Window/AcceptDialog 在 CanvasLayer 下无法显示
 	popup_layer.add_child(selector)
 	selector.instrument_selected.connect(_on_phase_selector_selected.bind(selector))
+
+## v7.x: 打开玩家相位师详细面板（9维战力分解 + 星级 + Lv + 构成明细）
+func _open_player_master_panel() -> void:
+	_play_sfx("button")
+	if player_master_overlay == null:
+		return
+	var panel: Node = player_master_overlay.get_node_or_null("CenterContainer/PlayerMasterPanel")
+	if panel and panel.has_method("open_panel"):
+		panel.open_panel()
+	player_master_overlay.visible = true
+	var cc: Node = player_master_overlay.get_node_or_null("CenterContainer")
+	if cc is Control:
+		(cc as Control).visible = true
+
+## v7.x: 玩家相位师详细面板关闭 → 隐藏 overlay
+func _on_player_master_panel_closed() -> void:
+	if player_master_overlay != null:
+		player_master_overlay.visible = false
 
 func _on_phase_selector_selected(_instrument_id: String, selector: Node) -> void:
 	if is_instance_valid(selector):

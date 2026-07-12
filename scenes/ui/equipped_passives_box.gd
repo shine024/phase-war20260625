@@ -109,6 +109,11 @@ func refresh_list() -> void:
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		# 修复对比度：浅色背景上用深色文字（原继承全局近白色，浅底白字难读）
+		if kind == "active":
+			label.add_theme_color_override("font_color", Color(0.15, 0.12, 0.05, 1.0))  # 浅黄底用深棕
+		else:
+			label.add_theme_color_override("font_color", Color(0.05, 0.1, 0.2, 1.0))   # 浅蓝底用深蓝
 		vb.add_child(label)
 		slot.add_child(vb)
 		slot.tooltip_text = _build_law_detail(cfg)

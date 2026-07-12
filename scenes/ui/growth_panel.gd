@@ -8,6 +8,7 @@ const ModRegistry = preload("res://scripts/systems/modification_registry.gd")
 const ModSlotScene: PackedScene = preload("res://scenes/ui/mod_slot_item.tscn")
 const EvoPathRegistry = preload("res://scripts/systems/evolution_path_registry.gd")
 const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
+const FormatUtil = preload("res://scripts/ui/format_util.gd")
 const UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")
 
 signal closed
@@ -156,6 +157,9 @@ func _ready() -> void:
 	_apply_visual_styles()
 	# 改造系统入口按钮挂图标（强化/改装/进化）
 	_apply_action_btn_icons()
+	# DetailCol 内容溢出保护：将 GridBody 包入 ScrollContainer，
+	# 避免 4 区块（星级/强化/改造/进化）全展开时超出固定 660px 面板高度被裁剪。
+	_wrap_grid_body_in_scroll()
 
 # ========== 视觉样式方法 ==========
 
@@ -349,6 +353,33 @@ func _on_apply_pressed() -> void:
 	# v7.x: 原 growth_panel_saved/card_data_changed 无监听者（死信号），改 emit backpack_changed 通知背包刷新
 	if sb and sb.has_signal("backpack_changed"):
 		sb.backpack_changed.emit()
+
+## 将 GridBody 包入 ScrollContainer，防止 4 区块全展开时内容超出面板高度被裁剪。
+## 程序化 reparent 避免改动 .tscn 中数十个子节点的 parent 路径字符串。
+func _wrap_grid_body_in_scroll() -> void:
+	var detail_col := get_node_or_null("RootVBox/DetailHBox/DetailCol")
+	if detail_col == null:
+		return
+	var grid_body := detail_col.get_node_or_null("GridBody")
+	if grid_body == null:
+		return
+	# 已包过则跳过（防重复）
+	if grid_body.get_parent() is ScrollContainer:
+		return
+	var idx := grid_body.get_index()
+	# 创建 ScrollContainer 占据 GridBody 原位置
+	var scroll := ScrollContainer.new()
+	scroll.name = "GridBodyScroll"
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	detail_col.remove_child(grid_body)
+	detail_col.add_child(scroll)
+	detail_col.move_child(scroll, idx)
+	scroll.add_child(grid_body)
+	grid_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 
 func _on_close_pressed() -> void:
 	hide_panel()
@@ -1142,15 +1173,7 @@ func _get_kind_color(combat_kind: int) -> Color:
 		_: return Color(0.5, 0.5, 0.5)
 
 func _format_number(n: int) -> String:
-	var s: String = str(n)
-	var result := ""
-	var count := 0
-	for i in range(s.length() - 1, -1, -1):
-		if count > 0 and count % 3 == 0:
-			result = "," + result
-		result = s[i] + result
-		count += 1
-	return result
+	return FormatUtil.format_thousands(n)
 
 func _init_cached_styleboxes() -> void:
 	_tag_stylebox = StyleBoxFlat.new()

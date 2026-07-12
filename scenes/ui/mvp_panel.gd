@@ -23,6 +23,7 @@ extends Control
 
 const DT = preload("res://resources/design_tokens.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
+const FormatUtil = preload("res://scripts/ui/format_util.gd")
 
 signal result_confirmed(player_won: bool)
 
@@ -77,6 +78,7 @@ func _build() -> void:
 	# 自动撑大自己，ScrollContainer 的内容高度会传上来把面板顶出屏幕。
 	# Panel 不参与 minimum_size 传播，offset 锚定的边界就是面板的真实边界，绝不会被撑开。
 	var panel := Panel.new()
+	panel.name = "Panel"
 	panel.set_anchors_preset(Control.PRESET_CENTER)
 	panel.anchor_left = 0.5
 	panel.anchor_right = 0.5
@@ -223,8 +225,8 @@ func _render_battle_stats(vbox: VBoxContainer) -> void:
 	vbox.add_child(data_grid)
 	_add_data_row(data_grid, "击毁敌方", str(stats.get("enemy_kills", 0)), DT.COLOR_GREEN_BRIGHT)
 	_add_data_row(data_grid, "我方损失", str(stats.get("player_kills", 0)), DT.COLOR_DANGER)
-	_add_data_row(data_grid, "造成伤害", str(int(stats.get("damage_dealt", 0))), DT.COLOR_ACCENT_CYAN)
-	_add_data_row(data_grid, "承受伤害", str(int(stats.get("damage_taken", 0))), DT.COLOR_ENERGY)
+	_add_data_row(data_grid, "造成伤害", FormatUtil.format_thousands(int(stats.get("damage_dealt", 0))), DT.COLOR_ACCENT_CYAN)
+	_add_data_row(data_grid, "承受伤害", FormatUtil.format_thousands(int(stats.get("damage_taken", 0))), DT.COLOR_ENERGY)
 
 	# 击杀类型分布
 	var kill_breakdown := _kill_type_breakdown()
@@ -473,11 +475,12 @@ func _on_continue_pressed() -> void:
 	var dm_claim: Node = Engine.get_main_loop().root.get_node_or_null("DropManager")
 	if dm_claim != null and dm_claim.has_method("claim_drops"):
 		dm_claim.claim_drops()
-	# 淡出后返回准备界面（淡出作用在 overlay_layer，内容都在 CanvasLayer 里）
-	var overlay: CanvasLayer = get_node_or_null("MvpPanelOverlay")
+	# 淡出后返回准备界面。注意：CanvasLayer 没有 modulate 属性（见 _build 注释），
+	# 因此淡出必须作用于面板内的 Control（Panel），不能作用于 overlay_layer。
+	var panel: Control = get_node_or_null("MvpPanelOverlay/Panel")
 	var tw := create_tween()
-	if overlay != null:
-		tw.tween_property(overlay, "modulate:a", 0.0, 0.18)
+	if panel != null:
+		tw.tween_property(panel, "modulate:a", 0.0, 0.18)
 	tw.tween_callback(func():
 		var parent: Node = get_parent()
 		if parent != null and parent.has_method("_on_result_confirmed"):

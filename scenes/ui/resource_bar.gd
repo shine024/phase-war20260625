@@ -3,6 +3,7 @@ extends PanelContainer
 
 const GC = preload("res://resources/game_constants.gd")
 const BasicResources = preload("res://data/basic_resources.gd")
+const FormatUtil = preload("res://scripts/ui/format_util.gd")
 
 var _energy_label: Label
 var _basic_nano_label: Label
@@ -179,12 +180,7 @@ func _refresh_lore_count() -> void:
 	_lore_count_label.text = str(lore_count)
 
 func _format_number(num: int) -> String:
-	if num >= 1000000:
-		return "%.1fM" % (num / 1000000.0)
-	elif num >= 1000:
-		return "%.1fK" % (num / 1000.0)
-	else:
-		return str(num)
+	return FormatUtil.format_number(num)
 
 ## 信号回调
 func _on_energy_changed(_new_energy: float) -> void:

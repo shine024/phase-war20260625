@@ -300,8 +300,8 @@ static func _apply_mega_shield(params: Dictionary) -> void:
 	if _battlefield == null:
 		return
 	var shield_amount: float = float(params.get("shield_amount", 3000.0))
-	# 每单位上限3000护盾
-	shield_amount = minf(shield_amount, 3000.0)
+	# v7.x 平衡修订：护盾上限由生成器 ability_mega_shield 按星级决定（4★3000/6★5000/7★8000），
+	# 此处不再二次压制（原硬上限 3000 会让高星级护盾空转）。
 	var allies: Array = _get_player_units()
 	# v7.x 正式动画：蓝色能量罩降临每个友军 + 战场中央光环
 	for u in allies:
@@ -579,9 +579,21 @@ static func _spawn_smoke_column(pos: Vector2, tint: Color = Color(0.5, 0.5, 0.5,
 	var tree := _battlefield.get_tree()
 	if tree != null:
 		var timer := tree.create_timer(2.5)
+		# v7.5: 用 WeakRef 捕获粒子节点。原直接捕获强引用 captured_p，当粒子随
+		# 战场节点树整体清理（战斗提前结束）被 free() 时，引擎在 gdscript_lambda_callable
+		# 调用前就检测到捕获对象已释放，报 "Lambda capture was freed. Passed null"，
+		# is_instance_valid 守卫根本来不及执行。WeakRef 不持有强引用，get_ref() 在对象
+		# 已释放时返回 null，守卫才能生效。
+		var weak_p: WeakRef = weakref(p)
 		timer.timeout.connect(func():
-			p.emitting = false
+			var captured_p: Variant = weak_p.get_ref()
+			if captured_p == null or not is_instance_valid(captured_p):
+				return
+			captured_p.emitting = false
 			# +0.1s 余量让残余粒子彻底淡出（虽已停发射，仍防帧率波动截断尾段）
-			var t2 := tree.create_timer(p.lifetime + 0.1)
-			t2.timeout.connect(func(): p.queue_free())
+			var t2 := tree.create_timer(captured_p.lifetime + 0.1)
+			t2.timeout.connect(func():
+				var captured_p2: Variant = weak_p.get_ref()
+				if captured_p2 != null and is_instance_valid(captured_p2):
+					captured_p2.queue_free())
 		)

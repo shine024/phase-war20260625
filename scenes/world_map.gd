@@ -552,6 +552,10 @@ func _show_level_info_popup(level_index: int) -> void:
 	if not garrison_faction_id.is_empty() and not garrison_buff_text.is_empty() and garrison_buff_text != "无加成":
 		garrison_full = "%s  [敌方加成: %s]" % [garrison_text, garrison_buff_text]
 	body.add_child(_make_detail_row("驻防势力", garrison_full, garrison_color))
+	# v7.x: 驻守相位师（固定驻守关显示）
+	var garrison_master_name: String = String(info.get("garrison_master_name", ""))
+	if not garrison_master_name.is_empty():
+		body.add_child(_make_detail_row("驻守相位师", garrison_master_name, Color(1.0, 0.55, 0.3, 1.0)))
 
 	# ▸ 环境参数（2列网格）
 	body.add_child(_make_detail_section_title("环境参数"))
@@ -918,6 +922,15 @@ func _collect_level_info(level_index: int) -> Dictionary:
 			if FactionConquestBuffs != null:
 				garrison_buff_text = FactionConquestBuffs.describe_buff(garrison_faction_id, flevel)
 				garrison_color = Color(1.0, 0.7, 0.4, 1.0)  # 橙红：占领势力，威胁提示
+	# v7.x: 查询驻守相位师（固定驻守关）
+	var garrison_master_name: String = ""
+	var _PMG = preload("res://data/phase_master_garrison.gd")
+	var _garrison_mid: String = _PMG.get_garrison_master_id(level_index)
+	if not _garrison_mid.is_empty():
+		var _EPMC = preload("res://data/enemy_phase_masters.gd")
+		var _gm: Dictionary = _EPMC.get_master_by_id(_garrison_mid)
+		if not _gm.is_empty():
+			garrison_master_name = "%s Lv.%d" % [String(_gm.get("name", "")), int(_gm.get("level", 0))]
 	var out: Dictionary = {
 		"display_name": String(li.get("display_name", "第%d关" % level_index)),
 		"description": String(li.get("description", "")),
@@ -939,6 +952,9 @@ func _collect_level_info(level_index: int) -> Dictionary:
 		"garrison_text": garrison_text,
 		"garrison_buff_text": garrison_buff_text,
 		"garrison_color": garrison_color,
+		# v7.x: 驻守相位师（固定驻守关）
+		"garrison_master_id": _garrison_mid,
+		"garrison_master_name": garrison_master_name,
 	}
 	return out
 

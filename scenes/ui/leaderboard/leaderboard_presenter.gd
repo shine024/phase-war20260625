@@ -433,12 +433,16 @@ func _create_equipment_section(equipment: Dictionary) -> Control:
 					plat_stats_row.add_child(_make_stat_label("攻击:%d" % int(pstats["attack"]), 10, Color(0.4, 0.8, 0.4, 0.9)))
 				if pstats.has("defense"):
 					plat_stats_row.add_child(_make_stat_label("防御:%d" % int(pstats["defense"]), 10, Color(0.4, 0.4, 0.8, 0.9)))
-				if pstats.has("defense"):
-					plat_stats_row.add_child(_make_stat_label("防御:%d" % int(pstats["defense"]), 10, Color(0.4, 0.4, 0.8, 0.9)))
+				if pstats.has("move_speed"):
+					plat_stats_row.add_child(_make_stat_label("速度:%d" % int(pstats["move_speed"]), 10, Color(0.8, 0.6, 0.3, 0.9)))
 
 			if not pspecial.is_empty():
 				var tags_lbl = Label.new()
-				tags_lbl.text = "  ".join(pspecial)
+				# 翻译 raw 英文 effect tag 为中文（修复：原直接 join 显示英文）
+				var translated: Array = []
+				for tag in pspecial:
+					translated.append(_translate_special_tag(String(tag)))
+				tags_lbl.text = "  ".join(translated)
 				tags_lbl.add_theme_font_size_override("font_size", 10)
 				tags_lbl.add_theme_color_override("font_color", Color(0.5, 0.6, 0.7, 0.8))
 				tags_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -460,6 +464,46 @@ static func _platform_type_display(type_str: String) -> String:
 		"stealth": return "[隐匿]"
 		"mage": return "[护卫]"
 		_: return "[%s]" % type_str
+
+## 翻译敌方相位师装备的 raw 英文 special tag 为中文（4 势力家族 + 梯度后缀）
+static func _translate_special_tag(tag: String) -> String:
+	# 已知完整翻译表（覆盖 enemy_equipment_specials.gd 全部 56 个 tag）
+	const TAG_ZH: Dictionary = {
+		# 钢铁（防御系）
+		"steel_skin_basic": "钢肤·初", "steel_skin_advanced": "钢肤·进",
+		"steel_skin_expert": "钢肤·精", "steel_skin_master": "钢肤·极",
+		"fortress_aura": "堡垒光环", "fortress_mastery": "堡垒精通",
+		"immortal_fortress": "不朽堡垒", "steel_mountain": "钢山之躯",
+		"industrial_aura": "工业光环", "tempered_skin": "淬火之肤",
+		"storm_forged": "风暴锻造", "divine_protection": "神圣庇护",
+		# 火焰（燃烧系）
+		"burning_aura_basic": "焚光·初", "burning_aura_advanced": "焚光·进",
+		"burning_aura_expert": "焚光·精", "heat_wave": "热浪",
+		"hellfire": "狱火", "immolation": "自焚",
+		"eternal_flame": "永恒之焰", "world_burning": "焚世",
+		"phoenix_aura": "凤凰光环", "immortal_flame": "不朽之焰",
+		"molten_aura": "熔岩光环", "dimensional_burn": "维度灼烧",
+		"entropy_flame_passive": "熵焰", "hell_on_earth": "人间炼狱",
+		# 雷电（电流系）
+		"static_field_basic": "静电场·初", "static_field_advanced": "静电场·进",
+		"static_field_expert": "静电场·精", "chain_lightning_passive": "连锁闪电",
+		"lightning_speed": "雷电之速", "overcharge": "过载",
+		"omnipresent_lightning": "无处不在之雷", "conductive_world": "导通世界",
+		"thunder_god_aura": "雷神光环", "conductive_armor": "导能装甲",
+		"god_of_thunder": "雷霆之神", "thunder_dome_passive": "雷穹",
+		"infinite_energy": "无尽能量",
+		# 虚空（熵变系）
+		"entropy_aura_basic": "熵光·初", "entropy_aura_advanced": "熵光·进",
+		"entropy_aura_expert": "熵光·精", "phase_shift": "相位偏移",
+		"reality_tear": "现实撕裂", "void_embrace": "虚空拥抱",
+		"void_goddess": "虚空女神", "void_lord": "虚空领主",
+		"void_mastery_ultimate": "虚空极意", "night_everlasting": "永夜",
+		"reality_breakdown": "现实崩溃", "reality_erasure": "现实抹除",
+		"chaos_aura": "混沌光环", "godly_aura": "神圣光环",
+		"infinite_potential": "无尽潜能", "master_of_all": "万物之主",
+		"perfect_harmony": "完美和谐", "energized_shield": "能量护盾",
+	}
+	return String(TAG_ZH.get(tag, tag))
 
 func _create_skills_section(section_title: String, skills: Array) -> Control:
 	var container = VBoxContainer.new()

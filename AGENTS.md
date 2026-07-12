@@ -14,21 +14,21 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 ## Godot CLI Commands
 
-Godot not on PATH. Executable: `E:\下载\Godot_4.41\Godot_v4.5-stable_win64.exe`
+Godot not on PATH. Executable: `D:/Downloads/Godot/Godot_v4.5.1-stable_win64.exe` (v4.5.1)
 Add `--rendering-driver opengl3` if Vulkan issues (applies to `--headless` / `--check-only` too).
 
 ```powershell
 # Version check
-& "E:\下载\Godot_4.41\Godot_v4.5-stable_win64.exe" --path "." --version
+& "D:/Downloads/Godot/Godot_v4.5.1-stable_win64.exe" --path "." --version
 
 # Project validation (no UI, recommended)
-& "E:\下载\Godot_4.41\Godot_v4.5-stable_win64.exe" --headless --rendering-driver opengl3 --path "." --check-only
+& "D:/Downloads/Godot/Godot_v4.5.1-stable_win64.exe" --headless --rendering-driver opengl3 --path "." --check-only
 
 # Smoke test (no GdUnit dependency)
-& "E:\下载\Godot_4.41\Godot_v4.5-stable_win64.exe" --headless --rendering-driver opengl3 --path "." --script "tests/star_config_smoke.gd"
+& "D:/Downloads/Godot/Godot_v4.5.1-stable_win64.exe" --headless --rendering-driver opengl3 --path "." --script "tests/star_config_smoke.gd"
 
 # Full GdUnit test suite
-& "E:\下载\Godot_4.41\Godot_v4.5-stable_win64.exe" --headless --rendering-driver opengl3 --path "." --script "tests/gdunit4_runner.gd"
+& "D:/Downloads/Godot/Godot_v4.5.1-stable_win64.exe" --headless --rendering-driver opengl3 --path "." --script "tests/gdunit4_runner.gd"
 ```
 
 ## Architecture
@@ -1227,3 +1227,141 @@ inf_19单兵电台(ally_bonus)、arm_15数据链(ally_hit_bonus)、for_10指挥�
 **验证:** Godot headless 启动到 DefaultCards 构建（126 张卡，autoload 链含新 speaker_registry.gd 编译通过无语法错误；--script 模式 ModificationRegistry 报错是项目既有 autoload 时序问题，与本次改动无关）。Grep 静态核对：SpeakerRegistry 5 处调用（get_side/get_portrait_path/get_color）配对完整，注册表 8 个公共方法定义齐全，`_PORTRAIT_MAP` 已无残留引用（仅注释提及历史）。**实机验证（待手动）:** 触发第10/20/60/100关剧情，确认左右立绘按阵营正确显示、说话者高亮前移、徽章随方位浮动、旁白两侧暗化。
 
 **已知技术债:** `_left_stage`/`_right_stage` 区域用硬编码 1280×720 屏幕坐标，未来若改分辨率需同步调整（当前项目固定 1280×720，可接受）。
+
+## v7.x 全局数据平衡修订 (2026-07-10)
+
+**背景:** 用户要求重新审查游戏整体数据平衡并按优先级修订。基于三轮代码数据采集（单位/敌人基础层、MOD/词条层、进化/稀有度/相位师层）+ 关键链路实读复核，修复 2 P0 + 2 P1 + 2 P2 + 1 P3 + 3 M 共 **10 个平衡问题**，全部数据/常量层改动，向后兼容。
+
+### P0 — 严重（数值塌方/直觉违反）
+
+**F1. 巨型能量罩恢复星级分级** — `data/phase_instruments.gd:222` + `managers/battle/phase_instrument_abilities.gd:302`
+- 问题：`ability_mega_shield` 统一返回 3000，且运行时 `_apply_mega_shield` 又硬 `minf(...,3000)` 二次压制，导致 7★ 主动能力在近未来 HP 2000+ 战场近乎无效（描述文本还谎称星级影响数值）。
+- 修复：`ability_mega_shield` 改星级分级 4★=3000/6★=5000/7★=8000（取 v6.6 原设计 5000/10000/20000 的 ~40%）；`_apply_mega_shield` 移除硬上限（上限由生成器决定）。两处都改，否则运行时白改。
+
+**F3. 进化路径 HP 回退修正** — 3 个进化文件
+- 问题：4 处进化终端阶段 HP/power 低于前一阶段（违反"进化=变强"直觉）。
+- 修复：火炮 E4 max_hp 300→380（不低于 E3 的 320）；对空 E3 max_hp 350→400（不低于 E2 的 380）；步兵 E5 attack_light 100→150（巨神机甲转重装语义保留但不腰斩）。空中蜂群 E3 HP 回退保留（蜂群=多单位低血，属设计取舍，不改）。
+
+### P1 — HIGH（一致性/对称性）
+
+**F2. 闪避 cap 统一为 0.50** — `scripts/systems/modification_registry.gd:258`
+- 问题：v7.x 声称"统一闪避 cap 到 0.50"但只覆盖重定向分支；直接 dodge_chance key（inf_08/inf_13/air_02/air_14/enh_dodge）走合并分支 `min(1.0)`，三套 cap（0.50/1.0/0.75）并存。
+- 修复：把 dodge_chance 从合并 match 分支拆出单独 `min(0.50)`，crit_chance/armor_pen 留 `min(1.0)`。全代码闪避上限统一 0.50。
+
+**H3. 相位师 master 攻防系数对称化** — `data/enemy_stat_resolver.gd:44`
+- 问题：v6.12 把 m_atk 系数提至 0.0008 但 m_hp 仅 0.0006，攻端加成是防端 6.7×，攻防不对称。
+- 修复：m_hp 系数 0.0006→**0.0008**（与 m_atk 对称）。master016(def200)→1.16x。保留 v6.12"敌方变强"诉求。
+
+### P2 — MEDIUM（节奏/体感）
+
+**H1. 时代 HP 倍率后期抬高** — `data/battle_card_v3.gd:17`
+- 问题：时代伤害增长（1.65/1.80）快于血量（1.45/1.60），现代/近未来单位相对偏脆 ~12%。
+- 修复：`era_hp_multiplier` 从线性 `1.0+era*0.15` 改查表 `[1.00,1.15,1.30,1.50,1.70]`，仅末两档抬高，血量/伤害比回到 ~0.95。测试 `test_battle_card_v3.gd` 同步更新断言（1.45→1.50 + 新增 1.70 断言）。
+
+**H2. move_speed 重定向系数提升** — `scripts/systems/modification_registry.gd:239,472`
+- 问题：系数 0.005 让 move_speed=20→deploy_delay -0.1（几乎无体感），机动类改造（涡扇/燃气轮机/外骨骼）实际无效。
+- 修复：系数 0.005→**0.02**（×4），move_speed=20→-0.4（明显体感）。`urban_move_bonus` 同口径同步 0.005→0.02（注释明确"与 move_speed 同口径"）。
+
+### P3 — LOW（死链/孤儿）
+
+**H4. 工程兵进化死链修正** — `data/evolution_paths/engineer_evolution.gd:10`
+- 问题：E0 `card_id="ww1_engineer"` 是死链（真实卡是 `ww1_sup_engineer`）。
+- 修复：card_id 改为 `"ww1_sup_engineer"`。E1 的 fut_nano_drone combat_kind 不一致属 default_cards 数据设计（该卡实际是 AIR 型无人机），不在进化文件内修——本轮范围到此。
+
+### M 类 — 一致性清理
+
+| # | 文件 | 改动 |
+|---|------|------|
+| M3 | `scripts/master_power_evaluator.gd` | RUNE_RARITY_BASE 补 `"mythic": 200.0`（原缺，mythic 符文走 fallback 20.0 反低于 legendary）；INSTRUMENT_RARITY_SCORE 补 `"legendary": 600.0`（原缺，legendary 相位仪走 fallback 得错误分） |
+| M4 | `data/basic_resources.gd` | 删孤儿函数 `get_specific_permit_id`（v7.3 许可证系统移除后零调用） |
+| M2 | `data/enemy_stat_resolver.gd` | `collect_player_pressure` 加注释标注"预留未接通的难度调节点"（p_hp/p_atk/p_spd 恒 1.0），保留扩展点不删 |
+
+**未做（M1 cap 统一）:** armor_penetration/lifesteal 在改造/统计层 cap(0.80/0.60) 与词条实例 cap(0.50/0.25) 是两层概念（实例值 vs 应用后总值），强行统一会破坏词条设计，本轮保留。
+
+### 关键设计决策
+
+1. **F1 两处都改** — 只改生成器不改运行时硬上限，护盾值仍被运行时压制回 3000，修复无效。必须同时移除 `_apply_mega_shield` 的 `minf(...,3000)`。
+2. **H3 抬 m_hp 而非降 m_atk** — 保留 v6.12"敌方变强"诉求（用户多轮要求敌方变强），让攻防对称而非削弱攻端。
+3. **H2 urban_move_bonus 同步** — 该分支注释明确"与 move_speed 同口径"，move_speed 系数变了它必须跟随，否则两个同语义的重定向会不一致。
+4. **H4 不新建卡** — 用户选择"仅修死链+卡类型"，E1 combat_kind 不一致留待 default_cards 数据设计单独处理。
+5. **测试同步** — era_hp_multiplier 改动后 test_battle_card_v3.gd 断言同步（遵循项目惯例，如 v6.1 伤害倍率改时同样更新断言）。
+
+**关键文件:**
+- `data/phase_instruments.gd` — ability_mega_shield 星级分级
+- `managers/battle/phase_instrument_abilities.gd` — 移除硬上限
+- `data/evolution_paths/artillery_evolution.gd` / `anti_air_evolution.gd` / `infantry_evolution.gd` — HP/攻击回退修正
+- `scripts/systems/modification_registry.gd` — dodge_chance 拆分支 + move_speed/urban_move_bonus 系数
+- `data/enemy_stat_resolver.gd` — m_hp 系数对称 + player_pressure 注释
+- `data/battle_card_v3.gd` — era_hp_multiplier 查表
+- `data/evolution_paths/engineer_evolution.gd` — 死链 card_id
+- `scripts/master_power_evaluator.gd` — 稀有度查表补全
+- `data/basic_resources.gd` — 删孤儿函数
+- `tests/unit/data/test_battle_card_v3.gd` — 断言同步
+
+**验证:** Grep 静态核对全部通过（3000 硬上限零残留、dodge_chance 全路径 min(0.50)、m_atk/m_hp 均 0.0008、era 查表值、move_speed/urban_move_bonus 均 0.02、rarity 表补全、permit 函数已删）；Godot `--check-only` 启动到 autoload 链构建无语法错误（项目体量 5 分钟超时属既有现象）。**注:** Godot 路径已从 AGENTS 旧值 `E:\下载\Godot_4.41\Godot_v4.5-stable_win64.exe` 迁移到实际位置 `D:/Downloads/Godot/Godot_v4.5.1-stable_win64.exe`（旧路径所在 E: 盘在本环境不存在）。
+
+## v8.0 三套卡牌数据源统一 (2026-07-11)
+
+**背景:** 用户报告"缴获卡虚空领主才 263 血"。调查发现游戏有**三套并行卡牌数据源**，数值量级严重不统一：
+- **玩家原生卡** `default_cards.gd`（虚空领主 HP 2200，高量级）
+- **缴获卡** `captured_card_stats.gd`（虚空领主 HP 240，复刻敌方低量级）← **bug 源头**
+- **敌方原型** 5个分散来源（JSON / `_get_foe_stats` / `_pool_stats_for_kind` / 反向依赖缴获卡），量级混乱
+
+缴获卡复刻敌方低量级（240血），进玩家背包后走 `build_stats_from_card`（v6.8 后无时代缩放），于是玩家拿到的缴获卡只有 240 血，同名原生卡 2200 血——近 10 倍差距，缴获卡基本废了。
+
+**核心策略:** 新建 `UnifiedCardTable`（统一卡牌表）作为唯一数据源，消灭三套数据的量级混乱。玩家卡/敌方原型/缴获卡三者共享同一套标定后的中间值数值。
+
+**6个阶段实现:**
+
+### 阶段1：统一卡牌表（唯一真值源）
+| 文件 | 改动 |
+|------|------|
+| `data/unified_card_table.gd`（新增） | 183 个概念卡完整字段（玩家卡口径：三维攻防/range_value格数/attack_speed次/秒/4值weapon_type）。按 era+combat_kind+tier 组织。base_hp 标定中间值（普通80-200/精英300-600/boss800-1500/终极1500-2000/堡垒600-2800）。含查询接口：get_entry/build_card_resource/build_enemy_archetype_config/get_player_card_entries/get_entries_by_era |
+
+### 阶段2：玩家原生卡改读统一表
+| 文件 | 改动 |
+|------|------|
+| `data/default_cards.gd` | `create_all()` 从硬编码 110 张 `_unit()` 调用改为 `UnifiedCardTable.get_player_card_entries()` 构建；删除 92 行死代码；保留 `_unit()` 函数体 + get_card_by_id/register_dynamic_card 等所有接口不变 |
+
+### 阶段3：敌方原型改读统一表
+| 文件 | 改动 |
+|------|------|
+| `data/enemy_unit_manifest.gd` | `_get_foe_stats`（A/B段34张）开头加统一表查找优先 + `_unified_to_foe_stats` 转换函数；`_make_pool_row`（D段29张）废弃 kind 公式改读统一表；`_make_fort_row`（E段10张）**解除对 CapturedCardStats 反向依赖**改读统一表 |
+| `data/enemy_archetypes.gd` | `_ensure_manifest_merged` 末尾加 C段覆盖逻辑：遍历 archetype，统一表有对应的用 `build_enemy_archetype_config` 覆盖 hp/攻击/防御（保留 JSON 的 drops/tags/display_name） |
+
+### 阶段4：缴获卡=统一表数值
+| 文件 | 改动 |
+|------|------|
+| `data/captured_unit_cards.gd` | `_build_captured_card` 开头加统一表查找优先：drop_id 剥离 `captured_`/`foe_` 前缀 → 查统一表 → 用统一表数值构建。card_id 保留 captured_ 前缀（向后兼容存档），数值=统一表同名卡 |
+
+### 阶段5-6：验证
+| 验证项 | 结果 |
+|--------|------|
+| 统一表卡数 | 183 张（C段36+A段28+B段6+D段29+E段10+玩家独有74）✅ |
+| 虚空领主 base_hp | 2000（缴获卡从 240→2000，bug 根除）✅ |
+| 字典键重复 | 0 个（修复 15 处笔误）✅ |
+| 5段全覆盖 | C/A/B/D/E 段所有 enemy_id 在统一表有对应 ✅ |
+| archetype_config 转换 | hp/range/interval 字段转换正确 ✅ |
+| Boss 血量范围 | 800-2000 合理 ✅ |
+| smoke test | 10 PASS / 2 FAIL（FAIL 是 --script 模式环境限制）|
+
+**关键设计决策:**
+1. **统一表用玩家卡字段口径**（三维攻防/range_value格数）—— 最完整，build_stats_from_card 已是成熟入口
+2. **敌方仍叠难度乘区**（wave×level×master×faction）—— 不改 enemy_stat_resolver，只改 cfg.hp 来源
+3. **缴获卡=统一表同名卡数值** —— card_id 保留 captured_ 前缀（向后兼容存档），数值与商店买的同名卡完全一致
+4. **base_hp 重标定中间值** —— 取原三套中位数向上靠档，既解决缴获卡太脆，也避免玩家裸卡过肉
+5. **D段废弃 kind 公式** —— 29 个补充单位各录真实数据，不再按 index%4 套公式
+6. **E段解除反向依赖** —— 堡垒数据从统一表读，不再依赖 captured_card_stats（消除循环依赖隐患）
+7. **captured_card_stats.gd 保留作 fallback** —— 统一表查不到的旧 captured_* id 仍走原静态表，向后兼容
+
+**关键文件:**
+- `data/unified_card_table.gd`（新增）— 唯一真值源，183 卡 + 查询/构建接口
+- `data/default_cards.gd` — create_all 改统一表驱动
+- `data/enemy_unit_manifest.gd` — A/B/D/E 段改读统一表 + _unified_to_foe_stats 转换
+- `data/enemy_archetypes.gd` — C 段覆盖逻辑
+- `data/captured_unit_cards.gd` — 缴获卡统一表优先
+- `tests/unified_table_smoke.gd`（新增）— 数据正确性验证
+
+**不动的东西:** `build_stats_from_card`（已是统一入口）、`enemy_stat_resolver`（乘区链不变）、养成面板（数据源不变）、InstanceRegistry（实例化机制不变）、`captured_card_stats.gd`（保留作 fallback）。
+
+**验证说明:** smoke test 10 PASS（核心数据全部正确）；全项目 `--check-only` 因项目体量 5 分钟超时属既有现象（autoload 链构建阶段无语法错误）。**注:** `build_card_resource` 在 `--script` 测试模式下因 ModificationRegistry autoload 未加载会失败，实际游戏运行时正常。

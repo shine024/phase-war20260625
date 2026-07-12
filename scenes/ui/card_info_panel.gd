@@ -17,6 +17,7 @@ const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
 const EnemyPhaseMasters = preload("res://data/enemy_phase_masters.gd")
 const MasterPowerEvaluator = preload("res://scripts/master_power_evaluator.gd")
+const MasterPlayerAssembler = preload("res://scripts/master_player_assembler.gd")
 const RuneDefs = preload("res://data/runes.gd")
 const RunewordDefs = preload("res://data/runewords.gd")
 const EnemyPhaseEquipment = preload("res://data/enemy_phase_equipment.gd")
@@ -28,6 +29,7 @@ const ModifyPanelScene = preload("res://scenes/ui/modification_panel.tscn")
 const EvolvePanelScene = preload("res://scenes/ui/evolution_panel.tscn")
 const ModificationRegistry = preload("res://scripts/systems/modification_registry.gd")
 const ModEffectLabels = preload("res://scripts/ui/mod_effect_labels.gd")
+const AuraData = preload("res://data/aura_data.gd")
 
 var current_card: CardResource = null
 var _current_unit: Node = null
@@ -480,7 +482,13 @@ func _refresh_info_sections(card: CardResource) -> void:
 		_star_detail_label.text = _build_star_lines(card)
 	# 养成摘要
 	if nurture_label:
-		nurture_label.text = _build_nurture_text(card)
+		var _nurture: String = _build_nurture_text(card)
+		# v7.x：tags 定位标签（战斗卡）+ 部署后光环预览（无战场 unit 时从 platform_type 反推）
+		var _tags_cn: String = _format_tags_cn(card.tags) if "tags" in card else ""
+		if not _tags_cn.is_empty() and card.card_type == GC.CardType.COMBAT_UNIT:
+			_nurture = "定位：%s\n" % _tags_cn + _nurture
+		_nurture += _build_aura_preview_text(card, _cached_display_stats)
+		nurture_label.text = _nurture
 	# 描述
 	if desc_label:
 		desc_label.text = card.description
@@ -835,6 +843,8 @@ func _refresh_unit_display(unit: Node, is_player: bool) -> void:
 	var is_ally: bool = _resolve_unit_is_player(unit, is_player)
 	if unit.is_in_group("enemy_phase_driver"):
 		_show_enemy_phase_driver(unit)
+	elif is_ally and unit.is_in_group("phase_driver"):
+		_show_player_phase_driver(unit)
 	elif is_ally and "stats" in unit:
 		_show_player_unit(unit)
 	else:
@@ -1089,10 +1099,13 @@ func _show_enemy_phase_driver(unit: Node) -> void:
 			var disp: String = str(cfg.get("name", mname))
 			if disp != mname and not disp.is_empty():
 				lines.append("档案名：%s" % disp)
-			# v7.x: 显示派生等级（由总战力派生）+ 总战力/星级
+			# v7.x: 显示相位场等级（原始 level 设计基准）+ 派生等级（由总战力派生）+ 总战力/星级
+			var raw_level: int = int(cfg.get("level", 0))
+			if raw_level > 0:
+				lines.append("相位场等级：Lv.%d" % raw_level)
 			var mlvl: int = EnemyPhaseMasters.compute_display_level(cfg)
 			if mlvl > 0:
-				lines.append("等级：Lv.%d" % mlvl)
+				lines.append("相位师等级：Lv.%d" % mlvl)
 			var _er: Dictionary = MasterPowerEvaluator.evaluate(cfg)
 			lines.append("总战力：%d · %s" % [int(_er.get("total_score", 0)), MasterPowerEvaluator.get_stars_display(cfg)])
 			var fac: String = str(cfg.get("faction", ""))
@@ -1123,6 +1136,78 @@ func _show_enemy_phase_driver(unit: Node) -> void:
 				lines.append("符文：%s" % _format_enemy_runes(runes))
 	if desc_label: desc_label.text = "\n".join(lines)
 	if flavor_label: flavor_label.text = "“相位师的意志锚定在这片场上。”"
+	_clear_non_summary_info_sections()
+
+## v7.x: 点击我方相位场驱动器（基地）——显示玩家相位场等级+情报+军团等级+战力
+## 与敌方 _show_enemy_phase_driver 对称：相位场Lv / 相位师Lv / 总战力·星级 / 相位仪 / 符文 / 主动能力
+func _show_player_phase_driver(unit: Node) -> void:
+	if name_label: name_label.text = "我方相位师基地"
+	if type_label: type_label.text = "相位场驱动器"
+	var cur_hp: float = float(unit.get("hp")) if "hp" in unit else 0.0
+	var mx_hp: float = float(unit.get("max_hp")) if "max_hp" in unit else 1.0
+	if summary_label: summary_label.text = "基地生命 %d / %d" % [int(cur_hp), int(mx_hp)]
+	var lines: Array[String] = []
+	lines.append("保护我方相位场驱动器，摧毁敌方即获胜；己方会持续部署战斗单位。")
+	var pm: Node = get_node_or_null("/root/PhaseInstrumentManager")
+	if pm != null:
+		# ── 相位场等级（Lv1-16，养成进度）──
+		var pf_level: int = 1
+		if pm.has_method("get_phase_field_level"):
+			pf_level = int(pm.get_phase_field_level())
+		lines.append("相位场等级：Lv.%d" % pf_level)
+		# ── 相位仪情报 ──
+		var inst_cfg: Dictionary = pm.get_current_instrument() if pm.has_method("get_current_instrument") else {}
+		if not inst_cfg.is_empty():
+			var inst_name: String = str(inst_cfg.get("name", "未知相位仪"))
+			var inst_star: int = int(inst_cfg.get("star", 0))
+			if inst_star > 0:
+				lines.append("相位仪：%s ★%d" % [inst_name, inst_star])
+			else:
+				lines.append("相位仪：%s" % inst_name)
+		# ── 相位师等级（派生Lv5-30）+ 总战力·星级（真实值，不压缩）──
+		var ev: Dictionary = {}
+		if pm.has_method("get_cached_player_master_eval"):
+			ev = pm.get_cached_player_master_eval()
+		if ev.is_empty():
+			ev = MasterPlayerAssembler.evaluate_player_stars(pm)
+		if not ev.is_empty():
+			var mlvl: int = int(ev.get("display_level", 15))
+			var stars: int = int(ev.get("stars", 3))
+			var star_name: String = str(ev.get("star_name", ""))
+			lines.append("相位师等级：Lv.%d · %d★ %s" % [mlvl, stars, star_name])
+			var raw: float = float(ev.get("raw_total_score", 0.0))
+			lines.append("总战力：%d" % int(raw))
+		# ── 军团构成情报：战斗卡/符文/主动能力 ──
+		var loadouts: Array = pm.get_loadouts() if pm.has_method("get_loadouts") else []
+		if not loadouts.is_empty():
+			lines.append("上场军团：%d 张战斗卡" % loadouts.size())
+		var rune_slots: Array = pm.get_rune_slots() if pm.has_method("get_rune_slots") else []
+		var active_runes: int = 0
+		for slot_v in rune_slots:
+			if slot_v != null and not str(slot_v).is_empty():
+				active_runes += 1
+		if active_runes > 0:
+			var active_rw: Array = pm.get_active_runewords() if pm.has_method("get_active_runewords") else []
+			var rw_str: String = ""
+			if not active_rw.is_empty():
+				var rw_names: Array[String] = []
+				for rw in active_rw:
+					var rn: String = str(rw.get("name", str(rw.get("id", ""))))
+					if not rn.is_empty():
+						rw_names.append(rn)
+				if not rw_names.is_empty():
+					rw_str = "（符文之语：" + " / ".join(rw_names) + "）"
+			lines.append("符文：%d / %d 槽位%s" % [active_runes, rune_slots.size(), rw_str])
+		var ability: Dictionary = pm.get_active_ability() if pm.has_method("get_active_ability") else {}
+		if not ability.is_empty():
+			var ab_name: String = str(ability.get("name", ""))
+			var ab_desc: String = str(ability.get("description", ""))
+			if not ab_name.is_empty():
+				lines.append("主动能力：%s" % ab_name)
+			if not ab_desc.is_empty():
+				lines.append("  %s" % ab_desc)
+	if desc_label: desc_label.text = "\n".join(lines)
+	if flavor_label: flavor_label.text = "“守护这片相位场，即是守护军团存续。”"
 	_clear_non_summary_info_sections()
 
 func _clear_non_summary_info_sections() -> void:
@@ -1169,7 +1254,9 @@ func _show_enemy_construct_unit(unit: Node) -> void:
 	var stats: UnitStats = unit.stats
 	var card_res: CardResource = DefaultCards.get_card_by_id(stats.platform_card_id)
 	var safe_name := DefaultCards.get_safe_display_name(stats.platform_card_id)
-	var dn := DefaultCards.safe_name(card_res)
+	# v7.5: 产兵 platform_card_id 可能是敌方装备平台 ID（不在 DefaultCards 表），card_res 为 null。
+	# 此处先判空，避免 safe_name(null) 触发无意义警告（下方 fallback 链已正确处理 null 情况）。
+	var dn := DefaultCards.safe_name(card_res) if card_res != null else ""
 	if name_label:
 		name_label.text = dn if not dn.is_empty() else (safe_name if not safe_name.is_empty() else "敌方构装单位")
 	var platform_name := dn if not dn.is_empty() else (safe_name if not safe_name.is_empty() else DefaultCards.get_platform_display_name(stats.platform_type))
@@ -1196,10 +1283,12 @@ func _show_enemy_construct_unit(unit: Node) -> void:
 	if _star_detail_label:
 		_star_detail_label.text = ""
 	_set_section_visible_by_content(_star_section, "")
-	# v7.x：敌方不显示玩家光环/符文（无玩家相位仪），nurture 置空并隐藏 section。
+	# v7.x：敌方构装单位显示其提供的平台光环（敌方 platform_type 同样驱动 AuraManager 注册，
+	# 影响敌方群体）。无养成/符文，只显示光环段；无光环时 nurture section 自动隐藏。
+	var enemy_nurture := _build_enemy_aura_text(unit)
 	if nurture_label:
-		nurture_label.text = ""
-	_set_section_visible_by_content(_nurture_section, "")
+		nurture_label.text = enemy_nurture
+	_set_section_visible_by_content(_nurture_section, enemy_nurture)
 	if desc_label:
 		desc_label.text = base_desc
 	if flavor_label:
@@ -1478,14 +1567,16 @@ func _show_generic_enemy_unit(unit: Node) -> void:
 			show_wt = int(unit.stats.weapon_type)
 			show_atk = float(unit.stats.attack_damage)
 			if show_label.is_empty():
-				show_label = String(unit.stats.get("weapon_label", ""))
+				# v7.5: UnitStats 是 Resource，Godot 4 的 Object.get() 只接受 1 参数，
+				# 不支持 Dictionary 风格的 get(key, default)。改用直接属性访问。
+				show_label = String(unit.stats.weapon_label)
 	if show_wt >= 0 and show_atk > 0.0:
 		var weapon_text := ""
 		# ① 优先用具体武器名
 		if not show_label.is_empty():
 			weapon_text = show_label
 		# ② legacy_weapon_type > 0 按 12 值 legacy 查表（改造型号优先）
-		elif "stats" in unit and unit.stats != null and int(unit.stats.get("legacy_weapon_type", 0)) > 0:
+		elif "stats" in unit and unit.stats != null and int(unit.stats.legacy_weapon_type) > 0:
 			weapon_text = RealWorldUnitLabels.weapon_kind_short(int(unit.stats.legacy_weapon_type))
 		# ③ weapon_type ∈ [0,11] 按 12 值 legacy 查表（兼容固定敌人 legacy 语义）
 		elif show_wt >= 0 and show_wt <= 11:
@@ -1532,60 +1623,269 @@ func _set_section_visible_by_content(section: PanelContainer, text: String) -> v
 	if section:
 		section.visible = not text.is_empty()
 
-# v7.x: 战场单位光环文本——查 AuraManager 中该单位激活的光环列表。
-# 仅我方单位会注册光环（construct_unit 调 register_aura），敌方查不到。
-# 返回空串表示无光环；非空形如 "\n当前光环：医疗光环 · 雷达侦测"。
+# ── 光环显示（提供/受到两段 + 数值 + MEDIC 补丁 + 敌方 + 卡牌预览） ──
+#
+# 平台光环类型枚举索引（与 AuraData.Category 一致）：
+#   0 MEDIC_HEAL / 1 CARRIER_REPAIR / 2 SCOUT_CRIT / 3 RADAR_RANGE / 4 FORTRESS_DEF / 5 COMMAND_GLOBAL
+# platform_type → 光环映射（复用 construct_unit.gd setup 的 register_aura match 表）：
+#   3→FORTRESS_DEF / 4→RADAR_RANGE / 5,10→SCOUT_CRIT / 8→CARRIER_REPAIR / 9→MEDIC_HEAL / 12→COMMAND_GLOBAL
+
+const _AURA_TYPE_NAMES := {
+	0: "医疗光环",
+	1: "运输维修",
+	2: "侦查暴击",
+	3: "雷达侦测",
+	4: "堡垒防御",
+	5: "指挥全局",
+}
+
+## platform_type → 平台光环类型（-1 表示该平台不提供光环）。
+## 须与 construct_unit.gd setup 的 register_aura match 分支保持一致。
+static func _platform_to_aura_type(platform_type: int) -> int:
+	match platform_type:
+		3: return 4  # FORTRESS_DEF
+		4: return 3  # RADAR_RANGE
+		5, 10: return 2  # SCOUT_CRIT
+		8: return 1  # CARRIER_REPAIR
+		9: return 0  # MEDIC_HEAL（自驱，不注册 AuraManager，显示层补）
+		12: return 5  # COMMAND_GLOBAL
+	return -1
+
+## 将单条光环类型的参数格式化为可读效果（如"治疗8%/3秒""暴击+10%"）。
+func _format_aura_effect_desc(aura_type: int, star: int) -> String:
+	var params: Dictionary = AuraData.get_aura_params(aura_type, star)
+	if params.is_empty():
+		return ""
+	match aura_type:
+		0:  # MEDIC_HEAL
+			return "每3秒治疗全体友军%d%%最大生命" % [int(float(params.get("heal_pct", 0.08)) * 100)]
+		1:  # CARRIER_REPAIR
+			return "每3秒维修机械类友军%d%%最大生命" % [int(float(params.get("heal_pct", 0.12)) * 100)]
+		2:  # SCOUT_CRIT
+			return "全体友军暴击+%d%%" % [int(float(params.get("crit_bonus", 0.08)) * 100)]
+		3:  # RADAR_RANGE
+			return "全体友军暴击+%d%%" % [int(float(params.get("crit_bonus", 0.10)) * 100)]
+		4:  # FORTRESS_DEF
+			return "全体友军减伤+%d%%、防御+%d" % [int(float(params.get("damage_reduction_bonus", 0.06)) * 100), int(float(params.get("defense_bonus", 2.0)))]
+		5:  # COMMAND_GLOBAL
+			return "全体友军攻击+%d%%、攻速+%d%%、暴击+%d%%" % [int(float(params.get("attack_mul", 0.05)) * 100), int(float(params.get("speed_mul", 0.05)) * 100), int(float(params.get("crit_mul", 0.02)) * 100)]
+	return ""
+
+# v7.x: 战场单位光环文本——分「提供的光环」和「受到的光环加成」两段。
+# 提供段：本单位激活的平台光环（AuraManager 查询 + MEDIC 补丁）+ 改造光环（mod_aura_summary）。
+# 受到段：本单位当前接收的改造光环（mod_aura_applied）+ 平台光环（遍历同阵营友军的一次性光环）。
+# 仅我方单位调用此函数（_show_player_unit）；敌方用 _build_enemy_aura_text。
 func _build_aura_text(unit: Node) -> String:
 	if unit == null or not is_instance_valid(unit):
 		return ""
-	var lines: Array[String] = []
-	
-	# ── 平台光环（从 AuraManager 读取） ──
 	var am: Node = get_node_or_null("/root/AuraManager")
+	var provide_lines: Array[String] = []
+	var receive_lines: Array[String] = []
+
+	# ── 提供段：平台光环 ──
+	var star: int = 1
+	if am != null and am.has_method("get_unit_star"):
+		star = am.get_unit_star(unit)
+	var aura_types: Array[int] = []
 	if am != null and am.has_method("get_unit_aura_types"):
-		var aura_types: Array[int] = am.get_unit_aura_types(unit)
-		if not aura_types.is_empty():
-			const AURA_NAMES := [
-				"医疗光环",      # 0 MEDIC_HEAL
-				"运输维修",      # 1 CARRIER_REPAIR
-				"侦查暴击",      # 2 SCOUT_CRIT
-				"雷达侦测",      # 3 RADAR_RANGE
-				"堡垒防御",      # 4 FORTRESS_DEF
-				"指挥全局",      # 5 COMMAND_GLOBAL
-			]
-			var names: Array[String] = []
-			for t in aura_types:
-				var idx: int = int(t)
-				if idx >= 0 and idx < AURA_NAMES.size():
-					names.append(AURA_NAMES[idx])
-			if not names.is_empty():
-				lines.append("当前光环：" + " · ".join(names))
-	
-	# ── 改造光环（从 mod_aura_applied meta 读取） ──
+		aura_types = am.get_unit_aura_types(unit)
+	# MEDIC 补丁：platform_type==9 自驱不注册 AuraManager，显示层补一条
+	if "stats" in unit and unit.stats != null and unit.stats.platform_type == 9:
+		if not aura_types.has(0):
+			aura_types.append(0)
+	for t in aura_types:
+		var idx: int = int(t)
+		var nm: String = _AURA_TYPE_NAMES.get(idx, "")
+		if nm.is_empty():
+			continue
+		var desc: String = _format_aura_effect_desc(idx, star)
+		if not desc.is_empty():
+			provide_lines.append("  · %s：%s" % [nm, desc])
+		else:
+			provide_lines.append("  · %s" % nm)
+
+	# ── 提供段：改造光环（本单位装了 ally_* 改造 → 给友军的 buff） ──
+	if unit.has_meta("mod_aura_summary"):
+		var summary = unit.get_meta("mod_aura_summary")
+		if summary is Dictionary and not summary.is_empty():
+			var effects: Array[String] = []
+			for sf in summary:
+				var rule: Dictionary = summary[sf]
+				var op: String = rule.get("op", "add")
+				var raw: float = float(rule.get("raw", 0.0))
+				effects.append(_mod_aura_stat_desc(sf, op, raw))
+			if not effects.is_empty():
+				provide_lines.append("  · 改造光环（给予友军）：%s" % ", ".join(effects))
+
+	# ── 受到段：改造光环（来自友军的 ally_* 改造广播） ──
 	if unit.has_meta("mod_aura_applied"):
 		var applied = unit.get_meta("mod_aura_applied")
 		if applied is Array and not applied.is_empty():
-			var mod_details: Array[String] = []
 			for entry in applied:
-				if entry is Dictionary:
-					var summary: Dictionary = entry.get("summary", {})
-					if not summary.is_empty():
-						var effects: Array[String] = []
-						for sf in summary:
-							var rule: Dictionary = summary[sf]
-							var op: String = rule.get("op", "add")
-							var raw: float = float(rule.get("raw", 0.0))
-							var sign: String = "+" if raw > 0 else ""
-							var desc: String = _mod_aura_stat_desc(sf, op, raw)
-							effects.append(desc)
-						if not effects.is_empty():
-							mod_details.append("改造光环：[" + ", ".join(effects) + "]")
-			if not mod_details.is_empty():
-				lines.append("改造光环：" + "\n  ".join(mod_details))
-	
+				if not (entry is Dictionary):
+					continue
+				var summary: Dictionary = entry.get("summary", {})
+				if summary.is_empty():
+					continue
+				var effects: Array[String] = []
+				for sf in summary:
+					var rule: Dictionary = summary[sf]
+					var op: String = rule.get("op", "add")
+					var raw: float = float(rule.get("raw", 0.0))
+					effects.append(_mod_aura_stat_desc(sf, op, raw))
+				if not effects.is_empty():
+					receive_lines.append("  · 改造光环：%s" % ", ".join(effects))
+
+	# ── 受到段：平台光环（遍历同阵营友军的一次性光环 RADAR/SCOUT/FORTRESS/COMMAND） ──
+	# MEDIC/CARRIER 是周期治疗，不列在"持续 buff"避免与治疗结算口径冲突
+	if am != null and am.has_method("get_unit_aura_types"):
+		var source_labels: Dictionary = {}  # aura_type -> 友军名列表
+		var allies: Array = _get_same_side_allies(unit)
+		for ally in allies:
+			if not is_instance_valid(ally):
+				continue
+			var ally_types: Array[int] = am.get_unit_aura_types(ally)
+			for at in ally_types:
+				var ati: int = int(at)
+				# 仅一次性光环（非周期治疗）才计入"受到"
+				if ati == 0 or ati == 1:  # MEDIC_HEAL / CARRIER_REPAIR 周期类跳过
+					continue
+				var ally_name: String = _ally_display_name(ally)
+				if not source_labels.has(ati):
+					source_labels[ati] = []
+				(source_labels[ati] as Array).append(ally_name)
+		# 去重友军名后格式化
+		for ati in source_labels.keys():
+			var nm: String = _AURA_TYPE_NAMES.get(int(ati), "")
+			if nm.is_empty():
+				continue
+			var desc: String = _format_aura_effect_desc(int(ati), star)
+			var src_names: Array = source_labels[ati]
+			# 去重
+			var uniq: Array[String] = []
+			for s in src_names:
+				if not uniq.has(String(s)):
+					uniq.append(String(s))
+			var src_str: String = ", ".join(uniq) if not uniq.is_empty() else ""
+			if not src_str.is_empty():
+				if not desc.is_empty():
+					receive_lines.append("  · %s（来自 %s）：%s" % [nm, src_str, desc])
+				else:
+					receive_lines.append("  · %s（来自 %s）" % [nm, src_str])
+
+	# 组装两段
+	var parts: Array[String] = []
+	if not provide_lines.is_empty():
+		parts.append("【提供的光环】\n" + "\n".join(provide_lines))
+	if not receive_lines.is_empty():
+		parts.append("【受到的光环加成】\n" + "\n".join(receive_lines))
+	if parts.is_empty():
+		return ""
+	return "\n" + "\n".join(parts)
+
+## 卡牌模式（背包/商店/相位仪查看）光环预览——无战场 unit，从 stats.platform_type 反推。
+func _build_aura_preview_text(card: CardResource, stats: UnitStats) -> String:
+	if card == null or stats == null:
+		return ""
+	if card.card_type != GC.CardType.COMBAT_UNIT:
+		return ""
+	var aura_type: int = _platform_to_aura_type(stats.platform_type)
+	var lines: Array[String] = []
+	# 平台光环预览
+	if aura_type >= 0:
+		var star: int = int(card.enhance_level) if "enhance_level" in card else 0
+		star = maxi(1, star + 1)  # enhance_level 0 起，star 1 起
+		var nm: String = _AURA_TYPE_NAMES.get(aura_type, "")
+		var desc: String = _format_aura_effect_desc(aura_type, star)
+		if not nm.is_empty():
+			if not desc.is_empty():
+				lines.append("  · %s：%s" % [nm, desc])
+			else:
+				lines.append("  · %s" % nm)
+	# 改造光环预览：读 stats 的 mod_aura_summary meta（build_stats_from_card 时 _apply_mod_stat_effects 写入）
+	if stats.has_meta("mod_aura_summary"):
+		var summary = stats.get_meta("mod_aura_summary")
+		if summary is Dictionary and not summary.is_empty():
+			var effects: Array[String] = []
+			for sf in summary:
+				var rule: Dictionary = summary[sf]
+				var op: String = rule.get("op", "add")
+				var raw: float = float(rule.get("raw", 0.0))
+				effects.append(_mod_aura_stat_desc(sf, op, raw))
+			if not effects.is_empty():
+				lines.append("  · 改造光环（给予友军）：%s" % ", ".join(effects))
 	if lines.is_empty():
 		return ""
-	return "\n" + "\n".join(lines)
+	return "\n部署后光环：\n" + "\n".join(lines)
+
+## 敌方构装单位光环文本——只显示「提供的光环」段（敌方无养成，不显示强化/改造）。
+func _build_enemy_aura_text(unit: Node) -> String:
+	if unit == null or not is_instance_valid(unit):
+		return ""
+	var am: Node = get_node_or_null("/root/AuraManager")
+	var provide_lines: Array[String] = []
+	# 敌方 platform_type 同样驱动 register_aura（construct_unit.gd 对 player/enemy 都执行）
+	var aura_types: Array[int] = []
+	if am != null and am.has_method("get_unit_aura_types"):
+		aura_types = am.get_unit_aura_types(unit)
+	# MEDIC 补丁（敌方医疗车同样自驱不注册）
+	if "stats" in unit and unit.stats != null and unit.stats.platform_type == 9:
+		if not aura_types.has(0):
+			aura_types.append(0)
+	var star: int = 1
+	if am != null and am.has_method("get_unit_star"):
+		star = am.get_unit_star(unit)
+	for t in aura_types:
+		var idx: int = int(t)
+		var nm: String = _AURA_TYPE_NAMES.get(idx, "")
+		if nm.is_empty():
+			continue
+		var desc: String = _format_aura_effect_desc(idx, star)
+		if not desc.is_empty():
+			provide_lines.append("  · %s：%s" % [nm, desc])
+		else:
+			provide_lines.append("  · %s" % nm)
+	if provide_lines.is_empty():
+		return ""
+	return "\n【敌方光环】\n" + "\n".join(provide_lines)
+
+## 获取同阵营友军列表（不含自身），用于查"受到的平台光环"。
+func _get_same_side_allies(unit: Node) -> Array:
+	if unit == null or not is_instance_valid(unit):
+		return []
+	var tree: SceneTree = unit.get_tree()
+	if tree == null:
+		return []
+	var is_player: bool = bool(unit.get("is_player")) if "is_player" in unit else true
+	var group_name: String = "player_units" if is_player else "enemy_units"
+	var bm: Node = tree.root.get_node_or_null("BattleManager")
+	var group_nodes: Array = []
+	if bm != null and is_instance_valid(bm) and bm.has_method("get_cached_nodes_in_group"):
+		var active: bool = bool(bm.get("battle_active")) if "battle_active" in bm else false
+		if active:
+			group_nodes = bm.get_cached_nodes_in_group(group_name)
+	if group_nodes.is_empty():
+		group_nodes = tree.get_nodes_in_group(group_name)
+	var result: Array = []
+	for node in group_nodes:
+		if is_instance_valid(node) and node != unit:
+			result.append(node)
+	return result
+
+## 友军显示名（用于"受到的光环（来自 X）"标注）。
+func _ally_display_name(unit: Node) -> String:
+	if unit == null or not is_instance_valid(unit):
+		return ""
+	var dn: String = ""
+	if "stats" in unit and unit.stats != null:
+		var card_res: CardResource = _resolve_source_instance_card(unit)
+		if card_res != null:
+			dn = DefaultCards.safe_name(card_res)
+		if dn.is_empty():
+			dn = DefaultCards.get_safe_display_name(unit.stats.platform_card_id)
+		if dn.is_empty():
+			dn = DefaultCards.get_platform_display_name(unit.stats.platform_type)
+	return dn if not dn.is_empty() else "友军"
 
 ## 将 mod_aura stat_field 转换为可读描述（如"攻击+10%"、"暴击率+5%"）
 func _mod_aura_stat_desc(stat_field: String, op: String, raw: float) -> String:
@@ -1627,6 +1927,36 @@ func _mod_aura_stat_desc(stat_field: String, op: String, raw: float) -> String:
 	elif op == "river":
 		return "%s+%d" % [name, int(raw * 80)]
 	return "%s:%.1f" % [name, raw]
+
+## tags 标签中文翻译（unified_card_table 的英制 tag → 中文定位标签）
+const _TAG_NAMES_CN := {
+	"infantry": "步兵",
+	"vehicle": "载具",
+	"armored": "装甲",
+	"support": "支援",
+	"aircraft": "空中",
+	"fortress": "堡垒",
+	"immobile": "固定",
+	"boss": "BOSS",
+	"elite": "精英",
+}
+
+## 将 card.tags 翻译为中文定位标签字符串（如"装甲·载具"），空则返回 ""。
+func _format_tags_cn(tags) -> String:
+	if tags == null:
+		return ""
+	var arr: Array = tags if tags is Array else []
+	if arr.is_empty():
+		return ""
+	var names: Array[String] = []
+	for t in arr:
+		var key: String = String(t)
+		var cn: String = _TAG_NAMES_CN.get(key, "")
+		if not cn.is_empty() and not names.has(cn):
+			names.append(cn)
+	if names.is_empty():
+		return ""
+	return "·".join(names)
 
 # v7.x: 玩家相位仪符文文本——读 PhaseInstrumentManager 的符文槽位 + 激活的符文之语。
 # 返回空串表示无任何符文；非空形如：

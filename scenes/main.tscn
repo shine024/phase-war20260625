@@ -1,4 +1,4 @@
-[gd_scene load_steps=31 format=3 uid="uid://main"]
+[gd_scene load_steps=32 format=3 uid="uid://main"]
 
 [ext_resource type="Script" uid="uid://d0jpdmko5mrnu" path="res://scenes/main.gd" id="1_script"]
 [ext_resource type="PackedScene" uid="uid://battlefield" path="res://scenes/battlefield/battlefield.tscn" id="2_battlefield"]
@@ -27,6 +27,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/battle_announcer.tscn" id="40_battle_announcer"]
 [ext_resource type="PackedScene" path="res://scenes/ui/battle_log.tscn" id="41_battle_log"]
 [ext_resource type="PackedScene" path="res://scenes/ui/unit_hover_info.tscn" id="42_unit_hover_info"]
+[ext_resource type="PackedScene" path="res://scenes/ui/player_master_panel.tscn" id="43_player_master"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_level_display"]
 font_size = 24
@@ -831,3 +832,32 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
+[node name="PlayerMasterOverlay" type="Control" parent="PopupLayer"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Backdrop" type="ColorRect" parent="PopupLayer/PlayerMasterOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.55)
+mouse_filter = 0
+
+[node name="CenterContainer" type="CenterContainer" parent="PopupLayer/PlayerMasterOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PlayerMasterPanel" parent="PopupLayer/PlayerMasterOverlay/CenterContainer" instance=ExtResource("43_player_master")]

@@ -436,6 +436,14 @@ func _calculate_dismantle_gains(card: CardResource) -> Dictionary:
 		"nano": maxi(1, int(scaled * 2.0)),
 	}
 
+## 获取拆解预览收益（不执行拆解，供 UI 确认弹窗使用）
+func get_dismantle_preview(card: CardResource) -> Dictionary:
+	if card == null:
+		return {"research": 0, "nano": 0, "name": ""}
+	var gains := _calculate_dismantle_gains(card)
+	gains["name"] = String(card.display_name) if not String(card.display_name).is_empty() else String(card.card_id)
+	return gains
+
 func _show_toast_success(message: String) -> void:
 	var toast_mgr: Node = _get_autoload_node("ToastManager")
 	if toast_mgr != null and toast_mgr.has_method("show_success"):

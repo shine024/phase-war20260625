@@ -4,9 +4,15 @@ class_name CapturedUnitCards
 ##
 ## v3 重构：直接从 EnemyUnitManifest 的 archetype_config 构建战斗卡，
 ## 不再从旧 default_cards 平台卡克隆。
+##
+## v8.0: 数据源统一——缴获卡数值改从 UnifiedCardTable（统一卡牌表）读取，
+## 与玩家原生卡/敌方原型共享同一套数值。消灭缴获卡复刻敌方低量级
+## （虚空领主 240 血 vs 原生卡 2200 血）的量级混乱。
+## 缴获卡 card_id 保留 captured_ 前缀（向后兼容存档），但数值=统一表同名卡。
 
 const EnemyUnitManifest = preload("res://data/enemy_unit_manifest.gd")
 const CapturedCardStats = preload("res://data/captured_card_stats.gd")
+const UnifiedCardTable = preload("res://data/unified_card_table.gd")
 const GC = preload("res://resources/game_constants.gd")
 
 static var _cache_built: bool = false
@@ -46,7 +52,20 @@ static func _build_captured_card(
 	display_name: String,
 	cfg: Dictionary
 ) -> CardResource:
-	# ── 静态表覆盖优先 ──
+	# ── v8.0: 统一卡牌表优先（缴获卡数值 = 统一表同名卡，与玩家原生卡一致）──
+	# drop_id 格式："captured_foe_<id>" 或 "captured_<id>"
+	# 去掉前缀得到 archetype_id（= 统一表 card_id），从统一表构建
+	var arch_id: String = drop_id.trim_prefix("captured_").trim_prefix("foe_")
+	var unified_card: CardResource = UnifiedCardTable.build_card_resource(arch_id)
+	if unified_card != null:
+		# 用 drop_id 作为 card_id（保留 captured_ 前缀，向后兼容存档），
+		# 数值全部来自统一表（标定后的中间值）
+		unified_card.card_id = drop_id
+		unified_card.is_dropped_card = true
+		unified_card.type_line = _make_captured_type_line(unified_card.era, unified_card.combat_kind)
+		return unified_card
+
+	# ── 静态表覆盖（fallback：统一表查不到的旧 captured_* id）──
 	var override: Dictionary = CapturedCardStats.get_stats(drop_id)
 	if not override.is_empty():
 		return _build_from_static(drop_id, override)
@@ -185,3 +204,10 @@ static func _build_from_static(drop_id: String, stats: Dictionary) -> CardResour
 	c.type_line = "%s — 缴获%s" % [era_label, kind_label]
 
 	return c
+
+
+## v8.0: 缴获卡类型行（统一表构建路径用）
+static func _make_captured_type_line(era: int, combat_kind: int) -> String:
+	var era_label: String = ["一战", "二战", "冷战", "现代", "近未来"][clampi(era, 0, 4)]
+	var kind_label: String = CardResource.get_combat_kind_name(combat_kind)
+	return "%s — 缴获%s" % [era_label, kind_label]

@@ -12,7 +12,9 @@ func test_era_multipliers_at_bounds() -> void:
 	# v6.1: 近未来伤害倍率 1.90→1.80（避免后期火力过溢），断言从 2.0 更新为 1.8
 	assert_float(BC.era_damage_multiplier(4)).is_equal(1.8)
 	assert_float(BC.era_range_multiplier(1)).is_equal(1.1)
-	assert_float(BC.era_hp_multiplier(3)).is_equal(1.45)
+	# v7.x 平衡修订：era_hp_multiplier 改查表，末两档抬高（现代 1.45→1.50、近未来 1.60→1.70）
+	assert_float(BC.era_hp_multiplier(3)).is_equal(1.50)
+	assert_float(BC.era_hp_multiplier(4)).is_equal(1.70)
 
 
 func test_star_stat_multiplier() -> void:

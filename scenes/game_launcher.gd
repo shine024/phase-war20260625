@@ -385,9 +385,12 @@ func show_help() -> void:
 	if UILazyLoader:
 		help_panel = UILazyLoader.get_panel("help")
 	else:
-		# 回退到直接加载
+		# 回退到直接加载（包入 CenterContainer 使其居中，原版钉在左上角）
 		help_panel = preload("res://scenes/ui/help_panel.tscn").instantiate()
-		add_child(help_panel)
+		var center := CenterContainer.new()
+		center.set_anchors_preset(Control.PRESET_FULL_RECT)
+		center.add_child(help_panel)
+		add_child(center)
 
 ## 显示关于
 func show_about() -> void:

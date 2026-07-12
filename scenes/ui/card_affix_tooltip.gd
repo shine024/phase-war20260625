@@ -57,6 +57,8 @@ func _ensure_tooltip_ui() -> void:
 	_tooltip_panel = PanelContainer.new()
 	_tooltip_panel.name = "TooltipPanel"
 	_tooltip_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# 限制 tooltip 最大宽度，防止长效果文本撑得过宽
+	_tooltip_panel.custom_minimum_size = Vector2(220, 0)
 	
 	var panel_style := StyleBoxFlat.new()
 	panel_style.bg_color = Color(0.06, 0.08, 0.12, 0.98)
@@ -121,7 +123,7 @@ func _refresh_content() -> void:
 	_content_vbox.add_child(title_hbox)
 	
 	# 类型色块
-	var type_color := _get_card_type_color(_card.card_type)
+	var type_color := _get_card_type_color(_card.card_type, int(_card.combat_kind))
 	var type_dot := Label.new()
 	type_dot.text = "■"
 	type_dot.add_theme_color_override("font_color", type_color)
@@ -216,22 +218,32 @@ func _add_affix_row(affix: AffixResource) -> void:
 	effect_label.text = affix.get_detailed_description().split("\n")[0]  # 只取第一行
 	effect_label.add_theme_font_size_override("font_size", 10)
 	effect_label.add_theme_color_override("font_color", Color(0.75, 0.75, 0.82, 0.9))
+	effect_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART  # 长效果文本自动换行
+	effect_label.custom_minimum_size.x = 200  # 触发换行的宽度下限
 	info_vbox.add_child(effect_label)
-	
+
 	# 变异描述
 	if affix.is_mutated and not affix.mutation_description.is_empty():
 		var mut_desc := Label.new()
 		mut_desc.text = "  ↳ %s" % affix.mutation_description
 		mut_desc.add_theme_font_size_override("font_size", 10)
 		mut_desc.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3, 0.85))
+		mut_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		mut_desc.custom_minimum_size.x = 200
 		info_vbox.add_child(mut_desc)
 
-## 获取卡牌类型颜色
-func _get_card_type_color(card_type: int) -> Color:
+## 获取卡牌类型颜色（战斗单位按 combat_kind 子类型差异化着色）
+func _get_card_type_color(card_type: int, combat_kind: int = -1) -> Color:
 	match card_type:
-		GC.CardType.COMBAT_UNIT: return Color(0.1, 0.5, 0.9, 1.0)
-		GC.CardType.COMBAT_UNIT:   return Color(0.85, 0.45, 0.1, 1.0)
-		GC.CardType.COMBAT_UNIT: return Color(0.55, 0.25, 0.9, 1.0)
+		GC.CardType.COMBAT_UNIT:
+			# 按 CombatKind 子类型差异化着色（修复：原 3 个相同 case 死代码）
+			match combat_kind:
+				GC.CombatKind.LIGHT:   return Color(0.1, 0.5, 0.9, 1.0)   # 轻装/步兵 — 蓝
+				GC.CombatKind.ARMOR:   return Color(0.85, 0.45, 0.1, 1.0) # 装甲/坦克 — 橙
+				GC.CombatKind.SUPPORT: return Color(0.2, 0.7, 0.45, 1.0)  # 工兵/支援 — 绿
+				GC.CombatKind.AIR:     return Color(0.55, 0.25, 0.9, 1.0) # 空军 — 紫
+				GC.CombatKind.FORT:    return Color(0.75, 0.6, 0.25, 1.0) # 堡垒 — 棕黄
+				_:                      return Color(0.1, 0.5, 0.9, 1.0)   # 默认蓝
 		GC.CardType.ENERGY:   return Color(0.15, 0.75, 0.35, 1.0)
 		GC.CardType.LAW:      return Color(0.95, 0.90, 0.60, 1.0)  # 金白 — 法则权威
 		_:                    return Color(0.5, 0.5, 0.5, 1.0)

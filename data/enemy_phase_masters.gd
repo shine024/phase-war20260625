@@ -341,15 +341,20 @@ static func get_recommended_level(master_id: String) -> int:
 ## 与原始手填 level（底层 _derive_runes/_derive_spawn_sequence/_era_from_level 继续读）解耦：
 ##   - 展示 Lv 代表"战力等级"，用于 UI 显示和 game_manager 掉落梯度；
 ##   - 原始 level 代表"设计基准"，用于符文稀有度/出兵序列/时代号。
-## 两者语义不同，派生 Lv ≠ 原始 level 属正常（如某高一战相位师展示 Lv12 但底层仍按 Lv5 派生）。
-## 映射规则：线性，区间贴合 30 相位师真实总分分布（最弱~434 → 最强~2210）。
-##   434 分→Lv5，2210 分→Lv30，区间外 clamp。
-## 区间随 STAR_TIERS 阈值校准同步更新（v7.x 第三轮）。
+## 两者语义不同，派生 Lv ≠ 原始 level 属正常。
+## v7.x 对称化最终版：用 log10 映射（真实战力跨度大，新手~200/终极~18万）。
+##   200分→Lv5，180000分→Lv30，log10 压缩使各档均匀分布。
 static func compute_display_level(master: Dictionary) -> int:
 	var er: Dictionary = _MasterPowerEvaluator.evaluate(master)
 	var total: float = float(er.get("total_score", 0.0))
-	# 区间贴合实际分布：434(最弱)→Lv5，2210(最强)→Lv30
-	var lvl: int = roundi(5 + (total - 434.0) / (2210.0 - 434.0) * 25.0)
+	if total <= 0.0:
+		return 5
+	# log10 映射：200→Lv5，180000→Lv30
+	var log_lo: float = log(200.0) / log(10.0)
+	var log_hi: float = log(180000.0) / log(10.0)
+	var log_t: float = log(maxf(total, 1.0)) / log(10.0)
+	var t: float = (log_t - log_lo) / maxf(log_hi - log_lo, 0.001)
+	var lvl: int = roundi(5 + t * 25.0)
 	return clampi(lvl, 5, 30)
 
 ## v7.x: 便捷重载——按 master_id 取展示等级（内部先查 master 再调 compute_display_level）。

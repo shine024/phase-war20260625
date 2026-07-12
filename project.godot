@@ -61,6 +61,10 @@ LeaderboardManager="*res://managers/leaderboard_manager.gd"
 StatBoostManager="*res://managers/stat_boost_manager.gd"
 BattleSpectacle="*res://managers/battle/battle_spectacle.gd"
 
+[debug]
+
+file_logging/enable_file_logging=true
+
 [display]
 
 window/size/viewport_width=1280

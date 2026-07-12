@@ -7,12 +7,12 @@ class_name LeaderboardData
 ##
 ## 对外接口：
 ##   - get_faction_leaderboard() -> Array  (公司势力排名)
-##   - get_npc_leaderboard() -> Array      (NPC相位师排名)
+##   - get_npc_leaderboard() -> Array      (玩家+挑战者排名，基于真实进度)
 ##   - get_active_phase_masters() -> Array (NPC战斗配置)
 ##   - get_phase_master_config(name) -> Dictionary
-##   - simulate_faction_battles() -> void
+##   - refresh() -> void
 
-# NPC相位师战斗配置
+# NPC相位师战斗配置（用于相位师遭遇战的卡牌选择，非排行榜显示数据）
 const NPC_PHASE_MASTERS: Array = [
 	{"name": "终焉之镰",   "faction": "void_research",     "era": "future",   "platform": "platform_future_heavy"},
 	{"name": "炽焰星痕",   "faction": "nova_arms",         "era": "future",   "platform": "platform_future_medium"},
@@ -23,43 +23,22 @@ const NPC_PHASE_MASTERS: Array = [
 	{"name": "边境开拓者", "faction": "frontier_union",    "era": "ww2",      "platform": "platform_ww2_light"},
 ]
 
-# 各公司势力领地范围（静态配置，仅用于 FSM 不可用时的 fallback + NPC 相位师进度对齐）
-# v6.9: 关卡占领以 level_information.gd 的 faction_id 为准（1-20关无主之地，21关起归各势力）
-#   - 主路径（FSM 可用）：用 get_all_factions_info().controlled_levels，自动跟随 level_information
-#   - 本表 start=end=0 表示该势力无固有领地（钢壁/边境），fallback 计算 total=0
-#   - NPC 相位师进度仍按此表对齐（钢壁的"寒霜壁垒"NPC 展示在二战区域进度附近）
+# 各公司势力领地范围（静态配置，仅用于 FSM 不可用时的 fallback）
 const FACTION_RANGES: Array = [
-	{"fid": "iron_wall_corp",    "start": 0,  "end": 0,   "name": "钢壁防务"},  # v6.9: 1-20关已改无主之地，钢壁无固有领地
+	{"fid": "iron_wall_corp",    "start": 0,  "end": 0,   "name": "钢壁防务"},
 	{"fid": "nova_arms",         "start": 21, "end": 40,  "name": "新星兵工"},
 	{"fid": "aether_dynamics",   "start": 41, "end": 60,  "name": "以太动力"},
 	{"fid": "quantum_logistics", "start": 61, "end": 80,  "name": "量子后勤"},
 	{"fid": "helix_recon",       "start": 81, "end": 90,  "name": "螺旋侦察"},
 	{"fid": "void_research",     "start": 91, "end": 100, "name": "虚空相位"},
-	{"fid": "frontier_union",    "start": 0,  "end": 0,   "name": "边境联合"},  # 通用势力，无固有领地
+	{"fid": "frontier_union",    "start": 0,  "end": 0,   "name": "边境联合"},
 ]
-
-# NPC相位师预设（按排名顺序）
-const NPC_PRESETS: Array = [
-	{"name": "终焉之镰",   "style": "暗影猎手",   "wins": 342, "win_rate": 0.82},
-	{"name": "炽焰星痕",   "style": "闪电术师",   "wins": 298, "win_rate": 0.78},
-	{"name": "雷霆判官",   "style": "风暴使者",   "wins": 265, "win_rate": 0.75},
-	{"name": "寒霜壁垒",   "style": "寒冰指挥官", "wins": 232, "win_rate": 0.71},
-	{"name": "量子幽灵",   "style": "间谍",       "wins": 198, "win_rate": 0.68},
-	{"name": "虚空低语",   "style": "相位法师",   "wins": 156, "win_rate": 0.65},
-	{"name": "边境开拓者", "style": "先锋",       "wins": 98,  "win_rate": 0.60},
-]
-
-# NPC进度比例设计
-const NPC_PROGRESS_RATIOS: Array = [1.0, 0.95, 0.80, 0.65, 0.50, 0.35, 0.20]
 
 # 缓存数据
 var _faction_data: Array = []
 var _player_data: Array = []
-var _faction_dynamic_state: Dictionary = {}
-var _simulation_seed: int = 0
-var _dynamic_initialized: bool = false
 
-## 获取当前活跃的相位师配置（按排行榜前几名的NPC）
+## 获取当前活跃的相位师配置（用于遭遇战卡牌选择，非排行榜显示）
 func get_active_phase_masters() -> Array:
 	return NPC_PHASE_MASTERS.duplicate()
 
@@ -76,52 +55,16 @@ func get_faction_leaderboard() -> Array:
 		_initialize_faction_data()
 	return _faction_data.duplicate(true)
 
-## 获取NPC相位师排名数据
+## 获取玩家+挑战者排名数据（基于真实进度，非硬编码NPC）
 func get_npc_leaderboard() -> Array:
 	if _player_data.is_empty():
 		_initialize_player_data()
 	return _player_data.duplicate(true)
 
-## 刷新所有数据
+## 刷新所有数据（重新读取真实游戏状态）
 func refresh() -> void:
-	simulate_faction_battles()
 	_initialize_faction_data()
-
-## 模拟各势力之间的动态战斗
-func simulate_faction_battles() -> void:
-	_simulation_seed += 1
-	var rng = RandomNumberGenerator.new()
-	rng.seed = _simulation_seed * int(Time.get_ticks_msec())
-
-	if not _dynamic_initialized:
-		_init_faction_dynamic_state()
-
-	var factions = _faction_dynamic_state.keys()
-	for attacker_fid in factions:
-		if rng.randf() > 0.4:
-			continue
-
-		var attacker_state = _faction_dynamic_state[attacker_fid]
-		var success = rng.randf() < 0.5
-
-		if success:
-			var targets = []
-			for fid in factions:
-				if fid != attacker_fid and _faction_dynamic_state[fid].get("cleared", 0) > 0:
-					targets.append(fid)
-			if targets.is_empty():
-				continue
-
-			var target_fid = targets[rng.randi() % targets.size()]
-			var target_state = _faction_dynamic_state[target_fid]
-			if target_state["cleared"] > 0:
-				target_state["cleared"] -= 1
-				attacker_state["cleared"] += 1
-		else:
-			if attacker_state.get("cleared", 0) > 0:
-				attacker_state["cleared"] -= 1
-
-	_update_npc_progress_from_faction_state()
+	_initialize_player_data()
 
 ## 初始化公司势力数据
 func _initialize_faction_data() -> void:
@@ -157,7 +100,6 @@ func _initialize_faction_data() -> void:
 		for sd in FACTION_RANGES:
 			var s: int = sd["start"]
 			var e: int = sd["end"]
-			# v6.9: start<=0 或 end<=0 表示无固有领地（钢壁/边境），total=0
 			var total: int = max(0, e - s + 1) if (e >= s and s > 0) else 0
 			var cleared: int = clampi(cleared_max - s + 1, 0, total) if s > 0 else 0
 			_faction_data.append({
@@ -174,33 +116,71 @@ func _initialize_faction_data() -> void:
 		return a["territories_total"] > b["territories_total"]
 	)
 
-## 初始化NPC相位师排名数据
+## 初始化玩家+挑战者排名数据（基于真实进度，非硬编码NPC）
 func _initialize_player_data() -> void:
 	_player_data.clear()
 
-	for i in range(min(NPC_PRESETS.size(), FACTION_RANGES.size())):
-		var npc = NPC_PRESETS[i]
-		var faction = FACTION_RANGES[i]
-		var f_start: int = faction["start"]
-		var f_end: int = faction["end"]
-		# v6.9: start<=0 表示无固有领地（钢壁/边境），total=0，NPC 显示在默认起点
-		var total: int = max(0, f_end - f_start + 1) if (f_end >= f_start and f_start > 0) else 0
+	# 玩家真实进度
+	var player_max_level: int = 1
+	var player_stars: int = 0
+	var lpm: Node = _get_autoload_node("LevelProgressManager")
+	if lpm and lpm.has_method("get_max_unlocked_level"):
+		player_max_level = int(lpm.get_max_unlocked_level())
+	if lpm and "level_stars" in lpm:
+		for lv in range(1, player_max_level + 1):
+			player_stars += int(lpm.level_stars.get(lv, 0))
 
-		var ratio: float = NPC_PROGRESS_RATIOS[i] if i < NPC_PROGRESS_RATIOS.size() else 0.2
-		var cleared: int = max(1, int(total * ratio)) if total > 0 else 0
-		cleared = clampi(cleared, 1, total) if total > 0 else 0
-		# 无领地势力（start<=0）的 NPC 显示在关卡 1（表示尚在活动初期）
-		var current_level: int = (f_start + cleared - 1) if total > 0 else 1
+	# 玩家势力
+	var player_faction_id: String = ""
+	var player_faction_name: String = "自由相位师"
+	var fsm: Node = _get_autoload_node("FactionSystemManager")
+	if fsm and fsm.has_method("get_active_faction"):
+		player_faction_id = String(fsm.get_active_faction())
+	if player_faction_id != "" and fsm and fsm.has_method("get_faction_info"):
+		var pfac: Dictionary = fsm.get_faction_info(player_faction_id)
+		player_faction_name = String(pfac.get("name", player_faction_name))
 
-		_player_data.append({
-			"rank": i + 1,
-			"name": npc["name"],
-			"current_level": current_level,
-			"wins": npc["wins"],
-			"win_rate": npc["win_rate"],
-			"preferred_faction": faction["fid"],
-			"faction_name": faction["name"],
-		})
+	_player_data.append({
+		"rank": 0,
+		"name": "我（玩家）",
+		"current_level": player_max_level,
+		"wins": player_stars,
+		"win_rate": 0.0,
+		"preferred_faction": player_faction_id,
+		"faction_name": player_faction_name,
+		"is_player": true,
+	})
+
+	# 各势力挑战者（基于真实占领数）
+	if fsm and fsm.has_method("get_all_factions_info"):
+		var all_factions: Array = fsm.get_all_factions_info()
+		for fi in all_factions:
+			var fid: String = fi.get("id", "")
+			if fid.is_empty() or fid == player_faction_id:
+				continue
+			var controlled: Array = fi.get("controlled_levels", [])
+			var territory: int = controlled.size()
+			var challenger_level: int = 1
+			if not controlled.is_empty():
+				challenger_level = int(controlled.max())
+			_player_data.append({
+				"rank": 0,
+				"name": "%s·挑战者" % String(fi.get("name", fid)),
+				"current_level": challenger_level,
+				"wins": territory * 2,
+				"win_rate": 0.0,
+				"preferred_faction": fid,
+				"faction_name": String(fi.get("name", fid)),
+				"is_player": false,
+			})
+
+	_player_data.sort_custom(func(a, b) -> bool:
+		if a.get("current_level", 0) != b.get("current_level", 0):
+			return a.get("current_level", 0) > b.get("current_level", 0)
+		return a.get("wins", 0) > b.get("wins", 0)
+	)
+	for i in range(_player_data.size()):
+		_player_data[i]["rank"] = i + 1
 
 func _get_autoload_node(name: String) -> Node:
 	var loop := Engine.get_main_loop()
@@ -209,40 +189,3 @@ func _get_autoload_node(name: String) -> Node:
 		if tree.root != null:
 			return tree.root.get_node_or_null(name)
 	return null
-
-func _init_faction_dynamic_state() -> void:
-	var rng = RandomNumberGenerator.new()
-	rng.randomize()
-	for sd in FACTION_RANGES:
-		# v6.9: start<=0 表示无固有领地，total=0
-		var s: int = sd["start"]
-		var total = max(0, sd["end"] - s + 1) if (sd["end"] >= s and s > 0) else 0
-		var initial_cleared = int(total * rng.randf_range(0.2, 0.5)) if total > 0 else 0
-		_faction_dynamic_state[sd["fid"]] = {
-			"total": total,
-			"cleared": initial_cleared,
-		}
-	_dynamic_initialized = true
-
-## 根据势力动态状态更新NPC相位师进度
-func _update_npc_progress_from_faction_state() -> void:
-	for i in range(min(FACTION_RANGES.size(), _player_data.size())):
-		var fid = FACTION_RANGES[i]["fid"]
-		var faction_state = _faction_dynamic_state.get(fid, {"total": 0, "cleared": 0})
-		var total = faction_state["total"]
-		var cleared = faction_state["cleared"]
-
-		var start_lv: int = FACTION_RANGES[i]["start"]
-		var new_level = start_lv + cleared - 1
-		if total > 0:
-			new_level = clampi(new_level, start_lv, start_lv + total - 1)
-		else:
-			new_level = start_lv
-
-		_player_data[i]["current_level"] = max(1, new_level)
-
-	_player_data.sort_custom(func(a, b) -> bool:
-		return a.get("current_level", 0) > b.get("current_level", 0)
-	)
-	for i in range(_player_data.size()):
-		_player_data[i]["rank"] = i + 1

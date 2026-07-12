@@ -15,7 +15,11 @@ static func era_range_multiplier(era: int) -> float:
 
 
 static func era_hp_multiplier(era: int) -> float:
-	return 1.0 + float(clampi(era, 0, 4)) * 0.15
+	# v7.x 平衡修订：改为查表，末两档（现代/近未来）抬高。
+	# 原 1.0+era*0.15 = [1.00,1.15,1.30,1.45,1.60]，伤害增长(1.65/1.80)快于血量致后期偏脆 ~12%。
+	# 新表 [1.00,1.15,1.30,1.50,1.70]，血量/伤害比回到 ~0.95，后期单位更耐打。
+	var table: Array = [1.00, 1.15, 1.30, 1.50, 1.70]
+	return float(table[clampi(era, 0, 4)])
 
 
 ## star: 1~9；用于 HP/ATK 等同步缩放（§3.1）。rarity 提供额外每星系数。

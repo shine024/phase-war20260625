@@ -215,6 +215,10 @@ signal unit_killed(victim: Node, killer: Node, is_player_victim: bool)
 signal boss_wave_started(boss_archetype_ids: Array)
 # 相位师登场：相位师战开始时广播 master_config，供 Announcer/Spectacle 播报。
 signal phase_master_appeared(master_config: Dictionary)
+# v7.x 玩家相位师战力变化：战斗开始算出玩家相位师星级/等级后广播，
+# 供 bottom_instrument_bar 等更新玩家相位师等级显示。
+# raw_score: 真实总分（不压缩）；score_alias: 兼容参数（与 raw_score 相同）；stars/star_name: 星级；display_level: Lv5-30
+signal player_phase_master_power_changed(raw_score: float, score_alias: float, stars: int, star_name: String, display_level: int)
 # 符文之语激活：RunewordMatcher 命中时广播，供 Announcer 播报。
 signal runeword_triggered(rw_id: String, unit: Node)
 # 通用高光事件（连杀/特殊触发等），payload 含 event_id + 自定义字段。

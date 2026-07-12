@@ -13,7 +13,7 @@ disable-model-invocation: true
 ## 验证命令
 
 ```powershell
-& "E:\下载\Godot_4.41\Godot_v4.5-stable_win64.exe" --headless --rendering-driver opengl3 --path "." --check-only
+& "D:/Downloads/Godot/Godot_v4.5.1-stable_win64.exe" --headless --rendering-driver opengl3 --path "." --check-only
 ```
 
 ## 使用场景

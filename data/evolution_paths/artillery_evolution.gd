@@ -38,7 +38,7 @@ const MAIN_LINE: Dictionary = {
 	},
 	E4 = {
 		stage = 4, card_id = "fut_howitzer", name = "悬浮自行火炮",
-		era = "Future", power = 795, max_hp = 300,
+		era = "Future", power = 795, max_hp = 380,
 		attack_light = 280, attack_armor = 200, attack_air = 0,
 		defense_light = 60, defense_armor = 50, defense_air = 30,
 		inherit_multiplier = 0.30,

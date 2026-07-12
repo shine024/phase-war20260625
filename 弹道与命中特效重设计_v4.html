@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>相位战争 · 拟真粒子弹道与命中 v4</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#04060c;color:#a0a8b8;font-family:"Microsoft YaHei",sans-serif;padding:8px;overflow-x:hidden}
+h1{text-align:center;color:#00e5ff;font-size:18px;margin:6px 0 2px;letter-spacing:2px}
+.sub{text-align:center;color:#304050;font-size:9px;margin-bottom:10px}
+h2{color:#00e5ff;border-left:3px solid #00e5ff;padding-left:8px;margin:16px 0 6px;font-size:13px}
+p.tip{font-size:8px;color:#3a4a5a;margin:-4px 0 6px;line-height:1.5}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:7px;margin-bottom:8px}
+.card{background:#080c16;border:1px solid #121a2a;border-radius:4px;overflow:hidden;transition:border-color .3s}
+.card:hover{border-color:#00e5ff}
+.card .canvas-wrap{width:100%;height:155px;background:#040810;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.card .info{padding:5px 7px}
+.card .num{font-size:7px;color:#2a3a4a;font-weight:bold}
+.card .name{font-size:10px;color:#7888a0;margin-top:1px}
+.card .desc{font-size:7px;color:#384858;margin-top:1px;line-height:1.5}
+.tag{display:inline-block;font-size:6px;padding:1px 3px;border-radius:2px;margin-top:1px}
+.tag-player{background:#081830;color:#4fc3f7}
+.tag-enemy{background:#280808;color:#ef5350}
+canvas{image-rendering:auto}
+</style>
+</head>
+<body>
+<h1>相位战争 · 拟真粒子弹道与命中 v4</h1>
+<p class="sub">物理级粒子模拟 — 温度梯度火焰 + 重力下落 + 空气阻力 + 湍流扰动 + 多层辉光叠加</p>
+
+<h2>一、直射弹道（推进火焰粒子 + 激波尾迹）</h2>
+<p class="tip">每发子弹 = 核心亮点 + 推进火焰粒子流（白→黄→橙→红→灰消散） + 空气阻力拖尾 + 高速激波锥</p>
+<div class="grid">
+<div class="card"><div class="canvas-wrap"><canvas id="c_p_direct"></canvas></div><div class="info"><div class="num">#1</div><div class="name">玩家直射</div><div class="desc">黄白核心 + 密集推进火焰粒子流（温度梯度） + 激波尾迹 | 720px/s</div><span class="tag tag-player">玩家方</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_e_direct"></canvas></div><div class="info"><div class="num">#2</div><div class="name">敌方直射</div><div class="desc">橙红核心 + 暗焰粒子 + 红色激波锥 | 720px/s</div><span class="tag tag-enemy">敌方</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_smg"></canvas></div><div class="info"><div class="num">#3</div><div class="name">冲锋枪连发</div><div class="desc">紧凑弹头形 | 黄白色 | 高射速 | 每发独立火焰粒子流</div><span class="tag tag-player">SMG</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_shotgun"></canvas></div><div class="info"><div class="num">#4</div><div class="name">霰弹散射</div><div class="desc">6颗弹丸扇形扩散 | 发射口爆闪光 + 每弹丸独立粒子流</div><span class="tag tag-player">SHOTGUN</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_sniper"></canvas></div><div class="info"><div class="num">#5</div><div class="name">狙击弹</div><div class="desc">细长高能弹 | 蓝白光束 | 超音速激波锥 + 极长拖尾</div><span class="tag tag-player">SNIPER</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_rocket"></canvas></div><div class="info"><div class="num">#6</div><div class="name">火箭弹</div><div class="desc">长粗导弹 | 橙色推进火焰 + 尾焰烟雾 + 脉冲推力</div><span class="tag tag-player">ROCKET</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_laser"></canvas></div><div class="info"><div class="num">#7</div><div class="name">激光</div><div class="desc">Line2D高能光束 | 青色脉动核心 + 白色内核 + 瞬时命中闪光</div><span class="tag tag-player">LASER</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_omega"></canvas></div><div class="info"><div class="num">#8</div><div class="name">Omega加农炮</div><div class="desc">等离子球体 | 紫色电弧拖尾 + 蓝色辉光 + 不规则脉动</div><span class="tag tag-player">OMEGA</span></div></div>
+</div>
+
+<h2>二、曲射弹道（贝塞尔抛物线 + 推进火焰云 + 湍流尾迹）</h2>
+<p class="tip">抛物线飞行全程生成推进火焰粒子云，湍流扰动使尾迹自然飘散，发射瞬间炮口爆燃。</p>
+<div class="grid">
+<div class="card"><div class="canvas-wrap"><canvas id="c_indirect_p"></canvas></div><div class="info"><div class="num">#9</div><div class="name">玩家曲射（迫击炮）</div><div class="desc">高弧线1.6x | 炮口爆燃火焰 + 持续尾焰粒子云 + 湍流扩散</div><span class="tag tag-player">玩家方</span><span class="tag" style="background:#1a2a1a;color:#aed581">曲射</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_indirect_e"></canvas></div><div class="info"><div class="num">#10</div><div class="name">敌方曲射</div><div class="desc">中弧线1.0x | 橙色调推进火焰 + 烟雾尾迹粒子</div><span class="tag tag-enemy">敌方</span><span class="tag" style="background:#1a2a1a;color:#aed581">曲射</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_arc_mortar"></canvas></div><div class="info"><div class="num">#11</div><div class="name">迫击炮弧线 1.6x</div><div class="desc">最高抛物线 | 缓慢上升快速坠落 | 尾焰粒子持续生成</div><span class="tag" style="background:#1a2a1a;color:#aed581">曲射</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_arc_missile"></canvas></div><div class="info"><div class="num">#12</div><div class="name">导弹弧线 1.0x</div><div class="desc">中等弧线 | 持续推进火焰粒子</div><span class="tag" style="background:#1a2a1a;color:#aed581">曲射</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_arc_rocket"></canvas></div><div class="info"><div class="num">#13</div><div class="name">火箭筒弧线 0.3x</div><div class="desc">低弧线接近平射 | 短促推进火焰</div><span class="tag" style="background:#1a2a1a;color:#aed581">曲射</span></div></div>
+</div>
+
+<h2>三、命中/爆炸特效（三层粒子系统 + 重力 + 湍流）</h2>
+<p class="tip">第1层：冲击波环(Polygon2D扩散+波纹扰动) → 第2层：主火花(CPUParticles2D径向爆发+重力下落) → 第3层：碎片烟尘(重型专属+湍流上升)</p>
+<div class="grid">
+<div class="card"><div class="canvas-wrap"><canvas id="c_imp_smg"></canvas></div><div class="info"><div class="num">#14</div><div class="name">轻武器命中</div><div class="desc">小冲击环24px + 18粒子黄白火花(重力下落) + 快速消散(0.45s)</div><span class="tag tag-player">SMG/RIFLE</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_imp_shotgun"></canvas></div><div class="info"><div class="num">#15</div><div class="name">霰弹命中</div><div class="desc">中环29px + 28粒子橙色扩散(宽散布) + 重力下落</div><span class="tag tag-player">SHOTGUN</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_imp_sniper"></canvas></div><div class="info"><div class="num">#16</div><div class="name">狙击命中</div><div class="desc">细环22px + 22粒子亮黄集中喷射(55度锥角) + 尖锐火花</div><span class="tag tag-player">SNIPER</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_imp_rocket"></canvas></div><div class="info"><div class="num">#17</div><div class="name">火箭弹爆炸</div><div class="desc">大环56px + 32粒子橙红 + 烟尘云湍流上升(0.9s)</div><span class="tag tag-player">ROCKET/FLAK</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_imp_missile"></canvas></div><div class="info"><div class="num">#18</div><div class="name">导弹爆炸</div><div class="desc">超大环60px + 36粒子深橙 + 金属碎片重力下落</div><span class="tag tag-player">MISSILE</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_imp_laser"></canvas></div><div class="info"><div class="num">#19</div><div class="name">激光命中</div><div class="desc">能量灼烧环22px + 22粒子蓝白集中喷射(40度) + 电离余晖</div><span class="tag tag-player">LASER</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_imp_omega"></canvas></div><div class="info"><div class="num">#20</div><div class="name">Omega加农炮</div><div class="desc">能量爆环34px + 28粒子能量蓝 + 大范围冲击波</div><span class="tag tag-player">OMEGA_CANNON</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_imp_rail"></canvas></div><div class="info"><div class="num">#21</div><div class="name">电磁轨道炮</div><div class="desc">电磁脉冲环34px + 28粒子电磁青 + 电离电弧散射</div><span class="tag tag-player">RAIL_CANNON</span></div></div>
+</div>
+
+<h2>四、按目标 combat_kind 差异化命中</h2>
+<div class="grid">
+<div class="card"><div class="canvas-wrap"><canvas id="c_hit_light"></canvas></div><div class="info"><div class="num">#22</div><div class="name">命中轻型单位</div><div class="desc">黄白色调 | 轻微震动1.8px | 火花粒子重力下落</div><span class="tag tag-player">LIGHT/SUPPORT</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_hit_armor"></canvas></div><div class="info"><div class="num">#23</div><div class="name">命中装甲单位</div><div class="desc">橙红色调 | 中等震动3.2px | 金属碎屑飞溅+重力下落</div><span class="tag tag-player">ARMOR/FORT</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_hit_air"></canvas></div><div class="info"><div class="num">#24</div><div class="name">命中空中单位</div><div class="desc">纯白强光 | 强烈震动5.0px | 空爆火球+上升烟云</div><span class="tag tag-player">AIR</span></div></div>
+</div>
+
+<h2>五、特殊伤害效果叠加</h2>
+<div class="grid">
+<div class="card"><div class="canvas-wrap"><canvas id="c_crit"></canvas></div><div class="info"><div class="num">#25</div><div class="name">暴击光环</div><div class="desc">金色双环脉动(46px扩张) + 辐射火花粒子(重力下落)</div><span class="tag" style="background:#2a2a0a;color:#ffd54f">CRIT</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_pierce"></canvas></div><div class="info"><div class="num">#26</div><div class="name">穿透光线</div><div class="desc">紫色穿甲光线76px长 | 变细淡出 + 金属碎片飞溅</div><span class="tag" style="background:#1a0a2a;color:#ce93d8">PIERCE</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_shockwave"></canvas></div><div class="info"><div class="num">#27</div><div class="name">溅射冲击波</div><div class="desc">橙色扩散环 + 渐变色带 + 地面扁平椭圆涟漪</div><span class="tag" style="background:#2a1a0a;color:#ff8a65">SPLASH</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_lightning"></canvas></div><div class="info"><div class="num">#28</div><div class="name">闪电链电弧</div><div class="desc">锯齿线段(5段jitter) + 分支电弧 + 电离余晖粒子</div><span class="tag" style="background:#0a1a2a;color:#82b1ff">CHAIN</span></div></div>
+</div>
+
+<script>
+// ===== Canvas Setup =====
+const W=240,H=155;
+function setup(id){const c=document.getElementById(id);if(!c)return null;c.width=W;c.height=H;return{c,ctx:c.getContext('2d')}}
+const anims=[];
+function anim(id,fn,fps){const o=setup(id);if(!o)return;let t=0;const iv=1000/(fps||30);
+function loop(){o.ctx.clearRect(0,0,W,H);fn(o.ctx,t,W,H);t+=iv;anims.push(loop);requestAnimationFrame(loop)}
+requestAnimationFrame(loop)}
+
+// ===== Bezier helper =====
+function bPt(p0,p1,p2,t){return{x:(1-t)*(1-t)*p0.x+2*(1-t)*t*p1.x+t*t*p2.x,y:(1-t)*(1-t)*p0.y+2*(1-t)*t*p1.y+t*t*p2.y}}
+
+// ===== Particle class with real physics =====
+class P{
+    constructor(){this.x=0;this.y=0;this.vx=0;this.vy=0;this.life=0;this.maxLife=0;
+        this.r=1;this.g=1;this.b=1;this.a=1;this.sz=1;this.gravity=0;this.drag=0.98;this.turbulence=0;this.active=false;this.shape='circle'}
+    reset(x,y,vx,vy,sz,r,g,b,life,gravity,drag,turbulence,shape){
+        this.x=x;this.y=y;this.vx=vx;this.vy=vy;this.sz=sz;this.r=r;this.g=g;this.b=b;
+        this.life=life;this.maxLife=life;this.gravity=gravity;this.drag=drag;
+        this.turbulence=turbulence;this.shape=shape||'circle';this.active=true;return this
+    }
+    update(dt){
+        if(!this.active)return false;
+        this.vy+=this.gravity*dt;
+        // Turbulence: random lateral force that decreases over life
+        const lifeRatio=this.life/this.maxLife;
+        const turbMag=this.turbulence*Math.sqrt(lifeRatio);
+        this.vx+=(Math.random()-0.5)*turbMag*dt*60;
+        this.vy+=(Math.random()-0.5)*turbMag*dt*30;
+        // Drag
+        this.vx*=Math.pow(this.drag,dt*60);
+        this.vy*=Math.pow(this.drag,dt*60);
+        this.x+=this.vx*dt;
+        this.y+=this.vy*dt;
+        this.life-=dt;
+        return this.life>0
+    }
+    get alpha(){return Math.max(0,this.life/this.maxLife)}
+    get radius(){return this.sz*Math.pow(Math.max(0,this.alpha),0.6)}
+}
+
+// ===== Emit particles from template =====
+function emit(ctx,arr,template,count){
+    for(let i=0;i<count;i++){
+        const p=new P();
+        p.reset(
+            template.x+(Math.random()-0.5)*template.spreadX,
+            template.y+(Math.random()-0.5)*template.spreadY,
+            template.vx+(Math.random()-0.5)*template.vSpreadX,
+            template.vy+(Math.random()-0.5)*template.vSpreadY,
+            template.sz*(0.5+Math.random()*0.5),
+            template.r,template.g,template.b,
+            template.life*(0.5+Math.random()*0.5),
+            template.gravity,template.drag,template.turbulence,template.shape
+        );
+        arr.push(p);
+    }
+    // Update and compact
+    let w=0;
+    for(let i=0;i<arr.length;i++){
+        if(arr[i].update(0.016)){arr[w++]=arr[i]}else{arr[i].active=false}
+    }
+    arr.length=w;
+}
+
+function drawP(ctx,p){
+    if(!p.active)return;
+    const a=p.alpha;
+    ctx.globalAlpha=a*p.a;
+    const rr=Math.round(p.r*255),gg=Math.round(p.g*255),bb=Math.round(p.b*255);
+    ctx.fillStyle=`rgb(${rr},${gg},${bb})`;
+    ctx.shadowColor=`rgb(${rr},${gg},${bb})`;
+    ctx.shadowBlur=p.radius*5;
+    if(p.shape==='square'){
+        ctx.fillRect(p.x-p.radius,p.y-p.radius,p.radius*2,p.radius*2);
+    }else{
+        ctx.beginPath();ctx.arc(p.x,p.y,Math.max(0.3,p.radius),0,Math.PI*2);ctx.fill();
+    }
+}
+
+// ===== 1. DIRECT PROJECTILES =====
+
+// Player direct - yellow-white with temperature-gradient flame trail
+anim('c_p_direct',(ctx,t,w,h)=>{
+    const prog=(t%2000)/2000;
+    const bx=15+prog*210;
+    const by=h/2+Math.sin(prog*Math.PI*8)*0.8;
+    
+    // Flame trail particles (temperature gradient: white->yellow->orange->red->gray->fade)
+    const flames=[];
+    emit(flames,{x:bx-3,y:by,spreadX:4,spreadY:3,vx:-180,vy:0,vSpreadX:30,vSpreadY:15,sz:2.5,r:1,g:0.95,b:0.8,life:0.15,gravity:0,drag:0.96,turbulence:8,shape:'circle'},2);
+    // Draw
+    for(let i=0;i<flames.length;i++)drawP(ctx,flames[i]);
+    
+    // Smoke trail (older, cooler particles)
+    const smoke=[];
+    emit(smoke,{x:bx-8,y:by,spreadX:6,spreadY:4,vx:-100,vy:5,vSpreadX:20,vSpreadY:10,sz:3,r:0.4,g:0.38,b:0.35,life:0.3,gravity:-3,drag:0.97,turbulence:15,shape:'circle'},1);
+    for(let i=0;i<smoke.length;i++)drawP(ctx,smoke[i]);
+    
+    // Motion blur afterimages
+    for(let i=6;i>=1;i--){
+        const tx=bx-i*10;
+        ctx.globalAlpha=0.1*(1-i/7);ctx.shadowBlur=0;
+        ctx.fillStyle='#F5E64D';
+        ctx.fillRect(tx-3,by-1.5,6,3);
+    }
+    
+    // Core glow
+    ctx.globalAlpha=0.35;ctx.fillStyle='#F5E64D';ctx.shadowColor='#F5E64D';ctx.shadowBlur=14;
+    ctx.beginPath();ctx.arc(bx,by,5,0,Math.PI*2);ctx.fill();
+    
+    // Bullet body
+    ctx.globalAlpha=1;ctx.fillStyle='#FFF8B0';ctx.shadowBlur=8;
+    ctx.beginPath();
+    ctx.moveTo(bx-5,by-2.5);ctx.lineTo(bx+2,by-1.2);
+    ctx.lineTo(bx+6,by);ctx.lineTo(bx+2,by+1.2);
+    ctx.lineTo(bx-5,by+2.5);ctx.closePath();ctx.fill();
+    
+    // Bright center dot
+    ctx.fillStyle='#FFFFFF';ctx.shadowBlur=4;
+    ctx.beginPath();ctx.arc(bx+1,by,1.8,0,Math.PI*2);ctx.fill();
+    
+    ctx.globalAlpha=1;ctx.shadowBlur=0;
+},60);
+
+// Enemy direct - orange-red
+anim('c_e_direct',(ctx,t,w,h)=>{
+    const prog=(t%2000)/2000;
+    const bx=w-15-prog*210;
+    const by=h/2+Math.sin(prog*Math.PI*8)*0.8;
+    
+    // Flame trail
+    const flames=[];
+    emit(flames,{x:bx+3,y:by,spreadX:4,spreadY:3,vx:180,vy:0,vSpreadX:30,vSpreadY:15,sz:2.5,r:1,g:0.55,b:0.2,life:0.15,gravity:0,drag:0.96,turbulence:8,shape:'circle'},2);
+    for(let i=0;i<flames.length;i++)drawP(ctx,flames[i]);
+    
+    const smoke=[];
+    emit(smoke,{x:bx+8,y:by,spreadX:6,spreadY:4,vx:100,vy:5,vSpreadX:20,vSpreadY:10,sz:3,r:0.4,g:0.25,b:0.2,life:0.3,gravity:-3,drag:0.97,turbulence:15,shape:'circle'},1);
+    for(let i=0;i<smoke.length;i++)drawP(ctx,smoke[i]);
+    
+    // Afterimages
+    for(let i=6;i>=1;i--){
+        ctx.globalAlpha=0.08*(1-i/7);ctx.shadowBlur=0;
+        ctx.fillStyle='#FF6433';
+        ctx.fillRect(bx+i*10-3,by-1.5,6,3);
+    }
+    
+    ctx.globalAlpha=0.35;ctx.fillStyle='#FF6433';ctx.shadowColor='#FF6433';ctx.shadowBlur=14;
+    ctx.beginPath();ctx.arc(bx,by,5,0,Math.PI*2);ctx.fill();
+    
+    ctx.globalAlpha=1;ctx.fillStyle='#FF8C5C';ctx.shadowBlur=8;
+    ctx.beginPath();
+    ctx.moveTo(bx+5,by-2.5);ctx.lineTo(bx-2,by-1.2);
+    ctx.lineTo(bx-6,by);ctx.lineTo(bx-2,by+1.2);
+    ctx.lineTo(bx+5,by+2.5);ctx.closePath();ctx.fill();
+    
+    ctx.fillStyle='#FFFFFF';ctx.beginPath();ctx.arc(bx-1,by,1.8,0,Math.PI*2);ctx.fill();
+    ctx.globalAlpha=1;ctx.shadowBlur=0;
+},60);
+
+// SMG rapid fire
+anim('c_smg',(ctx,t,w,h)=>{
+    const burst=Math.floor(t/110)%5;
+    const phase=(t%110)/110;
+    
+    for(let i=0;i<=burst;i++){
+        const bx=10+phase*220-i*38;
+        const by=h/2+(Math.random()-0.5)*0.5;
+        const isCurrent=i===burst;
+        
+        // Flame particles
+        const flames=[];
+        emit(flames,{x:bx+(isCurrent?-2:2),y:by,spreadX:3,spreadY:2,vx:(isCurrent?-160:160),vy:0,vSpreadX:25,vSpreadY:12,sz:2,r:1,g:0.9,b:0.6,life:0.12,gravity:0,drag:0.96,turbulence:6,shape:'circle'},isCurrent?2:1);
+        for(let j=0;j<flames.length;j++)drawP(ctx,flames[j]);
+        
+        if(!isCurrent)ctx.globalAlpha=0.5;
+        
+        ctx.fillStyle='#F5E64D';ctx.shadowColor='#F5E64D';ctx.shadowBlur=5;
+        ctx.beginPath();ctx.arc(bx,by,3,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#FFF8B0';
+        ctx.beginPath();ctx.arc(bx,by,1.5,0,Math.PI*2);ctx.fill();
+        
+        if(!isCurrent)ctx.globalAlpha=1;
+    }
+    ctx.globalAlpha=1;ctx.shadowBlur=0;
+},60);
+
+// Shotgun spread
+anim('c_shotgun',(ctx,t,w,h)=>{
+    const prog=(t%1500)/1500;
+    const spread=prog*38;
+    
+    // Muzzle flash
+    if(prog<0.04){
+        const fa=(1-prog/0.04)*0.9;
+        ctx.globalAlpha=fa;ctx.fillStyle='#FFE080';ctx.shadowColor='#FFE080';ctx.shadowBlur=20;
+        ctx.beginPath();ctx.arc(12,h/2,16*prog/0.04,0,Math.PI*2);ctx.fill();
+    }
+    
+    for(let i=0;i<6;i++){
+        const baseAngle=(i-2.5)*0.35;
+        const px=12+prog*215;
+        const py=h/2+Math.sin(baseAngle)*spread+(i-2.5)*2.8*(1-prog*0.3);
+        
+        // Trail particles
+        const trails=[];
+        emit(trails,{x:px-3,y:py,spreadX:3,spreadY:2,vx:-120,vy:0,vSpreadX:20,vSpreadY:10,sz:2,r:1,g:0.9,b:0.5,life:0.1,gravity:0,drag:0.97,turbulence:5,shape:'circle'},1);
+        for(let j=0;j<trails.length;j++)drawP(ctx,trails[j]);
+        
+        ctx.globalAlpha=1-prog*0.3;
+        ctx.fillStyle='#F5E64D';ctx.shadowColor='#F5E64D';ctx.shadowBlur=5;
+        ctx.beginPath();ctx.arc(px,py,2.5,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#FFF8B0';
+        ctx.beginPath();ctx.arc(px,py,1.2,0,Math.PI*2);ctx.fill();
+    }
+    ctx.globalAlpha=1;ctx.shadowBlur=0;
+},60);
+
+// Sniper beam with shockwave cone
+anim('c_sniper',(ctx,t,w,h)=>{
+    const prog=(t%900)/900;
+    const x=10+prog*220;
+    
+    // Long energy trail
+    for(let i=15;i>=0;i--){
+        const tx=x-i*16;
+        ctx.globalAlpha=0.1*(1-i/16);ctx.shadowBlur=0;
+        ctx.fillStyle='#4DCFFF';
+        ctx.fillRect(tx-16,h/2-0.5,32,1);
+    }
+    
+    // Shockwave cone (Mach cone effect)
+    if(prog>0.05&&prog<0.95){
+        ctx.globalAlpha=0.15;ctx.strokeStyle='#4DCFFF';ctx.lineWidth=0.5;ctx.shadowBlur=0;
+        const coneAngle=0.15;
+        const coneLen=30;
+        ctx.beginPath();
+        ctx.moveTo(x,h/2-Math.tan(coneAngle)*coneLen);
+        ctx.lineTo(x-coneLen,h/2);
+        ctx.lineTo(x,h/2+Math.tan(coneAngle)*coneLen);
+        ctx.stroke();
+    }
+    
+    ctx.globalAlpha=1;
+    ctx.shadowColor='#4DCFFF';ctx.shadowBlur=16;
+    ctx.strokeStyle='#4DCFFF';ctx.lineWidth=4;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(x-20,h/2);ctx.lineTo(x+20,h/2);ctx.stroke();
+    
+    ctx.strokeStyle='#FFFFFF';ctx.lineWidth=2;ctx.shadowColor='#FFFFFF';ctx.shadowBlur=8;
+    ctx.beginPath();ctx.moveTo(x-20,h/2);ctx.lineTo(x+20,h/2);ctx.stroke();
+    
+    // Hit flash
+    if(prog>0.92){
+        const fa=(prog-0.92)/0.08;
+        ctx.globalAlpha=(1-fa)*0.7;ctx.fillStyle='#FFFFFF';ctx.shadowColor='#FFFFFF';ctx.shadowBlur=20;
+        ctx.beginPath();ctx.arc(x+20,h/2,10*fa,0,Math.PI*2);ctx.fill();
+    }
+    ctx.globalAlpha=1;ctx.shadowBlur=0;
+},60);
+
+// Rocket with flame + smoke
+anim('c_rocket',(ctx,t,w,h)=>{
+    const prog=(t%2200)/2200;
+    const x=15+prog*210;
+    const y=h/2+Math.sin(prog*Math.PI*6)*1;
+    
+    // Flame particles (white core -> yellow -> orange -> red -> gray)
+    const flames=[];
+    emit(flames,{x:x-10,y:y,spreadX:8,spreadY:6,vx:-200,vy:10,vSpreadX:40,vSpreadY:20,sz:3.5,r:1,g:0.95,b:0.8,life:0.18,gravity:-5,drag:0.95,turbulence:12,shape:'circle'},3);
+    for(let i=0;i<flames.length;i++)drawP(ctx,flames[i]);
+    
+    // Red/gray tail
+    const tails=[];
+    emit(tails,{x:x-15,y:y,spreadX:10,spreadY:8,vx:-120,vy:15,vSpreadX:30,vSpreadY:15,sz:3,r:0.8,g:0.3,b:0.15,life:0.25,gravity:-8,drag:0.96,turbulence:18,shape:'circle'},2);
+    for(let i=0;i<tails.length;i++)drawP(ctx,tails[i]);
+    
+    // Smoke
+    const smoke=[];
+    emit(smoke,{x:x-20,y:y+5,spreadX:12,spreadY:10,vx:-60,vy:20,vSpreadX:25,vSpreadY:15,sz:4,r:0.35,g:0.33,b:0.3,life:0.5,gravity:-15,drag:0.97,turbulence:25,shape:'circle'},1);
+    for(let i=0;i<smoke.length;i++)drawP(ctx,smoke[i]);
+    
+    ctx.globalAlpha=1;
+    ctx.shadowColor='#FF8C33';ctx.shadowBlur=12;
+    ctx.fillStyle='#FF8C33';
+    ctx.beginPath();
+    ctx.moveTo(x-7,y-3.5);ctx.lineTo(x+5,y-2.5);
+    ctx.lineTo(x+9,y);ctx.lineTo(x+5,y+2.5);
+    ctx.lineTo(x-7,y+3.5);ctx.closePath();ctx.fill();
+    
+    ctx.fillStyle='#FFD54F';ctx.beginPath();ctx.arc(x+8,y,2.5,0,Math.PI*2);ctx.fill();
+    ctx.globalAlpha=1;ctx.shadowBlur=0;
+},60);
+
+// Laser with energy flicker
+anim('c_laser',(ctx,t,w,h)=>{
+    const cycle=t%1600;
+    const flash=cycle<100?cycle/100:(cycle>1400?(1600-cycle)/200:1);
+    const flicker=0.85+Math.sin(t/30)*0.15; // energy instability
+    
+    // Beam trail with flickering
+    ctx.globalAlpha=flash*flicker*0.8;
+    ctx.shadowColor='#4DCFFF';ctx.shadowBlur=18;
+    ctx.strokeStyle='#4DCFFF';ctx.lineWidth=5;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(10,h/2);ctx.lineTo(w-10,h/2);ctx.stroke();
+    
+    ctx.globalAlpha=flash*flicker*0.9;
+    ctx.strokeStyle='#FFFFFF';ctx.shadowColor='#FFFFFF';ctx.shadowBlur=8;
+    ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(10,h/2);ctx.lineTo(w-10,h/2);ctx.stroke();
+    
+    // Ionization particles along beam
+    if(flash>0.5){
+        const ionCount=5;
+        const ions=[];
+        for(let i=0;i<ionCount;i++){
+            const ix=30+Math.random()*(w-60);
+            const iy=h/2+(Math.random()-0.5)*6;
+            ctx.globalAlpha=(flash-0.5)*0.3;
+            ctx.fillStyle='#80DEEA';ctx.shadowColor='#80DEEA';ctx.shadowBlur=4;
+            ctx.beginPath();ctx.arc(ix,iy,1,0,Math.PI*2);ctx.fill();
+        }
+    }
+    
+    // Impact flash
+    if(flash>0.6){
+        const fa=(flash-0.6)/0.4;
+        ctx.globalAlpha=fa*0.65;ctx.fillStyle='#FFFFFF';ctx.shadowColor='#FFFFFF';ctx.shadowBlur=22;
+        ctx.beginPath();ctx.arc(w-15,h/2,12*fa,0,Math.PI*2);ctx.fill();
+    }
+    ctx.globalAlpha=1;ctx.shadowBlur=0;
+},60);
+
+// Omega plasma ball with irregular pulse
+anim('c_omega',(ctx,t,w,h)=>{
+    const prog=(t%2400)/2400;
+    const x=15+prog*210;
+    const pulseR=5+Math.sin(t/80)*1.5+Math.sin(t/137)*0.8; // irregular pulse
+    
+    // Arc trail particles
+    const arcs=[];
+    emit(arcs,{x:x-12,y:h/2,spreadX:10,spreadY:8,vx:-100,vy:(Math.random()-0.5)*40,vSpreadX:20,vSpreadY:30,sz:2,r:0.6,g:0.15,b:0.7,life:0.15,gravity:0,drag:0.95,turbulence:15,shape:'circle'},2);
+    for(let i=0;i<arcs.length;i++)drawP(ctx,arcs[i]);
+    
+    // Plasma layers
+    ctx.globalAlpha=0.12;ctx.fillStyle='#6699FF';ctx.shadowColor='#6699FF';ctx.shadowBlur=28;
+    ctx.beginPath();ctx.arc(x,h/2,pulseR*3.8,0,Math.PI*2);ctx.fill();
+    
+    ctx.globalAlpha=0.25;ctx.fillStyle='#6699FF';ctx.shadowBlur=18;
+    ctx.beginPath();ctx.arc(x,h/2,pulseR*2.4,0,Math.PI*2);ctx.fill();
+    
+    ctx.globalAlpha=1;ctx.fillStyle='#6699FF';ctx.shadowBlur=14;
+    ctx.beginPath();ctx.arc(x,h/2,pulseR,0,Math.PI*2);ctx.fill();
+    
+    ctx.fillStyle='#B3C6FF';ctx.shadowBlur=6;
+    ctx.beginPath();ctx.arc(x,h/2,pulseR*0.5,0,Math.PI*2);ctx.fill();
+    
+    ctx.globalAlpha=1;ctx.shadowBlur=0;
+},60);
+
+// ===== 2. INDIRECT PROJECTILES =====
+
+// Player indirect mortar
+anim('c_indirect_p',(ctx,t,w,h)=>{
+    const prog=(t%2600)/2600;
+    const start={x:15,y:h-15};
+    const end={x:w-15,y:h-15};
+    const apex={x:(start.x+end.x)/2,y:(start.y+end.y)/2-78};
+    
+    // Faint arc path
+    ctx.globalAlpha=0.1;ctx.strokeStyle='#FF8C33';ctx.lineWidth=1;ctx.setLineDash([2,3]);ctx.shadowBlur=0;
+    ctx.beginPath();
+    for(let p=0;p<=1;p+=0.02){const pt=bPt(start,apex,end,p);p===0?ctx.moveTo(pt.x,pt.y):ctx.lineTo(pt.x,pt.y);}
+    ctx.stroke();ctx.setLineDash([]);
+    
+    const pt=bPt(start,apex,end,prog);
+    
+    // Smoke trail with turbulence
+    const smoke=[];
+    emit(smoke,{x:pt.x-5,y:pt.y,spreadX:8,spreadY:6,vx:-30,vy:15,vSpreadX:20,vSpreadY:12,sz:3,r:0.35,g:0.33,b:0.3,life:0.4,gravity:-10,drag:0.97,turbulence:20,shape:'circle'},1);
+    for(let i=0;i<smoke.length;i++)drawP(ctx,smoke[i]);
+    
+    // Flame particles
+    const flames=[];
+    emit(flames,{x:pt.x-5,y:pt.y,spreadX:6,spreadY:5,vx:-100,vy:5,vSpreadX:25,vSpreadY:15,sz:2.5,r:1,g:0.6,b:0.2,life:0.15,gravity:-3,drag:0.96,turbulence:10,shape:'circle'},2);
+    for(let i=0;i<flames.length;i++)drawP(ctx,flames[i]);
+    
+    // Projectile glow
+    ctx.globalAlpha=1;ctx.shadowColor='#FF8C33';ctx.shadowBlur=14;
+    ctx.fillStyle='#FF8C33';ctx.beginPath();ctx.arc(pt.x,pt.y,4,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#FFD54F';ctx.beginPath();ctx.arc(pt.x,pt.y,2,0,Math.PI*2);ctx.fill();
+    
+    // Muzzle flash
+    if(prog<0.04){
+        const fa=(1-prog/0.04);
+        ctx.globalAlpha=fa*0.85;ctx.fillStyle='#FFD54F';ctx.shadowColor='#FF8C33';ctx.shadowBlur=25;
+        ctx.beginPath();ctx.arc(start.x,start.y,18*fa,0,Math.PI*2);ctx.fill();
+    }
+    ctx.globalAlpha=1;ctx.shadowBlur=0;
+},60);
+
+// Enemy indirect
+anim('c_indirect_e',(ctx,t,w,h)=>{
+    const prog=(t%2600)/2600;
+    const start={x:w-15,y:h-15};
+    const end={x:15,y:h-15};
+    const apex={x:(start.x+end.x)/2,y:(start.y+end.y)/2-50};
+    const pt=bPt(start,apex,end,prog);
+    
+    // Trail particles
+    const trails=[];
+    emit(trails,{x:pt.x+5,y:pt.y,spreadX:6,spreadY:5,vx:80,vy:5,vSpreadX:20,vSpreadY:12,sz:2,r:1,g:0.4,b:0.2,life:0.12,gravity:-3,drag:0.96,turbulence:12,shape:'circle'},1);
+    for(let i=0;i<trails.length;i++)drawP(ctx,trails[i]);
+    
+    ctx.globalAlpha=1;ctx.shadowColor='#FF6433';ctx.shadowBlur=10;
+    ctx.fillStyle='#FF6433';ctx.beginPath();ctx.arc(pt.x,pt.y,3.5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#FF8C5C';ctx.beginPath();ctx.arc(pt.x,pt.y,1.8,0,Math.PI*2);ctx.fill();
+    ctx.globalAlpha=1;ctx.shadowBlur=0;
+},60);
+
+// Arc height comparison
+['c_arc_mortar','c_arc_missile','c_arc_rocket'].forEach((id,idx)=>{
+    const mults=[1.6,1.0,0.3];
+    const colors=['#FF8C33','#FF7326','#C2B280'];
+    const m=mults[idx],c=colors[idx];
+    anim(id,(ctx,t,w,h)=>{
+        const prog=(t%2600)/2600;
+        const start={x:15,y:h-15};
+        const end={x:w-15,y:h-15};
+        const apex={x:(start.x+end.x)/2,y:(start.y+end.y)/2-60*m};
+        const pt=bPt(start,apex,end,prog);
+        
+        ctx.globalAlpha=0.12;ctx.strokeStyle=c;ctx.lineWidth=1;ctx.setLineDash([2,3]);ctx.shadowBlur=0;
+        ctx.beginPath();
+        for(let p=0;p<=1;p+=0.02){const pp=bPt(start,apex,end,p);p===0?ctx.moveTo(pp.x,pp.y):ctx.lineTo(pp.x,pp.y);}
+        ctx.stroke();ctx.setLineDash([]);
+        
+        // Trail
+        const trails=[];
+        emit(trails,{x:pt.x+(m>1?-5:5),y:pt.y,spreadX:5,spreadY:4,vx:m>1?-80:80,vy:5,vSpreadX:15,vSpreadY:10,sz:2,r:1,g:m>0.8?0.55:0.7,b:m>0.8?0.2:0.5,life:0.12,gravity:-3,drag:0.96,turbulence:10,shape:'circle'},1);
+        for(let i=0;i<trails.length;i++)drawP(ctx,trails[i]);
+        
+        ctx.globalAlpha=1;ctx.shadowColor=c;ctx.shadowBlur=8;
+        ctx.fillStyle=c;ctx.beginPath();ctx.arc(pt.x,pt.y,3,0,Math.PI*2);ctx.fill();
+        
+        ctx.fillStyle='#3a4a60';ctx.font='7px sans-serif';
+        ctx.fillText('H:'+Math.round(60*m)+'px',apex.x-18,apex.y-5);
+        ctx.shadowBlur=0;
+    },60);
+});
+
+// ===== 3. IMPACT EFFECTS =====
+
+function drawLayeredImpact(ctx,cx,cy,time,color,isHeavy,kindTint){
+    const burst=time/800;
+    if(burst>1)return;
+    
+    // Layer 1: Shockwave ring with ripple distortion
+    if(burst<0.55){
+        const rp=burst/0.55;
+        const ringR=5+rp*(isHeavy?50:28);
+        const ra=1-rp;
+        ctx.globalAlpha=ra*0.65;
+        ctx.strokeStyle=color;ctx.shadowColor=color;ctx.shadowBlur=10;
+        ctx.lineWidth=2.5*(1-rp*0.4)+0.5;
+        ctx.beginPath();
+        for(let i=0;i<48;i++){
+            const a=(Math.PI*2/48)*i;
+            // Ripple distortion
+            const ripple=Math.sin(a*12+time/30)*1.5*rp;
+            const r=ringR+ripple;
+            const px=cx+Math.cos(a)*r,py=cy+Math.sin(a)*r;
+            i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+        }
+        ctx.closePath();ctx.stroke();
+    }
+    
+    // Layer 2: Spark particles with gravity
+    if(burst<0.45){
+        const sparkCount=isHeavy?34:18;
+        const maxDist=isHeavy?62:38;
+        const sparks=[];
+        for(let i=0;i<sparkCount;i++){
+            const baseAngle=(Math.PI*2/sparkCount)*i;
+            const dist=burst*maxDist;
+            let angle=baseAngle;
+            if(!isHeavy&&(color==='#FFF299'||color==='#4DCFFF')){
+                angle=baseAngle+(Math.random()-0.5)*0.35;
+            }
+            const px=cx+Math.cos(angle)*dist;
+            const py=cy+Math.sin(angle)*dist;
+            const size=(1-burst)*3;
+            sparks.push(new P().reset(px,py,-Math.cos(angle)*5,-Math.sin(angle)*5-20,size,
+                parseFloat(color.slice(1,3),16)/255,parseFloat(color.slice(3,5),16)/255,parseFloat(color.slice(5,7),16)/255,
+                0.4,80,0.97,5,'circle'));
+        }
+        for(let i=0;i<sparks.length;i++)drawP(ctx,sparks[i]);
+    }
+    
+    // Layer 3: Debris/smoke (heavy only) with turbulence
+    if(isHeavy&&burst<0.75){
+        const debris=[];
+        for(let i=0;i<14;i++){
+            const age=burst-i*0.055;
+            if(age<0)continue;
+            const sa=Math.max(0,1-age/0.6);
+            const sy=cy-age*38+Math.sin(time/80+i)*8;
+            const sx=cx+Math.sin(time/60+i*2.3)*20*age;
+            const sr=3+age*16;
+            debris.push(new P().reset(cx,cy,(Math.random()-0.5)*15,age<0.3?-30:5,sr,
+                0.4,0.38,0.35,0.5,15,0.97,25,'circle'));
+        }
+        for(let i=0;i<debris.length;i++)drawP(ctx,debris[i]);
+        
+        // Metal fragments
+        if(burst<0.5){
+            const frags=[];
+            for(let i=0;i<8;i++){
+                const a=Math.random()*Math.PI*2;
+                const d=burst*50;
+                frags.push(new P().reset(cx+Math.cos(a)*d,cy+Math.sin(a)*d,
+                    Math.cos(a)*30,Math.sin(a)*30+40,2,
+                    0.8,0.55,0.25,0.35,120,0.96,3,'square'));
+            }
+            for(let i=0;i<frags.length;i++)drawP(ctx,frags[i]);
+        }
+    }
+    
+    // Center flash
+    if(burst<0.1){
+        const fa=(1-burst/0.1);
+        ctx.globalAlpha=fa*0.8;ctx.fillStyle='#FFFFFF';ctx.shadowColor='#FFFFFF';ctx.shadowBlur=25;
+        ctx.beginPath();ctx.arc(cx,cy,14*fa,0,Math.PI*2);ctx.fill();
+    }
+    
+    ctx.globalAlpha=1;ctx.shadowBlur=0;
+}
+
+anim('c_imp_smg',(ctx,t,w,h)=>{const c=t%800;drawLayeredImpact(ctx,w/2,h/2,c,'#F2EB80',false,-1)});
+anim('c_imp_shotgun',(ctx,t,w,h)=>{const c=t%800;drawLayeredImpact(ctx,w/2,h/2,c,'#FFB34D',false,-1)});
+anim('c_imp_sniper',(ctx,t,w,h)=>{const c=t%800;drawLayeredImpact(ctx,w/2,h/2,c,'#FFF299',false,-1)});
+anim('c_imp_rocket',(ctx,t,w,h)=>{const c=t%950;drawLayeredImpact(ctx,w/2,h/2,c,'#FF8C33',true,-1)});
+anim('c_imp_missile',(ctx,t,w,h)=>{const c=t%1000;drawLayeredImpact(ctx,w/2,h/2,c,'#FF7326',true,-1)});
+anim('c_imp_laser',(ctx,t,w,h)=>{const c=t%800;drawLayeredImpact(ctx,w/2,h/2,c,'#4DCFFF',false,-1)});
+anim('c_imp_omega',(ctx,t,w,h)=>{const c=t%950;drawLayeredImpact(ctx,w/2,h/2,c,'#6699FF',true,-1)});
+anim('c_imp_rail',(ctx,t,w,h)=>{const c=t%950;drawLayeredImpact(ctx,w/2,h/2,c,'#80E6FF',true,-1)});
+
+// ===== 4. COMBAT KIND IMPACTS =====
+
+anim('c_hit_light',(ctx,t,w,h)=>{
+    const c=t%850;
+    const s=Math.sin(c/60)*1.8*(1-c/850),sy=Math.cos(c/50)*1.8*(1-c/850);
+    ctx.save();ctx.translate(s,sy);
+    drawLayeredImpact(ctx,w/2,h/2,c,'#FFF280',false,0);
+    ctx.restore();
+});
+
+anim('c_hit_armor',(ctx,t,w,h)=>{
+    const c=t%900;
+    const s=Math.sin(c/50)*3.2*(1-c/900),sy=Math.cos(c/40)*3.2*(1-c/900);
+    ctx.save();ctx.translate(s,sy);
+    drawLayeredImpact(ctx,w/2,h/2,c,'#FF8C40',true,1);
+    ctx.restore();
+});
+
+anim('c_hit_air',(ctx,t,w,h)=>{
+    const c=t%950;
+    const s=Math.sin(c/40)*5*(1-c/950),sy=Math.cos(c/35)*5*(1-c/950);
+    ctx.save();ctx.translate(s,sy);
+    drawLayeredImpact(ctx,w/2,h/2,c,'#FFFFFF',true,3);
+    // Air burst fireball
+    if(c/950<0.2){
+        ctx.globalAlpha=(1-c/950/0.2)*0.5;ctx.fillStyle='#FFFFFF';ctx.shadowColor='#FFFFFF';ctx.shadowBlur=30;
+        ctx.beginPath();ctx.arc(w/2,h/2,30*(1-c/950/0.2),0,Math.PI*2);ctx.fill();
+    }
+    ctx.restore();
+});
+
+// ===== 5. SPECIAL EFFECTS =====
+
+// Crit aura
+anim('c_crit',(ctx,t,w,h)=>{
+    const p=t/1300;
+    
+    // First ring pulse
+    if(p<0.5){
+        const r1=8+(p/0.5)*40;
+        const a1=1-p/0.5;
+        ctx.globalAlpha=a1*0.75;ctx.strokeStyle='#FFD54F';ctx.shadowColor='#FFD54F';ctx.shadowBlur=16;
+        ctx.lineWidth=3*a1+0.5;
+        ctx.beginPath();
+        for(let i=0;i<36;i++){const a=(Math.PI*2/36)*i;const rx=w/2+Math.cos(a)*r1,ry=h/2+Math.sin(a)*r1;i===0?ctx.moveTo(rx,ry):ctx.lineTo(rx,ry);}
+        ctx.closePath();ctx.stroke();
+    }
+    
+    // Second ring (delayed)
+    if(p>0.08&&p<0.55){
+        const r2=6+((p-0.08)/0.47)*30;
+        const a2=1-(p-0.08)/0.47;
+        ctx.globalAlpha=a2*0.55;ctx.strokeStyle='#FFA000';ctx.shadowColor='#FFA000';ctx.shadowBlur=12;
+        ctx.lineWidth=2*a2+0.5;
+        ctx.beginPath();
+        for(let i=0;i<36;i++){const a=(Math.PI*2/36)*i;const rx=w/2+Math.cos(a)*r2,ry=h/2+Math.sin(a)*r2;i===0?ctx.moveTo(rx,ry):ctx.lineTo(rx,ry);}
+        ctx.closePath();ctx.stroke();
+    }
+    
+    // Crit sparks with gravity
+    if(p<0.45){
+        const sparks=[];
+        for(let i=0;i<16;i++){
+            const a=(Math.PI*2/16)*i+p*3;
+            const d=p*60;
+            sparks.push(new P().reset(w/2+Math.cos(a)*d,h/2+Math.sin(a)*d,
+                Math.cos(a)*20,Math.sin(a)*20+30,2*(1-p/0.45),
+                1,0.84,0.31,0.5,0.4,60,0.97,5,'circle'));
+        }
+        for(let i=0;i<sparks.length;i++)drawP(ctx,sparks[i]);
+    }
+    
+    // Center flash
+    if(p<0.08){
+        ctx.globalAlpha=(1-p/0.08)*0.65;ctx.fillStyle='#FFFFFF';ctx.shadowColor='#FFFFFF';ctx.shadowBlur=22;
+        ctx.beginPath();ctx.arc(w/2,h/2,12*(1-p/0.08),0,Math.PI*2);ctx.fill();
+    }
+    ctx.globalAlpha=1;ctx.shadowBlur=0;
+});
+
+// Pierce beam
+anim('c_pierce',(ctx,t,w,h)=>{
+    const p=t/1100;
+    if(p>1)return;
+    const bw=5*(1-p*0.6);
+    const ba=1-p;
+    
+    ctx.globalAlpha=ba*0.85;ctx.strokeStyle='#CE93D8';ctx.shadowColor='#CE93D8';ctx.shadowBlur=16;
+    ctx.lineWidth=bw;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(10,h/2);ctx.lineTo(w-10,h/2);ctx.stroke();
+    
+    ctx.globalAlpha=ba*0.65;ctx.strokeStyle='#FFFFFF';ctx.shadowColor='#FFFFFF';ctx.shadowBlur=6;
+    ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(10,h/2);ctx.lineTo(w-10,h/2);ctx.stroke();
+    
+    // Piercing sparks
+    if(p<0.3){
+        const sparks=[];
+        for(let i=0;i<10;i++){
+            const a=Math.random()*Math.PI*2;
+            sparks.push(new P().reset(w-10,h/2,
+                Math.cos(a)*40,Math.sin(a)*40,1.5,
+                0.88,0.25,0.99,0.3,50,0.97,8,'circle'));
+        }
+        for(let i=0;i<sparks.length;i++)drawP(ctx,sparks[i]);
+    }
+    ctx.globalAlpha=1;ctx.shadowBlur=0;
+});
+
+// Splash shockwave
+anim('c_shockwave',(ctx,t,w,h)=>{
+    const p=t/1100;
+    
+    if(p<0.5){
+        const r=8+p*58;
+        const a=(1-p/0.5)*0.75;
+        ctx.globalAlpha=a;ctx.strokeStyle='#FF8A65';ctx.shadowColor='#FF8A65';ctx.shadowBlur=14;
+        ctx.lineWidth=3*(1-p/0.5)+0.5;
+        ctx.beginPath();ctx.arc(w/2,h/2,r,0,Math.PI*2);ctx.stroke();
+    }
+    
+    if(p>0.1&&p<0.55){
+        const r2=6+((p-0.1)/0.45)*50;
+        const a2=(1-(p-0.1)/0.45)*0.45;
+        ctx.globalAlpha=a2;ctx.strokeStyle='#FFAB91';ctx.lineWidth=2;ctx.shadowBlur=8;
+        ctx.beginPath();ctx.arc(w/2,h/2,r2,0,Math.PI*2);ctx.stroke();
+    }
+    
+    // Ground ring (flattened ellipse)
+    if(p<0.45){
+        ctx.globalAlpha=(1-p/0.45)*0.25;ctx.fillStyle='#FF8A65';ctx.shadowBlur=0;
+        ctx.beginPath();ctx.ellipse(w/2,h/2+24,p*70,p*16,0,0,Math.PI*2);ctx.fill();
+    }
+    ctx.globalAlpha=1;ctx.shadowBlur=0;
+});
+
+// Lightning chain with branches
+anim('c_lightning',(ctx,t,w,h)=>{
+    const p=t/900;
+    if(p>0.45)return;
+    const alpha=1-p/0.45;
+    const segs=6;
+    const fromX=20,fromY=h/2;
+    const toX=w-20,toY=h/2+Math.sin(t/200)*14;
+    
+    // Main bolt
+    ctx.globalAlpha=alpha;ctx.strokeStyle='#82B1FF';ctx.shadowColor='#82B1FF';ctx.shadowBlur=14;
+    ctx.lineWidth=2.5;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(fromX,fromY);
+    for(let s=1;s<=segs;s++){
+        const tt=s/segs;
+        const bx=fromX+(toX-fromX)*tt;
+        const by=fromY+(toY-fromY)*tt;
+        const perpX=-(toY-fromY),perpY=(toX-fromX);
+        const len=Math.sqrt(perpX*perpX+perpY*perpY)||1;
+        const jit=(Math.random()-0.5)*32*tt;
+        ctx.lineTo(bx+(perpX/len)*jit,by+(perpY/len)*jit);
+    }
+    ctx.stroke();
+    
+    // White core
+    ctx.lineWidth=1.2;ctx.strokeStyle='#FFFFFF';ctx.shadowColor='#FFFFFF';ctx.shadowBlur=6;
+    ctx.beginPath();ctx.moveTo(fromX,fromY);
+    for(let s=1;s<=segs;s++){
+        const tt=s/segs;
+        const bx=fromX+(toX-fromX)*tt;
+        const by=fromY+(toY-fromY)*tt;
+        const perpX=-(toY-fromY),perpY=(toX-fromX);
+        const len=Math.sqrt(perpX*perpX+perpY*perpY)||1;
+        const jit=(Math.random()-0.5)*32*tt;
+        ctx.lineTo(bx+(perpX/len)*jit,by+(perpY/len)*jit);
+    }
+    ctx.stroke();
+    
+    // Branch bolts
+    if(p<0.3){
+        ctx.globalAlpha=alpha*0.5;ctx.strokeStyle='#B3E5FC';ctx.shadowColor='#B3E5FC';ctx.shadowBlur=8;
+        ctx.lineWidth=1;
+        for(let b=0;b<3;b++){
+            const bt=Math.random();
+            const bx=fromX+(toX-fromX)*bt;
+            const by=fromY+(toY-fromY)*bt;
+            ctx.beginPath();ctx.moveTo(bx,by);
+            const bsegs=3;
+            for(let s=1;s<=bsegs;s++){
+                const st=s/bsegs;
+                ctx.lineTo(bx+(Math.random()-0.5)*20*st,by+(Math.random()-0.5)*20*st);
+            }
+            ctx.stroke();
+        }
+    }
+    
+    // Ionization particles
+    if(p<0.35){
+        const ions=[];
+        for(let i=0;i<6;i++){
+            const tt=Math.random();
+            const ix=fromX+(toX-fromX)*tt;
+            const iy=fromY+(toY-fromY)*tt;
+            ions.push(new P().reset(ix,iy,(Math.random()-0.5)*30,(Math.random()-0.5)*30,1.5,
+                0.5,0.8,1,0.25,10,0.97,8,'circle'));
+        }
+        for(let i=0;i<ions.length;i++)drawP(ctx,ions[i]);
+    }
+    ctx.globalAlpha=1;ctx.shadowBlur=0;
+});
+</script>
+</body>
+</html>

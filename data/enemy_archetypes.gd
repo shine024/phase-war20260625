@@ -3,6 +3,7 @@ class_name EnemyArchetypes
 
 const _ARCHETYPES_JSON_PATH := "res://data/json/enemy_archetypes.json"
 const CapturedUnitCards = preload("res://data/captured_unit_cards.gd")
+const UnifiedCardTable = preload("res://data/unified_card_table.gd")
 
 ## 数据子模块预加载
 const _ArchWW = preload("res://data/enemy_archetypes_ww.gd")
@@ -369,6 +370,31 @@ static func _ensure_manifest_merged() -> void:
 				if key != "display_name":
 					existing_cfg[key] = gen_cfg[key]
 			_manifest_merged[gen_id] = existing_cfg
+
+	# ─────────────────────────────────────────────
+	# v8.1: 用统一卡牌表覆盖所有有对应条目的敌人的数值（统一表为唯一数值源）
+	# 确保敌方原型与玩家卡/缴获卡共享同一套数值，消灭量级混乱。
+	# 覆盖范围：任何 archetype_id 在统一表里有对应条目的，用统一表口径（像素射程/秒攻速）覆盖。
+	# 保留 JSON 原有的 drops/tags/display_name/anim/visual_scale/weapon_label 等非数值字段。
+	# ─────────────────────────────────────────────
+	for aid in _manifest_merged.keys():
+		var unified_entry: Dictionary = UnifiedCardTable.get_entry(aid)
+		if unified_entry.is_empty():
+			continue
+		var cfg: Dictionary = _manifest_merged[aid]
+		# 用统一表派生的 archetype_config 覆盖核心战斗字段
+		var unified_arch_cfg: Dictionary = UnifiedCardTable.build_enemy_archetype_config(aid)
+		if unified_arch_cfg.is_empty():
+			continue
+		# 覆盖数值字段（含 v8.1 三维攻速 interval）
+		for num_key in ["hp", "attack_light", "attack_armor", "attack_air",
+						"defense_light", "defense_armor", "defense_air",
+						"attack_range", "attack_interval",
+						"attack_light_interval", "attack_armor_interval", "attack_air_interval",
+						"combat_kind", "weapon_type", "speed", "swarm_unit"]:
+			if unified_arch_cfg.has(num_key):
+				cfg[num_key] = unified_arch_cfg[num_key]
+		_manifest_merged[aid] = cfg
 
 
 static func get_all_ids() -> Array:

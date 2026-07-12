@@ -94,5 +94,4 @@ static func get_drops_for_level(level: int) -> Dictionary:
 		ID_RESEARCH_POINTS: int(round(base_research)),
 	}
 
-static func get_specific_permit_id(card_id: String) -> String:
-	return "permit_card_%s" % String(card_id).strip_edges()
+## v7.x 平衡修订：get_specific_permit_id 已删除（v7.3 许可证系统移除后的孤儿函数，全项目零调用）

@@ -38,10 +38,10 @@ static func master_defense_hp_multiplier(master_stats: Dictionary) -> float:
 	var dfn: float = float(master_stats.get("defense", 0.0))
 	if dfn <= 0.0:
 		return 1.0
-	# v6.2 曾削弱血量加成(0.0003→0.0001)；v6.11 恢复 0.0003；v6.12 增强至 0.0006：
-	# 配合 m_atk 0.0008 的增强，让敌方产兵不再过脆。
-	# 新系数下 master016(def200)→1.12x、master030(def200)→1.12x，攻防对称。
-	return 1.0 + dfn * 0.0006
+	# v6.2 曾削弱血量加成(0.0003→0.0001)；v6.11 恢复 0.0003；v6.12 增强至 0.0006；
+	# v7.x 平衡修订：提至 0.0008 与 m_atk 系数对称（原 0.0006 使攻端加成是防端 6.7×）。
+	# 新系数下 master016(def200)→1.16x、master030(def200)→1.16x，攻防对称。
+	return 1.0 + dfn * 0.0008
 
 
 static func _pressure_mul(pressure: Dictionary, key: String) -> float:
@@ -51,6 +51,8 @@ static func _pressure_mul(pressure: Dictionary, key: String) -> float:
 
 
 ## 从 GameManager / PhaseInstrument 等聚合；未启用时返回空字典（等价全 1）
+## v7.x 平衡修订标注：此为预留未接通的难度调节点（p_hp/p_atk/p_spd 在 resolve_classic_enemy 链路中
+## 恒为 1.0）。若未来要启用「我方养成反向影响敌方难度」，在此写入 hp_mul/attack_mul/speed_mul 即可。
 static func collect_player_pressure() -> Dictionary:
 	## PhaseInstrumentManager / StatBoostManager：若 GDD 规定「我方养成影响敌难度」，在此写入 hp_mul / attack_mul 等
 	return {}
@@ -267,6 +269,11 @@ static func resolve_classic_enemy(archetype_id: String, ctx: EnemyStatContext) -
 				def_air = single_def
 	# 格子战单一 defense：取三维中最大值（与 build_stats_from_card 一致）
 	var def_out: float = maxf(def_l, maxf(def_a, def_air))
+	# v8.1: 三维攻速——cfg 有三维 interval 则各自读取，否则用单一 attack_interval 统一
+	var base_ivl: float = float(cfg.get("attack_interval", 1.0))
+	var ivl_l: float = float(cfg.get("attack_light_interval", base_ivl))
+	var ivl_a: float = float(cfg.get("attack_armor_interval", base_ivl))
+	var ivl_air: float = float(cfg.get("attack_air_interval", base_ivl))
 	# v6.3 修复：move_speed 读 cfg.speed（而非硬编码 0.0）
 	# v6.9: speed 乘区接入（p_spd 历史 + f_spd 新增势力加成）；move_speed 为负（向左），
 	# 速度更快=绝对值更大，所以用 |speed|×乘子 再取负；maxf 保护速度不低于原始值避免变慢
@@ -285,7 +292,10 @@ static func resolve_classic_enemy(archetype_id: String, ctx: EnemyStatContext) -
 		"defense_air": def_air,
 		"combat_kind": combat_kind,
 		"attack_range": float(cfg.get("attack_range", 100.0)),
-		"attack_interval": float(cfg.get("attack_interval", 1.0)),
+		"attack_interval": base_ivl,
+		"attack_light_interval": ivl_l,
+		"attack_armor_interval": ivl_a,
+		"attack_air_interval": ivl_air,
 		"move_speed": move_speed_out,
 		"weapon_type": int(cfg.get("weapon_type", 0)),  # default SMG
 		"weapon_label": String(cfg.get("weapon_label", "")),

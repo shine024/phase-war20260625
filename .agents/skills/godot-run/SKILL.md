@@ -14,12 +14,12 @@ disable-model-invocation: true
 
 ### 启动游戏（带窗口）
 ```powershell
-& "E:\下载\Godot_4.41\Godot_v4.5-stable_win64.exe" --rendering-driver opengl3 --path "."
+& "D:/Downloads/Godot/Godot_v4.5.1-stable_win64.exe" --rendering-driver opengl3 --path "."
 ```
 
 ### 指定场景运行
 ```powershell
-& "E:\下载\Godot_4.41\Godot_v4.5-stable_win64.exe" --rendering-driver opengl3 --path "." scenes/main.tscn
+& "D:/Downloads/Godot/Godot_v4.5.1-stable_win64.exe" --rendering-driver opengl3 --path "." scenes/main.tscn
 ```
 
 ## 使用场景

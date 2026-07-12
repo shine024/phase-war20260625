@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>相位战争 · 火焰与爆炸特效 v5</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#04060c;color:#a0a8b8;font-family:"Microsoft YaHei",sans-serif;padding:8px;overflow-x:hidden}
+h1{text-align:center;color:#ff6b35;font-size:18px;margin:6px 0 2px;letter-spacing:2px}
+.sub{text-align:center;color:#304050;font-size:9px;margin-bottom:10px}
+h2{color:#ff6b35;border-left:3px solid #ff6b35;padding-left:8px;margin:16px 0 6px;font-size:13px}
+p.tip{font-size:8px;color:#3a4a5a;margin:-4px 0 6px;line-height:1.5}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:7px;margin-bottom:8px}
+.card{background:#080c16;border:1px solid #1a1210;border-radius:4px;overflow:hidden}
+.card:hover{border-color:#ff6b35}
+.card .canvas-wrap{width:100%;height:160px;background:#040810;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.card .info{padding:5px 7px}
+.card .num{font-size:7px;color:#3a2a1a;font-weight:bold}
+.card .name{font-size:10px;color:#887868;margin-top:1px}
+.card .desc{font-size:7px;color:#483828;margin-top:1px;line-height:1.5}
+.tag{display:inline-block;font-size:6px;padding:1px 3px;border-radius:2px;margin-top:1px}
+.tag-fire{background:#2a1508;color:#ff8a40}
+canvas{image-rendering:auto}
+</style>
+</head>
+<body>
+<h1>相位战争 · 火焰与爆炸特效 v5</h1>
+<p class="sub">真实火焰物理 — 温度梯度燃烧 + 浮力对流 + 湍流卷吸 + 冲击波膨胀 + 火球成长</p>
+
+<h2>一、推进火焰（子弹/火箭尾焰）</h2>
+<p class="tip">每发子弹尾部喷射高温火焰粒子流：白热核心(1.0,0.95,0.8) → 亮黄(1,0.8,0.2) → 橙(1,0.5,0.1) → 暗红(0.6,0.1,0.05) → 灰烟(0.3,0.3,0.28)</p>
+<div class="grid">
+<div class="card"><div class="canvas-wrap"><canvas id="c_flame_direct"></canvas></div><div class="info"><div class="num">#1</div><div class="name">直射子弹火焰</div><div class="desc">高速子弹尾部喷流 | 密集火焰粒子 + 高温辉光 | 白热→橙→灰烟消散</div><span class="tag tag-fire">火焰</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_flame_rocket"></canvas></div><div class="info"><div class="num">#2</div><div class="name">火箭弹推进火焰</div><div class="desc">粗大锥形火焰 | 高温核心区 + 外围湍流卷吸 + 大量烟雾羽流</div><span class="tag tag-fire">火焰</span></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_flame_muzzle"></canvas></div><div class="info"><div class="num">#3</div><div class="name">炮口爆燃</div><div class="desc">发射瞬间球状火焰膨胀 | 白热核心快速扩散 → 橙红光晕 → 烟雾升腾</div><span class="tag tag-fire">爆燃</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_flame_indirect"></canvas></div><div class="info"><div class="num">#4</div><div class="name">曲射弹道尾焰</div><div class="desc">抛物线飞行中持续喷射火焰 + 湍流尾迹云 | 重力下落 + 浮力上升</div><span class="tag tag-fire">火焰</span></div></div>
+</div>
+
+<h2>二、爆炸火球（命中瞬间）</h2>
+<p class="tip">爆炸 = 火球膨胀(温度骤降) + 冲击波环 + 碎片飞溅 + 烟尘上升。火球从白热→亮黄→橙→暗红→黑烟，体积先膨胀后消散。</p>
+<div class="grid">
+<div class="card"><div class="canvas-wrap"><canvas id="c_exp_light"></canvas></div><div class="info"><div class="num">#5</div><div class="name">轻武器爆炸</div><div class="desc">小型火球(20px) | 快速膨胀→收缩 | 少量火花飞溅 | 1.2s消散</div><span class="tag tag-fire">爆炸</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_exp_rocket"></canvas></div><div class="info"><div class="num">#6</div><div class="name">火箭弹爆炸</div><div class="desc">大型火球(50px) | 猛烈膨胀 | 大量碎片+浓烟羽流 | 2.0s消散</div><span class="tag tag-fire">爆炸</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_exp_missile"></canvas></div><div class="info"><div class="num">#7</div><div class="name">导弹爆炸</div><div class="desc">超大火球(65px) | 二次爆燃 | 金属碎片四溅 | 浓密黑烟柱</div><span class="tag tag-fire">爆炸</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_exp_nuke"></canvas></div><div class="info"><div class="num">#8</div><div class="name">核爆火球</div><div class="desc">巨型火球(90px) | 蘑菇云形成 | 冲击波远传 | 强闪光→暗红→黑烟</div><span class="tag tag-fire">爆炸</span></div></div>
+</div>
+
+<h2>三、爆炸碎片与烟尘</h2>
+<p class="tip">碎片：金属/混凝土块受重力抛物线下落。烟尘：热气体浮力上升 + 湍流扩散 + 逐渐冷却变暗。</p>
+<div class="grid">
+<div class="card"><div class="canvas-wrap"><canvas id="c_debris"></canvas></div><div class="info"><div class="num">#9</div><div class="name">金属碎片飞溅</div><div class="desc">不规则碎片(方形粒子) | 初速度径向 | 重力抛物线坠落 | 火星拖尾</div><span class="tag tag-fire">碎片</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_smoke"></canvas></div><div class="info"><div class="num">#10</div><div class="name">烟雾羽流</div><div class="desc">热烟上升(负重力) | 湍流卷吸扩大 | 温度降低变暗 | 最终消散</div><span class="tag tag-fire">烟尘</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_shockwave"></canvas></div><div class="info"><div class="num">#11</div><div class="name">冲击波环</div><div class="desc">高压波阵面 | 快速膨胀 | 波纹扰动 | 带动周围烟尘运动</div><span class="tag tag-fire">冲击波</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_fireball"></canvas></div><div class="info"><div class="num">#12</div><div class="name">火球演化全过程</div><div class="desc">白热→亮黄→橙→暗红→黑烟 | 先膨胀后收缩 | 内部湍流翻滚</div><span class="tag tag-fire">火球</span></div></div>
+</div>
+
+<h2>四、综合场景</h2>
+<div class="grid">
+<div class="card"><div class="canvas-wrap"><canvas id="c_scene_rocket_hit"></canvas></div><div class="info"><div class="num">#13</div><div class="name">火箭弹命中场景</div><div class="desc">火箭弹飞来 → 命中瞬间火球爆发 → 碎片飞溅 + 冲击波 → 浓烟升腾</div><span class="tag tag-fire">综合</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_scene_artillery"></canvas></div><div class="info"><div class="num">#14</div><div class="name">火炮覆盖射击</div><div class="desc">连续多轮曲射炮弹命中 | 火球叠加 + 烟雾累积 + 地面焦痕</div><span class="tag tag-fire">综合</span></div></div>
+</div>
+
+<script>
+// ===== Canvas Setup =====
+const W=240,H=160;
+function setup(id){const c=document.getElementById(id);if(!c)return null;c.width=W;c.height=H;return{c,ctx:c.getContext('2d')}}
+const anims=[];
+function anim(id,fn,fps){const o=setup(id);if(!o)return;let t=0;const iv=1000/(fps||30);
+function loop(){o.ctx.clearRect(0,0,W,H);fn(o.ctx,t,W,H);t+=iv;anims.push(loop);requestAnimationFrame(loop)}
+requestAnimationFrame(loop)}
+
+// ===== Particle System with Real Physics =====
+class Particle{
+    constructor(){this.x=0;this.y=0;this.vx=0;this.vy=0;this.life=0;this.maxLife=0;
+        this.r=1;this.g=0.6;this.b=0.1;this.sz=3;this.gravity=-15;this.drag=0.98;
+        this.turbulence=0;this.active=false;this.type='flame'} // flame/debris/smoke/spark
+    reset(x,y,vx,vy,sz,r,g,b,life,gravity,drag,turbulence,type){
+        this.x=x;this.y=y;this.vx=vx;this.vy=vy;this.sz=sz;
+        this.r=r;this.g=g;this.b=b;
+        this.life=life;this.maxLife=life;
+        this.gravity=gravity;this.drag=drag;
+        this.turbulence=turbulence;this.type=type||'flame';
+        this.active=true;return this
+    }
+    update(dt){
+        if(!this.active)return false;
+        this.vy+=this.gravity*dt;
+        const lifeRatio=this.life/this.maxLife;
+        const turbMag=this.turbulence*Math.sqrt(Math.max(0,lifeRatio));
+        this.vx+=(Math.random()-0.5)*turbMag*dt*60;
+        this.vy+=(Math.random()-0.5)*turbMag*dt*30;
+        this.vx*=Math.pow(this.drag,dt*60);
+        this.vy*=Math.pow(this.drag,dt*60);
+        this.x+=this.vx*dt;
+        this.y+=this.vy*dt;
+        this.life-=dt;
+        return this.life>0
+    }
+    get alpha(){return Math.max(0,this.life/this.maxLife)}
+    get radius(){return this.sz*Math.pow(Math.max(0,this.alpha),0.5)}
+}
+
+function emitP(arr,tmpl,count){
+    for(let i=0;i<count;i++){
+        const p=new Particle();
+        p.reset(
+            tmpl.x+(Math.random()-0.5)*(tmpl.spreadX||0),
+            tmpl.y+(Math.random()-0.5)*(tmpl.spreadY||0),
+            tmpl.vx+(Math.random()-0.5)*(tmpl.vSpreadX||0),
+            tmpl.vy+(Math.random()-0.5)*(tmpl.vSpreadY||0),
+            tmpl.sz*(0.4+Math.random()*0.6),
+            tmpl.r,tmpl.g,tmpl.b,
+            tmpl.life*(0.3+Math.random()*0.7),
+            tmpl.gravity||0,tmpl.drag||0.98,tmpl.turbulence||0,
+            tmpl.type||'flame'
+        );
+        arr.push(p);
+    }
+    let w=0;
+    for(let i=0;i<arr.length;i++){if(arr[i].update(0.016)){arr[w++]=arr[i]}else{arr[i].active=false}}
+    arr.length=w;
+}
+
+function drawParticle(ctx,p){
+    if(!p.active)return;
+    const a=p.alpha;
+    ctx.globalAlpha=a*(p.type==='smoke'?0.4:0.85);
+    const rr=Math.round(p.r*255),gg=Math.round(p.g*255),bb=Math.round(p.b*255);
+    ctx.fillStyle=`rgb(${rr},${gg},${bb})`;
+    ctx.shadowColor=`rgb(${rr},${gg},${bb})`;
+    ctx.shadowBlur=p.radius*4;
+    if(p.type==='debris'){
+        ctx.fillRect(p.x-p.radius,p.y-p.radius,p.radius*2,p.radius*2);
+    }else{
+        ctx.beginPath();ctx.arc(p.x,p.y,Math.max(0.3,p.radius),0,Math.PI*2);ctx.fill();
+    }
+}
+
+// ===== Fire color helper =====
+// Returns fire color based on temperature (1.0=hottest/white, 0.0=coolest/dark)
+function fireColor(temp){
+    if(temp>0.85){return{r:1,g:0.95,b:0.8}} // white-hot
+    if(temp>0.7){return{r:1,g:0.9,b:0.3}}   // bright yellow
+    if(temp>0.5){return{r:1,g:0.6,b:0.1}}    // orange
+    if(temp>0.3){return{r:0.85,g:0.25,b:0.05}} // dark orange/red
+    if(temp>0.15){return{r:0.5,g:0.08,b:0.02}} // deep red
+    return{r:0.25,g:0.22,b:0.2} // gray smoke
+}
+
+// ===== 1. FLAME EFFECTS =====
+
+// Direct bullet flame trail
+anim('c_flame_direct',(ctx,t,w,h)=>{
+    const prog=(t%2000)/2000;
+    const bx=15+prog*210;
+    const by=h/2;
+    
+    // Flame particles behind bullet (temperature gradient along trail)
+    const flames=[];
+    // Hot core flames
+    for(let i=0;i<4;i++){
+        const age=t/1000-i*0.015;
+        if(age<0)continue;
+        const temp=Math.max(0,1-age/0.15);
+        const fc=fireColor(temp);
+        flames.push(new Particle().reset(
+            bx-3-age*180+(Math.random()-0.5)*4,
+            by+(Math.random()-0.5)*4,
+            -150+(Math.random()-0.5)*30, (Math.random()-0.5)*10,
+            2.5,fc.r,fc.g,fc.b,0.15,0,0.96,8,'flame'
+        ));
+    }
+    // Cooler outer flames
+    for(let i=0;i<3;i++){
+        const age=t/1000-i*0.025;
+        if(age<0)continue;
+        const temp=Math.max(0,1-age/0.2);
+        const fc=fireColor(temp);
+        flames.push(new Particle().reset(
+            bx-8-age*140+(Math.random()-0.5)*6,
+            by+(Math.random()-0.5)*6,
+            -100+(Math.random()-0.5)*20, (Math.random()-0.5)*15,
+            3,fc.r,fc.g,fc.b,0.2,0,0.97,12,'flame'
+        ));
+    }
+    // Smoke
+    for(let i=0;i<2;i++){
+        const age=t/1000-i*0.04;
+        if(age<0)continue;
+        const temp=Math.max(0,1-age/0.35);
+        const fc=fireColor(temp);
+        flames.push(new Particle().reset(
+            bx-15-age*100+(Math.random()-0.5)*8,
+            by+age*20+(Math.random()-0.5)*8,
+            -60+(Math.random()-0.5)*15, -15+(Math.random()-0.5)*10,
+            4,fc.r*0.6,fc.g*0.6,fc.b*0.6,0.35,-8,0.97,20,'smoke'
+        ));
+    }
+    for(let i=0;i<flames.length;i++)drawParticle(ctx,flames[i]);
+    
+    // Bullet body
+    ctx.globalAlpha=1;ctx.shadowBlur=0;
+    ctx.fillStyle='#FFF8B0';ctx.shadowColor='#F5E64D';ctx.shadowBlur=8;
+    ctx.beginPath();
+    ctx.moveTo(bx-5,by-2.5);ctx.lineTo(bx+2,by-1.2);
+    ctx.lineTo(bx+6,by);ctx.lineTo(bx+2,by+1.2);
+    ctx.lineTo(bx-5,by+2.5);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#FFFFFF';
+    ctx.beginPath();ctx.arc(bx+1,by,1.8,0,Math.PI*2);ctx.fill();
+    ctx.globalAlpha=1;ctx.shadowBlur=0;
+},60);
+
+// Rocket flame (larger, more turbulent)
+anim('c_flame_rocket',(ctx,t,w,h)=>{
+    const prog=(t%2400)/2400;
+    const bx=15+prog*210;
+    const by=h/2;
+    
+    // Large flame cone
+    const flames=[];
+    for(let i=0;i<6;i++){
+        const age=t/1000-i*0.012;
+        if(age<0)continue;
+        const temp=Math.max(0,1-age/0.18);
+        const fc=fireColor(temp);
+        const spread=age*25; // flame widens with age
+        flames.push(new Particle().reset(
+            bx-8-age*200+(Math.random()-0.5)*spread,
+            by+(Math.random()-0.5)*spread,
+            -180+(Math.random()-0.5)*40, (Math.random()-0.5)*20,
+            4,fc.r,fc.g,fc.b,0.2,0,0.95,15,'flame'
+        ));
+    }
+    // Thick smoke column
+    for(let i=0;i<4;i++){
+        const age=t/1000-i*0.03;
+        if(age<0)continue;
+        const temp=Math.max(0,1-age/0.4);
+        const fc=fireColor(temp);
+        const spread=age*35;
+        flames.push(new Particle().reset(
+            bx-20-age*150+(Math.random()-0.5)*spread,
+            by+age*30+(Math.random()-0.5)*spread*0.5,
+            -80+(Math.random()-0.5)*30, -25+(Math.random()-0.5)*15,
+            6,fc.r*0.5,fc.g*0.5,fc.b*0.5,0.5,-12,0.97,25,'smoke'
+        ));
+    }
+    for(let i=0;i<flames.length;i++)drawParticle(ctx,flames[i]);
+    
+    // Rocket body
+    ctx.globalAlpha=1;ctx.shadowColor='#FF8C33';ctx.shadowBlur=12;
+    ctx.fillStyle='#FF8C33';
+    ctx.beginPath();
+    ctx.moveTo(bx-8,by-4);ctx.lineTo(bx+6,by-3);
+    ctx.lineTo(bx+11,by);ctx.lineTo(bx+6,by+3);
+    ctx.lineTo(bx-8,by+4);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#FFD54F';ctx.beginPath();ctx.arc(bx+10,by,3,0,Math.PI*2);ctx.fill();
+    ctx.globalAlpha=1;ctx.shadowBlur=0;
+},60);
+
+// Muzzle blast
+anim('c_flame_muzzle',(ctx,t,w,h)=>{
+    const cycle=t%1500;
+    const p=cycle/1500;
+    
+    if(p<0.6){
+        const burn=p/0.6;
+        
+        // Fireball expanding
+        const fireR=5+burn*45;
+        const temp=Math.max(0,1-burn*1.2);
+        const fc=fireColor(temp);
+        
+        // Fire particles
+        const fires=[];
+        for(let i=0;i<12;i++){
+            const a=(Math.PI*2/12)*i+burn*2;
+            const d=burn*50;
+            fires.push(new Particle().reset(
+                w/2+Math.cos(a)*d,h/2+Math.sin(a)*d,
+                Math.cos(a)*80,Math.sin(a)*80,
+                3+Math.random()*2,
+                fc.r,fc.g,fc.b,
+                0.3-burn*0.15,0,0.96,10,'flame'
+            ));
+        }
+        for(let i=0;i<fires.length;i++)drawParticle(ctx,fires[i]);
+        
+        // Fireball glow
+        ctx.globalAlpha=(1-burn*0.8)*0.6;
+        ctx.fillStyle=`rgb(${Math.round(fc.r*255)},${Math.round(fc.g*255)},${Math.round(fc.b*255)})`;
+        ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=25*(1-burn*0.5);
+        ctx.beginPath();ctx.arc(w/2,h/2,fireR,0,Math.PI*2);ctx.fill();
+        
+        // Inner bright core
+        if(burn<0.4){
+            ctx.globalAlpha=(1-burn/0.4)*0.8;
+            ctx.fillStyle='#FFFFFF';ctx.shadowColor='#FFFFFF';ctx.shadowBlur=20;
+            ctx.beginPath();ctx.arc(w/2,h/2,fireR*0.3*(1-burn/0.4)+3,0,Math.PI*2);ctx.fill();
+        }
+        
+        // Smoke rising
+        if(burn>0.2){
+            const smokeAge=(burn-0.2)/0.8;
+            const smoke=[];
+            for(let i=0;i<6;i++){
+                const a=(Math.PI*2/6)*i+smokeAge;
+                smoke.push(new Particle().reset(
+                    w/2+Math.cos(a)*smokeAge*20,h/2-smokeAge*40,
+                    (Math.random()-0.5)*20,-30-Math.random()*20,
+                    5+smokeAge*8,0.3,0.28,0.25,0.6,-10,0.97,15,'smoke'
+                ));
+            }
+            for(let i=0;i<smoke.length;i++)drawParticle(ctx,smoke[i]);
+        }
+    }
+    ctx.globalAlpha=1;ctx.shadowBlur=0;
+},60);
+
+// Indirect trail flame
+anim('c_flame_indirect',(ctx,t,w,h)=>{
+    const prog=(t%2600)/2600;
+    const start={x:15,y:h-15};
+    const end={x:w-15,y:h-15};
+    const apex={x:(start.x+end.x)/2,y:(start.y+end.y)/2-70};
+    const pt=bPt(start,apex,end,prog);
+    
+    // Trail flame particles
+    const flames=[];
+    for(let i=0;i<5;i++){
+        const age=t/1000-i*0.02;
+        if(age<0)continue;
+        const tp=Math.max(0,prog-age*0.08);
+        const tp2=bPt(start,apex,end,tp);
+        const temp=Math.max(0,1-age/0.2);
+        const fc=fireColor(temp);
+        flames.push(new Particle().reset(
+            tp2.x-5+(Math.random()-0.5)*6,
+            tp2.y+(Math.random()-0.5)*6,
+            -60+(Math.random()-0.5)*20,(Math.random()-0.5)*15,
+            2.5,fc.r,fc.g,fc.b,0.18,0,0.96,12,'flame'
+        ));
+    }
+    for(let i=0;i<flames.length;i++)drawParticle(ctx,flames[i]);
+    
+    // Smoke trail
+    const smoke=[];
+    for(let i=0;i<3;i++){
+        const age=t/1000-i*0.035;
+        if(age<0)continue;
+        const tp=Math.max(0,prog-age*0.06);
+        const tp2=bPt(start,apex,end,tp);
+        smoke.push(new Particle().reset(
+            tp2.x+(Math.random()-0.5)*8,
+            tp2.y+age*15+(Math.random()-0.5)*5,
+            (Math.random()-0.5)*15,-10+(Math.random()-0.5)*10,
+            4,0.3,0.28,0.25,0.35,-5,0.97,18,'smoke'
+        ));
+    }
+    for(let i=0;i<smoke.length;i++)drawParticle(ctx,smoke[i]);
+    
+    // Projectile
+    ctx.globalAlpha=1;ctx.shadowColor='#FF8C33';ctx.shadowBlur=10;
+    ctx.fillStyle='#FF8C33';ctx.beginPath();ctx.arc(pt.x,pt.y,4,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#FFD54F';ctx.beginPath();ctx.arc(pt.x,pt.y,2,0,Math.PI*2);ctx.fill();
+    ctx.globalAlpha=1;ctx.shadowBlur=0;
+},60);
+
+// ===== 2. EXPLOSION FIREBALLS =====
+
+function drawExplosion(ctx,cx,cy,time,maxRadius,duration){
+    const p=time/duration;
+    if(p>1)return;
+    
+    // Fireball phase
+    if(p<0.7){
+        const burn=p/0.7;
+        // Radius: rapid expand then slow shrink
+        let r;
+        if(burn<0.3){r=maxRadius*(burn/0.3);}
+        else{r=maxRadius*(1-(burn-0.3)/0.7*0.4);}
+        
+        const temp=Math.max(0,1-burn*1.3);
+        const fc=fireColor(temp);
+        
+        // Fireball glow
+        ctx.globalAlpha=(1-burn*0.6)*0.7;
+        ctx.fillStyle=`rgb(${Math.round(fc.r*255)},${Math.round(fc.g*255)},${Math.round(fc.b*255)})`;
+        ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=20*(1-burn*0.5);
+        ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();
+        
+        // Inner bright core
+        if(burn<0.5){
+            ctx.globalAlpha=(1-burn/0.5)*0.9;
+            ctx.fillStyle='#FFFFFF';ctx.shadowColor='#FFFFFF';ctx.shadowBlur=15;
+            ctx.beginPath();ctx.arc(cx,cy,r*0.4*(1-burn/0.5)+2,0,Math.PI*2);ctx.fill();
+        }
+        
+        // Ejecta particles
+        if(burn<0.4){
+            const sparks=[];
+            const count=Math.floor(burn<0.15?20:10);
+            for(let i=0;i<count;i++){
+                const a=(Math.PI*2/count)*i+burn*3;
+                const d=r*(0.5+Math.random()*0.5);
+                sparks.push(new Particle().reset(
+                    cx+Math.cos(a)*d,cy+Math.sin(a)*d,
+                    Math.cos(a)*60*(1-burn),Math.sin(a)*60*(1-burn),
+                    2,fc.r,fc.g,fc.b,0.3-burn*0.2,0,0.96,5,'spark'
+                ));
+            }
+            for(let i=0;i<sparks.length;i++)drawParticle(ctx,sparks[i]);
+        }
+    }
+    
+    // Smoke phase
+    if(p>0.5){
+        const smokeBurn=(p-0.5)/0.5;
+        const smoke=[];
+        for(let i=0;i<8;i++){
+            const a=(Math.PI*2/8)*i+smokeBurn*2;
+            smoke.push(new Particle().reset(
+                cx+Math.cos(a)*smokeBurn*15+(Math.random()-0.5)*10,
+                cy-smokeBurn*50+(Math.random()-0.5)*10,
+                (Math.random()-0.5)*15,-20-Math.random()*15,
+                5+smokeBurn*10,0.25,0.22,0.2,0.8, -8,0.97,20,'smoke'
+            ));
+        }
+        for(let i=0;i<smoke.length;i++)drawParticle(ctx,smoke[i]);
+    }
+    
+    ctx.globalAlpha=1;ctx.shadowBlur=0;
+}
+
+anim('c_exp_light',(ctx,t,w,h)=>{const c=t%1200;drawExplosion(ctx,w/2,h/2,c,22,1200)});
+anim('c_exp_rocket',(ctx,t,w,h)=>{const c=t%2000;drawExplosion(ctx,w/2,h/2,c,50,2000)});
+anim('c_exp_missile',(ctx,t,w,h)=>{const c=t%2200;drawExplosion(ctx,w/2,h/2,c,65,2200)});
+anim('c_exp_nuke',(ctx,t,w,h)=>{const c=t%3000;drawExplosion(ctx,w/2,h/2,c,90,3000)});
+
+// ===== 3. DEBRIS & SMOKE =====
+
+// Metal debris
+anim('c_debris',(ctx,t,w,h)=>{
+    const cycle=t%1500;
+    const p=cycle/1500;
+    
+    if(p<0.6){
+        const burn=p/0.6;
+        const debris=[];
+        // Radial fragments
+        for(let i=0;i<12;i++){
+            const a=(Math.PI*2/12)*i;
+            const speed=40+Math.random()*60;
+            debris.push(new Particle().reset(
+                w/2,h/2,
+                Math.cos(a)*speed,Math.sin(a)*speed+30, // gravity pull down
+                2+Math.random()*2,
+                0.9,0.6,0.3, // metallic orange
+                0.8-burn*0.3,150,0.97,3,'debris'
+            ));
+        }
+        // Sparks from debris
+        for(let i=0;i<8;i++){
+            const a=Math.random()*Math.PI*2;
+            debris.push(new Particle().reset(
+                w/2+Math.cos(a)*burn*40,h/2+Math.sin(a)*burn*40,
+                Math.cos(a)*30,Math.sin(a)*30+40,
+                1.5,1,0.8,0.3,0.4,100,0.96,5,'spark'
+            ));
+        }
+        for(let i=0;i<debris.length;i++)drawParticle(ctx,debris[i]);
+        
+        // Explosion flash
+        if(burn<0.15){
+            ctx.globalAlpha=(1-burn/0.15)*0.7;ctx.fillStyle='#FFFFFF';
+            ctx.shadowColor='#FFFFFF';ctx.shadowBlur=20;
+            ctx.beginPath();ctx.arc(w/2,h/2,15*(1-burn/0.15),0,Math.PI*2);ctx.fill();
+        }
+    }
+    ctx.globalAlpha=1;ctx.shadowBlur=0;
+},60);
+
+// Smoke plume
+anim('c_smoke',(ctx,t,w,h)=>{
+    const cycle=t%2500;
+    const p=cycle/2500;
+    
+    if(p<0.8){
+        const burn=p/0.8;
+        const smoke=[];
+        
+        // Rising smoke column
+        for(let i=0;i<15;i++){
+            const age=t/1000-i*0.05;
+            if(age<0)continue;
+            const rise=age*60;
+            const spread=age*30;
+            const temp=Math.max(0,1-age/0.5);
+            const fc=fireColor(temp);
+            smoke.push(new Particle().reset(
+                w/2+(Math.random()-0.5)*spread*2,
+                h-20-rise,
+                (Math.random()-0.5)*20,-15-Math.random()*10,
+                4+age*8,fc.r*0.4,fc.g*0.4,fc.b*0.4,0.5, -10,0.97,15,'smoke'
+            ));
+        }
+        for(let i=0;i<smoke.length;i++)drawParticle(ctx,smoke[i]);
+        
+        // Mushroom cap
+        if(burn>0.3&&burn<0.7){
+            const capBurn=(burn-0.3)/0.4;
+            const capR=20+capBurn*40;
+            ctx.globalAlpha=(1-capBurn)*0.3;
+            ctx.fillStyle='#444';ctx.shadowBlur=0;
+            ctx.beginPath();
+            ctx.ellipse(w/2,h-20-60-capBurn*20,capR,capR*0.4,0,0,Math.PI*2);
+            ctx.fill();
+        }
+    }
+    ctx.globalAlpha=1;ctx.shadowBlur=0;
+},60);
+
+// Shockwave ring
+anim('c_shockwave',(ctx,t,w,h)=>{
+    const cycle=t%1200;
+    const p=cycle/1200;
+    
+    if(p<0.5){
+        const burn=p/0.5;
+        const ringR=5+burn*80;
+        const temp=Math.max(0,1-burn);
+        const fc=fireColor(temp);
+        
+        // Shockwave ring
+        ctx.globalAlpha=(1-burn)*0.6;
+        ctx.strokeStyle=`rgb(${Math.round(fc.r*255)},${Math.round(fc.g*255)},${Math.round(fc.b*255)})`;
+        ctx.shadowColor=ctx.strokeStyle;ctx.shadowBlur=12;
+        ctx.lineWidth=3*(1-burn)+1;
+        ctx.beginPath();
+        for(let i=0;i<48;i++){
+            const a=(Math.PI*2/48)*i;
+            const ripple=Math.sin(a*10+cycle/20)*2*burn;
+            const r=ringR+ripple;
+            const px=w/2+Math.cos(a)*r,py=h/2+Math.sin(a)*r;
+            i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+        }
+        ctx.closePath();ctx.stroke();
+        
+        // Secondary ring
+        if(burn>0.1){
+            const r2=5+(burn-0.1)/0.4*60;
+            ctx.globalAlpha=(1-burn)*0.3;
+            ctx.strokeStyle=`rgb(${Math.round(fc.r*200)},${Math.round(fc.g*200)},${Math.round(fc.b*200)})`;
+            ctx.lineWidth=1.5;ctx.shadowBlur=6;
+            ctx.beginPath();ctx.arc(w/2,h/2,r2,0,Math.PI*2);ctx.stroke();
+        }
+    }
+    ctx.globalAlpha=1;ctx.shadowBlur=0;
+},60);
+
+// Fireball evolution
+anim('c_fireball',(ctx,t,w,h)=>{
+    const cycle=t%3000;
+    const p=cycle/3000;
+    
+    // Phase 1: Expansion (0-0.3)
+    // Phase 2: Peak (0.3-0.5)
+    // Phase 3: Cooling (0.5-0.8)
+    // Phase 4: Smoke (0.8-1.0)
+    
+    let r,temp;
+    if(p<0.3){
+        const bp=p/0.3;
+        r=bp*55;
+        temp=1-bp*0.4;
+    }else if(p<0.5){
+        r=55;
+        temp=0.6-(p-0.3)/0.2*0.2;
+    }else if(p<0.8){
+        const cp=(p-0.5)/0.3;
+        r=55*(1-cp*0.3);
+        temp=Math.max(0,0.4-cp*0.35);
+    }else{
+        r=55*0.7*(1-(p-0.8)/0.2);
+        temp=0;
+    }
+    
+    const fc=fireColor(Math.max(0,temp));
+    
+    // Fireball
+    if(r>1){
+        ctx.globalAlpha=Math.max(0,1-p*0.8)*0.65;
+        ctx.fillStyle=`rgb(${Math.round(fc.r*255)},${Math.round(fc.g*255)},${Math.round(fc.b*255)})`;
+        ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=18;
+        ctx.beginPath();ctx.arc(w/2,h/2,r,0,Math.PI*2);ctx.fill();
+    }
+    
+    // Inner core
+    if(p<0.5&&r>5){
+        ctx.globalAlpha=(1-p/0.5)*0.7;
+        ctx.fillStyle='#FFFFFF';ctx.shadowColor='#FFFFFF';ctx.shadowBlur=12;
+        ctx.beginPath();ctx.arc(w/2,h/2,r*0.35,0,Math.PI*2);ctx.fill();
+    }
+    
+    // Turbulent inner particles
+    if(p<0.7){
+        const burns=p/0.7;
+        const inner=[];
+        for(let i=0;i<10;i++){
+            const a=(Math.PI*2/10)*i+burns*5;
+            const d=r*(0.2+Math.random()*0.6);
+            inner.push(new Particle().reset(
+                w/2+Math.cos(a)*d,h/2+Math.sin(a)*d,
+                (Math.random()-0.5)*30,(Math.random()-0.5)*30,
+                2,fc.r,fc.g,fc.b,0.2,0,0.96,12,'flame'
+            ));
+        }
+        for(let i=0;i<inner.length;i++)drawParticle(ctx,inner[i]);
+    }
+    
+    // Smoke rising
+    if(p>0.6){
+        const sb=(p-0.6)/0.4;
+        const smoke=[];
+        for(let i=0;i<8;i++){
+            const a=(Math.PI*2/8)*i+sb*3;
+            smoke.push(new Particle().reset(
+                w/2+Math.cos(a)*sb*10,
+                h/2-sb*60,
+                (Math.random()-0.5)*10,-18-Math.random()*10,
+                4+sb*8,0.2,0.18,0.15,0.5,-8,0.97,18,'smoke'
+            ));
+        }
+        for(let i=0;i<smoke.length;i++)drawParticle(ctx,smoke[i]);
+    }
+    
+    ctx.globalAlpha=1;ctx.shadowBlur=0;
+},60);
+
+// ===== 4. COMPOSITE SCENES =====
+
+// Rocket hit scene
+anim('c_scene_rocket_hit',(ctx,t,w,h)=>{
+    const cycle=t%3500;
+    const p=cycle/3500;
+    
+    // Phase 1: Rocket flying in (0-0.25)
+    if(p<0.25){
+        const rp=p/0.25;
+        const rx=w-20-rp*180;
+        const ry=h/2+Math.sin(rp*Math.PI*4)*2;
+        
+        // Rocket flame
+        const flames=[];
+        for(let i=0;i<4;i++){
+            const age=t/1000-i*0.015;
+            if(age<0)continue;
+            const temp=Math.max(0,1-age/0.15);
+            const fc=fireColor(temp);
+            flames.push(new Particle().reset(
+                rx+5+age*180+(Math.random()-0.5)*4,ry+(Math.random()-0.5)*4,
+                150+(Math.random()-0.5)*30,(Math.random()-0.5)*10,
+                3,fc.r,fc.g,fc.b,0.15,0,0.96,10,'flame'
+            ));
+        }
+        for(let i=0;i<flames.length;i++)drawParticle(ctx,flames[i]);
+        
+        // Rocket body
+        ctx.globalAlpha=1;ctx.shadowColor='#FF8C33';ctx.shadowBlur=10;
+        ctx.fillStyle='#FF8C33';
+        ctx.beginPath();
+        ctx.moveTo(rx-7,ry-3.5);ctx.lineTo(rx+5,ry-2.5);
+        ctx.lineTo(rx+9,ry);ctx.lineTo(rx+5,ry+2.5);
+        ctx.lineTo(rx-7,ry+3.5);ctx.closePath();ctx.fill();
+        ctx.fillStyle='#FFD54F';ctx.beginPath();ctx.arc(rx+8,ry,2,0,Math.PI*2);ctx.fill();
+        ctx.globalAlpha=1;ctx.shadowBlur=0;
+    }
+    
+    // Phase 2: Impact explosion (0.25-0.6)
+    if(p>=0.25&&p<0.6){
+        const ep=(p-0.25)/0.35;
+        drawExplosion(ctx,w/2,h/2,ep*800,500,55);
+        
+        // Debris
+        if(ep<0.4){
+            const debris=[];
+            for(let i=0;i<10;i++){
+                const a=(Math.PI*2/10)*i;
+                debris.push(new Particle().reset(
+                    w/2,h/2,
+                    Math.cos(a)*50,Math.sin(a)*50+40,
+                    2,0.9,0.6,0.3,0.6,120,0.97,5,'debris'
+                ));
+            }
+            for(let i=0;i<debris.length;i++)drawParticle(ctx,debris[i]);
+        }
+    }
+    
+    // Phase 3: Smoke rising (0.6-1.0)
+    if(p>=0.6){
+        const sp=(p-0.6)/0.4;
+        const smoke=[];
+        for(let i=0;i<10;i++){
+            smoke.push(new Particle().reset(
+                w/2+(Math.random()-0.5)*20,
+                h/2-sp*50,
+                (Math.random()-0.5)*10,-15-Math.random()*10,
+                4+sp*6,0.25,0.22,0.2,0.5,-8,0.97,15,'smoke'
+            ));
+        }
+        for(let i=0;i<smoke.length;i++)drawParticle(ctx,smoke[i]);
+    }
+},60);
+
+// Artillery barrage
+anim('c_scene_artillery',(ctx,t,w,h)=>{
+    const cycle=t%5000;
+    const p=cycle/5000;
+    
+    // Multiple impact points
+    const impacts=[
+        {x:50,y:120,t:0.1,dur:1.2},
+        {x:120,y:100,t:0.25,dur:1.5},
+        {x:180,y:130,t:0.4,dur:1.3},
+        {x:80,y:110,t:0.55,dur:1.6},
+        {x:150,y:125,t:0.7,dur:1.4},
+    ];
+    
+    impacts.forEach(imp=>{
+        const impactTime=(p-imp.t)/((1-p)<0.3?0.3:1);
+        if(impactTime>0&&impactTime<imp.dur/1500){
+            const ep=impactTime/(imp.dur/1500);
+            drawExplosion(ctx,imp.x,imp.y,ep*800,imp.dur*1000);
+            
+            // Ground scorch
+            if(ep>0.3){
+                ctx.globalAlpha=(ep-0.3)*0.3;
+                ctx.fillStyle='#2a1a0a';ctx.shadowBlur=0;
+                ctx.beginPath();
+                ctx.ellipse(imp.x,imp.y+10,15*ep,5*ep,0,0,Math.PI*2);
+                ctx.fill();
+            }
+        }
+    });
+    
+    // Cumulative smoke
+    if(p>0.3){
+        const smoke=[];
+        impacts.forEach(imp=>{
+            const age=(p-imp.t)*2;
+            if(age>0&&age<1){
+                smoke.push(new Particle().reset(
+                    imp.x+(Math.random()-0.5)*10,
+                    imp.y-age*40,
+                    (Math.random()-0.5)*8,-12-Math.random()*8,
+                    3+age*5,0.2,0.18,0.15,0.4,-8,0.97,12,'smoke'
+                ));
+            }
+        });
+        for(let i=0;i<smoke.length;i++)drawParticle(ctx,smoke[i]);
+    }
+},60);
+
+// Bezier helper
+function bPt(p0,p1,p2,t){return{x:(1-t)*(1-t)*p0.x+2*(1-t)*t*p1.x+t*t*p2.x,y:(1-t)*(1-t)*p0.y+2*(1-t)*t*p1.y+t*t*p2.y}}
+</script>
+</body>
+</html>

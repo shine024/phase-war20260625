@@ -218,10 +218,15 @@ static func ability_nano_swarm(star: int) -> Dictionary:
 		"description": "开局释放纳米虫群，持续%d秒，敌方每秒掉%.1f%%最大血量" % [int(duration), hp_pct_per_sec * 100],
 	}
 
-## 7. 巨型能量罩（通用势力）— 开局我方全体获得固定血量护盾（每单位上限3000）
+## 7. 巨型能量罩（通用势力）— 开局我方全体获得护盾（星级分级）
+## v7.x 平衡修订：恢复星级分级（原统一 3000 在近未来 HP 2000+ 战场近乎无效）。
+## 取 v6.6 原设计（5000/10000/20000）的 ~40%，避免 boss 战护盾过强：
+## 4★=3000 / 6★=5000 / 7★=8000。
 static func ability_mega_shield(star: int) -> Dictionary:
-	# 统一上限3000，星级只影响描述文本
 	var shield_amount: float = 3000.0
+	match star:
+		6: shield_amount = 5000.0
+		7: shield_amount = 8000.0
 	return {
 		"id": "mega_shield",
 		"name": "巨型能量罩",

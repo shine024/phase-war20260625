@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>相位战争 - 弹道与命中特效重设计预览 v2</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#060a14;color:#c8d0e0;font-family:"Microsoft YaHei","Segoe UI",sans-serif;padding:12px;overflow-x:hidden}
+h1{text-align:center;color:#00e5ff;font-size:22px;margin:10px 0 2px;letter-spacing:2px}
+.sub{text-align:center;color:#4a5a70;font-size:11px;margin-bottom:16px}
+h2{color:#00e5ff;border-left:3px solid #00e5ff;padding-left:10px;margin:24px 0 10px;font-size:16px}
+h3{color:#7c4dff;margin:18px 0 6px;font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:14px}
+.card{background:#0d1420;border:1px solid #1a2840;border-radius:6px;overflow:hidden;transition:border-color .3s}
+.card:hover{border-color:#00e5ff}
+.card .canvas-wrap{width:100%;height:140px;background:#080c16;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.card .info{padding:7px 9px}
+.card .num{font-size:9px;color:#3a4a5a;font-weight:bold}
+.card .name{font-size:12px;color:#90a0b8;margin-top:2px}
+.card .desc{font-size:9px;color:#506070;margin-top:3px;line-height:1.6}
+.tag{display:inline-block;font-size:8px;padding:1px 4px;border-radius:3px;margin-top:3px}
+.tag-player{background:#0d2a4a;color:#4fc3f7}
+.tag-enemy{background:#3a0d0d;color:#ef5350}
+canvas{image-rendering:auto}
+</style>
+</head>
+<body>
+<h1>相位战争 · 弹道与命中特效重设计</h1>
+<p class="sub">v2 — 全新粒子系统 + 动态拖尾 + 多层爆炸环，不替换现有资源，仅作预览对比</p>
+
+<!-- ===== SECTION 1: 直射弹道 ===== -->
+<h2>一、直射弹道（增强版）</h2>
+<p style="font-size:10px;color:#4a5a70;margin-bottom:8px">
+改进：弹体增加核心发光层 + 运动模糊拖影 + 不同武器差异化形状/颜色/速度感
+</p>
+<div class="grid">
+<div class="card"><div class="canvas-wrap"><canvas id="c_direct_p"></canvas></div><div class="info"><div class="num">#1</div><div class="name">玩家直射弹体</div><div class="desc">黄白核心 + 半透明能量拖尾 + 运动模糊光晕 | 速度720px/s</div><span class="tag tag-player">玩家方</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_direct_e"></canvas></div><div class="info"><div class="num">#2</div><div class="name">敌方直射弹体</div><div class="desc">橙红核心 + 暗色拖尾 + 红色光晕 | 速度720px/s</div><span class="tag tag-enemy">敌方</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_smg"></canvas></div><div class="info"><div class="num">#3</div><div class="name">冲锋枪</div><div class="desc">紧凑弹头形 | 黄白色 #F5E64D | 快速连续射出</div><span class="tag tag-player">SMG</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_shotgun"></canvas></div><div class="info"><div class="num">#4</div><div class="name">霰弹</div><div class="desc">圆胖丸形 | 散射18度 | 6颗弹丸扩散飞行</div><span class="tag tag-player">SHOTGUN</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_sniper"></canvas></div><div class="info"><div class="num">#5</div><div class="name">狙击弹</div><div class="desc">细长高能弹 | 蓝白光束穿透感 | 速度1100px/s</div><span class="tag tag-player">SNIPER</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_rocket"></canvas></div><div class="info"><div class="num">#6</div><div class="name">火箭弹</div><div class="desc">长粗导弹 | 橙色推进火焰拖尾 + 尾焰粒子</div><span class="tag tag-player">ROCKET</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_laser"></canvas></div><div class="info"><div class="num">#7</div><div class="name">激光</div><div class="desc">Line2D高能光束 | 青色脉动 + 白色内核 | 瞬时命中</div><span class="tag tag-player">LASER</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_omega"></canvas></div><div class="info"><div class="num">#8</div><div class="name">Omega加农炮</div><div class="desc">细长能量弹 | 蓝色等离子光球 + 紫色电弧拖尾</div><span class="tag tag-player">OMEGA</span></div></div>
+</div>
+
+<!-- ===== SECTION 2: 曲射弹道 ===== -->
+<h2>二、曲射弹道（增强版）</h2>
+<p style="font-size:10px;color:#4a5a70;margin-bottom:8px">
+改进：贝塞尔曲线更平滑 + 抛物线轨迹可视化 + 发射/命中时炮口火焰 + 尾迹粒子持续生成
+</p>
+<div class="grid">
+<div class="card"><div class="canvas-wrap"><canvas id="c_indirect_p"></canvas></div><div class="info"><div class="num">#9</div><div class="name">玩家曲射（迫击炮）</div><div class="desc">高弧线抛物线 | 倍率1.6x | 发射口火焰 + 持续尾焰粒子</div><span class="tag tag-player">玩家方</span><span class="tag" style="background:#1a2a1a;color:#aed581">曲射</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_indirect_e"></canvas></div><div class="info"><div class="num">#10</div><div class="name">敌方曲射</div><div class="desc">中弧线抛物线 | 倍率1.0x | 橙色调 + 烟雾尾迹</div><span class="tag tag-enemy">敌方</span><span class="tag" style="background:#1a2a1a;color:#aed581">曲射</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_arc_mortar"></canvas></div><div class="info"><div class="num">#11</div><div class="name">迫击炮弧线 1.6x</div><div class="desc">最高抛物线 | 缓慢上升快速坠落</div><span class="tag" style="background:#1a2a1a;color:#aed581">曲射</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_arc_missile"></canvas></div><div class="info"><div class="num">#12</div><div class="name">导弹弧线 1.0x</div><div class="desc">中等弧线 | 持续推进火焰</div><span class="tag" style="background:#1a2a1a;color:#aed581">曲射</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_arc_rocket"></canvas></div><div class="info"><div class="num">#13</div><div class="name">火箭筒弧线 0.3x</div><div class="desc">低弧线接近平射 | 短促推进</div><span class="tag" style="background:#1a2a1a;color:#aed581">曲射</span></div></div>
+</div>
+
+<!-- ===== SECTION 3: 命中/爆炸特效 ===== -->
+<h2>三、命中/爆炸特效（全新三层组合）</h2>
+<p style="font-size:10px;color:#4a5a70;margin-bottom:8px">
+改进：冲击波环（Polygon2D扩散）+ 主火花粒子（CPUParticles2D径向爆发）+ 碎片烟尘（重型武器专属）
+</p>
+<div class="grid">
+<div class="card"><div class="canvas-wrap"><canvas id="c_impact_smg"></canvas></div><div class="info"><div class="num">#14</div><div class="name">轻武器命中</div><div class="desc">小冲击环(24px) + 18粒子黄白火花 + 快速消散</div><span class="tag tag-player">SMG/RIFLE/PISTOL</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_impact_shotgun"></canvas></div><div class="info"><div class="num">#15</div><div class="name">霰弹命中</div><div class="desc">中环(29px) + 28粒子橙色扩散 + 宽散布角度</div><span class="tag tag-player">SHOTGUN</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_impact_sniper"></canvas></div><div class="info"><div class="num">#16</div><div class="name">狙击命中</div><div class="desc">细环(22px) + 22粒子亮黄集中喷射(55度锥角)</div><span class="tag tag-player">SNIPER</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_impact_rocket"></canvas></div><div class="info"><div class="num">#17</div><div class="name">火箭弹爆炸</div><div class="desc">大环(56px) + 32粒子橙红 + 烟尘云向上飘散</div><span class="tag tag-player">ROCKET/FLAK</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_impact_missile"></canvas></div><div class="info"><div class="num">#18</div><div class="name">导弹爆炸</div><div class="desc">超大环(60px) + 36粒子深橙 + 金属碎片重力下落</div><span class="tag tag-player">MISSILE</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_impact_laser"></canvas></div><div class="info"><div class="num">#19</div><div class="name">激光命中</div><div class="desc">能量灼烧环(22px) + 22粒子蓝白集中喷射(40度)</div><span class="tag tag-player">LASER</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_impact_omega"></canvas></div><div class="info"><div class="num">#20</div><div class="name">Omega加农炮</div><div class="desc">能量爆环(34px) + 28粒子能量蓝 + 大范围冲击</div><span class="tag tag-player">OMEGA_CANNON</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_impact_rail"></canvas></div><div class="info"><div class="num">#21</div><div class="name">电磁轨道炮</div><div class="desc">电磁脉冲环(34px) + 28粒子电磁青 + 电弧散射</div><span class="tag tag-player">RAIL_CANNON</span></div></div>
+</div>
+
+<!-- ===== SECTION 4: 按目标类型命中反馈 ===== -->
+<h2>四、按目标 combat_kind 差异化命中</h2>
+<p style="font-size:10px;color:#4a5a70;margin-bottom:8px">
+相同武器命中不同装甲类型时，色调和震动幅度变化
+</p>
+<div class="grid">
+<div class="card"><div class="canvas-wrap"><canvas id="c_hit_light"></canvas></div><div class="info"><div class="num">#22</div><div class="name">命中轻型单位</div><div class="desc">黄白色调 | 轻微震动1.8px | 快速消散</div><span class="tag tag-player">LIGHT/SUPPORT</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_hit_armor"></canvas></div><div class="info"><div class="num">#23</div><div class="name">命中装甲单位</div><div class="desc">橙红色调 | 中等震动3.2px | 金属碎屑飞溅</div><span class="tag tag-player">ARMOR/FORT</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_hit_air"></canvas></div><div class="info"><div class="num">#24</div><div class="name">命中空中单位</div><div class="desc">纯白强光 | 强烈震动5.0px | 空爆效果</div><span class="tag tag-player">AIR</span></div></div>
+</div>
+
+<!-- ===== SECTION 5: 特殊效果叠加 ===== -->
+<h2>五、特殊伤害效果叠加</h2>
+<div class="grid">
+<div class="card"><div class="canvas-wrap"><canvas id="c_crit"></canvas></div><div class="info"><div class="num">#25</div><div class="name">暴击光环</div><div class="desc">金色脉动双环(46px扩张) + 辐射火花 | 两次脉冲层次感</div><span class="tag" style="background:#2a2a0a;color:#ffd54f">CRIT</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_pierce"></canvas></div><div class="info"><div class="num">#26</div><div class="name">穿透光线</div><div class="desc">紫色穿甲光线(76px长) | 变细淡出 | 方向跟随弹道</div><span class="tag" style="background:#1a0a2a;color:#ce93d8">PIERCE</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_shockwave"></canvas></div><div class="info"><div class="num">#27</div><div class="name">溅射冲击波</div><div class="desc">橙色扩散环(半径按伤害范围) | 渐变色带</div><span class="tag" style="background:#2a1a0a;color:#ff8a65">SPLASH</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_lightning"></canvas></div><div class="info"><div class="num">#28</div><div class="name">闪电链电弧</div><div class="desc">锯齿线段(5段jitter) | 蓝白电弧 | 主目标→次目标</div><span class="tag" style="background:#0a1a2a;color:#82b1ff">CHAIN</span></div></div>
+</div>
+
+<script>
+// ========== Canvas Setup ==========
+const W = 220, H = 140;
+function setup(id){
+    const c = document.getElementById(id);
+    if(!c) return null;
+    c.width = W; c.height = H;
+    return {c, ctx: c.getContext('2d')};
+}
+
+// ========== Animation Registry ==========
+const anims = [];
+function anim(id, fn, fps){
+    const o = setup(id); if(!o) return;
+    let t = 0;
+    const iv = 1000/(fps||30);
+    function frame(){
+        o.ctx.clearRect(0,0,W,H);
+        fn(o.ctx, t, W, H);
+        t += iv;
+        anims.push(frame);
+    }
+    setTimeout(frame, 0);
+}
+
+// ========== Utility Drawing ==========
+function drawGlowCircle(ctx, x, y, r, color, blur){
+    ctx.save();
+    ctx.shadowColor = color;
+    ctx.shadowBlur = blur || 8;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(x, y, Math.max(0.5,r), 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+}
+
+function drawGlowLine(ctx, x1,y1,x2,y2,color,width,blur){
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width || 2;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = blur || 10;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x1,y1);
+    ctx.lineTo(x2,y2);
+    ctx.stroke();
+    ctx.restore();
+}
+
+// Bezier point
+function bezierPt(p0,p1,p2,t){
+    const x=(1-t)*(1-t)*p0.x+2*(1-t)*t*p1.x+t*t*p2.x;
+    const y=(1-t)*(1-t)*p0.y+2*(1-t)*t*p1.y+t*t*p2.y;
+    return {x,y};
+}
+
+// ========== 1. DIRECT PROJECTILES ==========
+
+// Player direct - yellow-white core with energy trail
+anim('c_direct_p', (ctx,t,w,h)=>{
+    const prog = (t % 1800)/1800;
+    const x = 20 + prog * (w-40);
+    const y = h/2 + Math.sin(prog*Math.PI*3)*1.5; // slight jitter
+    
+    // Motion blur trail
+    for(let i=5;i>=1;i--){
+        const tx = x - i*8;
+        ctx.globalAlpha = 0.15*(1-i/6);
+        ctx.fillStyle = '#F5E64D';
+        ctx.fillRect(tx-4, y-1.5, 8, 3);
+    }
+    
+    // Outer glow
+    ctx.globalAlpha = 0.3;
+    ctx.fillStyle = '#F5E64D';
+    ctx.shadowColor = '#F5E64D';
+    ctx.shadowBlur = 12;
+    ctx.beginPath(); ctx.arc(x,y,5,0,Math.PI*2); ctx.fill();
+    
+    // Core body (bullet shape)
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#FFF8B0';
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.moveTo(x-5,y-2.5);
+    ctx.lineTo(x+2,y-1.2);
+    ctx.lineTo(x+6,y);
+    ctx.lineTo(x+2,y+1.2);
+    ctx.lineTo(x-5,y+2.5);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Bright center dot
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath(); ctx.arc(x+1, y, 1.5, 0, Math.PI*2); ctx.fill();
+    
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+}, 60);
+
+// Enemy direct - orange-red
+anim('c_direct_e', (ctx,t,w,h)=>{
+    const prog = (t % 1800)/1800;
+    const x = w-20 - prog*(w-40);
+    const y = h/2 + Math.sin(prog*Math.PI*3)*1.5;
+    
+    // Trail
+    for(let i=5;i>=1;i--){
+        ctx.globalAlpha = 0.12*(1-i/6);
+        ctx.fillStyle = '#FF6433';
+        ctx.fillRect(x+i*8-4, y-1.5, 8, 3);
+    }
+    
+    // Glow
+    ctx.globalAlpha = 0.3;
+    ctx.fillStyle = '#FF6433';
+    ctx.shadowColor = '#FF6433';
+    ctx.shadowBlur = 12;
+    ctx.beginPath(); ctx.arc(x,y,5,0,Math.PI*2); ctx.fill();
+    
+    // Body
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#FF8C5C';
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.moveTo(x+5,y-2.5);
+    ctx.lineTo(x-2,y-1.2);
+    ctx.lineTo(x-6,y);
+    ctx.lineTo(x-2,y+1.2);
+    ctx.lineTo(x+5,y+2.5);
+    ctx.closePath();
+    ctx.fill();
+    
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath(); ctx.arc(x-1,y,1.5,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+}, 60);
+
+// SMG - compact, rapid
+anim('c_smg', (ctx,t,w,h)=>{
+    const burst = Math.floor(t/150)%4;
+    const phase = (t%150)/150;
+    
+    for(let i=0;i<=burst;i++){
+        const bx = 15 + phase*180 - i*40;
+        const by = h/2;
+        const alpha = i===burst ? 1 : 0.6;
+        ctx.globalAlpha = alpha;
+        
+        // Glow
+        ctx.shadowColor='#F5E64D'; ctx.shadowBlur=6;
+        ctx.fillStyle='#F5E64D';
+        ctx.beginPath(); ctx.arc(bx,by,3.5,0,Math.PI*2); ctx.fill();
+        
+        // Core
+        ctx.fillStyle='#FFF8B0';
+        ctx.beginPath();
+        ctx.moveTo(bx-3,by-1.8); ctx.lineTo(bx+2,by-0.8);
+        ctx.lineTo(bx+4,by); ctx.lineTo(bx+2,by+0.8);
+        ctx.lineTo(bx-3,by+1.8); ctx.closePath();
+        ctx.fill();
+    }
+    ctx.globalAlpha=1; ctx.shadowBlur=0;
+}, 60);
+
+// Shotgun - 6 pellets spreading
+anim('c_shotgun', (ctx,t,w,h)=>{
+    const prog = (t%1200)/1200;
+    const spread = prog * 30;
+    const baseY = h/2;
+    
+    // Muzzle flash at start
+    if(prog < 0.05){
+        const fa = (1-prog/0.05)*0.8;
+        ctx.globalAlpha = fa;
+        ctx.fillStyle = '#FFE080';
+        ctx.shadowColor='#FFE080'; ctx.shadowBlur=15;
+        ctx.beginPath(); ctx.arc(15,baseY,12*prog/0.05,0,Math.PI*2); ctx.fill();
+    }
+    
+    for(let i=0;i<6;i++){
+        const angle = (i-2.5)*0.3;
+        const px = 15 + prog*180;
+        const py = baseY + Math.sin(angle)*spread + (i-2.5)*3*(1-prog*0.5);
+        
+        ctx.globalAlpha = 1-prog*0.4;
+        ctx.shadowColor='#F5E64D'; ctx.shadowBlur=5;
+        ctx.fillStyle='#F5E64D';
+        ctx.beginPath(); ctx.arc(px,py,2.5,0,Math.PI*2); ctx.fill();
+        
+        ctx.fillStyle='#FFF8B0';
+        ctx.beginPath(); ctx.arc(px,py,1.5,0,Math.PI*2); ctx.fill();
+    }
+    ctx.globalAlpha=1; ctx.shadowBlur=0;
+}, 60);
+
+// Sniper - thin beam with high speed feel
+anim('c_sniper', (ctx,t,w,h)=>{
+    const prog = (t%800)/800;
+    const x = 10 + prog*200;
+    
+    // Beam trail (long afterimage)
+    for(let i=8;i>=0;i--){
+        const tx = x - i*12;
+        ctx.globalAlpha = 0.15*(1-i/9);
+        ctx.fillStyle = '#4DCFFF';
+        ctx.fillRect(tx-12, h/2-0.8, 24, 1.6);
+    }
+    
+    // Main beam
+    ctx.globalAlpha = 1;
+    ctx.shadowColor='#4DCFFF'; ctx.shadowBlur=12;
+    drawGlowLine(ctx, x-15, h/2, x+15, h/2, '#4DCFFF', 3, 12);
+    
+    // White core
+    drawGlowLine(ctx, x-15, h/2, x+15, h/2, '#FFFFFF', 1, 4);
+    
+    // Hit flash at tip
+    if(prog > 0.9){
+        const fa = (prog-0.9)/0.1;
+        ctx.globalAlpha = (1-fa)*0.6;
+        ctx.fillStyle='#FFFFFF';
+        ctx.beginPath(); ctx.arc(x+15, h/2, 6*fa, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.globalAlpha=1; ctx.shadowBlur=0;
+}, 60);
+
+// Rocket - thick missile with flame trail
+anim('c_rocket', (ctx,t,w,h)=>{
+    const prog = (t%2000)/2000;
+    const x = 15 + prog*190;
+    const y = h/2 + Math.sin(prog*Math.PI*4)*1;
+    
+    // Flame trail (multiple segments)
+    for(let i=7;i>=0;i--){
+        const tx = x - 8 - i*7;
+        const flicker = Math.sin(t/30+i*1.5)*2;
+        const tr = 2.5 - i*0.25;
+        ctx.globalAlpha = 0.6*(1-i/8);
+        ctx.fillStyle = i<3 ? '#FFFFFF' : (i<5 ? '#FFD54F' : '#FF8C33');
+        ctx.shadowColor = '#FF8C33';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.ellipse(tx, y+flicker, tr*2, tr, 0, 0, Math.PI*2);
+        ctx.fill();
+    }
+    
+    // Missile body
+    ctx.globalAlpha = 1;
+    ctx.shadowColor='#FF8C33'; ctx.shadowBlur=10;
+    ctx.fillStyle='#FF8C33';
+    ctx.beginPath();
+    ctx.moveTo(x-6,y-3);
+    ctx.lineTo(x+5,y-2);
+    ctx.lineTo(x+8,y);
+    ctx.lineTo(x+5,y+2);
+    ctx.lineTo(x-6,y+3);
+    ctx.closePath();
+    ctx.fill();
+    
+    // Nose highlight
+    ctx.fillStyle='#FFD54F';
+    ctx.beginPath(); ctx.arc(x+7,y,2,0,Math.PI*2); ctx.fill();
+    
+    ctx.globalAlpha=1; ctx.shadowBlur=0;
+}, 60);
+
+// Laser - instant beam
+anim('c_laser', (ctx,t,w,h)=>{
+    const cycle = t % 1500;
+    const flash = cycle < 100 ? cycle/100 : (cycle > 1300 ? (1500-cycle)/200 : 1);
+    
+    // Main beam
+    ctx.globalAlpha = flash * 0.9;
+    ctx.shadowColor='#4DCFFF'; ctx.shadowBlur=15;
+    drawGlowLine(ctx, 10, h/2, w-10, h/2, '#4DCFFF', 4.5, 15);
+    
+    // White core
+    ctx.globalAlpha = flash * 0.95;
+    drawGlowLine(ctx, 10, h/2, w-10, h/2, '#FFFFFF', 1.5, 4);
+    
+    // Impact flash
+    if(flash > 0.5){
+        ctx.globalAlpha = (flash-0.5)*0.5;
+        ctx.fillStyle='#FFFFFF';
+        ctx.beginPath(); ctx.arc(w-15, h/2, 8*(1-flash)*2, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.globalAlpha=1; ctx.shadowBlur=0;
+}, 60);
+
+// Omega cannon - plasma ball with arc trail
+anim('c_omega', (ctx,t,w,h)=>{
+    const prog = (t%2200)/2200;
+    const x = 15 + prog*190;
+    
+    // Arc trail (purple lightning behind)
+    for(let i=5;i>=0;i--){
+        const tx = x - 10 - i*10;
+        const jitter = Math.sin(t/20+i*2)*4;
+        ctx.globalAlpha = 0.2*(1-i/6);
+        ctx.strokeStyle = '#9C27B0';
+        ctx.shadowColor='#9C27B0'; ctx.shadowBlur=6;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(tx, h/2+jitter);
+        ctx.lineTo(tx-5, h/2+jitter+(Math.random()-0.5)*6);
+        ctx.stroke();
+    }
+    
+    // Plasma ball
+    ctx.globalAlpha = 1;
+    const pulseR = 5 + Math.sin(t/100)*1;
+    ctx.shadowColor='#6699FF'; ctx.shadowBlur=16;
+    ctx.fillStyle='#6699FF';
+    ctx.beginPath(); ctx.arc(x, h/2, pulseR, 0, Math.PI*2); ctx.fill();
+    
+    // Inner bright core
+    ctx.fillStyle='#B3C6FF';
+    ctx.beginPath(); ctx.arc(x, h/2, pulseR*0.5, 0, Math.PI*2); ctx.fill();
+    
+    // Outer glow
+    ctx.globalAlpha = 0.2;
+    ctx.fillStyle='#6699FF';
+    ctx.beginPath(); ctx.arc(x, h/2, pulseR*2.5, 0, Math.PI*2); ctx.fill();
+    
+    ctx.globalAlpha=1; ctx.shadowBlur=0;
+}, 60);
+
+// ========== 2. INDIRECT PROJECTILES ==========
+
+// Player indirect - mortar with visible arc
+anim('c_indirect_p', (ctx,t,w,h)=>{
+    const prog = (t%2400)/2400;
+    const start = {x:15, y:h-15};
+    const end = {x:w-15, y:h-15};
+    const apex = {x:(start.x+end.x)/2, y:(start.y+end.y)/2 - 70};
+    
+    // Draw arc path (faint)
+    ctx.globalAlpha = 0.15;
+    ctx.strokeStyle = '#FF8C33';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3,4]);
+    ctx.beginPath();
+    for(let p=0;p<=1;p+=0.02){
+        const pt = bezierPt(start, apex, end, p);
+        p===0 ? ctx.moveTo(pt.x,pt.y) : ctx.lineTo(pt.x,pt.y);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    // Projectile position
+    const pt = bezierPt(start, apex, end, prog);
+    
+    // Smoke trail (behind)
+    for(let i=6;i>=0;i--){
+        const tp = Math.max(0, prog - i*0.025);
+        const tp2 = bezierPt(start, apex, end, tp);
+        ctx.globalAlpha = 0.3*(1-i/7);
+        ctx.fillStyle = '#888888';
+        ctx.beginPath();
+        ctx.arc(tp2.x, tp2.y, 2+i*0.5, 0, Math.PI*2);
+        ctx.fill();
+    }
+    
+    // Projectile glow
+    ctx.globalAlpha = 1;
+    ctx.shadowColor='#FF8C33'; ctx.shadowBlur=10;
+    ctx.fillStyle='#FF8C33';
+    ctx.beginPath(); ctx.arc(pt.x, pt.y, 3.5, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle='#FFD54F';
+    ctx.beginPath(); ctx.arc(pt.x, pt.y, 2, 0, Math.PI*2); ctx.fill();
+    
+    // Muzzle flash at launch
+    if(prog < 0.05){
+        const fa = (1-prog/0.05);
+        ctx.globalAlpha = fa*0.7;
+        ctx.fillStyle='#FFD54F';
+        ctx.shadowColor='#FF8C33'; ctx.shadowBlur=20;
+        ctx.beginPath(); ctx.arc(start.x, start.y, 12*fa, 0, Math.PI*2); ctx.fill();
+    }
+    
+    ctx.globalAlpha=1; ctx.shadowBlur=0;
+}, 60);
+
+// Enemy indirect
+anim('c_indirect_e', (ctx,t,w,h)=>{
+    const prog = (t%2400)/2400;
+    const start = {x:w-15, y:h-15};
+    const end = {x:15, y:h-15};
+    const apex = {x:(start.x+end.x)/2, y:(start.y+end.y)/2 - 45};
+    
+    // Projectile
+    const pt = bezierPt(start, apex, end, prog);
+    
+    // Trail particles
+    for(let i=4;i>=0;i--){
+        const tp = Math.max(0, prog - i*0.03);
+        const tp2 = bezierPt(start, apex, end, tp);
+        ctx.globalAlpha = 0.2*(1-i/5);
+        ctx.fillStyle = '#FF6433';
+        ctx.beginPath(); ctx.arc(tp2.x, tp2.y, 1.5+i*0.3, 0, Math.PI*2); ctx.fill();
+    }
+    
+    ctx.globalAlpha = 1;
+    ctx.shadowColor='#FF6433'; ctx.shadowBlur=8;
+    ctx.fillStyle='#FF6433';
+    ctx.beginPath(); ctx.arc(pt.x, pt.y, 3, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle='#FF8C5C';
+    ctx.beginPath(); ctx.arc(pt.x, pt.y, 1.5, 0, Math.PI*2); ctx.fill();
+    
+    ctx.globalAlpha=1; ctx.shadowBlur=0;
+}, 60);
+
+// Arc height comparison
+const arcs = [
+    {id:'c_arc_mortar', mult:1.6, color:'#FF8C33'},
+    {id:'c_arc_missile', mult:1.0, color:'#FF7326'},
+    {id:'c_arc_rocket', mult:0.3, color:'#C2B280'},
+];
+arcs.forEach(a=>{
+    anim(a.id, (ctx,t,w,h)=>{
+        const prog = (t%2400)/2400;
+        const start = {x:15, y:h-15};
+        const end = {x:w-15, y:h-15};
+        const apex = {x:(start.x+end.x)/2, y:(start.y+end.y)/2 - 55*a.mult};
+        
+        // Full arc path
+        ctx.globalAlpha = 0.2;
+        ctx.strokeStyle = a.color;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([2,3]);
+        ctx.beginPath();
+        for(let p=0;p<=1;p+=0.02){
+            const pt = bezierPt(start, apex, end, p);
+            p===0?ctx.moveTo(pt.x,pt.y):ctx.lineTo(pt.x,pt.y);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        // Moving projectile
+        const mp = bezierPt(start, apex, end, prog);
+        ctx.globalAlpha = 1;
+        ctx.shadowColor=a.color; ctx.shadowBlur=8;
+        ctx.fillStyle=a.color;
+        ctx.beginPath(); ctx.arc(mp.x,mp.y,3,0,Math.PI*2); ctx.fill();
+        
+        // Label
+        ctx.fillStyle='#4a5a70'; ctx.font='8px sans-serif';
+        ctx.fillText('H:'+Math.round(55*a.mult)+'px', apex.x-15, apex.y-4);
+        
+        ctx.shadowBlur=0;
+    }, 60);
+});
+
+// ========== 3. IMPACT EFFECTS ==========
+
+// Impact helper - layered explosion
+function drawLayeredImpact(ctx, cx, cy, time, color, isHeavy, kindTint){
+    const burst = time / 700; // 0-1 over 700ms cycle
+    if(burst > 1) return;
+    
+    // Layer 1: Shockwave ring (expanding polygon circle)
+    if(burst < 0.6){
+        const ringProgress = burst / 0.6;
+        const ringR = 6 + ringProgress * (isHeavy ? 44 : 24);
+        const ringAlpha = 1 - ringProgress;
+        
+        ctx.globalAlpha = ringAlpha * 0.7;
+        ctx.strokeStyle = color;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 8;
+        ctx.lineWidth = 2.5 * (1-ringProgress*0.5);
+        ctx.beginPath();
+        // Draw circle as polygon
+        for(let i=0;i<32;i++){
+            const a = (Math.PI*2/32)*i;
+            const r = ringR * (1 + Math.sin(a*8+time/50)*0.03);
+            const px = cx + Math.cos(a)*r;
+            const py = cy + Math.sin(a)*r;
+            i===0 ? ctx.moveTo(px,py) : ctx.lineTo(px,py);
+        }
+        ctx.closePath();
+        ctx.stroke();
+    }
+    
+    // Layer 2: Spark particles
+    if(burst < 0.5){
+        const sparkCount = isHeavy ? 32 : 18;
+        const maxDist = isHeavy ? 55 : 35;
+        const coneAngle = burst < 0.15 ? Math.PI*2 : Math.PI*2;
+        
+        for(let i=0;i<sparkCount;i++){
+            const baseAngle = (Math.PI*2/sparkCount)*i;
+            const dist = (burst/maxDist) * maxDist;
+            
+            // For sniper/laser, use narrow cone
+            let angle = baseAngle;
+            if(!isHeavy && (color==='#FFF299'||color==='#4DCFFF')){
+                // Narrow cone around random direction
+                const dir = baseAngle;
+                angle = dir + (Math.random()-0.5)*0.4;
+            }
+            
+            const px = cx + Math.cos(angle)*dist;
+            const py = cy + Math.sin(angle)*dist;
+            const size = (1-burst)*2.5;
+            const alpha = (1-burst)*0.85;
+            
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = color;
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 5;
+            ctx.beginPath();
+            ctx.arc(px, py, Math.max(0.5,size), 0, Math.PI*2);
+            ctx.fill();
+        }
+    }
+    
+    // Layer 3: Debris/smoke (heavy only)
+    if(isHeavy && burst < 0.8){
+        const smokeCount = 10;
+        for(let i=0;i<smokeCount;i++){
+            const age = (burst - i*0.05);
+            if(age < 0) continue;
+            const sa = Math.max(0, 1-age/0.6);
+            const sy = cy - age*30 + Math.sin(time/100+i)*5;
+            const sx = cx + Math.sin(time/80+i*2)*15*age;
+            const sr = 3 + age*12;
+            
+            ctx.globalAlpha = sa * 0.35;
+            ctx.fillStyle = '#666660';
+            ctx.beginPath();
+            ctx.arc(sx, sy, sr, 0, Math.PI*2);
+            ctx.fill();
+        }
+    }
+    
+    // Center flash
+    if(burst < 0.12){
+        const fa = (1-burst/0.12);
+        ctx.globalAlpha = fa * 0.7;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.shadowColor = '#FFFFFF';
+        ctx.shadowBlur = 20;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 10*fa, 0, Math.PI*2);
+        ctx.fill();
+    }
+    
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+}
+
+// Light weapon impacts
+anim('c_impact_smg', (ctx,t,w,h)=>{
+    const cycle = t % 700;
+    drawLayeredImpact(ctx, w/2, h/2, cycle, '#F2EB80', false, -1);
+});
+
+anim('c_impact_shotgun', (ctx,t,w,h)=>{
+    const cycle = t % 700;
+    drawLayeredImpact(ctx, w/2, h/2, cycle, '#FFB34D', false, -1);
+});
+
+anim('c_impact_sniper', (ctx,t,w,h)=>{
+    const cycle = t % 700;
+    drawLayeredImpact(ctx, w/2, h/2, cycle, '#FFF299', false, -1);
+});
+
+// Heavy weapon impacts
+anim('c_impact_rocket', (ctx,t,w,h)=>{
+    const cycle = t % 850;
+    drawLayeredImpact(ctx, w/2, h/2, cycle, '#FF8C33', true, -1);
+});
+
+anim('c_impact_missile', (ctx,t,w,h)=>{
+    const cycle = t % 900;
+    drawLayeredImpact(ctx, w/2, h/2, cycle, '#FF7326', true, -1);
+});
+
+anim('c_impact_laser', (ctx,t,w,h)=>{
+    const cycle = t % 700;
+    drawLayeredImpact(ctx, w/2, h/2, cycle, '#4DCFFF', false, -1);
+});
+
+anim('c_impact_omega', (ctx,t,w,h)=>{
+    const cycle = t % 850;
+    drawLayeredImpact(ctx, w/2, h/2, cycle, '#6699FF', true, -1);
+});
+
+anim('c_impact_rail', (ctx,t,w,h)=>{
+    const cycle = t % 850;
+    drawLayeredImpact(ctx, w/2, h/2, cycle, '#80E6FF', true, -1);
+});
+
+// ========== 4. COMBAT KIND IMPACTS ==========
+
+anim('c_hit_light', (ctx,t,w,h)=>{
+    const cycle = t % 800;
+    const shakeX = Math.sin(cycle/60)*1.8*(1-cycle/800);
+    const shakeY = Math.cos(cycle/50)*1.8*(1-cycle/800);
+    ctx.save();
+    ctx.translate(shakeX, shakeY);
+    drawLayeredImpact(ctx, w/2, h/2, cycle, '#FFF280', false, 0);
+    ctx.restore();
+});
+
+anim('c_hit_armor', (ctx,t,w,h)=>{
+    const cycle = t % 850;
+    const shakeX = Math.sin(cycle/50)*3.2*(1-cycle/850);
+    const shakeY = Math.cos(cycle/40)*3.2*(1-cycle/850);
+    ctx.save();
+    ctx.translate(shakeX, shakeY);
+    drawLayeredImpact(ctx, w/2, h/2, cycle, '#FF8C40', true, 1);
+    // Extra metal debris sparks
+    if(cycle/850 < 0.4){
+        for(let i=0;i<8;i++){
+            const a = Math.random()*Math.PI*2;
+            const d = (cycle/850)*50;
+            ctx.globalAlpha = (1-cycle/850)*0.5;
+            ctx.fillStyle = '#CC8844';
+            ctx.fillRect(w/2+Math.cos(a)*d-1, h/2+Math.sin(a)*d-1, 2, 2);
+        }
+    }
+    ctx.restore();
+});
+
+anim('c_hit_air', (ctx,t,w,h)=>{
+    const cycle = t % 900;
+    const shakeX = Math.sin(cycle/40)*5*(1-cycle/900);
+    const shakeY = Math.cos(cycle/35)*5*(1-cycle/900);
+    ctx.save();
+    ctx.translate(shakeX, shakeY);
+    drawLayeredImpact(ctx, w/2, h/2, cycle, '#FFFFFF', true, 3);
+    // Air burst - extra white flash
+    if(cycle/900 < 0.15){
+        ctx.globalAlpha = (1-cycle/900/0.15)*0.5;
+        ctx.fillStyle='#FFFFFF';
+        ctx.beginPath(); ctx.arc(w/2,h/2,25*(1-cycle/900/0.15),0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+});
+
+// ========== 5. SPECIAL EFFECTS ==========
+
+// Crit aura - golden pulsing double ring
+anim('c_crit', (ctx,t,w,h)=>{
+    const cycle = t % 1200;
+    const p1 = cycle / 1200;
+    
+    // First ring pulse
+    if(p1 < 0.45){
+        const r1 = 8 + (p1/0.45)*38;
+        const a1 = 1 - p1/0.45;
+        ctx.globalAlpha = a1 * 0.8;
+        ctx.strokeStyle = '#FFD54F';
+        ctx.shadowColor = '#FFD54F';
+        ctx.shadowBlur = 12;
+        ctx.lineWidth = 3 * a1;
+        ctx.beginPath();
+        for(let i=0;i<32;i++){
+            const ang = (Math.PI*2/32)*i;
+            const rx = w/2+Math.cos(ang)*r1;
+            const ry = h/2+Math.sin(ang)*r1;
+            i===0?ctx.moveTo(rx,ry):ctx.lineTo(rx,ry);
+        }
+        ctx.closePath(); ctx.stroke();
+    }
+    
+    // Second ring pulse (delayed 80ms)
+    if(p1 > 0.07 && p1 < 0.5){
+        const r2 = 6 + ((p1-0.07)/0.4)*28;
+        const a2 = 1 - (p1-0.07)/0.4;
+        ctx.globalAlpha = a2 * 0.6;
+        ctx.strokeStyle = '#FFA000';
+        ctx.shadowColor = '#FFA000';
+        ctx.shadowBlur = 8;
+        ctx.lineWidth = 2 * a2;
+        ctx.beginPath();
+        for(let i=0;i<32;i++){
+            const ang = (Math.PI*2/32)*i;
+            const rx = w/2+Math.cos(ang)*r2;
+            const ry = h/2+Math.sin(ang)*r2;
+            i===0?ctx.moveTo(rx,ry):ctx.lineTo(rx,ry);
+        }
+        ctx.closePath(); ctx.stroke();
+    }
+    
+    // Crit sparks
+    if(p1 < 0.4){
+        for(let i=0;i<14;i++){
+            const a = (Math.PI*2/14)*i + p1*2;
+            const d = p1*50;
+            ctx.globalAlpha = (1-p1/0.4)*0.7;
+            ctx.fillStyle = '#FFD54F';
+            ctx.shadowColor='#FFD54F'; ctx.shadowBlur=5;
+            ctx.beginPath();
+            ctx.arc(w/2+Math.cos(a)*d, h/2+Math.sin(a)*d, 2*(1-p1/0.4), 0, Math.PI*2);
+            ctx.fill();
+        }
+    }
+    
+    // Center flash
+    if(p1 < 0.1){
+        ctx.globalAlpha = (1-p1/0.1)*0.6;
+        ctx.fillStyle='#FFFFFF';
+        ctx.beginPath(); ctx.arc(w/2,h/2,8*(1-p1/0.1),0,Math.PI*2); ctx.fill();
+    }
+    
+    ctx.globalAlpha=1; ctx.shadowBlur=0;
+});
+
+// Pierce beam - purple armor-piercing line
+anim('c_pierce', (ctx,t,w,h)=>{
+    const cycle = t % 1000;
+    const p = cycle / 1000;
+    
+    // Beam from left to right
+    const beamWidth = 5 * (1 - p*0.6);
+    const beamAlpha = 1 - p;
+    
+    ctx.globalAlpha = beamAlpha * 0.9;
+    ctx.strokeStyle = '#CE93D8';
+    ctx.shadowColor = '#CE93D8';
+    ctx.shadowBlur = 12;
+    ctx.lineWidth = beamWidth;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(10, h/2);
+    ctx.lineTo(w-10, h/2);
+    ctx.stroke();
+    
+    // White core
+    ctx.globalAlpha = beamAlpha * 0.7;
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 1.5;
+    ctx.shadowBlur = 4;
+    ctx.beginPath();
+    ctx.moveTo(10, h/2);
+    ctx.lineTo(w-10, h/2);
+    ctx.stroke();
+    
+    // Piercing sparks at endpoints
+    if(p < 0.3){
+        ctx.globalAlpha = (1-p/0.3)*0.6;
+        for(let i=0;i<6;i++){
+            const a = Math.random()*Math.PI*2;
+            ctx.fillStyle = '#E040FB';
+            ctx.beginPath();
+            ctx.arc(w-10+Math.cos(a)*5, h/2+Math.sin(a)*5, 1.5, 0, Math.PI*2);
+            ctx.fill();
+        }
+    }
+    
+    ctx.globalAlpha=1; ctx.shadowBlur=0;
+});
+
+// Splash shockwave - expanding orange ring
+anim('c_shockwave', (ctx,t,w,h)=>{
+    const cycle = t % 1000;
+    const p = cycle / 1000;
+    
+    // Expanding ring
+    if(p < 0.5){
+        const r = 8 + p*50;
+        const a = (1-p/0.5)*0.8;
+        ctx.globalAlpha = a;
+        ctx.strokeStyle = '#FF8A65';
+        ctx.shadowColor = '#FF8A65';
+        ctx.shadowBlur = 10;
+        ctx.lineWidth = 3*(1-p/0.5)+0.5;
+        ctx.beginPath();
+        ctx.arc(w/2, h/2, r, 0, Math.PI*2);
+        ctx.stroke();
+    }
+    
+    // Secondary ring
+    if(p > 0.1 && p < 0.55){
+        const r2 = 6 + ((p-0.1)/0.45)*45;
+        const a2 = (1-(p-0.1)/0.45)*0.5;
+        ctx.globalAlpha = a2;
+        ctx.strokeStyle = '#FFAB91';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(w/2, h/2, r2, 0, Math.PI*2);
+        ctx.stroke();
+    }
+    
+    // Ground ring effect (flattened ellipse)
+    if(p < 0.4){
+        ctx.globalAlpha = (1-p/0.4)*0.3;
+        ctx.fillStyle = '#FF8A65';
+        ctx.beginPath();
+        ctx.ellipse(w/2, h/2+20, p*60, p*12, 0, 0, Math.PI*2);
+        ctx.fill();
+    }
+    
+    ctx.globalAlpha=1; ctx.shadowBlur=0;
+});
+
+// Lightning chain - zigzag arc
+anim('c_lightning', (ctx,t,w,h)=>{
+    const cycle = t % 800;
+    const p = cycle / 800;
+    
+    if(p < 0.4){
+        const alpha = (1-p/0.4);
+        const segments = 5;
+        const fromX = 20, fromY = h/2;
+        const toX = w-20, toY = h/2 + Math.sin(t/200)*10;
+        
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = '#82B1FF';
+        ctx.shadowColor = '#82B1FF';
+        ctx.shadowBlur = 10;
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(fromX, fromY);
+        
+        for(let s=1;s<=segments;s++){
+            const tt = s/segments;
+            const bx = fromX + (toX-fromX)*tt;
+            const by = fromY + (toY-fromY)*tt;
+            const perpX = -(toY-fromY);
+            const perpY = (toX-fromX);
+            const len = Math.sqrt(perpX*perpX+perpY*perpY)||1;
+            const jitter = (Math.random()-0.5)*28*(tt);
+            ctx.lineTo(bx + (perpX/len)*jitter, by + (perpY/len)*jitter);
+        }
+        ctx.stroke();
+        
+        // White core
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.shadowColor = '#FFFFFF';
+        ctx.shadowBlur = 4;
+        ctx.beginPath();
+        ctx.moveTo(fromX, fromY);
+        for(let s=1;s<=segments;s++){
+            const tt = s/segments;
+            const bx = fromX + (toX-fromX)*tt;
+            const by = fromY + (toY-fromY)*tt;
+            const perpX = -(toY-fromY);
+            const perpY = (toX-fromX);
+            const l2 = Math.sqrt(perpX*perpX+perpY*perpY)||1;
+            const jitter = (Math.random()-0.5)*28*tt;
+            ctx.lineTo(bx + (perpX/l2)*jitter, by + (perpY/l2)*jitter);
+        }
+        ctx.stroke();
+    }
+    
+    ctx.globalAlpha=1; ctx.shadowBlur=0;
+});
+
+// ========== Auto-start all animations ==========
+setTimeout(()=>{
+    anims.forEach(fn => fn());
+}, 100);
+</script>
+</body>
+</html>

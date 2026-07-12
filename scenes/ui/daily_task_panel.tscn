@@ -28,11 +28,22 @@ grow_vertical = 2
 [node name="Header" type="VBoxContainer" parent="VBox"]
 layout_mode = 2
 
-[node name="HeaderLabel" type="Label" parent="VBox/Header"]
+[node name="TitleRow" type="HBoxContainer" parent="VBox/Header"]
 layout_mode = 2
+
+[node name="HeaderLabel" type="Label" parent="VBox/Header/TitleRow"]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0, 0.941, 1, 1)
 theme_override_font_sizes/font_size = 16
 text = "日常任务"
+
+[node name="CloseButton" type="Button" parent="VBox/Header/TitleRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(36, 36)
+theme_override_colors/font_color = Color(0.85, 0.4, 0.4, 1)
+theme_override_font_sizes/font_size = 14
+text = "✕"
 
 [node name="RefreshLabel" type="Label" parent="VBox/Header"]
 layout_mode = 2

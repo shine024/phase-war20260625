@@ -97,8 +97,13 @@ func _register_clone(clone: CardResource, card_id: String) -> CardResource:
 
 
 ## 分配一个新的 instance_id（card_id#序号）
+## v7.x 防御：若 _counter 与 _instances 状态不一致（极端情况，如计数器丢失/手工写入实例），
+## 递增序号直到找到 _instances 中不存在的 id，绝不覆盖已存实例的养成数据。
 func _allocate_instance_id(card_id: String) -> String:
 	var seq: int = int(_counter.get(card_id, 0)) + 1
+	while _instances.has("%s#%d" % [card_id, seq]):
+		# 计数器落后于实例表（撞号），递增直到找到空位
+		seq += 1
 	_counter[card_id] = seq
 	return "%s#%d" % [card_id, seq]
 
@@ -244,7 +249,7 @@ func load_state(data: Dictionary) -> void:
 	if data.is_empty():
 		return
 
-	# 恢复计数器
+	# 恢复计数器（存档有此字段时；缺字段时下方 _reconcile_counter_from_instances 会从实例重建）
 	if data.has("_counter") and data["_counter"] is Dictionary:
 		_counter = (data["_counter"] as Dictionary).duplicate(true)
 
@@ -256,6 +261,13 @@ func load_state(data: Dictionary) -> void:
 		if not inst_data is Dictionary:
 			continue
 		_load_one_instance(instance_id, inst_data)
+
+	# v7.x 修复：从已加载实例重建计数器，杜绝 _counter 丢失导致序号回卷撞号。
+	# 旧存档/v8 迁移期存档可能缺 _counter 字段，且 _load_one_instance 直接写 _instances
+	# 不推进计数器——两因素叠加会让后续 create_instance 从 #1 重新分配，覆盖已存实例
+	# 的养成数据（表现为"商店买的和缴获的都是 #1"）。无论存档有无 _counter，都以
+	# _instances 实际状态为准做 max 合并，确保计数器永不落后于实例表。
+	_reconcile_counter_from_instances()
 
 
 ## 加载单个实例
@@ -289,6 +301,25 @@ func _load_one_instance(instance_id: String, inst_data: Dictionary) -> void:
 	var ibb = inst_data.get("intel_branch_bonus", {})
 	if ibb is Dictionary and not (ibb as Dictionary).is_empty():
 		_intel_branch_bonus[instance_id] = (ibb as Dictionary).duplicate(true)
+
+
+## 从 _instances 实际状态重建计数器（load_state 收尾用）。
+## 对每个已注册实例，取其 instance_id 的序号后缀，把 _counter[card_id] 推进到 max(已存值, 序号)。
+## 作用：修复旧存档/v8 迁移期存档缺 _counter 字段、或 _counter 与实例表不一致时，
+## 后续 create_instance 回卷到 #1 覆盖已存实例养成数据的严重 bug。
+## 幂等：重复调用无副作用（max 合并，只会抬升计数器，永不回退）。
+func _reconcile_counter_from_instances() -> void:
+	for instance_id in _instances:
+		var card_id := get_card_id_of(instance_id)
+		if card_id.is_empty():
+			continue
+		var hash_idx: int = instance_id.rfind("#")
+		if hash_idx < 0:
+			continue
+		var seq: int = instance_id.substr(hash_idx + 1).to_int()
+		if seq <= 0:
+			continue
+		_counter[card_id] = maxi(int(_counter.get(card_id, 0)), seq)
 
 
 # ─────────────────────────────────────────────

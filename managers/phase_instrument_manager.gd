@@ -97,6 +97,8 @@ const MIRROR_LEVEL_HP_COEFF: float = 0.00050   # defense 200 → +10% HP（等�
 var _cached_player_rank_stars: int = 3
 ## 当前战斗缓存的敌方 boss 相位师星级（仅 boss 对战时设置）
 var _cached_enemy_rank_stars: int = 3
+# v7.x: 当前战斗缓存的玩家相位师完整评估（含 raw/compressed/Lv/scores），供 UI 读取
+var _cached_player_master_eval: Dictionary = {}
 
 ## 相位师星级 → 排名加成系数（0.85~1.25）
 static func get_rank_coefficient(stars: int) -> float:
@@ -418,10 +420,19 @@ func set_player_rank_stars(stars: int) -> void:
 func set_enemy_rank_stars(stars: int) -> void:
 	_cached_enemy_rank_stars = clampi(stars, 1, 7)
 
+## v7.x: 缓存完整玩家相位师评估（含 raw/compressed/Lv/scores），供 UI 读取
+func set_cached_player_master_eval(eval: Dictionary) -> void:
+	_cached_player_master_eval = eval
+
+## v7.x: 读取缓存的玩家相位师评估（战斗中有效；非战斗返回空）
+func get_cached_player_master_eval() -> Dictionary:
+	return _cached_player_master_eval
+
 ## v6.7: 战斗结束时清空缓存（恢复 3★ 基准，避免影响非战斗场景）
 func clear_rank_cache() -> void:
 	_cached_player_rank_stars = 3
 	_cached_enemy_rank_stars = 3
+	_cached_player_master_eval = {}
 
 func _set_default_instrument_if_needed() -> void:
 	# 仅在「未选择」或「当前 ID 已非法/未解锁」时重选；否则每次 get_current_instrument 会把选择覆盖成默认 ID，导致无法切换相位仪

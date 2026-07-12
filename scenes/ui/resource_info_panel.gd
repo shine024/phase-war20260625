@@ -1,6 +1,8 @@
 extends PanelContainer
 ## 左上角常驻资源面板：基础资源 + 情报数量。
 
+const FormatUtil = preload("res://scripts/ui/format_util.gd")
+
 var _labels: Dictionary = {}
 var _row_nodes: Dictionary = {}
 var _compact_mode: bool = true
@@ -192,12 +194,7 @@ func _update_label(key: String, value: int) -> void:
 	lbl.set_meta("roll_tween", tw)
 
 func _format_number(num: int) -> String:
-	if num >= 1000000:
-		return "%.1fM" % (num / 1000000.0)
-	elif num >= 1000:
-		return "%.1fK" % (num / 1000.0)
-	else:
-		return str(num)
+	return FormatUtil.format_number(num)
 
 func _on_resources_changed() -> void:
 	_refresh_basic_resources()

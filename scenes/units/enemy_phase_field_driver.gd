@@ -422,10 +422,19 @@ func _produce_unit_fallback() -> void:
 		_record_spawn_and_check_fatigue()
 
 func _produce_unit() -> void:
-	if _has_equipment:
-		_produce_unit_with_equipment()
-	elif USE_FALLBACK_SPAWN:
-		_produce_unit_fallback()
+	# v7.x: 一次产满全部槽位（而非每次1个）。相位师开局直接上场6个单位，
+	# 之后等场上单位阵亡后再补满。这样战斗节奏更紧凑，玩家面对的是完整波次的压力。
+	var attempts: int = 0
+	while attempts < _unit_limit:
+		attempts += 1
+		if _has_equipment:
+			_produce_unit_with_equipment()
+		elif USE_FALLBACK_SPAWN:
+			_produce_unit_fallback()
+		# 检查是否已满——每次产兵后重新判断，避免一口气出太多
+		var current_count: int = BattleManager.get_enemy_unit_count() if BattleManager else 0
+		if current_count >= _unit_limit:
+			break
 
 ## 返回 true 表示单位已成功进入战场（用于累计召唤计数）；false 表示场地已满被丢弃。
 func _add_unit_to_battle(unit: Node2D, current_count: int) -> bool:

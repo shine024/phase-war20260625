@@ -31,7 +31,7 @@ const MAIN_LINE: Dictionary = {
 	},
 	E3 = {
 		stage = 3, card_id = "fut_aa_hover", name = "防空悬浮车",
-		era = "Future", power = 780, max_hp = 350,
+		era = "Future", power = 780, max_hp = 400,
 		attack_light = 60, attack_armor = 40, attack_air = 400,
 		defense_light = 60, defense_armor = 50, defense_air = 100,
 		inherit_multiplier = 0.30,
