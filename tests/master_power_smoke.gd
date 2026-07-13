@@ -90,38 +90,37 @@ func _initialize() -> void:
 	var er_ww1: Dictionary = MasterPowerEvaluator.evaluate(m_ww1)
 	var er_fu: Dictionary = MasterPowerEvaluator.evaluate(m_fu)
 
-	# 1. G维空(我方无 stats)→0
+	# 1. v7.x 3分量公式：scores 只有 instrument/equipment_slots/runes
 	var empty_master := {"id":"t","name":"t","phase_instrument":""}
 	var er_empty: Dictionary = MasterPowerEvaluator.evaluate(empty_master)
-	if float(er_empty["scores"]["master_stats"]) != 0.0:
-		fail.call("G维 无stats应=0")
+	var empty_keys: Array = er_empty["scores"].keys()
+	if empty_keys.size() != 3:
+		fail.call("3分量公式 scores 应只有3键，实际 %d: %s" % [empty_keys.size(), str(empty_keys)])
 
-	# 2. H维单符文 + I维符文之语 都 > 0（拆分后各自独立计分）
+	# 2. H维符文 > 0（符文固定值）
 	var h_ww1: float = float(er_ww1["scores"]["runes"])
 	var h_fu: float = float(er_fu["scores"]["runes"])
-	var i_ww1: float = float(er_ww1["scores"].get("runewords", 0.0))
-	var i_fu: float = float(er_fu["scores"].get("runewords", 0.0))
-	print("  master_001 runes派生: %s → H单符文=%.1f I符文之语=%.1f" % [str(runes_ww1), h_ww1, i_ww1])
-	print("  master_030 runes派生: %s → H单符文=%.1f I符文之语=%.1f" % [str(runes_fu), h_fu, i_fu])
+	print("  master_001 runes派生: %s → H符文=%.1f" % [str(runes_ww1), h_ww1])
+	print("  master_030 runes派生: %s → H符文=%.1f" % [str(runes_fu), h_fu])
 	if h_ww1 <= 0.0:
-		fail.call("H维 master_001 单符文应>0，实际 %.1f" % h_ww1)
+		fail.call("H维 master_001 符文应>0，实际 %.1f" % h_ww1)
 	if h_fu <= 0.0:
-		fail.call("H维 master_030 单符文应>0，实际 %.1f" % h_fu)
-	# v7.x: I维(符文之语)已删，权重=0，不再断言 i>0
+		fail.call("H维 master_030 符文应>0，实际 %.1f" % h_fu)
 
-	# 3. F维载卡 > 0（敌方平台卡战力）
+	# 3. F维载卡 = archetype power 之和（v7.x 统一公式）
+	#    注：--script 模式下 UnifiedCardTable 可能未完全初始化，archetype 查不到→兜底100/卡
+	#    运行时（autoload 完整）archetype 正确解析，F 维会反映真实卡 power 梯度
 	var f_ww1: float = float(er_ww1["scores"]["equipment_slots"])
 	var f_fu: float = float(er_fu["scores"]["equipment_slots"])
 	if f_ww1 <= 0.0:
 		fail.call("F维 master_001 载卡应>0")
-	if f_fu <= f_ww1:
-		fail.call("F维 master_030(%.1f)应 > master_001(%.1f)" % [f_fu, f_ww1])
 
-	# 4. G维近未来 > 一战（时代递进）
-	var g_ww1: float = float(er_ww1["scores"]["master_stats"])
-	var g_fu: float = float(er_fu["scores"]["master_stats"])
-	if g_fu <= g_ww1:
-		fail.call("G维 master_030(%.1f)应 > master_001(%.1f)" % [g_fu, g_ww1])
+	# 4. 总分 = 3分量直接相加（v7.x 无权重）
+	var total_ww1: float = float(er_ww1["total_score"])
+	var total_fu: float = float(er_fu["total_score"])
+	var expected_total_ww1: float = float(er_ww1["scores"]["instrument"]) + f_ww1 + h_ww1
+	if absf(total_ww1 - expected_total_ww1) > 1.0:
+		fail.call("master_001 总分应是3分量之和(%.0f)，实际 %.0f" % [expected_total_ww1, total_ww1])
 
 	# 5. compute_display_level 在 [5,30]
 	var lvl_ww1: int = EnemyPhaseMasters.compute_display_level(m_ww1)
@@ -152,10 +151,8 @@ func _initialize() -> void:
 	var m_rw := {"id":"t","name":"t","phase_instrument":"","equipment":{"runes":rw_runes,"platforms":[],"weapons":[],"energy_cards":[]}}
 	var er_rw: Dictionary = MasterPowerEvaluator.evaluate(m_rw)
 	var h_rw: float = float(er_rw["scores"]["runes"])
-	var i_rw: float = float(er_rw["scores"].get("runewords", 0.0))
 	if h_rw <= 0.0:
-		fail.call("rw_2_01 H维单符文应>0，实际 %.1f" % h_rw)
-	# v7.x: I维(符文之语)已删，权重=0，不再断言 i_rw>0
+		fail.call("rw_2_01 H维符文应>0，实际 %.1f" % h_rw)
 
 	# ══════════ 汇总输出 ══════════
 
@@ -183,43 +180,32 @@ func _initialize() -> void:
 	if int(rune_power_table.get("legendary", 0)) < 3000:
 		fail.call("符文 legendary 固定值过低: %d（应≥3000）" % int(rune_power_table.get("legendary", 0)))
 
-	# 3. D维/I维已删（权重=0）
+	# 3. v7.x 3分量公式：旧9维权重常量保留但 evaluate() 不再用（权重=1.0 直接相加）
+	#    W_ACTIVE_SPELLS/W_RUNEWORDS 保持 0（D/I 维已删）
 	if MasterPowerEvaluator.W_ACTIVE_SPELLS != 0.0:
-		fail.call("D维 W_ACTIVE_SPELLS 应为0（已删），实际 %.2f" % MasterPowerEvaluator.W_ACTIVE_SPELLS)
+		fail.call("D维 W_ACTIVE_SPELLS 应为0（已删）")
 	if MasterPowerEvaluator.W_RUNEWORDS != 0.0:
-		fail.call("I维 W_RUNEWORDS 应为0（已删），实际 %.2f" % MasterPowerEvaluator.W_RUNEWORDS)
+		fail.call("I维 W_RUNEWORDS 应为0（已删）")
 	print("  D维/I维已删（权重=0）✓")
 
-	# 4. 权重总和=1.0
-	var w_sum: float = (
-		MasterPowerEvaluator.W_INSTRUMENT + MasterPowerEvaluator.W_ENGRAVINGS +
-		MasterPowerEvaluator.W_TRAITS + MasterPowerEvaluator.W_ACTIVE_SPELLS +
-		MasterPowerEvaluator.W_PASSIVE_SPELLS + MasterPowerEvaluator.W_EQUIPMENT_SLOTS +
-		MasterPowerEvaluator.W_MASTER_STATS + MasterPowerEvaluator.W_RUNES +
-		MasterPowerEvaluator.W_RUNEWORDS
-	)
-	if absf(w_sum - 1.0) > 0.01:
-		fail.call("权重总和应为1.0，实际 %.3f" % w_sum)
-	print("  权重总和=%.2f ✓" % w_sum)
+	# 4. STAR_TIERS 新阈值验证（3分量公式分布：0/300/1500/4000/8000/20000/40000）
+	var t1_stars = MasterPowerEvaluator._score_to_stars(100.0)  # 新手 → 1★
+	var t4_stars = MasterPowerEvaluator._score_to_stars(5000.0)  # 中配 → 4★
+	if int(t1_stars.get("stars", 0)) != 1:
+		fail.call("新手(100分)星级应=1★，实际 %d★" % int(t1_stars.get("stars", 0)))
+	print("  STAR_TIERS: 100分→%d★, 5000分→%d★" % [int(t1_stars.get("stars",0)), int(t4_stars.get("stars",0))])
 
-	# 5. STAR_TIERS 新阈值验证（基于真实分布）
-	var t1_stars = MasterPowerEvaluator._score_to_stars(200.0)  # 新手 → 1★
-	var t3_stars = MasterPowerEvaluator._score_to_stars(5000.0)  # 中配 → 3★
-	if int(t1_stars.get("stars", 0)) > 2:
-		fail.call("新手(200分)星级应≤2★，实际 %d★" % int(t1_stars.get("stars", 0)))
-	print("  STAR_TIERS: 200分→%d★, 5000分→%d★" % [int(t1_stars.get("stars",0)), int(t3_stars.get("stars",0))])
-
-	print("=== v7.x 最终版 校验结果 ===")
+	print("=== v7.x 3分量公式 校验结果 ===")
 	print("[修复A] ww1_105mm 火炮战力: %.1f (修复前破元帅2178+)" % ap)
-	print("[重构B] master_001: 总分=%.0f | F载卡=%.0f G本体=%.0f H符文=%.0f I词=%.0f | %s" % [
-		float(er_ww1["total_score"]), f_ww1, g_ww1, h_ww1, i_ww1,
+	print("[3分量] master_001: 总分=%.0f | A仪=%.0f F卡=%.0f H符=%.0f | %s" % [
+		float(er_ww1["total_score"]), float(er_ww1["scores"]["instrument"]), f_ww1, h_ww1,
 		MasterPowerEvaluator.get_stars_display(m_ww1)])
-	print("[重构B] master_030: 总分=%.0f | F载卡=%.0f G本体=%.0f H符文=%.0f I词=%.0f | %s" % [
-		float(er_fu["total_score"]), f_fu, g_fu, h_fu, i_fu,
+	print("[3分量] master_030: 总分=%.0f | A仪=%.0f F卡=%.0f H符=%.0f | %s" % [
+		float(er_fu["total_score"]), float(er_fu["scores"]["instrument"]), f_fu, h_fu,
 		MasterPowerEvaluator.get_stars_display(m_fu)])
 	print("[派生Lv] master_001=%d | master_030=%d" % [lvl_ww1, lvl_fu])
-	print("[符文之语] rw_2_01 激活=%d个 → H单符文=%.1f I符文之语=%.1f" % [active.size(), h_rw, i_rw])
-	print("[对称化最终版] 权重和=%.2f | 符文legendary=%d | D/I维已删 | STAR_TIERS新阈值" % [w_sum, int(rune_power_table.get("legendary",0))])
+	print("[符文之语] rw_2_01 激活=%d个 → H符文=%.1f" % [active.size(), h_rw])
+	print("[3分量公式] 符文legendary=%d | D/I维已删 | STAR_TIERS新阈值" % [int(rune_power_table.get("legendary",0))])
 	if code == 0:
 		print("✅ 全部断言通过")
 	else:

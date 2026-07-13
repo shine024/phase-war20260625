@@ -62,12 +62,13 @@ const IMPACT_TINT_BY_KIND: Dictionary = {
 	3: Color(1.0, 1.0, 1.0),    # AIR 保留原色（空爆贴图已足够）
 }
 ## combat_kind → 屏幕震动 (幅度, 时长)。AIR 最强，ARMOR 中等，LIGHT 轻微
+## v8.3 视觉增强：全面上调（LIGHT 1.8→3.0 / ARMOR 3.2→5.0 / AIR 5.0→7.0），让爆炸有分量感
 const IMPACT_SHAKE_BY_KIND: Dictionary = {
-	0: Vector2(1.8, 0.10),  # LIGHT
-	2: Vector2(1.8, 0.10),  # SUPPORT
-	1: Vector2(3.2, 0.18),  # ARMOR
-	4: Vector2(3.2, 0.18),  # FORT
-	3: Vector2(5.0, 0.25),  # AIR
+	0: Vector2(3.0, 0.15),  # LIGHT
+	2: Vector2(3.0, 0.15),  # SUPPORT
+	1: Vector2(5.0, 0.25),  # ARMOR
+	4: Vector2(5.0, 0.25),  # FORT
+	3: Vector2(7.0, 0.35),  # AIR
 }
 
 const PROJ_TEX_SCALE: Dictionary = {
@@ -104,7 +105,8 @@ const IMPACT_TEX_SCALE: Dictionary = {
 }
 
 const REF_TEX_PX: float = 512.0
-const PROJ_DISPLAY_SCALE_MUL: float = 0.05
+# v8.3 视觉增强：0.05 → 0.10（×2），让贴图弹体在战场上清晰可见
+const PROJ_DISPLAY_SCALE_MUL: float = 0.10
 
 
 ## ========== v6.0: 按武器名称查贴图 ==========

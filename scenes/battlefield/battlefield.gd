@@ -687,6 +687,14 @@ func get_unit_at_position(viewport_pos: Vector2) -> Dictionary:
 		if dd < hit_radius and dd < best_d:
 			best_d = dd
 			best = {"unit": enemy_driver, "is_player": false}
+	# 我方相位师基地同样挂在战场根节点（不在 PlayerUnits 容器内），需对称兜底
+	# 未加此前点击我方基地 get_unit_at_position 返回空 → 点击无反应（敌方有上面兜底故可点）
+	var player_driver := get_node_or_null("PhaseFieldDriver") as Node2D
+	if player_driver != null and is_instance_valid(player_driver):
+		var pd := viewport_pos.distance_to(player_driver.global_position)
+		if pd < hit_radius and pd < best_d:
+			best_d = pd
+			best = {"unit": player_driver, "is_player": true}
 	return best
 
 

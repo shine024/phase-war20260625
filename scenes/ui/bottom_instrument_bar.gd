@@ -1065,16 +1065,14 @@ func _append_player_master_tooltip_lines(lines: Array) -> void:
 	lines.append("相位师战力:")
 	lines.append("  Lv.%d · %d★ %s" % [lvl, stars, star_name])
 	lines.append("  总战力：%d" % int(raw))
-	# 9 维分解
+	# 3 分量分解（v7.x 统一公式：相位仪 + 装备卡 + 符文，直接相加）
 	var scores: Dictionary = ev.get("scores", {})
 	if not scores.is_empty():
 		var dim_parts: Array[String] = []
 		var dim_labels: Dictionary = {
-			"instrument": "相位仪", "engravings": "符文", "traits": "特质",
-			"active_spells": "主动", "passive_spells": "被动", "equipment_slots": "载卡",
-			"master_stats": "本体", "runes": "单符文", "runewords": "符文之语",
+			"instrument": "相位仪", "equipment_slots": "装备卡", "runes": "符文",
 		}
-		for key in ["instrument", "engravings", "traits", "active_spells", "passive_spells", "equipment_slots", "master_stats", "runes", "runewords"]:
+		for key in ["instrument", "equipment_slots", "runes"]:
 			var s: float = float(scores.get(key, 0.0))
 			if s > 0.5:
 				dim_parts.append("%s:%d" % [String(dim_labels.get(key, key)), int(s)])

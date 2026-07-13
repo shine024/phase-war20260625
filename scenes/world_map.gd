@@ -191,6 +191,11 @@ func _build_level_map() -> void:
 		var reused := _cached_level_map_template.duplicate(Node.DUPLICATE_USE_INSTANTIATION) as Control
 		if reused != null:
 			scroll.add_child(reused)
+			# v7.5: 修复"换场景后点关卡无反应"——静态模板跨 change_scene_to_file 复用时，
+			# duplicate() 复制了按钮的 pressed 信号连接，但连接的 lambda 隐式捕获旧 WorldMapPanel
+			# 实例（已随场景切换 free）。新实例点击按钮 → 调旧实例的 _on_level_selected → 静默失败。
+			# 这里按按钮名（LevelButton%d）重新连接到当前实例。
+			_reconnect_level_buttons(reused)
 			_map_built = true
 			return
 
@@ -203,6 +208,7 @@ func _build_level_map() -> void:
 
 	# v6.10: 顶部"势力领地图"按钮入口（打开占领可视化面板）
 	var territory_btn := Button.new()
+	territory_btn.name = "TerritoryMapButton"  # v7.5: 命名以便静态模板复用时重连信号
 	territory_btn.text = "◆ 势力领地图"
 	territory_btn.tooltip_text = "查看100关当前占领状态（势力领地分布）"
 	territory_btn.custom_minimum_size = Vector2(0, 32)
@@ -297,6 +303,29 @@ func _build_level_map() -> void:
 	# 标记地图已构建
 	_cached_level_map_template = content_vbox.duplicate(Node.DUPLICATE_USE_INSTANTIATION) as Control
 	_map_built = true
+
+## v7.5: 静态模板复用时重新连接关卡按钮的 pressed 信号到当前实例。
+## 原因：_make_level_button 用 lambda 捕获 self 隐式引用（_on_level_selected 是实例方法），
+## duplicate() 复制的信号连接仍指向旧实例。跨 change_scene_to_file 复用模板时旧实例已 free，
+## 点击按钮静默失败。此方法遍历复用模板里的所有按钮，按节点名识别类型并重连到当前 self。
+func _reconnect_level_buttons(root: Node) -> void:
+	var buttons := root.find_children("*", "Button", true, false)
+	for btn in buttons:
+		if not (btn is Button):
+			continue
+		var nm: String = btn.name
+		# 清掉旧实例遗留的所有 pressed 连接（匿名 lambda 无法按 Callable 精确断开，全清）
+		for conn in btn.pressed.get_connections():
+			btn.pressed.disconnect(conn.callable)
+		# 关卡按钮：按 LevelButton%d 解析关卡号重连
+		if nm.begins_with("LevelButton"):
+			var level_str := nm.substr("LevelButton".length())
+			if level_str.is_valid_int():
+				var level_index: int = level_str.to_int()
+				btn.pressed.connect(func() -> void: _on_level_selected(level_index))
+		# 势力领地图入口按钮（同样捕获 self 的实例方法）
+		elif nm == "TerritoryMapButton":
+			btn.pressed.connect(_on_territory_map_button)
 
 ## 刷新地图（清除缓存，强制重新生成）
 func refresh_levels() -> void:
@@ -557,6 +586,12 @@ func _show_level_info_popup(level_index: int) -> void:
 	if not garrison_master_name.is_empty():
 		body.add_child(_make_detail_row("驻守相位师", garrison_master_name, Color(1.0, 0.55, 0.3, 1.0)))
 
+	# v8 批次3: 关卡特殊规则提示（限定兵种/能量惩罚/特殊胜利/部署上限）
+	var _rules: Dictionary = _li_instance.get_special_rules(level_index)
+	var _rules_text: String = _format_special_rules(_rules)
+	if not _rules_text.is_empty():
+		body.add_child(_make_detail_row("特殊规则", _rules_text, Color(1.0, 0.82, 0.4, 1.0)))
+
 	# ▸ 环境参数（2列网格）
 	body.add_child(_make_detail_section_title("环境参数"))
 	var env_grid := GridContainer.new()
@@ -737,6 +772,56 @@ func _stars_to_text(stars: int) -> String:
 	for i in range(3):
 		s += "★" if i < stars else "☆"
 	return s
+
+## v8 批次3: 格式化关卡特殊规则为中文提示文本（供关卡弹窗显示）
+## 返回空串=普通关（无特殊规则）。
+func _format_special_rules(rules: Dictionary) -> String:
+	if rules.is_empty():
+		return ""
+	var parts: Array = []
+	# 限定兵种
+	var restrict: Array = rules.get("restrict_platforms", [])
+	if not restrict.is_empty():
+		var names: Array = []
+		for pt in restrict:
+			names.append(_platform_type_name(int(pt)))
+		parts.append("限定兵种: " + ", ".join(names))
+	# 能量惩罚
+	var em: float = float(rules.get("energy_mult", 1.0))
+	if absf(em - 1.0) > 0.001:
+		parts.append("能量上限 %d%%" % int(em * 100))
+	var rm: float = float(rules.get("energy_regen_mult", 1.0))
+	if absf(rm - 1.0) > 0.001:
+		parts.append("能量回复 %d%%" % int(rm * 100))
+	# 特殊胜利
+	var wt: String = String(rules.get("win_type", ""))
+	if wt == "survive_waves":
+		parts.append("胜利条件: 坚守 %d 波" % int(rules.get("win_param", 0)))
+	# 部署上限
+	var dl: int = int(rules.get("deploy_limit", 0))
+	if dl > 0:
+		parts.append("部署上限 %d" % dl)
+	return "  ·  ".join(parts) if not parts.is_empty() else ""
+
+
+## v8 批次3: platform_type 枚举值转中文名（供限定兵种提示）
+func _platform_type_name(pt: int) -> String:
+	# 对齐 GameConstants.PlatformType 枚举
+	match pt:
+		0: return "步兵"
+		1: return "装甲"
+		2: return "空军"
+		3: return "支援"
+		4: return "侦察"
+		5: return "炮兵"
+		6: return "防空"
+		7: return "工兵"
+		8: return "航母"
+		9: return "医疗"
+		10: return "隐身"
+		11: return "堡垒"
+		12: return "指挥"
+		_: return "类型%d" % pt
 
 ## 自动部署：进入该关 + 自动开始战斗 + AFK 自动布阵
 ## world_map 是独立场景，无法直接调 main.gd 的 AFK；

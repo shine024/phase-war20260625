@@ -12,6 +12,7 @@ const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const EnemyStatResolver = preload("res://data/enemy_stat_resolver.gd")
 const RuneDefs = preload("res://data/runes.gd")
 const BattleSlotGrid = preload("res://scenes/battlefield/battle_slot_grid.gd")
+const EnemyAffixes = preload("res://data/enemy_affixes.gd")
 
 ## 兜底：EnemyArchetypes 生成（当没有装备数据时使用）
 const USE_FALLBACK_SPAWN: bool = true
@@ -19,11 +20,17 @@ const USE_FALLBACK_SPAWN: bool = true
 const _PHASE_BODY_REFERENCE_FRAME_PX: float = 256.0
 ## 与 enemy_unit.gd 中 MAX_ENEMY_VISUAL_EXTENT_PX 对齐（底座略大可等同上限）
 const _PHASE_BODY_MAX_EXTENT_PX: float = 220.0
-## v6.2: 累计召唤上限。相位师不死即无限产兵会导致战斗拖延；达上限后切换到疲劳间隔，
-## 给玩家留出集中输出基地 HP 的窗口。
-const TOTAL_SPAWN_CAP: int = 12
-## v6.2: 累计达上限后的产兵间隔（原 spawn_interval 约 3~6s），大幅延长以缓解压制。
+## 出兵疲劳阶梯（v7.x 扩展自 v6.2 的单档疲劳）。
+## 相位师不死即无限产兵会导致长战斗拖延；改为三档阶梯递进→彻底枯竭停止，
+## 给玩家「熬过兵力潮就赢」的终局，避免消耗战。
+## 阈值按 _unit_limit 倍数动态派生（setup 时缓存），让高容量相位师总兵力也更多。
+const FATIGUE_TIER1_MULT: int = 2   # 轻度疲劳阈值 = unit_limit × 2
+const FATIGUE_TIER2_MULT: int = 4   # 重度疲劳阈值 = unit_limit × 4
+const EXHAUSTION_MULT: int = 6      # 彻底枯竭阈值 = unit_limit × 6
+## 轻度疲劳产兵间隔（原 spawn_interval 约 3~6s），大幅延长以缓解压制。
 const FATIGUED_SPAWN_INTERVAL: float = 18.0
+## 重度疲劳产兵间隔，进一步放慢。
+const HEAVY_FATIGUE_INTERVAL: float = 30.0
 
 @export var max_hp: float = 500.0
 @export var spawn_interval: float = 6.0
@@ -46,9 +53,23 @@ var _has_equipment: bool = false
 var _master_runes: Array = []           # 相位师自带符文 id 列表
 var _spawn_sequence: Array = []         # 出兵序列 [{platform, type}, ...]
 var _spawn_seq_index: int = 0           # 当前序列游标
-## v6.2: 累计召唤计数 + 疲劳标记（达 TOTAL_SPAWN_CAP 后切换到 FATIGUED_SPAWN_INTERVAL）
+# v7.x: 产兵 tier 按关卡难度递进（替代旧"恒定 TIER_HIGH"）
+# _game_level：当前游戏关卡号（1-100），0=未知 fallback 到主等级映射
+# _era_progress：当前时代内进度 0.0~1.0（驱动 enhance/tier/rune_count 限量）
+# _pm_tier：相位师产兵配置档位（TIER_MID/TIER_HIGH），setup 末尾缓存一次
+var _game_level: int = 0
+var _era_progress: float = 0.5
+var _pm_tier: int = 2  # 默认 TIER_MID，setup 末尾按 era_progress 重算
+## 出兵疲劳阶梯：0=正常, 1=轻度疲劳(18s), 2=重度疲劳(30s), 3=枯竭(停止产兵)
+var _fatigue_tier: int = 0
+## 累计召唤计数（达阈值推进 _fatigue_tier）
 var _total_spawned: int = 0
-var _spawn_fatigued: bool = false
+## 阶梯阈值缓存（setup 时按 _unit_limit 倍数计算）
+var _tier1_cap: int = 10
+var _tier2_cap: int = 20
+var _exhaustion_cap: int = 30
+## 缓存 setup 时设置的 Body 原始 tint，供疲劳视觉反馈叠加暗化使用
+var _base_body_tint: Color = Color.WHITE
 
 ## 平台类型字符串 -> GC.PlatformType 映射
 const _PLATFORM_TYPE_MAP: Dictionary = {
@@ -120,6 +141,17 @@ func setup(master_config: Dictionary) -> void:
 		era = _era_string_to_int(era_override)
 	else:
 		era = _era_from_level(int(master_config.get("level", 15)))
+	# v7.x: 读游戏关卡号 → 算时代进度 → 缓存产兵 tier（替代旧"恒定 TIER_HIGH"）
+	_game_level = int(master_config.get("game_level", 0))
+	if _game_level > 0:
+		var era_local_level: int = ((_game_level - 1) % 20) + 1
+		_era_progress = clampf(float(era_local_level - 1) / 19.0, 0.0, 1.0)
+	else:
+		# fallback：无 game_level 时用主等级(5-30)粗映射到 0.0~1.0
+		var master_lv: int = int(master_config.get("level", 15))
+		_era_progress = clampf(float(master_lv - 5) / 25.0, 0.0, 1.0)
+	var _ELT_init = preload("res://data/enemy_loadout_tiers.gd")
+	_pm_tier = _ELT_init.get_phase_master_tier(_era_progress)
 
 	## 尝试获取装备数据
 	_equipment = master_config.get("equipment", {})
@@ -136,10 +168,24 @@ func setup(master_config: Dictionary) -> void:
 	_spawn_sequence = _equipment.get("spawn_sequence", [])
 	_spawn_seq_index = 0
 	_unit_limit = int(_master_stats.get("unit_limit", 5))
+	# v7.x: 相位仪卡槽数(unit_capacity)限制产兵数——"出兵x相位仪，卡槽数y成为限制"。
+	# 相位仪 capacity 按稀有度梯度（mk1/common=3, mk2/uncommon=4, mk3/rare=5, mk4·god/mythic=6）。
+	# 与 stats.unit_limit 取最小，让低配相位师产兵数更少（战斗卡可高级但数目受限）。
+	# 缺省 unit_capacity=0 时不约束（旧相位仪无此字段→行为不变）。
+	var _inst_id_for_cap: String = String(_equipment.get("phase_instrument", ""))
+	if not _inst_id_for_cap.is_empty():
+		var _inst_cfg_for_cap: Dictionary = EnemyPhaseEquipment.get_phase_instrument(_inst_id_for_cap)
+		var _cap: int = int(_inst_cfg_for_cap.get("unit_capacity", 0))
+		if _cap > 0:
+			_unit_limit = mini(_unit_limit, _cap)
 	# 格子战场敌方仅 6 个可用槽位（SLOT_COUNT - 1）。数据表 unit_limit 可达 7~15，
 	# 超出会导致产兵越过 6 上限、多单位挤同格。统一钳制到格子可用槽位数。
 	# 注：master_power_evaluator 直接读原始配置 dict 评分，不受此钳制影响。
 	_unit_limit = mini(_unit_limit, BattleSlotGrid.SLOT_COUNT - 1)
+	# v7.x: 出兵疲劳阶梯阈值按 _unit_limit 倍数派生（钳制后计算，保证与实际场上容量一致）
+	_tier1_cap = _unit_limit * FATIGUE_TIER1_MULT
+	_tier2_cap = _unit_limit * FATIGUE_TIER2_MULT
+	_exhaustion_cap = _unit_limit * EXHAUSTION_MULT
 
 	if not _equipment.is_empty() and _equipment.has("platforms") and _equipment.has("weapons"):
 		_has_equipment = true
@@ -155,13 +201,13 @@ func setup(master_config: Dictionary) -> void:
 
 	hp = max_hp
 	add_to_group("enemy_phase_driver")
-	# v6.2: 每次重建基地都重置累计召唤计数与疲劳标记
+	# 每次重建基地都重置累计召唤计数与疲劳阶梯
 	_total_spawned = 0
-	_spawn_fatigued = false
+	_fatigue_tier = 0
 	if SignalBus:
 		SignalBus.enemy_phase_driver_hp_changed.emit(hp, max_hp)
 	var mode_str := "装备模式" if _has_equipment else "经典模式"
-	# [LOG-v5.1] print("[EnemyPhaseDriver] 相位师 %s 基地建立 (HP=%d, era=%d, limit=%d, cap=%d, interval=%.1f) [%s]" % [master_name, int(max_hp), era, _unit_limit, TOTAL_SPAWN_CAP, spawn_interval, mode_str])
+	# [LOG-v5.1] print("[EnemyPhaseDriver] 相位师 %s 基地建立 (HP=%d, era=%d, limit=%d, exhaust=%d, interval=%.1f) [%s]" % [master_name, int(max_hp), era, _unit_limit, _exhaustion_cap, spawn_interval, mode_str])
 	_apply_body_visual_from_master(master_config)
 
 func _apply_body_visual_from_master(master_config: Dictionary) -> void:
@@ -180,6 +226,8 @@ func _apply_body_visual_from_master(master_config: Dictionary) -> void:
 		"void": Color(0.86, 0.76, 1.0),
 	}
 	spr.modulate = tints.get(ef, Color.WHITE)
+	# 缓存原始 tint，供出兵疲劳阶梯视觉反馈叠加暗化使用
+	_base_body_tint = spr.modulate
 	# 缩放：与当前时代下「默认可用敌方原型」同一套 visual_scale 数据（见 _pick_visual_archetype_for_era）
 	var tex: Texture2D = spr.texture
 	if tex != null:
@@ -226,11 +274,122 @@ func _process(delta: float) -> void:
 	if tree == null or tree.paused:
 		return
 	_spawn_timer += delta
-	# v6.2: 累计召唤达上限后切换到疲劳间隔，缓解无限产兵压制
-	var interval: float = FATIGUED_SPAWN_INTERVAL if _spawn_fatigued else spawn_interval
+	# 枯竭后彻底停止产兵（_fatigue_tier >= 3），玩家只需专注输出基地 HP
+	if _fatigue_tier >= 3:
+		return
+	var interval: float = _get_current_spawn_interval()
 	if _spawn_timer >= interval:
 		_spawn_timer = 0.0
 		_produce_unit()
+
+## 按当前疲劳阶梯返回产兵间隔：正常=spawn_interval, 轻度疲劳=18s, 重度疲劳=30s。
+## 枯竭(tier>=3)由 _process 短路，不会走到这里。
+func _get_current_spawn_interval() -> float:
+	match _fatigue_tier:
+		2: return HEAVY_FATIGUE_INTERVAL
+		1: return FATIGUED_SPAWN_INTERVAL
+		_: return spawn_interval
+
+
+# ============================ v8: 反应式 AI ============================
+# 相位师侦测玩家场上主力兵种（combat_kind 分布），按概率出克制兵。
+# 克制关系复用 enemy_stat_resolver 的 combat_kind→三维攻击比例：
+#   玩家多 ARMOR  → 出 SUPPORT/FORT（对装甲强 1.2~1.3x）
+#   玩家多 AIR    → 出 AIR（对空中强 1.0x，其他兵种对空弱 0.2~0.3x）
+#   玩家多 LIGHT  → 出 ARMOR（对轻装 0.7x 但血厚碾压）/ FORT（对轻 0.5x 但阵地硬）
+#   SUPPORT/FORT 在攻防维度归 ARMOR/LIGHT，不单独处理
+
+## 统计玩家场上各 combat_kind 的单位数量。返回 {combat_kind_int: count}。
+func _tally_player_combat_kinds() -> Dictionary:
+	var tally: Dictionary = {}
+	if BattleManager == null:
+		return tally
+	var gr: Array = BattleManager.get_cached_nodes_in_group("player_units")
+	for n in gr:
+		if n == null or not is_instance_valid(n):
+			continue
+		var s = n.get("stats")
+		if s == null:
+			continue
+		var ck: int = int(s.combat_kind)
+		tally[ck] = int(tally.get(ck, 0)) + 1
+	return tally
+
+
+## 找出玩家主力 combat_kind（数量最多；并列取 CombatKind 枚举值小的）。
+func _dominant_player_kind(tally: Dictionary) -> int:
+	var best_kind: int = -1
+	var best_count: int = 0
+	for ck in tally:
+		var cnt: int = int(tally[ck])
+		if cnt > best_count or (cnt == best_count and (best_kind < 0 or int(ck) < best_kind)):
+			best_count = cnt
+			best_kind = int(ck)
+	return best_kind
+
+
+## 反查克制表：给定玩家主力 kind，返回应出的克制 combat_kind。
+## 返回 -1 表示无明确克制（回退原序列）。
+func _counter_kind_for(player_kind: int) -> int:
+	match player_kind:
+		GC.CombatKind.ARMOR:
+			# 玩家堆装甲 → 出反坦克（SUPPORT 对装甲 1.2x 或 FORT 1.3x）
+			# 优先 SUPPORT（可移动推进），FORT 作备选
+			return GC.CombatKind.SUPPORT
+		GC.CombatKind.AIR:
+			# 玩家堆空军 → 出空军对空（其他兵种对空太弱 0.2~0.3x）
+			return GC.CombatKind.AIR
+		GC.CombatKind.LIGHT:
+			# 玩家堆轻装步兵 → 出装甲碾压（血厚+对轻 0.7x 仍能打）
+			return GC.CombatKind.ARMOR
+		GC.CombatKind.SUPPORT:
+			# 玩家堆支援/炮兵 → 出装甲冲锋（支援对装甲弱，直接贴脸）
+			return GC.CombatKind.ARMOR
+		GC.CombatKind.FORT:
+			# 玩家堆堡垒 → 出 SUPPORT/FORT 反阵地
+			return GC.CombatKind.SUPPORT
+	return -1
+
+
+## 反应式选 platform：按 reactive_chance 概率，从 valid_platforms 中筛出
+## combat_kind 匹配克制关系的候选。返回选中的 platform_id；不触发或无候选时返回 ""。
+func _pick_reactive_platform(valid_platforms: Array, reactive_chance: float) -> String:
+	if randf() > reactive_chance:
+		return ""
+	var tally: Dictionary = _tally_player_combat_kinds()
+	if tally.is_empty():
+		return ""
+	var dom_kind: int = _dominant_player_kind(tally)
+	if dom_kind < 0:
+		return ""
+	var target_kind: int = _counter_kind_for(dom_kind)
+	if target_kind < 0:
+		return ""
+	# 在 valid_platforms 中筛出 combat_kind 匹配的候选
+	var matched: Array = []
+	for pid in valid_platforms:
+		var pid_str := String(pid)
+		var arch_cfg := EnemyArchetypes.get_config(pid_str)
+		if arch_cfg.is_empty():
+			continue
+		var ck: int = int(arch_cfg.get("combat_kind", -1))
+		# v6.8: tags 含 aircraft 的判为 AIR（与 enemy_stat_resolver 口径一致）
+		var tags: Array = arch_cfg.get("tags", [])
+		if ck != GC.CombatKind.AIR and tags.has("aircraft"):
+			ck = GC.CombatKind.AIR
+		if ck == target_kind:
+			matched.append(pid_str)
+	# 克制候选为空时尝试备选 kind（SUPPORT↔FORT 互通，都对装甲强）
+	if matched.is_empty() and target_kind == GC.CombatKind.SUPPORT:
+		for pid in valid_platforms:
+			var pid_str := String(pid)
+			var arch_cfg := EnemyArchetypes.get_config(pid_str)
+			if not arch_cfg.is_empty() and int(arch_cfg.get("combat_kind", -1)) == GC.CombatKind.FORT:
+				matched.append(pid_str)
+	if matched.is_empty():
+		return ""
+	return String(matched[randi() % matched.size()])
+
 
 ## 从装备数据生成单位（使用 ConstructUnit）
 func _produce_unit_with_equipment() -> void:
@@ -280,6 +439,19 @@ func _produce_unit_with_equipment() -> void:
 			platform_id = String(valid_platforms[randi() % valid_platforms.size()])
 	else:
 		platform_id = String(valid_platforms[randi() % valid_platforms.size()])
+
+	# v8: 反应式 AI——相位师侦测玩家主力兵种，按概率出克制兵。
+	# 70% 概率覆盖序列选择为克制玩家主力 combat_kind 的 platform；30% 保留原序列（维持出兵节奏）。
+	# valid_platforms 池中无克制候选时回退原选择（向后兼容）。
+	# entry 的 reactive_chance 字段（可选）可覆盖默认 0.7 概率，让不同相位师有不同"聪明度"。
+	if valid_platforms.size() > 1:
+		var reactive_chance: float = 0.7
+		if not _spawn_sequence.is_empty():
+			var cur_entry: Dictionary = _spawn_sequence[(_spawn_seq_index - 1) % _spawn_sequence.size()]
+			reactive_chance = float(cur_entry.get("reactive_chance", 0.7))
+		var reactive_pick: String = _pick_reactive_platform(valid_platforms, reactive_chance)
+		if not reactive_pick.is_empty():
+			platform_id = reactive_pick
 
 	# v7.x: 分流——直引 archetype vs 旧平台卡
 	var direct_archetype_id: String = String(direct_archetype_ids.get(platform_id, ""))
@@ -361,16 +533,24 @@ func _produce_unit_with_equipment() -> void:
 	_apply_sequence_entry_bonus(stats, seq_entry_type)
 	# v6.14: 相位师相位仪加成 —— 接入 _get_enemy_phase_instrument_bonus（此前字段空转，v6.14 已补全数据）
 	_apply_enemy_phase_instrument_bonus(stats)
-	# v7.3: 高配档加成（等量我方改造9槽+符文满配的总加成）。
-	# 相位师战固定走高配档（TIER_HIGH: atk+35%/hp+30%/def+15%），与我方满改造+满符文对称。
+	# v8 批次2: 精英/boss 词缀（seq_entry_type=elite/boss 时 roll 并应用到 stats）。
+	# 相位师产兵走 ConstructUnit，lifesteal/chain/splash 通过 bullet 命中的
+	# apply_on_hit_side_effects 自动触发（读 shooter.stats）；反伤由 stats.armor_reflect 字段承载。
+	var _elite_affixes: Array = EnemyAffixes.roll_affixes(seq_entry_type)
+	if not _elite_affixes.is_empty():
+		var _hp_ratio_pm: float = clampf(float(stats.max_hp) / maxf(1.0, float(stats.max_hp)), 0.0, 1.0)
+		EnemyAffixes.apply_to_stats(stats, _elite_affixes)
+	# v7.3: 配档加成（等量我方改造满配+符文满配的总加成）。
+	# v7.x: 配档不再恒定 TIER_HIGH，改按关卡难度递进（setup 缓存的 _pm_tier）。
+	# 时代早期/中段 → 中配(atk+20%/hp+18%/def+10%)，时代后期/Boss → 高配(atk+35%/hp+30%/def+15%)。
 	# 注：EnemyLoadoutTiers.TIER_MODIFICATIONS 里的改造ID（e_mod_t*）未在 ModificationRegistry 注册，
 	# 无法走 _apply_mod_stat_effects 真实改造链路，故用 TIER_BONUS 数值直接乘（等量我方同档总加成）。
-	# 配合上方的 enhance_level=9（等量强化），产兵达成"和我方战力差不多"的对称平衡。
+	# 配合上方的 enhance_level（按同 tier 派生），产兵达成"和我方战力差不多"的对称平衡。
 	var _ELT = preload("res://data/enemy_loadout_tiers.gd")
-	var _high_bonus: Dictionary = _ELT.get_bonus_for_tier(_ELT.TIER_HIGH)
-	var _tier_hp: float = float(_high_bonus.get("hp_pct", 0.0))
-	var _tier_atk: float = float(_high_bonus.get("atk_pct", 0.0))
-	var _tier_def: float = float(_high_bonus.get("def_pct", 0.0))
+	var _pm_bonus: Dictionary = _ELT.get_bonus_for_tier(_pm_tier)
+	var _tier_hp: float = float(_pm_bonus.get("hp_pct", 0.0))
+	var _tier_atk: float = float(_pm_bonus.get("atk_pct", 0.0))
+	var _tier_def: float = float(_pm_bonus.get("def_pct", 0.0))
 	if _tier_hp > 0.0:
 		stats.max_hp = maxf(1.0, stats.max_hp * (1.0 + _tier_hp))
 	if _tier_atk > 0.0:
@@ -396,6 +576,11 @@ func _produce_unit_with_equipment() -> void:
 		unit.setup_with_enemy_visual(false, stats, visual_archetype_id)
 	else:
 		unit.setup(false, stats)
+	# v7.x: 敌方产兵也有布置时间——入战后启动部署虚影（与我方对称，复用 calculate_deploy_delay 公式）。
+	# 部署期间半透明、不动、不开火，可被攻击；is_deploy_ghost 字段被 battle_manager 鸭子识别，
+	# 部署期不计入存活数（不影响产兵上限与胜负判定）。
+	if unit.has_method("start_as_deploy_ghost"):
+		unit.start_as_deploy_ghost()
 	if _add_unit_to_battle(unit, current_count):
 		_record_spawn_and_check_fatigue()
 
@@ -473,15 +658,52 @@ func _add_unit_to_battle(unit: Node2D, current_count: int) -> bool:
 	BattleManager.set_enemy_unit_count(current_count + 1)
 	if SignalBus:
 		SignalBus.unit_spawned.emit(unit, false)
+	# v7.x: 敌方布置时间——回退路径（非格子战/主路径失败）的 EnemyUnit 同样启动部署虚影。
+	# ConstructUnit 在 _produce_unit_with_equipment 已调过 start_as_deploy_ghost，此处守卫跳过重复触发。
+	if unit.has_method("start_as_deploy_ghost") and not (unit.get("is_deploy_ghost") if "is_deploy_ghost" in unit else false):
+		unit.start_as_deploy_ghost()
 	return true
 
 
-## v6.2: 单位成功进入战场后累计召唤计数；达 TOTAL_SPAWN_CAP 后切换到疲劳间隔。
+## 单位成功进入战场后累计召唤计数；按阶梯阈值推进 _fatigue_tier（0→1→2→3 枯竭停止）。
 func _record_spawn_and_check_fatigue() -> void:
 	_total_spawned += 1
-	if not _spawn_fatigued and _total_spawned >= TOTAL_SPAWN_CAP:
-		_spawn_fatigued = true
-		_spawn_timer = 0.0  # 重置计时器，让疲劳间隔从现在起算
+	var old_tier := _fatigue_tier
+	if _total_spawned >= _exhaustion_cap:
+		_fatigue_tier = 3
+	elif _total_spawned >= _tier2_cap:
+		_fatigue_tier = 2
+	elif _total_spawned >= _tier1_cap:
+		_fatigue_tier = 1
+	if _fatigue_tier > old_tier:
+		_spawn_timer = 0.0  # 阶梯跃迁重置计时器，让新间隔从现在起算
+		_on_fatigue_tier_changed(_fatigue_tier)
+
+## 疲劳阶梯跃迁反馈：视觉暗化（兵力流失感）+ Toast 提示玩家。
+func _on_fatigue_tier_changed(tier: int) -> void:
+	_apply_fatigue_visual(tier)
+	if SignalBus == null:
+		return
+	var msg: String = ""
+	match tier:
+		1: msg = "敌方相位师兵力告急，出兵减缓！"
+		2: msg = "敌方相位师兵力枯竭，出兵大幅减缓！"
+		3: msg = "敌方相位师弹尽粮绝，停止出兵！集中火力攻击！"
+		_: return
+	if not msg.is_empty():
+		SignalBus.show_toast.emit(msg)
+
+## 按 _fatigue_tier 在原始阵营 tint 基础上叠加暗化偏红，体现兵力流失。
+func _apply_fatigue_visual(tier: int) -> void:
+	var spr := get_node_or_null("Body") as Sprite2D
+	if spr == null:
+		return
+	var base: Color = _base_body_tint
+	match tier:
+		0: spr.modulate = base
+		1: spr.modulate = base.lerp(Color(0.5, 0.3, 0.3), 0.35)
+		2: spr.modulate = base.lerp(Color(0.35, 0.2, 0.2), 0.55)
+		3: spr.modulate = base.lerp(Color(0.2, 0.1, 0.1), 0.7)
 
 ## 回退路径：扫描 enemy_units 组，从远端(最大索引)倒序找第一个空闲敌槽；
 ## 敌方仅 slot N-1（位置 15，最右靠屏幕边）禁放，可用 slot 0~N-2。
@@ -610,9 +832,10 @@ func _build_stats_from_archetype(era: int, platform_type_str: String, fallback_p
 	# v7.3: 相位师产兵填充等量强化等级（对称我方强化系统）。
 	# build_stats_from_card 内部会调用 apply_enhance_level_bonus，按 combat_kind 应用
 	# 等量我方的 hp/atk/特殊能力加成（装甲9级=hp×1.315/atk×1.189+dmg_reduction+6.3%）。
-	# 相位师战固定走高配档（TIER_HIGH.enhance_level=9），与我方满强化对称。
+	# v7.x: 强化等级按关卡难度递进（setup 缓存的 _pm_tier），不再恒定 TIER_HIGH(9级)。
+	# 时代早期/中段 → enh6（中配），时代后期/Boss → enh9（高配满强化）。
 	var EnemyLoadoutTiers = preload("res://data/enemy_loadout_tiers.gd")
-	c.enhance_level = int(EnemyLoadoutTiers.get_bonus_for_tier(EnemyLoadoutTiers.TIER_HIGH).get("enhance_level", 0))
+	c.enhance_level = int(EnemyLoadoutTiers.get_bonus_for_tier(_pm_tier).get("enhance_level", 0))
 	# v6.13: archetype 表的 weapon_type 是 legacy 12 值（SMG=0…OMEGA=10），
 	# 不能直接当新 4 值 WeaponType（DIRECT/INDIRECT/AERIAL/SUPPORT）用——
 	# 否则 MG(2) 被误判成 AERIAL(2) → 信息卡显示"空射武器"。
@@ -711,7 +934,15 @@ func _legacy_weapon_to_new_weapon_type(legacy_wt: int, cfg: Dictionary) -> int:
 func _apply_master_rune_bonus(stats: UnitStats) -> void:
 	if _master_runes.is_empty():
 		return
+	# v7.x: 符文按 tier 限量应用（替代旧"应用全部符文"）。
+	# _master_runes 来自 _derive_runes（已按 level 选稀有度梯度），顺序天然偏稀有度优先。
+	# LOW=1 / MID=3 / HIGH=6 个符文，超出 tier 上限的符文不应用到产兵。
+	var _ELT_runes = preload("res://data/enemy_loadout_tiers.gd")
+	var _rune_cap: int = int(_ELT_runes.get_bonus_for_tier(_pm_tier).get("rune_count", 99))
+	var _applied: int = 0
 	for rune_id in _master_runes:
+		if _applied >= _rune_cap:
+			break  # 超出 tier 上限的符文不应用
 		var rune: Dictionary = RuneDefs.get_rune(String(rune_id))
 		if rune.is_empty():
 			continue
@@ -745,6 +976,7 @@ func _apply_master_rune_bonus(stats: UnitStats) -> void:
 				stats.attack_armor_speed /= mult
 				stats.attack_air_speed /= mult
 				stats.attack_interval /= mult
+		_applied += 1
 
 
 ## v6.14: 出兵序列 elite/boss 标记加成。

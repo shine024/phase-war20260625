@@ -14,6 +14,7 @@ const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 # v6.7: 相位师排名差异化加成 —— 玩家装配器 + 战力评估器
 const MasterPlayerAssembler = preload("res://scripts/master_player_assembler.gd")
 const MasterPowerEvaluator = preload("res://scripts/master_power_evaluator.gd")
+const LevelInformation = preload("res://data/level_information.gd")
 const DEBUG_BATTLE_LOG := false
 
 # v6.0 依赖注入重构: 移除 @onready 单例引用，改用 setup() 方法注入
@@ -281,6 +282,16 @@ func start_battle(battle_scene: Node) -> void:
 
 	# 初始化战斗能量
 	if energy_manager:
+		# v8 批次3: 把当前关卡的能量惩罚规则传给 energy_manager（set_meta 方式，不改 start_battle 签名）
+		var _rules: Dictionary = _get_current_special_rules()
+		var _energy_mult: float = float(_rules.get("energy_mult", 1.0))
+		var _regen_mult: float = float(_rules.get("energy_regen_mult", 1.0))
+		if absf(_energy_mult - 1.0) > 0.001 or absf(_regen_mult - 1.0) > 0.001:
+			energy_manager.set_meta("level_energy_mult", _energy_mult)
+			energy_manager.set_meta("level_regen_mult", _regen_mult)
+		else:
+			energy_manager.set_meta("level_energy_mult", 1.0)
+			energy_manager.set_meta("level_regen_mult", 1.0)
 		energy_manager.start_battle()
 
 	if SignalBus:
@@ -469,6 +480,17 @@ func _on_unit_died(unit: Node, is_player: bool) -> void:
 ## v6.11: _record_battle_star_kill 已移除（战力星级系统②已合并到强化等级①）
 
 
+## v8 批次3: 获取当前关卡的特殊规则（读 GameManager.current_level → LevelInformation）
+func _get_current_special_rules() -> Dictionary:
+	if GameManager == null:
+		return {}
+	var level: int = 1
+	if "current_level" in GameManager:
+		level = int(GameManager.current_level)
+	var li = LevelInformation.new()
+	return li.get_special_rules(level)
+
+
 func _check_win_lose() -> void:
 	if not battle_active or battlefield == null:
 		return
@@ -477,13 +499,27 @@ func _check_win_lose() -> void:
 	if _is_phase_master_battle:
 		return
 
-	# v6.6(剧情): 必败战 — 禁用玩家正常胜利路径，胜负完全由倒计时控制
+	# v6.6(剧情): 必败战 — 禁用玩家正常胜利路径
 	# 即使玩家清场，也不判胜；让波次持续刷敌，直到 _force_defeat_timer 归零
 	if _force_defeat:
 		return
 
 	if not _card_grid_combat_started:
 		return
+
+	# v8 批次3: 特殊胜利条件——坚守N波（survive_waves）
+	# 达到指定波数后立即判胜（无需清场），考验玩家在持续压力下的生存能力
+	var rules: Dictionary = _get_current_special_rules()
+	var win_type: String = String(rules.get("win_type", ""))
+	if win_type == "survive_waves":
+		var survive_target: int = int(rules.get("win_param", 0))
+		if survive_target > 0 and _spawn_system != null:
+			var current_wave: int = _spawn_system.get_enemy_wave_index()
+			if current_wave >= survive_target:
+				if DEBUG_BATTLE_LOG:
+					pass
+				end_battle(true)
+				return
 
 	# 普通格子战：配置波次全部刷出 + 场上无敌方战斗单位
 	if not _spawn_system.all_enemy_waves_spawned():

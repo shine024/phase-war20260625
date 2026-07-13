@@ -47,6 +47,10 @@ func _init_level_information() -> void:
 	# ==================== 近未来时代（81-100关）====================
 	_add_future_levels()
 
+	# v8 批次3: 关卡特殊机制（限定兵种/能量惩罚/特殊胜利/部署上限）
+	# 集中挂载，不侵入 100 关字典定义。字段全可选，缺省=普通关（向后兼容）。
+	_apply_special_rules()
+
 func _add_ww1_levels() -> void:
 	"""一战（1-20关）：钢壁防务为主
 	法则家族限制：
@@ -525,6 +529,75 @@ func get_level_info(level: int) -> Dictionary:
 	if level < 1 or level > LEVEL_COUNT:
 		return {}
 	return _level_db.get(level, {}).duplicate(true)
+
+## v8 批次3: 获取关卡特殊规则。缺省空字典=普通关（向后兼容）。
+## 结构示例：
+##   {
+##     "restrict_platforms": [0,1],   # 限定可部署 platform_type 白名单（空/缺省=不限）
+##     "energy_mult": 0.5,             # 能量上限/开局乘率（1.0=正常）
+##     "energy_regen_mult": 0.5,       # 能量回复乘率（1.0=正常）
+##     "win_type": "survive_waves",    # 特殊胜利：survive_waves=坚守N波后判胜
+##     "win_param": 5,                 # 胜利参数（survive_waves 的波数）
+##     "deploy_limit": 4               # 本关部署上限（缺省=正常上限6）
+##   }
+func get_special_rules(level: int) -> Dictionary:
+	if level < 1 or level > LEVEL_COUNT:
+		return {}
+	var info = _level_db.get(level, {})
+	return info.get("special_rules", {})
+
+## v8 批次3: 集中挂载关卡特殊规则。
+## 给关键关（每时代 Boss 关 + 时代首关 + 中段关卡）挂规则。
+## 字段全可选；未挂规则的关卡 get_special_rules 返回空字典=普通关。
+func _apply_special_rules() -> void:
+	# ─── 一战时代（1-20）───
+	# 第5关：能量受限（教学"能量管理"，回复减半）
+	_set_rules(5, {"energy_regen_mult": 0.5, "deploy_limit": 4})
+	# 第15关：限定步兵（巷战，重装备无法展开）—— platform_type 0=INFANTRY
+	_set_rules(15, {"restrict_platforms": [0]})
+	# 第20关 Boss：坚守8波（时代 Boss 考验耐力）
+	_set_rules(20, {"win_type": "survive_waves", "win_param": 8})
+
+	# ─── 二战时代（21-40）───
+	# 第25关：能量减半（资源匮乏战场）
+	_set_rules(25, {"energy_mult": 0.5})
+	# 第30关：限定装甲（装甲突击战）—— platform_type 1=ARMOR
+	_set_rules(30, {"restrict_platforms": [1]})
+	# 第40关 Boss：坚守10波 + 部署上限4（高压 Boss）
+	_set_rules(40, {"win_type": "survive_waves", "win_param": 10, "deploy_limit": 4})
+
+	# ─── 冷战时代（41-60）───
+	# 第50关：回复减半 + 部署上限4
+	_set_rules(50, {"energy_regen_mult": 0.5, "deploy_limit": 4})
+	# 第55关：限定空军/支援（机动战）—— platform_type 2=AIR, 3=SUPPORT
+	_set_rules(55, {"restrict_platforms": [2, 3]})
+	# 第60关 Boss：坚守12波
+	_set_rules(60, {"win_type": "survive_waves", "win_param": 12})
+
+	# ─── 现代时代（61-80）───
+	# 第65关：能量减半 + 回复减半（双压）
+	_set_rules(65, {"energy_mult": 0.5, "energy_regen_mult": 0.5})
+	# 第70关：部署上限3（精锐小队作战）
+	_set_rules(70, {"deploy_limit": 3})
+	# 第80关 Boss：坚守14波 + 能量减半
+	_set_rules(80, {"win_type": "survive_waves", "win_param": 14, "energy_mult": 0.5})
+
+	# ─── 近未来时代（81-100）───
+	# 第85关：限定堡垒/支援（阵地防御战）—— platform_type 3=SUPPORT, 7=ENGINEER
+	_set_rules(85, {"restrict_platforms": [3, 7]})
+	# 第90关：能量减半 + 部署上限4
+	_set_rules(90, {"energy_mult": 0.5, "deploy_limit": 4})
+	# 第100关 终局：坚守15波 + 全限制（终极考验）
+	_set_rules(100, {"win_type": "survive_waves", "win_param": 15, "energy_mult": 0.5, "deploy_limit": 4})
+
+
+## v8 批次3: 给指定关卡挂 special_rules（内部辅助，合并到已有字典）。
+func _set_rules(level: int, rules: Dictionary) -> void:
+	if not _level_db.has(level):
+		return
+	var entry: Dictionary = _level_db[level]
+	entry["special_rules"] = rules
+	_level_db[level] = entry
 
 func get_level_display_name(level: int) -> String:
 	"""获取关卡显示名称"""

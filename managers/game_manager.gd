@@ -204,6 +204,8 @@ func _build_garrison_config(master_id: String) -> Dictionary:
 		"active_spells": master.get("active_spells", []),
 		"passive_spells": master.get("passive_spells", []),
 		"era": _era_string_from_level(int(master.get("level", 15))),
+		# v7.x: 透传当前游戏关卡号，供 driver 按关卡难度递进产兵 tier
+		"game_level": current_level,
 	}
 
 ## v7.x: level → era 字符串（供 _build_garrison_config 填 era 字段）
@@ -388,6 +390,8 @@ func _enrich_master_config(simple_config: Dictionary) -> Dictionary:
 	enriched["id"] = best.get("id", "")
 	# 战场敌方相位场底座用：与排行榜「公司势力」不同，此为敌方模板 steel/flame/thunder/void
 	enriched["enemy_faction"] = String(best.get("faction", enemy_faction))
+	# v7.x: 透传当前游戏关卡号，供 driver 按关卡难度递进产兵 tier（与 _build_garrison_config 对齐）
+	enriched["game_level"] = current_level
 
 	if DEBUG_GAME_LOG:
 		pass  # LOG: 相位师配置已合并

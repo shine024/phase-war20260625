@@ -451,8 +451,8 @@ func _on_instrument_area_clicked() -> void:
 	pass
 
 func _on_phase_level_label_clicked() -> void:
-	# v7.x: 点击相位仪等级标签 → 打开玩家相位师详细面板（9维战力分解）
-	_open_player_master_panel()
+	# 点击底部相位仪等级标签 → 打开相位仪选择面板（切换相位仪）
+	_open_phase_instrument_selector()
 
 func _on_law_area_clicked() -> void:
 	# v7.x: 独立 rune_panel 已删除，符文管理合并到背包 RunesTab

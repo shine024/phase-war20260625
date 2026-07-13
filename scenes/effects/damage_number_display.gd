@@ -14,19 +14,25 @@ const DAMAGE_STYLES: Dictionary = {
 		"font_size": 24,
 		"color": Color(1.0, 0.2, 0.1, 1.0),
 		"outline_color": Color(0.8, 0.0, 0.0, 0.9),
-		"scale": 1.12
+		"scale": 1.12,
+		"glow_color": Color(1.0, 0.3, 0.1, 0.9),  # v8.3 红色发光
+		"glow_size": 4
 	},
 	"pierce": {
 		"font_size": 20,
 		"color": Color(0.75, 0.5, 1.0, 1.0),
 		"outline_color": Color(0.3, 0.1, 0.5, 0.9),
-		"scale": 1.0
+		"scale": 1.0,
+		"glow_color": Color(0.6, 0.3, 1.0, 0.85),  # v8.3 紫色发光
+		"glow_size": 3
 	},
 	"heal": {
 		"font_size": 18,
 		"color": Color(0.2, 1.0, 0.4, 1.0),
 		"outline_color": Color(0.0, 0.3, 0.1, 0.8),
-		"scale": 0.95
+		"scale": 0.95,
+		"glow_color": Color(0.2, 1.0, 0.4, 0.8),  # v8.3 绿色发光
+		"glow_size": 3
 	},
 	"shield": {
 		"font_size": 14,
@@ -51,7 +57,9 @@ const DAMAGE_STYLES: Dictionary = {
 		"font_size": 28,
 		"color": Color(1.0, 0.85, 0.35, 1.0),
 		"outline_color": Color(0.5, 0.3, 0.0, 0.95),
-		"scale": 1.5
+		"scale": 1.5,
+		"glow_color": Color(1.0, 0.85, 0.35, 0.95),  # v8.3 金色发光
+		"glow_size": 6
 	}
 }
 
@@ -87,6 +95,11 @@ static func _get_cached_label_settings(damage_type_key: String) -> LabelSettings
 	settings.font_color = style.get("color", Color.WHITE) as Color
 	settings.outline_size = 2
 	settings.outline_color = style.get("outline_color", Color.BLACK) as Color
+	# v8.3: 发光层（用 Shadow 当 glow）。normal/miss/dot/shield 无 glow 字段则跳过。
+	if style.has("glow_color"):
+		settings.shadow_color = style.get("glow_color", Color.WHITE) as Color
+		settings.shadow_size = int(style.get("glow_size", 3))
+		settings.shadow_offset = Vector2.ZERO
 	_label_settings_cache[damage_type_key] = settings
 	return settings
 

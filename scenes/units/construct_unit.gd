@@ -3,6 +3,7 @@ extends CharacterBody2D
 ## 拆分模块：AI → ConstructUnitAI, 部署 → ConstructUnitDeploy
 
 const GC = preload("res://resources/game_constants.gd")
+const DT = preload("res://resources/design_tokens.gd")
 const BulletScene = preload("res://scenes/units/bullet.tscn")
 const ModuleEffectHandler = preload("res://scripts/battle/module_effect_handler.gd")
 const ModAuraHandler = preload("res://scripts/battle/mod_aura_handler.gd")
@@ -129,8 +130,8 @@ var _card_nudge_tween: Tween = null
 var _hit_flash_t: float = 0.0           # flash 剩余时间（秒），0=未激活
 var _hit_flash_base_modulate: Color = Color.WHITE  # 触发瞬间快照，作 lerp 终点（防 faction_glow/clone 色调冲突）
 var _hit_shake_t: float = -1.0          # shake 已用时间（秒），-1=未激活，>=0=激活
-const _HIT_FLASH_DURATION: float = 0.1  # 与原 Tween 0.1s 对齐
-const _HIT_SHAKE_DURATION: float = 0.12 # 4×0.03s
+const _HIT_FLASH_DURATION: float = 0.15  # v8.3: 0.1→0.15（三阶段闪白）
+const _HIT_SHAKE_DURATION: float = 0.14 # v8.3: 0.12→0.14（4×0.035s）
 var _death_fade_tween: Tween = null  ## v6.4: 死亡淡出 Tween
 var _is_dying: bool = false  ## v6.4: 死亡中标志，防止 _die 重复触发
 ## v6.14: 部署阵营泛光——实体化瞬间单位泛出激活势力色（0.5s 渐隐回白）
@@ -463,30 +464,60 @@ func _trigger_hit_shake() -> void:
 	_hit_shake_t = 0.0   # 0.0=开始计时
 
 
+## v8.3: 受击击退位移——沿弹道反方向微位移，给物理反馈（被击不再是"被风吹过"）
+## strength：直射 3 / 爆炸 6 / 暴击 10。motion_reduce 时短路（仅保留 flash+shake）。
+var _knockback_tween: Tween = null
+func _trigger_hit_knockback(direction: Vector2, strength: float) -> void:
+	if is_preview_mode or DT.is_motion_reduce():
+		return
+	if direction == Vector2.ZERO or strength <= 0.0:
+		return
+	if _knockback_tween != null and _knockback_tween.is_valid():
+		_knockback_tween.kill()  # 连续受击时重置（取最新击退方向）
+	var base_pos: Vector2 = position
+	var off: Vector2 = direction.normalized() * strength
+	_knockback_tween = create_tween()
+	_knockback_tween.tween_property(self, "position", base_pos + off, 0.04)
+	_knockback_tween.tween_property(self, "position", base_pos, 0.08)
+
+
 ## v7.4: 受击动画推进（每 physics 帧调用）。flash 倒计时 lerp 回原色；shake 正计时分段插值。
+## v8.3: flash 改三阶段（基色→武器色→回原色 0.15s）；shake 振幅加大（0.78/1.12/0.92/1.0）段长 0.035s。
 func _update_hit_animations(delta: float) -> void:
-	# ── flash：线性衰减回原色 ──
+	# ── flash：三阶段（0-0.04s 基色全饱和 → 0.04-0.09s 武器色 → 0.09-0.15s lerp 回原色） ──
 	if _hit_flash_t > 0.0:
 		_hit_flash_t -= delta
 		if _hit_flash_t <= 0.0:
 			_hit_flash_t = 0.0
 			modulate = _hit_flash_base_modulate
 		else:
-			var k: float = _hit_flash_t / _HIT_FLASH_DURATION  # 1=闪色, 0=原色
-			var flash_color := Color.RED if is_player else Color.WHITE
-			modulate = flash_color.lerp(_hit_flash_base_modulate, 1.0 - k)
-	# ── shake：4 段关键帧 0.85→1.05→0.95→1.0，每段 0.03s ──
+			var elapsed: float = _HIT_FLASH_DURATION - _hit_flash_t
+			var base_color := Color.RED if is_player else Color.WHITE
+			# 武器色：淡黄白（模拟弹体颜色反射）
+			var weapon_tint := Color(1.0, 0.95, 0.7)
+			if elapsed < 0.04:
+				# 阶段1：基色全饱和
+				modulate = base_color
+			elif elapsed < 0.09:
+				# 阶段2：基色 → 武器色过渡
+				var k2: float = (elapsed - 0.04) / 0.05
+				modulate = base_color.lerp(weapon_tint, k2)
+			else:
+				# 阶段3：武器色 → 原色 lerp
+				var k3: float = (elapsed - 0.09) / 0.06
+				modulate = weapon_tint.lerp(_hit_flash_base_modulate, k3)
+	# ── shake：4 段关键帧（v8.3 加大振幅）0.78→1.12→0.92→1.0，每段 0.035s ──
 	if _hit_shake_t >= 0.0:
 		_hit_shake_t += delta
 		if _hit_shake_t >= _HIT_SHAKE_DURATION:
 			scale = Vector2.ONE
 			_hit_shake_t = -1.0  # 停用
 		else:
-			var seg: int = int(_hit_shake_t / 0.03)
+			var seg: int = int(_hit_shake_t / 0.035)
 			if seg > 3:
 				seg = 3
-			var local_t: float = (_hit_shake_t - seg * 0.03) / 0.03
-			var keys: Array = [0.85, 1.05, 0.95, 1.0]
+			var local_t: float = (_hit_shake_t - seg * 0.035) / 0.035
+			var keys: Array = [0.78, 1.12, 0.92, 1.0]
 			var s_start: float = 1.0 if seg == 0 else keys[seg - 1]
 			var s_end: float = keys[seg]
 			var s: float = lerpf(s_start, s_end, local_t)
@@ -1025,9 +1056,9 @@ func _enforce_card_grid_lane_alignment() -> void:
 		var si: int = int(get_meta("card_grid_slot", -1))
 		if si < 0 or not bf.has_method("get_card_grid_player_slot_global"):
 			return
-		var lane_y: float = bf.get_card_grid_player_slot_global(si).y
-		if absf(global_position.y - lane_y) > 0.01:
-			global_position.y = lane_y
+		var anchor: Vector2 = bf.get_card_grid_player_slot_global(si)
+		if global_position.distance_squared_to(anchor) > 0.25:
+			global_position = anchor
 		# 吸附后重置归位基准，避免下次 nudge 以偏移位置为起点
 		_card_grid_rest_x = NAN
 		return
@@ -1158,6 +1189,12 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 	# 受击闪白/抖动反馈（仅存活单位；死亡时 queue_free 后写 freed instance）
 	_trigger_hit_flash()
 	_trigger_hit_shake()
+	# v8.3: 受击击退——从攻击者位置推方向（被击沿弹道反方向位移）
+	if attacker != null and is_instance_valid(attacker) and (attacker is Node2D):
+		var kb_dir: Vector2 = global_position - (attacker as Node2D).global_position
+		# 强度按攻击者爆炸半径判定：爆炸类 6，否则直射 3
+		var kb_str: float = 6.0 if (attacker.get("explosion_radius") != null and float(attacker.get("explosion_radius")) > 0.0) else 3.0
+		_trigger_hit_knockback(kb_dir, kb_str)
 	# v8.1: 血条受击闪白（接通 unit_hp_bar.trigger_damage_flash，原为未连线死功能）
 	var _hpbar := get_node_or_null("HpBar")
 	if _hpbar != null and _hpbar.has_method("trigger_damage_flash"):

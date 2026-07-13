@@ -1015,15 +1015,9 @@ func _get_kind_color(combat_kind: int) -> Color:
 		"堡垒": return Color(0.6, 0.6, 0.65)
 		_: return Color(0.6, 0.6, 0.65)
 
+## v7.x 稀有度配色统一到 GC.get_rarity_color（单一数据源），避免与背包卡牌/卡框配色不一致。
 func _rarity_color(rarity: String) -> Color:
-	match rarity:
-		"common": return Color(0.5, 0.5, 0.55)
-		"uncommon": return Color(0.3, 0.85, 0.4)
-		"rare": return Color(0.3, 0.6, 0.95)
-		"epic": return Color(0.7, 0.4, 0.95)
-		"legendary": return Color(1.0, 0.78, 0.2)
-		"mythic": return Color(1.0, 0.42, 0.62)
-		_: return Color(0.5, 0.5, 0.55)
+	return GC.get_rarity_color(rarity)
 
 ## 稀有度排序权重（mythic 最大，用于已解锁改造列表按稀有度降序排列）
 func _rarity_sort_value(rarity: String) -> int:

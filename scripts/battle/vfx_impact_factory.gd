@@ -150,14 +150,15 @@ static func spawn_muzzle_flash(parent: Node2D, local_pos: Vector2, facing_right:
 		return
 	p.position = local_pos
 	p.lifetime = 0.40
-	p.amount = 12
-	p.emission_sphere_radius = 3.0
+	# v8.3 视觉增强：炮口火焰 amount 12→20, spread 120→150, velocity 翻倍, scale 加大
+	p.amount = 20
+	p.emission_sphere_radius = 4.0
 	p.direction = Vector2(1, 0) if facing_right else Vector2(-1, 0)
-	p.spread = 120.0
-	p.initial_velocity_min = 30.0
-	p.initial_velocity_max = 80.0
-	p.scale_amount_min = 1.0
-	p.scale_amount_max = 1.8
+	p.spread = 150.0
+	p.initial_velocity_min = 50.0
+	p.initial_velocity_max = 140.0
+	p.scale_amount_min = 1.5
+	p.scale_amount_max = 2.5
 	p.color_ramp = _get_muzzle_ramp()
 	parent.add_child(p)
 	var tree := p.get_tree()
@@ -434,72 +435,74 @@ static func _impact_color(weapon_type: int, combat_kind: int, is_player: bool) -
 ## 注：weapon_type=1 在 bullet 路径=INDIRECT(曲射)，在 batch 路径=RIFLE(直射)，
 ## 取折中"中火"配置（既不太像火炮也不太像步枪），不加剧既有歧义。
 ## v8.2: 整体加长寿命到"可清晰感知"区间（火花≥0.45s/环≥0.35s），保留武器间梯度。
+## v8.3 视觉增强：环 ×1.5、duration +0.08、spark_amount +50%、spark_vmax +60%、debris +30%
+## 让命中爆炸有"砰"的分量感（原环到 24px 就没了，火花 0.15s 消散）
 static func _impact_recipe(weapon_type: int) -> Dictionary:
 	match weapon_type:
 		0, 4:  # DIRECT/SMG/PISTOL — 小环 + 密集小火花
 			return {
-				"ring_r": 24.0, "ring_dur": 0.32,
-				"spark_amount": 18, "spark_vmin": 70.0, "spark_vmax": 170.0,
-				"spark_smin": 1.5, "spark_smax": 2.8, "spark_life": 0.45, "spark_spread": 360.0,
+				"ring_r": 36.0, "ring_dur": 0.40,
+				"spark_amount": 28, "spark_vmin": 90.0, "spark_vmax": 280.0,
+				"spark_smin": 1.5, "spark_smax": 2.8, "spark_life": 0.55, "spark_spread": 360.0,
 			}
 		6:  # SNIPER — 中环 + 高速集中喷射
 			return {
-				"ring_r": 32.0, "ring_dur": 0.36,
-				"spark_amount": 22, "spark_vmin": 130.0, "spark_vmax": 240.0,
-				"spark_smin": 1.8, "spark_smax": 3.2, "spark_life": 0.42, "spark_spread": 55.0,
+				"ring_r": 48.0, "ring_dur": 0.44,
+				"spark_amount": 25, "spark_vmin": 150.0, "spark_vmax": 350.0,
+				"spark_smin": 1.8, "spark_smax": 3.2, "spark_life": 0.50, "spark_spread": 55.0,
 				"spark_dir": true,
 			}
 		5:  # SHOTGUN — 宽散布
 			return {
-				"ring_r": 29.0, "ring_dur": 0.34,
-				"spark_amount": 28, "spark_vmin": 60.0, "spark_vmax": 150.0,
-				"spark_smin": 1.5, "spark_smax": 2.8, "spark_life": 0.42, "spark_spread": 360.0,
+				"ring_r": 44.0, "ring_dur": 0.42,
+				"spark_amount": 40, "spark_vmin": 80.0, "spark_vmax": 250.0,
+				"spark_smin": 1.5, "spark_smax": 2.8, "spark_life": 0.52, "spark_spread": 360.0,
 			}
 		1:  # INDIRECT(曲射) / RIFLE(batch直射) — 中火折中
 			return {
-				"ring_r": 36.0, "ring_dur": 0.40,
-				"spark_amount": 24, "spark_vmin": 70.0, "spark_vmax": 160.0,
-				"spark_smin": 2.0, "spark_smax": 3.8, "spark_life": 0.50, "spark_spread": 360.0,
+				"ring_r": 48.0, "ring_dur": 0.48,
+				"spark_amount": 32, "spark_vmin": 90.0, "spark_vmax": 260.0,
+				"spark_smin": 2.0, "spark_smax": 3.8, "spark_life": 0.60, "spark_spread": 360.0,
 			}
 		3:  # ROCKET — 大环 + 烟尘
 			return {
-				"ring_r": 56.0, "ring_dur": 0.52,
-				"spark_amount": 32, "spark_vmin": 80.0, "spark_vmax": 200.0,
-				"spark_smin": 3.0, "spark_smax": 6.0, "spark_life": 0.58, "spark_spread": 360.0,
-				"debris": {"amount": 14, "life": 0.9, "vmin": 40.0, "vmax": 100.0, "smin": 3.0, "smax": 5.0, "is_smoke": true, "smoke_color": Color(0.4, 0.35, 0.3, 0.5)},
+				"ring_r": 80.0, "ring_dur": 0.60,
+				"spark_amount": 48, "spark_vmin": 100.0, "spark_vmax": 320.0,
+				"spark_smin": 3.0, "spark_smax": 6.0, "spark_life": 0.70, "spark_spread": 360.0,
+				"debris": {"amount": 18, "life": 1.0, "vmin": 50.0, "vmax": 120.0, "smin": 3.0, "smax": 5.0, "is_smoke": true, "smoke_color": Color(0.4, 0.35, 0.3, 0.5)},
 			}
 		9, 2:  # MISSILE / AERIAL — 大环 + 碎片 + 烟柱
 			return {
-				"ring_r": 60.0, "ring_dur": 0.56,
-				"spark_amount": 36, "spark_vmin": 90.0, "spark_vmax": 220.0,
-				"spark_smin": 3.0, "spark_smax": 7.0, "spark_life": 0.62, "spark_spread": 360.0,
-				"debris": {"amount": 16, "life": 1.0, "vmin": 50.0, "vmax": 120.0, "smin": 2.0, "smax": 4.0, "is_smoke": false, "debris_color": Color(0.5, 0.45, 0.4, 1.0)},
+				"ring_r": 90.0, "ring_dur": 0.65,
+				"spark_amount": 55, "spark_vmin": 110.0, "spark_vmax": 350.0,
+				"spark_smin": 3.0, "spark_smax": 7.0, "spark_life": 0.75, "spark_spread": 360.0,
+				"debris": {"amount": 20, "life": 1.1, "vmin": 60.0, "vmax": 140.0, "smin": 2.0, "smax": 4.0, "is_smoke": false, "debris_color": Color(0.5, 0.45, 0.4, 1.0)},
 			}
 		7:  # FLAK — 中大环 + 烟尘
 			return {
-				"ring_r": 46.0, "ring_dur": 0.44,
-				"spark_amount": 28, "spark_vmin": 70.0, "spark_vmax": 170.0,
-				"spark_smin": 2.5, "spark_smax": 5.0, "spark_life": 0.52, "spark_spread": 360.0,
-				"debris": {"amount": 12, "life": 0.8, "vmin": 35.0, "vmax": 80.0, "smin": 3.0, "smax": 4.0, "is_smoke": true, "smoke_color": Color(0.45, 0.4, 0.35, 0.45)},
+				"ring_r": 64.0, "ring_dur": 0.52,
+				"spark_amount": 38, "spark_vmin": 90.0, "spark_vmax": 270.0,
+				"spark_smin": 2.5, "spark_smax": 5.0, "spark_life": 0.62, "spark_spread": 360.0,
+				"debris": {"amount": 16, "life": 0.9, "vmin": 45.0, "vmax": 95.0, "smin": 3.0, "smax": 4.0, "is_smoke": true, "smoke_color": Color(0.45, 0.4, 0.35, 0.45)},
 			}
 		8:  # LASER — 细环 + 高速线状火花（能量武器灼烧感，仍比动能武器短，但已能看清）
 			return {
-				"ring_r": 22.0, "ring_dur": 0.24,
-				"spark_amount": 22, "spark_vmin": 120.0, "spark_vmax": 260.0,
-				"spark_smin": 1.2, "spark_smax": 2.2, "spark_life": 0.32, "spark_spread": 40.0,
+				"ring_r": 30.0, "ring_dur": 0.30,
+				"spark_amount": 25, "spark_vmin": 140.0, "spark_vmax": 350.0,
+				"spark_smin": 1.2, "spark_smax": 2.2, "spark_life": 0.40, "spark_spread": 40.0,
 				"spark_dir": true,
 			}
 		10, 11:  # OMEGA / RAIL — 快环 + 青色火花
 			return {
-				"ring_r": 34.0, "ring_dur": 0.36,
-				"spark_amount": 24, "spark_vmin": 70.0, "spark_vmax": 170.0,
-				"spark_smin": 2.0, "spark_smax": 4.5, "spark_life": 0.48, "spark_spread": 360.0,
+				"ring_r": 50.0, "ring_dur": 0.45,
+				"spark_amount": 35, "spark_vmin": 90.0, "spark_vmax": 280.0,
+				"spark_smin": 2.0, "spark_smax": 4.5, "spark_life": 0.58, "spark_spread": 360.0,
 			}
 		_:
 			return {
-				"ring_r": 28.0, "ring_dur": 0.34,
-				"spark_amount": 20, "spark_vmin": 60.0, "spark_vmax": 150.0,
-				"spark_smin": 1.8, "spark_smax": 3.2, "spark_life": 0.46, "spark_spread": 360.0,
+				"ring_r": 42.0, "ring_dur": 0.42,
+				"spark_amount": 28, "spark_vmin": 80.0, "spark_vmax": 240.0,
+				"spark_smin": 1.8, "spark_smax": 3.2, "spark_life": 0.56, "spark_spread": 360.0,
 			}
 
 

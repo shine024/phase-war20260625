@@ -40,6 +40,7 @@ const IntelManualItemsRef = preload("res://data/intel_manual_items.gd")
 const BlueprintDefinitionsRef = preload("res://data/blueprint_definitions.gd")
 const ModificationRegistryRef = preload("res://scripts/systems/modification_registry.gd")
 const RankDisplayUi = preload("res://scripts/rank_display_ui.gd")
+const DesignTokens = preload("res://resources/design_tokens.gd")
 ## 详情弹窗内的统一情报面板实例引用
 var _detail_info_panel: Control = null
 ## ── 子系统：筛选/排序 ──
@@ -265,6 +266,8 @@ func _fallback_on_card_equipped(_slot_index: int, card_id: String, _card_type: S
 
 ## 标签页切换事件
 func _on_tab_changed(tab_index: int) -> void:
+	# v7.x：切换时对内容区做一次透明度闪现（受 motion_reduce 守卫）
+	_play_tab_change_fade()
 	match tab_index:
 		TabIndex.COMBAT_CARDS:
 			# 战斗卡标签页切换时刷新（如有需要）
@@ -281,6 +284,29 @@ func _on_tab_changed(tab_index: int) -> void:
 		TabIndex.RUNES:
 			# v6.2: 符文标签页刷新（内部会连带刷新右侧信息栏）
 			refresh_runes_tab()
+
+## v7.x：标签切换微动效——内容区透明度先降后升，制造切换感。tab 控件结构因 tab 而异
+## （RunesTab 是 HSplit 而非纯 ScrollContainer），防御性查找失败则跳过。
+func _play_tab_change_fade() -> void:
+	if DesignTokens.is_motion_reduce():
+		return
+	if _tab_container == null:
+		return
+	var cur := _tab_container.get_current_tab_control()
+	if cur == null:
+		return
+	# 优先找 ScrollContainer，回退到第一个 Control 子节点
+	var target: Control = cur.get_node_or_null("ScrollContainer") as Control
+	if target == null:
+		for ch in cur.get_children():
+			if ch is Control:
+				target = ch
+				break
+	if target == null:
+		return
+	var t := create_tween()
+	t.tween_property(target, "modulate:a", 0.6, 0.05)
+	t.tween_property(target, "modulate:a", 1.0, 0.15)
 
 ## ============================================================
 ## 公共接口（向后兼容）
@@ -493,7 +519,7 @@ func add_card(card: CardResource, at_top: bool = false) -> void:
 	if grid == null:
 		return
 	_apply_backpack_grid_layout(grid)
-	_add_card_item(grid, card, at_top)
+	_add_card_item(grid, card, at_top, true)
 	_ensure_min_card_slots(grid)
 	_schedule_sync_card_grid_scroll_size()
 	# 滚动到新卡位置
@@ -766,11 +792,14 @@ func refresh_intel_tab() -> void:
 		return
 	# 按稀有度排序（稀有→普通）
 	acquired_blueprints.sort_custom(func(a, b): return _rarity_sort_value(a.rarity) > _rarity_sort_value(b.rarity))
+	var _mod_idx := 0
 	for bp in acquired_blueprints:
 		var item = ResourceSlotScene.instantiate()
 		if item == null:
 			continue
 		_intel_grid.add_child(item)
+		# v7.x：写入稀有度 meta（_refresh_lore 在 set_data 内调用，需先于 set_data 写入）
+		item.set_meta("_tile_rarity", String(bp.rarity))
 		if item.has_method("set_data"):
 			# 名称前缀标注装配状态：✓已装配 / ○未装配
 			var status_mark: String = "✓ " if bp.installed else "○ "
@@ -783,6 +812,9 @@ func refresh_intel_tab() -> void:
 				],
 			}
 			item.set_data(bp.item_type, bp.count, ResourceSlotItem.SlotType.LORE, extra_data)
+		# v7.x：错峰入场动画
+		_play_tile_enter_animation(item, _mod_idx)
+		_mod_idx += 1
 	_schedule_sync_card_grid_scroll_size_for_grid(_intel_grid)
 
 
@@ -914,10 +946,12 @@ func refresh_runes_tab() -> void:
 	sorted_ids.sort_custom(func(a, b):
 		return _rune_rarity_sort_value(a) > _rune_rarity_sort_value(b))
 	# 渲染
+	var _rune_idx := 0
 	for rid in sorted_ids:
 		var rune_id: String = str(rid)
 		var count: int = int(rune_counts[rune_id])
-		_add_rune_item(_runes_grid, rune_id, count, equipped_runes.has(rune_id))
+		_add_rune_item(_runes_grid, rune_id, count, equipped_runes.has(rune_id), _rune_idx)
+		_rune_idx += 1
 	_schedule_sync_card_grid_scroll_size_for_grid(_runes_grid)
 	# v7.x: 连带刷新右侧加成/符文之语信息栏（合并自 rune_panel，所有 refresh_runes_tab 调用点自动生效）
 	refresh_rune_info_panel()
@@ -1009,7 +1043,7 @@ func switch_to_runes_tab() -> void:
 		_tab_container.current_tab = TabIndex.RUNES
 
 ## 单个符文格子渲染
-func _add_rune_item(grid: GridContainer, rune_id: String, count: int, is_equipped: bool) -> void:
+func _add_rune_item(grid: GridContainer, rune_id: String, count: int, is_equipped: bool, anim_idx: int = -1) -> void:
 	var rune_def: Dictionary = RuneClass.get_rune(rune_id)
 	var rune_name: String = RuneClass.get_rune_name(rune_id)
 	var rarity: String = rune_def.get("rarity", "common")
@@ -1037,6 +1071,9 @@ func _add_rune_item(grid: GridContainer, rune_id: String, count: int, is_equippe
 		"description": "【%s】%s\n%s%s" % [rarity_name, _rune_category_name(category), desc, status_line],
 		"rune_color": display_color,
 		"icon": RuneClass.icon_path_for(rune_id),
+		# v7.x：补 rarity + is_equipped，供 _refresh_rune 应用稀有度底色+激活态发光
+		"rarity": rarity,
+		"is_equipped": is_equipped,
 	}
 	# 复用 stat_boost 对象池
 	var item = null
@@ -1063,6 +1100,9 @@ func _add_rune_item(grid: GridContainer, rune_id: String, count: int, is_equippe
 	# 设置 tooltip
 	if "tooltip_text" in item:
 		item.tooltip_text = "【%s】%s\n%s\n（点击装备/卸下）" % [rarity_name, rune_name, desc]
+	# v7.x：错峰入场动画（anim_idx < 0 时不动画，兼容其他调用点）
+	if anim_idx >= 0:
+		_play_tile_enter_animation(item, anim_idx)
 
 ## v6.2: 背包符文格子点击 → 装备到首个空槽；已装备则卸下
 func _on_backpack_rune_clicked(rune_id: String) -> void:
@@ -1253,7 +1293,7 @@ func _refresh_aux_sections_after_open() -> void:
 ## 内部 UI 方法
 ## ============================================================
 
-func _add_card_item(grid: GridContainer, card: CardResource, at_top: bool = false) -> void:
+func _add_card_item(grid: GridContainer, card: CardResource, at_top: bool = false, animate: bool = false) -> void:
 	var item = null
 	if not _card_item_pool.is_empty():
 		item = _card_item_pool.pop_back()
@@ -1274,6 +1314,43 @@ func _add_card_item(grid: GridContainer, card: CardResource, at_top: bool = fals
 	var insert_idx := 0 if at_top else _find_first_empty_slot_index(grid)
 	if insert_idx >= 0:
 		grid.move_child(item, insert_idx)
+	if animate:
+		_play_card_enter_animation(item)
+
+## v7.x：新卡入场动画——淡入 + 回弹缩放。受 motion_reduce 守卫（关闭时直接显示无缩放）。
+func _play_card_enter_animation(item: Control) -> void:
+	if item == null or not is_instance_valid(item):
+		return
+	if DesignTokens.is_motion_reduce():
+		item.modulate.a = 1.0
+		item.scale = Vector2(1.0, 1.0)
+		return
+	item.modulate.a = 0.0
+	item.scale = Vector2(0.85, 0.85)
+	var t := create_tween()
+	t.set_parallel(true)
+	t.tween_property(item, "modulate:a", 1.0, 0.2).set_ease(Tween.EASE_OUT)
+	t.tween_property(item, "scale", Vector2(1.0, 1.0), 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+## v7.x：改造/符文瓷砖入场动画——淡入 + 缩放，带 index 错峰（批量重建时逐个入场，避免同步闪现）。
+func _play_tile_enter_animation(item: Control, index: int) -> void:
+	if item == null or not is_instance_valid(item):
+		return
+	if DesignTokens.is_motion_reduce():
+		item.modulate.a = 1.0
+		item.scale = Vector2(1.0, 1.0)
+		return
+	item.modulate.a = 0.0
+	item.scale = Vector2(0.88, 0.88)
+	# 错峰：每张延迟 0.03s，上限 8 张后不再增加（避免长列表等待过久）
+	var delay: float = minf(float(index) * 0.03, 0.24)
+	# 两条独立顺序 Tween：先延迟，再淡入 / 先延迟，再缩放（避免 set_parallel 与 chain 混用歧义）
+	var t_a := create_tween()
+	t_a.tween_interval(delay)
+	t_a.tween_property(item, "modulate:a", 1.0, 0.18).set_ease(Tween.EASE_OUT)
+	var t_s := create_tween()
+	t_s.tween_interval(delay)
+	t_s.tween_property(item, "scale", Vector2(1.0, 1.0), 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 func _find_first_empty_slot_index(grid: GridContainer) -> int:
 	if grid == null:
@@ -1317,8 +1394,26 @@ func _ensure_min_card_slots(grid: GridContainer) -> void:
 			placeholder.custom_minimum_size = CARD_SLOT_MIN
 			placeholder.mouse_filter = Control.MOUSE_FILTER_STOP
 			placeholder.add_theme_stylebox_override("panel", _get_empty_slot_style())
+		_ensure_empty_slot_plus(placeholder)
 		grid.add_child(placeholder)
 		card_count += 1
+
+## v7.x：空槽位添加居中 "+" 号标识（Label 字符，零美术依赖）。池化复用时复用已有 Label。
+func _ensure_empty_slot_plus(placeholder: Panel) -> void:
+	if placeholder == null:
+		return
+	placeholder.tooltip_text = "空格位"
+	var plus: Label = placeholder.get_node_or_null("EmptyPlusLabel") as Label
+	if plus == null:
+		plus = Label.new()
+		plus.name = "EmptyPlusLabel"
+		plus.text = "+"
+		plus.add_theme_font_size_override("font_size", 20)
+		plus.add_theme_color_override("font_color", Color(0.4, 0.5, 0.6, 0.5))
+		plus.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+		plus.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		placeholder.add_child(plus)
+	plus.visible = true
 
 func _get_empty_slot_style() -> StyleBoxFlat:
 	if _empty_slot_style != null:

@@ -137,6 +137,15 @@ func _physics_process(delta: float) -> void:
 	_sync_multimesh_transforms()
 
 func _tick_slot(s: Node2D, delta: float) -> void:
+	# v7.x: 部署虚影期间不索敌/不开火（蜂群 move_speed 恒为0靠 _clamp_slot 定位，仍需夹紧保持位置）。
+	# 计时归零时调 slot.materialize_swarm_deploy_ghost 实体化，本帧跳过攻击逻辑。
+	if s is SwarmEnemySlot and (s as SwarmEnemySlot).is_deploy_ghost:
+		_clamp_slot(s)
+		var gs: SwarmEnemySlot = s as SwarmEnemySlot
+		gs._ghost_materialize_time_left -= delta
+		if gs._ghost_materialize_time_left <= 0.0:
+			gs.materialize_swarm_deploy_ghost()
+		return
 	s._target_find_timer += delta
 	var should_find := false
 	if s.target == null or not is_instance_valid(s.target):

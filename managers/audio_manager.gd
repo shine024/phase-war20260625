@@ -13,7 +13,11 @@ const SFX_NAMES: Array[String] = [
 	"button", "button_hover", "hit", "shoot", "explosion", "cast", "hurt",
 	"win", "lose", "blueprint_unlock",
 	"enhance", "achievement", "quest_complete", "panel_open", "panel_close",
-	"card_pickup", "card_place", "error"
+	"card_pickup", "card_place", "error",
+	# v8.3: 按武器类型（WeaponTypeLegacy）的攻击/命中音效
+	"gun_smg", "gun_rifle", "gun_mg", "rocket_launch", "gun_pistol",
+	"gun_shotgun", "gun_sniper", "flak_fire", "laser_fire", "missile_hum",
+	"omega_cannon", "rail_cannon", "impact_generic"
 ]
 const BUS_NAME: String = "Master"
 
@@ -70,7 +74,8 @@ func _ready() -> void:
 				SignalBus.play_sound.connect(play_sfx)
 
 ## 播放音效
-func play_sfx(name: String) -> void:
+## v8.3: 增加 volume（0.0~1.0，线性→db）和 pitch（0.5~2.0，音高倍率）参数（默认值保证旧调用零变化）
+func play_sfx(name: String, volume: float = 1.0, pitch: float = 1.0) -> void:
 	if name.is_empty():
 		return
 
@@ -92,6 +97,10 @@ func play_sfx(name: String) -> void:
 		return  # 静默跳过
 
 	p.stream = stream
+	# v8.3: volume 叠加到全局 sfx_volume；pitch 微调播放速度（合成时已定型，此处作音高变化）
+	p.volume_db = linear_to_db(sfx_volume * clampf(volume, 0.0, 1.0))
+	if p is AudioStreamPlayer:
+		(p as AudioStreamPlayer).pitch_scale = clampf(pitch, 0.2, 3.0)
 	p.play()
 
 ## 加载音频流

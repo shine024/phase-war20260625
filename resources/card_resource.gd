@@ -362,6 +362,9 @@ func clone() -> CardResource:
 	# 战斗卡字段
 	new_card.era = era
 	new_card.combat_kind = combat_kind
+	new_card.unit_subtype = unit_subtype
+	new_card.tags = tags.duplicate()
+	new_card.power = power
 	new_card.base_hp = base_hp
 	new_card.range_value = range_value
 	new_card.attack_speed = attack_speed

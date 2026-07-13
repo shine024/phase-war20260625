@@ -6,6 +6,8 @@ class_name ResourceSlotItem
 ## 由 backpack_panel 接收后装备/卸下符文。
 
 const BasicResources = preload("res://data/basic_resources.gd")
+const CardFrameUi = preload("res://scripts/card_frame_ui.gd")
+const DesignTokens = preload("res://resources/design_tokens.gd")
 
 ## 槽位尺寸（与PhaseSlot.SLOT_SIZE保持一致）
 const SLOT_SIZE: Vector2 = Vector2(50, 80)
@@ -27,6 +29,15 @@ var amount: int = 0
 var display_name: String = ""
 var description: String = ""
 
+# v7.x hover 动效状态（与 BackpackCardItem 同模式，仅 LORE/RUNE 稀有度瓷砖启用）
+var _rarity: String = ""           # 当前瓷砖稀有度（空=无稀有度，hover 不启用）
+var _tile_glow_mode: int = 0       # 稀有度样式 glow_mode（符文已装备=1）
+var _hover_tween: Tween = null
+var _pulse_tween: Tween = null
+var _hover_base_style: StyleBoxFlat = null
+var _is_hovering := false
+var _hover_base_pos_y: float = 0.0
+
 func _ready() -> void:
 	clip_contents = true
 	custom_minimum_size = SLOT_SIZE
@@ -36,6 +47,9 @@ func _ready() -> void:
 	# 但显式确认避免被主题覆盖。仅 RUNE 类型连接 gui_input。
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	gui_input.connect(_on_gui_input)
+	# v7.x：hover 动效（仅稀有度瓷砖 LORE/RUNE 在 set_data 后才真正启用）
+	mouse_entered.connect(_on_mouse_entered)
+	mouse_exited.connect(_on_mouse_exited)
 	# v6.7 修复：节点路径前缀缺 "Margin/"，导致 VBox/Icon 尺寸初始化全部被跳过，
 	# TextureRect 宽度坍缩为 0，符文图标不可见（texture 已正确加载但无渲染区域）
 	var vbox = get_node_or_null("Margin/VBox")
@@ -57,11 +71,99 @@ func _on_gui_input(event: InputEvent) -> void:
 		if mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed:
 			rune_clicked.emit(resource_id)
 
+## v7.x hover 动效：上浮 + 发光增强；Legendary/Mythic 额外脉冲（仅稀有度瓷砖启用）
+func _on_mouse_entered() -> void:
+	if _rarity.is_empty():
+		return  # 资源/属性提升无稀有度，无 hover 效果
+	_is_hovering = true
+	z_index = 10
+	_hover_base_pos_y = position.y
+	var cur := get_theme_stylebox("panel")
+	if cur is StyleBoxFlat:
+		_hover_base_style = (cur as StyleBoxFlat)
+	else:
+		_hover_base_style = null
+	var motion_reduce: bool = DesignTokens.is_motion_reduce()
+	if not motion_reduce:
+		_hover_tween = create_tween()
+		_hover_tween.set_parallel(true)
+		_hover_tween.tween_property(self, "position:y", position.y - 2.0, 0.10).set_ease(Tween.EASE_OUT)
+		_hover_tween.tween_property(self, "scale", Vector2(1.04, 1.04), 0.10).set_ease(Tween.EASE_OUT)
+	# 发光增强：复制基底 stylebox，shadow_size +2 / shadow_alpha +0.15
+	_apply_hover_glow_style(true)
+	# Legendary/Mythic 脉冲（仅 hover 时，零 idle 开销；motion_reduce 时跳过）
+	if not motion_reduce and (_rarity == "legendary" or _rarity == "mythic"):
+		_start_pulse_glow()
+
+func _on_mouse_exited() -> void:
+	if not _is_hovering:
+		return
+	_is_hovering = false
+	z_index = 0
+	_kill_hover_tweens()
+	var motion_reduce: bool = DesignTokens.is_motion_reduce()
+	if not motion_reduce:
+		_hover_tween = create_tween()
+		_hover_tween.set_parallel(true)
+		_hover_tween.tween_property(self, "position:y", _hover_base_pos_y, 0.15).set_ease(Tween.EASE_OUT)
+		_hover_tween.tween_property(self, "scale", Vector2(1.0, 1.0), 0.15).set_ease(Tween.EASE_OUT)
+	if _hover_base_style != null:
+		add_theme_stylebox_override("panel", _hover_base_style)
+	else:
+		remove_theme_stylebox_override("panel")
+
+## 构建 hover 增强发光 stylebox（duplicate 基底，避免污染缓存共享对象）并应用
+func _apply_hover_glow_style(increase: bool) -> void:
+	if _hover_base_style == null:
+		return
+	var hover_style := (_hover_base_style.duplicate()) as StyleBoxFlat
+	if increase:
+		hover_style.shadow_size = clampi(hover_style.shadow_size + 2, 0, 14)
+		var sc: Color = hover_style.shadow_color
+		hover_style.shadow_color = Color(sc.r, sc.g, sc.b, clampf(sc.a + 0.15, 0.0, 1.0))
+	add_theme_stylebox_override("panel", hover_style)
+
+## Legendary/Mythic 脉冲：循环呼吸 shadow_alpha
+func _start_pulse_glow() -> void:
+	if _hover_base_style == null:
+		return
+	var base_a: float = _hover_base_style.shadow_color.a
+	_pulse_tween = create_tween().set_loops()
+	_pulse_tween.tween_method(_set_pulse_glow_alpha, base_a, clampf(base_a + 0.2, 0.0, 1.0), 0.6)
+	_pulse_tween.tween_method(_set_pulse_glow_alpha, clampf(base_a + 0.2, 0.0, 1.0), base_a, 0.6)
+
+func _set_pulse_glow_alpha(a: float) -> void:
+	if _hover_base_style == null or not _is_hovering:
+		return
+	var s := (_hover_base_style.duplicate()) as StyleBoxFlat
+	var sc: Color = s.shadow_color
+	s.shadow_color = Color(sc.r, sc.g, sc.b, a)
+	s.shadow_size = clampi(s.shadow_size + 2, 0, 14)
+	add_theme_stylebox_override("panel", s)
+
+func _kill_hover_tweens() -> void:
+	if _hover_tween != null and _hover_tween.is_valid():
+		_hover_tween.kill()
+	_hover_tween = null
+	if _pulse_tween != null and _pulse_tween.is_valid():
+		_pulse_tween.kill()
+	_pulse_tween = null
+
+func _exit_tree() -> void:
+	_kill_hover_tweens()
+
 ## 设置数据 - 支持多种掉落类型
 func set_data(id: String, stack_amount: int, type: SlotType = SlotType.RESOURCE, extra_data: Dictionary = {}) -> void:
 	resource_id = id
 	amount = max(0, stack_amount)
 	slot_type = type
+	# v7.x：复位 hover 状态（防池化/复用残留）
+	if _is_hovering or _hover_tween != null or _pulse_tween != null:
+		_kill_hover_tweens()
+		_is_hovering = false
+		z_index = 0
+		scale = Vector2(1.0, 1.0)
+		position.y = _hover_base_pos_y
 
 	var name_label: Label = get_node_or_null("Margin/VBox/NameLabel")
 	var amount_label: Label = get_node_or_null("Margin/VBox/AmountLabel")
@@ -75,12 +177,17 @@ func set_data(id: String, stack_amount: int, type: SlotType = SlotType.RESOURCE,
 	match slot_type:
 		SlotType.RESOURCE:
 			_refresh_resource(id, name_label, amount_label, icon_rect)
+			_rarity = ""; _tile_glow_mode = 0
 		SlotType.LORE:
 			_refresh_lore(id, stack_amount, name_label, amount_label, icon_rect, custom_icon, custom_name)
+			_rarity = String(get_meta("_tile_rarity", "")); _tile_glow_mode = 0
 		SlotType.STAT_BOOST:
 			_refresh_stat_boost(id, stack_amount, name_label, amount_label, icon_rect)
+			_rarity = ""; _tile_glow_mode = 0
 		SlotType.RUNE:
 			_refresh_rune(id, stack_amount, name_label, amount_label, icon_rect, extra_data)
+			_rarity = String(extra_data.get("rarity", "common"))
+			_tile_glow_mode = 1 if bool(extra_data.get("is_equipped", false)) else 0
 
 ## 刷新资源显示
 func _refresh_resource(id: String, name_label: Label, amount_label: Label, icon_rect: TextureRect) -> void:
@@ -122,6 +229,8 @@ func _refresh_lore(lore_id: String, count: int, name_label: Label, amount_label:
 		name_label.text = _truncate_with_ellipsis(display_name, max_name_len)
 	if amount_label:
 		amount_label.text = ""
+	# v7.x：改造图纸瓷砖应用稀有度底色+边框+发光（50×80 尺度，与战斗卡视觉统一）
+	_apply_lore_rarity_chrome(lore_id)
 	if icon_rect:
 		# 情报使用金色图标（无贴图时的默认染色）
 		icon_rect.modulate = Color(0.8, 0.6, 0.2, 1.0)
@@ -137,6 +246,18 @@ func _refresh_lore(lore_id: String, count: int, name_label: Label, amount_label:
 			icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			icon_rect.custom_minimum_size = Vector2(36, 32)
 			icon_rect.visible = true
+
+## v7.x：改造图纸瓷砖应用稀有度底色边框。rarity 从 _tile_rarity（meta）取，
+## 由 set_data 调用前的 backpack_panel.refresh_intel_tab 写入（item.set_meta("_tile_rarity", rarity)）。
+## 未写入时无样式变化（向后兼容纯情报条目）。
+func _apply_lore_rarity_chrome(_lore_id: String) -> void:
+	var rarity: String = String(get_meta("_tile_rarity", ""))
+	if rarity.is_empty():
+		# 无稀有度（纯情报资料）：清除可能的旧 override，回归 tscn 默认
+		if get_theme_stylebox("panel") is StyleBoxFlat and has_theme_stylebox_override("panel"):
+			remove_theme_stylebox_override("panel")
+		return
+	add_theme_stylebox_override("panel", CardFrameUi.tile_rarity_style(rarity, 0))
 
 ## 刷新属性提升显示
 func _refresh_stat_boost(boost_id: String, count: int, name_label: Label, amount_label: Label, icon_rect: TextureRect) -> void:
@@ -177,6 +298,10 @@ func _refresh_rune(rune_id: String, count: int, name_label: Label, amount_label:
 			amount_label.text = "×%d" % count
 		else:
 			amount_label.text = ""
+	# v7.x：符文瓷砖应用稀有度底色边框，已装备的用激活态发光（glow_mode=1）
+	var rune_rarity: String = String(extra_data.get("rarity", "common"))
+	var is_equipped: bool = bool(extra_data.get("is_equipped", false))
+	add_theme_stylebox_override("panel", CardFrameUi.tile_rarity_style(rune_rarity, 1 if is_equipped else 0))
 	if icon_rect:
 		# 符文用稀有度颜色染色图标，无贴图时仅靠颜色区分
 		var icon_color: Color = extra_data.get("rune_color", Color(0.75, 0.45, 0.95))

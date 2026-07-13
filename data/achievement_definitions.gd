@@ -189,7 +189,8 @@ const ACHIEVEMENTS: Dictionary = {
 		"description": "通关第20关（一战时代）",
 		"category": "progress",
 		"reward": {
-			"nano_materials": 100
+			"nano_materials": 100,
+			"type": "card", "card_id": "guardian_ww1_ironclad", "amount": 1
 		},
 		"icon": "🌟",
 		"hidden": false
@@ -201,7 +202,8 @@ const ACHIEVEMENTS: Dictionary = {
 		"description": "通关第40关（二战时代）",
 		"category": "progress",
 		"reward": {
-			"nano_materials": 150
+			"nano_materials": 150,
+			"type": "card", "card_id": "guardian_ww2_blitzkrieg", "amount": 1
 		},
 		"icon": "🌟🌟",
 		"hidden": false
@@ -213,7 +215,8 @@ const ACHIEVEMENTS: Dictionary = {
 		"description": "通关第60关（冷战时代）",
 		"category": "progress",
 		"reward": {
-			"nano_materials": 200
+			"nano_materials": 200,
+			"type": "card", "card_id": "guardian_cold_thunder", "amount": 1
 		},
 		"icon": "🌟🌟🌟",
 		"hidden": false
@@ -225,7 +228,8 @@ const ACHIEVEMENTS: Dictionary = {
 		"description": "通关第80关（现代时代）",
 		"category": "progress",
 		"reward": {
-			"nano_materials": 250
+			"nano_materials": 250,
+			"type": "card", "card_id": "guardian_modern_stealth", "amount": 1
 		},
 		"icon": "🌟🌟🌟🌟",
 		"hidden": false
@@ -237,7 +241,8 @@ const ACHIEVEMENTS: Dictionary = {
 		"description": "通关第100关（未来时代）",
 		"category": "progress",
 		"reward": {
-			"nano_materials": 1000
+			"nano_materials": 1000,
+			"type": "card", "card_id": "guardian_future_omega", "amount": 1
 		},
 		"icon": "🌟🌟🌟🌟🌟",
 		"hidden": false
@@ -249,7 +254,8 @@ const ACHIEVEMENTS: Dictionary = {
 		"description": "击败所有5个时代的Boss关卡",
 		"category": "challenge",
 		"reward": {
-			"nano_materials": 500
+			"nano_materials": 500,
+			"type": "mod_blueprint", "mod_blueprint_id": "gen_11_phase_resonance", "amount": 1
 		},
 		"icon": "👹",
 		"hidden": false

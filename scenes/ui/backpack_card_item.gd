@@ -29,6 +29,7 @@ const BackpackCombatPreview = preload("res://scenes/ui/backpack_combat_preview.g
 const RankDisplayUi = preload("res://scripts/rank_display_ui.gd")
 const CardFrameUi = preload("res://scripts/card_frame_ui.gd")
 const CardBackgroundUi = preload("res://scripts/card_background_ui.gd")
+const DesignTokens = preload("res://resources/design_tokens.gd")
 ## v8.0: 背包卡牌独立大卡面尺寸（80x120），不再与战场相位仪槽位(50x80)共用。
 ## 拖拽到相位仪槽位时视觉对齐由 backpack_card_item_drag 处理（预览缩放）。
 var SLOT_SIZE: Vector2 = Vector2(80, 120)
@@ -59,9 +60,18 @@ static var _card_border_style_cache: Dictionary = {}
 static var _empty_type_bar_style: StyleBoxFlat = null
 static var _empty_card_panel_style: StyleBoxFlat = null
 
+# v7.x hover 动效状态
+var _hover_tween: Tween = null
+var _pulse_tween: Tween = null
+var _hover_base_style: StyleBoxFlat = null  # hover 进入前的 stylebox，退出时恢复
+var _is_hovering := false
+var _hover_base_pos_y: float = 0.0  # hover 进入前 position.y，退出/复位时恢复
+
 
 func _ready() -> void:
 	gui_input.connect(_on_gui_input)
+	mouse_entered.connect(_on_mouse_entered)
+	mouse_exited.connect(_on_mouse_exited)
 	clip_contents = false
 	set_custom_minimum_size(SLOT_SIZE)
 	custom_minimum_size = SLOT_SIZE
@@ -132,6 +142,89 @@ func _exit_tree() -> void:
 	# v7.3: 退出树时确保断开 process_frame（防对象池游离节点持续触发）
 	_disconnect_drag_frame()
 	BackpackCardItemDrag.exit_tree_cleanup(self)
+	# v7.x：清理 hover/脉冲 Tween，防对象池游离节点持续触发
+	_kill_hover_tweens()
+
+## v7.x hover 动效：上浮 + 发光增强；Legendary/Mythic 额外脉冲（仅 hover 时）
+func _on_mouse_entered() -> void:
+	if card == null:
+		return
+	_is_hovering = true
+	z_index = 10  # 上浮时置顶，避免被相邻卡遮挡
+	_hover_base_pos_y = position.y  # 记录基底，退出/复位时恢复
+	# 记录当前 stylebox 作为 hover 基底（退出时恢复）
+	var cur := get_theme_stylebox("panel")
+	if cur is StyleBoxFlat:
+		_hover_base_style = (cur as StyleBoxFlat)
+	else:
+		_hover_base_style = null
+	var motion_reduce: bool = DesignTokens.is_motion_reduce()
+	if not motion_reduce:
+		# 上浮：position.y 上移 2px + scale 微放大（并行 Tween）
+		_hover_tween = create_tween()
+		_hover_tween.set_parallel(true)
+		_hover_tween.tween_property(self, "position:y", position.y - 2.0, 0.10).set_ease(Tween.EASE_OUT)
+		_hover_tween.tween_property(self, "scale", Vector2(1.03, 1.03), 0.10).set_ease(Tween.EASE_OUT)
+	# 发光增强：复制基底 stylebox，shadow_size +2 / shadow_alpha +0.15
+	_apply_hover_glow_style(true)
+	# Legendary/Mythic 脉冲（仅 hover 时，零 idle 开销；motion_reduce 时跳过）
+	if not motion_reduce and (card.rarity == "legendary" or card.rarity == "mythic"):
+		_start_pulse_glow()
+
+func _on_mouse_exited() -> void:
+	if not _is_hovering:
+		return
+	_is_hovering = false
+	z_index = 0
+	_kill_hover_tweens()
+	var motion_reduce: bool = DesignTokens.is_motion_reduce()
+	if not motion_reduce:
+		_hover_tween = create_tween()
+		_hover_tween.set_parallel(true)
+		_hover_tween.tween_property(self, "position:y", _hover_base_pos_y, 0.15).set_ease(Tween.EASE_OUT)
+		_hover_tween.tween_property(self, "scale", Vector2(1.0, 1.0), 0.15).set_ease(Tween.EASE_OUT)
+	# 恢复 hover 前 stylebox
+	if _hover_base_style != null:
+		add_theme_stylebox_override("panel", _hover_base_style)
+	else:
+		remove_theme_stylebox_override("panel")
+
+## 构建 hover 增强发光 stylebox（duplicate 基底，避免污染缓存共享对象）并应用
+func _apply_hover_glow_style(increase: bool) -> void:
+	if _hover_base_style == null:
+		return
+	var hover_style := (_hover_base_style.duplicate()) as StyleBoxFlat
+	if increase:
+		hover_style.shadow_size = clampi(hover_style.shadow_size + 2, 0, 16)
+		var sc: Color = hover_style.shadow_color
+		hover_style.shadow_color = Color(sc.r, sc.g, sc.b, clampf(sc.a + 0.15, 0.0, 1.0))
+	add_theme_stylebox_override("panel", hover_style)
+
+## Legendary/Mythic 脉冲：循环呼吸 shadow_alpha（base↔base+0.2）
+func _start_pulse_glow() -> void:
+	if _hover_base_style == null:
+		return
+	var base_a: float = _hover_base_style.shadow_color.a
+	_pulse_tween = create_tween().set_loops()
+	_pulse_tween.tween_method(_set_pulse_glow_alpha, base_a, clampf(base_a + 0.2, 0.0, 1.0), 0.6)
+	_pulse_tween.tween_method(_set_pulse_glow_alpha, clampf(base_a + 0.2, 0.0, 1.0), base_a, 0.6)
+
+func _set_pulse_glow_alpha(a: float) -> void:
+	if _hover_base_style == null or not _is_hovering:
+		return
+	var s := (_hover_base_style.duplicate()) as StyleBoxFlat
+	var sc: Color = s.shadow_color
+	s.shadow_color = Color(sc.r, sc.g, sc.b, a)
+	s.shadow_size = clampi(s.shadow_size + 2, 0, 16)  # 保持 hover 增强档
+	add_theme_stylebox_override("panel", s)
+
+func _kill_hover_tweens() -> void:
+	if _hover_tween != null and _hover_tween.is_valid():
+		_hover_tween.kill()
+	_hover_tween = null
+	if _pulse_tween != null and _pulse_tween.is_valid():
+		_pulse_tween.kill()
+	_pulse_tween = null
 
 ## 检查全局鼠标移动（用于拖拽过程中）
 func _check_global_mouse_movement() -> void:
@@ -182,6 +275,13 @@ func _find_slot_cost_label() -> Label:
 
 func set_card(c: CardResource) -> void:
 	card = c
+	# v7.x：池化复用复位 hover 变换残留（position/scale/z_index）
+	if _is_hovering or _hover_tween != null or _pulse_tween != null:
+		_kill_hover_tweens()
+		_is_hovering = false
+		z_index = 0
+		scale = Vector2(1.0, 1.0)
+		position.y = _hover_base_pos_y  # 恢复 hover 进入前的 y
 	var icon_row_sync: Control = _find_icon_row()
 	if icon_row_sync:
 		var want_mtg: bool = _backpack_uses_mtg_face()
@@ -334,7 +434,8 @@ func _apply_card_border_flat(c: CardResource) -> void:
 		add_theme_stylebox_override("panel", _card_border_style_cache[cache_key])
 		return
 	var panel_style := StyleBoxFlat.new()
-	panel_style.bg_color = Color(0.06, 0.10, 0.17, 0.95)
+	# v7.x：底色改用稀有度分层（与 PNG 框路径 apply_panel_with_frame 统一来源）
+	panel_style.bg_color = CardFrameUi._rarity_bg_color(c.rarity)
 	panel_style.set_corner_radius_all(6)
 	# 稀有度统一配色（GC.get_rarity_color 作为单一数据源）
 	var rarity_col: Color = GC.get_rarity_color(c.rarity)

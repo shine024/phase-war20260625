@@ -9,6 +9,7 @@ const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const UnitStatsTable = preload("res://resources/unit_stats_table.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 const LevelSpawnSequences = preload("res://data/level_spawn_sequences.gd")
+const LevelInformation = preload("res://data/level_information.gd")
 const SwarmEnemyControllerScript = preload("res://scenes/units/swarm_enemy_controller.gd")
 const _CardGridSlotsPerSide: int = BattleSlotGrid.SLOT_COUNT
 const _DamageNumberDisplayScript = preload("res://scenes/effects/damage_number_display.gd")
@@ -314,6 +315,10 @@ func spawn_card_grid_enemy_wave(current_level: int) -> bool:
 		var unit: Node2D = _create_enemy_unit_with_id(archetype_id) as Node2D
 		if unit == null:
 			continue
+		# v8 批次2: 精英/boss 词缀（type_pick=elite/boss 时 roll 词缀并应用）
+		if type_pick == "elite" or type_pick == "boss":
+			if unit.has_method("apply_elite_affixes"):
+				unit.apply_elite_affixes(type_pick)
 		if not spawn_enemy_unit_on_card_grid(unit, -1):
 			if is_instance_valid(unit):
 				unit.queue_free()
@@ -366,6 +371,12 @@ func spawn_enemy_unit_on_card_grid(unit: Node2D, preferred_slot: int = -1) -> bo
 	enemy_unit_count += 1
 	if _signal_bus:
 		_signal_bus.unit_spawned.emit(unit, false)
+	# v7.x: 敌方布置时间——EnemyUnit 入场即启动部署虚影（波次刷敌 + 相位师兜底产兵共用本入口）。
+	# ConstructUnit（相位师装备产兵）自带 start_as_deploy_ghost，在 enemy_phase_field_driver 单独挂。
+	# 蜂群走 SwarmEnemyController.spawn_slot，slot.setup 内部自启动，不经本函数。
+	# 守卫 not is_deploy_ghost：避免在已进入布置态的单位上重复触发。
+	if unit.has_method("start_as_deploy_ghost") and not (unit.get("is_deploy_ghost") if "is_deploy_ghost" in unit else false):
+		unit.start_as_deploy_ghost()
 	return true
 
 
@@ -460,6 +471,11 @@ func request_player_deploy(platform_card_id: String, world_pos: Vector2, battle_
 		# 玩家侧仅 slot 0（位置 1，最左靠屏幕边）禁放，实际可用 = SLOTS_PER_SIDE - 1
 		var usable_slots: int = max(1, _CardGridSlotsPerSide - 1)
 		max_units = mini(max_units, usable_slots)
+	# v8 批次3: 关卡部署上限（special_rules.deploy_limit 覆盖默认上限）
+	var _level_rules: Dictionary = _get_current_level_rules()
+	var _deploy_limit: int = int(_level_rules.get("deploy_limit", 0))
+	if _deploy_limit > 0:
+		max_units = mini(max_units, _deploy_limit)
 	# v6.5: 用实时 recount（与 HUD 显示口径一致）替代缓存 player_unit_count，
 	# 避免单位死亡淡出/幽灵态导致缓存与实际脱节，出现"显示4个却不让部署"的错位。
 	var live_count: int = player_unit_count
@@ -491,6 +507,13 @@ func request_player_deploy(platform_card_id: String, world_pos: Vector2, battle_
 	if platform_card == null:
 		_emit_deploy_failed("invalid_loadout", "未找到有效战斗卡配置，请检查绿槽。")
 		return false
+	# v8 批次3: 关卡限定兵种（special_rules.restrict_platforms 白名单）
+	var _restrict: Array = _level_rules.get("restrict_platforms", [])
+	if not _restrict.is_empty():
+		var _pt: int = int(platform_card.platform_type)
+		if not _restrict.has(_pt):
+			_emit_deploy_failed("restricted_unit", "本关限定兵种，该单位不可部署。")
+			return false
 	var weapon_types: Array = resolve_deploy_weapon_types(platform_card)
 	var deploy_slot_idx: int = -1
 	if _battlefield == null or not is_instance_valid(_battlefield):
@@ -1005,6 +1028,17 @@ func _emit_deploy_failed(reason_code: String, message: String) -> void:
 		_last_deploy_fail_ts_ms = now_ms
 	if _signal_bus:
 		_signal_bus.player_deploy_failed.emit(reason_code, message)
+
+
+## v8 批次3: 获取当前关卡的 special_rules（读 GameManager.current_level → LevelInformation）
+func _get_current_level_rules() -> Dictionary:
+	if GameManager == null:
+		return {}
+	var level: int = 1
+	if "current_level" in GameManager:
+		level = int(GameManager.current_level)
+	var li = LevelInformation.new()
+	return li.get_special_rules(level)
 
 
 ## 与 backpack_combat_preview 一致：一体卡多武器用 multi_weapon_types，否则单默认武器。

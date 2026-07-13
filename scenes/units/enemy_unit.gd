@@ -6,6 +6,7 @@ const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const EnemyStatResolver = preload("res://data/enemy_stat_resolver.gd")
 const ModuleEffectHandler = preload("res://scripts/battle/module_effect_handler.gd")
 const GC = preload("res://resources/game_constants.gd")
+const DT = preload("res://resources/design_tokens.gd")
 const CardGridUnitVisuals = preload("res://scripts/card_grid_unit_visuals.gd")
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 const CardGridDamage = preload("res://scripts/card_grid_damage.gd")
@@ -16,6 +17,7 @@ const TargetSelection = preload("res://scripts/battle/target_selection.gd")
 const DamageAttenuation = preload("res://scripts/battle/damage_attenuation.gd")
 const AttackCalculator = preload("res://scripts/battle/attack_calculator.gd")
 const FortShieldAuraScript = preload("res://scripts/battle/fort_shield_aura.gd")
+const ConstructUnitDeploy = preload("res://scripts/battle/construct_unit_deploy.gd")
 const BATTLE_MIN_X: float = 40.0
 const BATTLE_MAX_X: float = 1240.0
 const BATTLE_MIN_Y: float = 280.0
@@ -50,6 +52,12 @@ var wave_index: int = 0
 var archetype_id: String = "basic_infantry"
 var damage_reduction: float = 0.0  # 用于卡牌特殊能力 debuff
 var stats: UnitStats = null  # 用于词条效果计算
+# v7.x: 敌方布置时间（部署虚影）——入场后半透明、不动、不开火，过 _ghost_materialize_time_left 秒后实体化投入战斗。
+# is_deploy_ghost 被 battle_manager._is_active_combat_unit 鸭子识别，部署期不计入存活数。
+# 与 ConstructUnit 不同：敌兵实体化时 NOT 回满血（保留布置期间被打掉的血，避免玩家输出被回满白费）。
+var is_deploy_ghost: bool = false
+var _ghost_materialize_time_left: float = 0.0
+var _ghost_total_time: float = 0.0
 var _attack_weapon_index: int = 0  # 多武器时轮换
 # 性能优化：缓存 archetype 配置，避免每次攻击查字典
 var _cached_archetype_cfg: Dictionary = {}
@@ -81,6 +89,22 @@ var _cached_is_card_grid: bool = true
 var _cached_combat_started: bool = false
 ## 跨实例共享的资源缓存
 var _res_cache: Dictionary = {}
+# v8: 行为 tag 缓存（fast/stealth/antitank 等），setup 时从 archetype cfg 一次性读取
+# 供 TargetSelection._get_counter_priority 读取（antitank 覆盖），并驱动 fast/stealth 行为
+var _behavior_tags_cached: Array = []
+var _is_fast_unit: bool = false
+var _is_stealth_unit: bool = false
+# v8: stealth 开局减伤计时器（前 4 秒受伤 ×0.6，模拟"潜入到位"）
+var _stealth_grace_timer: float = 0.0
+const STEALTH_GRACE_DURATION: float = 4.0
+const STEALTH_GRACE_DAMAGE_MUL: float = 0.6
+# v8: fast 攻速加成倍率（attack_interval ×0.80 = 攻速 +20%）
+const FAST_INTERVAL_MULT: float = 0.80
+# v8 批次2: 精英词缀系统
+const EnemyAffixes = preload("res://data/enemy_affixes.gd")
+# 已应用的词缀列表（供 _do_attack 触发机制型效果 + UI 显示）
+var _elite_affixes: Array = []
+var _elite_spawn_type: String = "normal"
 
 ## 缓存 load()：同一资源路径只加载一次，后续从内存字典取
 func _cached_load(path: String, type_hint: int = -1) -> Resource:
@@ -114,8 +138,8 @@ var _card_grid_rest_x: float = NAN  ## 格子战术中卡片的归位 X
 var _hit_flash_t: float = 0.0
 var _hit_flash_base_modulate: Color = Color.WHITE
 var _hit_shake_t: float = -1.0  # -1=未激活，>=0=激活
-const _HIT_FLASH_DURATION: float = 0.1
-const _HIT_SHAKE_DURATION: float = 0.12
+const _HIT_FLASH_DURATION: float = 0.15  # v8.3: 0.1→0.15（三阶段闪白）
+const _HIT_SHAKE_DURATION: float = 0.14  # v8.3: 0.12→0.14（4×0.035s）
 var _death_fade_tween: Tween = null  ## v6.4: 死亡淡出 Tween
 var _is_dying: bool = false  ## v6.4: 死亡中标志，防止 _die 重复触发
 
@@ -320,6 +344,8 @@ func _apply_archetype_stats() -> void:
 	# v6.3: 构建完整 UnitStats，使 _do_attack 经典路径复用三维 AttackCalculator
 	# （与相位师产兵的 stats != null 路径统一）
 	_build_enemy_unit_stats(r, cfg)
+	# v8: 缓存行为 tag 并应用 tag 驱动的数值差异（fast/stealth/antitank）
+	_apply_behavior_tags(cfg)
 	if cfg.is_empty():
 		return
 	_base_max_hp = hp
@@ -328,6 +354,103 @@ func _apply_archetype_stats() -> void:
 	_base_attack_interval = attack_interval
 	_base_stats_ready = true
 	_apply_visual_from_archetype(cfg)
+
+
+## v8: 激活 archetype tags 驱动的行为差异（死字段→生效）。
+## 路径B（纯数值，不解锁槽位吸附，零视觉风险）：
+##   fast    → attack_interval ×0.80（攻速 +20%）
+##   stealth → 标记，开局 4 秒受伤 ×0.6（_stealth_grace_timer 驱动，_process 递减）
+##   antitank → 标记，TargetSelection._get_counter_priority 强制锁定 ARMOR
+## 无 tag 的敌人完全不受影响（向后兼容）。
+func _apply_behavior_tags(cfg: Dictionary) -> void:
+	_behavior_tags_cached = []
+	_is_fast_unit = false
+	_is_stealth_unit = false
+	var tags_var = cfg.get("tags", [])
+	if not (tags_var is Array):
+		return
+	_behavior_tags_cached = tags_var.duplicate()
+	if _behavior_tags_cached.has("fast"):
+		_is_fast_unit = true
+		# fast：攻速 +20%（interval ×0.80）。同步裸字段、UnitStats 与武器槽 attack_speed。
+		# 注意 WeaponResource 用 attack_speed（次/秒）而非 interval，故取倒数倍率 1/0.80=1.25。
+		attack_interval = maxf(0.05, attack_interval * FAST_INTERVAL_MULT)
+		if stats != null:
+			stats.attack_interval = maxf(0.05, float(stats.attack_interval) * FAST_INTERVAL_MULT)
+			# 三武器槽 attack_speed 等比放大（_process_attack_timing 优先读 weapon timing）
+			var spd_mult: float = 1.0 / FAST_INTERVAL_MULT
+			for w in stats.weapon_slots:
+				if w != null and w.enabled:
+					w.attack_speed = maxf(0.1, float(w.attack_speed) * spd_mult)
+	if _behavior_tags_cached.has("stealth"):
+		_is_stealth_unit = true
+		_stealth_grace_timer = STEALTH_GRACE_DURATION
+
+
+## v8: stealth 开局减伤——前 STEALTH_GRACE_DURATION 秒受伤 ×STEALTH_GRACE_DAMAGE_MUL。
+## 在 _process 中递减；实际减伤在 take_damage 中读取 _is_stealth_in_grace() 判定。
+func _update_stealth_grace(delta: float) -> void:
+	if not _is_stealth_unit or _stealth_grace_timer <= 0.0:
+		return
+	_stealth_grace_timer = maxf(0.0, _stealth_grace_timer - delta)
+
+
+func _is_stealth_in_grace() -> bool:
+	return _is_stealth_unit and _stealth_grace_timer > 0.0
+
+
+## v8 批次2: 获取反伤比率（armor_reflect 词缀）。0.0=无反伤。
+func _get_armor_reflect_ratio() -> float:
+	if stats == null:
+		return 0.0
+	if "armor_reflect" in stats:
+		return clampf(float(stats.armor_reflect), 0.0, 0.60)
+	# 兜底：UnitStats 无此字段时读 meta（apply_to_stats 的 set_meta 路径）
+	if stats.has_meta("armor_reflect"):
+		return clampf(float(stats.get_meta("armor_reflect")), 0.0, 0.60)
+	return 0.0
+
+
+## v8 批次2: 应用精英词缀到本单位。
+## 由 battle_spawn_system（经典波次）或 enemy_phase_field_driver（相位师产兵）在 setup 后调用。
+## spawn_type: "normal" / "elite" / "boss"——决定 roll 词缀数量与稀有度池。
+## 词缀效果分两类：
+##   A 数值型（attack/max_hp/speed/dodge/crit/regen）：apply 时改 stats 字段，战斗路径自动读取。
+##   B 机制型（lifesteal/chain/splash/shield/reflect）：apply 时改 stats 字段，
+##     _do_attack / take_damage 读取字段触发 AffixCombatHandler。
+## 注意：本方法应在 setup 完成（stats 就绪）后调用，且需同步裸 hp/max_hp（max_hp 词缀）。
+func apply_elite_affixes(spawn_type: String) -> void:
+	_elite_spawn_type = spawn_type
+	if stats == null:
+		return
+	if spawn_type == "normal":
+		return  # 普通怪不 roll
+	var affixes: Array = EnemyAffixes.roll_affixes(spawn_type)
+	if affixes.is_empty():
+		return
+	_elite_affixes = affixes
+	# 记录应用前的 hp 比率，词缀改 max_hp 后按比率同步裸 hp
+	var hp_ratio: float = clampf(hp / maxf(1.0, max_hp), 0.0, 1.0) if max_hp > 0.0 else 1.0
+	EnemyAffixes.apply_to_stats(stats, affixes)
+	# 同步裸字段：max_hp 词缀改了 stats.max_hp，需同步裸 max_hp/hp
+	var has_hp_affix: bool = false
+	for a in affixes:
+		if String(a.get("effect_key", "")) == "max_hp":
+			has_hp_affix = true
+			break
+	if has_hp_affix:
+		max_hp = float(stats.max_hp)
+		hp = maxf(1.0, max_hp * hp_ratio)
+		attack_damage = float(stats.attack_damage)  # attack_damage 词缀也可能改了
+
+
+## v8 批次2: 获取本单位的词缀显示信息（供 card_info_panel 显示）。
+func get_elite_affixes() -> Array:
+	return _elite_affixes
+
+
+func get_elite_spawn_type() -> String:
+	return _elite_spawn_type
 
 
 ## v6.6(剧情): 二周目敌人属性×1.2（补剧情.txt 第十二幕 L186）
@@ -636,6 +759,10 @@ func _physics_process(delta: float) -> void:
 	var paused := tree.paused if tree else true
 	if paused:
 		return
+	# v7.x: 部署虚影期间不移动/不索敌/不开火（可被攻击），实体化后才投入战斗
+	if is_deploy_ghost:
+		_update_enemy_deploy_ghost(delta)
+		return
 	if _hit_stun_left > 0.0:
 		_hit_stun_left -= delta
 	# v6.6: 敌方单位 hp_regen（持续回血）——之前敌方完全不回血，
@@ -645,6 +772,8 @@ func _physics_process(delta: float) -> void:
 		if regen_amt > 0.0 and hp < stats.max_hp:
 			hp = minf(hp + regen_amt, stats.max_hp)
 			_update_hp_bar()
+	# v8: stealth 开局减伤计时器递减
+	_update_stealth_grace(delta)
 	# 性能优化：不再每帧更新 HP 条，改为在 HP 变化时更新
 	# 性能优化：减少目标查找频率
 	_target_find_timer += delta
@@ -721,6 +850,13 @@ func _find_target(_delta: float) -> void:
 	# 直射单位：优先空间分区（O(1) 最近目标，与 select_target_direct 结果等价，零行为变化）
 	# 曲射/空射单位：走差异化索敌（迫击炮打克制 / 防空打空中 / 导弹按克制）
 	if not GC.is_indirect_weapon_type(wt):
+		# v8: antitank 单位优先打装甲/堡垒类目标（无视距离最近逻辑）
+		# 命中则锁定；未命中回退到常规直射索敌（向后兼容）
+		if _behavior_tags_cached.has("antitank"):
+			var at_target: Node2D = _pick_antitank_priority_target(acq)
+			if at_target != null:
+				target = at_target
+				return
 		# 性能优化：优先使用空间分区系统
 		if BattleManager and BattleManager.spatial_grid:
 			var spatial_grid = BattleManager.spatial_grid
@@ -766,6 +902,13 @@ func _find_target(_delta: float) -> void:
 	# —— 曲射/空射单位：差异化索敌 ——
 	var candidates: Array = _collect_player_candidates(acq)
 	if not candidates.is_empty():
+		# v8: stealth 单位优先打指挥/光环单位（模拟"渗透到关键目标"）
+		# 复用 ConstructUnitAI 的 platform_type 判定口径（COMMAND=12, AURA=[3,4,5,8,9,10,12]）
+		if _is_stealth_unit:
+			var priority_target: Node2D = _pick_stealth_priority_target(candidates)
+			if priority_target != null:
+				target = priority_target
+				return
 		var mapped_wt: int = GC.legacy_weapon_to_new_weapon_type(wt, _is_aircraft_unit())
 		var selected: Node2D = TargetSelection.select_target(self, candidates, mapped_wt)
 		if selected != null:
@@ -809,6 +952,71 @@ func _collect_player_candidates(acq: float) -> Array:
 		if dist_sq <= attack_range_sq:
 			result.append(n as Node2D)
 	return result
+
+
+## v8: stealth 单位优先级索敌——优先打指挥单位(platform_type==12)，其次光环单位。
+## 与 ConstructUnitAI._scan_slot_targets 的 L1/L2 口径对齐（AURA=[3,4,5,8,9,10,12]）。
+## 命中则返回最近的高价值目标；未命中返回 null（回退到常规克制索敌）。
+const _STEALTH_AURA_PLATFORM_TYPES := [3, 4, 5, 8, 9, 10, 12]
+func _pick_stealth_priority_target(candidates: Array) -> Node2D:
+	var origin := global_position
+	# L1 指挥单位
+	var commanders: Array = []
+	# L2 光环单位（含指挥）
+	var aura_units: Array = []
+	for n in candidates:
+		if n == null or not is_instance_valid(n):
+			continue
+		var s: UnitStats = n.get("stats") as UnitStats
+		if s == null:
+			continue
+		var pt: int = int(s.platform_type)
+		if pt == 12:
+			commanders.append(n)
+		if pt in _STEALTH_AURA_PLATFORM_TYPES:
+			aura_units.append(n)
+	if not commanders.is_empty():
+		return _nearest_node(origin, commanders)
+	if not aura_units.is_empty():
+		return _nearest_node(origin, aura_units)
+	return null
+
+
+## v8: 候选列表中距离最近的有效单位（单遍扫描，distance_squared_to）
+func _nearest_node(origin: Vector2, candidates: Array) -> Node2D:
+	var best: Node2D = null
+	var best_d2: float = INF
+	for c in candidates:
+		if c == null or not is_instance_valid(c):
+			continue
+		var d2: float = origin.distance_squared_to((c as Node2D).global_position)
+		if d2 < best_d2:
+			best_d2 = d2
+			best = c
+	return best
+
+
+## v8: antitank 单位优先索敌——射程内优先打 ARMOR/FORT 类目标（反坦克语义）。
+## 命中则返回最近的装甲类目标；射程内无装甲类时返回 null（回退常规直射）。
+func _pick_antitank_priority_target(acq: float) -> Node2D:
+	var attack_range_sq := acq * acq
+	var origin := global_position
+	var gr: Array = BattleManager.get_cached_nodes_in_group("player_units") if BattleManager else get_tree().get_nodes_in_group("player_units")
+	var armor_targets: Array = []
+	for n in gr:
+		if not CombatTargeting.is_attackable_combat_unit(n):
+			continue
+		var s: UnitStats = n.get("stats") as UnitStats
+		if s == null:
+			continue
+		# ARMOR=1, FORT=4（FORT 在攻防维度归 ARMOR，反坦克武器同样克制）
+		if s.combat_kind == GC.CombatKind.ARMOR or s.combat_kind == GC.CombatKind.FORT:
+			var dist_sq := origin.distance_squared_to((n as Node2D).global_position)
+			if dist_sq <= attack_range_sq:
+				armor_targets.append(n)
+	if not armor_targets.is_empty():
+		return _nearest_node(origin, armor_targets)
+	return null
 
 
 ## v7.x: 判定空中单位（索敌映射 AERIAL 用）
@@ -1054,11 +1262,29 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 	# 此前只作用于 hp 扣减，不作用于伤害数字显示，导致飘字与血条实际扣血矛盾。
 	# 现统一用 final_loss 扣血、发信号、触发受击反馈，三者保持一致。
 	var final_loss: float = hp_loss * _incoming_damage_mul
+	# v8: stealth 开局减伤（前 4 秒模拟"潜入到位"，未就位时更耐打）
+	if _is_stealth_in_grace():
+		final_loss *= STEALTH_GRACE_DAMAGE_MUL
 	hp -= final_loss
+	# v8 批次2: 反伤词缀（armor_reflect）——受到伤害时反弹给攻击者
+	# 标记 _vfx_is_reflect 防止递归（反伤伤害不再触发对方的反伤）
+	if final_loss > 0.0 and attacker != null and is_instance_valid(attacker):
+		var reflect_ratio: float = _get_armor_reflect_ratio()
+		if reflect_ratio > 0.0 and not (attacker.has_meta("_vfx_is_reflect") and attacker.get_meta("_vfx_is_reflect")):
+			var reflect_dmg: float = final_loss * reflect_ratio
+			if reflect_dmg > 0.0 and attacker.has_method("take_damage"):
+				set_meta("_vfx_is_reflect", true)
+				attacker.take_damage(reflect_dmg, self)
+				set_meta("_vfx_is_reflect", false)
 	# v6.4: 受击视觉反馈（复用 construct_unit 的闪白/抖动模式）
 	if hp > 0 and final_loss > 0:
 		_trigger_hit_flash()
 		_trigger_hit_shake()
+		# v8.3: 受击击退——从攻击者位置推方向
+		if attacker != null and is_instance_valid(attacker) and (attacker is Node2D):
+			var kb_dir: Vector2 = global_position - (attacker as Node2D).global_position
+			var kb_str: float = 6.0 if (attacker.get("explosion_radius") != null and float(attacker.get("explosion_radius")) > 0.0) else 3.0
+			_trigger_hit_knockback(kb_dir, kb_str)
 		# v8.1: 血条受击闪白（接通 unit_hp_bar.trigger_damage_flash，原为未连线死功能）
 		var _hpbar := get_node_or_null("HpBar")
 		if _hpbar != null and _hpbar.has_method("trigger_damage_flash"):
@@ -1089,7 +1315,24 @@ func _trigger_hit_shake() -> void:
 	_hit_shake_t = 0.0
 
 
+## v8.3: 受击击退位移——沿弹道反方向微位移（与 construct_unit 对齐）
+var _knockback_tween: Tween = null
+func _trigger_hit_knockback(direction: Vector2, strength: float) -> void:
+	if DT.is_motion_reduce():
+		return
+	if direction == Vector2.ZERO or strength <= 0.0:
+		return
+	if _knockback_tween != null and _knockback_tween.is_valid():
+		_knockback_tween.kill()
+	var base_pos: Vector2 = position
+	var off: Vector2 = direction.normalized() * strength
+	_knockback_tween = create_tween()
+	_knockback_tween.tween_property(self, "position", base_pos + off, 0.04)
+	_knockback_tween.tween_property(self, "position", base_pos, 0.08)
+
+
 ## v7.4: 受击动画推进（每 physics 帧调用）。与 construct_unit._update_hit_animations 对齐。
+## v8.3: flash 改三阶段（基色→武器色→回原色 0.15s）；shake 振幅加大 段长 0.035s。
 func _update_hit_animations(delta: float) -> void:
 	if _hit_flash_t > 0.0:
 		_hit_flash_t -= delta
@@ -1097,19 +1340,28 @@ func _update_hit_animations(delta: float) -> void:
 			_hit_flash_t = 0.0
 			modulate = _hit_flash_base_modulate
 		else:
-			var k: float = _hit_flash_t / _HIT_FLASH_DURATION
-			modulate = Color.WHITE.lerp(_hit_flash_base_modulate, 1.0 - k)
+			var elapsed: float = _HIT_FLASH_DURATION - _hit_flash_t
+			var base_color := Color.WHITE  # 敌方始终 WHITE
+			var weapon_tint := Color(1.0, 0.95, 0.7)
+			if elapsed < 0.04:
+				modulate = base_color
+			elif elapsed < 0.09:
+				var k2: float = (elapsed - 0.04) / 0.05
+				modulate = base_color.lerp(weapon_tint, k2)
+			else:
+				var k3: float = (elapsed - 0.09) / 0.06
+				modulate = weapon_tint.lerp(_hit_flash_base_modulate, k3)
 	if _hit_shake_t >= 0.0:
 		_hit_shake_t += delta
 		if _hit_shake_t >= _HIT_SHAKE_DURATION:
 			scale = Vector2.ONE
 			_hit_shake_t = -1.0
 		else:
-			var seg: int = int(_hit_shake_t / 0.03)
+			var seg: int = int(_hit_shake_t / 0.035)
 			if seg > 3:
 				seg = 3
-			var local_t: float = (_hit_shake_t - seg * 0.03) / 0.03
-			var keys: Array = [0.85, 1.05, 0.95, 1.0]
+			var local_t: float = (_hit_shake_t - seg * 0.035) / 0.035
+			var keys: Array = [0.78, 1.12, 0.92, 1.0]
 			var s_start: float = 1.0 if seg == 0 else keys[seg - 1]
 			var s_end: float = keys[seg]
 			var s: float = lerpf(s_start, s_end, local_t)
@@ -1239,3 +1491,37 @@ func _update_in_spatial_grid() -> void:
 	if not BattleManager or not BattleManager.spatial_grid:
 		return
 	BattleManager.spatial_grid.update(self)
+
+
+# ============================ v7.x: 敌方布置时间（部署虚影）============================
+# 复用我方 calculate_deploy_delay 公式（基于 stats.deploy_speed，默认3→约7.5秒）。
+# 与 ConstructUnit 的部署虚影语义对称但独立实现：敌兵不需要卡牌能力钩子/势力泛光/空间网格延迟注册，
+# 且实体化时不回满血（保留布置期间累积的伤害，避免玩家输出被回满白费）。
+# 布置期间：半透明 modulate.a=0.42、velocity=ZERO、target=null（不动不索敌），可被攻击。
+# is_deploy_ghost 字段被 battle_manager._is_active_combat_unit 鸭子识别 → 部署期不计存活数。
+
+## 启动敌方部署虚影（入场时由 spawn 挂钩调用）
+func start_as_deploy_ghost() -> void:
+	is_deploy_ghost = true
+	var actual_delay: float = ConstructUnitDeploy.calculate_deploy_delay(stats)
+	_ghost_materialize_time_left = maxf(0.05, actual_delay)
+	_ghost_total_time = _ghost_materialize_time_left
+	modulate = Color(1.0, 1.0, 1.0, 0.42)
+
+## 部署虚影每帧更新（由 _physics_process 调用，返回 true 表示本帧已实体化）
+func _update_enemy_deploy_ghost(delta: float) -> bool:
+	_ghost_materialize_time_left -= delta
+	velocity = Vector2.ZERO
+	target = null
+	move_and_slide()
+	_clamp_inside_battlefield()
+	if _ghost_materialize_time_left <= 0.0:
+		_materialize_enemy_deploy_ghost()
+		return true
+	return false
+
+## 实体化部署虚影：恢复完全不透明，投入战斗（NOT 回满血——保留布置期间被打掉的血）
+func _materialize_enemy_deploy_ghost() -> void:
+	is_deploy_ghost = false
+	_ghost_materialize_time_left = 0.0
+	modulate = Color.WHITE

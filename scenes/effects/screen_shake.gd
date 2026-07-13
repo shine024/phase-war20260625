@@ -55,6 +55,10 @@ func start_shake(intensity: float, duration: float, decay: bool = true) -> void:
 	shake_decay = decay
 	shake_timer = 0.0
 
+	# v8.3 视觉增强：强度→频率分层。高强度用更高频噪声（模拟"抖动"感），
+	# 低强度用低频（模拟"厚重"感）。frequency 1.0~1.5 区间，避免过度抖动眩晕。
+	_noise.frequency = 1.0 + intensity * 0.05
+
 	# 重新生成噪声种子
 	_noise.seed = randi()
 

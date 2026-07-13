@@ -994,33 +994,12 @@ func clear_slots_for_new_game() -> void:
 	_equip_starter_cards_for_new_game()
 	_emit_slots_changed()
 
-## 新游戏自动装备一套初始卡牌到空槽位
-## 绿色槽：放入初始平台卡（一战时代 FT-17，与第1关主题匹配）；黄色槽：放入初始能量卡
-## 注：原配置用 omega_platform（近未来终极单位）+ energy_start_4（20星 +2100能量上限），
-## 是开发期演示残留——新手开局拿到后期最强单位+海量能量，第1关毫无难度且与一战关卡主题错配。
-## 改为 FT-17（一战坦克）+ energy_start_1（5星 +500能量上限），让新手体验正常的养成曲线。
+## 新游戏自动装备一套初始卡牌到空槽位（v7.x 已停用）
+## v7.x 修复：此函数不再创建/装备任何卡牌。初始卡由 SaveManager._enqueue_starter_backpack_cards
+## 统一创建入背包（ww1_ft17#1）。此前此函数独立 create_instance 导致与 SaveManager 撞号（两个 #1）。
+## 保留函数体（no-op）避免 clear_slots_for_new_game 等调用点报错；绿槽开局为空，玩家手动装备。
 func _equip_starter_cards_for_new_game() -> void:
-	# v7.0: 初始卡也实例化（独立 instance_id + 养成数据），不污染 DefaultCards 模板
-	var ir: Node = get_node_or_null("/root/InstanceRegistry")
-	# 绿色槽：填入一战初始平台卡（FT-17 轻型坦克，era=0 一战）
-	var green_arr: Array = instrument_slots.get("green", [])
-	if not green_arr.is_empty():
-		for i in range(green_arr.size()):
-			if green_arr[i] == null:
-				var starter_platform: CardResource = null
-				if ir != null and ir.has_method("create_instance"):
-					starter_platform = ir.create_instance("ww1_ft17")
-				else:
-					var tpl: CardResource = _get_default_cards().get_card_by_id("ww1_ft17")
-					starter_platform = tpl.clone() if tpl != null else null
-				if starter_platform != null:
-					green_arr[i] = starter_platform
-	instrument_slots["green"] = green_arr
-
-	# v7.x: 黄色能量槽已移除（能量卡系统移除），不再装备初始能量卡。
-	# 能量上限改由相位仪星级决定（见 EnergyManager._apply_instrument_energy）。
-
-	# [LOG-v5.1] print("[PhaseInstrumentManager] 新游戏初始卡牌已自动装备")
+	pass
 
 func save_state() -> Dictionary:
 	var runtime_defs: Dictionary = {}
@@ -1070,9 +1049,10 @@ func load_state(data: Dictionary) -> void:
 	# 在 load_state 内部恢复槽位卡牌，消除两步加载时序依赖
 	if data.has("slot_card_ids") and data["slot_card_ids"] is Array:
 		set_slots_from_card_ids(data["slot_card_ids"])
-	else:
-		# 新游戏（空数据）或旧存档缺少 slot_card_ids：自动装备初始卡牌
-		_equip_starter_cards_for_new_game()
+	# v7.x 修复：新游戏（空数据 load_state({})）不再自动装备初始卡——
+	# 初始卡由 SaveManager._enqueue_starter_backpack_cards 统一创建入背包，
+	# 避免两个 starter 函数各自 create_instance 导致 ww1_ft17#1 重复（相位仪+背包同名）。
+	# 绿槽保持空（_rebuild_slots 已建空槽），玩家从背包拖到相位仪装备。
 	# v6.2: 恢复符文系统状态（旧存档无此字段时为空，新游戏从0开始）
 	var rune_state: Variant = data.get("rune_state", {})
 	if rune_state is Dictionary:

@@ -5,6 +5,7 @@ const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const EnemyStatResolver = preload("res://data/enemy_stat_resolver.gd")
 const GC = preload("res://resources/game_constants.gd")
 const CardGridDamage = preload("res://scripts/card_grid_damage.gd")
+const ConstructUnitDeploy = preload("res://scripts/battle/construct_unit_deploy.gd")
 
 var is_player: bool = false
 var archetype_id: String = "ww1_inf_mp18"
@@ -37,6 +38,14 @@ var _base_attack_interval: float = 0.25
 var visual_color: Color = Color(0.9, 0.35, 0.25)
 ## 空间网格更新节拍（由 SwarmEnemyController 递减，避免每帧 set_meta/get_meta）
 var grid_update_timer: float = 0.0
+# v7.x: 敌方布置时间（部署虚影）——蜂群版本。
+# 蜂群 slot 是轻量 Node2D（process_mode=DISABLED），移动/攻击逻辑由 SwarmEnemyController 驱动，
+# 故部署虚影只存状态字段；controller 在 _tick_slot 开头 early-return（部署期不索敌/不开火）。
+# 视觉用 visual_color.a=0.42 表示布置态（与 EnemyUnit/ConstructUnit 的半透明一致）。
+# is_deploy_ghost 被 battle_manager._is_active_combat_unit 鸭子识别，部署期不计存活数。
+var is_deploy_ghost: bool = false
+var _ghost_materialize_time_left: float = 0.0
+var _base_visual_color: Color = Color(0.9, 0.35, 0.25)
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_DISABLED
@@ -68,6 +77,25 @@ func setup(p_wave: int, p_archetype_id: String, local_pos: Vector2) -> void:
 	add_to_group("enemy_units")
 	_register_to_spatial_grid()
 	_update_visual_color()
+	# v7.x: 入场即进入布置态（与我方对称，复用 calculate_deploy_delay 公式）
+	_start_swarm_deploy_ghost()
+
+## v7.x: 启动蜂群部署虚影——缓存原色，按 stats.deploy_speed 算布置时间，压低 alpha 表示布置态。
+## 实际计时推进与状态清除由 SwarmEnemyController._tick_swarm_deploy_ghost 完成（slot 自身无 _process）。
+func _start_swarm_deploy_ghost() -> void:
+	_base_visual_color = visual_color
+	is_deploy_ghost = true
+	var actual_delay: float = ConstructUnitDeploy.calculate_deploy_delay(stats)
+	_ghost_materialize_time_left = maxf(0.05, actual_delay)
+	var ghost_col: Color = visual_color
+	ghost_col.a = 0.42
+	visual_color = ghost_col
+
+## v7.x: 实体化——恢复完全不透明色，投入战斗（由 controller 在计时归零时调用）
+func materialize_swarm_deploy_ghost() -> void:
+	is_deploy_ghost = false
+	_ghost_materialize_time_left = 0.0
+	visual_color = _base_visual_color
 
 func _apply_archetype_stats() -> void:
 	var cfg: Dictionary = EnemyArchetypes.get_config(archetype_id)

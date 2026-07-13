@@ -20,7 +20,8 @@
 			],
 			"atk_bonus": 1.67,
 			"hp_bonus": 1.25,
-			"def_bonus": 1.0
+			"def_bonus": 1.0,
+			"unit_capacity": 3
 		},
 		"steel_guardian_mk2": {
 			"id": "steel_guardian_mk2",
@@ -40,7 +41,8 @@
 			],
 			"atk_bonus": 4.4,
 			"hp_bonus": 3.3,
-			"def_bonus": 2.64
+			"def_bonus": 2.64,
+			"unit_capacity": 4
 		},
 		"steel_guardian_mk3": {
 			"id": "steel_guardian_mk3",
@@ -61,7 +63,8 @@
 			],
 			"atk_bonus": 7.5,
 			"hp_bonus": 5.62,
-			"def_bonus": 4.5
+			"def_bonus": 4.5,
+			"unit_capacity": 5
 		},
 		"steel_guardian_mk4": {
 			"id": "steel_guardian_mk4",
@@ -82,7 +85,8 @@
 			],
 			"atk_bonus": 13.33,
 			"hp_bonus": 10.0,
-			"def_bonus": 8.0
+			"def_bonus": 8.0,
+			"unit_capacity": 6
 		},
 		"flame_destroyer_mk1": {
 			"id": "flame_destroyer_mk1",
@@ -101,7 +105,8 @@
 			],
 			"atk_bonus": 2.0,
 			"hp_bonus": 1.5,
-			"def_bonus": 1.2
+			"def_bonus": 1.2,
+			"unit_capacity": 3
 		},
 		"flame_destroyer_mk2": {
 			"id": "flame_destroyer_mk2",
@@ -121,7 +126,8 @@
 			],
 			"atk_bonus": 4.77,
 			"hp_bonus": 3.58,
-			"def_bonus": 2.86
+			"def_bonus": 2.86,
+			"unit_capacity": 4
 		},
 		"flame_destroyer_mk3": {
 			"id": "flame_destroyer_mk3",
@@ -142,7 +148,8 @@
 			],
 			"atk_bonus": 7.92,
 			"hp_bonus": 5.94,
-			"def_bonus": 4.75
+			"def_bonus": 4.75,
+			"unit_capacity": 5
 		},
 		"flame_destroyer_mk4": {
 			"id": "flame_destroyer_mk4",
@@ -163,7 +170,8 @@
 			],
 			"atk_bonus": 13.87,
 			"hp_bonus": 10.4,
-			"def_bonus": 8.32
+			"def_bonus": 8.32,
+			"unit_capacity": 6
 		},
 		"thunder_storm_mk1": {
 			"id": "thunder_storm_mk1",
@@ -182,7 +190,8 @@
 			],
 			"atk_bonus": 2.33,
 			"hp_bonus": 1.75,
-			"def_bonus": 1.4
+			"def_bonus": 1.4,
+			"unit_capacity": 3
 		},
 		"thunder_storm_mk2": {
 			"id": "thunder_storm_mk2",
@@ -202,7 +211,8 @@
 			],
 			"atk_bonus": 5.13,
 			"hp_bonus": 3.85,
-			"def_bonus": 3.08
+			"def_bonus": 3.08,
+			"unit_capacity": 4
 		},
 		"thunder_storm_mk3": {
 			"id": "thunder_storm_mk3",
@@ -223,7 +233,8 @@
 			],
 			"atk_bonus": 8.33,
 			"hp_bonus": 6.25,
-			"def_bonus": 5.0
+			"def_bonus": 5.0,
+			"unit_capacity": 5
 		},
 		"thunder_storm_mk4": {
 			"id": "thunder_storm_mk4",
@@ -244,7 +255,8 @@
 			],
 			"atk_bonus": 14.4,
 			"hp_bonus": 10.8,
-			"def_bonus": 8.64
+			"def_bonus": 8.64,
+			"unit_capacity": 6
 		},
 		"void_walker_mk1": {
 			"id": "void_walker_mk1",
@@ -263,7 +275,8 @@
 			],
 			"atk_bonus": 2.67,
 			"hp_bonus": 2.0,
-			"def_bonus": 1.6
+			"def_bonus": 1.6,
+			"unit_capacity": 3
 		},
 		"void_walker_mk2": {
 			"id": "void_walker_mk2",
@@ -283,7 +296,8 @@
 			],
 			"atk_bonus": 5.5,
 			"hp_bonus": 4.12,
-			"def_bonus": 3.3
+			"def_bonus": 3.3,
+			"unit_capacity": 4
 		},
 		"void_walker_mk3": {
 			"id": "void_walker_mk3",
@@ -304,7 +318,8 @@
 			],
 			"atk_bonus": 8.75,
 			"hp_bonus": 6.56,
-			"def_bonus": 5.25
+			"def_bonus": 5.25,
+			"unit_capacity": 5
 		},
 		"void_walker_mk4": {
 			"id": "void_walker_mk4",
@@ -325,7 +340,8 @@
 			],
 			"atk_bonus": 14.93,
 			"hp_bonus": 11.2,
-			"def_bonus": 8.96
+			"def_bonus": 8.96,
+			"unit_capacity": 6
 		},
 		"hybrid_steel_flame_mk1": {
 			"id": "hybrid_steel_flame_mk1",
@@ -346,7 +362,8 @@
 			],
 			"atk_bonus": 6.67,
 			"hp_bonus": 5.0,
-			"def_bonus": 4.0
+			"def_bonus": 4.0,
+			"unit_capacity": 5
 		},
 		"hybrid_thunder_steel_mk1": {
 			"id": "hybrid_thunder_steel_mk1",
@@ -367,7 +384,8 @@
 			],
 			"atk_bonus": 7.08,
 			"hp_bonus": 5.31,
-			"def_bonus": 4.25
+			"def_bonus": 4.25,
+			"unit_capacity": 5
 		},
 		"hybrid_void_flame_mk1": {
 			"id": "hybrid_void_flame_mk1",
@@ -388,7 +406,8 @@
 			],
 			"atk_bonus": 7.5,
 			"hp_bonus": 5.62,
-			"def_bonus": 4.5
+			"def_bonus": 4.5,
+			"unit_capacity": 5
 		},
 		"steel_guardian_god": {
 			"id": "steel_guardian_god",
@@ -409,7 +428,8 @@
 			],
 			"atk_bonus": 15.47,
 			"hp_bonus": 11.6,
-			"def_bonus": 9.28
+			"def_bonus": 9.28,
+			"unit_capacity": 6
 		},
 		"flame_destroyer_god": {
 			"id": "flame_destroyer_god",
@@ -430,7 +450,8 @@
 			],
 			"atk_bonus": 16.0,
 			"hp_bonus": 12.0,
-			"def_bonus": 9.6
+			"def_bonus": 9.6,
+			"unit_capacity": 6
 		},
 		"thunder_storm_god": {
 			"id": "thunder_storm_god",
@@ -452,7 +473,8 @@
 			],
 			"atk_bonus": 16.0,
 			"hp_bonus": 12.0,
-			"def_bonus": 9.6
+			"def_bonus": 9.6,
+			"unit_capacity": 6
 		},
 		"void_walker_god": {
 			"id": "void_walker_god",
@@ -473,7 +495,8 @@
 			],
 			"atk_bonus": 16.0,
 			"hp_bonus": 12.0,
-			"def_bonus": 9.6
+			"def_bonus": 9.6,
+			"unit_capacity": 6
 		},
 		"omega_instrument": {
 			"id": "omega_instrument",
@@ -494,7 +517,8 @@
 			],
 			"atk_bonus": 16.0,
 			"hp_bonus": 12.0,
-			"def_bonus": 9.6
+			"def_bonus": 9.6,
+			"unit_capacity": 6
 		},
 		"hybrid_steel_thunder_mk1": {
 			"id": "hybrid_steel_thunder_mk1",
@@ -516,7 +540,8 @@
 			],
 			"atk_bonus": 11.2,
 			"hp_bonus": 8.4,
-			"def_bonus": 6.72
+			"def_bonus": 6.72,
+			"unit_capacity": 6
 		},
 		"hybrid_flame_void_mk1": {
 			"id": "hybrid_flame_void_mk1",
@@ -538,7 +563,8 @@
 			],
 			"atk_bonus": 11.67,
 			"hp_bonus": 8.75,
-			"def_bonus": 7.0
+			"def_bonus": 7.0,
+			"unit_capacity": 6
 		}
 	}
 }

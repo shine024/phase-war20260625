@@ -122,6 +122,8 @@ func setup(p_target: Node2D, p_damage: float, p_is_player: bool, p_weapon_type: 
 	_apply_visual()
 	_configure_behavior()
 	_beam_visual_phase = 0
+	# v8.3: 发射音效（所有武器类型，按 WeaponTypeLegacy 分流）
+	_play_attack_sfx()
 
 func _configure_behavior() -> void:
 	# 基础：大多数子弹直线追踪目标
@@ -258,33 +260,34 @@ func _apply_visual() -> void:
 ## v7.x: 程序化生成子弹多边形（替代原 3 点三角形）
 ## 形状 = 弹体（平底矩形段）+ 弹头（锥形过渡段），指向 +X（飞行方向）
 ## 按 weapon_type 差异化比例，让不同武器视觉上有辨识度
-## 注意：整体尺寸需与原三角形 (6×4*scale) 保持一致，不可放大
+## v8.3 视觉增强：基准 ×2（body 4→8 / nose 2→4 / half_h 1.5→3.5），让弹体在战场上清晰可见
+## 注意：整体尺寸需与放大后的基准 (12×8*scale) 保持一致，各 override 同步 ×2
 func _apply_bullet_shape(size_scale: float) -> void:
 	if _sprite == null:
 		return
 	var s := size_scale
-	# 基准尺寸与原三角形一致：总长约 6*scale，高约 4*scale
-	var body_len: float = 4.0 * s   # 弹体长度
-	var nose_len: float = 2.0 * s   # 弹头锥形长度
-	var half_h: float = 1.5 * s     # 弹体半高
-	# 按武器类型调整比例
+	# 基准尺寸（v8.3 ×2）：总长约 12*scale，高约 8*scale
+	var body_len: float = 8.0 * s   # 弹体长度（原 4.0）
+	var nose_len: float = 4.0 * s   # 弹头锥形长度（原 2.0）
+	var half_h: float = 3.5 * s     # 弹体半高（原 1.5）
+	# 按武器类型调整比例（v8.3 同步 ×2）
 	match weapon_type:
 		5:  # SHOTGUN — 圆胖霰弹丸
-			body_len = 3.0 * s
-			nose_len = 1.5 * s
-			half_h = 2.0 * s
+			body_len = 6.0 * s
+			nose_len = 3.0 * s
+			half_h = 4.0 * s
 		3, 9:  # ROCKET / MISSILE — 长粗导弹
-			body_len = 4.5 * s
-			nose_len = 2.0 * s
-			half_h = 2.0 * s
+			body_len = 9.0 * s
+			nose_len = 4.0 * s
+			half_h = 4.0 * s
 		10, 11:  # OMEGA / RAIL — 细长高能弹
-			body_len = 4.0 * s
-			nose_len = 2.0 * s
-			half_h = 0.8 * s
+			body_len = 8.0 * s
+			nose_len = 4.0 * s
+			half_h = 1.6 * s
 		7:  # FLAK — 短粗高炮弹
-			body_len = 2.5 * s
-			nose_len = 1.5 * s
-			half_h = 1.8 * s
+			body_len = 5.0 * s
+			nose_len = 3.0 * s
+			half_h = 3.6 * s
 	var tip_x: float = body_len + nose_len  # 弹头顶点 X
 	# 7 点顺时针多边形（从弹体底部后端起）：
 	# 后端平底 → 弹体底前 → 锥面收窄 → 弹尖 → 锥面展开 → 弹体顶前 → 后端平顶
@@ -348,7 +351,7 @@ func _apply_trail() -> void:
 			_trail_sprite.material = _get_add_blend_mat()
 			_trail_sprite.rotation = 0.0
 			_trail_sprite.position = Vector2.ZERO
-	# v8.1: 粒子拖尾配置
+	# v8.3 视觉增强：粒子拖尾按 weapon_type 6 档分级（原 _is_heavy 二分太粗，轻武器几乎无轨迹）
 	if _trail_particles != null:
 		_trail_particles.material = _get_add_blend_mat()
 		if DT.is_motion_reduce():
@@ -356,26 +359,40 @@ func _apply_trail() -> void:
 			_trail_particles.emitting = false
 			_trail_particles.visible = false
 			return
-		if _is_heavy:
-			# 重型武器：强拖尾（v8.2：加长到可清晰看见尾焰）
-			_trail_particles.amount = 14
-			_trail_particles.lifetime = 0.50
-			_trail_particles.initial_velocity_min = 15.0
-			_trail_particles.initial_velocity_max = 35.0
-			_trail_particles.scale_amount_min = 3.0
-			_trail_particles.scale_amount_max = 5.5
-			_trail_particles.color = _trail_color_for_weapon()
-		else:
-			# 轻武器：微弱拖尾（v8.2：0.14→0.30 / amount 4→8，原几乎看不见）
-			_trail_particles.amount = 8
-			_trail_particles.lifetime = 0.30
-			_trail_particles.initial_velocity_min = 6.0
-			_trail_particles.initial_velocity_max = 12.0
-			_trail_particles.scale_amount_min = 1.0
-			_trail_particles.scale_amount_max = 2.0
-			_trail_particles.color = _trail_color_for_weapon()
+		_apply_trail_tier()
+		_trail_particles.color = _trail_color_for_weapon()
 		_trail_particles.emitting = true
 		_trail_particles.visible = true
+
+
+## v8.3: 按 weapon_type 配置拖尾粒子参数（6 档 + 兜底）
+## WeaponTypeLegacy: SMG=0,RIFLE=1,MG=2,ROCKET=3,PISTOL=4,SHOTGUN=5,SNIPER=6,FLAK=7,LASER=8,MISSILE=9,OMEGA=10,RAIL=11
+func _apply_trail_tier() -> void:
+	var amount: int = 16
+	var life: float = 0.50
+	var vmin: float = 15.0
+	var vmax: float = 40.0
+	var smin: float = 1.5
+	var smax: float = 3.0
+	match weapon_type:
+		0, 1, 2, 4:  # SMG / RIFLE / MG / PISTOL — 轻武器，连发轨迹感
+			amount = 16; life = 0.50; vmin = 15.0; vmax = 40.0; smin = 1.5; smax = 3.0
+		5:  # SHOTGUN — 宽散布霰弹
+			amount = 24; life = 0.45; vmin = 20.0; vmax = 60.0; smin = 2.0; smax = 4.0
+		6:  # SNIPER — 高速细长
+			amount = 12; life = 0.60; vmin = 40.0; vmax = 100.0; smin = 1.0; smax = 2.0
+		3, 9, 7:  # ROCKET / MISSILE / FLAK — 浓烈爆炸类尾焰
+			amount = 30; life = 0.70; vmin = 20.0; vmax = 50.0; smin = 2.5; smax = 5.0
+		8:  # LASER — 细密能量
+			amount = 10; life = 0.40; vmin = 60.0; vmax = 150.0; smin = 0.8; smax = 1.5
+		10, 11:  # OMEGA / RAIL — 高能电弧
+			amount = 20; life = 0.55; vmin = 30.0; vmax = 80.0; smin = 1.8; smax = 3.5
+	_trail_particles.amount = amount
+	_trail_particles.lifetime = life
+	_trail_particles.initial_velocity_min = vmin
+	_trail_particles.initial_velocity_max = vmax
+	_trail_particles.scale_amount_min = smin
+	_trail_particles.scale_amount_max = smax
 
 
 ## v8.1: 按武器类型获取拖尾粒子颜色
@@ -591,13 +608,57 @@ func _request_hit_shake() -> void:
 			# 爆炸/曲射类增强：combat_kind 基础值 + 爆炸加成
 			var mag: float = shake.x
 			if _is_indirect or explosion_radius > 0.0:
-				mag = maxf(mag, 5.0)
+				mag = maxf(mag, 8.0)  # v8.3: 5.0→8.0
 			BattleManager.request_screen_shake(mag, shake.y)
 			return
+	# v8.3 视觉增强：fallback 直射 1.8→3.0 / 爆炸 5.0→8.0
 	if _is_indirect or explosion_radius > 0.0:
-		BattleManager.request_screen_shake(5.0, 0.25)
+		BattleManager.request_screen_shake(8.0, 0.35)
 	else:
-		BattleManager.request_screen_shake(1.8, 0.1)
+		BattleManager.request_screen_shake(3.0, 0.15)
+
+
+## v8.3: 发射音效——按 weapon_type（WeaponTypeLegacy）+ 敌我分流，直接调 AudioManager（autoload）
+func _play_attack_sfx() -> void:
+	if not (AudioManager and AudioManager.has_method("play_sfx")):
+		return
+	# reduce_motion 不影响音效（音效是无障碍辅助，仅视觉减动）
+	var pitch := randf_range(0.9, 1.1)
+	var vol: float = 0.7 if not shooter_is_player else 1.0
+	if not shooter_is_player:
+		pitch *= 0.92  # 敌方轻微降调，潜意识区分敌我
+	match weapon_type:
+		0:       AudioManager.play_sfx("gun_smg", vol * 0.6, pitch)
+		1:       AudioManager.play_sfx("gun_rifle", vol * 0.6, pitch)
+		2:       AudioManager.play_sfx("gun_mg", vol * 0.7, pitch * 0.9)
+		3:       AudioManager.play_sfx("rocket_launch", vol * 1.0, pitch * 0.8)
+		4:       AudioManager.play_sfx("gun_pistol", vol * 0.5, pitch * 1.1)
+		5:       AudioManager.play_sfx("gun_shotgun", vol * 0.9, pitch)
+		6:       AudioManager.play_sfx("gun_sniper", vol * 0.7, pitch * 1.2)
+		7:       AudioManager.play_sfx("flak_fire", vol * 0.9, pitch * 0.9)
+		8:       AudioManager.play_sfx("laser_fire", vol * 0.5, pitch * 2.0)
+		9:       AudioManager.play_sfx("missile_hum", vol * 0.8, pitch)
+		10:      AudioManager.play_sfx("omega_cannon", vol * 0.8, pitch * 0.5)
+		11:      AudioManager.play_sfx("rail_cannon", vol * 0.7, pitch * 1.5)
+
+
+## v8.3: 命中音效——按 weapon_type + is_crit 分流（暴击降调加重击感）
+func _play_impact_sfx(is_crit: bool) -> void:
+	if not (AudioManager and AudioManager.has_method("play_sfx")):
+		return
+	var vol: float = 0.6
+	var pitch: float = randf_range(0.95, 1.05)
+	match weapon_type:
+		3, 9:    vol = 1.0                              # ROCKET/MISSILE 爆炸最响
+		8:       vol = 0.4; pitch = randf_range(3.0, 5.0)  # LASER 高频
+		7:       vol = 0.8                              # FLAK 空爆
+		5:       vol = 0.7                              # SHOTGUN 碎屑
+		6:       vol = 0.7; pitch *= 1.3                # SNIPER 清脆
+		_:       vol = 0.6
+	if is_crit:
+		vol = minf(vol * 1.5, 1.0)
+		pitch *= 0.8
+	AudioManager.play_sfx("impact_generic", vol, pitch)
 
 
 ## 爆炸/溅射候选：优先空间网格，避免遍历父节点下全部子节点。
@@ -711,6 +772,8 @@ func _on_hit(primary: Node2D) -> void:
 		is_crit = true
 		final_damage *= (1.5 + shooter_stats.crit_damage_bonus)
 		_pending_crit = true  # v8.1: 命中特效暴击光环标记
+	# v8.3: 命中音效（暴击判定后，用 is_crit 调音高/音量）
+	_play_impact_sfx(is_crit)
 
 	# 武器伤害变异：15% 概率双倍伤害
 	if shooter_stats.has_weapon_dmg_mutation and randf() < 0.15:
@@ -809,6 +872,8 @@ func _on_hit_basic(primary: Node2D) -> void:
 	if forced_miss:
 		_finish_tex_bullet()
 		return
+	# v8.3: 命中音效（basic 路径无暴击判定，统一非暴击）
+	_play_impact_sfx(false)
 	# 范围伤害
 	if explosion_radius > 0.0:
 		for child in _get_aoe_damage_targets(global_position, explosion_radius, primary):

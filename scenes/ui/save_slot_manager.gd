@@ -136,7 +136,7 @@ func _on_load_slot(slot_num: int) -> void:
 	if SaveManager == null:
 		return
 	SaveManager.set_slot(slot_num)
-		var success: bool = SaveManager.load_game()
+	var success: bool = SaveManager.load_game()
 		if success:
 			slot_selected.emit(slot_num)
 			_refresh_all_slots()

@@ -34,6 +34,9 @@ func _process(delta: float) -> void:
 		return
 	# 能量回复：每秒自然回复 = 基础回复 + 相位仪恢复属性 - 相位仪消耗
 	var net_regen: float = GC.ENERGY_REGEN_PER_SEC + _regen_per_sec - GC.PHASE_BASE_DRAIN_PER_SEC
+	# v8 批次3: 关卡能量回复惩罚（由 BattleManager.start_battle 通过 set_meta 传入）
+	if has_meta("level_regen_mult"):
+		net_regen *= float(get_meta("level_regen_mult", 1.0))
 	if net_regen > 0.0:
 		_add_energy(net_regen * delta)
 
@@ -99,6 +102,13 @@ func _apply_instrument_energy() -> void:
 		_regen_per_sec += PhaseInstrumentManager.get_energy_recovery_rate()
 	if _base_start <= 0.0:
 		_base_start = GC.ENERGY_START
+	# v8 批次3: 关卡能量上限惩罚（由 BattleManager.start_battle 通过 set_meta 传入）
+	# energy_mult 同时作用于上限和开局值（保持满能量开局语义）
+	if has_meta("level_energy_mult"):
+		var em: float = float(get_meta("level_energy_mult", 1.0))
+		if em > 0.0:
+			_max = maxf(50.0, _max * em)
+			_base_start = maxf(50.0, _base_start * em)
 
 func _add_energy(amount: float) -> void:
 	current = clampf(current + amount, 0.0, _max)

@@ -13,6 +13,10 @@ const GEN_07_MINE_RESISTANT = "gen_07_mine_resistant"
 const GEN_08_NBC_PROTECTION = "gen_08_nbc_protection"
 const GEN_09_IR_JAMMER = "gen_09_ir_jammer"
 const GEN_10_AMMO_RACK = "gen_10_ammo_rack"
+# v8 批次5: 相位共鸣系列独占改造（仅挑战/成就奖励获得蓝图）
+const GEN_11_PHASE_RESONANCE = "gen_11_phase_resonance"
+const GEN_12_PHASE_SHIELDING = "gen_12_phase_shielding"
+const GEN_13_PHASE_OVERDRIVE = "gen_13_phase_overdrive"
 
 const DATA: Dictionary = {
 	"gen_01_comms" = {
@@ -116,19 +120,60 @@ const DATA: Dictionary = {
 		applicable_types = [1, 3],  # ARMOR, AIR
 		unlock_conditions = {required_level = 5}
 	},
-	"gen_10_ammo_rack" = {
-		id = GEN_10_AMMO_RACK, name = "备用弹药架", name_en = "Ammo Rack",
-		icon = "res://assets/ui/icons/mod_icons/mod_ammunition.png",
-		prototype = "外挂弹药箱", description = "持续作战能力提升",
-		rarity = "uncommon",
-	power_mult = 1.0, cost_research = 90, cost_install = 45,
-		slot_type = "ammunition", conflict_group = "ammunition",
-		# v7.x: per-slot 弹道——全槽（condition_slot=-1）直射强化（弹药充足）
-		condition_slot = -1,
-		effects = {sustained_fire = 0.30, slot_weapon_type = 0},  # v7.x: 全槽直射弹道,
-		applicable_types = [0, 1, 2, 3, 4],  # ALL（CombatKind 合法值 0-4）
-		unlock_conditions = {required_level = 1}
-	},
+		"gen_10_ammo_rack" = {
+			id = GEN_10_AMMO_RACK, name = "备用弹药架", name_en = "Ammo Rack",
+			icon = "res://assets/ui/icons/mod_icons/mod_ammunition.png",
+			prototype = "外挂弹药箱", description = "持续作战能力提升",
+			rarity = "uncommon",
+		power_mult = 1.0, cost_research = 90, cost_install = 45,
+			slot_type = "ammunition", conflict_group = "ammunition",
+			# v7.x: per-slot 弹道——全槽（condition_slot=-1）直射强化（弹药充足）
+			condition_slot = -1,
+			effects = {sustained_fire = 0.30, slot_weapon_type = 0},  # v7.x: 全槽直射弹道,
+			applicable_types = [0, 1, 2, 3, 4],  # ALL（CombatKind 合法值 0-4）
+			unlock_conditions = {required_level = 1}
+		},
+		# ══════════ v8 批次5: 相位共鸣系列独占改造（仅挑战/成就奖励获得蓝图） ══════════
+		"gen_11_phase_resonance" = {
+			id = GEN_11_PHASE_RESONANCE, name = "相位共鸣", name_en = "Phase Resonance",
+			icon = "res://assets/ui/icons/mod_icons/mod_resonance.png",
+			prototype = "相位共鸣放大器", description = "独占改造：三维攻击全面提升（相位能量强化火力）",
+			rarity = "legendary",
+		power_mult = 1.5, cost_research = 500, cost_install = 200,
+			slot_type = "phase_core", conflict_group = "phase_core",
+			condition_slot = -1,
+			# 用 attack_light/armor/air 三个 key（attack_damage 不在 _apply_single_mod_effects 分支）
+			effects = {attack_light = 0.25, attack_armor = 0.25, attack_air = 0.25},
+			applicable_types = [0, 1, 2, 3, 4],
+			unlock_conditions = {required_level = 10},
+			achievement_exclusive = true  # 独占标记（仅挑战大师难度奖励）
+		},
+		"gen_12_phase_shielding" = {
+			id = GEN_12_PHASE_SHIELDING, name = "相位护盾", name_en = "Phase Shielding",
+			icon = "res://assets/ui/icons/mod_icons/mod_shield.png",
+			prototype = "相位偏转护盾", description = "独占改造：减伤 +20%，生命 +30%（相位能量构造防护层）",
+			rarity = "legendary",
+		power_mult = 1.5, cost_research = 500, cost_install = 200,
+			slot_type = "phase_core", conflict_group = "phase_core",
+			condition_slot = -1,
+			effects = {damage_reduction = 0.20, max_hp = 0.30},
+			applicable_types = [0, 1, 2, 3, 4],
+			unlock_conditions = {required_level = 10},
+			achievement_exclusive = true
+		},
+		"gen_13_phase_overdrive" = {
+			id = GEN_13_PHASE_OVERDRIVE, name = "相位过载", name_en = "Phase Overdrive",
+			icon = "res://assets/ui/icons/mod_icons/mod_overdrive.png",
+			prototype = "相位过载核心", description = "独占改造：攻速 +30% + 暴击 +15%（相位能量过载驱动）",
+			rarity = "legendary",
+		power_mult = 1.5, cost_research = 600, cost_install = 250,
+			slot_type = "phase_core", conflict_group = "phase_core",
+			condition_slot = -1,
+			effects = {attack_interval = -0.30, crit_chance = 0.15},
+			applicable_types = [0, 1, 2, 3, 4],
+			unlock_conditions = {required_level = 10},
+			achievement_exclusive = true
+		},
 }
 
 static func get_mod_data(mod_id: String) -> Dictionary:

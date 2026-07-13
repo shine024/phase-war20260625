@@ -342,16 +342,16 @@ static func get_recommended_level(master_id: String) -> int:
 ##   - 展示 Lv 代表"战力等级"，用于 UI 显示和 game_manager 掉落梯度；
 ##   - 原始 level 代表"设计基准"，用于符文稀有度/出兵序列/时代号。
 ## 两者语义不同，派生 Lv ≠ 原始 level 属正常。
-## v7.x 对称化最终版：用 log10 映射（真实战力跨度大，新手~200/终极~18万）。
-##   200分→Lv5，180000分→Lv30，log10 压缩使各档均匀分布。
+## v7.x 3 分量公式：敌方总分 ~1800(一战师)~9200(未来师)，映射到 Lv5-30。
+##   500分→Lv5，10000分→Lv30，log10 压缩使各档均匀分布。
 static func compute_display_level(master: Dictionary) -> int:
 	var er: Dictionary = _MasterPowerEvaluator.evaluate(master)
 	var total: float = float(er.get("total_score", 0.0))
 	if total <= 0.0:
 		return 5
-	# log10 映射：200→Lv5，180000→Lv30
-	var log_lo: float = log(200.0) / log(10.0)
-	var log_hi: float = log(180000.0) / log(10.0)
+	# log10 映射：500→Lv5，10000→Lv30（3 分量公式敌方分布）
+	var log_lo: float = log(500.0) / log(10.0)
+	var log_hi: float = log(10000.0) / log(10.0)
 	var log_t: float = log(maxf(total, 1.0)) / log(10.0)
 	var t: float = (log_t - log_lo) / maxf(log_hi - log_lo, 0.001)
 	var lvl: int = roundi(5 + t * 25.0)

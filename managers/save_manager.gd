@@ -1058,6 +1058,12 @@ func start_new_game() -> void:
 	_start_new_game_perf_pending = true
 	if DEBUG_SAVE_LOG:
 		pass  # LOG: 开始新游戏，重置所有管理器
+	# v7.x 修复：ir.clear_all() 必须在所有 manager reset 之前执行——
+	# 部分 manager（如 PhaseInstrumentManager.load_state({})）在 reset 时可能接触实例表，
+	# 若 clear_all 在其后执行会清空已建实例导致计数器与实例表不一致/撞号。
+	var ir_pre: Node = get_node_or_null("/root/InstanceRegistry")
+	if ir_pre != null and ir_pre.has_method("clear_all"):
+		ir_pre.clear_all()
 	# 关键管理器同步重置；其余管理器分批 deferred 重置，降低按钮点击同帧阻塞。
 	for manager_name in CRITICAL_RESETTABLE_MANAGERS:
 		_reset_manager_by_name(manager_name)
@@ -1079,10 +1085,8 @@ func start_new_game() -> void:
 	# 清除待处理的背包ID（开始新游戏时）
 	_pending_backpack_ids.clear()
 	_last_known_extra_ids.clear()
-	# v7.0: 清空实例表（新游戏从干净状态开始）
-	var ir: Node = get_node_or_null("/root/InstanceRegistry")
-	if ir != null and ir.has_method("clear_all"):
-		ir.clear_all()
+	# v7.0/v7.x: 实例表清空已提前到 CRITICAL manager reset 之前执行（见函数开头），
+	# 避免 manager reset 时建的实例被 clear 清掉导致计数器撞号。
 	# v6.6(挂机): 重置 AFK 状态（manager 是 RefCounted，经 Main 桥接调用 reset_progress）
 	var afk_mgr_reset: RefCounted = _get_afk_manager()
 	if afk_mgr_reset != null and afk_mgr_reset.has_method("reset_progress"):

@@ -237,9 +237,10 @@ static func build_unit_stats_for_power_preview(card: CardResource, bpm_ref: Node
 ## 与 RankRules 阈值（约 120~780）同量级
 ## v7.x 对称化最终版：重新标定系数，压低 dps 项占比。
 ##   旧公式 hp×0.28 + dps×2.2 导致纯攻卡(orbital dps=1667)战力是肉盾卡(bastion hp=3200)的3.8倍。
-##   新公式 hp×0.15 + dps×0.32 + sqrt(range)×8，让顶级全攻卡:顶级肉盾卡 ≈ 1.2:1（用户要求 1.8:1.5）。
-##   射程项仍用 sqrt(格数)×8 压平（v7.x 射程失控修复保留）。
-## 实测（满配满相位仪）：orbital≈4336 / devastator≈2876 / bastion≈3646 / infantry≈142。
+##   新公式 hp×0.15 + dps×0.32 + sqrt(range)×2，让顶级全攻卡:顶级肉盾卡 ≈ 1.2:1（用户要求 1.8:1.5）。
+## v7.x 射程项修正：格子战术下索敌半径下限1600px > 战场跨度1020px，所有单位都能打全场，
+##   射程对实战无区分度。射程项系数 ×8→×2（仅保留弹道/曲射微弱区分，不再主导战力）。
+## 实测（满配满相位仪）：orbital≈4250 / devastator≈2850 / bastion≈3640 / infantry≈130。
 static func combat_power_from_unit_stats(stats: UnitStats) -> float:
 	if stats == null:
 		return 0.0
@@ -248,9 +249,9 @@ static func combat_power_from_unit_stats(stats: UnitStats) -> float:
 	var hp: float = maxf(float(stats.max_hp), 0.0)
 	var range_f: float = maxf(float(stats.attack_range), 0.0)
 	var spd: float = maxf(float(stats.move_speed), 0.0)
-	# 射程项：格数（像素/100）开方压平，避免远射单位战力失控
+	# 射程项：格数开方 ×2（v7.x: 从×8降到×2，因格子战术索敌半径下限1600px>战场跨度，射程不影响能否打到目标）
 	var range_cells: float = maxf(range_f / 100.0, 0.0)
-	var range_score: float = sqrt(range_cells) * 8.0
+	var range_score: float = sqrt(range_cells) * 2.0
 	var out: float = (
 		hp * 0.15
 		+ dps * 0.32

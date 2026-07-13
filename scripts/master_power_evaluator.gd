@@ -30,19 +30,18 @@ class_name MasterPowerEvaluator
 # ─────────────────────────────────────────────
 
 const STAR_TIERS: Array[Dictionary] = [
-	{"stars": 1, "name": "新锐",   "min_score": 0,     "max_score": 500,    "color": "#88CCFF"},
-	{"stars": 2, "name": "精英",   "min_score": 500,   "max_score": 3000,   "color": "#44FF88"},
-	{"stars": 3, "name": "高手",   "min_score": 3000,  "max_score": 10000,  "color": "#FFCC00"},
-	{"stars": 4, "name": "大师",   "min_score": 10000, "max_score": 30000,  "color": "#FF8800"},
-	{"stars": 5, "name": "宗师",   "min_score": 30000, "max_score": 60000,  "color": "#FF4466"},
-	{"stars": 6, "name": "传说",   "min_score": 60000, "max_score": 120000, "color": "#CC44FF"},
-	{"stars": 7, "name": "神话",   "min_score": 120000,"max_score": 9999999,"color": "#FFD700"},
+	{"stars": 1, "name": "新锐",   "min_score": 0,     "max_score": 300,    "color": "#88CCFF"},
+	{"stars": 2, "name": "精英",   "min_score": 300,   "max_score": 1500,   "color": "#44FF88"},
+	{"stars": 3, "name": "高手",   "min_score": 1500,  "max_score": 4000,   "color": "#FFCC00"},
+	{"stars": 4, "name": "大师",   "min_score": 4000,  "max_score": 8000,   "color": "#FF8800"},
+	{"stars": 5, "name": "宗师",   "min_score": 8000,  "max_score": 20000,  "color": "#FF4466"},
+	{"stars": 6, "name": "传说",   "min_score": 20000, "max_score": 40000,  "color": "#CC44FF"},
+	{"stars": 7, "name": "神话",   "min_score": 40000, "max_score": 9999999,"color": "#FFD700"},
 ]
-## v7.x 对称化最终版校准说明：
-## 阈值基于真实战力分布（不压缩）：新手~200 / 中配~5000-25000 / 终极DPS~180000。
-## 区间按数量级递进：1★<500（新手）→ 2★<3000 → 3★<10000（中配）→ 4★<30000 →
-## 5★<60000 → 6★<120000 → 7★≥120000（终极满配DPS军团）。
-## 敌方相位师因走轻量平台战力+无相位仪加成，总分偏低（~2000-8000），落在 2-3★。
+## v7.x 3 分量公式校准说明（敌我同口径：相位仪 + Σ卡战力 + Σ符文，直接相加）：
+## 敌方分布：WW1师~1800(3★) / WW2师~3800(4★) / Cold师~5700(4★) / Modern师~7600(4★) / Future师~9200(5★)
+## 玩家分布：新手~50(1★) / 中配~4100(4★) / 满配~55000(7★)
+## 阈值按合并分布标定，让敌我星级可直接横向对比。
 
 # ─────────────────────────────────────────────
 #  维度权重（v7.x 对称化最终版：删 D维技能 / I维符文之语 单独计分）
@@ -260,28 +259,20 @@ const RunewordMatcher = preload("res://managers/runeword_matcher.gd")
 ##     }
 ##   }
 static func evaluate(master: Dictionary) -> Dictionary:
+	# v7.x 统一公式（敌我同口径，直接相加，无加权系数）：
+	#   相位师总战力 = 相位仪战力(A) + Σ装备卡战力(F) + Σ符文战力(H)
+	# 玩家侧：assembler 在 evaluate_player_stars 里重写 A/F 用 get_current_power()，
+	#         此函数算出的是敌方口径；玩家口径见 master_player_assembler.gd。
+	# 删掉的旧维度（B刻印/C特质/D技能/E被动/G军团本体/I符文之语）：
+	#   - 玩家侧本就为 0 或兜底，删除不损失
+	#   - 敌方侧这些维度稀释了真实战力（玩家看到总战力远小于卡战力之和）
 	var scores: Dictionary = {}
-	scores.instrument = _eval_instrument(master)
-	scores.engravings = _eval_engravings(master)
-	scores.traits = _eval_traits(master)
-	scores.active_spells = 0.0   # v7.x: D 维已删（技能价值在 A 维相位仪内）
-	scores.passive_spells = _eval_passive_spells(master)
-	scores.equipment_slots = _eval_equipment_slots(master)   # F 维（真实 combat_power）
-	scores.master_stats = _eval_master_stats(master)         # G 维
-	scores.runes = _eval_runes(master)                        # H 维（符文固定值）
-	scores.runewords = 0.0   # v7.x: I 维已删（符文之语价值在 H 维符文内）
+	scores.instrument = _eval_instrument(master)          # A 相位仪战力
+	scores.equipment_slots = _eval_equipment_slots(master) # F 装备卡战力（直接相加）
+	scores.runes = _eval_runes(master)                     # H 符文战力（固定值求和）
 
-	var total: float = (
-		scores.instrument * W_INSTRUMENT +
-		scores.engravings * W_ENGRAVINGS +
-		scores.traits * W_TRAITS +
-		scores.active_spells * W_ACTIVE_SPELLS +
-		scores.passive_spells * W_PASSIVE_SPELLS +
-		scores.equipment_slots * W_EQUIPMENT_SLOTS +
-		scores.master_stats * W_MASTER_STATS +
-		scores.runes * W_RUNES +
-		scores.runewords * W_RUNEWORDS
-	)
+	# 3 分量直接相加（无权重系数）
+	var total: float = scores.instrument + scores.equipment_slots + scores.runes
 
 	var star_info: Dictionary = _score_to_stars(total)
 
@@ -329,7 +320,19 @@ static func get_stars_display(master: Dictionary) -> String:
 # ═════════════════════════════════════════════
 
 static func _eval_instrument(master: Dictionary) -> float:
-	var instr_id: String = master.get("phase_instrument", "")
+	# v7.x 统一公式：相位仪战力 = 仪器给所有装备卡的加成战力。
+	# 玩家侧：assembler 在 _player_inst_bonus_total 预算「加成后战力 - 加成前战力」之和，优先读。
+	# 敌方侧：从 phase_instrument 的 atk_bonus/hp_bonus/def_bonus 派生（仪器给产兵的加成）。
+	# 路径修复：旧版读 master.phase_instrument（顶层，敌方恒空→A=0），现回退读 equipment.phase_instrument。
+	var player_bonus: float = float(master.get("_player_inst_bonus_total", 0.0))
+	if master.has("_player_inst_bonus_total"):
+		return player_bonus
+
+	var instr_id: String = String(master.get("phase_instrument", ""))
+	if instr_id.is_empty():
+		# 回退：敌方相位仪 id 存在 equipment.phase_instrument（旧版路径 bug 导致所有敌方 A=0）
+		var equip: Dictionary = master.get("equipment", {})
+		instr_id = String(equip.get("phase_instrument", ""))
 	if instr_id.is_empty():
 		return 0.0
 
@@ -337,45 +340,21 @@ static func _eval_instrument(master: Dictionary) -> float:
 	if instr_data.is_empty():
 		return 0.0
 
-	var bs: Dictionary = instr_data.get("base_stats", {})
-	var hp: float = float(bs.get("max_hp", 0))
-	var atk: float = float(bs.get("attack_power", 0)) + float(bs.get("magic_power", 0))
-	var def_f: float = float(bs.get("defense", 0))
-	var ecap: float = float(bs.get("energy_capacity", 0))
-	var ereg: float = float(bs.get("energy_regen", 0))
-	var ulim: float = float(master.get("unit_limit", 0))
-	# unit_limit 可能在 master 或 stats 子级中
-	if ulim <= 0:
-		ulim = float(master.get("stats", {}).get("unit_limit", 7))
-
-	# 标准化并加权
-	var score: float = 0.0
-	score += (hp / REF_HP) * 500.0 * SW_HP
-	score += (atk / REF_ATTACK) * 500.0 * SW_ATTACK
-	score += (def_f / REF_DEFENSE) * 500.0 * SW_DEFENSE
-	score += (ecap / REF_ENERGY_CAP) * 500.0 * SW_ENERGY_CAP
-	score += (ereg / REF_ENERGY_REGEN) * 500.0 * SW_ENERGY_REGEN
-	score += (ulim / REF_UNIT_LIMIT) * 500.0 * SW_UNIT_LIMIT
-
-	# 非线性加成
-	if hp > 2500:
-		score += (hp - 2500) * 0.04
-	if ulim > 9:
-		score += (ulim - 9) * 80.0
-	if ecap > 400:
-		score += (ecap - 400) * 0.15
-	if ereg > 4.0:
-		score += (ereg - 4.0) * 20.0
-
-	# 稀有度加成
-	var rarity: String = instr_data.get("rarity", "common")
-	score += INSTRUMENT_RARITY_SCORE.get(rarity, 50)
-
-	# 特殊效果数量
-	var effects: Array = instr_data.get("special_effects", [])
-	score += effects.size() * 35.0
-
-	return score
+	# 敌方相位仪：用 atk_bonus/hp_bonus/def_bonus（仪器给产兵的百分比加成 × 产兵基础战力）
+	# atk_bonus/hp_bonus/def_bonus 是「给单位加成的百分比」（如 mk4 atk_bonus=13.33 = +666%?），
+	# 实际产兵加成走 _apply_enemy_phase_instrument_bonus（×0.05 转百分比）。
+	# 这里用 atk/hp/def bonus 之和 × 系数反映「仪器加成强度」，与产兵加成量级匹配。
+	var atk_b: float = float(instr_data.get("atk_bonus", 0.0))
+	var hp_b: float = float(instr_data.get("hp_bonus", 0.0))
+	var def_b: float = float(instr_data.get("def_bonus", 0.0))
+	# 加成战力 = (atk+hp+def bonus) × 卡基础战力系数（敌方 2 张产兵卡，每张 power 中位 ~200）
+	# atk/hp/def bonus 量级 1.67~16.0（mk1~god），× 卡基础战力系数反映加成贡献
+	var card_count: int = 2  # 敌方标准 2 张装备卡
+	var base_card_power: float = 200.0  # 敌方产兵卡平均 power
+	var bonus_sum: float = atk_b + hp_b + def_b
+	# 加成战力 = bonus_sum × base_card_power × card_count × 0.1
+	# 0.1 系数让 mk1(bonus~4)→160 / mk4(bonus~30)→1200 / god(bonus~38)→1520，梯度合理
+	return bonus_sum * base_card_power * card_count * 0.1
 
 
 # ═════════════════════════════════════════════
@@ -513,63 +492,33 @@ static func _eval_passive_spells(master: Dictionary) -> float:
 # ═════════════════════════════════════════════
 
 static func _eval_equipment_slots(master: Dictionary) -> float:
-	# v7.x 重构：从"槽数×固定值"改为"载卡战力加权"。
-	# 敌方：equipment.platforms 各平台卡轻量战力求和 × unit_limit（带兵上限乘子）
-	# 玩家：若 platforms 是真实卡ID则按卡牌战力×3（可重复部署的经验权重），否则回退旧逻辑
+	# v7.x 统一公式：装备卡战力 = 每张卡的 power 直接相加（不×3、不×unit_limit、无权重）。
+	# 玩家侧：assembler 在 _player_platform_powers 预算每张卡 get_current_power()，优先读。
+	# 敌方侧：platforms 是 archetype id，从 UnifiedCardTable.get_entry(id).power 取真实卡 power。
+	# 删掉的旧逻辑：_platform_power_light（读 get_war_platform 恒返回空→fallback 300，已废）。
+	var player_powers: Array = master.get("_player_platform_powers", [])
+	if not player_powers.is_empty():
+		var psum: float = 0.0
+		for p in player_powers:
+			psum += float(p)
+		return psum
+
 	var equip: Dictionary = master.get("equipment", {})
 	var platforms: Array = equip.get("platforms", [])
 	if platforms.is_empty():
-		# 无平台卡时回退旧"槽数×固定值"（武器/能量卡仍有分，避免归零）
-		var weapons: Array = equip.get("weapons", [])
-		var energy_cards: Array = equip.get("energy_cards", [])
-		return (
-			weapons.size() * WEAPON_COUNT_BONUS +
-			energy_cards.size() * ENERGY_CARD_BONUS
-		)
-	# 尝试判定敌我：敌方有顶层 stats.max_hp（master.stats），玩家无
-	var is_enemy: bool = master.has("stats") and (master.get("stats", {}) as Dictionary).has("max_hp")
+		return 0.0
+	var UCT = preload("res://data/unified_card_table.gd")
 	var card_power_sum: float = 0.0
 	for pid_var in platforms:
 		var pid: String = String(pid_var)
 		if pid.is_empty():
 			continue
-		card_power_sum += _platform_power_light(pid, is_enemy)
-	if is_enemy:
-		# 敌方：载卡战力 × unit_limit（带兵上限反映"整场能出多少兵"）
-		var ulim: float = float(master.get("stats", {}).get("unit_limit", 5))
-		return card_power_sum * maxf(ulim, 1.0)
-	else:
-		# 玩家：一张卡整场约上阵 3 次（可重复部署的经验权重）
-		return card_power_sum * 3.0
-
-
-## v7.x: 平台卡真实战力（敌方平台卡用 combat_power_from_unit_stats 同款公式）。
-## 敌方平台卡读 EnemyPhaseEquipment.get_war_platform(id).stats + 默认武器的 range/attack_speed。
-## 玩家真实卡战力由 master_player_assembler 预算后塞进 _player_platform_powers，不经过此函数。
-static func _platform_power_light(platform_id: String, is_enemy: bool) -> float:
-	if is_enemy:
-		var pd: Dictionary = EnemyPhaseEquipment.get_war_platform(platform_id)
-		if pd.is_empty():
-			return 300.0  # 查不到给基础分
-		var ps: Dictionary = pd.get("stats", {})
-		var hp: float = float(ps.get("hp", 0))
-		var atk: float = float(ps.get("attack", 0))
-		var aspd: float = float(ps.get("attack_speed", 1.0))
-		var spd: float = float(ps.get("move_speed", 0))
-		# range 从默认武器取
-		var wid: String = String(pd.get("default_weapon", ""))
-		var wd: Dictionary = EnemyPhaseEquipment.get_war_weapon(wid) if not wid.is_empty() else {}
-		var rng_pixels: float = float(wd.get("range", 200)) if not wd.is_empty() else 200.0
-		var range_cells: float = maxf(rng_pixels / 100.0, 0.0)
-		# combat_power_from_unit_stats 同款公式 v7.x 新系数（敌方平台无 dr/crit/pen）
-		var interval: float = maxf(aspd, 0.05)
-		var dps: float = atk / interval
-		var range_score: float = sqrt(range_cells) * 8.0
-		return hp * 0.15 + dps * 0.32 + range_score + spd * 0.05
-	else:
-		# 玩家真实卡：由 master_player_assembler 预算塞进 _player_platform_powers
-		# 此分支不应被走到（F 维玩家侧由 assembler 重写）；兜底给基础分
-		return 300.0
+		var entry: Dictionary = UCT.get_entry(pid)
+		if entry.is_empty():
+			card_power_sum += 100.0  # 查不到给基础分（兜底，不崩）
+			continue
+		card_power_sum += float(entry.get("power", 100))
+	return card_power_sum
 
 
 # ═════════════════════════════════════════════
@@ -704,8 +653,11 @@ static func _score_to_stars(score: float) -> Dictionary:
 
 static func _build_details(master: Dictionary, scores: Dictionary,
 		total: float, star_info: Dictionary) -> Dictionary:
+	# v7.x: 3 分量公式，scores 只有 instrument/equipment_slots/runes 三个键
 	# 从相位仪读取实际属性
-	var instr_id: String = master.get("phase_instrument", "")
+	var instr_id: String = String(master.get("phase_instrument", ""))
+	if instr_id.is_empty():
+		instr_id = String(master.get("equipment", {}).get("phase_instrument", ""))
 	var instr_data: Dictionary = _get_instrument_data(instr_id)
 	var bs: Dictionary = instr_data.get("base_stats", {})
 	var max_hp: int = int(bs.get("max_hp", 0))
@@ -717,15 +669,9 @@ static func _build_details(master: Dictionary, scores: Dictionary,
 	if ulim <= 0:
 		ulim = int(master.get("stats", {}).get("unit_limit", 7))
 
-	# 刻印数
-	var engraving_list: Array = master.get("engraved_affixes", [])
-	var active_engravings: int = 0
-	var completed_engravings: int = 0
-	for a in engraving_list:
-		if a.get("active", true):
-			active_engravings += 1
-			if float(a.get("progress", 0)) >= 1.0:
-				completed_engravings += 1
+	# 装备卡信息
+	var equip: Dictionary = master.get("equipment", {})
+	var platforms: Array = equip.get("platforms", [])
 
 	return {
 		"master_name": master.get("name", "?"),
@@ -733,23 +679,13 @@ static func _build_details(master: Dictionary, scores: Dictionary,
 		"faction": master.get("faction", ""),
 		"phase_instrument": instr_data.get("name", instr_id),
 		"instrument_rarity": instr_data.get("rarity", ""),
-		# 来自相位仪的属性
 		"hp": max_hp, "attack": atk, "defense": defense,
 		"energy_capacity": ecap, "energy_regen": ereg, "unit_limit": ulim,
-		# 刻印信息
-		"active_engravings": active_engravings,
-		"completed_engravings": completed_engravings,
-		"total_engravings": engraving_list.size(),
-		# 各维度分数
-		"instrument_score": roundf(scores.instrument),
-		"engravings_score": roundf(scores.engravings),
-		"traits_score": roundf(scores.traits),
-		"active_spells_score": roundf(scores.active_spells),
-		"passive_spells_score": roundf(scores.passive_spells),
-		"equipment_slots_score": roundf(scores.equipment_slots),
-		"master_stats_score": roundf(scores.master_stats),   # v7.x G 维
-		"runes_score": roundf(scores.runes),   # v7.x H 维（单符文）
-		"runewords_score": roundf(scores.runewords),   # v7.x I 维（符文之语）
+		"platform_count": platforms.size(),
+		# 3 分量分数（v7.x 统一公式）
+		"instrument_score": roundf(float(scores.get("instrument", 0.0))),
+		"equipment_slots_score": roundf(float(scores.get("equipment_slots", 0.0))),
+		"runes_score": roundf(float(scores.get("runes", 0.0))),
 	}
 
 

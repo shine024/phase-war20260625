@@ -6,6 +6,8 @@ signal instrument_selected(instrument_id: String)
 const PhaseInstruments = preload("res://data/phase_instruments.gd")
 const CompanyDefs = preload("res://data/company_definitions.gd")
 
+var _main_instance = null
+
 @onready var _backdrop: ColorRect = $Backdrop
 @onready var close_button: Button = $Center/DialogPanel/Margin/VBox/Header/CloseButton
 @onready var instrument_list: VBoxContainer = $Center/DialogPanel/Margin/VBox/Body/ScrollContainer/InstrumentList
@@ -15,6 +17,19 @@ var _instrument_items: Array = []
 func _ready() -> void:
 	add_to_group("phase_instrument_selector")
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	
+	# 添加"战力详情"按钮
+	var header = $Center/DialogPanel/Margin/VBox/Header
+	var title_label = header.get_node_or_null("TitleLabel")
+	if title_label:
+		var detail_btn = Button.new()
+		detail_btn.text = "⚔ 战力详情"
+		detail_btn.add_theme_font_size_override("font_size", 11)
+		detail_btn.custom_minimum_size = Vector2(100, 28)
+		detail_btn.position = Vector2(10, 0)
+		header.add_child(detail_btn)
+		detail_btn.pressed.connect(_on_detail_pressed)
+	
 	if _backdrop:
 		_backdrop.gui_input.connect(_on_backdrop_gui_input)
 	if close_button:
@@ -387,3 +402,13 @@ func _on_equip_pressed(instrument_id: String) -> void:
 
 func _on_close() -> void:
 	queue_free()
+
+func _on_detail_pressed() -> void:
+	# 打开战力详情面板
+	if _main_instance == null:
+		var tree = Engine.get_main_loop()
+		if tree and tree.root:
+			_main_instance = tree.root.get_node_or_null("Main")
+	if _main_instance and _main_instance.has_method("_open_player_master_panel"):
+		_main_instance._open_player_master_panel()
+		queue_free()

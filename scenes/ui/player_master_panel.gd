@@ -17,18 +17,13 @@ const MasterPlayerAssembler = preload("res://scripts/master_player_assembler.gd"
 @onready var close_btn: Button = $Margin/VBox/TitleBar/CloseButton
 
 const DIM_ORDER: Array = [
-	"instrument", "engravings", "traits", "active_spells", "passive_spells",
-	"equipment_slots", "master_stats", "runes", "runewords",
+	"instrument", "equipment_slots", "runes",
 ]
 const DIM_LABELS: Dictionary = {
-	"instrument": "A 相位仪", "engravings": "B 符文", "traits": "C 特质",
-	"active_spells": "D 主动技能", "passive_spells": "E 被动技能", "equipment_slots": "F 载卡战力",
-	"master_stats": "G 军团本体", "runes": "H 单符文", "runewords": "I 符文之语",
+	"instrument": "相位仪战力", "equipment_slots": "装备卡战力", "runes": "符文战力",
 }
 const DIM_WEIGHTS: Dictionary = {
-	"instrument": "15%", "engravings": "8%", "traits": "10%",
-	"active_spells": "10%", "passive_spells": "10%", "equipment_slots": "20%",
-	"master_stats": "15%", "runes": "6%", "runewords": "6%",
+	"instrument": "直接相加", "equipment_slots": "直接相加", "runes": "直接相加",
 }
 
 func _ready() -> void:
@@ -66,7 +61,7 @@ func refresh() -> void:
 	summary_label.text = "Lv.%d · %d★ %s\n总战力 %d" % [lvl, stars, star_name, int(raw)]
 	# ── 9 维分解 ──
 	var lines: Array[String] = []
-	lines.append("═══ 9 维战力分解 ═══")
+	lines.append("═══ 3 分量战力分解 ═══")
 	var scores: Dictionary = ev.get("scores", {})
 	for key in DIM_ORDER:
 		var s: float = float(scores.get(key, 0.0))
@@ -83,17 +78,8 @@ func refresh() -> void:
 	detail_label.text = "\n".join(lines)
 
 func _weight_value(key: String) -> float:
-	match key:
-		"instrument": return 0.15
-		"engravings": return 0.08
-		"traits": return 0.10
-		"active_spells": return 0.10
-		"passive_spells": return 0.10
-		"equipment_slots": return 0.20
-		"master_stats": return 0.15
-		"runes": return 0.06
-		"runewords": return 0.06
-	return 0.0
+	# v7.x: 3 分量直接相加，无权重系数（权重=1.0）
+	return 1.0
 
 func _append_instrument_lines(lines: Array, pm: Node) -> void:
 	var cfg: Dictionary = pm.get_current_instrument() if pm.has_method("get_current_instrument") else {}

@@ -51,13 +51,24 @@ static func get_bonus_for_tier(tier: int) -> Dictionary:
 ## era_progress: 时代内进度 0.0(早期)~1.0(后期)
 static func get_tier_for_level_progress(era_progress: float, is_phase_master: bool = false) -> int:
 	if is_phase_master:
-		return TIER_HIGH  # 相位师战固定高配
+		return TIER_HIGH  # 相位师战固定高配（旧路径保留，新代码用 get_phase_master_tier）
 	if era_progress < 0.33:
 		return TIER_LOW   # 时代前1/3：低配
 	elif era_progress < 0.75:
 		return TIER_MID   # 时代中段：中配
 	else:
 		return TIER_HIGH  # 时代后期：高配
+
+## v7.x: 相位师产兵 tier 按关卡难度递进（替代旧"恒定 TIER_HIGH"）
+## era_progress: 当前时代内进度 0.0(早期)~1.0(后期)
+## 相位师基准比普通敌兵高一档保底（最低 TIER_MID，不跌到 LOW），但不再恒定 HIGH。
+## 时代早期/中段 → 中配（enh6/rune3/atk+20%/hp+18%），时代后期/Boss关 → 高配（enh9/rune6/atk+35%/hp+30%）。
+## 这让低关卡驻守师产兵强度温和，高关卡/末关 Boss 才走满配，符合"难度递进"。
+static func get_phase_master_tier(era_progress: float) -> int:
+	if era_progress < 0.70:
+		return TIER_MID   # 时代早期+中段：中配（相位师最低保障）
+	else:
+		return TIER_HIGH  # 时代后期(era_local 15~20)/Boss关：高配
 
 ## 取档位的改造槽 ID 列表（UI展示/缴获用）
 static func get_modifications_for_tier(tier: int) -> Array:

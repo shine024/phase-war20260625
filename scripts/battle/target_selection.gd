@@ -49,8 +49,9 @@ static func select_target_indirect(attacker: Node2D, enemies: Array) -> Node2D:
 	var stats = attacker.get("stats") as UnitStats
 	if stats == null:
 		return _nearest(origin, valid)
-	# 确定克制优先级
-	var target_kind = _get_counter_priority(stats)
+	# v8: 支持行为 tag 覆盖（如 antitank 强制打装甲）
+	var tags: Array = attacker.get("_behavior_tags_cached") if attacker.get("_behavior_tags_cached") != null else []
+	var target_kind = _get_counter_priority(stats, tags)
 	if target_kind >= 0:
 		var countered = valid.filter(func(e):
 			var s = e.get("stats") as UnitStats
@@ -78,7 +79,8 @@ static func select_target_aerial(attacker: Node2D, enemies: Array) -> Node2D:
 	# 无空中则用克制优先
 	var stats = attacker.get("stats") as UnitStats
 	if stats != null:
-		var target_kind = _get_counter_priority(stats)
+		var tags: Array = attacker.get("_behavior_tags_cached") if attacker.get("_behavior_tags_cached") != null else []
+		var target_kind = _get_counter_priority(stats, tags)
 		if target_kind >= 0:
 			var countered = valid.filter(func(e):
 				var s = e.get("stats") as UnitStats
@@ -89,7 +91,12 @@ static func select_target_aerial(attacker: Node2D, enemies: Array) -> Node2D:
 	return _nearest(origin, valid)
 
 ## 根据attacker的攻击维度确定克制优先目标类型
-static func _get_counter_priority(stats: UnitStats) -> int:
+## v8: 支持 behavior tag 覆盖——antitank 强制锁定 ARMOR（让反坦克单位优先打装甲）
+## （tags 参数可选，缺省时空数组，保持旧行为完全不变）
+static func _get_counter_priority(stats: UnitStats, tags: Array = []) -> int:
+	# v8: 行为 tag 覆盖（优先级最高，无视三维攻击值）
+	if tags.has("antitank"):
+		return GameConstants.CombatKind.ARMOR
 	if stats.attack_light > stats.attack_armor and stats.attack_light > stats.attack_air:
 		return GameConstants.CombatKind.LIGHT
 	elif stats.attack_armor > stats.attack_light and stats.attack_armor > stats.attack_air:
