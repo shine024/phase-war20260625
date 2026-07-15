@@ -17,6 +17,13 @@ var faction_buff: Dictionary = {}
 ## 默认 1.0 → 单元测试用 EnemyStatContext.new() 不传难度时行为与历史版本完全一致（纯函数）。
 var difficulty_multiplier: float = 1.0
 
+## v7.x(敌方加成来源明细): 以下字段仅用于构建情报面板"加成来源"的可读标签，
+## 不参与任何战斗数值计算。由 make_default_context 填充，单元测试构造的 ctx 这些字段保持默认。
+var difficulty_name: String = "普通"        # 难度档名（普通/简单/困难）
+var faction_id: String = ""                  # 占领势力ID（空=无主之地）
+var faction_level: int = 0                   # 占领势力等级
+var is_phase_master_battle: bool = false     # 是否相位师遭遇战（决定 master_stats 来源标签）
+
 
 func _init(p_level: int = 1, p_wave: int = 0) -> void:
 	level = maxi(1, p_level)

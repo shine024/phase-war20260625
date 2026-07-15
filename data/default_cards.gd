@@ -15,6 +15,8 @@ const PhaseLaws = preload("res://data/phase_laws.gd")
 const UnitIdMigration = preload("res://data/unit_id_migration_config.gd")
 # v8.0: 统一卡牌表（单一真值源）
 const UnifiedCardTable = preload("res://data/unified_card_table.gd")
+# v7.x 性能：势力专属卡（提为类常量，get_all_blueprint_ids_lightweight 和 create_all 共用）
+const EC = preload("res://data/faction_exclusive_cards.gd")
 
 ## 静态缓存:避免每次 get_card_by_id 都重新创建
 static var _all_cards_cache: Array = []
@@ -150,7 +152,7 @@ static func create_all() -> Array:
 			list.append(card)
 
 	# ─── 势力专属卡(14张)───
-	var EC = preload("res://data/faction_exclusive_cards.gd")
+	# v7.x: EC 已提为类常量
 	for cfg in EC.EXCLUSIVE_CARDS:
 		list.append(EC.create_card(cfg))
 
@@ -168,6 +170,29 @@ static func get_all_blueprint_ids() -> Array:
 	for id in EnemyBlueprints.get_all_enemy_blueprint_ids():
 		if id is String and not ids.has(id):
 			ids.append(id)
+	return ids
+
+## v7.x 性能：返回所有蓝图 ID 的轻量版——不构建任何 CardResource。
+## get_all_blueprint_ids() 会触发 _ensure_card_cache() 构建 133 张完整卡对象，
+## 但 BlueprintManager._unlock_default_blueprints 等调用方只需 card_id 字符串做集合判断。
+## 轻量版直接从数据表提取 id，启动期可省去 133 次 CardResource.new() + 派生计算。
+## 与 get_all_blueprint_ids() 返回的 id 集合完全一致（玩家战斗卡 + 势力专属卡 + 敌人蓝图）。
+static func get_all_blueprint_ids_lightweight() -> Array:
+	var ids: Array = []
+	# 1. 玩家战斗卡 id（直接从统一表取，不构建 CardResource）
+	for entry in UnifiedCardTable.get_player_card_entries():
+		var cid: String = String(entry.get("card_id", ""))
+		if not cid.is_empty() and not ids.has(cid):
+			ids.append(cid)
+	# 2. 势力专属卡 id（从配置字典取 "id" 字段，不构建 CardResource）
+	for cfg in EC.EXCLUSIVE_CARDS:
+		var eid: String = String(cfg.get("id", ""))
+		if not eid.is_empty() and not ids.has(eid):
+			ids.append(eid)
+	# 3. 敌人掉落的高级蓝图 id（已走 _get_all_cached 缓存）
+	for eid in EnemyBlueprints.get_all_enemy_blueprint_ids():
+		if eid is String and not ids.has(eid):
+			ids.append(eid)
 	return ids
 
 ## 根据 PhaseLaws 定义生成法则卡模板(印制/发奖时用 clone())

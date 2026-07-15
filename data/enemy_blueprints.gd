@@ -5,6 +5,11 @@ class_name EnemyBlueprints
 
 const GC = preload("res://resources/game_constants.gd")
 
+# v7.x 性能：_create_all 结果缓存。get_all_enemy_blueprint_ids / get_card_by_id
+# 每次都调 _create_all 构建完整卡列表（143张 CardResource），启动期被 get_all_blueprint_ids
+# 链路触发。缓存后首次构建，后续 O(1) 命中。
+static var _all_cache: Array = []
+
 const ERA_PREFIX: Array[String] = ["ww1", "ww2", "cold", "modern", "near"]
 const ERA_LABEL: Array[String] = ["一战", "二战", "冷战", "现代", "近未来"]
 const GENERATED_PLATFORM_COUNTS: Array[int] = [10, 10, 9, 9, 10]
@@ -166,13 +171,13 @@ const BLUEPRINT_NAME_MAP: Dictionary = {
 
 static func get_all_enemy_blueprint_ids() -> Array:
 	var ids: Array = []
-	for c in _create_all():
+	for c in _get_all_cached():
 		if c is CardResource:
 			ids.append((c as CardResource).card_id)
 	return ids
 
 static func get_card_by_id(card_id: String) -> CardResource:
-	for c in _create_all():
+	for c in _get_all_cached():
 		if c is CardResource:
 			var card := c as CardResource
 			if card.card_id == card_id:
@@ -217,6 +222,13 @@ static func _generated_display_name(label: String, era: int, idx: int) -> String
 	return "%s·%s%s" % [label, p, s]
 
 static func _create_all() -> Array:
+	# v7.x 性能：经 _get_all_cached 统一入口，命中缓存直接返回
+	return _get_all_cached()
+
+# v7.x 性能：带缓存的统一入口，避免 get_all_enemy_blueprint_ids / get_card_by_id 重复构建
+static func _get_all_cached() -> Array:
+	if not _all_cache.is_empty():
+		return _all_cache
 	var list: Array = []
 
 	# ==================== 精英/头目掉落的特殊蓝图 ====================
@@ -296,6 +308,7 @@ static func _create_all() -> Array:
 	#	"当它开火时，战场会短暂安静。"))
 
 	list.append_array(_create_generated_blueprints())
+	_all_cache = list
 	return list
 
 ## 根据 platform_type 返回合理的默认武器类型（与 default_cards.gd 一致）

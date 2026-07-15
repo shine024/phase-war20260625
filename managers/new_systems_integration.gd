@@ -59,6 +59,7 @@ func _on_unit_damaged(_unit: Node, _is_player: bool, _damage: float, _position: 
 ## v7.x 修复 B5：施放相位法则时推进 USE_PHASE_LAWS 日常任务
 func _on_phase_law_cast(law_id: String, position: Vector2, _family: String) -> void:
 	# 日常任务：使用相位法则
+	_ensure_lazy("daily_task")  # v7.x 性能：DailyTaskManager 延迟加载守卫
 	var tm = get_node_or_null("/root/DailyTaskManager")
 	if tm and tm.has_method("update_task_progress"):
 		tm.update_task_progress(DailyTaskManager.TaskType.USE_PHASE_LAWS, 1)
@@ -85,6 +86,7 @@ func _on_phase_law_cast(law_id: String, position: Vector2, _family: String) -> v
 ## v7.x 修复 B5：原只推进 BATTLE_VICTORY 一类，其余6类无入口 → 接取的日常任务永远完不成。
 ## 现在战斗结算同时推进 BATTLE_VICTORY/COMPLETE_LEVELS，并从结算数据补 EARN_XP/KILL_ENEMIES。
 func _on_battle_ended_daily(player_won: bool) -> void:
+	_ensure_lazy("daily_task")  # v7.x 性能：DailyTaskManager 延迟加载守卫
 	var tm = get_node_or_null("/root/DailyTaskManager")
 	if tm == null or not tm.has_method("update_task_progress"):
 		return
@@ -106,6 +108,7 @@ func _on_battle_ended_daily(player_won: bool) -> void:
 ## 且 record_battle_victory 等统计方法全项目无调用者 → 战斗/收集/进度类成就永远不解锁。
 ## 改为调用 record_battle_victory（累计胜利数 + 自动触发 _check_all_battle_achievements）。
 func _on_battle_ended_achievement(player_won: bool) -> void:
+	_ensure_lazy("achievement")  # v7.x 性能：AchievementManager 延迟加载守卫
 	var am = get_node_or_null("/root/AchievementManager")
 	if am == null or not am.has_method("record_battle_victory"):
 		return
@@ -139,6 +142,10 @@ func _collect_battle_data_for_achievement() -> Dictionary:
 ## 蓝图解锁 → 更新收集 + 记录收集成就统计
 ## v7.x 修复 B3：原只更新图鉴，未调用 record_collection → 收集类成就（unique_blueprints/legendary_blueprint 等）永远不解锁
 func _on_blueprint_unlocked(card_id: String) -> void:
+	# v7.x 性能：下游 manager 延迟加载，访问前确保已实例化（否则收集记录/成就/任务丢失）
+	_ensure_lazy("card_collection")
+	_ensure_lazy("achievement")
+	_ensure_lazy("daily_task")
 	var cm = get_node_or_null("/root/CardCollectionManager")
 	if cm and cm.has_method("update_card_status"):
 		cm.update_card_status(card_id)
@@ -158,6 +165,7 @@ func _on_blueprint_unlocked(card_id: String) -> void:
 func _on_enhancement_completed(success: bool, _card_id: String, _action: String, _message: String) -> void:
 	if not success:
 		return
+	_ensure_lazy("daily_task")  # v7.x 性能：DailyTaskManager 延迟加载守卫
 	var tm = get_node_or_null("/root/DailyTaskManager")
 	if tm and tm.has_method("update_task_progress"):
 		tm.update_task_progress(DailyTaskManager.TaskType.UPGRADE_CARDS, 1)
@@ -171,6 +179,7 @@ func _on_unit_died(unit: Node, is_player_unit: bool) -> void:
 	# 仅敌方单位死亡计入击杀任务（is_player 为 true 表示死者是我方）
 	if is_player_unit:
 		return
+	_ensure_lazy("daily_task")  # v7.x 性能：DailyTaskManager 延迟加载守卫
 	var tm = get_node_or_null("/root/DailyTaskManager")
 	if tm and tm.has_method("update_task_progress"):
 		tm.update_task_progress(DailyTaskManager.TaskType.KILL_ENEMIES, 1)
@@ -185,3 +194,9 @@ func _find_battlefield(node: Node) -> Node:
 		if result:
 			return result
 	return null
+
+## v7.x 性能：统一确保延迟加载的 manager 已实例化（成就/日常任务延迟化后的守卫）
+func _ensure_lazy(manager_id: String) -> void:
+	var _mll: Node = get_node_or_null("/root/ManagerLazyLoader")
+	if _mll and _mll.has_method("ensure_loaded"):
+		_mll.ensure_loaded(manager_id)

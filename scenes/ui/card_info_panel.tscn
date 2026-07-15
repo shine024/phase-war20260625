@@ -399,6 +399,31 @@ theme_override_colors/font_color = Color(0.85, 0.75, 0.85, 1)
 theme_override_font_sizes/font_size = 12
 autowrap_mode = 2
 
+[node name="BonusSection" type="PanelContainer" parent="Margin/VBox/TabBar/TabInfo/InfoVBox"]
+visible = false
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_section")
+
+[node name="BonusVBox" type="VBoxContainer" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/BonusSection"]
+layout_mode = 2
+theme_override_constants/separation = 4
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 6
+
+[node name="BonusTitle" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/BonusSection/BonusVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.78, 0.45, 1)
+theme_override_font_sizes/font_size = 13
+text = "加成来源"
+
+[node name="BonusLabel" type="Label" parent="Margin/VBox/TabBar/TabInfo/InfoVBox/BonusSection/BonusVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.82, 0.82, 0.7, 1)
+theme_override_font_sizes/font_size = 12
+autowrap_mode = 2
+
 [node name="StatusSection" type="PanelContainer" parent="Margin/VBox/TabBar/TabInfo/InfoVBox"]
 visible = false
 layout_mode = 2

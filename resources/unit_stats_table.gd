@@ -354,6 +354,38 @@ static func _apply_mod_stat_effects(stats: UnitStats, mods: Array) -> void:
 		"single_target_penalty": stats.single_target_penalty,
 		# v6.9: move_speed 类改造重定向为部署延迟百分比（move_speed 种子值保留供写回，不被 effects 增量）
 		"deploy_delay_bonus": stats.deploy_delay_bonus,
+		# v7.x: 新机制字段（成长型 / debuff 型 / 兵种专属）
+		"combo_max": stats.combo_max,
+		"combo_bonus_mult": stats.combo_bonus_mult,
+		"rage_max": stats.rage_max,
+		"rage_bonus_mult": stats.rage_bonus_mult,
+		"armor_break_per_hit": stats.armor_break_per_hit,
+		"armor_break_max_stacks": stats.armor_break_max_stacks,
+		"mark_chance": stats.mark_chance,
+		"mark_duration": stats.mark_duration,
+		"mark_vuln_bonus": stats.mark_vuln_bonus,
+		"crit_mark_chance": stats.crit_mark_chance,
+		"crit_mark_duration": stats.crit_mark_duration,
+		"crit_mark_bonus": stats.crit_mark_bonus,
+		"siege_bonus_pct": stats.siege_bonus_pct,
+		"urban_defense_bonus": stats.urban_defense_bonus,
+		"has_counter_battery": stats.has_counter_battery,
+		# v7.x 第二批次新机制字段
+		"revive_on_death": stats.revive_on_death,
+		"revive_hp_ratio": stats.revive_hp_ratio,
+		"reflect_damage_pct": stats.reflect_damage_pct,
+		"reflect_charges": stats.reflect_charges,
+		"intercept_chance": stats.intercept_chance,
+		"intercept_charges": stats.intercept_charges,
+		"death_heal_allies_pct": stats.death_heal_allies_pct,
+		"death_heal_radius": stats.death_heal_radius,
+		"minefield_damage": stats.minefield_damage,
+		"slow_aura_pct": stats.slow_aura_pct,
+		"slow_aura_radius": stats.slow_aura_radius,
+		"command_aura_bonus": stats.command_aura_bonus,
+		"phase_shield_pool": stats.phase_shield_pool,
+		"phase_shield_regen": stats.phase_shield_regen,
+		"laser_mark_on_hit": stats.laser_mark_on_hit,
 	}
 	# 统一应用（支持 level_effects + effects 两种格式）
 	var result: Dictionary = ModificationRegistry.apply_with_level(base_dict, mods)
@@ -394,6 +426,38 @@ static func _apply_mod_stat_effects(stats: UnitStats, mods: Array) -> void:
 	stats.single_target_penalty = float(result.get("single_target_penalty", stats.single_target_penalty))
 	# v6.9: 部署延迟百分比加成写回（move_speed 类改造经 registry 重定向后落到此字段）
 	stats.deploy_delay_bonus = float(result.get("deploy_delay_bonus", stats.deploy_delay_bonus))
+	# v7.x: 新机制字段写回
+	stats.combo_max = int(result.get("combo_max", stats.combo_max))
+	stats.combo_bonus_mult = float(result.get("combo_bonus_mult", stats.combo_bonus_mult))
+	stats.rage_max = int(result.get("rage_max", stats.rage_max))
+	stats.rage_bonus_mult = float(result.get("rage_bonus_mult", stats.rage_bonus_mult))
+	stats.armor_break_per_hit = float(result.get("armor_break_per_hit", stats.armor_break_per_hit))
+	stats.armor_break_max_stacks = int(result.get("armor_break_max_stacks", stats.armor_break_max_stacks))
+	stats.mark_chance = float(result.get("mark_chance", stats.mark_chance))
+	stats.mark_duration = float(result.get("mark_duration", stats.mark_duration))
+	stats.mark_vuln_bonus = float(result.get("mark_vuln_bonus", stats.mark_vuln_bonus))
+	stats.crit_mark_chance = float(result.get("crit_mark_chance", stats.crit_mark_chance))
+	stats.crit_mark_duration = float(result.get("crit_mark_duration", stats.crit_mark_duration))
+	stats.crit_mark_bonus = float(result.get("crit_mark_bonus", stats.crit_mark_bonus))
+	stats.siege_bonus_pct = float(result.get("siege_bonus_pct", stats.siege_bonus_pct))
+	stats.urban_defense_bonus = float(result.get("urban_defense_bonus", stats.urban_defense_bonus))
+	stats.has_counter_battery = bool(result.get("has_counter_battery", stats.has_counter_battery))
+	# v7.x 第二批次新机制字段写回
+	stats.revive_on_death = bool(result.get("revive_on_death", stats.revive_on_death))
+	stats.revive_hp_ratio = float(result.get("revive_hp_ratio", stats.revive_hp_ratio))
+	stats.reflect_damage_pct = float(result.get("reflect_damage_pct", stats.reflect_damage_pct))
+	stats.reflect_charges = int(result.get("reflect_charges", stats.reflect_charges))
+	stats.intercept_chance = float(result.get("intercept_chance", stats.intercept_chance))
+	stats.intercept_charges = int(result.get("intercept_charges", stats.intercept_charges))
+	stats.death_heal_allies_pct = float(result.get("death_heal_allies_pct", stats.death_heal_allies_pct))
+	stats.death_heal_radius = float(result.get("death_heal_radius", stats.death_heal_radius))
+	stats.minefield_damage = float(result.get("minefield_damage", stats.minefield_damage))
+	stats.slow_aura_pct = float(result.get("slow_aura_pct", stats.slow_aura_pct))
+	stats.slow_aura_radius = float(result.get("slow_aura_radius", stats.slow_aura_radius))
+	stats.command_aura_bonus = float(result.get("command_aura_bonus", stats.command_aura_bonus))
+	stats.phase_shield_pool = float(result.get("phase_shield_pool", stats.phase_shield_pool))
+	stats.phase_shield_regen = float(result.get("phase_shield_regen", stats.phase_shield_regen))
+	stats.laser_mark_on_hit = bool(result.get("laser_mark_on_hit", stats.laser_mark_on_hit))
 	# v6.5→v6.6: 武器类改造改变武器型号，写入 legacy_weapon_type（不污染 weapon_type 弹道字段）
 	# bullet 的 VFX/弹道 match 读 legacy_weapon_type，AI 曲射判断读 weapon_type
 	if result.has("legacy_weapon_type"):

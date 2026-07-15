@@ -138,6 +138,14 @@ func _apply_archetype_stats() -> void:
 	_base_move_speed = move_speed
 	_base_attack_interval = attack_interval
 	_base_stats_ready = true
+	# v7.x(敌方加成来源明细): 蜂群同经典敌人，挂加成明细到 meta 供情报面板显示。
+	# 蜂群无二周目加成（_apply_ng_plus_scaling 不在蜂群路径），ng_plus 保持 1.0。
+	var _sw_breakdown: Dictionary = r.get("bonus_breakdown", {})
+	if not _sw_breakdown.is_empty():
+		_sw_breakdown["final_hp"] = float(hp)
+		_sw_breakdown["final_atk"] = float(attack_damage)
+		_sw_breakdown["final_def"] = float(defense)
+		set_meta("enemy_bonus_breakdown", _sw_breakdown)
 
 func _apply_phase_law_passives() -> void:
 	if not _base_stats_ready:
@@ -223,6 +231,36 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		var swarm_red: float = float(stats.damage_reduction) if stats != null else 0.0
 		swarm_red = minf(0.60, swarm_red + float(damage_reduction))
 		hp_loss = float(CardGridDamage.resolve_hit(amount, eff_def, swarm_dodge, swarm_red).get("hp_loss", amount))
+		# v7.x: 新机制 meta 读取（破甲叠加/标记易伤/巷战免伤）——与 construct_unit 口径一致
+		# 这些 meta 由攻击者的 ModuleEffectHandler.apply_on_hit_side_effects 挂载
+		if has_meta("_armor_break_stacks"):
+			var _ab_stacks: int = int(get_meta("_armor_break_stacks", 0))
+			var _ab_ratio: float = float(get_meta("_armor_break_ratio", 0.0))
+			if _ab_stacks > 0 and _ab_ratio > 0.0:
+				eff_defense = eff_defense * maxf(0.1, 1.0 - _ab_stacks * _ab_ratio)
+		if has_meta("_marked_until"):
+			var _mark_expire: float = float(get_meta("_marked_until", 0.0))
+			var _now: float = Time.get_ticks_msec() / 1000.0
+			if _now < _mark_expire:
+				var _vuln: float = float(get_meta("_mark_vuln_bonus", 0.0))
+				if _vuln > 0.0:
+					hp_loss = hp_loss * (1.0 + _vuln)
+			else:
+				remove_meta("_marked_until")
+				remove_meta("_mark_vuln_bonus")
+		# v8.x: 暴击标注惰性清理（加成按时间戳在 bullet.gd 判定，过期 meta 顺带清掉）
+		if has_meta("_crit_marked_until"):
+			var _cm_expire: float = float(get_meta("_crit_marked_until", 0.0))
+			if Time.get_ticks_msec() / 1000.0 >= _cm_expire:
+				remove_meta("_crit_marked_until")
+				remove_meta("_crit_mark_bonus")
+		# v7.x: 巷战免伤（敌方也可装备 infantry_mods 改造，若 stats 有 urban_defense_bonus 则生效）
+		if stats != null and stats.urban_defense_bonus > 0.0 and attacker_kind >= 0:
+			if attacker_kind == GC.CombatKind.ARMOR or attacker_kind == GC.CombatKind.AIR:
+				hp_loss = hp_loss * (1.0 - stats.urban_defense_bonus)
+	# v7.x 第二批：拦截判定（概率伤害归零）
+	if stats != null and ModuleEffectHandler.try_intercept(self):
+		return  # 拦截成功
 	if attacker != null and is_instance_valid(attacker) and attacker is Node and attacker.is_in_group("player_units"):
 		last_damage_source = attacker
 	# v6.6 修复：_incoming_damage_mul 同样需作用于伤害数字显示，保持飘字与血条扣血一致

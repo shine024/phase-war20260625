@@ -40,6 +40,9 @@ const IntelManualItemsRef = preload("res://data/intel_manual_items.gd")
 const BlueprintDefinitionsRef = preload("res://data/blueprint_definitions.gd")
 const ModificationRegistryRef = preload("res://scripts/systems/modification_registry.gd")
 const RankDisplayUi = preload("res://scripts/rank_display_ui.gd")
+## v8.0: 相位仪标签页所需的数据依赖
+const PhaseInstruments = preload("res://data/phase_instruments.gd")
+const CompanyDefs = preload("res://data/company_definitions.gd")
 const DesignTokens = preload("res://resources/design_tokens.gd")
 ## 详情弹窗内的统一情报面板实例引用
 var _detail_info_panel: Control = null
@@ -75,6 +78,8 @@ var _resources_grid: GridContainer = null
 var _intel_grid: GridContainer = null
 var _stat_boosts_grid: GridContainer = null
 var _runes_grid: GridContainer = null  ## v6.2: 符文格子
+## v8.0: 相位仪标签页列表容器（垂直排列，相位仪卡片按星级降序）
+@onready var _phase_inst_list: VBoxContainer = $VBoxOuter/TabContainer/PhaseInstTab/ScrollContainer/PhaseInstList
 ## v7.x: 符文右侧信息栏引用（从 rune_panel 合并而来）
 var _rune_bonus_label: RichTextLabel = null
 var _runeword_list_inner: VBoxContainer = null
@@ -88,6 +93,7 @@ enum TabIndex {
 	INTEL = 2,
 	STAT_BOOSTS = 3,
 	RUNES = 4,           ## v6.2: 符文标签
+	PHASE_INSTRUMENTS = 5, ## v8.0: 相位仪标签（已获得列表 + 装备切换）
 }
 
 ## 全量重建排到 idle 再执行：在背包卡 item 的 gui_input / 拖拽 / 装备信号栈内不能对其 free()，否则会报 Object is locked
@@ -162,6 +168,8 @@ func _ready() -> void:
 		_tab_container.set_tab_title(TabIndex.INTEL, "改造")
 		_tab_container.set_tab_title(TabIndex.STAT_BOOSTS, "属性提升")
 		_tab_container.set_tab_title(TabIndex.RUNES, "符文")
+		# v8.0: 相位仪标签（显示已获得列表 + 装备切换）
+		_tab_container.set_tab_title(TabIndex.PHASE_INSTRUMENTS, "相位仪")
 		_tab_container.tab_changed.connect(_on_tab_changed)
 
 	# 初始化详情弹窗（信号连接延迟到首次显示时）
@@ -232,6 +240,10 @@ func _fallback_init_from_save_manager() -> void:
 	if SignalBus and SignalBus.has_signal("card_equipped"):
 		if not SignalBus.card_equipped.is_connected(_fallback_on_card_equipped):
 			SignalBus.card_equipped.connect(_fallback_on_card_equipped)
+	# v7.x：换装原子信号——fallback 路径同步处理，避免 presenter 失败时换装背包重复
+	if SignalBus and SignalBus.has_signal("card_swapped"):
+		if not SignalBus.card_swapped.is_connected(_fallback_on_card_swapped):
+			SignalBus.card_swapped.connect(_fallback_on_card_swapped)
 	# 构建网格（至少显示空格子）
 	var cards: Array = _data.get_filtered_sorted_cards()
 	rebuild_card_grid(cards)
@@ -260,6 +272,25 @@ func _fallback_on_card_equipped(_slot_index: int, card_id: String, _card_type: S
 	if SaveManager and SaveManager.has_method("_on_card_equipped_remove_fallback"):
 		SaveManager._on_card_equipped_remove_fallback(_slot_index, card_id, _card_type)
 
+## v7.x：换装原子 fallback——presenter 不可用时，panel 直接同步 _data 与 SaveManager。
+## 顺序与 presenter._on_card_swapped 一致：先移新卡出包，再添旧卡入包。
+func _fallback_on_card_swapped(_slot_index: int, old_card: CardResource, new_card_id: String) -> void:
+	if _data == null:
+		return
+	# 1. 移新卡出包
+	if not new_card_id.is_empty():
+		_data.remove_card(new_card_id, false)
+		if SaveManager and SaveManager.has_method("_on_card_equipped_remove_fallback"):
+			SaveManager._on_card_equipped_remove_fallback(_slot_index, new_card_id, "")
+	# 2. 添旧卡入包
+	if old_card != null:
+		var inst_id: String = old_card.instance_id if not old_card.instance_id.is_empty() else old_card.card_id
+		if SaveManager and SaveManager.has_method("consume_pending_backpack_card_id"):
+			SaveManager.consume_pending_backpack_card_id(inst_id)
+		_data.add_extra_card(inst_id, false)
+		if SaveManager and SaveManager.has_method("enqueue_backpack_card_id"):
+			SaveManager.enqueue_backpack_card_id(inst_id)
+
 ## ============================================================
 ## 标签页事件处理
 ## ============================================================
@@ -284,6 +315,9 @@ func _on_tab_changed(tab_index: int) -> void:
 		TabIndex.RUNES:
 			# v6.2: 符文标签页刷新（内部会连带刷新右侧信息栏）
 			refresh_runes_tab()
+		TabIndex.PHASE_INSTRUMENTS:
+			# v8.0: 相位仪标签页刷新（已获得列表 + 装备切换）
+			refresh_phase_instruments_tab()
 
 ## v7.x：标签切换微动效——内容区透明度先降后升，制造切换感。tab 控件结构因 tab 而异
 ## （RunesTab 是 HSplit 而非纯 ScrollContainer），防御性查找失败则跳过。
@@ -1037,6 +1071,286 @@ func refresh_rune_info_panel() -> void:
 				_runeword_list_inner.add_child(entry)
 
 
+## ============================================================
+## v8.0 相位仪标签页
+## ============================================================
+
+## 刷新相位仪标签页：列出所有已解锁的相位仪，点击装备切换。
+## UI 逻辑复用自 phase_instrument_selector.gd（保持两处外观一致）。
+func refresh_phase_instruments_tab() -> void:
+	if _phase_inst_list == null:
+		return
+	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
+	if pim == null or not pim.has_method("get_unlocked_instrument_ids"):
+		_clear_phase_inst_list()
+		_add_phase_inst_placeholder("相位仪系统未初始化")
+		return
+
+	var current_instrument_id: String = ""
+	if pim.has_method("get_current_instrument"):
+		var cur_cfg: Dictionary = pim.get_current_instrument()
+		current_instrument_id = String(cur_cfg.get("id", ""))
+
+	var unlocked_ids: Array = pim.get_unlocked_instrument_ids()
+	_clear_phase_inst_list()
+
+	if unlocked_ids.is_empty():
+		_add_phase_inst_placeholder("暂无已解锁的相位仪\n通过商店购买、战斗掉落或势力声望获取")
+		return
+
+	# 按星级降序排列
+	var sorted_instruments: Array = []
+	for iid in unlocked_ids:
+		var cfg: Dictionary = PhaseInstruments.get_by_id(String(iid))
+		if not cfg.is_empty():
+			sorted_instruments.append(cfg)
+	sorted_instruments.sort_custom(func(a, b): return int(a.get("star", 0)) > int(b.get("star", 0)))
+
+	for inst_cfg in sorted_instruments:
+		var item: Control = _create_phase_inst_item(inst_cfg, String(inst_cfg.get("id", "")) == current_instrument_id)
+		_phase_inst_list.add_child(item)
+
+
+## 清空相位仪列表（不 queue_free 已移除的节点，避免在 _ready 阶段触发）
+func _clear_phase_inst_list() -> void:
+	if _phase_inst_list == null:
+		return
+	for child in _phase_inst_list.get_children():
+		child.queue_free()
+
+
+## 空状态占位文本
+func _add_phase_inst_placeholder(msg: String) -> void:
+	if _phase_inst_list == null:
+		return
+	var label := Label.new()
+	label.text = msg
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", 13)
+	label.add_theme_color_override("font_color", Color(0.5, 0.5, 0.6, 0.8))
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	label.custom_minimum_size = Vector2(0, 80)
+	_phase_inst_list.add_child(label)
+
+
+## 构建单个相位仪卡片（外观与 phase_instrument_selector 一致）
+func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
+	var container := PanelContainer.new()
+	container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	var style := StyleBoxFlat.new()
+	if is_equipped:
+		style.bg_color = Color(0.15, 0.25, 0.35, 0.95)
+		style.border_color = Color(0.4, 0.85, 1.0, 0.9)
+	else:
+		style.bg_color = Color(0.08, 0.10, 0.15, 0.92)
+		style.border_color = Color(0.3, 0.35, 0.45, 0.6)
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(6)
+	container.add_theme_stylebox_override("panel", style)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 12)
+	margin.add_theme_constant_override("margin_top", 10)
+	margin.add_theme_constant_override("margin_right", 12)
+	margin.add_theme_constant_override("margin_bottom", 10)
+	container.add_child(margin)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 6)
+	margin.add_child(vbox)
+
+	# ── 标题行：名称 + 星级 + 势力/通用 ──
+	var header_row := HBoxContainer.new()
+	vbox.add_child(header_row)
+
+	var name_label := Label.new()
+	var inst_name: String = String(cfg.get("name", "未知相位仪"))
+	var star: int = int(cfg.get("star", 0))
+	if is_equipped:
+		name_label.text = "✓ %s ★%d" % [inst_name, star]
+		name_label.add_theme_color_override("font_color", Color(0.4, 0.95, 0.6, 1.0))
+	else:
+		name_label.text = "%s ★%d" % [inst_name, star]
+		name_label.add_theme_color_override("font_color", Color(0.95, 0.9, 0.7, 1.0))
+	name_label.add_theme_font_size_override("font_size", 15)
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header_row.add_child(name_label)
+
+	var faction_id: String = String(cfg.get("faction_id", ""))
+	var is_generic: bool = bool(cfg.get("is_generic", false))
+	var faction_label := Label.new()
+	if not is_generic:
+		var faction_cfg: Dictionary = CompanyDefs.get_by_id(faction_id)
+		if not faction_cfg.is_empty():
+			faction_label.text = String(faction_cfg.get("name", ""))
+			faction_label.add_theme_color_override("font_color", Color(0.7, 0.8, 0.95, 0.9))
+		else:
+			faction_label.text = "专属"
+			faction_label.add_theme_color_override("font_color", Color(0.75, 0.55, 0.95, 0.9))
+	else:
+		faction_label.text = "通用"
+		faction_label.add_theme_color_override("font_color", Color(0.7, 0.9, 0.7, 0.9))
+	faction_label.add_theme_font_size_override("font_size", 11)
+	header_row.add_child(faction_label)
+
+	# ── 槽位配置行 ──
+	var slot_row := HBoxContainer.new()
+	vbox.add_child(slot_row)
+
+	var slot_counts: Dictionary = cfg.get("slot_counts", {})
+	var green_count: int = int(slot_counts.get("green", 0))
+	var yellow_count: int = int(slot_counts.get("yellow", 0))
+	var rune_count: int = int(slot_counts.get("rune", 0))
+	# 兼容旧数据：无 rune 字段时回退读 red/blue
+	if rune_count == 0:
+		rune_count = int(slot_counts.get("red", 0)) + int(slot_counts.get("blue", 0))
+	var total_slots: int = green_count + yellow_count + rune_count
+
+	var config_label := Label.new()
+	config_label.text = "槽位配置: "
+	config_label.add_theme_font_size_override("font_size", 11)
+	config_label.add_theme_color_override("font_color", Color(0.65, 0.75, 0.85, 0.9))
+	slot_row.add_child(config_label)
+
+	if green_count > 0:
+		var green_label := Label.new()
+		green_label.text = "绿%d " % green_count
+		green_label.add_theme_font_size_override("font_size", 11)
+		green_label.add_theme_color_override("font_color", Color(0.3, 0.9, 0.5, 1.0))
+		slot_row.add_child(green_label)
+
+	if yellow_count > 0:
+		var yellow_label := Label.new()
+		yellow_label.text = "黄%d " % yellow_count
+		yellow_label.add_theme_font_size_override("font_size", 11)
+		yellow_label.add_theme_color_override("font_color", Color(0.95, 0.85, 0.2, 1.0))
+		slot_row.add_child(yellow_label)
+
+	if rune_count > 0:
+		var rune_label := Label.new()
+		rune_label.text = "符%d " % rune_count
+		rune_label.add_theme_font_size_override("font_size", 11)
+		rune_label.add_theme_color_override("font_color", Color(0.75, 0.55, 0.95, 1.0))
+		slot_row.add_child(rune_label)
+
+	var total_label := Label.new()
+	total_label.text = "(总计: %d)" % total_slots
+	total_label.add_theme_font_size_override("font_size", 11)
+	total_label.add_theme_color_override("font_color", Color(0.65, 0.75, 0.85, 0.9))
+	slot_row.add_child(total_label)
+
+	# ── 属性加成行 ──
+	var stats_parts: Array = []
+	var recovery_rate: float = float(cfg.get("energy_recovery_rate", 0.3))
+	var spawn_ratio: float = float(cfg.get("spawn_range_ratio", 0.3))
+	var actual_recovery: float = recovery_rate * 3.0
+	stats_parts.append("可上场: %d单位" % green_count)
+	stats_parts.append("能量恢复: %.2f (实际: %.1f/秒)" % [recovery_rate, actual_recovery])
+	stats_parts.append("部署范围: %.0f%%" % (spawn_ratio * 100))
+
+	var stats_label := Label.new()
+	stats_label.text = "  |  ".join(PackedStringArray(stats_parts))
+	stats_label.add_theme_font_size_override("font_size", 10)
+	stats_label.add_theme_color_override("font_color", Color(0.6, 0.7, 0.8, 0.85))
+	vbox.add_child(stats_label)
+
+	# ── 进阶属性行（相位仪 properties + bonus） ──
+	var advanced_parts: Array = []
+	var props: Array = cfg.get("properties", [])
+	if props is Array and not props.is_empty():
+		for p in props:
+			if p is Dictionary:
+				var display: String = String((p as Dictionary).get("display", ""))
+				if not display.is_empty():
+					advanced_parts.append("[相位仪] " + display)
+	else:
+		if cfg.has("card_damage_bonus") and float(cfg.card_damage_bonus) > 0:
+			advanced_parts.append("[相位仪] 卡伤+%.0f%%" % (float(cfg.card_damage_bonus) * 100))
+		if cfg.has("defense_bonus") and float(cfg.defense_bonus) > 0:
+			advanced_parts.append("[相位仪] 防御+%.0f%%" % (float(cfg.defense_bonus) * 100))
+		if cfg.has("xp_bonus") and float(cfg.xp_bonus) > 0:
+			advanced_parts.append("[相位仪] 相位场经验+%.0f%%" % (float(cfg.xp_bonus) * 100))
+		if cfg.has("energy_cost_reduction") and int(cfg.energy_cost_reduction) > 0:
+			advanced_parts.append("[相位仪] 能耗-%d" % int(cfg.energy_cost_reduction))
+
+	if not advanced_parts.is_empty():
+		var advanced_label := Label.new()
+		advanced_label.text = "  |  ".join(PackedStringArray(advanced_parts.slice(0, 5)))
+		advanced_label.add_theme_font_size_override("font_size", 10)
+		advanced_label.add_theme_color_override("font_color", Color(0.95, 0.75, 0.35, 0.9))
+		advanced_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+		advanced_label.custom_minimum_size = Vector2(400, 0)
+		vbox.add_child(advanced_label)
+
+	# ── 特性行 ──
+	var traits: Array = cfg.get("special_traits", [])
+	if traits is Array and not traits.is_empty():
+		var trait_label := Label.new()
+		trait_label.text = "✦ " + "  |  ".join(PackedStringArray(traits))
+		trait_label.add_theme_font_size_override("font_size", 10)
+		trait_label.add_theme_color_override("font_color", Color(0.8, 0.95, 1.0, 0.95))
+		trait_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+		trait_label.custom_minimum_size = Vector2(400, 0)
+		vbox.add_child(trait_label)
+
+	# ── 主动能力行（7星相位仪）──
+	var ability: Dictionary = cfg.get("active_ability", {})
+	if not ability.is_empty():
+		var ability_name: String = String(ability.get("name", ""))
+		var ability_desc: String = String(ability.get("description", ""))
+		var ability_label := Label.new()
+		if not ability_name.is_empty() and not ability_desc.is_empty():
+			ability_label.text = "⚡ %s：%s" % [ability_name, ability_desc]
+		elif not ability_desc.is_empty():
+			ability_label.text = "⚡ %s" % ability_desc
+		else:
+			ability_label.text = "⚡ %s" % ability_name
+		ability_label.add_theme_font_size_override("font_size", 10)
+		ability_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2, 1.0))
+		ability_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+		ability_label.custom_minimum_size = Vector2(400, 0)
+		vbox.add_child(ability_label)
+
+	# ── 装备按钮 / 当前装备标记 ──
+	if is_equipped:
+		var equipped_label := Label.new()
+		equipped_label.text = "当前装备中"
+		equipped_label.add_theme_font_size_override("font_size", 11)
+		equipped_label.add_theme_color_override("font_color", Color(0.3, 0.85, 0.5, 1.0))
+		vbox.add_child(equipped_label)
+	else:
+		var equip_btn := Button.new()
+		equip_btn.text = "装备此相位仪"
+		equip_btn.add_theme_font_size_override("font_size", 12)
+		equip_btn.custom_minimum_size = Vector2(120, 32)
+		vbox.add_child(equip_btn)
+		var iid_copy: String = String(cfg.get("id", ""))
+		equip_btn.pressed.connect(_on_phase_inst_equip_pressed.bind(iid_copy))
+
+	return container
+
+
+## 装备相位仪按钮回调：调用 PhaseInstrumentManager.equip_instrument 后刷新列表
+func _on_phase_inst_equip_pressed(instrument_id: String) -> void:
+	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
+	if pim == null or not pim.has_method("equip_instrument"):
+		return
+	var success: bool = pim.equip_instrument(instrument_id)
+	if success:
+		refresh_phase_instruments_tab()
+		if SignalBus.has_signal("show_toast"):
+			SignalBus.show_toast.emit("已装备相位仪")
+
+
+## v8.0: 外部入口：打开背包并切到相位仪 Tab
+func switch_to_phase_instruments_tab() -> void:
+	if _tab_container != null:
+		_tab_container.current_tab = TabIndex.PHASE_INSTRUMENTS
+
+
 ## v7.x: 外部入口（main.gd 底部栏"法则区"点击 / 教程引导调用）：打开背包并切到符文 Tab
 func switch_to_runes_tab() -> void:
 	if _tab_container != null:
@@ -1288,6 +1602,7 @@ func _refresh_aux_sections_after_open() -> void:
 	refresh_intel_tab()
 	refresh_stat_boosts_tab()
 	refresh_runes_tab()  # v6.2: 刷新符文标签页
+	refresh_phase_instruments_tab()  # v8.0: 刷新相位仪标签页
 
 ## ============================================================
 ## 内部 UI 方法

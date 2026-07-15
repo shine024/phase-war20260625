@@ -26,6 +26,10 @@ var achievement_manager: Node
 var use_extended_definitions: bool = false
 
 func _ready() -> void:
+	# v7.x 性能：AchievementManager 延迟加载，面板打开时确保实例化（否则信号连不上）
+	var _mll: Node = get_node_or_null("/root/ManagerLazyLoader")
+	if _mll and _mll.has_method("ensure_loaded"):
+		_mll.ensure_loaded("achievement")
 	achievement_manager = get_node_or_null("/root/AchievementManager")
 
 	# 检查是否使用扩展成就定义（AchievementDefsExtended 是 preload 脚本对象）

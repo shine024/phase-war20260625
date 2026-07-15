@@ -97,6 +97,11 @@ func _connect_signals() -> void:
 	#if BlueprintManager and BlueprintManager.has_signal("fragments_changed"):
 	#	BlueprintManager.fragments_changed.connect(_on_blueprint_fragments_changed)
 
+	# v7.x 性能：LoreManager/StatBoostManager 延迟加载，进入主界面时确保实例化（标题画面不加载）
+	var _mll: Node = get_node_or_null("/root/ManagerLazyLoader")
+	if _mll and _mll.has_method("ensure_loaded"):
+		_mll.ensure_loaded("lore")
+		_mll.ensure_loaded("stat_boost")
 	var lm = get_node_or_null("/root/LoreManager")
 	if lm and lm.has_signal("lore_unlocked"):
 		lm.lore_unlocked.connect(_on_lore_unlocked)

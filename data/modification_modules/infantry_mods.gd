@@ -450,8 +450,8 @@ const DATA: Dictionary = {
 		slot_type = "medical",
 		conflict_group = "medical",
 		effects = {
-			# 特殊效果：生命低于30%时回复15%HP
-			ifak_heal = 0.15,
+			# v7.x 第二批：修复语义错配——原 ifak_heal 误映射为 hp_regen，改为真正的濒死复活
+			ifak_revive = 0.15,
 		},
 		unlock_conditions = {
 			required_level = 2,
@@ -545,6 +545,62 @@ const DATA: Dictionary = {
 		unlock_conditions = {
 			required_level = 2,
 		}
+	},
+
+	# ─── v7.x 新机制改造 ───
+
+	# 连击型：战斗兴奋剂（攻击 5 次后爆发 +25% 伤害）
+	"inf_23_combat_stimulant" = {
+		id = "inf_23_combat_stimulant",
+		name = "战斗兴奋剂",
+		name_en = "Combat Stimulant",
+		icon = "res://assets/ui/icons/mod_icons/mod_special.png",
+		prototype = "肾上腺素自动注射器",
+		description = "连续攻击积累战斗节奏，每 5 次命中触发爆发，额外造成 25% 伤害",
+		rarity = "epic",
+		power_mult = 1.5,
+		cost_research = 280,
+		cost_install = 140,
+		slot_type = "special",
+		conflict_group = "special",
+		effects = {combo_system = 5, combo_bonus = 0.25},
+		unlock_conditions = {required_level = 4}
+	},
+
+	# 兵种专属：巷战教范（受装甲/空军攻击减伤 50%）
+	"inf_24_urban_warfare" = {
+		id = "inf_24_urban_warfare",
+		name = "巷战教范",
+		name_en = "Urban Warfare Doctrine",
+		icon = "res://assets/ui/icons/mod_icons/mod_special.png",
+		prototype = "城市作战手册+反应装甲套件",
+		description = "城市作战训练：受到装甲和空军单位攻击时伤害减免 50%（步兵克制坦克飞机）",
+		rarity = "epic",
+		power_mult = 1.6,
+		cost_research = 300,
+		cost_install = 150,
+		slot_type = "special",
+		conflict_group = "special",
+		effects = {urban_defense = 0.50},
+		unlock_conditions = {required_level = 5}
+	},
+
+	# ─── v7.x 第二批：亡语治疗 ───
+	"inf_25_medic_sacrifice" = {
+		id = "inf_25_medic_sacrifice",
+		name = "医疗兵牺牲",
+		name_en = "Medic's Sacrifice",
+		icon = "res://assets/ui/icons/mod_icons/mod_medical.png",
+		prototype = "战场医疗兵遗言",
+		description = "死亡时治疗周围200像素内友军，恢复量等于自身20%最大生命值",
+		rarity = "legendary",
+		power_mult = 1.8,
+		cost_research = 400,
+		cost_install = 200,
+		slot_type = "medical",
+		conflict_group = "medical",
+		effects = {death_heal = 0.20, death_heal_radius = 200.0},
+		unlock_conditions = {required_level = 6}
 	},
 }
 

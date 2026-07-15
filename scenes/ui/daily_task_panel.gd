@@ -15,6 +15,10 @@ var daily_task_manager: Node
 @onready var claim_all_button = $VBox/Header/ClaimAllButton
 
 func _ready() -> void:
+	# v7.x 性能：DailyTaskManager 延迟加载，面板打开时确保实例化（否则信号连不上）
+	var _mll: Node = get_node_or_null("/root/ManagerLazyLoader")
+	if _mll and _mll.has_method("ensure_loaded"):
+		_mll.ensure_loaded("daily_task")
 	daily_task_manager = get_node_or_null("/root/DailyTaskManager")
 
 	_connect_signals()

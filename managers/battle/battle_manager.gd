@@ -15,6 +15,8 @@ const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 const MasterPlayerAssembler = preload("res://scripts/master_player_assembler.gd")
 const MasterPowerEvaluator = preload("res://scripts/master_power_evaluator.gd")
 const LevelInformation = preload("res://data/level_information.gd")
+# v7.x: 敌方相位仪主动能力引擎（镜像我方 PhaseInstrumentAbilities，角色对调）
+const EnemyPhaseInstrumentAbilities = preload("res://managers/battle/enemy_phase_instrument_abilities.gd")
 const DEBUG_BATTLE_LOG := false
 
 # v6.0 依赖注入重构: 移除 @onready 单例引用，改用 setup() 方法注入
@@ -123,6 +125,9 @@ func _process(delta: float) -> void:
 	_maybe_refresh_group_target_cache(delta)
 	# v6.6: 驱动相位仪主动能力（火炮连发/核子轰炸/酸雨持续）
 	PhaseInstrumentAbilities.update(delta)
+	# v7.x: 驱动敌方相位仪主动能力（炮击/酸雨/护盾/狂暴）
+	# 必须在 _is_phase_master_battle 短路之前调用，否则相位师战不会驱动敌方能力
+	EnemyPhaseInstrumentAbilities.update(delta)
 
 	# 相位师战斗：不执行波次逻辑
 	if _is_phase_master_battle:
@@ -316,6 +321,8 @@ func end_battle(player_won: bool) -> void:
 	CombatFeedback.reset_throttle()
 	# v6.6: 重置相位仪主动能力状态
 	PhaseInstrumentAbilities.reset_state()
+	# v7.x: 重置敌方相位仪主动能力状态（防止狂暴等残留状态污染下一场战斗）
+	EnemyPhaseInstrumentAbilities.reset_state()
 	# v6.7: 清空相位师排名星级缓存（恢复 3★ 基准，避免影响下一场战斗）
 	if PhaseInstrumentManager and PhaseInstrumentManager.has_method("clear_rank_cache"):
 		PhaseInstrumentManager.clear_rank_cache()
@@ -375,8 +382,14 @@ func end_battle(player_won: bool) -> void:
 # → ②任务通知（读 _battle_result.victory_stars，必须在掉落生成之后）
 # → ③清理相位师战斗状态（必须在掉落生成之后，否则双爆回归）
 # → ④广播 battle_ended（18+ 监听者本帧跑，但已是胜利后第二帧，玩家无感知）。
+#
+# v7.x 性能（二次拆分）：把①掉落生成单独留一帧，②③④移到下一帧。
+# 掉落生成（generate_battle_completion_drops → generate_battle_intel_harvest）
+# 遍历全部击败敌人做情报掷骰，是胜利后单帧最重的操作；单独一帧让渲染线程能在
+# 掉落计算完成后先画一帧（玩家看到胜利动画），下一帧再跑18+监听者+奖励发放。
+# 数据时序安全：_battle_result 在①写入，②③④在下一帧读，call_deferred 保证①先完成。
 func _deferred_end_battle_finalize(player_won: bool) -> void:
-	# ①掉落生成
+	# ①掉落生成（本帧唯一的重负载）
 	if player_won:
 		_damage_system.try_grant_battle_affixes(phase_instrument)
 		_battle_result = _damage_system.generate_battle_completion_drops(
@@ -387,6 +400,12 @@ func _deferred_end_battle_finalize(player_won: bool) -> void:
 			_spawn_system.get_max_player_units_deployed(),
 			_spawn_system.get_player_units_lost()
 		)
+	# 掉落生成完成后，把②③④延到下一帧（让渲染线程先画掉落完成后的胜利画面）
+	call_deferred("_deferred_end_battle_broadcast", player_won)
+
+# v7.x 性能：掉落生成完成后的收尾——任务通知/清状态/广播，单独一帧执行。
+# 依赖 _battle_result（已在 _deferred_end_battle_finalize 写入完毕）。
+func _deferred_end_battle_broadcast(player_won: bool) -> void:
 	# ②通知任务系统（读 _battle_result.victory_stars，必须在掉落生成之后）
 	ManagerLazyLoader.ensure_loaded("quest")
 	var qm = get_node_or_null("/root/QuestManager")
@@ -487,7 +506,8 @@ func _get_current_special_rules() -> Dictionary:
 	var level: int = 1
 	if "current_level" in GameManager:
 		level = int(GameManager.current_level)
-	var li = LevelInformation.new()
+	# v7.x 性能：用全局单例，避免 _check_win_lose 每帧重建 100 关字典
+	var li = LevelInformation.get_shared()
 	return li.get_special_rules(level)
 
 
@@ -615,6 +635,9 @@ func _spawn_enemy_phase_master_base() -> void:
 	if not battlefield.has_method("ensure_enemy_phase_driver"):
 		return
 	_enemy_phase_driver = battlefield.ensure_enemy_phase_driver(_phase_master_config)
+	# v7.x: 敌方相位师基地建立后，触发敌方相位仪主动能力（开局一次性能力 + 周期能力初始化）
+	if _enemy_phase_driver != null and is_instance_valid(_enemy_phase_driver):
+		EnemyPhaseInstrumentAbilities.on_battle_start(_enemy_phase_driver, battlefield)
 
 
 # =========================================================================

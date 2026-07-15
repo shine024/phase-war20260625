@@ -53,6 +53,8 @@ var _has_equipment: bool = false
 var _master_runes: Array = []           # 相位师自带符文 id 列表
 var _spawn_sequence: Array = []         # 出兵序列 [{platform, type}, ...]
 var _spawn_seq_index: int = 0           # 当前序列游标
+# v7.x: 敌方相位仪主动能力缓存（setup 时从相位仪配置读取）
+var _enemy_active_ability: Dictionary = {}
 # v7.x: 产兵 tier 按关卡难度递进（替代旧"恒定 TIER_HIGH"）
 # _game_level：当前游戏关卡号（1-100），0=未知 fallback 到主等级映射
 # _era_progress：当前时代内进度 0.0~1.0（驱动 enhance/tier/rune_count 限量）
@@ -167,6 +169,8 @@ func setup(master_config: Dictionary) -> void:
 	_master_runes = _equipment.get("runes", [])
 	_spawn_sequence = _equipment.get("spawn_sequence", [])
 	_spawn_seq_index = 0
+	# v7.x: 缓存敌方相位仪的主动能力（供 EnemyPhaseInstrumentAbilities 读取）
+	_enemy_active_ability = _read_enemy_active_ability()
 	_unit_limit = int(_master_stats.get("unit_limit", 5))
 	# v7.x: 相位仪卡槽数(unit_capacity)限制产兵数——"出兵x相位仪，卡槽数y成为限制"。
 	# 相位仪 capacity 按稀有度梯度（mk1/common=3, mk2/uncommon=4, mk3/rare=5, mk4·god/mythic=6）。
@@ -209,6 +213,18 @@ func setup(master_config: Dictionary) -> void:
 	var mode_str := "装备模式" if _has_equipment else "经典模式"
 	# [LOG-v5.1] print("[EnemyPhaseDriver] 相位师 %s 基地建立 (HP=%d, era=%d, limit=%d, exhaust=%d, interval=%.1f) [%s]" % [master_name, int(max_hp), era, _unit_limit, _exhaustion_cap, spawn_interval, mode_str])
 	_apply_body_visual_from_master(master_config)
+
+## v7.x: 从当前装备的相位仪读取 active_ability（供 EnemyPhaseInstrumentAbilities 使用）
+func _read_enemy_active_ability() -> Dictionary:
+	var inst_id: String = String(_equipment.get("phase_instrument", ""))
+	if inst_id.is_empty():
+		return {}
+	var inst_cfg: Dictionary = EnemyPhaseEquipment.get_phase_instrument(inst_id)
+	return inst_cfg.get("active_ability", {}) if not inst_cfg.is_empty() else {}
+
+## v7.x: 暴露给 EnemyPhaseInstrumentAbilities 读取当前敌方相位仪的 active_ability
+func get_active_ability() -> Dictionary:
+	return _enemy_active_ability
 
 func _apply_body_visual_from_master(master_config: Dictionary) -> void:
 	var spr := get_node_or_null("Body") as Sprite2D
@@ -516,7 +532,23 @@ func _produce_unit_with_equipment() -> void:
 	# platform_data 仍用于：平台类型判定（_map_platform_type）、视觉 archetype 选取（_pick_visual_archetype_for_platform）、
 	# 以及 platform_id 记录（stats.platform_card_id）。平台间的差异化由这些维度 + master 装备配置体现。
 
+	# v7.x(敌方加成来源明细): 产兵 7 层加成明细收集。
+	# 策略：每步加成前后记录 stats.max_hp / attack_damage / defense 的值，用前后比值作为该步倍率。
+	# 比从配置反算更准确（与实际应用的数值完全一致，含各种 maxf 保护后的真实值）。
+	var _sb_base_hp: float = float(stats.max_hp)
+	var _sb_base_atk: float = float(stats.attack_damage)
+	var _sb_base_def: float = float(stats.defense)
+	var _sb_sources: Array = []
+	var _sb_hp_before: float = _sb_base_hp
+	var _sb_atk_before: float = _sb_base_atk
+	var _sb_def_before: float = _sb_base_def
+
 	EnemyStatResolver.apply_phase_master_to_unit_stats(stats, _master_stats)
+	# 明细：相位师属性加成
+	_sb_sources = _record_spawn_step(_sb_sources, "相位师属性", _sb_hp_before, _sb_atk_before, _sb_def_before, stats)
+	_sb_hp_before = float(stats.max_hp)
+	_sb_atk_before = float(stats.attack_damage)
+	_sb_def_before = float(stats.defense)
 	# v6.13: 叠加战场难度乘区（wave × level × faction_buff）。
 	# 产兵此前只吃 master 加成，缺经典敌兵同款的 wave/level/faction 三个乘区，
 	# 导致产兵攻击力比同关经典敌兵低 2~3 倍。此处补全，让产兵与经典敌兵共享难度曲线。
@@ -525,14 +557,40 @@ func _produce_unit_with_equipment() -> void:
 		wave_idx = BattleManager.get_enemy_wave_index()
 	var ctx := EnemyStatResolver.make_default_context(wave_idx)
 	EnemyStatResolver.apply_field_multipliers_to_unit_stats(stats, ctx)
+	# 明细：战场难度（波次×关卡×势力）
+	var _field_label: String = "战场难度(波次%d" % (wave_idx + 1)
+	if not ctx.faction_id.is_empty():
+			var _fn: String = str(EnemyStatResolver._FACTION_DISPLAY_NAMES.get(ctx.faction_id, ctx.faction_id))
+		_field_label += "/%s Lv%d" % [_fn, ctx.faction_level]
+	_field_label += ")"
+	_sb_sources = _record_spawn_step(_sb_sources, _field_label, _sb_hp_before, _sb_atk_before, _sb_def_before, stats)
+	_sb_hp_before = float(stats.max_hp)
+	_sb_atk_before = float(stats.attack_damage)
+	_sb_def_before = float(stats.defense)
 	# v6.14: 相位师符文加成 —— 把 master 自带符文的 primary_effect 应用到产兵 stats。
 	# 符文影响产兵（玩家选择"显示+影响产兵"），与 master 等级/势力呼应。
 	_apply_master_rune_bonus(stats)
+	# 明细：符文加成
+	_sb_sources = _record_spawn_step(_sb_sources, "符文", _sb_hp_before, _sb_atk_before, _sb_def_before, stats)
+	_sb_hp_before = float(stats.max_hp)
+	_sb_atk_before = float(stats.attack_damage)
+	_sb_def_before = float(stats.defense)
 	# v6.14: 出兵序列 elite/boss 标记加成 —— 序列里标记 elite 的产兵额外+25%攻/血，boss +50%。
 	# 让序列不只是"出什么平台"，还有强度节奏（精英/boss 波次更强）。
 	_apply_sequence_entry_bonus(stats, seq_entry_type)
+	# 明细：出兵序列（elite/boss 才有加成，普通=×1.0）
+	var _seq_label: String = "出兵序列(%s)" % (seq_entry_type if not seq_entry_type.is_empty() else "普通")
+	_sb_sources = _record_spawn_step(_sb_sources, _seq_label, _sb_hp_before, _sb_atk_before, _sb_def_before, stats)
+	_sb_hp_before = float(stats.max_hp)
+	_sb_atk_before = float(stats.attack_damage)
+	_sb_def_before = float(stats.defense)
 	# v6.14: 相位师相位仪加成 —— 接入 _get_enemy_phase_instrument_bonus（此前字段空转，v6.14 已补全数据）
 	_apply_enemy_phase_instrument_bonus(stats)
+	# 明细：相位仪加成
+	_sb_sources = _record_spawn_step(_sb_sources, "相位仪", _sb_hp_before, _sb_atk_before, _sb_def_before, stats)
+	_sb_hp_before = float(stats.max_hp)
+	_sb_atk_before = float(stats.attack_damage)
+	_sb_def_before = float(stats.defense)
 	# v8 批次2: 精英/boss 词缀（seq_entry_type=elite/boss 时 roll 并应用到 stats）。
 	# 相位师产兵走 ConstructUnit，lifesteal/chain/splash 通过 bullet 命中的
 	# apply_on_hit_side_effects 自动触发（读 shooter.stats）；反伤由 stats.armor_reflect 字段承载。
@@ -540,6 +598,11 @@ func _produce_unit_with_equipment() -> void:
 	if not _elite_affixes.is_empty():
 		var _hp_ratio_pm: float = clampf(float(stats.max_hp) / maxf(1.0, float(stats.max_hp)), 0.0, 1.0)
 		EnemyAffixes.apply_to_stats(stats, _elite_affixes)
+	# 明细：精英词缀
+	_sb_sources = _record_spawn_step(_sb_sources, "精英词缀", _sb_hp_before, _sb_atk_before, _sb_def_before, stats)
+	_sb_hp_before = float(stats.max_hp)
+	_sb_atk_before = float(stats.attack_damage)
+	_sb_def_before = float(stats.defense)
 	# v7.3: 配档加成（等量我方改造满配+符文满配的总加成）。
 	# v7.x: 配档不再恒定 TIER_HIGH，改按关卡难度递进（setup 缓存的 _pm_tier）。
 	# 时代早期/中段 → 中配(atk+20%/hp+18%/def+10%)，时代后期/Boss → 高配(atk+35%/hp+30%/def+15%)。
@@ -566,6 +629,9 @@ func _produce_unit_with_equipment() -> void:
 		stats.defense_light = maxf(0.0, stats.defense_light * (1.0 + _tier_def))
 		stats.defense_armor = maxf(0.0, stats.defense_armor * (1.0 + _tier_def))
 		stats.defense_air = maxf(0.0, stats.defense_air * (1.0 + _tier_def))
+	# 明细：配档加成（含 tier 名）
+	var _tier_name: String = str(_pm_bonus.get("name", _pm_tier))
+	_sb_sources = _record_spawn_step(_sb_sources, "配档(%s)" % _tier_name, _sb_hp_before, _sb_atk_before, _sb_def_before, stats)
 	stats.platform_card_id = platform_id
 
 	## 生成 ConstructUnit
@@ -576,6 +642,24 @@ func _produce_unit_with_equipment() -> void:
 		unit.setup_with_enemy_visual(false, stats, visual_archetype_id)
 	else:
 		unit.setup(false, stats)
+	# v7.x(敌方加成来源明细): 把产兵 7 层加成明细挂到单位 meta，供情报面板显示。
+	# base 取 _build_stats_from_archetype 后的值（含 enhance_level，未乘任何战场加成）；
+	# final 取乘完所有加成后的 stats 值；total_*_mul = base→final 的总比值。
+	var _sb_total_hp: float = _safe_ratio(float(stats.max_hp), _sb_base_hp)
+	var _sb_total_atk: float = _safe_ratio(float(stats.attack_damage), _sb_base_atk)
+	unit.set_meta("enemy_bonus_breakdown", {
+		"base_hp": _sb_base_hp,
+		"base_atk": _sb_base_atk,
+		"base_def": _sb_base_def,
+		"final_hp": float(stats.max_hp),
+		"final_atk": float(stats.attack_damage),
+		"final_def": float(stats.defense),
+		"sources": _sb_sources,
+		"ng_plus": 1.0,            # 产兵无二周目加成
+		"total_hp_mul": _sb_total_hp,
+		"total_atk_mul": _sb_total_atk,
+		"kind": "spawn",
+	})
 	# v7.x: 敌方产兵也有布置时间——入战后启动部署虚影（与我方对称，复用 calculate_deploy_delay 公式）。
 	# 部署期间半透明、不动、不开火，可被攻击；is_deploy_ghost 字段被 battle_manager 鸭子识别，
 	# 部署期不计入存活数（不影响产兵上限与胜负判定）。
@@ -1051,5 +1135,39 @@ func _sync_enemy_weapon_slot_damage(stats: UnitStats, factor: float) -> void:
 		# WeaponResource 是 Resource（非 Dictionary），用 set/get 访问 damage 字段
 		if "damage" in w:
 			w.damage = float(w.damage) * factor
+
+
+## v7.x(敌方加成来源明细): 记录产兵单步加成的 HP/攻击/防御倍率到 sources 数组。
+## 通过前后值比值反推倍率（比从配置反算更准确，与实际应用值完全一致）。
+## 追加一条 {label, hp_mul, atk_mul, def_mul} 记录，若该步无任何变化（全×1.0）也记录（便于完整追溯）。
+func _record_spawn_step(sources: Array, label: String, hp_before: float, atk_before: float, def_before: float, stats: UnitStats) -> Array:
+	var hp_after: float = float(stats.max_hp)
+	var atk_after: float = float(stats.attack_damage)
+	var def_after: float = float(stats.defense)
+	var hp_mul: float = _safe_ratio(hp_after, hp_before)
+	var atk_mul: float = _safe_ratio(atk_after, atk_before)
+	var def_mul: float = _safe_ratio(def_after, def_before)
+	var parts: Array = []
+	if absf(hp_mul - 1.0) > 0.005:
+		parts.append("血×%.2f" % hp_mul)
+	if absf(atk_mul - 1.0) > 0.005:
+		parts.append("攻×%.2f" % atk_mul)
+	if absf(def_mul - 1.0) > 0.005:
+		parts.append("防×%.2f" % def_mul)
+	var full_label: String = label
+	if not parts.is_empty():
+		full_label += "(%s)" % " ".join(parts)
+	else:
+		full_label += "(无加成)"
+	sources.append({"label": full_label, "hp_mul": hp_mul, "atk_mul": atk_mul, "def_mul": def_mul})
+	return sources
+
+
+## v7.x(敌方加成来源明细): 安全比值（除零保护）。after/before，before≤0 时返回 1.0。
+func _safe_ratio(after: float, before: float) -> float:
+	if before <= 0.0:
+		return 1.0
+	return after / before
+
 
 

@@ -1365,3 +1365,111 @@ inf_19单兵电台(ally_bonus)、arm_15数据链(ally_hit_bonus)、for_10指挥�
 **不动的东西:** `build_stats_from_card`（已是统一入口）、`enemy_stat_resolver`（乘区链不变）、养成面板（数据源不变）、InstanceRegistry（实例化机制不变）、`captured_card_stats.gd`（保留作 fallback）。
 
 **验证说明:** smoke test 10 PASS（核心数据全部正确）；全项目 `--check-only` 因项目体量 5 分钟超时属既有现象（autoload 链构建阶段无语法错误）。**注:** `build_card_resource` 在 `--script` 测试模式下因 ModificationRegistry autoload 未加载会失败，实际游戏运行时正常。
+
+## v7.x 敌方相位仪独特技能 + 改造独特机制 (2026-07-13)
+
+**背景:** 用户提出两大方向提升战斗可玩性——① 给敌方相位师的相位仪增加独特技能（敌我互通+新增特殊相位仪），② 给改造增加独特机制（成长型/debuff型/兵种专属机制型）。
+
+**核心策略:** 敌方能力引擎镜像我方 PhaseInstrumentAbilities（角色对调），新增 4 个特殊相位仪仅相位师掉落；改造机制走成熟三步范式（UnitStats 加字段 + unit_stats_table 双向回写 + modification_registry 加 match 分支 + handler 加触发逻辑）。
+
+### 第一部分：敌方相位仪独特技能（4 阶段）
+
+**阶段 A：新建 EnemyPhaseInstrumentAbilities 引擎**
+| 文件 | 改动 |
+|------|------|
+| `managers/battle/enemy_phase_instrument_abilities.gd`（新增） | 镜像我方 PhaseInstrumentAbilities，角色对调（敌方能力打玩家、buff 敌兵）；4 个敌方能力：enemy_artillery_barrage(periodic 炮击)/enemy_nano_swarm(on_battle_start 酸雨)/enemy_shield_bulwark(on_battle_start 护盾)/enemy_rage_buff(periodic 狂暴)；复用所有弹道/特效辅助，配色偏威胁（红/暗紫） |
+
+**阶段 B-D：数据接入 + 战斗驱动 + 特殊相位仪**
+| 文件 | 改动 |
+|------|------|
+| `data/json/enemy_phase_instruments.json` | 6 个高阶相位仪加 active_ability 字段（mk3/mk4/god 级） |
+| `scenes/units/enemy_phase_field_driver.gd` | setup 缓存 _enemy_active_ability + get_active_ability() getter + _read_enemy_active_ability() |
+| `managers/battle/battle_manager.gd` | preload + _process 加 update（短路前）+ _spawn_enemy_phase_master_base 加 on_battle_start + end_battle 加 reset_state |
+| `data/phase_instruments.gd` | 新增 4 个特殊相位仪（pi_special_rage/void/aegis/nova，is_generic=false，acquire_rule="phase_master_drop"，复用我方 active_ability） |
+| `managers/game_manager.gd` | _grant_phase_master_victory_reward 加特殊相位仪掉落（6★20%/7★40%）+ _maybe_roll_special_instrument_drop 势力映射 |
+| `managers/battle/battle_spectacle.gd` | _on_ability_triggered 加 enemy_* 分支 + _play_enemy_warning_flash 演出 |
+
+### 第二部分：改造独特机制（5 阶段）
+
+**阶段 E：修通断链钩子（基础设施）**
+| 文件 | 改动 |
+|------|------|
+| `scenes/units/construct_unit.gd` | _die 加 ModuleEffectHandler.on_kill（修复 shield_on_kill 空转）+ take_damage 加 on_damage_taken 钩子 |
+| `scenes/units/enemy_unit.gd` / `scenes/units/swarm_enemy_slot.gd` | take_damage 加破甲/标记/巷战免伤 meta 读取 |
+| `scripts/battle/module_effect_handler.gd` | 新增 on_damage_taken 钩子（活跃路径） |
+
+**阶段 F：成长型机制（连击 + 怒气）**
+- UnitStats +6 字段：combo_counter/combo_max/combo_bonus_mult + rage_counter/rage_max/rage_bonus_mult
+- handler 新增 _tick_combo（命中计数→满后爆发）/ _accumulate_rage（受击计数→满后激活）
+- 3 个新改造：inf_23_combat_stimulant（连击5次+25%）、arm_16_battle_frenzy（怒气8次+35%）、air_15_afterburner（连击3次+40%）
+
+**阶段 G：debuff 型机制（破甲叠加 + 标记系统）**
+- UnitStats +5 字段：armor_break_per_hit/armor_break_max_stacks + mark_chance/mark_duration/mark_vuln_bonus
+- handler 新增 _apply_armor_break（命中挂 meta 降防御）/ _apply_mark（命中概率挂标记易伤）
+- 3 个新改造：art_13_apfsds_sabot（破甲-8%×5层）、rec_13_target_designator（标记30%+25%易伤）、aa_13_radar_lock（对空标记40%+30%易伤）
+
+**阶段 H：兵种专属机制（工兵爆破 + 步兵巷战 + 炮兵反击）**
+- UnitStats +3 字段：siege_bonus_pct + urban_defense_bonus + has_counter_battery
+- handler 新增 _apply_siege_bonus（对堡垒/装甲百分比掉血）/ _apply_counter_battery_mark（被攻击时标记攻击者）
+- 3 个新改造：eng_11_breaching_charge（对堡垒5%掉血）、inf_24_urban_warfare（受装甲/空军减伤50%）、art_14_counter_battery（被攻击标记+优先反击）
+
+**阶段 I：UI 翻译补齐**
+| 文件 | 改动 |
+|------|------|
+| `scripts/ui/mod_effect_labels.gd` | 12 个新 effect key 翻译（combo_system/rage_system/armor_break/target_marking/siege_bonus/urban_defense/counter_battery 等） |
+
+**关键设计决策:**
+1. **敌我能力引擎分离**——EnemyPhaseInstrumentAbilities 独立类，角色对调逻辑不污染我方，各自独立 reset
+2. **复用 phase_instrument_ability_triggered 信号**——params 加 is_enemy:true 区分来源，battle_spectacle 按 ability_id 分派，零新监听链路
+3. **特殊相位仪仅相位师掉落**——is_generic=false 不进商店，acquire_rule="phase_master_drop"，6★20%/7★40% 概率
+4. **9 个新改造全部新建**——不动现有改造 ID，避免平衡性回归风险
+5. **兵种专属机制用条件字段**——urban_defense_bonus/armor_break_per_hit 复用 attack_fort_bonus 条件型模式，零侵入
+6. **炮兵反击走标记系统**——art_14 不直接反弹伤害，而是标记攻击者+炮兵优先攻击，符合"炮兵反击炮击"语义
+7. **修通 on_kill/on_damage_taken 断链是前置**——shield_on_kill 复活 + 为后续机制铺路
+8. **百分比掉血用真实伤害**——target.hp × 5% 绕过防御，高防堡垒不被削弱
+
+**验证:** 3 个 smoke test 全 PASS（new_mod_mechanics 9/9 + phase_instrument_drop 21/21 + enemy_instrument_abilities 8/8）；Grep 静态核对全链路拼写一致（UnitStats 7新字段 + table 14处回写 + registry 22处match + handler 7新函数 + 9改造定义 + battle_manager 3接入点 + 4特殊相位仪 + 12翻译）。全项目 `--check-only` 因项目体量 5 分钟超时属既有现象（smoke test 已验证所有新文件正确编译加载）。
+
+**未处理（留待后续）:** 反伤/亡语爆炸机制（on_damage_taken 钩子已铺好）、充能爆发型机制、敌方召唤增援波能力（需突破 unit_limit）、炮兵反击的 AI 目标优先级（art_14 标记已挂载但 construct_unit_ai 的目标选择权重待接入）。
+
+## v7.x 改造特殊机制扩展第二批次 (2026-07-13)
+
+**背景:** 用户要求继续扩展改造特殊机制。基于调研确认 fort/universal 两兵种零新机制改造、4 个改造描述与实现严重不符（语义错配）、亡语钩子完全缺失。本轮修复 4 个 + 新增 8 个，覆盖 5 类全新机制。
+
+**5 类新机制 + 12 个改造:**
+
+| # | 兵种 | 改造 | 机制类型 | 新建/修复 |
+|---|------|------|---------|----------|
+| 1 | 步兵 | inf_18_ifak | 濒死复活（HP归零复活15%，每战1次） | 修复 |
+| 2 | 侦察 | rec_10_medkit | 濒死复活 | 修复 |
+| 3 | 装甲 | arm_03_reactive_armor | 爆反反伤（受击反弹30%伤害×3层） | 修复 |
+| 4 | 装甲 | arm_04_aps | 拦截（30%概率完全免伤×3次） | 修复 |
+| 5 | 工兵 | eng_12_reactive_engineering | 爆反反伤 | 新增 |
+| 6 | 步兵 | inf_25_medic_sacrifice | 亡语治疗（死亡治疗周围友军20%max_hp） | 新增 |
+| 7 | 工兵 | eng_13_supply_cache | 亡语治疗 | 新增 |
+| 8 | 堡垒 | for_11_advanced_minefield | 雷场爆炸（150伤害） | 新增 |
+| 9 | 堡垒 | for_12_anti_tank_trench | 区域减速（范围-40%移速） | 新增 |
+| 10 | 堡垒 | for_13_command_bunker | 指挥光环（+15%暴击） | 新增 |
+| 11 | 通用 | gen_14_phase_shield_gen | 相位护盾（2000池独立分流+回复） | 新增 |
+| 12 | 通用 | gen_15_laser_marker | 激光指示器（命中100%标记+20%易伤） | 新增 |
+
+**关键设计决策:**
+1. **复活用独立 on_death 钩子**——不混用 RuneSpecialHandler（两套数据通路：改造stats vs 符文meta）
+2. **拦截在 resolve_hit 之后、hp扣减之前 return**——绕过伤害符合"没被打到"语义，跳过受击反馈
+3. **反伤作用于实际扣血量(hp_loss)**——复用 on_damage_taken 现有签名，与项目惯例一致
+4. **亡语治疗与复活共享 on_death**——复活 return true 时亡语不触发（复活了就没死），逻辑自洽
+5. **堡垒区域机制用 meta 刷新模式**——on_tick 每帧给范围内敌方/友军挂 1 秒 meta，单位读 meta 生效，无需新建区域节点
+6. **相位护盾用独立池(_phase_shield_current)**——不复用 shield 字段（避免与护盾卡/符文/法则冲突），在常规护盾之前扣减
+7. **4个修复改造保留旧 effect key 在 registry**——向后兼容旧存档（ifak_heal/heat_immunity_once/missile_intercept 映射保留），改造 effects 改指向新 key
+
+**关键文件:**
+- `resources/unit_stats.gd` — +16 新字段（复活3+爆反拦截4+亡语2+堡垒4+相位护盾3）
+- `resources/unit_stats_table.gd` — base_dict + 写回各加16字段
+- `scripts/systems/modification_registry.gd` — +15 match 分支（含 charges/radius 子key）
+- `scripts/battle/module_effect_handler.gd` — +9 新函数（on_death/_revive_unit/_apply_reflect_damage/try_intercept/_apply_death_heal_allies/_apply_slow_aura/_apply_command_aura/_regen_phase_shield/_apply_laser_mark）+ 扩展 on_tick/on_damage_taken/apply_on_hit_side_effects
+- `scenes/units/construct_unit.gd` — _die 加 on_death（复活+亡语）+ take_damage 加 try_intercept + 相位护盾分流 + on_revived 重置 + _phase_shield_current 成员变量
+- `scenes/units/enemy_unit.gd` / `scenes/units/swarm_enemy_slot.gd` — take_damage 加 try_intercept
+- `data/modification_modules/*.gd` — 6 文件（infantry/recon/armor/engineer/fort/universal）4修复+8新增
+- `scripts/ui/mod_effect_labels.gd` — +15 翻译
+
+**验证:** smoke test 7/7 全 PASS（12 改造映射全对 + 复活/反伤/拦截/亡语/雷场/相位分流数值公式全对）；Grep 静态核对全链路拼写一致（UnitStats 9字段 + table 18处回写 + registry 28处match + handler 9新函数 + construct_unit 8接入点 + 12改造定义全在）；第一批 smoke test 回归验证 9/9 全 PASS（无回归）。

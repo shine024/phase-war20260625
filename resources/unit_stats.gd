@@ -200,6 +200,109 @@ var has_hp_regen_mutation: bool = false
 var has_platform_hp_mutation: bool = false
 
 # ─────────────────────────────────────────────
+#  v7.x 新机制字段（成长型 / debuff 型 / 兵种专属）
+#  全部默认值 0/false，未装备相关改造时行为零变化（向后兼容）
+# ─────────────────────────────────────────────
+
+# ── 成长型：连击（攻击积累→满后爆发）──
+## 连击当前计数（运行时递增，不存档）
+var combo_counter: int = 0
+## 连击触发阈值（0=禁用，5=5次命中后爆发）
+var combo_max: int = 0
+## 连击爆发倍率（0.3 = 爆发时额外 +30% 伤害）
+var combo_bonus_mult: float = 0.3
+
+# ── 成长型：怒气（受击积累→满后临时增益）──
+## 怒气当前计数（运行时递增，不存档）
+var rage_counter: int = 0
+## 怒气触发阈值（0=禁用，8=受击8次后激活）
+var rage_max: int = 0
+## 怒气激活后的攻击力加成（0.35 = +35%）
+var rage_bonus_mult: float = 0.35
+
+# ── debuff 型：破甲叠加（每次命中降目标防御）──
+## 每次命中降低目标防御的比例（0.08 = -8% 防御/层）
+var armor_break_per_hit: float = 0.0
+## 破甲叠加层数上限（5 = 最多叠 5 层，0=禁用）
+var armor_break_max_stacks: int = 0
+
+# ── debuff 型：标记系统（命中概率标记，被标记受额外伤害）──
+## 标记触发概率（0.0~1.0，0.30 = 30% 概率标记）
+var mark_chance: float = 0.0
+## 标记持续时间（秒）
+var mark_duration: float = 5.0
+## 被标记目标受到的额外伤害比例（0.25 = +25% 伤害）
+var mark_vuln_bonus: float = 0.0
+
+# ── debuff 型：暴击标注系统（侦查命中概率标注，被标注目标受攻击暴击率提升）──
+## 暴击标注触发概率（0.0~1.0，0.30 = 30% 概率标注）
+var crit_mark_chance: float = 0.0
+## 暴击标注持续时间（秒）
+var crit_mark_duration: float = 5.0
+## 被标注目标受到攻击时的暴击率加成（0.50 = +50% 暴击率）
+var crit_mark_bonus: float = 0.50
+
+# ── 兵种专属：工兵爆破（对堡垒/装甲百分比掉血）──
+## 对 FORT/ARMOR 目标造成的当前 HP 百分比伤害（0.05 = 5%）
+var siege_bonus_pct: float = 0.0
+
+# ── 兵种专属：步兵巷战（受装甲/空军攻击减免）──
+## 受 ARMOR/AIR 攻击时的伤害减免比例（0.50 = 减伤 50%）
+var urban_defense_bonus: float = 0.0
+
+# ── 兵种专属：炮兵反击（被攻击时标记攻击者）──
+## 是否启用炮兵反击（被攻击时给攻击者挂标记）
+var has_counter_battery: bool = false
+
+# ═══════════════════════════════════════════════════════════════
+#  v7.x 第二批次新机制字段（复活/爆反拦截/亡语/区域控制/相位护盾）
+# ═══════════════════════════════════════════════════════════════
+
+# ── 濒死复活（IFAK/急救包修复语义）──
+## 是否启用死亡复活（HP归零时复活，每场战斗1次）
+var revive_on_death: bool = false
+## 复活时的血量比例（0.15 = 复活到 15% max_hp）
+var revive_hp_ratio: float = 0.15
+## 运行时标记：本战是否已复活过（防重复触发）
+var has_revived: bool = false
+
+# ── 爆反装甲（受击时反伤周围敌人）──
+## 反伤比例（0.30 = 反弹30%实际伤害给攻击者）
+var reflect_damage_pct: float = 0.0
+## 反伤层数（-1=无限，3=触发3次后失效）
+var reflect_charges: int = -1
+
+# ── 拦截（概率伤害归零）──
+## 拦截概率（0.30 = 30%概率完全免伤）
+var intercept_chance: float = 0.0
+## 拦截次数（-1=无限，3=拦截3次后失效）
+var intercept_charges: int = -1
+
+# ── 亡语治疗（死亡时治疗周围友军）──
+## 死亡时治疗周围友军的比例（基于自身max_hp，0.20 = 治疗20%）
+var death_heal_allies_pct: float = 0.0
+## 亡语治疗半径（像素）
+var death_heal_radius: float = 150.0
+
+# ── 堡垒区域控制 ──
+## 雷场伤害（敌人进入范围时触发的一次性爆炸伤害）
+var minefield_damage: float = 0.0
+## 区域减速比例（范围内敌方移速降低，0.40 = -40%移速）
+var slow_aura_pct: float = 0.0
+## 区域减速半径
+var slow_aura_radius: float = 0.0
+## 指挥光环加成（范围内友军暴击/命中加成，0.15 = +15%）
+var command_aura_bonus: float = 0.0
+
+# ── 相位护盾（独立池分流）──
+## 相位护盾池容量（伤害先扣相位池，池空才走常规护盾/hp）
+var phase_shield_pool: float = 0.0
+## 相位护盾每秒回复量
+var phase_shield_regen: float = 0.0
+## 是否启用激光指示器（命中100%标记目标，复用mark meta）
+var laser_mark_on_hit: bool = false
+
+# ─────────────────────────────────────────────
 #  势力变体特殊属性（由 FactionCardGenerator 注入）
 # ─────────────────────────────────────────────
 

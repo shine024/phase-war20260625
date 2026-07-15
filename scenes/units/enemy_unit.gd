@@ -354,6 +354,15 @@ func _apply_archetype_stats() -> void:
 	_base_attack_interval = attack_interval
 	_base_stats_ready = true
 	_apply_visual_from_archetype(cfg)
+	# v7.x(敌方加成来源明细): 把 resolve_classic_enemy 返回的加成明细挂到单位 meta，
+	# 供情报面板显示"为什么这么强"。final_* 字段此时记录乘完乘区链的值（不含二周目/律法/词缀），
+	# _apply_ng_plus_scaling 会更新 ng_plus；律法减益/精英词缀不计入（属"我方施加"或"词缀系统"）。
+	var _breakdown: Dictionary = r.get("bonus_breakdown", {})
+	if not _breakdown.is_empty():
+		_breakdown["final_hp"] = float(hp)
+		_breakdown["final_atk"] = float(attack_damage)
+		_breakdown["final_def"] = float(defense)
+		set_meta("enemy_bonus_breakdown", _breakdown)
 
 
 ## v8: 激活 archetype tags 驱动的行为差异（死字段→生效）。
@@ -480,6 +489,15 @@ func _apply_ng_plus_scaling() -> void:
 		stats.attack_air = maxf(0.1, float(stats.attack_air) * mult)
 		if "defense" in stats:
 			stats.defense = maxf(0.0, float(stats.defense) * mult)
+	# v7.x(敌方加成来源明细): 二周目叠加后更新明细的 ng_plus 字段与 final 值，
+	# 让面板的"总倍率"包含二周目、"最终值"反映乘完二周目后的当前值。
+	if has_meta("enemy_bonus_breakdown"):
+		var _bd: Dictionary = get_meta("enemy_bonus_breakdown")
+		_bd["ng_plus"] = mult
+		_bd["final_hp"] = float(hp)
+		_bd["final_atk"] = float(attack_damage)
+		_bd["final_def"] = float(defense)
+		set_meta("enemy_bonus_breakdown", _bd)
 
 
 ## v6.4: 推断敌人 unit_subtype（炮兵/支援/堡垒/防空）
@@ -1247,11 +1265,41 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		dmg_red = minf(0.60, dmg_red + float(damage_reduction))
 		var hit: Dictionary = CardGridDamage.resolve_hit(amount, eff_def, dodge, dmg_red)
 		hp_loss = float(hit.get("hp_loss", amount))
+		# v7.x: 新机制 meta 读取（破甲叠加/标记易伤/巷战免伤）——与 construct_unit 口径一致
+		# 这些 meta 由攻击者的 ModuleEffectHandler.apply_on_hit_side_effects 挂载
+		if has_meta("_armor_break_stacks"):
+			var _ab_stacks: int = int(get_meta("_armor_break_stacks", 0))
+			var _ab_ratio: float = float(get_meta("_armor_break_ratio", 0.0))
+			if _ab_stacks > 0 and _ab_ratio > 0.0:
+				hp_loss = hp_loss * maxf(0.1, 1.0 - _ab_stacks * _ab_ratio)
+		if has_meta("_marked_until"):
+			var _mark_expire: float = float(get_meta("_marked_until", 0.0))
+			var _now: float = Time.get_ticks_msec() / 1000.0
+			if _now < _mark_expire:
+				var _vuln: float = float(get_meta("_mark_vuln_bonus", 0.0))
+				if _vuln > 0.0:
+					hp_loss = hp_loss * (1.0 + _vuln)
+			else:
+				remove_meta("_marked_until")
+				remove_meta("_mark_vuln_bonus")
+		# v8.x: 暴击标注惰性清理（加成按时间戳在 bullet.gd 判定，过期 meta 顺带清掉）
+		if has_meta("_crit_marked_until"):
+			var _cm_expire: float = float(get_meta("_crit_marked_until", 0.0))
+			if Time.get_ticks_msec() / 1000.0 >= _cm_expire:
+				remove_meta("_crit_marked_until")
+				remove_meta("_crit_mark_bonus")
+		# v7.x: 巷战免伤（敌方也可装备 infantry_mods 改造，若 stats 有 urban_defense_bonus 则生效）
+		if stats != null and stats.urban_defense_bonus > 0.0 and attacker_kind >= 0:
+			if attacker_kind == GC.CombatKind.ARMOR or attacker_kind == GC.CombatKind.AIR:
+				hp_loss = hp_loss * (1.0 - stats.urban_defense_bonus)
 		if bool(hit.get("apply_recoil", false)) and _presentation_card_grid:
 			_play_card_hit_recoil()
 		if bool(hit.get("apply_stun", false)):
 			var extra: float = 0.08 + clampf(hp_loss / maxf(max_hp, 1.0), 0.0, 0.25) * 0.35
 			_hit_stun_left = maxf(_hit_stun_left, extra)
+	# v7.x 第二批：拦截判定（概率伤害归零，在 hp 扣减之前）
+	if stats != null and ModuleEffectHandler.try_intercept(self):
+		return  # 拦截成功，跳过所有伤害
 	# 丢弃已释放的旧来源，避免死亡结算读到悬挂 Node
 	if not is_instance_valid(last_damage_source):
 		last_damage_source = null

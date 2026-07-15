@@ -302,6 +302,10 @@ func is_quest_revealed(quest_id: String) -> bool:
 ## 设置任务分支结果（补剧情.txt 第四幕"加入/拒绝/拖延真实者"选择）
 ## branch_key 存入 StoryManager story_flags，供后续剧情节点判定
 func set_quest_branch(quest_id: String, branch_key: String, branch_value: Variant = true) -> void:
+	# v7.x 性能：StoryManager 延迟加载，访问前确保已实例化
+	var _mll: Node = get_node_or_null("/root/ManagerLazyLoader")
+	if _mll and _mll.has_method("ensure_loaded"):
+		_mll.ensure_loaded("story")
 	var sm: Node = get_node_or_null("/root/StoryManager")
 	if sm and sm.has_method("set_story_flag"):
 		# 分支标记命名：quest_<quest_id>_<branch_key>
@@ -316,6 +320,10 @@ func set_quest_branch(quest_id: String, branch_key: String, branch_value: Varian
 
 ## 获取任务分支结果（供剧情节点查询玩家选择）
 func get_quest_branch(quest_id: String, branch_key: String) -> Variant:
+	# v7.x 性能：StoryManager 延迟加载，访问前确保已实例化
+	var _mll: Node = get_node_or_null("/root/ManagerLazyLoader")
+	if _mll and _mll.has_method("ensure_loaded"):
+		_mll.ensure_loaded("story")
 	var sm: Node = get_node_or_null("/root/StoryManager")
 	if sm and sm.has_method("get_story_flag"):
 		return sm.get_story_flag("quest_%s_%s" % [quest_id, branch_key], null)

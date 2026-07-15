@@ -89,6 +89,11 @@ func _connect_global_signals() -> void:
 		if SignalBus.card_equipped.is_connected(_on_card_equipped):
 			SignalBus.card_equipped.disconnect(_on_card_equipped)
 		SignalBus.card_equipped.connect(_on_card_equipped)
+		# v7.x：换装原子信号（避免 card_added_to_backpack(old) + card_equipped(new) 双信号中间态导致背包重复）
+		if SignalBus.has_signal("card_swapped"):
+			if SignalBus.card_swapped.is_connected(_on_card_swapped):
+				SignalBus.card_swapped.disconnect(_on_card_swapped)
+			SignalBus.card_swapped.connect(_on_card_swapped)
 		if SignalBus.backpack_changed.is_connected(_on_backpack_changed):
 			SignalBus.backpack_changed.disconnect(_on_backpack_changed)
 		SignalBus.backpack_changed.connect(_on_backpack_changed)
@@ -124,6 +129,8 @@ func _disconnect_global_signals() -> void:
 			SignalBus.card_added_to_backpack.disconnect(_on_card_added)
 		if SignalBus.card_equipped.is_connected(_on_card_equipped):
 			SignalBus.card_equipped.disconnect(_on_card_equipped)
+		if SignalBus.has_signal("card_swapped") and SignalBus.card_swapped.is_connected(_on_card_swapped):
+			SignalBus.card_swapped.disconnect(_on_card_swapped)
 		if SignalBus.backpack_changed.is_connected(_on_backpack_changed):
 			SignalBus.backpack_changed.disconnect(_on_backpack_changed)
 		if SignalBus.has_signal("instance_disposed") and SignalBus.instance_disposed.is_connected(_on_instance_disposed):
@@ -195,6 +202,32 @@ func _on_card_equipped(_slot_index: int, card_id: String, _card_type: String) ->
 		# 仅在“装备增量路径失败并回退全量刷新”时短路下一次 model cards_changed，避免重复 rebuild。
 		_suppress_next_cards_changed_refresh = true
 	_refresh_card_grid()
+
+## v7.x：换装原子回调——槽位 old_card 被替换为 new_card_id（拖卡到已占用槽位触发）。
+## 关键顺序：先移新卡出包（此时 _data 里一定有它，remove 必成功），再添旧卡入包。
+## 原 emit 顺序是 card_added_to_backpack(old) → card_equipped(new)，中间态背包同时含两卡，
+## 叠加 remove_card 静默成功会因时序竞态导致新卡未移除 → 背包多一张。此处消除该窗口。
+func _on_card_swapped(_slot_index: int, old_card: CardResource, new_card_id: String) -> void:
+	if _data == null:
+		return
+	# 1. 先移新卡出包（换装瞬间新卡必在 _data 中，remove 必成功）
+	var removed: bool = _data.remove_card(new_card_id, true)
+	if not removed:
+		push_warning("[BackpackPresenter] card_swapped: 新卡 %s 未在背包中找到（可能时序异常）" % new_card_id)
+	# 2. 再添旧卡入包（consume pending 里可能的幽灵记录，避免下次 load_pending 兑现成重复）
+	if old_card != null:
+		var old_id: String = old_card.instance_id if not old_card.instance_id.is_empty() else old_card.card_id
+		if SaveManager and SaveManager.has_method("consume_pending_backpack_card_id"):
+			SaveManager.consume_pending_backpack_card_id(old_id)
+		_data.add_extra_card(old_id, true)
+	# 增量移除新卡的视觉（若可见且支持），旧卡加入由全量刷新覆盖
+	var can_incremental: bool = _view and _view.has_method("remove_last_card_by_id")
+	if can_incremental and removed and _is_view_visible():
+		_view.remove_last_card_by_id(new_card_id)
+	if not _is_view_visible():
+		_grid_dirty_while_hidden = true
+	else:
+		_refresh_card_grid()
 
 func _on_backpack_changed() -> void:
 	pass

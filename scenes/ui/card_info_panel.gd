@@ -20,6 +20,7 @@ const MasterPowerEvaluator = preload("res://scripts/master_power_evaluator.gd")
 const MasterPlayerAssembler = preload("res://scripts/master_player_assembler.gd")
 const RuneDefs = preload("res://data/runes.gd")
 const RunewordDefs = preload("res://data/runewords.gd")
+const RunewordMatcher = preload("res://managers/runeword_matcher.gd")
 const EnemyPhaseEquipment = preload("res://data/enemy_phase_equipment.gd")
 const UnitStatsTable = preload("res://resources/unit_stats_table.gd")
 const BackpackCombatPreview = preload("res://scenes/ui/backpack_combat_preview.gd")
@@ -30,6 +31,7 @@ const EvolvePanelScene = preload("res://scenes/ui/evolution_panel.tscn")
 const ModificationRegistry = preload("res://scripts/systems/modification_registry.gd")
 const ModEffectLabels = preload("res://scripts/ui/mod_effect_labels.gd")
 const AuraData = preload("res://data/aura_data.gd")
+const EvolutionHelpers = preload("res://managers/evolution/evolution_helpers.gd")
 
 var current_card: CardResource = null
 var _current_unit: Node = null
@@ -53,6 +55,9 @@ var _star_detail_label: Label = null
 var _star_section: PanelContainer = null
 var _nurture_section: PanelContainer = null
 var nurture_label: Label = null
+# v7.x(敌方加成来源明细): 敌方单位"为什么这么强"的加成来源 section
+var _bonus_section: PanelContainer = null
+var _bonus_label: Label = null
 var status_label: Label = null
 var desc_label: Label = null
 var flavor_label: Label = null
@@ -134,6 +139,9 @@ func _resolve_nodes() -> void:
 	_star_section = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StarSection") as PanelContainer
 	_nurture_section = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/NurtureSection") as PanelContainer
 	nurture_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/NurtureSection/NurtureVBox/NurtureLabel") as Label
+	# v7.x(敌方加成来源明细): 加成来源 section 节点连接
+	_bonus_section = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/BonusSection") as PanelContainer
+	_bonus_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/BonusSection/BonusVBox/BonusLabel") as Label
 	status_section = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StatusSection") as PanelContainer
 	status_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StatusSection/StatusVBox/StatusLabel") as Label
 	desc_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/DescSection/DescVBox/DescLabel") as Label
@@ -471,6 +479,9 @@ func _refresh_info_sections(card: CardResource) -> void:
 	# v7.x：卡牌模式恢复所有 section 可见性（战场单位模式可能 visible=false 残留）
 	if _star_section: _star_section.visible = true
 	if _nurture_section: _nurture_section.visible = true
+	# v7.x(敌方加成来源明细): 卡牌模式不显示战场加成来源（那是敌方单位专属），确保隐藏
+	if _bonus_section: _bonus_section.visible = false
+	if _bonus_label: _bonus_label.text = ""
 	# v7.3 性能优化：顶部构建一次 UnitStats 缓存，子函数共用（原各调一次 _build_display_stats = build_stats_from_card 跑2遍）
 	_prepare_display_stats_cache(card)
 	# v6.4: 三维攻防——图形化三列数值卡
@@ -708,14 +719,17 @@ func _build_star_lines(card: CardResource) -> String:
 			return "强化 ★%d\n- %s" % [detail_star, "\n- ".join(lines)]
 	return "强化 ★%d" % detail_star
 
-func _build_nurture_text(card: CardResource) -> String:
+func _build_nurture_text(card: CardResource, _stats: UnitStats = null, include_power: bool = true) -> String:
 	if card == null or BlueprintManager == null:
 		return ""
 	var parts: Array[String] = []
 	if card.card_type == GC.CardType.COMBAT_UNIT:
 		parts.append("强化 ★%d" % card.enhance_level)
-		var power: int = card.get_current_power() if card.has_method("get_current_power") else 0
-		parts.append("战力：%d" % power)
+		# v7.x：战场单位情报面板已把战力移到 summary 行（属性口径，敌我可对比），
+		# 故 include_power=false 时此处不再重复显示养成战力。卡牌查看模式默认 true（养成口径不变）。
+		if include_power:
+			var power: int = card.get_current_power() if card.has_method("get_current_power") else 0
+			parts.append("战力：%d" % power)
 	# v6.11: 强化词条效果行（调用现成的 get_module_effect_lines，之前是孤儿接口从未被调用）
 	var enhance_effect_text: String = ""
 	if card.card_type == GC.CardType.COMBAT_UNIT:
@@ -839,6 +853,12 @@ func _refresh_unit_display(unit: Node, is_player: bool) -> void:
 				ch.queue_free()
 	if affix_label:
 		affix_label.visible = true
+	# v7.x(敌方加成来源明细): 调度入口统一隐藏加成来源 section，敌方显示函数按需重新填充。
+	# 避免从敌方单位切到我方单位时 BonusSection 残留（我方加成走养成摘要，不在此显示）。
+	if _bonus_label:
+		_bonus_label.text = ""
+	if _bonus_section:
+		_bonus_section.visible = false
 	_refresh_rank_badge(unit)
 	var is_ally: bool = _resolve_unit_is_player(unit, is_player)
 	if unit.is_in_group("enemy_phase_driver"):
@@ -940,6 +960,86 @@ func _format_unit_stats_summary(stats: UnitStats, cur_hp: float = -1.0, extra_su
 		extra_suffix,
 	]
 
+## v7.x：战场单位战力后缀——敌我统一用「属性战力」口径（combat_power_from_unit_stats），
+## 让情报面板的战力敌我可直接对比（卡牌查看模式仍用养成战力 get_current_power）。
+## 供 _format_unit_stats_summary / _format_enemy_combat_summary 的 extra_suffix 透传。
+func _combat_power_suffix(stats: UnitStats) -> String:
+	if stats == null:
+		return ""
+	return "｜战力 %d" % int(EvolutionHelpers.combat_power_from_unit_stats(stats))
+
+## 战场单位动态描述——基于单位实际特殊机制生成定位句，不写过时模板。
+## 扫描 stats 的特殊功能字段，拼成反映当前机制的描述；无特殊机制时回退 base_text。
+func _build_unit_description(stats: UnitStats, is_player: bool, base_text: String) -> String:
+	if stats == null:
+		return base_text
+	var roles: Array[String] = []
+	# ── 单位固有特征（非改造，基于卡牌本身属性）──
+	# 射程定位
+	var rng_cells: float = stats.attack_range / 100.0
+	if rng_cells >= 4.0:
+		roles.append("远程火力")
+	elif rng_cells >= 2.0:
+		roles.append("中程交战")
+	else:
+		roles.append("近战突击")
+	# 武器弹道（曲射/对空）
+	var wt: int = int(stats.weapon_type)
+	if wt == GC.WeaponType.INDIRECT:
+		roles.append("曲射越过前排")
+	elif wt == GC.WeaponType.AERIAL:
+		roles.append("对空能力")
+	# 兵种定位（combat_kind）
+	match int(stats.combat_kind):
+		GC.CombatKind.FORT:
+			roles.append("堡垒固守")
+		GC.CombatKind.SUPPORT:
+			roles.append("支援职能")
+		GC.CombatKind.AIR:
+			roles.append("空中单位")
+	# 固定单位（不移动）
+	if stats.move_speed < 1.0:
+		roles.append("固定部署")
+	# ── 改造/养成驱动的特殊机制 ──
+	if stats.splash_damage > 0.001 or stats.splash_radius_bonus > 0.001:
+		roles.append("范围溅射")
+	if stats.chain_chance > 0.001:
+		roles.append("连锁攻击")
+	if stats.attack_fort_bonus > 0.001 or stats.siege_bonus_pct > 0.001:
+		roles.append("攻城特化")
+	if stats.mark_chance > 0.001 or stats.laser_mark_on_hit:
+		roles.append("目标标记")
+	if stats.armor_break_per_hit > 0.001:
+		roles.append("破甲叠加")
+	if stats.combo_max > 0:
+		roles.append("连击输出")
+	if stats.rage_max > 0:
+		roles.append("狂怒增益")
+	if stats.reflect_damage_pct > 0.001:
+		roles.append("爆反反伤")
+	if stats.intercept_chance > 0.001:
+		roles.append("拦截格挡")
+	if stats.revive_on_death:
+		roles.append("濒死复活")
+	if stats.phase_shield_pool > 0.001:
+		roles.append("相位护盾")
+	if stats.urban_defense_bonus > 0.001:
+		roles.append("巷战防御")
+	if stats.death_heal_allies_pct > 0.001:
+		roles.append("亡语治疗")
+	if stats.slow_aura_pct > 0.001:
+		roles.append("减速光环")
+	if stats.command_aura_bonus > 0.001:
+		roles.append("指挥光环")
+	if stats.lifesteal > 0.001:
+		roles.append("吸血续航")
+	if stats.hp_regen > 0.001:
+		roles.append("自我回复")
+	# 动态描述：按阵营措辞，反映"这个单位能干什么"
+	var role_str := "、".join(roles)
+	var side_verb := "推进" if is_player else "来袭"
+	return "%s，%s交战。" % [role_str, side_verb]
+
 func _build_affix_summary_lines(stats: UnitStats) -> String:
 	if stats == null:
 		return ""
@@ -963,6 +1063,49 @@ func _build_affix_summary_lines(stats: UnitStats) -> String:
 		parts.append("击杀护盾 %d%%生命" % int(stats.shield_on_kill * 100.0))
 	if stats.hp_regen > 0.001:
 		parts.append("每秒回血 %d%%生命" % int(stats.hp_regen * 100.0))
+	# ── 特殊机制（改造驱动，v7.x 补全：之前这批 live 字段有值却从不显示）──
+	if stats.attack_fort_bonus > 0.001:
+		parts.append("对堡垒特攻 +%d%%" % int(stats.attack_fort_bonus * 100.0))
+	if stats.splash_radius_bonus > 0.001:
+		parts.append("溅射范围 +%d%%" % int(stats.splash_radius_bonus * 100.0))
+	if stats.single_target_penalty < -0.001:
+		parts.append("主目标分散伤害 %d%%" % int(stats.single_target_penalty * 100.0))
+	if stats.armor_break_per_hit > 0.001:
+		parts.append("破甲叠加（每击降%d防，%d层）" % [int(stats.armor_break_per_hit), stats.armor_break_max_stacks])
+	if stats.mark_chance > 0.001:
+		var mark_s := "标记 %d%%" % int(stats.mark_chance * 100.0)
+		if stats.mark_vuln_bonus > 0.001:
+			mark_s += "（易伤+%d%%）" % int(stats.mark_vuln_bonus * 100.0)
+		parts.append(mark_s)
+	if stats.siege_bonus_pct > 0.001:
+		parts.append("攻城加成 +%d%%" % int(stats.siege_bonus_pct * 100.0))
+	if stats.urban_defense_bonus > 0.001:
+		parts.append("巷战防御 +%d%%" % int(stats.urban_defense_bonus * 100.0))
+	if stats.has_counter_battery:
+		parts.append("反炮兵（受击标记攻击者）")
+	if stats.revive_on_death:
+		parts.append("濒死复活（%d%%生命）" % int(stats.revive_hp_ratio * 100.0))
+	if stats.reflect_damage_pct > 0.001:
+		parts.append("爆反反伤 %d%%" % int(stats.reflect_damage_pct * 100.0))
+	if stats.intercept_chance > 0.001:
+		var inter_s := "拦截 %d%%" % int(stats.intercept_chance * 100.0)
+		if stats.intercept_charges > 0:
+			inter_s += "（%d次）" % stats.intercept_charges
+		parts.append(inter_s)
+	if stats.death_heal_allies_pct > 0.001:
+		parts.append("亡语治疗友军 %d%%生命" % int(stats.death_heal_allies_pct * 100.0))
+	if stats.slow_aura_pct > 0.001:
+		parts.append("减速光环 %d%%" % int(stats.slow_aura_pct * 100.0))
+	if stats.command_aura_bonus > 0.001:
+		parts.append("指挥光环 +%d%%" % int(stats.command_aura_bonus * 100.0))
+	if stats.phase_shield_pool > 0.001:
+		parts.append("相位护盾 %d" % int(stats.phase_shield_pool))
+	if stats.laser_mark_on_hit:
+		parts.append("激光标记（命中必标记）")
+	if stats.combo_max > 0:
+		parts.append("连击系统（%d层+%d%%伤害）" % [stats.combo_max, int(stats.combo_bonus_mult * 100.0)])
+	if stats.rage_max > 0:
+		parts.append("狂怒系统（%d层+%d%%伤害）" % [stats.rage_max, int(stats.rage_bonus_mult * 100.0)])
 	var mutations: Array[String] = []
 	if stats.has_weapon_dmg_mutation: mutations.append("伤害变异")
 	if stats.has_weapon_atkspd_mutation: mutations.append("攻速变异")
@@ -1084,6 +1227,90 @@ func _format_enemy_runes(rune_ids: Array) -> String:
 				parts.append(rn)
 	return "、".join(parts)
 
+## v7.x: 敌方相位师符文完整显示（与我方 _show_player_phase_driver 对齐）。
+## 敌方相位仪无 rune_slot_count 硬数据，沿用 _derive_runes 的派生上限 clampi(2+level/10,2,4) 作槽位分母，
+## 反映"派生时即按此上限选符文"的语义。符文之语用 RunewordMatcher 查激活词。
+## [return] "N/槽位上限（符文之语：名/名）符文列表"；无符文返回空串
+func _format_enemy_runes_full(runes: Array, level: int) -> String:
+	if runes.is_empty():
+		return ""
+	var slot_cap: int = clampi(2 + int(level / 10), 2, 4)
+	var rune_str: String = _format_enemy_runes(runes)
+	# 符文之语：slot_count 用 max(符文数, 2)（与 MasterPowerEvaluator._eval_runewords 同口径）
+	var clean_ids: Array[String] = []
+	for rid in runes:
+		var rid_s: String = String(rid)
+		if not rid_s.is_empty():
+			clean_ids.append(rid_s)
+	var rw_part: String = ""
+	if not clean_ids.is_empty():
+		var active_rw: Array[Dictionary] = RunewordMatcher.check_active_runewords(clean_ids, maxi(clean_ids.size(), 2))
+		if not active_rw.is_empty():
+			var rw_names: Array[String] = []
+			for rw in active_rw:
+				var rwid: String = String(rw.get("id", ""))
+				var rn: String = RunewordDefs.get_runeword_name(rwid) if not rwid.is_empty() else ""
+				if rn.is_empty():
+					rn = rwid
+				if not rw_names.has(rn):
+					rw_names.append(rn)
+			if not rw_names.is_empty():
+				rw_part = "（符文之语：" + " / ".join(rw_names) + "）"
+	return "%d/%d 槽位%s%s" % [clean_ids.size(), slot_cap, rw_part, "" if rune_str.is_empty() else " " + rune_str]
+
+## v7.x: 敌方相位仪稀有度→中文（对齐我方"★星级"维度；敌方相位仪无 star 字段，用 rarity）。
+func _enemy_instrument_rarity_zh(rarity: String) -> String:
+	match rarity:
+		"common": return "普通"
+		"uncommon": return "精良"
+		"rare": return "稀有"
+		"epic": return "史诗"
+		"legendary": return "传说"
+		"mythic": return "神话"
+		"": return ""
+		_: return rarity
+
+## v7.x: 敌方相位师主动能力+相位仪特殊效果完整显示（用户选"两者都显示"）。
+## master.active_spells（带 name/description/cooldown）+ 相位仪 special_effects（字符串ID数组，复用
+## LeaderboardPresenter._translate_special_tag 56 条翻译表）。两路径共用。
+## [return] 格式化文本块（多行）；无内容返回空串
+func _format_enemy_active_abilities(pm_id: String, inst_id: String) -> String:
+	var blocks: Array[String] = []
+	# 1. master.active_spells（逐条 name + description + cooldown）
+	if not pm_id.is_empty() and EnemyPhaseMasters != null:
+		var spells: Array = EnemyPhaseMasters.get_master_active_spells(pm_id)
+		for sp in spells:
+			if not (sp is Dictionary):
+				continue
+			var sp_name: String = str(sp.get("name", ""))
+			var sp_desc: String = str(sp.get("description", ""))
+			var sp_cd: float = float(sp.get("cooldown", 0.0))
+			if sp_name.is_empty() and sp_desc.is_empty():
+				continue
+			var line: String = "◆ "
+			if not sp_name.is_empty():
+				line += sp_name
+				if sp_cd > 0.0:
+					line += "（冷却%.0f秒）" % sp_cd
+				if not sp_desc.is_empty():
+					line += "：" + sp_desc
+			else:
+				line += sp_desc
+			blocks.append(line)
+	# 2. 相位仪 special_effects（字符串ID数组，翻译后 join）
+	if not inst_id.is_empty():
+		var inst_cfg: Dictionary = EnemyPhaseEquipment.get_phase_instrument(inst_id)
+		var fx: Array = inst_cfg.get("special_effects", []) as Array
+		if not fx.is_empty():
+			var fx_names: Array[String] = []
+			for tag in fx:
+				var zh: String = LeaderboardPresenter._translate_special_tag(String(tag))
+				if not zh.is_empty() and not fx_names.has(zh):
+					fx_names.append(zh)
+			if not fx_names.is_empty():
+				blocks.append("特殊效果：" + "、".join(fx_names))
+	return "\n".join(blocks)
+
 func _show_enemy_phase_driver(unit: Node) -> void:
 	var mname: String = str(unit.get("master_name")) if "master_name" in unit else "相位师"
 	if name_label: name_label.text = "敌方相位师基地"
@@ -1099,15 +1326,22 @@ func _show_enemy_phase_driver(unit: Node) -> void:
 			var disp: String = str(cfg.get("name", mname))
 			if disp != mname and not disp.is_empty():
 				lines.append("档案名：%s" % disp)
-			# v7.x: 显示相位场等级（原始 level 设计基准）+ 派生等级（由总战力派生）+ 总战力/星级
+			# v7.x: 显示相位场等级（原始 level 设计基准）+ 派生等级（由总战力派生，含星名）+ 总战力
 			var raw_level: int = int(cfg.get("level", 0))
 			if raw_level > 0:
 				lines.append("相位场等级：Lv.%d" % raw_level)
+			var er: Dictionary = MasterPowerEvaluator.evaluate(cfg)
 			var mlvl: int = EnemyPhaseMasters.compute_display_level(cfg)
 			if mlvl > 0:
-				lines.append("相位师等级：Lv.%d" % mlvl)
-			var _er: Dictionary = MasterPowerEvaluator.evaluate(cfg)
-			lines.append("总战力：%d · %s" % [int(_er.get("total_score", 0)), MasterPowerEvaluator.get_stars_display(cfg)])
+				# 与我方 _show_player_phase_driver 对齐：相位师等级行合并星名
+				var stars: int = int(er.get("stars", 0))
+				var star_name: String = str(er.get("star_name", ""))
+				if stars > 0 and not star_name.is_empty():
+					lines.append("相位师等级：Lv.%d · %d★ %s" % [mlvl, stars, star_name])
+				else:
+					lines.append("相位师等级：Lv.%d" % mlvl)
+			# 总战力单列一行（星名已并入上行，此处不重复）
+			lines.append("总战力：%d" % int(er.get("total_score", 0)))
 			var fac: String = str(cfg.get("faction", ""))
 			if not fac.is_empty():
 				lines.append("所属势力：%s" % fac)
@@ -1125,15 +1359,38 @@ func _show_enemy_phase_driver(unit: Node) -> void:
 			var weps: Array = eq.get("weapons", []) as Array
 			if not plats.is_empty() or not weps.is_empty():
 				lines.append("上场装备：平台种类 %d · 武器种类 %d（由其基地持续部署）" % [plats.size(), weps.size()])
-			# v6.14: 显示相位仪名
+			# v7.x: 显示相位仪名+稀有度（对齐我方"★星级"维度）
 			var inst_id: String = str(eq.get("phase_instrument", ""))
 			var inst_name: String = _get_enemy_instrument_display_name(inst_id)
 			if not inst_name.is_empty():
-				lines.append("相位仪：%s" % inst_name)
-			# v6.14: 显示符文
+				var inst_cfg_e: Dictionary = EnemyPhaseEquipment.get_phase_instrument(inst_id) if not inst_id.is_empty() else {}
+				var rarity_zh: String = _enemy_instrument_rarity_zh(str(inst_cfg_e.get("rarity", "")))
+				if not rarity_zh.is_empty():
+					lines.append("相位仪：%s（%s）" % [inst_name, rarity_zh])
+				else:
+					lines.append("相位仪：%s" % inst_name)
+			# v7.x: 显示符文（含槽位比+符文之语，与我方对齐）
 			var runes: Array = eq.get("runes", []) as Array
 			if not runes.is_empty():
-				lines.append("符文：%s" % _format_enemy_runes(runes))
+				var runes_line: String = _format_enemy_runes_full(runes, raw_level)
+				if not runes_line.is_empty():
+					lines.append("符文：%s" % runes_line)
+			# v7.x: 相位师特性（与单位路径一致，消除敌方内部不一致）
+			var trait_lines: Array[String] = []
+			for t in cfg.get("traits", []) as Array:
+				if t is Dictionary:
+					var tn: String = str(t.get("name", ""))
+					var td: String = str(t.get("description", ""))
+					if not tn.is_empty():
+						trait_lines.append("◆ %s%s" % [tn, "：" + td if not td.is_empty() else ""])
+			if not trait_lines.is_empty():
+				lines.append("【相位师特性】")
+				lines.append_array(trait_lines)
+			# v7.x: 主动能力（master.active_spells + 相位仪 special_effects，与我方对齐）
+			var abilities_text: String = _format_enemy_active_abilities(pm_id, inst_id)
+			if not abilities_text.is_empty():
+				lines.append("【主动能力】")
+				lines.append(abilities_text)
 	if desc_label: desc_label.text = "\n".join(lines)
 	if flavor_label: flavor_label.text = "“相位师的意志锚定在这片场上。”"
 	_clear_non_summary_info_sections()
@@ -1274,8 +1531,8 @@ func _show_enemy_construct_unit(unit: Node) -> void:
 		type_label.text = "相位师部署 · %s / %s" % [platform_name, weapon_label_text]
 	var cur_hp: float = float(unit.get("hp")) if "hp" in unit else stats.max_hp
 	if summary_label:
-		summary_label.text = _format_unit_stats_summary(stats, cur_hp)
-	var base_desc := "由敌方相位师基地生产的构装单位，自动推进并攻击我方。"
+		summary_label.text = _format_unit_stats_summary(stats, cur_hp, _combat_power_suffix(stats))
+	var base_desc := _build_unit_description(stats, false, "由敌方相位师基地生产的构装单位，自动推进并攻击我方。")
 	if affix_label:
 		affix_label.text = _build_affix_summary_lines(stats)
 	# v7.x：敌方产兵无玩家养成，强化 section 置空并隐藏（避免占位）。
@@ -1293,6 +1550,10 @@ func _show_enemy_construct_unit(unit: Node) -> void:
 		desc_label.text = base_desc
 	if flavor_label:
 		flavor_label.text = "“同一套装甲，站在战场的另一侧。”"
+	# v7.x(敌方加成来源明细): 显示产兵 7 层加成来源明细
+	var _spawn_bonus_text := _build_bonus_breakdown_text(unit)
+	if _bonus_label: _bonus_label.text = _spawn_bonus_text
+	_set_section_visible_by_content(_bonus_section, _spawn_bonus_text)
 
 ## ── 我方单位 ──
 
@@ -1355,7 +1616,7 @@ func _show_player_unit(unit: Node) -> void:
 	if type_label:
 		type_label.text = "%s / %s" % [platform_name, weapon_label_text]
 	if summary_label:
-		summary_label.text = _format_unit_stats_summary(stats)
+		summary_label.text = _format_unit_stats_summary(stats, -1.0, _combat_power_suffix(stats))
 	if affix_label:
 		affix_label.text = _build_affix_summary_lines(stats)
 	# v7.x 修复：战场单位强化详情改用 _build_star_lines（读实例卡养成），
@@ -1367,14 +1628,15 @@ func _show_player_unit(unit: Node) -> void:
 	_set_section_visible_by_content(_star_section, star_detail_text)
 	# v7.x：显示养成（强化等级/战力/改造列表 + 当前光环 + 相位仪符文）。
 	# 光环仅我方单位有（construct_unit 注册），符文读 PhaseInstrumentManager。
-	var nurture_text := _build_nurture_text(card_res) if card_res != null else ""
+	# 战场单位战力已移至 summary 行（属性口径，敌我可对比），此处 include_power=false 避免重复。
+	var nurture_text := _build_nurture_text(card_res, null, false) if card_res != null else ""
 	nurture_text += _build_aura_text(unit)
 	nurture_text += _build_rune_text()
 	if nurture_label:
 		nurture_label.text = nurture_text
 	_set_section_visible_by_content(_nurture_section, nurture_text)
 	if desc_label:
-		desc_label.text = "自动向敌侧推进，在射程内交战。选中后可点击地面微调站位。"
+		desc_label.text = _build_unit_description(stats, true, "向敌侧推进，在射程内交战。选中后可点击地面微调站位。")
 	if flavor_label:
 		flavor_label.text = "“装甲军团永不疲倦。”"
 
@@ -1464,7 +1726,7 @@ func _show_enemy_phase_master_unit(unit: Node, master_name: String) -> void:
 		base_desc += "\n" + master_power_text
 	if not trait_lines.is_empty():
 		base_desc += "\n\n【相位师特性】\n" + "\n".join(trait_lines)
-	# v6.14: 补全相位仪名 + 符文显示（与基地分支信息一致）
+	# v7.x: 补全相位仪名+稀有度 + 符文（槽位比+符文之语）+ 主动能力（与基地路径一致）
 	if not master_cfg.is_empty():
 		var pm_id_m: String = str(master_cfg.get("id", ""))
 		var eq_m: Dictionary = master_cfg.get("equipment", {}) as Dictionary
@@ -1475,18 +1737,80 @@ func _show_enemy_phase_master_unit(unit: Node, master_name: String) -> void:
 		var inst_id_m: String = str(eq_m.get("phase_instrument", ""))
 		var inst_name_m: String = _get_enemy_instrument_display_name(inst_id_m)
 		var runes_m: Array = eq_m.get("runes", []) as Array
+		var raw_level_m: int = int(master_cfg.get("level", 0))
 		if not inst_name_m.is_empty() or not runes_m.is_empty():
 			base_desc += "\n\n【相位师装备】"
 			if not inst_name_m.is_empty():
-				base_desc += "\n相位仪：%s" % inst_name_m
+				var inst_cfg_m: Dictionary = EnemyPhaseEquipment.get_phase_instrument(inst_id_m) if not inst_id_m.is_empty() else {}
+				var rarity_zh_m: String = _enemy_instrument_rarity_zh(str(inst_cfg_m.get("rarity", "")))
+				if not rarity_zh_m.is_empty():
+					base_desc += "\n相位仪：%s（%s）" % [inst_name_m, rarity_zh_m]
+				else:
+					base_desc += "\n相位仪：%s" % inst_name_m
 			if not runes_m.is_empty():
-				base_desc += "\n符文：%s" % _format_enemy_runes(runes_m)
+				var runes_line_m: String = _format_enemy_runes_full(runes_m, raw_level_m)
+				if not runes_line_m.is_empty():
+					base_desc += "\n符文：%s" % runes_line_m
+		# 主动能力（master.active_spells + 相位仪 special_effects）
+		var abilities_m: String = _format_enemy_active_abilities(pm_id_m, inst_id_m)
+		if not abilities_m.is_empty():
+			base_desc += "\n\n【主动能力】\n" + abilities_m
 	# 敌方相位师的本体属性/装备/符文已在 base_desc 里展示。
 	if desc_label:
 		desc_label.text = base_desc
 	if flavor_label:
 		flavor_label.text = "“相位师的威严不容侵犯。”"
 	_clear_other_unit_sections()
+	# v7.x(敌方加成来源明细): 相位师单位是产兵路径来的（带 enemy_bonus_breakdown meta），
+	# _clear_other_unit_sections 清空后重新填充加成来源明细。
+	var _pm_bonus_text := _build_bonus_breakdown_text(unit)
+	if _bonus_label: _bonus_label.text = _pm_bonus_text
+	_set_section_visible_by_content(_bonus_section, _pm_bonus_text)
+
+## v7.x(敌方加成来源明细): 从单位 meta 读取加成明细，构建"为什么这么强"的可读文本。
+## 格式（总倍率+标签粒度）：
+##   基础: 生命80｜攻10｜防5
+##   加成: 波次×1.24 关卡(第40关)×1.36 势力(钢壁Lv5)×1.18 相位师×1.32 难度(普通)×1.0
+##   二周目×1.2  ← 仅经典敌人/蜂群有
+##   总倍率: 生命×4.0 攻击×4.0
+##   最终: 生命320｜攻40｜防5
+## 无明细返回空字符串（section 自动隐藏）。
+func _build_bonus_breakdown_text(unit: Node) -> String:
+	if unit == null or not is_instance_valid(unit):
+		return ""
+	if not unit.has_meta("enemy_bonus_breakdown"):
+		return ""
+	var bd: Dictionary = unit.get_meta("enemy_bonus_breakdown")
+	if bd.is_empty():
+		return ""
+	var lines: Array = []
+	# 基础值
+	var base_hp: float = float(bd.get("base_hp", 0.0))
+	var base_atk: float = float(bd.get("base_atk", 0.0))
+	var base_def: float = float(bd.get("base_def", 0.0))
+	lines.append("基础: 生命%d｜攻%d｜防%d" % [int(round(base_hp)), int(round(base_atk)), int(round(base_def))])
+	# 加成来源标签
+	var sources: Array = bd.get("sources", [])
+	var labels: Array = []
+	for s in sources:
+		labels.append(String(s.get("label", "")))
+	if not labels.is_empty():
+		lines.append("加成: " + " ".join(labels))
+	# 二周目（经典敌人/蜂群可能有，产兵恒 1.0）
+	var ng_plus: float = float(bd.get("ng_plus", 1.0))
+	if absf(ng_plus - 1.0) > 0.005:
+		lines.append("二周目×%.2f" % ng_plus)
+	# 总倍率（含二周目）
+	var total_hp: float = float(bd.get("total_hp_mul", 1.0)) * ng_plus
+	var total_atk: float = float(bd.get("total_atk_mul", 1.0)) * ng_plus
+	lines.append("总倍率: 生命×%.1f 攻击×%.1f" % [total_hp, total_atk])
+	# 最终值
+	var final_hp: float = float(bd.get("final_hp", base_hp * total_hp))
+	var final_atk: float = float(bd.get("final_atk", base_atk * total_atk))
+	var final_def: float = float(bd.get("final_def", base_def))
+	lines.append("最终: 生命%d｜攻%d｜防%d" % [int(round(final_hp)), int(round(final_atk)), int(round(final_def))])
+	return "\n".join(lines)
+
 
 func _clear_other_unit_sections() -> void:
 	if affix_label: affix_label.text = ""
@@ -1494,6 +1818,9 @@ func _clear_other_unit_sections() -> void:
 	_set_section_visible_by_content(_star_section, "")
 	if nurture_label: nurture_label.text = ""
 	_set_section_visible_by_content(_nurture_section, "")
+	# v7.x(敌方加成来源明细): 切换到无明细单位时隐藏加成来源 section
+	if _bonus_label: _bonus_label.text = ""
+	_set_section_visible_by_content(_bonus_section, "")
 
 func _show_generic_enemy_unit(unit: Node) -> void:
 	var display_name := "敌方单位"
@@ -1602,18 +1929,25 @@ func _show_generic_enemy_unit(unit: Node) -> void:
 	elif speed_display > 0.1:
 			speed_text = "｜移速 %d" % int(speed_display)
 	if summary_label:
-		summary_label.text = _format_enemy_combat_summary(unit, s2, speed_text)
+		summary_label.text = _format_enemy_combat_summary(unit, s2, speed_text + _combat_power_suffix(unit.stats if ("stats" in unit and unit.stats != null) else null))
 	if desc_label:
-		desc_label.text = "向左推进的敌方单位，会优先攻击我方单位，其次攻击相位场驱动器。"
+		var _e_stats: UnitStats = unit.stats if ("stats" in unit and unit.stats != null) else null
+		desc_label.text = _build_unit_description(_e_stats, false, "来袭的敌方单位，优先攻击我方单位，其次攻击相位场驱动器。")
 	if "stats" in unit and unit.stats != null:
 		if affix_label: affix_label.text = _build_affix_summary_lines(unit.stats)
 	if flavor_label:
 		flavor_label.text = "“相位裂隙的另一侧，总有人在看着你。”"
-	# v7.x：敌方普通单位无玩家养成，强化/养成 section 置空并隐藏（避免占位）
+	# v7.x：敌方普通单位无玩家养成，强化 section 置空隐藏；但敌方 platform_type 驱动的
+	# 光环（医疗/雷达/侦查/指挥）需显示——nurture section 改为填光环文本，空时才隐藏。
 	if _star_detail_label: _star_detail_label.text = ""
 	_set_section_visible_by_content(_star_section, "")
-	if nurture_label: nurture_label.text = ""
-	_set_section_visible_by_content(_nurture_section, "")
+	var enemy_aura_text := _build_enemy_aura_text(unit)
+	if nurture_label: nurture_label.text = enemy_aura_text
+	_set_section_visible_by_content(_nurture_section, enemy_aura_text)
+	# v7.x(敌方加成来源明细): 显示经典敌人/蜂群的加成来源明细
+	var _bonus_text := _build_bonus_breakdown_text(unit)
+	if _bonus_label: _bonus_label.text = _bonus_text
+	_set_section_visible_by_content(_bonus_section, _bonus_text)
 
 ## ── 法则效果构建 ──
 
@@ -1965,48 +2299,42 @@ func _build_rune_text() -> String:
 	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
 	if pim == null:
 		return ""
-	# 单符文槽位（String | null 数组）
-	var rune_slots: Array = pim.get_rune_slots() if pim.has_method("get_rune_slots") else []
-	var rune_names: Array[String] = []
-	for slot_v in rune_slots:
-		if slot_v == null:
-			continue
-		var rune_id: String = String(slot_v)
-		if rune_id.is_empty():
-			continue
-		var rd: Dictionary = RuneDefs.get_rune(rune_id)
-		if rd.is_empty():
-			rune_names.append(rune_id)
-			continue
-		var rn: String = String(rd.get("name", rune_id))
-		var rarity: String = String(rd.get("rarity", ""))
-		var rarity_short: String = _rune_rarity_short(rarity)
-		if not rarity_short.is_empty():
-			rune_names.append("%s(%s)" % [rn, rarity_short])
-		else:
-			rune_names.append(rn)
-	# 激活的符文之语
-	var active_rw: Array = pim.get_active_runewords() if pim.has_method("get_active_runewords") else []
-	var rw_names: Array[String] = []
-	for rw in active_rw:
-		if not rw is Dictionary:
-			continue
-		var rw_id: String = String(rw.get("id", ""))
-		if rw_id.is_empty():
-			continue
-		var disp_name: String = String(RunewordDefs.RUNEWORD_NAMES.get(rw_id, rw_id))
-		var tier: int = int(rw.get("tier", 0))
-		var tier_name: String = String(RunewordDefs.TIER_NAMES.get(tier, ""))
-		if not tier_name.is_empty():
-			rw_names.append("%s(%s)" % [disp_name, tier_name])
-		else:
-			rw_names.append(disp_name)
-	# 组装
+	# 符文加成汇总——只显示数值加成与特殊效果，不列符文/符文之语的名字明细
+	# （符文属相位仪全局，不是这张战斗卡本身的属性；玩家只需看到它带来的加成）。
+	var bonus: Dictionary = pim.get_rune_bonus() if pim.has_method("get_rune_bonus") else {}
+	if bonus.is_empty():
+		return ""
+	var stat_map: Dictionary = bonus.get("stats", {})
+	var specials: Array = bonus.get("specials", [])
+	if stat_map.is_empty() and specials.is_empty():
+		return ""
 	var parts: Array[String] = []
-	if not rune_names.is_empty():
-		parts.append("相位仪符文：" + " · ".join(rune_names))
-	if not rw_names.is_empty():
-		parts.append("激活符文之语：" + " · ".join(rw_names))
+	# 数值加成（值是小数 0.5 = +50%，统一按百分比显示）
+	if not stat_map.is_empty():
+		var stat_lines: Array[String] = []
+		for sk in stat_map.keys():
+			var nm: String = String(RuneDefs.STAT_SHORT_NAMES.get(sk, sk))
+			var val: float = float(stat_map[sk])
+			if val > 0.0:
+				stat_lines.append("%s+%d%%" % [nm, int(val * 100.0)])
+			elif val < 0.0:
+				stat_lines.append("%s%d%%" % [nm, int(val * 100.0)])
+		if not stat_lines.is_empty():
+			parts.append("符文加成：" + " · ".join(stat_lines))
+	# 特殊效果（去重后列名称）
+	if not specials.is_empty():
+		var seen: Dictionary = {}
+		var sp_lines: Array[String] = []
+		for sp in specials:
+			if not (sp is Dictionary):
+				continue
+			var sp_key: String = String(sp.get("special", ""))
+			if sp_key.is_empty() or seen.has(sp_key):
+				continue
+			seen[sp_key] = true
+			sp_lines.append(String(RuneDefs.SPECIAL_DISPLAY_NAMES.get(sp_key, sp_key)))
+		if not sp_lines.is_empty():
+			parts.append("符文特效：" + " · ".join(sp_lines))
 	if parts.is_empty():
 		return ""
 	return "\n" + "\n".join(parts)

@@ -144,6 +144,26 @@ const DATA: Dictionary = {
 		effects = {mobile_fire = true, accuracy_penalty = -0.20},
 		unlock_conditions = {required_level = 5}
 	},
+
+	# ─── v7.x 新机制改造 ───
+
+	# debuff 型：雷达锁定（对空目标 40% 标记 + 30% 易伤）
+	"aa_13_radar_lock" = {
+		id = "aa_13_radar_lock",
+		name = "雷达锁定",
+		name_en = "Radar Lock-On",
+		icon = "res://assets/ui/icons/mod_icons/mod_guidance.png",
+		prototype = "AN/MPQ-64 哨兵雷达",
+		description = "锁定空中目标：40% 概率标记目标，被标记目标受到 +30% 额外伤害，持续 5 秒",
+		rarity = "legendary",
+		power_mult = 1.8,
+		cost_research = 380,
+		cost_install = 190,
+		slot_type = "guidance",
+		conflict_group = "guidance",
+		effects = {target_marking = 0.40, mark_vuln = 0.30, mark_duration = 5.0},
+		unlock_conditions = {required_level = 6}
+	},
 }
 
 static func get_mod_data(mod_id: String) -> Dictionary:

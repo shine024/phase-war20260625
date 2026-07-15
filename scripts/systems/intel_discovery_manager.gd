@@ -159,6 +159,14 @@ func generate_battle_intel_harvest(
 	if im == null:
 		return {"harvests": [], "reveal_events": [], "eom_drops": [], "intel_item_drops": []}
 
+	# v7.x 性能：下游 manager 延迟加载，此处一次性确保实例化（情报收获链路聚合点）。
+	# 避免后续 EOM 碎片结算 / IEM 分支发现 / lore 页面解锁 / 揭示奖励因节点未实例化而静默丢失。
+	var _mll: Node = get_node_or_null("/root/ManagerLazyLoader")
+	if _mll and _mll.has_method("ensure_loaded"):
+		_mll.ensure_loaded("enemy_origin_mod")
+		_mll.ensure_loaded("intel_evolution")
+		_mll.ensure_loaded("lore")
+
 	## 收集本次击败的敌人ID（用于检测首次遭遇和避免重复）
 	var defeated_ids: Dictionary = {}
 	for enemy_info in defeated_enemies:

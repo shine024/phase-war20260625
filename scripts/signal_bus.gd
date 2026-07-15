@@ -8,6 +8,11 @@ signal energy_insufficient(amount: float)
 
 # 相位仪 / 装备
 signal card_equipped(slot_index: int, card_id: String, card_type: String)
+## 换装原子信号：槽位原有 old_card 被替换为 new_card_id（=instance_id，缺省回退 card_id）。
+## 订阅者一次性完成"移新卡出包 + 加旧卡入包"（先移后加），避免 card_added_to_backpack(old) +
+## card_equipped(new) 双信号中间态导致背包重复（"换装多出一张卡"bug 的根因）。
+## 仅 equip_card 的"替换已有卡"分支 emit；装到空槽仍走 card_equipped，unequip 仍走 card_added_to_backpack。
+signal card_swapped(slot_index: int, old_card: CardResource, new_card_id: String)
 # v7.x 现状：card_unequipped 由 phase_instrument_manager/phase_instrument_loadout_sync 在卸下时 emit，
 # 但无 SignalBus 订阅者——卸下时"卡归还背包"的状态同步实际由同一处的 card_added_to_backpack.emit 覆盖
 # （save_manager/backpack_presenter 均订阅 card_added_to_backpack）。此信号保留供需要"按槽位感知卸载"的

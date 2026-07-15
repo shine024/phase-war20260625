@@ -476,8 +476,8 @@ func _rebuild_slots() -> void:
 		for i in range(cnt):
 			arr.append(old_arr[i] if i < old_arr.size() else null)
 		instrument_slots[color] = arr
-	# v6.2: 同步刷新符文槽位数量（保留已装备的符文）
-	_rebuild_rune_slots()
+	# v6.2: rune 槽位已在上方 color=="rune" 分支内经 _rebuild_rune_slots() 同步，
+	# 此处无需重复调用（原冗余调用在 _ready 链路使 _rebuild_rune_slots 多跑一次）。
 
 func _law_id_from_card(card: Variant) -> String:
 	# v6.2: rune 槽存的是 String，防御非 CardResource 传入（red/blue 槽正常只存 CardResource）
@@ -677,12 +677,17 @@ func equip_card(slot_index: int, card: CardResource, _energy_manager: Node = nul
 	arr[color_index] = card
 	instrument_slots[color] = arr
 
-	if old_card != null:
-		SignalBus.card_added_to_backpack.emit(old_card)
-	_emit_slots_changed()
 	# v7.0: card_equipped 第2参数改传 instance_id（实例化养成身份）；无 instance_id 回退 card_id
 	var equip_id: String = card.instance_id if not card.instance_id.is_empty() else card.card_id
-	SignalBus.card_equipped.emit(slot_index, equip_id, _card_type_name(card))
+	if old_card != null:
+		# 换装：单原子信号通知订阅者"先移新卡出包再添旧卡入包"。
+		# 原 emit 顺序为 card_added_to_backpack(old) → card_equipped(new)，中间态背包同时含新旧两卡，
+		# 叠加 remove_card 静默成功会因时序竞态导致新卡未移除 → 背包多一张。card_swapped 消除该窗口。
+		SignalBus.card_swapped.emit(slot_index, old_card, equip_id)
+	else:
+		# 新装到空槽：原语义不变（仅移新卡出包，无旧卡归还）
+		SignalBus.card_equipped.emit(slot_index, equip_id, _card_type_name(card))
+	_emit_slots_changed()
 	var DebugLog = get_node_or_null("/root/DebugLogManager")
 	if DebugLog:
 		DebugLog.agent_log("phase_instrument_manager.gd", "equip_ok", {

@@ -43,7 +43,8 @@ var active_law_states: Dictionary = {}
 ## 获取关卡信息实例（懒加载）
 func _get_level_info() -> RefCounted:
 	if _level_info == null:
-		_level_info = _LevelInfoScript.new()
+		# v7.x 性能：用全局单例，与其他系统共享同一份关卡数据
+		_level_info = _LevelInfoScript.get_shared()
 	return _level_info
 
 

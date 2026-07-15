@@ -19,6 +19,12 @@ const TUTORIAL_DISABLED := true
 ## 存档由 QuestManager.save_state 持久化（保存定义 + 注册状态），读档后回填到这里
 static var _DYNAMIC_QUESTS: Dictionary = {}  # quest_id -> quest_def Dictionary
 
+# v7.x 性能：静态 QUESTS 的 id→quest 字典索引（懒构建）。
+# _check_story_mission_pre_battle 对每个命中任务调 get_by_id（原线性扫描 ~80 条），
+# 嵌套查找形成 O(n²)。索引让单次查询降为 O(1)。QUESTS 运行期不变，索引构建一次即可。
+static var _id_index: Dictionary = {}  # quest_id -> quest_def 引用（未深拷贝）
+static var _id_index_built: bool = false
+
 static func _load_json_array(path: String, fallback: Array) -> Array:
 	if not FileAccess.file_exists(path):
 		return fallback
@@ -1387,9 +1393,16 @@ static func get_all() -> Array:
 	return out
 
 static func get_by_id(quest_id: String) -> Dictionary:
-	for q in QUESTS:
-		if q.get("id", "") == quest_id:
-			return q.duplicate(true)
+	# v7.x 性能：优先查静态索引（O(1)），首次调用时懒构建
+	if not _id_index_built:
+		_id_index.clear()
+		for q in QUESTS:
+			var qid: String = String(q.get("id", ""))
+			if not qid.is_empty() and not _id_index.has(qid):
+				_id_index[qid] = q
+		_id_index_built = true
+	if _id_index.has(quest_id):
+		return (_id_index[quest_id] as Dictionary).duplicate(true)
 	# v6.9: 回退查动态任务集合
 	if _DYNAMIC_QUESTS.has(quest_id):
 		return (_DYNAMIC_QUESTS[quest_id] as Dictionary).duplicate(true)

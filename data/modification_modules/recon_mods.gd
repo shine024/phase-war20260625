@@ -117,7 +117,7 @@ const DATA: Dictionary = {
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 120, cost_install = 60,
 		slot_type = "medical", conflict_group = "medical",
-		effects = {ifak_heal = 0.15},
+		effects = {ifak_revive = 0.15},  # v7.x 第二批：修复为濒死复活（原 ifak_heal 误为 hp_regen）
 		unlock_conditions = {required_level = 2}
 	},
 	"rec_11_decoy" = {
@@ -139,6 +139,44 @@ const DATA: Dictionary = {
 		slot_type = "mobility", conflict_group = "mobility",
 		effects = {move_speed = 30},
 		unlock_conditions = {required_level = 2}
+	},
+
+	# ─── v7.x 新机制改造 ───
+
+	# debuff 型：目标指示器（30% 标记 + 25% 易伤）
+	"rec_13_target_designator" = {
+		id = "rec_13_target_designator",
+		name = "目标指示器",
+		name_en = "Target Designator",
+		icon = "res://assets/ui/icons/mod_icons/mod_guidance.png",
+		prototype = "SOFLAM 激光指示器",
+		description = "激光标记目标：30% 概率标记，被标记目标受到 +25% 额外伤害，持续 5 秒",
+		rarity = "epic",
+		power_mult = 1.6,
+		cost_research = 320,
+		cost_install = 160,
+		slot_type = "guidance",
+		conflict_group = "guidance",
+		effects = {target_marking = 0.30, mark_vuln = 0.25, mark_duration = 5.0},
+		unlock_conditions = {required_level = 5}
+	},
+
+	# debuff 型：暴击指示器（30% 暴击标注 + 暴击率+50%，全队远程优先集火）
+	"rec_14_crit_designator" = {
+		id = "rec_14_crit_designator",
+		name = "暴击指示器",
+		name_en = "Crit Designator",
+		icon = "res://assets/ui/icons/mod_icons/mod_guidance.png",
+		prototype = "精确标定仪",
+		description = "攻击命中 30% 概率挂暴击标注，被标注目标受到攻击时暴击率 +50%，持续 5 秒（全队远程优先集火）",
+		rarity = "epic",
+		power_mult = 1.6,
+		cost_research = 320,
+		cost_install = 160,
+		slot_type = "guidance",
+		conflict_group = "crit_designator",
+		effects = {crit_mark_chance = 0.30, crit_mark_bonus = 0.50, crit_mark_duration = 5.0},
+		unlock_conditions = {required_level = 5}
 	},
 }
 

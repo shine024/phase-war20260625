@@ -225,6 +225,44 @@ const DATA: Dictionary = {
 		effects = {defense_light = 0.40, deploy_speed = -1},
 		unlock_conditions = {required_level = 2}
 	},
+
+	# ─── v7.x 新机制改造 ───
+
+	# debuff 型：尾翼稳定脱壳穿甲（每次命中 -8% 防御，最多 5 层）
+	"art_13_apfsds_sabot" = {
+		id = "art_13_apfsds_sabot",
+		name = "尾翼稳定脱壳穿甲",
+		name_en = "APFSDS Sabot",
+		icon = "res://assets/ui/icons/mod_icons/mod_ammunition.png",
+		prototype = "M829A4 穿甲弹",
+		description = "每次命中撕裂目标装甲：降低 8% 防御，最多叠加 5 层（累计 -40% 防御）",
+		rarity = "legendary",
+		power_mult = 1.9,
+		cost_research = 420,
+		cost_install = 210,
+		slot_type = "ammunition",
+		conflict_group = "ammunition",
+		effects = {armor_break = 0.08, armor_break_stacks = 5},
+		unlock_conditions = {required_level = 6}
+	},
+
+	# 兵种专属：反击炮击（被攻击时标记攻击者，炮兵优先反击）
+	"art_14_counter_battery" = {
+		id = "art_14_counter_battery",
+		name = "反击炮击",
+		name_en = "Counter-Battery Fire",
+		icon = "res://assets/ui/icons/mod_icons/mod_special.png",
+		prototype = "AN/TPQ-36 反炮兵雷达",
+		description = "被攻击时自动标记攻击者（5秒），炮兵优先反击被标记目标并造成 +30% 伤害",
+		rarity = "legendary",
+		power_mult = 2.0,
+		cost_research = 450,
+		cost_install = 225,
+		slot_type = "special",
+		conflict_group = "special",
+		effects = {counter_battery = 1},
+		unlock_conditions = {required_level = 7}
+	},
 }
 
 static func get_mod_data(mod_id: String) -> Dictionary:

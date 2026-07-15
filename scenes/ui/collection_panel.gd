@@ -25,6 +25,10 @@ var _selected_card_id: String = ""
 func _ready() -> void:
 	if _close_btn:
 		_close_btn.pressed.connect(_on_close)
+	# v7.x 性能：CardCollectionManager 延迟加载，面板初始化时确保已实例化（否则本地信号连不上）
+	var _mll: Node = get_node_or_null("/root/ManagerLazyLoader")
+	if _mll and _mll.has_method("ensure_loaded"):
+		_mll.ensure_loaded("card_collection")
 	# 刷新订阅：blueprint_unlocked 是主路径；CardCollectionManager 本地信号兜底；
 	# card_added_to_backpack 覆盖"已拥有但未触发解锁信号"的卡（ InstanceRegistry 兜底判断）。
 	if SignalBus:

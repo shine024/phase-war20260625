@@ -676,6 +676,9 @@ func get_unit_at_position(viewport_pos: Vector2) -> Dictionary:
 		for child in parent_node.get_children():
 			if not is_instance_valid(child):
 				continue
+			# v7.x 修复：跳过非单位节点（伤害数字、特效等混在容器里时会被误判为可点单位）
+			if not (child.is_in_group("player_units") or child.is_in_group("enemy_units")):
+				continue
 			var d := viewport_pos.distance_to(child.global_position)
 			if d < hit_radius and d < best_d:
 				best_d = d

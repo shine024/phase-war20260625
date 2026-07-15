@@ -65,12 +65,14 @@ var _force_defeat_reason: String = ""       ## 必败战的剧情标识（如 "p
 # v6.6(剧情): 最终战标记（补剧情.txt 第十幕 第100关/相位之主/噬时者）
 var _is_final_battle: bool = false          ## 当前战斗是否为最终战（触发记忆场景视觉+专属Boss）
 
-## 检查是否遭遇相位师（基础15%概率 + 软兜底）
-## v7.1 软兜底：①前 PHASE_MASTER_GRACE_LEVELS(10) 关新手保护期不触发；
-##              ②连续 5 关未触发后概率递增（0.15→0.25→0.4），避免长期不遇。
+## 检查是否遭遇相位师（驻守关100%优先 → 非驻守关走概率门）
+## 驻守相位师：20个关卡100%遭遇固定相位师（PhaseMasterGarrison 表，含原第49关硬编码，已驻守化）。
+## 非驻守关：基础15%概率 + v7.1 软兜底
+##           ①前 PHASE_MASTER_GRACE_LEVELS(10) 关新手保护期不触发；
+##           ②连续 5 关未触发后概率递增（0.15→0.25→0.4），避免长期不遇。
 ## 逻辑：优先遭遇当前关卡所属势力的相位师（用于防守任务）
 func check_phase_master_encounter() -> Dictionary:
-	# v7.x 驻守相位师：19个关卡100%遭遇固定相位师（绕过随机机制）
+	# v7.x 驻守相位师：20个关卡100%遭遇固定相位师（绕过随机机制）
 	var garrison_master_id: String = PhaseMasterGarrison.get_garrison_master_id(current_level)
 	if not garrison_master_id.is_empty():
 		var garrison_config: Dictionary = _build_garrison_config(garrison_master_id)
@@ -79,29 +81,24 @@ func check_phase_master_encounter() -> Dictionary:
 			_is_phase_master_battle = true
 			_phase_master_drought_count = 0
 			return _current_phase_master
-	# 第49关固定为相位师战斗；其余关卡使用常量概率
-	var force_phase_master_battle: bool = (current_level == 49)
-	if not force_phase_master_battle:
-		# v7.1 新手保护期：前 N 关不触发随机遭遇（第49关固定战不受影响）
-		if current_level <= PHASE_MASTER_GRACE_LEVELS:
-			_is_phase_master_battle = false
-			_current_phase_master = {}
-			# 仍累计 drought（保护期内未触发也算，保证出保护期后递增生效）
-			_phase_master_drought_count += 1
-			return {}
-		# v7.1 递增保底：连续未触发次数越多，遭遇概率越高
-		var cur_chance: float = GC.PHASE_MASTER_ENCOUNTER_CHANCE
-		if _phase_master_drought_count >= 5:
-			# 每多连续未触发 1 次，概率 +0.10，上限 0.5
-			cur_chance = minf(0.5, GC.PHASE_MASTER_ENCOUNTER_CHANCE + (_phase_master_drought_count - 4) * 0.10)
-		if randf() > cur_chance:
-			_is_phase_master_battle = false
-			_current_phase_master = {}
-			_phase_master_drought_count += 1
-			return {}
-	if force_phase_master_battle:
-		if DEBUG_GAME_LOG:
-			pass  # LOG: 第49关固定触发相位师战斗
+	# 非驻守关走概率门（第49关已并入驻守表，不再需要硬编码 force 分支）
+	# v7.1 新手保护期：前 N 关不触发随机遭遇
+	if current_level <= PHASE_MASTER_GRACE_LEVELS:
+		_is_phase_master_battle = false
+		_current_phase_master = {}
+		# 仍累计 drought（保护期内未触发也算，保证出保护期后递增生效）
+		_phase_master_drought_count += 1
+		return {}
+	# v7.1 递增保底：连续未触发次数越多，遭遇概率越高
+	var cur_chance: float = GC.PHASE_MASTER_ENCOUNTER_CHANCE
+	if _phase_master_drought_count >= 5:
+		# 每多连续未触发 1 次，概率 +0.10，上限 0.5
+		cur_chance = minf(0.5, GC.PHASE_MASTER_ENCOUNTER_CHANCE + (_phase_master_drought_count - 4) * 0.10)
+	if randf() > cur_chance:
+		_is_phase_master_battle = false
+		_current_phase_master = {}
+		_phase_master_drought_count += 1
+		return {}
 
 	# 获取当前关卡的势力
 	var LIC = preload("res://data/level_information.gd")
@@ -473,6 +470,7 @@ func _on_battle_ended(player_won: bool) -> void:
 	# v6.6(剧情): 必败战处理 — 记录 story_flag 并清理状态
 	# 必败战通常 player_won=false（计时到强制判负），但即使因故 player_won=true 也走标记逻辑
 	if _is_force_defeat_battle:
+		ManagerLazyLoader.ensure_loaded("story")
 		var sm: Node = get_node_or_null("/root/StoryManager")
 		if sm and sm.has_method("set_story_flag") and not _force_defeat_reason.is_empty():
 			match _force_defeat_reason:
@@ -546,6 +544,8 @@ func _on_battle_ended(player_won: bool) -> void:
 			if DEBUG_GAME_LOG:
 				pass  # LOG: 关卡进度已更新
 			# v7.x 修复 B3：记录关卡进度成就统计（progress 类成就，如 max_level/perfect_levels）
+			# v7.x 性能：AchievementManager 延迟加载，访问前确保已实例化（否则成就进度丢失）
+			ManagerLazyLoader.ensure_loaded("achievement")
 			var _am_evo = get_node_or_null("/root/AchievementManager")
 			if _am_evo and _am_evo.has_method("record_level_progress"):
 				_am_evo.record_level_progress(current_level, victory_stars)
@@ -800,6 +800,17 @@ func _grant_phase_master_victory_reward(master_name: String) -> void:
 		if not _mod_drop2.is_empty() and _drop_bag and _drop_bag.has_method("add_item"):
 			_drop_bag.add_item(String(_mod_drop2.get("item_type", "")), 1)
 
+	# v7.x: 特殊相位仪掉落（仅相位师掉落，不在商店出售）
+	# 6★相位师 20% 掉对应特殊仪 / 7★相位师 40% 掉对应特殊仪
+	# 低星级（5★及以下）不掉特殊相位仪（保留追求感）
+	var _special_drop_id: String = _maybe_roll_special_instrument_drop(_stars, _pm_faction)
+	if not _special_drop_id.is_empty() and PhaseInstrumentManager and PhaseInstrumentManager.has_method("unlock_instrument"):
+		if not PhaseInstrumentManager.has_method("has_unlocked_instrument") or not PhaseInstrumentManager.has_unlocked_instrument(_special_drop_id):
+			PhaseInstrumentManager.unlock_instrument(_special_drop_id)
+			last_battle_reward_summary["special_instrument"] = _special_drop_id
+			if DEBUG_GAME_LOG:
+				push_warning("[v7.x] 特殊相位仪掉落: %s" % _special_drop_id)
+
 	# 5. 势力声望提升（战胜相位师，该势力获得声望）
 	var faction_id: String = ""
 	if fsm and fsm.has_method("add_faction_reputation"):
@@ -845,9 +856,35 @@ func _pick_rune_from_pool_or_generic(master_runes_pool: Array, rune_defs, target
 	for r in pool:
 		if r.get("faction_id", "") == rune_defs.FACTION_GENERIC:
 			generic.append(r)
-	if not generic.is_empty():
-		return String(generic[randi() % generic.size()]["id"])
+		if not generic.is_empty():
+			return String(generic[randi() % generic.size()]["id"])
 	return ""
+
+## v7.x: 按相位师星级/势力判定是否掉落特殊相位仪
+## 6★相位师 20% 概率掉对应特殊仪 / 7★相位师 40% 概率掉对应特殊仪
+## 5★及以下不掉（保留追求感，让高星相位师战更有价值）
+## [param stars] 相位师星级（1-7）
+## [param faction] 相位师势力 id（决定掉哪个特殊仪）
+## [return] 特殊相位仪 id，未命中返回 ""
+func _maybe_roll_special_instrument_drop(stars: int, faction: String) -> String:
+	if stars < 6:
+		return ""
+	var drop_chance: float = 0.40 if stars >= 7 else 0.20
+	if randf() >= drop_chance:
+		return ""
+	# 按势力映射特殊相位仪（势力-相位仪对应表）
+	var faction_to_special: Dictionary = {
+		"iron_wall_corp": "pi_special_rage",      # 钢铁势力 → 铁血元帅权杖
+		"void_research": "pi_special_void",       # 虚空势力 → 虚空吞噬者
+		"aether_dynamics": "pi_special_aegis",    # 神盾势力 → 神盾·壁垒之心
+		"nova_arms": "pi_special_nova",           # 新星势力 → 终焉核芯
+	}
+	# 势力命中：直接返回对应的特殊仪
+	if faction_to_special.has(faction):
+		return String(faction_to_special[faction])
+	# 势力未命中（混合势力/无势力相位师）：随机抽一个
+	var all_specials: Array = faction_to_special.values()
+	return String(all_specials[randi() % all_specials.size()])
 
 ## 敌方势力 -> 法则家族映射
 static func _get_law_families_for_faction(enemy_faction: String) -> Array:
@@ -1185,6 +1222,7 @@ func _check_story_mission_post_battle() -> void:
 
 ## v6.7(剧情任务): tutorial 是否已触发过（用 StoryManager 节点标记防重复）
 func _is_tutorial_triggered(quest_id: String) -> bool:
+	ManagerLazyLoader.ensure_loaded("story")
 	var sm: Node = get_node_or_null("/root/StoryManager")
 	if sm == null or not sm.has_method("is_node_triggered"):
 		return false
@@ -1192,6 +1230,7 @@ func _is_tutorial_triggered(quest_id: String) -> bool:
 
 ## v6.7(剧情任务): 标记 tutorial 已触发（对话开始播放时调用，防重复）
 func _mark_tutorial_triggered(quest_id: String) -> void:
+	ManagerLazyLoader.ensure_loaded("story")
 	var sm: Node = get_node_or_null("/root/StoryManager")
 	if sm != null and sm.has_method("mark_node_triggered"):
 		sm.mark_node_triggered("tutorial_" + quest_id)

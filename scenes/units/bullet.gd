@@ -768,6 +768,11 @@ func _on_hit(primary: Node2D) -> void:
 		var target_stats_v: UnitStats = primary.get("stats") as UnitStats if "stats" in primary else null
 		if target_stats_v != null and target_stats_v.crit_resist > 0.0:
 			effective_crit = maxf(0.0, effective_crit - target_stats_v.crit_resist)
+	# v8.x: 暴击标注——被标注目标受到攻击时暴击率额外提升（独立乘区，不受 crit_resist 扣减）
+	if primary != null and primary.has_meta("_crit_marked_until"):
+		var _cm_expire: float = float(primary.get_meta("_crit_marked_until", 0.0))
+		if Time.get_ticks_msec() / 1000.0 < _cm_expire:
+			effective_crit += float(primary.get_meta("_crit_mark_bonus", 0.0))
 	if effective_crit > 0.0 and randf() < effective_crit:
 		is_crit = true
 		final_damage *= (1.5 + shooter_stats.crit_damage_bonus)

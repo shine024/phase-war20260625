@@ -4,6 +4,9 @@ class_name TargetSelection
 
 enum TargetMode { DIRECT, INDIRECT, AERIAL }
 
+## v8.x: 远程单位阈值——attack_range >= 此值视为远程，参与暴击标注集火优先
+const REMOTE_RANGE_THRESHOLD: float = 250.0
+
 ## 直射: 距离最近 → 同距最低HP → 同距同HP最早部署
 ## 超出射程时向敌方基地方向移动（由调用方处理，此处只选目标）
 ## P1 性能优化：单遍手写循环找最优，避免 sort/filter/lambda 分配
@@ -107,6 +110,8 @@ static func _get_counter_priority(stats: UnitStats, tags: Array = []) -> int:
 
 ## 根据武器类型选目标
 static func select_target(attacker: Node2D, enemies: Array, weapon_type: int) -> Node2D:
+	# v8.x: 远程单位优先集火暴击标注目标（无标注或非远程则原样）
+	enemies = _prioritize_crit_marked(attacker, enemies)
 	match weapon_type:
 		0: return select_target_direct(attacker, enemies)      # DIRECT
 		1: return select_target_indirect(attacker, enemies)     # INDIRECT
@@ -137,3 +142,19 @@ static func _nearest(origin: Vector2, targets: Array) -> Node2D:
 			best_d2 = d2
 			best = t
 	return best
+
+## v8.x: 远程单位（attack_range >= REMOTE_RANGE_THRESHOLD）优先选暴击标注目标
+## 候选中存在未过期 _crit_marked_until 的目标时，仅返回这些目标；否则原样返回
+## 非远程单位不参与集火优先，原样返回
+static func _prioritize_crit_marked(attacker: Node2D, enemies: Array) -> Array:
+	var stats = attacker.get("stats") as UnitStats
+	if stats == null or stats.attack_range < REMOTE_RANGE_THRESHOLD:
+		return enemies
+	var now: float = Time.get_ticks_msec() / 1000.0
+	var marked: Array = []
+	for e in enemies:
+		if e == null or not is_instance_valid(e):
+			continue
+		if e.has_meta("_crit_marked_until") and now < float(e.get_meta("_crit_marked_until", 0.0)):
+			marked.append(e)
+	return marked if not marked.is_empty() else enemies

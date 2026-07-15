@@ -118,6 +118,58 @@ const DATA: Dictionary = {
 		effects = {ally_hit_bonus = 0.15},
 		unlock_conditions = {required_level = 7}
 	},
+
+	# ─── v7.x 第二批：堡垒区域控制 ───
+	"for_11_advanced_minefield" = {
+		id = "for_11_advanced_minefield",
+		name = "强化雷场",
+		name_en = "Advanced Minefield",
+		icon = "res://assets/ui/icons/mod_icons/mod_special.png",
+		prototype = "智能反坦克雷场",
+		description = "堡垒外围部署智能雷场：对接近的敌人造成150点一次性爆炸伤害",
+		rarity = "legendary",
+		power_mult = 1.9,
+		cost_research = 400,
+		cost_install = 200,
+		slot_type = "special",
+		conflict_group = "special",
+		effects = {minefield = 150.0},
+		unlock_conditions = {required_level = 6}
+	},
+
+	"for_12_anti_tank_trench" = {
+		id = "for_12_anti_tank_trench",
+		name = "反坦克壕",
+		name_en = "Anti-Tank Trench",
+		icon = "res://assets/ui/icons/mod_icons/mod_special.png",
+		prototype = "壕堑系统",
+		description = "挖掘反坦克壕：200像素范围内敌方移速降低40%",
+		rarity = "epic",
+		power_mult = 1.6,
+		cost_research = 320,
+		cost_install = 160,
+		slot_type = "special",
+		conflict_group = "special",
+		effects = {slow_aura = 0.40, slow_aura_radius = 200.0},
+		unlock_conditions = {required_level = 5}
+	},
+
+	"for_13_command_bunker" = {
+		id = "for_13_command_bunker",
+		name = "指挥地堡",
+		name_en = "Command Bunker",
+		icon = "res://assets/ui/icons/mod_icons/mod_command.png",
+		prototype = "地下指挥中心",
+		description = "强化指挥塔：250像素范围内友军暴击+15%",
+		rarity = "legendary",
+		power_mult = 2.0,
+		cost_research = 440,
+		cost_install = 220,
+		slot_type = "command",
+		conflict_group = "command",
+		effects = {command_aura = 0.15},
+		unlock_conditions = {required_level = 7}
+	},
 }
 
 static func get_mod_data(mod_id: String) -> Dictionary:

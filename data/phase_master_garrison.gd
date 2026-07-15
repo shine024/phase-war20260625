@@ -2,7 +2,7 @@ extends RefCounted
 class_name PhaseMasterGarrison
 ## 敌方相位师固定驻守关卡映射表（v7.x）
 ##
-## 把"15%随机遭遇"改为"19个关卡100%遭遇固定相位师"。
+## 把"15%随机遭遇"改为"20个关卡100%遭遇固定相位师"。
 ## 每个驻守相位师带重新设计的机配卡(platforms)+相位仪(phase_instrument)。
 ## 非驻守关保留原15%随机机制。
 ##
@@ -10,7 +10,7 @@ class_name PhaseMasterGarrison
 ## 难度随关卡递进（Lv10→Lv30），每时代3-4个驻守点。
 
 # ─────────────────────────────────────────────────────────────
-#  关卡 → 相位师ID 映射（19个驻守点）
+#  关卡 → 相位师ID 映射（20个驻守点）
 # ─────────────────────────────────────────────────────────────
 
 const GARRISON_LEVEL_TO_MASTER: Dictionary = {
@@ -27,6 +27,7 @@ const GARRISON_LEVEL_TO_MASTER: Dictionary = {
 
 	# ── COLD 时代（关卡 41-60）──
 	45: "enemy_master_013",  # 钢铁烈焰·卡尔 Lv18 steel_flame
+	49: "enemy_master_014",  # 雷霆钢铁·维克多 Lv19 thunder_steel（原第49关硬编码，驻守化）
 	50: "enemy_master_015",  # 虚空烈焰·塞拉菲娜 Lv20 void_flame
 	55: "enemy_master_016",  # 不朽钢铁·阿特拉斯 Lv22 steel
 	60: "enemy_master_018",  # 万雷之主·雷神 Lv24 thunder（COLD Boss）

@@ -164,6 +164,26 @@ const DATA: Dictionary = {
 		effects = {move_speed = 20, dodge_chance = 0.10},
 		unlock_conditions = {required_level = 5}
 	},
+
+	# ─── v7.x 新机制改造 ───
+
+	# 连击型：加力燃烧室（攻击 3 次后爆发 +40% 攻速）
+	"air_15_afterburner" = {
+		id = "air_15_afterburner",
+		name = "加力燃烧室",
+		name_en = "Afterburner",
+		icon = "res://assets/ui/icons/mod_icons/mod_special.png",
+		prototype = "F-119 推力矢量引擎",
+		description = "连续攻击激活加力：每 3 次命中触发爆发，本次额外造成 40% 伤害",
+		rarity = "legendary",
+		power_mult = 1.7,
+		cost_research = 380,
+		cost_install = 190,
+		slot_type = "special",
+		conflict_group = "special",
+		effects = {combo_system = 3, combo_bonus = 0.40},
+		unlock_conditions = {required_level = 6}
+	},
 }
 
 static func get_mod_data(mod_id: String) -> Dictionary:

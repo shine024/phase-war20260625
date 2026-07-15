@@ -24,9 +24,9 @@ const TIER_HIGH: int = 3    # 高配（9改造档满配）
 
 ## 档位 → 加成配置（atk_pct/hp_pct/def_pct，等量我方同档位养成总加成）
 const TIER_BONUS: Dictionary = {
-	TIER_LOW:  {"atk_pct": 0.10, "hp_pct": 0.10, "def_pct": 0.05, "mod_count": 3, "rune_count": 1, "enhance_level": 3},
-	TIER_MID:  {"atk_pct": 0.20, "hp_pct": 0.18, "def_pct": 0.10, "mod_count": 6, "rune_count": 3, "enhance_level": 6},
-	TIER_HIGH: {"atk_pct": 0.35, "hp_pct": 0.30, "def_pct": 0.15, "mod_count": 9, "rune_count": 6, "enhance_level": 9},
+	TIER_LOW:  {"name": "低配", "atk_pct": 0.10, "hp_pct": 0.10, "def_pct": 0.05, "mod_count": 3, "rune_count": 1, "enhance_level": 3},
+	TIER_MID:  {"name": "中配", "atk_pct": 0.20, "hp_pct": 0.18, "def_pct": 0.10, "mod_count": 6, "rune_count": 3, "enhance_level": 6},
+	TIER_HIGH: {"name": "高配", "atk_pct": 0.35, "hp_pct": 0.30, "def_pct": 0.15, "mod_count": 9, "rune_count": 6, "enhance_level": 9},
 }
 
 ## 改造槽组合（按档位，用于展示/UI，实际加成走 TIER_BONUS）

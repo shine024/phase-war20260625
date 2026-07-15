@@ -19,7 +19,6 @@ class_name GameConfig
 ## 相位师配置
 @export_group("相位师配置")
 @export var phase_master_encounter_chance: float = 0.15  ## 相位师遭遇概率
-@export var phase_master_boss_level: int = 49  ## 相位师BOSS关卡
 
 ## UI配置
 @export_group("UI配置")
@@ -54,7 +53,6 @@ static func get_default() -> GameConfig:
 		_default_config.exp_base_amount = 10
 		_default_config.exp_per_level = 5
 		_default_config.phase_master_encounter_chance = 0.15
-		_default_config.phase_master_boss_level = 49
 		_default_config.save_notification_duration = 2.0
 		_default_config.error_notification_duration = 3.0
 		_default_config.animation_default_duration = 0.3
@@ -116,7 +114,6 @@ func reset_to_defaults() -> void:
 	exp_base_amount = 10
 	exp_per_level = 5
 	phase_master_encounter_chance = 0.15
-	phase_master_boss_level = 49
 	save_notification_duration = 2.0
 	error_notification_duration = 3.0
 	animation_default_duration = 0.3

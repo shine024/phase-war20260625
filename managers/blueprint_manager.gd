@@ -168,7 +168,8 @@ func _sync_debug_log_flag() -> void:
 
 func _unlock_default_blueprints() -> void:
 	var plm := _ensure_plm()
-	var all_ids: Array = DefaultCards.get_all_blueprint_ids()
+	# v7.x 性能：用轻量版，避免启动期构建 133 张完整卡对象（只需 card_id 字符串）
+	var all_ids: Array = DefaultCards.get_all_blueprint_ids_lightweight()
 	var high_tier_blueprints = [
 		"omega_platform", "titan_mk2", "abrams_mk2",
 		"storm_rider"
@@ -481,13 +482,13 @@ func _is_exclusive_card_available(card_id: String) -> bool:
 	if not EC.is_exclusive_card(card_id):
 		return true  # 非专属卡始终可用
 	var faction_id: String = EC.get_exclusive_faction(card_id)
-	var min_lv: int = EC.get_min_faction_level(card_id)
+	var min_rep: int = EC.get_min_reputation(card_id)
 	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
 	if fsm == null:
 		return false
 	if fsm.get_active_faction() != faction_id:
 		return false
-	return fsm.get_faction_level(faction_id) >= min_lv
+	return fsm.get_faction_reputation(faction_id) >= min_rep
 
 func get_manufacture_info(card_id: String) -> Dictionary:
 	var lookup_id: String = _normalize_blueprint_id(card_id)

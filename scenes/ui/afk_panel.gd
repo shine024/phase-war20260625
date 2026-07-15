@@ -92,7 +92,8 @@ func _ready() -> void:
 	ResourceLoader.load_threaded_request("res://scenes/ui/afk_level_selector.tscn")
 
 	# v6.6(挂机): 实例化关卡信息（get_level_display_name 是实例方法）
-	_level_info = _LevelInfoScript.new()
+	# v7.x 性能：用全局单例，避免每次打开挂机面板重建 100 关字典
+	_level_info = _LevelInfoScript.get_shared()
 	# v6.6(挂机缩略图): 缓存战斗 SubViewport 引用（延迟到首次 refresh 时再查，此时 BattleContainer 可能还未就绪）
 	call_deferred("_cache_battle_viewport")
 

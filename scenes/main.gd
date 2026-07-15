@@ -1133,6 +1133,10 @@ func _start_tutorial_if_needed() -> void:
 
 ## 初始化日常任务
 func _init_daily_tasks() -> void:
+	# v7.x 性能：DailyTaskManager 延迟加载，进入主界面时确保实例化
+	var _mll: Node = get_node_or_null("/root/ManagerLazyLoader")
+	if _mll and _mll.has_method("ensure_loaded"):
+		_mll.ensure_loaded("daily_task")
 	var task_manager = get_node_or_null("/root/DailyTaskManager")
 	if task_manager:
 		task_manager.refresh_daily_tasks()

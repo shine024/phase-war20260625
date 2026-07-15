@@ -352,6 +352,133 @@
       "fragment_amount": 1,
       "price_nano_materials": 640,
       "required_rep": 58
+    },
+    {
+      "_comment": "v8.x: 补齐 18 张之前无任何获取途径的玩家卡（掉落+商店双保险）",
+      "company_id": "iron_wall_corp",
+      "card_id": "ww1_lanchest",
+      "fragment_amount": 1,
+      "price_nano_materials": 280,
+      "required_rep": 15
+    },
+    {
+      "company_id": "iron_wall_corp",
+      "card_id": "ww1_fort_pillbox",
+      "fragment_amount": 1,
+      "price_nano_materials": 300,
+      "required_rep": 18
+    },
+    {
+      "company_id": "iron_wall_corp",
+      "card_id": "ww1_fort_artillery",
+      "fragment_amount": 1,
+      "price_nano_materials": 320,
+      "required_rep": 20
+    },
+    {
+      "company_id": "aether_dynamics",
+      "card_id": "ww1_m76",
+      "fragment_amount": 1,
+      "price_nano_materials": 300,
+      "required_rep": 12
+    },
+    {
+      "company_id": "iron_wall_corp",
+      "card_id": "ww2_fort_bunker",
+      "fragment_amount": 1,
+      "price_nano_materials": 380,
+      "required_rep": 25
+    },
+    {
+      "company_id": "iron_wall_corp",
+      "card_id": "ww2_fort_flak",
+      "fragment_amount": 1,
+      "price_nano_materials": 420,
+      "required_rep": 28
+    },
+    {
+      "company_id": "iron_wall_corp",
+      "card_id": "cold_fort_radar",
+      "fragment_amount": 1,
+      "price_nano_materials": 500,
+      "required_rep": 32
+    },
+    {
+      "company_id": "iron_wall_corp",
+      "card_id": "cold_fort_missile",
+      "fragment_amount": 1,
+      "price_nano_materials": 600,
+      "required_rep": 40
+    },
+    {
+      "company_id": "nova_arms",
+      "card_id": "cold_spetsnaz",
+      "fragment_amount": 1,
+      "price_nano_materials": 450,
+      "required_rep": 30
+    },
+    {
+      "company_id": "iron_wall_corp",
+      "card_id": "mod_fort_phalanx",
+      "fragment_amount": 1,
+      "price_nano_materials": 650,
+      "required_rep": 45
+    },
+    {
+      "company_id": "iron_wall_corp",
+      "card_id": "mod_fort_citadel",
+      "fragment_amount": 1,
+      "price_nano_materials": 750,
+      "required_rep": 52
+    },
+    {
+      "company_id": "aether_dynamics",
+      "card_id": "mod_uh60",
+      "fragment_amount": 1,
+      "price_nano_materials": 700,
+      "required_rep": 45
+    },
+    {
+      "company_id": "iron_wall_corp",
+      "card_id": "fut_fort_shield",
+      "fragment_amount": 1,
+      "price_nano_materials": 800,
+      "required_rep": 55
+    },
+    {
+      "company_id": "iron_wall_corp",
+      "card_id": "fut_fort_ion",
+      "fragment_amount": 1,
+      "price_nano_materials": 900,
+      "required_rep": 65
+    },
+    {
+      "company_id": "void_research",
+      "card_id": "fut_space_fighter",
+      "fragment_amount": 1,
+      "price_nano_materials": 820,
+      "required_rep": 55
+    },
+    {
+      "company_id": "nova_arms",
+      "card_id": "fut_stormcore",
+      "fragment_amount": 1,
+      "price_nano_materials": 880,
+      "required_rep": 60
+    },
+    {
+      "company_id": "helix_recon",
+      "card_id": "fut_colossus",
+      "fragment_amount": 1,
+      "price_nano_materials": 920,
+      "required_rep": 68
+    },
+    {
+      "company_id": "void_research",
+      "card_id": "fut_arm_nexus",
+      "fragment_amount": 1,
+      "price_nano_materials": 900,
+      "required_rep": 70
     }
   ]
 }

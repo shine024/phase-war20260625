@@ -44,50 +44,62 @@
 			"def_bonus": 2.64,
 			"unit_capacity": 4
 		},
-		"steel_guardian_mk3": {
-			"id": "steel_guardian_mk3",
-			"name": "钢铁卫士·专家",
-			"faction": "steel",
-			"level": 18,
-			"rarity": "rare",
-			"base_stats": {
-				"max_hp": 1200,
-				"energy_capacity": 200,
-				"energy_regen": 2.0,
-				"defense": 50
+			"steel_guardian_mk3": {
+				"id": "steel_guardian_mk3",
+				"name": "钢铁卫士·专家",
+				"faction": "steel",
+				"level": 18,
+				"rarity": "rare",
+				"base_stats": {
+					"max_hp": 1200,
+					"energy_capacity": 200,
+					"energy_regen": 2.0,
+					"defense": 50
+				},
+				"special_effects": [
+					"steel_skin_expert",
+					"fortress_mastery",
+					"industrial_aura"
+				],
+				"atk_bonus": 7.5,
+				"hp_bonus": 5.62,
+				"def_bonus": 4.5,
+				"unit_capacity": 5,
+				"active_ability": {
+					"id": "enemy_shield_bulwark",
+					"type": "on_battle_start",
+					"params": {"shield_amount": 2500.0},
+					"description": "开局为全体敌兵附加 2500 点能量护盾"
+				}
 			},
-			"special_effects": [
-				"steel_skin_expert",
-				"fortress_mastery",
-				"industrial_aura"
-			],
-			"atk_bonus": 7.5,
-			"hp_bonus": 5.62,
-			"def_bonus": 4.5,
-			"unit_capacity": 5
-		},
-		"steel_guardian_mk4": {
-			"id": "steel_guardian_mk4",
-			"name": "钢铁卫士·大师",
-			"faction": "steel",
-			"level": 25,
-			"rarity": "mythic",
-			"base_stats": {
-				"max_hp": 2000,
-				"energy_capacity": 300,
-				"energy_regen": 2.5,
-				"defense": 80
+			"steel_guardian_mk4": {
+				"id": "steel_guardian_mk4",
+				"name": "钢铁卫士·大师",
+				"faction": "steel",
+				"level": 25,
+				"rarity": "mythic",
+				"base_stats": {
+					"max_hp": 2000,
+					"energy_capacity": 300,
+					"energy_regen": 2.5,
+					"defense": 80
+				},
+				"special_effects": [
+					"steel_skin_master",
+					"immortal_fortress",
+					"steel_mountain"
+				],
+				"atk_bonus": 13.33,
+				"hp_bonus": 10.0,
+				"def_bonus": 8.0,
+				"unit_capacity": 6,
+				"active_ability": {
+					"id": "enemy_rage_buff",
+					"type": "periodic",
+					"params": {"interval": 15.0, "duration": 5.0, "atk_mult": 1.4, "spd_mult": 1.25},
+					"description": "每 15 秒激活狂暴：全体敌兵 5 秒内攻击+40%、攻速+25%"
+				}
 			},
-			"special_effects": [
-				"steel_skin_master",
-				"immortal_fortress",
-				"steel_mountain"
-			],
-			"atk_bonus": 13.33,
-			"hp_bonus": 10.0,
-			"def_bonus": 8.0,
-			"unit_capacity": 6
-		},
 		"flame_destroyer_mk1": {
 			"id": "flame_destroyer_mk1",
 			"name": "烈焰破坏者·初阶",
@@ -151,28 +163,34 @@
 			"def_bonus": 4.75,
 			"unit_capacity": 5
 		},
-		"flame_destroyer_mk4": {
-			"id": "flame_destroyer_mk4",
-			"name": "烈焰破坏者·大师",
-			"faction": "flame",
-			"level": 26,
-			"rarity": "mythic",
-			"base_stats": {
-				"max_hp": 1800,
-				"energy_capacity": 320,
-				"energy_regen": 3.0,
-				"attack_power": 60
+			"flame_destroyer_mk4": {
+				"id": "flame_destroyer_mk4",
+				"name": "烈焰破坏者·大师",
+				"faction": "flame",
+				"level": 26,
+				"rarity": "mythic",
+				"base_stats": {
+					"max_hp": 1800,
+					"energy_capacity": 320,
+					"energy_regen": 3.0,
+					"attack_power": 60
+				},
+				"special_effects": [
+					"eternal_flame",
+					"world_burning",
+					"phoenix_aura"
+				],
+				"atk_bonus": 13.87,
+				"hp_bonus": 10.4,
+				"def_bonus": 8.32,
+				"unit_capacity": 6,
+				"active_ability": {
+					"id": "enemy_artillery_barrage",
+					"type": "periodic",
+					"params": {"interval": 12.0, "shots": 4, "shot_interval": 0.8},
+					"description": "每 12 秒从我方阵地外抛射 4 发曲射炮弹，间隔 0.8 秒，随机轰击我方单位"
+				}
 			},
-			"special_effects": [
-				"eternal_flame",
-				"world_burning",
-				"phoenix_aura"
-			],
-			"atk_bonus": 13.87,
-			"hp_bonus": 10.4,
-			"def_bonus": 8.32,
-			"unit_capacity": 6
-		},
 		"thunder_storm_mk1": {
 			"id": "thunder_storm_mk1",
 			"name": "雷霆风暴·初阶",
@@ -321,28 +339,34 @@
 			"def_bonus": 5.25,
 			"unit_capacity": 5
 		},
-		"void_walker_mk4": {
-			"id": "void_walker_mk4",
-			"name": "虚空行者·大师",
-			"faction": "void",
-			"level": 28,
-			"rarity": "mythic",
-			"base_stats": {
-				"max_hp": 1700,
-				"energy_capacity": 340,
-				"energy_regen": 2.8,
-				"magic_power": 80
+			"void_walker_mk4": {
+				"id": "void_walker_mk4",
+				"name": "虚空行者·大师",
+				"faction": "void",
+				"level": 28,
+				"rarity": "mythic",
+				"base_stats": {
+					"max_hp": 1700,
+					"energy_capacity": 340,
+					"energy_regen": 2.8,
+					"magic_power": 80
+				},
+				"special_effects": [
+					"void_lord",
+					"reality_breakdown",
+					"void_mastery_ultimate"
+				],
+				"atk_bonus": 14.93,
+				"hp_bonus": 11.2,
+				"def_bonus": 8.96,
+				"unit_capacity": 6,
+				"active_ability": {
+					"id": "enemy_nano_swarm",
+					"type": "on_battle_start",
+					"params": {"duration": 20.0, "hp_pct_per_sec": 0.015},
+					"description": "开局释放纳米虫群：我方单位每秒损失 1.5% 最大生命值，持续 20 秒"
+				}
 			},
-			"special_effects": [
-				"void_lord",
-				"reality_breakdown",
-				"void_mastery_ultimate"
-			],
-			"atk_bonus": 14.93,
-			"hp_bonus": 11.2,
-			"def_bonus": 8.96,
-			"unit_capacity": 6
-		},
 		"hybrid_steel_flame_mk1": {
 			"id": "hybrid_steel_flame_mk1",
 			"name": "熔铸卫士",
@@ -409,28 +433,34 @@
 			"def_bonus": 4.5,
 			"unit_capacity": 5
 		},
-		"steel_guardian_god": {
-			"id": "steel_guardian_god",
-			"name": "钢铁之神",
-			"faction": "steel",
-			"level": 29,
-			"rarity": "mythic",
-			"base_stats": {
-				"max_hp": 3000,
-				"energy_capacity": 500,
-				"energy_regen": 4.0,
-				"defense": 100
+			"steel_guardian_god": {
+				"id": "steel_guardian_god",
+				"name": "钢铁之神",
+				"faction": "steel",
+				"level": 29,
+				"rarity": "mythic",
+				"base_stats": {
+					"max_hp": 3000,
+					"energy_capacity": 500,
+					"energy_regen": 4.0,
+					"defense": 100
+				},
+				"special_effects": [
+					"divine_protection",
+					"godly_aura",
+					"immortal_fortress"
+				],
+				"atk_bonus": 15.47,
+				"hp_bonus": 11.6,
+				"def_bonus": 9.28,
+				"unit_capacity": 6,
+				"active_ability": {
+					"id": "enemy_rage_buff",
+					"type": "periodic",
+					"params": {"interval": 12.0, "duration": 6.0, "atk_mult": 1.5, "spd_mult": 1.3},
+					"description": "每 12 秒激活神威狂暴：全体敌兵 6 秒内攻击+50%、攻速+30%"
+				}
 			},
-			"special_effects": [
-				"divine_protection",
-				"godly_aura",
-				"immortal_fortress"
-			],
-			"atk_bonus": 15.47,
-			"hp_bonus": 11.6,
-			"def_bonus": 9.28,
-			"unit_capacity": 6
-		},
 		"flame_destroyer_god": {
 			"id": "flame_destroyer_god",
 			"name": "炎魔之神",
@@ -476,28 +506,34 @@
 			"def_bonus": 9.6,
 			"unit_capacity": 6
 		},
-		"void_walker_god": {
-			"id": "void_walker_god",
-			"name": "虚空女神",
-			"faction": "void",
-			"level": 30,
-			"rarity": "mythic",
-			"base_stats": {
-				"max_hp": 2500,
-				"energy_capacity": 500,
-				"energy_regen": 4.2,
-				"magic_power": 120
+			"void_walker_god": {
+				"id": "void_walker_god",
+				"name": "虚空女神",
+				"faction": "void",
+				"level": 30,
+				"rarity": "mythic",
+				"base_stats": {
+					"max_hp": 2500,
+					"energy_capacity": 500,
+					"energy_regen": 4.2,
+					"magic_power": 120
+				},
+				"special_effects": [
+					"void_goddess",
+					"night_everlasting",
+					"reality_erasure"
+				],
+				"atk_bonus": 16.0,
+				"hp_bonus": 12.0,
+				"def_bonus": 9.6,
+				"unit_capacity": 6,
+				"active_ability": {
+					"id": "enemy_nano_swarm",
+					"type": "on_battle_start",
+					"params": {"duration": 25.0, "hp_pct_per_sec": 0.02},
+					"description": "开局释放神级虫群：我方单位每秒损失 2% 最大生命值，持续 25 秒"
+				}
 			},
-			"special_effects": [
-				"void_goddess",
-				"night_everlasting",
-				"reality_erasure"
-			],
-			"atk_bonus": 16.0,
-			"hp_bonus": 12.0,
-			"def_bonus": 9.6,
-			"unit_capacity": 6
-		},
 		"omega_instrument": {
 			"id": "omega_instrument",
 			"name": "奥米茄相位仪",

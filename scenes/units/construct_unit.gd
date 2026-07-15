@@ -66,6 +66,8 @@ var is_player: bool = true
 var stats: UnitStats
 var hp: float = 100.0
 var shield: float = 0.0  # 护盾值
+# v7.x 第二批：相位护盾当前值（独立池，由 on_tick 回复，take_damage 优先扣减）
+var _phase_shield_current: float = 0.0
 ## v7.1: 堡垒类(combat_kind==FORT)专属防护光环——纯视觉，让"在防护"可见化。
 ## 站场上一动不动的防御单位会被玩家误以为"没作用"，此光环持续呼吸 + 受击闪亮强化。
 var _fort_shield_aura: Node2D = null
@@ -1148,17 +1150,50 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 				base_def = stats.defense_air
 			_:
 				base_def = maxf(stats.defense_light, maxf(stats.defense_armor, stats.defense_air))
+		# v7.x: 破甲叠加——读取自身 meta 的破甲层数，降低有效防御
+		# 每层按 armor_break_ratio 比例降低防御（_apply_armor_break 在攻击者命中时挂载）
+		if has_meta("_armor_break_stacks"):
+			var _ab_stacks: int = int(get_meta("_armor_break_stacks", 0))
+			var _ab_ratio: float = float(get_meta("_armor_break_ratio", 0.0))
+			if _ab_stacks > 0 and _ab_ratio > 0.0:
+				var _total_reduction: float = _ab_stacks * _ab_ratio
+				base_def = base_def * maxf(0.1, 1.0 - _total_reduction)
 		var eff_def: float = CardGridDamage.effective_defense(base_def, pen)
 		var dodge: float = float(stats.dodge_chance)
 		# v7.5: 传入 damage_reduction（此前全链路空转，现 resolve_hit 接入）
 		var dmg_red: float = float(stats.damage_reduction)
 		var hit: Dictionary = CardGridDamage.resolve_hit(amount, eff_def, dodge, dmg_red)
 		hp_loss = float(hit.get("hp_loss", amount))
+		# v7.x: 标记系统——被标记目标受额外伤害（_apply_mark 在攻击者命中时挂载）
+		if has_meta("_marked_until"):
+			var _mark_expire: float = float(get_meta("_marked_until", 0.0))
+			var _now: float = Time.get_ticks_msec() / 1000.0
+			if _now < _mark_expire:
+				var _vuln: float = float(get_meta("_mark_vuln_bonus", 0.0))
+				if _vuln > 0.0:
+					hp_loss = hp_loss * (1.0 + _vuln)
+			else:
+				# 标记过期，清理 meta
+				remove_meta("_marked_until")
+				remove_meta("_mark_vuln_bonus")
+		# v8.x: 暴击标注惰性清理（加成按时间戳在 bullet.gd 判定，过期 meta 顺带清掉）
+		if has_meta("_crit_marked_until"):
+			var _cm_expire: float = float(get_meta("_crit_marked_until", 0.0))
+			if Time.get_ticks_msec() / 1000.0 >= _cm_expire:
+				remove_meta("_crit_marked_until")
+				remove_meta("_crit_mark_bonus")
+		# v7.x: 巷战免伤——受 ARMOR/AIR 攻击时减免（步兵巷战教范）
+		if stats.urban_defense_bonus > 0.0 and attacker_kind >= 0:
+			if attacker_kind == GC.CombatKind.ARMOR or attacker_kind == GC.CombatKind.AIR:
+				hp_loss = hp_loss * (1.0 - stats.urban_defense_bonus)
 		if bool(hit.get("apply_recoil", false)):
 			_play_card_hit_recoil()
 		if bool(hit.get("apply_stun", false)):
 			var extra: float = 0.08 + clampf(hp_loss / maxf(stats.max_hp, 1.0), 0.0, 0.25) * 0.35
 			_hit_stun_left = maxf(_hit_stun_left, extra)
+	# v7.x 第二批：拦截判定（概率伤害归零，在 hp 扣减之前）
+	if stats != null and ModuleEffectHandler.try_intercept(self):
+		return  # 拦截成功，跳过所有伤害
 	# 卡牌特殊能力：平台受伤修改
 	if _has_bulwark:
 		hp_loss *= CardAbilityManager.get_bulwark_damage_multiplier(self, attacker)
@@ -1166,6 +1201,14 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		hp_loss = CardAbilityManager.apply_titan_mk2_damage_reduction(hp_loss)
 	# v6.2: 符文之语特殊效果 — 受击时触发（护盾生成）
 	RuneSpecialHandler.on_damaged(self, attacker, hp_loss)
+	# v7.x 第二批：相位护盾分流（独立池，在常规护盾之前扣减）
+	if stats != null and stats.phase_shield_pool > 0.0:
+		if not ("_phase_shield_current" in self):
+			_phase_shield_current = stats.phase_shield_pool
+		if _phase_shield_current > 0.0 and hp_loss > 0.0:
+			var phase_absorbed: float = min(_phase_shield_current, hp_loss)
+			_phase_shield_current -= phase_absorbed
+			hp_loss -= phase_absorbed
 	# v6.6: 护盾吸收 — 优先从护盾值扣减，剩余伤害才扣 HP。
 	# 修复前 shield 只增不减（add_shield 被 on_kill/law/rune 调用，但伤害从不走护盾吸收路径），
 	# 导致击杀护盾、法则护盾、符文护盾全部"白给"。现在 take_damage 入口统一扣护盾。
@@ -1182,6 +1225,9 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 	_update_hp_bar()
 	if SignalBus:
 		SignalBus.unit_damaged.emit(self, is_player, hp_loss, global_position)
+	# v7.x: 触发受击型改造效果（怒气积累、反击标记等）
+	# 注：on_damage_taken 需在 hp 扣减之后调用，让 handler 能读取当前 hp 状态
+	ModuleEffectHandler.on_damage_taken(self, attacker, hp_loss)
 	if hp <= 0:
 		_die()
 		return  # 死亡后跳过受击反馈（节点即将 freed，tween 会报错）
@@ -1251,6 +1297,21 @@ func _die() -> void:
 	# v6.2: 符文之语特殊效果 — 死亡复活检查（复活成功则中止死亡流程）
 	if RuneSpecialHandler.on_death(self):
 		return
+	# v7.x 第二批：改造濒死复活（IFAK/急救包）+ 亡语治疗
+	# on_death 返回 true 表示复活成功，中止死亡流程（亡语治疗不触发）
+	var _killer_for_death: Variant = null
+	if has_meta("_last_attacker"):
+		_killer_for_death = get_meta("_last_attacker", null)
+	if ModuleEffectHandler.on_death(self, _killer_for_death):
+		return  # 复活成功
+	# v7.x: 触发击杀型改造效果（击杀护盾 shield_on_kill 等）
+	# 注：此前 on_kill 全项目零调用方，shield_on_kill 改造空转；此处接通断链
+	# 取最后攻击者作为击杀者，传递给 ModuleEffectHandler
+	var _killer_for_mod: Variant = null
+	if has_meta("_last_attacker"):
+		_killer_for_mod = get_meta("_last_attacker", null)
+	if _killer_for_mod != null and is_instance_valid(_killer_for_mod):
+		ModuleEffectHandler.on_kill(_killer_for_mod)
 	# 性能优化：从空间分区网格移除
 	_unregister_from_spatial_grid()
 
@@ -1297,6 +1358,25 @@ func _die() -> void:
 		_trigger_allied_kill_rewards()
 	# v6.4: 死亡淡出动画（缩放+透明度），逻辑结算已完成，仅做视觉收尾
 	_play_death_fadeout()
+
+
+## v7.x 第二批：复活后状态重置（由 ModuleEffectHandler._revive_unit 调用）
+func on_revived() -> void:
+	# 重置 hp bar
+	_update_hp_bar()
+	# 重新注册空间分区网格（_die 时 _unregister 了，但复活在 _unregister 之前 return，所以可能还在）
+	# 安全起见：若已注销则重新注册
+	_register_to_spatial_grid_if_needed()
+	# emit 复活信号供 UI/特效使用
+	if SignalBus and SignalBus.has_signal("unit_damaged"):
+		SignalBus.unit_damaged.emit(self, is_player, 0.0, global_position)
+
+
+## v7.x 第二批：安全注册空间网格（若未注册）
+func _register_to_spatial_grid_if_needed() -> void:
+	# construct_unit 的 _unregister_from_spatial_grid 在复活 return 之后才执行，
+	# 所以复活时单位仍在网格中，无需重复注册。此方法留作安全兜底（空实现）。
+	pass
 
 
 ## v6.2: 敌方单位死亡时，触发所有携带 on_kill_regen_energy 的玩家方单位

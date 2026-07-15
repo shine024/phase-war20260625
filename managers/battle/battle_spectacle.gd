@@ -138,6 +138,16 @@ func _on_ability_triggered(ability_id: String, stage: String, params: Dictionary
 		"mega_shield":
 			if stage == "start":
 				_play_mega_shield_start(params)
+		# v7.x: 敌方相位仪能力演出（配色偏威胁——红/暗紫）
+		"enemy_nano_swarm":
+			if stage == "start":
+				_play_enemy_warning_flash(Color(0.5, 0.1, 0.2, 0.35), "☠ 敌方纳米虫群")
+		"enemy_shield_bulwark":
+			if stage == "start":
+				_play_enemy_warning_flash(Color(0.7, 0.2, 0.2, 0.3), "🛡 敌方能量壁垒")
+		"enemy_rage_buff":
+			if stage == "start":
+				_play_enemy_warning_flash(Color(1.0, 0.15, 0.1, 0.4), "🔥 敌方狂暴激活")
 
 
 ## 核子轰炸预警：全屏红色暗化 + 标题
@@ -254,6 +264,34 @@ func _play_mega_shield_start(_params: Dictionary) -> void:
 	tw.tween_property(_overlay, "color:a", 0.0, 0.6)
 	tw.tween_callback(func(): _overlay.visible = false)
 	_request_shake(6.0, 0.4)
+
+
+## v7.x: 敌方相位仪能力警告闪光（全屏暗红/暗紫闪光 + 标题警告）
+## [param flash_color] 闪光颜色（含 alpha 作为峰值透明度）
+## [param title_text] 警告标题文本
+func _play_enemy_warning_flash(flash_color: Color, title_text: String) -> void:
+	_ensure_overlay()
+	_ensure_title_label()
+	# 全屏威胁色闪光：0→峰值→0
+	_overlay.color = Color(flash_color.r, flash_color.g, flash_color.b, 0.0)
+	_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_overlay.visible = true
+	var tw: Tween = create_tween()
+	tw.tween_property(_overlay, "color:a", flash_color.a, 0.18)
+	tw.tween_property(_overlay, "color:a", 0.0, 0.7)
+	tw.tween_callback(func(): _overlay.visible = false)
+	# 警告标题
+	_title_label.text = title_text
+	_title_label.label_settings = _make_label_settings(Color(1.0, 0.4, 0.3), DT.FONT_SIZE_TITLE)
+	_title_label.visible = true
+	_title_label.modulate.a = 0.0
+	_title_label.position.x = (get_viewport().get_visible_rect().size.x - _title_label.size.x) / 2.0
+	_title_label.position.y = 110
+	var tw2: Tween = create_tween()
+	tw2.tween_property(_title_label, "modulate:a", 1.0, 0.2)
+	tw2.tween_interval(0.5)
+	tw2.tween_property(_title_label, "modulate:a", 0.0, 0.3)
+	_request_shake(8.0, 0.5)
 
 
 ## 清理技能演出残留节点（战斗结束时调用）

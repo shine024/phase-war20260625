@@ -143,7 +143,8 @@ func add_extra_card(card_id: String, silent: bool = false) -> void:
 		cards_changed.emit()
 
 ## 根据 card_id 移除一张卡（从额外卡列表中删除一条匹配记录）
-## returns: 是否成功移除
+## returns: 是否成功移除（找不到时返回 false，让调用方能感知失败而非静默成功——
+## 原 return true 会掩盖时序 bug：换装/装备时新卡未被移除却报告成功，导致背包多出一张）
 func remove_card(card_id: String, silent: bool = false) -> bool:
 	if card_id.is_empty():
 		return false
@@ -154,11 +155,12 @@ func remove_card(card_id: String, silent: bool = false) -> bool:
 		if not silent:
 			cards_changed.emit()
 		return true
-	# 如果不在额外卡中，可能是默认卡被消耗，也通知 UI 刷新
+	# 不在额外卡中：返回 false 让调用方感知失败（可能是默认卡被消耗或时序异常）。
+	# 仍失效缓存并通知 UI 刷新，保持原有的"消费默认卡"视觉刷新行为。
 	_invalidate_cards_cache()
 	if not silent:
 		cards_changed.emit()
-	return true
+	return false
 
 ## 严格移除：仅当额外卡列表中存在该 card_id 时才移除并返回 true
 func remove_extra_card_strict(card_id: String, silent: bool = false) -> bool:

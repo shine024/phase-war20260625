@@ -1037,7 +1037,7 @@ func _get_current_level_rules() -> Dictionary:
 	var level: int = 1
 	if "current_level" in GameManager:
 		level = int(GameManager.current_level)
-	var li = LevelInformation.new()
+	var li = LevelInformation.get_shared()
 	return li.get_special_rules(level)
 
 

@@ -19,6 +19,10 @@ const EnhancementModifications = preload("res://data/modification_modules/enhanc
 
 static var _cache: Dictionary = {}
 static var _initialized: bool = false
+# v7.x 性能：get_for_unit_type 结果缓存。unit_type(CombatKind int) → mod_id 字符串数组。
+# 该函数每次 append_array 10 个模块（约154条），掉落生成时每个击败敌人调一次，
+# 相位师战胜调5次，单场可达数千次重复 concat。返回值全程只读遍历，缓存安全。
+static var _unit_type_cache: Dictionary = {}
 
 ## ─────────────────────────────────────────────
 ##  初始化
@@ -38,6 +42,7 @@ static func register_all() -> void:
 		return
 
 	_cache.clear()
+	_unit_type_cache.clear()  # v7.x 性能：重注册时同步清掉 get_for_unit_type 缓存
 	_register_modifications("infantry", InfantryModifications)
 	_register_modifications("armor", ArmorModifications)
 	_register_modifications("artillery", ArtilleryModifications)
@@ -93,6 +98,10 @@ static func get_data(mod_id: String) -> Dictionary:
 static func get_for_unit_type(unit_type: int) -> Array:
 	_ensure_initialized()
 
+	# v7.x 性能：命中缓存直接返回（数组全程只读，安全共享引用）
+	if _unit_type_cache.has(unit_type):
+		return _unit_type_cache[unit_type]
+
 	var result = []
 	result.append_array(InfantryModifications.get_for_unit_type(unit_type))
 	result.append_array(ArmorModifications.get_for_unit_type(unit_type))
@@ -105,6 +114,8 @@ static func get_for_unit_type(unit_type: int) -> Array:
 	result.append_array(UniversalModifications.get_for_unit_type(unit_type))
 	# v6.4: 强化词条适用于所有兵种
 	result.append_array(EnhancementModifications.get_for_unit_type(unit_type))
+	# v7.x 性能：缓存结果，后续调用 O(1) 命中
+	_unit_type_cache[unit_type] = result
 	return result
 
 ## 按 card_id 精筛改造（比 get_for_unit_type 更精确）
@@ -532,6 +543,117 @@ static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary) -
 					if not result.has(_cek):
 						result[_cek] = 0
 					result[_cek] = int(float(result[_cek]) * _ce_mult)
+			# ─── v7.x 新机制分支 ───
+			# 成长型：连击系统（攻击积累→满后爆发）
+			# combo_system 的 value 是触发阈值（命中次数），bonus_mult 通过单独 key 传入
+			"combo_system":
+				if not result.has("combo_max"):
+					result["combo_max"] = 0
+				result["combo_max"] = maxi(1, int(float(effect_value)))
+			"combo_bonus":
+				if not result.has("combo_bonus_mult"):
+					result["combo_bonus_mult"] = 0.0
+				result["combo_bonus_mult"] = float(result["combo_bonus_mult"]) + float(effect_value)
+			# 成长型：怒气系统（受击积累→满后临时增益）
+			"rage_system":
+				if not result.has("rage_max"):
+					result["rage_max"] = 0
+				result["rage_max"] = maxi(1, int(float(effect_value)))
+			"rage_bonus":
+				if not result.has("rage_bonus_mult"):
+					result["rage_bonus_mult"] = 0.0
+				result["rage_bonus_mult"] = float(result["rage_bonus_mult"]) + float(effect_value)
+			# debuff 型：破甲叠加（每次命中降目标防御，可叠加）
+			"armor_break":
+				if not result.has("armor_break_per_hit"):
+					result["armor_break_per_hit"] = 0.0
+				result["armor_break_per_hit"] = float(result["armor_break_per_hit"]) + float(effect_value)
+				if not result.has("armor_break_max_stacks"):
+					result["armor_break_max_stacks"] = 5  # 默认 5 层上限
+			"armor_break_stacks":
+				result["armor_break_max_stacks"] = maxi(1, int(float(effect_value)))
+			# debuff 型：标记系统（命中概率标记，被标记受额外伤害）
+			"target_marking":
+				if not result.has("mark_chance"):
+					result["mark_chance"] = 0.0
+				result["mark_chance"] = min(1.0, float(result["mark_chance"]) + float(effect_value))
+			"mark_vuln":
+				if not result.has("mark_vuln_bonus"):
+					result["mark_vuln_bonus"] = 0.0
+				result["mark_vuln_bonus"] = float(result["mark_vuln_bonus"]) + float(effect_value)
+			"mark_duration":
+				result["mark_duration"] = maxf(1.0, float(effect_value))
+			# debuff 型：暴击标注系统（命中概率标注，被标注目标受攻击暴击率提升）
+			"crit_mark_chance":
+				if not result.has("crit_mark_chance"):
+					result["crit_mark_chance"] = 0.0
+				result["crit_mark_chance"] = min(1.0, float(result["crit_mark_chance"]) + float(effect_value))
+			"crit_mark_bonus":
+				if not result.has("crit_mark_bonus"):
+					result["crit_mark_bonus"] = 0.0
+				result["crit_mark_bonus"] = float(result["crit_mark_bonus"]) + float(effect_value)
+			"crit_mark_duration":
+				result["crit_mark_duration"] = maxf(1.0, float(effect_value))
+			# 兵种专属：工兵爆破（对堡垒/装甲百分比掉血）
+			"siege_bonus":
+				if not result.has("siege_bonus_pct"):
+					result["siege_bonus_pct"] = 0.0
+				result["siege_bonus_pct"] = float(result["siege_bonus_pct"]) + float(effect_value)
+			# 兵种专属：步兵巷战（受装甲/空军攻击减免）
+			"urban_defense":
+				if not result.has("urban_defense_bonus"):
+					result["urban_defense_bonus"] = 0.0
+				result["urban_defense_bonus"] = min(0.75, float(result["urban_defense_bonus"]) + float(effect_value))
+			# 兵种专属：炮兵反击（被攻击时标记攻击者）
+			"counter_battery":
+				result["has_counter_battery"] = true
+			# ─── v7.x 第二批次新机制分支 ───
+			# 濒死复活（IFAK/急救包）
+			"ifak_revive":
+				result["revive_on_death"] = true
+				result["revive_hp_ratio"] = clampf(float(effect_value), 0.05, 0.50)
+			# 爆反装甲（受击反伤+消耗层）
+			"reactive_armor":
+				result["reflect_damage_pct"] = clampf(float(effect_value), 0.0, 1.0)
+				if not result.has("reflect_charges"):
+					result["reflect_charges"] = 3
+			"reflect_charges":
+				result["reflect_charges"] = int(effect_value)
+			# 拦截（概率伤害归零+次数限制）
+			"intercept_system":
+				result["intercept_chance"] = clampf(float(effect_value), 0.0, 0.75)
+				if not result.has("intercept_charges"):
+					result["intercept_charges"] = 3
+			"intercept_charges":
+				result["intercept_charges"] = int(effect_value)
+			# 亡语治疗（死亡时治疗周围友军）
+			"death_heal":
+				result["death_heal_allies_pct"] = clampf(float(effect_value), 0.0, 1.0)
+				if not result.has("death_heal_radius"):
+					result["death_heal_radius"] = 180.0
+			"death_heal_radius":
+				result["death_heal_radius"] = maxf(50.0, float(effect_value))
+			# 堡垒区域控制
+			"minefield":
+				result["minefield_damage"] = maxf(0.0, float(effect_value))
+			"slow_aura":
+				result["slow_aura_pct"] = clampf(float(effect_value), 0.0, 0.75)
+				if not result.has("slow_aura_radius"):
+					result["slow_aura_radius"] = 200.0
+			"slow_aura_radius":
+				result["slow_aura_radius"] = maxf(50.0, float(effect_value))
+			"command_aura":
+				result["command_aura_bonus"] = clampf(float(effect_value), 0.0, 0.50)
+			# 相位护盾（独立池分流）
+			"phase_shield":
+				result["phase_shield_pool"] = maxf(0.0, float(effect_value))
+				if not result.has("phase_shield_regen"):
+					result["phase_shield_regen"] = 50.0
+			"phase_shield_regen":
+				result["phase_shield_regen"] = maxf(0.0, float(effect_value))
+			# 激光指示器（命中100%标记）
+			"laser_marker":
+				result["laser_mark_on_hit"] = true
 			_:
 				if not result.has("_special"):
 					result["_special"] = {}

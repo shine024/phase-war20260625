@@ -69,6 +69,9 @@ static func make_default_context(wave_index: int) -> EnemyStatContext:
 	# v6.9: 占领势力对敌人的加成（无主之地/未知势力留空 → 视为全 1.0）
 	# 复用 make_default_context 的 tree 句柄，避免重复 Engine.get_main_loop()
 	ctx.faction_buff = _collect_faction_buff(ctx.level, tree)
+	# v7.x(敌方加成来源明细): 记录占领势力标签信息，供 resolve_classic_enemy 构建"加成来源"可读标签。
+	# _collect_faction_buff 已查过 FactionSystemManager，此处复用其查询结果填标签（不重复反查全局）。
+	_collect_faction_labels(ctx, tree)
 	# v6.11: 相位师遭遇时，普通敌兵/蜂群也吃 master_stats 加成。
 	# 经典敌兵(enemy_unit)与蜂群(swarm_enemy_slot)都经此函数 → resolve_classic_enemy，
 	# 修复前 ctx.master_stats 恒空 → m_atk/m_hp=1.0，相位师属性对普通敌兵完全空转
@@ -77,6 +80,7 @@ static func make_default_context(wave_index: int) -> EnemyStatContext:
 	if tree != null and tree.root != null:
 		var bm: Node = tree.root.get_node_or_null("BattleManager")
 		if bm != null and "_is_phase_master_battle" in bm and bool(bm.get("_is_phase_master_battle")):
+			ctx.is_phase_master_battle = true
 			# 注：Node.get() 无 fallback 参数，先查属性存在再取值
 			if "_phase_master_config" in bm:
 				var master_cfg: Dictionary = bm.get("_phase_master_config")
@@ -84,21 +88,47 @@ static func make_default_context(wave_index: int) -> EnemyStatContext:
 				if not master_stats_raw.is_empty():
 					ctx.master_stats = master_stats_raw
 	# v7.x(A4): 从 settings.cfg 读玩家难度，填充到 ctx（resolver 保持纯函数，不直接读全局设置）。
-	ctx.difficulty_multiplier = _read_difficulty_multiplier()
+	# v7.x(敌方加成来源明细): 同时记录难度档名（普通/简单/困难）供标签使用。
+	var _diff_pair: Array = _read_difficulty_pair()
+	ctx.difficulty_multiplier = float(_diff_pair[0])
+	ctx.difficulty_name = String(_diff_pair[1])
 	return ctx
 
 
 # v7.x(A4): 读 settings.cfg 的玩家难度档位 → 返回乘区系数（easy 0.85 / normal 1.0 / hard 1.15）。
 # 仅在 make_default_context 调用一次，写入 ctx.difficulty_multiplier，resolver 乘区链读 ctx。
 # settings 缺失或键缺省时返回 1.0（normal），行为与历史版本一致。
-static func _read_difficulty_multiplier() -> float:
+# v7.x(敌方加成来源明细): 改为返回 [multiplier, name] 对，name 供面板标签显示。
+static func _read_difficulty_pair() -> Array:
 	var cfg := ConfigFile.new()
 	if cfg.load("user://settings.cfg") != OK:
-		return 1.0
+		return [1.0, "普通"]
 	var idx: int = cfg.get_value("settings", "difficulty_idx", 1)
 	const IDS := ["easy", "normal", "hard"]
+	const NAMES := ["简单", "普通", "困难"]
 	idx = clampi(idx, 0, IDS.size() - 1)
-	return float(GC.DIFFICULTY_MULTIPLIERS.get(IDS[idx], 1.0))
+	return [float(GC.DIFFICULTY_MULTIPLIERS.get(IDS[idx], 1.0)), NAMES[idx]]
+
+
+# v7.x(敌方加成来源明细): 记录占领势力标签信息到 ctx，供 resolve_classic_enemy 构建"加成来源"标签。
+# 与 _collect_faction_buff 同款查询路径（动态占领优先，回退静态），但只填 faction_id/faction_level。
+# 不影响战斗数值（faction_buff 已在前面填好），仅为面板显示服务。
+static func _collect_faction_labels(ctx: EnemyStatContext, tree: SceneTree) -> void:
+	if tree == null or tree.root == null:
+		return
+	var fsm: Node = tree.root.get_node_or_null("FactionSystemManager")
+	if fsm == null:
+		return
+	# faction_id：优先动态占领，回退静态表（与 _collect_faction_buff 一致）
+	if fsm.has_method("get_level_occupation"):
+		ctx.faction_id = fsm.get_level_occupation(ctx.level)
+	else:
+		var level_info := LevelInfoClass.new()
+		ctx.faction_id = level_info.get_level_faction(ctx.level)
+	if ctx.faction_id.is_empty():
+		return
+	if fsm.has_method("get_faction_level"):
+		ctx.faction_level = int(fsm.get_faction_level(ctx.faction_id))
 
 
 ## v6.9/v6.10: 按当前关卡占领势力 + 势力等级，计算敌方加成
@@ -159,6 +189,7 @@ static func resolve_classic_enemy(archetype_id: String, ctx: EnemyStatContext) -
 			"speed": -60.0,
 			"tags": [],
 		}
+		var _fb_breakdown: Dictionary = _build_classic_breakdown(ctx, w_hp, w_dmg, lvl, m_hp, m_atk, f_hp, f_atk, d_mul, 60.0 + float(ctx.wave_index) * 15.0, 10.0 + float(ctx.wave_index) * 2.0, 0.0)
 		return {
 			"hp": hp_lin,
 			"attack_damage": atk_lin,
@@ -170,6 +201,7 @@ static func resolve_classic_enemy(archetype_id: String, ctx: EnemyStatContext) -
 			"attack_interval": 1.0,
 			"move_speed": 0.0,
 			"weapon_type": 0,  # SMG
+			"bonus_breakdown": _fb_breakdown,
 		}
 
 	var base_hp: float = float(cfg.get("hp", 80.0))
@@ -280,6 +312,15 @@ static func resolve_classic_enemy(archetype_id: String, ctx: EnemyStatContext) -
 	var base_speed: float = float(cfg.get("speed", -60.0))
 	var spd_mul: float = p_spd * f_spd
 	var move_speed_out: float = -absf(base_speed) * spd_mul if base_speed < 0.0 else base_speed * spd_mul
+	# v7.x(敌方加成来源明细): 构建加成来源明细，挂在返回字典的 bonus_breakdown 键。
+	# enemy_unit / swarm_enemy_slot 取出后写入 set_meta，情报面板读取显示"为什么这么强"。
+	# 纯追加记录，不参与战斗数值计算。base 取 archetype cfg 原始值（未乘任何加成）。
+	var _base_hp_for_breakdown: float = base_hp
+	var _base_atk_for_breakdown: float = maxf(float(cfg.get("attack_light", 0.0)), maxf(float(cfg.get("attack_armor", 0.0)), float(cfg.get("attack_air", 0.0))))
+	if _base_atk_for_breakdown <= 0.0:
+		_base_atk_for_breakdown = float(cfg.get("attack_damage", 10.0))
+	var _base_def_for_breakdown: float = def_out / 1.0  # def_out 未乘任何乘区（防御不参与链），直接取
+	var _breakdown: Dictionary = _build_classic_breakdown(ctx, w_hp, w_dmg, lvl, m_hp, m_atk, f_hp, f_atk, d_mul, _base_hp_for_breakdown, _base_atk_for_breakdown, _base_def_for_breakdown)
 	return {
 		"hp": hp_out,
 		"attack_damage": atk_out,  # 兼容旧字段
@@ -299,6 +340,7 @@ static func resolve_classic_enemy(archetype_id: String, ctx: EnemyStatContext) -
 		"move_speed": move_speed_out,
 		"weapon_type": int(cfg.get("weapon_type", 0)),  # default SMG
 		"weapon_label": String(cfg.get("weapon_label", "")),
+		"bonus_breakdown": _breakdown,
 	}
 
 
@@ -319,6 +361,65 @@ static func apply_phase_master_to_unit_stats(stats: UnitStats, master_stats: Dic
 	if hp_m != 1.0:
 		stats.max_hp *= hp_m
 		stats.defense *= hp_m
+
+
+## v7.x(敌方加成来源明细): 势力ID → 中文名映射，供加成来源标签显示。
+const _FACTION_DISPLAY_NAMES: Dictionary = {
+	"iron_wall_corp": "钢壁防务",
+	"nova_arms": "新星兵工",
+	"aether_dynamics": "以太动力",
+	"quantum_logistics": "量子后勤",
+	"helix_recon": "螺旋侦察",
+	"void_research": "虚空相位",
+	"frontier_union": "边境联合",
+}
+
+
+## v7.x(敌方加成来源明细): 构建经典敌人/蜂群的加成来源明细字典。
+## 收集 resolve_classic_enemy 乘区链中各来源的倍率与可读标签，供情报面板显示"为什么这么强"。
+## 纯记录，不影响战斗数值。ng_plus 初始 1.0（enemy_unit._apply_ng_plus_scaling 会更新）。
+## total_*_mul = 所有 source 之积（不含 ng_plus，因二周目在 resolver 外应用）。
+static func _build_classic_breakdown(ctx: EnemyStatContext, w_hp: float, w_dmg: float, lvl: float, m_hp: float, m_atk: float, f_hp: float, f_atk: float, d_mul: float, base_hp: float, base_atk: float, base_def: float) -> Dictionary:
+	var sources: Array = []
+	# 波次：HP 与攻击倍率不同（0.12 vs 0.08），分开记录
+	sources.append({"label": "波次×%.2f/×%.2f" % [w_hp, w_dmg], "hp_mul": w_hp, "atk_mul": w_dmg})
+	# 关卡：HP/攻击同倍率
+	sources.append({"label": "关卡(第%d关)×%.2f" % [ctx.level, lvl], "hp_mul": lvl, "atk_mul": lvl})
+	# 势力占领：有占领势力才记录（无主之地 f_hp/f_atk=1.0，跳过避免显示无意义×1.0）
+	if not ctx.faction_id.is_empty():
+		var fname: String = String(_FACTION_DISPLAY_NAMES.get(ctx.faction_id, ctx.faction_id))
+		var flabel: String = "势力(%s Lv%d)" % [fname, ctx.faction_level]
+		if f_hp != f_atk:
+			flabel += "×%.2f/×%.2f" % [f_hp, f_atk]
+		else:
+			flabel += "×%.2f" % f_hp
+		sources.append({"label": flabel, "hp_mul": f_hp, "atk_mul": f_atk})
+	# 相位师属性：仅相位师战时 master_stats 非空
+	if ctx.is_phase_master_battle and not ctx.master_stats.is_empty():
+		var mlabel: String = "相位师属性"
+		if m_hp != m_atk:
+			mlabel += "×%.2f/×%.2f" % [m_hp, m_atk]
+		else:
+			mlabel += "×%.2f" % m_hp
+		sources.append({"label": mlabel, "hp_mul": m_hp, "atk_mul": m_atk})
+	# 难度：HP/攻击同倍率
+	sources.append({"label": "难度(%s)×%.2f" % [ctx.difficulty_name, d_mul], "hp_mul": d_mul, "atk_mul": d_mul})
+	# 总倍率：各 source 之积（不含二周目，二周目由 enemy_unit._apply_ng_plus_scaling 单独叠加并更新）
+	var total_hp: float = 1.0
+	var total_atk: float = 1.0
+	for s in sources:
+		total_hp *= float(s.get("hp_mul", 1.0))
+		total_atk *= float(s.get("atk_mul", 1.0))
+	return {
+		"base_hp": base_hp,
+		"base_atk": base_atk,
+		"base_def": base_def,
+		"sources": sources,
+		"ng_plus": 1.0,           # 经典敌人/蜂群由 _apply_ng_plus_scaling 更新
+		"total_hp_mul": total_hp,
+		"total_atk_mul": total_atk,
+		"kind": "classic",
+	}
 
 
 ## v6.13: 给相位师产兵叠加战场难度乘区（wave × level × faction_buff）。

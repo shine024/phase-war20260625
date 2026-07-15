@@ -169,7 +169,7 @@ func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
 
-	level_info = LevelInformation.new()
+	level_info = LevelInformation.get_shared()
 	_init_faction_data()
 	# 监听战斗结束信号（触发势力事件检查）
 	var sb: Node = get_node_or_null("/root/SignalBus")
@@ -224,7 +224,7 @@ func add_faction_reputation(faction_id: String, delta: int) -> int:
 		# v6.2: 声望升级奖励 — 每3级赠送1个该势力专属符文
 		_grant_reputation_level_reward(faction_id, result["new_level"])
 		# v6.6: 检查并发放达到等级门槛的势力独占卡
-		_grant_exclusive_cards_on_level_up(faction_id, result["new_level"])
+		_grant_exclusive_cards_on_level_up(faction_id, result["new_rep"])
 		emit_signal("faction_level_up", faction_id, result["new_level"])
 
 	emit_signal("faction_reputation_changed", faction_id, delta, result["new_rep"])
@@ -255,9 +255,9 @@ func _grant_reputation_level_reward(faction_id: String, new_level: int) -> void:
 		# 选第一个（避免随机导致玩家错过关键符文）
 		pim.add_owned_rune(candidates[0]["id"])
 
-## v6.6: 势力升级时，检查并发放达到 min_faction_level 门槛的独占卡
+## v6.6: 势力升级时，检查并发放达到 min_reputation 门槛的独占卡
 ## 每张独占卡仅在首次达到门槛时发放一次（exclusive_cards_granted 去重）
-func _grant_exclusive_cards_on_level_up(faction_id: String, new_level: int) -> void:
+func _grant_exclusive_cards_on_level_up(faction_id: String, new_rep: int) -> void:
 	var ExclusiveCards = preload("res://data/faction_exclusive_cards.gd")
 	var exclusives: Array = ExclusiveCards.get_exclusives_for_faction(faction_id)
 	if exclusives.is_empty():
@@ -266,11 +266,11 @@ func _grant_exclusive_cards_on_level_up(faction_id: String, new_level: int) -> v
 	var granted_any := false
 	for cfg in exclusives:
 		var card_id: String = cfg.get("id", "")
-		var min_level: int = int(cfg.get("min_faction_level", 99))
+		var min_rep: int = int(cfg.get("min_reputation", 99999))
 		if card_id.is_empty():
 			continue
-		# 等级达标且未发放过
-		if new_level >= min_level and not exclusive_cards_granted.has(card_id):
+		# 声望达标且未发放过
+		if new_rep >= min_rep and not exclusive_cards_granted.has(card_id):
 			# 注册到 DefaultCards 动态缓存（使 get_card_by_id 可用）
 			var DefaultCards = preload("res://data/default_cards.gd")
 			var card: CardResource = ExclusiveCards.create_card(cfg)
@@ -575,6 +575,9 @@ func get_faction_phase_instruments(faction_id: String) -> Array:
 			continue
 		if bool(d.get("is_generic", false)):
 			continue
+		# v8.x: phase_master_drop 仪仅相位师掉落，不在商店出售
+		if String(d.get("acquire_rule", "")) == "phase_master_drop":
+			continue
 		if String(d.get("faction_id", "")) == faction_id:
 			out.append(d)
 	return out
@@ -607,6 +610,9 @@ func can_buy_instrument(faction_id: String, instrument_cfg: Dictionary) -> Dicti
 		return {"ok": false, "reason": "invalid"}
 	if String(instrument_cfg.get("faction_id", "")) != faction_id:
 		return {"ok": false, "reason": "faction_mismatch"}
+	# v8.x: phase_master_drop 仪仅相位师掉落，商店不可购买（双保险）
+	if String(instrument_cfg.get("acquire_rule", "")) == "phase_master_drop":
+		return {"ok": false, "reason": "phase_master_only"}
 	if is_instrument_unlocked_for_faction(faction_id, iid):
 		return {"ok": false, "reason": "owned"}
 	var rep_need: int = int(instrument_cfg.get("required_rep", 0))

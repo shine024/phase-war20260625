@@ -174,6 +174,43 @@ const DATA: Dictionary = {
 			unlock_conditions = {required_level = 10},
 			achievement_exclusive = true
 		},
+
+		# ─── v7.x 第二批：相位护盾 + 激光指示器 ───
+		"gen_14_phase_shield_gen" = {
+			id = "gen_14_phase_shield_gen",
+			name = "相位护盾发生器",
+			name_en = "Phase Shield Generator",
+			icon = "res://assets/ui/icons/mod_icons/mod_shield.png",
+			prototype = "相位偏转护盾发生器",
+			description = "生成独立相位护盾池(2000点)，伤害优先扣相位池，每秒回复50点",
+			rarity = "legendary",
+			power_mult = 2.0,
+			cost_research = 500,
+			cost_install = 250,
+			slot_type = "phase_core",
+			conflict_group = "phase_core",
+			applicable_types = [0, 1, 2, 3, 4],
+			effects = {phase_shield = 2000.0, phase_shield_regen = 50.0},
+			unlock_conditions = {required_level = 8}
+		},
+
+		"gen_15_laser_marker" = {
+			id = "gen_15_laser_marker",
+			name = "激光指示器",
+			name_en = "Laser Marker",
+			icon = "res://assets/ui/icons/mod_icons/mod_guidance.png",
+			prototype = "SOFLAM 激光目标指示器",
+			description = "攻击时100%概率标记目标，被标记目标受到+20%额外伤害，持续5秒（炮兵优先打击被标记目标）",
+			rarity = "epic",
+			power_mult = 1.6,
+			cost_research = 320,
+			cost_install = 160,
+			slot_type = "guidance",
+			conflict_group = "guidance",
+			applicable_types = [0, 1, 2, 3, 4],
+			effects = {laser_marker = true},
+			unlock_conditions = {required_level = 5}
+		},
 }
 
 static func get_mod_data(mod_id: String) -> Dictionary:

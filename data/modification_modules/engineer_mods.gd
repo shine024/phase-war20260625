@@ -116,6 +116,61 @@ const DATA: Dictionary = {
 		effects = {ally_detection = -0.30},
 		unlock_conditions = {required_level = 4}
 	},
+
+	# ─── v7.x 新机制改造 ───
+
+	# 兵种专属：爆破装药（对堡垒/装甲目标 5% 百分比掉血）
+	"eng_11_breaching_charge" = {
+		id = "eng_11_breaching_charge",
+		name = "爆破装药",
+		name_en = "Breaching Charge",
+		icon = "res://assets/ui/icons/mod_icons/mod_ammunition.png",
+		prototype = "M112 定向爆破装药",
+		description = "对堡垒和装甲目标造成额外真实伤害：每次命中扣除目标当前生命值的 5%（无视防御）",
+		rarity = "legendary",
+		power_mult = 1.9,
+		cost_research = 420,
+		cost_install = 210,
+		slot_type = "ammunition",
+		conflict_group = "ammunition",
+		effects = {siege_bonus = 0.05},
+		unlock_conditions = {required_level = 6}
+	},
+
+	# ─── v7.x 第二批：爆反工程车 + 亡语补给 ───
+	"eng_12_reactive_engineering" = {
+		id = "eng_12_reactive_engineering",
+		name = "爆反工程装甲",
+		name_en = "Reactive Engineering Armor",
+		icon = "res://assets/ui/icons/mod_icons/mod_armor.png",
+		prototype = "扫雷艇反应装甲套件",
+		description = "工程车辆改装爆反装甲：受击时反弹25%伤害，可触发2次",
+		rarity = "legendary",
+		power_mult = 1.7,
+		cost_research = 380,
+		cost_install = 190,
+		slot_type = "armor",
+		conflict_group = "armor",
+		effects = {reactive_armor = 0.25, reflect_charges = 2},
+		unlock_conditions = {required_level = 5}
+	},
+
+	"eng_13_supply_cache" = {
+		id = "eng_13_supply_cache",
+		name = "补给遗物",
+		name_en = "Supply Cache",
+		icon = "res://assets/ui/icons/mod_icons/mod_special.png",
+		prototype = "自毁式补给投放器",
+		description = "阵亡时遗落补给：治疗周围180像素内友军，恢复量等于自身15%最大生命值",
+		rarity = "epic",
+		power_mult = 1.5,
+		cost_research = 300,
+		cost_install = 150,
+		slot_type = "special",
+		conflict_group = "special",
+		effects = {death_heal = 0.15, death_heal_radius = 180.0},
+		unlock_conditions = {required_level = 5}
+	},
 }
 
 static func get_mod_data(mod_id: String) -> Dictionary:

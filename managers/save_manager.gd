@@ -245,6 +245,10 @@ func _ensure_backpack_signal_hook() -> void:
 	if SignalBus.has_signal("card_equipped"):
 		if not SignalBus.card_equipped.is_connected(_on_card_equipped_remove_fallback):
 			SignalBus.card_equipped.connect(_on_card_equipped_remove_fallback)
+	# v7.x：换装原子信号——pending/last_known 一次性完成"移新卡 + 加旧卡"，避免双信号中间态导致背包重复
+	if SignalBus.has_signal("card_swapped"):
+		if not SignalBus.card_swapped.is_connected(_on_card_swapped_fallback):
+			SignalBus.card_swapped.connect(_on_card_swapped_fallback)
 	# v7.x：监听实例销毁，清理 pending/last_known 队列里的幽灵 instance_id
 	# （进化消耗/拆解/相位仪清理触发，确保任何场景下存档不再写出已销毁的实例 id）
 	if SignalBus.has_signal("instance_disposed"):
@@ -278,6 +282,21 @@ func _on_card_equipped_remove_fallback(_slot_index: int, card_id: String, _card_
 	var idx_last: int = _last_known_extra_ids.find(card_id)
 	if idx_last >= 0:
 		_last_known_extra_ids.remove_at(idx_last)
+
+## v7.x：换装原子回调——pending/last_known 一次性完成"移新卡出包 + 加旧卡入包"。
+## 原 card_added_to_backpack(old) + card_equipped(new) 双信号被拆成两次独立记账，
+## 中间态若有时序错位会导致 last_known 比 pending 多记一份，load_pending_cards 差值补齐兑现成重复卡。
+## 这里复用两个既有回调形成原子事务：先移新卡（复用 equipped_remove），再加旧卡（复用 enqueue）。
+func _on_card_swapped_fallback(_slot_index: int, old_card: CardResource, new_card_id: String) -> void:
+	# 1. 新卡出包：从 pending/last_known 移除
+	_on_card_equipped_remove_fallback(_slot_index, new_card_id, "")
+	# 2. 旧卡入包：enqueue（presenter._on_card_swapped 会 consume 掉 pending 里的，对齐买卡路径）
+	if old_card != null:
+		var cid: String = String(old_card.instance_id)
+		if cid.is_empty():
+			cid = String(old_card.card_id)
+		if not cid.is_empty():
+			enqueue_backpack_card_id(cid)
 
 ## 背包懒加载兜底：在未实例化背包面板时，也可先把新增卡加入 pending 队列。
 func enqueue_backpack_card_id(card_id: String) -> void:
@@ -553,6 +572,12 @@ func _get_afk_manager() -> RefCounted:
 
 func _collect_manager_state(data: Dictionary, node_path: String, data_key: String) -> void:
 	var mgr: Node = get_node_or_null(node_path)
+	# v7.x 性能：节点缺失时经 ManagerLazyLoader 实例化（autoload 延迟化的安全网）。
+	# 避免延迟化的 manager 未被访问时漏存字段（数据丢失）。
+	if mgr == null:
+		var lazy_loader = get_node_or_null("/root/ManagerLazyLoader")
+		if lazy_loader and lazy_loader.has_method("get_manager_by_name"):
+			mgr = lazy_loader.get_manager_by_name(node_path.get_file())
 	if mgr != null and mgr.has_method("save_state"):
 		data[data_key] = mgr.save_state()
 
@@ -1266,29 +1291,18 @@ func _load_from_path(path: String) -> bool:
 	else:
 		_pending_backpack_ids = []
 
-	# 确保槽位中已恢复的额外卡（非默认卡池）也加入背包追踪
-	# 注意：仅将不在默认卡池中的卡标记为额外卡；默认池中的卡（如 omega_platform、energy_start_4）
-	# 是初始装备卡，不应出现在背包中（它们属于相位仪槽位）
-	# 追加到 _pending_backpack_ids 和 _last_known_extra_ids，不覆盖已有数据
-	var ir_load: Node = get_node_or_null("/root/InstanceRegistry")
-	if pm != null and pm.has_method("get_slot_card_ids"):
-		var restored_slot_ids: Array = pm.get_slot_card_ids()
-		for sid_raw in restored_slot_ids:
-			var sid: String = str(sid_raw) if sid_raw != null else ""
-			if sid.is_empty():
-				continue
-			# 跳过初始装备卡（这些是相位仪自带的默认卡，不是玩家额外获取的）
-			# v7.0: sid 可能是 instance_id（ww1_ft17#1），解析出 card_id 再比较
-			# v7.x: 初始卡改为 ww1_ft17（能量卡 energy_start_1 已移除，残留由迁移清理）
-			var base_card_id: String = sid
-			if ir_load != null and ir_load.has_method("get_card_id_of"):
-				base_card_id = ir_load.get_card_id_of(sid)
-			if base_card_id == "ww1_ft17":
-				continue
-			if not _pending_backpack_ids.has(sid):
-				_pending_backpack_ids.append(sid)
-			if not _last_known_extra_ids.has(sid):
-				_last_known_extra_ids.append(sid)
+	# v7.x 修复（读档重复卡 bug）：此处原有一段把「相位仪槽位中的卡」追加进
+	# _pending_backpack_ids / _last_known_extra_ids 的逻辑（"步骤②"）。
+	#
+	# 该逻辑是 v7.0 实例化改造前的旧设计残留——当时"背包=全卡池，槽位引用其中卡"，
+	# 故槽位里的额外卡也要进背包列表。但 v7.x 实例化后槽位卡与背包卡互斥（一张卡
+	# 要么在相位仪里、要么在背包里），装备(_on_card_equipped)/卸下(card_added_to_backpack)
+	# /换装(card_swapped)三个信号链都已正确维护此互斥，存档时 SK_BACKPACK_EXTRA_IDS
+	# 也已不含已装备的卡。
+	#
+	# 唯独这段读档逻辑把槽位卡（如 cold_t72#1）又塞回背包队列，打开背包后
+	# load_pending_cards 把它兑现成一张背包卡 → 与槽位里的同一实例重复（同名同序号）。
+	# 删除该块即可修复，存档数据本身无需迁移（重复是读档时动态注入的，非持久化数据）。
 
 	# 特殊处理：game.current_level
 	var gmgr_load: Node = get_node_or_null("/root/GameManager")

@@ -77,23 +77,29 @@ const ERA_BLUEPRINT_IDS: Dictionary = {
 		0: ["ww1_mp18", "ww1_mauser", "ww1_enfield", "ww1_mg08", "ww1_vickers",
 			 "ww1_m81", "ww1_storm", "ww1_rolls", "ww1_ft17", "ww1_saint",
 			 "ww1_a7v", "ww1_mark4", "ww1_77mm", "ww1_105mm", "ww1_37mm",
-			 "ww1_cavalry", "ww1_flame", "ww1_engineer"],
+			 "ww1_cavalry", "ww1_flame", "ww1_engineer",
+			 "ww1_fort_artillery", "ww1_fort_pillbox", "ww1_lanchest", "ww1_m76"],
 		1: ["ww2_thompson", "ww2_garand", "ww2_mp40", "ww2_ppsh", "ww2_mg42",
 			 "ww2_browning", "ww2_panzerschrek", "ww2_bazooka", "ww2_m81", "ww2_m120",
 			 "ww2_pz3", "ww2_pz4", "ww2_panther", "ww2_tiger", "ww2_kingtiger",
-			 "ww2_t34_76", "ww2_t34_85", "ww2_is2", "ww2_sherman", "ww2_hellcat"],
+			 "ww2_t34_76", "ww2_t34_85", "ww2_is2", "ww2_sherman", "ww2_hellcat",
+			 "ww2_fort_bunker", "ww2_fort_flak"],
 		2: ["cold_rpg", "cold_ak47", "cold_m14", "cold_m60", "cold_rpk",
 			 "cold_btr60", "cold_m113", "cold_bmp1", "cold_bradley", "cold_t55",
 			 "cold_t62", "cold_t72", "cold_m60t", "cold_m1", "cold_leo1",
-			 "cold_chieftain", "cold_zsu23", "cold_sam7", "cold_mig21", "cold_f4"],
+			 "cold_chieftain", "cold_zsu23", "cold_sam7", "cold_mig21", "cold_f4",
+			 "cold_fort_missile", "cold_fort_radar", "cold_spetsnaz"],
 		3: ["mod_marine", "mod_ranger", "mod_javelin", "mod_stinger", "mod_technical",
 			 "mod_stryker_mgs", "mod_stryker_m2", "mod_hummer_tow", "mod_hummer_m2",
 			 "mod_m1a1", "mod_m1a2", "mod_t90", "mod_leo2a6", "mod_challenger2",
-			 "mod_ah64", "mod_ah1", "mod_m270", "mod_m6"],
+			 "mod_ah64", "mod_ah1", "mod_m270", "mod_m6",
+			 "mod_fort_citadel", "mod_fort_phalanx", "mod_uh60"],
 		4: ["fut_swarm", "fut_scout_drone", "fut_attack_drone", "fut_cyborg",
 			 "fut_heavy_trooper", "fut_scout_mech", "fut_assault_mech", "fut_heavy_mech",
 			 "fut_hovertank", "fut_howitzer", "fut_prism", "fut_aa_hover",
-			 "fut_stealth_bomber", "fut_spectre", "fut_nano_drone", "fut_shield"],
+			 "fut_stealth_bomber", "fut_spectre", "fut_nano_drone", "fut_shield",
+			 "fut_arm_nexus", "fut_colossus", "fut_fort_ion", "fut_fort_shield",
+			 "fut_space_fighter", "fut_stormcore"],
 	}
 
 var ww1_common_drops: Array[DropEntry] = []
@@ -124,6 +130,11 @@ func _build_era_drops() -> void:
 		DropEntry.new("ww1_105mm", DropType.BLUEPRINT_FRAGMENT, 0.8, 1, 1),
 		DropEntry.new("ww1_a7v", DropType.BLUEPRINT_FRAGMENT, 0.5, 1, 1),
 		DropEntry.new("ww1_mark4", DropType.BLUEPRINT_FRAGMENT, 0.5, 1, 1),
+		# v8.x: 补齐缺口卡（之前仅 enemy_only 数据，玩家无获取途径）
+		DropEntry.new("ww1_lanchest", DropType.BLUEPRINT_FRAGMENT, 1.0, 1, 1),
+		DropEntry.new("ww1_m76", DropType.BLUEPRINT_FRAGMENT, 1.2, 1, 1),
+		DropEntry.new("ww1_fort_pillbox", DropType.BLUEPRINT_FRAGMENT, 0.8, 1, 1),
+		DropEntry.new("ww1_fort_artillery", DropType.BLUEPRINT_FRAGMENT, 0.6, 1, 1),
 		DropEntry.new("alloy", DropType.MATERIAL, 2.0, 8, 18),
 		DropEntry.new("crystal", DropType.MATERIAL, 0.8, 3, 8),
 	]
@@ -141,6 +152,9 @@ func _build_era_drops() -> void:
 		DropEntry.new("ww2_tiger", DropType.BLUEPRINT_FRAGMENT, 0.4, 1, 1),
 		DropEntry.new("ww2_kingtiger", DropType.BLUEPRINT_FRAGMENT, 0.2, 1, 1),
 		DropEntry.new("ww2_is2", DropType.BLUEPRINT_FRAGMENT, 0.3, 1, 1),
+		# v8.x: 补齐缺口卡（之前仅 enemy_only 数据，玩家无获取途径）
+		DropEntry.new("ww2_fort_bunker", DropType.BLUEPRINT_FRAGMENT, 0.6, 1, 1),
+		DropEntry.new("ww2_fort_flak", DropType.BLUEPRINT_FRAGMENT, 0.5, 1, 1),
 		DropEntry.new("alloy", DropType.MATERIAL, 2.5, 12, 28),
 		DropEntry.new("crystal", DropType.MATERIAL, 1.0, 5, 12),
 	]
@@ -156,6 +170,10 @@ func _build_era_drops() -> void:
 		DropEntry.new("cold_t72", DropType.BLUEPRINT_FRAGMENT, 0.6, 1, 1),
 		DropEntry.new("cold_m1", DropType.BLUEPRINT_FRAGMENT, 0.4, 1, 1),
 		DropEntry.new("cold_leo1", DropType.BLUEPRINT_FRAGMENT, 0.5, 1, 1),
+		# v8.x: 补齐缺口卡（之前仅 enemy_only 数据，玩家无获取途径）
+		DropEntry.new("cold_spetsnaz", DropType.BLUEPRINT_FRAGMENT, 0.6, 1, 1),
+		DropEntry.new("cold_fort_radar", DropType.BLUEPRINT_FRAGMENT, 0.5, 1, 1),
+		DropEntry.new("cold_fort_missile", DropType.BLUEPRINT_FRAGMENT, 0.4, 1, 1),
 		DropEntry.new("alloy", DropType.MATERIAL, 2.0, 18, 38),
 		DropEntry.new("crystal", DropType.MATERIAL, 1.2, 7, 16),
 	]
@@ -172,6 +190,10 @@ func _build_era_drops() -> void:
 		DropEntry.new("mod_ah1", DropType.BLUEPRINT_FRAGMENT, 0.8, 1, 1),
 		DropEntry.new("mod_ah64", DropType.BLUEPRINT_FRAGMENT, 0.4, 1, 1),
 		DropEntry.new("mod_m270", DropType.BLUEPRINT_FRAGMENT, 0.3, 1, 1),
+		# v8.x: 补齐缺口卡（之前仅 enemy_only 数据，玩家无获取途径）
+		DropEntry.new("mod_uh60", DropType.BLUEPRINT_FRAGMENT, 0.5, 1, 1),
+		DropEntry.new("mod_fort_phalanx", DropType.BLUEPRINT_FRAGMENT, 0.4, 1, 1),
+		DropEntry.new("mod_fort_citadel", DropType.BLUEPRINT_FRAGMENT, 0.3, 1, 1),
 		DropEntry.new("alloy", DropType.MATERIAL, 2.0, 25, 48),
 		DropEntry.new("crystal", DropType.MATERIAL, 1.5, 10, 22),
 	]
@@ -188,6 +210,13 @@ func _build_era_drops() -> void:
 		DropEntry.new("fut_heavy_mech", DropType.BLUEPRINT_FRAGMENT, 0.2, 1, 1),
 		DropEntry.new("fut_shield", DropType.BLUEPRINT_FRAGMENT, 0.6, 1, 1),
 		DropEntry.new("fut_nano_drone", DropType.BLUEPRINT_FRAGMENT, 0.8, 1, 1),
+		# v8.x: 补齐缺口卡（之前仅 enemy_only 数据，玩家无获取途径）
+		DropEntry.new("fut_fort_shield", DropType.BLUEPRINT_FRAGMENT, 0.4, 1, 1),
+		DropEntry.new("fut_fort_ion", DropType.BLUEPRINT_FRAGMENT, 0.3, 1, 1),
+		DropEntry.new("fut_space_fighter", DropType.BLUEPRINT_FRAGMENT, 0.3, 1, 1),
+		DropEntry.new("fut_stormcore", DropType.BLUEPRINT_FRAGMENT, 0.2, 1, 1),
+		DropEntry.new("fut_colossus", DropType.BLUEPRINT_FRAGMENT, 0.15, 1, 1),
+		DropEntry.new("fut_arm_nexus", DropType.BLUEPRINT_FRAGMENT, 0.1, 1, 1),
 		DropEntry.new("alloy", DropType.MATERIAL, 2.0, 32, 60),
 		DropEntry.new("crystal", DropType.MATERIAL, 2.0, 16, 32),
 	]

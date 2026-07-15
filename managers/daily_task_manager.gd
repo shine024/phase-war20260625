@@ -1,5 +1,7 @@
 extends Node
+class_name DailyTaskManager
 ## 日常任务管理器：管理和生成每日任务
+## v7.x: class_name 确保 DailyTaskManager.TaskType 在延迟加载后仍可全局访问
 
 ## 任务类型
 enum TaskType {

@@ -391,6 +391,10 @@ func generate_battle_completion_drops(player_won: bool, elapsed_time: float, wav
 			_signal_bus.drops_ready_to_claim.emit(drops)
 
 	# ═══ v6.0: 情报收获生成 ═══
+	# v7.x 性能：IntelDiscoveryManager 延迟加载，战斗结算前确保已实例化（否则整条情报收获链丢失）
+	var _mll_idm: Node = _get_autoload_node("ManagerLazyLoader")
+	if _mll_idm and _mll_idm.has_method("ensure_loaded"):
+		_mll_idm.ensure_loaded("intel_discovery")
 	var idm: Node = _get_autoload_node("IntelDiscoveryManager")
 	if idm != null and idm.has_method("generate_battle_intel_harvest") and player_won:
 		var defeated_list: Array = _collect_defeated_enemy_info()

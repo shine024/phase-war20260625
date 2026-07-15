@@ -26,6 +26,17 @@ const LEVEL_COUNT = 100
 # 关卡信息数据库
 var _level_db: Dictionary = {}
 
+# v7.x 性能：全局共享单例。_init() 会重建全部 100 关字典（657 行构造代码），
+# 战斗中 _check_win_lose 每帧都会读关卡规则，反复 new() 是进战卡 + 战斗掉帧的主因。
+# 数据为构造期一次性写入、运行期纯只读查询，故用单例复用安全。
+static var _shared: LevelInformation = null
+
+## 返回全局共享单例（首次构造后复用，避免反复重建 100 关字典）。
+static func get_shared() -> LevelInformation:
+	if _shared == null:
+		_shared = LevelInformation.new()
+	return _shared
+
 func _init() -> void:
 	_init_level_information()
 

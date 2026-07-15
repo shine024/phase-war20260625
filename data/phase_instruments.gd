@@ -421,47 +421,54 @@ static func _build_all() -> Array[Dictionary]:
 	out.append(_make_def("pi_generic_12", "天穹VII型", "generic", true, 7, "generic_store", ["天界祝福：卡牌伤害+15%，防御+10%，经验+25%，掉落+20%"], ability_mega_shield(7)))
 	# 势力专属 23 款（7 势力，每个 3~4 款），每个都有独特的势力特性
 	# 神盾系列 - 防御特化
-	out.append(_make_def("pi_aegis_01", "神盾-前哨", "aether_dynamics", false, 2, "faction_reputation_or_quest", ["神盾力场：防御+6%，受到的伤害-3%"]))
-	out.append(_make_def("pi_aegis_02", "神盾-方阵", "aether_dynamics", false, 4, "faction_reputation_or_quest", ["方阵防御：防御+10%，每15秒获得1点临时护盾"], ability_nano_swarm(4)))
-	out.append(_make_def("pi_aegis_03", "神盾-穹顶", "aether_dynamics", false, 6, "faction_reputation_or_quest", ["穹顶庇护：防御+15%，受到的伤害-10%，能量消耗-2"], ability_nano_swarm(6)))
-	out.append(_make_def("pi_aegis_04", "神盾-壁垒核", "aether_dynamics", false, 7, "faction_reputation_or_quest", ["绝对防御：防御+20%，受到的伤害-15%，每10秒恢复2点能量"], ability_nano_swarm(7)))
+	out.append(_make_def("pi_aegis_01", "神盾-前哨", "aether_dynamics", false, 2, "faction_reputation", ["神盾力场：防御+6%，受到的伤害-3%"]))
+	out.append(_make_def("pi_aegis_02", "神盾-方阵", "aether_dynamics", false, 4, "faction_reputation", ["方阵防御：防御+10%，每15秒获得1点临时护盾"], ability_nano_swarm(4)))
+	out.append(_make_def("pi_aegis_03", "神盾-穹顶", "aether_dynamics", false, 6, "faction_reputation", ["穹顶庇护：防御+15%，受到的伤害-10%，能量消耗-2"], ability_nano_swarm(6)))
+	out.append(_make_def("pi_aegis_04", "神盾-壁垒核", "aether_dynamics", false, 7, "faction_reputation", ["绝对防御：防御+20%，受到的伤害-15%，每10秒恢复2点能量"], ability_nano_swarm(7)))
 
 	# 螺旋系列 - 侦查与机动
-	out.append(_make_def("pi_helix_01", "螺旋-猎线", "helix_recon", false, 1, "faction_reputation_or_quest", ["猎手直觉：经验获取+8%"]))
-	out.append(_make_def("pi_helix_02", "螺旋-织网", "helix_recon", false, 3, "faction_reputation_or_quest", ["神经网络：部署范围+15%，经验+12%"], ability_phantom_clone(3)))
-	out.append(_make_def("pi_helix_03", "螺旋-神经束", "helix_recon", false, 5, "faction_reputation_or_quest", ["神经加速：能量恢复+25%，经验+18%，部署范围+10%"], ability_phantom_clone(5)))
+	out.append(_make_def("pi_helix_01", "螺旋-猎线", "helix_recon", false, 1, "faction_reputation", ["猎手直觉：经验获取+8%"]))
+	out.append(_make_def("pi_helix_02", "螺旋-织网", "helix_recon", false, 3, "faction_reputation", ["神经网络：部署范围+15%，经验+12%"], ability_phantom_clone(3)))
+	out.append(_make_def("pi_helix_03", "螺旋-神经束", "helix_recon", false, 5, "faction_reputation", ["神经加速：能量恢复+25%，经验+18%，部署范围+10%"], ability_phantom_clone(5)))
 	# v6.6 新增：螺旋7星-幻影核（幻影克隆完整版）
-	out.append(_make_def("pi_helix_04", "螺旋-幻影核", "helix_recon", false, 7, "faction_reputation_or_quest", ["幻影核心：克隆体攻击+100%、血量+80%"], ability_phantom_clone(7)))
+	out.append(_make_def("pi_helix_04", "螺旋-幻影核", "helix_recon", false, 7, "faction_reputation", ["幻影核心：克隆体攻击+100%、血量+80%"], ability_phantom_clone(7)))
 
 	# 新星系列 - 火力输出
-	out.append(_make_def("pi_nova_01", "新星-回路", "nova_arms", false, 2, "faction_reputation_or_quest", ["回路超频：卡牌伤害+8%"]))
-	out.append(_make_def("pi_nova_02", "新星-灼流", "nova_arms", false, 4, "faction_reputation_or_quest", ["灼流爆发：卡牌伤害+15%，能量恢复+10%"], ability_artillery_barrage(4)))
-	out.append(_make_def("pi_nova_03", "新星-超弦", "nova_arms", false, 7, "faction_reputation_or_quest", ["超弦毁灭：卡牌伤害+25%，能量恢复+20%，能量消耗-3"], ability_artillery_barrage(7)))
-	out.append(_make_def("pi_nova_04", "新星-裂变庭", "nova_arms", false, 6, "faction_reputation_or_quest", ["裂变反应：卡牌伤害+20%，每击杀一个敌人恢复1点能量"], ability_artillery_barrage(6)))
+	out.append(_make_def("pi_nova_01", "新星-回路", "nova_arms", false, 2, "faction_reputation", ["回路超频：卡牌伤害+8%"]))
+	out.append(_make_def("pi_nova_02", "新星-灼流", "nova_arms", false, 4, "faction_reputation", ["灼流爆发：卡牌伤害+15%，能量恢复+10%"], ability_artillery_barrage(4)))
+	out.append(_make_def("pi_nova_03", "新星-超弦", "nova_arms", false, 7, "faction_reputation", ["超弦毁灭：卡牌伤害+25%，能量恢复+20%，能量消耗-3"], ability_artillery_barrage(7)))
+	out.append(_make_def("pi_nova_04", "新星-裂变庭", "nova_arms", false, 6, "faction_reputation", ["裂变反应：卡牌伤害+20%，每击杀一个敌人恢复1点能量"], ability_artillery_barrage(6)))
 
 	# 铁幕系列 - 坦克与生存
-	out.append(_make_def("pi_iron_01", "铁幕-重锚", "iron_wall_corp", false, 3, "faction_reputation_or_quest", ["重锚稳固：防御+8%，最大生命+10%"]))
-	out.append(_make_def("pi_iron_02", "铁幕-铸链", "iron_wall_corp", false, 5, "faction_reputation_or_quest", ["铸链锁甲：防御+14%，受到的伤害-8%，能量消耗-1"]))
-	out.append(_make_def("pi_iron_03", "铁幕-王座", "iron_wall_corp", false, 7, "faction_reputation_or_quest", ["王座威严：防御+20%，受到的伤害-12%，最大生命+25%"], ability_fortress_bulwark(7)))
+	out.append(_make_def("pi_iron_01", "铁幕-重锚", "iron_wall_corp", false, 3, "faction_reputation", ["重锚稳固：防御+8%，最大生命+10%"]))
+	out.append(_make_def("pi_iron_02", "铁幕-铸链", "iron_wall_corp", false, 5, "faction_reputation", ["铸链锁甲：防御+14%，受到的伤害-8%，能量消耗-1"]))
+	out.append(_make_def("pi_iron_03", "铁幕-王座", "iron_wall_corp", false, 7, "faction_reputation", ["王座威严：防御+20%，受到的伤害-12%，最大生命+25%"], ability_fortress_bulwark(7)))
 
 	# 影幕系列 - 潜行与爆发
-	out.append(_make_def("pi_umbra_01", "影幕-薄刃", "void_research", false, 1, "faction_reputation_or_quest", ["薄刃一击：首次攻击伤害+20%"]))
-	out.append(_make_def("pi_umbra_02", "影幕-折光", "void_research", false, 3, "faction_reputation_or_quest", ["折光隐匿：卡牌伤害+10%，暴击率+8%"], ability_piercing_shot(3)))
-	out.append(_make_def("pi_umbra_03", "影幕-寂静域", "void_research", false, 6, "faction_reputation_or_quest", ["寂静杀场：卡牌伤害+18%，暴击率+15%，暴击伤害+25%"], ability_piercing_shot(6)))
+	out.append(_make_def("pi_umbra_01", "影幕-薄刃", "void_research", false, 1, "faction_reputation", ["薄刃一击：首次攻击伤害+20%"]))
+	out.append(_make_def("pi_umbra_02", "影幕-折光", "void_research", false, 3, "faction_reputation", ["折光隐匿：卡牌伤害+10%，暴击率+8%"], ability_piercing_shot(3)))
+	out.append(_make_def("pi_umbra_03", "影幕-寂静域", "void_research", false, 6, "faction_reputation", ["寂静杀场：卡牌伤害+18%，暴击率+15%，暴击伤害+25%"], ability_piercing_shot(6)))
 	# v6.6 新增：影幕7星-虚空穿（直射穿透完整版）
-	out.append(_make_def("pi_umbra_04", "影幕-虚空穿", "void_research", false, 7, "faction_reputation_or_quest", ["虚空贯穿：100%穿透，每穿一个目标衰减10%"], ability_piercing_shot(7)))
+	out.append(_make_def("pi_umbra_04", "影幕-虚空穿", "void_research", false, 7, "faction_reputation", ["虚空贯穿：100%穿透，每穿一个目标衰减10%"], ability_piercing_shot(7)))
 
 	# 擎天系列 - 支援与资源
-	out.append(_make_def("pi_atlas_01", "擎天-工蜂", "quantum_logistics", false, 2, "faction_reputation_or_quest", ["工蜂采集：掉落率+10%"]))
-	out.append(_make_def("pi_atlas_02", "擎天-梁柱", "quantum_logistics", false, 4, "faction_reputation_or_quest", ["梁柱支撑：掉落率+18%，经验+10%"], ability_free_energy(4)))
-	out.append(_make_def("pi_atlas_03", "擎天-桥核", "quantum_logistics", false, 6, "faction_reputation_or_quest", ["桥核链接：掉落率+25%，经验+20%，每15秒获得1点免费能量"], ability_free_energy(6)))
+	out.append(_make_def("pi_atlas_01", "擎天-工蜂", "quantum_logistics", false, 2, "faction_reputation", ["工蜂采集：掉落率+10%"]))
+	out.append(_make_def("pi_atlas_02", "擎天-梁柱", "quantum_logistics", false, 4, "faction_reputation", ["梁柱支撑：掉落率+18%，经验+10%"], ability_free_energy(4)))
+	out.append(_make_def("pi_atlas_03", "擎天-桥核", "quantum_logistics", false, 6, "faction_reputation", ["桥核链接：掉落率+25%，经验+20%，每15秒获得1点免费能量"], ability_free_energy(6)))
 	# v6.6 新增：擎天7星-零点能（免能量完整版）
-	out.append(_make_def("pi_atlas_04", "擎天-零点能", "quantum_logistics", false, 7, "faction_reputation_or_quest", ["零点能源：所有卡片部署免能量"], ability_free_energy(7)))
+	out.append(_make_def("pi_atlas_04", "擎天-零点能", "quantum_logistics", false, 7, "faction_reputation", ["零点能源：所有卡片部署免能量"], ability_free_energy(7)))
 
 	# 永纪系列 - 时间与控制
-	out.append(_make_def("pi_eon_01", "永纪-秒针", "frontier_union", false, 2, "faction_reputation_or_quest", ["秒针精算：能量恢复+15%"], ability_nuclear_bombardment(2)))
-	out.append(_make_def("pi_eon_02", "永纪-时阶", "frontier_union", false, 5, "faction_reputation_or_quest", ["时阶掌控：能量恢复+30%，能量消耗-2，所有技能冷却-10%"], ability_nuclear_bombardment(5)))
-	out.append(_make_def("pi_eon_03", "永纪-终式", "frontier_union", false, 7, "faction_reputation_or_quest", ["终式预言：能量恢复+40%，能量消耗-3，每5秒有20%几率获得额外回合"], ability_nuclear_bombardment(7)))
+	out.append(_make_def("pi_eon_01", "永纪-秒针", "frontier_union", false, 2, "faction_reputation", ["秒针精算：能量恢复+15%"], ability_nuclear_bombardment(2)))
+	out.append(_make_def("pi_eon_02", "永纪-时阶", "frontier_union", false, 5, "faction_reputation", ["时阶掌控：能量恢复+30%，能量消耗-2，所有技能冷却-10%"], ability_nuclear_bombardment(5)))
+	out.append(_make_def("pi_eon_03", "永纪-终式", "frontier_union", false, 7, "faction_reputation", ["终式预言：能量恢复+40%，能量消耗-3，每5秒有20%几率获得额外回合"], ability_nuclear_bombardment(7)))
+	# v7.x 新增：4 个特殊相位仪（仅相位师掉落，不在商店出售）
+	# 复用我方 7 星 active_ability 函数（玩家版：火炮打敌方/酸雨打敌方/护盾罩我方/轰炸敌方）
+	# acquire_rule="phase_master_drop" 标记仅相位师掉落（商店面板过滤掉）
+	out.append(_make_def("pi_special_rage", "铁血元帅权杖", "iron_wall_corp", false, 5, "phase_master_drop", ["元帅之怒：我方攻击力+18%，每击杀回 1 点能量"], ability_artillery_barrage(5)))
+	out.append(_make_def("pi_special_void", "虚空吞噬者", "void_research", false, 6, "phase_master_drop", ["虚空侵蚀：暴击+15%，暴击伤害+30%"], ability_nano_swarm(6)))
+	out.append(_make_def("pi_special_aegis", "神盾·壁垒之心", "aether_dynamics", false, 6, "phase_master_drop", ["绝对壁垒：防御+22%，受到伤害-12%"], ability_mega_shield(6)))
+	out.append(_make_def("pi_special_nova", "终焉核芯", "nova_arms", false, 7, "phase_master_drop", ["终焉之力：卡牌伤害+22%，攻速+15%"], ability_nuclear_bombardment(7)))
 	return out
 
 static func get_all() -> Array[Dictionary]:

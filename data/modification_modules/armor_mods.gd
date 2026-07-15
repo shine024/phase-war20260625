@@ -77,17 +77,18 @@ const DATA: Dictionary = {
 		name = "爆反装甲",
 		name_en = "Reactive Armor",
 		prototype = "接触-1",
-		description = "爆炸反应装甲，首击免疫HEAT，消耗后失效",
+		description = "爆炸反应装甲：受击时反弹30%伤害给攻击者，可触发3次",
 		icon = "res://assets/ui/icons/mod_icons/mod_armor.png",
 		rarity = "epic",
-	power_mult = 1.6,
+		power_mult = 1.6,
 		cost_research = 300,
 		cost_install = 150,
 		slot_type = "armor",
 		conflict_group = "armor",
 		effects = {
-			heat_immunity_once = true,  # 首击HEAT免疫
-			defense_armor = 0.10,       # +10% 基础防护
+			# v7.x 第二批：修复为真正的爆反（原 heat_immunity_once 只是减伤）
+			reactive_armor = 0.30,       # 反弹30%伤害
+			reflect_charges = 3,         # 3次后失效
 		},
 		unlock_conditions = {
 			required_level = 5,
@@ -99,16 +100,18 @@ const DATA: Dictionary = {
 		name = "主动防护",
 		name_en = "Active Protection System",
 		prototype = "铁拳/竞技场",
-		description = "拦截来袭反坦克导弹，减伤30%",
+		description = "拦截来袭导弹：30%概率完全免伤，可触发3次",
 		icon = "res://assets/ui/icons/mod_icons/mod_active.png",
 		rarity = "legendary",
-	power_mult = 2.0,
+		power_mult = 2.0,
 		cost_research = 450,
 		cost_install = 225,
 		slot_type = "active",
 		conflict_group = "active",
 		effects = {
-			missile_intercept = 0.30,  # 30%拦截
+			# v7.x 第二批：修复为真正的拦截（原 missile_intercept 只是减伤）
+			intercept_system = 0.30,    # 30%概率拦截
+			intercept_charges = 3,      # 3次后失效
 		},
 		unlock_conditions = {
 			required_level = 7,
@@ -378,6 +381,26 @@ const DATA: Dictionary = {
 		unlock_conditions = {
 			required_level = 5,
 		}
+	},
+
+	# ─── v7.x 新机制改造 ───
+
+	# 怒气型：战斗狂热（受击 8 次后激活 5 秒 +35% 攻击）
+	"arm_16_battle_frenzy" = {
+		id = "arm_16_battle_frenzy",
+		name = "战斗狂热",
+		name_en = "Battle Frenzy",
+		icon = "res://assets/ui/icons/mod_icons/mod_special.png",
+		prototype = "损伤响应式反应装甲",
+		description = "承受攻击积累怒气，受击 8 次后激活战斗狂热：5 秒内攻击力 +35%",
+		rarity = "legendary",
+		power_mult = 1.8,
+		cost_research = 400,
+		cost_install = 200,
+		slot_type = "special",
+		conflict_group = "special",
+		effects = {rage_system = 8, rage_bonus = 0.35},
+		unlock_conditions = {required_level = 6}
 	},
 }
 

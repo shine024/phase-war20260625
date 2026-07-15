@@ -6,7 +6,7 @@ const GC = preload("res://resources/game_constants.gd")
 ## 专属卡定义：14张（每势力2张）
 ## id: 唯一标识（fe_前缀）
 ## faction_id: 所属势力
-## min_faction_level: 最低势力等级要求
+## min_reputation: 最低势力声望要求（epic=1200 即原Lv3下界，legendary=2900 即原Lv5下界）
 ## rarity: 稀有度（epic/legendary）
 ## era: 时代（0-4）
 ## combat_kind: 战斗类型（0轻装/1装甲/2支援/3空中/4堡垒）
@@ -16,7 +16,7 @@ const EXCLUSIVE_CARDS: Array[Dictionary] = [
 		"id": "fe_iron_wall_bastion",
 		"name": "不朽堡垒",
 		"faction_id": "iron_wall_corp",
-		"min_faction_level": 3,
+		"min_reputation": 1200,
 		"rarity": "epic",
 		"era": 4,
 		"combat_kind": 4,
@@ -34,7 +34,7 @@ const EXCLUSIVE_CARDS: Array[Dictionary] = [
 		"id": "fe_iron_wall_juggernaut",
 		"name": "重装先驱",
 		"faction_id": "iron_wall_corp",
-		"min_faction_level": 5,
+		"min_reputation": 2900,
 		"rarity": "legendary",
 		"era": 4,
 		"combat_kind": 0,
@@ -54,7 +54,7 @@ const EXCLUSIVE_CARDS: Array[Dictionary] = [
 		"id": "fe_nova_devastator",
 		"name": "歼灭者自行火炮",
 		"faction_id": "nova_arms",
-		"min_faction_level": 3,
+		"min_reputation": 1200,
 		"rarity": "epic",
 		"era": 4,
 		"combat_kind": 2,
@@ -72,7 +72,7 @@ const EXCLUSIVE_CARDS: Array[Dictionary] = [
 		"id": "fe_nova_ghost_sniper",
 		"name": "幽灵狙击组",
 		"faction_id": "nova_arms",
-		"min_faction_level": 5,
+		"min_reputation": 2900,
 		"rarity": "legendary",
 		"era": 3,
 		"combat_kind": 0,
@@ -92,7 +92,7 @@ const EXCLUSIVE_CARDS: Array[Dictionary] = [
 		"id": "fe_aether_hover_cavalry",
 		"name": "以太骑兵",
 		"faction_id": "aether_dynamics",
-		"min_faction_level": 3,
+		"min_reputation": 1200,
 		"rarity": "epic",
 		"era": 4,
 		"combat_kind": 0,
@@ -110,7 +110,7 @@ const EXCLUSIVE_CARDS: Array[Dictionary] = [
 		"id": "fe_aether_swarm_queen",
 		"name": "蜂群母机",
 		"faction_id": "aether_dynamics",
-		"min_faction_level": 5,
+		"min_reputation": 2900,
 		"rarity": "legendary",
 		"era": 4,
 		"combat_kind": 3,
@@ -130,7 +130,7 @@ const EXCLUSIVE_CARDS: Array[Dictionary] = [
 		"id": "fe_quantum_mobile_base",
 		"name": "移动堡垒基地",
 		"faction_id": "quantum_logistics",
-		"min_faction_level": 3,
+		"min_reputation": 1200,
 		"rarity": "epic",
 		"era": 4,
 		"combat_kind": 4,
@@ -148,7 +148,7 @@ const EXCLUSIVE_CARDS: Array[Dictionary] = [
 		"id": "fe_quantum_repair_drone",
 		"name": "纳米修复蜂群",
 		"faction_id": "quantum_logistics",
-		"min_faction_level": 5,
+		"min_reputation": 2900,
 		"rarity": "legendary",
 		"era": 4,
 		"combat_kind": 3,
@@ -168,7 +168,7 @@ const EXCLUSIVE_CARDS: Array[Dictionary] = [
 		"id": "fe_helix_phantom",
 		"name": "幻影特工",
 		"faction_id": "helix_recon",
-		"min_faction_level": 3,
+		"min_reputation": 1200,
 		"rarity": "epic",
 		"era": 4,
 		"combat_kind": 0,
@@ -186,7 +186,7 @@ const EXCLUSIVE_CARDS: Array[Dictionary] = [
 		"id": "fe_helix_orbital_strike",
 		"name": "轨道打击引导组",
 		"faction_id": "helix_recon",
-		"min_faction_level": 5,
+		"min_reputation": 2900,
 		"rarity": "legendary",
 		"era": 4,
 		"combat_kind": 2,
@@ -206,7 +206,7 @@ const EXCLUSIVE_CARDS: Array[Dictionary] = [
 		"id": "fe_void_phase_cannon",
 		"name": "相位炮台",
 		"faction_id": "void_research",
-		"min_faction_level": 3,
+		"min_reputation": 1200,
 		"rarity": "epic",
 		"era": 4,
 		"combat_kind": 4,
@@ -224,7 +224,7 @@ const EXCLUSIVE_CARDS: Array[Dictionary] = [
 		"id": "fe_void_dimensional_soldier",
 		"name": "次元行者",
 		"faction_id": "void_research",
-		"min_faction_level": 5,
+		"min_reputation": 2900,
 		"rarity": "legendary",
 		"era": 4,
 		"combat_kind": 0,
@@ -244,7 +244,7 @@ const EXCLUSIVE_CARDS: Array[Dictionary] = [
 		"id": "fe_frontier_veteran",
 		"name": "边境老兵",
 		"faction_id": "frontier_union",
-		"min_faction_level": 3,
+		"min_reputation": 1200,
 		"rarity": "epic",
 		"era": 3,
 		"combat_kind": 0,
@@ -262,7 +262,7 @@ const EXCLUSIVE_CARDS: Array[Dictionary] = [
 		"id": "fe_frontier_mixed_company",
 		"name": "混编突击队",
 		"faction_id": "frontier_union",
-		"min_faction_level": 5,
+		"min_reputation": 2900,
 		"rarity": "legendary",
 		"era": 4,
 		"combat_kind": 1,
@@ -342,12 +342,12 @@ static func get_exclusive_faction(card_id: String) -> String:
 			return cfg.get("faction_id", "")
 	return ""
 
-## 获取专属卡最低势力等级
-static func get_min_faction_level(card_id: String) -> int:
+## 获取专属卡最低势力声望
+static func get_min_reputation(card_id: String) -> int:
 	for cfg in EXCLUSIVE_CARDS:
 		if cfg.get("id", "") == card_id:
-			return cfg.get("min_faction_level", 1)
-	return 1
+			return cfg.get("min_reputation", 0)
+	return 0
 
 ## 按势力过滤专属卡
 static func get_exclusives_for_faction(faction_id: String) -> Array:

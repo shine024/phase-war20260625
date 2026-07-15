@@ -35,6 +35,8 @@ const DropTablesPreview = preload("res://resources/drop_tables.gd")
 const QuestDefs = preload("res://data/quest_definitions.gd")  # v6.7(剧情任务): 关卡剧情标记
 const FactionConquestBuffs = preload("res://data/faction_conquest_buffs.gd")  # v6.9: 占领势力加成描述
 const CompanyDefs = preload("res://data/company_definitions.gd")  # v6.14: 统一阵营色来源
+const PhaseMasterGarrison = preload("res://data/phase_master_garrison.gd")  # v7.x: Boss相位师驻守关判定
+const EnemyPhaseMasters = preload("res://data/enemy_phase_masters.gd")  # v7.x: 相位师详情查询
 
 # v6.10: 关卡按钮占领色标——势力色统一从 CompanyDefinitions.get_faction_color() 读取（Palette B）
 # 无主之地兜底（右边框半透明灰）
@@ -355,6 +357,14 @@ func _make_level_button(level_index: int, _era_idx: int, era_info: Dictionary, c
 		for q in story_quests:
 			titles.append(q.get("title", ""))
 		btn.tooltip_text = "★ 剧情任务：\n" + "\n".join(titles)
+	# v7.x: 驻守相位师 Boss 关检测（供金色字体描边 + tooltip）
+	var boss_master_name: String = ""
+	if PhaseMasterGarrison.is_garrison_level(level_index):
+		var _bmid: String = PhaseMasterGarrison.get_garrison_master_id(level_index)
+		if not _bmid.is_empty():
+			var _bm: Dictionary = EnemyPhaseMasters.get_master_by_id(_bmid)
+			if not _bm.is_empty():
+				boss_master_name = "%s Lv.%d" % [String(_bm.get("name", "")), int(_bm.get("level", 0))]
 
 	var is_current: bool = (level_index == current_level)
 	var btn_style := StyleBoxFlat.new()
@@ -403,6 +413,13 @@ func _make_level_button(level_index: int, _era_idx: int, era_info: Dictionary, c
 		else:
 			btn.tooltip_text += "\n占领：%s" % occ_name
 
+	# v7.x: Boss 关 tooltip 追加相位师首领信息（与剧情/占领 tooltip 共存）
+	if not boss_master_name.is_empty():
+		if btn.tooltip_text.is_empty():
+			btn.tooltip_text = "⚔ 相位师首领：%s" % boss_master_name
+		else:
+			btn.tooltip_text += "\n⚔ 相位师首领：%s" % boss_master_name
+
 	btn_style.corner_radius_top_left = 4
 	btn_style.corner_radius_top_right = 4
 	btn_style.corner_radius_bottom_right = 4
@@ -421,6 +438,15 @@ func _make_level_button(level_index: int, _era_idx: int, era_info: Dictionary, c
 	btn.add_theme_stylebox_override("hover", hover_style)
 	btn.add_theme_color_override("font_hover_color", era_info["btn_active"])
 
+	# v7.x: Boss 相位师关——金色字体 + 描边（绕开 StyleBoxFlat 单一 border_color 限制，
+	# 与剧情★紫色左边框 / 占领势力右边框零冲突，所有重叠情况都能叠加）
+	if not boss_master_name.is_empty():
+		var gold: Color = Color(1.0, 0.84, 0.3, 1.0)
+		btn.add_theme_color_override("font_color", gold)
+		btn.add_theme_color_override("font_hover_color", gold)
+		btn.add_theme_color_override("font_outline_color", Color(1.0, 0.65, 0.2, 0.9))
+		btn.add_theme_constant_override("outline_size", 2)
+
 	btn.pressed.connect(func() -> void: _on_level_selected(level_index))
 	return btn
 
@@ -429,8 +455,8 @@ func _get_level_occupation_safe(level: int) -> String:
 	var fsm = get_node_or_null("/root/FactionSystemManager")
 	if fsm and fsm.has_method("get_level_occupation"):
 		return String(fsm.get_level_occupation(level))
-	# 回退静态
-	var li = LevelInformation.new()
+	# 回退静态（v7.x 性能：用全局单例）
+	var li = LevelInformation.get_shared()
 	return li.get_level_faction(level)
 
 func _process(_delta: float) -> void:
@@ -559,8 +585,8 @@ func _show_level_info_popup(level_index: int) -> void:
 	body.add_child(_make_detail_section_title("基本信息"))
 	var in_era_pos: int = ((level_index - 1) % ERA_SIZE) + 1
 	var diff_tier: String = _difficulty_label(in_era_pos)
-	# LevelInformation 的方法是非静态的，需先实例化（与 _collect_level_info 一致）
-	var _li_instance := LevelInformation.new()
+	# v7.x 性能：用全局单例（与 _collect_level_info 一致）
+	var _li_instance := LevelInformation.get_shared()
 	var diff_mod: float = _li_instance.get_difficulty_modifier(level_index)
 	var lpm: Node = get_node_or_null("/root/LevelProgressManager")
 	var stars: int = 0
@@ -853,7 +879,7 @@ func _enter_level_from_popup(level_index: int, popup: Window) -> void:
 	get_tree().call_deferred("change_scene_to_file", "res://scenes/main.tscn")
 
 func _collect_level_info(level_index: int) -> Dictionary:
-	var info_db = LevelInformation.new()
+	var info_db = LevelInformation.get_shared()
 	var li: Dictionary = info_db.get_level_info(level_index)
 	var env: Dictionary = li.get("environment", {})
 	var drops: Dictionary = BasicResourcesData.get_drops_for_level(level_index)
@@ -1007,13 +1033,11 @@ func _collect_level_info(level_index: int) -> Dictionary:
 			if FactionConquestBuffs != null:
 				garrison_buff_text = FactionConquestBuffs.describe_buff(garrison_faction_id, flevel)
 				garrison_color = Color(1.0, 0.7, 0.4, 1.0)  # 橙红：占领势力，威胁提示
-	# v7.x: 查询驻守相位师（固定驻守关）
+	# v7.x: 查询驻守相位师（固定驻守关，复用顶部 const）
 	var garrison_master_name: String = ""
-	var _PMG = preload("res://data/phase_master_garrison.gd")
-	var _garrison_mid: String = _PMG.get_garrison_master_id(level_index)
+	var _garrison_mid: String = PhaseMasterGarrison.get_garrison_master_id(level_index)
 	if not _garrison_mid.is_empty():
-		var _EPMC = preload("res://data/enemy_phase_masters.gd")
-		var _gm: Dictionary = _EPMC.get_master_by_id(_garrison_mid)
+		var _gm: Dictionary = EnemyPhaseMasters.get_master_by_id(_garrison_mid)
 		if not _gm.is_empty():
 			garrison_master_name = "%s Lv.%d" % [String(_gm.get("name", "")), int(_gm.get("level", 0))]
 	var out: Dictionary = {

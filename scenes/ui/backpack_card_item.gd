@@ -400,14 +400,14 @@ func _apply_faction_exclusive_state(c: CardResource) -> void:
 	var available := false
 	if fsm != null:
 		var faction_id: String = EC.get_exclusive_faction(c.card_id)
-		var min_lv: int = EC.get_min_faction_level(c.card_id)
-		if fsm.get_active_faction() == faction_id and fsm.get_faction_level(faction_id) >= min_lv:
+		var min_rep: int = EC.get_min_reputation(c.card_id)
+		if fsm.get_active_faction() == faction_id and fsm.get_faction_reputation(faction_id) >= min_rep:
 			available = true
 	if not available:
 		modulate = Color(0.5, 0.5, 0.5, 0.7)
-		tooltip_text = "需要激活 %s 势力且等级 >= %d" % [
+		tooltip_text = "需要激活 %s 势力且声望 >= %d" % [
 			EC.get_exclusive_faction(c.card_id),
-			EC.get_min_faction_level(c.card_id)]
+			EC.get_min_reputation(c.card_id)]
 	else:
 		modulate = Color(1, 1, 1, 1)
 
