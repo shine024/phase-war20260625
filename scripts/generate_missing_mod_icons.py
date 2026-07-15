@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-"""Generate 3 missing mod_icons using requests. Use KEY1 from config."""
+"""Generate 3 missing mod_icons."""
 import requests, json, os, time
 
-# KEY1 from config.yaml (the verified working one)
-KEY1 = "".join([chr(c) for c in [115,107,45,116,104,112,88,84,107,87,111,110,57,82,73,76,109,100,110,83,122,103,113,81,85,72,55,88,73,54,83,100,108,104,76,89,115,120,55,101,81,84,111,106,55,71,116,73,86]])
-
+key = "sk-thpXTkWon9RiLMdnsZgqlQUH7XI6SdlhLYsx7eQToj7GtIPv"
 BASE_URL = "https://apihub.agnes-ai.com/v1"
 OUTPUT_DIR = r"F:\godot fair duet\create\phase-war\assets\ui\icons\mod_icons"
 
@@ -68,7 +66,7 @@ icons = [
 
 session = requests.Session()
 session.headers.update({
-    "Authorization": f"Bearer {KEY1}",
+    "Authorization": f"Bearer {key}",
     "Content-Type": "application/json",
 })
 
@@ -85,33 +83,30 @@ for icon_def in icons:
     }
     
     print(f"\n[{fn}] POST...")
-    try:
-        resp = session.post(f"{BASE_URL}/images/generations", json=payload, timeout=60)
-        print(f"  Status: {resp.status_code}")
-        data = resp.json()
-        
-        if "data" not in data or len(data["data"]) == 0:
-            err = data.get("error", {}).get("message", "Unknown error")
-            code = data.get("code", "")
-            msg = data.get("message", "")
-            print(f"  API ERROR: code={code} msg={msg}")
-            print(f"  Full: {json.dumps(data)[:400]}")
-            continue
-        
-        image_url = data["data"][0]["url"]
-        print(f"  URL received ({len(image_url)} chars), downloading...")
-        
-        img_resp = session.get(image_url, timeout=60)
-        if img_resp.status_code == 200:
-            with open(fp, 'wb') as f:
-                f.write(img_resp.content)
-            sz = os.path.getsize(fp)
-            print(f"  OK: {fp} ({sz} bytes)")
-        else:
-            print(f"  Download failed: status={img_resp.status_code}")
-            
-    except Exception as e:
-        print(f"  EXCEPTION: {e}")
+    resp = session.post(f"{BASE_URL}/images/generations", json=payload, timeout=60)
+    data = resp.json()
+    
+    if "data" not in data or len(data["data"]) == 0:
+        err = data.get("error", {}).get("message", "Unknown error")
+        code = data.get("code", "")
+        msg = data.get("message", "")
+        print(f"  API ERROR: code={code} msg={msg}")
+        continue
+    
+    image_url = data["data"][0]["url"]
+    print(f"  URL received ({len(image_url)} chars)")
+    
+    # Try downloading WITHOUT the auth header (URL may be pre-signed)
+    dl_session = requests.Session()
+    img_resp = dl_session.get(image_url, timeout=60)
+    if img_resp.status_code == 200:
+        with open(fp, 'wb') as f:
+            f.write(img_resp.content)
+        sz = os.path.getsize(fp)
+        print(f"  OK: {fp} ({sz} bytes)")
+    else:
+        print(f"  Download failed: status={img_resp.status_code}")
+        print(f"  Response: {img_resp.text[:200]}")
     
     time.sleep(5)
 

@@ -347,7 +347,19 @@ func try_grant_battle_affixes(phase_instrument: Node) -> void:
 #  战斗结算掉落生成
 # =========================================================================
 
+## v7.x 性能：拆分为两步——掉落表生成 + 情报收获（各自独立帧执行）
+## generate_battle_drops_only → 帧 B（中等负载）
+## generate_intel_harvest       → 帧 B'（重负载，遍历击败敌人做情报掷骰）
+## 原函数 generate_battle_completion_drops 保留为向后兼容包装（一步完成，供非拆帧调用）
+
 func generate_battle_completion_drops(player_won: bool, elapsed_time: float, wave_total: int, wave_interval: float, max_deployed: int, units_lost: int) -> Dictionary:
+	var result: Dictionary = generate_battle_drops_only(player_won, elapsed_time, wave_total, wave_interval, max_deployed, units_lost)
+	if player_won:
+		result = generate_intel_harvest(result)
+	return result
+
+
+func generate_battle_drops_only(player_won: bool, elapsed_time: float, wave_total: int, wave_interval: float, max_deployed: int, units_lost: int) -> Dictionary:
 	var dm: Node = _get_autoload_node("DropManager")
 	if dm == null or not dm.has_method("generate_battle_drops"):
 		return {"victory_stars": 0, "era": 0, "player_won": player_won}
@@ -390,13 +402,22 @@ func generate_battle_completion_drops(player_won: bool, elapsed_time: float, wav
 		if _signal_bus and _signal_bus.has_signal("drops_ready_to_claim"):
 			_signal_bus.drops_ready_to_claim.emit(drops)
 
-	# ═══ v6.0: 情报收获生成 ═══
-	# v7.x 性能：IntelDiscoveryManager 延迟加载，战斗结算前确保已实例化（否则整条情报收获链丢失）
+	return battle_result
+
+
+func generate_intel_harvest(existing_result: Dictionary) -> Dictionary:
+	## 帧B'：情报收获生成（遍历击败敌人做情报掷骰，胜利后单帧最重操作）
+	## 接收帧B的 _battle_result 字典，追加 intel_harvest/eom_fragments 后返回
+	if not existing_result.get("player_won", false):
+		return existing_result
+
+	var gm: Node = _get_autoload_node("GameManager")
+	# v7.x 性能：IntelDiscoveryManager 延迟加载（start_battle 时已预热，此处 ensure_loaded 仅做 is_instance_valid）
 	var _mll_idm: Node = _get_autoload_node("ManagerLazyLoader")
 	if _mll_idm and _mll_idm.has_method("ensure_loaded"):
 		_mll_idm.ensure_loaded("intel_discovery")
 	var idm: Node = _get_autoload_node("IntelDiscoveryManager")
-	if idm != null and idm.has_method("generate_battle_intel_harvest") and player_won:
+	if idm != null and idm.has_method("generate_battle_intel_harvest"):
 		var defeated_list: Array = _collect_defeated_enemy_info()
 		var current_env: Dictionary = {}
 		if gm and gm.has_method("get"):
@@ -406,18 +427,19 @@ func generate_battle_completion_drops(player_won: bool, elapsed_time: float, wav
 		# v7.x: 相位师战时屏蔽情报道具的改造蓝图掉落——
 		# 相位师专属掉落（game_manager._grant_phase_master_victory_reward）已必掉1-4个改造蓝图，
 		# 此处再掉会造成改造蓝图双爆。进化蓝图/情报增量/EOM碎片不受影响（它们不与相位师掉落重叠）。
-		# 注意：此时 BattleManager._is_phase_master_battle 尚未清零（在 end_battle 末尾才清），可安全读取。
+		# 注意：此时 BattleManager._is_phase_master_battle 尚未清零（在 _deferred_end_battle_broadcast 才清），可安全读取。
 		var pm_battle_bm: Node = _get_autoload_node("BattleManager")
 		var is_phase_master_battle: bool = bool(pm_battle_bm.get("_is_phase_master_battle")) if pm_battle_bm != null else false
+		var victory_stars: int = int(existing_result.get("victory_stars", 0))
 		var intel_harvest: Dictionary = idm.generate_battle_intel_harvest(
 			defeated_list, victory_stars, has_recon, current_env, is_phase_master_battle
 		)
-		battle_result["intel_harvest"] = intel_harvest
+		existing_result["intel_harvest"] = intel_harvest
 		# 敌源MOD碎片
 		if intel_harvest.get("eom_drops", {}).size() > 0:
-			battle_result["eom_fragments"] = intel_harvest["eom_drops"]
+			existing_result["eom_fragments"] = intel_harvest["eom_drops"]
 
-	return battle_result
+	return existing_result
 
 # =========================================================================
 #  v6.0: 收集本局击败的敌人信息（供情报系统使用）

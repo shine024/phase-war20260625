@@ -560,7 +560,7 @@ func _produce_unit_with_equipment() -> void:
 	# 明细：战场难度（波次×关卡×势力）
 	var _field_label: String = "战场难度(波次%d" % (wave_idx + 1)
 	if not ctx.faction_id.is_empty():
-			var _fn: String = str(EnemyStatResolver._FACTION_DISPLAY_NAMES.get(ctx.faction_id, ctx.faction_id))
+		var _fn: String = str(EnemyStatResolver._FACTION_DISPLAY_NAMES.get(ctx.faction_id, ctx.faction_id))
 		_field_label += "/%s Lv%d" % [_fn, ctx.faction_level]
 	_field_label += ")"
 	_sb_sources = _record_spawn_step(_sb_sources, _field_label, _sb_hp_before, _sb_atk_before, _sb_def_before, stats)
@@ -1168,6 +1168,3 @@ func _safe_ratio(after: float, before: float) -> float:
 	if before <= 0.0:
 		return 1.0
 	return after / before
-
-
-

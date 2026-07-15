@@ -482,7 +482,7 @@ func _on_battle_ended(player_won: bool) -> void:
 					sm.set_story_flag(StoryFlags.GUARDIAN_20_ATTEMPT_2, true)
 				_:
 					sm.set_story_flag("force_defeat_" + _force_defeat_reason, true)
-			clear_force_defeat_state()
+				clear_force_defeat_state()
 	# v6.6(剧情): 清理最终战标记（防跨战斗残留）
 	clear_final_battle_state()
 
@@ -501,17 +501,15 @@ func _on_battle_ended(player_won: bool) -> void:
 		# v7.1: 提取情报掉落（含改造图纸/进化蓝图），传给结算界面显示
 		intel_harvest = result.get("intel_harvest", {}) as Dictionary
 
-	# 处理相位师对战结果
-	if _is_phase_master_battle and not _current_phase_master.is_empty():
-		var master_name: String = _current_phase_master.get("name", "相位师")
-		if player_won:
-			_grant_phase_master_victory_reward(master_name)
-		else:
-			if DEBUG_GAME_LOG:
-				pass  # LOG: 败给相位师
-		# 清除相位师战斗状态
-		_is_phase_master_battle = false
-		_current_phase_master = {}
+	# v7.x 性能：相位师奖励（~160行，含Boss掉落表+符文抽取+改造蓝图+星级评估）延迟到下一帧。
+	# 这样结算面板能立即弹出（不依赖相位师奖励字段），相位师额外nano/energy在面板弹出后追加。
+	# 时序安全：_current_phase_master 在延迟函数中清除，它在 GameManager 上不受 BattleManager
+	# 的 _phase_master_config 清零影响。
+	var _pending_pm_battle: bool = _is_phase_master_battle and not _current_phase_master.is_empty() and player_won
+	var _pending_pm_name: String = ""
+	if _pending_pm_battle:
+		_pending_pm_name = String(_current_phase_master.get("name", "相位师"))
+		# 暂不清除相位师状态——延迟函数需要 _current_phase_master
 
 	# 记录战斗前资源
 	var before_basic_nano: int = BasicResourceManager.get_total(BasicResources.ID_NANO_MATERIALS) if BasicResourceManager.has_method("get_total") else 0
@@ -612,6 +610,9 @@ func _on_battle_ended(player_won: bool) -> void:
 		var dm_afk: Node = get_node_or_null("/root/DropManager")
 		if dm_afk != null and dm_afk.has_method("claim_drops"):
 			dm_afk.claim_drops()
+		# AFK 也需要延迟相位师奖励
+		if _pending_pm_battle:
+			call_deferred("_deferred_phase_master_reward", _pending_pm_name)
 		return_to_prep()
 	elif main_scene and main_scene.has_method("show_battle_result"):
 		# v7.x 性能：延迟到下一帧再构建结算面板。
@@ -628,6 +629,22 @@ func _on_battle_ended(player_won: bool) -> void:
 		if dm_fallback != null and dm_fallback.has_method("get_pending_drops_count") and dm_fallback.has_method("claim_drops"):
 			if dm_fallback.get_pending_drops_count() > 0:
 				dm_fallback.claim_drops()
+
+	# v7.x 性能：相位师奖励延迟到下一帧执行（Boss掉落表+符文抽取+改造蓝图+星级评估，~160行）
+	if _pending_pm_battle:
+		call_deferred("_deferred_phase_master_reward", _pending_pm_name)
+	else:
+		# 非相位师战或失败，直接清除状态
+		_is_phase_master_battle = false
+		_current_phase_master = {}
+
+
+func _deferred_phase_master_reward(master_name: String) -> void:
+	## 延迟执行的相位师战胜奖励——Boss掉落表+符文抽取+改造蓝图+星级评估
+	## 在结算面板弹出后执行，不影响玩家感知的"面板出现速度"
+	_grant_phase_master_victory_reward(master_name)
+	_is_phase_master_battle = false
+	_current_phase_master = {}
 
 func set_battle_scene(node: Node) -> void:
 	battle_scene = node

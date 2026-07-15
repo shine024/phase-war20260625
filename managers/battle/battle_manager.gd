@@ -299,6 +299,15 @@ func start_battle(battle_scene: Node) -> void:
 			energy_manager.set_meta("level_regen_mult", 1.0)
 		energy_manager.start_battle()
 
+	# v7.x 性能：预热结算路径需要的 lazy manager，消除结算时首次 ensure_loaded 同步开销
+	# （load()+new()+add_child() 在首帧可达数毫秒级；战斗持续数分钟，预热后 ensure_loaded 仅做
+	# is_instance_valid 检查，约 0 开销）
+	var _mll_pre = get_node_or_null("/root/ManagerLazyLoader")
+	if _mll_pre and _mll_pre.has_method("ensure_loaded"):
+		for _pre_id in ["intel_discovery", "quest", "achievement", "level_progress",
+				"leaderboard", "story", "faction", "stat_boost"]:
+			_mll_pre.ensure_loaded(_pre_id)
+
 	if SignalBus:
 		SignalBus.battle_started.emit()
 	if PerformanceMetricsManager and PerformanceMetricsManager.has_method("begin_battle_sampling"):
@@ -377,22 +386,19 @@ func end_battle(player_won: bool) -> void:
 
 
 # v7.x 性能：原 end_battle 末尾的重负载部分，延迟到下一帧执行以消除胜利瞬间卡顿。
-# 顺序约束：①掉落生成（依赖 _is_phase_master_battle 仍未清零，用于屏蔽相位师战
-# 改造蓝图双爆，见 battle_damage_system.gd 的 generate_battle_completion_drops）
+# 顺序约束：①掉落表生成（中等负载）→ ①b情报收获（重负载，遍历击败敌人掷骰）
 # → ②任务通知（读 _battle_result.victory_stars，必须在掉落生成之后）
 # → ③清理相位师战斗状态（必须在掉落生成之后，否则双爆回归）
-# → ④广播 battle_ended（18+ 监听者本帧跑，但已是胜利后第二帧，玩家无感知）。
+# → ④广播 battle_ended（18+ 监听者本帧跑，但已是胜利后第三帧，玩家无感知）。
 #
-# v7.x 性能（二次拆分）：把①掉落生成单独留一帧，②③④移到下一帧。
-# 掉落生成（generate_battle_completion_drops → generate_battle_intel_harvest）
-# 遍历全部击败敌人做情报掷骰，是胜利后单帧最重的操作；单独一帧让渲染线程能在
-# 掉落计算完成后先画一帧（玩家看到胜利动画），下一帧再跑18+监听者+奖励发放。
-# 数据时序安全：_battle_result 在①写入，②③④在下一帧读，call_deferred 保证①先完成。
+# 帧链：A(end_battle清理) → B(①掉落表) → B'(①b情报收获) → C(②③④广播)
+# 数据时序安全：_battle_result 在①写入，①b追加字段，②③④在下一帧读；
+# _is_phase_master_battle 在 C 才清零，B/B' 都可安全读取。
 func _deferred_end_battle_finalize(player_won: bool) -> void:
-	# ①掉落生成（本帧唯一的重负载）
+	# ①掉落表生成（中等负载：DropManager 掉落表 + 相位仪掉落）
 	if player_won:
 		_damage_system.try_grant_battle_affixes(phase_instrument)
-		_battle_result = _damage_system.generate_battle_completion_drops(
+		_battle_result = _damage_system.generate_battle_drops_only(
 			true,
 			_battle_elapsed_time,
 			_spawn_system.get_enemy_wave_total(),
@@ -400,11 +406,19 @@ func _deferred_end_battle_finalize(player_won: bool) -> void:
 			_spawn_system.get_max_player_units_deployed(),
 			_spawn_system.get_player_units_lost()
 		)
-	# 掉落生成完成后，把②③④延到下一帧（让渲染线程先画掉落完成后的胜利画面）
+	# 掉落表完成后，把①b情报收获延到下一帧
+	call_deferred("_deferred_end_battle_intel_harvest", player_won)
+
+
+func _deferred_end_battle_intel_harvest(player_won: bool) -> void:
+	# ①b 情报收获生成（重负载：遍历全部击败敌人做情报掷骰，胜利后单帧最重操作）
+	if player_won:
+		_battle_result = _damage_system.generate_intel_harvest(_battle_result)
+	# ②③④ 推迟到下一帧（让渲染线程先画情报收获后的胜利画面）
 	call_deferred("_deferred_end_battle_broadcast", player_won)
 
-# v7.x 性能：掉落生成完成后的收尾——任务通知/清状态/广播，单独一帧执行。
-# 依赖 _battle_result（已在 _deferred_end_battle_finalize 写入完毕）。
+# v7.x 性能：掉落表+情报收获都完成后的收尾——任务通知/清状态/广播，帧C 执行。
+# 依赖 _battle_result（帧B 写入掉落/星级，帧B' 追加情报字段，本帧安全读取）。
 func _deferred_end_battle_broadcast(player_won: bool) -> void:
 	# ②通知任务系统（读 _battle_result.victory_stars，必须在掉落生成之后）
 	ManagerLazyLoader.ensure_loaded("quest")
