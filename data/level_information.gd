@@ -594,7 +594,7 @@ func _apply_special_rules() -> void:
 	_set_rules(80, {"win_type": "survive_waves", "win_param": 14, "energy_mult": 0.5})
 
 	# ─── 近未来时代（81-100）───
-	# 第85关：限定堡垒/支援（阵地防御战）—— platform_type 3=SUPPORT, 7=ENGINEER
+	# 第85关：限定支援/工兵（阵地防御战）—— platform_type 3=SUPPORT, 7=ENGINEER
 	_set_rules(85, {"restrict_platforms": [3, 7]})
 	# 第90关：能量减半 + 部署上限4
 	_set_rules(90, {"energy_mult": 0.5, "deploy_limit": 4})

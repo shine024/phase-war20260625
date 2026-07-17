@@ -478,6 +478,15 @@ func process_auto_deploy(delta: float) -> void:
 
 ## 部署队列里的下一张卡到第一个空槽
 func _deploy_next_from_queue() -> void:
+	# v8.1d: 统一门控——与 AutoDeployController 一致，用 BattleSpawnSystem 的
+	# get_remaining_deployable_count 检查剩余配额，避免"slot 检查说有空位但
+	# recount 说已满"的错位。
+	var bss: Node = get_node_or_null("/root/BattleSpawnSystem")
+	if bss != null and bss.has_method("get_remaining_deployable_count"):
+		if bss.get_remaining_deployable_count() <= 0:
+			_auto_deploy_pending.clear()
+			_deploy_fail_streak = 0
+			return
 	if _auto_deploy_pending.is_empty():
 		return
 	var platform = _auto_deploy_pending[0]

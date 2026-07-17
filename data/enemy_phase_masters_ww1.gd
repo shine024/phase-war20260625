@@ -58,7 +58,7 @@ const ERA_MASTERS: Array = [
 			}
 		],
 		"equipment": {
-			"phase_instrument": "steel_guardian_mk1",
+			"phase_instrument": "pi_steel_01",
 			"level": 5,
 			"platforms": ["steel_fortress_basic", "steel_titan_basic"],
 			"weapons": ["steel_machinegun_basic", "steel_cannon_basic"],
@@ -124,7 +124,7 @@ const ERA_MASTERS: Array = [
 			}
 		],
 		"equipment": {
-			"phase_instrument": "flame_destroyer_mk1",
+			"phase_instrument": "pi_flame_01",
 			"level": 6,
 			"platforms": ["flame_raider_basic", "flame_siege_basic"],
 			"weapons": ["flame_thrower_basic", "incendiary_mortar_basic"],
@@ -190,7 +190,7 @@ const ERA_MASTERS: Array = [
 			}
 		],
 		"equipment": {
-			"phase_instrument": "thunder_storm_mk1",
+			"phase_instrument": "pi_thunder_01",
 			"level": 7,
 			"platforms": ["thunter_striker_basic", "thunter_sniper_basic"],
 			"weapons": ["tesla_coil_basic", "railgun_basic"],
@@ -256,7 +256,7 @@ const ERA_MASTERS: Array = [
 			}
 		],
 		"equipment": {
-			"phase_instrument": "void_walker_mk1",
+			"phase_instrument": "pi_void_01",
 			"level": 8,
 			"platforms": ["void_stealth_basic", "void_mage_basic"],
 			"weapons": ["void_lance_basic", "gravity_well_basic"],
@@ -324,7 +324,7 @@ const ERA_MASTERS: Array = [
 			}
 		],
 		"equipment": {
-			"phase_instrument": "steel_guardian_mk2",
+			"phase_instrument": "pi_steel_02",
 			"level": 10,
 			"platforms": ["steel_fortress_advanced", "steel_titan_advanced"],
 			"weapons": ["steel_minigun_advanced", "steel_railcannon_advanced"],
@@ -390,7 +390,7 @@ const ERA_MASTERS: Array = [
 			}
 		],
 		"equipment": {
-			"phase_instrument": "flame_destroyer_mk2",
+			"phase_instrument": "pi_flame_02",
 			"level": 12,
 			"platforms": ["flame_raider_advanced", "flame_siege_advanced"],
 			"weapons": ["flame_thrower_advanced", "incendiary_cannon_advanced"],

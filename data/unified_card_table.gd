@@ -92,7 +92,7 @@ const _TABLE: Array = [
 
 	{"card_id":"ww1_mg08","display_name":"MG08机枪巢","era":0,"combat_kind":2,"tier":Tier.VETERAN,
 	 "base_hp":170,"range_value":4,"deploy_speed":0,"base_speed":0,"power":28,"weapon_type":0,
-	 "weapon_label":"81mm/105mm火炮",
+	 "weapon_label":"MG08重机枪",
 	 "atk_l":41,"atk_l_speed":1.0,"atk_l_windup":0.2,"atk_l_active":0.1,
 	 "atk_a":136,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":8,"atk_air_speed":2.5,"atk_air_windup":0.08,"atk_air_active":0.04,
@@ -101,7 +101,7 @@ const _TABLE: Array = [
 
 	{"card_id":"ww1_vickers","display_name":"维克斯机枪巢","era":0,"combat_kind":2,"tier":Tier.VETERAN,
 	 "base_hp":162,"range_value":4,"deploy_speed":0,"base_speed":0,"power":28,"weapon_type":0,
-	 "weapon_label":"81mm/105mm火炮",
+	 "weapon_label":"维克斯重机枪",
 	 "atk_l":39,"atk_l_speed":1.0,"atk_l_windup":0.2,"atk_l_active":0.1,
 	 "atk_a":130,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":8,"atk_air_speed":2.5,"atk_air_windup":0.08,"atk_air_active":0.04,
@@ -140,7 +140,7 @@ const _TABLE: Array = [
 	 "weapon_label":"57mm/75mm坦克炮",
 	 "atk_l":55,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
 	 "atk_a":247,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
-	 "atk_air":0,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
+	 "atk_air":11,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
 	 "def_l":22,"def_a":31,"def_air":19,
 	 "w_light":"57mm/75mm坦克炮","w_armor":"57mm/75mm坦克炮","w_air":"14.5mm车载机枪"},
 
@@ -149,7 +149,7 @@ const _TABLE: Array = [
 	 "weapon_label":"37mm/57mm坦克炮",
 	 "atk_l":53,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
 	 "atk_a":235,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
-	 "atk_air":0,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
+	 "atk_air":11,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
 	 "def_l":21,"def_a":29,"def_air":18,
 	 "w_light":"37mm/57mm坦克炮","w_armor":"57mm/75mm坦克炮","w_air":"14.5mm车载机枪"},
 
@@ -209,7 +209,7 @@ const _TABLE: Array = [
 
 	{"card_id":"ww1_37mm","display_name":"37mm高射炮","era":0,"combat_kind":2,"tier":Tier.VETERAN,
 	 "base_hp":139,"range_value":5,"deploy_speed":0,"base_speed":0,"power":28,"weapon_type":0,
-	 "weapon_label":"迫击炮/野战炮",
+	 "weapon_label":"37mm高射炮",
 	 "atk_l":33,"atk_l_speed":1.0,"atk_l_windup":0.2,"atk_l_active":0.1,
 	 "atk_a":111,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":7,"atk_air_speed":2.5,"atk_air_windup":0.08,"atk_air_active":0.04,
@@ -303,7 +303,7 @@ const _TABLE: Array = [
 	 "weapon_label":"75mm主炮","enemy_only":true,
 	 "atk_l":131,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
 	 "atk_a":585,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
-	 "atk_air":0,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
+	 "atk_air":20,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
 	 "def_l":46,"def_a":65,"def_air":39,
 	 "w_light":"75mm主炮","w_armor":"75mm主炮","w_air":"机枪"},
 
@@ -315,7 +315,7 @@ const _TABLE: Array = [
 	 "atk_a":465,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":48,"atk_air_speed":2.0,"atk_air_windup":0.1,"atk_air_active":0.05,
 	 "def_l":67,"def_a":67,"def_air":62,
-	 "w_light":"150mm要塞炮/88mm防空炮","w_armor":"","w_air":"MG42/双联防空炮"},
+	 "w_light":"150mm要塞炮/88mm防空炮","w_armor":"","w_air":"马克沁重机枪/双联防空枪架"},
 
 	{"card_id":"ww1_fort_artillery","display_name":"要塞炮台","era":0,"combat_kind":4,"tier":Tier.FORT,
 	 "base_hp":554,"range_value":99,"deploy_speed":0,"base_speed":0,"power":100,"weapon_type":1,
@@ -356,12 +356,12 @@ const _TABLE: Array = [
 
 	{"card_id":"ww1_sup_ford_ambulance","display_name":"福特 T 型战地救护车","era":0,"combat_kind":2,"tier":Tier.GRUNT,
 	 "base_hp":91,"range_value":1,"deploy_speed":4,"base_speed":90,"power":40,"weapon_type":3,
-	 "weapon_label":"无","enemy_only":true,
+	 "weapon_label":"自卫手枪/急救设备","enemy_only":true,
 	 "atk_l":25,"atk_l_speed":1.0,"atk_l_windup":0.2,"atk_l_active":0.1,
 	 "atk_a":82,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":5,"atk_air_speed":2.5,"atk_air_windup":0.08,"atk_air_active":0.04,
 	 "def_l":3,"def_a":4,"def_air":2,
-	 "w_light":"无","w_armor":"","w_air":""},
+	 "w_light":"自卫手枪","w_armor":"","w_air":""},
 
 	{"card_id":"ww1_inf_mp18_x","display_name":"MP18 突击队","era":0,"combat_kind":0,"tier":Tier.VETERAN,
 	 "base_hp":201,"range_value":2,"deploy_speed":5,"base_speed":85,"power":80,"weapon_type":0,
@@ -413,7 +413,7 @@ const _TABLE: Array = [
 
 	{"card_id":"ww2_mg42","display_name":"MG42机枪组","era":1,"combat_kind":2,"tier":Tier.VETERAN,
 	 "base_hp":233,"range_value":4,"deploy_speed":0,"base_speed":0,"power":108,"weapon_type":0,
-	 "weapon_label":"105mm/120mm榴弹炮",
+	 "weapon_label":"MG42通用机枪",
 	 "atk_l":56,"atk_l_speed":1.0,"atk_l_windup":0.2,"atk_l_active":0.1,
 	 "atk_a":186,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":11,"atk_air_speed":2.5,"atk_air_windup":0.08,"atk_air_active":0.04,
@@ -422,7 +422,7 @@ const _TABLE: Array = [
 
 	{"card_id":"ww2_browning","display_name":"勃朗宁机枪组","era":1,"combat_kind":2,"tier":Tier.VETERAN,
 	 "base_hp":250,"range_value":4,"deploy_speed":0,"base_speed":0,"power":108,"weapon_type":0,
-	 "weapon_label":"81mm/105mm火炮",
+	 "weapon_label":"勃朗宁重机枪",
 	 "atk_l":60,"atk_l_speed":1.0,"atk_l_windup":0.2,"atk_l_active":0.1,
 	 "atk_a":200,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":12,"atk_air_speed":2.5,"atk_air_windup":0.08,"atk_air_active":0.04,
@@ -615,7 +615,7 @@ const _TABLE: Array = [
 	 "weapon_label":"88mm主炮","enemy_only":true,
 	 "atk_l":201,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
 	 "atk_a":900,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
-	 "atk_air":0,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
+	 "atk_air":30,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
 	 "def_l":70,"def_a":100,"def_air":60,
 	 "w_light":"88mm主炮","w_armor":"88mm主炮","w_air":"机枪"},
 
@@ -649,12 +649,12 @@ const _TABLE: Array = [
 
 	{"card_id":"ww2_sup_gmc_truck","display_name":"GMC 2.5t 补给卡车","era":1,"combat_kind":2,"tier":Tier.GRUNT,
 	 "base_hp":150,"range_value":1,"deploy_speed":4,"base_speed":90,"power":60,"weapon_type":3,
-	 "weapon_label":"无","enemy_only":true,
+	 "weapon_label":"自卫武器/补给设备","enemy_only":true,
 	 "atk_l":40,"atk_l_speed":1.0,"atk_l_windup":0.2,"atk_l_active":0.1,
 	 "atk_a":135,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":8,"atk_air_speed":2.5,"atk_air_windup":0.08,"atk_air_active":0.04,
 	 "def_l":4,"def_a":6,"def_air":3,
-	 "w_light":"无","w_armor":"","w_air":""},
+	 "w_light":"自卫手枪","w_armor":"","w_air":""},
 
 	{"card_id":"ww2_inf_kar98k","display_name":"毛瑟 Kar98k 狙击组","era":1,"combat_kind":0,"tier":Tier.VETERAN,
 	 "base_hp":233,"range_value":3,"deploy_speed":3,"base_speed":75,"power":110,"weapon_type":0,
@@ -682,7 +682,7 @@ const _TABLE: Array = [
 	 "atk_a":583,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":61,"atk_air_speed":2.0,"atk_air_windup":0.1,"atk_air_active":0.05,
 	 "def_l":84,"def_a":84,"def_air":78,
-	 "w_light":"MG42/双联防空炮","w_armor":"MG42/双联防空炮","w_air":"离子炮"},
+	 "w_light":"MG42/双联防空炮","w_armor":"MG42/双联防空炮","w_air":"双联37mm高射炮"},
 
 
 	# ══════════════ 冷战时代 (era=2) ══════════════
@@ -719,7 +719,7 @@ const _TABLE: Array = [
 	 "weapon_label":"M14步枪",
 	 "atk_l":92,"atk_l_speed":1.5,"atk_l_windup":0.133,"atk_l_active":0.067,
 	 "atk_a":42,"atk_a_speed":1.0,"atk_a_windup":0.2,"atk_a_active":0.1,
-	 "atk_air":0,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
+	 "atk_air":18,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
 	 "def_l":24,"def_a":12,"def_air":7,
 	 "w_light":"M14步枪","w_armor":"","w_air":"12.7mm重机枪"},
 
@@ -728,7 +728,7 @@ const _TABLE: Array = [
 	 "weapon_label":"AK-74突击步枪",
 	 "atk_l":90,"atk_l_speed":1.5,"atk_l_windup":0.133,"atk_l_active":0.067,
 	 "atk_a":41,"atk_a_speed":1.0,"atk_a_windup":0.2,"atk_a_active":0.1,
-	 "atk_air":0,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
+	 "atk_air":18,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
 	 "def_l":24,"def_a":12,"def_air":7,
 	 "w_light":"AK-74突击步枪","w_armor":"","w_air":"12.7mm重机枪"},
 
@@ -737,13 +737,13 @@ const _TABLE: Array = [
 	 "weapon_label":"100mm主炮",
 	 "atk_l":89,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
 	 "atk_a":399,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
-	 "atk_air":0,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
+	 "atk_air":18,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
 	 "def_l":37,"def_a":52,"def_air":32,
 	 "w_light":"100mm主炮","w_armor":"100mm主炮","w_air":"14.5mm车载机枪"},
 
-	{"card_id":"cold_sup_m113","display_name":"M113装甲车","era":2,"combat_kind":2,"tier":Tier.VETERAN,
+	{"card_id":"cold_sup_m113","display_name":"M113装甲车","era":2,"combat_kind":1,"tier":Tier.VETERAN,
 	 "base_hp":461,"range_value":2,"deploy_speed":4,"base_speed":90,"power":288,"weapon_type":0,
-	 "weapon_label":"81mm/105mm火炮",
+	 "weapon_label":"12.7mm车载机枪",
 	 "atk_l":111,"atk_l_speed":1.0,"atk_l_windup":0.2,"atk_l_active":0.1,
 	 "atk_a":369,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":22,"atk_air_speed":2.5,"atk_air_windup":0.08,"atk_air_active":0.04,
@@ -755,7 +755,7 @@ const _TABLE: Array = [
 	 "weapon_label":"100mm主炮",
 	 "atk_l":97,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
 	 "atk_a":435,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
-	 "atk_air":0,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
+	 "atk_air":19,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
 	 "def_l":40,"def_a":57,"def_air":34,
 	 "w_light":"100mm主炮","w_armor":"122mm主炮","w_air":"14.5mm车载机枪"},
 
@@ -764,7 +764,7 @@ const _TABLE: Array = [
 	 "weapon_label":"105mm主炮",
 	 "atk_l":105,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
 	 "atk_a":471,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
-	 "atk_air":0,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
+	 "atk_air":21,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
 	 "def_l":43,"def_a":62,"def_air":37,
 	 "w_light":"105mm主炮","w_armor":"122mm主炮","w_air":"14.5mm车载机枪"},
 
@@ -833,7 +833,7 @@ const _TABLE: Array = [
 
 	{"card_id":"cold_sup_zsu23","display_name":"ZSU-23-4自行高炮","era":2,"combat_kind":2,"tier":Tier.VETERAN,
 	 "base_hp":504,"range_value":5,"deploy_speed":3,"base_speed":70,"power":288,"weapon_type":0,
-	 "weapon_label":"迫击炮/野战炮",
+	 "weapon_label":"23mm自行高射炮",
 	 "atk_l":121,"atk_l_speed":1.0,"atk_l_windup":0.2,"atk_l_active":0.1,
 	 "atk_a":403,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":24,"atk_air_speed":2.5,"atk_air_windup":0.08,"atk_air_active":0.04,
@@ -856,7 +856,7 @@ const _TABLE: Array = [
 	 "atk_a":67,"atk_a_speed":0.67,"atk_a_windup":0.299,"atk_a_active":0.149,
 	 "atk_air":90,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
 	 "def_l":9,"def_a":6,"def_air":14,
-	 "w_light":"空空导弹/20mm机炮","w_armor":"空空导弹/20mm机炮","w_air":"地狱火导弹/127mm舰炮"},
+	 "w_light":"23mm航炮","w_armor":"23mm航炮","w_air":"地狱火导弹/127mm舰炮"},
 
 	{"card_id":"cold_f4","display_name":"F-4鬼怪战机","era":2,"combat_kind":3,"tier":Tier.ELITE,
 	 "base_hp":267,"range_value":99,"deploy_speed":6,"base_speed":150,"power":480,"weapon_type":2,
@@ -865,14 +865,14 @@ const _TABLE: Array = [
 	 "atk_a":76,"atk_a_speed":0.67,"atk_a_windup":0.299,"atk_a_active":0.149,
 	 "atk_air":101,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
 	 "def_l":10,"def_a":6,"def_air":16,
-	 "w_light":"空空导弹/20mm机炮","w_armor":"空空导弹/20mm机炮","w_air":"地狱火导弹/127mm舰炮"},
+	 "w_light":"20mm航炮","w_armor":"20mm航炮","w_air":"地狱火导弹/127mm舰炮"},
 
 	{"card_id":"cold_spetsnaz","display_name":"阿尔法特种部队","era":2,"combat_kind":0,"tier":Tier.ELITE,
 	 "base_hp":238,"range_value":2,"deploy_speed":5,"base_speed":90,"power":216,"weapon_type":0,
 	 "weapon_label":"M16A4步枪",
 	 "atk_l":60,"atk_l_speed":1.5,"atk_l_windup":0.133,"atk_l_active":0.067,
 	 "atk_a":27,"atk_a_speed":1.0,"atk_a_windup":0.2,"atk_a_active":0.1,
-	 "atk_air":0,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
+	 "atk_air":30,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
 	 "def_l":17,"def_a":8,"def_air":5,
 	 "w_light":"M16A4步枪","w_armor":"85mm/105mm主炮","w_air":"便携式防空导弹"},
 
@@ -941,7 +941,7 @@ const _TABLE: Array = [
 	 "w_light":"空空导弹","w_armor":"机炮","w_air":"空空导弹"},
 
 	# --- 冷战 D段补充池（enemy_only）---
-	{"card_id":"cold_arty_bmd1","display_name":"BMD-1 空降战车","era":2,"combat_kind":2,"tier":Tier.VETERAN,
+	{"card_id":"cold_arty_bmd1","display_name":"BMD-1 空降战车","era":2,"combat_kind":1,"tier":Tier.VETERAN,
 	 "base_hp":432,"range_value":99,"deploy_speed":3,"base_speed":80,"power":250,"weapon_type":1,
 	 "weapon_label":"73mm低压滑膛炮","enemy_only":true,
 	 "atk_l":104,"atk_l_speed":1.0,"atk_l_windup":0.2,"atk_l_active":0.1,
@@ -970,12 +970,12 @@ const _TABLE: Array = [
 
 	{"card_id":"cold_arm_p18","display_name":"P-18 雷达警戒车","era":2,"combat_kind":2,"tier":Tier.GRUNT,
 	 "base_hp":289,"range_value":99,"deploy_speed":3,"base_speed":80,"power":120,"weapon_type":3,
-	 "weapon_label":"无","enemy_only":true,
+	 "weapon_label":"雷达电子战设备","enemy_only":true,
 	 "atk_l":78,"atk_l_speed":1.0,"atk_l_windup":0.2,"atk_l_active":0.1,
 	 "atk_a":260,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":16,"atk_air_speed":2.5,"atk_air_windup":0.08,"atk_air_active":0.04,
 	 "def_l":9,"def_a":12,"def_air":5,
-	 "w_light":"无","w_armor":"","w_air":""},
+	 "w_light":"雷达电子战设备","w_armor":"","w_air":""},
 
 	{"card_id":"cold_arty_brem1","display_name":"BREM-1 装甲抢修车","era":2,"combat_kind":1,"tier":Tier.VETERAN,
 	 "base_hp":648,"range_value":2,"deploy_speed":2,"base_speed":60,"power":280,"weapon_type":0,
@@ -994,11 +994,11 @@ const _TABLE: Array = [
 	 "atk_a":1063,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":111,"atk_air_speed":2.0,"atk_air_windup":0.1,"atk_air_active":0.05,
 	 "def_l":154,"def_a":154,"def_air":142,
-	 "w_light":"多管近防炮/88mm防空炮","w_armor":"离子炮","w_air":"多管近防炮/88mm防空炮"},
+	 "w_light":"多管近防炮/88mm防空炮","w_armor":"反舰巡航导弹","w_air":"多管近防炮/88mm防空炮"},
 
 	{"card_id":"cold_fort_radar","display_name":"雷达站","era":2,"combat_kind":4,"tier":Tier.FORT,
 	 "base_hp":1023,"range_value":99,"deploy_speed":0,"base_speed":0,"power":300,"weapon_type":3,
-	 "weapon_label":"无",
+	 "weapon_label":"雷达侦测/电子对抗系统",
 	 "atk_l":215,"atk_l_speed":1.0,"atk_l_windup":0.2,"atk_l_active":0.1,
 	 "atk_a":737,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":77,"atk_air_speed":2.0,"atk_air_windup":0.1,"atk_air_active":0.05,
@@ -1022,16 +1022,16 @@ const _TABLE: Array = [
 	 "weapon_label":"M4卡宾枪/SCAR-H",
 	 "atk_l":215,"atk_l_speed":1.5,"atk_l_windup":0.133,"atk_l_active":0.067,
 	 "atk_a":97,"atk_a_speed":1.0,"atk_a_windup":0.2,"atk_a_active":0.1,
-	 "atk_air":0,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
+	 "atk_air":108,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
 	 "def_l":60,"def_a":30,"def_air":18,
 	 "w_light":"M4卡宾枪/SCAR-H","w_armor":"火箭筒/轻型装甲武器","w_air":"便携式防空导弹"},
 
 	{"card_id":"mod_javelin","display_name":"标枪导弹兵","era":3,"combat_kind":0,"tier":Tier.ELITE,
 	 "base_hp":600,"range_value":99,"deploy_speed":3,"base_speed":80,"power":396,"weapon_type":1,
-	 "weapon_label":"M4卡宾枪",
+	 "weapon_label":"标枪反坦克导弹",
 	 "atk_l":152,"atk_l_speed":1.5,"atk_l_windup":0.133,"atk_l_active":0.067,
 	 "atk_a":68,"atk_a_speed":1.0,"atk_a_windup":0.2,"atk_a_active":0.1,
-	 "atk_air":0,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
+	 "atk_air":76,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
 	 "def_l":42,"def_a":21,"def_air":13,
 	 "w_light":"M4卡宾枪","w_armor":"标枪反坦克导弹","w_air":"便携式防空导弹"},
 
@@ -1042,14 +1042,14 @@ const _TABLE: Array = [
 	 "atk_a":326,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":20,"atk_air_speed":2.5,"atk_air_windup":0.08,"atk_air_active":0.04,
 	 "def_l":12,"def_a":17,"def_air":7,
-	 "w_light":"M4卡宾枪","w_armor":"M4卡宾枪","w_air":"毒刺防空导弹"},
+	 "w_light":"M4卡宾枪","w_armor":"毒刺防空导弹","w_air":"毒刺防空导弹"},
 
 	{"card_id":"mod_inf_technical","display_name":"武装皮卡","era":3,"combat_kind":0,"tier":Tier.VETERAN,
 	 "base_hp":500,"range_value":3,"deploy_speed":5,"base_speed":110,"power":336,"weapon_type":0,
 	 "weapon_label":"AK-47突击步枪",
 	 "atk_l":133,"atk_l_speed":1.5,"atk_l_windup":0.133,"atk_l_active":0.067,
 	 "atk_a":60,"atk_a_speed":1.0,"atk_a_windup":0.2,"atk_a_active":0.1,
-	 "atk_air":0,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
+	 "atk_air":67,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
 	 "def_l":35,"def_a":18,"def_air":10,
 	 "w_light":"AK-47突击步枪","w_armor":"RPG-7火箭筒","w_air":"便携式防空导弹"},
 
@@ -1067,7 +1067,7 @@ const _TABLE: Array = [
 	 "weapon_label":"105mm/120mm主炮",
 	 "atk_l":362,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
 	 "atk_a":1615,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
-	 "atk_air":0,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
+	 "atk_air":109,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
 	 "def_l":149,"def_a":212,"def_air":128,
 	 "w_light":"105mm/120mm主炮","w_armor":"122mm主炮","w_air":"20mm机炮"},
 
@@ -1076,7 +1076,7 @@ const _TABLE: Array = [
 	 "weapon_label":"M4卡宾枪",
 	 "atk_l":128,"atk_l_speed":1.5,"atk_l_windup":0.133,"atk_l_active":0.067,
 	 "atk_a":58,"atk_a_speed":1.0,"atk_a_windup":0.2,"atk_a_active":0.1,
-	 "atk_air":0,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
+	 "atk_air":64,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
 	 "def_l":34,"def_a":17,"def_air":10,
 	 "w_light":"M4卡宾枪","w_armor":"陶式反坦克导弹","w_air":"便携式防空导弹"},
 
@@ -1085,9 +1085,9 @@ const _TABLE: Array = [
 	 "weapon_label":"M4卡宾枪",
 	 "atk_l":138,"atk_l_speed":1.5,"atk_l_windup":0.133,"atk_l_active":0.067,
 	 "atk_a":62,"atk_a_speed":1.0,"atk_a_windup":0.2,"atk_a_active":0.1,
-	 "atk_air":0,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
+	 "atk_air":28,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
 	 "def_l":36,"def_a":18,"def_air":11,
-	 "w_light":"M4卡宾枪","w_armor":"M4卡宾枪","w_air":"12.7mm重机枪"},
+	 "w_light":"M4卡宾枪","w_armor":"12.7mm重机枪","w_air":"12.7mm重机枪"},
 
 	{"card_id":"mod_arm_m1a1","display_name":"M1A1坦克","era":3,"combat_kind":1,"tier":Tier.CHAMPION,
 	 "base_hp":1086,"range_value":4,"deploy_speed":3,"base_speed":70,"power":1140,"weapon_type":0,
@@ -1145,21 +1145,21 @@ const _TABLE: Array = [
 
 	{"card_id":"mod_ah64","display_name":"AH-64阿帕奇","era":3,"combat_kind":3,"tier":Tier.ELITE,
 	 "base_hp":950,"range_value":99,"deploy_speed":5,"base_speed":130,"power":960,"weapon_type":2,
-	 "weapon_label":"地狱火导弹/127mm舰炮",
+	 "weapon_label":"地狱火导弹/30mm链炮",
 	 "atk_l":217,"atk_l_speed":0.83,"atk_l_windup":0.241,"atk_l_active":0.12,
 	 "atk_a":269,"atk_a_speed":0.67,"atk_a_windup":0.299,"atk_a_active":0.149,
 	 "atk_air":361,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
 	 "def_l":34,"def_a":23,"def_air":57,
-	 "w_light":"地狱火导弹/127mm舰炮","w_armor":"地狱火导弹/127mm舰炮","w_air":"空空导弹/20mm机炮"},
+	 "w_light":"地狱火导弹/30mm链炮","w_armor":"地狱火导弹/30mm链炮","w_air":"空空导弹/20mm机炮"},
 
 	{"card_id":"mod_ah1","display_name":"AH-1眼镜蛇","era":3,"combat_kind":3,"tier":Tier.ELITE,
 	 "base_hp":875,"range_value":99,"deploy_speed":5,"base_speed":130,"power":936,"weapon_type":2,
-	 "weapon_label":"地狱火导弹/127mm舰炮",
+	 "weapon_label":"地狱火导弹/20mm链炮",
 	 "atk_l":200,"atk_l_speed":0.83,"atk_l_windup":0.241,"atk_l_active":0.12,
 	 "atk_a":248,"atk_a_speed":0.67,"atk_a_windup":0.299,"atk_a_active":0.149,
 	 "atk_air":332,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
 	 "def_l":32,"def_a":21,"def_air":52,
-	 "w_light":"地狱火导弹/127mm舰炮","w_armor":"地狱火导弹/127mm舰炮","w_air":"空空导弹/20mm机炮"},
+	 "w_light":"地狱火导弹/20mm链炮","w_armor":"地狱火导弹/20mm链炮","w_air":"空空导弹/20mm机炮"},
 
 	{"card_id":"mod_uh60","display_name":"UH-60黑鹰","era":3,"combat_kind":3,"tier":Tier.VETERAN,
 	 "base_hp":593,"range_value":99,"deploy_speed":5,"base_speed":130,"power":840,"weapon_type":2,
@@ -1181,7 +1181,7 @@ const _TABLE: Array = [
 
 	{"card_id":"mod_sup_m6","display_name":"自行高炮M6","era":3,"combat_kind":2,"tier":Tier.VETERAN,
 	 "base_hp":741,"range_value":5,"deploy_speed":3,"base_speed":70,"power":576,"weapon_type":0,
-	 "weapon_label":"81mm/105mm火炮",
+	 "weapon_label":"40mm自行高射炮",
 	 "atk_l":178,"atk_l_speed":1.0,"atk_l_windup":0.2,"atk_l_active":0.1,
 	 "atk_a":593,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":36,"atk_air_speed":2.5,"atk_air_windup":0.08,"atk_air_active":0.04,
@@ -1307,7 +1307,7 @@ const _TABLE: Array = [
 	 "def_l":13,"def_a":9,"def_air":22,
 	 "w_light":"无人机","w_armor":"","w_air":""},
 
-	{"card_id":"mod_sup_growler","display_name":"EA-18G 电子战小组","era":3,"combat_kind":2,"tier":Tier.VETERAN,
+	{"card_id":"mod_sup_growler","display_name":"EA-18G 电子战小组","era":3,"combat_kind":3,"tier":Tier.VETERAN,
 	 "base_hp":519,"range_value":99,"deploy_speed":4,"base_speed":90,"power":240,"weapon_type":3,
 	 "weapon_label":"电子战系统","enemy_only":true,
 	 "atk_l":125,"atk_l_speed":1.0,"atk_l_windup":0.2,"atk_l_active":0.1,
@@ -1338,12 +1338,12 @@ const _TABLE: Array = [
 
 	{"card_id":"mod_fort_phalanx","display_name":"近防炮系统","era":3,"combat_kind":4,"tier":Tier.FORT,
 	 "base_hp":1133,"range_value":5,"deploy_speed":0,"base_speed":0,"power":600,"weapon_type":0,
-	 "weapon_label":"150mm要塞炮/88mm防空炮",
+	 "weapon_label":"密集阵近防炮系统",
 	 "atk_l":238,"atk_l_speed":1.0,"atk_l_windup":0.2,"atk_l_active":0.1,
 	 "atk_a":816,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":85,"atk_air_speed":2.0,"atk_air_windup":0.1,"atk_air_active":0.05,
 	 "def_l":118,"def_a":118,"def_air":109,
-	 "w_light":"150mm要塞炮/88mm防空炮","w_armor":"MG42/双联防空炮","w_air":"离子炮阵列"},
+	 "w_light":"150mm要塞炮/88mm防空炮","w_armor":"MG42/双联防空炮","w_air":"密集阵20mm近防炮"},
 
 
 	# ══════════════ 近未来时代 (era=4) ══════════════
@@ -1364,7 +1364,7 @@ const _TABLE: Array = [
 	 "atk_a":284,"atk_a_speed":0.67,"atk_a_windup":0.299,"atk_a_active":0.149,
 	 "atk_air":380,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
 	 "def_l":36,"def_a":24,"def_air":60,
-	 "w_light":"地狱火导弹/127mm舰炮","w_armor":"地狱火导弹/127mm舰炮","w_air":"空空导弹/20mm机炮"},
+	 "w_light":"地狱火导弹/激光炮","w_armor":"地狱火导弹/激光炮","w_air":"空空导弹/20mm机炮"},
 
 	{"card_id":"fut_cyborg","display_name":"机械步兵","era":4,"combat_kind":0,"tier":Tier.ELITE,
 	 "base_hp":1125,"range_value":3,"deploy_speed":4,"base_speed":95,"power":500,"weapon_type":0,
@@ -1380,7 +1380,7 @@ const _TABLE: Array = [
 	 "weapon_label":"植入式自动步枪/重型粒子炮",
 	 "atk_l":304,"atk_l_speed":1.5,"atk_l_windup":0.133,"atk_l_active":0.067,
 	 "atk_a":137,"atk_a_speed":1.0,"atk_a_windup":0.2,"atk_a_active":0.1,
-	 "atk_air":0,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
+	 "atk_air":152,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
 	 "def_l":84,"def_a":42,"def_air":25,
 	 "w_light":"植入式自动步枪/重型粒子炮","w_armor":"电磁炮","w_air":"便携式防空导弹"},
 
@@ -1389,7 +1389,7 @@ const _TABLE: Array = [
 	 "weapon_label":"粒子束步枪",
 	 "atk_l":266,"atk_l_speed":1.5,"atk_l_windup":0.133,"atk_l_active":0.067,
 	 "atk_a":120,"atk_a_speed":1.0,"atk_a_windup":0.2,"atk_a_active":0.1,
-	 "atk_air":0,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
+	 "atk_air":133,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
 	 "def_l":74,"def_a":37,"def_air":22,
 	 "w_light":"粒子束步枪","w_armor":"电磁炮","w_air":"点防御激光"},
 
@@ -1398,7 +1398,7 @@ const _TABLE: Array = [
 	 "weapon_label":"122mm主炮",
 	 "atk_l":344,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
 	 "atk_a":1536,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
-	 "atk_air":0,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
+	 "atk_air":103,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
 	 "def_l":128,"def_a":183,"def_air":110,
 	 "w_light":"122mm主炮","w_armor":"双联装电磁炮","w_air":"20mm机炮"},
 
@@ -1407,7 +1407,7 @@ const _TABLE: Array = [
 	 "weapon_label":"105mm主炮",
 	 "atk_l":417,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
 	 "atk_a":1865,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
-	 "atk_air":0,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
+	 "atk_air":125,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
 	 "def_l":155,"def_a":222,"def_air":133,
 	 "w_light":"105mm主炮","w_armor":"重型等离子加农炮","w_air":"20mm机炮"},
 
@@ -1416,7 +1416,7 @@ const _TABLE: Array = [
 	 "weapon_label":"105mm/120mm主炮",
 	 "atk_l":319,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
 	 "atk_a":1426,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
-	 "atk_air":0,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
+	 "atk_air":96,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
 	 "def_l":119,"def_a":170,"def_air":102,
 	 "w_light":"105mm/120mm主炮","w_armor":"重型等离子加农炮","w_air":"20mm机炮"},
 
@@ -1434,13 +1434,13 @@ const _TABLE: Array = [
 	 "weapon_label":"125mm滑膛炮",
 	 "atk_l":282,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
 	 "atk_a":1262,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
-	 "atk_air":0,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
+	 "atk_air":85,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
 	 "def_l":105,"def_a":150,"def_air":90,
 	 "w_light":"125mm滑膛炮","w_armor":"双联装电磁炮","w_air":"25mm M242大毒蛇"},
 
 	{"card_id":"fut_aa_hover","display_name":"防空悬浮车","era":4,"combat_kind":2,"tier":Tier.ELITE,
 	 "base_hp":950,"range_value":5,"deploy_speed":5,"base_speed":110,"power":780,"weapon_type":0,
-	 "weapon_label":"迫击炮/野战炮",
+	 "weapon_label":"防空激光炮",
 	 "atk_l":217,"atk_l_speed":1.0,"atk_l_windup":0.2,"atk_l_active":0.1,
 	 "atk_a":722,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":43,"atk_air_speed":2.5,"atk_air_windup":0.08,"atk_air_active":0.04,
@@ -1463,41 +1463,41 @@ const _TABLE: Array = [
 	 "atk_a":333,"atk_a_speed":0.67,"atk_a_windup":0.299,"atk_a_active":0.149,
 	 "atk_air":446,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
 	 "def_l":42,"def_a":28,"def_air":70,
-	 "w_light":"地狱火导弹/127mm舰炮","w_armor":"空空导弹/20mm机炮","w_air":"轨道炮/激光"},
+	 "w_light":"空天导弹/粒子炮","w_armor":"空空导弹/20mm机炮","w_air":"轨道炮/激光"},
 
 	{"card_id":"fut_spectre","display_name":"幽灵特工","era":4,"combat_kind":0,"tier":Tier.ELITE,
 	 "base_hp":950,"range_value":3,"deploy_speed":5,"base_speed":100,"power":530,"weapon_type":0,
 	 "weapon_label":"植入式自动步枪/重型粒子炮",
 	 "atk_l":241,"atk_l_speed":1.5,"atk_l_windup":0.133,"atk_l_active":0.067,
 	 "atk_a":108,"atk_a_speed":1.0,"atk_a_windup":0.2,"atk_a_active":0.1,
-	 "atk_air":0,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
+	 "atk_air":48,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
 	 "def_l":66,"def_a":33,"def_air":20,
 	 "w_light":"植入式自动步枪/重型粒子炮","w_armor":"85mm/105mm主炮","w_air":"12.7mm重机枪"},
 
 	{"card_id":"fut_nano_drone","display_name":"纳米修复机","era":4,"combat_kind":3,"tier":Tier.VETERAN,
 	 "base_hp":440,"range_value":99,"deploy_speed":5,"base_speed":120,"power":1000,"weapon_type":3,
-	 "weapon_label":"",
+	 "weapon_label":"纳米修复射线",
 	 "atk_l":106,"atk_l_speed":0.83,"atk_l_windup":0.241,"atk_l_active":0.12,
 	 "atk_a":131,"atk_a_speed":0.67,"atk_a_windup":0.299,"atk_a_active":0.149,
 	 "atk_air":176,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
 	 "def_l":16,"def_a":11,"def_air":26,
-	 "w_light":"","w_armor":"","w_air":""},
+	 "w_light":"纳米修复射线","w_armor":"","w_air":""},
 
 	{"card_id":"fut_shield","display_name":"力场发生器","era":4,"combat_kind":2,"tier":Tier.FORT,
 	 "base_hp":600,"range_value":0,"deploy_speed":0,"base_speed":0,"power":750,"weapon_type":3,
-	 "weapon_label":"",
+	 "weapon_label":"能量护盾发生器",
 	 "atk_l":108,"atk_l_speed":1.0,"atk_l_windup":0.2,"atk_l_active":0.1,
 	 "atk_a":360,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":22,"atk_air_speed":2.5,"atk_air_windup":0.08,"atk_air_active":0.04,
 	 "def_l":18,"def_a":25,"def_air":11,
-	 "w_light":"","w_armor":"","w_air":""},
+	 "w_light":"能量护盾发生器","w_armor":"","w_air":""},
 
 	{"card_id":"fut_colossus","display_name":"巨神机甲","era":4,"combat_kind":1,"tier":Tier.ULTIMATE,
 	 "base_hp":3000,"range_value":5,"deploy_speed":1,"base_speed":50,"power":1590,"weapon_type":0,
 	 "weapon_label":"105mm/120mm主炮",
 	 "atk_l":470,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
 	 "atk_a":2100,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
-	 "atk_air":0,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
+	 "atk_air":141,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
 	 "def_l":210,"def_a":300,"def_air":180,
 	 "w_light":"105mm/120mm主炮","w_armor":"攻城电磁炮","w_air":"25mm M242大毒蛇"},
 
@@ -1515,7 +1515,7 @@ const _TABLE: Array = [
 	 "weapon_label":"125mm滑膛炮",
 	 "atk_l":495,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
 	 "atk_a":2211,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
-	 "atk_air":0,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
+	 "atk_air":74,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
 	 "def_l":221,"def_a":316,"def_air":189,
 	 "w_light":"125mm滑膛炮","w_armor":"重型等离子加农炮","w_air":"40mm榴弹"},
 
@@ -1524,7 +1524,7 @@ const _TABLE: Array = [
 	 "weapon_label":"105mm/120mm主炮",
 	 "atk_l":470,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
 	 "atk_a":2100,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
-	 "atk_air":0,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
+	 "atk_air":141,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
 	 "def_l":210,"def_a":300,"def_air":180,
 	 "w_light":"105mm/120mm主炮","w_armor":"攻城电磁炮","w_air":"25mm M242大毒蛇"},
 
@@ -1588,7 +1588,7 @@ const _TABLE: Array = [
 	 "weapon_label":"重型等离子加农炮","enemy_only":true,
 	 "atk_l":504,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
 	 "atk_a":2250,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
-	 "atk_air":0,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
+	 "atk_air":76,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
 	 "def_l":175,"def_a":250,"def_air":150,
 	 "w_light":"重型等离子加农炮","w_armor":"重型等离子加农炮","w_air":"40mm榴弹"},
 
@@ -1631,12 +1631,12 @@ const _TABLE: Array = [
 
 	{"card_id":"fut_air_regen_frame","display_name":"再生骨架","era":4,"combat_kind":3,"tier":Tier.VETERAN,
 	 "base_hp":700,"range_value":1,"deploy_speed":3,"base_speed":120,"power":79,"weapon_type":2,
-	 "weapon_label":"手枪","enemy_only":true,
+	 "weapon_label":"激光炮","enemy_only":true,
 	 "atk_l":169,"atk_l_speed":0.83,"atk_l_windup":0.241,"atk_l_active":0.12,
 	 "atk_a":209,"atk_a_speed":0.67,"atk_a_windup":0.299,"atk_a_active":0.149,
 	 "atk_air":280,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
 	 "def_l":25,"def_a":17,"def_air":42,
-	 "w_light":"手枪","w_armor":"","w_air":""},
+	 "w_light":"激光炮","w_armor":"","w_air":""},
 
 	# --- 近未来 D段补充池（enemy_only）---
 	{"card_id":"fut_inf_neural","display_name":"神经接口突击兵","era":4,"combat_kind":0,"tier":Tier.ELITE,
@@ -1732,7 +1732,7 @@ const _TABLE: Array = [
 
 	{"card_id":"fut_fort_shield","display_name":"能量护盾发生器","era":4,"combat_kind":4,"tier":Tier.FORT,
 	 "base_hp":2800,"range_value":0,"deploy_speed":0,"base_speed":0,"power":1000,"weapon_type":3,
-	 "weapon_label":"",
+	 "weapon_label":"能量护盾发生器",
 	 "atk_l":588,"atk_l_speed":1.0,"atk_l_windup":0.2,"atk_l_active":0.1,
 	 "atk_a":2016,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":210,"atk_air_speed":2.0,"atk_air_windup":0.1,"atk_air_active":0.05,
@@ -1852,7 +1852,7 @@ const _TABLE: Array = [
 	 "atk_air":0,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
 	 "def_l":25,"def_a":36,"def_air":22,
 	 "w_light":"火炮","w_armor":"","w_air":""},
-	{"card_id":"platform_cold_ifv","display_name":"冷战步战车平台","era":2,"combat_kind":3,"tier":Tier.VETERAN,
+	{"card_id":"platform_cold_ifv","display_name":"冷战步战车平台","era":2,"combat_kind":1,"tier":Tier.VETERAN,
 	 "base_hp":360,"range_value":2,"deploy_speed":4,"base_speed":90,"power":471,"weapon_type":2,
 	 "weapon_label":"机枪","enemy_only":true,
 	 "atk_l":87,"atk_l_speed":0.83,"atk_l_windup":0.241,"atk_l_active":0.12,
@@ -2008,6 +2008,83 @@ const _TABLE: Array = [
 	 "atk_air":300,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
 	 "def_l":350,"def_a":480,"def_air":220,
 	 "w_light":"终焉光束","w_armor":"终焉粒子炮","w_air":"终焉防空"},
+
+	# ════════════════════════════════════════════════════════════════════════
+	# 精英/Boss 特色掉落卡（v7.x 补全）
+	# 原 enemy_archetypes.json 引用 smg_mk2 / phase_lance / railgun / mega_beam_cannon /
+	# thunder_field / overclock_matrix / mega_particle_cannon 等 7 个不存在的 card_id。
+	# 本组 7 张卡为这些掉落的正式实现——绑定掉落它们的敌人的时代/兵种，数值参照同时代
+	# 同类 ELITE/CHAMPION 卡中位值。全部 enemy_only:true（不进商店，仅击败精英/Boss 获得）。
+	# ════════════════════════════════════════════════════════════════════════
+	# ww1_inf_storm_e（暴风突击队·精锐）特色掉落 — WW1 轻装 ELITE
+	{"card_id":"drop_smg_mk2","display_name":"MP18-II 冲锋班","era":0,"combat_kind":0,"tier":Tier.ELITE,
+	 "base_hp":165,"range_value":2,"deploy_speed":5,"base_speed":95,"power":100,"weapon_type":0,
+	 "weapon_label":"MP18-II冲锋枪","enemy_only":true,
+	 "atk_l":44,"atk_l_speed":1.5,"atk_l_windup":0.133,"atk_l_active":0.067,
+	 "atk_a":20,"atk_a_speed":1.0,"atk_a_windup":0.2,"atk_a_active":0.1,
+	 "atk_air":0,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
+	 "def_l":12,"def_a":6,"def_air":3,
+	 "w_light":"MP18-II冲锋枪","w_armor":"","w_air":""},
+
+	# ww2_inf_para_e（伞兵精英）特色掉落 — WW2 轻装 ELITE
+	{"card_id":"drop_phase_lance","display_name":"相位刺刀班","era":1,"combat_kind":0,"tier":Tier.ELITE,
+	 "base_hp":195,"range_value":2,"deploy_speed":5,"base_speed":95,"power":155,"weapon_type":0,
+	 "weapon_label":"相位刺刀突击枪","enemy_only":true,
+	 "atk_l":52,"atk_l_speed":1.5,"atk_l_windup":0.133,"atk_l_active":0.067,
+	 "atk_a":23,"atk_a_speed":1.0,"atk_a_windup":0.2,"atk_a_active":0.1,
+	 "atk_air":0,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
+	 "def_l":13,"def_a":6,"def_air":4,
+	 "w_light":"相位刺刀突击枪","w_armor":"","w_air":""},
+
+	# cold_inf_spetsnaz_e（特种部队）特色掉落 — 冷战 轻装 ELITE（狙击特化，射程+atk_l突出）
+	{"card_id":"drop_railgun","display_name":"电磁步枪班","era":2,"combat_kind":0,"tier":Tier.ELITE,
+	 "base_hp":250,"range_value":3,"deploy_speed":5,"base_speed":90,"power":235,"weapon_type":0,
+	 "weapon_label":"电磁轨道步枪","enemy_only":true,
+	 "atk_l":72,"atk_l_speed":1.0,"atk_l_windup":0.2,"atk_l_active":0.1,
+	 "atk_a":32,"atk_a_speed":1.0,"atk_a_windup":0.2,"atk_a_active":0.1,
+	 "atk_air":0,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
+	 "def_l":18,"def_a":9,"def_air":5,
+	 "w_light":"电磁轨道步枪","w_armor":"","w_air":""},
+
+	# cold_boss_mig / mod_boss_command / fut_inf_spectre_e 特色掉落 — 冷战 支援 CHAMPION（曲射能量炮）
+	{"card_id":"drop_mega_beam_cannon","display_name":"巨型光束炮","era":2,"combat_kind":2,"tier":Tier.CHAMPION,
+	 "base_hp":550,"range_value":99,"deploy_speed":1,"base_speed":0,"power":300,"weapon_type":1,
+	 "weapon_label":"巨型光束炮","enemy_only":true,
+	 "atk_l":130,"atk_l_speed":1.0,"atk_l_windup":0.2,"atk_l_active":0.1,
+	 "atk_a":440,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
+	 "atk_air":66,"atk_air_speed":2.5,"atk_air_windup":0.08,"atk_air_active":0.04,
+	 "def_l":22,"def_a":31,"def_air":13,
+	 "w_light":"光束炮","w_armor":"巨型光束炮","w_air":""},
+
+	# mod_inf_delta_e（三角洲部队）特色掉落 — 现代 轻装 ELITE
+	{"card_id":"drop_thunder_field","display_name":"雷霆突击班","era":3,"combat_kind":0,"tier":Tier.ELITE,
+	 "base_hp":880,"range_value":2,"deploy_speed":5,"base_speed":95,"power":420,"weapon_type":0,
+	 "weapon_label":"雷霆突击步枪","enemy_only":true,
+	 "atk_l":225,"atk_l_speed":1.5,"atk_l_windup":0.133,"atk_l_active":0.067,
+	 "atk_a":100,"atk_a_speed":1.0,"atk_a_windup":0.2,"atk_a_active":0.1,
+	 "atk_air":0,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
+	 "def_l":62,"def_a":31,"def_air":18,
+	 "w_light":"雷霆突击步枪","w_armor":"","w_air":""},
+
+	# mod_air_apache_e（阿帕奇直升机）特色掉落 — 现代 空中 ELITE
+	{"card_id":"drop_overclock_matrix","display_name":"超频矩阵机","era":3,"combat_kind":3,"tier":Tier.ELITE,
+	 "base_hp":980,"range_value":99,"deploy_speed":5,"base_speed":130,"power":980,"weapon_type":2,
+	 "weapon_label":"超频矩阵炮","enemy_only":true,
+	 "atk_l":225,"atk_l_speed":0.83,"atk_l_windup":0.241,"atk_l_active":0.12,
+	 "atk_a":280,"atk_a_speed":0.67,"atk_a_windup":0.299,"atk_a_active":0.149,
+	 "atk_air":375,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
+	 "def_l":35,"def_a":24,"def_air":59,
+	 "w_light":"超频矩阵炮","w_armor":"超频矩阵炮","w_air":"空空导弹"},
+
+	# fut_arm_colossus_e / fut_boss_nexus 特色掉落 — 近未来 装甲 CHAMPION
+	{"card_id":"drop_mega_particle_cannon","display_name":"巨型粒子炮","era":4,"combat_kind":1,"tier":Tier.CHAMPION,
+	 "base_hp":1350,"range_value":3,"deploy_speed":2,"base_speed":80,"power":480,"weapon_type":0,
+	 "weapon_label":"巨型粒子炮","enemy_only":true,
+	 "atk_l":230,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
+	 "atk_a":1000,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
+	 "atk_air":0,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
+	 "def_l":92,"def_a":130,"def_air":78,
+	 "w_light":"粒子副炮","w_armor":"巨型粒子炮","w_air":""},
 
 ]
 

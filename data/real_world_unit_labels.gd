@@ -78,52 +78,32 @@ static func weapon_kind_short(weapon_type: int) -> String:
 		_: return "未知"
 
 
-## 与 GameConstants.PlatformType 一致：0=HOUND … 12=COMMAND
+## v7.x 修复：原按 GameConstants.PlatformType（13值 0=HOUND…12=COMMAND）返回底盘描述，
+## 但所有调用方（default_cards:107 `c.platform_type = combat_kind`、card_info_panel、
+## store_panel 等）实际传入的是 CombatKind（5值 0=轻装/1=装甲/2=支援/3=空中/4=堡垒），
+## 导致 AH-64阿帕奇(空中=3) 显示成"永备工事"、导弹发射井(堡垒=4) 显示成"雷达指挥车"。
+## 现统一为 CombatKind 5 值口径，与 card.combat_kind / stats.platform_type 对齐。
 static func platform_chassis_long(platform_type: int) -> String:
 	match platform_type:
 		0:
-			return "轻型装甲侦察车（轮式）"
+			return "轻装步兵 / 侦察单位"
 		1:
-			return "主战坦克 / 护卫战车（中型装甲）"
+			return "装甲战斗车辆"
 		2:
-			return "重型主战坦克"
+			return "支援 / 火力单位"
 		3:
-			return "永备工事 / 固定炮位"
+			return "空中单位"
 		4:
-			return "雷达指挥车 / 电子对抗站"
-		5:
-			return "轻型侦察车"
-		6:
-			return "突击装甲车辆"
-		7:
-			return "自行火炮 / 曲射支援"
-		8:
-			return "步兵战车 / 装甲输送车"
-		9:
-			return "战场救护车 / 维修工程车"
-		10:
-			return "隐身侦察平台（架空）"
-		11:
-			return "全装重型机动平台（架空）"
-		12:
-			return "指挥战车 / 联合作业指挥站"
+			return "堡垒 / 固定工事"
 		_:
-			return "未知底盘"
+			return "未知单位"
 
 
 static func platform_chassis_short(platform_type: int) -> String:
 	match platform_type:
-		0: return "轻侦装甲"
-		1: return "主战/护卫"
-		2: return "重型坦克"
-		3: return "固定工事"
-		4: return "雷达/电抗"
-		5: return "侦察车"
-		6: return "突击车"
-		7: return "自行火炮"
-		8: return "步战车"
-		9: return "救护/维修"
-		10: return "隐身侦"
-		11: return "全装机甲"
-		12: return "指挥车"
+		0: return "轻装"
+		1: return "装甲"
+		2: return "支援"
+		3: return "空中"
+		4: return "堡垒"
 		_: return "未知"

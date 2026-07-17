@@ -378,6 +378,12 @@ static func get_safe_display_name(card_id: String) -> String:
 	var bp_card: CardResource = EnemyBlueprints.get_card_by_id(card_id)
 	if bp_card != null and not bp_card.display_name.is_empty() and not _looks_like_id(bp_card.display_name):
 		return bp_card.display_name
+	# 尝试统一卡牌表（覆盖敌方 manifest 单位如 fut_air_regen_frame 等不在我方卡池的 id）
+	var uct_entry: Dictionary = UnifiedCardTable.get_entry(card_id)
+	if not uct_entry.is_empty():
+		var uct_name: String = String(uct_entry.get("display_name", ""))
+		if not uct_name.is_empty() and not _looks_like_id(uct_name):
+			return uct_name
 	# 所有回退都失败,记录警告并返回ID
 	push_error("[DefaultCards] 无法找到卡牌名称: %s,将显示原始ID" % card_id)
 	return card_id

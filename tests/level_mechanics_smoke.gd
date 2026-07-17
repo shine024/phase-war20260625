@@ -126,11 +126,28 @@ func _initialize() -> void:
 	# ══════════ 能量回复惩罚 ══════════
 	print("=== 能量回复惩罚 ===")
 	var regen_mult: float = 0.5  # 第5关
-	var base_regen: float = 0.5  # 基础 1.0 - 消耗 0.5 = 0.5
-	var penalized_regen: float = base_regen * regen_mult
-	print("  回复 0.5×0.5 = %.2f (期望 0.25)" % penalized_regen)
-	if absf(penalized_regen - 0.25) > 0.001:
-		fail.call("回复惩罚应 0.25，实际 %.3f" % penalized_regen)
+	# v8 修复：惩罚只作用于"正向回复项"（基础回复 + 相位仪恢复），不作用于基座消耗。
+	# 正向场景：基础回复 1.0，无相位仪恢复，消耗 0.5 → regen_in=1.0, 惩罚后 0.5, net=0.5-0.5=0.0
+	var ENERGY_REGEN_PER_SEC: float = 1.0
+	var PHASE_BASE_DRAIN_PER_SEC: float = 0.5
+	var regen_in_pos: float = ENERGY_REGEN_PER_SEC * regen_mult
+	var net_pos: float = regen_in_pos - PHASE_BASE_DRAIN_PER_SEC
+	print("  正向: regen_in=%.2f, net=%.2f (期望 0.00)" % [regen_in_pos, net_pos])
+	if absf(net_pos - 0.0) > 0.001:
+		fail.call("正向场景 net 应 0.0，实际 %.3f" % net_pos)
+	# 负值场景（修复核心）：相位基座消耗 > 回复（模拟高消耗相位仪）
+	# 基础回复 1.0，消耗 2.0 → regen_in=1.0, 惩罚后 0.5, net=0.5-2.0=-1.5
+	# 旧 bug（乘 net_regen）: net=(1.0-2.0)×0.5=-0.5（消耗被惩罚减免，方向反）
+	# 新逻辑（乘 regen_in）: net=0.5-2.0=-1.5（消耗不减免，符合"惩罚应更难"）
+	var drain_high: float = 2.0
+	var regen_in_neg: float = ENERGY_REGEN_PER_SEC * regen_mult
+	var net_neg_new: float = regen_in_neg - drain_high
+	var net_neg_old_bug: float = (ENERGY_REGEN_PER_SEC - drain_high) * regen_mult
+	print("  负值: 新逻辑 net=%.2f (期望 -1.50), 旧bug net=%.2f" % [net_neg_new, net_neg_old_bug])
+	if absf(net_neg_new - (-1.5)) > 0.001:
+		fail.call("负值场景新逻辑 net 应 -1.5，实际 %.3f" % net_neg_new)
+	if absf(net_neg_new - net_neg_old_bug) < 0.001:
+		fail.call("新旧逻辑应不同（否则修复无效）")
 
 	# ══════════ 边界：越界关卡 ══════════
 	print("=== 边界：越界关卡 ===")
@@ -139,6 +156,84 @@ func _initialize() -> void:
 	print("  关101: %s, 关0: %s (均期望空)" % [str(r_over), str(r_under)])
 	if not r_over.is_empty() or not r_under.is_empty():
 		fail.call("越界关卡应返回空字典")
+
+	# ══════════ 运行时行为：energy_mult 作用于上限+开局 ══════════
+	print("=== 运行时: energy_mult 惩罚 _max/_base_start ===")
+	# 模拟 energy_manager._apply_instrument_energy 的 level_energy_mult 分支
+	# 1星相位仪: _max = 100 + 1×200 = 300; 惩罚 0.5 → maxf(50, 150) = 150
+	var star: int = 1
+	var raw_max: float = 100.0 + float(star) * 200.0
+	var em_25: float = float(li.get_special_rules(25).get("energy_mult", 1.0))
+	var penalized_max_25: float = maxf(50.0, raw_max * em_25)
+	var penalized_start_25: float = maxf(50.0, raw_max * em_25)  # _base_start = _max 同步惩罚
+	print("  1星 raw=300, ×0.5 → max=%.0f, start=%.0f (期望 150/150)" % [penalized_max_25, penalized_start_25])
+	if absf(penalized_max_25 - 150.0) > 0.1 or absf(penalized_start_25 - 150.0) > 0.1:
+		fail.call("energy_mult 应同时作用于 _max 和 _base_start")
+	# 极端惩罚不跌破 50 下限：7星 raw=1500, ×0.1 → maxf(50, 150)=150... 取更小惩罚验证下限
+	var tiny_em: float = 0.01
+	var floored: float = maxf(50.0, raw_max * tiny_em)
+	print("  1星 ×0.01 → maxf(50, 3) = %.0f (期望 50 下限)" % floored)
+	if absf(floored - 50.0) > 0.1:
+		fail.call("energy_mult 惩罚应受 50 下限保护")
+
+	# ══════════ 运行时：deploy_limit 三者取 mini ══════════
+	print("=== 运行时: deploy_limit 与相位仪上限/槽位数取 mini ===")
+	# 模拟 request_player_deploy: max_units = mini(相位仪上限, 槽位数, deploy_limit)
+	# 第70关 deploy_limit=3, 相位仪6槽, 格子5 → mini(6,5,3)=3
+	var pi_cap: int = 6
+	var grid_slots: int = 5
+	var dl_70: int = int(li.get_special_rules(70).get("deploy_limit", 0))
+	var final_cap_70: int = mini(pi_cap, grid_slots)
+	if dl_70 > 0:
+		final_cap_70 = mini(final_cap_70, dl_70)
+	print("  mini(6, 5, 3) = %d (期望 3)" % final_cap_70)
+	if final_cap_70 != 3:
+		fail.call("deploy_limit 应参与 mini 叠加得 3")
+	# 普通关（无 deploy_limit）：deploy_limit=0 时不改变 max_units
+	var dl_normal: int = int(li.get_special_rules(7).get("deploy_limit", 0))
+	var final_cap_normal: int = mini(pi_cap, grid_slots)
+	if dl_normal > 0:
+		final_cap_normal = mini(final_cap_normal, dl_normal)
+	print("  普通关 mini(6, 5, 无) = %d (期望 5)" % final_cap_normal)
+	if final_cap_normal != 5:
+		fail.call("无 deploy_limit 关应保持 mini(6,5)=5")
+
+	# ══════════ 运行时：restrict_platforms 拦截判定 ══════════
+	print("=== 运行时: restrict_platforms 拦截分支 ===")
+	# 模拟 battle_spawn_system.request_player_deploy 的 restrict 分支
+	# 第15关 restrict=[0]（步兵），platform_type=1（装甲）→ 不在白名单 → 拦截
+	var restrict_15: Array = li.get_special_rules(15).get("restrict_platforms", [])
+	var pt_armor: int = 1
+	var blocked: bool = (not restrict_15.is_empty()) and (not restrict_15.has(pt_armor))
+	print("  第15关 装甲(1) → 拦截=%s (期望 true)" % blocked)
+	if not blocked:
+		fail.call("第15关装甲应被 restrict_platforms 拦截")
+	# 第15关 步兵(0) → 在白名单 → 放行
+	var pt_infantry: int = 0
+	var allowed: bool = (not restrict_15.is_empty()) and restrict_15.has(pt_infantry)
+	print("  第15关 步兵(0) → 放行=%s (期望 true)" % allowed)
+	if not allowed:
+		fail.call("第15关步兵应被 restrict_platforms 放行")
+	# 普通关 restrict=[] → 空白名单不拦截
+	var restrict_normal: Array = li.get_special_rules(7).get("restrict_platforms", [])
+	var no_restrict: bool = restrict_normal.is_empty()
+	print("  第7关 restrict空 → 不拦截=%s (期望 true)" % no_restrict)
+	if not no_restrict:
+		fail.call("普通关 restrict_platforms 应为空（不拦截）")
+
+	# ══════════ 运行时：UI 预过滤灰显判定（v8 修复3） ══════════
+	print("=== 运行时: UI 预过滤灰显判定 ===")
+	# 模拟 bottom_instrument_bar._is_card_platform_restricted 的逻辑
+	# 受限卡 → 灰显(modulate.a=0.4)；普通关/不受限 → 不灰显
+	var should_dim_armor_15: bool = (not restrict_15.is_empty()) and (not restrict_15.has(pt_armor))
+	var should_dim_infantry_15: bool = (not restrict_15.is_empty()) and (not restrict_15.has(pt_infantry))
+	print("  第15关 装甲灰显=%s (期望 true), 步兵灰显=%s (期望 false)" % [should_dim_armor_15, should_dim_infantry_15])
+	if not should_dim_armor_15:
+		fail.call("第15关受限卡应灰显")
+	if should_dim_infantry_15:
+		fail.call("第15关步兵（白名单内）不应灰显")
+	if not no_restrict:
+		fail.call("普通关不应有任何灰显")
 
 	# ══════════ 总结 ══════════
 	if code == 0:

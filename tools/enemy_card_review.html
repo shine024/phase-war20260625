@@ -78,6 +78,8 @@ h1 { text-align: center; font-size: 24px; margin-bottom: 6px; color: #58a6ff; }
 <button class="filter-btn" onclick="filterCards('C', this)">C段-固定</button>
 <button class="filter-btn" onclick="filterCards('D', this)">D段-补充</button>
 <button class="filter-btn" onclick="filterCards('E', this)">E段-堡垒</button>
+<button class="filter-btn" onclick="filterCards('F', this)">F段-平台卡</button>
+<button class="filter-btn" onclick="filterCards('G', this)">G段-守护者</button>
 </div>
 
 <div class="batch-bar" id="batchBar">
@@ -2167,6 +2169,215 @@ const CARDS = [
       "kind_desc": "heavy armored vehicle or tank silhouette",
       "is_boss": false
     }
+  },
+  {
+    "category": "F段-平台卡(待生成)",
+    "card_id": "platform_ww1_radar",
+    "display_name": "一战雷达平台(野战观测站)",
+    "icon_num": 82,
+    "era": 0,
+    "era_name": "一战",
+    "is_boss": false,
+    "section": "F",
+    "filename": "vis_enemy_082.png",
+    "rel_path": "../assets/card_icons/enemy/vis_enemy_082.png",
+    "exists": false,
+    "prompt": {
+      "display_name": "一战野战观测站",
+      "era_desc": "WW1 era military, trench warfare, early 20th century",
+      "kind_desc": "support weapon or artillery piece silhouette",
+      "is_boss": false
+    }
+  },
+  {
+    "category": "F段-平台卡(待生成)",
+    "card_id": "platform_ww2_radar",
+    "display_name": "二战雷达平台(雷达指挥车)",
+    "icon_num": 83,
+    "era": 1,
+    "era_name": "二战",
+    "is_boss": false,
+    "section": "F",
+    "filename": "vis_enemy_083.png",
+    "rel_path": "../assets/card_icons/enemy/vis_enemy_083.png",
+    "exists": false,
+    "prompt": {
+      "display_name": "二战雷达指挥车",
+      "era_desc": "WW2 era military, 1940s warfare",
+      "kind_desc": "support weapon or artillery piece silhouette",
+      "is_boss": false
+    }
+  },
+  {
+    "category": "F段-平台卡(待生成)",
+    "card_id": "platform_ww2_siege",
+    "display_name": "二战攻城平台(203毫米迫击炮)",
+    "icon_num": 84,
+    "era": 1,
+    "era_name": "二战",
+    "is_boss": false,
+    "section": "F",
+    "filename": "vis_enemy_084.png",
+    "rel_path": "../assets/card_icons/enemy/vis_enemy_084.png",
+    "exists": false,
+    "prompt": {
+      "display_name": "二战203毫米重型迫击炮",
+      "era_desc": "WW2 era military, 1940s warfare",
+      "kind_desc": "support weapon or artillery piece silhouette",
+      "is_boss": false
+    }
+  },
+  {
+    "category": "F段-平台卡(待生成)",
+    "card_id": "platform_cold_light",
+    "display_name": "冷战轻型平台(悍马侦察车)",
+    "icon_num": 85,
+    "era": 2,
+    "era_name": "冷战",
+    "is_boss": false,
+    "section": "F",
+    "filename": "vis_enemy_085.png",
+    "rel_path": "../assets/card_icons/enemy/vis_enemy_085.png",
+    "exists": false,
+    "prompt": {
+      "display_name": "冷战悍马轻型侦察车",
+      "era_desc": "Cold War era military, 1960s-1980s",
+      "kind_desc": "infantry soldier silhouette",
+      "is_boss": false
+    }
+  },
+  {
+    "category": "F段-平台卡(待生成)",
+    "card_id": "platform_cold_scout",
+    "display_name": "冷战侦察平台(BRDM-2侦察车)",
+    "icon_num": 86,
+    "era": 2,
+    "era_name": "冷战",
+    "is_boss": false,
+    "section": "F",
+    "filename": "vis_enemy_086.png",
+    "rel_path": "../assets/card_icons/enemy/vis_enemy_086.png",
+    "exists": false,
+    "prompt": {
+      "display_name": "冷战BRDM-2轮式装甲侦察车",
+      "era_desc": "Cold War era military, 1960s-1980s",
+      "kind_desc": "infantry soldier silhouette",
+      "is_boss": false
+    }
+  },
+  {
+    "category": "F段-平台卡(待生成)",
+    "card_id": "platform_future_radar",
+    "display_name": "近未来雷达平台(量子感知平台)",
+    "icon_num": 87,
+    "era": 4,
+    "era_name": "近未来",
+    "is_boss": false,
+    "section": "F",
+    "filename": "vis_enemy_087.png",
+    "rel_path": "../assets/card_icons/enemy/vis_enemy_087.png",
+    "exists": false,
+    "prompt": {
+      "display_name": "近未来量子感知雷达平台",
+      "era_desc": "Near-future sci-fi military, advanced technology",
+      "kind_desc": "support weapon or artillery piece silhouette",
+      "is_boss": false
+    }
+  },
+  {
+    "category": "G段-守护者卡(待生成)",
+    "card_id": "guardian_ww1_ironclad",
+    "display_name": "铁壁守护者·一战",
+    "icon_num": 110,
+    "era": 0,
+    "era_name": "一战",
+    "is_boss": true,
+    "section": "G",
+    "filename": "vis_enemy_110.png",
+    "rel_path": "../assets/card_icons/enemy/vis_enemy_110.png",
+    "exists": false,
+    "prompt": {
+      "display_name": "铁壁守护者·一战",
+      "era_desc": "WW1 era military, trench warfare, early 20th century",
+      "kind_desc": "heavy armored vehicle or tank silhouette",
+      "is_boss": true
+    }
+  },
+  {
+    "category": "G段-守护者卡(待生成)",
+    "card_id": "guardian_ww2_blitzkrieg",
+    "display_name": "闪电守护者·二战",
+    "icon_num": 111,
+    "era": 1,
+    "era_name": "二战",
+    "is_boss": true,
+    "section": "G",
+    "filename": "vis_enemy_111.png",
+    "rel_path": "../assets/card_icons/enemy/vis_enemy_111.png",
+    "exists": false,
+    "prompt": {
+      "display_name": "闪电守护者·二战",
+      "era_desc": "WW2 era military, 1940s warfare",
+      "kind_desc": "heavy armored vehicle or tank silhouette",
+      "is_boss": true
+    }
+  },
+  {
+    "category": "G段-守护者卡(待生成)",
+    "card_id": "guardian_cold_thunder",
+    "display_name": "雷霆守护者·冷战",
+    "icon_num": 112,
+    "era": 2,
+    "era_name": "冷战",
+    "is_boss": true,
+    "section": "G",
+    "filename": "vis_enemy_112.png",
+    "rel_path": "../assets/card_icons/enemy/vis_enemy_112.png",
+    "exists": false,
+    "prompt": {
+      "display_name": "雷霆守护者·冷战",
+      "era_desc": "Cold War era military, 1960s-1980s",
+      "kind_desc": "support weapon or artillery piece silhouette",
+      "is_boss": true
+    }
+  },
+  {
+    "category": "G段-守护者卡(待生成)",
+    "card_id": "guardian_modern_stealth",
+    "display_name": "幽灵守护者·现代",
+    "icon_num": 113,
+    "era": 3,
+    "era_name": "现代",
+    "is_boss": true,
+    "section": "G",
+    "filename": "vis_enemy_113.png",
+    "rel_path": "../assets/card_icons/enemy/vis_enemy_113.png",
+    "exists": false,
+    "prompt": {
+      "display_name": "幽灵守护者·现代",
+      "era_desc": "Modern era military, 21st century warfare",
+      "kind_desc": "aircraft or drone silhouette",
+      "is_boss": true
+    }
+  },
+  {
+    "category": "G段-守护者卡(待生成)",
+    "card_id": "guardian_future_omega",
+    "display_name": "终焉守护者·近未来",
+    "icon_num": 114,
+    "era": 4,
+    "era_name": "近未来",
+    "is_boss": true,
+    "section": "G",
+    "filename": "vis_enemy_114.png",
+    "rel_path": "../assets/card_icons/enemy/vis_enemy_114.png",
+    "exists": false,
+    "prompt": {
+      "display_name": "终焉守护者·近未来",
+      "era_desc": "Near-future sci-fi military, advanced technology",
+      "kind_desc": "heavy armored vehicle or tank silhouette",
+      "is_boss": true
+    }
   }
 ];
 const SECTION_LABELS = {
@@ -2174,7 +2385,9 @@ const SECTION_LABELS = {
     B: "B段 - 精英掉落卡",
     C: "C段 - 固定敌人 (含Boss)",
     D: "D段 - 补充池卡",
-    E: "E段 - 堡垒类别"
+    E: "E段 - 堡垒类别",
+    F: "F段 - 平台卡 (enemy_only 部署模板, 082-109 待生成)",
+    G: "G段 - 守护者成就卡 (achievement_exclusive, 110-114 待生成)"
 };
 let selectedCards = new Set();
 
@@ -2195,7 +2408,7 @@ for (const [era, cnt] of Object.entries(eraCounts)) {
 document.getElementById('stats-bar').innerHTML = statsHtml;
 
 const container = document.getElementById('sections-container');
-['A', 'B', 'C', 'D', 'E'].forEach(sec => {
+['A', 'B', 'C', 'D', 'E', 'F', 'G'].forEach(sec => {
     const secCards = CARDS.filter(c => c.section === sec);
     let html = '<div class="section-title" data-section="' + sec + '">' + SECTION_LABELS[sec] + ' (' + secCards.length + '张)</div>';
     html += '<div class="card-grid" data-section="' + sec + '">';

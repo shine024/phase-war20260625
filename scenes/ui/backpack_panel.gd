@@ -110,6 +110,8 @@ var _last_lore_signature: String = "__INIT__"
 var _last_stat_boost_signature: String = "__INIT__"
 var _last_resources_signature: String = "__INIT__"
 var _last_runes_signature: String = "__INIT__"  ## v6.2: 符文签名去重
+var _last_rune_info_signature: String = "__INIT__"  ## 符文信息栏（符文之语）签名去重
+var _last_phase_inst_signature: String = "__INIT__"  ## 相位仪标签签名去重
 var _loading_label: Label = null
 
 ## ============================================================
@@ -450,18 +452,6 @@ func _flush_rebuild_card_grid() -> void:
 	else:
 		_hide_backpack_empty_hint(grid)
 	_ensure_min_card_slots(grid)
-	# 诊断：检查第一个卡片 item 的视觉状态
-	var first_item = null
-	for ch in grid.get_children():
-		if ch.has_method("set_card") and ch.card != null:
-			first_item = ch
-			break
-	if first_item:
-		# [LOG-v5.1] print("[BP] _flush_rebuild: added=%d/%d grid_children=%d cols=%d item_visible=%s item_size=%s item_modulate=%s card_id=%s" % [added_count, cards.size(), grid.get_child_count(), grid.columns, first_item.visible, first_item.size, first_item.modulate, first_item.card.card_id if first_item.card else "null"])
-		_diag_card_item_internals(first_item, grid)
-	else:
-		pass
-		# [LOG-v5.1] print("[BP] _flush_rebuild: added=%d/%d BUT NO visible card item found! grid_children=%d" % [added_count, cards.size(), grid.get_child_count()])
 	_sync_card_grid_scroll_size_for_grid(grid)
 	_hide_loading_indicator()
 
@@ -501,51 +491,6 @@ func _hide_backpack_empty_hint(grid: GridContainer) -> void:
 		if is_instance_valid(child) and child.has_meta("is_empty_hint"):
 			child.queue_free()
 
-
-func _diag_card_item_internals(item: Control, grid: GridContainer) -> void:
-	var scroll = _scroll
-	if scroll:
-		pass
-		# [LOG-v5.1] print("[BP DIAG] Scroll: vis=%s size=%s sv=%d" % [scroll.visible, scroll.size, scroll.scroll_vertical])
-	var tab_ctr = _tab_container
-	if tab_ctr:
-		pass
-		# [LOG-v5.1] print("[BP DIAG] TabCtr: tab=%d tabs=%d" % [tab_ctr.current_tab, tab_ctr.get_tab_count()])
-	var combat_tab = get_node_or_null("VBoxOuter/TabContainer/CombatCardsTab")
-	if combat_tab:
-		pass
-		# [LOG-v5.1] print("[BP DIAG] CombatTab: vis=%s size=%s" % [combat_tab.visible, combat_tab.size])
-	# [LOG-v5.1] print("[BP DIAG] Grid: gpos=%s size=%s vis=%s" % [grid.global_position, grid.size, grid.visible])
-	var vbox = item.get_node_or_null("VBox")
-	if vbox:
-		# [LOG-v5.1] print("[BP DIAG] VBox: vis=%s size=%s" % [vbox.visible, vbox.size])
-		var cm = vbox.get_node_or_null("ContentMargin")
-		if cm:
-			# [LOG-v5.1] print("[BP DIAG] CM: vis=%s size=%s" % [cm.visible, cm.size])
-			var ivb = cm.get_node_or_null("InnerVBox")
-			if ivb:
-				# [LOG-v5.1] print("[BP DIAG] InnerVB: vis=%s size=%s clip=%s" % [ivb.visible, ivb.size, ivb.clip_contents])
-				var ir = ivb.get_node_or_null("IconRow")
-				if ir:
-					# [LOG-v5.1] print("[BP DIAG] IconRow: vis=%s size=%s ch=%d compact=%s" % [ir.visible, ir.size, ir.get_child_count(), ir.get_meta("_compact_slot_built", false)])
-					for ic in ir.get_children():
-						var sz = ic.size if ic is Control else "NA"
-						# [LOG-v5.1] print("[BP DIAG]   %s: vis=%s size=%s" % [ic.name, ic.visible, sz])
-						if ic.name == "CompactArtClip":
-							var icon = ic.get_node_or_null("Icon")
-							if icon:
-								pass
-								# [LOG-v5.1] print("[BP DIAG]     Icon: vis=%s size=%s tex=%s" % [icon.visible, icon.size, "YES" if icon.texture else "NULL"])
-						if ic.name == "CompactTextVBox":
-							for tc in ic.get_children():
-								if tc is Label:
-									pass
-									# [LOG-v5.1] print("[BP DIAG]     %s: vis=%s text=%s" % [tc.name, tc.visible, tc.text])
-	var sb = item.get_theme_stylebox("panel")
-	if sb and sb is StyleBoxFlat:
-		pass
-		# [LOG-v5.1] print("[BP DIAG] panel: bg=%s bdr=%s" % [sb.bg_color, sb.border_color])
-	# [LOG-v5.1] print("[BP DIAG] BPP: vis=%s size=%s gpos=%s" % [visible, size, global_position])
 
 ## 添加单张卡到网格末尾或顶部
 func add_card(card: CardResource, at_top: bool = false) -> void:
@@ -793,7 +738,7 @@ func refresh_intel_tab() -> void:
 	if sig == _last_lore_signature:
 		return
 	_last_lore_signature = sig
-	_clear_grid_children(_intel_grid)
+	_clear_grid_to_pool(_intel_grid, _resource_slot_pool, "is_resource_slot")
 	# 筛选：所有改造图纸（永久解锁，全部显示）
 	var acquired_blueprints: Array[Dictionary] = []
 	for item_type in bag_items.keys():
@@ -828,7 +773,7 @@ func refresh_intel_tab() -> void:
 	acquired_blueprints.sort_custom(func(a, b): return _rarity_sort_value(a.rarity) > _rarity_sort_value(b.rarity))
 	var _mod_idx := 0
 	for bp in acquired_blueprints:
-		var item = ResourceSlotScene.instantiate()
+		var item = _acquire_slot_from_pool(_resource_slot_pool, ResourceSlotScene, "is_resource_slot")
 		if item == null:
 			continue
 		_intel_grid.add_child(item)
@@ -886,7 +831,7 @@ func refresh_stat_boosts_tab() -> void:
 	# [LOG-v5.1] print("[BP TAB] stat: sbm=%s" % [sbm != null])
 	if sbm == null or not sbm.has_method("get_all_boosts"):
 		# [LOG-v5.1] print("[BP TAB] stat: ADDING placeholder (no sbm)")
-		_clear_grid_children(_stat_boosts_grid)
+		_clear_grid_to_pool(_stat_boosts_grid, _stat_boost_slot_pool, "is_stat_boost")
 		_add_stat_boosts_placeholder(_stat_boosts_grid, "属性提升系统未初始化")
 		return
 
@@ -905,10 +850,8 @@ func refresh_stat_boosts_tab() -> void:
 	if stat_signature == _last_stat_boost_signature:
 		return
 
-	# 清空现有内容
-	for child in _stat_boosts_grid.get_children():
-		_stat_boosts_grid.remove_child(child)
-		child.queue_free()
+	# 清空现有内容（池化回收）
+	_clear_grid_to_pool(_stat_boosts_grid, _stat_boost_slot_pool, "is_stat_boost")
 
 	if target_counts.is_empty():
 		_add_stat_boosts_placeholder(_stat_boosts_grid, "暂无属性提升")
@@ -945,7 +888,7 @@ func refresh_runes_tab() -> void:
 		return
 	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
 	if pim == null or not pim.has_method("get_owned_runes"):
-		_clear_grid_children(_runes_grid)
+		_clear_grid_to_pool(_runes_grid, _rune_slot_pool, "is_rune_slot")
 		_add_runes_placeholder(_runes_grid, "符文系统未初始化")
 		return
 	var owned_runes: Array = pim.get_owned_runes()
@@ -966,7 +909,7 @@ func refresh_runes_tab() -> void:
 	if sig == _last_runes_signature:
 		return
 	_last_runes_signature = sig
-	_clear_grid_children(_runes_grid)
+	_clear_grid_to_pool(_runes_grid, _rune_slot_pool, "is_rune_slot")
 	if owned_runes.is_empty():
 		_add_runes_placeholder(_runes_grid, "暂无符文\n通过战斗掉落或势力商店获取")
 		return
@@ -1092,16 +1035,30 @@ func refresh_phase_instruments_tab() -> void:
 		current_instrument_id = String(cur_cfg.get("id", ""))
 
 	var unlocked_ids: Array = pim.get_unlocked_instrument_ids()
+
+	# 签名去重：已解锁集合 + 当前装备 + 星级不变则跳过全量手搓重建（每 item 10+ 节点）
+	var sig_parts: Array[String] = []
+	for iid in unlocked_ids:
+		var sid := String(iid)
+		var star_raw = _safe_get_instrument_star(pim, sid)
+		sig_parts.append(sid + ":s" + str(star_raw))
+	sig_parts.append("[CUR]" + current_instrument_id)
+	sig_parts.sort()
+	var phase_sig := "|".join(sig_parts)
+	if phase_sig == _last_phase_inst_signature:
+		return
+	_last_phase_inst_signature = phase_sig
+
 	_clear_phase_inst_list()
 
 	if unlocked_ids.is_empty():
 		_add_phase_inst_placeholder("暂无已解锁的相位仪\n通过商店购买、战斗掉落或势力声望获取")
 		return
 
-	# 按星级降序排列
+	# 按星级降序排列（统一走 manager 接口，含运行时掉落定义）
 	var sorted_instruments: Array = []
 	for iid in unlocked_ids:
-		var cfg: Dictionary = PhaseInstruments.get_by_id(String(iid))
+		var cfg: Dictionary = pim.get_instrument_cfg(String(iid)) if pim.has_method("get_instrument_cfg") else PhaseInstruments.get_by_id(String(iid))
 		if not cfg.is_empty():
 			sorted_instruments.append(cfg)
 	sorted_instruments.sort_custom(func(a, b): return int(a.get("star", 0)) > int(b.get("star", 0)))
@@ -1133,6 +1090,23 @@ func _add_phase_inst_placeholder(msg: String) -> void:
 	label.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	label.custom_minimum_size = Vector2(0, 80)
 	_phase_inst_list.add_child(label)
+
+
+## 类型安全地取仪器星级：避免 star 字段为非 int 时 String() 构造报错。
+## 优先走 manager 统一接口（含运行时掉落定义），回退静态表。
+func _safe_get_instrument_star(pim: Node, instrument_id: String) -> int:
+	var cfg: Dictionary
+	if pim != null and pim.has_method("get_instrument_cfg"):
+		cfg = pim.get_instrument_cfg(instrument_id)
+	else:
+		cfg = PhaseInstruments.get_by_id(instrument_id)
+	if cfg.is_empty():
+		return 0
+	var raw = cfg.get("star", 0)
+	# star 必须是数字；防御性地拒绝字符串/对象等异常类型
+	if typeof(raw) == TYPE_INT or typeof(raw) == TYPE_FLOAT:
+		return int(raw)
+	return 0
 
 
 ## 构建单个相位仪卡片（外观与 phase_instrument_selector 一致）
@@ -1389,12 +1363,8 @@ func _add_rune_item(grid: GridContainer, rune_id: String, count: int, is_equippe
 		"rarity": rarity,
 		"is_equipped": is_equipped,
 	}
-	# 复用 stat_boost 对象池
-	var item = null
-	if not _rune_slot_pool.is_empty():
-		item = _rune_slot_pool.pop_back()
-	else:
-		item = ResourceSlotScene.instantiate()
+	# 复用符文对象池（_acquire_slot_from_pool 统一复位 visible/modulate + 打 is_rune_slot 标记）
+	var item = _acquire_slot_from_pool(_rune_slot_pool, ResourceSlotScene, "is_rune_slot")
 	if item == null:
 		return
 	grid.add_child(item)
@@ -1507,6 +1477,36 @@ func _clear_grid_children(grid: GridContainer) -> void:
 		grid.remove_child(child)
 		child.queue_free()
 
+## 池化清空：按 meta_key 分流，命中标记的节点回收到 pool 复用，其余 queue_free
+## （参考 _flush_rebuild_card_grid L419-437 的按 meta 分流回收模式）
+func _clear_grid_to_pool(grid: GridContainer, pool: Array, meta_key: String) -> void:
+	if grid == null:
+		return
+	for child in grid.get_children():
+		grid.remove_child(child)
+		if is_instance_valid(child) and child.has_meta(meta_key):
+			child.visible = false
+			pool.append(child)
+		else:
+			child.queue_free()
+
+## 池化获取：优先从 pool 弹出一个节点，空则实例化新节点；复用前复位可见性/调制
+## （参考 _add_card_item 的 acquire + 复用前复位模式）
+func _acquire_slot_from_pool(pool: Array, scene: PackedScene, meta_key: String) -> Control:
+	var item: Control = null
+	if not pool.is_empty():
+		item = pool.pop_back()
+	else:
+		item = scene.instantiate()
+	if item == null:
+		return null
+	if item is CanvasItem:
+		(item as CanvasItem).visible = true
+	if item is Control:
+		(item as Control).modulate = Color(1, 1, 1, 1)
+	item.set_meta(meta_key, true)
+	return item
+
 
 func refresh_resources_tab() -> void:
 	if _resources_grid == null:
@@ -1515,7 +1515,7 @@ func refresh_resources_tab() -> void:
 	# [LOG-v5.1] print("[BP TAB] res: grid=%s sig=%s" % [_resources_grid != null, _last_resources_signature])
 	var brm = get_node_or_null("/root/BasicResourceManager")
 	if brm == null or not brm.has_method("get_all_totals"):
-		_clear_grid_children(_resources_grid)
+		_clear_grid_to_pool(_resources_grid, _resource_slot_pool, "is_resource_slot")
 		var lbl := Label.new()
 		lbl.text = "资源系统未初始化"
 		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -1533,7 +1533,7 @@ func refresh_resources_tab() -> void:
 	if res_signature == _last_resources_signature:
 		return
 	_last_resources_signature = res_signature
-	_clear_grid_children(_resources_grid)
+	_clear_grid_to_pool(_resources_grid, _resource_slot_pool, "is_resource_slot")
 	if res_parts.is_empty():
 		var lbl := Label.new()
 		lbl.text = "暂无资源"
@@ -1549,7 +1549,7 @@ func refresh_resources_tab() -> void:
 		# 不过滤会导致资源标签页重复显示纳米材料
 		if String(k).begins_with("basic_"):
 			continue
-		var item = ResourceSlotScene.instantiate()
+		var item = _acquire_slot_from_pool(_resource_slot_pool, ResourceSlotScene, "is_resource_slot")
 		if item == null:
 			continue
 		_resources_grid.add_child(item)
@@ -1839,15 +1839,11 @@ func _add_lore_page_item(grid: GridContainer, lore_id: String) -> void:
 		item.set_data(lore_id, 1, ResourceSlotItem.SlotType.LORE)
 
 func _add_stat_boost_item(grid: GridContainer, boost_id: String, count: int) -> void:
-	var item = null
-	if not _stat_boost_slot_pool.is_empty():
-		item = _stat_boost_slot_pool.pop_back()
-	else:
-		item = ResourceSlotScene.instantiate()
+	# 复用属性提升对象池（_acquire_slot_from_pool 统一复位 visible/modulate + 打 is_stat_boost 标记）
+	var item = _acquire_slot_from_pool(_stat_boost_slot_pool, ResourceSlotScene, "is_stat_boost")
 	if item == null:
 		return
 	grid.add_child(item)
-	item.set_meta("is_stat_boost", true)
 	item.set_meta("boost_id", boost_id)
 	if item.has_method("set_data"):
 		item.set_data(boost_id, count, ResourceSlotItem.SlotType.STAT_BOOST)

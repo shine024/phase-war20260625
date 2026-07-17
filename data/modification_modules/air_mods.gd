@@ -72,7 +72,7 @@ const DATA: Dictionary = {
 	},
 	"air_06_bvr_missile" = {
 		id = AIR_06_BVR_MISSILE, name = "超视距导弹", name_en = "BVR Missile",
-		icon = "res://assets/ui/icons/mod_icons/mod_missile.png",
+		icon = "res://assets/ui/icons/mod_icons/mod_weapon_air.png",
 		prototype = "AIM-120C", description = "远程导弹，射程和暴击伤害提升",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 350, cost_install = 175,

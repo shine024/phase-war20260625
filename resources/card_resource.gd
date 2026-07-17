@@ -703,6 +703,10 @@ func _create_slot_from_legacy(slot_idx: int, base_damage: float, base_speed: flo
 	var specific_name: String = get_weapon_name_for_slot(slot_idx)
 	if not specific_name.is_empty():
 		w.display_name = specific_name
+		# v8.4: 按武器名覆盖默认弹道（修正语义错配，如"霰弹枪"应为 SHOTGUN 散射而非 DIRECT 直射）
+		var _traj_override: int = _trajectory_override_for_weapon_name(specific_name)
+		if _traj_override >= 0:
+			w.weapon_type = _traj_override
 	else:
 		match slot_idx:
 			0: w.display_name = "轻装武器"
@@ -731,6 +735,21 @@ func _default_weapon_type_for_slot(slot_idx: int) -> int:
 			return 9  # MISSILE：对空导弹
 		_:
 			return GC.WeaponType.DIRECT
+
+## v8.4: 按武器显示名识别专属弹道（修正语义错配）
+## 部分卡牌武器名明确指向某种弹道，但按槽位默认值分配的 weapon_type 语义不符
+## （如 fut_sup_bulwark 的 w_light="霰弹枪" 默认分到 DIRECT 直射，无散射效果）。
+## 此表按武器名覆盖槽位默认 weapon_type，让弹道视觉与武器语义一致。
+## key = 武器显示名（精确匹配），value = WeaponTypeLegacy 值
+const _WEAPON_NAME_TRAJECTORY_OVERRIDE: Dictionary = {
+	"霰弹枪": 5,  # SHOTGUN：6 发 18° 散射（原误配 DIRECT 单发直射）
+}
+
+## v8.4: 查武器名是否需要覆盖默认弹道，返回 weapon_type 或 -1（不覆盖）
+func _trajectory_override_for_weapon_name(weapon_name: String) -> int:
+	if weapon_name.is_empty():
+		return -1
+	return _WEAPON_NAME_TRAJECTORY_OVERRIDE.get(weapon_name, -1)
 
 ## 获取武器槽位名称（v6.0：从 weapon_names 数组读取）
 func get_weapon_name_for_slot(slot_idx: int) -> String:

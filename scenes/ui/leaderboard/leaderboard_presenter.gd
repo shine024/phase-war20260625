@@ -362,21 +362,21 @@ func _create_equipment_section(equipment: Dictionary) -> Control:
 		inst_name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		inst_inner.add_child(inst_name_lbl)
 
-		# 相位仪属性摘要
-		var inst_stats: Dictionary = inst_data.get("base_stats", {})
-		if not inst_stats.is_empty():
+		# 相位仪属性摘要（v7.x: 统一池用 star + level + properties，base_stats 已废）
+		var inst_star: int = int(inst_data.get("star", 0))
+		if inst_star > 0:
 			var inst_stats_row = HBoxContainer.new()
 			inst_stats_row.add_theme_constant_override("separation", 12)
 			inst_stats_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			inst_inner.add_child(inst_stats_row)
-			if inst_stats.has("max_hp"):
-				inst_stats_row.add_child(_make_stat_label("HP:%d" % int(inst_stats["max_hp"]), 10, Color(0.8, 0.4, 0.4, 0.9)))
-			if inst_stats.has("energy_capacity"):
-				inst_stats_row.add_child(_make_stat_label("能量:%d" % int(inst_stats["energy_capacity"]), 10, Color(0.4, 0.8, 0.8, 0.9)))
-			if inst_stats.has("energy_regen"):
-				inst_stats_row.add_child(_make_stat_label("回复:%.1f/s" % float(inst_stats["energy_regen"]), 10, Color(0.4, 0.8, 0.4, 0.9)))
-			if inst_stats.has("defense"):
-				inst_stats_row.add_child(_make_stat_label("防御:%d" % int(inst_stats["defense"]), 10, Color(0.4, 0.4, 0.8, 0.9)))
+			inst_stats_row.add_child(_make_stat_label("%d★" % inst_star, 10, Color(1.0, 0.9, 0.6, 0.9)))
+			var inst_data_level: int = int(inst_data.get("level", 0))
+			if inst_data_level > 0:
+				inst_stats_row.add_child(_make_stat_label("Lv.%d" % inst_data_level, 10, Color(0.8, 0.8, 0.8, 0.9)))
+			for p in inst_data.get("properties", []):
+				var disp: String = String(p.get("display", ""))
+				if not disp.is_empty():
+					inst_stats_row.add_child(_make_stat_label(disp, 10, Color(0.6, 0.8, 0.6, 0.9)))
 
 		container.add_child(inst_box)
 

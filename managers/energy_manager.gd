@@ -33,10 +33,14 @@ func _process(delta: float) -> void:
 	if Engine.is_editor_hint() or not _in_battle:
 		return
 	# 能量回复：每秒自然回复 = 基础回复 + 相位仪恢复属性 - 相位仪消耗
-	var net_regen: float = GC.ENERGY_REGEN_PER_SEC + _regen_per_sec - GC.PHASE_BASE_DRAIN_PER_SEC
+	# v8 修复：回复惩罚（level_regen_mult）只作用于"正向回复项"（基础回复 + 相位仪恢复），
+	# 不作用于"基座消耗"。原实现乘在 net_regen 上，当基座消耗 > 回复（net_regen<0）时
+	# ×0.5 惩罚反而让能量掉得更慢（惩罚变成奖励），方向反直觉。
+	var regen_in: float = GC.ENERGY_REGEN_PER_SEC + _regen_per_sec
 	# v8 批次3: 关卡能量回复惩罚（由 BattleManager.start_battle 通过 set_meta 传入）
 	if has_meta("level_regen_mult"):
-		net_regen *= float(get_meta("level_regen_mult", 1.0))
+		regen_in *= float(get_meta("level_regen_mult", 1.0))
+	var net_regen: float = regen_in - GC.PHASE_BASE_DRAIN_PER_SEC
 	if net_regen > 0.0:
 		_add_energy(net_regen * delta)
 

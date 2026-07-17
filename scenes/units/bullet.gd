@@ -10,9 +10,8 @@ const CardGridFx = preload("res://scripts/card_grid_fx.gd")
 const WeaponProjectileVfx = preload("res://scripts/weapon_projectile_vfx.gd")
 const AttackCalculator = preload("res://scripts/battle/attack_calculator.gd")
 const RuneSpecialHandler = preload("res://managers/rune_special_handler.gd")
-## 曲射弹道：炮口火焰和命中爆炸特效纹理（预加载，避免运行时 ResourceLoader.load 卡顿）
+## 曲射弹道：炮口火焰特效纹理（预加载，避免运行时 ResourceLoader.load 卡顿）
 const ARTILLERY_MUZZLE_TEX := preload("res://assets/effects/projectiles/weapons_realistic/weapon_artillery_muzzle.png")
-const ARTILLERY_IMPACT_TEX := preload("res://assets/effects/projectiles/weapons_realistic/weapon_artillery_impact.png")
 ## v6.4: 重型武器拖尾贴图（曲射/爆炸类），复用 omega_platform 拖尾资源
 const HEAVY_TRAIL_TEX := preload("res://assets/effects/projectiles/omega_platform/omega_platform_projectile_trail.png")
 ## 启用拖尾的重型武器类型：INDIRECT(1)/AERIAL(2)/ROCKET(3)/FLAK(7)/MISSILE(9)/OMEGA(10)/RAIL(11)
@@ -31,6 +30,9 @@ var shooter_stats: UnitStats = null  # 射手数值（用于词条效果计算�
 var forced_miss: bool = false
 var _pre_calculated: bool = false  # 伤害已完整计算（防御/强化不再重复）
 var _weapon_name: String = ""  # v6.0: 武器名（用于 VFX 贴图查找）
+## v8.4: 武器类改造专属视觉标识（cluster/thermobaric/proximity/guided/gun_missile）
+## 由 weapon_resource._mod_effects 读出，开火时传入，命中时透传给 spawn_impact_with_kind opts
+var _vfx_variant: String = ""
 ## v6.4: 重型武器标记（曲射/爆炸类启用拖尾与炮口火焰）
 var _is_heavy: bool = false
 ## v6.6: 抑制曲射炮口火焰（相位仪「超级火炮连击」从屏幕外飞入，无需炮口火）
@@ -99,7 +101,7 @@ func _apply_shield_wall_mitigation(raw_damage: float, target: Node) -> float:
 		return raw_damage
 	return raw_damage * (1.0 - mitigation)
 
-func setup(p_target: Node2D, p_damage: float, p_is_player: bool, p_weapon_type: int = -1, p_shooter: Node2D = null, p_shooter_stats: UnitStats = null, p_forced_miss: bool = false, p_weapon_name: String = "", p_pre_calculated: bool = false) -> void:
+func setup(p_target: Node2D, p_damage: float, p_is_player: bool, p_weapon_type: int = -1, p_shooter: Node2D = null, p_shooter_stats: UnitStats = null, p_forced_miss: bool = false, p_weapon_name: String = "", p_pre_calculated: bool = false, p_vfx_variant: String = "") -> void:
 	visible = true
 	_finished = false  # 复用：清除归还守卫
 	target = p_target
@@ -109,6 +111,7 @@ func setup(p_target: Node2D, p_damage: float, p_is_player: bool, p_weapon_type: 
 	shooter_stats = p_shooter_stats
 	forced_miss = p_forced_miss
 	_weapon_name = p_weapon_name
+	_vfx_variant = p_vfx_variant  # v8.4: 武器类改造专属视觉
 	_pre_calculated = p_pre_calculated
 	if p_weapon_type >= 0:
 		weapon_type = p_weapon_type
@@ -416,15 +419,15 @@ func _update_trail_transform() -> void:
 	_trail_sprite.position = Vector2(-28.0, 0.0)
 
 
-## v6.1 性能优化：轻武器跳过命中特效
-## 旧枚举: SMG=0, RIFLE=1, MG=2, PISTOL=4 → 跳过（高速直射已有弹体动画）
-## 新枚举: DIRECT=0 → 跳过；INDIRECT=1 和 AERIAL=2 → 必须有爆炸效果
-## 因此跳过列表只包含旧枚举值 0(SMG)、4(PISTOL)
-const _SKIP_IMPACT_WEAPON_TYPES: Array = [0, 4]
+## v8.4: 轻武器命中特效说明
+## 原先有 _SKIP_IMPACT_WEAPON_TYPES=[0,4] 跳过 SMG/PISTOL 命中特效（v6.1 性能优化）。
+## 实测发现 SMG/PISTOL 因 attack_speed>2.0 走直射 batch（simple_player/enemy_projectile_batch），
+## batch 命中时本就无条件调用 spawn_impact_with_kind，所以跳过列表对它们是死代码。
+## 已移除跳过逻辑——batch 路径已有特效，bullet 回退路径（batch 不可用时）也应有特效。
+## 轻武器配方在 vfx_impact_factory._impact_recipe 的 0,4 分支（v8.4 已重平衡：少粒子高亮度）。
+
 
 func _spawn_tex_impact_at(world_pos: Vector2) -> void:
-	if weapon_type in _SKIP_IMPACT_WEAPON_TYPES:
-		return
 	var parent := get_parent()
 	if parent == null:
 		return
@@ -455,11 +458,16 @@ func _spawn_tex_impact_at(world_pos: Vector2) -> void:
 		WeaponProjectileVfx.spawn_impact_with_kind(parent, world_pos, weapon_type, shooter_is_player, _target_combat_kind, opts)
 
 
-## v6.0/v8.0: 新版命中特效（按武器名）— 粒子化，零贴图绑定
+## v6.0/v8.0: 新版命中特效（按武器名）— 粒子化
 ## v8.1: 透传 opts（暴击/穿透）
+## v8.4: 透传 weapon_name（重型爆炸武器命中贴图）+ _vfx_variant（改造专属视觉）
 func _spawn_impact_v2(parent: Node2D, world_pos: Vector2, weapon_name: String, opts: Dictionary = {}) -> void:
-	# v8.0: 统一走 spawn_impact_with_kind（内部自动选颜色+粒子）
-	WeaponProjectileVfx.spawn_impact_with_kind(parent, world_pos, weapon_type, shooter_is_player, _target_combat_kind, opts)
+	# v8.0: 统一走 spawn_impact_with_kind（内部自动选颜色+粒子+贴图）
+	var _final_opts: Dictionary = opts
+	if not _vfx_variant.is_empty():
+		_final_opts = opts.duplicate()
+		_final_opts["vfx_variant"] = _vfx_variant
+	WeaponProjectileVfx.spawn_impact_with_kind(parent, world_pos, weapon_type, shooter_is_player, _target_combat_kind, _final_opts, weapon_name)
 
 
 func _finish_tex_bullet() -> void:
@@ -589,9 +597,14 @@ func _spawn_muzzle_effect(pos: Vector2) -> void:
 	VfxImpactFactory.spawn_muzzle_flash(host, pos, shooter_is_player)
 
 func _spawn_impact_explosion(pos: Vector2, opts: Dictionary = {}) -> void:
-	# v8.0: 统一走 spawn_impact_with_kind（粒子化，零贴图绑定）
+	# v8.0: 统一走 spawn_impact_with_kind（粒子化）
 	# v8.1: 透传 opts（暴击/穿透）
-	WeaponProjectileVfx.spawn_impact_with_kind(self, pos, weapon_type, shooter_is_player, _target_combat_kind, opts)
+	# v8.4: 透传 _weapon_name（重型爆炸武器命中贴图）+ _vfx_variant（改造专属视觉）
+	var _final_opts: Dictionary = opts
+	if not _vfx_variant.is_empty():
+		_final_opts = opts.duplicate()
+		_final_opts["vfx_variant"] = _vfx_variant
+	WeaponProjectileVfx.spawn_impact_with_kind(self, pos, weapon_type, shooter_is_player, _target_combat_kind, _final_opts, _weapon_name)
 
 
 ## v6.4: 命中时触发屏幕震动——曲射/爆炸类中震动，直射轻震动
@@ -747,7 +760,7 @@ func _on_hit(primary: Node2D) -> void:
 	if not _pending_pierce:
 		var pen_ratio: float = 0.0
 		# 相位仪直射穿透
-		var ability: Dictionary = PhaseInstrumentAbilities.get_active_ability()
+		var ability: Dictionary = PhaseInstrumentAbilities.get_active_ability(PhaseInstrumentAbilities.Owner.PLAYER)
 		if not ability.is_empty() and String(ability.get("id", "")) == "piercing_shot":
 			pen_ratio = maxf(pen_ratio, float(ability.get("params", {}).get("pen_ratio", 0.0)))
 		# 符文穿透
@@ -910,6 +923,8 @@ func reset_pool_object() -> void:
 	shooter_stats = null
 	forced_miss = false
 	_pre_calculated = false
+	_weapon_name = ""  # v8.4: 对象池卫生（防复用残留）
+	_vfx_variant = ""  # v8.4: 改造视觉标识重置
 
 	pierce_count = 0
 	explosion_radius = 0.0

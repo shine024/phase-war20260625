@@ -5,6 +5,7 @@ const GC = preload("res://resources/game_constants.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
 const PhaseInstruments = preload("res://data/phase_instruments.gd")
 const DefaultCardsData = preload("res://data/default_cards.gd")
+const LevelInformation = preload("res://data/level_information.gd")
 const NodeFinder = preload("res://scripts/node_finder.gd")
 const CardInfoPanel = preload("res://scenes/ui/card_info_panel.gd")
 const BackpackCombatPreview = preload("res://scenes/ui/backpack_combat_preview.gd")
@@ -319,6 +320,9 @@ func _update_slot_panel(panel: Control, entry: Dictionary) -> void:
 	if panel == null or not is_instance_valid(panel):
 		return
 	var color: String = String(entry.get("color", ""))
+	# v8 修复：关卡限定兵种预过滤——默认不灰显，仅 has_card 受限分支覆盖为 0.4。
+	# 在函数入口设默认值，避免上一轮被灰显的槽位换成法则/符文/空卡后残留灰显。
+	panel.modulate.a = 1.0
 	# v6.2: rune 槽的 card 字段实际是 rune_id (String)，不能用 CardResource 类型注解，
 	# 否则赋值时崩溃 "Trying to assign a non-object value to a variable of type 'card_resource.gd'"。
 	# 用 Variant 承载，并在使用 card 属性前用 is CardResource 守卫。
@@ -394,6 +398,10 @@ func _update_slot_panel(panel: Control, entry: Dictionary) -> void:
 		_sync_slot_rank_badge(panel, card)
 		_sync_slot_card_background(panel, card)
 		_sync_slot_card_frame(panel, card)
+		# v8 修复：关卡限定兵种预过滤——战斗卡若被本关 restrict_platforms 排除，灰显提示
+		# （部署时 battle_spawn_system 仍会拦截，这里只是 UI 预提示，避免玩家点了才报错）
+		if card.card_type == GC.CardType.COMBAT_UNIT and _is_card_platform_restricted(card):
+			panel.modulate.a = 0.4
 		return
 	elif not law_id.is_empty():
 		var PhaseLaws_local = PhaseLaws
@@ -450,6 +458,21 @@ func _update_slot_panel(panel: Control, entry: Dictionary) -> void:
 	_sync_slot_rank_badge(panel, card)
 	_sync_slot_card_background(panel, card)
 	_sync_slot_card_frame(panel, card)
+
+## v8 修复：判断战斗卡是否被当前关 restrict_platforms 排除（UI 预过滤用）。
+## 读 GameManager.current_level → LevelInformation.get_special_rules → restrict_platforms 白名单。
+## 无规则 / 非战斗场景（GameManager 未就绪）返回 false（不灰显）。
+func _is_card_platform_restricted(card: CardResource) -> bool:
+	if card == null:
+		return false
+	if GameManager == null or not GameManager.get("current_level"):
+		return false
+	var level: int = int(GameManager.current_level)
+	var li = LevelInformation.get_shared()
+	var restrict: Array = li.get_special_rules(level).get("restrict_platforms", [])
+	if restrict.is_empty():
+		return false
+	return not restrict.has(int(card.platform_type))
 
 ## 让格子高度精确填满条的可用高度（抵消 PanelContainer content_margin 等开销）
 func _fit_slots_to_bar() -> void:

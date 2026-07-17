@@ -585,7 +585,10 @@ static func _merge_fixed_config(row: Dictionary, base_cfg: Dictionary) -> Dictio
 	return cfg
 
 
-## 供 EnemyArchetypes 调用：在固定 JSON 配置上强制写入缴获掉落
+## 供 EnemyArchetypes 调用：在固定 JSON 配置上追加缴获掉落。
+## v7.x 修复：原逻辑无条件覆盖 cfg["drops"]，导致 JSON 配置的特色掉落卡
+## （如 drop_smg_mk2 / drop_mega_particle_cannon）被 captured_* 完全替换、
+## 从未运行时生效。改为追加模式——保留已有 drops（特色卡），仅补充 captured_* 缴获卡。
 static func apply_capture_drops_to_archetypes(archetypes: Dictionary) -> Dictionary:
 	var out: Dictionary = archetypes.duplicate(true)
 	for row in get_entries():
@@ -604,11 +607,25 @@ static func apply_capture_drops_to_archetypes(archetypes: Dictionary) -> Diction
 				continue
 		var cfg: Dictionary = out[aid]
 		if cfg is Dictionary:
-			cfg["drops"] = [{"card_id": drop_id, "chance": chance}]
+			# 追加 captured_* 缴获卡（若已有 drops 中未含同前缀项则补充，保留特色卡）
+			var existing_drops: Array = cfg.get("drops", [])
+			if not _has_drop_with_prefix(existing_drops, "captured_"):
+				existing_drops.append({"card_id": drop_id, "chance": chance})
+				cfg["drops"] = existing_drops
 			if not String(row.get("display_name", "")).is_empty():
 				cfg["display_name"] = String(row.get("display_name", ""))
 			out[aid] = cfg
 	return out
+
+
+## 检查 drops 数组中是否已存在指定前缀的 card_id 项（防重复追加 captured_*）
+static func _has_drop_with_prefix(drops: Array, prefix: String) -> bool:
+	for d in drops:
+		if d is Dictionary:
+			var cid: String = String((d as Dictionary).get("card_id", ""))
+			if cid.begins_with(prefix):
+				return true
+	return false
 
 
 static func _era_from_platform_id(card_id: String) -> int:
@@ -676,9 +693,12 @@ static func _get_fort_display_name(fort_id: String) -> String:
 
 
 static func _tag_tier_from_id(enemy_id: String) -> String:
-	if enemy_id.begins_with("boss_"):
+	# v7.x 修复：原 begins_with("boss_") 无法匹配 cold_boss_mig / mod_boss_command /
+	# fut_boss_nexus（boss 在中间非前缀），导致 3 个时代 Boss 缴获掉率被误判为 8%。
+	# 改用 contains 判定，同时兼容 *_elite_* 命名变体。
+	if enemy_id.contains("boss"):
 		return "boss"
-	if enemy_id.begins_with("elite_"):
+	if enemy_id.contains("elite"):
 		return "elite"
 	return "frontline"
 

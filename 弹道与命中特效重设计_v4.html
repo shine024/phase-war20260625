@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>相位战争 · 拟真粒子弹道与命中 v4</title>
+<title>相位战争 · 拟真粒子弹道与命中 v5</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#04060c;color:#a0a8b8;font-family:"Microsoft YaHei",sans-serif;padding:8px;overflow-x:hidden}
@@ -25,8 +25,8 @@ canvas{image-rendering:auto}
 </style>
 </head>
 <body>
-<h1>相位战争 · 拟真粒子弹道与命中 v4</h1>
-<p class="sub">物理级粒子模拟 — 温度梯度火焰 + 重力下落 + 空气阻力 + 湍流扰动 + 多层辉光叠加</p>
+<h1>相位战争 · 拟真粒子弹道与命中 v5</h1>
+<p class="sub">物理级粒子模拟 — 温度梯度火焰 + 重力下落 + 空气阻力 + 湍流扰动 + 多层辉光叠加 | v8.4 改造专属视觉 + 命中贴图层 + 死代码清理</p>
 
 <h2>一、直射弹道（推进火焰粒子 + 激波尾迹）</h2>
 <p class="tip">每发子弹 = 核心亮点 + 推进火焰粒子流（白→黄→橙→红→灰消散） + 空气阻力拖尾 + 高速激波锥</p>
@@ -54,7 +54,7 @@ canvas{image-rendering:auto}
 <h2>三、命中/爆炸特效（三层粒子系统 + 重力 + 湍流）</h2>
 <p class="tip">第1层：冲击波环(Polygon2D扩散+波纹扰动) → 第2层：主火花(CPUParticles2D径向爆发+重力下落) → 第3层：碎片烟尘(重型专属+湍流上升)</p>
 <div class="grid">
-<div class="card"><div class="canvas-wrap"><canvas id="c_imp_smg"></canvas></div><div class="info"><div class="num">#14</div><div class="name">轻武器命中</div><div class="desc">小冲击环24px + 18粒子黄白火花(重力下落) + 快速消散(0.45s)</div><span class="tag tag-player">SMG/RIFLE</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_imp_smg"></canvas></div><div class="info"><div class="num">#14</div><div class="name">轻武器命中</div><div class="desc">小冲击环28px + 16粒子高亮黄白火花(重力下落) + 快速消散(0.45s) | v8.4重平衡：减粒子数40%提单粒子亮度67%</div><span class="tag tag-player">SMG/RIFLE</span></div></div>
 <div class="card"><div class="canvas-wrap"><canvas id="c_imp_shotgun"></canvas></div><div class="info"><div class="num">#15</div><div class="name">霰弹命中</div><div class="desc">中环29px + 28粒子橙色扩散(宽散布) + 重力下落</div><span class="tag tag-player">SHOTGUN</span></div></div>
 <div class="card"><div class="canvas-wrap"><canvas id="c_imp_sniper"></canvas></div><div class="info"><div class="num">#16</div><div class="name">狙击命中</div><div class="desc">细环22px + 22粒子亮黄集中喷射(55度锥角) + 尖锐火花</div><span class="tag tag-player">SNIPER</span></div></div>
 <div class="card"><div class="canvas-wrap"><canvas id="c_imp_rocket"></canvas></div><div class="info"><div class="num">#17</div><div class="name">火箭弹爆炸</div><div class="desc">大环56px + 32粒子橙红 + 烟尘云湍流上升(0.9s)</div><span class="tag tag-player">ROCKET/FLAK</span></div></div>
@@ -71,7 +71,36 @@ canvas{image-rendering:auto}
 <div class="card"><div class="canvas-wrap"><canvas id="c_hit_air"></canvas></div><div class="info"><div class="num">#24</div><div class="name">命中空中单位</div><div class="desc">纯白强光 | 强烈震动5.0px | 空爆火球+上升烟云</div><span class="tag tag-player">AIR</span></div></div>
 </div>
 
-<h2>五、特殊伤害效果叠加</h2>
+<h2>五、武器类改造专属视觉（v8.4 新增 · vfx_variant 变体层）</h2>
+<p class="tip">武器类改造装备后，命中时在基础三层特效之上叠加独有视觉特征。数据链：改造effects的vfx_variant → WeaponResource._mod_effects → batch/bullet透传 → spawn_variant_overlay</p>
+<div class="grid">
+<div class="card"><div class="canvas-wrap"><canvas id="c_var_cluster"></canvas></div><div class="info"><div class="num">#25a</div><div class="name">子母弹 cluster</div><div class="desc">主爆炸 + 6个随机散布子弹药溅射点(半径30-55px) | art_04</div><span class="tag" style="background:#2a1a0a;color:#ff8a65">CLUSTER</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_var_thermo"></canvas></div><div class="info"><div class="num">#25b</div><div class="name">温压弹 thermobaric</div><div class="desc">超大冲击波130px(橙红) + 0.15s延迟二次爆炸(温压二次燃烧) | art_11</div><span class="tag" style="background:#2a1a0a;color:#ff8a65">THERMOBARIC</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_var_prox"></canvas></div><div class="info"><div class="num">#25c</div><div class="name">近炸引信 proximity</div><div class="desc">白色空爆闪光环70px + 向下破片火花锥(60度锥角) | aa_05</div><span class="tag" style="background:#2a2a1a;color:#fff59d">PROXIMITY</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_var_guided"></canvas></div><div class="info"><div class="num">#25d</div><div class="name">制导炮弹 guided</div><div class="desc">双层快速收缩青色同心环(锁定指示) 外环50px→内环30px延迟0.08s | art_03</div><span class="tag" style="background:#0a1a2a;color:#80deea">GUIDED</span></div></div>
+<div class="card"><div class="canvas-wrap"><canvas id="c_var_gunmis"></canvas></div><div class="info"><div class="num">#25e</div><div class="name">炮射导弹 gun_missile</div><div class="desc">蓝白拖尾火花锥(区分标准导弹橙红) 20粒子360度扩散 | arm_07</div><span class="tag" style="background:#0a1a2a;color:#90caf9">GUN_MISSILE</span></div></div>
+</div>
+
+<h2>六、命中贴图层（v8.4 · impact_texture 真实贴图展示）</h2>
+<p class="tip">重型爆炸武器(ROCKET=3/FLAK=7/MISSILE=9)命中时，在三层粒子之上叠加专属爆炸<b>贴图</b>（快放大→慢淡出0.45s）。贴图来源：assets/effects/projectiles/weapons_realistic/&lt;safe_id&gt;_impact.png，按武器display_name查映射表；查不到fallback通用图。下方为真实贴图资源（非程序化绘制）。</p>
+<style>
+.tex-wrap{width:100%;height:130px;background:#040810;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.tex-wrap img{max-width:100%;max-height:120px;object-fit:contain;image-rendering:auto;animation:texPop 1.3s ease-out infinite}
+@keyframes texPop{0%{transform:scale(0.55);opacity:0}25%{transform:scale(1);opacity:1}100%{transform:scale(1);opacity:0.15}}
+.tex-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:7px;margin-bottom:8px}
+</style>
+<div class="tex-grid">
+<div class="card"><div class="tex-wrap"><img src="assets/effects/projectiles/weapons_realistic/93d43e5e_impact.png" alt="地狱火导弹"></div><div class="info"><div class="name">地狱火导弹/127mm舰炮</div><div class="desc">MISSILE | 地狱火/舰炮命中爆炸</div><span class="tag" style="background:#1a2a1a;color:#aed581">93d43e5e</span></div></div>
+<div class="card"><div class="tex-wrap"><img src="assets/effects/projectiles/weapons_realistic/24b45a0c_impact.png" alt="空空导弹"></div><div class="info"><div class="name">空空导弹/20mm机炮</div><div class="desc">MISSILE | 空战导弹命中爆炸</div><span class="tag" style="background:#1a2a1a;color:#aed581">24b45a0c</span></div></div>
+<div class="card"><div class="tex-wrap"><img src="assets/effects/projectiles/weapons_realistic/9c8d7e6f_impact.png" alt="炮射导弹"></div><div class="info"><div class="name">炮射导弹 <span style="color:#aed581">★v8.4新</span></div><div class="desc">MISSILE | arm_07改造 蓝白尾焰导弹爆炸</div><span class="tag" style="background:#1a2a1a;color:#aed581">9c8d7e6f</span></div></div>
+<div class="card"><div class="tex-wrap"><img src="assets/effects/projectiles/weapons_realistic/f1a2b3c4_impact.png" alt="毒刺防空导弹"></div><div class="info"><div class="name">毒刺防空导弹 <span style="color:#aed581">★v8.4新</span></div><div class="desc">MISSILE | 便携防空导弹命中</div><span class="tag" style="background:#1a2a1a;color:#aed581">f1a2b3c4</span></div></div>
+<div class="card"><div class="tex-wrap"><img src="assets/effects/projectiles/weapons_realistic/d11df42c_impact.png" alt="高射炮"></div><div class="info"><div class="name">23mm/30mm高射炮</div><div class="desc">FLAK | 高炮命中爆炸(近炸引信用)</div><span class="tag" style="background:#1a2a1a;color:#aed581">d11df42c</span></div></div>
+<div class="card"><div class="tex-wrap"><img src="assets/effects/projectiles/weapons_realistic/7755baff_impact.png" alt="电磁轨道炮"></div><div class="info"><div class="name">电磁轨道炮</div><div class="desc">RAIL | 电磁炮命中爆炸</div><span class="tag" style="background:#1a2a1a;color:#aed581">7755baff</span></div></div>
+<div class="card"><div class="tex-wrap"><img src="assets/effects/projectiles/weapons_realistic/weapon_artillery_impact.png" alt="通用兜底"></div><div class="info"><div class="name">通用兜底图 fallback</div><div class="desc">ALL | 无专属贴图时的fallback(炮射导弹等历史缺口)</div><span class="tag" style="background:#2a2a1a;color:#fff59d">通用</span></div></div>
+<div class="card"><div class="tex-wrap"><img src="assets/effects/projectiles/weapons_realistic/a1b2c3d4_impact.png" alt="守护者防空"></div><div class="info"><div class="name">守护者防空 <span style="color:#aed581">★v8.4新</span></div><div class="desc">MISSILE | 守护者Boss系列命中</div><span class="tag" style="background:#1a2a1a;color:#aed581">a1b2c3d4</span></div></div>
+</div>
+
+<h2>七、特殊伤害效果叠加</h2>
 <div class="grid">
 <div class="card"><div class="canvas-wrap"><canvas id="c_crit"></canvas></div><div class="info"><div class="num">#25</div><div class="name">暴击光环</div><div class="desc">金色双环脉动(46px扩张) + 辐射火花粒子(重力下落)</div><span class="tag" style="background:#2a2a0a;color:#ffd54f">CRIT</span></div></div>
 <div class="card"><div class="canvas-wrap"><canvas id="c_pierce"></canvas></div><div class="info"><div class="num">#26</div><div class="name">穿透光线</div><div class="desc">紫色穿甲光线76px长 | 变细淡出 + 金属碎片飞溅</div><span class="tag" style="background:#1a0a2a;color:#ce93d8">PIERCE</span></div></div>
@@ -624,6 +653,132 @@ anim('c_imp_missile',(ctx,t,w,h)=>{const c=t%1000;drawLayeredImpact(ctx,w/2,h/2,
 anim('c_imp_laser',(ctx,t,w,h)=>{const c=t%800;drawLayeredImpact(ctx,w/2,h/2,c,'#4DCFFF',false,-1)});
 anim('c_imp_omega',(ctx,t,w,h)=>{const c=t%950;drawLayeredImpact(ctx,w/2,h/2,c,'#6699FF',true,-1)});
 anim('c_imp_rail',(ctx,t,w,h)=>{const c=t%950;drawLayeredImpact(ctx,w/2,h/2,c,'#80E6FF',true,-1)});
+
+// ===== 3b. VFX VARIANT OVERLAYS (v8.4) =====
+
+// Cluster munition: main burst + 6 scattered bomblets
+anim('c_var_cluster',(ctx,t,w,h)=>{
+    const c=t%1300;
+    // Main explosion (base)
+    drawLayeredImpact(ctx,w/2,h/2,c,'#FF8C33',true,-1);
+    // 6 scattered bomblets (staggered)
+    for(let i=0;i<6;i++){
+        const ang=(Math.PI*2/6)*i+0.3*(i%2);
+        const dist=30+i*4;
+        const bx=w/2+Math.cos(ang)*dist;
+        const by=h/2+Math.sin(ang)*dist;
+        const bc=c-i*60;
+        if(bc>0&&bc<700){
+            drawLayeredImpact(ctx,bx,by,bc,'#FFB34D',false,-1);
+        }
+    }
+});
+
+// Thermobaric: huge shockwave + delayed secondary blast
+anim('c_var_thermo',(ctx,t,w,h)=>{
+    const c=t%1400;
+    const p=c/1400;
+    // Primary huge shockwave (130px equivalent scaled)
+    if(p<0.45){
+        const r=10+p*100;
+        const a=(1-p/0.45)*0.85;
+        ctx.globalAlpha=a;ctx.strokeStyle='#FF6420';ctx.shadowColor='#FF6420';ctx.shadowBlur=18;
+        ctx.lineWidth=4*(1-p/0.45)+1;
+        ctx.beginPath();ctx.arc(w/2,h/2,r,0,Math.PI*2);ctx.stroke();
+    }
+    // Secondary blast (delayed 0.15s)
+    if(p>0.11){
+        const sp=(p-0.11)/0.5;
+        if(sp<1){
+            drawLayeredImpact(ctx,w/2,h/2,sp*700,'#FF8C33',true,-1);
+        }
+    }
+    // Main base explosion
+    drawLayeredImpact(ctx,w/2,h/2,c,'#FF8C33',true,-1);
+    ctx.globalAlpha=1;ctx.shadowBlur=0;
+});
+
+// Proximity fuze: airburst flash + downward shrapnel cone
+anim('c_var_prox',(ctx,t,w,h)=>{
+    const c=t%1000;
+    const p=c/1000;
+    // Airburst flash ring (white, fast)
+    if(p<0.4){
+        const r=8+p*65;
+        const a=(1-p/0.4)*0.8;
+        ctx.globalAlpha=a;ctx.strokeStyle='#FFD99A';ctx.shadowColor='#FFD99A';ctx.shadowBlur=16;
+        ctx.lineWidth=3*(1-p/0.4)+0.5;
+        ctx.beginPath();ctx.arc(w/2,h/2-10,r,0,Math.PI*2);ctx.stroke();
+    }
+    // Downward shrapnel cone
+    if(p<0.5){
+        const sparks=[];
+        for(let i=0;i<12;i++){
+            const baseAng=Math.PI/2; // downward
+            const ang=baseAng+(i-5.5)*0.1; // 60deg cone
+            const dist=p*70;
+            sparks.push(new P().reset(w/2,h/2-10,Math.cos(ang)*30,Math.sin(ang)*30+50,1.8,
+                1,0.8,0.4,0.4,80,0.97,5,'circle'));
+        }
+        for(let i=0;i<sparks.length;i++)drawP(ctx,sparks[i]);
+    }
+    drawLayeredImpact(ctx,w/2,h/2,c,'#FFD99A',false,-1);
+    ctx.globalAlpha=1;ctx.shadowBlur=0;
+});
+
+// Guided shell: dual contracting concentric rings (lock indicator)
+anim('c_var_guided',(ctx,t,w,h)=>{
+    const c=t%800;
+    const p=c/800;
+    // Outer ring (cyan, fast contract)
+    if(p<0.7){
+        const r=50-p*60;
+        const a=(1-p/0.7)*0.85;
+        ctx.globalAlpha=a;ctx.strokeStyle='#4DE8FF';ctx.shadowColor='#4DE8FF';ctx.shadowBlur=14;
+        ctx.lineWidth=2.5*(1-p/0.7)+0.5;
+        ctx.beginPath();ctx.arc(w/2,h/2,Math.max(5,r),0,Math.PI*2);ctx.stroke();
+    }
+    // Inner ring (delayed 0.08s, smaller, faster)
+    if(p>0.1){
+        const ip=(p-0.1)/0.6;
+        if(ip<1){
+            const r2=30-ip*38;
+            const a2=(1-ip)*0.9;
+            ctx.globalAlpha=a2;ctx.strokeStyle='#99F2FF';ctx.shadowColor='#99F2FF';ctx.shadowBlur=12;
+            ctx.lineWidth=2*(1-ip)+0.5;
+            ctx.beginPath();ctx.arc(w/2,h/2,Math.max(3,r2),0,Math.PI*2);ctx.stroke();
+        }
+    }
+    // Center flash
+    if(p<0.15){
+        ctx.globalAlpha=(1-p/0.15)*0.7;ctx.fillStyle='#FFFFFF';ctx.shadowColor='#FFFFFF';ctx.shadowBlur=20;
+        ctx.beginPath();ctx.arc(w/2,h/2,10*(1-p/0.15),0,Math.PI*2);ctx.fill();
+    }
+    drawLayeredImpact(ctx,w/2,h/2,c,'#4DE8FF',false,-1);
+    ctx.globalAlpha=1;ctx.shadowBlur=0;
+});
+
+// Gun missile: blue-white trail sparks (distinct from standard orange-red)
+anim('c_var_gunmis',(ctx,t,w,h)=>{
+    const c=t%1100;
+    const p=c/1100;
+    // Blue-white spark burst (20 particles 360deg)
+    if(p<0.55){
+        const sparks=[];
+        for(let i=0;i<20;i++){
+            const ang=(Math.PI*2/20)*i+Math.random()*0.2;
+            const dist=p*55;
+            sparks.push(new P().reset(w/2+Math.cos(ang)*dist,h/2+Math.sin(ang)*dist,
+                Math.cos(ang)*20,Math.sin(ang)*20,1.6,
+                0.6,0.8,1,0.45,0,0.96,3,'circle'));
+        }
+        for(let i=0;i<sparks.length;i++)drawP(ctx,sparks[i]);
+    }
+    drawLayeredImpact(ctx,w/2,h/2,c,'#99CCFF',false,-1);
+    ctx.globalAlpha=1;ctx.shadowBlur=0;
+});
+
+// (c_var_sheet removed — 命中贴图层改用真实贴图展示，见第六节 <img>)
 
 // ===== 4. COMBAT KIND IMPACTS =====
 

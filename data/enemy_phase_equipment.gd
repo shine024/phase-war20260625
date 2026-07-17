@@ -2,22 +2,21 @@ extends RefCounted
 class_name EnemyPhaseEquipment
 
 ## 数据子模块预加载
+const PhaseInstruments = preload("res://data/phase_instruments.gd")
 const _EquipmentSpecials = preload("res://data/enemy_equipment_specials.gd")
 const _EquipmentArmorModules = preload("res://data/enemy_equipment_armor_modules.gd")
 const _EquipmentWeapons = preload("res://data/enemy_equipment_weapons.gd")
 
-const _INSTRUMENTS_JSON_PATH := "res://data/json/enemy_phase_instruments.json"
 const _PLATFORMS_JSON_PATH := "res://data/json/enemy_phase_platforms.json"
 const _WEAPONS_JSON_PATH := "res://data/json/enemy_phase_weapons.json"
 const _ENERGY_JSON_PATH := "res://data/json/enemy_phase_energy_cards.json"
 
-static var PHASE_INSTRUMENTS: Dictionary = _load_json_dict(_INSTRUMENTS_JSON_PATH, _EquipmentSpecials.LEGACY_PHASE_INSTRUMENTS)
+# v7.x: PHASE_INSTRUMENTS 移除（统一到 PhaseInstruments 池，get_phase_instrument 委托）
 static var WAR_PLATFORMS: Dictionary = _load_json_dict(_PLATFORMS_JSON_PATH, _EquipmentArmorModules.LEGACY_WAR_PLATFORMS)
 static var WAR_WEAPONS: Dictionary = _load_json_dict(_WEAPONS_JSON_PATH, _EquipmentWeapons.LEGACY_WAR_WEAPONS)
 static var ENERGY_CARDS: Dictionary = _load_json_dict(_ENERGY_JSON_PATH, _EquipmentSpecials.LEGACY_ENERGY_CARDS)
 
 ## 向后兼容：const 别名指向子模块同名 const
-const LEGACY_PHASE_INSTRUMENTS: Dictionary = _EquipmentSpecials.LEGACY_PHASE_INSTRUMENTS
 const LEGACY_WAR_PLATFORMS: Dictionary = _EquipmentArmorModules.LEGACY_WAR_PLATFORMS
 const LEGACY_WAR_WEAPONS: Dictionary = _EquipmentWeapons.LEGACY_WAR_WEAPONS
 const LEGACY_ENERGY_CARDS: Dictionary = _EquipmentSpecials.LEGACY_ENERGY_CARDS
@@ -184,24 +183,24 @@ static func _card_resource_from_phase_instrument(d: Dictionary, equipment_id: St
 	c.card_type = GC.CardType.COMBAT_UNIT
 	c.combat_kind = int(_PLATFORM_TO_COMBAT_KIND.get(11, 1))
 	c.energy_cost = 6.0 + float(d.get("level", 5)) * 0.35
-	c.type_line = "相位仪 — %s" % String(d.get("faction", ""))
-	var bs: Dictionary = d.get("base_stats", {}) as Dictionary
-	c.summary_line = "Lv.%d｜耐久 %d｜能量 %d" % [
-		int(d.get("level", 0)), int(bs.get("max_hp", 0)), int(bs.get("energy_capacity", 0))]
-	c.description = "由敌方相位师装备数据生成的相位仪蓝图（展示用）。"
-	#c.max_weapons = 0
+	c.type_line = "相位仪 — %s" % String(d.get("faction_id", d.get("faction", "")))
+	# v7.x: 统一池无 base_stats，展示用 star + level + special_traits 首条
+	var star: int = int(d.get("star", 1))
+	var traits: Array = d.get("special_traits", [])
+	var trait_txt: String = String(traits[0]) if not traits.is_empty() else ""
+	c.summary_line = "%d★｜Lv.%d｜%s" % [star, int(d.get("level", 0)), trait_txt]
+	c.description = "由统一相位仪池生成的相位仪蓝图（展示用）。"
 	c.era = 0
-	c.base_hp = float(bs.get("max_hp", 100.0))
+	c.base_hp = 100.0
 	c.base_range = 120.0
 	c.base_interval = 1.0
 	c.base_speed = 0.0
 	return c
 
 ## 获取相位仪数据
+## v7.x: 委托统一相位仪池（敌方 master 的 phase_instrument 现用 pi_ id）
 static func get_phase_instrument(instrument_id: String) -> Dictionary:
-	if PHASE_INSTRUMENTS.has(instrument_id):
-		return PHASE_INSTRUMENTS[instrument_id]
-	return {}
+	return PhaseInstruments.get_by_id(instrument_id)
 
 ## 获取平台数据
 static func get_war_platform(platform_id: String) -> Dictionary:
@@ -230,62 +229,5 @@ static func get_energy_card(card_id: String) -> Dictionary:
 		return ENERGY_CARDS[card_id]
 	return {}
 
-## 根据等级获取可用装备
-static func get_equipment_by_level(level: int) -> Dictionary:
-	var result = {
-		"phase_instruments": [],
-		"platforms": [],
-		"weapons": [],
-		"energy_cards": []
-	}
-
-	for instrument_id in PHASE_INSTRUMENTS:
-		var instrument = PHASE_INSTRUMENTS[instrument_id]
-		if instrument.level <= level + 5:  # 允许使用稍高等级的装备
-			result.phase_instruments.append(instrument_id)
-
-	for platform_id in WAR_PLATFORMS:
-		var platform = WAR_PLATFORMS[platform_id]
-		if platform.level <= level + 3:
-			result.platforms.append(platform_id)
-
-	for weapon_id in WAR_WEAPONS:
-		var weapon = WAR_WEAPONS[weapon_id]
-		if weapon.level <= level + 3:
-			result.weapons.append(weapon_id)
-
-	for card_id in ENERGY_CARDS:
-		var card = ENERGY_CARDS[card_id]
-		if card.level <= level + 2:
-			result.energy_cards.append(card_id)
-
-	return result
-
-## 根据势力获取装备
-static func get_equipment_by_faction(faction: String) -> Dictionary:
-	var result = {
-		"phase_instruments": [],
-		"platforms": [],
-		"weapons": [],
-		"energy_cards": []
-	}
-
-	var faction_prefix = faction.split("_")[0]
-
-	for instrument_id in PHASE_INSTRUMENTS:
-		if instrument_id.contains(faction_prefix):
-			result.phase_instruments.append(instrument_id)
-
-	for platform_id in WAR_PLATFORMS:
-		if platform_id.contains(faction_prefix):
-			result.platforms.append(platform_id)
-
-	for weapon_id in WAR_WEAPONS:
-		if weapon_id.contains(faction_prefix):
-			result.weapons.append(weapon_id)
-
-	for card_id in ENERGY_CARDS:
-		if card_id.contains(faction_prefix):
-			result.energy_cards.append(card_id)
-
-	return result
+# v7.x: get_equipment_by_level / get_equipment_by_faction 已移除
+# （死代码：0 调用方，且 PHASE_INSTRUMENTS 已统一到池）。需要时用 PhaseInstruments.get_all() 重建。

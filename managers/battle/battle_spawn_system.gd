@@ -740,6 +740,33 @@ func get_player_units_lost() -> int:
 func _current_battle_era(level: int) -> int:
 	return GC.get_era_for_level(level)
 
+# =========================================================================
+#  统一部署计数查询（供 AutoDeployController / AFKModeManager 使用）
+#  口径与 request_player_deploy() 的 live_count 检查完全一致，
+#  杜绝"is_player_slot_occupied 说有空位但 recount 说已满"的错位。
+# =========================================================================
+
+## 返回还能部署几张卡（max_units - live_count 的下限 0）。
+## 内部复用 get_max_deployable_units + recount_player_units_on_field，
+## 确保与 request_player_deploy 的判定逻辑 100% 一致。
+func get_remaining_deployable_count() -> int:
+	var max_units: int = GC.PLAYER_MAX_UNITS
+	if _phase_instrument != null and _phase_instrument.has_method("get_max_deployable_units"):
+		max_units = _phase_instrument.get_max_deployable_units()
+	if _card_grid_active:
+		var usable_slots: int = max(1, _CardGridSlotsPerSide - 1)
+		max_units = mini(max_units, usable_slots)
+	var _level_rules: Dictionary = _get_current_level_rules()
+	var _deploy_limit: int = int(_level_rules.get("deploy_limit", 0))
+	if _deploy_limit > 0:
+		max_units = mini(max_units, _deploy_limit)
+	var live_count: int = player_unit_count
+	if BattleManager != null and BattleManager.has_method("recount_player_units_on_field"):
+		live_count = BattleManager.recount_player_units_on_field()
+		player_unit_count = live_count  # 同步缓存
+	return max(0, max_units - live_count)
+
+
 func _has_alive_player_unit_from_card(card_id: String) -> bool:
 	if card_id.is_empty() or _player_units_node == null:
 		return false

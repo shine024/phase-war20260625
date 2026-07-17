@@ -307,9 +307,11 @@ func apply_phase_field_bonus_to_unit_stats(stats: UnitStats) -> void:
 	var pi_def: float = _get_property_value(cfg, "pi_def")
 	var pi_hp: float = _get_property_value(cfg, "pi_hp")
 	# 合计
-	var total_hp_mult: float = hp_bonus + pi_hp * 0.05  # pi_hp 每点+5% HP
-	var total_atk_mult: float = atk_bonus + pi_atk * 0.05  # pi_atk 每点+5% 攻击
-	var total_def_mult: float = def_bonus + pi_def * 0.05  # pi_def 每点+5% 防御
+	# v7.x: 修复 properties value 语义 —— value 已是百分比小数（pi_atk=0.06 → +6%），
+	# 直接用，不再 ×0.05（原 ×0.05 是遗留 bug，致展示与应用差 20 倍）。与敌方 driver 对齐。
+	var total_hp_mult: float = hp_bonus + pi_hp
+	var total_atk_mult: float = atk_bonus + pi_atk
+	var total_def_mult: float = def_bonus + pi_def
 
 	# v6.7: 乘上玩家相位师排名系数（星级越高，加成越强）
 	# 3★=1.0 基准（等于改动前），低星略降，高星最多 +25%
@@ -1104,6 +1106,14 @@ func get_all_instruments() -> Array[Dictionary]:
 		rcfg["properties"] = _ensure_properties_with_legacy_fallback(rcfg)
 		out.append(rcfg)
 	return out
+
+## 公开接口：按 id 取仪器配置（先查运行时掉落定义，再回退静态表）。
+## 返回 duplicate 副本，调用方可安全修改。
+func get_instrument_cfg(instrument_id: String) -> Dictionary:
+	var cfg: Dictionary = _resolve_instrument_cfg(instrument_id)
+	if cfg.is_empty():
+		return {}
+	return cfg.duplicate(true)
 
 func equip_instrument(instrument_id: String) -> bool:
 	var cfg: Dictionary = _resolve_instrument_cfg(instrument_id)

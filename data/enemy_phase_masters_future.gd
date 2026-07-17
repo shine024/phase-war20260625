@@ -58,7 +58,7 @@ const ERA_MASTERS: Array = [
 			}
 		],
 		"equipment": {
-			"phase_instrument": "void_walker_mk4",
+			"phase_instrument": "pi_void_04",
 			"level": 28,
 			"platforms": ["void_stealth_expert", "void_mage_expert"],
 			"weapons": ["void_lance_expert", "entropy_caster_expert"],
@@ -132,7 +132,7 @@ const ERA_MASTERS: Array = [
 			}
 		],
 		"equipment": {
-			"phase_instrument": "steel_guardian_god",
+			"phase_instrument": "pi_steel_05",
 			"level": 28,
 			"platforms": ["steel_fortress_expert", "steel_titan_expert"],
 			"weapons": ["steel_gatling_expert", "steel_artillery_expert"],
@@ -204,7 +204,7 @@ const ERA_MASTERS: Array = [
 			}
 		],
 		"equipment": {
-			"phase_instrument": "flame_destroyer_god",
+			"phase_instrument": "pi_flame_05",
 			"level": 29,
 			"platforms": ["flame_raider_expert", "flame_siege_expert"],
 			"weapons": ["flame_thrower_expert", "plasma_cannon_expert"],
@@ -276,7 +276,7 @@ const ERA_MASTERS: Array = [
 			}
 		],
 		"equipment": {
-			"phase_instrument": "thunder_storm_god",
+			"phase_instrument": "pi_thunder_05",
 			"level": 29,
 			"platforms": ["thunter_striker_expert", "thunter_sniper_expert"],
 			"weapons": ["tesla_coil_expert", "railgun_expert"],
@@ -348,7 +348,7 @@ const ERA_MASTERS: Array = [
 			}
 		],
 		"equipment": {
-			"phase_instrument": "void_walker_god",
+			"phase_instrument": "pi_void_05",
 			"level": 30,
 			"platforms": ["void_stealth_expert", "void_mage_expert"],
 			"weapons": ["void_lance_expert", "entropy_caster_expert"],
@@ -422,7 +422,7 @@ const ERA_MASTERS: Array = [
 			}
 		],
 		"equipment": {
-			"phase_instrument": "omega_instrument",
+			"phase_instrument": "pi_omega_01",
 			"level": 30,
 			"platforms": ["steel_titan_expert", "flame_siege_expert"],
 			"weapons": ["railgun_expert", "plasma_cannon_expert"],

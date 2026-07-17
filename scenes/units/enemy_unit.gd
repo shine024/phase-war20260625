@@ -1135,6 +1135,8 @@ func _do_attack() -> void:
 	var pre_calc := false
 	# v7.x: 记录槽位 weapon_type，用于子弹 VFX 弹道差异化（按目标类型）
 	var _slot_wt: int = -1
+	# v8.4: 武器类改造专属视觉标识（从 weapon_resource._mod_effects 读出，曲射 batch / 独立 bullet 共用）
+	var _vfx_variant: String = ""
 	if stats != null:
 		var target_stats = target.get("stats") as UnitStats
 		var target_kind: int = target_stats.combat_kind if target_stats != null else 0
@@ -1143,6 +1145,8 @@ func _do_attack() -> void:
 			wt = weapon.weapon_type
 			_slot_wt = int(weapon.weapon_type)  # 槽位弹道类型（用于子弹 VFX）
 			weapon_name_str = weapon.display_name
+			if weapon is WeaponResource:
+				_vfx_variant = String(weapon._mod_effects.get("vfx_variant", ""))
 			dmg_out = AttackCalculator.calculate_damage_with_weapon(
 				stats, target_stats, dist_t, weapon, 0, [], is_card_grid, is_card_grid
 			)
@@ -1162,7 +1166,7 @@ func _do_attack() -> void:
 	if GC.is_indirect_weapon_type(wt):
 		if BattleManager and is_instance_valid(BattleManager.enemy_indirect_batch):
 			if BattleManager.enemy_indirect_batch.has_method("fire"):
-				BattleManager.enemy_indirect_batch.fire(global_position, target, dmg_out, wt, self, stats, miss, weapon_name_str)
+				BattleManager.enemy_indirect_batch.fire(global_position, target, dmg_out, wt, self, stats, miss, weapon_name_str, _vfx_variant)
 				if _presentation_card_grid:
 					_play_card_attack_nudge()
 				return
@@ -1184,7 +1188,7 @@ func _do_attack() -> void:
 			_vfx_wt = _slot_wt
 		elif stats and stats.legacy_weapon_type > 0:
 			_vfx_wt = stats.legacy_weapon_type
-		bullet.setup(target, pellet_dmg, false, _vfx_wt, self, stats, miss, weapon_name_str, pre_calc)
+		bullet.setup(target, pellet_dmg, false, _vfx_wt, self, stats, miss, weapon_name_str, pre_calc, _vfx_variant)
 		var current_parent: Node = bullet.get_parent()
 		if current_parent != root_2d:
 			if current_parent != null:

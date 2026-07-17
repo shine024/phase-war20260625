@@ -27,6 +27,10 @@ var _current_company_id: String = ""
 var _feedback_tween: Tween
 ## 购买防抖锁：购买流程（含 0.4s 反馈动画）期间禁止重复触发，避免快速连点导致多次 emit 多发卡。
 var _buy_in_progress: bool = false
+## 打开分帧单飞守卫：避免打开刷新管线重入（仿 backpack_presenter 模式）
+var _open_refresh_inflight: bool = false
+## 资源变动信号去重：购买流程自身会刷新 items，期间跳过 resources_changed 回弹触发的全量重建
+var _suppress_resources_refresh: bool = false
 
 ## 缓存样式
 var _row_style_normal: StyleBoxFlat
@@ -41,10 +45,33 @@ func _ready() -> void:
 	close_btn.pressed.connect(_on_close)
 	_build_company_tabs()
 	_refresh_balance()
-	_refresh_items()
+	# _ready 只做轻量初始化（余额 + 公司 tab），商品列表重建交给 on_overlay_opened 拆帧，
+	# 避免首次实例化时 40+ 节点全挤一帧（LazyLoader 实例化即 visible 时由 _run_open_refresh_pipeline 兜底）。
 	# 监听资源变动，实时刷新余额和购买按钮状态
 	if BasicResourceManager and BasicResourceManager.has_signal("resources_changed"):
 		BasicResourceManager.resources_changed.connect(_on_resources_changed)
+
+## 外部打开商店面板时调用：将刷新拆帧，先保证余额可见，再补齐商品列表（仿 backpack_presenter 模式）
+func on_overlay_opened() -> void:
+	if _open_refresh_inflight:
+		return
+	_open_refresh_inflight = true
+	call_deferred("_run_open_refresh_pipeline")
+
+## 打开刷新管线：余额先刷（轻量），商品列表延后一帧（重活），降低首开尖峰
+func _run_open_refresh_pipeline() -> void:
+	if not is_visible_in_tree():
+		_open_refresh_inflight = false
+		return
+	# Step 1: 余额立即刷新，让用户先看到资源数字
+	_refresh_balance()
+	# Step 2: 商品列表延后一帧，避开打开同帧的实例化尖峰
+	await get_tree().process_frame
+	if not is_visible_in_tree():
+		_open_refresh_inflight = false
+		return
+	_refresh_items()
+	_open_refresh_inflight = false
 
 func _init_cached_styles() -> void:
 	_row_style_normal = _make_style_box(
@@ -72,7 +99,11 @@ func _on_close() -> void:
 	closed.emit()
 
 func _on_resources_changed() -> void:
+	# 余额轻量，保持即时刷新（购买后用户立即看到扣减后的数字）
 	_refresh_balance()
+	# 购买流程自身会统一刷新 items，期间跳过回弹触发的全量重建（一次购买从 2-3 次降到 1 次）
+	if _suppress_resources_refresh:
+		return
 	_refresh_items()
 
 func _build_company_tabs() -> void:
@@ -373,7 +404,7 @@ func _on_buy_rune(rune_id: String, rep_cost: int, row_node: Control) -> void:
 	# 扣除声望（仅在符文发放成功后）
 	if fsm.has_method("add_faction_reputation"):
 		fsm.add_faction_reputation(_current_company_id, -rep_cost)
-	# 刷新
+	# 刷新（add_faction_reputation 不触发 resources_changed，无需 suppress 守卫）
 	_flash_row(row_node, Color(0.2, 0.8, 0.3, 0.3))
 	_refresh_items()
 
@@ -461,7 +492,10 @@ func _on_buy_intel_item(item_type: String, price: int, row_node: Control) -> voi
 	if current_nano < price:
 		_flash_row(row_node, Color(1, 0.3, 0.3, 0.6))
 		return
+	# 屏蔽 add_resource 触发的 resources_changed 回弹（购买流程自身统一刷一次）
+	_suppress_resources_refresh = true
 	BasicResourceManager.add_resource(BasicResources.ID_NANO_MATERIALS, -price)
+	_suppress_resources_refresh = false
 	bag.add_item(item_type, 1)
 	_flash_row(row_node, Color(0.3, 0.8, 0.5, 0.6))
 	_refresh_balance()
@@ -710,11 +744,14 @@ func _on_buy_pressed(card_id: String, card_count: int, price_nano: int, row_node
 		_flash_row(row_node, Color(1, 0.3, 0.3, 0.6))
 		return
 	_buy_in_progress = true
+	# 屏蔽 add_resource 触发的 resources_changed 回弹（购买流程末尾统一刷一次）
+	_suppress_resources_refresh = true
 	# 扣除资源并直接发放卡牌到背包
 	BasicResourceManager.add_resource(BasicResources.ID_NANO_MATERIALS, -price_nano)
 	if card_id.begins_with("permit_"):
 		BasicResourceManager.add_resource(card_id, maxi(1, card_count))
-	else:
+	_suppress_resources_refresh = false
+	if not card_id.begins_with("permit_"):
 		var template_card: CardResource = DefaultCards.get_card_by_id(card_id)
 		if template_card == null:
 			template_card = null
@@ -738,11 +775,11 @@ func _on_buy_pressed(card_id: String, card_count: int, price_nano: int, row_node
 	# 购买成功闪烁绿色
 	_flash_row(row_node, Color(0.3, 0.9, 0.5, 0.6))
 	_refresh_balance()
-	# 延迟刷新，让购买反馈动画先完成
+	# 延迟刷新，让购买反馈动画先完成（call_deferred 避免挤在反馈动画同帧）
 	await get_tree().create_timer(0.4).timeout
 	_buy_in_progress = false
 	if is_instance_valid(row_node):
-		_refresh_items()
+		call_deferred("_refresh_items")
 
 func _flash_row(row_node: Control, flash_color: Color) -> void:
 	if not is_instance_valid(row_node):
@@ -757,7 +794,10 @@ func _on_buy_instrument_pressed(instrument_id: String, row_node: Control) -> voi
 	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
 	if fsm == null or not fsm.has_method("buy_instrument"):
 		return
+	# 屏蔽 buy_instrument 内部 add_resource 触发的 resources_changed 回弹
+	_suppress_resources_refresh = true
 	var res: Dictionary = fsm.buy_instrument(_current_company_id, instrument_id)
+	_suppress_resources_refresh = false
 	if bool(res.get("ok", false)):
 		var qm2 = get_node_or_null("/root/QuestManager")
 		if qm2 and qm2.has_method("notify_item_bought"):
@@ -768,4 +808,4 @@ func _on_buy_instrument_pressed(instrument_id: String, row_node: Control) -> voi
 	_refresh_balance()
 	await get_tree().create_timer(0.35).timeout
 	if is_instance_valid(row_node):
-		_refresh_items()
+		call_deferred("_refresh_items")

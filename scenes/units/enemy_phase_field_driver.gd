@@ -172,14 +172,15 @@ func setup(master_config: Dictionary) -> void:
 	# v7.x: 缓存敌方相位仪的主动能力（供 EnemyPhaseInstrumentAbilities 读取）
 	_enemy_active_ability = _read_enemy_active_ability()
 	_unit_limit = int(_master_stats.get("unit_limit", 5))
-	# v7.x: 相位仪卡槽数(unit_capacity)限制产兵数——"出兵x相位仪，卡槽数y成为限制"。
-	# 相位仪 capacity 按稀有度梯度（mk1/common=3, mk2/uncommon=4, mk3/rare=5, mk4·god/mythic=6）。
+	# v7.x: 相位仪战斗卡槽数限制产兵数——"出兵x相位仪，绿槽数y成为限制"。
+	# v7.x 统一池：读 slot_counts.green（玩家同款 schema），按星级梯度 1~6（见 _STAR_LAYOUT）。
 	# 与 stats.unit_limit 取最小，让低配相位师产兵数更少（战斗卡可高级但数目受限）。
-	# 缺省 unit_capacity=0 时不约束（旧相位仪无此字段→行为不变）。
+	# 缺省（无 slot_counts / green）时不约束：_cap 回退到 _unit_limit → mini 不改变值。
 	var _inst_id_for_cap: String = String(_equipment.get("phase_instrument", ""))
 	if not _inst_id_for_cap.is_empty():
 		var _inst_cfg_for_cap: Dictionary = EnemyPhaseEquipment.get_phase_instrument(_inst_id_for_cap)
-		var _cap: int = int(_inst_cfg_for_cap.get("unit_capacity", 0))
+		var _sc: Dictionary = _inst_cfg_for_cap.get("slot_counts", {})
+		var _cap: int = int(_sc.get("green", _unit_limit))
 		if _cap > 0:
 			_unit_limit = mini(_unit_limit, _cap)
 	# 格子战场敌方仅 6 个可用槽位（SLOT_COUNT - 1）。数据表 unit_limit 可达 7~15，
@@ -1089,9 +1090,9 @@ func _apply_sequence_entry_bonus(stats: UnitStats, entry_type: String) -> void:
 			_sync_enemy_weapon_slot_damage(stats, 1.50)
 
 
-## v6.14: 相位师相位仪加成（接入 v6.14 补全的 atk_bonus/hp_bonus/def_bonus 数据）。
-## 与 phase_instrument_manager._get_enemy_phase_instrument_bonus 同款逻辑（×0.05 作百分比），
-## 直接在 driver 内读数据，避免改 phase_instrument_manager 的私有方法可见性。
+## v6.14/v7.x: 相位师相位仪加成（读统一池 properties 数组 pi_atk/pi_def/pi_hp）。
+## 统一池 properties value 已是百分比小数（0.15 = +15%，见 PhaseInstruments.build_property_display），
+## 直接用不再 ×0.05。直接在 driver 内读数据，避免改 phase_instrument_manager 的私有方法可见性。
 func _apply_enemy_phase_instrument_bonus(stats: UnitStats) -> void:
 	var instrument_id: String = String(_equipment.get("phase_instrument", ""))
 	if instrument_id.is_empty():
@@ -1099,9 +1100,16 @@ func _apply_enemy_phase_instrument_bonus(stats: UnitStats) -> void:
 	var cfg: Dictionary = EnemyPhaseEquipment.get_phase_instrument(instrument_id)
 	if cfg.is_empty():
 		return
-	var atk_pct: float = float(cfg.get("atk_bonus", 0.0)) * 0.05
-	var hp_pct: float = float(cfg.get("hp_bonus", 0.0)) * 0.05
-	var def_pct: float = float(cfg.get("def_bonus", 0.0)) * 0.05
+	# v7.x: 读统一池 properties（pi_atk/pi_def/pi_hp），value 已是百分比小数
+	var props: Array = cfg.get("properties", [])
+	var atk_pct: float = 0.0
+	var def_pct: float = 0.0
+	var hp_pct: float = 0.0
+	for p in props:
+		match String(p.get("id", "")):
+			"pi_atk": atk_pct = float(p.get("value", 0.0))
+			"pi_def": def_pct = float(p.get("value", 0.0))
+			"pi_hp":  hp_pct  = float(p.get("value", 0.0))
 	if atk_pct > 0.0:
 		stats.attack_light *= (1.0 + atk_pct)
 		stats.attack_armor *= (1.0 + atk_pct)

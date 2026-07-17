@@ -797,6 +797,11 @@ static func apply_to_weapon_slot(weapon: WeaponResource, modifications: Array, s
 				# v6.5: 武器类改造改变该槽位的武器类型（影响弹道和命中效果）
 				"slot_weapon_type":
 					result.weapon_type = int(effect_value)
+				# v8.4: 武器类改造的专属视觉变体标识（cluster/thermobaric/proximity/guided/gun_missile）
+				# 存入 _mod_effects，开火时由 construct_unit_ai/enemy_unit 读出透传给 bullet/batch。
+				# （不加此分支也会被下方 _ 默认分支隐式写入，此处显式声明便于维护。）
+				"vfx_variant":
+					result._mod_effects["vfx_variant"] = String(effect_value)
 				_:
 					# 其他特殊效果存储到武器 _mod_effects（已在 WeaponResource 声明，clone 时复制）
 					result._mod_effects[effect_key] = effect_value

@@ -69,7 +69,7 @@ const DATA: Dictionary = {
 		slot_type = "fuze", conflict_group = "fuze",
 		# v7.x: per-slot 弹道——对空槽改 FLAK 高炮（近炸空爆）
 		condition_slot = 2,
-		effects = {accuracy_bonus = 0.40, splash_radius = 0.30, slot_weapon_type = 7},  # v7.x: 对空槽 FLAK,
+		effects = {accuracy_bonus = 0.40, splash_radius = 0.30, slot_weapon_type = 7, vfx_variant = "proximity"},  # v7.x: 对空槽 FLAK + v8.4 近炸空爆专属视觉,
 		unlock_conditions = {required_level = 5}
 	},
 	"aa_06_laser" = {

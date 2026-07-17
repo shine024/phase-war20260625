@@ -482,7 +482,7 @@ func _on_battle_ended(player_won: bool) -> void:
 					sm.set_story_flag(StoryFlags.GUARDIAN_20_ATTEMPT_2, true)
 				_:
 					sm.set_story_flag("force_defeat_" + _force_defeat_reason, true)
-				clear_force_defeat_state()
+			clear_force_defeat_state()
 	# v6.6(剧情): 清理最终战标记（防跨战斗残留）
 	clear_final_battle_state()
 

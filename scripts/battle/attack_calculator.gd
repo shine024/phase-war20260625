@@ -315,7 +315,7 @@ static func _get_rune_penetration_ratio(attacker_stats: UnitStats) -> float:
 ## v6.6: 获取相位仪直射穿透能力的穿透比例（piercing_shot）
 ## 从 PhaseInstrumentAbilities 静态查询当前激活能力
 static func _get_instrument_piercing_ratio(_attacker_stats: UnitStats) -> float:
-	var ability: Dictionary = PhaseInstrumentAbilities.get_active_ability()
+	var ability: Dictionary = PhaseInstrumentAbilities.get_active_ability(PhaseInstrumentAbilities.Owner.PLAYER)
 	if ability.is_empty() or String(ability.get("id", "")) != "piercing_shot":
 		return 0.0
 	var params: Dictionary = ability.get("params", {})

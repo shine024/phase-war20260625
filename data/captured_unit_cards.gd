@@ -43,8 +43,28 @@ static func register_into_default_cards_cache() -> void:
 		# 写入 DefaultCards 缓存（受控入口：register_dynamic_card 同步更新 lookup + all_cards）
 		if DefaultCards and DefaultCards.has_method("register_dynamic_card"):
 			DefaultCards.register_dynamic_card(card)
+
+	# v7.x：注册精英/Boss 特色掉落卡（enemy_only:true，不进 create_all 的 player_card_entries
+	# 过滤，需显式注册才能被 DefaultCards.get_card_by_id 查到、让 grant_dropped_cards_by_id
+	# 正常发放）。时序：本函数由 _ensure_manifest_merged() 同步调用，在掉落查询之前完成注册。
+	for sid in SPECIAL_DROP_CARD_IDS:
+		var sc: CardResource = UnifiedCardTable.build_card_resource(sid)
+		if sc != null and DefaultCards and DefaultCards.has_method("register_dynamic_card"):
+			DefaultCards.register_dynamic_card(sc)
 	_cache_built = true
 	_building = false
+
+
+## 精英/Boss 特色掉落卡（enemy_only，击败精英/Boss 获得，绑定掉落敌人的时代/兵种）
+const SPECIAL_DROP_CARD_IDS: Array[String] = [
+	"drop_smg_mk2",              # ww1_inf_storm_e（暴风突击队·精锐）
+	"drop_phase_lance",          # ww2_inf_para_e（伞兵精英）
+	"drop_railgun",              # cold_inf_spetsnaz_e（特种部队）
+	"drop_mega_beam_cannon",     # cold_boss_mig / mod_boss_command / fut_inf_spectre_e
+	"drop_thunder_field",        # mod_inf_delta_e（三角洲部队）
+	"drop_overclock_matrix",     # mod_air_apache_e（阿帕奇直升机）
+	"drop_mega_particle_cannon", # fut_arm_colossus_e / fut_boss_nexus
+]
 
 
 static func _build_captured_card(

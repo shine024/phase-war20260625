@@ -9,6 +9,10 @@ const WeaponVfxMapping: GDScript = preload("res://data/weapon_vfx_mapping.gd")
 const VfxFactory = preload("res://scripts/battle/vfx_impact_factory.gd")
 
 const TEX_DIR := "res://assets/effects/projectiles/weapons_realistic/"
+## v8.4: 通用命中贴图兜底——仓库现有但此前零引用的通用爆炸贴图。
+## 当武器 display_name 不在 WEAPON_ID_MAP（如"炮射导弹"/"萨姆-7防空导弹"/未来单位）时，
+## fallback 到此贴图，保证所有重型爆炸武器的命中贴图层都能生效（而非回退纯粒子）。
+const FALLBACK_IMPACT_TEX := preload(TEX_DIR + "weapon_artillery_impact.png")
 
 ## 旧 WeaponType 枚举 → 默认贴图（兼容 v3 旧武器 ID）
 ## v6.1 新枚举映射：INDIRECT(1) -> 曲射弹道, AERIAL(2) -> 空射导弹
@@ -35,22 +39,10 @@ const PROJ_TEX_NEW: Dictionary = {
 	2: preload(TEX_DIR + "weapon_missile_projectile.png"),   # AERIAL -> 空射导弹
 }
 
-# ── 命中特效粒子颜色配置（替代贴图） ──
-# 按 weapon_type 分类的粒子主色，命中时通过 color_ramp 渐变
-const IMPACT_COLOR_BY_WT: Dictionary = {
-	0: Color(0.95, 0.92, 0.5, 1.0),   # DIRECT/SMG  黄白火花
-	4: Color(0.95, 0.92, 0.5, 1.0),   # PISTOL      同 SMG
-	5: Color(1.0, 0.7, 0.3, 1.0),     # SHOTGUN     橙
-	6: Color(1.0, 0.95, 0.6, 1.0),    # SNIPER      亮黄
-	3: Color(1.0, 0.55, 0.2, 1.0),    # ROCKET      橙红
-	7: Color(1.0, 0.55, 0.2, 1.0),    # FLAK        同 ROCKET
-	9: Color(1.0, 0.45, 0.15, 1.0),   # MISSILE     深橙
-	1: Color(1.0, 0.5, 0.15, 1.0),    # INDIRECT    曲射爆炸
-	2: Color(1.0, 0.4, 0.1, 1.0),     # AERIAL      空射导弹
-	8: Color(0.3, 0.8, 1.0, 1.0),     # LASER       蓝
-	10: Color(0.4, 0.6, 1.0, 1.0),    # OMEGA       能量蓝
-	11: Color(0.5, 0.9, 1.0, 1.0),    # RAIL        电磁青
-}
+# ── 命中特效粒子颜色配置 ──
+# v8.4: IMPACT_COLOR_BY_WT 已废弃（与 VfxImpactFactory.COLOR_BY_WT 重复定义）。
+# 命中粒子主色统一由 VfxImpactFactory._impact_color() 提供（含 combat_kind 二次调色）。
+# IMPACT_TINT_BY_KIND / IMPACT_SHAKE_BY_KIND 仍保留（工厂未实现震动表，这里仍是真身）。
 
 ## v7.x: 按目标 combat_kind 的命中修饰（色调/震动强度）
 ## v8.0: 缩放倍率已废弃（粒子系统无 scale 概念），仅保留色调和震动
@@ -220,16 +212,16 @@ static func impact_texture_by_name(weapon_name: String) -> Texture2D:
 	if _impact_name_cache.has(weapon_name):
 		return _impact_name_cache[weapon_name]
 	var sid: String = WeaponVfxMapping.get_weapon_safe_id(weapon_name)
-	if sid.is_empty():
-		_impact_name_cache[weapon_name] = null
-		return null
-	var path: String = TEX_DIR + sid + "_impact.png"
-	if ResourceLoader.exists(path):
-		var tex: Texture2D = load(path) as Texture2D
-		_impact_name_cache[weapon_name] = tex
-		return tex
-	_impact_name_cache[weapon_name] = null
-	return null
+	if not sid.is_empty():
+		var path: String = TEX_DIR + sid + "_impact.png"
+		if ResourceLoader.exists(path):
+			var tex: Texture2D = load(path) as Texture2D
+			_impact_name_cache[weapon_name] = tex
+			return tex
+	# v8.4: 无专属命中贴图（display_name 不在映射 / 映射了但贴图缺失）→ fallback 通用爆炸贴图
+	# 保证所有重型爆炸武器的命中贴图层都能生效（炮射导弹/萨姆-7/毒刺/未来单位等）
+	_impact_name_cache[weapon_name] = FALLBACK_IMPACT_TEX
+	return FALLBACK_IMPACT_TEX
 
 
 static func proj_scale_by_name(weapon_name: String) -> float:
@@ -328,13 +320,26 @@ static func spawn_impact(parent: Node2D, world_pos: Vector2, weapon_type: int, i
 ## v8.1: 委托 VfxImpactFactory 三层组合特效（签名不变，所有调用方零改动）
 ## combat_kind = -1 时走原逻辑；>=0 时叠加 IMPACT_TINT_BY_KIND 色调
 ## opts（v8.1 新增，可选）：{"is_crit":bool, "is_pierce":bool, "direction":Vector2}
-static func spawn_impact_with_kind(parent: Node2D, world_pos: Vector2, weapon_type: int, is_player_shot: bool, target_combat_kind: int = -1, opts: Dictionary = {}) -> void:
+##        v8.4 新增可选："vfx_variant":String（武器类改造专属视觉标识）
+## weapon_name（v8.4 新增，可选）：武器显示名，用于查命中贴图（仅重型爆炸武器 3/7/9 触发贴图层）
+static func spawn_impact_with_kind(parent: Node2D, world_pos: Vector2, weapon_type: int, is_player_shot: bool, target_combat_kind: int = -1, opts: Dictionary = {}, weapon_name: String = "") -> void:
 	if parent == null:
 		return
-	# v8.1: 委托 VfxImpactFactory 三层组合特效
+	# v8.4: 重型爆炸武器（ROCKET=3/FLAK=7/MISSILE=9）——有专属命中贴图时叠加贴图层
+	# 仅这三类触发贴图查找（符合"仅重型爆炸武器"决策），轻武器直接走粒子省查表
+	if weapon_name != "" and weapon_type in [3, 7, 9]:
+		var impact_tex: Texture2D = impact_texture_by_name(weapon_name)
+		if impact_tex != null:
+			var peak_scale: float = impact_scale_by_name(weapon_name) * 2.0  # 贴图爆炸放大显示
+			VfxFactory.spawn_impact_sprite(parent, world_pos, impact_tex, peak_scale, 0.45)
+	# v8.1: 委托 VfxImpactFactory 三层组合特效（粒子层，与贴图层叠加）
 	# 注：SMG(0)/PISTOL(4) 的跳过守卫仍在 bullet._spawn_tex_impact_at 维护；
 	# batch 路径（轻武器密集命中）不跳过——工厂配方表对轻武器用小快特效，命中反馈必要。
 	VfxFactory.spawn_layered_impact(parent, world_pos, weapon_type, is_player_shot, target_combat_kind, opts)
+	# v8.4: 武器类改造专属视觉——在基础特效之上叠加变体独有特征
+	var _variant: String = String(opts.get("vfx_variant", ""))
+	if not _variant.is_empty():
+		VfxFactory.spawn_variant_overlay(parent, world_pos, weapon_type, _variant, is_player_shot)
 
 ## v7.x: 按 combat_kind 返回屏幕震动参数 (幅度, 时长)，无匹配返回 Vector2.ZERO
 static func impact_shake_for_kind(target_combat_kind: int) -> Vector2:

@@ -1,7 +1,8 @@
 extends Node
 ## 音效：按名称播放，资源缺失时静默跳过
-## 可放置 res://assets/sfx/button.ogg, hit.ogg, cast.ogg, win.ogg, lose.ogg
-## 扩展音效: blueprint_unlock.ogg, enhance.ogg
+## 可放置 res://assets/sfx/<name>.ogg（或 .wav），缺失时用 sound_generator 合成兜底
+## 已接入音效见 SFX_NAMES；BGM/背景音乐尚未实装（无 MusicPlayer）。
+## 音效事件订阅见 _ready 末尾 connect 块。
 
 const SoundGeneratorScript = preload("res://managers/sound_generator.gd")
 
@@ -17,7 +18,13 @@ const SFX_NAMES: Array[String] = [
 	# v8.3: 按武器类型（WeaponTypeLegacy）的攻击/命中音效
 	"gun_smg", "gun_rifle", "gun_mg", "rocket_launch", "gun_pistol",
 	"gun_shotgun", "gun_sniper", "flak_fire", "laser_fire", "missile_hum",
-	"omega_cannon", "rail_cannon", "impact_generic"
+	"omega_cannon", "rail_cannon", "impact_generic",
+	# 战斗节奏/养成事件音效（多数复用既有音色，音频文件可后补）
+	"cancel",           # 失败/取消（强化失败、合成失败、错误操作回退）
+	"wave_start",       # 新波次开始
+	"boss_warn",        # BOSS 波/相位师登场警告
+	"master_appear",    # 相位师登场
+	"base_destroy",     # 基地（相位场驱动器）被摧毁
 ]
 const BUS_NAME: String = "Master"
 
@@ -72,6 +79,35 @@ func _ready() -> void:
 		if SignalBus.has_signal("play_sound"):
 			if not SignalBus.play_sound.is_connected(play_sfx):
 				SignalBus.play_sound.connect(play_sfx)
+		# ── 战斗节奏音效 ──
+		if SignalBus.has_signal("wave_spawned") and not SignalBus.wave_spawned.is_connected(_on_wave_spawned):
+			SignalBus.wave_spawned.connect(_on_wave_spawned)
+		if SignalBus.has_signal("boss_wave_started") and not SignalBus.boss_wave_started.is_connected(_on_boss_wave_started):
+			SignalBus.boss_wave_started.connect(_on_boss_wave_started)
+		if SignalBus.has_signal("phase_master_appeared") and not SignalBus.phase_master_appeared.is_connected(_on_phase_master_appeared):
+			SignalBus.phase_master_appeared.connect(_on_phase_master_appeared)
+		if SignalBus.has_signal("phase_driver_destroyed") and not SignalBus.phase_driver_destroyed.is_connected(_on_phase_driver_destroyed):
+			SignalBus.phase_driver_destroyed.connect(_on_phase_driver_destroyed)
+		if SignalBus.has_signal("player_deploy_failed") and not SignalBus.player_deploy_failed.is_connected(_on_player_deploy_failed):
+			SignalBus.player_deploy_failed.connect(_on_player_deploy_failed)
+		if SignalBus.has_signal("energy_insufficient") and not SignalBus.energy_insufficient.is_connected(_on_energy_insufficient):
+			SignalBus.energy_insufficient.connect(_on_energy_insufficient)
+		# ── 养成事件音效（复用既有音色） ──
+		if SignalBus.has_signal("synthesis_completed") and not SignalBus.synthesis_completed.is_connected(_on_synthesis_completed):
+			SignalBus.synthesis_completed.connect(_on_synthesis_completed)
+		if SignalBus.has_signal("synthesis_failed") and not SignalBus.synthesis_failed.is_connected(_on_synthesis_failed):
+			SignalBus.synthesis_failed.connect(_on_synthesis_failed)
+		if SignalBus.has_signal("rune_acquired") and not SignalBus.rune_acquired.is_connected(_on_rune_acquired):
+			SignalBus.rune_acquired.connect(_on_rune_acquired)
+		if SignalBus.has_signal("faction_level_up") and not SignalBus.faction_level_up.is_connected(_on_faction_level_up):
+			SignalBus.faction_level_up.connect(_on_faction_level_up)
+		if SignalBus.has_signal("milestone_reached") and not SignalBus.milestone_reached.is_connected(_on_milestone_reached):
+			SignalBus.milestone_reached.connect(_on_milestone_reached)
+		if SignalBus.has_signal("phase_field_level_up") and not SignalBus.phase_field_level_up.is_connected(_on_phase_field_level_up):
+			SignalBus.phase_field_level_up.connect(_on_phase_field_level_up)
+		# v7.x 修复: CardEnhancementManager.enhancement_completed 此前零订阅 + handler 签名错配（Dictionary vs String）。
+		# 延迟到首次强化时连接（cem 是 lazy-load，启动时不一定就绪）。
+		_connect_enhancement_signal()
 
 ## 播放音效
 ## v8.3: 增加 volume（0.0~1.0，线性→db）和 pitch（0.5~2.0，音高倍率）参数（默认值保证旧调用零变化）
@@ -164,8 +200,20 @@ func _on_battle_ended(player_won: bool) -> void:
 func _on_blueprint_unlocked(_card_id: String) -> void:
 	play_sfx("blueprint_unlock")
 
-func _on_enhancement_completed(success: bool, _card_id: String, _new_stats: Dictionary, _message: String) -> void:
+# v7.x 修复: 签名对齐 CardEnhancementManager.enhancement_completed(success, card_id, action, message)。
+# 原声明第3参为 Dictionary（错配 String action），即使连接也会运行时报错；且从未 connect（死代码）。
+# 由 _connect_enhancement_signal() 延迟连接（cem 为 lazy-load）。
+func _on_enhancement_completed(success: bool, _card_id: String, _action: String, _message: String) -> void:
 	play_sfx("enhance" if success else "cancel")
+
+## 延迟连接 CardEnhancementManager.enhancement_completed（cem lazy-load，启动时不一定就绪）。
+func _connect_enhancement_signal() -> void:
+	# AudioManager 自身是 Node，用绝对路径直接访问 autoload 节点（get_node_or_null 是 Node 方法，非 SceneTree）。
+	var cem: Node = get_node_or_null("/root/CardEnhancementManager")
+	if cem == null:
+		return  # lazy-load 未就绪，下次强化时由调用方重试；此处不阻塞
+	if cem.has_signal("enhancement_completed") and not cem.enhancement_completed.is_connected(_on_enhancement_completed):
+		cem.enhancement_completed.connect(_on_enhancement_completed)
 
 func _on_achievement_unlocked(_achievement_id: String, _achievement_name: String) -> void:
 	play_sfx("achievement")
@@ -179,6 +227,34 @@ func _on_quest_completed(_quest_id: String, _rewards: Dictionary) -> void:
 # 复用 quest_complete 音效（日常任务/委托性质相近，无需独立音效资源）。
 func _on_task_completed(_task: Dictionary) -> void:
 	play_sfx("quest_complete")
+
+# ── v7.x 新增: 战斗节奏 / 养成事件音效 handler ──
+# 战斗节奏（每关周期性触发，音色需有辨识度避免腻）
+func _on_wave_spawned(_wave_index: int) -> void:
+	play_sfx("wave_start")
+func _on_boss_wave_started(_boss_ids: Array) -> void:
+	play_sfx("boss_warn")
+func _on_phase_master_appeared(_config: Dictionary) -> void:
+	play_sfx("master_appear")
+func _on_phase_driver_destroyed() -> void:
+	play_sfx("base_destroy")
+func _on_player_deploy_failed(_reason: String, _message: String) -> void:
+	play_sfx("error")
+func _on_energy_insufficient(_amount: float) -> void:
+	play_sfx("error")
+# 养成事件（复用既有音色，无需新增音频文件即可生效）
+func _on_synthesis_completed(_card_id: String) -> void:
+	play_sfx("enhance")
+func _on_synthesis_failed(_reason: String) -> void:
+	play_sfx("error")
+func _on_rune_acquired(_rune_id: String, _source: String) -> void:
+	play_sfx("blueprint_unlock")
+func _on_faction_level_up(_faction_id: String, _new_level: int) -> void:
+	play_sfx("achievement")
+func _on_milestone_reached(_milestone_id: String, _milestone_name: String) -> void:
+	play_sfx("achievement")
+func _on_phase_field_level_up(_old: int, _new: int, _unspent: int) -> void:
+	play_sfx("enhance")
 
 ## 播放射击音效
 func play_shoot_sfx() -> void:

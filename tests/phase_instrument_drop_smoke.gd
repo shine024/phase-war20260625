@@ -1,6 +1,6 @@
 extends SceneTree
 ## v7.x 特殊相位仪 + 敌方相位仪能力 smoke test
-## 验证：4 个特殊相位仪 get_by_id 正确返回 + enemy_phase_instruments.json 的 active_ability 字段
+## 验证：4 个特殊相位仪 get_by_id 正确返回 + 统一池敌方款 active_ability 字段
 ##
 ## 运行：Godot --headless --script tests/phase_instrument_drop_smoke.gd
 
@@ -73,32 +73,20 @@ func _test_special_instruments_have_ability() -> bool:
 	print("  结果: %d/%d PASS" % [pass_count, ids.size()])
 	return pass_count == ids.size()
 
-## 测试 4：敌方高阶相位仪有 active_ability
-## 注：--script 模式下 EnemyPhaseEquipment 的静态 var PHASE_INSTRUMENTS 可能因
-## 初始化时序加载失败（项目既有限制），改为直接读 JSON 文件验证数据正确性
+## 测试 4：敌方高阶相位仪有 active_ability（统一池 pi_ id，裸 ability id）
 func _test_enemy_instruments_have_ability() -> bool:
-	print("\n[测试 4] 敌方相位仪 active_ability（直读 JSON）")
-	var json_path: String = "res://data/json/enemy_phase_instruments.json"
-	if not FileAccess.file_exists(json_path):
-		print("  ❌ JSON 文件不存在: %s" % json_path)
-		return false
-	var text: String = FileAccess.get_file_as_string(json_path)
-	var parsed: Variant = JSON.parse_string(text)
-	if typeof(parsed) != TYPE_DICTIONARY:
-		print("  ❌ JSON 解析失败")
-		return false
-	var all_data: Dictionary = parsed.get("data", {})
+	print("\n[测试 4] 敌方相位仪 active_ability（统一池）")
 	var ids: Array = [
-		"steel_guardian_mk3",   # enemy_shield_bulwark
-		"steel_guardian_mk4",   # enemy_rage_buff
-		"flame_destroyer_mk4",  # enemy_artillery_barrage
-		"void_walker_mk4",      # enemy_nano_swarm
-		"steel_guardian_god",   # enemy_rage_buff (god)
-		"void_walker_god",      # enemy_nano_swarm (god)
+		"pi_steel_03",   # mega_shield
+		"pi_steel_04",   # rage_buff
+		"pi_flame_04",   # artillery_barrage
+		"pi_void_04",    # nano_swarm
+		"pi_steel_05",   # rage_buff (god)
+		"pi_void_05",    # nano_swarm (god)
 	]
 	var pass_count: int = 0
 	for iid in ids:
-		var cfg: Dictionary = all_data.get(iid, {})
+		var cfg: Dictionary = PhaseInstruments.get_by_id(iid)
 		if cfg.is_empty():
 			print("  ❌ %s: 相位仪数据未找到" % iid)
 			continue

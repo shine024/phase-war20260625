@@ -282,6 +282,19 @@ tests/
 - `docs/UI_DESIGN_GUIDELINES.md` - UI设计规范
 - `docs/UI_FIX_SUMMARY.md` - UI修复总结
 
+## 美术资源工作流（卡图自动生成）
+
+**新增卡牌缺卡面图时**，用 AI API 自动生成，完整流程见 `docs/ART_PIPELINE_AI_ICON_GENERATION.md`。
+
+**快速要点**：
+- 卡面图 `vis_enemy/player_NNN.png`（512×512 RGBA 透明底；敌方原图朝左，我方=水平翻转版）
+- 编号体系：A段001-028 / B段030-035 / C段036-071 / D段专属命名 / E段072-081 / F段082-087 / G段110-114
+- 生成脚本模板：`tools/generate_missing_card_icons_11.py`（调 agnes-ai API，key 在 `tools/_api_key.txt`）
+- 部署脚本模板：`tools/deploy_card_icons_11.py`（白底转透明+缩放512+翻转player版）
+- **分配新编号前必须先查 `_FOE_ID_TO_PLATFORM` 和 `PLAYER_ICON_OVERRIDE`** 能否复用已有图
+- 修改 `enemy/` 原图后，必须对 `player/` 重做 `FLIP_LEFT_RIGHT`
+- 审查清单：`tools/enemy_card_review.html`（浏览器查看全部卡面）
+
 ## Engine Version Notes
 
 LLM training data covers Godot up to ~4.3. This project uses Godot 4.5.

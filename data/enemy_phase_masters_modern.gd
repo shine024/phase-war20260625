@@ -58,7 +58,7 @@ const ERA_MASTERS: Array = [
 			}
 		],
 		"equipment": {
-			"phase_instrument": "void_walker_mk4",
+			"phase_instrument": "pi_void_04",
 			"level": 25,
 			"platforms": ["void_stealth_expert", "void_mage_expert"],
 			"weapons": ["void_lance_expert", "entropy_caster_expert"],
@@ -126,7 +126,7 @@ const ERA_MASTERS: Array = [
 			}
 		],
 		"equipment": {
-			"phase_instrument": "hybrid_steel_thunder_mk1",
+			"phase_instrument": "pi_steelthunder_01",
 			"level": 24,
 			"platforms": ["steel_fortress_expert", "thunter_striker_expert"],
 			"weapons": ["steel_gatling_expert", "tesla_coil_expert"],
@@ -192,7 +192,7 @@ const ERA_MASTERS: Array = [
 			}
 		],
 		"equipment": {
-			"phase_instrument": "hybrid_flame_void_mk1",
+			"phase_instrument": "pi_flamevoid_01",
 			"level": 25,
 			"platforms": ["flame_siege_expert", "void_mage_expert"],
 			"weapons": ["plasma_cannon_expert", "entropy_caster_expert"],
@@ -260,7 +260,7 @@ const ERA_MASTERS: Array = [
 			}
 		],
 		"equipment": {
-			"phase_instrument": "steel_guardian_mk4",
+			"phase_instrument": "pi_steel_04",
 			"level": 26,
 			"platforms": ["steel_fortress_expert", "steel_titan_expert"],
 			"weapons": ["steel_gatling_expert", "steel_artillery_expert"],
@@ -326,7 +326,7 @@ const ERA_MASTERS: Array = [
 			}
 		],
 		"equipment": {
-			"phase_instrument": "flame_destroyer_mk4",
+			"phase_instrument": "pi_flame_04",
 			"level": 27,
 			"platforms": ["flame_raider_expert", "flame_siege_expert"],
 			"weapons": ["flame_thrower_expert", "plasma_cannon_expert"],
@@ -392,7 +392,7 @@ const ERA_MASTERS: Array = [
 			}
 		],
 		"equipment": {
-			"phase_instrument": "thunder_storm_mk4",
+			"phase_instrument": "pi_thunder_04",
 			"level": 27,
 			"platforms": ["thunter_striker_expert", "thunter_sniper_expert"],
 			"weapons": ["tesla_coil_expert", "railgun_expert"],

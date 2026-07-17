@@ -72,7 +72,7 @@
         }
       ],
       "equipment": {
-        "phase_instrument": "steel_guardian_mk1",
+        "phase_instrument": "pi_steel_01",
         "level": 5,
         "platforms": [
           "ww1_sup_mg_nest",
@@ -168,7 +168,7 @@
         }
       ],
       "equipment": {
-        "phase_instrument": "flame_destroyer_mk1",
+        "phase_instrument": "pi_flame_01",
         "level": 6,
         "platforms": [
           "ww1_arm_rolls_e",
@@ -262,7 +262,7 @@
         }
       ],
       "equipment": {
-        "phase_instrument": "thunder_storm_mk1",
+        "phase_instrument": "pi_thunder_01",
         "level": 7,
         "platforms": [
           "ww1_inf_storm_e",
@@ -354,7 +354,7 @@
         }
       ],
       "equipment": {
-        "phase_instrument": "void_walker_mk1",
+        "phase_instrument": "pi_void_01",
         "level": 8,
         "platforms": [
           "ww1_inf_mp18",
@@ -446,7 +446,7 @@
         }
       ],
       "equipment": {
-        "phase_instrument": "steel_guardian_mk2",
+        "phase_instrument": "pi_steel_02",
         "level": 10,
         "platforms": [
           "ww1_sup_mg_nest",
@@ -540,7 +540,7 @@
         }
       ],
       "equipment": {
-        "phase_instrument": "flame_destroyer_mk2",
+        "phase_instrument": "pi_flame_02",
         "level": 12,
         "platforms": [
           "ww1_arm_rolls_e",
@@ -632,7 +632,7 @@
         }
       ],
       "equipment": {
-        "phase_instrument": "thunder_storm_mk2",
+        "phase_instrument": "pi_thunder_02",
         "level": 13,
         "platforms": [
           "ww1_inf_storm_e",
@@ -725,7 +725,7 @@
         }
       ],
       "equipment": {
-        "phase_instrument": "void_walker_mk2",
+        "phase_instrument": "pi_void_02",
         "level": 14,
         "platforms": [
           "ww2_inf_garand",
@@ -820,7 +820,7 @@
         }
       ],
       "equipment": {
-        "phase_instrument": "steel_guardian_mk3",
+        "phase_instrument": "pi_steel_03",
         "level": 16,
         "platforms": [
           "ww2_sup_mg42",
@@ -914,7 +914,7 @@
         }
       ],
       "equipment": {
-        "phase_instrument": "flame_destroyer_mk3",
+        "phase_instrument": "pi_flame_03",
         "level": 17,
         "platforms": [
           "ww2_arm_panther_e",
@@ -1007,7 +1007,7 @@
         }
       ],
       "equipment": {
-        "phase_instrument": "thunder_storm_mk3",
+        "phase_instrument": "pi_thunder_03",
         "level": 18,
         "platforms": [
           "ww2_inf_para_e",
@@ -1101,7 +1101,7 @@
         }
       ],
       "equipment": {
-        "phase_instrument": "void_walker_mk3",
+        "phase_instrument": "pi_void_03",
         "level": 19,
         "platforms": [
           "ww2_inf_garand",
@@ -1198,7 +1198,7 @@
         }
       ],
       "equipment": {
-        "phase_instrument": "hybrid_steel_flame_mk1",
+        "phase_instrument": "pi_steelflame_01",
         "level": 18,
         "platforms": [
           "cold_arm_btr_e",
@@ -1293,7 +1293,7 @@
         }
       ],
       "equipment": {
-        "phase_instrument": "hybrid_thunder_steel_mk1",
+        "phase_instrument": "pi_thundersteel_01",
         "level": 19,
         "platforms": [
           "ww2_inf_para_e",
@@ -1390,7 +1390,7 @@
         }
       ],
       "equipment": {
-        "phase_instrument": "hybrid_void_flame_mk1",
+        "phase_instrument": "pi_voidflame_01",
         "level": 20,
         "platforms": [
           "cold_air_m113_e",
@@ -1482,7 +1482,7 @@
         }
       ],
       "equipment": {
-        "phase_instrument": "steel_guardian_mk4",
+        "phase_instrument": "pi_steel_04",
         "level": 22,
         "platforms": [
           "cold_arm_btr_e",
@@ -1576,7 +1576,7 @@
         }
       ],
       "equipment": {
-        "phase_instrument": "flame_destroyer_mk4",
+        "phase_instrument": "pi_flame_04",
         "level": 23,
         "platforms": [
           "cold_arm_t72_e",
@@ -1669,7 +1669,7 @@
         }
       ],
       "equipment": {
-        "phase_instrument": "thunder_storm_mk4",
+        "phase_instrument": "pi_thunder_04",
         "level": 24,
         "platforms": [
           "cold_inf_spetsnaz_e",
@@ -1761,7 +1761,7 @@
         }
       ],
       "equipment": {
-        "phase_instrument": "void_walker_mk4",
+        "phase_instrument": "pi_void_04",
         "level": 25,
         "platforms": [
           "mod_air_technical_e",
@@ -1861,7 +1861,7 @@
         }
       ],
       "equipment": {
-        "phase_instrument": "hybrid_steel_thunder_mk1",
+        "phase_instrument": "pi_steelthunder_01",
         "level": 24,
         "platforms": [
           "mod_arm_stryker_e",
@@ -1961,7 +1961,7 @@
         }
       ],
       "equipment": {
-        "phase_instrument": "hybrid_flame_void_mk1",
+        "phase_instrument": "pi_flamevoid_01",
         "level": 25,
         "platforms": [
           "mod_arm_abrams_e",
@@ -2055,7 +2055,7 @@
         }
       ],
       "equipment": {
-        "phase_instrument": "steel_guardian_mk4",
+        "phase_instrument": "pi_steel_04",
         "level": 26,
         "platforms": [
           "mod_arm_stryker_e",
@@ -2150,7 +2150,7 @@
         }
       ],
       "equipment": {
-        "phase_instrument": "flame_destroyer_mk4",
+        "phase_instrument": "pi_flame_04",
         "level": 27,
         "platforms": [
           "mod_arm_abrams_e",
@@ -2244,7 +2244,7 @@
         }
       ],
       "equipment": {
-        "phase_instrument": "thunder_storm_mk4",
+        "phase_instrument": "pi_thunder_04",
         "level": 27,
         "platforms": [
           "mod_inf_delta_e",
@@ -2336,7 +2336,7 @@
         }
       ],
       "equipment": {
-        "phase_instrument": "void_walker_mk4",
+        "phase_instrument": "pi_void_04",
         "level": 28,
         "platforms": [
           "fut_inf_cyborg",
@@ -2437,7 +2437,7 @@
         }
       ],
       "equipment": {
-        "phase_instrument": "steel_guardian_god",
+        "phase_instrument": "pi_steel_05",
         "level": 28,
         "platforms": [
           "fut_arm_mech_e",
@@ -2539,7 +2539,7 @@
         }
       ],
       "equipment": {
-        "phase_instrument": "flame_destroyer_god",
+        "phase_instrument": "pi_flame_05",
         "level": 29,
         "platforms": [
           "fut_arm_colossus_e",
@@ -2644,7 +2644,7 @@
         }
       ],
       "equipment": {
-        "phase_instrument": "thunder_storm_god",
+        "phase_instrument": "pi_thunder_05",
         "level": 29,
         "platforms": [
           "fut_inf_spectre_e",
@@ -2745,7 +2745,7 @@
         }
       ],
       "equipment": {
-        "phase_instrument": "void_walker_god",
+        "phase_instrument": "pi_void_05",
         "level": 30,
         "platforms": [
           "fut_inf_cyborg",
@@ -2846,7 +2846,7 @@
         }
       ],
       "equipment": {
-        "phase_instrument": "omega_instrument",
+        "phase_instrument": "pi_omega_01",
         "level": 30,
         "platforms": [
           "fut_arm_colossus_e",

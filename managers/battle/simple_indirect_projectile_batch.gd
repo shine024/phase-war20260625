@@ -93,7 +93,7 @@ func _get_indirect_arc_multiplier(wt: int) -> float:
 		_:
 			return 1.0
 
-func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, shooter_stats: Variant, forced_miss: bool = false, weapon_name: String = "") -> void:
+func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, shooter_stats: Variant, forced_miss: bool = false, weapon_name: String = "", p_vfx_variant: String = "") -> void:
 	if _proj.size() >= _MAX_PROJ or tgt == null or not is_instance_valid(tgt):
 		return
 	if not _layers.has(wt):
@@ -121,6 +121,7 @@ func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, shoo
 		"shooter_stats": shooter_stats,
 		"forced_miss": forced_miss,
 		"weapon_name": weapon_name,
+		"vfx_variant": p_vfx_variant,  # v8.4: 武器类改造专属视觉标识
 		"progress": 0.0,
 		"duration": duration,
 		"apex": apex,
@@ -245,7 +246,11 @@ func _apply_hit(r: Dictionary) -> void:
 		if _ts != null:
 			_tgt_kind = int(_ts.combat_kind)
 	if not bool(r.get("forced_miss", false)):
-		_spawn_impact_explosion(hit_pos, proj_is_player, wt, _tgt_kind)
+		# v8.4: 透传 weapon_name（命中贴图层）+ vfx_variant opts（改造专属视觉）
+		var _wname: String = String(r.get("weapon_name", ""))
+		var _variant: String = String(r.get("vfx_variant", ""))
+		var _opts: Dictionary = {} if _variant.is_empty() else {"vfx_variant": _variant}
+		_spawn_impact_explosion(hit_pos, proj_is_player, wt, _tgt_kind, _wname, _opts)
 		# v6.4: 曲射爆炸触发中等屏幕震动
 		# v7.x: 优先用 combat_kind 的震动参数（对空重震/对装甲中震/对轻装轻震）
 		var tree := get_tree()
@@ -395,10 +400,10 @@ func _get_aoe_targets(center: Vector2, radius: float, primary: Node2D) -> Array:
 					targets.append(child)
 	return targets
 
-## 爆炸特效（v8.0：粒子化，替代 Sprite2D+贴图）
-## 曲射/空射爆炸 = 重型命中特效（更多粒子量）
-func _spawn_impact_explosion(pos: Vector2, is_player_proj: bool = true, weapon_type: int = 1, target_combat_kind: int = -1) -> void:
+## 爆炸特效（v8.0：粒子化；v8.4：贴图层 + 改造变体）
+## 曲射/空射爆炸 = 重型命中特效（更多粒子量 + 命中贴图）
+func _spawn_impact_explosion(pos: Vector2, is_player_proj: bool = true, weapon_type: int = 1, target_combat_kind: int = -1, weapon_name: String = "", opts: Dictionary = {}) -> void:
 	if WeaponProjectileVfx._active_impacts >= WeaponProjectileVfx.MAX_ACTIVE_IMPACTS:
 		return
-	# 复用 spawn_impact_with_kind 的粒子系统，重型武器自动加量
-	WeaponProjectileVfx.spawn_impact_with_kind(self, pos, weapon_type, is_player_proj, target_combat_kind)
+	# 复用 spawn_impact_with_kind 的粒子系统 + 贴图层（v8.4 透传 weapon_name）
+	WeaponProjectileVfx.spawn_impact_with_kind(self, pos, weapon_type, is_player_proj, target_combat_kind, opts, weapon_name)

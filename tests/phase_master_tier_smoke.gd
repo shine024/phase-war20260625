@@ -73,34 +73,40 @@ func _init() -> void:
 		fail.call("MID rune_count 应 < HIGH")
 
 	print("")
-	print("=== 4. 相位仪 unit_capacity 完整性 ===")
-	# 读 JSON 验证 26 条都有 unit_capacity
-	var json_path: String = "res://data/json/enemy_phase_instruments.json"
-	var text: String = FileAccess.get_file_as_string(json_path)
-	var parsed: Variant = JSON.parse_string(text)
-	var data: Dictionary = parsed.get("data", {}) if parsed is Dictionary else {}
-	var cap_count: int = 0
-	var missing_cap: Array = []
-	for iid in data:
-		var inst: Dictionary = data[iid]
-		if inst.has("unit_capacity"):
-			cap_count += 1
+	print("=== 4. 统一池敌方相位仪 slot_counts.green 完整性 ===")
+	# v7.x: 读统一池验证 26 敌方款都有 slot_counts.green（替代旧 JSON unit_capacity）
+	var PhaseInstruments = load("res://data/phase_instruments.gd")
+	var enemy_ids: Array = ["pi_steel_01","pi_steel_02","pi_steel_03","pi_steel_04","pi_steel_05",
+		"pi_flame_01","pi_flame_02","pi_flame_03","pi_flame_04","pi_flame_05",
+		"pi_thunder_01","pi_thunder_02","pi_thunder_03","pi_thunder_04","pi_thunder_05",
+		"pi_void_01","pi_void_02","pi_void_03","pi_void_04","pi_void_05",
+		"pi_steelflame_01","pi_thundersteel_01","pi_voidflame_01","pi_steelthunder_01","pi_flamevoid_01",
+		"pi_omega_01"]
+	var green_count: int = 0
+	var missing: Array = []
+	var green_values: Array = []
+	for iid in enemy_ids:
+		var inst: Dictionary = PhaseInstruments.get_by_id(iid)
+		if inst.is_empty():
+			missing.append(iid)
+			continue
+		var sc: Dictionary = inst.get("slot_counts", {})
+		var g: int = int(sc.get("green", 0))
+		if g > 0:
+			green_count += 1
+			green_values.append(g)
 		else:
-			missing_cap.append(iid)
-	print("  有 unit_capacity 的相位仪：%d / %d" % [cap_count, data.size()])
-	if data.size() != 26:
-		fail.call("相位仪总数应为 26，实际 %d" % data.size())
-	if cap_count != data.size():
-		fail.call("缺失 unit_capacity 的相位仪：%s" % str(missing_cap))
-	# capacity 范围校验（应在 3~6）
-	var cap_values: Array = []
-	for iid in data:
-		cap_values.append(int(data[iid].get("unit_capacity", 0)))
-	var min_cap: int = cap_values.min() if not cap_values.is_empty() else 0
-	var max_cap: int = cap_values.max() if not cap_values.is_empty() else 0
-	print("  capacity 范围：%d ~ %d" % [min_cap, max_cap])
-	if min_cap < 3 or max_cap > 6:
-		fail.call("capacity 范围异常：%d~%d（应在 3~6）" % [min_cap, max_cap])
+			missing.append(iid)
+	print("  有 slot_counts.green 的敌方相位仪：%d / %d" % [green_count, enemy_ids.size()])
+	if enemy_ids.size() != 26:
+		fail.call("敌方相位仪应为 26，实际 %d" % enemy_ids.size())
+	if green_count != enemy_ids.size():
+		fail.call("缺失 slot_counts.green：%s" % str(missing))
+	var min_g: int = green_values.min() if not green_values.is_empty() else 0
+	var max_g: int = green_values.max() if not green_values.is_empty() else 0
+	print("  green 范围：%d ~ %d" % [min_g, max_g])
+	if min_g < 1 or max_g > 6:
+		fail.call("green 范围异常：%d~%d（应在 1~6）" % [min_g, max_g])
 
 	print("")
 	print("=== 5. era_progress 公式核对（与 battle_spawn_system 一致）===")

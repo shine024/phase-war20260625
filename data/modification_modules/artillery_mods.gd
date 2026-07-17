@@ -37,7 +37,7 @@ const DATA: Dictionary = {
 		id = ART_02_EXTENDED_RANGE,
 		name = "增程弹",
 		name_en = "Extended Range Munition",
-		icon = "res://assets/ui/icons/mod_icons/mod_ammunition.png",
+		icon = "res://assets/ui/icons/mod_icons/mod_ammo_extended.png",
 		prototype = "M549火箭增程弹",
 		description = "火箭增程，射程大幅提升，威力略降",
 		rarity = "rare",
@@ -65,7 +65,7 @@ const DATA: Dictionary = {
 		conflict_group = "guidance",
 		# v7.x: per-slot 弹道——对装甲槽改 MISSILE 制导
 		condition_slot = 1,
-		effects = {accuracy_bonus = 0.50, crit_chance = 0.15, weapon_type = 9, slot_weapon_type = 9},  # v6.5 MISSILE + v7.x 对装甲槽制导,
+		effects = {accuracy_bonus = 0.50, crit_chance = 0.15, weapon_type = 9, slot_weapon_type = 9, vfx_variant = "guided"},  # v6.5 MISSILE + v7.x 对装甲槽制导 + v8.4 制导专属视觉,
 		unlock_conditions = {required_level = 6}
 	},
 
@@ -73,7 +73,7 @@ const DATA: Dictionary = {
 		id = ART_04_CLUSTER_MUNITION,
 		name = "子母弹",
 		name_en = "Cluster Munition",
-		icon = "res://assets/ui/icons/mod_icons/mod_ammunition.png",
+		icon = "res://assets/ui/icons/mod_icons/mod_ammo_cluster.png",
 		prototype = "M26火箭弹",
 		description = "范围伤害增加，单目标伤害略降",
 		rarity = "epic",
@@ -84,7 +84,7 @@ const DATA: Dictionary = {
 		conflict_group = "ammunition",
 		# v7.x: per-slot 弹道——对装甲槽改 MISSILE 撒布
 		condition_slot = 1,
-		effects = {splash_radius = 0.50, single_target_penalty = -0.20, weapon_type = 9, slot_weapon_type = 9},  # v6.5 MISSILE + v7.x 对装甲槽撒布,
+		effects = {splash_radius = 0.50, single_target_penalty = -0.20, weapon_type = 9, slot_weapon_type = 9, vfx_variant = "cluster"},  # v6.5 MISSILE + v7.x 对装甲槽撒布 + v8.4 子弹药撒布专属视觉,
 		unlock_conditions = {required_level = 5}
 	},
 
@@ -194,7 +194,7 @@ const DATA: Dictionary = {
 		id = ART_11_THERMOBARIC,
 		name = "温压弹",
 		name_en = "Thermobaric Munition",
-		icon = "res://assets/ui/icons/mod_icons/mod_ammunition.png",
+		icon = "res://assets/ui/icons/mod_icons/mod_ammo_thermobaric.png",
 		prototype = "TOS-1喷火坦克",
 		description = "温压弹头，对堡垒伤害大幅提升",
 		rarity = "legendary",
@@ -205,7 +205,7 @@ const DATA: Dictionary = {
 		conflict_group = "ammunition",
 		# v7.x: per-slot 弹道——对装甲槽改 ROCKET 火箭（温压弹头重型爆破）
 		condition_slot = 1,
-		effects = {attack_fort = 0.50, slot_weapon_type = 3},  # v7.x: 对装甲槽火箭弹道（ROCKET）
+		effects = {attack_fort = 0.50, slot_weapon_type = 3, vfx_variant = "thermobaric"},  # v7.x: 对装甲槽火箭弹道（ROCKET）+ v8.4 温压二次爆炸视觉
 		unlock_conditions = {required_level = 7}
 	},
 
@@ -233,7 +233,7 @@ const DATA: Dictionary = {
 		id = "art_13_apfsds_sabot",
 		name = "尾翼稳定脱壳穿甲",
 		name_en = "APFSDS Sabot",
-		icon = "res://assets/ui/icons/mod_icons/mod_ammunition.png",
+		icon = "res://assets/ui/icons/mod_icons/mod_ammo_apfsds.png",
 		prototype = "M829A4 穿甲弹",
 		description = "每次命中撕裂目标装甲：降低 8% 防御，最多叠加 5 层（累计 -40% 防御）",
 		rarity = "legendary",

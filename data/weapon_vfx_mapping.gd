@@ -61,6 +61,18 @@ const WEAPON_ID_MAP: Dictionary = {
 	"重型等离子加农炮": "a6b9c8a9",
 	"防空机枪": "5cf65f67",
 	"骑兵卡宾枪/马刀": "cf369e42",
+	# v8.4: 别名映射——卡牌 display_name 措辞与上述条目不完全一致，复用现有贴图（零补图）
+	# 详见 docs/VFX_IMPACT_TEXTURE_TODO.md 的 A 类清单
+	"空空导弹": "24b45a0c",           # 复用「空空导弹/20mm机炮」（cold_boss_mig / mod_air_apache_e 等）
+	"萨姆-7防空导弹": "70912efd",     # 复用「萨姆-7导弹/防空导弹」（cold_sam7，含装 aa_05 场景）
+	"防空导弹": "e676771a",           # 复用「便携式防空导弹」（mod_inf_patriot / mod_boss_command 等）
+	"毒刺防空导弹": "f1a2b3c4",  # v8.4 B-class impact texture
+	"幽灵空空导弹": "c3d4e5f6",  # v8.4 B-class impact texture
+	"终焉防空": "d4e5f6a7",  # v8.4 B-class impact texture
+	# Retry batch (503 failures from first run):
+	"炮射导弹": "9c8d7e6f",      # v8.4 B-class — arm_07 改造
+	"守护者防空": "a1b2c3d4",    # v8.4 B-class — guardian_ww1 Boss slot2
+	"闪电防空": "b2c3d4e5",      # v8.4 B-class — guardian_ww2 Boss slot2
 }
 
 ## 安全ID -> 弹道贴图

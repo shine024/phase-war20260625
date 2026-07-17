@@ -15,8 +15,7 @@ const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 const MasterPlayerAssembler = preload("res://scripts/master_player_assembler.gd")
 const MasterPowerEvaluator = preload("res://scripts/master_power_evaluator.gd")
 const LevelInformation = preload("res://data/level_information.gd")
-# v7.x: 敌方相位仪主动能力引擎（镜像我方 PhaseInstrumentAbilities，角色对调）
-const EnemyPhaseInstrumentAbilities = preload("res://managers/battle/enemy_phase_instrument_abilities.gd")
+# v7.x: 敌方相位仪能力合并入 PhaseInstrumentAbilities 单引擎（owner-aware），旧 EnemyPhaseInstrumentAbilities 已删
 const DEBUG_BATTLE_LOG := false
 
 # v6.0 依赖注入重构: 移除 @onready 单例引用，改用 setup() 方法注入
@@ -123,11 +122,9 @@ func _process(delta: float) -> void:
 		return
 
 	_maybe_refresh_group_target_cache(delta)
-	# v6.6: 驱动相位仪主动能力（火炮连发/核子轰炸/酸雨持续）
-	PhaseInstrumentAbilities.update(delta)
-	# v7.x: 驱动敌方相位仪主动能力（炮击/酸雨/护盾/狂暴）
+	# v7.x: 驱动相位仪主动能力（owner-aware 单引擎，内部同时驱动玩家+敌方）
 	# 必须在 _is_phase_master_battle 短路之前调用，否则相位师战不会驱动敌方能力
-	EnemyPhaseInstrumentAbilities.update(delta)
+	PhaseInstrumentAbilities.update(delta)
 
 	# 相位师战斗：不执行波次逻辑
 	if _is_phase_master_battle:
@@ -313,7 +310,7 @@ func start_battle(battle_scene: Node) -> void:
 	if PerformanceMetricsManager and PerformanceMetricsManager.has_method("begin_battle_sampling"):
 		PerformanceMetricsManager.begin_battle_sampling()
 	# v6.6: 触发相位仪主动特殊能力（酸雨/能量罩等开局能力）
-	PhaseInstrumentAbilities.on_battle_start(PhaseInstrumentManager, battle_scene)
+	PhaseInstrumentAbilities.on_battle_start(PhaseInstrumentManager, battle_scene, PhaseInstrumentAbilities.Owner.PLAYER)
 
 	call_deferred("_deferred_refresh_card_grid_hud")
 
@@ -328,10 +325,8 @@ func end_battle(player_won: bool) -> void:
 	_clear_group_target_cache()
 	# v6.6: 清空伤害数字节流表，flush 残留合并伤害并避免跨战斗残留
 	CombatFeedback.reset_throttle()
-	# v6.6: 重置相位仪主动能力状态
+	# v7.x: 重置相位仪主动能力状态（owner-aware 单引擎，内部清双 owner）
 	PhaseInstrumentAbilities.reset_state()
-	# v7.x: 重置敌方相位仪主动能力状态（防止狂暴等残留状态污染下一场战斗）
-	EnemyPhaseInstrumentAbilities.reset_state()
 	# v6.7: 清空相位师排名星级缓存（恢复 3★ 基准，避免影响下一场战斗）
 	if PhaseInstrumentManager and PhaseInstrumentManager.has_method("clear_rank_cache"):
 		PhaseInstrumentManager.clear_rank_cache()
@@ -651,7 +646,7 @@ func _spawn_enemy_phase_master_base() -> void:
 	_enemy_phase_driver = battlefield.ensure_enemy_phase_driver(_phase_master_config)
 	# v7.x: 敌方相位师基地建立后，触发敌方相位仪主动能力（开局一次性能力 + 周期能力初始化）
 	if _enemy_phase_driver != null and is_instance_valid(_enemy_phase_driver):
-		EnemyPhaseInstrumentAbilities.on_battle_start(_enemy_phase_driver, battlefield)
+		PhaseInstrumentAbilities.on_battle_start(_enemy_phase_driver, battlefield, PhaseInstrumentAbilities.Owner.ENEMY)
 
 
 # =========================================================================

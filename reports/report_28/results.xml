@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites id="2026-07-16" name="report_28" tests="7" failures="0" skipped="0" flaky="0" time="0.000">
+	<testsuite id="0" name="test_phase_instruments_unified" package="tests/unit/data" timestamp="2026-07-16T09:16:46" hostname="localhost" tests="7" failures="0" errors="0" skipped="0" flaky="0" time="0.571">
+		<testcase name="test_enemy_migrated_ids_exist" classname="test_phase_instruments_unified" time="0.053">
+		</testcase>
+		<testcase name="test_enemy_instruments_have_slot_counts_and_level" classname="test_phase_instruments_unified" time="0.033">
+		</testcase>
+		<testcase name="test_enemy_active_ability_ids_bare" classname="test_phase_instruments_unified" time="0.033">
+		</testcase>
+		<testcase name="test_enemy_bare_instruments_have_empty_active_ability" classname="test_phase_instruments_unified" time="0.141">
+		</testcase>
+		<testcase name="test_all_enemy_ids_unique_and_present" classname="test_phase_instruments_unified" time="0.123">
+		</testcase>
+		<testcase name="test_player_instruments_still_present" classname="test_phase_instruments_unified" time="0.033">
+		</testcase>
+		<testcase name="test_total_instrument_count" classname="test_phase_instruments_unified" time="0.032">
+		</testcase>
+	</testsuite>
+</testsuites>

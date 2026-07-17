@@ -56,7 +56,7 @@ const DATA: Dictionary = {
 		name_en = "Composite Armor",
 		prototype = "乔巴姆",
 		description = "多层复合材料，显著提升对HEAT弹防护",
-		icon = "res://assets/ui/icons/mod_icons/mod_armor.png",
+		icon = "res://assets/ui/icons/mod_icons/mod_armor_special.png",
 		rarity = "epic",
 	power_mult = 1.6,
 		cost_research = 280,
@@ -78,7 +78,7 @@ const DATA: Dictionary = {
 		name_en = "Reactive Armor",
 		prototype = "接触-1",
 		description = "爆炸反应装甲：受击时反弹30%伤害给攻击者，可触发3次",
-		icon = "res://assets/ui/icons/mod_icons/mod_armor.png",
+		icon = "res://assets/ui/icons/mod_icons/mod_shield_reactive.png",
 		rarity = "epic",
 		power_mult = 1.6,
 		cost_research = 300,
@@ -151,7 +151,7 @@ const DATA: Dictionary = {
 		name_en = "APFSDS",
 		prototype = "北约标准",
 		description = "高动能穿甲弹，对装甲伤害最大化",
-		icon = "res://assets/ui/icons/mod_icons/mod_ammunition.png",
+		icon = "res://assets/ui/icons/mod_icons/mod_ammo_apfsds.png",
 		rarity = "epic",
 	power_mult = 1.6,
 		cost_research = 320,
@@ -189,6 +189,7 @@ const DATA: Dictionary = {
 	effects = {
 		attack_armor = 0.20,   # +20% 对装甲
 		slot_weapon_type = 9,  # v7.x: 对空槽导弹弹道（MISSILE）
+		vfx_variant = "gun_missile",  # v8.4: 炮射导弹专属视觉（蓝白尾焰，区分标准导弹）
 	},
 	# v6.13: grant_slot 直接激活对空武器槽（修复原 attack_air=0.20 对 base=0 失效的 bug）
 	# 以载体 attack_armor 为基准 ×0.8 派生对空基础伤害，导弹式低射速高单发

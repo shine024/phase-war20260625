@@ -109,7 +109,7 @@
       ],
       "drops": [
         {
-          "card_id": "smg_mk2",
+          "card_id": "drop_smg_mk2",
           "chance": 0.2
         }
       ],
@@ -281,7 +281,7 @@
       ],
       "drops": [
         {
-          "card_id": "phase_lance",
+          "card_id": "drop_phase_lance",
           "chance": 0.25
         }
       ],
@@ -453,7 +453,7 @@
       ],
       "drops": [
         {
-          "card_id": "railgun",
+          "card_id": "drop_railgun",
           "chance": 0.3
         }
       ],
@@ -509,7 +509,7 @@
       ],
       "drops": [
         {
-          "card_id": "mega_beam_cannon",
+          "card_id": "drop_mega_beam_cannon",
           "chance": 0.4
         }
       ],
@@ -625,7 +625,7 @@
       ],
       "drops": [
         {
-          "card_id": "thunder_field",
+          "card_id": "drop_thunder_field",
           "chance": 0.3
         }
       ],
@@ -681,7 +681,7 @@
       ],
       "drops": [
         {
-          "card_id": "overclock_matrix",
+          "card_id": "drop_overclock_matrix",
           "chance": 0.35
         }
       ],
@@ -708,7 +708,7 @@
       ],
       "drops": [
         {
-          "card_id": "mega_beam_cannon",
+          "card_id": "drop_mega_beam_cannon",
           "chance": 0.6
         }
       ],
@@ -826,7 +826,7 @@
       ],
       "drops": [
         {
-          "card_id": "mega_beam_cannon",
+          "card_id": "drop_mega_beam_cannon",
           "chance": 0.4
         }
       ],
@@ -853,7 +853,7 @@
       ],
       "drops": [
         {
-          "card_id": "mega_particle_cannon",
+          "card_id": "drop_mega_particle_cannon",
           "chance": 0.5
         }
       ],
@@ -880,7 +880,7 @@
       ],
       "drops": [
         {
-          "card_id": "mega_particle_cannon",
+          "card_id": "drop_mega_particle_cannon",
           "chance": 1.0
         }
       ],

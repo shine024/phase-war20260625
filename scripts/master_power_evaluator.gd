@@ -340,20 +340,16 @@ static func _eval_instrument(master: Dictionary) -> float:
 	if instr_data.is_empty():
 		return 0.0
 
-	# 敌方相位仪：用 atk_bonus/hp_bonus/def_bonus（仪器给产兵的百分比加成 × 产兵基础战力）
-	# atk_bonus/hp_bonus/def_bonus 是「给单位加成的百分比」（如 mk4 atk_bonus=13.33 = +666%?），
-	# 实际产兵加成走 _apply_enemy_phase_instrument_bonus（×0.05 转百分比）。
-	# 这里用 atk/hp/def bonus 之和 × 系数反映「仪器加成强度」，与产兵加成量级匹配。
-	var atk_b: float = float(instr_data.get("atk_bonus", 0.0))
-	var hp_b: float = float(instr_data.get("hp_bonus", 0.0))
-	var def_b: float = float(instr_data.get("def_bonus", 0.0))
-	# 加成战力 = (atk+hp+def bonus) × 卡基础战力系数（敌方 2 张产兵卡，每张 power 中位 ~200）
-	# atk/hp/def bonus 量级 1.67~16.0（mk1~god），× 卡基础战力系数反映加成贡献
+	# v7.x: 统一池无 atk_bonus/hp_bonus/def_bonus（选 B：properties 按 star 重算）。
+	# 评分基于 star（确定性梯度）+ active_ability 加成。量级与原公式相近（star3~360 / star7~1960+）。
+	var star: int = int(instr_data.get("star", 1))
+	var bonus_sum: float = float(star * star)   # star3=9 / star5=25 / star6=36 / star7=49
+	var ab: Dictionary = instr_data.get("active_ability", {})
+	if not ab.is_empty():
+		bonus_sum += 15.0   # 有主动能力的相位仪额外加分
 	var card_count: int = 2  # 敌方标准 2 张装备卡
 	var base_card_power: float = 200.0  # 敌方产兵卡平均 power
-	var bonus_sum: float = atk_b + hp_b + def_b
 	# 加成战力 = bonus_sum × base_card_power × card_count × 0.1
-	# 0.1 系数让 mk1(bonus~4)→160 / mk4(bonus~30)→1200 / god(bonus~38)→1520，梯度合理
 	return bonus_sum * base_card_power * card_count * 0.1
 
 
@@ -659,12 +655,13 @@ static func _build_details(master: Dictionary, scores: Dictionary,
 	if instr_id.is_empty():
 		instr_id = String(master.get("equipment", {}).get("phase_instrument", ""))
 	var instr_data: Dictionary = _get_instrument_data(instr_id)
-	var bs: Dictionary = instr_data.get("base_stats", {})
-	var max_hp: int = int(bs.get("max_hp", 0))
-	var atk: int = int(bs.get("attack_power", 0)) + int(bs.get("magic_power", 0))
-	var defense: int = int(bs.get("defense", 0))
-	var ecap: int = int(bs.get("energy_capacity", 0))
-	var ereg: float = float(bs.get("energy_regen", 0))
+	# v7.x: 统一池相位仪无 base_stats（玩家 schema）。展示属性改读 master.stats（相位师本体属性，真实）。
+	var ms: Dictionary = master.get("stats", {})
+	var max_hp: int = int(ms.get("max_hp", 0))
+	var atk: int = int(ms.get("attack_power", 0))
+	var defense: int = int(ms.get("defense", 0))
+	var ecap: int = 0   # 统一池无 energy_capacity（相位仪能量由 star 决定）
+	var ereg: float = float(ms.get("energy_regen", 0.0))
 	var ulim: int = int(master.get("unit_limit", 0))
 	if ulim <= 0:
 		ulim = int(master.get("stats", {}).get("unit_limit", 7))

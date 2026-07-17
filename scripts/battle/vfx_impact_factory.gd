@@ -39,6 +39,12 @@ static var _beam_pool: Array = []
 static var _active_beams: int = 0
 const MAX_BEAMS: int = 60
 
+# v8.4: 命中贴图 Sprite 池（重型爆炸武器的 *_impact.png 渲染）。原 v8.0 移除贴图改纯粒子，
+# 现重接贴图让爆炸有"形状感"——仅 weapon_projectile_vfx 在有 impact_texture 时调用。
+static var _impact_sprite_pool: Array = []
+static var _active_impact_sprites: int = 0
+const MAX_IMPACT_SPRITES: int = 80
+
 # ── ADD 混合材质缓存 ──
 static var _add_mat: CanvasItemMaterial = null
 
@@ -282,6 +288,187 @@ static func spawn_laser_beam(parent: Node2D, from_pos: Vector2, to_pos: Vector2,
 	tween.tween_callback(func(): _release_beam(beam))
 
 
+## v8.4: 命中贴图爆炸（重型爆炸武器专属）。
+## 在 world_pos 处用 Sprite2D 渲染 *_impact.png 贴图，快速放大→缓慢淡出，让爆炸有"形状感"。
+## 与 spawn_layered_impact 配合使用：贴图层 + 粒子层叠加（先贴图后粒子）。
+## life: 总生命周期秒（默认 0.45）；scale_peak: 峰值缩放（默认 1.0，调用方按贴图基准像素调整）
+static func spawn_impact_sprite(parent: Node2D, world_pos: Vector2, texture: Texture2D, scale_peak: float = 1.0, life: float = 0.45) -> void:
+	if parent == null or not is_instance_valid(parent) or texture == null:
+		return
+	if DT.is_motion_reduce():
+		return  # 减动效：跳过贴图层，粒子层已足够
+	var sprite := _acquire_impact_sprite()
+	if sprite == null:
+		return  # 池满，静默丢弃（节流）
+	sprite.texture = texture
+	sprite.position = world_pos
+	sprite.scale = Vector2(scale_peak * 0.6, scale_peak * 0.6)  # 起始略小
+	sprite.modulate.a = 1.0
+	sprite.visible = true
+	parent.add_child(sprite)
+	# 快速放大到峰值 → 缓慢淡出（模拟爆炸火球膨胀消散）
+	var tween := sprite.create_tween()
+	tween.tween_property(sprite, "scale", Vector2(scale_peak, scale_peak), life * 0.35).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(sprite, "modulate:a", 0.0, life).set_ease(Tween.EASE_IN)
+	tween.tween_callback(func(): _release_impact_sprite(sprite))
+
+
+## ======================================================================
+## v8.4: 武器类改造专属视觉（变体叠加层）
+## 在基础三层特效之上，为 5 种武器类改造叠加独有的视觉特征：
+##   cluster     — 子母弹：主爆炸 + 6 个随机散布的小溅射点（子弹药撒布）
+##   thermobaric — 温压弹：超大冲击波 + 0.15s 后二次爆炸（温压二次燃烧）
+##   proximity   — 近炸引信：高空环 + 向下火花锥（空爆闪光）
+##   guided      — 制导炮弹：精准命中指示环（快速收缩同心环）
+##   gun_missile — 炮射导弹：蓝白拖尾火花锥（区分标准导弹的橙红）
+## 所有变体复用现有 ring/spark 池，motion_reduce 时只保留最简特征。
+## ======================================================================
+static func spawn_variant_overlay(parent: Node2D, world_pos: Vector2, weapon_type: int, variant: String, is_player: bool) -> void:
+	if parent == null or not is_instance_valid(parent):
+		return
+	match variant:
+		"cluster":
+			_spawn_cluster_burst(parent, world_pos, is_player)
+		"thermobaric":
+			_spawn_thermobaric_blast(parent, world_pos, is_player)
+		"proximity":
+			_spawn_proximity_airburst(parent, world_pos, is_player)
+		"guided":
+			_spawn_guided_indicator(parent, world_pos, is_player)
+		"gun_missile":
+			_spawn_gun_missile_trail(parent, world_pos, is_player)
+
+
+## 子母弹：主爆炸周围撒布 6 个小溅射点（子弹药分离）
+static func _spawn_cluster_burst(parent: Node2D, pos: Vector2, is_player: bool) -> void:
+	if DT.is_motion_reduce():
+		return  # 减动效：跳过子弹药撒布
+	# 6 个围绕主爆点的小溅射，半径 30-55px 随机散布
+	for i in range(6):
+		var angle: float = (TAU * i) / 6.0 + randf_range(-0.3, 0.3)
+		var dist: float = randf_range(30.0, 55.0)
+		var sub_pos: Vector2 = pos + Vector2(cos(angle), sin(angle)) * dist
+		# 每个子弹药一个小环 + 少量火花（复用基础特效，武器类型用 ROCKET=3 的配方）
+		spawn_layered_impact(parent, sub_pos, 3, is_player, -1)
+
+
+## 温压弹：超大冲击波（半径×1.5）+ 延迟二次爆炸
+static func _spawn_thermobaric_blast(parent: Node2D, pos: Vector2, is_player: bool) -> void:
+	# 超大冲击波（橙红，半径 130）
+	var blast_color: Color = Color(1.0, 0.4, 0.1, 0.9)
+	spawn_shockwave(parent, pos, 130.0, blast_color)
+	if DT.is_motion_reduce():
+		return  # 减动效：跳过二次爆炸
+	# 延迟 0.15s 后二次爆炸（温压弹的持续燃烧特性）
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	if tree == null:
+		return
+	var captured_parent: Node2D = parent
+	var captured_pos: Vector2 = pos
+	tree.create_timer(0.15).timeout.connect(func():
+		if is_instance_valid(captured_parent):
+			spawn_layered_impact(captured_parent, captured_pos, 3, is_player, -1)
+	)
+
+
+## 近炸引信：高空环 + 向下火花锥（空爆闪光，区别于地面爆炸）
+static func _spawn_proximity_airburst(parent: Node2D, pos: Vector2, is_player: bool) -> void:
+	# 空爆闪光环（白色，比地面爆炸更亮更快）
+	var airburst_color: Color = Color(1.0, 0.85, 0.5, 0.85)
+	spawn_shockwave(parent, pos, 70.0, airburst_color)
+	if DT.is_motion_reduce():
+		return
+	# 向下火花锥（模拟破片向下散布击中下方目标）
+	if _active_sparks >= MAX_SPARKS:
+		return
+	_active_sparks += 1
+	var p := _acquire_spark_particle()
+	if p == null:
+		_active_sparks -= 1
+		return
+	p.position = pos + Vector2(0, -10)  # v8.4: 用 position（与工厂惯例一致，pos 已是 world 坐标）
+	p.amount = 16
+	p.lifetime = 0.40
+	p.direction = Vector2.DOWN
+	p.spread = 60.0  # 向下锥形
+	p.initial_velocity_min = 80.0
+	p.initial_velocity_max = 200.0
+	p.gravity = Vector2(0, 150)
+	p.color = Color(1.0, 0.8, 0.4, 1.0)
+	p.color_ramp = _get_spark_ramp(p.color)  # v8.4: 与 _spawn_sparks 一致，设色带避免池复用残留
+	p.scale_amount_min = 1.5
+	p.scale_amount_max = 3.0
+	parent.add_child(p)
+	var tree := p.get_tree()
+	if tree != null:
+		# v7.5 同款：用 _connect_deferred_release 避免 "Lambda capture was freed" 运行时错误
+		var timer := tree.create_timer(p.lifetime + 0.1)
+		_connect_deferred_release(timer, p, _release_spark_particle)
+
+
+## 制导炮弹：精准命中指示环（两层快速收缩同心环）
+static func _spawn_guided_indicator(parent: Node2D, pos: Vector2, is_player: bool) -> void:
+	if DT.is_motion_reduce():
+		return
+	# 外环（青色，快速收缩 → 精准点）
+	var outer := _acquire_ring()
+	if outer != null:
+		outer.position = pos
+		_configure_ring_polygon(outer, 50.0, Color(0.4, 0.9, 1.0, 0.7))
+		parent.add_child(outer)
+		var tw1 := outer.create_tween()
+		tw1.tween_method(func(r: float): _configure_ring_polygon(outer, r, Color(0.4, 0.9, 1.0, 0.7 * (r / 50.0))), 50.0, 8.0, 0.25)
+		tw1.tween_callback(func(): _release_ring(outer))
+	# 内环（延迟 0.08s，更小更快 → 强化"锁定"感）
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	if tree:
+		var captured_parent: Node2D = parent
+		var captured_pos: Vector2 = pos
+		tree.create_timer(0.08).timeout.connect(func():
+			if not is_instance_valid(captured_parent):
+				return
+			var inner := _acquire_ring()
+			if inner == null:
+				return
+			inner.position = captured_pos
+			_configure_ring_polygon(inner, 30.0, Color(0.6, 1.0, 1.0, 0.8))
+			captured_parent.add_child(inner)
+			var tw2 := inner.create_tween()
+			tw2.tween_method(func(r: float): _configure_ring_polygon(inner, r, Color(0.6, 1.0, 1.0, 0.8 * (r / 30.0))), 30.0, 5.0, 0.18)
+			tw2.tween_callback(func(): _release_ring(inner))
+		)
+
+
+## 炮射导弹：蓝白拖尾火花（区分标准导弹的橙红色调）
+static func _spawn_gun_missile_trail(parent: Node2D, pos: Vector2, is_player: bool) -> void:
+	if DT.is_motion_reduce() or _active_sparks >= MAX_SPARKS:
+		return
+	_active_sparks += 1
+	var p := _acquire_spark_particle()
+	if p == null:
+		_active_sparks -= 1
+		return
+	p.position = pos  # v8.4: 用 position（与工厂惯例一致）
+	p.amount = 20
+	p.lifetime = 0.45
+	p.direction = Vector2(0, 0)
+	p.spread = 360.0
+	p.initial_velocity_min = 30.0
+	p.initial_velocity_max = 100.0
+	p.gravity = Vector2(0, 0)
+	# 蓝白色调（炮射导弹特征，区别于标准导弹的橙红）
+	p.color = Color(0.6, 0.8, 1.0, 1.0)
+	p.color_ramp = _get_spark_ramp(p.color)  # v8.4: 与 _spawn_sparks 一致，设色带避免池复用残留
+	p.scale_amount_min = 1.2
+	p.scale_amount_max = 2.5
+	parent.add_child(p)
+	var tree := p.get_tree()
+	if tree != null:
+		# v7.5 同款：用 _connect_deferred_release 避免 "Lambda capture was freed" 运行时错误
+		var timer := tree.create_timer(p.lifetime + 0.1)
+		_connect_deferred_release(timer, p, _release_spark_particle)
+
+
 ## 冲击波环
 static func _spawn_ring(parent: Node2D, pos: Vector2, target_r: float, duration: float, color: Color) -> void:
 	var ring := _acquire_ring()
@@ -400,7 +587,7 @@ static func _spawn_debris(parent: Node2D, pos: Vector2, debris_cfg: Dictionary, 
 ## 内部：配色 & 配方表
 ## ======================================================================
 
-## 命中主色（提取自 WeaponProjectileVfx.IMPACT_COLOR_BY_WT + IMPACT_TINT_BY_KIND）
+## 命中主色（v8.4: 配色表真身，WeaponProjectileVfx.IMPACT_COLOR_BY_WT 已废弃迁移至此）
 static func _impact_color(weapon_type: int, combat_kind: int, is_player: bool) -> Color:
 	const COLOR_BY_WT: Dictionary = {
 		0: Color(0.95, 0.92, 0.5, 1.0),   # DIRECT/SMG 黄白
@@ -439,11 +626,14 @@ static func _impact_color(weapon_type: int, combat_kind: int, is_player: bool) -
 ## 让命中爆炸有"砰"的分量感（原环到 24px 就没了，火花 0.15s 消散）
 static func _impact_recipe(weapon_type: int) -> Dictionary:
 	match weapon_type:
-		0, 4:  # DIRECT/SMG/PISTOL — 小环 + 密集小火花
+		0, 4:  # DIRECT/SMG/PISTOL — 小环 + 少量高亮火花（v8.4 重平衡：减粒子数提单粒子亮度）
+			# v8.4: 原配方 28 小火花在高速连发(MG 4次/秒)下视觉糊成一片且耗性能。
+			# 改为 16 个更亮的火花(smin/smax↑) + 更小集中的环(像弹着点而非爆炸)，
+			# 既减负载(单次粒子数↓40%)又能看清弹着反馈(单粒子 scale↑67%)。
 			return {
-				"ring_r": 36.0, "ring_dur": 0.40,
-				"spark_amount": 28, "spark_vmin": 90.0, "spark_vmax": 280.0,
-				"spark_smin": 1.5, "spark_smax": 2.8, "spark_life": 0.55, "spark_spread": 360.0,
+				"ring_r": 28.0, "ring_dur": 0.32,
+				"spark_amount": 16, "spark_vmin": 100.0, "spark_vmax": 260.0,
+				"spark_smin": 2.5, "spark_smax": 4.0, "spark_life": 0.45, "spark_spread": 360.0,
 			}
 		6:  # SNIPER — 中环 + 高速集中喷射
 			return {
@@ -734,3 +924,43 @@ static func _release_spark_particle(p: CPUParticles2D) -> void:
 		_spark_pool.append(p)
 	else:
 		p.queue_free()
+
+
+## v8.4: 命中贴图 Sprite2D 池（重型爆炸武器 *_impact.png 渲染）
+static func _acquire_impact_sprite() -> Sprite2D:
+	var i := _impact_sprite_pool.size() - 1
+	while i >= 0:
+		var candidate = _impact_sprite_pool[i]
+		_impact_sprite_pool.remove_at(i)
+		if candidate != null and is_instance_valid(candidate) and not candidate.is_queued_for_deletion():
+			# v7.5 同款防御：剥离残留 parent
+			if candidate.get_parent() != null:
+				candidate.get_parent().remove_child(candidate)
+			_active_impact_sprites += 1
+			return candidate
+		i -= 1
+	if _active_impact_sprites >= MAX_IMPACT_SPRITES:
+		return null  # 硬上限节流
+	_active_impact_sprites += 1
+	var s := Sprite2D.new()
+	s.centered = true
+	s.offset = Vector2.ZERO
+	s.scale = Vector2.ONE  # Sprite2D 无 expand_mode（属 TextureRect/Control）；按 scale 渲染是默认行为
+	s.visible = false
+	return s
+
+
+static func _release_impact_sprite(s: Sprite2D) -> void:
+	if s == null or not is_instance_valid(s):
+		_active_impact_sprites -= 1
+		return
+	if s.get_parent() != null:
+		s.get_parent().remove_child(s)
+	s.visible = false
+	s.position = Vector2.ZERO
+	s.texture = null  # 释放贴图引用，避免池中持有资源
+	_active_impact_sprites -= 1
+	if _impact_sprite_pool.size() < MAX_IMPACT_SPRITES:
+		_impact_sprite_pool.append(s)
+	else:
+		s.queue_free()

@@ -210,6 +210,7 @@ static func ability_nano_swarm(star: int) -> Dictionary:
 	match star:
 		4: duration = 12.0; hp_pct_per_sec = 0.015
 		6: duration = 20.0; hp_pct_per_sec = 0.018
+		7: duration = 25.0; hp_pct_per_sec = 0.020   # 新增：void_god 用
 	return {
 		"id": "nano_swarm",
 		"name": "纳米虫群",
@@ -254,6 +255,26 @@ static func ability_fortress_bulwark(star: int) -> Dictionary:
 			"target_combat_kinds": [1] if apply_armor_only else [1, 4],  # ARMOR=1, FORT=4
 		},
 		"description": "我方装甲/堡垒单位最大HP×%.1f（耐久加倍）" % [hp_mult],
+	}
+
+## 9. 狂暴（owner-aware：PLAYER 持有→buff 我方，ENEMY 持有→buff 敌方）
+## 周期性激活：临时提升攻速/攻击。敌方原 enemy_rage_buff 统一为此 id。
+static func ability_rage_buff(star: int) -> Dictionary:
+	var interval: float = 15.0
+	var duration: float = 5.0
+	var atk_mult: float = 1.4
+	var spd_mult: float = 1.25
+	match star:
+		3: interval = 20.0; duration = 4.0; atk_mult = 1.2; spd_mult = 1.15
+		5: interval = 18.0; duration = 4.5; atk_mult = 1.3; spd_mult = 1.2
+		6: interval = 16.0; duration = 5.0; atk_mult = 1.35; spd_mult = 1.22
+		7: interval = 12.0; duration = 6.0; atk_mult = 1.5; spd_mult = 1.3
+	return {
+		"id": "rage_buff",
+		"name": "狂暴激涌",
+		"type": "periodic",
+		"params": {"interval": interval, "duration": duration, "atk_mult": atk_mult, "spd_mult": spd_mult},
+		"description": "每%d秒激活狂暴：目标单位 %d 秒内攻击+%d%%、攻速+%d%%" % [int(interval), int(duration), int(round((atk_mult - 1.0) * 100)), int(round((spd_mult - 1.0) * 100))],
 	}
 
 
@@ -469,6 +490,93 @@ static func _build_all() -> Array[Dictionary]:
 	out.append(_make_def("pi_special_void", "虚空吞噬者", "void_research", false, 6, "phase_master_drop", ["虚空侵蚀：暴击+15%，暴击伤害+30%"], ability_nano_swarm(6)))
 	out.append(_make_def("pi_special_aegis", "神盾·壁垒之心", "aether_dynamics", false, 6, "phase_master_drop", ["绝对壁垒：防御+22%，受到伤害-12%"], ability_mega_shield(6)))
 	out.append(_make_def("pi_special_nova", "终焉核芯", "nova_arms", false, 7, "phase_master_drop", ["终焉之力：卡牌伤害+22%，攻速+15%"], ability_nuclear_bombardment(7)))
+
+	# v7.x 敌方相位师相位仪迁入（26 款，原 enemy_phase_instruments.json）
+	# is_generic=true：不绑公司布局；faction_id="generic"；acquire_rule="phase_master_drop"
+	# level 字段后补（出现等级，与 star 解耦）
+	# 钢铁系（防御）5 款
+	var d: Dictionary = _make_def("pi_steel_01", "钢铁卫士·初阶", "generic", true, 3, "phase_master_drop", ["钢肤·初：产兵防御小幅强化"])
+	d["level"] = 5
+	out.append(d)
+	d = _make_def("pi_steel_02", "钢铁卫士·进阶", "generic", true, 5, "phase_master_drop", ["钢肤·进：产兵防御与生命强化"])
+	d["level"] = 12
+	out.append(d)
+	d = _make_def("pi_steel_03", "钢铁卫士·专家", "generic", true, 6, "phase_master_drop", ["要塞精通：产兵防御大幅强化"], ability_mega_shield(6))
+	d["level"] = 18
+	out.append(d)
+	d = _make_def("pi_steel_04", "钢铁卫士·大师", "generic", true, 7, "phase_master_drop", ["不朽要塞：产兵防御极大幅强化"], ability_rage_buff(7))
+	d["level"] = 25
+	out.append(d)
+	d = _make_def("pi_steel_05", "钢铁之神", "generic", true, 7, "phase_master_drop", ["神威钢躯：产兵全属性极限强化"], ability_rage_buff(7))
+	d["level"] = 29
+	out.append(d)
+	# 烈焰系（火力）5 款
+	d = _make_def("pi_flame_01", "烈焰破坏者·初阶", "generic", true, 3, "phase_master_drop", ["燃烧光环·初：产兵攻击小幅强化"])
+	d["level"] = 6
+	out.append(d)
+	d = _make_def("pi_flame_02", "烈焰破坏者·进阶", "generic", true, 5, "phase_master_drop", ["燃烧光环·进：产兵攻击与射程强化"])
+	d["level"] = 13
+	out.append(d)
+	d = _make_def("pi_flame_03", "烈焰破坏者·专家", "generic", true, 6, "phase_master_drop", ["烈焰地狱：产兵攻击大幅强化"])
+	d["level"] = 19
+	out.append(d)
+	d = _make_def("pi_flame_04", "烈焰破坏者·大师", "generic", true, 7, "phase_master_drop", ["永恒烈焰：产兵攻击极大幅强化"], ability_artillery_barrage(7))
+	d["level"] = 26
+	out.append(d)
+	d = _make_def("pi_flame_05", "炎魔之神", "generic", true, 7, "phase_master_drop", ["炎魔神躯：产兵攻击极限强化"])
+	d["level"] = 30
+	out.append(d)
+	# 雷霆系（攻速/闪电）5 款
+	d = _make_def("pi_thunder_01", "雷霆风暴·初阶", "generic", true, 3, "phase_master_drop", ["静电场·初：产兵攻速小幅强化"])
+	d["level"] = 7
+	out.append(d)
+	d = _make_def("pi_thunder_02", "雷霆风暴·进阶", "generic", true, 5, "phase_master_drop", ["静电场·进：产兵攻速与暴击强化"])
+	d["level"] = 14
+	out.append(d)
+	d = _make_def("pi_thunder_03", "雷霆风暴·专家", "generic", true, 6, "phase_master_drop", ["雷霆极速：产兵攻速大幅强化"])
+	d["level"] = 20
+	out.append(d)
+	d = _make_def("pi_thunder_04", "雷霆风暴·大师", "generic", true, 7, "phase_master_drop", ["无处不在的闪电：产兵攻速极大幅强化"])
+	d["level"] = 27
+	out.append(d)
+	d = _make_def("pi_thunder_05", "雷神", "generic", true, 7, "phase_master_drop", ["雷神之躯：产兵攻速极限强化"])
+	d["level"] = 30
+	out.append(d)
+	# 虚空系（法抗/熵增）5 款
+	d = _make_def("pi_void_01", "虚空行者·初阶", "generic", true, 3, "phase_master_drop", ["熵增光环·初：产兵法抗小幅强化"])
+	d["level"] = 8
+	out.append(d)
+	d = _make_def("pi_void_02", "虚空行者·进阶", "generic", true, 5, "phase_master_drop", ["熵增光环·进：产兵法抗与生命强化"])
+	d["level"] = 15
+	out.append(d)
+	d = _make_def("pi_void_03", "虚空行者·专家", "generic", true, 6, "phase_master_drop", ["现实撕裂：产兵法抗大幅强化"])
+	d["level"] = 21
+	out.append(d)
+	d = _make_def("pi_void_04", "虚空行者·大师", "generic", true, 7, "phase_master_drop", ["虚空主宰：产兵法抗极大幅强化"], ability_nano_swarm(7))
+	d["level"] = 28
+	out.append(d)
+	d = _make_def("pi_void_05", "虚空女神", "generic", true, 7, "phase_master_drop", ["虚空女神：产兵全属性极限强化"], ability_nano_swarm(7))
+	d["level"] = 30
+	out.append(d)
+	# 混合系 5 款 + 奥米茄 1 款
+	d = _make_def("pi_steelflame_01", "熔铸卫士", "generic", true, 5, "phase_master_drop", ["熔铸之肤：产兵防御与攻击双修"])
+	d["level"] = 16
+	out.append(d)
+	d = _make_def("pi_thundersteel_01", "电磁卫士·初", "generic", true, 5, "phase_master_drop", ["导电装甲：产兵防御与攻速双修"])
+	d["level"] = 17
+	out.append(d)
+	d = _make_def("pi_voidflame_01", "熵增炎魔", "generic", true, 5, "phase_master_drop", ["混沌光环：产兵攻击与法抗双修"])
+	d["level"] = 18
+	out.append(d)
+	d = _make_def("pi_steelthunder_01", "电磁卫士·高阶", "generic", true, 6, "phase_master_drop", ["雷铸钢躯：产兵防御与攻速大幅双修"])
+	d["level"] = 24
+	out.append(d)
+	d = _make_def("pi_flamevoid_01", "混沌炎魔仪", "generic", true, 6, "phase_master_drop", ["维度焚毁：产兵攻击与法抗大幅双修"])
+	d["level"] = 25
+	out.append(d)
+	d = _make_def("pi_omega_01", "奥米茄相位仪", "generic", true, 7, "phase_master_drop", ["完美和谐：产兵全属性极限强化"])
+	d["level"] = 30
+	out.append(d)
 	return out
 
 static func get_all() -> Array[Dictionary]:

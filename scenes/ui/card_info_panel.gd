@@ -82,6 +82,9 @@ var _affix_flow: VBoxContainer = null
 var _reinforce_instance: Control = null
 var _modify_instance: Control = null
 var _evolve_instance: Control = null
+# 子面板按需刷新：标记哪个子面板数据已变（用户切到对应 Tab 时才真正刷新，避免点卡时同步刷 3 个）
+var _sub_panel_dirty: Dictionary = {}
+var _info_tab_changed_connected: bool = false
 
 const ERA_NAMES := ["一战", "二战", "冷战", "现代", "近未来"]
 const RARITY_COLORS := {
@@ -121,6 +124,10 @@ func _resolve_nodes() -> void:
 	type_label = get_node_or_null("Margin/VBox/TypeLabel") as Label
 	rank_badge_host = get_node_or_null("Margin/VBox/RankBadgeHost") as HBoxContainer
 	_tab_container = get_node_or_null("Margin/VBox/TabBar") as TabContainer
+	# 子面板按需刷新：连接 tab_changed，切到强化/改造/进化 Tab 时才刷新对应子面板
+	if _tab_container and not _info_tab_changed_connected:
+		_tab_container.tab_changed.connect(_on_info_tab_changed)
+		_info_tab_changed_connected = true
 	# v6.4 图形化三维攻防卡
 	_hp_value_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow/HpCard/HpVBox/HpValue") as Label
 	_hp_sub_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StatsSection/StatsVBox/StatCardsRow/HpCard/HpVBox/HpSub") as Label
@@ -303,15 +310,33 @@ func _ensure_evolve_instance() -> void:
 func _refresh_sub_panels(card: CardResource) -> void:
 	if card.card_type != GC.CardType.COMBAT_UNIT:
 		return
-	_ensure_reinforce_instance()
-	_ensure_modify_instance()
-	_ensure_evolve_instance()
-	if _reinforce_instance and _reinforce_instance.has_method("set_selected_card"):
-		_reinforce_instance.set_selected_card(card)
-	if _modify_instance and _modify_instance.has_method("set_selected_card"):
-		_modify_instance.set_selected_card(card)
-	if _evolve_instance and _evolve_instance.has_method("set_selected_card"):
-		_evolve_instance.set_selected_card(card)
+	# 按需刷新：不再点卡时同步刷 3 个子面板，改为标记 dirty，
+	# 等用户切到对应 Tab 时（_on_info_tab_changed）才真正实例化+刷新。
+	# 点卡后默认停在情报 Tab（show_card_info 末尾 current_tab = INFO），用户看不到子面板无需刷。
+	_sub_panel_dirty[TabIdx.REINFORCE] = true
+	_sub_panel_dirty[TabIdx.MODIFY] = true
+	_sub_panel_dirty[TabIdx.EVOLVE] = true
+
+## 用户切换 Tab 时按需刷新对应子面板（首次也在此实例化，避免点卡首帧 instantiate 3 个 .tscn）
+func _on_info_tab_changed(tab_index: int) -> void:
+	if current_card == null:
+		return
+	match tab_index:
+		TabIdx.REINFORCE:
+			_ensure_reinforce_instance()
+			if _reinforce_instance and _reinforce_instance.has_method("set_selected_card"):
+				_reinforce_instance.set_selected_card(current_card)
+			_sub_panel_dirty[TabIdx.REINFORCE] = false
+		TabIdx.MODIFY:
+			_ensure_modify_instance()
+			if _modify_instance and _modify_instance.has_method("set_selected_card"):
+				_modify_instance.set_selected_card(current_card)
+			_sub_panel_dirty[TabIdx.MODIFY] = false
+		TabIdx.EVOLVE:
+			_ensure_evolve_instance()
+			if _evolve_instance and _evolve_instance.has_method("set_selected_card"):
+				_evolve_instance.set_selected_card(current_card)
+			_sub_panel_dirty[TabIdx.EVOLVE] = false
 
 ## ── 操作按钮 ──────────────────────────────────────────────────
 
@@ -1297,18 +1322,18 @@ func _format_enemy_active_abilities(pm_id: String, inst_id: String) -> String:
 			else:
 				line += sp_desc
 			blocks.append(line)
-	# 2. 相位仪 special_effects（字符串ID数组，翻译后 join）
+	# 2. 相位仪 special_traits（v7.x: 统一池中文描述，直接 join）
 	if not inst_id.is_empty():
 		var inst_cfg: Dictionary = EnemyPhaseEquipment.get_phase_instrument(inst_id)
-		var fx: Array = inst_cfg.get("special_effects", []) as Array
-		if not fx.is_empty():
-			var fx_names: Array[String] = []
-			for tag in fx:
-				var zh: String = LeaderboardPresenter._translate_special_tag(String(tag))
-				if not zh.is_empty() and not fx_names.has(zh):
-					fx_names.append(zh)
-			if not fx_names.is_empty():
-				blocks.append("特殊效果：" + "、".join(fx_names))
+		var traits: Array = inst_cfg.get("special_traits", []) as Array
+		if not traits.is_empty():
+			var trait_names: Array[String] = []
+			for t in traits:
+				var ts: String = String(t)
+				if not ts.is_empty() and not trait_names.has(ts):
+					trait_names.append(ts)
+			if not trait_names.is_empty():
+				blocks.append("特殊效果：" + "、".join(trait_names))
 	return "\n".join(blocks)
 
 func _show_enemy_phase_driver(unit: Node) -> void:

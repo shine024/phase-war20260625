@@ -354,6 +354,13 @@ func _open_overlay(overlay: Control, panel_key: String = "") -> void:
 			backpack_panel.on_overlay_opened()
 			if PerformanceMetricsManager and PerformanceMetricsManager.has_method("mark_backpack_open_ready"):
 				PerformanceMetricsManager.mark_backpack_open_ready()
+	elif panel_key == "store":
+		# 商店面板：触发打开分帧刷新（on_overlay_opened 将 _refresh_items 拆到下一帧，降低首开尖峰）
+		var store_panel: Node = overlay.get_node_or_null("CenterContainer/StorePanel")
+		if store_panel == null:
+			store_panel = overlay.find_child("StorePanel", true, false)
+		if store_panel and store_panel.has_method("on_overlay_opened"):
+			store_panel.on_overlay_opened()
 	elif panel_key == "info":
 		var hub: Node = overlay.get_node_or_null("CenterContainer/IntelligenceHubPanel")
 		if hub and hub.has_method("refresh"):

@@ -154,7 +154,16 @@ func process(delta: float) -> void:
 
 ## 收集装备的战斗卡，填充部署队列（保留绿槽索引用于固定映射）
 ## v7.x: 过滤掉已在战场上存活的卡（不管它在哪个位置），避免手动+自动混用时报错
+## v8.1d: 先用 get_remaining_deployable_count 做快速门控——与 request_player_deploy
+##         的 live_count 检查口径一致，杜绝"slot 检查说有空位但 recount 说已满"的错位。
 func _start_deploy_round() -> void:
+	# v8.1d: 快速门控——如果BattleSpawnSystem认为已无部署余量，直接清队
+	var bss: Node = _get_node("/root/BattleSpawnSystem")
+	if bss != null and bss.has_method("get_remaining_deployable_count"):
+		var remaining: int = bss.get_remaining_deployable_count()
+		if remaining <= 0:
+			_deploy_queue.clear()
+			return
 	var pim: Node = _get_node("/root/PhaseInstrumentManager")
 	if pim == null or not pim.has_method("get_loadouts"):
 		return
@@ -257,7 +266,12 @@ func _deploy_next() -> void:
 		player_units = bf.get_player_units_node()
 	if player_units == null:
 		player_units = bf.get_node_or_null("PlayerUnits")
-	# 遍历队列，找第一个"对应战场位空闲"的条目部署
+	# v8.1d: 每次部署前用统一口径检查剩余配额，避免"slot 检查说有空位但 recount 说已满"
+	var bss: Node = _get_node("/root/BattleSpawnSystem")
+	if bss != null and bss.has_method("get_remaining_deployable_count"):
+		if bss.get_remaining_deployable_count() <= 0:
+			_deploy_queue.clear()
+			return
 	var deployed_index: int = -1
 	for i in range(_deploy_queue.size()):
 		var entry: Dictionary = _deploy_queue[i]

@@ -435,15 +435,21 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 	# 直射 + 射速 > 2发/秒 → MultiMesh 批处理
 	# 直射 + 射速 ≤ 2发/秒 → 独立子弹节点（对象池）
 
+	# v8.4: 从 weapon_resource._mod_effects 读出 vfx_variant（武器类改造专属视觉）
+	# 在路由判定前提取，曲射 batch / 独立 bullet 两条路径共用
+	var _vfx_variant: String = ""
+	if weapon_resource and weapon_resource is WeaponResource:
+		_vfx_variant = String(weapon_resource._mod_effects.get("vfx_variant", ""))
+
 	# 优先路由：曲射/空射武器（v6.6: 统一曲射判定）
 	if GC.is_indirect_weapon_type(wt):
 		if u.is_player and BattleManager and is_instance_valid(BattleManager.player_indirect_batch):
 			if BattleManager.player_indirect_batch.has_method("fire"):
-				BattleManager.player_indirect_batch.fire(u.global_position, u.target, damage, wt, u, u.stats, miss, w_name)
+				BattleManager.player_indirect_batch.fire(u.global_position, u.target, damage, wt, u, u.stats, miss, w_name, _vfx_variant)
 				return
 		elif not u.is_player and BattleManager and is_instance_valid(BattleManager.enemy_indirect_batch):
 			if BattleManager.enemy_indirect_batch.has_method("fire"):
-				BattleManager.enemy_indirect_batch.fire(u.global_position, u.target, damage, wt, u, u.stats, miss, w_name)
+				BattleManager.enemy_indirect_batch.fire(u.global_position, u.target, damage, wt, u, u.stats, miss, w_name, _vfx_variant)
 				return
 		# 批处理不可用时回退到独立子弹
 
@@ -473,7 +479,7 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 			_vfx_wt = _slot_wt
 		elif u.stats and u.stats.legacy_weapon_type > 0:
 			_vfx_wt = u.stats.legacy_weapon_type
-		bullet.setup(u.target, pellet_dmg, u.is_player, _vfx_wt, u, u.stats, miss, w_name, p_pre_calculated)
+		bullet.setup(u.target, pellet_dmg, u.is_player, _vfx_wt, u, u.stats, miss, w_name, p_pre_calculated, _vfx_variant)
 		var current_parent: Node = bullet.get_parent()
 		if current_parent != root_2d:
 			if current_parent != null:
@@ -484,9 +490,12 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 static func apply_continuous_effects(u: CharacterBody2D, delta: float) -> void:
 	if u.stats == null:
 		return
-	# 应用回血效果（纳米自愈词条）
-	if u.stats.hp_regen > 0.0:
-		ModuleEffectHandler.on_tick(u, delta)
+	# v7.x 修复：on_tick 承载多个每帧机制（hp_regen / 怒气过期 / 区域光环 / 相位护盾回复），
+	# 此前用 hp_regen>0 守卫包住整个调用，导致未装回血改造的单位其他 on_tick 机制空转
+	# （反坦克壕减速 / 指挥地堡光环 / 相位护盾回复 / 怒气过期检查）。
+	# 现改为每帧无条件调用——on_tick 内部各分支自带早退守卫（字段<=0 即返回），
+	# 无相关改造的单位每帧仅做几次字段比较即返回，无性能负担。
+	ModuleEffectHandler.on_tick(u, delta)
 
 ## v5.0 攻速分离: 单武器三阶段攻击状态机
 static func _process_single_weapon_attack(u: CharacterBody2D, delta: float) -> void:
