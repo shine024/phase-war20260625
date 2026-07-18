@@ -71,7 +71,6 @@ func _debug_log(hypothesis_id: String, location: String, message: String, data: 
 @onready var enhancement_overlay: Control     = $PopupLayer/EnhancementOverlay
 @onready var modification_overlay: Control    = $PopupLayer/ModificationOverlay
 @onready var evolution_overlay: Control       = $PopupLayer/EvolutionOverlay
-@onready var story_overlay: Control           = $PopupLayer/StoryOverlay
 @onready var afk_overlay: Control             = $PopupLayer/AFKOverlay
 # v7.x: 玩家相位师详细面板（点击底部栏相位场标签打开）
 @onready var player_master_overlay: Control   = $PopupLayer/PlayerMasterOverlay
@@ -519,7 +518,6 @@ func _overlay_for_panel_key(panel_key: String) -> Control:
 		"progression": return manufacture_overlay
 		"quest": return quest_overlay
 		"store": return store_overlay
-		"story_dialogue": return story_overlay
 		"growth": return growth_overlay
 		"faction": return faction_overlay
 		"map": return map_overlay

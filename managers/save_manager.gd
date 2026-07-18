@@ -62,7 +62,6 @@ const DEFERRED_MANAGER_LOADS: Array = [
 	["/root/DailyTaskManager", "daily_task"],
 	["/root/CardEnhancementManager", "card_enhancement"],
 	["/root/TutorialProgressionManager", "tutorial_progress"],
-	["/root/StoryManager", "story_progress"],
 	["/root/DayClock", SK_DAY_CLOCK],
 	["/root/CharacterManager", "characters"],
 	["/root/ChallengeModeManager", "challenge_records"],
@@ -101,7 +100,6 @@ const RESETTABLE_MANAGERS := [
 	"StatBoostManager",
 	"CardEnhancementManager",
 	"TutorialProgressionManager",
-	"StoryManager",
 	"DayClock",
 	"CharacterManager",
 	"ChallengeModeManager",
@@ -149,7 +147,6 @@ const SK_STATISTICS: String = "statistics"  # v7.x: 常量源已删，保留字�
 const SK_CARD_ENHANCEMENT: String = SaveConstants.SK_CARD_ENHANCEMENT
 # v7.x: SK_LAW_SHARDS 别名已删除（SaveConstants 常量本身已删，全项目零引用）
 const SK_TUTORIAL_PROGRESS: String = SaveConstants.SK_TUTORIAL_PROGRESS
-const SK_STORY_PROGRESS: String = SaveConstants.SK_STORY_PROGRESS
 const SK_CHARACTERS: String = SaveConstants.SK_CHARACTERS
 const SK_CHALLENGE_RECORDS: String = SaveConstants.SK_CHALLENGE_RECORDS
 const SK_CARD_COLLECTION: String = SaveConstants.SK_CARD_COLLECTION
@@ -591,7 +588,6 @@ func _collect_noncritical_save_data(data: Dictionary, now_ms: int) -> void:
 		_collect_manager_state(fresh, "/root/DailyTaskManager", SK_DAILY_TASK)
 		_collect_manager_state(fresh, "/root/CardEnhancementManager", SK_CARD_ENHANCEMENT)
 		_collect_manager_state(fresh, "/root/TutorialProgressionManager", SK_TUTORIAL_PROGRESS)
-		_collect_manager_state(fresh, "/root/StoryManager", SK_STORY_PROGRESS)
 		_collect_manager_state(fresh, "/root/DayClock", SK_DAY_CLOCK)
 		_collect_manager_state(fresh, "/root/CharacterManager", SK_CHARACTERS)
 		_collect_manager_state(fresh, "/root/ChallengeModeManager", SK_CHALLENGE_RECORDS)

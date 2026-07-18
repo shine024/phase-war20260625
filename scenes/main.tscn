@@ -22,7 +22,6 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/card_grid_battle_hud.tscn" id="33_card_grid_hud"]
 [ext_resource type="PackedScene" path="res://scenes/ui/intelligence_hub_panel.tscn" id="34_intelligence_hub"]
 [ext_resource type="PackedScene" uid="uid://b8xk3l2m5n6o" path="res://scenes/ui/card_info_panel.tscn" id="35_card_info_panel"]
-[ext_resource type="PackedScene" path="res://scenes/ui/story_dialogue_panel.tscn" id="36_story_dialogue"]
 [ext_resource type="PackedScene" path="res://scenes/ui/afk_panel.tscn" id="39_afk_panel"]
 [ext_resource type="PackedScene" path="res://scenes/ui/battle_announcer.tscn" id="40_battle_announcer"]
 [ext_resource type="PackedScene" path="res://scenes/ui/battle_log.tscn" id="41_battle_log"]
@@ -691,38 +690,6 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-
-[node name="StoryOverlay" type="Control" parent="PopupLayer"]
-visible = false
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-[node name="Backdrop" type="ColorRect" parent="PopupLayer/StoryOverlay"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-color = Color(0, 0, 0, 0.55)
-mouse_filter = 0
-
-
-; v6.8: 节点名保留 CenterContainer 以兼容 ui_lazy_loader 的 parent_path，
-; 但类型改为 Control —— CenterContainer 会强制子节点按最小尺寸居中，导致剧情面板无法底部锚定。
-[node name="CenterContainer" type="Control" parent="PopupLayer/StoryOverlay"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="StoryDialoguePanel" parent="PopupLayer/StoryOverlay/CenterContainer" instance=ExtResource("36_story_dialogue")]
-visible = false
 
 [node name="CenterContainer" type="CenterContainer" parent="PopupLayer/LevelSelectOverlay"]
 layout_mode = 1

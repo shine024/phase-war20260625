@@ -278,9 +278,6 @@ func is_quest_available(quest_id: String) -> bool:
 	var prereq: String = String(def.get("prereq", ""))
 	if not prereq.is_empty() and not is_completed_ever(prereq):
 		return false
-	# story 任务前置完成后自动揭示（自由模式无 city_map / NPC，剧情任务不应卡 reveal）
-	if def.get("category", "commission") == "story" and not _revealed_quest_ids.has(quest_id):
-		_revealed_quest_ids.append(quest_id)
 	# hidden 且未揭示 → 不可接（其他 hidden 任务仍走 NPC reveal 路径）
 	if bool(def.get("hidden", false)) and not _revealed_quest_ids.has(quest_id):
 		return false
@@ -298,36 +295,6 @@ func reveal_quest(quest_id: String) -> bool:
 ## 任务是否已被揭示（隐藏任务可见性查询）
 func is_quest_revealed(quest_id: String) -> bool:
 	return _revealed_quest_ids.has(quest_id)
-
-## 设置任务分支结果（补剧情.txt 第四幕"加入/拒绝/拖延真实者"选择）
-## branch_key 存入 StoryManager story_flags，供后续剧情节点判定
-func set_quest_branch(quest_id: String, branch_key: String, branch_value: Variant = true) -> void:
-	# v7.x 性能：StoryManager 延迟加载，访问前确保已实例化
-	var _mll: Node = get_node_or_null("/root/ManagerLazyLoader")
-	if _mll and _mll.has_method("ensure_loaded"):
-		_mll.ensure_loaded("story")
-	var sm: Node = get_node_or_null("/root/StoryManager")
-	if sm and sm.has_method("set_story_flag"):
-		# 分支标记命名：quest_<quest_id>_<branch_key>
-		sm.set_story_flag("quest_%s_%s" % [quest_id, branch_key], branch_value)
-	# 揭示分支后续任务（如有）
-	var def: Dictionary = QuestDefs.get_by_id(quest_id)
-	var branches: Dictionary = def.get("branches", {})
-	if branches.has(branch_key):
-		var next_quest: String = String(branches[branch_key].get("next_quest", ""))
-		if not next_quest.is_empty():
-			reveal_quest(next_quest)
-
-## 获取任务分支结果（供剧情节点查询玩家选择）
-func get_quest_branch(quest_id: String, branch_key: String) -> Variant:
-	# v7.x 性能：StoryManager 延迟加载，访问前确保已实例化
-	var _mll: Node = get_node_or_null("/root/ManagerLazyLoader")
-	if _mll and _mll.has_method("ensure_loaded"):
-		_mll.ensure_loaded("story")
-	var sm: Node = get_node_or_null("/root/StoryManager")
-	if sm and sm.has_method("get_story_flag"):
-		return sm.get_story_flag("quest_%s_%s" % [quest_id, branch_key], null)
-	return null
 
 func get_accepted_quest_ids() -> Array:
 	return _accepted.keys()
@@ -687,34 +654,6 @@ func get_quest_target_faction(quest_id: String) -> String:
 
 func is_mission_quest_done(quest_id: String) -> bool:
 	return get_quest_progress_for_mission(quest_id) >= 1
-
-# ──────────────── v6.7(剧情任务): 自由模式剧情任务查询接口 ────────────────
-
-## 返回指定 category 的全部任务定义（委托/剧情/日常）
-func get_quests_by_category(category: String) -> Array:
-	var out: Array = []
-	for qid in QuestDefs.get_available_ids():
-		var def: Dictionary = QuestDefs.get_by_id(qid)
-		if def.is_empty():
-			continue
-		if def.get("category", "commission") == category:
-			out.append(def)
-	return out
-
-## 返回某剧情任务的触发关卡号（category=="story"）；非剧情任务返回 0
-func trigger_level_for_quest(quest_id: String) -> int:
-	var def: Dictionary = QuestDefs.get_by_id(quest_id)
-	if def.is_empty() or def.get("category", "commission") != "story":
-		return 0
-	return int(def.get("trigger_level", 0))
-
-## 查询当前关卡是否有已接取、未完成的剧情任务（供 GameManager 进关触发战前对话）
-## 返回 quest_id，无则空字符串
-func get_active_story_quest_at_level(level: int) -> String:
-	for qid in _accepted.keys():
-		if trigger_level_for_quest(qid) == level and not is_quest_done(qid):
-			return qid
-	return ""
 
 # ──────────────── v6.9: 势力动态任务系统 ────────────────
 

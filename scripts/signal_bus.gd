@@ -144,12 +144,6 @@ signal level_selected(level: int)
 # signal tower_state_changed(state: int)
 # signal tower_relic_obtained(relic_id: String)
 
-# v6.7(剧情任务): 关卡剧情任务（docs/补剧情.txt 关卡映射）
-
-# GameManager 在进关/过关时 emit，story_dialogue_panel 监听后播放对应任务的对话
-# phase = "pre"（战前）/ "post"（战后）
-signal story_mission_dialogue(quest_id: String, phase: String)
-
 # 通用 UI 反馈
 signal show_toast(message: String)
 

@@ -82,6 +82,11 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 theme_override_constants/separation = 0
 
+[node name="SignatureStrip" type="ColorRect" parent="VBoxOuter"]
+custom_minimum_size = Vector2(0, 2)
+layout_mode = 2
+color = Color(0.961, 0.62, 0.043, 0.7)
+
 [node name="TitleRow" type="HBoxContainer" parent="VBoxOuter"]
 layout_mode = 2
 custom_minimum_size = Vector2(0, 36)
@@ -90,9 +95,9 @@ theme_override_constants/separation = 8
 [node name="TitleLabel" type="Label" parent="VBoxOuter/TitleRow"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0, 0.941, 1, 1)
-theme_override_font_sizes/font_size = 15
-text = "🎒 背包"
+theme_override_colors/font_color = Color(0.95, 0.94, 0.98, 1)
+theme_override_font_sizes/font_size = 18
+text = "INVENTORY · 背包"
 
 [node name="CloseButton" type="Button" parent="VBoxOuter/TitleRow"]
 layout_mode = 2
@@ -137,31 +142,7 @@ size_flags_horizontal = 3
 size_flags_vertical = 0
 theme_override_constants/h_separation = 6
 theme_override_constants/v_separation = 6
-columns = 8
-
-[node name="ResourcesTab" type="Control" parent="VBoxOuter/TabContainer"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-
-[node name="ResourcesScroll" type="ScrollContainer" parent="VBoxOuter/TabContainer/ResourcesTab"]
-clip_contents = true
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-horizontal_scroll_mode = 0
-vertical_scroll_mode = 2
-
-[node name="ResourcesGrid" type="GridContainer" parent="VBoxOuter/TabContainer/ResourcesTab/ResourcesScroll"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 0)
-size_flags_horizontal = 3
-theme_override_constants/h_separation = 6
-theme_override_constants/v_separation = 6
-columns = 8
+columns = 7
 
 [node name="IntelTab" type="Control" parent="VBoxOuter/TabContainer"]
 layout_mode = 2
@@ -185,31 +166,7 @@ custom_minimum_size = Vector2(0, 0)
 size_flags_horizontal = 3
 theme_override_constants/h_separation = 6
 theme_override_constants/v_separation = 6
-columns = 8
-
-[node name="StatBoostsTab" type="Control" parent="VBoxOuter/TabContainer"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-
-[node name="StatBoostsScroll" type="ScrollContainer" parent="VBoxOuter/TabContainer/StatBoostsTab"]
-clip_contents = true
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-horizontal_scroll_mode = 0
-vertical_scroll_mode = 2
-
-[node name="StatBoostsGrid" type="GridContainer" parent="VBoxOuter/TabContainer/StatBoostsTab/StatBoostsScroll"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 0)
-size_flags_horizontal = 3
-theme_override_constants/h_separation = 6
-theme_override_constants/v_separation = 6
-columns = 8
+columns = 6
 
 [node name="RunesTab" type="Control" parent="VBoxOuter/TabContainer"]
 layout_mode = 2
@@ -239,7 +196,7 @@ custom_minimum_size = Vector2(0, 0)
 size_flags_horizontal = 3
 theme_override_constants/h_separation = 6
 theme_override_constants/v_separation = 6
-columns = 8
+columns = 6
 
 [node name="RuneInfoPanel" type="VBoxContainer" parent="VBoxOuter/TabContainer/RunesTab/RunesHSplit"]
 layout_mode = 2

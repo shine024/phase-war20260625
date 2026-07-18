@@ -1,6 +1,5 @@
 extends PanelContainer
-## 任务面板：委托/剧情/日常三标签，可接任务列表、已接任务与进度、接取/放弃
-## v6.7(剧情任务): 重构为 TabContainer，剧情任务独立标签页
+## 任务面板：委托/日常两标签，可接任务列表、已接任务与进度、接取/放弃
 
 const QuestDefs = preload("res://data/quest_definitions.gd")
 const CompanyDefs = preload("res://data/company_definitions.gd")
@@ -9,8 +8,6 @@ signal closed
 
 @onready var company_list: VBoxContainer = $Margin/VBox/TabContainer/CommissionTab/CompanySummary/Margin/CompanyList
 @onready var commission_list: VBoxContainer = $Margin/VBox/TabContainer/CommissionTab/CommissionScroll/CommissionList
-@onready var story_list: VBoxContainer = $Margin/VBox/TabContainer/StoryTab/StoryScroll/StoryList
-@onready var story_header: Label = $Margin/VBox/TabContainer/StoryTab/StoryHeader
 @onready var daily_list: VBoxContainer = $Margin/VBox/TabContainer/DailyTab/DailyScroll/DailyList
 @onready var accepted_label: Label = $Margin/VBox/AcceptedLabel
 @onready var close_btn: Button = $Margin/VBox/CloseButton
@@ -103,10 +100,8 @@ func _refresh_list() -> void:
 	var quest_mgr = get_node_or_null("/root/QuestManager")
 	if quest_mgr and quest_mgr.has_method("notify_fragments_changed"):
 		quest_mgr.notify_fragments_changed()
-	# 清空三个列表
+	# 清空两个列表
 	for c in commission_list.get_children():
-		c.queue_free()
-	for c in story_list.get_children():
 		c.queue_free()
 	for c in daily_list.get_children():
 		c.queue_free()
@@ -119,34 +114,19 @@ func _refresh_list() -> void:
 		var def: Dictionary = QuestDefs.get_by_id(qid)
 		if def.is_empty():
 			continue
-		# v6.7(引导剧情): tutorial 类自动触发、不进任务面板
-		if def.get("category", "commission") == "tutorial":
-			continue
-		# 主线剧情已关闭（已有 tutorial 引导替代）：story 任务不进任务面板
-		if def.get("category", "commission") == "story" and QuestDefs.STORY_DISABLED:
-			continue
 		var is_accepted: bool = quest_mgr.is_accepted(qid)
 		# v6.6(剧情): 隐藏任务在 reveal 前不出现在任务板（补剧情.txt 真实者支线）
 		# 已接的任务无论 hidden 都显示（防止接取后 reveal 状态丢失导致任务消失）
 		if not is_accepted and quest_mgr.has_method("is_quest_available") and not quest_mgr.is_quest_available(qid):
 			continue
 		var row: Control = _make_quest_row(qid, def, is_accepted)
-		# v6.7(剧情任务): 按 category 分流到对应 Tab 列表
+		# 按 category 分流到对应 Tab 列表
 		var category: String = def.get("category", "commission")
 		match category:
-			"story":
-				story_list.add_child(row)
 			"daily":
 				daily_list.add_child(row)
 			_:
 				commission_list.add_child(row)
-	# v7.x: 剧情Tab 顶部标题动态显示已揭示数（让玩家看到剧情进度脉络）
-	var story_visible_count: int = story_list.get_child_count()
-	if story_header:
-		story_header.text = "◆ 主线剧情 · 已揭示 %d 项（进入对应关卡自动开始对话，完成前置解锁新章节）" % story_visible_count
-	# 剧情标签无任务时显示空提示（紫色系，呼应剧情Tab主题）
-	if story_visible_count == 0:
-		story_list.add_child(_make_empty_hint("暂无剧情任务。\n完成前置关卡后会自动解锁新剧情，进入触发关卡即自动开始对话。", Color(0.75, 0.5, 0.95, 0.85)))
 	if daily_list.get_child_count() == 0:
 		daily_list.add_child(_make_empty_hint("日常任务将在每日刷新时出现。", Color(0.5, 0.55, 0.6, 0.75)))
 
@@ -163,7 +143,6 @@ func _make_quest_row(quest_id: String, def: Dictionary, is_accepted: bool) -> Co
 	var quest_mgr = get_node_or_null("/root/QuestManager")
 	var is_completed: bool = not is_accepted and quest_mgr.is_completed_ever(quest_id) if quest_mgr else false
 	var category: String = def.get("category", "commission")
-	var is_story: bool = (category == "story")
 	# v6.9: 动态任务（势力委托）视觉标记
 	var is_dynamic: bool = bool(def.get("is_dynamic", false))
 	# 根据状态确定边框颜色
@@ -179,10 +158,6 @@ func _make_quest_row(quest_id: String, def: Dictionary, is_accepted: bool) -> Co
 		# v6.9: 势力动态委托用橙红边框（占领势力主题色）
 		border_color = Color(0.95, 0.6, 0.25, 0.65)
 		bg_color     = Color(0.10, 0.07, 0.04, 0.9)
-	elif is_story:
-		# v6.7(剧情任务): 剧情任务用紫色边框突出
-		border_color = Color(0.55, 0.35, 0.85, 0.6)
-		bg_color     = Color(0.08, 0.05, 0.14, 0.9)
 	else:
 		border_color = Color(0.35, 0.6, 0.9, 0.5)
 		bg_color     = Color(0.04, 0.07, 0.13, 0.9)
@@ -212,8 +187,6 @@ func _make_quest_row(quest_id: String, def: Dictionary, is_accepted: bool) -> Co
 	# 标题
 	var title_l := Label.new()
 	var title_text: String = def.get("title", quest_id)
-	if is_story:
-		title_text = "★ " + title_text  # v6.7(剧情任务): 剧情任务标题加星号
 	title_l.text = title_text
 	title_l.add_theme_font_size_override("font_size", 14)
 	var title_color: Color
@@ -246,15 +219,6 @@ func _make_quest_row(quest_id: String, def: Dictionary, is_accepted: bool) -> Co
 		company_l.add_theme_font_size_override("font_size", 11)
 		company_l.add_theme_color_override("font_color", Color(0.5, 0.75, 1.0, 0.85))
 		v.add_child(company_l)
-	# v6.7(剧情任务): 剧情任务显示触发关卡
-	if is_story:
-		var trigger_level: int = int(def.get("trigger_level", 0))
-		if trigger_level > 0:
-			var level_l := Label.new()
-			level_l.text = "◆ 触发关卡：第 %d 关（进关自动开始剧情对话）" % trigger_level
-			level_l.add_theme_font_size_override("font_size", 11)
-			level_l.add_theme_color_override("font_color", Color(0.75, 0.5, 0.95, 0.9))
-			v.add_child(level_l)
 	# 描述
 	var desc_l := Label.new()
 	desc_l.text = def.get("description", "")

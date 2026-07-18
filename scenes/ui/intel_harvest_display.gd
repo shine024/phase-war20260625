@@ -10,10 +10,17 @@ class_name IntelHarvestDisplay
 
 const IntelDimensions = preload("res://data/intel_dimensions.gd")
 
+## v7.x 性能：情报条目渲染上限。超过此数量的敌人不再各自建节点（每条节点是
+## PanelContainer+StyleBox+VBox+HBox+多Label+ProgressBar，50敌人≈300+节点），
+## 末尾追加一行"…另 +N 种敌人"折叠。前 N 条通常覆盖主要敌人类型，完整列表在情报手册查看。
+const MAX_VISIBLE_ENTRIES: int = 15
+
 var _card_entries: Array[Dictionary] = []
 var _reveal_events: Array[Dictionary] = []
 var _intel_item_drops: Array = []
 var _im: Node = null  ## IntelManual引用
+## v7.x 性能：显示名缓存。同卡种敌人只查一次 EnemyArchetypes/DefaultCards 表（133卡）。
+var _display_name_cache: Dictionary = {}
 
 func _ready() -> void:
 	_im = get_node_or_null("/root/IntelManual")
@@ -62,12 +69,24 @@ func _refresh_ui() -> void:
 	title.add_theme_color_override("font_color", Color(0.7, 0.85, 1.0, 1.0))
 	outer.add_child(title)
 
-	## 按敌人分组显示
+	## 按敌人分组显示（限流：超过 MAX_VISIBLE_ENTRIES 后折叠，避免高波次关卡节点爆炸）
+	var shown_count: int = 0
 	for entry in _card_entries:
 		if not entry is Dictionary:
 			continue
+		if shown_count >= MAX_VISIBLE_ENTRIES:
+			break
 		var card_box := _create_card_entry(entry)
 		outer.add_child(card_box)
+		shown_count += 1
+	## 折叠提示：超出上限的敌人种类
+	var hidden_count: int = _card_entries.size() - shown_count
+	if hidden_count > 0:
+		var more_lbl := Label.new()
+		more_lbl.text = "  …另 +%d 种敌人（详见情报手册）" % hidden_count
+		more_lbl.add_theme_font_size_override("font_size", 11)
+		more_lbl.add_theme_color_override("font_color", Color(0.6, 0.7, 0.8, 0.8))
+		outer.add_child(more_lbl)
 
 	## 情报道具掉落展示
 	if not _intel_item_drops.is_empty():
@@ -226,17 +245,24 @@ func _create_progress_row(card_id: String, enemy_type: String, delta: float) -> 
 
 ## 获取敌人显示名称
 func _get_enemy_display_name(card_id: String, enemy_type: String) -> String:
+	## v7.x 性能：缓存命中优先。结算面板按敌人列表逐条取显示名，同卡种敌人会重复
+	## 查 EnemyArchetypes(36单位) + DefaultCards(133卡) 两张表，缓存后只查一次。
+	if not card_id.is_empty() and _display_name_cache.has(card_id):
+		return String(_display_name_cache[card_id])
 	## 优先从EnemyArchetypes获取名称
 	if not card_id.is_empty():
 		var config: Dictionary = EnemyArchetypes.get_config(card_id)
 		if not config.is_empty():
-			return config.get("display_name", "")
+			var dn: String = config.get("display_name", "")
+			_display_name_cache[card_id] = dn
+			return dn
 	## 尝试DefaultCards.get_safe_display_name（依次查DefaultCards→EnemyArchetypes）
 	if not card_id.is_empty():
 		var safe: String = _get_default_cards().get_safe_display_name(card_id)
 		if not safe.is_empty() and safe != card_id:
+			_display_name_cache[card_id] = safe
 			return safe
-	## 兜底
+	## 兜底（不缓存：enemy_type 推导结果，与 card_id 非一一对应）
 	match enemy_type:
 		"infantry": return "步兵部队"
 		"flame": return "火焰兵"

@@ -1,90 +1,92 @@
-[gd_scene load_steps=8 format=3 uid="uid://dd3v5t4e8w4gc"]
+[gd_scene load_steps=10 format=3 uid="uid://dd3v5t4e8w4gc"]
 
 [ext_resource type="Script" path="res://scenes/ui/card_enhancement_panel.gd" id="1_ja9f5"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg"]
-bg_color = Color(0.04, 0.06, 0.12, 0.97)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.2, 0.8, 0.4, 0.6)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-shadow_color = Color(0.2, 0.8, 0.4, 0.25)
-shadow_size = 10
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_scroll_bg"]
-bg_color = Color(0.03, 0.05, 0.10, 0.6)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_section_bg"]
-bg_color = Color(0.06, 0.10, 0.18, 0.8)
+bg_color = Color(0.051, 0.075, 0.125, 0.98)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.2, 0.6, 0.8, 0.3)
+border_color = Color(0.25, 0.35, 0.42, 0.22)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+shadow_color = Color(0.961, 0.620, 0.043, 0.12)
+shadow_size = 14
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_scroll_bg"]
+bg_color = Color(0.03, 0.05, 0.10, 0.5)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_title_bg"]
+bg_color = Color(0.075, 0.102, 0.165, 0.4)
+border_width_bottom = 1
+border_color = Color(0.25, 0.35, 0.42, 0.14)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_resource_bg"]
+bg_color = Color(0.075, 0.102, 0.165, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_enhance_btn"]
+bg_color = Color(0.984, 0.749, 0.141, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.961, 0.620, 0.043, 1)
+corner_radius_top_left = 8
+corner_radius_bottom_right = 8
+shadow_color = Color(0.961, 0.620, 0.043, 0.35)
+shadow_size = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_enhance_btn_hover"]
+bg_color = Color(0.984, 0.749, 0.141, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.961, 0.620, 0.043, 1)
+corner_radius_top_left = 8
+corner_radius_bottom_right = 8
+shadow_color = Color(0.961, 0.620, 0.043, 0.45)
+shadow_size = 18
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_enhance_btn_disabled"]
+bg_color = Color(0.102, 0.141, 0.220, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.25, 0.35, 0.42, 0.4)
+corner_radius_top_left = 8
+corner_radius_bottom_right = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_close_btn"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.25, 0.35, 0.42, 0.6)
 corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_close_btn_hover"]
-bg_color = Color(0.2, 0.8, 0.4, 0.25)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.2, 0.8, 0.4, 0.8)
-corner_radius_top_left = 5
-corner_radius_top_right = 5
-corner_radius_bottom_right = 5
-corner_radius_bottom_left = 5
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_enhance_btn"]
-bg_color = Color(0.2, 0.8, 0.4, 0.15)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.2, 0.8, 0.4, 0.7)
-corner_radius_top_left = 5
-corner_radius_top_right = 5
-corner_radius_bottom_right = 5
-corner_radius_bottom_left = 5
-shadow_color = Color(0.2, 0.8, 0.4, 0.3)
-shadow_size = 5
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_enhance_btn_hover"]
-bg_color = Color(0.2, 0.8, 0.4, 0.25)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.2, 0.8, 0.4, 0.9)
-corner_radius_top_left = 5
-corner_radius_top_right = 5
-corner_radius_bottom_right = 5
-corner_radius_bottom_left = 5
-shadow_color = Color(0.2, 0.8, 0.4, 0.4)
-shadow_size = 8
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_close_btn"]
-bg_color = Color(0.545, 0.361, 0.965, 0.12)
+bg_color = Color(0.937, 0.267, 0.267, 0.12)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.545, 0.361, 0.965, 0.5)
-corner_radius_top_left = 5
-corner_radius_top_right = 5
-corner_radius_bottom_right = 5
-corner_radius_bottom_left = 5
+border_color = Color(0.937, 0.267, 0.267, 0.8)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
 
 [node name="CardEnhancementPanel" type="PanelContainer"]
-custom_minimum_size = Vector2(1000, 580)
+custom_minimum_size = Vector2(1180, 640)
 layout_mode = 2
 script = ExtResource("1_ja9f5")
 theme_override_styles/panel = SubResource("StyleBoxFlat_bg")
@@ -97,87 +99,112 @@ anchor_bottom = 1.0
 theme_override_constants/separation = 0
 
 [node name="TitleArea" type="PanelContainer" parent="VBoxContainer"]
-layout_mode = 2
 custom_minimum_size = Vector2(0, 56)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_title_bg")
 
 [node name="TitleHBox" type="HBoxContainer" parent="VBoxContainer/TitleArea"]
 layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/margin_left = 20
-theme_override_constants/margin_top = 0
-theme_override_constants/margin_right = 20
-theme_override_constants/margin_bottom = 0
-theme_override_constants/separation = 20
+theme_override_constants/separation = 14
+offset_left = 24.0
+offset_top = 0.0
+offset_right = -24.0
+offset_bottom = 0.0
+grow_horizontal = 2
+
+[node name="TitleMark" type="Control" parent="VBoxContainer/TitleArea/TitleHBox"]
+custom_minimum_size = Vector2(26, 26)
+layout_mode = 2
+size_flags_vertical = 4
 
 [node name="TitleLabel" type="Label" parent="VBoxContainer/TitleArea/TitleHBox"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "⚔ 卡牌成长系统"
-theme_override_font_sizes/font_size = 24
-theme_override_colors/font_color = Color(0.35, 0.95, 0.58, 1)
-theme_override_colors/font_outline_color = Color(0.02, 0.18, 0.09, 0.9)
-theme_override_constants/outline_size = 3
+theme_override_colors/font_color = Color(0.91, 0.93, 0.97, 1)
+theme_override_colors/font_outline_color = Color(0.04, 0.07, 0.12, 0.6)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 20
+text = "战术强化站  TACTICAL ENHANCEMENT STATION"
+
+[node name="Spacer" type="Control" parent="VBoxContainer/TitleArea/TitleHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
 
 [node name="CloseButton" type="Button" parent="VBoxContainer/TitleArea/TitleHBox"]
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
-custom_minimum_size = Vector2(80, 36)
-text = "关闭"
-theme_override_font_sizes/font_size = 15
+size_flags_vertical = 4
 theme_override_styles/normal = SubResource("StyleBoxFlat_close_btn")
 theme_override_styles/hover = SubResource("StyleBoxFlat_close_btn_hover")
+theme_override_colors/font_color = Color(0.42, 0.46, 0.57, 1)
+theme_override_font_sizes/font_size = 18
+text = "×"
 
 [node name="ResourceArea" type="PanelContainer" parent="VBoxContainer"]
+custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
-custom_minimum_size = Vector2(0, 32)
+theme_override_styles/panel = SubResource("StyleBoxFlat_resource_bg")
 
 [node name="ResourceHBox" type="HBoxContainer" parent="VBoxContainer/ResourceArea"]
 layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/margin_left = 20
-theme_override_constants/margin_top = 0
-theme_override_constants/margin_right = 20
-theme_override_constants/margin_bottom = 0
-theme_override_constants/separation = 40
+theme_override_constants/separation = 24
+offset_left = 24.0
+offset_right = -24.0
 
 [node name="NanoLabel" type="Label" parent="VBoxContainer/ResourceArea/ResourceHBox"]
 layout_mode = 2
-text = "🧪 纳米材料：0"
-theme_override_font_sizes/font_size = 15
-theme_override_colors/font_color = Color(0.6, 0.85, 1, 0.95)
+theme_override_colors/font_color = Color(0.984, 0.749, 0.141, 1)
+theme_override_font_sizes/font_size = 13
+text = "纳米材料 0"
 
 [node name="ResearchLabel" type="Label" parent="VBoxContainer/ResourceArea/ResourceHBox"]
 layout_mode = 2
-text = "🔬 研究点：0"
-theme_override_font_sizes/font_size = 15
-theme_override_colors/font_color = Color(0.8, 0.65, 1, 0.98)
+theme_override_colors/font_color = Color(0.133, 0.827, 0.933, 1)
+theme_override_font_sizes/font_size = 13
+text = "研究点 0"
 
-[node name="MainSplit" type="HSplitContainer" parent="VBoxContainer"]
+[node name="AlloyLabel" type="Label" parent="VBoxContainer/ResourceArea/ResourceHBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.91, 0.93, 0.97, 1)
+theme_override_font_sizes/font_size = 13
+text = "合金 0"
+
+[node name="Spacer2" type="Control" parent="VBoxContainer/ResourceArea/ResourceHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="StationId" type="Label" parent="VBoxContainer/ResourceArea/ResourceHBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.27, 0.31, 0.39, 1)
+theme_override_font_sizes/font_size = 10
+text = "STATION-Δ7 · 强化终端"
+
+[node name="MainSplit" type="HBoxContainer" parent="VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
-split_offset = 240
-draggable = false
 theme_override_constants/separation = 0
 
 [node name="LeftPanel" type="VBoxContainer" parent="VBoxContainer/MainSplit"]
+custom_minimum_size = Vector2(260, 0)
 layout_mode = 2
-custom_minimum_size = Vector2(240, 0)
-size_flags_horizontal = 1
+size_flags_horizontal = 0
 theme_override_constants/separation = 0
 
-[node name="LeftTitle" type="PanelContainer" parent="VBoxContainer/MainSplit/LeftPanel"]
+[node name="LeftTitle" type="Label" parent="VBoxContainer/MainSplit/LeftPanel"]
+custom_minimum_size = Vector2(0, 38)
 layout_mode = 2
-custom_minimum_size = Vector2(0, 50)
+theme_override_colors/font_color = Color(0.42, 0.46, 0.57, 1)
+theme_override_constants/outline_size = 0
+theme_override_font_sizes/font_size = 12
+theme_override_constants/letter_spacing = 4
+text = "单位名册"
+offset_left = 16.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = -8.0
 
-[node name="LeftTitleLabel" type="Label" parent="VBoxContainer/MainSplit/LeftPanel/LeftTitle"]
+[node name="LeftSep" type="HSeparator" parent="VBoxContainer/MainSplit/LeftPanel"]
 layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/margin_left = 15
-theme_override_constants/margin_top = 0
-theme_override_constants/margin_right = 15
-theme_override_constants/margin_bottom = 0
-text = "📦 卡牌列表"
-theme_override_font_sizes/font_size = 16
-theme_override_colors/font_color = Color(0, 0.941, 1, 1)
 
 [node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer/MainSplit/LeftPanel"]
 layout_mode = 2
@@ -187,169 +214,99 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_scroll_bg")
 [node name="CardListContainer" type="VBoxContainer" parent="VBoxContainer/MainSplit/LeftPanel/ScrollContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 4
+theme_override_constants/separation = 2
 
-[node name="RightPanel" type="VBoxContainer" parent="VBoxContainer/MainSplit"]
+[node name="CenterPanel" type="VBoxContainer" parent="VBoxContainer/MainSplit"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 3
 theme_override_constants/separation = 0
 
-[node name="NoSelectionLabel" type="Label" parent="VBoxContainer/MainSplit/RightPanel"]
+[node name="NoSelectionLabel" type="Label" parent="VBoxContainer/MainSplit/CenterPanel"]
+visible = false
+custom_minimum_size = Vector2(0, 400)
 layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
+size_flags_vertical = 4
+theme_override_colors/font_color = Color(0.42, 0.46, 0.57, 1)
+theme_override_font_sizes/font_size = 16
 text = "← 请从左侧选择一张卡牌"
-theme_override_font_sizes/font_size = 18
-theme_override_colors/font_color = Color(0.4, 0.5, 0.65, 1)
 horizontal_alignment = 1
-vertical_alignment = 1
 
-[node name="DetailScroll" type="ScrollContainer" parent="VBoxContainer/MainSplit/RightPanel"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-
-[node name="DetailPanel" type="VBoxContainer" parent="VBoxContainer/MainSplit/RightPanel/DetailScroll"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 6
-
-[node name="CardInfoSection" type="PanelContainer" parent="VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 80)
-theme_override_styles/panel = SubResource("StyleBoxFlat_section_bg")
-
-[node name="CardInfoVBox" type="VBoxContainer" parent="VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/CardInfoSection"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 8
-theme_override_constants/margin_left = 15
-theme_override_constants/margin_top = 15
-theme_override_constants/margin_right = 15
-theme_override_constants/margin_bottom = 15
-
-[node name="CardInfoTitle" type="Label" parent="VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/CardInfoSection/CardInfoVBox"]
-layout_mode = 2
-text = "📋 当前卡牌信息"
-theme_override_font_sizes/font_size = 17
-theme_override_colors/font_color = Color(0.72, 0.86, 1, 1)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 0.55)
-theme_override_constants/outline_size = 2
-
-[node name="StarUpgradeSection" type="PanelContainer" parent="VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel"]
+[node name="DetailScroll" type="ScrollContainer" parent="VBoxContainer/MainSplit/CenterPanel"]
 visible = false
 layout_mode = 2
-custom_minimum_size = Vector2(0, 0)
-theme_override_styles/panel = SubResource("StyleBoxFlat_section_bg")
+size_flags_vertical = 3
 
-[node name="StarUpgradeVBox" type="VBoxContainer" parent="VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/StarUpgradeSection"]
+[node name="DetailPanel" type="VBoxContainer" parent="VBoxContainer/MainSplit/CenterPanel/DetailScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 10
-theme_override_constants/margin_left = 15
-theme_override_constants/margin_top = 15
-theme_override_constants/margin_right = 15
-theme_override_constants/margin_bottom = 15
+theme_override_constants/separation = 14
+offset_left = 24.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = -8.0
 
-[node name="StarUpgradeTitle" type="Label" parent="VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/StarUpgradeSection/StarUpgradeVBox"]
+[node name="ActionBar" type="HBoxContainer" parent="VBoxContainer/MainSplit/CenterPanel"]
+custom_minimum_size = Vector2(0, 72)
 layout_mode = 2
-text = "词条强化"
-theme_override_font_sizes/font_size = 16
-theme_override_colors/font_color = Color(1, 0.88, 0.35, 1)
+theme_override_constants/separation = 16
+offset_left = 24.0
+offset_right = -16.0
 
-[node name="StarUpgradeButton" type="Button" parent="VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/StarUpgradeSection/StarUpgradeVBox"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 50)
-size_flags_horizontal = 3
-text = "请选择卡牌升星"
-theme_override_colors/font_color = Color(1, 0.88, 0.35, 1)
-theme_override_colors/font_hover_color = Color(1, 0.95, 0.5, 1)
-theme_override_font_sizes/font_size = 18
-theme_override_styles/normal = SubResource("StyleBoxFlat_close_btn")
-theme_override_styles/hover = SubResource("StyleBoxFlat_close_btn_hover")
-
-[node name="EnhancementSection" type="PanelContainer" parent="VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 70)
-theme_override_styles/panel = SubResource("StyleBoxFlat_section_bg")
-
-[node name="EnhancementVBox" type="VBoxContainer" parent="VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/EnhancementSection"]
+[node name="Spacer3" type="Control" parent="VBoxContainer/MainSplit/CenterPanel/ActionBar"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 10
-theme_override_constants/margin_left = 15
-theme_override_constants/margin_top = 15
-theme_override_constants/margin_right = 15
-theme_override_constants/margin_bottom = 15
 
-[node name="EnhancementTitle" type="Label" parent="VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/EnhancementSection/EnhancementVBox"]
+[node name="EnhanceButton" type="Button" parent="VBoxContainer/MainSplit/CenterPanel/ActionBar"]
+custom_minimum_size = Vector2(200, 44)
 layout_mode = 2
-text = "💪 强化系统"
-theme_override_font_sizes/font_size = 17
-theme_override_colors/font_color = Color(0.32, 0.94, 0.52, 1)
-theme_override_colors/font_outline_color = Color(0, 0.13, 0.05, 0.7)
-theme_override_constants/outline_size = 2
-
-[node name="EnhancementButton" type="Button" parent="VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/EnhancementSection/EnhancementVBox"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 40)
-size_flags_horizontal = 3
-text = "请选择卡牌"
-theme_override_colors/font_color = Color(0.2, 0.8, 0.4, 1)
-theme_override_colors/font_hover_color = Color(0.3, 0.9, 0.6, 1)
-theme_override_font_sizes/font_size = 18
+size_flags_vertical = 4
 theme_override_styles/normal = SubResource("StyleBoxFlat_enhance_btn")
 theme_override_styles/hover = SubResource("StyleBoxFlat_enhance_btn_hover")
-
-[node name="EvolutionSection" type="PanelContainer" parent="VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 90)
-theme_override_styles/panel = SubResource("StyleBoxFlat_section_bg")
-
-[node name="EvolutionVBox" type="VBoxContainer" parent="VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/EvolutionSection"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 10
-theme_override_constants/margin_left = 15
-theme_override_constants/margin_top = 15
-theme_override_constants/margin_right = 15
-theme_override_constants/margin_bottom = 15
-
-[node name="EvolutionTitle" type="Label" parent="VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/EvolutionSection/EvolutionVBox"]
-layout_mode = 2
-text = "🧬 进化系统"
-theme_override_font_sizes/font_size = 17
-theme_override_colors/font_color = Color(1, 0.88, 0.4, 1)
-theme_override_colors/font_outline_color = Color(0.16, 0.11, 0, 0.7)
-theme_override_constants/outline_size = 2
-
-[node name="EvolveButton" type="Button" parent="VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/EvolutionSection/EvolutionVBox"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 38)
-size_flags_horizontal = 3
-text = "请选择可进化卡牌"
-theme_override_colors/font_color = Color(0.95, 0.85, 0.35, 1)
-theme_override_colors/font_hover_color = Color(1, 0.92, 0.45, 1)
-theme_override_font_sizes/font_size = 18
-theme_override_styles/normal = SubResource("StyleBoxFlat_close_btn")
-theme_override_styles/hover = SubResource("StyleBoxFlat_close_btn_hover")
-
-[node name="EvolutionBranchSelector" type="OptionButton" parent="VBoxContainer/MainSplit/RightPanel/DetailScroll/DetailPanel/EvolutionSection/EvolutionVBox"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 32)
+theme_override_styles/disabled = SubResource("StyleBoxFlat_enhance_btn_disabled")
+theme_override_colors/font_color = Color(0.024, 0.035, 0.071, 1)
+theme_override_colors/font_disabled_color = Color(0.42, 0.46, 0.57, 0.6)
 theme_override_font_sizes/font_size = 14
 disabled = true
+text = "请选择卡牌"
+
+[node name="RightPanel" type="VBoxContainer" parent="VBoxContainer/MainSplit"]
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_constants/separation = 0
+
+[node name="RightTitle" type="Label" parent="VBoxContainer/MainSplit/RightPanel"]
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.42, 0.46, 0.57, 1)
+theme_override_font_sizes/font_size = 12
+theme_override_constants/letter_spacing = 4
+text = "强化路径"
+offset_left = 16.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = -8.0
+
+[node name="RightSep" type="HSeparator" parent="VBoxContainer/MainSplit/RightPanel"]
+layout_mode = 2
+
+[node name="PathScroll" type="ScrollContainer" parent="VBoxContainer/MainSplit/RightPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_scroll_bg")
+
+[node name="PathList" type="VBoxContainer" parent="VBoxContainer/MainSplit/RightPanel/PathScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+offset_left = 14.0
+offset_top = 8.0
+offset_right = -14.0
 
 [node name="ResultLabel" type="Label" parent="VBoxContainer"]
+custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
-custom_minimum_size = Vector2(0, 28)
-theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.42, 0.46, 0.57, 1)
+theme_override_font_sizes/font_size = 13
 text = ""
-autowrap_mode = 1
-
-[node name="EvolutionConfirmDialog" type="ConfirmationDialog" parent="."]
-title = "进化确认"
-ok_button_text = "确认进化"
-dialog_text = ""
+horizontal_alignment = 1

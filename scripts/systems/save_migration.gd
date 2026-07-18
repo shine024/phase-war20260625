@@ -63,7 +63,6 @@ static func _migrate_v2_to_v3(data: Dictionary, debug_log: bool) -> void:
 		"daily_tasks": SaveConstants.SK_DAILY_TASK,
 		"tutorial_progress": SaveConstants.SK_TUTORIAL_PROGRESS,
 		"card_collection": SaveConstants.SK_CARD_COLLECTION,
-		"story_progress": SaveConstants.SK_STORY_PROGRESS,
 		"characters": SaveConstants.SK_CHARACTERS,
 		"challenge_records": SaveConstants.SK_CHALLENGE_RECORDS,
 		"leaderboard_data": SaveConstants.SK_LEADERBOARD

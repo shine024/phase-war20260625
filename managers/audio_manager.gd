@@ -1,10 +1,11 @@
 extends Node
 ## 音效：按名称播放，资源缺失时静默跳过
 ## 可放置 res://assets/sfx/<name>.ogg（或 .wav），缺失时用 sound_generator 合成兜底
-## 已接入音效见 SFX_NAMES；BGM/背景音乐尚未实装（无 MusicPlayer）。
+## 已接入音效见 SFX_NAMES；BGM 系统已实装（MusicPlayer + fade 切换）。
 ## 音效事件订阅见 _ready 末尾 connect 块。
 
 const SoundGeneratorScript = preload("res://managers/sound_generator.gd")
+const GameConstants = preload("res://resources/game_constants_clean.gd")
 
 var _players: Dictionary = {}
 var _sound_generator: Node = null
@@ -27,6 +28,24 @@ const SFX_NAMES: Array[String] = [
 	"base_destroy",     # 基地（相位场驱动器）被摧毁
 ]
 const BUS_NAME: String = "Master"
+const MUSIC_BUS: String = "Music"
+
+## BGM 播放器（淡入淡出用）
+var _music_player: AudioStreamPlayer = null
+var _music_player_active: AudioStreamPlayer = null  # 用于交叉淡出的活跃播放器
+var _current_bgm_name: String = ""
+
+## BGM 映射表
+const BGM_MAP: Dictionary = {
+	"title": "bgm_title",
+	"hub": "bgm_hub",
+	"battle_ww1": "bgm_battle_ww1",
+	"battle_ww2": "bgm_battle_ww2",
+	"battle_cold": "bgm_battle_cold",
+	"battle_modern": "bgm_battle_modern",
+	"battle_future": "bgm_battle_future",
+	"boss": "bgm_boss",
+}
 
 ## 音量设置
 var sfx_volume: float = 1.0
@@ -108,6 +127,9 @@ func _ready() -> void:
 		# v7.x 修复: CardEnhancementManager.enhancement_completed 此前零订阅 + handler 签名错配（Dictionary vs String）。
 		# 延迟到首次强化时连接（cem 是 lazy-load，启动时不一定就绪）。
 		_connect_enhancement_signal()
+	
+	# 初始化 BGM 系统
+	_init_music_player()
 
 ## 播放音效
 ## v8.3: 增加 volume（0.0~1.0，线性→db）和 pitch（0.5~2.0，音高倍率）参数（默认值保证旧调用零变化）
@@ -169,6 +191,125 @@ func set_master_volume(volume: float) -> void:
 	master_volume = clamp(volume, 0.0, 1.0)
 	var idx := AudioServer.get_bus_index("Master")
 	AudioServer.set_bus_volume_db(idx, linear_to_db(master_volume))
+
+# ── BGM 系统 ──
+
+## 初始化 MusicPlayer（在 _ready 末尾调用）
+func _init_music_player() -> void:
+	# 确保 Music bus 存在（默认 -1 末尾追加，避免 Master（恒在 index 0）被推后）
+	if not AudioServer.get_bus_index(MUSIC_BUS) >= 0:
+		AudioServer.add_bus()
+		AudioServer.set_bus_name(AudioServer.bus_count - 1, MUSIC_BUS)
+	
+	# 创建淡入播放器
+	_music_player = AudioStreamPlayer.new()
+	_music_player.bus = MUSIC_BUS
+	_music_player.stream = null
+	_music_player.volume_db = linear_to_db(music_volume)
+	add_child(_music_player)
+	
+	# 默认播放标题 BGM（适用于启动即主菜单的情况）
+	call_deferred("_play_initial_bgm")
+	
+	# 监听战斗结束，切回 hub BGM
+	if SignalBus:
+		if SignalBus.has_signal("battle_ended") and not SignalBus.battle_ended.is_connected(_on_battle_ended_bgm):
+			SignalBus.battle_ended.connect(_on_battle_ended_bgm)
+		# 战斗开始：切战斗 BGM（根据当前关卡时代）
+		if SignalBus.has_signal("battle_started") and not SignalBus.battle_started.is_connected(_on_battle_started_bgm):
+			SignalBus.battle_started.connect(_on_battle_started_bgm)
+		# BOSS 登场：切 BOSS BGM
+		if SignalBus.has_signal("phase_master_appeared") and not SignalBus.phase_master_appeared.is_connected(_on_phase_master_appeared_bgm):
+			SignalBus.phase_master_appeared.connect(_on_phase_master_appeared_bgm)
+
+## 战斗开始：切战斗 BGM（根据当前关卡时代）
+func _on_battle_started_bgm() -> void:
+	if not GameManager:
+		return
+	var lvl: int = GameManager.current_level
+	var era: int = GameConstants.get_era_for_level(lvl)
+	var bgm_key: String = "battle_future"
+	match era:
+		GameConstants.Era.WW1: bgm_key = "battle_ww1"
+		GameConstants.Era.WW2: bgm_key = "battle_ww2"
+		GameConstants.Era.COLD_WAR: bgm_key = "battle_cold"
+		GameConstants.Era.MODERN: bgm_key = "battle_modern"
+		GameConstants.Era.NEAR_FUTURE: bgm_key = "battle_future"
+	play_music(bgm_key)
+
+## BOSS 登场：切 BOSS BGM
+func _on_phase_master_appeared_bgm(_master_config: Dictionary) -> void:
+	play_music("boss")
+
+## 播放 BGM（带淡入淡出切换）
+func play_music(bgm_key: String, fade_out_duration: float = 1.5) -> void:
+	var bgm_name: String = BGM_MAP.get(bgm_key, "")
+	if bgm_name.is_empty():
+		return
+	
+	if bgm_name == _current_bgm_name:
+		return  # 同一首，不重复播放
+	
+	_current_bgm_name = bgm_name
+	
+	var path: String = "res://assets/sfx/%s.ogg" % bgm_name
+	if not ResourceLoader.exists(path):
+		path = "res://assets/sfx/%s.wav" % bgm_name
+		if not ResourceLoader.exists(path):
+			print("[AudioManager] BGM not found: ", bgm_name)
+			return
+	
+	var stream = load(path) as AudioStream
+	if stream == null:
+		return
+	
+	# 如果已有活跃播放器，先淡出它
+	if _music_player_active and _music_player_active.playing:
+		_music_player_active.volume_db = linear_to_db(music_volume)
+		await get_tree().create_timer(fade_out_duration).timeout
+		_music_player_active.stop()
+		_music_player_active.stream = null
+	
+	# 新播放器淡入
+	_music_player.stream = stream
+	_music_player.volume_db = -80  # 从静音开始
+	_music_player.play()
+	
+	# 淡入动画
+	var fade_steps = 30
+	var fade_step_time = fade_out_duration / fade_steps
+	for i in range(fade_steps + 1):
+		var vol = clampf(i * 80.0 / fade_steps, 0.0, 80.0)
+		_music_player.volume_db = linear_to_db(music_volume) - (80.0 - vol)
+		await get_tree().create_timer(fade_step_time).timeout
+	
+	_music_player.volume_db = linear_to_db(music_volume)
+	_music_player_active = _music_player
+
+## 停止当前 BGM（淡出）
+func stop_music(fade_duration: float = 1.0) -> void:
+	if _music_player and _music_player.playing:
+		var fade_steps = 20
+		var fade_step_time = fade_duration / fade_steps
+		for i in range(fade_steps + 1):
+			var vol = clampf(1.0 - i / fade_steps, 0.0, 1.0)
+			_music_player.volume_db = linear_to_db(music_volume * vol)
+			await get_tree().create_timer(fade_step_time).timeout
+		_music_player.stop()
+		_music_player.stream = null
+		_current_bgm_name = ""
+
+## 设置音乐音量
+func set_music_volume(volume: float) -> void:
+	music_volume = clamp(volume, 0.0, 1.0)
+	if _music_player:
+		_music_player.volume_db = linear_to_db(music_volume)
+
+## 战斗结束回调：切回 hub BGM
+func _on_battle_ended_bgm(player_won: bool) -> void:
+	# 延迟一小段时间再切 BGM，让 win/lose SFX 先播放
+	await get_tree().create_timer(0.5).timeout
+	play_music("hub")
 
 ## 播放UI音效
 func play_ui_sfx(action: String) -> void:
@@ -267,3 +408,10 @@ func play_explosion_sfx() -> void:
 ## 播放受伤音效
 func play_hurt_sfx() -> void:
 	play_sfx("hurt")
+
+# ── 初始 BGM ──
+
+## 启动时播放标题 BGM（场景加载完成后调用）
+func _play_initial_bgm() -> void:
+	await get_tree().process_frame  # 等一帧确保播放器就绪
+	play_music("title")

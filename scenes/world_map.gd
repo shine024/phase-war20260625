@@ -32,7 +32,6 @@ const EnemyArchetypesData = preload("res://data/enemy_archetypes.gd")
 const DefaultCardsData = preload("res://data/default_cards.gd")
 const PhaseLawsData = preload("res://data/phase_laws.gd")
 const DropTablesPreview = preload("res://resources/drop_tables.gd")
-const QuestDefs = preload("res://data/quest_definitions.gd")  # v6.7(剧情任务): 关卡剧情标记
 const FactionConquestBuffs = preload("res://data/faction_conquest_buffs.gd")  # v6.9: 占领势力加成描述
 const CompanyDefs = preload("res://data/company_definitions.gd")  # v6.14: 统一阵营色来源
 const PhaseMasterGarrison = preload("res://data/phase_master_garrison.gd")  # v7.x: Boss相位师驻守关判定
@@ -342,21 +341,12 @@ func _on_occupation_changed_refresh(_level: int, _old_f: String, _new_f: String)
 
 func _make_level_button(level_index: int, _era_idx: int, era_info: Dictionary, current_level: int) -> Button:
 	var btn := Button.new()
-	# v6.7(剧情任务): 有剧情任务的关卡加 ★ 前缀
-	var story_quests: Array = QuestDefs.get_quests_by_trigger_level(level_index)
-	var has_story: bool = not story_quests.is_empty()
-	btn.text = ("★%d" % level_index) if has_story else ("%d" % level_index)
+	btn.text = "%d" % level_index
 	btn.name = "LevelButton%d" % level_index
 	btn.custom_minimum_size = Vector2(52, 36)
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn.add_theme_font_size_override("font_size", 12)
 	btn.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	# v6.7(剧情任务): tooltip 显示剧情任务标题
-	if has_story:
-		var titles: Array = []
-		for q in story_quests:
-			titles.append(q.get("title", ""))
-		btn.tooltip_text = "★ 剧情任务：\n" + "\n".join(titles)
 	# v7.x: 驻守相位师 Boss 关检测（供金色字体描边 + tooltip）
 	var boss_master_name: String = ""
 	if PhaseMasterGarrison.is_garrison_level(level_index):
@@ -391,12 +381,7 @@ func _make_level_button(level_index: int, _era_idx: int, era_info: Dictionary, c
 		btn.add_theme_color_override("font_color", Color(
 			era_info["title"].r, era_info["title"].g, era_info["title"].b, 0.75))
 
-	# v6.7(剧情任务): 剧情任务关卡加紫色左边框（叠加在当前/默认样式上，不破坏高亮）
-	if has_story:
-		btn_style.border_width_left = 4
-		btn_style.border_color = Color(0.75, 0.45, 0.95, 0.9)
-
-	# v6.10: 占领色标——右边框显示占领势力色（与剧情关紫色左边框不冲突）
+	# v6.10: 占领色标——右边框显示占领势力色
 	var occupation_fid: String = _get_level_occupation_safe(level_index)
 	if not occupation_fid.is_empty():
 		var occ_color: Color = CompanyDefs.get_faction_color(occupation_fid)

@@ -54,11 +54,6 @@ var _phase_master_config: Dictionary = {}
 var _is_phase_master_battle: bool = false
 var _enemy_phase_driver: Node2D = null
 
-# ---- v6.6(剧情): 必败战机制（序章噩梦/守护者失败重试）----
-# 开启后启动倒计时，到时强制判负；玩家无法通过清场获胜（_check_win_lose 提前返回）
-var _force_defeat: bool = false
-var _force_defeat_timer: float = 0.0  ## 剩余秒数，倒计时到 0 强制 end_battle(false)
-
 # ---- 战斗结果数据 ----
 var _battle_result: Dictionary = {
 	"victory_stars": 0,
@@ -147,14 +142,6 @@ func _process(delta: float) -> void:
 		if do_consume:
 			_spawn_system.consume_wave_timer()
 
-	# v6.6(剧情): 必败战倒计时 — 到时强制判负，玩家"撑过"指定时长后结束
-	if _force_defeat:
-		_force_defeat_timer -= delta
-		if _force_defeat_timer <= 0.0:
-			_force_defeat_timer = 0.0
-			_force_defeat = false  # 防止 end_battle 内重复触发
-			end_battle(false)  # 玩家基地被"梦魇/守护者"击穿
-			return
 	_check_win_lose()
 	if PerformanceMetricsManager and PerformanceMetricsManager.has_method("sample_battle_frame"):
 		PerformanceMetricsManager.sample_battle_frame(delta)
@@ -253,16 +240,6 @@ func start_battle(battle_scene: Node) -> void:
 	battle_active = true
 	_defeated_enemies.clear()  ## v6.0: reset defeated enemy tracking
 	_group_target_cache_accum = _GROUP_TARGET_CACHE_INTERVAL_SEC
-
-	# v6.6(剧情): 读取必败战配置（序章噩梦/守护者失败重试）
-	_force_defeat = false
-	_force_defeat_timer = 0.0
-	if GameManager.has_method("is_force_defeat_battle") and GameManager.is_force_defeat_battle():
-		_force_defeat = true
-		var dur: float = 420.0
-		if GameManager.has_method("get_force_defeat_duration"):
-			dur = GameManager.get_force_defeat_duration()
-		_force_defeat_timer = dur
 
 	# 初始化刷新子系统
 	_spawn_system.reset(battlefield, enemy_wave_interval, enemy_wave_total)
@@ -364,9 +341,6 @@ func end_battle(player_won: bool) -> void:
 		PerformanceMetricsManager.end_battle_sampling()
 	if BlueprintManager and BlueprintManager.has_method("flush_deferred_unlock_notifications"):
 		BlueprintManager.flush_deferred_unlock_notifications()
-	# v6.6(剧情): 清理必败战状态（防止跨战斗残留，无下游依赖）
-	_force_defeat = false
-	_force_defeat_timer = 0.0
 	# v7.x 性能：把掉落生成 / 任务通知 / battle_ended 信号广播（18+ 监听者）等重活
 	# 延迟到下一帧。根因：胜利判定走 _process → _check_win_lose → end_battle，全部
 	# 在"最后一个敌人倒下"那一帧同步执行；generate_battle_completion_drops 遍历所有
@@ -526,11 +500,6 @@ func _check_win_lose() -> void:
 
 	# 相位师战斗：胜负由基地销毁信号驱动
 	if _is_phase_master_battle:
-		return
-
-	# v6.6(剧情): 必败战 — 禁用玩家正常胜利路径
-	# 即使玩家清场，也不判胜；让波次持续刷敌，直到 _force_defeat_timer 归零
-	if _force_defeat:
 		return
 
 	if not _card_grid_combat_started:

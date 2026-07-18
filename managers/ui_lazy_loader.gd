@@ -60,12 +60,6 @@ func _ready() -> void:
 			"node_name": "StorePanel",
 			"autoload": false
 		},
-		"story_dialogue": {
-			"scene": "res://scenes/ui/story_dialogue_panel.tscn",
-			"parent_path": "PopupLayer/StoryOverlay/CenterContainer",
-			"node_name": "StoryDialoguePanel",
-			"autoload": false
-		},
 		"faction": {
 			"scene": "res://scenes/ui/faction_panel.tscn",
 			"parent_path": "PopupLayer/FactionOverlay/CenterContainer",

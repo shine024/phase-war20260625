@@ -154,3 +154,107 @@ static func current_accent_color(accent_type: String) -> Color:
 
 static func current_font_size(base_size: int) -> int:
 	return get_font_size(base_size, LARGE_TYPE_ENABLED)
+
+
+# ===== v7.x UI 重设计：四养成面板统一签名色 + 字体 =====
+# 设计语言：每个养成系统有独立签名色，强化琥珀金/改造青蓝/进化紫金/成长整合
+# 颜色数值与 docs/design_mockups/养成系统四面板设计.html 对齐。
+
+# —— 四系统签名色 ——
+const COLOR_AMBER := Color(0.961, 0.620, 0.043, 1)          # #f59e0b 强化 · 提升
+const COLOR_AMBER_SOFT := Color(0.984, 0.749, 0.141, 1)     # #fbbf24
+const COLOR_AMBER_DEEP := Color(0.706, 0.325, 0.035, 1)     # #b45309
+const COLOR_CYAN_TECH := Color(0.024, 0.714, 0.831, 1)      # #06b6d4 改造 · 科技
+const COLOR_CYAN_TECH_SOFT := Color(0.133, 0.827, 0.933, 1) # #22d3ee
+const COLOR_VIOLET := Color(0.653, 0.546, 0.980, 1)         # #a78bfa 进化 · 蜕变
+const COLOR_VIOLET_SOFT := Color(0.769, 0.710, 0.992, 1)   # #c4b5fd
+const COLOR_VIOLET_DEEP := Color(0.486, 0.227, 0.929, 1)   # #7c3aed
+const COLOR_GREEN_UP := Color(0.204, 0.827, 0.600, 1)      # #34d399 数值提升（通用）
+const COLOR_RED_DOWN := Color(0.937, 0.267, 0.267, 1)      # #ef4444 数值下降/失败
+
+# —— 面板中性色（比 COLOR_BG/PANEL 更深的景深）——
+const COLOR_VOID := Color(0.024, 0.035, 0.071, 1)           # #060912 深空黑
+const COLOR_PANEL_DEEP := Color(0.051, 0.075, 0.125, 1)     # #0d1320
+const COLOR_CARD := Color(0.075, 0.102, 0.165, 1)           # #131a2a
+const COLOR_CARD_HI := Color(0.102, 0.141, 0.220, 1)        # #1a2438
+const COLOR_SLOT_LOCKED := Color(0.039, 0.059, 0.110, 1)   # #0a0f1c
+
+# —— 兼容别名（v7.x UI 重设计过渡期，供新面板代码引用）——
+# 命名与 HTML 设计稿 CSS 变量对齐，避免新旧常量名混乱
+const COLOR_BG_CARD := Color(0.075, 0.102, 0.165, 1)        # 同 COLOR_CARD
+const COLOR_BG_SLOT := Color(0.039, 0.059, 0.110, 1)        # 同 COLOR_SLOT_LOCKED
+const COLOR_BORDER_DIM := Color(0.25, 0.35, 0.42, 0.14)     # 极暗边框
+const COLOR_TEXT_FAINT := Color(0.27, 0.31, 0.39, 1)        # 极暗文本（标签/角标）
+const COLOR_TEXT_MID := Color(0.67, 0.72, 0.82, 1)          # 中等文本（次要信息）
+# 注：COLOR_AMBER_DEEP 已在上方签名色段定义（#b45309）
+
+# 签名色 → 发光色辅助（带 alpha，用于阴影/外发光）
+const COLOR_AMBER_GLOW := Color(0.961, 0.620, 0.043, 0.35)
+const COLOR_CYAN_TECH_GLOW := Color(0.024, 0.714, 0.831, 0.35)
+const COLOR_VIOLET_GLOW := Color(0.653, 0.546, 0.980, 0.40)
+
+# —— 稀有度色（与 backpack_card_item / GC.get_rarity_color 对齐）——
+const COLOR_RARITY_COMMON := Color(0.420, 0.463, 0.569, 1)    # #6b7691
+const COLOR_RARITY_UNCOMMON := Color(0.133, 0.773, 0.369, 1)  # #22c55e
+const COLOR_RARITY_RARE := Color(0.220, 0.741, 0.973, 1)      # #38bdf8
+const COLOR_RARITY_EPIC := Color(0.753, 0.518, 0.988, 1)      # #c084fc
+const COLOR_RARITY_LEGENDARY := Color(0.961, 0.620, 0.043, 1) # #f59e0b（与 COLOR_AMBER 同）
+const COLOR_RARITY_MYTHIC := Color(0.937, 0.267, 0.267, 1)    # #ef4444（与 COLOR_RED_DOWN 同）
+
+# —— 字体资源路径（v7.x UI 重设计新增 Rajdhani）——
+const FONT_PATH_TITLE := "res://assets/fonts/Rajdhani-SemiBold.ttf"  # 标题/数字
+const FONT_PATH_TITLE_BOLD := "res://assets/fonts/Rajdhani-Bold.ttf"
+const FONT_PATH_BODY := "res://assets/fonts/Rajdhani-Regular.ttf"     # 正文
+# 注：data_font.ttf（Barlow）保留用于纯数字场景；中文走 Godot fallback（Noto Sans CJK）
+
+# 字体缓存（避免每面板重复 load）
+static var _title_font: FontFile = null
+static var _title_font_bold: FontFile = null
+static var _body_font: FontFile = null
+
+# 获取 Rajdhani SemiBold（标题/数据展示），加载失败回退 ThemeDB.fallback_font
+static func get_title_font() -> Font:
+	if _title_font == null:
+		_title_font = load(FONT_PATH_TITLE) as FontFile
+		if _title_font == null:
+			return ThemeDB.fallback_font
+	return _title_font
+
+# 获取 Rajdhani Bold（强调标题）
+static func get_title_font_bold() -> Font:
+	if _title_font_bold == null:
+		_title_font_bold = load(FONT_PATH_TITLE_BOLD) as FontFile
+		if _title_font_bold == null:
+			return get_title_font()
+	return _title_font_bold
+
+# 获取 Rajdhani Regular（正文）
+static func get_body_font() -> Font:
+	if _body_font == null:
+		_body_font = load(FONT_PATH_BODY) as FontFile
+		if _body_font == null:
+			return ThemeDB.fallback_font
+	return _body_font
+
+# 系统签名色快捷取（system: "amber"|"cyan"|"violet"|"gold"|"green_up"|"red_down"）
+static func get_system_color(system: String) -> Color:
+	match system:
+		"amber", "enhance": return COLOR_AMBER
+		"amber_soft": return COLOR_AMBER_SOFT
+		"cyan", "modify": return COLOR_CYAN_TECH
+		"cyan_soft": return COLOR_CYAN_TECH_SOFT
+		"violet", "evolve": return COLOR_VIOLET
+		"violet_soft": return COLOR_VIOLET_SOFT
+		"gold", "growth": return COLOR_GOLD
+		"green_up": return COLOR_GREEN_UP
+		"red_down": return COLOR_RED_DOWN
+		_: return COLOR_ACCENT_CYAN
+
+# 系统签名色 → 对应发光色
+static func get_system_glow(system: String) -> Color:
+	match system:
+		"amber", "enhance": return COLOR_AMBER_GLOW
+		"cyan", "modify": return COLOR_CYAN_TECH_GLOW
+		"violet", "evolve": return COLOR_VIOLET_GLOW
+		"gold", "growth": return Color(1.0, 0.85, 0.35, 0.40)
+		_: return Color(0, 0.94, 1, 0.35)

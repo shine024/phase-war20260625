@@ -175,6 +175,18 @@ func generate_battle_intel_harvest(
 			if not aid.is_empty():
 				defeated_ids[aid] = true
 
+	## v7.x 性能：结算循环期间临时断开 intel_dimension_changed 信号级联。
+	## 根因：下面 for 循环对每个击败敌人调 register_first_encounter/register_defeat/
+	## register_recon 共 3 次，每次内部 _add_intel 都 emit intel_dimension_changed →
+	## 级联到 _on_intel_dimension_changed → 又调 _check_reveals（tier 循环+查表）。
+	## 而循环内已主动调 _check_reveals（见下文 step 4），信号回调是纯重复工作。
+	## N 个敌人 ≈ 5N+ 次 emit，每次都跑一遍揭示查表+_guess_enemy_type，是高波次关
+	## 卡结算卡顿的最大放大器。这里临时断开，循环结束后重连，揭示功能无任何损失。
+	var _intel_signal_was_connected: bool = false
+	if im.has_signal("intel_dimension_changed") and im.intel_dimension_changed.is_connected(_on_intel_dimension_changed):
+		im.intel_dimension_changed.disconnect(_on_intel_dimension_changed)
+		_intel_signal_was_connected = true
+
 	## 处理每个击败的敌人
 	for enemy_info in defeated_enemies:
 		if not enemy_info is Dictionary:
@@ -208,6 +220,12 @@ func generate_battle_intel_harvest(
 		## 5. 检查敌源MOD碎片掉落
 		var new_eom_drops: Array = _check_eom_drops(enemy_type, rank)
 		eom_drops.append_array(new_eom_drops)
+
+	## v7.x 性能：结算循环结束，恢复 intel_dimension_changed 信号连接。
+	## 后续 _roll_intel_item_drops/check_and_discover_branches 不再触发 _add_intel，
+	## 信号恢复连接后正常的运行时情报变动（非结算期）继续正常级联到 _on_intel_dimension_changed。
+	if _intel_signal_was_connected and not im.intel_dimension_changed.is_connected(_on_intel_dimension_changed):
+		im.intel_dimension_changed.connect(_on_intel_dimension_changed)
 
 	## 按card_id合并harvests
 	var merged: Dictionary = _merge_harvests(harvests)

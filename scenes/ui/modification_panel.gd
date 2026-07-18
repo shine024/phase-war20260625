@@ -1,8 +1,9 @@
 extends Control
 class_name ModificationPanel
-## 改造面板（新系统）
+## 改造面板（新系统 · v7.x UI 重设计 战术改造站）
 ## 显示军事技术改造模块
 ## 改造消耗：纳米材料 + 改造指南（根据稀有度）
+## 签名色：青蓝（COLOR_CYAN_TECH）· 科技装配主题
 
 signal closed
 
@@ -11,6 +12,11 @@ const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
 const StarConfig = preload("res://data/blueprint_star_config.gd")
 const GC = preload("res://resources/game_constants.gd")
 const ModEffectLabels = preload("res://scripts/ui/mod_effect_labels.gd")
+
+# v7.x UI 重设计基建
+const DT = preload("res://resources/design_tokens.gd")
+const GeoShapes = preload("res://scripts/ui/geo_shapes.gd")
+# PowerTiers / ModManager 有 class_name 全局注册，无需 preload
 
 # UI 组件引用
 @onready var card_list_container = get_node_or_null("VBoxContainer/HBoxContainer/ScrollContainer/CardListContainer")
@@ -29,10 +35,33 @@ func _ready() -> void:
 	if close_btn:
 		close_btn.pressed.connect(_on_close)
 
+	# v7.x UI 重设计：给主要 Label 加载 Rajdhani 字体（战术感）
+	_apply_title_fonts()
+
 	if _embedded_mode:
 		_apply_embedded_layout()
 	else:
 		_refresh_card_list()
+
+
+## v7.x：给标题/资源栏/主要 Label 加载 Rajdhani 字体（视觉焕新）
+func _apply_title_fonts() -> void:
+	var title_label = get_node_or_null("VBoxContainer/TitleRow/TitleHBox/TitleLabel")
+	if title_label:
+		title_label.add_theme_font_override("font", DT.get_title_font_bold())
+		title_label.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT)
+	# 资源栏
+	if research_label:
+		research_label.add_theme_font_override("font", DT.get_body_font())
+		research_label.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT)
+	# 详情面板关键 Label
+	for path in [
+		"VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel/DetailVBox/NameLabel",
+		"VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel/DetailVBox/PrototypeLabel",
+	]:
+		var lbl = get_node_or_null(path)
+		if lbl:
+			lbl.add_theme_font_override("font", DT.get_title_font())
 
 ## 内嵌模式：隐藏 TitleRow + 左侧卡牌列表
 func set_embedded_mode(p_embedded: bool) -> void:
@@ -189,12 +218,12 @@ func _create_card_item(card: CardResource, instance_card: CardResource = null) -
 		sb_n.border_width_left = 2
 		sb_n.bg_color = Color(0, 0.94, 1, 0.1)
 	else:
-		sb_n.border_color = Color(0.55, 0.35, 0.96, 0.2)
+		sb_n.border_color = Color(0.133, 0.827, 0.933, 0.2)
 	btn.add_theme_stylebox_override("normal", sb_n)
 
 	var sb_h := sb_n.duplicate() as StyleBoxFlat
 	sb_h.bg_color = Color(0.12, 0.08, 0.22, 0.7)
-	sb_h.border_color = Color(0.55, 0.35, 0.96, 0.5)
+	sb_h.border_color = Color(0.133, 0.827, 0.933, 0.5)
 	btn.add_theme_stylebox_override("hover", sb_h)
 
 	var vbox := VBoxContainer.new()
@@ -314,7 +343,7 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 	sb_n.content_margin_right = 8
 	sb_n.content_margin_bottom = 5
 	if selected_mod_id == mod_id:
-		sb_n.bg_color = Color(0.55, 0.35, 0.96, 0.16)
+		sb_n.bg_color = Color(0.133, 0.827, 0.933, 0.16)
 	btn.add_theme_stylebox_override("normal", sb_n)
 
 	var sb_h := sb_n.duplicate() as StyleBoxFlat
@@ -675,6 +704,9 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 			else:
 				unlock_label.text = ""
 
+		# v7.x 新增：战力档位阶梯条（TierLadder）—— HTML 稿核心控件，让玩家看到当前档 vs 要求档
+		_render_tier_ladder(details_panel, selected_mod_id)
+
 		# 消耗可视化
 		# v6.2 修复：用基础战力（与实际扣费 BlueprintManager.install_modification 的 get_base_power_for_mod_cost 一致），
 		# 原用 get_current_power（含强化+改造）导致显示成本虚高
@@ -1029,3 +1061,58 @@ func _rarity_sort_value(rarity: String) -> int:
 		"legendary": return 5
 		"mythic": return 6
 		_: return 0
+
+
+# ============================================================
+# v7.x 新增：战力档位阶梯条（TierLadder）
+# ============================================================
+## 在详情面板渲染战力档位阶梯条：显示卡牌当前档位 vs 改造要求档位
+## 5 档 GRUNT/VETERAN/ELITE/CHAMPION/OVERLORD，当前档高亮、要求档金边
+## 数据源：
+##   - 卡牌当前档：PowerTiers.get_tier_by_power(BlueprintManager._estimate_power_score)
+##   - 改造要求档：ModManager.get_min_power_tier_for_mod
+func _render_tier_ladder(details_panel: Node, mod_id: String) -> void:
+	if details_panel == null or selected_card == null:
+		return
+	var container = details_panel.get_node_or_null("DetailVBox/TierLadderContainer")
+	if container == null:
+		return  # tscn 未定义该节点（旧档），静默跳过
+
+	# 计算卡牌当前档位（用 EvolutionHelpers 的战力估算链，与战力档位阈值口径一致）
+	var card_power: float = 0.0
+	var key: String = selected_card.instance_id if not selected_card.instance_id.is_empty() else selected_card.card_id
+	if BlueprintManager != null:
+		# EvolutionHelpers.estimate_power_score 是 static，需要 bpm_ref
+		card_power = float(EvolutionHelpers.estimate_power_score(key, BlueprintManager))
+	var current_tier: int = PowerTiers.get_tier_by_power(card_power)
+
+	# 改造要求档位（按 mod rarity 派生）
+	var required_tier: int = ModManager.get_min_power_tier_for_mod(mod_id)
+	var meets: bool = PowerTiers.meets_requirement(current_tier, required_tier)
+
+	# 标题区显示结果
+	var result_label = container.get_node_or_null("TierMargin/TierInner/TierTitleRow/TierResultLabel")
+	if result_label:
+		var rar_name: String = PowerTiers.get_tier_name(required_tier)
+		var cur_name: String = PowerTiers.get_tier_name(current_tier)
+		if meets:
+			result_label.text = "✓ 当前 %s · 满足 %s 档" % [cur_name, rar_name]
+			result_label.add_theme_color_override("font_color", DT.COLOR_GREEN_UP)
+		else:
+			result_label.text = "✗ 需 %s · 当前 %s" % [rar_name, cur_name]
+			result_label.add_theme_color_override("font_color", DT.COLOR_RED_DOWN)
+
+	# 渲染阶梯（复用 GeoShapes.TierLadder 控件，替换 host 子节点）
+	var host = container.get_node_or_null("TierMargin/TierInner/TierLadderHost")
+	if host == null:
+		return
+	# 清空旧阶梯（同步 free，避免容器撑高）
+	for child in host.get_children():
+		host.remove_child(child)
+		child.free()
+	# common 档无门槛（GRUNT=0），仍然显示阶梯作为信息但隐藏容器避免噪音
+	var ladder = GeoShapes.TierLadder.new()
+	ladder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ladder.set_data(current_tier, required_tier, int(card_power))
+	host.add_child(ladder)
+	container.visible = true

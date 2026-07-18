@@ -1,4 +1,6 @@
 extends PanelContainer
+## 成长面板（v7.x UI 重设计 · 成长中枢）
+## 签名色：四系统整合（强化琥珀金/改造青蓝/进化紫/星级金）
 ## 成长面板 - 2x2 网格布局 (严格按 HTML 预览 v3)
 
 const GC = preload("res://resources/game_constants.gd")
@@ -10,6 +12,9 @@ const EvoPathRegistry = preload("res://scripts/systems/evolution_path_registry.g
 const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
 const FormatUtil = preload("res://scripts/ui/format_util.gd")
 const UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")
+
+# v7.x UI 重设计基建
+const DT = preload("res://resources/design_tokens.gd")
 
 signal closed
 
@@ -190,11 +195,35 @@ func _apply_visual_styles() -> void:
 	if ep:
 		ep.custom_minimum_size = Vector2(0, 8)
 
-	# --- 四大区块顶部彩色顶线（主题色区分：星级金/强化青/MOD紫/进化橙） ---
-	_apply_section_theme_border("%StarSection", Color(1.0, 0.84, 0.0, 0.9))
-	_apply_section_theme_border("%EnhanceSection", Color(0, 0.94, 1, 0.9))
-	_apply_section_theme_border("%ModSection2", Color(0.55, 0.35, 0.96, 0.9))
-	_apply_section_theme_border("%EvoSection2", Color(1.0, 0.596, 0.0, 0.9))
+	# --- 四大区块顶部彩色顶线（v7.x 新签名色：星级金/强化琥珀/改造青蓝/进化紫） ---
+	_apply_section_theme_border("%StarSection", DT.COLOR_GOLD)
+	_apply_section_theme_border("%EnhanceSection", DT.COLOR_AMBER)
+	_apply_section_theme_border("%ModSection2", DT.COLOR_CYAN_TECH_SOFT)
+	_apply_section_theme_border("%EvoSection2", DT.COLOR_VIOLET_SOFT)
+
+	# --- v7.x：主要 Label 加载 Rajdhani 字体（战术感） ---
+	_apply_panel_fonts()
+
+
+## v7.x：给标题/卡名/星级/Section 标题加载 Rajdhani 字体
+func _apply_panel_fonts() -> void:
+	# 卡名（大字）
+	if unit_name_label:
+		unit_name_label.add_theme_font_override("font", DT.get_title_font_bold())
+	# 星级数字 / 强化等级（强调数字）
+	for lbl in [star_level_label, enhance_level_label]:
+		if lbl:
+			lbl.add_theme_font_override("font", DT.get_title_font_bold())
+	# Section 标题（Rajdhani SemiBold）
+	for path in ["%StarSection/StarHeader/StarTitle", "%EnhanceSection/EnhanceHeader/EnhanceTitle",
+				"%ModSection2/ModHeader/ModTitle", "%EvoSection2/EvoHeader/EvoTitle"]:
+		var lbl = get_node_or_null(path)
+		if lbl:
+			lbl.add_theme_font_override("font", DT.get_title_font())
+	# 操作按钮（强化/改造/进化）
+	for btn in [enhance_btn, mod_btn, evo_btn]:
+		if btn:
+			btn.add_theme_font_override("font", DT.get_title_font())
 
 ## 为单个 Section 应用主题色顶线（保留原 bg/corner，只改顶部边框宽度+颜色）
 func _apply_section_theme_border(node_path: String, theme_color: Color) -> void:

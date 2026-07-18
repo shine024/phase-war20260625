@@ -1,0 +1,2428 @@
+<!DOCTYPE html>
+<!-- saved from url=(0145)file:///D:/godotplay/godot%20fair%20duel/phase-war/docs/design_mockups/%E8%83%8C%E5%8C%85%E9%9D%A2%E6%9D%BF%E9%87%8D%E8%AE%BE%E8%AE%A1.html#runes -->
+<html lang="zh-CN"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<title>Phase War · 背包 · 四分类设计稿</title>
+<link rel="preconnect" href="https://fonts.googleapis.com/">
+<link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
+<link href="./Phase War · 背包 · 四分类设计稿_files/css2" rel="stylesheet">
+<style>
+/* ============================================================
+   Phase War · 背包面板设计稿
+   沿用养成系统设计语言（深空黑底 + 战术网格 + Rajdhani + 签名色）
+   四分类：战斗卡 / 改造 / 符文 / 相位仪
+   每类格子有独立的设计语法，但共享 panel-frame/title-bar/resource-bar
+   ============================================================ */
+:root {
+  /* —— 中性色板（与养成面板一致） —— */
+  --bg-void:        #060912;
+  --bg-panel:       #0d1320;
+  --bg-card:        #131a2a;
+  --bg-card-hi:     #1a2438;
+  --bg-slot-locked: #0a0f1c;
+  --bg-slot-empty:  rgba(255,255,255,0.02);
+
+  --border-dim:     rgba(120,140,180,0.14);
+  --border:         rgba(160,180,220,0.22);
+  --border-hi:      rgba(120,180,255,0.45);
+
+  /* —— 四分类签名色（沿用养成系统，保持视觉连贯） —— */
+  --amber:          #f59e0b;  /* 战斗卡 · 主力 */
+  --amber-soft:     #fbbf24;
+  --amber-glow:     rgba(245,158,11,0.35);
+
+  --cyan:           #06b6d4;  /* 改造 · 科技 */
+  --cyan-soft:      #22d3ee;
+  --cyan-glow:      rgba(6,182,212,0.35);
+
+  --violet:         #a78bfa;  /* 符文 · 魔法 */
+  --violet-soft:    #c4b5fd;
+  --violet-deep:    #7c3aed;
+  --violet-glow:    rgba(167,139,250,0.4);
+
+  --gold:           #fbbf24;  /* 相位仪 · 王者 */
+  --gold-soft:      #fde68a;
+  --gold-glow:      rgba(251,191,36,0.45);
+
+  --green-up:       #34d399;
+  --red-down:       #ef4444;
+
+  --text:           #e8edf7;
+  --text-mid:       #a8b3c7;
+  --text-dim:       #6b7691;
+  --text-faint:     #454f63;
+
+  /* —— 字体 —— */
+  --font-display:   'Rajdhani', 'Noto Sans SC', sans-serif;
+  --font-body:      'Noto Sans SC', 'Inter', sans-serif;
+  --font-mono:      'JetBrains Mono', monospace;
+
+  /* —— 兵种色 —— */
+  --kind-infantry:  #e5484d;
+  --kind-armor:     #4d7fe5;
+  --kind-artillery: #e59820;
+  --kind-antiair:   #b3b34a;
+  --kind-air:       #4dcce5;
+  --kind-recon:     #80e548;
+  --kind-engineer:  #9c80e5;
+  --kind-fort:      #9ca3af;
+
+  /* —— 稀有度色 —— */
+  --rar-common:     #6b7691;
+  --rar-uncommon:   #22c55e;
+  --rar-rare:       #38bdf8;
+  --rar-epic:       #c084fc;
+  --rar-legendary:  #f59e0b;
+  --rar-mythic:     #ef4444;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-body);
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(245,158,11,0.05) 0%, transparent 45%),
+    radial-gradient(ellipse at 80% 100%, rgba(167,139,250,0.04) 0%, transparent 40%),
+    var(--bg-void);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 16px;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(120,140,180,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(120,140,180,0.025) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ============================================================
+   全局 Tab 切换器
+   ============================================================ */
+.app { max-width: 1340px; margin: 0 auto; position: relative; z-index: 1; }
+.app-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding: 0 4px;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.brand-mark {
+  width: 24px; height: 24px;
+  background: linear-gradient(135deg, var(--amber), var(--violet));
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+}
+.brand-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.2em;
+  color: var(--text);
+}
+.brand-title .sub {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-left: 10px;
+  letter-spacing: 0.15em;
+}
+.tabs {
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-radius: 6px;
+}
+.tab {
+  padding: 8px 18px;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.15s;
+  display: flex; align-items: center; gap: 8px;
+  user-select: none;
+}
+.tab:hover { color: var(--text-mid); background: rgba(255,255,255,0.02); }
+.tab.active { color: var(--text); background: var(--bg-card-hi); }
+.tab .dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+}
+.tab[data-panel="cards"]  .dot { background: var(--amber); }
+.tab[data-panel="mods"]   .dot { background: var(--cyan-soft); }
+.tab[data-panel="runes"]  .dot { background: var(--violet-soft); }
+.tab[data-panel="insts"]  .dot { background: var(--gold-soft); }
+.tab.active .dot { box-shadow: 0 0 8px currentColor; }
+.tab .count {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(255,255,255,0.04);
+  color: var(--text-dim);
+  letter-spacing: 0.05em;
+}
+.tab.active .count { background: rgba(255,255,255,0.08); color: var(--text-mid); }
+
+/* ============================================================
+   面板通用框架（与养成面板一致）
+   ============================================================ */
+.panel-frame {
+  width: 1340px;
+  height: 760px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+  display: none;
+}
+.panel-frame.active { display: grid; grid-template-rows: 56px 42px 1fr; }
+.panel-frame::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  z-index: 5;
+}
+.panel-frame.cards::before { background: linear-gradient(90deg, transparent, var(--amber) 20%, var(--amber-soft) 50%, var(--amber) 80%, transparent); opacity: 0.7; }
+.panel-frame.mods::before  { background: linear-gradient(90deg, transparent, var(--cyan) 20%, var(--cyan-soft) 50%, var(--cyan) 80%, transparent); opacity: 0.7; }
+.panel-frame.runes::before { background: linear-gradient(90deg, transparent, var(--violet) 20%, var(--violet-soft) 50%, var(--violet) 80%, transparent); opacity: 0.7; }
+.panel-frame.insts::before { background: linear-gradient(90deg, transparent, var(--gold) 20%, var(--gold-soft) 50%, var(--gold) 80%, transparent); opacity: 0.8; }
+
+/* ============================================================
+   标题栏 / 资源栏 / 工具栏
+   ============================================================ */
+.title-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--border-dim);
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+}
+.title-left { display: flex; align-items: center; gap: 14px; }
+.title-mark {
+  width: 26px; height: 26px;
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+}
+.title-mark::before, .title-mark::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+.title-mark::before { border: 1px solid currentColor; transform: rotate(45deg); }
+.title-mark::after {
+  inset: 8px;
+  background: currentColor;
+  transform: rotate(45deg);
+  filter: blur(0.5px);
+}
+.title-mark.amber  { color: var(--amber); }
+.title-mark.amber::after { box-shadow: 0 0 12px var(--amber-glow); }
+.title-mark.cyan   { color: var(--cyan-soft); }
+.title-mark.cyan::after { box-shadow: 0 0 12px var(--cyan-glow); }
+.title-mark.violet { color: var(--violet-soft); }
+.title-mark.violet::after { box-shadow: 0 0 12px var(--violet-glow); }
+.title-mark.gold   { color: var(--gold-soft); }
+.title-mark.gold::after { box-shadow: 0 0 12px var(--gold-glow); }
+
+.title-text {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: 0.12em;
+}
+.title-text .sub {
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  font-weight: 500;
+  margin-left: 12px;
+  opacity: 0.7;
+}
+.title-text.amber  .sub { color: var(--amber); }
+.title-text.cyan   .sub { color: var(--cyan-soft); }
+.title-text.violet .sub { color: var(--violet-soft); }
+.title-text.gold   .sub { color: var(--gold-soft); }
+
+.title-right { display: flex; align-items: center; gap: 14px; }
+.title-meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 0.1em;
+}
+.title-meta b { color: var(--text-mid); font-weight: 500; }
+.title-meta .filled { color: var(--amber-soft); }
+.close-btn {
+  width: 30px; height: 30px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-mid);
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.15s;
+  font-family: var(--font-body);
+}
+.close-btn:hover { border-color: var(--red-down); color: var(--red-down); }
+
+/* 工具栏：搜索 + 容量 + 筛选 */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--border-dim);
+  background: var(--bg-card);
+}
+.toolbar-left { display: flex; align-items: center; gap: 14px; }
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  background: var(--bg-slot-locked);
+  border: 1px solid var(--border-dim);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  min-width: 200px;
+}
+.search-box .ico { color: var(--text-faint); }
+.search-box input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  flex: 1;
+}
+.search-box input::placeholder { color: var(--text-faint); }
+
+.filter-chips { display: flex; gap: 4px; }
+.chip {
+  padding: 4px 10px;
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+  border: 1px solid var(--border-dim);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-transform: uppercase;
+  user-select: none;
+}
+.chip:hover { color: var(--text-mid); border-color: var(--border); }
+.chip.active {
+  color: var(--text);
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(160,180,220,0.4);
+}
+.chip.active.rar-common    { border-color: var(--rar-common);    color: var(--rar-common); }
+.chip.active.rar-uncommon  { border-color: var(--rar-uncommon);  color: var(--rar-uncommon); }
+.chip.active.rar-rare      { border-color: var(--rar-rare);      color: var(--rar-rare); }
+.chip.active.rar-epic      { border-color: var(--rar-epic);      color: var(--rar-epic); }
+.chip.active.rar-legendary { border-color: var(--rar-legendary); color: var(--rar-legendary); }
+.chip.active.rar-mythic    { border-color: var(--rar-mythic);    color: var(--rar-mythic); }
+
+.toolbar-right { display: flex; align-items: center; gap: 14px; }
+.capacity {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+}
+.capacity .used { color: var(--text); font-weight: 500; }
+.capacity .slash { color: var(--text-faint); }
+.capacity .max { color: var(--text-mid); }
+.capacity-bar {
+  width: 80px; height: 4px;
+  background: var(--bg-slot-locked);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+.capacity-bar .fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--amber), var(--amber-soft));
+  border-radius: 2px;
+}
+.sort-select {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.sort-select .sel {
+  color: var(--text);
+  padding: 4px 10px;
+  border: 1px solid var(--border-dim);
+  border-radius: 3px;
+  cursor: pointer;
+  background: var(--bg-slot-locked);
+}
+
+/* 内容区 */
+.content {
+  padding: 20px 24px;
+  overflow: auto;
+  position: relative;
+}
+
+/* ============================================================
+   战斗卡 · 90×130 大卡面（英雄阵列感）
+   ============================================================ */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+  grid-auto-rows: 138px;
+}
+.card-tile {
+  position: relative;
+  width: 96px; height: 138px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-radius: 4px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.15s;
+  display: flex;
+  flex-direction: column;
+}
+.card-tile:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-hi);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 0 0 1px var(--border-hi);
+}
+/* 顶部稀有度色条 + 兵种色 */
+.card-tile .top-strip {
+  height: 3px;
+  background: var(--rar-rare);
+  position: relative;
+}
+.card-tile .top-strip::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+}
+.card-tile.rar-legendary .top-strip,
+.card-tile.rar-mythic    .top-strip { height: 4px; }
+
+/* 兵种色右下小标 */
+.card-tile .kind-tag {
+  position: absolute;
+  top: 4px; right: 4px;
+  width: 14px; height: 14px;
+  border-radius: 2px;
+  background: var(--kind-armor);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display);
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.95);
+  letter-spacing: 0;
+}
+
+/* 中部立绘区（占位）*/
+.card-tile .art {
+  flex: 1;
+  background:
+    radial-gradient(circle at 50% 30%, rgba(255,255,255,0.04), transparent 60%),
+    linear-gradient(180deg, rgba(77,127,229,0.08), transparent 70%),
+    var(--bg-slot-locked);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.08);
+  letter-spacing: 0.1em;
+}
+.card-tile .art .silhouette {
+  font-size: 38px;
+  opacity: 0.6;
+  filter: drop-shadow(0 0 8px rgba(77,127,229,0.4));
+}
+
+/* 左上角 cost */
+.card-tile .cost {
+  position: absolute;
+  top: 6px; left: 4px;
+  width: 22px; height: 22px;
+  background: linear-gradient(135deg, var(--cyan), var(--cyan-soft));
+  clip-path: polygon(0 0, 100% 0, 100% 75%, 75% 100%, 0 100%);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: #06121b;
+}
+
+/* 实例徽章（同名卡 #序号）*/
+.card-tile .instance-no {
+  position: absolute;
+  bottom: 32px; right: 4px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-dim);
+  background: rgba(0,0,0,0.5);
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+/* 已装备标记 */
+.card-tile .equipped-mark {
+  position: absolute;
+  top: 22px; left: 4px;
+  font-family: var(--font-display);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--green-up);
+  background: rgba(52,211,153,0.1);
+  border: 1px solid rgba(52,211,153,0.4);
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+/* 底部信息条 */
+.card-tile .footer {
+  height: 38px;
+  background: linear-gradient(180deg, transparent, rgba(0,0,0,0.4));
+  padding: 4px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border-top: 1px solid var(--border-dim);
+}
+.card-tile .name-line {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.1;
+}
+.card-tile .stat-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+}
+.card-tile .stat-line .lv { color: var(--amber-soft); font-weight: 600; }
+.card-tile .stat-line .mod { color: var(--cyan-soft); }
+.card-tile .stat-line .pwr {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* 星点（5颗）*/
+.card-tile .stars {
+  position: absolute;
+  top: 8px; left: 32px;
+  display: flex;
+  gap: 1px;
+}
+.card-tile .stars .star {
+  width: 5px; height: 5px;
+  background: var(--text-faint);
+  clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+.card-tile .stars .star.on {
+  background: var(--gold);
+  box-shadow: 0 0 3px var(--gold-glow);
+}
+
+/* 选中状态 */
+.card-tile.selected {
+  border-color: var(--amber);
+  box-shadow: 0 0 0 1px var(--amber), 0 0 20px var(--amber-glow);
+}
+
+/* ============================================================
+   改造 · 80×95 瓷砖（模块仓储感）
+   ============================================================ */
+.mods-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+  grid-auto-rows: 108px;
+}
+.mod-tile {
+  position: relative;
+  width: 96px; height: 108px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-radius: 4px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.15s;
+  display: flex;
+}
+.mod-tile:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-hi);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+/* 左侧稀有度色条（粗，是改造的视觉签名）*/
+.mod-tile .rarity-strip {
+  width: 4px;
+  background: var(--rar-rare);
+  flex-shrink: 0;
+}
+.mod-tile.rar-legendary .rarity-strip,
+.mod-tile.rar-mythic    .rarity-strip { width: 5px; }
+
+.mod-tile .body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 6px 7px;
+  position: relative;
+}
+
+/* 顶行：图标 + 槽位类型 + 状态点 */
+.mod-tile .top-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 4px;
+}
+.mod-tile .mod-icon {
+  width: 22px; height: 22px;
+  background: var(--bg-slot-locked);
+  border: 1px solid var(--border-dim);
+  border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--cyan-soft);
+}
+.mod-tile .slot-type {
+  font-family: var(--font-display);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  flex: 1;
+}
+.mod-tile .status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--text-faint);
+}
+.mod-tile.installed .status-dot {
+  background: var(--green-up);
+  box-shadow: 0 0 4px var(--green-up);
+}
+
+/* 模块名 */
+.mod-tile .mod-name {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.2;
+  margin-bottom: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 关键效果 */
+.mod-tile .mod-effect {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--cyan-soft);
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+  margin-bottom: 2px;
+}
+.mod-tile .mod-prototype {
+  font-family: var(--font-body);
+  font-size: 9px;
+  color: var(--text-faint);
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 底部计数 + 稀有度文字 */
+.mod-tile .footer {
+  position: absolute;
+  bottom: 5px; left: 7px; right: 7px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+}
+.mod-tile .footer .rarity-label {
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* 装配计数徽章（如果多个卡装了同一改造）*/
+.mod-tile .install-count {
+  position: absolute;
+  top: 4px; right: 4px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--green-up);
+  background: rgba(52,211,153,0.1);
+  border: 1px solid rgba(52,211,153,0.3);
+  padding: 1px 5px;
+  border-radius: 2px;
+  letter-spacing: 0.05em;
+}
+
+.mod-tile.selected {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 1px var(--cyan), 0 0 16px var(--cyan-glow);
+}
+
+/* 改造区左边的"过滤侧栏" */
+.mods-layout {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 16px;
+  height: 100%;
+}
+.mods-sidebar {
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.sidebar-section .sec-title {
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--border-dim);
+}
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--text-mid);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+.sidebar-item:hover { background: rgba(255,255,255,0.03); color: var(--text); }
+.sidebar-item.active {
+  background: rgba(6,182,212,0.08);
+  color: var(--cyan-soft);
+  border-left: 2px solid var(--cyan);
+  padding-left: 6px;
+}
+.sidebar-item .ico {
+  width: 16px;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+.sidebar-item .ct {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+/* ============================================================
+   符文 · 菱形装饰 + 稀有度色（魔法符印感）
+   ============================================================ */
+.runes-layout {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 16px;
+  height: 100%;
+}
+.runes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
+  gap: 10px;
+  grid-auto-rows: 116px;
+  align-content: start;
+}
+.rune-tile {
+  position: relative;
+  width: 86px; height: 116px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-radius: 4px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.15s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 4px 6px;
+}
+.rune-tile:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-hi);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+}
+/* 菱形顶饰（符文的视觉签名 - 区别于改造的左侧色条）*/
+.rune-tile .rune-diamond {
+  width: 32px; height: 32px;
+  position: relative;
+  margin-bottom: 4px;
+  display: flex; align-items: center; justify-content: center;
+}
+.rune-tile .rune-diamond::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--rar-rare);
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+  opacity: 0.85;
+}
+.rune-tile .rune-diamond::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  background: var(--bg-card);
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+}
+.rune-tile .rune-diamond .glyph {
+  position: relative;
+  z-index: 2;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--rar-rare);
+  text-shadow: 0 0 6px currentColor;
+}
+.rune-tile.rar-legendary .rune-diamond::before,
+.rune-tile.rar-mythic    .rune-diamond::before { opacity: 1; }
+
+/* 符文名 */
+.rune-tile .rune-name {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text);
+  text-align: center;
+  line-height: 1.15;
+  margin-bottom: 3px;
+  max-width: 78px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* 主效果 */
+.rune-tile .rune-effect {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--violet-soft);
+  text-align: center;
+  line-height: 1.2;
+  margin-bottom: auto;
+}
+/* 底部星要求 */
+.rune-tile .star-req {
+  display: flex;
+  gap: 1px;
+  margin-top: 4px;
+}
+.rune-tile .star-req .sr {
+  width: 4px; height: 4px;
+  background: var(--text-faint);
+  border-radius: 50%;
+}
+.rune-tile .star-req .sr.on {
+  background: var(--violet-soft);
+  box-shadow: 0 0 2px var(--violet-glow);
+}
+
+/* 装备中边框（金色脉动）*/
+.rune-tile.equipped {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 1px var(--gold), 0 0 12px var(--gold-glow);
+}
+.rune-tile.equipped .equipped-badge {
+  position: absolute;
+  top: 3px; right: 3px;
+  width: 8px; height: 8px;
+  background: var(--gold);
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+}
+
+/* 符文之语激活光环 */
+.rune-tile.runeword-active {
+  border-color: var(--violet);
+  background:
+    radial-gradient(circle at 50% 30%, var(--violet-glow), transparent 70%),
+    var(--bg-card);
+}
+.rune-tile.runeword-active::after {
+  content: '✦ RW';
+  position: absolute;
+  bottom: 2px; right: 3px;
+  font-family: var(--font-display);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--violet-soft);
+}
+
+/* 符文右侧信息面板 */
+.rune-info {
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-radius: 6px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow: auto;
+}
+.rune-info .sec-title {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  color: var(--violet-soft);
+  text-transform: uppercase;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-dim);
+}
+.bonus-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.bonus-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-mid);
+  letter-spacing: 0.04em;
+}
+.bonus-row .lbl { color: var(--text-dim); }
+.bonus-row .val { color: var(--green-up); font-weight: 600; }
+
+.runeword-list { display: flex; flex-direction: column; gap: 6px; }
+.runeword-item {
+  padding: 6px 8px;
+  background: rgba(167,139,250,0.05);
+  border-left: 2px solid var(--violet);
+  border-radius: 2px;
+}
+.runeword-item .rw-name {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--violet-soft);
+  letter-spacing: 0.06em;
+  margin-bottom: 2px;
+}
+.runeword-item .rw-tier {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-dim);
+}
+.runeword-item .rw-eff {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-mid);
+  margin-top: 2px;
+}
+
+/* ============================================================
+   相位仪 · 水平条带（指挥中枢感，最重的展示）
+   ============================================================ */
+.insts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.inst-tile {
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-radius: 6px;
+  padding: 14px 18px;
+  display: grid;
+  grid-template-columns: 140px 1fr 200px;
+  gap: 18px;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  overflow: hidden;
+}
+.inst-tile:hover {
+  border-color: var(--border-hi);
+  background: var(--bg-card-hi);
+  transform: translateX(2px);
+}
+.inst-tile.equipped {
+  border-color: var(--gold);
+  background:
+    linear-gradient(90deg, rgba(251,191,36,0.06), transparent 70%),
+    var(--bg-card);
+  box-shadow: 0 0 0 1px rgba(251,191,36,0.4), 0 0 20px var(--gold-glow);
+}
+.inst-tile.equipped::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--gold), var(--gold-soft));
+}
+
+/* 左：星级 + 名字 */
+.inst-left {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.inst-stars {
+  display: flex;
+  gap: 2px;
+}
+.inst-stars .st {
+  width: 12px; height: 12px;
+  background: var(--text-faint);
+  clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+.inst-stars .st.on {
+  background: var(--gold);
+  box-shadow: 0 0 5px var(--gold-glow);
+}
+.inst-name {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.04em;
+  line-height: 1.15;
+}
+.inst-faction {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+}
+.inst-faction .generic { color: var(--text-mid); }
+.inst-faction .faction { color: var(--cyan-soft); }
+
+/* 中：槽位可视化 + 属性 */
+.inst-mid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.slot-vis {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.slot-vis .slot-label {
+  font-family: var(--font-display);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  min-width: 50px;
+}
+.slot-cells {
+  display: flex;
+  gap: 3px;
+}
+.slot-cell {
+  width: 12px; height: 14px;
+  background: var(--bg-slot-locked);
+  border: 1px solid var(--border-dim);
+  border-radius: 2px;
+}
+.slot-cell.green {
+  background: linear-gradient(180deg, rgba(52,211,153,0.2), rgba(52,211,153,0.05));
+  border-color: rgba(52,211,153,0.4);
+}
+.slot-cell.rune {
+  background: linear-gradient(180deg, rgba(167,139,250,0.2), rgba(167,139,250,0.05));
+  border-color: rgba(167,139,250,0.4);
+}
+.slot-cell.empty {
+  background: transparent;
+  border-style: dashed;
+}
+
+.inst-stats {
+  display: flex;
+  gap: 14px;
+}
+.stat-mini {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.stat-mini .lbl {
+  font-family: var(--font-display);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+.stat-mini .val {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+.stat-mini .val.up { color: var(--green-up); }
+
+/* 右：主动能力 + 操作 */
+.inst-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+.ability-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  background: rgba(251,191,36,0.08);
+  border: 1px solid rgba(251,191,36,0.3);
+  border-radius: 3px;
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--gold-soft);
+}
+.ability-chip .ico {
+  width: 8px; height: 8px;
+  background: var(--gold);
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+}
+.ability-chip.empty {
+  background: transparent;
+  border-color: var(--border-dim);
+  color: var(--text-faint);
+}
+.ability-chip.empty .ico { background: var(--text-faint); }
+
+.inst-action {
+  padding: 5px 14px;
+  background: var(--bg-slot-locked);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--text-mid);
+  cursor: pointer;
+  text-transform: uppercase;
+}
+.inst-action:hover {
+  border-color: var(--gold);
+  color: var(--gold-soft);
+}
+.inst-action.equipped-btn {
+  color: var(--green-up);
+  border-color: rgba(52,211,153,0.4);
+  background: rgba(52,211,153,0.05);
+  cursor: default;
+}
+
+/* 空状态 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-faint);
+  font-family: var(--font-display);
+  font-size: 14px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  gap: 12px;
+}
+.empty-state .ico {
+  font-size: 38px;
+  opacity: 0.4;
+}
+
+/* 注释卡片 */
+.design-notes {
+  margin-top: 28px;
+  padding: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-radius: 6px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-mid);
+  line-height: 1.7;
+}
+.design-notes h3 {
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  color: var(--text);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.design-notes ul { padding-left: 18px; }
+.design-notes li { margin-bottom: 4px; }
+.design-notes code {
+  font-family: var(--font-mono);
+  background: var(--bg-slot-locked);
+  padding: 1px 5px;
+  border-radius: 2px;
+  font-size: 11px;
+  color: var(--cyan-soft);
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- 顶部品牌 + Tab 切换 -->
+  <div class="app-head">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div class="brand-title">PHASE WAR <span class="sub">INVENTORY · 背包</span></div>
+    </div>
+    <div class="tabs" id="tabs">
+      <div class="tab" data-panel="cards"><span class="dot"></span>战斗卡<span class="count">38</span></div>
+      <div class="tab" data-panel="mods"><span class="dot"></span>改造<span class="count">24</span></div>
+      <div class="tab active" data-panel="runes"><span class="dot"></span>符文<span class="count">12</span></div>
+      <div class="tab" data-panel="insts"><span class="dot"></span>相位仪<span class="count">7</span></div>
+    </div>
+  </div>
+
+  <!-- ============== 战斗卡 Tab ============== -->
+  <div class="panel-frame cards" id="panel-cards">
+    <div class="title-bar">
+      <div class="title-left">
+        <div class="title-mark amber"></div>
+        <div class="title-text amber">战斗卡阵列 <span class="sub">COMBAT ROSTER</span></div>
+      </div>
+      <div class="title-right">
+        <div class="title-meta">兵种 <b>8</b> · 时代 <b class="filled">5</b> · 满星 <b>3</b></div>
+        <button class="close-btn">×</button>
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <div class="search-box">
+          <span class="ico">⌕</span>
+          <input placeholder="搜索卡名 / ID / 兵种...">
+        </div>
+        <div class="filter-chips">
+          <div class="chip">全部</div>
+          <div class="chip">步兵</div>
+          <div class="chip active">装甲</div>
+          <div class="chip">炮兵</div>
+          <div class="chip">空军</div>
+          <div class="chip">侦察</div>
+        </div>
+      </div>
+      <div class="toolbar-right">
+        <div class="capacity">
+          <span><span class="used">38</span><span class="slash">/</span><span class="max">50</span></span>
+          <div class="capacity-bar"><div class="fill" style="width: 76%"></div></div>
+        </div>
+        <div class="sort-select">排序 <span class="sel">战力 ↓</span></div>
+      </div>
+    </div>
+    <div class="content">
+      <div class="cards-grid">
+        <!-- 示例：5星传奇装甲卡，已装备 -->
+        <div class="card-tile rar-legendary selected">
+          <div class="top-strip" style="background: var(--rar-legendary)"></div>
+          <div class="cost">8</div>
+          <div class="kind-tag" style="background: var(--kind-armor)">◈</div>
+          <div class="stars">
+            <div class="star on"></div><div class="star on"></div><div class="star on"></div><div class="star on"></div><div class="star on"></div>
+          </div>
+          <div class="equipped-mark">EQUIP</div>
+          <div class="art"><span class="silhouette">◈</span></div>
+          <div class="instance-no">#2</div>
+          <div class="footer">
+            <div class="name-line">M1 艾布拉姆斯</div>
+            <div class="stat-line">
+              <span><span class="lv">Lv.9</span> · <span class="mod">改7/9</span></span>
+              <span class="pwr">2148</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4星稀有炮兵 -->
+        <div class="card-tile rar-rare">
+          <div class="top-strip" style="background: var(--rar-rare)"></div>
+          <div class="cost">6</div>
+          <div class="kind-tag" style="background: var(--kind-artillery)">◎</div>
+          <div class="stars">
+            <div class="star on"></div><div class="star on"></div><div class="star on"></div><div class="star on"></div><div class="star"></div>
+          </div>
+          <div class="art"><span class="silhouette">◎</span></div>
+          <div class="instance-no">#1</div>
+          <div class="footer">
+            <div class="name-line">M109 自行榴弹炮</div>
+            <div class="stat-line">
+              <span><span class="lv">Lv.7</span> · <span class="mod">改4/9</span></span>
+              <span class="pwr">1284</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3星罕见步兵 -->
+        <div class="card-tile rar-uncommon">
+          <div class="top-strip" style="background: var(--rar-uncommon)"></div>
+          <div class="cost">3</div>
+          <div class="kind-tag" style="background: var(--kind-infantry)">⚔</div>
+          <div class="stars">
+            <div class="star on"></div><div class="star on"></div><div class="star on"></div><div class="star"></div><div class="star"></div>
+          </div>
+          <div class="art"><span class="silhouette">⚔</span></div>
+          <div class="footer">
+            <div class="name-line">M16 突击步枪班</div>
+            <div class="stat-line">
+              <span><span class="lv">Lv.5</span> · <span class="mod">改2/9</span></span>
+              <span class="pwr">567</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 能量卡（绿色顶条） -->
+        <div class="card-tile" style="border-color: rgba(34,197,94,0.4)">
+          <div class="top-strip" style="background: var(--rar-uncommon)"></div>
+          <div class="cost">0</div>
+          <div class="kind-tag" style="background: var(--green-up); font-size: 8px">⚡</div>
+          <div class="art"><span class="silhouette" style="filter: drop-shadow(0 0 8px rgba(52,211,153,0.4))">⚡</span></div>
+          <div class="footer">
+            <div class="name-line">能量块 ×3</div>
+            <div class="stat-line">
+              <span><span class="lv">能量</span></span>
+              <span class="pwr">+90</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 神话空军 -->
+        <div class="card-tile rar-mythic">
+          <div class="top-strip" style="background: var(--rar-mythic)"></div>
+          <div class="cost">10</div>
+          <div class="kind-tag" style="background: var(--kind-air)">✈</div>
+          <div class="stars">
+            <div class="star on"></div><div class="star on"></div><div class="star on"></div><div class="star on"></div><div class="star on"></div>
+          </div>
+          <div class="art"><span class="silhouette">✈</span></div>
+          <div class="instance-no">#1</div>
+          <div class="footer">
+            <div class="name-line">F-22 猛禽</div>
+            <div class="stat-line">
+              <span><span class="lv">Lv.10</span> · <span class="mod">改9/9</span></span>
+              <span class="pwr">3210</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 史诗工兵 -->
+        <div class="card-tile rar-epic">
+          <div class="top-strip" style="background: var(--rar-epic)"></div>
+          <div class="cost">5</div>
+          <div class="kind-tag" style="background: var(--kind-engineer)">⚙</div>
+          <div class="stars">
+            <div class="star on"></div><div class="star on"></div><div class="star on"></div><div class="star on"></div><div class="star"></div>
+          </div>
+          <div class="art"><span class="silhouette">⚙</span></div>
+          <div class="footer">
+            <div class="name-line">战斗工兵车</div>
+            <div class="stat-line">
+              <span><span class="lv">Lv.6</span> · <span class="mod">改3/9</span></span>
+              <span class="pwr">892</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 通用步兵（多个实例） -->
+        <div class="card-tile rar-common">
+          <div class="top-strip" style="background: var(--rar-common)"></div>
+          <div class="cost">2</div>
+          <div class="kind-tag" style="background: var(--kind-infantry)">⚔</div>
+          <div class="stars">
+            <div class="star on"></div><div class="star on"></div><div class="star"></div><div class="star"></div><div class="star"></div>
+          </div>
+          <div class="art"><span class="silhouette">⚔</span></div>
+          <div class="instance-no">#1</div>
+          <div class="footer">
+            <div class="name-line">毛瑟步枪班</div>
+            <div class="stat-line">
+              <span><span class="lv">Lv.3</span> · <span class="mod">改1/9</span></span>
+              <span class="pwr">234</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-tile rar-common">
+          <div class="top-strip" style="background: var(--rar-common)"></div>
+          <div class="cost">2</div>
+          <div class="kind-tag" style="background: var(--kind-infantry)">⚔</div>
+          <div class="stars">
+            <div class="star on"></div><div class="star on"></div><div class="star"></div><div class="star"></div><div class="star"></div>
+          </div>
+          <div class="art"><span class="silhouette">⚔</span></div>
+          <div class="instance-no">#2</div>
+          <div class="footer">
+            <div class="name-line">毛瑟步枪班</div>
+            <div class="stat-line">
+              <span><span class="lv">Lv.4</span> · <span class="mod">改2/9</span></span>
+              <span class="pwr">287</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 防空 -->
+        <div class="card-tile rar-rare">
+          <div class="top-strip" style="background: var(--rar-rare)"></div>
+          <div class="cost">4</div>
+          <div class="kind-tag" style="background: var(--kind-antiair)">↑</div>
+          <div class="stars">
+            <div class="star on"></div><div class="star on"></div><div class="star on"></div><div class="star on"></div><div class="star"></div>
+          </div>
+          <div class="art"><span class="silhouette">↑</span></div>
+          <div class="footer">
+            <div class="name-line">爱国者防空</div>
+            <div class="stat-line">
+              <span><span class="lv">Lv.6</span> · <span class="mod">改3/9</span></span>
+              <span class="pwr">745</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 堡垒 -->
+        <div class="card-tile rar-epic">
+          <div class="top-strip" style="background: var(--rar-epic)"></div>
+          <div class="cost">7</div>
+          <div class="kind-tag" style="background: var(--kind-fort)">■</div>
+          <div class="stars">
+            <div class="star on"></div><div class="star on"></div><div class="star on"></div><div class="star on"></div><div class="star"></div>
+          </div>
+          <div class="art"><span class="silhouette">■</span></div>
+          <div class="footer">
+            <div class="name-line">碉堡工事</div>
+            <div class="stat-line">
+              <span><span class="lv">Lv.8</span> · <span class="mod">改5/9</span></span>
+              <span class="pwr">1654</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 侦察 -->
+        <div class="card-tile rar-uncommon">
+          <div class="top-strip" style="background: var(--rar-uncommon)"></div>
+          <div class="cost">2</div>
+          <div class="kind-tag" style="background: var(--kind-recon)">◉</div>
+          <div class="stars">
+            <div class="star on"></div><div class="star on"></div><div class="star on"></div><div class="star"></div><div class="star"></div>
+          </div>
+          <div class="art"><span class="silhouette">◉</span></div>
+          <div class="footer">
+            <div class="name-line">侦察吉普</div>
+            <div class="stat-line">
+              <span><span class="lv">Lv.4</span> · <span class="mod">改2/9</span></span>
+              <span class="pwr">412</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 锁定槽位 -->
+        <div class="card-tile" style="background: var(--bg-slot-locked); border-style: dashed; cursor: default; opacity: 0.5">
+          <div class="top-strip" style="background: var(--text-faint); opacity: 0.3"></div>
+          <div class="art" style="color: var(--text-faint); font-size: 11px; letter-spacing: 0.2em">空槽位</div>
+          <div class="footer" style="border-top-color: var(--border-dim)">
+            <div class="name-line" style="color: var(--text-faint)">— 未获得 —</div>
+            <div class="stat-line"><span>通过关卡掉落</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="design-notes">
+        <h3>战斗卡 · 设计要点</h3>
+        <ul>
+          <li><b>大卡面 96×138</b>：比原来 80×120 更大，承载更多视觉信息（5星点 + 兵种图标 + Lv + 战力）。</li>
+          <li><b>顶部稀有度色条</b>：传奇/神话加粗到 4px，普通 3px，建立视觉层级。</li>
+          <li><b>左上角能量 cost</b>：切角小标签（青色），统一能量卡认知。</li>
+          <li><b>右上角兵种色块</b>：8 兵种独立配色 + Unicode 兵种符号（◈ 装甲 / ◎ 炮兵 / ↑ 防空 / ✈ 空军 等）。</li>
+          <li><b>5 星点 + #序号</b>：星点紧跟养成系统；同名卡用 <code>#1/#2/#3</code> 区分实例。</li>
+          <li><b>底部信息条</b>：<code>Lv.X · 改Y/9 · 战力</code>，战力数字加粗白色突出。</li>
+          <li><b>EQUIP 绿色徽章</b>：已装备到相位仪的卡左上有醒目标记。</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============== 改造 Tab ============== -->
+  <div class="panel-frame mods" id="panel-mods">
+    <div class="title-bar">
+      <div class="title-left">
+        <div class="title-mark cyan"></div>
+        <div class="title-text cyan">改造模块库 <span class="sub">MOD REPOSITORY</span></div>
+      </div>
+      <div class="title-right">
+        <div class="title-meta">已装配 <b class="filled">18</b> · 待装配 <b>6</b> · 冲突 <b>0</b></div>
+        <button class="close-btn">×</button>
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <div class="search-box">
+          <span class="ico">⌕</span>
+          <input placeholder="搜索改造 / 原型 / 效果...">
+        </div>
+        <div class="filter-chips">
+          <div class="chip active rar-common" style="border-color: var(--rar-common); color: var(--rar-common)">普通</div>
+          <div class="chip rar-uncommon" style="border-color: var(--rar-uncommon); color: var(--rar-uncommon)">罕见</div>
+          <div class="chip rar-rare" style="border-color: var(--rar-rare); color: var(--rar-rare)">稀有</div>
+          <div class="chip rar-epic" style="border-color: var(--rar-epic); color: var(--rar-epic)">史诗</div>
+          <div class="chip rar-legendary" style="border-color: var(--rar-legendary); color: var(--rar-legendary)">传奇</div>
+        </div>
+      </div>
+      <div class="toolbar-right">
+        <div class="capacity">
+          <span><span class="used">24</span><span class="slash">/</span><span class="max">∞</span></span>
+        </div>
+        <div class="sort-select">排序 <span class="sel">稀有度 ↓</span></div>
+      </div>
+    </div>
+    <div class="content">
+      <div class="mods-layout">
+        <!-- 左侧：按槽位类型筛选 -->
+        <div class="mods-sidebar">
+          <div class="sidebar-section">
+            <div class="sec-title">槽位类型</div>
+            <div class="sidebar-item active">
+              <span><span class="ico" style="color: var(--cyan-soft)">▣</span> 全部</span>
+              <span class="ct">24</span>
+            </div>
+            <div class="sidebar-item">
+              <span><span class="ico">⚔</span> 武器</span>
+              <span class="ct">9</span>
+            </div>
+            <div class="sidebar-item">
+              <span><span class="ico">■</span> 装甲</span>
+              <span class="ct">6</span>
+            </div>
+            <div class="sidebar-item">
+              <span><span class="ico">◈</span> 特殊</span>
+              <span class="ct">5</span>
+            </div>
+            <div class="sidebar-item">
+              <span><span class="ico">○</span> 通用</span>
+              <span class="ct">4</span>
+            </div>
+          </div>
+          <div class="sidebar-section">
+            <div class="sec-title">装配状态</div>
+            <div class="sidebar-item">
+              <span><span class="ico" style="color: var(--green-up)">●</span> 已装配</span>
+              <span class="ct">18</span>
+            </div>
+            <div class="sidebar-item">
+              <span><span class="ico" style="color: var(--text-dim)">○</span> 待装配</span>
+              <span class="ct">6</span>
+            </div>
+          </div>
+          <div class="sidebar-section">
+            <div class="sec-title">兵种适用</div>
+            <div class="sidebar-item"><span><span class="ico" style="color: var(--kind-infantry)">⚔</span> 步兵</span><span class="ct">8</span></div>
+            <div class="sidebar-item"><span><span class="ico" style="color: var(--kind-armor)">◈</span> 装甲</span><span class="ct">7</span></div>
+            <div class="sidebar-item"><span><span class="ico" style="color: var(--kind-artillery)">◎</span> 炮兵</span><span class="ct">5</span></div>
+            <div class="sidebar-item"><span><span class="ico" style="color: var(--kind-air)">✈</span> 空军</span><span class="ct">4</span></div>
+          </div>
+        </div>
+
+        <!-- 右侧：改造瓷砖网格 -->
+        <div class="mods-grid">
+          <!-- 已装配的传奇武器改造 -->
+          <div class="mod-tile rar-legendary installed">
+            <div class="rarity-strip" style="background: var(--rar-legendary)"></div>
+            <div class="body">
+              <div class="top-row">
+                <div class="mod-icon">⚔</div>
+                <div class="slot-type">武器</div>
+                <div class="status-dot"></div>
+              </div>
+              <div class="mod-name">APFSDS 穿甲弹</div>
+              <div class="mod-effect">对装甲攻击 +30%</div>
+              <div class="mod-prototype">M829A4</div>
+              <div class="footer">
+                <span class="rarity-label" style="color: var(--rar-legendary)">传奇</span>
+                <span>×1.30</span>
+              </div>
+            </div>
+            <div class="install-count">3 卡</div>
+          </div>
+
+          <!-- 史诗特殊 -->
+          <div class="mod-tile rar-epic installed">
+            <div class="rarity-strip" style="background: var(--rar-epic)"></div>
+            <div class="body">
+              <div class="top-row">
+                <div class="mod-icon">◈</div>
+                <div class="slot-type">特殊</div>
+                <div class="status-dot"></div>
+              </div>
+              <div class="mod-name">热成像瞄准</div>
+              <div class="mod-effect">射程 +30 · 暴击 +5%</div>
+              <div class="mod-prototype">FLIR</div>
+              <div class="footer">
+                <span class="rarity-label" style="color: var(--rar-epic)">史诗</span>
+                <span>+30</span>
+              </div>
+            </div>
+            <div class="install-count">2 卡</div>
+          </div>
+
+          <!-- 稀有装甲 -->
+          <div class="mod-tile rar-rare installed">
+            <div class="rarity-strip" style="background: var(--rar-rare)"></div>
+            <div class="body">
+              <div class="top-row">
+                <div class="mod-icon">■</div>
+                <div class="slot-type">装甲</div>
+                <div class="status-dot"></div>
+              </div>
+              <div class="mod-name">复合装甲</div>
+              <div class="mod-effect">三维防御 ×1.18</div>
+              <div class="mod-prototype">Chobham</div>
+              <div class="footer">
+                <span class="rarity-label" style="color: var(--rar-rare)">稀有</span>
+                <span>×1.18</span>
+              </div>
+            </div>
+            <div class="install-count">5 卡</div>
+          </div>
+
+          <!-- 未装配的传奇 -->
+          <div class="mod-tile rar-legendary">
+            <div class="rarity-strip" style="background: var(--rar-legendary)"></div>
+            <div class="body">
+              <div class="top-row">
+                <div class="mod-icon">⚔</div>
+                <div class="slot-type">武器</div>
+                <div class="status-dot"></div>
+              </div>
+              <div class="mod-name">电磁轨道炮</div>
+              <div class="mod-effect">攻击 ×1.40 · 穿透</div>
+              <div class="mod-prototype">EMRG</div>
+              <div class="footer">
+                <span class="rarity-label" style="color: var(--rar-legendary)">传奇</span>
+                <span>×1.40</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 罕见通用 -->
+          <div class="mod-tile rar-uncommon installed">
+            <div class="rarity-strip" style="background: var(--rar-uncommon)"></div>
+            <div class="body">
+              <div class="top-row">
+                <div class="mod-icon">○</div>
+                <div class="slot-type">通用</div>
+                <div class="status-dot"></div>
+              </div>
+              <div class="mod-name">数字化单兵</div>
+              <div class="mod-effect">三维防御 ×1.075</div>
+              <div class="mod-prototype">FBCB2</div>
+              <div class="footer">
+                <span class="rarity-label" style="color: var(--rar-uncommon)">罕见</span>
+                <span>+7.5%</span>
+              </div>
+            </div>
+            <div class="install-count">4 卡</div>
+          </div>
+
+          <!-- 普通 -->
+          <div class="mod-tile rar-common installed">
+            <div class="rarity-strip" style="background: var(--rar-common)"></div>
+            <div class="body">
+              <div class="top-row">
+                <div class="mod-icon">⚔</div>
+                <div class="slot-type">武器</div>
+                <div class="status-dot"></div>
+              </div>
+              <div class="mod-name">冲锋枪改装</div>
+              <div class="mod-effect">攻速 ×1.15</div>
+              <div class="mod-prototype">MP18</div>
+              <div class="footer">
+                <span class="rarity-label" style="color: var(--rar-common)">普通</span>
+                <span>+15%</span>
+              </div>
+            </div>
+            <div class="install-count">6 卡</div>
+          </div>
+
+          <!-- 待装配的史诗 -->
+          <div class="mod-tile rar-epic">
+            <div class="rarity-strip" style="background: var(--rar-epic)"></div>
+            <div class="body">
+              <div class="top-row">
+                <div class="mod-icon">◈</div>
+                <div class="slot-type">特殊</div>
+                <div class="status-dot"></div>
+              </div>
+              <div class="mod-name">激光指示器</div>
+              <div class="mod-effect">对装甲 ×1.10</div>
+              <div class="mod-prototype">GLTD</div>
+              <div class="footer">
+                <span class="rarity-label" style="color: var(--rar-epic)">史诗</span>
+                <span>×1.10</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 稀有防空 -->
+          <div class="mod-tile rar-rare installed">
+            <div class="rarity-strip" style="background: var(--rar-rare)"></div>
+            <div class="body">
+              <div class="top-row">
+                <div class="mod-icon">↑</div>
+                <div class="slot-type">武器</div>
+                <div class="status-dot"></div>
+              </div>
+              <div class="mod-name">雷达火控</div>
+              <div class="mod-effect">攻速 ×1.30</div>
+              <div class="mod-prototype">MPQ-53</div>
+              <div class="footer">
+                <span class="rarity-label" style="color: var(--rar-rare)">稀有</span>
+                <span>+30%</span>
+              </div>
+            </div>
+            <div class="install-count">2 卡</div>
+          </div>
+
+          <!-- 神话 -->
+          <div class="mod-tile rar-mythic installed">
+            <div class="rarity-strip" style="background: var(--rar-mythic)"></div>
+            <div class="body">
+              <div class="top-row">
+                <div class="mod-icon">◈</div>
+                <div class="slot-type">特殊</div>
+                <div class="status-dot"></div>
+              </div>
+              <div class="mod-name">核子反应堆</div>
+              <div class="mod-effect">全属性 ×1.25</div>
+              <div class="mod-prototype">NR-1</div>
+              <div class="footer">
+                <span class="rarity-label" style="color: var(--rar-mythic)">神话</span>
+                <span>×1.25</span>
+              </div>
+            </div>
+            <div class="install-count">1 卡</div>
+          </div>
+
+          <!-- 未装配普通 -->
+          <div class="mod-tile rar-common">
+            <div class="rarity-strip" style="background: var(--rar-common)"></div>
+            <div class="body">
+              <div class="top-row">
+                <div class="mod-icon">■</div>
+                <div class="slot-type">装甲</div>
+                <div class="status-dot"></div>
+              </div>
+              <div class="mod-name">均质钢板</div>
+              <div class="mod-effect">防御 +10%</div>
+              <div class="mod-prototype">RHA</div>
+              <div class="footer">
+                <span class="rarity-label" style="color: var(--rar-common)">普通</span>
+                <span>+10%</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mod-tile rar-rare installed">
+            <div class="rarity-strip" style="background: var(--rar-rare)"></div>
+            <div class="body">
+              <div class="top-row">
+                <div class="mod-icon">◎</div>
+                <div class="slot-type">武器</div>
+                <div class="status-dot"></div>
+              </div>
+              <div class="mod-name">子母弹</div>
+              <div class="mod-effect">溅射半径 +50%</div>
+              <div class="mod-prototype">DPICM</div>
+              <div class="footer">
+                <span class="rarity-label" style="color: var(--rar-rare)">稀有</span>
+                <span>+50%</span>
+              </div>
+            </div>
+            <div class="install-count">3 卡</div>
+          </div>
+
+          <div class="mod-tile rar-uncommon">
+            <div class="rarity-strip" style="background: var(--rar-uncommon)"></div>
+            <div class="body">
+              <div class="top-row">
+                <div class="mod-icon">○</div>
+                <div class="slot-type">通用</div>
+                <div class="status-dot"></div>
+              </div>
+              <div class="mod-name">数据链系统</div>
+              <div class="mod-effect">三维攻击 ×1.075</div>
+              <div class="mod-prototype">Link-16</div>
+              <div class="footer">
+                <span class="rarity-label" style="color: var(--rar-uncommon)">罕见</span>
+                <span>+7.5%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="design-notes">
+        <h3>改造 · 设计要点</h3>
+        <ul>
+          <li><b>左侧粗稀有度色条（4-5px）</b>：改造的视觉签名，区别于战斗卡的顶部细条；传奇/神话加粗到 5px。</li>
+          <li><b>左侧筛选侧栏</b>：按槽位类型（武器/装甲/特殊/通用）+ 装配状态 + 兵种适用三层筛选，比纯 chip 更系统。</li>
+          <li><b>右上角"N 卡"装配计数</b>：一眼看出这个改造被多少张卡使用了（绿色徽章）。</li>
+          <li><b>左上小图标 + 槽位类型 + 状态点</b>：图标用兵种符号统一；状态点绿色=已装配，灰色=待装配。</li>
+          <li><b>关键效果高亮</b>：青色 monospace 显示效果数值（<code>+30%</code>/<code>×1.18</code>），让玩家快速扫读。</li>
+          <li><b>原型名斜体</b>：底部 italic 显示真实武器原型（M829A4 / Chobham），增加沉浸感。</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============== 符文 Tab ============== -->
+  <div class="panel-frame runes active" id="panel-runes">
+    <div class="title-bar">
+      <div class="title-left">
+        <div class="title-mark violet"></div>
+        <div class="title-text violet">符文图鉴 <span class="sub">RUNE ARCANUM</span></div>
+      </div>
+      <div class="title-right">
+        <div class="title-meta">已激活符文之语 <b class="filled">3</b> · 槽位 <b>5</b>/<b>7</b></div>
+        <button class="close-btn">×</button>
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <div class="search-box">
+          <span class="ico">⌕</span>
+          <input placeholder="搜索符文...">
+        </div>
+        <div class="filter-chips">
+          <div class="chip active">全部</div>
+          <div class="chip">攻击</div>
+          <div class="chip">防御</div>
+          <div class="chip">能量</div>
+          <div class="chip">机动</div>
+          <div class="chip">特殊</div>
+        </div>
+      </div>
+      <div class="toolbar-right">
+        <div class="capacity">
+          <span><span class="used">12</span><span class="slash">/</span><span class="max">∞</span></span>
+        </div>
+        <div class="sort-select">排序 <span class="sel">稀有度 ↓</span></div>
+      </div>
+    </div>
+    <div class="content">
+      <div class="runes-layout">
+        <!-- 左：符文瓷砖 -->
+        <div class="runes-grid">
+          <!-- 已装备的传奇符文，触发符文之语 -->
+          <div class="rune-tile rar-legendary equipped runeword-active">
+            <div class="rune-diamond" style="--rar-rare: var(--rar-legendary)">
+              <span class="glyph" style="color: var(--rar-legendary)">⚔</span>
+            </div>
+            <div class="rune-name">破坏之王</div>
+            <div class="rune-effect">攻击 +12%</div>
+            <div class="star-req">
+              <div class="sr on"></div><div class="sr on"></div><div class="sr on"></div><div class="sr on"></div><div class="sr"></div>
+            </div>
+            <div class="equipped-badge"></div>
+          </div>
+
+          <div class="rune-tile rar-epic equipped runeword-active">
+            <div class="rune-diamond" style="--rar-rare: var(--rar-epic)">
+              <span class="glyph" style="color: var(--rar-epic)">■</span>
+            </div>
+            <div class="rune-name">钢铁壁垒</div>
+            <div class="rune-effect">防御 +9%</div>
+            <div class="star-req">
+              <div class="sr on"></div><div class="sr on"></div><div class="sr on"></div><div class="sr on"></div><div class="sr"></div>
+            </div>
+            <div class="equipped-badge"></div>
+          </div>
+
+          <div class="rune-tile rar-rare equipped">
+            <div class="rune-diamond" style="--rar-rare: var(--rar-rare)">
+              <span class="glyph" style="color: var(--rar-rare)">⚡</span>
+            </div>
+            <div class="rune-name">能量涌动</div>
+            <div class="rune-effect">能量恢复 +0.3/s</div>
+            <div class="star-req">
+              <div class="sr on"></div><div class="sr on"></div><div class="sr on"></div><div class="sr"></div><div class="sr"></div>
+            </div>
+            <div class="equipped-badge"></div>
+          </div>
+
+          <div class="rune-tile rar-rare">
+            <div class="rune-diamond" style="--rar-rare: var(--rar-rare)">
+              <span class="glyph" style="color: var(--rar-rare)">◉</span>
+            </div>
+            <div class="rune-name">疾风步</div>
+            <div class="rune-effect">移速 +8%</div>
+            <div class="star-req">
+              <div class="sr on"></div><div class="sr on"></div><div class="sr on"></div><div class="sr"></div><div class="sr"></div>
+            </div>
+          </div>
+
+          <div class="rune-tile rar-uncommon equipped">
+            <div class="rune-diamond" style="--rar-rare: var(--rar-uncommon)">
+              <span class="glyph" style="color: var(--rar-uncommon)">✦</span>
+            </div>
+            <div class="rune-name">幸运一击</div>
+            <div class="rune-effect">暴击 +5%</div>
+            <div class="star-req">
+              <div class="sr on"></div><div class="sr on"></div><div class="sr"></div><div class="sr"></div><div class="sr"></div>
+            </div>
+            <div class="equipped-badge"></div>
+          </div>
+
+          <div class="rune-tile rar-uncommon">
+            <div class="rune-diamond" style="--rar-rare: var(--rar-uncommon)">
+              <span class="glyph" style="color: var(--rar-uncommon)">◆</span>
+            </div>
+            <div class="rune-name">水晶之心</div>
+            <div class="rune-effect">HP +6%</div>
+            <div class="star-req">
+              <div class="sr on"></div><div class="sr on"></div><div class="sr"></div><div class="sr"></div><div class="sr"></div>
+            </div>
+          </div>
+
+          <div class="rune-tile rar-mythic runeword-active">
+            <div class="rune-diamond" style="--rar-rare: var(--rar-mythic)">
+              <span class="glyph" style="color: var(--rar-mythic)">✧</span>
+            </div>
+            <div class="rune-name">虚空之眼</div>
+            <div class="rune-effect">全属性 +8%</div>
+            <div class="star-req">
+              <div class="sr on"></div><div class="sr on"></div><div class="sr on"></div><div class="sr on"></div><div class="sr on"></div>
+            </div>
+          </div>
+
+          <div class="rune-tile rar-epic">
+            <div class="rune-diamond" style="--rar-rare: var(--rar-epic)">
+              <span class="glyph" style="color: var(--rar-epic)">◎</span>
+            </div>
+            <div class="rune-name">破甲弹</div>
+            <div class="rune-effect">穿透 +10%</div>
+            <div class="star-req">
+              <div class="sr on"></div><div class="sr on"></div><div class="sr on"></div><div class="sr on"></div><div class="sr"></div>
+            </div>
+          </div>
+
+          <div class="rune-tile rar-rare equipped">
+            <div class="rune-diamond" style="--rar-rare: var(--rar-rare)">
+              <span class="glyph" style="color: var(--rar-rare)">▲</span>
+            </div>
+            <div class="rune-name">追猎本能</div>
+            <div class="rune-effect">攻速 +6%</div>
+            <div class="star-req">
+              <div class="sr on"></div><div class="sr on"></div><div class="sr on"></div><div class="sr"></div><div class="sr"></div>
+            </div>
+            <div class="equipped-badge"></div>
+          </div>
+
+          <div class="rune-tile rar-common">
+            <div class="rune-diamond" style="--rar-rare: var(--rar-common)">
+              <span class="glyph" style="color: var(--rar-common)">●</span>
+            </div>
+            <div class="rune-name">微光</div>
+            <div class="rune-effect">能量 +2%</div>
+            <div class="star-req">
+              <div class="sr on"></div><div class="sr"></div><div class="sr"></div><div class="sr"></div><div class="sr"></div>
+            </div>
+          </div>
+
+          <div class="rune-tile rar-common">
+            <div class="rune-diamond" style="--rar-rare: var(--rar-common)">
+              <span class="glyph" style="color: var(--rar-common)">○</span>
+            </div>
+            <div class="rune-name">坚韧</div>
+            <div class="rune-effect">HP +2%</div>
+            <div class="star-req">
+              <div class="sr on"></div><div class="sr"></div><div class="sr"></div><div class="sr"></div><div class="sr"></div>
+            </div>
+          </div>
+
+          <div class="rune-tile rar-legendary runeword-active">
+            <div class="rune-diamond" style="--rar-rare: var(--rar-legendary)">
+              <span class="glyph" style="color: var(--rar-legendary)">★</span>
+            </div>
+            <div class="rune-name">天命</div>
+            <div class="rune-effect">全属性 +5%</div>
+            <div class="star-req">
+              <div class="sr on"></div><div class="sr on"></div><div class="sr on"></div><div class="sr on"></div><div class="sr"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右：符文加成总览 + 已激活符文之语 -->
+        <div class="rune-info">
+          <div>
+            <div class="sec-title">✦ 符文加成总览</div>
+            <div class="bonus-list" style="margin-top: 8px">
+              <div class="bonus-row"><span class="lbl">攻击</span><span class="val">+17%</span></div>
+              <div class="bonus-row"><span class="lbl">防御</span><span class="val">+12%</span></div>
+              <div class="bonus-row"><span class="lbl">HP</span><span class="val">+8%</span></div>
+              <div class="bonus-row"><span class="lbl">攻速</span><span class="val">+6%</span></div>
+              <div class="bonus-row"><span class="lbl">移速</span><span class="val">+8%</span></div>
+              <div class="bonus-row"><span class="lbl">暴击</span><span class="val">+5%</span></div>
+              <div class="bonus-row"><span class="lbl">穿透</span><span class="val">+10%</span></div>
+              <div class="bonus-row"><span class="lbl">能量恢复</span><span class="val">+0.3/s</span></div>
+            </div>
+          </div>
+
+          <div>
+            <div class="sec-title">⚡ 已激活符文之语</div>
+            <div class="runeword-list" style="margin-top: 8px">
+              <div class="runeword-item">
+                <div class="rw-name">破坏者之路 <span class="rw-tier">· T4</span></div>
+                <div class="rw-eff">攻击 +20% · 暴击 +8%</div>
+              </div>
+              <div class="runeword-item">
+                <div class="rw-name">钢铁洪流 <span class="rw-tier">· T3</span></div>
+                <div class="rw-eff">防御 +15% · HP +10%</div>
+              </div>
+              <div class="runeword-item">
+                <div class="rw-name">虚空回响 <span class="rw-tier">· T5</span></div>
+                <div class="rw-eff">全属性 +12% · 穿透 +15%</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top: auto; padding-top: 10px; border-top: 1px solid var(--border-dim)">
+            <div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); letter-spacing: 0.06em; line-height: 1.6">
+              装备符文需对应星级的相位仪<br>
+              当前 7★ 相位仪支持 T5 符文之语
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="design-notes">
+        <h3>符文 · 设计要点</h3>
+        <ul>
+          <li><b>菱形顶饰（区别于改造的左侧色条）</b>：32×32 双层菱形，外层稀有度色 + 内层暗底 + 中心 glyph，呼应魔法符印感。</li>
+          <li><b>装备中状态</b>：金色边框 + 金色脉动 + 右上金色菱形小徽章，让已装备的符文一眼可辨。</li>
+          <li><b>符文之语激活</b>：紫色边框 + 中心紫色辉光 + 右下 <code>✦ RW</code> 角标，三重视觉提示。</li>
+          <li><b>底部星要求点阵</b>：5 个小圆点，亮的代表需要的相位仪星级（1-5★）。</li>
+          <li><b>右侧信息面板</b>：实时显示所有装备符文合并加成 + 已激活符文之语列表（紫色左边线 + TIER 标识）。</li>
+          <li><b>分离布局</b>：左大区瓷砖网格 + 右窄区信息总览，避免符文过多时信息过载。</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============== 相位仪 Tab ============== -->
+  <div class="panel-frame insts" id="panel-insts">
+    <div class="title-bar">
+      <div class="title-left">
+        <div class="title-mark gold"></div>
+        <div class="title-text gold">相位仪中枢 <span class="sub">CORE NEXUS</span></div>
+      </div>
+      <div class="title-right">
+        <div class="title-meta">解锁 <b class="filled">7</b>/<b>26</b> · 当前装备 <b>7★</b></div>
+        <button class="close-btn">×</button>
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <div class="search-box">
+          <span class="ico">⌕</span>
+          <input placeholder="搜索相位仪...">
+        </div>
+        <div class="filter-chips">
+          <div class="chip">全部</div>
+          <div class="chip">通用</div>
+          <div class="chip active">势力专属</div>
+          <div class="chip">掉落</div>
+          <div class="chip">7★</div>
+        </div>
+      </div>
+      <div class="toolbar-right">
+        <div class="sort-select">排序 <span class="sel">星级 ↓</span></div>
+      </div>
+    </div>
+    <div class="content">
+      <div class="insts-list">
+        <!-- 7星已装备的相位仪 -->
+        <div class="inst-tile equipped">
+          <div class="inst-left">
+            <div class="inst-stars">
+              <div class="st on"></div><div class="st on"></div><div class="st on"></div><div class="st on"></div><div class="st on"></div><div class="st on"></div><div class="st on"></div>
+            </div>
+            <div class="inst-name">神盾 · 壁垒核</div>
+            <div class="inst-faction"><span class="faction">铁壁军团</span> · 专属</div>
+          </div>
+          <div class="inst-mid">
+            <div class="slot-vis">
+              <div class="slot-label">战斗卡</div>
+              <div class="slot-cells">
+                <div class="slot-cell green"></div><div class="slot-cell green"></div><div class="slot-cell green"></div>
+                <div class="slot-cell green"></div><div class="slot-cell green"></div><div class="slot-cell green"></div>
+              </div>
+            </div>
+            <div class="slot-vis">
+              <div class="slot-label">符文</div>
+              <div class="slot-cells">
+                <div class="slot-cell rune"></div><div class="slot-cell rune"></div><div class="slot-cell rune"></div>
+                <div class="slot-cell rune"></div><div class="slot-cell rune"></div><div class="slot-cell rune"></div>
+                <div class="slot-cell rune"></div>
+              </div>
+            </div>
+            <div class="inst-stats">
+              <div class="stat-mini"><div class="lbl">能量恢复</div><div class="val">1.40/s</div></div>
+              <div class="stat-mini"><div class="lbl">部署范围</div><div class="val">100%</div></div>
+              <div class="stat-mini"><div class="lbl">卡伤</div><div class="val up">+25%</div></div>
+              <div class="stat-mini"><div class="lbl">防御</div><div class="val up">+30%</div></div>
+            </div>
+          </div>
+          <div class="inst-right">
+            <div class="ability-chip"><span class="ico"></span>致命酸雨 · 开局减敌血</div>
+            <button class="inst-action equipped-btn">✓ 当前装备</button>
+          </div>
+        </div>
+
+        <!-- 6星未装备 -->
+        <div class="inst-tile">
+          <div class="inst-left">
+            <div class="inst-stars">
+              <div class="st on"></div><div class="st on"></div><div class="st on"></div><div class="st on"></div><div class="st on"></div><div class="st on"></div><div class="st"></div>
+            </div>
+            <div class="inst-name">新星 · 超弦</div>
+            <div class="inst-faction"><span class="faction">新星军工</span> · 专属</div>
+          </div>
+          <div class="inst-mid">
+            <div class="slot-vis">
+              <div class="slot-label">战斗卡</div>
+              <div class="slot-cells">
+                <div class="slot-cell green"></div><div class="slot-cell green"></div><div class="slot-cell green"></div>
+                <div class="slot-cell green"></div><div class="slot-cell green"></div>
+              </div>
+            </div>
+            <div class="slot-vis">
+              <div class="slot-label">符文</div>
+              <div class="slot-cells">
+                <div class="slot-cell rune"></div><div class="slot-cell rune"></div><div class="slot-cell rune"></div>
+                <div class="slot-cell rune"></div><div class="slot-cell rune"></div><div class="slot-cell rune"></div>
+              </div>
+            </div>
+            <div class="inst-stats">
+              <div class="stat-mini"><div class="lbl">能量恢复</div><div class="val">1.20/s</div></div>
+              <div class="stat-mini"><div class="lbl">部署范围</div><div class="val">90%</div></div>
+              <div class="stat-mini"><div class="lbl">卡伤</div><div class="val up">+18%</div></div>
+              <div class="stat-mini"><div class="lbl">经验</div><div class="val up">+15%</div></div>
+            </div>
+          </div>
+          <div class="inst-right">
+            <div class="ability-chip"><span class="ico"></span>火炮连发 · 7连射</div>
+            <button class="inst-action">装备</button>
+          </div>
+        </div>
+
+        <!-- 5星通用 -->
+        <div class="inst-tile">
+          <div class="inst-left">
+            <div class="inst-stars">
+              <div class="st on"></div><div class="st on"></div><div class="st on"></div><div class="st on"></div><div class="st on"></div><div class="st"></div><div class="st"></div>
+            </div>
+            <div class="inst-name">巡航 V 型</div>
+            <div class="inst-faction"><span class="generic">通用</span></div>
+          </div>
+          <div class="inst-mid">
+            <div class="slot-vis">
+              <div class="slot-label">战斗卡</div>
+              <div class="slot-cells">
+                <div class="slot-cell green"></div><div class="slot-cell green"></div><div class="slot-cell green"></div>
+                <div class="slot-cell green"></div>
+              </div>
+            </div>
+            <div class="slot-vis">
+              <div class="slot-label">符文</div>
+              <div class="slot-cells">
+                <div class="slot-cell rune"></div><div class="slot-cell rune"></div><div class="slot-cell rune"></div>
+                <div class="slot-cell rune"></div><div class="slot-cell rune"></div>
+              </div>
+            </div>
+            <div class="inst-stats">
+              <div class="stat-mini"><div class="lbl">能量恢复</div><div class="val">1.00/s</div></div>
+              <div class="stat-mini"><div class="lbl">部署范围</div><div class="val">80%</div></div>
+              <div class="stat-mini"><div class="lbl">卡伤</div><div class="val up">+10%</div></div>
+            </div>
+          </div>
+          <div class="inst-right">
+            <div class="ability-chip empty"><span class="ico"></span>无主动能力</div>
+            <button class="inst-action">装备</button>
+          </div>
+        </div>
+
+        <!-- 4星 -->
+        <div class="inst-tile">
+          <div class="inst-left">
+            <div class="inst-stars">
+              <div class="st on"></div><div class="st on"></div><div class="st on"></div><div class="st on"></div><div class="st"></div><div class="st"></div><div class="st"></div>
+            </div>
+            <div class="inst-name">永纪 · 终式</div>
+            <div class="inst-faction"><span class="faction">永纪议会</span> · 掉落</div>
+          </div>
+          <div class="inst-mid">
+            <div class="slot-vis">
+              <div class="slot-label">战斗卡</div>
+              <div class="slot-cells">
+                <div class="slot-cell green"></div><div class="slot-cell green"></div><div class="slot-cell green"></div>
+              </div>
+            </div>
+            <div class="slot-vis">
+              <div class="slot-label">符文</div>
+              <div class="slot-cells">
+                <div class="slot-cell rune"></div><div class="slot-cell rune"></div><div class="slot-cell rune"></div>
+                <div class="slot-cell rune"></div>
+              </div>
+            </div>
+            <div class="inst-stats">
+              <div class="stat-mini"><div class="lbl">能量恢复</div><div class="val">0.85/s</div></div>
+              <div class="stat-mini"><div class="lbl">部署范围</div><div class="val">70%</div></div>
+              <div class="stat-mini"><div class="lbl">能耗</div><div class="val up">-2</div></div>
+            </div>
+          </div>
+          <div class="inst-right">
+            <div class="ability-chip"><span class="ico"></span>核子轰炸 · 30s</div>
+            <button class="inst-action">装备</button>
+          </div>
+        </div>
+
+        <!-- 3星 -->
+        <div class="inst-tile">
+          <div class="inst-left">
+            <div class="inst-stars">
+              <div class="st on"></div><div class="st on"></div><div class="st on"></div><div class="st"></div><div class="st"></div><div class="st"></div><div class="st"></div>
+            </div>
+            <div class="inst-name">螺旋 · 幻影核</div>
+            <div class="inst-faction"><span class="faction">螺旋侦察</span> · 专属</div>
+          </div>
+          <div class="inst-mid">
+            <div class="slot-vis">
+              <div class="slot-label">战斗卡</div>
+              <div class="slot-cells">
+                <div class="slot-cell green"></div><div class="slot-cell green"></div>
+              </div>
+            </div>
+            <div class="slot-vis">
+              <div class="slot-label">符文</div>
+              <div class="slot-cells">
+                <div class="slot-cell rune"></div><div class="slot-cell rune"></div><div class="slot-cell rune"></div>
+              </div>
+            </div>
+            <div class="inst-stats">
+              <div class="stat-mini"><div class="lbl">能量恢复</div><div class="val">0.70/s</div></div>
+              <div class="stat-mini"><div class="lbl">部署范围</div><div class="val">60%</div></div>
+            </div>
+          </div>
+          <div class="inst-right">
+            <div class="ability-chip"><span class="ico"></span>幻影克隆 ×2</div>
+            <button class="inst-action">装备</button>
+          </div>
+        </div>
+
+        <!-- 2星 -->
+        <div class="inst-tile">
+          <div class="inst-left">
+            <div class="inst-stars">
+              <div class="st on"></div><div class="st on"></div><div class="st"></div><div class="st"></div><div class="st"></div><div class="st"></div><div class="st"></div>
+            </div>
+            <div class="inst-name">巡航 III 型</div>
+            <div class="inst-faction"><span class="generic">通用</span></div>
+          </div>
+          <div class="inst-mid">
+            <div class="slot-vis">
+              <div class="slot-label">战斗卡</div>
+              <div class="slot-cells">
+                <div class="slot-cell green"></div><div class="slot-cell green"></div>
+              </div>
+            </div>
+            <div class="slot-vis">
+              <div class="slot-label">符文</div>
+              <div class="slot-cells">
+                <div class="slot-cell rune"></div><div class="slot-cell rune"></div>
+              </div>
+            </div>
+            <div class="inst-stats">
+              <div class="stat-mini"><div class="lbl">能量恢复</div><div class="val">0.55/s</div></div>
+              <div class="stat-mini"><div class="lbl">部署范围</div><div class="val">50%</div></div>
+            </div>
+          </div>
+          <div class="inst-right">
+            <div class="ability-chip empty"><span class="ico"></span>无主动能力</div>
+            <button class="inst-action">装备</button>
+          </div>
+        </div>
+
+        <!-- 1星 -->
+        <div class="inst-tile">
+          <div class="inst-left">
+            <div class="inst-stars">
+              <div class="st on"></div><div class="st"></div><div class="st"></div><div class="st"></div><div class="st"></div><div class="st"></div><div class="st"></div>
+            </div>
+            <div class="inst-name">巡航 I 型</div>
+            <div class="inst-faction"><span class="generic">通用 · 初始</span></div>
+          </div>
+          <div class="inst-mid">
+            <div class="slot-vis">
+              <div class="slot-label">战斗卡</div>
+              <div class="slot-cells">
+                <div class="slot-cell green"></div>
+              </div>
+            </div>
+            <div class="slot-vis">
+              <div class="slot-label">符文</div>
+              <div class="slot-cells">
+                <div class="slot-cell rune"></div>
+              </div>
+            </div>
+            <div class="inst-stats">
+              <div class="stat-mini"><div class="lbl">能量恢复</div><div class="val">0.50/s</div></div>
+              <div class="stat-mini"><div class="lbl">部署范围</div><div class="val">30%</div></div>
+            </div>
+          </div>
+          <div class="inst-right">
+            <div class="ability-chip empty"><span class="ico"></span>无主动能力</div>
+            <button class="inst-action">装备</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="design-notes">
+        <h3>相位仪 · 设计要点</h3>
+        <ul>
+          <li><b>水平条带布局（区别于其他 Tab 的网格）</b>：相位仪数量少（≤30）但信息量大，水平展示承载更多属性细节。</li>
+          <li><b>三列网格</b>：左列星级+名字（140px）+ 中列槽位可视化+属性（自适应）+ 右列主动能力+操作（200px）。</li>
+          <li><b>槽位格子可视化</b>：用 12×14 像素小格表示槽位，绿色=战斗卡槽、紫色=符文槽、虚线=空槽。一眼看清容量。</li>
+          <li><b>当前装备高亮</b>：金色边框 + 左侧金色 3px 色条 + 金色辉光，让当前装备的相位仪在列表中突出。</li>
+          <li><b>主动能力 chip</b>：7★ 相位仪有主动能力，用金色 chip 显示能力名+效果，无能力的用灰色"无主动能力"chip。</li>
+          <li><b>星级点阵</b>：7 颗 12×12 星点（不是 5 颗），符合相位仪 1-7★ 的设定，亮的星点带金色辉光。</li>
+          <li><b>势力/通用标签</b>：势力专属用青色高亮势力名，通用/初始用灰色，掉落用"掉落"标识。</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Tab 切换逻辑
+const tabs = document.querySelectorAll('.tab');
+const panels = document.querySelectorAll('.panel-frame');
+function switchTo(target) {
+  tabs.forEach(t => t.classList.toggle('active', t.dataset.panel === target));
+  panels.forEach(p => p.classList.toggle('active', p.id === 'panel-' + target));
+}
+tabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    switchTo(tab.dataset.panel);
+    if (location.hash !== '#' + tab.dataset.panel) {
+      history.replaceState(null, '', '#' + tab.dataset.panel);
+    }
+  });
+});
+// URL hash 路由（截图用）
+if (location.hash) {
+  const t = location.hash.slice(1);
+  if (['cards','mods','runes','insts'].includes(t)) switchTo(t);
+}
+
+// 稀有度 chip 切换（仅 demo）
+document.querySelectorAll('.chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const parent = chip.parentElement;
+    parent.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+  });
+});
+
+// 改造侧栏切换
+document.querySelectorAll('.sidebar-item').forEach(item => {
+  item.addEventListener('click', () => {
+    const parent = item.parentElement;
+    parent.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+  });
+});
+
+// 卡牌/改造选中
+document.querySelectorAll('.card-tile, .mod-tile').forEach(tile => {
+  tile.addEventListener('click', () => {
+    const parent = tile.parentElement;
+    parent.querySelectorAll('.card-tile, .mod-tile').forEach(t => t.classList.remove('selected'));
+    tile.classList.add('selected');
+  });
+});
+</script>
+
+
+</body></html>

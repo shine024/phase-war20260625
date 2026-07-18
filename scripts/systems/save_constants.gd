@@ -31,7 +31,6 @@ const SK_DAY_CLOCK: String = "day_clock"
 const SK_CARD_ENHANCEMENT: String = "card_enhancement"
 # v7.x 数据一致性核对：SK_LAW_SHARDS（"law_shards"）已删除——全项目零引用，疑似旧"法则碎片"系统残留。
 const SK_TUTORIAL_PROGRESS: String = "tutorial_progress"
-const SK_STORY_PROGRESS: String = "story_progress"
 const SK_CHARACTERS: String = "characters"
 const SK_CHALLENGE_RECORDS: String = "challenge_records"
 const SK_CARD_COLLECTION: String = "card_collection"

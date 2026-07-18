@@ -27,7 +27,6 @@ const FIX_PATTERNS = {
 	"scenes/ui/health_bar.tscn": 5,
 	"scenes/ui/help_panel.tscn": 1,
 	"scenes/ui/intelligence_hub_panel.tscn": 1,
-	"scenes/ui/interactive_tutorial.tscn": 2,
 	"scenes/ui/leaderboard_panel.tscn": 5,
 	"scenes/ui/level_info_panel.tscn": 1,
 	"scenes/ui/level_select_panel.tscn": 1,

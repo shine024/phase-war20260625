@@ -1,7 +1,8 @@
 extends Control
 class_name EvolutionPanel
-## 进化面板（重新设计版本）
+## 进化面板（重新设计版本 · v7.x UI 重设计 战术进化站）
 ## 更大的显示区域，更合理的布局，更强的可读性
+## 签名色：金色（COLOR_GOLD）· 蜕变主题，紫/青用于分支区分
 
 signal closed
 
@@ -20,6 +21,9 @@ const THEME_BORDER_DIM := Color(0.35, 0.3, 0.2, 0.7)
 const DefaultCards = preload("res://data/default_cards.gd")
 const IntelManualItems = preload("res://data/intel_manual_items.gd")
 const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
+
+# v7.x UI 重设计基建
+const DT = preload("res://resources/design_tokens.gd")
 
 # UI 组件引用 - 匹配新场景结构
 var card_selector: OptionButton = null
@@ -89,10 +93,32 @@ func _ready() -> void:
 
 	_evolve_callable = _on_evolve_pressed
 
+	# v7.x UI 重设计：加载 Rajdhani 字体到主要 Label
+	_apply_title_fonts()
+
 	if _embedded_mode:
 		_apply_embedded_layout()
 	else:
 		_refresh_card_selector()
+
+
+## v7.x：给标题/目标名/统计 Label 加载 Rajdhani 字体（战术感）
+func _apply_title_fonts() -> void:
+	# 标题
+	var title_label = get_node_or_null("VBoxContainer/TitleArea/TitleHBox/TitleLabel")
+	if title_label:
+		title_label.add_theme_font_override("font", DT.get_title_font_bold())
+	# 目标名（大字）
+	if target_name_label:
+		target_name_label.add_theme_font_override("font", DT.get_title_font_bold())
+	# 进化按钮
+	if evolve_button:
+		evolve_button.add_theme_font_override("font", DT.get_title_font())
+	# 统计标签（9 个）
+	for stat in [stat_hp, stat_attack_light, stat_attack_armor, stat_attack_air,
+				stat_defense_light, stat_defense_armor, stat_defense_air, stat_range, stat_speed]:
+		if stat:
+			stat.add_theme_font_override("font", DT.get_body_font())
 
 ## 内嵌模式：隐藏标题和卡牌选择器
 func set_embedded_mode(p_embedded: bool) -> void:

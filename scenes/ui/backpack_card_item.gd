@@ -17,8 +17,8 @@ var _drag_threshold := 5.0  # 移动5像素才开始拖拽
 var ENABLE_MINIMAL_CARD_RENDER := true
 const BACKPACK_USE_MTG_CARD_FACE := false
 const BACKPACK_MTG_ART_PCT := 58.0
-## v8.0: 底部信息栏高度（顶行卡名+底行详情，36px 适配 80x120 卡面）
-const COMPACT_BOTTOM_TEXT_H := 36
+## v9.0: 底部信息栏高度（顶行卡名+底行详情，42px 适配 96×138 大卡面）
+const COMPACT_BOTTOM_TEXT_H := 42
 const ENABLE_IMAGE_DRAG_PREVIEW := true
 var _last_drag_log_ms: int = 0
 var _drag_started_ms: int = 0
@@ -30,13 +30,13 @@ const RankDisplayUi = preload("res://scripts/rank_display_ui.gd")
 const CardFrameUi = preload("res://scripts/card_frame_ui.gd")
 const CardBackgroundUi = preload("res://scripts/card_background_ui.gd")
 const DesignTokens = preload("res://resources/design_tokens.gd")
-## v8.0: 背包卡牌独立大卡面尺寸（80x120），不再与战场相位仪槽位(50x80)共用。
+## v9.0: 背包卡牌独立大卡面尺寸（96×138），承载更多视觉信息（5星+兵种色块+Lv+战力+EQUIP徽章）。
 ## 拖拽到相位仪槽位时视觉对齐由 backpack_card_item_drag 处理（预览缩放）。
-var SLOT_SIZE: Vector2 = Vector2(80, 120)
+var SLOT_SIZE: Vector2 = Vector2(96, 138)
 ## 兼容别名（部分历史代码引用 BACKPACK_CARD_SIZE）
-const BACKPACK_CARD_SIZE := Vector2(80, 120)
-## 信息栏高度（底部 30% 区域）
-const INFO_BAR_HEIGHT := 36
+const BACKPACK_CARD_SIZE := Vector2(96, 138)
+## 信息栏高度（底部约 30% 区域）
+const INFO_BAR_HEIGHT := 42
 ## 列表内卡图：图标区填满 70% 高度
 var CARD_LIST_ICON_DISPLAY_MIN: Vector2 = Vector2(72, 72)
 ## 拖拽预览外框同槽位；内图标竖向略小于外框
@@ -593,9 +593,15 @@ func _ensure_compact_slot_structure(icon_row: Control, name_label: Label) -> voi
 	art_clip.clip_contents = true
 	art_clip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	art_clip.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	# v9.0 修复：Control 在 VBoxContainer 中若没有内容/最小尺寸会塌缩为 0×0，
+	# 导致 Icon（FULL_RECT 锚定）实际渲染区域为 0，卡图不可见（"闪一下就消失"）。
+	# 给一个与 SLOT_SIZE 匹配的图标区最小尺寸（高度 = SLOT_SIZE.y - INFO_BAR_HEIGHT - 边距）。
+	art_clip.custom_minimum_size = Vector2(SLOT_SIZE.x - 6, SLOT_SIZE.y - COMPACT_BOTTOM_TEXT_H - 6)
 	art_clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	# v9.0 修复：用 COVERED（保持比例填满，可能裁切边缘）而非 CENTERED（留白），
+	# 让卡图真正填满 art_clip 区域，避免小图被周围空白挤压成"看不到"
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	art_clip.add_child(icon)
@@ -632,11 +638,11 @@ func _layout_compact_art_clip(art_clip: Control) -> void:
 	var icon := art_clip.get_node_or_null("Icon") as TextureRect
 	if icon == null:
 		return
-	# v8.0 修复：图标在 CompactArtClip 内用 FULL_RECT 填满，不强制 custom_minimum_size。
-	# 仅更新纹理和拉伸模式，尺寸由容器布局决定（STRETCH_KEEP_ASPECT_CENTERED 保持比例）。
+	# v9.0 修复：图标在 CompactArtClip 内用 FULL_RECT 填满，不强制 custom_minimum_size。
+	# 尺寸由容器布局决定；用 COVERED 保持比例填满（CENTERED 会留白导致小图看不见）。
 	var tex: Texture2D = icon.texture
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	if tex == null:
 		icon.visible = false
 
@@ -654,7 +660,8 @@ func _apply_card_icon_to_clip(icon_rect: TextureRect, c: CardResource) -> void:
 	icon_rect.texture = tex
 	icon_rect.visible = true
 	icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	# v9.0 修复：COVERED 保持比例填满容器（CENTERED 会留白，512×512 原图在小容器里几乎不可见）
+	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 
 
 func _compact_display_name(c: CardResource) -> String:
@@ -668,8 +675,12 @@ func _compact_display_name(c: CardResource) -> String:
 	return display_name + DefaultCards.seq_suffix(c)
 
 
-## v8.0: 80x120 大卡面紧凑视图——图标区(70%) + 双行信息栏(30%)
-## 顶行：★★★★★ 卡名  Cost角标 | 底行：兵种 Lv.x/10 🔧x/y 战力
+## v9.0: 96×138 大卡面紧凑视图——图标区 + 双行信息栏 + 4 装饰层
+## 装饰层（注入到 PanelContainer 本体，绝对定位）：
+##   - RarityTopStrip：顶部 3-4px 稀有度色条
+##   - KindTagBadge：右上角 14×14 兵种色块（仅战斗卡）
+##   - StarsOverlay：底部 5 颗星点（仅战斗卡）
+##   - EquippedMark：左上 EQUIP 绿色徽章（仅已装备到相位仪）
 func _set_compact_slot_view(c: CardResource, name_label, lv_label, icon_rect) -> void:
 	var icon_row: Control = _find_icon_row()
 	if icon_row:
@@ -686,13 +697,10 @@ func _set_compact_slot_view(c: CardResource, name_label, lv_label, icon_rect) ->
 	_ensure_compact_slot_structure(icon_row, name_label)
 	var art_clip: Control = icon_row.get_node_or_null("CompactArtClip") as Control
 	if icon_rect:
-		# v8.0 修复：图标不设强制最小尺寸，纯靠 CompactArtClip 容器裁切 + FULL_RECT 自适应。
-		# 原传 CARD_LIST_ICON_DISPLAY_MIN(72x72) 会强制撑爆容器导致卡图溢出卡外。
 		_apply_card_icon_to_clip(icon_rect, c)
 	name_label.visible = true
-	# 顶行：星级前缀 + 卡名
-	var star_str: String = _build_star_prefix(c)
-	name_label.text = star_str + _compact_display_name(c)
+	# v9.0: 卡名不再前置 ★ 字符（5 星点改为图形装饰层 StarsOverlay，更清晰）
+	name_label.text = _compact_display_name(c)
 	name_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	name_label.max_lines_visible = 1
 	# 费用用左上角角标气泡（CostCornerBadge）
@@ -703,6 +711,232 @@ func _set_compact_slot_view(c: CardResource, name_label, lv_label, icon_rect) ->
 	_apply_card_chrome(c)
 	if art_clip:
 		call_deferred("_layout_compact_art_clip", art_clip)
+	# v9.0: 注入 4 个装饰层（HTML 设计稿视觉签名）
+	_apply_v9_decorations(c)
+
+
+## v9.0: 注入战斗卡装饰层——顶部稀有度色条 + 兵种色块 + 5 星点 + EQUIP 徽章
+## 全部绝对定位在 PanelContainer 本体上（z_index 高于 art_clip），按需创建/复用
+func _apply_v9_decorations(c: CardResource) -> void:
+	if c == null:
+		return
+	# 1. 顶部稀有度色条（3-4px，传奇/神话加粗到 4px）
+	_ensure_rarity_top_strip(c.rarity)
+	# 2. 右上兵种色块（仅战斗卡）
+	if c.card_type == GC.CardType.COMBAT_UNIT:
+		_ensure_kind_tag_badge(c.combat_kind)
+	else:
+		_hide_decoration("KindTagBadge")
+	# 3. 底部 5 星点（仅战斗卡；位置压在 footer 顶边稍上方）
+	if c.card_type == GC.CardType.COMBAT_UNIT:
+		_ensure_stars_overlay(c)
+	else:
+		_hide_decoration("StarsOverlay")
+	# 4. EQUIP 徽章（已装备到相位仪）
+	_ensure_equipped_mark(c)
+
+
+## v9.0: 兵种色映射（CombatKind 0-4：LIGHT/ARMOR/SUPPORT/AIR/FORT，HTML 设计稿配色）
+const _V9_KIND_COLORS := {
+	0: Color(0.898, 0.282, 0.302, 1.0),  # LIGHT 步兵/轻装 红 #e5484d
+	1: Color(0.302, 0.498, 0.898, 1.0),  # ARMOR 装甲 蓝 #4d7fe5
+	2: Color(0.898, 0.596, 0.125, 1.0),  # SUPPORT 支援/炮兵 橙 #e59820
+	3: Color(0.302, 0.802, 0.898, 1.0),  # AIR 空军 青 #4dcce5
+	4: Color(0.624, 0.624, 0.624, 1.0),  # FORT 堡垒 灰 #9f9f9f
+}
+const _V9_KIND_GLYPHS := {
+	0: "轻", 1: "甲", 2: "援", 3: "空", 4: "堡",
+}
+
+## v9.0: 兵种 ID 颜色查询（带 fallback）
+func _v9_kind_color(combat_kind: int) -> Color:
+	return _V9_KIND_COLORS.get(combat_kind, Color(0.7, 0.7, 0.7, 1.0))
+
+func _v9_kind_glyph(combat_kind: int) -> String:
+	return _V9_KIND_GLYPHS.get(combat_kind, "?")
+
+
+## v9.0: 顶部稀有度色条
+func _ensure_rarity_top_strip(rarity: String) -> void:
+	var strip: PanelContainer = get_node_or_null("RarityTopStrip") as PanelContainer
+	if strip == null:
+		strip = PanelContainer.new()
+		strip.name = "RarityTopStrip"
+		strip.anchor_left = 0.0
+		strip.anchor_right = 1.0
+		strip.anchor_top = 0.0
+		strip.anchor_bottom = 0.0
+		strip.offset_left = 0.0
+		strip.offset_right = 0.0
+		strip.offset_top = 0.0
+		# offset_bottom 在下面按稀有度设
+		strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		strip.z_index = 5
+		add_child(strip)
+	# 稀有度色 + 厚度（传奇/神话加粗）
+	var rar_color: Color = _v9_rarity_color(rarity)
+	var thickness: int = 4 if (rarity == "legendary" or rarity == "mythic") else 3
+	strip.offset_bottom = float(thickness)
+	var style := StyleBoxFlat.new()
+	style.bg_color = rar_color
+	style.border_width_bottom = 1
+	style.border_color = Color(0.0, 0.0, 0.0, 0.4)
+	strip.add_theme_stylebox_override("panel", style)
+	strip.visible = true
+
+
+## v9.0: 稀有度 → 色值
+func _v9_rarity_color(rarity: String) -> Color:
+	match rarity:
+		"common":    return Color(0.420, 0.463, 0.569, 1.0)
+		"uncommon":  return Color(0.133, 0.773, 0.369, 1.0)
+		"rare":      return Color(0.220, 0.741, 0.973, 1.0)
+		"epic":      return Color(0.753, 0.518, 0.988, 1.0)
+		"legendary": return Color(0.961, 0.620, 0.043, 1.0)
+		"mythic":    return Color(0.937, 0.267, 0.267, 1.0)
+		_: return Color(0.5, 0.5, 0.5, 1.0)
+
+
+## v9.0: 右上兵种色块
+func _ensure_kind_tag_badge(combat_kind: int) -> void:
+	var badge: PanelContainer = get_node_or_null("KindTagBadge") as PanelContainer
+	if badge == null:
+		badge = PanelContainer.new()
+		badge.name = "KindTagBadge"
+		badge.anchor_left = 1.0
+		badge.anchor_right = 1.0
+		badge.anchor_top = 0.0
+		badge.anchor_bottom = 0.0
+		badge.offset_left = -20.0
+		badge.offset_right = -4.0
+		badge.offset_top = 5.0
+		badge.offset_bottom = 21.0
+		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		badge.z_index = 6
+		var lbl := Label.new()
+		lbl.name = "Glyph"
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		lbl.add_theme_font_size_override("font_size", 10)
+		lbl.add_theme_color_override("font_color", Color(1, 1, 1, 0.98))
+		badge.add_child(lbl)
+		add_child(badge)
+	var style := StyleBoxFlat.new()
+	style.bg_color = _v9_kind_color(combat_kind)
+	style.set_corner_radius_all(2)
+	badge.add_theme_stylebox_override("panel", style)
+	var glyph_lbl: Label = badge.get_node_or_null("Glyph") as Label
+	if glyph_lbl:
+		glyph_lbl.text = _v9_kind_glyph(combat_kind)
+	badge.visible = true
+
+
+## v9.0: 底部 5 颗星点（用 HBoxContainer 装 5 个 ColorRect）
+func _ensure_stars_overlay(c: CardResource) -> void:
+	var hbox: HBoxContainer = get_node_or_null("StarsOverlay") as HBoxContainer
+	if hbox == null:
+		hbox = HBoxContainer.new()
+		hbox.name = "StarsOverlay"
+		hbox.anchor_left = 0.5
+		hbox.anchor_right = 0.5
+		hbox.anchor_top = 1.0
+		hbox.anchor_bottom = 1.0
+		hbox.offset_left = -22.0
+		hbox.offset_right = 22.0
+		hbox.offset_top = -38.0
+		hbox.offset_bottom = -28.0
+		hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hbox.z_index = 6
+		hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+		hbox.add_theme_constant_override("separation", 2)
+		for i in range(5):
+			var star := Label.new()
+			star.name = "Star%d" % i
+			star.text = "★"
+			star.add_theme_font_size_override("font_size", 9)
+			hbox.add_child(star)
+		add_child(hbox)
+	# 计算星级（0-5）
+	var stars: int = 0
+	if BlueprintManager and BlueprintManager.has_method("get_card_xp_progress"):
+		var prog: Dictionary = BlueprintManager.get_card_xp_progress(c.card_id)
+		stars = int(prog.get("level", 0))
+	else:
+		stars = int(c.enhance_level)
+	stars = clampi(stars, 0, 5)
+	# 更新每颗星颜色
+	for i in range(5):
+		var star: Label = hbox.get_node_or_null("Star%d" % i) as Label
+		if star == null:
+			continue
+		if i < stars:
+			star.add_theme_color_override("font_color", Color(0.984, 0.749, 0.141, 1.0))  # 金色
+		else:
+			star.add_theme_color_override("font_color", Color(0.27, 0.31, 0.39, 0.6))  # 暗灰
+	hbox.visible = stars > 0
+
+
+## v9.0: 左上 EQUIP 绿色徽章（已装备到相位仪）
+func _ensure_equipped_mark(c: CardResource) -> void:
+	var is_equipped := _is_card_equipped_to_phase_instrument(c)
+	var badge: PanelContainer = get_node_or_null("EquippedMark") as PanelContainer
+	if not is_equipped:
+		if badge:
+			badge.visible = false
+		return
+	if badge == null:
+		badge = PanelContainer.new()
+		badge.name = "EquippedMark"
+		badge.anchor_left = 0.0
+		badge.anchor_right = 0.0
+		badge.anchor_top = 0.0
+		badge.anchor_bottom = 0.0
+		badge.offset_left = 4.0
+		badge.offset_right = 42.0
+		badge.offset_top = 26.0
+		badge.offset_bottom = 38.0
+		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		badge.z_index = 7
+		var lbl := Label.new()
+		lbl.name = "Text"
+		lbl.text = "EQUIP"
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		lbl.add_theme_font_size_override("font_size", 8)
+		badge.add_child(lbl)
+		add_child(badge)
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.13, 0.40, 0.23, 0.55)  # 绿透
+	style.border_color = Color(0.20, 0.83, 0.60, 0.7)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(2)
+	badge.add_theme_stylebox_override("panel", style)
+	var text_lbl: Label = badge.get_node_or_null("Text") as Label
+	if text_lbl:
+		text_lbl.add_theme_color_override("font_color", Color(0.30, 0.92, 0.60, 1.0))
+	badge.visible = true
+
+
+## v9.0: 检测卡是否已装备到相位仪（查 PhaseInstrumentManager.get_slot_card_ids）
+func _is_card_equipped_to_phase_instrument(c: CardResource) -> bool:
+	if c == null:
+		return false
+	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
+	if pim == null or not pim.has_method("get_slot_card_ids"):
+		return false
+	var equipped_ids: Array = pim.get_slot_card_ids()
+	if equipped_ids.is_empty():
+		return false
+	# v9.0：精确匹配 instance_id（非空时）或裸 card_id（与 get_slot_card_ids 内部口径一致）
+	var id_to_match: String = c.instance_id if not c.instance_id.is_empty() else c.card_id
+	return equipped_ids.has(id_to_match)
+
+
+## v9.0: 隐藏某个装饰层（按名字）
+func _hide_decoration(deco_name: String) -> void:
+	var n: Node = get_node_or_null(deco_name)
+	if n is CanvasItem:
+		(n as CanvasItem).visible = false
 
 
 ## v8.0: 构建星级前缀字符串（金色★，最多显示5星避免撑爆）

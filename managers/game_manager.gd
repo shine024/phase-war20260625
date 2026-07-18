@@ -1,8 +1,6 @@
 extends Node
 ## 游戏流程：战前准备 → 战斗 → 战后
 const DEBUG_GAME_LOG := false
-const StoryFlags := preload("res://data/story/story_flags.gd")
-const QuestDefs := preload("res://data/quest_definitions.gd")  # v6.7(剧情任务): 关卡剧情查询
 const PhaseMasterGarrison := preload("res://data/phase_master_garrison.gd")  # v7.x 相位师驻守映射
 
 enum GamePhase {
@@ -42,12 +40,6 @@ const PHASE_MASTER_GRACE_LEVELS: int = 10
 
 var game_mode: GameMode = GameMode.FREE
 
-# v6.7(剧情任务): 自由模式关卡剧情任务触发状态
-# 进关时收集本关所有应触发的剧情（tutorial 自动 + story 已接取），形成队列依次播放
-# _story_mission_queue: 本次战斗待播放战前对话的 quest_id 列表（tutorial 在前，story 在后）
-# _story_mission_played: 本关实际播放过战前对话的 quest_id（过关后用于触发对应战后对话）
-var _story_mission_queue: Array = []
-var _story_mission_played: Array = []
 # v7.3 修复 BUG-1: 记录"本次战斗实际打的关卡号"，避免 battle_ended 时序错位。
 # 原 bug：battle_ended emit 后 GameManager 先于 QuestManager 执行（autoload 顺序），
 #   GameManager 在 _on_battle_ended 里 set_current_level(max_unlocked) 把 current_level 更新成下一关，
@@ -55,12 +47,6 @@ var _story_mission_played: Array = []
 #   首次通关第N关时 target=N 的剧情任务无法完成判定。
 # 修复：go_to_battle 时记录刚要打的关号，QuestManager 优先读它。
 var _pending_battle_level: int = 0
-
-# v6.6(剧情): 必败战机制 — 序章噩梦/守护者失败重试等场景
-# 开启后 BattleManager 会启动倒计时，到时强制判负；玩家正常胜利路径被禁用
-var _is_force_defeat_battle: bool = false   ## 当前战斗是否为必败战
-var _force_defeat_duration: float = 0.0     ## 必败战持续时长（秒），到时强制判负
-var _force_defeat_reason: String = ""       ## 必败战的剧情标识（如 "prologue"/"guardian_20_attempt1"）
 
 # v6.6(剧情): 最终战标记（补剧情.txt 第十幕 第100关/相位之主/噬时者）
 var _is_final_battle: bool = false          ## 当前战斗是否为最终战（触发记忆场景视觉+专属Boss）
@@ -452,9 +438,6 @@ func go_to_battle() -> void:
 
 	last_battle_reward_summary = {}
 	_snapshot_battle_reward_baselines()
-	# v6.7(剧情任务): 关卡剧情战前对话触发
-	# 若该关有 active story quest，emit 战前对话信号，由 story_dialogue_panel 播放
-	_check_story_mission_pre_battle()
 	# 检查是否遭遇相位师
 	check_phase_master_encounter()
 	if battle_scene == null:
@@ -467,22 +450,6 @@ func go_to_battle() -> void:
 func _on_battle_ended(player_won: bool) -> void:
 	current_phase = GamePhase.POST_BATTLE
 
-	# v6.6(剧情): 必败战处理 — 记录 story_flag 并清理状态
-	# 必败战通常 player_won=false（计时到强制判负），但即使因故 player_won=true 也走标记逻辑
-	if _is_force_defeat_battle:
-		ManagerLazyLoader.ensure_loaded("story")
-		var sm: Node = get_node_or_null("/root/StoryManager")
-		if sm and sm.has_method("set_story_flag") and not _force_defeat_reason.is_empty():
-			match _force_defeat_reason:
-				"prologue":
-					sm.set_story_flag(StoryFlags.PROLOGUE_COMPLETED, true)
-				"guardian_20_attempt1":
-					sm.set_story_flag(StoryFlags.GUARDIAN_20_ATTEMPT_1, true)
-				"guardian_20_attempt2":
-					sm.set_story_flag(StoryFlags.GUARDIAN_20_ATTEMPT_2, true)
-				_:
-					sm.set_story_flag("force_defeat_" + _force_defeat_reason, true)
-			clear_force_defeat_state()
 	# v6.6(剧情): 清理最终战标记（防跨战斗残留）
 	clear_final_battle_state()
 
@@ -550,9 +517,6 @@ func _on_battle_ended(player_won: bool) -> void:
 		# 与已解锁关卡的「最前沿」对齐，否则 save.json 里 game.current_level 会永远停在 1（读档像没进度）
 		if level_progress and level_progress.has_method("get_max_unlocked_level"):
 			set_current_level(level_progress.get_max_unlocked_level())
-		# v6.7(剧情任务): 自由模式关卡剧情战后对话触发（在关卡进度更新后，任务进度已刷新）
-		# 用 _story_mission_pending_level 记录刚通关的关卡号，避免 set_current_level 切换后丢失
-		_check_story_mission_post_battle()
 
 	# v6.6: 接线排行榜 — 战斗结束时更新统计（之前 update_* 方法零调用，排行榜永远为空）
 	ManagerLazyLoader.ensure_loaded("leaderboard")
@@ -586,15 +550,14 @@ func _on_battle_ended(player_won: bool) -> void:
 		"phase_instrument_drop": phase_instrument_drop.duplicate(true),
 		"intel_harvest": intel_harvest.duplicate(true) if not intel_harvest.is_empty() else {},
 	}
-	var battle_fragment_gain: Dictionary = _calculate_blueprint_fragment_gain()
-	var battle_knowledge_gain: Dictionary = _calculate_knowledge_gain()
-	last_battle_reward_summary["fragment_gain_total"] = int(battle_fragment_gain.get("total", 0))
-	last_battle_reward_summary["fragment_gain_items"] = battle_fragment_gain.get("items", [])
-	last_battle_reward_summary["knowledge_gain_total"] = int(battle_knowledge_gain.get("total", 0))
-	last_battle_reward_summary["knowledge_gain_items"] = battle_knowledge_gain.get("items", [])
-	var recon_bonus: float = _get_recon_fragment_bonus_multiplier()
-	last_battle_reward_summary["recon_fragment_bonus_percent"] = int(round(recon_bonus * 100.0))
-	last_battle_reward_summary["recon_fragment_multiplier"] = 1.0 + recon_bonus
+	# v7.x 性能：蓝图片段/知识收益计算延后到本帧 idle 队列执行。
+	# 根因：_calculate_blueprint_fragment_gain 遍历全部蓝图 ID（可达 133 个）做 copies 差值，
+	# _calculate_knowledge_gain 遍历 KNOWLEDGE_KEYS 快照，_get_recon_fragment_bonus_multiplier
+	# 遍历相位仪 loadouts——三项叠在 battle_ended 信号栈（帧C，与 20+ 监听者同帧）。
+	# 延后后：本帧先组装 reward_summary 主体，渲染一帧（玩家看到胜利瞬间），idle 队列再补字段。
+	# 时序安全：call_deferred 是 FIFO，本行入队早于下方 main_scene.call_deferred("show_battle_result")
+	# （若进入该分支），故面板构造时 last_battle_reward_summary 已含这三组字段，无需面板内延迟刷新。
+	call_deferred("_deferred_calculate_fragment_and_knowledge_gain")
 
 	# HUD 重构：结算入口由主场景 `show_battle_result` 弹出 battle_result_dialog（OK 时 claim_drops）。
 	# 若主场景未实现该方法（历史场景/测试），胜利后须仍领取 DropManager 待领掉落，否则会永久卡在 pending。
@@ -1095,46 +1058,20 @@ func _calculate_knowledge_gain() -> Dictionary:
 	return {"total": total_gain, "items": items}
 
 
-# ═══════════════════════════════════════════════════════════════════
-# v6.6(剧情): 必败战机制 — docs/补剧情.txt 序章噩梦/守护者失败重试
-# ═══════════════════════════════════════════════════════════════════
-
-## 启动一场必败战（到时长后强制判负，玩家无法正常获胜）
-## duration_sec: 必败战持续秒数（玩家需"撑过"这段时间，如序章撑7分钟=420秒）
-## level_override: 使用的关卡编号（决定敌人 era 和难度）
-## reason: 剧情标识（如 "prologue"/"guardian_20_attempt1"），用于战结束后记录 story_flag
-func start_force_defeat_battle(duration_sec: float, level_override: int, reason: String = "") -> void:
-	_is_force_defeat_battle = true
-	_force_defeat_duration = maxf(10.0, duration_sec)  # 至少10秒，防止误传0
-	_force_defeat_reason = reason
-	# 确保不是相位师战（必败战走普通波次流，让敌人持续刷出）
-	_is_phase_master_battle = false
-	_current_phase_master = {}
-	set_current_level(clampi(level_override, 1, 100))
-	go_to_battle()
-
-## 启动序章噩梦必败战（docs/补剧情.txt 序章：陈末梦境中的一战虫群入侵）
-## 默认撑7分钟（420秒）后强制判负，关卡使用第1关（一战）
-func start_prologue_battle(duration_sec: float = 420.0) -> void:
-	start_force_defeat_battle(duration_sec, 1, "prologue")
-
-## 查询当前是否为必败战
-func is_force_defeat_battle() -> bool:
-	return _is_force_defeat_battle
-
-## 获取必败战剩余时长（BattleManager 读取）
-func get_force_defeat_duration() -> float:
-	return _force_defeat_duration
-
-## 获取必败战剧情标识
-func get_force_defeat_reason() -> String:
-	return _force_defeat_reason
-
-## 清除必败战状态（BattleManager.end_battle 末尾调用，防跨战斗残留）
-func clear_force_defeat_state() -> void:
-	_is_force_defeat_battle = false
-	_force_defeat_duration = 0.0
-	_force_defeat_reason = ""
+## v7.x 性能：蓝图片段/知识收益/侦查加成的延迟计算（原在 _on_battle_ended 帧C同步执行）。
+## 由 _on_battle_ended 末尾 call_deferred 触发，在 idle 队列里补齐 last_battle_reward_summary
+## 的 fragment/knowledge/recon 字段。FIFO 保证此函数在 show_battle_result 之前执行，
+## 面板构造时字段已就绪。
+func _deferred_calculate_fragment_and_knowledge_gain() -> void:
+	var battle_fragment_gain: Dictionary = _calculate_blueprint_fragment_gain()
+	var battle_knowledge_gain: Dictionary = _calculate_knowledge_gain()
+	last_battle_reward_summary["fragment_gain_total"] = int(battle_fragment_gain.get("total", 0))
+	last_battle_reward_summary["fragment_gain_items"] = battle_fragment_gain.get("items", [])
+	last_battle_reward_summary["knowledge_gain_total"] = int(battle_knowledge_gain.get("total", 0))
+	last_battle_reward_summary["knowledge_gain_items"] = battle_knowledge_gain.get("items", [])
+	var recon_bonus: float = _get_recon_fragment_bonus_multiplier()
+	last_battle_reward_summary["recon_fragment_bonus_percent"] = int(round(recon_bonus * 100.0))
+	last_battle_reward_summary["recon_fragment_multiplier"] = 1.0 + recon_bonus
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -1152,111 +1089,4 @@ func is_final_battle() -> bool:
 
 ## 清除最终战状态（end_battle 时调用防残留）
 func clear_final_battle_state() -> void:
-		_is_final_battle = false
-
-
-# ════════════════════════════════════════════════════════════════════
-# v6.7(剧情任务): 自由模式关卡剧情任务触发（docs/补剧情.txt 关卡映射）
-# ════════════════════════════════════════════════════════════════════
-
-## 进关前检查：收集本关所有应触发的剧情任务，依次 emit 战前对话信号
-## tutorial 类：自动触发（无需接取），用 StoryManager 标记防重复，每个只播一次
-## story 类：只查已接取、未完成的任务
-## 同关多剧情：tutorial 先于 story，依次入队，由 story_dialogue_panel 队列播放
-func _check_story_mission_pre_battle() -> void:
-	_story_mission_queue.clear()
-	_story_mission_played.clear()
-	var quests_at_level: Array = QuestDefs.get_all_triggerable_at_level(current_level)
-	if quests_at_level.is_empty():
-		return
-	# 分离 tutorial 和 story
-	var tutorial_ids: Array = []
-	var story_ids: Array = []
-	var qm: Node = get_node_or_null("/root/QuestManager")
-	for q in quests_at_level:
-		var qid: String = q.get("id", "")
-		var cat: String = q.get("category", "commission")
-		if cat == "tutorial":
-			# tutorial：未触发过的才入队
-			if not _is_tutorial_triggered(qid):
-				tutorial_ids.append(qid)
-		elif cat == "story":
-			# v6.7: 进关时自动揭示该关的 story 任务（让玩家在面板看到并接取）
-			# 自由模式无 city_map/NPC，NPC 支线任务必须靠关卡触发才能揭示
-			if qm and qm.has_method("reveal_quest"):
-				qm.reveal_quest(qid)
-			# v7.3 修复 BUG-3.5: 主线 story 任务首次进关时自动接取（让战前对话能播放）。
-			# 原 bug：story 任务进关只 reveal（揭示≠接取），_is_story_quest_active 要求已接取，
-			# 导致玩家首次进入触发关时任务未接取 → 战前对话不播放，主线剧情演出缺失。
-			# 修复：对有 pre_battle_dialogues 的 story 任务，已揭示且未接取则自动接取（仅当 is_quest_available）。
-			if not q.get("pre_battle_dialogues", []).is_empty():
-				if qm and qm.has_method("is_accepted") and not qm.is_accepted(qid):
-					if qm.has_method("is_quest_available") and qm.is_quest_available(qid):
-						if qm.has_method("accept_quest"):
-							qm.accept_quest(qid)
-				# 只有已接取、未完成、且有战前对话的才入播放队列
-				if _is_story_quest_active(qid):
-					story_ids.append(qid)
-	# tutorial 在前，story 在后
-	_story_mission_queue = tutorial_ids + story_ids
-	if _story_mission_queue.is_empty():
-		return
-	# tutorial 任务：立即标记已触发（防重播）+ 发放一次性奖励
-	for qid in tutorial_ids:
-		_mark_tutorial_triggered(qid)
-		_grant_tutorial_reward(qid)
-	# 依次 emit（story_dialogue_panel 监听后排队播放）
-	for qid in _story_mission_queue:
-		if SignalBus and SignalBus.has_signal("story_mission_dialogue"):
-			SignalBus.story_mission_dialogue.emit(qid, "pre")
-
-## v6.7(剧情任务): 发放 tutorial 引导奖励（一次性纳米材料）
-func _grant_tutorial_reward(quest_id: String) -> void:
-	var def: Dictionary = QuestDefs.get_by_id(quest_id)
-	if def.is_empty():
-		return
-	var rewards: Dictionary = def.get("rewards", {})
-	var nano: int = int(rewards.get("nano_materials", 0))
-	if nano > 0 and BasicResourceManager and BasicResourceManager.has_method("add_resource"):
-		BasicResourceManager.add_resource("nano_materials", nano)
-
-## 过关后检查：对本关已接取的 story 任务，emit 战后对话信号
-## tutorial 无战后对话（引导只在战前）；story 有战前+战后
-func _check_story_mission_post_battle() -> void:
-	# 注意：此时 current_level 可能已被 set_current_level 切换，用 _story_mission_queue 里记录的 story 任务
-	for qid in _story_mission_queue:
-		var def: Dictionary = QuestDefs.get_by_id(qid)
-		if def.is_empty():
-			continue
-		# 只对 story 类（有 post_battle_dialogues 的）触发战后对话
-		if def.get("category", "commission") != "story":
-			continue
-		if not def.get("post_battle_dialogues", []).is_empty():
-			if SignalBus and SignalBus.has_signal("story_mission_dialogue"):
-				SignalBus.story_mission_dialogue.emit(qid, "post")
-	_story_mission_queue.clear()
-	_story_mission_played.clear()
-
-## v6.7(剧情任务): tutorial 是否已触发过（用 StoryManager 节点标记防重复）
-func _is_tutorial_triggered(quest_id: String) -> bool:
-	ManagerLazyLoader.ensure_loaded("story")
-	var sm: Node = get_node_or_null("/root/StoryManager")
-	if sm == null or not sm.has_method("is_node_triggered"):
-		return false
-	return sm.is_node_triggered("tutorial_" + quest_id)
-
-## v6.7(剧情任务): 标记 tutorial 已触发（对话开始播放时调用，防重复）
-func _mark_tutorial_triggered(quest_id: String) -> void:
-	ManagerLazyLoader.ensure_loaded("story")
-	var sm: Node = get_node_or_null("/root/StoryManager")
-	if sm != null and sm.has_method("mark_node_triggered"):
-		sm.mark_node_triggered("tutorial_" + quest_id)
-
-## v6.7(剧情任务): story 任务是否已接取且未完成
-func _is_story_quest_active(quest_id: String) -> bool:
-	var qm: Node = get_node_or_null("/root/QuestManager")
-	if qm == null:
-		return false
-	if not qm.has_method("is_accepted") or not qm.has_method("is_quest_done"):
-		return false
-	return qm.is_accepted(quest_id) and not qm.is_quest_done(quest_id)
+	_is_final_battle = false

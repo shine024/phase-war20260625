@@ -178,12 +178,6 @@ func _ensure_configs_initialized() -> void:
 			"priority": 6,
 			"description": "背景故事"
 		},
-		"story": {
-			"node_name": "StoryManager",
-			"script_path": "res://managers/story_manager.gd",
-			"priority": 6,
-			"description": "故事系统"
-		},
 		"character": {
 			"node_name": "CharacterManager",
 			"script_path": "res://managers/character_manager.gd",

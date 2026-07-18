@@ -9,12 +9,12 @@ border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0.6, 0.4, 1, 0.6)
+border_color = Color(0.024, 0.714, 0.831, 0.6)
 corner_radius_top_left = 8
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
-shadow_color = Color(0.6, 0.4, 1, 0.25)
+shadow_color = Color(0.024, 0.714, 0.831, 0.25)
 shadow_size = 10
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_title_bg"]
@@ -24,24 +24,24 @@ bg_color = Color(0.06, 0.10, 0.18, 0.9)
 bg_color = Color(0.03, 0.05, 0.10, 0.6)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_close_btn"]
-bg_color = Color(0.6, 0.4, 1, 0.12)
+bg_color = Color(0.024, 0.714, 0.831, 0.12)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.6, 0.4, 1, 0.5)
+border_color = Color(0.024, 0.714, 0.831, 0.5)
 corner_radius_top_left = 5
 corner_radius_top_right = 5
 corner_radius_bottom_right = 5
 corner_radius_bottom_left = 5
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_close_btn_hover"]
-bg_color = Color(0.6, 0.4, 1, 0.25)
+bg_color = Color(0.024, 0.714, 0.831, 0.25)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0.6, 0.4, 1, 0.8)
+border_color = Color(0.024, 0.714, 0.831, 0.8)
 corner_radius_top_left = 5
 corner_radius_top_right = 5
 corner_radius_bottom_right = 5
@@ -53,38 +53,38 @@ border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.6, 0.4, 1, 0.3)
+border_color = Color(0.024, 0.714, 0.831, 0.3)
 corner_radius_top_left = 6
 corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_install_btn"]
-bg_color = Color(0.6, 0.4, 1, 0.15)
+bg_color = Color(0.024, 0.714, 0.831, 0.15)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0.6, 0.4, 1, 0.7)
+border_color = Color(0.024, 0.714, 0.831, 0.7)
 corner_radius_top_left = 5
 corner_radius_top_right = 5
 corner_radius_bottom_right = 5
 corner_radius_bottom_left = 5
-shadow_color = Color(0.6, 0.4, 1, 0.3)
+shadow_color = Color(0.024, 0.714, 0.831, 0.3)
 shadow_size = 5
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_install_btn_hover"]
-bg_color = Color(0.6, 0.4, 1, 0.25)
+bg_color = Color(0.024, 0.714, 0.831, 0.25)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0.6, 0.4, 1, 0.9)
+border_color = Color(0.024, 0.714, 0.831, 0.9)
 corner_radius_top_left = 5
 corner_radius_top_right = 5
 corner_radius_bottom_right = 5
 corner_radius_bottom_left = 5
-shadow_color = Color(0.6, 0.4, 1, 0.4)
+shadow_color = Color(0.024, 0.714, 0.831, 0.4)
 shadow_size = 8
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mod_detail"]
@@ -93,7 +93,7 @@ border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.55, 0.35, 0.96, 0.4)
+border_color = Color(0.133, 0.827, 0.933, 0.4)
 corner_radius_top_left = 6
 corner_radius_top_right = 6
 corner_radius_bottom_right = 6
@@ -295,6 +295,46 @@ text = ""
 autowrap_mode = 3
 theme_override_colors/font_color = Color(1, 0.84, 0, 0.9)
 theme_override_font_sizes/font_size = 11
+
+[node name="TierLadderContainer" type="PanelContainer" parent="VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel/DetailVBox"]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TierMargin" type="MarginContainer" parent="VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel/DetailVBox/TierLadderContainer"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="TierInner" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel/DetailVBox/TierLadderContainer/TierMargin"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="TierTitleRow" type="HBoxContainer" parent="VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel/DetailVBox/TierLadderContainer/TierMargin/TierInner"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="TierTitleLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel/DetailVBox/TierLadderContainer/TierMargin/TierInner/TierTitleRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "战力档位门槛"
+theme_override_colors/font_color = Color(0.55, 0.65, 0.8, 0.85)
+theme_override_font_sizes/font_size = 10
+
+[node name="TierResultLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel/DetailVBox/TierLadderContainer/TierMargin/TierInner/TierTitleRow"]
+layout_mode = 2
+text = ""
+theme_override_colors/font_color = Color(0.2, 0.9, 0.4, 1)
+theme_override_font_sizes/font_size = 11
+horizontal_alignment = 2
+
+[node name="TierLadderHost" type="Control" parent="VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel/DetailVBox/TierLadderContainer/TierMargin/TierInner"]
+custom_minimum_size = Vector2(0, 56)
+layout_mode = 2
+size_flags_horizontal = 3
 
 [node name="UnlockLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel/DetailVBox"]
 layout_mode = 2

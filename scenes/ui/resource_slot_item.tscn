@@ -4,7 +4,7 @@
 
 [node name="ResourceSlotItem" type="PanelContainer"]
 layout_mode = 2
-custom_minimum_size = Vector2(50, 80)
+custom_minimum_size = Vector2(64, 96)
 size_flags_horizontal = 0
 size_flags_vertical = 0
 mouse_filter = 1
@@ -25,11 +25,11 @@ theme_override_constants/separation = 0
 
 [node name="Icon" type="TextureRect" parent="Margin/VBox"]
 layout_mode = 2
-custom_minimum_size = Vector2(0, 24)
+custom_minimum_size = Vector2(56, 56)
 size_flags_horizontal = 4
 size_flags_vertical = 4
 expand_mode = 1
-stretch_mode = 5
+stretch_mode = 6
 
 [node name="NameLabel" type="Label" parent="Margin/VBox"]
 layout_mode = 2
