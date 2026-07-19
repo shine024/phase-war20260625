@@ -82,22 +82,33 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 theme_override_constants/separation = 0
 
-[node name="SignatureStrip" type="ColorRect" parent="VBoxOuter"]
+[node name="TopAccentStrip" type="ColorRect" parent="VBoxOuter"]
 custom_minimum_size = Vector2(0, 2)
 layout_mode = 2
 color = Color(0.961, 0.62, 0.043, 0.7)
 
 [node name="TitleRow" type="HBoxContainer" parent="VBoxOuter"]
 layout_mode = 2
-custom_minimum_size = Vector2(0, 36)
-theme_override_constants/separation = 8
+custom_minimum_size = Vector2(0, 38)
+theme_override_constants/separation = 12
+
+[node name="TitleMark" type="PanelContainer" parent="VBoxOuter/TitleRow"]
+custom_minimum_size = Vector2(26, 26)
+layout_mode = 2
+mouse_filter = 2
 
 [node name="TitleLabel" type="Label" parent="VBoxOuter/TitleRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.95, 0.94, 0.98, 1)
 theme_override_font_sizes/font_size = 18
-text = "INVENTORY · 背包"
+text = "战斗卡阵列 · COMBAT ROSTER"
+
+[node name="MetaInfoLabel" type="Label" parent="VBoxOuter/TitleRow"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.66, 0.71, 0.81, 0.9)
+theme_override_font_sizes/font_size = 11
+text = ""
 
 [node name="CloseButton" type="Button" parent="VBoxOuter/TitleRow"]
 layout_mode = 2
@@ -112,6 +123,51 @@ text = "关闭"
 layout_mode = 2
 custom_minimum_size = Vector2(0, 1)
 theme_override_styles/panel = SubResource("StyleBoxFlat_title_sep")
+
+[node name="Toolbar" type="HBoxContainer" parent="VBoxOuter"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 36)
+theme_override_constants/separation = 12
+
+[node name="ToolbarLeft" type="HBoxContainer" parent="VBoxOuter/Toolbar"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="SearchEdit" type="LineEdit" parent="VBoxOuter/Toolbar/ToolbarLeft"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.94, 0.98, 1)
+theme_override_colors/font_placeholder_color = Color(0.42, 0.47, 0.57, 0.7)
+theme_override_font_sizes/font_size = 12
+placeholder_text = "搜索卡名/ID/兵种..."
+text = ""
+
+[node name="FilterChipsBox" type="HBoxContainer" parent="VBoxOuter/Toolbar/ToolbarLeft"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="ToolbarRight" type="HBoxContainer" parent="VBoxOuter/Toolbar"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="CapacityLabel" type="Label" parent="VBoxOuter/Toolbar/ToolbarRight"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.66, 0.71, 0.81, 0.9)
+theme_override_font_sizes/font_size = 11
+text = ""
+
+[node name="SortOption" type="OptionButton" parent="VBoxOuter/Toolbar/ToolbarRight"]
+custom_minimum_size = Vector2(110, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.94, 0.98, 1)
+theme_override_font_sizes/font_size = 11
+item_count = 4
+popup/item_0/text = "默认"
+popup/item_1/text = "名称"
+popup/item_2/text = "费用"
+popup/item_3/text = "稀有度"
 
 [node name="TabContainer" type="TabContainer" parent="VBoxOuter"]
 layout_mode = 2
@@ -149,18 +205,38 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="IntelScroll" type="ScrollContainer" parent="VBoxOuter/TabContainer/IntelTab"]
-clip_contents = true
+[node name="IntelHSplit" type="HSplitContainer" parent="VBoxOuter/TabContainer/IntelTab"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+split_offset = 188
+collapsed = false
+
+[node name="ModSidebarScroll" type="ScrollContainer" parent="VBoxOuter/TabContainer/IntelTab/IntelHSplit"]
+custom_minimum_size = Vector2(180, 0)
+layout_mode = 2
+clip_contents = true
 horizontal_scroll_mode = 0
 vertical_scroll_mode = 2
 
-[node name="IntelGrid" type="GridContainer" parent="VBoxOuter/TabContainer/IntelTab/IntelScroll"]
+[node name="ModSidebar" type="VBoxContainer" parent="VBoxOuter/TabContainer/IntelTab/IntelHSplit/ModSidebarScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="IntelScroll" type="ScrollContainer" parent="VBoxOuter/TabContainer/IntelTab/IntelHSplit"]
+clip_contents = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 2
+
+[node name="IntelGrid" type="GridContainer" parent="VBoxOuter/TabContainer/IntelTab/IntelHSplit/IntelScroll"]
 layout_mode = 2
 custom_minimum_size = Vector2(0, 0)
 size_flags_horizontal = 3

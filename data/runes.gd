@@ -1213,14 +1213,14 @@ static func icon_path_for(rune_id: String) -> String:
 		return ""
 	var rarity: String = String(rune.get("rarity", RARITY_COMMON))
 	var path: String = "res://assets/runes/%s/rune_%s.png" % [rarity, rune_id]
-	if ResourceLoader.exists(path, "Texture2D"):
+	if ResourceLoader.exists(path):
 		return path
 	# 跨稀有度文件夹回退查找（legendary 为全套兜底）
 	for alt_rarity in ["legendary", "common", "rare", "epic"]:
 		if alt_rarity == rarity:
 			continue
 		path = "res://assets/runes/%s/rune_%s.png" % [alt_rarity, rune_id]
-		if ResourceLoader.exists(path, "Texture2D"):
+		if ResourceLoader.exists(path):
 			return path
 	return ""
 

@@ -17,8 +17,10 @@ var _drag_threshold := 5.0  # 移动5像素才开始拖拽
 var ENABLE_MINIMAL_CARD_RENDER := true
 const BACKPACK_USE_MTG_CARD_FACE := false
 const BACKPACK_MTG_ART_PCT := 58.0
-## v9.0: 底部信息栏高度（顶行卡名+底行详情，42px 适配 96×138 大卡面）
-const COMPACT_BOTTOM_TEXT_H := 42
+## v9.2: 底部信息栏高度（顶行卡名+底行详情，40px 适配 96×138 大卡面）
+## 原 42px 导致 IconRow 可用 132px < 内容需求 134px（CompactArtClip 90 + sep 2 + text 42），
+## VBoxContainer 压缩子节点。改 40px 消除 2px 赤字，让 CompactArtClip 不被压缩。
+const COMPACT_BOTTOM_TEXT_H := 40
 const ENABLE_IMAGE_DRAG_PREVIEW := true
 var _last_drag_log_ms: int = 0
 var _drag_started_ms: int = 0
@@ -351,6 +353,12 @@ func _set_empty_style(name_label, lv_label, icon_rect) -> void:
 	add_theme_stylebox_override("panel", _get_empty_card_panel_style())
 	CardFrameUi.clear_overlay(self)
 	CardBackgroundUi.clear_overlay(self)
+	# v9.1：空槽清理所有装饰层（防池化复用残留）
+	_hide_decoration("RarityTopStrip")
+	_hide_decoration("KindTagBadge")
+	_hide_decoration("StarsOverlay")
+	_hide_decoration("EquippedMark")
+	_hide_decoration("InstanceNo")
 
 func _sync_card_background_overlay(c: CardResource) -> void:
 	if c == null:
@@ -593,36 +601,61 @@ func _ensure_compact_slot_structure(icon_row: Control, name_label: Label) -> voi
 	art_clip.clip_contents = true
 	art_clip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	art_clip.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	# v9.0 修复：Control 在 VBoxContainer 中若没有内容/最小尺寸会塌缩为 0×0，
+	# v9.1 修复：Control 在 VBoxContainer 中若没有内容/最小尺寸会塌缩为 0×0，
 	# 导致 Icon（FULL_RECT 锚定）实际渲染区域为 0，卡图不可见（"闪一下就消失"）。
-	# 给一个与 SLOT_SIZE 匹配的图标区最小尺寸（高度 = SLOT_SIZE.y - INFO_BAR_HEIGHT - 边距）。
+	# 给一个与 SLOT_SIZE 匹配的图标区最小尺寸（高度预留 footer 38px + 顶部色条 3px + 边距）。
 	art_clip.custom_minimum_size = Vector2(SLOT_SIZE.x - 6, SLOT_SIZE.y - COMPACT_BOTTOM_TEXT_H - 6)
 	art_clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	# v9.0 修复：用 COVERED（保持比例填满，可能裁切边缘）而非 CENTERED（留白），
-	# 让卡图真正填满 art_clip 区域，避免小图被周围空白挤压成"看不到"
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	# v9.1：用 SCALE（铺满容器，可能轻微变形）而非 COVERED——COVERED 在 Godot 4.5 的
+	# EXPAND_IGNORE_SIZE 模式下仍按贴图原尺寸居中渲染（实测卡图不显示）。
+	# SCALE 让贴图强制拉伸到 Icon 的 size，配合 FULL_RECT 锚定 = 填满 art_clip。
+	icon.stretch_mode = TextureRect.STRETCH_SCALE
 	icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	art_clip.add_child(icon)
+	# v9.1 HTML 设计稿 footer 结构：name-line + stat-line（HBox: 左 Lv·改N/M / 右 战力）
 	var text_v := VBoxContainer.new()
 	text_v.name = "CompactTextVBox"
 	text_v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	text_v.size_flags_vertical = Control.SIZE_SHRINK_END
 	text_v.custom_minimum_size.y = COMPACT_BOTTOM_TEXT_H
-	text_v.add_theme_constant_override("separation", 0)
+	text_v.add_theme_constant_override("separation", 1)
 	text_v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# name-line：卡名（HTML .name-line，居中、单行省略）
 	name_label.name = "NameLabel"
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	name_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	name_label.clip_text = true
 	name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_label.custom_minimum_size = Vector2(0, 14)
 	name_label.remove_theme_font_size_override("font_size")
-	name_label.add_theme_font_size_override("font_size", 10)
-	name_label.add_theme_color_override("font_color", Color(0.92, 0.94, 0.98, 1.0))
+	name_label.add_theme_font_size_override("font_size", 11)
+	name_label.add_theme_color_override("font_color", Color(0.91, 0.93, 0.97, 1.0))
 	text_v.add_child(name_label)
+	# stat-line：左侧 Lv/改 + 右侧战力（HTML .stat-line，mono 字体 9px）
+	var stat_line := HBoxContainer.new()
+	stat_line.name = "StatLine"
+	stat_line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stat_line.add_theme_constant_override("separation", 0)
+	stat_line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var stat_left := Label.new()
+	stat_left.name = "StatLeft"
+	stat_left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stat_left.clip_text = true
+	stat_left.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	stat_left.add_theme_font_size_override("font_size", 9)
+	stat_left.add_theme_color_override("font_color", Color(0.66, 0.71, 0.81, 0.9))
+	stat_left.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stat_line.add_child(stat_left)
+	var stat_right := Label.new()
+	stat_right.name = "StatRight"
+	stat_right.add_theme_font_size_override("font_size", 9)
+	stat_right.add_theme_color_override("font_color", Color(0.91, 0.93, 0.97, 1.0))
+	stat_right.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stat_line.add_child(stat_right)
+	text_v.add_child(stat_line)
 	icon_row.add_child(art_clip)
 	icon_row.add_child(text_v)
 	icon_row.set_meta("_compact_slot_built", true)
@@ -638,11 +671,10 @@ func _layout_compact_art_clip(art_clip: Control) -> void:
 	var icon := art_clip.get_node_or_null("Icon") as TextureRect
 	if icon == null:
 		return
-	# v9.0 修复：图标在 CompactArtClip 内用 FULL_RECT 填满，不强制 custom_minimum_size。
-	# 尺寸由容器布局决定；用 COVERED 保持比例填满（CENTERED 会留白导致小图看不见）。
+	# v9.1：SCALE 拉伸填满容器（COVERED/CENTERED 在 EXPAND_IGNORE_SIZE 下实测卡图不显示）
 	var tex: Texture2D = icon.texture
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	icon.stretch_mode = TextureRect.STRETCH_SCALE
 	if tex == null:
 		icon.visible = false
 
@@ -660,8 +692,8 @@ func _apply_card_icon_to_clip(icon_rect: TextureRect, c: CardResource) -> void:
 	icon_rect.texture = tex
 	icon_rect.visible = true
 	icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	# v9.0 修复：COVERED 保持比例填满容器（CENTERED 会留白，512×512 原图在小容器里几乎不可见）
-	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	# v9.1：SCALE 强制拉伸填满（COVERED/CENTERED 在 EXPAND_IGNORE_SIZE 下实测卡图不显示）
+	icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
 
 
 func _compact_display_name(c: CardResource) -> String:
@@ -685,13 +717,9 @@ func _set_compact_slot_view(c: CardResource, name_label, lv_label, icon_rect) ->
 	var icon_row: Control = _find_icon_row()
 	if icon_row:
 		icon_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	# v9.1：LvLabel 不再承担混合信息显示，HTML 设计改用 CompactTextVBox/StatLine
 	if lv_label:
-		# 底行信息：兵种|等级|改造|战力 —— 横向紧凑排列
-		lv_label.text = _build_bottom_info_line(c)
-		lv_label.visible = true
-		lv_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		lv_label.add_theme_font_size_override("font_size", 11)
-		lv_label.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85, 0.95))
+		lv_label.visible = false
 	if icon_row == null or name_label == null:
 		return
 	_ensure_compact_slot_structure(icon_row, name_label)
@@ -699,12 +727,15 @@ func _set_compact_slot_view(c: CardResource, name_label, lv_label, icon_rect) ->
 	if icon_rect:
 		_apply_card_icon_to_clip(icon_rect, c)
 	name_label.visible = true
-	# v9.0: 卡名不再前置 ★ 字符（5 星点改为图形装饰层 StarsOverlay，更清晰）
+	# name-line：卡名（HTML .name-line，不再前置 ★ 字符）
 	name_label.text = _compact_display_name(c)
 	name_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	name_label.max_lines_visible = 1
+	# stat-line：填充左侧 Lv·改N/M + 右侧战力（HTML .stat-line 结构）
+	_fill_stat_line(icon_row, c)
 	# 费用用左上角角标气泡（CostCornerBadge）
-	var _cost_badge_c = CardFrameUi.ensure_cost_corner_badge(self, true)
+	# v9.2: anchor_right=false 锚定左上角（设计稿 .cost 在左上），避免与右上兵种色块重叠
+	var _cost_badge_c = CardFrameUi.ensure_cost_corner_badge(self, false)
 	if _cost_badge_c != null:
 		_cost_badge_c.energy_value = int(c.energy_cost)
 	tooltip_text = ""
@@ -713,6 +744,32 @@ func _set_compact_slot_view(c: CardResource, name_label, lv_label, icon_rect) ->
 		call_deferred("_layout_compact_art_clip", art_clip)
 	# v9.0: 注入 4 个装饰层（HTML 设计稿视觉签名）
 	_apply_v9_decorations(c)
+	# v9.1: instance-no 独立角标（HTML .instance-no #N）
+	_ensure_instance_no(c)
+
+
+## v9.1: 填充 stat-line（HTML .stat-line 结构：左 Lv·改N/M · 右 战力）
+func _fill_stat_line(icon_row: Control, c: CardResource) -> void:
+	if icon_row == null:
+		return
+	var stat_left: Label = icon_row.get_node_or_null("CompactTextVBox/StatLine/StatLeft") as Label
+	var stat_right: Label = icon_row.get_node_or_null("CompactTextVBox/StatLine/StatRight") as Label
+	if stat_left == null or stat_right == null:
+		return
+	# 左：Lv.x · 改N/M
+	var parts: Array[String] = []
+	var enhance_lvl: int = int(c.enhance_level)
+	parts.append("Lv.%d" % enhance_lvl)
+	if c.card_type == GC.CardType.COMBAT_UNIT:
+		var mod_count: int = _get_mod_count_for_card(c)
+		var slot_total: int = c.module_slots.size() if c.module_slots != null else 0
+		if slot_total > 0:
+			parts.append("改%d/%d" % [mod_count, slot_total])
+	# 用 sep 着色（Lv 用 amber-soft，改 用 cyan-soft）
+	stat_left.text = " · ".join(parts)
+	# 右：战力分（HTML .pwr，text-white + 600 weight）
+	var power: int = int(_get_card_power_score(c))
+	stat_right.text = str(power) if power > 0 else ""
 
 
 ## v9.0: 注入战斗卡装饰层——顶部稀有度色条 + 兵种色块 + 5 星点 + EQUIP 徽章
@@ -915,6 +972,43 @@ func _ensure_equipped_mark(c: CardResource) -> void:
 	if text_lbl:
 		text_lbl.add_theme_color_override("font_color", Color(0.30, 0.92, 0.60, 1.0))
 	badge.visible = true
+
+
+## v9.1: 右下角 instance-no 角标（HTML .instance-no，显示 #N 序号）
+## 仅当 c.instance_id 非空时显示（裸模板无实例序号）
+func _ensure_instance_no(c: CardResource) -> void:
+	var seq: String = ""
+	if c != null and not c.instance_id.is_empty():
+		# instance_id 格式 card_id#N，取 #N 部分
+		var hash_pos: int = c.instance_id.rfind("#")
+		if hash_pos >= 0:
+			seq = c.instance_id.substr(hash_pos)  # 含 #
+	# 复用/创建角标
+	var lbl: Label = get_node_or_null("InstanceNo") as Label
+	if seq.is_empty():
+		if lbl:
+			lbl.visible = false
+		return
+	if lbl == null:
+		lbl = Label.new()
+		lbl.name = "InstanceNo"
+		lbl.anchor_left = 1.0
+		lbl.anchor_right = 1.0
+		lbl.anchor_top = 1.0
+		lbl.anchor_bottom = 1.0
+		lbl.offset_left = -28.0
+		lbl.offset_right = -4.0
+		lbl.offset_top = -36.0
+		lbl.offset_bottom = -22.0
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		lbl.z_index = 6
+		add_child(lbl)
+	lbl.text = seq
+	lbl.add_theme_font_size_override("font_size", 9)
+	lbl.add_theme_color_override("font_color", Color(0.42, 0.47, 0.57, 0.95))
+	lbl.visible = true
 
 
 ## v9.0: 检测卡是否已装备到相位仪（查 PhaseInstrumentManager.get_slot_card_ids）
@@ -1319,7 +1413,7 @@ func _get_cached_icon_texture(tex_path: String) -> Texture2D:
 	if not FileAccess.file_exists(tex_path):
 		_icon_cache[tex_path] = null
 		return null
-	if not ResourceLoader.exists(tex_path, "Texture2D"):
+	if not ResourceLoader.exists(tex_path):
 		_icon_cache[tex_path] = null
 		return null
 	var loaded: Resource = ResourceLoader.load(tex_path, "Texture2D", ResourceLoader.CACHE_MODE_REUSE)

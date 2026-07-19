@@ -198,7 +198,7 @@ static func _era_kind_fallback_path(era: int, combat_kind: int) -> String:
 	if vis_id.is_empty():
 		return ""
 	var path: String = "%splayer/%s.png" % [UNITS_ICON_DIR, vis_id]
-	return path if ResourceLoader.exists(path, "Texture2D") else ""
+	return path if ResourceLoader.exists(path) else ""
 
 
 static func _path_for_shape_key(shape_key: String) -> String:
@@ -208,10 +208,10 @@ static func _path_for_shape_key(shape_key: String) -> String:
 	var vis_id: String = String(SHAPE_KEY_UNIT_ICON.get(key, ""))
 	if not vis_id.is_empty():
 		var unit_p: String = "%splayer/%s.png" % [UNITS_ICON_DIR, vis_id]
-		if ResourceLoader.exists(unit_p, "Texture2D"):
+		if ResourceLoader.exists(unit_p):
 			return unit_p
 	var legacy: String = "res://assets/card_icons/%s.png" % key
-	if ResourceLoader.exists(legacy, "Texture2D"):
+	if ResourceLoader.exists(legacy):
 		return legacy
 	return ""
 
@@ -361,7 +361,7 @@ static func _vis_player_path_for_bp_platform(card_id: String) -> String:
 		vis_idx += 0
 	vis_idx += seq - 1
 	var full: String = "res://assets/card_icons/player/vis_player_%03d.png" % vis_idx
-	return full if ResourceLoader.exists(full, "Texture2D") else ""
+	return full if ResourceLoader.exists(full) else ""
 
 
 static func card_icon_path_for(c: CardResource) -> String:
@@ -370,7 +370,7 @@ static func card_icon_path_for(c: CardResource) -> String:
 	# 0) v6.5: 优先用专属卡面（card_icons/{card_id}.png），有专属图则不走 manifest 回退
 	# 避免新加入的专属图被旧的 vis_player 通用图覆盖
 	var dedicated: String = "res://assets/card_icons/%s.png" % c.card_id
-	if ResourceLoader.exists(dedicated, "Texture2D"):
+	if ResourceLoader.exists(dedicated):
 		return dedicated
 	# 1) 战斗卡 → manifest（card_id → foe_* → vis_player_*）
 	if c.card_type == GC.CardType.COMBAT_UNIT:
@@ -382,7 +382,7 @@ static func card_icon_path_for(c: CardResource) -> String:
 		var override_vis: String = String(PLAYER_ICON_OVERRIDE.get(c.card_id, ""))
 		if not override_vis.is_empty():
 			var override_p: String = "%splayer/%s.png" % [UNITS_ICON_DIR, override_vis]
-			if ResourceLoader.exists(override_p, "Texture2D"):
+			if ResourceLoader.exists(override_p):
 				return override_p
 	# 2) 缴获/敌人 archetype → units/<visual_id>.png
 	var arch: String = archetype_id_for_card_icon(c)
@@ -397,7 +397,7 @@ static func card_icon_path_for(c: CardResource) -> String:
 		if not from_drop.is_empty():
 			return from_drop
 		var arch_root: String = "res://assets/card_icons/%s.png" % drop_arch
-		if ResourceLoader.exists(arch_root, "Texture2D"):
+		if ResourceLoader.exists(arch_root):
 			return arch_root
 	# 4) 法则 / 能量卡
 	if c.card_type == GC.CardType.LAW:
@@ -407,14 +407,14 @@ static func card_icon_path_for(c: CardResource) -> String:
 		return law_slot_icon_path(law_id)
 	if c.card_type == GC.CardType.ENERGY:
 		var energy_by_id: String = "res://assets/card_icons/%s.png" % c.card_id
-		if ResourceLoader.exists(energy_by_id, "Texture2D"):
+		if ResourceLoader.exists(energy_by_id):
 			return energy_by_id
 		var energy_shape: String = _path_for_shape_key("energy")
 		if not energy_shape.is_empty():
 			return energy_shape
 	# 5) 根目录 card_id PNG
 	var by_id: String = "res://assets/card_icons/%s.png" % c.card_id
-	if ResourceLoader.exists(by_id, "Texture2D"):
+	if ResourceLoader.exists(by_id):
 		return by_id
 	# 6) 时代+兵种代表图回退（所有不在 manifest 的战斗卡至少拿到同期同类图）
 	if c.card_type == GC.CardType.COMBAT_UNIT:
@@ -426,7 +426,7 @@ static func card_icon_path_for(c: CardResource) -> String:
 	if not shape_p.is_empty():
 		return shape_p
 	const PLACEHOLDER := "res://assets/card_icons/_enemy_placeholder.png"
-	if ResourceLoader.exists(PLACEHOLDER, "Texture2D"):
+	if ResourceLoader.exists(PLACEHOLDER):
 		return PLACEHOLDER
 	return ""
 
@@ -435,10 +435,10 @@ static func card_icon_path_for(c: CardResource) -> String:
 static func law_slot_icon_path(law_id: String) -> String:
 	if not law_id.is_empty():
 		var by_law: String = "res://assets/card_icons/%s.png" % law_id
-		if ResourceLoader.exists(by_law, "Texture2D"):
+		if ResourceLoader.exists(by_law):
 			return by_law
 	var law_shape: String = "res://assets/card_icons/law.png"
-	if ResourceLoader.exists(law_shape, "Texture2D"):
+	if ResourceLoader.exists(law_shape):
 		return law_shape
 	return "res://assets/ui/icons/icon_law.svg"
 

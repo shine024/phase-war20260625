@@ -20,7 +20,7 @@ theme_override_constants/margin_bottom = 2
 [node name="VBox" type="VBoxContainer" parent="Margin"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 3
+size_flags_vertical = 1
 theme_override_constants/separation = 0
 
 [node name="Icon" type="TextureRect" parent="Margin/VBox"]
@@ -28,8 +28,8 @@ layout_mode = 2
 custom_minimum_size = Vector2(56, 56)
 size_flags_horizontal = 4
 size_flags_vertical = 4
-expand_mode = 1
-stretch_mode = 6
+expand_mode = 2
+stretch_mode = 0
 
 [node name="NameLabel" type="Label" parent="Margin/VBox"]
 layout_mode = 2

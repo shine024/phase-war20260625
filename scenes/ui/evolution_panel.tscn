@@ -1,98 +1,118 @@
-[gd_scene load_steps=11 format=3 uid="uid://bja6yipvtekki"]
+[gd_scene load_steps=13 format=3 uid="uid://bja6yipvtekki"]
 
 [ext_resource type="Script" path="res://scenes/ui/evolution_panel.gd" id="1_script"]
 [ext_resource type="Texture2D" path="res://assets/ui/icons/icon_blueprint.svg" id="2_title_icon"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg"]
-bg_color = Color(0.04, 0.06, 0.12, 0.97)
-border_width_left = 2
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1"]
+bg_color = Color(0.04, 0.06, 0.12, 0.98)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.653, 0.546, 0.98, 0.45)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+shadow_color = Color(0.653, 0.546, 0.98, 0.2)
+shadow_size = 14
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2"]
+bg_color = Color(0.075, 0.102, 0.165, 0.4)
 border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.95, 0.85, 0.35, 0.6)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-shadow_color = Color(0.95, 0.85, 0.35, 0.2)
-shadow_size = 10
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_title_bg"]
-bg_color = Color(0.06, 0.10, 0.18, 0.9)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_scroll_bg"]
-bg_color = Color(0.03, 0.05, 0.10, 0.6)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_section_bg"]
+border_width_bottom = 1
+border_color = Color(0.769, 0.71, 0.992, 0.85)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3"]
+bg_color = Color(0.075, 0.102, 0.165, 0.6)
+border_width_bottom = 1
+border_color = Color(0.25, 0.35, 0.42, 0.18)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_4"]
+bg_color = Color(0.075, 0.102, 0.165, 0.3)
+border_width_bottom = 1
+border_color = Color(0.25, 0.35, 0.42, 0.18)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5"]
+bg_color = Color(0.03, 0.05, 0.10, 0.5)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_6"]
 bg_color = Color(0.06, 0.10, 0.18, 0.8)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.95, 0.85, 0.35, 0.25)
+border_color = Color(0.653, 0.546, 0.98, 0.25)
 corner_radius_top_left = 6
 corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_close_btn"]
-bg_color = Color(0.95, 0.85, 0.35, 0.12)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_7"]
+bg_color = Color(0, 0, 0, 0)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.95, 0.85, 0.35, 0.5)
-corner_radius_top_left = 5
-corner_radius_top_right = 5
-corner_radius_bottom_right = 5
-corner_radius_bottom_left = 5
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_close_btn_hover"]
-bg_color = Color(0.95, 0.85, 0.35, 0.25)
+border_color = Color(0.25, 0.35, 0.42, 0.6)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_8"]
+bg_color = Color(0.937, 0.267, 0.267, 0.12)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.937, 0.267, 0.267, 0.8)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_9"]
+bg_color = Color(0.653, 0.546, 0.98, 0.18)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0.95, 0.85, 0.35, 0.8)
+border_color = Color(0.653, 0.546, 0.98, 0.9)
 corner_radius_top_left = 5
 corner_radius_top_right = 5
 corner_radius_bottom_right = 5
 corner_radius_bottom_left = 5
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_evolve_btn"]
-bg_color = Color(0.95, 0.85, 0.35, 0.15)
+shadow_color = Color(0.653, 0.546, 0.98, 0.35)
+shadow_size = 6
+content_margin_left = 16.0
+content_margin_top = 6.0
+content_margin_right = 16.0
+content_margin_bottom = 6.0
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_10"]
+bg_color = Color(0.653, 0.546, 0.98, 0.32)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0.95, 0.85, 0.35, 0.7)
+border_color = Color(0.653, 0.546, 0.98, 1)
 corner_radius_top_left = 5
 corner_radius_top_right = 5
 corner_radius_bottom_right = 5
 corner_radius_bottom_left = 5
-shadow_color = Color(0.95, 0.85, 0.35, 0.3)
-shadow_size = 5
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_evolve_btn_hover"]
-bg_color = Color(0.95, 0.85, 0.35, 0.25)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.95, 0.85, 0.35, 0.9)
-corner_radius_top_left = 5
-corner_radius_top_right = 5
-corner_radius_bottom_right = 5
-corner_radius_bottom_left = 5
-shadow_color = Color(0.95, 0.85, 0.35, 0.4)
-shadow_size = 8
-
-[node name="EvolutionPanel" type="PanelContainer"]
-custom_minimum_size = Vector2(960, 600)
-layout_mode = 2
+shadow_color = Color(0.653, 0.546, 0.98, 0.5)
+shadow_size = 9
+content_margin_left = 16.0
+content_margin_top = 6.0
+content_margin_right = 16.0
+content_margin_bottom = 6.0
+[node name="EvolutionPanel" type="Control"]
+custom_minimum_size = Vector2(1180, 640)
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 script = ExtResource("1_script")
-theme_override_styles/panel = SubResource("StyleBoxFlat_bg")
-
+[node name="BgPanel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_1")
 [node name="VBoxContainer" type="VBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
@@ -101,354 +121,446 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 0
-
-[node name="TitleArea" type="PanelContainer" parent="VBoxContainer"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 56)
-theme_override_styles/panel = SubResource("StyleBoxFlat_title_bg")
-
-[node name="TitleHBox" type="HBoxContainer" parent="VBoxContainer/TitleArea"]
+[node name="TitleRow" type="PanelContainer" parent="VBoxContainer"]
+custom_minimum_size = Vector2(0, 52)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/margin_left = 20
-theme_override_constants/margin_top = 0
-theme_override_constants/margin_right = 20
-theme_override_constants/margin_bottom = 0
-theme_override_constants/separation = 20
-
-[node name="TitleIcon" type="TextureRect" parent="VBoxContainer/TitleArea/TitleHBox"]
-layout_mode = 2
-custom_minimum_size = Vector2(28, 28)
-expand_mode = 1
-stretch_mode = 5
-texture = ExtResource("2_title_icon")
-
-[node name="TitleLabel" type="Label" parent="VBoxContainer/TitleArea/TitleHBox"]
+theme_override_styles/panel = SubResource("StyleBoxFlat_2")
+[node name="TitleHBox" type="HBoxContainer" parent="VBoxContainer/TitleRow"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "进化系统"
-theme_override_font_sizes/font_size = 24
-theme_override_colors/font_color = Color(1, 0.9, 0.42, 1)
-theme_override_colors/font_outline_color = Color(0.18, 0.13, 0.02, 0.85)
-theme_override_constants/outline_size = 3
-
-[node name="CloseButton" type="Button" parent="VBoxContainer/TitleArea/TitleHBox"]
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+offset_left = 20.0
+offset_right = -20.0
+[node name="TitleMark" type="Label" parent="VBoxContainer/TitleRow/TitleHBox"]
 layout_mode = 2
-custom_minimum_size = Vector2(80, 36)
-text = "关闭"
-theme_override_font_sizes/font_size = 15
-theme_override_colors/font_color = Color(1, 1, 1, 0.85)
-theme_override_colors/font_hover_color = Color(1, 0.92, 0.45, 1)
-theme_override_styles/normal = SubResource("StyleBoxFlat_close_btn")
-theme_override_styles/hover = SubResource("StyleBoxFlat_close_btn_hover")
-
-[node name="CardSelectorArea" type="PanelContainer" parent="VBoxContainer"]
+text = "❖"
+custom_minimum_size = Vector2(24, 0)
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.769, 0.71, 0.992, 1)
+[node name="TitleLabel" type="Label" parent="VBoxContainer/TitleRow/TitleHBox"]
+unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(0, 48)
-theme_override_styles/panel = SubResource("StyleBoxFlat_title_bg")
-
-[node name="CardSelectorHBox" type="HBoxContainer" parent="VBoxContainer/CardSelectorArea"]
+text = "战术进化站"
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
+[node name="TitleSub" type="Label" parent="VBoxContainer/TitleRow/TitleHBox"]
+layout_mode = 2
+text = "EVOLUTION FORGE"
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 0.7)
+[node name="Spacer" type="Control" parent="VBoxContainer/TitleRow/TitleHBox"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/margin_left = 20
-theme_override_constants/margin_top = 0
-theme_override_constants/margin_right = 20
-theme_override_constants/margin_bottom = 0
-theme_override_constants/separation = 20
-
-[node name="SelectorLabel" type="Label" parent="VBoxContainer/CardSelectorArea/CardSelectorHBox"]
+[node name="MetaLabel" type="Label" parent="VBoxContainer/TitleRow/TitleHBox"]
+unique_name_in_owner = true
 layout_mode = 2
-text = "选择卡牌："
+text = ""
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.769, 0.71, 0.992, 1)
+[node name="CloseButton" type="Button" parent="VBoxContainer/TitleRow/TitleHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "×"
+custom_minimum_size = Vector2(30, 30)
 theme_override_font_sizes/font_size = 16
-theme_override_colors/font_color = Color(0.7, 0.8, 0.95, 1)
-
-[node name="CardSelector" type="OptionButton" parent="VBoxContainer/CardSelectorArea/CardSelectorHBox"]
+theme_override_colors/font_color = Color(0.6, 0.65, 0.75, 1)
+theme_override_colors/font_hover_color = Color(0.94, 0.27, 0.27, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_7")
+theme_override_styles/hover = SubResource("StyleBoxFlat_8")
+[node name="ResourceBar" type="PanelContainer" parent="VBoxContainer"]
+custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
 size_flags_horizontal = 3
-custom_minimum_size = Vector2(280, 36)
-theme_override_font_sizes/font_size = 15
-
-[node name="CurrentCardInfo" type="Label" parent="VBoxContainer/CardSelectorArea/CardSelectorHBox"]
+theme_override_styles/panel = SubResource("StyleBoxFlat_3")
+[node name="ResourceHBox" type="HBoxContainer" parent="VBoxContainer/ResourceBar"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "当前卡牌信息"
-theme_override_font_sizes/font_size = 16
-theme_override_colors/font_color = Color(0.6, 0.75, 0.9, 1)
-
-[node name="MainContentSplit" type="HSplitContainer" parent="VBoxContainer"]
+size_flags_vertical = 3
+theme_override_constants/separation = 20
+offset_left = 20.0
+offset_right = -20.0
+[node name="PowerLabel" type="Label" parent="VBoxContainer/ResourceBar/ResourceHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "当前战力 —"
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 1)
+[node name="EnhanceLabel" type="Label" parent="VBoxContainer/ResourceBar/ResourceHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "强化 Lv.0"
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 1)
+[node name="ModsLabel" type="Label" parent="VBoxContainer/ResourceBar/ResourceHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "改造 0/9"
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 1)
+[node name="ResSpacer" type="Control" parent="VBoxContainer/ResourceBar/ResourceHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+[node name="StatusLineLabel" type="Label" parent="VBoxContainer/ResourceBar/ResourceHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = ""
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0.4, 0.45, 0.55, 0.7)
+[node name="ResultLabel" type="Label" parent="VBoxContainer"]
+unique_name_in_owner = true
+visible = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 22)
+text = ""
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.2, 0.9, 0.4, 1)
+autowrap_mode = 3
+[node name="BodyHBox" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 0
+[node name="LeftPanel" type="PanelContainer" parent="VBoxContainer/BodyHBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(220, 0)
 layout_mode = 2
 size_flags_vertical = 3
-split_offset = 480
-theme_override_constants/separation = 0
-
-[node name="LeftPanel" type="VBoxContainer" parent="VBoxContainer/MainContentSplit"]
+theme_override_styles/panel = SubResource("StyleBoxFlat_5")
+[node name="LeftVBox" type="VBoxContainer" parent="VBoxContainer/BodyHBox/LeftPanel"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 0
-
-[node name="LeftTitle" type="PanelContainer" parent="VBoxContainer/MainContentSplit/LeftPanel"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 48)
-theme_override_styles/panel = SubResource("StyleBoxFlat_title_bg")
-
-[node name="LeftTitleLabel" type="Label" parent="VBoxContainer/MainContentSplit/LeftPanel/LeftTitle"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/margin_left = 15
-theme_override_constants/margin_top = 0
-theme_override_constants/margin_right = 15
-theme_override_constants/margin_bottom = 0
-text = "📈 进化路径"
-theme_override_font_sizes/font_size = 17
-theme_override_colors/font_color = Color(1, 0.88, 0.4, 1)
-theme_override_colors/font_outline_color = Color(0.16, 0.11, 0, 0.7)
-theme_override_constants/outline_size = 2
-
-[node name="EvolutionScroll" type="ScrollContainer" parent="VBoxContainer/MainContentSplit/LeftPanel"]
-layout_mode = 2
 size_flags_vertical = 3
-theme_override_styles/panel = SubResource("StyleBoxFlat_scroll_bg")
-
-[node name="EvolutionTree" type="VBoxContainer" parent="VBoxContainer/MainContentSplit/LeftPanel/EvolutionScroll"]
+theme_override_constants/separation = 0
+[node name="ColHead" type="PanelContainer" parent="VBoxContainer/BodyHBox/LeftPanel/LeftVBox"]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_4")
+[node name="ColHeadHBox" type="HBoxContainer" parent="VBoxContainer/BodyHBox/LeftPanel/LeftVBox/ColHead"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+offset_left = 12.0
+offset_right = -12.0
+[node name="ColHeadPip" type="ColorRect" parent="VBoxContainer/BodyHBox/LeftPanel/LeftVBox/ColHead/ColHeadHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(3, 11)
+color = Color(0.769, 0.71, 0.992, 1)
+[node name="ColHeadTitle" type="Label" parent="VBoxContainer/BodyHBox/LeftPanel/LeftVBox/ColHead/ColHeadHBox"]
+layout_mode = 2
+text = "单位名册"
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.7, 0.75, 0.85, 1)
+[node name="ColHeadSpacer" type="Control" parent="VBoxContainer/BodyHBox/LeftPanel/LeftVBox/ColHead/ColHeadHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+[node name="ColHeadCount" type="Label" parent="VBoxContainer/BodyHBox/LeftPanel/LeftVBox/ColHead/ColHeadHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "0"
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.8)
+[node name="ColFilter" type="HBoxContainer" parent="VBoxContainer/BodyHBox/LeftPanel/LeftVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+offset_left = 10.0
+offset_right = -10.0
+offset_top = 6.0
+offset_bottom = -6.0
+[node name="ChipAll" type="Button" parent="VBoxContainer/BodyHBox/LeftPanel/LeftVBox/ColFilter"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "全部"
+custom_minimum_size = Vector2(0, 22)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.8)
+[node name="ChipEvo" type="Button" parent="VBoxContainer/BodyHBox/LeftPanel/LeftVBox/ColFilter"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "可进化"
+custom_minimum_size = Vector2(0, 22)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.8)
+[node name="ChipFinal" type="Button" parent="VBoxContainer/BodyHBox/LeftPanel/LeftVBox/ColFilter"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "终阶"
+custom_minimum_size = Vector2(0, 22)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.8)
+[node name="CardListScroll" type="ScrollContainer" parent="VBoxContainer/BodyHBox/LeftPanel/LeftVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+[node name="CardListContainer" type="VBoxContainer" parent="VBoxContainer/BodyHBox/LeftPanel/LeftVBox/CardListScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 2
+[node name="MiddlePanel" type="PanelContainer" parent="VBoxContainer/BodyHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_5")
+[node name="MiddleVBox" type="VBoxContainer" parent="VBoxContainer/BodyHBox/MiddlePanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 0
+[node name="PathHead" type="PanelContainer" parent="VBoxContainer/BodyHBox/MiddlePanel/MiddleVBox"]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_4")
+[node name="PathHeadHBox" type="HBoxContainer" parent="VBoxContainer/BodyHBox/MiddlePanel/MiddleVBox/PathHead"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+offset_left = 12.0
+offset_right = -12.0
+[node name="PathHeadPip" type="ColorRect" parent="VBoxContainer/BodyHBox/MiddlePanel/MiddleVBox/PathHead/PathHeadHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(3, 11)
+color = Color(0.769, 0.71, 0.992, 1)
+[node name="PathHeadTitle" type="Label" parent="VBoxContainer/BodyHBox/MiddlePanel/MiddleVBox/PathHead/PathHeadHBox"]
+layout_mode = 2
+text = "进化路径"
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.7, 0.75, 0.85, 1)
+[node name="PathHeadSpacer" type="Control" parent="VBoxContainer/BodyHBox/MiddlePanel/MiddleVBox/PathHead/PathHeadHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+[node name="PathHeadCount" type="Label" parent="VBoxContainer/BodyHBox/MiddlePanel/MiddleVBox/PathHead/PathHeadHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "0"
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.8)
+[node name="PathScroll" type="ScrollContainer" parent="VBoxContainer/BodyHBox/MiddlePanel/MiddleVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+[node name="EvolutionTree" type="VBoxContainer" parent="VBoxContainer/BodyHBox/MiddlePanel/MiddleVBox/PathScroll"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 10
-
-[node name="RightPanel" type="VBoxContainer" parent="VBoxContainer/MainContentSplit"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 0
-
-[node name="RightTitle" type="PanelContainer" parent="VBoxContainer/MainContentSplit/RightPanel"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 48)
-theme_override_styles/panel = SubResource("StyleBoxFlat_title_bg")
-
-[node name="RightTitleLabel" type="Label" parent="VBoxContainer/MainContentSplit/RightPanel/RightTitle"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/margin_left = 15
-theme_override_constants/margin_top = 0
-theme_override_constants/margin_right = 15
-theme_override_constants/margin_bottom = 0
-text = "📋 进化详情"
-theme_override_font_sizes/font_size = 17
-theme_override_colors/font_color = Color(1, 0.88, 0.4, 1)
-theme_override_colors/font_outline_color = Color(0.16, 0.11, 0, 0.7)
-theme_override_constants/outline_size = 2
-
-[node name="DetailScroll" type="ScrollContainer" parent="VBoxContainer/MainContentSplit/RightPanel"]
+[node name="DetailPanel" type="PanelContainer" parent="VBoxContainer/BodyHBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(300, 0)
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_styles/panel = SubResource("StyleBoxFlat_scroll_bg")
-
-[node name="DetailContent" type="VBoxContainer" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll"]
+theme_override_styles/panel = SubResource("StyleBoxFlat_6")
+[node name="DetailInner" type="MarginContainer" parent="VBoxContainer/BodyHBox/DetailPanel"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 12
-
-[node name="NoSelectionLabel" type="Label" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent"]
+size_flags_vertical = 3
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+[node name="DetailScroll" type="ScrollContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+[node name="DetailContent" type="VBoxContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+[node name="NoSelectionLabel" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 text = "← 请从左侧选择一个进化目标"
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 14
 theme_override_colors/font_color = Color(0.4, 0.5, 0.65, 1)
 horizontal_alignment = 1
 vertical_alignment = 1
-
-[node name="TargetNamePanel" type="PanelContainer" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 60)
+[node name="TargetNamePanel" type="PanelContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent"]
+unique_name_in_owner = true
 visible = false
-theme_override_styles/panel = SubResource("StyleBoxFlat_section_bg")
-
-[node name="TargetNameLabel" type="Label" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent/TargetNamePanel"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/margin_left = 15
-theme_override_constants/margin_top = 0
-theme_override_constants/margin_right = 15
-theme_override_constants/margin_bottom = 0
-text = "进化目标"
-theme_override_font_sizes/font_size = 24
-theme_override_colors/font_color = Color(0.95, 0.85, 0.35, 1)
-horizontal_alignment = 1
-
-[node name="InfoPanel" type="PanelContainer" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 0)
-visible = false
-theme_override_styles/panel = SubResource("StyleBoxFlat_section_bg")
-
-[node name="InfoContent" type="VBoxContainer" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent/InfoPanel"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 8
-theme_override_constants/margin_left = 15
-theme_override_constants/margin_top = 12
-theme_override_constants/margin_right = 15
-theme_override_constants/margin_bottom = 12
-
-[node name="InfoTitle" type="Label" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent/InfoPanel/InfoContent"]
-layout_mode = 2
-text = "基础信息"
-theme_override_font_sizes/font_size = 16
-theme_override_colors/font_color = Color(0.6, 0.75, 0.9, 1)
-
-[node name="InfoDetails" type="Label" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent/InfoPanel/InfoContent"]
-layout_mode = 2
-text = "详细信息"
-theme_override_font_sizes/font_size = 15
-autowrap_mode = 3
-
-[node name="RequirementsPanel" type="PanelContainer" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 0)
-visible = false
-theme_override_styles/panel = SubResource("StyleBoxFlat_section_bg")
-
-[node name="ReqContent" type="VBoxContainer" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent/RequirementsPanel"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 8
-theme_override_constants/margin_left = 15
-theme_override_constants/margin_top = 12
-theme_override_constants/margin_right = 15
-theme_override_constants/margin_bottom = 12
-
-[node name="ReqTitle" type="Label" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent/RequirementsPanel/ReqContent"]
-layout_mode = 2
-text = "进化条件"
-theme_override_font_sizes/font_size = 16
-theme_override_colors/font_color = Color(0.6, 0.75, 0.9, 1)
-
-[node name="ReqDetails" type="Label" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent/RequirementsPanel/ReqContent"]
-layout_mode = 2
-text = "条件详情"
-theme_override_font_sizes/font_size = 15
-autowrap_mode = 3
-
-[node name="StatsPanel" type="PanelContainer" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 0)
-visible = false
-theme_override_styles/panel = SubResource("StyleBoxFlat_section_bg")
-
-[node name="StatsContent" type="VBoxContainer" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent/StatsPanel"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 6
-theme_override_constants/margin_left = 15
-theme_override_constants/margin_top = 12
-theme_override_constants/margin_right = 15
-theme_override_constants/margin_bottom = 12
-
-[node name="StatsTitle" type="Label" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent/StatsPanel/StatsContent"]
-layout_mode = 2
-text = "进化后属性"
-theme_override_font_sizes/font_size = 16
-theme_override_colors/font_color = Color(0.6, 0.75, 0.9, 1)
-
-[node name="StatsGrid" type="GridContainer" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent/StatsPanel/StatsContent"]
-layout_mode = 2
-columns = 2
-theme_override_constants/h_separation = 15
-theme_override_constants/v_separation = 8
-
-[node name="StatHP" type="Label" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent/StatsPanel/StatsContent"]
-layout_mode = 2
-text = "生命值：0"
-theme_override_font_sizes/font_size = 15
-
-[node name="StatAttackLight" type="Label" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent/StatsPanel/StatsContent"]
-layout_mode = 2
-text = "对直射攻击：0"
-theme_override_font_sizes/font_size = 15
-
-[node name="StatAttackArmor" type="Label" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent/StatsPanel/StatsContent"]
-layout_mode = 2
-text = "对曲射攻击：0"
-theme_override_font_sizes/font_size = 15
-
-[node name="StatAttackAir" type="Label" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent/StatsPanel/StatsContent"]
-layout_mode = 2
-text = "对空攻击：0"
-theme_override_font_sizes/font_size = 15
-
-[node name="StatDefenseLight" type="Label" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent/StatsPanel/StatsContent"]
-layout_mode = 2
-text = "对直射防御：0"
-theme_override_font_sizes/font_size = 15
-
-[node name="StatDefenseArmor" type="Label" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent/StatsPanel/StatsContent"]
-layout_mode = 2
-text = "对曲射防御：0"
-theme_override_font_sizes/font_size = 15
-
-[node name="StatDefenseAir" type="Label" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent/StatsPanel/StatsContent"]
-layout_mode = 2
-text = "对空防御：0"
-theme_override_font_sizes/font_size = 15
-
-[node name="StatRange" type="Label" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent/StatsPanel/StatsContent"]
-layout_mode = 2
-text = "射程：0"
-theme_override_font_sizes/font_size = 15
-
-[node name="StatSpeed" type="Label" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent/StatsPanel/StatsContent"]
-layout_mode = 2
-text = "移速：0"
-theme_override_font_sizes/font_size = 15
-
-[node name="ResourcePanel" type="PanelContainer" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 0)
-visible = false
-theme_override_styles/panel = SubResource("StyleBoxFlat_section_bg")
-
-[node name="ResourceContent" type="VBoxContainer" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent/ResourcePanel"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 8
-theme_override_constants/margin_left = 15
-theme_override_constants/margin_top = 12
-theme_override_constants/margin_right = 15
-theme_override_constants/margin_bottom = 12
-
-[node name="ResourceTitle" type="Label" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent/ResourcePanel/ResourceContent"]
-layout_mode = 2
-text = "资源需求"
-theme_override_font_sizes/font_size = 16
-theme_override_colors/font_color = Color(0.6, 0.75, 0.9, 1)
-
-[node name="ResourceDetails" type="Label" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent/ResourcePanel/ResourceContent"]
-layout_mode = 2
-text = "资源信息"
-theme_override_font_sizes/font_size = 15
-autowrap_mode = 3
-
-[node name="ButtonArea" type="PanelContainer" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 70)
-theme_override_styles/panel = SubResource("StyleBoxFlat_section_bg")
-
-[node name="EvolveButton" type="Button" parent="VBoxContainer/MainContentSplit/RightPanel/DetailScroll/DetailContent/ButtonArea"]
 layout_mode = 2
 custom_minimum_size = Vector2(0, 50)
+theme_override_styles/panel = SubResource("StyleBoxFlat_6")
+[node name="TargetNameLabel" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/TargetNamePanel"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "进化目标"
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.769, 0.71, 0.992, 1)
+horizontal_alignment = 1
+[node name="InfoPanel" type="PanelContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_6")
+[node name="InfoContent" type="VBoxContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/InfoPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 8
+[node name="InfoTitle" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/InfoPanel/InfoContent"]
+layout_mode = 2
+text = "基础信息"
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.55, 0.65, 0.8, 0.85)
+[node name="InfoDetails" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/InfoPanel/InfoContent"]
+unique_name_in_owner = true
+layout_mode = 2
+text = ""
+theme_override_font_sizes/font_size = 11
+autowrap_mode = 3
+[node name="RequirementsPanel" type="PanelContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_6")
+[node name="ReqContent" type="VBoxContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/RequirementsPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 8
+[node name="ReqTitle" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/RequirementsPanel/ReqContent"]
+layout_mode = 2
+text = "进化条件"
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.55, 0.65, 0.8, 0.85)
+[node name="ReqDetails" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/RequirementsPanel/ReqContent"]
+unique_name_in_owner = true
+layout_mode = 2
+text = ""
+theme_override_font_sizes/font_size = 11
+autowrap_mode = 3
+[node name="StatsPanel" type="PanelContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_6")
+[node name="StatsContent" type="VBoxContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/StatsPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 3
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 8
+[node name="StatsTitle" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/StatsPanel/StatsContent"]
+layout_mode = 2
+text = "进化属性对比"
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.55, 0.65, 0.8, 0.85)
+[node name="StatHP" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/StatsPanel/StatsContent"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "生命值：0"
+theme_override_font_sizes/font_size = 10
+[node name="StatAttackLight" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/StatsPanel/StatsContent"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "轻装攻击：0"
+theme_override_font_sizes/font_size = 10
+[node name="StatAttackArmor" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/StatsPanel/StatsContent"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "装甲攻击：0"
+theme_override_font_sizes/font_size = 10
+[node name="StatAttackAir" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/StatsPanel/StatsContent"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "对空攻击：0"
+theme_override_font_sizes/font_size = 10
+[node name="StatDefenseLight" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/StatsPanel/StatsContent"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "轻装防御：0"
+theme_override_font_sizes/font_size = 10
+[node name="StatDefenseArmor" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/StatsPanel/StatsContent"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "装甲防御：0"
+theme_override_font_sizes/font_size = 10
+[node name="StatDefenseAir" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/StatsPanel/StatsContent"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "对空防御：0"
+theme_override_font_sizes/font_size = 10
+[node name="StatRange" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/StatsPanel/StatsContent"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "射程：0"
+theme_override_font_sizes/font_size = 10
+[node name="StatSpeed" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/StatsPanel/StatsContent"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "移速：0"
+theme_override_font_sizes/font_size = 10
+[node name="ResourcePanel" type="PanelContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_6")
+[node name="ResourceContent" type="VBoxContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/ResourcePanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 8
+[node name="ResourceTitle" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/ResourcePanel/ResourceContent"]
+layout_mode = 2
+text = "资源 / 图纸"
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.55, 0.65, 0.8, 0.85)
+[node name="ResourceDetails" type="Label" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/ResourcePanel/ResourceContent"]
+unique_name_in_owner = true
+layout_mode = 2
+text = ""
+theme_override_font_sizes/font_size = 11
+autowrap_mode = 3
+[node name="ButtonArea" type="PanelContainer" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 50)
+theme_override_styles/panel = SubResource("StyleBoxFlat_6")
+[node name="EvolveButton" type="Button" parent="VBoxContainer/BodyHBox/DetailPanel/DetailInner/DetailScroll/DetailContent/ButtonArea"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 40)
 size_flags_horizontal = 3
 text = "执行进化"
-theme_override_colors/font_color = Color(0.95, 0.85, 0.35, 1)
-theme_override_colors/font_hover_color = Color(1, 0.92, 0.45, 1)
-theme_override_font_sizes/font_size = 20
-theme_override_styles/normal = SubResource("StyleBoxFlat_evolve_btn")
-theme_override_styles/hover = SubResource("StyleBoxFlat_evolve_btn_hover")
-disabled = true
-
-[node name="ResultLabel" type="Label" parent="VBoxContainer"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 28)
-text = ""
+theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 14
-autowrap_mode = 1
+theme_override_styles/normal = SubResource("StyleBoxFlat_9")
+theme_override_styles/hover = SubResource("StyleBoxFlat_10")
+disabled = true

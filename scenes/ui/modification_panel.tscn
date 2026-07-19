@@ -1,53 +1,37 @@
-[gd_scene load_steps=14 format=3 uid="uid://xfff2bifmi26"]
+[gd_scene load_steps=15 format=3 uid="uid://xfff2bifmi26"]
 
 [ext_resource type="Script" uid="uid://gbaqq0364jg5b" path="res://scenes/ui/modification_panel.gd" id="1_script"]
 [ext_resource type="Texture2D" path="res://assets/ui/icons/icon_modification.svg" id="2_title_icon"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg"]
-bg_color = Color(0.04, 0.06, 0.12, 0.97)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.024, 0.714, 0.831, 0.6)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-shadow_color = Color(0.024, 0.714, 0.831, 0.25)
-shadow_size = 10
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_title_bg"]
-bg_color = Color(0.06, 0.10, 0.18, 0.9)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_scroll_bg"]
-bg_color = Color(0.03, 0.05, 0.10, 0.6)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_close_btn"]
-bg_color = Color(0.024, 0.714, 0.831, 0.12)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1"]
+bg_color = Color(0.04, 0.06, 0.12, 0.98)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.024, 0.714, 0.831, 0.5)
-corner_radius_top_left = 5
-corner_radius_top_right = 5
-corner_radius_bottom_right = 5
-corner_radius_bottom_left = 5
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_close_btn_hover"]
-bg_color = Color(0.024, 0.714, 0.831, 0.25)
-border_width_left = 2
+border_color = Color(0.024, 0.714, 0.831, 0.45)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+shadow_color = Color(0.024, 0.714, 0.831, 0.2)
+shadow_size = 14
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2"]
+bg_color = Color(0.075, 0.102, 0.165, 0.4)
 border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.024, 0.714, 0.831, 0.8)
-corner_radius_top_left = 5
-corner_radius_top_right = 5
-corner_radius_bottom_right = 5
-corner_radius_bottom_left = 5
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_detail_panel"]
+border_width_bottom = 1
+border_color = Color(0.133, 0.827, 0.933, 0.85)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3"]
+bg_color = Color(0.075, 0.102, 0.165, 0.6)
+border_width_bottom = 1
+border_color = Color(0.25, 0.35, 0.42, 0.18)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_4"]
+bg_color = Color(0.075, 0.102, 0.165, 0.3)
+border_width_bottom = 1
+border_color = Color(0.25, 0.35, 0.42, 0.18)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5"]
+bg_color = Color(0.03, 0.05, 0.10, 0.5)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_6"]
 bg_color = Color(0.06, 0.10, 0.18, 0.8)
 border_width_left = 1
 border_width_top = 1
@@ -58,23 +42,30 @@ corner_radius_top_left = 6
 corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_install_btn"]
-bg_color = Color(0.024, 0.714, 0.831, 0.15)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.024, 0.714, 0.831, 0.7)
-corner_radius_top_left = 5
-corner_radius_top_right = 5
-corner_radius_bottom_right = 5
-corner_radius_bottom_left = 5
-shadow_color = Color(0.024, 0.714, 0.831, 0.3)
-shadow_size = 5
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_install_btn_hover"]
-bg_color = Color(0.024, 0.714, 0.831, 0.25)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_7"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.25, 0.35, 0.42, 0.6)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_8"]
+bg_color = Color(0.937, 0.267, 0.267, 0.12)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.937, 0.267, 0.267, 0.8)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_9"]
+bg_color = Color(0.024, 0.714, 0.831, 0.18)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
@@ -84,10 +75,30 @@ corner_radius_top_left = 5
 corner_radius_top_right = 5
 corner_radius_bottom_right = 5
 corner_radius_bottom_left = 5
-shadow_color = Color(0.024, 0.714, 0.831, 0.4)
-shadow_size = 8
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mod_detail"]
+shadow_color = Color(0.024, 0.714, 0.831, 0.35)
+shadow_size = 6
+content_margin_left = 16.0
+content_margin_top = 6.0
+content_margin_right = 16.0
+content_margin_bottom = 6.0
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_10"]
+bg_color = Color(0.024, 0.714, 0.831, 0.32)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.024, 0.714, 0.831, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+shadow_color = Color(0.024, 0.714, 0.831, 0.5)
+shadow_size = 9
+content_margin_left = 16.0
+content_margin_top = 6.0
+content_margin_right = 16.0
+content_margin_bottom = 6.0
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_11"]
 bg_color = Color(0.08, 0.05, 0.15, 0.5)
 border_width_left = 1
 border_width_top = 1
@@ -102,271 +113,473 @@ content_margin_left = 10
 content_margin_top = 8
 content_margin_right = 10
 content_margin_bottom = 8
-
-[node name="ModificationPanel" type="PanelContainer"]
-custom_minimum_size = Vector2(960, 600)
-layout_mode = 2
-script = ExtResource("1_script")
-theme_override_styles/panel = SubResource("StyleBoxFlat_bg")
-
-[node name="VBoxContainer" type="VBoxContainer" parent="."]
-layout_mode = 1
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_12"]
+bg_color = Color(0.024, 0.714, 0.831, 0.06)
+border_color = Color(0.024, 0.714, 0.831, 0.15)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+content_margin_left = 10
+content_margin_top = 6
+content_margin_right = 10
+content_margin_bottom = 6
+[node name="ModificationPanel" type="Control"]
+custom_minimum_size = Vector2(1180, 640)
+layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+script = ExtResource("1_script")
+[node name="BgPanel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_1")
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
+grow_horizontal = 2
+grow_vertical = 2
 theme_override_constants/separation = 0
-
 [node name="TitleRow" type="PanelContainer" parent="VBoxContainer"]
+custom_minimum_size = Vector2(0, 52)
 layout_mode = 2
-custom_minimum_size = Vector2(0, 56)
-theme_override_styles/panel = SubResource("StyleBoxFlat_title_bg")
-
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_2")
 [node name="TitleHBox" type="HBoxContainer" parent="VBoxContainer/TitleRow"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/margin_left = 20
-theme_override_constants/margin_top = 0
-theme_override_constants/margin_right = 20
-theme_override_constants/margin_bottom = 0
-theme_override_constants/separation = 20
-
-[node name="TitleIcon" type="TextureRect" parent="VBoxContainer/TitleRow/TitleHBox"]
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+offset_left = 20.0
+offset_right = -20.0
+[node name="TitleMark" type="Label" parent="VBoxContainer/TitleRow/TitleHBox"]
 layout_mode = 2
-custom_minimum_size = Vector2(28, 28)
-expand_mode = 1
-stretch_mode = 5
-texture = ExtResource("2_title_icon")
-
+text = "◇"
+custom_minimum_size = Vector2(24, 0)
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.133, 0.827, 0.933, 1)
 [node name="TitleLabel" type="Label" parent="VBoxContainer/TitleRow/TitleHBox"]
 layout_mode = 2
+text = "战术改造站"
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
+[node name="TitleSub" type="Label" parent="VBoxContainer/TitleRow/TitleHBox"]
+layout_mode = 2
+text = "TACTICAL MODIFICATION BAY"
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 0.7)
+[node name="Spacer" type="Control" parent="VBoxContainer/TitleRow/TitleHBox"]
+layout_mode = 2
 size_flags_horizontal = 3
-text = "改装面板"
-theme_override_colors/font_color = Color(0.75, 0.6, 1, 1)
-theme_override_font_sizes/font_size = 22
-
+[node name="MetaLabel" type="Label" parent="VBoxContainer/TitleRow/TitleHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = ""
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.133, 0.827, 0.933, 1)
 [node name="CloseButton" type="Button" parent="VBoxContainer/TitleRow/TitleHBox"]
+unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(80, 36)
-text = "关闭"
-theme_override_font_sizes/font_size = 15
-theme_override_colors/font_color = Color(1, 1, 1, 0.85)
-theme_override_colors/font_hover_color = Color(0.7, 0.5, 1, 1)
-theme_override_styles/normal = SubResource("StyleBoxFlat_close_btn")
-theme_override_styles/hover = SubResource("StyleBoxFlat_close_btn_hover")
-
+text = "×"
+custom_minimum_size = Vector2(30, 30)
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.6, 0.65, 0.75, 1)
+theme_override_colors/font_hover_color = Color(0.94, 0.27, 0.27, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_7")
+theme_override_styles/hover = SubResource("StyleBoxFlat_8")
 [node name="ResourceBar" type="PanelContainer" parent="VBoxContainer"]
+custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
-custom_minimum_size = Vector2(0, 32)
-theme_override_styles/panel = SubResource("StyleBoxFlat_title_bg")
-
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_3")
 [node name="ResourceHBox" type="HBoxContainer" parent="VBoxContainer/ResourceBar"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/margin_left = 20
-theme_override_constants/margin_top = 0
-theme_override_constants/margin_right = 20
-theme_override_constants/margin_bottom = 0
-theme_override_constants/separation = 40
-
+size_flags_vertical = 3
+theme_override_constants/separation = 20
+offset_left = 20.0
+offset_right = -20.0
 [node name="ResearchLabel" type="Label" parent="VBoxContainer/ResourceBar/ResourceHBox"]
+unique_name_in_owner = true
 layout_mode = 2
-text = "纳米：0 | 图纸：0"
-theme_override_colors/font_color = Color(0.78, 0.62, 1, 0.95)
-theme_override_font_sizes/font_size = 15
-
-[node name="ResultLabel" type="Label" parent="VBoxContainer"]
+text = "纳米：0"
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 1)
+[node name="AlloyLabel" type="Label" parent="VBoxContainer/ResourceBar/ResourceHBox"]
+unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(0, 28)
+text = "合金：0"
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 1)
+[node name="ResSpacer" type="Control" parent="VBoxContainer/ResourceBar/ResourceHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+[node name="StatusLineLabel" type="Label" parent="VBoxContainer/ResourceBar/ResourceHBox"]
+unique_name_in_owner = true
+layout_mode = 2
 text = ""
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0.4, 0.45, 0.55, 0.7)
+[node name="ResultLabel" type="Label" parent="VBoxContainer"]
+unique_name_in_owner = true
+visible = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 22)
+text = ""
+theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(0.2, 0.9, 0.4, 1)
 autowrap_mode = 3
-
 [node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer"]
 layout_mode = 2
+size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 0
-
-[node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer/HBoxContainer"]
+[node name="LeftPanel" type="PanelContainer" parent="VBoxContainer/HBoxContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(220, 0)
 layout_mode = 2
-custom_minimum_size = Vector2(240, 0)
-size_flags_horizontal = 1
-theme_override_styles/panel = SubResource("StyleBoxFlat_scroll_bg")
-
-[node name="CardListContainer" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/ScrollContainer"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 4
-
-[node name="ModScrollContainer" type="ScrollContainer" parent="VBoxContainer/HBoxContainer"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_stretch_ratio = 1.0
-theme_override_styles/panel = SubResource("StyleBoxFlat_scroll_bg")
-
-[node name="ModListContainer" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/ModScrollContainer"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 4
-
-[node name="DetailPanel" type="PanelContainer" parent="VBoxContainer/HBoxContainer"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_stretch_ratio = 1.3
-theme_override_styles/panel = SubResource("StyleBoxFlat_detail_panel")
-
-[node name="CardView" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/DetailPanel"]
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_5")
+[node name="LeftVBox" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/LeftPanel"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_constants/separation = 8
-
-[node name="InfoLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/CardView"]
+theme_override_constants/separation = 0
+[node name="ColHead" type="PanelContainer" parent="VBoxContainer/HBoxContainer/LeftPanel/LeftVBox"]
+custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
 size_flags_horizontal = 3
-text = "← 选择卡牌和改造查看详情"
-theme_override_colors/font_color = Color(0.75, 0.6, 1, 1)
-theme_override_font_sizes/font_size = 14
-autowrap_mode = 3
-
-[node name="InstalledTitle" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/CardView"]
-layout_mode = 2
-text = "已安装改造"
-theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.85)
-theme_override_font_sizes/font_size = 11
-
-[node name="InstalledList" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/DetailPanel/CardView"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 4
-
-[node name="ModDetailsPanel" type="PanelContainer" parent="VBoxContainer/HBoxContainer/DetailPanel"]
-visible = false
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_styles/panel = SubResource("StyleBoxFlat_mod_detail")
-
-[node name="DetailVBox" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel"]
+theme_override_styles/panel = SubResource("StyleBoxFlat_4")
+[node name="ColHeadHBox" type="HBoxContainer" parent="VBoxContainer/HBoxContainer/LeftPanel/LeftVBox/ColHead"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 6
-
-[node name="NameLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel/DetailVBox"]
+offset_left = 12.0
+offset_right = -12.0
+[node name="ColHeadPip" type="ColorRect" parent="VBoxContainer/HBoxContainer/LeftPanel/LeftVBox/ColHead/ColHeadHBox"]
 layout_mode = 2
-text = ""
-theme_override_colors/font_color = Color(0.75, 0.6, 1, 1)
-theme_override_font_sizes/font_size = 16
-
-[node name="PrototypeLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel/DetailVBox"]
+custom_minimum_size = Vector2(3, 11)
+color = Color(0.133, 0.827, 0.933, 1)
+[node name="ColHeadTitle" type="Label" parent="VBoxContainer/HBoxContainer/LeftPanel/LeftVBox/ColHead/ColHeadHBox"]
 layout_mode = 2
-text = ""
-theme_override_colors/font_color = Color(0.65, 0.75, 0.9, 1)
-theme_override_font_sizes/font_size = 12
-
-[node name="DescLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel/DetailVBox"]
+text = "单位名册"
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.7, 0.75, 0.85, 1)
+[node name="ColHeadSpacer" type="Control" parent="VBoxContainer/HBoxContainer/LeftPanel/LeftVBox/ColHead/ColHeadHBox"]
 layout_mode = 2
-text = ""
+size_flags_horizontal = 3
+[node name="ColHeadCount" type="Label" parent="VBoxContainer/HBoxContainer/LeftPanel/LeftVBox/ColHead/ColHeadHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "0"
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.8)
+[node name="ColFilter" type="HBoxContainer" parent="VBoxContainer/HBoxContainer/LeftPanel/LeftVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+offset_left = 10.0
+offset_right = -10.0
+offset_top = 6.0
+offset_bottom = -6.0
+[node name="ChipAll" type="Button" parent="VBoxContainer/HBoxContainer/LeftPanel/LeftVBox/ColFilter"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "全部"
+custom_minimum_size = Vector2(0, 22)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.8)
+[node name="ChipMod" type="Button" parent="VBoxContainer/HBoxContainer/LeftPanel/LeftVBox/ColFilter"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "可改造"
+custom_minimum_size = Vector2(0, 22)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.8)
+[node name="ChipMax" type="Button" parent="VBoxContainer/HBoxContainer/LeftPanel/LeftVBox/ColFilter"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "满槽"
+custom_minimum_size = Vector2(0, 22)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.8)
+[node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer/HBoxContainer/LeftPanel/LeftVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+[node name="CardListContainer" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/LeftPanel/LeftVBox/ScrollContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 2
+[node name="MiddlePanel" type="PanelContainer" parent="VBoxContainer/HBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_5")
+[node name="MiddleVBox" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/MiddlePanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 0
+[node name="ModListHead" type="PanelContainer" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox"]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_4")
+[node name="ModListHeadHBox" type="HBoxContainer" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ModListHead"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+offset_left = 12.0
+offset_right = -12.0
+[node name="ModListHeadPip" type="ColorRect" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ModListHead/ModListHeadHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(3, 11)
+color = Color(0.133, 0.827, 0.933, 1)
+[node name="ModListHeadTitle" type="Label" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ModListHead/ModListHeadHBox"]
+layout_mode = 2
+text = "改造模块库"
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.7, 0.75, 0.85, 1)
+[node name="ModListHeadSpacer" type="Control" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ModListHead/ModListHeadHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+[node name="ModListHeadCount" type="Label" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ModListHead/ModListHeadHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "0"
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.8)
+[node name="SlotVisualSection" type="PanelContainer" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 64)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_4")
+[node name="SlotVisualVBox" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/SlotVisualSection"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+offset_left = 12.0
+offset_right = -12.0
+offset_top = 6.0
+offset_bottom = -6.0
+[node name="SlotVisualTitle" type="Label" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/SlotVisualSection/SlotVisualVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "已装改造 0/9"
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.55, 0.65, 0.8, 0.85)
+[node name="SlotVisualHost" type="HBoxContainer" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/SlotVisualSection/SlotVisualVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 3
+[node name="ModScrollContainer" type="ScrollContainer" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.0
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 1
+[node name="ModListContainer" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ModScrollContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 3
+[node name="DetailPanel" type="PanelContainer" parent="VBoxContainer/HBoxContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_6")
+[node name="DetailInner" type="MarginContainer" parent="VBoxContainer/HBoxContainer/DetailPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+[node name="CardView" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailInner"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+[node name="InfoLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailInner/CardView"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "← 选择卡牌和改造查看详情"
+theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.85)
+theme_override_font_sizes/font_size = 11
 autowrap_mode = 3
-theme_override_colors/font_color = Color(0.85, 0.88, 0.95, 1)
-theme_override_font_sizes/font_size = 12
-
-[node name="EffectsLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel/DetailVBox"]
+[node name="InstalledTitle" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailInner/CardView"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "已安装改造"
+theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.85)
+theme_override_font_sizes/font_size = 10
+[node name="InstalledList" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailInner/CardView"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+[node name="ModDetailsPanel" type="PanelContainer" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailInner"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_11")
+[node name="DetailVBox" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailInner/ModDetailsPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+[node name="NameLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailInner/ModDetailsPanel/DetailVBox"]
+unique_name_in_owner = true
 layout_mode = 2
 text = ""
-autowrap_mode = 3
-theme_override_colors/font_color = Color(0, 0.94, 1, 0.95)
-theme_override_font_sizes/font_size = 12
-
-[node name="MetaInfoLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel/DetailVBox"]
+theme_override_colors/font_color = Color(0.133, 0.827, 0.933, 1)
+theme_override_font_sizes/font_size = 15
+[node name="PrototypeLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailInner/ModDetailsPanel/DetailVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = ""
+theme_override_colors/font_color = Color(0.55, 0.65, 0.8, 0.9)
+theme_override_font_sizes/font_size = 10
+[node name="MetaInfoLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailInner/ModDetailsPanel/DetailVBox"]
+unique_name_in_owner = true
 layout_mode = 2
 text = ""
 autowrap_mode = 3
 theme_override_colors/font_color = Color(0.55, 0.65, 0.8, 0.85)
 theme_override_font_sizes/font_size = 10
-
-[node name="StatDeltaLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel/DetailVBox"]
+[node name="DescLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailInner/ModDetailsPanel/DetailVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = ""
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.85, 0.88, 0.95, 1)
+theme_override_font_sizes/font_size = 11
+[node name="EffectsLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailInner/ModDetailsPanel/DetailVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = ""
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.024, 0.714, 0.831, 0.95)
+theme_override_font_sizes/font_size = 11
+[node name="StatDeltaLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailInner/ModDetailsPanel/DetailVBox"]
+unique_name_in_owner = true
 layout_mode = 2
 text = ""
 autowrap_mode = 3
 theme_override_colors/font_color = Color(1, 0.84, 0, 0.9)
-theme_override_font_sizes/font_size = 11
-
-[node name="TierLadderContainer" type="PanelContainer" parent="VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel/DetailVBox"]
+theme_override_font_sizes/font_size = 10
+[node name="TierLadderContainer" type="PanelContainer" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailInner/ModDetailsPanel/DetailVBox"]
+unique_name_in_owner = true
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
-
-[node name="TierMargin" type="MarginContainer" parent="VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel/DetailVBox/TierLadderContainer"]
+theme_override_styles/panel = SubResource("StyleBoxFlat_12")
+[node name="TierMargin" type="MarginContainer" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailInner/ModDetailsPanel/DetailVBox/TierLadderContainer"]
 layout_mode = 2
 theme_override_constants/margin_left = 10
 theme_override_constants/margin_top = 10
 theme_override_constants/margin_right = 10
 theme_override_constants/margin_bottom = 10
-
-[node name="TierInner" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel/DetailVBox/TierLadderContainer/TierMargin"]
+[node name="TierInner" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailInner/ModDetailsPanel/DetailVBox/TierLadderContainer/TierMargin"]
 layout_mode = 2
 theme_override_constants/separation = 6
-
-[node name="TierTitleRow" type="HBoxContainer" parent="VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel/DetailVBox/TierLadderContainer/TierMargin/TierInner"]
+[node name="TierTitleRow" type="HBoxContainer" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailInner/ModDetailsPanel/DetailVBox/TierLadderContainer/TierMargin/TierInner"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 8
-
-[node name="TierTitleLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel/DetailVBox/TierLadderContainer/TierMargin/TierInner/TierTitleRow"]
+[node name="TierTitleLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailInner/ModDetailsPanel/DetailVBox/TierLadderContainer/TierMargin/TierInner/TierTitleRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "战力档位门槛"
 theme_override_colors/font_color = Color(0.55, 0.65, 0.8, 0.85)
 theme_override_font_sizes/font_size = 10
-
-[node name="TierResultLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel/DetailVBox/TierLadderContainer/TierMargin/TierInner/TierTitleRow"]
+[node name="TierResultLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailInner/ModDetailsPanel/DetailVBox/TierLadderContainer/TierMargin/TierInner/TierTitleRow"]
+unique_name_in_owner = true
 layout_mode = 2
 text = ""
 theme_override_colors/font_color = Color(0.2, 0.9, 0.4, 1)
 theme_override_font_sizes/font_size = 11
 horizontal_alignment = 2
-
-[node name="TierLadderHost" type="Control" parent="VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel/DetailVBox/TierLadderContainer/TierMargin/TierInner"]
+[node name="TierLadderHost" type="Control" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailInner/ModDetailsPanel/DetailVBox/TierLadderContainer/TierMargin/TierInner"]
+unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 56)
 layout_mode = 2
 size_flags_horizontal = 3
-
-[node name="UnlockLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel/DetailVBox"]
+[node name="UnlockLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailInner/ModDetailsPanel/DetailVBox"]
+unique_name_in_owner = true
 layout_mode = 2
 text = ""
 autowrap_mode = 3
 theme_override_colors/font_color = Color(0.7, 0.7, 0.8, 0.8)
 theme_override_font_sizes/font_size = 10
-
-[node name="CostHBox" type="HBoxContainer" parent="VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel/DetailVBox"]
+[node name="CostHBox" type="HBoxContainer" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailInner/ModDetailsPanel/DetailVBox"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 16
-
-[node name="NanoCostLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel/DetailVBox/CostHBox"]
+[node name="NanoCostLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailInner/ModDetailsPanel/DetailVBox/CostHBox"]
+unique_name_in_owner = true
 layout_mode = 2
 text = ""
-theme_override_font_sizes/font_size = 12
-
-[node name="BlueprintCostLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel/DetailVBox/CostHBox"]
+theme_override_font_sizes/font_size = 11
+[node name="BlueprintCostLabel" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailInner/ModDetailsPanel/DetailVBox/CostHBox"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = ""
 autowrap_mode = 3
-theme_override_font_sizes/font_size = 12
-
-[node name="InstallButton" type="Button" parent="VBoxContainer/HBoxContainer/DetailPanel/ModDetailsPanel/DetailVBox"]
+theme_override_font_sizes/font_size = 11
+[node name="InstallButton" type="Button" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailInner/ModDetailsPanel/DetailVBox"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-custom_minimum_size = Vector2(0, 36)
+custom_minimum_size = Vector2(0, 32)
 text = "安装"
-theme_override_colors/font_color = Color(0.75, 0.6, 1, 1)
-theme_override_colors/font_hover_color = Color(0.85, 0.7, 1, 1)
-theme_override_font_sizes/font_size = 14
-theme_override_styles/normal = SubResource("StyleBoxFlat_install_btn")
-theme_override_styles/hover = SubResource("StyleBoxFlat_install_btn_hover")
+theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 13
+theme_override_styles/normal = SubResource("StyleBoxFlat_9")
+theme_override_styles/hover = SubResource("StyleBoxFlat_10")

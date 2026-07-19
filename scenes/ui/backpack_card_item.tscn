@@ -3,28 +3,28 @@
 [ext_resource type="Script" path="res://scenes/ui/backpack_card_item.gd" id="1_script"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card_normal"]
-bg_color = Color(0.06, 0.10, 0.17, 0.95)
+bg_color = Color(0.075, 0.102, 0.165, 0.95)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.25, 0.35, 0.5, 0.6)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
+border_color = Color(0.47, 0.55, 0.71, 0.14)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_empty"]
-bg_color = Color(0.04, 0.07, 0.12, 0.5)
+bg_color = Color(0.039, 0.059, 0.110, 0.5)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.2, 0.25, 0.35, 0.3)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
+border_color = Color(0.47, 0.55, 0.71, 0.08)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
 
 [node name="BackpackCardItem" type="PanelContainer"]
 layout_mode = 2
@@ -67,8 +67,8 @@ layout_mode = 2
 custom_minimum_size = Vector2(90, 90)
 size_flags_horizontal = 4
 size_flags_vertical = 4
-expand_mode = 1
-stretch_mode = 5
+expand_mode = 2
+stretch_mode = 0
 
 [node name="NameLabel" type="Label" parent="VBox/ContentMargin/InnerVBox/IconRow"]
 layout_mode = 2

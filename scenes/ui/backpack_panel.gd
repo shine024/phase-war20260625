@@ -66,12 +66,42 @@ const BACKPACK_GRID_COLUMNS: int = 7
 const _TILE_GRID_COLUMNS: int = 6
 const _TILE_SLOT_MIN: Vector2 = Vector2(64, 96)
 
+## v9.2: 工具栏本地过滤状态（chip 点击时写入，refresh_*_tab 渲染时读取）
+## 默认值均为 "全部"，缺省行为与改动前 100% 一致（向后兼容）
+var _combat_kind_filter: int = -1   ## -1 = 全部；0-4 = CombatKind
+var _mod_bucket_filter: String = ""  ## "" = 全部；inf_/arm_/.../enh_ 前缀桶
+var _rune_cat_filter: String = ""    ## "" = 全部；attack/defense/energy/mobility/special
+var _inst_source_filter: String = "" ## "" = 全部；generic/faction/drop/star7
+var _search_query: String = ""       ## 搜索关键字（卡名/ID 包含匹配，空=不过滤）
+
+## v9.2: 相位仪静态总数（用于"解锁 N/68"分母）
+const _PHASE_INSTRUMENT_TOTAL := 68
+
+## v9.2: 改造前缀桶分类（mod_id 前缀 → 桶 key）
+const _MOD_BUCKETS := {
+	"inf_": "步兵", "arm_": "装甲", "art_": "炮兵", "aa_": "防空",
+	"air_": "空军", "rec_": "侦察", "eng_": "工兵", "for_": "堡垒",
+	"gen_": "通用", "enh_": "强化",
+}
+
 # MVP 引用
 var _presenter: BackpackPresenter = null
 var _data: BackpackData = null
 
 ## 标签页容器
 @onready var _tab_container: TabContainer = $VBoxOuter/TabContainer
+
+## v9.2: 顶部框架节点引用（顶线条 + 标题菱形 + 标题文字 + 元信息行）
+@onready var _top_accent_strip: ColorRect = $VBoxOuter/TopAccentStrip
+@onready var _title_mark: PanelContainer = $VBoxOuter/TitleRow/TitleMark
+@onready var _title_label: Label = $VBoxOuter/TitleRow/TitleLabel
+@onready var _meta_info_label: Label = $VBoxOuter/TitleRow/MetaInfoLabel
+
+## v9.2: 工具栏节点引用（搜索 + chip 容器 + 容量 + 排序）
+@onready var _search_edit: LineEdit = $VBoxOuter/Toolbar/ToolbarLeft/SearchEdit
+@onready var _filter_chips_box: HBoxContainer = $VBoxOuter/Toolbar/ToolbarLeft/FilterChipsBox
+@onready var _capacity_label: Label = $VBoxOuter/Toolbar/ToolbarRight/CapacityLabel
+@onready var _sort_option: OptionButton = $VBoxOuter/Toolbar/ToolbarRight/SortOption
 
 ## 内嵌滚动容器（用于程序化滚动定位）
 @onready var _scroll: ScrollContainer = $VBoxOuter/TabContainer/CombatCardsTab/ScrollContainer
@@ -82,6 +112,8 @@ var _resources_grid: GridContainer = null
 var _intel_grid: GridContainer = null
 var _stat_boosts_grid: GridContainer = null
 var _runes_grid: GridContainer = null  ## v6.2: 符文格子
+## v9.2: 改造左侧筛选侧栏容器（兵种/装配状态两层筛选）
+var _mod_sidebar: VBoxContainer = null
 ## v8.0: 相位仪标签页列表容器（垂直排列，相位仪卡片按星级降序）
 @onready var _phase_inst_list: VBoxContainer = $VBoxOuter/TabContainer/PhaseInstTab/ScrollContainer/PhaseInstList
 ## v7.x: 符文右侧信息栏引用（从 rune_panel 合并而来）
@@ -128,7 +160,8 @@ func _ready() -> void:
 
 	# 初始化各标签页Grid引用
 	_combat_cards_grid = get_node_or_null("VBoxOuter/TabContainer/CombatCardsTab/ScrollContainer/CardGrid") as GridContainer
-	_intel_grid = get_node_or_null("VBoxOuter/TabContainer/IntelTab/IntelScroll/IntelGrid") as GridContainer
+	_intel_grid = get_node_or_null("VBoxOuter/TabContainer/IntelTab/IntelHSplit/IntelScroll/IntelGrid") as GridContainer
+	_mod_sidebar = get_node_or_null("VBoxOuter/TabContainer/IntelTab/IntelHSplit/ModSidebarScroll/ModSidebar") as VBoxContainer
 	_runes_grid = get_node_or_null("VBoxOuter/TabContainer/RunesTab/RunesHSplit/RunesScroll/RunesGrid") as GridContainer
 	# v7.x: 符文右侧信息栏（加成 + 符文之语），从 rune_panel 迁移合并而来
 	_rune_bonus_label = get_node_or_null("VBoxOuter/TabContainer/RunesTab/RunesHSplit/RuneInfoPanel/BonusLabel") as RichTextLabel
@@ -198,27 +231,497 @@ func _ready() -> void:
 		if not SignalBus.rune_acquired.is_connected(_on_rune_acquired):
 			SignalBus.rune_acquired.connect(_on_rune_acquired)
 
-	# v9.0: 应用 Rajdhani 字体到标题/Tab 标题（与养成面板一致的设计语言）
-	_apply_title_fonts()
+	# v9.2: 顶部框架 + 工具栏初始化（对齐 HTML 设计稿）
+	_setup_title_bar_fonts()
+	_setup_toolbar_signals()
+	_refresh_title_bar(TabIndex.COMBAT_CARDS)
+	_rebuild_toolbar_chips(TabIndex.COMBAT_CARDS)
 
 
-## v9.0: 应用 Rajdhani 字体到标题栏 + Tab 标题，与养成面板统一设计语言
-func _apply_title_fonts() -> void:
+## v9.2: 应用 Rajdhani 字体到标题栏 + Tab 标题（与养成面板统一设计语言）
+## 仅做字体/字号覆盖；颜色与文字内容由 _refresh_title_bar(tab) 按当前 Tab 动态设
+func _setup_title_bar_fonts() -> void:
 	var title_font: Font = DesignTokens.get_title_font()
 	if title_font == null:
 		return
-	# 标题 Label
-	var title_label: Label = get_node_or_null("VBoxOuter/TitleRow/TitleLabel") as Label
-	if title_label:
-		title_label.add_theme_font_override("font", title_font)
-		title_label.add_theme_font_size_override("font_size", 18)
-		title_label.add_theme_color_override("font_color", Color(0.95, 0.94, 0.98, 1.0))
-		title_label.text = "INVENTORY · 背包"
+	if _title_label:
+		_title_label.add_theme_font_override("font", title_font)
+		_title_label.add_theme_font_size_override("font_size", 18)
+	if _meta_info_label:
+		_meta_info_label.add_theme_font_override("font", title_font)
 	# 关闭按钮
 	var close_btn: Button = get_node_or_null("VBoxOuter/TitleRow/CloseButton") as Button
 	if close_btn:
 		close_btn.add_theme_font_override("font", title_font)
 		close_btn.add_theme_font_size_override("font_size", 12)
+
+
+## v9.2: 按 Tab 刷新顶部框架（顶线条色 + 标题菱形 + 标题文字 + 元信息行）
+## 4 张 Tab 各有独立签名色与英文副标题，对齐 HTML 设计稿 panel-frame
+func _refresh_title_bar(tab_index: int) -> void:
+	var accent: Color = DesignTokens.COLOR_AMBER
+	var title_text: String = "战斗卡阵列 · COMBAT ROSTER"
+	match tab_index:
+		TabIndex.COMBAT_CARDS:
+			accent = DesignTokens.COLOR_AMBER
+			title_text = "战斗卡阵列 · COMBAT ROSTER"
+		TabIndex.INTEL:
+			accent = DesignTokens.COLOR_CYAN_TECH
+			title_text = "改造模块库 · MOD REPOSITORY"
+		TabIndex.RUNES:
+			accent = DesignTokens.COLOR_VIOLET
+			title_text = "符文图鉴 · RUNE ARCANUM"
+		TabIndex.PHASE_INSTRUMENTS:
+			accent = DesignTokens.COLOR_AMBER_SOFT  # gold = #fbbf24
+			title_text = "相位仪中枢 · CORE NEXUS"
+	# 顶线条（按 Tab 切换签名色，alpha 0.7 保持与原 SignatureStrip 一致）
+	if _top_accent_strip:
+		_top_accent_strip.color = Color(accent.r, accent.g, accent.b, 0.7)
+	# 标题菱形标记
+	_apply_title_mark_diamond(accent)
+	# 标题文字（副标题用对应签名色染色）
+	if _title_label:
+		_title_label.text = title_text
+	# 元信息行（每 Tab 不同统计）
+	if _meta_info_label:
+		_meta_info_label.text = _compute_meta_info(tab_index)
+		_meta_info_label.add_theme_color_override("font_color", Color(accent.r, accent.g, accent.b, 0.95))
+
+
+## v9.2: 构建/刷新标题菱形标记（外框 + 内嵌小色块，旋转 45°）
+func _apply_title_mark_diamond(color: Color) -> void:
+	if _title_mark == null:
+		return
+	# 外框 StyleBoxFlat（菱形描边，按 Tab 染色）
+	var outer := StyleBoxFlat.new()
+	outer.bg_color = Color(0, 0, 0, 0)  # 透明，仅描边
+	outer.border_color = color
+	outer.set_border_width_all(1)
+	outer.set_corner_radius_all(2)
+	outer.content_margin_left = 2.0
+	outer.content_margin_right = 2.0
+	outer.content_margin_top = 2.0
+	outer.content_margin_bottom = 2.0
+	_title_mark.add_theme_stylebox_override("panel", outer)
+	_title_mark.rotation = PI / 4.0  # 旋转 45° 成菱形
+	# 内嵌小色块（实心菱形，带辉光）
+	var inner: PanelContainer = _title_mark.get_node_or_null("InnerDot") as PanelContainer
+	if inner == null:
+		inner = PanelContainer.new()
+		inner.name = "InnerDot"
+		inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		inner.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+		inner.custom_minimum_size = Vector2(10, 10)
+		_title_mark.add_child(inner)
+	var inner_style := StyleBoxFlat.new()
+	inner_style.bg_color = color
+	inner_style.set_corner_radius_all(1)
+	inner.add_theme_stylebox_override("panel", inner_style)
+
+
+## v9.2: 计算标题栏右侧元信息文本（每 Tab 不同统计维度）
+func _compute_meta_info(tab_index: int) -> String:
+	match tab_index:
+		TabIndex.COMBAT_CARDS:
+			# 兵种数 / 时代数 / 满星数
+			var stats: Dictionary = get_backpack_statistics()
+			var total: int = int(stats.get("total_cards", 0))
+			var kind_count: int = _count_distinct_kinds_in_backpack()
+			var era_count: int = _count_distinct_eras_in_backpack()
+			var max_stars: int = _count_max_stars_in_backpack()
+			return "共 %d · 兵种 %d · 时代 %d · 满星 %d" % [total, kind_count, era_count, max_stars]
+		TabIndex.INTEL:
+			var installed: int = _count_installed_mods()
+			var total_mods: int = _count_owned_mods()
+			var pending: int = maxi(0, total_mods - installed)
+			return "已装配 %d · 待装配 %d · 共 %d" % [installed, pending, total_mods]
+		TabIndex.RUNES:
+			var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
+			var active_rw: int = 0
+			var slot_used: int = 0
+			var slot_total: int = 0
+			if pim:
+				if pim.has_method("get_active_runewords"):
+					active_rw = pim.get_active_runewords().size()
+				if pim.has_method("get_rune_slots"):
+					for s in pim.get_rune_slots():
+						if not str(s).is_empty():
+							slot_used += 1
+				if pim.has_method("get_rune_slot_count"):
+					slot_total = pim.get_rune_slot_count()
+			return "已激活符文之语 %d · 槽位 %d/%d" % [active_rw, slot_used, slot_total]
+		TabIndex.PHASE_INSTRUMENTS:
+			var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
+			var unlocked: int = 0
+			var cur_star: int = 0
+			if pim and pim.has_method("get_unlocked_instrument_ids"):
+				unlocked = pim.get_unlocked_instrument_ids().size()
+			if pim and pim.has_method("get_current_instrument"):
+				var cur: Dictionary = pim.get_current_instrument()
+				cur_star = int(cur.get("star", 0))
+			return "解锁 %d/%d · 当前装备 %d★" % [unlocked, _PHASE_INSTRUMENT_TOTAL, cur_star]
+	return ""
+
+
+## v9.2: 战斗卡元信息辅助——统计背包内不同兵种数
+func _count_distinct_kinds_in_backpack() -> int:
+	if _data == null:
+		return 0
+	var kinds: Dictionary = {}
+	for card in _data.get_filtered_sorted_cards():
+		if card is CardResource and card.card_type == GC.CardType.COMBAT_UNIT:
+			kinds[int(card.combat_kind)] = true
+	return kinds.size()
+
+
+## v9.2: 战斗卡元信息辅助——统计背包内不同时代数
+func _count_distinct_eras_in_backpack() -> int:
+	if _data == null:
+		return 0
+	var eras: Dictionary = {}
+	for card in _data.get_filtered_sorted_cards():
+		if card is CardResource:
+			eras[int(card.era)] = true
+	return eras.size()
+
+
+## v9.2: 战斗卡元信息辅助——统计背包内满星（5星）卡数
+func _count_max_stars_in_backpack() -> int:
+	if _data == null or BlueprintManager == null or not BlueprintManager.has_method("get_card_xp_progress"):
+		return 0
+	var count: int = 0
+	for card in _data.get_filtered_sorted_cards():
+		if not (card is CardResource):
+			continue
+		var prog: Dictionary = BlueprintManager.get_card_xp_progress(card.card_id)
+		if int(prog.get("level", 0)) >= 5:
+			count += 1
+	return count
+
+
+## v9.2: 改造元信息辅助——已装配在战斗卡上的不同 mod 数
+func _count_installed_mods() -> int:
+	var installed: Dictionary = {}
+	if BlueprintManager and "blueprint_mods" in BlueprintManager:
+		for card_id in BlueprintManager.blueprint_mods:
+			var mods_list = BlueprintManager.blueprint_mods[card_id]
+			if mods_list is Array:
+				for mod_entry in mods_list:
+					var mid: String = ""
+					if mod_entry is Dictionary:
+						mid = String(mod_entry.get("id", ""))
+					else:
+						mid = String(mod_entry)
+					if not mid.is_empty():
+						installed[mid] = true
+	return installed.size()
+
+
+## v9.2: 改造元信息辅助——已获得的改造总数（IntelItemBag 内 blueprint_* 且非 evol）
+func _count_owned_mods() -> int:
+	var bag = get_node_or_null("/root/IntelItemBag")
+	if bag == null or not bag.has_method("get_all_inventory"):
+		return 0
+	var items: Dictionary = bag.get_all_inventory()
+	var count: int = 0
+	for item_type in items.keys():
+		if int(items[item_type]) <= 0:
+			continue
+		if IntelManualItemsRef.is_mod_blueprint(String(item_type)):
+			count += 1
+	return count
+
+
+## ============================================================
+## v9.2: 工具栏（搜索 + 筛选 chips + 容量 + 排序）
+## ============================================================
+
+## 工具栏信号连接（_ready 中调用一次）
+func _setup_toolbar_signals() -> void:
+	if _search_edit:
+		_search_edit.text_changed.connect(_on_search_changed)
+	if _sort_option:
+		_sort_option.item_selected.connect(_on_sort_option_changed)
+
+
+## 搜索框文本变化：写入 _search_query 并刷新当前 Tab
+func _on_search_changed(text: String) -> void:
+	_search_query = text.strip_edges().to_lower()
+	_refresh_current_tab_after_filter()
+
+
+## 排序下拉变化：映射到 BackpackData.SortType 并触发战斗卡重建
+func _on_sort_option_changed(idx: int) -> void:
+	# idx 对应 SortOption 的 item 顺序：0=默认 1=名称 2=费用 3=稀有度
+	var sort_str: String = "default"
+	match idx:
+		0: sort_str = "default"
+		1: sort_str = "name"
+		2: sort_str = "cost"
+		3: sort_str = "rarity"
+	set_sort_type(sort_str)
+	# 改造/符文/相位仪也按稀有度/名称本地重排（idx==3 或 1 时）
+	if idx in [1, 3] and _tab_container != null:
+		_refresh_current_tab_after_filter()
+
+
+## chip 点击通用回调：把 chip 的 value 写入对应过滤变量后刷新当前 Tab
+func _on_filter_chip_pressed(filter_kind: String, value) -> void:
+	match filter_kind:
+		"combat_kind":
+			_combat_kind_filter = int(value)
+		"mod_bucket":
+			_mod_bucket_filter = String(value)
+		"rune_cat":
+			_rune_cat_filter = String(value)
+		"inst_source":
+			_inst_source_filter = String(value)
+	# 更新 chip 激活态视觉
+	_update_chip_active_states(filter_kind, value)
+	_refresh_current_tab_after_filter()
+
+
+## 刷新当前 Tab（chip/搜索/排序变化时调用）
+func _refresh_current_tab_after_filter() -> void:
+	if _tab_container == null:
+		return
+	match _tab_container.current_tab:
+		TabIndex.COMBAT_CARDS:
+			# 战斗卡：view 层过滤（隐藏不匹配项），不触发 data 层重建
+			_apply_combat_view_filters()
+			_refresh_capacity_label()
+		TabIndex.INTEL:
+			# 改造：签名失效 + 重建
+			_last_lore_signature = "__INVALIDATED__"
+			refresh_intel_tab()
+		TabIndex.RUNES:
+			_last_runes_signature = "__INVALIDATED__"
+			refresh_runes_tab()
+		TabIndex.PHASE_INSTRUMENTS:
+			_last_phase_inst_signature = "__INVALIDATED__"
+			refresh_phase_instruments_tab()
+
+
+## v9.2: 战斗卡 view 层过滤（按兵种 + 搜索关键字隐藏不匹配卡）
+## 复用 BackpackFilterSort 的"按 grid 子节点 visible 切换"模式
+func _apply_combat_view_filters() -> void:
+	if _combat_cards_grid == null:
+		return
+	for child in _combat_cards_grid.get_children():
+		if not (child is Control):
+			continue
+		if child.has_meta("is_empty_slot") and child.get_meta("is_empty_slot"):
+			continue
+		if not child.has_method("set_card"):
+			continue
+		var card: CardResource = child.card if "card" in child else null
+		if card == null:
+			continue
+		var visible := true
+		# 兵种过滤
+		if _combat_kind_filter >= 0 and card.card_type == GC.CardType.COMBAT_UNIT:
+			if int(card.combat_kind) != _combat_kind_filter:
+				visible = false
+		# 搜索过滤（卡名/ID/兵种名 包含匹配）
+		if visible and not _search_query.is_empty():
+			var haystack := _card_search_haystack(card)
+			if not haystack.contains(_search_query):
+				visible = false
+		child.visible = visible
+	_refresh_capacity_label()
+
+
+## v9.2: 构建战斗卡的搜索匹配字符串（卡名 + card_id + 兵种名，全部小写）
+func _card_search_haystack(card: CardResource) -> String:
+	if card == null:
+		return ""
+	var parts: PackedStringArray = []
+	parts.append(String(card.card_id).to_lower())
+	parts.append(DefaultCardsData.safe_name(card).to_lower())
+	if card.card_type == GC.CardType.COMBAT_UNIT:
+		parts.append(CardResource.get_combat_kind_name(int(card.combat_kind)).to_lower())
+	return " ".join(parts)
+
+
+## v9.2: 按 Tab 重建 FilterChipsBox 的 chip 集合
+func _rebuild_toolbar_chips(tab_index: int) -> void:
+	if _filter_chips_box == null:
+		return
+	for c in _filter_chips_box.get_children():
+		_filter_chips_box.remove_child(c)
+		c.queue_free()
+	# 当前 Tab 签名色（chip 激活态边框色用）
+	var accent: Color = _tab_accent_color(tab_index)
+	match tab_index:
+		TabIndex.COMBAT_CARDS:
+			# 兵种：全部 + 5 兵种（CombatKind 0-4）
+			_add_filter_chip("全部", "combat_kind", -1, accent, _combat_kind_filter == -1)
+			_add_filter_chip("轻装", "combat_kind", 0, accent, _combat_kind_filter == 0)
+			_add_filter_chip("装甲", "combat_kind", 1, accent, _combat_kind_filter == 1)
+			_add_filter_chip("支援", "combat_kind", 2, accent, _combat_kind_filter == 2)
+			_add_filter_chip("空中", "combat_kind", 3, accent, _combat_kind_filter == 3)
+			_add_filter_chip("堡垒", "combat_kind", 4, accent, _combat_kind_filter == 4)
+		TabIndex.INTEL:
+			# 改造：按前缀桶（10 桶）
+			_add_filter_chip("全部", "mod_bucket", "", accent, _mod_bucket_filter.is_empty())
+			for prefix in _MOD_BUCKETS.keys():
+				var label: String = _MOD_BUCKETS[prefix]
+				_add_filter_chip(label, "mod_bucket", prefix, accent, _mod_bucket_filter == prefix)
+		TabIndex.RUNES:
+			# 符文：5 类别
+			_add_filter_chip("全部", "rune_cat", "", accent, _rune_cat_filter.is_empty())
+			_add_filter_chip("攻击", "rune_cat", "attack", accent, _rune_cat_filter == "attack")
+			_add_filter_chip("防御", "rune_cat", "defense", accent, _rune_cat_filter == "defense")
+			_add_filter_chip("能量", "rune_cat", "energy", accent, _rune_cat_filter == "energy")
+			_add_filter_chip("机动", "rune_cat", "mobility", accent, _rune_cat_filter == "mobility")
+			_add_filter_chip("特殊", "rune_cat", "special", accent, _rune_cat_filter == "special")
+		TabIndex.PHASE_INSTRUMENTS:
+			# 相位仪：来源 + 星级
+			_add_filter_chip("全部", "inst_source", "", accent, _inst_source_filter.is_empty())
+			_add_filter_chip("通用", "inst_source", "generic", accent, _inst_source_filter == "generic")
+			_add_filter_chip("势力", "inst_source", "faction", accent, _inst_source_filter == "faction")
+			_add_filter_chip("掉落", "inst_source", "drop", accent, _inst_source_filter == "drop")
+			_add_filter_chip("7★", "inst_source", "star7", accent, _inst_source_filter == "star7")
+	_refresh_capacity_label()
+
+
+## v9.2: 添加单个筛选 chip（toggle Button，激活态用 tab 签名色边框）
+func _add_filter_chip(label: String, filter_kind: String, value, accent: Color, active: bool) -> void:
+	if _filter_chips_box == null:
+		return
+	var btn := Button.new()
+	btn.text = label
+	btn.toggle_mode = true
+	btn.button_pressed = active
+	btn.custom_minimum_size = Vector2(0, 26)
+	btn.add_theme_font_size_override("font_size", 11)
+	btn.add_theme_constant_override("h_separation", 0)
+	# 样式：未激活=暗灰边框；激活=tab 签名色边框 + 半透填充
+	var style_normal := StyleBoxFlat.new()
+	style_normal.bg_color = Color(0.04, 0.07, 0.12, 0.5)
+	style_normal.border_color = Color(0.25, 0.30, 0.40, 0.5)
+	style_normal.set_border_width_all(1)
+	style_normal.set_corner_radius_all(3)
+	style_normal.content_margin_left = 8.0
+	style_normal.content_margin_right = 8.0
+	style_normal.content_margin_top = 3.0
+	style_normal.content_margin_bottom = 3.0
+	btn.add_theme_stylebox_override("normal", style_normal)
+	var style_active := StyleBoxFlat.new()
+	if active:
+		style_active.bg_color = Color(accent.r, accent.g, accent.b, 0.12)
+		style_active.border_color = accent
+		style_active.set_border_width_all(1)
+		style_active.set_corner_radius_all(3)
+		style_active.content_margin_left = 8.0
+		style_active.content_margin_right = 8.0
+		style_active.content_margin_top = 3.0
+		style_active.content_margin_bottom = 3.0
+		btn.add_theme_stylebox_override("normal", style_active)
+		btn.add_theme_color_override("font_color", accent)
+	else:
+		btn.add_theme_color_override("font_color", Color(0.66, 0.71, 0.81, 0.9))
+	# hover 样式
+	var style_hover := StyleBoxFlat.new()
+	style_hover.bg_color = Color(0.08, 0.12, 0.20, 0.7)
+	style_hover.border_color = Color(accent.r, accent.g, accent.b, 0.5)
+	style_hover.set_border_width_all(1)
+	style_hover.set_corner_radius_all(3)
+	style_hover.content_margin_left = 8.0
+	style_hover.content_margin_right = 8.0
+	style_hover.content_margin_top = 3.0
+	style_hover.content_margin_bottom = 3.0
+	btn.add_theme_stylebox_override("hover", style_hover)
+	# 连接点击：传 filter_kind + value（value 类型可能是 int/String）
+	btn.pressed.connect(_on_filter_chip_pressed.bind(filter_kind, value))
+	_filter_chips_box.add_child(btn)
+
+
+## v9.2: 更新所有 chip 激活态（chip 点击后重绘，避免依赖 toggle 默认视觉）
+func _update_chip_active_states(filter_kind: String, value) -> void:
+	if _filter_chips_box == null:
+		return
+	for c in _filter_chips_box.get_children():
+		if not (c is Button):
+			continue
+		var btn := c as Button
+		# 从按钮 meta 取回它的 filter_kind/value（_add_filter_chip 时写入）
+		# 因 bind 的参数无法回读，这里用文本匹配当前 Tab 的过滤状态
+		var active := _is_chip_active_for_current_state(filter_kind, value, btn.text)
+		btn.button_pressed = active
+
+
+## v9.2: 判断某 chip 文本在当前过滤状态下是否应激活
+func _is_chip_active_for_current_state(filter_kind: String, value, label_text: String) -> bool:
+	# 简化逻辑：刚点击的那个 chip 一定激活；"全部" 在过滤变量为空/-1 时激活
+	# 这里依赖 _on_filter_chip_pressed 已更新过滤变量
+	match filter_kind:
+		"combat_kind":
+			if label_text == "全部":
+				return _combat_kind_filter < 0
+			return _combat_kind_filter == value
+		"mod_bucket":
+			if label_text == "全部":
+				return _mod_bucket_filter.is_empty()
+			return _mod_bucket_filter == String(value)
+		"rune_cat":
+			if label_text == "全部":
+				return _rune_cat_filter.is_empty()
+			return _rune_cat_filter == String(value)
+		"inst_source":
+			if label_text == "全部":
+				return _inst_source_filter.is_empty()
+			return _inst_source_filter == String(value)
+	return false
+
+
+## v9.2: 取 Tab 对应的签名色
+func _tab_accent_color(tab_index: int) -> Color:
+	match tab_index:
+		TabIndex.COMBAT_CARDS: return DesignTokens.COLOR_AMBER
+		TabIndex.INTEL: return DesignTokens.COLOR_CYAN_TECH
+		TabIndex.RUNES: return DesignTokens.COLOR_VIOLET
+		TabIndex.PHASE_INSTRUMENTS: return DesignTokens.COLOR_AMBER_SOFT
+	return DesignTokens.COLOR_AMBER
+
+
+## v9.2: 刷新容量标签（按 Tab 显示不同容量）
+func _refresh_capacity_label() -> void:
+	if _capacity_label == null or _tab_container == null:
+		return
+	match _tab_container.current_tab:
+		TabIndex.COMBAT_CARDS:
+			var stats: Dictionary = get_backpack_statistics()
+			var total: int = int(stats.get("total_cards", 0))
+			_capacity_label.text = "容量 %d/%d" % [total, MAX_CARD_SLOTS]
+		TabIndex.INTEL:
+			_capacity_label.text = "改造 %d" % _count_owned_mods()
+		TabIndex.RUNES:
+			var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
+			var n: int = 0
+			if pim and pim.has_method("get_owned_runes"):
+				n = pim.get_owned_runes().size()
+			_capacity_label.text = "符文 %d" % n
+		TabIndex.PHASE_INSTRUMENTS:
+			var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
+			var n: int = 0
+			if pim and pim.has_method("get_unlocked_instrument_ids"):
+				n = pim.get_unlocked_instrument_ids().size()
+			_capacity_label.text = "解锁 %d/%d" % [n, _PHASE_INSTRUMENT_TOTAL]
+
+
+## v9.2: mod_id → 前缀桶 key（取前 4 字符匹配 _MOD_BUCKETS 的 key）
+func _mod_bucket_of(mod_id: String) -> String:
+	if mod_id.is_empty():
+		return ""
+	# _MOD_BUCKETS 的 key 都是 4 字符前缀（inf_/arm_/art_/aa_/air_/rec_/eng_/for_/gen_/enh_）
+	# aa_ 是 3 字符，需特殊处理
+	if mod_id.begins_with("aa_"):
+		return "aa_"
+	var prefix4 := mod_id.substr(0, 4)
+	if _MOD_BUCKETS.has(prefix4):
+		return prefix4
+	return ""
 
 
 ## v9.0: 改造效果键 → 简短显示（用于瓷砖主效果行）
@@ -354,12 +857,15 @@ func _fallback_on_card_swapped(_slot_index: int, old_card: CardResource, new_car
 
 ## 标签页切换事件
 func _on_tab_changed(tab_index: int) -> void:
+	# v9.2: 先刷新顶部框架（顶线条色 + 标题 + 元信息）和工具栏 chips
+	_refresh_title_bar(tab_index)
+	_rebuild_toolbar_chips(tab_index)
 	# v7.x：切换时对内容区做一次透明度闪现（受 motion_reduce 守卫）
 	_play_tab_change_fade()
 	match tab_index:
 		TabIndex.COMBAT_CARDS:
 			# 战斗卡标签页切换时刷新（如有需要）
-			pass
+			_apply_combat_view_filters()
 		TabIndex.INTEL:
 			# 改造标签页切换时刷新
 			refresh_intel_tab()
@@ -778,12 +1284,12 @@ func refresh_intel_tab() -> void:
 	var bag_items: Dictionary = {}
 	if bag and bag.has_method("get_all_inventory"):
 		bag_items = bag.get_all_inventory()
-	# 签名
+	# 签名（v9.1: install_count 纳入签名，装配计数变化时瓷砖"N 卡"徽章能刷新）
 	var sig_parts: Array[String] = []
 	for bk in bag_items.keys():
 		sig_parts.append("bag:" + bk + ":" + str(bag_items[bk]))
 	for mid in installed_mod_ids.keys():
-		sig_parts.append("inst:" + mid)
+		sig_parts.append("inst:" + mid + "#" + str(mod_install_count.get(mid, 0)))
 	sig_parts.sort()
 	var sig := "|".join(sig_parts)
 	if sig == _last_lore_signature:
@@ -838,6 +1344,28 @@ func refresh_intel_tab() -> void:
 		_add_intel_placeholder(_intel_grid, "暂无已获得的改造
 	（获得改造图纸后，所有取得过的改造会显示于此）")
 		return
+	# v9.2: 应用工具栏过滤（前缀桶 + 装配状态 + 搜索关键字）
+	if not _mod_bucket_filter.is_empty() or not _mod_status_filter.is_empty() or not _search_query.is_empty():
+		var filtered: Array[Dictionary] = []
+		for bp in acquired_blueprints:
+			# 前缀桶过滤
+			if not _mod_bucket_filter.is_empty():
+				if _mod_bucket_of(String(bp.mod_id)) != _mod_bucket_filter:
+					continue
+			# 装配状态过滤
+			if not _mod_status_filter.is_empty():
+				var is_installed: bool = bool(bp.get("installed", false))
+				if _mod_status_filter == "installed" and not is_installed:
+					continue
+				if _mod_status_filter == "pending" and is_installed:
+					continue
+			# 搜索过滤（mod 名 / mod_id / prototype 包含匹配）
+			if not _search_query.is_empty():
+				var hay := String(bp.name).to_lower() + " " + String(bp.mod_id).to_lower() + " " + String(bp.get("prototype", "")).to_lower()
+				if not hay.contains(_search_query):
+					continue
+			filtered.append(bp)
+		acquired_blueprints = filtered
 	# 按稀有度排序（稀有→普通）
 	acquired_blueprints.sort_custom(func(a, b): return _rarity_sort_value(a.rarity) > _rarity_sort_value(b.rarity))
 	var _mod_idx := 0
@@ -870,6 +1398,134 @@ func refresh_intel_tab() -> void:
 		_play_tile_enter_animation(item, _mod_idx)
 		_mod_idx += 1
 	_schedule_sync_card_grid_scroll_size_for_grid(_intel_grid)
+	# v9.2: 刷新左侧筛选侧栏（兵种桶 + 装配状态两层）
+	_refresh_mod_sidebar(acquired_blueprints, mod_install_count)
+
+
+## v9.2: 刷新改造左侧筛选侧栏（对齐 HTML .mods-sidebar）
+## 两层筛选：① 兵种桶（全部/步兵/装甲/.../强化）② 装配状态（全部/已装配/待装配）
+## 每项显示对应数量，点击切换 _mod_bucket_filter / 新增 _mod_status_filter
+var _mod_status_filter: String = ""  ## "" = 全部；"installed" = 已装配；"pending" = 待装配
+func _refresh_mod_sidebar(visible_blueprints: Array, install_count_map: Dictionary) -> void:
+	if _mod_sidebar == null:
+		return
+	# 统计各桶数量（基于全部已获改造，非过滤后）
+	var bucket_counts: Dictionary = {}  # bucket_key → count
+	var installed_total: int = 0
+	var pending_total: int = 0
+	# 重新从 IntelItemBag 统计（visible_blueprints 可能已被过滤）
+	var bag = get_node_or_null("/root/IntelItemBag")
+	var all_items: Dictionary = {}
+	if bag and bag.has_method("get_all_inventory"):
+		all_items = bag.get_all_inventory()
+	for item_type in all_items.keys():
+		if int(all_items[item_type]) <= 0:
+			continue
+		if not IntelManualItemsRef.is_mod_blueprint(String(item_type)):
+			continue
+		var mid: String = BlueprintDefinitionsRef.extract_mod_id(String(item_type))
+		if mid.is_empty():
+			continue
+		var bucket: String = _mod_bucket_of(mid)
+		if not bucket.is_empty():
+			bucket_counts[bucket] = bucket_counts.get(bucket, 0) + 1
+		if install_count_map.has(mid):
+			installed_total += 1
+		else:
+			pending_total += 1
+	# 清空侧栏旧内容
+	for c in _mod_sidebar.get_children():
+		c.queue_free()
+	# ── 第一层：兵种桶 ──
+	var section1 := _make_sidebar_section("兵种类型")
+	_mod_sidebar.add_child(section1)
+	# "全部"
+	var total_all := 0
+	for bk in bucket_counts.keys():
+		total_all += int(bucket_counts[bk])
+	section1.add_child(_make_sidebar_item("▣ 全部", total_all, _mod_bucket_filter.is_empty(),
+		func(): _on_sidebar_bucket_pressed("")))
+	# 10 个桶
+	for prefix in _MOD_BUCKETS.keys():
+		var label_text: String = _MOD_BUCKETS[prefix]
+		var cnt: int = int(bucket_counts.get(prefix, 0))
+		if cnt == 0:
+			continue  # 没有该桶改造就不显示
+		section1.add_child(_make_sidebar_item("%s %s" % [_mod_bucket_glyph(prefix), label_text], cnt,
+			_mod_bucket_filter == prefix, _on_sidebar_bucket_pressed.bind(prefix)))
+	# ── 第二层：装配状态 ──
+	var section2 := _make_sidebar_section("装配状态")
+	_mod_sidebar.add_child(section2)
+	section2.add_child(_make_sidebar_item("● 全部", installed_total + pending_total,
+		_mod_status_filter.is_empty(), _on_sidebar_status_pressed.bind("")))
+	section2.add_child(_make_sidebar_item("● 已装配", installed_total,
+		_mod_status_filter == "installed", _on_sidebar_status_pressed.bind("installed")))
+	section2.add_child(_make_sidebar_item("○ 待装配", pending_total,
+		_mod_status_filter == "pending", _on_sidebar_status_pressed.bind("pending")))
+
+
+## v9.2: 兵种桶前缀 → glyph 符号（与工具栏 chip 风格统一）
+const _MOD_BUCKET_GLYPHS = {
+	"inf_": "⚔", "arm_": "◈", "art_": "◎", "aa_": "↑",
+	"air_": "✈", "rec_": "◉", "eng_": "⚙", "for_": "■",
+	"gen_": "○", "enh_": "★",
+}
+func _mod_bucket_glyph(prefix: String) -> String:
+	return _MOD_BUCKET_GLYPHS.get(prefix, "•")
+
+
+## v9.2: 侧栏分组标题（小标题 + 下划线）
+func _make_sidebar_section(title: String) -> VBoxContainer:
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 2)
+	var lbl := Label.new()
+	lbl.text = title
+	lbl.add_theme_font_size_override("font_size", 10)
+	lbl.add_theme_font_override("font", DesignTokens.get_title_font())
+	lbl.add_theme_color_override("font_color", Color(0.55, 0.65, 0.78, 0.7))
+	vbox.add_child(lbl)
+	var sep := HSeparator.new()
+	vbox.add_child(sep)
+	return vbox
+
+
+## v9.2: 侧栏单个筛选项（icon+文字 + 右侧数量）
+func _make_sidebar_item(text: String, count: int, active: bool, callable: Callable) -> Button:
+	var row := Button.new()
+	row.text = "%s  %d" % [text, count]
+	row.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	row.add_theme_font_size_override("font_size", 11)
+	row.custom_minimum_size = Vector2(0, 26)
+	# 样式
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.06, 0.10, 0.15, 0.3) if active else Color(0, 0, 0, 0)
+	style.border_color = DesignTokens.COLOR_CYAN_TECH if active else Color(0.25, 0.30, 0.40, 0.3)
+	style.set_border_width_all(0)
+	style.border_width_left = 2 if active else 0
+	style.set_corner_radius_all(2)
+	style.content_margin_left = 6.0
+	style.content_margin_right = 6.0
+	style.content_margin_top = 3.0
+	style.content_margin_bottom = 3.0
+	row.add_theme_stylebox_override("normal", style)
+	row.add_theme_color_override("font_color",
+		DesignTokens.COLOR_CYAN_TECH_SOFT if active else Color(0.66, 0.71, 0.81, 0.85))
+	row.pressed.connect(callable)
+	return row
+
+
+## v9.2: 侧栏兵种桶筛选点击
+func _on_sidebar_bucket_pressed(bucket: String) -> void:
+	_mod_bucket_filter = bucket
+	_last_lore_signature = "__INVALIDATED__"
+	refresh_intel_tab()
+
+
+## v9.2: 侧栏装配状态筛选点击
+func _on_sidebar_status_pressed(status: String) -> void:
+	_mod_status_filter = status
+	_last_lore_signature = "__INVALIDATED__"
+	refresh_intel_tab()
 
 
 ## 稀有度排序权重（legendary 最大）
@@ -943,6 +1599,23 @@ func refresh_runes_tab() -> void:
 	var sorted_ids: Array = rune_counts.keys()
 	sorted_ids.sort_custom(func(a, b):
 		return _rune_rarity_sort_value(a) > _rune_rarity_sort_value(b))
+	# v9.2: 应用工具栏过滤（类别 + 搜索关键字）
+	if not _rune_cat_filter.is_empty() or not _search_query.is_empty():
+		var filtered_ids: Array = []
+		for rid in sorted_ids:
+			var rune_id_str: String = str(rid)
+			var rune_def: Dictionary = RuneClass.get_rune(rune_id_str)
+			# 类别过滤
+			if not _rune_cat_filter.is_empty():
+				if String(rune_def.get("category", "")) != _rune_cat_filter:
+					continue
+			# 搜索过滤（符文名 / rune_id 包含匹配）
+			if not _search_query.is_empty():
+				var hay := RuneClass.get_rune_name(rune_id_str).to_lower() + " " + rune_id_str.to_lower()
+				if not hay.contains(_search_query):
+					continue
+			filtered_ids.append(rid)
+		sorted_ids = filtered_ids
 	# 渲染
 	var _rune_idx := 0
 	for rid in sorted_ids:
@@ -1083,6 +1756,21 @@ func refresh_phase_instruments_tab() -> void:
 		if not cfg.is_empty():
 			sorted_instruments.append(cfg)
 	sorted_instruments.sort_custom(func(a, b): return int(a.get("star", 0)) > int(b.get("star", 0)))
+	# v9.2: 应用工具栏过滤（来源 + 星级 + 搜索关键字）
+	if not _inst_source_filter.is_empty() or not _search_query.is_empty():
+		var filtered_insts: Array = []
+		for cfg in sorted_instruments:
+			# 来源过滤：generic/faction/drop/star7
+			if not _inst_source_filter.is_empty():
+				if not _matches_inst_source_filter(cfg, _inst_source_filter):
+					continue
+			# 搜索过滤（名字 / id 包含匹配）
+			if not _search_query.is_empty():
+				var hay := String(cfg.get("name", "")).to_lower() + " " + String(cfg.get("id", "")).to_lower()
+				if not hay.contains(_search_query):
+					continue
+			filtered_insts.append(cfg)
+		sorted_instruments = filtered_insts
 
 	for inst_cfg in sorted_instruments:
 		var item: Control = _create_phase_inst_item(inst_cfg, String(inst_cfg.get("id", "")) == current_instrument_id)
@@ -1169,6 +1857,7 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 	margin.add_child(cols)
 
 	# === 数据准备 ===
+	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
 	var inst_name: String = String(cfg.get("name", "未知相位仪"))
 	var star: int = int(cfg.get("star", 0))
 	var faction_id: String = String(cfg.get("faction_id", ""))
@@ -1182,6 +1871,22 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 	var recovery_rate: float = float(cfg.get("energy_recovery_rate", 0.3))
 	var spawn_ratio: float = float(cfg.get("spawn_range_ratio", 0.3))
 	var actual_recovery: float = recovery_rate * 3.0
+	# v9.2: 查询当前装备中的卡/符文，判断哪些槽位已填充（用于空槽虚线占位）
+	var green_filled: int = 0
+	var rune_filled: int = 0
+	if is_equipped:
+		if pim != null:
+			if pim.has_method("get_slot_card_ids"):
+				for cid in pim.get_slot_card_ids():
+					if not String(cid).is_empty():
+						green_filled += 1
+			if pim.has_method("get_rune_slots"):
+				for rid in pim.get_rune_slots():
+					# get_rune_slots() 返回 Array[String | null]，空槽为 null。
+					# 不能用 String(rid)：String 构造函数不接受 null 会抛错；
+					# str(null) 会得到非空 "null" 字符串误判为已填充，故单独判 null。
+					if rid != null and str(rid) != "":
+						rune_filled += 1
 
 	# === 左列：星级点阵 + 名字 + 势力 ===
 	var left_col := VBoxContainer.new()
@@ -1245,10 +1950,16 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 		green_row.add_child(green_lbl)
 		for i in range(green_count):
 			var cell := PanelContainer.new()
-			cell.custom_minimum_size = Vector2(14, 16)
+			cell.custom_minimum_size = Vector2(12, 14)
 			var cell_style := StyleBoxFlat.new()
-			cell_style.bg_color = Color(0.05, 0.18, 0.12, 0.7)
-			cell_style.border_color = Color(0.2, 0.83, 0.6, 0.6)
+			if is_equipped and i < green_filled:
+				# v9.2: 已填充槽位——实色绿格
+				cell_style.bg_color = Color(0.05, 0.18, 0.12, 0.7)
+				cell_style.border_color = Color(0.2, 0.83, 0.6, 0.6)
+			else:
+				# v9.2: 空槽位——虚线占位（设计稿 .slot-cell.empty）
+				cell_style.bg_color = Color(0, 0, 0, 0)
+				cell_style.border_color = Color(0.25, 0.35, 0.45, 0.4)
 			cell_style.set_border_width_all(1)
 			cell_style.set_corner_radius_all(2)
 			cell.add_theme_stylebox_override("panel", cell_style)
@@ -1267,10 +1978,16 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 		rune_row.add_child(rune_lbl)
 		for i in range(rune_count):
 			var cell := PanelContainer.new()
-			cell.custom_minimum_size = Vector2(14, 16)
+			cell.custom_minimum_size = Vector2(12, 14)
 			var cell_style := StyleBoxFlat.new()
-			cell_style.bg_color = Color(0.15, 0.08, 0.24, 0.7)
-			cell_style.border_color = Color(0.65, 0.45, 0.95, 0.6)
+			if is_equipped and i < rune_filled:
+				# v9.2: 已填充槽位——实色紫格
+				cell_style.bg_color = Color(0.15, 0.08, 0.24, 0.7)
+				cell_style.border_color = Color(0.65, 0.45, 0.95, 0.6)
+			else:
+				# v9.2: 空槽位——虚线占位
+				cell_style.bg_color = Color(0, 0, 0, 0)
+				cell_style.border_color = Color(0.25, 0.35, 0.45, 0.4)
 			cell_style.set_border_width_all(1)
 			cell_style.set_corner_radius_all(2)
 			cell.add_theme_stylebox_override("panel", cell_style)
@@ -1407,6 +2124,27 @@ func _on_phase_inst_equip_pressed(instrument_id: String) -> void:
 			SignalBus.show_toast.emit("已装备相位仪")
 
 
+## v9.2: 判断相位仪 cfg 是否匹配来源/星级过滤
+## filter_key: "generic" / "faction" / "drop" / "star7"
+func _matches_inst_source_filter(cfg: Dictionary, filter_key: String) -> bool:
+	if cfg.is_empty():
+		return false
+	match filter_key:
+		"generic":
+			# 通用 = is_generic true 且 acquire_rule = generic_store
+			return bool(cfg.get("is_generic", false)) and String(cfg.get("acquire_rule", "")) == "generic_store"
+		"faction":
+			# 势力专属 = acquire_rule = faction_reputation
+			return String(cfg.get("acquire_rule", "")) == "faction_reputation"
+		"drop":
+			# 掉落 = acquire_rule = phase_master_drop 或 source = drop
+			return String(cfg.get("acquire_rule", "")) == "phase_master_drop" or String(cfg.get("source", "")) == "drop"
+		"star7":
+			# 7★ = star == 7
+			return int(cfg.get("star", 0)) == 7
+	return false
+
+
 ## v8.0: 外部入口：打开背包并切到相位仪 Tab
 func switch_to_phase_instruments_tab() -> void:
 	if _tab_container != null:
@@ -1471,10 +2209,9 @@ func _add_rune_item(grid: GridContainer, rune_id: String, count: int, is_equippe
 		if item.rune_clicked.is_connected(_on_backpack_rune_clicked):
 			item.rune_clicked.disconnect(_on_backpack_rune_clicked)
 		item.rune_clicked.connect(_on_backpack_rune_clicked)
-	# 设置稀有度边框颜色
-	if "modulate" in item:
-		var border_color: Color = rune_color
-		item.modulate = Color(1, 1, 1, 1)
+	# v9.1: 移除死代码（border_color 计算后未使用），modulate 直接置白；
+	# 已装备状态靠 extra_data.runeword_active 边框 + RuneEquippedDot 区分，不靠整体变暗
+	item.modulate = Color(1, 1, 1, 1)
 	# 设置 tooltip
 	if "tooltip_text" in item:
 		item.tooltip_text = "【%s】%s\n%s\n（点击装备/卸下）" % [rarity_name, rune_name, desc]
@@ -1811,30 +2548,51 @@ func _ensure_min_card_slots(grid: GridContainer) -> void:
 		grid.add_child(placeholder)
 		card_count += 1
 
-## v7.x：空槽位添加居中 "+" 号标识（Label 字符，零美术依赖）。池化复用时复用已有 Label。
+## v9.2：空槽位添加居中两行内容（"空槽位" / "— 未获得 —"）。
+## 对齐 HTML 设计稿 .card-tile[空槽位] 视觉：虚线边框 + 居中小字。
+## 池化复用时复用已有 VBoxContainer。
 func _ensure_empty_slot_plus(placeholder: Panel) -> void:
 	if placeholder == null:
 		return
-	placeholder.tooltip_text = "空格位"
-	var plus: Label = placeholder.get_node_or_null("EmptyPlusLabel") as Label
-	if plus == null:
-		plus = Label.new()
-		plus.name = "EmptyPlusLabel"
-		plus.text = "+"
-		plus.add_theme_font_size_override("font_size", 20)
-		plus.add_theme_color_override("font_color", Color(0.4, 0.5, 0.6, 0.5))
-		plus.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-		plus.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		placeholder.add_child(plus)
-	plus.visible = true
+	placeholder.tooltip_text = "空槽位（未获得）"
+	var vbox: VBoxContainer = placeholder.get_node_or_null("EmptyContentBox") as VBoxContainer
+	if vbox == null:
+		vbox = VBoxContainer.new()
+		vbox.name = "EmptyContentBox"
+		vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+		vbox.add_theme_constant_override("separation", 2)
+		vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		# 第一行："空槽位"
+		var line1 := Label.new()
+		line1.name = "EmptyTitleLabel"
+		line1.text = "空槽位"
+		line1.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		line1.add_theme_font_size_override("font_size", 11)
+		line1.add_theme_color_override("font_color", Color(0.42, 0.47, 0.57, 0.6))
+		line1.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		vbox.add_child(line1)
+		# 第二行："— 未获得 —"
+		var line2 := Label.new()
+		line2.name = "EmptySubtitleLabel"
+		line2.text = "— 未获得 —"
+		line2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		line2.add_theme_font_size_override("font_size", 9)
+		line2.add_theme_color_override("font_color", Color(0.35, 0.40, 0.50, 0.5))
+		line2.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		vbox.add_child(line2)
+		placeholder.add_child(vbox)
+	vbox.visible = true
 
 func _get_empty_slot_style() -> StyleBoxFlat:
 	if _empty_slot_style != null:
 		return _empty_slot_style
 	_empty_slot_style = StyleBoxFlat.new()
-	_empty_slot_style.bg_color = Color(0.06, 0.10, 0.17, 0.45)
+	# v9.2：对齐 HTML 设计稿空槽位视觉——深底 + 虚线感暗灰边框（Godot StyleBoxFlat 无原生虚线，
+	# 用较低 alpha 的 1px 边框 + 偏暗的色调近似）
+	_empty_slot_style.bg_color = Color(0.039, 0.059, 0.110, 0.5)  # bg-slot-locked
 	_empty_slot_style.set_border_width_all(1)
-	_empty_slot_style.border_color = Color(0.25, 0.35, 0.5, 0.4)
+	_empty_slot_style.border_color = Color(0.25, 0.35, 0.5, 0.35)
 	_empty_slot_style.set_corner_radius_all(5)
 	return _empty_slot_style
 

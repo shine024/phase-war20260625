@@ -9,8 +9,9 @@ const BasicResources = preload("res://data/basic_resources.gd")
 const CardFrameUi = preload("res://scripts/card_frame_ui.gd")
 const DesignTokens = preload("res://resources/design_tokens.gd")
 
-## v9.0: 槽位尺寸放大到 64×96（HTML 设计稿瓷砖精神），让改造/符文瓷砖的图标+稀有度边框+文字更舒展
-const SLOT_SIZE: Vector2 = Vector2(64, 96)
+## v9.0: 槽位尺寸——改造用 96×108，符文用 86×116（对齐 HTML 设计稿）
+const SLOT_SIZE_MOD: Vector2 = Vector2(96, 108)
+const SLOT_SIZE_RUNE: Vector2 = Vector2(86, 116)
 
 ## v6.2: 符文格子被点击时发射，参数为 rune_id
 signal rune_clicked(rune_id: String)
@@ -40,7 +41,7 @@ var _hover_base_pos_y: float = 0.0
 
 func _ready() -> void:
 	clip_contents = true
-	custom_minimum_size = SLOT_SIZE
+	custom_minimum_size = SLOT_SIZE_MOD  ## 默认改造尺寸（符文在 set_data 中会覆盖）
 	size_flags_horizontal = 0
 	size_flags_vertical = 0
 	# v6.2: 符文格子需要接收鼠标点击；默认 mouse_filter 已为 STOP（PanelContainer 默认），
@@ -54,13 +55,16 @@ func _ready() -> void:
 	# TextureRect 宽度坍缩为 0，符文图标不可见（texture 已正确加载但无渲染区域）
 	var vbox = get_node_or_null("Margin/VBox")
 	if vbox:
-		vbox.custom_minimum_size = SLOT_SIZE
+		vbox.custom_minimum_size = custom_minimum_size
+		# v9.2: 锁定 VBox 高度——禁止 EXPAND_FILL 撑大瓷砖
+		vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		vbox.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var icon_rect: TextureRect = get_node_or_null("Margin/VBox/Icon") as TextureRect
 	if icon_rect:
-		# v9.0 修复：图标区必须给最小尺寸 + COVERED 拉伸（CENTERED 会留白导致看不见）
+		# v9.1 修复：SCALE 强制拉伸（COVERED/CENTERED 在 EXPAND_IGNORE_SIZE 下实测图标不显示）
 		icon_rect.custom_minimum_size = Vector2(56, 56)
 		icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
 		icon_rect.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		icon_rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 
@@ -179,20 +183,24 @@ func set_data(id: String, stack_amount: int, type: SlotType = SlotType.RESOURCE,
 	match slot_type:
 		SlotType.RESOURCE:
 			_refresh_resource(id, name_label, amount_label, icon_rect)
+			custom_minimum_size = SLOT_SIZE_MOD  ## 资源/改造统一用改造尺寸
 			_rarity = ""; _tile_glow_mode = 0
 			_clear_mod_decorations()
 			_clear_rune_decorations()
 		SlotType.LORE:
 			_refresh_lore(id, stack_amount, name_label, amount_label, icon_rect, custom_icon, custom_name, extra_data)
+			custom_minimum_size = SLOT_SIZE_MOD  ## 改造瓷砖 96×108
 			_rarity = String(extra_data.get("rarity", get_meta("_tile_rarity", "")))
 			_tile_glow_mode = 1 if bool(extra_data.get("installed", false)) else 0
 			_clear_rune_decorations()  # v9.0: 切到 LORE 时清掉符文专属装饰
 		SlotType.STAT_BOOST:
 			_refresh_stat_boost(id, stack_amount, name_label, amount_label, icon_rect)
+			custom_minimum_size = SLOT_SIZE_MOD
 			_rarity = ""; _tile_glow_mode = 0
 			_clear_mod_decorations()
 			_clear_rune_decorations()
 		SlotType.RUNE:
+			custom_minimum_size = SLOT_SIZE_RUNE  ## 符文瓷砖 86×116（菱形顶饰需要更多高度）
 			_refresh_rune(id, stack_amount, name_label, amount_label, icon_rect, extra_data)
 			_rarity = String(extra_data.get("rarity", "common"))
 			_tile_glow_mode = 1 if bool(extra_data.get("is_equipped", false)) else 0
@@ -257,25 +265,44 @@ func _refresh_lore(lore_id: String, count: int, name_label: Label, amount_label:
 	if icon_rect:
 		# 情报使用金色图标（无贴图时的默认染色）
 		icon_rect.modulate = Color(0.8, 0.6, 0.2, 1.0)
+		var has_texture := false
 		# 如果有自定义图标，尝试加载（背包"改造"标签依赖此分支显示改造图标）
-		if not custom_icon.is_empty() and ResourceLoader.exists(custom_icon, "Texture2D"):
+		if not custom_icon.is_empty() and ResourceLoader.exists(custom_icon):
+			has_texture = true
 			icon_rect.texture = load(custom_icon)
 			# 加载了真实贴图后恢复原色（贴图自身已有颜色，金色 modulate 会让它偏黄失真）
 			icon_rect.modulate = Color.WHITE
-			# v9.0 修复：_ready 已统一配置（56×56 + IGNORE_SIZE + COVERED + SHRINK_CENTER），
-			# 这里不再覆盖；原 v6.14 改成 EXPAND_FIT_WIDTH + 36×32 反而把图标压扁成看不见。
+			# v9.1 修复：SCALE 拉伸填满（COVERED/CENTERED 在 IGNORE_SIZE 下实测不显示）
 			icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+			icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
 			icon_rect.custom_minimum_size = Vector2(56, 56)
 			icon_rect.visible = true
+		# v9.2: 图标缺失时无贴图 → 用兵种 Unicode 符号兜底（青色 monospace）
+		if not has_texture:
+			icon_rect.texture = null
+			icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
+			icon_rect.custom_minimum_size = Vector2(56, 56)
+			icon_rect.visible = true
+			_ensure_mod_fallback_icon(icon_rect, extra_data)
 
-	# v9.0: 注入装饰层（左侧稀有度色条 + 装配计数徽章）
-	if not mod_rarity.is_empty():
-		_apply_mod_left_strip(mod_rarity)
-		if install_count > 0:
-			_apply_mod_install_count(install_count)
-		else:
-			_hide_mod_decoration("ModInstallBadge")
+		# v9.0: 注入装饰层（左侧稀有度色条 + 装配计数徽章 + 槽位类型标签 + 状态点 + 稀有度文字 + 原型名）
+		if not mod_rarity.is_empty():
+			_apply_mod_left_strip(mod_rarity)
+			if install_count > 0:
+				_apply_mod_install_count(install_count)
+			else:
+				_hide_mod_decoration("ModInstallBadge")
+			# v9.2: 槽位类型标签（顶部行，紧挨图标右侧）
+			var slot_type: String = String(extra_data.get("slot_type", ""))
+			_apply_mod_slot_type_label(slot_type)
+			# v9.2: 装配状态点（顶部行右侧，绿=已装配 灰=未装配）
+			var is_installed: bool = bool(extra_data.get("installed", false))
+			_apply_mod_status_dot(is_installed)
+			# v9.2: 稀有度文字标签（底部右侧，大写）
+			_apply_mod_rarity_text(mod_rarity)
+			# v9.2: 原型名（底部左侧，斜体灰色，如"M829A4"/"Chobham"）
+			_apply_mod_prototype(prototype)
 	else:
 		_clear_mod_decorations()
 
@@ -352,6 +379,11 @@ func _hide_mod_decoration(deco_name: String) -> void:
 func _clear_mod_decorations() -> void:
 	_hide_mod_decoration("ModLeftStrip")
 	_hide_mod_decoration("ModInstallBadge")
+	_hide_mod_decoration("ModSlotTypeLabel")
+	_hide_mod_decoration("ModStatusDot")
+	_hide_mod_decoration("ModRarityText")
+	_hide_mod_decoration("ModFallbackIcon")
+	_hide_mod_decoration("ModPrototypeLabel")
 
 
 ## v9.0: 清空所有符文装饰（改造/资源/属性提升 tab 复用同一个瓷砖时调用）
@@ -372,6 +404,177 @@ func _mod_rarity_color(rarity: String) -> Color:
 		"legendary": return Color(0.961, 0.620, 0.043, 1.0)
 		"mythic":    return Color(0.937, 0.267, 0.267, 1.0)
 		_: return Color(0.5, 0.5, 0.5, 1.0)
+
+
+## v9.2: 改造图标缺失时的兜底符号（用兵种 Unicode 字符填充）
+## 从 extra_data.slot_type 或 mod_id 前缀推断兵种，显示对应符号
+const _MOD_FALLBACK_GLYPHS = {
+	"weapon": "⚔", "weapons": "⚔", "gun": "⚔", "barrel": "⚔",
+	"ammunition": "🔶", "missile": "🔶", "fire_control": "⊕",
+	"guidance": "◎", "radar": "◎", "optics": "◎",
+	"stealth": "◉", "comms": "◈", "ecm": "◈",
+	"armor": "■", "shield": "■", "protection": "■",
+	"survival": "◆", "engineering": "⚙", "recovery": "⚙",
+	"special": "◇", "universal": "○", "enhancement": "★",
+	"phase_core": "✦", "power": "⚡", "engine": "⚙",
+	"thrust": "↑", "aerodynamics": "△",
+	"medical": "+", "logistics": "▣", "mobility": "»",
+	"navigation": "◉", "drone": "◇", "recon": "◉",
+	"demolition": "💥", "digging": "⛏", "bridge": "▬",
+	"fortification": "■", "environment": "◊",
+	"countermeasure": "◇", "laser": "λ", "minefield": "✸",
+	"mount": "▣", "repair": "⚙", "system": "⊞",
+	"autoloader": "⚙", "automation": "⊞",
+	"designator": "◎", "deception": "◉", "exoskeleton": "■",
+	"ergonomics": "⊕", "fuze": "🔶", "network": "◈",
+	"obstacle": "▬", "electronics": "⊞",
+}
+func _ensure_mod_fallback_icon(icon_rect: TextureRect, extra_data: Dictionary) -> void:
+	var slot_type: String = String(extra_data.get("slot_type", ""))
+	var fallback_glyph: String = _MOD_FALLBACK_GLYPHS.get(slot_type.to_lower(), "◇")
+	var lbl: Label = get_node_or_null("ModFallbackIcon") as Label
+	if lbl == null:
+		lbl = Label.new()
+		lbl.name = "ModFallbackIcon"
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		lbl.add_theme_font_size_override("font_size", 24)
+		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		lbl.z_index = 3
+		add_child(lbl)
+	lbl.text = fallback_glyph
+	lbl.add_theme_color_override("font_color", Color(0.024, 0.714, 0.831, 0.65))  # cyan_teck 半透
+	lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	lbl.visible = true
+
+
+## v9.2: 槽位类型标签映射（slot_type → 中文）
+const _SLOT_TYPE_CN = {
+	"weapon": "武器", "weapons": "武器", "gun": "武器", "barrel": "武器",
+	"ammunition": "弹药", "missile": "导弹", "fire_control": "火控",
+	"guidance": "制导", "radar": "雷达", "optics": "光学",
+	"stealth": "隐蔽", "comms": "通信", "ecm": "电子对抗",
+	"armor": "装甲", "shield": "护盾", "protection": "防护",
+	"survival": "生存", "engineering": "工程", "recovery": "回收",
+	"special": "特殊", "universal": "通用", "enhancement": "强化",
+	"phase_core": "相位核", "power": "动力", "engine": "引擎",
+	"thrust": "推进", "aerodynamics": "气动",
+	"medical": "医疗", "logistics": "后勤", "mobility": "机动",
+	"navigation": "导航", "drone": "无人机", "recon": "侦察",
+	"demolition": "爆破", "digging": "挖掘", "bridge": "架桥",
+	"fortification": "工事", "environment": "环境",
+	"countermeasure": "对抗", "laser": "激光", "minefield": "雷区",
+	"mount": "挂载", "repair": "维修", "system": "系统",
+	"autoloader": "自动装填", "automation": "自动化",
+	"designator": "指示器", "deception": "欺骗", "exoskeleton": "外骨骼",
+	"ergonomics": "人机工效", "fuze": "引信", "network": "网络",
+	"obstacle": "障碍", "electronics": "电子",
+}
+func _apply_mod_slot_type_label(slot_type: String) -> void:
+	if slot_type.is_empty():
+		return
+	var cn: String = _SLOT_TYPE_CN.get(slot_type.to_lower(), slot_type)
+	var label: Label = get_node_or_null("ModSlotTypeLabel") as Label
+	if label == null:
+		label = Label.new()
+		label.name = "ModSlotTypeLabel"
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+		label.add_theme_font_size_override("font_size", 9)
+		label.add_theme_color_override("font_color", Color(0.55, 0.65, 0.78, 0.9))
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		label.z_index = 4
+		add_child(label)
+	label.text = cn
+	label.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	label.offset_left = 28.0
+	label.offset_top = 4.0
+	label.visible = true
+
+
+## v9.2: 装配状态点（顶部行右侧，绿色=已装配，灰色=未装配）
+func _apply_mod_status_dot(is_installed: bool) -> void:
+	var dot: PanelContainer = get_node_or_null("ModStatusDot") as PanelContainer
+	if dot == null:
+		dot = PanelContainer.new()
+		dot.name = "ModStatusDot"
+		dot.custom_minimum_size = Vector2(6, 6)
+		dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		dot.z_index = 4
+		add_child(dot)
+	var style := StyleBoxFlat.new()
+	if is_installed:
+		style.bg_color = Color(0.204, 0.827, 0.600, 1.0)  # green_up
+		style.shadow_color = Color(0.204, 0.827, 0.600, 0.5)
+		style.shadow_size = 3
+	else:
+		style.bg_color = Color(0.27, 0.31, 0.39, 0.6)  # dark gray
+		style.shadow_color = Color(0, 0, 0, 0)
+		style.shadow_size = 0
+	style.set_corner_radius_all(3)
+	dot.add_theme_stylebox_override("panel", style)
+	dot.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	dot.offset_left = -16.0
+	dot.offset_right = -4.0
+	dot.offset_top = 4.0
+	dot.offset_bottom = 16.0
+	dot.visible = true
+
+
+## v9.2: 稀有度文字标签（底部右侧，大写中文："传奇"/"史诗"/"稀有"/"罕见"/"普通"）
+const _RARITY_CN := {
+	"common": "普通", "uncommon": "罕见", "rare": "稀有",
+	"epic": "史诗", "legendary": "传奇", "mythic": "神话",
+}
+func _apply_mod_rarity_text(rarity: String) -> void:
+	if rarity.is_empty():
+		return
+	var cn: String = _RARITY_CN.get(rarity, "")
+	if cn.is_empty():
+		return
+	var label: Label = get_node_or_null("ModRarityText") as Label
+	if label == null:
+		label = Label.new()
+		label.name = "ModRarityText"
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+		label.add_theme_font_size_override("font_size", 9)
+		label.add_theme_font_override("font", DesignTokens.get_title_font())
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		label.z_index = 4
+		add_child(label)
+	label.text = cn
+	label.add_theme_color_override("font_color", _mod_rarity_color(rarity))
+	label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	label.offset_right = -6.0
+	label.offset_bottom = -4.0
+	label.visible = true
+
+
+## v9.2: 改造原型名（底部左侧，斜体灰色，如"M829A4"/"Chobham"）
+## 对齐 HTML .mod-prototype（italic，灰色 9px）
+func _apply_mod_prototype(prototype: String) -> void:
+	var label: Label = get_node_or_null("ModPrototypeLabel") as Label
+	if prototype.is_empty():
+		if label:
+			label.visible = false
+		return
+	if label == null:
+		label = Label.new()
+		label.name = "ModPrototypeLabel"
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+		label.add_theme_font_size_override("font_size", 9)
+		label.add_theme_color_override("font_color", Color(0.27, 0.31, 0.39, 0.7))  # 暗灰次要信息
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		label.z_index = 4
+		add_child(label)
+	label.text = prototype
+	# 底部左侧（与底部右侧的稀有度文字对称）
+	label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	label.offset_left = 8.0
+	label.offset_bottom = -4.0
+	label.visible = true
 
 ## v7.x：改造图纸瓷砖应用稀有度底色边框。rarity 从 _tile_rarity（meta）取，
 ## 由 set_data 调用前的 backpack_panel.refresh_intel_tab 写入（item.set_meta("_tile_rarity", rarity)）。
@@ -443,22 +646,21 @@ func _refresh_rune(rune_id: String, count: int, name_label: Label, amount_label:
 		var rune_tex: Texture2D = null
 		var icon_path: String = String(extra_data.get("icon", ""))
 		if not icon_path.is_empty():
-			if ResourceLoader.exists(icon_path, "Texture2D"):
+			if ResourceLoader.exists(icon_path):
 				rune_tex = load(icon_path)
 		else:
 			var UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")
 			rune_tex = UiAssetLoader.rune_icon(rune_id)
 		if rune_tex != null:
 			icon_rect.texture = rune_tex
-			# v9.0 修复：与 _refresh_lore 同样，不再压扁成 36×32 + FIT_WIDTH + CENTERED，
-			# 用统一配置（IGNORE_SIZE + COVERED + 56×56）让符文图标真正显示
+			# v9.1 修复：SCALE 拉伸填满（COVERED/CENTERED 在 IGNORE_SIZE 下实测不显示）
 			icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+			icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
 			icon_rect.custom_minimum_size = Vector2(56, 56)
 			icon_rect.visible = true
 
 	# v9.0: 注入装饰层
-	_apply_rune_top_diamond(rune_rarity)
+	_apply_rune_top_diamond(rune_rarity, String(extra_data.get("category", "")), rune_id)
 	_apply_rune_star_req(star_req)
 	if runeword_active:
 		_apply_rune_runeword_badge()
@@ -471,28 +673,71 @@ func _refresh_rune(rune_id: String, count: int, name_label: Label, amount_label:
 	# 资源/属性提升 tile 不应该有这些装饰，但 Rune 用同一瓷砖，切换时需 clear（set_data 已处理 LORE/RESOURCE）
 
 
-## v9.0: 符文顶部菱形装饰（小菱形 ColorRect，按稀有度染色，叠在 icon 顶部）
-func _apply_rune_top_diamond(rarity: String) -> void:
-	var diamond: PanelContainer = get_node_or_null("RuneTopDiamond") as PanelContainer
-	if diamond == null:
-		diamond = PanelContainer.new()
-		diamond.name = "RuneTopDiamond"
-		diamond.anchor_left = 0.5
-		diamond.anchor_right = 0.5
-		diamond.anchor_top = 0.0
-		diamond.anchor_bottom = 0.0
-		diamond.offset_left = -7.0
-		diamond.offset_right = 7.0
-		diamond.offset_top = 2.0
-		diamond.offset_bottom = 16.0
-		diamond.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		diamond.z_index = 7
-		diamond.rotation = PI / 4.0  # 旋转 45 度成菱形
-		add_child(diamond)
-	var style := StyleBoxFlat.new()
-	style.bg_color = _mod_rarity_color(rarity)
-	diamond.add_theme_stylebox_override("panel", style)
-	diamond.visible = true
+## v9.2: 符文顶部双层菱形装饰（对齐 HTML .rune-diamond）
+## 外层 32×32 稀有度色菱形（opacity 0.85）+ 内层 24×24 暗底菱形 + 中心 glyph（稀有度色 + 辉光）
+## glyph 按 rune_category 选符号（⚔攻击 / ■防御 / ⚡能量 / ◉机动 / ✦特殊）
+const _RUNE_CAT_GLYPHS = {
+	"attack": "⚔", "defense": "■", "energy": "⚡", "mobility": "◉", "special": "✦",
+}
+func _apply_rune_top_diamond(rarity: String, category: String, rune_id: String = "") -> void:
+	var outer: PanelContainer = get_node_or_null("RuneTopDiamond") as PanelContainer
+	if outer == null:
+		outer = PanelContainer.new()
+		outer.name = "RuneTopDiamond"
+		outer.anchor_left = 0.5
+		outer.anchor_right = 0.5
+		outer.anchor_top = 0.0
+		outer.anchor_bottom = 0.0
+		# v9.2: 32×32 居中（原 14×14 太小）
+		outer.offset_left = -16.0
+		outer.offset_right = 16.0
+		outer.offset_top = 2.0
+		outer.offset_bottom = 34.0
+		outer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		outer.z_index = 7
+		outer.clip_contents = false  # 旋转后菱形角会超出方框，不能裁切
+		add_child(outer)
+	# 外层稀有度色菱形（旋转 45°）
+	outer.rotation = PI / 4.0
+	var outer_style := StyleBoxFlat.new()
+	var rar_col := _mod_rarity_color(rarity)
+	outer_style.bg_color = Color(rar_col.r, rar_col.g, rar_col.b, 0.85)  # opacity 0.85
+	outer_style.set_corner_radius_all(2)
+	outer.add_theme_stylebox_override("panel", outer_style)
+	# 内层暗底菱形（inset 4px → 24×24）
+	var inner: PanelContainer = outer.get_node_or_null("InnerDot") as PanelContainer
+	if inner == null:
+		inner = PanelContainer.new()
+		inner.name = "InnerDot"
+		inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		inner.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		inner.add_theme_constant_override("margin_left", 4)
+		inner.add_theme_constant_override("margin_right", 4)
+		inner.add_theme_constant_override("margin_top", 4)
+		inner.add_theme_constant_override("margin_bottom", 4)
+		outer.add_child(inner)
+	var inner_style := StyleBoxFlat.new()
+	inner_style.bg_color = Color(0.05, 0.08, 0.13, 1.0)  # bg-card 暗底
+	inner_style.set_corner_radius_all(2)
+	inner.add_theme_stylebox_override("panel", inner_style)
+	# 中心 glyph（按 category 选符号，稀有度色 + 辉光）
+	var glyph_lbl: Label = inner.get_node_or_null("Glyph") as Label
+	if glyph_lbl == null:
+		glyph_lbl = Label.new()
+		glyph_lbl.name = "Glyph"
+		glyph_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		glyph_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		glyph_lbl.add_theme_font_size_override("font_size", 14)
+		glyph_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		# glyph 不跟随 outer 旋转，保持正立可读
+		glyph_lbl.rotation = -PI / 4.0
+		inner.add_child(glyph_lbl)
+	var glyph_char: String = _RUNE_CAT_GLYPHS.get(category.to_lower(), "✦")
+	glyph_lbl.text = glyph_char
+	glyph_lbl.add_theme_color_override("font_color", rar_col)
+	glyph_lbl.add_theme_constant_override("shadow_size", 2)
+	glyph_lbl.add_theme_color_override("shadow_color", Color(rar_col.r, rar_col.g, rar_col.b, 0.6))
+	outer.visible = true
 
 
 ## v9.0: 底部星要求点阵（5 个小圆点，亮的表示需要的相位仪星级）
@@ -532,7 +777,8 @@ func _apply_rune_star_req(star_req: int) -> void:
 	hbox.visible = star_req > 0
 
 
-## v9.0: 右上符文之语激活角标 "✦ RW"
+## v9.2: 右下符文之语激活角标 "✦ RW"
+## 设计稿 .runeword-active::after 在 bottom:2px right:3px（右下角）
 func _apply_rune_runeword_badge() -> void:
 	var badge: PanelContainer = get_node_or_null("RuneRunewordBadge") as PanelContainer
 	if badge == null:
@@ -540,12 +786,13 @@ func _apply_rune_runeword_badge() -> void:
 		badge.name = "RuneRunewordBadge"
 		badge.anchor_left = 1.0
 		badge.anchor_right = 1.0
-		badge.anchor_top = 0.0
-		badge.anchor_bottom = 0.0
-		badge.offset_left = -30.0
-		badge.offset_right = -4.0
-		badge.offset_top = 4.0
-		badge.offset_bottom = 16.0
+		badge.anchor_top = 1.0
+		badge.anchor_bottom = 1.0
+		# v9.2: 右下角（原在右上，对调到右下）
+		badge.offset_left = -32.0
+		badge.offset_right = -3.0
+		badge.offset_top = -16.0
+		badge.offset_bottom = -2.0
 		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		badge.z_index = 7
 		var lbl := Label.new()
@@ -568,7 +815,8 @@ func _apply_rune_runeword_badge() -> void:
 	badge.visible = true
 
 
-## v9.0: 右下装备中金色小菱形点（已装备到符文槽）
+## v9.2: 右上装备中金色小菱形点（已装备到符文槽）
+## 设计稿 .equipped-badge 在 top:3px right:3px（右上角）
 func _apply_rune_equipped_dot() -> void:
 	var dot: PanelContainer = get_node_or_null("RuneEquippedDot") as PanelContainer
 	if dot == null:
@@ -576,12 +824,13 @@ func _apply_rune_equipped_dot() -> void:
 		dot.name = "RuneEquippedDot"
 		dot.anchor_left = 1.0
 		dot.anchor_right = 1.0
-		dot.anchor_top = 1.0
-		dot.anchor_bottom = 1.0
-		dot.offset_left = -12.0
-		dot.offset_right = -4.0
-		dot.offset_top = -12.0
-		dot.offset_bottom = -4.0
+		dot.anchor_top = 0.0
+		dot.anchor_bottom = 0.0
+		# v9.2: 右上角（原在右下，对调到右上）
+		dot.offset_left = -14.0
+		dot.offset_right = -3.0
+		dot.offset_top = 3.0
+		dot.offset_bottom = 14.0
 		dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		dot.z_index = 7
 		dot.rotation = PI / 4.0  # 菱形

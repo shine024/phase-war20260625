@@ -39,7 +39,7 @@ static func background_path_for(faction_id: String) -> String:
 
 
 static func has_background(faction_id: String = BG_NEUTRAL) -> bool:
-	return ResourceLoader.exists(background_path_for(faction_id), "Texture2D")
+	return ResourceLoader.exists(background_path_for(faction_id))
 
 
 static func load_background(faction_id: String) -> Texture2D:

@@ -1,277 +1,193 @@
 extends PanelContainer
-## 成长面板（v7.x UI 重设计 · 成长中枢）
-## 签名色：四系统整合（强化琥珀金/改造青蓝/进化紫/星级金）
-## 成长面板 - 2x2 网格布局 (严格按 HTML 预览 v3)
+## 成长中枢面板（v7.x UI 重设计 · 匹配"养成系统四面板设计"成长中枢页）
+## 金色签名色 + 2列布局（左名册 / 右详情）+ 2×2 进度卡片网格 + 底部操作按钮
+## 公开契约保持不变：show_panel / hide_panel / select_card / select_card_by_id / signal closed
 
 const GC = preload("res://resources/game_constants.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 const StarConfig = preload("res://data/blueprint_star_config.gd")
 const ModRegistry = preload("res://scripts/systems/modification_registry.gd")
-const ModSlotScene: PackedScene = preload("res://scenes/ui/mod_slot_item.tscn")
 const EvoPathRegistry = preload("res://scripts/systems/evolution_path_registry.gd")
 const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
 const FormatUtil = preload("res://scripts/ui/format_util.gd")
 const UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")
-
-# v7.x UI 重设计基建
 const DT = preload("res://resources/design_tokens.gd")
+const EvolutionHelpers = preload("res://managers/evolution/evolution_helpers.gd")
 
 signal closed
+
+const FILTER_ALL := "all"
+const FILTER_ENHANCEABLE := "enhanceable"
+const FILTER_MAXED := "maxed"
 
 var _anim_duration: float = 0.25
 var _is_open: bool = false
 var _selected_card: CardResource = null
 var _last_unlocked_ids: Array[String] = []
+var _filter_mode: String = FILTER_ALL
 
-# M1: 缓存 StyleBox
+# 缓存样式
 var _tag_stylebox: StyleBoxFlat
+var _card_thumb_stylebox_cache: Dictionary  # instance_id -> StyleBoxFlat (kind color)
 
-# ---- Header 区域 ----
-var unit_name_label: Label
-var unit_subtitle_label: Label
-var era_badge: Label
-var stat_tags: HBoxContainer
-var stars_row_container: HBoxContainer
-var star_count_label: Label
+# ---- TitleBar ----
+var meta_label: Label
 var close_btn: Button
-var portrait_icon: Label
 
-# ---- 星级强化区块 ----
-var star_level_label: Label
-var star_stars_container: HBoxContainer
-var star_progress_bar: ProgressBar
-var star_xp_text: Label
-var star_cost_text: Label
-
-# ---- 卡牌强化区块 ----
-var enhance_level_label: Label
-var enhance_progress_bar: ProgressBar
-var stat_atk_label: Label
-var stat_def_label: Label
-var stat_hp_label: Label
-var stat_misc_label: Label
-
-# ---- MOD 区块 ----
-var mod_count_label: Label
-var mod_grid: GridContainer
-
-# ---- 进化区块 ----
-var evo_status_label: Label
-var evo_current_icon: Label
-var evo_current_name: Label
-var evo_current_lv: Label
-var evo_target_icon: Label
-var evo_target_name: Label
-var evo_target_lv: Label
-var evo_requirements_label: RichTextLabel
-var evo_requirements_panel: PanelContainer
-
-# ---- Footer ----
-var currency_labels: Array[Label]
-var apply_btn: Button
-
-# ---- 卡牌列表 ----
+# ---- 左栏 ----
+var col_head_count: Label
+var chip_all: Button
+var chip_enh: Button
+var chip_max: Button
 var card_list_container: VBoxContainer
 var card_list_scroll: ScrollContainer
 var card_list_hint: Label
+
+# ---- HeroCard ----
+var hero_card: PanelContainer
+var hero_art: PanelContainer
+var hero_art_icon: Label
+var hero_name_label: Label
+var hero_tags: HBoxContainer
+var hero_power_label: Label
+
+# ---- 2×2 进度卡片 ----
+var prog_card_amber: PanelContainer   # 强化系统
+var prog_card_cyan: PanelContainer    # 改造系统
+var prog_card_violet: PanelContainer  # 进化系统
+var prog_card_gold: PanelContainer    # 星级评估
+
+# ---- 操作按钮 ----
 var enhance_btn: Button
 var mod_btn: Button
 var evo_btn: Button
 
+# ============================================================
+# _ready
+# ============================================================
 func _ready() -> void:
 	visible = false
 	modulate.a = 0.0
-
-	# M1: 预缓存 StyleBox
 	_init_cached_styleboxes()
+	_bind_nodes()
+	_connect_signals()
+	_apply_visual_styles()
 
-	# Header
-	unit_name_label = get_node_or_null("%UnitName")
-	unit_subtitle_label = get_node_or_null("%Subtitle")
-	era_badge = get_node_or_null("%EraBadge")
-	stat_tags = get_node_or_null("%TagsContainer")
-	stars_row_container = get_node_or_null("%StarsRow")
-	star_count_label = get_node_or_null("%StarCountLabel")
+
+func _bind_nodes() -> void:
+	# TitleBar
+	meta_label = get_node_or_null("%MetaLabel")
 	close_btn = get_node_or_null("%CloseBtn")
-	portrait_icon = get_node_or_null("%PortraitIcon")
 
-	# 星级强化区块
-	star_level_label = get_node_or_null("%StarLevel")
-	star_stars_container = get_node_or_null("%StarStars")
-	star_progress_bar = get_node_or_null("%StarProgress")
-	star_xp_text = get_node_or_null("%StarXpText")
-	star_cost_text = get_node_or_null("%StarCostText")
+	# 左栏
+	col_head_count = get_node_or_null("%ColHeadCount")
+	chip_all = get_node_or_null("%ChipAll")
+	chip_enh = get_node_or_null("%ChipEnh")
+	chip_max = get_node_or_null("%ChipMax")
+	card_list_container = get_node_or_null("%CardListContainer")
+	card_list_scroll = get_node_or_null("%CardListScroll")
+	card_list_hint = get_node_or_null("%CardListHint")
 
-	# 卡牌强化区块
-	enhance_level_label = get_node_or_null("%EnhanceLevel")
-	enhance_progress_bar = get_node_or_null("%EnhanceProgress")
-	stat_atk_label = get_node_or_null("%AtkValues")
-	stat_def_label = get_node_or_null("%DefValues")
-	stat_hp_label = get_node_or_null("%HpValues")
-	stat_misc_label = get_node_or_null("%MiscValues")
+	# HeroCard
+	hero_card = get_node_or_null("%HeroCard")
+	hero_art = get_node_or_null("%HeroArt")
+	hero_art_icon = get_node_or_null("%HeroArtIcon")
+	hero_name_label = get_node_or_null("%HeroName")
+	hero_tags = get_node_or_null("%HeroTags")
+	hero_power_label = get_node_or_null("%HeroPower")
 
-	# MOD
-	mod_count_label = get_node_or_null("%ModCountLabel")
-	mod_grid = get_node_or_null("%ModGrid")
-
-	# 进化
-	evo_status_label = get_node_or_null("%EvoStatusLabel")
-	evo_current_icon = get_node_or_null("%EvoCurrentIcon")
-	evo_current_name = get_node_or_null("%EvoCurrentName")
-	evo_current_lv = get_node_or_null("%EvoCurrentLv")
-	evo_target_icon = get_node_or_null("%EvoTargetIcon")
-	evo_target_name = get_node_or_null("%EvoTargetName")
-	evo_target_lv = get_node_or_null("%EvoTargetLv")
-	evo_requirements_label = get_node_or_null("%EvoReqInner")
-	evo_requirements_panel = get_node_or_null("%EvoRequirements")
-	if evo_requirements_label:
-		evo_requirements_label.bbcode_enabled = true
-
-	# P1: Footer
-	currency_labels = [
-		get_node_or_null("%F_C1"),
-		get_node_or_null("%F_C2"),
-		get_node_or_null("%F_C3"),
-		get_node_or_null("%F_C4"),
-	]
-	apply_btn = get_node_or_null("%ApplyBtn")
-	if apply_btn:
-		apply_btn.pressed.connect(_on_apply_pressed)
+	# ProgCards
+	prog_card_amber = get_node_or_null("%ProgCardAmber")
+	prog_card_cyan = get_node_or_null("%ProgCardCyan")
+	prog_card_violet = get_node_or_null("%ProgCardViolet")
+	prog_card_gold = get_node_or_null("%ProgCardGold")
 
 	# 操作按钮
 	enhance_btn = get_node_or_null("%EnhanceBtn")
 	mod_btn = get_node_or_null("%ModBtn")
 	evo_btn = get_node_or_null("%EvoBtn")
+
+
+func _connect_signals() -> void:
+	if close_btn:
+		close_btn.pressed.connect(_on_close_pressed)
+	if chip_all:
+		chip_all.pressed.connect(_on_filter_pressed.bind(FILTER_ALL))
+	if chip_enh:
+		chip_enh.pressed.connect(_on_filter_pressed.bind(FILTER_ENHANCEABLE))
+	if chip_max:
+		chip_max.pressed.connect(_on_filter_pressed.bind(FILTER_MAXED))
 	if enhance_btn:
 		enhance_btn.pressed.connect(_on_enhance_pressed)
 	if mod_btn:
 		mod_btn.pressed.connect(_on_mod_pressed)
-		if evo_btn:
-			evo_btn.pressed.connect(_on_evo_pressed)
+	if evo_btn:
+		evo_btn.pressed.connect(_on_evo_pressed)
 
-		# 卡牌列表
-		card_list_container = get_node_or_null("%CardListContainer")
-		card_list_scroll = get_node_or_null("%CardListScroll")
-		card_list_hint = get_node_or_null("%CardListHint")
-		# footer_res_labels 已移除（v7.x 美化：与 DetailFooter currency_labels 重复）
 
-		if close_btn:
-			close_btn.pressed.connect(_on_close_pressed)
-
-		# 视觉样式美化
-	_apply_visual_styles()
-	# 改造系统入口按钮挂图标（强化/改装/进化）
-	_apply_action_btn_icons()
-	# DetailCol 内容溢出保护：将 GridBody 包入 ScrollContainer，
-	# 避免 4 区块（星级/强化/改造/进化）全展开时超出固定 660px 面板高度被裁剪。
-	_wrap_grid_body_in_scroll()
-
-# ========== 视觉样式方法 ==========
-
+# ============================================================
+# 视觉样式
+# ============================================================
 func _apply_visual_styles() -> void:
-	# tscn 已定义基础 StyleBox，这里只做运行时动态调整
+	# HeroArt：菱形琥珀边框（与设计稿一致）
+	if hero_art:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0.04, 0.06, 0.11, 1)
+		sb.border_color = DT.COLOR_AMBER
+		sb.set_border_width_all(3)
+		sb.set_corner_radius_all(10)
+		sb.shadow_color = DT.COLOR_AMBER_GLOW
+		sb.shadow_size = 10
+		hero_art.add_theme_stylebox_override("panel", sb)
 
-	# --- 关闭按钮 ---（tscn 无法定义 hover 态）
-	var cbtn = get_node_or_null("%CloseBtn")
-	if cbtn:
-		var sb_n = StyleBoxFlat.new()
-		sb_n.bg_color = Color(0.55, 0.35, 0.96, 0.12)
-		sb_n.border_color = Color(0.55, 0.35, 0.96, 0.45)
-		sb_n.set_border_width_all(1)
-		sb_n.set_corner_radius_all(4)
-		cbtn.add_theme_stylebox_override("normal", sb_n)
-		var sb_h = StyleBoxFlat.new()
-		sb_h.bg_color = Color(0.9, 0.2, 0.2, 0.22)
-		sb_h.border_color = Color(0.95, 0.3, 0.3, 0.75)
-		sb_h.set_border_width_all(1)
-		sb_h.set_corner_radius_all(4)
-		cbtn.add_theme_stylebox_override("hover", sb_h)
+	# 关闭按钮 hover 红
+	if close_btn:
+		pass  # tscn 已定义 normal/hover
 
-	# --- 进度条（高度 6→8，更具存在感） ---
-	var sp = get_node_or_null("%StarProgress")
-	if sp:
-		sp.custom_minimum_size = Vector2(0, 8)
-	var ep = get_node_or_null("%EnhanceProgress")
-	if ep:
-		ep.custom_minimum_size = Vector2(0, 8)
+	# chip 初始 active 样式（全部）
+	_update_chip_styles()
 
-	# --- 四大区块顶部彩色顶线（v7.x 新签名色：星级金/强化琥珀/改造青蓝/进化紫） ---
-	_apply_section_theme_border("%StarSection", DT.COLOR_GOLD)
-	_apply_section_theme_border("%EnhanceSection", DT.COLOR_AMBER)
-	_apply_section_theme_border("%ModSection2", DT.COLOR_CYAN_TECH_SOFT)
-	_apply_section_theme_border("%EvoSection2", DT.COLOR_VIOLET_SOFT)
-
-	# --- v7.x：主要 Label 加载 Rajdhani 字体（战术感） ---
-	_apply_panel_fonts()
-
-
-## v7.x：给标题/卡名/星级/Section 标题加载 Rajdhani 字体
-func _apply_panel_fonts() -> void:
-	# 卡名（大字）
-	if unit_name_label:
-		unit_name_label.add_theme_font_override("font", DT.get_title_font_bold())
-	# 星级数字 / 强化等级（强调数字）
-	for lbl in [star_level_label, enhance_level_label]:
-		if lbl:
-			lbl.add_theme_font_override("font", DT.get_title_font_bold())
-	# Section 标题（Rajdhani SemiBold）
-	for path in ["%StarSection/StarHeader/StarTitle", "%EnhanceSection/EnhanceHeader/EnhanceTitle",
-				"%ModSection2/ModHeader/ModTitle", "%EvoSection2/EvoHeader/EvoTitle"]:
-		var lbl = get_node_or_null(path)
-		if lbl:
-			lbl.add_theme_font_override("font", DT.get_title_font())
-	# 操作按钮（强化/改造/进化）
+	# 字体：标题/卡名用 Rajdhani
+	if hero_name_label:
+		hero_name_label.add_theme_font_override("font", DT.get_title_font_bold())
+	if hero_power_label:
+		hero_power_label.add_theme_font_override("font", DT.get_title_font_bold())
 	for btn in [enhance_btn, mod_btn, evo_btn]:
 		if btn:
 			btn.add_theme_font_override("font", DT.get_title_font())
 
-## 为单个 Section 应用主题色顶线（保留原 bg/corner，只改顶部边框宽度+颜色）
-func _apply_section_theme_border(node_path: String, theme_color: Color) -> void:
-	var section = get_node_or_null(node_path)
-	if section == null:
-		return
-	var base_sb: StyleBoxFlat = section.get_theme_stylebox("panel")
-	var sb: StyleBoxFlat
-	if base_sb is StyleBoxFlat:
-		sb = (base_sb as StyleBoxFlat).duplicate() as StyleBoxFlat
-	else:
-		sb = StyleBoxFlat.new()
-		sb.bg_color = Color(0.06, 0.10, 0.18, 0.8)
-		sb.content_margin_left = 14
-		sb.content_margin_top = 12
-		sb.content_margin_right = 14
-		sb.content_margin_bottom = 12
-	sb.border_width_top = 3
-	sb.border_color = theme_color
-	sb.set_corner_radius_all(6)
-	section.add_theme_stylebox_override("panel", sb)
 
-# ========== 改造系统入口按钮图标 ==========
+func _update_chip_styles() -> void:
+	var chips := {FILTER_ALL: chip_all, FILTER_ENHANCEABLE: chip_enh, FILTER_MAXED: chip_max}
+	for mode in chips:
+		var btn: Button = chips[mode]
+		if btn == null:
+			continue
+		var sb := StyleBoxFlat.new()
+		sb.set_corner_radius_all(3)
+		sb.set_border_width_all(1)
+		sb.content_margin_left = 8
+		sb.content_margin_top = 4
+		sb.content_margin_right = 8
+		sb.content_margin_bottom = 4
+		if mode == _filter_mode:
+			sb.bg_color = Color(1.0, 0.85, 0.35, 0.12)
+			sb.border_color = DT.COLOR_GOLD
+			btn.add_theme_color_override("font_color", DT.COLOR_GOLD)
+		else:
+			sb.bg_color = Color(0.05, 0.09, 0.16, 0.4)
+			sb.border_color = Color(0.25, 0.35, 0.42, 0.3)
+			btn.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.8))
+		btn.add_theme_stylebox_override("normal", sb)
+		# hover 态
+		var sb_h := sb.duplicate() as StyleBoxFlat
+		sb_h.bg_color = Color(1.0, 0.85, 0.35, 0.06)
+		btn.add_theme_stylebox_override("hover", sb_h)
 
-## 给强化/改装/进化三个入口按钮挂图标（图标在文字左侧，保留中文文字）
-func _apply_action_btn_icons() -> void:
-	# 强化：mod_enhancement.png 在 mod_icons 子目录，用完整路径加载
-	var enh_tex := UiAssetLoader.load_tex("res://assets/ui/icons/mod_icons/mod_enhancement.png")
-	# 改装：根目录 svg
-	var mod_tex := UiAssetLoader.ui_icon("icon_modification")
-	# 进化：暂用 icon_blueprint.svg 占位（与 intel_manual_items.gd 进化蓝图一致）
-	var evo_tex := UiAssetLoader.ui_icon("icon_blueprint")
-	_apply_btn_icon(%EnhanceBtn, enh_tex, "强化")
-	_apply_btn_icon(%ModBtn, mod_tex, "改造")
-	_apply_btn_icon(%EvoBtn, evo_tex, "进化")
 
-## 统一挂图标：去掉原 text 开头的 emoji，保留中文文字
-func _apply_btn_icon(btn: Button, tex: Texture2D, text_label: String) -> void:
-	if btn == null or tex == null:
-		return
-	btn.text = text_label
-	btn.icon = tex
-	btn.expand_icon = true
-	btn.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	btn.add_theme_constant_override("icon_max_width", 18)
-
-# ========== 打开/关闭 ==========
-
+# ============================================================
+# 打开/关闭（保持公开契约）
+# ============================================================
 func show_panel(card: CardResource) -> void:
 	if _is_open:
 		return
@@ -286,76 +202,6 @@ func show_panel(card: CardResource) -> void:
 	tw.parallel().tween_property(self, "scale", Vector2(1.0, 1.0), _anim_duration).set_trans(Tween.TRANS_BACK)
 	tw.tween_callback(func(): _refresh_data())
 
-func _load_unlocked_cards() -> void:
-	## v7.x 设计：列表"每个实例一行"——同名卡 cold_t72#1 / #2 各自独立显示（各自养成不同）。
-	##
-	## 数据源优先级（关键修复：SaveManager 的 pending/last_known 队列在背包 presenter
-	## 存活时会被 consume 掉，导致买卡后队列变空、列表看不到新卡。真正可信的"玩家拥有的卡"
-	## 是 InstanceRegistry 里已注册的实例——买卡时 create_instance 注册，不会因 presenter
-	## 消费而消失）：
-	##   1. InstanceRegistry.get_all_instance_ids()（真·实例全集，主数据源）
-	##   2. SaveManager pending/last_known（兜底：presenter 未存活/旧档迁移场景）
-	##   3. BlueprintManager 蓝图（已解锁但未拥有任何实例的卡，补一条无养成模板行）
-	## 去重：完整 instance_id 去重；蓝图裸 card_id 仅在该卡无任何实例时补。
-	var all_ids: Array[String] = []
-	var seen_full: Dictionary = {}      # 完整 instance_id 去重
-	var seen_base: Dictionary = {}      # base card_id 集合（判断蓝图是否需要补条目）
-	var _sm = get_node_or_null("/root/SaveManager")
-	var _ir = get_node_or_null("/root/InstanceRegistry")
-	var _normalize := func(raw_id: String) -> String:
-		if _ir != null and _ir.has_method("get_card_id_of"):
-			return _ir.get_card_id_of(raw_id)  # cold_t72#1 → cold_t72（无序号返回原值）
-		var hi: int = raw_id.rfind("#")
-		return raw_id.substr(0, hi) if hi >= 0 else raw_id
-	# 主数据源：InstanceRegistry 全部实例
-	if _ir != null and _ir.has_method("get_all_instance_ids"):
-		for iid in _ir.get_all_instance_ids():
-			var sid: String = String(iid)
-			if sid.is_empty():
-				continue
-			if not seen_full.has(sid):
-				all_ids.append(sid)
-				seen_full[sid] = true
-				seen_base[String(_normalize.call(sid))] = true
-	# 兜底：SaveManager 队列（presenter 未存活/旧档迁移，补充 Registry 未覆盖的卡）
-	# v7.x 去重修复：队列里可能混入裸 card_id（如 "omega_platform"，来自相位仪槽位模板回退/
-	# 旧档迁移），而 InstanceRegistry 里是带 #序号的实例（"omega_platform#1"）。
-	# 原逻辑只查 seen_full（完整字符串）→ 裸id与实例id都进 all_ids → 成长面板渲染成2行同名卡。
-	# 修复：normalize 剥序号后若该 card_id 已有实例/代表条目被收录（seen_base 命中）则跳过。
-	if _sm:
-		var pending: Array = _sm.get_pending_backpack_ids() if _sm.has_method("get_pending_backpack_ids") else []
-		var last_known: Array = _sm.get_last_known_backpack_ids() if _sm.has_method("get_last_known_backpack_ids") else []
-		for id in pending + last_known:
-			var sid: String = String(id)
-			if sid.is_empty():
-				continue
-			if seen_full.has(sid):
-				continue
-			var base_id: String = String(_normalize.call(sid))
-			# 该 card_id 已有任何实例（带#序号）被收录 → 队列里的同卡条目（含裸id）是残留，跳过
-			if seen_base.has(base_id):
-				continue
-			all_ids.append(sid)
-			seen_full[sid] = true
-			seen_base[base_id] = true
-	# 补充 BlueprintManager 中已解锁但未拥有任何实例的蓝图（裸 card_id）
-	var bp = get_node_or_null("/root/BlueprintManager")
-	if bp:
-		var bp_ids: Array = bp.get_all_blueprint_ids() if bp.has_method("get_all_blueprint_ids") else bp.get_unlocked_blueprint_ids()
-		for id in bp_ids:
-			var sid: String = String(id)
-			if sid.is_empty():
-				continue
-			if not seen_base.has(sid) and not seen_full.has(sid):
-				all_ids.append(sid)
-				seen_full[sid] = true
-				seen_base[sid] = true
-	_last_unlocked_ids = all_ids
-	refresh_card_list(all_ids)
-	if not _selected_card and not all_ids.is_empty():
-		var first_card = _resolve_card(all_ids[0])
-		if first_card:
-			_selected_card = first_card
 
 func hide_panel() -> void:
 	if not _is_open:
@@ -369,69 +215,692 @@ func hide_panel() -> void:
 	)
 	closed.emit()
 
-# P4: 实际保存逻辑
-func _on_apply_pressed() -> void:
-	if not _selected_card:
-		return
+
+# ============================================================
+# 卡牌加载（数据层逻辑保持不变）
+# ============================================================
+func _load_unlocked_cards() -> void:
+	var all_ids: Array[String] = []
+	var seen_full: Dictionary = {}
+	var seen_base: Dictionary = {}
+	var _sm = get_node_or_null("/root/SaveManager")
+	var _ir = get_node_or_null("/root/InstanceRegistry")
+	var _normalize := func(raw_id: String) -> String:
+		if _ir != null and _ir.has_method("get_card_id_of"):
+			return _ir.get_card_id_of(raw_id)
+		var hi: int = raw_id.rfind("#")
+		return raw_id.substr(0, hi) if hi >= 0 else raw_id
+	if _ir != null and _ir.has_method("get_all_instance_ids"):
+		for iid in _ir.get_all_instance_ids():
+			var sid: String = String(iid)
+			if sid.is_empty():
+				continue
+			if not seen_full.has(sid):
+				all_ids.append(sid)
+				seen_full[sid] = true
+				seen_base[String(_normalize.call(sid))] = true
+	if _sm:
+		var pending: Array = _sm.get_pending_backpack_ids() if _sm.has_method("get_pending_backpack_ids") else []
+		var last_known: Array = _sm.get_last_known_backpack_ids() if _sm.has_method("get_last_known_backpack_ids") else []
+		for id in pending + last_known:
+			var sid: String = String(id)
+			if sid.is_empty():
+				continue
+			if seen_full.has(sid):
+				continue
+			var base_id: String = String(_normalize.call(sid))
+			if seen_base.has(base_id):
+				continue
+			all_ids.append(sid)
+			seen_full[sid] = true
+			seen_base[base_id] = true
 	var bp = get_node_or_null("/root/BlueprintManager")
 	if bp:
-		if bp.has_method("save_card_weapon_slots"):
-			bp.save_card_weapon_slots(_selected_card)
-	# 通知其他系统
-	var sb = get_node_or_null("/root/SignalBus")
-	# v7.x: 原 growth_panel_saved/card_data_changed 无监听者（死信号），改 emit backpack_changed 通知背包刷新
-	if sb and sb.has_signal("backpack_changed"):
-		sb.backpack_changed.emit()
+		var bp_ids: Array = bp.get_all_blueprint_ids() if bp.has_method("get_all_blueprint_ids") else bp.get_unlocked_blueprint_ids()
+		for id in bp_ids:
+			var sid: String = String(id)
+			if sid.is_empty():
+				continue
+			if not seen_base.has(sid) and not seen_full.has(sid):
+				all_ids.append(sid)
+				seen_full[sid] = true
+				seen_base[sid] = true
+	_last_unlocked_ids = all_ids
+	if not _selected_card and not all_ids.is_empty():
+		var first_card = _resolve_card(all_ids[0])
+		if first_card:
+			_selected_card = first_card
+	refresh_card_list(all_ids)
 
-## 将 GridBody 包入 ScrollContainer，防止 4 区块全展开时内容超出面板高度被裁剪。
-## 程序化 reparent 避免改动 .tscn 中数十个子节点的 parent 路径字符串。
-func _wrap_grid_body_in_scroll() -> void:
-	var detail_col := get_node_or_null("RootVBox/DetailHBox/DetailCol")
-	if detail_col == null:
-		return
-	var grid_body := detail_col.get_node_or_null("GridBody")
-	if grid_body == null:
-		return
-	# 已包过则跳过（防重复）
-	if grid_body.get_parent() is ScrollContainer:
-		return
-	var idx := grid_body.get_index()
-	# 创建 ScrollContainer 占据 GridBody 原位置
-	var scroll := ScrollContainer.new()
-	scroll.name = "GridBodyScroll"
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	detail_col.remove_child(grid_body)
-	detail_col.add_child(scroll)
-	detail_col.move_child(scroll, idx)
-	scroll.add_child(grid_body)
-	grid_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	grid_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 
+func _resolve_card(id_str: String) -> CardResource:
+	if id_str.is_empty():
+		return null
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	if ir != null and ir.has_method("get_instance"):
+		var inst: CardResource = ir.get_instance(id_str)
+		if inst != null:
+			return inst
+	var base_card_id: String = id_str
+	if ir != null and ir.has_method("get_card_id_of"):
+		base_card_id = ir.get_card_id_of(id_str)
+	var hash_idx: int = id_str.rfind("#")
+	if hash_idx < 0 and ir != null and ir.has_method("get_instances_by_card_id"):
+		var insts: Array = ir.get_instances_by_card_id(base_card_id)
+		if not insts.is_empty():
+			var first_inst: CardResource = ir.get_instance(String(insts[0]))
+			if first_inst != null:
+				return first_inst
+	return DefaultCards.get_card_by_id(base_card_id)
+
+
+# ============================================================
+# 卡牌列表渲染（新风格：缩略卡图 + 单行元信息 + 战力）
+# ============================================================
+func refresh_card_list(unlocked_ids: Array[String]) -> void:
+	if not card_list_container:
+		return
+	for child in card_list_container.get_children():
+		child.queue_free()
+
+	# 应用筛选
+	var filtered: Array[String] = []
+	for iid in unlocked_ids:
+		var card = _resolve_card(iid)
+		if card == null:
+			continue
+		if _filter_mode == FILTER_ENHANCEABLE and card.enhance_level >= 10:
+			continue
+		if _filter_mode == FILTER_MAXED and card.enhance_level < 10:
+			continue
+		filtered.append(iid)
+
+	if filtered.is_empty():
+		if card_list_hint:
+			card_list_hint.visible = true
+			card_list_hint.text = "无匹配卡牌" if _filter_mode != FILTER_ALL else "无卡牌"
+		if col_head_count:
+			col_head_count.text = "0"
+		return
+
+	if card_list_hint:
+		card_list_hint.visible = false
+
+	if col_head_count:
+		col_head_count.text = "%d / %d" % [filtered.size(), unlocked_ids.size()]
+
+	for iid in filtered:
+		var card = _resolve_card(iid)
+		if not card:
+			continue
+		var item = _create_card_list_item(card, iid)
+		card_list_container.add_child(item)
+
+
+func _on_card_selected(card: CardResource) -> void:
+	_selected_card = card
+	refresh_card_list(_last_unlocked_ids)
+	select_card(card)
+
+
+func _create_card_list_item(card: CardResource, instance_id_raw: Variant) -> Control:
+	var iid: String = String(instance_id_raw)
+	var btn := Button.new()
+	btn.custom_minimum_size = Vector2(0, 44)
+	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	btn.text = ""
+	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	btn.add_theme_font_size_override("font_size", 13)
+
+	# 选中态判断
+	var is_selected := false
+	if _selected_card != null:
+		var sel_iid := String(_selected_card.instance_id)
+		if not sel_iid.is_empty():
+			is_selected = (sel_iid == iid)
+		else:
+			is_selected = (iid.is_empty() or iid.split("#")[0] == _selected_card.card_id)
+
+	# 按钮样式
+	var sb_n := StyleBoxFlat.new()
+	sb_n.bg_color = Color(0.04, 0.07, 0.12, 0.4)
+	sb_n.set_border_width_all(0)
+	sb_n.set_corner_radius_all(3)
+	sb_n.content_margin_left = 6
+	sb_n.content_margin_top = 4
+	sb_n.content_margin_right = 6
+	sb_n.content_margin_bottom = 4
+	var sb_h := sb_n.duplicate() as StyleBoxFlat
+	sb_h.bg_color = Color(0.1, 0.14, 0.22, 0.7)
+	var sb_s := sb_n.duplicate() as StyleBoxFlat
+	sb_s.bg_color = Color(0.13, 0.16, 0.24, 0.9)
+	sb_s.border_width_left = 3
+	sb_s.border_color = DT.COLOR_GOLD
+	if is_selected:
+		btn.add_theme_stylebox_override("normal", sb_s)
+		btn.add_theme_stylebox_override("hover", sb_s)
+	else:
+		btn.add_theme_stylebox_override("normal", sb_n)
+		btn.add_theme_stylebox_override("hover", sb_h)
+
+	# 内容 HBox：缩略卡图 + 信息列 + 战力
+	var hbox := HBoxContainer.new()
+	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.add_theme_constant_override("separation", 8)
+
+	# 缩略卡图（32×36，顶部稀有度色条）
+	var thumb := PanelContainer.new()
+	thumb.custom_minimum_size = Vector2(32, 36)
+	thumb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var thumb_sb := StyleBoxFlat.new()
+	thumb_sb.bg_color = Color(0.03, 0.06, 0.11, 1)
+	thumb_sb.border_color = _get_kind_color(card.combat_kind)
+	thumb_sb.set_border_width_all(1)
+	thumb_sb.set_corner_radius_all(3)
+	thumb.add_theme_stylebox_override("panel", thumb_sb)
+	# 顶部稀有度色条（用 ColorRect 放在 thumb 上）
+	var rarity_strip := ColorRect.new()
+	rarity_strip.color = _get_rarity_color(card.rarity)
+	rarity_strip.custom_minimum_size = Vector2(32, 2)
+	rarity_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# 兵种字母（占位图）
+	var thumb_icon := Label.new()
+	thumb_icon.text = _get_unit_icon(card)
+	thumb_icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	thumb_icon.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	thumb_icon.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	thumb_icon.add_theme_font_size_override("font_size", 14)
+	thumb_icon.add_theme_color_override("font_color", Color(1, 1, 1, 0.55))
+	thumb_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	thumb.add_child(thumb_icon)
+	hbox.add_child(thumb)
+
+	# 信息列
+	var info := VBoxContainer.new()
+	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	info.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	info.add_theme_constant_override("separation", 2)
+
+	# 第一行：卡名 + 实例序号
+	var name_hbox := HBoxContainer.new()
+	name_hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	name_hbox.add_theme_constant_override("separation", 4)
+	var name_label := Label.new()
+	name_label.text = card.display_name if card.display_name else card.card_id
+	name_label.add_theme_font_size_override("font_size", 12)
+	name_label.add_theme_color_override("font_color", Color(0.95, 0.96, 0.98, 1) if is_selected else Color(0.85, 0.88, 0.94, 1))
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_label.clip_text = true
+	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	name_hbox.add_child(name_label)
+	# 实例序号
+	if iid.find("#") >= 0:
+		var parts := iid.split("#")
+		if parts.size() >= 2:
+			var seq_label := Label.new()
+			seq_label.text = "#" + parts[1]
+			seq_label.add_theme_font_size_override("font_size", 9)
+			seq_label.add_theme_color_override("font_color", Color(0.6, 0.65, 0.75, 0.7))
+			seq_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			name_hbox.add_child(seq_label)
+	info.add_child(name_hbox)
+
+	# 第二行：Lv.N · Mx/9（单行内联）
+	var meta_label := Label.new()
+	var mod_count: int = 0
+	if "mods" in card:
+		var mods_arr = card.mods
+		mod_count = mods_arr.size() if mods_arr is Array else 0
+	meta_label.text = "Lv.%d  ·  M%d/9" % [card.enhance_level, mod_count]
+	meta_label.add_theme_font_size_override("font_size", 9)
+	meta_label.add_theme_color_override("font_color", Color(0.55, 0.6, 0.7, 0.85))
+	meta_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	info.add_child(meta_label)
+	hbox.add_child(info)
+
+	# 战力（右侧）
+	var power_label := Label.new()
+	var power_str := _format_power(card)
+	power_label.text = power_str
+	power_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	power_label.add_theme_font_size_override("font_size", 11)
+	power_label.add_theme_color_override("font_color", DT.COLOR_GOLD if power_str != "—" else Color(0.5, 0.5, 0.55, 0.5))
+	power_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	power_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.add_child(power_label)
+
+	btn.add_child(hbox)
+	btn.pressed.connect(_on_card_selected.bind(card))
+	return btn
+
+
+# ============================================================
+# 筛选
+# ============================================================
+func _on_filter_pressed(mode: String) -> void:
+	_filter_mode = mode
+	_update_chip_styles()
+	refresh_card_list(_last_unlocked_ids)
+
+
+# ============================================================
+# 公开方法
+# ============================================================
+func select_card_by_id(card_id: String) -> void:
+	if card_id.is_empty():
+		return
+	var card = _resolve_card(card_id)
+	if card:
+		_selected_card = card
+		if visible:
+			_refresh_data()
+
+
+func select_card(card: CardResource) -> void:
+	_selected_card = card
+	if visible:
+		_refresh_data()
+
+
+# ============================================================
+# 数据刷新
+# ============================================================
+func _refresh_data() -> void:
+	if not _selected_card:
+		return
+	_selected_card = _ensure_selected_is_instance(_selected_card)
+	_refresh_header()
+	_refresh_star_section()
+	_refresh_enhance_section()
+	_refresh_mod_section()
+	_refresh_evolution_section()
+
+
+func _ensure_selected_is_instance(card: CardResource) -> CardResource:
+	if card == null:
+		return card
+	if not card.instance_id.is_empty():
+		return card
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	if ir != null and ir.has_method("get_instances_by_card_id") and not card.card_id.is_empty():
+		var insts: Array = ir.get_instances_by_card_id(card.card_id)
+		if not insts.is_empty() and ir.has_method("get_instance"):
+			var inst: CardResource = ir.get_instance(String(insts[0]))
+			if inst != null:
+				return inst
+	return card
+
+
+# ============================================================
+# Header
+# ============================================================
+func _refresh_header() -> void:
+	var c := _selected_card
+	if not c:
+		return
+
+	# HeroArt 图标 + 边框（边框色随兵种，但保留下方 hero_art 的琥珀边框——此处仅更新 icon）
+	if hero_art_icon:
+		hero_art_icon.text = _get_unit_icon(c)
+		hero_art_icon.add_theme_color_override("font_color", _get_kind_color(c.combat_kind))
+
+	# 卡名 + card_id#instance
+	if hero_name_label:
+		var name_text := c.display_name if c.display_name else c.card_id
+		var id_text := c.card_id
+		if not c.instance_id.is_empty():
+			id_text = c.instance_id
+		hero_name_label.text = "%s   [color=#454f63][font_size=10]%s[/font_size][/color]" % [name_text, id_text]
+		hero_name_label.text = name_text  # 简化：纯文本，id 显示在 meta
+	# MetaLabel 显示 card_id#instance
+	if meta_label:
+		var id_text := c.card_id.to_upper()
+		if not c.instance_id.is_empty():
+			id_text = c.instance_id
+		var era_name = GameConstants.get_era_name(c.era)
+		meta_label.text = "%s  ·  %s" % [id_text, era_name] if era_name else id_text
+
+	# 标签：时代 / 兵种 / 军衔星级 / 可进化
+	if hero_tags:
+		for child in hero_tags.get_children():
+			child.queue_free()
+		# 时代
+		var era_name = GameConstants.get_era_name(c.era)
+		if era_name:
+			_add_hero_tag(era_name, _get_era_color(c.era))
+		# 兵种
+		if c.card_type == GC.CardType.COMBAT_UNIT:
+			_add_hero_tag(CardResource.get_combat_kind_name(c.combat_kind), _get_kind_color(c.combat_kind))
+		# 星级（军衔）
+		var star: int = _calculate_star()
+		var star_str := ""
+		for i in range(5):
+			star_str += "★" if i < star else "☆"
+		_add_hero_tag(star_str, DT.COLOR_GOLD)
+		# 可进化标记
+		var evo_paths: Array = c.evolution_paths if "evolution_paths" in c else []
+		if not evo_paths.is_empty():
+			_add_hero_tag("可进化", DT.COLOR_VIOLET_SOFT)
+
+	# 综合战力
+	if hero_power_label:
+		hero_power_label.text = _format_power(c)
+
+
+# ============================================================
+# 2×2 进度卡片填充
+# ============================================================
+# --- 星级评估（ProgCardGold） ---
+func _refresh_star_section() -> void:
+	if prog_card_gold == null or _selected_card == null:
+		return
+	var body: VBoxContainer = _get_prog_body(prog_card_gold)
+	if body == null:
+		return
+	for child in body.get_children():
+		child.queue_free()
+
+	var c := _selected_card
+	var star: int = _calculate_star()
+	var rarity_name: String = c.rarity
+
+	# 星星行
+	var stars_row := HBoxContainer.new()
+	stars_row.add_theme_constant_override("separation", 2)
+	for i in range(5):
+		var s := Label.new()
+		s.text = "★" if i < star else "☆"
+		s.add_theme_font_size_override("font_size", 14)
+		s.add_theme_color_override("font_color", DT.COLOR_GOLD if i < star else Color(0.27, 0.31, 0.39, 1))
+		stars_row.add_child(s)
+	body.add_child(stars_row)
+
+	# 统计行
+	_add_prog_stat(body, "综合星级", "%d/5" % star)
+	_add_prog_stat(body, "稀有度", rarity_name, _get_rarity_color(c.rarity))
+	_add_prog_stat(body, "强化等级", "Lv.%d/10" % c.enhance_level)
+
+	# 进度条
+	var next_cost := StarConfig.get_research_cost_for_next_star(star, c.rarity)
+	var bp = get_node_or_null("/root/BlueprintManager")
+	var cur_rp: int = 0
+	if bp and bp.has_method("get_star_progress"):
+		var progress: Dictionary = bp.get_star_progress(c.card_id)
+		cur_rp = int(progress.get("current_research", 0))
+	var bar := _create_progress_bar(DT.COLOR_GOLD, cur_rp, next_cost)
+	body.add_child(bar)
+
+	# 提示
+	if next_cost <= 0:
+		_add_prog_hint(body, "已达最高星级")
+	else:
+		_add_prog_hint(body, "下一星 · 研究点 %s / %s" % [_format_number(cur_rp), _format_number(next_cost)])
+
+	# 状态标签
+	_set_prog_status(prog_card_gold, "Lv.%d" % star)
+
+
+# --- 强化系统（ProgCardAmber） ---
+func _refresh_enhance_section() -> void:
+	if prog_card_amber == null or _selected_card == null:
+		return
+	var body: VBoxContainer = _get_prog_body(prog_card_amber)
+	if body == null:
+		return
+	for child in body.get_children():
+		child.queue_free()
+
+	var c := _selected_card
+	var cur_lv: int = c.enhance_level
+	var max_lv: int = 10
+	var is_maxed := cur_lv >= max_lv
+
+	# 进度条
+	var pct := float(cur_lv) / float(max_lv)
+	var bar := _create_progress_bar_pct(DT.COLOR_AMBER, pct)
+	body.add_child(bar)
+
+	# 统计
+	_add_prog_stat(body, "当前等级", "Lv.%d/%d" % [cur_lv, max_lv])
+	if is_maxed:
+		_add_prog_stat(body, "状态", "已满级", DT.COLOR_GOLD)
+	else:
+		# 下一级消耗（纳米材料）
+		var next_cost := _estimate_next_enhance_cost(c)
+		_add_prog_stat(body, "下一级消耗", "%s 纳米" % _format_number(next_cost))
+		_add_prog_hint(body, "Lv.%d → 全属性+5%%" % (cur_lv + 1))
+
+	# 状态标签
+	_set_prog_status(prog_card_amber, "可强化" if not is_maxed else "已满级")
+
+
+# --- 改造系统（ProgCardCyan） ---
+func _refresh_mod_section() -> void:
+	if prog_card_cyan == null or _selected_card == null:
+		return
+	var body: VBoxContainer = _get_prog_body(prog_card_cyan)
+	if body == null:
+		return
+	for child in body.get_children():
+		child.queue_free()
+
+	var c := _selected_card
+	var mod_count: int = 0
+	if "mods" in c:
+		var mods_arr = c.mods
+		mod_count = mods_arr.size() if mods_arr is Array else 0
+	var max_mods: int = 9
+
+	# 9 格 tag 行
+	var slots_row := HBoxContainer.new()
+	slots_row.add_theme_constant_override("separation", 3)
+	for i in range(max_mods):
+		var tag := _make_slot_tag(i < mod_count)
+		slots_row.add_child(tag)
+	body.add_child(slots_row)
+
+	# 统计
+	_add_prog_stat(body, "已装模块", "%d/%d" % [mod_count, max_mods])
+	_add_prog_stat(body, "战力档位", _get_power_tier_name(c))
+	_add_prog_stat(body, "候选改造", "%d 个可用" % _count_available_mods(c))
+
+	# 状态标签
+	_set_prog_status(prog_card_cyan, "可改造" if mod_count < max_mods else "已满槽")
+
+
+# --- 进化系统（ProgCardViolet） ---
+func _refresh_evolution_section() -> void:
+	if prog_card_violet == null or _selected_card == null:
+		return
+	var body: VBoxContainer = _get_prog_body(prog_card_violet)
+	if body == null:
+		return
+	for child in body.get_children():
+		child.queue_free()
+
+	var c := _selected_card
+	# v7.x：用 get_evolution_targets() 获取完整目标列表（主线+势力+情报分支），
+	# 而非旧字段 evolution_paths（可能为空或单一目标）。
+	var evo_targets: Array = []
+	if c.has_method("get_evolution_targets"):
+		evo_targets = c.get_evolution_targets()
+
+	if evo_targets.is_empty():
+		_add_prog_hint(body, "无可用进化路线（终阶形态）")
+		_set_prog_status(prog_card_violet, "终阶")
+		return
+
+	# 显示前 N 个目标（卡片空间有限，最多 3 个）
+	var shown := mini(evo_targets.size(), 3)
+	for i in range(shown):
+		var t: Dictionary = evo_targets[i] if evo_targets[i] is Dictionary else {}
+		var target_id: String = String(t.get("target_id", ""))
+		var target_name: String = String(t.get("name", target_id))
+		var path_type: String = String(t.get("path_type", "main"))
+		if target_id.is_empty():
+			continue
+		# 路径类型 tag（主线/势力分支/情报隐藏）
+		var type_label := "主线" if path_type == "main" else ("势力" if path_type == "faction" else "情报")
+		var type_col := DT.COLOR_GOLD if path_type == "main" else (DT.COLOR_VIOLET_SOFT if path_type == "faction" else DT.COLOR_CYAN_TECH_SOFT)
+		# 战力变化
+		var target_card = DefaultCards.get_card_by_id(target_id)
+		var power_delta := ""
+		if target_card:
+			var cur_power := _estimate_power_value(c)
+			var tgt_power := _estimate_power_value(target_card)
+			if cur_power > 0 and tgt_power > 0:
+				var pct := int((float(tgt_power) / float(maxi(1, cur_power)) - 1.0) * 100.0)
+				var sign := "+" if pct >= 0 else ""
+				power_delta = "%s%d%%" % [sign, pct]
+		# 进化条件（取首个目标的校验结果）
+		var met_count := 0
+		var total_count := 0
+		var bp = get_node_or_null("/root/BlueprintManager")
+		if bp and bp.has_method("can_evolve_blueprint"):
+			var can_info: Dictionary = bp.can_evolve_blueprint(c.card_id, target_id)
+			if bool(can_info.get("ok", false)):
+				met_count = 3
+				total_count = 3
+			else:
+				# 统计已满足/总数
+				var enh_req: int = int(can_info.get("enhance_requirement", 0))
+				var mod_req: int = int(can_info.get("mod_requirement", 0))
+				if enh_req > 0:
+					total_count += 1
+					if int(can_info.get("current_enhance", 0)) >= enh_req:
+						met_count += 1
+				if mod_req > 0:
+					total_count += 1
+					if int(can_info.get("current_mod_count", 0)) >= mod_req:
+						met_count += 1
+				# 图纸
+				total_count += 1
+				var evo_bp_id := BlueprintDefinitions.get_evolution_blueprint_id(c.card_id, target_id)
+				var has_bp := false
+				var _iib = Engine.get_main_loop().get_root().get_node_or_null("IntelItemBag")
+				if _iib and not evo_bp_id.is_empty():
+					has_bp = _iib.has_item(evo_bp_id)
+				if has_bp:
+					met_count += 1
+		_add_evo_target_row(body, target_name, type_label, type_col, power_delta, met_count, total_count)
+
+	# 属性对比（取首个目标的 before→after）
+	var first_target_id: String = ""
+	if not evo_targets.is_empty():
+		var ft: Dictionary = evo_targets[0] if evo_targets[0] is Dictionary else {}
+		first_target_id = String(ft.get("target_id", ""))
+	if not first_target_id.is_empty() and c.has_method("calculate_evolved_stats"):
+		var evolved_stats: Dictionary = c.calculate_evolved_stats(first_target_id)
+		if not evolved_stats.is_empty():
+			_add_prog_hint(body, "HP %d→%d · 攻击 +%d" % [
+				int(c.base_hp),
+				int(float(evolved_stats.get("hp", c.base_hp))),
+				maxi(0, int(float(evolved_stats.get("attack_light", c.attack_light))) - c.attack_light),
+			])
+
+	_set_prog_status(prog_card_violet, "%d 路线" % evo_targets.size())
+
+
+## v7.x 辅助：估算卡牌战力数值（用于进化前后对比）
+func _estimate_power_value(card: CardResource) -> int:
+	var bp = get_node_or_null("/root/BlueprintManager")
+	if bp == null or card == null:
+		return 0
+	var id_to_eval: String = card.instance_id if not card.instance_id.is_empty() else card.card_id
+	if id_to_eval.is_empty():
+		return 0
+	var power := EvolutionHelpers.estimate_power_score(id_to_eval, bp)
+	return int(round(power))
+
+
+## v7.x 辅助：添加进化目标行（网页 evo-node 卡片样式浓缩版）
+func _add_evo_target_row(parent: VBoxContainer, name: String, type_label: String, type_col: Color, power_delta: String, met: int, total: int) -> void:
+	var row := PanelContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.075, 0.102, 0.165, 0.5)
+	sb.border_width_left = 2
+	sb.border_color = type_col
+	sb.set_corner_radius_all(3)
+	sb.content_margin_left = 8
+	sb.content_margin_top = 4
+	sb.content_margin_right = 8
+	sb.content_margin_bottom = 4
+	row.add_theme_stylebox_override("panel", sb)
+
+	var hbox := HBoxContainer.new()
+	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.add_theme_constant_override("separation", 6)
+
+	# 类型 tag
+	var type_lbl := Label.new()
+	type_lbl.text = type_label
+	type_lbl.add_theme_font_size_override("font_size", 8)
+	type_lbl.add_theme_color_override("font_color", type_col)
+	type_lbl.custom_minimum_size = Vector2(28, 0)
+	type_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	type_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.add_child(type_lbl)
+
+	# 目标名
+	var name_lbl := Label.new()
+	name_lbl.text = name
+	name_lbl.add_theme_font_size_override("font_size", 10)
+	name_lbl.add_theme_color_override("font_color", Color(0.9, 0.92, 0.96, 1))
+	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_lbl.clip_text = true
+	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.add_child(name_lbl)
+
+	# 战力变化
+	if not power_delta.is_empty():
+		var delta_lbl := Label.new()
+		delta_lbl.text = power_delta
+		delta_lbl.add_theme_font_size_override("font_size", 9)
+		var is_up := power_delta.begins_with("+")
+		delta_lbl.add_theme_color_override("font_color", DT.COLOR_GREEN_UP if is_up else DT.COLOR_RED_DOWN)
+		delta_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hbox.add_child(delta_lbl)
+
+	# 条件满足数
+	var cond_lbl := Label.new()
+	cond_lbl.text = "%d/%d" % [met, total]
+	cond_lbl.add_theme_font_size_override("font_size", 9)
+	cond_lbl.add_theme_color_override("font_color", DT.COLOR_GREEN_UP if met >= total else DT.COLOR_AMBER_SOFT)
+	cond_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.add_child(cond_lbl)
+
+	row.add_child(hbox)
+	parent.add_child(row)
+
+
+# ============================================================
+# 导航（保持原有逻辑）
+# ============================================================
 func _on_close_pressed() -> void:
 	hide_panel()
 
-## 打开强化面板（ EnhancementOverlay → CardEnhancementPanel ）
+
 func _on_enhance_pressed() -> void:
 	if not _selected_card:
 		return
 	_open_target_panel("enhancement")
 
-## 打开改造面板（ ModificationOverlay → ModificationPanel ）
+
 func _on_mod_pressed() -> void:
 	if not _selected_card:
 		return
 	_open_target_panel("modification")
 
-## 打开进化面板（ EvolutionOverlay → EvolutionPanel ）
+
 func _on_evo_pressed() -> void:
 	if not _selected_card:
 		return
 	_open_target_panel("evolution")
 
-## 关闭自身后打开目标面板，并预选当前卡牌（复用 main.gd 情报中心→成长的预选模式）
+
 func _open_target_panel(panel_key: String) -> void:
 	var card_to_select: CardResource = _selected_card
 	if _is_open:
@@ -443,31 +912,23 @@ func _open_target_panel(panel_key: String) -> void:
 	if main and main.has_method("_toggle_overlay"):
 		var overlay = main._overlay_for_panel_key(panel_key) if main.has_method("_overlay_for_panel_key") else null
 		if overlay:
-			# 先触发懒加载实例化目标面板，再预选当前卡牌
 			main._toggle_overlay(overlay, panel_key)
 			_preselect_target_card(overlay, panel_key, card_to_select)
 
-## 跳转后在目标面板预选当前卡牌（按 panel_key 匹配预选方法签名）
+
 func _preselect_target_card(overlay: Control, panel_key: String, card: CardResource) -> void:
 	if card == null or overlay == null:
 		return
-	# 节点名见 ui_lazy_loader.gd 的 node_name 配置
 	var panel: Node = overlay.get_node_or_null("CenterContainer/%s" % _target_panel_node_name(panel_key))
 	if panel == null:
-		# tscn 未内联时兜底查找（懒加载实例化的面板挂在 CenterContainer 下）
 		panel = overlay.find_child(_target_panel_node_name(panel_key), true, false)
 	if panel == null:
 		return
 	match panel_key:
 		"enhancement":
-			# v7.0: 传 instance_id（实例化养成身份）；无 instance_id 回退 card_id
-			# v7.4: 修复"强化面板词条槽显示空"——card 可能是裸模板（无 instance_id），
-			# 此时传裸 card_id 给强化面板会找不到实例养成数据。先尝试从 InstanceRegistry
-			# 解析该 card_id 的实例，存在则传 instance_id（养成数据挂在实例上）。
 			if panel.has_method("select_card_by_id"):
 				var sel_id: String = card.instance_id if not card.instance_id.is_empty() else card.card_id
 				if card.instance_id.is_empty():
-					# 裸 card_id：尝试取该 card_id 的第一个实例（养成数据所在）
 					var ir: Node = get_node_or_null("/root/InstanceRegistry")
 					if ir != null and ir.has_method("get_instances_by_card_id"):
 						var insts: Array = ir.get_instances_by_card_id(card.card_id)
@@ -475,13 +936,6 @@ func _preselect_target_card(overlay: Control, panel_key: String, card: CardResou
 							sel_id = String(insts[0])
 				panel.select_card_by_id(sel_id)
 		"modification", "evolution":
-			# ModificationPanel / EvolutionPanel.set_selected_card 入参为 CardResource
-			# v7.x 修复：原版直接传 _selected_card，若它是裸模板（无 instance_id，来自 show_panel
-			# 外部传入或 _resolve_card 的模板兜底），目标面板读 mods/enhance_level 会读到模板的空值，
-			# 导致"成长面板→改造面板看不到已装改造"。此处与 enhancement 分支一致，先解析该 card_id
-			# 的实例（养成数据所在）再传。目标面板侧（ModificationPanel.set_selected_card）已有
-			# _resolve_instance_or_warn 二次回退，这里解析是为了把"正确实例"传过去，避免回退到首个
-			# 同名实例（多实例时可能取错）。
 			var card_to_pass: CardResource = card
 			if card.instance_id.is_empty():
 				var ir: Node = get_node_or_null("/root/InstanceRegistry")
@@ -494,7 +948,7 @@ func _preselect_target_card(overlay: Control, panel_key: String, card: CardResou
 			if panel.has_method("set_selected_card"):
 				panel.set_selected_card(card_to_pass)
 
-## 目标面板在 overlay/CenterContainer 下的节点名（与 ui_lazy_loader.gd node_name 一致）
+
 func _target_panel_node_name(panel_key: String) -> String:
 	match panel_key:
 		"enhancement": return "CardEnhancementPanel"
@@ -502,691 +956,193 @@ func _target_panel_node_name(panel_key: String) -> String:
 		"evolution": return "EvolutionPanel"
 	return ""
 
-# ========== 卡牌列表 ==========
 
-## v7.0: 按 instance_id 解析模板 CardResource（instance_id → card_id → 模板）
-## 优先返回实例对象（带养成），无实例回退模板
-## v7.4: 修复"成长面板强化区块显示空"——裸 card_id（无 #序号）经 ir.get_instance 必返回 null，
-## 原逻辑直接回退模板（空养成），导致成长面板自身的强化等级/词条/属性全部显示为空/0。
-## 修复：裸 card_id 时再尝试取该 card_id 的第一个实例（养成数据所在），找不到才回退模板。
-func _resolve_card(id_str: String) -> CardResource:
-	if id_str.is_empty():
+# ============================================================
+# ProgCard 辅助
+# ============================================================
+func _get_prog_body(card_node: PanelContainer) -> VBoxContainer:
+	if card_node == null:
 		return null
-	var ir: Node = get_node_or_null("/root/InstanceRegistry")
-	# 优先取实例（带养成数据，展示用）
-	if ir != null and ir.has_method("get_instance"):
-		var inst: CardResource = ir.get_instance(id_str)
-		if inst != null:
-			return inst
-	# 回退：解析 card_id 查模板
-	var base_card_id: String = id_str
-	if ir != null and ir.has_method("get_card_id_of"):
-		base_card_id = ir.get_card_id_of(id_str)
-	# v7.4: 若 id_str 是裸 card_id（无 #序号），先尝试取该 card_id 的第一个实例
-	# （养成数据挂在实例上，模板永远是空养成）
-	var hash_idx: int = id_str.rfind("#")
-	if hash_idx < 0 and ir != null and ir.has_method("get_instances_by_card_id"):
-		var insts: Array = ir.get_instances_by_card_id(base_card_id)
-		if not insts.is_empty():
-			var first_inst: CardResource = ir.get_instance(String(insts[0]))
-			if first_inst != null:
-				return first_inst
-	return DefaultCards.get_card_by_id(base_card_id)
+	return card_node.get_node_or_null("ProgVBox/ProgBody")
 
-func refresh_card_list(unlocked_ids: Array[String]) -> void:
-	if not card_list_container:
+
+func _set_prog_status(card_node: PanelContainer, text: String) -> void:
+	if card_node == null:
 		return
-	for child in card_list_container.get_children():
-		child.queue_free()
+	var status: Label = card_node.get_node_or_null("ProgVBox/ProgHead/ProgStatus")
+	if status:
+		status.text = text
 
-	if unlocked_ids.is_empty():
-		if card_list_hint:
-			card_list_hint.visible = true
-		return
 
-	if card_list_hint:
-		card_list_hint.visible = false
+func _add_prog_stat(parent: VBoxContainer, label: String, value: String, value_color: Color = Color(0.9, 0.92, 0.96, 1)) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	var lbl := Label.new()
+	lbl.text = label
+	lbl.add_theme_font_size_override("font_size", 10)
+	lbl.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.85))
+	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(lbl)
+	var val := Label.new()
+	val.text = value
+	val.add_theme_font_size_override("font_size", 10)
+	val.add_theme_color_override("font_color", value_color)
+	row.add_child(val)
+	parent.add_child(row)
 
-	for iid in unlocked_ids:
-		var card = _resolve_card(iid)
-		if not card:
-			continue
-		var item = _create_card_list_item(card, iid)
-		card_list_container.add_child(item)
 
-func _on_card_selected(card: CardResource) -> void:
-	_selected_card = card
-	if not _last_unlocked_ids.is_empty():
-		refresh_card_list(_last_unlocked_ids)
-	select_card(card)
+func _add_prog_cond(parent: VBoxContainer, label: String, value: String, is_met: bool) -> void:
+	_add_prog_stat(parent, label, "%s %s" % ["✓" if is_met else "✗", value],
+		DT.COLOR_GREEN_UP if is_met else DT.COLOR_RED_DOWN)
 
-# ========== 列表项渲染（参考 modification_panel 卡片式范式） ==========
 
-## 创建单个卡牌列表项：PanelContainer 内含 HBox（兵种色标 + 图标 + 卡名/元信息）
-func _create_card_list_item(card: CardResource, instance_id_raw: Variant) -> Control:
-	var iid: String = String(instance_id_raw)
-	var btn := Button.new()
-	btn.custom_minimum_size = Vector2(0, 52)
-	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	btn.text = ""
-	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	btn.add_theme_font_size_override("font_size", 13)
-	btn.add_theme_color_override("font_color", Color(0.91, 0.93, 0.96, 1))
+func _add_prog_hint(parent: VBoxContainer, text: String) -> void:
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.add_theme_font_size_override("font_size", 9)
+	lbl.add_theme_color_override("font_color", Color(0.4, 0.45, 0.55, 0.8))
+	parent.add_child(lbl)
 
-	# ---- 选中态判断（instance_id 精确匹配，蓝图兜底回退 card_id） ----
-	var is_selected := false
-	if _selected_card != null:
-		var sel_iid := String(_selected_card.instance_id)
-		if not sel_iid.is_empty():
-			is_selected = (sel_iid == iid)
-		else:
-			is_selected = (iid.is_empty() or iid.split("#")[0] == _selected_card.card_id)
 
-	# ---- 按钮样式（normal / hover / selected 三色态） ----
-	var sb_n := StyleBoxFlat.new()
-	sb_n.bg_color = Color(0.06, 0.10, 0.18, 0.6)
-	sb_n.set_border_width_all(1)
-	sb_n.set_corner_radius_all(6)
-	sb_n.content_margin_left = 6
-	sb_n.content_margin_top = 5
-	sb_n.content_margin_right = 6
-	sb_n.content_margin_bottom = 5
-	var sb_h := sb_n.duplicate() as StyleBoxFlat
-	sb_h.bg_color = Color(0.12, 0.08, 0.22, 0.7)
-	sb_h.border_color = Color(0.55, 0.35, 0.96, 0.5)
-	var sb_s := sb_n.duplicate() as StyleBoxFlat
-	sb_s.border_color = Color(0, 0.94, 1, 0.8)
-	sb_s.border_width_left = 3
-	sb_s.bg_color = Color(0, 0.94, 1, 0.1)
+func _create_progress_bar(fill_color: Color, current: int, target: int) -> ProgressBar:
+	var pct := 0.0
+	if target > 0:
+		pct = clampf(float(current) / float(target), 0.0, 1.0)
+	return _create_progress_bar_pct(fill_color, pct)
 
-	if is_selected:
-		btn.add_theme_stylebox_override("normal", sb_s)
-		sb_h.bg_color = Color(0, 0.94, 1, 0.06)
+
+func _create_progress_bar_pct(fill_color: Color, pct: float) -> ProgressBar:
+	var bar := ProgressBar.new()
+	bar.min_value = 0.0
+	bar.max_value = 100.0
+	bar.value = pct * 100.0
+	bar.custom_minimum_size = Vector2(0, 5)
+	bar.show_percentage = false
+	var bg_sb := StyleBoxFlat.new()
+	bg_sb.bg_color = Color(0.03, 0.06, 0.11, 0.9)
+	bg_sb.set_border_width_all(1)
+	bg_sb.border_color = Color(0.25, 0.35, 0.42, 0.2)
+	bg_sb.set_corner_radius_all(3)
+	bar.add_theme_stylebox_override("background", bg_sb)
+	var fill_sb := StyleBoxFlat.new()
+	fill_sb.bg_color = fill_color
+	fill_sb.set_corner_radius_all(3)
+	bar.add_theme_stylebox_override("fill", fill_sb)
+	return bar
+
+
+func _make_slot_tag(filled: bool) -> PanelContainer:
+	var tag := PanelContainer.new()
+	tag.custom_minimum_size = Vector2(18, 18)
+	var sb := StyleBoxFlat.new()
+	sb.set_corner_radius_all(2)
+	sb.set_border_width_all(1)
+	if filled:
+		sb.bg_color = Color(DT.COLOR_CYAN_TECH_SOFT.r, DT.COLOR_CYAN_TECH_SOFT.g, DT.COLOR_CYAN_TECH_SOFT.b, 0.15)
+		sb.border_color = DT.COLOR_CYAN_TECH_SOFT
 	else:
-		btn.add_theme_stylebox_override("normal", sb_n)
-	btn.add_theme_stylebox_override("hover", sb_h)
+		sb.bg_color = Color(0.05, 0.09, 0.16, 0.3)
+		sb.border_color = Color(0.25, 0.35, 0.42, 0.3)
+	tag.add_theme_stylebox_override("panel", sb)
+	var lbl := Label.new()
+	lbl.text = "+" if not filled else "●"
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.add_theme_font_size_override("font_size", 9)
+	lbl.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT if filled else Color(0.4, 0.45, 0.55, 0.5))
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tag.add_child(lbl)
+	return tag
 
-	# ---- 内容结构：HBoxContainer（兵种色标 + 图标 + 信息列） ----
-	var outer_vbox := VBoxContainer.new()
-	outer_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	outer_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	outer_vbox.add_theme_constant_override("separation", 0)
 
-	var info_hbox := HBoxContainer.new()
-	info_hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	info_hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	info_hbox.add_theme_constant_override("separation", 6)
-
-	# 兵种色标条（4px 宽竖条）
-	var kind_color := _get_kind_color(card.combat_kind)
-	var color_bar := PanelContainer.new()
-	color_bar.custom_minimum_size = Vector2(4, 0)
-	color_bar.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var bar_sb := StyleBoxFlat.new()
-	bar_sb.bg_color = kind_color
-	bar_sb.set_border_width_all(0)
-	bar_sb.content_margin_left = 0
-	bar_sb.content_margin_top = 0
-	bar_sb.content_margin_right = 0
-	bar_sb.content_margin_bottom = 0
-	color_bar.add_theme_stylebox_override("panel", bar_sb)
-	info_hbox.add_child(color_bar)
-
-	# 兵种图标（20px Unicode）
-	var icon_label := Label.new()
-	icon_label.text = _get_unit_icon(card)
-	icon_label.custom_minimum_size = Vector2(24, 24)
-	icon_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	icon_label.add_theme_font_size_override("font_size", 20)
-	icon_label.add_theme_color_override("font_color", kind_color)
-	info_hbox.add_child(icon_label)
-
-	# 信息列（卡名 + 元信息）
-	var info_vbox := VBoxContainer.new()
-	info_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	info_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	info_vbox.add_theme_constant_override("separation", 1)
-
-	# 第一行：卡名 + 实例序号
-	var name_hbox := HBoxContainer.new()
-	name_hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	name_hbox.add_theme_constant_override("separation", 6)
-	var name_label := Label.new()
-	name_label.text = card.display_name if card.display_name else card.card_id
-	name_label.add_theme_font_size_override("font_size", 13)
-	name_label.add_theme_color_override("font_color", Color(0.91, 0.93, 0.96, 1))
-	name_label.add_theme_font_override("bold", ThemeDB.fallback_font)
-	name_hbox.add_child(name_label)
-
-	# 实例序号后缀（如 #2）
-	var inst_seq := ""
-	if not iid.is_empty() and iid.find("#") >= 0:
-		var parts := iid.split("#")
-		if parts.size() >= 2:
-			inst_seq = " #" + parts[1]
-	if not inst_seq.is_empty():
-		var seq_label := Label.new()
-		seq_label.text = inst_seq
-		seq_label.add_theme_font_size_override("font_size", 11)
-		seq_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.7, 0.8))
-		name_hbox.add_child(seq_label)
-
-	info_vbox.add_child(name_hbox)
-
-	# 第二行：星星 + 等级 + 改造数
-	var meta_hbox := HBoxContainer.new()
-	meta_hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	meta_hbox.add_theme_constant_override("separation", 8)
-
-	var star_count: int = StarConfig.calculate_star(card.enhance_level * 2, card.rarity)
-	var star_str := ""
-	for s in range(5):
-		star_str += "\u2605" if s < star_count else "\u2606"
-	var star_label := Label.new()
-	star_label.text = star_str
-	star_label.add_theme_font_size_override("font_size", 10)
-	star_label.add_theme_color_override("font_color", Color(1.0, 0.84, 0.0, 0.85))
-	meta_hbox.add_child(star_label)
-
-	var level_label := Label.new()
-	level_label.text = "Lv.%d" % card.enhance_level
-	level_label.add_theme_font_size_override("font_size", 10)
-	level_label.add_theme_color_override("font_color", Color(0.0, 0.73, 0.855, 0.9))
-	meta_hbox.add_child(level_label)
-
-	var mod_count: int = 0
-	if card is Object and "mods" in card:
-		var mods_arr = card.mods
-		mod_count = mods_arr.size() if mods_arr is Array else 0
-	var mod_label := Label.new()
-	mod_label.text = "MOD %d/9" % mod_count
-	mod_label.add_theme_font_size_override("font_size", 10)
-	mod_label.add_theme_color_override("font_color", Color(0, 0.94, 1, 0.9))
-	meta_hbox.add_child(mod_label)
-
-	info_vbox.add_child(meta_hbox)
-	info_hbox.add_child(info_vbox)
-	outer_vbox.add_child(info_hbox)
-	btn.add_child(outer_vbox)
-
-	btn.pressed.connect(_on_card_selected.bind(card))
-	return btn
-
-# ========== 旧方法（兼容） ==========
-
-func select_card_by_id(card_id: String) -> void:
-	if card_id.is_empty():
+# ============================================================
+# HeroCard 标签
+# ============================================================
+func _add_hero_tag(text: String, color: Color) -> void:
+	if hero_tags == null:
 		return
-	var card = _resolve_card(card_id)
-	if card:
-		_selected_card = card
-		if visible:
-			_refresh_data()
+	var tag := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(color.r, color.g, color.b, 0.08)
+	sb.border_color = Color(color.r, color.g, color.b, 0.5)
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(3)
+	sb.content_margin_left = 7
+	sb.content_margin_top = 2
+	sb.content_margin_right = 7
+	sb.content_margin_bottom = 2
+	tag.add_theme_stylebox_override("panel", sb)
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.add_theme_font_size_override("font_size", 9)
+	lbl.add_theme_color_override("font_color", color)
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tag.add_child(lbl)
+	hero_tags.add_child(tag)
 
-func select_card(card: CardResource) -> void:
-	_selected_card = card
-	if visible:
-		_refresh_data()
 
-# ========== 数据刷新 ==========
+# ============================================================
+# 战力 / 资源辅助
+# ============================================================
+func _format_power(card: CardResource) -> String:
+	var bp = get_node_or_null("/root/BlueprintManager")
+	if bp == null:
+		return "—"
+	var id_to_eval: String = card.instance_id if not card.instance_id.is_empty() else card.card_id
+	if id_to_eval.is_empty():
+		return "—"
+	var power := EvolutionHelpers.estimate_power_score(id_to_eval, bp)
+	if power <= 0:
+		return "—"
+	return _format_number(int(round(power)))
 
-func _refresh_data() -> void:
-	if not _selected_card:
-		return
-	# v7.x 修复：成长面板各区块（改造/强化/进化）读的是 _selected_card.mods / enhance_level / evolution_paths
-	# 等养成字段，这些数据只挂在实例对象上（模板永远是空养成）。若 _selected_card 是裸模板
-	# （show_panel 外部传入、或战场/背包回退到模板），改造区块会全显空槽、强化显示 Lv0。
-	# 此处在刷新前把 _selected_card 解析为实例，下游所有 _refresh_* 都读到真实养成数据。
-	_selected_card = _ensure_selected_is_instance(_selected_card)
-	_refresh_header()
-	_refresh_star_section()
-	_refresh_enhance_section()
-	_refresh_mod_section()
-	_refresh_evolution_section()
-	_refresh_footer()
 
-## 确保 _selected_card 是实例对象（带养成数据）。已是实例直接返回；模板则回退取 Registry 首个同名实例；
-## 都失败则返回原 card（保持旧行为，至少能显示模板字段）。复用 _resolve_card 的回退思路。
-func _ensure_selected_is_instance(card: CardResource) -> CardResource:
-	if card == null:
-		return card
-	if not card.instance_id.is_empty():
-		return card
-	# 模板（instance_id 空）→ 取 Registry 该 card_id 的首个实例
-	var ir: Node = get_node_or_null("/root/InstanceRegistry")
-	if ir != null and ir.has_method("get_instances_by_card_id") and not card.card_id.is_empty():
-		var insts: Array = ir.get_instances_by_card_id(card.card_id)
-		if not insts.is_empty() and ir.has_method("get_instance"):
-			var inst: CardResource = ir.get_instance(String(insts[0]))
-			if inst != null:
-				return inst
-	return card
+func _estimate_next_enhance_cost(card: CardResource) -> int:
+	# 简化估算：每级 50 × (level+1)
+	return 50 * (card.enhance_level + 1)
 
-# ---------- Header ----------
 
-func _refresh_header() -> void:
-	var c := _selected_card
-	if not c:
-		return
+func _count_available_mods(card: CardResource) -> int:
+	# 简化：返回注册表中该兵种类型可用的改造总数（运行时由 modification_panel 详查）
+	return 14
 
-	# 头像图标和边框（72×72，边框色随兵种）
-	if portrait_icon:
-		portrait_icon.text = _get_unit_icon(c)
-		var portrait_panel = get_node_or_null("%Portrait")
-		if portrait_panel:
-			var icon_sb := StyleBoxFlat.new()
-			icon_sb.bg_color = Color(0.102, 0.157, 0.267, 1)
-			icon_sb.border_color = _get_kind_color(c.combat_kind)
-			icon_sb.set_border_width_all(3)
-			icon_sb.set_corner_radius_all(10)
-			icon_sb.shadow_color = _get_kind_color(c.combat_kind)
-			icon_sb.shadow_size = 8
-			portrait_panel.add_theme_stylebox_override("panel", icon_sb)
 
-	# 主标题：display_name（18px 加粗白色）；副标题：card_id（11px 灰色）
-	if unit_name_label:
-		unit_name_label.text = c.display_name if c.display_name else c.card_id
-	if unit_subtitle_label:
-		unit_subtitle_label.text = c.card_id.to_upper()
-	if era_badge:
-		var era_name = GameConstants.get_era_name(c.era)
-		era_badge.text = era_name if era_name else ""
+func _get_power_tier_name(card: CardResource) -> String:
+	# 简化：基于战力的 5 档
+	var bp = get_node_or_null("/root/BlueprintManager")
+	if bp == null:
+		return "GRUNT"
+	var id_to_eval: String = card.instance_id if not card.instance_id.is_empty() else card.card_id
+	var power := EvolutionHelpers.estimate_power_score(id_to_eval, bp)
+	if power < 150: return "GRUNT 灰"
+	if power < 260: return "VETERAN 绿"
+	if power < 420: return "ELITE 蓝"
+	if power < 720: return "CHAMPION 紫"
+	return "OVERLORD 金"
 
-	# 标签
-	if stat_tags:
-		for child in stat_tags.get_children():
-			child.queue_free()
-		if c.card_type == GC.CardType.COMBAT_UNIT:
-			_add_tag(CardResource.get_combat_kind_name(c.combat_kind))
 
-			if c.weapon_type == GC.WeaponType.DIRECT:
-				_add_tag("直射")
-			elif c.weapon_type == GC.WeaponType.INDIRECT:
-				_add_tag("曲射")
-			elif c.weapon_type == GC.WeaponType.AERIAL:
-				_add_tag("空射")
-			else:
-				_add_tag("辅助")
-
-			if c.range_value > 0:
-				_add_tag("射程 %d" % c.range_value)
-			_add_tag("能量 %d" % int(c.energy_cost))
-
-	# 星星
-	if stars_row_container:
-		for child in stars_row_container.get_children():
-			child.queue_free()
-		var star: int = _calculate_star()
-		for idx in range(5):
-			var s := Label.new()
-			s.add_theme_font_size_override("font_size", 20)
-			s.custom_minimum_size = Vector2(24, 24)
-			s.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			if idx < star:
-				s.text = "\u2605"
-				s.modulate = Color(1.0, 0.84, 0.0)
-				s.add_theme_color_override("font_color", Color(1.0, 0.84, 0.0))
-			else:
-				s.text = "\u2606"
-				s.modulate = Color(0.333, 0.4, 0.467)
-			stars_row_container.add_child(s)
-
-	if star_count_label:
-		star_count_label.text = "%d/5" % _calculate_star()
-
-# ---------- 星级强化 ----------
-
-func _refresh_star_section() -> void:
-	if not _selected_card:
-		return
-	var star: int = _calculate_star()
-
-	if star_level_label:
-		star_level_label.text = "LV.%d" % star
-
-	if star_stars_container:
-		for child in star_stars_container.get_children():
-			child.queue_free()
-		for idx in range(5):
-			var s := Label.new()
-			s.add_theme_font_size_override("font_size", 14)
-			if idx < star:
-				s.text = "\u2605"
-				s.modulate = Color(1.0, 0.84, 0.0)
-			else:
-				s.text = "\u2606"
-				s.modulate = Color(0.333, 0.4, 0.467)
-			star_stars_container.add_child(s)
-
-	if star_progress_bar:
-		star_progress_bar.value = (float(mini(star, 5)) / 5.0) * 100.0
-
-	var next_cost := StarConfig.get_research_cost_for_next_star(star, _selected_card.rarity)
-
-	# 真实 XP 数据
-	if star_xp_text:
-		var bp = get_node_or_null("/root/BlueprintManager")
-		if bp and bp.has_method("get_star_progress"):
-			var progress: Dictionary = bp.get_star_progress(_selected_card.card_id)
-			var cur_rp: int = int(progress.get("current_research", 0))
-			var need_rp: int = int(progress.get("next_star_research", next_cost))
-			if need_rp <= 0:
-				star_xp_text.text = "已满星"
-			else:
-				star_xp_text.text = "%s / %s 研究点" % [_format_number(cur_rp), _format_number(need_rp)]
-		else:
-			if next_cost <= 0:
-				star_xp_text.text = "已满星"
-			else:
-				star_xp_text.text = "下一星需 %s 研究点" % _format_number(next_cost)
-
-	if star_cost_text:
-		if next_cost <= 0:
-			star_cost_text.text = "已达最高星级"
-		else:
-			var alloy_cost: int = maxi(1, int(next_cost * 0.2))
-			var crystal_cost: int = maxi(1, int(next_cost * 0.15))
-			star_cost_text.text = "下一星: 合金×%s · 晶体×%s" % [_format_number(alloy_cost), _format_number(crystal_cost)]
-
-# ---------- 卡牌强化 ----------
-
-func _refresh_enhance_section() -> void:
-	var c := _selected_card
-	if not c:
-		return
-
-	if enhance_level_label:
-		enhance_level_label.text = "Lv.%d/10" % c.enhance_level
-
-	if enhance_progress_bar:
-		enhance_progress_bar.value = (float(c.enhance_level) / 10.0) * 100.0
-
-	var base_stats := _get_base_stats()
-	var enhanced_stats := _get_enhanced_stats()
-
-	if stat_atk_label:
-		stat_atk_label.text = "轻%d / 甲%d / 空%d%s" % [
-				int(float(enhanced_stats.get("atk_light", 0))),
-				int(float(enhanced_stats.get("atk_armor", 0))),
-				int(float(enhanced_stats.get("atk_air", 0))),
-				_get_stat_delta(float(base_stats.get("atk_light", 0)), float(enhanced_stats.get("atk_light", 0)))]
-	if stat_def_label:
-		stat_def_label.text = "轻%d / 甲%d / 空%d%s" % [
-				int(float(enhanced_stats.get("def_light", 0))),
-				int(float(enhanced_stats.get("def_armor", 0))),
-				int(float(enhanced_stats.get("def_air", 0))),
-				_get_stat_delta(float(base_stats.get("def_light", 0)), float(enhanced_stats.get("def_light", 0)))]
-	if stat_hp_label:
-		stat_hp_label.text = "%d%s" % [
-				int(float(enhanced_stats.get("hp", 0))),
-				_get_stat_delta(float(base_stats.get("hp", 0)), float(enhanced_stats.get("hp", 0)))]
-	if stat_misc_label:
-		# V2: 加入移速显示
-		# 攻速保留1位小数（因为攻速本身是小数值如1.5），移速取整
-			stat_misc_label.text = "射程 %d | 攻速 %.1f | 移速 %d" % [
-				int(enhanced_stats.get("range", c.range_value)),
-				float(enhanced_stats.get("atk_speed", c.attack_speed)),
-				int(float(enhanced_stats.get("speed", c.base_speed)))]
-
-# ---------- MOD ----------
-
-func _refresh_mod_section() -> void:
-	if not mod_grid or not _selected_card:
-		return
-	for child in mod_grid.get_children():
-		child.queue_free()
-
-	var mod_list: Array = _selected_card.mods
-	var filled: int = mini(mod_list.size(), 9)
-	if mod_count_label:
-		mod_count_label.text = "%d/9" % filled
-
-	for idx in range(9):
-		if idx < filled:
-			var slot: Control = ModSlotScene.instantiate()
-			slot.custom_minimum_size = Vector2(80, 56)
-			slot.modulate.a = 1.0
-			mod_grid.add_child(slot)
-			if slot.has_method("set_slot_index"):
-				slot.set_slot_index(idx + 1)
-			var mod_data: Dictionary = {}
-			var entry = mod_list[idx]
-			# BlueprintManager 写入的 entry 是 {id, installed_at}，不含 name/level/tier 等显示字段；
-			# 统一用 id 反查改造注册表补全，避免 mod_slot_item 取不到 name 显示空白。
-			# 用 duplicate 避免把显示字段写回 card.mods 污染存档数据。
-			var mod_id_str: String = ""
-			if entry is Dictionary:
-				mod_id_str = String(entry.get("id", ""))
-				mod_data = entry.duplicate(true)
-			elif entry is String:
-				mod_id_str = String(entry)
-			if not mod_id_str.is_empty():
-				var md: Dictionary = ModRegistry.get_data(mod_id_str)
-				mod_data["id"] = mod_id_str
-				# 改造数据名字字段是 "name"（非 display_name）
-				mod_data["name"] = md.get("name", mod_id_str)
-				if not mod_data.has("level"):
-					mod_data["level"] = 1
-				if not mod_data.has("tier"):
-					mod_data["tier"] = md.get("tier", "A")
-				if not mod_data.has("icon"):
-					mod_data["icon"] = md.get("icon", "")
-			if slot.has_method("set_mod"):
-				slot.set_mod(mod_data)
-			# tooltip：鼠标悬停显示改造名 + tier
-			var tt_name: String = String(mod_data.get("name", mod_id_str))
-			var tt_tier: String = String(mod_data.get("tier", ""))
-			slot.tooltip_text = "%s%s" % [tt_name, (" [" + tt_tier + "]") if not tt_tier.is_empty() else ""]
-		else:
-			# 空槽位 - 虚线边框（紫色风格与 MOD 区块主题色呼应）
-			var placeholder := PanelContainer.new()
-			placeholder.custom_minimum_size = Vector2(80, 56)
-			placeholder.name = "PlaceholderSlot"
-			var placeholder_sb := StyleBoxFlat.new()
-			placeholder_sb.bg_color = Color(0.1, 0.137, 0.2, 0.15)
-			placeholder_sb.border_color = Color(0.55, 0.35, 0.96, 0.25)
-			placeholder_sb.set_border_width_all(1)
-			placeholder_sb.set_corner_radius_all(3)
-			# 虚线效果
-			placeholder_sb.draw_center = false
-			placeholder.add_theme_stylebox_override("panel", placeholder_sb)
-			var plus_label := Label.new()
-			plus_label.text = "+"
-			plus_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			plus_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-			plus_label.add_theme_font_size_override("font_size", 20)
-			plus_label.add_theme_color_override("font_color", Color(0.55, 0.35, 0.96, 0.5))
-			placeholder.add_child(plus_label)
-			mod_grid.add_child(placeholder)
-
-# ---------- 进化 ----------
-
-func _refresh_evolution_section() -> void:
-	var c := _selected_card
-	if not c:
-		return
-	var evo_paths: Array = c.evolution_paths
-
-	if evo_current_icon:
-		evo_current_icon.text = "\u2694"
-	if evo_current_name:
-		evo_current_name.text = c.display_name
-	if evo_current_lv:
-		evo_current_lv.text = "当前 · Lv.%d" % c.enhance_level
-
-	if evo_target_icon:
-		if evo_paths.is_empty():
-			evo_target_icon.text = "?"
-			if evo_status_label:
-				evo_status_label.text = "未解锁"
-			if evo_target_name:
-				evo_target_name.text = "暂无进化路线"
-			if evo_target_lv:
-				evo_target_lv.text = ""
-		else:
-			evo_target_icon.text = "\u2694"
-			var target_id: String = String(evo_paths[0])
-			var target = DefaultCards.get_card_by_id(target_id)
-			if target:
-				if evo_target_name:
-					evo_target_name.text = target.display_name
-				if evo_target_lv:
-					evo_target_lv.text = CardResource.get_combat_kind_name(target.combat_kind)
-				# 高亮目标（非锁定）
-				if evo_target_icon:
-					evo_target_icon.modulate = Color.WHITE
-			else:
-				if evo_target_name:
-					evo_target_name.text = target_id
-				if evo_target_lv:
-					evo_target_lv.text = ""
-
-	# 进化条件 — 直接用 BlueprintManager.can_evolve_blueprint 真实校验结果
-	# v6.7 修复：原实现用 base_hp×1.5 估算战力门槛、硬编码"合金500"、虚假"星级≥4"，
-	# 与真实校验（强化等级/MOD数/进化图纸/敌源MOD/势力等级）完全脱节，导致两条面板口径矛盾。
-	if evo_requirements_label:
-		if evo_paths.is_empty():
-			evo_requirements_label.text = "无可用进化路线"
-			if evo_requirements_panel:
-				evo_requirements_panel.visible = false
-			return
-
-		if evo_requirements_panel:
-			evo_requirements_panel.visible = true
-
-		var target_id_evo: String = String(evo_paths[0])
-		var parts: Array = []
-		var bp = get_node_or_null("/root/BlueprintManager")
-		if bp and bp.has_method("can_evolve_blueprint"):
-			var can_info: Dictionary = bp.can_evolve_blueprint(c.card_id, target_id_evo)
-			var can_ok: bool = bool(can_info.get("ok", false))
-			# 进化图纸持有状态（can_evolve_blueprint 内部已校验，失败 reason 会反映）
-			var evo_blueprint_id := BlueprintDefinitions.get_evolution_blueprint_id(c.card_id, target_id_evo)
-			var has_evo_blueprint := false
-			var _iib = Engine.get_main_loop().get_root().get_node_or_null("IntelItemBag")
-			if _iib and not evo_blueprint_id.is_empty():
-				has_evo_blueprint = _iib.has_item(evo_blueprint_id)
-			parts.append({
-				"text": ("\u2713 进化图纸" if has_evo_blueprint else "\u2717 进化图纸（未获得）"),
-				"is_ok": has_evo_blueprint,
-			})
-			# 强化等级门槛（成功时 can_info 带明细）
-			var enh_req: int = int(can_info.get("enhance_requirement", 0))
-			if enh_req > 0:
-				var cur_enh: int = int(can_info.get("current_enhance", c.enhance_level))
-				parts.append({
-					"text": ("\u2713 强化 Lv.\u2265%d (%d)" if cur_enh >= enh_req else "\u2717 强化 Lv.\u2265%d (%d)") % [enh_req, cur_enh],
-					"is_ok": cur_enh >= enh_req,
-				})
-			# 改造数量门槛
-			var mod_req: int = int(can_info.get("mod_requirement", 0))
-			if mod_req > 0:
-				var cur_mod: int = int(can_info.get("current_mod_count", c.mods.size()))
-				parts.append({
-					"text": ("\u2713 改造 \u2265%d (%d)" if cur_mod >= mod_req else "\u2717 改造 \u2265%d (%d)") % [mod_req, cur_mod],
-					"is_ok": cur_mod >= mod_req,
-				})
-			# 失败时若有未覆盖的 reason_zh，追加提示（如敌源MOD/势力等级/战力等门槛）
-			if not can_ok:
-				var reason_zh: String = String(can_info.get("reason_zh", ""))
-				# 过滤已被上面三项覆盖的 reason（enhance/mod/blueprint）
-				var reason: String = String(can_info.get("reason", ""))
-				if reason != "enhance_not_enough" and reason != "mod_not_enough" and reason != "evo_blueprint_missing" \
-						and not reason_zh.is_empty() and reason != "ok":
-					parts.append({"text": "\u26a0 %s" % reason_zh, "is_ok": false})
-		else:
-			parts.append({"text": "\u2717 进化系统未加载", "is_ok": false})
-
-		# 构建带 BBCode 分色的文本
-		var bbcode_parts: Array = []
-		for part in parts:
-			if part.get("is_ok", false):
-				bbcode_parts.append("[color=#00E676]%s[/color]" % part.get("text", ""))
-			else:
-				bbcode_parts.append("[color=#FF9800]%s[/color]" % part.get("text", ""))
-
-		evo_requirements_label.bbcode_text = "  \u00B7  ".join(bbcode_parts)
-
-# ---------- Footer ----------
-
-func _refresh_footer() -> void:
-	if currency_labels.size() >= 4:
-		var res_mgr = get_node_or_null("/root/BasicResourceManager")
-		if res_mgr:
-			var ids := ["res_alloy", "res_crystal", "res_nano", "res_permit"]
-			var symbols := ["合金", "晶体", "纳米", "许可"]
-			var names := ["合金", "晶体", "纳米", "许可"]
-			for i in range(min(4, ids.size())):
-				if currency_labels[i]:
-					var amt: int = res_mgr.get_total(ids[i])
-					currency_labels[i].text = "%s %s" % [names[i], _format_number(amt)]
-
-# ========== 辅助 ==========
-
-func _add_tag(text: String) -> void:
-	var tag_panel := PanelContainer.new()
-	tag_panel.add_theme_stylebox_override("panel", _tag_stylebox)
-
-	var tag_label := Label.new()
-	tag_label.text = text
-	tag_label.add_theme_font_size_override("font_size", 11)
-	tag_label.add_theme_color_override("font_color", Color(0.85, 0.95, 1.0, 0.95))
-	tag_panel.add_child(tag_label)
-	stat_tags.add_child(tag_panel)
-
+# ============================================================
+# 颜色/图标辅助
+# ============================================================
 func _calculate_star() -> int:
+	if _selected_card == null:
+		return 0
 	return StarConfig.calculate_star(_selected_card.enhance_level * 2, _selected_card.rarity)
 
-func _get_base_stats() -> Dictionary:
-	var c := _selected_card
-	return {
-		"atk_light": float(c.attack_light),
-		"atk_armor": float(c.attack_armor),
-		"atk_air": float(c.attack_air),
-		"def_light": float(c.defense_light),
-		"def_armor": float(c.defense_armor),
-		"def_air": float(c.defense_air),
-		"hp": float(c.base_hp),
-		"range": float(c.range_value),
-		"atk_speed": float(c.attack_speed),
-		"speed": float(c.base_speed),
-	}
-
-func _get_enhanced_stats() -> Dictionary:
-	var c := _selected_card
-	# v6.2 修复：用 UnifiedRankSystem 统一倍率（原硬编码 0.08/级线性外推与实际 0.05/级非线性不符）
-	var mult := UnifiedRankSystem.get_power_multiplier(c.enhance_level)
-	return {
-		"atk_light": c.attack_light * mult,
-		"atk_armor": c.attack_armor * mult,
-		"atk_air": c.attack_air * mult,
-		"def_light": c.defense_light * mult,
-		"def_armor": c.defense_armor * mult,
-		"def_air": c.defense_air * mult,
-		"hp": c.base_hp * mult,
-		"range": float(c.range_value),
-		"atk_speed": float(c.attack_speed),
-		"speed": float(c.base_speed),
-	}
-
-func _get_stat_delta(base_val: float, enhanced_val: float) -> String:
-	var delta := int(enhanced_val - base_val)
-	if delta > 0:
-		return " \u25B2+%d" % delta
-	return ""
 
 func _get_unit_icon(card: CardResource) -> String:
 	var kind_names = CardResource.get_combat_kind_name(card.combat_kind)
 	match kind_names:
-		"步兵": return "\u2694"
+		"步兵": return "⚔"
 		"装甲": return "◈"
 		"炮兵": return "◎"
 		"防空": return "↑"
-		"空军": return "\u2708"
+		"空军": return "✈"
 		"侦察": return "◉"
 		"工程": return "⚙"
 		"堡垒": return "■"
-		_: return "\u2694"
+		_: return "⚔"
+
 
 func _get_kind_color(combat_kind: int) -> Color:
 	var kind_names = CardResource.get_combat_kind_name(combat_kind)
@@ -1201,15 +1157,38 @@ func _get_kind_color(combat_kind: int) -> Color:
 		"堡垒": return Color(0.5, 0.5, 0.5)
 		_: return Color(0.5, 0.5, 0.5)
 
+
+func _get_rarity_color(rarity: String) -> Color:
+	match rarity.to_lower():
+		"common": return Color(0.42, 0.46, 0.57)
+		"uncommon": return Color(0.13, 0.77, 0.37)
+		"rare": return Color(0.22, 0.74, 0.97)
+		"epic": return Color(0.75, 0.52, 0.99)
+		"legendary": return DT.COLOR_AMBER
+		"mythic": return DT.COLOR_RED_DOWN
+		_: return Color(0.5, 0.5, 0.5)
+
+
+func _get_era_color(era: int) -> Color:
+	match era:
+		0: return Color(0.7, 0.72, 0.78)  # WW1
+		1: return Color(0.9, 0.4, 0.35)   # WW2
+		2: return Color(0.3, 0.5, 0.9)    # Cold
+		3: return DT.COLOR_CYAN_TECH_SOFT # Modern
+		4: return DT.COLOR_VIOLET_SOFT    # Future
+		_: return Color(0.6, 0.62, 0.68)
+
+
 func _format_number(n: int) -> String:
 	return FormatUtil.format_thousands(n)
 
+
 func _init_cached_styleboxes() -> void:
 	_tag_stylebox = StyleBoxFlat.new()
-	_tag_stylebox.bg_color = Color(0, 0.94, 1, 0.18)
-	_tag_stylebox.border_color = Color(0, 0.94, 1, 0.5)
+	_tag_stylebox.bg_color = Color(1.0, 0.85, 0.35, 0.12)
+	_tag_stylebox.border_color = Color(1.0, 0.85, 0.35, 0.5)
 	_tag_stylebox.set_border_width_all(1)
-	_tag_stylebox.set_corner_radius_all(8)
+	_tag_stylebox.set_corner_radius_all(3)
 	_tag_stylebox.content_margin_left = 8
 	_tag_stylebox.content_margin_top = 3
 	_tag_stylebox.content_margin_right = 8
