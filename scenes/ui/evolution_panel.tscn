@@ -161,6 +161,17 @@ layout_mode = 2
 text = ""
 theme_override_font_sizes/font_size = 10
 theme_override_colors/font_color = Color(0.769, 0.71, 0.992, 1)
+[node name="BackToGrowthButton" type="Button" parent="VBoxContainer/TitleRow/TitleHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "← 成长首页"
+custom_minimum_size = Vector2(100, 30)
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(1, 0.92, 0.55, 0.9)
+theme_override_colors/font_hover_color = Color(1, 0.85, 0.3, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_7")
+theme_override_styles/hover = SubResource("StyleBoxFlat_8")
+
 [node name="CloseButton" type="Button" parent="VBoxContainer/TitleRow/TitleHBox"]
 unique_name_in_owner = true
 layout_mode = 2

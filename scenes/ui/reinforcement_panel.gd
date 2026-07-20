@@ -33,6 +33,10 @@ func _ready() -> void:
 	var close_btn = get_node_or_null("VBoxContainer/TitleRow/CloseButton")
 	if close_btn:
 		close_btn.pressed.connect(_on_close)
+	# v9.x: 连接"返回成长首页"按钮（与 modification/evolution 面板同模式，用 unique_name）
+	var back_btn = get_node_or_null("%BackToGrowthButton")
+	if back_btn:
+		back_btn.pressed.connect(_on_back_to_growth)
 	# 连接晋升按钮
 	if reinforce_button:
 		reinforce_button.pressed.connect(_on_reinforce_pressed)
@@ -335,6 +339,16 @@ func show_panel() -> void:
 
 func _on_close() -> void:
 	closed.emit()
+
+
+## v9.x: 返回成长面板首页（关闭当前面板 + 打开成长面板）
+func _on_back_to_growth() -> void:
+	closed.emit()
+	var main = get_node_or_null("/root/Main")
+	if main and main.has_method("_toggle_overlay"):
+		var overlay = main._overlay_for_panel_key("growth") if main.has_method("_overlay_for_panel_key") else null
+		if overlay:
+			main._toggle_overlay(overlay, "growth")
 
 func _show_result(message: String) -> void:
 	if result_label:

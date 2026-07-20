@@ -49,6 +49,10 @@ func _ready() -> void:
 	# 连接关闭按钮
 	if close_button:
 		close_button.pressed.connect(_on_close)
+	# v9.x: 连接"返回成长首页"按钮
+	var back_btn: Button = get_node_or_null("%BackToGrowthButton")
+	if back_btn:
+		back_btn.pressed.connect(_on_back_to_growth)
 	# chip 筛选
 	if chip_all:
 		chip_all.pressed.connect(_on_filter_pressed.bind(FILTER_ALL))
@@ -1253,6 +1257,16 @@ func show_panel() -> void:
 
 func _on_close() -> void:
 	closed.emit()
+
+
+## v9.x: 返回成长面板首页（关闭当前面板 + 打开成长面板）
+func _on_back_to_growth() -> void:
+	closed.emit()
+	var main = get_node_or_null("/root/Main")
+	if main and main.has_method("_toggle_overlay"):
+		var overlay = main._overlay_for_panel_key("growth") if main.has_method("_overlay_for_panel_key") else null
+		if overlay:
+			main._toggle_overlay(overlay, "growth")
 
 func _show_result(message: String) -> void:
 	if result_label:

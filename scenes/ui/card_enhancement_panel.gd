@@ -70,6 +70,10 @@ func _ready() -> void:
 	var close_btn = get_node_or_null("VBoxContainer/TitleArea/TitleHBox/CloseButton")
 	if close_btn:
 		close_btn.pressed.connect(_on_close)
+	# v9.x: 返回成长首页按钮
+	var back_btn = get_node_or_null("%BackToGrowthButton")
+	if back_btn:
+		back_btn.pressed.connect(_on_back_to_growth)
 
 	# 信号连接
 	var mll = get_node_or_null("/root/ManagerLazyLoader")
@@ -859,14 +863,11 @@ func _slot_display(slots: Array, i: int) -> String:
 			lvl = int(lvl_val)
 	if mid.is_empty():
 		return ""
-	# ModuleDefinitions 是 autoload
-	var defs = get_node_or_null("/root/ModuleDefinitions")
-	if defs and defs.has_method("get_module_name"):
-		var name_str: String = defs.get_module_name(mid)
-		if name_str.length() > 4:
-			name_str = name_str.substr(0, 4)
-		return "%s Lv.%d" % [name_str, lvl]
-	return "%s Lv.%d" % [mid, lvl]
+	# v9.x 修复：ModuleDefinitions 是 class_name 静态类（非 autoload），直接用类名调用
+	var name_str: String = ModuleDefinitions.get_module_name(mid)
+	if name_str.length() > 4:
+		name_str = name_str.substr(0, 4)
+	return "%s Lv.%d" % [name_str, lvl]
 
 
 ## 更新底部 ActionBar（强化按钮 + 消耗）
@@ -1070,6 +1071,16 @@ func _on_close() -> void:
 	closed.emit()
 
 
+## v9.x: 返回成长面板首页（关闭当前面板 + 打开成长面板）
+func _on_back_to_growth() -> void:
+	closed.emit()
+	var main = get_node_or_null("/root/Main")
+	if main and main.has_method("_toggle_overlay"):
+		var overlay = main._overlay_for_panel_key("growth") if main.has_method("_overlay_for_panel_key") else null
+		if overlay:
+			main._toggle_overlay(overlay, "growth")
+
+
 func _on_card_added_to_backpack(_card: CardResource) -> void:
 	_init_card_list()
 	_update_detail_panel()
@@ -1080,20 +1091,19 @@ func _on_card_added_to_backpack(_card: CardResource) -> void:
 # ============================================================
 
 func _show_module_selection_popup(card_id: String, enhance_level: int) -> void:
-	var defs = get_node_or_null("/root/ModuleDefinitions")
-	if defs == null:
-		return
-	var available: Array = defs.get_available_modules(enhance_level)
+	# v9.x 修复：ModuleDefinitions 是 class_name 静态类（非 autoload），
+	# 不能用 get_node_or_null("/root/ModuleDefinitions")，直接用类名调用静态方法。
+	var available: Array = ModuleDefinitions.get_available_modules(enhance_level)
 	if available.is_empty():
 		return
 	var overlay := _create_module_overlay("✦ 选择新词条", "强化至 Lv.%d，解锁新词条槽位，请选择一个词条：" % enhance_level)
 	var list_box: VBoxContainer = overlay["list_box"]
 	for module_id in available:
 		var mid := String(module_id)
-		var module_name: String = defs.get_module_name(mid)
-		var effect_key: String = defs.get_effect_key(mid)
-		var effect_type: String = defs.get_effect_type(mid)
-		var base_val: float = defs.get_base_value(mid)
+		var module_name: String = ModuleDefinitions.get_module_name(mid)
+		var effect_key: String = ModuleDefinitions.get_effect_key(mid)
+		var effect_type: String = ModuleDefinitions.get_effect_type(mid)
+		var base_val: float = ModuleDefinitions.get_base_value(mid)
 		var effect_desc: String = _format_module_effect(effect_key, base_val, effect_type)
 		var btn := Button.new()
 		btn.text = "%s  (%s)" % [module_name, effect_desc]
@@ -1143,14 +1153,12 @@ func _show_module_upgrade_popup(card_id: String) -> void:
 		return
 	var overlay := _create_module_overlay("↑ 升级词条", "本次强化可升级一个已有词条，请选择：")
 	var list_box: VBoxContainer = overlay["list_box"]
-	var defs = get_node_or_null("/root/ModuleDefinitions")
+	# v9.x 修复：ModuleDefinitions 是 class_name 静态类，直接用类名调用
 	for u in upgradable:
 		var mid: String = String(u["module_id"])
 		var si: int = int(u["slot_index"])
 		var old_lvl: int = int(u["level"])
-		var module_name: String = ""
-		if defs and defs.has_method("get_module_name"):
-			module_name = defs.get_module_name(mid)
+		var module_name: String = ModuleDefinitions.get_module_name(mid)
 		var btn := Button.new()
 		btn.text = "%s  Lv.%d → Lv.%d" % [module_name, old_lvl, old_lvl + 1]
 		btn.custom_minimum_size = Vector2(0, 36)
@@ -1167,11 +1175,21 @@ func _show_module_upgrade_popup(card_id: String) -> void:
 
 
 func _create_module_overlay(title_text: String, desc_text: String) -> Dictionary:
+	# v9.x 修复：词条选择弹窗用独立 CanvasLayer（layer=110，高于 PopupLayer 的 100），
+	# 彻底脱离强化面板（PanelContainer 被 CenterContainer 包裹会强制居中布局）的影响。
+	# 之前用 Control + set_as_top_level + PRESET_FULL_RECT，三者与父节点布局管线时序冲突，
+	# 导致弹窗 root 被推到 viewport 之外（看不到）。
+	# 用 CanvasLayer 后：1) 永远在最上层 2) 不继承任何父节点变换 3) 永远铺满 viewport。
+	var layer := CanvasLayer.new()
+	layer.name = "_dyn_module_popup_layer"
+	layer.layer = 110   # 高于 PopupLayer(100)，确保盖住强化面板自身
+	add_child(layer)
+	# CanvasLayer 下挂一个 Control 铺满 viewport，承载遮罩 + 中央面板
 	var root := Control.new()
 	root.name = "_dyn_module_popup"
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_STOP
-	add_child(root)
+	layer.add_child(root)
 	# 暗色遮罩
 	var dim := ColorRect.new()
 	dim.color = Color(0.0, 0.0, 0.0, 0.55)
@@ -1230,12 +1248,12 @@ func _create_module_overlay(title_text: String, desc_text: String) -> Dictionary
 	skip_btn.add_theme_stylebox_override("normal", PanelStyles.make_panel_style(
 		DT.COLOR_BG_SLOT, DT.COLOR_BORDER_DIM, 1, 4))
 	skip_btn.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
-	skip_btn.pressed.connect(_close_module_popup.bind(root))
+	skip_btn.pressed.connect(_close_module_popup.bind(layer))
 	vbox.add_child(skip_btn)
-	return {"root": root, "list_box": list_box}
+	return {"root": layer, "list_box": list_box}
 
 
-func _on_module_selected(card_id: String, module_id: String, popup_root: Control) -> void:
+func _on_module_selected(card_id: String, module_id: String, popup_root: Node) -> void:
 	var cem: Node = get_node_or_null("/root/CardEnhancementManager")
 	if cem and cem.has_method("choose_module"):
 		var r: Dictionary = cem.choose_module(card_id, module_id)
@@ -1251,7 +1269,7 @@ func _on_module_selected(card_id: String, module_id: String, popup_root: Control
 				result_label.add_theme_color_override("font_color", DT.COLOR_RED_DOWN)
 
 
-func _on_module_upgrade(card_id: String, slot_index: int, popup_root: Control) -> void:
+func _on_module_upgrade(card_id: String, slot_index: int, popup_root: Node) -> void:
 	var cem: Node = get_node_or_null("/root/CardEnhancementManager")
 	if cem and cem.has_method("upgrade_module"):
 		var r: Dictionary = cem.upgrade_module(card_id, slot_index)
@@ -1267,7 +1285,7 @@ func _on_module_upgrade(card_id: String, slot_index: int, popup_root: Control) -
 				result_label.add_theme_color_override("font_color", DT.COLOR_RED_DOWN)
 
 
-func _close_module_popup(popup_root: Control) -> void:
+func _close_module_popup(popup_root: Node) -> void:
 	if popup_root:
 		popup_root.queue_free()
 
