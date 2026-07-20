@@ -52,19 +52,25 @@ const BASE_RANK_BY_PLATFORM_TYPE: Dictionary = {
 }
 
 const POWER_THRESHOLDS: Dictionary = {
+	# v7.x 战力公式全修（用户主导设计最终版）：HP×0.35 + DPS三维各自配对×0.75×(1+暴击×0.5)
+	# + avg_speed×25 + (三维防御和)×2.1 + 穿甲×5 + 移速×0.25。
+	# 新公式量级显著放大（终极卡裸卡 ~3600 分），阈值同步 ×2.5 防止"终极卡裸卡即元帅"。
+	# 校准目标：初期卡裸卡=下士/中士、冷战卡裸卡=上尉、终极卡裸卡=上将（未到顶）、
+	# 终极卡满养=元帅（养满才到顶）。养成有意义、时代递进清晰。
+	# RANK_BONUS（hp/dmg 加成）不变——军衔数值加成与战力公式解耦。
 	"private": 0.0,
-	"corporal": 40.0,
-	"sergeant": 100.0,
-	"second_lieutenant": 160.0,
-	"first_lieutenant": 220.0,
-	"captain": 300.0,
-	"major": 400.0,
-	"lieutenant_colonel": 520.0,
-	"colonel": 660.0,
-	"brigadier": 820.0,
-	"major_general": 1000.0,
-	"general": 1200.0,
-	"marshal": 1450.0,
+	"corporal": 100.0,            # 40 → 100
+	"sergeant": 250.0,            # 100 → 250
+	"second_lieutenant": 400.0,   # 160 → 400
+	"first_lieutenant": 550.0,    # 220 → 550
+	"captain": 750.0,             # 300 → 750
+	"major": 1000.0,              # 400 → 1000
+	"lieutenant_colonel": 1300.0, # 520 → 1300
+	"colonel": 1650.0,            # 660 → 1650
+	"brigadier": 2050.0,          # 820 → 2050
+	"major_general": 2500.0,      # 1000 → 2500
+	"general": 3000.0,            # 1200 → 3000
+	"marshal": 3625.0,            # 1450 → 3625（≈终极卡裸卡战力，满养才稳定破）
 }
 
 const RANK_BONUS: Dictionary = {

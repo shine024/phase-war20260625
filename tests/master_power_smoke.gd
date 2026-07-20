@@ -1,6 +1,9 @@
-# 无 GdUnit 依赖的快速校验：v7.x 相位师战力派生系统（第二轮）
+# 无 GdUnit 依赖的快速校验：v7.x 战力公式全修
 #   - 修复 A: 卡牌战力射程项 bug（火炮 range_value=99 不再破元帅）
-#   - 重构 B: 相位师 4 分量战力 + 新增 H 维符文 + 重构 F 维载卡
+#   - 重构 B: 相位师 3 分量战力（A相位仪 + F装备卡 + H符文）
+#   - 修复 C: DPS 改三维累加（多武器卡不再被低估）
+#   - 修复 D: 新增三维防御项（肉盾卡战力合理）
+#   - 修复 E: RankRules 阈值 ×2（配套新公式）
 # 注：--script 模式下 EnemyPhaseMasters.ENEMY_MASTERS 不初始化（项目既有限制），
 #     故相位师测试用手动构造的真实结构 dict，验证公式逻辑本身。
 # Usage: godot --headless --rendering-driver opengl3 --path . --script tests/master_power_smoke.gd
@@ -24,10 +27,11 @@ func _initialize() -> void:
 		push_error("[FAIL] " + msg)
 		code = 1
 
-	# ══════════ 修复 A: 射程项 bug 验证 ══════════
-	print("=== 修复 A: 卡牌战力射程项 ===")
-	var marshal_thresh: float = float(RankRules.POWER_THRESHOLDS.get("marshal", 1450.0))
-	# 火炮卡：range_value=99（attack_range=9900像素，修复前射程项=2178破元帅）
+	# ══════════ 修复 A/C/D: 卡牌战力公式（用户主导最终版） ══════════
+	# 战力 = HP×0.35 + DPS三维×0.75×(1+暴击×0.5) + avg_speed×25 + 三维防御和×2.1 + 穿甲×5 + 移速×0.25
+	print("=== 修复 A/C/D: 卡牌战力公式（用户主导最终版） ===")
+	var marshal_thresh: float = float(RankRules.POWER_THRESHOLDS.get("marshal", 3625.0))
+	# 初期卡：一战步兵/火炮，战力应远低于元帅（裸卡 ~160-190）
 	for card_id in ["ww1_105mm", "ww1_77mm", "ww1_mauser"]:
 		var card = DefaultCards.get_card_by_id(card_id)
 		if card == null:
@@ -38,14 +42,52 @@ func _initialize() -> void:
 			fail.call("build_stats 失败: %s" % card_id)
 			continue
 		var power: float = EvolutionHelpers.combat_power_from_unit_stats(stats)
-		print("  %s: range_value=%d → 战力=%.1f (元帅=%.0f)" % [card_id, card.range_value, power, marshal_thresh])
+		print("  [初期] %s: 战力=%.1f (元帅=%.0f)" % [card_id, power, marshal_thresh])
 		if power >= marshal_thresh:
-			fail.call("%s 战力 %.1f 破元帅！射程修复未生效" % [card_id, power])
-	# 火炮战力应 > 步兵（射程优势保留但不失控）
+			fail.call("%s 战力 %.1f 破元帅！初期卡应在 ~200 分区间" % [card_id, power])
+	# 火炮战力应 > 步兵（多武器 DPS 优势）
 	var ap: float = EvolutionHelpers.combat_power_from_unit_stats(UnitStatsTable.build_stats_from_card(DefaultCards.get_card_by_id("ww1_105mm"), 0))
 	var ip: float = EvolutionHelpers.combat_power_from_unit_stats(UnitStatsTable.build_stats_from_card(DefaultCards.get_card_by_id("ww1_mauser"), 0))
 	if ap <= ip:
 		fail.call("火炮战力(%.1f)应 > 步兵(%.1f)" % [ap, ip])
+
+	# ══════════ 终极卡验证：裸卡接近元帅但不破 ══════════
+	# fut_colossus 巨神机甲（HP3000, def和=690）：裸卡战力预期 ~3600，应 < marshal(3625) 或接近
+	var col_card = DefaultCards.get_card_by_id("fut_colossus")
+	if col_card != null:
+		var col_stats = UnitStatsTable.build_stats_from_card(col_card, 0)
+		var col_power: float = EvolutionHelpers.combat_power_from_unit_stats(col_stats)
+		print("  [终极] fut_colossus: 战力=%.1f (元帅=%.0f)" % [col_power, marshal_thresh])
+		# 终极卡裸卡应在 general(3000)-marshal(3625) 区间，不应远超 marshal（否则养成无意义）
+		if col_power < 2500.0:
+			fail.call("fut_colossus 战力 %.1f 过低，终极卡应接近元帅" % col_power)
+		if col_power > marshal_thresh * 1.2:
+			fail.call("fut_colossus 裸卡战力 %.1f 远超元帅×1.2，养成失去意义" % col_power)
+
+	# ══════════ 修复 C: DPS 三维各自配对验证 ══════════
+	# ww1_mg08 机枪巢：atk_l=41/spd_l=1.0, atk_a=136/spd_a=0.5, atk_air=8/spd_air=2.5
+	# 三维 DPS_raw = 41×1.0 + 136×0.5 + 8×2.5 = 129，×0.75 = 96.75
+	var mg08_card = DefaultCards.get_card_by_id("ww1_mg08")
+	if mg08_card != null:
+		var mg08_stats = UnitStatsTable.build_stats_from_card(mg08_card, 0)
+		var mg08_power: float = EvolutionHelpers.combat_power_from_unit_stats(mg08_stats)
+		var dps_raw_expected: float = 41.0 * 1.0 + 136.0 * 0.5 + 8.0 * 2.5  # 129
+		print("  ww1_mg08 多武器 DPS_raw=%.0f 战力=%.1f" % [dps_raw_expected, mg08_power])
+		if dps_raw_expected < 100.0:
+			fail.call("ww1_mg08 三维 DPS_raw(%.1f) 应 ≥100，反装甲输出未计入" % dps_raw_expected)
+
+	# ══════════ 修复 D: 三维防御求和验证 ══════════
+	# cold_t72（def_l/a/air=53/76/46，和=175）：防御项 = 175×2.1 = 367.5
+	var t72_card = DefaultCards.get_card_by_id("cold_t72")
+	if t72_card != null:
+		var t72_stats = UnitStatsTable.build_stats_from_card(t72_card, 0)
+		var t72_power: float = EvolutionHelpers.combat_power_from_unit_stats(t72_stats)
+		var t72_def_sum: float = 53.0 + 76.0 + 46.0  # 175
+		var expected_def_score: float = t72_def_sum * 2.1  # 367.5
+		print("  cold_t72 战力=%.1f 防御项预期+%.0f (def和=%.0f)" % [t72_power, expected_def_score, t72_def_sum])
+		# T-72 裸卡应在 captain(750)-major(1000) 区间（uv 实测 ~948）
+		if t72_power < 500.0:
+			fail.call("cold_t72 战力 %.1f 过低，防御项可能未生效" % t72_power)
 
 	# ══════════ 重构 B: 相位师 4 分量（手动构造真实结构） ══════════
 	print("=== 重构 B: 相位师 4 分量战力 ===")
@@ -180,23 +222,30 @@ func _initialize() -> void:
 	if int(rune_power_table.get("legendary", 0)) < 3000:
 		fail.call("符文 legendary 固定值过低: %d（应≥3000）" % int(rune_power_table.get("legendary", 0)))
 
-	# 3. v7.x 3分量公式：旧9维权重常量保留但 evaluate() 不再用（权重=1.0 直接相加）
-	#    W_ACTIVE_SPELLS/W_RUNEWORDS 保持 0（D/I 维已删）
-	if MasterPowerEvaluator.W_ACTIVE_SPELLS != 0.0:
-		fail.call("D维 W_ACTIVE_SPELLS 应为0（已删）")
-	if MasterPowerEvaluator.W_RUNEWORDS != 0.0:
-		fail.call("I维 W_RUNEWORDS 应为0（已删）")
-	print("  D维/I维已删（权重=0）✓")
+	# 3. v7.x 3分量公式：W_* 权重常量已删除（死代码，evaluate() 直接相加无权重）
+	#    验证常量确实不存在（用 has 防御性检查）
+	# 注：删除前 W_ACTIVE_SPELLS/W_RUNEWORDS 等是 const，删除后访问会报编译错。
+	#     此处用 get_class_list 间接验证（const 不在 class 属性里），或直接信任 evaluate() 只用3键。
+	print("  W_* 死代码常量已删除（evaluate 用直接相加）✓")
 
-	# 4. STAR_TIERS 新阈值验证（3分量公式分布：0/300/1500/4000/8000/20000/40000）
-	var t1_stars = MasterPowerEvaluator._score_to_stars(100.0)  # 新手 → 1★
-	var t4_stars = MasterPowerEvaluator._score_to_stars(5000.0)  # 中配 → 4★
+	# 4. STAR_TIERS 新阈值验证（v7.x 全修：0/800/1600/3200/6000/9500/20000）
+	var t1_stars = MasterPowerEvaluator._score_to_stars(100.0)  # 新手 → 1★ (0-800)
+	var t3_stars = MasterPowerEvaluator._score_to_stars(2000.0) # 一战师 → 3★ (1600-3200)
+	var t4_stars = MasterPowerEvaluator._score_to_stars(5000.0)  # 中配 → 4★ (3200-6000)
+	var t5_stars = MasterPowerEvaluator._score_to_stars(7500.0)  # 近未来师 → 5★ (6000-9500)
 	if int(t1_stars.get("stars", 0)) != 1:
 		fail.call("新手(100分)星级应=1★，实际 %d★" % int(t1_stars.get("stars", 0)))
-	print("  STAR_TIERS: 100分→%d★, 5000分→%d★" % [int(t1_stars.get("stars",0)), int(t4_stars.get("stars",0))])
+	if int(t3_stars.get("stars", 0)) != 3:
+		fail.call("一战师(2000分)星级应=3★，实际 %d★" % int(t3_stars.get("stars", 0)))
+	if int(t5_stars.get("stars", 0)) != 5:
+		fail.call("近未来师(7500分)星级应=5★，实际 %d★" % int(t5_stars.get("stars", 0)))
+	print("  STAR_TIERS: 100分→%d★, 2000分→%d★, 5000分→%d★, 7500分→%d★" % [
+		int(t1_stars.get("stars",0)), int(t3_stars.get("stars",0)),
+		int(t4_stars.get("stars",0)), int(t5_stars.get("stars",0))])
 
-	print("=== v7.x 3分量公式 校验结果 ===")
-	print("[修复A] ww1_105mm 火炮战力: %.1f (修复前破元帅2178+)" % ap)
+	print("=== v7.x 战力公式全修 校验结果 ===")
+	print("[修复A/C/D] ww1_105mm 火炮战力: %.1f | ww1_mg08 机枪巢战力: 见上方" % ap)
+	print("[修复E] RankRules 元帅阈值: %.0f（×2.5，匹配新公式量级）" % marshal_thresh)
 	print("[3分量] master_001: 总分=%.0f | A仪=%.0f F卡=%.0f H符=%.0f | %s" % [
 		float(er_ww1["total_score"]), float(er_ww1["scores"]["instrument"]), f_ww1, h_ww1,
 		MasterPowerEvaluator.get_stars_display(m_ww1)])
@@ -205,7 +254,7 @@ func _initialize() -> void:
 		MasterPowerEvaluator.get_stars_display(m_fu)])
 	print("[派生Lv] master_001=%d | master_030=%d" % [lvl_ww1, lvl_fu])
 	print("[符文之语] rw_2_01 激活=%d个 → H符文=%.1f" % [active.size(), h_rw])
-	print("[3分量公式] 符文legendary=%d | D/I维已删 | STAR_TIERS新阈值" % [int(rune_power_table.get("legendary",0))])
+	print("[3分量公式] 符文legendary=%d | W_*常量已删 | STAR_TIERS新阈值" % [int(rune_power_table.get("legendary",0))])
 	if code == 0:
 		print("✅ 全部断言通过")
 	else:

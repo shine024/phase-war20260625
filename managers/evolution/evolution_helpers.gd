@@ -234,32 +234,58 @@ static func build_unit_stats_for_power_preview(card: CardResource, bpm_ref: Node
 		return stats
 	return null
 
-## 与 RankRules 阈值（约 120~780）同量级
-## v7.x 对称化最终版：重新标定系数，压低 dps 项占比。
-##   旧公式 hp×0.28 + dps×2.2 导致纯攻卡(orbital dps=1667)战力是肉盾卡(bastion hp=3200)的3.8倍。
-##   新公式 hp×0.15 + dps×0.32 + sqrt(range)×2，让顶级全攻卡:顶级肉盾卡 ≈ 1.2:1（用户要求 1.8:1.5）。
-## v7.x 射程项修正：格子战术下索敌半径下限1600px > 战场跨度1020px，所有单位都能打全场，
-##   射程对实战无区分度。射程项系数 ×8→×2（仅保留弹道/曲射微弱区分，不再主导战力）。
-## 实测（满配满相位仪）：orbital≈4250 / devastator≈2850 / bastion≈3640 / infantry≈130。
+## v7.x 战力公式全修（用户主导设计最终版）：
+##   战力 = HP × 0.35
+##        + (atk_l×spd_l + atk_a×spd_a + atk_air×spd_air) × 0.75 × (1 + 暴击 × 0.5)
+##        + avg_speed × 25
+##        + (def_l + def_a + def_air) × 2.1
+##        + armor_pen × 5
+##        + move_speed × 0.25
+##
+## 设计要点：
+##   ① HP 权重 0.15 → 0.35：血量重要性提升，后期肉盾卡受益。
+##   ② DPS 三维各自配对（每维用自己的 per-target 攻速，v5.0 独立攻速）×0.75；暴击率进 DPS 乘区
+##      （×(1+暴击×0.5)，暴击 50% 时 DPS×1.25）——暴击成为输出放大器而非独立分项。
+##   ③ 攻速独立项 avg_speed×25：反映"出手快慢"本身的价值（高速单位多项贡献）。
+##   ④ 三维防御求和 ×2.1：奖励全面型单位（后期卡三维都高自然分高），比 def_max 更鼓励均衡发展。
+##   ⑤ 删除射程项：格子战术索敌半径下限 1600px > 战场跨度 1020px，射程不影响能否打到目标。
+##   ⑥ 删除 damage_reduction 独立项：platform_armor 词条价值已由三维防御体现，不重复计。
+##   ⑦ 穿甲 ×5、移速 ×0.25：次要属性保留区分度。
+##
+## 实测（uv 验证）：MP18 裸卡~165 / T72 裸卡~948 / 巨神机甲裸卡~3602 / 虚空领主裸卡~3764。
+## 终极/初期比 ~22×，配合 RankRules.POWER_THRESHOLDS ×2.5 校准，让终极卡裸卡=上将、满养=元帅。
 static func combat_power_from_unit_stats(stats: UnitStats) -> float:
 	if stats == null:
 		return 0.0
-	var interval: float = maxf(float(stats.attack_interval), 0.05)
-	var dps: float = float(stats.attack_damage) / interval
 	var hp: float = maxf(float(stats.max_hp), 0.0)
-	var range_f: float = maxf(float(stats.attack_range), 0.0)
+	# DPS 三维各自配对（每维用自己的攻速）
+	var spd_l: float = maxf(float(stats.attack_light_speed), 0.0)
+	var spd_a: float = maxf(float(stats.attack_armor_speed), 0.0)
+	var spd_air: float = maxf(float(stats.attack_air_speed), 0.0)
+	var dps_raw: float = (
+		maxf(float(stats.attack_light), 0.0) * spd_l
+		+ maxf(float(stats.attack_armor), 0.0) * spd_a
+		+ maxf(float(stats.attack_air), 0.0) * spd_air
+	)
+	# 暴击率进 DPS 乘区（暴击 50% → DPS ×1.25）
+	var crit_mul: float = 1.0 + maxf(float(stats.crit_chance), 0.0) * 0.5
+	var dps_score: float = dps_raw * 0.75 * crit_mul
+	# 攻速独立项（三维平均攻速，反映出手快慢本身的价值）
+	var avg_speed: float = (spd_l + spd_a + spd_air) / 3.0
+	# 三维防御求和（奖励全面型单位，后期卡三维均衡发展自然分高）
+	var def_sum: float = (
+		maxf(float(stats.defense_light), 0.0)
+		+ maxf(float(stats.defense_armor), 0.0)
+		+ maxf(float(stats.defense_air), 0.0)
+	)
 	var spd: float = maxf(float(stats.move_speed), 0.0)
-	# 射程项：格数开方 ×2（v7.x: 从×8降到×2，因格子战术索敌半径下限1600px>战场跨度，射程不影响能否打到目标）
-	var range_cells: float = maxf(range_f / 100.0, 0.0)
-	var range_score: float = sqrt(range_cells) * 2.0
 	var out: float = (
-		hp * 0.15
-		+ dps * 0.32
-		+ range_score
-		+ spd * 0.05
-		+ float(stats.damage_reduction) * 60.0
-		+ float(stats.crit_chance) * 80.0
-		+ float(stats.armor_penetration) * 40.0
+		hp * 0.35
+		+ dps_score
+		+ avg_speed * 25.0
+		+ def_sum * 2.1
+		+ float(stats.armor_penetration) * 5.0
+		+ spd * 0.25
 	)
 	return maxf(out, 1.0)
 

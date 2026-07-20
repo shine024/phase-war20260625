@@ -9,19 +9,15 @@ class_name MasterPowerEvaluator
 ##   - 刻印有进度（0.0~1.0），进度满=完整生效
 ##   - 我方和敌方共用同一套刻印与评估规则
 ##
-## 评估维度（加权）：
-##   A. 相位仪基础属性（15%） — 仪器的 HP/ATK/DEF/Energy/UnitLimit
-##   B. 刻印词条（15%）       — 已刻录的进化词条（含进度）
-##   C. 特质强度（10%）       — 相位师固有特质
-##   D. 主动技能（10%）       — 爆发与实用技能
-##   E. 被动技能（10%）       — 持续战斗优势
-##   F. 载卡战力（20%）        — 相位仪里装的平台卡战力（敌方=平台卡×unit_limit；玩家=卡战力×3）
-##   G. 军团本体战力（15%）    — master.stats（敌方相位师本体 HP/ATK/DEF/Regen/UnitLimit）
-##   H. 单符文战力（6%）        — 装备的符文（稀有度基础分 + primary/secondary effect）
-##   I. 符文之语战力（6%）      — 激活的符文之语（按 TIER 加权 + effects 求和）
-##      v7.x 第二轮重构：把"相位师总战力"对齐为用户设想的 4 分量（卡+相位仪+符文+载卡）。
-##      第三轮：把原合并 H 维（符文+符文之语）拆成 H（单符文）+ I（符文之语）两个独立维，
-##      符文和符文之语在评分表里各自有分，分别计权重。
+## v7.x 3 分量公式（直接相加，无权重系数）：
+##   总战力 = A(相位仪本体) + F(装备卡战力之和) + H(符文战力之和)
+##   - A 维：相位仪本体（star 平方梯度 + 主动能力加分）
+##   - F 维：装备卡每张真实 power 之和（敌方从 UnifiedCardTable 取，玩家由 assembler 预算注入）
+##   - H 维：符文按稀有度固定值之和（符文之语价值已内含——能凑词说明符文搭配好）
+##
+## 删掉的旧维度（B 刻印 / C 特质 / D 主动技能 / E 被动技能 / G 军团本体 / I 符文之语）：
+##   - 玩家侧本就为 0 或兜底，删除不损失
+##   - 敌方侧这些维度稀释了真实战力（玩家看到总战力远小于卡战力之和）
 ##
 ## 星级：1★~7★，纯由总分决定，无等级概念
 
@@ -30,35 +26,20 @@ class_name MasterPowerEvaluator
 # ─────────────────────────────────────────────
 
 const STAR_TIERS: Array[Dictionary] = [
-	{"stars": 1, "name": "新锐",   "min_score": 0,     "max_score": 300,    "color": "#88CCFF"},
-	{"stars": 2, "name": "精英",   "min_score": 300,   "max_score": 1500,   "color": "#44FF88"},
-	{"stars": 3, "name": "高手",   "min_score": 1500,  "max_score": 4000,   "color": "#FFCC00"},
-	{"stars": 4, "name": "大师",   "min_score": 4000,  "max_score": 8000,   "color": "#FF8800"},
-	{"stars": 5, "name": "宗师",   "min_score": 8000,  "max_score": 20000,  "color": "#FF4466"},
-	{"stars": 6, "name": "传说",   "min_score": 20000, "max_score": 40000,  "color": "#CC44FF"},
-	{"stars": 7, "name": "神话",   "min_score": 40000, "max_score": 9999999,"color": "#FFD700"},
+	{"stars": 1, "name": "新锐",   "min_score": 0,     "max_score": 800,     "color": "#88CCFF"},
+	{"stars": 2, "name": "精英",   "min_score": 800,   "max_score": 1600,    "color": "#44FF88"},
+	{"stars": 3, "name": "高手",   "min_score": 1600,  "max_score": 3200,    "color": "#FFCC00"},
+	{"stars": 4, "name": "大师",   "min_score": 3200,  "max_score": 6000,    "color": "#FF8800"},
+	{"stars": 5, "name": "宗师",   "min_score": 6000,  "max_score": 9500,    "color": "#FF4466"},
+	{"stars": 6, "name": "传说",   "min_score": 9500,  "max_score": 20000,   "color": "#CC44FF"},
+	{"stars": 7, "name": "神话",   "min_score": 20000, "max_score": 9999999, "color": "#FFD700"},
 ]
 ## v7.x 3 分量公式校准说明（敌我同口径：相位仪 + Σ卡战力 + Σ符文，直接相加）：
-## 敌方分布：WW1师~1800(3★) / WW2师~3800(4★) / Cold师~5700(4★) / Modern师~7600(4★) / Future师~9200(5★)
+## 敌方分布：WW1师~1800(3★) / WW2师~3800(4★) / Cold师~5700(4★) / Modern师~7600(5★) / Future师~9200(5★)
 ## 玩家分布：新手~50(1★) / 中配~4100(4★) / 满配~55000(7★)
-## 阈值按合并分布标定，让敌我星级可直接横向对比。
-
-# ─────────────────────────────────────────────
-#  维度权重（v7.x 对称化最终版：删 D维技能 / I维符文之语 单独计分）
-#  用户决策：相位仪技能价值体现在相位仪战力内，符文之语价值体现在符文战力内。
-#  总战力 = F维(卡真实战力) + A维(相位仪加成战力) + H维(符文固定值) + G维(本体) + 辅助维
-# ─────────────────────────────────────────────
-
-const W_INSTRUMENT: float = 0.15   # A 维：相位仪（含其给卡的加成战力）
-const W_ENGRAVINGS: float = 0.05   # B 维：刻印（保留，权重降低）
-const W_TRAITS: float = 0.10       # C 维：特质
-const W_ACTIVE_SPELLS: float = 0.0  # D 维：已删（技能价值在 A 维内）
-const W_PASSIVE_SPELLS: float = 0.10 # E 维：被动技能
-const W_EQUIPMENT_SLOTS: float = 0.35 # F 维：载卡战力（真实 combat_power，主导项）
-const W_MASTER_STATS: float = 0.15 # G 维：军团本体战力
-const W_RUNES: float = 0.10        # H 维：符文固定值（按稀有度）
-const W_RUNEWORDS: float = 0.0     # I 维：已删（符文之语价值在 H 维内）
-# 权重总和 = 0.15+0.05+0.10+0+0.10+0.35+0.15+0.10+0 = 1.00 ✓
+## v7.x 战力公式全修（本轮）：阈值按注释声称的时代分布重标定（旧阈值与分布矛盾——
+## Modern师~7600 落在旧 3★区间 1500-4000 之外，实际跑 4000-8000=4★，但注释说 4★，自相矛盾）。
+## 新阈值让时代递进清晰：一战师=3★、冷战师=4★、近未来师=5★、玩家满配=7★。
 
 # ─────────────────────────────────────────────
 #  A. 相位仪属性评估参数
@@ -320,9 +301,9 @@ static func get_stars_display(master: Dictionary) -> String:
 # ═════════════════════════════════════════════
 
 static func _eval_instrument(master: Dictionary) -> float:
-	# v7.x 统一公式：相位仪战力 = 仪器给所有装备卡的加成战力。
+	# v7.x 3 分量公式：A 维 = 相位仪本体战力（star 平方梯度 + 主动能力加分）。
 	# 玩家侧：assembler 在 _player_inst_bonus_total 预算「加成后战力 - 加成前战力」之和，优先读。
-	# 敌方侧：从 phase_instrument 的 atk_bonus/hp_bonus/def_bonus 派生（仪器给产兵的加成）。
+	# 敌方侧：从 phase_instrument 的 star 派生。
 	# 路径修复：旧版读 master.phase_instrument（顶层，敌方恒空→A=0），现回退读 equipment.phase_instrument。
 	var player_bonus: float = float(master.get("_player_inst_bonus_total", 0.0))
 	if master.has("_player_inst_bonus_total"):
@@ -340,17 +321,16 @@ static func _eval_instrument(master: Dictionary) -> float:
 	if instr_data.is_empty():
 		return 0.0
 
-	# v7.x: 统一池无 atk_bonus/hp_bonus/def_bonus（选 B：properties 按 star 重算）。
-	# 评分基于 star（确定性梯度）+ active_ability 加成。量级与原公式相近（star3~360 / star7~1960+）。
+	# v7.x 战力公式全修（本轮）：旧版用 star² × 200(假设卡power) × 2(假设卡数) × 0.1 估算
+	# 「仪器给假设卡的加成」，但 F 维已独立算真实卡战力，这里再用"假设卡"语义重复。
+	# 简化为只反映相位仪本体：star² × 10（star3=90 / star5=250 / star7=490）+ 主动能力 +50。
+	# A 维量级 90-540，占 3 分量总和 5-15%（F 维载卡是主导项）。
 	var star: int = int(instr_data.get("star", 1))
-	var bonus_sum: float = float(star * star)   # star3=9 / star5=25 / star6=36 / star7=49
+	var bonus_sum: float = float(star * star) * 10.0
 	var ab: Dictionary = instr_data.get("active_ability", {})
 	if not ab.is_empty():
-		bonus_sum += 15.0   # 有主动能力的相位仪额外加分
-	var card_count: int = 2  # 敌方标准 2 张装备卡
-	var base_card_power: float = 200.0  # 敌方产兵卡平均 power
-	# 加成战力 = bonus_sum × base_card_power × card_count × 0.1
-	return bonus_sum * base_card_power * card_count * 0.1
+		bonus_sum += 50.0   # 有主动能力的相位仪额外加分
+	return bonus_sum
 
 
 # ═════════════════════════════════════════════
