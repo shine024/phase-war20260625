@@ -51,6 +51,11 @@ func _ready() -> void:
 	# v7.x：hover 动效（仅稀有度瓷砖 LORE/RUNE 在 set_data 后才真正启用）
 	mouse_entered.connect(_on_mouse_entered)
 	mouse_exited.connect(_on_mouse_exited)
+	# v9.x 修复：创建装饰中间层（与 BackpackCardItem 同模式）。
+	# ResourceSlotItem 是 PanelContainer，会对所有直接子节点强制 fit_child_in_rect。
+	# 装饰节点（稀有度色条/状态点/数量徽章等）需要按 anchor/offset 局部定位，
+	# 挂到 DecorationLayer（Control 非 Container）下避免被强制拉伸覆盖图标。
+	_ensure_decoration_layer()
 	# v6.7 修复：节点路径前缀缺 "Margin/"，导致 VBox/Icon 尺寸初始化全部被跳过，
 	# TextureRect 宽度坍缩为 0，符文图标不可见（texture 已正确加载但无渲染区域）
 	var vbox = get_node_or_null("Margin/VBox")
@@ -251,7 +256,11 @@ func _refresh_lore(lore_id: String, count: int, name_label: Label, amount_label:
 		# 改造瓷砖名字限制更短（避免和左侧色条/右侧计数冲突）
 		var max_name_len := 7 if not mod_rarity.is_empty() else 12
 		name_label.text = _truncate_with_ellipsis(display_name, max_name_len)
+		# v9.x: 改造名居中显示
+		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	if amount_label:
+		# v9.x: 效果行居中显示
+		amount_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		# v9.0: 改造瓷砖用 amount_label 显示效果行（青色 monospace 风格）
 		if not effect_text.is_empty():
 			amount_label.text = effect_text
@@ -308,10 +317,13 @@ func _refresh_lore(lore_id: String, count: int, name_label: Label, amount_label:
 
 
 ## v9.0: 改造瓷砖左侧粗稀有度色条（4-5px，HTML 设计稿改造视觉签名）
+## v9.x 修复：PanelContainer → Control+ColorRect，挂到 DecorationLayer 下避免父级强制布局
 func _apply_mod_left_strip(rarity: String) -> void:
-	var strip: PanelContainer = get_node_or_null("ModLeftStrip") as PanelContainer
+	var layer: Control = _ensure_decoration_layer()
+	var strip: Control = layer.get_node_or_null("ModLeftStrip") as Control
+	var bg: ColorRect = null
 	if strip == null:
-		strip = PanelContainer.new()
+		strip = Control.new()
 		strip.name = "ModLeftStrip"
 		strip.anchor_left = 0.0
 		strip.anchor_right = 0.0
@@ -322,21 +334,30 @@ func _apply_mod_left_strip(rarity: String) -> void:
 		strip.offset_top = 0.0
 		strip.offset_bottom = 0.0
 		strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		strip.z_index = 5
-		add_child(strip)
+		layer.add_child(strip)
+		bg = ColorRect.new()
+		bg.name = "Bg"
+		bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		strip.add_child(bg)
+	else:
+		bg = strip.get_node_or_null("Bg") as ColorRect
 	var thickness: int = 5 if (rarity == "legendary" or rarity == "mythic") else 4
 	strip.offset_right = float(thickness)
-	var style := StyleBoxFlat.new()
-	style.bg_color = _mod_rarity_color(rarity)
-	strip.add_theme_stylebox_override("panel", style)
+	if bg:
+		bg.color = _mod_rarity_color(rarity)
 	strip.visible = true
 
 
 ## v9.0: 右上装配计数徽章（"N 卡"——多少张卡装了这个改造）
+## v9.x 修复：PanelContainer → Control+ColorRect，挂到 DecorationLayer 下
 func _apply_mod_install_count(install_count: int) -> void:
-	var badge: PanelContainer = get_node_or_null("ModInstallBadge") as PanelContainer
+	var layer: Control = _ensure_decoration_layer()
+	var badge: Control = layer.get_node_or_null("ModInstallBadge") as Control
+	var bg: ColorRect = null
+	var text_lbl: Label = null
 	if badge == null:
-		badge = PanelContainer.new()
+		badge = Control.new()
 		badge.name = "ModInstallBadge"
 		badge.anchor_left = 1.0
 		badge.anchor_right = 1.0
@@ -347,30 +368,54 @@ func _apply_mod_install_count(install_count: int) -> void:
 		badge.offset_top = 4.0
 		badge.offset_bottom = 18.0
 		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		badge.z_index = 6
-		var lbl := Label.new()
-		lbl.name = "Text"
-		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		lbl.add_theme_font_size_override("font_size", 9)
-		badge.add_child(lbl)
-		add_child(badge)
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.13, 0.40, 0.23, 0.30)
-	style.border_color = Color(0.20, 0.83, 0.60, 0.5)
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(2)
-	badge.add_theme_stylebox_override("panel", style)
-	var text_lbl: Label = badge.get_node_or_null("Text") as Label
+		layer.add_child(badge)
+		bg = ColorRect.new()
+		bg.name = "Bg"
+		bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		bg.color = Color(0.13, 0.40, 0.23, 0.30)
+		bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		badge.add_child(bg)
+		text_lbl = Label.new()
+		text_lbl.name = "Text"
+		text_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		text_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		text_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		text_lbl.add_theme_font_size_override("font_size", 9)
+		text_lbl.add_theme_color_override("font_color", Color(0.30, 0.92, 0.60, 1.0))
+		text_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		badge.add_child(text_lbl)
+	else:
+		bg = badge.get_node_or_null("Bg") as ColorRect
+		text_lbl = badge.get_node_or_null("Text") as Label
 	if text_lbl:
 		text_lbl.text = "%d 卡" % install_count
-		text_lbl.add_theme_color_override("font_color", Color(0.30, 0.92, 0.60, 1.0))
 	badge.visible = true
 
 
 ## v9.0: 隐藏某个装饰节点
+## v9.x 修复：装饰中间层。ResourceSlotItem(PanelContainer) 会强制布局直接子节点，
+## 装饰节点挂到这里（Control 非 Container，不强制布局子节点），anchor/offset 正常生效。
+func _ensure_decoration_layer() -> Control:
+	var layer: Control = get_node_or_null("DecorationLayer") as Control
+	if layer == null:
+		layer = Control.new()
+		layer.name = "DecorationLayer"
+		layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		# z_index=5：在 VBox(图标层 z=0) 之上、CardFrameOverlay(z=30) 之下
+		layer.z_index = 5
+		add_child(layer)
+	return layer
+
+
 func _hide_mod_decoration(deco_name: String) -> void:
-	var n: Node = get_node_or_null(deco_name)
+	# v9.x 装饰挂在 DecorationLayer 下；兼容旧路径（直接挂在 PanelContainer 上）
+	var layer: Control = get_node_or_null("DecorationLayer") as Control
+	var n: Node = null
+	if layer:
+		n = layer.get_node_or_null(deco_name)
+	if n == null:
+		n = get_node_or_null(deco_name)
 	if n is CanvasItem:
 		(n as CanvasItem).visible = false
 
@@ -432,7 +477,8 @@ const _MOD_FALLBACK_GLYPHS = {
 func _ensure_mod_fallback_icon(icon_rect: TextureRect, extra_data: Dictionary) -> void:
 	var slot_type: String = String(extra_data.get("slot_type", ""))
 	var fallback_glyph: String = _MOD_FALLBACK_GLYPHS.get(slot_type.to_lower(), "◇")
-	var lbl: Label = get_node_or_null("ModFallbackIcon") as Label
+	var layer: Control = _ensure_decoration_layer()
+	var lbl: Label = layer.get_node_or_null("ModFallbackIcon") as Label
 	if lbl == null:
 		lbl = Label.new()
 		lbl.name = "ModFallbackIcon"
@@ -440,8 +486,7 @@ func _ensure_mod_fallback_icon(icon_rect: TextureRect, extra_data: Dictionary) -
 		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		lbl.add_theme_font_size_override("font_size", 24)
 		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		lbl.z_index = 3
-		add_child(lbl)
+		layer.add_child(lbl)
 	lbl.text = fallback_glyph
 	lbl.add_theme_color_override("font_color", Color(0.024, 0.714, 0.831, 0.65))  # cyan_teck 半透
 	lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -474,7 +519,8 @@ func _apply_mod_slot_type_label(slot_type: String) -> void:
 	if slot_type.is_empty():
 		return
 	var cn: String = _SLOT_TYPE_CN.get(slot_type.to_lower(), slot_type)
-	var label: Label = get_node_or_null("ModSlotTypeLabel") as Label
+	var layer: Control = _ensure_decoration_layer()
+	var label: Label = layer.get_node_or_null("ModSlotTypeLabel") as Label
 	if label == null:
 		label = Label.new()
 		label.name = "ModSlotTypeLabel"
@@ -483,8 +529,7 @@ func _apply_mod_slot_type_label(slot_type: String) -> void:
 		label.add_theme_font_size_override("font_size", 9)
 		label.add_theme_color_override("font_color", Color(0.55, 0.65, 0.78, 0.9))
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		label.z_index = 4
-		add_child(label)
+		layer.add_child(label)
 	label.text = cn
 	label.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 	label.offset_left = 28.0
@@ -493,26 +538,29 @@ func _apply_mod_slot_type_label(slot_type: String) -> void:
 
 
 ## v9.2: 装配状态点（顶部行右侧，绿色=已装配，灰色=未装配）
+## v9.x 修复：PanelContainer → Control+ColorRect，挂到 DecorationLayer 下
 func _apply_mod_status_dot(is_installed: bool) -> void:
-	var dot: PanelContainer = get_node_or_null("ModStatusDot") as PanelContainer
+	var layer: Control = _ensure_decoration_layer()
+	var dot: Control = layer.get_node_or_null("ModStatusDot") as Control
+	var bg: ColorRect = null
 	if dot == null:
-		dot = PanelContainer.new()
+		dot = Control.new()
 		dot.name = "ModStatusDot"
 		dot.custom_minimum_size = Vector2(6, 6)
 		dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		dot.z_index = 4
-		add_child(dot)
-	var style := StyleBoxFlat.new()
-	if is_installed:
-		style.bg_color = Color(0.204, 0.827, 0.600, 1.0)  # green_up
-		style.shadow_color = Color(0.204, 0.827, 0.600, 0.5)
-		style.shadow_size = 3
+		layer.add_child(dot)
+		bg = ColorRect.new()
+		bg.name = "Bg"
+		bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		dot.add_child(bg)
 	else:
-		style.bg_color = Color(0.27, 0.31, 0.39, 0.6)  # dark gray
-		style.shadow_color = Color(0, 0, 0, 0)
-		style.shadow_size = 0
-	style.set_corner_radius_all(3)
-	dot.add_theme_stylebox_override("panel", style)
+		bg = dot.get_node_or_null("Bg") as ColorRect
+	if bg:
+		if is_installed:
+			bg.color = Color(0.204, 0.827, 0.600, 1.0)  # green_up
+		else:
+			bg.color = Color(0.27, 0.31, 0.39, 0.6)  # dark gray
 	dot.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	dot.offset_left = -16.0
 	dot.offset_right = -4.0
@@ -532,7 +580,8 @@ func _apply_mod_rarity_text(rarity: String) -> void:
 	var cn: String = _RARITY_CN.get(rarity, "")
 	if cn.is_empty():
 		return
-	var label: Label = get_node_or_null("ModRarityText") as Label
+	var layer: Control = _ensure_decoration_layer()
+	var label: Label = layer.get_node_or_null("ModRarityText") as Label
 	if label == null:
 		label = Label.new()
 		label.name = "ModRarityText"
@@ -541,8 +590,7 @@ func _apply_mod_rarity_text(rarity: String) -> void:
 		label.add_theme_font_size_override("font_size", 9)
 		label.add_theme_font_override("font", DesignTokens.get_title_font())
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		label.z_index = 4
-		add_child(label)
+		layer.add_child(label)
 	label.text = cn
 	label.add_theme_color_override("font_color", _mod_rarity_color(rarity))
 	label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
@@ -554,7 +602,8 @@ func _apply_mod_rarity_text(rarity: String) -> void:
 ## v9.2: 改造原型名（底部左侧，斜体灰色，如"M829A4"/"Chobham"）
 ## 对齐 HTML .mod-prototype（italic，灰色 9px）
 func _apply_mod_prototype(prototype: String) -> void:
-	var label: Label = get_node_or_null("ModPrototypeLabel") as Label
+	var layer: Control = _ensure_decoration_layer()
+	var label: Label = layer.get_node_or_null("ModPrototypeLabel") as Label
 	if prototype.is_empty():
 		if label:
 			label.visible = false
@@ -567,8 +616,7 @@ func _apply_mod_prototype(prototype: String) -> void:
 		label.add_theme_font_size_override("font_size", 9)
 		label.add_theme_color_override("font_color", Color(0.27, 0.31, 0.39, 0.7))  # 暗灰次要信息
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		label.z_index = 4
-		add_child(label)
+		layer.add_child(label)
 	label.text = prototype
 	# 底部左侧（与底部右侧的稀有度文字对称）
 	label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
@@ -596,7 +644,11 @@ func _refresh_stat_boost(boost_id: String, count: int, name_label: Label, amount
 	if name_label:
 		# 属性提升名称截断到 6 字符
 		name_label.text = _truncate_with_ellipsis(display_name, 6)
+		# v9.x: 名称居中显示
+		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	if amount_label:
+		# v9.x: 等级居中显示
+		amount_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		amount_label.text = "Lv.%d" % count
 	if icon_rect:
 		# 属性提升使用橙色图标
@@ -625,9 +677,13 @@ func _refresh_rune(rune_id: String, count: int, name_label: Label, amount_label:
 	if name_label:
 		# 符文名允许较长（最多8字符），避免"神盾壁垒"等被截断
 		name_label.text = _truncate_with_ellipsis(display_name, 8)
+		# v9.x: 符文名居中显示
+		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		# 稀有度颜色染色：让符文名一眼可辨稀有度
 		name_label.add_theme_color_override("font_color", rune_color)
 	if amount_label:
+		# v9.x: 效果行/数量居中显示
+		amount_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		# v9.0: 优先显示主效果（紫色），count>1 才显示数量
 		if not effect_short.is_empty():
 			amount_label.text = effect_short
@@ -660,7 +716,8 @@ func _refresh_rune(rune_id: String, count: int, name_label: Label, amount_label:
 			icon_rect.visible = true
 
 	# v9.0: 注入装饰层
-	_apply_rune_top_diamond(rune_rarity, String(extra_data.get("category", "")), rune_id)
+	# v9.x: 去掉顶部菱形装饰（用户反馈遮挡卡图），仅保留星点要求
+	_hide_mod_decoration("RuneTopDiamond")
 	_apply_rune_star_req(star_req)
 	if runeword_active:
 		_apply_rune_runeword_badge()
@@ -679,10 +736,16 @@ func _refresh_rune(rune_id: String, count: int, name_label: Label, amount_label:
 const _RUNE_CAT_GLYPHS = {
 	"attack": "⚔", "defense": "■", "energy": "⚡", "mobility": "◉", "special": "✦",
 }
+## v9.x 修复：PanelContainer → Control+ColorRect，挂到 DecorationLayer 下
 func _apply_rune_top_diamond(rarity: String, category: String, rune_id: String = "") -> void:
-	var outer: PanelContainer = get_node_or_null("RuneTopDiamond") as PanelContainer
+	var layer: Control = _ensure_decoration_layer()
+	var outer: Control = layer.get_node_or_null("RuneTopDiamond") as Control
+	var outer_bg: ColorRect = null
+	var inner: Control = null
+	var inner_bg: ColorRect = null
+	var glyph_lbl: Label = null
 	if outer == null:
-		outer = PanelContainer.new()
+		outer = Control.new()
 		outer.name = "RuneTopDiamond"
 		outer.anchor_left = 0.5
 		outer.anchor_right = 0.5
@@ -694,37 +757,30 @@ func _apply_rune_top_diamond(rarity: String, category: String, rune_id: String =
 		outer.offset_top = 2.0
 		outer.offset_bottom = 34.0
 		outer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		outer.z_index = 7
 		outer.clip_contents = false  # 旋转后菱形角会超出方框，不能裁切
-		add_child(outer)
-	# 外层稀有度色菱形（旋转 45°）
-	outer.rotation = PI / 4.0
-	var outer_style := StyleBoxFlat.new()
-	var rar_col := _mod_rarity_color(rarity)
-	outer_style.bg_color = Color(rar_col.r, rar_col.g, rar_col.b, 0.85)  # opacity 0.85
-	outer_style.set_corner_radius_all(2)
-	outer.add_theme_stylebox_override("panel", outer_style)
-	# 内层暗底菱形（inset 4px → 24×24）
-	var inner: PanelContainer = outer.get_node_or_null("InnerDot") as PanelContainer
-	if inner == null:
-		inner = PanelContainer.new()
+		layer.add_child(outer)
+		outer_bg = ColorRect.new()
+		outer_bg.name = "OuterBg"
+		outer_bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		outer_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		outer.add_child(outer_bg)
+		inner = Control.new()
 		inner.name = "InnerDot"
 		inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		inner.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		inner.add_theme_constant_override("margin_left", 4)
-		inner.add_theme_constant_override("margin_right", 4)
-		inner.add_theme_constant_override("margin_top", 4)
-		inner.add_theme_constant_override("margin_bottom", 4)
+		inner.offset_left = 4.0
+		inner.offset_right = -4.0
+		inner.offset_top = 4.0
+		inner.offset_bottom = -4.0
 		outer.add_child(inner)
-	var inner_style := StyleBoxFlat.new()
-	inner_style.bg_color = Color(0.05, 0.08, 0.13, 1.0)  # bg-card 暗底
-	inner_style.set_corner_radius_all(2)
-	inner.add_theme_stylebox_override("panel", inner_style)
-	# 中心 glyph（按 category 选符号，稀有度色 + 辉光）
-	var glyph_lbl: Label = inner.get_node_or_null("Glyph") as Label
-	if glyph_lbl == null:
+		inner_bg = ColorRect.new()
+		inner_bg.name = "InnerBg"
+		inner_bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		inner_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		inner.add_child(inner_bg)
 		glyph_lbl = Label.new()
 		glyph_lbl.name = "Glyph"
+		glyph_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		glyph_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		glyph_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		glyph_lbl.add_theme_font_size_override("font_size", 14)
@@ -732,57 +788,91 @@ func _apply_rune_top_diamond(rarity: String, category: String, rune_id: String =
 		# glyph 不跟随 outer 旋转，保持正立可读
 		glyph_lbl.rotation = -PI / 4.0
 		inner.add_child(glyph_lbl)
-	var glyph_char: String = _RUNE_CAT_GLYPHS.get(category.to_lower(), "✦")
-	glyph_lbl.text = glyph_char
-	glyph_lbl.add_theme_color_override("font_color", rar_col)
-	glyph_lbl.add_theme_constant_override("shadow_size", 2)
-	glyph_lbl.add_theme_color_override("shadow_color", Color(rar_col.r, rar_col.g, rar_col.b, 0.6))
+	else:
+		outer_bg = outer.get_node_or_null("OuterBg") as ColorRect
+		inner = outer.get_node_or_null("InnerDot") as Control
+		if inner:
+			inner_bg = inner.get_node_or_null("InnerBg") as ColorRect
+			glyph_lbl = inner.get_node_or_null("Glyph") as Label
+	# 外层稀有度色菱形（旋转 45°）
+	outer.rotation = PI / 4.0
+	var rar_col := _mod_rarity_color(rarity)
+	if outer_bg:
+		outer_bg.color = Color(rar_col.r, rar_col.g, rar_col.b, 0.85)  # opacity 0.85
+	if inner_bg:
+		inner_bg.color = Color(0.05, 0.08, 0.13, 1.0)  # bg-card 暗底
+	if glyph_lbl:
+		var glyph_char: String = _RUNE_CAT_GLYPHS.get(category.to_lower(), "✦")
+		glyph_lbl.text = glyph_char
+		glyph_lbl.add_theme_color_override("font_color", rar_col)
+		glyph_lbl.add_theme_constant_override("shadow_size", 2)
+		glyph_lbl.add_theme_color_override("shadow_color", Color(rar_col.r, rar_col.g, rar_col.b, 0.6))
 	outer.visible = true
 
 
 ## v9.0: 底部星要求点阵（5 个小圆点，亮的表示需要的相位仪星级）
+## v9.x 修复：外层 Control 挂到 DecorationLayer；内部 dots 改 ColorRect
 func _apply_rune_star_req(star_req: int) -> void:
-	var hbox: HBoxContainer = get_node_or_null("RuneStarReq") as HBoxContainer
-	if hbox == null:
+	var layer: Control = _ensure_decoration_layer()
+	var wrapper: Control = layer.get_node_or_null("RuneStarReq") as Control
+	var hbox: HBoxContainer = null
+	if wrapper == null:
+		wrapper = Control.new()
+		wrapper.name = "RuneStarReq"
+		wrapper.anchor_left = 0.5
+		wrapper.anchor_right = 0.5
+		wrapper.anchor_top = 1.0
+		wrapper.anchor_bottom = 1.0
+		wrapper.offset_left = -16.0
+		wrapper.offset_right = 16.0
+		wrapper.offset_top = -14.0
+		wrapper.offset_bottom = -6.0
+		wrapper.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		layer.add_child(wrapper)
 		hbox = HBoxContainer.new()
-		hbox.name = "RuneStarReq"
-		hbox.anchor_left = 0.5
-		hbox.anchor_right = 0.5
-		hbox.anchor_top = 1.0
-		hbox.anchor_bottom = 1.0
-		hbox.offset_left = -16.0
-		hbox.offset_right = 16.0
-		hbox.offset_top = -14.0
-		hbox.offset_bottom = -6.0
+		hbox.name = "HBox"
+		hbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		hbox.z_index = 6
 		hbox.alignment = BoxContainer.ALIGNMENT_CENTER
 		hbox.add_theme_constant_override("separation", 2)
 		for i in range(5):
-			var dot := PanelContainer.new()
-			dot.name = "Dot%d" % i
-			dot.custom_minimum_size = Vector2(4, 4)
-			hbox.add_child(dot)
-		add_child(hbox)
-	for i in range(5):
-		var dot: PanelContainer = hbox.get_node_or_null("Dot%d" % i) as PanelContainer
-		if dot == null:
-			continue
-		var style := StyleBoxFlat.new()
-		if i < star_req:
-			style.bg_color = Color(0.653, 0.546, 0.980, 1.0)  # 紫色（符文签名色）
-		else:
-			style.bg_color = Color(0.27, 0.31, 0.39, 0.4)  # 暗灰
-		dot.add_theme_stylebox_override("panel", style)
-	hbox.visible = star_req > 0
+			var dot_wrapper := Control.new()
+			dot_wrapper.name = "Dot%d" % i
+			dot_wrapper.custom_minimum_size = Vector2(4, 4)
+			dot_wrapper.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			hbox.add_child(dot_wrapper)
+			var dot_bg := ColorRect.new()
+			dot_bg.name = "Bg"
+			dot_bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			dot_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			dot_wrapper.add_child(dot_bg)
+		wrapper.add_child(hbox)
+	else:
+		hbox = wrapper.get_node_or_null("HBox") as HBoxContainer
+	if hbox:
+		for i in range(5):
+			var dot_wrapper: Control = hbox.get_node_or_null("Dot%d" % i) as Control
+			if dot_wrapper == null:
+				continue
+			var dot_bg: ColorRect = dot_wrapper.get_node_or_null("Bg") as ColorRect
+			if dot_bg == null:
+				continue
+			if i < star_req:
+				dot_bg.color = Color(0.653, 0.546, 0.980, 1.0)  # 紫色（符文签名色）
+			else:
+				dot_bg.color = Color(0.27, 0.31, 0.39, 0.4)  # 暗灰
+	wrapper.visible = star_req > 0
 
 
 ## v9.2: 右下符文之语激活角标 "✦ RW"
-## 设计稿 .runeword-active::after 在 bottom:2px right:3px（右下角）
+## v9.x 修复：PanelContainer → Control+ColorRect，挂到 DecorationLayer 下
 func _apply_rune_runeword_badge() -> void:
-	var badge: PanelContainer = get_node_or_null("RuneRunewordBadge") as PanelContainer
+	var layer: Control = _ensure_decoration_layer()
+	var badge: Control = layer.get_node_or_null("RuneRunewordBadge") as Control
+	var bg: ColorRect = null
+	var text_lbl: Label = null
 	if badge == null:
-		badge = PanelContainer.new()
+		badge = Control.new()
 		badge.name = "RuneRunewordBadge"
 		badge.anchor_left = 1.0
 		badge.anchor_right = 1.0
@@ -794,33 +884,37 @@ func _apply_rune_runeword_badge() -> void:
 		badge.offset_top = -16.0
 		badge.offset_bottom = -2.0
 		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		badge.z_index = 7
-		var lbl := Label.new()
-		lbl.name = "Text"
-		lbl.text = "✦RW"
-		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		lbl.add_theme_font_size_override("font_size", 8)
-		badge.add_child(lbl)
-		add_child(badge)
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.42, 0.34, 0.62, 0.30)  # 紫透
-	style.border_color = Color(0.653, 0.546, 0.980, 0.7)
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(2)
-	badge.add_theme_stylebox_override("panel", style)
-	var text_lbl: Label = badge.get_node_or_null("Text") as Label
-	if text_lbl:
+		layer.add_child(badge)
+		bg = ColorRect.new()
+		bg.name = "Bg"
+		bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		bg.color = Color(0.42, 0.34, 0.62, 0.30)  # 紫透
+		bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		badge.add_child(bg)
+		text_lbl = Label.new()
+		text_lbl.name = "Text"
+		text_lbl.text = "✦RW"
+		text_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		text_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		text_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		text_lbl.add_theme_font_size_override("font_size", 8)
 		text_lbl.add_theme_color_override("font_color", Color(0.78, 0.70, 1.0, 1.0))
+		text_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		badge.add_child(text_lbl)
+	else:
+		bg = badge.get_node_or_null("Bg") as ColorRect
+		text_lbl = badge.get_node_or_null("Text") as Label
 	badge.visible = true
 
 
 ## v9.2: 右上装备中金色小菱形点（已装备到符文槽）
-## 设计稿 .equipped-badge 在 top:3px right:3px（右上角）
+## v9.x 修复：PanelContainer → Control+ColorRect，挂到 DecorationLayer 下
 func _apply_rune_equipped_dot() -> void:
-	var dot: PanelContainer = get_node_or_null("RuneEquippedDot") as PanelContainer
+	var layer: Control = _ensure_decoration_layer()
+	var dot: Control = layer.get_node_or_null("RuneEquippedDot") as Control
+	var bg: ColorRect = null
 	if dot == null:
-		dot = PanelContainer.new()
+		dot = Control.new()
 		dot.name = "RuneEquippedDot"
 		dot.anchor_left = 1.0
 		dot.anchor_right = 1.0
@@ -832,12 +926,18 @@ func _apply_rune_equipped_dot() -> void:
 		dot.offset_top = 3.0
 		dot.offset_bottom = 14.0
 		dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		dot.z_index = 7
 		dot.rotation = PI / 4.0  # 菱形
-		add_child(dot)
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.984, 0.749, 0.141, 1.0)  # 金色
-	dot.add_theme_stylebox_override("panel", style)
+		layer.add_child(dot)
+		bg = ColorRect.new()
+		bg.name = "Bg"
+		bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		bg.color = Color(0.984, 0.749, 0.141, 1.0)  # 金色
+		bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		dot.add_child(bg)
+	else:
+		bg = dot.get_node_or_null("Bg") as ColorRect
+		if bg:
+			bg.color = Color(0.984, 0.749, 0.141, 1.0)  # 金色
 	dot.visible = true
 
 ## 获取情报默认名称
