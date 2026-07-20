@@ -1486,3 +1486,52 @@ inf_19单兵电台(ally_bonus)、arm_15数据链(ally_hit_bonus)、for_10指挥�
 - `scripts/ui/mod_effect_labels.gd` — +15 翻译
 
 **验证:** smoke test 7/7 全 PASS（12 改造映射全对 + 复活/反伤/拦截/亡语/雷场/相位分流数值公式全对）；Grep 静态核对全链路拼写一致（UnitStats 9字段 + table 18处回写 + registry 28处match + handler 9新函数 + construct_unit 8接入点 + 12改造定义全在）；第一批 smoke test 回归验证 9/9 全 PASS（无回归）。
+
+## v9.x 背包卡图不可见修复 — PanelContainer 强制布局陷阱 (2026-07-20)
+
+**背景:** 用户反馈"背包所有卡都看不到卡图"。深度排查后定位到一个反直觉的 Godot 4 Container 布局陷阱——此问题极易复发，记录此节供后续所有 UI 开发参考。
+
+### ⚠️ 永久教训：PanelContainer/Container 父节点会强制布局所有直接子节点
+
+**Godot 4 的 Container 布局机制**：任何 `Container` 子类（`PanelContainer`/`VBoxContainer`/`HBoxContainer`/`GridContainer`/`MarginContainer`/`ScrollContainer`/`TabContainer` 等）作为父节点时，会对**所有直接子节点**调用 `fit_child_in_rect`，强制把它们拉伸填满整个父区域——**无论子节点本身是不是 Container**。
+
+这意味着：**在 PanelContainer（或任何 Container）上直接 `add_child()` 一个用 anchor/offset 定位的局部装饰节点，该节点会被强制拉伸到整个父区域，其 bg_color/内容会覆盖其它兄弟节点。**
+
+**反直觉点：**
+1. 子节点是 `Control`（非 Container）**也逃不掉**——父 Container 照样强制布局它
+2. 设置 `custom_minimum_size` 无用——被 `fit_child_in_rect` 覆盖
+3. 设置 `size_flags = SIZE_SHRINK_BEGIN` 无用——Container 不尊重
+4. **首次 `add_child` 后到下一次 `_on_sort_children` 触发前，子节点保持自定义尺寸（看似正常）；一旦父级重排（resize/子节点增减/对象池复用 set_card），就被拉伸**
+
+**正确做法（三选一）：**
+
+| 方案 | 适用场景 | 做法 |
+|------|---------|------|
+| **A. 中间层 Control**（推荐） | 多个局部定位装饰挂在同一 Container 上 | 创建一个 `Control`（非 Container）作为中间层挂到 Container 上；装饰挂到中间层下。Container 只拉伸中间层（符合预期），中间层不强制布局子节点 |
+| **B. set_as_top_level(true)** | 单个装饰、需脱离父坐标系 | 装饰 `set_as_top_level(true)` 后用 `_process`/手动同步全局位置跟随父节点（参考 `cost_badge.gd` 的 CostCornerBadge） |
+| **C. 兄弟节点置于非 Container 下** | 装饰本应全屏覆盖 | 如 `CardFrameOverlay`/`CardBackgroundOverlay` 是 TextureRect 挂在 PanelContainer 上被拉伸到全卡——这恰是期望行为 |
+
+**本项目已踩坑位置：** `backpack_card_item.gd` 的 4 个装饰（`RarityTopStrip`/`KindTagBadge`/`StarsOverlay`/`EquippedMark`）+ `InstanceNo` 原本直接挂在 `BackpackCardItem`(PanelContainer) 上，被拉伸覆盖卡图。已用方案 A 修复（新建 `DecorationLayer` Control 中间层）。
+
+### 本次修复详情
+
+**排查路径（二分法）**：通过逐个注释 `_set_compact_slot_view` 后续代码块，定位到 `_apply_v9_decorations` 是元凶；再二分到 `_ensure_rarity_top_strip`；运行时打印子节点尺寸，发现对象池复用第二次 `set_card` 后装饰被拉伸到整卡（`KindTagBadge: 16x16 → 96x140`）。
+
+**修复**：
+1. `_ensure_decoration_layer()` 新增——创建 `Control`（非 Container，`PRESET_FULL_RECT` + `z_index=5`）作为装饰容器
+2. 5 个装饰节点（RarityTopStrip/KindTagBadge/StarsOverlay/EquippedMark/InstanceNo）改挂到 DecorationLayer 下
+3. 装饰节点类型从 `PanelContainer`/`HBoxContainer` 改为 `Control` + 内部 `ColorRect`（画底色）/`Label`（画文字），去掉 Container 特性
+4. `_hide_decoration` 查找路径改为 DecorationLayer 下
+5. `set_card` 入口移到 DecorationLayer 创建之后
+
+**关键文件:**
+- `scenes/ui/backpack_card_item.gd` — `_ensure_decoration_layer()` 新增；`_ready` 调用；5 个 `_ensure_*` 装饰函数改挂 DecorationLayer + 改节点类型；`_hide_decoration` 查找路径更新
+
+**验证:** Godot `--check-only` 通过；游戏运行确认卡图正常显示；`[BP-CHILDREN]` 日志确认 DecorationLayer 被拉伸到整卡（符合预期）、装饰节点在内部按 anchor 正常定位；对象池复用多次 set_card 后装饰尺寸稳定不漂移。
+
+**给后续 UI 开发的检查清单：**
+- [ ] 新增 UI 装饰节点时，检查父节点是不是 Container（PanelContainer/VBox/HBox 等）
+- [ ] 若父是 Container 且装饰需要局部定位（非全屏覆盖），必须用方案 A（中间层 Control）或 B（set_as_top_level）
+- [ ] **不要只测首次显示**——对象池复用/resize 后的二次布局才会暴露强制布局 bug
+- [ ] TextureRect 挂在 Container 上被拉伸到全屏是**期望行为**（如卡框/底图），不要误改
+

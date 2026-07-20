@@ -96,6 +96,13 @@ func _ready() -> void:
 	_style_normal = get_theme_stylebox("panel") as StyleBoxFlat
 	CardBackgroundUi.ensure_overlay(self)
 	CardFrameUi.ensure_overlay(self)
+	# v9.x 修复：创建装饰中间层（非 Container 的 Control）。
+	# BackpackCardItem 是 PanelContainer，会对所有直接子节点强制 fit_child_in_rect（填满整卡）。
+	# 装饰节点（RarityTopStrip/KindTagBadge/StarsOverlay/EquippedMark/InstanceNo）需要按
+	# anchor/offset 定位到卡牌局部位置，不能被强制拉伸。把它们挂到 DecorationLayer 下：
+	# DecorationLayer 本身被父 PanelContainer 拉伸到整卡（符合预期，它就是全卡覆盖层），
+	# 但它是 Control（非 Container），不会强制布局自己的子节点，装饰的 anchor/offset 正常生效。
+	_ensure_decoration_layer()
 
 	# v7.3 性能优化：process_frame 不在 _ready 无条件连接。
 	# 原实现每个卡牌条目都 connect SceneTree.process_frame，背包几十张卡 = 每帧几十次回调（即使不拖拽也空跑），
@@ -727,14 +734,10 @@ func _set_compact_slot_view(c: CardResource, name_label, lv_label, icon_rect) ->
 	if icon_rect:
 		_apply_card_icon_to_clip(icon_rect, c)
 	name_label.visible = true
-	# name-line：卡名（HTML .name-line，不再前置 ★ 字符）
 	name_label.text = _compact_display_name(c)
 	name_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	name_label.max_lines_visible = 1
-	# stat-line：填充左侧 Lv·改N/M + 右侧战力（HTML .stat-line 结构）
 	_fill_stat_line(icon_row, c)
-	# 费用用左上角角标气泡（CostCornerBadge）
-	# v9.2: anchor_right=false 锚定左上角（设计稿 .cost 在左上），避免与右上兵种色块重叠
 	var _cost_badge_c = CardFrameUi.ensure_cost_corner_badge(self, false)
 	if _cost_badge_c != null:
 		_cost_badge_c.energy_value = int(c.energy_cost)
@@ -742,9 +745,7 @@ func _set_compact_slot_view(c: CardResource, name_label, lv_label, icon_rect) ->
 	_apply_card_chrome(c)
 	if art_clip:
 		call_deferred("_layout_compact_art_clip", art_clip)
-	# v9.0: 注入 4 个装饰层（HTML 设计稿视觉签名）
 	_apply_v9_decorations(c)
-	# v9.1: instance-no 独立角标（HTML .instance-no #N）
 	_ensure_instance_no(c)
 
 
@@ -770,6 +771,21 @@ func _fill_stat_line(icon_row: Control, c: CardResource) -> void:
 	# 右：战力分（HTML .pwr，text-white + 600 weight）
 	var power: int = int(_get_card_power_score(c))
 	stat_right.text = str(power) if power > 0 else ""
+
+
+## v9.x 修复：装饰中间层。BackpackCardItem(PanelContainer) 会强制布局直接子节点，
+## 装饰节点挂到这里（Control 非 Container，不强制布局子节点），anchor/offset 正常生效。
+func _ensure_decoration_layer() -> Control:
+	var layer: Control = get_node_or_null("DecorationLayer") as Control
+	if layer == null:
+		layer = Control.new()
+		layer.name = "DecorationLayer"
+		layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		# z_index 设为 5，让装饰层在 VBox(图标层 z=0) 之上、CardFrameOverlay(z=30) 之下
+		layer.z_index = 5
+		add_child(layer)
+	return layer
 
 
 ## v9.0: 注入战斗卡装饰层——顶部稀有度色条 + 兵种色块 + 5 星点 + EQUIP 徽章
@@ -814,10 +830,15 @@ func _v9_kind_glyph(combat_kind: int) -> String:
 
 
 ## v9.0: 顶部稀有度色条
+## v9.x 修复：原用 PanelContainer（Container 子类），父 BackpackCardItem(PanelContainer)
+## 会强制布局 Container 子节点，把色条拉伸到整个卡牌大小，bg_color 盖住卡图。
+## 改用 Control + ColorRect（非 Container），anchor/offset 正常生效，不会被父级强制布局。
 func _ensure_rarity_top_strip(rarity: String) -> void:
-	var strip: PanelContainer = get_node_or_null("RarityTopStrip") as PanelContainer
+	var layer: Control = _ensure_decoration_layer()
+	var strip: Control = layer.get_node_or_null("RarityTopStrip") as Control
+	var bg: ColorRect = null
 	if strip == null:
-		strip = PanelContainer.new()
+		strip = Control.new()
 		strip.name = "RarityTopStrip"
 		strip.anchor_left = 0.0
 		strip.anchor_right = 1.0
@@ -828,17 +849,20 @@ func _ensure_rarity_top_strip(rarity: String) -> void:
 		strip.offset_top = 0.0
 		# offset_bottom 在下面按稀有度设
 		strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		strip.z_index = 5
-		add_child(strip)
+		layer.add_child(strip)
+		bg = ColorRect.new()
+		bg.name = "Bg"
+		bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		strip.add_child(bg)
+	else:
+		bg = strip.get_node_or_null("Bg") as ColorRect
 	# 稀有度色 + 厚度（传奇/神话加粗）
 	var rar_color: Color = _v9_rarity_color(rarity)
 	var thickness: int = 4 if (rarity == "legendary" or rarity == "mythic") else 3
 	strip.offset_bottom = float(thickness)
-	var style := StyleBoxFlat.new()
-	style.bg_color = rar_color
-	style.border_width_bottom = 1
-	style.border_color = Color(0.0, 0.0, 0.0, 0.4)
-	strip.add_theme_stylebox_override("panel", style)
+	if bg:
+		bg.color = rar_color
 	strip.visible = true
 
 
@@ -855,10 +879,14 @@ func _v9_rarity_color(rarity: String) -> Color:
 
 
 ## v9.0: 右上兵种色块
+## v9.x 修复：PanelContainer → Control + ColorRect（避免父 PanelContainer 强制布局）
 func _ensure_kind_tag_badge(combat_kind: int) -> void:
-	var badge: PanelContainer = get_node_or_null("KindTagBadge") as PanelContainer
+	var layer: Control = _ensure_decoration_layer()
+	var badge: Control = layer.get_node_or_null("KindTagBadge") as Control
+	var bg: ColorRect = null
+	var glyph_lbl: Label = null
 	if badge == null:
-		badge = PanelContainer.new()
+		badge = Control.new()
 		badge.name = "KindTagBadge"
 		badge.anchor_left = 1.0
 		badge.anchor_right = 1.0
@@ -869,41 +897,55 @@ func _ensure_kind_tag_badge(combat_kind: int) -> void:
 		badge.offset_top = 5.0
 		badge.offset_bottom = 21.0
 		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		badge.z_index = 6
-		var lbl := Label.new()
-		lbl.name = "Glyph"
-		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		lbl.add_theme_font_size_override("font_size", 10)
-		lbl.add_theme_color_override("font_color", Color(1, 1, 1, 0.98))
-		badge.add_child(lbl)
-		add_child(badge)
-	var style := StyleBoxFlat.new()
-	style.bg_color = _v9_kind_color(combat_kind)
-	style.set_corner_radius_all(2)
-	badge.add_theme_stylebox_override("panel", style)
-	var glyph_lbl: Label = badge.get_node_or_null("Glyph") as Label
+		layer.add_child(badge)
+		bg = ColorRect.new()
+		bg.name = "Bg"
+		bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		badge.add_child(bg)
+		glyph_lbl = Label.new()
+		glyph_lbl.name = "Glyph"
+		glyph_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		glyph_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		glyph_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		glyph_lbl.add_theme_font_size_override("font_size", 10)
+		glyph_lbl.add_theme_color_override("font_color", Color(1, 1, 1, 0.98))
+		glyph_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		badge.add_child(glyph_lbl)
+	else:
+		bg = badge.get_node_or_null("Bg") as ColorRect
+		glyph_lbl = badge.get_node_or_null("Glyph") as Label
+	if bg:
+		bg.color = _v9_kind_color(combat_kind)
 	if glyph_lbl:
 		glyph_lbl.text = _v9_kind_glyph(combat_kind)
 	badge.visible = true
 
 
 ## v9.0: 底部 5 颗星点（用 HBoxContainer 装 5 个 ColorRect）
+## v9.x 修复：外层用 Control（非 Container），避免父 PanelContainer 强制布局；
+## 内层 HBoxContainer 负责星星水平排列。
 func _ensure_stars_overlay(c: CardResource) -> void:
-	var hbox: HBoxContainer = get_node_or_null("StarsOverlay") as HBoxContainer
-	if hbox == null:
+	var layer: Control = _ensure_decoration_layer()
+	var wrapper: Control = layer.get_node_or_null("StarsOverlay") as Control
+	var hbox: HBoxContainer = null
+	if wrapper == null:
+		wrapper = Control.new()
+		wrapper.name = "StarsOverlay"
+		wrapper.anchor_left = 0.5
+		wrapper.anchor_right = 0.5
+		wrapper.anchor_top = 1.0
+		wrapper.anchor_bottom = 1.0
+		wrapper.offset_left = -22.0
+		wrapper.offset_right = 22.0
+		wrapper.offset_top = -38.0
+		wrapper.offset_bottom = -28.0
+		wrapper.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		layer.add_child(wrapper)
 		hbox = HBoxContainer.new()
-		hbox.name = "StarsOverlay"
-		hbox.anchor_left = 0.5
-		hbox.anchor_right = 0.5
-		hbox.anchor_top = 1.0
-		hbox.anchor_bottom = 1.0
-		hbox.offset_left = -22.0
-		hbox.offset_right = 22.0
-		hbox.offset_top = -38.0
-		hbox.offset_bottom = -28.0
+		hbox.name = "HBox"
+		hbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		hbox.z_index = 6
 		hbox.alignment = BoxContainer.ALIGNMENT_CENTER
 		hbox.add_theme_constant_override("separation", 2)
 		for i in range(5):
@@ -911,8 +953,11 @@ func _ensure_stars_overlay(c: CardResource) -> void:
 			star.name = "Star%d" % i
 			star.text = "★"
 			star.add_theme_font_size_override("font_size", 9)
+			star.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			hbox.add_child(star)
-		add_child(hbox)
+		wrapper.add_child(hbox)
+	else:
+		hbox = wrapper.get_node_or_null("HBox") as HBoxContainer
 	# 计算星级（0-5）
 	var stars: int = 0
 	if BlueprintManager and BlueprintManager.has_method("get_card_xp_progress"):
@@ -922,27 +967,32 @@ func _ensure_stars_overlay(c: CardResource) -> void:
 		stars = int(c.enhance_level)
 	stars = clampi(stars, 0, 5)
 	# 更新每颗星颜色
-	for i in range(5):
-		var star: Label = hbox.get_node_or_null("Star%d" % i) as Label
-		if star == null:
-			continue
-		if i < stars:
-			star.add_theme_color_override("font_color", Color(0.984, 0.749, 0.141, 1.0))  # 金色
-		else:
-			star.add_theme_color_override("font_color", Color(0.27, 0.31, 0.39, 0.6))  # 暗灰
-	hbox.visible = stars > 0
+	if hbox:
+		for i in range(5):
+			var star: Label = hbox.get_node_or_null("Star%d" % i) as Label
+			if star == null:
+				continue
+			if i < stars:
+				star.add_theme_color_override("font_color", Color(0.984, 0.749, 0.141, 1.0))  # 金色
+			else:
+				star.add_theme_color_override("font_color", Color(0.27, 0.31, 0.39, 0.6))  # 暗灰
+	wrapper.visible = stars > 0
 
 
 ## v9.0: 左上 EQUIP 绿色徽章（已装备到相位仪）
+## v9.x 修复：PanelContainer → Control + ColorRect（避免父 PanelContainer 强制布局）
 func _ensure_equipped_mark(c: CardResource) -> void:
 	var is_equipped := _is_card_equipped_to_phase_instrument(c)
-	var badge: PanelContainer = get_node_or_null("EquippedMark") as PanelContainer
+	var layer: Control = _ensure_decoration_layer()
+	var badge: Control = layer.get_node_or_null("EquippedMark") as Control
 	if not is_equipped:
 		if badge:
 			badge.visible = false
 		return
+	var bg: ColorRect = null
+	var text_lbl: Label = null
 	if badge == null:
-		badge = PanelContainer.new()
+		badge = Control.new()
 		badge.name = "EquippedMark"
 		badge.anchor_left = 0.0
 		badge.anchor_right = 0.0
@@ -953,24 +1003,26 @@ func _ensure_equipped_mark(c: CardResource) -> void:
 		badge.offset_top = 26.0
 		badge.offset_bottom = 38.0
 		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		badge.z_index = 7
-		var lbl := Label.new()
-		lbl.name = "Text"
-		lbl.text = "EQUIP"
-		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		lbl.add_theme_font_size_override("font_size", 8)
-		badge.add_child(lbl)
-		add_child(badge)
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.13, 0.40, 0.23, 0.55)  # 绿透
-	style.border_color = Color(0.20, 0.83, 0.60, 0.7)
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(2)
-	badge.add_theme_stylebox_override("panel", style)
-	var text_lbl: Label = badge.get_node_or_null("Text") as Label
-	if text_lbl:
+		layer.add_child(badge)
+		bg = ColorRect.new()
+		bg.name = "Bg"
+		bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		bg.color = Color(0.13, 0.40, 0.23, 0.55)  # 绿透
+		bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		badge.add_child(bg)
+		text_lbl = Label.new()
+		text_lbl.name = "Text"
+		text_lbl.text = "EQUIP"
+		text_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		text_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		text_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		text_lbl.add_theme_font_size_override("font_size", 8)
 		text_lbl.add_theme_color_override("font_color", Color(0.30, 0.92, 0.60, 1.0))
+		text_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		badge.add_child(text_lbl)
+	else:
+		bg = badge.get_node_or_null("Bg") as ColorRect
+		text_lbl = badge.get_node_or_null("Text") as Label
 	badge.visible = true
 
 
@@ -983,8 +1035,9 @@ func _ensure_instance_no(c: CardResource) -> void:
 		var hash_pos: int = c.instance_id.rfind("#")
 		if hash_pos >= 0:
 			seq = c.instance_id.substr(hash_pos)  # 含 #
-	# 复用/创建角标
-	var lbl: Label = get_node_or_null("InstanceNo") as Label
+	# 复用/创建角标（挂到 DecorationLayer，避免父 PanelContainer 强制布局）
+	var layer: Control = _ensure_decoration_layer()
+	var lbl: Label = layer.get_node_or_null("InstanceNo") as Label
 	if seq.is_empty():
 		if lbl:
 			lbl.visible = false
@@ -1003,8 +1056,7 @@ func _ensure_instance_no(c: CardResource) -> void:
 		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		lbl.z_index = 6
-		add_child(lbl)
+		layer.add_child(lbl)
 	lbl.text = seq
 	lbl.add_theme_font_size_override("font_size", 9)
 	lbl.add_theme_color_override("font_color", Color(0.42, 0.47, 0.57, 0.95))
@@ -1026,9 +1078,14 @@ func _is_card_equipped_to_phase_instrument(c: CardResource) -> bool:
 	return equipped_ids.has(id_to_match)
 
 
-## v9.0: 隐藏某个装饰层（按名字）
+## v9.0: 隐藏某个装饰层（按名字）。v9.x 装饰挂在 DecorationLayer 下。
 func _hide_decoration(deco_name: String) -> void:
-	var n: Node = get_node_or_null(deco_name)
+	var layer: Control = get_node_or_null("DecorationLayer") as Control
+	var n: Node = null
+	if layer:
+		n = layer.get_node_or_null(deco_name)
+	else:
+		n = get_node_or_null(deco_name)  # 兼容旧路径
 	if n is CanvasItem:
 		(n as CanvasItem).visible = false
 
