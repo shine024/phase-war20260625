@@ -278,8 +278,9 @@ func start_battle(battle_scene: Node) -> void:
 	# is_instance_valid 检查，约 0 开销）
 	var _mll_pre = get_node_or_null("/root/ManagerLazyLoader")
 	if _mll_pre and _mll_pre.has_method("ensure_loaded"):
+		# 注：原 "story" 已移除（StoryManager 删除时的孤儿残留）
 		for _pre_id in ["intel_discovery", "quest", "achievement", "level_progress",
-				"leaderboard", "story", "faction", "stat_boost"]:
+				"leaderboard", "faction", "stat_boost"]:
 			_mll_pre.ensure_loaded(_pre_id)
 
 	if SignalBus:

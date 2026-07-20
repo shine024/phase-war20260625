@@ -1,19 +1,27 @@
 extends RefCounted
 ## Toast 提示工具：在指定父节点上显示临时提示消息
 ## 从 main.gd 拆分出来的 toast 系统
+##
+## v7.x: 改为优先挂到 ToastManager 的独立 CanvasLayer（layer=200），
+## 避免被战斗 HUD（layer=40）/弹窗（layer=100）盖住"只看到一半"。
+## 定位从"底部贴底（-200~-130，压在战斗日志上）"改为"底部抬高（-440~-380）"，
+## 避开战斗日志区(496-592)和底部卡牌栏(596-720)。
 
 var _toast: Control = null
 var _toast_tween: Tween = null
 
 
 func show_toast(parent: Node, message: String, is_error: bool = false, \
-		rect_left: float = -220.0, rect_right: float = 220.0, \
-		rect_top: float = -200.0, rect_bottom: float = -130.0, \
+		rect_left: float = -240.0, rect_right: float = 240.0, \
+		rect_top: float = -440.0, rect_bottom: float = -380.0, \
 		show_duration: float = 2.2) -> void:
 
 	if message.is_empty():
 		return
 	_dispose_existing()
+
+	# 优先复用 ToastManager 的 layer=200（永远在最上层）；回退到调用方传入的 parent
+	var host_parent: Node = _get_toast_host(parent)
 
 	var panel := PanelContainer.new()
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -56,10 +64,10 @@ func show_toast(parent: Node, message: String, is_error: bool = false, \
 		lbl.add_theme_color_override("font_color", Color(0.92, 0.96, 1.0, 1.0))
 	margin.add_child(lbl)
 
-	parent.add_child(panel)
+	host_parent.add_child(panel)
 	_toast = panel
 	panel.modulate.a = 0.0
-	var tw := parent.create_tween()
+	var tw := host_parent.create_tween()
 	_toast_tween = tw
 	tw.tween_property(panel, "modulate:a", 1.0, 0.12)
 	tw.tween_interval(show_duration)
@@ -90,3 +98,16 @@ func _on_finished(panel: Control) -> void:
 
 func cleanup() -> void:
 	_dispose_existing()
+
+
+## 优先复用 ToastManager 的独立 CanvasLayer（layer=200，永远在最上层），
+## 找不到时回退到调用方传入的 parent（保持向后兼容）。
+func _get_toast_host(fallback_parent: Node) -> Node:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree != null and tree.root != null:
+		var tm: Node = tree.root.get_node_or_null("/root/ToastManager")
+		if tm != null and tm.has_method("get_toast_layer"):
+			var layer: CanvasLayer = tm.get_toast_layer()
+			if layer != null and is_instance_valid(layer):
+				return layer
+	return fallback_parent
