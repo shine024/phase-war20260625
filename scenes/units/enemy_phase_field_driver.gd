@@ -934,11 +934,28 @@ func _build_stats_from_archetype(era: int, platform_type_str: String, fallback_p
 	c.range_value = max(1, int(round(float(cfg.get("attack_range", 120.0)) / 100.0)))
 	var interval: float = float(cfg.get("attack_interval", 1.0))
 	c.attack_speed = 1.0 / maxf(0.001, interval)
-	var dmg: float = float(cfg.get("attack_damage", 10.0))
-	# 三维攻击派生（复用 build_multi_stats 的同款比例：轻1.0/甲0.8/空0.7）
-	c.attack_light = dmg
-	c.attack_armor = dmg * 0.8
-	c.attack_air = dmg * 0.7
+	# v7.x 修复：三维攻击优先读 UCT 覆盖字段（EnemyArchetypes._ensure_manifest_merged 已用
+	# UnifiedCardTable.build_enemy_archetype_config 覆盖 attack_light/attack_armor/attack_air）。
+	# 旧代码无条件读 attack_damage（旧表单维字段）再按 0.8/0.7 比例派生三维，完全无视 UCT
+	# 真实三维数据——巨神机甲 atk_a 应 878，旧路径算成 55×0.8=44，差 20 倍。
+	# 回退路径与 resolve_classic_enemy（enemy_stat_resolver.gd:213-250）同款：combat_kind 智能派生。
+	if cfg.has("attack_light") or cfg.has("attack_armor") or cfg.has("attack_air"):
+		c.attack_light = float(cfg.get("attack_light", 0.0))
+		c.attack_armor = float(cfg.get("attack_armor", 0.0))
+		c.attack_air = float(cfg.get("attack_air", 0.0))
+	else:
+		var dmg_fallback: float = float(cfg.get("attack_damage", 10.0))
+		c.attack_light = dmg_fallback
+		c.attack_armor = dmg_fallback * 0.8
+		c.attack_air = dmg_fallback * 0.7
+	# v7.x 修复：三维攻速优先读 UCT 覆盖的 per-target interval（防空特化单位对空高频对地低频）。
+	# 旧代码只读单一 attack_interval，丢失三维独立攻速。
+	var ivl_l: float = float(cfg.get("attack_light_interval", interval))
+	var ivl_a: float = float(cfg.get("attack_armor_interval", interval))
+	var ivl_air: float = float(cfg.get("attack_air_interval", interval))
+	c.attack_light_speed = 1.0 / maxf(0.001, ivl_l)
+	c.attack_armor_speed = 1.0 / maxf(0.001, ivl_a)
+	c.attack_air_speed = 1.0 / maxf(0.001, ivl_air)
 	# 三维防御沿用平台通用表（archetype 无防御字段）
 	var pd: float = float(UnitStatsTable._PLATFORM_DEFENSE.get(fallback_platform_int, 8))
 	c.defense_light = pd
