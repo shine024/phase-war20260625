@@ -428,6 +428,24 @@ func _get_armor_reflect_ratio() -> float:
 ##   B 机制型（lifesteal/chain/splash/shield/reflect）：apply 时改 stats 字段，
 ##     _do_attack / take_damage 读取字段触发 AffixCombatHandler。
 ## 注意：本方法应在 setup 完成（stats 就绪）后调用，且需同步裸 hp/max_hp（max_hp 词缀）。
+## v7.x：把 stats 关键数值字段同步到裸字段（hp/max_hp/attack_damage/defense）。
+## 用于 spawn 后加成函数（loadout tier / phase master bonus / elite affixes）
+## 改完 stats 后让裸字段保持一致——take_damage 扣血、_update_hp_bar 血条、
+## 死亡判定读裸字段，hp_regen 上限读 stats.max_hp，两套数据不一致会导致
+## "面板显示 HP 高 / 实际脆"或"血条与实际血量不符"。
+## 保持当前 hp/max_hp 比率，避免满血单位加成后突然不满血。
+func _sync_bare_fields_from_stats() -> void:
+	if stats == null:
+		return
+	var ratio: float = clampf(hp / maxf(1.0, max_hp), 0.0, 1.0) if max_hp > 0.0 else 1.0
+	max_hp = maxf(1.0, float(stats.max_hp))
+	hp = maxf(1.0, max_hp * ratio)
+	attack_damage = maxf(0.1, float(stats.attack_damage))
+	if "defense" in stats:
+		defense = maxf(0.0, float(stats.defense))
+	_update_hp_bar()
+
+
 func apply_elite_affixes(spawn_type: String) -> void:
 	_elite_spawn_type = spawn_type
 	if stats == null:
@@ -438,19 +456,11 @@ func apply_elite_affixes(spawn_type: String) -> void:
 	if affixes.is_empty():
 		return
 	_elite_affixes = affixes
-	# 记录应用前的 hp 比率，词缀改 max_hp 后按比率同步裸 hp
-	var hp_ratio: float = clampf(hp / maxf(1.0, max_hp), 0.0, 1.0) if max_hp > 0.0 else 1.0
 	EnemyAffixes.apply_to_stats(stats, affixes)
-	# 同步裸字段：max_hp 词缀改了 stats.max_hp，需同步裸 max_hp/hp
-	var has_hp_affix: bool = false
-	for a in affixes:
-		if String(a.get("effect_key", "")) == "max_hp":
-			has_hp_affix = true
-			break
-	if has_hp_affix:
-		max_hp = float(stats.max_hp)
-		hp = maxf(1.0, max_hp * hp_ratio)
-		attack_damage = float(stats.attack_damage)  # attack_damage 词缀也可能改了
+	# v7.x：无论 roll 到哪个词缀都同步裸字段（之前只在 max_hp 词缀命中时才同步，
+	# 导致 tier/phase_master 加成对非 max_hp 词缀的怪完全失效——spawn 后加成只改 stats
+	# 不传导到 hp/max_hp/attack_damage 裸字段，血条/伤害结算读到的是未加成值）。
+	_sync_bare_fields_from_stats()
 
 
 ## v8 批次2: 获取本单位的词缀显示信息（供 card_info_panel 显示）。

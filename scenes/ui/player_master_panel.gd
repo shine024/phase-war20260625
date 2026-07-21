@@ -1,11 +1,11 @@
 extends Panel
-## v7.x 玩家相位师详细面板
+## v7.x 玩家相位师详细面板（单分量公式）
 ##
-## 展示玩家相位师的 9 维战力分解、星级、展示等级、相位仪/战斗卡/符文构成。
+## 展示玩家相位师的总战力、星级、展示等级、相位仪/战斗卡战力分解/符文构成。
 ## 入口：bottom_instrument_bar 的 PhaseLevelLabel 点击（main.gd 路由）。
 ##
-## 类比敌方 card_info_panel._show_enemy_phase_driver 的展示风格，
-## 但玩家侧数据来自 MasterPlayerAssembler.evaluate_player_stars(PhaseInstrumentManager)。
+## v7.x 单分量公式：总战力 = Σ 每张装备卡加成后战力。
+## 相位仪/符文/势力/词条的加成已体现在每张卡的战力里，不再单独显示分量。
 
 signal closed()
 
@@ -15,16 +15,6 @@ const MasterPlayerAssembler = preload("res://scripts/master_player_assembler.gd"
 @onready var summary_label: Label = $Margin/VBox/SummaryLabel
 @onready var detail_label: Label = $Margin/VBox/ScrollContainer/DetailLabel
 @onready var close_btn: Button = $Margin/VBox/TitleBar/CloseButton
-
-const DIM_ORDER: Array = [
-	"instrument", "equipment_slots", "runes",
-]
-const DIM_LABELS: Dictionary = {
-	"instrument": "相位仪战力", "equipment_slots": "装备卡战力", "runes": "符文战力",
-}
-const DIM_WEIGHTS: Dictionary = {
-	"instrument": "直接相加", "equipment_slots": "直接相加", "runes": "直接相加",
-}
 
 func _ready() -> void:
 	if close_btn:
@@ -57,29 +47,45 @@ func refresh() -> void:
 	var stars: int = int(ev.get("stars", 3))
 	var star_name: String = str(ev.get("star_name", ""))
 	var raw: float = float(ev.get("raw_total_score", 0.0))
-	var compressed: float = 0.0  # v7.x: 已移除压缩
 	summary_label.text = "Lv.%d · %d★ %s\n总战力 %d" % [lvl, stars, star_name, int(raw)]
-	# ── 9 维分解 ──
+	# ── 单分量公式：卡战力分解 ──
 	var lines: Array[String] = []
-	lines.append("═══ 3 分量战力分解 ═══")
-	var scores: Dictionary = ev.get("scores", {})
-	for key in DIM_ORDER:
-		var s: float = float(scores.get(key, 0.0))
-		var label: String = String(DIM_LABELS.get(key, key))
-		var weight: String = String(DIM_WEIGHTS.get(key, ""))
-		var weighted: float = s * _weight_value(key)
-		lines.append("  %-14s %6d × %s = %6d" % [label, int(s), weight, int(weighted)])
+	lines.append("═══ 战斗卡战力（Σ=%d）═══" % int(raw))
+	var card_breakdown: Array = ev.get("card_breakdown", [])
+	if card_breakdown.is_empty():
+		# 无卡或 breakdown 未注入：回退到 loadouts 直接显示
+		_append_platform_lines_fallback(lines, pm)
+	else:
+		for cb in card_breakdown:
+			var cname: String = String(cb.get("name", "?"))
+			var enhance: int = int(cb.get("enhance", 0))
+			var power: float = float(cb.get("power", 0.0))
+			var enhance_str: String = " +%d强化" % enhance if enhance > 0 else ""
+			lines.append("  %s%s → 战力 %d" % [cname, enhance_str, int(power)])
 	lines.append("")
 	lines.append("═══ 构成明细 ═══")
 	_append_instrument_lines(lines, pm)
-	_append_platform_lines(lines, pm)
 	_append_rune_lines(lines, pm)
 	_append_ability_lines(lines, pm)
 	detail_label.text = "\n".join(lines)
 
-func _weight_value(key: String) -> float:
-	# v7.x: 3 分量直接相加，无权重系数（权重=1.0）
-	return 1.0
+func _append_platform_lines_fallback(lines: Array, pm: Node) -> void:
+	# card_breakdown 未注入时的兜底（直接从 loadouts 读卡）
+	var loadouts: Array = pm.get_loadouts() if pm.has_method("get_loadouts") else []
+	if loadouts.is_empty():
+		lines.append("  （未装备战斗卡）")
+		return
+	for ld in loadouts:
+		if not (ld is Dictionary):
+			continue
+		var plat = ld.get("platform", null)
+		if plat == null or not (plat is CardResource):
+			continue
+		var card: CardResource = plat
+		var display_name: String = String(card.display_name) if "display_name" in card else card.card_id
+		var enhance: int = int(card.enhance_level) if "enhance_level" in card else 0
+		var enhance_str: String = " +%d强化" % enhance if enhance > 0 else ""
+		lines.append("  %s%s" % [display_name, enhance_str])
 
 func _append_instrument_lines(lines: Array, pm: Node) -> void:
 	var cfg: Dictionary = pm.get_current_instrument() if pm.has_method("get_current_instrument") else {}
@@ -89,7 +95,7 @@ func _append_instrument_lines(lines: Array, pm: Node) -> void:
 	var inst_name: String = String(cfg.get("name", "?"))
 	var star: int = int(cfg.get("star", 0))
 	lines.append("相位仪：%s ★%d" % [inst_name, star])
-	# 相位场属性点
+	# 相位场属性点（展示玩家投入的养成，数值加成已体现在上方卡战力里）
 	var pf_bonus: Dictionary = pm.get_phase_field_total_bonus() if pm.has_method("get_phase_field_total_bonus") else {}
 	if not pf_bonus.is_empty():
 		var pf_parts: Array[String] = []
@@ -97,29 +103,8 @@ func _append_instrument_lines(lines: Array, pm: Node) -> void:
 			var pct := int(round(float(pf_bonus[key]) * 100.0))
 			if pct != 0:
 				pf_parts.append("%s:+%d%%" % [key, pct])
-		if not pf_parts.is_empty():
-			lines.append("  相位场：" + " ".join(pf_parts))
-
-func _append_platform_lines(lines: Array, pm: Node) -> void:
-	lines.append("战斗卡：")
-	var loadouts: Array = pm.get_loadouts() if pm.has_method("get_loadouts") else []
-	if loadouts.is_empty():
-		lines.append("  （空）")
-		return
-	# 预计算每张卡的真实战力（含相位仪加成）
-	var master: Dictionary = MasterPlayerAssembler.build_player_master_dict(pm)
-	var powers: Array = master.get("_player_platform_powers", [])
-	for i in range(loadouts.size()):
-		var ld: Dictionary = loadouts[i] if loadouts[i] is Dictionary else {}
-		var plat = ld.get("platform", null)
-		if plat == null or not (plat is CardResource):
-			continue
-		var card: CardResource = plat
-		var display_name: String = String(card.display_name) if "display_name" in card else card.card_id
-		var power: float = float(powers[i]) if i < powers.size() else 0.0
-		var enhance: int = int(card.enhance_level) if "enhance_level" in card else 0
-		var enhance_str: String = " +%d强化" % enhance if enhance > 0 else ""
-		lines.append("  %s%s → 战力 %d" % [display_name, enhance_str, int(power)])
+			if not pf_parts.is_empty():
+				lines.append("  相位场：" + " ".join(pf_parts))
 
 func _append_rune_lines(lines: Array, pm: Node) -> void:
 	var rune_slots: Array = pm.get_rune_slots() if pm.has_method("get_rune_slots") else []

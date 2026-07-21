@@ -59,6 +59,7 @@ TutorialProgressionManager="*res://managers/tutorial_progression_manager.gd"
 "leaderboard)å®å«#LeaderboardManager"="*res://managers/leaderboard_manager.gd"
 "#StatBoostManager:resource_bar._ready/drop_manager/game_manager/backpack_panelåæensure_loadedå®å«#StatBoostManager"="*res://managers/stat_boost_manager.gd"
 BattleSpectacle="*res://managers/battle/battle_spectacle.gd"
+_MCPGameBridge="*res://addons/agent_tools/runtime/game_bridge.gd"
 
 [debug]
 
@@ -72,7 +73,7 @@ window/stretch/mode="canvas_items"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/godot-mcp/plugin.cfg", "res://addons/gdunit4/plugin.cfg")
+enabled=PackedStringArray("res://addons/agent_tools/plugin.cfg", "res://addons/gdunit4/plugin.cfg", "res://addons/godot-mcp/plugin.cfg")
 
 [rendering]
 

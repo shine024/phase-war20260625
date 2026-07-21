@@ -1261,7 +1261,7 @@ func _format_enemy_runes_full(runes: Array, level: int) -> String:
 		return ""
 	var slot_cap: int = clampi(2 + int(level / 10), 2, 4)
 	var rune_str: String = _format_enemy_runes(runes)
-	# 符文之语：slot_count 用 max(符文数, 2)（与 MasterPowerEvaluator._eval_runewords 同口径）
+	# 符文之语：slot_count 用 max(符文数, 2)（与 RunewordMatcher 标准判定同口径）
 	var clean_ids: Array[String] = []
 	for rid in runes:
 		var rid_s: String = String(rid)

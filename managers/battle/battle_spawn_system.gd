@@ -1005,8 +1005,12 @@ func _apply_enemy_loadout_tier_if_normal_battle(unit: Node) -> void:
 		stats.attack_air = maxf(0.1, stats.attack_air * (1.0 + atk_mult))
 		if stats.has_method("_sync_weapon_slots_damage"):
 			stats._sync_weapon_slots_damage(1.0 + atk_mult)
-	# 同步单位节点的派生字段（hp/max_hp 等）
-	if unit.has_method("_update_hp_bar"):
+	# v7.x：同步单位节点的裸字段（hp/max_hp/attack_damage/defense），让血条/伤害结算
+	# 与 stats 一致。之前只调 _update_hp_bar 只刷新血条 UI，但 take_damage 扣血读裸 hp、
+	# 死亡判定读裸 hp，导致 tier 加成（HP ×1.30 / ATK ×1.35）面板显示但战斗中不生效。
+	if unit.has_method("_sync_bare_fields_from_stats"):
+		unit._sync_bare_fields_from_stats()
+	elif unit.has_method("_update_hp_bar"):
 		unit._update_hp_bar()
 
 ## v6.7: 仅在相位师 boss 对战时给敌方单位应用排名加成
@@ -1031,8 +1035,12 @@ func _apply_enemy_phase_master_bonus_if_active(unit: Node) -> void:
 		if "_cached_enemy_rank_stars" in _phase_instrument:
 			enemy_stars = int(_phase_instrument._cached_enemy_rank_stars)
 		_phase_instrument.apply_enemy_phase_master_bonus_to_unit_stats(stats, enemy_stars)
-	# 同步单位节点的派生字段（hp/max_hp 等），让 UI 血条与 stats 一致
-	if unit.has_method("_update_hp_bar"):
+	# v7.x：同步单位节点的裸字段（hp/max_hp/attack_damage/defense），让 UI 血条与 stats 一致。
+	# 之前只调 _update_hp_bar 只刷新血条 UI，但 take_damage 扣血读裸 hp、死亡判定读裸 hp，
+	# 导致 phase master 加成面板显示但战斗中不生效（血量比面板显示的脆）。
+	if unit.has_method("_sync_bare_fields_from_stats"):
+		unit._sync_bare_fields_from_stats()
+	elif unit.has_method("_update_hp_bar"):
 		unit._update_hp_bar()
 
 func _ensure_swarm_controller() -> Node:
@@ -1158,8 +1166,10 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 		card_key, ",".join(weapon_ids), weapon_types_key, battle_era, pf_bonus_key,
 		active_faction_cache_key
 	]
+	print("[DIAG deploy-in] card=%s inst=<%s> enhance=%d mods=%d mslots=%d | era=%d | key=%s" % [platform_card.card_id, platform_card.instance_id, int(platform_card.enhance_level), platform_card.mods.size(), platform_card.module_slots.size(), battle_era, key])
 	if _stats_cache.has(key):
 		var cached_stats: UnitStats = _stats_cache[key]
+		print("[DIAG deploy-out CACHED] hp=%.0f" % float(cached_stats.max_hp))
 		return cached_stats.duplicate() as UnitStats
 
 	var stats = UnitStatsTable.build_stats_from_card(effective_card, battle_era)
@@ -1186,6 +1196,7 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 		_apply_rune_bonus_to_stats(stats, _phase_instrument.get_rune_bonus())
 	# v6.8: 敌源MOD（D槽）战斗加成已停用（EOM 面板/掉落/存档保留）
 	_stats_cache[key] = stats.duplicate()
+	print("[DIAG deploy-out BUILT] hp=%.0f" % float(stats.max_hp))
 	return stats
 
 ## v6.2: 应用符文之语加成到单位属性

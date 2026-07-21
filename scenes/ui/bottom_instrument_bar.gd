@@ -1088,19 +1088,20 @@ func _append_player_master_tooltip_lines(lines: Array) -> void:
 	lines.append("相位师战力:")
 	lines.append("  Lv.%d · %d★ %s" % [lvl, stars, star_name])
 	lines.append("  总战力：%d" % int(raw))
-	# 3 分量分解（v7.x 统一公式：相位仪 + 装备卡 + 符文，直接相加）
-	var scores: Dictionary = ev.get("scores", {})
-	if not scores.is_empty():
-		var dim_parts: Array[String] = []
-		var dim_labels: Dictionary = {
-			"instrument": "相位仪", "equipment_slots": "装备卡", "runes": "符文",
-		}
-		for key in ["instrument", "equipment_slots", "runes"]:
-			var s: float = float(scores.get(key, 0.0))
-			if s > 0.5:
-				dim_parts.append("%s:%d" % [String(dim_labels.get(key, key)), int(s)])
-		if not dim_parts.is_empty():
-			lines.append("  " + " | ".join(dim_parts))
+	# 卡战力简表（单分量公式：每张装备卡加成后战力，前 4 张 + 省略号）
+	var card_bd: Array = ev.get("card_breakdown", [])
+	if not card_bd.is_empty():
+		var parts: Array[String] = []
+		var show_n: int = mini(card_bd.size(), 4)
+		for i in range(show_n):
+			var c: Dictionary = card_bd[i] if card_bd[i] is Dictionary else {}
+			var nm: String = String(c.get("name", "?"))
+			var en: int = int(c.get("enhance", 0))
+			var en_str: String = ("+%d" % en) if en > 0 else ""
+			parts.append("%s%s:%d" % [nm, en_str, int(float(c.get("power", 0.0)))])
+		if card_bd.size() > show_n:
+			parts.append("...")
+		lines.append("  " + " | ".join(parts))
 
 
 ## v7.x: 构建玩家相位师等级/星级摘要（单行，供底部栏常驻显示）

@@ -1089,6 +1089,27 @@ L10 真实者阴影 → L15 城市轮廓 → L20 铁血男爵 → L40 钢铁元�
 
 **已知技术债（范围外）:** `EnemyPhaseMasters.LEGACY_ENEMY_MASTERS` 静态 var 跨类初始化 bug（拼接时其他子文件未初始化得 0）——本绕过（直接遍历子文件），根因修复需把 LEGACY 改成延迟函数，留待后续。
 
+## v7.x 相位师战力公式收敛为 3 分量 (2026-07-21)
+
+**重要更正：** 上方 L966-1088 记录的"9 维加权公式（A=0.15/B=0.08/C=0.10/D=0.10/E=0.10/F=0.20/G=0.15/H=0.06/I=0.06）"已被代码**完全废弃**，保留段落仅供历史追溯。当前 `MasterPowerEvaluator.evaluate(master)` 实际是 **3 分量直接相加无权重**：
+
+```
+总分 = scores.instrument(A) + scores.equipment_slots(F) + scores.runes(H)
+```
+
+**3 分量子公式：**
+| 维度 | 计算 | 说明 |
+|------|------|------|
+| A 相位仪 | `star² × 10 + (有 active_ability ? +50 : 0)` | 量级 90-540，占 5-15% |
+| F 载卡 | `Σ UnifiedCardTable.get_entry(platform_id).power`（查不到兜底 100/卡） | 主导项，玩家侧读 `_player_platform_powers` |
+| H 符文 | `Σ RUNE_RARITY_POWER[rune.rarity]`（common=800/rare=1500/epic=3000/legendary=5000/mythic=7000） | 敌方符文派生驱动 |
+
+**死代码：** `_eval_engravings`/`_eval_traits`/`_eval_active_spells`/`_eval_passive_spells`/`_eval_master_stats`/`_eval_runewords` 6 个子函数仍残留在 `master_power_evaluator.gd`（L340-611），但 `evaluate()` **根本不调用**——勿被误导。
+
+**STAR_TIERS 实际阈值（非旧记录的 450/540/650/780/950/1600）：** `0/800/1600/3200/6000/9500/20000`。
+
+**实测数值（v7.x 3 分量口径）：** master_030 总分约 19040（A=490/F=1050/H=17500）→ 6★ 传说，派生 Lv30；注意 F 维因敌方 `*_expert` 平台 id 不在 UnifiedCardTable 走兜底 100/卡，实际运行时（autoload 完整 + JSON 合并命中）会反映真实卡 power 梯度。
+
 ## v7.x 改造效果审计 + 情报面板翻译表补齐 (2026-06-28)
 
 **背景:** 用户要求审计"改造相关有多少没实装、多少对游戏无用、多少无法在情报面板正确显示"。对全 9 改造模块文件（133 改造，70 个 effect key）做三维度审查。
