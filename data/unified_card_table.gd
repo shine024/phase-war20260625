@@ -2230,9 +2230,27 @@ static func _entry_to_card(entry: Dictionary) -> CardResource:
 	c.weapon_names = names
 	# 标记 enemy_only（缴获卡用）
 	c.is_dropped_card = bool(entry.get("enemy_only", false))
+	# v7.x 修复：补上 rarity 推断（原 _entry_to_card 漏设，导致所有 UCT 构建的卡 rarity 恒为默认 "common"）。
+	# rarity 驱动 get_effective_power_multiplier（apply_growth_to_stats 的 hp/dmg 乘区）+ 强化消耗 + 军衔评估，
+	# 漏设会让 mythic/legendary 卡被当 common 处理，养成乘区被低估约 46%（mythic m: 2.388→1.630）。
+	# 复用与 default_cards._infer_rarity 相同的 era+power 推断口径，保证两套构建路径 rarity 一致。
+	c.rarity = _infer_rarity(c.era, c.power)
 	# 类型行
 	c.type_line = _make_type_line(c.era, c.combat_kind, c.is_dropped_card)
 	return c
+
+
+## v7.x 修复：rarity 推断（与 default_cards._infer_rarity 同口径）。
+## era 0-1=common / 2=rare|uncommon / 3=epic|rare / 4=mythic|legendary（按 power 分档）。
+static func _infer_rarity(era: int, power: int) -> String:
+	if era <= 1:
+		return "common"
+	elif era == 2:
+		return "rare" if power > 400 else "uncommon"
+	elif era == 3:
+		return "epic" if power > 800 else "rare"
+	else:  # era 4 近未来
+		return "mythic" if power > 1500 else "legendary"
 
 
 static func _calc_main_attack_speed(c: CardResource) -> float:
