@@ -227,6 +227,13 @@ static func load_tex(path: String) -> Texture2D:
 	if not ResourceLoader.exists(path):
 		_tex_cache[path] = null
 		return null
+	# 导入有效性校验：资源文件存在但导入失败（.import 里 valid=false）时，
+	# ResourceLoader.exists 仍返回 true，但 load() 会返回引擎的橙色 missing-texture
+	# 占位纹理（转型成 Texture2D 非 null），导致 UI 渲染出橙色占位方块。
+	# 在此拦截，让调用方优雅降级（显示兜底/留空）。逻辑提取自 Battlefield._is_import_marked_invalid。
+	if is_import_marked_invalid(path):
+		_tex_cache[path] = null
+		return null
 	var loaded: Resource = ResourceLoader.load(path)
 	var t: Texture2D = loaded as Texture2D
 	if t == null:
@@ -234,6 +241,23 @@ static func load_tex(path: String) -> Texture2D:
 		return null
 	_tex_cache[path] = t
 	return t
+
+
+## 检查资源的 .import sidecar 是否标记 valid=false（导入失败）。
+## 对"文件在但导入失败"的情况返回 true，用于 load_tex 拦截引擎橙色占位纹理。
+## 逻辑原自 Battlefield._is_import_marked_invalid，提取为公共工具供 UI 层复用。
+static func is_import_marked_invalid(path: String) -> bool:
+	var import_path: String = "%s.import" % path
+	if not FileAccess.file_exists(import_path):
+		return false
+	var f: FileAccess = FileAccess.open(import_path, FileAccess.READ)
+	if f == null:
+		return false
+	while not f.eof_reached():
+		var line: String = f.get_line().strip_edges()
+		if line == "valid=false":
+			return true
+	return false
 
 
 static func ui_icon(icon_basename: String) -> Texture2D:
@@ -276,13 +300,10 @@ const CARD_FRAME_RARITIES: Array[String] = [
 
 
 ## 稀有度 PNG 卡框（5:8，透明中心）`res://assets/cards/frames/<rarity>.png`
-## 注意：项目暂无 mythic.png 素材。mythic（神话）比 legendary 更稀有，
-## 回退到 legendary 框（金色高级系，视觉最接近），而非 common（会导致神话卡显示普通框）。
+## 6 档稀有度各有独立 PNG（v7.x 界面一致性修复：mythic 已补独立红色科技框，不再回退 legendary）。
 static func card_frame_path_for(rarity: String) -> String:
 	var r := rarity.strip_edges().to_lower()
-	if r == "mythic":
-		r = "legendary"
-	elif r not in CARD_FRAME_RARITIES:
+	if r not in CARD_FRAME_RARITIES:
 		r = "common"
 	return "res://assets/cards/frames/%s.png" % r
 

@@ -289,17 +289,31 @@ func _show_final_battle_subtitle() -> void:
 	var label := Label.new()
 	label.text = "第100关 · 最终试炼\n「这里的每一寸土地，都是你的记忆。」"
 	label.add_theme_font_size_override("font_size", 18)
-	label.add_theme_color_override("font_color", Color(0.85, 0.85, 0.95, 0.9))
+	label.add_theme_color_override("font_color", Color(0.88, 0.92, 0.98, 0.95))
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	label.position.y = 30
-	label.name = "FinalBattleSubtitle"
-	# 加到 Background 上层（ColorRect 是 Control，可加 Label 子节点）
+	# 字幕包进半透明背景面板（v7.x 界面一致性修复：原裸 Label 浮在记忆场景灰白背景上几乎不可读）
+	var panel := PanelContainer.new()
+	panel.name = "FinalBattleSubtitle"
+	# 半透明深色底 + 内边距 + 圆角 + 细边框
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.02, 0.04, 0.09, 0.78)
+	style.set_content_margin_all(16)
+	style.set_corner_radius_all(8)
+	style.border_width_left = 1
+	style.border_width_top = 1
+	style.border_width_right = 1
+	style.border_width_bottom = 1
+	style.border_color = Color(0.0, 0.83, 1.0, 0.35)
+	panel.add_theme_stylebox_override("panel", style)
+	panel.add_child(label)
+	panel.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	panel.position.y = 30
+	# 加到 Background 上层（ColorRect 是 Control，可加子节点）
 	if background != null and is_instance_valid(background):
-		background.add_child(label)
+		background.add_child(panel)
 		# 5秒后淡出
-		create_tween().tween_property(label, "modulate:a", 0.0, 2.0).set_delay(5.0)
-		create_tween().tween_callback(label.queue_free).set_delay(7.5)
+		create_tween().tween_property(panel, "modulate:a", 0.0, 2.0).set_delay(5.0)
+		create_tween().tween_callback(panel.queue_free).set_delay(7.5)
 
 func _try_apply_alternative_background(level: int, era: int) -> bool:
 	var candidates: Array[int] = []

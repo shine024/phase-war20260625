@@ -1473,6 +1473,11 @@ func _get_cached_icon_texture(tex_path: String) -> Texture2D:
 	if not ResourceLoader.exists(tex_path):
 		_icon_cache[tex_path] = null
 		return null
+	# 导入有效性校验：文件在但导入失败（valid=false）时，ResourceLoader.exists 仍 true，
+	# 但 load() 会返回引擎橙色 missing-texture 占位。拦截避免渲染占位方块。
+	if UiAssetLoader.is_import_marked_invalid(tex_path):
+		_icon_cache[tex_path] = null
+		return null
 	var loaded: Resource = ResourceLoader.load(tex_path, "Texture2D", ResourceLoader.CACHE_MODE_REUSE)
 	if loaded == null or not (loaded is Texture2D):
 		_icon_cache[tex_path] = null

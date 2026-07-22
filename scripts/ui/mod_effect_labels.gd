@@ -11,7 +11,7 @@ class_name ModEffectLabels
 
 
 ## 翻译改造效果 key 为简短中文显示名。
-## 覆盖全部 70 个标准 effect key + 7 个武器槽 slot_* key（与 modification_registry._apply_single_mod_effects 的 match 分支对齐）。
+## 覆盖全部标准 effect key + 7 个武器槽 slot_* key（与 modification_registry._apply_single_mod_effects 的 match 分支对齐，含 crit_mark_* 暴击标注系列）。
 static func translate(key: String) -> String:
 	match key:
 		# ── 主属性 ──（维度语义 = 目标类型，与 unit_stats.gd 字段注释、attack_calculator 战斗逻辑对齐）
@@ -119,6 +119,9 @@ static func translate(key: String) -> String:
 		"target_marking": return "标记概率"
 		"mark_vuln": return "标记易伤"
 		"mark_duration": return "标记持续"
+		"crit_mark_chance": return "暴击标注"
+		"crit_mark_bonus": return "标注暴伤"
+		"crit_mark_duration": return "标注持续"
 		"siege_bonus": return "爆破百分比"
 		"urban_defense": return "巷战免伤"
 		"counter_battery": return "反击标记"

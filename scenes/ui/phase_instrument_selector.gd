@@ -5,6 +5,7 @@ signal instrument_selected(instrument_id: String)
 
 const PhaseInstruments = preload("res://data/phase_instruments.gd")
 const CompanyDefs = preload("res://data/company_definitions.gd")
+const DT = preload("res://resources/design_tokens.gd")
 
 var _main_instance = null
 
@@ -181,7 +182,7 @@ func _create_instrument_item(cfg: Dictionary, is_equipped: bool) -> Control:
 	var style = StyleBoxFlat.new()
 	if is_equipped:
 		style.bg_color = Color(0.15, 0.25, 0.35, 0.95)
-		style.border_color = Color(0.4, 0.85, 1.0, 0.9)
+		style.border_color = Color(DT.COLOR_CYAN_TECH.r, DT.COLOR_CYAN_TECH.g, DT.COLOR_CYAN_TECH.b, 0.9)
 	else:
 		style.bg_color = Color(0.08, 0.10, 0.15, 0.92)
 		style.border_color = Color(0.3, 0.35, 0.45, 0.6)
@@ -208,10 +209,10 @@ func _create_instrument_item(cfg: Dictionary, is_equipped: bool) -> Control:
 	var star = int(cfg.get("star", 0))
 	if is_equipped:
 		name_label.text = "✓ %s ★%d" % [inst_name, star]
-		name_label.add_theme_color_override("font_color", Color(0.4, 0.95, 0.6, 1.0))
+		name_label.add_theme_color_override("font_color", DT.COLOR_GREEN_UP)
 	else:
 		name_label.text = "%s ★%d" % [inst_name, star]
-		name_label.add_theme_color_override("font_color", Color(0.95, 0.9, 0.7, 1.0))
+		name_label.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
 	name_label.add_theme_font_size_override("font_size", 15)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header_row.add_child(name_label)

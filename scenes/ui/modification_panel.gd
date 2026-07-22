@@ -32,9 +32,16 @@ const GeoShapes = preload("res://scripts/ui/geo_shapes.gd")
 @onready var chip_all: Button = get_node_or_null("%ChipAll")
 @onready var chip_mod: Button = get_node_or_null("%ChipMod")
 @onready var chip_max: Button = get_node_or_null("%ChipMax")
-@onready var slot_visual_title: Label = get_node_or_null("%SlotVisualTitle")
-@onready var slot_visual_host: HBoxContainer = get_node_or_null("%SlotVisualHost")
 @onready var left_panel: PanelContainer = get_node_or_null("%LeftPanel")
+# v1.4 底部操作台（中栏底部，选中模块时显示核心属性+安装按钮）
+@onready var action_deck: PanelContainer = get_node_or_null("%ActionDeck")
+@onready var deck_empty: Label = get_node_or_null("%DeckEmpty")
+@onready var deck_name_label: Label = get_node_or_null("%DeckNameLabel")
+@onready var deck_core_label: Label = get_node_or_null("%DeckCoreLabel")
+@onready var deck_req_label: Label = get_node_or_null("%DeckReqLabel")
+@onready var deck_install_button: Button = get_node_or_null("%DeckInstallButton")
+# v1.4 右栏单位面板（恒定显示战力/属性/已装列表，动态构建视觉块）
+@onready var unit_panel: VBoxContainer = get_node_or_null("%UnitPanel")
 
 const FILTER_ALL := "all"
 const FILTER_MOD := "mod"
@@ -81,10 +88,9 @@ func _apply_title_fonts() -> void:
 	if research_label:
 		research_label.add_theme_font_override("font", DT.get_body_font())
 		research_label.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT)
-	# 详情面板关键 Label
+	# 详情面板关键 Label（v1.4：操作台模块名，单位面板动态构建的字体在构建时设置）
 	for path in [
-		"%NameLabel",
-		"%PrototypeLabel",
+		"%DeckNameLabel",
 	]:
 		var lbl = get_node_or_null(path)
 		if lbl:
@@ -438,10 +444,9 @@ func _refresh_mod_list() -> void:
 			continue  # 找不到改造数据（旧/无效 mod_id），跳过避免渲染异常
 		var item = _create_mod_item(mod_id, mod_data)
 		mod_list_container.add_child(item)
-	# v7.x：更新改造库计数 + 9 槽位可视化
+	# v7.x：更新改造库计数
 	if mod_list_head_count:
-		mod_list_head_count.text = "%d" % unlocked_mod_ids.size()
-	_refresh_slot_visual()
+		mod_list_head_count.text = "可用 %d · 总持有 %d" % [unlocked_mod_ids.size(), unlocked_mod_ids.size()]
 
 func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 	var btn := Button.new()
@@ -493,7 +498,7 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 	var icon_path: String = mod_data.get("icon", "")
 	if not icon_path.is_empty() and ResourceLoader.exists(icon_path):
 		var tex_rect := TextureRect.new()
-		tex_rect.texture = load(icon_path)
+		tex_rect.texture = UiAssetLoader.load_tex(icon_path)
 		tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		tex_rect.custom_minimum_size = Vector2(26, 26)
@@ -593,37 +598,60 @@ func _get_install_block_reason(mod_id: String) -> String:
 		return ""
 	return String(check_result.get("reason", "冲突"))
 
+## v1.4：刷新右栏单位面板（恒定显示，不随模块选中切换）
+## 动态构建 6 个视觉区块：Hero头部 / PowerBlock战力块 / TierProgress5档条 / 基础属性6格 / 已装改造列表
 func _update_card_info() -> void:
 	if card_info_panel == null:
 		return
 	if not selected_card:
-		card_info_panel.visible = false
+		# 未选单位时 DetailPanel 保持可见并显示占位提示（v7.x 界面一致性修复：
+		# 原 visible=false 会让 300px 右栏折叠，导致改造站右侧大面积空白）。
+		card_info_panel.visible = true
+		_show_unit_panel_placeholder()
 		return
-
 	card_info_panel.visible = true
 
-	# 显示 CardView（卡牌摘要+已装列表）时隐藏 ModDetailsPanel（避免重叠）
-	var card_view = get_node_or_null("%CardView")
-	if card_view:
-		card_view.visible = true
-	var mod_details = get_node_or_null("%ModDetailsPanel")
-	if mod_details:
-		mod_details.visible = false
+	# 清空 UnitPanel 旧内容（同步 free，避免容器撑高）
+	if unit_panel:
+		for child in unit_panel.get_children():
+			unit_panel.remove_child(child)
+			child.free()
 
-	var info_label = get_node_or_null("%InfoLabel")
-	if info_label:
-		info_label.text = "%s\n强化 Lv.%d | 改造：%d/9" % [
-			selected_card.display_name,
-			selected_card.enhance_level,
-			selected_card.mods.size()
-		]
+	# === 数据准备 ===
+	var tier_str := _get_card_tier_str(selected_card)
+	var key: String = selected_card.instance_id if not selected_card.instance_id.is_empty() else selected_card.card_id
+	var power_val: float = 0.0
+	if BlueprintManager != null and not key.is_empty():
+		power_val = EvolutionHelpers.estimate_power_score(key, BlueprintManager)
+	var current_tier: int = PowerTiers.get_tier_by_power(power_val) if power_val > 0 else 0
+	var stats: Dictionary = selected_card.get_modified_stats()
+	var mod_count: int = selected_card.mods.size() if "mods" in selected_card else 0
 
-	# 显示已安装改造列表
-	var installed_list = get_node_or_null("%InstalledList")
-	if installed_list:
-		_refresh_installed_list(installed_list)
+	# === 区块1：Hero 头部（缩略图 + 名#号 + 标签行） ===
+	unit_panel.add_child(_build_unit_hero())
 
-	# 更新资源栏：纳米 + 合金 + 战力档位（顶部决策性总览）
+	# === 区块2：战力评分大块（左侧标签 + 右侧大数字） ===
+	unit_panel.add_child(_build_power_block(power_val, current_tier, tier_str))
+
+	# === 区块3：5 档进度条 ===
+	unit_panel.add_child(_build_tier_progress(current_tier))
+
+	# === 区块4：区段标题「基础属性」 ===
+	unit_panel.add_child(_make_section_header("◆ 基础属性", "满血状态"))
+
+	# === 区块5：属性 6 格网格 ===
+	unit_panel.add_child(_build_stat_grid(stats))
+
+	# === 区块6：已装改造列表 ===
+	unit_panel.add_child(_make_section_header("◆ 已装改造", "%d / 9" % mod_count))
+	var installed_list := VBoxContainer.new()
+	installed_list.name = "InstalledList"
+	installed_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	installed_list.add_theme_constant_override("separation", 4)
+	unit_panel.add_child(installed_list)
+	_refresh_installed_list(installed_list)
+
+	# === 资源栏更新 ===
 	var nano_amount: int = 0
 	var alloy_amount: int = 0
 	if BasicResourceManager != null and "ID_NANO_MATERIALS" in BasicResources:
@@ -634,53 +662,257 @@ func _update_card_info() -> void:
 		research_label.text = "纳米 %s" % _format_int(nano_amount)
 	if alloy_label:
 		alloy_label.text = "合金 %s" % _format_int(alloy_amount)
-	# 顶部状态行：当前战力档位
 	if status_line_label:
-		var tier_str := _get_card_tier_str(selected_card)
 		status_line_label.text = "当前战力档  %s" % tier_str if not tier_str.is_empty() else ""
 
-	# v7.x：刷新 9 槽位可视化
-	_refresh_slot_visual()
+	# v1.4：选中新卡时重置底部操作台到空态
+	_show_deck_empty()
 
 
-## v7.x 新增：9 槽位可视化（已装=cyan填充，空=灰色+）
-func _refresh_slot_visual() -> void:
-	if slot_visual_host == null:
+## 未选单位时显示占位提示（v7.x 界面一致性修复：消除 DetailPanel 右侧空白）
+func _show_unit_panel_placeholder() -> void:
+	if unit_panel == null:
 		return
-	for child in slot_visual_host.get_children():
-		slot_visual_host.remove_child(child)
+	for child in unit_panel.get_children():
+		unit_panel.remove_child(child)
 		child.free()
-	var mod_count: int = 0
-	if selected_card and "mods" in selected_card and selected_card.mods is Array:
-		mod_count = selected_card.mods.size()
-	if slot_visual_title:
-		slot_visual_title.text = "已装改造 %d/9" % mod_count
-	if not selected_card:
-		return
-	for i in range(9):
-		var filled := i < mod_count
-		var tag := PanelContainer.new()
-		tag.custom_minimum_size = Vector2(0, 22)
-		tag.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var ph := Label.new()
+	ph.text = "← 选择左侧单位\n查看属性与已装改造"
+	ph.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ph.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	ph.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	ph.add_theme_font_size_override("font_size", 13)
+	ph.add_theme_color_override("font_color", Color(0.42, 0.48, 0.58, 0.7))
+	unit_panel.add_child(ph)
+
+
+## 构建单位 Hero 头部（缩略图 + 名#号 + 兵种/档位标签）
+func _build_unit_hero() -> Control:
+	var hero := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.024, 0.714, 0.831, 0.06)
+	sb.border_color = Color(0.024, 0.714, 0.831, 0.2)
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(6)
+	sb.content_margin_left = 10; sb.content_margin_top = 10
+	sb.content_margin_right = 10; sb.content_margin_bottom = 10
+	hero.add_theme_stylebox_override("panel", sb)
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 10)
+	# 缩略图（兵种色边框 + 兵种字母）
+	var art := PanelContainer.new()
+	art.custom_minimum_size = Vector2(40, 40)
+	var art_sb := StyleBoxFlat.new()
+	art_sb.bg_color = Color(0.03, 0.06, 0.11, 1)
+	art_sb.border_color = _get_kind_color(selected_card.combat_kind)
+	art_sb.set_border_width_all(1)
+	art_sb.set_corner_radius_all(4)
+	art.add_theme_stylebox_override("panel", art_sb)
+	var art_lbl := Label.new()
+	art_lbl.text = _get_unit_icon(selected_card)
+	art_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	art_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	art_lbl.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	art_lbl.add_theme_font_size_override("font_size", 18)
+	art_lbl.add_theme_color_override("font_color", _get_kind_color(selected_card.combat_kind))
+	art.add_child(art_lbl)
+	hbox.add_child(art)
+	# 名 + 实例号 + 标签
+	var info := VBoxContainer.new()
+	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	info.add_theme_constant_override("separation", 3)
+	var name_lbl := Label.new()
+	var display_name: String = selected_card.display_name if selected_card.display_name else selected_card.card_id
+	name_lbl.text = display_name
+	name_lbl.add_theme_font_size_override("font_size", 14)
+	name_lbl.add_theme_color_override("font_color", Color(0.95, 0.96, 0.98, 1))
+	var iid: String = str(selected_card.instance_id)
+	if not iid.is_empty():
+		var h_idx: int = iid.rfind("#")
+		if h_idx >= 0:
+			name_lbl.text += "  #" + iid.substr(h_idx + 1)
+	info.add_child(name_lbl)
+	# 标签行：兵种 · Lv · 改造数
+	var tags := Label.new()
+	tags.text = "%s · Lv.%d · 改造 %d/9" % [
+		CardResource.get_combat_kind_name(selected_card.combat_kind),
+		selected_card.enhance_level,
+		selected_card.mods.size()
+	]
+	tags.add_theme_font_size_override("font_size", 9)
+	tags.add_theme_color_override("font_color", Color(0.55, 0.6, 0.7, 0.85))
+	info.add_child(tags)
+	hbox.add_child(info)
+	hero.add_child(hbox)
+	return hero
+
+
+## 构建战力评分块（左侧标签+档位名 / 右侧大数字）
+func _build_power_block(power_val: float, current_tier: int, tier_str: String) -> Control:
+	var block := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.075, 0.102, 0.165, 0.5)
+	sb.border_color = Color(0.25, 0.35, 0.42, 0.18)
+	sb.set_border_width_all(1)
+	sb.border_width_left = 3
+	sb.border_color = DT.COLOR_CYAN_TECH_SOFT
+	sb.set_corner_radius_all(5)
+	sb.content_margin_left = 10; sb.content_margin_top = 8
+	sb.content_margin_right = 10; sb.content_margin_bottom = 8
+	block.add_theme_stylebox_override("panel", sb)
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 8)
+	# 左侧：标签 + 档位名
+	var left := VBoxContainer.new()
+	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var lbl1 := Label.new()
+	lbl1.text = "战力评分 · POWER"
+	lbl1.add_theme_font_size_override("font_size", 9)
+	lbl1.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.85))
+	left.add_child(lbl1)
+	var tier_name_cn := PowerTiers.get_tier_name(current_tier) if power_val > 0 else ""
+	var lbl2 := Label.new()
+	lbl2.text = "%s · %s" % [tier_str, tier_name_cn] if not tier_str.is_empty() else "—"
+	lbl2.add_theme_font_size_override("font_size", 11)
+	lbl2.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT)
+	left.add_child(lbl2)
+	hbox.add_child(left)
+	# 右侧：战力大数字
+	var pwr_lbl := Label.new()
+	pwr_lbl.text = str(int(power_val)) if power_val > 0 else "—"
+	pwr_lbl.add_theme_font_size_override("font_size", 26)
+	pwr_lbl.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT)
+	pwr_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	pwr_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	hbox.add_child(pwr_lbl)
+	block.add_child(hbox)
+	return block
+
+
+## 构建 5 档进度条（GRUNT/VETERAN/ELITE/CHAMPION/OVERLORD）
+func _build_tier_progress(current_tier: int) -> Control:
+	var grid := GridContainer.new()
+	grid.columns = 5
+	grid.add_theme_constant_override("h_separation", 3)
+	var names := ["GRUNT", "VET", "ELITE", "CHAMP", "OVER"]
+	var vals := ["150", "260", "420", "720", "720+"]
+	for i in range(5):
+		var cell := PanelContainer.new()
+		cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var sb := StyleBoxFlat.new()
-		sb.set_corner_radius_all(2)
 		sb.set_border_width_all(1)
-		if filled:
-			sb.bg_color = Color(DT.COLOR_CYAN_TECH.r, DT.COLOR_CYAN_TECH.g, DT.COLOR_CYAN_TECH.b, 0.18)
+		sb.set_corner_radius_all(2)
+		sb.content_margin_left = 2; sb.content_margin_top = 3
+		sb.content_margin_right = 2; sb.content_margin_bottom = 3
+		if i < current_tier:
+			sb.bg_color = Color(0.2, 0.9, 0.4, 0.04)
+			sb.border_color = Color(0.2, 0.9, 0.4, 0.2)
+		elif i == current_tier:
+			sb.bg_color = Color(0.024, 0.714, 0.831, 0.12)
 			sb.border_color = DT.COLOR_CYAN_TECH
 		else:
-			sb.bg_color = Color(0.05, 0.09, 0.16, 0.3)
-			sb.border_color = Color(0.25, 0.35, 0.42, 0.3)
-		tag.add_theme_stylebox_override("panel", sb)
-		var lbl := Label.new()
-		lbl.text = "+" if not filled else "●"
-		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		lbl.add_theme_font_size_override("font_size", 10)
-		lbl.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT if filled else Color(0.4, 0.45, 0.55, 0.5))
-		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		tag.add_child(lbl)
-		slot_visual_host.add_child(tag)
+			sb.bg_color = Color(0.03, 0.05, 0.10, 0.3)
+			sb.border_color = Color(0.25, 0.35, 0.42, 0.18)
+		cell.add_theme_stylebox_override("panel", sb)
+		var vbox := VBoxContainer.new()
+		vbox.add_theme_constant_override("separation", 0)
+		vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+		var n_lbl := Label.new()
+		n_lbl.text = names[i]
+		n_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		n_lbl.add_theme_font_size_override("font_size", 8)
+		n_lbl.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT if i == current_tier else (Color(0.6,0.65,0.75,0.8) if i < current_tier else Color(0.4,0.45,0.55,0.5)))
+		vbox.add_child(n_lbl)
+		var v_lbl := Label.new()
+		v_lbl.text = vals[i]
+		v_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v_lbl.add_theme_font_size_override("font_size", 7)
+		v_lbl.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.6))
+		vbox.add_child(v_lbl)
+		cell.add_child(vbox)
+		grid.add_child(cell)
+	return grid
+
+
+## 区段标题（左标题 + 右附注）
+func _make_section_header(title: String, extra: String) -> Control:
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 6)
+	var t_lbl := Label.new()
+	t_lbl.text = title
+	t_lbl.add_theme_font_size_override("font_size", 10)
+	t_lbl.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85, 0.9))
+	hbox.add_child(t_lbl)
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hbox.add_child(spacer)
+	if not extra.is_empty():
+		var e_lbl := Label.new()
+		e_lbl.text = extra
+		e_lbl.add_theme_font_size_override("font_size", 9)
+		e_lbl.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT)
+		hbox.add_child(e_lbl)
+	return hbox
+
+
+## 构建 6 格属性网格（HP/轻攻/甲攻/空攻/装甲防/移速）
+func _build_stat_grid(stats: Dictionary) -> Control:
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 5)
+	grid.add_theme_constant_override("v_separation", 5)
+	var entries := [
+		["生命值", "max_hp", true],
+		["轻装攻击", "attack_light", false],
+		["装甲攻击", "attack_armor", false],
+		["对空攻击", "attack_air", false],
+		["装甲防御", "defense_armor", false],
+		["移动速度", "move_speed", false],
+	]
+	for entry in entries:
+		var key_name: String = entry[1]
+		var val_raw = stats.get(key_name, 0)
+		var val_int := int(val_raw) if val_raw != null else 0
+		grid.add_child(_make_stat_cell(entry[0], val_int, entry[2]))
+	return grid
+
+
+## 单个属性格
+func _make_stat_cell(label_text: String, value: int, is_hp: bool) -> Control:
+	var cell := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.075, 0.102, 0.165, 0.5)
+	sb.border_color = Color(0.25, 0.35, 0.42, 0.18)
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(3)
+	sb.content_margin_left = 6; sb.content_margin_top = 5
+	sb.content_margin_right = 6; sb.content_margin_bottom = 5
+	cell.add_theme_stylebox_override("panel", sb)
+	var vbox := VBoxContainer.new()
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_theme_constant_override("separation", 2)
+	var lbl := Label.new()
+	lbl.text = label_text
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.add_theme_font_size_override("font_size", 8)
+	lbl.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.85))
+	vbox.add_child(lbl)
+	var val_lbl := Label.new()
+	val_lbl.text = str(value)
+	val_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	val_lbl.add_theme_font_size_override("font_size", 14)
+	val_lbl.add_theme_color_override("font_color", DT.COLOR_GREEN_UP if is_hp else Color(0.95, 0.96, 0.98, 1))
+	vbox.add_child(val_lbl)
+	cell.add_child(vbox)
+	return cell
+
+
+## v1.4：显示底部操作台空态（未选模块时）
+func _show_deck_empty() -> void:
+	if action_deck:
+		action_deck.visible = false
+	if deck_empty:
+		deck_empty.visible = true
 
 
 ## v7.x 辅助：整数千分位格式化
@@ -757,7 +989,7 @@ func _refresh_installed_list(installed_list: Control) -> void:
 		var icon_path: String = mod_data.get("icon", "")
 		if not icon_path.is_empty() and ResourceLoader.exists(icon_path):
 			var tex_rect := TextureRect.new()
-			tex_rect.texture = load(icon_path)
+			tex_rect.texture = UiAssetLoader.load_tex(icon_path)
 			tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			tex_rect.custom_minimum_size = Vector2(20, 20)
@@ -816,11 +1048,12 @@ func _on_weapon_mod_toggled(mod_index: int, enable: bool) -> void:
 		# v7.0: 用 instance_id 操作（实例化养成）；无 instance_id 回退 card_id
 		var ok: bool = BlueprintManager.set_mod_enabled(_selected_id(), mod_index, enable)
 		if ok:
-			# 刷新已安装列表
-			var installed_list = get_node_or_null("%InstalledList")
+			# 刷新已安装列表 + 单位面板属性（改造变化会影响属性）
+			# v1.4：InstalledList 现在是动态创建在 unit_panel 下，按名字查找
+			var installed_list = unit_panel.get_node_or_null("InstalledList") if unit_panel else null
 			if installed_list:
 				_refresh_installed_list(installed_list)
-			_refresh_slot_visual()
+			_update_card_info()
 
 
 ## v7.0: 取当前选中卡的身份标识（优先 instance_id，回退 card_id）
@@ -904,116 +1137,97 @@ func _on_mod_selected(mod_id: String, mod_data: Dictionary) -> void:
 	# 显示改造详情
 	_show_mod_details(mod_data)
 
-## v7.1: 改造效果展示更友好
+## v1.4：刷新底部操作台（选中模块时显示核心属性+要求+安装按钮）
+## 替代原 _show_mod_details 的右栏切换逻辑，详情沉到中栏底部
 func _show_mod_details(mod_data: Dictionary) -> void:
-	var details_panel = get_node_or_null("%ModDetailsPanel")
-	if details_panel == null:
-		return
-	details_panel.visible = true
-	# 隐藏 CardView，避免与详情重叠
-	var card_view = get_node_or_null("%CardView")
-	if card_view:
-		card_view.visible = false
+	# 显示操作台，隐藏空态
+	if action_deck:
+		action_deck.visible = true
+	if deck_empty:
+		deck_empty.visible = false
 
-	var name_label = get_node_or_null("%NameLabel")
-	if name_label:
+	# 操作台图标：按稀有度着色边框（视觉化区分模块品质）
+	var mod_rarity := String(mod_data.get("rarity", "common"))
+	var rarity_col := _rarity_color(mod_rarity)
+	var deck_icon := get_node_or_null("%DeckIcon")
+	if deck_icon and deck_icon is PanelContainer:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(rarity_col.r, rarity_col.g, rarity_col.b, 0.06)
+		sb.border_color = rarity_col
+		sb.set_border_width_all(1)
+		sb.set_corner_radius_all(4)
+		deck_icon.add_theme_stylebox_override("panel", sb)
+
+	# 模块名 + 稀有度（mod_rarity 已在上方 DeckIcon 段声明）
+	if deck_name_label:
 		var rarity_names := {"common": "普通", "uncommon": "优秀", "rare": "稀有", "epic": "史诗", "legendary": "传说", "mythic": "神话"}
-		var mod_rarity: String = String(mod_data.get("rarity", "common"))
-		name_label.text = "%s [%s]" % [mod_data.get("name", ""), rarity_names.get(mod_rarity, mod_rarity)]
-
-	var proto_label = get_node_or_null("%PrototypeLabel")
-	if proto_label:
-		proto_label.text = "原型：%s" % mod_data.get("prototype", "")
-
-	var desc_label = get_node_or_null("%DescLabel")
-	if desc_label:
-		desc_label.text = mod_data.get("description", "")
-
-	var effects_label = get_node_or_null("%EffectsLabel")
-	if effects_label:
-		var effect_texts = _format_effects_for_display(mod_data)
-		effects_label.text = "效果：\n" + "\n".join(effect_texts) if effect_texts.size() > 0 else "无具体数值效果"
-
-	# 新增：元信息（槽位/冲突组/倍率）
-	var meta_label = get_node_or_null("%MetaInfoLabel")
-	if meta_label:
 		var slot_type: String = String(mod_data.get("slot_type", ""))
-		var conflict: String = String(mod_data.get("conflict_group", ""))
-		var power_mult: float = float(mod_data.get("power_mult", 1.0))
-		var parts: Array = []
+		var meta_parts: Array = []
 		if not slot_type.is_empty():
-			parts.append("槽位：%s" % _translate_slot_type(slot_type))
-		if not conflict.is_empty():
-			parts.append("冲突组：%s" % _translate_conflict(conflict))
-		if power_mult != 1.0:
-			parts.append("战力倍率×%.1f" % power_mult)
-		meta_label.text = " — ".join(parts) if not parts.is_empty() else "—"
+			meta_parts.append(_translate_slot_type(slot_type))
+		meta_parts.append(rarity_names.get(mod_rarity, mod_rarity))
+		deck_name_label.text = "%s  [%s]" % [mod_data.get("name", ""), " · ".join(meta_parts)]
 
-	# 新增：属性变化预览（基于选中卡的当前属性计算）
-	var stat_delta_label = get_node_or_null("%StatDeltaLabel")
-	if stat_delta_label:
-		stat_delta_label.text = _build_stat_delta_preview(mod_data)
+	# 核心属性（取改造效果首行 + 属性预览）
+	if deck_core_label:
+		var effect_texts := _format_effects_for_display(mod_data)
+		if effect_texts.size() > 0:
+			deck_core_label.text = " · ".join(effect_texts)
+		else:
+			deck_core_label.text = String(mod_data.get("description", ""))
 
-	# 新增：解锁条件
-	var unlock_label = get_node_or_null("%UnlockLabel")
-	if unlock_label:
+	# 要求行：解锁条件 + 纳米 + 图纸（单行紧凑）
+	if deck_req_label:
+		var req_parts: Array = []
+		# 解锁条件
 		var unlock = mod_data.get("unlock_conditions", {})
 		if unlock is Dictionary and unlock.has("required_level"):
-			var req_lv = int(unlock["required_level"])
-			unlock_label.text = "解锁要求：强化等级 ≥ %d" % req_lv
-		else:
-			unlock_label.text = ""
+			req_parts.append("强化≥%d" % int(unlock["required_level"]))
+		# 纳米成本
+		var base_power: float = BlueprintManager.get_base_power_for_mod_cost(selected_card.card_id) if selected_card else 100.0
+		var nano_cost = int(base_power * 0.5)
+		req_parts.append("纳米%d" % nano_cost)
+		# 图纸
+		var blueprint_id = BlueprintDefinitions.get_mod_blueprint_id(selected_mod_id)
+		var has_blueprint = false
+		var _iib = Engine.get_main_loop().get_root().get_node_or_null("IntelItemBag")
+		if _iib:
+			has_blueprint = _iib.has_item(blueprint_id)
+		req_parts.append("图纸" + ("✓" if has_blueprint else "✗"))
+		deck_req_label.text = " · ".join(req_parts)
 
-	# v7.x 新增：战力档位阶梯条（TierLadder）—— HTML 稿核心控件，让玩家看到当前档 vs 要求档
-	_render_tier_ladder(details_panel, selected_mod_id)
-
-	# 消耗可视化
-	# v6.2 修复：用基础战力（与实际扣费 BlueprintManager.install_modification 的 get_base_power_for_mod_cost 一致），
-	# 原用 get_current_power（含强化+改造）导致显示成本虚高
-	var base_power: float = BlueprintManager.get_base_power_for_mod_cost(selected_card.card_id) if selected_card else 100.0
-	var nano_cost = int(base_power * 0.5)
-	var blueprint_id = BlueprintDefinitions.get_mod_blueprint_id(selected_mod_id)
-	var blueprint_name = BlueprintDefinitions.get_mod_blueprint_name(selected_mod_id)
-	var has_blueprint = false
-	var _iib = Engine.get_main_loop().get_root().get_node_or_null("IntelItemBag")
-	if _iib:
-		has_blueprint = _iib.has_item(blueprint_id)
-	var nano_amount = BasicResourceManager.get_total(BasicResources.ID_NANO_MATERIALS) if BasicResourceManager else 0
-	var has_nano = nano_amount >= nano_cost
-
-	var nano_lbl = get_node_or_null("%NanoCostLabel")
-	if nano_lbl:
-		nano_lbl.text = "纳米 %d %s" % [nano_cost, "✓" if has_nano else "✗（有%d）" % nano_amount]
-		nano_lbl.add_theme_color_override("font_color", Color(0.2, 0.9, 0.4, 1) if has_nano else Color(0.95, 0.35, 0.35, 1))
-
-	var bp_lbl = get_node_or_null("%BlueprintCostLabel")
-	if bp_lbl:
-		bp_lbl.text = "图纸：%s %s" % [blueprint_name, "✓" if has_blueprint else "✗"]
-		bp_lbl.add_theme_color_override("font_color", Color(0.2, 0.9, 0.4, 1) if has_blueprint else Color(0.95, 0.35, 0.35, 1))
-
-	var install_btn = get_node_or_null("%InstallButton")
-	if install_btn:
+	# 安装按钮状态 + 重连
+	if deck_install_button:
+		var base_power2: float = BlueprintManager.get_base_power_for_mod_cost(selected_card.card_id) if selected_card else 100.0
+		var nano_cost2 = int(base_power2 * 0.5)
+		var has_blueprint2 = false
+		var _iib2 = Engine.get_main_loop().get_root().get_node_or_null("IntelItemBag")
+		if _iib2:
+			has_blueprint2 = _iib2.has_item(BlueprintDefinitions.get_mod_blueprint_id(selected_mod_id))
+		var nano_amount = BasicResourceManager.get_total(BasicResources.ID_NANO_MATERIALS) if BasicResourceManager else 0
+		var has_nano = nano_amount >= nano_cost2
 		var is_installed = _is_mod_installed(selected_mod_id)
-		if is_installed:
-			install_btn.text = "已安装"
-			install_btn.disabled = true
-		elif not has_blueprint:
-			install_btn.text = "缺少图纸"
-			install_btn.disabled = true
-		elif not has_nano:
-			install_btn.text = "纳米不足"
-			install_btn.disabled = true
-		else:
-			install_btn.text = "安装"
-			install_btn.disabled = false
 
-		# v5.0: Godot 4 正确的信号断开方式：存储并移除所有现有连接
-		var connections: Array = install_btn.pressed.get_connections()
+		if is_installed:
+			deck_install_button.text = "已安装"
+			deck_install_button.disabled = true
+		elif not has_blueprint2:
+			deck_install_button.text = "缺图纸"
+			deck_install_button.disabled = true
+		elif not has_nano:
+			deck_install_button.text = "纳米不足"
+			deck_install_button.disabled = true
+		else:
+			deck_install_button.text = "安装"
+			deck_install_button.disabled = false
+
+		# v5.0: 信号重连（先断开所有旧 callable，再绑定新的）
+		var connections: Array = deck_install_button.pressed.get_connections()
 		for conn in connections:
 			if conn.callable.is_valid():
-				install_btn.pressed.disconnect(conn.callable)
+				deck_install_button.pressed.disconnect(conn.callable)
 		var install_callable = func(): _install_modification(selected_mod_id)
-		install_btn.pressed.connect(install_callable)
+		deck_install_button.pressed.connect(install_callable)
 
 ## 构建属性变化预览：对比安装改造前后各属性的变化
 func _build_stat_delta_preview(mod_data: Dictionary) -> String:
@@ -1336,60 +1550,11 @@ func _rarity_sort_value(rarity: String) -> int:
 
 
 # ============================================================
-# v7.x 新增：战力档位阶梯条（TierLadder）
+# v7.x 战力档位阶梯条（v1.4 起操作台不再包含 TierLadder 容器，此函数留作内部档位判定用）
 # ============================================================
-## 在详情面板渲染战力档位阶梯条：显示卡牌当前档位 vs 改造要求档位
-## 5 档 GRUNT/VETERAN/ELITE/CHAMPION/OVERLORD，当前档高亮、要求档金边
-## 数据源：
-##   - 卡牌当前档：PowerTiers.get_tier_by_power(BlueprintManager._estimate_power_score)
-##   - 改造要求档：ModManager.get_min_power_tier_for_mod
+## 计算卡牌当前档位 vs 改造要求档位，返回是否达标（供安装按钮逻辑参考）
+## 5 档 GRUNT/VETERAN/ELITE/CHAMPION/OVERLORD
 func _render_tier_ladder(details_panel: Node, mod_id: String) -> void:
 	if details_panel == null or selected_card == null:
 		return
-	# v7.x：TierLadderContainer 路径在新 tscn 中为 ModDetailsPanel/DetailVBox/TierLadderContainer
-	# details_panel 入参即 ModDetailsPanel，故相对路径 DetailVBox/TierLadderContainer 不变
-	var container = details_panel.get_node_or_null("DetailVBox/TierLadderContainer")
-	if container == null:
-		# 兜底：尝试 unique_name（兼容旧/新 tscn）
-		container = get_node_or_null("%TierLadderContainer")
-	if container == null:
-		return  # tscn 未定义该节点，静默跳过
-
-	# 计算卡牌当前档位（用 EvolutionHelpers 的战力估算链，与战力档位阈值口径一致）
-	var card_power: float = 0.0
-	var key: String = selected_card.instance_id if not selected_card.instance_id.is_empty() else selected_card.card_id
-	if BlueprintManager != null:
-		# EvolutionHelpers.estimate_power_score 是 static，需要 bpm_ref
-		card_power = float(EvolutionHelpers.estimate_power_score(key, BlueprintManager))
-	var current_tier: int = PowerTiers.get_tier_by_power(card_power)
-
-	# 改造要求档位（按 mod rarity 派生）
-	var required_tier: int = ModManager.get_min_power_tier_for_mod(mod_id)
-	var meets: bool = PowerTiers.meets_requirement(current_tier, required_tier)
-
-	# 标题区显示结果
-	var result_label = container.get_node_or_null("TierMargin/TierInner/TierTitleRow/TierResultLabel")
-	if result_label:
-		var rar_name: String = PowerTiers.get_tier_name(required_tier)
-		var cur_name: String = PowerTiers.get_tier_name(current_tier)
-		if meets:
-			result_label.text = "✓ 当前 %s · 满足 %s 档" % [cur_name, rar_name]
-			result_label.add_theme_color_override("font_color", DT.COLOR_GREEN_UP)
-		else:
-			result_label.text = "✗ 需 %s · 当前 %s" % [rar_name, cur_name]
-			result_label.add_theme_color_override("font_color", DT.COLOR_RED_DOWN)
-
-	# 渲染阶梯（复用 GeoShapes.TierLadder 控件，替换 host 子节点）
-	var host = container.get_node_or_null("TierMargin/TierInner/TierLadderHost")
-	if host == null:
-		return
-	# 清空旧阶梯（同步 free，避免容器撑高）
-	for child in host.get_children():
-		host.remove_child(child)
-		child.free()
-	# common 档无门槛（GRUNT=0），仍然显示阶梯作为信息但隐藏容器避免噪音
-	var ladder = GeoShapes.TierLadder.new()
-	ladder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	ladder.set_data(current_tier, required_tier, int(card_power))
-	host.add_child(ladder)
-	container.visible = true
+	# v1.4：操作台不再有 TierLadderContainer 节点，仅返回不渲染（档位信息已融入右栏单位面板）

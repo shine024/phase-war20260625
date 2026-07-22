@@ -38,10 +38,10 @@ const RARITY_LEGENDARY: String = "legendary"
 const RARITY_ORDER: Array[String] = [RARITY_COMMON, RARITY_RARE, RARITY_EPIC, RARITY_LEGENDARY]
 
 const RARITY_COLORS: Dictionary = {
-	RARITY_COMMON: Color(0.85, 0.85, 0.85),    # 灰色
-	RARITY_RARE: Color(0.2, 0.5, 0.95),         # 蓝色
-	RARITY_EPIC: Color(0.65, 0.25, 0.9),        # 紫色
-	RARITY_LEGENDARY: Color(0.95, 0.65, 0.15),  # 金色
+	RARITY_COMMON: Color(0.420, 0.463, 0.569, 1),     # 枪铁灰（与 GC 对齐）
+	RARITY_RARE: Color(0.220, 0.741, 0.973, 1),       # 电蓝（与 GC 对齐）
+	RARITY_EPIC: Color(0.753, 0.518, 0.988, 1),       # 紫（与 GC 对齐）
+	RARITY_LEGENDARY: Color(0.961, 0.620, 0.043, 1),  # 琥珀（与 GC 对齐）
 }
 
 const RARITY_NAMES: Dictionary = {
@@ -1189,11 +1189,12 @@ static func get_rune_name(rune_id: String) -> String:
 		return RUNE_NAMES[rune_id]
 	return rune_id
 
-## 获取符文颜色（按稀有度）
+## 获取符文颜色（按稀有度，透传 GC.get_rarity_color 全项目唯一权威源）
+const _GC = preload("res://resources/game_constants.gd")
 static func get_color(rune_id: String) -> Color:
 	var rune = get_rune(rune_id)
 	var rarity = rune.get("rarity", RARITY_COMMON)
-	return RARITY_COLORS.get(rarity, Color.WHITE)
+	return _GC.get_rarity_color(rarity)
 
 ## 获取符文描述
 static func get_description(rune_id: String) -> String:

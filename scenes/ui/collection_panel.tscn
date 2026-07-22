@@ -36,10 +36,14 @@ layout_mode = 2
 
 [node name="Title" type="Label" parent="Margin/VBox/TitleRow"]
 layout_mode = 2
-size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0, 0.941, 1, 1)
 theme_override_font_sizes/font_size = 22
-text = "卡牌图鉴 COLLECTION"
+text = "卡牌图鉴"
+[node name="TitleSub" type="Label" parent="Margin/VBox/TitleRow"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 0.7)
+theme_override_font_sizes/font_size = 10
+text = "COLLECTION"
 
 [node name="ProgressRow" type="HBoxContainer" parent="Margin/VBox"]
 layout_mode = 2

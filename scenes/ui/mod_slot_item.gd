@@ -39,7 +39,7 @@ func set_mod(mod_data: Dictionary) -> void:
 		if icon_path.is_empty() or not ResourceLoader.exists(icon_path):
 			_icon.texture = null
 		else:
-			_icon.texture = load(icon_path)
+			_icon.texture = UiAssetLoader.load_tex(icon_path)
 		_icon.modulate = Color.WHITE
 		_name.text = mod_data.get("name", "")
 		var lv: int = mod_data.get("level", 1)

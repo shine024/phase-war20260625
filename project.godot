@@ -71,6 +71,10 @@ window/size/viewport_width=1280
 window/size/viewport_height=720
 window/stretch/mode="canvas_items"
 
+[gui]
+
+theme/custom="res://resources/default_theme.tres"
+
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/agent_tools/plugin.cfg", "res://addons/gdunit4/plugin.cfg", "res://addons/godot-mcp/plugin.cfg")

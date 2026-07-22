@@ -1,4 +1,6 @@
 ## 游戏常量：能量、刷新间隔、单位上限等
+extends RefCounted
+class_name GameConstants
 
 # 能量
 const ENERGY_MAX: float = 100.0
@@ -189,15 +191,18 @@ static func get_rarity_name(rarity: String) -> String:
 		"mythic": return "神话"
 		_: return "普通"
 
+# 稀有度配色（全项目唯一权威源，与 DesignTokens.COLOR_RARITY_* 数值一致）
+# common 枪铁灰 / uncommon 钢绿 / rare 电蓝 / epic 紫 / legendary 琥珀 / mythic 红
+# 所有其他处的稀有度色必须透传本函数，禁止再定义本地副本。
 static func get_rarity_color(rarity: String) -> Color:
 	match rarity:
-		"common": return Color(0.75, 0.75, 0.75, 1.0)
-		"uncommon": return Color(0.40, 0.90, 0.50, 1.0)
-		"rare": return Color(0.40, 0.65, 1.00, 1.0)
-		"epic": return Color(0.48, 0.41, 0.93, 1.0)
-		"legendary": return Color(1.00, 0.70, 0.30, 1.0)
-		"mythic": return Color(1.00, 0.42, 0.62, 1.0)
-		_: return Color(0.75, 0.75, 0.75, 1.0)
+		"common": return Color(0.420, 0.463, 0.569, 1.0)    # #6b7691 枪铁灰
+		"uncommon": return Color(0.133, 0.773, 0.369, 1.0)  # #22c55e 钢绿
+		"rare": return Color(0.220, 0.741, 0.973, 1.0)      # #38bdf8 电蓝
+		"epic": return Color(0.753, 0.518, 0.988, 1.0)      # #c084fc 紫
+		"legendary": return Color(0.961, 0.620, 0.043, 1.0) # #f59e0b 琥珀
+		"mythic": return Color(0.937, 0.267, 0.267, 1.0)    # #ef4444 红
+		_: return Color(0.420, 0.463, 0.569, 1.0)
 
 static func get_era_name(era: int) -> String:
 	match era:

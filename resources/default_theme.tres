@@ -1,0 +1,11 @@
+; Phase War 全局默认主题（v7.x 界面一致性修复）
+; 统一默认字体为 Rajdhani-Regular + 基础字号 16。
+; 未设 theme_override 的 Label/Button 自动继承此默认值。
+; 按类型的字号阶（标题/数据等）仍由各面板用 theme_override_font_sizes 单独设。
+[gd_resource type="Theme" load_steps=2 format=3]
+
+[ext_resource type="FontFile" path="res://assets/fonts/Rajdhani-Regular.ttf" id="1_body"]
+
+[resource]
+default_font = ExtResource("1_body")
+default_font_size = 16

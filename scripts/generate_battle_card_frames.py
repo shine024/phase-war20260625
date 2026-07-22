@@ -1,7 +1,11 @@
-"""Generate high-quality card frame borders for all rarities using agnes-image-2.0-flash API.
+"""Generate clean tech-style card frame borders for all rarities (agnes-image-2.0-flash).
 
-Each rarity gets a distinct military/sci-fi themed frame with transparent center.
-Output: assets/cards/battle_frames_review/border_<rarity>.png
+Design language (v7.x 界面一致性修复): UNIFIED minimal sci-fi across all rarities —
+deep metal base + thin energy line border + angular corner brackets.
+Rarity is encoded ONLY by accent color + glow intensity, NEVER by ornament/engraving level
+(previous "gold/ornate/ceremonial" prompts produced fantasy-RPG frames that clashed with
+the dark tech UI — see docs/界面一致性/visual_audit_report.html P0).
+Output: assets/cards/frames/<rarity>.png  (overwrites runtime path directly)
 """
 import os
 import sys
@@ -9,7 +13,7 @@ import time
 import requests
 
 PROJECT_ROOT = r"F:\godot fair duet\create\phase-war"
-OUTPUT_DIR = os.path.join(PROJECT_ROOT, "assets", "cards", "battle_frames_review")
+OUTPUT_DIR = os.path.join(PROJECT_ROOT, "assets", "cards", "frames")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 config_path = os.path.expanduser(r"C:\Users\jianchang.tan\.hermes\config.yaml")
@@ -31,78 +35,84 @@ RARITIES = {
     "common": {
         "name": "Common",
         "name_cn": "普通",
-        "color_scheme": "steel gray, gunmetal, muted silver",
-        "border_style": "simple straight edges, minimal geometric accents, clean tactical design",
-        "glow_level": "subtle gray-blue ambient glow",
-        "ornament_level": "minimal - just clean lines and subtle corner brackets",
+        "accent_color": "gunmetal gray #6b7691",
+        "glow_level": "no glow, flat matte finish",
     },
     "uncommon": {
         "name": "Uncommon",
         "name_cn": "优秀",
-        "color_scheme": "dark teal, steel blue, silver accents",
-        "border_style": "angled chamfered corners, reinforced corner brackets, subtle panel lines",
-        "glow_level": "cool blue edge glow on corner joints",
-        "ornament_level": "moderate - corner reinforcements and tactical grid accents",
+        "accent_color": "steel green #22c55e",
+        "glow_level": "faint green edge glow, very subtle",
     },
     "rare": {
         "name": "Rare",
         "name_cn": "稀有",
-        "color_scheme": "electric blue, deep navy, bright silver",
-        "border_style": "layered armor plate design, beveled edges, hexagonal mesh texture along borders",
-        "glow_level": "bright blue energy glow along border seams",
-        "ornament_level": "decorative - layered armor plates with energy seams and hexagonal patterns",
+        "accent_color": "electric blue #38bdf8",
+        "glow_level": "medium blue edge glow along border lines",
     },
     "epic": {
         "name": "Epic",
         "name_cn": "史诗",
-        "color_scheme": "vibrant cyan, deep blue, bright silver, electric purple hints",
-        "border_style": "ornate tactical armor with layered plates, intricate corner emblems, angular filigree",
-        "glow_level": "strong blue-purple energy glow with pulsing corner nodes",
-        "ornament_level": "highly decorative - complex layered armor with glowing nodes and tactical filigree",
+        "accent_color": "violet #c084fc",
+        "glow_level": "strong violet glow at corner nodes and border seams",
     },
     "legendary": {
         "name": "Legendary",
         "name_cn": "传说",
-        "color_scheme": "gold, amber, warm bronze, deep crimson accents",
-        "border_style": "grand ornate armor with intricate engravings, elaborate corner crests, layered ceremonial plates",
-        "glow_level": "intense golden-orange energy glow with radiant corner crowns",
-        "ornament_level": "maximum ornamentation - elaborate crests, engraved patterns, radiant energy crown at corners",
+        "accent_color": "amber #f59e0b",
+        "glow_level": "intense amber glow with pulsing energy at corners",
+    },
+    "mythic": {
+        "name": "Mythic",
+        "name_cn": "神话",
+        "accent_color": "red #ef4444",
+        "glow_level": "maximum red glow with full-border pulsing energy veins",
     },
 }
 
+# Unified design language: ALL rarities share the same minimal sci-fi frame structure.
+# Only the accent color and glow intensity differ. NO gold, NO ornate engravings, NO crests,
+# NO ceremonial elements — those produced the fantasy-RPG clash reported in visual_audit.
 STYLE_PREFIX = (
-    "A card game frame border design, 5:8 portrait aspect ratio, "
-    "thick ornamental border surrounding a large transparent center area, "
-    "the border is on all four sides forming a rectangular frame, "
-    "center is completely transparent (alpha=0) for card content to show through, "
-    "border has detailed texture and design, "
-    "high contrast, game UI element, "
-    "no text, no watermarks, no signatures, no Chinese characters, "
-    "no characters, no creatures, no objects inside the frame, "
-    "vector illustration meets digital painting, "
+    "ABSTRACT CARD FRAME BORDER ONLY, no content inside the frame, "
+    "5:8 portrait aspect ratio, "
+    "a thin uniform-width border on all four sides forming a clean rectangular frame, "
+    "minimal sci-fi tech aesthetic, flat dark metal base, "
+    "simple angular corner brackets at the four corners, "
+    "thin circuit-trace lines along the border, geometric not ornamental, "
+    "center area is completely empty and transparent for card content, "
+    "flat vector graphic style, clean, modern, game UI element, "
+    "NO gold, NO bronze, NO engravings, NO crests, NO filigree, NO ornamental flourishes, "
+    "NO characters, NO people, NO creatures, NO objects inside the frame, "
+    "no text, no watermarks, no signatures, no Chinese characters, no kanji, "
     "1024x1638 pixels"
 )
+
+# Strict negative prompt to prevent characters/armor/ornament in center (from regenerate_bad_frames).
+NEGATIVE = ("character, person, human, humanoid, armor suit, robot, creature, monster, face, mask, "
+            "figure, statue, object, item, weapon, vehicle, landscape, scene, background, scenery, "
+            "environment, gold, bronze, ornate, engraved, crest, filigree, flourish, ceremonial, "
+            "medieval, fantasy, rune, text, watermark, signature, chinese, kanji, japanese, korean, "
+            "letter, word, phrase, sentence")
 
 
 def build_prompt(rarity_id, rarity_data):
     return (
         f"{STYLE_PREFIX}, "
-        f"military sci-fi tactical armor aesthetic, "
-        f"color palette of {rarity_data['color_scheme']}, "
-        f"{rarity_data['border_style']}, "
-        f"{rarity_data['glow_level']}, "
-        f"{rarity_data['ornament_level']}, "
-        f"representing {rarity_data['name_cn']} ({rarity_data['name']}) rarity tier, "
-        f"no Chinese characters, no kanji"
+        f"accent color: {rarity_data['accent_color']}, "
+        f"glow: {rarity_data['glow_level']}, "
+        f"this frame represents {rarity_data['name_cn']} ({rarity_data['name']}) rarity tier — "
+        f"keep the SAME simple geometric structure as other tiers, only the color and glow differ"
     )
 
 
 def generate_frame(rarity_id, rarity_data):
     prompt = build_prompt(rarity_id, rarity_data)
-    
+
     payload = {
         "model": "agnes-image-2.0-flash",
         "prompt": prompt,
+        "negative_prompt": NEGATIVE,
         "n": 1,
         "size": "1024x1638",
     }
@@ -139,7 +149,7 @@ def generate_frame(rarity_id, rarity_data):
         else:
             return False, "No image data in response"
         
-        out_path = os.path.join(OUTPUT_DIR, f"border_{rarity_id}.png")
+        out_path = os.path.join(OUTPUT_DIR, f"{rarity_id}.png")
         with open(out_path, "wb") as f:
             f.write(img_data)
         

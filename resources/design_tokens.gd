@@ -34,6 +34,12 @@ const PADDING_SMALL := 8
 const PADDING_MEDIUM := 16
 const PADDING_LARGE := 24
 
+# 标准面板尺寸（v7.x 界面一致性修复：统一弹窗三档，视口 1280×720）
+# 养成面板（强化/改造/进化/成长）统一 LARGE；图鉴/军衔用 MEDIUM；情报/小弹窗用 SMALL
+const PANEL_SIZE_LARGE := Vector2(1180, 640)
+const PANEL_SIZE_MEDIUM := Vector2(960, 600)
+const PANEL_SIZE_SMALL := Vector2(840, 580)
+
 # Glow settings
 const GLOW_ENABLED := true
 const GLOW_STRENGTH := 0.8

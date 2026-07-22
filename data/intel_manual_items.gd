@@ -79,16 +79,10 @@ static func get_blueprint_rarity(blueprint_id: String) -> String:
 		return "epic"  # 进化图纸默认史诗
 	return "common"
 
-## 获取稀有度颜色
+## 获取稀有度颜色（透传 GC.get_rarity_color，全项目唯一权威源）
+const _GC = preload("res://resources/game_constants.gd")
 static func get_rarity_color(rarity: String) -> Color:
-	match rarity:
-		"common": return Color(0.7, 0.8, 0.7, 1.0)
-		"uncommon": return Color(0.3, 0.75, 0.3, 1.0)
-		"rare": return Color(0.3, 0.5, 1.0, 1.0)
-		"epic": return Color(0.7, 0.3, 0.9, 1.0)
-		"legendary": return Color(1.0, 0.6, 0.2, 1.0)
-		"mythic": return Color(1.0, 0.42, 0.62, 1.0)
-		_: return Color.WHITE
+	return _GC.get_rarity_color(rarity)
 
 ## 获取稀有度名称
 static func get_rarity_name(rarity: String) -> String:

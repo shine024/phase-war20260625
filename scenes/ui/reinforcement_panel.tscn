@@ -136,12 +136,17 @@ theme_override_constants/separation = 20
 
 [node name="TitleLabel" type="Label" parent="VBoxContainer/TitleRow/TitleHBox"]
 layout_mode = 2
-size_flags_horizontal = 3
 text = "💪 强化面板"
 theme_override_font_sizes/font_size = 24
 theme_override_colors/font_color = Color(0.3, 0.95, 0.55, 1)
 theme_override_colors/font_outline_color = Color(0.02, 0.18, 0.09, 0.9)
 theme_override_constants/outline_size = 3
+[node name="TitleSub" type="Label" parent="VBoxContainer/TitleRow/TitleHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 0.7)
+theme_override_font_sizes/font_size = 10
+text = "REINFORCEMENT"
 
 [node name="BackToGrowthButton" type="Button" parent="VBoxContainer/TitleRow/TitleHBox"]
 unique_name_in_owner = true

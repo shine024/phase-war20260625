@@ -87,14 +87,8 @@ var _sub_panel_dirty: Dictionary = {}
 var _info_tab_changed_connected: bool = false
 
 const ERA_NAMES := ["一战", "二战", "冷战", "现代", "近未来"]
-const RARITY_COLORS := {
-	"common": Color(0.75, 0.78, 0.85, 1),
-	"uncommon": Color(0.4, 1.0, 0.6, 1),
-	"rare": Color(0.4, 0.7, 1.0, 1),
-	"epic": Color(0.8, 0.5, 1.0, 1),
-	"legendary": Color(1.0, 0.6, 0.9, 1),
-	"mythic": Color(1.0, 0.42, 0.62, 1),
-}
+# 稀有度色统一走 GC.get_rarity_color（全项目唯一权威源，v7.x 界面一致性修复）。
+# 原本地字典 RARITY_COLORS legendary 为粉色(1.0,0.6,0.9)，与 GC 琥珀色冲突导致同一张传说卡不同面板显色不同；已删除本地字典，两处 header 色带改用 GC.get_rarity_color。
 const RARITY_DISPLAY := {
 	"common": "普通", "uncommon": "优秀", "rare": "稀有",
 	"epic": "史诗", "legendary": "传说", "mythic": "神话",
@@ -416,7 +410,7 @@ func _apply_header_rarity_band(rarity_key: String) -> void:
 	var header := get_node_or_null("Margin/VBox/HeaderPanel") as PanelContainer
 	if header == null:
 		return
-	var band_color: Color = RARITY_COLORS.get(rarity_key, Color(0.6, 0.65, 0.75, 1))
+	var band_color: Color = GC.get_rarity_color(rarity_key)
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.1, 0.14, 0.22, 0.9)
 	sb.border_color = band_color
@@ -440,7 +434,7 @@ func _apply_header_rarity_for_card(card: CardResource) -> void:
 	_apply_header_rarity_band(r_key)
 	if rarity_label:
 		rarity_label.text = RARITY_DISPLAY.get(r_key, r_key)
-		rarity_label.add_theme_color_override("font_color", RARITY_COLORS.get(r_key, Color(0.75, 0.78, 0.85, 1)))
+		rarity_label.add_theme_color_override("font_color", GC.get_rarity_color(r_key))
 
 func _refresh_header(card: CardResource) -> void:
 	if rank_badge_host:
@@ -1367,6 +1361,9 @@ func _show_enemy_phase_driver(unit: Node) -> void:
 					lines.append("相位师等级：Lv.%d" % mlvl)
 			# 总战力单列一行（星名已并入上行，此处不重复）
 			lines.append("总战力：%d" % int(er.get("total_score", 0)))
+			# v7.x: 澄清口径——总战力是相位师裸装固有战力（6张载卡+相位师属性/符文/相位仪），
+			# 不含本关难度加成（wave/level/pressure/faction_buff）。战场单位实战值会高于此数。
+			lines.append("（相位师固有战力，战场单位会叠加本关难度加成）")
 			var fac: String = str(cfg.get("faction", ""))
 			if not fac.is_empty():
 				lines.append("所属势力：%s" % fac)
@@ -1703,6 +1700,8 @@ func _show_enemy_phase_master_unit(unit: Node, master_name: String) -> void:
 		# v7.x: 计算总战力/星级显示
 		var _er_m: Dictionary = MasterPowerEvaluator.evaluate(master_cfg)
 		master_power_text = "总战力：%d · %s" % [int(_er_m.get("total_score", 0)), MasterPowerEvaluator.get_stars_display(master_cfg)]
+		# v7.x: 澄清口径——总战力是相位师裸装固有战力，不含本关难度加成（战场单位实战值会高于此数）
+		master_power_text += "\n（相位师固有战力，战场单位会叠加本关难度加成）"
 		var traits: Array = master_cfg.get("traits", []) as Array
 		for t in traits:
 			if t is Dictionary:

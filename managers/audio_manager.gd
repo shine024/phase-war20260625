@@ -5,7 +5,7 @@ extends Node
 ## 音效事件订阅见 _ready 末尾 connect 块。
 
 const SoundGeneratorScript = preload("res://managers/sound_generator.gd")
-const GameConstants = preload("res://resources/game_constants_clean.gd")
+const GameConstants = preload("res://resources/game_constants.gd")
 
 var _players: Dictionary = {}
 var _sound_generator: Node = null

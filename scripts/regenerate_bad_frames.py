@@ -1,8 +1,13 @@
-"""Regenerate problematic card frame borders (epic + legendary) with stricter prompts."""
+"""Regenerate specific card frame borders in the unified minimal tech style (iteration entry point).
+
+Shares the SAME design language as generate_battle_card_frames.py — deep metal base +
+thin energy line border + angular corner brackets. Color + glow differ by rarity only.
+Edit REGEN below to list which rarities to re-run.
+"""
 import os, time, base64, requests
 
 PROJECT_ROOT = r"F:\godot fair duet\create\phase-war"
-OUTPUT_DIR = os.path.join(PROJECT_ROOT, "assets", "cards", "battle_frames_review")
+OUTPUT_DIR = os.path.join(PROJECT_ROOT, "assets", "cards", "frames")
 
 config_path = os.path.expanduser(r"C:\Users\jianchang.tan\.hermes\config.yaml")
 api_key = ""
@@ -19,27 +24,48 @@ if idx >= 0:
 
 BASE_URL = "https://apihub.agnes-ai.com/v1"
 
+# Re-run list: edit to pick which rarities to regenerate (defaults to all 6 for a full refresh).
 REGEN = {
+    "common": {
+        "accent_color": "gunmetal gray #6b7691",
+        "glow_level": "no glow, flat matte finish",
+        "name_cn": "普通", "name": "Common",
+    },
+    "uncommon": {
+        "accent_color": "steel green #22c55e",
+        "glow_level": "faint green edge glow, very subtle",
+        "name_cn": "优秀", "name": "Uncommon",
+    },
+    "rare": {
+        "accent_color": "electric blue #38bdf8",
+        "glow_level": "medium blue edge glow along border lines",
+        "name_cn": "稀有", "name": "Rare",
+    },
     "epic": {
-        "color_scheme": "vibrant cyan, deep blue, bright silver, electric purple accents",
-        "border_style": "complex layered tactical armor plates with angular geometric filigree, reinforced corner emblems, hexagonal circuit patterns",
-        "glow_level": "intense blue-purple energy glow at corner nodes and border seams",
-        "ornament_level": "highly ornate layered armor with glowing tactical nodes",
+        "accent_color": "violet #c084fc",
+        "glow_level": "strong violet glow at corner nodes and border seams",
         "name_cn": "史诗", "name": "Epic",
     },
     "legendary": {
-        "color_scheme": "warm gold, amber, bronze, deep crimson red accents",
-        "border_style": "ceremonial tactical armor with intricate engraved patterns, elaborate corner crests, layered golden armor plates with red energy veins",
-        "glow_level": "radiant golden-orange energy glow with crimson pulse lines",
-        "ornament_level": "maximum ornamentation - elaborate golden crests, engraved tactical patterns, radiant energy veins",
+        "accent_color": "amber #f59e0b",
+        "glow_level": "intense amber glow with pulsing energy at corners",
         "name_cn": "传说", "name": "Legendary",
+    },
+    "mythic": {
+        "accent_color": "red #ef4444",
+        "glow_level": "maximum red glow with full-border pulsing energy veins",
+        "name_cn": "神话", "name": "Mythic",
     },
 }
 
 MAX_RETRIES = 3
 
-# Strict negative prompt to prevent characters/armor in center
-NEGATIVE = "character, person, human, humanoid, armor suit, robot, creature, monster, face, mask, figure, statue, object, item, weapon, vehicle, landscape, scene, background, scenery, environment, text, watermark, signature, chinese, kanji, japanese, korean, letter, word, phrase, sentence"
+# Strict negative prompt to prevent characters/armor/ornament in center + fantasy elements.
+NEGATIVE = ("character, person, human, humanoid, armor suit, robot, creature, monster, face, mask, "
+            "figure, statue, object, item, weapon, vehicle, landscape, scene, background, scenery, "
+            "environment, gold, bronze, ornate, engraved, crest, filigree, flourish, ceremonial, "
+            "medieval, fantasy, rune, text, watermark, signature, chinese, kanji, japanese, korean, "
+            "letter, word, phrase, sentence")
 
 def generate_with_retry(rarity_id, rd):
     for attempt in range(1, MAX_RETRIES + 1):
@@ -47,18 +73,18 @@ def generate_with_retry(rarity_id, rd):
             prompt = (
                 f"ABSTRACT CARD FRAME BORDER ONLY, no content inside the frame, "
                 f"5:8 portrait aspect ratio, "
-                f"a thick ornamental border on all four sides forming a rectangular frame, "
+                f"a thin uniform-width border on all four sides forming a clean rectangular frame, "
+                f"minimal sci-fi tech aesthetic, flat dark metal base, "
+                f"simple angular corner brackets at the four corners, "
+                f"thin circuit-trace lines along the border, geometric not ornamental, "
                 f"center area is completely empty and transparent for card content, "
+                f"NO gold, NO bronze, NO engravings, NO crests, NO filigree, NO ornamental flourishes, "
+                f"flat vector graphic style, clean, modern, game UI element, "
                 f"NO characters, NO people, NO creatures, NO objects inside the frame, "
-                f"NO armor suits, NO statues, NO figures, NO items, NO scenes, "
-                f"the border design is {rd['border_style']}, "
-                f"color palette of {rd['color_scheme']}, "
-                f"{rd['glow_level']}, "
-                f"{rd['ornament_level']}, "
-                f"representing {rd['name_cn']} ({rd['name']}) rarity tier, "
-                f"military sci-fi tactical aesthetic, "
-                f"only decorative border elements on the edges, center is completely empty, "
-                f"vector illustration meets digital painting, "
+                f"accent color: {rd['accent_color']}, "
+                f"glow: {rd['glow_level']}, "
+                f"this frame represents {rd['name_cn']} ({rd['name']}) rarity tier — "
+                f"keep the SAME simple geometric structure as other tiers, only the color and glow differ, "
                 f"1024x1638 pixels"
             )
             
@@ -92,7 +118,7 @@ def generate_with_retry(rarity_id, rd):
             else:
                 raise ValueError("No image data")
             
-            out_path = os.path.join(OUTPUT_DIR, f"border_{rarity_id}.png")
+            out_path = os.path.join(OUTPUT_DIR, f"{rarity_id}.png")
             with open(out_path, "wb") as f:
                 f.write(img_data)
             print(f"  SUCCESS: {out_path}")

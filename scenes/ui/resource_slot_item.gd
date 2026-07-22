@@ -223,7 +223,7 @@ func _refresh_resource(id: String, name_label: Label, amount_label: Label, icon_
 		amount_label.text = "%d / %d" % [amount, BasicResources.STACK_SIZE]
 	if icon_rect and icon_path != "":
 		if ResourceLoader.exists(icon_path):
-			icon_rect.texture = load(icon_path)
+			icon_rect.texture = UiAssetLoader.load_tex(icon_path)
 		else:
 			icon_rect.texture = null
 
@@ -278,7 +278,7 @@ func _refresh_lore(lore_id: String, count: int, name_label: Label, amount_label:
 		# 如果有自定义图标，尝试加载（背包"改造"标签依赖此分支显示改造图标）
 		if not custom_icon.is_empty() and ResourceLoader.exists(custom_icon):
 			has_texture = true
-			icon_rect.texture = load(custom_icon)
+			icon_rect.texture = UiAssetLoader.load_tex(custom_icon)
 			# 加载了真实贴图后恢复原色（贴图自身已有颜色，金色 modulate 会让它偏黄失真）
 			icon_rect.modulate = Color.WHITE
 			# v9.1 修复：SCALE 拉伸填满（COVERED/CENTERED 在 IGNORE_SIZE 下实测不显示）
@@ -701,11 +701,11 @@ func _refresh_rune(rune_id: String, count: int, name_label: Label, amount_label:
 		# v6.2: 加载符文专属图标贴图（优先用 extra_data 传入的 icon 路径，否则按 rune_id 查找）
 		var rune_tex: Texture2D = null
 		var icon_path: String = String(extra_data.get("icon", ""))
+		var UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")
 		if not icon_path.is_empty():
 			if ResourceLoader.exists(icon_path):
-				rune_tex = load(icon_path)
+				rune_tex = UiAssetLoader.load_tex(icon_path)
 		else:
-			var UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")
 			rune_tex = UiAssetLoader.rune_icon(rune_id)
 		if rune_tex != null:
 			icon_rect.texture = rune_tex
