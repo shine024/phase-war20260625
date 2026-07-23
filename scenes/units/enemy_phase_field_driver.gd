@@ -596,14 +596,31 @@ func _produce_unit_with_equipment() -> void:
 	_sb_sources = _record_spawn_step(_sb_sources, "配档(%s)" % _tier_name, _sb_hp_before, _sb_atk_before, _sb_def_before, stats)
 	stats.platform_card_id = platform_id
 
+	## v8.x boss 唯一性限制：同名 boss 单位战场上只能存在 1 个
+	# 提前计算 visual_archetype_id（供 boss 检查 + 后续 ConstructUnit 初始化共用）
+	var visual_archetype_id: String = ""
+	if not direct_archetype_id.is_empty():
+		visual_archetype_id = direct_archetype_id
+	else:
+		visual_archetype_id = _pick_visual_archetype_for_platform(era, platform_type_str)
+	# 确定实际 archetype（直引模式用 direct_archetype_id；旧平台卡回退 visual）
+	var effective_archetype: String = direct_archetype_id if not direct_archetype_id.is_empty() else visual_archetype_id
+	var _is_boss: bool = false
+	if not effective_archetype.is_empty():
+		var _e_cfg = EnemyArchetypes.get_config(effective_archetype)
+		_is_boss = _e_cfg.get("tags", []).has("boss")
+	if _is_boss and _effective_archetype_exists_on_field(effective_archetype):
+		return  # 场上已有同名 boss，跳过本次产兵
+
 	## 生成 ConstructUnit
 	var unit: Node2D = ConstructUnitScene.instantiate()
-	# v7.x: 直引 archetype 模式用 direct_archetype_id；旧平台卡模式按平台类型匹配卡图。
-	var visual_archetype_id: String = direct_archetype_id if not direct_archetype_id.is_empty() else _pick_visual_archetype_for_platform(era, platform_type_str)
 	if unit.has_method("setup_with_enemy_visual"):
 		unit.setup_with_enemy_visual(false, stats, visual_archetype_id)
 	else:
 		unit.setup(false, stats)
+	# v8.x boss 唯一性：记录 archetype_id 到 meta，供后续 boss 数量统计（ConstructUnit 无 archetype_id 裸字段）
+	if not effective_archetype.is_empty():
+		unit.set_meta("archetype_id", effective_archetype)
 	# v7.x(敌方加成来源明细): 把产兵 7 层加成明细挂到单位 meta，供情报面板显示。
 	# base 取 _build_stats_from_archetype 后的值（含 enhance_level，未乘任何战场加成）；
 	# final 取乘完所有加成后的 stats 值；total_*_mul = base→final 的总比值。
@@ -1153,3 +1170,43 @@ func _safe_ratio(after: float, before: float) -> float:
 	if before <= 0.0:
 		return 1.0
 	return after / before
+
+
+# ───────────────────────────────────────────────────────────────
+## v8.x: boss 唯一性 — 按 archetype_id 统计场上存活同名 boss 数量
+## 注：非 static（需访问 self.get_parent()，仅由 driver 实例调用）
+func _effective_archetype_exists_on_field(archetype_id: String) -> bool:
+	if archetype_id.is_empty():
+		return false
+	var enemy_container: Node = null
+	# 路径1：父节点是 Battlefield，直接查 EnemyUnits
+	var bf: Node = get_parent()
+	if bf != null:
+		enemy_container = bf.get_node_or_null("EnemyUnits")
+	# 路径2：fallback → BattleManager.enemy_units_node
+	if enemy_container == null:
+		var bm: Node = get_node_or_null("/root/BattleManager")
+		if bm != null and "enemy_units_node" in bm:
+			enemy_container = bm.enemy_units_node
+	if enemy_container == null:
+		return false
+	for n in enemy_container.get_children():
+		if n == null or not is_instance_valid(n):
+			continue
+		if "_is_dying" in n and n._is_dying:
+			continue
+		if "is_deploy_ghost" in n and n.is_deploy_ghost:
+			continue
+		# 读取 archetype_id（EnemyUnit 裸字段 / ConstructUnit meta / stats.platform_card_id）
+		var aid: String = ""
+		if "archetype_id" in n:
+			aid = str(n.archetype_id)
+		elif n.has_meta("archetype_id"):
+			aid = str(n.get_meta("archetype_id"))
+		elif "stats" in n and n.stats != null:
+			var st = n.stats
+			if "platform_card_id" in st:
+				aid = String(st.platform_card_id)
+		if aid == archetype_id:
+			return true
+	return false

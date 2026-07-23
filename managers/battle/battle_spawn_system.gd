@@ -313,6 +313,10 @@ func spawn_card_grid_enemy_wave(current_level: int) -> bool:
 						_signal_bus.unit_spawned.emit(slot, false)
 			continue
 
+		# v8.x boss 唯一性限制：同名 boss 单位战场上只能存在 1 个
+		if type_pick == "boss" and _count_alive_enemy_by_archetype(archetype_id) >= 1:
+			continue  # 场上已有同名 boss，跳过本个产兵
+
 		# 普通单位：先创建，再按实际射程选 slot（长程远端、短程近端）
 		var unit: Node2D = _create_enemy_unit_with_id(archetype_id) as Node2D
 		if unit == null:
@@ -1320,3 +1324,33 @@ func _get_autoload_node(name: String) -> Node:
 	return null
 
 
+# ───────────────────────────────────────────────────────────────
+## v8.x: 按 archetype_id 统计存活敌方单位数
+## 兼容两种敌方单位类型：
+##   - EnemyUnit（普通波次）：有 archetype_id 裸字段
+##   - ConstructUnit（相位师产兵）：通过 meta「archetype_id」或 stats.platform_card_id 读取
+func _count_alive_enemy_by_archetype(archetype_id: String) -> int:
+	if archetype_id.is_empty() or _enemy_units_node == null:
+		return 0
+	var count: int = 0
+	for n in _enemy_units_node.get_children():
+		if n == null or not is_instance_valid(n):
+			continue
+		# 跳过死亡中 + 部署虚影（不计入"有效存活"）
+		if "_is_dying" in n and n._is_dying:
+			continue
+		if "is_deploy_ghost" in n and n.is_deploy_ghost:
+			continue
+		# 读取 archetype_id：优先 EnemyUnit 裸字段，其次 meta，最后 stats.platform_card_id
+		var aid: String = ""
+		if "archetype_id" in n:
+			aid = str(n.archetype_id)
+		elif n.has_meta("archetype_id"):
+			aid = str(n.get_meta("archetype_id"))
+		elif "stats" in n and n.stats != null:
+			var st = n.stats
+			if "platform_card_id" in st:
+				aid = String(st.platform_card_id)
+		if aid == archetype_id:
+			count += 1
+	return count
