@@ -300,11 +300,8 @@ static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary) -
 				if not result.has("crit_damage_bonus"):
 					result["crit_damage_bonus"] = 0.0
 				result["crit_damage_bonus"] += float(effect_value)
-			# ifak_heal：急救包 → 映射为持续回血
-			"ifak_heal":
-				if not result.has("hp_regen"):
-					result["hp_regen"] = 0.0
-				result["hp_regen"] += float(effect_value)
+			# v8.x: ifak_heal 分支已移除（孤儿死代码）——inf_18/rec_10 在 v7.x 第二批已改用 ifak_revive（真实濒死复活机制），
+			# 此分支再无任何改造数据使用，删除以减少 _apply_single_mod_effects 的无效分支噪声。
 			# v7.5: mine_immunity 防地雷 → 三维防御全加（原映射 damage_reduction 空转：take_damage 从不读 damage_reduction）
 			# gen_07_mine_resistant 布尔型（true），激活时给三维防御各 +0.15（≈ enh_def_flat Lv1 量级）
 			"mine_immunity":
@@ -314,10 +311,13 @@ static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary) -
 						result[_dk] = 0
 					result[_dk] = int(float(result[_dk]) * (1.0 + _mine_def_val))
 			# nbq_immunity：三防免疫 → 减伤（语义保留，防护类）
+			# v8.x: bool(true) 经 float()=1.0 会顶到 cap 0.75（for_04/gen_08 装上即 75% 减伤，偏强），
+			# bool 值改为固定 0.30（合理减伤），float 值保持原逻辑向后兼容
 			"nbq_immunity":
 				if not result.has("damage_reduction"):
 					result["damage_reduction"] = 0.0
-				result["damage_reduction"] = min(0.75, float(result["damage_reduction"]) + float(effect_value))
+				var _nbq_val: float = 0.30 if bool(effect_value) and typeof(effect_value) == TYPE_BOOL else float(effect_value)
+				result["damage_reduction"] = min(0.75, float(result["damage_reduction"]) + _nbq_val)
 			# sustained_fire：持续射击 → 攻速提升（v7.5: 转写三个 per-target speed）
 			# 正值（如 0.50）→ speed *= (1 + value) = 1.50
 			"sustained_fire":
@@ -375,13 +375,18 @@ static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary) -
 				result["crit_chance"] = min(1.0, float(result["crit_chance"]) + absf(float(effect_value)))
 			# 夜视/烟雾穿透类 → 暴击率（精确射击语义）
 			# inf_20_night_vision / rec_08_nvg / arm_12_thermal_sight / inf_21_thermal
+			# v8.x: smoke_ignore 是 bool(true)，经 float()=1.0 会顶到 100% 暴击（inf_21/arm_12 装上即满暴击，偏强），
+			# bool 值改为固定 0.15（合理暴击加成），night_bonus(float) 保持原逻辑向后兼容
 			"night_bonus", "smoke_ignore":
 				if not result.has("crit_chance"):
 					result["crit_chance"] = 0.0
-				result["crit_chance"] = min(1.0, float(result["crit_chance"]) + float(effect_value))
+				var _nsi_val: float = 0.15 if bool(effect_value) and typeof(effect_value) == TYPE_BOOL else float(effect_value)
+				result["crit_chance"] = min(1.0, float(result["crit_chance"]) + _nsi_val)
 			# 热防护/三防类 → 减伤（防护语义同源）
-			# rec_02_ir_suppression / arm_02_composite_armor / arm_03_reactive_armor
-			"thermal_immunity", "heat_resist", "heat_immunity_once":
+			# rec_02_ir_suppression / arm_02_composite_armor
+			# v8.x: heat_immunity_once 从条件移除（孤儿死代码）——arm_03 在 v7.x 第二批已改用 reactive_armor（真实爆反），
+			# 该 key 再无任何改造数据使用，移除以减少条件列表噪声。
+			"thermal_immunity", "heat_resist":
 				if not result.has("damage_reduction"):
 					result["damage_reduction"] = 0.0
 				result["damage_reduction"] = min(0.75, float(result["damage_reduction"]) + float(effect_value))

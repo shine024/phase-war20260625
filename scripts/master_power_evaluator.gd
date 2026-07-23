@@ -25,23 +25,23 @@ const _LevelEras = preload("res://data/level_eras.gd")
 #  星级阈值（v7.x 单分量公式）
 # ─────────────────────────────────────────────
 
-# 新公式量级：单卡加成后战力 200-5000；敌方装 2-4 张、玩家装 1-6 张。
-# 阈值标定原则（与 compute_display_level 同源分布）：
-#   - 1★ 新锐：空装/新手（0-500）
-#   - 2★ 精英：一战相位师典型（500-1500）
-#   - 3★ 高手：一战强师/二战师（1500-3000）
-#   - 4★ 大师：冷战师（3000-5500）
-#   - 5★ 宗师：现代/近未来师（5500-9000）
-#   - 6★ 传说：玩家满配（9000-18000）
-#   - 7★ 神话：玩家终极配置（18000+）
+# v7.x A: 敌方 platforms 对称玩家补齐到 6 槽。实测分布 min 1312/max 20767/median 5089。
+# 阈值标定（6 卡满配口径，敌我同）：
+#   - 1★ 新锐：空装/极弱（0-800）
+#   - 2★ 精英：一战弱师（800-2000）
+#   - 3★ 高手：一战师/二战弱（2000-4000）
+#   - 4★ 大师：二战/冷战师（4000-7000）
+#   - 5★ 宗师：现代/近未来弱（7000-11000）
+#   - 6★ 传说：近未来强师/玩家中配（11000-16000）
+#   - 7★ 神话：近未来 boss/玩家满配（16000+）
 const STAR_TIERS: Array[Dictionary] = [
-	{"stars": 1, "name": "新锐",   "min_score": 0,     "max_score": 500,     "color": "#88CCFF"},
-	{"stars": 2, "name": "精英",   "min_score": 500,   "max_score": 1500,    "color": "#44FF88"},
-	{"stars": 3, "name": "高手",   "min_score": 1500,  "max_score": 3000,    "color": "#FFCC00"},
-	{"stars": 4, "name": "大师",   "min_score": 3000,  "max_score": 5500,    "color": "#FF8800"},
-	{"stars": 5, "name": "宗师",   "min_score": 5500,  "max_score": 9000,    "color": "#FF4466"},
-	{"stars": 6, "name": "传说",   "min_score": 9000,  "max_score": 18000,   "color": "#CC44FF"},
-	{"stars": 7, "name": "神话",   "min_score": 18000, "max_score": 9999999, "color": "#FFD700"},
+	{"stars": 1, "name": "新锐",   "min_score": 0,     "max_score": 800,     "color": "#88CCFF"},
+	{"stars": 2, "name": "精英",   "min_score": 800,   "max_score": 2000,    "color": "#44FF88"},
+	{"stars": 3, "name": "高手",   "min_score": 2000,  "max_score": 4000,    "color": "#FFCC00"},
+	{"stars": 4, "name": "大师",   "min_score": 4000,  "max_score": 7000,    "color": "#FF8800"},
+	{"stars": 5, "name": "宗师",   "min_score": 7000,  "max_score": 11000,   "color": "#FF4466"},
+	{"stars": 6, "name": "传说",   "min_score": 11000, "max_score": 16000,   "color": "#CC44FF"},
+	{"stars": 7, "name": "神话",   "min_score": 16000, "max_score": 9999999, "color": "#FFD700"},
 ]
 
 ## 敌方 UI/排行榜默认 tier（满配威胁评估）
@@ -128,6 +128,21 @@ static func _eval_equipment_slots(master: Dictionary) -> float:
 	var platforms: Array = equip.get("platforms", [])
 	if platforms.is_empty():
 		return 0.0
+	# v7.x A: 对称玩家满配 6 槽 —— platforms <6 时循环补齐到 6
+	# （master 数据普遍 2 张平台卡，补齐后战力量级对齐玩家满配）
+	var plat_clean: Array = []
+	for pid_v in platforms:
+		var pid_s := String(pid_v)
+		if not pid_s.is_empty():
+			plat_clean.append(pid_s)
+	if plat_clean.is_empty():
+		return 0.0
+	var padded: Array = plat_clean.duplicate()
+	var i: int = 0
+	while padded.size() < 6 and i < 100:
+		padded.append(String(plat_clean[i % plat_clean.size()]))
+		i += 1
+	platforms = padded
 
 	var tier: String = String(master.get("_eval_tier", ENEMY_DEFAULT_TIER))
 	# era：优先读显式字段；无则按 master id 编号段推（数据约定：001-006 ww1, 007-012 ww2,

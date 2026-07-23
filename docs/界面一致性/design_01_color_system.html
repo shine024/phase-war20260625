@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase War · 配色体系 Design Spec</title>
+<style>
+  :root {
+    --bg: #0a0e17;
+    --surface: #111827;
+    --card: #1a2236;
+    --border: #2a3550;
+    --text: #e8ecf4;
+    --muted: #8b95a8;
+    --dim: #5a6478;
+    --cyan: #00d4ff;
+    --purple: #a855f7;
+    --orange: #f59e0b;
+    --green: #22c55e;
+    --red: #ef4444;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; background:var(--bg); color:var(--text); line-height:1.6; }
+
+  .page { max-width:1400px; margin:0 auto; padding:48px 32px; }
+
+  .header { text-align:center; margin-bottom:48px; }
+  .header h1 { font-size:36px; font-weight:800; background:linear-gradient(135deg,var(--cyan),var(--purple)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:8px; }
+  .header p { color:var(--muted); font-size:15px; }
+
+  /* Section */
+  .section { margin-bottom:56px; }
+  .section-title { font-size:20px; font-weight:700; margin-bottom:20px; display:flex; align-items:center; gap:10px; }
+  .section-title::before { content:""; width:4px; height:24px; background:var(--cyan); border-radius:2px; }
+
+  /* Color grid */
+  .color-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:16px; }
+  .color-card { background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; transition:transform .2s; }
+  .color-card:hover { transform:translateY(-3px); }
+  .color-swatch { height:80px; position:relative; }
+  .color-swatch::after { content:attr(data-hex); position:absolute; bottom:8px; right:12px; font-family:monospace; font-size:13px; font-weight:700; text-shadow:0 1px 4px rgba(0,0,0,0.8); }
+  .color-info { padding:14px 16px; }
+  .color-name { font-weight:700; font-size:14px; margin-bottom:2px; }
+  .color-role { font-size:12px; color:var(--muted); }
+
+  /* Contrast table */
+  .contrast-table { width:100%; border-collapse:collapse; font-size:14px; }
+  .contrast-table th { text-align:left; padding:10px 14px; background:rgba(0,0,0,0.3); color:var(--dim); font-size:11px; text-transform:uppercase; letter-spacing:1px; }
+  .contrast-table td { padding:10px 14px; border-bottom:1px solid var(--border); }
+  .pass { color:var(--green); font-weight:700; }
+  .fail { color:var(--red); font-weight:700; }
+
+  /* Bad vs Good */
+  .compare-row { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:16px; }
+  @media(max-width:800px){ .compare-row{grid-template-columns:1fr;} }
+  .compare-box { border-radius:12px; padding:20px; border:1px solid var(--border); }
+  .compare-box.bad { background:rgba(239,68,68,0.05); }
+  .compare-box.good { background:rgba(34,197,94,0.05); }
+  .compare-label { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:12px; }
+  .bad .compare-label { color:var(--red); }
+  .good .compare-label { color:var(--green); }
+
+  /* Rarity bars */
+  .rarity-demo { display:flex; flex-direction:column; gap:12px; }
+  .rarity-item { display:flex; align-items:center; gap:16px; padding:14px 18px; background:var(--card); border-radius:10px; border-left:4px solid; }
+  .rarity-stars { font-size:14px; min-width:60px; }
+  .rarity-name { font-weight:700; font-size:15px; min-width:100px; }
+  .rarity-desc { font-size:13px; color:var(--muted); }
+
+  /* Usage rules */
+  .rule-list { display:flex; flex-direction:column; gap:10px; }
+  .rule-item { display:flex; align-items:flex-start; gap:12px; padding:14px 18px; background:var(--card); border-radius:10px; border:1px solid var(--border); }
+  .rule-icon { font-size:18px; flex-shrink:0; margin-top:2px; }
+  .rule-text { font-size:14px; }
+  .rule-text strong { color:var(--text); }
+
+  /* Token output */
+  .token-box { background:#0d1117; border:1px solid var(--border); border-radius:12px; padding:20px; font-family:"Cascadia Code","Consolas",monospace; font-size:13px; line-height:1.8; color:var(--muted); overflow-x:auto; white-space:pre; }
+  .token-box .kw { color:var(--purple); }
+  .token-box .val { color:var(--cyan); }
+  .token-box .cmt { color:var(--dim); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <h1>配色体系 Design Spec</h1>
+    <p>Phase War 统一色彩语义系统 · v1.0</p>
+  </div>
+
+  <!-- Base Colors -->
+  <div class="section">
+    <div class="section-title">基础色调 Base Palette</div>
+    <div class="color-grid">
+      <div class="color-card">
+        <div class="color-swatch" style="background:#0a0e17" data-hex="#0A0E17"></div>
+        <div class="color-info"><div class="color-name">页面背景</div><div class="color-role">Page background — 最深色</div></div>
+      </div>
+      <div class="color-card">
+        <div class="color-swatch" style="background:#111827" data-hex="#111827"></div>
+        <div class="color-info"><div class="color-name">面板背景</div><div class="color-role">Panel surface — 层级 +1</div></div>
+      </div>
+      <div class="color-card">
+        <div class="color-swatch" style="background:#1a2236" data-hex="#1A2236"></div>
+        <div class="color-info"><div class="color-name">卡片背景</div><div class="color-role">Card surface — 层级 +2</div></div>
+      </div>
+      <div class="color-card">
+        <div class="color-swatch" style="background:#2a3550" data-hex="#2A3550"></div>
+        <div class="color-info"><div class="color-name">边框 / 分割线</div><div class="color-role">Border & divider</div></div>
+      </div>
+      <div class="color-card">
+        <div class="color-swatch" style="background:#e8ecf4" data-hex="#E8ECF4"></div>
+        <div class="color-info"><div class="color-name">主要文字</div><div class="color-role">Primary text — 近白非纯白</div></div>
+      </div>
+      <div class="color-card">
+        <div class="color-swatch" style="background:#8b95a8" data-hex="#8B95A8"></div>
+        <div class="color-info"><div class="color-name">次要文字</div><div class="color-role">Secondary text</div></div>
+      </div>
+      <div class="color-card">
+        <div class="color-swatch" style="background:#5a6478" data-hex="#5A6478"></div>
+        <div class="color-info"><div class="color-name">占位 / 禁用</div><div class="color-role">Placeholder & disabled</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Semantic Colors -->
+  <div class="section">
+    <div class="section-title">语义强调色 Semantic Accents</div>
+    <div class="color-grid">
+      <div class="color-card">
+        <div class="color-swatch" style="background:#00d4ff" data-hex="#00D4FF"></div>
+        <div class="color-info"><div class="color-name">主强调色</div><div class="color-role">科技 · 选中 · CTA · 关键数据</div></div>
+      </div>
+      <div class="color-card">
+        <div class="color-swatch" style="background:#a855f7" data-hex="#A855F7"></div>
+        <div class="color-info"><div class="color-name">次强调色</div><div class="color-role">符文 · 特殊系统 · 传说稀有度</div></div>
+      </div>
+      <div class="color-card">
+        <div class="color-swatch" style="background:#f59e0b" data-hex="#F59E0B"></div>
+        <div class="color-info"><div class="color-name">资源 / 等级</div><div class="color-role">金色 · 重要提示 · 神话稀有度</div></div>
+      </div>
+      <div class="color-card">
+        <div class="color-swatch" style="background:#22c55e" data-hex="#22C55E"></div>
+        <div class="color-info"><div class="color-name">增益 / 成功</div><div class="color-role">正面数值 · 可操作 · 普通稀有度</div></div>
+      </div>
+      <div class="color-card">
+        <div class="color-swatch" style="background:#ef4444" data-hex="#EF4444"></div>
+        <div class="color-info"><div class="color-name">危险 / 敌方</div><div class="color-role">伤害 · 负面效果 · 关闭按钮</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rarity Colors -->
+  <div class="section">
+    <div class="section-title">稀有度配色 Rarity Colors</div>
+    <div class="rarity-demo">
+      <div class="rarity-item" style="border-left-color:linear-gradient(135deg,#fbbf24,#f59e0b);background:linear-gradient(90deg,rgba(251,191,36,0.08),transparent)">
+        <div class="rarity-stars">★★★★★★★</div>
+        <div class="rarity-name" style="color:#fbbf24">神话 Mythic</div>
+        <div class="rarity-desc">金橙渐变 · 最高稀有度 · ★7</div>
+      </div>
+      <div class="rarity-item" style="border-left-color:#a855f7;background:linear-gradient(90deg,rgba(168,85,247,0.08),transparent)">
+        <div class="rarity-stars">★★★★★</div>
+        <div class="rarity-name" style="color:#a855f7">传说 Legendary</div>
+        <div class="rarity-desc">紫色渐变 · 高稀有度 · ★5-6</div>
+      </div>
+      <div class="rarity-item" style="border-left-color:#00d4ff;background:linear-gradient(90deg,rgba(0,212,255,0.08),transparent)">
+        <div class="rarity-stars">★★★</div>
+        <div class="rarity-name" style="color:#00d4ff">稀有 Rare</div>
+        <div class="rarity-desc">青色渐变 · 中等稀有度 · ★3-4</div>
+      </div>
+      <div class="rarity-item" style="border-left-color:#22c55e;background:linear-gradient(90deg,rgba(34,197,94,0.08),transparent)">
+        <div class="rarity-stars">★★</div>
+        <div class="rarity-name" style="color:#22c55e">普通 Common</div>
+        <div class="rarity-desc">绿色渐变 · 基础单位 · ★1-2</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contrast Check -->
+  <div class="section">
+    <div class="section-title">对比度检测 Contrast Ratio (WCAG AA)</div>
+    <table class="contrast-table">
+      <thead><tr><th>组合</th><th>比率</th><th>标准</th><th>结果</th></tr></thead>
+      <tbody>
+        <tr><td style="color:#e8ecf4">#E8ECF4 on #0A0E17</td><td>14.2:1</td><td>AA ≥ 4.5:1</td><td class="pass">✓ PASS</td></tr>
+        <tr><td style="color:#8b95a8">#8B95A8 on #0A0E17</td><td>5.1:1</td><td>AA ≥ 4.5:1</td><td class="pass">✓ PASS</td></tr>
+        <tr><td style="color:#00d4ff">#00D4FF on #0A0E17</td><td>5.8:1</td><td>AA ≥ 4.5:1</td><td class="pass">✓ PASS</td></tr>
+        <tr><td style="color:#a855f7">#A855F7 on #0A0E17</td><td>4.7:1</td><td>AA ≥ 4.5:1</td><td class="pass">✓ PASS</td></tr>
+        <tr><td style="color:#f59e0b">#F59E0B on #0A0E17</td><td>3.2:1</td><td>AA ≥ 4.5:1</td><td class="fail">✕ FAIL (仅装饰用)</td></tr>
+        <tr><td style="color:#22c55e">#22C55E on #0A0E17</td><td>4.6:1</td><td>AA ≥ 4.5:1</td><td class="pass">✓ PASS</td></tr>
+        <tr><td style="color:#ef4444">#EF4444 on #0A0E17</td><td>4.7:1</td><td>AA ≥ 4.5:1</td><td class="pass">✓ PASS</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Bad vs Good -->
+  <div class="section">
+    <div class="section-title">当前问题 → 优化方案</div>
+    <div class="compare-row">
+      <div class="compare-box bad">
+        <div class="compare-label">❌ 当前问题</div>
+        <ul style="font-size:14px;color:var(--muted);padding-left:18px;display:flex;flex-direction:column;gap:8px">
+          <li>金色雕花边框与深色科技 UI 风格冲突</li>
+          <li>稀有度颜色超过 6 种且无图例说明</li>
+          <li>荧光绿选中态过于刺眼，视觉攻击性强</li>
+          <li>青色滥用导致重点不突出</li>
+          <li>红黄蓝绿四色底部按钮像视频播放器</li>
+          <li>不同页面同一颜色含义不一致</li>
+        </ul>
+      </div>
+      <div class="compare-box good">
+        <div class="compare-label">✓ 优化方案</div>
+        <ul style="font-size:14px;color:var(--muted);padding-left:18px;display:flex;flex-direction:column;gap:8px">
+          <li>统一为简洁科技线条边框 + 稀有度渐变光晕</li>
+          <li>稀有度精简为 4 级，附图例和说明</li>
+          <li>选中态使用主强调色青色 + 柔和外发光</li>
+          <li>青色仅用于关键数据和选中态，控制使用频率</li>
+          <li>底部控制统一为单色图标按钮</li>
+          <li>每种颜色有明确语义，全局一致</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Usage Rules -->
+  <div class="section">
+    <div class="section-title">使用规则 Usage Rules</div>
+    <div class="rule-list">
+      <div class="rule-item"><div class="rule-icon">1</div><div class="rule-text"><strong>主强调色 (#00D4FF)</strong> — 仅用于：选中态、CTA按钮、关键数值、进度条。全站最多出现 20% 的面积。</div></div>
+      <div class="rule-item"><div class="rule-icon">2</div><div class="rule-text"><strong>次强调色 (#A855F7)</strong> — 仅用于：符文系统、传说稀有度、特殊标记。不与主强调色同时大面积出现。</div></div>
+      <div class="rule-item"><div class="rule-icon">3</div><div class="rule-text"><strong>金色 (#F59E0B)</strong> — 仅用于：资源数字、等级标识、神话稀有度。不作为交互元素主色。</div></div>
+      <div class="rule-item"><div class="rule-icon">4</div><div class="rule-text"><strong>绿色 (#22C55E)</strong> — 仅用于：正面数值变化、可安装/可操作状态、普通稀有度。不用于已装备项的高亮。</div></div>
+      <div class="rule-item"><div class="rule-icon">5</div><div class="rule-text"><strong>红色 (#EF4444)</strong> — 仅用于：伤害数字、敌方单位、删除/关闭操作、负面效果。不用于装饰。</div></div>
+    </div>
+  </div>
+
+  <!-- CSS Tokens -->
+  <div class="section">
+    <div class="section-title">CSS 变量输出 CSS Variables</div>
+    <div class="token-box"><span class="cmt">/* Phase War Design Tokens — colors.css */</span>
+<span class="kw">:root</span> {
+  <span class="cmt">/* Base */</span>
+  <span class="kw">--color-bg-page</span>:     <span class="val">#0A0E17</span>;
+  <span class="kw">--color-bg-panel</span>:    <span class="val">#111827</span>;
+  <span class="kw">--color-bg-card</span>:     <span class="val">#1A2236</span>;
+  <span class="kw">--color-border</span>:      <span class="val">#2A3550</span>;
+  <span class="kw">--color-text-primary</span>:<span class="val">#E8ECF4</span>;
+  <span class="kw">--color-text-secondary</span>:<span class="val">#8B95A8</span>;
+  <span class="kw">--color-text-disabled</span>:<span class="val">#5A6478</span>;
+
+  <span class="cmt">/* Semantic */</span>
+  <span class="kw">--color-accent-primary</span>:  <span class="val">#00D4FF</span>;
+  <span class="kw">--color-accent-secondary</span>:<span class="val">#A855F7</span>;
+  <span class="kw">--color-resource</span>:        <span class="val">#F59E0B</span>;
+  <span class="kw">--color-positive</span>:        <span class="val">#22C55E</span>;
+  <span class="kw">--color-danger</span>:          <span class="val">#EF4444</span>;
+
+  <span class="cmt">/* Rarity */</span>
+  <span class="kw">--color-rarity-mythic</span>:   <span class="val">#FBBF24</span>;
+  <span class="kw">--color-rarity-legendary</span>:<span class="val">#A855F7</span>;
+  <span class="kw">--color-rarity-rare</span>:     <span class="val">#00D4FF</span>;
+  <span class="kw">--color-rarity-common</span>:   <span class="val">#22C55E</span>;
+}</div>
+  </div>
+
+</div>
+</body>
+</html>

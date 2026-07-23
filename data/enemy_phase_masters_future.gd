@@ -60,7 +60,7 @@ const ERA_MASTERS: Array = [
 		"equipment": {
 			"phase_instrument": "pi_void_04",
 			"level": 28,
-			"platforms": ["void_stealth_expert", "void_mage_expert"],
+			"platforms": ["fut_boss_nexus", "fut_arm_colossus_e", "fut_arm_colossus_e", "fut_arm_mech_e", "fut_inf_spectre_e", "fut_air_drone"],
 			"weapons": ["void_lance_expert", "entropy_caster_expert"],
 			"energy_cards": ["void_energy_expert"]
 		},
@@ -134,7 +134,7 @@ const ERA_MASTERS: Array = [
 		"equipment": {
 			"phase_instrument": "pi_steel_05",
 			"level": 28,
-			"platforms": ["steel_fortress_expert", "steel_titan_expert"],
+			"platforms": ["fut_boss_nexus", "fut_arm_colossus_e", "fut_arm_colossus_e", "fut_arm_hovertank_e", "fut_arm_mech_e", "fut_inf_cyborg"],
 			"weapons": ["steel_gatling_expert", "steel_artillery_expert"],
 			"energy_cards": ["steel_energy_god"]
 		},
@@ -206,7 +206,7 @@ const ERA_MASTERS: Array = [
 		"equipment": {
 			"phase_instrument": "pi_flame_05",
 			"level": 29,
-			"platforms": ["flame_raider_expert", "flame_siege_expert"],
+			"platforms": ["fut_arm_colossus_e", "fut_arm_hovertank_e", "fut_boss_nexus", "fut_inf_spectre_e", "fut_arm_mech_e"],
 			"weapons": ["flame_thrower_expert", "plasma_cannon_expert"],
 			"energy_cards": ["flame_energy_god"]
 		},
@@ -278,7 +278,7 @@ const ERA_MASTERS: Array = [
 		"equipment": {
 			"phase_instrument": "pi_thunder_05",
 			"level": 29,
-			"platforms": ["thunter_striker_expert", "thunter_sniper_expert"],
+			"platforms": ["fut_boss_nexus", "fut_boss_nexus", "fut_arm_colossus_e", "fut_arm_hovertank_e", "fut_inf_spectre_e", "fut_air_drone"],
 			"weapons": ["tesla_coil_expert", "railgun_expert"],
 			"energy_cards": ["thunder_energy_god"]
 		},
@@ -350,7 +350,7 @@ const ERA_MASTERS: Array = [
 		"equipment": {
 			"phase_instrument": "pi_void_05",
 			"level": 30,
-			"platforms": ["void_stealth_expert", "void_mage_expert"],
+			"platforms": ["fut_inf_cyborg", "fut_arm_hovertank_e", "fut_boss_nexus", "fut_inf_spectre_e", "fut_arm_colossus_e", "fut_air_drone"],
 			"weapons": ["void_lance_expert", "entropy_caster_expert"],
 			"energy_cards": ["void_energy_god"]
 		},
@@ -424,7 +424,7 @@ const ERA_MASTERS: Array = [
 		"equipment": {
 			"phase_instrument": "pi_omega_01",
 			"level": 30,
-			"platforms": ["steel_titan_expert", "flame_siege_expert"],
+			"platforms": ["fut_boss_nexus", "fut_boss_nexus", "fut_arm_colossus_e", "fut_arm_colossus_e", "fut_arm_hovertank_e", "fut_arm_mech_e"],
 			"weapons": ["railgun_expert", "plasma_cannon_expert"],
 			"energy_cards": ["hybrid_energy_god"]
 		},

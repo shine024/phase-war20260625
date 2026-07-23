@@ -251,8 +251,9 @@ static func _derive_runes(level: int, faction_family: String, master_id: String 
 		if not rid_s.is_empty() and not picked.has(rid_s):
 			picked.append(rid_s)
 
-	# 3. 槽位富余则补 generic 符文填满（数量仍按 level：2 + level/10，clamp 2-4）
-	var max_count: int = clampi(2 + int(level / 10), 2, 4)
+	# 3. 槽位富余则补 generic 符文填满（v7.x：max_count 上限提到 6，匹配相位仪 6 符文槽
+	#    与 EnemyLoadoutTiers rune_cap(HIGH=6)；原 clamp 2-4 让 5★/6★ 相位仪槽位填不满）
+	var max_count: int = clampi(2 + int(level / 6), 2, 6)
 	if picked.size() < max_count:
 		var generic_pool: Array[Dictionary] = _RuneDefs.get_generic_runes()
 		var remaining: Array = []
@@ -285,7 +286,7 @@ static func _derive_runes_generic_fallback(level: int, master_id: String = "") -
 			candidates.append(r)
 	if candidates.is_empty():
 		candidates = pool
-	var count: int = clampi(2 + int(level / 10), 2, 4)
+	var count: int = clampi(2 + int(level / 6), 2, 6)
 	var picked: Array[String] = []
 	var remaining: Array = candidates.duplicate()
 	var rng := RandomNumberGenerator.new()
@@ -342,16 +343,16 @@ static func get_recommended_level(master_id: String) -> int:
 ##   - 展示 Lv 代表"战力等级"，用于 UI 显示和 game_manager 掉落梯度；
 ##   - 原始 level 代表"设计基准"，用于符文稀有度/出兵序列/时代号。
 ## 两者语义不同，派生 Lv ≠ 原始 level 属正常。
-## v7.x 单分量公式实测分布：敌方总分 ~443(一战弱师)~7700(近未来强师)，中位 ~1690。
-##   500分→Lv5，10000分→Lv30，log10 压缩使各档均匀分布。
+## v7.x A 6 卡补齐后实测分布：敌方总分 ~1326(一战弱师)~21335(近未来 boss)，中位 ~5124。
+##   800分→Lv5，25000分→Lv30，log10 压缩使各档均匀分布。
 static func compute_display_level(master: Dictionary) -> int:
 	var er: Dictionary = _MasterPowerEvaluator.evaluate(master)
 	var total: float = float(er.get("total_score", 0.0))
 	if total <= 0.0:
 		return 5
-	# log10 映射：500→Lv5，10000→Lv30（单分量公式敌方实测分布）
-	var log_lo: float = log(500.0) / log(10.0)
-	var log_hi: float = log(10000.0) / log(10.0)
+	# log10 映射：800→Lv5，25000→Lv30（v7.x A 6 卡补齐后实测分布 min 1326/max 21335）
+	var log_lo: float = log(800.0) / log(10.0)
+	var log_hi: float = log(25000.0) / log(10.0)
 	var log_t: float = log(maxf(total, 1.0)) / log(10.0)
 	var t: float = (log_t - log_lo) / maxf(log_hi - log_lo, 0.001)
 	var lvl: int = roundi(5 + t * 25.0)

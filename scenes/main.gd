@@ -14,7 +14,7 @@ const PhaseLaws = preload("res://data/phase_laws.gd")
 const MainBattleSetup = preload("res://scripts/systems/main_battle_setup.gd")
 const MainReward = preload("res://scripts/systems/main_reward.gd")
 const ToastUtils = preload("res://scripts/toast_utils.gd")
-const CardEnhancementPanelScene = preload("res://scenes/ui/card_enhancement_panel.tscn")
+# v8.x: CardEnhancementPanelScene 已移除（强化②停用），养成改为自动经验升星 + 技能树
 const AFKModeManagerScript = preload("res://scripts/systems/afk_mode_manager.gd")
 const OfflineIdleManagerScript = preload("res://scripts/systems/offline_idle_manager.gd")
 const OfflineRewardDialogScript = preload("res://scenes/ui/offline_reward_dialog.gd")
@@ -653,23 +653,9 @@ func _on_progression_pressed() -> void:
 	_toggle_overlay(growth_overlay, "growth")
 
 func _ensure_card_enhancement_panel() -> void:
-	if manufacture_overlay == null:
-		return
-	var cc: Node = manufacture_overlay.get_node_or_null("CenterContainer")
-	if cc == null:
-		return
-	var existing: Node = cc.get_node_or_null("CardEnhancementPanel")
-	if existing != null:
-		return
-	for child in cc.get_children():
-		child.queue_free()
-	var panel: Node = CardEnhancementPanelScene.instantiate()
-	if panel == null:
-		return
-	panel.name = "CardEnhancementPanel"
-	cc.add_child(panel)
-	if panel.has_signal("closed") and not panel.closed.is_connected(_on_panel_closed.bind("progression")):
-		panel.closed.connect(_on_panel_closed.bind("progression"))
+	# v8.x: 强化②面板已停用（养成改为自动经验升星 + 技能树），本函数保留为 no-op 避免调用方报错。
+	# 旧 _on_progression_pressed / 教程引导若调用此函数，直接返回不创建面板。
+	return
 
 func _on_map_pressed() -> void:
 	_play_sfx("button")

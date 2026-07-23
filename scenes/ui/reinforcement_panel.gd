@@ -18,6 +18,9 @@ const THEME_BG_CARD := Color(0.07, 0.12, 0.16, 0.92)
 const THEME_BG_SLOT := Color(0.05, 0.08, 0.11, 0.95)
 const THEME_BORDER_DIM := Color(0.25, 0.35, 0.42, 0.7)
 
+# v9.x: 战力口径统一为「属性战力」（与改造面板/情报面板一致，敌我可对比）
+const EvolutionHelpers = preload("res://managers/evolution/evolution_helpers.gd")
+
 # UI 组件引用
 @onready var card_list_container = $VBoxContainer/MainHBox/ScrollContainer/CardListContainer
 @onready var card_detail_panel = $VBoxContainer/MainHBox/DetailPanel
@@ -168,8 +171,9 @@ func _create_card_item(template_card: CardResource, instance_card: CardResource 
 	item.add_theme_stylebox_override("hover", _make_sb(THEME_GREEN * Color(1, 1, 1, 0.1), THEME_GREEN_SOFT * Color(1, 1, 1, 0.6), 1, 5, Color(0, 0, 0, 0), 0, 10, 6, 10, 6))
 
 	# v6.11：军衔称号已移除，tooltip 改为显示强化等级 + 战力（用实例数据）
+	# v9.x: 战力改用属性口径（与改造面板/情报面板一致）
 	var level = display_card.enhance_level
-	item.tooltip_text = "强化 Lv.%d\n战力：%d" % [level, display_card.get_current_power()]
+	item.tooltip_text = "强化 Lv.%d\n战力：%d" % [level, _get_display_power(display_card)]
 
 	# v7.x：选中实例卡（而非模板）——强化写入实例，避免污染共享模板导致所有同名卡被改
 	item.pressed.connect(func(): _on_card_selected(display_card))
@@ -191,10 +195,11 @@ func _update_detail_panel() -> void:
 		_clear_dyn(detail_vbox)
 
 	# v6.11：军衔称号已移除，改为基于强化等级构造显示信息
+	# v9.x: 战力改用属性口径（与改造面板/情报面板一致）
 	var cur_level: int = selected_card.enhance_level
 	var rank_info: Dictionary = {
 		"name": "强化 Lv.%d" % cur_level,
-		"desc": "战力 %d" % selected_card.get_current_power(),
+		"desc": "战力 %d" % _get_display_power(selected_card),
 	}
 	var next_rank_info: Dictionary = {}
 	if cur_level < 10:
@@ -232,7 +237,7 @@ func _update_card_info() -> void:
 	info_vbox.add_child(name_l)
 	var chips := HBoxContainer.new()
 	chips.add_theme_constant_override("separation", 8)
-	chips.add_child(_make_chip("⚡ 战力 %d" % selected_card.get_current_power(), THEME_CYAN * Color(1, 1, 1, 0.15), THEME_CYAN * Color(1, 1, 1, 0.6), THEME_CYAN, 13))
+	chips.add_child(_make_chip("⚡ 战力 %d" % _get_display_power(selected_card), THEME_CYAN * Color(1, 1, 1, 0.15), THEME_CYAN * Color(1, 1, 1, 0.6), THEME_CYAN, 13))
 	chips.add_child(_make_chip("⬆ 强化 Lv.%d" % selected_card.enhance_level, THEME_GREEN * Color(1, 1, 1, 0.16), THEME_GREEN * Color(1, 1, 1, 0.65), THEME_GREEN, 13))
 	info_vbox.add_child(chips)
 	info_card.add_child(info_vbox)
@@ -328,9 +333,36 @@ func _on_reinforce_pressed() -> void:
 
 ## 供外部调用的接口
 func set_selected_card(card: CardResource) -> void:
-	selected_card = card
+	# v9.x 修复：对齐 modification_panel——相位仪槽位传来的卡可能 instance_id 为空，
+	# 此时直接用模板强化会污染共享模板（所有同名卡被改），或读到 0 级模板战力。
+	# 回退查 InstanceRegistry 同名实例，拿到真实养成数据。
+	var card_to_use: CardResource = card
+	if card != null and card.instance_id.is_empty() and not card.card_id.is_empty():
+		var ir: Node = get_node_or_null("/root/InstanceRegistry")
+		if ir != null and ir.has_method("get_instances_by_card_id"):
+			var insts: Array = ir.get_instances_by_card_id(card.card_id)
+			if not insts.is_empty() and ir.has_method("get_instance"):
+				var fb: CardResource = ir.get_instance(String(insts[0]))
+				if fb != null:
+					card_to_use = fb
+	selected_card = card_to_use
 	if has_node("VBoxContainer/MainHBox/DetailPanel"):
 		_update_detail_panel()
+
+## v9.x: 统一战力口径——用「属性战力」（与改造面板/情报面板一致）。
+## 原 get_current_power() 只算 base_power×强化倍率+改造加成（养成口径），
+## 不含三维属性/暴击/防御/移速，数值偏小且与改造面板不一致。
+## 现改用 estimate_power_score → combat_power_from_unit_stats，敌我可对比。
+func _get_display_power(card: CardResource) -> int:
+	if card == null:
+		return 0
+	var bpm: Node = get_node_or_null("/root/BlueprintManager")
+	if bpm == null:
+		return int(card.get_current_power())  # 回退养成口径
+	var key: String = card.instance_id if not card.instance_id.is_empty() else card.card_id
+	if key.is_empty():
+		return int(card.get_current_power())
+	return int(EvolutionHelpers.estimate_power_score(key, bpm))
 
 func show_panel() -> void:
 	visible = true

@@ -153,6 +153,30 @@ static func apply_enhance_level_bonus(stats: UnitStats, card: CardResource) -> v
 			_apply_enhance_abilities(stats, 4, lvl)
 		_:
 			_apply_enhance_fixed(stats, lvl_f, 0.021, 0.021, "", 0.0)
+	# v8.x: 相位师技能树解锁的兵种特殊能力（叠加在强化等级解锁之上）
+	_apply_skill_tree_unit_abilities(stats)
+
+## v8.x: 应用相位师技能树解锁的兵种特殊能力
+## 技能树 firepower 分支的 unit_ability 节点（light_crit/armor_pen/lifesteal_unlock 等）
+## 解锁后给所有对应兵种单位叠加额外能力加成。
+static func _apply_skill_tree_unit_abilities(stats: UnitStats) -> void:
+	if stats == null:
+		return
+	var tree = Engine.get_main_loop()
+	if tree == null or not (tree is SceneTree) or tree.root == null:
+		return
+	var pmsm: Node = tree.root.get_node_or_null("PhaseMasterSkillManager")
+	if pmsm == null or not pmsm.has_method("is_content_unlocked"):
+		return
+	# 轻装暴击（light_crit）
+	if pmsm.is_content_unlocked("unit_ability", "light_crit") and stats.combat_kind == 0:
+		stats.crit_chance = minf(0.75, stats.crit_chance + 0.10)
+	# 装甲穿甲（armor_pen）
+	if pmsm.is_content_unlocked("unit_ability", "armor_pen") and stats.combat_kind == 1:
+		stats.armor_penetration = minf(0.80, stats.armor_penetration + 0.15)
+	# 吸血解锁（lifesteal_unlock，所有兵种）
+	if pmsm.is_content_unlocked("unit_ability", "lifesteal_unlock"):
+		stats.lifesteal = minf(0.60, stats.lifesteal + 0.05)
 
 ## v6.11: 强化固定数值加成（HP/攻击/兵种特殊）
 static func _apply_enhance_fixed(stats: UnitStats, lvl_f: float, hp_pct: float, atk_pct: float, extra_key: String, extra_per_lvl: float) -> void:

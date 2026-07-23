@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites id="2026-07-21" name="report_42" tests="1" failures="0" skipped="0" flaky="0" time="0.000">
+	<testsuite id="0" name="test_ui_compile_check" package="tests/unit/managers" timestamp="2026-07-21T07:39:48" hostname="localhost" tests="1" failures="0" errors="0" skipped="0" flaky="0" time="0.189">
+		<testcase name="test_scripts_compile" classname="test_ui_compile_check" time="0.106">
+		</testcase>
+	</testsuite>
+</testsuites>

@@ -106,6 +106,10 @@ func _bind_nodes() -> void:
 	enhance_btn = get_node_or_null("%EnhanceBtn")
 	mod_btn = get_node_or_null("%ModBtn")
 	evo_btn = get_node_or_null("%EvoBtn")
+	# v8.x: 强化②（选词条）已停用，enhance_btn 改为"技能树"入口
+	if enhance_btn:
+		enhance_btn.text = "◆ 技能树"
+		enhance_btn.tooltip_text = "打开相位师技能树（指挥/智能化/火力/概念武器）"
 
 
 func _connect_signals() -> void:
@@ -884,9 +888,44 @@ func _on_close_pressed() -> void:
 
 
 func _on_enhance_pressed() -> void:
-	if not _selected_card:
-		return
-	_open_target_panel("enhancement")
+	# v8.x: 强化②已停用，此按钮改为打开相位师技能树面板
+	_open_phase_master_skill_panel()
+
+## v8.x: 打开相位师技能树面板
+## 直接实例化场景挂到 PopupLayer（不依赖 UILazyLoader 的 parent_path，避免 main.tscn 无 overlay 节点）
+func _open_phase_master_skill_panel() -> void:
+	# 先查 PopupLayer 下是否已存在面板（复用，避免重复实例化）
+	var canvas: CanvasLayer = get_tree().root.get_node_or_null("PopupLayer")
+	if canvas == null:
+		canvas = CanvasLayer.new()
+		canvas.name = "PopupLayer"
+		canvas.layer = 100
+		get_tree().root.add_child(canvas)
+	var existing: Node = canvas.get_node_or_null("PhaseMasterSkillPanel")
+	var panel: Node = existing
+	if panel == null:
+		# 实例化场景
+		var scene = load("res://scenes/ui/phase_master_skill_panel.tscn")
+		if scene == null:
+			push_error("[growth_panel] 无法加载相位师技能树面板场景")
+			return
+		panel = scene.instantiate()
+		if panel == null:
+			push_error("[growth_panel] 相位师技能树面板实例化失败")
+			return
+		canvas.add_child(panel)
+		if panel.has_signal("closed") and not panel.closed.is_connected(_on_phase_master_skill_closed):
+			panel.closed.connect(_on_phase_master_skill_closed)
+	# 居中显示
+	if panel is Control:
+		(panel as Control).anchors_preset = Control.PRESET_CENTER
+	panel.visible = true
+	if panel.has_method("_refresh"):
+		panel._refresh()
+
+## v8.x: 技能树面板关闭回调
+func _on_phase_master_skill_closed() -> void:
+	pass  # 面板自身已 hide，无需额外处理
 
 
 func _on_mod_pressed() -> void:

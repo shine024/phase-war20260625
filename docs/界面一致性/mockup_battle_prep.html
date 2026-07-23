@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase War · 战斗准备界面 Mockup</title>
+<style>
+  :root {
+    --bg: #0a0e17;
+    --surface: #111827;
+    --card-bg: #1a2236;
+    --border: #2a3550;
+    --text: #e8ecf4;
+    --muted: #8b95a8;
+    --dim: #5a6478;
+    --cyan: #00d4ff;
+    --purple: #a855f7;
+    --orange: #f59e0b;
+    --green: #22c55e;
+    --red: #ef4444;
+    --mythic: #fbbf24;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:"Segoe UI","Microsoft YaHei",sans-serif; background:var(--bg); color:var(--text); overflow:hidden; height:100vh; }
+
+  /* Battlefield */
+  .battlefield {
+    position:relative; width:100vw; height:100vh;
+    background:
+      radial-gradient(ellipse at 50% 30%, rgba(0,212,255,0.04) 0%, transparent 60%),
+      linear-gradient(180deg, #0d1525 0%, #0a0e17 40%, #0f1a2e 100%);
+    overflow:hidden;
+  }
+
+  /* Sci-fi grid floor */
+  .grid-floor {
+    position:absolute; bottom:0; left:0; right:0; height:55%;
+    background:
+      linear-gradient(rgba(0,212,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.04) 1px, transparent 1px);
+    background-size:60px 30px;
+    transform:perspective(500px) rotateX(55deg);
+    transform-origin:bottom;
+    mask-image:linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 80%);
+  }
+
+  /* Horizon glow */
+  .horizon {
+    position:absolute; bottom:42%; left:0; right:0; height:2px;
+    background:linear-gradient(90deg, transparent, rgba(0,212,255,0.3), rgba(168,85,247,0.2), transparent);
+    box-shadow:0 0 40px 10px rgba(0,212,255,0.08);
+  }
+
+  /* Distant structures */
+  .structure {
+    position:absolute; bottom:42%; opacity:0.15;
+  }
+  .structure-left { left:15%; }
+  .structure-right { right:20%; }
+  .tower {
+    width:4px; height:120px; background:linear-gradient(to top, var(--cyan), transparent);
+    margin:0 auto; position:relative;
+  }
+  .tower::before {
+    content:""; position:absolute; top:-8px; left:-6px; width:16px; height:16px;
+    border-radius:50%; background:var(--cyan); opacity:0.6;
+    box-shadow:0 0 20px var(--cyan);
+  }
+
+  /* Top bar */
+  .top-bar {
+    position:absolute; top:0; left:0; right:0; height:56px;
+    background:linear-gradient(180deg, rgba(10,14,23,0.95), rgba(10,14,23,0.7));
+    border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 24px; z-index:10;
+  }
+  .level-badge {
+    display:flex; align-items:center; gap:12px;
+  }
+  .level-tag {
+    font-size:13px; font-weight:700; color:var(--cyan); letter-spacing:2px;
+    text-transform:uppercase;
+  }
+  .level-num {
+    font-size:24px; font-weight:800; color:#fff;
+  }
+  .level-label {
+    font-size:12px; color:var(--muted);
+  }
+  .resources {
+    display:flex; gap:20px; align-items:center;
+  }
+  .resource {
+    display:flex; align-items:center; gap:6px;
+    padding:6px 14px; border-radius:8px; background:rgba(0,0,0,0.3);
+    border:1px solid var(--border);
+  }
+  .resource-icon { font-size:14px; }
+  .resource-val { font-size:14px; font-weight:700; font-family:monospace; }
+  .resource-nano { color:var(--cyan); }
+  .resource-alloy { color:var(--orange); }
+  .resource-points { color:var(--purple); }
+  .battle-info {
+    display:flex; align-items:center; gap:16px;
+  }
+  .deploy-count {
+    font-size:13px; color:var(--muted);
+  }
+  .deploy-count span { color:var(--cyan); font-weight:700; }
+
+  /* Left panel */
+  .left-panel {
+    position:absolute; top:72px; left:16px; width:260px;
+    display:flex; flex-direction:column; gap:12px; z-index:10;
+  }
+  .panel {
+    background:rgba(17,24,39,0.92); border:1px solid var(--border);
+    border-radius:10px; backdrop-filter:blur(8px);
+  }
+  .panel-header {
+    padding:12px 16px; border-bottom:1px solid var(--border);
+    font-size:12px; font-weight:700; color:var(--muted);
+    text-transform:uppercase; letter-spacing:1px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .panel-body { padding:12px 16px; }
+
+  /* Unit list */
+  .unit-list { display:flex; flex-direction:column; gap:6px; }
+  .unit-row {
+    display:flex; align-items:center; gap:10px; padding:8px 10px;
+    border-radius:6px; background:rgba(0,0,0,0.2); cursor:pointer; transition:all .2s;
+  }
+  .unit-row:hover { background:rgba(0,212,255,0.06); }
+  .unit-row.selected { background:rgba(0,212,255,0.1); border:1px solid rgba(0,212,255,0.3); }
+  .unit-icon { width:32px; height:32px; border-radius:6px; background:rgba(255,255,255,0.05); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+  .unit-name { font-size:13px; font-weight:600; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .unit-level { font-size:11px; color:var(--dim); font-family:monospace; }
+  .unit-pwr { font-size:12px; font-weight:700; color:var(--cyan); font-family:monospace; }
+
+  /* Buffs */
+  .buff-list { display:flex; flex-direction:column; gap:6px; }
+  .buff-item {
+    display:flex; align-items:center; gap:8px; font-size:12px;
+    padding:6px 10px; border-radius:6px; background:rgba(0,0,0,0.2);
+  }
+  .buff-positive { color:var(--green); }
+  .buff-negative { color:var(--red); }
+
+  /* Center - deployment area */
+  .deployment-area {
+    position:absolute; top:72px; left:300px; right:300px; bottom:200px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    z-index:5;
+  }
+  .deployment-zone {
+    width:100%; max-width:700px;
+    border:1px dashed rgba(0,212,255,0.2);
+    border-radius:16px; padding:40px;
+    display:flex; flex-direction:column; align-items:center; gap:24px;
+  }
+  .zone-label {
+    font-size:14px; font-weight:700; color:var(--cyan); letter-spacing:2px;
+    text-transform:uppercase;
+  }
+  .deploy-slots {
+    display:grid; grid-template-columns:repeat(3,1fr); gap:12px; width:100%;
+  }
+  .deploy-slot {
+    aspect-ratio:3/4; border:1px dashed rgba(0,212,255,0.25); border-radius:10px;
+    background:rgba(0,212,255,0.03); display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:8px; cursor:pointer;
+    transition:all .2s; position:relative;
+  }
+  .deploy-slot:hover { border-color:var(--cyan); background:rgba(0,212,255,0.08); }
+  .deploy-slot.filled { border-style:solid; border-color:rgba(0,212,255,0.4); background:rgba(0,212,255,0.06); }
+  .slot-icon { font-size:28px; opacity:0.5; }
+  .slot-label { font-size:11px; color:var(--dim); }
+  .deploy-slot.filled .slot-icon { opacity:1; }
+  .deploy-slot.filled .slot-label { color:var(--cyan); font-weight:600; }
+
+  /* Enemy preview */
+  .enemy-preview {
+    position:absolute; top:80px; right:24px; width:200px;
+    background:rgba(17,24,39,0.92); border:1px solid rgba(239,68,68,0.2);
+    border-radius:10px; z-index:10;
+  }
+  .enemy-preview .panel-header { color:var(--red); }
+  .enemy-unit {
+    display:flex; align-items:center; gap:8px; padding:8px 12px;
+    border-bottom:1px solid rgba(239,68,68,0.1);
+  }
+  .enemy-unit:last-child { border-bottom:none; }
+  .enemy-icon { font-size:18px; }
+  .enemy-name { font-size:12px; color:var(--muted); flex:1; }
+  .enemy-power { font-size:12px; color:var(--red); font-weight:700; font-family:monospace; }
+
+  /* Bottom hand */
+  .bottom-area {
+    position:absolute; bottom:0; left:0; right:0; height:190px;
+    background:linear-gradient(0deg, rgba(10,14,23,0.98) 0%, rgba(10,14,23,0.85) 80%, transparent 100%);
+    z-index:10; display:flex; flex-direction:column; align-items:center; justify-content:flex-end;
+    padding-bottom:16px;
+  }
+  .hand-label {
+    font-size:11px; color:var(--dim); letter-spacing:2px; text-transform:uppercase;
+    margin-bottom:10px;
+  }
+  .hand-cards {
+    display:flex; gap:10px; align-items:flex-end;
+  }
+  .hand-card {
+    width:100px; height:140px; border-radius:10px; border:2px solid;
+    background:linear-gradient(180deg, rgba(255,255,255,0.05), rgba(0,0,0,0.3));
+    display:flex; flex-direction:column; align-items:center; justify-content:space-between;
+    padding:10px 8px; cursor:pointer; transition:all .25s; position:relative;
+  }
+  .hand-card:hover { transform:translateY(-12px); }
+  .hand-card.selected { transform:translateY(-20px); box-shadow:0 12px 32px rgba(0,212,255,0.2); }
+  .hand-card.mythic { border-color:var(--mythic); }
+  .hand-card.legendary { border-color:var(--purple); }
+  .hand-card.rare { border-color:var(--cyan); }
+  .hand-card.common { border-color:var(--green); }
+  .hc-stars { font-size:9px; color:var(--mythic); }
+  .hc-icon { font-size:28px; }
+  .hc-name { font-size:10px; font-weight:700; text-align:center; color:#fff; line-height:1.2; }
+  .hc-cost {
+    font-size:10px; font-weight:700; color:var(--cyan); font-family:monospace;
+    background:rgba(0,212,255,0.1); padding:2px 6px; border-radius:4px;
+  }
+  .hand-card.mythic .hc-cost { color:var(--mythic); background:rgba(251,191,36,0.1); }
+
+  /* Auto toggle */
+  .auto-toggle {
+    position:absolute; left:24px; bottom:210px;
+    display:flex; align-items:center; gap:8px;
+    padding:8px 14px; border-radius:8px; background:rgba(17,24,39,0.9);
+    border:1px solid var(--border); z-index:10;
+  }
+  .toggle-track { width:36px; height:20px; border-radius:10px; background:rgba(0,0,0,0.4); border:1px solid var(--border); position:relative; }
+  .toggle-thumb { width:14px; height:14px; border-radius:50%; background:var(--cyan); position:absolute; top:2px; left:2px; }
+  .toggle-text { font-size:12px; font-weight:600; color:var(--muted); }
+
+  /* Action bar */
+  .action-bar {
+    position:absolute; right:24px; bottom:210px;
+    display:flex; flex-direction:column; gap:8px; z-index:10;
+  }
+  .action-btn {
+    padding:10px 20px; border-radius:8px; font-size:13px; font-weight:700;
+    cursor:pointer; transition:all .2s; border:none; text-transform:uppercase;
+    letter-spacing:1px;
+  }
+  .btn-deploy {
+    background:linear-gradient(135deg,var(--cyan),#0ea5e9); color:#0a0e17;
+    box-shadow:0 4px 16px rgba(0,212,255,0.3);
+  }
+  .btn-deploy:hover { box-shadow:0 6px 24px rgba(0,212,255,0.5); transform:translateY(-1px); }
+  .btn-cancel {
+    background:rgba(239,68,68,0.1); color:var(--red); border:1px solid rgba(239,68,68,0.3);
+  }
+  .btn-refresh {
+    background:rgba(245,158,11,0.1); color:var(--orange); border:1px solid rgba(245,158,11,0.3);
+  }
+
+  /* Bottom nav */
+  .bottom-nav {
+    position:absolute; bottom:8px; left:50%; transform:translateX(-50%);
+    display:flex; gap:4px; background:rgba(10,14,23,0.95); border:1px solid var(--border);
+    border-radius:12px; padding:6px 8px; z-index:20;
+  }
+  .nav-item {
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+    padding:6px 12px; border-radius:8px; cursor:pointer; transition:all .2s;
+  }
+  .nav-item:hover { background:rgba(255,255,255,0.04); }
+  .nav-item.active { background:rgba(0,212,255,0.1); }
+  .nav-icon { font-size:16px; }
+  .nav-label { font-size:9px; color:var(--dim); font-weight:600; }
+  .nav-item.active .nav-label { color:var(--cyan); }
+
+  /* Floating particles */
+  .particle {
+    position:absolute; width:2px; height:2px; border-radius:50%;
+    background:var(--cyan); opacity:0.3;
+    animation:float 6s infinite ease-in-out;
+  }
+  @keyframes float {
+    0%, 100% { transform:translateY(0); opacity:0.2; }
+    50% { transform:translateY(-20px); opacity:0.5; }
+  }
+
+  /* Scanline */
+  .scanline {
+    position:absolute; inset:0; pointer-events:none; z-index:50;
+    background:repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,212,255,0.01) 2px, rgba(0,212,255,0.01) 4px);
+  }
+
+  /* Tooltip */
+  .tooltip {
+    position:absolute; background:rgba(17,24,39,0.96); border:1px solid var(--cyan);
+    border-radius:8px; padding:12px 16px; font-size:12px; z-index:100;
+    box-shadow:0 8px 24px rgba(0,0,0,0.5); display:none; min-width:180px;
+  }
+  .tooltip.show { display:block; }
+  .tooltip-title { font-weight:700; font-size:13px; color:#fff; margin-bottom:6px; }
+  .tooltip-stat { display:flex; justify-content:space-between; color:var(--muted); margin-bottom:3px; }
+  .tooltip-stat span:last-child { color:var(--cyan); font-weight:600; font-family:monospace; }
+</style>
+</head>
+<body>
+
+<div class="battlefield">
+  <!-- Background effects -->
+  <div class="grid-floor"></div>
+  <div class="horizon"></div>
+
+  <!-- Distant structures -->
+  <div class="structure structure-left">
+    <div class="tower" style="height:80px;"></div>
+  </div>
+  <div class="structure structure-right">
+    <div class="tower" style="height:100px;"></div>
+    <div class="tower" style="height:60px; margin-top:20px;"></div>
+  </div>
+
+  <!-- Particles -->
+  <div class="particle" style="left:20%;top:30%;animation-delay:0s;"></div>
+  <div class="particle" style="left:60%;top:25%;animation-delay:1s;"></div>
+  <div class="particle" style="left:80%;top:40%;animation-delay:2s;"></div>
+  <div class="particle" style="left:35%;top:50%;animation-delay:3s;"></div>
+  <div class="particle" style="left:70%;top:35%;animation-delay:4s;"></div>
+
+  <div class="scanline"></div>
+
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <div class="level-badge">
+      <div>
+        <div class="level-tag">第</div>
+        <div style="display:flex;align-items:baseline;gap:4px;">
+          <span class="level-num">100</span>
+          <span class="level-label">关</span>
+        </div>
+      </div>
+    </div>
+    <div class="resources">
+      <div class="resource">
+        <span class="resource-icon">⚡</span>
+        <span class="resource-val resource-nano">4,620</span>
+        <span style="font-size:11px;color:var(--dim);">能量块</span>
+      </div>
+      <div class="resource">
+        <span class="resource-icon">💎</span>
+        <span class="resource-val resource-alloy">9,722</span>
+        <span style="font-size:11px;color:var(--dim);">纳米材料</span>
+      </div>
+      <div class="resource">
+        <span class="resource-icon">🔬</span>
+        <span class="resource-val resource-points">5,499</span>
+        <span style="font-size:11px;color:var(--dim);">研究点</span>
+      </div>
+    </div>
+    <div class="battle-info">
+      <div class="deploy-count">部署：<span>3</span> / 7</div>
+      <div class="deploy-count">战力：<span style="color:var(--orange);">547</span></div>
+    </div>
+  </div>
+
+  <!-- Left Panel - Unit Roster -->
+  <div class="left-panel">
+    <div class="panel">
+      <div class="panel-header">
+        单位名册
+        <span style="color:var(--cyan);">31/31</span>
+      </div>
+      <div class="panel-body">
+        <div class="unit-list">
+          <div class="unit-row selected">
+            <div class="unit-icon">⚔️</div>
+            <div><div class="unit-name">F-4 鬼怪战机</div><div class="unit-level">等级 0 · M0/9</div></div>
+            <div class="unit-pwr">PWR 120</div>
+          </div>
+          <div class="unit-row">
+            <div class="unit-icon">🚀</div>
+            <div><div class="unit-name">导弹发射车</div><div class="unit-level">等级 3 · M2/9</div></div>
+            <div class="unit-pwr">PWR 185</div>
+          </div>
+          <div class="unit-row">
+            <div class="unit-icon">💣</div>
+            <div><div class="unit-name">RPG 火箭班</div><div class="unit-level">等级 1 · M0/9</div></div>
+            <div class="unit-pwr">PWR 95</div>
+          </div>
+          <div class="unit-row">
+            <div class="unit-icon">🛡️</div>
+            <div><div class="unit-name">重装步兵</div><div class="unit-level">等级 5 · M3/9</div></div>
+            <div class="unit-pwr">PWR 210</div>
+          </div>
+          <div class="unit-row">
+            <div class="unit-icon">🛰️</div>
+            <div><div class="unit-name">轨道打击引导</div><div class="unit-level">等级 2 · M1/9</div></div>
+            <div class="unit-pwr">PWR 160</div>
+          </div>
+          <div class="unit-row">
+            <div class="unit-icon">👻</div>
+            <div><div class="unit-name">幻影特工</div><div class="unit-level">等级 4 · M2/9</div></div>
+            <div class="unit-pwr">PWR 175</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">当前增益</div>
+      <div class="panel-body">
+        <div class="buff-list">
+          <div class="buff-item buff-positive">⚡ 相位仪 · 攻速 +11%</div>
+          <div class="buff-item buff-positive">⚡ 相位仪 · 能量恢复 +21%</div>
+          <div class="buff-item buff-positive">🔮 符文 · 攻击 +45%</div>
+          <div class="buff-item buff-positive">🔮 符文 · 暴击率 +15%</div>
+          <div class="buff-item buff-positive">🛡️ 强袭 T2 · 攻击 +18%</div>
+          <div class="buff-item buff-positive">🛡️ 强袭 T2 · 生命 +18%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Deployment Area -->
+  <div class="deployment-area">
+    <div class="deployment-zone">
+      <div class="zone-label">▸ 部署区域 · 点击卡牌后选择空位</div>
+      <div class="deploy-slots">
+        <div class="deploy-slot filled" onclick="showTooltip(event, '离子炮台', '轻型攻击 61', '射程 99', '装甲防御 6')">
+          <div class="slot-icon">🔫</div>
+          <div class="slot-label">离子炮台</div>
+        </div>
+        <div class="deploy-slot filled" onclick="showTooltip(event, '导弹发射车', '重型攻击 76', '射程 120', '消耗 2 能量')">
+          <div class="slot-icon">🚀</div>
+          <div class="slot-label">导弹发射</div>
+        </div>
+        <div class="deploy-slot" onclick="fillSlot(this)">
+          <div class="slot-icon">+</div>
+          <div class="slot-label">空位</div>
+        </div>
+        <div class="deploy-slot" onclick="fillSlot(this)">
+          <div class="slot-icon">+</div>
+          <div class="slot-label">空位</div>
+        </div>
+        <div class="deploy-slot" onclick="fillSlot(this)">
+          <div class="slot-icon">+</div>
+          <div class="slot-label">空位</div>
+        </div>
+        <div class="deploy-slot" onclick="fillSlot(this)">
+          <div class="slot-icon">+</div>
+          <div class="slot-label">空位</div>
+        </div>
+        <div class="deploy-slot" onclick="fillSlot(this)">
+          <div class="slot-icon">+</div>
+          <div class="slot-label">空位</div>
+        </div>
+        <div class="deploy-slot" onclick="fillSlot(this)">
+          <div class="slot-icon">+</div>
+          <div class="slot-label">空位</div>
+        </div>
+        <div class="deploy-slot" onclick="fillSlot(this)">
+          <div class="slot-icon">+</div>
+          <div class="slot-label">空位</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Enemy Preview -->
+  <div class="enemy-preview">
+    <div class="panel-header">
+      ⚠ 敌方情报
+      <span style="font-size:11px;color:var(--red);">3 单位</span>
+    </div>
+    <div class="enemy-unit">
+      <span class="enemy-icon">🤖</span>
+      <span class="enemy-name">悬浮坦克</span>
+      <span class="enemy-power">320</span>
+    </div>
+    <div class="enemy-unit">
+      <span class="enemy-icon">🦾</span>
+      <span class="enemy-name">巨神机甲</span>
+      <span class="enemy-power">580</span>
+    </div>
+    <div class="enemy-unit">
+      <span class="enemy-icon">🛸</span>
+      <span class="enemy-name">侦察无人机</span>
+      <span class="enemy-power">150</span>
+    </div>
+  </div>
+
+  <!-- Auto Toggle -->
+  <div class="auto-toggle">
+    <div class="toggle-track"><div class="toggle-thumb"></div></div>
+    <span class="toggle-text">自动</span>
+  </div>
+
+  <!-- Action Buttons -->
+  <div class="action-bar">
+    <button class="action-btn btn-deploy">▶ 开始战斗</button>
+    <button class="action-btn btn-refresh">↻ 刷新</button>
+    <button class="action-btn btn-cancel">✕ 取消</button>
+  </div>
+
+  <!-- Bottom Hand -->
+  <div class="bottom-area">
+    <div class="hand-label">手牌 · 选择后点击部署位</div>
+    <div class="hand-cards">
+      <div class="hand-card mythic selected" onclick="selectCard(this)">
+        <div class="hc-stars">★★★★★★★</div>
+        <div class="hc-icon">💎</div>
+        <div class="hc-name">永纪·终式</div>
+        <div class="hc-cost">3 ⚡</div>
+      </div>
+      <div class="hand-card legendary" onclick="selectCard(this)">
+        <div class="hc-stars">★★★★★</div>
+        <div class="hc-icon">🚀</div>
+        <div class="hc-name">导弹发射车</div>
+        <div class="hc-cost">2 ⚡</div>
+      </div>
+      <div class="hand-card rare" onclick="selectCard(this)">
+        <div class="hc-stars">★★★</div>
+        <div class="hc-icon">🔫</div>
+        <div class="hc-name">离子炮台</div>
+        <div class="hc-cost">1 ⚡</div>
+      </div>
+      <div class="hand-card rare" onclick="selectCard(this)">
+        <div class="hc-stars">★★★</div>
+        <div class="hc-icon">🛡️</div>
+        <div class="hc-name">重装步兵</div>
+        <div class="hc-cost">1 ⚡</div>
+      </div>
+      <div class="hand-card common" onclick="selectCard(this)">
+        <div class="hc-stars">★★</div>
+        <div class="hc-icon">💣</div>
+        <div class="hc-name">RPG 火箭班</div>
+        <div class="hc-cost">1 ⚡</div>
+      </div>
+      <div class="hand-card common" onclick="selectCard(this)">
+        <div class="hc-stars">★★</div>
+        <div class="hc-icon">👻</div>
+        <div class="hc-name">幻影特工</div>
+        <div class="hc-cost">1 ⚡</div>
+      </div>
+      <div class="hand-card legendary" onclick="selectCard(this)">
+        <div class="hc-stars">★★★★★</div>
+        <div class="hc-icon">🛰️</div>
+        <div class="hc-name">轨道打击</div>
+        <div class="hc-cost">3 ⚡</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <div class="bottom-nav">
+    <div class="nav-item"><span class="nav-icon">🎒</span><span class="nav-label">背包</span></div>
+    <div class="nav-item"><span class="nav-icon">⬆️</span><span class="nav-label">成长</span></div>
+    <div class="nav-item"><span class="nav-icon">🏳️</span><span class="nav-label">势力</span></div>
+    <div class="nav-item active"><span class="nav-icon">⚔️</span><span class="nav-label">战斗</span></div>
+    <div class="nav-item"><span class="nav-icon">🛒</span><span class="nav-label">商店</span></div>
+    <div class="nav-item"><span class="nav-icon">🗺️</span><span class="nav-label">地图</span></div>
+  </div>
+
+  <!-- Tooltip -->
+  <div class="tooltip" id="tooltip">
+    <div class="tooltip-title" id="tt-title"></div>
+    <div class="tooltip-stat"><span>轻型攻击</span><span id="tt-atk1"></span></div>
+    <div class="tooltip-stat"><span>射程</span><span id="tt-range"></span></div>
+  </div>
+</div>
+
+<script>
+function selectCard(el) {
+  document.querySelectorAll('.hand-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function fillSlot(slot) {
+  const selected = document.querySelector('.hand-card.selected');
+  if (!selected) return;
+  const icon = selected.querySelector('.hc-icon').textContent;
+  const name = selected.querySelector('.hc-name').textContent;
+  slot.classList.add('filled');
+  slot.innerHTML = `<div class="slot-icon">${icon}</div><div class="slot-label">${name}</div>`;
+}
+
+function showTooltip(e, title, stat1, stat2, stat3) {
+  e.stopPropagation();
+  const tt = document.getElementById('tooltip');
+  document.getElementById('tt-title').textContent = title;
+  const body = tt.querySelector('.tooltip-stat') || true;
+  tt.innerHTML = `<div class="tooltip-title">${title}</div>
+    <div class="tooltip-stat"><span>${stat1}</span></div>
+    <div class="tooltip-stat"><span>${stat2}</span></div>
+    <div class="tooltip-stat"><span>${stat3}</span></div>`;
+  tt.style.left = e.pageX + 12 + 'px';
+  tt.style.top = e.pageY - 10 + 'px';
+  tt.classList.add('show');
+}
+
+document.addEventListener('click', () => {
+  document.getElementById('tooltip').classList.remove('show');
+});
+</script>
+
+</body>
+</html>

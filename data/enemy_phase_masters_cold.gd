@@ -60,7 +60,7 @@ const ERA_MASTERS: Array = [
 		"equipment": {
 			"phase_instrument": "pi_steelflame_01",
 			"level": 18,
-			"platforms": ["steel_fortress_expert", "flame_raider_expert"],
+			"platforms": ["cold_arm_t72_e", "cold_arm_t72_e", "cold_arm_btr_e", "cold_air_m113_e", "cold_inf_ak"],
 			"weapons": ["steel_gatling_expert", "flame_thrower_expert"],
 			"energy_cards": ["hybrid_energy_basic"]
 		},
@@ -124,9 +124,9 @@ const ERA_MASTERS: Array = [
 			}
 		],
 		"equipment": {
-			"phase_instrument": "pi_thundersteel_01",
+			"phase_instrument": "pi_steelthunder_01",
 			"level": 19,
-			"platforms": ["steel_titan_expert", "thunter_striker_expert"],
+			"platforms": ["cold_arm_t72_e", "cold_arm_btr_e", "cold_air_m113_e", "cold_inf_spetsnaz_e", "cold_boss_mig"],
 			"weapons": ["steel_railcannon_advanced", "tesla_coil_expert"],
 			"energy_cards": ["hybrid_energy_basic"]
 		},
@@ -190,9 +190,9 @@ const ERA_MASTERS: Array = [
 			}
 		],
 		"equipment": {
-			"phase_instrument": "pi_voidflame_01",
+			"phase_instrument": "pi_flamevoid_01",
 			"level": 20,
-			"platforms": ["void_mage_expert", "flame_siege_expert"],
+			"platforms": ["cold_boss_mig", "cold_arm_t72_e", "cold_arm_t72_e", "cold_air_m113_e", "cold_inf_spetsnaz_e"],
 			"weapons": ["entropy_caster_expert", "plasma_cannon_expert"],
 			"energy_cards": ["hybrid_energy_advanced"]
 		},
@@ -260,7 +260,7 @@ const ERA_MASTERS: Array = [
 		"equipment": {
 			"phase_instrument": "pi_steel_04",
 			"level": 22,
-			"platforms": ["steel_fortress_expert", "steel_titan_expert"],
+			"platforms": ["cold_boss_mig", "cold_arm_t72_e", "cold_arm_t72_e", "cold_air_m113_e", "cold_inf_spetsnaz_e", "cold_arm_btr_e"],
 			"weapons": ["steel_gatling_expert", "steel_artillery_expert"],
 			"energy_cards": ["steel_energy_expert"]
 		},
@@ -326,7 +326,7 @@ const ERA_MASTERS: Array = [
 		"equipment": {
 			"phase_instrument": "pi_flame_04",
 			"level": 23,
-			"platforms": ["flame_raider_expert", "flame_siege_expert"],
+			"platforms": ["cold_arm_t72_e", "cold_inf_ak", "cold_boss_mig", "cold_arm_btr_e"],
 			"weapons": ["flame_thrower_expert", "plasma_cannon_expert"],
 			"energy_cards": ["flame_energy_expert"]
 		},
@@ -392,7 +392,7 @@ const ERA_MASTERS: Array = [
 		"equipment": {
 			"phase_instrument": "pi_thunder_04",
 			"level": 24,
-			"platforms": ["thunter_striker_expert", "thunter_sniper_expert"],
+			"platforms": ["cold_boss_mig", "cold_boss_mig", "cold_arm_t72_e", "cold_air_m113_e", "cold_inf_spetsnaz_e", "cold_arm_btr_e"],
 			"weapons": ["tesla_coil_expert", "railgun_expert"],
 			"energy_cards": ["thunder_energy_expert"]
 		},

@@ -116,32 +116,78 @@ func on_card_level_up(card_id: String, new_level: int, affix_type: int) -> void:
 
 	# 每次升级都有概率随机升级已有词条（即使是同等级强化）
 	_try_upgrade_existing_affixes(affix_key, affix_type)
+	# v7.x: 卡牌升级触发词条变化，刷新玩家相位师战力缓存避免面板陈旧
+	_refresh_player_master_eval_safe()
 
 ## 蓝图升星时调用（新系统）
 ## 每升1星获得1个新词条
 func on_blueprint_star_up(card_id: String, old_star: int, new_star: int) -> void:
-	if card_id.is_empty():
+	# v8.x: affix 改技能树赋予——升星不再随机获得词条，而是由技能树节点（intelligence 分支
+	# 的 affix 解锁节点）统一赋予。本函数保留供旧调用方不崩，但不再主动随机 roll。
+	# 具体赋予逻辑见 grant_skill_tree_affix_pool / on_card_star_up。
+	# 升星仍刷新玩家相位师战力缓存。
+	_refresh_player_master_eval_safe()
+
+## v8.x: 卡牌自动升星回调（由 InstanceRegistry._on_star_level_up 调用）
+## 改为查技能树：若技能树解锁了 affix 赋予节点，按 star_level 解锁对应词条；
+## 未解锁则升星不赋予新词条（纯战力提升，不获得 affix）。
+func on_card_star_up(instance_id: String, old_star: int, new_star: int) -> void:
+	if instance_id.is_empty():
 		return
-	var bm: Node = _get_root_node_or_null("BlueprintManager")
-	if bm == null:
+	var pmsm: Node = _get_root_node_or_null("PhaseMasterSkillManager")
+	if pmsm == null:
+		return  # 技能树不可用时不赋予（向后兼容：旧环境无 affix 增长）
+	# 查技能树是否解锁了 affix 赋予节点
+	if not pmsm.has_method("is_content_unlocked"):
 		return
-	var card: CardResource = null
-	var DC = preload("res://data/default_cards.gd")
-	if DC:
-		card = DC.get_card_by_id(card_id)
-	if card == null:
+	if not pmsm.is_content_unlocked("affix", "any"):
+		return  # 技能树未解锁 affix 节点，升星不赋予词条
+	# 已解锁：按 star_level 赋予基础 affix（每 2 星解锁一个，与原随机节奏接近）
+	# 这里调用 grant_skill_tree_affix_pool 赋予基础池词条
+	if new_star > old_star and new_star % 2 == 0:
+		grant_skill_tree_affix_pool(["affix_basic_atk", "affix_basic_def", "affix_basic_hp"], instance_id)
+	emit_signal("affix_changed", instance_id)
+	_refresh_player_master_eval_safe()
+
+## v8.x: 技能树解锁 affix 节点时调用，赋予固定词条池
+## pool: 词条 ID 数组；target_identity: 可选，指定赋予给某实例，空则赋予给所有战斗卡
+func grant_skill_tree_affix_pool(pool: Array, target_identity: String = "") -> void:
+	if pool.is_empty():
 		return
-	if card.card_type == GC.CardType.LAW:
-		return  # 法则卡不走词条系统
-	# 双轨统一：机体强化和武器强化均按总星级增长，词条数量口径一致
+	# 若指定实例，只赋予该实例；否则赋予所有战斗卡实例（技能树全局解锁时）
+	if not target_identity.is_empty():
+		_grant_affix_to_identity(target_identity, pool)
+	else:
+		var ir: Node = _get_root_node_or_null("InstanceRegistry")
+		if ir == null or not ir.has_method("get_all_instance_ids"):
+			return
+		for iid in ir.get_all_instance_ids():
+			_grant_affix_to_identity(String(iid), pool)
+
+## 内部：给单个 identity 赋予词条池中的一个（取第一个空槽能放的）
+func _grant_affix_to_identity(identity: String, pool: Array) -> void:
 	for affix_type in [0, 1]:
-		var affix_key: String = _get_affix_key(card_id, affix_type)
-		for star in range(old_star + 1, new_star + 1):
-			if not has_empty_affix_slot(affix_key):
+		var affix_key: String = _get_affix_key(identity, affix_type)
+		if not has_empty_affix_slot(affix_key):
+			continue
+		# 从池中取一个尚未拥有的词条
+		for affix_id in pool:
+			if not _has_affix_id(affix_key, String(affix_id)):
+				var affix: AffixResource = AffixDefs.build_affix(String(affix_id), "common", 1)
+				if affix != null:
+					if not _card_affixes.has(affix_key):
+						_card_affixes[affix_key] = []
+					(_card_affixes[affix_key] as Array).append(affix)
+					emit_signal("affix_acquired", identity, affix)
 				break
-			var star_rarity: String = bm.get_card_rarity(card_id)
-			_enhance_card_for_star(card_id, affix_type, star, star_rarity)
-	emit_signal("affix_changed", card_id)
+		break  # 每次 grant 只填一个类型的一个槽
+
+## 检查某卡是否已拥有指定 affix_id
+func _has_affix_id(affix_key: String, affix_id: String) -> bool:
+	for a in _get_affix_array(affix_key):
+		if a is AffixResource and a.affix_id == affix_id:
+			return true
+	return false
 
 ## 根据等级获取强化次数
 func _get_enhance_count_for_level(level: int) -> int:
@@ -283,6 +329,8 @@ func reroll_affix(affix_key: String, slot_index: int) -> bool:
 
 	emit_signal("affix_rerolled", affix_key, slot_index)
 	emit_signal("affix_changed", affix_key)
+	# v7.x: 词条变化影响第 4 层加成，刷新玩家相位师战力缓存
+	_refresh_player_master_eval_safe()
 	return true
 
 ## 获取重随消耗
@@ -386,6 +434,8 @@ func batch_reroll_affixes(affix_key: String) -> bool:
 		emit_signal("affix_rerolled", affix_key, i)
 
 	emit_signal("affix_changed", affix_key)
+	# v7.x: 批量词条变化影响第 4 层加成，刷新玩家相位师战力缓存
+	_refresh_player_master_eval_safe()
 	return true
 
 # ─────────────────────────────────────────────
@@ -504,6 +554,12 @@ func _get_root_node_or_null(node_name: String) -> Node:
 		if tree.root != null:
 			return tree.root.get_node_or_null(node_name)
 	return null
+
+# v7.x: 安全刷新玩家相位师战力缓存（词条变化影响第 4 层加成，避免面板显示陈旧缓存）
+func _refresh_player_master_eval_safe() -> void:
+	var pm: Node = _get_root_node_or_null("PhaseInstrumentManager")
+	if pm != null and pm.has_method("refresh_player_master_eval"):
+		pm.refresh_player_master_eval()
 
 # ─────────────────────────────────────────────
 #  存档接口

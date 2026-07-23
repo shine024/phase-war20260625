@@ -52,39 +52,38 @@ func test_master_multipliers_on_unit_stats() -> void:
 	var stats: UnitStats = UnitStats.new()
 	stats.max_hp = 100.0
 	stats.attack_damage = 20.0
+	stats.defense = 10.0
 	stats.weapons = [{"damage": 20.0, "weapon_type": 0, "range": 80.0, "interval": 0.5, "timer": 0.0}]
 	var master: Dictionary = {"attack_power": 200.0, "defense": 300.0}
 	EnemyStatResolver.apply_phase_master_to_unit_stats(stats, master)
-	# v6.12: 系数 0.0008/0.0006，attack_power200→1.16x，defense300→1.18x
+	# v7.x: attack 系数 0.0008，attack_power200→1.16x；defense 系数 0.0008，defense300→1.24x
 	assert_float(stats.attack_damage).is_equal(20.0 * 1.16)
 	assert_float(float((stats.weapons[0] as Dictionary)["damage"])).is_equal(20.0 * 1.16)
-	assert_float(stats.max_hp).is_equal(100.0 * (1.0 + 300.0 * 0.0006))
+	assert_float(stats.defense).is_equal(10.0 * 1.24)
+	# max_hp: 先乘 defense 系数 1.24；无 master.stats.max_hp → 无额外乘数
+	assert_float(stats.max_hp).is_equal(100.0 * 1.24)
 
 
-# v6.11: 锁定 master 乘数系数（v6.11 为 0.0005/0.0003，v6.12 增强为 0.0008/0.0006），
-# 防止回归到 v6.2 的 0.002/0.0001（master030→3.0x 过猛）。
+# v6.11/v6.12: 锁定 master 乘数系数（attack 0.0008 / defense 0.0008，攻防对称）。
+# 注：v8.2 起 resolve_classic_enemy 链不再调用这些函数（master_stats 乘区已砍），
+# 函数定义保留供 apply_phase_master_to_unit_stats 兼容，此处仅锁定系数防回归。
 func test_master_multipliers_new_coefficients() -> void:
 	# attack_power 200 → 1 + 200*0.0008 = 1.16
 	assert_float(EnemyStatResolver.master_attack_multiplier({"attack_power": 200.0})).is_equal(1.16)
 	# attack_power 1000（master030）→ 1.80
 	assert_float(EnemyStatResolver.master_attack_multiplier({"attack_power": 1000.0})).is_equal(1.80)
-	# defense 300 → 1 + 300*0.0006 = 1.18
-	assert_float(EnemyStatResolver.master_defense_hp_multiplier({"defense": 300.0})).is_equal(1.18)
-	# defense 200（master016）→ 1.12
-	assert_float(EnemyStatResolver.master_defense_hp_multiplier({"defense": 200.0})).is_equal(1.12)
-	# 空 master_stats 应返回 1.0（普通波次行为）
+	# v7.x: defense 系数 0.0008（与 attack 对称）：defense 300 → 1.24
+	assert_float(EnemyStatResolver.master_defense_hp_multiplier({"defense": 300.0})).is_equal(1.24)
+	# defense 200（master016）→ 1.16
+	assert_float(EnemyStatResolver.master_defense_hp_multiplier({"defense": 200.0})).is_equal(1.16)
+	# 空 master_stats 应返回 1.0
 	assert_float(EnemyStatResolver.master_attack_multiplier({})).is_equal(1.0)
 	assert_float(EnemyStatResolver.master_defense_hp_multiplier({})).is_equal(1.0)
 
 
-# v6.11: 验证 resolve_classic_enemy 在 master_stats 非空时，m_atk/m_hp 真正生效。
-# 这是「相位师影响普通敌兵」的核心修复点：修复前 make_default_context 从不注入 master_stats，
-# 导致经典敌兵/蜂群的 m_atk/m_hp 恒为 1.0。此处用裸 EnemyStatContext 直接验证乘区接入。
-# （make_default_context 的注入逻辑依赖 BattleManager 运行时环境，由集成测试覆盖。）
+# v8.2: 验证 resolve_classic_enemy 不再受 master_stats 影响（乘区已砍）。
+# 注入 master_stats 后输出应与不注入完全相同（比值=1.0），确认简化生效。
 func test_resolve_classic_enemy_with_master_stats() -> void:
-	# 第1关、第1波，ww1_inf_mp18
-	# 注：archetype 基础值可能被运行时 manifest 合并改写，故用「无master基准 vs 有master」的比值验证，
-	# 比值应精确等于 m_atk/m_hp，与绝对值无关。
 	var ctx_baseline := EnemyStatContext.new(1, 1)
 	var r_baseline: Dictionary = EnemyStatResolver.resolve_classic_enemy("ww1_inf_mp18", ctx_baseline)
 	var base_hp: float = float(r_baseline.get("hp", 0.0))
@@ -92,14 +91,33 @@ func test_resolve_classic_enemy_with_master_stats() -> void:
 	assert_float(base_hp).is_greater(0.0)
 	assert_float(base_atk_l).is_greater(0.0)
 
-	# 注入相位师 master_stats（attack_power 400 / defense 200，对应 master016 量级）
+	# 注入相位师 master_stats（attack_power 400 / defense 200）
 	var ctx_master := EnemyStatContext.new(1, 1)
 	ctx_master.master_stats = {"attack_power": 400.0, "defense": 200.0}
 	var r_master: Dictionary = EnemyStatResolver.resolve_classic_enemy("ww1_inf_mp18", ctx_master)
 
-	# v6.12: m_atk = 1 + 400*0.0008 = 1.32；m_hp = 1 + 200*0.0006 = 1.12
-	# 用比值验证：master战后 / 基准 应精确等于乘数
+	# v8.2: master_stats 不再影响 resolve 链，比值应为 1.0
 	var hp_ratio: float = float(r_master.get("hp", 0.0)) / base_hp
 	var atk_ratio: float = float(r_master.get("attack_light", 0.0)) / base_atk_l
-	assert_float(hp_ratio).is_equal(1.12)
-	assert_float(atk_ratio).is_equal(1.32)
+	assert_float(hp_ratio).is_equal_approx(1.0, 0.001)
+	assert_float(atk_ratio).is_equal_approx(1.0, 0.001)
+
+
+# v8.2: 验证档位系数正确接入 resolve 链（base × 档位）。
+# 同关同波，不同档位 → hp/atk 比值应等于档位系数之比。
+func test_resolve_classic_enemy_tier_multiplier() -> void:
+	var EnemyLoadoutTiers = preload("res://data/enemy_loadout_tiers.gd")
+	# 第1关 wave1，选低配档
+	var ctx_low := EnemyStatContext.new(1, 1)
+	ctx_low.tier = EnemyLoadoutTiers.TIER_LOW
+	var r_low: Dictionary = EnemyStatResolver.resolve_classic_enemy("ww1_inf_mp18", ctx_low)
+	# 同关，选高档
+	var ctx_high := EnemyStatContext.new(1, 1)
+	ctx_high.tier = EnemyLoadoutTiers.TIER_HIGH
+	var r_high: Dictionary = EnemyStatResolver.resolve_classic_enemy("ww1_inf_mp18", ctx_high)
+
+	var hp_ratio: float = float(r_high.get("hp", 0.0)) / maxf(1.0, float(r_low.get("hp", 0.0)))
+	var atk_ratio: float = float(r_high.get("attack_light", 0.0)) / maxf(0.1, float(r_low.get("attack_light", 0.0)))
+	# 高档(×2.0) / 低档(×1.3) = 1.538...
+	assert_float(hp_ratio).is_equal_approx(2.0 / 1.3, 0.01)
+	assert_float(atk_ratio).is_equal_approx(2.0 / 1.3, 0.01)

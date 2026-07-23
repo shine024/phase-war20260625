@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase War · 背包界面 Mockup</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Segoe UI","Microsoft YaHei",sans-serif;background:#0d1117;color:#e8ecf4;overflow:hidden;height:100vh}
+.screen{position:relative;width:100%;height:100vh;overflow:hidden}
+.bg{position:absolute;inset:0;background:linear-gradient(180deg,#2a3a5c,#6b4a6b 20%,#c4653a 45%,#e8a87c 60%,#8b6f47 75%,#5a4a30 85%,#3d3020)}
+.sky{position:absolute;top:0;left:0;right:0;height:45%;background:linear-gradient(180deg,#1a2a4a,#4a3050 40%,#c4653a)}
+.tower{position:absolute;bottom:38%;left:38%;width:6px;height:200px;background:linear-gradient(to top,rgba(0,212,255,.5),rgba(168,85,247,.3),transparent)}
+.tower::before{content:"";position:absolute;top:-6px;left:-12px;width:30px;height:30px;border-radius:50%;background:#00d4ff;opacity:.7;box-shadow:0 0 40px #00d4ff}
+.tower-beam{position:absolute;bottom:calc(38%+190px);left:calc(38%+2px);width:4px;height:250px;background:linear-gradient(to top,rgba(0,212,255,.3),transparent);filter:blur(4px)}
+.ground{position:absolute;bottom:0;left:0;right:0;height:38%;background:linear-gradient(180deg,#6b5a3a,#5a4a30 40%,#3d3020)}
+.scanline{position:absolute;inset:0;pointer-events:none;z-index:50;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.012) 3px,rgba(0,0,0,.012) 6px)}
+.top-bar{position:absolute;top:0;left:0;right:0;height:32px;background:rgba(20,25,35,.9);border-bottom:1px solid rgba(42,53,80,.5);display:flex;align-items:center;justify-content:space-between;padding:0 10px;z-index:20;font-size:10px}
+.top-left{display:flex;gap:4px}.top-btn{width:16px;height:16px;border-radius:2px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:8px;color:#5a6478;cursor:pointer}
+.top-center{position:absolute;left:50%;transform:translateX(-50%);font-size:15px;font-weight:700;color:rgba(255,255,255,.7);letter-spacing:2px;text-shadow:0 0 8px rgba(0,0,0,.6)}
+.top-right{display:flex;gap:4px}.top-res{padding:1px 6px;border-radius:2px;background:rgba(0,0,0,.4);color:#5a6478;font-family:monospace;font-size:9px}
+.left-panels{position:absolute;top:36px;left:8px;width:200px;z-index:10;display:flex;flex-direction:column;gap:5px}
+.panel{background:rgba(10,14,23,.88);border:1px solid rgba(42,53,80,.6);border-radius:4px}
+.panel-h{padding:5px 8px;border-bottom:1px solid rgba(42,53,80,.4);font-size:9px;font-weight:700;color:#8b95a8;letter-spacing:1px;display:flex;align-items:center;justify-content:space-between}
+.panel-b{padding:5px 8px}
+.status-line{display:flex;justify-content:space-between;font-size:9px;color:#8b95a8;padding:1px 0}.status-line span:last-child{color:#e8ecf4;font-family:monospace}
+.buff-list{display:flex;flex-direction:column;gap:2px;margin-top:4px}.buff-item{font-size:8px;color:#8b95a8;line-height:1.3;padding:2px 4px;border-radius:2px;background:rgba(0,0,0,.2)}.val-pos{color:#22c55e;font-weight:600}
+.resource-row{display:flex;align-items:center;gap:5px;padding:1px 0}.resource-icon{font-size:11px}.resource-name{font-size:9px;color:#8b95a8;flex:1}.resource-val{font-size:11px;font-weight:700;font-family:monospace}
+.expand-btn{font-size:8px;padding:1px 5px;border-radius:2px;background:rgba(0,212,255,.15);color:#00d4ff;border:1px solid rgba(0,212,255,.3);cursor:pointer}
+.action-stack{position:absolute;right:8px;top:36px;bottom:20px;display:flex;flex-direction:column;justify-content:center;gap:4px;z-index:15}
+.act-btn{width:28px;height:28px;border-radius:4px;border:1px solid;display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;transition:all .2s}.act-btn:hover{transform:scale(1.08)}
+.act-green{background:rgba(34,197,94,.2);border-color:rgba(34,197,94,.4);color:#22c55e}.act-yellow{background:rgba(245,158,11,.2);border-color:rgba(245,158,11,.4);color:#f59e0b}.act-red{background:rgba(239,68,68,.2);border-color:rgba(239,68,68,.4);color:#ef4444}.act-blue{background:rgba(0,212,255,.2);border-color:rgba(0,212,255,.4);color:#00d4ff}
+.overlay{position:absolute;inset:0;background:rgba(0,0,0,.55);z-index:100;backdrop-filter:blur(2px)}
+.modal{position:absolute;top:36px;left:50%;transform:translateX(-50%);width:min(1080px,90%);height:calc(100vh - 60px);background:rgba(12,16,28,.96);border:1px solid rgba(42,53,80,.7);border-radius:8px;display:flex;flex-direction:column;overflow:hidden;z-index:110}
+.m-top{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid rgba(42,53,80,.5);flex-shrink:0}
+.m-title{font-size:16px;font-weight:700;color:#e8ecf4;letter-spacing:1px}.m-sub{font-size:10px;color:#5a6478;margin-left:10px;font-weight:400}
+.m-stats{display:flex;gap:12px;font-size:12px;color:#8b95a8}.m-stats span{color:#e8ecf4;font-family:monospace;font-weight:600}
+.m-close{padding:4px 14px;border-radius:4px;background:rgba(168,85,247,.2);border:1px solid rgba(168,85,247,.4);color:#a855f7;font-size:11px;font-weight:700;cursor:pointer}
+.m-tabs{display:flex;gap:0;padding:0 16px;border-bottom:1px solid rgba(42,53,80,.4);flex-shrink:0}
+.tab{padding:8px 16px;font-size:12px;font-weight:600;color:#5a6478;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s}.tab:hover{color:#8b95a8}.tab.active{color:#00d4ff;border-bottom-color:#00d4ff;background:rgba(0,212,255,.05)}
+.m-filters{display:flex;align-items:center;gap:8px;padding:8px 16px;border-bottom:1px solid rgba(42,53,80,.3);flex-shrink:0}
+.search-input{flex:1;max-width:280px;padding:5px 10px;border-radius:4px;background:rgba(0,0,0,.3);border:1px solid rgba(42,53,80,.5);color:#8b95a8;font-size:11px;outline:none}.search-input::placeholder{color:#5a6478}
+.filter-tag{padding:4px 10px;border-radius:4px;font-size:10px;font-weight:600;color:#5a6478;background:rgba(0,0,0,.2);border:1px solid rgba(42,53,80,.3);cursor:pointer;transition:all .2s;white-space:nowrap}.filter-tag:hover{color:#8b95a8;border-color:rgba(0,212,255,.3)}.filter-tag.active{color:#00d4ff;border-color:rgba(0,212,255,.4);background:rgba(0,212,255,.08)}
+.filter-count{font-size:10px;color:#5a6478;margin-left:auto;white-space:nowrap}
+.m-body{flex:1;display:flex;overflow:hidden}
+.side-filter{width:160px;border-right:1px solid rgba(42,53,80,.4);padding:10px 12px;overflow-y:auto;flex-shrink:0}
+.side-section{margin-bottom:12px}.side-section-title{font-size:10px;font-weight:700;color:#5a6478;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid rgba(42,53,80,.3)}
+.side-item{display:flex;justify-content:space-between;font-size:11px;color:#8b95a8;padding:3px 0;cursor:pointer}.side-item:hover{color:#e8ecf4}.side-item.active{color:#00d4ff}.side-item .count{font-family:monospace;color:#5a6478;font-size:10px}
+.card-area{flex:1;padding:12px 16px;overflow-y:auto}
+.card-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+.card{aspect-ratio:3/4;border-radius:6px;border:2px solid;background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(0,0,0,.3));display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:6px 4px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.card:hover{transform:translateY(-4px);box-shadow:0 6px 16px rgba(0,0,0,.4)}.card.selected{box-shadow:0 0 16px rgba(0,212,255,.3);border-color:rgba(0,212,255,.6)!important}
+.card.mythic{border-color:#fbbf24}.card.legendary{border-color:#a855f7}.card.rare{border-color:#00d4ff}.card.common{border-color:#22c55e}.card.epic{border-color:#8b5cf6}
+.card-icon{font-size:24px;margin-top:4px}.card-name{font-size:9px;font-weight:600;text-align:center;color:#e8ecf4;line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.card-stars{font-size:7px;color:#fbbf24;letter-spacing:1px}.card-id{font-size:8px;color:#5a6478;font-family:monospace}
+.card-equipped{position:absolute;top:4px;left:4px;font-size:8px;color:#22c55e}
+.card.empty-slot{border-style:dashed;border-color:rgba(42,53,80,.4);background:rgba(0,0,0,.1)}.card.empty-slot .card-icon{opacity:.2;font-size:20px}.card.empty-slot .card-name{color:#5a6478}
+.bot-nav{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);display:flex;gap:1px;background:rgba(15,20,30,.95);border:1px solid #2a3550;border-radius:5px;padding:2px 3px;z-index:20}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:1px;padding:2px 5px;border-radius:3px;cursor:pointer;transition:all .2s}.nav-item:hover{background:rgba(255,255,255,.04)}.nav-item.active{background:rgba(0,212,255,.1)}.nav-icon{font-size:11px}.nav-label{font-size:6px;color:#5a6478;font-weight:600}.nav-item.active .nav-label{color:#00d4ff}
+</style>
+</head>
+<body>
+<div class="screen">
+  <div class="bg"><div class="sky"></div><div class="tower"></div><div class="tower-beam"></div><div class="ground"></div></div>
+  <div class="scanline"></div>
+  <div class="top-bar">
+    <div class="top-left"><div class="top-btn">▶</div><div class="top-btn">■</div><div class="top-btn">入</div><div class="top-btn">2D</div><div class="top-btn">3D</div><div class="top-btn">◎</div><div class="top-btn">↖</div></div>
+    <div class="top-center">第 100 关</div>
+    <div class="top-right"><div class="top-res">🔊</div><div class="top-res">📢</div><div class="top-res">⋮</div><div class="top-res">1280×720</div></div>
+  </div>
+  <div class="left-panels">
+    <div class="panel"><div class="panel-h">准备中 <span style="color:#5a6478;font-size:8px">⏱ 00:00</span></div><div class="panel-b"><div class="status-line"><span>单位</span><span>我方 0 / 敌方 0</span></div><div class="status-line"><span>击毁</span><span>我方 0 / 敌方 0</span></div><div class="status-line"><span>伤害</span><span>我方 0 / 敌方 0</span></div><div class="buff-list"><div class="buff-item">相位仪：攻速 <span class="val-pos">+11%</span> 能量恢复 <span class="val-pos">+21%</span> 暴击率 <span class="val-pos">+7%</span></div><div class="buff-item">符文：生命 <span class="val-pos">+20%</span> 攻击 <span class="val-pos">+45%</span> 暴击 <span class="val-pos">+15%</span> 命中 <span class="val-pos">+20%</span></div><div class="buff-item">[强袭] 攻击 <span class="val-pos">+18%</span> 生命 <span class="val-pos">+18%</span></div></div></div></div>
+    <div class="panel"><div class="panel-h">资源 <div class="expand-btn">展开</div></div><div class="panel-b"><div class="resource-row"><span class="resource-icon">⚡</span><span class="resource-name">能量块</span><span class="resource-val" style="color:#f59e0b">4.6K</span></div><div class="resource-row"><span class="resource-icon">💎</span><span class="resource-name">纳米材料</span><span class="resource-val" style="color:#00d4ff">9.7K</span></div></div></div>
+  </div>
+  <div class="action-stack"><div class="act-btn act-green">▶</div><div class="act-btn act-yellow">⏸</div><div class="act-btn act-red">🚩</div><div class="act-btn act-blue">←</div></div>
+  <div class="overlay"></div>
+  <div class="modal">
+    <div class="m-top"><div><span class="m-title">战斗卡阵列</span><span class="m-sub">COMBAT ROSTER</span></div><div class="m-stats">共 <span>24</span> · 兵种 <span>5</span> · 时代 <span>4</span> · 满星 <span>0</span></div><div class="m-close">关闭</div></div>
+    <div class="m-tabs"><div class="tab active">战斗卡</div><div class="tab">改造</div><div class="tab">符文</div><div class="tab">相位仪</div></div>
+    <div class="m-filters"><input class="search-input" type="text" placeholder="搜索卡名/ID/兵种..."><div class="filter-tag active">全部</div><div class="filter-tag">轻装</div><div class="filter-tag">装甲</div><div class="filter-tag">支援</div><div class="filter-tag">空中</div><div class="filter-tag">堡垒</div><div class="filter-count">容量 24/50</div></div>
+    <div class="m-body">
+      <div class="side-filter">
+        <div class="side-section"><div class="side-section-title">兵种分类</div><div class="side-item active">全部 <span class="count">24</span></div><div class="side-item">步兵 <span class="count">6</span></div><div class="side-item">装甲 <span class="count">1</span></div><div class="side-item">防空 <span class="count">1</span></div><div class="side-item">空军 <span class="count">1</span></div><div class="side-item">侦察 <span class="count">3</span></div><div class="side-item">工兵 <span class="count">2</span></div><div class="side-item">堡垒 <span class="count">1</span></div><div class="side-item">通用 <span class="count">2</span></div><div class="side-item">强化 <span class="count">5</span></div></div>
+        <div class="side-section"><div class="side-section-title">装备状态</div><div class="side-item active">全部 <span class="count">24</span></div><div class="side-item">已装配 <span class="count">8</span></div><div class="side-item">待装配 <span class="count">16</span></div></div>
+      </div>
+      <div class="card-area"><div class="card-grid">
+        <div class="card rare selected" onclick="selCard(this)"><div class="card-equipped">✓</div><div class="card-stars">★★★★★</div><div class="card-icon">✈️</div><div class="card-name">F-4鬼怪战机</div><div class="card-id">#001</div></div>
+        <div class="card legendary" onclick="selCard(this)"><div class="card-equipped">✓</div><div class="card-stars">★★★★★</div><div class="card-icon">💣</div><div class="card-name">RPG火箭筒组</div><div class="card-id">#002</div></div>
+        <div class="card legendary" onclick="selCard(this)"><div class="card-equipped">✓</div><div class="card-stars">★★★★★</div><div class="card-icon">🛡️</div><div class="card-name">力场发生器</div><div class="card-id">#003</div></div>
+        <div class="card legendary" onclick="selCard(this)"><div class="card-stars">★★★★★</div><div class="card-icon">🛡️</div><div class="card-name">力场发生器</div><div class="card-id">#004</div></div>
+        <div class="card legendary" onclick="selCard(this)"><div class="card-equipped">✓</div><div class="card-stars">★★★★★</div><div class="card-icon">🤖</div><div class="card-name">侦察机甲</div><div class="card-id">#001</div></div>
+        <div class="card legendary" onclick="selCard(this)"><div class="card-stars">★★★★★</div><div class="card-icon">🛡️</div><div class="card-name">力场发生器</div><div class="card-id">#005</div></div>
+        <div class="card legendary" onclick="selCard(this)"><div class="card-stars">★★★★★</div><div class="card-icon">🦟</div><div class="card-name">蜂群无人机</div><div class="card-id">#001</div></div>
+        <div class="card legendary" onclick="selCard(this)"><div class="card-equipped">✓</div><div class="card-stars">★★★★★</div><div class="card-icon">🔫</div><div class="card-name">离子炮台</div><div class="card-id">#001</div></div>
+        <div class="card legendary" onclick="selCard(this)"><div class="card-equipped">✓</div><div class="card-stars">★★★★★</div><div class="card-icon">💚</div><div class="card-name">纳米修复机</div><div class="card-id">#001</div></div>
+        <div class="card legendary" onclick="selCard(this)"><div class="card-equipped">✓</div><div class="card-stars">★★★★★</div><div class="card-icon">💚</div><div class="card-name">纳米修复机</div><div class="card-id">#002</div></div>
+        <div class="card legendary" onclick="selCard(this)"><div class="card-equipped">✓</div><div class="card-stars">★★★★★</div><div class="card-icon">🤖</div><div class="card-name">侦察机甲</div><div class="card-id">#002</div></div>
+        <div class="card rare" onclick="selCard(this)"><div class="card-stars">★★★★★</div><div class="card-icon">✈️</div><div class="card-name">F-4鬼怪战机</div><div class="card-id">#002</div></div>
+        <div class="card common" onclick="selCard(this)"><div class="card-stars">★★★</div><div class="card-icon">🪖</div><div class="card-name">FT-17轻型坦克</div><div class="card-id">#001</div></div>
+        <div class="card common" onclick="selCard(this)"><div class="card-stars">★★★</div><div class="card-icon">🎯</div><div class="card-name">77mm野战炮</div><div class="card-id">#001</div></div>
+        <div class="card legendary" onclick="selCard(this)"><div class="card-equipped">✓</div><div class="card-stars">★★★★★</div><div class="card-icon">🦾</div><div class="card-name">重装机甲</div><div class="card-id">#001</div></div>
+        <div class="card epic" onclick="selCard(this)"><div class="card-stars">★★★★★★★</div><div class="card-icon">🪐</div><div class="card-name">虚空领主</div><div class="card-id">#003</div></div>
+        <div class="card legendary" onclick="selCard(this)"><div class="card-equipped">✓</div><div class="card-stars">★★★★★</div><div class="card-icon">🔷</div><div class="card-name">光棱坦克</div><div class="card-id">#001</div></div>
+        <div class="card legendary" onclick="selCard(this)"><div class="card-stars">★★★★★</div><div class="card-icon">🦟</div><div class="card-name">蜂群无人机</div><div class="card-id">#002</div></div>
+        <div class="card legendary" onclick="selCard(this)"><div class="card-stars">★★★★★</div><div class="card-icon">🤖</div><div class="card-name">侦察机甲</div><div class="card-id">#003</div></div>
+        <div class="card epic" onclick="selCard(this)"><div class="card-stars">★★★★★★★</div><div class="card-icon">🛸</div><div class="card-name">侦察无人机</div><div class="card-id">#001</div></div>
+        <div class="card legendary" onclick="selCard(this)"><div class="card-stars">★★★★★</div><div class="card-icon">🤖</div><div class="card-name">侦察机甲</div><div class="card-id">#004</div></div>
+        <div class="card empty-slot"><div class="card-icon">+</div><div class="card-name">空位</div></div><div class="card empty-slot"><div class="card-icon">+</div><div class="card-name">空位</div></div><div class="card empty-slot"><div class="card-icon">+</div><div class="card-name">空位</div></div><div class="card empty-slot"><div class="card-icon">+</div><div class="card-name">空位</div></div><div class="card empty-slot"><div class="card-icon">+</div><div class="card-name">空位</div></div><div class="card empty-slot"><div class="card-icon">+</div><div class="card-name">空位</div></div><div class="card empty-slot"><div class="card-icon">+</div><div class="card-name">空位</div></div>
+        <div class="card empty-slot"><div class="card-icon">+</div><div class="card-name">空位</div></div><div class="card empty-slot"><div class="card-icon">+</div><div class="card-name">空位</div></div><div class="card empty-slot"><div class="card-icon">+</div><div class="card-name">空位</div></div><div class="card empty-slot"><div class="card-icon">+</div><div class="card-name">空位</div></div><div class="card empty-slot"><div class="card-icon">+</div><div class="card-name">空位</div></div><div class="card empty-slot"><div class="card-icon">+</div><div class="card-name">空位</div></div><div class="card empty-slot"><div class="card-icon">+</div><div class="card-name">空位</div></div>
+      </div></div>
+    </div>
+  </div>
+  <div class="bot-nav">
+    <div class="nav-item active"><span class="nav-icon">🎒</span><span class="nav-label">背包</span></div><div class="nav-item"><span class="nav-icon">⬆️</span><span class="nav-label">成长</span></div><div class="nav-item"><span class="nav-icon">🏳️</span><span class="nav-label">势力</span></div><div class="nav-item"><span class="nav-icon">📋</span><span class="nav-label">任务</span></div><div class="nav-item"><span class="nav-icon">⚔️</span><span class="nav-label">战斗</span></div><div class="nav-item"><span class="nav-icon">🛒</span><span class="nav-label">商店</span></div><div class="nav-item"><span class="nav-icon">🏆</span><span class="nav-label">排行</span></div><div class="nav-item"><span class="nav-icon">❓</span><span class="nav-label">情报</span></div><div class="nav-item"><span class="nav-icon">🗺️</span><span class="nav-label">地图</span></div><div class="nav-item"><span class="nav-icon">⚙️</span><span class="nav-label">设置</span></div><div class="nav-item"><span class="nav-icon">📖</span><span class="nav-label">图鉴</span></div><div class="nav-item"><span class="nav-icon">💾</span><span class="nav-label">存档</span></div>
+  </div>
+</div>
+<script>function selCard(c){document.querySelectorAll('.card').forEach(x=>x.classList.remove('selected'));c.classList.add('selected')}</script>
+</body>
+</html>

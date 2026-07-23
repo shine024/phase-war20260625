@@ -35,6 +35,8 @@ signal unit_damaged(unit: Node, is_player: bool, amount: float, at_position: Vec
 signal battle_started()
 signal battle_ended(player_won: bool)
 signal wave_spawned(wave_index: int)
+# v8.x 战斗经验升星：卡牌升星通知（供 UI 刷新）
+signal card_star_up(instance_id: String, old_star: int, new_star: int)
 
 # 相位场驱动器（我方基地）
 signal phase_driver_hp_changed(current: float, maximum: float)

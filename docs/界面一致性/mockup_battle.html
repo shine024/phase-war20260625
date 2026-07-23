@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase War · 战斗界面 Mockup</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Segoe UI","Microsoft YaHei",sans-serif;background:#0d1117;color:#e8ecf4;overflow:hidden;height:100vh}
+.screen{position:relative;width:100%;height:100vh;overflow:hidden}
+
+/* ===== 战场背景 ===== */
+.bg{position:absolute;inset:0;background:linear-gradient(180deg,#2a3a5c 0%,#6b4a6b 20%,#c4653a 45%,#e8a87c 60%,#8b6f47 75%,#5a4a30 85%,#3d3020 100%)}
+.sky{position:absolute;top:0;left:0;right:0;height:45%;background:linear-gradient(180deg,#1a2a4a,#4a3050 40%,#c4653a 100%)}
+.tower{position:absolute;bottom:38%;left:38%;width:6px;height:200px;background:linear-gradient(to top,rgba(0,212,255,.5),rgba(168,85,247,.3),transparent);z-index:1}
+.tower::before{content:"";position:absolute;top:-6px;left:-12px;width:30px;height:30px;border-radius:50%;background:#00d4ff;opacity:.7;box-shadow:0 0 40px #00d4ff}
+.tower-beam{position:absolute;bottom:calc(38% + 190px);left:calc(38% + 2px);width:4px;height:250px;background:linear-gradient(to top,rgba(0,212,255,.3),transparent);filter:blur(4px);z-index:1}
+.ground{position:absolute;bottom:0;left:0;right:0;height:38%;background:linear-gradient(180deg,#6b5a3a,#5a4a30 40%,#3d3020 100%)}
+.scanline{position:absolute;inset:0;pointer-events:none;z-index:50;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.012) 3px,rgba(0,0,0,.012) 6px)}
+
+/* ===== 1. 顶部Godot工具栏 (Y: 0%-5%) ===== */
+.top-bar{position:absolute;top:0;left:0;right:0;height:5vh;background:rgba(20,25,35,.9);border-bottom:1px solid rgba(42,53,80,.5);display:flex;align-items:center;justify-content:space-between;padding:0 10px;z-index:20;font-size:10px}
+.top-left{display:flex;gap:4px}.top-btn{width:16px;height:16px;border-radius:2px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:8px;color:#5a6478;cursor:pointer}
+.top-center{position:absolute;left:50%;transform:translateX(-50%);font-size:15px;font-weight:700;color:rgba(255,255,255,.7);letter-spacing:2px;text-shadow:0 0 8px rgba(0,0,0,.6)}
+.top-right{display:flex;gap:4px}.top-res{padding:1px 6px;border-radius:2px;background:rgba(0,0,0,.4);color:#5a6478;font-family:monospace;font-size:9px}
+
+/* ===== 2. 左侧面板 (X: 0%-22%, Y: 5%-62%) ===== */
+.left-panel{position:absolute;top:5vh;left:0;width:22vw;height:57vh;background:rgba(10,14,23,.88);border-right:1px solid rgba(42,53,80,.6);z-index:15;display:flex;flex-direction:column;overflow:hidden}
+.panel-section{padding:8px 10px;border-bottom:1px solid rgba(42,53,80,.4)}
+.panel-title{font-size:11px;font-weight:700;color:#8b95a8;margin-bottom:4px;display:flex;align-items:center;justify-content:space-between}
+.panel-subtitle{font-size:10px;color:#5a6478}
+.status-line{display:flex;justify-content:space-between;font-size:10px;color:#8b95a8;padding:2px 0}
+.status-line span:last-child{color:#e8ecf4;font-family:monospace}
+.buff-list{display:flex;flex-direction:column;gap:3px;margin-top:6px}
+.buff-item{font-size:9px;color:#8b95a8;line-height:1.3;padding:3px 5px;border-radius:3px;background:rgba(0,0,0,.2)}
+.val-pos{color:#22c55e;font-weight:600}
+.resource-row{display:flex;align-items:center;gap:6px;padding:3px 0}
+.resource-icon{font-size:12px}.resource-name{font-size:10px;color:#8b95a8;flex:1}
+.resource-val{font-size:12px;font-weight:700;font-family:monospace}
+.expand-btn{font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(0,212,255,.15);color:#00d4ff;border:1px solid rgba(0,212,255,.3);cursor:pointer}
+.deploy-guide{background:rgba(10,14,23,.92);border:1px solid rgba(42,53,80,.6);border-radius:4px;padding:6px 8px;margin-bottom:6px}
+.deploy-guide .title{font-size:11px;font-weight:700;color:#22c55e;margin-bottom:3px}
+.deploy-guide .line{font-size:10px;color:#e8ecf4;padding:1px 0}
+.deploy-guide .muted{color:#8b95a8}
+
+/* ===== 3. 战场中央 (X: 22%-100%, Y: 5%-62%) ===== */
+.battlefield{position:absolute;top:5vh;left:22vw;right:0;bottom:38vh;z-index:5;overflow:hidden}
+.unit-sprite{position:absolute;font-size:24px;filter:drop-shadow(0 0 6px rgba(0,212,255,.4))}
+.unit-sprite.enemy{filter:drop-shadow(0 0 6px rgba(239,68,68,.3))}
+.dmg-float{position:absolute;font-size:18px;font-weight:800;color:#ef4444;text-shadow:0 0 8px rgba(239,68,68,.5);animation:dmgPulse 1.2s infinite ease-in-out;z-index:6}
+@keyframes dmgPulse{0%,100%{transform:translateY(0) scale(1);opacity:1}50%{transform:translateY(-6px) scale(1.08);opacity:.7}}
+.buff-float{position:absolute;top:5%;left:50%;transform:translateX(-50%);z-index:8;display:flex;flex-direction:column;gap:2px;pointer-events:none}
+.buff-float span{font-size:10px;font-weight:600;text-shadow:0 0 6px rgba(0,0,0,.9);white-space:nowrap}
+.buff-float .green{color:#22c55e}.buff-float .white{color:rgba(255,255,255,.7)}
+
+/* ===== 4. 底部手牌区 (Y: 62%-82%) ===== */
+.bottom-hand{position:absolute;bottom:18vh;left:0;right:0;height:20vh;z-index:15;display:flex;flex-direction:column;align-items:center;padding:3px 12px;background:rgba(10,14,23,.6)}
+.skill-row{display:flex;align-items:center;gap:6px;margin-bottom:3px;width:100%}
+.auto-btn{padding:3px 10px;border-radius:4px;background:rgba(30,40,60,.8);border:1px solid #2a3550;color:#8b95a8;font-size:10px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px}
+.toggle{width:22px;height:12px;border-radius:6px;background:rgba(0,0,0,.4);border:1px solid #2a3550;position:relative}.toggle.on{background:rgba(0,212,255,.2);border-color:#00d4ff}.toggle::after{content:"";position:absolute;top:2px;left:2px;width:7px;height:7px;border-radius:50%;background:#5a6478;transition:all .2s}.toggle.on::after{left:10px;background:#00d4ff}
+.skill-orb{width:30px;height:30px;border-radius:50%;border:2px solid;display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;transition:all .2s;position:relative}
+.skill-orb:hover{transform:scale(1.12)}.skill-orb.purple{border-color:#a855f7;background:rgba(168,85,247,.15)}.skill-orb.red{border-color:#ef4444;background:rgba(239,68,68,.15)}.skill-orb.blue{border-color:#00d4ff;background:rgba(0,212,255,.15)}
+.skill-key{position:absolute;bottom:-1px;right:-1px;font-size:7px;font-weight:700;background:rgba(0,0,0,.7);color:#5a6478;padding:0 2px;border-radius:2px}
+.hand-wrap{display:flex;align-items:flex-end;gap:0;flex:1;overflow-x:auto;scrollbar-width:none}
+.hand-wrap::-webkit-scrollbar{display:none}
+.card{min-width:52px;height:100%;border-radius:4px;border:2px solid;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(0,0,0,.3));display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:4px 2px;cursor:pointer;transition:all .2s;flex-shrink:0;position:relative}
+.card:hover{transform:translateY(-5px)}.card.sel{transform:translateY(-10px);box-shadow:0 6px 20px rgba(0,0,0,.5);z-index:5}
+.card.mythic{border-color:#fbbf24}.card.legendary{border-color:#a855f7}.card.rare{border-color:#00d4ff}.card.common{border-color:#22c55e}
+.card.disabled{opacity:.35;filter:grayscale(.6)}.card.disabled:hover{transform:none}
+.card-stars{font-size:6px;color:#fbbf24;line-height:1}.card-icon{font-size:16px}.card-name{font-size:7px;font-weight:600;text-align:center;color:#fff;line-height:1.1;max-width:48px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card-cost{font-size:7px;font-weight:700;color:#00d4ff;font-family:monospace;background:rgba(0,0,0,.4);padding:1px 3px;border-radius:2px}.card.mythic .card-cost{color:#fbbf24}
+.card.hero{min-width:68px}
+.hero-tag{position:absolute;top:-6px;left:50%;transform:translateX(-50%);font-size:6px;font-weight:700;color:#fbbf24;background:rgba(251,191,36,.15);padding:1px 4px;border-radius:2px;white-space:nowrap}
+.empty-slot{border-style:dashed;border-color:rgba(34,197,94,.2);background:rgba(34,197,94,.03)}.empty-slot .card-icon{font-size:14px;color:#22c55e;opacity:.5}.empty-slot .card-name{color:#22c55e}
+
+/* ===== 5. 底部导航栏 (Y: 82%-94%) ===== */
+.bot-nav{position:absolute;bottom:6vh;left:0;right:0;height:12vh;background:rgba(15,20,30,.95);border-top:1px solid #2a3550;display:flex;align-items:center;justify-content:center;gap:2px;z-index:20}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:1px;padding:3px 8px;border-radius:4px;cursor:pointer;transition:all .2s}.nav-item:hover{background:rgba(255,255,255,.04)}.nav-item.active{background:rgba(0,212,255,.1)}
+.nav-icon{font-size:12px}.nav-label{font-size:7px;color:#5a6478;font-weight:600}.nav-item.active .nav-label{color:#00d4ff}
+
+/* ===== 6. 右侧操作按钮 (右下角，与导航栏同高度) ===== */
+.action-stack{position:absolute;bottom:6vh;right:0;width:12vw;height:12vh;display:flex;align-items:center;justify-content:center;gap:4px;z-index:20}
+.act-btn{width:28px;height:28px;border-radius:4px;border:1px solid;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;transition:all .2s}.act-btn:hover{transform:scale(1.08)}
+.act-green{background:rgba(34,197,94,.2);border-color:rgba(34,197,94,.4);color:#22c55e}.act-yellow{background:rgba(245,158,11,.2);border-color:rgba(245,158,11,.4);color:#f59e0b}.act-red{background:rgba(239,68,68,.2);border-color:rgba(239,68,68,.4);color:#ef4444}.act-blue{background:rgba(0,212,255,.2);border-color:rgba(0,212,255,.4);color:#00d4ff}
+</style>
+</head>
+<body>
+<div class="screen">
+  <div class="bg"><div class="sky"></div><div class="tower"></div><div class="tower-beam"></div><div class="ground"></div></div>
+  <div class="scanline"></div>
+
+  <!-- 1. TOP BAR (Y: 0%-5%) -->
+  <div class="top-bar">
+    <div class="top-left"><div class="top-btn">▶</div><div class="top-btn">■</div><div class="top-btn">入</div><div class="top-btn">2D</div><div class="top-btn">3D</div><div class="top-btn">◎</div><div class="top-btn">↖</div></div>
+    <div class="top-center">第 100 关</div>
+    <div class="top-right"><div class="top-res">🔊</div><div class="top-res">📢</div><div class="top-res">⋮</div><div class="top-res">1280×720</div></div>
+  </div>
+
+  <!-- 2. LEFT PANEL (X: 0%-22%, Y: 5%-62%) -->
+  <div class="left-panel">
+    <div class="panel-section">
+      <div class="deploy-guide">
+        <div class="title">战斗中</div>
+        <div class="line muted">我方刷新 · 部署：点绿槽再点战场</div>
+        <div class="line">当前 我方：<span style="color:#00d4ff">3</span> / 7</div>
+      </div>
+      <div class="panel-title">准备中 <span class="panel-subtitle">⏱ 00:06</span></div>
+      <div class="status-line"><span>时间</span><span>00:06</span></div>
+      <div class="status-line"><span>单位</span><span>我方:3 敌方:6</span></div>
+      <div class="status-line"><span>击毁</span><span>我方:0 敌方:0</span></div>
+      <div class="status-line"><span>伤害</span><span>我方:2420 敌方:0</span></div>
+      <div class="buff-list">
+        <div class="buff-item">相位仪：卡牌伤害 <span class="val-pos">+14%</span> 经验 <span class="val-pos">+21%</span> 部署范围 <span class="val-pos">+21%</span></div>
+        <div class="buff-item">符文：生命 <span class="val-pos">+20%</span> 攻击 <span class="val-pos">+45%</span> 暴击 <span class="val-pos">+15%</span> 命中 <span class="val-pos">+20%</span></div>
+        <div class="buff-item">[强袭] 攻击 <span class="val-pos">+18%</span> 生命 <span class="val-pos">+18%</span></div>
+      </div>
+    </div>
+    <div class="panel-section" style="flex:1">
+      <div class="panel-title">资源 <div class="expand-btn">展开</div></div>
+      <div class="resource-row"><span class="resource-icon">⚡</span><span class="resource-name">能量块</span><span class="resource-val" style="color:#f59e0b">4.6K</span></div>
+      <div class="resource-row"><span class="resource-icon">💎</span><span class="resource-name">纳米材料</span><span class="resource-val" style="color:#00d4ff">9.7K</span></div>
+    </div>
+  </div>
+
+  <!-- 3. BATTLEFIELD (X: 22%-100%, Y: 5%-62%) -->
+  <div class="battlefield">
+    <div class="buff-float">
+      <span class="green">+14% 伤害</span><span class="green">+21% 经验</span><span class="green">+20% 生命</span><span class="green">+45% 攻击</span><span class="white">相位仪 · 全属性提升中</span>
+    </div>
+    <div class="unit-sprite" style="bottom:30%;left:35%">🔫</div>
+    <div class="unit-sprite enemy" style="bottom:25%;left:60%">🤖</div>
+    <div class="unit-sprite" style="bottom:35%;left:25%">🛡️</div>
+    <div class="dmg-float" style="top:40%;right:20%">35,758</div>
+  </div>
+
+  <!-- 4. BOTTOM HAND (Y: 62%-82%) -->
+  <div class="bottom-hand">
+    <div class="skill-row">
+      <div class="auto-btn"><div class="toggle on"></div>自动</div>
+      <div class="skill-orb purple" title="技能1"><span style="font-size:10px">✦</span><span class="skill-key">1</span></div>
+      <div class="skill-orb red" title="技能2"><span style="font-size:10px">◆</span><span class="skill-key">2</span></div>
+      <div class="skill-orb blue" title="技能3"><span style="font-size:10px">●</span><span class="skill-key">3</span></div>
+    </div>
+    <div class="hand-wrap">
+      <div class="card hero mythic sel"><div class="hero-tag">永纪-终式 ★7 Lv.16 MAX</div><div class="card-stars">★★★★★★★</div><div class="card-icon">💎</div><div class="card-name">永纪·终式</div><div class="card-cost">神话 Lv.30</div></div>
+      <div class="card rare" onclick="selCard(this)"><div class="card-stars">★★★</div><div class="card-icon">🔫</div><div class="card-name">离子炮台</div><div class="card-cost">1⚡</div></div>
+      <div class="card legendary" onclick="selCard(this)"><div class="card-stars">★★★★★</div><div class="card-icon">🚀</div><div class="card-name">导弹发射</div><div class="card-cost">2⚡</div></div>
+      <div class="card rare" onclick="selCard(this)"><div class="card-stars">★★★</div><div class="card-icon">🛡️</div><div class="card-name">重装步兵</div><div class="card-cost">1⚡</div></div>
+      <div class="card common disabled" onclick="selCard(this)"><div class="card-stars">★★</div><div class="card-icon">💣</div><div class="card-name">RPG火箭班</div><div class="card-cost">1⚡</div></div>
+      <div class="card empty-slot" onclick="selCard(this)"><div class="card-icon">+</div><div class="card-name">空槽</div></div>
+      <div class="card rare" onclick="selCard(this)"><div class="card-stars">★★★</div><div class="card-icon">🛰️</div><div class="card-name">轨道打击</div><div class="card-cost">2⚡</div></div>
+      <div class="card legendary" onclick="selCard(this)"><div class="card-stars">★★★★★</div><div class="card-icon">👻</div><div class="card-name">幻影特工</div><div class="card-cost">2⚡</div></div>
+      <div class="card mythic" onclick="selCard(this)"><div class="card-stars">★★★★★★★</div><div class="card-icon">⚡</div><div class="card-name">相位核心</div><div class="card-cost">3⚡</div></div>
+      <div class="card rare" onclick="selCard(this)"><div class="card-stars">★★★</div><div class="card-icon">🔮</div><div class="card-name">符文碎片</div><div class="card-cost">1⚡</div></div>
+      <div class="card rare" onclick="selCard(this)"><div class="card-stars">★★★</div><div class="card-icon">🗼</div><div class="card-name">能量塔</div><div class="card-cost">2⚡</div></div>
+      <div class="card legendary" onclick="selCard(this)"><div class="card-stars">★★★★★</div><div class="card-icon">🪐</div><div class="card-name">虚空领主</div><div class="card-cost">3⚡</div></div>
+    </div>
+  </div>
+
+  <!-- 5. BOTTOM NAV (Y: 82%-94%) -->
+  <div class="bot-nav">
+    <div class="nav-item"><span class="nav-icon">🎒</span><span class="nav-label">背包</span></div>
+    <div class="nav-item"><span class="nav-icon">⬆️</span><span class="nav-label">成长</span></div>
+    <div class="nav-item"><span class="nav-icon">🏳️</span><span class="nav-label">势力</span></div>
+    <div class="nav-item"><span class="nav-icon">📋</span><span class="nav-label">任务</span></div>
+    <div class="nav-item active"><span class="nav-icon">⚔️</span><span class="nav-label">战斗</span></div>
+    <div class="nav-item"><span class="nav-icon">🛒</span><span class="nav-label">商店</span></div>
+    <div class="nav-item"><span class="nav-icon">🏆</span><span class="nav-label">排行</span></div>
+    <div class="nav-item"><span class="nav-icon">❓</span><span class="nav-label">情报</span></div>
+    <div class="nav-item"><span class="nav-icon">🗺️</span><span class="nav-label">地图</span></div>
+    <div class="nav-item"><span class="nav-icon">⚙️</span><span class="nav-label">设置</span></div>
+    <div class="nav-item"><span class="nav-icon">📖</span><span class="nav-label">图鉴</span></div>
+    <div class="nav-item"><span class="nav-icon">💾</span><span class="nav-label">存档</span></div>
+  </div>
+
+  <!-- 6. RIGHT ACTION BUTTONS (Y: 82%-94%, X: 88%-100%) -->
+  <div class="action-stack">
+    <div class="act-btn act-green" title="开始">▶</div>
+    <div class="act-btn act-yellow" title="暂停">⏸</div>
+    <div class="act-btn act-red" title="旗帜">🚩</div>
+    <div class="act-btn act-blue" title="返回">←</div>
+  </div>
+</div>
+<script>function selCard(c){document.querySelectorAll('.card').forEach(x=>x.classList.remove('sel'));c.classList.add('sel')}</script>
+</body>
+</html>

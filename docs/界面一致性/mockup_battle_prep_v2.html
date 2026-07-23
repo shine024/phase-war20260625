@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase War · 战斗准备界面 Mockup v2</title>
+<style>
+  :root {
+    --bg:#0a0e17;--surface:#111827;--card-bg:#1a2236;--border:#2a3550;
+    --text:#e8ecf4;--muted:#8b95a8;--dim:#5a6478;
+    --cyan:#00d4ff;--purple:#a855f7;--orange:#f59e0b;--green:#22c55e;--red:#ef4444;--mythic:#fbbf24;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:"Segoe UI","Microsoft YaHei",sans-serif;background:#0d1117;color:var(--text);overflow:hidden;height:100vh}
+
+  .screen{position:relative;width:100%;height:100vh;background:linear-gradient(180deg,#1a2a4a 0%,#2d1f3d 25%,#c4653a 55%,#e8a87c 70%,#8b6f47 85%,#3d3020 100%);overflow:hidden}
+
+  /* BG */
+  .sky-glow{position:absolute;top:10%;left:50%;width:60%;height:40%;background:radial-gradient(ellipse,rgba(255,160,80,.15),transparent 70%)}
+  .tower{position:absolute;bottom:38%;left:42%;width:4px;height:180px;background:linear-gradient(to top,rgba(0,212,255,.6),rgba(168,85,247,.4),transparent);box-shadow:0 0 40px rgba(0,212,255,.3),0 0 80px rgba(168,85,247,.15)}
+  .tower::before{content:"";position:absolute;top:-4px;left:-10px;width:24px;height:24px;border-radius:50%;background:var(--cyan);opacity:.7;box-shadow:0 0 30px var(--cyan),0 -40px 20px rgba(0,212,255,.3)}
+  .tower-beam{position:absolute;bottom:calc(38% + 170px);left:calc(42% - 1px);width:3px;height:200px;background:linear-gradient(to top,rgba(0,212,255,.4),transparent);filter:blur(2px)}
+  .terrain{position:absolute;bottom:0;left:0;right:0;height:35%;background:linear-gradient(180deg,#5a4a30 0%,#3d3020 40%,#2a2015 100%);border-top:1px solid rgba(255,255,255,.05)}
+  .trench{position:absolute;bottom:0;left:0;right:0;height:15%;background:linear-gradient(180deg,rgba(30,25,15,.8),rgba(15,12,8,.95))}
+  .barbed-wire{position:absolute;bottom:32%;left:5%;width:200px;height:60px;border-top:2px solid rgba(100,80,60,.4);border-bottom:2px solid rgba(100,80,60,.3);background:repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(100,80,60,.2) 8px,rgba(100,80,60,.2) 9px)}
+  .crate{position:absolute;bottom:34%;right:15%;width:40px;height:35px;background:rgba(40,80,40,.5);border:1px solid rgba(80,120,80,.4);border-radius:2px}
+  .scanline{position:absolute;inset:0;pointer-events:none;z-index:50;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.015) 3px,rgba(0,0,0,.015) 6px)}
+
+  /* TOP BAR */
+  .top-bar{position:absolute;top:0;left:0;right:0;height:36px;background:rgba(20,25,35,.85);border-bottom:1px solid rgba(42,53,80,.5);display:flex;align-items:center;justify-content:space-between;padding:0 12px;z-index:20;font-size:11px}
+  .top-left{display:flex;align-items:center;gap:6px}
+  .top-icon{width:18px;height:18px;border-radius:3px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--dim);cursor:pointer}
+  .top-center{position:absolute;left:50%;transform:translateX(-50%);font-size:16px;font-weight:700;color:rgba(255,255,255,.7);text-shadow:0 0 10px rgba(0,0,0,.5);letter-spacing:2px}
+  .top-right{display:flex;align-items:center;gap:6px}
+  .res-badge{padding:2px 8px;border-radius:3px;background:rgba(0,0,0,.4);font-family:monospace;color:var(--dim);font-size:10px}
+
+  /* LEFT PANELS */
+  .left-panels{position:absolute;top:44px;left:10px;width:210px;z-index:15;display:flex;flex-direction:column;gap:6px}
+  .info-panel{background:rgba(10,14,23,.88);border:1px solid rgba(42,53,80,.6);border-radius:5px}
+  .info-header{padding:6px 10px;border-bottom:1px solid rgba(42,53,80,.4);font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;display:flex;align-items:center;justify-content:space-between}
+  .info-body{padding:6px 10px}
+  .status-line{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);padding:1px 0}
+  .status-line span:last-child{color:var(--text);font-family:monospace}
+  .buff-list{display:flex;flex-direction:column;gap:3px;margin-top:5px}
+  .buff-item{font-size:9px;color:var(--muted);line-height:1.3;padding:2px 5px;border-radius:3px;background:rgba(0,0,0,.2)}
+  .val-pos{color:var(--green);font-weight:600}
+  .val-neg{color:var(--red);font-weight:600}
+  .resource-row{display:flex;align-items:center;gap:6px;padding:2px 0}
+  .resource-icon{font-size:12px}
+  .resource-name{font-size:10px;color:var(--muted);flex:1}
+  .resource-val{font-size:12px;font-weight:700;font-family:monospace}
+  .resource-expand{font-size:9px;padding:1px 6px;border-radius:3px;background:rgba(0,212,255,.15);color:var(--cyan);border:1px solid rgba(0,212,255,.3);cursor:pointer}
+
+  /* BUFF OVERLAY */
+  .buff-overlay{position:absolute;top:90px;left:230px;z-index:8;display:flex;flex-direction:column;gap:1px}
+  .buff-text{font-size:10px;font-weight:600;text-shadow:0 0 6px rgba(0,0,0,.8);white-space:nowrap}
+  .buff-text.green{color:var(--green)}
+  .buff-text.white{color:rgba(255,255,255,.7)}
+
+  /* BATTLEFIELD GRID */
+  .battlefield-grid{position:absolute;top:44px;left:235px;right:0;bottom:195px;display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:5}
+  .grid-container{display:flex;gap:60px;align-items:center}
+  .side-label{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:3px 10px;border-radius:3px;margin-bottom:6px}
+  .side-player{color:var(--cyan);background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.2)}
+  .side-enemy{color:var(--red);background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2)}
+  .deploy-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .deploy-point{width:48px;height:48px;border-radius:50%;border:2px dashed rgba(255,255,255,.15);background:rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;font-size:18px;transition:all .2s}
+  .deploy-point.filled{border-style:solid;border-color:rgba(0,212,255,.4);background:rgba(0,212,255,.08);box-shadow:0 0 12px rgba(0,212,255,.15)}
+  .deploy-point.enemy{border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.05);box-shadow:0 0 12px rgba(239,68,68,.1)}
+  .deploy-point.empty{opacity:.4}
+
+  .damage-float{position:absolute;top:32%;left:55%;font-size:24px;font-weight:800;color:var(--red);text-shadow:0 0 10px rgba(239,68,68,.5);animation:damagePulse 1.5s infinite ease-in-out}
+  @keyframes damagePulse{0%,100%{transform:translateY(0);opacity:1}50%{transform:translateY(-8px);opacity:.7}}
+
+  /* RIGHT ACTION BUTTONS */
+  .action-stack{position:absolute;right:10px;bottom:205px;display:flex;flex-direction:column;gap:3px;z-index:15}
+  .action-btn{width:32px;height:32px;border-radius:4px;border:1px solid;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;transition:all .2s}
+  .action-btn:hover{transform:scale(1.05)}
+  .btn-green{background:rgba(34,197,94,.2);border-color:rgba(34,197,94,.4);color:var(--green)}
+  .btn-yellow{background:rgba(245,158,11,.2);border-color:rgba(245,158,11,.4);color:var(--orange)}
+  .btn-red{background:rgba(239,68,68,.2);border-color:rgba(239,68,68,.4);color:var(--red)}
+  .btn-blue{background:rgba(0,212,255,.2);border-color:rgba(0,212,255,.4);color:var(--cyan)}
+
+  /* BOTTOM AREA */
+  .bottom-area{position:absolute;bottom:0;left:0;right:0;height:195px;background:linear-gradient(0deg,rgba(10,14,23,.97) 0%,rgba(10,14,23,.9) 70%,transparent 100%);z-index:15;display:flex;flex-direction:column;align-items:center;padding:6px 12px 4px}
+
+  .skill-row{display:flex;align-items:center;gap:6px;margin-bottom:6px;padding-left:2px;width:100%}
+  .auto-btn{padding:4px 10px;border-radius:5px;background:rgba(30,40,60,.8);border:1px solid var(--border);color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px}
+  .auto-toggle{width:24px;height:14px;border-radius:7px;background:rgba(0,0,0,.4);border:1px solid var(--border);position:relative}
+  .auto-toggle.on{background:rgba(0,212,255,.2);border-color:var(--cyan)}
+  .auto-toggle::after{content:"";position:absolute;top:2px;left:2px;width:8px;height:8px;border-radius:50%;background:var(--dim);transition:all .2s}
+  .auto-toggle.on::after{left:12px;background:var(--cyan)}
+  .skill-btn{width:34px;height:34px;border-radius:50%;border:2px solid;display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;transition:all .2s;position:relative}
+  .skill-btn:hover{transform:scale(1.1)}
+  .skill-btn.purple{border-color:var(--purple);background:rgba(168,85,247,.15)}
+  .skill-btn.red{border-color:var(--red);background:rgba(239,68,68,.15)}
+  .skill-btn.blue{border-color:var(--cyan);background:rgba(0,212,255,.15)}
+  .skill-key{position:absolute;bottom:-1px;right:-1px;font-size:7px;font-weight:700;background:rgba(0,0,0,.7);color:var(--dim);padding:0 3px;border-radius:2px}
+
+  /* HAND CARDS */
+  .hand-wrapper{display:flex;align-items:flex-end;gap:0;flex:1;overflow-x:auto;padding:0 2px;scrollbar-width:none}
+  .hand-wrapper::-webkit-scrollbar{display:none}
+  .hand-card{min-width:64px;height:92px;border-radius:5px;border:2px solid;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(0,0,0,.3));display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:5px 3px;cursor:pointer;transition:all .2s;flex-shrink:0;position:relative}
+  .hand-card:hover{transform:translateY(-8px)}
+  .hand-card.selected{transform:translateY(-16px);box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:5}
+  .hand-card.mythic{border-color:var(--mythic)}
+  .hand-card.legendary{border-color:var(--purple)}
+  .hand-card.rare{border-color:var(--cyan)}
+  .hand-card.common{border-color:var(--green)}
+  .hc-stars{font-size:7px;color:var(--mythic);line-height:1}
+  .hc-icon{font-size:20px}
+  .hc-name{font-size:8px;font-weight:600;text-align:center;color:#fff;line-height:1.1;max-width:58px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hc-cost{font-size:8px;font-weight:700;color:var(--cyan);font-family:monospace;background:rgba(0,0,0,.4);padding:1px 4px;border-radius:2px}
+  .hand-card.mythic .hc-cost{color:var(--mythic)}
+  .hand-card.hero{min-width:80px;height:104px}
+  .hero-tag{position:absolute;top:-7px;left:50%;transform:translateX(-50%);font-size:7px;font-weight:700;color:var(--mythic);background:rgba(251,191,36,.15);padding:1px 5px;border-radius:2px;white-space:nowrap}
+
+  /* BOTTOM NAV */
+  .bottom-nav{position:absolute;bottom:3px;left:50%;transform:translateX(-50%);display:flex;gap:1px;background:rgba(15,20,30,.95);border:1px solid var(--border);border-radius:6px;padding:3px 4px;z-index:20}
+  .nav-item{display:flex;flex-direction:column;align-items:center;gap:1px;padding:3px 6px;border-radius:4px;cursor:pointer;transition:all .2s}
+  .nav-item:hover{background:rgba(255,255,255,.04)}
+  .nav-item.active{background:rgba(0,212,255,.1)}
+  .nav-icon{font-size:12px}
+  .nav-label{font-size:7px;color:var(--dim);font-weight:600}
+  .nav-item.active .nav-label{color:var(--cyan)}
+</style>
+</head>
+<body>
+<div class="screen">
+  <div class="sky-glow"></div>
+  <div class="tower"></div>
+  <div class="tower-beam"></div>
+  <div class="terrain"></div>
+  <div class="trench"></div>
+  <div class="barbed-wire"></div>
+  <div class="crate"></div>
+  <div class="scanline"></div>
+
+  <!-- TOP BAR -->
+  <div class="top-bar">
+    <div class="top-left">
+      <div class="top-icon">⏸</div>
+      <div class="top-icon">入</div>
+      <div class="top-icon">2D</div>
+      <div class="top-icon">3D</div>
+      <div class="top-icon">◎</div>
+      <div class="top-icon">↖</div>
+    </div>
+    <div class="top-center">第 100 关</div>
+    <div class="top-right">
+      <div class="res-badge">🔊</div>
+      <div class="res-badge">📢</div>
+      <div class="res-badge">⋮</div>
+      <div class="res-badge">1280×720</div>
+    </div>
+  </div>
+
+  <!-- LEFT PANELS -->
+  <div class="left-panels">
+    <div class="info-panel">
+      <div class="info-header">准备中 <span style="color:var(--dim);font-size:9px;">⏱ 00:00</span></div>
+      <div class="info-body">
+        <div class="status-line"><span>单位</span><span>我方 0 / 敌方 0</span></div>
+        <div class="status-line"><span>击毁</span><span>我方 0 / 敌方 0</span></div>
+        <div class="status-line"><span>伤害</span><span>我方 0 / 敌方 0</span></div>
+        <div class="buff-list">
+          <div class="buff-item">相位仪：攻速 <span class="val-pos">+11%</span> 能量恢复 <span class="val-pos">+21%</span> 暴击率 <span class="val-pos">+7%</span></div>
+          <div class="buff-item">符文：生命 <span class="val-pos">+20%</span> 攻击 <span class="val-pos">+45%</span> 暴击 <span class="val-pos">+15%</span> 命中 <span class="val-pos">+20%</span></div>
+          <div class="buff-item">[强袭] 攻击 <span class="val-pos">+18%</span> 生命 <span class="val-pos">+18%</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="info-panel">
+      <div class="info-header">资源 <div class="resource-expand">展开</div></div>
+      <div class="info-body">
+        <div class="resource-row"><span class="resource-icon">⚡</span><span class="resource-name">能量块</span><span class="resource-val" style="color:var(--orange)">4.6K</span></div>
+        <div class="resource-row"><span class="resource-icon">💎</span><span class="resource-name">纳米材料</span><span class="resource-val" style="color:var(--cyan)">9.7K</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BUFF OVERLAY -->
+  <div class="buff-overlay">
+    <div class="buff-text green">+14% 伤害</div>
+    <div class="buff-text green">+21% 经验</div>
+    <div class="buff-text green">+20% 生命</div>
+    <div class="buff-text green">+45% 攻击</div>
+    <div class="buff-text white">相位仪 · 全属性提升中</div>
+  </div>
+
+  <!-- BATTLEFIELD GRID -->
+  <div class="battlefield-grid">
+    <div class="grid-container">
+      <div>
+        <div class="side-label side-player">我方部署区</div>
+        <div class="deploy-grid">
+          <div class="deploy-point filled" title="离子炮台">🔫</div>
+          <div class="deploy-point filled" title="导弹发射车">🚀</div>
+          <div class="deploy-point empty">+</div>
+          <div class="deploy-point filled" title="RPG火箭班">💣</div>
+          <div class="deploy-point empty">+</div>
+          <div class="deploy-point empty">+</div>
+          <div class="deploy-point empty">+</div>
+          <div class="deploy-point empty">+</div>
+          <div class="deploy-point empty">+</div>
+        </div>
+      </div>
+      <div style="font-size:16px;font-weight:800;color:rgba(255,255,255,.12);letter-spacing:3px;">VS</div>
+      <div>
+        <div class="side-label side-enemy">敌方部署区</div>
+        <div class="deploy-grid">
+          <div class="deploy-point enemy" title="悬浮坦克">🤖</div>
+          <div class="deploy-point enemy" title="巨神机甲">🦾</div>
+          <div class="deploy-point enemy" title="侦察无人机">🛸</div>
+          <div class="deploy-point enemy" style="opacity:.4">+</div>
+          <div class="deploy-point enemy" style="opacity:.4">+</div>
+          <div class="deploy-point enemy" style="opacity:.4">+</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="damage-float">3,558</div>
+
+  <!-- RIGHT ACTION BUTTONS -->
+  <div class="action-stack">
+    <div class="action-btn btn-green" title="开始">▶</div>
+    <div class="action-btn btn-yellow" title="暂停">⏸</div>
+    <div class="action-btn btn-red" title="旗帜">🚩</div>
+    <div class="action-btn btn-blue" title="返回">←</div>
+  </div>
+
+  <!-- BOTTOM AREA -->
+  <div class="bottom-area">
+    <div class="skill-row">
+      <div class="auto-btn"><div class="auto-toggle on"></div>自动</div>
+      <div class="skill-btn purple" title="技能1"><span style="font-size:10px">✦</span><span class="skill-key">1</span></div>
+      <div class="skill-btn red" title="技能2"><span style="font-size:10px">◆</span><span class="skill-key">2</span></div>
+      <div class="skill-btn blue" title="技能3"><span style="font-size:10px">●</span><span class="skill-key">3</span></div>
+    </div>
+    <div class="hand-wrapper">
+      <div class="hand-card hero mythic selected">
+        <div class="hero-tag">永纪-终式 ★7 Lv.16 MAX</div>
+        <div class="hc-stars">★★★★★★★</div>
+        <div class="hc-icon">💎</div>
+        <div class="hc-name">永纪·终式</div>
+        <div class="hc-cost">神话 Lv.30</div>
+      </div>
+      <div class="hand-card rare"><div class="hc-stars">★★★</div><div class="hc-icon">🔫</div><div class="hc-name">离子炮台</div><div class="hc-cost">1⚡</div></div>
+      <div class="hand-card legendary"><div class="hc-stars">★★★★★</div><div class="hc-icon">🚀</div><div class="hc-name">导弹发射</div><div class="hc-cost">2⚡</div></div>
+      <div class="hand-card rare"><div class="hc-stars">★★★</div><div class="hc-icon">🛡️</div><div class="hc-name">重装步兵</div><div class="hc-cost">1⚡</div></div>
+      <div class="hand-card common"><div class="hc-stars">★★</div><div class="hc-icon">💣</div><div class="hc-name">RPG火箭班</div><div class="hc-cost">1⚡</div></div>
+      <div class="hand-card common" style="border-color:rgba(34,197,94,.3);border-style:dashed;background:rgba(34,197,94,.05)">
+        <div class="hc-icon" style="font-size:16px;color:var(--green)">+</div>
+        <div class="hc-name" style="color:var(--green)">空槽</div>
+      </div>
+      <div class="hand-card rare"><div class="hc-stars">★★★</div><div class="hc-icon">🛰️</div><div class="hc-name">轨道打击</div><div class="hc-cost">2⚡</div></div>
+      <div class="hand-card legendary"><div class="hc-stars">★★★★★</div><div class="hc-icon">👻</div><div class="hc-name">幻影特工</div><div class="hc-cost">2⚡</div></div>
+      <div class="hand-card mythic"><div class="hc-stars">★★★★★★★</div><div class="hc-icon">⚡</div><div class="hc-name">相位核心</div><div class="hc-cost">3⚡</div></div>
+      <div class="hand-card rare"><div class="hc-stars">★★★</div><div class="hc-icon">🔮</div><div class="hc-name">符文碎片</div><div class="hc-cost">1⚡</div></div>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <div class="bottom-nav">
+    <div class="nav-item"><span class="nav-icon">🎒</span><span class="nav-label">背包</span></div>
+    <div class="nav-item"><span class="nav-icon">⬆️</span><span class="nav-label">成长</span></div>
+    <div class="nav-item"><span class="nav-icon">🏳️</span><span class="nav-label">势力</span></div>
+    <div class="nav-item"><span class="nav-icon">📋</span><span class="nav-label">任务</span></div>
+    <div class="nav-item active"><span class="nav-icon">⚔️</span><span class="nav-label">战斗</span></div>
+    <div class="nav-item"><span class="nav-icon">🛒</span><span class="nav-label">商店</span></div>
+    <div class="nav-item"><span class="nav-icon">🏆</span><span class="nav-label">排行</span></div>
+    <div class="nav-item"><span class="nav-icon">❓</span><span class="nav-label">情报</span></div>
+    <div class="nav-item"><span class="nav-icon">🗺️</span><span class="nav-label">地图</span></div>
+    <div class="nav-item"><span class="nav-icon">⚙️</span><span class="nav-label">设置</span></div>
+    <div class="nav-item"><span class="nav-icon">📖</span><span class="nav-label">图鉴</span></div>
+    <div class="nav-item"><span class="nav-icon">💾</span><span class="nav-label">存档</span></div>
+  </div>
+</div>
+
+<script>
+document.querySelectorAll('.hand-card').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.hand-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+  });
+});
+document.querySelectorAll('.deploy-point.empty').forEach(slot => {
+  slot.addEventListener('click', () => {
+    const selected = document.querySelector('.hand-card.selected');
+    if (!selected) return;
+    if (selected.querySelector('.hc-name').textContent === '空槽') return;
+    const icon = selected.querySelector('.hc-icon').textContent;
+    const name = selected.querySelector('.hc-name').textContent;
+    slot.className = 'deploy-point filled';
+    slot.innerHTML = icon;
+    slot.title = name;
+  });
+});
+</script>
+</body>
+</html>

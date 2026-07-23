@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase War · 布局规范 Layout Spec</title>
+<style>
+  :root {
+    --bg: #0a0e17;
+    --surface: #111827;
+    --card: #1a2236;
+    --border: #2a3550;
+    --text: #e8ecf4;
+    --muted: #8b95a8;
+    --dim: #5a6478;
+    --cyan: #00d4ff;
+    --purple: #a855f7;
+    --orange: #f59e0b;
+    --green: #22c55e;
+    --red: #ef4444;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; background:var(--bg); color:var(--text); line-height:1.6; }
+  .page { max-width:1400px; margin:0 auto; padding:48px 32px; }
+  .header { text-align:center; margin-bottom:48px; }
+  .header h1 { font-size:36px; font-weight:800; background:linear-gradient(135deg,var(--cyan),var(--purple)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:8px; }
+  .header p { color:var(--muted); font-size:15px; }
+  .section { margin-bottom:56px; }
+  .section-title { font-size:20px; font-weight:700; margin-bottom:20px; display:flex; align-items:center; gap:10px; }
+  .section-title::before { content:""; width:4px; height:24px; background:var(--cyan); border-radius:2px; }
+
+  /* Template cards */
+  .template-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:20px; }
+  .template-card { background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+  .template-header { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  .template-name { font-weight:700; font-size:16px; }
+  .template-badge { font-size:11px; font-weight:700; padding:3px 10px; border-radius:12px; text-transform:uppercase; letter-spacing:0.5px; }
+  .badge-a { background:rgba(0,212,255,0.15); color:var(--cyan); }
+  .badge-b { background:rgba(168,85,247,0.15); color:var(--purple); }
+  .badge-c { background:rgba(245,158,11,0.15); color:var(--orange); }
+  .badge-d { background:rgba(34,197,94,0.15); color:var(--green); }
+  .template-body { padding:20px; }
+  .template-desc { font-size:13px; color:var(--muted); margin-bottom:16px; }
+  .template-diagram { background:rgba(0,0,0,0.3); border-radius:8px; padding:16px; font-family:monospace; font-size:12px; line-height:1.8; color:var(--muted); }
+  .template-diagram .highlight { color:var(--cyan); font-weight:700; }
+
+  /* Spacing system */
+  .spacing-demo { display:flex; flex-direction:column; gap:12px; }
+  .spacing-row { display:flex; align-items:center; gap:16px; }
+  .spacing-label { min-width:80px; font-size:13px; color:var(--muted); font-weight:600; }
+  .spacing-bar { height:28px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; font-family:monospace; }
+  .bar-xs { width:32px; background:rgba(0,212,255,0.15); color:var(--cyan); border:1px solid rgba(0,212,255,0.3); }
+  .bar-sm { width:48px; background:rgba(0,212,255,0.15); color:var(--cyan); border:1px solid rgba(0,212,255,0.3); }
+  .bar-md { width:80px; background:rgba(0,212,255,0.15); color:var(--cyan); border:1px solid rgba(0,212,255,0.3); }
+  .bar-lg { width:112px; background:rgba(168,85,247,0.15); color:var(--purple); border:1px solid rgba(168,85,247,0.3); }
+  .bar-xl { width:160px; background:rgba(168,85,247,0.15); color:var(--purple); border:1px solid rgba(168,85,247,0.3); }
+  .bar-2xl { width:192px; background:rgba(168,85,247,0.15); color:var(--purple); border:1px solid rgba(168,85,247,0.3); }
+
+  /* Grid system */
+  .grid-demo { display:grid; gap:12px; margin-top:16px; }
+  .grid-demo-4 { grid-template-columns:repeat(4,1fr); }
+  .grid-demo-6 { grid-template-columns:repeat(6,1fr); }
+  .grid-cell { background:var(--card); border:1px solid var(--border); border-radius:8px; height:80px; display:flex; align-items:center; justify-content:center; font-size:12px; color:var(--muted); font-weight:600; }
+  .grid-cell.active { background:rgba(0,212,255,0.1); border-color:var(--cyan); color:var(--cyan); }
+
+  /* Before After */
+  .compare-row { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  @media(max-width:800px){ .compare-row{grid-template-columns:1fr;} }
+  .compare-box { border-radius:12px; padding:20px; border:1px solid var(--border); }
+  .compare-box.bad { background:rgba(239,68,68,0.05); }
+  .compare-box.good { background:rgba(34,197,94,0.05); }
+  .compare-label { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:12px; }
+  .bad .compare-label { color:var(--red); }
+  .good .compare-label { color:var(--green); }
+
+  /* Component specs */
+  .component-list { display:flex; flex-direction:column; gap:12px; }
+  .component-item { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px 20px; display:flex; align-items:center; gap:16px; }
+  .component-icon { width:40px; height:40px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+  .icon-cyan { background:rgba(0,212,255,0.15); }
+  .icon-purple { background:rgba(168,85,247,0.15); }
+  .icon-orange { background:rgba(245,158,11,0.15); }
+  .component-info { flex:1; }
+  .component-name { font-weight:700; font-size:15px; margin-bottom:4px; }
+  .component-spec { font-size:13px; color:var(--muted); font-family:monospace; }
+
+  /* Responsive breakpoints */
+  .breakpoint-table { width:100%; border-collapse:collapse; font-size:14px; }
+  .breakpoint-table th { text-align:left; padding:12px 16px; background:rgba(0,0,0,0.3); color:var(--dim); font-size:11px; text-transform:uppercase; letter-spacing:1px; }
+  .breakpoint-table td { padding:12px 16px; border-bottom:1px solid var(--border); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <h1>布局规范 Layout Spec</h1>
+    <p>Phase War 统一页面结构模板 · v1.0</p>
+  </div>
+
+  <!-- Page Templates -->
+  <div class="section">
+    <div class="section-title">页面模板 Page Templates</div>
+    <div class="template-grid">
+      <div class="template-card">
+        <div class="template-header">
+          <div class="template-name">模板 A：列表 + 详情</div>
+          <span class="template-badge badge-a">A</span>
+        </div>
+        <div class="template-body">
+          <div class="template-desc">适用于：改造库、符文图鉴、相位仪中枢</div>
+          <div class="template-diagram">
+            <span class="highlight">┌─────────────────────────────────────┐</span><br>
+            <span class="highlight">│  顶部工具栏 (搜索 + 筛选 + 计数)     │</span><br>
+            <span class="highlight">├──────────┬──────────────────────────┤</span><br>
+            <span class="highlight">│          │                          │</span><br>
+            <span class="highlight">│ 左侧栏   │    内容区域              │</span><br>
+            <span class="highlight">│ (240px)  │    网格 / 列表           │</span><br>
+            <span class="highlight">│ 筛选器   │    (自适应宽度)           │</span><br>
+            <span class="highlight">│          │                          │</span><br>
+            <span class="highlight">└──────────┴──────────────────────────┘</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="template-card">
+        <div class="template-header">
+          <div class="template-name">模板 B：三栏操作</div>
+          <span class="template-badge badge-b">B</span>
+        </div>
+        <div class="template-body">
+          <div class="template-desc">适用于：强化站、改造站、进化系统</div>
+          <div class="template-diagram">
+            <span class="highlight">┌───────────────────────────────────────────────┐</span><br>
+            <span class="highlight">│  顶部资源栏 (纳米 / 合金 / 研究点)             │</span><br>
+            <span class="highlight">├──────────┬──────────────────┬─────────────────┤</span><br>
+            <span class="highlight">│          │                  │                 │</span><br>
+            <span class="highlight">│ 单位列表 │  详情 + 操作      │  进度 / 路径     │</span><br>
+            <span class="highlight">│ (220px)  │  (自适应)         │  (280px)        │</span><br>
+            <span class="highlight">│          │                  │                 │</span><br>
+            <span class="highlight">└──────────┴──────────────────┴─────────────────┘</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="template-card">
+        <div class="template-header">
+          <div class="template-name">模板 C：弹窗选择</div>
+          <span class="template-badge badge-c">C</span>
+        </div>
+        <div class="template-body">
+          <div class="template-desc">适用于：战斗卡阵列、图鉴、背包</div>
+          <div class="template-diagram">
+            <span class="highlight">  ┌─────────────────────────────────┐</span><br>
+            <span class="highlight">  │  标题栏 (关闭按钮)               │</span><br>
+            <span class="highlight">  ├─────────────────────────────────┤</span><br>
+            <span class="highlight">  │  搜索 + 筛选标签                 │</span><br>
+            <span class="highlight">  ├─────────────────────────────────┤</span><br>
+            <span class="highlight">  │                                 │</span><br>
+            <span class="highlight">  │    内容网格 (最大 720px)         │</span><br>
+            <span class="highlight">  │                                 │</span><br>
+            <span class="highlight">  ├─────────────────────────────────┤</span><br>
+            <span class="highlight">  │  底部操作栏                     │</span><br>
+            <span class="highlight">  └─────────────────────────────────┘</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="template-card">
+        <div class="template-header">
+          <div class="template-name">模板 D：战斗界面</div>
+          <span class="template-badge badge-d">D</span>
+        </div>
+        <div class="template-body">
+          <div class="template-desc">适用于：战场、战斗准备、部署阶段</div>
+          <div class="template-diagram">
+            <span class="highlight">┌─────────────────────────────────────┐</span><br>
+            <span class="highlight">│  关卡信息 (居中，带背景面板)         │</span><br>
+            <span class="highlight">├─────────────────────────────────────┤</span><br>
+            <span class="highlight">│                                     │</span><br>
+            <span class="highlight">│         全屏战场区域                │</span><br>
+            <span class="highlight">│                                     │</span><br>
+            <span class="highlight">├──────────────┬──────────────────────┤</span><br>
+            <span class="highlight">│ 左上信息面板 │    底部手牌 + 导航    │</span><br>
+            <span class="highlight">│ (可折叠)     │    (固定 72px)       │</span><br>
+            <span class="highlight">└──────────────┴──────────────────────┘</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Spacing System -->
+  <div class="section">
+    <div class="section-title">间距系统 Spacing System</div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;">
+      <div class="spacing-demo">
+        <div class="spacing-row">
+          <div class="spacing-label">xs · 4px</div>
+          <div class="spacing-bar bar-xs">4px</div>
+          <div style="font-size:12px;color:var(--dim)">元素内紧间距</div>
+        </div>
+        <div class="spacing-row">
+          <div class="spacing-label">sm · 8px</div>
+          <div class="spacing-bar bar-sm">8px</div>
+          <div style="font-size:12px;color:var(--dim)">卡片间距 · 行间距</div>
+        </div>
+        <div class="spacing-row">
+          <div class="spacing-label">md · 12px</div>
+          <div class="spacing-bar bar-md">12px</div>
+          <div style="font-size:12px;color:var(--dim)">网格列间距</div>
+        </div>
+        <div class="spacing-row">
+          <div class="spacing-label">lg · 16px</div>
+          <div class="spacing-bar bar-lg">16px</div>
+          <div style="font-size:12px;color:var(--dim)">面板内边距</div>
+        </div>
+        <div class="spacing-row">
+          <div class="spacing-label">xl · 24px</div>
+          <div class="spacing-bar bar-xl">24px</div>
+          <div style="font-size:12px;color:var(--dim)">区块间距</div>
+        </div>
+        <div class="spacing-row">
+          <div class="spacing-label">2xl · 32px</div>
+          <div class="spacing-bar bar-2xl">32px</div>
+          <div style="font-size:12px;color:var(--dim)">页面级间距</div>
+        </div>
+        <div class="spacing-row">
+          <div class="spacing-label">3xl · 48px</div>
+          <div class="spacing-bar bar-2xl" style="width:224px">48px</div>
+          <div style="font-size:12px;color:var(--dim)">大区块分隔</div>
+        </div>
+      </div>
+      <p style="margin-top:20px;font-size:13px;color:var(--muted)">
+        所有间距必须是 <strong style="color:var(--cyan)">4px 的倍数</strong>。禁止使用 5px、7px、15px 等非标准间距。
+      </p>
+    </div>
+  </div>
+
+  <!-- Grid System -->
+  <div class="section">
+    <div class="section-title">栅格系统 Grid System</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;">
+        <div style="font-weight:700;font-size:15px;margin-bottom:12px;">4 列网格 · 卡牌展示</div>
+        <div class="grid-demo grid-demo-4">
+          <div class="grid-cell">1</div>
+          <div class="grid-cell">2</div>
+          <div class="grid-cell">3</div>
+          <div class="grid-cell">4</div>
+          <div class="grid-cell">5</div>
+          <div class="grid-cell active">6</div>
+          <div class="grid-cell">7</div>
+          <div class="grid-cell">8</div>
+          <div class="grid-cell">9</div>
+          <div class="grid-cell">10</div>
+          <div class="grid-cell active">11</div>
+          <div class="grid-cell">12</div>
+        </div>
+        <div style="margin-top:12px;font-size:12px;color:var(--dim)">适用：卡牌阵列、符文图鉴、装备库</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;">
+        <div style="font-weight:700;font-size:15px;margin-bottom:12px;">6 列网格 · 紧凑展示</div>
+        <div class="grid-demo grid-demo-6">
+          <div class="grid-cell">1</div>
+          <div class="grid-cell">2</div>
+          <div class="grid-cell">3</div>
+          <div class="grid-cell">4</div>
+          <div class="grid-cell">5</div>
+          <div class="grid-cell">6</div>
+          <div class="grid-cell">7</div>
+          <div class="grid-cell active">8</div>
+          <div class="grid-cell">9</div>
+          <div class="grid-cell">10</div>
+          <div class="grid-cell">11</div>
+          <div class="grid-cell">12</div>
+        </div>
+        <div style="margin-top:12px;font-size:12px;color:var(--dim)">适用：小图标列表、状态概览</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Component Specs -->
+  <div class="section">
+    <div class="section-title">组件尺寸规范 Component Sizes</div>
+    <div class="component-list">
+      <div class="component-item">
+        <div class="component-icon icon-cyan">📦</div>
+        <div class="component-info">
+          <div class="component-name">弹窗最大宽度</div>
+          <div class="component-spec">max-width: 90vw / 720px · 圆角: 12px · 阴影: 0 8px 32px rgba(0,0,0,0.4)</div>
+        </div>
+      </div>
+      <div class="component-item">
+        <div class="component-icon icon-purple">📏</div>
+        <div class="component-info">
+          <div class="component-name">左侧栏宽度</div>
+          <div class="component-spec">220-260px · 可折叠至 64px (仅图标)</div>
+        </div>
+      </div>
+      <div class="component-item">
+        <div class="component-icon icon-orange">🎯</div>
+        <div class="component-info">
+          <div class="component-name">底部导航高度</div>
+          <div class="component-spec">64-72px · 图标 ≥ 44×44px · 触控目标安全区</div>
+        </div>
+      </div>
+      <div class="component-item">
+        <div class="component-icon icon-cyan">🃏</div>
+        <div class="component-info">
+          <div class="component-name">卡片最小尺寸</div>
+          <div class="component-spec">120×160px (竖版) / 160×120px (横版) · 间距 8-12px</div>
+        </div>
+      </div>
+      <div class="component-item">
+        <div class="component-icon icon-purple">📐</div>
+        <div class="component-info">
+          <div class="component-name">页面边距</div>
+          <div class="component-spec">16-24px · 内容区最大宽度 1400px</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Responsive -->
+  <div class="section">
+    <div class="section-title">响应式断点 Responsive Breakpoints</div>
+    <table class="breakpoint-table">
+      <thead>
+        <tr><th>断点</th><th>分辨率</th><th>布局策略</th><th>适用场景</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>720p</strong></td>
+          <td>1280×720</td>
+          <td>三栏 → 两栏 (左侧栏可折叠)</td>
+          <td>小屏平板 / 笔记本</td>
+        </tr>
+        <tr>
+          <td><strong>1080p</strong></td>
+          <td>1920×1080</td>
+          <td>完整三栏布局 · 卡片网格更宽松</td>
+          <td>桌面端 / 大屏平板</td>
+        </tr>
+        <tr>
+          <td><strong>Mobile</strong></td>
+          <td>360-430px</td>
+          <td>单栏列表 · 底部抽屉式详情</td>
+          <td>移动端适配</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Before After -->
+  <div class="section">
+    <div class="section-title">当前问题 → 优化方案</div>
+    <div class="compare-row">
+      <div class="compare-box bad">
+        <div class="compare-label">❌ 当前问题</div>
+        <ul style="font-size:14px;color:var(--muted);padding-left:18px;display:flex;flex-direction:column;gap:8px">
+          <li>弹窗尺寸/圆角/边框厚度各不相同</li>
+          <li>三栏 vs 双栏 vs 单栏无规律</li>
+          <li>右侧大面积空白浪费</li>
+          <li>底部导航 12 个图标拥挤</li>
+          <li>各页面边距/列宽/卡片间距不统一</li>
+          <li>成长中枢底部按钮未居中对齐</li>
+        </ul>
+      </div>
+      <div class="compare-box good">
+        <div class="compare-label">✓ 优化方案</div>
+        <ul style="font-size:14px;color:var(--muted);padding-left:18px;display:flex;flex-direction:column;gap:8px">
+          <li>4 套标准模板，全局复用</li>
+          <li>统一使用 4 列/6 列栅格系统</li>
+          <li>空白区域填充相关内容或留白规范化</li>
+          <li>精简为核心 6-8 个入口</li>
+          <li>所有间距遵循 4px 基准</li>
+          <li>按钮组使用 Flexbox 强制居中</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

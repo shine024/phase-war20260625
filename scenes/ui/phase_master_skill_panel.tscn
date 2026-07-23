@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3 uid="uid://bfisk3rxjmrd2"]
+
+[ext_resource type="Script" path="res://scenes/ui/phase_master_skill_panel.gd" id="1_main"]
+
+[node name="PhaseMasterSkillPanel" type="PanelContainer"]
+offset_right = 960.0
+offset_bottom = 640.0
+script = ExtResource("1_main")

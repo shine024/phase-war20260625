@@ -551,7 +551,11 @@ func can_evolve_blueprint(card_id: String, target_card_id: String) -> Dictionary
 	return CardEvolutionManager.can_evolve_blueprint(card_id, target_card_id, self)
 
 func evolve_blueprint(card_id: String, target_card_id: String) -> bool:
-	return CardEvolutionManager.evolve_blueprint(card_id, target_card_id, self)
+	var ok: bool = CardEvolutionManager.evolve_blueprint(card_id, target_card_id, self)
+	if ok:
+		# v7.x: 进化改变第 2 层加成（进化 HP 下限 + 新卡基础值），刷新玩家相位师战力缓存避免面板陈旧
+		_refresh_player_master_eval_safe()
+	return ok
 
 ## ─────────── 军衔系统 ───────────
 ## Facade 委托 → EvolutionHelpers（managers/evolution/evolution_helpers.gd）
@@ -845,6 +849,13 @@ func _flush_deferred_auto_save() -> void:
 		# 兜底：SaveManager 可能未初始化完整，触发状态保存
 		sm.save_state()
 
+# v7.x: 安全刷新玩家相位师战力缓存（强化/改造/进化操作后调用，避免面板显示陈旧缓存）
+# 守卫：PhaseInstrumentManager 未就绪或缺方法时静默跳过（非战斗场景或启动早期）
+func _refresh_player_master_eval_safe() -> void:
+	var pm: Node = get_node_or_null("/root/PhaseInstrumentManager")
+	if pm != null and pm.has_method("refresh_player_master_eval"):
+		pm.refresh_player_master_eval()
+
 # ─────────────────────────────────────────────
 #  新扩展方法：强化改造与进化系统
 # ─────────────────────────────────────────────
@@ -889,6 +900,9 @@ func apply_reinforcement(card: CardResource, target_level: int) -> Dictionary:
 
 	# 自动保存
 	_auto_save("reinforcement")
+
+	# v7.x: 强化改变第 1/2 层加成，刷新玩家相位师战力缓存避免面板陈旧
+	_refresh_player_master_eval_safe()
 
 	return result
 
@@ -997,6 +1011,9 @@ func install_modification(card: CardResource, mod_id: String, slot: int = -1) ->
 
 	# 自动保存
 	_auto_save("modification")
+
+	# v7.x: 改造改变第 1/2 层加成，刷新玩家相位师战力缓存避免面板陈旧
+	_refresh_player_master_eval_safe()
 
 	return result
 

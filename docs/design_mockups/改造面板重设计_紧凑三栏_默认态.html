@@ -1,0 +1,1302 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase War · 改造面板重设计 · 默认态（未选模块）</title>
+<style>
+/* ============================================================
+ * 设计 TOKEN —— 与 resources/design_tokens.gd 1:1 对齐
+ * 改造面板签名色 = --cyan (#06b6d4)
+ * ============================================================ */
+:root {
+  --bg-void:        #060912;
+  --bg-panel:       #0d1320;
+  --bg-card:        #131a2a;
+  --bg-card-hi:     #1a2438;
+  --bg-slot-locked: #0a0f1c;
+  --border-dim:     rgba(120,140,180,0.14);
+  --border:         rgba(160,180,220,0.22);
+  --border-hi:      rgba(120,180,255,0.45);
+
+  --cyan:        #06b6d4;
+  --cyan-soft:   #22d3ee;
+  --cyan-glow:   rgba(6,182,212,0.35);
+
+  --green-up:    #34d399;
+  --red-down:    #ef4444;
+  --amber:       #f59e0b;
+  --violet:      #a78bfa;
+
+  --text:        #e8edf7;
+  --text-mid:    #a8b3c7;
+  --text-dim:    #6b7691;
+  --text-faint:  #454f63;
+
+  --font-display: 'Rajdhani', 'Noto Sans SC', sans-serif;
+  --font-body:    'Noto Sans SC', 'Inter', sans-serif;
+  --font-mono:    'JetBrains Mono', 'Consolas', monospace;
+
+  --kind-infantry: #e5484d;
+  --kind-armor:    #4d7fe5;
+  --kind-air:      #4dcce5;
+
+  --rar-common:    #6b7691;
+  --rar-uncommon:  #22c55e;
+  --rar-rare:      #38bdf8;
+  --rar-epic:      #c084fc;
+  --rar-legendary: #f59e0b;
+  --rar-mythic:    #ef4444;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-void);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 16px;
+  overflow-x: hidden;
+}
+body::before {
+  content: ''; position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(120,140,180,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(120,140,180,0.025) 1px, transparent 1px);
+  background-size: 40px 40px; pointer-events: none; z-index: 0;
+}
+
+.app { max-width: 1360px; margin: 0 auto; position: relative; z-index: 1; }
+
+/* ===== 顶部 brand bar ===== */
+.top-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 16px; margin-bottom: 12px;
+  background: var(--bg-card); border: 1px solid var(--border-dim); border-radius: 6px;
+}
+.top-brand { display: flex; align-items: center; gap: 10px; }
+.top-brand .diamond {
+  width: 18px; height: 18px;
+  background: linear-gradient(135deg, var(--cyan), var(--cyan-soft));
+  transform: rotate(45deg); border-radius: 2px;
+}
+.top-brand h1 {
+  font-family: var(--font-display); font-size: 14px; font-weight: 700;
+  letter-spacing: 0.2em; color: var(--text);
+}
+.top-brand h1 .sub {
+  font-size: 9px; color: var(--text-dim); letter-spacing: 0.15em;
+  margin-left: 8px; font-weight: 400;
+}
+.top-meta {
+  display: flex; gap: 16px; align-items: center;
+  font-family: var(--font-mono); font-size: 10px; color: var(--text-dim);
+  letter-spacing: 0.08em;
+}
+.top-meta b { color: var(--cyan-soft); font-weight: 600; }
+
+/* ===== 面板外框 ===== */
+.panel-frame {
+  width: 1360px; height: 760px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border); border-radius: 10px;
+  overflow: hidden; position: relative;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+  display: grid;
+  grid-template-rows: 48px 36px 1fr 28px;
+}
+.panel-frame::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--cyan) 20%, var(--cyan-soft) 50%, var(--cyan) 80%, transparent);
+  opacity: 0.8; z-index: 5;
+}
+
+/* ===== 标题栏 ===== */
+.title-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px; border-bottom: 1px solid var(--border-dim);
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+}
+.title-left { display: flex; align-items: center; gap: 12px; }
+.title-mark {
+  width: 18px; height: 18px; position: relative;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--cyan-soft);
+}
+.title-mark::before {
+  content: ''; position: absolute; inset: 0;
+  border: 1px solid currentColor; transform: rotate(45deg);
+}
+.title-mark::after {
+  content: ''; position: absolute; inset: 5px;
+  background: currentColor; transform: rotate(45deg); filter: blur(0.5px);
+}
+.title-text {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: 18px; letter-spacing: 0.12em; color: var(--text);
+}
+.title-text .sub {
+  font-size: 10px; letter-spacing: 0.3em; font-weight: 500;
+  margin-left: 10px; opacity: 0.7; color: var(--cyan-soft);
+}
+.title-right { display: flex; align-items: center; gap: 12px; }
+.title-meta-top {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text-dim); letter-spacing: 0.1em;
+}
+.title-meta-top b { color: var(--cyan-soft); }
+.close-btn {
+  width: 24px; height: 24px; border: 1px solid var(--border-dim);
+  background: transparent; color: var(--text-dim);
+  border-radius: 4px; cursor: pointer; font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+}
+.close-btn:hover { color: var(--text); border-color: var(--border); }
+
+/* ===== 资源条 ===== */
+.resource-bar {
+  display: flex; align-items: center; gap: 14px;
+  padding: 0 20px; border-bottom: 1px solid var(--border-dim);
+  background: var(--bg-card); font-family: var(--font-mono); font-size: 11px;
+}
+.res-item {
+  display: flex; align-items: baseline; gap: 6px; color: var(--text-mid);
+}
+.res-item .res-val {
+  font-family: var(--font-display); font-size: 14px;
+  font-weight: 700; color: var(--text);
+}
+.res-item .res-val.cyan { color: var(--cyan-soft); }
+.res-item .res-val.amber { color: var(--amber); }
+.res-item .res-lbl { font-size: 10px; color: var(--text-dim); }
+.res-sep { width: 1px; height: 14px; background: var(--border-dim); }
+.status-line {
+  margin-left: auto; color: var(--text-dim);
+  display: flex; align-items: center; gap: 6px;
+}
+.status-line .on {
+  color: var(--green-up); font-size: 8px;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+/* ===== 三栏布局 ===== */
+.tri-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr 320px;
+  height: 100%; overflow: hidden;
+}
+.col-pane {
+  display: flex; flex-direction: column;
+  border-right: 1px solid var(--border-dim);
+  overflow: hidden; min-width: 0;
+}
+.col-pane:last-child { border-right: none; }
+
+/* ===== 列头 ===== */
+.col-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px; border-bottom: 1px solid var(--border-dim);
+  background: rgba(255,255,255,0.015);
+}
+.col-head.cyan .ch-title { color: var(--cyan-soft); }
+.ch-title {
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--font-display); font-size: 12px;
+  font-weight: 700; letter-spacing: 0.1em;
+}
+.ch-title .pip {
+  width: 5px; height: 5px; border-radius: 50%; background: currentColor;
+}
+.ch-count {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--text-faint); letter-spacing: 0.06em;
+}
+
+/* ===== 筛选 chip ===== */
+.col-filter {
+  display: flex; gap: 4px; padding: 6px 8px;
+  border-bottom: 1px solid var(--border-dim);
+}
+.chip {
+  flex: 1; padding: 4px 8px;
+  font-family: var(--font-display); font-size: 10px; font-weight: 600;
+  letter-spacing: 0.06em; color: var(--text-dim);
+  background: var(--bg-card); border: 1px solid var(--border-dim);
+  border-radius: 3px; cursor: pointer; text-align: center;
+  user-select: none; transition: all 0.12s;
+}
+.chip:hover { color: var(--text-mid); border-color: var(--border); }
+.chip.active.cyan {
+  color: var(--cyan-soft);
+  background: rgba(6,182,212,0.08);
+  border-color: rgba(6,182,212,0.45);
+}
+
+/* ===== 左栏：单位列表 ===== */
+.col-scroll { overflow-y: auto; flex: 1; }
+.col-scroll::-webkit-scrollbar { width: 6px; }
+.col-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.col-scroll::-webkit-scrollbar-track { background: transparent; }
+
+.card-item {
+  display: grid; grid-template-columns: 32px 1fr auto;
+  align-items: center; gap: 8px;
+  padding: 6px 10px; margin: 2px 6px;
+  border-radius: 4px; cursor: pointer;
+  border-left: 3px solid transparent;
+  background: transparent;
+  transition: background 0.12s;
+}
+.card-item:hover { background: rgba(255,255,255,0.025); }
+.card-item.active {
+  background: rgba(6,182,212,0.08);
+  border-left-color: var(--cyan);
+}
+.card-thumb {
+  width: 32px; height: 36px;
+  background: var(--bg-slot-locked);
+  border: 1px solid var(--kind-armor);
+  border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 16px; font-weight: 700;
+  color: var(--kind-armor);
+}
+.card-thumb.inf { border-color: var(--kind-infantry); color: var(--kind-infantry); }
+.card-thumb.air { border-color: var(--kind-air); color: var(--kind-air); }
+.card-info { min-width: 0; }
+.card-name {
+  font-size: 12px; font-weight: 600; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.card-name .cid {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--text-faint); margin-left: 4px; font-weight: 400;
+}
+.card-sub {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--text-dim); margin-top: 1px;
+}
+.card-sub .mods { color: var(--cyan-soft); }
+.card-tier {
+  font-family: var(--font-display); font-size: 9px; font-weight: 700;
+  padding: 1px 5px; border-radius: 2px;
+  background: rgba(6,182,212,0.1);
+  border: 1px solid rgba(6,182,212,0.4);
+  color: var(--cyan-soft); letter-spacing: 0.06em;
+}
+.card-tier.grunt { background: rgba(107,118,145,0.1); border-color: rgba(107,118,145,0.4); color: var(--text-mid); }
+
+/* ===== 中栏：极红单位条（替代原"单位基础面板"） ===== */
+.unit-strip {
+  display: grid; grid-template-columns: 32px 1fr auto auto;
+  align-items: center; gap: 10px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border-dim);
+  background: linear-gradient(90deg, rgba(6,182,212,0.05), transparent);
+}
+.unit-strip .us-thumb {
+  width: 32px; height: 32px;
+  background: var(--bg-slot-locked);
+  border: 1px solid var(--kind-armor);
+  border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 14px; font-weight: 700;
+  color: var(--kind-armor);
+}
+.unit-strip .us-name {
+  font-family: var(--font-display); font-size: 13px; font-weight: 700;
+  color: var(--text);
+}
+.unit-strip .us-name .cid {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--text-faint); margin-left: 4px; font-weight: 400;
+}
+.unit-strip .us-sub {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--text-dim); margin-top: 1px;
+}
+.unit-strip .us-tier {
+  font-family: var(--font-display); font-size: 10px; font-weight: 700;
+  padding: 2px 8px; border-radius: 2px;
+  background: rgba(6,182,212,0.1);
+  border: 1px solid rgba(6,182,212,0.4);
+  color: var(--cyan-soft); letter-spacing: 0.08em;
+}
+.unit-strip .us-power {
+  font-family: var(--font-display); font-size: 16px; font-weight: 700;
+  color: var(--cyan-soft);
+}
+.unit-strip .us-power .lbl {
+  font-size: 8px; color: var(--text-dim);
+  display: block; text-align: right; letter-spacing: 0.06em;
+}
+
+/* ===== 中栏：9 槽位横排窄条 ===== */
+.slot-strip-section {
+  padding: 8px 12px; border-bottom: 1px solid var(--border-dim);
+  background: linear-gradient(180deg, rgba(6,182,212,0.03), transparent);
+}
+.slot-strip-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 6px;
+}
+.slot-strip-title {
+  font-family: var(--font-display); font-size: 11px; font-weight: 700;
+  color: var(--text-mid); letter-spacing: 0.08em;
+  display: flex; align-items: center; gap: 6px;
+}
+.slot-strip-title .count {
+  color: var(--cyan-soft); font-family: var(--font-mono);
+}
+.slot-strip-hint {
+  font-family: var(--font-mono); font-size: 9px; color: var(--text-faint);
+}
+.slot-strip {
+  display: grid; grid-template-columns: repeat(9, 1fr);
+  gap: 4px;
+}
+.slot-box {
+  height: 30px; border-radius: 3px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-size: 9px;
+  border: 1px solid var(--border-dim);
+  background: var(--bg-card); color: var(--text-faint);
+  cursor: pointer; transition: all 0.12s; position: relative;
+}
+.slot-box .glyph { font-weight: 700; font-size: 10px; }
+.slot-box .lvl { font-size: 7px; opacity: 0.7; }
+.slot-box.filled {
+  background: rgba(6,182,212,0.08);
+  border-color: rgba(6,182,212,0.4);
+  color: var(--cyan-soft);
+}
+.slot-box.empty:hover {
+  border-color: var(--cyan-soft);
+  color: var(--cyan-soft);
+  background: rgba(6,182,212,0.05);
+}
+
+/* ===== 中栏：改造模块库 ===== */
+.mod-section { flex: 1; overflow-y: auto; padding: 4px 8px; }
+.mod-section::-webkit-scrollbar { width: 6px; }
+.mod-section::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.mod-row {
+  display: grid; grid-template-columns: 28px 1fr auto;
+  align-items: center; gap: 10px;
+  padding: 6px 10px; margin: 2px 0;
+  border-radius: 4px; cursor: pointer;
+  border-left: 3px solid transparent;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border-dim);
+  border-right: 1px solid var(--border-dim);
+  border-bottom: 1px solid var(--border-dim);
+  transition: all 0.12s;
+}
+.mod-row:hover { background: var(--bg-card-hi); }
+.mod-row.active {
+  background: rgba(6,182,212,0.1);
+  border-left-color: var(--cyan);
+  box-shadow: 0 0 0 1px rgba(6,182,212,0.25);
+}
+.mod-row.unusable {
+  opacity: 0.35;
+  background: transparent;
+}
+.mod-row.unusable:hover { opacity: 0.5; background: rgba(255,255,255,0.02); }
+
+.mod-ico {
+  width: 28px; height: 28px;
+  border: 1px solid var(--text-faint);
+  border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 10px; font-weight: 700;
+  color: var(--text-faint);
+}
+.mod-ico.epic { border-color: var(--rar-epic); color: var(--rar-epic); }
+.mod-ico.legendary { border-color: var(--rar-legendary); color: var(--rar-legendary); }
+.mod-ico.rare { border-color: var(--rar-rare); color: var(--rar-rare); }
+.mod-ico.cyan { border-color: var(--cyan); color: var(--cyan); }
+
+.mod-info { min-width: 0; }
+.mod-name {
+  font-size: 12px; font-weight: 600; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  display: flex; align-items: center; gap: 4px;
+}
+.mod-name .rar-tag {
+  font-family: var(--font-mono); font-size: 8px; font-weight: 600;
+  padding: 0 3px; border-radius: 1px; letter-spacing: 0.04em;
+}
+.rar-tag.epic { color: var(--rar-epic); border: 1px solid var(--rar-epic); }
+.rar-tag.legendary { color: var(--rar-legendary); border: 1px solid var(--rar-legendary); }
+.rar-tag.rare { color: var(--rar-rare); border: 1px solid var(--rar-rare); }
+.rar-tag.common { color: var(--text-mid); border: 1px solid var(--text-faint); }
+.mod-effect {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text-dim); margin-top: 1px;
+}
+.mod-effect .hi { color: var(--green-up); font-weight: 600; }
+
+.mod-status {
+  font-family: var(--font-display); font-size: 9px; font-weight: 700;
+  letter-spacing: 0.06em; padding: 2px 6px; border-radius: 2px;
+  white-space: nowrap;
+}
+.mod-status.available {
+  color: var(--green-up);
+  background: rgba(52,211,153,0.08);
+  border: 1px solid rgba(52,211,153,0.3);
+}
+.mod-status.installed {
+  color: var(--cyan-soft);
+  background: rgba(6,182,212,0.1);
+  border: 1px solid rgba(6,182,212,0.4);
+}
+.mod-status.conflict {
+  color: var(--red-down);
+  background: rgba(239,68,68,0.06);
+  border: 1px solid rgba(239,68,68,0.3);
+}
+.mod-status.low-tier {
+  color: var(--text-faint);
+  background: transparent;
+  border: 1px solid var(--border-dim);
+}
+
+/* ============================================================
+ * 右栏 —— 状态切换 Tab
+ * ============================================================ */
+.view-tabs {
+  display: flex; gap: 0;
+  border-bottom: 1px solid var(--border-dim);
+  background: var(--bg-card);
+}
+.view-tab {
+  flex: 1; padding: 8px 12px;
+  font-family: var(--font-display); font-size: 11px; font-weight: 700;
+  letter-spacing: 0.08em; color: var(--text-dim);
+  background: transparent; border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer; transition: all 0.12s;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+}
+.view-tab:hover { color: var(--text-mid); background: rgba(255,255,255,0.02); }
+.view-tab.active {
+  color: var(--cyan-soft);
+  border-bottom-color: var(--cyan);
+  background: rgba(6,182,212,0.04);
+}
+.view-tab .vt-dot {
+  width: 5px; height: 5px; border-radius: 50%; background: currentColor;
+}
+
+.right-body { flex: 1; overflow-y: auto; }
+.right-body::-webkit-scrollbar { width: 6px; }
+.right-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.right-body::-webkit-scrollbar-track { background: transparent; }
+
+/* ============ 视图 A：单位概览（默认态） ============ */
+.view-overview { padding: 12px 14px; display: block; }
+.view-detail { padding: 12px 14px; display: none; }
+body[data-view="detail"] .view-overview { display: none; }
+body[data-view="detail"] .view-detail { display: block; }
+
+/* 单位头部 */
+.ov-hero {
+  display: grid; grid-template-columns: 48px 1fr;
+  gap: 12px; align-items: center;
+  padding: 10px;
+  background: linear-gradient(135deg, rgba(6,182,212,0.06), transparent);
+  border: 1px solid rgba(6,182,212,0.2);
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+.ov-hero .ov-art {
+  width: 48px; height: 48px;
+  background: var(--bg-slot-locked);
+  border: 1px solid var(--kind-armor);
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 22px; font-weight: 700;
+  color: var(--kind-armor);
+}
+.ov-hero .ov-info .ov-name {
+  font-family: var(--font-display); font-size: 16px; font-weight: 700;
+  color: var(--text);
+}
+.ov-hero .ov-info .ov-name .cid {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--text-faint); margin-left: 5px; font-weight: 400;
+}
+.ov-hero .ov-info .ov-tags {
+  display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px;
+}
+.ov-tag {
+  font-family: var(--font-mono); font-size: 9px;
+  padding: 1px 6px; border-radius: 2px;
+  border: 1px solid var(--border-dim); color: var(--text-mid);
+  background: var(--bg-card);
+}
+.ov-tag.cyan { border-color: rgba(6,182,212,0.4); color: var(--cyan-soft); }
+.ov-tag.era { border-color: rgba(167,139,250,0.3); color: var(--violet); }
+
+/* 战力评分大块 */
+.ov-power-block {
+  display: grid; grid-template-columns: 1fr auto;
+  align-items: center; gap: 12px;
+  padding: 10px 12px; margin-bottom: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-radius: 5px;
+  border-left: 3px solid var(--cyan);
+}
+.ov-power-block .opb-lbl {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--text-dim); letter-spacing: 0.08em;
+}
+.ov-power-block .opb-tier {
+  font-family: var(--font-display); font-size: 11px; font-weight: 700;
+  color: var(--cyan-soft); letter-spacing: 0.1em; margin-top: 2px;
+}
+.ov-power-block .opb-val {
+  font-family: var(--font-display); font-size: 28px; font-weight: 700;
+  color: var(--cyan-soft); text-align: right; line-height: 1;
+  text-shadow: 0 0 16px var(--cyan-glow);
+}
+
+/* 5 档进度条 */
+.ov-tier-progress {
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  gap: 3px; margin-bottom: 12px;
+}
+.ov-tp-cell {
+  padding: 4px 2px; text-align: center;
+  font-family: var(--font-mono); font-size: 7px;
+  border-radius: 2px;
+  border: 1px solid var(--border-dim); color: var(--text-faint);
+  position: relative;
+}
+.ov-tp-cell .tp-name { font-weight: 700; display: block; font-size: 8px; }
+.ov-tp-cell.passed {
+  color: var(--text-mid);
+  background: rgba(52,211,153,0.04);
+  border-color: rgba(52,211,153,0.2);
+}
+.ov-tp-cell.current {
+  color: var(--cyan-soft);
+  background: rgba(6,182,212,0.12);
+  border-color: var(--cyan);
+  box-shadow: 0 0 8px rgba(6,182,212,0.3);
+}
+.ov-tp-cell.current::after {
+  content: '●'; position: absolute; top: -4px; right: 2px;
+  font-size: 8px; color: var(--cyan-soft);
+}
+
+/* 区段标题 */
+.ov-section-h {
+  font-family: var(--font-display); font-size: 10px; font-weight: 700;
+  color: var(--text-mid); letter-spacing: 0.12em;
+  padding: 6px 0; margin-top: 4px;
+  border-bottom: 1px dashed var(--border-dim);
+  display: flex; align-items: center; gap: 6px;
+}
+.ov-section-h .osh-extra {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--text-faint); margin-left: auto; font-weight: 400;
+}
+.ov-section-h .osh-count {
+  color: var(--cyan-soft); font-family: var(--font-mono);
+}
+
+/* 基础属性 6 格 */
+.ov-stat-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 5px; margin: 8px 0 10px;
+}
+.ov-stat {
+  padding: 6px 8px; background: var(--bg-card);
+  border: 1px solid var(--border-dim); border-radius: 3px;
+  text-align: center;
+}
+.ov-stat .lbl {
+  font-family: var(--font-mono); font-size: 8px;
+  color: var(--text-dim); letter-spacing: 0.04em; margin-bottom: 2px;
+}
+.ov-stat .val {
+  font-family: var(--font-display); font-size: 15px; font-weight: 700;
+  color: var(--text);
+}
+.ov-stat .val.green { color: var(--green-up); }
+.ov-stat .val.amber { color: var(--amber); }
+
+/* 已装改造列表 */
+.installed-list { margin: 6px 0 8px; }
+.installed-row {
+  display: grid; grid-template-columns: 28px 1fr auto;
+  align-items: center; gap: 10px;
+  padding: 7px 10px; margin-bottom: 4px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-left: 3px solid rgba(6,182,212,0.4);
+  border-radius: 4px;
+  transition: all 0.12s;
+}
+.installed-row:hover {
+  border-left-color: var(--cyan);
+  background: var(--bg-card-hi);
+}
+.installed-row .ir-ico {
+  width: 28px; height: 28px;
+  border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 10px; font-weight: 700;
+  border: 1px solid var(--cyan); color: var(--cyan);
+  background: rgba(6,182,212,0.06);
+}
+.installed-row .ir-ico.epic { border-color: var(--rar-epic); color: var(--rar-epic); }
+.installed-row .ir-ico.legendary { border-color: var(--rar-legendary); color: var(--rar-legendary); }
+.installed-row .ir-info { min-width: 0; }
+.installed-row .ir-name {
+  font-size: 12px; font-weight: 600; color: var(--text);
+  display: flex; align-items: center; gap: 4px;
+}
+.installed-row .ir-name .ir-lv {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--cyan-soft); padding: 0 4px;
+  background: rgba(6,182,212,0.1); border-radius: 2px;
+}
+.installed-row .ir-effect {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text-dim); margin-top: 1px;
+}
+.installed-row .ir-effect .hi { color: var(--green-up); font-weight: 600; }
+.uninstall-btn {
+  padding: 4px 8px;
+  font-family: var(--font-display); font-size: 9px; font-weight: 700;
+  letter-spacing: 0.08em; color: var(--text-faint);
+  background: transparent;
+  border: 1px solid var(--border-dim);
+  border-radius: 3px; cursor: pointer;
+  transition: all 0.12s;
+  opacity: 0.6;
+}
+.installed-row:hover .uninstall-btn { opacity: 1; }
+.uninstall-btn:hover {
+  color: var(--red-down);
+  border-color: var(--red-down);
+  background: rgba(239,68,68,0.06);
+}
+
+/* 空槽位引导 */
+.empty-slots-hint {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; margin-top: 4px;
+  background: transparent;
+  border: 1px dashed var(--border-dim);
+  border-radius: 4px;
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text-faint);
+}
+.empty-slots-hint .esh-icon {
+  font-family: var(--font-display); font-size: 16px;
+  color: var(--cyan-soft); animation: pulse 2s infinite;
+}
+.empty-slots-hint .esh-hi { color: var(--cyan-soft); font-weight: 600; }
+
+/* 底部引导提示 */
+.ov-cta-hint {
+  margin-top: 10px; padding: 10px;
+  background: linear-gradient(135deg, rgba(6,182,212,0.06), rgba(6,182,212,0.02));
+  border: 1px solid rgba(6,182,212,0.25);
+  border-radius: 5px;
+  text-align: center;
+}
+.ov-cta-hint .cta-arrow {
+  font-family: var(--font-display); font-size: 18px;
+  color: var(--cyan-soft); margin-bottom: 4px;
+  animation: pulse 2s infinite;
+}
+.ov-cta-hint .cta-text {
+  font-size: 11px; color: var(--text-mid);
+}
+.ov-cta-hint .cta-text b { color: var(--cyan-soft); }
+
+/* ============ 视图 B：模块详情（选中态） ============ */
+.detail-name {
+  font-family: var(--font-display); font-size: 17px; font-weight: 700;
+  color: var(--text); letter-spacing: 0.04em;
+}
+.detail-name .rar-pill {
+  font-family: var(--font-display); font-size: 9px; font-weight: 700;
+  padding: 1px 6px; border-radius: 2px; margin-left: 6px;
+  letter-spacing: 0.1em; vertical-align: middle;
+}
+.rar-pill.epic { color: var(--rar-epic); border: 1px solid var(--rar-epic); background: rgba(192,132,252,0.06); }
+.rar-pill.legendary { color: var(--rar-legendary); border: 1px solid var(--rar-legendary); background: rgba(245,158,11,0.06); }
+.rar-pill.rare { color: var(--rar-rare); border: 1px solid var(--rar-rare); background: rgba(56,189,248,0.06); }
+.detail-sub {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--text-faint); margin-top: 3px; letter-spacing: 0.06em;
+}
+.detail-tags {
+  display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;
+}
+.tag-pill {
+  font-family: var(--font-mono); font-size: 9px;
+  padding: 1px 6px; border-radius: 2px;
+  border: 1px solid var(--border-dim); color: var(--text-mid);
+  background: var(--bg-card);
+}
+.tag-pill.cyan { border-color: rgba(6,182,212,0.4); color: var(--cyan-soft); }
+
+.core-stats {
+  margin: 10px 0;
+  padding: 10px;
+  background: linear-gradient(135deg, rgba(6,182,212,0.06), rgba(6,182,212,0.02));
+  border: 1px solid rgba(6,182,212,0.25);
+  border-radius: 5px;
+}
+.core-stats-head {
+  font-family: var(--font-display); font-size: 10px;
+  font-weight: 700; color: var(--cyan-soft);
+  letter-spacing: 0.1em; margin-bottom: 6px;
+}
+.stat-delta {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 4px 8px; margin-bottom: 3px;
+  background: var(--bg-card); border-radius: 3px;
+  font-family: var(--font-mono); font-size: 11px;
+}
+.stat-delta:last-child { margin-bottom: 0; }
+.stat-delta .lbl { color: var(--text-mid); }
+.stat-delta .delta {
+  color: var(--green-up); font-weight: 700;
+  font-family: var(--font-display); font-size: 13px;
+}
+
+.tier-strip {
+  display: flex; align-items: center; gap: 4px;
+  padding: 6px 0; margin: 4px 0 8px;
+  border-bottom: 1px dashed var(--border-dim);
+}
+.tier-strip-label {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--text-dim); letter-spacing: 0.06em;
+  margin-right: 4px; white-space: nowrap;
+}
+.tier-chip {
+  flex: 1; text-align: center;
+  padding: 3px 2px; border-radius: 2px;
+  font-family: var(--font-mono); font-size: 8px;
+  border: 1px solid var(--border-dim); color: var(--text-faint);
+}
+.tier-chip .tc-name { font-weight: 700; display: block; }
+.tier-chip .tc-val { font-size: 7px; opacity: 0.7; }
+.tier-chip.active {
+  border-color: var(--cyan-soft); color: var(--cyan-soft);
+  background: rgba(6,182,212,0.1);
+}
+.tier-chip.reached { color: var(--text-mid); border-color: var(--border); }
+.tier-strip-note {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--text-dim); margin-left: 4px; white-space: nowrap;
+}
+.tier-strip-note.ok { color: var(--green-up); }
+
+.req-line {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 5px 8px; margin-bottom: 3px;
+  background: var(--bg-card); border-radius: 3px;
+  font-family: var(--font-mono); font-size: 10px;
+}
+.req-line .rl-lbl { color: var(--text-dim); }
+.req-line .rl-val { font-weight: 600; }
+.req-line .rl-val.ok { color: var(--green-up); }
+
+.detail-desc {
+  padding: 8px 0; font-size: 11px; line-height: 1.5;
+  color: var(--text-mid); border-bottom: 1px dashed var(--border-dim);
+  margin-bottom: 8px;
+}
+
+.install-zone { margin-top: 10px; }
+.btn-primary {
+  width: 100%; padding: 10px 16px;
+  font-family: var(--font-display); font-size: 13px; font-weight: 700;
+  letter-spacing: 0.12em; color: #00121a;
+  background: linear-gradient(135deg, var(--cyan-soft), var(--cyan));
+  border: none; border-radius: 5px; cursor: pointer;
+  box-shadow: 0 4px 16px rgba(6,182,212,0.4);
+  transition: all 0.15s;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(6,182,212,0.55);
+}
+.btn-secondary {
+  width: 100%; padding: 6px;
+  font-family: var(--font-display); font-size: 10px;
+  letter-spacing: 0.08em; color: var(--text-dim);
+  background: transparent; border: 1px solid var(--border-dim);
+  border-radius: 4px; cursor: pointer; margin-top: 4px;
+}
+.btn-secondary:hover { color: var(--text); border-color: var(--border); }
+
+/* ===== 页脚 ===== */
+.panel-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px; border-top: 1px solid var(--border-dim);
+  background: var(--bg-card);
+  font-family: var(--font-mono); font-size: 9px; color: var(--text-faint);
+}
+.panel-footer .keys { display: flex; gap: 14px; }
+.panel-footer .key { display: flex; align-items: center; gap: 4px; }
+.panel-footer .key kbd {
+  background: var(--bg-slot-locked); border: 1px solid var(--border-dim);
+  border-radius: 2px; padding: 0 4px;
+  font-size: 9px; color: var(--text-mid);
+}
+
+/* ===== 设计注释 ===== */
+.design-notes {
+  margin-top: 16px; padding: 12px 16px;
+  background: var(--bg-card); border: 1px solid var(--border-dim);
+  border-radius: 6px;
+}
+.design-notes h3 {
+  font-family: var(--font-display); font-size: 12px;
+  color: var(--cyan-soft); letter-spacing: 0.12em;
+  margin-bottom: 8px;
+}
+.design-notes ul {
+  list-style: none; padding-left: 0;
+  font-size: 11px; color: var(--text-mid); line-height: 1.6;
+}
+.design-notes li { padding-left: 14px; position: relative; margin-bottom: 3px; }
+.design-notes li::before {
+  content: '▸'; position: absolute; left: 0; color: var(--cyan-soft);
+}
+.design-notes .tag {
+  display: inline-block; padding: 0 4px; border-radius: 2px;
+  font-family: var(--font-mono); font-size: 9px;
+  background: rgba(6,182,212,0.1); color: var(--cyan-soft);
+  border: 1px solid rgba(6,182,212,0.3); margin: 0 2px;
+}
+.design-notes .switch-hint {
+  margin-top: 8px; padding: 8px 10px;
+  background: rgba(245,158,11,0.06);
+  border: 1px solid rgba(245,158,11,0.3);
+  border-radius: 4px;
+  font-size: 11px; color: var(--amber);
+}
+</style>
+</head>
+<body data-view="overview">
+
+<div class="app">
+
+  <!-- 顶部 brand -->
+  <div class="top-bar">
+    <div class="top-brand">
+      <div class="diamond"></div>
+      <h1>PHASE WAR · 改造面板 · 默认态 <span class="sub">DEFAULT VIEW (NO MOD SELECTED)</span></h1>
+    </div>
+    <div class="top-meta">设计稿 v1.1 · 右栏未选模块时的单位概览视图</div>
+  </div>
+
+  <!-- 改造面板主体 -->
+  <div class="panel-frame">
+
+    <!-- 标题栏 -->
+    <div class="title-bar">
+      <div class="title-left">
+        <div class="title-mark"></div>
+        <div class="title-text">战术改造站 <span class="sub">TACTICAL MODIFICATION BAY</span></div>
+      </div>
+      <div class="title-right">
+        <div class="title-meta-top">改造图纸 <b>14</b> 可用 · 当前槽位 <b>2/9</b></div>
+        <button class="close-btn">×</button>
+      </div>
+    </div>
+
+    <!-- 资源条 -->
+    <div class="resource-bar">
+      <div class="res-item"><span class="res-val amber">1,247</span><span class="res-lbl">纳米材料</span></div>
+      <div class="res-sep"></div>
+      <div class="res-item"><span class="res-val">3,482</span><span class="res-lbl">合金</span></div>
+      <div class="res-sep"></div>
+      <div class="res-item">当前战力档 <span class="res-val cyan">ELITE · T2</span></div>
+      <div class="status-line"><span class="on">●</span> BAY-13 · OPERATIONAL · 7 MODULES READY</div>
+    </div>
+
+    <!-- 三栏主体 -->
+    <div class="tri-layout">
+
+      <!-- ============ 左栏：单位名册 ============ -->
+      <div class="col-pane">
+        <div class="col-head cyan">
+          <div class="ch-title"><span class="pip"></span>单位名册</div>
+          <div class="ch-count">已选 1 / 42</div>
+        </div>
+        <div class="col-filter">
+          <div class="chip active cyan">全部</div>
+          <div class="chip cyan">可改造</div>
+          <div class="chip cyan">满槽</div>
+        </div>
+        <div class="col-scroll">
+          <div class="card-item active">
+            <div class="card-thumb">◈</div>
+            <div class="card-info">
+              <div class="card-name">虚空领主<span class="cid">foe_fut_nexus#4</span></div>
+              <div class="card-sub">Lv.10 · <span class="mods">2/9 模块</span></div>
+            </div>
+            <div class="card-tier">OVERLORD</div>
+          </div>
+          <div class="card-item">
+            <div class="card-thumb">⚔</div>
+            <div class="card-info">
+              <div class="card-name">T-72 主战坦克<span class="cid">cold_t72#1</span></div>
+              <div class="card-sub">Lv.8 · <span class="mods">5/9 模块</span></div>
+            </div>
+            <div class="card-tier">CHAMPION</div>
+          </div>
+          <div class="card-item">
+            <div class="card-thumb inf">▲</div>
+            <div class="card-info">
+              <div class="card-name">毛瑟步兵班<span class="cid">ww1_mauser#2</span></div>
+              <div class="card-sub">Lv.4 · <span class="mods">0/9 模块</span></div>
+            </div>
+            <div class="card-tier grunt">GRUNT</div>
+          </div>
+          <div class="card-item">
+            <div class="card-thumb air">✈</div>
+            <div class="card-info">
+              <div class="card-name">F-16 战隼<span class="cid">cold_f16#1</span></div>
+              <div class="card-sub">Lv.7 · <span class="mods">9/9 满槽</span></div>
+            </div>
+            <div class="card-tier">ELITE</div>
+          </div>
+          <div class="card-item">
+            <div class="card-thumb">◉</div>
+            <div class="card-info">
+              <div class="card-name">虎式坦克<span class="cid">ww2_tiger#1</span></div>
+              <div class="card-sub">Lv.6 · <span class="mods">3/9 模块</span></div>
+            </div>
+            <div class="card-tier">ELITE</div>
+          </div>
+          <div class="card-item">
+            <div class="card-thumb inf">▲</div>
+            <div class="card-info">
+              <div class="card-name">掷弹兵班<span class="cid">ww2_grenadier#3</span></div>
+              <div class="card-sub">Lv.5 · <span class="mods">1/9 模块</span></div>
+            </div>
+            <div class="card-tier grunt">VETERAN</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ 中栏：极红单位条 + 9 槽位 + 改造库 ============ -->
+      <div class="col-pane">
+
+        <!-- 极红单位条（替代原"单位基础面板"，避免与右栏重复） -->
+        <div class="unit-strip">
+          <div class="us-thumb">◈</div>
+          <div>
+            <div class="us-name">虚空领主<span class="cid">foe_fut_nexus#4</span></div>
+            <div class="us-sub">未来 · 装甲 · Lv.10 · 米加粒子炮</div>
+          </div>
+          <div class="us-tier">OVERLORD</div>
+          <div class="us-power">1248<span class="lbl">战力</span></div>
+        </div>
+
+        <!-- 9 槽位横向窄条 -->
+        <div class="slot-strip-section">
+          <div class="slot-strip-head">
+            <div class="slot-strip-title">已装改造 <span class="count">2 / 9</span></div>
+            <div class="slot-strip-hint">点击空槽位 = 定位可装模块</div>
+          </div>
+          <div class="slot-strip">
+            <div class="slot-box filled" title="反应装甲模块 Lv.2"><span class="glyph">RC</span><span class="lvl">Lv.2</span></div>
+            <div class="slot-box filled" title="自动装填机 Lv.1"><span class="glyph">AG</span><span class="lvl">Lv.1</span></div>
+            <div class="slot-box empty"><span class="glyph">+</span></div>
+            <div class="slot-box empty"><span class="glyph">+</span></div>
+            <div class="slot-box empty"><span class="glyph">+</span></div>
+            <div class="slot-box empty"><span class="glyph">+</span></div>
+            <div class="slot-box empty"><span class="glyph">+</span></div>
+            <div class="slot-box empty"><span class="glyph">+</span></div>
+            <div class="slot-box empty"><span class="glyph">+</span></div>
+          </div>
+        </div>
+
+        <!-- 改造模块列表（注意：默认态下没有 active 项，玩家还没选） -->
+        <div class="col-head cyan" style="border-top:1px solid var(--border-dim)">
+          <div class="ch-title"><span class="pip"></span>改造模块库</div>
+          <div class="ch-count">可用 6 · 总持有 14 · 点击或 Hover 查看详情</div>
+        </div>
+        <div class="mod-section">
+          <div class="mod-row">
+            <div class="mod-ico epic">EP</div>
+            <div class="mod-info">
+              <div class="mod-name">致命精通 <span class="rar-tag epic">EPIC</span></div>
+              <div class="mod-effect">暴击伤害 <span class="hi">+42%</span> · 强化词条</div>
+            </div>
+            <div class="mod-status available">可安装</div>
+          </div>
+          <div class="mod-row">
+            <div class="mod-ico cyan">RA</div>
+            <div class="mod-info">
+              <div class="mod-name">反应装甲模块 <span class="rar-tag epic">EPIC</span></div>
+              <div class="mod-effect">装甲防御 <span class="hi">+20%</span> · mount 槽</div>
+            </div>
+            <div class="mod-status installed">✓ 已装</div>
+          </div>
+          <div class="mod-row">
+            <div class="mod-ico legendary">AG</div>
+            <div class="mod-info">
+              <div class="mod-name">自动装填机 <span class="rar-tag legendary">LEG</span></div>
+              <div class="mod-effect">攻击速度 <span class="hi">×1.5</span> · ammunition 槽</div>
+            </div>
+            <div class="mod-status installed">✓ 已装</div>
+          </div>
+          <div class="mod-row">
+            <div class="mod-ico epic">AP</div>
+            <div class="mod-info">
+              <div class="mod-name">尾翼稳定脱壳穿甲 <span class="rar-tag epic">EPIC</span></div>
+              <div class="mod-effect">装甲攻击 <span class="hi">+30%</span> · ammunition 槽</div>
+            </div>
+            <div class="mod-status available">可安装</div>
+          </div>
+          <div class="mod-row">
+            <div class="mod-ico rare">TS</div>
+            <div class="mod-info">
+              <div class="mod-name">热成像瞄准镜 <span class="rar-tag rare">RARE</span></div>
+              <div class="mod-effect">命中精度 <span class="hi">+25%</span> · optics 槽</div>
+            </div>
+            <div class="mod-status available">可安装</div>
+          </div>
+          <div class="mod-row unusable">
+            <div class="mod-ico" style="border-color:var(--text-faint);color:var(--text-faint)">CM</div>
+            <div class="mod-info">
+              <div class="mod-name">主动防御系统 <span class="rar-tag common">RARE</span></div>
+              <div class="mod-effect">需要 CHAMPION 档位（当前 ELITE）</div>
+            </div>
+            <div class="mod-status low-tier">✗ 档位不足</div>
+          </div>
+          <div class="mod-row unusable">
+            <div class="mod-ico" style="border-color:var(--text-faint);color:var(--text-faint)">SM</div>
+            <div class="mod-info">
+              <div class="mod-name">烟幕弹发射器 <span class="rar-tag common">RARE</span></div>
+              <div class="mod-effect">冲突组：radar（与已装雷达互斥）</div>
+            </div>
+            <div class="mod-status conflict">✗ 冲突</div>
+          </div>
+          <div class="mod-row">
+            <div class="mod-ico rare">LM</div>
+            <div class="mod-info">
+              <div class="mod-name">激光测距仪 <span class="rar-tag rare">RARE</span></div>
+              <div class="mod-effect">命中精度 <span class="hi">+15%</span> · optics 槽</div>
+            </div>
+            <div class="mod-status available">可安装</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ 右栏：状态切换（默认态 / 选中态） ============ -->
+      <div class="col-pane">
+        <!-- 视图切换 tab -->
+        <div class="view-tabs">
+          <button class="view-tab active" onclick="switchView('overview')">
+            <span class="vt-dot"></span>单位概览
+          </button>
+          <button class="view-tab" onclick="switchView('detail')">
+            <span class="vt-dot"></span>模块详情
+          </button>
+        </div>
+
+        <div class="right-body">
+
+          <!-- ===== 视图 A：单位概览（默认态，玩家未选模块） ===== -->
+          <div class="view-overview">
+
+            <!-- 单位头部 -->
+            <div class="ov-hero">
+              <div class="ov-art">◈</div>
+              <div class="ov-info">
+                <div class="ov-name">虚空领主<span class="cid">foe_fut_nexus#4</span></div>
+                <div class="ov-tags">
+                  <span class="ov-tag era">未来时代</span>
+                  <span class="ov-tag">装甲 · 主战</span>
+                  <span class="ov-tag cyan">OVERLORD</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 战力评分 -->
+            <div class="ov-power-block">
+              <div>
+                <div class="opb-lbl">战力评分 · POWER SCORE</div>
+                <div class="opb-tier">OVERLORD · 第 5 档</div>
+              </div>
+              <div class="opb-val">1248</div>
+            </div>
+
+            <!-- 5 档进度条 -->
+            <div class="ov-tier-progress">
+              <div class="tp-cell passed"><span class="tp-name">GRUNT</span>150</div>
+              <div class="tp-cell passed"><span class="tp-name">VETERAN</span>260</div>
+              <div class="tp-cell passed"><span class="tp-name">ELITE</span>420</div>
+              <div class="tp-cell passed"><span class="tp-name">CHAMPION</span>720</div>
+              <div class="tp-cell current"><span class="tp-name">OVERLORD</span>720+</div>
+            </div>
+
+            <!-- 基础属性 -->
+            <div class="ov-section-h">
+              ◆ 基础属性 <span class="osh-extra">满血状态</span>
+            </div>
+            <div class="ov-stat-grid">
+              <div class="ov-stat"><div class="lbl">生命值</div><div class="val green">240</div></div>
+              <div class="ov-stat"><div class="lbl">轻装攻击</div><div class="val">220</div></div>
+              <div class="ov-stat"><div class="lbl">装甲攻击</div><div class="val">180</div></div>
+              <div class="ov-stat"><div class="lbl">对空攻击</div><div class="val">160</div></div>
+              <div class="ov-stat"><div class="lbl">装甲防御</div><div class="val">12</div></div>
+              <div class="ov-stat"><div class="lbl">移动速度</div><div class="val">3</div></div>
+            </div>
+
+            <!-- 已装改造列表 -->
+            <div class="ov-section-h">
+              ◆ 已装改造 <span class="osh-count">2 / 9</span>
+              <span class="osh-extra">Hover 显示卸载</span>
+            </div>
+            <div class="installed-list">
+              <div class="installed-row">
+                <div class="ir-ico epic">RC</div>
+                <div class="ir-info">
+                  <div class="ir-name">反应装甲模块 <span class="ir-lv">Lv.2</span></div>
+                  <div class="ir-effect">装甲防御 <span class="hi">+20%</span> · 已激活</div>
+                </div>
+                <button class="uninstall-btn">卸载</button>
+              </div>
+              <div class="installed-row">
+                <div class="ir-ico legendary">AG</div>
+                <div class="ir-info">
+                  <div class="ir-name">自动装填机 <span class="ir-lv">Lv.1</span></div>
+                  <div class="ir-effect">攻击速度 <span class="hi">×1.5</span> · 已激活</div>
+                </div>
+                <button class="uninstall-btn">卸载</button>
+              </div>
+            </div>
+
+            <!-- 空槽位引导 -->
+            <div class="empty-slots-hint">
+              <span class="esh-icon">+</span>
+              <span>还有 <span class="esh-hi">7 个空槽位</span> · 可继续装 7 个改造模块</span>
+            </div>
+
+            <!-- 底部 CTA 引导 -->
+            <div class="ov-cta-hint">
+              <div class="cta-arrow">◀ ─ ─ ─ ┤</div>
+              <div class="cta-text">从左侧 <b>改造模块库</b> 选择一个模块<br>此处将显示该模块的详情与安装按钮</div>
+            </div>
+
+          </div>
+
+          <!-- ===== 视图 B：模块详情（选中态，用于对比） ===== -->
+          <div class="view-detail">
+            <div class="detail-name">致命精通 <span class="rar-pill epic">EPIC · 史诗</span></div>
+            <div class="detail-sub">enh_crit_dmg · Crit Damage · 原型「致命打击精通」</div>
+            <div class="detail-tags">
+              <span class="tag-pill cyan">强化槽 enhancement</span>
+              <span class="tag-pill">冲突组 enh_crit_dmg</span>
+              <span class="tag-pill">适用 全兵种</span>
+              <span class="tag-pill cyan">战力倍率 ×1.5</span>
+            </div>
+
+            <div class="core-stats">
+              <div class="core-stats-head">▣ 核心属性 · 装备后</div>
+              <div class="stat-delta"><span class="lbl">暴击伤害</span><span class="delta">+42%</span></div>
+              <div class="stat-delta"><span class="lbl">等级进度</span><span class="delta" style="font-size:11px;color:var(--text-mid)">Lv.3 / 3 满级</span></div>
+            </div>
+
+            <div class="tier-strip">
+              <span class="tier-strip-label">档位</span>
+              <div class="tier-chip reached"><span class="tc-name">GRUNT</span><span class="tc-val">150</span></div>
+              <div class="tier-chip reached"><span class="tc-name">VETERAN</span><span class="tc-val">260</span></div>
+              <div class="tier-chip active"><span class="tc-name">ELITE</span><span class="tc-val">420</span></div>
+              <div class="tier-chip reached"><span class="tc-name">CHAMPION</span><span class="tc-val">720</span></div>
+              <div class="tier-chip active"><span class="tc-name">OVERLORD</span><span class="tc-val">720+</span></div>
+              <span class="tier-strip-note ok">✓ 已达</span>
+            </div>
+
+            <div class="req-line">
+              <span class="rl-lbl">▸ 解锁要求</span>
+              <span class="rl-val ok">强化等级 ≥ 3（当前 Lv.10）✓</span>
+            </div>
+            <div class="req-line">
+              <span class="rl-lbl">▸ 材料 · 纳米</span>
+              <span class="rl-val ok">64（持有 1,247 · 余 1,183）✓</span>
+            </div>
+            <div class="req-line">
+              <span class="rl-lbl">▸ 材料 · 图纸</span>
+              <span class="rl-val ok">1（持有 14）✓</span>
+            </div>
+
+            <div class="detail-desc">致命打击精通训练。装备后单位对致命要害的把握大幅提升，暴击时造成的额外伤害 <b style="color:var(--green-up)">+42%</b>。</div>
+
+            <div class="install-zone">
+              <button class="btn-primary">▣ 立即安装</button>
+              <button class="btn-secondary">查看完整效果模拟 →</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 页脚 -->
+    <div class="panel-footer">
+      <div class="keys">
+        <span class="key"><kbd>CLICK</kbd> 选单位/模块</span>
+        <span class="key"><kbd>HOVER</kbd> 中栏模块 → 右栏切换详情</span>
+        <span class="key"><kbd>ESC</kbd> 返回单位概览</span>
+      </div>
+      <div>PHASE WAR · v7.x · 改造站 · 默认态原型</div>
+    </div>
+  </div>
+
+  <!-- 设计注释 -->
+  <div class="design-notes">
+    <h3>◆ 默认态（未选模块）设计要点</h3>
+    <ul>
+      <li><b>核心思路</b>：右栏在玩家未选中改造模块时，承载<span class="tag">当前单位的完整概览</span>——进来就能看到"这单位多强、装了啥、还能装啥"，不浪费空间。</li>
+      <li><b>单位头部</b>：48px 缩略图 + 名字 + 实例号 + 三标签（时代/兵种/档位），一眼锚定当前编辑对象。</li>
+      <li><b>战力评分块</b>：大字 <span class="tag">1248</span> + OVERLORD 档位标识 + 下方 5 档进度条（已过档淡色、当前档 cyan 高亮+脉冲点），战力位置一目了然。</li>
+      <li><b>基础属性 6 格</b>：HP / 三维攻击 / 装甲防御 / 移动速度，HP 用绿色强调。比中栏单位条更详细，作为"查看"层。</li>
+      <li><b>已装改造列表</b>：2 行已装模块，每行带<span class="tag">Hover 显卸载按钮</span>（默认半透明，悬停变红）。这就是原设计"图1"对应的状态——右栏展示已装列表。</li>
+      <li><b>空槽位引导</b>：虚线框 + 脉冲 <span class="tag">+ 号</span> + "还有 7 个空槽位"，可视化剩余容量。</li>
+      <li><b>底部 CTA</b>：cyan 渐变引导块 + 箭头指向左方改造库，明确告诉玩家下一步操作。</li>
+      <li><b>中栏调整</b>：因右栏承接单位信息，中栏原"单位基础面板"改为<span class="tag">极简一行单位条</span>（缩略图+名+档位+战力），避免重复；腾出空间给改造库列表显示更多行。</li>
+    </ul>
+    <div class="switch-hint">
+      ▸ <b>状态切换演示</b>：点击右栏顶部的「单位概览 / 模块详情」tab 可对比两个状态。实际游戏中切换由"Hover/选中中栏模块"自动触发，此处 tab 仅作 mockup 演示。
+    </div>
+  </div>
+
+</div>
+
+<script>
+function switchView(view) {
+  document.body.setAttribute('data-view', view);
+  document.querySelectorAll('.view-tab').forEach((tab, i) => {
+    tab.classList.toggle('active', (view === 'overview' && i === 0) || (view === 'detail' && i === 1));
+  });
+}
+</script>
+</body>
+</html>

@@ -226,8 +226,10 @@ func can_enhance(card_id: String, nano_available: int) -> bool:
 ##   而是返回失败。原因：回退到模板后 card.enhance_level = target_level 会污染单例，
 ##   导致背包/装备读的实例（空）与强化的模板（有值）脱节，表现为"强化没生效"。
 func do_enhance(card_id_or_instance: String, nano_available: int) -> Dictionary:
-	if not can_enhance(card_id_or_instance, nano_available):
-		return {"ok": false, "action": "none", "reason": "无法强化"}
+	# v8.x: 强化②（选词条系统）已停用——养成改为自动经验升星 + 技能树。
+	# 本函数保留存档兼容（save/load 仍读旧 module_slots），但强化入口关闭。
+	# 战斗仍读 module_slots（apply_module_effects），旧存档加成不丢。
+	return {"ok": false, "action": "none", "reason": "强化系统已改为自动升星，请通过战斗获取经验"}
 
 	# v7.3: 强制要求实例——养成数据必须写到实例对象，禁止回退模板污染单例
 	var card = _get_instance_card(card_id_or_instance)
@@ -256,79 +258,14 @@ func do_enhance(card_id_or_instance: String, nano_available: int) -> Dictionary:
 ## 弹窗 _show_module_selection_popup 已用 do_enhance 返回的正确等级拉取并展示词条，
 ## 数据层信任该池，不再重读等级校验（仅校验 module_id 合法性）。
 func choose_module(card_id: String, module_id: String) -> Dictionary:
-	var slots = get_module_slots(card_id)
-	var level = get_card_enhancement_level(card_id)
-	var max_slots = ModuleDefinitions.get_max_slots_for_level(level)
-
-	# v6.13: 仅校验 module_id 是合法词条定义（不再重读等级做池校验）
-	# —— 池校验已在弹窗层完成，避免实例解析时序问题导致进阶池词条被误拒
-	if not ModuleDefinitions.is_valid_module(module_id):
-		return {"ok": false, "reason": "无效词条"}
-
-	# 找到第一个空槽位
-	var slot_index: int = -1
-	for i in range(max_slots):
-		if i >= slots.size():
-			slot_index = i
-			break
-		elif slots[i] == null or (slots[i] is Dictionary and slots[i].get("module_id", "") == ""):
-			slot_index = i
-			break
-		elif slots[i] is ModuleSlot and slots[i].module_id.is_empty():
-			slot_index = i
-			break
-
-	if slot_index < 0:
-		slot_index = slots.size()
-
-	# 确保数组够大
-	while slots.size() <= slot_index:
-		slots.append(null)
-
-	var slot := ModuleSlot.new()
-	slot.module_id = module_id
-	slot.level = 1
-	slot.slot_index = slot_index
-	slots[slot_index] = slot
-	_set_module_slots(card_id, slots)
-
-	emit_signal("module_chosen", card_id, slot_index, module_id, 1)
-	return {"ok": true, "slot_index": slot_index, "module_id": module_id, "level": 1}
+	# v8.x: 选词条功能已停用（强化②改自动升星 + 技能树）
+	# 本函数原逻辑（校验词条 + 写入 module_slots）已移除，保留签名供旧调用方不崩。
+	return {"ok": false, "reason": "词条选择已停用，请通过战斗经验自动升星"}
 
 ## 升级已有词条（偶数级时调用）
+## v8.x: 选词条功能已停用（强化②改自动升星 + 技能树）
 func upgrade_module(card_id: String, slot_index: int) -> Dictionary:
-	var slots = get_module_slots(card_id)
-	if slot_index < 0 or slot_index >= slots.size():
-		return {"ok": false, "reason": "无效槽位"}
-
-	var slot = slots[slot_index]
-	var old_level: int = 1
-	if slot is ModuleSlot:
-		if slot.module_id.is_empty():
-			return {"ok": false, "reason": "空槽位"}
-		if slot.level >= 3:
-			return {"ok": false, "reason": "词条已满级"}
-		old_level = slot.level
-		slot.level += 1
-		_set_module_slots(card_id, slots)  # v7.0: 同步到实例
-		var new_level = slot.level
-		emit_signal("module_upgraded", card_id, slot_index, old_level, new_level)
-		return {"ok": true, "slot_index": slot_index, "module_id": slot.module_id,
-			"old_level": old_level, "new_level": new_level}
-	elif slot is Dictionary:
-		var mid: String = slot.get("module_id", "")
-		if mid.is_empty():
-			return {"ok": false, "reason": "空槽位"}
-		old_level = int(slot.get("level", 1))
-		if old_level >= 3:
-			return {"ok": false, "reason": "词条已满级"}
-		slot["level"] = old_level + 1
-		_set_module_slots(card_id, slots)  # v7.0: 同步到实例
-		emit_signal("module_upgraded", card_id, slot_index, old_level, old_level + 1)
-		return {"ok": true, "slot_index": slot_index, "module_id": mid,
-			"old_level": old_level, "new_level": old_level + 1}
-
-	return {"ok": false, "reason": "未知槽位格式"}
+	return {"ok": false, "reason": "词条升级已停用，请通过战斗经验自动升星"}
 
 ## 重置单个词条槽位
 func reset_module(card_id: String, slot_index: int) -> Dictionary:

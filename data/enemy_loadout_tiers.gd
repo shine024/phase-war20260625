@@ -4,29 +4,29 @@ class_name EnemyLoadoutTiers
 ##
 ## 设计核心（用户思路）：
 ## - 敌方产兵/敌兵 = 3 档配置，对称我方养成档位：
-##     低配 = 我方强化改造3档（3改造槽 + ~3级强化）
-##     中配 = 我方强化改造6档（6改造槽 + ~6级强化）
-##     高配 = 我方强化改造9档（9改造槽满 + 9级强化满）
-## - 数值等量对称：敌方某档位产兵加成 = 我方同档位养成加成
-## - 相位师产兵固定走高配档；普通关敌人按时代/关卡选低/中/高配
+##     低配 = 我方3级强化+3改造槽
+##     中配 = 我方6级强化+6改造槽
+##     高配 = 我方10级强化(满)+9改造槽(满)
+## - base 属性表已烤进时代递进（一战→近未来 hp 5-7×），公式不加时代系数/关卡线性乘数，
+##   跨时代递进全靠 base 数据本身（平衡时更直观）。
+## - 相位师产兵固定走高配档；普通关敌人按时代前/中/后选低/中/高配
 ## - "同一时代前中后"：时代早期出低配、中期中配、后期/相位师战高配
 ##
-## 档位定义（改造+符文+强化倍率，等量我方 apply_growth_to_stats + get_rune_bonus）：
-##   我方满改造(9槽)约贡献 atk+18%/hp+15%；满符文(6格)约 atk+12%/hp+10%
-##   高配档 = 满改造+满符文+9级强化 ≈ atk+35%/hp+30%
-##   中配档 = 6改造+3符文+6级强化 ≈ atk+20%/hp+18%
-##   低配档 = 3改造+1符文+3级强化 ≈ atk+10%/hp+10%
+## 档位统一系数（裸卡=1.0；hp/atk/def 共用同一倍率，平衡调一处即可）：
+##   低配档 = 3强化+3改造+1符文 → ×1.30
+##   中配档 = 6强化+6改造+3符文 → ×1.75
+##   高配档 = 10强化(满)+9改造(满)+6符文 → ×2.00
 
 ## 档位枚举
-const TIER_LOW: int = 1     # 低配（3改造档）
-const TIER_MID: int = 2     # 中配（6改造档）
-const TIER_HIGH: int = 3    # 高配（9改造档满配）
+const TIER_LOW: int = 1     # 低配（3强化+3改造档）
+const TIER_MID: int = 2     # 中配（6强化+6改造档）
+const TIER_HIGH: int = 3    # 高配（10强化满+9改造满配）
 
-## 档位 → 加成配置（atk_pct/hp_pct/def_pct，等量我方同档位养成总加成）
+## 档位 → 加成配置（统一系数：atk_pct=hp_pct=def_pct，对应 1.30/1.75/2.00）
 const TIER_BONUS: Dictionary = {
-	TIER_LOW:  {"name": "低配", "atk_pct": 0.10, "hp_pct": 0.10, "def_pct": 0.05, "mod_count": 3, "rune_count": 1, "enhance_level": 3},
-	TIER_MID:  {"name": "中配", "atk_pct": 0.20, "hp_pct": 0.18, "def_pct": 0.10, "mod_count": 6, "rune_count": 3, "enhance_level": 6},
-	TIER_HIGH: {"name": "高配", "atk_pct": 0.35, "hp_pct": 0.30, "def_pct": 0.15, "mod_count": 9, "rune_count": 6, "enhance_level": 9},
+	TIER_LOW:  {"name": "低配", "atk_pct": 0.30, "hp_pct": 0.30, "def_pct": 0.30, "mod_count": 3, "rune_count": 1, "enhance_level": 3},
+	TIER_MID:  {"name": "中配", "atk_pct": 0.75, "hp_pct": 0.75, "def_pct": 0.75, "mod_count": 6, "rune_count": 3, "enhance_level": 6},
+	TIER_HIGH: {"name": "高配", "atk_pct": 1.00, "hp_pct": 1.00, "def_pct": 1.00, "mod_count": 9, "rune_count": 6, "enhance_level": 10},
 }
 
 ## 改造槽组合（按档位，用于展示/UI，实际加成走 TIER_BONUS）
@@ -59,16 +59,12 @@ static func get_tier_for_level_progress(era_progress: float, is_phase_master: bo
 	else:
 		return TIER_HIGH  # 时代后期：高配
 
-## v7.x: 相位师产兵 tier 按关卡难度递进（替代旧"恒定 TIER_HIGH"）
-## era_progress: 当前时代内进度 0.0(早期)~1.0(后期)
-## 相位师基准比普通敌兵高一档保底（最低 TIER_MID，不跌到 LOW），但不再恒定 HIGH。
-## 时代早期/中段 → 中配（enh6/rune3/atk+20%/hp+18%），时代后期/Boss关 → 高配（enh9/rune6/atk+35%/hp+30%）。
-## 这让低关卡驻守师产兵强度温和，高关卡/末关 Boss 才走满配，符合"难度递进"。
+## v8.2: 相位师产兵固定高档（用户要求"敌方相位师都是高配置敌人"）。
+## 恒返回 TIER_HIGH（enh10 + 满改造 + 满符文 + ×2.00 系数）。
+## 相位师的强弱差异由 base archetype 时代 + 自身 stats + 符文/相位仪决定，不靠产兵档位递进。
+## 参数 era_progress 保留兼容签名，不再使用。
 static func get_phase_master_tier(era_progress: float) -> int:
-	if era_progress < 0.70:
-		return TIER_MID   # 时代早期+中段：中配（相位师最低保障）
-	else:
-		return TIER_HIGH  # 时代后期(era_local 15~20)/Boss关：高配
+	return TIER_HIGH
 
 ## 取档位的改造槽 ID 列表（UI展示/缴获用）
 static func get_modifications_for_tier(tier: int) -> Array:

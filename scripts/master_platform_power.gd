@@ -43,6 +43,9 @@ const UnitStatsTable = preload("res://resources/unit_stats_table.gd")
 const EvolutionHelpers = preload("res://managers/evolution/evolution_helpers.gd")
 const GC = preload("res://resources/game_constants.gd")
 
+# v7.x: 诊断开关——对比「评估端」vs「上场端」单卡 stats，定位面板 vs 战场战力差异源
+const DEBUG_PLAYER_POWER_LOG := false
+
 
 # ═══════════════════════════════════════════════════════════════
 #  玩家单卡战力（7 层加成，复刻 _build_stats_cached 链路）
@@ -104,6 +107,14 @@ static func compute_player_card_power(card: CardResource, pm: Node, bpm: Node) -
 	if pm != null and pm.has_method("get_rune_bonus"):
 		_apply_rune_bonus_to_stats(stats, pm.get_rune_bonus())
 
+	# v7.x 诊断：对比评估端 vs 上场端 stats，定位面板/战场战力差异（默认关，调试时改 true）
+	if DEBUG_PLAYER_POWER_LOG:
+		var _p_eval := EvolutionHelpers.combat_power_from_unit_stats(stats)
+		push_warning("[PowerDebug][评估端] card=%s enhance=%d hp=%.0f atk_l=%.1f atk_a=%.1f atk_air=%.1f def_l=%.0f def_a=%.0f spd=%.1f → power=%.1f" % [
+			effective_card.card_id, int(effective_card.enhance_level),
+			stats.max_hp, stats.attack_light, stats.attack_armor, stats.attack_air,
+			stats.defense_light, stats.defense_armor, stats.move_speed, _p_eval])
+		return _p_eval
 	return EvolutionHelpers.combat_power_from_unit_stats(stats)
 
 
@@ -163,7 +174,8 @@ static func compute_enemy_platform_power(platform_id: String, master: Dictionary
 	var tier_def: float = float(tier_bonus.get("def_pct", 0.0))
 	if tier_atk > 0.0:
 		var m: float = 1.0 + tier_atk
-		stats.attack_damage = maxf(0.1, stats.attack_damage * m)
+		# v8.x 修复：attack_damage 是 attack_light 的 getter/setter 别名（unit_stats.gd:22-28），
+		# 与 attack_light 同乘会让 attack_light 被乘两次（实际 ×m²）。
 		stats.attack_light = maxf(0.1, stats.attack_light * m)
 		stats.attack_armor = maxf(0.1, stats.attack_armor * m)
 		stats.attack_air = maxf(0.1, stats.attack_air * m)
@@ -189,7 +201,7 @@ static func compute_enemy_platform_power(platform_id: String, master: Dictionary
 static func _build_stats_from_archetype_static(archetype_id: String, era: int, tier_int: int = EnemyLoadoutTiers.TIER_HIGH) -> Dictionary:
 	var cfg: Dictionary = EnemyArchetypes.get_config(archetype_id)
 	if cfg.is_empty():
-		return null
+		return {}
 	var c := CardResource.new()
 	c.card_type = GC.CardType.COMBAT_UNIT
 	c.era = int(cfg.get("era", era))
@@ -301,10 +313,10 @@ static func _apply_master_rune_bonus_static(stats: UnitStats, rune_ids: Array, t
 		var mult: float = 1.0 + val
 		match stat:
 			"attack":
+				# v8.x 修复：attack_damage 是 attack_light 别名，同乘会乘两次（见配档乘区注释）。
 				stats.attack_light *= mult
 				stats.attack_armor *= mult
 				stats.attack_air *= mult
-				stats.attack_damage *= mult
 			"defense":
 				stats.defense_light *= mult
 				stats.defense_armor *= mult
@@ -338,10 +350,10 @@ static func _apply_enemy_phase_instrument_bonus_static(stats: UnitStats, instrum
 			"pi_def": def_pct = float(p.get("value", 0.0))
 			"pi_hp":  hp_pct  = float(p.get("value", 0.0))
 	if atk_pct > 0.0:
+		# v8.x 修复：attack_damage 是 attack_light 别名，同乘会乘两次（见配档乘区注释）。
 		stats.attack_light *= (1.0 + atk_pct)
 		stats.attack_armor *= (1.0 + atk_pct)
 		stats.attack_air *= (1.0 + atk_pct)
-		stats.attack_damage *= (1.0 + atk_pct)
 	if hp_pct > 0.0:
 		stats.max_hp *= (1.0 + hp_pct)
 	if def_pct > 0.0:
@@ -378,7 +390,7 @@ static func _apply_rune_bonus_to_stats(stats: UnitStats, bonus: Dictionary) -> v
 	# 攻击力
 	if stat_map.has("attack") and float(stat_map["attack"]) != 0.0:
 		var mult: float = 1.0 + float(stat_map["attack"])
-		stats.attack_damage *= mult
+		# v8.x 修复：attack_damage 是 attack_light 别名，同乘会乘两次（见配档乘区注释）。
 		stats.attack_light *= mult
 		stats.attack_armor *= mult
 		stats.attack_air *= mult

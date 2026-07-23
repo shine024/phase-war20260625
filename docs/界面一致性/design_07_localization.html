@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase War · 本地化与文案规范 Localization Spec</title>
+<style>
+  :root { --bg:#0a0e17; --surface:#111827; --card:#1a2236; --border:#2a3550; --text:#e8ecf4; --muted:#8b95a8; --dim:#5a6478; --cyan:#00d4ff; --purple:#a855f7; --orange:#f59e0b; --green:#22c55e; --red:#ef4444; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:"Segoe UI","Microsoft YaHei",sans-serif; background:var(--bg); color:var(--text); line-height:1.6; }
+  .page { max-width:1400px; margin:0 auto; padding:48px 32px; }
+  .header { text-align:center; margin-bottom:48px; }
+  .header h1 { font-size:36px; font-weight:800; background:linear-gradient(135deg,var(--cyan),var(--purple)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:8px; }
+  .header p { color:var(--muted); font-size:15px; }
+  .section { margin-bottom:56px; }
+  .section-title { font-size:20px; font-weight:700; margin-bottom:20px; display:flex; align-items:center; gap:10px; }
+  .section-title::before { content:""; width:4px; height:24px; background:var(--cyan); border-radius:2px; }
+  .compare-row { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  @media(max-width:800px){ .compare-row{grid-template-columns:1fr;} }
+  .compare-box { border-radius:12px; padding:20px; border:1px solid var(--border); }
+  .compare-box.bad { background:rgba(239,68,68,0.05); }
+  .compare-box.good { background:rgba(34,197,94,0.05); }
+  .compare-label { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:12px; }
+  .bad .compare-label { color:var(--red); }
+  .good .compare-label { color:var(--green); }
+  .rule-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px; }
+  .rule-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:20px; }
+  .rule-card h4 { font-size:15px; font-weight:700; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+  .rule-card ul { list-style:none; display:flex; flex-direction:column; gap:8px; }
+  .rule-card li { font-size:13px; color:var(--muted); padding-left:16px; position:relative; }
+  .rule-card li::before { content:"→"; position:absolute; left:0; color:var(--cyan); }
+  .code-block { background:#0d1117; border:1px solid var(--border); border-radius:10px; padding:20px; font-family:"Cascadia Code","Consolas",monospace; font-size:13px; line-height:1.8; color:var(--muted); overflow-x:auto; white-space:pre; }
+  .code-block .kw { color:var(--purple); }
+  .code-block .val { color:var(--cyan); }
+  .code-block .cmt { color:var(--dim); }
+  .showcase { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:24px; margin-bottom:16px; }
+  .showcase-title { font-size:14px; font-weight:700; color:var(--cyan); margin-bottom:16px; }
+  .example-list { display:flex; flex-direction:column; gap:10px; }
+  .example-item { display:flex; align-items:flex-start; gap:12px; padding:12px 16px; background:rgba(0,0,0,0.2); border-radius:8px; }
+  .example-bad { border-left:3px solid var(--red); }
+  .example-good { border-left:3px solid var(--green); }
+  .example-label { font-size:11px; font-weight:700; padding:2px 8px; border-radius:4px; min-width:50px; text-align:center; }
+  .label-bad { background:rgba(239,68,68,0.15); color:var(--red); }
+  .label-good { background:rgba(34,197,94,0.15); color:var(--green); }
+  .example-text { font-size:14px; }
+  .example-text code { background:rgba(0,0,0,0.3); padding:2px 6px; border-radius:4px; font-family:monospace; color:var(--cyan); font-size:13px; }
+  .table-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th { text-align:left; padding:12px 16px; background:rgba(0,0,0,0.3); color:var(--dim); font-size:11px; text-transform:uppercase; letter-spacing:1px; }
+  td { padding:12px 16px; border-bottom:1px solid var(--border); }
+  tr:hover td { background:rgba(0,212,255,0.02); }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <h1>本地化与文案规范 Localization Spec</h1>
+    <p>Phase War 文本展示标准 · v1.0</p>
+  </div>
+
+  <div class="section">
+    <div class="section-title">标题格式规范 Title Format</div>
+    <div class="showcase">
+      <div class="showcase-title">页面标题双语格式</div>
+      <div class="example-list">
+        <div class="example-item example-bad">
+          <span class="example-label label-bad">错误</span>
+          <span class="example-text">GROWTH COMMANDO（全英文标题）</span>
+        </div>
+        <div class="example-item example-bad">
+          <span class="example-label label-bad">错误</span>
+          <span class="example-text">战斗卡阵列 · combat roster（英文小写）</span>
+        </div>
+        <div class="example-item example-good">
+          <span class="example-label label-good">正确</span>
+          <span class="example-text"><strong style="color:#fff;">战斗卡阵列</strong> <span style="color:var(--dim);font-size:13px;font-family:monospace;">· COMBAT ROSTER</span></span>
+        </div>
+      </div>
+    </div>
+    <div class="showcase">
+      <div class="showcase-title">副标题样式规则</div>
+      <ul style="font-size:14px;color:var(--muted);padding-left:20px;display:flex;flex-direction:column;gap:8px;">
+        <li>中文标题使用 H2 字号 (24px)</li>
+        <li>英文副标题使用 H3 字号的 60% (约 11px)</li>
+        <li>英文副标题全大写 + letter-spacing: 1.5px</li>
+        <li>中英文之间用居中点 · 分隔（非破折号或斜杠）</li>
+        <li>英文副标题颜色为 dim (#5A6478)，不抢主标题视觉</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">代码变量替换表 Variable Replacement Table</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>当前显示（错误）</th><th>应替换为（正确）</th><th>类型</th></tr>
+        </thead>
+        <tbody>
+          <tr><td style="color:var(--red);font-family:monospace;">crit_mark_chance: 0.3</td><td><strong style="color:var(--green);">暴击标记概率：30%</strong></td><td>属性名 → 中文名</td></tr>
+          <tr><td style="color:var(--red);font-family:monospace;">slow_aura: 0.4</td><td><strong style="color:var(--green);">减速光环：40%</strong></td><td>属性名 → 中文名</td></tr>
+          <tr><td style="color:var(--red);font-family:monospace;">max_hp: 0.2</td><td><strong style="color:var(--green);">最大生命值：+20%</strong></td><td>属性名 → 中文名</td></tr>
+          <tr><td style="color:var(--red);font-family:monospace;">ally_fort_regan: 0.5</td><td><strong style="color:var(--green);">友军堡垒再生：+50%</strong></td><td>拼写修正 regen</td></tr>
+          <tr><td style="color:var(--red);font-family:monospace;">友军_arty_bonus: 0.2</td><td><strong style="color:var(--green);">友军炮兵加成：+20%</strong></td><td>混合变量 → 纯中文</td></tr>
+          <tr><td style="color:var(--red);font-family:monospace;">回血 +1%</td><td><strong style="color:var(--green);">生命恢复：+1%</strong></td><td>口语 → 正式</td></tr>
+          <tr><td style="color:var(--red);font-family:monospace;">攻速 -15%</td><td><strong style="color:var(--green);">攻击速度：-15%</strong></td><td>缩写 → 全称</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">数值格式化规范 Number Formatting</div>
+    <div class="rule-grid">
+      <div class="rule-card">
+        <h4>🔢 百分比</h4>
+        <ul>
+          <li>增益：<span style="color:var(--green);">+30%</span></li>
+          <li>减益：<span style="color:var(--red);">-15%</span></li>
+          <li>固定值：<span style="color:var(--text);">+200</span></li>
+          <li>禁止使用小数：<span style="color:var(--dim);">× 0.3 → ✓ 30%</span></li>
+        </ul>
+      </div>
+      <div class="rule-card">
+        <h4>📊 大数字</h4>
+        <ul>
+          <li>资源数量：<span style="color:var(--orange);">9,722</span></li>
+          <li>战力值：<span style="color:var(--orange);">547</span></li>
+          <li>超过 10000 使用缩写：<span style="color:var(--cyan);">1.2W</span></li>
+          <li>禁止科学计数法：<span style="color:var(--dim);">× 1.2e4</span></li>
+        </ul>
+      </div>
+      <div class="rule-card">
+        <h4>📏 等级与星级</h4>
+        <ul>
+          <li>等级：<span style="color:var(--text);">等级 16（已满）</span></li>
+          <li>星级：<span style="color:var(--orange);">★★★★★★★</span></li>
+          <li>阶段：<span style="color:var(--text);">M0/9</span>（仅技术标识）</li>
+          <li>禁止：<span style="color:var(--dim);">Lv.16 MAX</span></li>
+        </ul>
+      </div>
+      <div class="rule-card">
+        <h4>⏱️ 时间与冷却</h4>
+        <ul>
+          <li>倒计时：<span style="color:var(--text);">00:45</span></li>
+          <li>冷却时间：<span style="color:var(--text);">3 秒</span></li>
+          <li>持续时长：<span style="color:var(--text);">15 秒</span></li>
+          <li>禁止：<span style="color:var(--dim);">CD: 3s</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">术语统一表 Terminology Glossary</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>领域</th><th>禁止用语</th><th>推荐用语</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>等级</td><td style="color:var(--dim);">Lv. / Level</td><td><strong>等级</strong></td></tr>
+          <tr><td>星级</td><td style="color:var(--dim);">Star / ★</td><td><strong>星等</strong> 或直接用 <strong>★7</strong></td></tr>
+          <tr><td>稀有度</td><td style="color:var(--dim);">rare / common</td><td><strong>传说 / 普通</strong></td></tr>
+          <tr><td>装备</td><td style="color:var(--dim);">equip / item</td><td><strong>装配 / 模块</strong></td></tr>
+          <tr><td>强化</td><td style="color:var(--dim);">enhance / upgrade</td><td><strong>强化</strong></td></tr>
+          <tr><td>改造</td><td style="color:var(--dim);">modify / mod</td><td><strong>改造</strong></td></tr>
+          <tr><td>进化</td><td style="color:var(--dim);">evolve</td><td><strong>进化</strong></td></tr>
+          <tr><td>符文</td><td style="color:var(--dim);">rune word / RW</td><td><strong>符文之语</strong></td></tr>
+          <tr><td>相位仪</td><td style="color:var(--dim);">phase instrument</td><td><strong>相位仪</strong></td></tr>
+          <tr><td>资源</td><td style="color:var(--dim);">nano material / alloy</td><td><strong>纳米材料 / 合金</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">当前问题 → 优化方案</div>
+    <div class="compare-row">
+      <div class="compare-box bad">
+        <div class="compare-label">❌ 当前问题</div>
+        <ul style="font-size:14px;color:var(--muted);padding-left:18px;display:flex;flex-direction:column;gap:8px;">
+          <li>代码变量名直接显示在界面上</li>
+          <li>标题中英混排格式不统一</li>
+          <li>"rare" 等英文单词出现在中文界面</li>
+          <li>"Lv." 和 "等级" 混用</li>
+          <li>拼写错误：regan → regen</li>
+          <li>口语化表达："回血"、"攻速"</li>
+          <li>无统一的术语对照表</li>
+        </ul>
+      </div>
+      <div class="compare-box good">
+        <div class="compare-label">✓ 优化方案</div>
+        <ul style="font-size:14px;color:var(--muted);padding-left:18px;display:flex;flex-direction:column;gap:8px;">
+          <li>所有变量映射为中文化描述</li>
+          <li>标题格式统一为 "中文 · ENGLISH SUBTITLE"</li>
+          <li>建立术语对照表，全局强制执行</li>
+          <li>统一使用"等级 N（已满）"格式</li>
+          <li>修复所有拼写错误</li>
+          <li>使用正式游戏术语替代口语</li>
+          <li>新增文案时必须在术语表中查找</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">JSON 配置输出 JSON Config</div>
+    <div class="code-block"><span class="cmt">// localization/zh_CN.json — 关键条目示例</span>
+{
+  <span class="cmt">/* 标题 */</span>
+  <span class="kw">"title.combat_roster"</span>:    <span class="val">"战斗卡阵列"</span>,
+  <span class="kw">"title.mod_repository"</span>:   <span class="val">"改造模块库"</span>,
+  <span class="kw">"title.rune_arcanum"</span>:     <span class="val">"符文图鉴"</span>,
+
+  <span class="cmt">/* 属性名 */</span>
+  <span class="kw">"stat.crit_mark_chance"</span>:  <span class="val">"暴击标记概率"</span>,
+  <span class="kw">"stat.slow_aura"</span>:         <span class="val">"减速光环"</span>,
+  <span class="kw">"stat.max_hp"</span>:            <span class="val">"最大生命值"</span>,
+  <span class="kw">"stat.ally_fort_regen"</span>:   <span class="val">"友军堡垒再生"</span>,
+
+  <span class="cmt">/* 数值格式 */</span>
+  <span class="kw">"format.percent"</span>:         <span class="val">"{value}%"</span>,
+  <span class="kw">"format.level"</span>:           <span class="val">"等级 {level}"</span>,
+  <span class="kw">"format.max"</span>:             <span class="val">"（已满）"</span>,
+
+  <span class="cmt">/* 状态标签 */</span>
+  <span class="kw">"status.equipped"</span>:        <span class="val">"已装配"</span>,
+  <span class="kw">"status.available"</span>:       <span class="val">"可安装"</span>,
+  <span class="kw">"status.not_applicable"</span>:  <span class="val">"不适用"</span>,
+  <span class="kw">"status.max_level"</span>:       <span class="val">"已满级"</span>
+}</div>
+  </div>
+
+</div>
+</body>
+</html>

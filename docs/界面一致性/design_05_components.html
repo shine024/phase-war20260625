@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase War · 组件系统 Component Spec</title>
+<style>
+  :root {
+    --bg: #0a0e17;
+    --surface: #111827;
+    --card: #1a2236;
+    --border: #2a3550;
+    --text: #e8ecf4;
+    --muted: #8b95a8;
+    --dim: #5a6478;
+    --cyan: #00d4ff;
+    --purple: #a855f7;
+    --orange: #f59e0b;
+    --green: #22c55e;
+    --red: #ef4444;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; background:var(--bg); color:var(--text); line-height:1.6; }
+  .page { max-width:1400px; margin:0 auto; padding:48px 32px; }
+  .header { text-align:center; margin-bottom:48px; }
+  .header h1 { font-size:36px; font-weight:800; background:linear-gradient(135deg,var(--cyan),var(--purple)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:8px; }
+  .header p { color:var(--muted); font-size:15px; }
+  .section { margin-bottom:56px; }
+  .section-title { font-size:20px; font-weight:700; margin-bottom:20px; display:flex; align-items:center; gap:10px; }
+  .section-title::before { content:""; width:4px; height:24px; background:var(--cyan); border-radius:2px; }
+  .component-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:20px; }
+  .comp-card { background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+  .comp-preview { padding:24px; min-height:140px; display:flex; align-items:center; justify-content:center; position:relative; }
+  .comp-info { padding:16px 20px; border-top:1px solid var(--border); }
+  .comp-name { font-weight:700; font-size:15px; margin-bottom:4px; }
+  .comp-desc { font-size:12px; color:var(--muted); }
+  .btn-primary { background:linear-gradient(135deg,#00d4ff,#0ea5e9); color:#0a0e17; border:none; padding:10px 24px; border-radius:8px; font-weight:700; font-size:14px; cursor:pointer; box-shadow:0 4px 16px rgba(0,212,255,0.3); }
+  .btn-secondary { background:transparent; color:var(--cyan); border:1px solid var(--cyan); padding:10px 24px; border-radius:8px; font-weight:600; font-size:14px; cursor:pointer; }
+  .btn-danger { background:rgba(239,68,68,0.15); color:var(--red); border:1px solid rgba(239,68,68,0.3); padding:10px 24px; border-radius:8px; font-weight:600; font-size:14px; }
+  .btn-group { display:flex; gap:12px; flex-wrap:wrap; }
+  .unit-card { width:140px; height:180px; border-radius:10px; border:2px solid; background:linear-gradient(180deg,rgba(0,212,255,0.05),rgba(0,0,0,0.3)); display:flex; flex-direction:column; align-items:center; justify-content:space-between; padding:12px; }
+  .unit-card.mythic { border-color:#fbbf24; box-shadow:0 0 20px rgba(251,191,36,0.2); }
+  .unit-card.legendary { border-color:#a855f7; box-shadow:0 0 20px rgba(168,85,247,0.2); }
+  .unit-card.rare { border-color:#00d4ff; box-shadow:0 0 20px rgba(0,212,255,0.2); }
+  .unit-card.common { border-color:#22c55e; box-shadow:0 0 20px rgba(34,197,94,0.2); }
+  .card-icon { width:48px; height:48px; border-radius:8px; background:rgba(255,255,255,0.05); display:flex; align-items:center; justify-content:center; font-size:24px; }
+  .card-name { font-size:12px; font-weight:700; text-align:center; color:#fff; }
+  .card-stars { font-size:10px; color:#fbbf24; }
+  .card-level { font-size:11px; color:var(--muted); font-family:monospace; }
+  .tabs { display:flex; gap:4px; background:rgba(0,0,0,0.3); border-radius:8px; padding:4px; }
+  .tab { padding:8px 16px; border-radius:6px; font-size:13px; font-weight:600; color:var(--muted); cursor:pointer; transition:all .2s; }
+  .tab.active { background:rgba(0,212,255,0.15); color:var(--cyan); }
+  .search-bar { display:flex; align-items:center; gap:10px; background:rgba(0,0,0,0.3); border:1px solid var(--border); border-radius:8px; padding:10px 16px; width:100%; max-width:400px; }
+  .search-bar input { background:none; border:none; color:var(--text); font-size:14px; outline:none; flex:1; }
+  .search-bar input::placeholder { color:var(--dim); }
+  .badge { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:700; }
+  .badge-cyan { background:rgba(0,212,255,0.15); color:var(--cyan); }
+  .badge-green { background:rgba(34,197,94,0.15); color:var(--green); }
+  .badge-red { background:rgba(239,68,68,0.15); color:var(--red); }
+  .badge-orange { background:rgba(245,158,11,0.15); color:var(--orange); }
+  .progress-bar { height:8px; background:rgba(0,0,0,0.3); border-radius:4px; overflow:hidden; }
+  .progress-fill { height:100%; border-radius:4px; background:linear-gradient(90deg,var(--cyan),var(--purple)); width:65%; }
+  .toggle { display:flex; align-items:center; gap:10px; }
+  .toggle-track { width:44px; height:24px; border-radius:12px; background:rgba(0,0,0,0.3); border:1px solid var(--border); position:relative; }
+  .toggle-thumb { width:18px; height:18px; border-radius:50%; background:var(--cyan); position:absolute; top:2px; left:2px; transition:left .2s; }
+  .toggle-label { font-size:13px; color:var(--muted); }
+  .chips { display:flex; gap:8px; flex-wrap:wrap; }
+  .chip { padding:6px 14px; border-radius:20px; font-size:12px; font-weight:600; border:1px solid var(--border); color:var(--muted); background:transparent; cursor:pointer; transition:all .2s; }
+  .chip.active { border-color:var(--cyan); color:var(--cyan); background:rgba(0,212,255,0.1); }
+  .stats-row { display:flex; gap:16px; }
+  .stat-item { text-align:center; padding:12px 16px; background:rgba(0,0,0,0.2); border-radius:8px; min-width:80px; }
+  .stat-value { font-size:18px; font-weight:800; color:var(--cyan); font-family:monospace; }
+  .stat-label { font-size:11px; color:var(--dim); margin-top:4px; }
+  .bottom-nav { display:flex; align-items:center; justify-content:space-around; background:rgba(10,14,23,0.95); border-top:1px solid var(--border); padding:8px 0; max-width:480px; margin:0 auto; border-radius:12px; }
+  .nav-item { display:flex; flex-direction:column; align-items:center; gap:4px; padding:4px 8px; border-radius:8px; cursor:pointer; transition:all .2s; }
+  .nav-item.active { background:rgba(0,212,255,0.1); }
+  .nav-icon { font-size:18px; }
+  .nav-label { font-size:10px; color:var(--dim); font-weight:600; }
+  .nav-item.active .nav-label { color:var(--cyan); }
+  .compare-row { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  @media(max-width:800px){ .compare-row{grid-template-columns:1fr;} }
+  .compare-box { border-radius:12px; padding:20px; border:1px solid var(--border); }
+  .compare-box.bad { background:rgba(239,68,68,0.05); }
+  .compare-box.good { background:rgba(34,197,94,0.05); }
+  .compare-label { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:12px; }
+  .bad .compare-label { color:var(--red); }
+  .good .compare-label { color:var(--green); }
+  .code-block { background:#0d1117; border:1px solid var(--border); border-radius:10px; padding:20px; font-family:"Cascadia Code","Consolas",monospace; font-size:13px; line-height:1.8; color:var(--muted); overflow-x:auto; white-space:pre; }
+  .code-block .kw { color:var(--purple); }
+  .code-block .val { color:var(--cyan); }
+  .code-block .cmt { color:var(--dim); }
+  .state-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:16px; }
+  .state-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px; text-align:center; }
+  .state-card:hover { border-color:var(--cyan); transform:translateY(-2px); }
+  .state-name { font-size:13px; font-weight:700; margin-bottom:8px; }
+  .state-demo { min-height:60px; display:flex; align-items:center; justify-content:center; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <h1>组件系统 Component Spec</h1>
+    <p>Phase War 可复用 UI 组件库 · v1.0</p>
+  </div>
+
+  <!-- Buttons -->
+  <div class="section">
+    <div class="section-title">按钮 Buttons</div>
+    <div class="component-grid">
+      <div class="comp-card">
+        <div class="comp-preview" style="background:rgba(0,212,255,0.03);">
+          <div class="btn-group">
+            <button class="btn-primary">确认部署</button>
+            <button class="btn-secondary">取消</button>
+            <button class="btn-danger">删除</button>
+          </div>
+        </div>
+        <div class="comp-info">
+          <div class="comp-name">操作按钮组</div>
+          <div class="comp-desc">主按钮使用青色渐变 + 阴影 · 次按钮描边 · 危险按钮红色半透明</div>
+        </div>
+      </div>
+      <div class="comp-card">
+        <div class="comp-preview" style="background:rgba(168,85,247,0.03);">
+          <div style="display:flex;flex-direction:column;gap:12px;width:100%;">
+            <button class="btn-primary" style="width:100%;">强化至 Lv.1 (消耗 50 纳米)</button>
+            <button class="btn-secondary" style="width:100%;">查看进化路线</button>
+          </div>
+        </div>
+        <div class="comp-info">
+          <div class="comp-name">全宽按钮</div>
+          <div class="comp-desc">移动端/弹窗底部操作 · 最小高度 44px · 圆角 8px</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cards -->
+  <div class="section">
+    <div class="section-title">卡牌 Card</div>
+    <div class="component-grid">
+      <div class="comp-card">
+        <div class="comp-preview" style="background:rgba(0,0,0,0.2);">
+          <div style="display:flex;gap:16px;">
+            <div class="unit-card common">
+              <div class="card-stars">★★</div>
+              <div class="card-icon">⚔️</div>
+              <div class="card-name">侦察机甲</div>
+              <div class="card-level">Lv.3</div>
+            </div>
+            <div class="unit-card rare">
+              <div class="card-stars">★★★</div>
+              <div class="card-icon">🛡️</div>
+              <div class="card-name">重装步兵</div>
+              <div class="card-level">Lv.7</div>
+            </div>
+            <div class="unit-card legendary">
+              <div class="card-stars">★★★★★</div>
+              <div class="card-icon">🚀</div>
+              <div class="card-name">导弹发射</div>
+              <div class="card-level">Lv.12</div>
+            </div>
+            <div class="unit-card mythic">
+              <div class="card-stars">★★★★★★★</div>
+              <div class="card-icon">💎</div>
+              <div class="card-name">永纪·终式</div>
+              <div class="card-level">MAX</div>
+            </div>
+          </div>
+        </div>
+        <div class="comp-info">
+          <div class="comp-name">单位卡牌</div>
+          <div class="comp-desc">稀有度决定边框颜色 + 光晕强度 · 尺寸 140×180px · 圆角 10px</div>
+        </div>
+      </div>
+      <div class="comp-card">
+        <div class="comp-preview" style="background:rgba(0,0,0,0.2);">
+          <div style="width:200px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <span style="font-size:14px;font-weight:700;color:#fff;">装备卡片</span>
+              <span class="badge badge-green">已装配</span>
+            </div>
+            <div style="height:80px;background:rgba(255,255,255,0.03);border-radius:8px;margin-bottom:12px;display:flex;align-items:center;justify-content:center;font-size:32px;">🔧</div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);">
+              <span>暴击标记概率</span>
+              <span style="color:var(--green);">+30%</span>
+            </div>
+          </div>
+        </div>
+        <div class="comp-info">
+          <div class="comp-name">装备/模块卡片</div>
+          <div class="comp-desc">图标区 + 名称 + 数值 + 状态标签 · 适用于改造库、符文库</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <div class="section">
+    <div class="section-title">导航组件 Navigation</div>
+    <div class="component-grid">
+      <div class="comp-card">
+        <div class="comp-preview" style="background:rgba(0,0,0,0.2);">
+          <div class="bottom-nav">
+            <div class="nav-item"><div class="nav-icon">🎒</div><div class="nav-label">背包</div></div>
+            <div class="nav-item active"><div class="nav-icon">⬆️</div><div class="nav-label">成长</div></div>
+            <div class="nav-item"><div class="nav-icon">🏳️</div><div class="nav-label">势力</div></div>
+            <div class="nav-item"><div class="nav-icon">📋</div><div class="nav-label">任务</div></div>
+            <div class="nav-item"><div class="nav-icon">🛒</div><div class="nav-label">商店</div></div>
+            <div class="nav-item"><div class="nav-icon">🗺️</div><div class="nav-label">地图</div></div>
+          </div>
+        </div>
+        <div class="comp-info">
+          <div class="comp-name">底部导航栏</div>
+          <div class="comp-desc">精简为 6 个核心入口 · 当前页面高亮青色 · 图标 ≥ 44×44px</div>
+        </div>
+      </div>
+      <div class="comp-card">
+        <div class="comp-preview" style="background:rgba(0,0,0,0.2);">
+          <div style="display:flex;flex-direction:column;gap:16px;width:100%;">
+            <div class="tabs">
+              <div class="tab active">战斗卡</div>
+              <div class="tab">改造</div>
+              <div class="tab">符文</div>
+              <div class="tab">相位仪</div>
+            </div>
+            <div class="chips">
+              <div class="chip active">全部</div>
+              <div class="chip">轻装</div>
+              <div class="chip">装甲</div>
+              <div class="chip">支援</div>
+              <div class="chip">空中</div>
+              <div class="chip">堡垒</div>
+            </div>
+          </div>
+        </div>
+        <div class="comp-info">
+          <div class="comp-name">筛选组件</div>
+          <div class="comp-desc">Tab 切换 + Chip 过滤双层结构 · 激活态使用青色背景</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- States -->
+  <div class="section">
+    <div class="section-title">交互状态 Interactive States</div>
+    <div class="state-grid">
+      <div class="state-card">
+        <div class="state-name">Default</div>
+        <div class="state-demo"><button class="btn-secondary" style="opacity:0.6;">按钮</button></div>
+      </div>
+      <div class="state-card">
+        <div class="state-name">Hover</div>
+        <div class="state-demo"><button class="btn-secondary" style="border-color:var(--cyan);box-shadow:0 0 12px rgba(0,212,255,0.2);">按钮</button></div>
+      </div>
+      <div class="state-card">
+        <div class="state-name">Active / Selected</div>
+        <div class="state-demo"><button class="btn-primary">按钮</button></div>
+      </div>
+      <div class="state-card">
+        <div class="state-name">Disabled</div>
+        <div class="state-demo"><button class="btn-primary" style="opacity:0.3;pointer-events:none;">按钮</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Before After -->
+  <div class="section">
+    <div class="section-title">当前问题 → 优化方案</div>
+    <div class="compare-row">
+      <div class="compare-box bad">
+        <div class="compare-label">❌ 当前问题</div>
+        <ul style="font-size:14px;color:var(--muted);padding-left:18px;display:flex;flex-direction:column;gap:8px;">
+          <li>底部 12 个图标无主次，当前页高亮不明显</li>
+          <li>右下角彩色按钮像视频播放器</li>
+          <li>卡牌边框风格不统一（金/蓝/银/紫）</li>
+          <li>筛选器顶部横排和左侧竖排重复且不一致</li>
+          <li>空状态无引导（改造站右侧大面积空白）</li>
+          <li>滚动条样式不统一</li>
+        </ul>
+      </div>
+      <div class="compare-box good">
+        <div class="compare-label">✓ 优化方案</div>
+        <ul style="font-size:14px;color:var(--muted);padding-left:18px;display:flex;flex-direction:column;gap:8px;">
+          <li>精简导航为 6 个核心入口，当前页青色高亮</li>
+          <li>战斗控制独立区域，统一单色图标风格</li>
+          <li>卡牌统一科技线条边框 + 稀有度渐变光晕</li>
+          <li>筛选器统一为 Tab + Chip 双层组件</li>
+          <li>空状态显示引导文案 + 操作提示</li>
+          <li>全局统一自定义滚动条样式</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- CSS Tokens -->
+  <div class="section">
+    <div class="section-title">CSS 变量输出 CSS Variables</div>
+    <div class="code-block"><span class="cmt">/* Phase War Design Tokens — components.css */</span>
+<span class="kw">:root</span> {
+  <span class="cmt">/* Button */</span>
+  <span class="kw">--btn-height</span>:          <span class="val">44px</span>;
+  <span class="kw">--btn-padding-h</span>:       <span class="val">24px</span>;
+  <span class="kw">--btn-radius</span>:          <span class="val">8px</span>;
+  <span class="kw">--btn-font-size</span>:       <span class="val">14px</span>;
+  <span class="kw">--btn-shadow-primary</span>:  <span class="val">0 4px 16px rgba(0,212,255,0.3)</span>;
+
+  <span class="cmt">/* Card */</span>
+  <span class="kw">--card-width</span>:          <span class="val">140px</span>;
+  <span class="kw">--card-height</span>:         <span class="val">180px</span>;
+  <span class="kw">--card-radius</span>:         <span class="val">10px</span>;
+  <span class="kw">--card-border-width</span>:   <span class="val">2px</span>;
+  <span class="kw">--card-gap</span>:            <span class="val">12px</span>;
+
+  <span class="cmt">/* Navigation */</span>
+  <span class="kw">--nav-height</span>:          <span class="val">64px</span>;
+  <span class="kw">--nav-icon-size</span>:       <span class="val">44px</span>;
+  <span class="kw">--nav-active-color</span>:    <span class="val">#00D4FF</span>;
+
+  <span class="cmt">/* Modal */</span>
+  <span class="kw">--modal-max-width</span>:     <span class="val">720px</span>;
+  <span class="kw">--modal-radius</span>:        <span class="val">12px</span>;
+  <span class="kw">--modal-padding</span>:       <span class="val">24px</span>;
+  <span class="kw">--modal-shadow</span>:        <span class="val">0 8px 32px rgba(0,0,0,0.4)</span>;
+
+  <span class="cmt">/* Tab / Chip */</span>
+  <span class="kw">--tab-radius</span>:          <span class="val">6px</span>;
+  <span class="kw">--chip-radius</span>:         <span class="val">20px</span>;
+  <span class="kw">--chip-active-bg</span>:      <span class="val">rgba(0,212,255,0.1)</span>;
+}</div>
+  </div>
+
+</div>
+</body>
+</html>

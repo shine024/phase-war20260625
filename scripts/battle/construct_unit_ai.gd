@@ -205,6 +205,7 @@ static func _get_unit_slot_index(n: Node) -> int:
 
 ## 槽位编号扫描索敌（曲射/空射用）
 ## v7.x: 四级优先级降级链（每级同级取距离最近）：
+##   L0 反击标记目标（art_14_counter_battery：被谁打就反击谁，优先攻击挂 _counter_marked_by 的目标）
 ##   L1 指挥单位（platform_type==12）→ L2 光环单位（AURA_PLATFORM_TYPES）
 ##   → L3 输出最高单位（DPS 最高，并列取最近）→ L4 最后排单位（槽位远→近兜底）
 ## L3 在任意有存活敌方时总能选出一个，L4 为安全兜底
@@ -217,6 +218,17 @@ static func _scan_slot_targets(u: CharacterBody2D, gr: Array) -> Node2D:
 		return null
 
 	var origin: Vector2 = u.global_position
+
+	# L0 反击标记目标（仅当本单位装了 art_14_counter_battery 等反击改造时生效）
+	# _apply_counter_battery_mark 在本炮兵被攻击时给攻击者挂 _counter_marked_by meta（带 5s _marked_until）；
+	# 此前该 meta 写入后战斗侧零读取，现复活：炮兵优先反击刚刚打自己的敌人。
+	# 过期检查复用 _marked_until（与标记系统同源），避免攻击者死亡后 meta 残留被永久优先。
+	if u.stats != null and u.stats.has_counter_battery:
+		var _now_cb: float = Time.get_ticks_msec() / 1000.0
+		var marked: Array = valid.filter(func(n):
+			return n is Node and n.has_meta("_counter_marked_by") and n.has_meta("_marked_until") and _now_cb < float(n.get_meta("_marked_until", 0.0)))
+		if not marked.is_empty():
+			return _nearest_of(origin, marked)
 
 	# L1 指挥单位
 	var commanders: Array = valid.filter(func(n):

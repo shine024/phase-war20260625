@@ -15,6 +15,8 @@ const _CardGridSlotsPerSide: int = BattleSlotGrid.SLOT_COUNT
 const _DamageNumberDisplayScript = preload("res://scenes/effects/damage_number_display.gd")
 const ConstructUnitScene = preload("res://scenes/units/construct_unit.tscn")
 const DEPLOY_FAIL_LOG_THROTTLE_MS := 350
+# v7.x: 诊断开关——对比「上场端」vs「评估端」单卡 stats，定位战场 vs 面板战力差异源
+const DEBUG_DEPLOY_POWER_LOG := false
 
 # ---- 外部依赖引用（由 BattleManager 注入） ----
 var _energy_manager: Node = null
@@ -900,7 +902,8 @@ func _apply_phantom_clone_buff(unit: Node) -> void:
 	# 攻击加成（三维攻击 + 武器伤害）
 	if atk_bonus > 0.0:
 		var mult: float = 1.0 + atk_bonus
-		unit_stats.attack_damage = maxf(0.1, float(unit_stats.attack_damage) * mult)
+		# v8.x 修复：attack_damage 是 attack_light 的 getter/setter 别名（unit_stats.gd:22-28），
+		# 与 attack_light 同乘会让 attack_light 被乘两次（实际 ×mult²）。
 		unit_stats.attack_light = maxf(0.1, float(unit_stats.attack_light) * mult)
 		unit_stats.attack_armor = maxf(0.1, float(unit_stats.attack_armor) * mult)
 		unit_stats.attack_air = maxf(0.1, float(unit_stats.attack_air) * mult)
@@ -968,76 +971,27 @@ func _create_enemy_unit_with_id(arch_id: String) -> Node:
 	_apply_enemy_loadout_tier_if_normal_battle(u)
 	return u
 
-## v7.2: 普通关敌兵档位加成（3/6/9改造档，等量我方养成）
-## 按当前关卡在时代内的进度选档：前1/3低配、中段中配、后期高配
+## v7.2→v8.2: 档位加成已移入 resolver 主链（resolve_classic_enemy 内 ctx.tier × 档位系数）。
+## 此函数不再单独应用乘区，仅负责同步单位节点的裸字段（hp/max_hp/attack_damage/defense），
+## 让血条/伤害结算与 stats 一致。
 func _apply_enemy_loadout_tier_if_normal_battle(unit: Node) -> void:
 	if unit == null or not is_instance_valid(unit):
 		return
-	# 相位师战不在此处理（产兵函数已默认高配档）
-	var tree = Engine.get_main_loop() as SceneTree
-	if tree == null or tree.root == null:
-		return
-	var battle_mgr: Node = tree.root.get_node_or_null("BattleManager")
-	if battle_mgr == null or not ("_is_phase_master_battle" in battle_mgr):
-		return
-	if bool(battle_mgr.get("_is_phase_master_battle")):
-		return  # 相位师战，跳过（产兵函数处理）
-	var stats: Variant = unit.get("stats") if "stats" in unit else null
-	if stats == null or not (stats is UnitStats):
-		return
-	# 按关卡号算时代进度（每20关一个时代，时代内进度 0.0~1.0）
-	var current_level: int = 1
-	if GameManager != null and ("current_level" in GameManager):
-		current_level = int(GameManager.current_level)
-	var era_local_level: int = ((current_level - 1) % 20) + 1  # 时代内关卡 1~20
-	var era_progress: float = float(era_local_level - 1) / 19.0  # 0.0~1.0
-	var EnemyLoadoutTiers = preload("res://data/enemy_loadout_tiers.gd")
-	var tier: int = EnemyLoadoutTiers.get_tier_for_level_progress(era_progress, false)
-	var tier_bonus: Dictionary = EnemyLoadoutTiers.get_bonus_for_tier(tier)
-	var atk_mult: float = float(tier_bonus.get("atk_pct", 0.0))
-	var hp_mult: float = float(tier_bonus.get("hp_pct", 0.0))
-	if hp_mult > 0.0:
-		stats.max_hp = maxf(1.0, stats.max_hp * (1.0 + hp_mult))
-	if atk_mult > 0.0:
-		stats.attack_damage = maxf(0.1, stats.attack_damage * (1.0 + atk_mult))
-		stats.attack_light = maxf(0.1, stats.attack_light * (1.0 + atk_mult))
-		stats.attack_armor = maxf(0.1, stats.attack_armor * (1.0 + atk_mult))
-		stats.attack_air = maxf(0.1, stats.attack_air * (1.0 + atk_mult))
-		if stats.has_method("_sync_weapon_slots_damage"):
-			stats._sync_weapon_slots_damage(1.0 + atk_mult)
-	# v7.x：同步单位节点的裸字段（hp/max_hp/attack_damage/defense），让血条/伤害结算
-	# 与 stats 一致。之前只调 _update_hp_bar 只刷新血条 UI，但 take_damage 扣血读裸 hp、
-	# 死亡判定读裸 hp，导致 tier 加成（HP ×1.30 / ATK ×1.35）面板显示但战斗中不生效。
+	# v7.x：同步单位节点的裸字段。resolver 已把档位系数乘进 stats.max_hp 等，
+	# 但单位节点的裸 hp/max_hp/attack_damage 需单独同步（take_damage 读裸 hp、死亡判定读裸 hp）。
 	if unit.has_method("_sync_bare_fields_from_stats"):
 		unit._sync_bare_fields_from_stats()
 	elif unit.has_method("_update_hp_bar"):
 		unit._update_hp_bar()
 
-## v6.7: 仅在相位师 boss 对战时给敌方单位应用排名加成
-## 普通波次小怪不受影响（保持原数值）
+## v6.7→v8.2: 经典敌兵的相位师战排名加成已移除（master_stats 加成链全部砍掉）。
+## 相位师战时普通敌兵走与普通关相同的 resolver 公式（档位 × 波数 × 势力 × 难度），
+## 相位师的强度差异由其召唤的产兵（高档位 + 相位仪 + 符文 + boss波序列）体现。
+## 此函数保留为同步裸字段的轻量入口（resolver 已算完数值，单位节点裸 hp/max_hp 需同步）。
 func _apply_enemy_phase_master_bonus_if_active(unit: Node) -> void:
 	if unit == null or not is_instance_valid(unit):
 		return
-	var bm = Engine.get_main_loop() as SceneTree
-	if bm == null or bm.root == null:
-		return
-	var battle_mgr: Node = bm.root.get_node_or_null("BattleManager")
-	if battle_mgr == null or not ("_is_phase_master_battle" in battle_mgr):
-		return
-	if not bool(battle_mgr.get("_is_phase_master_battle")):
-		return
-	# 仅对有 stats 的单位应用（enemy_unit 的 stats 在 setup 中构建）
-	var stats: Variant = unit.get("stats") if "stats" in unit else null
-	if stats == null or not (stats is UnitStats):
-		return
-	if _phase_instrument != null and _phase_instrument.has_method("apply_enemy_phase_master_bonus_to_unit_stats"):
-		var enemy_stars: int = 3
-		if "_cached_enemy_rank_stars" in _phase_instrument:
-			enemy_stars = int(_phase_instrument._cached_enemy_rank_stars)
-		_phase_instrument.apply_enemy_phase_master_bonus_to_unit_stats(stats, enemy_stars)
 	# v7.x：同步单位节点的裸字段（hp/max_hp/attack_damage/defense），让 UI 血条与 stats 一致。
-	# 之前只调 _update_hp_bar 只刷新血条 UI，但 take_damage 扣血读裸 hp、死亡判定读裸 hp，
-	# 导致 phase master 加成面板显示但战斗中不生效（血量比面板显示的脆）。
 	if unit.has_method("_sync_bare_fields_from_stats"):
 		unit._sync_bare_fields_from_stats()
 	elif unit.has_method("_update_hp_bar"):
@@ -1166,10 +1120,12 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 		card_key, ",".join(weapon_ids), weapon_types_key, battle_era, pf_bonus_key,
 		active_faction_cache_key
 	]
-	print("[DIAG deploy-in] card=%s inst=<%s> enhance=%d mods=%d mslots=%d | era=%d | key=%s" % [platform_card.card_id, platform_card.instance_id, int(platform_card.enhance_level), platform_card.mods.size(), platform_card.module_slots.size(), battle_era, key])
+	if DEBUG_DEPLOY_POWER_LOG:
+		print("[DIAG deploy-in] card=%s inst=<%s> enhance=%d mods=%d mslots=%d | era=%d | key=%s" % [platform_card.card_id, platform_card.instance_id, int(platform_card.enhance_level), platform_card.mods.size(), platform_card.module_slots.size(), battle_era, key])
 	if _stats_cache.has(key):
 		var cached_stats: UnitStats = _stats_cache[key]
-		print("[DIAG deploy-out CACHED] hp=%.0f" % float(cached_stats.max_hp))
+		if DEBUG_DEPLOY_POWER_LOG:
+			print("[DIAG deploy-out CACHED] hp=%.0f" % float(cached_stats.max_hp))
 		return cached_stats.duplicate() as UnitStats
 
 	var stats = UnitStatsTable.build_stats_from_card(effective_card, battle_era)
@@ -1194,9 +1150,18 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 	# v6.2: 符文之语全局加成注入（所有玩家单位共享）
 	if _phase_instrument and _phase_instrument.has_method("get_rune_bonus"):
 		_apply_rune_bonus_to_stats(stats, _phase_instrument.get_rune_bonus())
+	# v8.x: 相位师技能树 stat_bonus 全局加成注入（所有玩家单位共享）
+	_apply_skill_tree_stat_bonus(stats)
 	# v6.8: 敌源MOD（D槽）战斗加成已停用（EOM 面板/掉落/存档保留）
 	_stats_cache[key] = stats.duplicate()
-	print("[DIAG deploy-out BUILT] hp=%.0f" % float(stats.max_hp))
+	# v7.x 诊断：对比上场端 vs 评估端 stats，定位战场/面板战力差异（默认关，调试时改 true）
+	# 与 master_platform_power.gd:compute_player_card_power 的 [PowerDebug][评估端] 格式对称
+	if DEBUG_DEPLOY_POWER_LOG:
+		var _p_deploy: float = EvolutionHelpers.combat_power_from_unit_stats(stats)
+		push_warning("[PowerDebug][上场端] card=%s enhance=%d hp=%.0f atk_l=%.1f atk_a=%.1f atk_air=%.1f def_l=%.0f def_a=%.0f spd=%.1f → power=%.1f" % [
+			platform_card.card_id, int(platform_card.enhance_level),
+			stats.max_hp, stats.attack_light, stats.attack_armor, stats.attack_air,
+			stats.defense_light, stats.defense_armor, stats.move_speed, _p_deploy])
 	return stats
 
 ## v6.2: 应用符文之语加成到单位属性
@@ -1213,7 +1178,7 @@ func _apply_rune_bonus_to_stats(stats: UnitStats, bonus: Dictionary) -> void:
 	# 攻击力加成（影响所有武器伤害）
 	if stat_map.has("attack") and float(stat_map["attack"]) != 0.0:
 		var mult: float = 1.0 + float(stat_map["attack"])
-		stats.attack_damage *= mult
+		# v8.x 修复：attack_damage 是 attack_light 别名，同乘会乘两次（见 L905 注释）。
 		stats.attack_light *= mult
 		stats.attack_armor *= mult
 		stats.attack_air *= mult
@@ -1276,6 +1241,33 @@ func _apply_rune_bonus_to_stats(stats: UnitStats, bonus: Dictionary) -> void:
 ##   def_light/def_armor/def_air → 三维防御乘区
 ##   hp → max_hp 乘区
 ##   attack_speed → 降低 attack_interval（提速）
+## v8.x: 应用相位师技能树的 stat_bonus 全局加成
+## 复用 _apply_active_faction_stat_bonus 处理 atk/def/hp，单独处理技能树特有的 key
+func _apply_skill_tree_stat_bonus(stats: UnitStats) -> void:
+	var pmsm: Node = _get_autoload_node("PhaseMasterSkillManager")
+	if pmsm == null or not pmsm.has_method("get_active_effects"):
+		return
+	var effects: Dictionary = pmsm.get_active_effects()
+	var sb: Dictionary = effects.get("stat_bonus", {})
+	if sb.is_empty():
+		return
+	# 复用势力技能的注入函数（atk_light/atk_armor/atk_air/def_*/hp/attack_speed）
+	_apply_active_faction_stat_bonus(stats, sb)
+	# 技能树特有 key（势力技能不涉及）：暴击/闪避/穿甲/吸血/射程/暴击伤害
+	if sb.has("crit_chance") and float(sb["crit_chance"]) != 0.0:
+		stats.crit_chance = minf(0.75, stats.crit_chance + float(sb["crit_chance"]))
+	if sb.has("dodge_chance") and float(sb["dodge_chance"]) != 0.0:
+		stats.dodge_chance = minf(0.75, stats.dodge_chance + float(sb["dodge_chance"]))
+	if sb.has("armor_penetration") and float(sb["armor_penetration"]) != 0.0:
+		stats.armor_penetration = minf(0.80, stats.armor_penetration + float(sb["armor_penetration"]))
+	if sb.has("lifesteal") and float(sb["lifesteal"]) != 0.0:
+		stats.lifesteal = minf(0.60, stats.lifesteal + float(sb["lifesteal"]))
+	if sb.has("attack_range") and float(sb["attack_range"]) != 0.0:
+		stats.attack_range *= (1.0 + float(sb["attack_range"]))
+	if sb.has("crit_damage_bonus") and float(sb["crit_damage_bonus"]) != 0.0:
+		stats.crit_damage_bonus += float(sb["crit_damage_bonus"])
+	# unit_limit / energy_regen / deploy_speed 是全局属性，不在单位 stats 内，由各子系统单独查询
+
 ## 与 _apply_rune_bonus_to_stats 模式一致：加成为百分比（0.10 = +10%）。
 func _apply_active_faction_stat_bonus(stats: UnitStats, stat_bonus: Dictionary) -> void:
 	if stat_bonus.is_empty():
@@ -1290,9 +1282,8 @@ func _apply_active_faction_stat_bonus(stats: UnitStats, stat_bonus: Dictionary) 
 				0: stats.attack_light *= mult
 				1: stats.attack_armor *= mult
 				2: stats.attack_air *= mult
-			# atk_light 同时是 attack_damage 的主源（别名），需同步
-			if i == 0:
-				stats.attack_damage *= mult
+			# v8.x 修复：attack_damage 是 attack_light 别名（unit_stats.gd:22-28），
+			# 原 i==0 时额外乘 attack_damage 会让 attack_light 被乘两次（×mult²）。已删除。
 			# v7.x 修复: 分维度同步 weapon_slots[i].damage（槽位 i 对应维度 i）
 			# 战斗 AI 读 weapon_slots[i].damage，此前势力技能加成对实际开火伤害失效
 			if i < stats.weapon_slots.size():

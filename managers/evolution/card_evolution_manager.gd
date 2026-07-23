@@ -150,6 +150,16 @@ static func can_evolve_blueprint(card_id_or_instance: String, target_card_id: St
 
 	var stage: String = UnitLineageConfig.get_stage(card_id, target_card_id)
 
+	## v8.x: 进化能力需先在相位师技能树解锁。
+	## 技能树 concept_weapon 分支的 evolution 节点按 era 解锁进化能力（era=-1 表示全时代）。
+	## 若技能树未解锁该 era 的进化，直接拒绝（数值门槛 enhance_level/mod 不再检查）。
+	var card_era: int = _get_card_era(card_id, is_instance, card_id_or_instance)
+	var pmsm: Node = _get_autoload_node("PhaseMasterSkillManager")
+	if pmsm != null and pmsm.has_method("is_evolution_era_unlocked"):
+		if not pmsm.is_evolution_era_unlocked(card_era):
+			return _evolve_check_denied("evolution_not_unlocked_in_skill_tree")
+	# 注：若 PhaseMasterSkillManager 不可用（旧环境），回退到原 enhance_level 门槛（向后兼容）
+
 	## v6.0: 新门槛 — 强化等级 + MOD数量 + 敌源MOD
 	# v7.0: 优先从实例对象读 enhance_level 和 mods；实例不存在回退 blueprint_mods 字典
 	var enhance_lvl: int = 0
@@ -341,3 +351,20 @@ static func _get_card_enhance_level(card_id: String, bpm_ref: Node) -> int:
 		if cem != null and cem.has_method("get_card_enhancement_level"):
 			return cem.get_card_enhancement_level(card_id)
 	return 1
+
+## v8.x: 获取卡的 era（用于技能树进化解锁检查）
+static func _get_card_era(card_id: String, is_instance: bool, instance_or_id: String) -> int:
+	# 优先从实例/模板卡读 era 字段
+	if is_instance:
+		var ir: Node = _get_autoload_node("InstanceRegistry")
+		if ir != null and ir.has_method("get_instance"):
+			var inst: CardResource = ir.get_instance(instance_or_id)
+			if inst != null:
+				return int(inst.era)
+	# 回退：从 DefaultCards 模板读
+	var DefaultCards = load("res://data/default_cards.gd")
+	if DefaultCards != null and DefaultCards.has_method("get_card_by_id"):
+		var tpl: CardResource = DefaultCards.get_card_by_id(card_id)
+		if tpl != null:
+			return int(tpl.era)
+	return 0

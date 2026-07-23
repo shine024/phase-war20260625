@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase War · 设计系统总览 Design System Index</title>
+<style>
+  :root { --bg:#0a0e17; --surface:#111827; --card:#1a2236; --border:#2a3550; --text:#e8ecf4; --muted:#8b95a8; --dim:#5a6478; --cyan:#00d4ff; --purple:#a855f7; --orange:#f59e0b; --green:#22c55e; --red:#ef4444; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:"Segoe UI","Microsoft YaHei",sans-serif; background:var(--bg); color:var(--text); line-height:1.6; }
+  .page { max-width:1200px; margin:0 auto; padding:48px 32px; }
+  .hero { text-align:center; padding:80px 0 60px; position:relative; }
+  .hero::before { content:""; position:absolute; inset:0; background:radial-gradient(ellipse 60% 50% at 50% 30%, rgba(0,212,255,0.06) 0%, transparent 70%); pointer-events:none; }
+  .hero h1 { font-size:42px; font-weight:800; background:linear-gradient(135deg,var(--cyan),var(--purple)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:12px; position:relative; }
+  .hero p { color:var(--muted); font-size:16px; position:relative; }
+  .badge-row { display:flex; gap:12px; justify-content:center; margin-top:24px; position:relative; flex-wrap:wrap; }
+  .badge { padding:6px 16px; border-radius:20px; font-size:12px; font-weight:700; letter-spacing:0.5px; }
+  .badge-cyan { background:rgba(0,212,255,0.1); color:var(--cyan); border:1px solid rgba(0,212,255,0.25); }
+  .badge-purple { background:rgba(168,85,247,0.1); color:var(--purple); border:1px solid rgba(168,85,247,0.25); }
+  .badge-orange { background:rgba(245,158,11,0.1); color:var(--orange); border:1px solid rgba(245,158,11,0.25); }
+  .section { margin-bottom:56px; }
+  .section-title { font-size:20px; font-weight:700; margin-bottom:20px; display:flex; align-items:center; gap:10px; }
+  .section-title::before { content:""; width:4px; height:24px; background:var(--cyan); border-radius:2px; }
+  .spec-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:20px; }
+  .spec-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:24px; transition:all .25s; text-decoration:none; color:inherit; display:block; }
+  .spec-card:hover { border-color:var(--cyan); transform:translateY(-3px); box-shadow:0 8px 32px rgba(0,212,255,0.1); }
+  .spec-number { font-size:12px; font-weight:700; color:var(--cyan); font-family:monospace; margin-bottom:8px; }
+  .spec-name { font-size:18px; font-weight:700; margin-bottom:6px; }
+  .spec-desc { font-size:13px; color:var(--muted); margin-bottom:16px; line-height:1.6; }
+  .spec-tags { display:flex; gap:6px; flex-wrap:wrap; }
+  .spec-tag { font-size:11px; padding:3px 10px; border-radius:12px; background:rgba(0,0,0,0.3); color:var(--dim); font-weight:600; }
+  .roadmap { background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+  .roadmap-phase { padding:20px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:16px; }
+  .roadmap-phase:last-child { border-bottom:none; }
+  .phase-badge { padding:4px 12px; border-radius:6px; font-size:11px; font-weight:700; letter-spacing:1px; white-space:nowrap; }
+  .phase-p0 { background:rgba(239,68,68,0.15); color:var(--red); }
+  .phase-p1 { background:rgba(245,158,11,0.15); color:var(--orange); }
+  .phase-p2 { background:rgba(0,212,255,0.12); color:var(--cyan); }
+  .phase-info { flex:1; }
+  .phase-title { font-weight:700; font-size:15px; margin-bottom:2px; }
+  .phase-desc { font-size:13px; color:var(--muted); }
+  .phase-tasks { display:flex; gap:8px; flex-wrap:wrap; }
+  .phase-task { font-size:11px; padding:4px 10px; border-radius:6px; background:rgba(255,255,255,0.04); color:var(--dim); font-weight:600; }
+  .summary-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:40px; }
+  @media(max-width:700px){ .summary-grid{grid-template-columns:repeat(2,1fr);} }
+  .summary-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px; text-align:center; }
+  .summary-value { font-size:32px; font-weight:800; color:var(--cyan); margin-bottom:4px; }
+  .summary-label { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+  .file-list { background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+  .file-item { display:flex; align-items:center; gap:12px; padding:14px 20px; border-bottom:1px solid var(--border); }
+  .file-item:last-child { border-bottom:none; }
+  .file-icon { font-size:16px; }
+  .file-name { font-weight:600; font-size:14px; flex:1; }
+  .file-path { font-size:12px; color:var(--dim); font-family:monospace; }
+  .file-status { font-size:11px; font-weight:700; padding:3px 10px; border-radius:12px; }
+  .status-done { background:rgba(34,197,94,0.15); color:var(--green); }
+  .footer { text-align:center; padding:40px 0; color:var(--dim); font-size:13px; border-top:1px solid var(--border); margin-top:40px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="hero">
+    <h1>Phase War 设计系统</h1>
+    <p>界面一致性审计报告 · 视觉规范总览</p>
+    <div class="badge-row">
+      <span class="badge badge-cyan">v1.0</span>
+      <span class="badge badge-purple">2026-07-21</span>
+      <span class="badge badge-orange">基于 9 张截图分析</span>
+    </div>
+  </div>
+
+  <!-- Summary Stats -->
+  <div class="summary-grid">
+    <div class="summary-card">
+      <div class="summary-value">8</div>
+      <div class="summary-label">设计规范</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-value">12</div>
+      <div class="summary-label">核心问题</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-value">4</div>
+      <div class="summary-label">优化阶段</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-value">7</div>
+      <div class="summary-label">CSS Token 文件</div>
+    </div>
+  </div>
+
+  <!-- Spec Cards -->
+  <div class="section">
+    <div class="section-title">设计规范文档</div>
+    <div class="spec-grid">
+      <a href="design_01_color_system.html" class="spec-card">
+        <div class="spec-number">DESIGN 01</div>
+        <div class="spec-name">配色体系 Color System</div>
+        <div class="spec-desc">基础色调、语义强调色、稀有度 4 级配色、WCAG 对比度检测、CSS 变量输出。</div>
+        <div class="spec-tags"><span class="spec-tag">色彩</span><span class="spec-tag">对比度</span><span class="spec-tag">稀有度</span></div>
+      </a>
+      <a href="design_02_layout_system.html" class="spec-card">
+        <div class="spec-number">DESIGN 02</div>
+        <div class="spec-name">布局规范 Layout System</div>
+        <div class="spec-desc">4 套页面模板（A/B/C/D）、统一栅格、组件尺寸规范、响应式断点策略。</div>
+        <div class="spec-tags"><span class="spec-tag">模板</span><span class="spec-tag">栅格</span><span class="spec-tag">响应式</span></div>
+      </a>
+      <a href="design_03_typography.html" class="spec-card">
+        <div class="spec-number">DESIGN 03</div>
+        <div class="spec-name">字体与排版 Typography</div>
+        <div class="spec-desc">6 级字号层级、中英混排规则、可读性标准、WCAG AA 对比度要求。</div>
+        <div class="spec-tags"><span class="spec-tag">字号</span><span class="spec-tag">中英混排</span><span class="spec-tag">可读性</span></div>
+      </a>
+      <a href="design_04_spacing.html" class="spec-card">
+        <div class="spec-number">DESIGN 04</div>
+        <div class="spec-name">间距系统 Spacing</div>
+        <div class="spec-desc">7 级 4px 基准间距、紧凑/宽松模式、组件间距规范、CSS 变量输出。</div>
+        <div class="spec-tags"><span class="spec-tag">4px 栅格</span><span class="spec-tag">间距</span><span class="spec-tag">节奏</span></div>
+      </a>
+      <a href="design_05_components.html" class="spec-card">
+        <div class="spec-number">DESIGN 05</div>
+        <div class="spec-name">组件系统 Components</div>
+        <div class="spec-desc">按钮、卡牌、导航栏、筛选器、交互状态、CSS 变量输出。</div>
+        <div class="spec-tags"><span class="spec-tag">按钮</span><span class="spec-tag">卡牌</span><span class="spec-tag">导航</span></div>
+      </a>
+      <a href="design_06_visual_direction.html" class="spec-card">
+        <div class="spec-number">DESIGN 06</div>
+        <div class="spec-name">视觉方向 Visual Direction</div>
+        <div class="spec-desc">三种风格方向对比、推荐军事科幻方向、边框/光效/背景/图标规范细则。</div>
+        <div class="spec-tags"><span class="spec-tag">风格定位</span><span class="spec-tag">边框</span><span class="spec-tag">光效</span></div>
+      </a>
+      <a href="design_07_localization.html" class="spec-card">
+        <div class="spec-number">DESIGN 07</div>
+        <div class="spec-name">本地化与文案 Localization</div>
+        <div class="spec-desc">代码变量替换表、数值格式化、术语统一表、JSON 配置示例。</div>
+        <div class="spec-tags"><span class="spec-tag">中文化</span><span class="spec-tag">术语</span><span class="spec-tag">格式化</span></div>
+      </a>
+      <a href="visual_audit_report.html" class="spec-card" style="border-color:rgba(168,85,247,0.3);">
+        <div class="spec-number" style="color:var(--purple);">REPORT</div>
+        <div class="spec-name">综合审计报告</div>
+        <div class="spec-desc">9 张截图总览、12 个核心问题诊断、实施路线图。设计系统的入口页面。</div>
+        <div class="spec-tags"><span class="spec-tag">总览</span><span class="spec-tag">诊断</span><span class="spec-tag">路线图</span></div>
+      </a>
+    </div>
+  </div>
+
+  <!-- Roadmap -->
+  <div class="section">
+    <div class="section-title">实施路线图 Implementation Roadmap</div>
+    <div class="roadmap">
+      <div class="roadmap-phase">
+        <span class="phase-badge phase-p0">P0 · Phase 1</span>
+        <div class="phase-info">
+          <div class="phase-title">消除阻断性问题</div>
+          <div class="phase-desc">隐藏调试信息，统一美术风格方向</div>
+        </div>
+        <div class="phase-tasks">
+          <span class="phase-task">隐藏 Godot Editor 栏</span>
+          <span class="phase-task">移除代码变量显示</span>
+          <span class="phase-task">替换占位贴图</span>
+          <span class="phase-task">废弃金色雕花边框</span>
+        </div>
+      </div>
+      <div class="roadmap-phase">
+        <span class="phase-badge phase-p1">P1 · Phase 2</span>
+        <div class="phase-info">
+          <div class="phase-title">建立设计系统基础</div>
+          <div class="phase-desc">配色、布局、本地化三大规范落地</div>
+        </div>
+        <div class="phase-tasks">
+          <span class="phase-task">配色语义规范</span>
+          <span class="phase-task">4 套页面模板</span>
+          <span class="phase-task">全部中文化</span>
+          <span class="phase-task">修复拼写错误</span>
+        </div>
+      </div>
+      <div class="roadmap-phase">
+        <span class="phase-badge phase-p2">P2 · Phase 3</span>
+        <div class="phase-info">
+          <div class="phase-title">打磨细节体验</div>
+          <div class="phase-desc">字体、间距、导航体验优化</div>
+        </div>
+        <div class="phase-tasks">
+          <span class="phase-task">6 级字号系统</span>
+          <span class="phase-task">4px 间距栅格</span>
+          <span class="phase-task">精简底部导航</span>
+          <span class="phase-task">提升对比度</span>
+        </div>
+      </div>
+      <div class="roadmap-phase">
+        <span class="phase-badge phase-p2">P3 · Phase 4</span>
+        <div class="phase-info">
+          <div class="phase-title">资产替换与验证</div>
+          <div class="phase-desc">按新规范重新制作所有 UI 资产</div>
+        </div>
+        <div class="phase-tasks">
+          <span class="phase-task">卡牌边框重做</span>
+          <span class="phase-task">图标统一风格</span>
+          <span class="phase-task">战斗背景调整</span>
+          <span class="phase-task">全页面走查</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- File List -->
+  <div class="section">
+    <div class="section-title">文件清单 Files</div>
+    <div class="file-list">
+      <div class="file-item">
+        <span class="file-icon">📊</span>
+        <span class="file-name">综合审计报告</span>
+        <span class="file-path">visual_audit_report.html</span>
+        <span class="file-status status-done">已完成</span>
+      </div>
+      <div class="file-item">
+        <span class="file-icon">🎨</span>
+        <span class="file-name">配色体系</span>
+        <span class="file-path">design_01_color_system.html</span>
+        <span class="file-status status-done">已完成</span>
+      </div>
+      <div class="file-item">
+        <span class="file-icon">📐</span>
+        <span class="file-name">布局规范</span>
+        <span class="file-path">design_02_layout_system.html</span>
+        <span class="file-status status-done">已完成</span>
+      </div>
+      <div class="file-item">
+        <span class="file-icon">🔤</span>
+        <span class="file-name">字体与排版</span>
+        <span class="file-path">design_03_typography.html</span>
+        <span class="file-status status-done">已完成</span>
+      </div>
+      <div class="file-item">
+        <span class="file-icon">↔️</span>
+        <span class="file-name">间距系统</span>
+        <span class="file-path">design_04_spacing.html</span>
+        <span class="file-status status-done">已完成</span>
+      </div>
+      <div class="file-item">
+        <span class="file-icon">🧩</span>
+        <span class="file-name">组件系统</span>
+        <span class="file-path">design_05_components.html</span>
+        <span class="file-status status-done">已完成</span>
+      </div>
+      <div class="file-item">
+        <span class="file-icon">🎯</span>
+        <span class="file-name">视觉方向</span>
+        <span class="file-path">design_06_visual_direction.html</span>
+        <span class="file-status status-done">已完成</span>
+      </div>
+      <div class="file-item">
+        <span class="file-icon">🌐</span>
+        <span class="file-name">本地化与文案</span>
+        <span class="file-path">design_07_localization.html</span>
+        <span class="file-status status-done">已完成</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>Phase War 界面一致性设计系统 · v1.0 · 2026-07-21</p>
+  </div>
+
+</div>
+
+</body>
+</html>

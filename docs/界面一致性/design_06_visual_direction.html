@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase War · 视觉方向 Visual Direction</title>
+<style>
+  :root { --bg:#0a0e17; --surface:#111827; --card:#1a2236; --border:#2a3550; --text:#e8ecf4; --muted:#8b95a8; --dim:#5a6478; --cyan:#00d4ff; --purple:#a855f7; --orange:#f59e0b; --green:#22c55e; --red:#ef4444; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:"Segoe UI","Microsoft YaHei",sans-serif; background:var(--bg); color:var(--text); line-height:1.6; }
+  .page { max-width:1400px; margin:0 auto; padding:48px 32px; }
+  .header { text-align:center; margin-bottom:48px; }
+  .header h1 { font-size:36px; font-weight:800; background:linear-gradient(135deg,var(--cyan),var(--purple)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:8px; }
+  .header p { color:var(--muted); font-size:15px; }
+  .section { margin-bottom:56px; }
+  .section-title { font-size:20px; font-weight:700; margin-bottom:20px; display:flex; align-items:center; gap:10px; }
+  .section-title::before { content:""; width:4px; height:24px; background:var(--cyan); border-radius:2px; }
+  .compare-row { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  @media(max-width:800px){ .compare-row{grid-template-columns:1fr;} }
+  .compare-box { border-radius:12px; padding:20px; border:1px solid var(--border); }
+  .compare-box.bad { background:rgba(239,68,68,0.05); }
+  .compare-box.good { background:rgba(34,197,94,0.05); }
+  .compare-label { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:12px; }
+  .bad .compare-label { color:var(--red); }
+  .good .compare-label { color:var(--green); }
+  .rule-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px; }
+  .rule-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:20px; }
+  .rule-card h4 { font-size:15px; font-weight:700; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+  .rule-card ul { list-style:none; display:flex; flex-direction:column; gap:8px; }
+  .rule-card li { font-size:13px; color:var(--muted); padding-left:16px; position:relative; }
+  .rule-card li::before { content:"→"; position:absolute; left:0; color:var(--cyan); }
+  .style-cards { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; }
+  @media(max-width:900px){ .style-cards{grid-template-columns:1fr;} }
+  .style-card { background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+  .style-preview { height:160px; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; }
+  .style-info { padding:20px; }
+  .style-name { font-weight:700; font-size:16px; margin-bottom:8px; }
+  .style-desc { font-size:13px; color:var(--muted); }
+  .preview-fantasy { background:linear-gradient(135deg,#1a0a00,#2a1500); border-bottom:3px solid #fbbf24; }
+  .preview-fantasy::after { content:"⚔️🛡️🏰"; font-size:48px; filter:drop-shadow(0 0 20px rgba(251,191,36,0.5)); }
+  .preview-sci-fi { background:linear-gradient(135deg,#0a0e17,#0d1b2a); border-bottom:3px solid var(--cyan); }
+  .preview-sci-fi::after { content:"🚀💎⚡"; font-size:48px; filter:drop-shadow(0 0 20px rgba(0,212,255,0.5)); }
+  .preview-military { background:linear-gradient(135deg,#0a1a0a,#1a2a1a); border-bottom:3px solid var(--green); }
+  .preview-military::after { content:"🎖️🔫🪖"; font-size:48px; filter:drop-shadow(0 0 20px rgba(34,197,94,0.5)); }
+  .recommendation { background:var(--card); border:2px solid var(--cyan); border-radius:12px; padding:24px; margin-top:20px; }
+  .recommendation-title { font-size:18px; font-weight:800; color:var(--cyan); margin-bottom:12px; }
+  .css-tokens { background:#0d1117; border:1px solid var(--border); border-radius:10px; padding:20px; font-family:"Cascadia Code","Consolas",monospace; font-size:13px; line-height:1.8; color:var(--muted); white-space:pre; overflow-x:auto; }
+  .css-tokens .kw { color:var(--purple); }
+  .css-tokens .val { color:var(--cyan); }
+  .css-tokens .cmt { color:var(--dim); }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <h1>视觉方向 Visual Direction</h1>
+    <p>Phase War 统一美术风格定位 · v1.0</p>
+  </div>
+
+  <div class="section">
+    <div class="section-title">三种风格方向对比</div>
+    <div class="style-cards">
+      <div class="style-card">
+        <div class="style-preview preview-fantasy"></div>
+        <div class="style-info">
+          <div class="style-name">方向 A：奇幻 RPG</div>
+          <div class="style-desc">金色雕花边框、魔法光效、中世纪字体。适合传统卡牌游戏，但与 Phase War 的军事科幻主题不符。</div>
+        </div>
+      </div>
+      <div class="style-card">
+        <div class="style-preview preview-sci-fi"></div>
+        <div class="style-info">
+          <div class="style-name">方向 B：军事科幻 ✓ 推荐</div>
+          <div class="style-desc">简洁科技线条、霓虹光晕、冷色调。与现有 UI 深色背景一致，符合战场/机甲主题。</div>
+        </div>
+      </div>
+      <div class="style-card">
+        <div class="style-preview preview-military"></div>
+        <div class="style-info">
+          <div class="style-name">方向 C：写实军事</div>
+          <div class="style-desc">迷彩色、金属质感、硬朗几何。适合模拟战争，但缺乏科幻感和卡牌游戏的视觉吸引力。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="recommendation">
+    <div class="recommendation-title">✓ 推荐方向：军事科幻 + 简洁科技线条</div>
+    <div style="font-size:14px;color:var(--muted);display:flex;flex-direction:column;gap:12px;">
+      <div><strong style="color:var(--text);">核心理念：</strong>保留现有深色科技 UI 的基础，废弃所有奇幻元素（金色雕花边框、魔法光效），统一为简洁的科技线条风格。</div>
+      <div><strong style="color:var(--text);">视觉关键词：</strong>霓虹光晕 · 渐变边框 · 半透明面板 · 几何切割 · 冷色调</div>
+      <div><strong style="color:var(--text);">应用场景：</strong>卡牌边框、弹窗装饰、按钮高光、选中态发光、稀有度标识</div>
+    </div>
+  </div>
+
+  <div class="section" style="margin-top:40px;">
+    <div class="section-title">当前问题 → 优化方案</div>
+    <div class="compare-row">
+      <div class="compare-box bad">
+        <div class="compare-label">❌ 当前问题</div>
+        <ul style="font-size:14px;color:var(--muted);padding-left:18px;display:flex;flex-direction:column;gap:8px;">
+          <li>金色雕花边框（奇幻 RPG 风格）</li>
+          <li>蓝色全息边框（赛博朋克风格）</li>
+          <li>银色金属边框（工业风格）</li>
+          <li>厚涂油画风战场背景</li>
+          <li>像素风图标 + 矢量扁平图标混用</li>
+          <li>整体风格无法归类，缺乏统一世界观</li>
+        </ul>
+      </div>
+      <div class="compare-box good">
+        <div class="compare-label">✓ 优化方案</div>
+        <ul style="font-size:14px;color:var(--muted);padding-left:18px;display:flex;flex-direction:column;gap:8px;">
+          <li>统一为科技线条边框 + 稀有度渐变</li>
+          <li>所有边框使用同一套几何切割逻辑</li>
+          <li>战场背景替换为科幻风格（可选）</li>
+          <li>图标统一为线性图标或等宽像素风</li>
+          <li>建立明确的视觉关键词和规范文档</li>
+          <li>所有新资产必须遵循统一美术方向</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">视觉规范细则 Visual Guidelines</div>
+    <div class="rule-grid">
+      <div class="rule-card">
+        <h4>🎨 边框规范</h4>
+        <ul>
+          <li>所有边框使用 2px 实线或渐变描边</li>
+          <li>圆角统一为 8-12px</li>
+          <li>禁用雕花、卷草、魔法阵等装饰元素</li>
+          <li>选中态使用外发光而非加粗边框</li>
+        </ul>
+      </div>
+      <div class="rule-card">
+        <h4>✨ 光效规范</h4>
+        <ul>
+          <li>光晕颜色与稀有度/语义颜色对应</li>
+          <li>外发光强度：选中态 > 稀有度 > 普通</li>
+          <li>禁止使用彩虹渐变光效</li>
+          <li>光效过渡时间：200-300ms</li>
+        </ul>
+      </div>
+      <div class="rule-card">
+        <h4>🖼️ 背景规范</h4>
+        <ul>
+          <li>主背景使用纯色或极淡渐变</li>
+          <li>战场背景可保留但需降低饱和度</li>
+          <li>弹窗背景使用半透明深色 (#1A2236 @80%)</li>
+          <li>禁止使用高饱和度插画作为 UI 背景</li>
+        </ul>
+      </div>
+      <div class="rule-card">
+        <h4>🔷 图标规范</h4>
+        <ul>
+          <li>导航图标：线性风格，2px 描边</li>
+          <li>单位图标：统一比例，居中显示</li>
+          <li>状态图标：使用语义颜色（绿/红/黄）</li>
+          <li>禁止混用写实/卡通/像素三种风格</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">CSS 变量输出 CSS Variables</div>
+    <div class="css-tokens"><span class="cmt">/* Phase War Design Tokens — visual-direction.css */</span>
+<span class="kw">:root</span> {
+  <span class="cmt">/* Border Style */</span>
+  <span class="kw">--border-style-base</span>:       <span class="val">2px solid var(--color-border)</span>;
+  <span class="kw">--border-radius-sm</span>:        <span class="val">6px</span>;
+  <span class="kw">--border-radius-md</span>:        <span class="val">10px</span>;
+  <span class="kw">--border-radius-lg</span>:        <span class="val">12px</span>;
+
+  <span class="cmt">/* Glow Effect */</span>
+  <span class="kw">--glow-intensity-low</span>:      <span class="val">0 0 8px rgba(0,212,255,0.2)</span>;
+  <span class="kw">--glow-intensity-medium</span>:   <span class="val">0 0 16px rgba(0,212,255,0.3)</span>;
+  <span class="kw">--glow-intensity-high</span>:     <span class="val">0 0 24px rgba(0,212,255,0.4)</span>;
+
+  <span class="cmt">/* Background */</span>
+  <span class="kw">--bg-panel-opacity</span>:        <span class="val">0.8</span>;
+  <span class="kw">--bg-field-opacity</span>:        <span class="val">0.3</span>;
+
+  <span class="cmt">/* Animation */</span>
+  <span class="kw">--transition-speed</span>:        <span class="val">200ms</span>;
+  <span class="kw">--transition-easing</span>:       <span class="val">ease-out</span>;
+}</div>
+  </div>
+
+</div>
+</body>
+</html>

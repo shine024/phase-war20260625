@@ -388,16 +388,17 @@ func generate_battle_drops_only(player_won: bool, elapsed_time: float, wave_tota
 	}
 
 	var drops: Array = dm.generate_battle_drops(era, level, player_won, victory_stars)
-	var pim: Node = _get_autoload_node("PhaseInstrumentManager")
-	if pim != null and pim.has_method("try_roll_battle_drop_instrument"):
-		var inst_drop: Dictionary = pim.try_roll_battle_drop_instrument(0.4, maxi(victory_stars - 1, 0))
-		if not inst_drop.is_empty():
-			# 防御性拷贝：确保 drops 是可变普通 Array（兼容 TypedArray 场景）
-			var safe_drops: Array = []
-			safe_drops.assign(drops)
-			safe_drops.append(inst_drop)
-			drops = safe_drops
-			battle_result["phase_instrument_drop"] = inst_drop
+	# v8.x: 相位仪改为技能树解锁（不再战斗掉落）。掉落触发已禁用。
+	# 玩家通过相位师技能树（command/firepower 等分支的 phase_instrument 节点）解锁相位仪。
+	# var pim: Node = _get_autoload_node("PhaseInstrumentManager")
+	# if pim != null and pim.has_method("try_roll_battle_drop_instrument"):
+	# 	var inst_drop: Dictionary = pim.try_roll_battle_drop_instrument(0.4, maxi(victory_stars - 1, 0))
+	# 	if not inst_drop.is_empty():
+	# 		var safe_drops: Array = []
+	# 		safe_drops.assign(drops)
+	# 		safe_drops.append(inst_drop)
+	# 		drops = safe_drops
+	# 		battle_result["phase_instrument_drop"] = inst_drop
 	if not drops.is_empty():
 		if _signal_bus and _signal_bus.has_signal("drops_ready_to_claim"):
 			_signal_bus.drops_ready_to_claim.emit(drops)

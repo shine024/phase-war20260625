@@ -532,6 +532,10 @@ func set_active_faction(faction_id: String) -> void:
 			return
 	active_faction = faction_id
 	active_faction_changed.emit(active_faction)
+	# v7.x: 激活势力改变第 3 层加成（势力技能 stat_bonus），刷新玩家相位师战力缓存避免面板陈旧
+	var _pim_sa: Node = get_node_or_null("/root/PhaseInstrumentManager")
+	if _pim_sa != null and _pim_sa.has_method("refresh_player_master_eval"):
+		_pim_sa.refresh_player_master_eval()
 
 ## 获取当前激活势力ID（空字符串=未激活）
 func get_active_faction() -> String:
@@ -569,18 +573,9 @@ func get_all_factions_info() -> Array:
 
 ## 获取势力的相位仪列表
 func get_faction_phase_instruments(faction_id: String) -> Array:
-	var out: Array = []
-	for d in PhaseInstruments.get_all():
-		if not (d is Dictionary):
-			continue
-		if bool(d.get("is_generic", false)):
-			continue
-		# v8.x: phase_master_drop 仪仅相位师掉落，不在商店出售
-		if String(d.get("acquire_rule", "")) == "phase_master_drop":
-			continue
-		if String(d.get("faction_id", "")) == faction_id:
-			out.append(d)
-	return out
+	# v8.x: 相位仪改为技能树解锁，不再在势力商店出售。返回空数组。
+	# 玩家通过相位师技能树（command/firepower 等分支）解锁相位仪。
+	return []
 
 func is_instrument_unlocked_for_faction(faction_id: String, instrument_id: String) -> bool:
 	var arr: Array = unlocked_faction_instruments.get(faction_id, [])
@@ -827,6 +822,10 @@ func unlock_faction_skill(faction_id: String, skill_id: String) -> bool:
 	var state: Dictionary = faction_skill_states[faction_id]
 	if FactionSkillManager.unlock_skill(state, faction_id, skill_id, fl):
 		faction_skill_unlocked.emit(faction_id, skill_id)
+		# v7.x: 解锁势力技能可能改变第 3 层加成（get_active_faction_skill_effects），刷新玩家相位师战力缓存
+		var _pim_us: Node = get_node_or_null("/root/PhaseInstrumentManager")
+		if _pim_us != null and _pim_us.has_method("refresh_player_master_eval"):
+			_pim_us.refresh_player_master_eval()
 		return true
 	return false
 

@@ -60,7 +60,7 @@ const ERA_MASTERS: Array = [
 		"equipment": {
 			"phase_instrument": "pi_void_04",
 			"level": 25,
-			"platforms": ["void_stealth_expert", "void_mage_expert"],
+			"platforms": ["mod_boss_command", "mod_arm_abrams_e", "mod_arm_abrams_e", "mod_air_apache_e", "mod_arm_stryker_e", "mod_inf_delta_e"],
 			"weapons": ["void_lance_expert", "entropy_caster_expert"],
 			"energy_cards": ["void_energy_expert"]
 		},
@@ -128,7 +128,7 @@ const ERA_MASTERS: Array = [
 		"equipment": {
 			"phase_instrument": "pi_steelthunder_01",
 			"level": 24,
-			"platforms": ["steel_fortress_expert", "thunter_striker_expert"],
+			"platforms": ["mod_boss_command", "mod_arm_abrams_e", "mod_arm_abrams_e", "mod_arm_stryker_e", "mod_air_apache_e", "mod_inf_delta_e"],
 			"weapons": ["steel_gatling_expert", "tesla_coil_expert"],
 			"energy_cards": ["hybrid_energy_advanced"]
 		},
@@ -194,7 +194,7 @@ const ERA_MASTERS: Array = [
 		"equipment": {
 			"phase_instrument": "pi_flamevoid_01",
 			"level": 25,
-			"platforms": ["flame_siege_expert", "void_mage_expert"],
+			"platforms": ["mod_arm_abrams_e", "mod_arty_mlrs_e", "mod_boss_command", "mod_air_apache_e"],
 			"weapons": ["plasma_cannon_expert", "entropy_caster_expert"],
 			"energy_cards": ["hybrid_energy_advanced"]
 		},
@@ -262,7 +262,7 @@ const ERA_MASTERS: Array = [
 		"equipment": {
 			"phase_instrument": "pi_steel_04",
 			"level": 26,
-			"platforms": ["steel_fortress_expert", "steel_titan_expert"],
+			"platforms": ["mod_boss_command", "mod_arm_abrams_e", "mod_arm_abrams_e", "mod_arm_stryker_e", "mod_air_apache_e", "mod_arty_mlrs_e"],
 			"weapons": ["steel_gatling_expert", "steel_artillery_expert"],
 			"energy_cards": ["steel_energy_expert"]
 		},
@@ -328,7 +328,7 @@ const ERA_MASTERS: Array = [
 		"equipment": {
 			"phase_instrument": "pi_flame_04",
 			"level": 27,
-			"platforms": ["flame_raider_expert", "flame_siege_expert"],
+			"platforms": ["mod_arm_abrams_e", "mod_arty_mlrs_e", "mod_boss_command", "mod_air_apache_e", "mod_inf_delta_e"],
 			"weapons": ["flame_thrower_expert", "plasma_cannon_expert"],
 			"energy_cards": ["flame_energy_expert"]
 		},
@@ -394,7 +394,7 @@ const ERA_MASTERS: Array = [
 		"equipment": {
 			"phase_instrument": "pi_thunder_04",
 			"level": 27,
-			"platforms": ["thunter_striker_expert", "thunter_sniper_expert"],
+			"platforms": ["mod_boss_command", "mod_boss_command", "mod_air_apache_e", "mod_arm_abrams_e", "mod_arm_stryker_e", "mod_arty_mlrs_e"],
 			"weapons": ["tesla_coil_expert", "railgun_expert"],
 			"energy_cards": ["thunder_energy_expert"]
 		},

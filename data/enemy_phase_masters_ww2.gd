@@ -60,7 +60,7 @@ const ERA_MASTERS: Array = [
 		"equipment": {
 			"phase_instrument": "pi_thunder_02",
 			"level": 13,
-			"platforms": ["thunter_striker_advanced", "thunter_sniper_advanced"],
+			"platforms": ["ww1_boss_av7", "ww1_boss_av7", "ww1_arm_rolls_e", "ww1_sup_mg_nest"],
 			"weapons": ["tesla_coil_advanced", "railgun_advanced"],
 			"energy_cards": ["thunder_energy_advanced"]
 		},
@@ -126,7 +126,7 @@ const ERA_MASTERS: Array = [
 		"equipment": {
 			"phase_instrument": "pi_void_02",
 			"level": 14,
-			"platforms": ["void_stealth_advanced", "void_mage_advanced"],
+			"platforms": ["ww2_boss_kingtiger", "ww2_arm_panther_e", "ww2_arm_panther_e", "ww2_inf_panzerschreck_e", "ww2_inf_para_e"],
 			"weapons": ["void_lance_advanced", "gravity_well_advanced"],
 			"energy_cards": ["void_energy_advanced"]
 		},
@@ -194,7 +194,7 @@ const ERA_MASTERS: Array = [
 		"equipment": {
 			"phase_instrument": "pi_steel_03",
 			"level": 16,
-			"platforms": ["steel_fortress_expert", "steel_titan_expert"],
+			"platforms": ["ww2_boss_kingtiger", "ww2_boss_kingtiger", "ww2_arm_panther_e", "ww2_inf_panzerschreck_e", "ww2_inf_para_e"],
 			"weapons": ["steel_gatling_expert", "steel_artillery_expert"],
 			"energy_cards": ["steel_energy_expert"]
 		},
@@ -260,7 +260,7 @@ const ERA_MASTERS: Array = [
 		"equipment": {
 			"phase_instrument": "pi_flame_03",
 			"level": 17,
-			"platforms": ["flame_raider_expert", "flame_siege_expert"],
+			"platforms": ["ww2_arm_panther_e", "ww2_inf_panzerschreck_e", "ww2_boss_kingtiger", "ww2_inf_para_e"],
 			"weapons": ["flame_thrower_expert", "plasma_cannon_expert"],
 			"energy_cards": ["flame_energy_expert"]
 		},
@@ -326,7 +326,7 @@ const ERA_MASTERS: Array = [
 		"equipment": {
 			"phase_instrument": "pi_thunder_03",
 			"level": 18,
-			"platforms": ["thunter_striker_expert", "thunter_sniper_expert"],
+			"platforms": ["ww2_boss_kingtiger", "ww2_arm_panther_e", "ww2_arm_panther_e", "ww2_sup_mg42", "ww2_inf_panzerschreck_e"],
 			"weapons": ["tesla_coil_expert", "railgun_expert"],
 			"energy_cards": ["thunder_energy_expert"]
 		},
@@ -392,7 +392,7 @@ const ERA_MASTERS: Array = [
 		"equipment": {
 			"phase_instrument": "pi_void_03",
 			"level": 19,
-			"platforms": ["void_stealth_expert", "void_mage_expert"],
+			"platforms": ["ww2_boss_kingtiger", "ww2_boss_kingtiger", "ww2_arm_panther_e", "ww2_sup_mg42", "ww2_inf_para_e"],
 			"weapons": ["void_lance_expert", "entropy_caster_expert"],
 			"energy_cards": ["void_energy_expert"]
 		},

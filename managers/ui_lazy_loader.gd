@@ -94,12 +94,7 @@ func _ready() -> void:
 			"node_name": "AchievementPanel",
 			"autoload": false
 		},
-		"enhancement": {
-			"scene": "res://scenes/ui/card_enhancement_panel.tscn",
-			"parent_path": "PopupLayer/EnhancementOverlay/CenterContainer",
-			"node_name": "CardEnhancementPanel",
-			"autoload": false
-		},
+		# v8.x: enhancement 注册已移除（强化②停用），养成改为自动经验升星 + 相位师技能树
 		"drops_inventory": {
 			"scene": "res://scenes/ui/drops_inventory_panel.tscn",
 			"parent_path": "PopupLayer/DropsInventoryOverlay/CenterContainer",
@@ -110,6 +105,12 @@ func _ready() -> void:
 			"scene": "res://scenes/ui/level_select_panel.tscn",
 			"parent_path": "PopupLayer/LevelSelectOverlay/CenterContainer",
 			"node_name": "LevelSelectPanel",
+			"autoload": false
+		},
+		"phase_master_skill": {
+			"scene": "res://scenes/ui/phase_master_skill_panel.tscn",
+			"parent_path": "PopupLayer/PhaseMasterSkillOverlay/CenterContainer",
+			"node_name": "PhaseMasterSkillPanel",
 			"autoload": false
 		},
 		"help": {

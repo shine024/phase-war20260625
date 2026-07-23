@@ -489,6 +489,8 @@ func _on_battle_ended(player_won: bool) -> void:
 		_grant_phase_field_xp_for_victory()
 		# 攻克关卡后触发势力反应
 		_apply_faction_reaction_for_conquest()
+	# v8.x: 战斗经验平分给上场存活卡（胜负都给，失败按 30% 比例），达阈值自动升 star_level
+	_grant_battle_experience(player_won)
 
 	# 计算原有奖励增益
 	var after_basic_nano: int = BasicResourceManager.get_total(BasicResources.ID_NANO_MATERIALS) if BasicResourceManager.has_method("get_total") else before_basic_nano
@@ -706,6 +708,11 @@ func _grant_phase_master_victory_reward(master_name: String) -> void:
 		var excluded_types: Array[String] = ["striker", "sniper", "stealth", "mage"]
 		for pid in platforms:
 			var pdata: Dictionary = EnemyPhaseEquipment.get_war_platform(pid)
+			# v8.2 B2修复：WAR_PLATFORMS 查不到的平台（如 fut_boss_nexus 等真实 archetype），
+			# 不是可缴获的正规平台卡（不在 DefaultCards），跳过避免静默失败。
+			# boss 单位是特殊设计，其强度通过改造蓝图/符文/特殊仪掉落体现，不直接缴获。
+			if pdata.is_empty():
+				continue
 			var ptype: String = String(pdata.get("type", ""))
 			if excluded_types.has(ptype):
 				continue
@@ -755,9 +762,11 @@ func _grant_phase_master_victory_reward(master_name: String) -> void:
 	var _stars: int = int(_MPE.evaluate(_current_phase_master).get("stars", 3))
 	var _drop_bag: Node = get_node_or_null("/root/IntelItemBag")
 	# enemy_type 按相位师所属势力的改造偏好派生；势力无偏好/查不到时回退 infantry
+	# v8.2 B1修复：敌方 faction(steel/flame/...) 需映射到玩家势力 ID 才能匹配 FACTION_MOD_BIAS
 	var _pm_faction: String = String(_current_phase_master.get("faction", ""))
+	var _pm_player_faction: String = _enemy_faction_to_player_faction(_pm_faction)
 	var _pm_enemy_type: String = "infantry"
-	var _bias: Array = _FCB.FACTION_MOD_BIAS.get(_pm_faction, [])
+	var _bias: Array = _FCB.FACTION_MOD_BIAS.get(_pm_player_faction, [])
 	if not _bias.is_empty():
 		_pm_enemy_type = String(_bias[0])
 	var _pm_power_tier: int = _PT.get_tier_by_stars(_stars)
@@ -859,10 +868,12 @@ func _maybe_roll_special_instrument_drop(stars: int, faction: String) -> String:
 		"aether_dynamics": "pi_special_aegis",    # 神盾势力 → 神盾·壁垒之心
 		"nova_arms": "pi_special_nova",           # 新星势力 → 终焉核芯
 	}
+	# v8.2 B1修复：敌方 faction 用 steel/flame/thunder/void，需映射到玩家势力 ID。
+	var player_faction: String = _enemy_faction_to_player_faction(faction)
 	# 势力命中：直接返回对应的特殊仪
-	if faction_to_special.has(faction):
-		return String(faction_to_special[faction])
-	# 势力未命中（混合势力/无势力相位师）：随机抽一个
+	if faction_to_special.has(player_faction):
+		return String(faction_to_special[player_faction])
+	# 势力未命中（all/未知）：随机抽一个
 	var all_specials: Array = faction_to_special.values()
 	return String(all_specials[randi() % all_specials.size()])
 
@@ -880,6 +891,20 @@ static func _get_law_families_for_faction(enemy_faction: String) -> Array:
 		"flame_void": return ["FLAME", "VOID"]
 		"all": return ["STEEL", "FLAME", "THUNDER", "VOID"]
 		_: return ["STEEL"]
+
+## v8.2 B1: 敌方家族 faction（steel/flame/thunder/void/混合）→ 玩家势力 ID 映射。
+## 修复 faction 命名空间不一致：FACTION_MOD_BIAS / 特殊仪表 的 key 是玩家势力 ID，
+## 而相位师 faction 字段用敌方家族名，两者原先永不匹配导致改造偏好/特殊仪掉落失效。
+## 混合势力取首段（steel_flame→iron_wall_corp）；all/未知返回空（走随机/默认）。
+static func _enemy_faction_to_player_faction(enemy_faction: String) -> String:
+	# 混合势力取首段
+	var primary: String = enemy_faction.split("_")[0] if enemy_faction.find("_") >= 0 else enemy_faction
+	match primary:
+		"steel": return "iron_wall_corp"
+		"flame": return "nova_arms"
+		"thunder": return "aether_dynamics"
+		"void": return "void_research"
+		_: return ""  # all/未知 → 空，调用方走随机/默认
 
 ## 根据法则家族获取所有法则ID
 static func _get_law_ids_for_families(families: Array) -> Array:
@@ -910,6 +935,7 @@ func _is_afk_running() -> bool:
 	return bool(afk_mgr.is_running)
 
 const LevelEras = preload("res://data/level_eras.gd")
+const BattleExperienceConfig = preload("res://data/battle_experience_config.gd")
 const GC = preload("res://resources/game_constants.gd")
 const RECON_FRAGMENT_BONUS_PER_PLATFORM: float = 0.20
 const RECON_FRAGMENT_BONUS_CAP: float = 0.80
@@ -1014,6 +1040,47 @@ func _get_rune_special_bonus(special_type: String) -> float:
 		if sp is Dictionary and sp.get("special", "") == special_type:
 			total += float(sp.get("value", 0)) / 100.0
 	return total
+
+## v8.x: 战斗经验平分给上场存活卡，达阈值自动升 star_level
+## 经验 = 基础经验(胜50/败15) + 击杀数×5，应用技能树经验加成后平分给上场卡
+func _grant_battle_experience(player_won: bool) -> void:
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	if ir == null or not ir.has_method("add_experience"):
+		return
+	# 收集上场卡（green 槽战斗卡）的 instance_id
+	var loadouts: Array = []
+	if PhaseInstrumentManager and PhaseInstrumentManager.has_method("get_loadouts"):
+		loadouts = PhaseInstrumentManager.get_loadouts()
+	var instance_ids: Array = []
+	for lo in loadouts:
+		var platform: CardResource = lo.get("platform")
+		if platform == null:
+			continue
+		var iid: String = String(platform.instance_id) if "instance_id" in platform else ""
+		if not iid.is_empty() and not (iid in instance_ids):
+			instance_ids.append(iid)
+	if instance_ids.is_empty():
+		return
+	# 计算总经验
+	var base_exp: int = BattleExperienceConfig.BATTLE_WIN_EXP_BASE if player_won else int(float(BattleExperienceConfig.BATTLE_WIN_EXP_BASE) * BattleExperienceConfig.BATTLE_LOSE_EXP_RATIO)
+	# 击杀数：从 BattleManager 获取（如可用）
+	var kill_count: int = 0
+	if BattleManager and BattleManager.has_method("get_player_kill_count"):
+		kill_count = int(BattleManager.get_player_kill_count())
+	var total_exp: int = base_exp + kill_count * BattleExperienceConfig.BATTLE_KILL_EXP
+	# 技能树经验加成
+	var pmsm: Node = get_node_or_null("/root/PhaseMasterSkillManager")
+	if pmsm != null and pmsm.has_method("get_active_effects"):
+		var effects: Dictionary = pmsm.get_active_effects()
+		var exp_bonus: float = float(effects.get("experience_bonus", 0.0))
+		if exp_bonus > 0.0:
+			total_exp = int(float(total_exp) * (1.0 + exp_bonus))
+	# 平分给上场卡
+	var per_card: int = int(total_exp / instance_ids.size())
+	if per_card <= 0:
+		return
+	for iid in instance_ids:
+		ir.add_experience(iid, per_card)
 
 func _snapshot_battle_reward_baselines() -> void:
 	_blueprint_copies_before_battle.clear()

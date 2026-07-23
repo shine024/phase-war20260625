@@ -786,6 +786,13 @@ func _on_hit(primary: Node2D) -> void:
 		var _cm_expire: float = float(primary.get_meta("_crit_marked_until", 0.0))
 		if Time.get_ticks_msec() / 1000.0 < _cm_expire:
 			effective_crit += float(primary.get_meta("_crit_mark_bonus", 0.0))
+	# v8.x: 指挥光环——射手（shooter）处于 for_13_command_bunker 等光环范围内时暴击率额外提升
+	# _apply_command_aura 在 on_tick 里把 meta 挂给范围内友军（射手），此处读取。
+	# 此前 meta 写入端完整但战斗侧零读取，现复活 for_13_command_bunker 改造。
+	if is_instance_valid(shooter) and shooter.has_meta("_command_aura_until"):
+		var _ca_expire: float = float(shooter.get_meta("_command_aura_until", 0.0))
+		if Time.get_ticks_msec() / 1000.0 < _ca_expire:
+			effective_crit += float(shooter.get_meta("_command_aura_bonus", 0.0))
 	if effective_crit > 0.0 and randf() < effective_crit:
 		is_crit = true
 		final_damage *= (1.5 + shooter_stats.crit_damage_bonus)

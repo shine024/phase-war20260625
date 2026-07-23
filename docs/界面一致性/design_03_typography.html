@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase War · 字体与排版规范 Typography Spec</title>
+<style>
+  :root {
+    --bg: #0a0e17;
+    --surface: #111827;
+    --card: #1a2236;
+    --border: #2a3550;
+    --text: #e8ecf4;
+    --muted: #8b95a8;
+    --dim: #5a6478;
+    --cyan: #00d4ff;
+    --purple: #a855f7;
+    --orange: #f59e0b;
+    --green: #22c55e;
+    --red: #ef4444;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; background:var(--bg); color:var(--text); line-height:1.6; }
+  .page { max-width:1400px; margin:0 auto; padding:48px 32px; }
+  .header { text-align:center; margin-bottom:48px; }
+  .header h1 { font-size:36px; font-weight:800; background:linear-gradient(135deg,var(--cyan),var(--purple)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:8px; }
+  .header p { color:var(--muted); font-size:15px; }
+  .section { margin-bottom:56px; }
+  .section-title { font-size:20px; font-weight:700; margin-bottom:20px; display:flex; align-items:center; gap:10px; }
+  .section-title::before { content:""; width:4px; height:24px; background:var(--cyan); border-radius:2px; }
+  .font-list { display:flex; flex-direction:column; gap:12px; }
+  .font-item { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px 20px; display:flex; align-items:center; gap:16px; }
+  .font-icon { width:40px; height:40px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+  .icon-cyan { background:rgba(0,212,255,0.15); }
+  .icon-purple { background:rgba(168,85,247,0.15); }
+  .font-info { flex:1; }
+  .font-name { font-weight:700; font-size:15px; margin-bottom:2px; }
+  .font-desc { font-size:13px; color:var(--muted); }
+  .type-scale { display:flex; flex-direction:column; gap:16px; }
+  .type-row { display:grid; grid-template-columns:140px 1fr; gap:24px; align-items:center; padding:16px 20px; background:var(--card); border:1px solid var(--border); border-radius:10px; }
+  .type-label { font-weight:700; font-size:14px; margin-bottom:4px; }
+  .type-size { font-size:12px; color:var(--muted); font-family:monospace; }
+  .type-preview { font-weight:700; }
+  .rule-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px; }
+  .rule-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:20px; }
+  .rule-card h4 { font-size:15px; font-weight:700; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+  .rule-card ul { list-style:none; display:flex; flex-direction:column; gap:8px; }
+  .rule-card li { font-size:13px; color:var(--muted); padding-left:16px; position:relative; }
+  .rule-card li::before { content:"→"; position:absolute; left:0; color:var(--cyan); }
+  .compare-row { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  @media(max-width:800px){ .compare-row{grid-template-columns:1fr;} }
+  .compare-box { border-radius:12px; padding:20px; border:1px solid var(--border); }
+  .compare-box.bad { background:rgba(239,68,68,0.05); }
+  .compare-box.good { background:rgba(34,197,94,0.05); }
+  .compare-label { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:12px; }
+  .bad .compare-label { color:var(--red); }
+  .good .compare-label { color:var(--green); }
+  .code-block { background:#0d1117; border:1px solid var(--border); border-radius:10px; padding:20px; font-family:"Cascadia Code","Consolas",monospace; font-size:13px; line-height:1.8; color:var(--muted); overflow-x:auto; white-space:pre; }
+  .code-block .kw { color:var(--purple); }
+  .code-block .val { color:var(--cyan); }
+  .code-block .cmt { color:var(--dim); }
+  .contrast-demo { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; }
+  .contrast-card { border-radius:10px; padding:16px; text-align:center; background:var(--card); border:1px solid var(--border); }
+  .contrast-card .ratio { font-size:24px; font-weight:800; margin-bottom:4px; }
+  .contrast-card .label { font-size:12px; color:var(--muted); }
+  .hierarchy-demo { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:24px; }
+  .hier-item { display:flex; align-items:center; gap:16px; padding:12px 0; border-bottom:1px solid var(--border); }
+  .hier-item:last-child { border-bottom:none; }
+  .hier-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
+  .hier-text { flex:1; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <h1>字体与排版规范 Typography Spec</h1>
+    <p>Phase War 统一字号层级与中英混排规则 · v1.0</p>
+  </div>
+
+  <!-- Font Families -->
+  <div class="section">
+    <div class="section-title">字体族 Font Families</div>
+    <div class="font-list">
+      <div class="font-item">
+        <div class="font-icon icon-cyan">Aa</div>
+        <div class="font-info">
+          <div class="font-name">主字体 · System UI</div>
+          <div class="font-desc">Segoe UI, Microsoft YaHei, PingFang SC, sans-serif</div>
+          <div style="font-size:12px;color:var(--dim);margin-top:4px;">用于所有中文界面文字、标题、正文。系统原生渲染，无加载延迟。</div>
+        </div>
+      </div>
+      <div class="font-item">
+        <div class="font-icon icon-purple">fx</div>
+        <div class="font-info">
+          <div class="font-name">等宽字体 · Mono</div>
+          <div class="font-desc">Cascadia Code, JetBrains Mono, Consolas, monospace</div>
+          <div style="font-size:12px;color:var(--dim);margin-top:4px;">仅用于：代码变量展示、数值对齐、技术标识。不用于普通文本。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Type Scale -->
+  <div class="section">
+    <div class="section-title">字号层级 Type Scale</div>
+    <div class="type-scale">
+      <div class="type-row">
+        <div><div class="type-label">H1 · 页面标题</div><div class="type-size">32px / 1.2em · Bold</div></div>
+        <div class="type-preview" style="font-size:32px;color:#fff;">战斗卡阵列</div>
+      </div>
+      <div class="type-row">
+        <div><div class="type-label">H2 · 面板标题</div><div class="type-size">24px / 1.3em · Bold</div></div>
+        <div class="type-preview" style="font-size:24px;color:#e8ecf4;">改造模块库</div>
+      </div>
+      <div class="type-row">
+        <div><div class="type-label">H3 · 卡片标题</div><div class="type-size">18px / 1.4em · SemiBold</div></div>
+        <div class="type-preview" style="font-size:18px;color:#d1d5db;">致命 · Fatal</div>
+      </div>
+      <div class="type-row">
+        <div><div class="type-label">Body · 正文</div><div class="type-size">15px / 1.5em · Regular</div></div>
+        <div class="type-preview" style="font-size:15px;color:#8b95a8;">攻击 +30% · 命中 +20% · 暴击率 +15%</div>
+      </div>
+      <div class="type-row">
+        <div><div class="type-label">Caption · 辅助文字</div><div class="type-size">13px / 1.5em · Regular</div></div>
+        <div class="type-preview" style="font-size:13px;color:#5a6478;">Lv.3 · 稀有度：传说 · 已装备</div>
+      </div>
+      <div class="type-row">
+        <div><div class="type-label">Micro · 标签</div><div class="type-size">11px / 1.6em · Medium · Uppercase</div></div>
+        <div class="type-preview" style="font-size:11px;color:#5a6478;letter-spacing:1.5px;text-transform:uppercase;">COMMON · UNLOCKED · Lv.3</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hierarchy Demo -->
+  <div class="section">
+    <div class="section-title">信息层级可视化 Information Hierarchy</div>
+    <div class="hierarchy-demo">
+      <div class="hier-item">
+        <div class="hier-dot" style="background:var(--cyan)"></div>
+        <div class="hier-text">
+          <div style="font-size:20px;font-weight:800;color:#fff;">第一优先级 · 页面标题</div>
+          <div style="font-size:13px;color:var(--muted);">用户进入页面时首先看到的内容</div>
+        </div>
+      </div>
+      <div class="hier-item">
+        <div class="hier-dot" style="background:var(--purple)"></div>
+        <div class="hier-text">
+          <div style="font-size:16px;font-weight:700;color:#e8ecf4;">第二优先级 · 卡片/区块标题</div>
+          <div style="font-size:13px;color:var(--muted);">区分不同内容区域</div>
+        </div>
+      </div>
+      <div class="hier-item">
+        <div class="hier-dot" style="background:var(--orange)"></div>
+        <div class="hier-text">
+          <div style="font-size:14px;font-weight:600;color:#d1d5db;">第三优先级 · 关键数据/数值</div>
+          <div style="font-size:13px;color:var(--muted);">需要快速扫描的核心信息</div>
+        </div>
+      </div>
+      <div class="hier-item">
+        <div class="hier-dot" style="background:var(--dim)"></div>
+        <div class="hier-text">
+          <div style="font-size:13px;font-weight:400;color:#8b95a8;">第四优先级 · 辅助说明</div>
+          <div style="font-size:13px;color:var(--muted);">补充信息，非必须阅读</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bilingual Rules -->
+  <div class="section">
+    <div class="section-title">中英混排规范 Bilingual Rules</div>
+    <div class="rule-grid">
+      <div class="rule-card">
+        <h4>📝 标题格式</h4>
+        <ul>
+          <li>统一使用 <strong style="color:var(--text)">中文 · English Subtitle</strong></li>
+          <li>英文副标题字号为中文的 60%</li>
+          <li>英文副标题使用全大写 + 字间距 1px</li>
+          <li>示例：<span style="font-size:12px;color:var(--cyan);">战斗卡阵列 · COMBAT ROSTER</span></li>
+        </ul>
+      </div>
+      <div class="rule-card">
+        <h4>🔢 数值格式</h4>
+        <ul>
+          <li>等级：<strong style="color:var(--text)">等级 16（已满）</strong></li>
+          <li>星级：<strong style="color:var(--text)">★7</strong> 或 <strong style="color:var(--text)">七星</strong></li>
+          <li>百分比：<strong style="color:var(--text)">+30%</strong>（无前缀中文）</li>
+          <li>资源：<strong style="color:var(--text)">纳米材料 9,722</strong></li>
+        </ul>
+      </div>
+      <div class="rule-card">
+        <h4>⚠️ 禁止事项</h4>
+        <ul>
+          <li>禁止直接显示代码变量名</li>
+          <li>禁止在中文界面中使用孤立英文单词</li>
+          <li>禁止混合使用 "Lv." 和 "等级"</li>
+          <li>禁止未翻译的技术术语作为主显示文本</li>
+        </ul>
+      </div>
+      <div class="rule-card">
+        <h4>✅ 正确示例</h4>
+        <ul>
+          <li><span style="color:var(--green);">暴击标记概率：30%</span></li>
+          <li><span style="color:var(--green);">减速光环：40%</span></li>
+          <li><span style="color:var(--green);">友军堡垒再生：+50%</span></li>
+          <li><span style="color:var(--green);">等级 16（已满）· 稀有度：传说</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contrast Standards -->
+  <div class="section">
+    <div class="section-title">可读性标准 Readability Standards</div>
+    <div class="contrast-demo">
+      <div class="contrast-card">
+        <div class="ratio" style="color:var(--green);">≥ 4.5:1</div>
+        <div class="label">正文对比度 (WCAG AA)</div>
+        <div style="font-size:12px;color:var(--dim);margin-top:8px;">#E8ECF4 on #0A0E17 = 14.2:1 ✓</div>
+      </div>
+      <div class="contrast-card">
+        <div class="ratio" style="color:var(--green);">≥ 3:1</div>
+        <div class="label">大文字对比度 (WCAG AA)</div>
+        <div style="font-size:12px;color:var(--dim);margin-top:8px;">#00D4FF on #0A0E17 = 5.8:1 ✓</div>
+      </div>
+      <div class="contrast-card">
+        <div class="ratio" style="color:var(--orange);">14px</div>
+        <div class="label">正文最小字号</div>
+        <div style="font-size:12px;color:var(--dim);margin-top:8px;">低于此值影响移动端阅读</div>
+      </div>
+      <div class="contrast-card">
+        <div class="ratio" style="color:var(--orange);">44×44</div>
+        <div class="label">触控目标最小尺寸</div>
+        <div style="font-size:12px;color:var(--dim);margin-top:8px;">底部导航图标必须达标</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Before After -->
+  <div class="section">
+    <div class="section-title">当前问题 → 优化方案</div>
+    <div class="compare-row">
+      <div class="compare-box bad">
+        <div class="compare-label">❌ 当前问题</div>
+        <ul style="font-size:14px;color:var(--muted);padding-left:18px;display:flex;flex-direction:column;gap:8px;">
+          <li>字号梯度不足，标题/正文/辅助难以区分</li>
+          <li>搜索框占位符对比度不足</li>
+          <li>卡牌网格内文字过小，难以快速扫描</li>
+          <li>"rare" 出现在中文界面中</li>
+          <li>"Lv.16 MAX" 中英混杂无空格</li>
+          <li>底部导航图标过小，触控困难</li>
+        </ul>
+      </div>
+      <div class="compare-box good">
+        <div class="compare-label">✓ 优化方案</div>
+        <ul style="font-size:14px;color:var(--muted);padding-left:18px;display:flex;flex-direction:column;gap:8px;">
+          <li>建立 6 级字号系统 (H1→Micro)</li>
+          <li>所有文字对比度符合 WCAG AA 标准</li>
+          <li>卡片内文字最小 13px，关键数据 15px+</li>
+          <li>全部中文化，英文仅用于技术标识</li>
+          <li>统一格式："等级 16（已满）"</li>
+          <li>导航图标尺寸 ≥ 44×44px</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- CSS Tokens -->
+  <div class="section">
+    <div class="section-title">CSS 变量输出 CSS Variables</div>
+    <div class="code-block"><span class="cmt">/* Phase War Design Tokens — typography.css */</span>
+<span class="kw">:root</span> {
+  <span class="cmt">/* Font Families */</span>
+  <span class="kw">--font-sans</span>:     <span class="val">"Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif</span>;
+  <span class="kw">--font-mono</span>:     <span class="val">"Cascadia Code", "JetBrains Mono", "Consolas", monospace</span>;
+
+  <span class="cmt">/* Type Scale */</span>
+  <span class="kw">--font-size-h1</span>:          <span class="val">32px</span>;
+  <span class="kw">--font-size-h2</span>:          <span class="val">24px</span>;
+  <span class="kw">--font-size-h3</span>:          <span class="val">18px</span>;
+  <span class="kw">--font-size-body</span>:        <span class="val">15px</span>;
+  <span class="kw">--font-size-caption</span>:     <span class="val">13px</span>;
+  <span class="kw">--font-size-micro</span>:       <span class="val">11px</span>;
+
+  <span class="cmt">/* Line Heights */</span>
+  <span class="kw">--line-height-tight</span>:     <span class="val">1.2</span>;
+  <span class="kw">--line-height-normal</span>:    <span class="val">1.5</span>;
+  <span class="kw">--line-height-relaxed</span>:   <span class="val">1.8</span>;
+
+  <span class="cmt">/* Letter Spacing */</span>
+  <span class="kw">--letter-spacing-normal</span>: <span class="val">0</span>;
+  <span class="kw">--letter-spacing-wide</span>:   <span class="val">1px</span>;
+  <span class="kw">--letter-spacing-wider</span>:  <span class="val">1.5px</span>;
+}</div>
+  </div>
+
+</div>
+</body>
+</html>

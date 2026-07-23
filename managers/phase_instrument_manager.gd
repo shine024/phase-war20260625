@@ -11,6 +11,8 @@ const PhaseInstruments = preload("res://data/phase_instruments.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
 const RunewordMatcher = preload("res://managers/runeword_matcher.gd")
 const RuneDefs = preload("res://data/runes.gd")
+# v7.x: 用于养成操作后重算玩家相位师战力（无循环依赖：assembler→platform_power→data/evolution，不回引）
+const MasterPlayerAssembler = preload("res://scripts/master_player_assembler.gd")
 const DEBUG_EQUIP_LOG := false
 var _default_cards_instance: Variant = null
 
@@ -224,6 +226,8 @@ func grant_phase_field_xp(source: String, amount: int) -> void:
 		unspent_phase_field_points += level_gain * PHASE_FIELD_POINTS_PER_LEVEL
 		if SignalBus and SignalBus.has_signal("phase_field_level_up"):
 			SignalBus.phase_field_level_up.emit(old_level, new_level, unspent_phase_field_points)
+		# v7.x: 相位场升级改变第 5 层加成（相位场加成），刷新缓存避免面板陈旧
+		refresh_player_master_eval()
 
 func add_phase_xp(amount: int) -> void:
 	grant_phase_field_xp("legacy", amount)
@@ -435,6 +439,25 @@ func clear_rank_cache() -> void:
 	_cached_player_rank_stars = 3
 	_cached_enemy_rank_stars = 3
 	_cached_player_master_eval = {}
+
+## v7.x: 重算并刷新玩家相位师战力缓存，emit 变化信号。
+## 任何会改变玩家卡战力的养成操作（强化/改造/进化/装卸卡/换相位仪/装卸符文/升相位场/激活势力/装词条）
+## 都应在操作成功后调用此方法，避免 UI 显示陈旧缓存（面板 3000 vs 上场 12000 的根因）。
+func refresh_player_master_eval() -> void:
+	var eval: Dictionary = MasterPlayerAssembler.evaluate_player_stars(self)
+	_cached_player_master_eval = eval
+	_cached_player_rank_stars = clampi(int(eval.get("stars", 3)), 1, 7)
+	if not eval.is_empty() and SignalBus and SignalBus.has_signal("player_phase_master_power_changed"):
+		var _pm_total: float = float(eval.get("total_score", 0.0))
+		SignalBus.player_phase_master_power_changed.emit(
+			_pm_total,
+			_pm_total,  # 第二参数兼容（v7.x 已移除压缩，两值相同）
+			int(eval.get("stars", 3)),
+			str(eval.get("star_name", "")),
+			int(eval.get("display_level", 15))
+		)
+		if DEBUG_EQUIP_LOG:
+			push_warning("[PowerDebug] 缓存刷新 total=%.1f stars=%d" % [_pm_total, int(eval.get("stars", 3))])
 
 func _set_default_instrument_if_needed() -> void:
 	# 仅在「未选择」或「当前 ID 已非法/未解锁」时重选；否则每次 get_current_instrument 会把选择覆盖成默认 ID，导致无法切换相位仪
@@ -699,6 +722,8 @@ func equip_card(slot_index: int, card: CardResource, _energy_manager: Node = nul
 			"energy_cost": int(card.energy_cost),
 			"replaced_old_card": old_card != null,
 		}, "", "0ec8f5")
+	# v7.x: 装备变更改变卡战力，刷新缓存避免面板陈旧
+	refresh_player_master_eval()
 	return true
 
 func unequip_card(slot_index: int) -> void:
@@ -720,6 +745,8 @@ func unequip_card(slot_index: int) -> void:
 		# [LOG-v5.1] print("[PhaseInstrumentManager] unequip_card: Emitting card_added_to_backpack for card_id=%s" % card.card_id)
 		SignalBus.card_added_to_backpack.emit(card)
 		# [LOG-v5.1] print("[PhaseInstrumentManager] unequip_card: Signal emitted successfully")
+	# v7.x: 卸下战斗卡改变卡战力，刷新缓存避免面板陈旧
+	refresh_player_master_eval()
 
 ## 战斗结束后：清空所有槽位并将卡片逐一放回背包的第一个空位
 func unequip_all_and_return_to_backpack() -> void:
@@ -1126,6 +1153,8 @@ func equip_instrument(instrument_id: String) -> bool:
 	selected_instrument_id = instrument_id
 	_rebuild_slots()
 	_emit_slots_changed()
+	# v7.x: 换相位仪改变第 5 层加成（pi_atk/pi_def/pi_hp + 星级系数），刷新缓存避免面板陈旧
+	refresh_player_master_eval()
 	return true
 
 func has_unlocked_instrument(instrument_id: String) -> bool:
@@ -1507,6 +1536,8 @@ func equip_rune(slot_index: int, rune_id: String) -> bool:
 	# 否则 Godot 4.5 运行时会抛 "emit failed: expected 1 argument" 错误，
 	# 导致 equip_rune 在写入数据后异常中断、UI 不刷新（表现为符文装备不上）。
 	SignalBus.phase_slots_changed.emit(get_slots())
+	# v7.x: 装备符文改变第 6 层加成（符文之语），刷新缓存避免面板陈旧
+	refresh_player_master_eval()
 	return true
 
 ## 卸下指定槽位的符文（符文保留在已拥有列表中，只是从槽位移除）
@@ -1517,6 +1548,8 @@ func unequip_rune(slot_index: int) -> void:
 	_sync_rune_to_instrument_slots()
 	_mark_rune_bonus_dirty()
 	SignalBus.phase_slots_changed.emit(get_slots())
+	# v7.x: 卸下符文改变第 6 层加成（符文之语），刷新缓存避免面板陈旧
+	refresh_player_master_eval()
 
 ## 卸下所有符文（保留所有权）
 func unequip_all_runes() -> void:

@@ -135,6 +135,9 @@ static func on_tick(unit: Node, delta: float) -> void:
 	# v7.x 第二批：堡垒区域控制（每帧刷新范围内的 meta）
 	_apply_slow_aura(unit, stats)       # 区域减速光环
 	_apply_command_aura(unit, stats)    # 指挥光环
+	# v8.x: 雷场范围伤害（for_11_advanced_minefield 等的读取端复活）
+	# minefield_damage 此前写入 stats 但战斗侧零读取；现每 0.5s 对范围内敌方造成持续真实伤害
+	_apply_minefield_damage(unit, stats, delta)
 	# v7.x 第二批：相位护盾回复
 	_regen_phase_shield(unit, stats, delta)
 
@@ -701,6 +704,33 @@ static func _apply_command_aura(unit: Node, stats: UnitStats) -> void:
 		# 挂指挥 meta（持续 1 秒，on_tick 每帧刷新）
 		ally.set_meta("_command_aura_until", Time.get_ticks_msec() / 1000.0 + 1.0)
 		ally.set_meta("_command_aura_bonus", stats.command_aura_bonus)
+
+## v8.x: 雷场范围伤害（minefield_damage 的读取端复活）
+## for_11_advanced_minefield 等写入 stats.minefield_damage 后此前战斗侧零读取。
+## 现每 0.5s 对范围内敌方造成 minefield_damage × TICK 的真实伤害（绕过防御）。
+## 节流：用单位 meta 累积时间，避免每帧全组扫描。
+const MINEFIELD_TICK_INTERVAL: float = 0.5
+static func _apply_minefield_damage(unit: Node, stats: UnitStats, delta: float) -> void:
+	if stats.minefield_damage <= 0.0:
+		return
+	# 累积计时（meta 挂在单位上，跨帧保留）
+	var acc: float = 0.0
+	if unit.has_meta("_minefield_acc"):
+		acc = float(unit.get_meta("_minefield_acc", 0.0))
+	acc += delta
+	if acc < MINEFIELD_TICK_INTERVAL:
+		unit.set_meta("_minefield_acc", acc)
+		return
+	# 到达节流阈值，重置计时并触发伤害
+	unit.set_meta("_minefield_acc", 0.0)
+	var dmg_per_tick: float = stats.minefield_damage * MINEFIELD_TICK_INTERVAL  # 每秒 = minefield_damage
+	# 复用 splash 半径口径（80 × (1 + bonus)），让 for_11 改造数值与溅射机制视觉一致
+	var radius: float = 80.0 * (1.0 + maxf(0.0, stats.splash_radius_bonus) * 2.0)
+	var enemies: Array = _find_nearby_enemies(unit, radius)
+	for e in enemies:
+		if e == null or not is_instance_valid(e):
+			continue
+		_deal_damage_to_unit(e, dmg_per_tick, unit)
 
 # ── 相位护盾 ──
 

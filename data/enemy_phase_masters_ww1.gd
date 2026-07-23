@@ -326,7 +326,7 @@ const ERA_MASTERS: Array = [
 		"equipment": {
 			"phase_instrument": "pi_steel_02",
 			"level": 10,
-			"platforms": ["steel_fortress_advanced", "steel_titan_advanced"],
+			"platforms": ["ww1_boss_av7", "ww1_boss_av7", "ww1_arm_rolls_e", "ww1_inf_storm_e"],
 			"weapons": ["steel_minigun_advanced", "steel_railcannon_advanced"],
 			"energy_cards": ["steel_energy_advanced"]
 		},
@@ -392,7 +392,7 @@ const ERA_MASTERS: Array = [
 		"equipment": {
 			"phase_instrument": "pi_flame_02",
 			"level": 12,
-			"platforms": ["flame_raider_advanced", "flame_siege_advanced"],
+			"platforms": ["ww1_boss_av7", "ww1_arm_rolls_e", "ww1_arm_rolls_e", "ww1_inf_storm_e"],
 			"weapons": ["flame_thrower_advanced", "incendiary_cannon_advanced"],
 			"energy_cards": ["flame_energy_advanced"]
 		},

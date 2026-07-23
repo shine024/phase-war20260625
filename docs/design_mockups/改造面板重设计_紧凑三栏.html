@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase War · 改造面板重设计 · 紧凑三栏</title>
+<style>
+/* ============================================================
+ * 设计 TOKEN —— 与 resources/design_tokens.gd 1:1 对齐
+ * 改造面板签名色 = --cyan (#06b6d4)
+ * ============================================================ */
+:root {
+  --bg-void:        #060912;
+  --bg-panel:       #0d1320;
+  --bg-card:        #131a2a;
+  --bg-card-hi:     #1a2438;
+  --bg-slot-locked: #0a0f1c;
+  --border-dim:     rgba(120,140,180,0.14);
+  --border:         rgba(160,180,220,0.22);
+  --border-hi:      rgba(120,180,255,0.45);
+
+  --cyan:        #06b6d4;
+  --cyan-soft:   #22d3ee;
+  --cyan-glow:   rgba(6,182,212,0.35);
+
+  --green-up:    #34d399;
+  --red-down:    #ef4444;
+  --amber:       #f59e0b;
+  --violet:      #a78bfa;
+
+  --text:        #e8edf7;
+  --text-mid:    #a8b3c7;
+  --text-dim:    #6b7691;
+  --text-faint:  #454f63;
+
+  --font-display: 'Rajdhani', 'Noto Sans SC', sans-serif;
+  --font-body:    'Noto Sans SC', 'Inter', sans-serif;
+  --font-mono:    'JetBrains Mono', 'Consolas', monospace;
+
+  /* 兵种色 */
+  --kind-infantry: #e5484d;
+  --kind-armor:    #4d7fe5;
+  --kind-air:      #4dcce5;
+
+  /* 稀有度色 */
+  --rar-common:    #6b7691;
+  --rar-uncommon:  #22c55e;
+  --rar-rare:      #38bdf8;
+  --rar-epic:      #c084fc;
+  --rar-legendary: #f59e0b;
+  --rar-mythic:    #ef4444;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-void);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 16px;
+  overflow-x: hidden;
+}
+body::before {
+  content: ''; position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(120,140,180,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(120,140,180,0.025) 1px, transparent 1px);
+  background-size: 40px 40px; pointer-events: none; z-index: 0;
+}
+
+.app { max-width: 1360px; margin: 0 auto; position: relative; z-index: 1; }
+
+/* ===== 顶部 brand bar ===== */
+.top-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 16px; margin-bottom: 12px;
+  background: var(--bg-card); border: 1px solid var(--border-dim); border-radius: 6px;
+}
+.top-brand { display: flex; align-items: center; gap: 10px; }
+.top-brand .diamond {
+  width: 18px; height: 18px;
+  background: linear-gradient(135deg, var(--cyan), var(--cyan-soft));
+  transform: rotate(45deg); border-radius: 2px;
+}
+.top-brand h1 {
+  font-family: var(--font-display); font-size: 14px; font-weight: 700;
+  letter-spacing: 0.2em; color: var(--text);
+}
+.top-brand h1 .sub {
+  font-size: 9px; color: var(--text-dim); letter-spacing: 0.15em;
+  margin-left: 8px; font-weight: 400;
+}
+.top-meta {
+  display: flex; gap: 16px; align-items: center;
+  font-family: var(--font-mono); font-size: 10px; color: var(--text-dim);
+  letter-spacing: 0.08em;
+}
+.top-meta b { color: var(--cyan-soft); font-weight: 600; }
+
+/* ===== 面板外框 ===== */
+.panel-frame {
+  width: 1360px; height: 760px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border); border-radius: 10px;
+  overflow: hidden; position: relative;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+  display: grid;
+  grid-template-rows: 48px 36px 1fr 28px;
+}
+.panel-frame::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--cyan) 20%, var(--cyan-soft) 50%, var(--cyan) 80%, transparent);
+  opacity: 0.8; z-index: 5;
+}
+
+/* ===== 标题栏 ===== */
+.title-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px; border-bottom: 1px solid var(--border-dim);
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+}
+.title-left { display: flex; align-items: center; gap: 12px; }
+.title-mark {
+  width: 18px; height: 18px; position: relative;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--cyan-soft);
+}
+.title-mark::before {
+  content: ''; position: absolute; inset: 0;
+  border: 1px solid currentColor; transform: rotate(45deg);
+}
+.title-mark::after {
+  content: ''; position: absolute; inset: 5px;
+  background: currentColor; transform: rotate(45deg); filter: blur(0.5px);
+}
+.title-text {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: 18px; letter-spacing: 0.12em; color: var(--text);
+}
+.title-text .sub {
+  font-size: 10px; letter-spacing: 0.3em; font-weight: 500;
+  margin-left: 10px; opacity: 0.7; color: var(--cyan-soft);
+}
+.title-right { display: flex; align-items: center; gap: 12px; }
+.title-meta-top {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text-dim); letter-spacing: 0.1em;
+}
+.title-meta-top b { color: var(--cyan-soft); }
+.close-btn {
+  width: 24px; height: 24px; border: 1px solid var(--border-dim);
+  background: transparent; color: var(--text-dim);
+  border-radius: 4px; cursor: pointer; font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+}
+.close-btn:hover { color: var(--text); border-color: var(--border); }
+
+/* ===== 资源条 ===== */
+.resource-bar {
+  display: flex; align-items: center; gap: 14px;
+  padding: 0 20px; border-bottom: 1px solid var(--border-dim);
+  background: var(--bg-card); font-family: var(--font-mono); font-size: 11px;
+}
+.res-item {
+  display: flex; align-items: baseline; gap: 6px; color: var(--text-mid);
+}
+.res-item .res-val {
+  font-family: var(--font-display); font-size: 14px;
+  font-weight: 700; color: var(--text);
+}
+.res-item .res-val.cyan { color: var(--cyan-soft); }
+.res-item .res-val.amber { color: var(--amber); }
+.res-item .res-lbl { font-size: 10px; color: var(--text-dim); }
+.res-sep { width: 1px; height: 14px; background: var(--border-dim); }
+.status-line {
+  margin-left: auto; color: var(--text-dim);
+  display: flex; align-items: center; gap: 6px;
+}
+.status-line .on {
+  color: var(--green-up); font-size: 8px;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+/* ===== 三栏布局 ===== */
+.tri-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr 300px;  /* 紧凑三栏：左窄 / 中宽 / 右适中 */
+  height: 100%; overflow: hidden;
+}
+.col-pane {
+  display: flex; flex-direction: column;
+  border-right: 1px solid var(--border-dim);
+  overflow: hidden; min-width: 0;
+}
+.col-pane:last-child { border-right: none; }
+
+/* ===== 列头 ===== */
+.col-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px; border-bottom: 1px solid var(--border-dim);
+  background: rgba(255,255,255,0.015);
+}
+.col-head.cyan .ch-title { color: var(--cyan-soft); }
+.ch-title {
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--font-display); font-size: 12px;
+  font-weight: 700; letter-spacing: 0.1em;
+}
+.ch-title .pip {
+  width: 5px; height: 5px; border-radius: 50%; background: currentColor;
+}
+.ch-count {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--text-faint); letter-spacing: 0.06em;
+}
+
+/* ===== 筛选 chip ===== */
+.col-filter {
+  display: flex; gap: 4px; padding: 6px 8px;
+  border-bottom: 1px solid var(--border-dim);
+}
+.chip {
+  flex: 1; padding: 4px 8px;
+  font-family: var(--font-display); font-size: 10px; font-weight: 600;
+  letter-spacing: 0.06em; color: var(--text-dim);
+  background: var(--bg-card); border: 1px solid var(--border-dim);
+  border-radius: 3px; cursor: pointer; text-align: center;
+  user-select: none; transition: all 0.12s;
+}
+.chip:hover { color: var(--text-mid); border-color: var(--border); }
+.chip.active.cyan {
+  color: var(--cyan-soft);
+  background: rgba(6,182,212,0.08);
+  border-color: rgba(6,182,212,0.45);
+}
+
+/* ===== 左栏：单位列表 ===== */
+.col-scroll { overflow-y: auto; flex: 1; }
+.col-scroll::-webkit-scrollbar { width: 6px; }
+.col-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.col-scroll::-webkit-scrollbar-track { background: transparent; }
+
+.card-item {
+  display: grid; grid-template-columns: 32px 1fr auto;
+  align-items: center; gap: 8px;
+  padding: 6px 10px; margin: 2px 6px;
+  border-radius: 4px; cursor: pointer;
+  border-left: 3px solid transparent;
+  background: transparent;
+  transition: background 0.12s;
+}
+.card-item:hover { background: rgba(255,255,255,0.025); }
+.card-item.active {
+  background: rgba(6,182,212,0.08);
+  border-left-color: var(--cyan);
+}
+.card-thumb {
+  width: 32px; height: 36px;
+  background: var(--bg-slot-locked);
+  border: 1px solid var(--kind-armor);
+  border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 16px; font-weight: 700;
+  color: var(--kind-armor);
+}
+.card-thumb.inf { border-color: var(--kind-infantry); color: var(--kind-infantry); }
+.card-thumb.air { border-color: var(--kind-air); color: var(--kind-air); }
+.card-info { min-width: 0; }
+.card-name {
+  font-size: 12px; font-weight: 600; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.card-name .cid {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--text-faint); margin-left: 4px; font-weight: 400;
+}
+.card-sub {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--text-dim); margin-top: 1px;
+}
+.card-sub .mods { color: var(--cyan-soft); }
+.card-tier {
+  font-family: var(--font-display); font-size: 9px; font-weight: 700;
+  padding: 1px 5px; border-radius: 2px;
+  background: rgba(6,182,212,0.1);
+  border: 1px solid rgba(6,182,212,0.4);
+  color: var(--cyan-soft); letter-spacing: 0.06em;
+}
+.card-tier.grunt { background: rgba(107,118,145,0.1); border-color: rgba(107,118,145,0.4); color: var(--text-mid); }
+
+/* ===== 中栏：9 槽位横排窄条 ===== */
+.slot-strip-section {
+  padding: 8px 12px; border-bottom: 1px solid var(--border-dim);
+  background: linear-gradient(180deg, rgba(6,182,212,0.03), transparent);
+}
+.slot-strip-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 6px;
+}
+.slot-strip-title {
+  font-family: var(--font-display); font-size: 11px; font-weight: 700;
+  color: var(--text-mid); letter-spacing: 0.08em;
+  display: flex; align-items: center; gap: 6px;
+}
+.slot-strip-title .count {
+  color: var(--cyan-soft); font-family: var(--font-mono);
+}
+.slot-strip-hint {
+  font-family: var(--font-mono); font-size: 9px; color: var(--text-faint);
+}
+.slot-strip {
+  display: grid; grid-template-columns: repeat(9, 1fr);
+  gap: 4px;
+}
+.slot-box {
+  height: 30px; border-radius: 3px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-size: 9px;
+  border: 1px solid var(--border-dim);
+  background: var(--bg-card); color: var(--text-faint);
+  cursor: pointer; transition: all 0.12s; position: relative;
+}
+.slot-box .glyph { font-weight: 700; font-size: 10px; }
+.slot-box .lvl { font-size: 7px; opacity: 0.7; }
+.slot-box.filled {
+  background: rgba(6,182,212,0.08);
+  border-color: rgba(6,182,212,0.4);
+  color: var(--cyan-soft);
+}
+.slot-box.empty:hover {
+  border-color: var(--cyan-soft);
+  color: var(--cyan-soft);
+  background: rgba(6,182,212,0.05);
+}
+
+/* ===== 中栏留白：当前单位基础面板 ===== */
+.unit-dashboard {
+  padding: 10px 14px; border-bottom: 1px solid var(--border-dim);
+}
+.ud-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+}
+.ud-title {
+  font-family: var(--font-display); font-size: 11px; font-weight: 700;
+  color: var(--text-mid); letter-spacing: 0.08em;
+  display: flex; align-items: center; gap: 6px;
+}
+.ud-tier-pill {
+  display: flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 2px;
+  background: rgba(6,182,212,0.1);
+  border: 1px solid rgba(6,182,212,0.4);
+  font-family: var(--font-display); font-size: 9px; font-weight: 700;
+  color: var(--cyan-soft); letter-spacing: 0.08em;
+}
+.ud-tier-pill .dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--cyan-soft); box-shadow: 0 0 6px var(--cyan-glow);
+}
+.ud-stat-row {
+  display: grid; grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+}
+.ud-stat {
+  padding: 6px 8px; background: var(--bg-card);
+  border: 1px solid var(--border-dim); border-radius: 3px;
+  text-align: center;
+}
+.ud-stat .lbl {
+  font-family: var(--font-mono); font-size: 8px;
+  color: var(--text-dim); letter-spacing: 0.04em;
+  margin-bottom: 2px;
+}
+.ud-stat .val {
+  font-family: var(--font-display); font-size: 14px; font-weight: 700;
+  color: var(--text);
+}
+.ud-stat .val.green { color: var(--green-up); }
+
+/* ===== 中栏：改造模块库 ===== */
+.mod-section { flex: 1; overflow-y: auto; padding: 4px 8px; }
+.mod-section::-webkit-scrollbar { width: 6px; }
+.mod-section::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.mod-row {
+  display: grid; grid-template-columns: 28px 1fr auto;
+  align-items: center; gap: 10px;
+  padding: 6px 10px; margin: 2px 0;
+  border-radius: 4px; cursor: pointer;
+  border-left: 3px solid transparent;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border-dim);
+  border-right: 1px solid var(--border-dim);
+  border-bottom: 1px solid var(--border-dim);
+  transition: all 0.12s;
+}
+.mod-row:hover { background: var(--bg-card-hi); }
+.mod-row.active {
+  background: rgba(6,182,212,0.1);
+  border-left-color: var(--cyan);
+  box-shadow: 0 0 0 1px rgba(6,182,212,0.25);
+}
+.mod-row.unusable {
+  opacity: 0.35;
+  background: transparent;
+}
+.mod-row.unusable:hover { opacity: 0.5; background: rgba(255,255,255,0.02); }
+
+.mod-ico {
+  width: 28px; height: 28px;
+  border: 1px solid var(--text-faint);
+  border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 10px; font-weight: 700;
+  color: var(--text-faint);
+}
+.mod-ico.epic { border-color: var(--rar-epic); color: var(--rar-epic); }
+.mod-ico.legendary { border-color: var(--rar-legendary); color: var(--rar-legendary); }
+.mod-ico.rare { border-color: var(--rar-rare); color: var(--rar-rare); }
+.mod-ico.cyan { border-color: var(--cyan); color: var(--cyan); }
+
+.mod-info { min-width: 0; }
+.mod-name {
+  font-size: 12px; font-weight: 600; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  display: flex; align-items: center; gap: 4px;
+}
+.mod-name .rar-tag {
+  font-family: var(--font-mono); font-size: 8px; font-weight: 600;
+  padding: 0 3px; border-radius: 1px; letter-spacing: 0.04em;
+}
+.rar-tag.epic { color: var(--rar-epic); border: 1px solid var(--rar-epic); }
+.rar-tag.legendary { color: var(--rar-legendary); border: 1px solid var(--rar-legendary); }
+.rar-tag.rare { color: var(--rar-rare); border: 1px solid var(--rar-rare); }
+.rar-tag.common { color: var(--text-mid); border: 1px solid var(--text-faint); }
+.mod-effect {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text-dim); margin-top: 1px;
+}
+.mod-effect .hi { color: var(--green-up); font-weight: 600; }
+
+.mod-status {
+  font-family: var(--font-display); font-size: 9px; font-weight: 700;
+  letter-spacing: 0.06em; padding: 2px 6px; border-radius: 2px;
+  white-space: nowrap;
+}
+.mod-status.available {
+  color: var(--green-up);
+  background: rgba(52,211,153,0.08);
+  border: 1px solid rgba(52,211,153,0.3);
+}
+.mod-status.installed {
+  color: var(--cyan-soft);
+  background: rgba(6,182,212,0.1);
+  border: 1px solid rgba(6,182,212,0.4);
+}
+.mod-status.conflict {
+  color: var(--red-down);
+  background: rgba(239,68,68,0.06);
+  border: 1px solid rgba(239,68,68,0.3);
+}
+.mod-status.low-tier {
+  color: var(--text-faint);
+  background: transparent;
+  border: 1px solid var(--border-dim);
+}
+
+/* ===== 右栏：模块详情（瘦身版） ===== */
+.detail-empty {
+  padding: 40px 20px; text-align: center;
+  color: var(--text-faint); font-size: 11px;
+}
+.detail-empty .de-hint {
+  font-family: var(--font-display); font-size: 13px;
+  color: var(--text-dim); margin-bottom: 6px;
+  letter-spacing: 0.08em;
+}
+
+.mod-detail { padding: 12px 14px; }
+.detail-header { margin-bottom: 10px; }
+.detail-name {
+  font-family: var(--font-display); font-size: 17px; font-weight: 700;
+  color: var(--text); letter-spacing: 0.04em;
+}
+.detail-name .rar-pill {
+  font-family: var(--font-display); font-size: 9px; font-weight: 700;
+  padding: 1px 6px; border-radius: 2px; margin-left: 6px;
+  letter-spacing: 0.1em; vertical-align: middle;
+}
+.rar-pill.epic { color: var(--rar-epic); border: 1px solid var(--rar-epic); background: rgba(192,132,252,0.06); }
+.rar-pill.legendary { color: var(--rar-legendary); border: 1px solid var(--rar-legendary); background: rgba(245,158,11,0.06); }
+.rar-pill.rare { color: var(--rar-rare); border: 1px solid var(--rar-rare); background: rgba(56,189,248,0.06); }
+.detail-sub {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--text-faint); margin-top: 3px; letter-spacing: 0.06em;
+}
+.detail-tags {
+  display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;
+}
+.tag-pill {
+  font-family: var(--font-mono); font-size: 9px;
+  padding: 1px 6px; border-radius: 2px;
+  border: 1px solid var(--border-dim); color: var(--text-mid);
+  background: var(--bg-card);
+}
+.tag-pill.cyan { border-color: rgba(6,182,212,0.4); color: var(--cyan-soft); }
+
+/* ---- 核心属性（最显眼块，紧贴安装按钮） ---- */
+.core-stats {
+  margin: 10px 0;
+  padding: 10px;
+  background: linear-gradient(135deg, rgba(6,182,212,0.06), rgba(6,182,212,0.02));
+  border: 1px solid rgba(6,182,212,0.25);
+  border-radius: 5px;
+}
+.core-stats-head {
+  font-family: var(--font-display); font-size: 10px;
+  font-weight: 700; color: var(--cyan-soft);
+  letter-spacing: 0.1em; margin-bottom: 6px;
+}
+.stat-delta {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 4px 8px; margin-bottom: 3px;
+  background: var(--bg-card); border-radius: 3px;
+  font-family: var(--font-mono); font-size: 11px;
+}
+.stat-delta:last-child { margin-bottom: 0; }
+.stat-delta .lbl { color: var(--text-mid); }
+.stat-delta .delta {
+  color: var(--green-up); font-weight: 700;
+  font-family: var(--font-display); font-size: 13px;
+}
+
+/* ---- 战力档位（压缩成 chip 行） ---- */
+.tier-strip {
+  display: flex; align-items: center; gap: 4px;
+  padding: 6px 0; margin: 4px 0 8px;
+  border-bottom: 1px dashed var(--border-dim);
+}
+.tier-strip-label {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--text-dim); letter-spacing: 0.06em;
+  margin-right: 4px; white-space: nowrap;
+}
+.tier-chip {
+  flex: 1; text-align: center;
+  padding: 3px 2px; border-radius: 2px;
+  font-family: var(--font-mono); font-size: 8px;
+  border: 1px solid var(--border-dim); color: var(--text-faint);
+}
+.tier-chip .tc-name { font-weight: 700; display: block; }
+.tier-chip .tc-val { font-size: 7px; opacity: 0.7; }
+.tier-chip.active {
+  border-color: var(--cyan-soft); color: var(--cyan-soft);
+  background: rgba(6,182,212,0.1);
+}
+.tier-chip.reached {
+  color: var(--text-mid); border-color: var(--border);
+}
+.tier-chip.req {
+  border-color: var(--red-down); color: var(--red-down);
+  background: rgba(239,68,68,0.04);
+}
+.tier-strip-note {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--text-dim); margin-left: 4px; white-space: nowrap;
+}
+.tier-strip-note.ok { color: var(--green-up); }
+.tier-strip-note.fail { color: var(--red-down); }
+
+/* ---- 解锁要求 + 材料（合并两行小字） ---- */
+.req-line {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 5px 8px; margin-bottom: 3px;
+  background: var(--bg-card); border-radius: 3px;
+  font-family: var(--font-mono); font-size: 10px;
+}
+.req-line .rl-lbl { color: var(--text-dim); }
+.req-line .rl-val { font-weight: 600; }
+.req-line .rl-val.ok { color: var(--green-up); }
+.req-line .rl-val.fail { color: var(--red-down); }
+
+/* ---- 描述 ---- */
+.detail-desc {
+  padding: 8px 0; font-size: 11px; line-height: 1.5;
+  color: var(--text-mid); border-bottom: 1px dashed var(--border-dim);
+  margin-bottom: 8px;
+}
+
+/* ---- 安装按钮（紧贴核心属性） ---- */
+.install-zone {
+  margin-top: 10px;
+}
+.btn-primary {
+  width: 100%; padding: 10px 16px;
+  font-family: var(--font-display); font-size: 13px; font-weight: 700;
+  letter-spacing: 0.12em; color: #00121a;
+  background: linear-gradient(135deg, var(--cyan-soft), var(--cyan));
+  border: none; border-radius: 5px; cursor: pointer;
+  box-shadow: 0 4px 16px rgba(6,182,212,0.4);
+  transition: all 0.15s;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(6,182,212,0.55);
+}
+.btn-primary:disabled {
+  background: var(--bg-card-hi); color: var(--text-faint);
+  cursor: not-allowed; box-shadow: none;
+  border: 1px solid var(--border-dim);
+}
+.btn-secondary {
+  width: 100%; padding: 6px;
+  font-family: var(--font-display); font-size: 10px;
+  letter-spacing: 0.08em; color: var(--text-dim);
+  background: transparent; border: 1px solid var(--border-dim);
+  border-radius: 4px; cursor: pointer; margin-top: 4px;
+}
+.btn-secondary:hover { color: var(--text); border-color: var(--border); }
+
+/* ===== 页脚 ===== */
+.panel-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px; border-top: 1px solid var(--border-dim);
+  background: var(--bg-card);
+  font-family: var(--font-mono); font-size: 9px; color: var(--text-faint);
+}
+.panel-footer .keys { display: flex; gap: 14px; }
+.panel-footer .key { display: flex; align-items: center; gap: 4px; }
+.panel-footer .key kbd {
+  background: var(--bg-slot-locked); border: 1px solid var(--border-dim);
+  border-radius: 2px; padding: 0 4px;
+  font-size: 9px; color: var(--text-mid);
+}
+
+/* ===== 设计注释浮层（mockup 专用，非游戏内容） ===== */
+.design-notes {
+  margin-top: 16px; padding: 12px 16px;
+  background: var(--bg-card); border: 1px solid var(--border-dim);
+  border-radius: 6px;
+}
+.design-notes h3 {
+  font-family: var(--font-display); font-size: 12px;
+  color: var(--cyan-soft); letter-spacing: 0.12em;
+  margin-bottom: 8px;
+}
+.design-notes ul {
+  list-style: none; padding-left: 0;
+  font-size: 11px; color: var(--text-mid); line-height: 1.6;
+}
+.design-notes li { padding-left: 14px; position: relative; }
+.design-notes li::before {
+  content: '▸'; position: absolute; left: 0; color: var(--cyan-soft);
+}
+.design-notes .tag {
+  display: inline-block; padding: 0 4px; border-radius: 2px;
+  font-family: var(--font-mono); font-size: 9px;
+  background: rgba(6,182,212,0.1); color: var(--cyan-soft);
+  border: 1px solid rgba(6,182,212,0.3); margin: 0 2px;
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- 顶部 brand -->
+  <div class="top-bar">
+    <div class="top-brand">
+      <div class="diamond"></div>
+      <h1>PHASE WAR · 改造面板重设计 <span class="sub">COMPACT TRI-COLUMN MOCKUP</span></h1>
+    </div>
+    <div class="top-meta">设计稿 v1.0 · 基于 <b>临时修改.txt</b>「紧凑三栏」方案</div>
+  </div>
+
+  <!-- 改造面板主体 -->
+  <div class="panel-frame">
+
+    <!-- 标题栏 -->
+    <div class="title-bar">
+      <div class="title-left">
+        <div class="title-mark"></div>
+        <div class="title-text">战术改造站 <span class="sub">TACTICAL MODIFICATION BAY</span></div>
+      </div>
+      <div class="title-right">
+        <div class="title-meta-top">改造图纸 <b>14</b> 可用 · 当前槽位 <b>2/9</b></div>
+        <button class="close-btn">×</button>
+      </div>
+    </div>
+
+    <!-- 资源条 -->
+    <div class="resource-bar">
+      <div class="res-item"><span class="res-val amber">1,247</span><span class="res-lbl">纳米材料</span></div>
+      <div class="res-sep"></div>
+      <div class="res-item"><span class="res-val">3,482</span><span class="res-lbl">合金</span></div>
+      <div class="res-sep"></div>
+      <div class="res-item">当前战力档 <span class="res-val cyan">ELITE · T2</span></div>
+      <div class="status-line"><span class="on">●</span> BAY-13 · OPERATIONAL · 7 MODULES READY</div>
+    </div>
+
+    <!-- 三栏主体 -->
+    <div class="tri-layout">
+
+      <!-- ============ 左栏：单位名册 ============ -->
+      <div class="col-pane">
+        <div class="col-head cyan">
+          <div class="ch-title"><span class="pip"></span>单位名册</div>
+          <div class="ch-count">已选 1 / 42</div>
+        </div>
+        <div class="col-filter">
+          <div class="chip active cyan">全部</div>
+          <div class="chip cyan">可改造</div>
+          <div class="chip cyan">满槽</div>
+        </div>
+        <div class="col-scroll">
+          <!-- 选中：虚空领主 #4 -->
+          <div class="card-item active">
+            <div class="card-thumb">◈</div>
+            <div class="card-info">
+              <div class="card-name">虚空领主<span class="cid">foe_fut_nexus#4</span></div>
+              <div class="card-sub">Lv.10 · <span class="mods">2/9 模块</span></div>
+            </div>
+            <div class="card-tier">OVERLORD</div>
+          </div>
+          <div class="card-item">
+            <div class="card-thumb">⚔</div>
+            <div class="card-info">
+              <div class="card-name">T-72 主战坦克<span class="cid">cold_t72#1</span></div>
+              <div class="card-sub">Lv.8 · <span class="mods">5/9 模块</span></div>
+            </div>
+            <div class="card-tier">CHAMPION</div>
+          </div>
+          <div class="card-item">
+            <div class="card-thumb inf">▲</div>
+            <div class="card-info">
+              <div class="card-name">毛瑟步兵班<span class="cid">ww1_mauser#2</span></div>
+              <div class="card-sub">Lv.4 · <span class="mods">0/9 模块</span></div>
+            </div>
+            <div class="card-tier grunt">GRUNT</div>
+          </div>
+          <div class="card-item">
+            <div class="card-thumb air">✈</div>
+            <div class="card-info">
+              <div class="card-name">F-16 战隼<span class="cid">cold_f16#1</span></div>
+              <div class="card-sub">Lv.7 · <span class="mods">9/9 满槽</span></div>
+            </div>
+            <div class="card-tier">ELITE</div>
+          </div>
+          <div class="card-item">
+            <div class="card-thumb">◉</div>
+            <div class="card-info">
+              <div class="card-name">虎式坦克<span class="cid">ww2_tiger#1</span></div>
+              <div class="card-sub">Lv.6 · <span class="mods">3/9 模块</span></div>
+            </div>
+            <div class="card-tier">ELITE</div>
+          </div>
+          <div class="card-item">
+            <div class="card-thumb inf">▲</div>
+            <div class="card-info">
+              <div class="card-name">掷弹兵班<span class="cid">ww2_grenadier#3</span></div>
+              <div class="card-sub">Lv.5 · <span class="mods">1/9 模块</span></div>
+            </div>
+            <div class="card-tier grunt">VETERAN</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ 中栏：改造模块库 + 单位面板 ============ -->
+      <div class="col-pane">
+
+        <!-- 9 槽位横向窄条（原 3x3 大方块 → 缩成一行） -->
+        <div class="slot-strip-section">
+          <div class="slot-strip-head">
+            <div class="slot-strip-title">已装改造 <span class="count">2 / 9</span></div>
+            <div class="slot-strip-hint">点击空槽位 = 定位可装模块</div>
+          </div>
+          <div class="slot-strip">
+            <div class="slot-box filled" title="反应装甲模块 Lv.2"><span class="glyph">RC</span><span class="lvl">Lv.2</span></div>
+            <div class="slot-box filled" title="自动装填机 Lv.1"><span class="glyph">AG</span><span class="lvl">Lv.1</span></div>
+            <div class="slot-box empty" title="空槽位 · 可装 1 个模块"><span class="glyph">+</span></div>
+            <div class="slot-box empty"><span class="glyph">+</span></div>
+            <div class="slot-box empty"><span class="glyph">+</span></div>
+            <div class="slot-box empty"><span class="glyph">+</span></div>
+            <div class="slot-box empty"><span class="glyph">+</span></div>
+            <div class="slot-box empty"><span class="glyph">+</span></div>
+            <div class="slot-box empty"><span class="glyph">+</span></div>
+          </div>
+        </div>
+
+        <!-- 中栏留白利用：当前单位基础面板 -->
+        <div class="unit-dashboard">
+          <div class="ud-head">
+            <div class="ud-title"><span style="color:var(--cyan-soft)">●</span>当前单位 · 虚空领主 #4</div>
+            <div class="ud-tier-pill"><span class="dot"></span>OVERLORD · 1248 战力</div>
+          </div>
+          <div class="ud-stat-row">
+            <div class="ud-stat"><div class="lbl">HP</div><div class="val">240</div></div>
+            <div class="ud-stat"><div class="lbl">轻攻</div><div class="val">220</div></div>
+            <div class="ud-stat"><div class="lbl">甲攻</div><div class="val">180</div></div>
+            <div class="ud-stat"><div class="lbl">空攻</div><div class="val">160</div></div>
+            <div class="ud-stat"><div class="lbl">装甲防</div><div class="val">12</div></div>
+            <div class="ud-stat"><div class="lbl">强化</div><div class="val green">Lv.10</div></div>
+          </div>
+        </div>
+
+        <!-- 改造模块列表（可装亮 / 不适用 35% 透明） -->
+        <div class="col-head cyan" style="border-top:1px solid var(--border-dim)">
+          <div class="ch-title"><span class="pip"></span>改造模块库</div>
+          <div class="ch-count">可用 6 · 总持有 14</div>
+        </div>
+        <div class="mod-section">
+          <!-- 选中：致命精通 -->
+          <div class="mod-row active">
+            <div class="mod-ico epic">EP</div>
+            <div class="mod-info">
+              <div class="mod-name">致命精通 <span class="rar-tag epic">EPIC</span></div>
+              <div class="mod-effect">暴击伤害 <span class="hi">+42%</span> · 强化词条</div>
+            </div>
+            <div class="mod-status available">可安装</div>
+          </div>
+          <div class="mod-row">
+            <div class="mod-ico cyan">RA</div>
+            <div class="mod-info">
+              <div class="mod-name">反应装甲模块 <span class="rar-tag epic">EPIC</span></div>
+              <div class="mod-effect">装甲防御 <span class="hi">+20%</span> · mount 槽</div>
+            </div>
+            <div class="mod-status installed">✓ 已装</div>
+          </div>
+          <div class="mod-row">
+            <div class="mod-ico legendary">AG</div>
+            <div class="mod-info">
+              <div class="mod-name">自动装填机 <span class="rar-tag legendary">LEG</span></div>
+              <div class="mod-effect">攻击速度 <span class="hi">×1.5</span> · ammunition 槽</div>
+            </div>
+            <div class="mod-status installed">✓ 已装</div>
+          </div>
+          <div class="mod-row">
+            <div class="mod-ico epic">AP</div>
+            <div class="mod-info">
+              <div class="mod-name">尾翼稳定脱壳穿甲 <span class="rar-tag epic">EPIC</span></div>
+              <div class="mod-effect">装甲攻击 <span class="hi">+30%</span> · ammunition 槽</div>
+            </div>
+            <div class="mod-status available">可安装</div>
+          </div>
+          <div class="mod-row">
+            <div class="mod-ico rare">TS</div>
+            <div class="mod-info">
+              <div class="mod-name">热成像瞄准镜 <span class="rar-tag rare">RARE</span></div>
+              <div class="mod-effect">命中精度 <span class="hi">+25%</span> · optics 槽</div>
+            </div>
+            <div class="mod-status available">可安装</div>
+          </div>
+          <div class="mod-row unusable">
+            <div class="mod-ico" style="border-color:var(--text-faint);color:var(--text-faint)">CM</div>
+            <div class="mod-info">
+              <div class="mod-name">主动防御系统 <span class="rar-tag common">RARE</span></div>
+              <div class="mod-effect">需要 CHAMPION 档位（当前 ELITE）</div>
+            </div>
+            <div class="mod-status low-tier">✗ 档位不足</div>
+          </div>
+          <div class="mod-row unusable">
+            <div class="mod-ico" style="border-color:var(--text-faint);color:var(--text-faint)">SM</div>
+            <div class="mod-info">
+              <div class="mod-name">烟幕弹发射器 <span class="rar-tag common">RARE</span></div>
+              <div class="mod-effect">冲突组：radar（与已装雷达互斥）</div>
+            </div>
+            <div class="mod-status conflict">✗ 冲突</div>
+          </div>
+          <div class="mod-row">
+            <div class="mod-ico rare">LM</div>
+            <div class="mod-info">
+              <div class="mod-name">激光测距仪 <span class="rar-tag rare">RARE</span></div>
+              <div class="mod-effect">命中精度 <span class="hi">+15%</span> · optics 槽</div>
+            </div>
+            <div class="mod-status available">可安装</div>
+          </div>
+          <div class="mod-row">
+            <div class="mod-ico cyan">FC</div>
+            <div class="mod-info">
+              <div class="mod-name">先进火控雷达 <span class="rar-tag legendary">LEG</span></div>
+              <div class="mod-effect">轻/甲攻 <span class="hi">+18%/+15%</span> · electronics 槽</div>
+            </div>
+            <div class="mod-status available">可安装</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ 右栏：瘦身版详情 ============ -->
+      <div class="col-pane">
+        <div class="col-head cyan">
+          <div class="ch-title"><span class="pip"></span>模块详情</div>
+          <div class="ch-count">Hover 中栏模块即时刷新</div>
+        </div>
+        <div class="col-scroll">
+          <div class="mod-detail">
+
+            <!-- 头部 -->
+            <div class="detail-header">
+              <div class="detail-name">致命精通 <span class="rar-pill epic">EPIC · 史诗</span></div>
+              <div class="detail-sub">enh_crit_dmg · Crit Damage · 原型「致命打击精通」</div>
+              <div class="detail-tags">
+                <span class="tag-pill cyan">强化槽 enhancement</span>
+                <span class="tag-pill">冲突组 enh_crit_dmg</span>
+                <span class="tag-pill">适用 全兵种</span>
+                <span class="tag-pill cyan">战力倍率 ×1.5</span>
+              </div>
+            </div>
+
+            <!-- 核心属性（最显眼块） -->
+            <div class="core-stats">
+              <div class="core-stats-head">▣ 核心属性 · 装备后</div>
+              <div class="stat-delta"><span class="lbl">暴击伤害</span><span class="delta">+42%</span></div>
+              <div class="stat-delta"><span class="lbl">等级进度</span><span class="delta" style="font-size:11px;color:var(--text-mid)">Lv.3 / 3 满级</span></div>
+            </div>
+
+            <!-- 战力档位（压缩成 chip 行） -->
+            <div class="tier-strip">
+              <span class="tier-strip-label">档位</span>
+              <div class="tier-chip reached"><span class="tc-name">GRUNT</span><span class="tc-val">150</span></div>
+              <div class="tier-chip reached"><span class="tc-name">VETERAN</span><span class="tc-val">260</span></div>
+              <div class="tier-chip active"><span class="tc-name">ELITE</span><span class="tc-val">420</span></div>
+              <div class="tier-chip reached"><span class="tc-name">CHAMPION</span><span class="tc-val">720</span></div>
+              <div class="tier-chip active"><span class="tc-name">OVERLORD</span><span class="tc-val">720+</span></div>
+              <span class="tier-strip-note ok">✓ 已达</span>
+            </div>
+
+            <!-- 解锁要求 + 材料（合并小字） -->
+            <div class="req-line">
+              <span class="rl-lbl">▸ 解锁要求</span>
+              <span class="rl-val ok">强化等级 ≥ 3（当前 Lv.10）✓</span>
+            </div>
+            <div class="req-line">
+              <span class="rl-lbl">▸ 材料 · 纳米</span>
+              <span class="rl-val ok">64（持有 1,247 · 余 1,183）✓</span>
+            </div>
+            <div class="req-line">
+              <span class="rl-lbl">▸ 材料 · 图纸</span>
+              <span class="rl-val ok">1（持有 14）✓</span>
+            </div>
+
+            <!-- 描述 -->
+            <div class="detail-desc">致命打击精通训练。装备后单位对致命要害的把握大幅提升，暴击时造成的额外伤害 <b style="color:var(--green-up)">+42%</b>。</div>
+
+            <!-- 安装按钮（紧贴核心属性） -->
+            <div class="install-zone">
+              <button class="btn-primary">▣ 立即安装</button>
+              <button class="btn-secondary">查看完整效果模拟 →</button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 页脚 -->
+    <div class="panel-footer">
+      <div class="keys">
+        <span class="key"><kbd>CLICK</kbd> 选单位/模块</span>
+        <span class="key"><kbd>HOVER</kbd> 中栏模块 → 右栏刷新</span>
+        <span class="key"><kbd>SPACE</kbd> 安装</span>
+        <span class="key"><kbd>ESC</kbd> 关闭</span>
+      </div>
+      <div>PHASE WAR · v7.x · 改造站原型 · 紧凑三栏</div>
+    </div>
+  </div>
+
+  <!-- 设计注释（mockup 专用说明） -->
+  <div class="design-notes">
+    <h3>◆ 紧凑三栏方案 · 核心改动对照（临时修改.txt）</h3>
+    <ul>
+      <li><b>问题①·右侧栏"双重身份"</b> → 中栏 9 槽位从 <span class="tag">3×3 大方块</span>缩为 <span class="tag">横向窄条</span>（高度从 ~150px → ~60px），让出中栏垂直空间给「当前单位基础面板」。</li>
+      <li><b>问题②·焦点不统一</b> → 右栏只在「中栏 Hover/选中模块」时刷新；左栏选中单位用 <span class="tag">左侧 3px cyan 边框</span>（不再是大块深色框），仅做锚定不打架。</li>
+      <li><b>问题③·顶部 9 槽位占地过大</b> → 槽位高度 30px 横排一行，释放的纵向空间用于展示 <span class="tag">HP / 三维攻防 / 战力档位</span>，解决"右栏列表很长时左中栏闲置"的痛点。</li>
+      <li><b>右栏瘦身</b>：战力档位从「<span class="tag">大灰条阶梯</span>」压缩成 <span class="tag">单行 chip + 状态点</span>；解锁要求 + 材料纳米 + 图纸合并成 <span class="tag">3 行小字</span>；核心属性（+42%）独立成发光块紧贴安装按钮，视线垂直向下。</li>
+      <li><b>对比度代替文字说明</b>：「档位不足」「冲突」两类不可装模块整行 <span class="tag">35% 透明</span>；「可安装」绿色 chip / 「已装」cyan chip，玩家一眼定位可操作项。</li>
+      <li><b>视线流</b>：左栏点单位 → 中栏 Hover 模块 → 右栏看核心属性 → 点安装。焦点集中在中-右区，左栏只做锚定。</li>
+      <li><b>真实数据</b>：单位=<span class="tag">虚空领主#4（OVERLORD 1248 战力）</span>，改造=<span class="tag">致命精通（epic +42% 暴伤）</span>，均来自项目真实数据。</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

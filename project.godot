@@ -49,6 +49,7 @@ AffixManager="*res://managers/affix_manager.gd"
 LevelProgressManager="*res://managers/level_progress_manager.gd"
 CardEnhancementManager="*res://managers/card_enhancement_manager.gd"
 InstanceRegistry="*res://managers/instance_registry.gd"
+PhaseMasterSkillManager="*res://managers/phase_master_skill_manager.gd"
 "#v7.xæ§è½ï¼Lore/Achievement/DailyTaskå»¶è¿å è½½ï¼è¿å¥ä¸»çé¢æ¶ç±resource_bar._ready/main._init_daily_tasksæèµ·ï¼#ææç»ç®ç±new_systems_integrationåè°ensure_loadedï¼#LoreManager"="*res://managers/lore_manager.gd"
 #AchievementManager="*res://managers/achievement_manager.gd"
 #DailyTaskManager="*res://managers/daily_task_manager.gd"
@@ -71,13 +72,13 @@ window/size/viewport_width=1280
 window/size/viewport_height=720
 window/stretch/mode="canvas_items"
 
-[gui]
-
-theme/custom="res://resources/default_theme.tres"
-
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/agent_tools/plugin.cfg", "res://addons/gdunit4/plugin.cfg", "res://addons/godot-mcp/plugin.cfg")
+
+[gui]
+
+theme/custom="res://resources/default_theme.tres"
 
 [rendering]
 

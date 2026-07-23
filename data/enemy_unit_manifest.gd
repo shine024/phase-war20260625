@@ -245,6 +245,14 @@ static func get_unit_icon_path_for_archetype(archetype_id: String, for_player: b
 		return ""
 	_ensure_unit_icon_map()
 	var rel: String = String(_unit_icon_by_archetype.get(aid, ""))
+	# v8.2 修复：foe_ 前缀查不到时，去前缀再查。
+	# 根因：ui_asset_loader 用 archetype_id_for_platform_card 给 card_id 加 foe_ 前缀再查本表，
+	# 但 PLATFORM/SPECIAL 段的 key 是 foe_<id>（能命中），而 FIXED/CAPTURED/POOL/FORT 段的
+	# key 是 <id>（无 foe_ 前缀，_make_fixed_row/_make_pool_row/_make_fort_row 用原 id）。
+	# 这导致 FIXED 等段的卡（如 ww1_inf_mp18/fut_inf_cyborg/ww1_fort_pillbox）查询 miss → fallback 撞图。
+	# 此兜底让两种 key 形式都能命中，零侵入修复全段。
+	if rel.is_empty() and aid.begins_with("foe_"):
+		rel = String(_unit_icon_by_archetype.get(aid.substr(4), ""))
 	if rel.is_empty():
 		return ""
 	# 敌方取原图：把 vis_player 翻转图改写为 vis_enemy 原图（编号不变）。

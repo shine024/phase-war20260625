@@ -1556,3 +1556,74 @@ inf_19单兵电台(ally_bonus)、arm_15数据链(ally_hit_bonus)、for_10指挥�
 - [ ] **不要只测首次显示**——对象池复用/resize 后的二次布局才会暴露强制布局 bug
 - [ ] TextureRect 挂在 Container 上被拉伸到全屏是**期望行为**（如卡框/底图），不要误改
 
+
+## v9.x 驻守相位师战力重配（5-7★）+ 加成链 2 处 bug 修复 (2026-07-22)
+
+**背景**: 用户反馈"49 关相位师有时获得高级堡垒"，调查发现爆率档位严重错位——20 个驻守相位师实测全部 1★ 新锐（总分 600，掉率档位 = 杂兵 GRUNT），导致：
+- 改造蓝图必掉 1 张（设计应 2-4 张），legendary 概率仅 2.4%（应 6-8%）
+- 符文/特殊相位仪门槛永远够不到（6★/7★ 才掉特殊相位仪）
+
+**根因**: 20 个驻守相位师的 `equipment.platforms` 填了 `EnemyArchetypes` 表里**不存在**的卡 id（如 `ww2_inf_garand/ww2_sup_mg42` 实际是弱小兵卡，或 `_legacy_platforms` 的 `steel_fortress_expert` 等老 id 已废弃），导致 `compute_enemy_platform_power` 全部走兜底 100/卡，总分恒 600。
+
+**核心策略**: 4-6 张时代高级战斗卡阶梯配置 + 显式写死势力主题符文 + 修复 2 处加成链 bug（让数学上可达 5-7★）。
+
+**5 个改动点:**
+
+| # | 改动 | 详情 |
+|---|------|------|
+| A1 | **接入 master.stats.max_hp** | `apply_phase_master_to_unit_stats` 之前只读 attack_power/defense，max_hp 完全空转。新增 `mhp_m = 1 + max_hp × 0.00015`（max_hp 3000→×1.45, 5000→×1.75）。仅相位师战生效，普通波次零影响 |
+| A2 | **`_derive_runes` max_count 4→6** | 原 `clampi(2+level/10, 2, 4)` 让符文槽填不满相位仪 6 槽（EnemyLoadoutTiers rune_cap HIGH=6）。改为 `clampi(2+level/6, 2, 6)`，Lv10→3/Lv18→5/Lv24→6 |
+| B1 | **20 驻守师 platforms 重配** | 每相位师 4-6 张**真实存在于 archetype JSON** 的高级卡（WW1 4 张→COLD 5 张→FUTURE 6 张），含每时代 boss 卡（ww1_boss_av7/ww2_boss_kingtiger/cold_boss_mig/mod_boss_command/fut_boss_nexus） |
+| B2 | **显式写死势力主题 runes** | 20 个驻守师的 equipment.runes 字段直接填势力专属符文（steel→iron_*, flame→nova_*, thunder→aether_*, void→void_*）+ 通用攻防符文。`get_enriched_equipment` L212 检测到 runes 字段就不再派生，可控 |
+| B3 | **2 处相位仪升级** | master_014（关49 雷霆钢铁）`pi_thundersteel_01(5★)` → `pi_steelthunder_01(6★)`；master_015（关50 虚空烈焰）`pi_voidflame_01(5★)` → `pi_flamevoid_01(6★)`，让 Lv20+ 相位师全部达到 6★+ 仪档 |
+
+**关键设计决策:**
+1. **只用 archetype JSON 真实存在的卡**——`EnemyArchetypes.get_config()` 池只有 37 张（每时代 6-8 张），填玩家卡 id（如 cold_t72）会查不到走兜底 100/卡。所有 platforms id 都经 grep 核实存在于 `data/json/enemy_archetypes.json`
+2. **runes 显式写死而非改派生逻辑**——`get_enriched_equipment` 已支持"JSON 有 runes 就用原值"，比改 `_derive_runes` 派生逻辑更可控；势力主题（iron/nova/aether/void）让 20 个相位师有视觉识别度
+3. **max_hp 系数 0.00015 偏激进**——纯 0.0001 估算后部分中时代相位师卡 4★ 边界，提到 0.00015 确保 WW1/WW2/low-COLD（卡偏弱）也能稳定 5★。代价：高 max_hp（5000+）相位师产兵 HP 加成 ×1.75，需实机观察是否过强
+4. **静态子文件同步 platforms**（不写 runes）——JSON 优先时用 JSON 的 runes，JSON 缺失回退静态源时让 `_derive_runes` 自动派生，两层互不影响
+5. **不改 STAR_TIERS 阈值**（7000/11000/16000 保持）——加成链补强（A1）+ 数据补强（B）后可达，不动阈值避免影响其他评估路径
+
+**20 个驻守相位师配置总览（platforms/runes/相位仪）:**
+
+| 关 | master | platforms | runes | 仪 | 目标星级 |
+|---|---|---|---|---|---|
+| 10 | 005 钢铁元帅 | 4（含2×av7）| 4 钢系 | pi_steel_02 5★ | 5★ |
+| 15 | 006 炎魔女王 | 4 | 4 焰系 | pi_flame_02 5★ | 5★ |
+| 20 | 007 雷神之子 | 4 | 4 雷系 | pi_thunder_02 5★ | 5★ |
+| 25 | 008 虚空领主 | 5（含 boss_kingtiger）| 4 虚系 | pi_void_02 5★ | 5★ |
+| 30 | 009 钢铁军团长 | 5 | 4 钢系 | pi_steel_03 6★ | 5-6★ |
+| 35 | 011 雷皇 | 5 | 4 雷系 | pi_thunder_03 6★ | 5-6★ |
+| 40 | 012 虚空虚主 | 5（含2×kingtiger）| 5 虚系 | pi_void_03 6★ | 6★ |
+| 45 | 013 钢铁烈焰 | 5 | 5 钢+焰 | pi_steelflame_01 5★ | 5★ |
+| 49 | 014 雷霆钢铁 | 5（含 boss_mig）| 5 钢+雷 | **pi_steelthunder_01 6★↑** | 6★ |
+| 50 | 015 虚空烈焰 | 5 | 5 虚+焰 | **pi_flamevoid_01 6★↑** | 6★ |
+| 55 | 016 不朽钢铁 | 6 | 5 钢系 | pi_steel_04 7★ | 6★ |
+| 60 | 018 万雷之主 | 6（含2×mig）| 5 雷系 | pi_thunder_04 7★ | 6★ |
+| 65 | 019 虚空主宰 | 6（含 boss_command）| 5 虚系 | pi_void_04 7★ | 6-7★ |
+| 70 | 020 钢铁雷霆 | 6 | 5 钢+雷 | pi_steelthunder_01 6★ | 6★ |
+| 75 | 022 战争机器 | 6 | 5 钢系 | pi_steel_04 7★ | 6-7★ |
+| 80 | 024 风暴使者 | 6（含2×command）| 5 雷系 | pi_thunder_04 7★ | 6-7★ |
+| 85 | 025 暗影主宰 | 6（含 boss_nexus）| 5 虚系 | pi_void_04 7★ | 7★ |
+| 90 | 026 钢铁之神 | 6（含2×colossus）| 5 钢系 | pi_steel_05 7★ | 7★ |
+| 95 | 028 雷神 | 6（含2×nexus）| 5 雷系 | pi_thunder_05 7★ | 7★ |
+| 100 | 030 全能奥米伽 | 6（含2×nexus+2×colossus）| 6 四系混 | pi_omega_01 7★ | 7★ |
+
+**关键文件:**
+- `data/enemy_stat_resolver.gd` L365-370 — apply_phase_master_to_unit_stats 新增 max_hp 加成
+- `data/enemy_phase_masters.gd` L256, L289 — _derive_runes/_derive_runes_generic_fallback max_count 4→6
+- `data/json/enemy_phase_masters.json` — 20 个驻守 master 的 equipment.platforms/runes/phase_instrument 重写
+- `data/enemy_phase_masters_{ww1,ww2,cold,modern,future}.gd` — 静态源 platforms 同步（runes 不写，回退时派生）
+- `tests/master_garrison_power_smoke.gd`（新增）— 20 驻守师战力 smoke test
+
+**验证:**
+- ✓ `tests/syntax_check.gd` 全脚本语法通过
+- ✓ JSON 解析 OK，20 个驻守 master 全部 platforms∈[4,6]、runes≥4、卡 id 全部在 archetype 池
+- ✓ grep 链路核对：A1 max_hp 接入 L369-370、A2 max_count L256/L289、B 静态源 5 个子文件 platforms 同步正确
+- ⚠️ **smoke test 受 `--script` 模式限制无法验证真实星级**——`EnemyArchetypes._ensure_manifest_merged` 依赖 `ModificationRegistry` autoload，`--script` 模式下不可用 → 全走兜底 100/卡 → 总分恒 600（不真实）。**真实星级需游戏内实机验证**（autoload 完整 + manifest 合并命中后，每张卡战力正确计算）。手算 mod_boss_command 满配单卡 ≈1644，6 张 ≈9864 → 5★ 宗师（7000-11000），数学上可达。
+- ⚠️ **战斗侧 enemy_phase_field_driver 不读 MasterPowerEvaluator**——它走自己的产兵加成链，改 JSON 的 platforms 会让战场实际产兵变化（6 张 boss 卡产兵可能过强）。**需实机验证战斗平衡**，必要时在 driver 加产兵 hp/atk 上限钳制。
+
+**未处理（范围外）:**
+- faction→公司 id 映射 bug（`game_manager.gd:758` `FACTION_MOD_BIAS.get(_pm_faction, [])` 用相位师 faction 如 "steel" 查公司 id 如 "iron_wall_corp"，永远命中空）——影响 fort/armor 改造偏好掉落，本次未修
+- 战斗侧产兵平衡验证（需实机）
+- 其他 10 个非驻守相位师 platforms（只顺带享受 A1/A2 bug 修复，数据未改）

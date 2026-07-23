@@ -544,72 +544,33 @@ func _produce_unit_with_equipment() -> void:
 	var _sb_atk_before: float = _sb_base_atk
 	var _sb_def_before: float = _sb_base_def
 
-	EnemyStatResolver.apply_phase_master_to_unit_stats(stats, _master_stats)
-	# 明细：相位师属性加成
-	_sb_sources = _record_spawn_step(_sb_sources, "相位师属性", _sb_hp_before, _sb_atk_before, _sb_def_before, stats)
-	_sb_hp_before = float(stats.max_hp)
-	_sb_atk_before = float(stats.attack_damage)
-	_sb_def_before = float(stats.defense)
-	# v6.13: 叠加战场难度乘区（wave × level × faction_buff）。
-	# 产兵此前只吃 master 加成，缺经典敌兵同款的 wave/level/faction 三个乘区，
-	# 导致产兵攻击力比同关经典敌兵低 2~3 倍。此处补全，让产兵与经典敌兵共享难度曲线。
-	var wave_idx: int = 0
-	if BattleManager != null and BattleManager.has_method("get_enemy_wave_index"):
-		wave_idx = BattleManager.get_enemy_wave_index()
-	var ctx := EnemyStatResolver.make_default_context(wave_idx)
-	EnemyStatResolver.apply_field_multipliers_to_unit_stats(stats, ctx)
-	# 明细：战场难度（波次×关卡×势力）
-	var _field_label: String = "战场难度(波次%d" % (wave_idx + 1)
-	if not ctx.faction_id.is_empty():
-		var _fn: String = str(EnemyStatResolver._FACTION_DISPLAY_NAMES.get(ctx.faction_id, ctx.faction_id))
-		_field_label += "/%s Lv%d" % [_fn, ctx.faction_level]
-	_field_label += ")"
-	_sb_sources = _record_spawn_step(_sb_sources, _field_label, _sb_hp_before, _sb_atk_before, _sb_def_before, stats)
-	_sb_hp_before = float(stats.max_hp)
-	_sb_atk_before = float(stats.attack_damage)
-	_sb_def_before = float(stats.defense)
-	# v6.14: 相位师符文加成 —— 把 master 自带符文的 primary_effect 应用到产兵 stats。
-	# 符文影响产兵（玩家选择"显示+影响产兵"），与 master 等级/势力呼应。
+	# v8.2 简化：产兵乘区收敛为 4 个 —— 符文 × boss波序列 × 相位仪 × 配档(高档)。
+	# 砍掉的旧乘区：master_stats（apply_phase_master_to_unit_stats）、战场难度（wave/level/faction，
+	# 即 apply_field_multipliers_to_unit_stats）、精英词缀（roll_affixes）。
+	# base 属性已含时代递进，产兵不再吃经典敌兵的难度链；高档位+相位仪+符文+boss波已体现 boss 强度。
+
+	# 乘区1：符文加成 —— master 自带符文的 primary_effect 应用到产兵 stats。
 	_apply_master_rune_bonus(stats)
-	# 明细：符文加成
 	_sb_sources = _record_spawn_step(_sb_sources, "符文", _sb_hp_before, _sb_atk_before, _sb_def_before, stats)
 	_sb_hp_before = float(stats.max_hp)
 	_sb_atk_before = float(stats.attack_damage)
 	_sb_def_before = float(stats.defense)
-	# v6.14: 出兵序列 elite/boss 标记加成 —— 序列里标记 elite 的产兵额外+25%攻/血，boss +50%。
-	# 让序列不只是"出什么平台"，还有强度节奏（精英/boss 波次更强）。
+	# 乘区2：出兵序列 elite/boss 标记加成 —— elite +25%攻/血，boss +50%，普通×1.0。
 	_apply_sequence_entry_bonus(stats, seq_entry_type)
-	# 明细：出兵序列（elite/boss 才有加成，普通=×1.0）
 	var _seq_label: String = "出兵序列(%s)" % (seq_entry_type if not seq_entry_type.is_empty() else "普通")
 	_sb_sources = _record_spawn_step(_sb_sources, _seq_label, _sb_hp_before, _sb_atk_before, _sb_def_before, stats)
 	_sb_hp_before = float(stats.max_hp)
 	_sb_atk_before = float(stats.attack_damage)
 	_sb_def_before = float(stats.defense)
-	# v6.14: 相位师相位仪加成 —— 接入 _get_enemy_phase_instrument_bonus（此前字段空转，v6.14 已补全数据）
+	# 乘区3：相位师相位仪加成 —— pi_atk/pi_def/pi_hp。
 	_apply_enemy_phase_instrument_bonus(stats)
-	# 明细：相位仪加成
 	_sb_sources = _record_spawn_step(_sb_sources, "相位仪", _sb_hp_before, _sb_atk_before, _sb_def_before, stats)
 	_sb_hp_before = float(stats.max_hp)
 	_sb_atk_before = float(stats.attack_damage)
 	_sb_def_before = float(stats.defense)
-	# v8 批次2: 精英/boss 词缀（seq_entry_type=elite/boss 时 roll 并应用到 stats）。
-	# 相位师产兵走 ConstructUnit，lifesteal/chain/splash 通过 bullet 命中的
-	# apply_on_hit_side_effects 自动触发（读 shooter.stats）；反伤由 stats.armor_reflect 字段承载。
-	var _elite_affixes: Array = EnemyAffixes.roll_affixes(seq_entry_type)
-	if not _elite_affixes.is_empty():
-		var _hp_ratio_pm: float = clampf(float(stats.max_hp) / maxf(1.0, float(stats.max_hp)), 0.0, 1.0)
-		EnemyAffixes.apply_to_stats(stats, _elite_affixes)
-	# 明细：精英词缀
-	_sb_sources = _record_spawn_step(_sb_sources, "精英词缀", _sb_hp_before, _sb_atk_before, _sb_def_before, stats)
-	_sb_hp_before = float(stats.max_hp)
-	_sb_atk_before = float(stats.attack_damage)
-	_sb_def_before = float(stats.defense)
-	# v7.3: 配档加成（等量我方改造满配+符文满配的总加成）。
-	# v7.x: 配档不再恒定 TIER_HIGH，改按关卡难度递进（setup 缓存的 _pm_tier）。
-	# 时代早期/中段 → 中配(atk+20%/hp+18%/def+10%)，时代后期/Boss → 高配(atk+35%/hp+30%/def+15%)。
-	# 注：EnemyLoadoutTiers.TIER_MODIFICATIONS 里的改造ID（e_mod_t*）未在 ModificationRegistry 注册，
-	# 无法走 _apply_mod_stat_effects 真实改造链路，故用 TIER_BONUS 数值直接乘（等量我方同档总加成）。
-	# 配合上方的 enhance_level（按同 tier 派生），产兵达成"和我方战力差不多"的对称平衡。
+	# 乘区4：配档加成（高档位 atk+100%/hp+100%/def+100%，即×2.0）。
+	# EnemyLoadoutTiers.TIER_MODIFICATIONS 里的改造ID 未注册，故用 TIER_BONUS 数值直接乘。
+	# 配合 _build_stats_from_archetype 的 enhance_level（按同 tier 派生），产兵达成对称平衡。
 	var _ELT = preload("res://data/enemy_loadout_tiers.gd")
 	var _pm_bonus: Dictionary = _ELT.get_bonus_for_tier(_pm_tier)
 	var _tier_hp: float = float(_pm_bonus.get("hp_pct", 0.0))
@@ -618,19 +579,19 @@ func _produce_unit_with_equipment() -> void:
 	if _tier_hp > 0.0:
 		stats.max_hp = maxf(1.0, stats.max_hp * (1.0 + _tier_hp))
 	if _tier_atk > 0.0:
-		stats.attack_damage = maxf(0.1, stats.attack_damage * (1.0 + _tier_atk))
+		# v8.x 修复：attack_damage 是 attack_light 的 getter/setter 别名（unit_stats.gd:22-28），
+		# 与 attack_light 同乘会让 attack_light 被乘两次（实际 ×mult²）。
+		# 原 bug 导致第49关产兵 attack_light ≈ 9000（应为 ~2150）。
 		stats.attack_light = maxf(0.1, stats.attack_light * (1.0 + _tier_atk))
 		stats.attack_armor = maxf(0.1, stats.attack_armor * (1.0 + _tier_atk))
 		stats.attack_air = maxf(0.1, stats.attack_air * (1.0 + _tier_atk))
-		# v7.x H2: 同步武器槽伤害（原调 stats._sync_weapon_slots_damage 但该方法在 UnitStats 上
-		# 从未定义——has_method 守卫恒 false，调用永远空转，tier 加成也不进实际伤害）。
+		# v7.x H2: 同步武器槽伤害。
 		_sync_enemy_weapon_slot_damage(stats, 1.0 + _tier_atk)
 	if _tier_def > 0.0:
 		stats.defense = maxf(0.0, stats.defense * (1.0 + _tier_def))
 		stats.defense_light = maxf(0.0, stats.defense_light * (1.0 + _tier_def))
 		stats.defense_armor = maxf(0.0, stats.defense_armor * (1.0 + _tier_def))
 		stats.defense_air = maxf(0.0, stats.defense_air * (1.0 + _tier_def))
-	# 明细：配档加成（含 tier 名）
 	var _tier_name: String = str(_pm_bonus.get("name", _pm_tier))
 	_sb_sources = _record_spawn_step(_sb_sources, "配档(%s)" % _tier_name, _sb_hp_before, _sb_atk_before, _sb_def_before, stats)
 	stats.platform_card_id = platform_id
@@ -1058,10 +1019,10 @@ func _apply_master_rune_bonus(stats: UnitStats) -> void:
 		var mult: float = 1.0 + val
 		match stat:
 			"attack":
+				# v8.x 修复：attack_damage 是 attack_light 别名，同乘会乘两次（见配档乘区注释）。
 				stats.attack_light *= mult
 				stats.attack_armor *= mult
 				stats.attack_air *= mult
-				stats.attack_damage *= mult
 				# v7.x 修复(H2): attack 乘区同步到 weapon_slots[].damage——
 				# AI/AttackCalculator 的伤害结算读 weapon_slots[i].damage（非 attack_damage），
 				# 原漏同步导致符文/序列/仪器加成不进实际伤害。
@@ -1086,17 +1047,16 @@ func _apply_master_rune_bonus(stats: UnitStats) -> void:
 func _apply_sequence_entry_bonus(stats: UnitStats, entry_type: String) -> void:
 	match entry_type:
 		"elite":
+			# v8.x 修复：attack_damage 是 attack_light 别名，同乘会乘两次（见配档乘区注释）。
 			stats.attack_light *= 1.25
 			stats.attack_armor *= 1.25
 			stats.attack_air *= 1.25
-			stats.attack_damage *= 1.25
 			stats.max_hp *= 1.25
 			_sync_enemy_weapon_slot_damage(stats, 1.25)  # v7.x H2: 同步武器槽伤害
 		"boss":
 			stats.attack_light *= 1.50
 			stats.attack_armor *= 1.50
 			stats.attack_air *= 1.50
-			stats.attack_damage *= 1.50
 			stats.max_hp *= 1.50
 			# v7.x 修复(H1): 补齐三维防御（原只乘标量 defense，与 elite/instrument 分支不一致；
 			# 防御实际由三维驱动，单乘标量导致 boss 防御加成不完整）。
@@ -1128,10 +1088,10 @@ func _apply_enemy_phase_instrument_bonus(stats: UnitStats) -> void:
 			"pi_def": def_pct = float(p.get("value", 0.0))
 			"pi_hp":  hp_pct  = float(p.get("value", 0.0))
 	if atk_pct > 0.0:
+		# v8.x 修复：attack_damage 是 attack_light 别名，同乘会乘两次（见配档乘区注释）。
 		stats.attack_light *= (1.0 + atk_pct)
 		stats.attack_armor *= (1.0 + atk_pct)
 		stats.attack_air *= (1.0 + atk_pct)
-		stats.attack_damage *= (1.0 + atk_pct)
 		_sync_enemy_weapon_slot_damage(stats, 1.0 + atk_pct)  # v7.x H2: 同步武器槽伤害
 	if hp_pct > 0.0:
 		stats.max_hp *= (1.0 + hp_pct)
