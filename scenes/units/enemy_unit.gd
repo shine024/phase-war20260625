@@ -18,6 +18,7 @@ const DamageAttenuation = preload("res://scripts/battle/damage_attenuation.gd")
 const AttackCalculator = preload("res://scripts/battle/attack_calculator.gd")
 const FortShieldAuraScript = preload("res://scripts/battle/fort_shield_aura.gd")
 const ConstructUnitDeploy = preload("res://scripts/battle/construct_unit_deploy.gd")
+const ConstructUnitAI = preload("res://scripts/battle/construct_unit_ai.gd")
 const BATTLE_MIN_X: float = 40.0
 const BATTLE_MAX_X: float = 1240.0
 const BATTLE_MIN_Y: float = 280.0
@@ -132,6 +133,7 @@ var _hit_stun_left: float = 0.0
 var _card_tween: Tween = null
 var _rest_position: Vector2 = Vector2.ZERO
 var _card_nudge_tween: Tween = null
+var _fire_pulse_tween: Tween = null  ## 开火缩放脉冲（独立于 nudge/recoil，只动 Sprite2D 子节点）
 var _card_grid_rest_x: float = NAN  ## 格子战术中卡片的归位 X
 ## v7.4: 受击视觉反馈（改手写计时动画，与 construct_unit 对齐；原每击 create_tween 2 个 Tween）
 ## flash 倒计时 lerp 回原色（参考 unit_hp_bar._damage_flash）；shake 正计时分段插值（参考 damage_number_display._pop_age）
@@ -256,6 +258,20 @@ func _play_card_attack_nudge() -> void:
 	var rest_x: float = _card_grid_rest_x
 	_card_nudge_tween.tween_property(self, "position:x", rest_x + dir * 22.0, 0.07)
 	_card_nudge_tween.tween_property(self, "position:x", rest_x, 0.09)
+
+
+## 开火缩放脉冲：Sprite2D 子节点 scale 短暂放大再回弹，模拟开火反冲。
+## 只动 Sprite2D 子节点 scale，不碰根节点 scale.x/rotation（与 construct_unit 对称）。
+func _play_fire_scale_pulse() -> void:
+	var spr: Sprite2D = get_node_or_null("Sprite2D")
+	if spr == null:
+		return
+	if _fire_pulse_tween != null and _fire_pulse_tween.is_valid():
+		_fire_pulse_tween.kill()
+	var base_s: Vector2 = spr.scale
+	_fire_pulse_tween = create_tween()
+	_fire_pulse_tween.tween_property(spr, "scale", base_s * 1.10, 0.04)
+	_fire_pulse_tween.tween_property(spr, "scale", base_s, 0.07)
 
 
 func _play_card_hit_recoil() -> void:
@@ -1131,6 +1147,9 @@ func _do_attack() -> void:
 		return
 	if _hit_stun_left > 0.0:
 		return
+	# 开火反馈：炮口闪光 + Sprite2D 缩放脉冲（所有武器/所有战斗模式统一生效）
+	# 复用玩家 AI 的静态方法——敌方攻击逻辑独立，但开火视觉反馈无耦合
+	ConstructUnitAI._play_muzzle_feedback(self)
 	var dist_t := global_position.distance_to(target.global_position)
 	var miss := false
 	var weapon_name_str: String = ""

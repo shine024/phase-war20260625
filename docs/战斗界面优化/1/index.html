@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>废土战争 UI 重制版</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="game">
+  <div class="battle">
+
+    <!-- 雾层 -->
+    <div class="fog"></div>
+
+    <!-- 顶部 HUD -->
+    <div class="topbar">
+      <div class="stage">第 49 关</div>
+
+      <div class="wave">
+        第 15 波 / 30
+        <div class="progress"><div></div></div>
+      </div>
+
+      <div class="resource">
+        <div>🪙 1280</div>
+        <div>💎 32</div>
+        <div>⚡ 120/200</div>
+      </div>
+    </div>
+
+    <!-- 左侧战斗信息面板 -->
+    <div class="panel left">
+      <h2>战斗信息</h2>
+
+      <div class="hpbox">
+        <span>基地耐久 <b>8500/10000</b></span>
+        <div class="bar"><i></i></div>
+      </div>
+
+      <div class="stat">单位：<b>2 / 7</b></div>
+      <div class="stat">敌军：<b class="red">3</b></div>
+
+      <div class="buff">
+        <h3>当前强化</h3>
+        <p>⚔ 攻击 +15%</p>
+        <p>🛡 防御 +10%</p>
+        <p>⚡ 能量回复 +20%</p>
+      </div>
+    </div>
+
+    <!-- 战场单位 -->
+    <div class="unit tank selected">
+      <div class="health"><div></div></div>
+      <div class="armor"><div></div></div>
+      <div class="name">77mm 坦克</div>
+    </div>
+
+    <div class="unit cannon">
+      <div class="health"><div></div></div>
+      <div class="armor"><div></div></div>
+      <div class="name">M270 火箭</div>
+    </div>
+
+    <div class="unit enemy">
+      <div class="health"><div></div></div>
+      <div class="armor"><div></div></div>
+      <div class="name">BT-132 装甲</div>
+    </div>
+
+    <!-- 伤害飘字 -->
+    <div class="damage">292</div>
+
+    <!-- 部署区 -->
+    <div class="deploy">
+      <div>+</div>
+      <div>+</div>
+      <div>+</div>
+    </div>
+
+    <!-- 卡牌栏 -->
+    <div class="cards">
+      <div class="card active"><span>5</span>77mm 炮</div>
+      <div class="card"><span>3</span>M270</div>
+      <div class="card"><span>4</span>FT17</div>
+      <div class="card"><span>2</span>维修</div>
+      <div class="card skillcard">EMP</div>
+    </div>
+
+    <!-- 技能按钮 -->
+    <div class="skills">
+      <button>⚡<div class="cd"></div></button>
+      <button>🔥<div class="cd"></div></button>
+    </div>
+
+    <!-- 战斗日志 -->
+    <div class="log">
+      <p>15:22 敌军进入区域</p>
+      <p>15:23 77mm 造成 292 伤害</p>
+      <p>15:24 EMP 准备完成</p>
+    </div>
+
+    <!-- 底部菜单 -->
+    <div class="menu">
+      <button>⏸ 暂停</button>
+      <button>▶ 自动</button>
+      <button>⚙ 设置</button>
+      <button>📖 卡组</button>
+    </div>
+
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>

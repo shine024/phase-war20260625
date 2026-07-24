@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1280">
+<title>Phase War - 战斗界面优化 v2.0</title>
+<style>
+  :root {
+    --neon-cyan: #00f5ff;
+    --neon-red: #ff3344;
+    --neon-green: #00e676;
+    --neon-gold: #ffd700;
+    --neon-purple: #b388ff;
+    --neon-orange: #ff9100;
+    --bg-dark: #0a0e14;
+    --bg-panel: rgba(13,20,30,0.92);
+    --border-panel: 1px solid rgba(0,245,255,0.25);
+    --font-main: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg-dark);
+    font-family: var(--font-main);
+    color: #c9d1d9;
+    line-height: 1.6;
+  }
+
+  /* ===== 顶部说明 ===== */
+  .doc-header {
+    background: linear-gradient(135deg, #0d1b2a, #161b22);
+    border-bottom: 2px solid var(--neon-cyan);
+    padding: 28px 48px;
+  }
+  .doc-header h1 {
+    font-size: 28px;
+    color: var(--neon-cyan);
+    text-shadow: 0 0 12px rgba(0,245,255,0.5);
+    margin-bottom: 6px;
+  }
+  .doc-header .version {
+    display: inline-block;
+    background: rgba(0,245,255,0.15);
+    border: 1px solid var(--neon-cyan);
+    border-radius: 4px;
+    padding: 2px 10px;
+    font-size: 12px;
+    color: var(--neon-cyan);
+    margin-left: 12px;
+    vertical-align: middle;
+  }
+  .doc-header .subtitle {
+    font-size: 14px;
+    color: #7b8ca0;
+    margin-top: 8px;
+  }
+
+  /* ===== 通用区块 ===== */
+  section {
+    max-width: 1260px;
+    margin: 0 auto;
+    padding: 32px 40px;
+  }
+  section + section {
+    border-top: 1px solid #21262d;
+  }
+  h2 {
+    font-size: 20px;
+    color: #58a6ff;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #21262d;
+  }
+  h3 {
+    font-size: 16px;
+    color: #79c0ff;
+    margin: 20px 0 10px 0;
+  }
+  p, li { font-size: 14px; }
+  ul, ol { padding-left: 20px; }
+  li { margin: 4px 0; }
+
+  /* ===== 表格 ===== */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+  }
+  th, td {
+    border: 1px solid #30363d;
+    padding: 8px 12px;
+    text-align: left;
+    font-size: 13px;
+  }
+  th { background: #161b22; color: #58a6ff; }
+  tr:nth-child(even) { background: rgba(22,27,34,0.5); }
+
+  /* ===== 对比卡片 ===== */
+  .compare-row {
+    display: grid;
+    grid-template-columns: 1fr 60px 1fr;
+    gap: 16px;
+    align-items: center;
+    margin: 16px 0;
+  }
+  .compare-card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .compare-card.before { border-color: #f85149; }
+  .compare-card.after { border-color: #3fb950; }
+  .compare-label {
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .compare-label.before { color: #f85149; }
+  .compare-label.after { color: #3fb950; }
+  .arrow-right {
+    text-align: center;
+    font-size: 28px;
+    color: #ffd700;
+  }
+
+  /* ===== 高亮代码块 ===== */
+  pre {
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 14px 18px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #c9d1d9;
+    margin: 12px 0;
+  }
+  code { font-family: "Cascadia Code", "Fira Code", monospace; }
+
+  /* ===== 标签 ===== */
+  .tag {
+    display: inline-block;
+    border-radius: 4px;
+    padding: 1px 8px;
+    font-size: 11px;
+    font-weight: bold;
+    margin-right: 6px;
+  }
+  .tag-p0 { background: #da3633; color: #fff; }
+  .tag-p1 { background: #f85149; color: #fff; }
+  .tag-p2 { background: #d29922; color: #fff; }
+  .tag-p3 { background: #3fb950; color: #000; }
+  .tag-info { background: #1f6feb; color: #fff; }
+
+  /* ===== 色块示例 ===== */
+  .color-swatch {
+    display: inline-block;
+    width: 20px; height: 20px;
+    border-radius: 4px;
+    vertical-align: middle;
+    margin-right: 6px;
+    border: 1px solid #fff3;
+  }
+
+  /* ===== 比例条 ===== */
+  .ratio-row {
+    display: flex;
+    height: 52px;
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 8px 0;
+    border: 1px solid #30363d;
+  }
+  .ratio-segment {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  }
+
+  /* ===== 优先级列表 ===== */
+  .priority-list { list-style: none; padding: 0; }
+  .priority-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 14px;
+    margin: 6px 0;
+    border-radius: 6px;
+    background: #161b22;
+    border-left: 3px solid #30363d;
+  }
+  .priority-list.p0 li { border-left-color: #da3633; }
+  .priority-list.p1 li { border-left-color: #d29922; }
+  .priority-list.p2 li { border-left-color: #3fb950; }
+  .priority-num {
+    min-width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold; font-size: 14px;
+  }
+  .p0 .priority-num { background: #da3633; color: #fff; }
+  .p1 .priority-num { background: #d29922; color: #fff; }
+  .p2 .priority-num { background: #3fb950; color: #fff; }
+
+  /* ===== 设计稿模拟区域 ===== */
+  .mockup-frame {
+    background: #0d1117;
+    border: 2px solid #30363d;
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 20px 0;
+  }
+  .mockup-titlebar {
+    background: #161b22;
+    padding: 8px 16px;
+    font-size: 12px;
+    color: #7b8ca0;
+    border-bottom: 1px solid #30363d;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .mockup-titlebar .dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+  }
+  .mockup-titlebar .dot.r { background: #f85149; }
+  .mockup-titlebar .dot.y { background: #d29922; }
+  .mockup-titlebar .dot.g { background: #3fb950; }
+
+  /* ===== 战斗界面模拟 (1280x720 比例) ===== */
+  .battle-mockup {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1280 / 720;
+    overflow: hidden;
+  }
+  .bm-area {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.7);
+    border: 1px dashed rgba(255,255,255,0.15);
+    border-radius: 4px;
+  }
+
+  /* ========== 布局说明文档 ========== */
+  .layout-diagram {
+    background: #0d1117;
+    border: 2px solid #30363d;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 16px 0;
+  }
+  .layout-row {
+    display: flex;
+    margin: 4px 0;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .layout-cell {
+    padding: 10px 14px;
+    font-size: 12px;
+    font-weight: bold;
+    border: 1px solid #30363d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+  }
+
+  .footer-note {
+    text-align: center;
+    padding: 24px;
+    color: #484f58;
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ==================== 顶部标题 ==================== -->
+<div class="doc-header">
+  <h1>Phase War 战斗界面设计方案 v2.0<span class="version">FINAL</span></h1>
+  <div class="subtitle">
+    废土科技风 · 信息层级重构 · 决策效率优先 · 1280×720 原始分辨率全适配
+  </div>
+  <div class="key-stats">
+    <div class="key-stat"><b>目标：</b>进入战斗 3 秒内掌握全局</div>
+    <div class="key-stat"><b>核心指标：</b>战场区域 70% / 状态 15% / 操作 15%</div>
+    <div class="key-stat"><b>风格：</b>废土科技 · 霓虹配色 · 低饱和底色</div>
+  </div>
+</div>
+
+<!-- ==================== 0. 对比总览 ==================== -->
+<section>
+<h2>0. 问题总览 — 新旧对比</h2>
+
+<div class="compare-row">
+  <div class="compare-card before">
+    <div class="compare-label before">❌ 修改前</div>
+    <ul>
+      <li>战斗区域仅占 45%，被 UI 挤压严重</li>
+      <li>底部常驻 10+ 主菜单按钮（背包/成长/势力…）</li>
+      <li>信息全部平铺，无层次，玩家无处聚焦</li>
+      <li>单位颜色灰暗，阵营不分，血条不明显</li>
+      <li>部署点只是一堆小圆点，无状态区分</li>
+      <li>右侧技能球看不出是否可用</li>
+      <li>伤害数字固定红色，无暴击/护盾区分</li>
+    </ul>
+  </div>
+  <div class="arrow-right">➜</div>
+  <div class="compare-card after">
+    <div class="compare-label after">✅ 修改后</div>
+    <ul>
+      <li>战斗区域扩大到 70%，视觉焦点回归战场</li>
+      <li>底部常驻改为暂停/自动/技能/卡组（仅 4 个）</li>
+      <li>三层 HUD 结构：关卡→资源→状态，按需展开</li>
+      <li>我方青绿描边 / 敌方红色描边，血条 2px 加粗</li>
+      <li>部署网格三色：灰(空)/绿(可放)/红(禁止)</li>
+      <li>技能带 CD 遮罩 + 可用发光光圈</li>
+      <li>普通伤害白字 / 暴击金色大字 / 护盾蓝色吸收</li>
+    </ul>
+  </div>
+</div>
+
+<h3>屏幕空间重新分配</h3>
+<div class="ratio-row">
+  <div class="ratio-segment" style="background:#da3633;width:45%">战场 45%</div>
+  <div class="ratio-segment" style="background:#d29922;width:35%">底部UI 35%</div>
+  <div class="ratio-segment" style="background:#1f6feb;width:20%">左右 20%</div>
+</div>
+<div style="text-align:center;color:#484f58;margin:4px 0">↓ 修改前 ↓</div>
+<div class="ratio-row">
+  <div class="ratio-segment" style="background:#238636;width:70%">战场 70%</div>
+  <div class="ratio-segment" style="background:#1f6feb;width:15%">状态 15%</div>
+  <div class="ratio-segment" style="background:#7c3aed;width:15%">操作 15%</div>
+</div>
+<div style="text-align:center;color:#484f58;margin:4px 0">↓ 修改后 ↓</div>
+</section>
+
+<!-- ==================== 1. 整体布局 ==================== -->
+<section>
+<h2>1. 整体布局结构 <span class="tag tag-p0">P0</span></h2>
+
+<h3>1.1 九宫格布局 (1280×720)</h3>
+<pre><code>+------------------------------------------------------------------+
+|  [TOP-HUD 顶部状态栏 - 高度 60px (8.3%)]                          |
+|  关卡编号 │ 波次进度条 │ ⚡能量 │ 🪙资源 │ ⏸暂停 │ ⚙设置         |
++--------------------------+---------------------------+-------------+
+|  [LEFT 左侧状态面板      |  [CENTER 战场区域           | [RIGHT]   |
+|   高度 70% × 宽 160px]   |   高度 70% × 填充剩余     | [技能栏]  |
+|                          |   宽度]                    | 宽度 120] |
+|  • 基地 HP               |                           |           |
+|  • 总能量                |       战场网格 + 单位     | • 技能1  |
+|  • 单位数量              |                           | • 技能2  |
+|  • Buff 列表             |                           | • 技能3  |
+|  • [▼ 展开详情]          |                           | • 技能N  |
++--------------------------+---------------------------+-------------+
+|  [BOTTOM-BAR 底部操作栏 - 高度 100px (13.9%)]                     |
+|  [卡牌1][卡牌2][卡牌3][卡牌4][卡牌5][卡牌6]  [自动][卡组]         |
++------------------------------------------------------------------+</code></pre>
+
+<h3>1.2 三大层级关系</h3>
+<table>
+  <thead>
+    <tr><th>层级</th><th>位置</th><th>占比</th><th>职责</th><th>可见性</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><b>观察层</b></td><td>中央战场</td><td>70%</td>
+      <td>看敌我在哪、谁在打谁、血条变化</td>
+      <td>始终全开</td>
+    </tr>
+    <tr>
+      <td><b>状态层</b></td><td>顶部HUD + 左侧面板</td><td>15%</td>
+      <td>关/波次/基地HP/能量/Buff 一目了然</td>
+      <td>始终可见，详情可折叠</td>
+    </tr>
+    <tr>
+      <td><b>操作层</b></td><td>底部卡牌栏 + 右侧技能</td><td>15%</td>
+      <td>选卡部署 / 放技能 / 暂停</td>
+      <td>始终可见，CD 时灰化</td>
+    </tr>
+  </tbody>
+</table>
+</section>
+
+<!-- ==================== 2. 顶部 HUD ==================== -->
+<section>
+<h2>2. 顶部 HUD 三层结构 <span class="tag tag-p0">P0</span></h2>
+
+<h3>2.1 第一层 — 关卡核心信息 (居中)</h3>
+<pre><code>┌─────────────────────────────────────────────────┐
+│           第 49 关 · 钢铁洪流                    │
+│      波次 ▓▓▓▓▓▓▓▓░░░░░░ 15 / 30              │
+│      Boss 波次将在 15 秒后到来                  │
+└─────────────────────────────────────────────────┘</code></pre>
+<ul>
+  <li><span class="color-swatch" style="background:#58a6ff"></span>蓝色 = 正常推进</li>
+  <li><span class="color-swatch" style="background:#d29922"></span>黄色 = 危险波次（精英怪涌入）</li>
+  <li><span class="color-swatch" style="background:#f85149"></span>红色 = Boss 波次（带闪烁边框）</li>
+  <li>进度条用渐变色：完成段深 / 未完成段浅</li>
+</ul>
+
+<h3>2.2 第二层 — 战斗资源 (右上)</h3>
+<pre><code>⚡ 120/200    🪙 1280    🔥 x2.0    ⚙️</code></pre>
+<ul>
+  <li><b>仅保留战斗相关资源</b>：能量、纳米材料、战斗倍率</li>
+  <li>删除钻石/金币等非战斗资源（战后查看即可）</li>
+  <li>战斗倍率 🔥 随势力等级/符文动态变化</li>
+  <li>右侧固定一个最小化图标可收起整个 HUD</li>
+</ul>
+
+<h3>2.3 第三层 — 时间 & 警报 (左上)</h3>
+<pre><code>⏱ 03:45    ⚠ 敌方增援 2波后到达</code></pre>
+<ul>
+  <li>倒计时归零时自动弹出下一波敌人预告</li>
+  <li>警报文本橙色 + 脉冲动画提醒玩家注意</li>
+</ul>
+</section>
+
+<!-- ==================== 3. 左侧面板 ==================== -->
+<section>
+<h2>3. 左侧战斗状态面板 <span class="tag tag-p0">P0</span></h2>
+
+<h3>3.1 默认折叠态 (宽 160px)</h3>
+<pre><code>╔══════════════════╗
+║  ⬡ 基地防御塔    ║
+║  ❤️ 8,500/10,000║
+║                  ║
+║  ⚡ 能量 120/200 ║
+║  ━━━━━━━━━━ 60% ║
+║                  ║
+║  👥 单位 2/7     ║
+║                  ║
+║  ▼ BUFF           ║
+║  ⚔攻击 +15%     ║
+║  🛡防御 +10%     ║
+║  💨速度 +5%      ║
+║                  ║
+╠══════════════════╣
+║  ▼ 详细信息       ║  ← 点击展开
+╚══════════════════╝</code></pre>
+
+<h3>3.2 展开态 (动画滑出，宽增至 280px)</h3>
+<pre><code>╔══════════════════════════════╗
+║  ⬡ 基地  8,500/10,000       ║
+║  ⚡ 能量  120/200 (60%)      ║
+║  👥 单位  2/7 (最大)          ║
+║                              ║
+║  ── 全队属性 ──              ║
+║  平均攻击  3,420              ║
+║  平均防御  1,280              ║
+║  暴击率    18.5%              ║
+║  平均射程  5.2 格             ║
+║  攻速      1.8 次/秒          ║
+║                              ║
+║  ── BUFF (3) ──              ║
+║  ⚔ 新星势力·猛攻 +15%        ║
+║  🛡 钢壁堡垒·铁壁 +10%        ║
+║  ✨ 符文·疾风 速度+5%         ║
+║                              ║
+║  [收起 ▲]                    ║
+╚══════════════════════════════╝</code></pre>
+
+<h3>3.3 设计要点</h3>
+<ul>
+  <li>折叠态只展示 <b>最关键的 4 个数字</b>：基地HP / 能量 / 单位数 / Buff条目数</li>
+  <li>展开/收起使用 200ms 平滑动画，不阻塞游戏</li>
+  <li>BUFF 列表超出 3 项时显示"+X more"，鼠标悬停弹出全部</li>
+  <li>基地 HP 低于 30% 时进度条变橙色闪烁；低于 10% 变红色快速闪烁</li>
+</ul>
+</section>
+
+<!-- ==================== 4. 战场区域 ==================== -->
+<section>
+<h2>4. 中央战场区域 <span class="tag tag-p0">P0</span></h2>
+
+<h3>4.1 阵营颜色体系</h3>
+<table>
+  <thead>
+    <tr><th>元素</th><th>我方</th><th>敌方</th><th>Boss</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>描边/光环</td>
+      <td><span class="color-swatch" style="background:#00e676"></span>青绿 #00E676</td>
+      <td><span class="color-swatch" style="background:#ff3344"></span>赤红 #FF3344</td>
+      <td><span class="color-swatch" style="background:#ff9100"></span>橙红(脉冲)</td>
+    </tr>
+    <tr>
+      <td>血条底色</td>
+      <td><span class="color-swatch" style="background:#00e676"></span>#00E676</td>
+      <td><span class="color-swatch" style="background:#ff3344"></span>#FF3344</td>
+      <td><span class="color-swatch" style="background:#ff9100"></span>#FF9100</td>
+    </tr>
+    <tr>
+      <td>选中效果</td>
+      <td>蓝色光环 + 属性浮窗</td>
+      <td>无（不主动选敌方）</td>
+      <td>紫色脉冲边框</td>
+    </tr>
+    <tr>
+      <td>低血量警告</td>
+      <td>HP&lt;30% 绿色转橙色闪烁</td>
+      <td>HP&lt;30% 红色转黄色闪烁</td>
+      <td>始终有粒子特效</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>4.2 单位信息叠加层 (鼠标悬停时显示)</h3>
+<pre><code>┌──────────────────────────────────┐
+│  ♢ cold_t72  │ Lv.5 │ 精英型     │
+│  ─────────────────────────────   │
+│  ❤️  2,850 / 3,200              │
+│  ⚔  420  🛡  180  🎯  45       │
+│  📏 射程 3格  ⚡ 攻速 1.2/s      │
+│  ─────────────────────────────   │
+│  [MOD] arm_02 穿甲弹 +15%        │
+│  [MOD] arm_05 复合装甲 +10%      │
+│  [BUFF] 新星·猛攻 +15% ATK      │
+│                                  │
+│  [▼ 查看完整属性面板]            │
+└──────────────────────────────────┘</code></pre>
+
+<h3>4.3 攻击反馈 — 伤害数字系统</h3>
+<table>
+  <thead>
+    <tr><th>类型</th><th>颜色</th><th>字号</th><th>动画</th><th>示例</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>普通伤害</td>
+      <td><span class="color-swatch" style="background:#fff"></span>白色</td>
+      <td>20px</td>
+      <td>向上弹出 + 淡出 0.8s</td>
+      <td>-342</td>
+    </tr>
+    <tr>
+      <td>暴击伤害</td>
+      <td><span class="color-swatch" style="background:#ffd700"></span>金色</td>
+      <td>32px (放大)</td>
+      <td>弹出 + 缩放 1.3x + 淡出 1.2s</td>
+      <td>CRIT<br>-684</td>
+    </tr>
+    <tr>
+      <td>护盾吸收</td>
+      <td><span class="color-swatch" style="background:#4fc3f7"></span>蓝绿</td>
+      <td>18px</td>
+      <td>原地浮动 + 半透明</td>
+      <td>+500🛡</td>
+    </tr>
+    <tr>
+      <td>治疗/回血</td>
+      <td><span class="color-swatch" style="background:#00e676"></span>绿色</td>
+      <td>18px</td>
+      <td>上升 + 绿叶粒子</td>
+      <td>+80</td>
+    </tr>
+    <tr>
+      <td>百分比扣血</td>
+      <td><span class="color-swatch" style="background:#ab47bc"></span>紫色</td>
+      <td>24px</td>
+      <td>震动 + 大字体</td>
+      <td>-5% HP</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>4.4 部署网格可视化</h3>
+<pre><code>  列→  1    2    3    4    5    6
+       ┌────┬────┬────┬────┬────┬────┐
+行 ↓   │+🟩 │+🟩 │🟦空│🟩+ │🟥× │🟩+ │  (第一排 = 可部署)
+       ├────┼────┼────┼────┼────┼────┤
+       │🟩+ │🟥× │🟥× │🟦空│🟩+ │🟩+ │
+       ├────┼────┼────┼────┼────┼────┤
+       │🟦空│🟦空│🟦空│🟦空│🟦空│🟦空│  (中间 = 不可部署,仅穿越)
+       └────┴────┴────┴────┴────┴────┘
+
+图例:
+  🟩+ = 绿色高亮 = 可部署 (有能量+冷却就绪)
+  🟥× = 红色斜杠 = 不可部署 (已满/禁区)
+  🟦空 = 灰色网格 = 空位 (非部署区)
+  🟨* = 黄色脉冲 = 鼠标悬停预览射程</code></pre>
+</section>
+
+<!-- ==================== 5. 底部卡牌栏 ==================== -->
+<section>
+<h2>5. 底部悬浮卡牌栏 <span class="tag tag-p0">P0</span></h2>
+
+<h3>5.1 从仓库风 → 技能风</h3>
+<pre><code>┌─────────────────────────────────────────────────────────────┐
+│ [🃏] [🃏] [🃏] [🃏] [🃏] [🃏]    ⏱自动  📋卡组  ⏸暂停  ⚙设置 │
+│ WW1马  T-72  105mm M1A1  F-16  AK47                           │
+│  5⚡   8⚡   12⚡  10⚡   15⚡   3⚡                            │
+│ ░░░░░  ████░ ████░░ ██░░░  ▒▒▒▒▒  ▒▒▒▒▒                       │
+│  3s   冷却中  冷却中  5s    就绪    就绪                          │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+
+<h3>5.2 单张卡牌结构 (90px 高)</h3>
+<pre><code>  ┌──────────────────┐
+  │ ⚡5     [冷却遮罩] │ ← 左上费用 + 右上CD
+  │                  │
+  │                  │
+  │    🖼 卡面图      │ ← 居中 64x64
+  │    (512x512缩略)  │
+  │                  │
+  │  Cold T-72       │ ← 卡名
+  │  坦克 | 二战      │ ← 兵种标签
+  │                  │
+  │  ██████████░░ 80% │ ← 就绪进度条
+  │                  │
+  └──────────────────┘</code></pre>
+
+<h3>5.3 卡牌状态</h3>
+<table>
+  <thead>
+    <tr><th>状态</th><th>表现</th><th>说明</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>就绪</td>
+      <td>正常亮度 + 绿色底光</td>
+      <td>能量足够 + CD 结束</td>
+    </tr>
+    <tr>
+      <td>冷却中</td>
+      <td>灰色遮罩 + 进度百分比</td>
+      <td>如 "3s"、"60%"</td>
+    </tr>
+    <tr>
+      <td>能量不足</td>
+      <td>暗化 40% + 费用变红</td>
+      <td>无法点击部署</td>
+    </tr>
+    <tr>
+      <td>已达上限</td>
+      <td>右上角 X 标记</td>
+      <td>该卡最大数量已部署</td>
+    </tr>
+    <tr>
+      <td>悬停预览</td>
+      <td>放大 1.1x + 显示射程圈</td>
+      <td>点击即部署</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>5.4 布局细节</h3>
+<ul>
+  <li>卡牌宽度固定 <b>100px</b>，6 张 + 间隔 = 约 700px，居中放置</li>
+  <li>超出 6 张时可左右滑动（手势/滚轮），当前页卡片放大显示</li>
+  <li>已部署的卡牌进入 <b>6s CD</b>，CD 期间不能重复部署同卡</li>
+  <li>支持<b>拖拽部署</b>：从卡牌栏拖到部署网格上直接放置</li>
+</ul>
+</section>
+
+<!-- ==================== 6. 右侧技能栏 ==================== -->
+<section>
+<h2>6. 右侧技能/相位仪栏 <span class="tag tag-p1">P1</span></h2>
+
+<h3>6.1 技能按钮</h3>
+<pre><code>  ┌──────────────┐
+  │  EMP 电磁脉冲 │
+  │              │
+  │   ⚡ 80      │ ← 消耗
+  │              │
+  │   [====░░]   │ ← CD 进度条
+  │   CD 5s      │
+  │              │
+  │   ◉ 可用     │ ← 发光圆点指示
+  └──────────────┘</code></pre>
+
+<h3>6.2 技能视觉提示</h3>
+<table>
+  <thead>
+    <tr><th>状态</th><th>视觉效果</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>可用</td><td>外圈<b>紫色发光脉冲</b>（anim glow）</td></tr>
+    <tr><td>CD 中</td><td>灰色遮罩覆盖 50%，底部 CD 进度条</td></tr>
+    <tr><td>能量不足</td><td>整体暗化 30%，费用文字变红</td></tr>
+    <tr><td>释放瞬间</td><td>全屏闪光 + 音效 + 范围圈动画</td></tr>
+  </tbody>
+</table>
+
+<h3>6.3 技能排序规则</h3>
+<ul>
+  <li>按消耗从低到高排列（优先让玩家看到低成本技能）</li>
+  <li>当前选中的势力相位仪主动技能置顶</li>
+  <li>被动符文技能以图标形式贴在对应卡牌上（不占右侧位置）</li>
+</ul>
+</section>
+
+<!-- ==================== 7. 暂停菜单 ==================== -->
+<section>
+<h2>7. 暂停/底部操作菜单 <span class="tag tag-p1">P1</span></h2>
+
+<h3>7.1 战斗中底部常驻按钮 (仅 4 个)</h3>
+<pre><code>[⏸暂停]  [⚡自动]  [📋卡组]  [⚙设置]</code></pre>
+
+<h3>7.2 暂停弹窗</h3>
+<pre><code>╔═══════════════════════════╗
+║         ⏸ 暂停            ║
+╠═══════════════════════════╣
+║  ▶ 继续战斗               ║
+║  ⚡ 开启自动战斗           ║
+║  📋 编辑卡组               ║
+║  💾 保存并退出            ║
+║  ⚙ 设置                   ║
+╚═══════════════════════════╝</code></pre>
+
+<h3>7.3 主菜单移除</h3>
+<ul>
+  <li><b>不再在战斗界面显示</b>：背包/成长/商店/势力/任务/情报/图鉴/排行</li>
+  <li>这些按钮全部移到<b>战前准备界面</b>和<b>战后结算界面</b></li>
+  <li>战斗中的"暂停 → 保存并退出"可返回主菜单</li>
+</ul>
+</section>
+
+<!-- ==================== 8. 视觉风格 ==================== -->
+<section>
+<h2>8. 废土科技风配色方案 <span class="tag tag-p2">P2</span></h2>
+
+<h3>8.1 核心色板</h3>
+<table>
+  <thead>
+    <tr><th>用途</th><th>色值</th><th>HEX</th><th>应用</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>背景基底</td><td><span class="color-swatch" style="background:#0a0e14"></span>#0A0E14</td><td>#0A0E14</td><td>战场底色、面板背景</td></tr>
+    <tr><td>我方标识</td><td><span class="color-swatch" style="background:#00e676"></span>#00E676</td><td>#00E676</td><td>描边、血条、选中</td></tr>
+    <tr><td>敌方标识</td><td><span class="color-swatch" style="background:#ff3344"></span>#FF3344</td><td>#FF3344</td><td>描边、血条</td></tr>
+    <tr><td>Boss 标识</td><td><span class="color-swatch" style="background:#ff9100"></span>#FF9100</td><td>#FF9100</td><td>脉冲边框</td></tr>
+    <tr><td>技能/能量</td><td><span class="color-swatch" style="background:#b388ff"></span>#B388FF</td><td>#B388FF</td><td>技能光圈、粒子</td></tr>
+    <tr><td>资源/金币</td><td><span class="color-swatch" style="background:#ffd700"></span>#FFD700</td><td>#FFD700</td><td>费用、纳米材料</td></tr>
+    <tr><td>危险/警报</td><td><span class="color-swatch" style="background:#ff6d00"></span>#FF6D00</td><td>#FF6D00</td><td>Boss 波次、低血量</td></tr>
+    <tr><td>常规文字</td><td><span class="color-swatch" style="background:#c9d1d9"></span>#C9D1D9</td><td>#C9D1D9</td><td>正文</td></tr>
+    <tr><td>次要文字</td><td><span class="color-swatch" style="background:#7b8ca0"></span>#7B8CA0</td><td>#7B8CA0</td><td>提示、标签</td></tr>
+    <tr><td>边框/分割</td><td><span class="color-swatch" style="background:#30363d"></span>#30363D</td><td>#30363D</td><td>边框、分割线</td></tr>
+    <tr><td>霓虹高光</td><td><span class="color-swatch" style="background:#00f5ff"></span>#00F5FF</td><td>#00F5FF</td><td>标题、选中焦点</td></tr>
+  </tbody>
+</table>
+
+<h3>8.2 渐变与光影</h3>
+<pre><code>面板背景: linear-gradient(180deg, rgba(13,20,30,0.95), rgba(10,14,20,0.90))
+顶部HUD: linear-gradient(180deg, rgba(13,27,42,0.98), rgba(13,27,42,0.0))
+卡牌框:   border: 1px solid rgba(0,245,255,0.2); box-shadow: 0 0 8px rgba(0,245,255,0.1)
+技能发光: box-shadow: 0 0 12px rgba(179,136,255,0.4), inset 0 0 8px rgba(179,136,255,0.2)</code></pre>
+
+<h3>8.3 字体规范</h3>
+<table>
+  <thead>
+    <tr><th>层级</th><th>字号</th><th>字重</th><th>用途</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>关卡号</td><td>24px</td><td>bold</td><td>顶部 HUD 正中标题</td></tr>
+    <tr><td>波次数</td><td>18px</td><td>medium</td><td>HUD 第二行</td></tr>
+    <tr><td>单位名</td><td>14px</td><td>medium</td><td>单位悬停浮窗</td></tr>
+    <tr><td>伤害数字</td><td>20-32px</td><td>bold</td><td>攻击反馈</td></tr>
+    <tr><td>卡牌名</td><td>12px</td><td>regular</td><td>底部卡牌栏</td></tr>
+    <tr><td>按钮</td><td>14px</td><td>medium</td><td>所有交互按钮</td></tr>
+    <tr><td>提示</td><td>11px</td><td>light</td><td>副文本、说明</td></tr>
+  </tbody>
+</table>
+</section>
+
+<!-- ==================== 9. 交互流程 ==================== -->
+<section>
+<h2>9. 核心交互流程 <span class="tag tag-p2">P2</span></h2>
+
+<h3>9.1 部署一张新单位的完整流程</h3>
+<pre><code>玩家操作                              系统反馈
+────────────────────────────────────────────────────────
+1. 鼠标移至底部卡牌栏                   卡牌放大 1.1x + 悬停效果
+   → 选中"T-72"卡
+2. 卡牌上方显示部署预览轮廓             网格上显示绿色高亮可选位
+3. 鼠标拖拽到网格任意可部署格          该格变亮绿 + 射程圈预览（半透明圆）
+4. 松开鼠标                             检查：能量够？CD够？名额够？
+                                       → 否：格子闪红 + "❌"提示
+                                       → 是：继续
+5. 播放部署动画（单位从天而降）          绿色粒子 + "轰"音效 + 地面波纹
+6. 单位现身并开始攻击最近敌人           单位身上绿色光环亮起
+7. 卡牌进入 6s CD                      卡牌变灰 + CD 进度条</code></pre>
+
+<h3>9.2 释放一个技能（EMP 电磁脉冲）</h3>
+<pre><code>玩家操作                              系统反馈
+────────────────────────────────────────────────────────
+1. 鼠标移至右侧 EMP 技能图标            紫色光圈开始发光（可用提示）
+2. 点击技能图标                        弹出确认窗（目标区域预览）
+3. 在战场上点击目标区域                显示 EMP 范围圆（半径 150px）
+4. 确认释放                             扣除 80 能量
+5. 播放全屏闪光 + 脉冲波扩散动画        范围内所有敌方减速 50% × 3s
+6. 技能进入 15s CD                     技能按钮灰色遮罩 + CD 计时</code></pre>
+
+<h3>9.3 查看战场单位详情</h3>
+<pre><code>玩家操作                              系统反馈
+────────────────────────────────────────────────────────
+1. 鼠标悬停在任意单位上                 蓝色选中圈 + 信息浮窗
+2. 浮窗展示：名字/LV/HP/攻击/防御/MOD   可点击"查看完整面板"
+3. 点击"查看完整面板"                   右侧滑出 card_info_panel（300px）
+4. 浮窗消失/面板关闭                    选中圈消失，单位恢复默认</code></pre>
+</section>
+
+<!-- ==================== 10. 开发优先级 ==================== -->
+<section>
+<h2>10. 开发优先级与工作量评估 <span class="tag tag-info">规划</span></h2>
+
+<h3>第一阶段 — 立竿见影 (P0)</h3>
+<ul class="priority-list p0">
+  <li><div class="priority-num">1</div><div><b>移除底部主菜单</b> — 砍掉背包/成长/商店等 10 个按钮，替换为 4 个战斗按钮。工作量：小。收益：战斗视野立刻清爽。</div></li>
+  <li><div class="priority-num">2</div><div><b>重做底部卡牌栏</b> — 高度 120px→90px，加费用/CD遮罩/就绪条。工作量：中。收益：卡牌从"仓库感"变为"技能栏"。</div></li>
+  <li><div class="priority-num">3</div><div><b>单位阵营配色 + 血条增强</b> — 我方绿描边/敌方红描边，血条加粗至 3px。工作量：小。收益：一眼分敌我。</div></li>
+  <li><div class="priority-num">4</div><div><b>左侧面板折叠/展开</b> — 默认折叠只显示 4 数字，点击展开详情。工作量：小。收益：减少信息噪音。</div></li>
+  <li><div class="priority-num">5</div><div><b>HUD 三层重构</b> — 关卡居中 + 波次进度条 + 资源右上精简。工作量：中。收益：核心信息一目了然。</div></li>
+</ul>
+
+<h3>第二阶段 — 体验提升 (P1)</h3>
+<ul class="priority-list p1">
+  <li><div class="priority-num">6</div><div><b>部署网格可视化</b> — 三色状态显示 + 悬停射程预览。工作量：中。</div></li>
+  <li><div class="priority-num">7</div><div><b>技能 CD 系统</b> — 遮罩 + 发光光圈 + 范围预览。工作量：中。</div></li>
+  <li><div class="priority-num">8</div><div><b>伤害数字分级</b> — 普通白字/暴击金色/护盾蓝色/治疗绿色。工作量：中。</div></li>
+  <li><div class="priority-num">9</div><div><b>单位悬停浮窗</b> — 名字/等级/HP/属性/MOD 一览。工作量：小。</div></li>
+</ul>
+
+<h3>第三阶段 — 视觉打磨 (P2)</h3>
+<ul class="priority-list p2">
+  <li><div class="priority-num">10</div><div><b>粒子特效</b> — 部署烟尘、命中火花、死亡碎片。工作量：大。</div></li>
+  <li><div class="priority-num">11</div><div><b>镜头震动</b> — 重武器命中时的屏幕 shake。工作量：中。</div></li>
+  <li><div class="priority-num">12</div><div><b>单位死亡动画</b> — 火焰/冒烟/倾斜倒地。工作量：中。</div></li>
+</ul>
+
+<h3>工作量矩阵</h3>
+<table>
+  <thead>
+    <tr><th>优先级</th><th>改动项</th><th>代码改动量</th><th>美术需求</th><th>预计工期</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><b>P0</b></td><td>#1-5 共 5 项</td><td>中大</td><td>低（配色已有）</td><td>2-3 天</td></tr>
+    <tr><td><b>P1</b></td><td>#6-9 共 4 项</td><td>中</td><td>低-中（数字字体）</td><td>2-3 天</td></tr>
+    <tr><td><b>P2</b></td><td>#10-12 共 3 项</td><td>中</td><td>高（粒子/动画）</td><td>3-5 天</td></tr>
+  </tbody>
+</table>
+</section>
+
+<!-- ==================== 11. 效果验收标准 ==================== -->
+<section>
+<h2>11. 效果验收标准 <span class="tag tag-info">验收</span></h2>
+
+<p>完成所有 P0+P1 后，以下 6 项应全部满足：</p>
+
+<ol>
+  <li>✅ 玩家进入战斗 <b>3 秒内</b>能说出：我在哪关、第几波、基地剩多少血、有几张卡可用</li>
+  <li>✅ 战场区域占比 <b>≥ 70%</b>，底部 UI ≤ 15% 高度</li>
+  <li>✅ 任何敌方单位用鼠标悬停能在 <b>0.5 秒内</b>看清 HP/攻击/防御</li>
+  <li>✅ 任意一张己方单位在屏幕上，玩家能<b>一眼区分</b>它是绿色我方还是红色敌方</li>
+  <li>✅ 卡牌栏所有卡片状态清晰：<b>就绪</b>（绿光）、<b>冷却中</b>（灰遮罩）、<b>能量不足</b>（暗化+红字）</li>
+  <li>✅ 战斗时<b>没有</b>背包/成长/商店/势力等主菜单按钮露出</li>
+</ol>
+</section>
+
+<!-- ==================== 附录 ==================== -->
+<section>
+<h2>附录 A：与原 AGENTS.md 战斗设计的对照</h2>
+<table>
+  <thead>
+    <tr><th>AGENTS.md 要求</th><th>本设计方案</th><th>状态</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>波次进度条 + Boss 预警</td><td>§2.1 波次进度条 + 倒计时 Boss 预警</td><td>✅ 全覆盖</td></tr>
+    <tr><td>基地 HP + 护盾可视化</td><td>§3 左侧面板，基地 HP 带三色闪烁</td><td>✅ 全覆盖</td></tr>
+    <tr><td>单位血量条阵营配色</td><td>§4.1 绿描边 vs 红描边 + Boss 橙色脉冲</td><td>✅ 全覆盖</td></tr>
+    <tr><td>能量条 + 颜色编码</td><td>§2.2 右上能量 60% 绿色 → 30% 黄色 → &lt;30% 红色</td><td>✅ 全覆盖</td></tr>
+    <tr><td>部署格高亮 + 射程预览</td><td>§4.4 三色网格 + §5.4 悬停显示射程圈</td><td>✅ 全覆盖</td></tr>
+    <tr><td>伤害数字分级</td><td>§4.3 普通白/暴击金/护盾蓝/治疗绿/百分比紫</td><td>✅ 全覆盖</td></tr>
+    <tr><td>战斗结束时弹出结算卡片</td><td>§9.1 流程终点，通关/失败独立弹窗（战后界面承载主菜单）</td><td>✅ 全覆盖</td></tr>
+    <tr><td>删除底部主菜单</td><td>§7 明确移除 10 个主菜单，仅留 4 个战斗按钮</td><td>✅ 全覆盖</td></tr>
+  </tbody>
+</table>
+</section>
+
+<div class="footer-note">
+  Phase War Battle UI Design v2.0 · Created 2026-07-24 · FINAL DOC<br>
+  1280×720 · 废土科技风 · 决策效率优先
+</div>
+
+</body>
+</html>

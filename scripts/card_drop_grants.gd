@@ -33,7 +33,9 @@ static func _get_drop_manager() -> Node:
 
 
 ## 敌方风格奖励：规范化 id 后，若有对应卡牌资源则经 DropManager 发掉落卡，否则写入蓝图副本
-static func grant_enemy_style_card(bm: Node, card_id: String, _era: int, amount: int) -> void:
+## v7.x 胜利面板漏显修复：新增可选 source 参数，非空时记录到 GameManager 本局收集器，
+## 供胜利面板"本局缴获与战利品"分区显示。默认空 → 不记录（向后兼容，普通关 pending_drops claim 路径零变化）。
+static func grant_enemy_style_card(bm: Node, card_id: String, _era: int, amount: int, source: String = "") -> void:
 	if bm == null or not is_instance_valid(bm):
 		return
 	var n: int = maxi(1, int(amount))
@@ -46,6 +48,9 @@ static func grant_enemy_style_card(bm: Node, card_id: String, _era: int, amount:
 		id = String(bm.normalize_storage_id(id))
 	if id.is_empty():
 		return
+	# v7.x 胜利面板漏显修复：source 非空时记录到本局收集器（显示名多层回退，杜绝裸 ID）
+	if not source.is_empty():
+		_record_card_to_collector(id, n, source)
 	var dm: Node = _get_drop_manager()
 	if dm != null and dm.has_method("grant_dropped_cards_by_id"):
 		if DefaultCards.get_card_by_id(id) != null:
@@ -53,6 +58,25 @@ static func grant_enemy_style_card(bm: Node, card_id: String, _era: int, amount:
 			return
 	if bm.has_method("add_blueprint_copy"):
 		bm.add_blueprint_copy(id, n)
+
+
+## v7.x 胜利面板漏显修复：把卡牌发放记录到 GameManager 本局收集器
+static func _record_card_to_collector(card_id: String, count: int, source: String) -> void:
+	var gm: Node = _get_game_manager()
+	if gm == null or not gm.has_method("collect_battle_card"):
+		return
+	var display_name: String = DefaultCards.get_safe_display_name(card_id)
+	gm.collect_battle_card(card_id, display_name, count, source)
+
+
+## 获取 GameManager autoload（运行时，编辑器/单测可能为空）
+static func _get_game_manager() -> Node:
+	var loop := Engine.get_main_loop()
+	if loop is SceneTree:
+		var tree: SceneTree = loop as SceneTree
+		if tree.root != null:
+			return tree.root.get_node_or_null("GameManager")
+	return null
 
 
 ## 将旧「蓝图碎片档位」奖励统一转为背包卡牌（与 DailyTaskManager 原池一致）

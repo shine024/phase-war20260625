@@ -207,6 +207,36 @@ const COLOR_RARITY_EPIC := Color(0.753, 0.518, 0.988, 1)      # #c084fc
 const COLOR_RARITY_LEGENDARY := Color(0.961, 0.620, 0.043, 1) # #f59e0b（与 COLOR_AMBER 同）
 const COLOR_RARITY_MYTHIC := Color(0.937, 0.267, 0.267, 1)    # #ef4444（与 COLOR_RED_DOWN 同）
 
+# —— 兵种色（CombatKind 0-4：LIGHT/ARMOR/SUPPORT/AIR/FORT）——
+# v1.5：单一权威源。原 modification_panel/evolution_panel/growth_panel 各有一份 _get_kind_color，
+# 且键名按"步兵/炮兵/防空..."match，但 CardResource.get_combat_kind_name 只返回"轻装/装甲/支援/空中/堡垒"，
+# 导致除装甲外全部 fallback 灰。此处用 int 索引（与枚举值 1:1），数值照搬 backpack_card_item._V9_KIND_COLORS。
+const COLOR_KIND_LIGHT := Color(0.898, 0.282, 0.302, 1)   # 0 轻装/步兵 红 #e5484d
+const COLOR_KIND_ARMOR := Color(0.302, 0.498, 0.898, 1)   # 1 装甲 蓝 #4d7fe5
+const COLOR_KIND_SUPPORT := Color(0.898, 0.596, 0.125, 1) # 2 支援/炮兵 橙 #e59820
+const COLOR_KIND_AIR := Color(0.302, 0.802, 0.898, 1)     # 3 空军 青 #4dcce5
+const COLOR_KIND_FORT := Color(0.624, 0.624, 0.624, 1)    # 4 堡垒 灰 #9f9f9f
+
+const KIND_COLORS := {
+	0: COLOR_KIND_LIGHT,
+	1: COLOR_KIND_ARMOR,
+	2: COLOR_KIND_SUPPORT,
+	3: COLOR_KIND_AIR,
+	4: COLOR_KIND_FORT,
+}
+# 兵种单字字形（与 CardResource.get_combat_kind_short 一致：轻/甲/援/空/堡）
+const KIND_GLYPHS := {
+	0: "轻", 1: "甲", 2: "援", 3: "空", 4: "堡",
+}
+
+## 按 combat_kind 整数取兵种色，越界返回中性灰（v1.5 统一入口）
+static func get_kind_color(combat_kind: int) -> Color:
+	return KIND_COLORS.get(combat_kind, Color(0.624, 0.624, 0.624, 1))
+
+## 按 combat_kind 整数取兵种单字字形，越界返回 "?"
+static func get_kind_glyph(combat_kind: int) -> String:
+	return KIND_GLYPHS.get(combat_kind, "?")
+
 # —— 字体资源路径（v7.x UI 重设计新增 Rajdhani）——
 const FONT_PATH_TITLE := "res://assets/fonts/Rajdhani-SemiBold.ttf"  # 标题/数字
 const FONT_PATH_TITLE_BOLD := "res://assets/fonts/Rajdhani-Bold.ttf"

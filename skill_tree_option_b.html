@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>相位师技能树 - 方案B：科技电路式</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #060a12;
+    color: #c0c8d4;
+    font-family: 'Consolas', 'Microsoft YaHei', monospace;
+    overflow-x: hidden;
+  }
+
+  .scheme-label {
+    position: fixed; top: 10px; right: 10px;
+    background: rgba(0,200,255,0.15);
+    border: 1px solid rgba(0,200,255,0.4);
+    color: #00c8ff;
+    padding: 4px 12px; border-radius: 3px;
+    font-size: 12px; z-index: 100;
+  }
+
+  /* 顶部 HUD */
+  .hud-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 24px;
+    background: linear-gradient(90deg, rgba(0,180,255,0.08), transparent, rgba(0,180,255,0.08));
+    border-bottom: 1px solid rgba(0,180,255,0.15);
+    position: relative;
+  }
+  .hud-top::after {
+    content: '';
+    position: absolute;
+    bottom: -1px; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(0,180,255,0.4), transparent);
+  }
+  .hud-title {
+    font-size: 16px;
+    letter-spacing: 6px;
+    color: #00d4ff;
+    text-shadow: 0 0 10px rgba(0,212,255,0.5);
+  }
+  .hud-stats {
+    display: flex; gap: 20px;
+    font-size: 11px; color: #4a7a9a;
+  }
+  .hud-stats span { color: #00e0aa; }
+
+  /* 主容器 - 横向电路布局 */
+  .tree-root {
+    display: flex;
+    min-height: calc(100vh - 60px);
+  }
+
+  .branch-panel {
+    flex: 1;
+    padding: 12px 10px;
+    position: relative;
+    border-right: 1px solid rgba(0,180,255,0.06);
+    display: flex;
+    flex-direction: column;
+  }
+  .branch-panel:last-child { border-right: none; }
+
+  /* 背景网格 */
+  .branch-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,180,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,180,255,0.03) 1px, transparent 1px);
+    background-size: 20px 20px;
+    pointer-events: none;
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    position: relative;
+    z-index: 2;
+  }
+  .panel-icon {
+    width: 24px; height: 24px;
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+  }
+  .panel-name {
+    font-size: 13px;
+    letter-spacing: 4px;
+    font-weight: bold;
+  }
+  .panel-line {
+    flex: 1;
+    height: 1px;
+    opacity: 0.3;
+  }
+
+  /* 节点 - 电路板模块风格 */
+  .node-row {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin: 8px 0;
+    position: relative;
+    z-index: 2;
+  }
+
+  .module {
+    width: 155px;
+    position: relative;
+    cursor: pointer;
+  }
+
+  .module-body {
+    background: rgba(8, 14, 24, 0.95);
+    border: 1px solid;
+    padding: 8px;
+    position: relative;
+    transition: all 0.3s;
+  }
+
+  /* 四角装饰 */
+  .module-body::before, .module-body::after {
+    content: '';
+    position: absolute;
+    width: 8px; height: 8px;
+    border: 1px solid;
+    transition: all 0.3s;
+  }
+  .module-body::before {
+    top: -1px; left: -1px;
+    border-right: none; border-bottom: none;
+  }
+  .module-body::after {
+    bottom: -1px; right: -1px;
+    border-left: none; border-top: none;
+  }
+
+  .module.unlocked .module-body {
+    border-color: var(--bc);
+  }
+  .module.unlocked .module-body::before,
+  .module.unlocked .module-body::after {
+    border-color: var(--bc);
+    box-shadow: 0 0 6px var(--bc);
+  }
+
+  .module.locked .module-body {
+    border-color: rgba(255,255,255,0.08);
+    opacity: 0.4;
+  }
+  .module.locked .module-body::before,
+  .module.locked .module-body::after {
+    border-color: rgba(255,255,255,0.08);
+  }
+
+  .module.available .module-body {
+    border-color: var(--bc);
+    animation: circuit-pulse 1.5s infinite;
+  }
+  .module.available .module-body::before,
+  .module.available .module-body::after {
+    border-color: #00e0aa;
+    box-shadow: 0 0 8px #00e0aa;
+  }
+
+  @keyframes circuit-pulse {
+    0%, 100% { box-shadow: 0 0 5px rgba(var(--brgb), 0.3); }
+    50% { box-shadow: 0 0 15px rgba(var(--brgb), 0.5); }
+  }
+
+  .module-id {
+    font-size: 9px;
+    color: #3a5a7a;
+    letter-spacing: 1px;
+    margin-bottom: 3px;
+  }
+  .module-name {
+    font-size: 12px;
+    color: var(--bc);
+    font-weight: bold;
+    margin-bottom: 3px;
+    letter-spacing: 1px;
+  }
+  .module-desc {
+    font-size: 9px;
+    color: #5a7a8a;
+    line-height: 1.5;
+  }
+  .module-cost-bar {
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .cost-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: rgba(0,224,170,0.3);
+    border: 1px solid rgba(0,224,170,0.5);
+  }
+  .cost-dot.filled {
+    background: #00e0aa;
+    box-shadow: 0 0 4px #00e0aa;
+  }
+  .module-status {
+    font-size: 9px;
+    margin-top: 3px;
+    letter-spacing: 1px;
+  }
+
+  /* 电路连接线 */
+  .circuit-line {
+    display: flex;
+    justify-content: center;
+    height: 16px;
+    position: relative;
+    z-index: 2;
+  }
+  .circuit-line::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    width: 1px;
+    height: 100%;
+    background: var(--bc);
+    opacity: 0.2;
+  }
+  .circuit-line.active::before {
+    opacity: 0.5;
+    background: linear-gradient(180deg, var(--bc), var(--bc));
+    box-shadow: 0 0 4px var(--bc);
+  }
+  .circuit-line::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--bc);
+    opacity: 0.4;
+  }
+
+  /* 分支颜色变量 */
+  .branch-panel[data-branch="cmd"] { --bc: #4da9ff; --brgb: 77,169,255; }
+  .branch-panel[data-branch="int"] { --bc: #40ff80; --brgb: 64,255,128; }
+  .branch-panel[data-branch="fp"] { --bc: #ff7040; --brgb: 255,112,64; }
+  .branch-panel[data-branch="cw"] { --bc: #bf66ff; --brgb: 191,102,255; }
+
+  .panel-icon.cmd { background: rgba(77,169,255,0.15); color: #4da9ff; }
+  .panel-icon.int { background: rgba(64,255,128,0.15); color: #40ff80; }
+  .panel-icon.fp { background: rgba(255,112,64,0.15); color: #ff7040; }
+  .panel-icon.cw { background: rgba(191,102,255,0.15); color: #bf66ff; }
+  .panel-line.cmd { background: linear-gradient(90deg, transparent, #4da9ff, transparent); }
+  .panel-line.int { background: linear-gradient(90deg, transparent, #40ff80, transparent); }
+  .panel-line.fp { background: linear-gradient(90deg, transparent, #ff7040, transparent); }
+  .panel-line.cw { background: linear-gradient(90deg, transparent, #bf66ff, transparent); }
+</style>
+</head>
+<body>
+
+<div class="scheme-label">方案 B：科技电路式</div>
+
+<div class="hud-top">
+  <div class="hud-title">PHASE MASTER // SKILL TREE</div>
+  <div class="hud-stats">
+    POINTS: <span>12/19</span>
+    UNLOCKED: <span>7</span>
+    TIER: <span>3/5</span>
+    SYS: <span>NOMINAL</span>
+  </div>
+</div>
+
+<div class="tree-root">
+
+  <!-- 指挥 -->
+  <div class="branch-panel" data-branch="cmd">
+    <div class="panel-header">
+      <div class="panel-icon cmd">&#x2694;</div>
+      <div class="panel-name" style="color:#4da9ff;">COMMAND</div>
+      <div class="panel-line cmd"></div>
+    </div>
+
+    <div class="node-row">
+      <div class="module unlocked">
+        <div class="module-body">
+          <div class="module-id">PMS_CMD_0</div>
+          <div class="module-name">指挥觉醒</div>
+          <div class="module-desc">UNIT_LIMIT +1<br>基础指挥协议已激活</div>
+          <div class="module-cost-bar"><div class="cost-dot filled"></div><div class="cost-dot"></div></div>
+          <div class="module-status" style="color:#40ff80;">[ACTIVE]</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="circuit-line active" style="--bc:#4da9ff;"></div>
+
+    <div class="node-row">
+      <div class="module unlocked">
+        <div class="module-body">
+          <div class="module-id">PMS_CMD_1A</div>
+          <div class="module-name">扩编指挥</div>
+          <div class="module-desc">UNIT_LIMIT +2<br>编制扩展协议</div>
+          <div class="module-cost-bar"><div class="cost-dot filled"></div><div class="cost-dot"></div></div>
+          <div class="module-status" style="color:#40ff80;">[ACTIVE]</div>
+        </div>
+      </div>
+      <div class="module available">
+        <div class="module-body">
+          <div class="module-id">PMS_CMD_1B</div>
+          <div class="module-name">快速部署</div>
+          <div class="module-desc">DEPLOY_SPEED +15%</div>
+          <div class="module-cost-bar"><div class="cost-dot filled"></div><div class="cost-dot"></div></div>
+          <div class="module-status" style="color:#00e0aa;">[READY]</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="circuit-line active" style="--bc:#4da9ff;"></div>
+
+    <div class="node-row">
+      <div class="module unlocked">
+        <div class="module-body">
+          <div class="module-id">PMS_CMD_2</div>
+          <div class="module-name">指挥网络</div>
+          <div class="module-desc">ATK_AURA +10% R:2.5<br>COMMAND_AURA [UNLOCKED]</div>
+          <div class="module-cost-bar"><div class="cost-dot filled"></div><div class="cost-dot filled"></div><div class="cost-dot"></div></div>
+          <div class="module-status" style="color:#40ff80;">[ACTIVE]</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="circuit-line" style="--bc:#4da9ff;"></div>
+
+    <div class="node-row">
+      <div class="module locked">
+        <div class="module-body">
+          <div class="module-id">PMS_CMD_3</div>
+          <div class="module-name">指挥相位仪</div>
+          <div class="module-desc">PI_ATLAS_01<br>待解锁</div>
+          <div class="module-status" style="color:#ff6040;">[LOCKED]</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="circuit-line" style="--bc:#4da9ff;"></div>
+
+    <div class="node-row">
+      <div class="module locked">
+        <div class="module-body">
+          <div class="module-id">PMS_CMD_4</div>
+          <div class="module-name">军团统帅</div>
+          <div class="module-desc">DEF_ALL +12% UNIT+1<br>终极协议</div>
+          <div class="module-status" style="color:#ff6040;">[LOCKED]</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 智能化 -->
+  <div class="branch-panel" data-branch="int">
+    <div class="panel-header">
+      <div class="panel-icon int">&#x269b;</div>
+      <div class="panel-name" style="color:#40ff80;">INTELLIGENCE</div>
+      <div class="panel-line int"></div>
+    </div>
+
+    <div class="node-row">
+      <div class="module unlocked">
+        <div class="module-body">
+          <div class="module-id">PMS_INT_0</div>
+          <div class="module-name">智能核心</div>
+          <div class="module-desc">CRIT_CHANCE +5%<br>AUXILIARY AI ONLINE</div>
+          <div class="module-cost-bar"><div class="cost-dot filled"></div><div class="cost-dot"></div></div>
+          <div class="module-status" style="color:#40ff80;">[ACTIVE]</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="circuit-line active" style="--bc:#40ff80;"></div>
+
+    <div class="node-row">
+      <div class="module unlocked">
+        <div class="module-body">
+          <div class="module-id">PMS_INT_1A</div>
+          <div class="module-name">战斗学习</div>
+          <div class="module-desc">EXP_GAIN +30%<br>BATTLE LEARNING</div>
+          <div class="module-cost-bar"><div class="cost-dot filled"></div><div class="cost-dot"></div></div>
+          <div class="module-status" style="color:#40ff80;">[ACTIVE]</div>
+        </div>
+      </div>
+      <div class="module available">
+        <div class="module-body">
+          <div class="module-id">PMS_INT_1B</div>
+          <div class="module-name">战术规避</div>
+          <div class="module-desc">DODGE_CHANCE +8%</div>
+          <div class="module-cost-bar"><div class="cost-dot filled"></div><div class="cost-dot"></div></div>
+          <div class="module-status" style="color:#00e0aa;">[READY]</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="circuit-line active" style="--bc:#40ff80;"></div>
+
+    <div class="node-row">
+      <div class="module unlocked">
+        <div class="module-body">
+          <div class="module-id">PMS_INT_2</div>
+          <div class="module-name">模块化武装</div>
+          <div class="module-desc">AFFIX_SLOTS [UNLOCKED]<br>BASIC_POOL: ATK/DEF/HP</div>
+          <div class="module-cost-bar"><div class="cost-dot filled"></div><div class="cost-dot filled"></div><div class="cost-dot"></div></div>
+          <div class="module-status" style="color:#40ff80;">[ACTIVE]</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="circuit-line" style="--bc:#40ff80;"></div>
+
+    <div class="node-row">
+      <div class="module locked">
+        <div class="module-body">
+          <div class="module-id">PMS_INT_3</div>
+          <div class="module-name">智能火控</div>
+          <div class="module-desc">SMART_TARGETING<br>CRIT +5%</div>
+          <div class="module-status" style="color:#ff6040;">[LOCKED]</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="circuit-line" style="--bc:#40ff80;"></div>
+
+    <div class="node-row">
+      <div class="module locked">
+        <div class="module-body">
+          <div class="module-id">PMS_INT_4</div>
+          <div class="module-name">自适应进化</div>
+          <div class="module-desc">SURVIVE 30s -> ALL_STAT +15%<br>ULTIMATE PROTOCOL</div>
+          <div class="module-status" style="color:#ff6040;">[LOCKED]</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 火力 -->
+  <div class="branch-panel" data-branch="fp">
+    <div class="panel-header">
+      <div class="panel-icon fp">&#x26a1;</div>
+      <div class="panel-name" style="color:#ff7040;">FIREPOWER</div>
+      <div class="panel-line fp"></div>
+    </div>
+
+    <div class="node-row">
+      <div class="module unlocked">
+        <div class="module-body">
+          <div class="module-id">PMS_FP_0</div>
+          <div class="module-name">火力觉醒</div>
+          <div class="module-desc">ATK_ALL +8%<br>FIRE CONTROL INIT</div>
+          <div class="module-cost-bar"><div class="cost-dot filled"></div><div class="cost-dot"></div></div>
+          <div class="module-status" style="color:#40ff80;">[ACTIVE]</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="circuit-line active" style="--bc:#ff7040;"></div>
+
+    <div class="node-row">
+      <div class="module unlocked">
+        <div class="module-body">
+          <div class="module-id">PMS_FP_1A</div>
+          <div class="module-name">穿甲弹道</div>
+          <div class="module-desc">ARMOR_PEN +20%<br>UNIT_ABILITY: ARMOR_PEN</div>
+          <div class="module-cost-bar"><div class="cost-dot filled"></div><div class="cost-dot"></div></div>
+          <div class="module-status" style="color:#40ff80;">[ACTIVE]</div>
+        </div>
+      </div>
+      <div class="module available">
+        <div class="module-body">
+          <div class="module-id">PMS_FP_1B</div>
+          <div class="module-name">精确射击</div>
+          <div class="module-desc">LIGHT_CRIT +15%</div>
+          <div class="module-cost-bar"><div class="cost-dot filled"></div><div class="cost-dot"></div></div>
+          <div class="module-status" style="color:#00e0aa;">[READY]</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="circuit-line active" style="--bc:#ff7040;"></div>
+
+    <div class="node-row">
+      <div class="module unlocked">
+        <div class="module-body">
+          <div class="module-id">PMS_FP_2</div>
+          <div class="module-name">火力相位仪</div>
+          <div class="module-desc">PI_NOVA_03 [UNLOCKED]<br>超弦相位阵列</div>
+          <div class="module-cost-bar"><div class="cost-dot filled"></div><div class="cost-dot filled"></div><div class="cost-dot"></div></div>
+          <div class="module-status" style="color:#40ff80;">[ACTIVE]</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="circuit-line" style="--bc:#ff7040;"></div>
+
+    <div class="node-row">
+      <div class="module locked">
+        <div class="module-body">
+          <div class="module-id">PMS_FP_3</div>
+          <div class="module-name">纵深打击</div>
+          <div class="module-desc">RANGE +10% LIFESTEAL +8%</div>
+          <div class="module-status" style="color:#ff6040;">[LOCKED]</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="circuit-line" style="--bc:#ff7040;"></div>
+
+    <div class="node-row">
+      <div class="module locked">
+        <div class="module-body">
+          <div class="module-id">PMS_FP_4</div>
+          <div class="module-name">火力压制</div>
+          <div class="module-desc">ATK_ALL +15% CRIT_DMG +30%<br>ULTIMATE PROTOCOL</div>
+          <div class="module-status" style="color:#ff6040;">[LOCKED]</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 概念武器 -->
+  <div class="branch-panel" data-branch="cw">
+    <div class="panel-header">
+      <div class="panel-icon cw">&#x2728;</div>
+      <div class="panel-name" style="color:#bf66ff;">CONCEPT WEAPON</div>
+      <div class="panel-line cw"></div>
+    </div>
+
+    <div class="node-row">
+      <div class="module unlocked">
+        <div class="module-body">
+          <div class="module-id">PMS_CW_0</div>
+          <div class="module-name">概念突破</div>
+          <div class="module-desc">ENERGY_REGEN +20%<br>CONCEPT REACH</div>
+          <div class="module-cost-bar"><div class="cost-dot filled"></div><div class="cost-dot"></div></div>
+          <div class="module-status" style="color:#40ff80;">[ACTIVE]</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="circuit-line active" style="--bc:#bf66ff;"></div>
+
+    <div class="node-row">
+      <div class="module unlocked">
+        <div class="module-body">
+          <div class="module-id">PMS_CW_1</div>
+          <div class="module-name">相位护盾</div>
+          <div class="module-desc">PHASE_SHIELD 8000<br>CONCEPT_WEAPON UNLOCKED</div>
+          <div class="module-cost-bar"><div class="cost-dot filled"></div><div class="cost-dot filled"></div><div class="cost-dot"></div></div>
+          <div class="module-status" style="color:#40ff80;">[ACTIVE]</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="circuit-line active" style="--bc:#bf66ff;"></div>
+
+    <div class="node-row">
+      <div class="module unlocked">
+        <div class="module-body">
+          <div class="module-id">PMS_CW_2</div>
+          <div class="module-name">形态进化</div>
+          <div class="module-desc">EVOLUTION ERA:0<br>一战时代进化解锁</div>
+          <div class="module-cost-bar"><div class="cost-dot filled"></div><div class="cost-dot filled"></div><div class="cost-dot"></div></div>
+          <div class="module-status" style="color:#40ff80;">[ACTIVE]</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="circuit-line" style="--bc:#bf66ff;"></div>
+
+    <div class="node-row">
+      <div class="module locked">
+        <div class="module-body">
+          <div class="module-id">PMS_CW_3</div>
+          <div class="module-name">核子轰炸</div>
+          <div class="module-desc">NUCLEAR_BOMBARDMENT<br>45s COOLDOWN</div>
+          <div class="module-status" style="color:#ff6040;">[LOCKED]</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="circuit-line" style="--bc:#bf66ff;"></div>
+
+    <div class="node-row">
+      <div class="module locked">
+        <div class="module-body">
+          <div class="module-id">PMS_CW_4</div>
+          <div class="module-name">相位终焉</div>
+          <div class="module-desc">SPECIAL_CARD: GUARDIAN<br>EVOLUTION: ALL_ERAS<br>ULTIMATE</div>
+          <div class="module-status" style="color:#ff6040;">[LOCKED]</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

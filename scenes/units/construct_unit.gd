@@ -85,6 +85,18 @@ var _shield_aura_hit_boost: float = 0.0  # 护盾吸收伤害时的承压闪光
 var _aura_low_freq_frame: int = 0
 var _shield_aura_last_ratio: float = -1.0
 var _fort_aura_player_meta_set: bool = false
+# ── v8 兵种固定机制运行时状态 ──
+# 侦察潜入开局：前 15s 受伤 ×0.6（搬运 enemy_unit stealth grace 逻辑）
+var _is_recon_unit: bool = false
+var _recon_grace_timer: float = 0.0
+const RECON_GRACE_DURATION: float = 15.0
+const RECON_GRACE_DAMAGE_MUL: float = 0.6
+# 空中突袭击速：前 10s 攻速 ×1.5（搬运 enemy_unit fast tag 逻辑）
+var _is_air_assault: bool = false
+var _air_assault_timer: float = 0.0
+var _air_assault_base_interval: float = 0.0  # 缓存原 attack_interval，供突袭结束撤销
+const AIR_ASSAULT_DURATION: float = 10.0
+const AIR_ASSAULT_SPEED_MULT: float = 1.5
 var attack_timer: float = 0.0
 ## v5.0 攻速分离: 三阶段攻击状态机 (idle → windup → active → cooldown → idle)
 enum AttackPhase { IDLE, WINDUP, ACTIVE, COOLDOWN }
@@ -127,6 +139,7 @@ var _presentation_card_grid: bool = false
 var _hit_stun_left: float = 0.0
 var _card_tween: Tween = null
 var _card_nudge_tween: Tween = null
+var _fire_pulse_tween: Tween = null  ## 开火缩放脉冲（独立于 nudge/recoil，只动 Sprite 子节点）
 # v7.4 性能优化：受击闪白/抖动改手写计时动画（原每击 create_tween 2 个 Tween，密集命中时 GC 压力）
 # 模式参考 unit_hp_bar._damage_flash（倒计时 + lerp）与 damage_number_display._pop_age（正计时 + 分段）
 var _hit_flash_t: float = 0.0           # flash 剩余时间（秒），0=未激活
@@ -182,6 +195,8 @@ func setup(p_is_player: bool, p_stats: UnitStats, forced_enemy_visual_archetype_
 		var aura_summary = stats.get_meta("mod_aura_summary")
 		if aura_summary is Dictionary and not aura_summary.is_empty():
 			set_meta("mod_aura_summary", aura_summary)
+	# v8 兵种固定机制初始化（从 stats meta 读取 apply_combat_kind_modifiers 设置的标记）
+	_init_unit_mechanisms()
 	hp = stats.max_hp
 	velocity = Vector2.ZERO
 	_weapon_cfgs.clear()
@@ -433,6 +448,22 @@ func _play_card_attack_nudge() -> void:
 	ConstructUnitAI._play_card_attack_nudge(self)
 
 
+## 开火缩放脉冲：Sprite 子节点 scale 短暂放大再回弹，模拟开火反冲。
+## 只动 Sprite 子节点 scale，不碰根节点 scale.x（翻转符号）/rotation（受击占用）。
+## 独立 _fire_pulse_tween 句柄，与 nudge/recoil 各不干扰。
+func _play_fire_scale_pulse() -> void:
+	var spr: Sprite2D = get_node_or_null("Sprite")
+	if spr == null:
+		return
+	if _fire_pulse_tween != null and _fire_pulse_tween.is_valid():
+		_fire_pulse_tween.kill()
+	# 记录当前 scale 作回归点（可能被 faction_glow 等改过，不硬编码）
+	var base_s: Vector2 = spr.scale
+	_fire_pulse_tween = create_tween()
+	_fire_pulse_tween.tween_property(spr, "scale", base_s * 1.10, 0.04)
+	_fire_pulse_tween.tween_property(spr, "scale", base_s, 0.07)
+
+
 func _play_card_hit_recoil() -> void:
 	if not _presentation_card_grid:
 		return
@@ -605,6 +636,68 @@ func _update_shape() -> void:
 	poly.polygon = pts
 	# 我方蓝色，敌方红色（用于相位师等复用构装体场景的敌方单位）
 	poly.color = Color(0.2, 0.4, 0.9) if is_player else Color(0.85, 0.2, 0.2)
+
+# ═════════════════════════════════════════════════════════════════
+#  v8: 兵种固定机制运行时处理（侦察潜入 / 空中突袭）
+#  apply_combat_kind_modifiers 在 stats 上设 meta 标记，setup 时 _init_unit_mechanisms 读取并初始化。
+#  _process 每 frame 递减计时器；take_damage 读 _is_recon_unit 判定减伤。
+#  空中突袭需在结束时刻撤销攻速加成（恢复缓存的原 attack_interval）。
+# ═════════════════════════════════════════════════════════════════
+
+## v8: 从 stats meta 读取兵种固定机制标记，初始化运行时状态
+func _init_unit_mechanisms() -> void:
+	_is_recon_unit = false
+	_recon_grace_timer = 0.0
+	_is_air_assault = false
+	_air_assault_timer = 0.0
+	if stats == null:
+		return
+	# 侦察潜入开局
+	if stats.has_meta("is_recon_unit") and bool(stats.get_meta("is_recon_unit", false)):
+		_is_recon_unit = true
+		_recon_grace_timer = RECON_GRACE_DURATION
+	# 空中突袭击速
+	if stats.has_meta("is_air_assault") and bool(stats.get_meta("is_air_assault", false)):
+		_is_air_assault = true
+		_air_assault_timer = AIR_ASSAULT_DURATION
+		# 缓存原攻速并立即应用突袭加速（×1.5 攻速 = interval ×(1/1.5)）
+		_air_assault_base_interval = stats.attack_interval
+		var assault_interval: float = maxf(0.05, stats.attack_interval / AIR_ASSAULT_SPEED_MULT)
+		stats.attack_interval = assault_interval
+		attack_timer = minf(attack_timer, assault_interval)  # 防止已积累的攻击时间溢出
+		# weapon_slots 攻速等比放大（_process_attack_timing 优先读 weapon timing）
+		var spd_mult: float = AIR_ASSAULT_SPEED_MULT
+		for w in stats.weapon_slots:
+			if w != null and w.enabled:
+				w.attack_speed = maxf(0.1, float(w.attack_speed) * spd_mult)
+
+
+## v8: 侦察潜入开局计时器递减（_process 调用）
+func _update_recon_grace(delta: float) -> void:
+	if not _is_recon_unit or _recon_grace_timer <= 0.0:
+		return
+	_recon_grace_timer = maxf(0.0, _recon_grace_timer - delta)
+
+
+func _is_recon_in_grace() -> bool:
+	return _is_recon_unit and _recon_grace_timer > 0.0
+
+
+## v8: 空中突袭击速计时器递减，归零时撤销攻速加成（_process 调用）
+func _update_air_assault(delta: float) -> void:
+	if not _is_air_assault or _air_assault_timer <= 0.0:
+		return
+	_air_assault_timer = maxf(0.0, _air_assault_timer - delta)
+	if _air_assault_timer <= 0.0:
+		# 突袭结束，撤销攻速加成
+		_is_air_assault = false
+		if stats != null and _air_assault_base_interval > 0.0:
+			stats.attack_interval = _air_assault_base_interval
+			# weapon_slots 攻速恢复
+			for w in stats.weapon_slots:
+				if w != null and w.enabled:
+					w.attack_speed = maxf(0.1, float(w.attack_speed) / AIR_ASSAULT_SPEED_MULT)
+
 
 # ═════════════════════════════════════════════════════════════════
 #  v7.1: 堡垒类防护光环（纯视觉）
@@ -968,6 +1061,9 @@ func _physics_process(delta: float) -> void:
 	ConstructUnitAI.process_attack(self, delta)
 	# v7.1: 堡垒防护光环呼吸动画（仅堡垒类单位，非堡垒时 _is_fort_aura_unit=false 直接返回）
 	_update_fort_shield_aura(delta)
+	# v8: 侦察潜入 + 空中突袭计时器递减
+	_update_recon_grace(delta)
+	_update_air_assault(delta)
 	# v7.4: 受击闪白/抖动手写动画推进（原 create_tween 改手写计时）
 	_update_hit_animations(delta)
 	move_and_slide()
@@ -1186,6 +1282,18 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		if stats.urban_defense_bonus > 0.0 and attacker_kind >= 0:
 			if attacker_kind == GC.CombatKind.ARMOR or attacker_kind == GC.CombatKind.AIR:
 				hp_loss = hp_loss * (1.0 - stats.urban_defense_bonus)
+		# v8: 侦察潜入开局——前 15s 受伤 ×0.6（兵种固定机制）
+		if _is_recon_in_grace():
+			hp_loss = hp_loss * RECON_GRACE_DAMAGE_MUL
+		# v8: 堡垒阵地坚守光环——范围内堡垒庇护 meta 减伤（兵种固定机制）
+		# _apply_fort_shelter_aura 在友方堡垒 on_tick 时挂载此 meta（持续 1s 每 tick 刷新）
+		if has_meta("_fort_shelter_until"):
+			var _fs_expire: float = float(get_meta("_fort_shelter_until", 0.0))
+			var _fs_now: float = Time.get_ticks_msec() / 1000.0
+			if _fs_now < _fs_expire:
+				var _fs_bonus: float = float(get_meta("_fort_shelter_bonus", 0.0))
+				if _fs_bonus > 0.0:
+					hp_loss = hp_loss * (1.0 - _fs_bonus)
 		if bool(hit.get("apply_recoil", false)):
 			_play_card_hit_recoil()
 		if bool(hit.get("apply_stun", false)):

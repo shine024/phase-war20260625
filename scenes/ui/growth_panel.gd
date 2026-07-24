@@ -1184,17 +1184,8 @@ func _get_unit_icon(card: CardResource) -> String:
 
 
 func _get_kind_color(combat_kind: int) -> Color:
-	var kind_names = CardResource.get_combat_kind_name(combat_kind)
-	match kind_names:
-		"步兵": return Color(0.9, 0.3, 0.3)
-		"装甲": return Color(0.3, 0.5, 0.9)
-		"炮兵": return Color(0.9, 0.6, 0.2)
-		"防空": return Color(0.7, 0.7, 0.3)
-		"空军": return Color(0.3, 0.8, 0.9)
-		"侦察": return Color(0.5, 0.9, 0.3)
-		"工程": return Color(0.6, 0.4, 0.8)
-		"堡垒": return Color(0.5, 0.5, 0.5)
-		_: return Color(0.5, 0.5, 0.5)
+	# v1.5：收敛到 DesignTokens 单一源（旧本地 match 键名错位，除装甲外全灰）
+	return DT.get_kind_color(combat_kind)
 
 
 func _get_rarity_color(rarity: String) -> Color:

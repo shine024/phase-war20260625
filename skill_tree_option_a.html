@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>相位师技能树 - 方案A：星图连线式</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0e17;
+    color: #c8d0dc;
+    font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+    overflow-x: hidden;
+  }
+  .header {
+    text-align: center;
+    padding: 20px;
+    background: linear-gradient(180deg, rgba(20,30,50,0.95), rgba(10,14,23,0));
+    position: relative;
+    z-index: 10;
+  }
+  .header h1 {
+    font-size: 22px;
+    color: #f0c060;
+    letter-spacing: 4px;
+    text-shadow: 0 0 20px rgba(240,192,96,0.4);
+  }
+  .header .subtitle { font-size: 12px; color: #5a6a80; margin-top: 4px; }
+
+  /* 整体布局：4分支横向排列，从上到下按tier排列 */
+  .tree-container {
+    display: flex;
+    gap: 0;
+    min-height: calc(100vh - 80px);
+    position: relative;
+  }
+
+  .branch-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 8px;
+    position: relative;
+    border-right: 1px solid rgba(255,255,255,0.03);
+  }
+  .branch-col:last-child { border-right: none; }
+
+  .branch-title {
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 3px;
+    padding: 6px 16px;
+    border-radius: 3px;
+    margin-bottom: 12px;
+    position: relative;
+    z-index: 5;
+  }
+
+  /* 连接线SVG层 */
+  .connections-svg {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .tier-row {
+    display: flex;
+    gap: 12px;
+    margin: 6px 0;
+    position: relative;
+    z-index: 5;
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* 节点样式 - 菱形星图风格 */
+  .node {
+    width: 160px;
+    padding: 10px;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .node-inner {
+    background: rgba(12, 18, 30, 0.9);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .node-inner::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(ellipse at center, var(--glow-color) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .node:hover .node-inner::before { opacity: 0.15; }
+
+  .node.unlocked .node-inner {
+    border-color: var(--branch-color);
+    box-shadow: 0 0 15px rgba(var(--branch-rgb), 0.3), inset 0 0 15px rgba(var(--branch-rgb), 0.1);
+  }
+  .node.unlocked .node-inner::before { opacity: 0.08; }
+
+  .node.locked .node-inner {
+    opacity: 0.5;
+    border-style: dashed;
+  }
+
+  .node.available .node-inner {
+    border-color: #f0c060;
+    box-shadow: 0 0 10px rgba(240,192,96,0.2);
+    animation: pulse-glow 2s infinite;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 10px rgba(240,192,96,0.2); }
+    50% { box-shadow: 0 0 20px rgba(240,192,96,0.4); }
+  }
+
+  .node-name {
+    font-size: 13px;
+    font-weight: bold;
+    color: var(--branch-color);
+    margin-bottom: 4px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .node-desc {
+    font-size: 10px;
+    color: #7a8a9a;
+    line-height: 1.4;
+    position: relative;
+    z-index: 2;
+  }
+
+  .node-cost {
+    display: inline-block;
+    margin-top: 6px;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: rgba(240,192,96,0.15);
+    color: #f0c060;
+    border: 1px solid rgba(240,192,96,0.3);
+    position: relative;
+    z-index: 2;
+  }
+
+  .node-status {
+    font-size: 10px;
+    margin-top: 4px;
+    position: relative;
+    z-index: 2;
+  }
+  .node-status.done { color: #40ff80; }
+  .node-status.pending { color: #f0c060; }
+
+  /* 连线 */
+  .connection-line {
+    stroke: var(--branch-color);
+    stroke-width: 1.5;
+    opacity: 0.2;
+    fill: none;
+  }
+  .connection-line.active {
+    opacity: 0.6;
+    stroke-width: 2;
+    filter: drop-shadow(0 0 4px var(--branch-color));
+  }
+
+  /* 分支分隔 */
+  .branch-separator {
+    width: 2px;
+    background: linear-gradient(180deg, transparent, rgba(255,255,255,0.05), transparent);
+  }
+
+  /* 顶部信息栏 */
+  .info-bar {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    padding: 8px 20px;
+    background: rgba(15,20,35,0.9);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    font-size: 12px;
+  }
+  .info-item span { color: #f0c060; font-weight: bold; }
+
+  /* 方案标签 */
+  .scheme-label {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    background: rgba(240,192,96,0.2);
+    border: 1px solid rgba(240,192,96,0.4);
+    color: #f0c060;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    z-index: 100;
+  }
+
+  /* 背景装饰 - 星点 */
+  .stars {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+  .star {
+    position: absolute;
+    width: 1px; height: 1px;
+    background: white;
+    border-radius: 50%;
+    animation: twinkle 3s infinite alternate;
+  }
+  @keyframes twinkle { 0% { opacity: 0.2; } 100% { opacity: 0.8; } }
+</style>
+</head>
+<body>
+
+<div class="scheme-label">方案 A：星图连线式</div>
+
+<div class="stars" id="stars"></div>
+
+<div class="header">
+  <h1>M &#x25c6; 相位师技能树</h1>
+  <div class="subtitle">PHASE MASTER SKILL TREE — STAR MAP STYLE</div>
+</div>
+
+<div class="info-bar">
+  <div>可用技能点：<span>12</span></div>
+  <div>已用：<span>7</span></div>
+  <div>解锁进度：<span>7 / 19</span></div>
+</div>
+
+<div class="tree-container">
+
+  <!-- 指挥分支 -->
+  <div class="branch-col" style="--branch-color:#4da9ff; --branch-rgb:77,169,255;">
+    <div class="branch-title" style="color:#4da9ff; border:1px solid rgba(77,169,255,0.3);">指 挥</div>
+
+    <div class="tier-row">
+      <div class="node unlocked">
+        <div class="node-inner">
+          <div class="node-name">&#x2b50; 指挥觉醒</div>
+          <div class="node-desc">单位上限 +1</div>
+          <div class="node-status done">&#x2713 已解锁</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tier-row">
+      <div class="node unlocked">
+        <div class="node-inner">
+          <div class="node-name">&#x2b50; 扩编指挥</div>
+          <div class="node-desc">单位上限 +2</div>
+          <div class="node-status done">&#x2713 已解锁</div>
+        </div>
+      </div>
+      <div class="node available">
+        <div class="node-inner">
+          <div class="node-name">&#x2b50; 快速部署</div>
+          <div class="node-desc">部署速度 +15%</div>
+          <div class="node-cost">1 点</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tier-row">
+      <div class="node unlocked">
+        <div class="node-inner">
+          <div class="node-name">&#x2b50; 指挥网络</div>
+          <div class="node-desc">攻击光环 ATK+10% R:2.5</div>
+          <div class="node-status done">&#x2713 已解锁</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tier-row">
+      <div class="node locked">
+        <div class="node-inner">
+          <div class="node-name">&#x2b50; 指挥相位仪</div>
+          <div class="node-desc">解锁：擎天-战术核心</div>
+          <div class="node-status pending">&#x26a0 需前置</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tier-row">
+      <div class="node locked">
+        <div class="node-inner">
+          <div class="node-name">&#x2b50; 军团统帅</div>
+          <div class="node-desc">三维防御+12%，上限+1</div>
+          <div class="node-status pending">&#x26a0 需前置</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 智能化分支 -->
+  <div class="branch-col" style="--branch-color:#40ff80; --branch-rgb:64,255,128;">
+    <div class="branch-title" style="color:#40ff80; border:1px solid rgba(64,255,128,0.3);">智能化</div>
+
+    <div class="tier-row">
+      <div class="node unlocked">
+        <div class="node-inner">
+          <div class="node-name">&#x2b50; 智能核心</div>
+          <div class="node-desc">暴击率 +5%</div>
+          <div class="node-status done">&#x2713 已解锁</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tier-row">
+      <div class="node unlocked">
+        <div class="node-inner">
+          <div class="node-name">&#x2b50; 战斗学习</div>
+          <div class="node-desc">经验获取 +30%</div>
+          <div class="node-status done">&#x2713 已解锁</div>
+        </div>
+      </div>
+      <div class="node available">
+        <div class="node-inner">
+          <div class="node-name">&#x2b50; 战术规避</div>
+          <div class="node-desc">闪避 +8%</div>
+          <div class="node-cost">1 点</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tier-row">
+      <div class="node unlocked">
+        <div class="node-inner">
+          <div class="node-name">&#x2b50; 模块化武装</div>
+          <div class="node-desc">解锁 affix 词条槽</div>
+          <div class="node-status done">&#x2713 已解锁</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tier-row">
+      <div class="node locked">
+        <div class="node-inner">
+          <div class="node-name">&#x2b50; 智能火控</div>
+          <div class="node-desc">自动索敌 + 暴击+5%</div>
+          <div class="node-status pending">&#x26a0 需前置</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tier-row">
+      <div class="node locked">
+        <div class="node-inner">
+          <div class="node-name">&#x2b50; 自适应进化</div>
+          <div class="node-desc">存活30s后全属性+15%</div>
+          <div class="node-status pending">&#x26a0 需前置</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 火力分支 -->
+  <div class="branch-col" style="--branch-color:#ff7040; --branch-rgb:255,112,64;">
+    <div class="branch-title" style="color:#ff7040; border:1px solid rgba(255,112,64,0.3);">火 力</div>
+
+    <div class="tier-row">
+      <div class="node unlocked">
+        <div class="node-inner">
+          <div class="node-name">&#x2b50; 火力觉醒</div>
+          <div class="node-desc">三维攻击 +8%</div>
+          <div class="node-status done">&#x2713 已解锁</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tier-row">
+      <div class="node unlocked">
+        <div class="node-inner">
+          <div class="node-name">&#x2b50; 穿甲弹道</div>
+          <div class="node-desc">装甲穿透 +20%</div>
+          <div class="node-status done">&#x2713 已解锁</div>
+        </div>
+      </div>
+      <div class="node available">
+        <div class="node-inner">
+          <div class="node-name">&#x2b50; 精确射击</div>
+          <div class="node-desc">步兵暴击 +15%</div>
+          <div class="node-cost">1 点</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tier-row">
+      <div class="node unlocked">
+        <div class="node-inner">
+          <div class="node-name">&#x2b50; 火力相位仪</div>
+          <div class="node-desc">解锁：新星-超弦</div>
+          <div class="node-status done">&#x2713 已解锁</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tier-row">
+      <div class="node locked">
+        <div class="node-inner">
+          <div class="node-name">&#x2b50; 纵深打击</div>
+          <div class="node-desc">射程+10%，吸血+8%</div>
+          <div class="node-status pending">&#x26a0 需前置</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tier-row">
+      <div class="node locked">
+        <div class="node-inner">
+          <div class="node-name">&#x2b50; 火力压制</div>
+          <div class="node-desc">攻击+15%，暴伤+30%</div>
+          <div class="node-status pending">&#x26a0 需前置</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 概念武器分支 -->
+  <div class="branch-col" style="--branch-color:#bf66ff; --branch-rgb:191,102,255;">
+    <div class="branch-title" style="color:#bf66ff; border:1px solid rgba(191,102,255,0.3);">概念武器</div>
+
+    <div class="tier-row">
+      <div class="node unlocked">
+        <div class="node-inner">
+          <div class="node-name">&#x2b50; 概念突破</div>
+          <div class="node-desc">能量恢复 +20%</div>
+          <div class="node-status done">&#x2713 已解锁</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tier-row">
+      <div class="node unlocked">
+        <div class="node-inner">
+          <div class="node-name">&#x2b50; 相位护盾</div>
+          <div class="node-desc">开局全体+8000护盾</div>
+          <div class="node-status done">&#x2713 已解锁</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tier-row">
+      <div class="node unlocked">
+        <div class="node-inner">
+          <div class="node-name">&#x2b50; 形态进化</div>
+          <div class="node-desc">解锁卡牌进化（一战）</div>
+          <div class="node-status done">&#x2713 已解锁</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tier-row">
+      <div class="node locked">
+        <div class="node-inner">
+          <div class="node-name">&#x2b50; 核子轰炸</div>
+          <div class="node-desc">每45秒敌方全体轰炸</div>
+          <div class="node-status pending">&#x26a0 需前置</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tier-row">
+      <div class="node locked">
+        <div class="node-inner">
+          <div class="node-name">&#x2b50; 相位终焉</div>
+          <div class="node-desc">特殊卡+全时代进化</div>
+          <div class="node-status pending">&#x26a0 需前置</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// 生成背景星星
+const starsEl = document.getElementById('stars');
+for (let i = 0; i < 80; i++) {
+  const star = document.createElement('div');
+  star.className = 'star';
+  star.style.left = Math.random() * 100 + '%';
+  star.style.top = Math.random() * 100 + '%';
+  star.style.animationDelay = (Math.random() * 3) + 's';
+  star.style.width = star.style.height = (Math.random() > 0.7 ? 2 : 1) + 'px';
+  starsEl.appendChild(star);
+}
+</script>
+</body>
+</html>

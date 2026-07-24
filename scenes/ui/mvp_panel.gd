@@ -151,6 +151,8 @@ func _build() -> void:
 	if player_won:
 		_render_drops(vbox)
 		_render_phase_instrument_drop(vbox)
+		# v7.x 胜利面板漏显修复：本局缴获与战利品（战中击杀卡/符文/相位师全部奖励）
+		_render_collected_rewards(vbox)
 
 	# ═══ 关闭按钮：anchors 钉在面板底部，永远可见 ═══
 	_render_close_button_anchored(panel)
@@ -378,7 +380,13 @@ func _render_drops(vbox: VBoxContainer) -> void:
 			var n: String = String(info.get("name", "未知"))
 			var c: int = int(info.get("count", 1))
 			var s: String = String(info.get("source", "battle"))
-			line_text = "  ▸ %s ×%d（%s）" % [n, c, s]
+			# v7.x P3修复：ENERGY_CARD/ENERGY_DATA/ENERGY Blueprint 实际 claim 时降级为研究点（15点/个），
+			# 原显示"能量卡/能量蓝图"误导玩家。统一改为"研究点 ×N（15点/个）"反映真实获得物。
+			var t_int: int = int(info.get("type", -1))
+			if t_int == DropTables.DropType.ENERGY_CARD or t_int == DropTables.DropType.ENERGY_DATA or t_int == DropTables.DropType.ENERGY_BLUEPRINT:
+				line_text = "  ▸ 研究点 ×%d（15点/个，%s）" % [c, s]
+			else:
+				line_text = "  ▸ %s ×%d（%s）" % [n, c, s]
 			var dl := Label.new()
 			dl.text = line_text
 			dl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
@@ -429,6 +437,152 @@ func _render_phase_instrument_drop(vbox: VBoxContainer) -> void:
 			more_line.add_theme_font_size_override("font_size", 11)
 			more_line.add_theme_color_override("font_color", Color(0.60, 0.78, 0.95, 0.88))
 			vbox.add_child(more_line)
+
+
+# =========================================================================
+#  v7.x 胜利面板漏显修复：本局缴获与战利品
+#  渲染绕过 DropManager.pending_drops 直接入背包/库存的奖励：
+#  战中击杀卡 / 战中符文 / 相位师 Boss掉落卡 / 缴获平台卡 / 相位师符文 /
+#  相位师改造蓝图 / 特殊相位仪 / 相位师额外材料
+# =========================================================================
+
+func _render_collected_rewards(vbox: VBoxContainer) -> void:
+	var collected: Array = _reward_summary.get("collected_rewards", [])
+	if collected.is_empty():
+		return
+	# 按 category 分组（保留首次出现顺序）
+	var grouped: Dictionary = {}  # category -> Array[entry]
+	var order: Array[String] = []
+	for entry in collected:
+		if not (entry is Dictionary):
+			continue
+		var cat: String = String(entry.get("category", ""))
+		if cat.is_empty():
+			continue
+		if not grouped.has(cat):
+			grouped[cat] = []
+			order.append(cat)
+		grouped[cat].append(entry)
+	if grouped.is_empty():
+		return
+	var col_sep := HSeparator.new()
+	col_sep.add_theme_color_override("color", Color(0.95, 0.8, 0.25, 0.3))
+	vbox.add_child(col_sep)
+	var col_title := Label.new()
+	col_title.text = "◆ 本局缴获与战利品"
+	col_title.add_theme_font_size_override("font_size", 13)
+	col_title.add_theme_color_override("font_color", Color(0.98, 0.84, 0.35, 1))
+	vbox.add_child(col_title)
+	var col_list := VBoxContainer.new()
+	col_list.add_theme_constant_override("separation", 3)
+	# 按固定顺序渲染各分组（缺失则跳过）
+	var section_order: Array[String] = ["card", "rune", "mod_blueprint", "instrument", "resource"]
+	for cat in section_order:
+		if not grouped.has(cat):
+			continue
+		_render_collected_section(col_list, cat, grouped[cat])
+	vbox.add_child(col_list)
+
+
+## 渲染单个分类区块（卡牌/符文/改造蓝图/特殊相位仪/资源）
+func _render_collected_section(parent_vbox: VBoxContainer, cat: String, entries: Array) -> void:
+	var section_title: String = _collected_section_title(cat)
+	var sh := Label.new()
+	sh.text = "  ▸ %s（共%d）" % [section_title, entries.size()]
+	sh.add_theme_font_size_override("font_size", 11)
+	sh.add_theme_color_override("font_color", Color(0.95, 0.82, 0.5, 0.95))
+	parent_vbox.add_child(sh)
+	for entry in entries:
+		if not (entry is Dictionary):
+			continue
+		var line_text: String = _collected_entry_line(cat, entry)
+		var line_lbl := Label.new()
+		line_lbl.text = "      · " + line_text
+		line_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		line_lbl.add_theme_color_override("font_color", _collected_entry_color(cat, entry))
+		parent_vbox.add_child(line_lbl)
+
+
+## 分类中文标题
+static func _collected_section_title(cat: String) -> String:
+	match cat:
+		"card": return "缴获卡牌"
+		"rune": return "符文"
+		"mod_blueprint": return "改造蓝图"
+		"instrument": return "特殊相位仪"
+		"resource": return "相位师额外战利品"
+		_: return cat
+
+
+## 单项行文本
+static func _collected_entry_line(cat: String, entry: Dictionary) -> String:
+	var name: String = String(entry.get("name", entry.get("id", "?")))
+	var source: String = String(entry.get("source", ""))
+	var src_suffix: String = "（%s）" % source if not source.is_empty() else ""
+	match cat:
+		"card":
+			var count: int = int(entry.get("count", 1))
+			if count > 1:
+				return "%s ×%d%s" % [name, count, src_suffix]
+			return "%s%s" % [name, src_suffix]
+		"rune":
+			var rarity: String = _collected_rarity_name(String(entry.get("rarity", "")))
+			return "%s%s%s" % [name, ("（" + rarity + "）") if not rarity.is_empty() else "", src_suffix]
+		"mod_blueprint":
+			var rarity: String = _collected_rarity_name(String(entry.get("rarity", "")))
+			return "%s%s%s" % [name, ("（" + rarity + "）") if not rarity.is_empty() else "", src_suffix]
+		"instrument":
+			var star: int = int(entry.get("star", 1))
+			return "%s ★%d%s" % [name, star, src_suffix]
+		"resource":
+			var res_name: String = _collected_resource_name(String(entry.get("id", "")))
+			var amount: int = int(entry.get("amount", 0))
+			return "%s +%d%s" % [res_name, amount, src_suffix]
+		_:
+			return name + src_suffix
+
+
+## 单项颜色（按 category / 稀有度区分）
+static func _collected_entry_color(cat: String, entry: Dictionary) -> Color:
+	match cat:
+		"card": return Color(0.85, 0.95, 1.0, 0.95)
+		"instrument": return Color(0.95, 0.75, 0.3, 0.98)
+		"resource": return Color(0.6, 0.95, 0.75, 0.95)
+		"rune", "mod_blueprint":
+			return _collected_rarity_color(String(entry.get("rarity", "")))
+		_: return Color(0.8, 0.92, 1.0, 0.95)
+
+
+## 稀有度中文名（符文/改造蓝图用）
+static func _collected_rarity_name(rarity: String) -> String:
+	match rarity:
+		"common": return "普通"
+		"rare": return "稀有"
+		"epic": return "史诗"
+		"legendary": return "传说"
+		"mythic": return "神话"
+		_: return rarity
+
+
+## 稀有度配色
+static func _collected_rarity_color(rarity: String) -> Color:
+	match rarity:
+		"common": return Color(0.78, 0.82, 0.85, 0.95)
+		"rare": return Color(0.35, 0.7, 1.0, 0.98)
+		"epic": return Color(0.75, 0.45, 1.0, 0.98)
+		"legendary": return Color(1.0, 0.7, 0.25, 0.98)
+		"mythic": return Color(1.0, 0.35, 0.45, 0.98)
+		_: return Color(0.8, 0.92, 1.0, 0.95)
+
+
+## 资源 id → 中文名
+static func _collected_resource_name(res_id: String) -> String:
+	match res_id:
+		"nano_materials": return "纳米材料"
+		"energy_block": return "能量块"
+		"alloy": return "合金"
+		"crystal": return "晶体"
+		_: return res_id
 
 
 ## 关闭按钮：用 anchors 钉在面板底部，独立于 ScrollContainer，内容再多也永远可见

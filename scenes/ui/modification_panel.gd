@@ -40,8 +40,15 @@ const GeoShapes = preload("res://scripts/ui/geo_shapes.gd")
 @onready var deck_core_label: Label = get_node_or_null("%DeckCoreLabel")
 @onready var deck_req_label: Label = get_node_or_null("%DeckReqLabel")
 @onready var deck_install_button: Button = get_node_or_null("%DeckInstallButton")
+# v1.5 效果模拟抽屉（底部操作台次级按钮 + 展开式详情抽屉）
+@onready var deck_sim_button: Button = get_node_or_null("%DeckSimButton")
+@onready var sim_drawer: PanelContainer = get_node_or_null("%SimDrawer")
 # v1.4 右栏单位面板（恒定显示战力/属性/已装列表，动态构建视觉块）
 @onready var unit_panel: VBoxContainer = get_node_or_null("%UnitPanel")
+# v1.5 右栏三档折叠按钮（完整280/紧凑200/收起0）
+@onready var fold_button: Button = get_node_or_null("%FoldButton")
+# v1.5 DetailInner（含 UnitScroll），折叠时整体隐藏
+@onready var detail_inner: MarginContainer = get_node_or_null("VBoxContainer/HBoxContainer/DetailPanel/DetailVBox/DetailInner")
 
 const FILTER_ALL := "all"
 const FILTER_MOD := "mod"
@@ -51,6 +58,26 @@ var _filter_mode: String = FILTER_ALL
 var selected_card: CardResource = null
 var selected_mod_id: String = ""
 var _embedded_mode: bool = false
+# v7.x 性能优化：_refresh_mod_list 期间缓存选中卡的战力/档位，供 _create_mod_item 复用，
+# 避免对每个改造条目重复走 estimate_power_score（会触发大量下游 push_warning）。
+var _cached_card_power: float = 0.0
+var _cached_card_tier: int = 0
+# v1.5 右栏折叠档位：0完整280 / 1紧凑200 / 2收起0（右栏隐藏，靠 hover 浮卡看单位）
+var _fold_state: int = 0
+const _FOLD_WIDTHS := [280, 200, 0]
+const _FOLD_LABELS := ["完整", "紧凑", "收起"]
+# v1.5 收起态 hover 浮卡（右栏收起时，hover 名册行弹迷你单位卡）
+var _hover_card: PanelContainer = null
+
+
+## 计算当前选中卡的战力值（单次刷新内复用，避免 N 次重复 build_stats）。
+func _compute_card_power_once() -> float:
+	if selected_card == null or BlueprintManager == null:
+		return 0.0
+	var key: String = selected_card.instance_id if not selected_card.instance_id.is_empty() else selected_card.card_id
+	if key.is_empty():
+		return 0.0
+	return EvolutionHelpers.estimate_power_score(key, BlueprintManager)
 
 func _ready() -> void:
 	# 连接关闭按钮
@@ -67,6 +94,13 @@ func _ready() -> void:
 		chip_mod.pressed.connect(_on_filter_pressed.bind(FILTER_MOD))
 	if chip_max:
 		chip_max.pressed.connect(_on_filter_pressed.bind(FILTER_MAX))
+	# v1.5 右栏折叠按钮（三档循环：完整→紧凑→收起→完整）
+	if fold_button:
+		fold_button.pressed.connect(_on_fold_pressed)
+		_apply_fold_state()  # 初始化按钮文案/样式
+	# v1.5 效果模拟抽屉切换按钮
+	if deck_sim_button:
+		deck_sim_button.pressed.connect(_on_sim_button_pressed)
 
 	# v7.x UI 重设计：给主要 Label 加载 Rajdhani 字体（战术感）
 	_apply_title_fonts()
@@ -76,6 +110,8 @@ func _ready() -> void:
 		_apply_embedded_layout()
 	else:
 		_refresh_card_list()
+	# v1.5：键盘导航——面板可获焦接收 _gui_input
+	focus_mode = Control.FOCUS_ALL
 
 
 ## v7.x：给标题/资源栏/主要 Label 加载 Rajdhani 字体（视觉焕新）
@@ -130,6 +166,153 @@ func _on_filter_pressed(mode: String) -> void:
 	_filter_mode = mode
 	_update_chip_styles()
 	_refresh_card_list()
+
+
+## v1.5：右栏折叠按钮回调——三档循环（完整→紧凑→收起→完整）
+func _on_fold_pressed() -> void:
+	_fold_state = (_fold_state + 1) % 3
+	_apply_fold_state()
+
+
+## v1.5：应用当前折叠档位（宽度 + DetailInner 可见性 + 按钮文案）
+## 收起态（档2）：DetailPanel 宽度归零 + DetailInner 隐藏（RightHead 仍可见，供玩家点回展开）
+func _apply_fold_state() -> void:
+	if card_info_panel == null:
+		return
+	var w: int = _FOLD_WIDTHS[_fold_state]
+	card_info_panel.custom_minimum_size.x = w
+	# 收起态隐藏内容区（保留 RightHead 让玩家能点按钮展开回来）
+	if detail_inner:
+		detail_inner.visible = (_fold_state < 2)
+	if fold_button:
+		fold_button.text = _FOLD_LABELS[_fold_state]
+		# 折叠按钮样式：收起态高亮（提示当前是折叠）
+		var sb := StyleBoxFlat.new()
+		sb.set_corner_radius_all(3)
+		sb.set_border_width_all(1)
+		sb.content_margin_left = 6
+		sb.content_margin_top = 2
+		sb.content_margin_right = 6
+		sb.content_margin_bottom = 2
+		if _fold_state == 2:
+			sb.bg_color = Color(0.024, 0.714, 0.831, 0.12)
+			sb.border_color = DT.COLOR_CYAN_TECH
+			fold_button.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT)
+		else:
+			sb.bg_color = Color(0.05, 0.09, 0.16, 0.4)
+			sb.border_color = Color(0.25, 0.35, 0.42, 0.3)
+			fold_button.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.8))
+		fold_button.add_theme_stylebox_override("normal", sb)
+	# 收起态若当前 hover 浮卡残留，隐藏掉
+	if _fold_state != 2 and _hover_card != null:
+		_hide_hover_card()
+
+
+## v1.5：右栏收起态下，hover 名册行弹出迷你单位浮卡。
+## 内容=精简右栏（名+战力大字+5档迷你条+已装N/9），约 180×130px。
+## 仅当 _fold_state==2（收起）时显示，否则不弹（右栏已可见，浮卡冗余）。
+func _maybe_show_hover_card(card: CardResource, anchor: Control) -> void:
+	if _fold_state != 2 or card == null or not is_inside_tree():
+		return
+	if _hover_card == null:
+		_hover_card = _build_hover_card()
+		add_child(_hover_card)
+	_refresh_hover_card(_hover_card, card)
+	# 定位到 anchor 右侧 +8px，垂直居中对齐
+	await get_tree().process_frame  # 等一帧让浮卡算出尺寸
+	if not is_instance_valid(_hover_card) or not is_instance_valid(anchor):
+		return
+	var anchor_rect: Rect2 = anchor.get_global_rect()
+	var hc_size: Vector2 = _hover_card.size
+	var pos := Vector2(anchor_rect.end.x + 8, anchor_rect.position.y)
+	# 防溢出右边界
+	var viewport_w: float = get_viewport_rect().size.x
+	if pos.x + hc_size.x > viewport_w - 8:
+		pos.x = anchor_rect.position.x - hc_size.x - 8  # 改弹左侧
+	_hover_card.set_global_position(pos)
+	_hover_card.visible = true
+	# 提到最前
+	_hover_card.z_index = 100
+
+
+## v1.5：构建浮卡节点骨架（首次懒创建）
+func _build_hover_card() -> PanelContainer:
+	var pc := PanelContainer.new()
+	pc.visible = false
+	pc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pc.z_index = 100
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.06, 0.10, 0.18, 0.96)
+	# 先设四边 1px cyan_soft，再把左边加粗到 3px（顺序：all 在前，left 覆盖在后）
+	sb.set_border_width_all(1)
+	sb.border_color = DT.COLOR_CYAN_TECH_SOFT
+	sb.border_width_left = 3
+	sb.set_corner_radius_all(5)
+	sb.content_margin_left = 8
+	sb.content_margin_top = 6
+	sb.content_margin_right = 8
+	sb.content_margin_bottom = 6
+	pc.add_theme_stylebox_override("panel", sb)
+	pc.custom_minimum_size = Vector2(180, 0)
+	return pc
+
+
+## v1.5：刷新浮卡内容（每次 hover 重建子节点）
+func _refresh_hover_card(pc: PanelContainer, card: CardResource) -> void:
+	for child in pc.get_children():
+		pc.remove_child(child)
+		child.free()
+	var vbox := VBoxContainer.new()
+	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_theme_constant_override("separation", 4)
+	# 名行
+	var name_lbl := Label.new()
+	name_lbl.text = card.display_name if card.display_name else card.card_id
+	name_lbl.add_theme_font_override("font", DT.get_title_font_bold())
+	name_lbl.add_theme_font_size_override("font_size", 13)
+	name_lbl.add_theme_color_override("font_color", Color(0.95, 0.96, 0.98, 1))
+	name_lbl.clip_text = true
+	vbox.add_child(name_lbl)
+	# 战力大字
+	var power: float = 0.0
+	var key: String = card.instance_id if not card.instance_id.is_empty() else card.card_id
+	if not key.is_empty() and BlueprintManager != null:
+		power = EvolutionHelpers.estimate_power_score(key, BlueprintManager)
+	if power > 0:
+		var power_row := HBoxContainer.new()
+		power_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var pl := Label.new()
+		pl.text = "战力"
+		pl.add_theme_font_size_override("font_size", 9)
+		pl.add_theme_color_override("font_color", Color(0.55, 0.6, 0.7, 0.8))
+		pl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		power_row.add_child(pl)
+		var pv := Label.new()
+		pv.text = str(int(power))
+		pv.add_theme_font_override("font", DT.get_title_font_bold())
+		pv.add_theme_font_size_override("font_size", 18)
+		pv.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT)
+		pv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		pv.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		power_row.add_child(pv)
+		vbox.add_child(power_row)
+		# 5 档迷你条
+		var current_tier: int = PowerTiers.get_tier_by_power(power) if PowerTiers != null else 0
+		vbox.add_child(_build_tier_progress(current_tier))
+	# 已装 N/9
+	var mod_count: int = card.mods.size() if "mods" in card else 0
+	var mod_lbl := Label.new()
+	mod_lbl.text = "已装改造  %d / 9" % mod_count
+	mod_lbl.add_theme_font_size_override("font_size", 10)
+	mod_lbl.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT if mod_count > 0 else Color(0.5, 0.55, 0.65, 0.7))
+	vbox.add_child(mod_lbl)
+	pc.add_child(vbox)
+
+
+## v1.5：隐藏浮卡
+func _hide_hover_card() -> void:
+	if _hover_card != null and is_instance_valid(_hover_card):
+		_hover_card.visible = false
 
 ## 内嵌模式：隐藏 TitleRow + 左侧卡牌列表
 func set_embedded_mode(p_embedded: bool) -> void:
@@ -313,9 +496,11 @@ func _create_card_item(card: CardResource, instance_card: CardResource = null) -
 	var sb_h := sb_n.duplicate() as StyleBoxFlat
 	sb_h.bg_color = Color(0.1, 0.14, 0.22, 0.7)
 	var sb_s := sb_n.duplicate() as StyleBoxFlat
+	# v1.5：选中态背景仍用 cyan（保持"选中"语义识别），但左边框改用兵种色，
+	# 让玩家一眼区分 combat_kind（v1.4 全 cyan，无法区分兵种）
 	sb_s.bg_color = Color(0.024, 0.714, 0.831, 0.1)
 	sb_s.border_width_left = 3
-	sb_s.border_color = DT.COLOR_CYAN_TECH
+	sb_s.border_color = _get_kind_color(card.combat_kind)
 	if selected_card and selected_card.instance_id == display_instance_id:
 		btn.add_theme_stylebox_override("normal", sb_s)
 		btn.add_theme_stylebox_override("hover", sb_s)
@@ -362,7 +547,8 @@ func _create_card_item(card: CardResource, instance_card: CardResource = null) -
 	name_row.add_theme_constant_override("separation", 4)
 	var name_label := Label.new()
 	name_label.text = display_name
-	name_label.add_theme_font_size_override("font_size", 12)
+	name_label.add_theme_font_override("font", DT.get_title_font())
+	name_label.add_theme_font_size_override("font_size", 13)
 	name_label.add_theme_color_override("font_color", Color(0.95, 0.96, 0.98, 1) if (selected_card and selected_card.instance_id == display_instance_id) else Color(0.85, 0.88, 0.94, 1))
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_label.clip_text = true
@@ -384,7 +570,8 @@ func _create_card_item(card: CardResource, instance_card: CardResource = null) -
 	# 第二行：Lv.N · Mx/9（单行内联）
 	var meta_label := Label.new()
 	meta_label.text = "Lv.%d  ·  M%d/9" % [display_level, display_mods.size()]
-	meta_label.add_theme_font_size_override("font_size", 9)
+	meta_label.add_theme_font_override("font", DT.get_body_font())
+	meta_label.add_theme_font_size_override("font_size", 10)
 	meta_label.add_theme_color_override("font_color", Color(0.55, 0.6, 0.7, 0.85))
 	meta_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	info.add_child(meta_label)
@@ -396,6 +583,10 @@ func _create_card_item(card: CardResource, instance_card: CardResource = null) -
 	# _on_card_selected 会拒绝选中（避免改造写到无养成的模板污染单例）。
 	# display_card 仅用于列表项显示（含回退模板的展示），不参与养成写入。
 	btn.pressed.connect(func(): _on_card_selected(instance_card))
+	# v1.5：右栏收起态下 hover 弹迷你单位浮卡（替代被折叠的右栏单位面板）
+	var captured_card: CardResource = display_card
+	btn.mouse_entered.connect(func(): _maybe_show_hover_card(captured_card, btn))
+	btn.mouse_exited.connect(_hide_hover_card)
 	return btn
 
 ## v7.x 重构：显示所有已解锁（持有图纸）的改造，选了战斗卡时用状态标识区分可用性。
@@ -425,28 +616,46 @@ func _refresh_mod_list() -> void:
 			if not mod_id.is_empty() and not unlocked_mod_ids.has(mod_id):
 				unlocked_mod_ids.append(mod_id)
 
-	if unlocked_mod_ids.is_empty():
+	## v7.x 修复（对齐设计稿）：按当前选中卡的兵种预过滤，只显示适用的改造。
+	## 原版所有已解锁改造全列出，不适用的灰显写"⊘不适用"——视觉噪音巨大且不符合设计稿
+	## "改造库只显示该单位能用的改造"的预期。复用 _is_mod_applicable_to_card 做数据层过滤。
+	var applicable_mod_ids: Array = []
+	var total_owned: int = unlocked_mod_ids.size()
+	for mod_id in unlocked_mod_ids:
+		if _is_mod_applicable_to_card(String(mod_id)):
+			applicable_mod_ids.append(mod_id)
+
+	if applicable_mod_ids.is_empty():
 		var empty_label = Label.new()
-		empty_label.text = "暂无已解锁改造\n（获得改造图纸后，所有已解锁改造会显示于此）"
+		empty_label.text = "暂无可用改造\n（当前单位兵种不适用任何已解锁改造，或尚未获得图纸）"
 		empty_label.add_theme_font_size_override("font_size", 12)
 		empty_label.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.8))
 		mod_list_container.add_child(empty_label)
+		if mod_list_head_count:
+			mod_list_head_count.text = "可用 0 · 总持有 %d" % total_owned
 		return
 
 	## 按稀有度排序（高→低），让玩家先看到珍贵改造
-	unlocked_mod_ids.sort_custom(func(a: String, b: String):
+	applicable_mod_ids.sort_custom(func(a: String, b: String):
 		return _rarity_sort_value(String(ModificationRegistry.get_data(a).get("rarity", "common"))) \
 			> _rarity_sort_value(String(ModificationRegistry.get_data(b).get("rarity", "common"))))
 
-	for mod_id in unlocked_mod_ids:
+	# v7.x 性能优化：本次刷新期间缓存选中卡的战力值与档位，避免 _create_mod_item 对每个
+	# 改造条目重复调用 estimate_power_score（O(N) 次完整 build_stats_from_card，会触发大量
+	# 下游 push_warning 导致引擎 "Too many warnings" 限流，并显著拖慢面板刷新）。
+	# 算一次、传给所有 mod item 复用。
+	_cached_card_power = _compute_card_power_once()
+	_cached_card_tier = PowerTiers.get_tier_by_power(_cached_card_power) if (_cached_card_power > 0 and PowerTiers != null) else 0
+
+	for mod_id in applicable_mod_ids:
 		var mod_data = ModificationRegistry.get_data(mod_id)
 		if mod_data.is_empty():
 			continue  # 找不到改造数据（旧/无效 mod_id），跳过避免渲染异常
 		var item = _create_mod_item(mod_id, mod_data)
 		mod_list_container.add_child(item)
-	# v7.x：更新改造库计数
+	# v7.x：更新改造库计数（可用数 = 过滤后适用数；总持有 = 过滤前总数，让玩家知道还有其他兵种的改造）
 	if mod_list_head_count:
-		mod_list_head_count.text = "可用 %d · 总持有 %d" % [unlocked_mod_ids.size(), unlocked_mod_ids.size()]
+		mod_list_head_count.text = "适用 %d · 总持有 %d" % [applicable_mod_ids.size(), total_owned]
 
 func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 	var btn := Button.new()
@@ -455,6 +664,9 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 	btn.text = ""
 	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	btn.add_theme_color_override("font_color", Color(0.91, 0.93, 0.96, 1))
+	# v1.5：存 mod_id 元数据，供键盘导航（↑↓ 在改造库行间移动）读取
+	btn.set_meta("mod_id", mod_id)
+	btn.focus_mode = Control.FOCUS_NONE  # 焦点由面板根节点统一管理，避免子按钮抢焦
 
 	var rarity: String = String(mod_data.get("rarity", "common"))
 	var rarity_names := {"common": "普通", "uncommon": "优秀", "rare": "稀有", "epic": "史诗", "legendary": "传说", "mythic": "神话"}
@@ -479,7 +691,10 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 	sb_n.content_margin_right = 6
 	sb_n.content_margin_bottom = 4
 	if selected_mod_id == mod_id:
+		# v1.5：选中态背景 + 左边框同步切 cyan 并加粗 3→4（v1.4 只改 bg，边框仍是稀有度色，视觉不统一）
 		sb_n.bg_color = Color(0.024, 0.714, 0.831, 0.12)
+		sb_n.border_color = DT.COLOR_CYAN_TECH
+		sb_n.border_width_left = 4
 	if is_installed:
 		# 已装的改造淡化（与设计稿 opacity 0.45 一致）
 		sb_n.bg_color = sb_n.bg_color.darkened(0.2)
@@ -506,7 +721,8 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 		tex_rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		hbox.add_child(tex_rect)
 	else:
-		# 兜底：稀有度色块占位
+		# 兜底：稀有度色边框 + 稀有度首字母（v1.5：原 v1.4 只是色块，色弱不友好）
+		# 字母规则：common→C / uncommon→U / rare→R / epic→E / legendary→L / mythic→M
 		var placeholder := PanelContainer.new()
 		placeholder.custom_minimum_size = Vector2(26, 26)
 		placeholder.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -516,6 +732,17 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 		ph_sb.set_border_width_all(1)
 		ph_sb.set_corner_radius_all(3)
 		placeholder.add_theme_stylebox_override("panel", ph_sb)
+		# 稀有度首字母（颜色+字母双重编码）
+		var rar_letter := rarity.substr(0, 1).to_upper() if not rarity.is_empty() else "?"
+		var ph_lbl := Label.new()
+		ph_lbl.text = rar_letter
+		ph_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		ph_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		ph_lbl.add_theme_font_override("font", DT.get_title_font_bold())
+		ph_lbl.add_theme_font_size_override("font_size", 14)
+		ph_lbl.add_theme_color_override("font_color", rarity_col)
+		ph_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		placeholder.add_child(ph_lbl)
 		hbox.add_child(placeholder)
 
 	# 信息列（名 + 效果摘要）
@@ -526,7 +753,8 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 
 	var name_label := Label.new()
 	name_label.text = String(mod_data.get("name", mod_id))
-	name_label.add_theme_font_size_override("font_size", 11)
+	name_label.add_theme_font_override("font", DT.get_title_font())
+	name_label.add_theme_font_size_override("font_size", 12)
 	name_label.add_theme_color_override("font_color", Color(0.91, 0.93, 0.96, 1))
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_label.clip_text = true
@@ -538,7 +766,8 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 	if not effect_summary.is_empty():
 		var effect_lbl := Label.new()
 		effect_lbl.text = effect_summary[0]
-		effect_lbl.add_theme_font_size_override("font_size", 9)
+		effect_lbl.add_theme_font_override("font", DT.get_body_font())
+		effect_lbl.add_theme_font_size_override("font_size", 10)
 		effect_lbl.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT if is_applicable else Color(0.5, 0.55, 0.65, 0.7))
 		effect_lbl.clip_text = true
 		effect_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -546,8 +775,14 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 	hbox.add_child(info)
 
 	# 状态标签（右侧）
+	# v7.x 增强（对齐设计稿）：在原有"冲突/槽满/情报不足"阻断之外，补检战力档位门槛。
+	# 高稀有度改造（epic/legendary）需 CHAMPION/OVERLORD 档位才可安装，不达标时显示
+	# "✗需CHAMPION（当前ELITE）"，让玩家明确知道为何装不上（而非只看到"冲突"二字）。
+	# 性能：用 _refresh_mod_list 顶部算好的 _cached_card_power/_cached_card_tier，
+	# 不再每个 mod item 重复调用 estimate_power_score（会触发 "Too many warnings" 限流）。
 	var status_col := DT.COLOR_CYAN_TECH_SOFT
 	var status_text := "可安装"
+	var tier_blocked: bool = false
 	if is_installed:
 		status_col = DT.COLOR_GREEN_UP
 		status_text = "✓已装"
@@ -557,9 +792,17 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 	elif not block_reason.is_empty():
 		status_col = DT.COLOR_RED_DOWN
 		status_text = "✗" + block_reason
+	elif _cached_card_power > 0 and PowerTiers != null and ModManager != null:
+		# 战力档位门槛检查：epic 需 CHAMPION、legendary 需 OVERLORD
+		if not ModManager.can_install_by_power_tier(_cached_card_tier, mod_id):
+			var min_tier: int = ModManager.get_min_power_tier_for_mod(mod_id)
+			tier_blocked = true
+			status_col = DT.COLOR_AMBER
+			status_text = "✗需%s" % PowerTiers.get_tier_name(min_tier)
 	var status_label := Label.new()
 	status_label.text = status_text
-	status_label.add_theme_font_size_override("font_size", 9)
+	status_label.add_theme_font_override("font", DT.get_title_font())
+	status_label.add_theme_font_size_override("font_size", 10)
 	status_label.add_theme_color_override("font_color", status_col)
 	status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	status_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -567,8 +810,8 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 	hbox.add_child(status_label)
 
 	btn.add_child(hbox)
-	# 禁用规则：已安装、不适用、或被 block（冲突/槽满/情报不足）时禁用点击
-	btn.disabled = is_installed or not is_applicable or not block_reason.is_empty()
+	# 禁用规则：已安装、不适用、被 block（冲突/槽满/情报不足）、或战力档位不足时禁用点击
+	btn.disabled = is_installed or not is_applicable or not block_reason.is_empty() or tier_blocked
 	btn.tooltip_text = "%s\n%s\n稀有度：%s" % [String(mod_data.get("prototype", "")), String(mod_data.get("description", "")), rarity_cn]
 	btn.pressed.connect(func(): _on_mod_selected(mod_id, mod_data))
 	return btn
@@ -686,6 +929,20 @@ func _show_unit_panel_placeholder() -> void:
 	unit_panel.add_child(ph)
 
 
+## v1.4 字体统一辅助：给 Label 加载 Rajdhani 字体 + 设置字号/颜色/对齐/填充
+## 设计稿核心视觉是 Rajdhani 窄体战术字体，默认字体会让视觉感大打折扣
+func _style_lbl(lbl: Label, size: int, color: Color, align: int = -1, expand: bool = false, use_bold: bool = false) -> Label:
+	lbl.add_theme_font_override("font", DT.get_title_font_bold() if use_bold else DT.get_title_font())
+	lbl.add_theme_font_size_override("font_size", size)
+	lbl.add_theme_color_override("font_color", color)
+	if align >= 0:
+		lbl.horizontal_alignment = align
+	if expand:
+		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return lbl
+
+
 ## 构建单位 Hero 头部（缩略图 + 名#号 + 兵种/档位标签）
 func _build_unit_hero() -> Control:
 	var hero := PanelContainer.new()
@@ -710,11 +967,9 @@ func _build_unit_hero() -> Control:
 	art.add_theme_stylebox_override("panel", art_sb)
 	var art_lbl := Label.new()
 	art_lbl.text = _get_unit_icon(selected_card)
-	art_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	art_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	art_lbl.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	art_lbl.add_theme_font_size_override("font_size", 18)
-	art_lbl.add_theme_color_override("font_color", _get_kind_color(selected_card.combat_kind))
+	_style_lbl(art_lbl, 18, _get_kind_color(selected_card.combat_kind), HORIZONTAL_ALIGNMENT_CENTER)
 	art.add_child(art_lbl)
 	hbox.add_child(art)
 	# 名 + 实例号 + 标签
@@ -724,13 +979,13 @@ func _build_unit_hero() -> Control:
 	var name_lbl := Label.new()
 	var display_name: String = selected_card.display_name if selected_card.display_name else selected_card.card_id
 	name_lbl.text = display_name
-	name_lbl.add_theme_font_size_override("font_size", 14)
-	name_lbl.add_theme_color_override("font_color", Color(0.95, 0.96, 0.98, 1))
 	var iid: String = str(selected_card.instance_id)
 	if not iid.is_empty():
 		var h_idx: int = iid.rfind("#")
 		if h_idx >= 0:
 			name_lbl.text += "  #" + iid.substr(h_idx + 1)
+	name_lbl.clip_text = true
+	_style_lbl(name_lbl, 15, Color(0.95, 0.96, 0.98, 1), -1, true, true)
 	info.add_child(name_lbl)
 	# 标签行：兵种 · Lv · 改造数
 	var tags := Label.new()
@@ -739,8 +994,8 @@ func _build_unit_hero() -> Control:
 		selected_card.enhance_level,
 		selected_card.mods.size()
 	]
-	tags.add_theme_font_size_override("font_size", 9)
-	tags.add_theme_color_override("font_color", Color(0.55, 0.6, 0.7, 0.85))
+	tags.clip_text = true
+	_style_lbl(tags, 10, Color(0.55, 0.6, 0.7, 0.85), -1, true)
 	info.add_child(tags)
 	hbox.add_child(info)
 	hero.add_child(hbox)
@@ -767,22 +1022,19 @@ func _build_power_block(power_val: float, current_tier: int, tier_str: String) -
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var lbl1 := Label.new()
 	lbl1.text = "战力评分 · POWER"
-	lbl1.add_theme_font_size_override("font_size", 9)
-	lbl1.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.85))
+	_style_lbl(lbl1, 9, Color(0.5, 0.55, 0.65, 0.85), -1, true)
 	left.add_child(lbl1)
 	var tier_name_cn := PowerTiers.get_tier_name(current_tier) if power_val > 0 else ""
 	var lbl2 := Label.new()
 	lbl2.text = "%s · %s" % [tier_str, tier_name_cn] if not tier_str.is_empty() else "—"
-	lbl2.add_theme_font_size_override("font_size", 11)
-	lbl2.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT)
+	lbl2.clip_text = true
+	_style_lbl(lbl2, 11, DT.COLOR_CYAN_TECH_SOFT, -1, true, true)
 	left.add_child(lbl2)
 	hbox.add_child(left)
-	# 右侧：战力大数字
+	# 右侧：战力大数字（26px Rajdhani Bold）
 	var pwr_lbl := Label.new()
 	pwr_lbl.text = str(int(power_val)) if power_val > 0 else "—"
-	pwr_lbl.add_theme_font_size_override("font_size", 26)
-	pwr_lbl.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT)
-	pwr_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_style_lbl(pwr_lbl, 26, DT.COLOR_CYAN_TECH_SOFT, HORIZONTAL_ALIGNMENT_RIGHT)
 	pwr_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	hbox.add_child(pwr_lbl)
 	block.add_child(hbox)
@@ -795,7 +1047,12 @@ func _build_tier_progress(current_tier: int) -> Control:
 	grid.columns = 5
 	grid.add_theme_constant_override("h_separation", 3)
 	var names := ["GRUNT", "VET", "ELITE", "CHAMP", "OVER"]
-	var vals := ["150", "260", "420", "720", "720+"]
+	# v1.5：阈值改读 PowerTiers.POWER_THRESHOLDS 单一源（原硬编码 [150,260,420,720]，改阈值会两处不同步）
+	var thresholds: Array = PowerTiers.POWER_THRESHOLDS if PowerTiers != null else [150, 260, 420, 720]
+	var vals: Array = []
+	for i in range(thresholds.size()):
+		vals.append(str(int(thresholds[i])))
+	vals.append(str(int(thresholds[thresholds.size() - 1])) + "+")  # 最后一档 "720+"
 	for i in range(5):
 		var cell := PanelContainer.new()
 		cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -819,15 +1076,11 @@ func _build_tier_progress(current_tier: int) -> Control:
 		vbox.alignment = BoxContainer.ALIGNMENT_CENTER
 		var n_lbl := Label.new()
 		n_lbl.text = names[i]
-		n_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		n_lbl.add_theme_font_size_override("font_size", 8)
-		n_lbl.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT if i == current_tier else (Color(0.6,0.65,0.75,0.8) if i < current_tier else Color(0.4,0.45,0.55,0.5)))
+		_style_lbl(n_lbl, 9, DT.COLOR_CYAN_TECH_SOFT if i == current_tier else (Color(0.6,0.65,0.75,0.8) if i < current_tier else Color(0.4,0.45,0.55,0.5)), HORIZONTAL_ALIGNMENT_CENTER, true, true)
 		vbox.add_child(n_lbl)
 		var v_lbl := Label.new()
 		v_lbl.text = vals[i]
-		v_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		v_lbl.add_theme_font_size_override("font_size", 7)
-		v_lbl.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.6))
+		_style_lbl(v_lbl, 8, Color(0.5, 0.55, 0.65, 0.6), HORIZONTAL_ALIGNMENT_CENTER, true)
 		vbox.add_child(v_lbl)
 		cell.add_child(vbox)
 		grid.add_child(cell)
@@ -840,8 +1093,7 @@ func _make_section_header(title: String, extra: String) -> Control:
 	hbox.add_theme_constant_override("separation", 6)
 	var t_lbl := Label.new()
 	t_lbl.text = title
-	t_lbl.add_theme_font_size_override("font_size", 10)
-	t_lbl.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85, 0.9))
+	_style_lbl(t_lbl, 11, Color(0.7, 0.75, 0.85, 0.9), -1, false, true)
 	hbox.add_child(t_lbl)
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -849,13 +1101,15 @@ func _make_section_header(title: String, extra: String) -> Control:
 	if not extra.is_empty():
 		var e_lbl := Label.new()
 		e_lbl.text = extra
-		e_lbl.add_theme_font_size_override("font_size", 9)
-		e_lbl.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT)
+		_style_lbl(e_lbl, 10, DT.COLOR_CYAN_TECH_SOFT, -1, false, true)
 		hbox.add_child(e_lbl)
 	return hbox
 
 
-## 构建 6 格属性网格（HP/轻攻/甲攻/空攻/装甲防/移速）
+## 构建 6 格属性网格（HP/轻攻/甲攻/空攻/装甲防/部署档）
+## v7.x 修复：原"移动速度"读 stats.move_speed（像素值，如 80/120/150），该字段是死属性
+## （单位走格子战术，实际机动由 deploy_speed 0-7 档决定）。改为显示 deploy_speed 档位
+## 更符合玩家直觉——数值 0-7 直观反映部署快慢（0=瞬间, 7=极快）。
 func _build_stat_grid(stats: Dictionary) -> Control:
 	var grid := GridContainer.new()
 	grid.columns = 3
@@ -867,7 +1121,7 @@ func _build_stat_grid(stats: Dictionary) -> Control:
 		["装甲攻击", "attack_armor", false],
 		["对空攻击", "attack_air", false],
 		["装甲防御", "defense_armor", false],
-		["移动速度", "move_speed", false],
+		["部署档", "deploy_speed", false],
 	]
 	for entry in entries:
 		var key_name: String = entry[1]
@@ -893,26 +1147,148 @@ func _make_stat_cell(label_text: String, value: int, is_hp: bool) -> Control:
 	vbox.add_theme_constant_override("separation", 2)
 	var lbl := Label.new()
 	lbl.text = label_text
-	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl.add_theme_font_size_override("font_size", 8)
-	lbl.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.85))
+	_style_lbl(lbl, 9, Color(0.5, 0.55, 0.65, 0.85), HORIZONTAL_ALIGNMENT_CENTER, true)
 	vbox.add_child(lbl)
 	var val_lbl := Label.new()
 	val_lbl.text = str(value)
-	val_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	val_lbl.add_theme_font_size_override("font_size", 14)
-	val_lbl.add_theme_color_override("font_color", DT.COLOR_GREEN_UP if is_hp else Color(0.95, 0.96, 0.98, 1))
+	_style_lbl(val_lbl, 16, DT.COLOR_GREEN_UP if is_hp else Color(0.95, 0.96, 0.98, 1), HORIZONTAL_ALIGNMENT_CENTER, true, true)
 	vbox.add_child(val_lbl)
 	cell.add_child(vbox)
 	return cell
 
 
 ## v1.4：显示底部操作台空态（未选模块时）
+## v1.5：同时收起效果模拟抽屉
 func _show_deck_empty() -> void:
 	if action_deck:
 		action_deck.visible = false
 	if deck_empty:
 		deck_empty.visible = true
+	_close_sim_drawer()
+
+
+## v1.5：效果模拟抽屉切换按钮回调
+func _on_sim_button_pressed() -> void:
+	if sim_drawer == null:
+		return
+	var will_open: bool = not sim_drawer.visible
+	if will_open:
+		_open_sim_drawer()
+	else:
+		_close_sim_drawer()
+
+
+## v1.5：打开效果模拟抽屉——填充当前选中模块的完整 effect 列表 + 同类对比 + 战力预估
+func _open_sim_drawer() -> void:
+	if sim_drawer == null or selected_mod_id.is_empty():
+		return
+	var mod_data: Dictionary = ModificationRegistry.get_data(selected_mod_id) if ModificationRegistry != null else {}
+	if mod_data.is_empty():
+		return
+	# 清空旧内容
+	for child in sim_drawer.get_children():
+		sim_drawer.remove_child(child)
+		child.free()
+	# 抽屉底色 + 内边距
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.04, 0.07, 0.12, 0.6)
+	sb.border_width_top = 1
+	sb.border_color = Color(0.024, 0.714, 0.831, 0.25)
+	sb.content_margin_left = 12
+	sb.content_margin_top = 8
+	sb.content_margin_right = 12
+	sb.content_margin_bottom = 8
+	sim_drawer.add_theme_stylebox_override("panel", sb)
+	# 三栏内容
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 14)
+	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# 栏1：完整效果列表（走 ModEffectLabels.translate）
+	var col1 := VBoxContainer.new()
+	col1.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col1.add_theme_constant_override("separation", 2)
+	col1.add_child(_make_sim_section_label("◆ 完整效果"))
+	var effects: Dictionary = mod_data.get("effects", {})
+	if effects.is_empty():
+		col1.add_child(_make_sim_kv("（无效果数据）", "", Color(0.5, 0.55, 0.65, 0.6)))
+	else:
+		for eff_key in effects.keys():
+			var eff_val = effects[eff_key]
+			var label_cn: String = ModEffectLabels.translate(str(eff_key)) if ModEffectLabels != null else str(eff_key)
+			var val_str: String = _format_effect_value(eff_key, eff_val)
+			col1.add_child(_make_sim_kv(label_cn, val_str, DT.COLOR_GREEN_UP))
+	hbox.add_child(col1)
+	# 栏2：同类已装对比（当前已装该冲突组的模块数 + 战力前后）
+	var col2 := VBoxContainer.new()
+	col2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col2.add_theme_constant_override("separation", 2)
+	col2.add_child(_make_sim_section_label("◆ 战力预估"))
+	var power_mult: float = float(mod_data.get("power_mult", 1.0))
+	var before_power: float = _cached_card_power
+	var after_power: float = before_power * power_mult
+	col2.add_child(_make_sim_kv("当前战力", str(int(before_power)) if before_power > 0 else "—", Color(0.55, 0.6, 0.7, 0.8)))
+	col2.add_child(_make_sim_kv("装上后", str(int(after_power)), DT.COLOR_GREEN_UP))
+	var delta: int = int(after_power - before_power)
+	col2.add_child(_make_sim_kv("变化", ("+" if delta >= 0 else "") + str(delta), DT.COLOR_GREEN_UP if delta >= 0 else DT.COLOR_RED_DOWN))
+	# 槽位占用
+	var mod_count: int = selected_card.mods.size() if (selected_card and "mods" in selected_card) else 0
+	col2.add_child(_make_sim_kv("槽位", "%d/9 → %d/9" % [mod_count, mod_count + 1], DT.COLOR_CYAN_TECH_SOFT))
+	hbox.add_child(col2)
+	sim_drawer.add_child(hbox)
+	sim_drawer.visible = true
+	if deck_sim_button:
+		deck_sim_button.text = "效果模拟 ↑"
+		deck_sim_button.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT)
+
+
+## v1.5：关闭效果模拟抽屉
+func _close_sim_drawer() -> void:
+	if sim_drawer != null:
+		sim_drawer.visible = false
+	if deck_sim_button:
+		deck_sim_button.text = "效果模拟 ↓"
+		deck_sim_button.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.8))
+
+
+## v1.5：抽屉小区块标题
+func _make_sim_section_label(text: String) -> Label:
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.add_theme_font_override("font", DT.get_title_font_bold())
+	lbl.add_theme_font_size_override("font_size", 10)
+	lbl.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85, 0.9))
+	return lbl
+
+
+## v1.5：抽屉 key-value 行（左标签右值）
+func _make_sim_kv(key: String, val: String, val_color: Color) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	var kl := Label.new()
+	kl.text = key
+	kl.add_theme_font_size_override("font_size", 10)
+	kl.add_theme_color_override("font_color", Color(0.55, 0.6, 0.7, 0.85))
+	kl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(kl)
+	var vl := Label.new()
+	vl.text = val
+	vl.add_theme_font_override("font", DT.get_title_font_bold())
+	vl.add_theme_font_size_override("font_size", 10)
+	vl.add_theme_color_override("font_color", val_color)
+	vl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	row.add_child(vl)
+	return row
+
+
+## v1.5：effect 值格式化（百分比/倍率/裸值）
+func _format_effect_value(eff_key: String, eff_val) -> String:
+	var v: float = float(eff_val)
+	# 加成型（多为 0.0~1.0 的小数）显示百分比；乘型（>=1）显示倍率
+	if absf(v) <= 1.0 and v != 0.0:
+		return ("%+.0f%%" if v > 0 else "%.0f%%") % (v * 100.0)
+	if v >= 1.0:
+		return "×%.2f" % v
+	return str(eff_val)
 
 
 ## v7.x 辅助：整数千分位格式化
@@ -929,6 +1305,8 @@ func _format_int(n: int) -> String:
 
 
 ## v7.x 辅助：取卡牌战力档位名（基于 EvolutionHelpers 估算）
+## v1.5：阈值判定改调 PowerTiers.get_tier_by_power（原硬编码 [150,260,420,720] if 链，
+## 改阈值会两处不同步）。返回英文档位名（资源条/档位 chip 用），中文走 PowerTiers.get_tier_name。
 func _get_card_tier_str(card: CardResource) -> String:
 	if card == null or BlueprintManager == null:
 		return ""
@@ -938,7 +1316,12 @@ func _get_card_tier_str(card: CardResource) -> String:
 	var power := EvolutionHelpers.estimate_power_score(key, BlueprintManager)
 	if power <= 0:
 		return ""
-	# 5 档阈值（与 power_tiers.gd 的 [150,260,420,720] 一致）
+	# 英文档位名（PowerTiers.TIER_NAMES 是中文，这里需英文显示）
+	var tier_en := ["GRUNT", "VETERAN", "ELITE", "CHAMPION", "OVERLORD"]
+	if PowerTiers != null:
+		var t: int = PowerTiers.get_tier_by_power(power)
+		return tier_en[clampi(t, 0, tier_en.size() - 1)]
+	# PowerTiers 不可用时回退硬编码（防御性）
 	if power < 150: return "GRUNT"
 	if power < 260: return "VETERAN"
 	if power < 420: return "ELITE"
@@ -993,7 +1376,31 @@ func _refresh_installed_list(installed_list: Control) -> void:
 			tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			tex_rect.custom_minimum_size = Vector2(20, 20)
+			tex_rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			hbox.add_child(tex_rect)
+		else:
+			# v1.5：无图标兜底——稀有度色边框 + 首字母（与改造库 mod-ico 一致，原 v1.4 直接省略不统一）
+			var rar_col := _rarity_color(rarity)
+			var ph := PanelContainer.new()
+			ph.custom_minimum_size = Vector2(20, 20)
+			ph.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			var ph_sb := StyleBoxFlat.new()
+			ph_sb.bg_color = Color(0.05, 0.09, 0.16, 0.6)
+			ph_sb.border_color = rar_col if enabled else (rar_col * Color(1, 1, 1, 0.4))
+			ph_sb.set_border_width_all(1)
+			ph_sb.set_corner_radius_all(3)
+			ph.add_theme_stylebox_override("panel", ph_sb)
+			var rar_letter := rarity.substr(0, 1).to_upper() if not rarity.is_empty() else "?"
+			var ph_lbl := Label.new()
+			ph_lbl.text = rar_letter
+			ph_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			ph_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			ph_lbl.add_theme_font_override("font", DT.get_title_font_bold())
+			ph_lbl.add_theme_font_size_override("font_size", 11)
+			ph_lbl.add_theme_color_override("font_color", rar_col if enabled else (rar_col * Color(1, 1, 1, 0.4)))
+			ph_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			ph.add_child(ph_lbl)
+			hbox.add_child(ph)
 
 		var lbl := Label.new()
 		var status_prefix: String = "✓ " if enabled else "⊘ "
@@ -1018,6 +1425,22 @@ func _refresh_installed_list(installed_list: Control) -> void:
 				_on_weapon_mod_toggled(captured_index, not enabled)
 			)
 			hbox.add_child(toggle_btn)
+
+		# v1.5：对所有已装项追加"替换"按钮（卸载 API 未实装，语义对齐 replace_modification）
+		# 点击后收起右栏详情、引导玩家从改造库选新模块；新模块若同冲突组会触发替换。
+		var replace_btn := Button.new()
+		replace_btn.text = "替换"
+		replace_btn.add_theme_font_size_override("font_size", 9)
+		replace_btn.custom_minimum_size = Vector2(40, 0)
+		replace_btn.tooltip_text = "替换为同槽位新模块（从改造库另选一个）。注意：原改造的安装消耗不返还。"
+		replace_btn.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.7))
+		replace_btn.add_theme_color_override("font_hover_color", DT.COLOR_AMBER)
+		replace_btn.pressed.connect(func():
+			# 引导玩家去改造库选新模块（选中后若同冲突组，install_modification 内部走 replace）
+			_show_deck_empty()
+			_show_result("从左侧改造库选择新模块以替换「%s」（原消耗不返还）" % String(mod_data.get("name", mod_id)))
+		)
+		hbox.add_child(replace_btn)
 
 		vbox.add_child(hbox)
 
@@ -1157,6 +1580,21 @@ func _show_mod_details(mod_data: Dictionary) -> void:
 		sb.set_border_width_all(1)
 		sb.set_corner_radius_all(4)
 		deck_icon.add_theme_stylebox_override("panel", sb)
+		# 图标内字母用 Rajdhani
+		var icon_inner := deck_icon.get_node_or_null("DeckIconLabel")
+		if icon_inner is Label:
+			icon_inner.add_theme_font_override("font", DT.get_title_font_bold())
+			icon_inner.add_theme_color_override("font_color", rarity_col)
+
+	# 操作台三个 Label 统一加载 Rajdhani 字体（设计稿核心视觉）
+	if deck_name_label:
+		deck_name_label.add_theme_font_override("font", DT.get_title_font_bold())
+	if deck_core_label:
+		deck_core_label.add_theme_font_override("font", DT.get_title_font())
+	if deck_req_label:
+		deck_req_label.add_theme_font_override("font", DT.get_body_font())
+	if deck_install_button:
+		deck_install_button.add_theme_font_override("font", DT.get_title_font_bold())
 
 	# 模块名 + 稀有度（mod_rarity 已在上方 DeckIcon 段声明）
 	if deck_name_label:
@@ -1469,6 +1907,86 @@ func show_panel() -> void:
 	visible = true
 	_refresh_card_list()
 
+## v1.5：键盘导航（面板获焦时触发，嵌入模式不会全局拦截宿主输入）
+## ↑↓：改造库行间移动选中；SPACE/ENTER：安装当前选中模块；ESC：逐级退出
+func _gui_input(event: InputEvent) -> void:
+	if not (event is InputEventKey) or not event.pressed or event.echo:
+		return
+	match event.keycode:
+		KEY_UP, KEY_DOWN:
+			if _navigate_mod_list(event.keycode == KEY_DOWN):
+				get_viewport().set_input_as_handled()
+		KEY_SPACE, KEY_ENTER:
+			if not selected_mod_id.is_empty():
+				_install_modification(selected_mod_id)
+				get_viewport().set_input_as_handled()
+		KEY_ESCAPE:
+			if _handle_escape():
+				get_viewport().set_input_as_handled()
+
+
+## v1.5：改造库 ↑↓ 导航，返回是否消费了按键
+func _navigate_mod_list(go_down: bool) -> bool:
+	if mod_list_container == null:
+		return false
+	var rows: Array = []
+	var indices: Array = []
+	for i in range(mod_list_container.get_child_count()):
+		var child = mod_list_container.get_child(i)
+		if child is Button and child.has_meta("mod_id"):
+			rows.append(child)
+			indices.append(i)
+	if rows.is_empty():
+		return false
+	# 找当前选中行位置
+	var cur_idx: int = -1
+	for i in range(rows.size()):
+		if str(rows[i].get_meta("mod_id")) == selected_mod_id:
+			cur_idx = i
+			break
+	var next_idx: int
+	if cur_idx < 0:
+		next_idx = 0
+	else:
+		next_idx = cur_idx + (1 if go_down else -1)
+		next_idx = clampi(next_idx, 0, rows.size() - 1)
+	if next_idx == cur_idx:
+		return false  # 已到头/尾
+	var mod_id: String = str(rows[next_idx].get_meta("mod_id"))
+	var mod_data: Dictionary = ModificationRegistry.get_data(mod_id) if ModificationRegistry != null else {}
+	if mod_data.is_empty():
+		return false
+	_on_mod_selected(mod_id, mod_data)
+	return true
+
+
+## v1.5：ESC 逐级退出（抽屉→选中模块→嵌入仅取消/独立关闭面板），返回是否消费
+func _handle_escape() -> bool:
+	# 1. 抽屉开→先关
+	if sim_drawer != null and sim_drawer.visible:
+		_close_sim_drawer()
+		return true
+	# 2. 有选中模块→回空态
+	if not selected_mod_id.is_empty():
+		selected_mod_id = ""
+		_show_deck_empty()
+		# 刷新改造库选中态视觉
+		if mod_list_container:
+			for child in mod_list_container.get_children():
+				if child is Button:
+					child.queue_redraw()
+		return true
+	# 3. 嵌入模式：不关闭面板（避免连带关闭宿主 card_info_panel），仅取消选中单位
+	if _embedded_mode:
+		if selected_card != null:
+			selected_card = null
+			_update_card_info()
+		return true
+	# 4. 独立模式：关闭面板
+	_on_close()
+	return true
+
+
 func _on_close() -> void:
 	closed.emit()
 
@@ -1510,28 +2028,20 @@ func _make_label(text: String, font_size: int, color: Color, expand: bool) -> La
 	return lbl
 
 func _get_unit_icon(card: CardResource) -> String:
-	match CardResource.get_combat_kind_name(card.combat_kind):
-		"步兵": return "⚔"
-		"装甲": return "◈"
-		"炮兵": return "◎"
-		"防空": return "↑"
-		"空军": return "✈"
-		"侦察": return "◉"
-		"工程": return "⚙"
-		"堡垒": return "■"
+	# v1.5：枚举只有 5 档（轻装/装甲/支援/空中/堡垒），旧代码匹配"步兵/炮兵/防空..."
+	# 导致除装甲外全 fallback。改用 combat_kind int 直接索引。
+	# 保留图形化 emoji（比单字更直观），键值与 CardResource.CombatKind 对齐。
+	match card.combat_kind:
+		0: return "⚔"   # LIGHT 轻装/步兵
+		1: return "◈"   # ARMOR 装甲
+		2: return "◎"   # SUPPORT 支援/炮兵
+		3: return "✈"   # AIR 空军
+		4: return "■"   # FORT 堡垒
 		_: return "⚔"
 
 func _get_kind_color(combat_kind: int) -> Color:
-	match CardResource.get_combat_kind_name(combat_kind):
-		"步兵": return Color(0.9, 0.3, 0.3)
-		"装甲": return Color(0.3, 0.55, 0.95)
-		"炮兵": return Color(0.95, 0.6, 0.2)
-		"防空": return Color(0.85, 0.8, 0.3)
-		"空军": return Color(0.3, 0.85, 0.95)
-		"侦察": return Color(0.4, 0.9, 0.4)
-		"工程": return Color(0.65, 0.45, 0.95)
-		"堡垒": return Color(0.6, 0.6, 0.65)
-		_: return Color(0.6, 0.6, 0.65)
+	# v1.5：收敛到 DesignTokens 单一源（旧本地 match 键名错位，除装甲外全灰）
+	return DT.get_kind_color(combat_kind)
 
 ## v7.x 稀有度配色统一到 GC.get_rarity_color（单一数据源），避免与背包卡牌/卡框配色不一致。
 func _rarity_color(rarity: String) -> Color:

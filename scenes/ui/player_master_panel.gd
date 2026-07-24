@@ -1,10 +1,10 @@
 extends Panel
 ## v7.x 玩家相位师详细面板（单分量公式）
 ##
-## 展示玩家相位师的总战力、星级、展示等级、相位仪/战斗卡战力分解/符文构成。
+## 展示玩家相位师的军团战力、星级、相位仪/战斗卡战力分解/符文构成。
 ## 入口：bottom_instrument_bar 的 PhaseLevelLabel 点击（main.gd 路由）。
 ##
-## v7.x 单分量公式：总战力 = Σ 每张装备卡加成后战力。
+## v7.x 单分量公式：军团战力 = Σ 每张装备卡加成后战力。
 ## 相位仪/符文/势力/词条的加成已体现在每张卡的战力里，不再单独显示分量。
 
 signal closed()
@@ -43,11 +43,10 @@ func refresh() -> void:
 	# ── 标题 ──
 	title_label.text = "相位师档案"
 	# ── 摘要行 ──
-	var lvl: int = int(ev.get("display_level", 15))
 	var stars: int = int(ev.get("stars", 3))
 	var star_name: String = str(ev.get("star_name", ""))
 	var raw: float = float(ev.get("raw_total_score", 0.0))
-	summary_label.text = "Lv.%d · %d★ %s\n总战力 %d" % [lvl, stars, star_name, int(raw)]
+	summary_label.text = "%d★ %s\n军团战力 %d" % [stars, star_name, int(raw)]
 	# ── 单分量公式：卡战力分解 ──
 	var lines: Array[String] = []
 	lines.append("═══ 战斗卡战力（Σ=%d）═══" % int(raw))

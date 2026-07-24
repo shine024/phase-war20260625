@@ -376,6 +376,9 @@ static func _apply_mod_stat_effects(stats: UnitStats, mods: Array) -> void:
 		"attack_fort_bonus": stats.attack_fort_bonus,
 		"splash_radius_bonus": stats.splash_radius_bonus,
 		"single_target_penalty": stats.single_target_penalty,
+		# v8: 兵种固定机制条件型攻击加成（供改造叠加）
+		"attack_light_bonus": stats.attack_light_bonus,
+		"attack_air_bonus": stats.attack_air_bonus,
 		# v6.9: move_speed 类改造重定向为部署延迟百分比（move_speed 种子值保留供写回，不被 effects 增量）
 		"deploy_delay_bonus": stats.deploy_delay_bonus,
 		# v7.x: 新机制字段（成长型 / debuff 型 / 兵种专属）
@@ -394,6 +397,9 @@ static func _apply_mod_stat_effects(stats: UnitStats, mods: Array) -> void:
 		"siege_bonus_pct": stats.siege_bonus_pct,
 		"urban_defense_bonus": stats.urban_defense_bonus,
 		"has_counter_battery": stats.has_counter_battery,
+		"counter_battery_shots": stats.counter_battery_shots,
+		# v8: 堡垒阵地坚守光环（供改造叠加）
+		"fort_shelter_aura": stats.fort_shelter_aura,
 		# v7.x 第二批次新机制字段
 		"revive_on_death": stats.revive_on_death,
 		"revive_hp_ratio": stats.revive_hp_ratio,
@@ -446,6 +452,9 @@ static func _apply_mod_stat_effects(stats: UnitStats, mods: Array) -> void:
 	stats.hp_regen = float(result.get("hp_regen", stats.hp_regen))
 	# v6.6: 改造条件型/乘数加成字段写回
 	stats.attack_fort_bonus = float(result.get("attack_fort_bonus", stats.attack_fort_bonus))
+	# v8: 兵种固定机制条件型攻击加成写回
+	stats.attack_light_bonus = float(result.get("attack_light_bonus", stats.attack_light_bonus))
+	stats.attack_air_bonus = float(result.get("attack_air_bonus", stats.attack_air_bonus))
 	stats.splash_radius_bonus = float(result.get("splash_radius_bonus", stats.splash_radius_bonus))
 	stats.single_target_penalty = float(result.get("single_target_penalty", stats.single_target_penalty))
 	# v6.9: 部署延迟百分比加成写回（move_speed 类改造经 registry 重定向后落到此字段）
@@ -466,6 +475,9 @@ static func _apply_mod_stat_effects(stats: UnitStats, mods: Array) -> void:
 	stats.siege_bonus_pct = float(result.get("siege_bonus_pct", stats.siege_bonus_pct))
 	stats.urban_defense_bonus = float(result.get("urban_defense_bonus", stats.urban_defense_bonus))
 	stats.has_counter_battery = bool(result.get("has_counter_battery", stats.has_counter_battery))
+	stats.counter_battery_shots = int(result.get("counter_battery_shots", stats.counter_battery_shots))
+	# v8: 堡垒阵地坚守光环写回
+	stats.fort_shelter_aura = float(result.get("fort_shelter_aura", stats.fort_shelter_aura))
 	# v7.x 第二批次新机制字段写回
 	stats.revive_on_death = bool(result.get("revive_on_death", stats.revive_on_death))
 	stats.revive_hp_ratio = float(result.get("revive_hp_ratio", stats.revive_hp_ratio))
@@ -546,10 +558,25 @@ static func _extract_aura_summary_to_meta(stats: UnitStats, mods: Array) -> void
 		stats.set_meta("mod_aura_summary", summary)
 
 
+## v8: 侦察卡 card_id 前缀（与 recon_mods.gd._CARD_PREFIXES 同源，复用权威列表）
+## 命中前缀的 LIGHT 卡是"侦察兵种"（拿潜入开局），否则是"步兵兵种"（拿巷战掩蔽）
+const _RECON_PREFIXES: Array = ["ww1_inf_cavalry", "cold_spetsnaz", "mod_ranger", "fut_spectre", "fut_inf_scout_mech", "mod_inf_scout_drone"]
+
+## 判定 card_id 是否为侦察兵种（复用 _RECON_PREFIXES 前缀匹配）
+static func _is_recon_card(card_id: String) -> bool:
+	if card_id.is_empty():
+		return false
+	for prefix in _RECON_PREFIXES:
+		if card_id.begins_with(prefix):
+			return true
+	return false
+
+
 ## 战斗定位固有修正（替代旧 apply_platform_innate_modifiers）
 ## v6.2: 防御维度与攻击维度对齐后，防御修正也改为对应维度
 ##       （装甲/堡垒擅长防装甲攻击 → defense_armor；空中擅长防空中攻击 → defense_air）
 ##       SUPPORT(2)/FORT(4) 旧值仍按其主类（LIGHT/ARMOR）处理，确保兼容未迁移数据。
+## v8: 注入 8 兵种固定机制（天生被动，写在 base 层，无需改造/技能树）
 static func apply_combat_kind_modifiers(stats: UnitStats) -> void:
 	if stats == null:
 		return
@@ -570,6 +597,27 @@ static func apply_combat_kind_modifiers(stats: UnitStats) -> void:
 			stats.dodge_chance = maxf(stats.dodge_chance, 0.18)
 		if sub == GC.UnitSubType.SUPPORT:
 			stats.max_hp *= 1.08  # 辅助单位（机枪巢/工兵）加HP
+		# ── v8 兵种固定机制：按子类分派（SUPPORT(2) 归入 is_light 主类）──
+		match sub:
+			GC.UnitSubType.NONE:
+				# 步兵 vs 侦察：都是 LIGHT/NONE，靠 card_id 前缀区分
+				#   侦察（命中 _RECON_PREFIXES）→ 潜入开局标记（实际减伤在 construct_unit 运行时读 _is_recon_unit）
+				#   步兵（不命中）→ 巷战掩蔽（受 ARMOR/AIR 攻击减伤 15%）
+				if _is_recon_card(stats.card_id):
+					stats.set_meta("is_recon_unit", true)  # 标记给 construct_unit 读取
+				else:
+					stats.urban_defense_bonus = maxf(stats.urban_defense_bonus, 0.15)
+			GC.UnitSubType.ARTILLERY:
+				# 火炮反炮兵：被攻击时标记攻击者，下 3 次射击优先打标记目标
+				stats.has_counter_battery = true
+				stats.counter_battery_shots = 3
+			GC.UnitSubType.ANTI_AIR:
+				# 防空空域封锁：对 AIR 伤害 +25%（索敌优先锁定 AIR 在 construct_unit_ai 处理）
+				stats.attack_air_bonus = maxf(stats.attack_air_bonus, 0.25)
+				stats.set_meta("is_anti_air_unit", true)  # 标记给索敌 AI 读取
+			GC.UnitSubType.SUPPORT:
+				# 工兵爆破专精：对 FORT/ARMOR 按攻击+最大HP 2%/击（siege_bonus_pct 已实装）
+				stats.siege_bonus_pct = maxf(stats.siege_bonus_pct, 0.02)
 	elif is_armor:
 		# 装甲擅长防装甲攻击
 		stats.defense_armor += 4.0
@@ -579,9 +627,21 @@ static func apply_combat_kind_modifiers(stats: UnitStats) -> void:
 			stats.defense_light += 4.0
 			stats.defense_air += 4.0
 			stats.max_hp *= 1.15
+			# ── v8 兵种固定机制：堡垒阵地坚守 ──
+			# 自身减伤 30%（复用 damage_reduction 字段，take_damage 已读）
+			stats.damage_reduction = maxf(stats.damage_reduction, 0.30)
+			# 地面友军减伤光环 10%（fort_shelter_aura → module_effect_handler 每 tick 扫描）
+			stats.fort_shelter_aura = maxf(stats.fort_shelter_aura, 0.10)
+		else:
+			# ── v8 兵种固定机制：装甲碾压 ──
+			# 对 LIGHT 类目标伤害 +20%（attack_light_bonus → get_attack_vs 叠加）
+			stats.attack_light_bonus = maxf(stats.attack_light_bonus, 0.20)
 	elif stats.combat_kind == 3:  # 空中：高机动，擅长防空中攻击
 		stats.dodge_chance = maxf(stats.dodge_chance, 0.12)
 		stats.defense_air += 2.0
+		# ── v8 兵种固定机制：空中突袭击速 ──
+		# 前 10s 攻速 ×1.5（标记给 construct_unit 运行时处理，避免此处改 attack_interval 被撤销逻辑覆盖）
+		stats.set_meta("is_air_assault", true)
 
 
 # ─────────────────────────────────────────────

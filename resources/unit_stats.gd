@@ -160,6 +160,14 @@ var armor_pen_vs_air: float = 0.0
 ## 此字段为额外的对堡垒特攻乘数：实际伤害 = attack_armor × (1 + attack_fort_bonus)
 var attack_fort_bonus: float = 0.0
 
+## v8: 条件型对轻装伤害加成（兵种固定机制：装甲碾压）
+## 与 attack_fort_bonus 同模式：实际伤害 = attack_light × (1 + attack_light_bonus)
+var attack_light_bonus: float = 0.0
+
+## v8: 条件型对空中伤害加成（兵种固定机制：防空空域封锁）
+## 实际伤害 = attack_air × (1 + attack_air_bonus)
+var attack_air_bonus: float = 0.0
+
 ## v6.6: 溅射半径加成（来自 splash_radius 改造，如子母弹/近炸引信）
 ## _apply_splash 的半径 = 80 × (1 + splash_radius_bonus)，默认 0 时与原硬编码行为一致
 var splash_radius_bonus: float = 0.0
@@ -253,6 +261,9 @@ var urban_defense_bonus: float = 0.0
 # ── 兵种专属：炮兵反击（被攻击时标记攻击者）──
 ## 是否启用炮兵反击（被攻击时给攻击者挂标记）
 var has_counter_battery: bool = false
+## v8: 反炮兵剩余优先射击次数（兵种固定机制：火炮反炮兵）
+## 被攻击标记攻击者后，下 N 次射击优先打标记目标；归零后清理标记回退常规索敌
+var counter_battery_shots: int = 0
 
 # ═══════════════════════════════════════════════════════════════
 #  v7.x 第二批次新机制字段（复活/爆反拦截/亡语/区域控制/相位护盾）
@@ -293,6 +304,12 @@ var slow_aura_pct: float = 0.0
 var slow_aura_radius: float = 0.0
 ## 指挥光环加成（范围内友军暴击/命中加成，0.15 = +15%）
 var command_aura_bonus: float = 0.0
+
+## v8: 堡垒阵地坚守光环（兵种固定机制：堡垒阵地坚守）
+## 范围内地面友军（非空中）受伤减免比例（0.10 = 减伤 10%）
+var fort_shelter_aura: float = 0.0
+## 堡垒光环半径（像素）
+var fort_shelter_radius: float = 250.0
 
 # ── 相位护盾（独立池分流）──
 ## 相位护盾池容量（伤害先扣相位池，池空才走常规护盾/hp）

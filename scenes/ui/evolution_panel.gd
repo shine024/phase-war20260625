@@ -452,31 +452,22 @@ func _format_int(n: int) -> String:
 
 
 ## v7.x 辅助：兵种图标
+## v1.5：旧 match 用"步兵/炮兵/防空"键名，但枚举只返回"轻装/装甲/支援/空中/堡垒"，
+## 除装甲外全 fallback。改用 combat_kind int 索引（与 CardResource.CombatKind 对齐）。
 func _get_unit_icon(card: CardResource) -> String:
-	match CardResource.get_combat_kind_name(card.combat_kind):
-		"步兵": return "⚔"
-		"装甲": return "◈"
-		"炮兵": return "◎"
-		"防空": return "↑"
-		"空军": return "✈"
-		"侦察": return "◉"
-		"工程": return "⚙"
-		"堡垒": return "■"
+	match card.combat_kind:
+		0: return "⚔"   # LIGHT 轻装/步兵
+		1: return "◈"   # ARMOR 装甲
+		2: return "◎"   # SUPPORT 支援/炮兵
+		3: return "✈"   # AIR 空军
+		4: return "■"   # FORT 堡垒
 		_: return "⚔"
 
 
 ## v7.x 辅助：兵种颜色
+## v1.5：收敛到 DesignTokens 单一源（旧本地 match 键名错位，除装甲外全灰）
 func _get_kind_color(combat_kind: int) -> Color:
-	match CardResource.get_combat_kind_name(combat_kind):
-		"步兵": return Color(0.9, 0.3, 0.3)
-		"装甲": return Color(0.3, 0.5, 0.9)
-		"炮兵": return Color(0.95, 0.6, 0.2)
-		"防空": return Color(0.85, 0.8, 0.3)
-		"空军": return Color(0.3, 0.85, 0.95)
-		"侦察": return Color(0.4, 0.9, 0.4)
-		"工程": return Color(0.65, 0.45, 0.95)
-		"堡垒": return Color(0.6, 0.6, 0.65)
-		_: return Color(0.6, 0.6, 0.65)
+	return DT.get_kind_color(combat_kind)
 
 
 ## 创建进化节点（对齐网页设计稿 evo-node 卡片样式）

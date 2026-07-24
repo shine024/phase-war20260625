@@ -135,6 +135,8 @@ static func on_tick(unit: Node, delta: float) -> void:
 	# v7.x 第二批：堡垒区域控制（每帧刷新范围内的 meta）
 	_apply_slow_aura(unit, stats)       # 区域减速光环
 	_apply_command_aura(unit, stats)    # 指挥光环
+	# v8: 堡垒阵地坚守光环（地面友军减伤）
+	_apply_fort_shelter_aura(unit, stats)
 	# v8.x: 雷场范围伤害（for_11_advanced_minefield 等的读取端复活）
 	# minefield_damage 此前写入 stats 但战斗侧零读取；现每 0.5s 对范围内敌方造成持续真实伤害
 	_apply_minefield_damage(unit, stats, delta)
@@ -704,6 +706,23 @@ static func _apply_command_aura(unit: Node, stats: UnitStats) -> void:
 		# 挂指挥 meta（持续 1 秒，on_tick 每帧刷新）
 		ally.set_meta("_command_aura_until", Time.get_ticks_msec() / 1000.0 + 1.0)
 		ally.set_meta("_command_aura_bonus", stats.command_aura_bonus)
+
+## v8: 堡垒阵地坚守光环——范围内地面友军（非空中）受伤减免
+## 复用 _apply_command_aura 的扫描+meta 模式，区别：排除 AIR 友军、挂减伤 meta
+static func _apply_fort_shelter_aura(unit: Node, stats: UnitStats) -> void:
+	if stats.fort_shelter_aura <= 0.0:
+		return
+	var allies: Array = _find_nearby_allies(unit, stats.fort_shelter_radius)
+	for ally in allies:
+		if ally == null or not is_instance_valid(ally):
+			continue
+		# 排除空中单位（堡垒保护地面部队，不保护头顶目标）
+		var ally_stats = _get_unit_stats(ally)
+		if ally_stats != null and ally_stats.combat_kind == GC.CombatKind.AIR:
+			continue
+		# 挂堡垒庇护 meta（持续 1 秒，on_tick 每帧刷新）
+		ally.set_meta("_fort_shelter_until", Time.get_ticks_msec() / 1000.0 + 1.0)
+		ally.set_meta("_fort_shelter_bonus", stats.fort_shelter_aura)
 
 ## v8.x: 雷场范围伤害（minefield_damage 的读取端复活）
 ## for_11_advanced_minefield 等写入 stats.minefield_damage 后此前战斗侧零读取。

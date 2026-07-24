@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase War - 战斗界面优化 v4 (商业UI方案)</title>
+<style>
+  *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+  :root {
+    /* 阵营色（核心） */
+    --ally: #00ff9d;        /* 我方 青绿 */
+    --ally-dim: #00aa66;
+    --enemy: #ff3b4a;       /* 敌方 红 */
+    --enemy-dim: #aa2230;
+    --skill: #b46cff;       /* 技能 紫 */
+    --skill-dim: #6a3aa8;
+    --resource: #ffd23f;    /* 资源 金 */
+    --danger: #ff8c1a;      /* 危险 橙 */
+    --ui-deep: #0a1428;     /* 普通UI 深蓝 */
+    --ui-panel: rgba(12, 24, 48, 0.92);
+    --ui-light: #1a3050;
+    --text: #e8f0ff;
+    --text-dim: #7a8aa0;
+    --text-faint: #4a5868;
+  }
+  body {
+    background: #050810;
+    color: var(--text);
+    font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+    overflow-x: hidden;
+  }
+
+  /* ===== 页头说明 ===== */
+  .header {
+    text-align:center; padding:18px 20px;
+    border-bottom:1px solid rgba(0,255,157,0.2);
+    background:rgba(0,0,0,0.5);
+  }
+  .header h1 { font-size:18px; color:var(--ally); letter-spacing:3px; }
+  .header h1 small { color:var(--text-dim); font-size:12px; letter-spacing:0; margin-left:8px; font-weight:normal; }
+  .header p { font-size:12px; color:var(--text-dim); margin-top:6px; }
+
+  .section { max-width:1280px; margin:0 auto 20px; padding:0 20px; }
+  .section h2 { font-size:13px; color:var(--resource); margin-bottom:10px; letter-spacing:1px; }
+  .section h2 .num { color:var(--ally); margin-right:6px; }
+
+  /* 比例对照表 */
+  .ratio-table { width:100%; border-collapse:collapse; font-size:12px; background:var(--ui-panel); border:1px solid rgba(0,255,157,0.2); border-radius:6px; overflow:hidden; }
+  .ratio-table th { background:rgba(0,255,157,0.1); color:var(--ally); padding:8px 12px; text-align:left; }
+  .ratio-table td { padding:8px 12px; border-top:1px solid rgba(255,255,255,0.05); color:var(--text-dim); }
+  .bar-cell { display:flex; align-items:center; gap:6px; }
+  .bar { height:8px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden; flex:1; }
+  .bar > div { height:100%; border-radius:4px; }
+
+  /* ===== 战斗场景容器 ===== */
+  .preview-wrapper { display:flex; justify-content:center; padding:0 20px 20px; }
+  .preview-scale { transform-origin:top center; }
+  .battle-scene {
+    position:relative; width:1280px; height:720px;
+    background:
+      /* 远景天空 */
+      linear-gradient(180deg, #1a2438 0%, #2a3548 25%, #3a4858 45%, #48505a 60%, #38403a 75%, #2a2820 90%, #1a1812 100%);
+    border:2px solid rgba(0,255,157,0.3);
+    border-radius:8px;
+    overflow:hidden;
+    font-size:12px;
+  }
+  /* 远处城市剪影 */
+  .skyline {
+    position:absolute; bottom:288px; left:0; right:0; height:120px;
+    background:
+      linear-gradient(180deg, transparent 0%, transparent 60%, rgba(10,20,40,0.5) 100%),
+      radial-gradient(ellipse 60px 80px at 8% 70%, #141c2e, transparent 70%),
+      radial-gradient(ellipse 80px 110px at 22% 60%, #182030, transparent 70%),
+      radial-gradient(ellipse 70px 90px at 38% 75%, #141820, transparent 70%),
+      radial-gradient(ellipse 90px 120px at 58% 65%, #1a2230, transparent 70%),
+      radial-gradient(ellipse 75px 100px at 76% 70%, #141c28, transparent 70%),
+      radial-gradient(ellipse 65px 85px at 92% 75%, #181c28, transparent 70%);
+    z-index:1;
+  }
+  /* 地面渐变（战场区） */
+  .ground {
+    position:absolute; bottom:0; left:0; right:0; height:432px;
+    background:
+      linear-gradient(180deg, transparent 0%, rgba(40,45,30,0.4) 20%, rgba(50,55,35,0.7) 50%, rgba(35,38,25,0.9) 100%);
+    z-index:2;
+  }
+  /* 战场网格底纹 */
+  .grid-floor {
+    position:absolute; bottom:108px; left:0; right:0; height:324px;
+    background-image:
+      linear-gradient(rgba(0,255,157,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,157,0.05) 1px, transparent 1px);
+    background-size:80px 54px;
+    z-index:2;
+    perspective:400px;
+  }
+
+  /* ===== 顶部HUD（占15% = 108px 高度分配的一部分）===== */
+  .top-hud {
+    position:absolute; top:0; left:0; right:0;
+    z-index:100;
+    display:flex; align-items:flex-start; justify-content:space-between;
+    padding:10px 20px 0;
+  }
+  /* 左：基地状态卡 */
+  .base-card {
+    width:190px;
+    background:var(--ui-panel);
+    border:1px solid rgba(0,255,157,0.35);
+    border-left:3px solid var(--ally);
+    border-radius:6px;
+    padding:8px 10px;
+  }
+  .base-card .base-title { font-size:11px; color:var(--ally); font-weight:600; margin-bottom:6px; display:flex; justify-content:space-between; }
+  .stat-line { font-size:11px; color:var(--text-dim); margin-bottom:4px; display:flex; justify-content:space-between; align-items:center; }
+  .stat-line .v { color:var(--text); font-variant-numeric:tabular-nums; font-weight:600; }
+  .stat-line .v.warn { color:var(--danger); }
+  .mini-bar { width:100%; height:6px; background:rgba(255,255,255,0.08); border-radius:3px; overflow:hidden; margin:2px 0 6px; }
+  .mini-bar > div { height:100%; border-radius:3px; }
+  .mini-bar.hp > div { background:linear-gradient(90deg, var(--ally-dim), var(--ally)); }
+  .mini-bar.energy > div { background:linear-gradient(90deg, #ffaa00, var(--resource)); }
+  .buff-row { display:flex; gap:4px; flex-wrap:wrap; margin-top:4px; }
+  .buff-chip { font-size:9px; padding:1px 5px; border-radius:3px; background:rgba(0,255,157,0.15); color:var(--ally); border:1px solid rgba(0,255,157,0.3); }
+
+  /* 中：关卡+波次进度 */
+  .center-hud {
+    flex:1; text-align:center;
+    padding-top:4px;
+  }
+  .level-no { font-size:24px; font-weight:800; color:var(--resource); letter-spacing:4px; text-shadow:0 0 12px rgba(255,210,63,0.6); }
+  .wave-info { font-size:11px; color:var(--text-dim); margin-top:2px; }
+  .wave-info .cur { color:var(--text); font-weight:600; }
+  .wave-bar { width:280px; height:8px; background:rgba(255,255,255,0.1); border-radius:4px; margin:6px auto 0; overflow:hidden; position:relative; }
+  .wave-bar > div { height:100%; background:linear-gradient(90deg, var(--ally), var(--resource), var(--enemy)); border-radius:4px; }
+  .wave-marker { position:absolute; top:-2px; width:2px; height:12px; background:var(--text); opacity:0.6; }
+  .wave-labels { display:flex; justify-content:space-between; width:280px; margin:2px auto 0; font-size:9px; color:var(--text-faint); }
+
+  /* 右：资源（战斗相关） */
+  .right-hud { width:170px; display:flex; flex-direction:column; gap:6px; align-items:flex-end; }
+  .res-pill {
+    display:flex; align-items:center; gap:6px;
+    background:var(--ui-panel); border:1px solid rgba(255,210,63,0.3);
+    border-radius:14px; padding:4px 10px;
+    font-size:12px; font-weight:600;
+  }
+  .res-pill .ico { font-size:14px; }
+  .res-pill.energy { border-color:rgba(180,108,255,0.4); }
+  .res-pill.energy .v { color:var(--skill); }
+  .res-pill .v { color:var(--resource); }
+  .res-pill.gold .v { color:var(--resource); }
+  .multi-pill { background:rgba(255,140,26,0.15); border-color:rgba(255,140,26,0.4); }
+  .multi-pill .v { color:var(--danger); }
+
+  /* ===== 战场单位区（核心 70%）===== */
+  .battle-zone {
+    position:absolute; top:108px; left:0; right:0; bottom:180px;
+    z-index:50;
+  }
+
+  /* 我方基地（左下） */
+  .my-base {
+    position:absolute; left:40px; bottom:30px;
+    width:80px; text-align:center;
+    z-index:55;
+  }
+  .base-icon {
+    width:72px; height:72px; margin:0 auto;
+    background:linear-gradient(135deg, rgba(0,255,157,0.3), rgba(0,170,102,0.5));
+    border:2px solid var(--ally);
+    border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:28px;
+    box-shadow:0 0 16px rgba(0,255,157,0.4);
+  }
+  .base-label { font-size:10px; color:var(--ally); margin-top:2px; font-weight:600; }
+  .base-hp { width:72px; height:5px; background:rgba(255,255,255,0.1); border-radius:2px; margin:3px auto 0; overflow:hidden; }
+  .base-hp > div { height:100%; background:var(--ally); }
+
+  /* 敌方基地（右下） */
+  .enemy-base {
+    position:absolute; right:40px; bottom:30px;
+    width:80px; text-align:center;
+    z-index:55;
+  }
+  .enemy-base .base-icon {
+    background:linear-gradient(135deg, rgba(255,59,74,0.3), rgba(170,34,48,0.5));
+    border-color:var(--enemy);
+    box-shadow:0 0 16px rgba(255,59,74,0.4);
+  }
+  .enemy-base .base-label { color:var(--enemy); }
+  .enemy-base .base-hp > div { background:var(--enemy); }
+
+  /* 单位 */
+  .unit {
+    position:absolute;
+    width:64px; text-align:center;
+    z-index:60;
+  }
+  .unit-sprite {
+    width:54px; height:64px; margin:0 auto;
+    background:linear-gradient(180deg, rgba(20,40,30,0.9), rgba(10,25,18,0.9));
+    border:2px solid var(--ally);
+    border-radius:6px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:26px;
+    position:relative;
+  }
+  .unit.ally .unit-sprite { border-color:var(--ally); box-shadow:0 0 8px rgba(0,255,157,0.4); }
+  .unit.enemy .unit-sprite {
+    background:linear-gradient(180deg, rgba(40,15,18,0.9), rgba(25,8,10,0.9));
+    border-color:var(--enemy);
+    box-shadow:0 0 8px rgba(255,59,74,0.4);
+  }
+  .unit.selected .unit-sprite {
+    box-shadow:0 0 0 3px rgba(0,255,157,0.5), 0 0 16px rgba(0,255,157,0.6);
+  }
+  /* 选中圈（地面） */
+  .selection-ring {
+    position:absolute; bottom:-6px; left:50%; transform:translateX(-50%);
+    width:60px; height:14px;
+    border:2px solid var(--ally);
+    border-radius:50%;
+    background:radial-gradient(ellipse, rgba(0,255,157,0.3), transparent 70%);
+    opacity:0; transition:opacity 0.2s;
+  }
+  .unit.selected .selection-ring { opacity:1; }
+
+  /* 单位顶部信息 */
+  .unit-top {
+    position:absolute; top:-42px; left:50%; transform:translateX(-50%);
+    width:62px; text-align:center;
+  }
+  .unit-name { font-size:9px; color:var(--text); white-space:nowrap; text-shadow:0 1px 2px #000; }
+  .unit.ally .unit-name { color:var(--ally); }
+  .unit.enemy .unit-name { color:var(--enemy); }
+  .unit-hp-bar { width:54px; height:5px; background:rgba(0,0,0,0.6); border-radius:2px; margin:2px auto; overflow:hidden; border:1px solid rgba(255,255,255,0.15); }
+  .unit-hp-bar > div { height:100%; border-radius:2px; }
+  .unit.ally .unit-hp-bar > div { background:linear-gradient(90deg, var(--ally-dim), var(--ally)); }
+  .unit.enemy .unit-hp-bar > div { background:linear-gradient(90deg, var(--enemy-dim), var(--enemy)); }
+  .unit-hp-bar.low > div { background:linear-gradient(90deg, #aa3030, var(--danger)) !important; animation:pulseRed 0.8s infinite; }
+  @keyframes pulseRed { 0%,100%{opacity:1;} 50%{opacity:0.5;} }
+  .unit-hp-text { font-size:8px; color:var(--text); font-variant-numeric:tabular-nums; }
+
+  /* 等级徽章 */
+  .lvl-badge {
+    position:absolute; top:-4px; right:-6px;
+    background:var(--resource); color:#000;
+    font-size:9px; font-weight:700;
+    padding:1px 4px; border-radius:3px;
+    border:1px solid rgba(0,0,0,0.4);
+  }
+  /* 攻击范围圈 */
+  .range-circle {
+    position:absolute; left:50%; top:50%;
+    width:180px; height:60px;
+    transform:translate(-50%, -50%);
+    border:1px dashed rgba(0,255,157,0.25);
+    border-radius:50%;
+    pointer-events:none;
+    z-index:-1;
+  }
+
+  /* 伤害数字（漂浮） */
+  .dmg-float {
+    position:absolute; font-size:14px; font-weight:700;
+    font-variant-numeric:tabular-nums;
+    text-shadow:0 2px 4px #000, 0 0 2px #000;
+    pointer-events:none;
+    z-index:200;
+  }
+  .dmg-normal { color:#fff; }
+  .dmg-crit { color:var(--resource); font-size:18px; }
+  .dmg-crit::before { content:"⚡"; font-size:10px; vertical-align:top; }
+  .dmg-shield { color:var(--skill); }
+  .dmg-shield::before { content:"🛡"; font-size:10px; }
+
+  /* 部署网格（左下我方侧） */
+  .deploy-grid {
+    position:absolute; left:130px; bottom:20px;
+    display:grid; grid-template-columns:repeat(4, 1fr); gap:6px;
+    z-index:45;
+  }
+  .deploy-cell {
+    width:44px; height:44px;
+    border:1px dashed rgba(0,255,157,0.3);
+    border-radius:4px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:18px;
+    color:rgba(0,255,157,0.4);
+    transition:all 0.2s;
+  }
+  .deploy-cell.available {
+    border-style:solid;
+    border-color:var(--ally);
+    background:rgba(0,255,157,0.1);
+    color:var(--ally);
+    box-shadow:0 0 6px rgba(0,255,157,0.3);
+    cursor:pointer;
+  }
+  .deploy-cell.occupied {
+    border-color:var(--ally-dim);
+    background:rgba(0,170,102,0.2);
+    opacity:0.5;
+  }
+  .deploy-cell.blocked {
+    border-color:var(--enemy);
+    background:rgba(255,59,74,0.1);
+    color:var(--enemy);
+  }
+  .deploy-cell:hover.available { background:rgba(0,255,157,0.25); transform:scale(1.05); }
+
+  /* ===== 底部操作区（占15% = 108px）===== */
+  .bottom-hud {
+    position:absolute; bottom:0; left:0; right:0;
+    height:180px;
+    z-index:100;
+    display:flex; flex-direction:column;
+  }
+
+  /* 上：卡牌栏（90px） */
+  .card-bar {
+    height:108px;
+    display:flex; align-items:center; gap:6px;
+    padding:6px 20px;
+    background:linear-gradient(0deg, rgba(15,10,30,0.95) 0%, rgba(20,15,40,0.7) 100%);
+    border-top:1px solid rgba(180,108,255,0.2);
+  }
+  .card-slot {
+    width:72px; height:96px;
+    background:linear-gradient(180deg, rgba(30,20,50,0.9), rgba(15,10,30,0.9));
+    border:1px solid rgba(180,108,255,0.3);
+    border-radius:6px;
+    position:relative;
+    overflow:hidden;
+    cursor:pointer;
+    transition:all 0.15s;
+    flex-shrink:0;
+  }
+  .card-slot:hover { transform:translateY(-4px); border-color:var(--skill); box-shadow:0 -4px 12px rgba(180,108,255,0.4); }
+  .card-slot.deployable { border-color:var(--ally); box-shadow:0 0 8px rgba(0,255,157,0.3); }
+  .card-slot.deployable:hover { border-color:var(--ally); box-shadow:0 -4px 12px rgba(0,255,157,0.5); }
+
+  .card-cost {
+    position:absolute; top:3px; left:3px;
+    width:20px; height:20px;
+    background:var(--resource); color:#000;
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:11px; font-weight:700;
+    border:1px solid rgba(0,0,0,0.4);
+    z-index:3;
+  }
+  .card-cost.unaffordable { background:#555; color:#999; }
+  .card-img {
+    width:100%; height:56px;
+    background:linear-gradient(180deg, #3a2a55, #1a1230);
+    display:flex; align-items:center; justify-content:center;
+    font-size:26px;
+    border-bottom:1px solid rgba(180,108,255,0.2);
+  }
+  .card-name { font-size:9px; color:var(--text); text-align:center; padding:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  /* 冷却遮罩 */
+  .card-cooldown {
+    position:absolute; top:24px; left:0; right:0; bottom:0;
+    background:rgba(0,0,0,0.7);
+    color:#fff;
+    display:flex; align-items:center; justify-content:center;
+    font-size:18px; font-weight:700;
+    z-index:2;
+    clip-path:polygon(0 60%, 100% 60%, 100% 100%, 0 100%);
+  }
+  .card-count {
+    position:absolute; bottom:2px; right:3px;
+    font-size:9px; color:var(--skill);
+    background:rgba(0,0,0,0.6); padding:0 3px; border-radius:2px;
+  }
+
+  .card-divider { width:1px; height:60px; background:rgba(180,108,255,0.2); margin:0 2px; flex-shrink:0; }
+
+  /* 下：战斗菜单（52px） */
+  .battle-menu {
+    height:52px;
+    display:flex; align-items:center; gap:4px;
+    padding:0 20px;
+    background:rgba(8,14,28,0.98);
+    border-top:1px solid rgba(0,255,157,0.2);
+  }
+  .menu-btn {
+    display:flex; align-items:center; gap:6px;
+    padding:6px 14px;
+    border-radius:6px;
+    cursor:pointer;
+    transition:all 0.15s;
+    font-size:12px;
+    color:var(--text-dim);
+  }
+  .menu-btn .ico { font-size:15px; }
+  .menu-btn:hover { background:rgba(0,255,157,0.1); color:var(--text); }
+  .menu-btn.primary { background:rgba(0,255,157,0.15); border:1px solid rgba(0,255,157,0.4); color:var(--ally); }
+  .menu-btn.warn { background:rgba(255,140,26,0.15); border:1px solid rgba(255,140,26,0.4); color:var(--danger); }
+  .menu-btn.danger { background:rgba(255,59,74,0.15); border:1px solid rgba(255,59,74,0.4); color:var(--enemy); }
+  .menu-spacer { flex:1; }
+  .speed-btn {
+    width:36px; height:36px; border-radius:6px;
+    background:rgba(255,210,63,0.15); border:1px solid rgba(255,210,63,0.4);
+    display:flex; align-items:center; justify-content:center;
+    font-size:12px; color:var(--resource); font-weight:700;
+    cursor:pointer;
+  }
+  .speed-btn:hover { background:rgba(255,210,63,0.25); }
+
+  /* 右侧技能按钮（替代原能量球） */
+  .skill-area {
+    position:absolute; right:20px; top:50%; transform:translateY(-30%);
+    z-index:95;
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .skill-btn {
+    width:64px; height:64px;
+    background:linear-gradient(135deg, rgba(60,30,100,0.9), rgba(30,15,60,0.9));
+    border:2px solid var(--skill);
+    border-radius:10px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    position:relative;
+    cursor:pointer;
+    transition:all 0.2s;
+  }
+  .skill-btn:hover { box-shadow:0 0 16px rgba(180,108,255,0.6); transform:scale(1.05); }
+  .skill-btn.ready { animation:skillReady 1.5s infinite; }
+  @keyframes skillReady { 0%,100%{box-shadow:0 0 8px rgba(180,108,255,0.4);} 50%{box-shadow:0 0 20px rgba(180,108,255,0.8);} }
+  .skill-ico { font-size:24px; }
+  .skill-name { font-size:9px; color:var(--text); margin-top:1px; }
+  .skill-cost {
+    position:absolute; bottom:-6px; right:-6px;
+    background:var(--skill); color:#fff;
+    font-size:10px; font-weight:700;
+    padding:1px 5px; border-radius:8px;
+    border:1px solid rgba(0,0,0,0.5);
+  }
+  .skill-cd-overlay {
+    position:absolute; top:0; left:0; right:0; bottom:0;
+    background:rgba(0,0,0,0.7);
+    border-radius:10px;
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-size:18px; font-weight:700;
+  }
+  .skill-range-hint {
+    position:absolute; top:50%; left:-8px; transform:translateY(-50%);
+    width:0; height:0;
+    border-top:6px solid transparent;
+    border-bottom:6px solid transparent;
+    border-right:8px solid var(--skill);
+    opacity:0; transition:opacity 0.2s;
+  }
+  .skill-btn:hover .skill-range-hint { opacity:1; }
+
+  /* ===== 设计规范卡 ===== */
+  .legend-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(380px, 1fr)); gap:12px; }
+  .legend-card {
+    background:var(--ui-panel); border:1px solid rgba(0,255,157,0.2); border-radius:6px;
+    padding:12px 16px;
+  }
+  .legend-card h3 { font-size:12px; color:var(--ally); margin-bottom:8px; }
+  .legend-card ul { list-style:none; font-size:11px; color:var(--text-dim); line-height:1.9; }
+  .legend-card li::before { content:"▸ "; color:var(--ally); }
+  .sw { display:inline-block; width:12px; height:12px; border-radius:2px; vertical-align:middle; margin-right:4px; border:1px solid rgba(255,255,255,0.2); }
+
+  /* 决策优先级 */
+  .prio-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; }
+  .prio-card {
+    background:var(--ui-panel); border-radius:6px; padding:14px;
+    border-top:3px solid;
+  }
+  .prio-card.p1 { border-top-color:var(--enemy); }
+  .prio-card.p2 { border-top-color:var(--danger); }
+  .prio-card.p3 { border-top-color:var(--skill); }
+  .prio-card h3 { font-size:12px; margin-bottom:8px; display:flex; align-items:center; gap:6px; }
+  .prio-card.p1 h3 { color:var(--enemy); }
+  .prio-card.p2 h3 { color:var(--danger); }
+  .prio-card.p3 h3 { color:var(--skill); }
+  .prio-card ol { padding-left:18px; font-size:11px; color:var(--text-dim); line-height:1.8; }
+  .star { color:var(--resource); font-size:10px; }
+
+  /* 3秒决策目标 */
+  .goal-box {
+    background:linear-gradient(135deg, rgba(0,255,157,0.08), rgba(180,108,255,0.08));
+    border:1px solid rgba(0,255,157,0.3);
+    border-radius:8px;
+    padding:16px 20px;
+  }
+  .goal-box h3 { color:var(--ally); font-size:13px; margin-bottom:10px; }
+  .goal-checks { display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; font-size:11px; color:var(--text-dim); }
+  .goal-checks div { padding:8px; background:rgba(0,0,0,0.3); border-radius:4px; border-left:2px solid var(--ally); }
+  .goal-checks div b { color:var(--text); display:block; margin-bottom:2px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>⚔ Phase War 战斗界面优化 v4 <small>· 商业UI方案 · 决策效率优先</small></h1>
+  <p>布局比例 70/15/15 · 阵营色体系 · 卡牌费用+冷却 · 战斗菜单替代主菜单 · 技能按钮化 · 部署网格三态 · 伤害数字分层</p>
+</div>
+
+<!-- 比例对照 -->
+<div class="section">
+  <h2><span class="num">①</span>布局比例重构（核心）</h2>
+  <table class="ratio-table">
+    <thead><tr><th style="width:18%;">区域</th><th style="width:35%;">原版</th><th style="width:35%;">v4 优化</th><th>占比</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>战斗区域</td>
+        <td><div class="bar-cell"><div class="bar"><div style="width:45%;background:var(--enemy-dim);"></div></div>45%</div></td>
+        <td><div class="bar-cell"><div class="bar"><div style="width:70%;background:var(--ally);"></div></div><strong style="color:var(--ally);">70%</strong></div></td>
+        <td style="color:var(--ally);">+25%</td>
+      </tr>
+      <tr>
+        <td>状态/HUD</td>
+        <td><div class="bar-cell"><div class="bar"><div style="width:20%;background:#666;"></div></div>20%（混乱堆叠）</div></td>
+        <td><div class="bar-cell"><div class="bar"><div style="width:15%;background:var(--resource);"></div></div>15%（分层）</div></td>
+        <td style="color:var(--danger);">-5%</td>
+      </tr>
+      <tr>
+        <td>操作区域</td>
+        <td><div class="bar-cell"><div class="bar"><div style="width:35%;background:#666;"></div></div>35%（含主菜单）</div></td>
+        <td><div class="bar-cell"><div class="bar"><div style="width:15%;background:var(--skill);"></div></div>15%（仅战斗相关）</div></td>
+        <td style="color:var(--danger);">-20%</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== 主设计稿 ===== -->
+<div class="preview-wrapper">
+  <div class="preview-scale">
+    <div class="battle-scene">
+
+      <div class="skyline"></div>
+      <div class="ground"></div>
+      <div class="grid-floor"></div>
+
+      <!-- ========== 顶部HUD ========== -->
+      <div class="top-hud">
+        <!-- 基地状态卡（左） -->
+        <div class="base-card">
+          <div class="base-title"><span>🏛 我方基地</span><span style="font-size:9px;color:var(--text-faint);">展开 ▾</span></div>
+          <div class="stat-line"><span>❤️ HP</span><span class="v warn">8,500/10,000</span></div>
+          <div class="mini-bar hp"><div style="width:85%;"></div></div>
+          <div class="stat-line"><span>⚡ 能量</span><span class="v">120/200</span></div>
+          <div class="mini-bar energy"><div style="width:60%;"></div></div>
+          <div class="stat-line"><span>👥 单位</span><span class="v">2/7</span></div>
+          <div class="buff-row">
+            <span class="buff-chip">⚔攻击+15%</span>
+            <span class="buff-chip">🛡防御+10%</span>
+          </div>
+        </div>
+
+        <!-- 关卡+波次（中） -->
+        <div class="center-hud">
+          <div class="level-no">第 49 关</div>
+          <div class="wave-info">第 <span class="cur">15</span> / 30 波 · 剩余 12s</div>
+          <div class="wave-bar">
+            <div style="width:50%;"></div>
+            <div class="wave-marker" style="left:50%;"></div>
+          </div>
+          <div class="wave-labels"><span>开始</span><span style="color:var(--danger);">▼BOSS</span><span>结束</span></div>
+        </div>
+
+        <!-- 资源（右） -->
+        <div class="right-hud">
+          <div class="res-pill gold"><span class="ico">🪙</span><span class="v">1,280</span></div>
+          <div class="res-pill energy"><span class="ico">⚡</span><span class="v">120</span><span style="color:var(--text-faint);font-size:10px;">/200</span></div>
+          <div class="res-pill multi-pill"><span class="ico">🔥</span><span class="v">x2.0</span></div>
+        </div>
+      </div>
+
+      <!-- ========== 战场单位区 ========== -->
+      <div class="battle-zone">
+
+        <!-- 我方基地 -->
+        <div class="my-base">
+          <div class="base-icon">🏛</div>
+          <div class="base-hp"><div style="width:85%;"></div></div>
+          <div class="base-label">基地 8500</div>
+        </div>
+
+        <!-- 敌方基地 -->
+        <div class="enemy-base">
+          <div class="base-icon">🏚</div>
+          <div class="base-hp"><div style="width:60%;"></div></div>
+          <div class="base-label">敌方 6000</div>
+        </div>
+
+        <!-- 我方单位 -->
+        <div class="unit ally selected" style="left:220px; bottom:80px;">
+          <div class="selection-ring"></div>
+          <div class="range-circle"></div>
+          <div class="unit-top">
+            <div class="unit-name">77mm火炮</div>
+            <div class="unit-hp-bar"><div style="width:85%;"></div></div>
+            <div class="unit-hp-text">4250</div>
+          </div>
+          <div class="unit-sprite">💥<div class="lvl-badge">12</div></div>
+        </div>
+
+        <div class="unit ally" style="left:320px; bottom:50px;">
+          <div class="selection-ring"></div>
+          <div class="unit-top">
+            <div class="unit-name">FT-17</div>
+            <div class="unit-hp-bar"><div style="width:100%;"></div></div>
+            <div class="unit-hp-text">1500</div>
+          </div>
+          <div class="unit-sprite">🛡<div class="lvl-badge">5</div></div>
+        </div>
+
+        <!-- 伤害数字示例 -->
+        <div class="dmg-float dmg-normal" style="left:240px; bottom:160px;">-292</div>
+        <div class="dmg-float dmg-crit" style="left:560px; bottom:180px;">-580</div>
+        <div class="dmg-float dmg-shield" style="left:880px; bottom:150px;">-120</div>
+
+        <!-- 敌方单位 -->
+        <div class="unit enemy" style="left:540px; bottom:90px;">
+          <div class="unit-top">
+            <div class="unit-name">T-72B</div>
+            <div class="unit-hp-bar low"><div style="width:25%;"></div></div>
+            <div class="unit-hp-text" style="color:var(--danger);">⚠ 510</div>
+          </div>
+          <div class="unit-sprite">🤖</div>
+        </div>
+
+        <div class="unit enemy" style="left:660px; bottom:60px;">
+          <div class="unit-top">
+            <div class="unit-name">轻甲兵</div>
+            <div class="unit-hp-bar"><div style="width:70%;"></div></div>
+            <div class="unit-hp-text">840</div>
+          </div>
+          <div class="unit-sprite">👾</div>
+        </div>
+
+        <div class="unit enemy" style="left:780px; bottom:90px;">
+          <div class="unit-top">
+            <div class="unit-name">RTR装甲</div>
+            <div class="unit-hp-bar"><div style="width:45%;"></div></div>
+            <div class="unit-hp-text">2160</div>
+          </div>
+          <div class="unit-sprite">🚜</div>
+        </div>
+
+        <div class="unit enemy" style="left:900px; bottom:55px;">
+          <div class="unit-top">
+            <div class="unit-name">STR</div>
+            <div class="unit-hp-bar"><div style="width:92%;"></div></div>
+            <div class="unit-hp-text">3600</div>
+          </div>
+          <div class="unit-sprite">🛻</div>
+        </div>
+
+        <!-- 部署网格（左下） -->
+        <div class="deploy-grid">
+          <div class="deploy-cell available">+</div>
+          <div class="deploy-cell available">+</div>
+          <div class="deploy-cell occupied">✓</div>
+          <div class="deploy-cell available">+</div>
+          <div class="deploy-cell occupied">✓</div>
+          <div class="deploy-cell available">+</div>
+          <div class="deploy-cell blocked">✕</div>
+          <div class="deploy-cell available">+</div>
+        </div>
+      </div>
+
+      <!-- ========== 右侧技能区（替代能量球） ========== -->
+      <div class="skill-area">
+        <div class="skill-btn ready">
+          <span class="skill-range-hint"></span>
+          <span class="skill-ico">⚡</span>
+          <span class="skill-name">EMP</span>
+          <span class="skill-cost">⚡80</span>
+        </div>
+        <div class="skill-btn">
+          <span class="skill-ico">💥</span>
+          <span class="skill-name">空袭</span>
+          <div class="skill-cd-overlay">5s</div>
+        </div>
+        <div class="skill-btn">
+          <span class="skill-ico">🛡</span>
+          <span class="skill-name">护盾</span>
+          <span class="skill-cost" style="background:#555;">⚡200</span>
+        </div>
+      </div>
+
+      <!-- ========== 底部操作区 ========== -->
+      <div class="bottom-hud">
+
+        <!-- 卡牌栏 -->
+        <div class="card-bar">
+          <!-- 可部署卡（绿色边框，能量够） -->
+          <div class="card-slot deployable">
+            <div class="card-cost">5</div>
+            <div class="card-img">💥</div>
+            <div class="card-name">77mm火炮</div>
+            <div class="card-count">×3</div>
+          </div>
+          <div class="card-slot deployable">
+            <div class="card-cost">8</div>
+            <div class="card-img">🚀</div>
+            <div class="card-name">M270</div>
+            <div class="card-count">×2</div>
+          </div>
+          <!-- 冷却中 -->
+          <div class="card-slot">
+            <div class="card-cost">6</div>
+            <div class="card-img">🛡</div>
+            <div class="card-name">重装甲</div>
+            <div class="card-cooldown">3s</div>
+          </div>
+          <!-- 能量不足 -->
+          <div class="card-slot">
+            <div class="card-cost unaffordable">15</div>
+            <div class="card-img">⚔️</div>
+            <div class="card-name">重机甲</div>
+          </div>
+          <div class="card-slot deployable">
+            <div class="card-cost">4</div>
+            <div class="card-img">🎯</div>
+            <div class="card-name">侦察</div>
+            <div class="card-count">×5</div>
+          </div>
+
+          <div class="card-divider"></div>
+
+          <!-- 技能/符文卡 -->
+          <div class="card-slot" style="border-color:rgba(180,108,255,0.5);">
+            <div class="card-cost" style="background:var(--skill);color:#fff;">⚡</div>
+            <div class="card-img" style="background:linear-gradient(180deg,#3a2055,#1a1040);">🔮</div>
+            <div class="card-name" style="color:var(--skill);">符文·烈焰</div>
+          </div>
+          <div class="card-slot" style="border-color:rgba(255,59,74,0.5);">
+            <div class="card-cost" style="background:var(--enemy);color:#fff;">!</div>
+            <div class="card-img" style="background:linear-gradient(180deg,#552030,#401020);">⚠️</div>
+            <div class="card-name" style="color:var(--enemy);">紧急技能</div>
+            <div class="card-cooldown" style="clip-path:polygon(0 30%, 100% 30%, 100% 100%, 0 100%);">8s</div>
+          </div>
+        </div>
+
+        <!-- 战斗菜单（替代主菜单） -->
+        <div class="battle-menu">
+          <div class="menu-btn primary"><span class="ico">⏸</span>暂停</div>
+          <div class="menu-btn"><span class="ico">▶</span>自动</div>
+          <div class="menu-btn"><span class="ico">⚡</span>技能</div>
+          <div class="menu-btn"><span class="ico">🗂</span>卡组</div>
+
+          <div class="menu-spacer"></div>
+
+          <div class="speed-btn">1x</div>
+          <div class="speed-btn" style="background:rgba(255,210,63,0.3);">2x</div>
+          <div class="menu-btn warn"><span class="ico">⚙</span>设置</div>
+          <div class="menu-btn danger"><span class="ico">🚪</span>退出</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ===== 阵营色体系 ===== -->
+<div class="section">
+  <h2><span class="num">②</span>阵营色体系（废土科技风）</h2>
+  <div class="legend-grid">
+    <div class="legend-card">
+      <h3>功能色定义</h3>
+      <ul>
+        <li><span class="sw" style="background:var(--ally);"></span><code>#00ff9d</code> 我方 — 青绿（描边/血条/选中圈）</li>
+        <li><span class="sw" style="background:var(--enemy);"></span><code>#ff3b4a</code> 敌方 — 红（描边/血条/警告）</li>
+        <li><span class="sw" style="background:var(--skill);"></span><code>#b46cff</code> 技能 — 紫（符文/主动技能）</li>
+        <li><span class="sw" style="background:var(--resource);"></span><code>#ffd23f</code> 资源 — 金（能量/金币/星级）</li>
+        <li><span class="sw" style="background:var(--danger);"></span><code>#ff8c1a</code> 危险 — 橙（低血量/警告）</li>
+        <li><span class="sw" style="background:var(--ui-deep);"></span><code>#0a1428</code> 普通UI — 深蓝（面板底色）</li>
+      </ul>
+    </div>
+    <div class="legend-card">
+      <h3>色系应用规则</h3>
+      <ul>
+        <li>我方单位：青绿描边 + 青绿血条 + 蓝绿选中圈</li>
+        <li>敌方单位：红描边 + 红血条 + 低血量闪红动画</li>
+        <li>能量不足卡牌：费用变灰，不可点击</li>
+        <li>冷却中卡牌：黑色遮罩 + 倒计时数字</li>
+        <li>可部署卡牌：青绿发光边框（玩家注意力锚点）</li>
+        <li>BOSS波次：波次进度条变红 + 顶部警告</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 卡牌栏设计 ===== -->
+<div class="section">
+  <h2><span class="num">③</span>卡牌栏重构（90px 高度）</h2>
+  <div class="legend-grid">
+    <div class="legend-card">
+      <h3>卡牌结构（4要素）</h3>
+      <ul>
+        <li>左上角 <strong style="color:var(--resource);">费用圆圈</strong>（金色/灰色=不足）</li>
+        <li>中部 <strong>卡图区</strong>（56px 高，渐变背景）</li>
+        <li>底部 <strong>卡名</strong>（9px，单行省略）</li>
+        <li>右下角 <strong style="color:var(--skill);">数量</strong>（×N，紫底）</li>
+      </ul>
+    </div>
+    <div class="legend-card">
+      <h3>状态反馈</h3>
+      <ul>
+        <li>可部署：青绿发光边框，hover 上浮4px</li>
+        <li>冷却中：黑色遮罩从下往上扫，中间显示秒数</li>
+        <li>能量不足：费用变灰，卡牌半透明</li>
+        <li>选中待部署：脉冲青绿光圈</li>
+        <li>分隔线：区分普通卡 / 符文 / 技能</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 单位/部署/伤害 ===== -->
+<div class="section">
+  <h2><span class="num">④</span>战场单位 + 部署网格 + 伤害反馈</h2>
+  <div class="legend-grid">
+    <div class="legend-card">
+      <h3>单位信息（4层）</h3>
+      <ul>
+        <li>顶部：名字 + 5px血条 + 血量数字</li>
+        <li>本体：64×64 卡图 + 右上等级徽章</li>
+        <li>选中：青绿地面圈 + 攻击范围虚线圈</li>
+        <li>低血量：血条闪红动画（<30%触发）</li>
+      </ul>
+    </div>
+    <div class="legend-card">
+      <h3>部署网格三态</h3>
+      <ul>
+        <li><span class="sw" style="background:rgba(0,255,157,0.3);border-color:var(--ally);"></span>空位可放：青绿虚线 → 实线</li>
+        <li><span class="sw" style="background:rgba(0,170,102,0.4);"></span>已占用：半透明，不可放</li>
+        <li><span class="sw" style="background:rgba(255,59,74,0.3);border-color:var(--enemy);"></span>禁止区：红色（敌方领地）</li>
+        <li>拖拽卡牌时网格自动显示，松开隐藏</li>
+      </ul>
+    </div>
+    <div class="legend-card">
+      <h3>伤害数字分层</h3>
+      <ul>
+        <li><span style="color:#fff;font-weight:700;">-292</span> 普通伤害：白色</li>
+        <li><span style="color:var(--resource);font-weight:700;">⚡-580</span> 暴击：金色+放大+⚡前缀</li>
+        <li><span style="color:var(--skill);font-weight:700;">🛡-120</span> 护盾吸收：紫色+🛡前缀</li>
+        <li>所有数字上浮+淡出动画（0.8s）</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 主菜单→战斗菜单 ===== -->
+<div class="section">
+  <h2><span class="num">⑤</span>底部菜单重构：主菜单 → 战斗菜单</h2>
+  <table class="ratio-table">
+    <thead><tr><th>原版（12个主菜单按钮）</th><th>v4（6个战斗按钮）</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td>背包 / 成长 / 势力 / 任务 / 商店 / 排行 / 情报 / 地图 / 设置 / 图鉴 / 存档 / 挂机</td><td>暂停 · 自动 · 技能 · 卡组 · 设置 · 退出 + 1x/2x 倍速</td><td>主菜单全部移到 <strong style="color:var(--ally);">非战斗状态</strong>（关卡选择界面）</td></tr>
+    </tbody>
+  </table>
+  <p style="font-size:11px;color:var(--text-dim);margin-top:8px;padding:8px;background:rgba(255,59,74,0.08);border-left:3px solid var(--enemy);border-radius:0 4px 4px 0;">
+    ⚠ 核心原则：战斗中玩家只需要"控制战斗"的按钮，所有养成/浏览类功能在战斗结束后回到基地界面再打开。
+  </p>
+</div>
+
+<!-- ===== 技能按钮化 ===== -->
+<div class="section">
+  <h2><span class="num">⑥</span>右侧能量球 → 技能按钮组</h2>
+  <div class="legend-grid">
+    <div class="legend-card">
+      <h3>原版问题</h3>
+      <ul>
+        <li>单个蓝色冰球，无任何信息</li>
+        <li>玩家不知道：是什么技能 / 能不能用 / 花多少能量</li>
+        <li>视觉突兀，与UI风格不符</li>
+      </ul>
+    </div>
+    <div class="legend-card">
+      <h3>v4 方案</h3>
+      <ul>
+        <li>改为 <strong style="color:var(--skill);">3个技能按钮</strong> 竖排（EMP/空袭/护盾）</li>
+        <li>每个按钮：图标+名称+费用+冷却</li>
+        <li>可用：紫色脉冲发光动画</li>
+        <li>冷却中：黑色遮罩+倒计时</li>
+        <li>能量不足：费用标红</li>
+        <li>hover：显示射程/范围提示箭头</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 实施优先级 ===== -->
+<div class="section">
+  <h2><span class="num">⑦</span>实施优先级（分3阶段）</h2>
+  <div class="prio-grid">
+    <div class="prio-card p1">
+      <h3>第一阶段 <span class="star">⭐⭐⭐⭐⭐</span></h3>
+      <ol>
+        <li>删除底部主菜单</li>
+        <li>重做卡牌栏（费用+冷却）</li>
+        <li>优化单位血条+阵营色</li>
+        <li>简化左侧信息（基地卡）</li>
+      </ol>
+    </div>
+    <div class="prio-card p2">
+      <h3>第二阶段 <span class="star">⭐⭐⭐⭐</span></h3>
+      <ol>
+        <li>技能CD系统</li>
+        <li>部署网格三态</li>
+        <li>伤害数字分层动画</li>
+        <li>波次进度条</li>
+      </ol>
+    </div>
+    <div class="prio-card p3">
+      <h3>第三阶段 <span class="star">⭐⭐⭐</span></h3>
+      <ol>
+        <li>粒子特效</li>
+        <li>镜头震动</li>
+        <li>单位受击动画</li>
+        <li>BOSS出场演出</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 3秒决策目标 ===== -->
+<div class="section">
+  <h2><span class="num">⑧</span>最终目标：3秒决策清晰度</h2>
+  <div class="goal-box">
+    <h3>玩家进入战斗 3 秒内应该知道：</h3>
+    <div class="goal-checks">
+      <div><b>🏛 基地状态</b>左上基地卡：HP/能量/单位数</div>
+      <div><b>🌊 当前波次</b>顶部居中：第15/30波 + 进度条</div>
+      <div><b>👉 敌人方向</b>右侧红色单位群 + 低血量闪烁</div>
+      <div><b>✚ 可部署位置</b>左下绿色网格（拖卡时显示）</div>
+      <div><b>🎴 可用卡牌</b>底部青绿发光卡 = 能量够+可部署</div>
+      <div><b>▶ 下一步操作</b>右侧紫色脉冲技能 = 可立即释放</div>
+    </div>
+  </div>
+</div>
+
+<script>
+function fitView() {
+  const w = window.innerWidth - 40;
+  const h = window.innerHeight - 200;
+  const scale = Math.min(w / 1280, h / 720, 1);
+  document.querySelector('.preview-scale').style.transform = `scale(${scale})`;
+}
+window.addEventListener('resize', fitView);
+fitView();
+</script>
+
+</body>
+</html>

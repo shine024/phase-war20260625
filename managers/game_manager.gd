@@ -24,6 +24,11 @@ var battle_scene: Node = null
 var main_scene: Node = null
 var current_level: int = 1
 var last_battle_reward_summary: Dictionary = {}
+# v7.x 胜利面板漏显修复：本局掉落收集器。
+# 收集所有绕过 DropManager.pending_drops 直接入背包/库存的奖励（战中击杀卡/符文/相位师全部奖励），
+# 供 mvp_panel 新增"本局缴获与战利品"分区逐项显示。每项形如
+# {category:"card|rune|mod_blueprint|instrument|resource", id, name, count, rarity, star, source}
+var _battle_reward_collector: Array = []
 var _blueprint_copies_before_battle: Dictionary = {}
 var _knowledge_before_battle: Dictionary = {}
 var _plm: Node = null  ## 安全引用：PhaseLawManager 本地缓存
@@ -437,6 +442,7 @@ func go_to_battle() -> void:
 	_pending_battle_level = current_level
 
 	last_battle_reward_summary = {}
+	clear_battle_reward_collector()  # v7.x 胜利面板漏显修复：战斗开始时清空本局收集器
 	_snapshot_battle_reward_baselines()
 	# 检查是否遭遇相位师
 	check_phase_master_encounter()
@@ -472,8 +478,10 @@ func _on_battle_ended(player_won: bool) -> void:
 	# 这样结算面板能立即弹出（不依赖相位师奖励字段），相位师额外nano/energy在面板弹出后追加。
 	# 时序安全：_current_phase_master 在延迟函数中清除，它在 GameManager 上不受 BattleManager
 	# 的 _phase_master_config 清零影响。
+	# v7.x 胜利面板漏显修复：_pm_reward_queued 标志防止相位师奖励被重复入队（AFK/show_battle_result/末尾兜底三路径互斥）。
 	var _pending_pm_battle: bool = _is_phase_master_battle and not _current_phase_master.is_empty() and player_won
 	var _pending_pm_name: String = ""
+	var _pm_reward_queued: bool = false
 	if _pending_pm_battle:
 		_pending_pm_name = String(_current_phase_master.get("name", "相位师"))
 		# 暂不清除相位师状态——延迟函数需要 _current_phase_master
@@ -551,6 +559,9 @@ func _on_battle_ended(player_won: bool) -> void:
 		"era": era,
 		"phase_instrument_drop": phase_instrument_drop.duplicate(true),
 		"intel_harvest": intel_harvest.duplicate(true) if not intel_harvest.is_empty() else {},
+		# v7.x 胜利面板漏显修复：本局收集器快照（战中击杀卡/符文/相位师全部奖励）。
+		# 相位师战时此快照在 _deferred_pm_show_battle_result 中会刷新一次（相位师奖励已入收集器）。
+		"collected_rewards": _battle_reward_collector.duplicate(true),
 	}
 	# v7.x 性能：蓝图片段/知识收益计算延后到本帧 idle 队列执行。
 	# 根因：_calculate_blueprint_fragment_gain 遍历全部蓝图 ID（可达 133 个）做 copies 差值，
@@ -578,6 +589,7 @@ func _on_battle_ended(player_won: bool) -> void:
 		# AFK 也需要延迟相位师奖励
 		if _pending_pm_battle:
 			call_deferred("_deferred_phase_master_reward", _pending_pm_name)
+			_pm_reward_queued = true
 		return_to_prep()
 	elif main_scene and main_scene.has_method("show_battle_result"):
 		# v7.x 性能：延迟到下一帧再构建结算面板。
@@ -588,7 +600,15 @@ func _on_battle_ended(player_won: bool) -> void:
 		# 结束才能画下一帧——这是"面板出来前卡一下"的主因。
 		# call_deferred 让奖励计算先在本帧完成，剩余监听者处理完，渲染一帧（玩家看到胜利瞬间），
 		# 再在下一帧构建面板并淡入。reward_summary 已在上方 488-506 组装完毕，延迟安全。
-		main_scene.call_deferred("show_battle_result", player_won)
+		# v7.x 胜利面板漏显修复：相位师战时，call_deferred 是 FIFO，必须让相位师奖励先入队、面板后入队，
+		# 否则面板先弹时相位师全部奖励（Boss卡/缴获卡/符文/改造蓝图/特殊仪/额外材料）还没进收集器，面板读不到。
+		# 相位师战面板比非相位师战晚 ~2 帧（1帧发奖励+1帧显示），相位师战为15%概率稀有事件，可接受。
+		if _pending_pm_battle:
+			call_deferred("_deferred_phase_master_reward", _pending_pm_name)
+			call_deferred("_deferred_pm_show_battle_result", player_won)
+			_pm_reward_queued = true
+		else:
+			main_scene.call_deferred("show_battle_result", player_won)
 	elif player_won:
 		var dm_fallback: Node = get_node_or_null("/root/DropManager")
 		if dm_fallback != null and dm_fallback.has_method("get_pending_drops_count") and dm_fallback.has_method("claim_drops"):
@@ -596,9 +616,11 @@ func _on_battle_ended(player_won: bool) -> void:
 				dm_fallback.claim_drops()
 
 	# v7.x 性能：相位师奖励延迟到下一帧执行（Boss掉落表+符文抽取+改造蓝图+星级评估，~160行）
-	if _pending_pm_battle:
+	# v7.x 胜利面板漏显修复：仅当上方分支（AFK / show_battle_result 相位师战）尚未入队时才在此兜底入队，
+	# 避免相位师奖励被重复执行（双倍发卡/符文/材料）。
+	if _pending_pm_battle and not _pm_reward_queued:
 		call_deferred("_deferred_phase_master_reward", _pending_pm_name)
-	else:
+	elif not _pending_pm_battle:
 		# 非相位师战或失败，直接清除状态
 		_is_phase_master_battle = false
 		_current_phase_master = {}
@@ -610,6 +632,87 @@ func _deferred_phase_master_reward(master_name: String) -> void:
 	_grant_phase_master_victory_reward(master_name)
 	_is_phase_master_battle = false
 	_current_phase_master = {}
+
+## v7.x 胜利面板漏显修复：相位师战专用面板显示包装。
+## 在 _deferred_phase_master_reward（已把相位师奖励发入收集器）之后刷新 collected_rewards 快照，
+## 再调用 main_scene.show_battle_result 弹出面板——此时收集器已含相位师全部奖励，面板读得到。
+func _deferred_pm_show_battle_result(player_won: bool) -> void:
+	last_battle_reward_summary["collected_rewards"] = _battle_reward_collector.duplicate(true)
+	if main_scene and main_scene.has_method("show_battle_result"):
+		main_scene.show_battle_result(player_won)
+
+# =========================================================================
+#  v7.x 胜利面板漏显修复：本局掉落收集器 API
+#  收集所有绕过 DropManager.pending_drops 直接入背包/库存的奖励，
+#  供 mvp_panel "本局缴获与战利品"分区逐项显示。
+# =========================================================================
+
+## 清空本局收集器（go_to_battle 时调用）
+func clear_battle_reward_collector() -> void:
+	_battle_reward_collector.clear()
+
+## 记录一张缴获/掉落卡（战中击杀 / 相位师Boss掉落 / 缴获平台卡）
+func collect_battle_card(card_id: String, display_name: String, count: int, source: String) -> void:
+	if card_id.is_empty():
+		return
+	_battle_reward_collector.append({
+		"category": "card",
+		"id": card_id,
+		"name": display_name if not display_name.is_empty() else card_id,
+		"count": maxi(1, count),
+		"source": source,
+	})
+
+## 记录一个符文（战中击杀 / 相位师击败掉落）
+func collect_battle_rune(rune_id: String, display_name: String, rarity: String, source: String) -> void:
+	if rune_id.is_empty():
+		return
+	_battle_reward_collector.append({
+		"category": "rune",
+		"id": rune_id,
+		"name": display_name if not display_name.is_empty() else rune_id,
+		"rarity": rarity,
+		"source": source,
+	})
+
+## 记录一个改造蓝图（相位师击败掉落）
+func collect_battle_mod_blueprint(item_type: String, display_name: String, rarity: String, source: String) -> void:
+	if item_type.is_empty():
+		return
+	_battle_reward_collector.append({
+		"category": "mod_blueprint",
+		"id": item_type,
+		"name": display_name if not display_name.is_empty() else item_type,
+		"rarity": rarity,
+		"source": source,
+	})
+
+## 记录一个特殊相位仪（相位师击败掉落）
+func collect_battle_instrument(instrument_id: String, display_name: String, star: int, source: String) -> void:
+	if instrument_id.is_empty():
+		return
+	_battle_reward_collector.append({
+		"category": "instrument",
+		"id": instrument_id,
+		"name": display_name if not display_name.is_empty() else instrument_id,
+		"star": star,
+		"source": source,
+	})
+
+## 记录相位师额外材料（Boss掉落表的纳米/能量/许可补偿）
+func collect_battle_extra_resource(res_id: String, amount: int) -> void:
+	if amount <= 0:
+		return
+	_battle_reward_collector.append({
+		"category": "resource",
+		"id": res_id,
+		"amount": amount,
+		"source": "相位师战利品",
+	})
+
+## 获取本局收集器（供面板读取）
+func get_battle_reward_collector() -> Array:
+	return _battle_reward_collector.duplicate(true)
 
 func set_battle_scene(node: Node) -> void:
 	battle_scene = node
@@ -677,18 +780,25 @@ func _grant_phase_master_victory_reward(master_name: String) -> void:
 					if BasicResourceManager.has_method("add_resource"):
 						BasicResourceManager.add_resource(BasicResources.ID_NANO_MATERIALS, res.count * 50)
 						extra_nano_total += res.count * 50
+						# v7.x 胜利面板漏显修复：相位师额外材料记入收集器
+						collect_battle_extra_resource("nano_materials", res.count * 50)
 				else:
 					# 材料类：直接加资源（item_id 与 BasicResources ID 字符串一致）
 					if BasicResourceManager.has_method("add_resource"):
 						BasicResourceManager.add_resource(res.drop.item_id, res.count)
 						if res.drop.item_id == "nano_materials":
 							extra_nano_total += res.count
+							# v7.x 胜利面板漏显修复：相位师额外材料记入收集器
+							collect_battle_extra_resource("nano_materials", res.count)
 						elif res.drop.item_id == "energy_block":
 							extra_energy_total += res.count
+							# v7.x 胜利面板漏显修复：相位师额外材料记入收集器
+							collect_battle_extra_resource("energy_block", res.count)
 			DropTables.DropType.CARD_DATA, DropTables.DropType.BLUEPRINT_FRAGMENT:
 				# Boss 卡牌数据 → 成品卡发放
 				if not res.drop.item_id.is_empty() and BlueprintManager:
-					CardDropGrants.grant_enemy_style_card(BlueprintManager, res.drop.item_id, era_pm, 2)
+					# v7.x 胜利面板漏显修复：source 非空时记录到本局收集器
+					CardDropGrants.grant_enemy_style_card(BlueprintManager, res.drop.item_id, era_pm, 2, "相位师战利品")
 			DropTables.DropType.STAT_BOOST:
 				# v7.x 修复：Boss/相位师的属性提升掉落此前被静默丢弃（match 缺此分支）。
 				# 现 lazy-load StatBoostManager 并应用 boost（与 DropManager._apply_stat_boost 同口径）。
@@ -717,7 +827,8 @@ func _grant_phase_master_victory_reward(master_name: String) -> void:
 			if excluded_types.has(ptype):
 				continue
 			var pname: String = pdata.get("name", pid)
-			CardDropGrants.grant_enemy_style_card(BlueprintManager, String(pid), era_pm, 2)
+			# v7.x 胜利面板漏显修复：source 非空时记录到本局收集器
+			CardDropGrants.grant_enemy_style_card(BlueprintManager, String(pid), era_pm, 2, "相位师缴获")
 			if DEBUG_GAME_LOG:
 				pass  # LOG: 平台卡奖励
 	# 4. v6.2: 相位大师击败 → 符文掉落（替代废弃的法则卡奖励）
@@ -738,16 +849,22 @@ func _grant_phase_master_victory_reward(master_name: String) -> void:
 		var _granted_rune: String = _pick_rune_from_pool_or_generic(_master_runes_pool, RuneDefs, RuneDefs.RARITY_RARE)
 		if not _granted_rune.is_empty():
 			pim.add_owned_rune(_granted_rune)
+			# v7.x 胜利面板漏显修复：相位师符文记入本局收集器
+			collect_battle_rune(_granted_rune, RuneDefs.get_rune_name(_granted_rune), "rare", "相位师战利品")
 		# 30%概率额外掉史诗符文
 		if randf() < 0.30:
 			var _granted_e: String = _pick_rune_from_pool_or_generic(_master_runes_pool, RuneDefs, RuneDefs.RARITY_EPIC)
 			if not _granted_e.is_empty():
 				pim.add_owned_rune(_granted_e)
+				# v7.x 胜利面板漏显修复
+				collect_battle_rune(_granted_e, RuneDefs.get_rune_name(_granted_e), "epic", "相位师战利品")
 		# 5%概率掉传说符文（极稀有）
 		if randf() < 0.05:
 			var _granted_l: String = _pick_rune_from_pool_or_generic(_master_runes_pool, RuneDefs, RuneDefs.RARITY_LEGENDARY)
 			if not _granted_l.is_empty():
 				pim.add_owned_rune(_granted_l)
+				# v7.x 胜利面板漏显修复
+				collect_battle_rune(_granted_l, RuneDefs.get_rune_name(_granted_l), "legendary", "相位师战利品")
 
 	# v6.14: 相位师击败 → 改造蓝图掉落（此前相位师无保底改造掉落，只有通用击杀概率）。
 	# v7.x: 改用 MasterPowerEvaluator 星级映射 Tier（替代原 level*40 的 ad-hoc 换算），
@@ -783,22 +900,31 @@ func _grant_phase_master_victory_reward(master_name: String) -> void:
 		var _mod_drop: Dictionary = IntelManualItems.roll_random_mod_blueprint(_pm_enemy_type, "boss", _pm_power_tier, _bias)
 		if not _mod_drop.is_empty() and _drop_bag and _drop_bag.has_method("add_item"):
 			_drop_bag.add_item(String(_mod_drop.get("item_type", "")), 1)
+			# v7.x 胜利面板漏显修复：相位师改造蓝图记入本局收集器（_mod_drop dict 已含 name/rarity 字段）
+			collect_battle_mod_blueprint(String(_mod_drop.get("item_type", "")), String(_mod_drop.get("name", "")), String(_mod_drop.get("rarity", "")), "相位师战利品")
 	# 30% 额外1个
 	if randf() < 0.30:
 		var _mod_drop2: Dictionary = IntelManualItems.roll_random_mod_blueprint(_pm_enemy_type, "boss", _pm_power_tier, _bias)
 		if not _mod_drop2.is_empty() and _drop_bag and _drop_bag.has_method("add_item"):
 			_drop_bag.add_item(String(_mod_drop2.get("item_type", "")), 1)
+			# v7.x 胜利面板漏显修复
+			collect_battle_mod_blueprint(String(_mod_drop2.get("item_type", "")), String(_mod_drop2.get("name", "")), String(_mod_drop2.get("rarity", "")), "相位师战利品")
 
 	# v7.x: 特殊相位仪掉落（仅相位师掉落，不在商店出售）
 	# 6★相位师 20% 掉对应特殊仪 / 7★相位师 40% 掉对应特殊仪
 	# 低星级（5★及以下）不掉特殊相位仪（保留追求感）
-	var _special_drop_id: String = _maybe_roll_special_instrument_drop(_stars, _pm_faction)
-	if not _special_drop_id.is_empty() and PhaseInstrumentManager and PhaseInstrumentManager.has_method("unlock_instrument"):
-		if not PhaseInstrumentManager.has_method("has_unlocked_instrument") or not PhaseInstrumentManager.has_unlocked_instrument(_special_drop_id):
-			PhaseInstrumentManager.unlock_instrument(_special_drop_id)
-			last_battle_reward_summary["special_instrument"] = _special_drop_id
-			if DEBUG_GAME_LOG:
-				push_warning("[v7.x] 特殊相位仪掉落: %s" % _special_drop_id)
+		var _special_drop_id: String = _maybe_roll_special_instrument_drop(_stars, _pm_faction)
+		if not _special_drop_id.is_empty() and PhaseInstrumentManager and PhaseInstrumentManager.has_method("unlock_instrument"):
+			if not PhaseInstrumentManager.has_method("has_unlocked_instrument") or not PhaseInstrumentManager.has_unlocked_instrument(_special_drop_id):
+				PhaseInstrumentManager.unlock_instrument(_special_drop_id)
+				last_battle_reward_summary["special_instrument"] = _special_drop_id
+				# v7.x 胜利面板漏显修复：特殊相位仪记入本局收集器（显示名从 PhaseInstruments 数据表取）
+				var _PhaseInstrumentsData = load("res://data/phase_instruments.gd")
+				var _spec_inst_cfg: Dictionary = _PhaseInstrumentsData.get_by_id(_special_drop_id) if _PhaseInstrumentsData != null else {}
+				var _spec_inst_name: String = String(_spec_inst_cfg.get("name", _special_drop_id))
+				collect_battle_instrument(_special_drop_id, _spec_inst_name, _stars, "相位师掉落")
+				if DEBUG_GAME_LOG:
+					push_warning("[v7.x] 特殊相位仪掉落: %s" % _special_drop_id)
 
 	# 5. 势力声望提升（战胜相位师，该势力获得声望）
 	var faction_id: String = ""

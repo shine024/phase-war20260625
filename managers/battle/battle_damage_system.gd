@@ -62,7 +62,7 @@ func roll_blueprint_drops(unit: Node) -> void:
 		if randf() < extra_prob:
 			fragment_amount += 1
 		fragment_amount = max(1, fragment_amount)
-		CardDropGrants.grant_enemy_style_card(bm, card_id, 0, fragment_amount)
+		CardDropGrants.grant_enemy_style_card(bm, card_id, 0, fragment_amount, "击杀缴获")
 		var qm: Node = _get_autoload_node("QuestManager")
 		if qm and qm.has_method("notify_fragments_changed"):
 			qm.notify_fragments_changed()
@@ -111,6 +111,10 @@ func _roll_rune_drops(unit: Node) -> void:
 			var rune_name: String = RuneDefsForDrop.RUNE_NAMES.get(rune_id, rune_id)
 			var rarity_name: String = RuneDefsForDrop.RARITY_NAMES.get(rarity, "")
 			SignalBus.show_toast.emit("✦ 获得符文：%s（%s）" % [rune_name, rarity_name])
+			# v7.x 胜利面板漏显修复：战中击杀符文记入本局收集器，供胜利面板显示
+			# 复用函数顶部已声明的 gm（_get_autoload_node("GameManager")），不重复声明
+			if gm != null and gm.has_method("collect_battle_rune"):
+				gm.collect_battle_rune(rune_id, rune_name, rarity, "击杀缴获")
 	# 通知任务系统（如有）
 	var qm: Node = _get_autoload_node("QuestManager")
 	if qm and qm.has_method("notify_fragments_changed"):

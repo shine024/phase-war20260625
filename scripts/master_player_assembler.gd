@@ -236,11 +236,12 @@ static func get_player_display_level(pm: Node) -> int:
 	return int(r.get("display_level", 15))
 
 
-## v7.x: 便捷查询——返回完整展示文本 "Lv.20 4★ 大师"（供 UI 调用）
+## v7.x: 便捷查询——返回完整展示文本 "军团战力5124 · 4★ 大师"（供 UI 调用）
+## 注：原派生Lv由战力换算与战力同义重复，已改用军团战力数字直接展示。
 static func get_player_display_text(pm: Node) -> String:
 	var r: Dictionary = evaluate_player_stars(pm)
-	return "Lv.%d %d★ %s" % [
-		int(r.get("display_level", 15)),
+	return "军团战力%d · %d★ %s" % [
+		int(r.get("raw_total_score", 0.0)),
 		int(r.get("stars", 3)),
 		str(r.get("star_name", "")),
 	]

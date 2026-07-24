@@ -1082,12 +1082,10 @@ func _append_player_master_tooltip_lines(lines: Array) -> void:
 		return
 	var raw: float = float(ev.get("raw_total_score", 0.0))
 	var compressed: float = 0.0  # v7.x: 已移除压缩，保留变量兼容
-	var lvl: int = int(ev.get("display_level", 15))
 	var stars: int = int(ev.get("stars", 3))
 	var star_name: String = str(ev.get("star_name", ""))
 	lines.append("相位师战力:")
-	lines.append("  Lv.%d · %d★ %s" % [lvl, stars, star_name])
-	lines.append("  总战力：%d" % int(raw))
+	lines.append("  军团战力：%d · %d★ %s" % [int(raw), stars, star_name])
 	# 卡战力简表（单分量公式：每张装备卡加成后战力，前 4 张 + 省略号）
 	var card_bd: Array = ev.get("card_breakdown", [])
 	if not card_bd.is_empty():
@@ -1104,8 +1102,8 @@ func _append_player_master_tooltip_lines(lines: Array) -> void:
 		lines.append("  " + " | ".join(parts))
 
 
-## v7.x: 构建玩家相位师等级/星级摘要（单行，供底部栏常驻显示）
-## 格式："相位师 Lv.20 4★ 大师"
+## v7.x: 构建玩家相位师军团战力/星级摘要（单行，供底部栏常驻显示）
+## 格式："相位师 军团战力5124 · 4★ 大师"
 ## 优先读战斗缓存；非战斗时现算（稍慢但保证可见）
 func _build_player_master_summary() -> String:
 	if PhaseInstrumentManager == null:
@@ -1114,8 +1112,8 @@ func _build_player_master_summary() -> String:
 	if PhaseInstrumentManager.has_method("get_cached_player_master_eval"):
 		var cached: Dictionary = PhaseInstrumentManager.get_cached_player_master_eval()
 		if not cached.is_empty():
-			return "相位师 Lv.%d %d★ %s" % [
-				int(cached.get("display_level", 15)),
+			return "相位师 军团战力%d · %d★ %s" % [
+				int(cached.get("raw_total_score", 0.0)),
 				int(cached.get("stars", 3)),
 				str(cached.get("star_name", "")),
 			]

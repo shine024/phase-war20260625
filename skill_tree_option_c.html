@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>相位师技能树 - 方案C：全息投影式</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #020408;
+    color: #c0d0e0;
+    font-family: 'Microsoft YaHei', sans-serif;
+    overflow-x: hidden;
+  }
+
+  .scheme-label {
+    position: fixed; top: 10px; right: 10px;
+    background: rgba(100,180,255,0.1);
+    border: 1px solid rgba(100,180,255,0.3);
+    color: #6ab4ff;
+    padding: 4px 12px; border-radius: 20px;
+    font-size: 12px; z-index: 100;
+  }
+
+  /* 顶部 */
+  .top-bar {
+    text-align: center;
+    padding: 16px;
+    position: relative;
+  }
+  .top-bar::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 10%; right: 10%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(100,180,255,0.3), transparent);
+  }
+  .top-bar h1 {
+    font-size: 20px;
+    letter-spacing: 8px;
+    background: linear-gradient(180deg, #f0d080, #a07830);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: none;
+    filter: drop-shadow(0 0 8px rgba(240,208,128,0.3));
+  }
+  .top-bar .sub {
+    font-size: 10px;
+    color: #3a5060;
+    margin-top: 4px;
+    letter-spacing: 3px;
+  }
+
+  /* 主容器 - 横向排列，节点用全息卡片 */
+  .holo-root {
+    display: flex;
+    min-height: calc(100vh - 90px);
+    perspective: 1200px;
+  }
+
+  .holo-branch {
+    flex: 1;
+    padding: 14px 8px;
+    position: relative;
+    border-right: 1px solid rgba(100,180,255,0.04);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .holo-branch:last-child { border-right: none; }
+
+  /* 分支标签 */
+  .holo-tag {
+    font-size: 12px;
+    letter-spacing: 5px;
+    padding: 4px 14px;
+    border-radius: 2px;
+    margin-bottom: 16px;
+    position: relative;
+    z-index: 2;
+  }
+
+  /* 全息节点卡片 */
+  .holo-node {
+    width: 165px;
+    margin: 5px 0;
+    position: relative;
+    cursor: pointer;
+    transform-style: preserve-3d;
+    transition: transform 0.4s ease;
+  }
+  .holo-node:hover {
+    transform: translateZ(10px) scale(1.03);
+  }
+
+  .holo-card {
+    position: relative;
+    background: linear-gradient(135deg, rgba(10,20,40,0.9), rgba(5,10,25,0.95));
+    border: 1px solid rgba(100,180,255,0.15);
+    border-radius: 4px;
+    padding: 10px;
+    overflow: hidden;
+    transition: all 0.4s;
+  }
+
+  /* 全息扫描线效果 */
+  .holo-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(100,180,255,0.015) 2px,
+      rgba(100,180,255,0.015) 4px
+    );
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* 全息光晕层 */
+  .holo-card::after {
+    content: '';
+    position: absolute;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: conic-gradient(from 0deg, transparent, var(--hc), transparent, transparent);
+    opacity: 0;
+    animation: holo-spin 4s linear infinite;
+    transition: opacity 0.4s;
+    z-index: 0;
+  }
+  @keyframes holo-spin { to { transform: rotate(360deg); } }
+
+  .holo-node.unlocked .holo-card {
+    border-color: var(--hc);
+    box-shadow: 0 0 20px rgba(var(--hrbg), 0.15), inset 0 0 20px rgba(var(--hrbg), 0.05);
+  }
+  .holo-node.unlocked .holo-card::after { opacity: 0.06; }
+
+  .holo-node.available .holo-card {
+    border-color: var(--hc);
+    box-shadow: 0 0 25px rgba(var(--hrbg), 0.3), inset 0 0 15px rgba(var(--hrbg), 0.1);
+    animation: holo-ready 2s ease-in-out infinite;
+  }
+  @keyframes holo-ready {
+    0%, 100% { box-shadow: 0 0 20px rgba(var(--hrbg), 0.2); }
+    50% { box-shadow: 0 0 35px rgba(var(--hrbg), 0.4); }
+  }
+
+  .holo-node.locked .holo-card {
+    border-color: rgba(255,255,255,0.06);
+    opacity: 0.35;
+  }
+
+  .holo-card > * { position: relative; z-index: 2; }
+
+  .holo-icon {
+    font-size: 18px;
+    text-align: center;
+    margin-bottom: 4px;
+    filter: drop-shadow(0 0 4px var(--hc));
+  }
+
+  .holo-name {
+    font-size: 12px;
+    font-weight: bold;
+    color: var(--hc);
+    text-align: center;
+    letter-spacing: 2px;
+    margin-bottom: 3px;
+  }
+
+  .holo-desc {
+    font-size: 9px;
+    color: #5a7a8a;
+    text-align: center;
+    line-height: 1.5;
+  }
+
+  .holo-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 6px;
+    padding-top: 4px;
+    border-top: 1px solid rgba(100,180,255,0.08);
+  }
+
+  .holo-cost {
+    font-size: 9px;
+    color: #f0c060;
+    background: rgba(240,192,96,0.1);
+    padding: 1px 6px;
+    border-radius: 8px;
+  }
+
+  .holo-state {
+    font-size: 8px;
+    letter-spacing: 1px;
+  }
+  .holo-state.on { color: #40ffa0; }
+  .holo-state.rdy { color: #f0c060; }
+  .holo-state.off { color: #604040; }
+
+  /* 连接线 - 能量束 */
+  .energy-link {
+    width: 2px;
+    height: 14px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 2;
+  }
+  .energy-link.active {
+    background: linear-gradient(180deg, var(--hc), var(--hc));
+    opacity: 0.4;
+    box-shadow: 0 0 6px var(--hc);
+  }
+  .energy-link.inactive {
+    background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.05));
+    opacity: 0.3;
+  }
+  .energy-link::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--hc);
+    opacity: 0.5;
+  }
+
+  /* 分支颜色 */
+  .holo-branch[data-hb="cmd"] { --hc: #4da9ff; --hrbg: 77,169,255; }
+  .holo-branch[data-hb="int"] { --hc: #40ff80; --hrbg: 64,255,128; }
+  .holo-branch[data-hb="fp"] { --hc: #ff7040; --hrbg: 255,112,64; }
+  .holo-branch[data-hb="cw"] { --hc: #bf66ff; --hrbg: 191,102,255; }
+
+  .holo-tag.cmd { color: #4da9ff; border: 1px solid rgba(77,169,255,0.3); }
+  .holo-tag.int { color: #40ff80; border: 1px solid rgba(64,255,128,0.3); }
+  .holo-tag.fp { color: #ff7040; border: 1px solid rgba(255,112,64,0.3); }
+  .holo-tag.cw { color: #bf66ff; border: 1px solid rgba(191,102,255,0.3); }
+
+  /* 底部信息 */
+  .bottom-info {
+    text-align: center;
+    padding: 10px;
+    font-size: 10px;
+    color: #2a3a4a;
+    letter-spacing: 2px;
+  }
+</style>
+</head>
+<body>
+
+<div class="scheme-label">方案 C：全息投影式</div>
+
+<div class="top-bar">
+  <h1>相位师技能树</h1>
+  <div class="sub">HOLOGRAPHIC PROJECTION INTERFACE — 可用技能点 12 / 已消耗 7</div>
+</div>
+
+<div class="holo-root">
+
+  <!-- 指挥 -->
+  <div class="holo-branch" data-hb="cmd">
+    <div class="holo-tag cmd">指 挥</div>
+
+    <div class="holo-node unlocked">
+      <div class="holo-card">
+        <div class="holo-icon">&#x2694;</div>
+        <div class="holo-name">指挥觉醒</div>
+        <div class="holo-desc">单位上限 +1<br>相位师基础指挥协议激活</div>
+        <div class="holo-meta">
+          <span class="holo-cost">&#x2b55; 1</span>
+          <span class="holo-state on">&#x25cf ACTIVE</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="energy-link active" style="--hc:#4da9ff;"></div>
+
+    <div class="holo-node unlocked">
+      <div class="holo-card">
+        <div class="holo-icon">&#x2694;</div>
+        <div class="holo-name">扩编指挥</div>
+        <div class="holo-desc">单位上限 +2<br>编制扩展协议</div>
+        <div class="holo-meta">
+          <span class="holo-cost">&#x2b55; 1</span>
+          <span class="holo-state on">&#x25cf ACTIVE</span>
+        </div>
+      </div>
+    </div>
+    <div class="holo-node available">
+      <div class="holo-card">
+        <div class="holo-icon">&#x2694;</div>
+        <div class="holo-name">快速部署</div>
+        <div class="holo-desc">部署速度 +15%</div>
+        <div class="holo-meta">
+          <span class="holo-cost">&#x2b55; 1</span>
+          <span class="holo-state rdy">&#x25cf READY</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="energy-link active" style="--hc:#4da9ff;"></div>
+
+    <div class="holo-node unlocked">
+      <div class="holo-card">
+        <div class="holo-icon">&#x2694;</div>
+        <div class="holo-name">指挥网络</div>
+        <div class="holo-desc">攻击光环 ATK+10%<br>半径 2.5 指挥领域</div>
+        <div class="holo-meta">
+          <span class="holo-cost">&#x2b55; 2</span>
+          <span class="holo-state on">&#x25cf ACTIVE</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="energy-link inactive" style="--hc:#4da9ff;"></div>
+
+    <div class="holo-node locked">
+      <div class="holo-card">
+        <div class="holo-icon">&#x2694;</div>
+        <div class="holo-name">指挥相位仪</div>
+        <div class="holo-desc">解锁：擎天-战术核心<br>待前置完成</div>
+        <div class="holo-meta">
+          <span class="holo-cost">&#x2b55; 2</span>
+          <span class="holo-state off">&#x25cf LOCKED</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="energy-link inactive" style="--hc:#4da9ff;"></div>
+
+    <div class="holo-node locked">
+      <div class="holo-card">
+        <div class="holo-icon">&#x2694;</div>
+        <div class="holo-name">军团统帅</div>
+        <div class="holo-desc">三维防御+12%<br>终极统御协议</div>
+        <div class="holo-meta">
+          <span class="holo-cost">&#x2b55; 3</span>
+          <span class="holo-state off">&#x25cf LOCKED</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 智能化 -->
+  <div class="holo-branch" data-hb="int">
+    <div class="holo-tag int">智能化</div>
+
+    <div class="holo-node unlocked">
+      <div class="holo-card">
+        <div class="holo-icon">&#x269b;</div>
+        <div class="holo-name">智能核心</div>
+        <div class="holo-desc">暴击率 +5%<br>AUXILIARY AI ONLINE</div>
+        <div class="holo-meta">
+          <span class="holo-cost">&#x2b55; 1</span>
+          <span class="holo-state on">&#x25cf ACTIVE</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="energy-link active" style="--hc:#40ff80;"></div>
+
+    <div class="holo-node unlocked">
+      <div class="holo-card">
+        <div class="holo-icon">&#x269b;</div>
+        <div class="holo-name">战斗学习</div>
+        <div class="holo-desc">经验获取 +30%<br>BATTLE LEARNING</div>
+        <div class="holo-meta">
+          <span class="holo-cost">&#x2b55; 1</span>
+          <span class="holo-state on">&#x25cf ACTIVE</span>
+        </div>
+      </div>
+    </div>
+    <div class="holo-node available">
+      <div class="holo-card">
+        <div class="holo-icon">&#x269b;</div>
+        <div class="holo-name">战术规避</div>
+        <div class="holo-desc">闪避 +8%</div>
+        <div class="holo-meta">
+          <span class="holo-cost">&#x2b55; 1</span>
+          <span class="holo-state rdy">&#x25cf READY</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="energy-link active" style="--hc:#40ff80;"></div>
+
+    <div class="holo-node unlocked">
+      <div class="holo-card">
+        <div class="holo-icon">&#x269b;</div>
+        <div class="holo-name">模块化武装</div>
+        <div class="holo-desc">AFFIX词条赋予<br>基础池：攻击/防御/生命</div>
+        <div class="holo-meta">
+          <span class="holo-cost">&#x2b55; 2</span>
+          <span class="holo-state on">&#x25cf ACTIVE</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="energy-link inactive" style="--hc:#40ff80;"></div>
+
+    <div class="holo-node locked">
+      <div class="holo-card">
+        <div class="holo-icon">&#x269b;</div>
+        <div class="holo-name">智能火控</div>
+        <div class="holo-desc">自动索敌<br>远程优先克制目标</div>
+        <div class="holo-meta">
+          <span class="holo-cost">&#x2b55; 2</span>
+          <span class="holo-state off">&#x25cf LOCKED</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="energy-link inactive" style="--hc:#40ff80;"></div>
+
+    <div class="holo-node locked">
+      <div class="holo-card">
+        <div class="holo-icon">&#x269b;</div>
+        <div class="holo-name">自适应进化</div>
+        <div class="holo-desc">存活30秒后全属性+15%<br>终极进化协议</div>
+        <div class="holo-meta">
+          <span class="holo-cost">&#x2b55; 3</span>
+          <span class="holo-state off">&#x25cf LOCKED</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 火力 -->
+  <div class="holo-branch" data-hb="fp">
+    <div class="holo-tag fp">火 力</div>
+
+    <div class="holo-node unlocked">
+      <div class="holo-card">
+        <div class="holo-icon">&#x26a1;</div>
+        <div class="holo-name">火力觉醒</div>
+        <div class="holo-desc">三维攻击 +8%<br>FIRE CONTROL INIT</div>
+        <div class="holo-meta">
+          <span class="holo-cost">&#x2b55; 1</span>
+          <span class="holo-state on">&#x25cf ACTIVE</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="energy-link active" style="--hc:#ff7040;"></div>
+
+    <div class="holo-node unlocked">
+      <div class="holo-card">
+        <div class="holo-icon">&#x26a1;</div>
+        <div class="holo-name">穿甲弹道</div>
+        <div class="holo-desc">装甲穿透 +20%<br>UNIT_ABILITY: ARMOR_PEN</div>
+        <div class="holo-meta">
+          <span class="holo-cost">&#x2b55; 1</span>
+          <span class="holo-state on">&#x25cf ACTIVE</span>
+        </div>
+      </div>
+    </div>
+    <div class="holo-node available">
+      <div class="holo-card">
+        <div class="holo-icon">&#x26a1;</div>
+        <div class="holo-name">精确射击</div>
+        <div class="holo-desc">步兵暴击 +15%</div>
+        <div class="holo-meta">
+          <span class="holo-cost">&#x2b55; 1</span>
+          <span class="holo-state rdy">&#x25cf READY</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="energy-link active" style="--hc:#ff7040;"></div>
+
+    <div class="holo-node unlocked">
+      <div class="holo-card">
+        <div class="holo-icon">&#x26a1;</div>
+        <div class="holo-name">火力相位仪</div>
+        <div class="holo-desc">PI_NOVA_03 超弦阵列<br>已解锁</div>
+        <div class="holo-meta">
+          <span class="holo-cost">&#x2b55; 2</span>
+          <span class="holo-state on">&#x25cf ACTIVE</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="energy-link inactive" style="--hc:#ff7040;"></div>
+
+    <div class="holo-node locked">
+      <div class="holo-card">
+        <div class="holo-icon">&#x26a1;</div>
+        <div class="holo-name">纵深打击</div>
+        <div class="holo-desc">射程 +10% 吸血 +8%</div>
+        <div class="holo-meta">
+          <span class="holo-cost">&#x2b55; 2</span>
+          <span class="holo-state off">&#x25cf LOCKED</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="energy-link inactive" style="--hc:#ff7040;"></div>
+
+    <div class="holo-node locked">
+      <div class="holo-card">
+        <div class="holo-icon">&#x26a1;</div>
+        <div class="holo-name">火力压制</div>
+        <div class="holo-desc">攻击+15% 暴伤+30%<br>终极压制协议</div>
+        <div class="holo-meta">
+          <span class="holo-cost">&#x2b55; 3</span>
+          <span class="holo-state off">&#x25cf LOCKED</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 概念武器 -->
+  <div class="holo-branch" data-hb="cw">
+    <div class="holo-tag cw">概念武器</div>
+
+    <div class="holo-node unlocked">
+      <div class="holo-card">
+        <div class="holo-icon">&#x2728;</div>
+        <div class="holo-name">概念突破</div>
+        <div class="holo-desc">能量恢复 +20%<br>CONCEPT REACH</div>
+        <div class="holo-meta">
+          <span class="holo-cost">&#x2b55; 1</span>
+          <span class="holo-state on">&#x25cf ACTIVE</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="energy-link active" style="--hc:#bf66ff;"></div>
+
+    <div class="holo-node unlocked">
+      <div class="holo-card">
+        <div class="holo-icon">&#x2728;</div>
+        <div class="holo-name">相位护盾</div>
+        <div class="holo-desc">开局全体+8000护盾<br>CONCEPT_WEAPON UNLOCKED</div>
+        <div class="holo-meta">
+          <span class="holo-cost">&#x2b55; 2</span>
+          <span class="holo-state on">&#x25cf ACTIVE</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="energy-link active" style="--hc:#bf66ff;"></div>
+
+    <div class="holo-node unlocked">
+      <div class="holo-card">
+        <div class="holo-icon">&#x2728;</div>
+        <div class="holo-name">形态进化</div>
+        <div class="holo-desc">卡牌进化（一战时代）<br>EVOLUTION ERA:0</div>
+        <div class="holo-meta">
+          <span class="holo-cost">&#x2b55; 2</span>
+          <span class="holo-state on">&#x25cf ACTIVE</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="energy-link inactive" style="--hc:#bf66ff;"></div>
+
+    <div class="holo-node locked">
+      <div class="holo-card">
+        <div class="holo-icon">&#x2728;</div>
+        <div class="holo-name">核子轰炸</div>
+        <div class="holo-desc">每45秒敌方全体轰炸<br>NUCLEAR_BOMBARDMENT</div>
+        <div class="holo-meta">
+          <span class="holo-cost">&#x2b55; 3</span>
+          <span class="holo-state off">&#x25cf LOCKED</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="energy-link inactive" style="--hc:#bf66ff;"></div>
+
+    <div class="holo-node locked">
+      <div class="holo-card">
+        <div class="holo-icon">&#x2728;</div>
+        <div class="holo-name">相位终焉</div>
+        <div class="holo-desc">特殊卡：相位守护者<br>全时代进化解锁</div>
+        <div class="holo-meta">
+          <span class="holo-cost">&#x2b55; 3</span>
+          <span class="holo-state off">&#x25cf LOCKED</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="bottom-info">PHASE MASTER SKILL TREE // HOLOGRAPHIC VIEW</div>
+</body>
+</html>

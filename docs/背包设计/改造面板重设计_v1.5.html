@@ -1,0 +1,1539 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase War · 改造面板 · v1.5 可落地修正 + 折叠右栏 + 状态体系</title>
+<style>
+/* ============================================================
+ * 设计 TOKEN —— 与 resources/design_tokens.gd 1:1 对齐
+ * 改造面板签名色 = --cyan (#06b6d4)
+ * ============================================================ */
+:root {
+  --bg-void:        #060912;
+  --bg-panel:       #0d1320;
+  --bg-card:        #131a2a;
+  --bg-card-hi:     #1a2438;
+  --bg-slot-locked: #0a0f1c;
+  --border-dim:     rgba(120,140,180,0.14);
+  --border:         rgba(160,180,220,0.22);
+  --border-hi:      rgba(120,180,255,0.45);
+
+  --cyan:        #06b6d4;
+  --cyan-soft:   #22d3ee;
+  --cyan-glow:   rgba(6,182,212,0.35);
+
+  --green-up:    #34d399;
+  --red-down:    #ef4444;
+  --amber:       #f59e0b;
+  --violet:      #a78bfa;
+
+  --text:        #e8edf7;
+  --text-mid:    #a8b3c7;
+  --text-dim:    #6b7691;
+  --text-faint:  #454f63;
+
+  --font-display: 'Rajdhani', 'Noto Sans SC', sans-serif;
+  --font-body:    'Noto Sans SC', 'Inter', sans-serif;
+  --font-mono:    'JetBrains Mono', 'Consolas', monospace;
+
+  /* 兵种色（GameConstants.CombatKind） */
+  --kind-infantry: #e5484d;   /* 步兵 combat_kind=0 */
+  --kind-armor:    #4d7fe5;   /* 装甲 combat_kind=1 */
+  --kind-arty:     #d97706;   /* 炮兵 combat_kind=2 */
+  --kind-air:      #4dcce5;   /* 空军 combat_kind=3 */
+  --kind-fort:     #94a3b8;   /* 堡垒 combat_kind=4 */
+
+  /* 稀有度色（统一图标体系，见 §3.4） */
+  --rar-common:    #6b7691;
+  --rar-uncommon:  #22c55e;
+  --rar-rare:      #38bdf8;
+  --rar-epic:      #c084fc;
+  --rar-legendary: #f59e0b;
+  --rar-mythic:    #ef4444;
+
+  /* ★ v1.5：右栏三档宽度 CSS 变量，由 JS 切换 */
+  --right-w: 280px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-void);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 16px;
+  overflow-x: hidden;
+}
+body::before {
+  content: ''; position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(120,140,180,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(120,140,180,0.025) 1px, transparent 1px);
+  background-size: 40px 40px; pointer-events: none; z-index: 0;
+}
+
+.app { max-width: 1360px; margin: 0 auto; position: relative; z-index: 1; }
+
+/* ===== 顶部 brand bar ===== */
+.top-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 16px; margin-bottom: 12px;
+  background: var(--bg-card); border: 1px solid var(--border-dim); border-radius: 6px;
+}
+.top-brand { display: flex; align-items: center; gap: 10px; }
+.top-brand .diamond {
+  width: 18px; height: 18px;
+  background: linear-gradient(135deg, var(--cyan), var(--cyan-soft));
+  transform: rotate(45deg); border-radius: 2px;
+}
+.top-brand h1 {
+  font-family: var(--font-display); font-size: 14px; font-weight: 700;
+  letter-spacing: 0.2em; color: var(--text);
+}
+.top-brand h1 .sub {
+  font-size: 9px; color: var(--text-dim); letter-spacing: 0.15em;
+  margin-left: 8px; font-weight: 400;
+}
+.top-meta {
+  display: flex; gap: 16px; align-items: center;
+  font-family: var(--font-mono); font-size: 10px; color: var(--text-dim);
+  letter-spacing: 0.08em;
+}
+.top-meta b { color: var(--cyan-soft); font-weight: 600; }
+.top-meta .pill {
+  padding: 2px 8px; border-radius: 10px;
+  background: rgba(6,182,212,0.1); border: 1px solid rgba(6,182,212,0.3);
+  color: var(--cyan-soft); font-size: 9px;
+}
+
+/* ===== 面板外框 ===== */
+.panel-frame {
+  width: 1360px; height: 760px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border); border-radius: 10px;
+  overflow: hidden; position: relative;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+  display: grid;
+  grid-template-rows: 48px 36px 1fr 28px;
+}
+.panel-frame::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--cyan) 20%, var(--cyan-soft) 50%, var(--cyan) 80%, transparent);
+  opacity: 0.8; z-index: 5;
+}
+
+/* ===== 标题栏 ===== */
+.title-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px; border-bottom: 1px solid var(--border-dim);
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+}
+.title-left { display: flex; align-items: center; gap: 12px; }
+.title-mark {
+  width: 18px; height: 18px; position: relative;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--cyan-soft);
+}
+.title-mark::before {
+  content: ''; position: absolute; inset: 0;
+  border: 1px solid currentColor; transform: rotate(45deg);
+}
+.title-mark::after {
+  content: ''; position: absolute; inset: 5px;
+  background: currentColor; transform: rotate(45deg); filter: blur(0.5px);
+}
+.title-text {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: 18px; letter-spacing: 0.12em; color: var(--text);
+}
+.title-text .sub {
+  font-size: 10px; letter-spacing: 0.3em; font-weight: 500;
+  margin-left: 10px; opacity: 0.7; color: var(--cyan-soft);
+}
+.title-right { display: flex; align-items: center; gap: 12px; }
+.title-meta-top {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text-dim); letter-spacing: 0.1em;
+}
+.title-meta-top b { color: var(--cyan-soft); }
+.close-btn {
+  width: 24px; height: 24px; border: 1px solid var(--border-dim);
+  background: transparent; color: var(--text-dim);
+  border-radius: 4px; cursor: pointer; font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+}
+.close-btn:hover { color: var(--text); border-color: var(--border); }
+
+/* ===== 资源条 ===== */
+.resource-bar {
+  display: flex; align-items: center; gap: 14px;
+  padding: 0 20px; border-bottom: 1px solid var(--border-dim);
+  background: var(--bg-card); font-family: var(--font-mono); font-size: 11px;
+}
+.res-item {
+  display: flex; align-items: baseline; gap: 6px; color: var(--text-mid);
+}
+.res-item .res-val {
+  font-family: var(--font-display); font-size: 14px;
+  font-weight: 700; color: var(--text);
+}
+.res-item .res-val.cyan { color: var(--cyan-soft); }
+.res-item .res-val.amber { color: var(--amber); }
+.res-item .res-val.green { color: var(--green-up); }
+.res-item .res-lbl { font-size: 10px; color: var(--text-dim); }
+.res-sep { width: 1px; height: 14px; background: var(--border-dim); }
+.status-line {
+  margin-left: auto; color: var(--text-dim);
+  display: flex; align-items: center; gap: 6px;
+}
+.status-line .on {
+  color: var(--green-up); font-size: 8px;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+/* ============================================================
+ * ★ v1.5 三栏：左名册 240px / 中改造库+底部台 1fr / 右单位面板 var(--right-w)
+ *   左栏从 v1.4 的 290px 收窄到 240px，右栏用 CSS 变量三档切换
+ * ============================================================ */
+.tri-layout {
+  display: grid;
+  grid-template-columns: 240px 1fr var(--right-w);
+  height: 100%; overflow: hidden;
+  transition: grid-template-columns 0.2s ease;
+}
+.col-pane {
+  display: flex; flex-direction: column;
+  border-right: 1px solid var(--border-dim);
+  overflow: hidden; min-width: 0;
+  transition: opacity 0.2s ease;
+}
+.col-pane:last-child { border-right: none; }
+.col-pane.collapsed { opacity: 0; pointer-events: none; }
+
+/* 中栏拆为 上半（改造库） + 下半（底部操作台） */
+.col-mid-stack {
+  display: flex;
+  flex-direction: column;
+  height: 100%; overflow: hidden;
+}
+
+/* ===== 列头 ===== */
+.col-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px; border-bottom: 1px solid var(--border-dim);
+  background: rgba(255,255,255,0.015);
+}
+.col-head.cyan .ch-title { color: var(--cyan-soft); }
+.ch-title {
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--font-display); font-size: 12px;
+  font-weight: 700; letter-spacing: 0.1em;
+}
+.ch-title .pip {
+  width: 5px; height: 5px; border-radius: 50%; background: currentColor;
+}
+.ch-count {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--text-faint); letter-spacing: 0.06em;
+}
+/* ★ v1.5：右栏折叠按钮 */
+.ch-fold-btn {
+  display: flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 3px;
+  background: transparent; border: 1px solid var(--border-dim);
+  color: var(--text-dim); cursor: pointer;
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.06em;
+  transition: all 0.12s;
+}
+.ch-fold-btn:hover { color: var(--cyan-soft); border-color: var(--cyan); background: rgba(6,182,212,0.05); }
+.ch-fold-btn .fb-icon { font-family: var(--font-display); font-size: 12px; line-height: 1; }
+
+/* ===== 筛选 chip ===== */
+.col-filter {
+  display: flex; gap: 4px; padding: 6px 8px;
+  border-bottom: 1px solid var(--border-dim);
+}
+.chip {
+  flex: 1; padding: 4px 8px;
+  font-family: var(--font-display); font-size: 10px; font-weight: 600;
+  letter-spacing: 0.06em; color: var(--text-dim);
+  background: var(--bg-card); border: 1px solid var(--border-dim);
+  border-radius: 3px; cursor: pointer; text-align: center;
+  user-select: none; transition: all 0.12s;
+}
+.chip:hover { color: var(--text-mid); border-color: var(--border); }
+.chip.active.cyan {
+  color: var(--cyan-soft);
+  background: rgba(6,182,212,0.08);
+  border-color: rgba(6,182,212,0.45);
+}
+
+/* ===== 左栏：单位列表 ===== */
+.col-scroll { overflow-y: auto; flex: 1; }
+.col-scroll::-webkit-scrollbar { width: 6px; }
+.col-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.col-scroll::-webkit-scrollbar-track { background: transparent; }
+
+.card-item {
+  display: grid; grid-template-columns: 32px 1fr auto;
+  align-items: center; gap: 8px;
+  padding: 6px 10px; margin: 2px 6px;
+  border-radius: 4px; cursor: pointer;
+  border-left: 3px solid transparent;
+  background: transparent;
+  position: relative;
+  transition: background 0.12s, border-color 0.12s;
+}
+.card-item:hover { background: rgba(255,255,255,0.025); }
+/* ★ v1.5：选中态用兵种色左边框（按 combat_kind 区分） */
+.card-item.active {
+  background: rgba(6,182,212,0.08);
+  border-left-color: var(--kind-armor);
+}
+.card-item.active.inf { border-left-color: var(--kind-infantry); }
+.card-item.active.air { border-left-color: var(--kind-air); }
+.card-item.active.arty { border-left-color: var(--kind-arty); }
+/* ★ v1.5：焦点态（键盘导航用），2px cyan outline 区别于选中左边框 */
+.card-item.focused {
+  outline: 2px solid var(--cyan-soft);
+  outline-offset: -2px;
+}
+
+.card-thumb {
+  width: 32px; height: 36px;
+  background: var(--bg-slot-locked);
+  border: 1px solid var(--kind-armor);
+  border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 16px; font-weight: 700;
+  color: var(--kind-armor);
+}
+.card-thumb.inf { border-color: var(--kind-infantry); color: var(--kind-infantry); }
+.card-thumb.air { border-color: var(--kind-air); color: var(--kind-air); }
+.card-thumb.arty { border-color: var(--kind-arty); color: var(--kind-arty); }
+.card-info { min-width: 0; }
+.card-name {
+  font-size: 12px; font-weight: 600; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.card-name .cid {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--text-faint); margin-left: 4px; font-weight: 400;
+}
+.card-sub {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--text-dim); margin-top: 1px;
+}
+.card-sub .mods { color: var(--cyan-soft); }
+.card-tier {
+  font-family: var(--font-display); font-size: 9px; font-weight: 700;
+  padding: 1px 5px; border-radius: 2px;
+  background: rgba(6,182,212,0.1);
+  border: 1px solid rgba(6,182,212,0.4);
+  color: var(--cyan-soft); letter-spacing: 0.06em;
+}
+.card-tier.grunt { background: rgba(107,118,145,0.1); border-color: rgba(107,118,145,0.4); color: var(--text-mid); }
+.card-tier.veteran { background: rgba(34,197,94,0.08); border-color: rgba(34,197,94,0.35); color: var(--rar-uncommon); }
+.card-tier.elite { background: rgba(56,189,248,0.08); border-color: rgba(56,189,248,0.35); color: var(--rar-rare); }
+.card-tier.champion { background: rgba(192,132,252,0.08); border-color: rgba(192,132,252,0.35); color: var(--rar-epic); }
+.card-tier.overlord { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.4); color: var(--rar-legendary); }
+
+/* ===== 中栏上半：改造库 ===== */
+.mod-section { overflow-y: auto; padding: 6px 10px; flex: 1 1 auto; min-height: 0; }
+.mod-section::-webkit-scrollbar { width: 6px; }
+.mod-section::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ★ v1.5 选中态：左边框 3→4px + 顶边光带 + 背景 8%→12% */
+.mod-row {
+  display: grid; grid-template-columns: 36px 1fr auto;
+  align-items: center; gap: 12px;
+  padding: 8px 12px; margin: 3px 0;
+  border-radius: 5px; cursor: pointer;
+  border-left: 3px solid transparent;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border-dim);
+  border-right: 1px solid var(--border-dim);
+  border-bottom: 1px solid var(--border-dim);
+  transition: background 0.12s, border-color 0.12s, transform 0.12s;
+}
+.mod-row:hover {
+  background: var(--bg-card-hi);
+  transform: translateX(2px);
+}
+.mod-row.active {
+  background: rgba(6,182,212,0.12);
+  border-left: 4px solid var(--cyan);
+  border-top-color: rgba(6,182,212,0.5);
+  box-shadow: 0 0 0 1px rgba(6,182,212,0.25), 0 2px 12px rgba(6,182,212,0.15);
+}
+.mod-row.unusable {
+  opacity: 0.40;
+  background: transparent;
+}
+.mod-row.unusable:hover { opacity: 0.6; background: rgba(255,255,255,0.02); transform: none; }
+
+/* ★ v1.5 统一图标体系：稀有度首字母 + 稀有度色边框 + 兵种色淡底 */
+.mod-ico {
+  width: 36px; height: 36px;
+  border: 1px solid var(--rar-common);
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 18px; font-weight: 700;
+  color: var(--rar-common);
+  background: rgba(107,118,145,0.05);
+}
+.mod-ico.common    { border-color: var(--rar-common);    color: var(--rar-common);    background: rgba(107,118,145,0.05); }
+.mod-ico.uncommon  { border-color: var(--rar-uncommon);  color: var(--rar-uncommon);  background: rgba(34,197,94,0.05); }
+.mod-ico.rare      { border-color: var(--rar-rare);      color: var(--rar-rare);      background: rgba(56,189,248,0.05); }
+.mod-ico.epic      { border-color: var(--rar-epic);      color: var(--rar-epic);      background: rgba(192,132,252,0.05); }
+.mod-ico.legendary { border-color: var(--rar-legendary); color: var(--rar-legendary); background: rgba(245,158,11,0.05); }
+
+.mod-info { min-width: 0; }
+.mod-line1 {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 2px;
+}
+.mod-name {
+  font-size: 13px; font-weight: 600; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mod-rar {
+  font-family: var(--font-mono); font-size: 8px; font-weight: 700;
+  padding: 0 4px; border-radius: 2px; letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+.mod-rar.epic { color: var(--rar-epic); border: 1px solid var(--rar-epic); }
+.mod-rar.legendary { color: var(--rar-legendary); border: 1px solid var(--rar-legendary); }
+.mod-rar.rare { color: var(--rar-rare); border: 1px solid var(--rar-rare); }
+.mod-rar.uncommon { color: var(--rar-uncommon); border: 1px solid var(--rar-uncommon); }
+.mod-rar.common { color: var(--text-mid); border: 1px solid var(--text-faint); }
+.mod-slot-chip {
+  font-family: var(--font-mono); font-size: 8px;
+  padding: 1px 5px; border-radius: 2px;
+  background: var(--bg-slot-locked);
+  border: 1px solid var(--border-dim);
+  color: var(--text-dim); letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+.mod-pwr {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--amber); flex-shrink: 0;
+}
+.mod-line2 {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text-dim);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mod-line2 .hi { color: var(--green-up); font-weight: 600; }
+.mod-line2 .neg { color: var(--red-down); }
+
+/* ★ v1.5 状态体系统一（§3.1） */
+.mod-status {
+  font-family: var(--font-display); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.06em; padding: 4px 10px; border-radius: 3px;
+  white-space: nowrap;
+  display: flex; align-items: center; gap: 4px;
+}
+.mod-status .ms-icon { font-size: 11px; line-height: 1; }
+.mod-status.available {
+  color: var(--green-up);
+  background: rgba(52,211,153,0.1);
+  border: 1px solid rgba(52,211,153,0.35);
+}
+.mod-status.available .ms-icon {
+  animation: pulse-dot 1.6s ease-in-out infinite;
+}
+@keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.5} }
+.mod-status.installed {
+  color: var(--cyan-soft);
+  background: rgba(6,182,212,0.12);
+  border: 1px solid rgba(6,182,212,0.45);
+}
+.mod-status.conflict {
+  color: var(--red-down);
+  background: rgba(239,68,68,0.08);
+  border: 1px solid rgba(239,68,68,0.35);
+}
+/* v1.5：档位不足从灰改琥珀色（与冲突红区分，§3.1） */
+.mod-status.low-tier {
+  color: var(--amber);
+  background: rgba(245,158,11,0.08);
+  border: 1px solid rgba(245,158,11,0.35);
+}
+.mod-status.disabled {
+  color: var(--text-faint);
+  background: transparent;
+  border: 1px dashed var(--border-dim);
+}
+
+/* ============================================================
+ * ★ v1.5 底部操作台（瘦身后 + 效果模拟抽屉）
+ * ============================================================ */
+.action-deck {
+  border-top: 2px solid var(--cyan);
+  background: linear-gradient(180deg, rgba(6,182,212,0.06), rgba(6,182,212,0.02) 30%, var(--bg-panel));
+  box-shadow: 0 -8px 24px rgba(6,182,212,0.08);
+  flex-shrink: 0;
+}
+
+/* 空态：呼吸光带从改造库指向底部台 */
+.action-empty {
+  padding: 16px 24px;
+  display: flex; align-items: center; gap: 14px;
+}
+.action-empty .ae-beam {
+  width: 3px; height: 32px;
+  background: linear-gradient(180deg, transparent, var(--cyan-soft), transparent);
+  animation: beam 2s ease-in-out infinite;
+  border-radius: 2px;
+}
+@keyframes beam { 0%,100%{opacity:0.3; transform:scaleY(0.8)} 50%{opacity:1; transform:scaleY(1.2)} }
+.action-empty .ae-text {
+  font-size: 12px; color: var(--text-dim);
+}
+.action-empty .ae-text b { color: var(--cyan-soft); }
+
+/* 已选态：两列布局（左核心信息 / 右安装按钮） */
+.action-body {
+  display: grid;
+  grid-template-columns: 1fr 200px;
+  gap: 16px;
+  padding: 12px 20px;
+  align-items: center;
+}
+
+/* 左块 */
+.ab-left {
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, rgba(6,182,212,0.08), rgba(6,182,212,0.02));
+  border: 1px solid rgba(6,182,212,0.3);
+  border-radius: 6px;
+}
+.ab-left .ab-ico {
+  width: 44px; height: 44px;
+  border: 1px solid var(--rar-epic);
+  border-radius: 5px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 22px; font-weight: 700;
+  color: var(--rar-epic);
+  background: rgba(192,132,252,0.08);
+  flex-shrink: 0;
+}
+.ab-left .ab-ico.legendary { border-color: var(--rar-legendary); color: var(--rar-legendary); background: rgba(245,158,11,0.08); }
+.ab-left .ab-ico.rare { border-color: var(--rar-rare); color: var(--rar-rare); background: rgba(56,189,248,0.08); }
+.ab-left .ab-info { min-width: 0; flex: 1; }
+.ab-left .ab-name {
+  font-family: var(--font-display); font-size: 14px; font-weight: 700;
+  color: var(--text);
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 3px;
+}
+.ab-left .ab-name .ab-rar {
+  font-family: var(--font-display); font-size: 9px; font-weight: 700;
+  padding: 1px 5px; border-radius: 2px;
+  color: var(--rar-epic); border: 1px solid var(--rar-epic);
+  letter-spacing: 0.08em;
+}
+.ab-left .ab-name .ab-slot {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--text-dim);
+}
+.ab-left .ab-core {
+  display: flex; align-items: baseline; gap: 10px;
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--text-mid);
+}
+.ab-left .ab-core .hi {
+  color: var(--green-up); font-weight: 700;
+  font-family: var(--font-display); font-size: 16px;
+}
+.ab-left .ab-req {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text-dim);
+}
+.ab-left .ab-req .ok { color: var(--green-up); font-weight: 600; }
+.ab-left .ab-req .no { color: var(--red-down); font-weight: 600; }
+.ab-left .ab-req .warn { color: var(--amber); font-weight: 600; }
+
+/* 右块：安装按钮 */
+.ab-right {
+  display: flex; flex-direction: column; gap: 4px;
+}
+.btn-primary {
+  width: 100%; padding: 12px 16px;
+  font-family: var(--font-display); font-size: 14px; font-weight: 700;
+  letter-spacing: 0.14em; color: #00121a;
+  background: linear-gradient(135deg, var(--cyan-soft), var(--cyan));
+  border: none; border-radius: 5px; cursor: pointer;
+  box-shadow: 0 4px 16px rgba(6,182,212,0.4);
+  transition: transform 0.1s, box-shadow 0.15s;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(6,182,212,0.55);
+}
+/* v1.5：按下反馈 */
+.btn-primary:active {
+  transform: scale(0.97);
+  box-shadow: 0 2px 8px rgba(6,182,212,0.3);
+}
+.btn-primary:disabled {
+  background: var(--bg-card-hi); color: var(--text-faint);
+  cursor: not-allowed; box-shadow: none;
+  border: 1px solid var(--border-dim);
+}
+.btn-secondary {
+  width: 100%; padding: 5px;
+  font-family: var(--font-display); font-size: 9px;
+  letter-spacing: 0.08em; color: var(--text-dim);
+  background: transparent; border: 1px solid var(--border-dim);
+  border-radius: 3px; cursor: pointer;
+  transition: all 0.12s;
+}
+.btn-secondary:hover { color: var(--cyan-soft); border-color: var(--cyan); background: rgba(6,182,212,0.05); }
+.btn-secondary.expanded { color: var(--cyan-soft); border-color: var(--cyan); background: rgba(6,182,212,0.05); }
+
+/* ★ v1.5：效果模拟抽屉（§1.3，展开态） */
+.sim-drawer {
+  display: none;
+  padding: 10px 20px 14px;
+  border-top: 1px dashed rgba(6,182,212,0.25);
+  background: rgba(6,182,212,0.03);
+  animation: drawer-in 0.18s ease;
+}
+.sim-drawer.open { display: grid; grid-template-columns: 1fr 1fr 180px; gap: 14px; }
+@keyframes drawer-in { from{opacity:0; transform:translateY(-4px)} to{opacity:1; transform:none} }
+.sim-block .sim-h {
+  font-family: var(--font-display); font-size: 9px; font-weight: 700;
+  color: var(--text-mid); letter-spacing: 0.1em;
+  margin-bottom: 6px; padding-bottom: 3px;
+  border-bottom: 1px solid var(--border-dim);
+}
+.sim-eff-list { display: flex; flex-direction: column; gap: 3px; }
+.sim-eff {
+  display: flex; justify-content: space-between;
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text-dim);
+  padding: 2px 0;
+}
+.sim-eff .se-key { color: var(--text-mid); }
+.sim-eff .se-val { color: var(--green-up); font-weight: 600; }
+.sim-cmp {
+  display: flex; flex-direction: column; gap: 4px;
+}
+.sim-cmp-row {
+  display: grid; grid-template-columns: 1fr auto auto;
+  gap: 6px; align-items: center;
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text-dim);
+  padding: 3px 0;
+}
+.sim-cmp-row .scr-label { color: var(--text-mid); }
+.sim-cmp-row .scr-before { color: var(--text-faint); }
+.sim-cmp-row .scr-arrow { color: var(--cyan-soft); }
+.sim-cmp-row .scr-after { color: var(--green-up); font-weight: 700; }
+.sim-power {
+  text-align: center; padding: 10px;
+  background: var(--bg-card); border: 1px solid var(--border-dim);
+  border-radius: 5px;
+}
+.sim-power .sp-label {
+  font-family: var(--font-mono); font-size: 8px;
+  color: var(--text-dim); letter-spacing: 0.08em;
+}
+.sim-power .sp-before { font-family: var(--font-display); font-size: 18px; color: var(--text-faint); }
+.sim-power .sp-arrow { color: var(--cyan-soft); font-size: 14px; margin: 2px 0; }
+.sim-power .sp-after { font-family: var(--font-display); font-size: 24px; font-weight: 700; color: var(--green-up); text-shadow: 0 0 12px rgba(52,211,153,0.4); }
+.sim-power .sp-delta { font-family: var(--font-mono); font-size: 9px; color: var(--green-up); margin-top: 4px; }
+
+/* ============================================================
+ * ★ v1.5 右栏：单位面板（恒定显示，三档可折叠）
+ * ============================================================ */
+.up-body { flex: 1; overflow-y: auto; padding: 12px 14px; }
+.up-body::-webkit-scrollbar { width: 6px; }
+.up-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* 单位头部 */
+.up-hero {
+  display: grid; grid-template-columns: 48px 1fr;
+  gap: 12px; align-items: center;
+  padding: 10px;
+  background: linear-gradient(135deg, rgba(6,182,212,0.06), transparent);
+  border: 1px solid rgba(6,182,212,0.2);
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+.up-hero .up-art {
+  width: 48px; height: 48px;
+  background: var(--bg-slot-locked);
+  border: 1px solid var(--kind-armor);
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 22px; font-weight: 700;
+  color: var(--kind-armor);
+}
+.up-hero .up-info .up-name {
+  font-family: var(--font-display); font-size: 15px; font-weight: 700;
+  color: var(--text);
+}
+.up-hero .up-info .up-name .cid {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--text-faint); margin-left: 5px; font-weight: 400;
+}
+.up-hero .up-info .up-tags {
+  display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px;
+}
+.up-tag {
+  font-family: var(--font-mono); font-size: 9px;
+  padding: 1px 6px; border-radius: 2px;
+  border: 1px solid var(--border-dim); color: var(--text-mid);
+  background: var(--bg-card);
+}
+.up-tag.cyan { border-color: rgba(6,182,212,0.4); color: var(--cyan-soft); }
+.up-tag.era { border-color: rgba(167,139,250,0.3); color: var(--violet); }
+
+/* 战力评分大块 */
+.up-power-block {
+  display: grid; grid-template-columns: 1fr auto;
+  align-items: center; gap: 10px;
+  padding: 10px 12px; margin-bottom: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-radius: 5px;
+  border-left: 3px solid var(--cyan);
+}
+.up-power-block .upb-lbl {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--text-dim); letter-spacing: 0.08em;
+}
+.up-power-block .upb-tier {
+  font-family: var(--font-display); font-size: 11px; font-weight: 700;
+  color: var(--cyan-soft); letter-spacing: 0.1em; margin-top: 2px;
+}
+.up-power-block .upb-val {
+  font-family: var(--font-display); font-size: 26px; font-weight: 700;
+  color: var(--cyan-soft); text-align: right; line-height: 1;
+  text-shadow: 0 0 16px var(--cyan-glow);
+}
+
+/* ★ v1.5：5 档进度条门槛标注修正（按真实阈值 [150,260,420,720]） */
+.up-tier-progress {
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  gap: 3px; margin-bottom: 10px;
+}
+.up-tp-cell {
+  padding: 4px 2px; text-align: center;
+  font-family: var(--font-mono); font-size: 7px;
+  border-radius: 2px;
+  border: 1px solid var(--border-dim); color: var(--text-faint);
+  position: relative;
+}
+.up-tp-cell .tp-name { font-weight: 700; display: block; font-size: 8px; }
+.up-tp-cell .tp-thr { display: block; margin-top: 1px; }
+.up-tp-cell.passed {
+  color: var(--text-mid);
+  background: rgba(52,211,153,0.04);
+  border-color: rgba(52,211,153,0.2);
+}
+.up-tp-cell.current {
+  color: var(--cyan-soft);
+  background: rgba(6,182,212,0.12);
+  border-color: var(--cyan);
+  box-shadow: 0 0 8px rgba(6,182,212,0.3);
+}
+.up-tp-cell.current::after {
+  content: '●'; position: absolute; top: -4px; right: 2px;
+  font-size: 8px; color: var(--cyan-soft);
+}
+
+/* 区段标题 */
+.up-section-h {
+  font-family: var(--font-display); font-size: 10px; font-weight: 700;
+  color: var(--text-mid); letter-spacing: 0.12em;
+  padding: 6px 0; margin-top: 4px;
+  border-bottom: 1px dashed var(--border-dim);
+  display: flex; align-items: center; gap: 6px;
+}
+.up-section-h .ush-extra {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--text-faint); margin-left: auto; font-weight: 400;
+}
+.up-section-h .ush-count {
+  color: var(--cyan-soft); font-family: var(--font-mono);
+}
+
+/* 基础属性 6 格 */
+.up-stat-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 5px; margin: 6px 0 8px;
+}
+.up-stat {
+  padding: 6px 8px; background: var(--bg-card);
+  border: 1px solid var(--border-dim); border-radius: 3px;
+  text-align: center;
+}
+.up-stat .lbl {
+  font-family: var(--font-mono); font-size: 8px;
+  color: var(--text-dim); letter-spacing: 0.04em; margin-bottom: 2px;
+}
+.up-stat .val {
+  font-family: var(--font-display); font-size: 14px; font-weight: 700;
+  color: var(--text);
+}
+.up-stat .val.green { color: var(--green-up); }
+
+/* 已装改造列表 */
+.installed-list { margin: 6px 0 8px; }
+.installed-row {
+  display: grid; grid-template-columns: 28px 1fr auto;
+  align-items: center; gap: 10px;
+  padding: 6px 10px; margin-bottom: 4px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-left: 3px solid rgba(6,182,212,0.4);
+  border-radius: 4px;
+  transition: all 0.12s;
+}
+.installed-row:hover {
+  border-left-color: var(--cyan);
+  background: var(--bg-card-hi);
+}
+.installed-row .ir-ico {
+  width: 28px; height: 28px;
+  border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 14px; font-weight: 700;
+  border: 1px solid var(--cyan); color: var(--cyan);
+  background: rgba(6,182,212,0.06);
+}
+.installed-row .ir-ico.epic { border-color: var(--rar-epic); color: var(--rar-epic); }
+.installed-row .ir-ico.legendary { border-color: var(--rar-legendary); color: var(--rar-legendary); }
+.installed-row .ir-info { min-width: 0; }
+.installed-row .ir-name {
+  font-size: 11px; font-weight: 600; color: var(--text);
+  display: flex; align-items: center; gap: 4px;
+}
+.installed-row .ir-name .ir-lv {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--cyan-soft); padding: 0 4px;
+  background: rgba(6,182,212,0.1); border-radius: 2px;
+}
+.installed-row .ir-effect {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--text-dim); margin-top: 1px;
+}
+.installed-row .ir-effect .hi { color: var(--green-up); font-weight: 600; }
+/* ★ v1.5：卸载→替换（§1.2，无卸载 API，语义对齐 replace_modification） */
+.replace-btn {
+  padding: 3px 7px;
+  font-family: var(--font-display); font-size: 9px; font-weight: 700;
+  letter-spacing: 0.08em; color: var(--text-faint);
+  background: transparent;
+  border: 1px solid var(--border-dim);
+  border-radius: 3px; cursor: pointer;
+  transition: all 0.12s;
+  opacity: 0.6;
+  position: relative;
+}
+.installed-row:hover .replace-btn { opacity: 1; }
+.replace-btn:hover {
+  color: var(--amber);
+  border-color: var(--amber);
+  background: rgba(245,158,11,0.06);
+}
+/* tooltip */
+.replace-btn[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute; bottom: calc(100% + 6px); right: 0;
+  width: 200px; padding: 6px 8px;
+  background: var(--bg-card-hi); border: 1px solid var(--border);
+  border-radius: 3px;
+  font-family: var(--font-body); font-size: 9px; font-weight: 400;
+  color: var(--text-mid); letter-spacing: 0;
+  white-space: normal; text-align: left;
+  opacity: 0; pointer-events: none; transition: opacity 0.12s;
+  z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+.replace-btn:hover[data-tip]::after { opacity: 1; }
+
+/* 空槽位引导 */
+.empty-slots-hint {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px; margin-top: 4px;
+  background: transparent;
+  border: 1px dashed var(--border-dim);
+  border-radius: 4px;
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--text-faint);
+}
+.empty-slots-hint .esh-icon {
+  font-family: var(--font-display); font-size: 14px;
+  color: var(--cyan-soft); animation: pulse 2s infinite;
+}
+.empty-slots-hint .esh-hi { color: var(--cyan-soft); font-weight: 600; }
+
+/* ===== 页脚 ===== */
+.panel-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px; border-top: 1px solid var(--border-dim);
+  background: var(--bg-card);
+  font-family: var(--font-mono); font-size: 9px; color: var(--text-faint);
+}
+.panel-footer .keys { display: flex; gap: 14px; }
+.panel-footer .key { display: flex; align-items: center; gap: 4px; }
+.panel-footer .key kbd {
+  background: var(--bg-slot-locked); border: 1px solid var(--border-dim);
+  border-radius: 2px; padding: 0 4px;
+  font-size: 9px; color: var(--text-mid);
+}
+.panel-footer .key.active kbd {
+  border-color: var(--cyan); color: var(--cyan-soft);
+  box-shadow: 0 0 6px rgba(6,182,212,0.3);
+}
+
+/* ===== 设计注释 ===== */
+.design-notes {
+  margin-top: 16px; padding: 14px 18px;
+  background: var(--bg-card); border: 1px solid var(--border-dim);
+  border-radius: 6px;
+}
+.design-notes h3 {
+  font-family: var(--font-display); font-size: 13px;
+  color: var(--cyan-soft); letter-spacing: 0.12em;
+  margin-bottom: 10px;
+}
+.design-notes h4 {
+  font-family: var(--font-display); font-size: 11px;
+  color: var(--text); letter-spacing: 0.08em;
+  margin: 12px 0 6px;
+}
+.design-notes ul {
+  list-style: none; padding-left: 0;
+  font-size: 11px; color: var(--text-mid); line-height: 1.65;
+}
+.design-notes li { padding-left: 14px; position: relative; margin-bottom: 4px; }
+.design-notes li::before {
+  content: '▸'; position: absolute; left: 0; color: var(--cyan-soft);
+}
+.design-notes li.warn::before { content: '⚠'; color: var(--amber); }
+.design-notes li.fix::before { content: '✓'; color: var(--green-up); }
+.design-notes .tag {
+  display: inline-block; padding: 0 4px; border-radius: 2px;
+  font-family: var(--font-mono); font-size: 9px;
+  background: rgba(6,182,212,0.1); color: var(--cyan-soft);
+  border: 1px solid rgba(6,182,212,0.3); margin: 0 2px;
+}
+.design-notes .tag.red { background: rgba(239,68,68,0.08); color: var(--red-down); border-color: rgba(239,68,68,0.3); }
+.design-notes .tag.amber { background: rgba(245,158,11,0.08); color: var(--amber); border-color: rgba(245,158,11,0.3); }
+.design-notes .tag.green { background: rgba(52,211,153,0.08); color: var(--green-up); border-color: rgba(52,211,153,0.3); }
+.design-notes .src {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--text-faint);
+}
+.design-notes table {
+  width: 100%; border-collapse: collapse; margin: 6px 0;
+  font-size: 10px;
+}
+.design-notes th, .design-notes td {
+  padding: 4px 6px; text-align: left;
+  border-bottom: 1px solid var(--border-dim);
+}
+.design-notes th { color: var(--text-dim); font-weight: 600; font-family: var(--font-mono); font-size: 9px; }
+.design-notes td code {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--cyan-soft);
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- 顶部 brand -->
+  <div class="top-bar">
+    <div class="top-brand">
+      <div class="diamond"></div>
+      <h1>PHASE WAR · 改造面板 · v1.5 <span class="sub">可落地修正 + 折叠右栏 + 状态体系</span></h1>
+    </div>
+    <div class="top-meta">
+      <span class="pill">v1.5</span>
+      数据源已对齐 <b>unified_card_table.gd</b> / <b>power_tiers.gd</b> / <b>modification_modules</b>
+    </div>
+  </div>
+
+  <!-- 改造面板主体 -->
+  <div class="panel-frame">
+
+    <!-- 标题栏 -->
+    <div class="title-bar">
+      <div class="title-left">
+        <div class="title-mark"></div>
+        <div class="title-text">战术改造站 <span class="sub">TACTICAL MODIFICATION BAY</span></div>
+      </div>
+      <div class="title-right">
+        <div class="title-meta-top">改造图纸 <b>14</b> 可用 · 当前槽位 <b>2/9</b></div>
+        <button class="close-btn">×</button>
+      </div>
+    </div>
+
+    <!-- 资源条（v1.5：删除"当前战力档"格，由右栏承载，避免与选中单位矛盾） -->
+    <div class="resource-bar">
+      <div class="res-item"><span class="res-val amber">1,247</span><span class="res-lbl">纳米材料</span></div>
+      <div class="res-sep"></div>
+      <div class="res-item"><span class="res-val">3,482</span><span class="res-lbl">合金</span></div>
+      <div class="res-sep"></div>
+      <div class="res-item"><span class="res-val green">847</span><span class="res-lbl">研究点</span></div>
+      <div class="status-line"><span class="on">●</span> BAY-13 · OPERATIONAL · 7 MODULES READY</div>
+    </div>
+
+    <!-- 三栏主体（grid-template-columns 由 JS 跟随右栏档位切换） -->
+    <div class="tri-layout" id="tri-layout">
+
+      <!-- ============ 左栏：单位名册（240px） ============ -->
+      <div class="col-pane" id="col-left">
+        <div class="col-head cyan">
+          <div class="ch-title"><span class="pip"></span>单位名册</div>
+          <div class="ch-count">已选 1 / 42</div>
+        </div>
+        <div class="col-filter">
+          <div class="chip active cyan">全部</div>
+          <div class="chip cyan">可改造</div>
+          <div class="chip cyan">满槽</div>
+        </div>
+        <div class="col-scroll">
+          <!-- 选中单位：fut_arm_nexus（虚空领主，近未来 ULTIMATE 装甲，power 1590） -->
+          <div class="card-item active focused" data-kind="armor">
+            <div class="card-thumb">◈</div>
+            <div class="card-info">
+              <div class="card-name">虚空领主<span class="cid">fut_arm_nexus#1</span></div>
+              <div class="card-sub">Lv.10 · <span class="mods">2/9 模块</span></div>
+            </div>
+            <div class="card-tier overlord">OVERLORD</div>
+          </div>
+          <div class="card-item" data-kind="armor">
+            <div class="card-thumb">⚔</div>
+            <div class="card-info">
+              <div class="card-name">T-72 主战坦克<span class="cid">cold_t72#1</span></div>
+              <div class="card-sub">Lv.8 · <span class="mods">5/9 模块</span></div>
+            </div>
+            <div class="card-tier champion">CHAMPION</div>
+          </div>
+          <div class="card-item" data-kind="infantry">
+            <div class="card-thumb inf">▲</div>
+            <div class="card-info">
+              <div class="card-name">毛瑟步兵班<span class="cid">ww1_mauser#2</span></div>
+              <div class="card-sub">Lv.4 · <span class="mods">0/9 模块</span></div>
+            </div>
+            <div class="card-tier grunt">GRUNT</div>
+          </div>
+          <div class="card-item" data-kind="air">
+            <div class="card-thumb air">✈</div>
+            <div class="card-info">
+              <div class="card-name">F-16 战隼<span class="cid">cold_f16#1</span></div>
+              <div class="card-sub">Lv.7 · <span class="mods">9/9 满槽</span></div>
+            </div>
+            <div class="card-tier elite">ELITE</div>
+          </div>
+          <div class="card-item" data-kind="armor">
+            <div class="card-thumb">◉</div>
+            <div class="card-info">
+              <div class="card-name">虎式坦克<span class="cid">ww2_tiger#1</span></div>
+              <div class="card-sub">Lv.6 · <span class="mods">3/9 模块</span></div>
+            </div>
+            <div class="card-tier elite">ELITE</div>
+          </div>
+          <div class="card-item" data-kind="infantry">
+            <div class="card-thumb inf">▲</div>
+            <div class="card-info">
+              <div class="card-name">掷弹兵班<span class="cid">ww2_grenadier#3</span></div>
+              <div class="card-sub">Lv.5 · <span class="mods">1/9 模块</span></div>
+            </div>
+            <div class="card-tier veteran">VETERAN</div>
+          </div>
+          <div class="card-item" data-kind="arty">
+            <div class="card-thumb arty">⊕</div>
+            <div class="card-info">
+              <div class="card-name">105mm 榴弹炮<span class="cid">ww1_105mm#1</span></div>
+              <div class="card-sub">Lv.5 · <span class="mods">2/9 模块</span></div>
+            </div>
+            <div class="card-tier veteran">VETERAN</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ 中栏：上半改造库 + 下半底部操作台 ============ -->
+      <div class="col-pane">
+        <div class="col-mid-stack">
+
+          <!-- 上半：改造库 -->
+          <div style="display:flex;flex-direction:column;flex:1 1 auto;min-height:0">
+            <div class="col-head cyan">
+              <div class="ch-title"><span class="pip"></span>改造模块库</div>
+              <div class="ch-count">可用 5 · 冲突 1 · 档位不足 1 · 总持有 14</div>
+            </div>
+            <div class="mod-section" id="mod-section">
+
+              <!-- ★ 选中：致命精通 enh_crit_dmg（真实数据：epic ×1.5 power, cost_install=200, Lv3 暴击伤害+42%） -->
+              <div class="mod-row active">
+                <div class="mod-ico epic">E</div>
+                <div class="mod-info">
+                  <div class="mod-line1">
+                    <span class="mod-name">致命精通</span>
+                    <span class="mod-rar epic">EPIC</span>
+                    <span class="mod-slot-chip">enhancement</span>
+                    <span class="mod-pwr">×1.5 PWR</span>
+                  </div>
+                  <div class="mod-line2">暴击伤害 <span class="hi">+42%</span>（Lv.3）· 强化词条 · 全兵种适用</div>
+                </div>
+                <div class="mod-status available"><span class="ms-icon">●</span>可安装</div>
+              </div>
+
+              <!-- 爆反装甲 arm_03_reactive_armor（epic ×1.6, conflict_group="armor", 反弹30%伤害3次） -->
+              <div class="mod-row">
+                <div class="mod-ico epic">E</div>
+                <div class="mod-info">
+                  <div class="mod-line1">
+                    <span class="mod-name">爆反装甲</span>
+                    <span class="mod-rar epic">EPIC</span>
+                    <span class="mod-slot-chip">armor</span>
+                    <span class="mod-pwr">×1.6 PWR</span>
+                  </div>
+                  <div class="mod-line2">受击反弹 <span class="hi">30%</span> 伤害（3次失效）· 冲突组 armor</div>
+                </div>
+                <div class="mod-status installed"><span class="ms-icon">✓</span>已装 Lv.2</div>
+              </div>
+
+              <!-- 自动装弹机 arm_08_autoloader（epic ×1.6, conflict_group="autoloader", 射速提升） -->
+              <div class="mod-row">
+                <div class="mod-ico epic">E</div>
+                <div class="mod-info">
+                  <div class="mod-line1">
+                    <span class="mod-name">自动装弹机</span>
+                    <span class="mod-rar epic">EPIC</span>
+                    <span class="mod-slot-chip">autoloader</span>
+                    <span class="mod-pwr">×1.6 PWR</span>
+                  </div>
+                  <div class="mod-line2">攻击速度 <span class="hi">大幅提升</span> · 冲突组 autoloader · 已激活</div>
+                </div>
+                <div class="mod-status installed"><span class="ms-icon">✓</span>已装 Lv.1</div>
+              </div>
+
+              <!-- 尾翼稳定脱壳穿甲弹 arm_07_apfsds（epic ×1.6, conflict_group="ammunition", 对装甲+30%） -->
+              <div class="mod-row">
+                <div class="mod-ico epic">E</div>
+                <div class="mod-info">
+                  <div class="mod-line1">
+                    <span class="mod-name">尾翼稳定脱壳穿甲弹</span>
+                    <span class="mod-rar epic">EPIC</span>
+                    <span class="mod-slot-chip">ammunition</span>
+                    <span class="mod-pwr">×1.6 PWR</span>
+                  </div>
+                  <div class="mod-line2">装甲攻击 <span class="hi">+30%</span> · 高动能穿甲弹 · 冲突组 ammunition</div>
+                </div>
+                <div class="mod-status available"><span class="ms-icon">●</span>可安装</div>
+              </div>
+
+              <!-- 热成像瞄准镜 arm_10_thermal（rare ×1.2, conflict_group="optics", 射程+30） -->
+              <div class="mod-row">
+                <div class="mod-ico rare">R</div>
+                <div class="mod-info">
+                  <div class="mod-line1">
+                    <span class="mod-name">热成像瞄准镜</span>
+                    <span class="mod-rar rare">RARE</span>
+                    <span class="mod-slot-chip">optics</span>
+                    <span class="mod-pwr">×1.2 PWR</span>
+                  </div>
+                  <div class="mod-line2">射程 <span class="hi">+30</span> · 夜战能力 · 冲突组 optics</div>
+                </div>
+                <div class="mod-status available"><span class="ms-icon">●</span>可安装</div>
+              </div>
+
+              <!-- 战斗狂热 arm_16_battle_frenzy（legendary ×1.8, conflict_group="special", 需 OVERLORD） -->
+              <div class="mod-row unusable">
+                <div class="mod-ico legendary">L</div>
+                <div class="mod-info">
+                  <div class="mod-line1">
+                    <span class="mod-name">战斗狂热</span>
+                    <span class="mod-rar legendary">LEG</span>
+                    <span class="mod-slot-chip">special</span>
+                    <span class="mod-pwr">×1.8 PWR</span>
+                  </div>
+                  <div class="mod-line2">受击8次激活：5秒攻击 <span class="hi">+35%</span> · <span class="neg">需 OVERLORD 档（已满足，仅演示档位不足态见下行）</span></div>
+                </div>
+                <div class="mod-status available"><span class="ms-icon">●</span>可安装</div>
+              </div>
+
+              <!-- 档位不足演示：假设一张 epic 改造装在 GRUNT 单位上 -->
+              <div class="mod-row unusable">
+                <div class="mod-ico epic">E</div>
+                <div class="mod-info">
+                  <div class="mod-line1">
+                    <span class="mod-name">猎歼火控</span>
+                    <span class="mod-rar epic">EPIC</span>
+                    <span class="mod-slot-chip">fire_control</span>
+                    <span class="mod-pwr">×1.6 PWR</span>
+                  </div>
+                  <div class="mod-line2"><span class="neg">需要 CHAMPION 档位（当前 OVERLORD，此处演示档位不足配色）</span></div>
+                </div>
+                <div class="mod-status low-tier"><span class="ms-icon">▲</span>需 CHAMPION</div>
+              </div>
+
+              <!-- 冲突演示：烟幕弹 aa_09（rare, conflict_group="countermeasure"） -->
+              <div class="mod-row unusable">
+                <div class="mod-ico rare">R</div>
+                <div class="mod-info">
+                  <div class="mod-line1">
+                    <span class="mod-name">烟幕弹发射器</span>
+                    <span class="mod-rar rare">RARE</span>
+                    <span class="mod-slot-chip">countermeasure</span>
+                    <span class="mod-pwr">×1.3 PWR</span>
+                  </div>
+                  <div class="mod-line2"><span class="neg">冲突组 countermeasure（与已装反制设备互斥）</span> · 闪避 +30%</div>
+                </div>
+                <div class="mod-status conflict"><span class="ms-icon">✕</span>冲突</div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- 下半：底部操作台 -->
+          <div class="action-deck">
+
+            <!-- 空态（v1.5：呼吸光带引导） -->
+            <div class="action-empty" id="deck-empty" style="display:none">
+              <div class="ae-beam"></div>
+              <div class="ae-text">从上方 <b>改造模块库</b> 选择一个模块 · 此处显示详情与安装按钮（按 <b>↓</b> 直达）</div>
+            </div>
+
+            <!-- 已选态 -->
+            <div class="action-body" id="deck-body">
+              <div class="ab-left">
+                <div class="ab-ico">E</div>
+                <div class="ab-info">
+                  <div class="ab-name">
+                    致命精通 <span class="ab-rar">EPIC</span>
+                    <span class="ab-slot">enhancement · ×1.5 PWR · Lv.3</span>
+                  </div>
+                  <div class="ab-core">
+                    <span>暴击伤害 <span class="hi">+42%</span></span>
+                    <span style="color:var(--text-faint)">|</span>
+                    <!-- v1.5：要求行用真实成本（cost_install=200 纳米, cost_research=400 研究, required_level=3） -->
+                    <span class="ab-req">等级≥3 <span class="ok">✓</span> · 纳米 200 <span class="ok">✓</span> · 研究 400 <span class="ok">✓</span> · 档位 CHAMPION <span class="ok">✓</span></span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="ab-right">
+                <button class="btn-primary">▣ 立即安装</button>
+                <button class="btn-secondary" id="sim-toggle">查看完整效果模拟 ↓</button>
+              </div>
+            </div>
+
+            <!-- ★ v1.5：效果模拟抽屉（默认收起，点击展开） -->
+            <div class="sim-drawer" id="sim-drawer">
+              <div class="sim-block">
+                <div class="sim-h">◆ 完整效果列表（ModEffectLabels）</div>
+                <div class="sim-eff-list">
+                  <div class="sim-eff"><span class="se-key">crit_damage_bonus</span><span class="se-val">+42%</span></div>
+                  <div class="sim-eff"><span class="se-key">来源</span><span class="se-val" style="color:var(--text-dim)">enhancement 词条</span></div>
+                  <div class="sim-eff"><span class="se-key">冲突组</span><span class="se-val" style="color:var(--red-down)">enh_crit_dmg</span></div>
+                  <div class="sim-eff"><span class="se-key">适用兵种</span><span class="se-val" style="color:var(--text-dim)">全兵种 [0,1,2,3,4]</span></div>
+                </div>
+              </div>
+              <div class="sim-block">
+                <div class="sim-h">◆ 同类已装对比</div>
+                <div class="sim-cmp">
+                  <div class="sim-cmp-row">
+                    <span class="scr-label">暴击伤害</span>
+                    <span class="scr-before">0%</span>
+                    <span class="scr-arrow">→</span>
+                    <span class="scr-after">+42%</span>
+                  </div>
+                  <div class="sim-cmp-row">
+                    <span class="scr-label">战力评分</span>
+                    <span class="scr-before">1248</span>
+                    <span class="scr-arrow">→</span>
+                    <span class="scr-after">1872</span>
+                  </div>
+                  <div class="sim-cmp-row">
+                    <span class="scr-label">槽位占用</span>
+                    <span class="scr-before">2/9</span>
+                    <span class="scr-arrow">→</span>
+                    <span class="scr-after">3/9</span>
+                  </div>
+                </div>
+              </div>
+              <div class="sim-power">
+                <div class="sp-label">预估战力变化</div>
+                <div class="sp-before">1248</div>
+                <div class="sp-arrow">↓ ×1.5 PWR</div>
+                <div class="sp-after">1872</div>
+                <div class="sp-delta">+624（+50%）</div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ============ 右栏：单位面板（恒定显示，三档可折叠） ============ -->
+      <div class="col-pane" id="col-right">
+        <div class="col-head cyan">
+          <div class="ch-title"><span class="pip"></span>单位面板</div>
+          <!-- ★ v1.5：折叠按钮（完整 280 / 紧凑 200 / 收起 0） -->
+          <button class="ch-fold-btn" id="fold-btn" title="切换右栏宽度">
+            <span class="fb-icon" id="fb-icon">⊳</span>
+            <span id="fb-label">完整</span>
+          </button>
+        </div>
+        <div class="up-body">
+
+          <!-- 单位头部：fut_arm_nexus（虚空领主） -->
+          <div class="up-hero">
+            <div class="up-art">◈</div>
+            <div class="up-info">
+              <div class="up-name">虚空领主<span class="cid">fut_arm_nexus#1</span></div>
+              <div class="up-tags">
+                <span class="up-tag era">未来</span>
+                <span class="up-tag">装甲 · 主战</span>
+                <span class="up-tag cyan">OVERLORD</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 战力评分：power 1590 → OVERLORD 第5档 -->
+          <div class="up-power-block">
+            <div>
+              <div class="upb-lbl">战力评分 · POWER</div>
+              <div class="upb-tier">OVERLORD · 第 5 档</div>
+            </div>
+            <div class="upb-val">1590</div>
+          </div>
+
+          <!-- ★ v1.5：5档进度条门槛标注修正（POWER_THRESHOLDS=[150,260,420,720]） -->
+          <div class="up-tier-progress">
+            <div class="up-tp-cell passed"><span class="tp-name">GRUNT</span><span class="tp-thr">&lt;150</span></div>
+            <div class="up-tp-cell passed"><span class="tp-name">VETERAN</span><span class="tp-thr">150+</span></div>
+            <div class="up-tp-cell passed"><span class="tp-name">ELITE</span><span class="tp-thr">260+</span></div>
+            <div class="up-tp-cell passed"><span class="tp-name">CHAMPION</span><span class="tp-thr">420+</span></div>
+            <div class="up-tp-cell current"><span class="tp-name">OVERLORD</span><span class="tp-thr">720+</span></div>
+          </div>
+
+          <!-- 基础属性（fut_arm_nexus 真实数据：hp3158/atk_l495/atk_a2211/atk_air74/def_a316/speed60） -->
+          <div class="up-section-h">◆ 基础属性 <span class="ush-extra">满血</span></div>
+          <div class="up-stat-grid">
+            <div class="up-stat"><div class="lbl">生命值</div><div class="val green">3158</div></div>
+            <div class="up-stat"><div class="lbl">轻装攻击</div><div class="val">495</div></div>
+            <div class="up-stat"><div class="lbl">装甲攻击</div><div class="val">2211</div></div>
+            <div class="up-stat"><div class="lbl">对空攻击</div><div class="val">74</div></div>
+            <div class="up-stat"><div class="lbl">装甲防御</div><div class="val">316</div></div>
+            <div class="up-stat"><div class="lbl">移动速度</div><div class="val">60</div></div>
+          </div>
+
+          <!-- 已装改造 -->
+          <div class="up-section-h">
+            ◆ 已装改造 <span class="ush-count">2 / 9</span>
+            <span class="ush-extra">Hover 替换</span>
+          </div>
+          <div class="installed-list">
+            <div class="installed-row">
+              <div class="ir-ico epic">E</div>
+              <div class="ir-info">
+                <div class="ir-name">爆反装甲 <span class="ir-lv">Lv.2</span></div>
+                <div class="ir-effect">受击反弹 <span class="hi">30%</span> · 已激活</div>
+              </div>
+              <!-- v1.5：卸载→替换（BlueprintManager 无 uninstall API，对齐 replace_modification） -->
+              <button class="replace-btn" data-tip="替换为同名槽位的新模块。注意：原改造的安装消耗不返还（卸载 API 未实装，当前仅支持替换或切换武器启用）。">替换</button>
+            </div>
+            <div class="installed-row">
+              <div class="ir-ico epic">E</div>
+              <div class="ir-info">
+                <div class="ir-name">自动装弹机 <span class="ir-lv">Lv.1</span></div>
+                <div class="ir-effect">攻击速度 <span class="hi">大幅提升</span> · 已激活</div>
+              </div>
+              <button class="replace-btn" data-tip="替换为同名槽位的新模块。注意：原改造的安装消耗不返还。">替换</button>
+            </div>
+          </div>
+
+          <!-- 空槽位引导 -->
+          <div class="empty-slots-hint">
+            <span class="esh-icon">+</span>
+            <span>还有 <span class="esh-hi">7 个空槽位</span> · 从左侧改造库选模块</span>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 页脚（v1.5：键盘交互补全 + 焦点高亮） -->
+    <div class="panel-footer">
+      <div class="keys">
+        <span class="key"><kbd>CLICK</kbd> 选单位/模块</span>
+        <span class="key"><kbd>↑↓</kbd> 改造库行间移动</span>
+        <span class="key"><kbd>TAB</kbd> 切换栏焦点</span>
+        <span class="key"><kbd>SPACE</kbd> 安装</span>
+        <span class="key"><kbd>ESC</kbd> 取消选中</span>
+      </div>
+      <div>PHASE WAR · v1.5 · 改造站 · 可落地修正版</div>
+    </div>
+  </div>
+
+  <!-- 设计注释 -->
+  <div class="design-notes">
+    <h3>◆ v1.5 三大改动方向（可落地性 + 布局优化 + 视觉打磨）</h3>
+
+    <h4>一、可落地性修正（消除 v1.4 与代码的脱节）</h4>
+    <ul>
+      <li class="fix"><b>单位 ID 穿帮</b>：<span class="tag red">foe_fut_nexus#4</span>（敌方前缀，不可能在玩家名册）→ <span class="tag green">fut_arm_nexus#1</span>（玩家实例）。<span class="src">源：data/unified_card_table.gd:1513 "虚空领主" era=4 combat_kind=1 power=1590</span></li>
+      <li class="fix"><b>5 档进度条门槛错位</b>：GRUNT 标 150 等 → 按真实阈值 <code>[150, 260, 420, 720]</code> 重新标注（GRUNT&lt;150 / VETERAN 150+ / ELITE 260+ / CHAMPION 420+ / OVERLORD 720+）。选中单位 power 1590 → OVERLORD，前4格 passed、第5格 current。<span class="src">源：data/power_tiers.gd:60 POWER_THRESHOLDS + line 26 enum Tier</span></li>
+      <li class="fix"><b>资源条矛盾</b>：删掉"当前战力档 ELITE·T2"格（与选中 OVERLORD 单位矛盾），该信息由右栏承载。补充"研究点 847"（致命精通 cost_research=400 够用）。</li>
+      <li class="fix"><b>致命精通成本</b>：原"纳米 64"（偏低）→ <span class="tag">纳米 200 + 研究 400 + 等级 3</span>。<span class="src">源：data/modification_modules/enhancement_mods.gd:211 enh_crit_dmg</span></li>
+      <li class="fix"><b>APFSDS 属性错误</b>：原"×1.3 / 冲突组 apfsds" → <span class="tag">×1.6 / conflict_group="ammunition" / 对装甲+30%</span>。<span class="src">源：data/modification_modules/armor_mods.gd:150</span></li>
+      <li class="fix"><b>烟幕弹冲突组</b>：原"radar" → <span class="tag">countermeasure</span>（missile_dodge=0.30 经 v7.x 重映射为闪避+30%）。<span class="src">源：data/modification_modules/anti_air_mods.gd:108 AA_09_SMOKE_LAUNCHER</span></li>
+      <li class="warn"><b>"卸载"按钮 → 改为"替换"</b>：<code>BlueprintManager</code> 无 uninstall API（只有 replace_modification / set_mod_enabled）。v1.5 不补 API（涉及资源返还规则，属独立设计决策），按钮文案对齐 <span class="tag">replace_modification</span> 语义，hover tooltip 注明"原消耗不返还"。<span class="src">源：managers/blueprint_manager.gd:1074</span></li>
+      <li class="fix"><b>"查看完整效果模拟 →" 去向</b>：v1.4 悬空 → v1.5 定义为<b>底部台抽屉展开</b>（不弹新面板），显示完整 effect key 列表（走 ModEffectLabels.translate）+ 同类已装对比 + 战力预估。<span class="src">源：scripts/ui/mod_effect_labels.gd:15</span></li>
+    </ul>
+
+    <h4>二、布局再优化（回收 v1.4 被右栏挤掉的 280px）</h4>
+    <ul>
+      <li><b>右栏三档折叠</b>：顶部 col-head 加折叠按钮，三档切换（点击循环 完整→紧凑→收起→完整）：
+        <table>
+          <tr><th>档位</th><th>右栏宽度</th><th>中栏列宽</th><th>改造库单屏行数</th><th>场景</th></tr>
+          <tr><td>完整（默认）</td><td>280px</td><td>~760px</td><td>6-7</td><td>看单位全景</td></tr>
+          <tr><td>紧凑</td><td>200px</td><td>~840px</td><td>7-8</td><td>空间吃紧时</td></tr>
+          <tr><td>收起</td><td>0px</td><td>~1040px</td><td>8-10</td><td>最大化改造库（≈v1.3 体验）</td></tr>
+        </table>
+        grid-template-columns 由 JS 跟随切换，200ms 过渡。
+      </li>
+      <li><b>左名册 290→240px</b>：单位条仅 32px 缩略图+单行名，290px 有冗余。收窄省 50px 给中栏。</li>
+      <li><b>（可选）收起态 hover 浮卡</b>：右栏收起时，hover 名册行弹 180px 迷你浮卡（战力+5档+已装计数），不损失信息可达性。<span class="tag amber">本稿未画，待确认是否需要</span></li>
+    </ul>
+
+    <h4>三、视觉细节打磨</h4>
+    <ul>
+      <li><b>状态体系统一（核心）</b>：5 种状态规范化，档位不足从灰改<span class="tag amber">琥珀色</span>（与冲突红区分）：
+        <table>
+          <tr><th>状态</th><th>图标</th><th>文案</th><th>色</th></tr>
+          <tr><td>可安装</td><td>●（呼吸）</td><td>可安装</td><td><code>#34d399 绿</code></td></tr>
+          <tr><td>已装</td><td>✓</td><td>已装 Lv.N</td><td><code>#22d3ee 青</code></td></tr>
+          <tr><td>冲突</td><td>✕</td><td>冲突</td><td><code>#ef4444 红</code></td></tr>
+          <tr><td>档位不足</td><td>▲</td><td>需 {档名}</td><td><code>#f59e0b 琥珀（v1.4灰→v1.5琥珀）</code></td></tr>
+          <tr><td>已禁用</td><td>◐</td><td>已禁用</td><td><code>#6b7691 灰</code></td></tr>
+        </table>
+      </li>
+      <li><b>选中态强化</b>：改造库行左边框 3→4px + 顶边光带 + 背景 8%→12%；名册选中行用<b>兵种色</b>左边框（装甲蓝/步兵红/空军青/炮兵橙），一眼区分 combat_kind。</li>
+      <li><b>统一图标体系</b>：所有 mod-ico 用<span class="tag">稀有度首字母</span>（C/U/R/E/L/M）+ 稀有度色边框 + 兵种色淡底。颜色+字母双重编码，色弱友好。已装列表图标同规则缩小。</li>
+      <li><b>空态引导</b>：底部台空态用<b>呼吸 cyan 光带</b>（从改造库指向底部台）替代静态箭头；名册/右栏空态加虚线箭头指向操作目标。</li>
+      <li><b>动效（克制）</b>：选中行 translateX 2px / 右栏折叠 200ms / 安装按钮按下 scale 0.97 / 仅"可安装"绿点呼吸，其余静态。</li>
+      <li><b>键盘交互补全</b>：页脚 5 键（CLICK/↑↓/TAB/SPACE/ESC），焦点行 2px cyan outline 区别于选中态左边框。<span class="tag amber">注：↑↓/TAB 需在 modification_panel.gd 实现 _gui_input，当前仅 SPACE/ESC 接近可用</span></li>
+    </ul>
+
+    <h4>四、数据来源核对表（全部来自真实代码）</h4>
+    <table>
+      <tr><th>字段</th><th>值</th><th>源文件:行</th></tr>
+      <tr><td>选中单位</td><td><code>fut_arm_nexus</code> 虚空领主</td><td>data/unified_card_table.gd:1513</td></tr>
+      <tr><td>单位 power</td><td>1590</td><td>同上 (power:1590)</td></tr>
+      <tr><td>单位属性</td><td>hp3158 / atk_l495 / atk_a2211 / atk_air74 / def_a316 / speed60</td><td>同上</td></tr>
+      <tr><td>战力阈值</td><td>[150, 260, 420, 720]</td><td>data/power_tiers.gd:60</td></tr>
+      <tr><td>致命精通</td><td>epic ×1.5, cost_install=200, Lv3 crit_damage_bonus+0.42</td><td>enhancement_mods.gd:211</td></tr>
+      <tr><td>爆反装甲</td><td>epic ×1.6, conflict_group="armor", reactive_armor=0.30</td><td>armor_mods.gd:74 (arm_03)</td></tr>
+      <tr><td>自动装弹机</td><td>epic ×1.6, conflict_group="autoloader"</td><td>armor_mods.gd:216 (arm_08)</td></tr>
+      <tr><td>APFSDS</td><td>epic ×1.6, conflict_group="ammunition"</td><td>armor_mods.gd:150</td></tr>
+      <tr><td>热成像瞄准镜</td><td>rare ×1.2, conflict_group="optics"</td><td>armor_mods.gd:302</td></tr>
+      <tr><td>战斗狂热</td><td>legendary ×1.8, conflict_group="special", rage_bonus=0.35</td><td>armor_mods.gd:392 (arm_16)</td></tr>
+      <tr><td>烟幕弹</td><td>rare ×1.3, conflict_group="countermeasure", missile_dodge=0.30</td><td>anti_air_mods.gd:108 (AA_09)</td></tr>
+    </table>
+
+    <h4>五、未做（留待后续决策）</h4>
+    <ul>
+      <li class="warn"><b>卸载 API</b>：v1.5 不补，按钮对齐 replace_modification。若要真卸载，需先定资源返还规则（全返/半返/不返）+ 在 BlueprintManager 加 uninstall_modification + 改 _refresh_installed_list。</li>
+      <li class="warn"><b>收起态 hover 浮卡</b>：本稿未画，需确认是否值得增加这层交互。</li>
+      <li class="warn"><b>键盘 ↑↓/TAB 导航</b>：稿子画了，但需 modification_panel.gd 补 _gui_input 实现。</li>
+      <li class="warn"><b>战力预估数字</b>：抽屉里"1248→1872"是按 power_mult=1.5 粗算的示意，真实预估需调 EvolutionHelpers.estimate_power_score，本稿不绑定具体算法。</li>
+    </ul>
+  </div>
+
+</div>
+
+<script>
+// ============================================================
+// v1.5 交互演示
+// ============================================================
+
+// 1. 改造库行点击切换选中
+document.querySelectorAll('.mod-row').forEach(row => {
+  row.addEventListener('click', () => {
+    document.querySelectorAll('.mod-row').forEach(r => r.classList.remove('active'));
+    row.classList.add('active');
+    document.getElementById('deck-empty').style.display = 'none';
+    document.getElementById('deck-body').style.display = 'grid';
+    // 选中后收起抽屉
+    document.getElementById('sim-drawer').classList.remove('open');
+    document.getElementById('sim-toggle').classList.remove('expanded');
+    document.getElementById('sim-toggle').textContent = '查看完整效果模拟 ↓';
+  });
+});
+
+// 2. 单位名册点击切换选中（含兵种色左边框）
+document.querySelectorAll('.card-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.card-item').forEach(i => i.classList.remove('active', 'focused'));
+    item.classList.add('active', 'focused');
+  });
+});
+
+// 3. 效果模拟抽屉展开/收起
+const simToggle = document.getElementById('sim-toggle');
+const simDrawer = document.getElementById('sim-drawer');
+simToggle.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const open = simDrawer.classList.toggle('open');
+  simToggle.classList.toggle('expanded', open);
+  simToggle.textContent = open ? '收起效果模拟 ↑' : '查看完整效果模拟 ↓';
+});
+
+// 4. ★ v1.5 右栏三档折叠（完整 280 → 紧凑 200 → 收起 0 → 完整）
+const foldBtn = document.getElementById('fold-btn');
+const fbIcon = document.getElementById('fb-icon');
+const fbLabel = document.getElementById('fb-label');
+const colRight = document.getElementById('col-right');
+const triLayout = document.getElementById('tri-layout');
+const foldStates = [
+  { w: '280px', icon: '⊳', label: '完整', collapsed: false },
+  { w: '200px', icon: '⊣', label: '紧凑', collapsed: false },
+  { w: '0px',   icon: '⊂', label: '已收起', collapsed: true },
+];
+let foldIdx = 0;
+foldBtn.addEventListener('click', () => {
+  foldIdx = (foldIdx + 1) % foldStates.length;
+  const s = foldStates[foldIdx];
+  document.documentElement.style.setProperty('--right-w', s.w);
+  fbIcon.textContent = s.icon;
+  fbLabel.textContent = s.label;
+  colRight.classList.toggle('collapsed', s.collapsed);
+});
+
+// 5. ESC 取消模块选中（回到空态）；再按 ESC 关闭抽屉
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    if (simDrawer.classList.contains('open')) {
+      simDrawer.classList.remove('open');
+      simToggle.classList.remove('expanded');
+      simToggle.textContent = '查看完整效果模拟 ↓';
+      return;
+    }
+    document.querySelectorAll('.mod-row').forEach(r => r.classList.remove('active'));
+    document.getElementById('deck-empty').style.display = 'flex';
+    document.getElementById('deck-body').style.display = 'none';
+  }
+});
+</script>
+</body>
+</html>

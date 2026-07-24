@@ -11,6 +11,8 @@ const CombatTargeting = preload("res://scripts/combat_targeting.gd")
 const TargetSelection = preload("res://scripts/battle/target_selection.gd")
 const DamageAttenuation = preload("res://scripts/battle/damage_attenuation.gd")
 const AttackCalculator = preload("res://scripts/battle/attack_calculator.gd")
+const VfxImpactFactory = preload("res://scripts/battle/vfx_impact_factory.gd")
+const DT = preload("res://resources/design_tokens.gd")
 
 ## v7.x: 光环/指挥单位的 platform_type 集合（与 construct_unit.gd 光环注册对齐）
 ## FORTRESS=3, RADAR=4, SCOUT=5, CARRIER=8, MEDIC=9, STEALTH=10, COMMAND=12
@@ -173,6 +175,12 @@ static func _find_target_by_card_grid(u: CharacterBody2D, targeting_mode: int = 
 	var origin: Vector2 = u.global_position
 	var acq_range: float = acquisition_range(u)
 	var acq_range_sq: float = acq_range * acq_range
+	# v8: 兵种固定机制「防空空域封锁」——防空单位优先锁定射程内的 AIR 目标
+	# is_anti_air_unit meta 由 apply_combat_kind_modifiers 在 ANTI_AIR 子类上设置
+	if u.stats != null and u.stats.has_meta("is_anti_air_unit") and bool(u.stats.get_meta("is_anti_air_unit", false)):
+		var air_tgt: Node2D = _pick_air_priority_target(u, gr, acq_range_sq)
+		if air_tgt != null:
+			return air_tgt
 	var candidates: Array = []
 	for n in gr:
 		if not CombatTargeting.is_attackable_combat_unit(n):
@@ -203,6 +211,27 @@ static func _get_unit_slot_index(n: Node) -> int:
 	return int(n.get_meta("card_grid_enemy_slot", -1))
 
 
+## v8: 防空单位优先索敌——射程内优先打 AIR 类目标（空域封锁语义）。
+## 命中则返回最近的空中目标；射程内无空中目标时返回 null（回退常规直射）。
+## 搬运 enemy_unit.gd _pick_antitank_priority_target 结构，目标改为 AIR。
+static func _pick_air_priority_target(u: CharacterBody2D, gr: Array, acq_range_sq: float) -> Node2D:
+	var origin: Vector2 = u.global_position
+	var air_targets: Array = []
+	for n in gr:
+		if not CombatTargeting.is_attackable_combat_unit(n):
+			continue
+		var s: UnitStats = n.get("stats") as UnitStats
+		if s == null:
+			continue
+		if s.combat_kind == GC.CombatKind.AIR:
+			var dist_sq := origin.distance_squared_to((n as Node2D).global_position)
+			if dist_sq <= acq_range_sq:
+				air_targets.append(n)
+	if not air_targets.is_empty():
+		return _nearest_of(origin, air_targets)
+	return null
+
+
 ## 槽位编号扫描索敌（曲射/空射用）
 ## v7.x: 四级优先级降级链（每级同级取距离最近）：
 ##   L0 反击标记目标（art_14_counter_battery：被谁打就反击谁，优先攻击挂 _counter_marked_by 的目标）
@@ -223,11 +252,19 @@ static func _scan_slot_targets(u: CharacterBody2D, gr: Array) -> Node2D:
 	# _apply_counter_battery_mark 在本炮兵被攻击时给攻击者挂 _counter_marked_by meta（带 5s _marked_until）；
 	# 此前该 meta 写入后战斗侧零读取，现复活：炮兵优先反击刚刚打自己的敌人。
 	# 过期检查复用 _marked_until（与标记系统同源），避免攻击者死亡后 meta 残留被永久优先。
-	if u.stats != null and u.stats.has_counter_battery:
+	# v8: 兵种固定机制「火炮反炮兵」加计数器——counter_battery_shots 限制优先射击次数，
+	# 归零后清理标记回退常规索敌（炮兵反击不再无限优先）。
+	if u.stats != null and u.stats.has_counter_battery and u.stats.counter_battery_shots > 0:
 		var _now_cb: float = Time.get_ticks_msec() / 1000.0
 		var marked: Array = valid.filter(func(n):
 			return n is Node and n.has_meta("_counter_marked_by") and n.has_meta("_marked_until") and _now_cb < float(n.get_meta("_marked_until", 0.0)))
 		if not marked.is_empty():
+			# v8: 递减反炮兵剩余次数；归零时清理所有标记目标的 _counter_marked_by（停止优先）
+			u.stats.counter_battery_shots -= 1
+			if u.stats.counter_battery_shots <= 0:
+				for n in marked:
+					if n is Node and n.has_meta("_counter_marked_by"):
+						n.remove_meta("_counter_marked_by")
 			return _nearest_of(origin, marked)
 
 	# L1 指挥单位
@@ -433,6 +470,9 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 		damage *= CardAbilityManager.get_titan_mk2_damage_multiplier(u)
 	if u._has_storm_rider:
 		damage *= CardAbilityManager.get_storm_rider_damage_multiplier(u)
+	# 开火反馈：炮口闪光 + Sprite 缩放脉冲（所有武器/所有战斗模式统一生效）
+	# 修复传统战场零开火反馈——nudge 仅格子战播，此处无条件补
+	_play_muzzle_feedback(u)
 	if u._presentation_card_grid:
 		_play_card_attack_nudge(u)
 	var w_name: String = weapon_name
@@ -751,6 +791,28 @@ static func _play_card_attack_nudge(u: CharacterBody2D) -> void:
 	var rest_x: float = u._card_grid_rest_x
 	u._card_nudge_tween.tween_property(u, "position:x", rest_x + dir * 22.0, 0.07)
 	u._card_nudge_tween.tween_property(u, "position:x", rest_x, 0.09)
+
+## 开火反馈：炮口闪光（池化 CPUParticles2D）+ Sprite 缩放脉冲。
+## 所有武器类型、所有战斗模式统一生效——修复传统战场零开火反馈。
+## 调用方：玩家 do_attack_with_damage 顶部（弹道路由前，霰弹只触发一次）。
+## 敌方 enemy_unit._do_attack 也调用本静态方法（复用同一套逻辑）。
+static func _play_muzzle_feedback(u: Node2D) -> void:
+	if u == null or not is_instance_valid(u):
+		return
+	var facing_right: bool = bool(u.get("is_player"))
+	# 炮口闪光：粒子挂到单位本体下，local_pos 为相对单位中心的本地偏移。
+	# 朝向偏移：我方 +x（朝右），敌方 -x（朝左），与 _play_card_attack_nudge 方向一致。
+	var off_x: float = 48.0 if facing_right else -48.0
+	VfxImpactFactory.spawn_muzzle_flash(u, Vector2(off_x, -6.0), facing_right)
+	# 开火缩放脉冲：交给单位实例方法处理（避开根 scale.x 翻转，只动 Sprite 子节点）
+	# reduce motion 时跳过脉冲（保留炮口火——静态闪烁非抖动）
+	var reduce_motion: bool = false
+	if DT != null:
+		reduce_motion = DT.is_motion_reduce()
+	if reduce_motion:
+		return
+	if u.has_method("_play_fire_scale_pulse"):
+		u._play_fire_scale_pulse()
 
 ## v6.4: 改造伤害加成已由 ModificationRegistry.apply_with_level 在 UnitStats 构建阶段
 ## 直接叠加到 attack_light/armor/air。此函数保留仅为兼容 AttackCalculator 的旧参数签名，

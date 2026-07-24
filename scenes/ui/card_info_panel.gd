@@ -1345,23 +1345,19 @@ func _show_enemy_phase_driver(unit: Node) -> void:
 			var disp: String = str(cfg.get("name", mname))
 			if disp != mname and not disp.is_empty():
 				lines.append("档案名：%s" % disp)
-			# v7.x: 显示相位场等级（原始 level 设计基准）+ 派生等级（由总战力派生，含星名）+ 总战力
+			# v7.x: 显示相位场等级（原始 level 设计基准）+ 军团战力（含星名档位）
 			var raw_level: int = int(cfg.get("level", 0))
 			if raw_level > 0:
 				lines.append("相位场等级：Lv.%d" % raw_level)
+			# 军团战力行（原派生Lv由战力换算，与战力同义重复，已移除；只保留军团战力+星级档位）
 			var er: Dictionary = MasterPowerEvaluator.evaluate(cfg)
-			var mlvl: int = EnemyPhaseMasters.compute_display_level(cfg)
-			if mlvl > 0:
-				# 与我方 _show_player_phase_driver 对齐：相位师等级行合并星名
-				var stars: int = int(er.get("stars", 0))
-				var star_name: String = str(er.get("star_name", ""))
-				if stars > 0 and not star_name.is_empty():
-					lines.append("相位师等级：Lv.%d · %d★ %s" % [mlvl, stars, star_name])
-				else:
-					lines.append("相位师等级：Lv.%d" % mlvl)
-			# 总战力单列一行（星名已并入上行，此处不重复）
-			lines.append("总战力：%d" % int(er.get("total_score", 0)))
-			# v7.x: 澄清口径——总战力是相位师裸装固有战力（6张载卡+相位师属性/符文/相位仪），
+			var stars: int = int(er.get("stars", 0))
+			var star_name: String = str(er.get("star_name", ""))
+			if stars > 0 and not star_name.is_empty():
+				lines.append("军团战力：%d · %d★ %s" % [int(er.get("total_score", 0)), stars, star_name])
+			else:
+				lines.append("军团战力：%d" % int(er.get("total_score", 0)))
+			# v7.x: 澄清口径——军团战力是相位师裸装固有战力（6张载卡+相位师属性/符文/相位仪），
 			# 不含本关难度加成（wave/level/pressure/faction_buff）。战场单位实战值会高于此数。
 			lines.append("（相位师固有战力，战场单位会叠加本关难度加成）")
 			var fac: String = str(cfg.get("faction", ""))
@@ -1418,7 +1414,7 @@ func _show_enemy_phase_driver(unit: Node) -> void:
 	_clear_non_summary_info_sections()
 
 ## v7.x: 点击我方相位场驱动器（基地）——显示玩家相位场等级+情报+军团等级+战力
-## 与敌方 _show_enemy_phase_driver 对称：相位场Lv / 相位师Lv / 总战力·星级 / 相位仪 / 符文 / 主动能力
+## 与敌方 _show_enemy_phase_driver 对称：相位场Lv / 军团战力·星级 / 相位仪 / 符文 / 主动能力
 func _show_player_phase_driver(unit: Node) -> void:
 	if name_label: name_label.text = "我方相位师基地"
 	if type_label: type_label.text = "相位场驱动器"
@@ -1443,19 +1439,20 @@ func _show_player_phase_driver(unit: Node) -> void:
 				lines.append("相位仪：%s ★%d" % [inst_name, inst_star])
 			else:
 				lines.append("相位仪：%s" % inst_name)
-		# ── 相位师等级（派生Lv5-30）+ 总战力·星级（真实值，不压缩）──
+		# ── 军团战力·星级（真实值，原派生Lv由战力换算与战力同义重复，已移除）──
 		var ev: Dictionary = {}
 		if pm.has_method("get_cached_player_master_eval"):
 			ev = pm.get_cached_player_master_eval()
 		if ev.is_empty():
 			ev = MasterPlayerAssembler.evaluate_player_stars(pm)
 		if not ev.is_empty():
-			var mlvl: int = int(ev.get("display_level", 15))
 			var stars: int = int(ev.get("stars", 3))
 			var star_name: String = str(ev.get("star_name", ""))
-			lines.append("相位师等级：Lv.%d · %d★ %s" % [mlvl, stars, star_name])
 			var raw: float = float(ev.get("raw_total_score", 0.0))
-			lines.append("总战力：%d" % int(raw))
+			if stars > 0 and not star_name.is_empty():
+				lines.append("军团战力：%d · %d★ %s" % [int(raw), stars, star_name])
+			else:
+				lines.append("军团战力：%d" % int(raw))
 		# ── 军团构成情报：战斗卡/符文/主动能力 ──
 		var loadouts: Array = pm.get_loadouts() if pm.has_method("get_loadouts") else []
 		if not loadouts.is_empty():
@@ -1682,9 +1679,8 @@ func _show_enemy_phase_master_unit(unit: Node, master_name: String) -> void:
 	var master_cfg: Dictionary = {}
 	var master_disp_name: String = ""
 	var master_title: String = ""
-	var master_level: int = 0
 	var master_faction: String = ""
-	var master_power_text: String = ""   # v7.x: 总战力 · 星级 显示文本
+	var master_power_text: String = ""   # v7.x: 军团战力 · 星级 显示文本
 	var trait_lines: Array[String] = []
 	if GameManager and GameManager.has_method("get_current_phase_master"):
 		master_cfg = GameManager.get_current_phase_master()
@@ -1694,13 +1690,11 @@ func _show_enemy_phase_master_unit(unit: Node, master_name: String) -> void:
 	if not master_cfg.is_empty():
 		master_disp_name = str(master_cfg.get("name", ""))
 		master_title = str(master_cfg.get("title", ""))
-		# v7.x: 等级改用派生值（由总战力派生）
-		master_level = EnemyPhaseMasters.compute_display_level(master_cfg)
 		master_faction = str(master_cfg.get("faction", ""))
-		# v7.x: 计算总战力/星级显示
+		# v7.x: 计算军团战力/星级显示（原派生Lv由战力换算与战力同义重复，已移除）
 		var _er_m: Dictionary = MasterPowerEvaluator.evaluate(master_cfg)
-		master_power_text = "总战力：%d · %s" % [int(_er_m.get("total_score", 0)), MasterPowerEvaluator.get_stars_display(master_cfg)]
-		# v7.x: 澄清口径——总战力是相位师裸装固有战力，不含本关难度加成（战场单位实战值会高于此数）
+		master_power_text = "军团战力：%d · %s" % [int(_er_m.get("total_score", 0)), MasterPowerEvaluator.get_stars_display(master_cfg)]
+		# v7.x: 澄清口径——军团战力是相位师裸装固有战力，不含本关难度加成（战场单位实战值会高于此数）
 		master_power_text += "\n（相位师固有战力，战场单位会叠加本关难度加成）"
 		var traits: Array = master_cfg.get("traits", []) as Array
 		for t in traits:
@@ -1716,7 +1710,6 @@ func _show_enemy_phase_master_unit(unit: Node, master_name: String) -> void:
 		name_label.text = master_disp_name if not master_disp_name.is_empty() else "敌方相位师"
 	var type_parts: Array[String] = []
 	if not master_title.is_empty(): type_parts.append(master_title)
-	if master_level > 0: type_parts.append("Lv.%d" % master_level)
 	var faction_names := {"steel": "钢铁", "thunder": "雷霆", "frost": "霜寒", "void": "虚空", "shadow": "暗影", "inferno": "炼狱"}
 	if not master_faction.is_empty():
 		type_parts.append(faction_names.get(master_faction, master_faction))

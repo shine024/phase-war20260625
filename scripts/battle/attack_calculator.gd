@@ -12,12 +12,13 @@ const DEFAULT_ATTACK_SPEED: float = 1.0
 ## 根据目标类型获取攻击值
 ## 目标轻甲→attack_light, 装甲→attack_armor, 空中→attack_air
 ## v6.6: FORT 目标额外叠加 attack_fort_bonus（对堡垒特攻改造，如温压弹/爆破装置）
+## v8: LIGHT/AIR 目标叠加兵种固定机制加成（装甲碾压/防空空域封锁）
 static func get_attack_vs(attacker_stats: UnitStats, target_combat_kind: int) -> float:
 	match target_combat_kind:
-		GC.CombatKind.LIGHT: return attacker_stats.attack_light
+		GC.CombatKind.LIGHT: return attacker_stats.attack_light * (1.0 + attacker_stats.attack_light_bonus)  # 轻装 + 装甲碾压
 		GC.CombatKind.ARMOR: return attacker_stats.attack_armor
-		GC.CombatKind.AIR: return attacker_stats.attack_air
-		GC.CombatKind.SUPPORT: return attacker_stats.attack_light  # 支援按轻装算
+		GC.CombatKind.AIR: return attacker_stats.attack_air * (1.0 + attacker_stats.attack_air_bonus)  # 空中 + 防空封锁
+		GC.CombatKind.SUPPORT: return attacker_stats.attack_light * (1.0 + attacker_stats.attack_light_bonus)  # 支援按轻装算 + 装甲碾压
 		GC.CombatKind.FORT: return attacker_stats.attack_armor * (1.0 + attacker_stats.attack_fort_bonus)  # 堡垒按装甲 + 对堡垒特攻
 		_: return attacker_stats.attack_light
 

@@ -264,7 +264,7 @@ size_flags_vertical = 3
 theme_override_constants/separation = 0
 [node name="LeftPanel" type="PanelContainer" parent="VBoxContainer/HBoxContainer"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(290, 0)
+custom_minimum_size = Vector2(240, 0)
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_5")
@@ -352,6 +352,7 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+size_flags_stretch_ratio = 2.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_5")
 [node name="MiddleVBox" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/MiddlePanel"]
 layout_mode = 2
@@ -443,19 +444,26 @@ theme_override_constants/separation = 2
 [node name="DeckNameLabel" type="Label" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckHBox/DeckInfo"]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 text = ""
+clip_text = true
 theme_override_font_sizes/font_size = 14
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 [node name="DeckCoreLabel" type="Label" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckHBox/DeckInfo"]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 text = ""
+clip_text = true
+autowrap_mode = 3
 theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(0.2, 0.9, 0.4, 1)
 [node name="DeckReqLabel" type="Label" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckHBox/DeckInfo"]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 text = ""
+clip_text = true
 theme_override_font_sizes/font_size = 10
 theme_override_colors/font_color = Color(0.55, 0.6, 0.7, 0.85)
 [node name="DeckInstallButton" type="Button" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckHBox"]
@@ -469,6 +477,14 @@ theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_9")
 theme_override_styles/hover = SubResource("StyleBoxFlat_10")
+[node name="DeckSimButton" type="Button" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 22)
+text = "效果模拟 ↓"
+theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.8)
+theme_override_font_sizes/font_size = 9
 [node name="DeckEmpty" type="Label" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -478,13 +494,48 @@ theme_override_font_sizes/font_size = 10
 theme_override_colors/font_color = Color(0.4, 0.45, 0.55, 0.6)
 horizontal_alignment = 1
 vertical_alignment = 1
+[node name="SimDrawer" type="PanelContainer" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
 [node name="DetailPanel" type="PanelContainer" parent="VBoxContainer/HBoxContainer"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(300, 0)
+custom_minimum_size = Vector2(280, 0)
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_6")
-[node name="DetailInner" type="MarginContainer" parent="VBoxContainer/HBoxContainer/DetailPanel"]
+[node name="DetailVBox" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/DetailPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 0
+[node name="RightHead" type="PanelContainer" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailVBox"]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_4")
+[node name="RightHeadHBox" type="HBoxContainer" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailVBox/RightHead"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+offset_left = 12.0
+offset_right = -12.0
+[node name="RightHeadPip" type="ColorRect" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailVBox/RightHead/RightHeadHBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(3, 11)
+color = Color(0.133, 0.827, 0.933, 1)
+[node name="RightHeadTitle" type="Label" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailVBox/RightHead/RightHeadHBox"]
+layout_mode = 2
+text = "单位面板"
+[node name="RightHeadSpacer" type="Control" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailVBox/RightHead/RightHeadHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+[node name="FoldButton" type="Button" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailVBox/RightHead/RightHeadHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "完整"
+[node name="DetailInner" type="MarginContainer" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailVBox"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -492,13 +543,13 @@ theme_override_constants/margin_left = 10
 theme_override_constants/margin_top = 10
 theme_override_constants/margin_right = 10
 theme_override_constants/margin_bottom = 10
-[node name="UnitScroll" type="ScrollContainer" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailInner"]
+[node name="UnitScroll" type="ScrollContainer" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailVBox/DetailInner"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
-[node name="UnitPanel" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailInner/UnitScroll"]
+[node name="UnitPanel" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/DetailPanel/DetailVBox/DetailInner/UnitScroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
