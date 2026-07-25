@@ -40,6 +40,9 @@ var _enemy_colors: Dictionary = {
 	"bg": Color(0.12, 0.12, 0.15, 0.95)    # 背景
 }
 
+var _selected: bool = false
+var _selection_border: Polygon2D = null
+
 func _ready() -> void:
 	position = Vector2(0, -40)
 	_bg = get_node_or_null("Bg") as Polygon2D
@@ -47,8 +50,50 @@ func _ready() -> void:
 	_glow = get_node_or_null("Glow") as Polygon2D
 	_shield_bg = get_node_or_null("ShieldBg") as Polygon2D
 	_shield_fill = get_node_or_null("ShieldFill") as Polygon2D
+	# v7.x 选中目标高亮：金色描边（环绕血条）
+	_selection_border = Polygon2D.new()
+	_selection_border.name = "SelectionBorder"
+	_selection_border.z_index = 15
+	_selection_border.visible = false
+	add_child(_selection_border)
+	_update_selection_border()
+	# 监听选中信号实时刷新（不依赖 _update_hp_bar 的 HP 变化触发）
+	var sb = get_node_or_null("/root/SignalBus")
+	if sb and sb.has_signal("unit_selected"):
+		sb.unit_selected.connect(_on_unit_selected)
 	_update_view()
 	set_process(false)
+
+## 选中信号回调：比较信号携带的 unit 与本血条的宿主单位
+func _on_unit_selected(unit: Node, _is_player: bool, _pos: Vector2) -> void:
+	var parent := get_parent()
+	var now_selected: bool = (is_instance_valid(unit) and unit == parent)
+	if now_selected != _selected:
+		_selected = now_selected
+		if _selection_border != null:
+			_selection_border.visible = _selected
+
+## 外部也可直接设置选中态（兼容旧调用路径）
+func set_selected(value: bool) -> void:
+	if _selected == value:
+		return
+	_selected = value
+	if _selection_border != null:
+		_selection_border.visible = _selected
+
+## 选中描边：金色矩形框，略大于血条（宽+8 / 高+4），半透明金
+func _update_selection_border() -> void:
+	if _selection_border == null:
+		return
+	var w: float = BAR_WIDTH + 10.0
+	var h: float = HEIGHT_EXPANDED + 6.0
+	var x0: float = -w * 0.5
+	var y0: float = -h * 0.5
+	_selection_border.polygon = PackedVector2Array([
+		Vector2(x0, y0), Vector2(x0 + w, y0),
+		Vector2(x0 + w, y0 + h), Vector2(x0, y0 + h)
+	])
+	_selection_border.color = Color(0.98, 0.75, 0.15, 0.85)  # 金色（与精英角标同源）
 
 func _needs_active_process() -> bool:
 	if absf(_ratio - _target_ratio) > 0.001:

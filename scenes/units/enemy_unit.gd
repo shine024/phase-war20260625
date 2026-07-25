@@ -225,7 +225,7 @@ func apply_card_grid_enemy_presentation() -> void:
 		var rank_id: String = RankRules.get_rank_by_power("corporal", pscore)
 		var rl: int = CardGridUnitVisuals.rank_level_from_id(rank_id)
 		sprite_ok = CardGridUnitVisuals.apply_battle_unit_presentation(
-			self, spr, card_res, tex, false, rl
+			self, spr, card_res, tex, false, rl, self
 		)
 		# v7.x 战场视觉反馈：敌方改造图标条（从 archetype tags 推断）
 		CardGridUnitVisuals.sync_mod_strip(self, self, spr)

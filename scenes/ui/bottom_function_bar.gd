@@ -45,6 +45,7 @@ const BTN_ICON_BY_KEY: Dictionary = {
 	"leaderboard": "icon_leaderboard",
 	"info": "icon_help",
 	"map": "icon_map",
+	"collection": "icon_collection",
 	"settings": "icon_settings",
 	"save": "icon_save",
 	"afk": "icon_afk",
@@ -58,17 +59,18 @@ const BATTLE_BTN_ICON_BY_KEY: Dictionary = {
 }
 
 # 按钮配置：[key, 显示文字, 信号名]
+# v7.x: 12 个功能按钮全部直接显示（"更多"菜单方案因图标渲染问题暂缓，保持原 12 按钮平铺）
 const BTN_CONFIGS: Array = [
 	["backpack",     "背包",   "btn_backpack_pressed"],
 	["progression",  "成长",   "btn_progression_pressed"],
 	["faction",      "势力",   "btn_faction_pressed"],
 	["quest",        "任务",   "btn_quest_pressed"],
 	["store",        "商店",   "btn_store_pressed"],
+	["map",          "地图",   "btn_map_pressed"],
 	["leaderboard",  "排行",   "btn_leaderboard_pressed"],
 	["info",         "情报",   "btn_info_pressed"],
-	["map",          "地图",   "btn_map_pressed"],
-	["settings",     "设置",   "btn_settings_pressed"],
 	["collection",   "图鉴",   "btn_collection_pressed"],
+	["settings",     "设置",   "btn_settings_pressed"],
 	["save",         "存档",   "btn_save_pressed"],
 	["afk",          "挂机",   "btn_afk_pressed"],
 ]
@@ -91,10 +93,16 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_build_left_buttons()
 	_build_right_buttons()
+	# v7.x: 战斗控制按钮已迁移到 TopBattleControls，隐藏底部 RightSection + Divider
+	# 仍保留 _build_right_buttons 创建按钮到 _btn_map（set_pause_text 回退路径依赖）
+	if right_section:
+		right_section.visible = false
+	var divider := get_node_or_null("Margin/HBox/Divider")
+	if divider:
+		divider.visible = false
 
-## 创建左侧功能按钮
+## 创建左侧功能按钮（12 个全部直接显示）
 func _build_left_buttons() -> void:
-	var keys_built: Array[String] = []
 	for cfg in BTN_CONFIGS:
 		var key: String = cfg[0]
 		var label_text: String = cfg[1]
@@ -104,7 +112,6 @@ func _build_left_buttons() -> void:
 			btn.text = ""
 		_apply_bar_icon(btn, BTN_ICON_BY_KEY.get(key, ""))
 		btn.add_theme_constant_override("icon_max_width", 30)
-		# 存档为即时动作，不切换面板高亮
 		if key == "save":
 			btn.pressed.connect(func():
 				_set_active_btn("")
@@ -116,7 +123,6 @@ func _build_left_buttons() -> void:
 			)
 		left_section.add_child(btn)
 		_btn_map[key] = btn
-		keys_built.append(key)
 
 ## 创建右侧战斗控制按钮
 func _build_right_buttons() -> void:
@@ -187,6 +193,59 @@ func _make_func_button(label_text: String) -> Button:
 	btn.add_theme_stylebox_override("pressed", pressed_style)
 	return btn
 
+## 设置某按钮的红点角标（key=按钮key，count>0 显示数字，count<=0 隐藏）
+## 延迟创建 Badge 子节点，避免预设子节点干扰 Button 的 icon/text 布局
+func set_btn_badge(key: String, count: int) -> void:
+	if not _btn_map.has(key):
+		return
+	var btn: Button = _btn_map[key]
+	var bg := btn.get_node_or_null("BadgeBg") as ColorRect
+	var bd := btn.get_node_or_null("Badge") as Label
+	# count<=0 且无现有 badge：直接返回，不创建任何节点
+	if count <= 0 and bg == null:
+		return
+	# 首次需要显示时才创建 badge 节点
+	if bg == null:
+		bg = ColorRect.new()
+		bg.name = "BadgeBg"
+		bg.color = Color(0.95, 0.25, 0.25, 0.95)
+		bg.anchors_preset = Control.PRESET_TOP_RIGHT
+		bg.anchor_left = 1.0
+		bg.anchor_right = 1.0
+		bg.offset_left = -18
+		bg.offset_right = -2
+		bg.offset_top = -2
+		bg.offset_bottom = 14
+		bg.size = Vector2(16, 16)
+		bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		btn.add_child(bg)
+		bd = Label.new()
+		bd.name = "Badge"
+		bd.add_theme_font_size_override("font_size", 10)
+		bd.add_theme_color_override("font_color", Color.WHITE)
+		bd.add_theme_color_override("font_outline_color", Color(0.8, 0.1, 0.1, 1.0))
+		bd.add_theme_constant_override("outline_size", 2)
+		bd.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		bd.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		bd.anchors_preset = Control.PRESET_TOP_RIGHT
+		bd.anchor_left = 1.0
+		bd.anchor_right = 1.0
+		bd.offset_left = -18
+		bd.offset_right = -2
+		bd.offset_top = -2
+		bd.offset_bottom = 14
+		bd.size = Vector2(16, 16)
+		bd.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		btn.add_child(bd)
+	if count > 0:
+		bd.text = str(count)
+		bg.visible = true
+		bd.visible = true
+	else:
+		bd.text = ""
+		bg.visible = false
+		bd.visible = false
+
 ## 战斗控制按钮特殊样式
 func _style_battle_button(btn: Button, font_color: Color, bg_color: Color) -> void:
 	btn.add_theme_color_override("font_color", font_color)
@@ -236,19 +295,33 @@ func notify_panel_closed(key: String) -> void:
 	if _active_btn_key == key:
 		_set_active_btn("")
 
-## 外部更新开始战斗状态（仅图标：用悬停提示显示「开始战斗 / 战斗中」）
+## v7.x: 战斗控制按钮已整合进 TopHudBar。
+## 本方法保留为转发门面，让 main_battle_setup.gd 等旧调用点零改动。
+func _get_top_controls() -> Node:
+	# bottom_function_bar 在 HudLayer/BattleBottomBar/BottomFunctionBar
+	# 向上 2 层到 HudLayer，再下到 TopHudBar
+	return get_node_or_null("../../TopHudBar")
+
+## 外部更新开始战斗状态（转发到 TopBattleControls）
 func set_start_battle_text(text: String) -> void:
+	var tc := _get_top_controls()
+	if tc != null and tc.has_method("set_start_battle_text"):
+		tc.set_start_battle_text(text)
+		return
+	# 回退：旧场景未挂 TopBattleControls 时仍操作本地按钮
 	if not _btn_map.has("start_battle"):
 		return
 	var btn: Button = _btn_map["start_battle"] as Button
 	btn.tooltip_text = text
-	if text == "战斗中":
-		btn.modulate = Color(0.55, 0.58, 0.62, 1.0)
-	else:
-		btn.modulate = Color(1, 1, 1, 1)
+	btn.modulate = Color(0.55, 0.58, 0.62, 1.0) if text == "战斗中" else Color(1, 1, 1, 1)
 
-## 外部更新暂停状态（「暂停」显示暂停图标，「继续」显示播放图标；悬停见文案）
+## 外部更新暂停状态（转发到 TopBattleControls）
 func set_pause_text(text: String) -> void:
+	var tc := _get_top_controls()
+	if tc != null and tc.has_method("set_pause_text"):
+		tc.set_pause_text(text)
+		return
+	# 回退
 	if not _btn_map.has("pause"):
 		return
 	var btn: Button = _btn_map["pause"] as Button

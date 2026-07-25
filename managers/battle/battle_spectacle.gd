@@ -39,6 +39,20 @@ var _last_boss_fx_ms: int = -999999
 # --- 慢动作状态守卫 ---
 var _slowmo_active: bool = false
 
+# v7.x: 玩家设定的倍速（1.0 或 2.0）。胜利慢动作恢复时用此值，不覆盖玩家选择。
+var _user_time_scale: float = 1.0
+
+## 外部设置玩家倍速（top_battle_controls 调用）。立即应用到 Engine.time_scale。
+func set_user_time_scale(scale: float) -> void:
+	_user_time_scale = scale
+	# 慢动作进行中不立即覆盖（等慢动作结束自然恢复到 _user_time_scale）
+	if not _slowmo_active:
+		Engine.time_scale = scale
+
+## 获取当前玩家倍速
+func get_user_time_scale() -> float:
+	return _user_time_scale
+
 # --- 临时节点引用（按需创建，战斗结束清理）---
 var _overlay: ColorRect = null             # 全屏覆盖层（暗化/闪光）
 var _title_label: Label = null             # 中央大字标签（VICTORY/BOSS名）
@@ -422,7 +436,8 @@ func _play_victory() -> void:
 		Engine.time_scale = 0.3
 		# ignore_time_scale=true 保证即使 time_scale<1 也能准时恢复
 		await get_tree().create_timer(0.6, true, false, true).timeout
-		Engine.time_scale = 1.0
+		# v7.x: 恢复到玩家设定的倍速（而非硬编码 1.0），避免覆盖玩家的 ×2 选择
+		Engine.time_scale = _user_time_scale
 		_slowmo_active = false
 	# VICTORY 金字弹出
 	_title_label.text = "VICTORY"
@@ -555,6 +570,7 @@ func _trim_kill_window(now_ms: int) -> void:
 
 func _exit_tree() -> void:
 	# 守卫：节点销毁时确保 time_scale 恢复（防 autoload 被卸载时慢动作卡死）
+	# 用 _user_time_scale 恢复，尊重玩家设定的倍速
 	if _slowmo_active:
-		Engine.time_scale = 1.0
+		Engine.time_scale = _user_time_scale
 		_slowmo_active = false

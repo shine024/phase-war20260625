@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase War · 战斗界面优化 v7 · 融合版（v3 骨架 + v1 相位仪行/波次/导航/配色）</title>
+<style>
+/* ============ v1 配色体系（用户确认沿用 v1 的青/红/琥珀/紫四色对比） ============ */
+:root{
+  --bg-deep:#0a0e14;
+  --panel:rgba(13,18,27,.85);
+  --panel-solid:#10161f;
+  --border:rgba(148,163,184,.18);
+  --cyan:#22d3ee;            /* 相位青：主强调 / 我方 */
+  --cyan-soft:rgba(34,211,238,.35);
+  --red:#f87171;             /* 敌方 */
+  --amber:#fbbf24;           /* 能量 / 警示 / 金 */
+  --green:#34d399;           /* HP满 / 正面buff */
+  --violet:#a78bfa;          /* 法则 / 符文 */
+  --text-1:#e8eef5;
+  --text-2:#93a1b3;
+  --text-3:#5b6b7d;
+  --num:Consolas,"JetBrains Mono",monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;font-family:"Microsoft YaHei","PingFang SC","Noto Sans SC",sans-serif}
+body{background:#05070b;display:flex;align-items:center;justify-content:center;min-height:100vh;overflow:hidden}
+.stage{width:1280px;height:720px;position:relative;background:var(--bg-deep);overflow:hidden;flex:none;transform-origin:center center;box-shadow:0 0 90px rgba(34,211,238,.07)}
+
+/* ============ 战场背景（v1：天空+山+城市+地面） ============ */
+.bf{position:absolute;inset:0}
+.sky{position:absolute;inset:0;background:linear-gradient(180deg,#7d8fa3 0%,#5f7185 38%,#46566b 62%,#2c3849 100%)}
+.mtn{position:absolute;left:0;right:0}
+.m1{bottom:190px;height:280px;background:#55667a;opacity:.55;clip-path:polygon(0 62%,14% 30%,28% 55%,44% 22%,60% 52%,76% 18%,90% 46%,100% 30%,100% 100%,0 100%)}
+.m2{bottom:150px;height:240px;background:#3d4c5f;opacity:.8;clip-path:polygon(0 55%,18% 28%,34% 60%,52% 25%,68% 55%,84% 30%,100% 52%,100% 100%,0 100%)}
+.city{position:absolute;left:0;right:0;bottom:150px;height:130px;display:flex;align-items:flex-end;gap:6px;padding:0 30px}
+.city i{display:block;background:#26303d;border-radius:2px 2px 0 0;position:relative}
+.city i::after{content:"";position:absolute;inset:8px 6px;background-image:radial-gradient(rgba(251,191,36,.35) 1px,transparent 1.5px);background-size:9px 11px}
+.ground{position:absolute;left:0;right:0;bottom:0;height:152px;background:linear-gradient(180deg,#333b2e 0%,#262c22 30%,#191d16 100%)}
+.ground::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 14px,rgba(0,0,0,.18) 14px 15px),repeating-linear-gradient(90deg,transparent 0 46px,rgba(0,0,0,.12) 46px 48px);opacity:.7}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+
+/* ============ 通用面板质感：玻璃拟态 ============ */
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;backdrop-filter:blur(8px)}
+
+/* ============ ① 顶部 HUD（v1：撤退/关卡+波次/计时/控制 三合一） ============ */
+.top-hud{position:absolute;top:0;left:0;right:0;height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 12px;background:linear-gradient(180deg,rgba(8,11,17,.9),rgba(8,11,17,.55) 80%,transparent);z-index:30}
+.hud-btn{height:30px;padding:0 12px;border-radius:7px;border:1px solid var(--border);background:rgba(16,22,31,.8);color:var(--text-2);font-size:12px;display:flex;align-items:center;gap:6px;cursor:pointer;transition:.15s;font-family:inherit}
+.hud-btn:hover{border-color:var(--cyan-soft);color:var(--text-1)}
+.hud-btn.retreat{color:#fca5a5;border-color:rgba(248,113,113,.3)}
+.hud-btn.retreat:hover{background:rgba(248,113,113,.12)}
+.hud-btn.ctl-on{color:var(--cyan);border-color:var(--cyan-soft);background:rgba(34,211,238,.08)}
+.hud-right{display:flex;gap:8px}
+.hud-center{display:flex;align-items:center;gap:14px}
+.level-tag{display:flex;align-items:center;gap:8px;color:var(--text-1);font-size:14px;font-weight:600;letter-spacing:1px}
+.level-tag .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 1.6s infinite}
+/* 波次进度可视化 ●●◐○○（v1 核心） */
+.wave-progress{display:flex;align-items:center;gap:5px}
+.wave-progress b{font:normal 11px var(--num);color:var(--text-2);margin-left:4px}
+.wave-dot{width:8px;height:8px;border-radius:50%;background:#2b3644;border:1px solid var(--border)}
+.wave-dot.done{background:var(--cyan);border-color:var(--cyan);box-shadow:0 0 6px var(--cyan-soft)}
+.wave-dot.cur{background:var(--amber);border-color:var(--amber);animation:pulse 1.2s infinite}
+.battle-time{font:12px var(--num);color:var(--text-2);padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:rgba(16,22,31,.6)}
+
+/* ============ ② 顶部下战况状态条（v3：横排小字一行） ============ */
+.status-strip{position:absolute;top:48px;left:50%;transform:translateX(-50%);display:flex;gap:22px;padding:4px 18px;background:rgba(0,0,0,.55);border-radius:0 0 8px 8px;font:11px var(--num);color:var(--text-2);z-index:29;border:1px solid var(--border);border-top:none}
+.status-strip .si{display:flex;align-items:center;gap:4px}
+.status-strip .si .lbl{color:var(--text-3)}
+.status-strip .si .v{color:var(--text-1);font-weight:600}
+.status-strip .si .v.a{color:var(--green)}
+.status-strip .si .v.e{color:var(--red)}
+
+/* ============ ③ 左侧 BUFF 折叠卡（v3 骨架 + v1 配色） ============ */
+.left-panel{position:absolute;left:10px;top:90px;width:172px;z-index:25;display:flex;flex-direction:column;gap:7px}
+.fold-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden;backdrop-filter:blur(8px)}
+.fold-head{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;cursor:pointer;user-select:none;font-size:12px;font-weight:600;color:var(--text-1);background:rgba(34,211,238,.06)}
+.fold-head:hover{color:var(--cyan)}
+.fold-head .arrow{font-size:9px;color:var(--text-3);transition:.2s}
+.fold-card.closed .arrow{transform:rotate(-90deg)}
+.fold-head .mini{font:600 10px var(--num);color:var(--text-3);font-weight:400}
+.fold-body{padding:8px 10px 9px;display:flex;flex-direction:column;gap:5px}
+.fold-card.closed .fold-body{display:none}
+.buff-row{display:flex;align-items:center;gap:6px;font-size:11px}
+.buff-row .bi{width:18px;text-align:center;font-size:11px}
+.buff-row.pos .bt{color:var(--green)}
+.buff-row.vio .bt{color:var(--violet)}
+.buff-row.amb .bt{color:var(--amber)}
+.fold-divider{height:1px;background:var(--border);margin:6px -10px}
+
+/* ============ ④ 战场单位层（v3 悬浮卡 + v1 配色 + 漂浮 buff） ============ */
+.unit-layer{position:absolute;inset:0;z-index:15;pointer-events:none}
+.unit-layer>*{pointer-events:auto}
+.unit{position:absolute;width:74px;cursor:pointer;transition:transform .15s}
+.unit:hover{transform:translateY(-3px)}
+/* 悬浮信息卡（v3 风格，悬浮在单位头像上方） */
+.info-overlay{width:72px;background:rgba(8,12,20,.88);border:1px solid;border-radius:5px;padding:4px 3px;text-align:center;font-size:9px;line-height:1.4;margin-bottom:2px}
+.unit-name{font-weight:600;margin-bottom:2px;letter-spacing:.3px}
+.hp-bar-mini{width:100%;height:4px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;margin:2px 0}
+.hp-fill-mini{height:100%;border-radius:2px}
+.hp-text-mini{font:600 8px var(--num);color:var(--text-2)}
+.shield-text{font:600 8px var(--num);color:var(--cyan);margin-top:1px}
+/* 单位头像区 */
+.unit-img{width:64px;height:78px;border:1.5px solid;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:26px;position:relative;margin:0 auto;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))}
+.level-badge{position:absolute;top:-6px;right:-4px;background:var(--amber);color:#1a1005;font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;box-shadow:0 0 6px rgba(251,191,36,.5)}
+.elite-badge{position:absolute;top:-6px;left:-4px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#1a1005;font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;box-shadow:0 0 8px rgba(245,158,11,.6);z-index:2}
+/* 我方（v1 青） */
+.unit.friendly .info-overlay{border-color:rgba(34,211,238,.45)}
+.unit.friendly .unit-name{color:#a5f3fc}
+.unit.friendly .hp-fill-mini{background:linear-gradient(90deg,#0ea5b7,var(--cyan))}
+.unit.friendly .unit-img{border-color:var(--cyan);background:linear-gradient(180deg,rgba(34,211,238,.16),rgba(10,20,28,.85));box-shadow:0 0 12px rgba(34,211,238,.15)}
+/* 敌方（v1 红） */
+.unit.enemy .info-overlay{border-color:rgba(248,113,113,.45)}
+.unit.enemy .unit-name{color:#fecaca}
+.unit.enemy .hp-fill-mini{background:linear-gradient(90deg,#b91c1c,var(--red))}
+.unit.enemy .unit-img{border-color:var(--red);background:linear-gradient(180deg,rgba(248,113,113,.16),rgba(28,12,12,.85));box-shadow:0 0 12px rgba(248,113,113,.15)}
+.unit.enemy.selected .unit-img{border-color:var(--amber);box-shadow:0 0 12px rgba(251,191,36,.5)}
+/* 漂浮 buff 标签（v3 创新：信息就地化） */
+.float-tag{position:absolute;top:-20px;left:50%;transform:translateX(-50%);padding:1px 6px;border-radius:3px;font:600 9px var(--num);white-space:nowrap;z-index:20}
+.float-tag.pos{background:rgba(52,211,153,.18);border:1px solid rgba(52,211,153,.4);color:var(--green)}
+.float-tag.neg{background:rgba(248,113,113,.18);border:1px solid rgba(248,113,113,.4);color:#fca5a5}
+/* 伤害飘字 */
+.dmg-float{position:absolute;font:700 14px var(--num);color:var(--red);text-shadow:0 0 6px rgba(248,113,113,.6);animation:floatUp 1.4s ease-out forwards;pointer-events:none}
+@keyframes floatUp{0%{opacity:0;transform:translateY(8px)}15%{opacity:1}100%{opacity:0;transform:translateY(-22px)}}
+
+/* ============ ⑤ 右侧能量球（v3 + label 标注 + 脉冲） ============ */
+.right-orb{position:absolute;top:46%;right:18px;transform:translateY(-50%);z-index:25;display:flex;flex-direction:column;align-items:center;gap:6px}
+.orb-circle{width:72px;height:72px;border-radius:50%;background:radial-gradient(circle at 34% 30%,rgba(186,230,253,.95),rgba(56,189,248,.55) 45%,rgba(14,116,144,.25) 70%,transparent 75%);border:2px solid rgba(34,211,238,.5);box-shadow:0 0 20px rgba(56,189,248,.5),inset 0 0 12px rgba(34,211,238,.25);animation:pulse 3s ease-in-out infinite}
+.orb-label{font:600 10px var(--num);color:#7dd3fc;background:rgba(0,0,0,.6);padding:2px 8px;border-radius:3px;border:1px solid rgba(34,211,238,.3);white-space:nowrap}
+
+/* ============ ⑥ 底部装备行（核心融合点）============ */
+/* 左侧：v1 相位仪 chip + 自动部署开关 | 中间：v3 卡槽 | 右侧：v1 战场视野按钮 */
+.equip-row{position:absolute;left:0;right:0;bottom:44px;height:90px;display:flex;align-items:center;gap:10px;padding:0 12px;background:linear-gradient(0deg,rgba(8,11,17,.96),rgba(15,20,30,.85) 80%,transparent);z-index:28}
+/* ---- v1 左侧：相位仪 chip + 自动部署 ---- */
+.master-block{width:180px;display:flex;flex-direction:column;gap:6px;flex:none}
+.chip-master{display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:8px;background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.3);cursor:pointer;transition:.15s}
+.chip-master:hover{border-color:var(--violet);box-shadow:0 0 10px rgba(167,139,250,.25)}
+.chip-master .ava{width:28px;height:28px;border-radius:7px;background:radial-gradient(circle at 35% 30%,#fbbf24,#b45309);flex:none;box-shadow:0 0 8px rgba(251,191,36,.5)}
+.chip-master .mt{flex:1;min-width:0}
+.chip-master b{font-size:11px;color:var(--text-1);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip-master span{font:9px var(--num);color:var(--violet)}
+.chip-master .star{color:var(--amber)}
+.auto-toggle{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-2);padding-left:2px}
+.sw{width:34px;height:18px;border-radius:9px;background:#232d3a;border:1px solid var(--border);position:relative;cursor:pointer;transition:.2s;flex:none}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#64748b;transition:.2s}
+.sw.on{background:rgba(52,211,153,.25);border-color:rgba(52,211,153,.5)}
+.sw.on::after{left:18px;background:var(--green);box-shadow:0 0 8px rgba(52,211,153,.7)}
+/* ---- v3 中间：卡槽（4色战斗 + 符文/技能 + 空槽）---- */
+.slots{flex:1;display:flex;justify-content:center;align-items:center;gap:6px}
+.equip-divider{width:1px;height:62px;background:rgba(148,163,184,.2);margin:0 4px;flex:none}
+.slot{width:60px;height:78px;border:1px solid var(--border);border-radius:5px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:9px;color:var(--text-3);position:relative;transition:.15s;flex:none;cursor:pointer;background:rgba(15,20,30,.6)}
+.slot:hover{border-color:var(--cyan);box-shadow:0 0 8px var(--cyan-soft);transform:translateY(-2px)}
+.slot .si{font-size:22px;opacity:.6;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))}
+.slot .sl{font-size:8px;color:var(--text-3);margin-top:3px;letter-spacing:.3px}
+.slot .badge{position:absolute;top:-4px;right:-4px;min-width:15px;height:15px;border-radius:8px;color:#06202a;font:700 9px var(--num);display:flex;align-items:center;justify-content:center;padding:0 4px}
+.slot.filled{border-color:rgba(34,211,238,.5);background:rgba(0,20,40,.5)}
+.slot.filled .si{opacity:.9}
+.slot.filled .sl{color:#7dd3fc}
+.slot.fire .badge{background:var(--amber)}
+.slot.fire .si{color:var(--amber)}
+.slot.armor .badge{background:var(--cyan);color:#06202a}
+.slot.rune{border-color:rgba(167,139,250,.5);background:rgba(40,20,60,.5)}
+.slot.rune .badge{background:var(--violet);color:#1a0f2e}
+.slot.rune .si{color:var(--violet)}
+.slot.rune .sl{color:#c4b5fd}
+.slot.skill{border-color:rgba(248,113,113,.5);background:rgba(40,15,15,.5)}
+.slot.skill .badge{background:var(--red);color:#2a0a0a}
+.slot.skill .si{color:var(--red)}
+.slot.skill .sl{color:#fca5a5}
+.slot.empty{border-style:dashed;background:rgba(15,20,30,.3)}
+/* ---- v1 右侧：战场视野按钮 ---- */
+.view-block{width:120px;flex:none;display:flex;justify-content:flex-end}
+.field-view{height:46px;padding:0 12px;border-radius:7px;border:1px solid var(--border);background:rgba(16,22,31,.8);color:var(--text-2);font-size:11px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;transition:.15s;font-family:inherit}
+.field-view:hover{color:var(--cyan);border-color:var(--cyan-soft);box-shadow:0 0 8px var(--cyan-soft)}
+.field-view .vi{font-size:16px}
+.field-view .vl{font-size:10px;letter-spacing:.3px}
+
+/* ============ ⑦ 底部导航行（v1：6 高频 + 更多菜单） ============ */
+.nav-row{position:absolute;left:0;right:0;bottom:0;height:44px;display:flex;align-items:center;justify-content:center;gap:8px;padding:0 12px;background:linear-gradient(180deg,rgba(10,14,22,.96),#05070b);border-top:1px solid var(--border);z-index:29}
+.nav-btn{width:68px;height:36px;border-radius:7px;border:1px solid var(--border);background:rgba(16,22,31,.7);color:var(--text-2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;cursor:pointer;font-size:10px;transition:.15s;position:relative;font-family:inherit}
+.nav-btn .ni{font-size:14px;line-height:1}
+.nav-btn .nl{font-size:9px;letter-spacing:.3px}
+.nav-btn:hover{color:var(--cyan);border-color:var(--cyan-soft);transform:translateY(-2px)}
+.nav-btn.active{color:var(--cyan);border-color:var(--cyan);background:rgba(34,211,238,.1)}
+.nav-btn .badge{position:absolute;top:-4px;right:-4px;min-width:15px;height:15px;border-radius:8px;background:var(--red);color:#fff;font:700 9px var(--num);display:flex;align-items:center;justify-content:center;padding:0 4px;box-shadow:0 0 6px rgba(248,113,113,.5)}
+.more-menu{position:absolute;bottom:50px;left:50%;transform:translateX(80px);width:138px;padding:6px;display:none;flex-direction:column;gap:2px;z-index:40;background:var(--panel);border:1px solid var(--border);border-radius:8px;backdrop-filter:blur(10px)}
+.more-menu.show{display:flex}
+.more-menu button{background:none;border:none;color:var(--text-2);font-size:11px;text-align:left;padding:7px 10px;border-radius:6px;cursor:pointer;display:flex;gap:8px;align-items:center;width:100%;font-family:inherit}
+.more-menu button:hover{background:rgba(34,211,238,.1);color:var(--text-1)}
+
+/* ============ ⑧ 标注层（设计稿说明：v7 融合点） ============ */
+.anno-layer{position:absolute;inset:0;z-index:50;pointer-events:none;display:none}
+.anno-layer.show{display:block}
+.anno{position:absolute;width:22px;height:22px;border-radius:50%;background:var(--amber);color:#1a1005;font:700 11px var(--num);display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 4px rgba(251,191,36,.25),0 0 14px rgba(251,191,36,.6);animation:pulse 2s infinite}
+.anno-panel{position:absolute;top:56px;right:10px;bottom:150px;width:320px;z-index:51;padding:14px;display:none;flex-direction:column;gap:8px;overflow:auto;background:rgba(8,12,19,.95);border:1px solid var(--border);border-radius:12px;backdrop-filter:blur(10px)}
+.anno-panel.show{display:flex}
+.anno-panel h3{font-size:13px;color:var(--amber);letter-spacing:1px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.anno-panel .sub{font-size:10px;color:var(--text-3);margin-top:-4px;margin-bottom:4px}
+.anno-item{display:flex;gap:9px;font-size:11px;line-height:1.55}
+.anno-item .n{width:18px;height:18px;flex:none;border-radius:50%;background:var(--amber);color:#1a1005;font:700 10px var(--num);display:flex;align-items:center;justify-content:center;margin-top:1px}
+.anno-item b{color:var(--text-1);display:block;font-size:11px}
+.anno-item p{color:var(--text-2)}
+.anno-item p s{color:var(--text-3)}
+.tag-v1{display:inline-block;padding:0 4px;border-radius:3px;font:600 9px var(--num);background:rgba(34,211,238,.2);color:var(--cyan);margin-left:4px}
+.tag-v3{display:inline-block;padding:0 4px;border-radius:3px;font:600 9px var(--num);background:rgba(167,139,250,.2);color:var(--violet);margin-left:4px}
+.tag-new{display:inline-block;padding:0 4px;border-radius:3px;font:600 9px var(--num);background:rgba(52,211,153,.2);color:var(--green);margin-left:4px}
+/* 设计稿工具条 */
+.dev-tools{position:absolute;left:12px;bottom:148px;z-index:60;display:flex;gap:8px}
+.dev-tools button{height:28px;padding:0 12px;border-radius:7px;border:1px solid var(--border);background:rgba(8,12,19,.9);color:var(--text-2);font-size:11px;cursor:pointer;backdrop-filter:blur(6px);font-family:inherit}
+.dev-tools button:hover{color:var(--amber);border-color:rgba(251,191,36,.4)}
+.dev-tools button.on{color:var(--amber);border-color:var(--amber)}
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+
+  <!-- 战场背景（v1） -->
+  <div class="bf">
+    <div class="sky"></div>
+    <div class="mtn m1"></div>
+    <div class="mtn m2"></div>
+    <div class="city">
+      <i style="width:52px;height:64px"></i><i style="width:38px;height:92px"></i><i style="width:60px;height:48px"></i>
+      <i style="width:44px;height:110px"></i><i style="width:70px;height:56px"></i><i style="width:36px;height:80px"></i>
+      <i style="width:56px;height:42px"></i><i style="width:48px;height:96px"></i><i style="width:64px;height:60px"></i>
+      <i style="width:40px;height:74px"></i><i style="width:58px;height:50px"></i><i style="width:46px;height:88px"></i>
+      <i style="width:62px;height:44px"></i><i style="width:42px;height:70px"></i><i style="width:54px;height:58px"></i>
+    </div>
+    <div class="ground"></div>
+  </div>
+
+  <!-- ⑤ 右侧能量球（v3 + label） -->
+  <div class="right-orb">
+    <div class="orb-circle"></div>
+    <div class="orb-label">相位护盾 ×3,200</div>
+  </div>
+
+  <!-- ④ 战场单位层（v3 悬浮卡 + v1 配色 + 漂浮 buff） -->
+  <div class="unit-layer">
+    <!-- 我方：青色 -->
+    <div class="unit friendly" style="left:250px;bottom:160px">
+      <div class="info-overlay">
+        <div class="unit-name">77mm火炮</div>
+        <div class="hp-bar-mini"><div class="hp-fill-mini" style="width:85%"></div></div>
+        <div class="hp-text-mini">HP 4,250</div>
+        <div class="shield-text">🛡 +800</div>
+      </div>
+      <div class="unit-img">🎯<div class="level-badge">Lv12</div></div>
+      <div class="float-tag pos">⚔ +14%</div>
+    </div>
+    <div class="unit friendly" style="left:348px;bottom:160px">
+      <div class="info-overlay">
+        <div class="unit-name">M270火箭</div>
+        <div class="hp-bar-mini"><div class="hp-fill-mini" style="width:60%"></div></div>
+        <div class="hp-text-mini">HP 2,880</div>
+      </div>
+      <div class="unit-img">🚀<div class="level-badge">Lv8</div></div>
+    </div>
+    <div class="unit friendly" style="left:446px;bottom:160px">
+      <div class="info-overlay">
+        <div class="unit-name">FT-17轻坦</div>
+        <div class="hp-bar-mini"><div class="hp-fill-mini" style="width:100%"></div></div>
+        <div class="hp-text-mini">HP 1,500</div>
+        <div class="shield-text">🛡 +500</div>
+      </div>
+      <div class="unit-img">🛡<div class="level-badge">Lv5</div></div>
+    </div>
+
+    <!-- 敌方：红色 -->
+    <div class="unit enemy" style="left:760px;bottom:160px">
+      <div class="info-overlay">
+        <div class="unit-name">重装机甲</div>
+        <div class="hp-bar-mini"><div class="hp-fill-mini" style="width:45%"></div></div>
+        <div class="hp-text-mini">292</div>
+      </div>
+      <div class="unit-img">🤖</div>
+      <div class="float-tag neg">🔥 Burn</div>
+    </div>
+    <div class="unit enemy" style="left:858px;bottom:160px">
+      <span class="elite-badge">精英</span>
+      <div class="info-overlay">
+        <div class="unit-name">轻甲兵</div>
+        <div class="hp-bar-mini"><div class="hp-fill-mini" style="width:80%"></div></div>
+        <div class="hp-text-mini">1,200</div>
+      </div>
+      <div class="unit-img">🪖</div>
+    </div>
+    <div class="unit enemy selected" style="left:956px;bottom:160px">
+      <div class="info-overlay">
+        <div class="unit-name" style="color:#fcd34d">RTR装甲</div>
+        <div class="hp-bar-mini"><div class="hp-fill-mini" style="width:30%"></div></div>
+        <div class="hp-text-mini" style="color:#fcd34d">● 选中</div>
+      </div>
+      <div class="unit-img">🚜</div>
+    </div>
+    <div class="unit enemy" style="left:1054px;bottom:160px">
+      <div class="info-overlay">
+        <div class="unit-name">STR装甲</div>
+        <div class="hp-bar-mini"><div class="hp-fill-mini" style="width:100%"></div></div>
+        <div class="hp-text-mini">3,600</div>
+      </div>
+      <div class="unit-img">🚜</div>
+    </div>
+    <div class="unit enemy" style="left:1152px;bottom:160px">
+      <div class="info-overlay">
+        <div class="unit-name">T-72B</div>
+        <div class="hp-bar-mini"><div class="hp-fill-mini" style="width:92%"></div></div>
+        <div class="hp-text-mini">5,100</div>
+      </div>
+      <div class="unit-img">🗼</div>
+    </div>
+
+    <!-- 伤害飘字 -->
+    <div class="dmg-float" style="left:970px;bottom:248px">-232</div>
+  </div>
+
+  <!-- ① 顶部 HUD（v1：撤退/关卡+波次/计时/控制 三合一） -->
+  <header class="top-hud">
+    <button class="hud-btn retreat">◀ 撤退</button>
+    <div class="hud-center">
+      <div class="level-tag"><span class="dot"></span>战斗中 · 第 49 关</div>
+      <div class="wave-progress">
+        <span class="wave-dot done"></span><span class="wave-dot done"></span><span class="wave-dot cur"></span><span class="wave-dot"></span><span class="wave-dot"></span>
+        <b>波次 3/5</b>
+      </div>
+      <div class="battle-time">⏱ 00:06</div>
+    </div>
+    <div class="hud-right">
+      <button class="hud-btn" onclick="this.classList.toggle('ctl-on')">⏸ 暂停</button>
+      <button class="hud-btn ctl-on">▶ ×1</button>
+    </div>
+  </header>
+
+  <!-- ② 顶部下战况状态条（v3：横排小字一行） -->
+  <div class="status-strip">
+    <div class="si"><span class="lbl">时间:</span><span class="v">00:58</span></div>
+    <div class="si"><span class="lbl">单位</span><span class="v a">我方 3</span><span class="lbl">/</span><span class="v e">敌方 5</span></div>
+    <div class="si"><span class="lbl">击杀</span><span class="v a">12</span><span class="lbl">/</span><span class="v e">8</span></div>
+    <div class="si"><span class="lbl">伤害</span><span class="v a">9,850</span><span class="lbl">/</span><span class="v e">3,420</span></div>
+  </div>
+
+  <!-- ③ 左侧 BUFF 折叠卡（v3 骨架 + v1 配色） -->
+  <aside class="left-panel">
+    <div class="fold-card">
+      <div class="fold-head" onclick="this.parentElement.classList.toggle('closed')">
+        <span>☰ BUFF <span class="mini">· 3项</span></span>
+        <span class="arrow">▼</span>
+      </div>
+      <div class="fold-body">
+        <div class="buff-row pos"><span class="bi">🛡</span><span class="bt">相位仪防御 +7%</span></div>
+        <div class="buff-row pos"><span class="bi">⚡</span><span class="bt">攻速 +11%</span></div>
+        <div class="buff-row amb"><span class="bi">💥</span><span class="bt">卡牌伤害 +14%</span></div>
+      </div>
+    </div>
+    <div class="fold-card closed">
+      <div class="fold-head" onclick="this.parentElement.classList.toggle('closed')">
+        <span>🎖 我的面板</span>
+        <span class="arrow">▼</span>
+      </div>
+      <div class="fold-body">
+        <div class="buff-row"><span style="color:var(--text-3)">战力分</span><span style="color:var(--amber);margin-left:auto;font:700 11px var(--num)">12,450</span></div>
+        <div class="buff-row"><span style="color:var(--text-3)">进化阶</span><span style="color:var(--cyan);margin-left:auto">★★★★☆</span></div>
+        <div class="buff-row"><span style="color:var(--text-3)">主战兵种</span><span style="color:var(--green);margin-left:auto">重装机甲</span></div>
+      </div>
+    </div>
+    <div class="fold-card closed">
+      <div class="fold-head" onclick="this.parentElement.classList.toggle('closed')">
+        <span>◆ 资源</span>
+        <span class="arrow">▼</span>
+      </div>
+      <div class="fold-body">
+        <div class="buff-row amb"><span class="bi">⚡</span><span>能量块</span><span style="color:var(--amber);margin-left:auto;font:700 11px var(--num)">1.0K</span></div>
+        <div class="buff-row pos"><span class="bi">◆</span><span>纳米材料</span><span style="color:var(--green);margin-left:auto;font:700 11px var(--num)">120</span></div>
+        <div class="fold-divider"></div>
+        <div class="buff-row"><span style="color:var(--text-3)">场上兵力</span><span style="color:var(--cyan);margin-left:auto;font:700 11px var(--num)">3 / 7</span></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ⑥ 底部装备行（核心融合：v1 左右 + v3 中间卡槽） -->
+  <div class="equip-row">
+    <!-- v1 左侧：相位仪 chip + 自动部署开关 -->
+    <div class="master-block">
+      <div class="chip-master" title="点击查看相位仪详情">
+        <div class="ava"></div>
+        <div class="mt">
+          <b>烈焰破坏者·大师</b>
+          <span><span class="star">★7</span> · Lv 10/150</span>
+        </div>
+      </div>
+      <div class="auto-toggle">
+        <div class="sw on" id="autoSw" onclick="this.classList.toggle('on')"></div>
+        <span>自动部署</span>
+      </div>
+    </div>
+
+    <!-- v3 中间：卡槽（相位仪不再放槽，已在左侧 chip） -->
+    <div class="slots">
+      <div class="slot fire filled" title="火炮槽 · Lv4">
+        <span class="badge">4</span>
+        <span class="si">💣</span>
+        <span class="sl">火炮</span>
+      </div>
+      <div class="slot filled" title="火箭槽 · Lv3">
+        <span class="badge" style="background:var(--cyan);color:#06202a">3</span>
+        <span class="si">🚀</span>
+        <span class="sl">火箭</span>
+      </div>
+      <div class="slot armor filled" title="装甲槽 · Lv5">
+        <span class="badge">5</span>
+        <span class="si">🛡</span>
+        <span class="sl">装甲</span>
+      </div>
+      <div class="slot filled" title="机甲槽 · Lv7">
+        <span class="badge" style="background:var(--green);color:#06202a">7</span>
+        <span class="si">⚔️</span>
+        <span class="sl">机甲</span>
+      </div>
+
+      <div class="equip-divider"></div>
+
+      <div class="slot rune filled" title="符文槽">
+        <span class="badge">◆</span>
+        <span class="si">🔮</span>
+        <span class="sl">符文</span>
+      </div>
+      <div class="slot skill filled" title="技能槽">
+        <span class="badge">▲</span>
+        <span class="si">⚠️</span>
+        <span class="sl">技能</span>
+      </div>
+      <div class="slot empty"><span class="si" style="opacity:.3">◇</span><span class="sl">空</span></div>
+      <div class="slot empty"><span class="si" style="opacity:.3">◇</span><span class="sl">空</span></div>
+    </div>
+  </div>
+
+  <!-- ⑦ 底部导航行（v1：6 高频 + 更多菜单） -->
+  <nav class="nav-row">
+    <button class="nav-btn"><span class="ni">🎒</span><span class="nl">背包</span></button>
+    <button class="nav-btn"><span class="ni">✦</span><span class="nl">成长</span></button>
+    <button class="nav-btn"><span class="ni">⚑</span><span class="nl">势力</span></button>
+    <button class="nav-btn"><span class="ni">☰</span><span class="nl">任务</span><span class="badge">3</span></button>
+    <button class="nav-btn"><span class="ni">⚖</span><span class="nl">商店</span></button>
+    <button class="nav-btn active"><span class="ni">🗺</span><span class="nl">地图</span></button>
+    <button class="nav-btn" id="moreBtn" onclick="document.getElementById('moreMenu').classList.toggle('show');event.stopPropagation()"><span class="ni">⋯</span><span class="nl">更多</span></button>
+    <div class="more-menu" id="moreMenu">
+      <button>🏆 排行</button>
+      <button>🔍 情报</button>
+      <button>📖 图鉴</button>
+      <button>⚙ 设置</button>
+      <button>💾 存档</button>
+      <button>⏳ 挂机</button>
+    </div>
+  </nav>
+
+  <!-- ⑧ 标注层 -->
+  <div class="anno-layer" id="annoLayer">
+    <span class="anno" style="left:50%;top:20px">1</span>
+    <span class="anno" style="left:50%;top:54px">2</span>
+    <span class="anno" style="left:96px;top:108px">3</span>
+    <span class="anno" style="left:430px;bottom:268px">4</span>
+    <span class="anno" style="left:990px;bottom:268px">5</span>
+    <span class="anno" style="right:24px;top:240px">6</span>
+    <span class="anno" style="left:96px;bottom:48px">7</span>
+    <span class="anno" style="left:50%;bottom:18px">8</span>
+  </div>
+  <aside class="anno-panel" id="annoPanel">
+    <h3>v7 融合版 · 优化说明</h3>
+    <div class="sub">v3 卡槽骨架 + v1 相位仪行/波次/导航/配色</div>
+    <div class="anno-item"><span class="n">1</span><div><b>顶部 HUD 三合一 + 波次可视化<span class="tag-v1">v1</span></b><p><s>撤退/关卡/播放控制分散割裂</s> → 一条 44px 顶栏，<b>波次 ●●◐○○</b> 进度可视化（done/cur/empty 三态）+ 战斗计时。</p></div></div>
+    <div class="anno-item"><span class="n">2</span><div><b>战况状态条<span class="tag-v3">v3</span></b><p>紧贴顶栏下方横排一行：时间 / 单位(我X敌X) / 击杀 / 伤害，敌我配色区分，对比度强。</p></div></div>
+    <div class="anno-item"><span class="n">3</span><div><b>左侧 BUFF 折叠卡<span class="tag-v3">v3</span></b><p>三段可折叠：BUFF（默认展开）/ 我的面板 / 资源。释放战场空间，老玩家收起后视野更大。</p></div></div>
+    <div class="anno-item"><span class="n">4</span><div><b>我方单位悬浮卡<span class="tag-new">融合</span></b><p><s>原版血条极小看不清</s> → v3 悬浮信息卡（名+HP+护盾+等级徽章）+ v1 相位青配色 + <b>漂浮 buff 标签</b>（信息就地化，不占面板）。</p></div></div>
+    <div class="anno-item"><span class="n">5</span><div><b>敌方单位 + 精英角标<span class="tag-new">融合</span></b><p>v3 加粗血条 + v1 红色体系 + <b>金色精英角标</b> + 选中目标金色高亮，一眼可辨威胁等级。</p></div></div>
+    <div class="anno-item"><span class="n">6</span><div><b>能量球 + label<span class="tag-v3">v3</span></b><p>右侧脉冲能量球（相位护盾 ×3,200）配 label 标注，比原版"裸球"语义更清晰。</p></div></div>
+    <div class="anno-item"><span class="n">7</span><div><b>★ 底部装备行 · 用户特别要求<span class="tag-v1">v1</span> + <span class="tag-v3">v3</span></b><p><b>左用 v1，中间用 v3</b>：左侧 v1 相位仪 chip（头像+★7+Lv）+ 自动部署开关；中间 v3 卡槽（4 色战斗槽+符文/技能+空槽，<b>相位仪不再占槽</b>）。</p></div></div>
+    <div class="anno-item"><span class="n">8</span><div><b>导航 6+更多<span class="tag-v1">v1</span></b><p><s>12 个按钮平铺</s> → 6 个高频（背包/成长/势力/任务/商店/地图）+ "更多"收纳 6 个低频；任务带红点角标。</p></div></div>
+    <div class="anno-item" style="margin-top:6px;padding-top:8px;border-top:1px solid var(--border)">
+      <span class="n" style="background:var(--cyan);color:#06202a">Σ</span>
+      <div><b style="color:var(--cyan)">融合总结</b>
+      <p>以 <b>v3 卡槽模型</b>为骨架（贴合现状 <code>bottom_instrument_bar</code>），吸收 v1 的<b>波次可视化 / 导航收纳 / 敌我四色对比</b>，并按用户要求把<b>相位仪 chip</b> 用 v1 风格放在装备行左侧。</p></div>
+    </div>
+  </aside>
+
+  <!-- 设计稿工具 -->
+  <div class="dev-tools">
+    <button id="annoBtn" onclick="toggleAnno()">💡 优化说明</button>
+  </div>
+</div>
+
+<script>
+/* 窗口缩放适配（1280×720 设计基准） */
+function fit(){
+  const s=document.getElementById('stage');
+  const k=Math.min(innerWidth/1280,innerHeight/720)*0.98;
+  s.style.transform='scale('+k+')';
+}
+addEventListener('resize',fit);fit();
+
+/* 标注开关 */
+function toggleAnno(){
+  const on=document.getElementById('annoLayer').classList.toggle('show');
+  document.getElementById('annoPanel').classList.toggle('show',on);
+  document.getElementById('annoBtn').classList.toggle('on',on);
+}
+
+/* 点击"更多"外部时收起菜单 */
+document.addEventListener('click',e=>{
+  const m=document.getElementById('moreMenu');
+  if(m.classList.contains('show')&&!e.target.closest('#moreMenu')&&!e.target.closest('#moreBtn'))
+    m.classList.remove('show');
+});
+</script>
+</body>
+</html>

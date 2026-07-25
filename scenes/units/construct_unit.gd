@@ -330,7 +330,13 @@ func _maybe_apply_card_grid_presentation() -> void:
 		power_score = float(ri.get("power_score", power_score))
 	var card_res: CardResource = DefaultCards.get_card_by_id(stats.platform_card_id)
 	# 与敌方一致的双回退：先 UiAssetLoader，再 EnemyArchetypes.resolve_card_icon_texture_path
-	var arch_for_icon: String = EnemyArchetypes.get_visual_archetype_id_for_card(stats.platform_card_id)
+	# 优先用 setup_with_enemy_visual 注入的 _visual_archetype_id（敌方产兵/我方缴获外观复用），
+	# 为空时才走 drops 反查；两者都空则回退 platform_card_id（我方卡走 PLAYER_ICON_OVERRIDE）。
+	# 关键：敌方产兵的 platform_card_id 是平台 ID（如 steel_titan_expert），不在 drops 里，
+	# get_visual_archetype_id_for_card 会返回空，但 _visual_archetype_id 已被正确设置为真实 archetype。
+	var arch_for_icon: String = _visual_archetype_id
+	if arch_for_icon.is_empty():
+		arch_for_icon = EnemyArchetypes.get_visual_archetype_id_for_card(stats.platform_card_id)
 	if arch_for_icon.is_empty():
 		arch_for_icon = stats.platform_card_id
 	var cfg: Dictionary = EnemyArchetypes.get_config(arch_for_icon)
@@ -405,7 +411,13 @@ func apply_card_grid_enemy_presentation() -> void:
 	var rank_id: String = RankRules.get_rank_by_power("corporal", pscore)
 	var rank_level: int = CardGridUnitVisuals.rank_level_from_id(rank_id)
 	var sprite_ok: bool = false
-	var arch_for_icon: String = EnemyArchetypes.get_visual_archetype_id_for_card(stats.platform_card_id)
+	# 优先用 setup_with_enemy_visual 注入的 _visual_archetype_id（敌方产兵真实 archetype），
+	# 为空时才走 drops 反查；两者都空则回退 platform_card_id。
+	# 关键修复：敌方产兵 platform_card_id 是平台 ID（如 steel_titan_expert），
+	# get_visual_archetype_id_for_card 查不到，但 _visual_archetype_id 已被正确设置。
+	var arch_for_icon: String = _visual_archetype_id
+	if arch_for_icon.is_empty():
+		arch_for_icon = EnemyArchetypes.get_visual_archetype_id_for_card(stats.platform_card_id)
 	if arch_for_icon.is_empty():
 		arch_for_icon = stats.platform_card_id
 	var cfg: Dictionary = EnemyArchetypes.get_config(arch_for_icon)

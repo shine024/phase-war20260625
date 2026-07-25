@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3 uid="uid://buff_fold_card"]
+
+[ext_resource type="Script" path="res://scenes/ui/buff_fold_card.gd" id="1_script"]
+
+[node name="BuffFoldCard" type="VBoxContainer"]
+custom_minimum_size = Vector2(172, 0)
+layout_mode = 1
+mouse_filter = 2
+script = ExtResource("1_script")

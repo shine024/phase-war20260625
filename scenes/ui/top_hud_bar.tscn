@@ -1,0 +1,124 @@
+[gd_scene load_steps=3 format=3 uid="uid://top_hud_bar"]
+
+[ext_resource type="Script" path="res://scenes/ui/top_hud_bar.gd" id="1_script"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_hud"]
+font_size = 14
+font_color = Color(0.91, 0.93, 0.96, 1)
+outline_size = 2
+outline_color = Color(0, 0, 0, 0.8)
+
+[node name="TopHudBar" type="Control"]
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 44.0
+grow_horizontal = 2
+mouse_filter = 2
+script = ExtResource("1_script")
+
+[node name="CenterSection" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -140.0
+offset_top = -22.0
+offset_right = 140.0
+offset_bottom = 22.0
+grow_horizontal = 2
+grow_vertical = 2
+alignment = 1
+theme_override_constants/separation = 2
+mouse_filter = 2
+
+[node name="LevelRow" type="HBoxContainer" parent="CenterSection"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 8
+
+[node name="LevelLabel" type="Label" parent="CenterSection/LevelRow"]
+layout_mode = 2
+label_settings = SubResource("LabelSettings_hud")
+text = "第 1 关"
+mouse_filter = 2
+
+[node name="InfoRow" type="HBoxContainer" parent="CenterSection"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 14
+
+[node name="WaveLabel" type="Label" parent="CenterSection/InfoRow"]
+layout_mode = 2
+label_settings = SubResource("LabelSettings_hud")
+text = ""
+mouse_filter = 2
+
+[node name="TimeLabel" type="Label" parent="CenterSection/InfoRow"]
+layout_mode = 2
+label_settings = SubResource("LabelSettings_hud")
+text = "⏱ 00:00"
+mouse_filter = 2
+
+[node name="RetreatBtn" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = 0
+offset_left = 928.0
+offset_top = 4.0
+offset_right = 984.0
+offset_bottom = 40.0
+custom_minimum_size = Vector2(56, 36)
+text = "1撤"
+tooltip_text = "撤退"
+mouse_filter = 1
+
+[node name="StartBtn" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = 0
+offset_left = 1000.0
+offset_top = 4.0
+offset_right = 1056.0
+offset_bottom = 40.0
+custom_minimum_size = Vector2(56, 36)
+text = "2战"
+tooltip_text = "开始战斗"
+mouse_filter = 1
+
+[node name="SpeedBtn" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = 0
+offset_left = 1072.0
+offset_top = 4.0
+offset_right = 1128.0
+offset_bottom = 40.0
+custom_minimum_size = Vector2(56, 36)
+text = "3倍"
+tooltip_text = "战斗倍速 ×1"
+
+[node name="PauseBtn" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = 0
+offset_left = 1144.0
+offset_top = 4.0
+offset_right = 1200.0
+offset_bottom = 40.0
+custom_minimum_size = Vector2(56, 36)
+text = "4停"
+tooltip_text = "暂停"
+mouse_filter = 1
+
+[node name="BackBtn" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = 0
+offset_left = 1216.0
+offset_top = 4.0
+offset_right = 1272.0
+offset_bottom = 40.0
+custom_minimum_size = Vector2(56, 36)
+text = "5返"
+tooltip_text = "返回主菜单"
+mouse_filter = 1

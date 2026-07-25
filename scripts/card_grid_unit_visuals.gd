@@ -70,13 +70,15 @@ static func resolve_battle_icon_texture(
 
 
 ## 立绘 + 势力底 + 稀有度框 + 军衔条（与背包简略卡面一致）
+## unit 可选参数：传入单位节点以启用精英金角标（敌方 elite/boss 显示）
 static func apply_battle_unit_presentation(
 	host: Node2D,
 	unit_spr: Sprite2D,
 	card: CardResource,
 	tex: Texture2D,
 	face_right: bool,
-	rank_level: int
+	rank_level: int,
+	unit: Node = null
 ) -> bool:
 	if host == null or unit_spr == null or tex == null:
 		return false
@@ -94,7 +96,56 @@ static func apply_battle_unit_presentation(
 	if card != null:
 		sync_rarity_badge(host, unit_spr, card)
 	sync_level_tag(host, unit_spr, card)
+	# v7.x 战场视觉反馈：敌方精英金角标（elite/boss 单位，左上角，避开右上的稀有度角标）
+	sync_elite_badge(host, unit_spr, unit)
 	return true
+
+
+## 敌方精英金角标：当 unit 是 elite/boss 时，卡框左上角显示金色星形角标
+## 与右上角的稀有度三角错开，一眼识别威胁等级
+static func sync_elite_badge(host: Node2D, unit_spr: Sprite2D, unit: Node) -> void:
+	if host == null or unit_spr == null or unit == null:
+		# 无 unit 引用则清掉残留角标（防御性）
+		var stale := host.get_node_or_null("EliteBadge") as Polygon2D
+		if stale != null:
+			stale.visible = false
+		return
+	# 仅当单位暴露 get_elite_spawn_type() 且值为 elite/boss 才显示
+	var spawn_type: String = ""
+	if unit.has_method("get_elite_spawn_type"):
+		spawn_type = String(unit.get_elite_spawn_type())
+	var is_elite := (spawn_type == "elite" or spawn_type == "boss")
+	var badge := host.get_node_or_null("EliteBadge") as Polygon2D
+	if not is_elite:
+		if badge != null:
+			badge.visible = false
+		return
+	if badge == null:
+		badge = Polygon2D.new()
+		badge.name = "EliteBadge"
+		badge.z_index = 16
+		host.add_child(badge)
+	# boss 用更大尺寸 + 更亮的金；elite 标准
+	var s: float = 7.5 if spawn_type == "boss" else 6.0
+	# 五角星形（向上）
+	badge.polygon = PackedVector2Array([
+		Vector2(0.0, -s),
+		Vector2(s * 0.224, -s * 0.309),
+		Vector2(s, -s * 0.309),
+		Vector2(s * 0.363, s * 0.118),
+		Vector2(s * 0.588, s),
+		Vector2(0.0, s * 0.382),
+		Vector2(-s * 0.588, s),
+		Vector2(-s * 0.363, s * 0.118),
+		Vector2(-s, -s * 0.309),
+		Vector2(-s * 0.224, -s * 0.309),
+	])
+	# 金色（boss 更亮）
+	badge.color = Color(1.0, 0.78, 0.20, 1.0) if spawn_type == "boss" else Color(0.98, 0.75, 0.15, 1.0)
+	# 定位：卡框左上角（与右上角的 RarityBadge 对称）
+	var card_h: float = CardGridBattleLayout.battle_card_width_px() * 8.0 / 5.0
+	badge.position = Vector2(-CardGridBattleLayout.battle_card_width_px() * 0.42, unit_spr.position.y - card_h * 0.5 - s)
+	badge.visible = true
 
 
 ## v6.5: 在卡片立绘底部绘制单位名称条（我方青 / 敌方橙），补齐格子战可读性。

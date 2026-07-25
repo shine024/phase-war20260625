@@ -71,7 +71,16 @@ func _process(delta: float) -> void:
 			_next_label.text = "下次波次: --"
 	if _wave_label:
 		if wave_total > 0:
-			_wave_label.text = "波次: %d / %d" % [wave_idx, wave_total]
+			# 波次进度可视化 ●●◉○○（已完成/当前/未完成三态）+ 文字
+			var dots := ""
+			for i in range(wave_total):
+				if i < wave_idx - 1:
+					dots += "●"   # 已完成波次（实心）
+				elif i == wave_idx - 1:
+					dots += "◉"   # 当前波次（实心带圈，视觉突出）
+				else:
+					dots += "○"   # 未完成波次（空心）
+			_wave_label.text = "%s  波次 %d/%d" % [dots, wave_idx, wave_total]
 		else:
 			_wave_label.text = "波次: %d" % wave_idx
 	if _count_label:

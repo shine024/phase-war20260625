@@ -1,4 +1,4 @@
-[gd_scene load_steps=32 format=3 uid="uid://main"]
+[gd_scene load_steps=35 format=3 uid="uid://main"]
 
 [ext_resource type="Script" uid="uid://d0jpdmko5mrnu" path="res://scenes/main.gd" id="1_script"]
 [ext_resource type="PackedScene" uid="uid://battlefield" path="res://scenes/battlefield/battlefield.tscn" id="2_battlefield"]
@@ -27,6 +27,9 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/battle_log.tscn" id="41_battle_log"]
 [ext_resource type="PackedScene" path="res://scenes/ui/unit_hover_info.tscn" id="42_unit_hover_info"]
 [ext_resource type="PackedScene" path="res://scenes/ui/player_master_panel.tscn" id="43_player_master"]
+[ext_resource type="PackedScene" path="res://scenes/ui/top_hud_bar.tscn" id="45_top_hud_bar"]
+[ext_resource type="PackedScene" path="res://scenes/ui/battle_status_strip.tscn" id="47_status_strip"]
+[ext_resource type="PackedScene" path="res://scenes/ui/buff_fold_card.tscn" id="48_buff_card"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_level_display"]
 font_size = 24
@@ -120,6 +123,7 @@ offset_top = 8.0
 offset_right = -8.0
 offset_bottom = 168.0
 theme_override_constants/separation = 10
+visible = false
 
 [node name="PlayerSpawnHUD" parent="HudLayer/BattleTopStatusBar" instance=ExtResource("8_player_hud")]
 layout_mode = 2
@@ -142,6 +146,7 @@ offset_left = 8.0
 offset_top = 176.0
 offset_right = 200.0
 offset_bottom = 396.0
+visible = false
 
 [node name="ResourceInfoPanel" parent="HudLayer/TopLeftMeta" instance=ExtResource("29_resource_info")]
 layout_mode = 1
@@ -151,44 +156,19 @@ offset_top = 0.0
 offset_right = 192.0
 offset_bottom = 220.0
 
-[node name="TopRightMeta" type="Control" parent="HudLayer"]
+[node name="TopHudBar" parent="HudLayer" instance=ExtResource("45_top_hud_bar")]
 layout_mode = 1
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -200.0
-offset_top = 8.0
-offset_right = -8.0
-offset_bottom = 228.0
-grow_horizontal = 0
 
-[node name="TopCenterMeta" type="Control" parent="HudLayer"]
+[node name="BattleStatusStrip" parent="HudLayer" instance=ExtResource("47_status_strip")]
 layout_mode = 1
-anchors_preset = 10
-anchor_right = 1.0
-offset_left = 0.0
-offset_top = 8.0
-offset_right = 0.0
-offset_bottom = 48.0
-grow_horizontal = 2
 
-[node name="LevelDisplay" type="Label" parent="HudLayer/TopCenterMeta"]
+[node name="BuffFoldCard" parent="HudLayer" instance=ExtResource("48_buff_card")]
 layout_mode = 1
-anchors_preset = 10
-anchor_left = 0.5
-anchor_top = 0.0
-anchor_right = 0.5
-anchor_bottom = 0.0
-offset_left = -120.0
-offset_top = 0.0
-offset_right = 120.0
-offset_bottom = 32.0
-grow_horizontal = 2
-grow_vertical = 0
-label_settings = SubResource("LabelSettings_level_display")
-text = "第 1 关"
-horizontal_alignment = 1
-mouse_filter = 2
+anchors_preset = 0
+offset_left = 8.0
+offset_top = 72.0
+offset_right = 180.0
+offset_bottom = 72.0
 
 [node name="TopCenterAnnouncer" parent="HudLayer" instance=ExtResource("40_battle_announcer")]
 layout_mode = 1
@@ -196,9 +176,9 @@ anchors_preset = 10
 anchor_left = 0.5
 anchor_right = 0.5
 offset_left = -200.0
-offset_top = 50.0
+offset_top = 72.0
 offset_right = 200.0
-offset_bottom = 100.0
+offset_bottom = 122.0
 grow_horizontal = 2
 
 [node name="BattleBottomBar" type="VBoxContainer" parent="HudLayer"]

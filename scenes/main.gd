@@ -53,6 +53,7 @@ func _debug_log(hypothesis_id: String, location: String, message: String, data: 
 @onready var battle_container: Control            = $BattleContainer
 @onready var bottom_instrument_bar                = $HudLayer/BattleBottomBar/BottomInstrumentBar
 @onready var bottom_function_bar                 = $HudLayer/BattleBottomBar/BottomFunctionBar
+@onready var top_hud_bar                         = $HudLayer/TopHudBar
 @onready var popup_layer: CanvasLayer            = $PopupLayer
 
 # Overlays（在 PopupLayer 下）
@@ -74,7 +75,7 @@ func _debug_log(hypothesis_id: String, location: String, message: String, data: 
 @onready var afk_overlay: Control             = $PopupLayer/AFKOverlay
 # v7.x: 玩家相位师详细面板（点击底部栏相位场标签打开）
 @onready var player_master_overlay: Control   = $PopupLayer/PlayerMasterOverlay
-@onready var level_display: Label = $HudLayer/TopCenterMeta/LevelDisplay
+@onready var level_display: Label = null  # v7.x: 关卡名合并进 TopHudBar，此引用保留兼容（_update_level_display 改用 top_hud_bar.set_level）
 
 func _ready() -> void:
 	## 初始化拆分模块
@@ -104,10 +105,14 @@ func _ready() -> void:
 		bottom_function_bar.btn_collection_pressed.connect(_on_collection_pressed)
 		bottom_function_bar.btn_save_pressed.connect(_on_manual_save_pressed)
 		bottom_function_bar.btn_afk_pressed.connect(_on_afk_pressed)
-		bottom_function_bar.btn_start_battle_pressed.connect(_on_start_battle)
-		bottom_function_bar.btn_pause_pressed.connect(_on_pause_pressed)
-		bottom_function_bar.btn_retreat_pressed.connect(_on_retreat_pressed)
-		bottom_function_bar.btn_back_pressed.connect(_on_back_to_title)
+	# v7.x: 4 个战斗控制按钮（开始/暂停/撤退/返回）整合进顶部 TopHudBar
+	if top_hud_bar:
+		top_hud_bar.btn_start_battle_pressed.connect(_on_start_battle)
+		top_hud_bar.btn_pause_pressed.connect(_on_pause_pressed)
+		top_hud_bar.btn_retreat_pressed.connect(_on_retreat_pressed)
+		top_hud_bar.btn_back_pressed.connect(_on_back_to_title)
+	# 任务红点角标：连接 DailyTaskManager 信号刷新可领取数量
+	_connect_quest_badge_signals()
 
 	# 连接各面板 closed 信号
 	_connect_panel_closed_signals()
@@ -230,12 +235,14 @@ func _prune_preloaded_panels() -> void:
 				child.queue_free()
 
 func _update_level_display() -> void:
-	if level_display == null:
-		return
 	var level = 1
 	if GameManager and "current_level" in GameManager:
 		level = int(GameManager.current_level)
-	level_display.text = "第 %d 关" % level
+	# v7.x: 关卡名合并进 TopHudBar
+	if top_hud_bar and top_hud_bar.has_method("set_level"):
+		top_hud_bar.set_level(level)
+	elif level_display != null:
+		level_display.text = "第 %d 关" % level
 
 func _on_current_level_changed(_level: int) -> void:
 	_update_level_display()
@@ -609,6 +616,39 @@ func _connect_intelligence_hub_signals() -> void:
 		hub.open_progression_requested.connect(_on_intelligence_open_progression)
 
 
+## 连接 DailyTaskManager 信号以刷新任务按钮红点角标
+func _connect_quest_badge_signals() -> void:
+	var dtm := get_node_or_null("/root/DailyTaskManager")
+	if dtm == null:
+		# 懒加载：经 ManagerLazyLoader 触发后再连
+		var mll := get_node_or_null("/root/ManagerLazyLoader")
+		if mll and mll.has_method("ensure_loaded"):
+			mll.ensure_loaded("daily_task")
+			dtm = get_node_or_null("/root/DailyTaskManager")
+	if dtm == null:
+		return
+	if dtm.has_signal("task_completed") and not dtm.task_completed.is_connected(_refresh_quest_badge):
+		dtm.task_completed.connect(_refresh_quest_badge)
+	if dtm.has_signal("daily_tasks_refreshed") and not dtm.daily_tasks_refreshed.is_connected(_refresh_quest_badge):
+		dtm.daily_tasks_refreshed.connect(_refresh_quest_badge)
+	# 首次刷新一次
+	_refresh_quest_badge()
+
+
+## 刷新任务按钮红点：可领取(completed && !claimed)的任务数
+func _refresh_quest_badge(_dummy = null) -> void:
+	if bottom_function_bar == null or not bottom_function_bar.has_method("set_btn_badge"):
+		return
+	var dtm := get_node_or_null("/root/DailyTaskManager")
+	if dtm == null or not dtm.has_method("get_daily_tasks"):
+		return
+	var claimable := 0
+	for task in dtm.get_daily_tasks():
+		if task.get("completed", false) and not task.get("claimed", false):
+			claimable += 1
+	bottom_function_bar.set_btn_badge("quest", claimable)
+
+
 func _on_intelligence_open_progression(card_id: String) -> void:
 	_close_overlay(intelligence_overlay, "info")
 	_toggle_overlay(growth_overlay, "growth")
@@ -629,10 +669,15 @@ func _on_faction_pressed() -> void:
 func _on_toggle_phase_instrument_from_tutorial() -> void:
 	_open_backpack_runes_tab()
 
-## v7.x 教程引导：打开强化面板（CardEnhancementPanel）
+## v7.x 教程引导：打开强化面板
+## v8.x: 强化②（CardEnhancementPanel）已停用，养成改为自动经验升星 + 相位师技能树。
+# 教程的"打开强化"重定向到成长中枢（growth_panel），那里展示强化等级/Lv.X/10，
+# 且其"强化"按钮会打开相位师技能树面板——与 v8.x 养成入口一致。
+# 原 enhancement_overlay 路径已断（UILazyLoader 无 "enhancement" 配置，
+# _ensure_lazy_panel 会 push_error 并返回空 overlay，导致玩家无法关闭→死机）。
 func _on_toggle_enhancement_from_tutorial() -> void:
 	_play_sfx("button")
-	_toggle_overlay(enhancement_overlay, "enhancement")
+	_on_progression_pressed()
 
 ## v7.x 教程引导：打开改造面板（ModificationPanel）
 func _on_toggle_modification_from_tutorial() -> void:
@@ -792,8 +837,8 @@ func _on_pause_pressed() -> void:
 	if tree == null:
 		return
 	tree.paused = not tree.paused
-	if bottom_function_bar:
-		bottom_function_bar.set_pause_text("继续" if tree.paused else "暂停")
+	if top_hud_bar:
+		top_hud_bar.set_pause_text("继续" if tree.paused else "暂停")
 
 # ── 撤退（放弃本场战斗，判定为失败） ───────────────────────────
 # 用一个实例字段追踪当前确认框，避免重复弹出
@@ -811,8 +856,8 @@ func _on_retreat_pressed() -> void:
 	var tree := get_tree()
 	if tree and tree.paused:
 		tree.paused = false
-		if bottom_function_bar:
-			bottom_function_bar.set_pause_text("暂停")
+		if top_hud_bar:
+			top_hud_bar.set_pause_text("暂停")
 	_retreat_confirm = _build_retreat_confirm_dialog()
 	popup_layer.add_child(_retreat_confirm)
 
