@@ -129,6 +129,7 @@ func _cached_load(path: String, type_hint: int = -1) -> Resource:
 	return res
 
 var _presentation_card_grid: bool = false
+var _buff_label_refresh_accum: float = 0.0  ## v7.x 漂浮 buff 标签低频刷新累加器
 var _hit_stun_left: float = 0.0
 var _card_tween: Tween = null
 var _rest_position: Vector2 = Vector2.ZERO
@@ -851,6 +852,12 @@ func _physics_process(delta: float) -> void:
 	_update_fort_shield_aura(delta)
 	# v7.4: 受击闪白/抖动手写动画推进（与 construct_unit 对齐）
 	_update_hit_animations(delta)
+	# v7.x 战场视觉反馈：低频刷新漂浮 buff/debuff 标签（标记过期需自动消失）
+	if _cached_is_card_grid:
+		_buff_label_refresh_accum += delta
+		if _buff_label_refresh_accum >= 0.3:
+			_buff_label_refresh_accum = 0.0
+			_refresh_buff_labels()
 	# P2 性能优化：静止单位跳过空间网格更新（格子战敌人 velocity=0，原每帧无谓 update）
 	if velocity != Vector2.ZERO:
 		_update_in_spatial_grid()
@@ -1235,6 +1242,8 @@ func _try_fire_enemy_projectile_batch(p_target: Node2D, wt: int, p_damage: float
 
 func _update_hp_bar() -> void:
 	if _presentation_card_grid:
+		# v7.x: 格子战 HP 条隐藏，但仍刷新卡框 HP 数值标签
+		_refresh_hp_value_label()
 		return
 	var bar = get_node_or_null("HpBar")
 	if bar == null or not bar.has_method("set_ratio"):
@@ -1250,6 +1259,19 @@ func _update_hp_bar() -> void:
 		bar.set_folded(true)
 	else:
 		bar.set_folded(BattleInputState.current_selected_unit != self)
+	# v7.x: 同步刷新卡框 HP 数值标签
+	_refresh_hp_value_label()
+
+## v7.x: 刷新卡框 HP 数值标签（HpValueLabel）
+func _refresh_hp_value_label() -> void:
+	CardGridUnitVisuals.update_hp_label_text(self, hp, max_hp)
+
+## v7.x: 低频刷新漂浮 buff/debuff 标签（仅格子战）
+func _refresh_buff_labels() -> void:
+	if not _presentation_card_grid:
+		return
+	var spr: Sprite2D = get_node_or_null("Sprite") as Sprite2D
+	CardGridUnitVisuals.sync_buff_labels(self, spr, self)
 
 func take_damage(amount: float, attacker: Variant = null) -> void:
 	# v7.x 战场视觉反馈：记录最后攻击者，供 unit_killed 信号携带（击杀定帧/连杀提示依赖）

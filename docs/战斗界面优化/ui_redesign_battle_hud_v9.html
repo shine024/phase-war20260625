@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase War · 战斗界面 v9（与实际落地一致）</title>
+<style>
+:root{
+  --bg-deep:#0a0e14;
+  --border:rgba(148,163,184,.18);
+  --cyan:#22d3ee;
+  --cyan-soft:rgba(34,211,238,.35);
+  --red:#f87171;
+  --amber:#fbbf24;
+  --green:#34d399;
+  --violet:#a78bfa;
+  --text-1:#e8eef5;
+  --text-2:#93a1b3;
+  --text-3:#5b6b7d;
+  --num:Consolas,"JetBrains Mono",monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;font-family:"Microsoft YaHei","PingFang SC","Noto Sans SC",sans-serif}
+body{background:#05070b;display:flex;align-items:center;justify-content:center;min-height:100vh;overflow:hidden}
+.stage{width:1280px;height:720px;position:relative;background:linear-gradient(180deg,#3a4858 0%,#2a3441 40%,#1e2630 70%,#0f1419 100%);overflow:hidden;flex:none;transform-origin:center center;box-shadow:0 0 90px rgba(34,211,238,.07)}
+
+/* 战场背景简化 */
+.bf{position:absolute;inset:0}
+.bf::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 60%,rgba(34,211,238,.05),transparent 60%)}
+.ground{position:absolute;left:0;right:0;bottom:0;height:180px;background:linear-gradient(180deg,#2a3026 0%,#1a1f16 100%)}
+.ground::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 14px,rgba(0,0,0,.15) 14px 15px)}
+
+/* ========== 顶部区域（无整条背景） ========== */
+.top-area{position:absolute;top:0;left:0;right:0;height:44px;z-index:30;pointer-events:none}
+.top-area>*{pointer-events:auto}
+
+/* 中间居中信息（两行） */
+.center-info{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:2px;pointer-events:none}
+.level-line{font:600 14px var(--num);color:var(--text-1);text-shadow:0 1px 3px rgba(0,0,0,.8);letter-spacing:1px}
+.info-line{display:flex;align-items:center;gap:14px;font:13px var(--num);color:var(--text-2);text-shadow:0 1px 3px rgba(0,0,0,.8)}
+.wave-dots{letter-spacing:2px}
+.wave-dots .done{color:var(--cyan)}
+.wave-dots .cur{color:var(--amber)}
+.wave-dots .todo{color:var(--text-3)}
+
+/* 右侧 5 独立按钮（绝对定位） */
+.btn{position:absolute;top:4px;width:56px;height:36px;border-radius:5px;border:1px solid rgba(0,0,0,.5);font:600 13px var(--num);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.15s;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.btn:hover{transform:translateY(-1px);filter:brightness(1.15)}
+.btn-retreat{right:8px;background:rgba(0.4,0.1,0.1,.85);color:#fca5a5;border-color:rgba(248,113,113,.5)}
+.btn-back{right:72px;background:rgba(0.1,0.1,0.15,.85);color:#cbd5e1;border-color:rgba(148,163,184,.4)}
+.btn-pause{right:136px;background:rgba(0.3,0.25,0.05,.85);color:var(--amber);border-color:rgba(251,191,36,.5)}
+.btn-speed{right:200px;background:rgba(0.06,0.10,0.18,.85);color:var(--green);border-color:rgba(52,211,153,.5)}
+.btn-start{right:264px;background:rgba(0.05,0.25,0.15,.85);color:var(--green);border-color:rgba(52,211,153,.5)}
+
+/* ========== 右上角战况卡（纵向） ========== */
+.status-card{position:absolute;top:52px;right:8px;width:152px;padding:8px;background:rgba(5,7,11,.88);border:1px solid rgba(34,211,238,.2);border-radius:6px;z-index:25;backdrop-filter:blur(6px)}
+.status-card .title{font:600 12px var(--num);color:var(--text-1);margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid rgba(148,163,184,.15)}
+.status-card .row{display:flex;justify-content:space-between;font:11px var(--num);color:var(--text-2);line-height:1.7}
+.status-card .row .v{color:var(--text-1)}
+.status-card .row .a{color:var(--green)}
+.status-card .row .e{color:var(--red)}
+
+/* ========== 左上角 BUFF 折叠卡 ========== */
+.buff-card{position:absolute;top:52px;left:8px;width:172px;padding:5px 8px;background:rgba(5,7,11,.88);border:1px solid rgba(34,211,238,.2);border-radius:6px;z-index:25;backdrop-filter:blur(6px)}
+.buff-card .head{font:600 12px var(--num);color:var(--text-1);padding:3px 0;cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:rgba(34,211,238,.06);padding-left:6px;padding-right:6px;border-radius:3px}
+.buff-card .body{margin-top:5px;display:flex;flex-direction:column;gap:3px}
+.buff-card .brow{font:11px var(--num);color:var(--green);text-shadow:0 1px 2px rgba(0,0,0,.7)}
+
+/* ========== 战场单位（悬浮卡 + HP数值 + 等级 + 精英角标） ========== */
+.unit-layer{position:absolute;inset:0;z-index:15;pointer-events:none}
+.unit{position:absolute;width:60px}
+.unit-face{width:60px;height:72px;border:1.5px solid;border-radius:5px;background:linear-gradient(180deg,rgba(20,30,45,.85),rgba(10,14,20,.9));display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto;position:relative}
+.unit.friendly .unit-face{border-color:var(--cyan);box-shadow:0 0 8px rgba(34,211,238,.2)}
+.unit.enemy .unit-face{border-color:var(--red);box-shadow:0 0 8px rgba(248,113,113,.2)}
+/* 等级徽章（左上角） */
+.level-badge{position:absolute;top:-8px;left:-8px;background:var(--amber);color:#1a1005;font:700 9px var(--num);padding:1px 5px;border-radius:3px;box-shadow:0 0 6px rgba(251,191,24,.5);z-index:2}
+/* 精英金角标（左上角，五角星） */
+.elite-badge{position:absolute;top:-10px;left:-10px;width:18px;height:18px;background:linear-gradient(135deg,#fbbf24,#d97706);clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);z-index:3}
+/* HP 数值（卡框下方） */
+.hp-value{font:600 11px var(--num);text-align:center;margin-top:3px;text-shadow:0 1px 2px #000}
+.unit.friendly .hp-value{color:#a5f3fc}
+.unit.enemy .hp-value{color:#fca5a5}
+/* 选中金描边 */
+.unit.selected .unit-face{border-color:var(--amber);box-shadow:0 0 12px rgba(251,191,24,.5)}
+/* 漂浮 buff/debuff 标签（卡顶上方一行） */
+.buff-row{position:absolute;top:-22px;left:50%;transform:translateX(-50%);display:flex;gap:2px;z-index:4;pointer-events:none}
+.buff-tag{padding:1px 4px;border-radius:3px;font:700 9px var(--num);text-shadow:0 1px 2px #000;white-space:nowrap}
+.buff-tag.armor{background:rgba(255,140,64,.18);color:#ff8c40;border:1px solid rgba(255,140,64,.5)}
+.buff-tag.mark{background:rgba(242,77,217,.18);color:#f24dd9;border:1px solid rgba(242,77,217,.5)}
+.buff-tag.crit{background:rgba(251,191,36,.18);color:var(--amber);border:1px solid rgba(251,191,36,.5)}
+.buff-tag.counter{background:rgba(178,102,255,.18);color:#b266ff;border:1px solid rgba(178,102,255,.5)}
+
+/* ========== 底部功能栏（12按钮平铺） ========== */
+.bottom-bar{position:absolute;left:0;right:0;bottom:0;height:60px;display:flex;align-items:center;justify-content:center;gap:6px;background:linear-gradient(0deg,rgba(5,7,11,.95),rgba(8,11,17,.7));border-top:1px solid rgba(34,211,238,.15);z-index:30;padding:0 8px}
+.func-btn{width:64px;height:44px;border-radius:6px;border:1px solid rgba(0,0.65,1,.3);background:rgba(0.08,0.12,0.20,.85);color:var(--text-2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;cursor:pointer;font-size:10px;transition:.15s;position:relative}
+.func-btn:hover{border-color:var(--cyan);color:var(--cyan);transform:translateY(-1px)}
+.func-btn.active{border-color:var(--cyan);color:var(--cyan);background:rgba(34,211,238,.1)}
+.func-btn .ico{font-size:14px;line-height:1}
+.func-btn .badge{position:absolute;top:-4px;right:-4px;min-width:14px;height:14px;border-radius:8px;background:var(--red);color:#fff;font:700 8px var(--num);display:flex;align-items:center;justify-content:center;padding:0 4px}
+
+/* 设计稿工具 */
+.dev-tools{position:absolute;left:12px;bottom:72px;z-index:60;display:flex;gap:8px}
+.dev-tools button{height:28px;padding:0 12px;border-radius:7px;border:1px solid var(--border);background:rgba(8,12,19,.9);color:var(--text-2);font-size:11px;cursor:pointer;font-family:inherit}
+.dev-tools button:hover{color:var(--cyan)}
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+
+  <div class="bf"><div class="ground"></div></div>
+
+  <!-- 战场单位 -->
+  <div class="unit-layer">
+    <!-- 我方 -->
+    <div class="unit friendly" style="left:320px;bottom:200px">
+      <div class="unit-face">🎯<div class="level-badge">Lv12</div></div>
+      <div class="hp-value">4250/4250</div>
+    </div>
+    <div class="unit friendly selected" style="left:420px;bottom:200px">
+      <div class="buff-row"><span class="buff-tag crit">暴击眼</span></div>
+      <div class="unit-face">🚀<div class="level-badge">Lv8</div></div>
+      <div class="hp-value">2880/3000</div>
+    </div>
+    <div class="unit friendly" style="left:520px;bottom:200px">
+      <div class="buff-row"><span class="buff-tag mark">标记</span></div>
+      <div class="unit-face">🛡<div class="level-badge">Lv5</div></div>
+      <div class="hp-value">1500/1500</div>
+    </div>
+    <!-- 敌方 -->
+    <div class="unit enemy" style="left:700px;bottom:200px">
+      <div class="buff-row"><span class="buff-tag armor">破甲×2</span></div>
+      <div class="unit-face">🤖</div>
+      <div class="hp-value">292/650</div>
+    </div>
+    <div class="unit enemy" style="left:780px;bottom:200px">
+      <div class="buff-row"><span class="buff-tag armor">破甲×3</span><span class="buff-tag mark">标记</span></div>
+      <div class="unit-face">🪖<div class="elite-badge"></div></div>
+      <div class="hp-value">1200/1500</div>
+    </div>
+    <div class="unit enemy" style="left:860px;bottom:200px">
+      <div class="buff-row"><span class="buff-tag counter">反炮</span></div>
+      <div class="unit-face">🚜</div>
+      <div class="hp-value">3600/3600</div>
+    </div>
+    <div class="unit enemy" style="left:940px;bottom:200px">
+      <div class="unit-face">🗼</div>
+      <div class="hp-value">5100/5500</div>
+    </div>
+  </div>
+
+  <!-- 顶部区域（无整条背景） -->
+  <div class="top-area">
+    <!-- 中间居中信息（两行） -->
+    <div class="center-info">
+      <div class="level-line">第 49 关</div>
+      <div class="info-line">
+        <span class="wave-dots"><span class="done">●</span><span class="done">●</span><span class="cur">◉</span><span class="todo">○</span><span class="todo">○</span></span>
+        <span>波次 3/5</span>
+        <span>⏱ 00:06</span>
+      </div>
+    </div>
+    <!-- 右侧 5 独立按钮 -->
+    <button class="btn btn-start">战</button>
+    <button class="btn btn-speed">×1</button>
+    <button class="btn btn-pause">停</button>
+    <button class="btn btn-back">返</button>
+    <button class="btn btn-retreat">撤</button>
+  </div>
+
+  <!-- 右上角战况卡 -->
+  <div class="status-card">
+    <div class="title">📊 战况</div>
+    <div class="row">时间 <span class="v">00:58</span></div>
+    <div class="row">单位 <span><span class="a">我3</span> / <span class="e">敌5</span></span></div>
+    <div class="row">击杀 <span><span class="a">12</span> / <span class="e">8</span></span></div>
+    <div class="row">伤害 <span><span class="a">9.8k</span> / <span class="e">3.4k</span></span></div>
+  </div>
+
+  <!-- 左上角 BUFF 折叠卡 -->
+  <div class="buff-card">
+    <div class="head"><span>☰ BUFF ▼</span></div>
+    <div class="body">
+      <div class="brow">🛡 钢壁防御 +7%</div>
+      <div class="brow">⚡ 迅捷攻速 +11%</div>
+      <div class="brow">💥 烈焰伤害 +14%</div>
+    </div>
+  </div>
+
+  <!-- 底部功能栏（12按钮平铺） -->
+  <div class="bottom-bar">
+    <button class="func-btn"><span class="ico">🎒</span>背包</button>
+    <button class="func-btn"><span class="ico">✦</span>成长</button>
+    <button class="func-btn"><span class="ico">⚑</span>势力</button>
+    <button class="func-btn"><span class="ico">☰</span>任务<span class="badge">3</span></button>
+    <button class="func-btn"><span class="ico">⚖</span>商店</button>
+    <button class="func-btn"><span class="ico">🏆</span>排行</button>
+    <button class="func-btn"><span class="ico">🔍</span>情报</button>
+    <button class="func-btn active"><span class="ico">🗺</span>地图</button>
+    <button class="func-btn"><span class="ico">📖</span>图鉴</button>
+    <button class="func-btn"><span class="ico">⚙</span>设置</button>
+    <button class="func-btn"><span class="ico">💾</span>存档</button>
+    <button class="func-btn"><span class="ico">⏳</span>挂机</button>
+  </div>
+
+  <div class="dev-tools">
+    <button>v9 · 与实际落地一致</button>
+  </div>
+</div>
+
+<script>
+function fit(){
+  const s=document.getElementById('stage');
+  const k=Math.min(innerWidth/1280,innerHeight/720)*0.98;
+  s.style.transform='scale('+k+')';
+}
+addEventListener('resize',fit);fit();
+</script>
+</body>
+</html>

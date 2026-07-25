@@ -161,6 +161,7 @@ var _repair_fortress_cd: float = 0.0
 var _buff_strip_timer: float = 0.0
 var _ability_accum: float = 0.0  ## 平台能力累加器（降低调用频率）
 var _buff_strip_signature: String = ""
+var _buff_label_refresh_accum: float = 0.0  ## v7.x 漂浮 buff 标签低频刷新累加器
 ## 跨实例共享的资源缓存，避免运行时重复 load()
 var _res_cache: Dictionary = {}
 
@@ -354,7 +355,7 @@ func _maybe_apply_card_grid_presentation() -> void:
 			use_tex = spr.texture
 		if use_tex != null:
 			var rl: int = CardGridUnitVisuals.rank_level_from_id(rank_id)
-			CardGridUnitVisuals.apply_battle_unit_presentation(self, spr, card_res, use_tex, true, rl)
+			CardGridUnitVisuals.apply_battle_unit_presentation(self, spr, card_res, use_tex, true, rl, self)
 	if walk_sprite != null:
 		walk_sprite.visible = false
 	if poly != null:
@@ -428,7 +429,7 @@ func apply_card_grid_enemy_presentation() -> void:
 	var tex: Texture2D = CardGridUnitVisuals.resolve_battle_icon_texture(card_res, arch_for_icon, cfg, false)
 	if spr != null and tex != null:
 		sprite_ok = CardGridUnitVisuals.apply_battle_unit_presentation(
-			self, spr, card_res, tex, false, rank_level
+			self, spr, card_res, tex, false, rank_level, self
 		)
 		# v7.x 战场视觉反馈：敌方改造图标条（从 archetype tags 推断）
 		CardGridUnitVisuals.sync_mod_strip(self, self, spr)
@@ -1082,6 +1083,12 @@ func _physics_process(delta: float) -> void:
 	_clamp_inside_battlefield()
 	if not is_player and _cached_is_card_grid:
 		velocity = Vector2.ZERO
+	# v7.x 战场视觉反馈：低频刷新漂浮 buff/debuff 标签（标记过期需自动消失）
+	if _cached_is_card_grid:
+		_buff_label_refresh_accum += delta
+		if _buff_label_refresh_accum >= 0.3:
+			_buff_label_refresh_accum = 0.0
+			_refresh_buff_labels()
 	# 性能优化：静止单位跳过空间网格更新
 	if velocity != Vector2.ZERO:
 		_update_in_spatial_grid()
@@ -1224,6 +1231,21 @@ func _update_hp_bar() -> void:
 		bar.set_folded(true)
 	else:
 		bar.set_folded(BattleInputState.current_selected_unit != self)
+	# v7.x: 同步刷新卡框 HP 数值标签
+	_refresh_hp_value_label()
+
+## v7.x: 刷新卡框 HP 数值标签（HpValueLabel）
+func _refresh_hp_value_label() -> void:
+	if stats == null:
+		return
+	CardGridUnitVisuals.update_hp_label_text(self, hp, stats.max_hp)
+
+## v7.x: 低频刷新漂浮 buff/debuff 标签（仅格子战）
+func _refresh_buff_labels() -> void:
+	if not _presentation_card_grid:
+		return
+	var spr: Sprite2D = get_node_or_null("Sprite") as Sprite2D
+	CardGridUnitVisuals.sync_buff_labels(self, spr, self)
 
 func take_damage(amount: float, attacker: Variant = null) -> void:
 	# 预览模式不会受到伤害

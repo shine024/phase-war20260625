@@ -6,6 +6,7 @@ const CardGridRankStrip = preload("res://scripts/card_grid_rank_strip.gd")
 const CardGridBuffStrip = preload("res://scripts/card_grid_buff_strip.gd")
 const CardGridModStrip = preload("res://scripts/card_grid_mod_strip.gd")
 const CardGridBattleLayout = preload("res://scripts/card_grid_battle_layout.gd")
+const CardGridFloatingLabel = preload("res://scripts/card_grid_floating_label.gd")
 const RankRules = preload("res://data/rank_rules.gd")
 const CardFrameUi = preload("res://scripts/card_frame_ui.gd")
 const CardBackgroundUi = preload("res://scripts/card_background_ui.gd")
@@ -95,9 +96,13 @@ static func apply_battle_unit_presentation(
 	# v7.x 战场视觉反馈：单位头顶增强——稀有度角标 + 等级标签
 	if card != null:
 		sync_rarity_badge(host, unit_spr, card)
-	sync_level_tag(host, unit_spr, card)
+	sync_level_tag(host, unit_spr, card, unit)
 	# v7.x 战场视觉反馈：敌方精英金角标（elite/boss 单位，左上角，避开右上的稀有度角标）
 	sync_elite_badge(host, unit_spr, unit)
+	# v7.x HP 数值标签（卡框下方，我方青/敌方红）
+	sync_hp_label(host, unit_spr, unit)
+	# v7.x 战场视觉反馈：漂浮 buff/debuff 标签（卡顶上方，破甲/标记/暴击标注/反炮）
+	sync_buff_labels(host, unit_spr, unit)
 	return true
 
 
@@ -341,37 +346,82 @@ static func sync_rarity_badge(host: Node2D, unit_spr: Sprite2D, card: CardResour
 
 
 ## 等级小标签：卡框左上角 "Lv.X"（我方读 enhance_level，敌方无则隐藏）
-static func sync_level_tag(host: Node2D, unit_spr: Sprite2D, card: CardResource) -> void:
+## 用 Node2D + _draw() 自绘（参考 CardGridRankStrip），避免 Label 在 Node2D 下
+## 因 Control 布局系统不触发导致的 size=0 / 文字不渲染问题。
+static func sync_level_tag(host: Node2D, unit_spr: Sprite2D, card: CardResource, unit: Node = null) -> void:
 	if host == null:
 		return
 	var level: int = 0
-	# 我方：读 enhance_level meta（aura_manager 缓存写入）
-	if host.has_meta("enhance_level"):
+	# v7.x: 优先读 unit.stats.enhance_level（我方 construct_unit 有，敌方无则 level=0 不显示）
+	if unit != null and "stats" in unit and unit.stats != null and "enhance_level" in unit.stats:
+		level = int(unit.stats.enhance_level)
+	elif host.has_meta("enhance_level"):
 		level = int(host.get_meta("enhance_level"))
 	elif card != null and "enhance_level" in card:
 		level = int(card.enhance_level)
-	var label := host.get_node_or_null("LevelTag") as Label
+	var label := host.get_node_or_null("LevelTag") as CardGridFloatingLabel
 	if level <= 0:
 		if label != null:
 			label.visible = false
 		return
 	if label == null:
-		label = Label.new()
+		label = CardGridFloatingLabel.new()
 		label.name = "LevelTag"
-		label.z_index = 16
-		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var ls := LabelSettings.new()
-		ls.font_size = 10
-		ls.font_color = Color(1.0, 0.85, 0.35, 1.0)
-		ls.outline_color = Color(0, 0, 0, 0.85)
-		ls.outline_size = 3
-		label.label_settings = ls
 		host.add_child(label)
-	label.text = "Lv.%d" % level
-	# 定位：卡框左上角
-	var card_h: float = CardGridBattleLayout.battle_card_width_px() * 8.0 / 5.0
-	label.position = Vector2(-CardGridBattleLayout.battle_card_width_px() * 0.42 - 24.0, unit_spr.position.y - card_h * 0.5 - 8.0)
+	label.set_text("Lv.%d" % level)
+	label.set_style(11, Color(1.0, 0.85, 0.35, 1.0), Color(0, 0, 0, 0.85), 3, HORIZONTAL_ALIGNMENT_CENTER)
+	# 定位：卡框左上角（Node2D position 即原点，文字以原点为中心居中绘制）
+	var card_w: float = CardGridBattleLayout.battle_card_width_px()
+	var card_h: float = card_w * 8.0 / 5.0
+	label.position = Vector2(-card_w * 0.5 - 18.0, unit_spr.position.y - card_h * 0.5 - 8.0)
 	label.visible = true
+
+
+## v7.x HP 数值标签：卡框下方显示当前/最大 HP（我方青/敌方红）
+## 我方读 unit.hp / unit.stats.max_hp；敌方读 unit.hp / unit.max_hp
+## 用 Node2D + _draw() 自绘（参考 CardGridRankStrip），避免 Label 在 Node2D 下
+## 因 Control 布局系统不触发导致的 size=0 / 文字不渲染问题。
+static func sync_hp_label(host: Node2D, unit_spr: Sprite2D, unit: Node) -> void:
+	if host == null or unit == null:
+		return
+	var cur_hp: float = 0.0
+	var max_hp_val: float = 0.0
+	var is_player: bool = false
+	if "hp" in unit:
+		cur_hp = float(unit.hp)
+	if "is_player" in unit:
+		is_player = bool(unit.is_player)
+	if is_player and "stats" in unit and unit.stats != null and "max_hp" in unit.stats:
+		max_hp_val = float(unit.stats.max_hp)
+	elif "max_hp" in unit:
+		max_hp_val = float(unit.max_hp)
+	if max_hp_val <= 0.0:
+		return
+	var label := host.get_node_or_null("HpValueLabel") as CardGridFloatingLabel
+	if label == null:
+		label = CardGridFloatingLabel.new()
+		label.name = "HpValueLabel"
+		host.add_child(label)
+	# 配色：我方青、敌方红
+	var font_color: Color = Color(0.65, 0.95, 1.0, 1.0) if is_player else Color(1.0, 0.6, 0.6, 1.0)
+	label.set_text("%d/%d" % [int(cur_hp), int(max_hp_val)])
+	label.set_style(11, font_color, Color(0, 0, 0, 0.85), 3, HORIZONTAL_ALIGNMENT_CENTER)
+	# 定位：卡框底部下方（Node2D position 即原点，文字以原点为中心居中绘制）
+	var card_w: float = CardGridBattleLayout.battle_card_width_px()
+	var card_h: float = card_w * 8.0 / 5.0
+	label.position = Vector2(0.0, unit_spr.position.y + card_h * 0.5 + 8.0)
+	label.visible = true
+
+
+## v7.x: 更新 HP 数值标签的文字（供单位 _refresh_hp_value_label 高频调用，避免每次重建样式）
+## 这是 _refresh_hp_value_label 的轻量入口：只更新文字，不重设样式/位置
+static func update_hp_label_text(host: Node2D, cur_hp: float, max_hp: float) -> void:
+	if host == null:
+		return
+	var label := host.get_node_or_null("HpValueLabel") as CardGridFloatingLabel
+	if label == null:
+		return
+	label.set_text("%d/%d" % [int(cur_hp), int(max_hp)])
 
 
 ## 改造图标条：装备改造的单位卡底显示图标（与 buff_strip 错位，放在更下方）
@@ -402,3 +452,77 @@ static func sync_mod_strip(host: Node2D, unit: Node, spr: Sprite2D) -> void:
 	var buff_strip_h: float = card_w * 0.22 + 2.0
 	var base_y: float = bg_spr.position.y if (bg_spr != null and bg_spr.texture != null) else spr.position.y
 	strip.position = Vector2(0.0, base_y + half_h + 8.0 + 8.0 + buff_strip_h)
+
+
+# ============================================================================
+#  v7.x 战场视觉反馈：漂浮 buff/debuff 标签（卡顶上方）
+# ============================================================================
+
+## 漂浮 buff/debuff 标签：单位卡顶上方显示当前激活的 debuff 状态
+## 数据源（unit meta，由 module_effect_handler 设置）：
+##   _armor_break_stacks（破甲叠加层数）、_marked_until（标记过期时间戳）
+##   _crit_marked_until（暴击标注过期时间戳）、_counter_marked_by（反炮标记来源）
+## 过期的标记（_marked_until / _crit_marked_until）不显示
+## 多个 debuff 横向排列在卡顶上方一行
+## 用 Node2D + _draw() 自绘（避免 Label 在 Node2D 下不渲染）
+static func sync_buff_labels(host: Node2D, unit_spr: Sprite2D, unit: Node) -> void:
+	if host == null or unit_spr == null or unit == null:
+		return
+	# 收集当前激活的 debuff（顺序固定：破甲 → 标记 → 暴击 → 反炮）
+	var tags: Array[Dictionary] = []
+	var now_sec: float = Time.get_ticks_msec() / 1000.0
+	if unit.has_meta("_armor_break_stacks"):
+		var stacks: int = int(unit.get_meta("_armor_break_stacks", 0))
+		if stacks > 0:
+			tags.append({"text": "破甲×%d" % stacks, "color": Color(1.0, 0.55, 0.25, 1.0), "bg": Color(0.30, 0.12, 0.05, 0.75)})
+	if unit.has_meta("_marked_until"):
+		var expire_at: float = float(unit.get_meta("_marked_until", 0.0))
+		if expire_at > now_sec:
+			tags.append({"text": "标记", "color": Color(0.95, 0.55, 0.95, 1.0), "bg": Color(0.28, 0.08, 0.22, 0.75)})
+	if unit.has_meta("_crit_marked_until"):
+		var expire_at2: float = float(unit.get_meta("_crit_marked_until", 0.0))
+		if expire_at2 > now_sec:
+			tags.append({"text": "暴击眼", "color": Color(1.0, 0.85, 0.30, 1.0), "bg": Color(0.30, 0.22, 0.05, 0.75)})
+	if unit.has_meta("_counter_marked_by"):
+		tags.append({"text": "反炮", "color": Color(0.80, 0.60, 1.0, 1.0), "bg": Color(0.18, 0.10, 0.30, 0.75)})
+	# 容器节点（Node2D，挂在 host 下；子标签是 CardGridFloatingLabel）
+	var container := host.get_node_or_null("BuffLabelsRow")
+	if container == null:
+		container = Node2D.new()
+		container.name = "BuffLabelsRow"
+		container.z_index = 16
+		host.add_child(container)
+	# 清理旧标签（每次重建，因为标签数量会变）
+	for child in container.get_children():
+		child.queue_free()
+	if tags.is_empty():
+		container.visible = false
+		return
+	container.visible = true
+	# 标签布局参数
+	var gap: float = 2.0
+	# 第一遍：创建所有标签并测量宽度
+	var labels: Array[CardGridFloatingLabel] = []
+	var total_w: float = 0.0
+	for i in range(tags.size()):
+		var tag: Dictionary = tags[i]
+		var lbl := CardGridFloatingLabel.new()
+		lbl.name = "Tag%d" % i
+		container.add_child(lbl)
+		lbl.set_text(String(tag.get("text", "")))
+		lbl.set_style(9, tag.get("color", Color.WHITE), Color(0, 0, 0, 0.85), 2, HORIZONTAL_ALIGNMENT_CENTER)
+		lbl.set_background(tag.get("bg", Color(0, 0, 0, 0.6)), 2.0)
+		labels.append(lbl)
+		total_w += lbl.get_text_width() + 4.0  # +padding
+		if i > 0:
+			total_w += gap
+	# 第二遍：从左到右定位
+	var card_w: float = CardGridBattleLayout.battle_card_width_px()
+	var card_h: float = card_w * 8.0 / 5.0
+	var x_cursor: float = -total_w * 0.5
+	var y_top: float = unit_spr.position.y - card_h * 0.5 - 12.0
+	for i in range(labels.size()):
+		var lbl: CardGridFloatingLabel = labels[i]
+		var w: float = lbl.get_text_width() + 4.0
+		lbl.position = Vector2(x_cursor + w * 0.5, y_top)
+		x_cursor += w + gap
