@@ -656,6 +656,10 @@ static func _apply_death_heal_allies(dying_unit: Node, stats: UnitStats) -> void
 			_heal_unit(ally, heal_amount)
 
 ## 找周围友军（复用 _find_nearby_enemies 的 spatial_grid 模式，但阵营对调）
+## v7.x 性能优化：优先用 spatial_grid.query_allies（bounding-box 只遍历覆盖格子），
+## 替代原 get_nodes_in_group 全组遍历 + 逐个 distance_to 的 O(N) 扫描。
+## _apply_command_aura / _apply_fort_shelter_aura / _apply_death_heal_allies 每帧每光环单位
+# 调用本函数，全组遍历在指挥车/堡垒类（platform_type 3/4/12 等）在场时形成 N×M 全组扫描。
 static func _find_nearby_allies(center: Node, radius: float) -> Array:
 	if center == null or not is_instance_valid(center):
 		return []
@@ -663,15 +667,20 @@ static func _find_nearby_allies(center: Node, radius: float) -> Array:
 	if "is_player" in center:
 		is_player_center = bool(center.is_player)
 	# 友军=同阵营（玩家找玩家，敌方找敌方）
-	# spatial_grid.query_enemies 默认返回敌方，这里需要同阵营
-	# 用全组遍历替代（友军数量通常不多）
-	# 防御性：全组遍历找同阵营
-	var targets: Array = []
+	# v7.x: spatial_grid.query_allies 与 query_enemies 镜像，返回同阵营单位
+	var bm: Node = _get_battle_manager()
+	if bm != null and bm.get("spatial_grid") != null and is_instance_valid(bm.get("spatial_grid")):
+		var allies = bm.get("spatial_grid").query_allies(center.global_position, radius, is_player_center)
+		# query_allies 可能包含 center 自身（同阵营），过滤掉
+		if center in allies:
+			allies.erase(center)
+		return allies
+	# 防御性回退: spatial_grid 不可用时用原全组遍历
 	var tree = center.get_tree()
 	if tree == null:
 		return []
 	var group_name: String = "player_units" if is_player_center else "enemy_units"
-	targets = tree.get_nodes_in_group(group_name)
+	var targets: Array = tree.get_nodes_in_group(group_name)
 	var result: Array = []
 	for t in targets:
 		if is_instance_valid(t) and t != center:

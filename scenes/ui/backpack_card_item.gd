@@ -17,9 +17,10 @@ var _drag_threshold := 5.0  # 移动5像素才开始拖拽
 var ENABLE_MINIMAL_CARD_RENDER := true
 const BACKPACK_USE_MTG_CARD_FACE := false
 const BACKPACK_MTG_ART_PCT := 58.0
-## v9.2: 底部信息栏高度（顶行卡名+底行详情，40px 适配 96×138 大卡面）
-## 原 42px 导致 IconRow 可用 132px < 内容需求 134px（CompactArtClip 90 + sep 2 + text 42），
-## VBoxContainer 压缩子节点。改 40px 消除 2px 赤字，让 CompactArtClip 不被压缩。
+## v9.3: 底部信息栏高度（顶行卡名+底行详情）。40px 适配 108×154 大卡面——
+## 立绘区 102×108（高 = SLOT_SIZE.y − 40 − 6），占比 ~70%，底栏 ~26%：卡图清晰但不挤压底栏。
+## name(14) + sep(1) + stat(9) ≈ 24px 内容，40px 容器留 16px 余量，舒展不压缩。
+## 注：曾试 32px（立绘区 116 占 75%），卡图过大挤占底栏 + 立绘纵向变形 13%，故回调 40。
 const COMPACT_BOTTOM_TEXT_H := 40
 const ENABLE_IMAGE_DRAG_PREVIEW := true
 var _last_drag_log_ms: int = 0
@@ -32,11 +33,11 @@ const RankDisplayUi = preload("res://scripts/rank_display_ui.gd")
 const CardFrameUi = preload("res://scripts/card_frame_ui.gd")
 const CardBackgroundUi = preload("res://scripts/card_background_ui.gd")
 const DesignTokens = preload("res://resources/design_tokens.gd")
-## v9.0: 背包卡牌独立大卡面尺寸（96×138），承载更多视觉信息（5星+兵种色块+Lv+战力+EQUIP徽章）。
-## 拖拽到相位仪槽位时视觉对齐由 backpack_card_item_drag 处理（预览缩放）。
-var SLOT_SIZE: Vector2 = Vector2(96, 138)
+## v9.3: 背包卡牌大卡面尺寸（108×154），立绘区约 102×116，承载更多视觉信息（5星+兵种色块+Lv+战力+EQUIP徽章）。
+## 拖拽到相位仪槽位时视觉对齐由 backpack_card_item_drag 处理（预览缩放，引用本变量自动适配）。
+var SLOT_SIZE: Vector2 = Vector2(108, 154)
 ## 兼容别名（部分历史代码引用 BACKPACK_CARD_SIZE）
-const BACKPACK_CARD_SIZE := Vector2(96, 138)
+const BACKPACK_CARD_SIZE := Vector2(108, 154)
 ## 信息栏高度（底部约 30% 区域）
 const INFO_BAR_HEIGHT := 42
 ## 列表内卡图：图标区填满 70% 高度
@@ -451,7 +452,7 @@ func _apply_card_border_flat(c: CardResource) -> void:
 	var panel_style := StyleBoxFlat.new()
 	# v7.x：底色改用稀有度分层（与 PNG 框路径 apply_panel_with_frame 统一来源）
 	panel_style.bg_color = CardFrameUi._rarity_bg_color(c.rarity)
-	panel_style.set_corner_radius_all(6)
+	panel_style.set_corner_radius_all(4)
 	# 稀有度统一配色（GC.get_rarity_color 作为单一数据源）
 	var rarity_col: Color = GC.get_rarity_color(c.rarity)
 	# 默认边框（common 基准）
@@ -498,7 +499,7 @@ func _get_empty_card_panel_style() -> StyleBoxFlat:
 	_empty_card_panel_style.border_width_right = 1
 	_empty_card_panel_style.border_width_bottom = 1
 	_empty_card_panel_style.border_color = Color(0.2, 0.25, 0.35, 0.3)
-	_empty_card_panel_style.set_corner_radius_all(6)
+	_empty_card_panel_style.set_corner_radius_all(4)
 	return _empty_card_panel_style
 
 
@@ -613,12 +614,38 @@ func _ensure_compact_slot_structure(icon_row: Control, name_label: Label) -> voi
 	# 给一个与 SLOT_SIZE 匹配的图标区最小尺寸（高度预留 footer 38px + 顶部色条 3px + 边距）。
 	art_clip.custom_minimum_size = Vector2(SLOT_SIZE.x - 6, SLOT_SIZE.y - COMPACT_BOTTOM_TEXT_H - 6)
 	art_clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# v9.3：底层氛围背景（暗蓝底 + 顶部蓝渐变 + 中心高光），无图卡不再空洞；对齐 HTML .art 渐变
+	var backdrop := _ArtBackdrop.new()
+	backdrop.name = "Backdrop"
+	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	art_clip.add_child(backdrop)
+	# v9.3：无图占位 glyph（兵种字，大号半透明蓝），有图时由 _apply_card_icon_to_clip 隐藏
+	var placeholder := Label.new()
+	placeholder.name = "Placeholder"
+	placeholder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	placeholder.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	placeholder.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	placeholder.add_theme_font_size_override("font_size", 34)
+	placeholder.add_theme_color_override("font_color", Color(0.30, 0.50, 0.90, 0.22))
+	placeholder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	placeholder.visible = false
+	art_clip.add_child(placeholder)
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	# v9.1：用 SCALE（铺满容器，可能轻微变形）而非 COVERED——COVERED 在 Godot 4.5 的
 	# EXPAND_IGNORE_SIZE 模式下仍按贴图原尺寸居中渲染（实测卡图不显示）。
-	# SCALE 让贴图强制拉伸到 Icon 的 size，配合 FULL_RECT 锚定 = 填满 art_clip。
+	# SCALE 让贴图强制拉伸到 Icon 的 size，配合锚定 = 填满立绘区。
 	icon.stretch_mode = TextureRect.STRETCH_SCALE
-	icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# v9.3：立绘顶部留 14px 让出星辰区（星辰在卡顶 y7~17；art_clip 从卡 y3 起，
+	# offset_top=14 → 立绘从卡 y17 开始，紧贴星辰下方，不再重叠）。
+	icon.anchor_left = 0.0
+	icon.anchor_top = 0.0
+	icon.anchor_right = 1.0
+	icon.anchor_bottom = 1.0
+	icon.offset_left = 0.0
+	icon.offset_top = 14.0
+	icon.offset_right = 0.0
+	icon.offset_bottom = 0.0
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	art_clip.add_child(icon)
 	# v9.1 HTML 设计稿 footer 结构：name-line + stat-line（HBox: 左 Lv·改N/M / 右 战力）
@@ -641,20 +668,34 @@ func _ensure_compact_slot_structure(icon_row: Control, name_label: Label) -> voi
 	name_label.add_theme_font_size_override("font_size", 11)
 	name_label.add_theme_color_override("font_color", Color(0.91, 0.93, 0.97, 1.0))
 	text_v.add_child(name_label)
-	# stat-line：左侧 Lv/改 + 右侧战力（HTML .stat-line，mono 字体 9px）
+	# stat-line：左侧 [Lv·改] + 右侧 战力（HTML .stat-line，mono 9px）
+	# v9.3：StatLeft 改为 HBox（Lv amber-soft + Mod cyan-soft），三段分色提升扫读性
 	var stat_line := HBoxContainer.new()
 	stat_line.name = "StatLine"
 	stat_line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stat_line.add_theme_constant_override("separation", 0)
 	stat_line.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var stat_left := Label.new()
+	var stat_left := HBoxContainer.new()
 	stat_left.name = "StatLeft"
 	stat_left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	stat_left.clip_text = true
-	stat_left.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	stat_left.add_theme_font_size_override("font_size", 9)
-	stat_left.add_theme_color_override("font_color", Color(0.66, 0.71, 0.81, 0.9))
+	stat_left.add_theme_constant_override("separation", 4)
 	stat_left.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var lv_label := Label.new()
+	lv_label.name = "Lv"
+	lv_label.clip_text = true
+	lv_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	lv_label.add_theme_font_size_override("font_size", 9)
+	lv_label.add_theme_color_override("font_color", Color(0.984, 0.749, 0.141, 1.0))  # amber-soft
+	lv_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stat_left.add_child(lv_label)
+	var mod_label := Label.new()
+	mod_label.name = "Mod"
+	mod_label.clip_text = true
+	mod_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	mod_label.add_theme_font_size_override("font_size", 9)
+	mod_label.add_theme_color_override("font_color", Color(0.498, 0.851, 1.0, 1.0))  # cyan-soft
+	mod_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stat_left.add_child(mod_label)
 	stat_line.add_child(stat_left)
 	var stat_right := Label.new()
 	stat_right.name = "StatRight"
@@ -692,26 +733,38 @@ func _apply_card_icon_to_clip(icon_rect: TextureRect, c: CardResource) -> void:
 		return
 	var tex_path := _card_icon_tex_path(c)
 	var tex: Texture2D = _get_cached_icon_texture(tex_path)
+	var art_clip: Control = icon_rect.get_parent() as Control
+	var placeholder: Label = null
+	if art_clip != null:
+		placeholder = art_clip.get_node_or_null("Placeholder") as Label
 	if tex == null:
 		icon_rect.texture = null
 		icon_rect.visible = false
+		# v9.3：无图时显示兵种占位 glyph，避免立绘区空洞
+		if placeholder:
+			if c.card_type == GC.CardType.COMBAT_UNIT:
+				placeholder.text = _v9_kind_glyph(int(c.combat_kind))
+			else:
+				placeholder.text = "？"
+			placeholder.visible = true
 		return
 	icon_rect.texture = tex
 	icon_rect.visible = true
 	icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	# v9.1：SCALE 强制拉伸填满（COVERED/CENTERED 在 EXPAND_IGNORE_SIZE 下实测卡图不显示）
 	icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
+	if placeholder:
+		placeholder.visible = false
 
 
 func _compact_display_name(c: CardResource) -> String:
 	var display_name: String = "能量" if c.card_type == GC.CardType.ENERGY else DefaultCards.safe_name(c)
 	if display_name.is_empty():
 		display_name = DefaultCards.get_safe_display_name(c.card_id)
-	if display_name.length() > 6:
-		# v6.2 修复 L3：超长名截断加省略号（原 substr 直接截断，中文可能残缺）
-		display_name = display_name.substr(0, 6) + "…"
-	# v7.x：同名卡追加序号后缀（#1/#2…），在截断之后追加，避免序号被截断
-	return display_name + DefaultCards.seq_suffix(c)
+	# v9.3：不再硬编码 6 字截断——name_label 已设 clip_text + overrun ellipsis + 单行，
+	# 会在底栏实际宽度（108 卡约 8~9 字）内自适应显示，超长才省略，尽量完整显示卡名。
+	# 序号不并入卡名（与右下角 instance-no chip 重复），统一由右下角 chip 显示。
+	return display_name
 
 
 ## v9.0: 96×138 大卡面紧凑视图——图标区 + 双行信息栏 + 4 装饰层
@@ -753,21 +806,22 @@ func _set_compact_slot_view(c: CardResource, name_label, lv_label, icon_rect) ->
 func _fill_stat_line(icon_row: Control, c: CardResource) -> void:
 	if icon_row == null:
 		return
-	var stat_left: Label = icon_row.get_node_or_null("CompactTextVBox/StatLine/StatLeft") as Label
+	# v9.3：StatLeft 现为 HBox（Lv amber-soft + Mod cyan-soft 两个 Label）
+	var lv_label: Label = icon_row.get_node_or_null("CompactTextVBox/StatLine/StatLeft/Lv") as Label
+	var mod_label: Label = icon_row.get_node_or_null("CompactTextVBox/StatLine/StatLeft/Mod") as Label
 	var stat_right: Label = icon_row.get_node_or_null("CompactTextVBox/StatLine/StatRight") as Label
-	if stat_left == null or stat_right == null:
+	if lv_label == null or stat_right == null:
 		return
-	# 左：Lv.x · 改N/M
-	var parts: Array[String] = []
-	var enhance_lvl: int = int(c.enhance_level)
-	parts.append("Lv.%d" % enhance_lvl)
-	if c.card_type == GC.CardType.COMBAT_UNIT:
-		var mod_count: int = _get_mod_count_for_card(c)
-		var slot_total: int = c.module_slots.size() if c.module_slots != null else 0
-		if slot_total > 0:
-			parts.append("改%d/%d" % [mod_count, slot_total])
-	# 用 sep 着色（Lv 用 amber-soft，改 用 cyan-soft）
-	stat_left.text = " · ".join(parts)
+	# Lv.x（amber-soft）
+	lv_label.text = "Lv.%d" % int(c.enhance_level)
+	# 改N/M（cyan-soft，仅战斗卡且有槽位）
+	if mod_label != null:
+		if c.card_type == GC.CardType.COMBAT_UNIT:
+			var mod_count: int = _get_mod_count_for_card(c)
+			var slot_total: int = c.module_slots.size() if c.module_slots != null else 0
+			mod_label.text = "改%d/%d" % [mod_count, slot_total] if slot_total > 0 else ""
+		else:
+			mod_label.text = ""
 	# 右：战力分（HTML .pwr，text-white + 600 weight）
 	var power: int = int(_get_card_power_score(c))
 	stat_right.text = str(power) if power > 0 else ""
@@ -855,6 +909,21 @@ func _ensure_rarity_top_strip(rarity: String) -> void:
 		bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		strip.add_child(bg)
+		# v9.3：色条扫光（横向 透明→白→透明），对齐设计稿 .top-strip::after 光泽
+		var sheen := TextureRect.new()
+		sheen.name = "Sheen"
+		sheen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		sheen.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		sheen.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		sheen.stretch_mode = TextureRect.STRETCH_SCALE
+		var sheen_grad := Gradient.new()
+		sheen_grad.add_point(0.0, Color(1, 1, 1, 0.0))
+		sheen_grad.add_point(0.5, Color(1, 1, 1, 0.22))
+		sheen_grad.add_point(1.0, Color(1, 1, 1, 0.0))
+		var sheen_tex := GradientTexture1D.new()
+		sheen_tex.gradient = sheen_grad
+		sheen.texture = sheen_tex
+		strip.add_child(sheen)
 	else:
 		bg = strip.get_node_or_null("Bg") as ColorRect
 	# 稀有度色 + 厚度（传奇/神话加粗）
@@ -883,7 +952,7 @@ func _v9_rarity_color(rarity: String) -> Color:
 func _ensure_kind_tag_badge(combat_kind: int) -> void:
 	var layer: Control = _ensure_decoration_layer()
 	var badge: Control = layer.get_node_or_null("KindTagBadge") as Control
-	var bg: ColorRect = null
+	var bg: PanelContainer = null
 	var glyph_lbl: Label = null
 	if badge == null:
 		badge = Control.new()
@@ -892,13 +961,15 @@ func _ensure_kind_tag_badge(combat_kind: int) -> void:
 		badge.anchor_right = 1.0
 		badge.anchor_top = 0.0
 		badge.anchor_bottom = 0.0
-		badge.offset_left = -20.0
-		badge.offset_right = -4.0
+		# v9.3：向内 6px（-20→-26 / -4→-10），避开较宽的稀有度边框/发光
+		badge.offset_left = -26.0
+		badge.offset_right = -10.0
 		badge.offset_top = 5.0
 		badge.offset_bottom = 21.0
 		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		layer.add_child(badge)
-		bg = ColorRect.new()
+		# v9.3：bg 改 PanelContainer（kind 色底 + 圆角 2），原方形 ColorRect 不好看
+		bg = PanelContainer.new()
 		bg.name = "Bg"
 		bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -913,10 +984,14 @@ func _ensure_kind_tag_badge(combat_kind: int) -> void:
 		glyph_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		badge.add_child(glyph_lbl)
 	else:
-		bg = badge.get_node_or_null("Bg") as ColorRect
+		bg = badge.get_node_or_null("Bg") as PanelContainer
 		glyph_lbl = badge.get_node_or_null("Glyph") as Label
+	# v9.3：kind 色 stylebox（圆角 2）
 	if bg:
-		bg.color = _v9_kind_color(combat_kind)
+		var kbg := StyleBoxFlat.new()
+		kbg.bg_color = _v9_kind_color(combat_kind)
+		kbg.set_corner_radius_all(2)
+		bg.add_theme_stylebox_override("panel", kbg)
 	if glyph_lbl:
 		glyph_lbl.text = _v9_kind_glyph(combat_kind)
 	badge.visible = true
@@ -932,14 +1007,17 @@ func _ensure_stars_overlay(c: CardResource) -> void:
 	if wrapper == null:
 		wrapper = Control.new()
 		wrapper.name = "StarsOverlay"
-		wrapper.anchor_left = 0.5
-		wrapper.anchor_right = 0.5
-		wrapper.anchor_top = 1.0
-		wrapper.anchor_bottom = 1.0
-		wrapper.offset_left = -22.0
-		wrapper.offset_right = 22.0
-		wrapper.offset_top = -38.0
-		wrapper.offset_bottom = -28.0
+		# v9.3 修复：星辰从底部移到顶部左侧（紧邻费用角标），消除与底栏卡名的重叠。
+		# 设计稿 .stars{top:8px;left:32px}；5 颗 7px 星 + 4×1 间距 ≈ 39px，止于 x71，
+		# 不与右上 KindTagBadge(x76~92) 冲突。底部 y100~110 原与 NameLabel(y95~109) 重叠。
+		wrapper.anchor_left = 0.0
+		wrapper.anchor_right = 0.0
+		wrapper.anchor_top = 0.0
+		wrapper.anchor_bottom = 0.0
+		wrapper.offset_left = 32.0
+		wrapper.offset_right = 72.0
+		wrapper.offset_top = 7.0
+		wrapper.offset_bottom = 17.0
 		wrapper.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		layer.add_child(wrapper)
 		hbox = HBoxContainer.new()
@@ -947,12 +1025,12 @@ func _ensure_stars_overlay(c: CardResource) -> void:
 		hbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-		hbox.add_theme_constant_override("separation", 2)
+		hbox.add_theme_constant_override("separation", 1)
 		for i in range(5):
 			var star := Label.new()
 			star.name = "Star%d" % i
 			star.text = "★"
-			star.add_theme_font_size_override("font_size", 9)
+			star.add_theme_font_size_override("font_size", 7)
 			star.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			hbox.add_child(star)
 		wrapper.add_child(hbox)
@@ -989,7 +1067,8 @@ func _ensure_equipped_mark(c: CardResource) -> void:
 		if badge:
 			badge.visible = false
 		return
-	var bg: ColorRect = null
+	# v9.3：bg 改为 PanelContainer（绿边框 + 暗绿底 + 圆角），对齐设计稿 .equipped-mark 边框
+	var bg: PanelContainer = null
 	var text_lbl: Label = null
 	if badge == null:
 		badge = Control.new()
@@ -1004,11 +1083,16 @@ func _ensure_equipped_mark(c: CardResource) -> void:
 		badge.offset_bottom = 38.0
 		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		layer.add_child(badge)
-		bg = ColorRect.new()
+		bg = PanelContainer.new()
 		bg.name = "Bg"
 		bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		bg.color = Color(0.13, 0.40, 0.23, 0.55)  # 绿透
 		bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var bg_style := StyleBoxFlat.new()
+		bg_style.bg_color = Color(0.13, 0.40, 0.23, 0.45)  # 暗绿底
+		bg_style.border_color = Color(0.30, 0.92, 0.60, 0.55)  # 绿边框
+		bg_style.set_border_width_all(1)
+		bg_style.set_corner_radius_all(2)
+		bg.add_theme_stylebox_override("panel", bg_style)
 		badge.add_child(bg)
 		text_lbl = Label.new()
 		text_lbl.name = "Text"
@@ -1021,7 +1105,7 @@ func _ensure_equipped_mark(c: CardResource) -> void:
 		text_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		badge.add_child(text_lbl)
 	else:
-		bg = badge.get_node_or_null("Bg") as ColorRect
+		bg = badge.get_node_or_null("Bg") as PanelContainer
 		text_lbl = badge.get_node_or_null("Text") as Label
 	badge.visible = true
 
@@ -1035,32 +1119,51 @@ func _ensure_instance_no(c: CardResource) -> void:
 		var hash_pos: int = c.instance_id.rfind("#")
 		if hash_pos >= 0:
 			seq = c.instance_id.substr(hash_pos)  # 含 #
-	# 复用/创建角标（挂到 DecorationLayer，避免父 PanelContainer 强制布局）
+	# v9.3：角标改为 PanelContainer（圆角暗底 chip）内含 Label，对齐设计稿 .instance-no
 	var layer: Control = _ensure_decoration_layer()
-	var lbl: Label = layer.get_node_or_null("InstanceNo") as Label
+	var chip: PanelContainer = layer.get_node_or_null("InstanceNo") as PanelContainer
 	if seq.is_empty():
-		if lbl:
-			lbl.visible = false
+		if chip:
+			chip.visible = false
 		return
-	if lbl == null:
+	var lbl: Label = null
+	if chip == null:
+		chip = PanelContainer.new()
+		chip.name = "InstanceNo"
+		chip.anchor_left = 1.0
+		chip.anchor_right = 1.0
+		chip.anchor_top = 1.0
+		chip.anchor_bottom = 1.0
+		chip.offset_left = -36.0
+		chip.offset_right = -10.0
+		# v9.3：chip 上移到立绘区底右角（footer 之上），避开 name-line/stat-line 文字行。
+		# 原 offset_top=-38/offset_bottom=-24 落在 footer 内、与卡名同行，短名卡上 #N 贴到卡名框。
+		# offset_right=-10：稀有度框/发光较宽，#N 距右边 10px 避免被卡框盖住（原 -4 太靠右）。
+		chip.offset_top = -60.0
+		chip.offset_bottom = -46.0
+		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var chip_style := StyleBoxFlat.new()
+		# v9.3：bg 透明——角标所在卡面已有稀有度底色，再叠暗底成两层背景，故去掉。
+		chip_style.bg_color = Color(0, 0, 0, 0)
+		chip_style.content_margin_left = 3.0
+		chip_style.content_margin_right = 3.0
+		chip_style.content_margin_top = 1.0
+		chip_style.content_margin_bottom = 1.0
+		chip.add_theme_stylebox_override("panel", chip_style)
+		layer.add_child(chip)
 		lbl = Label.new()
-		lbl.name = "InstanceNo"
-		lbl.anchor_left = 1.0
-		lbl.anchor_right = 1.0
-		lbl.anchor_top = 1.0
-		lbl.anchor_bottom = 1.0
-		lbl.offset_left = -28.0
-		lbl.offset_right = -4.0
-		lbl.offset_top = -36.0
-		lbl.offset_bottom = -22.0
+		lbl.name = "Text"
 		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		layer.add_child(lbl)
-	lbl.text = seq
-	lbl.add_theme_font_size_override("font_size", 9)
-	lbl.add_theme_color_override("font_color", Color(0.42, 0.47, 0.57, 0.95))
-	lbl.visible = true
+		chip.add_child(lbl)
+	else:
+		lbl = chip.get_node_or_null("Text") as Label
+	chip.visible = true
+	if lbl:
+		lbl.text = seq
+		lbl.add_theme_font_size_override("font_size", 9)
+		lbl.add_theme_color_override("font_color", Color(0.65, 0.70, 0.80, 0.95))
 
 
 ## v9.0: 检测卡是否已装备到相位仪（查 PhaseInstrumentManager.get_slot_card_ids）
@@ -1568,3 +1671,29 @@ func _show_backpack_overlay() -> void:
 func _notification(what: int) -> void:
 	# 不再使用内置拖拽系统
 	pass
+
+
+## v9.3: 立绘区底层氛围背景（暗蓝底 + 顶部蓝色淡渐变 + 中心高光）
+## 对齐 HTML .art 的 radial/linear 渐变，让无图卡也有环境光氛围、有图卡背景更立体。
+class _ArtBackdrop extends Control:
+	func _init() -> void:
+		clip_contents = false
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		var r := Rect2(Vector2.ZERO, size)
+		if r.size.x < 2.0 or r.size.y < 2.0:
+			return
+		# 暗蓝底
+		draw_rect(r, Color(0.045, 0.075, 0.135, 0.96), true)
+		# 顶部蓝色淡渐变（占上 70%，越往下越淡）
+		var grad_h: float = r.size.y * 0.7
+		var steps: int = 8
+		for i in range(steps):
+			var t: float = float(i) / float(steps)
+			var y0: float = t * grad_h
+			var y1: float = (float(i + 1) / float(steps)) * grad_h
+			var a: float = 0.11 * (1.0 - t)
+			draw_rect(Rect2(0.0, y0, r.size.x, y1 - y0 + 1.0), Color(0.30, 0.50, 0.90, a), true)
+		# 中心偏上高光（radial 近似）
+		draw_circle(Vector2(r.size.x * 0.5, r.size.y * 0.3), r.size.x * 0.42, Color(1.0, 1.0, 1.0, 0.035))

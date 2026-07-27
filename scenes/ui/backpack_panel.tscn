@@ -213,10 +213,10 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 split_offset = 188
-collapsed = false
+collapsed = true
 
 [node name="ModSidebarScroll" type="ScrollContainer" parent="VBoxOuter/TabContainer/IntelTab/IntelHSplit"]
-custom_minimum_size = Vector2(180, 0)
+custom_minimum_size = Vector2(0, 0)
 layout_mode = 2
 clip_contents = true
 horizontal_scroll_mode = 0
@@ -249,14 +249,14 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="RunesHSplit" type="HSplitContainer" parent="VBoxOuter/TabContainer/RunesTab"]
+[node name="RunesHSplit" type="HBoxContainer" parent="VBoxOuter/TabContainer/RunesTab"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-split_offset = 720
+theme_override_constants/separation = 8
 
 [node name="RunesScroll" type="ScrollContainer" parent="VBoxOuter/TabContainer/RunesTab/RunesHSplit"]
 clip_contents = true
@@ -275,8 +275,9 @@ theme_override_constants/v_separation = 6
 columns = 6
 
 [node name="RuneInfoPanel" type="VBoxContainer" parent="VBoxOuter/TabContainer/RunesTab/RunesHSplit"]
+custom_minimum_size = Vector2(320, 0)
 layout_mode = 2
-size_flags_horizontal = 3
+size_flags_horizontal = 8
 size_flags_vertical = 3
 theme_override_constants/separation = 8
 

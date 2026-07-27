@@ -61,13 +61,10 @@ func _ready() -> void:
 		_sound_generator = SoundGeneratorScript.new()
 		add_child(_sound_generator)
 
-	# 创建音效播放器池
-	for name in SFX_NAMES:
-		var p := AudioStreamPlayer.new()
-		p.bus = BUS_NAME
-		p.volume_db = linear_to_db(sfx_volume)
-		add_child(p)
-		_players[name] = p
+	# v7.x 性能优化：启动时只建默认 button 播放器（标题屏立即需要），
+	# 其余 SFX 在首次 play_sfx 时按需 new + add_child（_ensure_player）。
+	# 原 _ready 一次性建 32 个 AudioStreamPlayer，启动期无谓节点创建。
+	_ensure_player("button")
 
 	# 连接信号（is_connected 守卫防止重复注册）
 	if SignalBus:
@@ -139,9 +136,10 @@ func play_sfx(name: String, volume: float = 1.0, pitch: float = 1.0) -> void:
 
 	var p: AudioStreamPlayer = _players.get(name)
 	if p == null:
-		# 如果没有专用播放器，使用默认的按钮播放器
-		p = _players.get("button")
+		# v7.x: 未命中时按需创建（原启动期一次性建 32 个，现懒扩展）
+		p = _ensure_player(name)
 	if p == null:
+		# 极端兜底：仍未取到（如 _ensure_player 内部失败）则放弃
 		return
 
 	# 尝试加载音效文件
@@ -160,6 +158,19 @@ func play_sfx(name: String, volume: float = 1.0, pitch: float = 1.0) -> void:
 	if p is AudioStreamPlayer:
 		(p as AudioStreamPlayer).pitch_scale = clampf(pitch, 0.2, 3.0)
 	p.play()
+
+## v7.x: 按需创建播放器并加入场景树（懒扩展池）
+## 首次 play_sfx(name) 未命中时调用，创建后存入 _players 字典，后续直接复用。
+func _ensure_player(name: String) -> AudioStreamPlayer:
+	var p: AudioStreamPlayer = _players.get(name)
+	if p != null:
+		return p
+	p = AudioStreamPlayer.new()
+	p.bus = BUS_NAME
+	p.volume_db = linear_to_db(sfx_volume)
+	add_child(p)
+	_players[name] = p
+	return p
 
 ## 加载音频流
 func _load_audio_stream(name: String) -> AudioStream:

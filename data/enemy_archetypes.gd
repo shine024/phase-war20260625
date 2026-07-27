@@ -53,7 +53,18 @@ static func _merged_legacy_archetypes() -> Dictionary:
 	d.merge(_ArchFuture.DATA)
 	return d
 
-static var ARCHETYPES: Dictionary = _load_json_dict(_ARCHETYPES_JSON_PATH, _merged_legacy_archetypes())
+# v7.x 性能优化：改 getter 懒加载（仿 enemy_phase_masters.gd:50-57）。
+# 原 static var 初始化器在类首次被 preload 时即同步读盘解析 JSON +
+# 求值 _merged_legacy_archetypes()（合并 3 个子模块 DATA），触达 preload 链就触发。
+# 改后推迟到首次访问 ARCHETYPES 时（此时所有 preload 子文件必然已编译完成，更健壮）。
+static var _archetypes_cache: Dictionary = {}
+static var _archetypes_inited: bool = false
+static var ARCHETYPES: Dictionary:
+	get:
+		if not _archetypes_inited:
+			_archetypes_inited = true
+			_archetypes_cache = _load_json_dict(_ARCHETYPES_JSON_PATH, _merged_legacy_archetypes())
+		return _archetypes_cache
 
 const GC = preload("res://resources/game_constants.gd")
 const ERA_PREFIX: Array[String] = ["ww1", "ww2", "cold", "modern", "near"]

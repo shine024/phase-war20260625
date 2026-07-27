@@ -131,6 +131,34 @@ func query_enemies(position: Vector2, radius: float, is_player: bool) -> Array:
 
 	return enemies
 
+## 查询指定范围内的同阵营单位（与 query_enemies 镜像，阵营判定取同侧）
+## v7.x 性能优化：供 _find_nearby_allies（指挥光环/堡垒庇护/亡语治疗）使用，
+## 替代原 get_nodes_in_group 全组遍历 + 逐个 distance_to 的 O(N) 扫描。
+func query_allies(position: Vector2, radius: float, is_player: bool) -> Array:
+	_query_count += 1
+	var allies: Array = []
+	var r2: float = radius * radius
+
+	var min_c: Vector2i = _get_cell_coords(position - Vector2(radius, radius))
+	var max_c: Vector2i = _get_cell_coords(position + Vector2(radius, radius))
+
+	for x in range(min_c.x, max_c.x + 1):
+		for y in range(min_c.y, max_c.y + 1):
+			var cell_key := Vector2i(x, y)
+			if not _grid.has(cell_key):
+				continue
+			for unit in _grid[cell_key]:
+				if unit == null or not is_instance_valid(unit):
+					continue
+				if not (unit is Node2D):
+					continue
+				if unit.global_position.distance_squared_to(position) > r2:
+					continue
+				if "is_player" in unit and unit.is_player == is_player:
+					allies.append(unit)
+
+	return allies
+
 ## 查询最近的目标（使用bounding-box优化，避免遍历所有格子）
 func query_nearest_target(position: Vector2, is_player: bool, max_range: float = 1000.0) -> Node2D:
 	_query_count += 1

@@ -29,8 +29,11 @@ static var _unit_type_cache: Dictionary = {}
 ## ─────────────────────────────────────────────
 
 func _ready() -> void:
-	## 作为autoload时自动初始化
-	register_all()
+	# v7.x 性能优化：不在 autoload 启动时同步 register_all（注册 154 条改造 + 10 模块类 preload 链）。
+	# 所有查询入口（get_data/get_for_unit_type/get_mods_for_card/check_conflict/validate_slot_type/
+	# apply_effects/apply_with_level/apply_to_weapon_slot(s)/get_all_ids）首行均调 _ensure_initialized()，
+	# 首次查询会自动触发 register_all。开销从启动期转移到首次战斗构建 unit_stats 时。
+	pass
 
 ## ─────────────────────────────────────────────
 ##  注册

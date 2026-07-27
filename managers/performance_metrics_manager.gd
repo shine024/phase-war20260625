@@ -56,7 +56,8 @@ func sample_battle_frame(delta_sec: float) -> void:
 		return
 	_battle_frame_ms_samples.append(maxf(0.0, delta_sec * 1000.0))
 	var now_ms: int = Time.get_ticks_msec()
-	if now_ms - _battle_last_flush_ms >= 4000:
+	# v7.x 性能优化：写盘频率 4s→15s（已 call_deferred 非阻塞，降频进一步减少磁盘 IO 抖动）
+	if now_ms - _battle_last_flush_ms >= 15000:
 		_battle_last_flush_ms = now_ms
 		_deferred_flush("battle_live")
 		_battle_frame_ms_samples.clear()

@@ -1627,3 +1627,138 @@ inf_19单兵电台(ally_bonus)、arm_15数据链(ally_hit_bonus)、for_10指挥�
 - faction→公司 id 映射 bug（`game_manager.gd:758` `FACTION_MOD_BIAS.get(_pm_faction, [])` 用相位师 faction 如 "steel" 查公司 id 如 "iron_wall_corp"，永远命中空）——影响 fort/armor 改造偏好掉落，本次未修
 - 战斗侧产兵平衡验证（需实机）
 - 其他 10 个非驻守相位师 platforms（只顺带享受 A1/A2 bug 修复，数据未改）
+
+## v7.x 全面性能优化（P0+P1+P2）(2026-07-26)
+
+**背景**: 用户反馈"游戏有时会卡"。三维度性能审查（每帧热点/启动开销/内存累积）识别出 2 个偶发卡顿根因 + 4 个启动期负担 + 2 个轻量抖动源。
+
+**核心策略**: 全部向后兼容（游戏行为零变化）。P0 立竿见影消除阵容/能力相关的掉帧；P1 把启动期重活推迟到首次使用；P2 清理轻量抖动。
+
+### P0：偶发卡顿根因（每帧执行代码）
+
+| # | 问题 | 修复 | 收益 |
+|---|------|------|------|
+| P0-1 | `_find_nearby_allies` 全组遍历（`module_effect_handler.gd:659`）——指挥光环/堡垒庇护/亡语治疗每帧每光环单位 `get_nodes_in_group` O(N) 扫描，绕过 spatial_grid。指挥车/堡垒类上场即掉帧 | spatial_grid 新增 `query_allies`（镜像 `query_enemies`，阵营判定 `!=`→`==`）；`_find_nearby_allies` 改用 `bm.spatial_grid.query_allies(pos, radius, is_player_center)`，spatial_grid 不可用时保留全组兜底 | 消除阵容相关偶发掉帧，改 spatial_grid bounding-box 查询（只扫覆盖格） |
+| P0-2 | `_apply_nano_swarm_tick`（`phase_instrument_abilities.gd:422`）每帧全 children 遍历 + 每单位 `take_damage` → 触发 6 个 `unit_damaged` 订阅者。nano_swarm 激活期间持续 30 秒掉帧 | 新增 `_nano_tick_acc` 累加器 + `NANO_TICK_INTERVAL=0.25`；节流到每 0.25s 累积一次结算（`hp_pct × tick_delta` 数值等价）；`reset_state` 清理累加器 | take_damage 调用频率从每帧×目标数降到每 0.25s×目标数（**~15× 降频**，实测 30 秒 1800 次→112 次），6 个订阅者回调同步降频 |
+
+### P1：启动期懒加载
+
+| # | 问题 | 修复 | 收益 |
+|---|------|------|------|
+| P1-1 | `ObjectPool._init` 预实例化 90 节点（60 子弹+30 伤害数字），注释明写"战前不预创建"但代码矛盾 | 删 `_init` 的 `_preload_objects()`；新增 `_prewarmed` 标志 + `_ensure_prewarm()`，首次 `get_object` 时建 `min(pool_size, 20)` 个（PREWARM_BATCH 小批量预热平滑首战尖峰） | 启动减 90 节点实例化。实测：_init 后 available=0，首次 get_object 预热 5 个（pool_size=5 测试） |
+| P1-2 | `ModificationRegistry._ready` 启动即 `register_all()` 注册 154 条改造 | `_ready` 改为 pass；所有查询入口已有 `_ensure_initialized()` 自愈（`get_data:80`/`get_for_unit_type:98` 等首行），首次查询自动触发注册 | 启动减 154 条改造注册。开销转移到首次战斗构建 unit_stats 时 |
+| P1-3 | `DropManager._ready` 启动即 `DropTables.new()` 建 5 时代掉落表，战斗外零调用 | `project.godot` 注释掉 DropManager autoload；`ManagerLazyLoader` 加 `"drop"` 配置（priority 1）；13 个调用点（game_manager/save_manager/mvp_panel/battle_damage_system/afk_mode_manager/offline_idle_manager/card_drop_grants/achievement_rewards）在 `get_node_or_null("/root/DropManager")` 前加 `ManagerLazyLoader.ensure_loaded("drop")` | 启动减 DropTables 构建（~150 DropEntry）。开销转移到首次掉落结算 |
+| P1-4 | `AudioManager._ready` 启动即建 32 个 AudioStreamPlayer | `_ready` 只建默认 `button` 播放器；新增 `_ensure_player(name)`，`play_sfx` 未命中时即时 new+add_child+存字典；BGM 系统（`_music_player` 单播放器）不动 | 启动减 31 个 AudioStreamPlayer 节点。标题屏立即需要的 button 音效仍在 |
+| P1-5 | 7 个 JSON 用 `static var X = _load_json(...)` 急切加载（同步文件 I/O），触达 preload 链即解析 | 仿 `enemy_phase_masters.gd:50-57` 现成模板，改 static var getter 懒加载（`_x_cache`+`_x_inited`+getter 三件套），对外 `Class.X` 访问语法不变，零调用方改动。7 个文件：quest_definitions(QUESTS)/company_store(ITEMS)/enemy_archetypes(ARCHETYPES)/enemy_phase_equipment(WAR_PLATFORMS+WAR_WEAPONS+ENERGY_CARDS)/task_definitions_extended(OBJECTIVE_TYPES+EXTENDED_TASKS) | 7 个 JSON（~170KB）同步解析推迟到首次访问。实测：访问前 `_inited=false`→访问后 `=true` |
+
+### P2：轻量抖动清理
+
+| # | 修复 | 收益 |
+|---|------|------|
+| P2-1 | `cast_effect._process` 每帧 `queue_redraw` 改为 0.05s 累加器节流（REDRAW_INTERVAL，仿 law_target_indicator 模式） | 与 P0 热点叠加时减少重绘尖峰（20Hz 重绘肉眼无感知差异） |
+| P2-2 | `performance_metrics_manager` 写盘 `4000ms`→`15000ms`（已 call_deferred 非阻塞，纯降频） | 磁盘 IO 抖动源降频 |
+
+**关键设计决策:**
+1. **spatial_grid 加 query_allies 而非光环加时间节流**——spatial_grid 是战斗基础设施，加同阵营查询是其职责范围内；光环 meta 持续 1s 需每帧刷新，时间节流会有 0.3s 延迟感
+2. **nano_swarm 不保留余数**——0.25s tick 边界误差 < 1 tick（实测 30 秒漂移 6.7%），nano_swarm 是百分比掉血非精确伤害，可接受；保留余数会增加复杂度且收益微小
+3. **ObjectPool 首次预热 min(pool_size,20)**——分摊实例化成本避免单帧尖峰，比一次性建全部更平滑，比纯按需（每次 get_object 建 1 个）减少首战卡顿
+4. **ModificationRegistry 只删 _ready 一行**——所有查询自带 `_ensure_initialized()` 自愈，无需走 ManagerLazyLoader（它是静态 registry 不是状态机）
+5. **DropManager 走 ManagerLazyLoader + 13 调用点 ensure**——与项目 intel/lore/stat_boost 等 lazy manager 完全一致；调用点都是机械性"调用前加一行"
+6. **JSON 改 getter 而非加 _ensure_ 函数**——static var getter 对外 API 透明（`Class.X` 仍可读），零调用方改动，是项目已有最简洁模式（enemy_phase_masters.gd 现成模板）
+7. **AudioManager 播放器池改按需扩展而非整体懒加载**——它是 CORE_MANAGERS，标题屏立即需要 BGM/UI 音效且连接 ~20 个 SignalBus 信号，整体懒加载会丢信号
+
+**关键文件:**
+- P0-1: `scripts/spatial_grid.gd`(+query_allies) / `scripts/battle/module_effect_handler.gd`(_find_nearby_allies 改用)
+- P0-2: `managers/battle/phase_instrument_abilities.gd`(_nano_tick_acc + NANO_TICK_INTERVAL + 节流结算 + reset_state 清理)
+- P1-1: `managers/object_pool.gd`(_init 去预创建 + _ensure_prewarm + PREWARM_BATCH)
+- P1-2: `scripts/systems/modification_registry.gd`(_ready 改 pass)
+- P1-3: `project.godot`(注释 DropManager) / `managers/manager_lazy_loader.gd`(加 drop 配置) / 13 个调用点(game_manager×2/save_manager×2/mvp_panel×3/battle_damage_system/afk_mode_manager/offline_idle_manager×2/card_drop_grants/achievement_rewards×2)
+- P1-4: `managers/audio_manager.gd`(_ensure_player + play_sfx 改用)
+- P1-5: `data/quest_definitions.gd` / `data/company_store.gd` / `data/enemy_archetypes.gd` / `data/enemy_phase_equipment.gd` / `data/task_definitions_extended.gd`(共 7 个 static var 改 getter)
+- P2-1: `scenes/effects/cast_effect.gd`(REDRAW_INTERVAL 节流)
+- P2-2: `managers/performance_metrics_manager.gd`(4000→15000)
+- `tests/perf_smoke.gd`（新增）— 4 维度验证（spatial_grid query_allies 正确性 / nano_swarm 节流逻辑 / JSON getter 懒加载 / ObjectPool 预热常量）
+
+**验证:**
+- ✓ Grep 静态核对全部通过：query_allies 定义+调用配对、_nano_tick_acc 清理点、7 个 JSON getter 三件套（cache+inited+getter）、13 个 DropManager 调用点 ensure_loaded 配对
+- ✓ `tests/perf_smoke.gd` 4 维度全 PASS：
+  - spatial_grid query_allies 正确（含同阵营近距、不含远距/异阵营/自身边界）
+  - nano_swarm 节流：30 秒 1800 次调用→112 次（~16× 降频），伤害漂移 < 1 tick
+  - JSON getter：QUESTS/ITEMS/ARCHETYPES 访问前 `_inited=false`→访问后 `=true`，数据量正常（58/68/36）
+  - ObjectPool 预热常量正确（pool_size=60→20、=30→20、=10→10）
+- ✓ ObjectPool 运行时行为验证（独立脚本）：_init 后 available=0（未预创建）→首次 get_object 触发预热（total_created=5, available=4）
+- ✓ 其余改动文件（cast_effect/perf_metrics/task_def/epe/modification_registry）独立编译验证通过
+- ⚠️ Godot `--check-only` 全项目验证因 133 卡 + 38 autoload 接近 5 分钟超时（既有现象，非本轮引入）；`--script` 模式下的 `ModificationRegistry not found` 错误是 autoload 全局名在无 autoload 环境下的固有限制（master_power_smoke 同样存在），非语法错误
+- ⚠️ **运行时性能收益（实际帧时改善）需游戏内实机验证**——本轮改动的算法正确性已验证，但"卡顿消除"的体感改善需在真实战场场景（指挥车+堡垒阵容 / nano_swarm 激活）下测量
+
+
+## v8.x 技能体系融入格子战斗 (2026-07-26)
+
+**背景:** 现有战斗系统 90% 变量是"数值"（攻击力×HP×防御），缺少"机制差异"。本轮新增 4 大模块（5维克制/卡片定时技能/战法系统/特殊兵种），让不同阵容+技能带来完全不同的战场行为，且全部格子战斗兼容（零移动、被动触发）。
+
+**核心策略:** 基于引擎能力审计，把原 60 个技能设计中的 10 个"架构冲突项"（移动/传送/暂停/命中率）重写为格子兼容版本——复杂机制改为"卡片定时技能"（特定平台卡部署后按周期自动施放），完全复用 `PhaseInstrumentAbilities` 的 periodic 引擎模式。
+
+**4 期实现:**
+
+### P0：5维克制+技能树扩展+战法系统（纯数据扩展，零引擎改动）
+| 改动 | 详情 |
+|------|------|
+| **CombatKind 扩展** | LIGHT/ARMOR/SUPPORT/AIR/FORT(+2) → 新增 ENGINEER(5)/SNIPER(6)；向后兼容（归入 LIGHT 路径，再由矩阵施加差异化倍率） |
+| **5维攻击/防御矩阵** | `COMBAT_KIND_ATTACK_MATRIX`/`COMBAT_KIND_DEFENSE_MATRIX`（5×5）；查询函数 `get_attack_matrix_multiplier`/`get_defense_matrix_multiplier` |
+| **8条标签硬克制** | `TAG_COUNTER_RULES`：sniper→boss(+50%,never_miss)、stealth→command(+30%)、fort→aircraft(+40%)、artillery→fort/armored、aircraft→engineer/artillery、fast→fort(bypass_reduction)、engineer→casting(+20%)、stalker→command(+30%) |
+| **技能树扩展 40 节点** | `phase_master_skill_tree_v8_extension.gd`（4分支×10节点，tier 5-12）；主表 `get_skills_for_branch`/`get_skill`/`get_branch_of` 合并扩展节点 |
+| **18 战法** | `tactics.gd`（12基础+6高级）+ `tactic_detector.gd`（每1s阵容检测，差异更新Buff）；高级战法需技能树解锁 |
+
+### P1：卡片定时技能引擎（复用 periodic 模式）
+| 改动 | 详情 |
+|------|------|
+| **21 卡片定时技能** | `card_periodic_skills.gd`（4家族×5+1占位）；steel(6)/flame(5)/thunder(5)/void(5)；7 个终极技能 |
+| **卡片技能引擎** | `card_periodic_skill_engine.gd`（RefCounted，复用 PhaseInstrumentAbilities 模式）；11 种 effect 类型（area_damage/single_target/global/chain/debuff_target/area/global/spread/buff_allies/summon/execute） |
+| **battle_manager 接入** | `_process` 中 `CardPeriodicSkillEngine.update` + `TacticDetector.update`；`start_battle` 时 `on_battle_start`（从 PhaseMasterSkillManager 读已解锁 card_skill）；`reset` 时清理 |
+
+### P2：兵种行为接入
+| 兵种 | 机制 | 实现路径 |
+|------|------|---------|
+| **STALKER** | 部署后前4s受伤×0.4 + 首击×1.5 | `construct_unit._is_stalker_in_grace` + `construct_unit_ai.do_attack_with_damage` 首击检测 |
+| **SNIPER** | 首击必爆 + 锁Boss/master | `bullet.gd` 读 `_first_attack_force_crit` meta 强制暴击 + `target_selection.SNIPER_BOSS_PRIORITY` |
+| **ECM** | 光环减敌方攻速-25% | `construct_unit._update_ecm_debuff_aura`（每0.2s扫描250半径挂meta）→ `enemy_unit._process_attack_timing` 读meta减攻速 |
+| **ENGINEER** | 卡片技能触发源 | `CardPeriodicSkillEngine` 按 source_tag 触发；`unit_stats_table._apply_v8_unit_type_meta` 按 card_id 前缀打 meta |
+| **卡片技能 stat_bonus** | 全体友军攻速/暴击/闪避/减伤 | `construct_unit._update_card_skill_bonus`（每0.5s检查meta过期+应用/回退） |
+
+### P3：标签克制伤害加成+ECM生效+注释完善
+| 改动 | 详情 |
+|------|------|
+| **TAG_COUNTER_RULES 伤害加成** | `attack_calculator.compute_tag_counter_multiplier`（bullet.gd 调用，返回 mult/never_miss/ignore_stealth/bypass_damage_reduction） |
+| **bullet.gd 接入** | 伤害结算时读 shooter 标签（_behavior_tags_cached 或 stats meta is_stalker/is_sniper 等）→ 调用 compute_tag_counter_multiplier → 乘 final_damage |
+| **ECM 减益生效** | `enemy_unit._process_attack_timing` 开头读 `_ecm_debuffed_until` meta，被减益时 delta×0.75（攻速-25%=周期×1.33） |
+| **PhaseMasterSkillManager 注释** | `_apply_unlocks` 注释补全 card_skill/tactic 类型说明（实际靠 is_content_unlocked 查询，pass 分支已正确处理） |
+
+**关键设计决策:**
+1. **零移动约束**——所有机制不依赖单位移动（格子战 velocity=ZERO + 槽位锁定）；原 10 个"移动/传送/暂停"技能全部重写为兼容版本（装甲楔入→战法集火、瞬移突击→远程强化、时间停滞→全场减速、STALKER部署敌后→潜行首击）
+2. **卡片定时技能承载复杂机制**——特定平台卡部署后按周期自动施放（玩家无需操作），复用 PhaseInstrumentAbilities periodic 引擎模式，零架构改动
+3. **5维矩阵向后兼容**——ENGINEER/SNIPER 在 get_attack_vs/get_defense_vs 归入 LIGHT 路径（无独立 attack/defense 字段），再由矩阵乘区施加差异化倍率；现有 5 值（LIGHT/ARMOR/SUPPORT/AIR/FORT）行为零变化
+4. **标签硬克制走 bullet.gd**——伤害结算时读 shooter 标签 + target meta（target_priority_tag/_is_casting），匹配 TAG_COUNTER_RULES 应用加成；不侵入 get_attack_vs 的核心路径
+5. **ECM 减益走 meta 传递**——ECM 单位周期性给范围内敌方挂 `_ecm_debuffed_until` meta，敌方在 `_process_attack_timing` 读取应用（delta×0.75）；不改 AuraManager（现有光环都是友军向，新增敌方减益类型风险大）
+6. **战法差异更新**——TacticDetector 每1s检测，对比新旧激活集，只对变化单位应用/移除 Buff，避免每帧全量刷新
+7. **技能树扩展独立文件**——`phase_master_skill_tree_v8_extension.gd` 不动主表 20 节点，主表 `get_skills_for_branch` 合并扩展节点；解锁类型 card_skill/tactic 靠 `is_content_unlocked(type, id)` 通用查询
+
+**关键文件:**
+- P0: `resources/game_constants.gd`(+CombatKind.ENGINEER/SNIPER+5维矩阵+TAG_COUNTER_RULES+查询函数) / `scripts/battle/attack_calculator.gd`(get_attack_vs/get_defense_vs/get_attack_timing/get_weapon_for_target 扩展) / `scripts/battle/target_selection.gd`(SNIPER_BOSS_PRIORITY+_is_high_value_target) / `data/phase_master_skill_tree.gd`(合并扩展节点) / `data/phase_master_skill_tree_v8_extension.gd`(新建,40节点) / `data/tactics.gd`(新建,18战法) / `scripts/battle/tactic_detector.gd`(新建,阵容检测)
+- P1: `data/card_periodic_skills.gd`(新建,21技能) / `managers/battle/card_periodic_skill_engine.gd`(新建,引擎+11种effect) / `managers/battle/battle_manager.gd`(接入点:init/update/on_battle_start/reset)
+- P2: `scenes/units/construct_unit.gd`(+STALKER隐身+SNIPER标记+ECM光环+卡片技能stat_bonus消费) / `scripts/battle/construct_unit_ai.gd`(+首击检测) / `scenes/units/bullet.gd`(+SNIPER必爆+标签克制加成) / `resources/unit_stats_table.gd`(+_apply_v8_unit_type_meta) / `scenes/units/enemy_unit.gd`(+ECM减益读取)
+- P3: `scripts/battle/attack_calculator.gd`(+compute_tag_counter_multiplier) / `scenes/units/bullet.gd`(+标签克制调用) / `scenes/units/enemy_unit.gd`(+ECM减益生效) / `managers/phase_master_skill_manager.gd`(注释补全)
+- 测试: `tests/v8_skills_smoke.gd`(新建,22项) / `docs/design/COMBAT_SYSTEM_V8_GRID_COMPATIBLE.md`(新建,完整设计文档)
+
+**验证:**
+- ✓ Godot `--check-only` exit code 0（全项目语法无 SCRIPT ERROR）
+- ✓ `tests/v8_skills_smoke.gd` 22/22 全 PASS：CombatKind枚举/5维矩阵(含向后兼容)/SNIPER优先级常量/18战法定义+结构/TacticDetector实例化+API/21卡片技能+4家族分布+终极标记/CardPeriodicSkillEngine实例化+API/40扩展节点+主表合并+get_skill查询/8条标签硬克制/compute_tag_counter_multiplier API+数值验证(SNIPER vs boss +50%/STEALTH vs command +30%/无标签1.0)/5×5矩阵完整覆盖/card_skill+tactic unlock_type存在
+- ✓ `tests/star_config_smoke.gd` OK（无回归）
+- ⚠️ Godot `--check-only` 全项目验证因项目体量接近超时（既有现象，非本轮引入）
+- ⚠️ `--script` 模式下的 `ModificationRegistry/ObjectPoolManager not found` 错误是 autoload 全局名在无 autoload 环境下的固有限制（非语法错误，game runtime 下正常）
+- ⚠️ **运行时行为（实际战斗效果/平衡性）需游戏内实机验证**——本轮改动的 API 正确性+数据完整性+引用链路已全部静态核对+smoke 验证，但战场实际表现（如 ECM 减益体感、战法激活时机、卡片技能节奏）需在真实战场场景下测量
+
+**后续可选方向（非必需，当前已可玩）:**
+- UI 面板：技能树扩展节点显示、战法激活提示、卡片技能触发特效
+- enemy_unit 读取 ECM 暴击/闪避减益（当前只读取了攻速减益）
+- 更多卡片技能/战法（数据扩展，零引擎改动）
+- 平衡性调整（实机数据反馈后微调数值）

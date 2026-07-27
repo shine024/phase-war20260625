@@ -91,6 +91,9 @@ static func legacy_weapon_to_new_weapon_type(legacy_wt: int, is_aircraft: bool =
 # v6.2: 攻防维度对齐后，攻防计算上 SUPPORT 归入 LIGHT、FORT 归入 ARMOR
 #       （参见 AttackCalculator.get_attack_vs / get_defense_vs 的 match 分组）
 #       CombatKind 保留 5 值用于显示/索敌差异化；主类归属由 UnitSubType 标记区分。
+# v8.x: 三维攻防系统（LIGHT/ARMOR/AIR + weapon_slots）保持封闭，不新增 CombatKind。
+#       新兵种（渗透者/工程师/电子战/狙击手）走纯标签层（tags + meta + TAG_COUNTER_RULES），
+#       归入现有主类（多数为 LIGHT），不侵入 get_attack_vs 的三维数值路径。
 enum CombatKind {
 	LIGHT = 0,
 	ARMOR = 1,
@@ -98,6 +101,68 @@ enum CombatKind {
 	AIR = 3,
 	FORT = 4
 }
+
+# v8.x: 标签硬克制规则（独立于三维攻防系统的额外伤害加成层）
+# 由 AttackCalculator.compute_tag_counter_multiplier 在 bullet.gd 伤害结算时查询
+# （attacker.tags ∩ target.tags 命中即应用 effect），不侵入 get_attack_vs 的三维数值路径。
+# 新兵种（stalker/engineer/ecm/sniper）的差异化伤害加成全部走这套标签层。
+const TAG_COUNTER_RULES: Array = [
+	# SNIPER 专杀高价值目标：boss/master/command 标签 +50% 伤害、必命中、无视隐身
+	{
+		"attacker_tag": "sniper",
+		"target_tags": ["boss", "master", "command"],
+		"effect": "damage_bonus",
+		"value": 0.50,
+		"extra": ["never_miss", "ignore_stealth"]
+	},
+	# STEALTH/STALKER 优先攻击指挥/后勤 +30% 伤害
+	{
+		"attacker_tag": "stealth",
+		"target_tags": ["command", "support"],
+		"effect": "damage_bonus",
+		"value": 0.30
+	},
+	{
+		"attacker_tag": "stalker",
+		"target_tags": ["command", "support"],
+		"effect": "damage_bonus",
+		"value": 0.30
+	},
+	# FORT 对空特攻 +40% 伤害
+	{
+		"attacker_tag": "fort",
+		"target_tags": ["aircraft"],
+		"effect": "damage_bonus",
+		"value": 0.40
+	},
+	# ARTILLERY 克堡垒/装甲 +20% 范围伤害
+	{
+		"attacker_tag": "artillery",
+		"target_tags": ["fort", "armored"],
+		"effect": "splash_bonus",
+		"value": 0.20
+	},
+	# AIR 克后勤/远程 +30% 伤害
+	{
+		"attacker_tag": "aircraft",
+		"target_tags": ["engineer", "artillery"],
+		"effect": "damage_bonus",
+		"value": 0.30
+	},
+	# FAST 绕过堡垒正面（格子战中=无视 damage_reduction）
+	{
+		"attacker_tag": "fast",
+		"target_tags": ["fort"],
+		"effect": "bypass_damage_reduction"
+	},
+	# ENGINEER 打断施法（格子战中=对 casting meta 目标额外+20% 伤害）
+	{
+		"attacker_tag": "engineer",
+		"target_condition": "is_casting",
+		"effect": "damage_bonus",
+		"value": 0.20
+	},
+]
 
 # 单位子类标记（v6.2: 配合"3主类+子类"设计）
 # 主类归属：LIGHT 主类含 ARTILLERY/SUPPORT/ANTI_AIR 子类；ARMOR 主类含 FORT 子类

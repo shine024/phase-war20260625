@@ -161,8 +161,14 @@ const SKILL_TREE: Dictionary = {
 }
 
 ## 获取分支技能列表
+## v8.x: 合并主表节点 + V8Extension 扩展节点
 static func get_skills_for_branch(branch: String) -> Array:
-	return SKILL_TREE.get(branch, []).duplicate(true)
+	var main_nodes: Array = SKILL_TREE.get(branch, []).duplicate(true)
+	# v8.x: 合并扩展节点（tier 5-12）
+	var V8Ext = preload("res://data/phase_master_skill_tree_v8_extension.gd")
+	var ext_nodes: Array = V8Ext.get_extension_nodes(branch)
+	main_nodes.append_array(ext_nodes)
+	return main_nodes
 
 ## 获取指定 tier 的技能
 static func get_skills_at_tier(branch: String, tier: int) -> Array:
@@ -173,17 +179,30 @@ static func get_skills_at_tier(branch: String, tier: int) -> Array:
 	return out
 
 ## 获取技能定义
+## v8.x: 优先查主表，找不到再查 V8Extension
 static func get_skill(skill_id: String) -> Dictionary:
 	for branch in SKILL_TREE.keys():
 		for s in SKILL_TREE[branch]:
 			if s.get("id", "") == skill_id:
 				return s.duplicate(true)
+	# v8.x: 查扩展节点
+	var V8Ext = preload("res://data/phase_master_skill_tree_v8_extension.gd")
+	var ext_node: Dictionary = V8Ext.get_extension_skill(skill_id)
+	if not ext_node.is_empty():
+		return ext_node
 	return {}
 
 ## 获取技能所属分支
+## v8.x: 支持扩展节点
 static func get_branch_of(skill_id: String) -> String:
 	for branch in SKILL_TREE.keys():
 		for s in SKILL_TREE[branch]:
+			if s.get("id", "") == skill_id:
+				return branch
+	# v8.x: 查扩展节点
+	var V8Ext = preload("res://data/phase_master_skill_tree_v8_extension.gd")
+	for branch in V8Ext.EXTENSION_NODES.keys():
+		for s in V8Ext.EXTENSION_NODES[branch]:
 			if s.get("id", "") == skill_id:
 				return branch
 	return ""

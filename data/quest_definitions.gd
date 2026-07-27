@@ -2,7 +2,17 @@ extends RefCounted
 class_name QuestDefinitions
 
 const _QUESTS_JSON_PATH := "res://data/json/quest_definitions.json"
-static var QUESTS: Array = _load_json_array(_QUESTS_JSON_PATH, LEGACY_QUESTS)
+# v7.x 性能优化：改 getter 懒加载（仿 enemy_phase_masters.gd:50-57）。
+# 原 static var 初始化器在类首次被 preload 时即同步读盘解析 JSON，
+# 触达 preload 链就触发 I/O。改后推迟到首次访问 QUESTS 时。
+static var _quests_cache: Array = []
+static var _quests_inited: bool = false
+static var QUESTS: Array:
+	get:
+		if not _quests_inited:
+			_quests_inited = true
+			_quests_cache = _load_json_array(_QUESTS_JSON_PATH, LEGACY_QUESTS)
+		return _quests_cache
 
 ## v6.9: 动态任务集合（运行时注册，不写入静态 QUESTS）
 ## 由 QuestManager.register_dynamic_quest 委托填充；get_by_id/get_available_ids 自动同时查询两个集合

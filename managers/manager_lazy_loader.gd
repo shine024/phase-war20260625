@@ -28,7 +28,6 @@ const CORE_MANAGERS: Array = [
 	"PhaseLawManager",
 	"BasicResourceManager",
 	"BlueprintManager",
-	"DropManager",
 	"ObjectPoolManager",
 	"UILazyLoader",
 	"ManagerLazyLoader"
@@ -67,6 +66,13 @@ func _ensure_configs_initialized() -> void:
 			"script_path": "res://managers/level_progress_manager.gd",
 			"priority": 1,
 			"description": "关卡进度"
+		},
+		# v7.x 性能优化：DropManager 从 autoload 改为懒加载（战斗结算/离线奖励/成就奖励时由调用方 ensure_loaded）
+		"drop": {
+			"node_name": "DropManager",
+			"script_path": "res://managers/drop_manager.gd",
+			"priority": 1,
+			"description": "掉落系统"
 		},
 		# ── 任务和成就 (priority 2) ──
 		"quest": {

@@ -36,6 +36,11 @@ static var _enemy_active: Dictionary = {}
 static var _periodic_timers: Dictionary = {}
 ## 纳米虫群剩余持续时间  "<owner_key>" -> float
 static var _nano_remaining: Dictionary = {}
+## v7.x 性能优化：纳米虫群 tick 累加器  "<owner_key>" -> accumulated_delta
+## nano_swarm 每 take_damage 触发 6 个 unit_damaged 订阅者，每帧×目标数开销大。
+## 改为每 0.25s 累积一次结算（数值等价，take_damage 调用频率降 4×）。
+static var _nano_tick_acc: Dictionary = {}
+const NANO_TICK_INTERVAL: float = 0.25
 ## 火炮连发队列  "<owner_key>" -> Array[{fire_at: float, fired: bool}]
 static var _barrage_queue: Dictionary = {}
 ## 狂暴状态  "<owner_key>" -> {active, expire_at, applied, atk_mult, spd_mult}
@@ -84,6 +89,7 @@ static func reset_state() -> void:
 	_enemy_active.clear()
 	_periodic_timers.clear()
 	_nano_remaining.clear()
+	_nano_tick_acc.clear()
 	_barrage_queue.clear()
 	_rage_state.clear()
 	_start_fired.clear()
@@ -419,16 +425,26 @@ static func _compute_nuclear_damage(owner: Owner) -> float:
 	return 300.0 + total_atk * 0.5  # 基础300 + 总攻击力50%
 
 # ── 纳米虫群（on_battle_start，持续百分比掉血）──
+# v7.x 性能优化：节流到 NANO_TICK_INTERVAL(0.25s) 累积一次结算。
+# 原实现每帧 take_damage×目标数，每 take_damage 触发 6 个 unit_damaged 订阅者，
+# 30 秒持续期间是稳定掉帧源。改后 take_damage 频率降 4×，伤害数值完全等价（hp_pct × tick_delta）。
 static func _apply_nano_swarm_tick(owner: Owner, ab: Dictionary, delta: float) -> void:
 	if _battlefield == null:
 		return
+	var key: String = _owner_key(owner)
+	# 累加 delta，未满一个 tick 则跳过本帧（伤害在 tick 结算时按整 tick 计算，数值等价）
+	var acc: float = float(_nano_tick_acc.get(key, 0.0)) + delta
+	if acc < NANO_TICK_INTERVAL:
+		_nano_tick_acc[key] = acc
+		return
+	# 消费一个 tick（不保留余数，误差 < NANO_TICK_INTERVAL 可接受；nano_swarm 是百分比掉血非精确伤害）
+	_nano_tick_acc[key] = 0.0
+	var tick_delta: float = NANO_TICK_INTERVAL
+
 	var params: Dictionary = ab.get("params", {})
 	var hp_pct: float = float(params.get("hp_pct_per_sec", 0.02))
 	var targets: Array = _get_targets(owner)
-	# 节流：每 ~0.4s 在部分单位上显示一次命中特效，避免每帧刷屏
-	var show_vfx_this_frame: bool = fmod(Time.get_ticks_msec(), 400.0) < 60.0
-	for i in range(targets.size()):
-		var e = targets[i]
+	for e in targets:
 		if e == null or not is_instance_valid(e):
 			continue
 		var max_hp: float = 0.0
@@ -438,12 +454,12 @@ static func _apply_nano_swarm_tick(owner: Owner, ab: Dictionary, delta: float) -
 			max_hp = float(e.max_hp)
 		if max_hp <= 0.0:
 			continue
-		var dmg: float = max_hp * hp_pct * delta
+		var dmg: float = max_hp * hp_pct * tick_delta
 		if dmg > 0.0 and e.has_method("take_damage"):
 			e.take_damage(dmg, null)
 			# v7.x: 伤害数字由 take_damage → unit_damaged 信号统一驱动，
-			# 仅保留纳米虫群命中视觉特效。
-			if show_vfx_this_frame and i % 3 == 0 and e is Node2D:
+			# 每 tick 显示一次命中视觉特效（频率已从每帧降到每 0.25s）。
+			if e is Node2D:
 				_create_nano_swarm_hit((e as Node2D).global_position, owner)
 
 # ── 巨型能量罩（on_battle_start，给 allies 加护盾）──

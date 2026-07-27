@@ -428,6 +428,7 @@ func _afk_failed() -> void:
 ## 将 DropManager 当前 pending_drops 快照累加到累计池。
 ## 由 game_manager.gd 的 AFK 分支在 claim_drops() 之前调用，确保奖励计入总账。
 func accumulate_pending_drops() -> void:
+	ManagerLazyLoader.ensure_loaded("drop")  # v7.x: DropManager 已改懒加载
 	var dm: Node = get_node_or_null("/root/DropManager")
 	if dm == null or not dm.has_method("get_pending_drops"):
 		return

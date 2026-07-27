@@ -285,6 +285,7 @@ func _render_reward_summary(vbox: VBoxContainer) -> void:
 	var reward_list := VBoxContainer.new()
 	reward_list.add_theme_constant_override("separation", 3)
 	# 扫描 pending drops 中已汇总的 MATERIAL 资源，合并到顶部显示（避免与掉落列表重复）
+	ManagerLazyLoader.ensure_loaded("drop")  # v7.x: DropManager 已改懒加载
 	var dm_for_summary: Node = Engine.get_main_loop().root.get_node_or_null("DropManager")
 	var pending_mats: Dictionary = _summarize_pending_materials(dm_for_summary)
 	var energy_gain: int = int(_reward_summary.get("energy_block_gain", 0)) + int(pending_mats.get("energy_block", 0))
@@ -324,6 +325,7 @@ func _render_intel_harvest(vbox: VBoxContainer) -> void:
 
 
 func _render_drops(vbox: VBoxContainer) -> void:
+	ManagerLazyLoader.ensure_loaded("drop")  # v7.x: DropManager 已改懒加载
 	var dm: Node = Engine.get_main_loop().root.get_node_or_null("DropManager")
 	if dm == null or not dm.has_method("get_pending_drops"):
 		return
@@ -626,6 +628,7 @@ func _render_close_button_anchored(panel: Control) -> void:
 func _on_continue_pressed() -> void:
 	result_confirmed.emit(player_won)
 	# 领取全部掉落
+	ManagerLazyLoader.ensure_loaded("drop")  # v7.x: DropManager 已改懒加载
 	var dm_claim: Node = Engine.get_main_loop().root.get_node_or_null("DropManager")
 	if dm_claim != null and dm_claim.has_method("claim_drops"):
 		dm_claim.claim_drops()

@@ -8,6 +8,7 @@ const ModuleEffectHandler = preload("res://scripts/battle/module_effect_handler.
 const GC = preload("res://resources/game_constants.gd")
 const DT = preload("res://resources/design_tokens.gd")
 const CardGridUnitVisuals = preload("res://scripts/card_grid_unit_visuals.gd")
+const CardGridBattleLayout = preload("res://scripts/card_grid_battle_layout.gd")
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 const CardGridDamage = preload("res://scripts/card_grid_damage.gd")
 const CombatTargeting = preload("res://scripts/combat_targeting.gd")
@@ -232,9 +233,19 @@ func apply_card_grid_enemy_presentation() -> void:
 		CardGridUnitVisuals.sync_mod_strip(self, self, spr)
 	if poly != null:
 		poly.visible = not sprite_ok
+	# v7.x: 敌方格子战启用迷你 HP 条（与设计稿 v9 对齐——HP 条 + HP 数值配套）
+	# 默认折叠态（4px），选中时展开（8px）；HP 数值在 HP 条下方独立显示
 	var hb := get_node_or_null("HpBar") as CanvasItem
 	if hb != null:
-		hb.visible = false
+		hb.visible = true
+		# 贴卡底定位（与玩家单位对称）：立绘下方 +card_h/2+8
+		var card_h_enemies: float = CardGridBattleLayout.battle_card_width_px() * 8.0 / 5.0
+		if spr != null:
+			hb.position = Vector2(0.0, spr.position.y + card_h_enemies * 0.5 + 8.0)
+		if hb.has_method("set_side"):
+			hb.set_side(false)  # 敌方色（红）
+		if hb.has_method("set_folded"):
+			hb.set_folded(true)  # 默认折叠，选中时展开（与玩家对称）
 	var aura_ring := get_node_or_null("AuraRing") as CanvasItem
 	var rank_badge := get_node_or_null("RankBadge") as CanvasItem
 	if aura_ring != null:
@@ -1086,6 +1097,21 @@ func _process_attack_timing(delta: float) -> void:
 		_attack_phase = 0
 		_attack_phase_timer = 0.0
 		return
+	# v8.x: ECM 电子战减益——被 ECM 光环覆盖时攻速 -25%（攻击节奏变慢）
+	# meta 由玩家方 ECM 单位的 _update_ecm_debuff_aura 周期性挂载（_ecm_debuffed_until）
+	var _ecm_attack_speed_mult: float = 1.0
+	if has_meta("_ecm_debuffed_until"):
+		var _ecm_expire: int = int(get_meta("_ecm_debuffed_until", 0))
+		if Time.get_ticks_msec() < _ecm_expire:
+			_ecm_attack_speed_mult = 0.75  # 攻速 ×0.75 = 攻击周期 ×1.33
+		else:
+			remove_meta("_ecm_debuffed_until")
+			remove_meta("_ecm_attack_speed_penalty")
+			remove_meta("_ecm_crit_penalty")
+			remove_meta("_ecm_dodge_penalty")
+	# 应用 ECM 减益：delta 乘以减益系数（攻击节奏变慢）
+	if _ecm_attack_speed_mult < 1.0:
+		delta = delta * _ecm_attack_speed_mult
 	# 获取攻速参数：优先使用缓存（仅目标变化时重算）
 	var timing: Dictionary
 	var fire_range: float
@@ -1242,7 +1268,19 @@ func _try_fire_enemy_projectile_batch(p_target: Node2D, wt: int, p_damage: float
 
 func _update_hp_bar() -> void:
 	if _presentation_card_grid:
-		# v7.x: 格子战 HP 条隐藏，但仍刷新卡框 HP 数值标签
+		# v7.x: 格子战启用迷你 HP 条（与设计稿 v9 对齐——HP 条 + HP 数值配套）
+		var bar_grid := get_node_or_null("HpBar")
+		if bar_grid != null and bar_grid.has_method("set_ratio"):
+			var grid_ratio := hp / max_hp if max_hp > 0 else 1.0
+			if absf(grid_ratio - _cached_hp_ratio) >= 0.01:
+				_cached_hp_ratio = grid_ratio
+				bar_grid.set_side(false)
+				bar_grid.set_ratio(grid_ratio)
+				if typeof(SignalBus) == TYPE_NIL:
+					bar_grid.set_folded(true)
+				else:
+					bar_grid.set_folded(BattleInputState.current_selected_unit != self)
+		# 仍刷新卡框 HP 数值标签
 		_refresh_hp_value_label()
 		return
 	var bar = get_node_or_null("HpBar")

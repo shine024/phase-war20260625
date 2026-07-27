@@ -127,9 +127,15 @@ func _apply_unlocks(node_id: String) -> void:
 				_unlock_phase_instrument(str(u.get("id", "")))
 			"affix":
 				_grant_affix_pool(u.get("pool", []))
-			# unit_ability / unit_mechanism / concept_weapon / evolution / special_card
-			# 仅记录解锁状态（is_content_unlocked / is_evolution_era_unlocked 查询），
-			# 战斗系统/进化面板/卡牌系统各自查询，无需主动推送
+			# 以下类型仅记录解锁状态，由 is_content_unlocked(type, id) 查询，
+			# 各子系统（战斗/进化/卡片技能引擎/战法检测器）自行读取：
+			#   unit_ability    → 兵种特殊能力（暴击/吸血/穿甲等）
+			#   unit_mechanism  → 兵种独占机制（侦察视野/工兵建造/STALKER隐身等）
+			#   concept_weapon  → 概念武器大技（核子轰炸/酸雨等）
+			#   special_card    → 特殊卡解锁
+			#   evolution       → 进化形态解锁
+			#   card_skill      → ★v8.x 卡片定时技能（CardPeriodicSkillEngine 查询）
+			#   tactic          → ★v8.x 战法（TacticDetector 查询）
 			_:
 				pass
 

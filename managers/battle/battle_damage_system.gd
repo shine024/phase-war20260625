@@ -364,6 +364,7 @@ func generate_battle_completion_drops(player_won: bool, elapsed_time: float, wav
 
 
 func generate_battle_drops_only(player_won: bool, elapsed_time: float, wave_total: int, wave_interval: float, max_deployed: int, units_lost: int) -> Dictionary:
+	ManagerLazyLoader.ensure_loaded("drop")  # v7.x: DropManager 已改懒加载
 	var dm: Node = _get_autoload_node("DropManager")
 	if dm == null or not dm.has_method("generate_battle_drops"):
 		return {"victory_stars": 0, "era": 0, "player_won": player_won}

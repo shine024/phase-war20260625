@@ -307,8 +307,10 @@ static func sync_buff_strip(host: Node2D, unit: Node, spr: Sprite2D) -> void:
 			hp_h = 8.0  # 回退默认展开高度
 	# 卡底下方定位：卡的底部（底图底）= 底图基线(CardBattleBg.position.y) + card_h/2；buff 条再往下
 	# 注意：立绘 spr.position.y 已改为"脚对齐"，不等于底图基线；buff 条跟随底图（卡的外壳）。
+	# v7.x: 增加 hp_value_h（HP 数值占的垂直空间 14px），避免与 HpValueLabel 重叠
 	var base_y: float = bg_spr.position.y if (bg_spr != null and bg_spr.texture != null) else spr.position.y
-	strip.position = Vector2(0.0, base_y + half_h + hp_gap + hp_h + card_w * 0.03)
+	var hp_value_h: float = 14.0 if host.has_node("HpValueLabel") else 0.0
+	strip.position = Vector2(0.0, base_y + half_h + hp_gap + hp_h + hp_value_h + card_w * 0.03)
 
 
 # ============================================================================
@@ -378,7 +380,7 @@ static func sync_level_tag(host: Node2D, unit_spr: Sprite2D, card: CardResource,
 
 
 ## v7.x HP 数值标签：卡框下方显示当前/最大 HP（我方青/敌方红）
-## 我方读 unit.hp / unit.stats.max_hp；敌方读 unit.hp / unit.max_hp
+## 我方有护盾时叠加显示 "+N盾"（青色），仅我方（敌方无 shield 字段）
 ## 用 Node2D + _draw() 自绘（参考 CardGridRankStrip），避免 Label 在 Node2D 下
 ## 因 Control 布局系统不触发导致的 size=0 / 文字不渲染问题。
 static func sync_hp_label(host: Node2D, unit_spr: Sprite2D, unit: Node) -> void:
@@ -387,10 +389,13 @@ static func sync_hp_label(host: Node2D, unit_spr: Sprite2D, unit: Node) -> void:
 	var cur_hp: float = 0.0
 	var max_hp_val: float = 0.0
 	var is_player: bool = false
+	var shield_val: float = 0.0
 	if "hp" in unit:
 		cur_hp = float(unit.hp)
 	if "is_player" in unit:
 		is_player = bool(unit.is_player)
+	if "shield" in unit:
+		shield_val = float(unit.shield)
 	if is_player and "stats" in unit and unit.stats != null and "max_hp" in unit.stats:
 		max_hp_val = float(unit.stats.max_hp)
 	elif "max_hp" in unit:
@@ -404,24 +409,33 @@ static func sync_hp_label(host: Node2D, unit_spr: Sprite2D, unit: Node) -> void:
 		host.add_child(label)
 	# 配色：我方青、敌方红
 	var font_color: Color = Color(0.65, 0.95, 1.0, 1.0) if is_player else Color(1.0, 0.6, 0.6, 1.0)
-	label.set_text("%d/%d" % [int(cur_hp), int(max_hp_val)])
+	label.set_text(_format_hp_text(cur_hp, max_hp_val, shield_val))
 	label.set_style(11, font_color, Color(0, 0, 0, 0.85), 3, HORIZONTAL_ALIGNMENT_CENTER)
-	# 定位：卡框底部下方（Node2D position 即原点，文字以原点为中心居中绘制）
+	# 定位：HP 条下方（避免与 HpBar 重叠 —— HpBar 在 card_h/2+8，HP 数值在 card_h/2+20）
 	var card_w: float = CardGridBattleLayout.battle_card_width_px()
 	var card_h: float = card_w * 8.0 / 5.0
-	label.position = Vector2(0.0, unit_spr.position.y + card_h * 0.5 + 8.0)
+	label.position = Vector2(0.0, unit_spr.position.y + card_h * 0.5 + 20.0)
 	label.visible = true
 
 
 ## v7.x: 更新 HP 数值标签的文字（供单位 _refresh_hp_value_label 高频调用，避免每次重建样式）
 ## 这是 _refresh_hp_value_label 的轻量入口：只更新文字，不重设样式/位置
-static func update_hp_label_text(host: Node2D, cur_hp: float, max_hp: float) -> void:
+## shield_val 仅我方传（敌方无 shield 字段，传 0 即可）
+static func update_hp_label_text(host: Node2D, cur_hp: float, max_hp: float, shield_val: float = 0.0) -> void:
 	if host == null:
 		return
 	var label := host.get_node_or_null("HpValueLabel") as CardGridFloatingLabel
 	if label == null:
 		return
-	label.set_text("%d/%d" % [int(cur_hp), int(max_hp)])
+	label.set_text(_format_hp_text(cur_hp, max_hp, shield_val))
+
+
+## 格式化 HP 数值文本：HP 部分 + 护盾部分（护盾>0 才显示）
+static func _format_hp_text(cur_hp: float, max_hp: float, shield_val: float) -> String:
+	var base: String = "%d/%d" % [int(cur_hp), int(max_hp)]
+	if shield_val > 0.5:
+		base += "  +%d" % int(shield_val)
+	return base
 
 
 ## 改造图标条：装备改造的单位卡底显示图标（与 buff_strip 错位，放在更下方）
@@ -449,21 +463,29 @@ static func sync_mod_strip(host: Node2D, unit: Node, spr: Sprite2D) -> void:
 	strip.rebuild(kinds, card_w)
 	var half_h: float = card_h * 0.5
 	# 定位：buff_strip 下方（buff_strip 高约 card_w*0.22，留 2px 间距）
+	# v7.x: 加 hp_value_h（HP 数值占的 14px），避免与 HpValueLabel 重叠
+	var hp_value_h: float = 14.0 if host.has_node("HpValueLabel") else 0.0
 	var buff_strip_h: float = card_w * 0.22 + 2.0
 	var base_y: float = bg_spr.position.y if (bg_spr != null and bg_spr.texture != null) else spr.position.y
-	strip.position = Vector2(0.0, base_y + half_h + 8.0 + 8.0 + buff_strip_h)
+	strip.position = Vector2(0.0, base_y + half_h + 8.0 + 8.0 + hp_value_h + buff_strip_h)
 
 
 # ============================================================================
 #  v7.x 战场视觉反馈：漂浮 buff/debuff 标签（卡顶上方）
 # ============================================================================
 
-## 漂浮 buff/debuff 标签：单位卡顶上方显示当前激活的 debuff 状态
+## 漂浮 buff/debuff 标签：单位卡顶上方（rank_strip 之上）显示当前激活的 debuff 状态
 ## 数据源（unit meta，由 module_effect_handler 设置）：
 ##   _armor_break_stacks（破甲叠加层数）、_marked_until（标记过期时间戳）
 ##   _crit_marked_until（暴击标注过期时间戳）、_counter_marked_by（反炮标记来源）
 ## 过期的标记（_marked_until / _crit_marked_until）不显示
-## 多个 debuff 横向排列在卡顶上方一行
+## 多个 debuff 横向排列在 rank_strip 上方一行
+##
+## 位置选择说明：卡顶元素垂直分层（从下到上）：
+##   level_tag/rarity_badge/elite_badge (-card_h/2-6~-8，左右两侧)
+##   rank_strip (-card_h/2-12~rank_h，居中)
+##   buff_labels (-card_h/2-28，居中，rank_strip 之上 16px)
+## 卡底留给 hp_value（+20）+ buff_strip/mod_strip（+24 起）
 ## 用 Node2D + _draw() 自绘（避免 Label 在 Node2D 下不渲染）
 static func sync_buff_labels(host: Node2D, unit_spr: Sprite2D, unit: Node) -> void:
 	if host == null or unit_spr == null or unit == null:
@@ -516,11 +538,11 @@ static func sync_buff_labels(host: Node2D, unit_spr: Sprite2D, unit: Node) -> vo
 		total_w += lbl.get_text_width() + 4.0  # +padding
 		if i > 0:
 			total_w += gap
-	# 第二遍：从左到右定位
+	# 第二遍：从左到右定位（buff 标签在卡顶 rank_strip 之上，-card_h/2-28）
 	var card_w: float = CardGridBattleLayout.battle_card_width_px()
 	var card_h: float = card_w * 8.0 / 5.0
 	var x_cursor: float = -total_w * 0.5
-	var y_top: float = unit_spr.position.y - card_h * 0.5 - 12.0
+	var y_top: float = unit_spr.position.y - card_h * 0.5 - 28.0
 	for i in range(labels.size()):
 		var lbl: CardGridFloatingLabel = labels[i]
 		var w: float = lbl.get_text_width() + 4.0

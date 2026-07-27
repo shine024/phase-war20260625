@@ -42,6 +42,7 @@ static func select_target_direct(attacker: Node2D, enemies: Array) -> Node2D:
 
 ## 曲射: 优先被克制类型 → 无克制则最近 → 同距最低HP
 ## 不移动
+## v8.x: 支持 SNIPER 优先锁定高价值目标（boss/master/command）
 static func select_target_indirect(attacker: Node2D, enemies: Array) -> Node2D:
 	if enemies.is_empty():
 		return null
@@ -55,6 +56,13 @@ static func select_target_indirect(attacker: Node2D, enemies: Array) -> Node2D:
 	# v8: 支持行为 tag 覆盖（如 antitank 强制打装甲）
 	var tags: Array = attacker.get("_behavior_tags_cached") if attacker.get("_behavior_tags_cached") != null else []
 	var target_kind = _get_counter_priority(stats, tags)
+	# v8.x: SNIPER 优先锁定高价值目标
+	if target_kind == CombatKindPriority.SNIPER_BOSS_PRIORITY:
+		var high_value = valid.filter(func(e): return _is_high_value_target(e))
+		if not high_value.is_empty():
+			return _nearest(origin, high_value)
+		# 无高价值目标则回退最近
+		return _nearest(origin, valid)
 	if target_kind >= 0:
 		var countered = valid.filter(func(e):
 			var s = e.get("stats") as UnitStats
@@ -65,6 +73,7 @@ static func select_target_indirect(attacker: Node2D, enemies: Array) -> Node2D:
 	return _nearest(origin, valid)
 
 ## 空射: 优先空中 → 无空中则克制目标 → 最近
+## v8.x: 支持 SNIPER 优先锁定高价值目标
 static func select_target_aerial(attacker: Node2D, enemies: Array) -> Node2D:
 	if enemies.is_empty():
 		return null
@@ -72,6 +81,12 @@ static func select_target_aerial(attacker: Node2D, enemies: Array) -> Node2D:
 	var valid = _filter_attackable(enemies)
 	if valid.is_empty():
 		return null
+	# v8.x: SNIPER 标签优先锁定高价值目标（早于空中优先级，确保狙击手锁 Boss）
+	var tags_pre: Array = attacker.get("_behavior_tags_cached") if attacker.get("_behavior_tags_cached") != null else []
+	if tags_pre.has("sniper"):
+		var high_value_pre = valid.filter(func(e): return _is_high_value_target(e))
+		if not high_value_pre.is_empty():
+			return _nearest(origin, high_value_pre)
 	# 优先空中
 	var air_targets = valid.filter(func(e):
 		var s = e.get("stats") as UnitStats
@@ -84,6 +99,11 @@ static func select_target_aerial(attacker: Node2D, enemies: Array) -> Node2D:
 	if stats != null:
 		var tags: Array = attacker.get("_behavior_tags_cached") if attacker.get("_behavior_tags_cached") != null else []
 		var target_kind = _get_counter_priority(stats, tags)
+		# v8.x: SNIPER 优先锁定高价值目标
+		if target_kind == CombatKindPriority.SNIPER_BOSS_PRIORITY:
+			var high_value = valid.filter(func(e): return _is_high_value_target(e))
+			if not high_value.is_empty():
+				return _nearest(origin, high_value)
 		if target_kind >= 0:
 			var countered = valid.filter(func(e):
 				var s = e.get("stats") as UnitStats
@@ -95,8 +115,18 @@ static func select_target_aerial(attacker: Node2D, enemies: Array) -> Node2D:
 
 ## 根据attacker的攻击维度确定克制优先目标类型
 ## v8: 支持 behavior tag 覆盖——antitank 强制锁定 ARMOR（让反坦克单位优先打装甲）
+## v8.x: 扩展 sniper/stalker/engineer/ecm 等新兵种标签覆盖（优先级高于三维攻击值）
 ## （tags 参数可选，缺省时空数组，保持旧行为完全不变）
 static func _get_counter_priority(stats: UnitStats, tags: Array = []) -> int:
+	# v8.x: 新兵种标签覆盖（优先级最高，无视三维攻击值）
+	# SNIPER 优先锁定高价值目标（Boss/master/command 标签单位在战斗中通常为 ARMOR/FORT 主类，
+	# 此处返回 ARMOR 让狙击手优先打重甲/堡垒类，配合 TAG_COUNTER_RULES 的+50%伤害）
+	if tags.has("sniper"):
+		# 先尝试找 boss/master 标签目标——通过返回特殊值 -2 通知调用方走 boss 优先逻辑
+		return CombatKindPriority.SNIPER_BOSS_PRIORITY
+	# STALKER/STEALTH 优先攻击指挥/后勤（归入 LIGHT 主类的 support 子类）
+	if tags.has("stalker") or tags.has("stealth"):
+		return GameConstants.CombatKind.LIGHT
 	# v8: 行为 tag 覆盖（优先级最高，无视三维攻击值）
 	if tags.has("antitank"):
 		return GameConstants.CombatKind.ARMOR
@@ -107,6 +137,30 @@ static func _get_counter_priority(stats: UnitStats, tags: Array = []) -> int:
 	elif stats.attack_air > stats.attack_light and stats.attack_air > stats.attack_armor:
 		return GameConstants.CombatKind.AIR
 	return -1
+
+## v8.x: 兵种优先级特殊常量（负值区段，避免与 CombatKind 枚举 0-6 冲突）
+const CombatKindPriority = {
+	"SNIPER_BOSS_PRIORITY": -2,  # SNIPER 优先锁定 boss/master/command 标签
+	"INVALID": -1,
+}
+
+## v8.x: 判断目标是否为高价值目标（boss/master/command 标签）
+## 供 select_target_indirect/aerial 在 SNIPER_BOSS_PRIORITY 时调用
+static func _is_high_value_target(e: Node) -> bool:
+	if e == null or not is_instance_valid(e):
+		return false
+	# 检查 meta 标签（敌方 archetype 的 boss/elite 标记在 enemy_unit.gd 写入 meta）
+	if e.has_meta("target_priority_tag"):
+		var tag = String(e.get_meta("target_priority_tag", ""))
+		if tag in ["boss", "master", "command"]:
+			return true
+	# 兼容：检查 stats.combat_kind 是否为高威胁类型（Boss 通常 ARMOR/FORT）
+	var s = e.get("stats") as UnitStats
+	if s != null:
+		# 威胁值估算：HP > 500 视为高价值（Boss 普遍 HP 600+）
+		if s.max_hp > 500.0:
+			return true
+	return false
 
 ## 根据武器类型选目标
 static func select_target(attacker: Node2D, enemies: Array, weapon_type: int) -> Node2D:

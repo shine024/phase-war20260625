@@ -28,7 +28,7 @@ corner_radius_bottom_left = 4
 
 [node name="BackpackCardItem" type="PanelContainer"]
 layout_mode = 2
-custom_minimum_size = Vector2(96, 138)
+custom_minimum_size = Vector2(108, 154)
 size_flags_horizontal = 0
 size_flags_vertical = 0
 mouse_filter = 1

@@ -517,6 +517,10 @@ func _refresh_info_sections(card: CardResource) -> void:
 		var _tags_cn: String = _format_tags_cn(card.tags) if "tags" in card else ""
 		if not _tags_cn.is_empty() and card.card_type == GC.CardType.COMBAT_UNIT:
 			_nurture = "定位：%s\n" % _tags_cn + _nurture
+		# v8.x：兵种机制描述（STALKER隐身/SNIPER首击/ECM光环/ENGINEER 等）
+		var _mech_desc: String = _format_unit_mechanism_cn(card.tags) if "tags" in card else ""
+		if not _mech_desc.is_empty():
+			_nurture = "兵种机制：%s\n" % _mech_desc + _nurture
 		_nurture += _build_aura_preview_text(card, _cached_display_stats)
 		nurture_label.text = _nurture
 	# 描述
@@ -2280,6 +2284,7 @@ func _mod_aura_stat_desc(stat_field: String, op: String, raw: float) -> String:
 	return "%s:%.1f" % [name, raw]
 
 ## tags 标签中文翻译（unified_card_table 的英制 tag → 中文定位标签）
+# v8.x: 扩展新兵种标签（stalker/sniper/ecm/engineer/stealth 等）
 const _TAG_NAMES_CN := {
 	"infantry": "步兵",
 	"vehicle": "载具",
@@ -2290,6 +2295,27 @@ const _TAG_NAMES_CN := {
 	"immobile": "固定",
 	"boss": "BOSS",
 	"elite": "精英",
+	# v8.x 新兵种标签
+	"stalker": "渗透者",
+	"sniper": "狙击手",
+	"ecm": "电子战",
+	"engineer": "工程兵",
+	"stealth": "潜行",
+	# v8.x 战术标签
+	"fast": "快攻",
+	"artillery": "火炮",
+	"antitank": "反坦克",
+	"command": "指挥",
+	"recon": "侦察",
+}
+
+## v8.x: 兵种机制描述表（标签 → 机制说明，用于卡片信息面板显示）
+const _UNIT_MECHANISM_DESC := {
+	"stalker": "渗透者：部署后前4秒受伤-60%，首次攻击伤害×1.5",
+	"sniper": "狙击手：射程+30%，首次攻击必暴击，优先锁定高价值目标",
+	"ecm": "电子战：半径250内敌方攻速-25%、暴击-15%、闪避-20%",
+	"engineer": "工程兵：作为卡片技能触发源（维修/布雷/净化），攻击施法目标+20%伤害",
+	"stealth": "潜行：前4秒受伤-60%",
 }
 
 ## 将 card.tags 翻译为中文定位标签字符串（如"装甲·载具"），空则返回 ""。
@@ -2308,6 +2334,23 @@ func _format_tags_cn(tags) -> String:
 	if names.is_empty():
 		return ""
 	return "·".join(names)
+
+## v8.x: 提取卡牌 tags 中的兵种机制描述（STALKER/SNIPER/ECM/ENGINEER/STEALTH）
+## 返回机制说明字符串（多条用换行分隔），无则返回 ""
+func _format_unit_mechanism_cn(tags) -> String:
+	if tags == null:
+		return ""
+	var arr: Array = tags if tags is Array else []
+	if arr.is_empty():
+		return ""
+	var descs: Array = []
+	for t in arr:
+		var key: String = String(t)
+		if _UNIT_MECHANISM_DESC.has(key):
+			var d: String = String(_UNIT_MECHANISM_DESC[key])
+			if not descs.has(d):
+				descs.append(d)
+	return "\n".join(descs)
 
 # v7.x: 玩家相位仪符文文本——读 PhaseInstrumentManager 的符文槽位 + 激活的符文之语。
 # 返回空串表示无任何符文；非空形如：

@@ -97,6 +97,25 @@ var _air_assault_timer: float = 0.0
 var _air_assault_base_interval: float = 0.0  # 缓存原 attack_interval，供突袭结束撤销
 const AIR_ASSAULT_DURATION: float = 10.0
 const AIR_ASSAULT_SPEED_MULT: float = 1.5
+# ── v8.x 新兵种机制运行时状态 ──
+# STALKER 潜行：部署后前 4s 受伤 ×0.4（-60%），首击伤害 ×1.5
+var _is_stalker_unit: bool = false
+var _stalker_grace_timer: float = 0.0
+const STALKER_GRACE_DURATION: float = 4.0
+const STALKER_GRACE_DAMAGE_MUL: float = 0.4
+var _stalker_base_modulate: Color = Color(1, 1, 1, 1)  # STALKER 隐身前的基础 modulate（用于恢复）
+var _has_made_first_attack: bool = false  # 首击检测（SNIPER 必爆 / STALKER ×1.5）
+# SNIPER 首击必爆标记
+var _is_sniper_unit: bool = false
+# v8.x: ECM 电子战光环（周期性给范围内敌方挂减益 meta）
+var _is_ecm_unit: bool = false
+const ECM_DEBUFF_RADIUS: float = 250.0
+const ECM_DEBUFF_DURATION_SEC: float = 0.25  # 比扫描周期略长，确保连续覆盖
+# 卡片定时技能临时 stat_bonus 消费节流
+var _card_skill_bonus_acc: float = 0.0
+const CARD_SKILL_BONUS_CHECK_INTERVAL: float = 0.5
+# 运行时累积的卡片技能 stat_bonus（attack_speed/crit_chance/dodge_chance/damage_reduction）
+var _card_skill_runtime_bonus: Dictionary = {}
 var attack_timer: float = 0.0
 ## v5.0 攻速分离: 三阶段攻击状态机 (idle → windup → active → cooldown → idle)
 enum AttackPhase { IDLE, WINDUP, ACTIVE, COOLDOWN }
@@ -683,6 +702,135 @@ func _init_unit_mechanisms() -> void:
 		for w in stats.weapon_slots:
 			if w != null and w.enabled:
 				w.attack_speed = maxf(0.1, float(w.attack_speed) * spd_mult)
+	# v8.x: STALKER 潜行（读 stats meta "is_stalker"，由 apply_combat_kind_modifiers 写入）
+	if stats.has_meta("is_stalker") and bool(stats.get_meta("is_stalker", false)):
+		_is_stalker_unit = true
+		_stalker_grace_timer = STALKER_GRACE_DURATION
+		# v8.x 视觉反馈：部署时半透明（隐身效果），计时器结束恢复
+		_stalker_base_modulate = modulate
+		modulate = Color(modulate.r, modulate.g, modulate.b, 0.5)
+	# v8.x: SNIPER 标记（读 stats meta "is_sniper"）
+	if stats.has_meta("is_sniper") and bool(stats.get_meta("is_sniper", false)):
+		_is_sniper_unit = true
+	# v8.x: ECM 电子战标记（读 stats meta "is_ecm"）
+	if stats.has_meta("is_ecm") and bool(stats.get_meta("is_ecm", false)):
+		_is_ecm_unit = true
+
+
+## v8.x: ECM 电子战光环——周期性给范围内敌方挂减益 meta
+## （敌方 attack_speed_penalty / crit_penalty / dodge_penalty，由敌方自身读取应用）
+## 复用 _ability_accum 节流（0.2s），扫描半径 ECM_DEBUFF_RADIUS
+func _update_ecm_debuff_aura() -> void:
+	if not _is_ecm_unit or is_deploy_ghost or is_preview_mode:
+		return
+	# 扫描敌方单位（与自身阵营相反）
+	var enemy_group: String = "enemy_units" if is_player else "player_units"
+	var enemies: Array = get_tree().get_nodes_in_group(enemy_group)
+	var now_msec: int = Time.get_ticks_msec()
+	var expire_msec: int = now_msec + int(ECM_DEBUFF_DURATION_SEC * 1000)
+	for e in enemies:
+		if e == null or not is_instance_valid(e):
+			continue
+		if not ("global_position" in e):
+			continue
+		if global_position.distance_to(e.global_position) <= ECM_DEBUFF_RADIUS:
+			# 给敌方挂临时减益 meta（敌方在 attack/damage 路径读取应用）
+			e.set_meta("_ecm_debuffed_until", expire_msec)
+			e.set_meta("_ecm_attack_speed_penalty", 0.25)  # 攻速 -25%
+			e.set_meta("_ecm_crit_penalty", 0.15)          # 暴击 -15%
+			e.set_meta("_ecm_dodge_penalty", 0.20)         # 闪避 -20%
+
+
+## v8.x: STALKER 潜行计时器递减（_process 调用）
+## 计时器归零时恢复 modulate（解除隐身视觉）
+func _update_stalker_grace(delta: float) -> void:
+	if not _is_stalker_unit or _stalker_grace_timer <= 0.0:
+		return
+	_stalker_grace_timer = maxf(0.0, _stalker_grace_timer - delta)
+	# 计时器刚归零：恢复 modulate（从半透明回到正常）
+	if _stalker_grace_timer <= 0.0:
+		modulate = _stalker_base_modulate
+
+
+func _is_stalker_in_grace() -> bool:
+	return _is_stalker_unit and _stalker_grace_timer > 0.0
+
+
+## v8.x: 消费卡片定时技能写入的 _card_skill_stat_bonus meta（每 0.5s 检查一次过期+应用）
+func _update_card_skill_bonus(delta: float) -> void:
+	_card_skill_bonus_acc += delta
+	if _card_skill_bonus_acc < CARD_SKILL_BONUS_CHECK_INTERVAL:
+		return
+	_card_skill_bonus_acc = 0.0
+	if not has_meta("_card_skill_stat_bonus"):
+		# 没有活跃的 bonus，清理运行时累积
+		if not _card_skill_runtime_bonus.is_empty():
+			_revert_card_skill_runtime_bonus()
+		return
+	var now_msec: int = Time.get_ticks_msec()
+	var until: int = int(get_meta("_card_skill_stat_bonus_until", 0))
+	if now_msec >= until:
+		# bonus 过期，清除
+		remove_meta("_card_skill_stat_bonus")
+		remove_meta("_card_skill_stat_bonus_until")
+		if not _card_skill_runtime_bonus.is_empty():
+			_revert_card_skill_runtime_bonus()
+	else:
+		# 应用 bonus（差异更新：只应用新 key，旧 key 保留）
+		_apply_card_skill_runtime_bonus()
+
+
+## 应用卡片技能 stat_bonus 到运行时字段
+func _apply_card_skill_runtime_bonus() -> void:
+	if not has_meta("_card_skill_stat_bonus"):
+		return
+	var sb: Dictionary = get_meta("_card_skill_stat_bonus")
+	# 攻速加成（attack_speed）
+	if sb.has("attack_speed") and not _card_skill_runtime_bonus.has("attack_speed"):
+		var bonus: float = float(sb["attack_speed"])
+		_card_skill_runtime_bonus["attack_speed"] = bonus
+		# 应用到 weapon_slots（攻速 = 基础 × (1+bonus)）
+		for w in stats.weapon_slots:
+			if w != null and w.enabled:
+				w.attack_speed = maxf(0.1, float(w.attack_speed) * (1.0 + bonus))
+	# 暴击加成（crit_chance）
+	if sb.has("crit_chance") and not _card_skill_runtime_bonus.has("crit_chance"):
+		var bonus: float = float(sb["crit_chance"])
+		_card_skill_runtime_bonus["crit_chance"] = bonus
+		stats.crit_chance = clampf(stats.crit_chance + bonus, 0.0, 1.0)
+	# 闪避加成（dodge_chance）
+	if sb.has("dodge_chance") and not _card_skill_runtime_bonus.has("dodge_chance"):
+		var bonus: float = float(sb["dodge_chance"])
+		_card_skill_runtime_bonus["dodge_chance"] = bonus
+		stats.dodge_chance = clampf(stats.dodge_chance + bonus, 0.0, 0.95)
+	# 减伤加成（damage_reduction）
+	if sb.has("damage_reduction") and not _card_skill_runtime_bonus.has("damage_reduction"):
+		var bonus: float = float(sb["damage_reduction"])
+		_card_skill_runtime_bonus["damage_reduction"] = bonus
+		stats.damage_reduction = clampf(stats.damage_reduction + bonus, 0.0, 0.95)
+
+
+## 还原卡片技能 stat_bonus（过期或清除时）
+func _revert_card_skill_runtime_bonus() -> void:
+	# 还原攻速
+	if _card_skill_runtime_bonus.has("attack_speed"):
+		var bonus: float = float(_card_skill_runtime_bonus["attack_speed"])
+		for w in stats.weapon_slots:
+			if w != null and w.enabled:
+				w.attack_speed = maxf(0.1, float(w.attack_speed) / (1.0 + bonus))
+	# 还原暴击
+	if _card_skill_runtime_bonus.has("crit_chance"):
+		var bonus: float = float(_card_skill_runtime_bonus["crit_chance"])
+		stats.crit_chance = clampf(stats.crit_chance - bonus, 0.0, 1.0)
+	# 还原闪避
+	if _card_skill_runtime_bonus.has("dodge_chance"):
+		var bonus: float = float(_card_skill_runtime_bonus["dodge_chance"])
+		stats.dodge_chance = clampf(stats.dodge_chance - bonus, 0.0, 0.95)
+	# 还原减伤
+	if _card_skill_runtime_bonus.has("damage_reduction"):
+		var bonus: float = float(_card_skill_runtime_bonus["damage_reduction"])
+		stats.damage_reduction = clampf(stats.damage_reduction - bonus, 0.0, 0.95)
+	_card_skill_runtime_bonus.clear()
 
 
 ## v8: 侦察潜入开局计时器递减（_process 调用）
@@ -1077,6 +1225,9 @@ func _physics_process(delta: float) -> void:
 	# v8: 侦察潜入 + 空中突袭计时器递减
 	_update_recon_grace(delta)
 	_update_air_assault(delta)
+	# v8.x: STALKER 潜行计时器递减 + 卡片技能 stat_bonus 消费
+	_update_stalker_grace(delta)
+	_update_card_skill_bonus(delta)
 	# v7.4: 受击闪白/抖动手写动画推进（原 create_tween 改手写计时）
 	_update_hit_animations(delta)
 	move_and_slide()
@@ -1123,6 +1274,9 @@ func _physics_process(delta: float) -> void:
 		if _buff_strip_timer >= 0.25:
 			_buff_strip_timer = 0.0
 			_update_card_grid_buff_strip()
+	# v8.x: ECM 电子战光环（复用 0.2s 节流，与 _ability_accum 同步）
+	if _is_ecm_unit and not is_deploy_ghost and not is_preview_mode:
+		_update_ecm_debuff_aura()
 
 func _apply_continuous_effects(delta: float) -> void:
 	ConstructUnitAI.apply_continuous_effects(self, delta)
@@ -1238,7 +1392,7 @@ func _update_hp_bar() -> void:
 func _refresh_hp_value_label() -> void:
 	if stats == null:
 		return
-	CardGridUnitVisuals.update_hp_label_text(self, hp, stats.max_hp)
+	CardGridUnitVisuals.update_hp_label_text(self, hp, stats.max_hp, shield)
 
 ## v7.x: 低频刷新漂浮 buff/debuff 标签（仅格子战）
 func _refresh_buff_labels() -> void:
@@ -1319,6 +1473,9 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		# v8: 侦察潜入开局——前 15s 受伤 ×0.6（兵种固定机制）
 		if _is_recon_in_grace():
 			hp_loss = hp_loss * RECON_GRACE_DAMAGE_MUL
+		# v8.x: STALKER 潜行——部署后前 4s 受伤 ×0.4（-60%）
+		if _is_stalker_in_grace():
+			hp_loss = hp_loss * STALKER_GRACE_DAMAGE_MUL
 		# v8: 堡垒阵地坚守光环——范围内堡垒庇护 meta 减伤（兵种固定机制）
 		# _apply_fort_shelter_aura 在友方堡垒 on_tick 时挂载此 meta（持续 1s 每 tick 刷新）
 		if has_meta("_fort_shelter_until"):

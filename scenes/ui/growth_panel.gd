@@ -111,6 +111,21 @@ func _bind_nodes() -> void:
 		enhance_btn.text = "◆ 技能树"
 		enhance_btn.tooltip_text = "打开相位师技能树（指挥/智能化/火力/概念武器）"
 
+## v8.x: 更新技能树按钮红点提示（有可用技能点时显示 "●"）
+func _update_skill_tree_badge() -> void:
+	if enhance_btn == null:
+		return
+	if PhaseMasterSkillManager == null:
+		return
+	var avail: int = PhaseMasterSkillManager.get_available_points()
+	if avail > 0:
+		enhance_btn.text = "◆ 技能树 ●%d" % avail
+		# 红点配色（modulate 不影响文字，仅改文字颜色提示）
+		enhance_btn.add_theme_color_override("font_color", Color(1.0, 0.85, 0.30))
+	else:
+		enhance_btn.text = "◆ 技能树"
+		enhance_btn.remove_theme_color_override("font_color")
+
 
 func _connect_signals() -> void:
 	if close_btn:
@@ -201,6 +216,7 @@ func show_panel(card: CardResource) -> void:
 	modulate.a = 0.0
 	scale = Vector2(0.92, 0.92)
 	_load_unlocked_cards()
+	_update_skill_tree_badge()  # v8.x: 刷新技能树按钮红点
 	var tw := create_tween()
 	tw.tween_property(self, "modulate:a", 1.0, _anim_duration).set_trans(Tween.TRANS_SINE)
 	tw.parallel().tween_property(self, "scale", Vector2(1.0, 1.0), _anim_duration).set_trans(Tween.TRANS_BACK)
@@ -925,7 +941,8 @@ func _open_phase_master_skill_panel() -> void:
 
 ## v8.x: 技能树面板关闭回调
 func _on_phase_master_skill_closed() -> void:
-	pass  # 面板自身已 hide，无需额外处理
+	# 面板自身已 hide；关闭后刷新红点（点数可能已变化）
+	_update_skill_tree_badge()
 
 
 func _on_mod_pressed() -> void:

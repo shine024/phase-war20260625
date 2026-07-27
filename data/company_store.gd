@@ -2,7 +2,15 @@ extends RefCounted
 class_name CompanyStore
 
 const _ITEMS_JSON_PATH := "res://data/json/company_store.json"
-static var ITEMS: Array = _load_json_array(_ITEMS_JSON_PATH, LEGACY_ITEMS)
+# v7.x 性能优化：改 getter 懒加载（仿 enemy_phase_masters.gd:50-57）。
+static var _items_cache: Array = []
+static var _items_inited: bool = false
+static var ITEMS: Array:
+	get:
+		if not _items_inited:
+			_items_inited = true
+			_items_cache = _load_json_array(_ITEMS_JSON_PATH, LEGACY_ITEMS)
+		return _items_cache
 
 static func _load_json_array(path: String, fallback: Array) -> Array:
 	if not FileAccess.file_exists(path):

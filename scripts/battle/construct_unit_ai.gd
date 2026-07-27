@@ -417,6 +417,18 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 		return
 	if u.target == null or not is_instance_valid(u.target):
 		return
+	# v8.x: 首击加成检测（SNIPER 必爆 / STALKER ×1.5）
+	# 通过临时 meta 传递给 bullet.gd 的暴击判定路径
+	var _is_first_attack: bool = false
+	if not u._has_made_first_attack:
+		u._has_made_first_attack = true
+		_is_first_attack = true
+	# STALKER 首击伤害 ×1.5
+	if _is_first_attack and u._is_stalker_unit:
+		damage = damage * 1.5
+	# SNIPER 首击必爆：设置临时 meta，bullet.gd 读取并强制暴击
+	if _is_first_attack and u._is_sniper_unit:
+		u.set_meta("_first_attack_force_crit", true)
 	var dist_t := u.global_position.distance_to(u.target.global_position)
 	var miss := false
 	# v7.x: wt 优先读当前槽位 weapon_resource.weapon_type（按目标类型差异化的弹道），

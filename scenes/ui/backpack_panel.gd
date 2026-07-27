@@ -53,15 +53,16 @@ var _filter_sort: BackpackFilterSort = null
 ## v8.0: 背包卡牌独立大卡面尺寸（80x120），不再跟随战场 PhaseSlot.SLOT_SIZE(50x80)。
 ## 战场槽位保持原尺寸，背包用大卡面展示，拖拽对齐由 backpack_card_item_drag 处理。
 ## v9.0: 战斗卡格子改大 96×138（HTML 设计稿），承载更多信息（5星+兵种色块+Lv+战力+EQUIP徽章）
-const CARD_SLOT_MIN: Vector2 = Vector2(96, 138)
+const CARD_SLOT_MIN: Vector2 = Vector2(108, 154)
 ## 背包卡槽上限，与 BackpackData.MAX_CARD_SLOTS 保持单一真相源（统计与 UI 必须一致）
 const MAX_CARD_SLOTS := 50
 ## 与 `backpack_panel.tscn` 中 CardGrid 的 `h_separation` 一致（勿与主题脱节）
 const BACKPACK_GRID_H_SEP := 6
-## v9.0: 7 列 × 96px + 6 × 6px 间距 = 708px，留出滚动条与内边距（原 8 列 80px=642px）
+## v9.3: 面板设计宽（文档性常量；实际面板宽由 backpack_panel.tscn 根节点 custom_minimum_size 1180 决定）
 const BACKPACK_PANEL_DESIGN_WIDTH := 760
-## v9.0: 战斗卡大卡面（96×138）改为 7 列，更突出每张卡 + 容纳 5星+兵种+EQUIP 信息
-const BACKPACK_GRID_COLUMNS: int = 7
+## v9.3: 战斗卡列数下限与回退基准。实际列数由 _compute_combat_grid_columns 按面板可用宽度
+## 动态计算（填满 1180 宽面板，约 9~10 列），避免固定列数导致右侧大片空白。
+const BACKPACK_GRID_COLUMNS: int = 6
 ## v9.0: 改造/符文瓷砖（resource_slot_item 64×96）独立列数（与战斗卡分流）
 const _TILE_GRID_COLUMNS: int = 6
 const _TILE_SLOT_MIN: Vector2 = Vector2(64, 96)
@@ -236,6 +237,11 @@ func _ready() -> void:
 	_setup_toolbar_signals()
 	_refresh_title_bar(TabIndex.COMBAT_CARDS)
 	_rebuild_toolbar_chips(TabIndex.COMBAT_CARDS)
+	# v9.3: 延迟重排所有网格列数（首次 _ready 时父容器 size 可能未定）
+	call_deferred("_reflow_grids_after_layout")
+	# v9.3: 连接各网格父容器（ScrollContainer）的 resized——切 Tab 布局完成时 size 确定会触发，
+	# 自动重排到准确列数，避免首次进入回退 4 列。
+	_connect_grid_scroll_resized()
 
 
 ## v9.2: 应用 Rajdhani 字体到标题栏 + Tab 标题（与养成面板统一设计语言）
@@ -562,7 +568,7 @@ func _rebuild_toolbar_chips(tab_index: int) -> void:
 			_add_filter_chip("空中", "combat_kind", 3, accent, _combat_kind_filter == 3)
 			_add_filter_chip("堡垒", "combat_kind", 4, accent, _combat_kind_filter == 4)
 		TabIndex.INTEL:
-			# 改造：按前缀桶（10 桶）
+			# 改造：按前缀桶（10 桶）。v9.3：去左侧栏后顶部 chips 为唯一分类入口。
 			_add_filter_chip("全部", "mod_bucket", "", accent, _mod_bucket_filter.is_empty())
 			for prefix in _MOD_BUCKETS.keys():
 				var label: String = _MOD_BUCKETS[prefix]
@@ -867,7 +873,8 @@ func _on_tab_changed(tab_index: int) -> void:
 			# 战斗卡标签页切换时刷新（如有需要）
 			_apply_combat_view_filters()
 		TabIndex.INTEL:
-			# 改造标签页切换时刷新
+			# v9.3：直接 refresh；首次切 Tab 若 IntelScroll size 未定会回退 4 列，
+			# 但 resized 信号会在布局完成后自动重排到准确列数（见 _connect_grid_scroll_resized）。
 			refresh_intel_tab()
 		TabIndex.RUNES:
 			# v6.2: 符文标签页刷新（内部会连带刷新右侧信息栏）
@@ -1398,8 +1405,7 @@ func refresh_intel_tab() -> void:
 		_play_tile_enter_animation(item, _mod_idx)
 		_mod_idx += 1
 	_schedule_sync_card_grid_scroll_size_for_grid(_intel_grid)
-	# v9.2: 刷新左侧筛选侧栏（兵种桶 + 装配状态两层）
-	_refresh_mod_sidebar(acquired_blueprints, mod_install_count)
+	# v9.3：左侧栏已折叠（tscn IntelHSplit collapsed=true），分类改用顶部 chips，不再刷新侧栏。
 
 
 ## v9.2: 刷新改造左侧筛选侧栏（对齐 HTML .mods-sidebar）
@@ -2634,18 +2640,77 @@ func _sync_card_grid_scroll_size_for_grid(grid: GridContainer) -> void:
 func _apply_backpack_grid_layout(grid: GridContainer) -> void:
 	if grid == null or not is_instance_valid(grid):
 		return
-	# 战斗卡网格用 BACKPACK_GRID_COLUMNS（7 列大卡面）；
-	# 改造/符文瓷砖网格用 _TILE_GRID_COLUMNS（6 列 64×96 瓷砖）
-	var cols: int = BACKPACK_GRID_COLUMNS
-	var slot_min_w: float = CARD_SLOT_MIN.x
-	if grid != _combat_cards_grid:
-		cols = _TILE_GRID_COLUMNS
-		slot_min_w = _TILE_SLOT_MIN.x
-	grid.columns = cols
 	var sep_h: int = grid.get_theme_constant("h_separation", "GridContainer")
+	# v9.3：战斗卡 + 改造/符文瓷砖都按可用宽度动态算列数，填满面板（避免右侧大片空白）。
+	var slot_min_w: float = CARD_SLOT_MIN.x
+	var min_cols: int = BACKPACK_GRID_COLUMNS
+	var max_cols: int = 14
+	if grid != _combat_cards_grid:
+		slot_min_w = _TILE_SLOT_MIN.x
+		min_cols = 4
+		max_cols = 20
+	# 实际子节点宽（瓷砖含边框可能 > slot_min）——用实际宽避免按 slot_min 算多列、排开超 viewport 溢出
+	var effective_w: float = _effective_slot_width(grid, slot_min_w)
+	var cols: int = _compute_grid_columns(effective_w, sep_h, grid, min_cols, max_cols)
+	# v9.3：EXPAND_FILL 左对齐铺满（固定宽瓷砖/卡片右侧 < 1 列余量不可避免；SHRINK_CENTER 会把余量均分到两侧显得左右都空）
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.columns = cols
 	grid.custom_minimum_size.x = float(
-		cols * int(slot_min_w) + maxi(0, cols - 1) * sep_h
+		cols * int(effective_w) + maxi(0, cols - 1) * sep_h
 	)
+
+
+## v9.3: 取网格第一个可见子节点的实际宽度（瓷砖实际可能 > slot_min）；无子时回退 fallback。
+func _effective_slot_width(grid: GridContainer, fallback: float) -> float:
+	if grid != null and is_instance_valid(grid):
+		for ch in grid.get_children():
+			if ch is Control and (ch as Control).size.x > 1.0:
+				return float((ch as Control).size.x)
+	return fallback
+
+
+## v9.3: 按父容器（ScrollContainer）可用宽度计算一行能容纳的列数——填满且不溢出。
+## 可用宽度 = 父容器宽 - 垂直滚动条实际宽 - 容差；父容器 size 未定时回退最小列数（保守）。
+func _compute_grid_columns(slot_w: float, sep: int, grid: GridContainer, min_cols: int, max_cols: int) -> int:
+	var parent: Node = grid.get_parent() if is_instance_valid(grid) else null
+	if parent is Control and (parent as Control).size.x > 1.0:
+		var avail: float = float((parent as Control).size.x)
+		# 扣垂直滚动条实际宽（瓷砖多时垂直滚动出现，占去内容宽）
+		if parent is ScrollContainer:
+			var vsb: VScrollBar = (parent as ScrollContainer).get_v_scroll_bar()
+			if vsb != null and vsb.is_visible_in_tree():
+				avail -= float(vsb.size.x)
+		avail -= 8.0  # 边距/舍入容差
+		var c: int = floori((avail + float(sep)) / (slot_w + float(sep)))
+		return clampi(c, min_cols, max_cols)
+	# 父容器 size 未定时回退最小列数（保守，绝不按估算算多导致溢出）
+	return min_cols
+
+
+## v9.3: 布局完成后的延迟重排：首次 _ready 时父容器 size 可能未定，此处用实际宽度重算所有网格。
+func _reflow_grids_after_layout() -> void:
+	for g in [_combat_cards_grid, _intel_grid, _runes_grid]:
+		if g != null and is_instance_valid(g):
+			_apply_backpack_grid_layout(g)
+
+
+## v9.3: 连接各网格父容器（ScrollContainer）的 resized 信号——父容器布局完成、size 确定时触发，
+## 自动重排该网格列数。解决首次切 Tab 时 size 跨帧布局未定导致回退 min_cols 的问题。
+func _connect_grid_scroll_resized() -> void:
+	for g in [_combat_cards_grid, _intel_grid, _runes_grid]:
+		if g == null or not is_instance_valid(g):
+			continue
+		var sc: Node = g.get_parent()
+		if sc is Control:
+			var ctrl: Control = sc as Control
+			if not ctrl.resized.is_connected(_on_grid_scroll_resized):
+				ctrl.resized.connect(_on_grid_scroll_resized.bind(g))
+
+
+## v9.3: 网格父容器尺寸变化时重排该网格列数（确保切 Tab 布局完成后列数按实际尺寸准确）。
+func _on_grid_scroll_resized(grid: GridContainer) -> void:
+	if grid != null and is_instance_valid(grid):
+		_apply_backpack_grid_layout(grid)
 
 func _setup_drag_through_support() -> void:
 	# 自定义拖拽系统在 backpack_card_item.gd 中实现

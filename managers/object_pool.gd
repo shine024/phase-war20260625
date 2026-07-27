@@ -29,6 +29,11 @@ class ObjectPool extends Node:
 	var config: PoolConfig
 	var total_created: int = 0  # 总创建数量统计
 	var is_initialized: bool = false
+	## v7.x 性能优化：预热标志。启动时不再 _init 里一次性实例化全部 pool_size 个对象
+	##（注释原意即"战前不预创建"，原代码在 _init 直接 _preload_objects 与注释矛盾）。
+	## 改为首帧 get_object 时小批量预热（PREWARM_BATCH），平滑首战扩容尖峰。
+	var _prewarmed: bool = false
+	const PREWARM_BATCH: int = 20  # 首次取对象时预热的批量上限（剩余靠 auto_expand 按需扩）
 
 	func _init(p_config: PoolConfig):
 		config = p_config
@@ -41,11 +46,15 @@ class ObjectPool extends Node:
 			is_initialized = false  ## 标记初始化失败，阻止池被使用
 			return
 		is_initialized = true
-		# 预创建对象
-		_preload_objects()
+		# v7.x: 不在此处预创建对象（战前不预创建），改由 get_object 首次调用时 _ensure_prewarm 小批量预热
 
-	func _preload_objects():
-		for i in range(config.pool_size):
+	## 首次取对象时小批量预热：建 min(pool_size, PREWARM_BATCH) 个，分摊实例化成本避免单帧尖峰
+	func _ensure_prewarm() -> void:
+		if _prewarmed:
+			return
+		_prewarmed = true
+		var target: int = mini(config.pool_size, PREWARM_BATCH)
+		for i in range(target):
 			var obj = _create_object()
 			if obj:
 				available.append(obj)
@@ -70,6 +79,8 @@ class ObjectPool extends Node:
 		if not is_initialized:
 			push_error("[ObjectPool] 池未正确初始化")
 			return null
+		# v7.x: 首次取对象时小批量预热（启动时已不再预创建）
+		_ensure_prewarm()
 		var obj: Node = null
 		# 从可用池中获取（跳过已释放/无效对象，避免 freed instance 赋值报错）
 		while available.size() > 0 and obj == null:

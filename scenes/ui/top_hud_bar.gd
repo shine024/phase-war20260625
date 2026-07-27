@@ -60,11 +60,12 @@ func _cache_nodes() -> void:
 	_level_label = get_node_or_null("CenterSection/LevelRow/LevelLabel") as Label
 	_wave_label = get_node_or_null("CenterSection/InfoRow/WaveLabel") as Label
 	_time_label = get_node_or_null("CenterSection/InfoRow/TimeLabel") as Label
-	_retreat_btn = get_node_or_null("RetreatBtn") as Button
-	_pause_btn = get_node_or_null("PauseBtn") as Button
-	_speed_btn = get_node_or_null("SpeedBtn") as Button
-	_start_btn = get_node_or_null("StartBtn") as Button
-	_back_btn = get_node_or_null("BackBtn") as Button
+	# v7.x: 5 按钮组从顶栏根节点迁到 RightSection HBoxContainer（右锚，防 1280 以下分辨率按钮掉屏）
+	_retreat_btn = get_node_or_null("RightSection/RetreatBtn") as Button
+	_pause_btn = get_node_or_null("RightSection/PauseBtn") as Button
+	_speed_btn = get_node_or_null("RightSection/SpeedBtn") as Button
+	_start_btn = get_node_or_null("RightSection/StartBtn") as Button
+	_back_btn = get_node_or_null("RightSection/BackBtn") as Button
 
 
 func _connect_signals() -> void:

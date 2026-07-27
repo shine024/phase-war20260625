@@ -168,7 +168,7 @@ anchors_preset = 0
 offset_left = 8.0
 offset_top = 72.0
 offset_right = 180.0
-offset_bottom = 72.0
+offset_bottom = 272.0
 
 [node name="TopCenterAnnouncer" parent="HudLayer" instance=ExtResource("40_battle_announcer")]
 layout_mode = 1

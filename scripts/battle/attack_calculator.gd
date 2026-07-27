@@ -13,6 +13,8 @@ const DEFAULT_ATTACK_SPEED: float = 1.0
 ## 目标轻甲→attack_light, 装甲→attack_armor, 空中→attack_air
 ## v6.6: FORT 目标额外叠加 attack_fort_bonus（对堡垒特攻改造，如温压弹/爆破装置）
 ## v8: LIGHT/AIR 目标叠加兵种固定机制加成（装甲碾压/防空空域封锁）
+## v8.x: 三维攻防系统保持封闭（LIGHT/ARMOR/AIR），新兵种差异化加成走 TAG_COUNTER_RULES 标签层
+##       （由 bullet.gd 调用 compute_tag_counter_multiplier），不在此处扩展。
 static func get_attack_vs(attacker_stats: UnitStats, target_combat_kind: int) -> float:
 	match target_combat_kind:
 		GC.CombatKind.LIGHT: return attacker_stats.attack_light * (1.0 + attacker_stats.attack_light_bonus)  # 轻装 + 装甲碾压
@@ -27,6 +29,7 @@ static func get_attack_vs(attacker_stats: UnitStats, target_combat_kind: int) ->
 ## defense_light = 防轻装单位(LIGHT/SUPPORT)攻击
 ## defense_armor = 防装甲单位(ARMOR/FORT)攻击
 ## defense_air   = 防空中单位(AIR)攻击
+## v8.x: 三维攻防系统保持封闭，不新增 ENGINEER/SNIPER 分支
 static func get_defense_vs(target_stats: UnitStats, attacker_combat_kind: int) -> float:
 	match attacker_combat_kind:
 		GC.CombatKind.LIGHT, GC.CombatKind.SUPPORT: return target_stats.defense_light
@@ -259,6 +262,70 @@ static func calculate_damage_with_weapon(
 	# 直接叠加到 attack_light/armor/air，此处无需再乘倍率。
 
 	return final_damage
+
+## v8.x: 计算标签硬克制的伤害倍率（由 bullet.gd 在伤害结算时调用）
+## attacker_tags: 攻击者标签数组（从 Node._behavior_tags_cached 或 stats meta 读取）
+## target: 目标节点（用于读取 target_tags / target_priority_tag meta / casting meta）
+## 返回 {mult: float, never_miss: bool, ignore_stealth: bool, bypass_damage_reduction: bool}
+static func compute_tag_counter_multiplier(attacker_tags: Array, target: Node) -> Dictionary:
+	var result: Dictionary = {"mult": 1.0, "never_miss": false, "ignore_stealth": false, "bypass_damage_reduction": false}
+	if attacker_tags.is_empty() or target == null or not is_instance_valid(target):
+		return result
+	# 收集目标标签：优先 _behavior_tags_cached，其次 tags 属性，最后 meta target_priority_tag
+	var target_tags: Array = []
+	if "_behavior_tags_cached" in target:
+		var t = target.get("_behavior_tags_cached")
+		if t is Array:
+			target_tags = t
+	if target_tags.is_empty() and "tags" in target:
+		var t2 = target.get("tags")
+		if t2 is Array:
+			target_tags = t2
+	# 高价值目标 meta（boss/master/command）
+	var target_priority_tag: String = ""
+	if target.has_meta("target_priority_tag"):
+		target_priority_tag = String(target.get_meta("target_priority_tag", ""))
+	# 遍历 TAG_COUNTER_RULES，匹配 attacker_tag
+	for rule in GC.TAG_COUNTER_RULES:
+		var atk_tag: String = String(rule.get("attacker_tag", ""))
+		if not attacker_tags.has(atk_tag):
+			continue
+		# 检查目标条件
+		var matched: bool = false
+		# 条件1: target_tags 命中
+		var rule_target_tags: Array = rule.get("target_tags", [])
+		if not rule_target_tags.is_empty():
+			for rtt in rule_target_tags:
+				if target_tags.has(rtt) or target_priority_tag == rtt:
+					matched = true
+					break
+		# 条件2: target_condition（is_casting 等）
+		if not matched:
+			var cond: String = String(rule.get("target_condition", ""))
+			if cond == "is_casting" and target.has_meta("_is_casting"):
+				if bool(target.get_meta("_is_casting", false)):
+					matched = true
+		if not matched:
+			continue
+		# 应用效果
+		var effect: String = String(rule.get("effect", ""))
+		var value: float = float(rule.get("value", 0.0))
+		match effect:
+			"damage_bonus":
+				result["mult"] *= (1.0 + value)
+			"splash_bonus":
+				result["mult"] *= (1.0 + value)
+			"bypass_front", "bypass_damage_reduction":
+				result["bypass_damage_reduction"] = true
+			_:
+				pass
+		# extra 标记
+		var extra: Array = rule.get("extra", [])
+		if extra.has("never_miss"):
+			result["never_miss"] = true
+		if extra.has("ignore_stealth"):
+			result["ignore_stealth"] = true
+	return result
 
 ## 获取槽位武器的攻击计时参数
 static func get_weapon_attack_timing(weapon: WeaponResource) -> Dictionary:

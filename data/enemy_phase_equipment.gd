@@ -12,9 +12,35 @@ const _WEAPONS_JSON_PATH := "res://data/json/enemy_phase_weapons.json"
 const _ENERGY_JSON_PATH := "res://data/json/enemy_phase_energy_cards.json"
 
 # v7.x: PHASE_INSTRUMENTS 移除（统一到 PhaseInstruments 池，get_phase_instrument 委托）
-static var WAR_PLATFORMS: Dictionary = _load_json_dict(_PLATFORMS_JSON_PATH, _EquipmentArmorModules.LEGACY_WAR_PLATFORMS)
-static var WAR_WEAPONS: Dictionary = _load_json_dict(_WEAPONS_JSON_PATH, _EquipmentWeapons.LEGACY_WAR_WEAPONS)
-static var ENERGY_CARDS: Dictionary = _load_json_dict(_ENERGY_JSON_PATH, _EquipmentSpecials.LEGACY_ENERGY_CARDS)
+# v7.x 性能优化：3 个 JSON 改 getter 懒加载（仿 enemy_phase_masters.gd:50-57）。
+# 原 static var 初始化器在类首次被 preload 时即同步读盘解析 3 个 JSON，
+# 触达 preload 链就触发 I/O。改后推迟到首次访问各 static var 时。
+static var _war_platforms_cache: Dictionary = {}
+static var _war_platforms_inited: bool = false
+static var WAR_PLATFORMS: Dictionary:
+	get:
+		if not _war_platforms_inited:
+			_war_platforms_inited = true
+			_war_platforms_cache = _load_json_dict(_PLATFORMS_JSON_PATH, _EquipmentArmorModules.LEGACY_WAR_PLATFORMS)
+		return _war_platforms_cache
+
+static var _war_weapons_cache: Dictionary = {}
+static var _war_weapons_inited: bool = false
+static var WAR_WEAPONS: Dictionary:
+	get:
+		if not _war_weapons_inited:
+			_war_weapons_inited = true
+			_war_weapons_cache = _load_json_dict(_WEAPONS_JSON_PATH, _EquipmentWeapons.LEGACY_WAR_WEAPONS)
+		return _war_weapons_cache
+
+static var _energy_cards_cache: Dictionary = {}
+static var _energy_cards_inited: bool = false
+static var ENERGY_CARDS: Dictionary:
+	get:
+		if not _energy_cards_inited:
+			_energy_cards_inited = true
+			_energy_cards_cache = _load_json_dict(_ENERGY_JSON_PATH, _EquipmentSpecials.LEGACY_ENERGY_CARDS)
+		return _energy_cards_cache
 
 ## 向后兼容：const 别名指向子模块同名 const
 const LEGACY_WAR_PLATFORMS: Dictionary = _EquipmentArmorModules.LEGACY_WAR_PLATFORMS

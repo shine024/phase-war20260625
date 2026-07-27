@@ -151,6 +151,7 @@ func grant_rewards(result: Dictionary) -> void:
 	# 注意：generate_battle_drops 会覆盖 pending_drops（pending_drops = drops），
 	# 故必须累加返回的 Array，最后一次性塞回 pending 再 claim，否则只保留最后一场。
 	# 不做放大（少生成 = 少掉落，保守）。离线掉落本就是额外福利。
+	ManagerLazyLoader.ensure_loaded("drop")  # v7.x: DropManager 已改懒加载
 	var dm: Node = _get_node("/root/DropManager")
 	if dm == null or not dm.has_method("generate_battle_drops"):
 		return
@@ -219,6 +220,7 @@ func _estimate_battles_per_hour(level: int) -> float:
 ## battles 参数已由调用方 clamp 到 DROP_SIM_MAX_BATTLES，故此处的抽样放大直接覆盖
 ## 全部 battles 场，与 grant_rewards 的实际生成量一致，杜绝"预估远大于实际"的误导。
 func _estimate_drop_count(era: int, level: int, battles: int) -> int:
+	ManagerLazyLoader.ensure_loaded("drop")  # v7.x: DropManager 已改懒加载
 	var dm: Node = _get_node("/root/DropManager")
 	if dm == null or not dm.has_method("generate_battle_drops"):
 		return 0

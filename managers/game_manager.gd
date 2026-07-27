@@ -583,6 +583,7 @@ func _on_battle_ended(player_won: bool) -> void:
 		var afk_mgr = main_scene._afk_manager if (main_scene != null and "_afk_manager" in main_scene) else null
 		if afk_mgr != null and afk_mgr.has_method("accumulate_pending_drops"):
 			afk_mgr.accumulate_pending_drops()
+		ManagerLazyLoader.ensure_loaded("drop")  # v7.x: DropManager 已改懒加载
 		var dm_afk: Node = get_node_or_null("/root/DropManager")
 		if dm_afk != null and dm_afk.has_method("claim_drops"):
 			dm_afk.claim_drops()
@@ -610,6 +611,7 @@ func _on_battle_ended(player_won: bool) -> void:
 		else:
 			main_scene.call_deferred("show_battle_result", player_won)
 	elif player_won:
+		ManagerLazyLoader.ensure_loaded("drop")  # v7.x: DropManager 已改懒加载
 		var dm_fallback: Node = get_node_or_null("/root/DropManager")
 		if dm_fallback != null and dm_fallback.has_method("get_pending_drops_count") and dm_fallback.has_method("claim_drops"):
 			if dm_fallback.get_pending_drops_count() > 0:

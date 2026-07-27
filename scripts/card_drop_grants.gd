@@ -24,6 +24,9 @@ static func _get_blueprint_manager() -> Node:
 
 
 static func _get_drop_manager() -> Node:
+	# v7.x: DropManager 已改懒加载，统一在此 ensure（所有调用方一次性受益）
+	if ManagerLazyLoader and ManagerLazyLoader.has_method("ensure_loaded"):
+		ManagerLazyLoader.ensure_loaded("drop")
 	var loop := Engine.get_main_loop()
 	if loop is SceneTree:
 		var tree: SceneTree = loop as SceneTree

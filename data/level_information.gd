@@ -588,8 +588,7 @@ func _apply_special_rules() -> void:
 	# ─── 现代时代（61-80）───
 	# 第65关：能量减半 + 回复减半（双压）
 	_set_rules(65, {"energy_mult": 0.5, "energy_regen_mult": 0.5})
-	# 第70关：部署上限3（精锐小队作战）
-	_set_rules(70, {"deploy_limit": 3})
+	# 第70关：原部署上限3已移除（不再限制单位数量）
 	# 第80关 Boss：坚守14波 + 能量减半
 	_set_rules(80, {"win_type": "survive_waves", "win_param": 14, "energy_mult": 0.5})
 

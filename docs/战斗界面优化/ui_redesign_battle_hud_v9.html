@@ -79,6 +79,7 @@ body{background:#05070b;display:flex;align-items:center;justify-content:center;m
 .hp-value{font:600 11px var(--num);text-align:center;margin-top:3px;text-shadow:0 1px 2px #000}
 .unit.friendly .hp-value{color:#a5f3fc}
 .unit.enemy .hp-value{color:#fca5a5}
+.hp-value .shield{color:#7dd3fc;margin-left:4px}
 /* 选中金描边 */
 .unit.selected .unit-face{border-color:var(--amber);box-shadow:0 0 12px rgba(251,191,24,.5)}
 /* 漂浮 buff/debuff 标签（卡顶上方一行） */
@@ -118,7 +119,7 @@ body{background:#05070b;display:flex;align-items:center;justify-content:center;m
     <div class="unit friendly selected" style="left:420px;bottom:200px">
       <div class="buff-row"><span class="buff-tag crit">暴击眼</span></div>
       <div class="unit-face">🚀<div class="level-badge">Lv8</div></div>
-      <div class="hp-value">2880/3000</div>
+      <div class="hp-value">2880/3000<span class="shield">+1200</span></div>
     </div>
     <div class="unit friendly" style="left:520px;bottom:200px">
       <div class="buff-row"><span class="buff-tag mark">标记</span></div>

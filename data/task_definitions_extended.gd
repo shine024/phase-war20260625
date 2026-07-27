@@ -442,8 +442,25 @@ const LEGACY_EXTENDED_TASKS = {
 }
 
 ## 运行时合并缓存（从 JSON 加载，失败回退 LEGACY 表）
-static var OBJECTIVE_TYPES: Dictionary = _load_json_dict(_OBJECTIVES_JSON_PATH, LEGACY_OBJECTIVE_TYPES)
-static var EXTENDED_TASKS: Dictionary = _load_json_dict(_TASKS_JSON_PATH, LEGACY_EXTENDED_TASKS)
+# v7.x 性能优化：改 getter 懒加载（仿 enemy_phase_masters.gd:50-57）。
+# 原 static var 初始化器在类首次被 preload 时即同步读盘解析 JSON。
+static var _objective_types_cache: Dictionary = {}
+static var _objective_types_inited: bool = false
+static var OBJECTIVE_TYPES: Dictionary:
+	get:
+		if not _objective_types_inited:
+			_objective_types_inited = true
+			_objective_types_cache = _load_json_dict(_OBJECTIVES_JSON_PATH, LEGACY_OBJECTIVE_TYPES)
+		return _objective_types_cache
+
+static var _extended_tasks_cache: Dictionary = {}
+static var _extended_tasks_inited: bool = false
+static var EXTENDED_TASKS: Dictionary:
+	get:
+		if not _extended_tasks_inited:
+			_extended_tasks_inited = true
+			_extended_tasks_cache = _load_json_dict(_TASKS_JSON_PATH, LEGACY_EXTENDED_TASKS)
+		return _extended_tasks_cache
 
 ## 从 JSON 加载字典；schema 不匹配或文件缺失时回退到 fallback
 static func _load_json_dict(path: String, fallback: Dictionary) -> Dictionary:

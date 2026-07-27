@@ -79,19 +79,21 @@ func _initialize() -> void:
 	if restrict15.has(1):
 		fail.call("装甲(1)不应在白名单")
 
-	# ══════════ 第70关：部署上限3 ══════════
-	print("=== 第70关: 部署上限3 ===")
+	# ══════════ 第70关：部署上限已移除（不限单位数量）══════════
+	print("=== 第70关: 部署上限已移除 ===")
 	var r70: Dictionary = li.get_special_rules(70)
 	var dl70: int = int(r70.get("deploy_limit", 0))
-	print("  deploy_limit=%d (期望 3)" % dl70)
-	if dl70 != 3:
-		fail.call("第70关 deploy_limit 应 3")
-	# 上限叠加：mini(6, 3) = 3
+	print("  deploy_limit=%d (期望 0，无限制)" % dl70)
+	if dl70 != 0:
+		fail.call("第70关 deploy_limit 应已移除（0），实际 %d" % dl70)
+	# 无 deploy_limit：max_units 不被关卡限制，保持基础值 6
 	var base_max_units: int = 6
-	var final_max: int = mini(base_max_units, dl70)
-	print("  mini(6, 3) = %d (期望 3)" % final_max)
-	if final_max != 3:
-		fail.call("部署上限叠加应 3，实际 %d" % final_max)
+	var final_max: int = base_max_units
+	if dl70 > 0:
+		final_max = mini(final_max, dl70)
+	print("  无 deploy_limit 时 max_units 保持 %d (期望 6)" % final_max)
+	if final_max != 6:
+		fail.call("第70关无 deploy_limit，max_units 应保持 6，实际 %d" % final_max)
 
 	# ══════════ 第100关：多重规则 ══════════
 	print("=== 第100关: 终局多重规则 ===")
@@ -179,16 +181,16 @@ func _initialize() -> void:
 	# ══════════ 运行时：deploy_limit 三者取 mini ══════════
 	print("=== 运行时: deploy_limit 与相位仪上限/槽位数取 mini ===")
 	# 模拟 request_player_deploy: max_units = mini(相位仪上限, 槽位数, deploy_limit)
-	# 第70关 deploy_limit=3, 相位仪6槽, 格子5 → mini(6,5,3)=3
+	# 第70关 deploy_limit 已移除，相位仪6槽, 格子5 → mini(6,5)=5
 	var pi_cap: int = 6
 	var grid_slots: int = 5
 	var dl_70: int = int(li.get_special_rules(70).get("deploy_limit", 0))
 	var final_cap_70: int = mini(pi_cap, grid_slots)
 	if dl_70 > 0:
 		final_cap_70 = mini(final_cap_70, dl_70)
-	print("  mini(6, 5, 3) = %d (期望 3)" % final_cap_70)
-	if final_cap_70 != 3:
-		fail.call("deploy_limit 应参与 mini 叠加得 3")
+	print("  mini(6, 5, 无) = %d (期望 5)" % final_cap_70)
+	if final_cap_70 != 5:
+		fail.call("第70关无 deploy_limit，应 mini(6,5)=5，实际 %d" % final_cap_70)
 	# 普通关（无 deploy_limit）：deploy_limit=0 时不改变 max_units
 	var dl_normal: int = int(li.get_special_rules(7).get("deploy_limit", 0))
 	var final_cap_normal: int = mini(pi_cap, grid_slots)

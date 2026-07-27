@@ -684,6 +684,7 @@ func save_game() -> bool:
 	_collect_manager_state(data, "/root/FactionSystemManager", SK_FACTION_SYSTEM)
 	_collect_manager_state(data, "/root/AffixManager", SK_AFFIX_DATA)
 	_collect_manager_state(data, "/root/LevelProgressManager", SK_LEVEL_PROGRESS)
+	ManagerLazyLoader.ensure_loaded("drop")  # v7.x: DropManager 已改懒加载，存档前确保存在
 	_collect_manager_state(data, "/root/DropManager", SK_DROP_MANAGER)
 	_collect_manager_state(data, "/root/IntelItemBag", SK_INTEL_ITEM_BAG)
 	# v6.6: 情报手册（critical，战斗实时查询）
@@ -1142,6 +1143,7 @@ func start_ng_plus() -> void:
 	if dc and dc.has_method("reset_for_new_loop"):
 		dc.reset_for_new_loop()
 	# v6.6(剧情): 新周目重置剧情奖励倍率（倒计时×3 不应跨周目继承）
+	ManagerLazyLoader.ensure_loaded("drop")  # v7.x: DropManager 已改懒加载
 	var dm: Node = get_node_or_null("/root/DropManager")
 	if dm and dm.has_method("reset_multiplier"):
 		dm.reset_multiplier()

@@ -25,6 +25,9 @@ var phase_instrument: Node = null
 # ---- 子系统 ----
 var _spawn_system: RefCounted = null  ## BattleSpawnSystem
 var _damage_system: RefCounted = null  ## BattleDamageSystem
+# v8.x: 战法检测器 + 卡片定时技能引擎
+var _tactic_detector: RefCounted = null  ## TacticDetector
+var _card_skill_engine: RefCounted = null  ## CardPeriodicSkillEngine
 
 # ---- 性能优化：空间分区系统 ----
 var spatial_grid: Node = null  ## SpatialGrid 实例
@@ -85,6 +88,24 @@ func _ready() -> void:
 	_spawn_system = SpawnSystemScript.new()
 	_damage_system = DamageSystemScript.new()
 
+	# v8.x: 初始化战法检测器 + 卡片定时技能引擎
+	const TacticDetectorScript = preload("res://scripts/battle/tactic_detector.gd")
+	const CardSkillEngineScript = preload("res://managers/battle/card_periodic_skill_engine.gd")
+	_tactic_detector = TacticDetectorScript.new()
+	_card_skill_engine = CardSkillEngineScript.new()
+	var skill_mgr: Node = get_node_or_null("/root/PhaseMasterSkillManager")
+	_tactic_detector.setup({
+		"player_units_node": null,  # 战斗开始后更新
+		"skill_manager": skill_mgr,
+		"card_skill_engine": _card_skill_engine,
+	})
+	_card_skill_engine.setup({
+		"player_units_node": null,  # 战斗开始后更新
+		"enemy_units_node": null,
+		"skill_manager": skill_mgr,
+		"battlefield": null,
+	})
+
 	_spawn_system.setup({
 		"energy_manager": energy_manager,
 		"phase_instrument": phase_instrument,
@@ -120,6 +141,11 @@ func _process(delta: float) -> void:
 	# v7.x: 驱动相位仪主动能力（owner-aware 单引擎，内部同时驱动玩家+敌方）
 	# 必须在 _is_phase_master_battle 短路之前调用，否则相位师战不会驱动敌方能力
 	PhaseInstrumentAbilities.update(delta)
+	# v8.x: 驱动卡片定时技能引擎 + 战法检测器（同样在短路前调用，确保两套战斗都生效）
+	if _card_skill_engine != null:
+		_card_skill_engine.update(delta)
+	if _tactic_detector != null:
+		_tactic_detector.update(delta)
 
 	# 相位师战斗：不执行波次逻辑
 	if _is_phase_master_battle:
@@ -250,6 +276,20 @@ func start_battle(battle_scene: Node) -> void:
 	player_units_node = _spawn_system.get_player_units_node()
 	enemy_units_node = _spawn_system.get_enemy_units_node()
 	_damage_system.set_player_units_node(player_units_node)
+	# v8.x: 同步 player/enemy_units_node 到战法检测器 + 卡片技能引擎
+	if _tactic_detector != null:
+		_tactic_detector.setup({
+			"player_units_node": player_units_node,
+			"skill_manager": get_node_or_null("/root/PhaseMasterSkillManager"),
+			"card_skill_engine": _card_skill_engine,
+		})
+	if _card_skill_engine != null:
+		_card_skill_engine.setup({
+			"player_units_node": player_units_node,
+			"enemy_units_node": enemy_units_node,
+			"skill_manager": get_node_or_null("/root/PhaseMasterSkillManager"),
+			"battlefield": battlefield,
+		})
 
 	# 如果是相位师对战，生成敌方相位场基地
 	if _is_phase_master_battle and not _phase_master_config.is_empty():
@@ -289,6 +329,9 @@ func start_battle(battle_scene: Node) -> void:
 		PerformanceMetricsManager.begin_battle_sampling()
 	# v6.6: 触发相位仪主动特殊能力（酸雨/能量罩等开局能力）
 	PhaseInstrumentAbilities.on_battle_start(PhaseInstrumentManager, battle_scene, PhaseInstrumentAbilities.Owner.PLAYER)
+	# v8.x: 启动卡片定时技能引擎（从 PhaseMasterSkillManager 读取已解锁 card_skill）
+	if _card_skill_engine != null:
+		_card_skill_engine.on_battle_start()
 
 	call_deferred("_deferred_refresh_card_grid_hud")
 
@@ -305,6 +348,11 @@ func end_battle(player_won: bool) -> void:
 	CombatFeedback.reset_throttle()
 	# v7.x: 重置相位仪主动能力状态（owner-aware 单引擎，内部清双 owner）
 	PhaseInstrumentAbilities.reset_state()
+	# v8.x: 重置卡片定时技能引擎 + 战法检测器
+	if _card_skill_engine != null:
+		_card_skill_engine.reset()
+	if _tactic_detector != null:
+		_tactic_detector.reset()
 	# v6.7: 清空相位师排名星级缓存（恢复 3★ 基准，避免影响下一场战斗）
 	if PhaseInstrumentManager and PhaseInstrumentManager.has_method("clear_rank_cache"):
 		PhaseInstrumentManager.clear_rank_cache()

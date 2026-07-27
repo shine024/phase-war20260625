@@ -793,6 +793,10 @@ func _on_hit(primary: Node2D) -> void:
 		var _ca_expire: float = float(shooter.get_meta("_command_aura_until", 0.0))
 		if Time.get_ticks_msec() / 1000.0 < _ca_expire:
 			effective_crit += float(shooter.get_meta("_command_aura_bonus", 0.0))
+	# v8.x: SNIPER 首击必爆——射手首次攻击强制暴击（meta 由 construct_unit_ai.do_attack_with_damage 设置）
+	if is_instance_valid(shooter) and shooter.has_meta("_first_attack_force_crit"):
+		effective_crit = 1.0  # 强制 100% 暴击
+		shooter.remove_meta("_first_attack_force_crit")  # 一次性消费
 	if effective_crit > 0.0 and randf() < effective_crit:
 		is_crit = true
 		final_damage *= (1.5 + shooter_stats.crit_damage_bonus)
@@ -813,6 +817,27 @@ func _on_hit(primary: Node2D) -> void:
 		)
 	final_damage += ability_result["damage_bonus"]
 	final_damage *= (1.0 + ability_result["damage_mult_bonus"])
+	# v8.x: 标签硬克制加成（SNIPER 打 Boss +50%、STEALTH 打指挥 +30%、FORT 对空 +40% 等）
+	if is_instance_valid(shooter) and primary != null:
+		var _atk_tags: Array = []
+		if "_behavior_tags_cached" in shooter:
+			var _st = shooter.get("_behavior_tags_cached")
+			if _st is Array:
+				_atk_tags = _st
+		# 兼容 construct_unit：读 stats meta 的 is_stalker/is_sniper 等转成标签
+		if _atk_tags.is_empty() and "stats" in shooter and shooter.stats != null:
+			if shooter.stats.has_meta("is_sniper") and bool(shooter.stats.get_meta("is_sniper", false)):
+				_atk_tags.append("sniper")
+			if shooter.stats.has_meta("is_stalker") and bool(shooter.stats.get_meta("is_stalker", false)):
+				_atk_tags.append("stalker")
+				_atk_tags.append("stealth")
+			if shooter.stats.has_meta("is_ecm") and bool(shooter.stats.get_meta("is_ecm", false)):
+				_atk_tags.append("ecm")
+			if shooter.stats.has_meta("is_engineer") and bool(shooter.stats.get_meta("is_engineer", false)):
+				_atk_tags.append("engineer")
+		if not _atk_tags.is_empty():
+			var _tag_result: Dictionary = AttackCalculator.compute_tag_counter_multiplier(_atk_tags, primary)
+			final_damage *= float(_tag_result.get("mult", 1.0))
 
 	# 范围伤害
 	if explosion_radius > 0.0:

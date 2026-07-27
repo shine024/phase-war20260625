@@ -27,6 +27,9 @@ static func build_stats_from_card(card: CardResource, era_override: int = -1) ->
 	stats.unit_subtype = card.unit_subtype  # v6.2: 透传子类标记
 	stats.weapon_label = card.weapon_label
 	stats.card_id = card.card_id
+	# v8.x: 复制卡牌 tags 到 stats meta，供 _apply_v8_unit_type_meta 读取
+	# （修复原 bug：_apply_v8_unit_type_meta 读 stats.has_meta("card_tags") 但从未写入）
+	stats.set_meta("card_tags", card.tags.duplicate() if card.tags is Array else [])
 
 	# 基础数值直接从卡牌读取
 	stats.max_hp = card.base_hp
@@ -642,6 +645,45 @@ static func apply_combat_kind_modifiers(stats: UnitStats) -> void:
 		# ── v8 兵种固定机制：空中突袭击速 ──
 		# 前 10s 攻速 ×1.5（标记给 construct_unit 运行时处理，避免此处改 attack_interval 被撤销逻辑覆盖）
 		stats.set_meta("is_air_assault", true)
+
+	# ── v8.x 新兵种机制 meta 标记 ──
+	# ENGINEER(5)/SNIPER(6) 是新 CombatKind 值，归入 LIGHT 主类的运行时行为，
+	# 但通过 meta 标记让 construct_unit 走独立的兵种机制分支。
+	# 标记来源优先级：① 卡牌 tags 字段含 stalker/engineer/ecm/sniper → ② card_id 前缀匹配
+	# 注意：这里只打标记，实际机制（隐身/首击/光环）由 construct_unit._init_unit_mechanisms 读取 meta 实现
+	_apply_v8_unit_type_meta(stats)
+
+
+## v8.x: 根据卡牌 tags 或 card_id 前缀，为新兵种（STALKER/ENGINEER/ECM/SNIPER）打 meta 标记
+## 供 construct_unit._init_unit_mechanisms 读取并初始化运行时机制
+static func _apply_v8_unit_type_meta(stats: UnitStats) -> void:
+	if stats == null:
+		return
+	# 收集卡牌 tags（CardResource.tags 在 build_stats_from_card 时未复制到 UnitStats，
+	# 这里从 stats.card_id 反查或读 meta "card_tags"）
+	var card_tags: Array = []
+	if stats.has_meta("card_tags"):
+		var t = stats.get_meta("card_tags")
+		if t is Array:
+			card_tags = t
+	# card_id 前缀推断（兜底：无 tags 时按命名约定）
+	var cid: String = stats.card_id.to_lower()
+	# STALKER：渗透者（隐身 + 首击×1.5）
+	if "stalker" in card_tags or cid.find("stalker") >= 0 or cid.find("stealth") >= 0 \
+	   or cid.find("spectre") >= 0 or cid.find("recon") >= 0:
+		stats.set_meta("is_stalker", true)
+	# ENGINEER：工程师（卡片技能触发源 + 打断施法）
+	if "engineer" in card_tags or cid.find("engineer") >= 0 or cid.find("support") >= 0 \
+	   or cid.find("combat_eng") >= 0:
+		stats.set_meta("is_engineer", true)
+	# ECM：电子战（光环减益）
+	if "ecm" in card_tags or cid.find("ecm") >= 0 or cid.find("drone") >= 0 \
+	   or cid.find("jammer") >= 0:
+		stats.set_meta("is_ecm", true)
+	# SNIPER：狙击手（首击必爆 + 锁 Boss）
+	if "sniper" in card_tags or cid.find("sniper") >= 0 or cid.find("marksman") >= 0 \
+	   or cid.find("spetsnaz") >= 0:
+		stats.set_meta("is_sniper", true)
 
 
 # ─────────────────────────────────────────────
