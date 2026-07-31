@@ -46,7 +46,7 @@ const DATA: Dictionary = {
 	"gen_03_camouflage" = {
 		id = GEN_03_CAMOUFLAGE, name = "伪装迷彩", name_en = "Camouflage Pattern",
 		icon = "res://assets/ui/icons/mod_icons/mod_stealth.png",
-		prototype = "多地形迷彩", description = "降低被发现概率",
+		prototype = "多地形迷彩", description = "伪装迷彩，闪避+20%",
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 70, cost_install = 35,
 		slot_type = "stealth", conflict_group = "stealth",
@@ -79,7 +79,7 @@ const DATA: Dictionary = {
 	"gen_06_laser_designator" = {
 		id = GEN_06_LASER_DESIGNATOR, name = "激光指示器", name_en = "Laser Designator",
 		icon = "res://assets/ui/icons/mod_icons/mod_designator.png",
-		prototype = "激光目标指示器", description = "周围炮兵命中提升",
+		prototype = "激光目标指示器", description = "激光指示，对装甲伤害+10%",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 180, cost_install = 90,
 		slot_type = "designator", conflict_group = "designator",
@@ -101,7 +101,7 @@ const DATA: Dictionary = {
 	"gen_08_nbc_protection" = {
 		id = GEN_08_NBC_PROTECTION, name = "三防系统", name_en = "NBC Protection",
 		icon = "res://assets/ui/icons/mod_icons/mod_protection.png",
-		prototype = "核生化防护", description = "免疫生化攻击",
+		prototype = "核生化防护", description = "三防系统，减伤+30%",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 300, cost_install = 150,
 		slot_type = "protection", conflict_group = "protection",
@@ -210,6 +210,25 @@ const DATA: Dictionary = {
 			applicable_types = [0, 1, 2, 3, 4],
 			effects = {laser_marker = true},
 			unlock_conditions = {required_level = 5}
+		},
+
+		# ─── v8.6 现实/科幻伤害类型（通用）───
+		"gen_16_emp_pulse" = {
+			id = "gen_16_emp_pulse",
+			name = "电磁脉冲装置",
+			name_en = "EMP Pulse Device",
+			icon = "res://assets/ui/icons/mod_icons/mod_electronic.png",
+			prototype = "车载电磁脉冲发生器",
+			description = "攻击35%概率释放电磁脉冲：目标攻速-30%、暴击-20%、闪避-15%（4秒），并造成10点真实伤害（蓝色电弧）",
+			rarity = "epic",
+			power_mult = 1.5,
+			cost_research = 300,
+			cost_install = 150,
+			slot_type = "electronic",
+			conflict_group = "electronic",
+			applicable_types = [0, 1, 2, 3, 4],
+			effects = {emp_chance = 0.35, emp_true_damage = 10.0},
+			unlock_conditions = {required_level = 4}
 		},
 }
 

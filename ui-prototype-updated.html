@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PHASE WAR · 改造面板 - 优化版</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+    --bg: #0a0e1a;
+    --panel: #0f1422;
+    --border: #1a2535;
+    --cyan: #00e5ff;
+    --cyan-dim: #00b8d4;
+    --text: #c8d0dc;
+    --text-dim: #6b7a8d;
+    --green: #00e676;
+    --purple: #b388ff;
+    --red: #ff5252;
+    --yellow: #ffd740;
+    --orange: #ffab40;
+}
+body { 
+    background:var(--bg); 
+    color:var(--text); 
+    font-family:'Microsoft YaHei','Segoe UI',sans-serif; 
+    font-size:14px;
+    height:100vh; 
+    display:flex; 
+    flex-direction:column; 
+    overflow:hidden;
+}
+
+/* ===== 顶部栏 ===== */
+.topbar { 
+    background:#080c16; 
+    border-bottom:2px solid var(--cyan);
+    padding:10px 24px; 
+    display:flex; 
+    align-items:center; 
+    min-height:50px;
+}
+.topbar-left { display:flex; align-items:center; gap:12px; }
+.diamond { width:12px; height:12px; background:var(--cyan); transform:rotate(45px); }
+.topbar-title { font-size:15px; color:var(--text); letter-spacing:2px; font-weight:bold; }
+.topbar-sub { font-size:13px; color:var(--text-dim); margin-left:8px; opacity:0.8; }
+.topbar-right { font-size:13px; color:var(--text-dim); margin-left:auto; letter-spacing:1px; }
+
+/* ===== 主布局 ===== */
+.main { flex:1; display:flex; overflow:hidden; }
+
+/* ===== 左侧：单位选择列（加宽到 280px）===== */
+.left { 
+    width:280px; 
+    border-right:2px solid var(--border); 
+    display:flex; 
+    flex-direction:column; 
+    background:var(--panel); 
+}
+.left-header { padding:16px 16px 12px; border-bottom:2px solid var(--border); }
+.left-header .icon { color:var(--cyan); font-size:20px; margin-right:8px; }
+.left-header .zh { font-size:18px; font-weight:bold; color:#fff; letter-spacing:1px; }
+.left-header .en { font-size:11px; color:var(--text-dim); letter-spacing:2px; margin-top:3px; }
+
+.resources { display:flex; gap:16px; padding:12px 16px; border-bottom:1px solid var(--border); font-size:13px; }
+.resources .label { color:var(--text-dim); }
+.resources .val { color:var(--cyan); font-weight:bold; font-size:15px; }
+.resources .val2 { color:#fff; font-weight:bold; font-size:15px; }
+
+.unit-header { padding:12px 16px; border-bottom:1px solid var(--border); }
+.unit-header .title { font-size:14px; color:var(--cyan); font-weight:bold; }
+.unit-header .count { font-size:11px; color:var(--text-dim); float:right; }
+
+.filters { display:flex; gap:0; border-bottom:1px solid var(--border); }
+.filters button { flex:1; padding:8px; background:none; border:none; border-bottom:3px solid transparent; color:var(--text-dim); font-size:12px; cursor:pointer; transition:.2s; font-weight:500; }
+.filters button.active { color:var(--cyan); border-bottom-color:var(--cyan); }
+.filters button:hover { color:var(--text); }
+
+.unit-list { flex:1; overflow-y:auto; }
+.unit-item { display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid var(--border); cursor:pointer; transition:.15s; font-size:13px; }
+.unit-item:hover, .unit-item.active { background:rgba(0,229,255,.08); }
+.unit-icon { width:36px; height:36px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; font-weight:bold; }
+.unit-icon.purple { background:rgba(179,136,255,.15); color:var(--purple); }
+.unit-icon.blue { background:rgba(0,229,255,.12); color:var(--cyan); }
+.unit-icon.red { background:rgba(255,82,82,.15); color:var(--red); }
+.unit-icon.yellow { background:rgba(255,215,64,.12); color:var(--yellow); }
+.unit-icon.green { background:rgba(0,230,118,.12); color:var(--green); }
+.unit-info { flex:1; min-width:0; }
+.unit-name { font-size:14px; color:#fff; white-space:normal; word-break:break-word; line-height:1.3; }
+.unit-meta { font-size:11px; color:var(--text-dim); margin-top:2px; }
+.mod-info .mod-name { font-size:14px; color:#fff; margin-bottom:3px; white-space:normal; word-break:break-word; line-height:1.3; }
+.overview .unit-detail .name { font-size:15px; font-weight:bold; color:#fff; margin-bottom:3px; white-space:normal; word-break:break-word; }
+.inst-mod .info .name { font-size:13px; color:#fff; margin-bottom:2px; white-space:normal; word-break:break-word; }
+.badge-grunt { background:rgba(0,230,118,.15); color:var(--green); border:1px solid rgba(0,230,118,.4); }
+.badge-elite { background:rgba(0,229,255,.15); color:var(--cyan); border:1px solid rgba(0,229,255,.4); }
+.badge-veteran { background:rgba(255,171,64,.15); color:var(--orange); border:1px solid rgba(255,171,64,.4); }
+
+/* ===== 中间：模块库列（适度缩窄）===== */
+.center { flex:2; display:flex; flex-direction:column; overflow:hidden; min-width:0; }
+
+.unit-bar { display:flex; align-items:center; gap:14px; padding:14px 20px; border-bottom:2px solid var(--border); background:var(--panel); }
+.unit-bar .icon { width:32px; height:32px; background:rgba(179,136,255,.18); border-radius:6px; display:flex; align-items:center; justify-content:center; color:var(--purple); font-size:16px; flex-shrink:0; }
+.unit-bar .name { font-size:16px; font-weight:bold; color:#fff; white-space:nowrap; }
+.unit-bar .code { font-size:12px; color:var(--text-dim); margin-left:6px; font-family:monospace; }
+.unit-bar .tags { display:flex; gap:6px; margin-left:8px; }
+.unit-bar .tag { font-size:11px; color:var(--text-dim); background:rgba(0,229,255,.08); padding:2px 8px; border-radius:4px; border:1px solid rgba(0,229,255,.15); }
+.unit-bar .right-info { margin-left:auto; text-align:right; }
+.unit-bar .rank { font-size:12px; color:var(--text-dim); }
+.unit-bar .rank b { color:#fff; font-size:15px; }
+
+.slot-section { padding:16px 20px 12px; }
+.slot-section .label { font-size:12px; color:var(--cyan); margin-bottom:10px; font-weight:500; }
+.slots { display:flex; gap:8px; flex-wrap:wrap; }
+.slot { width:56px; height:56px; border:2px solid var(--border); border-radius:8px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:13px; cursor:pointer; transition:.2s; position:relative; background:rgba(15,20,34,0.5); }
+.slot.filled { border-color:var(--cyan-dim); background:rgba(0,229,255,.08); }
+.slot.filled .s-name { color:var(--cyan); font-weight:bold; }
+.slot.filled .s-lv { color:var(--text-dim); font-size:10px; }
+.slot.empty { border-style:dashed; color:var(--text-dim); font-size:20px; }
+.slot.empty:hover { border-color:var(--cyan-dim); color:var(--cyan); background:rgba(0,229,255,.05); }
+
+.module-section { flex:1; padding:12px 20px 16px; overflow-y:auto; border-top:1px solid var(--border); }
+.module-section .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+.module-section .title { font-size:13px; color:var(--cyan); font-weight:bold; }
+.module-section .sub { font-size:11px; color:var(--text-dim); }
+
+.mod-list { display:flex; flex-direction:column; gap:8px; }
+.mod-item { display:flex; align-items:center; gap:12px; padding:12px 14px; border:2px solid var(--border); border-radius:8px; cursor:pointer; transition:.15s; background:var(--panel); font-size:13px; }
+.mod-item:hover { border-color:var(--cyan-dim); background:rgba(0,229,255,.04); transform:translateX(4px); }
+.mod-item.installed { border-color:var(--cyan-dim); background:rgba(0,229,255,.06); }
+.mod-icon { width:40px; height:40px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:bold; flex-shrink:0; }
+.mod-icon.epic { background:rgba(179,136,255,.18); color:var(--purple); }
+.mod-icon.legend { background:rgba(255,171,64,.18); color:var(--orange); }
+.mod-icon.rare { background:rgba(0,229,255,.15); color:var(--cyan); }
+.mod-info { flex:1; min-width:0; }
+
+.mod-rarity { font-size:9px; padding:1px 6px; border-radius:4px; margin-left:6px; font-weight:bold; vertical-align:middle; }
+.rarity-epic { background:rgba(179,136,255,.25); color:var(--purple); }
+.rarity-leg { background:rgba(255,171,64,.25); color:var(--orange); }
+.rarity-rare { background:rgba(0,229,255,.2); color:var(--cyan); }
+.mod-desc { font-size:11px; color:var(--text-dim); line-height:1.4; }
+.mod-desc b { color:var(--cyan); font-weight:500; }
+.mod-status { font-size:11px; flex-shrink:0; width:70px; text-align:right; }
+.mod-status.can { color:var(--green); }
+.mod-status.inst { color:var(--cyan); }
+.mod-status.locked { color:var(--text-dim); opacity:0.5; }
+.mod-status.conflict { color:var(--red); }
+
+/* ===== 右侧：属性卡列（加宽到 320px）===== */
+.right { width:320px; border-left:2px solid var(--border); display:flex; flex-direction:column; background:var(--panel); }
+.right-tabs { display:flex; border-bottom:2px solid var(--border); }
+.right-tabs button { flex:1; padding:12px; background:none; border:none; border-bottom:3px solid transparent; color:var(--text-dim); font-size:12px; cursor:pointer; transition:.2s; font-weight:500; }
+.right-tabs button.active { color:var(--cyan); border-bottom-color:var(--cyan); }
+
+.overview { padding:16px; overflow-y:auto; flex:1; }
+.overview .unit-card { border:2px solid var(--border); border-radius:10px; padding:14px; margin-bottom:16px; background:rgba(15,20,34,0.3); }
+.overview .unit-top { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+.overview .unit-avatar { width:48px; height:48px; background:rgba(179,136,255,.18); border-radius:8px; display:flex; align-items:center; justify-content:center; color:var(--purple); font-size:20px; flex-shrink:0; }
+
+.overview .unit-detail .code { font-size:11px; color:var(--text-dim); font-family:monospace; margin-bottom:4px; }
+.overview .unit-tags { display:flex; gap:6px; flex-wrap:wrap; }
+.overview .unit-tags .tag { font-size:10px; padding:2px 8px; border-radius:3px; background:rgba(0,229,255,.08); color:var(--text-dim); border:1px solid rgba(0,229,255,.15); }
+
+.power-score { margin:16px 0; }
+.power-score .label { font-size:11px; color:var(--text-dim); letter-spacing:1px; margin-bottom:6px; }
+.power-score .rank-label { font-size:13px; color:var(--cyan); margin-bottom:8px; font-weight:bold; }
+.power-score .score { font-size:36px; font-weight:bold; color:var(--cyan); text-align:right; margin-bottom:-24px; line-height:1; }
+.power-score .tier { font-size:11px; color:var(--text-dim); text-align:right; margin-top:8px; }
+
+.tier-bar { display:flex; gap:0; margin:12px 0; border-radius:6px; overflow:hidden; font-size:10px; text-align:center; }
+.tier-bar span { padding:6px 0; flex:1; background:rgba(255,255,255,.05); }
+.tier-bar .t-grunt { background:rgba(0,230,118,.15); color:var(--green); border-right:1px solid rgba(0,230,118,.2); }
+.tier-bar .t-vet { background:rgba(255,171,64,.15); color:var(--orange); border-right:1px solid rgba(255,171,64,.2); }
+.tier-bar .t-elite { background:rgba(0,229,255,.18); color:var(--cyan); border-right:1px solid rgba(0,229,255,.2); }
+.tier-bar .t-champ { background:rgba(255,215,64,.15); color:var(--yellow); border-right:1px solid rgba(255,215,64,.2); }
+.tier-bar .t-ov { background:rgba(0,229,255,.1); color:var(--cyan); font-weight:bold; }
+
+.stats-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:16px 0; }
+.stat-box { border:2px solid var(--border); border-radius:6px; padding:10px 6px; text-align:center; background:rgba(15,20,34,0.3); }
+.stat-box .val { font-size:20px; font-weight:bold; color:#fff; }
+.stat-box .lbl { font-size:10px; color:var(--text-dim); margin-top:4px; letter-spacing:0.5px; }
+
+.installed-section { margin-top:16px; }
+.installed-section .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.installed-section .title { font-size:12px; color:var(--cyan); font-weight:bold; }
+.installed-section .sub { font-size:10px; color:var(--text-dim); }
+
+.inst-mod { display:flex; align-items:center; gap:10px; padding:10px; border:2px solid var(--border); border-radius:6px; margin-bottom:8px; background:rgba(0,229,255,.04); transition:.15s; }
+.inst-mod:hover { border-color:var(--cyan-dim); background:rgba(0,229,255,.06); }
+.inst-mod .icon { width:32px; height:32px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:bold; flex-shrink:0; }
+.inst-mod .info { flex:1; min-width:0; }
+
+.inst-mod .info .desc { font-size:11px; color:var(--text-dim); line-height:1.3; }
+.inst-mod .info .desc b { color:var(--cyan); font-weight:500; }
+.inst-mod .remove { font-size:11px; color:var(--text-dim); cursor:pointer; padding:4px 10px; border:1px solid var(--border); border-radius:4px; transition:.15s; }
+.inst-mod .remove:hover { color:var(--red); border-color:var(--red); background:rgba(255,82,82,.1); }
+
+.slots-info { font-size:11px; color:var(--text-dim); padding:12px 0; border-top:1px solid var(--border); margin-top:12px; }
+.slots-info b { color:var(--cyan); font-weight:bold; }
+</style>
+</head>
+<body>
+
+<!-- 顶部栏 -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="diamond"></div>
+    <span class="topbar-title">PHASE WAR · 改造面板</span>
+    <span class="topbar-sub">OPTIMIZED EDITION - LARGER FONT & IMPROVED LAYOUT</span>
+  </div>
+  <div class="topbar-right">v2.0 · 右栏未选模块时的单位概览视图</div>
+</div>
+
+<div class="main">
+  <!-- 左侧：单位选择列（加宽至 280px）-->
+  <div class="left">
+    <div class="left-header">
+      <span class="icon">◆</span>
+      <span class="zh">战术改造站</span>
+      <div class="en">TACTICAL MODIFICATION BAY</div>
+    </div>
+    
+    <div class="resources">
+      <div><span class="label">改造图纸 </span><span class="val">14</span><span class="label"> 可用</span></div>
+      <div><span class="label"> 当前槽位 </span><span class="val2">2</span><span class="label">/9</span></div>
+    </div>
+    <div class="resources">
+      <div><span class="val">1,247</span><span class="label"> 纳米材料</span></div>
+      <div><span class="val2">3,482</span><span class="label"> 合金</span></div>
+    </div>
+    <div class="resources">
+      <div><span class="label">当前战力档 </span><b style="color:#fff">ELITE · T2</b></div>
+    </div>
+    
+    <div class="unit-header">
+      <span class="title">● 单位名册</span>
+      <span class="count">已选 1 / 42</span>
+    </div>
+    
+    <div class="filters">
+      <button class="active">全部</button>
+      <button>可改造</button>
+      <button>满槽</button>
+    </div>
+    
+    <div class="unit-list">
+      <div class="unit-item active">
+        <div class="unit-icon purple">◇</div>
+        <div class="unit-info">
+          <div class="unit-name">虚空领主 · FOE_NEXUS_01</div>
+          <div class="unit-meta">LV.10 · 2/9 模块</div>
+        </div>
+        <div class="unit-badge badge-overlord">OVERLORD</div>
+      </div>
+      <div class="unit-item">
+        <div class="unit-icon blue">⚔</div>
+        <div class="unit-info">
+          <div class="unit-name">T-72 主战坦克 MOD_II</div>
+          <div class="unit-meta">LV.8 · 5/9 模块</div>
+        </div>
+        <div class="unit-badge badge-champion">CHAMPION</div>
+      </div>
+      <div class="unit-item">
+        <div class="unit-icon red">▲</div>
+        <div class="unit-info">
+          <div class="unit-name">毛瑟步兵班 M1898</div>
+          <div class="unit-meta">LV.4 · 0/9 模块</div>
+        </div>
+        <div class="unit-badge badge-grunt">GRUNT</div>
+      </div>
+      <div class="unit-item">
+        <div class="unit-icon blue">✈</div>
+        <div class="unit-info">
+          <div class="unit-name">F-16 战隼 COLD_RETRO</div>
+          <div class="unit-meta">LV.7 · 9/9 满槽</div>
+        </div>
+        <div class="unit-badge badge-elite">ELITE</div>
+      </div>
+      <div class="unit-item">
+        <div class="unit-icon yellow">⊙</div>
+        <div class="unit-info">
+          <div class="unit-name">虎式坦克 PzKpfw VI</div>
+          <div class="unit-meta">LV.6 · 3/9 模块</div>
+        </div>
+        <div class="unit-badge badge-elite">ELITE</div>
+      </div>
+      <div class="unit-item">
+        <div class="unit-icon green">▲</div>
+        <div class="unit-info">
+          <div class="unit-name">掷弹兵班 6m2_trench</div>
+          <div class="unit-meta">LV.5 · 1/9 模块</div>
+        </div>
+        <div class="unit-badge badge-veteran">VETERAN</div>
+      </div>
+      <div class="unit-item">
+        <div class="unit-icon blue">✦</div>
+        <div class="unit-info">
+          <div class="unit-name">量子隐形战机 QF-X9</div>
+          <div class="unit-meta">LV.12 · 4/9 模块</div>
+        </div>
+        <div class="unit-badge badge-elite">ELITE</div>
+      </div>
+      <div class="unit-item">
+        <div class="unit-icon red">★</div>
+        <div class="unit-info">
+          <div class="unit-name">末日机甲 DMK-Alpha</div>
+          <div class="unit-meta">LV.15 · 2/9 模块</div>
+        </div>
+        <div class="unit-badge badge-overlord">OVERLORD</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 中间：模块库列（适度缩窄，但信息更清晰）-->
+  <div class="center">
+    <div class="unit-bar">
+      <div class="icon">◇</div>
+      <span class="name">虚空领主</span>
+      <span class="code">foe_fut_nexus#4</span>
+      <div class="tags">
+        <span class="tag">未来</span>
+        <span class="tag">统甲</span>
+        <span class="tag">Lv.18</span>
+        <span class="tag">米加粒子炮</span>
+      </div>
+      <div class="right-info">
+        <div class="rank"><b style="color:var(--cyan)">ELITE</b> · T2</div>
+      </div>
+    </div>
+
+    <div class="slot-section">
+      <div class="label">已装改造 <b style="font-size:14px">2 / 9</b> <span style="font-size:11px;color:var(--text-dim);margin-left:8px;">点击空槽位 = 定位可装配模块</span></div>
+      <div class="slots">
+        <div class="slot filled"><div class="s-name">RC</div><div class="s-lv">Lv.2</div></div>
+        <div class="slot filled"><div class="s-name">AG</div><div class="s-lv">Lv.1</div></div>
+        <div class="slot empty">+</div>
+        <div class="slot empty">+</div>
+        <div class="slot empty">+</div>
+        <div class="slot empty">+</div>
+        <div class="slot empty">+</div>
+        <div class="slot empty">+</div>
+        <div class="slot empty">+</div>
+      </div>
+    </div>
+
+    <div class="module-section">
+      <div class="header">
+        <div>
+          <span class="title">● 改造模块库</span>
+          <span class="sub" style="margin-left:10px; font-size:11px;">可用 6 · 总持有 14 · 点击或 Hover 查看详情</span>
+        </div>
+      </div>
+      
+      <div class="mod-list">
+        <div class="mod-item">
+          <div class="mod-icon epic">EP</div>
+          <div class="mod-info">
+            <div class="mod-name">致命精通 <span class="mod-rarity rarity-epic">EPIC</span></div>
+            <div class="mod-desc">暴击伤害<b>+42%</b> · 强化词条 slot</div>
+          </div>
+          <div class="mod-status can">可安装</div>
+        </div>
+        
+        <div class="mod-item installed">
+          <div class="mod-icon epic">RA</div>
+          <div class="mod-info">
+            <div class="mod-name">反应装甲模块 <span class="mod-rarity rarity-epic">EPIC</span></div>
+            <div class="mod-desc">装甲防御<b>+26%</b> · mount slot</div>
+          </div>
+          <div class="mod-status inst">✓ 已装</div>
+        </div>
+        
+        <div class="mod-item installed">
+          <div class="mod-icon legend">AG</div>
+          <div class="mod-info">
+            <div class="mod-name">自动装填机 <span class="mod-rarity rarity-leg">LEGEND</span></div>
+            <div class="mod-desc">攻击速度<b>×1.5</b> · ammunition slot</div>
+          </div>
+          <div class="mod-status inst">✓ 已装</div>
+        </div>
+        
+        <div class="mod-item">
+          <div class="mod-icon epic">AP</div>
+          <div class="mod-info">
+            <div class="mod-name">尾翼稳定脱壳穿甲 <span class="mod-rarity rarity-epic">EPIC</span></div>
+            <div class="mod-desc">装甲攻击<b>+30%</b> · ammunition slot</div>
+          </div>
+          <div class="mod-status can">可安装</div>
+        </div>
+        
+        <div class="mod-item">
+          <div class="mod-icon rare">TS</div>
+          <div class="mod-info">
+            <div class="mod-name">热成像瞄准镜 <span class="mod-rarity rarity-rare">RARE</span></div>
+            <div class="mod-desc">命中精度<b>+25%</b> · optics slot</div>
+          </div>
+          <div class="mod-status can">可安装</div>
+        </div>
+        
+        <div class="mod-item" style="opacity:0.5;">
+          <div class="mod-icon rare" style="opacity:0.5;">CM</div>
+          <div class="mod-info">
+            <div class="mod-name" style="opacity:0.5;">主动防御系统 <span class="mod-rarity rarity-rare" style="opacity:0.5;">RARE</span></div>
+            <div class="mod-desc" style="opacity:0.5;">需要 CHAMPION 档位（当前 ELITE）</div>
+          </div>
+          <div class="mod-status locked" style="opacity:0.5;">X 档位不足</div>
+        </div>
+        
+        <div class="mod-item" style="opacity:0.5;">
+          <div class="mod-icon rare" style="opacity:0.5;">SM</div>
+          <div class="mod-info">
+            <div class="mod-name" style="opacity:0.5;">烟幕弹发射器 <span class="mod-rarity rarity-rare" style="opacity:0.5;">RARE</span></div>
+            <div class="mod-desc" style="opacity:0.5;">冲突组: radar（与已装雷达互斥）</div>
+          </div>
+          <div class="mod-status conflict" style="opacity:0.5;">X 冲突</div>
+        </div>
+        
+        <div class="mod-item">
+          <div class="mod-icon rare">LM</div>
+          <div class="mod-info">
+            <div class="mod-name">激光测距仪 <span class="mod-rarity rarity-rare">RARE</span></div>
+            <div class="mod-desc">命中精度<b>+15%</b> · optics slot</div>
+          </div>
+          <div class="mod-status can">可安装</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右侧：属性卡列（加宽至 320px，内容更丰富）-->
+  <div class="right">
+    <div class="right-tabs">
+      <button class="active">● 单位概览</button>
+      <button>● 模块详情</button>
+      <button>● 配件树</button>
+    </div>
+    
+    <div class="overview">
+      <div class="unit-card">
+        <div class="unit-top">
+          <div class="unit-avatar">◇</div>
+          <div class="unit-detail">
+            <div class="name">虚空领主</div>
+            <div class="code">foe_fut_nexus#4</div>
+            <div class="unit-tags">
+              <span class="tag">未来时代</span>
+              <span class="tag">统甲</span>
+              <span class="tag">主战</span>
+              <span class="tag" style="color:var(--cyan);border-color:var(--cyan)">OVERLORD</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="power-score">
+        <div class="label">◆ 战力评分 · POWER SCORE</div>
+        <div class="rank-label">OVERLORD · 第 5 档</div>
+        <div class="score">1248</div>
+        <div class-tier">精英战力标杆</div>
+      </div>
+
+      <div class="tier-bar">
+        <span class="t-grunt">GRUNT 150</span>
+        <span class="t-vet">VETERAN 260</span>
+        <span class="t-elite">ELITE 420</span>
+        <span class="t-champ">CHAMPION 780</span>
+        <span class="t-ov">OVERLORD 1248</span>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin:16px 0 10px;">
+        <span style="font-size:13px; color:var(--cyan); font-weight:bold;">◆ 基础属性（满血状态）</span>
+      </div>
+      
+      <div class="stats-grid">
+        <div class="stat-box"><div class="val" style="color:var(--green)">240</div><div class="lbl">生命值</div></div>
+        <div class="stat-box"><div class="val" style="color:var(--red)">220</div><div class="lbl">轻型攻击</div></div>
+        <div class="stat-box"><div class="val" style="color:var(--yellow)">180</div><div class="lbl">装甲攻击</div></div>
+        <div class="stat-box"><div class="val">160</div><div class="lbl">对空攻击</div></div>
+        <div class="stat-box"><div class="val">12</div><div class="lbl">装甲防御</div></div>
+        <div class="stat-box"><div class="val">3</div><div class="lbl">移动速度</div></div>
+      </div>
+
+      <div class="installed-section">
+        <div class="header">
+          <span class="title">◆ 已装改造 2 / 9</span>
+          <span class="sub" style="font-size:10px;">Hover 显示卸载按钮</span>
+        </div>
+        
+        <div class="inst-mod">
+          <div class="icon" style="background:rgba(179,136,255,.15); color:var(--purple);">RC</div>
+          <div class="info">
+            <div class="name">反应装甲模块 <span style="font-size:11px;color:var(--text-dim);margin-left:6px;">Lv.2</span></div>
+            <div class="desc">装甲防御 <b>+26%</b> · 已激活</div>
+          </div>
+          <div class="remove">卸载</div>
+        </div>
+        
+        <div class="inst-mod">
+          <div class="icon" style="background:rgba(255,171,64,.15); color:var(--orange);">AG</div>
+          <div class="info">
+            <div class="name">自动装填机 <span style="font-size:11px;color:var(--text-dim);margin-left:6px;">Lv.1</span></div>
+            <div class="desc">攻击速度 <b>×1.5</b> · 已激活</div>
+          </div>
+          <div class="remove">卸载</div>
+        </div>
+      </div>
+
+      <div class="slots-info">
+        + 还有 <b style="color:var(--cyan);font-size:13px;">7 个空槽位</b>，可继续装配 7 个改造模块
+      </div>
+      
+      <div style="margin-top:16px;padding:12px;background:rgba(0,229,255,.05);border:1px solid rgba(0,229,255,.2);border-radius:6px;">
+        <div style="font-size:11px;color:var(--cyan);font-weight:bold;margin-bottom:6px;">◆ 推荐配置</div>
+        <div style="font-size:11px;color:var(--text-dim);line-height:1.6;">
+          优先安装：<br>
+          • 热成像瞄准镜 (+25% 命中)<br>
+          • 激光测距仪 (+15% 命中)<br>
+          • 致命精通 (+42% 暴伤)
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// 简单的交互效果
+document.querySelectorAll('.unit-item').forEach(item => {
+  item.addEventListener('click', function() {
+    document.querySelectorAll('.unit-item').forEach(i => i.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+
+document.querySelectorAll('.mod-item').forEach(item => {
+  item.addEventListener('mouseenter', function() {
+    if (!this.classList.contains('installed') && !this.style.opacity === '0.5') {
+      this.style.transform = 'translateX(4px)';
+    }
+  });
+  item.addEventListener('mouseleave', function() {
+    this.style.transform = 'translateX(0)';
+  });
+});
+
+console.log('改造面板 v2.0 - 已优化布局与字体大小');
+</script>
+</body>
+</html>

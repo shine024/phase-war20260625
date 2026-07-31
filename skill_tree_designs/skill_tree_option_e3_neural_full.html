@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale:1.0">
+<title>相位师技能树 - 方案E3：神经网状式（完整版 - 45节点无分支聚合）</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box }
+body { background:#05070f; color:#d0e0f0; font-family:'Microsoft YaHei',sans-serif; overflow:hidden; height:100vh; }
+.scheme-label { position:fixed;top:10px;left:10px;background:rgba(200,100,255,0.2);border:1px solid rgba(200,100,255,0.5);color:#c864ff;padding:5px 14px;border-radius:4px;font-size:12px;zinct:100; font-weight:bold; }
+.top-panel { position:relative;width:100%;height:50px;background:radial-gradient(ellipse at top,#0d1525,#05070f);border-bottom:1px solid rgba(200,100,255,0.2);display:flex;justify-content:space-between;align-items:center;padding:0 20px;zinct:20; } .neural-title { font-size:14px;color:#c864ff;letter-spacing:3px;font-weight:bold;text-shadow:0 0 15px rgba(200,100,255,0.5); } .neural-stats { display:flex;gap:20px;font-size:11px;color:#8aa0b0; } .neural-stats span { color:#c864ff;font-weight:bold; } .main-area { position:relative;width:100%;height:calc(100vh - 100px);zinct:1; } .neural-node { position:absolute;width:64px;height:64px;border-radius:50%;cursor:pointer;transition:all 0.4s cubic-bezier(0.68,-0.55,0.265,1.55); transform-style:preserve-3d; zinct:10; border:3px solid; box-shadow:0 4px 15px currentColor; filter:drop-shadow(0 0 8px currentColor); } .neural-node.unlocked { border-color:#c864ff; opacity:1; transform:scale(1) rotateZ(0deg); } .neural-node.locked { border-color:rgba(255,255,255,0.1); opacity:0.15; filter:grayscale(1) blur(1.5px); transform:scale(0.6) translateZ(-40px); } .neural-node.available { border-color:#ffd700; opacity:1; animation:neural-blink 1.5s infinite; transform:scale(1.2) translateZ(20px); } @keyframes neural-blink { 0%,100%{box-shadow:0 0 25px #ffd700;} 50%{box-shadow:0 0 50px #ffd700,0 0 70px #ffd700;} } .node-ring { width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;color:white;background:radial-gradient(circle at 30% 30%,rgba(var(--node-rgb),0.3),transparent);position:relative; transition:all 0.3s; } .neural-node.unlocked .node-ring { border:2px solid var(--node-color); box-shadow:0 0 20px var(--node-color-glow); animation:ring-spiral 25s linear infinite; } .neural-node.locked .node-ring { border:1px solid rgba(255,255,255,0.1); color:#8aa0b0; background:rgba(0,0,0,0.5); } .neural-node.available .node-ring { border-color:#ffd700; color:#ffd700; box-shadow:0 0 30px #ffd700; animation:ring-wobble 0.8s infinite alternate; } @keyframes ring-spiral { from{transform:rotate(0deg);} to{transform:rotate(360deg);} } @keyframes ring-wobble { from{transform:rotate(-5deg);} to{transform:rotate(5deg);} } .node-tier { position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:7px;color:#8aa0b0;letter-spacing:0.8px;white-space:nowrap;background:rgba(5,7,15,0.9);padding:2px 6px;border-radius:10px;border:1px solid rgba(255,255,255,0.1); } .node-name { position:absolute;bottom:-22px;left:50%;transform:translateX(-50%);font-size:9px;background:rgba(5,7,15,0.95);padding:2px 8px;border-radius:6px;opacity:0;transition:opacity 0.3s;white-space:nowrap;max-width:100px;text-align:center;zinct:15; } .neural-node:hover .node-name { opacity:1; } .node-cost { position:absolute;right:-16px;top:50%;transform:translateY(-50%);font-size:8px;background:#c864ff;color:#05070f;padding:1px 4px;border-radius:8px;font-weight:bold; } .neural-link { position:absolute;height:1px;background:linear-gradient(to right,rgba(200,100,255,0.2),rgba(200,100,255,0.6),rgba(200,100,255,0.2));transform-origin:left center;zinct:1;opacity:0;transition:opacity 0.5s; } .neural-link.active { opacity:0.4; box-shadow:0 0 5px #c864ff; } .detail-panel { position:fixed;right:20px;bottom:20px;width:240px;background:radial-gradient(ellipse at bottom,#0d1525,#05070f);border:1px solid rgba(200,100,255,0.3);border-radius:8px;padding:14px;box-shadow:0 10px 40px rgba(0,0,0,0.5);zinct:100;opacity:0;pointer-events:none;transition:all 0.3s; } .detail-panel.show { opacity:1; pointer-events:auto; } .detail-header { font-size:12px;color:#c864ff;font-weight:bold;margin-bottom:8px;letter-spacing:1px;border-bottom:1px solid rgba(200,100,255,0.2);padding-bottom:6px; } .detail-desc { font-size:10px;color:#aab0b0;line-height:1.5;margin-bottom:8px;min-height:60px; } .detail-cost { font-size:9px;color:#ffd700;background:rgba(255,215,0,0.15);padding:3px 8px;border-radius:4px;display:inline-block; } .bottom-panel { position:fixed;bottom:0;left:0;right:0;height:35px;background:rgba(5,7,15,0.9);border-top:1px solid rgba(200,100,255,0.15);display:flex;justify-content:center;align-items:center;font-size:9px;color:#6a7a8a;zinct:20; }</style>
+</head>
+<body>
+<div class="scheme-label">方案 E3：神经网状式（完整版 - 45节点）</div>
+<div class="top-panel">
+  <div class="neural-title">◆ NEURAL SKILL WEB</div>
+  <div class="neural-stats">
+    <div>Connectors: <span>12</span></div>
+    <div>Active: <span>7</span></div>
+    <div>Hops: <span>7 / 45</span></div>
+    <div>Complexity: <span>LVL<span id="complexity">5</span></span></div>
+  </div>
+</div>
+<div class="main-area" id="neuralArea"></div>
+<div class="bottom-panel">💡 有机网状结构，相邻节点自动形成连接通路；点击任意节点查看详情</div>
+<div class="detail-panel" id="neuralDetail">
+  <div class="detail-header" id="detailTitle">技能名称</div>
+  <div class="detail-desc" id="detailDesc">技能描述将在此处显示...</div>
+  <div class="detail-cost" id="detailCost">消耗技能点</div>
+</div>
+
+<script>
+const neuralNodes = [
+// Tier 0 - CORE层 (10节点)
+{id:'n000',name:'指挥觉醒','desc':'单位上限+1，基础指挥协议激活','cost':1,'type':'cmd','color':'#c864ff','rgb':'200,100,255','x':0.45,'y':0.35,'tier':'CORE'},
+{id:'n001',name:'智能核心','desc':'暴击率+5%，辅助AI在线','cost':1,'type':'int','color':'#64ff90','rgb':'100,255,144','x':0.55,'y':0.35,'tier':'CORE'},
+{id:'n002',name:'火力觉醒','desc':'三维攻击+8%，火控初始化','cost':1,'type':'fp','color':'#ff6490','rgb':'255,100,144','x':0.50,'y':0.45,'tier':'CORE'},
+{id:'n003',name:'概念突破','desc':'能量恢复+20%，概念跃迁','cost':1,'type':'cw','color':'#bf64ff','rgb':'191,100,255','x':0.48,'y':0.30,'tier':'CORE'},
+{id:'n004',name:'基础防御','desc':'生命值+15%，护盾增强','cost':1,'type':'cmd','color':'#64c8ff','rgb':'100,200,255','x':0.52,'y':0.55,'tier':'CORE'},
+{id:'n005',name:'光学瞄准','desc':'命中精度+15%，精准打击','cost':1,'type':'fp','color':'#64ff90','rgb':'100,255,144','x':0.60,'y':0.50,'tier':'CORE'},
+{id:'n006',name:'战术学习','desc':'经验获取+20%，快速成长','cost':1,'type':'int','color':'#ff8866','rgb':'255,136,102','x':0.40,'y':0.50,'tier':'CORE'},
+{id:'n007',name:'能量储备','desc':'开局满能量，快速启动','cost':1,'type':'cw','color':'#ffff00','rgb':'255,255,0','x':0.35,'y':0.45,'tier':'CORE'},
+{id:'n008',name:'快速部署','desc':'部署速度+15%，机动优化','cost':1,'type':'cmd','color':'#64c8ff','rgb':'100,200,255','x':0.50,'y':0.25,'tier':'CORE'},
+{id:'n009',name:'战术规避','desc':'闪避+8%，自动回避机制','cost':1,'type':'int','color':'#64ff90','rgb':'100,255,144','x':0.30,'y':0.60,'tier':'CORE'},
+// Tier 1 - TIER1层 (15节点)
+{id:'n100',name:'指挥网络','desc':'光环ATK+10% R:2.5','cost':2,'type':'cmd','color':'#64c8ff','rgb':'100,200,255','x':0.20,'y':0.40,'tier':'TIER1'},
+{id:'n101',name:'火力压制','desc':'攻击+15% · 暴伤+30%','cost':2,'type':'fp','color':'#ff6490','rgb':'255,100,144','x':0.70,'y':0.25,'tier':'TIER1'},
+{id:'n102',name:'智能火控','desc':'自动索敌+暴击5%','cost':2,'type':'int','color':'#64ff90','rgb':'100,255,144','x':0.65,'y':0.55,'tier':'TIER1'},
+{id:'n103',name:'概念重构','desc':'修改战场规则','cost':2,'type':'cw','color':'#bf64ff','rgb':'191,100,255','x':0.45,'y':0.80,'tier':'TIER1'},
+{id:'n104',name:'形态进化','desc':'卡牌一战进化能力','cost':1,'type':'cw','color':'#bf64ff','rgb':'191,100,255','x':0.75,'y':0.35,'tier':'TIER1'},
+{id:'n105',name:'侦察视野','desc':'视野范围+30%，战场感知','cost':1,'type':'fp','color':'#ff8866','rgb':'255,136,102','x':0.80,'y':0.45,'tier':'TIER1'},
+{id:'n106',name:'AI进化','desc':'存活后属性提升','cost':1,'type':'int','color':'#64ff90','rgb':'100,255,144','x':0.55,'y':0.70,'tier':'TIER1'},
+{id:'n107',name:'能量脉冲','desc':'周期性能量爆发效果','cost':2,'type':'cw','color':'#ffff00','rgb':'255,255,0','x':0.40,'y':0.70,'tier':'TIER1'},
+{id:'n108',name:'领域压制','desc':'控制范围扩大，区域增益','cost':2,'type':'cmd','color':'#c864ff','rgb':'200,100,255','x':0.15,'y':0.50,'tier':'TIER1'},
+{id:'n109',name:'精通射击','desc':'暴击伤害+42%，强化词条','cost':2,'type':'fp','color':'#ff6490','rgb':'255,100,144','x':0.85,'y':0.30,'tier':'TIER1'},
+{id:'n110',name:'穿甲弹道','desc':'装甲穿透+20%','cost':1,'type':'fp','color':'#ff8866','rgb':'255,136,102','x':0.70,'y':0.15,'tier':'TIER1'},
+{id:'n111',name:'战术协同','desc':'多单位协同作战','cost':2,'type':'cmd','color':'#64c8ff','rgb':'100,200,255','x':0.25,'y':0.30,'tier':'TIER1'},
+{id:'n112',name:'智能强化','desc':'决策能力提升','cost':2,'type':'int','color':'#64ff90','rgb':'100,255,144','x':0.35,'y':0.35,'tier':'TIER1'},
+{id:'n113',name:'能量转化','desc':'资源转换效率提升','cost':2,'type':'cw','color':'#ffff00','rgb':'255,255,0','x':0.60,'y':0.40,'tier':'TIER1'},
+{id:'n114',name:'防御强化','desc':'护盾再生速度加快','cost':2,'type':'cmd','color':'#c864ff','rgb':'200,100,255','x':0.30,'y':0.70,'tier':'TIER1'},
+// Tier 2 - TIER2层 (14节点)
+{id:'n200',name:'战略机动','desc':'移速+20% · 战术跳跃','cost':2,'type':'cmd','color':'#64c8ff','rgb':'100,200,255','x':0.25,'y':0.60,'tier':'TIER2'},
+{id:'n201',name:'火力相位仪','desc':'解锁新星·超弦阵列','cost':2,'type':'fp','color':'#ff6490','rgb':'255,100,144','x':0.75,'y':0.60,'tier':'TIER2'},
+{id:'n202',name:'智能相位仪','desc':'自主决策引擎，高级AI','cost':2,'type':'int','color':'#64ff90','rgb':'100,255,144','x':0.40,'y':0.80,'tier':'TIER2'},
+{id:'n203',name:'概念相位仪','desc':'时空扭曲场，维度操作','cost':3,'type':'cw','color':'#bf64ff','rgb':'191,100,255','x':0.60,'y':0.80,'tier':'TIER2'},
+{id:'n204',name:'纵深打击','desc':'射程+10%，吸血+8%','cost':2,'type':'fp','color':'#ff8866','rgb':'255,136,102','x':0.85,'y':0.70,'tier':'TIER2'},
+{id:'n205',name:'模块化武装','desc':'开启词条槽位，自定义配置','cost':2,'type':'int','color':'#64ff90','rgb':'100,255,144','x':0.30,'y':0.90,'tier':'TIER2'},
+{id:'n206',name:'召唤支援','desc':'临时增援单位','cost':2,'type':'cmd','color':'#64c8ff','rgb':'100,200,255','x':0.15,'y':0.80,'tier':'TIER2'},
+{id:'n207',name:'隐身干扰','desc':'敌方追踪失效','cost':2,'type':'int','color':'#bf64ff','rgb':'191,100,255','x':0.25,'y':0.90,'tier':'TIER2'},
+{id:'n208',name:'能量爆发','desc':'区域能量释放','cost':3,'type':'cw','color':'#ffff00','rgb':'255,255,0','x':0.50,'y':0.95,'tier':'TIER2'},
+{id:'n209',name:'火力集中','desc':'单目标过载打击','cost':2,'type':'fp','color':'#ff6490','rgb':'255,100,144','x':0.70,'y':0.40,'tier':'TIER2'},
+{id:'n210',name:'战术预判','desc':'提前识别敌人行动','cost':1,'type':'int','color':'#64ff90','rgb':'100,255,144','x':0.35,'y':0.50,'tier':'TIER2'},
+{id:'n211',name:'指挥升级','desc':'指挥官能力强化','cost':2,'type':'cmd','color':'#64c8ff','rgb':'100,200,255','x':0.45,'y':0.30,'tier':'TIER2'},
+{id:'n212',name:'概念强化','desc':'概念领域扩展','cost':2,'type':'cw','color':'#bf64ff','rgb':'191,100,255','x':0.55,'y':0.35,'tier':'TIER2'},
+{id:'n213',name:'终极进化','desc':'特殊卡+全时代进化','cost':5,'type':'cw','color':'#ffd700','rgb':'255,215,0','x':0.50,'y':0.85,'tier':'ULT'},
+];
+const area = document.getElementById('neuralArea');
+
+neuralNodes.forEach(node => {
+  const el = document.createElement('div');
+  el.className = 'neural-node '+(node.id.startsWith('n2')||node.id==='n213'?'available':'unlocked');
+  el.style.left = (node.x * 90) + '%';
+  el.style.top = (node.y * 80) + '%';
+  el.style.setProperty('--node-color', node.color);
+  el.style.setProperty('--node-rgb', node.rgb);
+  el.style.setProperty('--node-color-glow', node.color);
+  
+  const icons = {'cmd':'◆','fp':'⚔','int':'♟','cw':'⚡'};
+  el.innerHTML = `<div class="node-ring"><span style="color:${node.color}">${icons[node.type]||'?'}</span></div><div class="node-tier">${node.tier}</div><div class="node-name">${node.name}</div><div class="node-cost">${node.cost}点</div>`;
+  el.onclick = () => showNeuralInfo(node);
+  area.appendChild(el);
+});
+
+function showNeuralInfo(node) {
+  const panel = document.getElementById('neuralDetail');
+  document.getElementById('detailTitle').textContent = node.name;
+  document.getElementById('detailDesc').textContent = node.desc;
+  document.getElementById('detailCost').textContent = `需要 ${node.cost} 点`;
+  panel.classList.add('show');
+  setTimeout(() => panel.classList.remove('show'), 5000);
+  document.getElementById('complexity').textContent = Math.floor(Math.random() * 8) + 3;
+}
+
+window.addEventListener('resize', () => {
+  area.innerHTML = '';
+  neuralNodes.forEach(node => {
+    const el = document.createElement('div');
+    el.className = 'neural-node '+(node.id.startsWith('n2')||node.id==='n213'?'available':'unlocked');
+    el.style.left = (node.x * 90) + '%';
+    el.style.top = (node.y * 80) + '%';
+    el.style.setProperty('--node-color', node.color);
+    el.style.setProperty('--node-rgb', node.rgb);
+    el.style.setProperty('--node-color-glow', node.color);
+    const icons = {'cmd':'◆','fp':'⚔','int':'♟','cw':'⚡'};
+    el.innerHTML = `<div class="node-ring"><span style="color:${node.color}">${icons[node.type]||'?'}</span></div><div class="node-tier">${node.tier}</div><div class="node-name">${node.name}</div><div class="node-cost">${node.cost}点</div>`;
+    el.onclick = () => showNeuralInfo(node);
+    area.appendChild(el);
+  });
+});
+</script>
+</body>
+</html>

@@ -9,6 +9,8 @@ const DefaultCards = preload("res://data/default_cards.gd")
 const DT = preload("res://resources/design_tokens.gd")
 
 var _selected_card_id: String = ""
+# v8.x 性能：on_overlay_opened 拆帧重入守卫
+var _open_refresh_inflight: bool = false
 
 @onready var _title_lbl: Label = $Margin/VBox/TitleRow/Title
 @onready var _progress_lbl: Label = $Margin/VBox/ProgressRow/ProgressLabel
@@ -42,6 +44,8 @@ func _ready() -> void:
 			ccm.card_obtained.connect(_on_collection_changed)
 		if not ccm.collection_milestone_reached.is_connected(_on_milestone_reached):
 			ccm.collection_milestone_reached.connect(_on_milestone_reached)
+	# v8.x 性能：保留首刷（建立 _selected_card_id 初值，保证 SignalBus handler 触发时数据已初始化），
+	# 但实际的"打开面板刷新"由 on_overlay_opened 拆帧承担，避免 LazyLoader 实例化同帧卡顿。
 	_refresh()
 
 
@@ -49,6 +53,26 @@ func _ready() -> void:
 func show_panel() -> void:
 	visible = true
 	_refresh()
+
+## v8.x 性能：外部打开面板时调用（main.gd._open_overlay 分发）。
+## 将列表重建拆到下一帧，避开打开同帧的实例化尖峰。
+## 仿 store_panel.on_overlay_opened 模式。
+func on_overlay_opened() -> void:
+	if _open_refresh_inflight:
+		return
+	_open_refresh_inflight = true
+	call_deferred("_run_open_refresh_pipeline")
+
+func _run_open_refresh_pipeline() -> void:
+	if not is_visible_in_tree():
+		_open_refresh_inflight = false
+		return
+	await get_tree().process_frame
+	if not is_visible_in_tree():
+		_open_refresh_inflight = false
+		return
+	_refresh()
+	_open_refresh_inflight = false
 
 
 # ─────────────────────────────────────────────

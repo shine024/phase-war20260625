@@ -92,6 +92,12 @@ static func apply_on_hit_side_effects(attacker: Node, target: Node, deal_damage:
 	_apply_crit_mark(target, stats)                    # 暴击标注（侦查集火眼）
 	_apply_siege_bonus(attacker, target, stats)               # 工兵爆破（对堡垒百分比掉血）
 	_apply_laser_mark(target, stats)                          # 激光指示器（命中100%标记）
+	# v8.6 现实/科幻伤害类型（命中触发）
+	_apply_true_damage(target, stats, attacker)               # 真实伤害（无视护甲即时结算）
+	_apply_chem_on_hit(target, stats)                         # 化学武器（概率挂毒）
+	_apply_burn_on_hit(target, stats)                         # 燃烧弹（概率挂燃烧，可叠加）
+	_apply_emp_on_hit(target, stats, attacker)                # 电磁静电（降攻速+真实伤害）
+	_apply_nano_on_hit(target, stats)                         # 纳米病毒（概率挂比例dot）
 
 ## v7.x: 主目标减伤补偿（single_target_penalty 的落地）。对目标恢复 heal_amount 血量。
 ## 直接操作 hp 字段并 clamp 到 max_hp，避免触发 take_damage 的反击/信号链路。
@@ -142,6 +148,8 @@ static func on_tick(unit: Node, delta: float) -> void:
 	_apply_minefield_damage(unit, stats, delta)
 	# v7.x 第二批：相位护盾回复
 	_regen_phase_shield(unit, stats, delta)
+	# v8.6 现实/科幻 dot 伤害 tick（化学/燃烧/纳米，挂载在目标自身 meta 上）
+	_tick_dot_damage(unit, delta)
 
 # ─────────────────────────────────────────────
 #  受击处理（v7.x 新增活跃路径）
@@ -455,9 +463,8 @@ static func _activate_rage_on_unit(unit: Node, stats: UnitStats) -> void:
 	stats.set_meta("_rage_expire_at", expire_at)
 	# 临时提升攻击力（用乘法，过期时恢复）
 	stats.attack_damage *= (1.0 + stats.rage_bonus_mult)
-	# 红色光环视觉
-	if unit is Node2D:
-		_create_rage_vfx((unit as Node2D).global_position)
+	# 红色光环视觉（复用 spawn_shockwave，与相位仪狂暴 _create_rage_aura 视觉一致）
+	_create_rage_vfx(unit)
 
 ## 怒气过期检查（由 on_tick 驱动，每帧检查过期时间）
 static func _check_rage_expiry(unit: Node, stats: UnitStats, delta: float) -> void:
@@ -470,11 +477,15 @@ static func _check_rage_expiry(unit: Node, stats: UnitStats, delta: float) -> vo
 		stats.attack_damage /= (1.0 + stats.rage_bonus_mult)
 		stats.set_meta("_rage_active", false)
 
-## 怒气激活时的红色光环视觉（简化版）
-static func _create_rage_vfx(pos: Vector2) -> void:
-	# 简化实现：通过 SignalBus 请求伤害数字风格的视觉提示
-	# 完整粒子特效留给 EnemyPhaseInstrumentAbilities 的 rage 机制
-	pass
+## 怒气激活时的红色光环视觉
+## 复用 VfxImpactFactory.spawn_shockwave（红橙色环），与相位仪狂暴 _create_rage_aura 视觉语言一致。
+static func _create_rage_vfx(unit: Node) -> void:
+	if unit == null or not is_instance_valid(unit) or not (unit is Node2D):
+		return
+	var parent: Node2D = _resolve_fx_parent_node(unit)
+	if parent == null:
+		return
+	VfxImpactFactory.spawn_shockwave(parent, (unit as Node2D).global_position, 36.0, Color(1.0, 0.35, 0.15, 0.85))
 
 # ── debuff 型：破甲叠加（每次命中降低目标防御，可叠加）──
 
@@ -596,6 +607,11 @@ static func _revive_unit(unit: Node, stats: UnitStats) -> void:
 	# 调用单位的 on_revived 钩子（可选，单位可重置状态）
 	if unit.has_method("on_revived"):
 		unit.on_revived()
+	# 绿色扩散环（复用 spawn_shockwave，复活感）
+	if unit is Node2D:
+		var parent: Node2D = _resolve_fx_parent_node(unit)
+		if parent != null:
+			VfxImpactFactory.spawn_shockwave(parent, (unit as Node2D).global_position, 42.0, Color(0.3, 1.0, 0.4, 0.85))
 
 # ── 爆反装甲（受击反伤）──
 
@@ -636,7 +652,18 @@ static func try_intercept(target: Node) -> bool:
 	# 拦截成功：消耗次数
 	if stats.intercept_charges > 0:
 		stats.intercept_charges -= 1
+	# 蓝青色盾面闪光（复用 spawn_shockwave，盾面感）
+	_spawn_intercept_vfx(target)
 	return true
+
+## 拦截成功的盾面闪光视觉（蓝青色小环，复用 spawn_shockwave）
+static func _spawn_intercept_vfx(target: Node) -> void:
+	if target == null or not is_instance_valid(target) or not (target is Node2D):
+		return
+	var parent: Node2D = _resolve_fx_parent_node(target)
+	if parent == null:
+		return
+	VfxImpactFactory.spawn_shockwave(parent, (target as Node2D).global_position, 30.0, Color(0.4, 0.8, 1.0, 0.9))
 
 # ── 亡语治疗（死亡时治疗周围友军）──
 
@@ -783,3 +810,147 @@ static func _apply_laser_mark(target: Node, stats: UnitStats) -> void:
 	var expire_at: float = Time.get_ticks_msec() / 1000.0 + 5.0
 	target.set_meta("_marked_until", expire_at)
 	target.set_meta("_mark_vuln_bonus", 0.20)
+
+# ═══════════════════════════════════════════════════════════════
+#  v8.6 现实/科幻战斗伤害类型
+#  4 种持续伤害（化学/燃烧/电磁/纳米）+ 真实伤害
+#  范式：命中时挂 meta 状态（_chem_*/_burn_*/_nano_*），on_tick 消费
+# ═══════════════════════════════════════════════════════════════
+
+## 真实伤害：每次命中额外造成固定伤害（无视护甲/减伤，不触发暴击）
+## 直接调 take_damage，不经过 resolve_hit 护甲公式
+static func _apply_true_damage(target: Node, stats: UnitStats, attacker: Node) -> void:
+	if stats.true_damage <= 0.0:
+		return
+	if target == null or not is_instance_valid(target):
+		return
+	_deal_damage_to_unit(target, stats.true_damage, attacker)
+
+## 化学武器：命中按概率挂毒（固定 DPS 持续 N 秒，刷新覆盖）
+static func _apply_chem_on_hit(target: Node, stats: UnitStats) -> void:
+	if stats.chem_chance <= 0.0 or stats.chem_dps <= 0.0:
+		return
+	if randf() > clampf(stats.chem_chance, 0.0, 1.0):
+		return
+	if target == null or not is_instance_valid(target):
+		return
+	var now: float = Time.get_ticks_msec() / 1000.0
+	target.set_meta("_chem_dps", stats.chem_dps)
+	target.set_meta("_chem_until", now + maxf(0.1, stats.chem_duration))
+	# VFX：绿色毒雾（仅首次挂载时播一次，tick 时不再播避免刷屏）
+	if target is Node2D:
+		var parent: Node2D = _resolve_fx_parent_node(target)
+		if parent != null:
+			VfxImpactFactory.spawn_shockwave(parent, (target as Node2D).global_position, 30.0, Color(0.3, 0.9, 0.2, 0.7))
+
+## 燃烧弹：命中按概率挂燃烧，可叠加层数（dps = base × stacks）
+static func _apply_burn_on_hit(target: Node, stats: UnitStats) -> void:
+	if stats.burn_chance <= 0.0 or stats.burn_dps <= 0.0:
+		return
+	if randf() > clampf(stats.burn_chance, 0.0, 1.0):
+		return
+	if target == null or not is_instance_valid(target):
+		return
+	var now: float = Time.get_ticks_msec() / 1000.0
+	# 叠加层数（上限 5 层），刷新持续时间
+	var stacks: int = int(target.get_meta("_burn_stacks", 0))
+	stacks = min(stacks + 1, 5)
+	target.set_meta("_burn_stacks", stacks)
+	target.set_meta("_burn_base_dps", stats.burn_dps)
+	target.set_meta("_burn_until", now + maxf(0.1, stats.burn_duration))
+	if target is Node2D:
+		var parent: Node2D = _resolve_fx_parent_node(target)
+		if parent != null:
+			VfxImpactFactory.spawn_shockwave(parent, (target as Node2D).global_position, 28.0, Color(1.0, 0.5, 0.1, 0.8))
+
+## 电磁静电：命中按概率降目标攻速（复用 ECM debuff meta）+ 小额真实伤害即时结算
+static func _apply_emp_on_hit(target: Node, stats: UnitStats, attacker: Node) -> void:
+	if stats.emp_chance <= 0.0:
+		return
+	if randf() > clampf(stats.emp_chance, 0.0, 1.0):
+		return
+	if target == null or not is_instance_valid(target):
+		return
+	# 复用 ECM debuff meta（攻速-30%/暴击-20%/闪避-15%，持续 4 秒）
+	var now_msec: int = Time.get_ticks_msec()
+	target.set_meta("_ecm_debuffed_until", now_msec + 4000)
+	target.set_meta("_ecm_attack_speed_penalty", 0.30)
+	target.set_meta("_ecm_crit_penalty", 0.20)
+	target.set_meta("_ecm_dodge_penalty", 0.15)
+	# 真实伤害即时结算
+	if stats.emp_true_damage > 0.0:
+		_deal_damage_to_unit(target, stats.emp_true_damage, attacker)
+	# VFX：蓝色电弧（攻击者→目标，如果攻击者有效）
+	if target is Node2D and attacker != null and is_instance_valid(attacker) and attacker is Node2D:
+		var parent: Node2D = _resolve_fx_parent_node(target)
+		if parent != null:
+			VfxImpactFactory.spawn_lightning_arc(parent, (attacker as Node2D).global_position, (target as Node2D).global_position, Color(0.4, 0.7, 1.0, 1.0))
+
+## 纳米病毒：命中按概率挂病毒（按目标 maxHP 百分比每秒掉血，打肉盾专用）
+static func _apply_nano_on_hit(target: Node, stats: UnitStats) -> void:
+	if stats.nano_chance <= 0.0 or stats.nano_pct <= 0.0:
+		return
+	if randf() > clampf(stats.nano_chance, 0.0, 1.0):
+		return
+	if target == null or not is_instance_valid(target):
+		return
+	var now: float = Time.get_ticks_msec() / 1000.0
+	target.set_meta("_nano_pct", stats.nano_pct)
+	target.set_meta("_nano_until", now + maxf(0.1, stats.nano_duration))
+	if target is Node2D:
+		var parent: Node2D = _resolve_fx_parent_node(target)
+		if parent != null:
+			VfxImpactFactory.spawn_shockwave(parent, (target as Node2D).global_position, 32.0, Color(0.7, 0.2, 0.9, 0.7))
+
+## dot tick：每帧消费化学/燃烧/纳米状态，按 delta 累积掉血，过期清理
+## 复用 minefield 的 meta 节流思路，但 dot 每 tick 间隔短（0.25s，更平滑）
+const DOT_TICK_INTERVAL: float = 0.25
+static func _tick_dot_damage(unit: Node, delta: float) -> void:
+	if unit == null or not is_instance_valid(unit):
+		return
+	var now: float = Time.get_ticks_msec() / 1000.0
+	var total_dmg: float = 0.0
+	# 节流累积（0.25s 结算一次，减少 take_damage 调用频率）
+	var acc: float = 0.0
+	if unit.has_meta("_dot_acc"):
+		acc = float(unit.get_meta("_dot_acc", 0.0))
+	acc += delta
+	if acc < DOT_TICK_INTERVAL:
+		unit.set_meta("_dot_acc", acc)
+		return
+	unit.set_meta("_dot_acc", 0.0)
+	var tick_dt: float = acc  # 实际经过时间
+	# 化学：固定 dps
+	if unit.has_meta("_chem_until"):
+		var chem_until: float = float(unit.get_meta("_chem_until", 0.0))
+		if now < chem_until:
+			var chem_dps: float = float(unit.get_meta("_chem_dps", 0.0))
+			total_dmg += chem_dps * tick_dt
+		else:
+			unit.remove_meta("_chem_until")
+			unit.remove_meta("_chem_dps")
+	# 燃烧：dps = base × stacks
+	if unit.has_meta("_burn_until"):
+		var burn_until: float = float(unit.get_meta("_burn_until", 0.0))
+		if now < burn_until:
+			var burn_base: float = float(unit.get_meta("_burn_base_dps", 0.0))
+			var burn_stacks: int = int(unit.get_meta("_burn_stacks", 0))
+			total_dmg += burn_base * burn_stacks * tick_dt
+		else:
+			unit.remove_meta("_burn_until")
+			unit.remove_meta("_burn_base_dps")
+			unit.remove_meta("_burn_stacks")
+	# 纳米：按 maxHP 百分比
+	if unit.has_meta("_nano_until"):
+		var nano_until: float = float(unit.get_meta("_nano_until", 0.0))
+		if now < nano_until:
+			var nano_pct: float = float(unit.get_meta("_nano_pct", 0.0))
+			var max_hp: float = _get_unit_max_hp(unit)
+			if max_hp > 0.0:
+				total_dmg += max_hp * nano_pct * tick_dt
+		else:
+			unit.remove_meta("_nano_until")
+			unit.remove_meta("_nano_pct")
+	# 统一结算（避免每个状态单独调 take_damage）
+	if total_dmg > 0.0:
+		_deal_damage_to_unit(unit, total_dmg, null)

@@ -356,6 +356,15 @@ static func get_safe_display_name(card_id: String) -> String:
 	var c: CardResource = _id_lookup_cache.get(card_id) as CardResource
 	if c != null and not c.display_name.is_empty() and not _looks_like_id(c.display_name):
 		return c.display_name
+	# v7.x 修复：旧ID迁移兜底（与 get_card_by_id 对齐）。
+	# drop_tables 等历史数据仍持有旧 card_id（如 ww1_engineer→ww1_sup_engineer），
+	# get_card_by_id 会自动迁移，但此函数此前没有，导致胜利面板显示名查询报错。
+	if UnitIdMigration.needs_migration(card_id):
+		var migrated_id: String = UnitIdMigration.get_new_id(card_id)
+		if migrated_id != card_id:
+			var migrated_card: CardResource = _id_lookup_cache.get(migrated_id) as CardResource
+			if migrated_card != null and not migrated_card.display_name.is_empty() and not _looks_like_id(migrated_card.display_name):
+				return migrated_card.display_name
 	# 尝试敌方相位装备(platform 或 weapon)- 延迟加载避免循环依赖
 	var eq_epe: GDScript = load("res://data/enemy_phase_equipment.gd")
 	if eq_epe:

@@ -229,3 +229,21 @@ signal combat_highlight(event_id: String, payload: Dictionary)
 # stage: "warning"(预警) / "impact"(命中) / "start"(开局开始) / "end"(结束)
 # params: 自定义参数（位置/伤害值/持续时间等）
 signal phase_instrument_ability_triggered(ability_id: String, stage: String, params: Dictionary)
+
+# ── v8.5 兵种机制技能 VFX 信号（battle_spectacle 监听播特效）──
+# 定向爆破（侦察）：from 发射点 → to 目标点（抛物线弹+爆炸）
+signal mechanism_demolition_fired(from_pos: Vector2, to_pos: Vector2)
+# 瞄准狙击锁定（狙击就绪时，pos 为狙击单位位置，播瞄准镜十字线）
+signal mechanism_sniper_aim_locked(pos: Vector2)
+# 瞄准狙击开火（消费瞄准时，from→to 播红色锁定框+射击线）
+signal mechanism_sniper_fired(from_pos: Vector2, to_pos: Vector2)
+# 闪电穿插开火（装甲穿透射击时，from→to 播贯穿光线+后排命中标记）
+signal mechanism_blitz_fired(from_pos: Vector2, to_pos: Vector2)
+# 电子屏蔽（防空/电子战释放屏蔽波，center+radius 播紫色扩散波纹）
+signal mechanism_jamming_field_activated(center: Vector2, radius: float)
+# 战术核武（堡垒发射核弹，from→to 播抛物线+蘑菇云+震屏）
+signal mechanism_nuclear_launched(from_pos: Vector2, target_pos: Vector2)
+# 护盾投射（堡垒投射护盾，from 施放者 + target_positions 多个友军位置，播蓝色护盾展开）
+signal mechanism_shield_projected(from_pos: Vector2, target_positions: Array)
+# 无人机定时标记（无人机标记敌方，from 无人机 + target_positions 多个敌方位置，播红色锁定框+扫描波纹）
+signal mechanism_drone_marked(from_pos: Vector2, target_positions: Array)

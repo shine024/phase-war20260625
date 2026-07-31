@@ -154,6 +154,11 @@ static func _respawn_unit(unit: Node, hp_ratio: float) -> void:
 	# 通知单位复活（如果支持）
 	if unit.has_method("on_revived"):
 		unit.on_revived()
+	# 绿色扩散环（与改造复活 _revive_unit 视觉一致，复用 spawn_shockwave）
+	if unit is Node2D:
+		var parent: Node = CombatFeedback.resolve_fx_parent(unit)
+		if parent is Node2D:
+			VfxImpactFactory.spawn_shockwave(parent, (unit as Node2D).global_position, 42.0, Color(0.3, 1.0, 0.4, 0.85))
 
 ## 查找附近的敌方单位（排除主目标）
 static func _find_nearby_enemies(source: Node, primary_target: Node, radius: float, max_count: int) -> Array:

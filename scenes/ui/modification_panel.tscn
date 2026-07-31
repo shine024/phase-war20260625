@@ -173,17 +173,17 @@ text = "◇"
 custom_minimum_size = Vector2(24, 0)
 horizontal_alignment = 1
 vertical_alignment = 1
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 20
 theme_override_colors/font_color = Color(0.133, 0.827, 0.933, 1)
 [node name="TitleLabel" type="Label" parent="VBoxContainer/TitleRow/TitleHBox"]
 layout_mode = 2
 text = "战术改造站"
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 20
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 [node name="TitleSub" type="Label" parent="VBoxContainer/TitleRow/TitleHBox"]
 layout_mode = 2
 text = "TACTICAL MODIFICATION BAY"
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 0.7)
 [node name="Spacer" type="Control" parent="VBoxContainer/TitleRow/TitleHBox"]
 layout_mode = 2
@@ -192,14 +192,14 @@ size_flags_horizontal = 3
 unique_name_in_owner = true
 layout_mode = 2
 text = ""
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(0.133, 0.827, 0.933, 1)
 [node name="BackToGrowthButton" type="Button" parent="VBoxContainer/TitleRow/TitleHBox"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "← 成长首页"
-custom_minimum_size = Vector2(100, 30)
-theme_override_font_sizes/font_size = 13
+custom_minimum_size = Vector2(108, 32)
+theme_override_font_sizes/font_size = 14
 theme_override_colors/font_color = Color(1, 0.92, 0.55, 0.9)
 theme_override_colors/font_hover_color = Color(1, 0.85, 0.3, 1)
 theme_override_styles/normal = SubResource("StyleBoxFlat_7")
@@ -209,8 +209,8 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_8")
 unique_name_in_owner = true
 layout_mode = 2
 text = "×"
-custom_minimum_size = Vector2(30, 30)
-theme_override_font_sizes/font_size = 16
+custom_minimum_size = Vector2(32, 32)
+theme_override_font_sizes/font_size = 18
 theme_override_colors/font_color = Color(0.6, 0.65, 0.75, 1)
 theme_override_colors/font_hover_color = Color(0.94, 0.27, 0.27, 1)
 theme_override_styles/normal = SubResource("StyleBoxFlat_7")
@@ -231,13 +231,13 @@ offset_right = -20.0
 unique_name_in_owner = true
 layout_mode = 2
 text = "纳米：0"
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 1)
 [node name="AlloyLabel" type="Label" parent="VBoxContainer/ResourceBar/ResourceHBox"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "合金：0"
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 1)
 [node name="ResSpacer" type="Control" parent="VBoxContainer/ResourceBar/ResourceHBox"]
 layout_mode = 2
@@ -246,15 +246,15 @@ size_flags_horizontal = 3
 unique_name_in_owner = true
 layout_mode = 2
 text = ""
-theme_override_font_sizes/font_size = 9
+theme_override_font_sizes/font_size = 10
 theme_override_colors/font_color = Color(0.4, 0.45, 0.55, 0.7)
 [node name="ResultLabel" type="Label" parent="VBoxContainer"]
 unique_name_in_owner = true
 visible = true
 layout_mode = 2
-custom_minimum_size = Vector2(0, 22)
+custom_minimum_size = Vector2(0, 24)
 text = ""
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.2, 0.9, 0.4, 1)
 autowrap_mode = 3
 [node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer"]
@@ -264,7 +264,7 @@ size_flags_vertical = 3
 theme_override_constants/separation = 0
 [node name="LeftPanel" type="PanelContainer" parent="VBoxContainer/HBoxContainer"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(240, 0)
+custom_minimum_size = Vector2(360, 0)
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_5")
@@ -292,7 +292,7 @@ color = Color(0.133, 0.827, 0.933, 1)
 [node name="ColHeadTitle" type="Label" parent="VBoxContainer/HBoxContainer/LeftPanel/LeftVBox/ColHead/ColHeadHBox"]
 layout_mode = 2
 text = "单位名册"
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.7, 0.75, 0.85, 1)
 [node name="ColHeadSpacer" type="Control" parent="VBoxContainer/HBoxContainer/LeftPanel/LeftVBox/ColHead/ColHeadHBox"]
 layout_mode = 2
@@ -301,7 +301,7 @@ size_flags_horizontal = 3
 unique_name_in_owner = true
 layout_mode = 2
 text = "0"
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.8)
 [node name="ColFilter" type="HBoxContainer" parent="VBoxContainer/HBoxContainer/LeftPanel/LeftVBox"]
 layout_mode = 2
@@ -315,25 +315,25 @@ offset_bottom = -6.0
 unique_name_in_owner = true
 layout_mode = 2
 text = "全部"
-custom_minimum_size = Vector2(0, 22)
+custom_minimum_size = Vector2(0, 24)
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 9
+theme_override_font_sizes/font_size = 10
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.8)
 [node name="ChipMod" type="Button" parent="VBoxContainer/HBoxContainer/LeftPanel/LeftVBox/ColFilter"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "可改造"
-custom_minimum_size = Vector2(0, 22)
+custom_minimum_size = Vector2(0, 24)
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 9
+theme_override_font_sizes/font_size = 10
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.8)
 [node name="ChipMax" type="Button" parent="VBoxContainer/HBoxContainer/LeftPanel/LeftVBox/ColFilter"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "满槽"
-custom_minimum_size = Vector2(0, 22)
+custom_minimum_size = Vector2(0, 24)
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 9
+theme_override_font_sizes/font_size = 10
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.8)
 [node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer/HBoxContainer/LeftPanel/LeftVBox"]
 unique_name_in_owner = true
@@ -378,7 +378,7 @@ color = Color(0.133, 0.827, 0.933, 1)
 [node name="ModListHeadTitle" type="Label" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ModListHead/ModListHeadHBox"]
 layout_mode = 2
 text = "改造模块库"
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.7, 0.75, 0.85, 1)
 [node name="ModListHeadSpacer" type="Control" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ModListHead/ModListHeadHBox"]
 layout_mode = 2
@@ -387,7 +387,7 @@ size_flags_horizontal = 3
 unique_name_in_owner = true
 layout_mode = 2
 text = "0"
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.8)
 [node name="ModScrollContainer" type="ScrollContainer" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox"]
 unique_name_in_owner = true
@@ -425,7 +425,7 @@ theme_override_constants/separation = 12
 [node name="DeckIcon" type="PanelContainer" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckHBox"]
 unique_name_in_owner = true
 layout_mode = 2
-custom_minimum_size = Vector2(40, 40)
+custom_minimum_size = Vector2(44, 44)
 size_flags_vertical = 3
 [node name="DeckIconLabel" type="Label" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckHBox/DeckIcon"]
 unique_name_in_owner = true
@@ -433,7 +433,7 @@ layout_mode = 2
 text = "◇"
 horizontal_alignment = 1
 vertical_alignment = 1
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 16
 theme_override_colors/font_color = Color(0.133, 0.827, 0.933, 1)
 [node name="DeckInfo" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckHBox"]
 unique_name_in_owner = true
@@ -447,7 +447,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 text = ""
 clip_text = true
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 16
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 [node name="DeckCoreLabel" type="Label" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckHBox/DeckInfo"]
 unique_name_in_owner = true
@@ -456,7 +456,7 @@ size_flags_horizontal = 3
 text = ""
 clip_text = true
 autowrap_mode = 3
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.2, 0.9, 0.4, 1)
 [node name="DeckReqLabel" type="Label" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckHBox/DeckInfo"]
 unique_name_in_owner = true
@@ -464,17 +464,17 @@ layout_mode = 2
 size_flags_horizontal = 3
 text = ""
 clip_text = true
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(0.55, 0.6, 0.7, 0.85)
 [node name="DeckInstallButton" type="Button" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckHBox"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
-custom_minimum_size = Vector2(120, 40)
+custom_minimum_size = Vector2(130, 44)
 text = "安装"
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 13
+theme_override_font_sizes/font_size = 15
 theme_override_styles/normal = SubResource("StyleBoxFlat_9")
 theme_override_styles/hover = SubResource("StyleBoxFlat_10")
 [node name="DeckSimButton" type="Button" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox/ActionDeck/DeckMargin/DeckHBox"]
@@ -484,13 +484,13 @@ size_flags_vertical = 3
 custom_minimum_size = Vector2(0, 22)
 text = "效果模拟 ↓"
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.8)
-theme_override_font_sizes/font_size = 9
+theme_override_font_sizes/font_size = 10
 [node name="DeckEmpty" type="Label" parent="VBoxContainer/HBoxContainer/MiddlePanel/MiddleVBox"]
 unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(0, 36)
 text = "↑ 点击上方改造模块库的任一模块查看详情"
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(0.4, 0.45, 0.55, 0.6)
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -500,7 +500,7 @@ visible = false
 layout_mode = 2
 [node name="DetailPanel" type="PanelContainer" parent="VBoxContainer/HBoxContainer"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(280, 0)
+custom_minimum_size = Vector2(340, 0)
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_6")

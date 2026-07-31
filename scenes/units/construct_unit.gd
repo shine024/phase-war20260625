@@ -111,6 +111,50 @@ var _is_sniper_unit: bool = false
 var _is_ecm_unit: bool = false
 const ECM_DEBUFF_RADIUS: float = 250.0
 const ECM_DEBUFF_DURATION_SEC: float = 0.25  # 比扫描周期略长，确保连续覆盖
+# ── v8.5 兵种机制技能（meta+timer 范式，由技能树 unit_mechanism 解锁）──
+# 定向爆破（侦察）：每12s 发射曲射爆破弹打最近堡垒/装甲，8%最大生命真实伤害
+var _is_demolition_unit: bool = false
+var _demolition_cd: float = 0.0
+const DEMOLITION_INTERVAL: float = 12.0
+const DEMOLITION_HP_PCT: float = 0.08
+const DEMOLITION_RANGE: float = 500.0
+# 瞄准狙击（狙击）：每15s 进入瞄准，下次攻击必暴+50%伤（对Boss×2）
+var _is_sniper_aim_unit: bool = false
+var _sniper_aim_cd: float = 0.0
+const SNIPER_AIM_INTERVAL: float = 15.0
+var _sniper_aim_ready: bool = false  # true=瞄准就绪，下次攻击触发
+# 闪电穿插（装甲）：每10s 下次攻击 pierce_count+2（穿透打后排）
+var _is_blitz_pierce_unit: bool = false
+var _blitz_pierce_cd: float = 0.0
+const BLITZ_PIERCE_INTERVAL: float = 10.0
+var _blitz_pierce_ready: bool = false  # true=穿透就绪，下次攻击触发
+# 电子屏蔽（防空/电子战）：每18s 释放屏蔽波，范围内敌方攻击失效3s
+var _is_jamming_field_unit: bool = false
+var _jamming_field_cd: float = 0.0
+const JAMMING_FIELD_INTERVAL: float = 18.0
+const JAMMING_FIELD_RADIUS: float = 300.0
+const JAMMING_FIELD_DURATION: float = 3.0
+# 战术核武（堡垒·导弹井）：每45s 发射核弹，密集区35%最大生命范围伤
+var _is_nuclear_strike_unit: bool = false
+var _nuclear_strike_cd: float = 0.0
+const NUCLEAR_STRIKE_INTERVAL: float = 45.0
+const NUCLEAR_STRIKE_HP_PCT: float = 0.35
+const NUCLEAR_STRIKE_RADIUS: float = 200.0
+# 护盾投射（堡垒·护盾器）：每20s 为3个低血友军投射护盾（20%自身最大生命）
+var _is_shield_projector_unit: bool = false
+var _shield_projector_cd: float = 0.0
+const SHIELD_PROJECTOR_INTERVAL: float = 20.0
+const SHIELD_PROJECTOR_RADIUS: float = 250.0
+const SHIELD_PROJECTOR_TARGET_COUNT: int = 3
+const SHIELD_PROJECTOR_HP_PCT: float = 0.20
+# 定时标记（无人机）：每14s 标记2个最高威胁敌方+25%易伤8s
+var _is_drone_mark_unit: bool = false
+var _drone_mark_cd: float = 0.0
+const DRONE_MARK_INTERVAL: float = 14.0
+const DRONE_MARK_RADIUS: float = 400.0
+const DRONE_MARK_TARGET_COUNT: int = 2
+const DRONE_MARK_DURATION: float = 8.0
+const DRONE_MARK_VULN: float = 0.25
 # 卡片定时技能临时 stat_bonus 消费节流
 var _card_skill_bonus_acc: float = 0.0
 const CARD_SKILL_BONUS_CHECK_INTERVAL: float = 0.5
@@ -715,6 +759,28 @@ func _init_unit_mechanisms() -> void:
 	# v8.x: ECM 电子战标记（读 stats meta "is_ecm"）
 	if stats.has_meta("is_ecm") and bool(stats.get_meta("is_ecm", false)):
 		_is_ecm_unit = true
+	# v8.5: 兵种机制技能标记（读 stats meta，由 _apply_v8_unit_type_meta + 技能树守卫写入）
+	if stats.has_meta("is_demolition") and bool(stats.get_meta("is_demolition", false)):
+		_is_demolition_unit = true
+		_demolition_cd = DEMOLITION_INTERVAL  # 首次部署后等一个完整 CD
+	if stats.has_meta("is_sniper_aim") and bool(stats.get_meta("is_sniper_aim", false)):
+		_is_sniper_aim_unit = true
+		_sniper_aim_cd = SNIPER_AIM_INTERVAL
+	if stats.has_meta("is_blitz_pierce") and bool(stats.get_meta("is_blitz_pierce", false)):
+		_is_blitz_pierce_unit = true
+		_blitz_pierce_cd = BLITZ_PIERCE_INTERVAL
+	if stats.has_meta("is_jamming_field") and bool(stats.get_meta("is_jamming_field", false)):
+		_is_jamming_field_unit = true
+		_jamming_field_cd = JAMMING_FIELD_INTERVAL
+	if stats.has_meta("is_nuclear_strike") and bool(stats.get_meta("is_nuclear_strike", false)):
+		_is_nuclear_strike_unit = true
+		_nuclear_strike_cd = NUCLEAR_STRIKE_INTERVAL
+	if stats.has_meta("is_shield_projector") and bool(stats.get_meta("is_shield_projector", false)):
+		_is_shield_projector_unit = true
+		_shield_projector_cd = SHIELD_PROJECTOR_INTERVAL
+	if stats.has_meta("is_drone_mark") and bool(stats.get_meta("is_drone_mark", false)):
+		_is_drone_mark_unit = true
+		_drone_mark_cd = DRONE_MARK_INTERVAL
 
 
 ## v8.x: ECM 电子战光环——周期性给范围内敌方挂减益 meta
@@ -739,6 +805,235 @@ func _update_ecm_debuff_aura() -> void:
 			e.set_meta("_ecm_attack_speed_penalty", 0.25)  # 攻速 -25%
 			e.set_meta("_ecm_crit_penalty", 0.15)          # 暴击 -15%
 			e.set_meta("_ecm_dodge_penalty", 0.20)         # 闪避 -20%
+
+
+# ═══════════════════════════════════════════════════════════
+#  v8.5 兵种机制技能 tick（meta+timer 范式，仿 _update_ecm_debuff_aura）
+#  全部"原地自动触发 + 远程/范围效果"，符合格子战不移动约束
+#  VFX 通过 SignalBus 信号驱动（battle_spectacle 监听播放）
+# ═══════════════════════════════════════════════════════════
+
+## 通用：扫描敌方单位（与自身阵营相反），返回有效 Node 数组
+func _collect_enemy_units_for_mechanism() -> Array:
+	var enemy_group: String = "enemy_units" if is_player else "player_units"
+	return get_tree().get_nodes_in_group(enemy_group)
+
+## 通用：扫描友方单位（与自身阵营相同，排除自己）
+func _collect_ally_units_for_mechanism() -> Array:
+	var ally_group: String = "player_units" if is_player else "enemy_units"
+	var allies: Array = get_tree().get_nodes_in_group(ally_group)
+	var filtered: Array = []
+	for a in allies:
+		if a == self:
+			continue
+		filtered.append(a)
+	return filtered
+
+## 机制1·定向爆破（侦察）：CD 到期 → 找射程内最近敌方 FORT/ARMOR → 造成 8% 最大生命真实伤害
+func _update_demolition_tick(delta: float) -> void:
+	if not _is_demolition_unit or is_deploy_ghost or is_preview_mode:
+		return
+	_demolition_cd -= delta
+	if _demolition_cd > 0.0:
+		return
+	_demolition_cd = DEMOLITION_INTERVAL
+	# 找射程内最近的 FORT/ARMOR 敌方
+	var enemies: Array = _collect_enemy_units_for_mechanism()
+	var best_target: Node2D = null
+	var best_dist: float = DEMOLITION_RANGE
+	for e in enemies:
+		if e == null or not is_instance_valid(e):
+			continue
+		if not ("global_position" in e) or not ("stats" in e):
+			continue
+		var e_stats = e.stats
+		if e_stats == null:
+			continue
+		# 仅打 FORT 或 ARMOR（堡垒/装甲目标）
+		var ck: int = int(e_stats.combat_kind) if "combat_kind" in e_stats else 0
+		if ck != GC.CombatKind.ARMOR and ck != GC.CombatKind.FORT:
+			continue
+		var d: float = global_position.distance_to(e.global_position)
+		if d < best_dist:
+			best_dist = d
+			best_target = e
+	if best_target == null:
+		return
+	# 造成 8% 最大生命真实伤害（无视防御，直接调 take_damage）
+	var target_max_hp: float = float(best_target.stats.max_hp) if best_target.stats != null else 100.0
+	var dmg: float = maxf(50.0, target_max_hp * DEMOLITION_HP_PCT)
+	if best_target.has_method("take_damage"):
+		best_target.take_damage(dmg, self)
+	# VFX：发射爆破弹信号（battle_spectacle 监听播抛物线弹+爆炸）
+	if SignalBus.has_signal("mechanism_demolition_fired"):
+		SignalBus.mechanism_demolition_fired.emit(global_position, best_target.global_position)
+
+## 机制2·瞄准狙击（狙击）：CD 到期 → 进入瞄准就绪，下次攻击必暴+50%伤（对Boss×2）
+func _update_sniper_aim_tick(delta: float) -> void:
+	if not _is_sniper_aim_unit or is_deploy_ghost or is_preview_mode:
+		return
+	if _sniper_aim_ready:
+		return  # 已就绪，等下次攻击消费
+	_sniper_aim_cd -= delta
+	if _sniper_aim_cd <= 0.0:
+		_sniper_aim_ready = true
+		_sniper_aim_cd = SNIPER_AIM_INTERVAL
+		# VFX：瞄准锁定信号（battle_spectacle 播瞄准镜十字线）
+		if SignalBus.has_signal("mechanism_sniper_aim_locked"):
+			SignalBus.mechanism_sniper_aim_locked.emit(global_position)
+
+## 机制3·闪电穿插（装甲）：CD 到期 → 穿透就绪，下次攻击 pierce_count+2
+func _update_blitz_pierce_tick(delta: float) -> void:
+	if not _is_blitz_pierce_unit or is_deploy_ghost or is_preview_mode:
+		return
+	if _blitz_pierce_ready:
+		return  # 已就绪，等下次攻击消费
+	_blitz_pierce_cd -= delta
+	if _blitz_pierce_cd <= 0.0:
+		_blitz_pierce_ready = true
+		_blitz_pierce_cd = BLITZ_PIERCE_INTERVAL
+
+## 机制4·电子屏蔽（防空/电子战）：CD 到期 → 释放屏蔽波，范围内敌方攻击失效3s
+func _update_jamming_field_tick(delta: float) -> void:
+	if not _is_jamming_field_unit or is_deploy_ghost or is_preview_mode:
+		return
+	_jamming_field_cd -= delta
+	if _jamming_field_cd > 0.0:
+		return
+	_jamming_field_cd = JAMMING_FIELD_INTERVAL
+	# 给范围内敌方挂"攻击失效"meta（敌方 attack 路径读取，失效则跳过攻击）
+	var now_msec: int = Time.get_ticks_msec()
+	var expire_msec: int = now_msec + int(JAMMING_FIELD_DURATION * 1000)
+	var enemies: Array = _collect_enemy_units_for_mechanism()
+	for e in enemies:
+		if e == null or not is_instance_valid(e):
+			continue
+		if not ("global_position" in e):
+			continue
+		if global_position.distance_to(e.global_position) <= JAMMING_FIELD_RADIUS:
+			e.set_meta("_jammed_until", expire_msec)
+	# VFX：屏蔽波信号（battle_spectacle 播紫色扩散波纹）
+	if SignalBus.has_signal("mechanism_jamming_field_activated"):
+		SignalBus.mechanism_jamming_field_activated.emit(global_position, JAMMING_FIELD_RADIUS)
+
+## 机制5·战术核武（堡垒·导弹井）：CD 到期 → 找敌方密集区 → 范围 35% 最大生命伤害
+func _update_nuclear_strike_tick(delta: float) -> void:
+	if not _is_nuclear_strike_unit or is_deploy_ghost or is_preview_mode:
+		return
+	_nuclear_strike_cd -= delta
+	if _nuclear_strike_cd > 0.0:
+		return
+	_nuclear_strike_cd = NUCLEAR_STRIKE_INTERVAL
+	# 找敌方最密集区域（简化：取敌方单位平均位置作为爆心）
+	var enemies: Array = _collect_enemy_units_for_mechanism()
+	if enemies.is_empty():
+		return
+	var center: Vector2 = Vector2.ZERO
+	var count: int = 0
+	for e in enemies:
+		if e == null or not is_instance_valid(e) or not ("global_position" in e):
+			continue
+		center += e.global_position
+		count += 1
+	if count == 0:
+		return
+	center /= float(count)
+	# 对爆心半径内敌方造成 35% 最大生命伤害
+	for e in enemies:
+		if e == null or not is_instance_valid(e) or not ("global_position" in e):
+			continue
+		if center.distance_to(e.global_position) <= NUCLEAR_STRIKE_RADIUS:
+			var e_stats = e.stats if "stats" in e else null
+			var t_hp: float = float(e_stats.max_hp) if e_stats != null and "max_hp" in e_stats else 100.0
+			var dmg: float = maxf(200.0, t_hp * NUCLEAR_STRIKE_HP_PCT)
+			if e.has_method("take_damage"):
+				e.take_damage(dmg, self)
+	# VFX：核弹发射+爆炸信号（battle_spectacle 播抛物线+蘑菇云+震屏）
+	if SignalBus.has_signal("mechanism_nuclear_launched"):
+		SignalBus.mechanism_nuclear_launched.emit(global_position, center)
+
+## 机制6·护盾投射（堡垒·护盾器）：CD 到期 → 为半径内3个最低血友军投射护盾
+func _update_shield_projector_tick(delta: float) -> void:
+	if not _is_shield_projector_unit or is_deploy_ghost or is_preview_mode:
+		return
+	_shield_projector_cd -= delta
+	if _shield_projector_cd > 0.0:
+		return
+	_shield_projector_cd = SHIELD_PROJECTOR_INTERVAL
+	if stats == null:
+		return
+	var allies: Array = _collect_ally_units_for_mechanism()
+	# 筛选半径内友军，按血量比例排序取最低3个
+	var candidates: Array = []
+	for a in allies:
+		if a == null or not is_instance_valid(a):
+			continue
+		if not ("global_position" in a) or not ("stats" in a):
+			continue
+		if global_position.distance_to(a.global_position) > SHIELD_PROJECTOR_RADIUS:
+			continue
+		var a_hp: float = float(a.hp) if "hp" in a else 0.0
+		var a_max: float = float(a.stats.max_hp) if a.stats != null and "max_hp" in a.stats else 1.0
+		var ratio: float = a_hp / maxf(a_max, 1.0)
+		candidates.append({"unit": a, "ratio": ratio})
+	if candidates.is_empty():
+		return
+	candidates.sort_custom(func(a, b): return a.ratio < b.ratio)
+	var shield_amount: float = stats.max_hp * SHIELD_PROJECTOR_HP_PCT
+	var target_positions: Array = []
+	var granted: int = 0
+	for c in candidates:
+		if granted >= SHIELD_PROJECTOR_TARGET_COUNT:
+			break
+		var u = c.unit
+		if u != null and is_instance_valid(u) and u.has_method("add_shield"):
+			u.add_shield(shield_amount)
+			target_positions.append(u.global_position)
+			granted += 1
+	# VFX：护盾投射信号（battle_spectacle 播蓝色护盾展开）
+	if not target_positions.is_empty() and SignalBus.has_signal("mechanism_shield_projected"):
+		SignalBus.mechanism_shield_projected.emit(global_position, target_positions)
+
+## 机制7·定时标记（无人机）：CD 到期 → 标记半径内2个最高威胁敌方+25%易伤8s
+func _update_drone_mark_tick(delta: float) -> void:
+	if not _is_drone_mark_unit or is_deploy_ghost or is_preview_mode:
+		return
+	_drone_mark_cd -= delta
+	if _drone_mark_cd > 0.0:
+		return
+	_drone_mark_cd = DRONE_MARK_INTERVAL
+	var enemies: Array = _collect_enemy_units_for_mechanism()
+	# 筛选半径内敌方，按"威胁度"（max_hp 排序）取前2
+	var candidates: Array = []
+	for e in enemies:
+		if e == null or not is_instance_valid(e):
+			continue
+		if not ("global_position" in e) or not ("stats" in e):
+			continue
+		if global_position.distance_to(e.global_position) > DRONE_MARK_RADIUS:
+			continue
+		var e_stats = e.stats
+		var threat: float = float(e_stats.max_hp) if e_stats != null and "max_hp" in e_stats else 50.0
+		candidates.append({"unit": e, "threat": threat})
+	if candidates.is_empty():
+		return
+	candidates.sort_custom(func(a, b): return a.threat > b.threat)
+	var now_msec: int = Time.get_ticks_msec()
+	var expire_msec: int = now_msec + int(DRONE_MARK_DURATION * 1000)
+	var target_positions: Array = []
+	var marked: int = 0
+	for c in candidates:
+		if marked >= DRONE_MARK_TARGET_COUNT:
+			break
+		var u = c.unit
+		if u != null and is_instance_valid(u):
+			u.set_meta("_drone_marked_until", expire_msec)
+			u.set_meta("_drone_mark_vuln", DRONE_MARK_VULN)
+			target_positions.append(u.global_position)
+			marked += 1
+	# VFX：标记锁定信号（battle_spectacle 播红色锁定框+扫描波纹）
+	if not target_positions.is_empty() and SignalBus.has_signal("mechanism_drone_marked"):
+		SignalBus.mechanism_drone_marked.emit(global_position, target_positions)
 
 
 ## v8.x: STALKER 潜行计时器递减（_process 调用）
@@ -1277,6 +1572,15 @@ func _physics_process(delta: float) -> void:
 	# v8.x: ECM 电子战光环（复用 0.2s 节流，与 _ability_accum 同步）
 	if _is_ecm_unit and not is_deploy_ghost and not is_preview_mode:
 		_update_ecm_debuff_aura()
+	# v8.5: 兵种机制技能 tick（全部 delta 驱动 CD 递减，到期触发效果）
+	if not is_deploy_ghost and not is_preview_mode:
+		_update_demolition_tick(delta)
+		_update_sniper_aim_tick(delta)
+		_update_blitz_pierce_tick(delta)
+		_update_jamming_field_tick(delta)
+		_update_nuclear_strike_tick(delta)
+		_update_shield_projector_tick(delta)
+		_update_drone_mark_tick(delta)
 
 func _apply_continuous_effects(delta: float) -> void:
 	ConstructUnitAI.apply_continuous_effects(self, delta)
@@ -1447,6 +1751,12 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		# v7.5: 传入 damage_reduction（此前全链路空转，现 resolve_hit 接入）
 		var dmg_red: float = float(stats.damage_reduction)
 		var hit: Dictionary = CardGridDamage.resolve_hit(amount, eff_def, dodge, dmg_red)
+		# v8.x: 闪避反馈——此前 dodged 字段从不被读取，闪避时 hp_loss=0 静默走完流程，
+		# 且仍触发受击闪白/抖动/击退（既有 bug）。现闪避即飘 MISS 并提前 return，
+		# 既补上缺失反馈，又顺带修复"闪避仍受击"的副作用。
+		if bool(hit.get("dodged", false)):
+			CombatFeedback.show_miss(global_position, self)
+			return
 		hp_loss = float(hit.get("hp_loss", amount))
 		# v7.x: 标记系统——被标记目标受额外伤害（_apply_mark 在攻击者命中时挂载）
 		if has_meta("_marked_until"):

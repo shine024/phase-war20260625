@@ -88,9 +88,12 @@ static func get_era_masters(era: int) -> Array:
 ## - attack_speed_boost: float      攻击速度百分比加成
 ## - hp_boost: float                生命值百分比加成
 ## - energy_regen_boost: float      能量恢复百分比加成
-## - fire_damage_boost: float       火焰伤害百分比加成
-## - lightning_damage_boost: float  雷电伤害百分比加成
-## - void_damage_boost: float       虚空伤害百分比加成
+## - atk_light/atk_armor/atk_air: float  三维攻击百分比加成（v8.x 统一口径，
+##   替代旧的 fire/lightning/void_damage_boost 元素 key——元素 key 已废弃，
+##   仅 void_goddess_trait 按势力树归类保留 void_damage_boost 一处）
+## - fire_damage_boost: float       [已废弃] 火焰伤害百分比加成（已被 atk_* 替代）
+## - lightning_damage_boost: float  [已废弃] 雷电伤害百分比加成（已被 atk_* 替代）
+## - void_damage_boost: float       [势力树保留] 虚空伤害百分比加成（仅 void_goddess_trait）
 ## - all_damage_boost: float        所有伤害百分比加成
 ## - all_resistance_boost: float    所有抗性百分比加成
 ## - unit_limit_bonus: int          额外单位上限

@@ -289,6 +289,29 @@ static func combat_power_from_unit_stats(stats: UnitStats) -> float:
 	)
 	return maxf(out, 1.0)
 
+
+## 预览：给卡牌额外装一个改造后的战力（不真正写入养成数据）。
+## 改造面板效果抽屉"装上后"用。实现=深拷贝实例卡 + 把候选 mod 追加进 clone.mods，
+## 再走与真实安装完全相同的 build_stats_from_card → combat_power_from_unit_stats 路径，
+## 保证预览值与实际安装后（右栏/intel 面板）显示的战力一致。
+## 原 modification_panel 用 before × power_mult 严重虚高（power_mult 是稀有度/成本权重，
+## 非战力增益倍率，1.35 会对 3000 战力卡显示 +1050）。
+static func estimate_power_with_extra_mod(card: CardResource, mod_id: String, bpm_ref: Node) -> float:
+	if card == null or mod_id.is_empty() or bpm_ref == null:
+		return 0.0
+	var clone: CardResource = card.duplicate(true)
+	if clone == null:
+		return 0.0
+	# 追加候选改造（与真实 install_modification 写入的 entry 结构一致：{id, enabled}）
+	if clone.mods == null:
+		clone.mods = []
+	clone.mods.append({"id": mod_id, "enabled": true})
+	var stats: UnitStats = build_unit_stats_for_power_preview(clone, bpm_ref)
+	if stats == null:
+		return 0.0
+	return combat_power_from_unit_stats(stats)
+
+
 ## ─────────── 属性增长 ───────────
 
 static func apply_growth_to_stats(stats: UnitStats, platform_card: CardResource, weapon_cards: Array, bpm_ref: Node, apply_rank_bonus: bool = true) -> void:

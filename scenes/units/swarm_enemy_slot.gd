@@ -230,7 +230,12 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		var swarm_dodge: float = float(stats.dodge_chance) if stats != null else 0.0
 		var swarm_red: float = float(stats.damage_reduction) if stats != null else 0.0
 		swarm_red = minf(0.60, swarm_red + float(damage_reduction))
-		hp_loss = float(CardGridDamage.resolve_hit(amount, eff_def, swarm_dodge, swarm_red).get("hp_loss", amount))
+		var _swarm_hit: Dictionary = CardGridDamage.resolve_hit(amount, eff_def, swarm_dodge, swarm_red)
+		# v8.x: 闪避反馈——dodged 字段从不被读取（原链式 .get 丢弃了），现飘 MISS 并提前 return。
+		if bool(_swarm_hit.get("dodged", false)):
+			CombatFeedback.show_miss(global_position, self)
+			return
+		hp_loss = float(_swarm_hit.get("hp_loss", amount))
 		# v7.x: 新机制 meta 读取（破甲叠加/标记易伤/巷战免伤）——与 construct_unit 口径一致
 		# 这些 meta 由攻击者的 ModuleEffectHandler.apply_on_hit_side_effects 挂载
 		if has_meta("_armor_break_stacks"):

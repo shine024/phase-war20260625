@@ -49,6 +49,7 @@ var _pierce_dir: Vector2 = Vector2.RIGHT  # 穿透光线方向
 
 # 行为参数：由武器类型决定
 var pierce_count: int = 0          # 可额外穿透多少个目标（LASER/SNIPER 用）
+var _blitz_applied: bool = false   # v8.5: 闪电穿插 pierce 补充已应用标记（避免重复加）
 var explosion_radius: float = 0.0  # >0 时命中产生范围伤害（ROCKET/MISSILE/FLAK）
 var pellet_count: int = 1          # 霰弹多发
 var spread_angle_deg: float = 0.0  # 多发散射角
@@ -705,6 +706,14 @@ func _get_aoe_damage_targets(center: Vector2, radius: float, primary: Node2D) ->
 	return targets
 
 func _on_hit(primary: Node2D) -> void:
+	# v8.5: 闪电穿插机制——首次命中时读 shooter 的 _blitz_pierce_bonus meta，加到本弹 pierce_count
+	# （meta 由 construct_unit_ai.do_attack_with_damage 在 _blitz_pierce_ready 时挂上，一次性消费）
+	if not _blitz_applied and shooter != null and is_instance_valid(shooter):
+		_blitz_applied = true
+		var bonus: int = int(shooter.get_meta("_blitz_pierce_bonus", 0))
+		if bonus > 0:
+			pierce_count += bonus
+			shooter.remove_meta("_blitz_pierce_bonus")  # 一次性消费
 	# v7.x: 提取目标 combat_kind（用于命中特效按目标类型差异化色调/缩放/震动）
 	if primary != null:
 		var _ts: UnitStats = primary.get("stats") as UnitStats if "stats" in primary else null
@@ -838,6 +847,12 @@ func _on_hit(primary: Node2D) -> void:
 		if not _atk_tags.is_empty():
 			var _tag_result: Dictionary = AttackCalculator.compute_tag_counter_multiplier(_atk_tags, primary)
 			final_damage *= float(_tag_result.get("mult", 1.0))
+	# v8.5: 无人机定时标记易伤——目标有 _drone_marked_until（未过期）则伤害 ×(1+vuln)
+	if primary != null and is_instance_valid(primary) and primary.has_meta("_drone_marked_until"):
+		var _dm_until: int = int(primary.get_meta("_drone_marked_until", 0))
+		if Time.get_ticks_msec() < _dm_until:
+			var _dm_vuln: float = float(primary.get_meta("_drone_mark_vuln", 0.25))
+			final_damage *= (1.0 + _dm_vuln)
 
 	# 范围伤害
 	if explosion_radius > 0.0:

@@ -22,11 +22,14 @@ class_name PhaseMasterSkillTree
 ##  UNLOCK_TYPES（unlocks 字段的 type 值，驱动不同子系统）：
 ##    phase_instrument  → PhaseInstrumentManager.unlock_instrument(id)
 ##    unit_ability      → 兵种特殊能力解锁（原 enhance_level 解锁的暴击/吸血等）
-##    unit_mechanism    → 新兵种独占机制（侦察视野/工兵建造/堡垒反斜面等）
-##    concept_weapon    → 概念武器大技（核子轰炸/酸雨/能量罩等）
-##    special_card      → 特殊卡解锁（InstanceRegistry/BlueprintManager 标记可获取）
+##    unit_mechanism    → 兵种机制技能解锁（v8.5：定向爆破/瞄准狙击/闪电穿插/电子屏蔽/战术核武/护盾投射/定时标记）
 ##    evolution         → 进化形态解锁（替代 enhance_level 门槛）
 ##    affix             → affix 词条池赋予（替代随机 roll）
+##    card_skill        → 卡片定时技能解锁（CardPeriodicSkillEngine 查询）
+##    tactic            → 战法解锁（TacticDetector 查询）
+##  v8.5 废弃类型（仅旧存档兼容读取，不再有新节点使用）：
+##    concept_weapon    → 原概念武器大技（已改为 unit_mechanism 或 stat_bonus）
+##    special_card      → 原特殊卡解锁（已改为 unit_mechanism）
 ## ═══════════════════════════════════════════════════════════
 
 const BRANCH_COMMAND := "command"
@@ -34,39 +37,44 @@ const BRANCH_INTELLIGENCE := "intelligence"
 const BRANCH_FIREPOWER := "firepower"
 const BRANCH_CONCEPT_WEAPON := "concept_weapon"
 
-## 技能点随相位场等级（Lv1-16）线性增长：Lv1=0, Lv3=1, Lv5=3, ... 每级 +1（Lv3 起）
-const POINTS_BY_PHASE_FIELD_LEVEL := [0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+## 技能点随相位场等级（Lv1-16）增长：v8.5 提升产量（Lv16: 15→28），让玩家能体验 2-3 个分支 + 多个机制技能
+## 原：[0,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]（满级15点只够1-2分支）
+## 新：中期加速，满级28点可点满2分支+部分机制技能
+const POINTS_BY_PHASE_FIELD_LEVEL := [0, 0, 1, 2, 3, 5, 7, 9, 11, 13, 16, 19, 22, 24, 26, 28, 30]
 
 ## 4 分支技能节点（v8.x 骨架版，阶段 1 先填代表性节点，阶段 6 逐步填充）
 const SKILL_TREE: Dictionary = {
 	# ═══════════ 指挥分支：单位上限 / 光环 / 部署 / 特殊卡 ═══════════
-	"command": [
-		# tier 0：起点
-		{"id": "pms_cmd_0", "name": "指挥觉醒", "desc": "相位师获得基础指挥能力，单位上限 +1",
-		 "branch": BRANCH_COMMAND, "tier": 0, "cost": 1, "requires": [],
-		 "unlocks": [], "effects": {"stat_bonus": {"unit_limit": 1}}},
-		# tier 1：单位上限 / 部署速度二选一
-		{"id": "pms_cmd_1a", "name": "扩编指挥", "desc": "单位上限 +2",
-		 "branch": BRANCH_COMMAND, "tier": 1, "cost": 1, "requires": ["pms_cmd_0"],
-		 "unlocks": [], "effects": {"stat_bonus": {"unit_limit": 2}}},
-		{"id": "pms_cmd_1b", "name": "快速部署", "desc": "所有单位部署速度 +15%",
-		 "branch": BRANCH_COMMAND, "tier": 1, "cost": 1, "requires": ["pms_cmd_0"],
-		 "unlocks": [], "effects": {"stat_bonus": {"deploy_speed": 0.15}}},
-		# tier 2：指挥光环（解锁新兵种机制）
-		{"id": "pms_cmd_2", "name": "指挥网络", "desc": "解锁指挥光环：范围内友军攻击 +10%",
-		 "branch": BRANCH_COMMAND, "tier": 2, "cost": 2, "requires": ["pms_cmd_1a"],
-		 "unlocks": [{"type": "unit_mechanism", "id": "command_aura"}],
-		 "effects": {"aura": {"radius": 2.5, "stat_bonus": {"atk_light": 0.10, "atk_armor": 0.10, "atk_air": 0.10}}}},
-		# tier 3：解锁一架指挥专用相位仪
-		{"id": "pms_cmd_3", "name": "指挥相位仪", "desc": "解锁相位仪：擎天-战术核心",
-		 "branch": BRANCH_COMMAND, "tier": 3, "cost": 2, "requires": ["pms_cmd_2"],
-		 "unlocks": [{"type": "phase_instrument", "id": "pi_atlas_01"}],
-		 "effects": {}},
-		# tier 4：指挥终极——全体友军 buff
-		{"id": "pms_cmd_4", "name": "军团统帅", "desc": "所有友军三维防御 +12%，单位上限 +1",
-		 "branch": BRANCH_COMMAND, "tier": 4, "cost": 3, "requires": ["pms_cmd_3"],
-		 "unlocks": [], "effects": {"stat_bonus": {"def_light": 0.12, "def_armor": 0.12, "def_air": 0.12, "unit_limit": 1}}},
-	],
+		"command": [
+			# tier 0：起点（v8.5：原 unit_limit 字段战斗侧从不读取，改三维攻击）
+			{"id": "pms_cmd_0", "name": "指挥觉醒", "desc": "相位师获得基础指挥能力，所有单位三维攻击 +5%",
+			 "branch": BRANCH_COMMAND, "tier": 0, "cost": 1, "requires": [],
+			 "unlocks": [], "effects": {"stat_bonus": {"atk_light": 0.05, "atk_armor": 0.05, "atk_air": 0.05}}},
+			# tier 1：攻击/攻速二选一（v8.5：原 unit_limit/deploy_speed 无效，换有效数值）
+			{"id": "pms_cmd_1a", "name": "集结号令", "desc": "所有单位三维攻击 +8%",
+			 "branch": BRANCH_COMMAND, "tier": 1, "cost": 1, "requires": ["pms_cmd_0"],
+			 "unlocks": [], "effects": {"stat_bonus": {"atk_light": 0.08, "atk_armor": 0.08, "atk_air": 0.08}}},
+			{"id": "pms_cmd_1b", "name": "急行军", "desc": "所有单位三维攻击 +8%（另一侧强化）",
+			 "branch": BRANCH_COMMAND, "tier": 1, "cost": 1, "requires": ["pms_cmd_0"],
+			 "unlocks": [], "effects": {"stat_bonus": {"atk_light": 0.08, "atk_armor": 0.08, "atk_air": 0.08}}},
+			# tier 2：战术协调（v8.5：原 command_aura 空转——光环靠卡牌tags驱动与技能树无关，换暴击伤害）
+			{"id": "pms_cmd_2", "name": "战术协调", "desc": "所有单位暴击伤害 +15%",
+			 "branch": BRANCH_COMMAND, "tier": 2, "cost": 2, "requires": ["pms_cmd_1a"],
+			 "unlocks": [], "effects": {"stat_bonus": {"crit_damage_bonus": 0.15}}},
+			# tier 3：解锁一架指挥专用相位仪
+			{"id": "pms_cmd_3", "name": "指挥相位仪", "desc": "解锁相位仪：擎天-战术核心",
+			 "branch": BRANCH_COMMAND, "tier": 3, "cost": 2, "requires": ["pms_cmd_2"],
+			 "unlocks": [{"type": "phase_instrument", "id": "pi_atlas_01"}],
+			 "effects": {}},
+			# tier 4：军团统帅（v8.5：删无效 unit_limit，三维防御 12%→15%）
+			{"id": "pms_cmd_4", "name": "军团统帅", "desc": "所有友军三维防御 +15%",
+			 "branch": BRANCH_COMMAND, "tier": 4, "cost": 3, "requires": ["pms_cmd_3"],
+			 "unlocks": [], "effects": {"stat_bonus": {"def_light": 0.15, "def_armor": 0.15, "def_air": 0.15}}},
+		# tier 4b：相位场强化（v8.6：单位+基地双效——hp 键同时作用于单位/产兵/基地三处）
+		{"id": "pms_cmd_4b", "name": "相位场强化", "desc": "所有单位与相位场基地生命值 +20%",
+		 "branch": BRANCH_COMMAND, "tier": 4, "cost": 2, "requires": ["pms_cmd_3"],
+		 "unlocks": [], "effects": {"stat_bonus": {"hp": 0.20}}},
+		],
 
 	# ═══════════ 智能化分支：自动行为 / AI 加成 / 经验加成 / affix 赋予 ═══════════
 	"intelligence": [
@@ -86,11 +94,10 @@ const SKILL_TREE: Dictionary = {
 		 "branch": BRANCH_INTELLIGENCE, "tier": 2, "cost": 2, "requires": ["pms_int_1a"],
 		 "unlocks": [{"type": "affix", "pool": ["affix_basic_atk", "affix_basic_def", "affix_basic_hp"]}],
 		 "effects": {}},
-		# tier 3：自动索敌（智能化 AI 加成）
-		{"id": "pms_int_3", "name": "智能火控", "desc": "解锁智能索敌：远程单位优先攻击克制目标",
-		 "branch": BRANCH_INTELLIGENCE, "tier": 3, "cost": 2, "requires": ["pms_int_2"],
-		 "unlocks": [{"type": "unit_mechanism", "id": "smart_targeting"}],
-		 "effects": {"stat_bonus": {"crit_chance": 0.05}}},
+			# tier 3：智能火控（v8.5：原 smart_targeting 未实装，换暴击+闪避数值）
+			{"id": "pms_int_3", "name": "智能火控", "desc": "所有单位暴击率 +8%，闪避 +5%",
+			 "branch": BRANCH_INTELLIGENCE, "tier": 3, "cost": 2, "requires": ["pms_int_2"],
+			 "unlocks": [], "effects": {"stat_bonus": {"crit_chance": 0.08, "dodge_chance": 0.05}}},
 		# tier 4：智能化终极——自动升级
 		{"id": "pms_int_4", "name": "自适应进化", "desc": "战斗中存活超过 30 秒的单位全属性 +15%",
 		 "branch": BRANCH_INTELLIGENCE, "tier": 4, "cost": 3, "requires": ["pms_int_3"],
@@ -131,33 +138,32 @@ const SKILL_TREE: Dictionary = {
 	],
 
 	# ═══════════ 概念武器分支：核子轰炸 / 酸雨 / 能量罩等大技 + 进化解锁 ═══════════
-	"concept_weapon": [
-		# tier 0：起点
-		{"id": "pms_cw_0", "name": "概念突破", "desc": "相位师掌握概念武器基础，能量恢复 +20%",
-		 "branch": BRANCH_CONCEPT_WEAPON, "tier": 0, "cost": 1, "requires": [],
-		 "unlocks": [], "effects": {"stat_bonus": {"energy_regen": 0.20}}},
-		# tier 1：首个概念武器（小型）
-		{"id": "pms_cw_1", "name": "相位护盾", "desc": "解锁概念武器：开局我方全体获得 8000 护盾",
-		 "branch": BRANCH_CONCEPT_WEAPON, "tier": 1, "cost": 2, "requires": ["pms_cw_0"],
-		 "unlocks": [{"type": "concept_weapon", "id": "phase_shield_8000"}],
-		 "effects": {}},
-		# tier 2：进化形态解锁（替代 enhance_level 门槛）
-		{"id": "pms_cw_2", "name": "形态进化", "desc": "解锁卡牌进化能力（一战时代）",
-		 "branch": BRANCH_CONCEPT_WEAPON, "tier": 2, "cost": 2, "requires": ["pms_cw_1"],
-		 "unlocks": [{"type": "evolution", "era": 0}],
-		 "effects": {}},
-		# tier 3：大型概念武器
-		{"id": "pms_cw_3", "name": "核子轰炸", "desc": "解锁概念武器：每 45 秒对敌方全体轰炸",
-		 "branch": BRANCH_CONCEPT_WEAPON, "tier": 3, "cost": 3, "requires": ["pms_cw_2"],
-		 "unlocks": [{"type": "concept_weapon", "id": "nuclear_bombardment"}],
-		 "effects": {}},
-		# tier 4：概念武器终极——解锁特殊卡 + 终极进化
-		{"id": "pms_cw_4", "name": "相位终焉", "desc": "解锁特殊卡：相位守护者，所有时代进化解锁",
-		 "branch": BRANCH_CONCEPT_WEAPON, "tier": 4, "cost": 3, "requires": ["pms_cw_3"],
-		 "unlocks": [{"type": "special_card", "id": "phase_guardian"},
-		             {"type": "evolution", "era": -1}],
-		 "effects": {"stat_bonus": {"max_hp": 0.10}}},
-	],
+		"concept_weapon": [
+			# tier 0：起点（v8.5：原 energy_regen 字段战斗侧从不读取，改三维攻击+暴击）
+			{"id": "pms_cw_0", "name": "概念突破", "desc": "相位师掌握概念武器基础，三维攻击 +5%，暴击率 +5%",
+			 "branch": BRANCH_CONCEPT_WEAPON, "tier": 0, "cost": 1, "requires": [],
+			 "unlocks": [], "effects": {"stat_bonus": {"atk_light": 0.05, "atk_armor": 0.05, "atk_air": 0.05, "crit_chance": 0.05}}},
+			# tier 1：战术核武（v8.5：原 phase_shield_8000 空转——由相位仪能力触发不走技能树；改为机制技能：导弹发射井堡垒发射核弹）
+			{"id": "pms_cw_1", "name": "战术核武", "desc": "解锁机制：导弹发射井堡垒每45秒发射战术核弹，对敌方密集区造成 35% 最大生命的范围伤害",
+			 "branch": BRANCH_CONCEPT_WEAPON, "tier": 1, "cost": 2, "requires": ["pms_cw_0"],
+			 "unlocks": [{"type": "unit_mechanism", "id": "nuclear_strike"}],
+			 "effects": {}},
+			# tier 2：进化形态解锁（替代 enhance_level 门槛）
+			{"id": "pms_cw_2", "name": "形态进化", "desc": "解锁卡牌进化能力（一战时代）",
+			 "branch": BRANCH_CONCEPT_WEAPON, "tier": 2, "cost": 2, "requires": ["pms_cw_1"],
+			 "unlocks": [{"type": "evolution", "era": 0}],
+			 "effects": {}},
+			# tier 3：能量过载（v8.5：原 nuclear_bombardment 空转——由相位仪能力触发不走技能树；改数值加成）
+			{"id": "pms_cw_3", "name": "能量过载", "desc": "所有单位三维攻击 +12%，暴击伤害 +25%",
+			 "branch": BRANCH_CONCEPT_WEAPON, "tier": 3, "cost": 3, "requires": ["pms_cw_2"],
+			 "unlocks": [], "effects": {"stat_bonus": {"atk_light": 0.12, "atk_armor": 0.12, "atk_air": 0.12, "crit_damage_bonus": 0.25}}},
+			# tier 4：护盾投射（v8.5：原 phase_guardian 特殊卡空转——special_card 分支未实装；改为机制技能 + 保留全时代进化解锁）
+			{"id": "pms_cw_4", "name": "护盾投射", "desc": "解锁机制：护盾发射器堡垒每20秒为半径250内生命最低的3个友军投射护盾；解锁所有时代进化",
+			 "branch": BRANCH_CONCEPT_WEAPON, "tier": 4, "cost": 3, "requires": ["pms_cw_3"],
+			 "unlocks": [{"type": "unit_mechanism", "id": "shield_projector"},
+			             {"type": "evolution", "era": -1}],
+			 "effects": {}},
+		],
 }
 
 ## 获取分支技能列表

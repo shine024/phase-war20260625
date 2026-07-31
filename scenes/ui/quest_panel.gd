@@ -13,6 +13,9 @@ signal closed
 @onready var close_btn: Button = $Margin/VBox/CloseButton
 @onready var tab_container: TabContainer = $Margin/VBox/TabContainer
 
+# v8.x 性能：on_overlay_opened 拆帧重入守卫
+var _open_refresh_inflight: bool = false
+
 func _ready() -> void:
 	close_btn.pressed.connect(_on_close)
 	ManagerLazyLoader.ensure_loaded("quest")
@@ -20,8 +23,30 @@ func _ready() -> void:
 	if QuestManager:
 		QuestManager.quest_progress_changed.connect(_on_quest_changed)
 		QuestManager.quest_completed.connect(_on_quest_completed)
+	# v8.x 性能：_ready 只连信号，列表刷新交给 on_overlay_opened 拆帧。
+	# QuestManager 信号 handler (_on_quest_changed/_on_quest_completed) 自身就是完整刷新流程，
+	# 不依赖 _ready 设置任何状态，故窗口期安全。
+
+## v8.x 性能：外部打开面板时调用（main.gd._open_overlay 分发）。
+## 将任务/公司列表重建拆到下一帧，避开打开同帧的实例化尖峰。
+## 仿 store_panel.on_overlay_opened 模式。
+func on_overlay_opened() -> void:
+	if _open_refresh_inflight:
+		return
+	_open_refresh_inflight = true
+	call_deferred("_run_open_refresh_pipeline")
+
+func _run_open_refresh_pipeline() -> void:
+	if not is_visible_in_tree():
+		_open_refresh_inflight = false
+		return
+	await get_tree().process_frame
+	if not is_visible_in_tree():
+		_open_refresh_inflight = false
+		return
 	_refresh_company_summary()
 	_refresh_list()
+	_open_refresh_inflight = false
 
 ## v7.x 修复 W6：面板释放时断开 autoload 信号，避免残留死 Callable
 func _exit_tree() -> void:

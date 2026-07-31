@@ -75,11 +75,14 @@ const DATA: Dictionary = {
 	"aa_06_laser" = {
 		id = AA_06_LASER, name = "激光近防系统", name_en = "Laser CIWS",
 		icon = "res://assets/ui/icons/mod_icons/mod_laser.png",
-		prototype = "HELIOS", description = "30%拦截导弹，无限弹药",
+		# v8.x: 从 missile_intercept(→damage_reduction 减伤，偏弱) 迁移到真拦截 intercept_system。
+		# 与 arm_04_aps(30%×3次) 区分定位：激光靠"无限弹药"持续拦截，
+		# intercept_charges=-1 在 try_intercept 中走无限分支（不耗尽），匹配 legendary+Lv8 门槛。
+		prototype = "HELIOS", description = "30%概率激光拦截来袭弹药（无限弹药，无次数限制）",
 		rarity = "legendary",
 	power_mult = 2.0, cost_research = 500, cost_install = 250,
 		slot_type = "laser", conflict_group = "laser",
-		effects = {missile_intercept = 0.30, infinite_ammo = true},
+		effects = {intercept_system = 0.30, intercept_charges = -1, infinite_ammo = true},
 		unlock_conditions = {required_level = 8}
 	},
 	"aa_07_aesa" = {
@@ -97,7 +100,7 @@ const DATA: Dictionary = {
 	"aa_08_power_gen" = {
 		id = AA_08_POWER_GEN, name = "车载发电机组", name_en = "Power Generator",
 		icon = "res://assets/ui/icons/mod_icons/mod_power.png",
-		prototype = "自行高炮必备", description = "持续作战，无限电力",
+		prototype = "自行高炮必备", description = "持续供电，攻速+100%",
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 100, cost_install = 50,
 		slot_type = "power", conflict_group = "power",
@@ -117,7 +120,7 @@ const DATA: Dictionary = {
 	"aa_10_camouflage" = {
 		id = AA_10_CAMOUFLAGE, name = "伪装网", name_en = "Camouflage Net",
 		icon = "res://assets/ui/icons/mod_icons/mod_stealth.png",
-		prototype = "红外伪装网", description = "降低被攻击优先级",
+		prototype = "红外伪装网", description = "伪装隐蔽，闪避+30%",
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 90, cost_install = 45,
 		slot_type = "stealth", conflict_group = "stealth",
@@ -137,7 +140,7 @@ const DATA: Dictionary = {
 	"aa_12_fire_on_move" = {
 		id = AA_12_FIRE_ON_MOVE, name = "行进间射击", name_en = "Fire on Move",
 		icon = "res://assets/ui/icons/mod_icons/mod_mobility.png",
-		prototype = "ZSU-23-4", description = "移动中可射击，精度略降",
+		prototype = "ZSU-23-4", description = "行进间速射，攻速+10%，暴击率-20%",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 300, cost_install = 150,
 		slot_type = "mobility", conflict_group = "mobility",

@@ -55,7 +55,7 @@ const DATA: Dictionary = {
 		slot_type = "optics", conflict_group = "optics",
 		# v7.x: per-slot 弹道——对轻装槽改 SNIPER 精确射击
 		condition_slot = 0,
-		effects = {attack_range = 60, crit_chance = 0.10, slot_weapon_type = 6},  # v7.x: 对轻装槽狙击弹道,
+		effects = {attack_range = 60, crit_chance = 0.10, slot_weapon_type = 6, true_damage = 12},  # v8.6: 狙击补真实伤害（高倍瞄准=无视护甲命中要害）
 		unlock_conditions = {required_level = 5}
 	},
 	"rec_05_uav" = {
@@ -71,7 +71,7 @@ const DATA: Dictionary = {
 	"rec_06_tactical_radio" = {
 		id = REC_06_TACTICAL_RADIO, name = "战术电台", name_en = "Tactical Radio",
 		icon = "res://assets/ui/icons/mod_icons/mod_comms.png",
-		prototype = "单兵超短波", description = "情报传输速度提升",
+		prototype = "单兵超短波", description = "战术通讯协调，暴击率+30%",
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 80, cost_install = 40,
 		slot_type = "comms", conflict_group = "comms",
@@ -81,7 +81,7 @@ const DATA: Dictionary = {
 	"rec_07_gps" = {
 		id = REC_07_GPS, name = "GPS定位仪", name_en = "GPS Receiver",
 		icon = "res://assets/ui/icons/mod_icons/mod_navigation.png",
-		prototype = "军用GPS", description = "精确定位，机动性提升",
+		prototype = "军用GPS", description = "GPS定位，部署加速20%",
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 90, cost_install = 45,
 		slot_type = "navigation", conflict_group = "navigation",
@@ -91,7 +91,7 @@ const DATA: Dictionary = {
 	"rec_08_nvg" = {
 		id = REC_08_NVG, name = "夜视仪", name_en = "Night Vision",
 		icon = "res://assets/ui/icons/mod_icons/mod_optics.png",
-		prototype = "PVS-14", description = "夜间全属性提升",
+		prototype = "PVS-14", description = "夜视瞄准，暴击率+15%",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 180, cost_install = 90,
 		slot_type = "optics", conflict_group = "optics",
@@ -123,7 +123,7 @@ const DATA: Dictionary = {
 	"rec_11_decoy" = {
 		id = REC_11_DECOY, name = "假目标", name_en = "Decoy",
 		icon = "res://assets/ui/icons/mod_icons/mod_deception.png",
-		prototype = "充气坦克/假人", description = "敌方误判概率提升",
+		prototype = "充气坦克/假人", description = "假目标诱饵，暴击率+20%",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 160, cost_install = 80,
 		slot_type = "deception", conflict_group = "deception",
@@ -133,7 +133,7 @@ const DATA: Dictionary = {
 	"rec_12_atv" = {
 		id = REC_12_ATV, name = "越野摩托", name_en = "All-Terrain Vehicle",
 		icon = "res://assets/ui/icons/mod_icons/mod_mobility.png",
-		prototype = "侦察摩托", description = "高机动性，速度大幅提升",
+		prototype = "侦察摩托", description = "越野摩托，部署加速60%",
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 110, cost_install = 55,
 		slot_type = "mobility", conflict_group = "mobility",

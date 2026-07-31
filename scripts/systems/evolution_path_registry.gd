@@ -14,8 +14,12 @@ static var _initialized: bool = false
 ## ─────────────────────────────────────────────
 
 func _ready() -> void:
-	## 作为autoload时自动初始化
-	register_all()
+	# v8.x 性能优化：不在 autoload 启动时同步 register_all（注册 8 兵种 × 主线+隐藏分支 = 73 节点，
+	# 含 8 个 evolution_paths/*.gd 的 preload 链 + duplicate(true) 深拷贝）。
+	# 所有公开查询入口（get_evolution_path/get_evolution_targets/check_evolution_requirements/
+	# calculate_evolved_stats/evolve_weapon_slots）首行均调 _ensure_initialized()，
+	# 首次查询会自动触发 register_all。开销从启动期转移到首次进化面板/战斗构建时。
+	pass
 
 ## ─────────────────────────────────────────────
 ##  注册

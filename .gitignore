@@ -44,6 +44,9 @@ _s3_test.txt
 C:Users*
 
 
+# ── 临时分析/探针脚本工作目录（.zcode，CLI 探针残留，勿入库）──
+.zcode/
+
 # ── Claude Code 本地配置 ──
 .claude/settings.local.json
 .claude/agent-memory/

@@ -419,6 +419,12 @@ static func _apply_mod_stat_effects(stats: UnitStats, mods: Array) -> void:
 		"phase_shield_pool": stats.phase_shield_pool,
 		"phase_shield_regen": stats.phase_shield_regen,
 		"laser_mark_on_hit": stats.laser_mark_on_hit,
+		# v8.6 现实/科幻伤害类型
+		"true_damage": stats.true_damage,
+		"chem_chance": stats.chem_chance, "chem_dps": stats.chem_dps, "chem_duration": stats.chem_duration,
+		"burn_chance": stats.burn_chance, "burn_dps": stats.burn_dps, "burn_duration": stats.burn_duration,
+		"emp_chance": stats.emp_chance, "emp_true_damage": stats.emp_true_damage,
+		"nano_chance": stats.nano_chance, "nano_pct": stats.nano_pct, "nano_duration": stats.nano_duration,
 	}
 	# 统一应用（支持 level_effects + effects 两种格式）
 	var result: Dictionary = ModificationRegistry.apply_with_level(base_dict, mods)
@@ -497,6 +503,19 @@ static func _apply_mod_stat_effects(stats: UnitStats, mods: Array) -> void:
 	stats.phase_shield_pool = float(result.get("phase_shield_pool", stats.phase_shield_pool))
 	stats.phase_shield_regen = float(result.get("phase_shield_regen", stats.phase_shield_regen))
 	stats.laser_mark_on_hit = bool(result.get("laser_mark_on_hit", stats.laser_mark_on_hit))
+	# v8.6 现实/科幻伤害类型回写
+	stats.true_damage = float(result.get("true_damage", stats.true_damage))
+	stats.chem_chance = float(result.get("chem_chance", stats.chem_chance))
+	stats.chem_dps = float(result.get("chem_dps", stats.chem_dps))
+	stats.chem_duration = float(result.get("chem_duration", stats.chem_duration))
+	stats.burn_chance = float(result.get("burn_chance", stats.burn_chance))
+	stats.burn_dps = float(result.get("burn_dps", stats.burn_dps))
+	stats.burn_duration = float(result.get("burn_duration", stats.burn_duration))
+	stats.emp_chance = float(result.get("emp_chance", stats.emp_chance))
+	stats.emp_true_damage = float(result.get("emp_true_damage", stats.emp_true_damage))
+	stats.nano_chance = float(result.get("nano_chance", stats.nano_chance))
+	stats.nano_pct = float(result.get("nano_pct", stats.nano_pct))
+	stats.nano_duration = float(result.get("nano_duration", stats.nano_duration))
 	# v6.5→v6.6: 武器类改造改变武器型号，写入 legacy_weapon_type（不污染 weapon_type 弹道字段）
 	# bullet 的 VFX/弹道 match 读 legacy_weapon_type，AI 曲射判断读 weapon_type
 	if result.has("legacy_weapon_type"):
@@ -684,6 +703,63 @@ static func _apply_v8_unit_type_meta(stats: UnitStats) -> void:
 	if "sniper" in card_tags or cid.find("sniper") >= 0 or cid.find("marksman") >= 0 \
 	   or cid.find("spetsnaz") >= 0:
 		stats.set_meta("is_sniper", true)
+
+	# ── v8.5: 兵种机制技能 meta（由技能树 unit_mechanism 解锁守卫）──
+	# 载体：侦察/狙击/装甲/防空·电子战/堡垒·导弹井·护盾器/无人机
+	# 守卫：必须技能树解锁对应 unit_mechanism 才打 meta（未解锁则机制不生效）
+	var sm: Node = null
+	if Engine.has_singleton("PhaseMasterSkillManager"):
+		sm = Engine.get_singleton("PhaseMasterSkillManager")
+	else:
+		# v8.5: 静态上下文无 Engine.get_singleton，走 autoload 节点路径（运行时有效）
+		var tree = Engine.get_main_loop() as SceneTree
+		if tree != null and tree.root != null:
+			sm = tree.root.get_node_or_null("PhaseMasterSkillManager")
+	if sm != null:
+		# 定向爆破：侦察单位（复用 is_recon_unit 判定逻辑，或 card_id 前缀）
+		var is_recon_unit := stats.has_meta("is_recon_unit") and bool(stats.get_meta("is_recon_unit", false))
+		if is_recon_unit and sm.has_method("is_content_unlocked") \
+		   and sm.is_content_unlocked("unit_mechanism", "demolition"):
+			stats.set_meta("is_demolition", true)
+		# 瞄准狙击：狙击单位
+		if stats.has_meta("is_sniper") and bool(stats.get_meta("is_sniper", false)) \
+		   and sm.is_content_unlocked("unit_mechanism", "sniper_aim"):
+			stats.set_meta("is_sniper_aim", true)
+		# 闪电穿插：装甲单位（ARMOR 主类且非 FORT 子类）
+		if stats.combat_kind == GC.CombatKind.ARMOR and stats.unit_subtype != GC.UnitSubType.FORT \
+		   and sm.is_content_unlocked("unit_mechanism", "blitz_pierce"):
+			stats.set_meta("is_blitz_pierce", true)
+		# 电子屏蔽：防空单位（ANTI_AIR 子类）或电子战单位（is_ecm）
+		var is_aa_or_ecm := (stats.unit_subtype == GC.UnitSubType.ANTI_AIR) \
+		                   or (stats.has_meta("is_ecm") and bool(stats.get_meta("is_ecm", false)))
+		if is_aa_or_ecm and sm.is_content_unlocked("unit_mechanism", "jamming_field"):
+			stats.set_meta("is_jamming_field", true)
+		# 战术核武：堡垒单位且 card_id 含导弹井关键字
+		if stats.combat_kind == GC.CombatKind.FORT \
+		   and (cid.find("missile") >= 0 or cid.find("silo") >= 0 or cid.find("nuke") >= 0) \
+		   and sm.is_content_unlocked("unit_mechanism", "nuclear_strike"):
+			stats.set_meta("is_nuclear_strike", true)
+		# 护盾投射：堡垒单位且 card_id 含护盾/发射器关键字
+		if stats.combat_kind == GC.CombatKind.FORT \
+		   and (cid.find("shield") >= 0 or cid.find("phalanx") >= 0 or cid.find("citadel") >= 0) \
+		   and sm.is_content_unlocked("unit_mechanism", "shield_projector"):
+			stats.set_meta("is_shield_projector", true)
+		# 定时标记：无人机单位（card_id 含 drone/uav，含侦察无人机和战术无人机）
+		if (cid.find("drone") >= 0 or cid.find("uav") >= 0) \
+		   and sm.is_content_unlocked("unit_mechanism", "drone_mark"):
+			stats.set_meta("is_drone_mark", true)
+		# v8.6 化学武器：支援/火炮单位（解锁后自带化学弹头能力）
+		if stats.combat_kind == GC.CombatKind.SUPPORT \
+		   and sm.is_content_unlocked("unit_mechanism", "chemical_weapon"):
+			stats.chem_chance = maxf(stats.chem_chance, 0.25)
+			stats.chem_dps = maxf(stats.chem_dps, 6.0)
+			stats.chem_duration = maxf(stats.chem_duration, 5.0)
+		# v8.6 纳米病毒：支援/火炮单位（解锁后自带纳米病毒弹头）
+		if stats.combat_kind == GC.CombatKind.SUPPORT \
+		   and sm.is_content_unlocked("unit_mechanism", "nano_virus"):
+			stats.nano_chance = maxf(stats.nano_chance, 0.20)
+			stats.nano_pct = maxf(stats.nano_pct, 0.015)
+			stats.nano_duration = maxf(stats.nano_duration, 6.0)
 
 
 # ─────────────────────────────────────────────

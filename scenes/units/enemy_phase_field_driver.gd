@@ -55,6 +55,14 @@ var _spawn_sequence: Array = []         # 出兵序列 [{platform, type}, ...]
 var _spawn_seq_index: int = 0           # 当前序列游标
 # v7.x: 敌方相位仪主动能力缓存（setup 时从相位仪配置读取）
 var _enemy_active_ability: Dictionary = {}
+# v8.5: boss 主动/被动技能缓存（setup 时从 master_config 透传，供 EnemyMasterSkillEngine 读取）
+var _boss_active_spells: Array = []
+var _boss_passive_spells: Array = []
+# v8.5: boss 技能引擎引用（setup 时由 BattleManager 注入，用于 _on_destroyed 触发死亡被动）
+var _master_skill_engine: RefCounted = null
+# v8.5: boss 护盾/反伤（由 EnemyMasterSkillEngine 的 shield_base/thorn_armor 类被动设置）
+var _boss_shield: float = 0.0
+var _boss_thorn_pct: float = 0.0
 # v7.x: 产兵 tier 按关卡难度递进（替代旧"恒定 TIER_HIGH"）
 # _game_level：当前游戏关卡号（1-100），0=未知 fallback 到主等级映射
 # _era_progress：当前时代内进度 0.0~1.0（驱动 enhance/tier/rune_count 限量）
@@ -171,6 +179,9 @@ func setup(master_config: Dictionary) -> void:
 	_spawn_seq_index = 0
 	# v7.x: 缓存敌方相位仪的主动能力（供 EnemyPhaseInstrumentAbilities 读取）
 	_enemy_active_ability = _read_enemy_active_ability()
+	# v8.5: 缓存 boss 主动/被动技能（透传自 master_config，供 EnemyMasterSkillEngine 定时触发）
+	_boss_active_spells = master_config.get("active_spells", []) if master_config.has("active_spells") else []
+	_boss_passive_spells = master_config.get("passive_spells", []) if master_config.has("passive_spells") else []
 	_unit_limit = int(_master_stats.get("unit_limit", 5))
 	# v7.x: 相位仪战斗卡槽数限制产兵数——"出兵x相位仪，绿槽数y成为限制"。
 	# v7.x 统一池：读 slot_counts.green（玩家同款 schema），按星级梯度 1~6（见 _STAR_LAYOUT）。
@@ -227,6 +238,14 @@ func _read_enemy_active_ability() -> Dictionary:
 func get_active_ability() -> Dictionary:
 	return _enemy_active_ability
 
+## v8.5: 暴露 boss 主动技能数组（供 EnemyMasterSkillEngine 定时触发）
+func get_boss_active_spells() -> Array:
+	return _boss_active_spells
+
+## v8.5: 暴露 boss 被动技能数组（事件触发型，如死亡爆炸/复活）
+func get_boss_passive_spells() -> Array:
+	return _boss_passive_spells
+
 func _apply_body_visual_from_master(master_config: Dictionary) -> void:
 	var spr := get_node_or_null("Body") as Sprite2D
 	if spr == null:
@@ -281,6 +300,17 @@ func start_production() -> void:
 
 func stop_production() -> void:
 	_battle_active = false
+
+## v8.5: 强制立即产兵一次（补满到 unit_limit）。供 EnemyMasterSkillEngine 召唤类技能调用。
+## 格子战约束：敌方槽位上限 6，补满即止，不会越界。
+func force_produce_once() -> void:
+	if not is_instance_valid(self):
+		return
+	_produce_unit()
+
+## v8.5: 由 BattleManager 注入技能引擎引用（用于死亡时触发死亡类被动）
+func set_master_skill_engine(engine: RefCounted) -> void:
+	_master_skill_engine = engine
 
 func _process(delta: float) -> void:
 	if _body != null:
@@ -789,15 +819,39 @@ func _fallback_pick_free_enemy_slot() -> int:
 	return BattleSlotGrid.SLOT_COUNT - 2
 
 func take_damage(amount: float, attacker: Variant = null) -> void:
-	hp -= amount
+	var actual: float = amount
+	# v8.5: boss 护盾优先扣减（shield_base/iron_dome 等被动给 boss 加的护盾）
+	if _boss_shield > 0.0:
+		var absorbed: float = minf(_boss_shield, actual)
+		_boss_shield -= absorbed
+		actual -= absorbed
+		if _boss_shield <= 0.0:
+			_boss_shield = 0.0
+	hp -= actual
+	# v8.5: boss 反伤被动（thorn_armor_fire/lightning_thorn 等）——受击时给攻击者反伤
+	if _boss_thorn_pct > 0.0 and actual > 0.0 and attacker != null:
+		var reflect: float = actual * _boss_thorn_pct
+		if attacker.has_method("take_damage"):
+			attacker.take_damage(reflect, self)
 	if SignalBus:
 		SignalBus.enemy_phase_driver_hp_changed.emit(maxf(hp, 0.0), max_hp)
 		SignalBus.unit_damaged.emit(self, false, amount, global_position)
 	if hp <= 0:
 		_on_destroyed()
 
+## v8.5: boss 护盾/反伤由 EnemyMasterSkillEngine 设置（shield_base/thorn_armor 类被动）
+func add_boss_shield(amount: float) -> void:
+	_boss_shield += amount
+func set_boss_thorn(pct: float) -> void:
+	_boss_thorn_pct = pct
+func get_boss_shield() -> float:
+	return _boss_shield
+
 func _on_destroyed() -> void:
 	stop_production()
+	# v8.5: 死亡类被动（death_explosion 等）必须在 queue_free 前触发（此时 driver 仍有效）
+	if _master_skill_engine != null and _master_skill_engine.has_method("on_boss_destroyed"):
+		_master_skill_engine.on_boss_destroyed()
 	if SignalBus:
 		SignalBus.enemy_phase_driver_destroyed.emit()
 	queue_free()

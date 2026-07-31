@@ -563,7 +563,7 @@ func get_special_rules(level: int) -> Dictionary:
 func _apply_special_rules() -> void:
 	# ─── 一战时代（1-20）───
 	# 第5关：能量受限（教学"能量管理"，回复减半）
-	_set_rules(5, {"energy_regen_mult": 0.5, "deploy_limit": 4})
+	_set_rules(5, {"energy_regen_mult": 0.5})
 	# 第15关：限定步兵（巷战，重装备无法展开）—— platform_type 0=INFANTRY
 	_set_rules(15, {"restrict_platforms": [0]})
 	# 第20关 Boss：坚守8波（时代 Boss 考验耐力）
@@ -574,12 +574,12 @@ func _apply_special_rules() -> void:
 	_set_rules(25, {"energy_mult": 0.5})
 	# 第30关：限定装甲（装甲突击战）—— platform_type 1=ARMOR
 	_set_rules(30, {"restrict_platforms": [1]})
-	# 第40关 Boss：坚守10波 + 部署上限4（高压 Boss）
-	_set_rules(40, {"win_type": "survive_waves", "win_param": 10, "deploy_limit": 4})
+	# 第40关 Boss：坚守10波（时代 Boss 考验耐力）
+	_set_rules(40, {"win_type": "survive_waves", "win_param": 10})
 
 	# ─── 冷战时代（41-60）───
-	# 第50关：回复减半 + 部署上限4
-	_set_rules(50, {"energy_regen_mult": 0.5, "deploy_limit": 4})
+	# 第50关：回复减半
+	_set_rules(50, {"energy_regen_mult": 0.5})
 	# 第55关：限定空军/支援（机动战）—— platform_type 2=AIR, 3=SUPPORT
 	_set_rules(55, {"restrict_platforms": [2, 3]})
 	# 第60关 Boss：坚守12波
@@ -595,10 +595,10 @@ func _apply_special_rules() -> void:
 	# ─── 近未来时代（81-100）───
 	# 第85关：限定支援/工兵（阵地防御战）—— platform_type 3=SUPPORT, 7=ENGINEER
 	_set_rules(85, {"restrict_platforms": [3, 7]})
-	# 第90关：能量减半 + 部署上限4
-	_set_rules(90, {"energy_mult": 0.5, "deploy_limit": 4})
-	# 第100关 终局：坚守15波 + 全限制（终极考验）
-	_set_rules(100, {"win_type": "survive_waves", "win_param": 15, "energy_mult": 0.5, "deploy_limit": 4})
+	# 第90关：能量减半
+	_set_rules(90, {"energy_mult": 0.5})
+	# 第100关 终局：坚守15波（终极考验）
+	_set_rules(100, {"win_type": "survive_waves", "win_param": 15, "energy_mult": 0.5})
 
 
 ## v8 批次3: 给指定关卡挂 special_rules（内部辅助，合并到已有字典）。

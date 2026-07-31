@@ -137,12 +137,12 @@ func _on_load_slot(slot_num: int) -> void:
 		return
 	SaveManager.set_slot(slot_num)
 	var success: bool = SaveManager.load_game()
-		if success:
-			slot_selected.emit(slot_num)
-			_refresh_all_slots()
-		else:
-			push_error("[SaveSlotManager] 加载存档槽 %d 失败" % slot_num)
-			_show_error_toast("加载存档槽 %d 失败，文件可能已损坏" % slot_num)
+	if success:
+		slot_selected.emit(slot_num)
+		_refresh_all_slots()
+	else:
+		push_error("[SaveSlotManager] 加载存档槽 %d 失败" % slot_num)
+		_show_error_toast("加载存档槽 %d 失败，文件可能已损坏" % slot_num)
 
 ## 保存到存档槽（真实 API：set_slot + save_game）
 func _on_save_slot(slot_num: int) -> void:
@@ -150,7 +150,7 @@ func _on_save_slot(slot_num: int) -> void:
 		return
 	var prev_slot := SaveManager.get_slot()
 	SaveManager.set_slot(slot_num)
-		var success: bool = SaveManager.save_game()
+	var success: bool = SaveManager.save_game()
 	if success:
 		slot_selected.emit(slot_num)
 		_refresh_all_slots()

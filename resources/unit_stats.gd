@@ -186,6 +186,34 @@ var single_target_penalty: float = 0.0
 @export var hp_regen: float = 0.0
 
 # ─────────────────────────────────────────────
+#  v8.6 现实/科幻战斗伤害类型
+#  4 种持续伤害（dot）+ 真实伤害（命中追加，无视护甲）
+# ─────────────────────────────────────────────
+
+## 真实伤害（固定值，每次命中额外造成，无视护甲/减伤/闪避）
+## 来源：射程类改造（膛线/瞄准镜/狙击等）+ 电磁武器即时伤害
+var true_damage: float = 0.0
+
+## 化学武器（中毒 dot）：命中概率挂毒，固定 DPS 持续 N 秒
+var chem_chance: float = 0.0       ## 触发概率（0~1）
+var chem_dps: float = 0.0          ## 每秒伤害
+var chem_duration: float = 0.0     ## 持续秒数
+
+## 燃烧弹/助燃剂（燃烧 dot）：命中概率挂燃烧，DPS 可叠加层数
+var burn_chance: float = 0.0       ## 触发概率
+var burn_dps: float = 0.0          ## 每层每秒伤害
+var burn_duration: float = 0.0     ## 持续秒数
+
+## 电磁静电：命中概率降攻速/命中（复用 ECM debuff meta）+ 小额真实伤害即时结算
+var emp_chance: float = 0.0        ## 触发概率
+var emp_true_damage: float = 0.0   ## 即时真实伤害量
+
+## 纳米病毒（比例 dot）：命中概率挂病毒，按目标 maxHP 百分比每秒掉血（打肉盾专用）
+var nano_chance: float = 0.0       ## 触发概率
+var nano_pct: float = 0.0          ## 每秒掉 maxHP 的百分比（如 0.02 = 每秒 2%）
+var nano_duration: float = 0.0     ## 持续秒数
+
+# ─────────────────────────────────────────────
 #  变异词条标记
 # ─────────────────────────────────────────────
 

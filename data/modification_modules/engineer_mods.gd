@@ -79,7 +79,7 @@ const DATA: Dictionary = {
 	"eng_07_generator" = {
 		id = ENG_07_GENERATOR, name = "发电机", name_en = "Power Generator",
 		icon = "res://assets/ui/icons/mod_icons/mod_power.png",
-		prototype = "野战发电站", description = "周围堡垒HP回复提升",
+		prototype = "野战发电站", description = "野战发电，三维防御+12.5%",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 200, cost_install = 100,
 		slot_type = "power", conflict_group = "power",
@@ -89,7 +89,7 @@ const DATA: Dictionary = {
 	"eng_08_medical" = {
 		id = ENG_08_MEDICAL, name = "战场急救站", name_en = "Field Medical Station",
 		icon = "res://assets/ui/icons/mod_icons/mod_medical.png",
-		prototype = "机动医疗单元", description = "周围友军回复生命值",
+		prototype = "机动医疗单元", description = "战场医疗，每秒回复0.15%生命值",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 280, cost_install = 140,
 		slot_type = "medical", conflict_group = "medical",
@@ -99,7 +99,7 @@ const DATA: Dictionary = {
 	"eng_09_supply" = {
 		id = ENG_09_SUPPLY, name = "弹药补给车", name_en = "Ammo Supply Truck",
 		icon = "res://assets/ui/icons/mod_icons/mod_logistics.png",
-		prototype = "运输车", description = "周围友军弹药提升",
+		prototype = "运输车", description = "弹药补给，攻速+15%",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 180, cost_install = 90,
 		slot_type = "logistics", conflict_group = "logistics",
@@ -109,7 +109,7 @@ const DATA: Dictionary = {
 	"eng_10_camouflage" = {
 		id = ENG_10_CAMOUFLAGE, name = "伪装网系统", name_en = "Camouflage System",
 		icon = "res://assets/ui/icons/mod_icons/mod_stealth.png",
-		prototype = "大型伪装系统", description = "周围单位被发现降低",
+		prototype = "大型伪装系统", description = "伪装隐蔽，闪避+15%",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 240, cost_install = 120,
 		slot_type = "stealth", conflict_group = "stealth",

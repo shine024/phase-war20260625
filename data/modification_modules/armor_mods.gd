@@ -55,7 +55,7 @@ const DATA: Dictionary = {
 		name = "复合装甲",
 		name_en = "Composite Armor",
 		prototype = "乔巴姆",
-		description = "多层复合材料，显著提升对HEAT弹防护",
+		description = "多层复合装甲，对装甲防御+30%，减伤+50%",
 		icon = "res://assets/ui/icons/mod_icons/mod_armor_special.png",
 		rarity = "epic",
 	power_mult = 1.6,
@@ -237,7 +237,7 @@ const DATA: Dictionary = {
 		name = "燃气轮机",
 		name_en = "Gas Turbine",
 		prototype = "M1艾布拉姆斯",
-		description = "燃气轮机，机动性显著提升",
+		description = "燃气轮机，部署加速40%",
 		icon = "res://assets/ui/icons/mod_icons/mod_engine.png",
 		rarity = "legendary",
 	power_mult = 2.0,
@@ -258,7 +258,7 @@ const DATA: Dictionary = {
 		name = "柴油增压引擎",
 		name_en = "Turbocharged Diesel",
 		prototype = "MTU发动机",
-		description = "增压柴油机，机动和耐久平衡",
+		description = "增压柴油机，部署加速20%，生命+10%",
 		icon = "res://assets/ui/icons/mod_icons/mod_engine.png",
 		rarity = "epic",
 	power_mult = 1.6,
@@ -302,7 +302,10 @@ const DATA: Dictionary = {
 		name = "热成像瞄准镜",
 		name_en = "Thermal Sight",
 		prototype = "M60A3 TTS",
-		description = "热成像瞄准，射程+30px",
+		# v8.x: 原 smoke_ignore→暴击 + attack_range+30px（射程加成过小几乎无感）。
+		# 项目无独立烟雾战术系统，smoke_ignore bool 被重定向为固定 +15% 暴击；
+		# 现 effects 直接写 crit_chance=0.15（语义对齐"热成像=看得清=命中要害"），射程加成删除。
+		description = "热成像瞄准，暴击率+15%",
 		icon = "res://assets/ui/icons/mod_icons/mod_optics.png",
 		rarity = "rare",
 	power_mult = 1.3,
@@ -311,8 +314,7 @@ const DATA: Dictionary = {
 		slot_type = "optics",
 		conflict_group = "optics",
 		effects = {
-			smoke_ignore = true,   # 无视烟雾
-			attack_range = 30,     # +30px
+			crit_chance = 0.15,    # +15% 暴击率（热成像精准锁定）
 		},
 		unlock_conditions = {
 			required_level = 3,
@@ -346,7 +348,10 @@ const DATA: Dictionary = {
 		name = "扫雷滚/犁",
 		name_en = "Mine Plow/Roller",
 		prototype = "以色列地毯",
-		description = "三维防御提升，轻微减速",
+		# v8.x: 项目无敌方地雷机制，原 mine_immunity 空转。
+		# 重定向为三维防御加成（registry mine_immunity 分支控制系数），
+		# 描述对齐实际效果，不提"免疫地雷"。
+		description = "附加装甲提升三维防御+30%，轻微减速",
 		icon = "res://assets/ui/icons/mod_icons/mod_engineering.png",
 		rarity = "rare",
 	power_mult = 1.3,
@@ -355,8 +360,8 @@ const DATA: Dictionary = {
 		slot_type = "engineering",
 		conflict_group = "engineering",
 		effects = {
-			mine_immunity = true,   # 免疫地雷
-			move_speed = -5,        # -5px/s 副作用
+			mine_immunity = true,   # 重定向为三维防御+30%（registry mine_immunity 分支）
+			move_speed = -5,        # -5px/s 副作用（重定向为部署延迟+0.1）
 		},
 		unlock_conditions = {
 			required_level = 3,
@@ -368,7 +373,7 @@ const DATA: Dictionary = {
 		name = "战术数据链",
 		name_en = "Tactical Data Link",
 		prototype = "Link 16",
-		description = "数据链系统，周围友军命中提升",
+		description = "数据链协同，暴击率+5%",
 		icon = "res://assets/ui/icons/mod_icons/mod_command.png",
 		rarity = "epic",
 	power_mult = 1.6,

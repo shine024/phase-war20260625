@@ -10,12 +10,14 @@ class_name FactionPanel
 ## - 实时更新势力声望变化
 
 const GC = preload("res://resources/game_constants.gd")
+const FactionSkillTree = preload("res://data/faction_skill_tree.gd")
+const FactionSkillManager = preload("res://managers/faction/faction_skill_manager.gd")
 
 signal closed
 
 # UI 组件引用
 @onready var faction_scroll = $VBoxContainer/HBoxContainer/ScrollContainer/FactionListContainer
-@onready var faction_detail = $VBoxContainer/HBoxContainer/DetailPanel
+@onready var faction_detail = $VBoxContainer/HBoxContainer/DetailScroll/DetailPanel
 
 # 数据
 var selected_faction_id: String = ""
@@ -33,9 +35,17 @@ func _ready() -> void:
 		faction_mgr.faction_reputation_changed.connect(_on_faction_reputation_changed)
 		faction_mgr.faction_level_up.connect(_on_faction_level_up)
 		faction_mgr.faction_store_updated.connect(_on_faction_store_updated)
+		# v8.5: 势力技能树解锁 + 激活势力变化 → 刷新详情（技能节点状态/激活按钮）
+		if faction_mgr.has_signal("faction_skill_unlocked"):
+			faction_mgr.faction_skill_unlocked.connect(_on_faction_skill_changed)
+		if faction_mgr.has_signal("active_faction_changed"):
+			faction_mgr.active_faction_changed.connect(_on_active_faction_changed)
 
 	# 初始化势力列表
 	_init_faction_list()
+	# 选择第一个势力
+	if faction_items.size() > 0:
+		_on_faction_item_selected(faction_items[0]["id"])
 
 ## v7.x 修复 W6：面板释放时断开 autoload 信号，避免残留死 Callable（内存泄漏/脏连接）
 func _exit_tree() -> void:
@@ -48,10 +58,21 @@ func _exit_tree() -> void:
 		faction_mgr.faction_level_up.disconnect(_on_faction_level_up)
 	if faction_mgr.has_signal("faction_store_updated") and faction_mgr.faction_store_updated.is_connected(_on_faction_store_updated):
 		faction_mgr.faction_store_updated.disconnect(_on_faction_store_updated)
-	
-	# 选择第一个势力
-	if faction_items.size() > 0:
-		_on_faction_item_selected(faction_items[0]["id"])
+	# v8.5: 断开技能树/激活势力信号
+	if faction_mgr.has_signal("faction_skill_unlocked") and faction_mgr.faction_skill_unlocked.is_connected(_on_faction_skill_changed):
+		faction_mgr.faction_skill_unlocked.disconnect(_on_faction_skill_changed)
+	if faction_mgr.has_signal("active_faction_changed") and faction_mgr.active_faction_changed.is_connected(_on_active_faction_changed):
+		faction_mgr.active_faction_changed.disconnect(_on_active_faction_changed)
+
+
+# v8.5: 势力技能树解锁/激活变化回调 → 刷新详情区（技能节点状态变化）
+func _on_faction_skill_changed(_faction_id: String, _skill_id: String) -> void:
+	if is_visible_in_tree():
+		_update_faction_detail()
+
+func _on_active_faction_changed(_faction_id: String) -> void:
+	if is_visible_in_tree():
+		_update_faction_detail()
 
 func _init_faction_list() -> void:
 	"""初始化势力列表"""
@@ -111,6 +132,21 @@ func _update_faction_detail() -> void:
 	name_label.text = faction_info.get("name", "")
 	name_label.add_theme_font_size_override("font_size", 24)
 	faction_detail.add_child(name_label)
+
+	# v8.5: 激活势力按钮（战斗注入只对激活势力生效，必须让玩家能激活）
+	var active_faction: String = faction_mgr.get("active_faction") if "active_faction" in faction_mgr else ""
+	var is_this_active: bool = (active_faction == selected_faction_id)
+	var active_btn = Button.new()
+	if is_this_active:
+		active_btn.text = "★ 已激活（战斗加成生效中）"
+		active_btn.disabled = true
+	else:
+		active_btn.text = "☆ 激活此势力（战斗加成切换到此）"
+		active_btn.disabled = false
+	active_btn.custom_minimum_size = Vector2(0, 32)
+	if not is_this_active:
+		active_btn.pressed.connect(_on_activate_faction_pressed.bind(selected_faction_id))
+	faction_detail.add_child(active_btn)
 	
 	# 势力描述
 	var desc_label = Label.new()
@@ -181,6 +217,183 @@ func _update_faction_detail() -> void:
 		var empty_label = Label.new()
 		empty_label.text = "暂无库存"
 		faction_detail.add_child(empty_label)
+
+	# ── v8.5: 势力技能树区块（12 节点，按 tier 分组，A/B 互斥并排）──
+	_append_faction_skill_tree(faction_mgr, selected_faction_id, level)
+
+## v8.5: 追加势力技能树区块到详情区
+func _append_faction_skill_tree(faction_mgr: Node, faction_id: String, faction_level: int) -> void:
+	# 分隔标题
+	var skill_title = Label.new()
+	skill_title.text = "◆ 势力技能树"
+	skill_title.add_theme_font_size_override("font_size", 16)
+	faction_detail.add_child(skill_title)
+
+	# 可用技能点
+	var state: Dictionary = faction_mgr.faction_skill_states.get(faction_id, {}) if "faction_skill_states" in faction_mgr else {}
+	var unlocked: Array = state.get("unlocked_skills", [])
+	var avail: int = FactionSkillManager.get_available_points(state, faction_level)
+	var spent: int = FactionSkillManager.get_total_spent(state)
+	var points_label = Label.new()
+	points_label.text = "可用技能点：%d（已用 %d，势力等级 %d）" % [avail, spent, faction_level]
+	points_label.add_theme_font_size_override("font_size", 13)
+	faction_detail.add_child(points_label)
+
+	# 按节点数判断是否放入 ScrollContainer（12 节点 + 分组标题可能超出高度）
+	var skills: Array = FactionSkillTree.get_skills_for_faction(faction_id)
+	if skills.is_empty():
+		var empty_sk = Label.new()
+		empty_sk.text = "（该势力无技能定义）"
+		empty_sk.add_theme_font_size_override("font_size", 12)
+		faction_detail.add_child(empty_sk)
+		return
+
+	# 按 tier 分组（tier 顺序：2/3/4/5/7/10）
+	var tiers: Array = []
+	for s in skills:
+		var t: int = int(s.get("tier", 0))
+		if not tiers.has(t):
+			tiers.append(t)
+	tiers.sort()
+
+	for tier in tiers:
+		# tier 分组标题
+		var tier_label = Label.new()
+		tier_label.text = "— 等级 %d 解锁 —" % tier
+		tier_label.add_theme_font_size_override("font_size", 12)
+		tier_label.modulate = Color(0.7, 0.7, 0.75)
+		faction_detail.add_child(tier_label)
+
+		# 该 tier 的节点（A/B 并排）
+		var tier_skills: Array = FactionSkillTree.get_skills_at_tier(faction_id, tier)
+		var branch_a: Dictionary = {}
+		var branch_b: Dictionary = {}
+		for s in tier_skills:
+			var br: String = String(s.get("branch", "A"))
+			if br == "B":
+				branch_b = s
+			else:
+				branch_a = s
+		# 并排容器
+		var branch_row = HBoxContainer.new()
+		branch_row.custom_minimum_size = Vector2(0, 0)
+		if not branch_a.is_empty():
+			branch_row.add_child(_make_faction_skill_node(branch_a, faction_id, faction_level, unlocked, avail, branch_b.get("id", "")))
+		if not branch_b.is_empty():
+			branch_row.add_child(_make_faction_skill_node(branch_b, faction_id, faction_level, unlocked, avail, branch_a.get("id", "")))
+		faction_detail.add_child(branch_row)
+
+## v8.5: 渲染单个势力技能节点（参考 phase_master_skill_panel 的三态着色范式）
+func _make_faction_skill_node(skill: Dictionary, faction_id: String, faction_level: int, unlocked: Array, avail: int, conflict_id: String) -> PanelContainer:
+	var panel = PanelContainer.new()
+	panel.custom_minimum_size = Vector2(195, 0)
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	var skill_id: String = String(skill.get("id", ""))
+	var is_unlocked: bool = unlocked.has(skill_id)
+	# branch 冲突：另一个分支已解锁 → 本节点不可选
+	var is_conflict: bool = not conflict_id.is_empty() and unlocked.has(conflict_id)
+	# 解锁校验（用 manager 拿权威结果）
+	var faction_mgr = get_node_or_null("/root/FactionSystemManager")
+	var can_unlock: bool = false
+	if faction_mgr != null and faction_mgr.has_method("can_unlock_faction_skill"):
+		can_unlock = bool(faction_mgr.can_unlock_faction_skill(faction_id, skill_id).get("ok", false))
+
+	# 三态着色（StyleBoxFlat）
+	var sb = StyleBoxFlat.new()
+	if is_unlocked:
+		sb.bg_color = Color(0.08, 0.18, 0.10, 1.0)
+		sb.border_color = Color(0.30, 0.70, 0.45, 1.0)
+	elif can_unlock and avail > 0:
+		sb.bg_color = Color(0.12, 0.14, 0.20, 1.0)
+		sb.border_color = Color(0.95, 0.75, 0.30, 1.0)
+	else:
+		sb.bg_color = Color(0.06, 0.07, 0.10, 1.0)
+		sb.border_color = Color(0.30, 0.32, 0.36, 1.0)
+	sb.set_border_width_all(1)
+	sb.content_margin_left = 6
+	sb.content_margin_right = 6
+	sb.content_margin_top = 4
+	sb.content_margin_bottom = 4
+	sb.corner_radius_top_left = 3
+	sb.corner_radius_top_right = 3
+	sb.corner_radius_bottom_left = 3
+	sb.corner_radius_bottom_right = 3
+	panel.add_theme_stylebox_override("panel", sb)
+
+	var vb = VBoxContainer.new()
+	panel.add_child(vb)
+
+	# 节点名称
+	var name_lbl = Label.new()
+	name_lbl.text = String(skill.get("name", skill_id))
+	name_lbl.add_theme_font_size_override("font_size", 13)
+	vb.add_child(name_lbl)
+
+	# 描述
+	var desc_lbl = Label.new()
+	desc_lbl.text = String(skill.get("desc", ""))
+	desc_lbl.add_theme_font_size_override("font_size", 11)
+	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc_lbl.custom_minimum_size = Vector2(180, 0)
+	vb.add_child(desc_lbl)
+
+	# 消耗/状态
+	var cost: int = int(skill.get("cost", 1))
+	if is_unlocked:
+		var ok_lbl = Label.new()
+		ok_lbl.text = "✓ 已解锁"
+		ok_lbl.add_theme_font_size_override("font_size", 12)
+		ok_lbl.modulate = Color(0.5, 0.9, 0.6)
+		vb.add_child(ok_lbl)
+	elif is_conflict:
+		var conflict_lbl = Label.new()
+		conflict_lbl.text = "⚠ 已选另一分支"
+		conflict_lbl.add_theme_font_size_override("font_size", 11)
+		conflict_lbl.modulate = Color(0.9, 0.5, 0.5)
+		vb.add_child(conflict_lbl)
+	else:
+		var unlock_btn = Button.new()
+		unlock_btn.text = "解锁 (%d点)" % cost
+		unlock_btn.add_theme_font_size_override("font_size", 12)
+		unlock_btn.custom_minimum_size = Vector2(0, 26)
+		unlock_btn.disabled = not can_unlock or avail < cost
+		if can_unlock and avail >= cost:
+			unlock_btn.pressed.connect(_on_unlock_faction_skill.bind(faction_id, skill_id))
+		vb.add_child(unlock_btn)
+	return panel
+
+## v8.5: 解锁势力技能按钮回调
+func _on_unlock_faction_skill(faction_id: String, skill_id: String) -> void:
+	var faction_mgr = get_node_or_null("/root/FactionSystemManager")
+	if faction_mgr == null or not faction_mgr.has_method("unlock_faction_skill"):
+		return
+	var ok: bool = faction_mgr.unlock_faction_skill(faction_id, skill_id)
+	if not ok:
+		# 解锁失败：查原因并提示
+		var reason: String = ""
+		if faction_mgr.has_method("can_unlock_faction_skill"):
+			reason = String(faction_mgr.can_unlock_faction_skill(faction_id, skill_id).get("reason", ""))
+		var tip: String = "解锁失败"
+		match reason:
+			"level_not_enough": tip = "势力等级不足"
+			"not_enough_points": tip = "技能点不足"
+			"branch_conflict": tip = "已选同层另一分支"
+			"already_unlocked": tip = "已解锁"
+		if SignalBus.has_signal("show_toast"):
+			SignalBus.show_toast.emit(tip)
+	else:
+		# 解锁成功：刷新面板（_on_faction_skill_changed 会处理，这里即时刷新避免延迟）
+		_update_faction_detail()
+
+## v8.5: 激活势力按钮回调
+func _on_activate_faction_pressed(faction_id: String) -> void:
+	var faction_mgr = get_node_or_null("/root/FactionSystemManager")
+	if faction_mgr == null or not faction_mgr.has_method("set_active_faction"):
+		return
+	faction_mgr.set_active_faction(faction_id)
+	# 刷新面板（_on_active_faction_changed 会处理，这里即时刷新）
+	_update_faction_detail()
 
 func _on_faction_reputation_changed(faction_id: String, delta: int, new_value: int) -> void:
 	"""势力声望变化回调"""

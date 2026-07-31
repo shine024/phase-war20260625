@@ -1,22 +1,31 @@
 {
   "mcpServers": {
-    "filesystem": {
+    "context7": {
+      "args": [
+        "-y",
+        "@upstash/context7-mcp"
+      ],
       "command": "npx",
+      "env": {
+
+      },
+      "type": "stdio"
+    },
+    "filesystem": {
       "args": [
         "-y",
         "@modelcontextprotocol/server-filesystem",
         "F:/godot fair duet/create/phase-war"
       ],
+      "command": "npx",
       "disabled": false
     },
-    "context7": {
-      "type": "stdio",
-      "command": "npx",
+    "godot-agent-tools": {
       "args": [
         "-y",
-        "@upstash/context7-mcp"
+        "godot-agent-tools-mcp"
       ],
-      "env": {}
+      "command": "npx"
     }
   }
 }

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>相位师技能树 - 方案E1：轨道环式（完整版 - 60节点同心环）</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box }
+body { background:#060a14; color:#c8d8e8; font-family:'Microsoft YaHei',sans-serif; overflow:hidden; height:100vh; }
+.scheme-label { position:fixed;top:10px;left:10px;background:rgba(255,190,80,0.2);border:1px solid rgba(255,190,80,0.5);color:#ffbe50;padding:5px 14px;border-radius:4px;font-size:12px;zinct:100; font-weight:bold; }
+.info-bar { position:fixed;top:0;left:0;right:0;height:50px; background:linear-gradient(180deg,rgba(6,10,20,0.98),transparent); display:flex; justify-content:center; align-items:center; gap:40px; font-size:12px; zinct:100; border-bottom:1px solid rgba(100,180,255,0.15); }
+.info-item span { color:#ffbe50; font-weight:bold; font-size:14px; }
+.orbital-root { display:flex; justify-content:center; align-items:center; height:100vh; perspective:1200px; }
+.orbital-container { position:relative; width:85vmin; height:85vmin; animation:orbital-rotate 50s linear infinite; transform-style:preserve-3d; transform-origin:center center; }
+@keyframes orbital-rotate { from{transform:rotateY(0deg) rotateX(5deg);} to{transform:rotateY(360deg) rotateX(5deg);} }
+.orbital-inner { position:absolute; inset:0; border-radius:50%; border:2px solid rgba(100,180,255,0.15); box-shadow:inset 0 0 80px rgba(100,180,255,0.08); }
+.orbital-center { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) translateZ(-20px); width:90px; height:90px; background:radial-gradient(circle at 30% 30%,#ffd700,#aa7700,transparent); border-radius:50%; border:4px solid #ffbe50; box-shadow:0 0 40px rgba(255,190,80,0.6), inset 0 0 30px rgba(255,215,0,0.3); zinct:20; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; cursor:pointer; transition:all 0.3s; }
+.orbital-center:hover { transform:translate(-50%,-50%) translateZ(-10px) scale(1.05); box-shadow:0 0 60px rgba(255,190,80,0.8); }
+.orbital-center .core-icon { font-size:24px; margin-bottom:3px; text-shadow:0 0 10px #ffbe50; }
+.orbital-center .core-title { font-size:11px; color:#ffbe50; letter-spacing:2px; font-weight:bold; }
+.orbital-center .core-sub { font-size:8px; color:#d4c0a0; }
+.orbital-ring { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); border-radius:50%; border:1px dashed rgba(255,255,255,0.12); display:flex; align-items:center; justify-content:center; zinct:0; }
+.orbital-ring.tier-0 { width:22vmin; height:22vmin; border-color:rgba(100,255,140,0.2); box-shadow:0 0 20px rgba(100,255,140,0.05); }
+.orbital-ring.tier-1 { width:34vmin; height:34vmin; border-color:rgba(100,200,255,0.2); box-shadow:0 0 25px rgba(100,200,255,0.05); }
+.orbital-ring.tier-2 { width:48vmin; height:48vmin; border-color:rgba(255,150,80,0.2); box-shadow:0 0 30px rgba(255,150,80,0.05); }
+.orbital-ring.tier-3 { width:62vmin; height:62vmin; border-color:rgba(200,100,255,0.2); box-shadow:0 0 35px rgba(200,100,255,0.05); }
+.orbital-ring.tier-4 { width:75vmin; height:75vmin; border-color:rgba(255,100,150,0.2); box-shadow:0 0 40px rgba(255,100,150,0.05); }
+.orbital-node { position:absolute; width:72px; height:72px; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; transition:all 0.4s cubic-bezier(0.68,-0.55,0.265,1.55); transform-style:preserve-3d; filter:drop-shadow(0 4px 8px rgba(0,0,0,0.3)); zinct:5; }
+.orbital-node.unlocked { opacity:1; transform:scale(1) rotateZ(var(--rot,0deg)) translateZ(0); }
+.orbital-node.locked { opacity:0.15; filter:blur(1.5px) grayscale(0.8); transform:scale(0.7) translateZ(-30px); }
+.orbital-node.available { opacity:1; animation:orbital-pulse 1.8s infinite; transform:scale(1.1) translateZ(15px); }
+@keyframes orbital-pulse { 0%,100%{box-shadow:0 0 20px #ffbe50;} 50%{box-shadow:0 0 45px #ffbe50;} }
+.orbital-node .node-ring { width:58px;height:58px;border-radius:50%;border:2px solid;display:flex;align-items:center;justify-content:center;font-size:20px;position:relative; zinct:2; transition:all 0.3s; background:radial-gradient(circle at 30% 30%,rgba(var(--ring-rgb),0.15),transparent); }
+.orbital-node.unlocked .node-ring { border-color:var(--ring-color); box-shadow:0 0 25px var(--ring-color-glow); animation:ring-spin 20s linear infinite; }
+.orbital-node.locked .node-ring { border-color:rgba(255,255,255,0.1); background:rgba(0,0,0,0.4); }
+.orbital-node.available .node-ring { border-color:#ffd700; box-shadow:0 0 25px #ffd700; animation:ring-blink 1s infinite alternate; }
+@keyframes ring-spin { from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
+@keyframes ring-blink { from{box-shadow:0 0 20px #ffd700;} to{box-shadow:0 0 50px #ffd700;} }
+.orbital-node .node-icon { color:white; text-shadow:0 0 10px currentColor; zinct:3; }
+.orbital-node .node-label { position:absolute;top:-20px;font-size:9px;color:#8aa0b0;letter-spacing:0.8px;text-align:center;white-space:nowrap; transform:translateX(-50%); background:rgba(6,10,20,0.85); padding:2px 8px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); }
+.orbital-node .node-cost { position:absolute;bottom:-18px;font-size:8px;background:rgba(255,190,80,0.9);color:#060a14;padding:1px 5px;border-radius:12px;font-weight:bold; zinct:3; }
+.orbital-link { position:absolute; top:50%; left:50%; width:2px; height:50%; origin:bottom center; transform-origin:bottom center; transform:translateX(-50%) rotate(var(--angle)); pointer-events:none; zinct:1; opacity:0; transition:opacity 0.5s; }
+.orbital-link.active { opacity:0.4; animation:link-flow 2s linear infinite; }
+.orbital-link::before { content:''; position:absolute; top:0;left:0;right:0;bottom:0; background:linear-gradient(to top,transparent,var(--link-color),transparent); opacity:0.3; }
+.orbital-link.active::before { opacity:0.6; box-shadow:0 0 10px var(--link-color); }
+@keyframes link-flow { 0%{transform:translateY(-100%);} 100%{transform:translateY(100%);} }
+.bottom-hint { position:fixed;bottom:12px;left:50%;transform:translateX(-50%);font-size:10px;color:#5a6a7a;text-align:center;zinct:100; text-shadow:0 0 5px rgba(0,0,0,0.5); }
+</style>
+</head>
+<body>
+<div class="scheme-label">方案 E1：轨道环式（完整版 - 60节点）</div>
+<div class="info-bar">
+  <div class="info-item">可用技能点：<span>12</span></div>
+  <div class="info-item">已使用：<span>7</span></div>
+  <div class="info-item">轨道层级：<span>3 / 5</span></div>
+  <div class="info-item">核心等级：<span>LVL<span id="core-level">6</span></span></div>
+</div>
+
+<div class="orbital-root">
+  <div class="orbital-container">
+    <div class="orbital-inner"></div>
+    <div class="orbital-ring tier-0" id="tier0"></div>
+    <div class="orbital-ring tier-1" id="tier1"></div>
+    <div class="orbital-ring tier-2" id="tier2"></div>
+    <div class="orbital-ring tier-3" id="tier3"></div>
+    <div class="orbital-ring tier-4" id="tier4"></div>
+    <div class="orbital-link active" style="--angle:0deg; --link-color:#64ff90;"></div>
+    <div class="orbital-link active" style="--angle:45deg; --link-color:#64c8ff;"></div>
+    <div class="orbital-link active" style="--angle:90deg; --link-color:#ff8866;"></div>
+    <div class="orbital-link active" style="--angle:135deg; --link-color:#bf64ff;"></div>
+    <div class="orbital-link active" style="--angle:180deg; --link-color:#64ff90;"></div>
+    <div class="orbital-link active" style="--angle:225deg; --link-color:#64c8ff;"></div>
+    <div class="orbital-link active" style="--angle:270deg; --link-color:#ff8866;"></div>
+    <div class="orbital-link active" style="--angle:315deg; --link-color:#ffd700;"></div>
+  </div>
+</div>
+
+<div class="bottom-hint">💡 3D旋转视角 | 点击节点查看详情 | 内层解锁激活外层权限 | 节点数60/层级完备</div>
+
+<script>
+const skillData = {
+  tier0: [{name:'指挥觉醒','desc':'单位上限+1 · 基础协议激活','cost':1,'type':'cmd','icon':'◆'}, {name:'火力觉醒','desc':'三维攻击+8% · 火控初始化','cost':1,'type':'fp','icon':'⚔'}, {name:'智能核心','desc':'暴击率+5% · AI在线','cost':1,'type':'int','icon':'♟'}, {name:'概念突破','desc':'能量恢复+20%','cost':1,'type':'cw','icon':'⚡'}, {name:'基础防御','desc':'生命+15% · 护盾增强','cost':1,'type':'cmd','icon':'■'}, {name:'光学瞄准','desc':'命中精度+15%','cost':1,'type':'fp','icon':'🎯'}, {name:'战术学习','desc':'经验获取+20%','cost':1,'type':'int','icon':'📚'}, {name:'能量储备','desc':'开局满能量·快速启动','cost':1,'type':'cw','icon':'⚡⚡'}, {name:'精准射击','desc':'步兵暴击+15%','cost':1,'type':'fp','icon':'🎯🎯'}, {name:'形态进化','desc':'卡牌一战进化','cost':1,'type':'cw','icon':'🔄'}],
+  tier1: [{name:'指挥网络','desc':'光环ATK+10% R:2.5','cost':2,'type':'cmd','icon':'◆◆'}, {name:'扩编指挥','desc':'单位上限+2','cost':1,'type':'cmd','icon':'▶'}, {name:'火力压制','desc':'攻击+15% · 暴伤+30%','cost':2,'type':'fp','icon':'💥'}, {name:'模块化武装','desc':'开启词条槽','cost':2,'type':'int','icon':'⧩'}, {name:'战斗学习','desc':'经验获取+30%','cost':1,'type':'int','icon':'📖'}, {name:'相位护盾','desc':'开局全体+8000盾','cost':2,'type':'cw','icon':'🛡️'}, {name:'侦察视野','desc':'视野范围+30%','cost':1,'type':'fp','icon':'👁️'}, {name:'指挥协同','desc':'单位间增益共享','cost':2,'type':'cmd','icon':'🤝'}, {name:'智能规避','desc':'闪避+8% · 自动回避','cost':1,'type':'int','icon':'⏪'}, {name:'能量脉冲','desc':'周期性能量爆发','cost':2,'type':'cw','icon':'⚡⚡⚡'}, {name:'战略机动','desc':'移速+20% · 战术跳跃','cost':2,'type':'cmd','icon':'🏃'}, {name:'防御矩阵','desc':'减伤+20% · 反射机制','cost':2,'type':'cmd','icon':'🧱'}],
+  tier2: [{name:'领域统帅','desc':'三维防+12% · 上限+1','cost':3,'type':'cmd','icon':'◆◆◆'}, {name:'纵深打击','desc':'射程+10% · 吸血+8%','cost':2,'type':'fp','icon':'➢'}, {name:'智能火控','desc':'自动索敌+暴击5%','cost':2,'type':'int','icon':'🎯💡'}, {name:'核爆打击','desc':'45秒全体轰炸','cost':3,'type':'cw','icon':'☢️'}, {name:'穿透强化','desc':'装甲穿透+35%','cost':2,'type':'fp','icon':'🔩'}, {name:'AI进化','desc':'存活30s全属性+15%','cost':3,'type':'int','icon':'🧬'}, {name:'终极护盾','desc':'全体无敌3秒','cost':3,'type':'cw','icon':'🛡️🛡️'}, {name:'火力连发','desc':'攻速×1.3 · 连射模式','cost':2,'type':'fp','icon':'🔫'}, {name:'指挥中枢','desc':'全场指令效率+25%','cost':3,'type':'cmd','icon':'⚙️'}, {name:'战术扫描','desc':'敌方弱点标记','cost':1,'type':'int','icon':'🔍'}, {name:'相位跃迁','desc':'瞬间位移+重置冷却','cost':2,'type':'cw','icon':'🌀'}, {name:'重火力覆盖','desc':'范围伤害+40%','cost':3,'type':'fp','icon':'💣'}, {name:'资源管理','desc':'产能+15% · 经济加速','cost':2,'type':'cmd','icon':'💰'}, {name:'协同作战','desc':'队友协同增益','cost':2,'type':'cmd','icon':'🤝🤝'}, {name:'召唤援军','desc':'召唤强力援军单位','cost':3,'type':'cmd','icon':'👥'}, {name:'隐形模式','desc':'进入不可锁定状态','cost':3,'type':'int','icon':'👻'}],
+  tier3: [{name:'指挥相位仪','desc':'解锁擎天·战术核心','cost':2,'type':'cmd','icon':'◆⚙️'}, {name:'火力相位仪','desc':'解锁新星·超弦阵列','cost':2,'type':'fp','icon':'⚔️⚡'}, {name:'智能相位仪','desc':'自主决策引擎','cost':2,'type':'int','icon':'♟️🧠'}, {name:'概念相位仪','desc':'时空扭曲场','cost':2,'type':'cw','icon':'⚡⏳'}, {name:'雷霆一击','desc':'单体毁灭性伤害','cost':3,'type':'fp','icon':'⚡💥'}, {name:'领域展开','desc':'全屏控制范围扩大','cost':3,'type':'cmd','icon':'🌐'}, {name:'致命弱点','desc':'针对敌方弱点的必杀技','cost':3,'type':'fp','icon':'🔪'}, {name:'绝对防御','desc':'免疫一切伤害5秒','cost':3,'type':'cmd','icon':'🛡️❄️'}, {name:'群体复活','desc':'复活场上所有友军','cost':4,'type':'cw','icon':'🔄'}, {name:'时间停止','desc':'暂停战场5秒','cost':4,'type':'cw','icon':'⏸️'}, {name:'无限弹药','desc':'攻击无消耗持续射击','cost':3,'type':'fp','icon':'🔫∞'}, {name:'生命共享','desc':'队友间生命转移','cost':2,'type':'cmd','icon':'❤️'}, {name:'能量转换','desc':'将伤害转化为治疗','cost':2,'type':'cw','icon':'❤️⚡'}, {name:'精确计算','desc':'必中下一次攻击','cost':2,'type':'int','icon':'📐'}, {name:'火力全开','desc':'所有攻击翻倍','cost':3,'type':'fp','icon':'💥💥'}, {name:'指挥强化','desc':'所有指挥类技能效果+50%','cost':3,'type':'cmd','icon':'👑'}, {name:'智能升级','desc':'AI学习能力永久提升','cost':2,'type':'int','icon':'🆙'}, {name:'概念重构','desc':'修改战场规则','cost':4,'type':'cw','icon':'⚡🔨'}, {name:'终极形态','desc':'完成最终进化','cost':5,'type':'cw','icon':'⭐'}, {name:'维度掌控','desc':'操控空间结构','cost':5,'type':'cmd','icon':'🌌'}],
+  tier4: [{name:'终极相位','desc':'特殊卡+全时代进化','cost':5,'type':'cw','icon':'⭐'}, {name:'领域终焉','desc':'掌控整个战场维度','cost':5,'type':'cmd','icon':'👑✨'}, {name:'火力终焉','desc':'无限火力·宇宙终结','cost':5,'type':'fp','icon':'☀️💥'}, {name:'智能终焉','desc':'完全自主进化智能体','cost':5,'type':'int','icon':'🧠🌟'}, {name:'概念终焉','desc':'重塑现实法则','cost':5,'type':'cw','icon':'⚡🔮'}]
+};
+
+function createNode(data, radius, angle, tierIndex, isUltimate=false) {
+  const node = document.createElement('div');
+  node.className = 'orbital-node unlocked';
+  if(isUltimate) node.classList.add('available');
+  
+  const colors = {'cmd':'#64c8ff','fp':'#ff8866','int':'#64ff90','cw':'#bf64ff'};
+  const color = colors[data.type] || '#ffbe50';
+  const rgb = color.replace('#','');
+  
+  node.style.setProperty('--ring-color', color);
+  node.style.setProperty('--ring-rgb', rgb);
+  node.style.setProperty('--ring-color-glow', color);
+  
+  const rad = angle * Math.PI / 180;
+  const x = Math.cos(rad) * radius;
+  const y = Math.sin(rad) * radius;
+  
+  node.style.left = `calc(50% + ${x}px)`;
+  node.style.top = `calc(50% + ${y}px)`;
+  node.style.setProperty('--rot', angle+'deg');
+  
+  node.onclick = () => showSkillInfo(data.name, data.desc, data.cost);
+  
+  node.innerHTML = `<div class="node-ring"><span class="node-icon">${data.icon}</span></div><div class="node-label">${data.name}</div><div class="node-cost">${data.cost}点</div>`;
+  return node;
+}
+
+function populateRing(tierId, nodes, baseRadius) {
+  const container = document.getElementById(tierId);
+  const count = nodes.length;
+  for(let i=0;i<count;i++) {
+    const angle = (i/count)*360 + (i%3)*15; // 径向错位避免重叠
+    const radius = baseRadius + (Math.floor(i/5)*25) % 30;
+    node = createNode(nodes[i], radius, angle, tierId.replace('tier',''), tierId==='tier4');
+    container.appendChild(node);
+  }
+}
+
+populateRing('tier0', skillData.tier0, 110);
+populateRing('tier1', skillData.tier1, 170);
+populateRing('tier2', skillData.tier2, 240);
+populateRing('tier3', skillData.tier3, 310);
+populateRing('tier4', skillData.tier4, 375);
+
+function showSkillInfo(name, desc, cost) {
+  alert('技能详情:\n\n' + name + '\n\n' + desc + '\n\n需要: ' + cost + ' 技能点');
+}
+
+document.addEventListener('mousemove', (e) => {
+  const container = document.querySelector('.orbital-container');
+  const x = e.clientX / window.innerWidth - 0.5;
+  const y = e.clientY / window.innerHeight - 0.5;
+  const rotateX = y * -8;
+  const rotateY = x * 8;
+  container.style.transform = `rotateY(${rotateY}deg) rotateX(${rotateX}deg) rotateZ(var(--rot,0deg))`;
+});
+</script>
+</body>
+</html>

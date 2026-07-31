@@ -29,6 +29,13 @@ const GC = preload("res://resources/game_constants.gd")
 ## instance_id -> CardResource（独立 clone 对象，带完整养成）
 var _instances: Dictionary = {}
 
+## v8.x 性能：card_id -> Array[instance_id] 反向索引。
+## 原 get_instances_by_card_id 每次 O(N) 全表遍历 _instances，
+## modification_panel / growth_panel / card_info_panel 多处在 N 卡循环里调它，
+## 满背包 100+ 实例时单次面板刷新可达 O(N²) 数千次遍历。
+## 在 create/dispose/load_state/clear_all 四处同步维护，查询降为 O(1)。
+var _index_by_card_id: Dictionary = {}
+
 ## 加载失败的 instance_id（模板找不到），供调试/诊断用
 var _load_failed_ids: Array = []
 
@@ -99,6 +106,7 @@ func _register_clone(clone: CardResource, card_id: String) -> CardResource:
 	if clone.weapon_slots.is_empty() and clone.has_method("_ensure_weapon_slots_initialized"):
 		clone._ensure_weapon_slots_initialized()
 	_instances[instance_id] = clone
+	_index_add(card_id, instance_id)  # v8.x 性能：维护反向索引
 	instance_created.emit(instance_id, card_id)
 	return clone
 
@@ -137,6 +145,8 @@ func get_card_id_of(instance_id: String) -> String:
 ## 销毁实例（进化消耗/拆解时调用）
 ## 清除实例对象及所有关联养成数据
 func dispose_instance(instance_id: String) -> void:
+	# v8.x 性能：同步移除反向索引（先取 card_id 再删 _instances）
+	_index_remove(get_card_id_of(instance_id), instance_id)
 	_instances.erase(instance_id)
 	_inherit_bonus.erase(instance_id)
 	_evolution_hp_floor.erase(instance_id)
@@ -165,12 +175,37 @@ func get_all_instance_ids() -> Array:
 
 
 ## 获取某 card_id 的所有实例ID（背包展示/统计用）
+## v8.x 性能：走反向索引 O(1)，替代原 O(N) 全表遍历。
+## 返回索引数组的浅拷贝，调用方 append/remove 不污染内部状态。
 func get_instances_by_card_id(card_id: String) -> Array:
-	var result: Array = []
-	for iid in _instances:
-		if get_card_id_of(iid) == card_id:
-			result.append(iid)
-	return result
+	var bucket: Variant = _index_by_card_id.get(card_id, null)
+	if bucket == null:
+		return []
+	return (bucket as Array).duplicate()
+
+
+## v8.x 性能：反向索引维护辅助。
+## _index_add：追加 instance_id 到 card_id 的 bucket（去重防御，正常路径不会重复）。
+## _index_remove：从 card_id 的 bucket 移除 instance_id，bucket 空则清键。
+func _index_add(card_id: String, instance_id: String) -> void:
+	if card_id.is_empty() or instance_id.is_empty():
+		return
+	var bucket: Array = _index_by_card_id.get(card_id, [])
+	if not bucket.has(instance_id):
+		bucket.append(instance_id)
+	_index_by_card_id[card_id] = bucket
+
+func _index_remove(card_id: String, instance_id: String) -> void:
+	if card_id.is_empty():
+		return
+	var bucket: Array = _index_by_card_id.get(card_id, [])
+	var idx: int = bucket.rfind(instance_id)
+	if idx >= 0:
+		bucket.remove_at(idx)
+		if bucket.is_empty():
+			_index_by_card_id.erase(card_id)
+		else:
+			_index_by_card_id[card_id] = bucket
 
 
 # ─────────────────────────────────────────────
@@ -298,9 +333,17 @@ func load_state(data: Dictionary) -> void:
 	_intel_branch_bonus.clear()
 	_battle_experience.clear()
 	_star_level.clear()
+	_index_by_card_id.clear()  # v8.x 性能：清反向索引，下方 _rebuild_index_from_instances 重建
 
 	if data.is_empty():
 		return
+
+	# v8.x 修复：预注册 captured_/drop_ 等动态卡模板。
+	# InstanceRegistry 排在 SaveManager CRITICAL 列表第 0 位（最先加载），此刻
+	# CapturedUnitCards.register_into_default_cards_cache（懒触发于 EnemyArchetypes 查询）
+	# 尚未执行 → clone_for_instance 对缴获卡/特殊掉落卡返回 null → 养成数据永久丢失。
+	# 主动触发注册，消除"读档时序早于动态卡注册"的时序依赖。幂等（register 内部有 _cache_built 守卫）。
+	_ensure_dynamic_card_templates_registered()
 
 	# 恢复计数器（存档有此字段时；缺字段时下方 _reconcile_counter_from_instances 会从实例重建）
 	if data.has("_counter") and data["_counter"] is Dictionary:
@@ -321,6 +364,9 @@ func load_state(data: Dictionary) -> void:
 	# 的养成数据（表现为"商店买的和缴获的都是 #1"）。无论存档有无 _counter，都以
 	# _instances 实际状态为准做 max 合并，确保计数器永不落后于实例表。
 	_reconcile_counter_from_instances()
+	# v8.x 性能：load_state 顶部已 clear 索引，_load_one_instance 直接写 _instances 绕过 _register_clone，
+	# 故此处统一从 _instances 重建反向索引（与 _reconcile_counter 同理）。
+	_rebuild_index_from_instances()
 
 
 ## 加载单个实例
@@ -330,11 +376,18 @@ func _load_one_instance(instance_id: String, inst_data: Dictionary) -> void:
 		return
 	var clone: CardResource = DefaultCards.clone_for_instance(card_id)
 	if clone == null:
-		# v7.x: 模板找不到意味着养成数据将永久丢失（该实例无法重建），用 push_error 暴露问题
-		# （原 push_warning 易被忽略，旧存档卡模板被删/改名时玩家无感知）
-		push_error("[InstanceRegistry] 加载实例 %s 失败：找不到卡牌模板 %s（养成数据将丢失）" % [instance_id, card_id])
-		_load_failed_ids.append(instance_id)
-		return
+		# v8.x 兜底：核心修复（load_state 预注册）应已覆盖全部已知 captured_/drop_ 动态卡。
+		# 仍缺失说明是未覆盖的 id（未来新增动态卡/manifest 首轮初始化遗漏）——
+		# 现场从统一卡牌表重建并注册，避免养成数据永久丢失。
+		if not _reconstruct_missing_template(card_id):
+			push_error("[InstanceRegistry] 加载实例 %s 失败：找不到卡牌模板 %s（养成数据将丢失）" % [instance_id, card_id])
+			_load_failed_ids.append(instance_id)
+			return
+		clone = DefaultCards.clone_for_instance(card_id)
+		if clone == null:
+			push_error("[InstanceRegistry] 加载实例 %s 失败：模板重建仍失败 %s" % [instance_id, card_id])
+			_load_failed_ids.append(instance_id)
+			return
 	clone.instance_id = instance_id
 	clone.enhance_level = int(inst_data.get("enhance_level", 0))
 	clone.mods = _deserialize_mods(inst_data.get("mods", []))
@@ -363,6 +416,38 @@ func _load_one_instance(instance_id: String, inst_data: Dictionary) -> void:
 		_star_level[instance_id] = slv
 
 
+## v8.x 修复：预注册 captured_/drop_ 等动态卡模板到 DefaultCards 缓存。
+## 见 load_state 顶部注释——消除"读档时序早于动态卡懒注册"导致的实例加载失败。
+func _ensure_dynamic_card_templates_registered() -> void:
+	var CapturedUnitCards = load("res://data/captured_unit_cards.gd")
+	if CapturedUnitCards != null and CapturedUnitCards.has_method("register_into_default_cards_cache"):
+		CapturedUnitCards.register_into_default_cards_cache()
+
+
+## v8.x 兜底：模板缺失时尝试现场重建并注册，避免养成数据永久丢失。
+## ① 再次触发 captured/drop 完整注册（防御 manifest 首轮未注册全）；
+## ② 从统一卡牌表直接构建（captured_/foe_ 前缀剥离后查，或直接查 card_id）。
+func _reconstruct_missing_template(card_id: String) -> bool:
+	var CapturedUnitCards = load("res://data/captured_unit_cards.gd")
+	if CapturedUnitCards != null and CapturedUnitCards.has_method("register_into_default_cards_cache"):
+		CapturedUnitCards.register_into_default_cards_cache()
+	if DefaultCards.get_card_by_id(card_id) != null:
+		return true
+	var UnifiedCardTable = load("res://data/unified_card_table.gd")
+	if UnifiedCardTable != null and UnifiedCardTable.has_method("build_card_resource"):
+		var lookup_id := card_id.trim_prefix("captured_").trim_prefix("foe_")
+		var rebuilt: CardResource = UnifiedCardTable.build_card_resource(lookup_id)
+		if rebuilt == null:
+			# 非 captured_/foe_ 前缀或剥前缀后查不到，直接用原 id 再查一次
+			rebuilt = UnifiedCardTable.build_card_resource(card_id)
+		if rebuilt != null:
+			# 保留原 card_id（含 captured_ 前缀，向后兼容存档）再注册
+			rebuilt.card_id = card_id
+			DefaultCards.register_dynamic_card(rebuilt)
+			return true
+	return false
+
+
 ## 从 _instances 实际状态重建计数器（load_state 收尾用）。
 ## 对每个已注册实例，取其 instance_id 的序号后缀，把 _counter[card_id] 推进到 max(已存值, 序号)。
 ## 作用：修复旧存档/v8 迁移期存档缺 _counter 字段、或 _counter 与实例表不一致时，
@@ -380,6 +465,18 @@ func _reconcile_counter_from_instances() -> void:
 		if seq <= 0:
 			continue
 		_counter[card_id] = maxi(int(_counter.get(card_id, 0)), seq)
+
+
+## v8.x 性能：从 _instances 重建反向索引（load_state 收尾用）。
+## 与 _reconcile_counter_from_instances 同模式：遍历 _instances 按 card_id 分桶。
+## 幂等：先 clear 再重建，重复调用无副作用。
+func _rebuild_index_from_instances() -> void:
+	_index_by_card_id.clear()
+	for instance_id in _instances:
+		var card_id := get_card_id_of(instance_id)
+		if card_id.is_empty():
+			continue
+		_index_add(card_id, instance_id)
 
 
 # ─────────────────────────────────────────────
@@ -505,3 +602,4 @@ func clear_all() -> void:
 	_intel_branch_bonus.clear()
 	_battle_experience.clear()
 	_star_level.clear()
+	_index_by_card_id.clear()  # v8.x 性能：清反向索引

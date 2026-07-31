@@ -23,6 +23,12 @@ static var _initialized: bool = false
 # 该函数每次 append_array 10 个模块（约154条），掉落生成时每个击败敌人调一次，
 # 相位师战胜调5次，单场可达数千次重复 concat。返回值全程只读遍历，缓存安全。
 static var _unit_type_cache: Dictionary = {}
+# v8.x 性能：扁平反向索引 mod_id → mod_data（直接引用，非深拷贝）。
+# 原 get_data 每次 for type_key in _cache.keys() 线性扫描 + duplicate(true) 深拷贝，
+# modification_panel 渲染改造列表时每个 mod_id 调一次（M 改造 × N 卡），是首开热点。
+# 索引在 register_all 末尾一次性建好，get_data 命中后 O(1) 返回。
+# 注意：返回值仍是 .duplicate(true) 以保持调用方"修改不影响缓存"的既有契约。
+static var _flat_index: Dictionary = {}
 
 ## ─────────────────────────────────────────────
 ##  初始化
@@ -57,6 +63,9 @@ static func register_all() -> void:
 	_register_modifications("universal", UniversalModifications)
 	_register_modifications("enhancement", EnhancementModifications)  # v6.4 强化词条统一
 
+	# v8.x 性能：建扁平反向索引（mod_id → mod_data），让 get_data 从 O(N) 扫描降到 O(1)。
+	_rebuild_flat_index()
+
 	_initialized = true
 	# [LOG-v5.1] print("[ModificationRegistry] Registered %d modification modules" % _count_total())
 
@@ -68,6 +77,16 @@ static func _register_modifications(type_key: String, class_ref: RefCounted) -> 
 		type_cache[mod_id] = class_ref.get_mod_data(mod_id)
 
 	_cache[type_key] = type_cache
+
+## v8.x 性能：扁平索引构建。遍历 _cache（按 type_key 分组）平铺成 mod_id → data 字典。
+## 同一 mod_id 跨 type_key 重复时取首个（理论上不应发生，duplicate 防御）。
+static func _rebuild_flat_index() -> void:
+	_flat_index.clear()
+	for type_key in _cache.keys():
+		var type_cache: Dictionary = _cache[type_key]
+		for mod_id in type_cache.keys():
+			if not _flat_index.has(mod_id):
+				_flat_index[mod_id] = type_cache[mod_id]
 
 static func _count_total() -> int:
 	var count = 0
@@ -83,19 +102,22 @@ static func _count_total() -> int:
 static func get_data(mod_id: String) -> Dictionary:
 	_ensure_initialized()
 
-	# 优先通过各模块直接查找（避免前缀解析问题）
-	for type_key in _cache.keys():
-		if _cache[type_key].has(mod_id):
-			return _cache[type_key][mod_id].duplicate(true)
+	# v8.x 性能：优先查扁平索引（O(1)），替代原 for type_key 线性扫描（O(N)，10 个 type_key）。
+	if _flat_index.has(mod_id):
+		return _flat_index[mod_id].duplicate(true)
 
-	# 回退：解析ID前缀获取类型
+	# 回退1：解析ID前缀获取类型（保留原逻辑兼容历史 mod_id 命名）
 	var prefix = mod_id.split("_")[0]  # "inf", "arm", "art"...
 	var type_key = _prefix_to_type(prefix)
 
-	if type_key.is_empty():
-		return {}
+	if not type_key.is_empty() and _cache.has(type_key):
+		var bucket: Dictionary = _cache[type_key]
+		if bucket.has(mod_id):
+			# 命中但未进索引（理论不应发生，注册期已建全），补登索引并返回
+			_flat_index[mod_id] = bucket[mod_id]
+			return bucket[mod_id].duplicate(true)
 
-	return _cache.get(type_key, {}).get(mod_id, {}).duplicate(true)
+	return {}
 
 ## 获取特定兵种的所有改造
 static func get_for_unit_type(unit_type: int) -> Array:
@@ -306,9 +328,11 @@ static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary) -
 			# v8.x: ifak_heal 分支已移除（孤儿死代码）——inf_18/rec_10 在 v7.x 第二批已改用 ifak_revive（真实濒死复活机制），
 			# 此分支再无任何改造数据使用，删除以减少 _apply_single_mod_effects 的无效分支噪声。
 			# v7.5: mine_immunity 防地雷 → 三维防御全加（原映射 damage_reduction 空转：take_damage 从不读 damage_reduction）
-			# gen_07_mine_resistant 布尔型（true），激活时给三维防御各 +0.15（≈ enh_def_flat Lv1 量级）
+			# gen_07_mine_resistant 布尔型（true），激活时给三维防御加成。
+			# v8.x: 系数 0.15→0.30——原 0.15 对装甲载体仅 3-7% 实际减伤（乘法稀释），与同价位
+			# 倾斜装甲(+20%)/复合装甲(+30%) 相比过弱；提升到 0.30 对齐 epic 档位（arm_14_mine_plow 描述已同步）。
 			"mine_immunity":
-				var _mine_def_val: float = 0.15 if bool(effect_value) else 0.0
+				var _mine_def_val: float = 0.30 if bool(effect_value) else 0.0
 				for _dk in ["defense_light", "defense_armor", "defense_air"]:
 					if not result.has(_dk):
 						result[_dk] = 0
@@ -477,8 +501,9 @@ static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary) -
 				if not result.has("dodge_chance"):
 					result["dodge_chance"] = 0.0
 				result["dodge_chance"] = min(0.50, float(result["dodge_chance"]) + absf(float(effect_value)))
-			# 拦截/防护类 → 减伤
-			# aa_06_laser / arm_04_aps(missile_intercept 0.30)
+			# 拦截/防护类 → 减伤（向后兼容旧存档）
+			# v8.x: arm_04_aps 与 aa_06_laser 均已迁移到真拦截 intercept_system（完全免伤），
+			# 当前改造数据不再使用 missile_intercept；此分支仅保留用于加载旧存档的兼容读取。
 			"missile_intercept":
 				if not result.has("damage_reduction"):
 					result["damage_reduction"] = 0.0
@@ -662,6 +687,43 @@ static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary) -
 			# 激光指示器（命中100%标记）
 			"laser_marker":
 				result["laser_mark_on_hit"] = true
+			# v8.6 现实/科幻伤害类型
+			"true_damage":
+				if not result.has("true_damage"): result["true_damage"] = 0.0
+				result["true_damage"] += float(effect_value)
+			"chem_chance":
+				if not result.has("chem_chance"): result["chem_chance"] = 0.0
+				result["chem_chance"] += float(effect_value)
+			"chem_dps":
+				if not result.has("chem_dps"): result["chem_dps"] = 0.0
+				result["chem_dps"] += float(effect_value)
+			"chem_duration":
+				if not result.has("chem_duration"): result["chem_duration"] = 0.0
+				result["chem_duration"] += float(effect_value)
+			"burn_chance":
+				if not result.has("burn_chance"): result["burn_chance"] = 0.0
+				result["burn_chance"] += float(effect_value)
+			"burn_dps":
+				if not result.has("burn_dps"): result["burn_dps"] = 0.0
+				result["burn_dps"] += float(effect_value)
+			"burn_duration":
+				if not result.has("burn_duration"): result["burn_duration"] = 0.0
+				result["burn_duration"] += float(effect_value)
+			"emp_chance":
+				if not result.has("emp_chance"): result["emp_chance"] = 0.0
+				result["emp_chance"] += float(effect_value)
+			"emp_true_damage":
+				if not result.has("emp_true_damage"): result["emp_true_damage"] = 0.0
+				result["emp_true_damage"] += float(effect_value)
+			"nano_chance":
+				if not result.has("nano_chance"): result["nano_chance"] = 0.0
+				result["nano_chance"] += float(effect_value)
+			"nano_pct":
+				if not result.has("nano_pct"): result["nano_pct"] = 0.0
+				result["nano_pct"] += float(effect_value)
+			"nano_duration":
+				if not result.has("nano_duration"): result["nano_duration"] = 0.0
+				result["nano_duration"] += float(effect_value)
 			_:
 				if not result.has("_special"):
 					result["_special"] = {}

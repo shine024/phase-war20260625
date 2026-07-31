@@ -17,30 +17,11 @@ const ERA_MASTERS: Array = [
 			{
 				"id": "shadow_realm",
 				"name": "暗影领域",
-				"description": "暗影中敌人受到伤害+50%；背刺伤害+200%",
-				"effects": {"darkness_damage_boost": 0.50, "backstab_damage_boost": 2.0}
+				"description": "三维攻击+15%",
+				"effects": {"atk_light": 0.15, "atk_armor": 0.15, "atk_air": 0.15}
 			}
 		],
-		"active_spells": [
-			{
-				"id": "shadow_clones",
-				"name": "暗影军团",
-				"description": "召唤8个暗影分身，持续时间15秒",
-				"cooldown": 35.0,
-				"mana_cost": 220,
-				"effect": "shadow_clones",
-				"params": {"count": 8, "duration": 15.0}
-			},
-			{
-				"id": "eclipse",
-				"name": "日蚀",
-				"description": "战场陷入黑暗，敌人命中率降低40%",
-				"cooldown": 40.0,
-				"mana_cost": 180,
-				"effect": "darkness_debuff",
-				"params": {"accuracy_reduction": 0.4, "duration": 10.0}
-			}
-		],
+		"active_spells": [],
 		"passive_spells": [
 			{
 				"id": "teleport_behind",
@@ -65,9 +46,9 @@ const ERA_MASTERS: Array = [
 			"energy_cards": ["void_energy_expert"]
 		},
 		"stats": {
-			"max_hp": 4500,
-			"attack_power": 580,
-			"defense": 80,
+			"max_hp": 22950,
+			"attack_power": 315,
+			"defense": 41,
 			"energy_regen": 4.5,
 			"unit_limit": 7
 		}
@@ -95,34 +76,8 @@ const ERA_MASTERS: Array = [
 				"effects": {"cheat_death_chance": 0.40}
 			}
 		],
-		"active_spells": [
-			{
-				"id": "divine_transformation",
-				"name": "神圣锻造",
-				"description": "将所有友军转化为神圣形态，全属性提升80%",
-				"cooldown": 90.0,
-				"mana_cost": 600,
-				"effect": "divine_transformation",
-				"params": {"duration": 15.0, "stat_boost": 0.8}
-			},
-			{
-				"id": "terrain_forge",
-				"name": "世界锻造",
-				"description": "重塑战场地形，创造3个钢铁堡垒",
-				"cooldown": 120.0,
-				"mana_cost": 800,
-				"effect": "terrain_forge",
-				"params": {"fortress_count": 3}
-			}
-		],
+		"active_spells": [],
 		"passive_spells": [
-			{
-				"id": "cheat_death_chance",
-				"name": "神圣庇护",
-				"description": "友军受到致命伤害时，有40%概率保留1点生命值",
-				"effect": "cheat_death_chance",
-				"params": {"chance": 0.4}
-			},
 			{
 				"id": "massive_heal_aura",
 				"name": "神之光环",
@@ -139,9 +94,9 @@ const ERA_MASTERS: Array = [
 			"energy_cards": ["steel_energy_god"]
 		},
 		"stats": {
-			"max_hp": 7000,
-			"attack_power": 550,
-			"defense": 230,
+			"max_hp": 22950,
+			"attack_power": 315,
+			"defense": 76,
 			"energy_regen": 4.0,
 			"unit_limit": 12
 		}
@@ -157,8 +112,8 @@ const ERA_MASTERS: Array = [
 			{
 				"id": "hell_queen",
 				"name": "炼狱女王",
-				"description": "火焰伤害+60%；全队单位死亡后3秒自动复活(50%HP)",
-				"effects": {"fire_damage_boost": 0.60, "auto_resurrect": {"delay": 3.0, "hp": 0.50}}
+				"description": "三维攻击+15%；全队单位死亡后3秒自动复活(50%HP)",
+				"effects": {"atk_light": 0.15, "atk_armor": 0.15, "atk_air": 0.15, "auto_resurrect": {"delay": 3.0, "hp": 0.50}}
 			},
 			{
 				"id": "global_burn",
@@ -167,26 +122,7 @@ const ERA_MASTERS: Array = [
 				"effects": {"global_dot": 150}
 			}
 		],
-		"active_spells": [
-			{
-				"id": "hell_terrain",
-				"name": "地狱降临",
-				"description": "将整个战场变为地狱环境，持续造成毁灭性伤害",
-				"cooldown": 100.0,
-				"mana_cost": 700,
-				"effect": "hell_terrain",
-				"params": {"damage": 400, "duration": 15.0}
-			},
-			{
-				"id": "full_resurrect_all",
-				"name": "凤凰涅槃",
-				"description": "完全复活所有死亡单位，并恢复70%生命值",
-				"cooldown": 150.0,
-				"mana_cost": 1000,
-				"effect": "full_resurrect_all",
-				"params": {"hp_percent": 0.7}
-			}
-		],
+		"active_spells": [],
 		"passive_spells": [
 			{
 				"id": "auto_resurrect",
@@ -211,9 +147,9 @@ const ERA_MASTERS: Array = [
 			"energy_cards": ["flame_energy_god"]
 		},
 		"stats": {
-			"max_hp": 6500,
-			"attack_power": 750,
-			"defense": 140,
+			"max_hp": 23200,
+			"attack_power": 320,
+			"defense": 50,
 			"energy_regen": 4.5,
 			"unit_limit": 11
 		}
@@ -229,8 +165,8 @@ const ERA_MASTERS: Array = [
 			{
 				"id": "god_of_thunder",
 				"name": "雷霆之神",
-				"description": "雷电伤害+150%，技能冷却-40%，能量消耗-60%",
-				"effects": {"lightning_damage_boost": 1.50, "cooldown_reduction": 0.40, "energy_cost_reduction": 0.60}
+				"description": "三维攻击+15%",
+				"effects": {"atk_light": 0.15, "atk_armor": 0.15, "atk_air": 0.15}
 			},
 			{
 				"id": "thunder_dome",
@@ -239,42 +175,8 @@ const ERA_MASTERS: Array = [
 				"effects": {"auto_thunder_dome": {"interval": 60.0, "duration": 5.0}}
 			}
 		],
-		"active_spells": [
-			{
-				"id": "god_weapon_attack",
-				"name": "雷神之锤",
-				"description": "投掷雷神之锤，造成1500伤害并瘫痪所有敌人4秒",
-				"cooldown": 80.0,
-				"mana_cost": 800,
-				"effect": "god_weapon_attack",
-				"params": {"damage": 1500, "stun_duration": 4.0}
-			},
-			{
-				"id": "thunder_dome_shield",
-				"name": "雷霆穹顶",
-				"description": "创造无敌雷霆穹顶，保护所有友军并电击敌人",
-				"cooldown": 60.0,
-				"mana_cost": 600,
-				"effect": "thunder_dome_shield",
-				"params": {"duration": 12.0, "shock_damage": 250}
-			}
-		],
-		"passive_spells": [
-			{
-				"id": "god_mastery",
-				"name": "雷霆之神",
-				"description": "所有雷电伤害提升150%，冷却时间减少40%",
-				"effect": "god_mastery",
-				"params": {"damage_boost": 1.5, "cooldown_reduction": 0.4, "element": "lightning"}
-			},
-			{
-				"id": "energy_cost_reduction",
-				"name": "无限能量",
-				"description": "能量消耗减少60%",
-				"effect": "energy_cost_reduction",
-				"params": {"reduction": 0.6}
-			}
-		],
+		"active_spells": [],
+		"passive_spells": [],
 		"equipment": {
 			"phase_instrument": "pi_thunder_05",
 			"level": 29,
@@ -283,9 +185,9 @@ const ERA_MASTERS: Array = [
 			"energy_cards": ["thunder_energy_god"]
 		},
 		"stats": {
-			"max_hp": 6000,
-			"attack_power": 850,
-			"defense": 130,
+			"max_hp": 23200,
+			"attack_power": 320,
+			"defense": 50,
 			"energy_regen": 6.0,
 			"unit_limit": 10
 		}
@@ -311,33 +213,14 @@ const ERA_MASTERS: Array = [
 				"effects": {"instant_delete": {"cooldown": 90.0}}
 			}
 		],
-		"active_spells": [
-			{
-				"id": "mass_conversion",
-				"name": "虚空转化",
-				"description": "将生命值最低的敌方单位转化为虚空生物",
-				"cooldown": 120.0,
-				"mana_cost": 900,
-				"effect": "mass_conversion",
-				"params": {"duration": 12.0, "target_count": 2}
-			},
-			{
-				"id": "instant_delete",
-				"name": "现实抹除",
-				"description": "抹除一个敌方单位的存在",
-				"cooldown": 90.0,
-				"mana_cost": 700,
-				"effect": "instant_delete",
-				"params": {"cast_time": 2.0}
-			}
-		],
+		"active_spells": [],
 		"passive_spells": [
 			{
 				"id": "goddess_mastery",
 				"name": "虚空女神",
-				"description": "所有虚空技能伤害提升200%",
+				"description": "三维攻击+15%",
 				"effect": "goddess_mastery",
-				"params": {"damage_boost": 2.0}
+				"params": {"damage_boost": 0.15}
 			},
 			{
 				"id": "permanent_darkness",
@@ -355,9 +238,9 @@ const ERA_MASTERS: Array = [
 			"energy_cards": ["void_energy_god"]
 		},
 		"stats": {
-			"max_hp": 5800,
-			"attack_power": 800,
-			"defense": 110,
+			"max_hp": 23450,
+			"attack_power": 325,
+			"defense": 44,
 			"energy_regen": 5.5,
 			"unit_limit": 9
 		}
@@ -375,43 +258,24 @@ const ERA_MASTERS: Array = [
 			{
 				"id": "master_of_all",
 				"name": "万物主宰",
-				"description": "所有伤害类型+80%，所有抗性+40%，每使用技能全属性+8%(无上限)",
-				"effects": {"all_damage_boost": 0.80, "all_resistance_boost": 0.40, "scaling_per_cast": 0.08}
+				"description": "三维攻击+15%",
+				"effects": {"atk_light": 0.15, "atk_armor": 0.15, "atk_air": 0.15}
 			},
 			{
 				"id": "infinite_potential",
 				"name": "无限潜能",
-				"description": "能量回复+100%，单位上限+3",
-				"effects": {"energy_regen_boost": 1.0, "unit_limit_bonus": 3}
+				"description": "HP+15%，三维防御+10%",
+				"effects": {"hp": 0.15, "def_light": 0.10, "def_armor": 0.10, "def_air": 0.10}
 			}
 		],
-		"active_spells": [
-			{
-				"id": "perfect_fusion",
-				"name": "完美和谐",
-				"description": "融合所有势力力量，全属性提升150%",
-				"cooldown": 120.0,
-				"mana_cost": 1000,
-				"effect": "perfect_fusion",
-				"params": {"duration": 25.0, "all_boost": 1.5}
-			},
-			{
-				"id": "combo_ultimate",
-				"name": "奥米茄打击",
-				"description": "释放所有势力的终极技能，造成毁灭性伤害",
-				"cooldown": 180.0,
-				"mana_cost": 1500,
-				"effect": "combo_ultimate",
-				"params": {"skill_count": 4}
-			}
-		],
+		"active_spells": [],
 		"passive_spells": [
 			{
 				"id": "omni_mastery",
 				"name": "万物主宰",
-				"description": "所有伤害类型提升80%，所有抗性提升40%",
+				"description": "三维攻击+15%",
 				"effect": "omni_mastery",
-				"params": {"damage_boost": 0.8, "resistance_boost": 0.4}
+				"params": {"damage_boost": 0.15}
 			},
 			{
 				"id": "infinite_scaling",
@@ -429,9 +293,9 @@ const ERA_MASTERS: Array = [
 			"energy_cards": ["hybrid_energy_god"]
 		},
 		"stats": {
-			"max_hp": 10000,
-			"attack_power": 1000,
-			"defense": 200,
+			"max_hp": 23450,
+			"attack_power": 325,
+			"defense": 47,
 			"energy_regen": 8.0,
 			"unit_limit": 15
 		}

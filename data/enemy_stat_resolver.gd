@@ -460,4 +460,3 @@ static func apply_field_multipliers_to_unit_stats(stats: UnitStats, ctx: EnemySt
 	# 移速：archetype 用绝对值（朝左），乘区不改变方向
 	if f_spd != 1.0 and stats.move_speed > 0.001:
 		stats.move_speed *= f_spd
-

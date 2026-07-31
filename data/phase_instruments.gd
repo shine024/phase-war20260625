@@ -517,13 +517,13 @@ static func _build_all() -> Array[Dictionary]:
 	d = _make_def("pi_flame_02", "烈焰破坏者·进阶", "generic", true, 5, "phase_master_drop", ["燃烧光环·进：产兵攻击与射程强化"])
 	d["level"] = 13
 	out.append(d)
-	d = _make_def("pi_flame_03", "烈焰破坏者·专家", "generic", true, 6, "phase_master_drop", ["烈焰地狱：产兵攻击大幅强化"])
+	d = _make_def("pi_flame_03", "烈焰破坏者·专家", "generic", true, 6, "phase_master_drop", ["烈焰地狱：产兵攻击大幅强化"], ability_artillery_barrage(6))
 	d["level"] = 19
 	out.append(d)
 	d = _make_def("pi_flame_04", "烈焰破坏者·大师", "generic", true, 7, "phase_master_drop", ["永恒烈焰：产兵攻击极大幅强化"], ability_artillery_barrage(7))
 	d["level"] = 26
 	out.append(d)
-	d = _make_def("pi_flame_05", "炎魔之神", "generic", true, 7, "phase_master_drop", ["炎魔神躯：产兵攻击极限强化"])
+	d = _make_def("pi_flame_05", "炎魔之神", "generic", true, 7, "phase_master_drop", ["炎魔神躯：产兵攻击极限强化"], ability_nuclear_bombardment(7))
 	d["level"] = 30
 	out.append(d)
 	# 雷霆系（攻速/闪电）5 款
@@ -533,13 +533,13 @@ static func _build_all() -> Array[Dictionary]:
 	d = _make_def("pi_thunder_02", "雷霆风暴·进阶", "generic", true, 5, "phase_master_drop", ["静电场·进：产兵攻速与暴击强化"])
 	d["level"] = 14
 	out.append(d)
-	d = _make_def("pi_thunder_03", "雷霆风暴·专家", "generic", true, 6, "phase_master_drop", ["雷霆极速：产兵攻速大幅强化"])
+	d = _make_def("pi_thunder_03", "雷霆风暴·专家", "generic", true, 6, "phase_master_drop", ["雷霆极速：产兵攻速大幅强化"], ability_artillery_barrage(6))
 	d["level"] = 20
 	out.append(d)
-	d = _make_def("pi_thunder_04", "雷霆风暴·大师", "generic", true, 7, "phase_master_drop", ["无处不在的闪电：产兵攻速极大幅强化"])
+	d = _make_def("pi_thunder_04", "雷霆风暴·大师", "generic", true, 7, "phase_master_drop", ["无处不在的闪电：产兵攻速极大幅强化"], ability_artillery_barrage(7))
 	d["level"] = 27
 	out.append(d)
-	d = _make_def("pi_thunder_05", "雷神", "generic", true, 7, "phase_master_drop", ["雷神之躯：产兵攻速极限强化"])
+	d = _make_def("pi_thunder_05", "雷神", "generic", true, 7, "phase_master_drop", ["雷神之躯：产兵攻速极限强化"], ability_artillery_barrage(7))
 	d["level"] = 30
 	out.append(d)
 	# 虚空系（法抗/熵增）5 款
@@ -549,7 +549,7 @@ static func _build_all() -> Array[Dictionary]:
 	d = _make_def("pi_void_02", "虚空行者·进阶", "generic", true, 5, "phase_master_drop", ["熵增光环·进：产兵法抗与生命强化"])
 	d["level"] = 15
 	out.append(d)
-	d = _make_def("pi_void_03", "虚空行者·专家", "generic", true, 6, "phase_master_drop", ["现实撕裂：产兵法抗大幅强化"])
+	d = _make_def("pi_void_03", "虚空行者·专家", "generic", true, 6, "phase_master_drop", ["现实撕裂：产兵法抗大幅强化"], ability_piercing_shot(6))
 	d["level"] = 21
 	out.append(d)
 	d = _make_def("pi_void_04", "虚空行者·大师", "generic", true, 7, "phase_master_drop", ["虚空主宰：产兵法抗极大幅强化"], ability_nano_swarm(7))

@@ -19,6 +19,7 @@ extends Node
 ##   SignalBus.battle_ended(player_won)
 
 const DT = preload("res://resources/design_tokens.gd")
+const VfxImpactFactory = preload("res://scripts/battle/vfx_impact_factory.gd")
 
 # --- 节流时间戳（毫秒，同类特效冷却）---
 const _THROTTLE_KILL_MS: int = 1000        # 击杀定帧 1s 冷却
@@ -72,6 +73,23 @@ func _ready() -> void:
 		# v8.1: 相位仪主动能力全屏演出
 		if SignalBus.has_signal("phase_instrument_ability_triggered"):
 			SignalBus.phase_instrument_ability_triggered.connect(_on_ability_triggered)
+		# v8.5: 兵种机制技能 VFX（8 个信号，has_signal 守卫兼容旧存档）
+		if SignalBus.has_signal("mechanism_demolition_fired"):
+			SignalBus.mechanism_demolition_fired.connect(_on_mechanism_demolition_fired)
+		if SignalBus.has_signal("mechanism_sniper_aim_locked"):
+			SignalBus.mechanism_sniper_aim_locked.connect(_on_mechanism_sniper_aim_locked)
+		if SignalBus.has_signal("mechanism_sniper_fired"):
+			SignalBus.mechanism_sniper_fired.connect(_on_mechanism_sniper_fired)
+		if SignalBus.has_signal("mechanism_blitz_fired"):
+			SignalBus.mechanism_blitz_fired.connect(_on_mechanism_blitz_fired)
+		if SignalBus.has_signal("mechanism_jamming_field_activated"):
+			SignalBus.mechanism_jamming_field_activated.connect(_on_mechanism_jamming_field_activated)
+		if SignalBus.has_signal("mechanism_nuclear_launched"):
+			SignalBus.mechanism_nuclear_launched.connect(_on_mechanism_nuclear_launched)
+		if SignalBus.has_signal("mechanism_shield_projected"):
+			SignalBus.mechanism_shield_projected.connect(_on_mechanism_shield_projected)
+		if SignalBus.has_signal("mechanism_drone_marked"):
+			SignalBus.mechanism_drone_marked.connect(_on_mechanism_drone_marked)
 
 
 # =========================================================================
@@ -574,3 +592,112 @@ func _exit_tree() -> void:
 	if _slowmo_active:
 		Engine.time_scale = _user_time_scale
 		_slowmo_active = false
+
+
+# =========================================================================
+#  v8.5 兵种机制技能 VFX 回调
+#  局部特效用 VfxImpactFactory（需战场 Node2D parent）；全屏效果用 _overlay/shake
+# =========================================================================
+
+## 获取战场层 Node2D（用于 spawn 局部 VFX），找不到返回 null
+func _get_vfx_parent() -> Node2D:
+	var tree := get_tree()
+	if tree == null:
+		return null
+	# 优先按 group 查（battlefield/battle_layer），回退到 root 下第一个 Node2D 子节点
+	var by_group: Node = tree.get_first_node_in_group("battlefield_layer")
+	if by_group == null:
+		by_group = tree.get_first_node_in_group("battlefield")
+	if by_group != null and by_group is Node2D:
+		return by_group
+	# 回退：遍历 root 子节点找第一个 Node2D（main 场景根）
+	if tree.root != null:
+		for c in tree.root.get_children():
+			if c is Node2D:
+				return c
+	return null
+
+
+## 定向爆破：从 from→to 播抛物线弹（简化为激光束+爆炸冲击波）
+func _on_mechanism_demolition_fired(from_pos: Vector2, to_pos: Vector2) -> void:
+	var parent: Node2D = _get_vfx_parent()
+	if parent == null:
+		return
+	# 橙红色抛物线轨迹（用 laser_beam 简化，方向 from→to）
+	VfxImpactFactory.spawn_laser_beam(parent, from_pos, to_pos, Color(1.0, 0.5, 0.2, 0.9))
+	# 目标点爆炸冲击波（橙）
+	VfxImpactFactory.spawn_shockwave(parent, to_pos, 80.0, Color(1.0, 0.6, 0.2, 0.9))
+	_request_shake(4.0, 0.3)
+
+
+## 瞄准狙击锁定：在狙击单位位置播瞄准镜十字线（紫色短闪光）
+func _on_mechanism_sniper_aim_locked(pos: Vector2) -> void:
+	var parent: Node2D = _get_vfx_parent()
+	if parent == null:
+		return
+	VfxImpactFactory.spawn_shockwave(parent, pos, 40.0, Color(0.8, 0.5, 1.0, 0.7))
+
+
+## 瞄准狙击开火：from→to 红色锁定框+射击线
+func _on_mechanism_sniper_fired(from_pos: Vector2, to_pos: Vector2) -> void:
+	var parent: Node2D = _get_vfx_parent()
+	if parent == null:
+		return
+	VfxImpactFactory.spawn_laser_beam(parent, from_pos, to_pos, Color(1.0, 0.3, 0.3, 1.0))
+	VfxImpactFactory.spawn_crit_aura(parent, to_pos)
+
+
+## 闪电穿插开火：from→to 贯穿光线（青色，体现穿透）
+func _on_mechanism_blitz_fired(from_pos: Vector2, to_pos: Vector2) -> void:
+	var parent: Node2D = _get_vfx_parent()
+	if parent == null:
+		return
+	var dir: Vector2 = (to_pos - from_pos).normalized()
+	VfxImpactFactory.spawn_pierce_beam(parent, from_pos, dir)
+
+
+## 电子屏蔽：center 位置播紫色扩散波纹（半径 radius）
+func _on_mechanism_jamming_field_activated(center: Vector2, radius: float) -> void:
+	var parent: Node2D = _get_vfx_parent()
+	if parent == null:
+		return
+	VfxImpactFactory.spawn_shockwave(parent, center, radius, Color(0.6, 0.3, 0.9, 0.6))
+
+
+## 战术核武：from→to 抛物线（用 laser 简化）+ 蘑菇云（冲击波）+ 震屏
+func _on_mechanism_nuclear_launched(from_pos: Vector2, target_pos: Vector2) -> void:
+	var parent: Node2D = _get_vfx_parent()
+	# 轨迹（橙白）
+	if parent != null:
+		VfxImpactFactory.spawn_laser_beam(parent, from_pos, target_pos, Color(1.0, 0.9, 0.4, 1.0))
+	# 爆炸：白闪 + 大冲击波 + 强震屏（复用 nuclear_impact 的全屏效果）
+	_ensure_overlay()
+	_overlay.color = Color(1.0, 1.0, 1.0, 0.0)
+	_overlay.visible = true
+	var tw: Tween = create_tween()
+	tw.tween_property(_overlay, "color:a", 0.7, 0.05)
+	tw.tween_property(_overlay, "color:a", 0.0, 0.25)
+	tw.tween_callback(func(): _overlay.visible = false)
+	if parent != null:
+		VfxImpactFactory.spawn_shockwave(parent, target_pos, 120.0, Color(1.0, 0.7, 0.3, 0.95))
+	_request_shake(12.0, 0.8)
+
+
+## 护盾投射：from 施放者 + 多个友军位置播蓝色护盾展开
+func _on_mechanism_shield_projected(_from_pos: Vector2, target_positions: Array) -> void:
+	var parent: Node2D = _get_vfx_parent()
+	if parent == null:
+		return
+	for tp in target_positions:
+		if tp is Vector2:
+			VfxImpactFactory.spawn_shockwave(parent, tp, 50.0, Color(0.3, 0.7, 1.0, 0.8))
+
+
+## 无人机定时标记：from 无人机 + 多个敌方位置播红色锁定框+扫描波纹
+func _on_mechanism_drone_marked(_from_pos: Vector2, target_positions: Array) -> void:
+	var parent: Node2D = _get_vfx_parent()
+	if parent == null:
+		return
+	for tp in target_positions:
+		if tp is Vector2:
+			VfxImpactFactory.spawn_shockwave(parent, tp, 45.0, Color(1.0, 0.3, 0.3, 0.85))

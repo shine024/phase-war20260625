@@ -40,21 +40,21 @@ const BASIC_TACTICS: Dictionary = {
 		},
 		"effects": {"stat_bonus": {"damage_reduction": 0.25}}
 	},
-	"tactic_crescent": {
-		"id": "tactic_crescent", "name": "新月阵", "tier": 1,
+	"tactic_flank_pincer": {
+		"id": "tactic_flank_pincer", "name": "两翼包抄", "tier": 1,
 		"desc": "≥2 FAST（两侧分布）：FAST 伤害+30%，中央防御+30%",
 		"conditions": {"min_count_by_tag": {"fast": 2}},
 		"effects": {"stat_bonus": {"atk_fast_bonus": 0.30, "def_center_bonus": 0.30}}
 	},
-	"tactic_arrow": {
-		"id": "tactic_arrow", "name": "箭矢阵", "tier": 1,
+	"tactic_crossfire": {
+		"id": "tactic_crossfire", "name": "交叉火力", "tier": 1,
 		"desc": "≥3 SNIPER：SNIPER 射程+30%、伤害+25%、必命中",
 		"conditions": {"min_count_by_tag": {"sniper": 3}},
 		"effects": {"stat_bonus": {"attack_range_sniper": 0.30, "sniper_damage_bonus": 0.25},
 		            "special": ["sniper_never_miss"]}
 	},
-	"tactic_testudo": {
-		"id": "tactic_testudo", "name": "龟甲阵", "tier": 1,
+	"tactic_fortress_line": {
+		"id": "tactic_fortress_line", "name": "堡垒防线", "tier": 1,
 		"desc": "≥4 FORT：全体-35% 受伤，部署速度-20%",
 		"conditions": {"min_count_by_kind": {GC.CombatKind.FORT: 4}},
 		"effects": {"stat_bonus": {"damage_reduction": 0.35, "deploy_speed": -0.20}}
@@ -135,15 +135,8 @@ const ADVANCED_TACTICS: Dictionary = {
 		},
 		"effects": {"stat_bonus": {"enemy_attack_speed_penalty": 0.30, "enemy_move_speed_penalty": 0.30}}
 	},
-	"tactic_void_descent": {
-		"id": "tactic_void_descent", "name": "虚空降临", "tier": 2,
-		"desc": "≥2 VOID 技能：全体敌方受到伤害+20%",
-		"require_unlock": true,
-		"conditions": {"min_card_skill_family": {"void": 2}},
-		"effects": {"stat_bonus": {"enemy_vulnerability": 0.20}}
-	},
-	"tactic_phoenix": {
-		"id": "tactic_phoenix", "name": "凤凰涅槃", "tier": 2,
+	"tactic_inferno_counter": {
+		"id": "tactic_inferno_counter", "name": "纵火反击", "tier": 2,
 		"desc": "≥2 FLAME 技能：全体 HP+20%，死亡 20% 复活",
 		"require_unlock": true,
 		"conditions": {"min_card_skill_family": {"flame": 2}},
@@ -161,8 +154,8 @@ const ADVANCED_TACTICS: Dictionary = {
 		                           "def_light": 0.25, "def_armor": 0.25, "def_air": 0.25,
 		                           "max_hp": 0.25}}
 	},
-	"tactic_ragnarok": {
-		"id": "tactic_ragnarok", "name": "诸神黄昏", "tier": 2,
+	"tactic_total_war": {
+		"id": "tactic_total_war", "name": "全面战争", "tier": 2,
 		"desc": "4 终极技能：全体+40% 全属性，敌方每秒-1% HP",
 		"require_unlock": true,
 		"conditions": {"min_ultimate_skill_count": 4},

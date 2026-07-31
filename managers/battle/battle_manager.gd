@@ -28,6 +28,8 @@ var _damage_system: RefCounted = null  ## BattleDamageSystem
 # v8.x: 战法检测器 + 卡片定时技能引擎
 var _tactic_detector: RefCounted = null  ## TacticDetector
 var _card_skill_engine: RefCounted = null  ## CardPeriodicSkillEngine
+# v8.5: 敌方相位师主动技能引擎（boss active_spells 定时触发）
+var _enemy_master_skill_engine: RefCounted = null  ## EnemyMasterSkillEngine
 
 # ---- 性能优化：空间分区系统 ----
 var spatial_grid: Node = null  ## SpatialGrid 实例
@@ -91,8 +93,10 @@ func _ready() -> void:
 	# v8.x: 初始化战法检测器 + 卡片定时技能引擎
 	const TacticDetectorScript = preload("res://scripts/battle/tactic_detector.gd")
 	const CardSkillEngineScript = preload("res://managers/battle/card_periodic_skill_engine.gd")
+	const EnemyMasterSkillEngineScript = preload("res://managers/battle/enemy_master_skill_engine.gd")
 	_tactic_detector = TacticDetectorScript.new()
 	_card_skill_engine = CardSkillEngineScript.new()
+	_enemy_master_skill_engine = EnemyMasterSkillEngineScript.new()
 	var skill_mgr: Node = get_node_or_null("/root/PhaseMasterSkillManager")
 	_tactic_detector.setup({
 		"player_units_node": null,  # 战斗开始后更新
@@ -144,6 +148,9 @@ func _process(delta: float) -> void:
 	# v8.x: 驱动卡片定时技能引擎 + 战法检测器（同样在短路前调用，确保两套战斗都生效）
 	if _card_skill_engine != null:
 		_card_skill_engine.update(delta)
+	# v8.5: 敌方相位师主动技能（boss active_spells 定时触发）
+	if _enemy_master_skill_engine != null:
+		_enemy_master_skill_engine.update(delta)
 	if _tactic_detector != null:
 		_tactic_detector.update(delta)
 
@@ -294,6 +301,10 @@ func start_battle(battle_scene: Node) -> void:
 	# 如果是相位师对战，生成敌方相位场基地
 	if _is_phase_master_battle and not _phase_master_config.is_empty():
 		_spawn_enemy_phase_master_base()
+
+	# v8.x: 我方基地（相位场）HP 加成——技能树/势力技能树的 stat_bonus.hp 路由到基地
+	# 此前我方基地 phase_field_driver 恒定 200，无成长通道；现复用技能树 hp 加成让基地可成长
+	_apply_player_base_hp_bonus()
 
 	# 同步法则卡到 PhaseInstrumentManager
 	if PhaseInstrumentManager.has_method("sync_law_cards_to_phase_law_manager"):
@@ -665,6 +676,48 @@ func _spawn_enemy_phase_master_base() -> void:
 	# v7.x: 敌方相位师基地建立后，触发敌方相位仪主动能力（开局一次性能力 + 周期能力初始化）
 	if _enemy_phase_driver != null and is_instance_valid(_enemy_phase_driver):
 		PhaseInstrumentAbilities.on_battle_start(_enemy_phase_driver, battlefield, PhaseInstrumentAbilities.Owner.ENEMY)
+		# v8.5: 初始化敌方相位师主动技能引擎（boss active_spells 定时触发）
+		if _enemy_master_skill_engine != null:
+			_enemy_master_skill_engine.setup(_enemy_phase_driver, battlefield)
+			# 注入引擎引用给 driver（用于死亡时触发被动）
+			if _enemy_phase_driver.has_method("set_master_skill_engine"):
+				_enemy_phase_driver.set_master_skill_engine(_enemy_master_skill_engine)
+
+
+## v8.x: 我方基地（相位场）HP 加成注入。
+## 取相位师技能树 + 激活势力技能树的 stat_bonus.hp，乘到我方基地 phase_field_driver。
+## 此前基地恒定 200 无成长；现复用技能树 hp 加成通道让基地可成长（与单位 hp 加成同源）。
+## 复用 active_law_effects.gd:126 的取节点范式（battlefield.get_node_or_null("PhaseFieldDriver")）。
+func _apply_player_base_hp_bonus() -> void:
+	if battlefield == null or not is_instance_valid(battlefield):
+		return
+	var pd: Node = battlefield.get_node_or_null("PhaseFieldDriver")
+	if pd == null or not is_instance_valid(pd):
+		return
+	if not ("max_hp" in pd):
+		return
+	# 汇总 hp 加成比例（技能树 + 势力技能树）
+	var hp_bonus: float = 0.0
+	# 相位师技能树
+	var pmsm: Node = get_node_or_null("/root/PhaseMasterSkillManager")
+	if pmsm != null and pmsm.has_method("get_active_effects"):
+		var fx: Dictionary = pmsm.get_active_effects().get("stat_bonus", {})
+		hp_bonus += float(fx.get("hp", 0.0))
+	# 激活势力技能树
+	var fsm: Node = get_node_or_null("/root/FactionSystemManager")
+	if fsm != null and fsm.has_method("get_active_faction_skill_effects"):
+		var ffx: Dictionary = fsm.get_active_faction_skill_effects().get("stat_bonus", {})
+		hp_bonus += float(ffx.get("hp", 0.0))
+	if hp_bonus <= 0.0:
+		return
+	# 应用到基地（乘法，与单位 hp 加成口径一致）
+	var old_max: float = float(pd.max_hp)
+	pd.max_hp = maxf(1.0, old_max * (1.0 + hp_bonus))
+	if "hp" in pd:
+		pd.hp = float(pd.max_hp)  # 满血出场（与敌方 driver setup 后 hp=max_hp 一致）
+	# 刷新血条 UI（与 phase_field_driver._ready 的 emit 范式一致）
+	if SignalBus and SignalBus.has_signal("phase_driver_hp_changed"):
+		SignalBus.phase_driver_hp_changed.emit(float(pd.hp), float(pd.max_hp))
 
 
 # =========================================================================

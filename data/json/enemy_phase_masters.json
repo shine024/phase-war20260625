@@ -16,49 +16,21 @@
 					"name": "新兵教官",
 					"description": "所有友军防御+10%，部署冷却-5%",
 					"effects": {
-						"defense_boost": 0.1,
-						"deploy_cooldown_reduction": 0.05
+						"def_light": 0.1,
+						"def_armor": 0.1,
+						"def_air": 0.1
 					}
 				}
 			],
-			"active_spells": [
-				{
-					"id": "steel_wall_summon",
-					"name": "钢铁壁垒",
-					"description": "召唤3个钢铁壁垒单位，每个拥有800血量和50防御",
-					"cooldown": 15.0,
-					"mana_cost": 80,
-					"effect": "summon_units",
-					"params": {
-						"count": 3,
-						"unit_type": "steel_wall",
-						"hp": 800,
-						"defense": 50
-					}
-				},
-				{
-					"id": "armor_break",
-					"name": "破甲冲击",
-					"description": "对前方扇形区域造成200伤害并降低30%防御，持续5秒",
-					"cooldown": 12.0,
-					"mana_cost": 60,
-					"effect": "damage_debuff",
-					"params": {
-						"damage": 200,
-						"defense_reduction": 0.3,
-						"duration": 5.0,
-						"angle": 90
-					}
-				}
-			],
+			"active_spells": [],
 			"passive_spells": [
 				{
 					"id": "steel_skin",
 					"name": "钢铁之肤",
-					"description": "所有友军获得15%额外护甲",
+					"description": "所有友军获得12%额外护甲",
 					"effect": "armor_boost",
 					"params": {
-						"bonus": 0.15
+						"bonus": 0.12
 					}
 				},
 				{
@@ -72,11 +44,11 @@
 				}
 			],
 			"equipment": {
-				"phase_instrument": "pi_steel_01",
+				"phase_instrument": "pi_steel_02",
 				"level": 5,
 				"platforms": [
-					"ww1_sup_mg_nest",
-					"ww1_arm_rolls_e"
+					"steel_fortress_basic",
+					"steel_titan_basic"
 				],
 				"weapons": [
 					"steel_machinegun_basic",
@@ -84,17 +56,13 @@
 				],
 				"energy_cards": [
 					"steel_energy_basic"
-				],
-				"_legacy_platforms": [
-					"steel_fortress_basic",
-					"steel_titan_basic"
 				]
 			},
 			"stats": {
-				"max_hp": 1500,
-				"attack_power": 120,
-				"defense": 80,
-				"energy_regen": 2.0,
+				"max_hp": 2900,
+				"attack_power": 36,
+				"defense": 32,
+				"energy_regen": 2,
 				"unit_limit": 5
 			}
 		},
@@ -109,41 +77,15 @@
 				{
 					"id": "first_flame",
 					"name": "初燃之心",
-					"description": "攻击力+10%，火焰伤害额外+10%",
+					"description": "攻击力+8%",
 					"effects": {
-						"attack_boost": 0.1,
-						"fire_damage_boost": 0.1
+						"atk_light": 0.08,
+						"atk_armor": 0.08,
+						"atk_air": 0.08
 					}
 				}
 			],
-			"active_spells": [
-				{
-					"id": "fire_storm",
-					"name": "烈焰风暴",
-					"description": "在指定区域召唤火焰风暴，每秒造成150伤害，持续6秒",
-					"cooldown": 18.0,
-					"mana_cost": 100,
-					"effect": "aoe_damage_over_time",
-					"params": {
-						"damage": 150,
-						"duration": 6.0,
-						"radius": 120
-					}
-				},
-				{
-					"id": "explosive_charge",
-					"name": "爆炸冲锋",
-					"description": "所有己方单位获得爆炸死亡效果，死亡时对周围造成100伤害",
-					"cooldown": 20.0,
-					"mana_cost": 90,
-					"effect": "death_explosion_buff",
-					"params": {
-						"damage": 100,
-						"radius": 80,
-						"duration": 8.0
-					}
-				}
-			],
+			"active_spells": [],
 			"passive_spells": [
 				{
 					"id": "burning_aura",
@@ -158,21 +100,21 @@
 				{
 					"id": "fire_adaptation",
 					"name": "火焰适应",
-					"description": "火焰伤害提升20%，受到的火焰伤害减少30%",
+					"description": "攻击力提升8%",
 					"effect": "damage_boost_resistance",
 					"params": {
-						"boost": 0.2,
+						"boost": 0.08,
 						"resistance": 0.3,
 						"damage_type": "fire"
 					}
 				}
 			],
 			"equipment": {
-				"phase_instrument": "pi_flame_01",
+				"phase_instrument": "pi_flame_02",
 				"level": 6,
 				"platforms": [
-					"ww1_arm_rolls_e",
-					"ww1_arty_mortar"
+					"flame_raider_basic",
+					"flame_siege_basic"
 				],
 				"weapons": [
 					"flame_thrower_basic",
@@ -180,16 +122,12 @@
 				],
 				"energy_cards": [
 					"flame_energy_basic"
-				],
-				"_legacy_platforms": [
-					"flame_raider_basic",
-					"flame_siege_basic"
 				]
 			},
 			"stats": {
-				"max_hp": 1200,
-				"attack_power": 150,
-				"defense": 50,
+				"max_hp": 2950,
+				"attack_power": 37,
+				"defense": 25,
 				"energy_regen": 2.5,
 				"unit_limit": 6
 			}
@@ -205,40 +143,14 @@
 				{
 					"id": "first_thunder",
 					"name": "初雷之印",
-					"description": "攻击速度+10%，暴击率+5%",
+					"description": "暴击率+8%，闪避+5%",
 					"effects": {
-						"attack_speed_boost": 0.1,
-						"crit_chance": 0.05
+						"crit_chance": 0.08,
+						"dodge_chance": 0.05
 					}
 				}
 			],
-			"active_spells": [
-				{
-					"id": "chain_lightning",
-					"name": "连锁闪电",
-					"description": "释放闪电链，弹射4次，每次造成250伤害",
-					"cooldown": 14.0,
-					"mana_cost": 85,
-					"effect": "chain_damage",
-					"params": {
-						"damage": 250,
-						"bounces": 4,
-						"range": 200
-					}
-				},
-				{
-					"id": "thunder_strike",
-					"name": "雷霆一击",
-					"description": "对单个目标造成400伤害并眩晕2秒",
-					"cooldown": 16.0,
-					"mana_cost": 110,
-					"effect": "single_damage_stun",
-					"params": {
-						"damage": 400,
-						"stun_duration": 2.0
-					}
-				}
-			],
+			"active_spells": [],
 			"passive_spells": [
 				{
 					"id": "static_field",
@@ -262,11 +174,11 @@
 				}
 			],
 			"equipment": {
-				"phase_instrument": "pi_thunder_01",
+				"phase_instrument": "pi_thunder_02",
 				"level": 7,
 				"platforms": [
-					"ww1_inf_storm_e",
-					"ww1_inf_rifle"
+					"thunter_striker_basic",
+					"thunter_sniper_basic"
 				],
 				"weapons": [
 					"tesla_coil_basic",
@@ -274,17 +186,13 @@
 				],
 				"energy_cards": [
 					"thunder_energy_basic"
-				],
-				"_legacy_platforms": [
-					"thunter_striker_basic",
-					"thunter_sniper_basic"
 				]
 			},
 			"stats": {
-				"max_hp": 1100,
-				"attack_power": 160,
-				"defense": 45,
-				"energy_regen": 3.0,
+				"max_hp": 2950,
+				"attack_power": 38,
+				"defense": 25,
+				"energy_regen": 3,
 				"unit_limit": 5
 			}
 		},
@@ -299,39 +207,15 @@
 				{
 					"id": "void_sense",
 					"name": "虚空初感",
-					"description": "法术强度+15%，攻击附带3%能量吸取",
+					"description": "攻击力+8%",
 					"effects": {
-						"magic_power_boost": 0.15,
-						"energy_drain_on_hit": 0.03
+						"atk_light": 0.08,
+						"atk_armor": 0.08,
+						"atk_air": 0.08
 					}
 				}
 			],
-			"active_spells": [
-				{
-					"id": "time_warp",
-					"name": "时间扭曲",
-					"description": "使所有敌军速度降低50%，持续5秒",
-					"cooldown": 22.0,
-					"mana_cost": 120,
-					"effect": "speed_debuff",
-					"params": {
-						"slow_percent": 0.5,
-						"duration": 5.0
-					}
-				},
-				{
-					"id": "void_tear",
-					"name": "虚空撕裂",
-					"description": "在战场上开启3个虚空传送门，传送己方单位",
-					"cooldown": 25.0,
-					"mana_cost": 100,
-					"effect": "teleport_gates",
-					"params": {
-						"gate_count": 3,
-						"duration": 10.0
-					}
-				}
-			],
+			"active_spells": [],
 			"passive_spells": [
 				{
 					"id": "entropy_aura",
@@ -354,11 +238,11 @@
 				}
 			],
 			"equipment": {
-				"phase_instrument": "pi_void_01",
+				"phase_instrument": "pi_void_02",
 				"level": 8,
 				"platforms": [
-					"ww1_inf_mp18",
-					"ww1_inf_rifle"
+					"void_stealth_basic",
+					"void_mage_basic"
 				],
 				"weapons": [
 					"void_lance_basic",
@@ -366,16 +250,12 @@
 				],
 				"energy_cards": [
 					"void_energy_basic"
-				],
-				"_legacy_platforms": [
-					"void_stealth_basic",
-					"void_mage_basic"
 				]
 			},
 			"stats": {
-				"max_hp": 1300,
-				"attack_power": 140,
-				"defense": 60,
+				"max_hp": 3000,
+				"attack_power": 39,
+				"defense": 29,
 				"energy_regen": 2.8,
 				"unit_limit": 5
 			}
@@ -391,39 +271,16 @@
 				{
 					"id": "iron_wall_command",
 					"name": "铁壁指挥",
-					"description": "防御+20%，单位上限+1",
+					"description": "HP+15%，三维防御+10%",
 					"effects": {
-						"defense_boost": 0.2,
-						"unit_limit_bonus": 1
+						"hp": 0.15,
+						"def_light": 0.1,
+						"def_armor": 0.1,
+						"def_air": 0.1
 					}
 				}
 			],
-			"active_spells": [
-				{
-					"id": "iron_dome",
-					"name": "钢铁穹顶",
-					"description": "为己方基地施加无敌护盾，吸收3000点伤害，持续8秒",
-					"cooldown": 30.0,
-					"mana_cost": 150,
-					"effect": "shield_base",
-					"params": {
-						"shield_amount": 3000,
-						"duration": 8.0
-					}
-				},
-				{
-					"id": "reinforcement_call",
-					"name": "增援呼叫",
-					"description": "立即召唤4个精锐钢铁战士",
-					"cooldown": 22.0,
-					"mana_cost": 100,
-					"effect": "summon_elites",
-					"params": {
-						"count": 4,
-						"unit_type": "steel_elite"
-					}
-				}
-			],
+			"active_spells": [],
 			"passive_spells": [
 				{
 					"id": "formation_master",
@@ -446,7 +303,7 @@
 				}
 			],
 			"equipment": {
-				"phase_instrument": "pi_steel_02",
+				"phase_instrument": "pi_steel_03",
 				"level": 10,
 				"platforms": [
 					"ww1_boss_av7",
@@ -460,22 +317,12 @@
 				],
 				"energy_cards": [
 					"steel_energy_advanced"
-				],
-				"_legacy_platforms": [
-					"steel_fortress_advanced",
-					"steel_titan_advanced"
-				],
-				"runes": [
-					"iron_01",
-					"iron_03",
-					"defense_07",
-					"defense_08"
 				]
 			},
 			"stats": {
-				"max_hp": 2200,
-				"attack_power": 200,
-				"defense": 120,
+				"max_hp": 3100,
+				"attack_power": 41,
+				"defense": 35,
 				"energy_regen": 2.5,
 				"unit_limit": 7
 			}
@@ -491,39 +338,15 @@
 				{
 					"id": "flame_authority",
 					"name": "炎之权柄",
-					"description": "火焰伤害+20%，燃烧持续时间+2秒",
+					"description": "三维攻击+15%",
 					"effects": {
-						"fire_damage_boost": 0.2,
-						"burn_duration_bonus": 2.0
+						"atk_light": 0.15,
+						"atk_armor": 0.15,
+						"atk_air": 0.15
 					}
 				}
 			],
-			"active_spells": [
-				{
-					"id": "meteor_swarm",
-					"name": "流星群",
-					"description": "召唤4颗流星，每颗造成350伤害并点燃区域",
-					"cooldown": 25.0,
-					"mana_cost": 180,
-					"effect": "meteor_rain",
-					"params": {
-						"count": 4,
-						"damage": 350,
-						"burn_duration": 4.0
-					}
-				},
-				{
-					"id": "phoenix_rebirth",
-					"name": "凤凰重生",
-					"description": "复活所有死亡的友军单位，恢复50%生命值",
-					"cooldown": 45.0,
-					"mana_cost": 200,
-					"effect": "mass_resurrect",
-					"params": {
-						"hp_percent": 0.5
-					}
-				}
-			],
+			"active_spells": [],
 			"passive_spells": [
 				{
 					"id": "eternal_flame",
@@ -541,14 +364,14 @@
 					"description": "战斗每进行10秒，所有友军攻击力提升10%",
 					"effect": "scaling_damage",
 					"params": {
-						"interval": 10.0,
+						"interval": 10,
 						"boost_per_stack": 0.1,
 						"max_stacks": 5
 					}
 				}
 			],
 			"equipment": {
-				"phase_instrument": "pi_flame_02",
+				"phase_instrument": "pi_flame_03",
 				"level": 12,
 				"platforms": [
 					"ww1_boss_av7",
@@ -562,23 +385,13 @@
 				],
 				"energy_cards": [
 					"flame_energy_advanced"
-				],
-				"_legacy_platforms": [
-					"flame_raider_advanced",
-					"flame_siege_advanced"
-				],
-				"runes": [
-					"nova_01",
-					"nova_02",
-					"attack_07",
-					"attack_08"
 				]
 			},
 			"stats": {
-				"max_hp": 2000,
-				"attack_power": 260,
-				"defense": 70,
-				"energy_regen": 3.0,
+				"max_hp": 3200,
+				"attack_power": 43,
+				"defense": 23,
+				"energy_regen": 3,
 				"unit_limit": 7
 			}
 		},
@@ -593,39 +406,15 @@
 				{
 					"id": "storm_child",
 					"name": "风暴之子",
-					"description": "雷电伤害+20%，闪电链弹射+1次",
+					"description": "三维攻击+8%",
 					"effects": {
-						"lightning_damage_boost": 0.2,
-						"chain_bounce_bonus": 1
+						"atk_light": 0.08,
+						"atk_armor": 0.08,
+						"atk_air": 0.08
 					}
 				}
 			],
-			"active_spells": [
-				{
-					"id": "lightning_storm",
-					"name": "雷暴",
-					"description": "全屏闪电打击，随机敌人受到300伤害",
-					"cooldown": 20.0,
-					"mana_cost": 160,
-					"effect": "global_lightning",
-					"params": {
-						"damage": 300,
-						"strike_count": 6
-					}
-				},
-				{
-					"id": "electrify",
-					"name": "充能",
-					"description": "使所有友军获得电击攻击，每次攻击附加100伤害",
-					"cooldown": 18.0,
-					"mana_cost": 140,
-					"effect": "weapon_enchant",
-					"params": {
-						"bonus_damage": 100,
-						"duration": 10.0
-					}
-				}
-			],
+			"active_spells": [],
 			"passive_spells": [
 				{
 					"id": "conductive",
@@ -648,7 +437,7 @@
 				}
 			],
 			"equipment": {
-				"phase_instrument": "pi_thunder_02",
+				"phase_instrument": "pi_thunder_03",
 				"level": 13,
 				"platforms": [
 					"ww1_boss_av7",
@@ -662,22 +451,12 @@
 				],
 				"energy_cards": [
 					"thunder_energy_advanced"
-				],
-				"_legacy_platforms": [
-					"thunter_striker_advanced",
-					"thunter_sniper_advanced"
-				],
-				"runes": [
-					"aether_01",
-					"aether_02",
-					"attack_06",
-					"mobility_04"
 				]
 			},
 			"stats": {
-				"max_hp": 1800,
-				"attack_power": 300,
-				"defense": 65,
+				"max_hp": 5200,
+				"attack_power": 73,
+				"defense": 32,
 				"energy_regen": 3.5,
 				"unit_limit": 6
 			}
@@ -693,40 +472,15 @@
 				{
 					"id": "dimension_perception",
 					"name": "维度感知",
-					"description": "虚空伤害+20%，相位仪能量恢复+30%",
+					"description": "三维攻击+8%",
 					"effects": {
-						"void_damage_boost": 0.2,
-						"energy_regen_boost": 0.3
+						"atk_light": 0.08,
+						"atk_armor": 0.08,
+						"atk_air": 0.08
 					}
 				}
 			],
-			"active_spells": [
-				{
-					"id": "dimension_rift",
-					"name": "维度裂隙",
-					"description": "打开传送门，持续召唤虚空生物，持续12秒",
-					"cooldown": 35.0,
-					"mana_cost": 200,
-					"effect": "portal_summon",
-					"params": {
-						"duration": 12.0,
-						"spawn_interval": 2.0
-					}
-				},
-				{
-					"id": "black_hole",
-					"name": "黑洞",
-					"description": "创造黑洞，持续吸引敌人并每秒造成200伤害",
-					"cooldown": 28.0,
-					"mana_cost": 180,
-					"effect": "black_hole",
-					"params": {
-						"damage": 200,
-						"duration": 6.0,
-						"radius": 150
-					}
-				}
-			],
+			"active_spells": [],
 			"passive_spells": [
 				{
 					"id": "reality_tear",
@@ -749,7 +503,7 @@
 				}
 			],
 			"equipment": {
-				"phase_instrument": "pi_void_02",
+				"phase_instrument": "pi_void_03",
 				"level": 14,
 				"platforms": [
 					"ww2_boss_kingtiger",
@@ -764,22 +518,12 @@
 				],
 				"energy_cards": [
 					"void_energy_advanced"
-				],
-				"_legacy_platforms": [
-					"void_stealth_advanced",
-					"void_mage_advanced"
-				],
-				"runes": [
-					"void_01",
-					"void_03",
-					"void_02",
-					"attack_07"
 				]
 			},
 			"stats": {
-				"max_hp": 2100,
-				"attack_power": 280,
-				"defense": 80,
+				"max_hp": 5250,
+				"attack_power": 74,
+				"defense": 34,
 				"energy_regen": 3.8,
 				"unit_limit": 6
 			}
@@ -795,42 +539,16 @@
 				{
 					"id": "industrial_commander",
 					"name": "工业统帅",
-					"description": "单位生产速度+30%，存活单位每10秒获得+5%全属性",
+					"description": "HP+15%，三维防御+10%",
 					"effects": {
-						"deploy_speed_boost": 0.3,
-						"time_scaling": {
-							"interval": 10.0,
-							"boost": 0.05
-						}
+						"hp": 0.15,
+						"def_light": 0.1,
+						"def_armor": 0.1,
+						"def_air": 0.1
 					}
 				}
 			],
-			"active_spells": [
-				{
-					"id": "legion_call",
-					"name": "军团召唤",
-					"description": "召唤10个钢铁战士，包括3个精锐和7个普通",
-					"cooldown": 40.0,
-					"mana_cost": 220,
-					"effect": "mass_summon",
-					"params": {
-						"elite_count": 3,
-						"normal_count": 7
-					}
-				},
-				{
-					"id": "fortress_mode",
-					"name": "要塞模式",
-					"description": "所有友军获得50%防御和1500生命值护盾",
-					"cooldown": 35.0,
-					"mana_cost": 200,
-					"effect": "mass_buff_shield",
-					"params": {
-						"defense_boost": 0.5,
-						"shield_amount": 1500
-					}
-				}
-			],
+			"active_spells": [],
 			"passive_spells": [
 				{
 					"id": "iron_will",
@@ -839,7 +557,7 @@
 					"effect": "low_hp_defense_boost",
 					"params": {
 						"threshold": 0.3,
-						"defense_multiplier": 2.0
+						"defense_multiplier": 2
 					}
 				},
 				{
@@ -848,12 +566,12 @@
 					"description": "每12秒自动生产一个额外单位",
 					"effect": "auto_production",
 					"params": {
-						"interval": 12.0
+						"interval": 12
 					}
 				}
 			],
 			"equipment": {
-				"phase_instrument": "pi_steel_03",
+				"phase_instrument": "pi_steel_04",
 				"level": 16,
 				"platforms": [
 					"ww2_boss_kingtiger",
@@ -868,23 +586,13 @@
 				],
 				"energy_cards": [
 					"steel_energy_expert"
-				],
-				"_legacy_platforms": [
-					"steel_fortress_expert",
-					"steel_titan_expert"
-				],
-				"runes": [
-					"iron_01",
-					"iron_03",
-					"iron_02",
-					"defense_08"
 				]
 			},
 			"stats": {
-				"max_hp": 3000,
-				"attack_power": 280,
-				"defense": 150,
-				"energy_regen": 3.0,
+				"max_hp": 5400,
+				"attack_power": 78,
+				"defense": 46,
+				"energy_regen": 3,
 				"unit_limit": 8
 			}
 		},
@@ -899,48 +607,23 @@
 				{
 					"id": "eternal_inferno",
 					"name": "永恒烈焰",
-					"description": "火焰伤害+30%，友军移动路径留下燃烧轨迹",
+					"description": "三维攻击+15%",
 					"effects": {
-						"fire_damage_boost": 0.3,
-						"flame_trail": true
+						"atk_light": 0.15,
+						"atk_armor": 0.15,
+						"atk_air": 0.15
 					}
 				}
 			],
-			"active_spells": [
-				{
-					"id": "world_inferno",
-					"name": "世界炼狱",
-					"description": "将战场变为熔岩环境，所有敌人每秒受到80伤害",
-					"cooldown": 50.0,
-					"mana_cost": 300,
-					"effect": "terrain_transform",
-					"params": {
-						"damage": 80,
-						"duration": 12.0
-					}
-				},
-				{
-					"id": "supernova",
-					"name": "超新星",
-					"description": "在中心点释放巨大爆炸，造成700伤害并点燃所有敌人",
-					"cooldown": 45.0,
-					"mana_cost": 280,
-					"effect": "massive_explosion",
-					"params": {
-						"damage": 700,
-						"radius": 200,
-						"burn_duration": 6.0
-					}
-				}
-			],
+			"active_spells": [],
 			"passive_spells": [
 				{
 					"id": "hellfire",
 					"name": "地狱火",
-					"description": "友军攻击造成额外40%火焰伤害",
+					"description": "友军攻击力提升8%",
 					"effect": "elemental_damage_boost",
 					"params": {
-						"boost": 0.4,
+						"boost": 0.08,
 						"element": "fire"
 					}
 				},
@@ -956,7 +639,7 @@
 				}
 			],
 			"equipment": {
-				"phase_instrument": "pi_flame_03",
+				"phase_instrument": "pi_flame_04",
 				"level": 17,
 				"platforms": [
 					"ww2_arm_panther_e",
@@ -970,16 +653,12 @@
 				],
 				"energy_cards": [
 					"flame_energy_expert"
-				],
-				"_legacy_platforms": [
-					"flame_raider_expert",
-					"flame_siege_expert"
 				]
 			},
 			"stats": {
-				"max_hp": 2800,
-				"attack_power": 380,
-				"defense": 90,
+				"max_hp": 5450,
+				"attack_power": 79,
+				"defense": 30,
 				"energy_regen": 3.5,
 				"unit_limit": 8
 			}
@@ -995,48 +674,24 @@
 				{
 					"id": "thunder_domination",
 					"name": "雷霆主宰",
-					"description": "雷电伤害+35%，能量满时自动触发闪电链打击",
+					"description": "三维攻击+15%",
 					"effects": {
-						"lightning_damage_boost": 0.35,
-						"energy_full_auto_strike": true
+						"atk_light": 0.15,
+						"atk_armor": 0.15,
+						"atk_air": 0.15
 					}
 				}
 			],
-			"active_spells": [
-				{
-					"id": "thunder_god_fury",
-					"name": "雷神之怒",
-					"description": "连续释放8次强力闪电，每次造成450伤害",
-					"cooldown": 30.0,
-					"mana_cost": 250,
-					"effect": "rapid_lightning",
-					"params": {
-						"strike_count": 8,
-						"damage": 450
-					}
-				},
-				{
-					"id": "electromagnetic_pulse",
-					"name": "电磁脉冲",
-					"description": "EMP攻击，瘫痪所有敌人4秒",
-					"cooldown": 40.0,
-					"mana_cost": 200,
-					"effect": "emp_stun",
-					"params": {
-						"duration": 4.0,
-						"target_type": "all"
-					}
-				}
-			],
+			"active_spells": [],
 			"passive_spells": [
 				{
 					"id": "lightning_speed",
 					"name": "闪电速度",
-					"description": "所有友军移动和攻击速度提升30%",
+					"description": "暴击率+8%，闪避+5%",
 					"effect": "speed_boost",
 					"params": {
-						"move_speed": 0.3,
-						"attack_speed": 0.3
+						"crit_chance": 0.08,
+						"dodge_chance": 0.05
 					}
 				},
 				{
@@ -1051,7 +706,7 @@
 				}
 			],
 			"equipment": {
-				"phase_instrument": "pi_thunder_03",
+				"phase_instrument": "pi_thunder_04",
 				"level": 18,
 				"platforms": [
 					"ww2_boss_kingtiger",
@@ -1066,23 +721,13 @@
 				],
 				"energy_cards": [
 					"thunder_energy_expert"
-				],
-				"_legacy_platforms": [
-					"thunter_striker_expert",
-					"thunter_sniper_expert"
-				],
-				"runes": [
-					"aether_01",
-					"aether_02",
-					"aether_03",
-					"attack_08"
 				]
 			},
 			"stats": {
-				"max_hp": 2600,
-				"attack_power": 420,
-				"defense": 85,
-				"energy_regen": 4.0,
+				"max_hp": 5550,
+				"attack_power": 81,
+				"defense": 30,
+				"energy_regen": 4,
 				"unit_limit": 7
 			}
 		},
@@ -1097,51 +742,16 @@
 				{
 					"id": "void_mastery",
 					"name": "虚空精通",
-					"description": "虚空伤害+35%，所有技能冷却-20%，能量吸取效果+50%",
+					"description": "三维攻击+15%",
 					"effects": {
-						"void_damage_boost": 0.35,
-						"cooldown_reduction": 0.2,
-						"energy_drain_boost": 0.5
+						"atk_light": 0.15,
+						"atk_armor": 0.15,
+						"atk_air": 0.15
 					}
 				}
 			],
-			"active_spells": [
-				{
-					"id": "reality_collapse",
-					"name": "现实崩塌",
-					"description": "删除区域内生命值低于20%的敌人",
-					"cooldown": 60.0,
-					"mana_cost": 350,
-					"effect": "instant_kill_zone",
-					"params": {
-						"radius": 100,
-						"cast_time": 3.0,
-						"hp_threshold": 0.2
-					}
-				},
-				{
-					"id": "void_army",
-					"name": "虚空大军",
-					"description": "召唤12个虚空生物，包括2个虚空巨兽",
-					"cooldown": 45.0,
-					"mana_cost": 280,
-					"effect": "summon_void_army",
-					"params": {
-						"normal_count": 10,
-						"behemoth_count": 2
-					}
-				}
-			],
+			"active_spells": [],
 			"passive_spells": [
-				{
-					"id": "cooldown_mastery",
-					"name": "冷却精通",
-					"description": "所有技能冷却时间减少25%",
-					"effect": "cooldown_reduction",
-					"params": {
-						"reduction": 0.25
-					}
-				},
 				{
 					"id": "dimension_siphon",
 					"name": "维度虹吸",
@@ -1154,7 +764,7 @@
 				}
 			],
 			"equipment": {
-				"phase_instrument": "pi_void_03",
+				"phase_instrument": "pi_void_04",
 				"level": 19,
 				"platforms": [
 					"ww2_boss_kingtiger",
@@ -1169,23 +779,12 @@
 				],
 				"energy_cards": [
 					"void_energy_expert"
-				],
-				"_legacy_platforms": [
-					"void_stealth_expert",
-					"void_mage_expert"
-				],
-				"runes": [
-					"void_01",
-					"void_03",
-					"void_02",
-					"attack_07",
-					"special_05"
 				]
 			},
 			"stats": {
-				"max_hp": 3200,
-				"attack_power": 400,
-				"defense": 100,
+				"max_hp": 5600,
+				"attack_power": 82,
+				"defense": 29,
 				"energy_regen": 4.2,
 				"unit_limit": 7
 			}
@@ -1211,33 +810,7 @@
 					}
 				}
 			],
-			"active_spells": [
-				{
-					"id": "molten_armor",
-					"name": "熔岩护甲",
-					"description": "友军获得熔岩护甲，受到攻击时对攻击者造成80火焰伤害",
-					"cooldown": 25.0,
-					"mana_cost": 150,
-					"effect": "thorn_armor_fire",
-					"params": {
-						"thorn_damage": 80,
-						"duration": 10.0
-					}
-				},
-				{
-					"id": "forge_hammer",
-					"name": "锻锤",
-					"description": "巨大的锻锤砸向地面，造成300伤害并眩晕2.5秒",
-					"cooldown": 20.0,
-					"mana_cost": 130,
-					"effect": "hammer_smash",
-					"params": {
-						"damage": 300,
-						"stun_duration": 2.5,
-						"radius": 120
-					}
-				}
-			],
+			"active_spells": [],
 			"passive_spells": [
 				{
 					"id": "heat_treatment",
@@ -1256,7 +829,7 @@
 					"effect": "fire_damage_boost",
 					"params": {
 						"boost": 0.1,
-						"duration": 5.0
+						"duration": 5
 					}
 				}
 			],
@@ -1276,23 +849,12 @@
 				],
 				"energy_cards": [
 					"hybrid_energy_basic"
-				],
-				"_legacy_platforms": [
-					"steel_fortress_expert",
-					"flame_raider_expert"
-				],
-				"runes": [
-					"iron_01",
-					"nova_01",
-					"iron_03",
-					"nova_02",
-					"defense_07"
 				]
 			},
 			"stats": {
-				"max_hp": 2800,
-				"attack_power": 340,
-				"defense": 120,
+				"max_hp": 9450,
+				"attack_power": 121,
+				"defense": 37,
 				"energy_regen": 3.2,
 				"unit_limit": 8
 			}
@@ -1319,31 +881,7 @@
 					}
 				}
 			],
-			"active_spells": [
-				{
-					"id": "railgun_barrage",
-					"name": "电磁炮齐射",
-					"description": "发射5枚电磁炮弹，穿透路径上的所有敌人",
-					"cooldown": 22.0,
-					"mana_cost": 160,
-					"effect": "piercing_shots",
-					"params": {
-						"shot_count": 5,
-						"damage": 220
-					}
-				},
-				{
-					"id": "energize_shields",
-					"name": "充能护盾",
-					"description": "为所有友军施加能量护盾，吸收400点伤害",
-					"cooldown": 18.0,
-					"mana_cost": 120,
-					"effect": "mass_shield",
-					"params": {
-						"shield_amount": 400
-					}
-				}
-			],
+			"active_spells": [],
 			"passive_spells": [
 				{
 					"id": "conductive_armor",
@@ -1381,23 +919,12 @@
 				],
 				"energy_cards": [
 					"hybrid_energy_basic"
-				],
-				"_legacy_platforms": [
-					"steel_titan_expert",
-					"thunter_striker_expert"
-				],
-				"runes": [
-					"iron_01",
-					"aether_01",
-					"iron_03",
-					"aether_02",
-					"attack_07"
 				]
 			},
 			"stats": {
-				"max_hp": 2700,
-				"attack_power": 360,
-				"defense": 140,
+				"max_hp": 9550,
+				"attack_power": 124,
+				"defense": 46,
 				"energy_regen": 3.5,
 				"unit_limit": 7
 			}
@@ -1420,37 +947,11 @@
 							"flame",
 							"void"
 						],
-						"burn_energy_drain_mult": 2.0
+						"burn_energy_drain_mult": 2
 					}
 				}
 			],
-			"active_spells": [
-				{
-					"id": "chaos_inferno",
-					"name": "混沌炼狱",
-					"description": "召唤混乱火焰，随机移动并每秒造成180伤害",
-					"cooldown": 30.0,
-					"mana_cost": 200,
-					"effect": "chaos_flame",
-					"params": {
-						"duration": 8.0,
-						"damage": 180
-					}
-				},
-				{
-					"id": "burning_void",
-					"name": "燃烧虚空",
-					"description": "在指定区域创造燃烧虚空，持续造成伤害和能量流失",
-					"cooldown": 25.0,
-					"mana_cost": 180,
-					"effect": "burning_void_zone",
-					"params": {
-						"damage": 120,
-						"energy_drain": 25,
-						"duration": 8.0
-					}
-				}
-			],
+			"active_spells": [],
 			"passive_spells": [
 				{
 					"id": "entropy_flame",
@@ -1488,23 +989,12 @@
 				],
 				"energy_cards": [
 					"hybrid_energy_advanced"
-				],
-				"_legacy_platforms": [
-					"void_mage_expert",
-					"flame_siege_expert"
-				],
-				"runes": [
-					"void_01",
-					"nova_01",
-					"void_03",
-					"nova_02",
-					"attack_07"
 				]
 			},
 			"stats": {
-				"max_hp": 2600,
-				"attack_power": 380,
-				"defense": 85,
+				"max_hp": 9700,
+				"attack_power": 126,
+				"defense": 29,
 				"energy_regen": 3.8,
 				"unit_limit": 7
 			}
@@ -1527,33 +1017,7 @@
 					}
 				}
 			],
-			"active_spells": [
-				{
-					"id": "world_pillar",
-					"name": "世界支柱",
-					"description": "创造2个巨大的钢铁支柱，拥有4000HP",
-					"cooldown": 60.0,
-					"mana_cost": 300,
-					"effect": "permanent_structures",
-					"params": {
-						"count": 2,
-						"hp": 4000
-					}
-				},
-				{
-					"id": "earthquake",
-					"name": "大地震",
-					"description": "全屏震动，造成500伤害并降低所有敌人40%防御",
-					"cooldown": 40.0,
-					"mana_cost": 250,
-					"effect": "global_earthquake",
-					"params": {
-						"damage": 500,
-						"defense_reduction": 0.4,
-						"duration": 6.0
-					}
-				}
-			],
+			"active_spells": [],
 			"passive_spells": [
 				{
 					"id": "unbreakable",
@@ -1591,23 +1055,12 @@
 				],
 				"energy_cards": [
 					"steel_energy_expert"
-				],
-				"_legacy_platforms": [
-					"steel_fortress_expert",
-					"steel_titan_expert"
-				],
-				"runes": [
-					"iron_01",
-					"iron_03",
-					"iron_02",
-					"defense_08",
-					"attack_07"
 				]
 			},
 			"stats": {
-				"max_hp": 5000,
-				"attack_power": 400,
-				"defense": 200,
+				"max_hp": 9900,
+				"attack_power": 131,
+				"defense": 36,
 				"energy_regen": 3.5,
 				"unit_limit": 9
 			}
@@ -1623,40 +1076,18 @@
 				{
 					"id": "ragnarok",
 					"name": "诸神黄昏",
-					"description": "火焰伤害+40%；友军首次死亡时自动复活，恢复30%生命值",
+					"description": "三维攻击+15%；友军首次死亡时自动复活，恢复30%生命值",
 					"effects": {
-						"fire_damage_boost": 0.4,
+						"atk_light": 0.15,
+						"atk_armor": 0.15,
+						"atk_air": 0.15,
 						"auto_revive_once": {
 							"hp_percent": 0.3
 						}
 					}
 				}
 			],
-			"active_spells": [
-				{
-					"id": "ragnarok_inferno",
-					"name": "诸神黄昏炼狱",
-					"description": "召唤火焰巨人，持续20秒",
-					"cooldown": 90.0,
-					"mana_cost": 500,
-					"effect": "summon_fire_giant",
-					"params": {
-						"duration": 20.0
-					}
-				},
-				{
-					"id": "solar_flare",
-					"name": "太阳耀斑",
-					"description": "释放太阳耀斑，全屏800伤害并致盲所有敌人5秒",
-					"cooldown": 60.0,
-					"mana_cost": 400,
-					"effect": "solar_flare",
-					"params": {
-						"damage": 800,
-						"blind_duration": 5.0
-					}
-				}
-			],
+			"active_spells": [],
 			"passive_spells": [
 				{
 					"id": "phoenix_rebirth_auto",
@@ -1665,7 +1096,7 @@
 					"effect": "phoenix_rebirth_auto",
 					"params": {
 						"rebirth_hp": 0.3,
-						"cooldown_per_unit": 30.0
+						"cooldown_per_unit": 30
 					}
 				},
 				{
@@ -1674,7 +1105,7 @@
 					"description": "战斗每进行30秒，所有敌人失去8%最大生命值",
 					"effect": "time_based_hp_drain",
 					"params": {
-						"interval": 30.0,
+						"interval": 30,
 						"drain_percent": 0.08
 					}
 				}
@@ -1694,17 +1125,13 @@
 				],
 				"energy_cards": [
 					"flame_energy_expert"
-				],
-				"_legacy_platforms": [
-					"flame_raider_expert",
-					"flame_siege_expert"
 				]
 			},
 			"stats": {
-				"max_hp": 4200,
-				"attack_power": 520,
-				"defense": 110,
-				"energy_regen": 4.0,
+				"max_hp": 10000,
+				"attack_power": 133,
+				"defense": 24,
+				"energy_regen": 4,
 				"unit_limit": 8
 			}
 		},
@@ -1719,39 +1146,15 @@
 				{
 					"id": "thunder_avatar",
 					"name": "万钧雷霆",
-					"description": "雷电伤害+45%，闪电链弹射额外+2次，能量满自动打击",
+					"description": "三维攻击+15%",
 					"effects": {
-						"lightning_damage_boost": 0.45,
-						"chain_bounce_bonus": 2,
-						"energy_full_auto_strike": true
+						"atk_light": 0.15,
+						"atk_armor": 0.15,
+						"atk_air": 0.15
 					}
 				}
 			],
-			"active_spells": [
-				{
-					"id": "thunder_god_avatar",
-					"name": "雷神化身",
-					"description": "化身为雷神，获得无限能量和无敌状态，持续8秒",
-					"cooldown": 120.0,
-					"mana_cost": 600,
-					"effect": "avatar_mode",
-					"params": {
-						"duration": 8.0
-					}
-				},
-				{
-					"id": "lightning_omega",
-					"name": "终极雷霆",
-					"description": "释放超强力闪电，造成1200伤害并分裂为6道",
-					"cooldown": 50.0,
-					"mana_cost": 350,
-					"effect": "ultimate_lightning",
-					"params": {
-						"damage": 1200,
-						"splits": 6
-					}
-				}
-			],
+			"active_spells": [],
 			"passive_spells": [
 				{
 					"id": "auto_lightning",
@@ -1759,18 +1162,18 @@
 					"description": "每5秒自动随机打击敌人，造成250伤害",
 					"effect": "auto_lightning",
 					"params": {
-						"interval": 5.0,
+						"interval": 5,
 						"damage": 250
 					}
 				},
 				{
 					"id": "global_damage_boost",
 					"name": "导电世界",
-					"description": "整个战场变为导电体，所有敌人受到的雷电伤害+40%",
+					"description": "三维攻击+8%",
 					"effect": "global_damage_boost",
 					"params": {
 						"damage_type": "lightning",
-						"boost": 0.4
+						"boost": 0.08
 					}
 				}
 			],
@@ -1791,23 +1194,12 @@
 				],
 				"energy_cards": [
 					"thunder_energy_expert"
-				],
-				"_legacy_platforms": [
-					"thunter_striker_expert",
-					"thunter_sniper_expert"
-				],
-				"runes": [
-					"aether_01",
-					"aether_02",
-					"aether_03",
-					"attack_08",
-					"mobility_05"
 				]
 			},
 			"stats": {
-				"max_hp": 3800,
-				"attack_power": 560,
-				"defense": 95,
+				"max_hp": 10150,
+				"attack_power": 136,
+				"defense": 23,
 				"energy_regen": 4.5,
 				"unit_limit": 8
 			}
@@ -1823,57 +1215,32 @@
 				{
 					"id": "world_devourer",
 					"name": "世界吞噬者",
-					"description": "虚空伤害+45%；敌方护盾和护甲效果降低30%",
+					"description": "三维攻击+15%",
 					"effects": {
-						"void_damage_boost": 0.45,
-						"enemy_defense_reduction": 0.3
+						"atk_light": 0.15,
+						"atk_armor": 0.15,
+						"atk_air": 0.15
 					}
 				}
 			],
-			"active_spells": [
-				{
-					"id": "devour_all",
-					"name": "世界吞噬",
-					"description": "吞噬战场上低生命值的敌人，恢复40%最大生命值",
-					"cooldown": 80.0,
-					"mana_cost": 500,
-					"effect": "devour_all",
-					"params": {
-						"heal_percent": 0.4,
-						"hp_threshold": 0.25
-					}
-				},
-				{
-					"id": "void_apocalypse",
-					"name": "虚空末日",
-					"description": "开启虚空末日，所有敌人持续受到伤害并被传送",
-					"cooldown": 60.0,
-					"mana_cost": 450,
-					"effect": "void_apocalypse",
-					"params": {
-						"damage": 180,
-						"duration": 12.0
-					}
-				}
-			],
+			"active_spells": [],
 			"passive_spells": [
 				{
 					"id": "void_lord",
 					"name": "虚空领主",
-					"description": "所有虚空技能伤害提升80%，冷却减少25%",
+					"description": "三维攻击+15%",
 					"effect": "void_mastery_ultimate",
 					"params": {
-						"damage_boost": 0.8,
-						"cooldown_reduction": 0.25
+						"damage_boost": 0.15
 					}
 				},
 				{
 					"id": "enemy_defense_reduction",
 					"name": "现实崩溃",
-					"description": "敌人的护盾和护甲效果降低40%",
+					"description": "三维攻击+8%",
 					"effect": "enemy_defense_reduction",
 					"params": {
-						"reduction": 0.4
+						"reduction": 0.08
 					}
 				}
 			],
@@ -1894,23 +1261,12 @@
 				],
 				"energy_cards": [
 					"void_energy_expert"
-				],
-				"_legacy_platforms": [
-					"void_stealth_expert",
-					"void_mage_expert"
-				],
-				"runes": [
-					"void_01",
-					"void_03",
-					"void_02",
-					"attack_08",
-					"special_05"
 				]
 			},
 			"stats": {
-				"max_hp": 4500,
-				"attack_power": 500,
-				"defense": 120,
+				"max_hp": 17650,
+				"attack_power": 207,
+				"defense": 40,
 				"energy_regen": 4.5,
 				"unit_limit": 8
 			}
@@ -1937,32 +1293,7 @@
 					}
 				}
 			],
-			"active_spells": [
-				{
-					"id": "electromagnetic_fortress",
-					"name": "电磁堡垒",
-					"description": "创造电磁堡垒，对周围敌人造成持续伤害",
-					"cooldown": 45.0,
-					"mana_cost": 300,
-					"effect": "em_fortress",
-					"params": {
-						"damage": 200,
-						"duration": 15.0
-					}
-				},
-				{
-					"id": "lightning_assault",
-					"name": "雷霆突击",
-					"description": "所有友军获得闪电护盾和攻击加速",
-					"cooldown": 30.0,
-					"mana_cost": 250,
-					"effect": "lightning_buff",
-					"params": {
-						"attack_speed": 0.4,
-						"shield_damage": 120
-					}
-				}
-			],
+			"active_spells": [],
 			"passive_spells": [
 				{
 					"id": "synergy_boost",
@@ -2005,24 +1336,13 @@
 				],
 				"energy_cards": [
 					"hybrid_energy_advanced"
-				],
-				"_legacy_platforms": [
-					"steel_fortress_expert",
-					"thunter_striker_expert"
-				],
-				"runes": [
-					"iron_01",
-					"aether_01",
-					"iron_03",
-					"aether_02",
-					"attack_08"
 				]
 			},
 			"stats": {
-				"max_hp": 4200,
-				"attack_power": 480,
-				"defense": 160,
-				"energy_regen": 4.0,
+				"max_hp": 17450,
+				"attack_power": 203,
+				"defense": 56,
+				"energy_regen": 4,
 				"unit_limit": 8
 			}
 		},
@@ -2048,41 +1368,15 @@
 					}
 				}
 			],
-			"active_spells": [
-				{
-					"id": "chaos_zone",
-					"name": "混沌虚空炼狱",
-					"description": "创造混乱的虚空炼狱，随机传送和伤害敌人",
-					"cooldown": 50.0,
-					"mana_cost": 350,
-					"effect": "chaos_zone",
-					"params": {
-						"damage": 250,
-						"duration": 12.0
-					}
-				},
-				{
-					"id": "entropy_drain",
-					"name": "熵增烈焰",
-					"description": "所有敌人持续失去生命值和能量",
-					"cooldown": 40.0,
-					"mana_cost": 280,
-					"effect": "entropy_drain",
-					"params": {
-						"hp_drain": 80,
-						"energy_drain": 40,
-						"duration": 8.0
-					}
-				}
-			],
+			"active_spells": [],
 			"passive_spells": [
 				{
 					"id": "dual_element_boost",
 					"name": "混沌之火",
-					"description": "火焰和虚空伤害提升40%，有15%概率触发双重伤害",
+					"description": "三维攻击+8%",
 					"effect": "dual_element_boost",
 					"params": {
-						"boost": 0.4,
+						"boost": 0.08,
 						"dual_chance": 0.15
 					}
 				},
@@ -2114,16 +1408,12 @@
 				],
 				"energy_cards": [
 					"hybrid_energy_advanced"
-				],
-				"_legacy_platforms": [
-					"flame_siege_expert",
-					"void_mage_expert"
 				]
 			},
 			"stats": {
-				"max_hp": 4000,
-				"attack_power": 520,
-				"defense": 100,
+				"max_hp": 17650,
+				"attack_power": 207,
+				"defense": 37,
 				"energy_regen": 4.5,
 				"unit_limit": 7
 			}
@@ -2141,39 +1431,15 @@
 					"name": "自动化战争",
 					"description": "每10秒自动生产一个战斗单位；单位每存活10秒获得一层升级(+8%属性)",
 					"effects": {
-						"auto_spawn_interval": 10.0,
+						"auto_spawn_interval": 10,
 						"time_scaling": {
-							"interval": 10.0,
+							"interval": 10,
 							"boost": 0.08
 						}
 					}
 				}
 			],
-			"active_spells": [
-				{
-					"id": "deploy_mechs",
-					"name": "机械军团",
-					"description": "部署6个战斗机器人",
-					"cooldown": 30.0,
-					"mana_cost": 180,
-					"effect": "deploy_mechs",
-					"params": {
-						"count": 6,
-						"mech_type": "battle_robot"
-					}
-				},
-				{
-					"id": "mass_repair",
-					"name": "修复蜂群",
-					"description": "纳米机器人修复所有友军，恢复25%生命值",
-					"cooldown": 25.0,
-					"mana_cost": 150,
-					"effect": "mass_repair",
-					"params": {
-						"heal_percent": 0.25
-					}
-				}
-			],
+			"active_spells": [],
 			"passive_spells": [
 				{
 					"id": "automation",
@@ -2181,7 +1447,7 @@
 					"description": "每12秒自动生产一个战斗单位",
 					"effect": "auto_production_fast",
 					"params": {
-						"interval": 12.0
+						"interval": 12
 					}
 				},
 				{
@@ -2190,7 +1456,7 @@
 					"description": "友军单位每存活10秒，获得一层升级（+8%属性）",
 					"effect": "time_based_upgrade",
 					"params": {
-						"interval": 10.0,
+						"interval": 10,
 						"boost_per_level": 0.08
 					}
 				}
@@ -2212,23 +1478,12 @@
 				],
 				"energy_cards": [
 					"steel_energy_expert"
-				],
-				"_legacy_platforms": [
-					"steel_fortress_expert",
-					"steel_titan_expert"
-				],
-				"runes": [
-					"iron_01",
-					"iron_03",
-					"iron_02",
-					"defense_08",
-					"attack_08"
 				]
 			},
 			"stats": {
-				"max_hp": 5500,
-				"attack_power": 480,
-				"defense": 200,
+				"max_hp": 17850,
+				"attack_power": 211,
+				"defense": 55,
 				"energy_regen": 3.5,
 				"unit_limit": 10
 			}
@@ -2251,43 +1506,16 @@
 					}
 				}
 			],
-			"active_spells": [
-				{
-					"id": "pyroblast",
-					"name": "炎爆术",
-					"description": "发射巨大火球，造成600伤害并点燃区域",
-					"cooldown": 18.0,
-					"mana_cost": 160,
-					"effect": "pyroblast",
-					"params": {
-						"damage": 600,
-						"radius": 100,
-						"burn_duration": 6.0
-					}
-				},
-				{
-					"id": "flame_wave",
-					"name": "烈焰波",
-					"description": "释放环形烈焰波，推开敌人并造成400伤害",
-					"cooldown": 16.0,
-					"mana_cost": 140,
-					"effect": "flame_wave",
-					"params": {
-						"damage": 400,
-						"knockback": 150
-					}
-				}
-			],
+			"active_spells": [],
 			"passive_spells": [
 				{
 					"id": "fire_mastery",
 					"name": "火焰精通",
-					"description": "火焰伤害提升35%，火焰法术冷却减少20%",
+					"description": "三维攻击+15%",
 					"effect": "elemental_mastery",
 					"params": {
 						"element": "fire",
-						"damage_boost": 0.35,
-						"cooldown_reduction": 0.2
+						"damage_boost": 0.15
 					}
 				},
 				{
@@ -2317,16 +1545,12 @@
 				],
 				"energy_cards": [
 					"flame_energy_expert"
-				],
-				"_legacy_platforms": [
-					"flame_raider_expert",
-					"flame_siege_expert"
 				]
 			},
 			"stats": {
-				"max_hp": 4800,
-				"attack_power": 580,
-				"defense": 100,
+				"max_hp": 18050,
+				"attack_power": 214,
+				"defense": 32,
 				"energy_regen": 4.2,
 				"unit_limit": 9
 			}
@@ -2342,49 +1566,24 @@
 				{
 					"id": "storm_rush",
 					"name": "超级突袭",
-					"description": "移动速度+50%；对首领级目标造成+100%伤害",
+					"description": "三维攻击+8%",
 					"effects": {
-						"move_speed_boost": 0.5,
-						"boss_damage_boost": 1.0
+						"atk_light": 0.08,
+						"atk_armor": 0.08,
+						"atk_air": 0.08
 					}
 				}
 			],
-			"active_spells": [
-				{
-					"id": "tornado_summon",
-					"name": "龙卷风链",
-					"description": "召唤3个龙卷风，在战场上移动并造成伤害",
-					"cooldown": 28.0,
-					"mana_cost": 200,
-					"effect": "tornado_summon",
-					"params": {
-						"count": 3,
-						"damage": 160,
-						"duration": 10.0
-					}
-				},
-				{
-					"id": "wind_blast",
-					"name": "风之冲击",
-					"description": "强力风击，将所有敌人推向一侧并造成280伤害",
-					"cooldown": 22.0,
-					"mana_cost": 170,
-					"effect": "wind_push",
-					"params": {
-						"damage": 280,
-						"push_distance": 200
-					}
-				}
-			],
+			"active_spells": [],
 			"passive_spells": [
 				{
 					"id": "storm_speed",
 					"name": "风暴骑手",
-					"description": "友军移动速度提升50%，攻击速度提升25%",
+					"description": "暴击率+8%，闪避+5%",
 					"effect": "storm_speed",
 					"params": {
-						"move_speed": 0.5,
-						"attack_speed": 0.25
+						"crit_chance": 0.08,
+						"dodge_chance": 0.05
 					}
 				},
 				{
@@ -2393,7 +1592,7 @@
 					"description": "周围敌人每3秒受到一次电击",
 					"effect": "periodic_electric_shock",
 					"params": {
-						"interval": 3.0,
+						"interval": 3,
 						"damage": 100
 					}
 				}
@@ -2415,23 +1614,12 @@
 				],
 				"energy_cards": [
 					"thunder_energy_expert"
-				],
-				"_legacy_platforms": [
-					"thunter_striker_expert",
-					"thunter_sniper_expert"
-				],
-				"runes": [
-					"aether_01",
-					"aether_02",
-					"aether_03",
-					"attack_08",
-					"mobility_05"
 				]
 			},
 			"stats": {
-				"max_hp": 4000,
-				"attack_power": 550,
-				"defense": 80,
+				"max_hp": 18050,
+				"attack_power": 214,
+				"defense": 30,
 				"energy_regen": 4.8,
 				"unit_limit": 8
 			}
@@ -2447,39 +1635,15 @@
 				{
 					"id": "shadow_realm",
 					"name": "暗影领域",
-					"description": "暗影中敌人受到伤害+50%；背刺伤害+200%",
+					"description": "三维攻击+15%",
 					"effects": {
-						"darkness_damage_boost": 0.5,
-						"backstab_damage_boost": 2.0
+						"atk_light": 0.15,
+						"atk_armor": 0.15,
+						"atk_air": 0.15
 					}
 				}
 			],
-			"active_spells": [
-				{
-					"id": "shadow_clones",
-					"name": "暗影军团",
-					"description": "召唤8个暗影分身，持续时间15秒",
-					"cooldown": 35.0,
-					"mana_cost": 220,
-					"effect": "shadow_clones",
-					"params": {
-						"count": 8,
-						"duration": 15.0
-					}
-				},
-				{
-					"id": "eclipse",
-					"name": "日蚀",
-					"description": "战场陷入黑暗，敌人命中率降低40%",
-					"cooldown": 40.0,
-					"mana_cost": 180,
-					"effect": "darkness_debuff",
-					"params": {
-						"accuracy_reduction": 0.4,
-						"duration": 10.0
-					}
-				}
-			],
+			"active_spells": [],
 			"passive_spells": [
 				{
 					"id": "teleport_behind",
@@ -2487,7 +1651,7 @@
 					"description": "友军可以瞬间移动到敌人身后",
 					"effect": "teleport_behind",
 					"params": {
-						"cooldown": 8.0
+						"cooldown": 8
 					}
 				},
 				{
@@ -2497,7 +1661,7 @@
 					"effect": "execute_damage",
 					"params": {
 						"threshold": 0.3,
-						"damage_boost": 1.0
+						"damage_boost": 1
 					}
 				}
 			],
@@ -2518,23 +1682,12 @@
 				],
 				"energy_cards": [
 					"void_energy_expert"
-				],
-				"_legacy_platforms": [
-					"void_stealth_expert",
-					"void_mage_expert"
-				],
-				"runes": [
-					"void_01",
-					"void_03",
-					"void_02",
-					"attack_08",
-					"special_06"
 				]
 			},
 			"stats": {
-				"max_hp": 4500,
-				"attack_power": 580,
-				"defense": 80,
+				"max_hp": 22950,
+				"attack_power": 315,
+				"defense": 41,
 				"energy_regen": 4.5,
 				"unit_limit": 7
 			}
@@ -2553,7 +1706,7 @@
 					"description": "每场战斗可使用一次神圣变身：全队全属性+80%持续15秒",
 					"effects": {
 						"divine_transform": {
-							"duration": 15.0,
+							"duration": 15,
 							"all_stat_boost": 0.8
 						}
 					}
@@ -2567,41 +1720,8 @@
 					}
 				}
 			],
-			"active_spells": [
-				{
-					"id": "divine_transformation",
-					"name": "神圣锻造",
-					"description": "将所有友军转化为神圣形态，全属性提升80%",
-					"cooldown": 90.0,
-					"mana_cost": 600,
-					"effect": "divine_transformation",
-					"params": {
-						"duration": 15.0,
-						"stat_boost": 0.8
-					}
-				},
-				{
-					"id": "terrain_forge",
-					"name": "世界锻造",
-					"description": "重塑战场地形，创造3个钢铁堡垒",
-					"cooldown": 120.0,
-					"mana_cost": 800,
-					"effect": "terrain_forge",
-					"params": {
-						"fortress_count": 3
-					}
-				}
-			],
+			"active_spells": [],
 			"passive_spells": [
-				{
-					"id": "cheat_death_chance",
-					"name": "神圣庇护",
-					"description": "友军受到致命伤害时，有40%概率保留1点生命值",
-					"effect": "cheat_death_chance",
-					"params": {
-						"chance": 0.4
-					}
-				},
 				{
 					"id": "massive_heal_aura",
 					"name": "神之光环",
@@ -2630,24 +1750,13 @@
 				],
 				"energy_cards": [
 					"steel_energy_god"
-				],
-				"_legacy_platforms": [
-					"steel_fortress_expert",
-					"steel_titan_expert"
-				],
-				"runes": [
-					"iron_01",
-					"iron_03",
-					"iron_02",
-					"defense_08",
-					"attack_08"
 				]
 			},
 			"stats": {
-				"max_hp": 7000,
-				"attack_power": 550,
-				"defense": 230,
-				"energy_regen": 4.0,
+				"max_hp": 22950,
+				"attack_power": 315,
+				"defense": 76,
+				"energy_regen": 4,
 				"unit_limit": 12
 			}
 		},
@@ -2662,11 +1771,13 @@
 				{
 					"id": "hell_queen",
 					"name": "炼狱女王",
-					"description": "火焰伤害+60%；全队单位死亡后3秒自动复活(50%HP)",
+					"description": "三维攻击+15%；全队单位死亡后3秒自动复活(50%HP)",
 					"effects": {
-						"fire_damage_boost": 0.6,
+						"atk_light": 0.15,
+						"atk_armor": 0.15,
+						"atk_air": 0.15,
 						"auto_resurrect": {
-							"delay": 3.0,
+							"delay": 3,
 							"hp": 0.5
 						}
 					}
@@ -2680,31 +1791,7 @@
 					}
 				}
 			],
-			"active_spells": [
-				{
-					"id": "hell_terrain",
-					"name": "地狱降临",
-					"description": "将整个战场变为地狱环境，持续造成毁灭性伤害",
-					"cooldown": 100.0,
-					"mana_cost": 700,
-					"effect": "hell_terrain",
-					"params": {
-						"damage": 400,
-						"duration": 15.0
-					}
-				},
-				{
-					"id": "full_resurrect_all",
-					"name": "凤凰涅槃",
-					"description": "完全复活所有死亡单位，并恢复70%生命值",
-					"cooldown": 150.0,
-					"mana_cost": 1000,
-					"effect": "full_resurrect_all",
-					"params": {
-						"hp_percent": 0.7
-					}
-				}
-			],
+			"active_spells": [],
 			"passive_spells": [
 				{
 					"id": "auto_resurrect",
@@ -2712,7 +1799,7 @@
 					"description": "友军不会真正死亡，而是3秒后复活",
 					"effect": "auto_resurrect",
 					"params": {
-						"resurrect_delay": 3.0,
+						"resurrect_delay": 3,
 						"resurrect_hp": 0.5
 					}
 				},
@@ -2742,16 +1829,12 @@
 				],
 				"energy_cards": [
 					"flame_energy_god"
-				],
-				"_legacy_platforms": [
-					"flame_raider_expert",
-					"flame_siege_expert"
 				]
 			},
 			"stats": {
-				"max_hp": 6500,
-				"attack_power": 750,
-				"defense": 140,
+				"max_hp": 23200,
+				"attack_power": 320,
+				"defense": 50,
 				"energy_regen": 4.5,
 				"unit_limit": 11
 			}
@@ -2767,11 +1850,11 @@
 				{
 					"id": "god_of_thunder",
 					"name": "雷霆之神",
-					"description": "雷电伤害+150%，技能冷却-40%，能量消耗-60%",
+					"description": "三维攻击+15%",
 					"effects": {
-						"lightning_damage_boost": 1.5,
-						"cooldown_reduction": 0.4,
-						"energy_cost_reduction": 0.6
+						"atk_light": 0.15,
+						"atk_armor": 0.15,
+						"atk_air": 0.15
 					}
 				},
 				{
@@ -2780,60 +1863,14 @@
 					"description": "每60秒自动展开雷霆穹顶，保护友军5秒",
 					"effects": {
 						"auto_thunder_dome": {
-							"interval": 60.0,
-							"duration": 5.0
+							"interval": 60,
+							"duration": 5
 						}
 					}
 				}
 			],
-			"active_spells": [
-				{
-					"id": "god_weapon_attack",
-					"name": "雷神之锤",
-					"description": "投掷雷神之锤，造成1500伤害并瘫痪所有敌人4秒",
-					"cooldown": 80.0,
-					"mana_cost": 800,
-					"effect": "god_weapon_attack",
-					"params": {
-						"damage": 1500,
-						"stun_duration": 4.0
-					}
-				},
-				{
-					"id": "thunder_dome_shield",
-					"name": "雷霆穹顶",
-					"description": "创造无敌雷霆穹顶，保护所有友军并电击敌人",
-					"cooldown": 60.0,
-					"mana_cost": 600,
-					"effect": "thunder_dome_shield",
-					"params": {
-						"duration": 12.0,
-						"shock_damage": 250
-					}
-				}
-			],
-			"passive_spells": [
-				{
-					"id": "god_mastery",
-					"name": "雷霆之神",
-					"description": "所有雷电伤害提升150%，冷却时间减少40%",
-					"effect": "god_mastery",
-					"params": {
-						"damage_boost": 1.5,
-						"cooldown_reduction": 0.4,
-						"element": "lightning"
-					}
-				},
-				{
-					"id": "energy_cost_reduction",
-					"name": "无限能量",
-					"description": "能量消耗减少60%",
-					"effect": "energy_cost_reduction",
-					"params": {
-						"reduction": 0.6
-					}
-				}
-			],
+			"active_spells": [],
+			"passive_spells": [],
 			"equipment": {
 				"phase_instrument": "pi_thunder_05",
 				"level": 29,
@@ -2851,24 +1888,13 @@
 				],
 				"energy_cards": [
 					"thunder_energy_god"
-				],
-				"_legacy_platforms": [
-					"thunter_striker_expert",
-					"thunter_sniper_expert"
-				],
-				"runes": [
-					"aether_01",
-					"aether_02",
-					"aether_03",
-					"attack_08",
-					"mobility_05"
 				]
 			},
 			"stats": {
-				"max_hp": 6000,
-				"attack_power": 850,
-				"defense": 130,
-				"energy_regen": 6.0,
+				"max_hp": 23200,
+				"attack_power": 320,
+				"defense": 50,
+				"energy_regen": 6,
 				"unit_limit": 10
 			}
 		},
@@ -2885,7 +1911,7 @@
 					"name": "夜之女神",
 					"description": "虚空伤害+200%；永久黑暗(敌方命中率-60%)；可转化1个敌方单位",
 					"effects": {
-						"void_damage_boost": 2.0,
+						"void_damage_boost": 2,
 						"permanent_darkness": 0.6,
 						"mass_convert_once": true
 					}
@@ -2896,44 +1922,20 @@
 					"description": "每90秒可抹除1个敌方单位",
 					"effects": {
 						"instant_delete": {
-							"cooldown": 90.0
+							"cooldown": 90
 						}
 					}
 				}
 			],
-			"active_spells": [
-				{
-					"id": "mass_conversion",
-					"name": "虚空转化",
-					"description": "将生命值最低的敌方单位转化为虚空生物",
-					"cooldown": 120.0,
-					"mana_cost": 900,
-					"effect": "mass_conversion",
-					"params": {
-						"duration": 12.0,
-						"target_count": 2
-					}
-				},
-				{
-					"id": "instant_delete",
-					"name": "现实抹除",
-					"description": "抹除一个敌方单位的存在",
-					"cooldown": 90.0,
-					"mana_cost": 700,
-					"effect": "instant_delete",
-					"params": {
-						"cast_time": 2.0
-					}
-				}
-			],
+			"active_spells": [],
 			"passive_spells": [
 				{
 					"id": "goddess_mastery",
 					"name": "虚空女神",
-					"description": "所有虚空技能伤害提升200%",
+					"description": "三维攻击+15%",
 					"effect": "goddess_mastery",
 					"params": {
-						"damage_boost": 2.0
+						"damage_boost": 0.15
 					}
 				},
 				{
@@ -2963,16 +1965,12 @@
 				],
 				"energy_cards": [
 					"void_energy_god"
-				],
-				"_legacy_platforms": [
-					"void_stealth_expert",
-					"void_mage_expert"
 				]
 			},
 			"stats": {
-				"max_hp": 5800,
-				"attack_power": 800,
-				"defense": 110,
+				"max_hp": 23450,
+				"attack_power": 325,
+				"defense": 44,
 				"energy_regen": 5.5,
 				"unit_limit": 9
 			}
@@ -2988,57 +1986,34 @@
 				{
 					"id": "master_of_all",
 					"name": "万物主宰",
-					"description": "所有伤害类型+80%，所有抗性+40%，每使用技能全属性+8%(无上限)",
+					"description": "三维攻击+15%",
 					"effects": {
-						"all_damage_boost": 0.8,
-						"all_resistance_boost": 0.4,
-						"scaling_per_cast": 0.08
+						"atk_light": 0.15,
+						"atk_armor": 0.15,
+						"atk_air": 0.15
 					}
 				},
 				{
 					"id": "infinite_potential",
 					"name": "无限潜能",
-					"description": "能量回复+100%，单位上限+3",
+					"description": "HP+15%，三维防御+10%",
 					"effects": {
-						"energy_regen_boost": 1.0,
-						"unit_limit_bonus": 3
+						"hp": 0.15,
+						"def_light": 0.1,
+						"def_armor": 0.1,
+						"def_air": 0.1
 					}
 				}
 			],
-			"active_spells": [
-				{
-					"id": "perfect_fusion",
-					"name": "完美和谐",
-					"description": "融合所有势力力量，全属性提升150%",
-					"cooldown": 120.0,
-					"mana_cost": 1000,
-					"effect": "perfect_fusion",
-					"params": {
-						"duration": 25.0,
-						"all_boost": 1.5
-					}
-				},
-				{
-					"id": "combo_ultimate",
-					"name": "奥米茄打击",
-					"description": "释放所有势力的终极技能，造成毁灭性伤害",
-					"cooldown": 180.0,
-					"mana_cost": 1500,
-					"effect": "combo_ultimate",
-					"params": {
-						"skill_count": 4
-					}
-				}
-			],
+			"active_spells": [],
 			"passive_spells": [
 				{
 					"id": "omni_mastery",
 					"name": "万物主宰",
-					"description": "所有伤害类型提升80%，所有抗性提升40%",
+					"description": "三维攻击+15%",
 					"effect": "omni_mastery",
 					"params": {
-						"damage_boost": 0.8,
-						"resistance_boost": 0.4
+						"damage_boost": 0.15
 					}
 				},
 				{
@@ -3068,25 +2043,13 @@
 				],
 				"energy_cards": [
 					"hybrid_energy_god"
-				],
-				"_legacy_platforms": [
-					"steel_titan_expert",
-					"flame_siege_expert"
-				],
-				"runes": [
-					"iron_01",
-					"void_01",
-					"nova_01",
-					"aether_01",
-					"attack_08",
-					"defense_08"
 				]
 			},
 			"stats": {
-				"max_hp": 10000,
-				"attack_power": 1000,
-				"defense": 200,
-				"energy_regen": 8.0,
+				"max_hp": 23450,
+				"attack_power": 325,
+				"defense": 47,
+				"energy_regen": 8,
 				"unit_limit": 15
 			}
 		}

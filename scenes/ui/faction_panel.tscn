@@ -44,7 +44,7 @@ corner_radius_bottom_right = 5
 corner_radius_bottom_left = 5
 
 [node name="FactionPanel" type="PanelContainer"]
-custom_minimum_size = Vector2(720, 480)
+custom_minimum_size = Vector2(760, 600)
 layout_mode = 2
 script = ExtResource("1_7rnc5")
 theme_override_styles/panel = SubResource("StyleBoxFlat_bg")
@@ -95,10 +95,16 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="DetailPanel" type="VBoxContainer" parent="VBoxContainer/HBoxContainer"]
+[node name="DetailScroll" type="ScrollContainer" parent="VBoxContainer/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 custom_minimum_size = Vector2(400, 0)
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 2
+
+[node name="DetailPanel" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/DetailScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/separation = 6
 

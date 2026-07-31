@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale:1.0">
+<title>相位师技能树 - 方案E4：量子沙盒式（完整版 - 35节点零重力空间）</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box }
+body { background:#000; color:#e0f0ff; font-family:'Microsoft YaHei',sans-serif; overflow:hidden; height:100vh; }
+.scheme-label { position:fixed;top:10px;left:10px;background:rgba(255,100,150,0.2);border:1px solid rgba(255,100,150,0.5);color:#ff6496;padding:5px 14px;border-radius:4px;font-size:12px;zinct:100; font-weight:bold; }
+.scene-container { position:relative;width:100%;height:100vh;display:flex;justify-content:center;align-items:center;perspective:1500px; }
+.quantum-field { position:relative;width:90vmin;height:90vmin;transform-style:preserve-3d;animation:field-rotate 45s infinite linear; } @keyframes field-rotate { from{transform:rotateY(0deg) rotateX(15deg);} to{transform:rotateY(360deg) rotateX(15deg);} }
+.quantum-node { position:absolute;width:72px;height:72px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all 0.5s cubic-bezier(0.68,-0.55,0.265,1.55); transform-style:preserve-3d; zinct:20; filter:drop-shadow(0 0 15px currentColor); }
+.quantum-node.unlocked { opacity:1; transform:scale(1) translateZ(var(--z,0)) rotateX(var(rx,0deg)) rotateY(var(ry,0deg)); }
+.quantum-node.locked { opacity:0.1; filter:grayscale(1) blur(3px); transform:scale(0.5) translateZ(-200px) rotateX(-30deg) rotateY(-30deg); }
+.quantum-node.available { opacity:1; animation:quantum-blink 1.5s infinite; transform:scale(1.25) translateZ(80px) rotateX(10deg) rotateY(10deg); }
+@keyframes quantum-blink { 0%,100%{box-shadow:0 0 30px var(--node-color);} 50%{box-shadow:0 0 60px var(--node-color),0 0 90px var(--node-color);} }
+.node-core { width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content-center;font-size:22px;color:white;background:radial-gradient(circle at 30% 30%,var(--node-glow),var(--node-color)); border:2px solid rgba(255,255,255,0.4); position:relative; zinct:2; }
+.node-ring { position:absolute;width:100%;height:100%;border-radius:50%;border:1px dashed var(--node-color);opacity:0.2;animation:ring-spin 30s linear infinite; zinct:1; } .node-tier { position:absolute;top:-22px;font-size:8px;background:rgba(0,0,0,0.8);padding:2px 8px;border-radius:12px;letter-spacing:1px;white-space:nowrap;zinct:3; } .node-label { position:absolute;bottom:-22px;font-size:9px;background:rgba(0,0,0,0.8);padding:2px 8px;border-radius:6px;white-space:nowrap;max-width:100px;text-align:center;zinct:3; opacity:0; transition:opacity 0.3s; } .quantum-node:hover .node-label { opacity:1; } .node-cost { position:absolute;right:-18px;top:50%;transform:translateY(-50%);font-size:7px;background:#ff6496;color:#000;padding:1px 4px;border-radius:4px;font-weight:bold; zinct:3; } .info-panel { position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(5,7,12,0.95);border:1px solid #ff6496;border-radius:8px;padding:12px 24px;font-size:11px;color:#c0d0e0;display:flex;gap:30px;zinct:50; } .infoitem span { color:#ff6496;font-weight:bold; } .quantum-tooltip { position:fixed;background:rgba(5,7,12,0.98);border:1px solid #ff6496;border-radius:6px;padding:12px;font-size:11px;color:#e0f0ff;max-width:220px;opacity:0;pointer-events:none;transition:all 0.3s;zinct:100;backdrop-filter:blur(8px);box-shadow:0 5px 25px rgba(255,100,150,0.3); } .quantum-tooltip.show { opacity:1; } .quantum-tooltip h4 { color:#ffd700;margin-bottom:6px;font-size:12px;letter-spacing:1px; } .quantum-tooltip p { font-size:10px;line-height:1.5;color:#a0b0c0;margin-bottom:8px; }</style>
+</head>
+<body>
+<div class="scheme-label">方案 E4：量子沙盒式（完整版 - 35节点）</div>
+<div class="scene-container">
+  <div class="quantum-field" id="quantumField"></div>
+</div>
+<div class="info-panel">
+  <div class="infoitem">可用锚点：<span>12</span></div>
+  <div class="infoitem">已用量子态：<span>7</span></div>
+  <div class="infoitem">纠缠层级：<span>LVL<span id="entanglement">5</span></span></div>
+</div>
+<div class="quantum-tooltip" id="quantumTooltip">
+  <h4 id="qt-title">技能名称</h4>
+  <p id="qt-desc">技能描述...</p>
+  <p style="margin-top:8px;color:#ffd700;letter-spacing:1px;">⚡ 消耗 <span id="qt-cost">1点</span></p>
+</div>
+
+<script>
+const field = document.getElementById('quantumField');
+const quantumNodes = [
+{id:'q000',name:'指挥觉醒','desc':'单位上限+1，基础协议激活','cost':1,'type':'cmd','color':'#00e5ff','glow':'#0088cc','x':0,'y':0,'z':50,'rotX':'0deg','rotY':'0deg'},{id:'q001',name:'智能核心','desc':'暴击率+5%，AI辅助','cost':1,'type':'int','color':'#00ff88','glow':'#00cc66','x':45,'y':15,'z':45,'rotX':'-15deg','rotY':'150deg'},{id:'q002',name:'火力觉醒','desc':'三维攻击+8%，火控初始化','cost':1,'type':'fp','color':'#ff6490','glow':'#cc4477','x':35,'y':35,'z':55,'rotX':'10deg','rotY':'270deg'},{id:'q003',name:'概念突破','desc':'能量恢复+20%，概念跃迁','cost':1,'type':'cw','color':'#bf64ff','glow':'#9944cc','x':-20,'y':25,'z':50,'rotX':'20deg','rotY':'45deg'},{id:'q004',name:'基础防御','desc':'生命+15%，护盾增强','cost':1,'type':'cmd','color':'#64c8ff','glow':'#4488cc','x':-30,'y':-10,'z':48,'rotX':'-10deg','rotY':'225deg'},{id:'q005',name:'光学瞄准','desc':'命中精度+15%','cost':1,'type':'fp','color':'#64ff90','glow':'#44cc66','x':40,'y':-20,'z':52,'rotX':'15deg','rotY':'330deg'},{id:'q006',name:'战术学习','desc':'经验获取+20%','cost':1,'type':'int','color':'#ff8866','glow':'#cc6644','x':-35,'y':25,'z':55,'rotX':'-10deg','rotY':'120deg'},{id:'q007',name:'能量储备','desc':'开局满能量','cost':1,'type':'cw','color':'#ffff00','glow':'#cccc00','x':25,'y':-35,'z':50,'rotX':'15deg','rotY':'-45deg'},{id:'q100',name:'快速部署','desc':'部署速度+15%','cost':1,'type':'cmd','color':'#ffff00','glow':'#ccaa00','x':-60,'y':-40,'z':80,'rotX':'30deg','rotY':'300deg'},{id:'q101',name:'战术规避','desc':'闪避+8%','cost':1,'type':'int','color':'#00ffff','glow':'#00cccc','x':-70,'y':30,'z':85,'rotX':'-20deg','rotY':'120deg'},{id:'q102',name:'穿甲弹道','desc':'装甲穿透+20%','cost':1,'type':'fp','color':'#ff8866','glow':'#cc6644','x':65,'y':-35,'z':90,'rotX':'-25deg','rotY':'60deg'},{id:'q103',name:'形态进化','desc':'卡牌一战进化','cost':1,'type':'cw','color':'#ff64ff','glow':'#cc44cc','x':55,'y':55,'z':88,'rotX':'-15deg','rotY':'30deg'},{id:'q104',name:'指挥协同','desc':'增益共享','cost':2,'type':'cmd','color':'#64c8ff','glow':'#4488cc','x':-50,'y':0,'z':95,'rotX':'5deg','rotY':'180deg'},{id:'q105',name:'侦察视野','desc':'视野+30%','cost':1,'type':'fp','color':'#ffff66','glow':'#cccc44','x':75,'y':20,'z':92,'rotX':'-10deg','rotY':'45deg'},{id:'q106',name:'AI进化','desc':'存活后属性+15%','cost':1,'type':'int','color':'#88ff66','glow':'#66cc44','x':-45,'y':-50,'z':93,'rotX':'25deg','rotY':'135deg'},{id:'q107',name:'能量脉冲','desc':'周期性能量爆发','cost':2,'type':'cw','color':'#ffcc00','glow':'#cc9900','x':0,'y':-65,'z':98,'rotX':'0deg','rotY':'0deg'},{id:'q108',name:'战略机动','desc':'移速+20%','cost':2,'type':'cmd','color':'#64c8ff','glow':'#4488cc','x':-65,'y':45,'z':90,'rotX':'-15deg','rotY':'75deg'},{id:'q109',name:'模块化武装','desc':'开启词条槽位','cost':2,'type':'int','color':'#64ff90','glow':'#44cc66','x':55,'y':-30,'z':95,'rotX':'-20deg','rotY':'150deg'},{id:'q110',name:'领域压制','desc':'控制范围扩大','cost':2,'type':'cmd','color':'#ff6490','glow':'#cc4477','x':45,'y':60,'z':88,'rotX':'-25deg','rotY':'-60deg'},{id:'q111',name:'穿透强化','desc':'装甲穿透+35%','cost':2,'type':'fp','color':'#ff8866','glow':'#cc6644','x':-70,'y':-25,'z':92,'rotX':'15deg','rotY':'210deg'},{id:'q112',name:'概念强化','desc':'概念领域扩展','cost':2,'type':'cw','color':'#bf64ff','glow':'#9944cc','x':35,'y':-60,'z':95,'rotX':'-10deg','rotY':'-45deg'},{id:'q200',name:'指挥网络','desc':'光环ATK+10% R:2.5','cost':2,'type':'cmd','color':'#64c8ff','glow':'#4488cc','x':-60,'y':-60,'z':130,'rotX':'40deg','rotY':'240deg'},{id:'q201',name:'火力压制','desc':'攻击+15% 暴伤+30%','cost':3,'type':'fp','color':'#ff5555','glow':'#cc3333','x':85,'y':-55,'z':135,'rotX':'-35deg','rotY':'30deg'},{id:'q202',name:'智能火控','desc':'自动索敌+暴击','cost':2,'type':'int','color':'#55ff88','glow':'#33cc66','x':-65,'y':70,'z':132,'rotX':'30deg','rotY':'150deg'},{id:'q203',name:'核爆打击','desc':'周期性全体轰炸','cost':3,'type':'cw','color':'#ffaa00','glow':'#cc8800','x':70,'y':65,'z':133,'rotX':'-25deg','rotY':'45deg'},{id:'q204',name:'终极相位','desc':'特殊卡+全时代进化','cost':5,'type':'cw','color':'#ffd700','glow':'#ccaa00','x':0,'y':0,'z':150,'rotX':'0deg','rotY':'0deg'},{id:'u001',name:'时空扭曲','desc':'暂停战场效果','cost':5,'type':'cw','color':'#ff00ff','glow':'#cc00cc','x':0,'y':-90,'z':200,'rotX':'0deg','rotY':'0deg'},{id:'u002',name:'绝对领域','desc':'全域控制','cost':5,'type':'cmd','color':'#00ffff','glow':'#00cccc','x':90,'y':0,'z':200,'rotX':'0deg','rotY':'0deg'},{id:'u003',name:'毁灭之枪','desc':'单体毁灭打击','cost':5,'type':'fp','color':'#ff0000','glow':'#cc0000','x':-90,'y':0,'z':200,'rotX':'0deg','rotY':'0deg'},{id:'u004',name:'智慧之眼','desc':'全知视角','cost':4,'type':'int','color':'#00ff00','glow':'#00cc00','x':0,'y':90,'z':200,'rotX':'0deg','rotY':'0deg'},{id:'u005',name:'命运交织','desc':'概率因果操控','cost':5,'type':'cw','color':'#ff00ff','glow':'#cc00cc','x':-45,'y':-45,'z':180,'rotX':'30deg','rotY':'-30deg'},{id:'u006',name:'创世纪','desc':'世界重启','cost':6,'type':'cmd','color':'#ffffff','glow':'#ffffff','x':45,'y':45,'z':180,'rotX':'-30deg','rotY':'30deg'},{id:'u007',name:'虚空寂灭','desc':'维度湮灭','cost':6,'type':'fp','color':'#000000','glow':'#333333','x':0,'y':-100,'z':220,'rotX':'0deg','rotY':'0deg'},{id:'u008',name:'以太升腾','desc':'能量极限解放','cost':6,'type':'cw','color':'#00ffff','glow':'#00cccc','x':100,'y':0,'z':220,'rotX':'0deg','rotY':'0deg'},{id:'u009',name:'本源重构','desc':'法则重写','cost':7,'type':'cmd','color':'#ffd700','glow':'#ccaa00','x':-100,'y':0,'z':220,'rotX':'0deg','rotY':'0deg'},{id:'u010',name:'无限可能','desc':'全可能性展开','cost':7,'type':'int','color':'#ff6490','glow':'#cc4477','x':0,'y':100,'z':220,'rotX':'0deg','rotY':'0deg'}];
+quantumNodes.forEach(node => {
+  const el = document.createElement('div');
+  el.className = 'quantum-node '+(node.id.startsWith('q2')||node.id.includes('u')?'locked':'unlocked');
+  if(node.id === 'q204' || node.id.startsWith('u')) el.classList.add('available');
+  
+  const icons = {'cmd':'◆','fp':'⚔','int':'♟','cw':'⚡'};
+  const tier = node.id.startsWith('q0')?'CORE':node.id.startsWith('q1')?'MID':node.id.startsWith('q2')?'HIGH':'ULT';
+  
+  el.style.left = (50 + node.x) + '%';
+  el.style.top = (50 + node.y) + '%';
+  el.style.setProperty('--node-color', node.color);
+  el.style.setProperty('--node-glow', node.glow);
+  el.style.setProperty('--z', node.z + 'px');
+  el.style.setProperty('rx', node.rotX);
+  el.style.setProperty('ry', node.rotY);
+  
+  el.innerHTML = `<div class="node-ring"></div><div class="node-tier">${tier}</div><div class="node-core"><span style="color:${node.color}">${icons[node.type]||'?'}</span></div><div class="node-label">${node.name}</div><div class="node-cost">${node.cost}点</div>`;
+  el.onclick = () => showQuantumInfo(node);
+  field.appendChild(el);
+});
+
+function showQuantumInfo(node) {
+  const tt = document.getElementById('quantumTooltip');
+  document.getElementById('qt-title').textContent = node.name;
+  document.getElementById('qt-desc').textContent = node.desc;
+  document.getElementById('qt-cost').textContent = node.cost + '点';
+  tt.style.left = (window.innerWidth/2 - 110) + 'px';
+  tt.style.top = (window.innerHeight/2 - 80) + 'px';
+  tt.classList.add('show');
+  setTimeout(() => tt.classList.remove('show'), 4000);
+  document.getElementById('entanglement').textContent = Math.floor(Math.random() * 8) + 4;
+}
+</script>
+</body>
+</html>

@@ -215,12 +215,21 @@ func show_panel(card: CardResource) -> void:
 	visible = true
 	modulate.a = 0.0
 	scale = Vector2(0.92, 0.92)
-	_load_unlocked_cards()
-	_update_skill_tree_badge()  # v8.x: 刷新技能树按钮红点
+	_update_skill_tree_badge()  # v8.x: 刷新技能树按钮红点（轻量，立即刷）
 	var tw := create_tween()
 	tw.tween_property(self, "modulate:a", 1.0, _anim_duration).set_trans(Tween.TRANS_SINE)
 	tw.parallel().tween_property(self, "scale", Vector2(1.0, 1.0), _anim_duration).set_trans(Tween.TRANS_BACK)
+	# v8.x 性能：_load_unlocked_cards（扫 InstanceRegistry + SaveManager + Blueprint 重建名册，
+	# 内部对每张卡调 _format_power 触发 estimate_power_score 重操作）原与显示同帧，
+	# 现挪到打开动画首帧之后，让用户先看到 fade-in 空壳再填充列表，避免打开同帧尖峰。
+	tw.tween_callback(_deferred_load_unlocked_cards)
 	tw.tween_callback(func(): _refresh_data())
+
+## v8.x 性能：show_panel 的延迟入口，让出一帧再执行重活。
+func _deferred_load_unlocked_cards() -> void:
+	if not is_visible_in_tree():
+		return
+	_load_unlocked_cards()
 
 
 func hide_panel() -> void:
@@ -366,7 +375,7 @@ func _on_card_selected(card: CardResource) -> void:
 func _create_card_list_item(card: CardResource, instance_id_raw: Variant) -> Control:
 	var iid: String = String(instance_id_raw)
 	var btn := Button.new()
-	btn.custom_minimum_size = Vector2(0, 44)
+	btn.custom_minimum_size = Vector2(0, 48)
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn.text = ""
 	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -411,7 +420,7 @@ func _create_card_list_item(card: CardResource, instance_id_raw: Variant) -> Con
 
 	# 缩略卡图（32×36，顶部稀有度色条）
 	var thumb := PanelContainer.new()
-	thumb.custom_minimum_size = Vector2(32, 36)
+	thumb.custom_minimum_size = Vector2(36, 40)
 	thumb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var thumb_sb := StyleBoxFlat.new()
 	thumb_sb.bg_color = Color(0.03, 0.06, 0.11, 1)
@@ -430,7 +439,7 @@ func _create_card_list_item(card: CardResource, instance_id_raw: Variant) -> Con
 	thumb_icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	thumb_icon.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	thumb_icon.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	thumb_icon.add_theme_font_size_override("font_size", 14)
+	thumb_icon.add_theme_font_size_override("font_size", 16)
 	thumb_icon.add_theme_color_override("font_color", Color(1, 1, 1, 0.55))
 	thumb_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	thumb.add_child(thumb_icon)
@@ -441,6 +450,7 @@ func _create_card_list_item(card: CardResource, instance_id_raw: Variant) -> Con
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	info.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	info.add_theme_constant_override("separation", 2)
+	info.custom_minimum_size = Vector2(150, 0)
 
 	# 第一行：卡名 + 实例序号
 	var name_hbox := HBoxContainer.new()
@@ -448,10 +458,10 @@ func _create_card_list_item(card: CardResource, instance_id_raw: Variant) -> Con
 	name_hbox.add_theme_constant_override("separation", 4)
 	var name_label := Label.new()
 	name_label.text = card.display_name if card.display_name else card.card_id
-	name_label.add_theme_font_size_override("font_size", 12)
+	name_label.add_theme_font_size_override("font_size", 14)
 	name_label.add_theme_color_override("font_color", Color(0.95, 0.96, 0.98, 1) if is_selected else Color(0.85, 0.88, 0.94, 1))
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_label.clip_text = true
+	name_label.clip_text = false
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	name_hbox.add_child(name_label)
 	# 实例序号
@@ -460,7 +470,7 @@ func _create_card_list_item(card: CardResource, instance_id_raw: Variant) -> Con
 		if parts.size() >= 2:
 			var seq_label := Label.new()
 			seq_label.text = "#" + parts[1]
-			seq_label.add_theme_font_size_override("font_size", 9)
+			seq_label.add_theme_font_size_override("font_size", 10)
 			seq_label.add_theme_color_override("font_color", Color(0.6, 0.65, 0.75, 0.7))
 			seq_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			name_hbox.add_child(seq_label)
@@ -473,7 +483,7 @@ func _create_card_list_item(card: CardResource, instance_id_raw: Variant) -> Con
 		var mods_arr = card.mods
 		mod_count = mods_arr.size() if mods_arr is Array else 0
 	meta_label.text = "Lv.%d  ·  M%d/9" % [card.enhance_level, mod_count]
-	meta_label.add_theme_font_size_override("font_size", 9)
+	meta_label.add_theme_font_size_override("font_size", 11)
 	meta_label.add_theme_color_override("font_color", Color(0.55, 0.6, 0.7, 0.85))
 	meta_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	info.add_child(meta_label)
@@ -484,7 +494,7 @@ func _create_card_list_item(card: CardResource, instance_id_raw: Variant) -> Con
 	var power_str := _format_power(card)
 	power_label.text = power_str
 	power_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	power_label.add_theme_font_size_override("font_size", 11)
+	power_label.add_theme_font_size_override("font_size", 12)
 	power_label.add_theme_color_override("font_color", DT.COLOR_GOLD if power_str != "—" else Color(0.5, 0.5, 0.55, 0.5))
 	power_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	power_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -631,7 +641,7 @@ func _refresh_star_section() -> void:
 	for i in range(5):
 		var s := Label.new()
 		s.text = "★" if i < star else "☆"
-		s.add_theme_font_size_override("font_size", 14)
+		s.add_theme_font_size_override("font_size", 16)
 		s.add_theme_color_override("font_color", DT.COLOR_GOLD if i < star else Color(0.27, 0.31, 0.39, 1))
 		stars_row.add_child(s)
 	body.add_child(stars_row)
@@ -857,7 +867,7 @@ func _add_evo_target_row(parent: VBoxContainer, name: String, type_label: String
 	# 类型 tag
 	var type_lbl := Label.new()
 	type_lbl.text = type_label
-	type_lbl.add_theme_font_size_override("font_size", 8)
+	type_lbl.add_theme_font_size_override("font_size", 10)
 	type_lbl.add_theme_color_override("font_color", type_col)
 	type_lbl.custom_minimum_size = Vector2(28, 0)
 	type_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -867,10 +877,10 @@ func _add_evo_target_row(parent: VBoxContainer, name: String, type_label: String
 	# 目标名
 	var name_lbl := Label.new()
 	name_lbl.text = name
-	name_lbl.add_theme_font_size_override("font_size", 10)
+	name_lbl.add_theme_font_size_override("font_size", 12)
 	name_lbl.add_theme_color_override("font_color", Color(0.9, 0.92, 0.96, 1))
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_lbl.clip_text = true
+	name_lbl.clip_text = false
 	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hbox.add_child(name_lbl)
 
@@ -878,7 +888,7 @@ func _add_evo_target_row(parent: VBoxContainer, name: String, type_label: String
 	if not power_delta.is_empty():
 		var delta_lbl := Label.new()
 		delta_lbl.text = power_delta
-		delta_lbl.add_theme_font_size_override("font_size", 9)
+		delta_lbl.add_theme_font_size_override("font_size", 10)
 		var is_up := power_delta.begins_with("+")
 		delta_lbl.add_theme_color_override("font_color", DT.COLOR_GREEN_UP if is_up else DT.COLOR_RED_DOWN)
 		delta_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -887,7 +897,7 @@ func _add_evo_target_row(parent: VBoxContainer, name: String, type_label: String
 	# 条件满足数
 	var cond_lbl := Label.new()
 	cond_lbl.text = "%d/%d" % [met, total]
-	cond_lbl.add_theme_font_size_override("font_size", 9)
+	cond_lbl.add_theme_font_size_override("font_size", 10)
 	cond_lbl.add_theme_color_override("font_color", DT.COLOR_GREEN_UP if met >= total else DT.COLOR_AMBER_SOFT)
 	cond_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hbox.add_child(cond_lbl)
@@ -1035,13 +1045,13 @@ func _add_prog_stat(parent: VBoxContainer, label: String, value: String, value_c
 	row.add_theme_constant_override("separation", 8)
 	var lbl := Label.new()
 	lbl.text = label
-	lbl.add_theme_font_size_override("font_size", 10)
+	lbl.add_theme_font_size_override("font_size", 11)
 	lbl.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.85))
 	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(lbl)
 	var val := Label.new()
 	val.text = value
-	val.add_theme_font_size_override("font_size", 10)
+	val.add_theme_font_size_override("font_size", 11)
 	val.add_theme_color_override("font_color", value_color)
 	row.add_child(val)
 	parent.add_child(row)
@@ -1055,7 +1065,7 @@ func _add_prog_cond(parent: VBoxContainer, label: String, value: String, is_met:
 func _add_prog_hint(parent: VBoxContainer, text: String) -> void:
 	var lbl := Label.new()
 	lbl.text = text
-	lbl.add_theme_font_size_override("font_size", 9)
+	lbl.add_theme_font_size_override("font_size", 10)
 	lbl.add_theme_color_override("font_color", Color(0.4, 0.45, 0.55, 0.8))
 	parent.add_child(lbl)
 
@@ -1089,7 +1099,7 @@ func _create_progress_bar_pct(fill_color: Color, pct: float) -> ProgressBar:
 
 func _make_slot_tag(filled: bool) -> PanelContainer:
 	var tag := PanelContainer.new()
-	tag.custom_minimum_size = Vector2(18, 18)
+	tag.custom_minimum_size = Vector2(20, 20)
 	var sb := StyleBoxFlat.new()
 	sb.set_corner_radius_all(2)
 	sb.set_border_width_all(1)
@@ -1104,7 +1114,7 @@ func _make_slot_tag(filled: bool) -> PanelContainer:
 	lbl.text = "+" if not filled else "●"
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	lbl.add_theme_font_size_override("font_size", 9)
+	lbl.add_theme_font_size_override("font_size", 10)
 	lbl.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH_SOFT if filled else Color(0.4, 0.45, 0.55, 0.5))
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tag.add_child(lbl)
@@ -1130,7 +1140,7 @@ func _add_hero_tag(text: String, color: Color) -> void:
 	tag.add_theme_stylebox_override("panel", sb)
 	var lbl := Label.new()
 	lbl.text = text
-	lbl.add_theme_font_size_override("font_size", 9)
+	lbl.add_theme_font_size_override("font_size", 10)
 	lbl.add_theme_color_override("font_color", color)
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tag.add_child(lbl)

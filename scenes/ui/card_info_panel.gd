@@ -32,6 +32,7 @@ const ModificationRegistry = preload("res://scripts/systems/modification_registr
 const ModEffectLabels = preload("res://scripts/ui/mod_effect_labels.gd")
 const AuraData = preload("res://data/aura_data.gd")
 const EvolutionHelpers = preload("res://managers/evolution/evolution_helpers.gd")
+const ModEffects = preload("res://data/mod_effects.gd")  # v7.x: MAX_MOD_SLOTS 槽位上限权威源
 
 var current_card: CardResource = null
 var _current_unit: Node = null
@@ -207,6 +208,13 @@ func show_unit_info(unit: Node, is_player: bool, at_position: Vector2 = Vector2.
 		return
 	current_card = null
 	_current_unit = unit
+	# v7.x 修复头部残留：战场单位模式入口统一清空卡牌模式遗留的星级/稀有度/费用三标签 + 色带。
+	# 根因：同一面板实例复用于卡牌模式和战场单位模式，卡牌模式 _refresh_header 和我方单位 _show_player_unit
+	# 会设置这三项；敌方 5 个显示函数（_show_enemy_phase_driver/_show_player_phase_driver/_show_enemy_construct_unit/
+	# _show_enemy_phase_master_unit/_show_generic_enemy_unit）全部不碰它们，导致从卡牌模式切到敌方单位时
+	# 头部残留上次卡牌的 ★5/传说/50⚡。入口统一清理后，敌方单位不设值即默认清空；我方单位 _show_player_unit
+	# 会重设这三项，不受影响。
+	_clear_header_rarity_extras()
 	_refresh_unit_display(unit, is_player)
 	_apply_unit_tab_visibility()
 	if _tab_container:
@@ -424,6 +432,21 @@ func _apply_header_rarity_band(rarity_key: String) -> void:
 	sb.corner_radius_bottom_right = 4
 	header.add_theme_stylebox_override("panel", sb)
 
+## v7.x 修复：清空头部星级/稀有度/费用三标签 + 移除稀有度色带 override。
+## 用于战场单位模式入口（show_unit_info），消除从卡牌模式切到敌方单位时的头部残留。
+## 我方单位 _show_player_unit 随后会重设这三项，敌方单位保持清空状态。
+func _clear_header_rarity_extras() -> void:
+	if star_label:
+		star_label.text = ""
+	if rarity_label:
+		rarity_label.text = ""
+	if cost_label:
+		cost_label.text = ""
+	# 移除 HeaderPanel 的稀有度色带 override，恢复 tscn 默认样式
+	var header := get_node_or_null("Margin/VBox/HeaderPanel") as PanelContainer
+	if header:
+		header.remove_theme_stylebox_override("panel")
+
 ## v7.x 修复：刷新稀有度色带 + 标签（文本/颜色）。
 ## 卡牌模式(_refresh_header)与战场单位模式(_show_player_unit)共用，
 ## 避免战场单位漏刷 rarity_label 导致"相位仪显示稀有、战场显示普通"的残留 bug。
@@ -518,7 +541,13 @@ func _refresh_info_sections(card: CardResource) -> void:
 		if not _tags_cn.is_empty() and card.card_type == GC.CardType.COMBAT_UNIT:
 			_nurture = "定位：%s\n" % _tags_cn + _nurture
 		# v8.x：兵种机制描述（STALKER隐身/SNIPER首击/ECM光环/ENGINEER 等）
-		var _mech_desc: String = _format_unit_mechanism_cn(card.tags) if "tags" in card else ""
+		# v7.x 修复：card.tags 字段在数据层从不填充（default_cards.gd 0 个 .tags= 赋值），
+		# _format_unit_mechanism_cn(card.tags) 恒返回空。改为优先读 _cached_display_stats 的
+		# is_stalker/is_sniper/is_ecm/is_engineer meta（由 _apply_v8_unit_type_meta 通过 card_id
+		# 前缀打标，是兵种特性真实生效路径），字面量 tags 作兜底。
+		var _mech_desc: String = _format_unit_mechanism_from_stats(_cached_display_stats)
+		if _mech_desc.is_empty() and "tags" in card:
+			_mech_desc = _format_unit_mechanism_cn(card.tags)
 		if not _mech_desc.is_empty():
 			_nurture = "兵种机制：%s\n" % _mech_desc + _nurture
 		_nurture += _build_aura_preview_text(card, _cached_display_stats)
@@ -594,7 +623,6 @@ func _refresh_stat_cards(card: CardResource) -> void:
 			best_atk = atk_air
 			best_speed = stats.attack_air_speed if stats.attack_air_speed > 0 else 1.0
 		var dps: float = best_atk * best_speed
-		var avg_spd: float = stats.attack_interval if stats.attack_interval > 0 else 1.0
 		_extra_stat_label.text = "攻速 %.1f/s · 秒伤 %d · 移速 %d" % [best_speed, int(dps), int(stats.move_speed)]
 
 ## v7.3 性能优化：在 _refresh_info_sections 顶部构建一次 UnitStats 缓存，供子函数共用。
@@ -805,7 +833,7 @@ func _build_nurture_text(card: CardResource, _stats: UnitStats = null, include_p
 				if mod_disabled:
 					mod_text += "（禁用）"
 				mod_lines.append(mod_text)
-		parts.append("改造 %d/9" % mod_lines.size())
+		parts.append("改造 %d/%d" % [mod_lines.size(), ModEffects.MAX_MOD_SLOTS])
 		if not mod_lines.is_empty():
 			mod_list_text = "\n已装改造：\n    · " + "\n    · ".join(mod_lines)
 	# v6.11: 战力星级信息已移除（系统②合并到强化等级①，详见 _build_star_lines 的强化加成）
@@ -1087,8 +1115,15 @@ func _build_affix_summary_lines(stats: UnitStats) -> String:
 	if stats.hp_regen > 0.001:
 		parts.append("每秒回血 %d%%生命" % int(stats.hp_regen * 100.0))
 	# ── 特殊机制（改造驱动，v7.x 补全：之前这批 live 字段有值却从不显示）──
+	# v8.x: 同步补齐兵种固定机制的数值字段（碾压/空域封锁/堡垒庇护光环），让数值与机制说明行双路径可见
 	if stats.attack_fort_bonus > 0.001:
 		parts.append("对堡垒特攻 +%d%%" % int(stats.attack_fort_bonus * 100.0))
+	if stats.attack_light_bonus > 0.001:
+		parts.append("对轻装/支援 +%d%%（碾压）" % int(stats.attack_light_bonus * 100.0))
+	if stats.attack_air_bonus > 0.001:
+		parts.append("对空军 +%d%%（空域封锁）" % int(stats.attack_air_bonus * 100.0))
+	if stats.fort_shelter_aura > 0.001:
+		parts.append("半径%d内地面友军减伤 %d%%（阵地坚守光环）" % [250, int(stats.fort_shelter_aura * 100.0)])
 	if stats.splash_radius_bonus > 0.001:
 		parts.append("溅射范围 +%d%%" % int(stats.splash_radius_bonus * 100.0))
 	if stats.single_target_penalty < -0.001:
@@ -1101,11 +1136,12 @@ func _build_affix_summary_lines(stats: UnitStats) -> String:
 			mark_s += "（易伤+%d%%）" % int(stats.mark_vuln_bonus * 100.0)
 		parts.append(mark_s)
 	if stats.siege_bonus_pct > 0.001:
-		parts.append("攻城加成 +%d%%" % int(stats.siege_bonus_pct * 100.0))
+		parts.append("对装甲/堡垒 +%d%%当前生命真实伤害" % int(stats.siege_bonus_pct * 100.0))
 	if stats.urban_defense_bonus > 0.001:
-		parts.append("巷战防御 +%d%%" % int(stats.urban_defense_bonus * 100.0))
+		parts.append("受装甲/空军攻击减伤 %d%%" % int(stats.urban_defense_bonus * 100.0))
 	if stats.has_counter_battery:
-		parts.append("反炮兵（受击标记攻击者）")
+		var cb_s := "反炮兵（受击标记攻击者，下%d次优先射击）" % stats.counter_battery_shots
+		parts.append(cb_s)
 	if stats.revive_on_death:
 		parts.append("濒死复活（%d%%生命）" % int(stats.revive_hp_ratio * 100.0))
 	if stats.reflect_damage_pct > 0.001:
@@ -1566,6 +1602,11 @@ func _show_enemy_construct_unit(unit: Node) -> void:
 	# v7.x：敌方构装单位显示其提供的平台光环（敌方 platform_type 同样驱动 AuraManager 注册，
 	# 影响敌方群体）。无养成/符文，只显示光环段；无光环时 nurture section 自动隐藏。
 	var enemy_nurture := _build_enemy_aura_text(unit)
+	# v7.x：兵种机制——敌方产兵同样走 build_stats_from_card → _apply_v8_unit_type_meta，
+	# stats 上有 is_stalker/is_sniper/is_ecm/is_engineer meta，与卡牌模式/我方单位同源显示。
+	var _enemy_mech := _format_unit_mechanism_from_stats(stats)
+	if not _enemy_mech.is_empty():
+		enemy_nurture = "兵种机制：%s\n" % _enemy_mech + enemy_nurture
 	if nurture_label:
 		nurture_label.text = enemy_nurture
 	_set_section_visible_by_content(_nurture_section, enemy_nurture)
@@ -1653,6 +1694,11 @@ func _show_player_unit(unit: Node) -> void:
 	# 光环仅我方单位有（construct_unit 注册），符文读 PhaseInstrumentManager。
 	# 战场单位战力已移至 summary 行（属性口径，敌我可对比），此处 include_power=false 避免重复。
 	var nurture_text := _build_nurture_text(card_res, null, false) if card_res != null else ""
+	# v7.x：兵种机制（STALKER隐身/SNIPER首击/ECM光环/ENGINEER）——读 stats meta，
+	# 与卡牌查看模式同源。部署后仍需显示，让玩家看到该单位的特殊机制。
+	var _player_mech := _format_unit_mechanism_from_stats(stats)
+	if not _player_mech.is_empty():
+		nurture_text = "兵种机制：%s\n" % _player_mech + nurture_text
 	nurture_text += _build_aura_text(unit)
 	nurture_text += _build_rune_text()
 	if nurture_label:
@@ -2310,11 +2356,35 @@ const _TAG_NAMES_CN := {
 }
 
 ## v8.x: 兵种机制描述表（标签 → 机制说明，用于卡片信息面板显示）
+# v8.x 修订：补全 9 个传统兵种固定机制（apply_combat_kind_modifiers 写入的字段/meta）。
+#           文案严格对齐实际生效数值，不提未实装内容（如地雷、烟雾、射程加成等空转项）。
+#           stealth 描述从未被读取（_format_unit_mechanism_from_stats 不读 stealth meta，且 card.tags
+#           全链路不填充），保留但标注死代码，避免误导。
 const _UNIT_MECHANISM_DESC := {
+	# ── 传统兵种固定机制（由 combat_kind + unit_subtype 派生，所有同兵种单位共有）──
+	"infantry": "步兵：受装甲/空军攻击减伤15%（巷战掩蔽）",
+	"recon": "侦察：部署后前15秒受伤-40%（潜入开局）",
+	"armor": "装甲：对轻装/支援目标伤害+20%（碾压）",
+	"artillery": "炮兵：曲射弹道，受击时标记攻击者（反炮兵）",
+	"anti_air": "防空：对空军伤害+25%（空域封锁），优先锁定空中目标",
+	"air": "空军：部署后前10秒攻速×1.5（突袭击速）",
+	"engineer_class": "工兵：对装甲/堡垒目标造成2%当前生命额外真实伤害（爆破专精）",
+	"fort": "堡垒：自身减伤30%+半径250内地面友军减伤10%（阵地坚守光环）",
+	# ── 新兵种标签机制（由 card_id 前缀/tag 打 meta，仅特定单位有）──
 	"stalker": "渗透者：部署后前4秒受伤-60%，首次攻击伤害×1.5",
 	"sniper": "狙击手：射程+30%，首次攻击必暴击，优先锁定高价值目标",
 	"ecm": "电子战：半径250内敌方攻速-25%、暴击-15%、闪避-20%",
-	"engineer": "工程兵：作为卡片技能触发源（维修/布雷/净化），攻击施法目标+20%伤害",
+	"engineer": "工程兵：对装甲/堡垒目标造成额外真实伤害（见下方爆破专精）",
+	# ── v8.5 兵种机制技能（技能树解锁后，由 meta 触发显示）──
+	"is_demolition": "定向爆破：每12秒自动爆破最近敌方堡垒/装甲（8%最大生命真实伤害）",
+	"is_sniper_aim": "瞄准狙击：每15秒进入瞄准，下次攻击必暴+50%伤（对Boss×2）",
+	"is_blitz_pierce": "闪电穿插：每10秒下次攻击穿透打后排2个单位",
+	"is_jamming_field": "电子屏蔽：每18秒释放屏蔽波，敌方攻击失效3秒",
+	"is_nuclear_strike": "战术核武：每45秒发射核弹，敌方密集区35%最大生命范围伤",
+	"is_shield_projector": "护盾投射：每20秒为3个低血友军投射护盾",
+	"is_drone_mark": "定时标记：每14秒标记2个最高威胁敌方+25%易伤",
+	# ⚠️ stealth 为死代码：_format_unit_mechanism_from_stats 不读 stealth meta，
+	#    且 card.tags 全链路不填充，此条永不显示。保留仅供 _format_unit_mechanism_cn 兜底。
 	"stealth": "潜行：前4秒受伤-60%",
 }
 
@@ -2351,6 +2421,73 @@ func _format_unit_mechanism_cn(tags) -> String:
 			if not descs.has(d):
 				descs.append(d)
 	return "\n".join(descs)
+
+## v7.x→v8.x: 从 UnitStats 提取兵种机制描述。
+## 优先级：新兵种 meta（is_stalker/is_sniper/is_ecm/is_engineer）→ 传统兵种（combat_kind+subtype 派生）。
+## meta 由 unit_stats_table._apply_v8_unit_type_meta 通过 card_id 前缀打标（card.tags 全链路不填充，故不读）；
+## 传统兵种由 apply_combat_kind_modifiers（unit_stats_table.gd:583）按 combat_kind+subtype 写入对应字段/meta。
+## 卡牌查看模式（_cached_display_stats 已含 meta）与战场单位模式（unit.stats 已含 meta）统一用此函数。
+## 返回机制说明字符串（多条用换行分隔），无则返回 ""
+func _format_unit_mechanism_from_stats(stats: UnitStats) -> String:
+	if stats == null:
+		return ""
+	var descs: Array[String] = []
+	# ── 新兵种 meta（is_stalker/is_sniper/is_ecm/is_engineer），与 _apply_v8_unit_type_meta 写入的 key 对齐 ──
+	var is_engineer_tag := stats.has_meta("is_engineer") and bool(stats.get_meta("is_engineer", false))
+	if stats.has_meta("is_stalker") and bool(stats.get_meta("is_stalker", false)):
+		descs.append(String(_UNIT_MECHANISM_DESC.get("stalker", "")))
+	if stats.has_meta("is_sniper") and bool(stats.get_meta("is_sniper", false)):
+		descs.append(String(_UNIT_MECHANISM_DESC.get("sniper", "")))
+	if stats.has_meta("is_ecm") and bool(stats.get_meta("is_ecm", false)):
+		descs.append(String(_UNIT_MECHANISM_DESC.get("ecm", "")))
+	if is_engineer_tag:
+		descs.append(String(_UNIT_MECHANISM_DESC.get("engineer", "")))
+
+	# ── 传统兵种固定机制（v8.x 补全：按 combat_kind + unit_subtype 派生）──
+	# 与 apply_combat_kind_modifiers 的写入条件对齐，确保"有该机制才显示该说明"。
+	var ck: int = stats.combat_kind
+	var sub: int = stats.unit_subtype
+	var is_recon := stats.has_meta("is_recon_unit") and bool(stats.get_meta("is_recon_unit", false))
+	# 工兵是 SUPPORT/SUPPORT 子类，但有独立爆破专精；engineer_class 与 engineer 标签文案不重复（前者讲爆破，后者讲技能触发源）
+	# 防空/炮兵/工兵都属 SUPPORT 主类，靠 subtype 区分：ARTILLERY=1 / SUPPORT=2 / ANTI_AIR=4
+	if ck == GC.CombatKind.LIGHT:
+		# LIGHT 主类：步兵（含侦察分支）
+		if is_recon:
+			descs.append(String(_UNIT_MECHANISM_DESC.get("recon", "")))
+		elif sub == GC.UnitSubType.NONE:
+			descs.append(String(_UNIT_MECHANISM_DESC.get("infantry", "")))
+	elif ck == GC.CombatKind.ARMOR:
+		# ARMOR 主类：装甲（堡垒走 FORT 子类，由 ARMOR+FORT 分支处理）
+		if sub != GC.UnitSubType.FORT:
+			descs.append(String(_UNIT_MECHANISM_DESC.get("armor", "")))
+	elif ck == GC.CombatKind.SUPPORT:
+		# SUPPORT 主类：按 subtype 区分炮兵/防空/工兵
+		match sub:
+			GC.UnitSubType.ARTILLERY:
+				descs.append(String(_UNIT_MECHANISM_DESC.get("artillery", "")))
+			GC.UnitSubType.ANTI_AIR:
+				descs.append(String(_UNIT_MECHANISM_DESC.get("anti_air", "")))
+			GC.UnitSubType.SUPPORT:
+				# 工兵（SUPPORT 子类）有爆破专精；若已有 engineer 标签，只补爆破说明避免重复
+				descs.append(String(_UNIT_MECHANISM_DESC.get("engineer_class", "")))
+	elif ck == GC.CombatKind.AIR:
+		descs.append(String(_UNIT_MECHANISM_DESC.get("air", "")))
+	elif ck == GC.CombatKind.FORT:
+		descs.append(String(_UNIT_MECHANISM_DESC.get("fort", "")))
+
+	# ── v8.5 兵种机制技能（技能树解锁后由 _apply_v8_unit_type_meta 打 meta）──
+	# 7 个机制 meta：仅在技能树解锁 + 兵种匹配时才写入，故检测到即显示
+	for meta_key in ["is_demolition", "is_sniper_aim", "is_blitz_pierce", "is_jamming_field",
+					 "is_nuclear_strike", "is_shield_projector", "is_drone_mark"]:
+		if stats.has_meta(meta_key) and bool(stats.get_meta(meta_key, false)):
+			descs.append(String(_UNIT_MECHANISM_DESC.get(meta_key, "")))
+
+	# 过滤空串（_UNIT_MECHANISM_DESC 缺 key 时 get 返回 ""）
+	var filtered: Array[String] = []
+	for d in descs:
+		if not d.is_empty() and not filtered.has(d):
+			filtered.append(d)
+	return "\n".join(filtered)
 
 # v7.x: 玩家相位仪符文文本——读 PhaseInstrumentManager 的符文槽位 + 激活的符文之语。
 # 返回空串表示无任何符文；非空形如：
@@ -2398,18 +2535,3 @@ func _build_rune_text() -> String:
 	if parts.is_empty():
 		return ""
 	return "\n" + "\n".join(parts)
-
-# v7.x: 符文稀有度转中文短名（复用 _format_enemy_runes 的映射口径）。
-func _rune_rarity_short(rarity: String) -> String:
-	match rarity:
-		"common": return "常见"
-		"uncommon": return "优秀"
-		"rare": return "稀有"
-		"epic": return "史诗"
-		"legendary": return "传说"
-		"mythic": return "神话"
-		_: return ""
-
-func _build_star_enhancement_effects_for_stats(stats: UnitStats) -> String:
-	# v5.1: star_level system removed
-	return ""

@@ -49,7 +49,9 @@ func _is_host_clipped_away() -> bool:
 	while p != null:
 		if p is Control and (p as Control).clip_contents:
 			var clip_rect: Rect2 = (p as Control).get_global_rect()
-			return not clip_rect.intersects(host_rect)
+			# Check if host intersects clip area - if not, host is scrolled out of view
+			if not clip_rect.intersects(host_rect):
+				return true
 		p = p.get_parent()
 	return false
 
@@ -59,13 +61,32 @@ func _update_position() -> void:
 	var host_rect: Rect2 = _host.get_global_rect()
 	var ts: Vector2 = get_theme_default_font().get_string_size(_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10) if get_theme_default_font() != null else Vector2(22, 12)
 	size = Vector2(ts.x + 4.0, ts.y + 2.0)
-	# v9.3：向内偏移（2→6 / 1→4），避开较宽的稀有度边框/发光，不被卡框盖住
+	# v9.3：向内偏移（6→6 / 1→4），避开较宽的稀有度边框/发光，不被卡框盖住
 	var px: float
 	if _anchor_right:
 		px = host_rect.end.x - size.x - 6.0
 	else:
 		px = host_rect.position.x + 6.0
-	global_position = Vector2(px, host_rect.position.y + 4.0)
+	var py = host_rect.position.y + 4.0
+	global_position = Vector2(px, py)
+	
+	# Additional check: ensure badge stays within safe bounds to prevent it from
+	# appearing outside the backpack panel during scrolling
+	# If the badge is too far from its host or outside reasonable viewport areas, hide it
+	var badge_rect = Rect2(global_position, size)
+	var host_min_x = min(host_rect.position.x, px)
+	var host_max_x = max(host_rect.end.x, px + size.x)
+	# Calculate the offset point on the host (left edge for left anchor, right edge for right anchor)
+	var host_offset_x: float = 0
+	if _anchor_right:
+		host_offset_x = host_rect.end.x
+	else:
+		host_offset_x = host_rect.position.x
+	# If badge is significantly separated from host (more than 50px), it's likely misplaced due to scroll/layout issues
+	if abs(px - host_offset_x) > 50.0 or abs(py - host_rect.position.y) > 50.0:
+		visible = false
+	else:
+		visible = true
 
 func _draw() -> void:
 	if _text.is_empty():

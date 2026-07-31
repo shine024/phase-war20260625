@@ -1357,6 +1357,11 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 			dmg_red = float(stats.damage_reduction)
 		dmg_red = minf(0.60, dmg_red + float(damage_reduction))
 		var hit: Dictionary = CardGridDamage.resolve_hit(amount, eff_def, dodge, dmg_red)
+		# v8.x: 闪避反馈——dodged 字段从不被读取，闪避时 hp_loss=0 静默走完流程且仍触发受击反馈。
+		# 现闪避即飘 MISS 并提前 return（与 construct_unit 口径一致）。
+		if bool(hit.get("dodged", false)):
+			CombatFeedback.show_miss(global_position, self)
+			return
 		hp_loss = float(hit.get("hp_loss", amount))
 		# v7.x: 新机制 meta 读取（破甲叠加/标记易伤/巷战免伤）——与 construct_unit 口径一致
 		# 这些 meta 由攻击者的 ModuleEffectHandler.apply_on_hit_side_effects 挂载

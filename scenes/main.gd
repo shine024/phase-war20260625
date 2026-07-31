@@ -193,9 +193,24 @@ func _deferred_non_critical_init() -> void:
 		call_deferred("_auto_start_afk_from_world_map", _auto_lvl)
 
 func _preload_common_panels() -> void:
+	# v8.x 性能：后台线程预热高频面板的 .tscn 资源（不实例化、不占主线程）。
+	# UILazyLoader.get_panel 走 load() 时会命中 ResourceLoader 缓存，
+	# 把"首次打开面板同步编译 .tscn"的尖峰摊到启动后空闲期。
+	# 只预热 .tscn 资源本身，preload 链内的子资源也会一并进缓存。
 	var panel_paths: Array[String] = [
+		# 高频养成面板（首开最易卡，每张都遍历 133 卡/实例全集）
 		"res://scenes/ui/backpack_panel.tscn",
 		"res://scenes/ui/quest_panel.tscn",
+		"res://scenes/ui/store_panel.tscn",
+		"res://scenes/ui/growth_panel.tscn",
+		"res://scenes/ui/modification_panel.tscn",
+		"res://scenes/ui/evolution_panel.tscn",
+		"res://scenes/ui/collection_panel.tscn",
+		# 战略面板（中频）
+		"res://scenes/ui/faction_panel.tscn",
+		"res://scenes/ui/occupation_panel.tscn",
+		"res://scenes/ui/leaderboard_panel.tscn",
+		"res://scenes/ui/intelligence_hub_panel.tscn",
 	]
 	for path in panel_paths:
 		if ResourceLoader.has_cached(path):
@@ -379,6 +394,32 @@ func _open_overlay(overlay: Control, panel_key: String = "") -> void:
 			if DEBUG_MAIN_LOG:
 				print("[Main] Calling GrowthPanel.show_panel")
 			gp.show_panel(null)
+	# v8.x 性能：以下 4 个面板的列表刷新已从 _ready 移到 on_overlay_opened（拆帧），
+	# 打开时显式调用以触发下一帧刷新，避免 LazyLoader 实例化同帧的列表构建尖峰。
+	elif panel_key == "modification":
+		var mp: Node = overlay.get_node_or_null("CenterContainer/ModificationPanel")
+		if mp == null:
+			mp = overlay.find_child("ModificationPanel", true, false)
+		if mp and mp.has_method("on_overlay_opened"):
+			mp.on_overlay_opened()
+	elif panel_key == "evolution":
+		var ep: Node = overlay.get_node_or_null("CenterContainer/EvolutionPanel")
+		if ep == null:
+			ep = overlay.find_child("EvolutionPanel", true, false)
+		if ep and ep.has_method("on_overlay_opened"):
+			ep.on_overlay_opened()
+	elif panel_key == "collection":
+		var cp: Node = overlay.get_node_or_null("CenterContainer/CollectionPanel")
+		if cp == null:
+			cp = overlay.find_child("CollectionPanel", true, false)
+		if cp and cp.has_method("on_overlay_opened"):
+			cp.on_overlay_opened()
+	elif panel_key == "quest":
+		var qp: Node = overlay.get_node_or_null("CenterContainer/QuestPanel")
+		if qp == null:
+			qp = overlay.find_child("QuestPanel", true, false)
+		if qp and qp.has_method("on_overlay_opened"):
+			qp.on_overlay_opened()
 	elif panel_key == "afk":
 		# AFKPanel 在 _ready 中将自身 visible 置 false（依赖 _open() 控制），
 		# 故 overlay 可见后必须显式调用面板 _open()，否则面板主体与 Backdrop 均不显示。

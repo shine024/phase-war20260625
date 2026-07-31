@@ -199,7 +199,17 @@ func get_panel(panel_id: String) -> Control:
 		push_error("[UILazyLoader] 面板场景路径为空: ", panel_id)
 		return null
 
-	var scene = load(scene_path)
+	# v8.x 性能：优先接管 _preload_common_panels 的后台预热结果。
+	# 若 main.gd 在启动末尾调过 ResourceLoader.load_threaded_request(scene_path)，
+	# 这里用 load_threaded_get 取已完成的结果（主线程只短暂等待后台线程收尾），
+	# 避免 load() 重新触发同步磁盘读+编译。无后台任务时降级为普通 load()。
+	var scene: Resource = null
+	if ResourceLoader.load_threaded_get_status(scene_path) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+		scene = ResourceLoader.load_threaded_get(scene_path)
+	elif ResourceLoader.has_cached(scene_path):
+		scene = ResourceLoader.load(scene_path)
+	else:
+		scene = load(scene_path)
 	if scene == null:
 		# #region agent log
 		_debug_log("H2", "ui_lazy_loader.gd:get_panel:load_failed", "scene load returned null", {

@@ -281,17 +281,17 @@ text = "◆"
 custom_minimum_size = Vector2(24, 0)
 horizontal_alignment = 1
 vertical_alignment = 1
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 20
 theme_override_colors/font_color = Color(1.0, 0.85, 0.35, 1)
 [node name="TitleText" type="Label" parent="RootVBox/TitleBar/TitleHBox"]
 layout_mode = 2
 text = "成长中枢"
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 20
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 [node name="TitleSub" type="Label" parent="RootVBox/TitleBar/TitleHBox"]
 layout_mode = 2
 text = "GROWTH COMMANDO"
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 0.7)
 [node name="Spacer" type="Control" parent="RootVBox/TitleBar/TitleHBox"]
 layout_mode = 2
@@ -300,14 +300,14 @@ size_flags_horizontal = 3
 unique_name_in_owner = true
 layout_mode = 2
 text = ""
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 1)
 [node name="CloseBtn" type="Button" parent="RootVBox/TitleBar/TitleHBox"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "×"
-custom_minimum_size = Vector2(30, 30)
-theme_override_font_sizes/font_size = 16
+custom_minimum_size = Vector2(32, 32)
+theme_override_font_sizes/font_size = 18
 theme_override_colors/font_color = Color(0.6, 0.65, 0.75, 1)
 theme_override_colors/font_hover_color = Color(0.94, 0.27, 0.27, 1)
 theme_override_styles/normal = SubResource("StyleBoxFlat_15")
@@ -318,7 +318,7 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 0
 [node name="LeftPanel" type="PanelContainer" parent="RootVBox/BodyHBox"]
-custom_minimum_size = Vector2(220, 0)
+custom_minimum_size = Vector2(280, 0)
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_4")
@@ -346,7 +346,7 @@ color = Color(1.0, 0.85, 0.35, 1)
 [node name="ColHeadTitle" type="Label" parent="RootVBox/BodyHBox/LeftPanel/LeftVBox/ColHead/ColHeadHBox"]
 layout_mode = 2
 text = "单位名册"
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.7, 0.75, 0.85, 1)
 [node name="ColHeadSpacer" type="Control" parent="RootVBox/BodyHBox/LeftPanel/LeftVBox/ColHead/ColHeadHBox"]
 layout_mode = 2
@@ -355,7 +355,7 @@ size_flags_horizontal = 3
 unique_name_in_owner = true
 layout_mode = 2
 text = "0"
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.8)
 [node name="ColFilter" type="HBoxContainer" parent="RootVBox/BodyHBox/LeftPanel/LeftVBox"]
 layout_mode = 2
@@ -369,27 +369,27 @@ offset_bottom = -6.0
 unique_name_in_owner = true
 layout_mode = 2
 text = "全部"
-custom_minimum_size = Vector2(0, 22)
+custom_minimum_size = Vector2(0, 24)
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 9
+theme_override_font_sizes/font_size = 10
 theme_override_colors/font_color = Color(1.0, 0.85, 0.35, 1)
 theme_override_colors/font_hover_color = Color(0.95, 0.96, 0.98, 1)
 [node name="ChipEnh" type="Button" parent="RootVBox/BodyHBox/LeftPanel/LeftVBox/ColFilter"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "可强化"
-custom_minimum_size = Vector2(0, 22)
+custom_minimum_size = Vector2(0, 24)
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 9
+theme_override_font_sizes/font_size = 10
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 1)
 theme_override_colors/font_hover_color = Color(0.95, 0.96, 0.98, 1)
 [node name="ChipMax" type="Button" parent="RootVBox/BodyHBox/LeftPanel/LeftVBox/ColFilter"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "满级"
-custom_minimum_size = Vector2(0, 22)
+custom_minimum_size = Vector2(0, 24)
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 9
+theme_override_font_sizes/font_size = 10
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 1)
 theme_override_colors/font_hover_color = Color(0.95, 0.96, 0.98, 1)
 [node name="CardListScroll" type="ScrollContainer" parent="RootVBox/BodyHBox/LeftPanel/LeftVBox"]
@@ -410,7 +410,7 @@ visible = false
 layout_mode = 2
 text = "无卡牌"
 horizontal_alignment = 1
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.5, 0.5, 0.6, 0.5)
 [node name="DetailCol" type="VBoxContainer" parent="RootVBox/BodyHBox"]
 layout_mode = 2
@@ -457,7 +457,7 @@ text = "?"
 horizontal_alignment = 1
 vertical_alignment = 1
 custom_minimum_size = Vector2(0, 56)
-theme_override_font_sizes/font_size = 26
+theme_override_font_sizes/font_size = 28
 [node name="HeroInfo" type="VBoxContainer" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/HeroCard/HeroHBox"]
 layout_mode = 2
 size_flags_horizontal = 3
@@ -467,7 +467,7 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "卡牌名称"
 custom_minimum_size = Vector2(0, 24)
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 20
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 [node name="HeroTags" type="HBoxContainer" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/HeroCard/HeroHBox/HeroInfo"]
 unique_name_in_owner = true
@@ -481,14 +481,14 @@ alignment = 1
 layout_mode = 2
 text = "综合战力"
 horizontal_alignment = 2
-theme_override_font_sizes/font_size = 9
+theme_override_font_sizes/font_size = 10
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.8)
 [node name="HeroPower" type="Label" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/HeroCard/HeroHBox/HeroPowerBox"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "—"
 horizontal_alignment = 2
-theme_override_font_sizes/font_size = 28
+theme_override_font_sizes/font_size = 30
 theme_override_colors/font_color = Color(1.0, 0.85, 0.35, 1)
 [node name="ProgressGrid" type="GridContainer" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody"]
 unique_name_in_owner = true
@@ -515,11 +515,11 @@ theme_override_constants/separation = 6
 [node name="ProgIcon" type="Label" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardAmber/ProgVBox/ProgHead"]
 layout_mode = 2
 text = "◆"
-theme_override_font_sizes/font_size = 13
+theme_override_font_sizes/font_size = 15
 [node name="ProgTitle" type="Label" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardAmber/ProgVBox/ProgHead"]
 layout_mode = 2
 text = "强化系统"
-theme_override_font_sizes/font_size = 13
+theme_override_font_sizes/font_size = 15
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 [node name="ProgSpacer" type="Control" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardAmber/ProgVBox/ProgHead"]
 layout_mode = 2
@@ -528,7 +528,7 @@ size_flags_horizontal = 3
 layout_mode = 2
 text = ""
 horizontal_alignment = 2
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(0.7, 0.75, 0.85, 0.8)
 [node name="ProgBody" type="VBoxContainer" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardAmber/ProgVBox"]
 layout_mode = 2
@@ -538,7 +538,7 @@ theme_override_constants/separation = 4
 layout_mode = 2
 text = "进入 ▶"
 horizontal_alignment = 2
-theme_override_font_sizes/font_size = 9
+theme_override_font_sizes/font_size = 10
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.7)
 [node name="ProgCardCyan" type="PanelContainer" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid"]
 unique_name_in_owner = true
@@ -558,11 +558,11 @@ theme_override_constants/separation = 6
 [node name="ProgIcon" type="Label" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardCyan/ProgVBox/ProgHead"]
 layout_mode = 2
 text = "◇"
-theme_override_font_sizes/font_size = 13
+theme_override_font_sizes/font_size = 15
 [node name="ProgTitle" type="Label" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardCyan/ProgVBox/ProgHead"]
 layout_mode = 2
 text = "改造系统"
-theme_override_font_sizes/font_size = 13
+theme_override_font_sizes/font_size = 15
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 [node name="ProgSpacer" type="Control" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardCyan/ProgVBox/ProgHead"]
 layout_mode = 2
@@ -571,7 +571,7 @@ size_flags_horizontal = 3
 layout_mode = 2
 text = ""
 horizontal_alignment = 2
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(0.7, 0.75, 0.85, 0.8)
 [node name="ProgBody" type="VBoxContainer" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardCyan/ProgVBox"]
 layout_mode = 2
@@ -581,7 +581,7 @@ theme_override_constants/separation = 4
 layout_mode = 2
 text = "进入 ▶"
 horizontal_alignment = 2
-theme_override_font_sizes/font_size = 9
+theme_override_font_sizes/font_size = 10
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.7)
 [node name="ProgCardViolet" type="PanelContainer" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid"]
 unique_name_in_owner = true
@@ -601,11 +601,11 @@ theme_override_constants/separation = 6
 [node name="ProgIcon" type="Label" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardViolet/ProgVBox/ProgHead"]
 layout_mode = 2
 text = "❖"
-theme_override_font_sizes/font_size = 13
+theme_override_font_sizes/font_size = 15
 [node name="ProgTitle" type="Label" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardViolet/ProgVBox/ProgHead"]
 layout_mode = 2
 text = "进化系统"
-theme_override_font_sizes/font_size = 13
+theme_override_font_sizes/font_size = 15
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 [node name="ProgSpacer" type="Control" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardViolet/ProgVBox/ProgHead"]
 layout_mode = 2
@@ -614,7 +614,7 @@ size_flags_horizontal = 3
 layout_mode = 2
 text = ""
 horizontal_alignment = 2
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(0.7, 0.75, 0.85, 0.8)
 [node name="ProgBody" type="VBoxContainer" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardViolet/ProgVBox"]
 layout_mode = 2
@@ -624,7 +624,7 @@ theme_override_constants/separation = 4
 layout_mode = 2
 text = "进入 ▶"
 horizontal_alignment = 2
-theme_override_font_sizes/font_size = 9
+theme_override_font_sizes/font_size = 10
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.7)
 [node name="ProgCardGold" type="PanelContainer" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid"]
 unique_name_in_owner = true
@@ -644,11 +644,11 @@ theme_override_constants/separation = 6
 [node name="ProgIcon" type="Label" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardGold/ProgVBox/ProgHead"]
 layout_mode = 2
 text = "★"
-theme_override_font_sizes/font_size = 13
+theme_override_font_sizes/font_size = 15
 [node name="ProgTitle" type="Label" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardGold/ProgVBox/ProgHead"]
 layout_mode = 2
 text = "星级评估"
-theme_override_font_sizes/font_size = 13
+theme_override_font_sizes/font_size = 15
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 [node name="ProgSpacer" type="Control" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardGold/ProgVBox/ProgHead"]
 layout_mode = 2
@@ -657,7 +657,7 @@ size_flags_horizontal = 3
 layout_mode = 2
 text = ""
 horizontal_alignment = 2
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(0.7, 0.75, 0.85, 0.8)
 [node name="ProgBody" type="VBoxContainer" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardGold/ProgVBox"]
 layout_mode = 2
@@ -667,7 +667,7 @@ theme_override_constants/separation = 4
 layout_mode = 2
 text = "进入 ▶"
 horizontal_alignment = 2
-theme_override_font_sizes/font_size = 9
+theme_override_font_sizes/font_size = 10
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.7)
 [node name="ActionBar" type="HBoxContainer" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody"]
 unique_name_in_owner = true
@@ -679,8 +679,8 @@ theme_override_constants/separation = 8
 unique_name_in_owner = true
 layout_mode = 2
 text = "◆ 强化"
-custom_minimum_size = Vector2(120, 32)
-theme_override_font_sizes/font_size = 13
+custom_minimum_size = Vector2(130, 36)
+theme_override_font_sizes/font_size = 15
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
 theme_override_styles/normal = SubResource("StyleBoxFlat_17")
@@ -689,8 +689,8 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_18")
 unique_name_in_owner = true
 layout_mode = 2
 text = "◇ 改造"
-custom_minimum_size = Vector2(120, 32)
-theme_override_font_sizes/font_size = 13
+custom_minimum_size = Vector2(130, 36)
+theme_override_font_sizes/font_size = 15
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
 theme_override_styles/normal = SubResource("StyleBoxFlat_19")
@@ -699,8 +699,8 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_20")
 unique_name_in_owner = true
 layout_mode = 2
 text = "❖ 进化"
-custom_minimum_size = Vector2(120, 32)
-theme_override_font_sizes/font_size = 13
+custom_minimum_size = Vector2(130, 36)
+theme_override_font_sizes/font_size = 15
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
 theme_override_styles/normal = SubResource("StyleBoxFlat_21")

@@ -207,6 +207,7 @@ const DATA: Dictionary = {
 		effects = {
 			attack_range = 30,     # +30px
 			crit_chance = 0.05,   # +5%
+			true_damage = 8,      # v8.6: 补真实伤害（瞄准镜=精准命中要害）
 		},
 		unlock_conditions = {
 			required_level = 2,
@@ -353,7 +354,7 @@ const DATA: Dictionary = {
 		name = "护膝护肘",
 		name_en = "Knee and Elbow Pads",
 		prototype = "战斗服内置护具",
-		description = "减少地形减速，机动性微升",
+		description = "护具减负，部署加速10%",
 		icon = "res://assets/ui/icons/mod_icons/mod_mobility.png",
 		rarity = "common",
 	power_mult = 0.8,
@@ -463,7 +464,7 @@ const DATA: Dictionary = {
 		name = "单兵电台",
 		name_en = "Personal Radio",
 		prototype = "PRC-152",
-		description = "战术通讯，可呼叫支援并提升周围友军命中",
+		description = "战术通讯协调，攻速+5%，暴击率+1.5%",
 		icon = "res://assets/ui/icons/mod_icons/mod_comms.png",
 		rarity = "rare",
 	power_mult = 1.3,
@@ -485,7 +486,7 @@ const DATA: Dictionary = {
 		name = "夜视仪",
 		name_en = "Night Vision Goggles",
 		prototype = "PVS-14",
-		description = "微光夜视，夜间/黑暗地形战斗力提升",
+		description = "微光夜视瞄准，暴击率+15%",
 		icon = "res://assets/ui/icons/mod_icons/mod_optics.png",
 		rarity = "rare",
 	power_mult = 1.3,
@@ -507,7 +508,7 @@ const DATA: Dictionary = {
 		name = "热成像",
 		name_en = "Thermal Imaging",
 		prototype = "AN/PAS-13",
-		description = "穿透烟雾/植被，无视环境遮蔽",
+		description = "热成像瞄准，暴击率+23%",
 		icon = "res://assets/ui/icons/mod_icons/mod_optics.png",
 		rarity = "epic",
 	power_mult = 1.6,
@@ -529,7 +530,7 @@ const DATA: Dictionary = {
 		name = "破门工具",
 		name_en = "Breaching Tools",
 		prototype = "霰弹枪/破门锤",
-		description = "城市战突入专用，地形适应性提升",
+		description = "破门装备，部署加速20%，对轻装伤害-5%",
 		icon = "res://assets/ui/icons/mod_icons/mod_environment.png",
 		rarity = "uncommon",
 	power_mult = 1.0,
@@ -601,6 +602,43 @@ const DATA: Dictionary = {
 		conflict_group = "medical",
 		effects = {death_heal = 0.20, death_heal_radius = 200.0},
 		unlock_conditions = {required_level = 6}
+	},
+
+	# ─── v8.6 现实/科幻伤害类型 ───
+	"inf_26_chemical_warhead" = {
+		id = "inf_26_chemical_warhead",
+		name = "化学弹头",
+		name_en = "Chemical Warhead",
+		icon = "res://assets/ui/icons/mod_icons/mod_weapon.png",
+		prototype = "芥子气/神经毒剂弹头",
+		description = "攻击35%概率施加化学毒剂：每秒造成8点伤害，持续6秒（绿色毒雾）",
+		rarity = "epic",
+		power_mult = 1.5,
+		cost_research = 280,
+		cost_install = 140,
+		slot_type = "weapon",
+		conflict_group = "special_ammo",
+		effects = {chem_chance = 0.35, chem_dps = 8.0, chem_duration = 6.0},
+		applicable_types = [0, 1],
+		unlock_conditions = {required_level = 4}
+	},
+
+	"inf_27_napalm" = {
+		id = "inf_27_napalm",
+		name = "凝固汽油弹",
+		name_en = "Napalm Rounds",
+		icon = "res://assets/ui/icons/mod_icons/mod_weapon.png",
+		prototype = "M202 FLASH 燃烧火箭",
+		description = "攻击30%概率引燃目标：每层每秒6点伤害，可叠加至5层，持续5秒（橙色火苗）",
+		rarity = "epic",
+		power_mult = 1.5,
+		cost_research = 300,
+		cost_install = 150,
+		slot_type = "weapon",
+		conflict_group = "special_ammo",
+		effects = {burn_chance = 0.30, burn_dps = 6.0, burn_duration = 5.0},
+		applicable_types = [0],
+		unlock_conditions = {required_level = 4}
 	},
 }
 

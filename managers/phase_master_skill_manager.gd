@@ -7,10 +7,12 @@ extends Node
 ##  解锁时根据节点 unlocks 字段驱动子系统：
 ##    - phase_instrument → PhaseInstrumentManager.unlock_instrument
 ##    - unit_ability / unit_mechanism → 记录解锁状态供 UnitStatsTable 查询
-##    - concept_weapon → 记录解锁状态供战斗系统查询
-##    - special_card → 标记可获取（InstanceRegistry/BlueprintManager）
+##      （v8.5 unit_mechanism：定向爆破/瞄准狙击/闪电穿插/电子屏蔽/战术核武/护盾投射/定时标记）
 ##    - evolution → 记录已解锁的进化 era 供 CardEvolutionManager 查询
 ##    - affix → 通知 AffixManager 赋予对应 affix 池
+##    - card_skill → 记录供 CardPeriodicSkillEngine 查询
+##    - tactic → 记录供 TacticDetector 查询
+##  v8.5 废弃：concept_weapon / special_card（旧存档兼容读取，无新节点）
 ## ═══════════════════════════════════════════════════════════
 
 signal node_unlocked(node_id: String)
@@ -130,12 +132,12 @@ func _apply_unlocks(node_id: String) -> void:
 			# 以下类型仅记录解锁状态，由 is_content_unlocked(type, id) 查询，
 			# 各子系统（战斗/进化/卡片技能引擎/战法检测器）自行读取：
 			#   unit_ability    → 兵种特殊能力（暴击/吸血/穿甲等）
-			#   unit_mechanism  → 兵种独占机制（侦察视野/工兵建造/STALKER隐身等）
-			#   concept_weapon  → 概念武器大技（核子轰炸/酸雨等）
-			#   special_card    → 特殊卡解锁
+			#   unit_mechanism  → v8.5 兵种机制技能（定向爆破/瞄准狙击/闪电穿插/电子屏蔽/战术核武/护盾投射/定时标记）
 			#   evolution       → 进化形态解锁
-			#   card_skill      → ★v8.x 卡片定时技能（CardPeriodicSkillEngine 查询）
-			#   tactic          → ★v8.x 战法（TacticDetector 查询）
+			#   card_skill      → v8.x 卡片定时技能（CardPeriodicSkillEngine 查询）
+			#   tactic          → v8.x 战法（TacticDetector 查询）
+			# 注：concept_weapon / special_card 类型在 v8.5 已废弃（原节点改为机制技能/数值），
+			#     仅保留于旧存档兼容读取，不再有新节点使用。
 			_:
 				pass
 

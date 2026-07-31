@@ -7,51 +7,71 @@ class_name UnlockLabels
 ##  供 phase_master_skill_panel 显示、Toast 通知、card_info_panel 兵种描述使用。
 ##
 ##  覆盖 4 种 unlock_type：
-##    unit_mechanism → 兵种机制（STALKER隐身/SNIPER首击/ECM光环/ENGINEER工程）
+##    unit_mechanism → 兵种机制技能（v8.5：定向爆破/瞄准狙击/闪电穿插/电子屏蔽/战术核武/护盾投射/定时标记）
 ##    card_skill     → 卡片定时技能（炮兵协调/EMP/钢铁风暴 等 21 个）
 ##    tactic         → 战法（钳形攻势/刺猬防御 等 18 个）
 ##    unit_ability   → 兵种能力（穿甲/暴击/吸血，现有 20 节点沿用）
 ## ═══════════════════════════════════════════════════════════
 
 ## 兵种机制标签（unit_mechanism）
+# v8.5：原 stalker_stealth/sniper_training/ecm_aura/engineer_build/command_aura/smart_targeting 6 个空转机制
+#       已替换为 7 个真实生效的兵种机制技能（meta+timer+VFX 范式）
 const UNIT_MECHANISM_LABELS: Dictionary = {
-	# v8.x 新兵种机制
-	"stalker_stealth": {
-		"name": "渗透者隐身",
-		"short": "渗透者",
-		"desc": "部署后前4秒受伤-60%，首次攻击伤害×1.5",
-		"icon": "🥷"
+	# v8.5 兵种机制技能（7 个，对应技能树 unit_mechanism 解锁节点）
+	"demolition": {
+		"name": "定向爆破",
+		"short": "爆破",
+		"desc": "侦察单位每12秒原地发射曲射爆破弹打最近敌方堡垒/装甲，造成8%最大生命的真实伤害",
+		"icon": "💥"
 	},
-	"sniper_training": {
-		"name": "狙击手训练",
-		"short": "狙击手",
-		"desc": "射程+30%，首次攻击必定暴击，优先锁定高价值目标",
+	"sniper_aim": {
+		"name": "瞄准狙击",
+		"short": "瞄准",
+		"desc": "狙击单位每15秒进入瞄准状态，下次攻击必暴击且伤害+50%（对Boss×2）",
 		"icon": "🎯"
 	},
-	"ecm_aura": {
-		"name": "电子战光环",
-		"short": "电子战",
-		"desc": "半径250内敌方攻速-25%、暴击-15%、闪避-20%",
+	"blitz_pierce": {
+		"name": "闪电穿插",
+		"short": "穿插",
+		"desc": "装甲单位每10秒下次攻击变为穿透弹，越过前排堡垒直击后排2个单位",
+		"icon": "⚡"
+	},
+	"jamming_field": {
+		"name": "电子屏蔽",
+		"short": "屏蔽",
+		"desc": "防空/电子战单位每18秒释放屏蔽波（半径300），范围内敌方攻击失效3秒",
 		"icon": "📡"
 	},
-	"engineer_build": {
-		"name": "工程兵",
-		"short": "工程兵",
-		"desc": "作为卡片技能触发源（维修/布雷/净化），攻击施法目标+20%伤害",
-		"icon": "🔧"
+	"nuclear_strike": {
+		"name": "战术核武",
+		"short": "核武",
+		"desc": "导弹发射井堡垒每45秒发射战术核弹，对敌方密集区造成35%最大生命的范围伤害",
+		"icon": "☢"
 	},
-	# 现有机制（v8 主表 20 节点）
-	"command_aura": {
-		"name": "指挥光环",
-		"short": "指挥",
-		"desc": "范围内友军三维攻击+10%",
-		"icon": "⚑"
+	"shield_projector": {
+		"name": "护盾投射",
+		"short": "护盾",
+		"desc": "护盾发射器堡垒每20秒为半径250内生命最低的3个友军投射护盾（吸收20%自身最大生命）",
+		"icon": "🛡"
 	},
-	"smart_targeting": {
-		"name": "智能火控",
-		"short": "智能火控",
-		"desc": "远程单位优先攻击克制目标",
-		"icon": "🔍"
+	"drone_mark": {
+		"name": "定时标记",
+		"short": "标记",
+		"desc": "无人机每14秒标记半径400内最高威胁的2个敌方，被标记目标受到+25%额外伤害（持续8秒）",
+		"icon": "📍"
+	},
+	# v8.6 现实/科幻伤害类型机制
+	"chemical_weapon": {
+		"name": "化学武器",
+		"short": "化学",
+		"desc": "支援/火炮单位攻击25%概率施加化学毒剂：每秒6伤害，持续5秒（绿色毒雾）",
+		"icon": "☣"
+	},
+	"nano_virus": {
+		"name": "纳米病毒",
+		"short": "纳米",
+		"desc": "支援/火炮单位攻击20%概率注入纳米病毒：目标每秒损失1.5%最大生命值，持续6秒（紫色粒子，打肉盾专用）",
+		"icon": "🧬"
 	},
 }
 
@@ -100,9 +120,9 @@ const TACTIC_LABELS: Dictionary = {
 	# 基础战法（12）
 	"tactic_pincer": {"name": "钳形攻势", "desc": "≥2装甲+1快攻：装甲对最高威胁+25%伤害", "icon": "🔱", "tier": 1},
 	"tactic_hedgehog": {"name": "刺猬防御", "desc": "≥3堡垒+1工兵：全体-25%受伤", "icon": "🦔", "tier": 1},
-	"tactic_crescent": {"name": "新月阵", "desc": "≥2快攻：快攻+30%伤害，中央+30%防御", "icon": "🌙", "tier": 1},
-	"tactic_arrow": {"name": "箭矢阵", "desc": "≥3狙击：狙击射程+30%、伤害+25%、必中", "icon": "🏹", "tier": 1},
-	"tactic_testudo": {"name": "龟甲阵", "desc": "≥4堡垒：全体-35%受伤", "icon": "🐢", "tier": 1},
+	"tactic_flank_pincer": {"name": "两翼包抄", "desc": "≥2快攻：快攻+30%伤害，中央+30%防御", "icon": "⚔️", "tier": 1},
+	"tactic_crossfire": {"name": "交叉火力", "desc": "≥3狙击：狙击射程+30%、伤害+25%、必中", "icon": "🎯", "tier": 1},
+	"tactic_fortress_line": {"name": "堡垒防线", "desc": "≥4堡垒：全体-35%受伤", "icon": "🛡️", "tier": 1},
 	"tactic_draw_deep": {"name": "诱敌深入", "desc": "1快攻+3后排：快攻-30%受伤，后排+25%攻击", "icon": "🎣", "tier": 1},
 	"tactic_scorched_line": {"name": "焦土防线", "desc": "2火焰+1堡垒：免疫燃烧，火焰+30%", "icon": "🔥", "tier": 1},
 	"tactic_saturation": {"name": "饱和打击", "desc": "≥2火炮+1电子战：火炮+50%伤害、+20%射程", "icon": "💥", "tier": 1},
@@ -110,13 +130,12 @@ const TACTIC_LABELS: Dictionary = {
 	"tactic_feint": {"name": "声东击西", "desc": "电子战+2快攻：快攻+25%暴击，电子战-25%受伤", "icon": "🎭", "tier": 1},
 	"tactic_siege_intercept": {"name": "围点打援", "desc": "≥2堡垒+1装甲：堡垒-20%受伤，装甲+50%反援", "icon": "🏰", "tier": 1},
 	"tactic_depth_operation": {"name": "纵深作战", "desc": "≥3不同兵种：全体全属性+10%", "icon": "🌐", "tier": 1},
-	# 高级战法（6）
+	# 高级战法（5）
 	"tactic_blitz": {"name": "闪电穿插", "desc": "≥3快攻：快攻+40%攻速、+30%伤害", "icon": "⚡", "tier": 2},
 	"tactic_sky_net": {"name": "天罗地网", "desc": "钢铁+雷霆：全体敌方-30%攻速/移速", "icon": "🕸", "tier": 2},
-	"tactic_void_descent": {"name": "虚空降临", "desc": "≥2虚空：全体敌方+20%受伤", "icon": "🌌", "tier": 2},
-	"tactic_phoenix": {"name": "凤凰涅槃", "desc": "≥2火焰：全体+20%HP，死亡20%复活", "icon": "🔥", "tier": 2},
+	"tactic_inferno_counter": {"name": "纵火反击", "desc": "≥2火焰：全体+20%HP，死亡20%复活", "icon": "🔥", "tier": 2},
 	"tactic_4d_strike": {"name": "四维打击", "desc": "4家族各1技能：全体+25%全属性", "icon": "✨", "tier": 2},
-	"tactic_ragnarok": {"name": "诸神黄昏", "desc": "4终极技能：全体+40%全属性，敌方每秒-1%HP", "icon": "💀", "tier": 2},
+	"tactic_total_war": {"name": "全面战争", "desc": "4终极技能：全体+40%全属性，敌方每秒-1%HP", "icon": "☢️", "tier": 2},
 }
 
 ## 卡牌标签翻译表（card.tags → 中文）

@@ -75,6 +75,8 @@ var _embedded_mode: bool = false
 var _card_list: Array[CardResource] = []
 var _evolve_callable: Callable
 var _filter_mode: String = FILTER_ALL
+# v8.x 性能：on_overlay_opened 拆帧重入守卫
+var _open_refresh_inflight: bool = false
 
 func _ready() -> void:
 	# v7.x 重构：节点绑定改用 % unique_name（路径无关）
@@ -143,8 +145,30 @@ func _ready() -> void:
 
 	if _embedded_mode:
 		_apply_embedded_layout()
-	else:
-		_refresh_card_list()
+	# v8.x 性能：非嵌入模式的 _refresh_card_list（遍历实例 + 蓝图重建名册）
+	# 改由 on_overlay_opened 拆帧触发，避免 LazyLoader 实例化同帧卡顿。
+
+## v8.x 性能：外部打开面板时调用（main.gd._open_overlay 分发）。
+## 将卡片名册重建拆到下一帧，避开打开同帧的实例化尖峰。
+## 仿 store_panel.on_overlay_opened 模式。
+func on_overlay_opened() -> void:
+	if _embedded_mode:
+		return
+	if _open_refresh_inflight:
+		return
+	_open_refresh_inflight = true
+	call_deferred("_run_open_refresh_pipeline")
+
+func _run_open_refresh_pipeline() -> void:
+	if not is_visible_in_tree():
+		_open_refresh_inflight = false
+		return
+	await get_tree().process_frame
+	if not is_visible_in_tree():
+		_open_refresh_inflight = false
+		return
+	_refresh_card_list()
+	_open_refresh_inflight = false
 
 
 ## v7.x：给标题/目标名/统计 Label 加载 Rajdhani 字体（战术感）
@@ -302,7 +326,7 @@ func _passes_filter(card: CardResource) -> bool:
 ## v7.x 新增：构建单个名册列表项（缩略卡图 + 卡名#N + Lv·Mx/9 + 战力）
 func _create_card_item(card: CardResource) -> Control:
 	var btn := Button.new()
-	btn.custom_minimum_size = Vector2(0, 44)
+	btn.custom_minimum_size = Vector2(0, 48)
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn.text = ""
 	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -347,7 +371,7 @@ func _create_card_item(card: CardResource) -> Control:
 
 	# 缩略卡图（32×36，兵种色边框）
 	var thumb := PanelContainer.new()
-	thumb.custom_minimum_size = Vector2(32, 36)
+	thumb.custom_minimum_size = Vector2(36, 40)
 	thumb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var thumb_sb := StyleBoxFlat.new()
 	thumb_sb.bg_color = Color(0.03, 0.06, 0.11, 1)
@@ -360,7 +384,7 @@ func _create_card_item(card: CardResource) -> Control:
 	thumb_icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	thumb_icon.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	thumb_icon.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	thumb_icon.add_theme_font_size_override("font_size", 14)
+	thumb_icon.add_theme_font_size_override("font_size", 16)
 	thumb_icon.add_theme_color_override("font_color", Color(1, 1, 1, 0.55))
 	thumb_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	thumb.add_child(thumb_icon)
@@ -371,6 +395,7 @@ func _create_card_item(card: CardResource) -> Control:
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	info.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	info.add_theme_constant_override("separation", 2)
+	info.custom_minimum_size = Vector2(150, 0)
 
 	# 第一行：卡名 + #N
 	var name_row := HBoxContainer.new()
@@ -378,10 +403,10 @@ func _create_card_item(card: CardResource) -> Control:
 	name_row.add_theme_constant_override("separation", 4)
 	var name_label := Label.new()
 	name_label.text = card.display_name if card.display_name else card.card_id
-	name_label.add_theme_font_size_override("font_size", 12)
+	name_label.add_theme_font_size_override("font_size", 14)
 	name_label.add_theme_color_override("font_color", Color(0.95, 0.96, 0.98, 1) if is_selected else Color(0.85, 0.88, 0.94, 1))
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_label.clip_text = true
+	name_label.clip_text = false
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	name_row.add_child(name_label)
 	# 实例序号
@@ -391,7 +416,7 @@ func _create_card_item(card: CardResource) -> Control:
 		if h_idx >= 0:
 			var seq_label := Label.new()
 			seq_label.text = "#" + iid.substr(h_idx + 1)
-			seq_label.add_theme_font_size_override("font_size", 9)
+			seq_label.add_theme_font_size_override("font_size", 10)
 			seq_label.add_theme_color_override("font_color", Color(0.6, 0.65, 0.75, 0.7))
 			seq_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			name_row.add_child(seq_label)
@@ -403,7 +428,7 @@ func _create_card_item(card: CardResource) -> Control:
 		mod_count = card.mods.size()
 	var meta_label := Label.new()
 	meta_label.text = "Lv.%d  ·  M%d/9" % [card.enhance_level, mod_count]
-	meta_label.add_theme_font_size_override("font_size", 9)
+	meta_label.add_theme_font_size_override("font_size", 11)
 	meta_label.add_theme_color_override("font_color", Color(0.55, 0.6, 0.7, 0.85))
 	meta_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	info.add_child(meta_label)
@@ -414,7 +439,7 @@ func _create_card_item(card: CardResource) -> Control:
 	var power_str := _format_power_value(card)
 	power_label.text = power_str
 	power_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	power_label.add_theme_font_size_override("font_size", 11)
+	power_label.add_theme_font_size_override("font_size", 12)
 	power_label.add_theme_color_override("font_color", DT.COLOR_VIOLET_SOFT if power_str != "—" else Color(0.5, 0.5, 0.55, 0.5))
 	power_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	power_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -482,7 +507,7 @@ func _create_evolution_node(target: Dictionary) -> Control:
 	if target_card == null:
 		var ph := Label.new()
 		ph.text = "⚠ 无效进化目标：%s（数据缺失）" % String(target.get("target_id", "???"))
-		ph.add_theme_font_size_override("font_size", 11)
+		ph.add_theme_font_size_override("font_size", 12)
 		ph.add_theme_color_override("font_color", Color(0.9, 0.4, 0.3))
 		ph.modulate.a = 0.6
 		return ph
@@ -537,10 +562,10 @@ func _create_evolution_node(target: Dictionary) -> Control:
 	top_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var name_lbl := Label.new()
 	name_lbl.text = target.name
-	name_lbl.add_theme_font_size_override("font_size", 12)
+	name_lbl.add_theme_font_size_override("font_size", 14)
 	name_lbl.add_theme_color_override("font_color", THEME_VIOLET_SOFT if can_evo else THEME_TEXT_DIM)
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_lbl.clip_text = true
+	name_lbl.clip_text = false
 	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top_row.add_child(name_lbl)
 	# 状态 badge（紧凑）
@@ -561,7 +586,7 @@ func _create_evolution_node(target: Dictionary) -> Control:
 			badge_text = "🔒缺图纸"
 		badge_lbl.text = badge_text
 		badge_lbl.add_theme_color_override("font_color", THEME_RED)
-	badge_lbl.add_theme_font_size_override("font_size", 9)
+	badge_lbl.add_theme_font_size_override("font_size", 10)
 	badge_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	badge_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top_row.add_child(badge_lbl)
@@ -577,13 +602,13 @@ func _create_evolution_node(target: Dictionary) -> Control:
 		pct = int((float(target_power) / float(current_power) - 1.0) * 100.0)
 	var pct_str := ("+%d%%" % pct) if pct >= 0 else ("%d%%" % pct)
 	power_lbl.text = "战力 %d ▶ %d" % [current_power, target_power]
-	power_lbl.add_theme_font_size_override("font_size", 10)
+	power_lbl.add_theme_font_size_override("font_size", 11)
 	power_lbl.add_theme_color_override("font_color", THEME_GREEN if pct >= 0 else THEME_RED)
 	power_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	power_row.add_child(power_lbl)
 	var pct_lbl := Label.new()
 	pct_lbl.text = pct_str
-	pct_lbl.add_theme_font_size_override("font_size", 10)
+	pct_lbl.add_theme_font_size_override("font_size", 11)
 	pct_lbl.add_theme_color_override("font_color", THEME_GREEN if pct >= 0 else THEME_RED)
 	pct_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	pct_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -604,7 +629,7 @@ func _create_evolution_node(target: Dictionary) -> Control:
 	var era_lbl := Label.new()
 	var era_name := GameConstants.get_era_name(target_card.era) if target_card and GameConstants else str(target_card.era)
 	era_lbl.text = "· " + era_name if not era_name.is_empty() else ""
-	era_lbl.add_theme_font_size_override("font_size", 9)
+	era_lbl.add_theme_font_size_override("font_size", 10)
 	era_lbl.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.8))
 	era_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	meta_row.add_child(era_lbl)
@@ -632,7 +657,7 @@ func _make_small_chip(text: String, color: Color) -> Control:
 	p.add_theme_stylebox_override("panel", sb)
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 8)
+	l.add_theme_font_size_override("font_size", 10)
 	l.add_theme_color_override("font_color", color)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	p.add_child(l)
@@ -669,7 +694,7 @@ func _update_evolution_tree() -> void:
 	else:
 		summary_lbl.text = "%s → %d 个可选目标 · %d 主线 / %d 分支" % [
 			selected_card.display_name, targets.size(), main_count, branch_count]
-	summary_lbl.add_theme_font_size_override("font_size", 9)
+	summary_lbl.add_theme_font_size_override("font_size", 10)
 	summary_lbl.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.85))
 	summary_box.add_child(summary_lbl)
 	# 图例行（仅当有目标时显示）
@@ -703,7 +728,7 @@ func _update_evolution_tree() -> void:
 		var final_lbl := Label.new()
 		final_lbl.text = "✓ 该卡牌已达终阶形态"
 		final_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		final_lbl.add_theme_font_size_override("font_size", 13)
+		final_lbl.add_theme_font_size_override("font_size", 15)
 		final_lbl.add_theme_color_override("font_color", THEME_GOLD)
 		final_lbl.custom_minimum_size = Vector2(0, 40)
 		evolution_tree.add_child(final_lbl)
@@ -762,15 +787,15 @@ func _create_current_form_node() -> Control:
 	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var name_lbl := Label.new()
 	name_lbl.text = selected_card.display_name if selected_card.display_name else selected_card.card_id
-	name_lbl.add_theme_font_size_override("font_size", 12)
+	name_lbl.add_theme_font_size_override("font_size", 14)
 	name_lbl.add_theme_color_override("font_color", Color(0.95, 0.96, 0.98, 1))
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_lbl.clip_text = true
+	name_lbl.clip_text = false
 	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top.add_child(name_lbl)
 	var badge := Label.new()
 	badge.text = "● 当前"
-	badge.add_theme_font_size_override("font_size", 9)
+	badge.add_theme_font_size_override("font_size", 10)
 	badge.add_theme_color_override("font_color", THEME_GOLD)
 	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top.add_child(badge)
@@ -779,7 +804,7 @@ func _create_current_form_node() -> Control:
 	var meta := Label.new()
 	var cur_power := _get_current_power_score()
 	meta.text = "战力 %d · 当前形态" % cur_power
-	meta.add_theme_font_size_override("font_size", 9)
+	meta.add_theme_font_size_override("font_size", 10)
 	meta.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.7))
 	meta.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vbox.add_child(meta)

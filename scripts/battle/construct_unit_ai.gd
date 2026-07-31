@@ -417,6 +417,11 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 		return
 	if u.target == null or not is_instance_valid(u.target):
 		return
+	# v8.5: 电子屏蔽机制——被屏蔽单位攻击失效（_jammed_until 未过期则跳过本次攻击）
+	if u.has_meta("_jammed_until"):
+		var jammed_until: int = int(u.get_meta("_jammed_until", 0))
+		if Time.get_ticks_msec() < jammed_until:
+			return  # 攻击失效（屏蔽持续期内）
 	# v8.x: 首击加成检测（SNIPER 必爆 / STALKER ×1.5）
 	# 通过临时 meta 传递给 bullet.gd 的暴击判定路径
 	var _is_first_attack: bool = false
@@ -429,6 +434,30 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 	# SNIPER 首击必爆：设置临时 meta，bullet.gd 读取并强制暴击
 	if _is_first_attack and u._is_sniper_unit:
 		u.set_meta("_first_attack_force_crit", true)
+	# v8.5: 瞄准狙击机制消费（_sniper_aim_ready 时本次攻击必暴+50%伤，对Boss×2）
+	if u.get("_sniper_aim_ready") == true:
+		u._sniper_aim_ready = false
+		damage = damage * 1.5
+		u.set_meta("_first_attack_force_crit", true)
+		# 对 Boss/相位师额外 ×2（总 ×3）：检查目标 meta 或 stats
+		if u.target != null and is_instance_valid(u.target):
+			var _is_boss_t: bool = false
+			if u.target.get("stats") != null and u.target.stats != null:
+				_is_boss_t = bool(u.target.stats.get_meta("is_boss", false)) if u.target.stats.has_meta("is_boss") else false
+			if not _is_boss_t and u.target.has_meta("is_phase_master"):
+				_is_boss_t = true
+			if _is_boss_t:
+				damage = damage * 2.0
+		# VFX：狙击开火信号
+		if SignalBus.has_signal("mechanism_sniper_fired"):
+			SignalBus.mechanism_sniper_fired.emit(u.global_position, u.target.global_position)
+	# v8.5: 闪电穿插机制消费（_blitz_pierce_ready 时本次攻击穿透+2，挂 meta 给 bullet 读取）
+	if u.get("_blitz_pierce_ready") == true:
+		u._blitz_pierce_ready = false
+		u.set_meta("_blitz_pierce_bonus", 2)
+		# VFX：穿透开火信号
+		if SignalBus.has_signal("mechanism_blitz_fired"):
+			SignalBus.mechanism_blitz_fired.emit(u.global_position, u.target.global_position)
 	var dist_t := u.global_position.distance_to(u.target.global_position)
 	var miss := false
 	# v7.x: wt 优先读当前槽位 weapon_resource.weapon_type（按目标类型差异化的弹道），

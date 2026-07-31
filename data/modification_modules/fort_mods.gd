@@ -81,7 +81,7 @@ const DATA: Dictionary = {
 	"for_07_camouflage" = {
 		id = FOR_07_CAMOUFLAGE, name = "伪装系统", name_en = "Camouflage System",
 		icon = "res://assets/ui/icons/mod_icons/mod_stealth.png",
-		prototype = "伪装网/植被", description = "降低被发现概率",
+		prototype = "伪装网/植被", description = "要塞伪装，闪避+50%",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 140, cost_install = 70,
 		slot_type = "stealth", conflict_group = "stealth",
@@ -91,7 +91,7 @@ const DATA: Dictionary = {
 	"for_08_trench" = {
 		id = FOR_08_TRENCH, name = "反坦克壕", name_en = "Anti-Tank Trench",
 		icon = "res://assets/ui/icons/mod_icons/mod_obstacle.png",
-		prototype = "堑壕系统", description = "敌方装甲兵减速",
+		prototype = "堑壕系统", description = "反坦克壕，对装甲伤害+50%",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 200, cost_install = 100,
 		slot_type = "obstacle", conflict_group = "obstacle",
@@ -101,7 +101,7 @@ const DATA: Dictionary = {
 	"for_09_minefield" = {
 		id = FOR_09_MINEFIELD, name = "雷场", name_en = "Minefield",
 		icon = "res://assets/ui/icons/mod_icons/mod_minefield.png",
-		prototype = "反坦克/人员地雷", description = "接近敌人损失生命值",
+		prototype = "反坦克/人员地雷", description = "雷场封锁，对轻装伤害+10%",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 280, cost_install = 140,
 		slot_type = "minefield", conflict_group = "minefield",
@@ -111,7 +111,7 @@ const DATA: Dictionary = {
 	"for_10_command" = {
 		id = FOR_10_COMMAND, name = "指挥塔", name_en = "Command Tower",
 		icon = "res://assets/ui/icons/mod_icons/mod_command.png",
-		prototype = "要塞核心", description = "周围友军命中提升",
+		prototype = "要塞核心", description = "指挥协同，暴击率+7.5%",
 		rarity = "legendary",
 	power_mult = 2.0, cost_research = 420, cost_install = 210,
 		slot_type = "command", conflict_group = "command",

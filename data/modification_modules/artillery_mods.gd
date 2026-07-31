@@ -29,7 +29,7 @@ const DATA: Dictionary = {
 		cost_install = 80,
 		slot_type = "barrel",
 		conflict_group = "barrel",
-		effects = {attack_range = 60, attack_light = 0.10},
+		effects = {attack_range = 60, attack_light = 0.10, true_damage = 10},  # v8.6: 补真实伤害（膛线=精准命中要害）
 		unlock_conditions = {required_level = 2}
 	},
 
@@ -46,7 +46,7 @@ const DATA: Dictionary = {
 		cost_install = 90,
 		slot_type = "ammunition",
 		conflict_group = "ammunition",
-		effects = {attack_range = 90, attack_light = -0.10},
+		effects = {attack_range = 90, attack_light = -0.10, true_damage = 15},  # v8.6: 补真实伤害（增程弹=远距离精准打击）
 		unlock_conditions = {required_level = 3}
 	},
 
@@ -262,6 +262,43 @@ const DATA: Dictionary = {
 		conflict_group = "special",
 		effects = {counter_battery = 1},
 		unlock_conditions = {required_level = 7}
+	},
+
+	# ─── v8.6 现实/科幻伤害类型 ───
+	"art_15_emp_round" = {
+		id = "art_15_emp_round",
+		name = "电磁脉冲弹",
+		name_en = "EMP Round",
+		icon = "res://assets/ui/icons/mod_icons/mod_special.png",
+		prototype = "电磁脉冲炮弹",
+		description = "攻击40%概率触发电磁脉冲：目标攻速-30%、暴击-20%、闪避-15%（4秒），并造成12点真实伤害（蓝色电弧）",
+		rarity = "epic",
+		power_mult = 1.6,
+		cost_research = 320,
+		cost_install = 160,
+		slot_type = "special",
+		conflict_group = "special_ammo",
+		effects = {emp_chance = 0.40, emp_true_damage = 12.0},
+		applicable_types = [2],
+		unlock_conditions = {required_level = 5}
+	},
+
+	"art_16_nano_virus" = {
+		id = "art_16_nano_virus",
+		name = "纳米病毒弹",
+		name_en = "Nano-Virus Shell",
+		icon = "res://assets/ui/icons/mod_icons/mod_special.png",
+		prototype = "纳米机械病毒弹头",
+		description = "攻击25%概率注入纳米病毒：目标每秒损失2%最大生命值，持续8秒（紫色粒子，打肉盾专用）",
+		rarity = "legendary",
+		power_mult = 1.8,
+		cost_research = 400,
+		cost_install = 200,
+		slot_type = "special",
+		conflict_group = "special_ammo",
+		effects = {nano_chance = 0.25, nano_pct = 0.02, nano_duration = 8.0},
+		applicable_types = [2],
+		unlock_conditions = {required_level = 6}
 	},
 }
 

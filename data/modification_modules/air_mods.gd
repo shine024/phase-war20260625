@@ -21,7 +21,7 @@ const DATA: Dictionary = {
 	"air_01_turbofan" = {
 		id = AIR_01_TURBOFAN, name = "涡扇发动机", name_en = "Turbofan Engine",
 		icon = "res://assets/ui/icons/mod_icons/mod_engine.png",
-		prototype = "F100-PW-220", description = "高涵道比涡扇，速度提升",
+		prototype = "F100-PW-220", description = "涡扇发动机，部署加速60%",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 280, cost_install = 140,
 		slot_type = "engine", conflict_group = "engine",
@@ -41,7 +41,7 @@ const DATA: Dictionary = {
 	"air_03_stealth_coating" = {
 		id = AIR_03_STEALTH_COATING, name = "隐身涂层", name_en = "Stealth Coating",
 		icon = "res://assets/ui/icons/mod_icons/mod_stealth.png",
-		prototype = "RAM吸波材料", description = "降低被锁定概率",
+		prototype = "RAM吸波材料", description = "隐身涂层，闪避+40%",
 		rarity = "legendary",
 	power_mult = 2.0, cost_research = 500, cost_install = 250,
 		slot_type = "stealth", conflict_group = "stealth",
@@ -107,7 +107,7 @@ const DATA: Dictionary = {
 	"air_09_air_refuel" = {
 		id = AIR_09_AIR_REFUEL, name = "空中加油口", name_en = "Aerial Refueling",
 		icon = "res://assets/ui/icons/mod_icons/mod_logistics.png",
-		prototype = "伙伴加油", description = "作战时间大幅延长",
+		prototype = "伙伴加油", description = "空中加油补给，攻速+50%",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 220, cost_install = 110,
 		slot_type = "logistics", conflict_group = "logistics",
@@ -127,7 +127,7 @@ const DATA: Dictionary = {
 	"air_11_weapon_rack" = {
 		id = AIR_11_WEAPON_RACK, name = "外挂武器架", name_en = "Weapon Rack",
 		icon = "res://assets/ui/icons/mod_icons/mod_weapons.png",
-		prototype = "复合挂架", description = "载弹量大幅提升",
+		prototype = "复合挂架", description = "外挂武器架，攻速+50%",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 200, cost_install = 100,
 		slot_type = "weapons", conflict_group = "weapons",
@@ -137,7 +137,7 @@ const DATA: Dictionary = {
 	"air_12_data_link" = {
 		id = AIR_12_DATA_LINK, name = "数据链系统", name_en = "Data Link",
 		icon = "res://assets/ui/icons/mod_icons/mod_command.png",
-		prototype = "Link 16", description = "编队协同，全属性微升",
+		prototype = "Link 16", description = "数据链协同，三维攻击+7.5%",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 340, cost_install = 170,
 		slot_type = "command", conflict_group = "command",
@@ -157,7 +157,7 @@ const DATA: Dictionary = {
 	"air_14_swing_wing" = {
 		id = AIR_14_SWING_WING, name = "可变后掠翼", name_en = "Swing Wing",
 		icon = "res://assets/ui/icons/mod_icons/mod_aerodynamics.png",
-		prototype = "F-14雄猫", description = "后掠翼，速度和机动平衡",
+		prototype = "F-14雄猫", description = "可变后掠翼，部署加速40%，闪避+10%",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 360, cost_install = 180,
 		slot_type = "aerodynamics", conflict_group = "aerodynamics",

@@ -14,21 +14,27 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 ## Godot CLI Commands
 
-Godot not on PATH. Executable: `D:/Downloads/Godot/Godot_v4.5.1-stable_win64.exe` (v4.5.1)
+Godot not on PATH. Executable: `D:/Downloads/Godot/Godot_v4.5.1-stable/Godot_v4.5.1-stable_win64.exe` (v4.5.1)
+> ⚠️ 实际路径多一层 `-stable/` 子目录（旧文档记为 `D:/Downloads/Godot/Godot_v4.5.1-stable_win64.exe`，该路径在本环境不存在）。
 Add `--rendering-driver opengl3` if Vulkan issues (applies to `--headless` / `--check-only` too).
+
+> **验证方式分层建议（避免撞 5 分钟超时）**：
+> - **纯逻辑文件**（无 `key = value` 字典写法）→ `gdparse <file>`（秒级，但 gdtoolkit 4.5.0 不支持 GDScript `key = value` 字典语法，对数据字典文件集体误报）
+> - **单文件改动**（数据字典等）→ `--script` 模式单独 `load()` 改动文件 + 断言（几秒出结果，不启动全部 autoload）
+> - **全项目兜底** → `--check-only`（启动 42 autoload + 构建 133 卡，常撞 5 分钟超时，仅大改动用）
 
 ```powershell
 # Version check
-& "D:/Downloads/Godot/Godot_v4.5.1-stable_win64.exe" --path "." --version
+& "D:/Downloads/Godot/Godot_v4.5.1-stable/Godot_v4.5.1-stable_win64.exe" --path "." --version
 
-# Project validation (no UI, recommended)
-& "D:/Downloads/Godot/Godot_v4.5.1-stable_win64.exe" --headless --rendering-driver opengl3 --path "." --check-only
+# Project validation (no UI, recommended) — 全项目兜底，小改动别用
+& "D:/Downloads/Godot/Godot_v4.5.1-stable/Godot_v4.5.1-stable_win64.exe" --headless --rendering-driver opengl3 --path "." --check-only
 
 # Smoke test (no GdUnit dependency)
-& "D:/Downloads/Godot/Godot_v4.5.1-stable_win64.exe" --headless --rendering-driver opengl3 --path "." --script "tests/star_config_smoke.gd"
+& "D:/Downloads/Godot/Godot_v4.5.1-stable/Godot_v4.5.1-stable_win64.exe" --headless --rendering-driver opengl3 --path "." --script "tests/star_config_smoke.gd"
 
 # Full GdUnit test suite
-& "D:/Downloads/Godot/Godot_v4.5.1-stable_win64.exe" --headless --rendering-driver opengl3 --path "." --script "tests/gdunit4_runner.gd"
+& "D:/Downloads/Godot/Godot_v4.5.1-stable/Godot_v4.5.1-stable_win64.exe" --headless --rendering-driver opengl3 --path "." --script "tests/gdunit4_runner.gd"
 ```
 
 ## Architecture
@@ -1180,9 +1186,9 @@ inf_19单兵电台(ally_bonus)、arm_15数据链(ally_hit_bonus)、for_10指挥�
 
 | 改造 | 文件 | 改前描述 → 改后描述 |
 |------|------|-------------------|
-| 主动防护 | armor_mods | 拦截30% → 减伤30%（拦截机制重定向为减伤） |
-| 热成像瞄准镜 | armor_mods | 无视烟雾+射程 → 射程+30（无视烟雾未实装） |
-| 扫雷滚/犁 | armor_mods | 免疫地雷 → 三维防御提升（地雷免疫重定向为减伤） |
+| 主动防护 | armor_mods | 拦截30% → 减伤30%（拦截机制重定向为减伤） ⚠️**v8.x 已废弃，见下方勘误** |
+| 热成像瞄准镜 | armor_mods | 无视烟雾+射程 → 射程+30（无视烟雾未实装） ⚠️**v8.x 已废弃，见下方勘误** |
+| 扫雷滚/犁 | armor_mods | 免疫地雷 → 三维防御提升（地雷免疫重定向为减伤） ⚠️**v8.x 已废弃，见下方勘误** |
 | 烟幕弹发射器 | anti_air_mods | 闪避制导武器 → 闪避+30%（反导闪避重定向为通用闪避） |
 | 光学伪装 | recon_mods | 暴击率提升 → 暴击+50%（侦测范围走 vision 类映射暴击） |
 | 红外抑制 | recon_mods | 热成像免疫 → 减伤提升（重定向为减伤） |
@@ -1197,6 +1203,16 @@ inf_19单兵电台(ally_bonus)、arm_15数据链(ally_hit_bonus)、for_10指挥�
 |---|------|------|
 | 1 | **闪避值过高**：消音器 fire_exposure=-0.80 映射闪避+0.80（半无敌），光学伪装/伪装网等同路径偏高 | 所有闪避映射分支（detection_reduce / lock_reduction / fire_exposure / aggro_reduce / missile_dodge / ally_detection）统一 `min(0.50)` 上限。消音器 0.80→0.50，其余在阈值内的不变 |
 | 2 | **架桥设备系数太弱**：ally_river_bonus=1.00(百分比) ×0.005×0.5=0.0025（0.25%部署加速，无感） | 系数 0.0025→0.05（×20倍），epic 稀有度获得 5% 部署加速体感 |
+
+> **⚠️ v8.x 勘误（2026-07-27）：上表 A 段前 3 行（主动防护/热成像瞄准镜/扫雷滚）的"改后描述"已被后续版本覆盖，当前真实状态如下：**
+>
+> | 改造 | v7.x 表格记录（已废弃） | v8.x 当前真实状态 |
+> |------|----------------------|------------------|
+> | 主动防护 arm_04_aps | 拦截→减伤30% | **真拦截**：`intercept_system=0.30` + `intercept_charges=3`（30% 概率完全免伤，最多 3 次）。description="拦截来袭导弹：30%概率完全免伤，可触发3次"。registry 仍保留 `missile_intercept→damage_reduction` 兼容映射（仅旧存档用，当前无改造数据走此分支；`aa_06_laser` 仍用旧 missile_intercept，未迁移到真拦截） |
+> | 热成像瞄准镜 arm_12 | smoke_ignore+射程+30px | **纯暴击**：删除 `smoke_ignore` 和 `attack_range=30`（射程 +0.3 格无感、项目无烟雾战术系统），改 `crit_chance=0.15`。description="热成像瞄准，暴击率+15%"（不再提射程/烟雾） |
+> | 扫雷滚/犁 arm_14 | mine_immunity→减伤 | **三维防御×1.30**：registry `mine_immunity` 分支系数 0.15→0.30（原 0.15 对装甲仅 3-7% 实际减伤，过弱）。description="附加装甲提升三维防御+30%，轻微减速"（项目无敌方地雷机制，不提"地雷"）。数据层仍写 `mine_immunity=true`（重定向闸门在 registry） |
+>
+> **验证方式更新**：本次改动用 Godot `--script` 模式单独 `load()` armor_mods.gd + 7 项断言（几秒完成，不启动全部 autoload），未撞 5 分钟超时。`gdparse` 对本项目数据字典文件的 `key = value` 写法集体误报（gdtoolkit 4.5.0 限制），不适用。
 
 **关键设计决策:**
 1. **闪避统一上限 0.50**——闪避是"完全免伤"的随机机制，0.80 意味着 80% 攻击无效（接近无敌），0.50 是合理的"高闪避单位"天花板。数据层直接给 dodge_chance 的小值改造（inf_08/inf_13 的 0.03-0.15）仍走原 min(1.0) 路径不受影响
@@ -1332,7 +1348,7 @@ inf_19单兵电台(ally_bonus)、arm_15数据链(ally_hit_bonus)、for_10指挥�
 - `data/basic_resources.gd` — 删孤儿函数
 - `tests/unit/data/test_battle_card_v3.gd` — 断言同步
 
-**验证:** Grep 静态核对全部通过（3000 硬上限零残留、dodge_chance 全路径 min(0.50)、m_atk/m_hp 均 0.0008、era 查表值、move_speed/urban_move_bonus 均 0.02、rarity 表补全、permit 函数已删）；Godot `--check-only` 启动到 autoload 链构建无语法错误（项目体量 5 分钟超时属既有现象）。**注:** Godot 路径已从 AGENTS 旧值 `E:\下载\Godot_4.41\Godot_v4.5-stable_win64.exe` 迁移到实际位置 `D:/Downloads/Godot/Godot_v4.5.1-stable_win64.exe`（旧路径所在 E: 盘在本环境不存在）。
+**验证:** Grep 静态核对全部通过（3000 硬上限零残留、dodge_chance 全路径 min(0.50)、m_atk/m_hp 均 0.0008、era 查表值、move_speed/urban_move_bonus 均 0.02、rarity 表补全、permit 函数已删）；Godot `--check-only` 启动到 autoload 链构建无语法错误（项目体量 5 分钟超时属既有现象）。**注:** Godot 路径已从 AGENTS 旧值 `E:\下载\Godot_4.41\Godot_v4.5-stable_win64.exe` 迁移到实际位置 `D:/Downloads/Godot/Godot_v4.5.1-stable/Godot_v4.5.1-stable_win64.exe`（v8.x 再次校正：真实路径多一层 `-stable/` 子目录，旧记 `D:/Downloads/Godot/Godot_v4.5.1-stable_win64.exe` 在本环境不存在）。
 
 ## v8.0 三套卡牌数据源统一 (2026-07-11)
 
