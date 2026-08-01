@@ -514,10 +514,14 @@ static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary) -
 					if not result.has("deploy_delay_bonus"):
 						result["deploy_delay_bonus"] = 0.0
 					result["deploy_delay_bonus"] -= float(effect_value) * 0.02
-			# ── v7.x: 光环协同类（ally_*/formation_bonus/command_efficiency）重映射为装载单位自身加成 ──
-			# 原 effect 按"给周围多友军加 buff"设计，但项目无光环系统，全部落 default→_special 空转。
-			# 改为给装载单位自身加成。所有值 ×0.5 缩放（原值按多受益设计，自身单受益需减半平衡）。
-			# "命中"类（无独立命中系统）→ 暴击率（复用 v6.6 视野/精度类口径）
+			# ── v7.x: 光环协同类（ally_*/formation_bonus/command_efficiency）双链路实装 ──
+			# 本 match 分支（链路①）：给【装载单位自身】加成，所有值 ×0.5 缩放（原值按多受益设计，
+			#   自身单受益需减半平衡）。"命中"类（无独立命中系统）→ 暴击率（复用 v6.6 口径）。
+			# 另有 v6.8 光环系统（链路②）：scripts/battle/mod_aura_handler.gd + unit_stats_table.gd
+			#   的 _extract_aura_summary_to_meta，把【原始未缩放值】广播给周围同阵营友军（排除自身）。
+			# 两链路对象不重叠（自身不进自身光环目标集），故不会对同一单位双重叠加——
+			#   载体单位：仅获自身加成（×0.5）；其他友军：仅获光环广播（原值）。
+			# 注意：友军端原值未减半，此处的 ×0.5 平衡论证仅对载体自身成立。
 			"ally_bonus", "ally_hit_bonus":
 				if not result.has("crit_chance"):
 					result["crit_chance"] = 0.0

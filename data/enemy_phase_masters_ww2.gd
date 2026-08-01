@@ -21,7 +21,16 @@ const ERA_MASTERS: Array = [
 				"effects": {"atk_light": 0.08, "atk_armor": 0.08, "atk_air": 0.08}
 			}
 		],
-		"active_spells": [],
+		"active_spells": [
+			{
+				"id": "thunderstorm_chain",
+				"name": "雷暴连锁",
+				"description": "每20秒释放连锁闪电，跳跃打击玩家单位",
+				"effect": "thunderstorm_chain",
+				"cooldown": 20.0,
+				"params": {"damage_mult": 1.0}
+			}
+		],
 		"passive_spells": [
 			{
 				"id": "conductive",
@@ -68,7 +77,16 @@ const ERA_MASTERS: Array = [
 				"effects": {"atk_light": 0.08, "atk_armor": 0.08, "atk_air": 0.08}
 			}
 		],
-		"active_spells": [],
+		"active_spells": [
+			{
+				"id": "void_implosion",
+				"name": "虚空内爆",
+				"description": "每22秒引发虚空坍缩，对全体玩家单位造成范围伤害",
+				"effect": "void_explosion",
+				"cooldown": 22.0,
+				"params": {"damage_mult": 1.0}
+			}
+		],
 		"passive_spells": [
 			{
 				"id": "reality_tear",
@@ -117,7 +135,15 @@ const ERA_MASTERS: Array = [
 				"effects": {"hp": 0.15, "def_light": 0.10, "def_armor": 0.10, "def_air": 0.10}
 			}
 		],
-		"active_spells": [],
+		"active_spells": [
+			{
+				"id": "legion_deploy",
+				"name": "军团动员",
+				"description": "每19秒召唤钢铁军团单位增援",
+				"effect": "deploy_legion",
+				"cooldown": 19.0
+			}
+		],
 		"passive_spells": [
 			{
 				"id": "iron_will",
@@ -164,7 +190,16 @@ const ERA_MASTERS: Array = [
 				"effects": {"atk_light": 0.15, "atk_armor": 0.15, "atk_air": 0.15}
 			}
 		],
-		"active_spells": [],
+		"active_spells": [
+			{
+				"id": "prometheus_flame",
+				"name": "普罗米修斯之焰",
+				"description": "每18秒降下天火，对全体玩家单位造成烈焰伤害",
+				"effect": "meteor_flame",
+				"cooldown": 18.0,
+				"params": {"damage_mult": 1.1}
+			}
+		],
 		"passive_spells": [
 			{
 				"id": "hellfire",
@@ -211,7 +246,24 @@ const ERA_MASTERS: Array = [
 				"effects": {"atk_light": 0.15, "atk_armor": 0.15, "atk_air": 0.15}
 			}
 		],
-		"active_spells": [],
+		"active_spells": [
+			{
+				"id": "zeus_lightning",
+				"name": "宙斯雷霆",
+				"description": "每16秒降下雷霆连锁，跳跃打击多个玩家单位",
+				"effect": "lightning_chain",
+				"cooldown": 16.0,
+				"params": {"damage_mult": 1.2}
+			},
+			{
+				"id": "olympus_ward",
+				"name": "奥林匹斯之护",
+				"description": "每24秒为自身施加18%最大生命值护盾",
+				"effect": "dome_barrier",
+				"cooldown": 24.0,
+				"params": {"shield_pct": 0.18}
+			}
+		],
 		"passive_spells": [
 			{
 				"id": "lightning_speed",
@@ -258,7 +310,24 @@ const ERA_MASTERS: Array = [
 				"effects": {"atk_light": 0.15, "atk_armor": 0.15, "atk_air": 0.15}
 			}
 		],
-		"active_spells": [],
+		"active_spells": [
+			{
+				"id": "abyss_apocalypse",
+				"name": "深渊降临",
+				"description": "每18秒引发虚空灾变，对全体玩家单位造成范围伤害",
+				"effect": "abyss_apocalypse",
+				"cooldown": 18.0,
+				"params": {"damage_mult": 1.2}
+			},
+			{
+				"id": "devouring_void",
+				"name": "虚空吞噬",
+				"description": "每14秒对生命最高的玩家单位发动吞噬打击",
+				"effect": "devour_single",
+				"cooldown": 14.0,
+				"params": {"damage_mult": 1.3}
+			}
+		],
 		"passive_spells": [
 			{
 				"id": "dimension_siphon",

@@ -21,7 +21,9 @@ const _PROCEDURAL_BG_HEIGHT: int = 720
 const _BattlePerfMonScript: Script = preload("res://scripts/battle_performance_monitor.gd")
 ## 道路带位置（基于背景纹理比例）：用于敌我刷新与部署区
 const BATTLE_LANE_CENTER_RATIO := 0.80
-const BATTLE_LANE_HEIGHT_RATIO := 0.14
+## 双行交错：车道带需覆盖上行(center - 80)到下行(center + 80)全程，故从 0.14 提到 0.28。
+## 0.28 × 背景高(720) ≈ 200px，半高 100px > 80px 偏移，双行 Y 不会被 _deploy_y clamp 截断。
+const BATTLE_LANE_HEIGHT_RATIO := 0.28
 
 const _BattleSlotGridScript: Script = preload("res://scenes/battlefield/battle_slot_grid.gd")
 

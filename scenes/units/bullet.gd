@@ -10,6 +10,7 @@ const CardGridFx = preload("res://scripts/card_grid_fx.gd")
 const WeaponProjectileVfx = preload("res://scripts/weapon_projectile_vfx.gd")
 const AttackCalculator = preload("res://scripts/battle/attack_calculator.gd")
 const RuneSpecialHandler = preload("res://managers/rune_special_handler.gd")
+const FactionSkillEffectHandler = preload("res://scripts/battle/faction_skill_effect_handler.gd")
 ## 曲射弹道：炮口火焰特效纹理（预加载，避免运行时 ResourceLoader.load 卡顿）
 const ARTILLERY_MUZZLE_TEX := preload("res://assets/effects/projectiles/weapons_realistic/weapon_artillery_muzzle.png")
 ## v6.4: 重型武器拖尾贴图（曲射/爆炸类），复用 omega_platform 拖尾资源
@@ -894,12 +895,20 @@ func _on_hit(primary: Node2D) -> void:
 	if primary.has_method("take_damage"):
 		var final_after_wall: float = _apply_shield_wall_mitigation(final_damage, primary)
 		var atk_primary: Variant = shooter if is_instance_valid(shooter) else null
+		# v8.6: 势力技能 first_hit_damage（首次命中伤害加成，take_damage 前乘到伤害上）
+		if is_instance_valid(shooter):
+			var _fs_extra: float = FactionSkillEffectHandler.on_attack_hit(shooter, primary, is_crit)
+			if _fs_extra > 0.0:
+				final_after_wall *= (1.0 + _fs_extra)
 		primary.take_damage(final_after_wall, atk_primary)
 		# v6.2: 符文之语特殊效果 — 攻击命中时触发（闪电链/溅射）
 		if is_instance_valid(shooter):
 			RuneSpecialHandler.on_hit(shooter, primary, final_after_wall)
 			# v6.6: 应用改造命中副作用（吸血/连锁/溅射）——补全低速直射路径缺失的效果
 			ModuleEffectHandler.apply_on_hit_side_effects(shooter, primary, final_after_wall)
+			# v8.6: 势力技能 extra_attack_chance（概率触发额外一次伤害结算）
+			if FactionSkillEffectHandler.roll_extra_attack(shooter):
+				primary.take_damage(final_after_wall, atk_primary)
 	# 兜底：若目标无 take_damage（不应发生），meta 不会经信号清除，此处手动清避免残留
 	elif is_instance_valid(primary):
 		if is_crit and primary.has_meta("_vfx_crit_pending"):

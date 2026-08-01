@@ -591,11 +591,28 @@ static func apply_continuous_effects(u: CharacterBody2D, delta: float) -> void:
 	ModuleEffectHandler.on_tick(u, delta)
 
 ## v5.0 攻速分离: 单武器三阶段攻击状态机
+## v8.6: 获取 ECM debuff 的攻速减速系数（1.0=正常，<1.0=被削弱减速）。
+## 读 _ecm_debuffed_until meta（boss _exec_debuff_players / 玩家 ECM 光环 / EMP on_hit 挂载）。
+## 修复：此前玩家侧零消费方，boss 削弱技能对玩家攻速完全无效。
+static func _get_ecm_attack_slow_mult(u: Node) -> float:
+	if u == null or not u.has_meta("_ecm_debuffed_until"):
+		return 1.0
+	var now: float = Time.get_ticks_msec() / 1000.0
+	if now >= float(u.get_meta("_ecm_debuffed_until", 0.0)):
+		return 1.0  # 已过期
+	# 默认削弱 25% 攻速（与 enemy_unit 的 0.75 口径一致），可被 _ecm_attack_speed_penalty 覆盖
+	var penalty: float = float(u.get_meta("_ecm_attack_speed_penalty", 0.25))
+	return maxf(0.1, 1.0 - penalty)
+
+
 static func _process_single_weapon_attack(u: CharacterBody2D, delta: float) -> void:
 	if u.target == null or not is_instance_valid(u.target):
 		u._attack_phase = u.AttackPhase.IDLE
 		u._attack_phase_timer = 0.0
 		return
+	# v8.6: ECM debuff（boss 削弱技能/电子战）——被削弱时攻速降低，计时累加变慢。
+	# 修复：此前玩家侧零消费方，boss _exec_debuff_players 给玩家挂的 meta 完全空转。
+	delta = delta * _get_ecm_attack_slow_mult(u)
 	var target_stats = u.target.get("stats") as UnitStats
 	var target_kind: int = target_stats.combat_kind if target_stats else 0
 
@@ -666,6 +683,8 @@ static func _process_multi_weapons(u: CharacterBody2D, delta: float) -> void:
 			w["phase"] = u.AttackPhase.IDLE
 			w["phase_timer"] = 0.0
 		return
+	# v8.6: ECM debuff 攻速降低（同单武器路径）
+	delta = delta * _get_ecm_attack_slow_mult(u)
 	var target_stats = u.target.get("stats") as UnitStats
 	var target_kind: int = target_stats.combat_kind if target_stats else 0
 	var eff_rng: float = effective_fire_range(u)

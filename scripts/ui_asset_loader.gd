@@ -85,10 +85,10 @@ const PLAYER_ICON_OVERRIDE: Dictionary = {
 	"ww1_mg08": "vis_player_038",       # MG08机枪巢 → 机枪巢 ★完美同名
 	"ww1_vickers": "vis_player_038",    # 维克斯机枪巢 → 机枪巢
 	"ww1_m76": "vis_player_039",        # 76mm迫击炮组 → 迫击炮组 ★完美同名
-	"ww1_storm": "vis_player_040",      # 暴风突击队 → 暴风突击队 ★完美同名
-	"ww1_flame": "vis_player_036",      # 火焰喷射兵 → 步兵班·MP18（步兵通用）
-	"ww1_mark4": "vis_player_041",      # 马克IV型坦克 → 装甲车（同期装甲）
-	"ww1_a7v": "vis_player_042",        # A7V重型坦克 → 圣沙蒙坦克（同期重坦）
+		"ww1_storm": "vis_player_040",      # 暴风突击队 → 暴风突击队 ★完美同名
+		"ww1_flame": "vis_player_036",      # 火焰喷射兵 → 步兵班·MP18（步兵通用）
+		"ww1_mark4": "vis_player_042",      # 马克IV型坦克 → 圣沙蒙坦克（同期重坦，v7.x修正：原误用041装甲车）
+		"ww1_a7v": "vis_player_042",        # A7V重型坦克 → 圣沙蒙坦克（同期重坦）
 	"ww1_saint": "vis_player_042",      # 圣沙蒙坦克 → 圣沙蒙坦克 ★完美同名
 	# 二战
 	"ww2_pz3": "vis_player_007",        # 三号坦克 → M4谢尔曼（中型坦克通用）
@@ -112,10 +112,10 @@ const PLAYER_ICON_OVERRIDE: Dictionary = {
 	"cold_rpk": "vis_player_045",       # RPK机枪班 → MG42机枪组
 	"cold_ak47": "vis_player_050",      # AK-47步兵班 → 苏军步兵
 	"cold_m14": "vis_player_051",       # M14步兵班 → 美军步兵
-	"cold_leo1": "vis_player_052",      # 豹1坦克 → BTR装甲车（西方装甲）
-	"cold_m1": "vis_player_052",        # M1主战坦克 → BTR装甲车
-	"cold_m60t": "vis_player_052",      # M60坦克 → BTR装甲车
-	"cold_bradley": "vis_player_053",   # M2布雷德利 → M113装甲车（步战车）
+		"cold_leo1": "vis_player_055",      # 豹1坦克 → T-72坦克（主战坦克，v7.x修正：原误用052 BTR装甲车）
+		"cold_m1": "vis_player_055",        # M1主战坦克 → T-72坦克（主战坦克，v7.x修正：原误用052 BTR装甲车）
+		"cold_m60t": "vis_player_055",      # M60坦克 → T-72坦克（主战坦克，v7.x修正：原误用052 BTR装甲车）
+		"cold_bradley": "vis_player_053",   # M2布雷德利 → M113装甲车（步战车）
 	"cold_spetsnaz": "vis_player_054",  # 阿尔法特种部队 → 特种部队 ★完美同名
 	"cold_chieftain": "vis_player_055", # 酋长坦克 → T-72坦克（重型坦克）
 	"cold_t62": "vis_player_055",       # T-62坦克 → T-72坦克（苏系坦克）
@@ -137,7 +137,7 @@ const PLAYER_ICON_OVERRIDE: Dictionary = {
 	"mod_m1a2": "vis_player_062",       # M1A2艾布拉姆斯 → M1A2坦克 ★完美同名
 	"mod_ah1": "vis_player_063",        # AH-1眼镜蛇 → 阿帕奇直升机（武装直升机）
 	"mod_ah64": "vis_player_063",       # AH-64阿帕奇 → 阿帕奇直升机 ★完美同名
-	"mod_stinger": "vis_player_063",    # 毒刺导弹兵 → 阿帕奇直升机（防空/飞行器）
+		"mod_stinger": "vis_player_017",    # 毒刺导弹兵 → ZSU-23-4自行高炮（防空，v7.x修正：原误用063阿帕奇直升机）
 	"mod_uh60": "vis_player_063",       # UH-60黑鹰 → 阿帕奇直升机（直升机通用）
 	"mod_javelin": "vis_player_046",    # 标枪导弹兵 → 反坦克组（导弹步兵）
 	# 近未来

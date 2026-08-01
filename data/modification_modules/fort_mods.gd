@@ -111,7 +111,7 @@ const DATA: Dictionary = {
 	"for_10_command" = {
 		id = FOR_10_COMMAND, name = "指挥塔", name_en = "Command Tower",
 		icon = "res://assets/ui/icons/mod_icons/mod_command.png",
-		prototype = "要塞核心", description = "指挥协同，暴击率+7.5%",
+		prototype = "要塞核心", description = "指挥协同：自身暴击+7.5%，周围友军暴击+15%",
 		rarity = "legendary",
 	power_mult = 2.0, cost_research = 420, cost_install = 210,
 		slot_type = "command", conflict_group = "command",

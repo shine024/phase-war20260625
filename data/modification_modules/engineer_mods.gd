@@ -99,7 +99,7 @@ const DATA: Dictionary = {
 	"eng_09_supply" = {
 		id = ENG_09_SUPPLY, name = "弹药补给车", name_en = "Ammo Supply Truck",
 		icon = "res://assets/ui/icons/mod_icons/mod_logistics.png",
-		prototype = "运输车", description = "弹药补给，攻速+15%",
+		prototype = "运输车", description = "弹药补给：自身攻速+15%，周围友军攻速+30%",
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 180, cost_install = 90,
 		slot_type = "logistics", conflict_group = "logistics",

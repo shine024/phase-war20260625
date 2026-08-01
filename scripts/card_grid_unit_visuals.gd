@@ -15,7 +15,13 @@ const DefaultCards = preload("res://data/default_cards.gd")
 const CapturedUnitCards = preload("res://data/captured_unit_cards.gd")
 const EnemyUnitManifest = preload("res://data/enemy_unit_manifest.gd")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
+const CardFootAnchors = preload("res://data/card_foot_anchors.gd")
 const GC = preload("res://resources/game_constants.gd")
+
+## v8.x 性能优化：sync_buff_labels 的签名缓存（按 host instance_id），状态不变则跳过重建。
+## 单位被 queue_free 时其 id 会被回收复用，但 host 销毁后不会再调 sync_buff_labels，
+## 故残留 key 无害（仅占微量内存）；必要时可定期清理，但权衡下不值得。
+static var _buff_label_sig_cache: Dictionary = {}
 
 
 ## `face_right`：v7.x 起图本身已携带朝向（vis_player=我方翻转图，vis_enemy=敌方原图），
@@ -85,8 +91,13 @@ static func apply_battle_unit_presentation(
 		return false
 	unit_spr.visible = true
 	unit_spr.modulate = Color.WHITE
-	# 统一卡图大小：所有单位同一缩放（按纹理宽度归一到固定卡宽），不按类型缩放。
+	# 统一卡图大小：所有单位按纹理宽度归一到固定卡宽（基础尺寸一致），再按缩放表
+	# 乘以各自的视觉倍数（步兵小/坦克大/boss 更大）。缩放查询统一走 CardFootAnchors（单一真理源）。
 	apply_uniform_card_sprite(unit_spr, tex, face_right)
+	if card != null:
+		var vs: float = CardFootAnchors.get_visual_scale(card)
+		if vs > 0.0 and vs != 1.0:
+			unit_spr.scale *= vs
 	# 立绘居中（position 默认原点），不悬浮、不按脚线对齐。
 	unit_spr.position = Vector2(unit_spr.position.x, 0.0)
 	if card != null:
@@ -147,9 +158,9 @@ static func sync_elite_badge(host: Node2D, unit_spr: Sprite2D, unit: Node) -> vo
 	])
 	# 金色（boss 更亮）
 	badge.color = Color(1.0, 0.78, 0.20, 1.0) if spawn_type == "boss" else Color(0.98, 0.75, 0.15, 1.0)
-	# 定位：卡框左上角（与右上角的 RarityBadge 对称）
-	var card_h: float = CardGridBattleLayout.battle_card_width_px() * 8.0 / 5.0
-	badge.position = Vector2(-CardGridBattleLayout.battle_card_width_px() * 0.42, unit_spr.position.y - card_h * 0.5 - s)
+	# 定位：实体左上角（与右上角的 RarityBadge 对称），锚定实体顶部
+	var card_w_eb: float = CardGridBattleLayout.battle_card_width_px()
+	badge.position = Vector2(-card_w_eb * 0.42, entity_top_y(unit_spr) - s)
 	badge.visible = true
 
 
@@ -167,19 +178,16 @@ static func sync_name_strip(host: Node2D, unit_spr: Sprite2D, card: CardResource
 	var display_name: String = ""
 	if card != null:
 		display_name = card.display_name
-	# 卡的尺寸取"外壳"（势力底图 CardBattleBg，5:8）而非立绘纹理，保证与底图对齐
+	# 卡的尺寸取标准卡宽（CardBattleBg 已在 apply_battle_card_chrome 强制隐藏且不加载纹理，
+	# 故 bg_spr.texture 恒为 null，原 bg_spr 读取分支永不命中，已清理）
 	var card_w: float = CardGridBattleLayout.battle_card_width_px()
 	var card_h: float = card_w * 8.0 / 5.0
-	var bg_spr := host.get_node_or_null("CardBattleBg") as Sprite2D
-	if bg_spr != null and bg_spr.texture != null:
-		card_w = float(bg_spr.texture.get_width()) * absf(bg_spr.scale.x)
-		card_h = float(bg_spr.texture.get_height()) * absf(bg_spr.scale.y)
 	strip.rebuild(display_name, is_player, card_w, card_h)
-	# 名称条改为"卡框内部下部"：紧贴卡底边内侧（立绘中心 + half_h - 条高），不再悬于卡外。
-	# 条高与 CardGridNameStrip.rebuild() 内部公式一致（max(card_w × 0.30, 14)），用于反向定位。
-	var half_h: float = card_h * 0.5
+	# 名字条锚定到实体脚部（地面线 y=0）下方固定距离，不再随卡框尺寸浮动。
+	# 实体脚部 = unit_spr 经 offset 底部对齐后落在节点原点(y=0)；名字条在脚下固定 6px。
+	# 这样不同缩放/不同图，名字条离实体脚部距离恒定。
 	var bar_h: float = maxf(card_w * 0.30, 14.0)
-	strip.position = Vector2(unit_spr.position.x, unit_spr.position.y + half_h - bar_h)
+	strip.position = Vector2(unit_spr.position.x, 0.0 + 6.0)
 
 
 static func apply_uniform_card_sprite(spr: Sprite2D, tex: Texture2D, face_right: bool = false) -> float:
@@ -190,11 +198,33 @@ static func apply_uniform_card_sprite(spr: Sprite2D, tex: Texture2D, face_right:
 	var sc: float = CardGridThumbnailScale.compute_battlefield_uniform_width_scale(
 		spr.texture if spr.texture != null else tex
 	)
-	spr.offset = Vector2.ZERO
+	# 脚部对齐地面线：用扫描得到的 foot_frac（脚距纹理底的比例）算 offset。
+	# centered 立绘：纹理底部相对中心 = +tex_h/2，脚在纹理底上方 foot_frac*tex_h 处。
+	# offset.y 让脚落在节点原点(地面线 y=0)：offset.y = -(0.5 - foot_frac) * tex_h
+	# offset 在纹理空间，随 scale 缩放后脚部恒在原点（与 scale 无关）。
+	spr.offset = Vector2(0.0, _foot_offset_y(spr.texture))
 	# v7.x: 图本身已携带朝向（vis_player=翻转/我方，vis_enemy=原图/敌方），不再 scale 翻转。
 	# face_right 参数保留仅用于 sync_name_strip 的敌我颜色区分，不影响贴图朝向。
 	spr.scale = Vector2(sc, sc)
 	return abs(sc)
+
+
+## 算立绘 offset.y 让脚部对齐地面（节点原点 y=0）。
+static func _foot_offset_y(tex: Texture2D) -> float:
+	if tex == null:
+		return 0.0
+	var tex_h: float = maxf(float(tex.get_height()), 1.0)
+	var file_name: String = ""
+	if tex.resource_path != null and not tex.resource_path.is_empty():
+		file_name = String(tex.resource_path).get_file().get_basename()
+	var foot_frac: float = CardFootAnchors.get_foot_frac(file_name)
+	return -(0.5 - foot_frac) * tex_h
+
+
+## 返回实体顶部相对节点原点(地面线 y=0)的 Y 坐标（负值，在脚上方）。
+## 供头顶 UI（军衔条/角标/等级）锚定，保证 UI 离实体顶部固定距离（不随缩放/卡框浮动）。
+static func entity_top_y(unit_spr: Sprite2D) -> float:
+	return CardFootAnchors.entity_top_y_for_sprite(unit_spr)
 
 
 static func _ensure_battle_chrome_sprite(host: Node2D, node_name: String, z: int) -> Sprite2D:
@@ -209,61 +239,31 @@ static func _ensure_battle_chrome_sprite(host: Node2D, node_name: String, z: int
 	return spr
 
 
-## 格子战立绘：5:8 势力底 + 单位图 + 稀有度框（与 UI 槽一致）
+## 格子战立绘：势力底图/稀有度卡框已停用（去框去背景），仅保留立绘本身。
+## 仍确保两个 chrome 节点存在并隐藏，兼容老单位/其他读取这些节点的代码。
+## 血条/军衔条/名称条/角标等功能性 UI 在其它兄弟函数中处理，不受影响。
 static func apply_battle_card_chrome(host: Node2D, unit_spr: Sprite2D, card: CardResource) -> void:
 	if host == null or unit_spr == null or card == null:
 		return
-	var card_w: float = CardGridBattleLayout.battle_card_width_px()
-	var card_h: float = card_w * 8.0 / 5.0
-	var bg_tex: Texture2D = CardBackgroundUi.load_background(
-		CardBackgroundUi.resolve_faction_id_for_card(card)
-	)
-	var frame_tex: Texture2D = CardFrameUi.load_frame(card.rarity)
 	var bg_spr := _ensure_battle_chrome_sprite(host, "CardBattleBg", 4)
 	var frame_spr := _ensure_battle_chrome_sprite(host, "CardBattleFrame", 14)
 	for chrome in [bg_spr, frame_spr]:
 		chrome.centered = true
 		chrome.position = unit_spr.position
-	if bg_tex != null:
-		bg_spr.texture = bg_tex
-		var bw: float = maxf(float(bg_tex.get_width()), 1.0)
-		var bh: float = maxf(float(bg_tex.get_height()), 1.0)
-		bg_spr.scale = Vector2(card_w / bw, card_h / bh)
-		bg_spr.visible = true
-	else:
-		bg_spr.visible = false
-	if frame_tex != null:
-		frame_spr.texture = frame_tex
-		var fw: float = maxf(float(frame_tex.get_width()), 1.0)
-		var fh: float = maxf(float(frame_tex.get_height()), 1.0)
-		frame_spr.scale = Vector2(card_w / fw, card_h / fh)
-		frame_spr.visible = true
-	else:
-		frame_spr.visible = false
+		chrome.visible = false  # 去卡框/卡背景：彻底隐藏，不加载纹理
 	unit_spr.z_index = 10
 
 
 static func sync_rank_strip(host: Node2D, rank_level: int, spr: Sprite2D) -> void:
-	if host == null or spr == null or spr.texture == null:
+	# 战场单位顶部军衔条已移除（v7.x 布局优化），仅保留兼容性空实现
+	if host == null:
 		return
+	# 移除rank strip节点以避免显示
 	var strip: CardGridRankStrip = host.get_node_or_null("CardGridRankStrip") as CardGridRankStrip
-	if strip == null:
-		strip = CardGridRankStrip.new()
-		strip.name = "CardGridRankStrip"
-		host.add_child(strip)
-	strip.z_index = 12
-	# 卡的尺寸取"外壳"（势力底图 CardBattleBg，5:8）而非立绘纹理，保证与底图对齐
-	var card_w: float = CardGridBattleLayout.battle_card_width_px()
-	var card_h: float = card_w * 8.0 / 5.0
-	var bg_spr := host.get_node_or_null("CardBattleBg") as Sprite2D
-	if bg_spr != null and bg_spr.texture != null:
-		card_w = float(bg_spr.texture.get_width()) * absf(bg_spr.scale.x)
-		card_h = float(bg_spr.texture.get_height()) * absf(bg_spr.scale.y)
-	strip.rebuild(rank_level, card_w)
-	var half_h: float = card_h * 0.5
-	# 卡顶定位：卡的顶部（底图顶）= 立绘中心(spr.position.y) - card_h/2；军衔条再往上
-	strip.position = Vector2(0.0, spr.position.y - half_h - strip.get_total_height() - card_w * 0.02)
-	strip.visible = rank_level > 0
+	if strip != null and is_instance_valid(strip):
+		strip.visible = false
+		# 可选：从场景中移除节点
+		# host.remove_child(strip)
 
 
 static func rank_level_from_id(rank_id: String) -> int:
@@ -286,31 +286,15 @@ static func sync_buff_strip(host: Node2D, unit: Node, spr: Sprite2D) -> void:
 		strip.name = "CardGridBuffStrip"
 		host.add_child(strip)
 	strip.z_index = 13
-	# 卡的尺寸取"外壳"（势力底图 CardBattleBg，5:8）而非立绘纹理，保证与底图对齐
+	# 卡宽取标准值（CardBattleBg 已隐藏不加载纹理，bg_spr 读取分支永不命中，已清理）
 	var card_w: float = CardGridBattleLayout.battle_card_width_px()
 	var card_h: float = card_w * 8.0 / 5.0
-	var bg_spr := host.get_node_or_null("CardBattleBg") as Sprite2D
-	if bg_spr != null and bg_spr.texture != null:
-		card_w = float(bg_spr.texture.get_width()) * absf(bg_spr.scale.x)
-		card_h = float(bg_spr.texture.get_height()) * absf(bg_spr.scale.y)
 	strip.rebuild(kinds, card_w)
-	var half_h: float = card_h * 0.5
-	var hp_gap: float = 8.0
-	# 血条高度读真实折叠态（修复 H1：原硬编码 8.0 与未选中单位 4px 折叠态脱钩，导致 buff 条错位）
-	# 敌方血条不可见时 hp_h=0（敌方不显示头顶血条）
-	var hp_h: float = 0.0
-	var hb := host.get_node_or_null("HpBar")
-	if hb != null and (hb as CanvasItem).visible:
-		if hb.has_method("get_bar_height"):
-			hp_h = float(hb.get_bar_height())
-		else:
-			hp_h = 8.0  # 回退默认展开高度
-	# 卡底下方定位：卡的底部（底图底）= 底图基线(CardBattleBg.position.y) + card_h/2；buff 条再往下
-	# 注意：立绘 spr.position.y 已改为"脚对齐"，不等于底图基线；buff 条跟随底图（卡的外壳）。
-	# v7.x: 增加 hp_value_h（HP 数值占的垂直空间 14px），避免与 HpValueLabel 重叠
-	var base_y: float = bg_spr.position.y if (bg_spr != null and bg_spr.texture != null) else spr.position.y
-	var hp_value_h: float = 14.0 if host.has_node("HpValueLabel") else 0.0
-	strip.position = Vector2(0.0, base_y + half_h + hp_gap + hp_h + hp_value_h + card_w * 0.03)
+	# buff 条移到血条上方横排：血条在 entity_top_y-14，buff 条在血条上方（留 4px 间距）。
+	# buff_strip 内部以原点为中心绘制，故 position.y 对齐到目标行中心。
+	var top_y_bs: float = entity_top_y(spr)
+	var hp_bar_y_bs: float = top_y_bs - 14.0
+	strip.position = Vector2(0.0, hp_bar_y_bs - 4.0 - card_w * 0.11)
 
 
 # ============================================================================
@@ -341,9 +325,9 @@ static func sync_rarity_badge(host: Node2D, unit_spr: Sprite2D, card: CardResour
 		Vector2(0.0, s * 0.6),
 	])
 	badge.color = GC.get_rarity_color(card.rarity)
-	# 定位：卡框右上角（立绘上方）
-	var card_h: float = CardGridBattleLayout.battle_card_width_px() * 8.0 / 5.0
-	badge.position = Vector2(CardGridBattleLayout.battle_card_width_px() * 0.42, unit_spr.position.y - card_h * 0.5 - s)
+	# 定位：实体右上角，锚定实体顶部（不随卡框/缩放浮动）
+	var card_w_rb: float = CardGridBattleLayout.battle_card_width_px()
+	badge.position = Vector2(card_w_rb * 0.42, entity_top_y(unit_spr) - s)
 	badge.visible = true
 
 
@@ -372,70 +356,19 @@ static func sync_level_tag(host: Node2D, unit_spr: Sprite2D, card: CardResource,
 		host.add_child(label)
 	label.set_text("Lv.%d" % level)
 	label.set_style(11, Color(1.0, 0.85, 0.35, 1.0), Color(0, 0, 0, 0.85), 3, HORIZONTAL_ALIGNMENT_CENTER)
-	# 定位：卡框左上角（Node2D position 即原点，文字以原点为中心居中绘制）
-	var card_w: float = CardGridBattleLayout.battle_card_width_px()
-	var card_h: float = card_w * 8.0 / 5.0
-	label.position = Vector2(-card_w * 0.5 - 18.0, unit_spr.position.y - card_h * 0.5 - 8.0)
+	# 定位：实体左上角，锚定实体顶部
+	var card_w_lt: float = CardGridBattleLayout.battle_card_width_px()
+	label.position = Vector2(-card_w_lt * 0.5 - 18.0, entity_top_y(unit_spr) - 8.0)
 	label.visible = true
 
 
-## v7.x HP 数值标签：卡框下方显示当前/最大 HP（我方青/敌方红）
-## 我方有护盾时叠加显示 "+N盾"（青色），仅我方（敌方无 shield 字段）
-## 用 Node2D + _draw() 自绘（参考 CardGridRankStrip），避免 Label 在 Node2D 下
-## 因 Control 布局系统不触发导致的 size=0 / 文字不渲染问题。
+## v7.x: HP数值标签已弃用，HP现在显示在血条内部（保留兼容性函数）
 static func sync_hp_label(host: Node2D, unit_spr: Sprite2D, unit: Node) -> void:
-	if host == null or unit == null:
-		return
-	var cur_hp: float = 0.0
-	var max_hp_val: float = 0.0
-	var is_player: bool = false
-	var shield_val: float = 0.0
-	if "hp" in unit:
-		cur_hp = float(unit.hp)
-	if "is_player" in unit:
-		is_player = bool(unit.is_player)
-	if "shield" in unit:
-		shield_val = float(unit.shield)
-	if is_player and "stats" in unit and unit.stats != null and "max_hp" in unit.stats:
-		max_hp_val = float(unit.stats.max_hp)
-	elif "max_hp" in unit:
-		max_hp_val = float(unit.max_hp)
-	if max_hp_val <= 0.0:
-		return
+	# 已移除：HP now displayed inside blood bar via unit_hp_bar
+	# 清理可能存在的旧标签
 	var label := host.get_node_or_null("HpValueLabel") as CardGridFloatingLabel
-	if label == null:
-		label = CardGridFloatingLabel.new()
-		label.name = "HpValueLabel"
-		host.add_child(label)
-	# 配色：我方青、敌方红
-	var font_color: Color = Color(0.65, 0.95, 1.0, 1.0) if is_player else Color(1.0, 0.6, 0.6, 1.0)
-	label.set_text(_format_hp_text(cur_hp, max_hp_val, shield_val))
-	label.set_style(11, font_color, Color(0, 0, 0, 0.85), 3, HORIZONTAL_ALIGNMENT_CENTER)
-	# 定位：HP 条下方（避免与 HpBar 重叠 —— HpBar 在 card_h/2+8，HP 数值在 card_h/2+20）
-	var card_w: float = CardGridBattleLayout.battle_card_width_px()
-	var card_h: float = card_w * 8.0 / 5.0
-	label.position = Vector2(0.0, unit_spr.position.y + card_h * 0.5 + 20.0)
-	label.visible = true
-
-
-## v7.x: 更新 HP 数值标签的文字（供单位 _refresh_hp_value_label 高频调用，避免每次重建样式）
-## 这是 _refresh_hp_value_label 的轻量入口：只更新文字，不重设样式/位置
-## shield_val 仅我方传（敌方无 shield 字段，传 0 即可）
-static func update_hp_label_text(host: Node2D, cur_hp: float, max_hp: float, shield_val: float = 0.0) -> void:
-	if host == null:
-		return
-	var label := host.get_node_or_null("HpValueLabel") as CardGridFloatingLabel
-	if label == null:
-		return
-	label.set_text(_format_hp_text(cur_hp, max_hp, shield_val))
-
-
-## 格式化 HP 数值文本：HP 部分 + 护盾部分（护盾>0 才显示）
-static func _format_hp_text(cur_hp: float, max_hp: float, shield_val: float) -> String:
-	var base: String = "%d/%d" % [int(cur_hp), int(max_hp)]
-	if shield_val > 0.5:
-		base += "  +%d" % int(shield_val)
-	return base
+	if label != null and is_instance_valid(label):
+		label.visible = false
 
 
 ## 改造图标条：装备改造的单位卡底显示图标（与 buff_strip 错位，放在更下方）
@@ -453,21 +386,16 @@ static func sync_mod_strip(host: Node2D, unit: Node, spr: Sprite2D) -> void:
 		strip = CardGridModStrip.new()
 		strip.name = "CardGridModStrip"
 		host.add_child(strip)
-	strip.z_index = 13
+	# v8.x: mod_strip 在 buff_strip 上方，分层 z_index(14>13) 防止小卡图下两行重叠
+	strip.z_index = 14
+	# 卡宽取标准值（CardBattleBg 已隐藏不加载纹理，bg_spr 读取分支永不命中，已清理）
 	var card_w: float = CardGridBattleLayout.battle_card_width_px()
 	var card_h: float = card_w * 8.0 / 5.0
-	var bg_spr := host.get_node_or_null("CardBattleBg") as Sprite2D
-	if bg_spr != null and bg_spr.texture != null:
-		card_w = float(bg_spr.texture.get_width()) * absf(bg_spr.scale.x)
-		card_h = float(bg_spr.texture.get_height()) * absf(bg_spr.scale.y)
 	strip.rebuild(kinds, card_w)
-	var half_h: float = card_h * 0.5
-	# 定位：buff_strip 下方（buff_strip 高约 card_w*0.22，留 2px 间距）
-	# v7.x: 加 hp_value_h（HP 数值占的 14px），避免与 HpValueLabel 重叠
-	var hp_value_h: float = 14.0 if host.has_node("HpValueLabel") else 0.0
-	var buff_strip_h: float = card_w * 0.22 + 2.0
-	var base_y: float = bg_spr.position.y if (bg_spr != null and bg_spr.texture != null) else spr.position.y
-	strip.position = Vector2(0.0, base_y + half_h + 8.0 + 8.0 + hp_value_h + buff_strip_h)
+	# mod 条移到 buff 条上方横排（头顶最上层）：buff 条在 hp_bar_y-4-0.22w，mod 再往上。
+	var top_y_ms: float = entity_top_y(spr)
+	var hp_bar_y_ms: float = top_y_ms - 14.0
+	strip.position = Vector2(0.0, hp_bar_y_ms - 4.0 - card_w * 0.22 - 2.0 - card_w * 0.09)
 
 
 # ============================================================================
@@ -507,6 +435,15 @@ static func sync_buff_labels(host: Node2D, unit_spr: Sprite2D, unit: Node) -> vo
 			tags.append({"text": "暴击眼", "color": Color(1.0, 0.85, 0.30, 1.0), "bg": Color(0.30, 0.22, 0.05, 0.75)})
 	if unit.has_meta("_counter_marked_by"):
 		tags.append({"text": "反炮", "color": Color(0.80, 0.60, 1.0, 1.0), "bg": Color(0.18, 0.10, 0.30, 0.75)})
+	# signature 去重：状态不变则跳过重建（避免每 0.3s × 全场单位 queue_free + new）
+	var sig_parts: PackedStringArray = []
+	for t in tags:
+		sig_parts.append(String(t.get("text", "")))
+	var sig: String = "|".join(sig_parts)
+	var host_id: int = host.get_instance_id()
+	if _buff_label_sig_cache.has(host_id) and String(_buff_label_sig_cache[host_id]) == sig:
+		return  # 状态未变，跳过
+	_buff_label_sig_cache[host_id] = sig
 	# 容器节点（Node2D，挂在 host 下；子标签是 CardGridFloatingLabel）
 	var container := host.get_node_or_null("BuffLabelsRow")
 	if container == null:
@@ -514,23 +451,27 @@ static func sync_buff_labels(host: Node2D, unit_spr: Sprite2D, unit: Node) -> vo
 		container.name = "BuffLabelsRow"
 		container.z_index = 16
 		host.add_child(container)
-	# 清理旧标签（每次重建，因为标签数量会变）
-	for child in container.get_children():
-		child.queue_free()
 	if tags.is_empty():
 		container.visible = false
+		# 清理可能残留的旧标签
+		for child in container.get_children():
+			child.queue_free()
 		return
 	container.visible = true
-	# 标签布局参数
+	# 节点池复用：尽量复用已有子标签，多余的 queue_free，不足的 new（避免全量重建）
+	var existing: Array[Node] = container.get_children()
 	var gap: float = 2.0
-	# 第一遍：创建所有标签并测量宽度
 	var labels: Array[CardGridFloatingLabel] = []
 	var total_w: float = 0.0
 	for i in range(tags.size()):
 		var tag: Dictionary = tags[i]
-		var lbl := CardGridFloatingLabel.new()
-		lbl.name = "Tag%d" % i
-		container.add_child(lbl)
+		var lbl: CardGridFloatingLabel
+		if i < existing.size() and is_instance_valid(existing[i]):
+			lbl = existing[i] as CardGridFloatingLabel
+		else:
+			lbl = CardGridFloatingLabel.new()
+			lbl.name = "Tag%d" % i
+			container.add_child(lbl)
 		lbl.set_text(String(tag.get("text", "")))
 		lbl.set_style(9, tag.get("color", Color.WHITE), Color(0, 0, 0, 0.85), 2, HORIZONTAL_ALIGNMENT_CENTER)
 		lbl.set_background(tag.get("bg", Color(0, 0, 0, 0.6)), 2.0)
@@ -538,11 +479,13 @@ static func sync_buff_labels(host: Node2D, unit_spr: Sprite2D, unit: Node) -> vo
 		total_w += lbl.get_text_width() + 4.0  # +padding
 		if i > 0:
 			total_w += gap
-	# 第二遍：从左到右定位（buff 标签在卡顶 rank_strip 之上，-card_h/2-28）
-	var card_w: float = CardGridBattleLayout.battle_card_width_px()
-	var card_h: float = card_w * 8.0 / 5.0
+	# 销毁多余的旧标签（标签数量减少时）
+	for i in range(tags.size(), existing.size()):
+		if is_instance_valid(existing[i]):
+			existing[i].queue_free()
+	# 从左到右定位（buff 标签在实体顶部上方 28px，与稀有度/精英角标同基准 entity_top_y 对齐）
 	var x_cursor: float = -total_w * 0.5
-	var y_top: float = unit_spr.position.y - card_h * 0.5 - 28.0
+	var y_top: float = entity_top_y(unit_spr) - 28.0
 	for i in range(labels.size()):
 		var lbl: CardGridFloatingLabel = labels[i]
 		var w: float = lbl.get_text_width() + 4.0

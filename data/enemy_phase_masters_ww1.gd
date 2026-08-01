@@ -21,7 +21,16 @@ const ERA_MASTERS: Array = [
 				"effects": {"def_light": 0.10, "def_armor": 0.10, "def_air": 0.10}
 			}
 		],
-		"active_spells": [],
+		"active_spells": [
+			{
+				"id": "iron_bulwark",
+				"name": "钢铁壁垒",
+				"description": "每28秒为自身施加20%最大生命值护盾",
+				"effect": "energy_shield",
+				"cooldown": 28.0,
+				"params": {"shield_pct": 0.20}
+			}
+		],
 		"passive_spells": [
 			{
 				"id": "steel_skin",
@@ -68,7 +77,16 @@ const ERA_MASTERS: Array = [
 				"effects": {"atk_light": 0.08, "atk_armor": 0.08, "atk_air": 0.08}
 			}
 		],
-		"active_spells": [],
+		"active_spells": [
+			{
+				"id": "napalm_explosion",
+				"name": "烈焰风暴",
+				"description": "每26秒对全体玩家单位造成火焰范围伤害",
+				"effect": "napalm_explosion",
+				"cooldown": 26.0,
+				"params": {"damage_mult": 0.8}
+			}
+		],
 		"passive_spells": [
 			{
 				"id": "burning_aura",
@@ -115,7 +133,16 @@ const ERA_MASTERS: Array = [
 				"effects": {"crit_chance": 0.08, "dodge_chance": 0.05}
 			}
 		],
-		"active_spells": [],
+		"active_spells": [
+			{
+				"id": "tesla_chain",
+				"name": "雷霆连锁",
+				"description": "每24秒释放连锁闪电，跳跃打击最多5个玩家单位",
+				"effect": "tesla_chain",
+				"cooldown": 24.0,
+				"params": {"damage_mult": 0.9}
+			}
+		],
 		"passive_spells": [
 			{
 				"id": "static_field",
@@ -162,7 +189,16 @@ const ERA_MASTERS: Array = [
 				"effects": {"atk_light": 0.08, "atk_armor": 0.08, "atk_air": 0.08}
 			}
 		],
-		"active_spells": [],
+		"active_spells": [
+			{
+				"id": "phase_debuff",
+				"name": "相位移领域",
+				"description": "每25秒扭曲玩家单位，降低其攻速与暴击",
+				"effect": "darkness_debuff",
+				"cooldown": 25.0,
+				"params": {"attack_speed_penalty": 0.20, "crit_penalty": 0.15, "duration": 4.0}
+			}
+		],
 		"passive_spells": [
 			{
 				"id": "entropy_aura",
@@ -211,7 +247,15 @@ const ERA_MASTERS: Array = [
 				"effects": {"hp": 0.15, "def_light": 0.10, "def_armor": 0.10, "def_air": 0.10}
 			}
 		],
-		"active_spells": [],
+		"active_spells": [
+			{
+				"id": "reinforcement_deploy",
+				"name": "钢铁援军",
+				"description": "每22秒召唤一批友军单位增援战场",
+				"effect": "summon_reinforcement",
+				"cooldown": 22.0
+			}
+		],
 		"passive_spells": [
 			{
 				"id": "formation_master",
@@ -258,7 +302,16 @@ const ERA_MASTERS: Array = [
 				"effects": {"atk_light": 0.15, "atk_armor": 0.15, "atk_air": 0.15}
 			}
 		],
-		"active_spells": [],
+		"active_spells": [
+			{
+				"id": "inferno_explosion",
+				"name": "地狱烈焰",
+				"description": "每20秒引爆全场，对所有玩家单位造成烈焰伤害",
+				"effect": "hellfire_explosion",
+				"cooldown": 20.0,
+				"params": {"damage_mult": 1.0}
+			}
+		],
 		"passive_spells": [
 			{
 				"id": "eternal_flame",

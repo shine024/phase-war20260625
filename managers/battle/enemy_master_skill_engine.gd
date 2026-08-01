@@ -44,7 +44,9 @@ func setup(driver: Node, battlefield: Node) -> void:
 		for spell in _driver.get_boss_active_spells():
 			var sid: String = String(spell.get("id", ""))
 			if not sid.is_empty():
-				_timers[sid] = float(spell.get("cooldown", 20.0))  # 首次等满 CD
+				# v8.6: 首次触发用完整 CD 的 35%（开场首秀，避免 WW1 boss 等 28s 才第一次放技能）
+				var full_cd: float = float(spell.get("cooldown", 20.0))
+				_timers[sid] = full_cd * 0.35
 	_active = true
 
 ## 停止（战斗结束/boss 死亡时调用）
@@ -160,7 +162,9 @@ func _tick_aura_damage(params: Dictionary, effect: String, tick_dt: float) -> vo
 		if effect.find("max_hp") >= 0 or effect.find("drain") >= 0 or effect.find("entropy") >= 0:
 			# 百分比抽血：按目标 max_hp 的百分比/秒
 			var pct: float = float(params.get("drain_percent", params.get("bonus", 0.01)))
-			var t_max_hp: float = float(t.get("max_hp")) if "max_hp" in t else 100.0
+			# 修复：玩家单位 max_hp 在 t.stats.max_hp（顶层无 max_hp，旧 fallback 100 致抽血量级低 99%）
+			var t_stats = t.get("stats") if "stats" in t else null
+			var t_max_hp: float = float(t_stats.max_hp) if t_stats != null and "max_hp" in t_stats else (float(t.get("max_hp")) if "max_hp" in t else 100.0)
 			dmg = t_max_hp * pct * tick_dt
 		else:
 			# 固定伤害：params.damage 是每秒值
@@ -298,6 +302,8 @@ func _exec_aoe_damage(dmg_mult: float, name_text: String) -> void:
 	if targets.is_empty():
 		return
 	var base_dmg: float = _compute_boss_damage() * dmg_mult
+	# v8.6: 二次 clamp 防 AOE 清场（_compute_boss_damage 已 clamp[80,500]，但 ×dmg_mult 后 modern+ 偏高）
+	base_dmg = clampf(base_dmg, 50.0, 800.0)
 	var boss_pos: Vector2 = _get_driver_pos()
 	# toast 预警
 	_show_toast("⚠ %s！我方全体即将受到 %.0f 伤害" % [name_text, base_dmg])
@@ -397,6 +403,8 @@ func _exec_shield_self(params: Dictionary, name_text: String) -> void:
 	var shield_pct: float = float(params.get("shield_pct", params.get("bonus", 0.20)))
 	var boss_max_hp: float = float(_driver.get("max_hp")) if "max_hp" in _driver else 1000.0
 	var shield_amount: float = boss_max_hp * shield_pct
+	# v8.6: 护盾上限 boss max_hp 的 60%（防多次施法堆叠到数万近似无敌）
+	shield_amount = minf(shield_amount, boss_max_hp * 0.60)
 	if _driver.has_method("add_boss_shield"):
 		_driver.add_boss_shield(shield_amount)
 	# VFX：boss 位置蓝色护盾环
@@ -423,6 +431,8 @@ func _exec_single_target(dmg_mult: float, name_text: String) -> void:
 	if best == null:
 		return
 	var base_dmg: float = _compute_boss_damage() * 3.0 * dmg_mult  # 单体伤害 ×3（聚焦打击）
+	# v8.6: 二次 clamp 防单体秒杀（×3×dmg_mult 后 Future boss 可达 2832，过强）
+	base_dmg = clampf(base_dmg, 80.0, 1500.0)
 	var tpos: Vector2 = (best as Node2D).global_position if best is Node2D else _get_driver_pos()
 	# VFX：红色锁定 + 命中冲击波
 	if _battlefield != null and is_instance_valid(_battlefield):
@@ -440,12 +450,20 @@ func _exec_single_target(dmg_mult: float, name_text: String) -> void:
 func _compute_boss_damage() -> float:
 	if _driver == null or not is_instance_valid(_driver):
 		return 50.0
-	var stats = _driver.get("stats") if "stats" in _driver else null
-	if stats == null:
-		# driver 自身的 max_hp 作为 fallback（boss 越强伤害越高）
-		var hp: float = float(_driver.get("max_hp")) if "max_hp" in _driver else 1000.0
+	# v8.5: 优先用 driver 暴露的 get_master_stats()（_master_stats 私有，无 public stats 属性）。
+	# 旧代码 _driver.get("stats") 恒 null → 永远走 fallback，attack_power 从不生效。
+	var stats: Dictionary = {}
+	if _driver.has_method("get_master_stats"):
+		stats = _driver.get_master_stats()
+	var atk: float = float(stats.get("attack_power", 0.0)) if not stats.is_empty() else 0.0
+	if atk <= 0.0:
+		# fallback：无 attack_power 时用 max_hp×0.05（boss 越强伤害越高）
+		var hp: float = float(stats.get("max_hp", 0.0))
+		if hp <= 0.0 and "max_hp" in _driver:
+			hp = float(_driver.get("max_hp"))
+		if hp <= 0.0:
+			hp = 1000.0
 		return clampf(hp * 0.05, 50.0, 300.0)
-	var atk: float = float(stats.attack_power) if "attack_power" in stats else 100.0
 	# boss atk 普遍 120-1000，技能伤害 = atk × 1.5（AOE 威胁感，但单次不致死）
 	return clampf(atk * 1.5, 80.0, 500.0)
 

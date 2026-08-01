@@ -9,6 +9,7 @@ const GC = preload("res://resources/game_constants.gd")
 const DT = preload("res://resources/design_tokens.gd")
 const CardGridUnitVisuals = preload("res://scripts/card_grid_unit_visuals.gd")
 const CardGridBattleLayout = preload("res://scripts/card_grid_battle_layout.gd")
+const CardGridBuffStrip = preload("res://scripts/card_grid_buff_strip.gd")
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 const CardGridDamage = preload("res://scripts/card_grid_damage.gd")
 const CombatTargeting = preload("res://scripts/combat_targeting.gd")
@@ -20,6 +21,7 @@ const AttackCalculator = preload("res://scripts/battle/attack_calculator.gd")
 const FortShieldAuraScript = preload("res://scripts/battle/fort_shield_aura.gd")
 const ConstructUnitDeploy = preload("res://scripts/battle/construct_unit_deploy.gd")
 const ConstructUnitAI = preload("res://scripts/battle/construct_unit_ai.gd")
+const UnitStatsTable = preload("res://resources/unit_stats_table.gd")
 const BATTLE_MIN_X: float = 40.0
 const BATTLE_MAX_X: float = 1240.0
 const BATTLE_MIN_Y: float = 280.0
@@ -131,6 +133,8 @@ func _cached_load(path: String, type_hint: int = -1) -> Resource:
 
 var _presentation_card_grid: bool = false
 var _buff_label_refresh_accum: float = 0.0  ## v7.x 漂浮 buff 标签低频刷新累加器
+var _buff_strip_timer: float = 0.0  ## v8.x buff/改造条周期刷新累加器（与 construct_unit 对齐）
+var _buff_strip_signature: String = ""  ## v8.x buff_strip signature 去重（避免无变化时重建）
 var _hit_stun_left: float = 0.0
 var _card_tween: Tween = null
 var _rest_position: Vector2 = Vector2.ZERO
@@ -138,11 +142,8 @@ var _card_nudge_tween: Tween = null
 var _fire_pulse_tween: Tween = null  ## 开火缩放脉冲（独立于 nudge/recoil，只动 Sprite2D 子节点）
 var _card_grid_rest_x: float = NAN  ## 格子战术中卡片的归位 X
 ## v7.4: 受击视觉反馈（改手写计时动画，与 construct_unit 对齐；原每击 create_tween 2 个 Tween）
-## flash 倒计时 lerp 回原色（参考 unit_hp_bar._damage_flash）；shake 正计时分段插值（参考 damage_number_display._pop_age）
-var _hit_flash_t: float = 0.0
-var _hit_flash_base_modulate: Color = Color.WHITE
+## v8.x: flash 已移除（改命中点血溅，单位保持卡图清晰），仅剩 shake 正计时分段插值（参考 damage_number_display._pop_age）
 var _hit_shake_t: float = -1.0  # -1=未激活，>=0=激活
-const _HIT_FLASH_DURATION: float = 0.15  # v8.3: 0.1→0.15（三阶段闪白）
 const _HIT_SHAKE_DURATION: float = 0.14  # v8.3: 0.12→0.14（4×0.035s）
 var _death_fade_tween: Tween = null  ## v6.4: 死亡淡出 Tween
 var _is_dying: bool = false  ## v6.4: 死亡中标志，防止 _die 重复触发
@@ -238,10 +239,12 @@ func apply_card_grid_enemy_presentation() -> void:
 	var hb := get_node_or_null("HpBar") as CanvasItem
 	if hb != null:
 		hb.visible = true
-		# 贴卡底定位（与玩家单位对称）：立绘下方 +card_h/2+8
-		var card_h_enemies: float = CardGridBattleLayout.battle_card_width_px() * 8.0 / 5.0
-		if spr != null:
-			hb.position = Vector2(0.0, spr.position.y + card_h_enemies * 0.5 + 8.0)
+		# 敌方 Sprite2D 有 z_index=1（见 enemy_unit.tscn），会盖住 z_index 默认 0 的 HpBar，
+		# 导致血条和 HP 数字被立绘遮挡。抬高 HpBar 根节点 z_index 到立绘之上。
+		(hb as Node2D).z_index = 10
+		# 血条移到头顶：锚定实体顶部上方（与玩家单位对称）
+		var top_y: float = CardGridUnitVisuals.entity_top_y(spr) if spr != null else -50.0
+		hb.position = Vector2(0.0, top_y - 14.0)
 		if hb.has_method("set_side"):
 			hb.set_side(false)  # 敌方色（红）
 		if hb.has_method("set_folded"):
@@ -612,6 +615,14 @@ func _build_enemy_unit_stats(r: Dictionary, cfg: Dictionary) -> void:
 	# 初始化武器槽位（让 AttackCalculator.get_weapon_for_target 生效）
 	s.weapon_slots.clear()
 	_ensure_enemy_weapon_slots(s)
+	# v8.5: 注入兵种专属机制（与 construct_unit 走 build_stats_from_card 对齐）。
+	# 修复经典波次敌方跳过此函数导致堡垒 damage_reduction=0、侦察无闪避、防空无对空加成的 bug。
+	# 纯数值字段写入（dodge_chance/damage_reduction/三维防御/HP×1.15 等）+ 被动 meta（is_recon_unit 等）。
+	# v8.5 主动技能 tick（核武/护盾投射）不在此处——敌方无对应 tick 代码读取这些 meta，沿用现状。
+	UnitStatsTable.apply_combat_kind_modifiers(s)
+	# 关键：apply_combat_kind_modifiers 会按兵种放大 max_hp（如堡垒×1.15），
+	# 必须同步回节点 hp 字段，否则 setup() 的 max_hp = hp 会用未放大的 hp 覆盖 stats.max_hp。
+	hp = s.max_hp
 	stats = s
 	# v7.1: stats 就绪后判定并创建堡垒防护光环
 	_ensure_fort_shield_aura()
@@ -821,13 +832,12 @@ func _physics_process(delta: float) -> void:
 		return
 	if _hit_stun_left > 0.0:
 		_hit_stun_left -= delta
-	# v6.6: 敌方单位 hp_regen（持续回血）——之前敌方完全不回血，
-	# 导致敌方装备/词条带 hp_regen 时静默失效。现在与玩家单位对称生效。
-	if stats != null and stats.hp_regen > 0.0 and hp > 0.0:
-		var regen_amt: float = stats.max_hp * stats.hp_regen * delta
-		if regen_amt > 0.0 and hp < stats.max_hp:
-			hp = minf(hp + regen_amt, stats.max_hp)
-			_update_hp_bar()
+	# v8.6: 接入 ModuleEffectHandler.on_tick（与玩家单位对齐）。
+	# 激活：hp_regen（替代下方手写段，避免双倍回血）、堡垒阵地光环 fort_shelter_aura 写入、
+	# 雷场伤害、相位护盾、chem/burn/nano dot tick、怒气过期、区域光环。
+	# 修复：敌方堡垒此前不 tick → fort_shelter_aura 双失效（不写入+不读取）。
+	if stats != null and hp > 0.0:
+		ModuleEffectHandler.on_tick(self, delta)
 	# v8: stealth 开局减伤计时器递减
 	_update_stealth_grace(delta)
 	# 性能优化：不再每帧更新 HP 条，改为在 HP 变化时更新
@@ -869,6 +879,11 @@ func _physics_process(delta: float) -> void:
 		if _buff_label_refresh_accum >= 0.3:
 			_buff_label_refresh_accum = 0.0
 			_refresh_buff_labels()
+		# v8.x: buff/改造条周期刷新（与 construct_unit 对齐，敌方受光环时卡底图标才更新）
+		_buff_strip_timer += delta
+		if _buff_strip_timer >= 0.25:
+			_buff_strip_timer = 0.0
+			_update_card_grid_buff_strip()
 	# P2 性能优化：静止单位跳过空间网格更新（格子战敌人 velocity=0，原每帧无谓 update）
 	if velocity != Vector2.ZERO:
 		_update_in_spatial_grid()
@@ -1280,8 +1295,9 @@ func _update_hp_bar() -> void:
 					bar_grid.set_folded(true)
 				else:
 					bar_grid.set_folded(BattleInputState.current_selected_unit != self)
-		# 仍刷新卡框 HP 数值标签
-		_refresh_hp_value_label()
+		# HP 直接显示在血条内部，调用 set_hp_text 同步显示
+		if bar_grid.has_method("set_hp_text"):
+			bar_grid.set_hp_text(hp, max_hp)
 		return
 	var bar = get_node_or_null("HpBar")
 	if bar == null or not bar.has_method("set_ratio"):
@@ -1297,12 +1313,21 @@ func _update_hp_bar() -> void:
 		bar.set_folded(true)
 	else:
 		bar.set_folded(BattleInputState.current_selected_unit != self)
-	# v7.x: 同步刷新卡框 HP 数值标签
-	_refresh_hp_value_label()
+	# v7.x: 现在HP直接显示在血条内部，调用set_hp_text同步显示
+	if bar.has_method("set_hp_text"):
+		bar.set_hp_text(hp, max_hp)
 
-## v7.x: 刷新卡框 HP 数值标签（HpValueLabel）
-func _refresh_hp_value_label() -> void:
-	CardGridUnitVisuals.update_hp_label_text(self, hp, max_hp)
+## v8.x: 刷新卡底 buff/改造图标条（与 construct_unit 对齐，signature 去重避免无变化时重建）
+func _update_card_grid_buff_strip(force: bool = false) -> void:
+	if not _presentation_card_grid:
+		return
+	var sig: String = CardGridBuffStrip.buff_signature(self)
+	if not force and sig == _buff_strip_signature:
+		return
+	_buff_strip_signature = sig
+	var spr: Sprite2D = get_node_or_null("Sprite") as Sprite2D
+	CardGridUnitVisuals.sync_buff_strip(self, self, spr)
+	CardGridUnitVisuals.sync_mod_strip(self, self, spr)
 
 ## v7.x: 低频刷新漂浮 buff/debuff 标签（仅格子战）
 func _refresh_buff_labels() -> void:
@@ -1411,6 +1436,15 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 	# v8: stealth 开局减伤（前 4 秒模拟"潜入到位"，未就位时更耐打）
 	if _is_stealth_in_grace():
 		final_loss *= STEALTH_GRACE_DAMAGE_MUL
+	# v8.6: 堡垒阵地坚守光环——范围内堡垒庇护 meta 减伤（与 construct_unit 对齐）。
+	# _apply_fort_shelter_aura 在友方堡垒 on_tick 时挂载此 meta（敌方堡垒已接 on_tick，会写入）。
+	if has_meta("_fort_shelter_until"):
+		var _fs_expire: float = float(get_meta("_fort_shelter_until", 0.0))
+		var _fs_now: float = Time.get_ticks_msec() / 1000.0
+		if _fs_now < _fs_expire:
+			var _fs_bonus: float = float(get_meta("_fort_shelter_bonus", 0.0))
+			if _fs_bonus > 0.0:
+				final_loss = final_loss * (1.0 - _fs_bonus)
 	hp -= final_loss
 	# v8 批次2: 反伤词缀（armor_reflect）——受到伤害时反弹给攻击者
 	# 标记 _vfx_is_reflect 防止递归（反伤伤害不再触发对方的反伤）
@@ -1422,15 +1456,16 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 				set_meta("_vfx_is_reflect", true)
 				attacker.take_damage(reflect_dmg, self)
 				set_meta("_vfx_is_reflect", false)
-	# v6.4: 受击视觉反馈（复用 construct_unit 的闪白/抖动模式）
+	# v6.4: 受击视觉反馈。v8.x: 去掉整体变色虚化（单位保持卡图清晰），改命中点血溅 + 保留抖动/击退
 	if hp > 0 and final_loss > 0:
-		_trigger_hit_flash()
 		_trigger_hit_shake()
 		# v8.3: 受击击退——从攻击者位置推方向
 		if attacker != null and is_instance_valid(attacker) and (attacker is Node2D):
 			var kb_dir: Vector2 = global_position - (attacker as Node2D).global_position
 			var kb_str: float = 6.0 if (attacker.get("explosion_radius") != null and float(attacker.get("explosion_radius")) > 0.0) else 3.0
 			_trigger_hit_knockback(kb_dir, kb_str)
+			# v8.x: 命中点血溅粒子（敌方暗红血色）
+			VfxImpactFactory.spawn_hit_blood(get_parent(), global_position, kb_dir, kb_str, false)
 		# v8.1: 血条受击闪白（接通 unit_hp_bar.trigger_damage_flash，原为未连线死功能）
 		var _hpbar := get_node_or_null("HpBar")
 		if _hpbar != null and _hpbar.has_method("trigger_damage_flash"):
@@ -1442,17 +1477,11 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 	_update_hp_bar()
 	if SignalBus:
 		SignalBus.unit_damaged.emit(self, false, final_loss, global_position)
+	# v8.6: 接入 ModuleEffectHandler.on_damage_taken（与玩家单位对齐）。
+	# 激活：怒气积累、反炮兵标记（敌方 ARTILLERY）、爆反装甲。此前敌方这些改造效果全空转。
+	ModuleEffectHandler.on_damage_taken(self, attacker, final_loss)
 	if hp <= 0:
 		_die()
-
-## v7.4: 受击闪白触发（手写计时，不再 create_tween）。敌方始终 WHITE。
-func _trigger_hit_flash() -> void:
-	# 连续命中时保留旧 base（让动画连续回原色，不被中间色截断）
-	if _hit_flash_t <= 0.0:
-		_hit_flash_base_modulate = modulate
-	_hit_flash_t = _HIT_FLASH_DURATION
-	modulate = Color.WHITE
-
 
 ## v7.4: 受击缩放抖动触发（手写分段计时，不再 create_tween）。
 ## 基准必须固定为 (1,1) 并每次重置——连续高频受击时若不重置，scale 累积漂移导致敌人越打越小（历史 bug）。
@@ -1478,25 +1507,9 @@ func _trigger_hit_knockback(direction: Vector2, strength: float) -> void:
 
 
 ## v7.4: 受击动画推进（每 physics 帧调用）。与 construct_unit._update_hit_animations 对齐。
-## v8.3: flash 改三阶段（基色→武器色→回原色 0.15s）；shake 振幅加大 段长 0.035s。
+## v8.x: flash 已移除（改命中点血溅），仅剩 shake 分段插值。
+## v8.3: shake 振幅加大 段长 0.035s。
 func _update_hit_animations(delta: float) -> void:
-	if _hit_flash_t > 0.0:
-		_hit_flash_t -= delta
-		if _hit_flash_t <= 0.0:
-			_hit_flash_t = 0.0
-			modulate = _hit_flash_base_modulate
-		else:
-			var elapsed: float = _HIT_FLASH_DURATION - _hit_flash_t
-			var base_color := Color.WHITE  # 敌方始终 WHITE
-			var weapon_tint := Color(1.0, 0.95, 0.7)
-			if elapsed < 0.04:
-				modulate = base_color
-			elif elapsed < 0.09:
-				var k2: float = (elapsed - 0.04) / 0.05
-				modulate = base_color.lerp(weapon_tint, k2)
-			else:
-				var k3: float = (elapsed - 0.09) / 0.06
-				modulate = weapon_tint.lerp(_hit_flash_base_modulate, k3)
 	if _hit_shake_t >= 0.0:
 		_hit_shake_t += delta
 		if _hit_shake_t >= _HIT_SHAKE_DURATION:
@@ -1522,6 +1535,19 @@ func _die() -> void:
 	if _is_dying:
 		return
 	_is_dying = true
+	# v8.6: 接入 ModuleEffectHandler 复活检查（敌方若装 revive_on_death 改造）。
+	# on_death 返回 true 表示复活成功，中止死亡流程（与 construct_unit 对齐）。
+	var _killer_for_death: Variant = null
+	if has_meta("_last_attacker"):
+		_killer_for_death = get_meta("_last_attacker", null)
+	if _killer_for_death != null and not is_instance_valid(_killer_for_death):
+		_killer_for_death = null
+	if ModuleEffectHandler.on_death(self, _killer_for_death):
+		_is_dying = false  # 复活成功，清除死亡锁
+		return
+	# v8.6: 通知击杀者（玩家单位击杀敌方时，shield_on_kill 等击杀型改造）。
+	if _killer_for_death != null:
+		ModuleEffectHandler.on_kill(_killer_for_death)
 	# 性能优化：从空间分区网格移除
 	_unregister_from_spatial_grid()
 
@@ -1536,9 +1562,14 @@ func _die() -> void:
 		var _killer: Variant = null
 		if has_meta("_last_attacker"):
 			_killer = get_meta("_last_attacker", null)
+		# v8.6: is_instance_valid 守卫必须在 on_kill 之后（on_kill 可能触发击杀者自身的
+		# take_damage/死亡/释放，导致此处的 _killer 引用变为 freed object，as Node 会报错）。
 		if _killer != null and not is_instance_valid(_killer):
 			_killer = null
-		SignalBus.unit_killed.emit(self, _killer, false)
+		# meta 取出的对象类型信息会退化为 Object 基类，emit 信号(killer: Node)严格检查会报转换错。
+		# 显式 as Node 转换：是 Node 则传入，否则 null。
+		var _killer_node: Node = _killer as Node if (_killer != null and is_instance_valid(_killer)) else null
+		SignalBus.unit_killed.emit(self, _killer_node, false)
 	# v6.4: 死亡淡出动画（缩放+透明度），逻辑结算已完成，仅做视觉收尾
 	_play_death_fadeout()
 

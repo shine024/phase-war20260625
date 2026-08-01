@@ -145,10 +145,10 @@ static func _apply_buffs_to_unit(ally: Node, summary: Dictionary, apply: bool) -
 						if div_m > 0.0:
 							stats.set(stat_field, int(float(cur_m) / div_m))
 			"river":
-				# 架桥 → 移速加法（值较大如 1.0，转为 +80 速度）
-				var speed_delta: int = int(raw * 80.0)
-				var cur_spd: int = int(stats.get(stat_field))
-				stats.set(stat_field, maxi(0, cur_spd + (speed_delta if apply else -speed_delta)))
+				# v8.6: 架桥 → 友军部署延迟减少（与自身路径 ally_river_bonus 同口径，系数 0.05）。
+				# 原 raw*80 写 move_speed 是死属性（玩家单位格子战不移动）且数值过大（+100%移速）。
+				var cur_dd: float = float(stats.get("deploy_delay_bonus"))
+				stats.set("deploy_delay_bonus", cur_dd + (-raw * 0.05 if apply else raw * 0.05))
 
 
 # ─────────────────────────────────────────────

@@ -880,8 +880,9 @@ func _setup_spatial_grid() -> void:
 	spatial_grid.name = "SpatialGrid"
 
 	# 配置网格参数（根据战场尺寸）
-	# 战场范围: X(40-1240), Y(280-440)
-	spatial_grid.setup(100.0, 40.0, 1240.0, 280.0, 440.0)
+	# 战场范围: X(40-1240)；Y 覆盖双行交错全程（车道中心≈576，双行 ±80 → 约 496~656）。
+	# 原 Y 边界 280~440 不覆盖双行，会导致单位插不进空间网格 → 索敌/点击/AOE 全失效。
+	spatial_grid.setup(100.0, 40.0, 1240.0, 200.0, 720.0)
 
 	# 添加到场景树
 	if battlefield:

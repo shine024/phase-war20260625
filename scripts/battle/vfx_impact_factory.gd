@@ -142,6 +142,99 @@ static func spawn_crit_sparks(parent: Node2D, world_pos: Vector2, is_full_crit: 
 		_connect_deferred_release(timer, p, _release_spark_particle)
 
 
+## v8.x: 单位受击血溅（复用 debris 池）。替代 v7.4 受击"整体变色虚化"——单位保持卡图清晰，
+## 打击感外化到命中点：暗红血溅（沿弹道反向飞溅+重力下落）+ 叠加少量金色火花（BLEND_ADD 一闪）。
+## direction：弹道反方向（attacker→unit 反向），强度越大粒子越多越远。
+static var _blood_ramp: Gradient = null
+static var _spark_blood_ramp: Gradient = null
+static func spawn_hit_blood(parent: Node2D, world_pos: Vector2, direction: Vector2, strength: float, is_player: bool) -> void:
+	if parent == null or not is_instance_valid(parent):
+		return
+	if DT.is_motion_reduce():
+		return
+	# 第1层：暗红血溅（debris 池，重力下落）
+	if _active_debris < MAX_DEBRIS:
+		_active_debris += 1
+		var p := _acquire_debris_particle()
+		if p == null:
+			_active_debris -= 1
+		else:
+			# 我方/敌方血色微差（我方亮红、敌方暗红），均不饱和以免糊图
+			var d: Vector2 = direction.normalized() if direction.length() > 0.01 else Vector2.ZERO
+			p.position = world_pos
+			p.lifetime = 0.42
+			# 强度 → 数量（直射 strength=3→8 粒子；爆炸 6→14；暴击 10→20）
+			var n: int = int(clamp(strength * 2.5, 6.0, 20.0))
+			p.amount = n
+			p.emission_sphere_radius = 3.0
+			p.direction = d
+			p.spread = 70.0
+			p.initial_velocity_min = 60.0
+			p.initial_velocity_max = 150.0
+			p.gravity = Vector2(0, 220.0)
+			p.scale_amount_min = 1.6
+			p.scale_amount_max = 3.0
+			p.color_ramp = _get_blood_ramp(is_player)
+			# 血溅不用 ADD（叠亮会糊），改普通混合
+			p.material = null
+			parent.add_child(p)
+			var tree := p.get_tree()
+			if tree != null:
+				var timer := tree.create_timer(p.lifetime + 0.1)
+				_connect_deferred_release(timer, p, _release_debris_particle)
+	# 第2层：金色火花（spark 池，ADD 一闪即逝）—— 承担"打击感高光"
+	if _active_sparks < MAX_SPARKS:
+		_active_sparks += 1
+		var sp := _acquire_spark_particle()
+		if sp == null:
+			_active_sparks -= 1
+		else:
+			var d: Vector2 = direction.normalized() if direction.length() > 0.01 else Vector2.ZERO
+			sp.position = world_pos
+			sp.lifetime = 0.16
+			sp.amount = int(clamp(strength * 1.2, 4.0, 12.0))
+			sp.emission_sphere_radius = 2.0
+			sp.direction = d
+			sp.spread = 90.0
+			sp.initial_velocity_min = 90.0
+			sp.initial_velocity_max = 200.0
+			sp.gravity = Vector2(0, 0)
+			sp.scale_amount_min = 1.0
+			sp.scale_amount_max = 1.8
+			sp.color_ramp = _get_blood_spark_ramp()
+			parent.add_child(sp)
+			var tree2 := sp.get_tree()
+			if tree2 != null:
+				var timer2 := tree2.create_timer(sp.lifetime + 0.1)
+				_connect_deferred_release(timer2, sp, _release_spark_particle)
+
+
+## v8.x: 血溅 Gradient 缓存（敌我各一份，alpha 1.0→0.0 渐隐）
+static var _blood_ramp_player: Gradient = null
+static var _blood_ramp_enemy: Gradient = null
+static func _get_blood_ramp(is_player: bool) -> Gradient:
+	var target := _blood_ramp_player if is_player else _blood_ramp_enemy
+	if target != null:
+		return target
+	var base_c: Color = Color(0.82, 0.18, 0.12) if is_player else Color(0.62, 0.10, 0.07)
+	var g := Gradient.new()
+	g.add_point(0, Color(base_c.r, base_c.g, base_c.b, 1.0))
+	g.add_point(1.0, Color(base_c.r, base_c.g, base_c.b, 0.0))
+	if is_player:
+		_blood_ramp_player = g
+	else:
+		_blood_ramp_enemy = g
+	return g
+
+
+static func _get_blood_spark_ramp() -> Gradient:
+	if _spark_blood_ramp == null:
+		_spark_blood_ramp = Gradient.new()
+		_spark_blood_ramp.add_point(0, Color(1.0, 0.85, 0.4, 1.0))
+		_spark_blood_ramp.add_point(1.0, Color(1.0, 0.55, 0.15, 0.0))
+	return _spark_blood_ramp
+
+
 ## v7.4: 炮口火焰（复用 spark 池，替代 bullet.gd 每次 new CPUParticles2D+Gradient）。
 ## 参数对齐原 bullet._spawn_muzzle_effect 的配置。
 static func spawn_muzzle_flash(parent: Node2D, local_pos: Vector2, facing_right: bool) -> void:

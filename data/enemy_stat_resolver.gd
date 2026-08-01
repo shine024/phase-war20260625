@@ -212,39 +212,49 @@ static func resolve_classic_enemy(archetype_id: String, ctx: EnemyStatContext) -
 		atk_a = float(cfg.get("attack_armor", 0.0)) * dmg_mul_chain
 		atk_air = float(cfg.get("attack_air", 0.0)) * dmg_mul_chain
 	else:
-		# v6.4: 旧一维数据按 combat_kind 智能派生三维攻击（不再对装甲/对空=0）
+		# v6.4: 旧一维数据按 combat_kind 智能派生三维攻击
+		# v8.6: 非防空地面单位对空=0（对空需显式配置 attack_air 或防空 tag，防空能力由
+		#   enemy_unit_manifest 显式三维数据或 weapon_type=FLAK 保证，原 0.2-0.3× 派生导致
+		#   经典波次敌方步兵/装甲/堡垒都能打空军，与玩家方"非防空打不到空军"不对称）
 		var base_atk: float = float(cfg.get("attack_damage", 10.0)) * dmg_mul_chain
 		var ck_atk: int = int(cfg.get("combat_kind", 0))
+		var wt: int = int(cfg.get("weapon_type", 0))
+		var is_aa_by_tag: bool = false
+		var tags_var: Variant = cfg.get("tags", [])
+		if tags_var is Array:
+			for _t in tags_var:
+				var _ts: String = String(_t).to_lower()
+				if _ts in ["aa", "anti_air", "flak", "sam"]:
+					is_aa_by_tag = true
+					break
+		var is_aa: bool = is_aa_by_tag or (wt == 7)  # FLAK=7 视为防空专武
 		match ck_atk:
 			GC.CombatKind.LIGHT:
-				# 步兵：对轻装强，对装甲中，对空中低
 				atk_l = base_atk
 				atk_a = base_atk * 0.6
-				atk_air = base_atk * 0.2
+				atk_air = base_atk * 0.6 if is_aa else 0.0
 			GC.CombatKind.ARMOR:
-				# 装甲：对装甲强，对轻装中，对空中低
 				atk_l = base_atk * 0.7
 				atk_a = base_atk
-				atk_air = base_atk * 0.3
+				atk_air = base_atk * 0.6 if is_aa else 0.0
 			GC.CombatKind.SUPPORT:
-				# 支援/炮兵：对装甲强（反坦克），对轻装中，对空中低
 				atk_l = base_atk * 0.5
 				atk_a = base_atk * 1.2
-				atk_air = base_atk * 0.2
+				atk_air = base_atk * 0.6 if is_aa else 0.0
 			GC.CombatKind.AIR:
 				# 空军：对空中强（空战），对装甲中，对轻装中
 				atk_l = base_atk * 0.6
 				atk_a = base_atk * 0.6
 				atk_air = base_atk
 			GC.CombatKind.FORT:
-				# 堡垒：对装甲强（反坦克炮台），对轻装中，对空中低
+				# 堡垒：对装甲强（反坦克炮台），对轻装中；防空塔(is_aa)才对空
 				atk_l = base_atk * 0.5
 				atk_a = base_atk * 1.3
-				atk_air = base_atk * 0.2
+				atk_air = base_atk * 0.6 if is_aa else 0.0
 			_:
 				atk_l = base_atk
 				atk_a = base_atk * 0.6
-				atk_air = base_atk * 0.2
+				atk_air = base_atk * 0.6 if is_aa else 0.0
 	# 兼容：保留 attack_damage 字段（取三维中的最大值或对轻装值）
 	var atk_out: float = maxf(atk_l, maxf(atk_a, atk_air))
 	# v6.3: 三维防御——cfg 有三维则直接取，否则从单一 defense 派生或用 derive_defense_by_unit_type

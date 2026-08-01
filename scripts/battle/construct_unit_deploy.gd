@@ -3,6 +3,8 @@
 class_name ConstructUnitDeploy
 extends RefCounted
 
+const _Anchors = preload("res://data/card_foot_anchors.gd")
+
 ## 根据单位 deploy_speed 计算实际部署延迟
 ## 公式：delay = (8.0 - deploy_speed) × 1.5
 ## deploy_speed=0 → 0秒（堡垒/要塞瞬间部署）
@@ -98,13 +100,10 @@ static func _configure_card_grid_player_hp_bar(u: CharacterBody2D, spr: Sprite2D
 		return
 	if hb is CanvasItem:
 		(hb as CanvasItem).visible = true
-	# 血条贴卡底：立绘居中（position.y=0），血条放在立绘下半边下方。
-	var half_h: float = 0.0
-	var spr_y: float = 0.0
-	if spr != null and spr.texture != null:
-		half_h = float(spr.texture.get_height()) * absf(spr.scale.y) * 0.5
-		spr_y = spr.position.y
-	hb.position = Vector2(0.0, spr_y + half_h + 8.0)
+	# 血条移到头顶：锚定实体顶部上方（state 图标/buff 条占更上方）。
+	# entity_top_y 为负值（实体顶在脚上方），血条再往上偏移留出状态图标空间。
+	var top_y: float = _Anchors.entity_top_y_for_sprite(spr) if spr != null else -50.0
+	hb.position = Vector2(0.0, top_y - 14.0)
 	if hb.has_method("set_side"):
 		hb.set_side(true)
 	if hb.has_method("set_folded"):

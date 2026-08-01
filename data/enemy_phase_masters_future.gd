@@ -21,7 +21,24 @@ const ERA_MASTERS: Array = [
 				"effects": {"atk_light": 0.15, "atk_armor": 0.15, "atk_air": 0.15}
 			}
 		],
-		"active_spells": [],
+		"active_spells": [
+			{
+				"id": "abyss_void",
+				"name": "深渊降临",
+				"description": "每12秒引发虚空灾变，对全体玩家单位造成毁灭范围伤害",
+				"effect": "void_apocalypse",
+				"cooldown": 12.0,
+				"params": {"damage_mult": 1.6}
+			},
+			{
+				"id": "abyss_devour",
+				"name": "深渊吞噬",
+				"description": "每10秒对生命最高的玩家单位发动吞噬打击",
+				"effect": "devour_single",
+				"cooldown": 10.0,
+				"params": {"damage_mult": 1.8}
+			}
+		],
 		"passive_spells": [
 			{
 				"id": "teleport_behind",
@@ -76,7 +93,23 @@ const ERA_MASTERS: Array = [
 				"effects": {"cheat_death_chance": 0.40}
 			}
 		],
-		"active_spells": [],
+		"active_spells": [
+			{
+				"id": "hephaestus_aegis",
+				"name": "神之壁垒",
+				"description": "每12秒为自身施加35%最大生命值护盾",
+				"effect": "ward_bulwark",
+				"cooldown": 12.0,
+				"params": {"shield_pct": 0.35}
+			},
+			{
+				"id": "hephaestus_forge",
+				"name": "神之熔炉",
+				"description": "每14秒锻造钢铁神兵单位增援战场",
+				"effect": "forge_summon",
+				"cooldown": 14.0
+			}
+		],
 		"passive_spells": [
 			{
 				"id": "massive_heal_aura",
@@ -122,7 +155,24 @@ const ERA_MASTERS: Array = [
 				"effects": {"global_dot": 150}
 			}
 		],
-		"active_spells": [],
+		"active_spells": [
+			{
+				"id": "hecate_inferno",
+				"name": "魔神地狱火",
+				"description": "每11秒引爆地狱烈焰，对全体玩家单位造成毁灭范围伤害",
+				"effect": "hell_inferno",
+				"cooldown": 11.0,
+				"params": {"damage_mult": 1.7}
+			},
+			{
+				"id": "hecate_apocalypse",
+				"name": "末日审判",
+				"description": "每14秒召唤陨石雨，对全体玩家单位造成末日伤害",
+				"effect": "meteor_apocalypse",
+				"cooldown": 14.0,
+				"params": {"damage_mult": 1.6}
+			}
+		],
 		"passive_spells": [
 			{
 				"id": "auto_resurrect",
@@ -175,7 +225,24 @@ const ERA_MASTERS: Array = [
 				"effects": {"auto_thunder_dome": {"interval": 60.0, "duration": 5.0}}
 			}
 		],
-		"active_spells": [],
+		"active_spells": [
+			{
+				"id": "thor_mjolnir",
+				"name": "雷霆之锤",
+				"description": "每10秒释放连锁闪电，跳跃打击玩家单位",
+				"effect": "tesla_chain",
+				"cooldown": 10.0,
+				"params": {"damage_mult": 1.7}
+			},
+			{
+				"id": "thor_judgment",
+				"name": "雷神审判",
+				"description": "每12秒对生命最高的玩家单位降下雷罚",
+				"effect": "god_weapon_single",
+				"cooldown": 12.0,
+				"params": {"damage_mult": 1.8}
+			}
+		],
 		"passive_spells": [],
 		"equipment": {
 			"phase_instrument": "pi_thunder_05",
@@ -213,7 +280,32 @@ const ERA_MASTERS: Array = [
 				"effects": {"instant_delete": {"cooldown": 90.0}}
 			}
 		],
-		"active_spells": [],
+		"active_spells": [
+			{
+				"id": "nyx_eternal_night",
+				"name": "永夜降临",
+				"description": "每10秒引发虚空灾变，对全体玩家单位造成毁灭范围伤害",
+				"effect": "void_apocalypse",
+				"cooldown": 10.0,
+				"params": {"damage_mult": 1.7}
+			},
+			{
+				"id": "nyx_darkness",
+				"name": "永恒黑暗",
+				"description": "每13秒笼罩玩家单位于黑暗，大幅降低攻速暴击闪避",
+				"effect": "darkness_debuff",
+				"cooldown": 13.0,
+				"params": {"attack_speed_penalty": 0.40, "crit_penalty": 0.30, "dodge_penalty": 0.25, "duration": 7.0}
+			},
+			{
+				"id": "nyx_devour",
+				"name": "虚空吞噬",
+				"description": "每11秒对生命最高的玩家单位发动吞噬打击",
+				"effect": "devour_single",
+				"cooldown": 11.0,
+				"params": {"damage_mult": 1.9}
+			}
+		],
 		"passive_spells": [
 			{
 				"id": "goddess_mastery",
@@ -268,7 +360,32 @@ const ERA_MASTERS: Array = [
 				"effects": {"hp": 0.15, "def_light": 0.10, "def_armor": 0.10, "def_air": 0.10}
 			}
 		],
-		"active_spells": [],
+		"active_spells": [
+			{
+				"id": "omega_apocalypse",
+				"name": "终末启示",
+				"description": "每9秒引发终极虚空灾变，对全体玩家单位造成毁灭范围伤害",
+				"effect": "void_apocalypse",
+				"cooldown": 9.0,
+				"params": {"damage_mult": 2.0}
+			},
+			{
+				"id": "omega_thunder",
+				"name": "终末雷霆",
+				"description": "每11秒释放终极连锁闪电，跳跃打击玩家单位",
+				"effect": "tesla_chain",
+				"cooldown": 11.0,
+				"params": {"damage_mult": 2.0}
+			},
+			{
+				"id": "omega_judgment",
+				"name": "终焉裁决",
+				"description": "每10秒对生命最高的玩家单位降下终焉打击",
+				"effect": "god_weapon_single",
+				"cooldown": 10.0,
+				"params": {"damage_mult": 2.0}
+			}
+		],
 		"passive_spells": [
 			{
 				"id": "omni_mastery",

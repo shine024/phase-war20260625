@@ -14,6 +14,7 @@ const SwarmEnemyControllerScript = preload("res://scenes/units/swarm_enemy_contr
 const _CardGridSlotsPerSide: int = BattleSlotGrid.SLOT_COUNT
 const _DamageNumberDisplayScript = preload("res://scenes/effects/damage_number_display.gd")
 const ConstructUnitScene = preload("res://scenes/units/construct_unit.tscn")
+const FactionSkillEffectHandler = preload("res://scripts/battle/faction_skill_effect_handler.gd")
 const DEPLOY_FAIL_LOG_THROTTLE_MS := 350
 # v7.x: 诊断开关——对比「上场端」vs「评估端」单卡 stats，定位战场 vs 面板战力差异源
 const DEBUG_DEPLOY_POWER_LOG := false
@@ -1143,6 +1144,10 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 	# v6.14: 注入激活势力技能 stat_bonus（非空才注入，避免无势力时多余计算）
 	if not _active_faction_fx.is_empty():
 		_apply_active_faction_stat_bonus(stats, _active_faction_fx.get("stat_bonus", {}))
+		# v8.6: 势力技能 special 类效果（13+ 种特殊效果此前战斗端零消费）。
+		# 生成期处理 armor_penetration/conditional.stat/stacking_bonus/variety_bonus，
+		# 并把需运行时判定的 special 快照存到 stats meta（供事件/tick handler 读取）。
+		FactionSkillEffectHandler.apply_setup_effects(stats, _active_faction_fx.get("special", []))
 	# v7.x 修复 B1（affix 战斗空转）：原注释误称"词条已由 build_stats_from_card 内部处理"，
 	# 但 build_stats_from_card / apply_growth_to_stats 实际都不读 affix，导致词条养成在实战完全失效。
 	# 在养成加成之后、相位仪/符文加成之前应用词条（与 UI 预览面板调用方式一致）。

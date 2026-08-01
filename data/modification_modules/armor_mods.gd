@@ -305,20 +305,21 @@ const DATA: Dictionary = {
 		# v8.x: 原 smoke_ignore→暴击 + attack_range+30px（射程加成过小几乎无感）。
 		# 项目无独立烟雾战术系统，smoke_ignore bool 被重定向为固定 +15% 暴击；
 		# 现 effects 直接写 crit_chance=0.15（语义对齐"热成像=看得清=命中要害"），射程加成删除。
+		# v8.6: 稀有度 rare→epic（+15%暴击比所有 epic 同类 +8~10% 都强，倒挂修正）。
 		description = "热成像瞄准，暴击率+15%",
 		icon = "res://assets/ui/icons/mod_icons/mod_optics.png",
-		rarity = "rare",
-	power_mult = 1.3,
-		cost_research = 200,
-		cost_install = 100,
-		slot_type = "optics",
-		conflict_group = "optics",
-		effects = {
-			crit_chance = 0.15,    # +15% 暴击率（热成像精准锁定）
-		},
-		unlock_conditions = {
-			required_level = 3,
-		}
+		rarity = "epic",
+	power_mult = 1.6,
+	cost_research = 240,
+	cost_install = 120,
+	slot_type = "optics",
+	conflict_group = "optics",
+	effects = {
+		crit_chance = 0.15,    # +15% 暴击率（热成像精准锁定）
+	},
+	unlock_conditions = {
+		required_level = 5,
+	}
 	},
 
 	# ─── 特殊环境改造 ───────────────────────
@@ -373,7 +374,7 @@ const DATA: Dictionary = {
 		name = "战术数据链",
 		name_en = "Tactical Data Link",
 		prototype = "Link 16",
-		description = "数据链协同，暴击率+5%",
+		description = "数据链协同：自身暴击+5%，周围友军暴击+10%",
 		icon = "res://assets/ui/icons/mod_icons/mod_command.png",
 		rarity = "epic",
 	power_mult = 1.6,

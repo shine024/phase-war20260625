@@ -536,7 +536,7 @@ static func _extract_aura_summary_to_meta(stats: UnitStats, mods: Array) -> void
 		"ally_ammo": "attack_interval", "command_efficiency": "attack_interval",
 		"ally_detection": "dodge_chance",
 		"ally_arty_bonus": "attack_armor",
-		"ally_river_bonus": "move_speed",
+		"ally_river_bonus": "deploy_delay_bonus",
 		"ally_bonus": "attack_all",
 	}
 	var summary: Dictionary = {}  # {stat_field: {op, raw}}
@@ -671,6 +671,44 @@ static func apply_combat_kind_modifiers(stats: UnitStats) -> void:
 	# 标记来源优先级：① 卡牌 tags 字段含 stalker/engineer/ecm/sniper → ② card_id 前缀匹配
 	# 注意：这里只打标记，实际机制（隐身/首击/光环）由 construct_unit._init_unit_mechanisms 读取 meta 实现
 	_apply_v8_unit_type_meta(stats)
+	# v8.6: 把 attack_*_bonus 同步到 weapon_slots[].damage（战斗主路径读 weapon.damage 不读 get_attack_vs，
+	#   否则装甲碾压/防空封锁/对堡垒特攻的 bonus 字段全部空转）。weapon_slots 在本函数之前已建立。
+	_sync_kind_bonus_to_weapon_slots(stats)
+
+
+## v8.6: 把 attack_light_bonus / attack_air_bonus / attack_fort_bonus 同步到 weapon_slots[].damage。
+## 战斗主路径（calculate_damage_with_weapon）读 weapon.damage 而非 get_attack_vs，
+## 若不同步，兵种固定机制（装甲碾压 +20%、防空封锁 +25%、对堡垒特攻）全部空转。
+## 槽位映射：slot[0]→LIGHT/SUPPORT、slot[1]→ARMOR/FORT、slot[2]→AIR。
+static func _sync_kind_bonus_to_weapon_slots(stats: UnitStats) -> void:
+	if stats == null or stats.weapon_slots.is_empty():
+		return
+	var light_bonus: float = float(stats.attack_light_bonus)
+	var air_bonus: float = float(stats.attack_air_bonus)
+	var fort_bonus: float = float(stats.attack_fort_bonus)
+	if light_bonus <= 0.0 and air_bonus <= 0.0 and fort_bonus <= 0.0:
+		return
+	for i in range(stats.weapon_slots.size()):
+		var w: Variant = stats.weapon_slots[i]
+		if not (w is Dictionary):
+			continue
+		var wd: Dictionary = w
+		var base_dmg: float = float(wd.get("damage", 0.0))
+		if base_dmg <= 0.0:
+			continue
+		var mult: float = 1.0
+		# slot[0] 对轻装（装甲碾压加成）
+		if i == 0 and light_bonus > 0.0:
+			mult += light_bonus
+		# slot[1] 对装甲/堡垒（对堡垒特攻加成叠加到装甲槽）
+		if i == 1 and fort_bonus > 0.0:
+			mult += fort_bonus
+		# slot[2] 对空中（防空封锁加成）
+		if i == 2 and air_bonus > 0.0:
+			mult += air_bonus
+		if mult > 1.0:
+			wd["damage"] = maxf(0.1, base_dmg * mult)
+			stats.weapon_slots[i] = wd
 
 
 ## v8.x: 根据卡牌 tags 或 card_id 前缀，为新兵种（STALKER/ENGINEER/ECM/SNIPER）打 meta 标记

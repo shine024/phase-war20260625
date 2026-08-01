@@ -21,7 +21,16 @@ const ERA_MASTERS: Array = [
 				"effects": {"synergy_boost": 0.25, "synergy_types": ["steel", "flame"]}
 			}
 		],
-		"active_spells": [],
+		"active_spells": [
+			{
+				"id": "molten_bombard",
+				"name": "熔铁轰炸",
+				"description": "每17秒对全体玩家单位倾泻熔铁弹幕",
+				"effect": "bombard_explosion",
+				"cooldown": 17.0,
+				"params": {"damage_mult": 1.1}
+			}
+		],
 		"passive_spells": [
 			{
 				"id": "heat_treatment",
@@ -68,7 +77,24 @@ const ERA_MASTERS: Array = [
 				"effects": {"synergy_boost": 0.20, "synergy_types": ["thunder", "steel"], "armor_reflect": 80}
 			}
 		],
-		"active_spells": [],
+		"active_spells": [
+			{
+				"id": "victor_chain_lightning",
+				"name": "雷霆贯穿",
+				"description": "每15秒释放连锁闪电，跳跃打击玩家单位",
+				"effect": "chain_lightning",
+				"cooldown": 15.0,
+				"params": {"damage_mult": 1.2}
+			},
+			{
+				"id": "victor_plate",
+				"name": "钢板护盾",
+				"description": "每22秒为自身施加22%最大生命值护盾",
+				"effect": "plate_shield",
+				"cooldown": 22.0,
+				"params": {"shield_pct": 0.22}
+			}
+		],
 		"passive_spells": [
 			{
 				"id": "conductive_armor",
@@ -115,7 +141,24 @@ const ERA_MASTERS: Array = [
 				"effects": {"synergy_boost": 0.20, "synergy_types": ["flame", "void"], "burn_energy_drain_mult": 2.0}
 			}
 		],
-		"active_spells": [],
+		"active_spells": [
+			{
+				"id": "seraphina_void",
+				"name": "虚空烈焰",
+				"description": "每16秒引爆虚空烈焰，对全体玩家单位造成范围伤害",
+				"effect": "void_apocalypse",
+				"cooldown": 16.0,
+				"params": {"damage_mult": 1.2}
+			},
+			{
+				"id": "seraphina_curse",
+				"name": "炽焰诅咒",
+				"description": "每18秒削弱玩家单位，降低攻速与闪避",
+				"effect": "weakness_debuff",
+				"cooldown": 18.0,
+				"params": {"attack_speed_penalty": 0.25, "dodge_penalty": 0.20, "duration": 5.0}
+			}
+		],
 		"passive_spells": [
 			{
 				"id": "entropy_flame",
@@ -164,7 +207,23 @@ const ERA_MASTERS: Array = [
 				"effects": {"damage_cap": 0.30, "unit_count_defense": 0.05}
 			}
 		],
-		"active_spells": [],
+		"active_spells": [
+			{
+				"id": "atlas_bulwark",
+				"name": "不朽壁垒",
+				"description": "每16秒为自身施加28%最大生命值护盾",
+				"effect": "ward_bulwark",
+				"cooldown": 16.0,
+				"params": {"shield_pct": 0.28}
+			},
+			{
+				"id": "atlas_summon",
+				"name": "不朽军团",
+				"description": "每20秒召唤不朽钢铁单位增援",
+				"effect": "forge_summon",
+				"cooldown": 20.0
+			}
+		],
 		"passive_spells": [
 			{
 				"id": "unbreakable",
@@ -211,7 +270,16 @@ const ERA_MASTERS: Array = [
 				"effects": {"atk_light": 0.15, "atk_armor": 0.15, "atk_air": 0.15, "auto_revive_once": {"hp_percent": 0.30}}
 			}
 		],
-		"active_spells": [],
+		"active_spells": [
+			{
+				"id": "surtr_meteor",
+				"name": "诸神黄昏",
+				"description": "每15秒召唤陨石雨，对全体玩家单位造成毁灭伤害",
+				"effect": "meteor_apocalypse",
+				"cooldown": 15.0,
+				"params": {"damage_mult": 1.3}
+			}
+		],
 		"passive_spells": [
 			{
 				"id": "phoenix_rebirth_auto",
@@ -258,7 +326,24 @@ const ERA_MASTERS: Array = [
 				"effects": {"atk_light": 0.15, "atk_armor": 0.15, "atk_air": 0.15}
 			}
 		],
-		"active_spells": [],
+		"active_spells": [
+			{
+				"id": "thunder_lord_chain",
+				"name": "万雷齐发",
+				"description": "每14秒释放强力连锁闪电，跳跃打击玩家单位",
+				"effect": "thunder_chain",
+				"cooldown": 14.0,
+				"params": {"damage_mult": 1.3}
+			},
+			{
+				"id": "thunder_lord_judgment",
+				"name": "雷神之裁",
+				"description": "每16秒对生命最高的玩家单位降下雷罚",
+				"effect": "god_weapon_single",
+				"cooldown": 16.0,
+				"params": {"damage_mult": 1.4}
+			}
+		],
 		"passive_spells": [
 			{
 				"id": "auto_lightning",

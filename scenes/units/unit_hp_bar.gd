@@ -1,9 +1,9 @@
 extends Node2D
 ## 单位头顶血条：可折叠（紧凑一线）或展开显示，增强视觉效果
 
-const BAR_WIDTH: float = 44.0
-const HEIGHT_COMPACT: float = 4.0
-const HEIGHT_EXPANDED: float = 8.0
+const BAR_WIDTH: float = 98.0  # 固定宽度（130 缩减 1/4 → 98）
+const HEIGHT_COMPACT: float = 15.0  # 折叠高度（16→15）
+const HEIGHT_EXPANDED: float = 21.0  # 展开高度（22→21）
 
 var _ratio: float = 1.0
 var _target_ratio: float = 1.0
@@ -14,16 +14,19 @@ var _fill: Polygon2D
 var _glow: Polygon2D
 var _shield_bg: Polygon2D
 var _shield_fill: Polygon2D
+var _hp_label: Label = null  # HP文本标签（优先使用，自动创建后备）
 var _damage_flash: float = 0.0
 var _heal_flash: float = 0.0
 var _tween: Tween = null
-## 预分配多边形数组（避免每帧 PackedVector2Array 分配）
+## 预分配多边形数组
 var _fill_pts: PackedVector2Array = PackedVector2Array([Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO])
 var _bg_pts: PackedVector2Array = PackedVector2Array([Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO])
 var _glow_pts: PackedVector2Array = PackedVector2Array([Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO])
 var _shield_pts: PackedVector2Array = PackedVector2Array([Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO])
 var _shield_bg_pts: PackedVector2Array = PackedVector2Array([Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO])
 var _shield_gain: float = 0.0  # 护盾获得时的闪光值（0-1）
+var _cur_hp: float = 0.0       # 当前HP（用于文本显示）
+var _max_hp: float = 100.0     # 最大HP（用于文本显示）
 
 ## 血条颜色配置
 var _player_colors: Dictionary = {
@@ -50,21 +53,45 @@ func _ready() -> void:
 	_glow = get_node_or_null("Glow") as Polygon2D
 	_shield_bg = get_node_or_null("ShieldBg") as Polygon2D
 	_shield_fill = get_node_or_null("ShieldFill") as Polygon2D
-	# v7.x 选中目标高亮：金色描边（环绕血条）
+	_hp_label = get_node_or_null("HpLabel") as Label
+	# 如果 HpLabel 不存在，自动创建作为后备
+	if _hp_label == null:
+		_hp_label = Label.new()
+		_hp_label.name = "HpLabel"
+		add_child(_hp_label)
+	# 统一 Label 文字样式（覆盖 tscn 初始值）
+	# 固定白字 + 黑描边：在任何血条底色（玩家绿/敌方红）上都清晰可读
+	# Godot 4.x：Label 无 outline_size/outline_color 直接属性，须用主题覆盖；
+	# 对齐属性名为 horizontal_alignment/vertical_alignment，值用枚举常量（非裸 int）
+	_hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_hp_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP  # 文字紧靠血条上边
+	_hp_label.modulate = Color(1, 1, 1, 1)
+	_hp_label.add_theme_constant_override("outline_size", 3)
+	_hp_label.add_theme_color_override("outline_color", Color(0, 0, 0, 1.0))
+	_hp_label.visible = false
+	# 护盾条初始隐藏：单位出生 shield=0，set_shield() 在 shield>0 时才会显示
+	if _shield_bg != null:
+		_shield_bg.visible = false
+	if _shield_fill != null:
+		_shield_fill.visible = false
+	# 验证关键节点是否存在
+	if _bg == null or _fill == null or _shield_bg == null or _shield_fill == null:
+		push_error("HpBar: Missing critical nodes! Check tscn structure")
+	# v7.x 选中目标高亮：金色描边
 	_selection_border = Polygon2D.new()
 	_selection_border.name = "SelectionBorder"
 	_selection_border.z_index = 15
 	_selection_border.visible = false
 	add_child(_selection_border)
 	_update_selection_border()
-	# 监听选中信号实时刷新（不依赖 _update_hp_bar 的 HP 变化触发）
+	# 监听选中信号
 	var sb = get_node_or_null("/root/SignalBus")
-	if sb and sb.has_signal("unit_selected"):
+	if sb != null and sb.has_signal("unit_selected"):
 		sb.unit_selected.connect(_on_unit_selected)
 	_update_view()
 	set_process(false)
 
-## 选中信号回调：比较信号携带的 unit 与本血条的宿主单位
+## 选中信号回调
 func _on_unit_selected(unit: Node, _is_player: bool, _pos: Vector2) -> void:
 	var parent := get_parent()
 	var now_selected: bool = (is_instance_valid(unit) and unit == parent)
@@ -73,18 +100,16 @@ func _on_unit_selected(unit: Node, _is_player: bool, _pos: Vector2) -> void:
 		if _selection_border != null:
 			_selection_border.visible = _selected
 
-## 外部也可直接设置选中态（兼容旧调用路径）
+## 外部设置选中态
 func set_selected(value: bool) -> void:
-	if _selected == value:
-		return
+	if _selected == value: return
 	_selected = value
 	if _selection_border != null:
 		_selection_border.visible = _selected
 
-## 选中描边：金色矩形框，略大于血条（宽+8 / 高+4），半透明金
+## 选中描边
 func _update_selection_border() -> void:
-	if _selection_border == null:
-		return
+	if _selection_border == null: return
 	var w: float = BAR_WIDTH + 10.0
 	var h: float = HEIGHT_EXPANDED + 6.0
 	var x0: float = -w * 0.5
@@ -93,71 +118,51 @@ func _update_selection_border() -> void:
 		Vector2(x0, y0), Vector2(x0 + w, y0),
 		Vector2(x0 + w, y0 + h), Vector2(x0, y0 + h)
 	])
-	_selection_border.color = Color(0.98, 0.75, 0.15, 0.85)  # 金色（与精英角标同源）
+	_selection_border.color = Color(0.98, 0.75, 0.15, 0.85)
 
 func _needs_active_process() -> bool:
-	if absf(_ratio - _target_ratio) > 0.001:
-		return true
-	if _damage_flash > 0.0 or _heal_flash > 0.0:
-		return true
-	if _shield_gain > 0.0:
-		return true
-	# 低血量脉动发光依赖每帧刷新
-	if _ratio <= 0.3:
-		return true
+	if absf(_ratio - _target_ratio) > 0.001: return true
+	if _damage_flash > 0.0 or _heal_flash > 0.0: return true
+	if _shield_gain > 0.0: return true
+	if _ratio <= 0.3: return true
 	return false
 
 func _sync_process_state() -> void:
 	set_process(_needs_active_process())
 
 func _process(delta: float) -> void:
-	# 平滑过渡血量变化
 	if abs(_ratio - _target_ratio) > 0.001:
 		var lerp_speed = 5.0
 		_ratio = lerp(_ratio, _target_ratio, lerp_speed * delta)
 		_update_fill_only()
-
-	# 处理伤害闪烁效果
 	if _damage_flash > 0:
 		_damage_flash -= delta * 3.0
-		if _damage_flash < 0:
-			_damage_flash = 0
+		if _damage_flash < 0: _damage_flash = 0
 		_update_flash_effect()
-
-	# 处理治疗闪烁效果
 	if _heal_flash > 0:
 		_heal_flash -= delta * 2.0
-		if _heal_flash < 0:
-			_heal_flash = 0
+		if _heal_flash < 0: _heal_flash = 0
 		_update_heal_effect()
-
-	# 处理护盾增益闪光
 	if _shield_gain > 0:
 		_shield_gain -= delta * 3.0
-		if _shield_gain < 0:
-			_shield_gain = 0
+		if _shield_gain < 0: _shield_gain = 0
 		_update_shield_gain_effect()
-
 	_sync_process_state()
 
-## 设置血量比例（带动画）
 func set_ratio(r: float) -> void:
 	_target_ratio = clampf(r, 0.0, 1.0)
 	_sync_process_state()
 
-## 立即设置血量比例（无动画）
 func set_ratio_immediate(r: float) -> void:
 	_target_ratio = clampf(r, 0.0, 1.0)
 	_ratio = _target_ratio
 	_update_view()
 	_sync_process_state()
 
-## 触发伤害闪烁效果
 func trigger_damage_flash() -> void:
 	_damage_flash = 1.0
 	set_process(true)
 
-## 触发治疗闪烁效果
 func trigger_heal_flash() -> void:
 	_heal_flash = 1.0
 	set_process(true)
@@ -167,22 +172,29 @@ func set_folded(folded: bool) -> void:
 	_update_view()
 	_sync_process_state()
 
-## 查询当前血条渲染高度（折叠=4px / 展开=8px）
-## 供 buff_strip 等卡底元素计算避让间距用，避免硬编码与折叠态脱钩
 func get_bar_height() -> float:
 	return HEIGHT_COMPACT if _folded else HEIGHT_EXPANDED
 
 func set_side(is_player: bool) -> void:
 	_is_player = is_player
 	_update_view()
+	# HP 文字固定白色 + 黑描边（在 _ready 设定），不跟随阵营色，
+	# 否则白字变绿/红叠在同色血条上看不清。
 	_sync_process_state()
+
+## 设置HP文本（当前/最大HP），显示在血条内部
+func set_hp_text(cur_hp: float, max_hp: float) -> void:
+	_cur_hp = cur_hp
+	_max_hp = max_hp
+	if _hp_label != null:
+		_hp_label.text = "%d/%d" % [int(cur_hp), int(max_hp)]
+		_hp_label.visible = true
 
 func _update_view() -> void:
 	var h: float = HEIGHT_COMPACT if _folded else HEIGHT_EXPANDED
 	var half_w: float = BAR_WIDTH * 0.5
 	var half_h: float = h * 0.5
 
-	# 更新背景
 	if _bg:
 		_bg_pts.set(0, Vector2(-half_w, -half_h))
 		_bg_pts.set(1, Vector2(half_w, -half_h))
@@ -192,120 +204,112 @@ func _update_view() -> void:
 		var colors = _player_colors if _is_player else _enemy_colors
 		_bg.color = colors.bg
 
-	# 更新发光效果
 	if _glow:
 		_glow_pts.set(0, Vector2(-half_w, -half_h))
 		_glow_pts.set(1, Vector2(half_w, -half_h))
 		_glow_pts.set(2, Vector2(half_w, half_h))
 		_glow_pts.set(3, Vector2(-half_w, half_h))
 		_glow.polygon = _glow_pts
-		_glow.color = Color(0, 0, 0, 0)  # 初始不发光
+		_glow.color = Color(0, 0, 0, 0)
 
+	# 同步更新 HpLabel 位置与字号（居中于血条且不溢出）
+	# Label 在 Node2D 父节点下：position 是左上角锚点，anchor 系统无效。
+	# 需先设固定 size（与血条等大），再把 position 设为 -size/2，让 Label 框中心
+	# 对齐血条局部原点；配合 h_alignment/v_alignment=CENTER，文字就叠在血条正中。
+	# 字号随血条高度动态调整：font_size 实际渲染行高约为字号 +4~6px，
+	# 折叠态(12px)用 8pt(行高~12px)刚好不溢出；展开态(18px)用 12pt 充满。
+	if _hp_label != null:
+		var lbl_size := Vector2(BAR_WIDTH, h)
+		_hp_label.size = lbl_size
+		# position.y 上移 1px：文字 TOP 对齐时 baseline 偏下，整体上提让字紧贴血条顶边
+		_hp_label.position = Vector2(-lbl_size.x * 0.5, -lbl_size.y * 0.5 - 1.0)
+		# Godot 4.x：font_size 须用主题覆盖（add_theme_font_size_override），非直接属性
+		# 折叠态(16px高)用 12pt，展开态(22px高)用 16pt，文字紧靠血条上边
+		_hp_label.add_theme_font_size_override("font_size", 12 if _folded else 16)
+	
 	_update_fill_only()
 
 func _update_fill_only() -> void:
-	if _fill == null:
-		return
+	if _fill == null: return
 
 	var h: float = HEIGHT_COMPACT if _folded else HEIGHT_EXPANDED
 	var half_w: float = BAR_WIDTH * 0.5
 	var half_h: float = h * 0.5
 
-	# 计算填充宽度
-	var fill_w: float = BAR_WIDTH * _ratio - 2.0
-	if fill_w < 0.0:
-		fill_w = 0.0
+	var fill_w: float = BAR_WIDTH * _ratio - 4.0
+	if fill_w < 0.0: fill_w = 0.0
 
-	# 更新填充多边形（复用预分配数组）
-	_fill_pts.set(0, Vector2(-half_w + 1, -half_h + 1))
-	_fill_pts.set(1, Vector2(-half_w + 1 + fill_w, -half_h + 1))
-	_fill_pts.set(2, Vector2(-half_w + 1 + fill_w, half_h - 1))
-	_fill_pts.set(3, Vector2(-half_w + 1, half_h - 1))
+	_fill_pts.set(0, Vector2(-half_w + 2, -half_h + 2))
+	_fill_pts.set(1, Vector2(-half_w + 2 + fill_w, -half_h + 2))
+	_fill_pts.set(2, Vector2(-half_w + 2 + fill_w, half_h - 2))
+	_fill_pts.set(3, Vector2(-half_w + 2, half_h - 2))
 	_fill.polygon = _fill_pts
 
-	# 根据血量百分比选择颜色
 	var colors = _player_colors if _is_player else _enemy_colors
 	var color_key = "high"
-	if _ratio <= 0.3:
-		color_key = "low"
-	elif _ratio <= 0.6:
-		color_key = "medium"
-
+	if _ratio <= 0.3: color_key = "low"
+	elif _ratio <= 0.6: color_key = "medium"
 	_fill.color = colors[color_key]
 
-	# 低血量时添加脉动效果
-	if _ratio <= 0.3:
+	if _ratio <= 0.3 and _glow:
 		var pulse = (sin(Time.get_ticks_msec() * 0.01) + 1.0) * 0.5
-		if _glow:
-			_glow.color = colors[color_key] * Color(1, 1, 1, 0.3 * pulse)
+		_glow.color = colors[color_key] * Color(1, 1, 1, 0.3 * pulse)
 	else:
-		if _glow:
-			_glow.color = Color(0, 0, 0, 0)
+		if _glow: _glow.color = Color(0, 0, 0, 0)
 
 func _update_flash_effect() -> void:
-	if _fill:
-		_fill.color = Color.WHITE.lerp(_fill.color, 1.0 - _damage_flash)
+	if _fill: _fill.color = Color.WHITE.lerp(_fill.color, 1.0 - _damage_flash)
 
 func _update_heal_effect() -> void:
 	if _fill:
 		var heal_color = Color(0.4, 1.0, 0.6, 1.0)
 		_fill.color = heal_color.lerp(_fill.color, 1.0 - _heal_flash)
 
-## ─────────────────────────────────────────────
-##  护盾条渲染
-## ─────────────────────────────────────────────
+## ── 护盾条渲染 ──
 
-## 设置护盾值（基于 max_hp 的比例）
-func set_shield(shield_value: float, max_hp: float) -> void:
-	if _shield_bg == null or _shield_fill == null:
-		return
-	if max_hp <= 0:
-		return
+func set_shield(shield_value: float, max_hp_val: float) -> void:
+	if _shield_bg == null or _shield_fill == null or max_hp_val <= 0: return
 
-	var shield_ratio: float = shield_value / (max_hp * 2.0)  # 上限为 max_hp * 2
-	shield_ratio = clampf(shield_ratio, 0.0, 1.0)
+	var shield_ratio: float = clampf(shield_value / (max_hp_val * 2.0), 0.0, 1.0)
+	# 护盾归零：隐藏护盾条（防止残留显示旧的护盾比例）。>0 时确保可见。
+	if shield_ratio <= 0.0:
+		_shield_bg.visible = false
+		_shield_fill.visible = false
+		return
+	_shield_bg.visible = true
+	_shield_fill.visible = true
 
 	var half_w: float = BAR_WIDTH * 0.5
-	var shield_h: float = 4.0  # v7.x: 从1px加到4px，更明显
+	var shield_h: float = 6.0
 
-	# 更新护盾背景（圆角矩形）
 	var sb_pts: PackedVector2Array = _shield_bg_pts
-	sb_pts.set(0, Vector2(-half_w, -shield_h - 5.5))
-	sb_pts.set(1, Vector2(half_w, -shield_h - 5.5))
-	sb_pts.set(2, Vector2(half_w, -shield_h - 1.5))
-	sb_pts.set(3, Vector2(-half_w, -shield_h - 1.5))
+	sb_pts.set(0, Vector2(-half_w + 2, -shield_h - 8.0))
+	sb_pts.set(1, Vector2(half_w - 2, -shield_h - 8.0))
+	sb_pts.set(2, Vector2(half_w - 2, -shield_h - 2.0))
+	sb_pts.set(3, Vector2(-half_w + 2, -shield_h - 2.0))
 	_shield_bg.polygon = sb_pts
 
-	# 更新护盾填充
-	var shield_fill_w: float = BAR_WIDTH * shield_ratio - 1.0
-	if shield_fill_w < 0.0:
-		shield_fill_w = 0.0
+	var shield_fill_w: float = BAR_WIDTH * shield_ratio - 4.0
+	if shield_fill_w < 0.0: shield_fill_w = 0.0
 	var sf_pts: PackedVector2Array = _shield_pts
-	sf_pts.set(0, Vector2(-half_w + 0.5, -shield_h - 4.9))
-	sf_pts.set(1, Vector2(-half_w + 0.5 + shield_fill_w, -shield_h - 4.9))
-	sf_pts.set(2, Vector2(-half_w + 0.5 + shield_fill_w, -shield_h - 2.1))
-	sf_pts.set(3, Vector2(-half_w + 0.5, -shield_h - 2.1))
+	sf_pts.set(0, Vector2(-half_w + 3, -shield_h - 7.0))
+	sf_pts.set(1, Vector2(-half_w + 3 + shield_fill_w, -shield_h - 7.0))
+	sf_pts.set(2, Vector2(-half_w + 3 + shield_fill_w, -shield_h - 3.0))
+	sf_pts.set(3, Vector2(-half_w + 3, -shield_h - 3.0))
 	_shield_fill.polygon = sf_pts
 
-	# 护盾颜色：按比例渐变——满护盾亮蓝→低护盾暗蓝→极低时偏黄
 	var shield_color: Color
-	if shield_ratio > 0.6:
-		shield_color = Color(0.2, 0.7, 1.0, 0.95)       # 亮蓝
-	elif shield_ratio > 0.3:
-		shield_color = Color(0.3, 0.85, 1.0, 0.9)        # 中蓝
-	else:
-		shield_color = Color(0.9, 0.7, 0.3, 0.85)        # 橙黄警告色
+	if shield_ratio > 0.6: shield_color = Color(0.2, 0.7, 1.0, 0.95)
+	elif shield_ratio > 0.3: shield_color = Color(0.3, 0.85, 1.0, 0.9)
+	else: shield_color = Color(0.9, 0.7, 0.3, 0.85)
 	_shield_fill.color = shield_color
 
 func _update_shield_gain_effect() -> void:
-	if _shield_fill == null or _shield_gain <= 0.0:
-		return
-	# 护盾获得时闪白光
+	if _shield_fill == null or _shield_gain <= 0.0: return
 	var flash_color: Color = Color.WHITE.lerp(Color(0.3, 0.7, 1.0, 0.9), 1.0 - _shield_gain)
 	_shield_fill.color = flash_color
 	_shield_fill.modulate = Color(1.0, 1.0, 1.0, 0.5 + _shield_gain * 0.5)
 
-func trigger_shield_gain(amount: float, max_hp: float) -> void:
-	"""护盾增加时触发闪光动画"""
+func trigger_shield_gain(amount: float, max_hp_val: float) -> void:
 	_shield_gain = 1.0
 	set_process(true)

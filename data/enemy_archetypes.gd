@@ -4,6 +4,7 @@ class_name EnemyArchetypes
 const _ARCHETYPES_JSON_PATH := "res://data/json/enemy_archetypes.json"
 const CapturedUnitCards = preload("res://data/captured_unit_cards.gd")
 const UnifiedCardTable = preload("res://data/unified_card_table.gd")
+const CardFootAnchors = preload("res://data/card_foot_anchors.gd")  # 战场视觉数据单一真理源（缩放/脚部/头部）
 
 ## 数据子模块预加载
 const _ArchWW = preload("res://data/enemy_archetypes_ww.gd")
@@ -95,50 +96,8 @@ const WEAPONS_SUPPORT: Array = [0, 4]
 
 enum UnitKind { INFANTRY, VEHICLE, TURRET, SUPPORT }
 const UNIT_KIND_LABEL: Array[String] = ["步兵", "载具", "阵地", "支援"]
-const DEFAULT_VISUAL_SCALE: float = 1.0
-const ARCHETYPE_VISUAL_SCALE_OVERRIDES: Dictionary = {
-	# WW1
-	"ww1_inf_mp18": 0.378,
-	"ww1_inf_rifle": 0.474,
-	"ww1_sup_mg_nest": 0.318,
-	"ww1_arty_mortar": 0.33,
-	"ww1_inf_storm_e": 0.432,
-	"ww1_arm_rolls_e": 0.6,
-	"ww1_boss_av7": 0.66,
-	# WW2
-	"ww2_inf_thompson": 0.312,
-	"ww2_inf_garand": 0.324,
-	"ww2_sup_mg42": 0.318,
-	"ww2_inf_panzerschreck_e": 0.324,
-	"ww2_inf_para_e": 0.36,
-	"ww2_arm_panther_e": 1.38,
-	"ww2_boss_kingtiger": 0.66,
-	# Cold War
-	"cold_inf_ak": 0.39,
-	"cold_inf_m60": 0.342,
-	"cold_arm_btr_e": 0.552,
-	"cold_air_m113_e": 0.612,
-	"cold_inf_spetsnaz_e": 0.438,
-	"cold_arm_t72_e": 0.66,
-	"cold_boss_mig": 1.44,
-	# Modern
-	"mod_inf_marine": 0.456,
-	"mod_air_technical_e": 0.312,
-	"mod_arm_stryker_e": 0.75,
-	"mod_arty_mlrs_e": 0.84,
-	"mod_inf_delta_e": 0.552,
-	"mod_arm_abrams_e": 0.36,
-	"mod_air_apache_e": 0.78,
-	"mod_boss_command": 0.78,
-	# Future
-	"fut_air_drone": 0.9,
-	"fut_inf_cyborg": 0.66,
-	"fut_arm_mech_e": 0.642,
-	"fut_arm_hovertank_e": 0.66,
-	"fut_inf_spectre_e": 0.36,
-	"fut_arm_colossus_e": 0.66,
-	"fut_boss_nexus": 0.78,
-}
+## 战场视觉缩放表已迁移到 data/card_foot_anchors.gd（VISUAL_SCALE，单一真理源）。
+## 本文件的 get_visual_scale_for_archetype 转发到 CardFootAnchors。
 ## 若你希望所有敌人都显示完整精灵动画而非蜂群几何体，保持 false。
 ## 需要压测性能时可改回 true（仅对配置了 swarm_unit=true 的敌人生效）。
 const ENABLE_SWARM_RENDER: bool = false
@@ -515,13 +474,12 @@ static func resolve_card_icon_texture_path(archetype_id: String, cfg: Dictionary
 	return ""
 
 static func get_visual_scale_for_archetype(id: String, cfg: Dictionary) -> float:
+	# cfg 显式 visual_scale 优先（个别 archetype 自定义覆盖）
 	var explicit_scale: float = float(cfg.get("visual_scale", -1.0))
 	if explicit_scale > 0.0:
 		return explicit_scale
-	var id_key: String = id
-	if not id_key.is_empty() and ARCHETYPE_VISUAL_SCALE_OVERRIDES.has(id_key):
-		return float(ARCHETYPE_VISUAL_SCALE_OVERRIDES[id_key])
-	return DEFAULT_VISUAL_SCALE
+	# 转发到 CardFootAnchors（战场视觉数据单一真理源，内部剥 captured_ 前缀）
+	return CardFootAnchors.get_visual_scale_by_id(id)
 
 static func get_visual_scale(cfg: Dictionary) -> float:
 	return get_visual_scale_for_archetype("", cfg)

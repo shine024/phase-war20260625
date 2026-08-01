@@ -246,6 +246,12 @@ func get_boss_active_spells() -> Array:
 func get_boss_passive_spells() -> Array:
 	return _boss_passive_spells
 
+## v8.5: 暴露 boss 属性表（max_hp/attack_power/defense/...）供 EnemyMasterSkillEngine 派生技能伤害。
+## _master_stats 是私有字段（无 public stats 属性），engine 旧代码 _driver.get("stats") 恒 null，
+## 导致 _compute_boss_damage 永远走 max_hp×0.05 fallback，attack_power 从不生效。
+func get_master_stats() -> Dictionary:
+	return _master_stats
+
 func _apply_body_visual_from_master(master_config: Dictionary) -> void:
 	var spr := get_node_or_null("Body") as Sprite2D
 	if spr == null:

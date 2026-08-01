@@ -137,7 +137,7 @@ const DATA: Dictionary = {
 	"air_12_data_link" = {
 		id = AIR_12_DATA_LINK, name = "数据链系统", name_en = "Data Link",
 		icon = "res://assets/ui/icons/mod_icons/mod_command.png",
-		prototype = "Link 16", description = "数据链协同，三维攻击+7.5%",
+		prototype = "Link 16", description = "数据链协同：自身三维攻击+7.5%，周围友军三维攻击+7.5%",
 		rarity = "epic",
 	power_mult = 1.6, cost_research = 340, cost_install = 170,
 		slot_type = "command", conflict_group = "command",

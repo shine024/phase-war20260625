@@ -301,6 +301,28 @@ tests/
 - 修改 `enemy/` 原图后，必须对 `player/` 重做 `FLIP_LEFT_RIGHT`
 - 审查清单：`tools/enemy_card_review.html`（浏览器查看全部卡面）
 
+## ★ 战场卡图视觉数据单一真理源
+
+**改任何"卡图大小/脚踩地/头部位置/缩放比例"问题，先查 `data/card_foot_anchors.gd`。**
+
+该文件是战场卡图视觉数据的唯一真身，涵盖三类数据：
+
+| 数据 | 字段 | 说明 |
+|------|------|------|
+| 脚部锚点 | `FOOT_FRAC` | 脚（最低非透明像素）距纹理底部比例；立绘 offset 据此对齐地面线 |
+| 头部锚点 | `HEAD_FRAC` | 头（最高非透明像素）距纹理顶部比例；头顶 UI 据此锚定实体顶部 |
+| 缩放比例 | `VISUAL_SCALE` | 战场缩放（CSV 原值 0.62~2.0，步兵~0.7/载具~1.4/boss~2.0）；查询时自动剥 `captured_` 前缀 |
+
+**配套**：
+- `PLAYER_PLATFORM_TO_SCALE_ARCHETYPE`（我方 platform_type → archetype 兜底映射，同文件内）
+- `get_visual_scale(card)` / `get_visual_scale_by_id(id)` / `entity_top_y_for_sprite(spr)` 查询方法
+- 脚部/头部数据由 `tools/generate_card_foot_anchors.py` 扫描卡图 alpha 通道生成（**新增卡图后必须重跑**：`python tools/generate_card_foot_anchors.py`）
+- 缩放比例来自用户 CSV 表（手填，非扫描生成）
+
+**消费方**（无需改，数据源统一指向本文件）：
+- `scripts/card_grid_unit_visuals.gd`（战场单位呈现：缩放/脚部 offset/头顶 UI 锚定）
+- `data/enemy_archetypes.gd` 的 `get_visual_scale_for_archetype`（转发到本文件，供 construct_unit/enemy_phase_field_driver 调用）
+
 ## Engine Version Notes
 
 LLM training data covers Godot up to ~4.3. This project uses Godot 4.5.
@@ -1778,3 +1800,163 @@ inf_19单兵电台(ally_bonus)、arm_15数据链(ally_hit_bonus)、for_10指挥�
 - enemy_unit 读取 ECM 暴击/闪避减益（当前只读取了攻速减益）
 - 更多卡片技能/战法（数据扩展，零引擎改动）
 - 平衡性调整（实机数据反馈后微调数值）
+
+## v8.x 战场卡图与血条视觉修复 (2026-07-31)
+
+**背景:** 连续修复战场卡图呈现的一系列视觉 bug——血条/HP数字/护盾条显示异常、敌方卡图遮挡血条、势力战斗卡立绘偏小、我方卡图错用。全部集中在视觉呈现层，零战斗数值改动。
+
+### 1. 血条/HP数字/护盾条显示修复（unit_hp_bar）
+**根因**：`unit_hp_bar.gd` 的 Label 配置踩了 Godot 4.x 的 3.x→4.x 属性迁移雷区（连续 3 批），叠加 HP 数字定位/字号/护盾条刷新逻辑缺陷。
+
+| # | 问题 | 根因 | 修复 |
+|---|------|------|------|
+| ① | HP数字显示在血条外 | Label 在 Node2D 父下 `position` 是左上角锚点，`Vector2(0,0)` 让文字向右下偏出 | `_update_view` 设 `size=(BAR_WIDTH,h)` + `position=-size/2`，框中心对齐原点 |
+| ② | HP数字颜色看不清 | `set_side()` 把 modulate 改成阵营色（玩家绿/敌方红），同色血条上看不清 | 固定白字 + 黑描边（`add_theme_color_override outline_color`），删除 set_side 改色 |
+| ③ | 字号溢出血条 | 固定 font_size=12 行高15px > 折叠态血条12px | 字号动态化：折叠10pt/展开14pt（行高均<血条高度） |
+| ④ | `h_alignment` 运行时报错 | 3.x 属性名，4.x 改名 `horizontal_alignment` + 枚举常量 | 改用 `HORIZONTAL_ALIGNMENT_CENTER`/`VERTICAL_ALIGNMENT_CENTER` |
+| ⑤ | `outline_size` 运行时报错 | Label 4.x 无此直接属性，须 theme override | `add_theme_constant_override("outline_size",2)` + `add_theme_color_override("outline_color",...)` |
+| ⑥ | `font_size` 运行时报错 | 同上，4.x 须 theme override | `add_theme_font_size_override("font_size",N)` |
+| ⑦ | 护盾条不显示/残留 | `set_shield()` 仅在 add_shield 调一次，受击消耗后从不刷新 | `set_shield` 加归零隐藏 + `_update_hp_bar` 每次同步护盾条（放在 HP 阈值 early-return 前） |
+
+**血条加宽**：`BAR_WIDTH` 100→130，`HEIGHT_COMPACT` 12→14（容纳更大字号），敌我统一加宽。
+
+**关键文件**：`scenes/units/unit_hp_bar.gd`、`.tscn`、`scenes/units/construct_unit.gd`(_update_hp_bar)
+
+### 2. 敌方血条被立绘遮挡（z_index）
+**根因**：`enemy_unit.tscn` 的 Sprite2D 写了 `z_index=1`，HpBar 根节点 z_index 默认0 → 立绘盖住血条和数字。玩家侧因 Sprite z=10 但血条位置在头顶上方侥幸不重叠。
+
+**修复**：`enemy_unit.gd _update_visual_setup` 设 `(hb as Node2D).z_index = 10`，抬到立绘之上。
+
+### 3. 战场双行整体下移 10px
+**修复**：`card_grid_battle_layout.gd` 新增 `CARD_GRID_ROW_VERTICAL_SHIFT=10.0`，`slot_y_offset_for_index` 上下行返回值各 +10；`battle_slot_grid.gd` 点击接受带同步 +10。改动落在单位 Y 单一真源，所有单位经 snap 自动跟随。
+
+### 4. 势力战斗卡立绘偏小（foe_* VISUAL_SCALE 缺失）
+**根因**：v6.9 势力占领系统的 34 个势力卡 `foe_*` 有独占卡图（vis_enemy_001~035）和锚点数据，但 **VISUAL_SCALE 全部缺失**，产兵缩放回退默认1.0（载具/boss 应有1.2~2.0）→ 立绘偏小 → entity_top_y 算错 → 血条错位。
+
+**修复**：`card_foot_anchors.gd` VISUAL_SCALE 表补全 34 条 `foe_*`。**关键原则**：同名单位的卡图（vis_enemy_NNN）敌我共用，缩放必须一致——全部对齐到我方同名短名卡的既有 VISUAL_SCALE（28个有同名卡对齐，6个未来专属无同名卡按兵种估算标[估算]）。
+
+### 5. 我方卡图错用（PLAYER_ICON_OVERRIDE）★
+**背景**：我方卡图是敌方卡的水平翻转（vis_player_NNN = vis_enemy_NNN 翻转）。错用发生在 `ui_asset_loader.gd` 的 `PLAYER_ICON_OVERRIDE` 表（我方 card_id → vis_player_NNN 核心映射）。
+
+**排查方法**：运行时审计 74 条 override，反查每条映射的 vis_enemy_NNN 卡图内容（display_name+tags），与我方 card_id 的真实单位身份逐项比对。
+
+**修正 5 处错用**：
+
+| card_id | 我方单位 | 原卡图(错) | 修正为 | 理由 |
+|---------|---------|-----------|--------|------|
+| `mod_stinger` | 毒刺导弹兵(步兵) | vis_player_063(阿帕奇直升机) | `vis_player_017`(ZSU-23-4高炮) | 步兵误用飞行器图 → 改防空武器图 |
+| `ww1_mark4` | 马克IV坦克 | vis_player_041(装甲车) | `vis_player_042`(圣沙蒙坦克) | 坦克误用轻装甲车 → 同期重坦图(与a7v/saint一致) |
+| `cold_leo1` | 豹1主战坦克 | vis_player_052(BTR装甲车) | `vis_player_055`(T-72坦克) | 西方主战坦克误用苏式装甲车 → 主战坦克图 |
+| `cold_m1` | M1主战坦克 | vis_player_052(BTR装甲车) | `vis_player_055`(T-72坦克) | 同上 |
+| `cold_m60t` | M60坦克 | vis_player_052(BTR装甲车) | `vis_player_055`(T-72坦克) | 同上 |
+
+**未改**：`fut_aa_hover`(防空悬浮车→火箭炮车)，防空/火炮勉强同类，可接受。
+
+**关键澄清（排查过程中的重要发现）**：
+- `PLAYER_MIRROR_ARCHETYPE_BY_PLATFORM`（construct_unit.gd）和 `PLAYER_PLATFORM_TO_SCALE_ARCHETYPE`（card_foot_anchors.gd）虽两表同步，但它们基于废弃的 13 值 `PlatformType` 枚举（HOUND/GUARD/TITAN...），实际我方卡 `platform_type = combat_kind`（只有 LIGHT/ARMOR/SUPPORT/AIR/FORT 五值）。这两表只作为缩放兜底，**不是**我方卡图的主映射——真正决定我方卡图的是 `PLAYER_ICON_OVERRIDE`（ui_asset_loader.gd）。
+- 排查我方卡图错用应查 `PLAYER_ICON_OVERRIDE`，不是 mirror/scale 表。
+
+**验证**：`ui_asset_loader.gd` 编译 OK；5 处修正后的卡图语义与单位身份匹配（步兵→步兵图、坦克→坦克图、防空→防空图）。
+
+### 关键文件汇总
+- `scenes/units/unit_hp_bar.gd` / `.tscn` — 血条/HP数字/护盾条/字号/描边/加宽
+- `scenes/units/construct_unit.gd` — _update_hp_bar 同步护盾条
+- `scenes/units/enemy_unit.gd` — HpBar z_index=10
+- `scripts/card_grid_battle_layout.gd` / `scenes/battlefield/battle_slot_grid.gd` — 双行下移10px
+- `data/card_foot_anchors.gd` — 34个 foe_* VISUAL_SCALE 补全
+- `scripts/ui_asset_loader.gd` — PLAYER_ICON_OVERRIDE 5处卡图错用修正
+
+**经验教训（Godot 4.x 雷区）**：Label 的 `h_alignment`/`v_alignment`/`outline_size`/`outline_color`/`font_size` 在 4.x 全部不能用裸 int 直接赋值——前两个改名+需枚举常量，后三个须用 `add_theme_*_override`。tscn 里字号标准写法是 `theme_override_font_sizes/font_size`。
+
+## v8.6 全系统实装与复查修复 (2026-08-01)
+
+基于对改造、相位师技能、势力技能、兵种机制四大子系统的三维度审查（数据一致性/逻辑空转/文案匹配），分三轮完成 23 项修复。全部向后兼容，全项目 `--check-only` 零错误。
+
+### 第一轮：四大系统实装缺口修复（5 模块）
+
+**审查结论**：改造 106 key 零空转但 ally_* 双链路注释错误；相位师主动技能引擎就绪但数据全空；势力 stat_bonus 实装但 special 类零消费；兵种机制玩家方实装但敌方完全缺失。
+
+| 模块 | 问题 | 修复 |
+|------|------|------|
+| 1-敌方兵种 | 经典波次敌方走自建 stats 管线跳过 `apply_combat_kind_modifiers`，敌方堡垒减伤=0/侦察无闪避/防空无对空加成 | `enemy_unit._build_enemy_unit_stats` 加 `apply_combat_kind_modifiers(s)` + `hp=s.max_hp` 同步 |
+| 2-ally注释 | `modification_registry.gd:517` 注释称"项目无光环系统"但 `mod_aura_handler.gd` 实际活跃 | 修正注释准确描述双链路（载体自身×0.5缩放 + 友军原值广播） |
+| 3-势力special | `merged["special"]` 战斗端零消费，13+种特殊效果解锁后无效果 | 新建 `faction_skill_effect_handler.gd`（17种子键）+ 接入 spawn/construct_unit/bullet |
+| 4-boss引擎 | `_compute_boss_damage` 读 `_driver.get("stats")` 恒 null（driver 无 public stats）→ 永走 fallback | driver 暴露 `get_master_stats()`，engine 改读它 |
+| 5-boss数据 | 30个 boss 的 `active_spells` 全为空[]，引擎6路执行函数写好但无数据触发 | 按时代梯度填充 51 个 active_spell（WW1 1技能→Future 2-3技能）+ JSON 同步 |
+
+**势力 special 17 种子键分三层接入**：
+- 生成期（spawn_system）：armor_penetration / conditional.hp_below / stacking_bonus / variety_bonus / aura.stat
+- 事件驱动（construct_unit/bullet）：on_hit_debuff / first_hit_damage / extra_attack_chance / on_kill_energy / on_kill_heal_pct / on_death_energy_return / on_death_ally_heal / death_save / on_crit_bonus_damage_pct
+- 周期tick（construct_unit._physics_process）：periodic_shield / periodic_heal / periodic_invuln
+
+**boss 数据分配原则**：faction 主题映射（thunder→chain、flame→AOE、void→AOE/single、steel→shield/summon）；effect 关键字避开顺序陷阱（分派顺序 AOE>chain>summon>debuff>shield>single）；active 禁用 damage_aura/burning（避免被判全场AOE）。
+
+### 第二轮：复查发现的新引入空转与既有 bug（12 项）
+
+**复查发现第一轮声称"17种全实装"实际只生效10种**——3种伪生效、4种完全空转，外加5个既有严重bug。
+
+| # | 问题 | 根因 | 修复 |
+|---|------|------|------|
+| 1 | on_hit_debuff 零消费方 | handler 挂 meta 无人读 | 改为直接改目标 stats（attack_interval/defense）+ process_debuff_expirations 用 remaining 递减恢复 |
+| 2-3 | stacking/variety 缓存冻结 | spawn 缓存 key 不含单位数，首次构建后冻结 | 从 stats 缓存移出，新增 apply_runtime_stacking 在 construct_unit.setup 后按实时单位数应用 |
+| 4 | conditional.hp_below 硬编码0.15 | 与数据 def+25% 脱钩 | 改为 setup 时直接注入 def 加成走既有防御结算，删 get_conditional_mitigation |
+| 5 | conditional 3子键不识别 | handler 只认 hp_below | on_attack_hit 补 atk_speed_above/deploy_speed_above/target_hp_below 运行时判定 |
+| 6 | on_crit_received 零调用方 | 函数实现无人调 | 改为 setup 预注入 dodge_chance（永久），删 get_crit_received_dodge_bonus |
+| 7 | aura 类完全不处理 | handler 无 aura 分支 | stat_bonus 类预注入自身，hp_regen_pct 留 runtime tick |
+| 8 | boss被动抽血读 t.max_hp | 玩家单位 max_hp 在 t.stats.max_hp（顶层无）→ fallback 100 致量级低99% | 改读 `t.stats.max_hp` |
+| 9 | boss SINGLE/AOE未二次clamp | ×3×dmg_mult 后 Future 达2832秒杀 | AOE clamp[50,800]、SINGLE clamp[80,1500]；顺带护盾上限60%max_hp + 首次CD用35% |
+| 10 | attack_*_bonus双方空转 | 战斗读 weapon.damage 不读 get_attack_vs | apply_combat_kind_modifiers 末尾新增 _sync_kind_bonus_to_weapon_slots |
+| 11 | 预览单位光环泄漏 | queue_free 不触发 _die 的 remove | construct_unit 新增 _exit_tree 调 remove_mod_auras 兜底 |
+| 12 | 敌方attack_air派生0.2-0.3× | resolver else 分支给所有地面单位派生非零对空 | 改为 AA 限定（tags 含 aa/anti_air/flak/sam 或 weapon_type=FLAK 才对空） |
+| 附 | _battle_time 读不存在的属性 | tree 无 battle_elapsed 属性 | 删函数，改用 remaining 递减（不依赖全局时间） |
+
+**关键设计决策**：
+1. conditional.hp_below/on_crit_received 改为永久注入（牺牲"条件触发"换数值口径正确）——take_damage 无法得知是否暴击/低血，条件触发难接入，永久注入至少数值对。
+2. stacking/variety 移出 stats 缓存——缓存冻结首次计数是功能性失效，改运行时每单位独立计算（已部署旧单位不回溯，性能权衡）。
+3. on_hit_debuff 直接改 stats 而非挂 meta——敌方单位不跑 construct_unit tick，挂 meta 永不恢复，直接改 stats 至少立即生效（敌方死亡即清除，可接受）。
+
+### 第三轮：深度复查的机制接入与文案平衡（6 项）
+
+| # | 问题 | 修复 |
+|---|------|------|
+| A-敌方module_effect | enemy_unit 缺 on_tick/on_damage_taken/on_death/on_kill + fort_shelter 读取，堡垒阵地光环等机制对敌方双失效 | 4处接入 ModuleEffectHandler + take_damage 读 _fort_shelter meta（激活：hp_regen/堡垒光环写入/雷场/相位护盾/dot tick/怒气/反炮兵/爆反/复活/击杀护盾） |
+| B-ECM消费方 | boss _exec_debuff_players 给玩家挂 _ecm meta 但玩家侧零消费，削弱技能空转 | construct_unit_ai 新增 _get_ecm_attack_slow_mult，单/多武器攻击计时用它缩 delta |
+| C-river数值 | ally_river_bonus 友军路径写 move_speed（死属性）且 +80 过大（+100%移速） | river 分支改写 deploy_delay_bonus（对齐自身路径 -5%系数），aura_keys 同步 |
+| D-driver stats | boss driver 无 stats 属性，玩家被 boss 打走 max-of-3 兜底（最高防御，难度低估） | take_damage 特判 attacker.has_method("get_master_stats") → attacker_kind=ARMOR |
+| E-ally文案 | 5个 ally_* 改造文案只写自身收益，未体现友军光环（且部分数值凭空） | 5处 description 补"周围友军"说明 + 校准数值与 effects 对齐 |
+| F-arm_12倒挂 | arm_12(rare,+15%暴击)比所有 epic 同类(+8~10%)都强 | rare→epic，power_mult/cost/level 对齐 epic 档 |
+
+**敌方 module_effect_handler 接入的安全性**：所有公开方法（on_tick/on_damage_taken/on_death/on_kill）对敌方安全——内部用 `is_player` 字段区分阵营，group 名仅作 fallback；敌方缺 `add_shield`/`on_revived` 等方法均被 has_method 守卫安全跳过。
+
+**ECM 消费方设计**：仿 enemy_unit 已有的 `_ecm_debuffed_until` 读取口径，玩家侧用 `_get_ecm_attack_slow_mult(u)` 返回 1.0（正常）或 <1.0（被削弱），作用于 `_attack_phase_timer += delta` 的有效 delta。默认削弱25%（与敌方0.75口径一致），可被 `_ecm_attack_speed_penalty` meta 覆盖。
+
+### 关键文件汇总
+
+**第一轮**：
+- `scripts/battle/faction_skill_effect_handler.gd`（新增，17种子键处理引擎）
+- `data/enemy_phase_masters_{ww1,ww2,cold,modern,future}.gd` + `data/json/enemy_phase_masters.json`（51个 active_spell）
+- `managers/battle/battle_spawn_system.gd`（special 生成期接入）
+- `scenes/units/construct_unit.gd`（special 事件驱动+周期tick接入）
+- `scenes/units/bullet.gd`（special 攻击命中接入）
+- `scenes/units/enemy_phase_field_driver.gd`（get_master_stats 暴露）
+- `managers/battle/enemy_master_skill_engine.gd`（_compute_boss_damage 改读 master_stats）
+
+**第二轮**：
+- `scripts/battle/faction_skill_effect_handler.gd`（on_hit_debuff 重构 + stacking 运行时 + conditional/aura/on_crit_received + 删死代码）
+- `managers/battle/enemy_master_skill_engine.gd`（抽血 max_hp + 伤害 clamp + 护盾上限 + 首次CD）
+- `resources/unit_stats_table.gd`（_sync_kind_bonus_to_weapon_slots）
+- `data/enemy_stat_resolver.gd`（attack_air AA 限定）
+
+**第三轮**：
+- `scenes/units/enemy_unit.gd`（on_tick/on_damage_taken/on_death/on_kill + fort_shelter 读取）
+- `scripts/battle/construct_unit_ai.gd`（_get_ecm_attack_slow_mult ECM 消费方）
+- `scripts/battle/mod_aura_handler.gd` + `resources/unit_stats_table.gd`（river 改 deploy_delay）
+- `scenes/units/construct_unit.gd`（driver stats 特判）
+- `data/modification_modules/{infantry,armor,engineer,fort,air}_mods.gd`（5文案 + arm_12 倒挂）
+
+**待实机验证（无 GUI 环境无法测）**：势力注入/序列波次/相位师产兵序列的运行时行为、ECM 减速实际手感、boss 技能伤害实战平衡、stacking 运行时叠加的体感。静态验证全部通过（全项目 --check-only 零错误 + smoke test + Grep 链路核对）。
+
+**遗留已知问题（范围外）**：
+- `e_mod_*` 敌方装备 ID 全部未注册（敌方 mod 槽装饰化，预先存在，非本次回归）
+- ally_fort_regen 敌方无光环（敌方不接入 ModAuraHandler，但敌方不用 ally_* 改造，无影响）
+- v8.5 主动技能 tick（核武/护盾投射等）对敌方仍缺失（敌方 boss 已有独立技能系统，工作量大收益低，保留现状）

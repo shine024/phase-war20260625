@@ -22,7 +22,18 @@
 					}
 				}
 			],
-			"active_spells": [],
+			"active_spells": [
+				{
+					"id": "iron_bulwark",
+					"name": "钢铁壁垒",
+					"description": "每28秒为自身施加20%最大生命值护盾",
+					"effect": "energy_shield",
+					"cooldown": 28.0,
+					"params": {
+						"shield_pct": 0.2
+					}
+				}
+			],
 			"passive_spells": [
 				{
 					"id": "steel_skin",
@@ -85,7 +96,18 @@
 					}
 				}
 			],
-			"active_spells": [],
+			"active_spells": [
+				{
+					"id": "napalm_explosion",
+					"name": "烈焰风暴",
+					"description": "每26秒对全体玩家单位造成火焰范围伤害",
+					"effect": "napalm_explosion",
+					"cooldown": 26.0,
+					"params": {
+						"damage_mult": 0.8
+					}
+				}
+			],
 			"passive_spells": [
 				{
 					"id": "burning_aura",
@@ -150,7 +172,18 @@
 					}
 				}
 			],
-			"active_spells": [],
+			"active_spells": [
+				{
+					"id": "tesla_chain",
+					"name": "雷霆连锁",
+					"description": "每24秒释放连锁闪电，跳跃打击最多5个玩家单位",
+					"effect": "tesla_chain",
+					"cooldown": 24.0,
+					"params": {
+						"damage_mult": 0.9
+					}
+				}
+			],
 			"passive_spells": [
 				{
 					"id": "static_field",
@@ -215,7 +248,20 @@
 					}
 				}
 			],
-			"active_spells": [],
+			"active_spells": [
+				{
+					"id": "phase_debuff",
+					"name": "相位移领域",
+					"description": "每25秒扭曲玩家单位，降低其攻速与暴击",
+					"effect": "darkness_debuff",
+					"cooldown": 25.0,
+					"params": {
+						"attack_speed_penalty": 0.2,
+						"crit_penalty": 0.15,
+						"duration": 4.0
+					}
+				}
+			],
 			"passive_spells": [
 				{
 					"id": "entropy_aura",
@@ -280,7 +326,15 @@
 					}
 				}
 			],
-			"active_spells": [],
+			"active_spells": [
+				{
+					"id": "reinforcement_deploy",
+					"name": "钢铁援军",
+					"description": "每22秒召唤一批友军单位增援战场",
+					"effect": "summon_reinforcement",
+					"cooldown": 22.0
+				}
+			],
 			"passive_spells": [
 				{
 					"id": "formation_master",
@@ -346,7 +400,18 @@
 					}
 				}
 			],
-			"active_spells": [],
+			"active_spells": [
+				{
+					"id": "inferno_explosion",
+					"name": "地狱烈焰",
+					"description": "每20秒引爆全场，对所有玩家单位造成烈焰伤害",
+					"effect": "hellfire_explosion",
+					"cooldown": 20.0,
+					"params": {
+						"damage_mult": 1.0
+					}
+				}
+			],
 			"passive_spells": [
 				{
 					"id": "eternal_flame",
@@ -414,7 +479,18 @@
 					}
 				}
 			],
-			"active_spells": [],
+			"active_spells": [
+				{
+					"id": "thunderstorm_chain",
+					"name": "雷暴连锁",
+					"description": "每20秒释放连锁闪电，跳跃打击玩家单位",
+					"effect": "thunderstorm_chain",
+					"cooldown": 20.0,
+					"params": {
+						"damage_mult": 1.0
+					}
+				}
+			],
 			"passive_spells": [
 				{
 					"id": "conductive",
@@ -480,7 +556,18 @@
 					}
 				}
 			],
-			"active_spells": [],
+			"active_spells": [
+				{
+					"id": "void_implosion",
+					"name": "虚空内爆",
+					"description": "每22秒引发虚空坍缩，对全体玩家单位造成范围伤害",
+					"effect": "void_explosion",
+					"cooldown": 22.0,
+					"params": {
+						"damage_mult": 1.0
+					}
+				}
+			],
 			"passive_spells": [
 				{
 					"id": "reality_tear",
@@ -548,7 +635,15 @@
 					}
 				}
 			],
-			"active_spells": [],
+			"active_spells": [
+				{
+					"id": "legion_deploy",
+					"name": "军团动员",
+					"description": "每19秒召唤钢铁军团单位增援",
+					"effect": "deploy_legion",
+					"cooldown": 19.0
+				}
+			],
 			"passive_spells": [
 				{
 					"id": "iron_will",
@@ -615,7 +710,18 @@
 					}
 				}
 			],
-			"active_spells": [],
+			"active_spells": [
+				{
+					"id": "prometheus_flame",
+					"name": "普罗米修斯之焰",
+					"description": "每18秒降下天火，对全体玩家单位造成烈焰伤害",
+					"effect": "meteor_flame",
+					"cooldown": 18.0,
+					"params": {
+						"damage_mult": 1.1
+					}
+				}
+			],
 			"passive_spells": [
 				{
 					"id": "hellfire",
@@ -682,7 +788,28 @@
 					}
 				}
 			],
-			"active_spells": [],
+			"active_spells": [
+				{
+					"id": "zeus_lightning",
+					"name": "宙斯雷霆",
+					"description": "每16秒降下雷霆连锁，跳跃打击多个玩家单位",
+					"effect": "lightning_chain",
+					"cooldown": 16.0,
+					"params": {
+						"damage_mult": 1.2
+					}
+				},
+				{
+					"id": "olympus_ward",
+					"name": "奥林匹斯之护",
+					"description": "每24秒为自身施加18%最大生命值护盾",
+					"effect": "dome_barrier",
+					"cooldown": 24.0,
+					"params": {
+						"shield_pct": 0.18
+					}
+				}
+			],
 			"passive_spells": [
 				{
 					"id": "lightning_speed",
@@ -750,7 +877,28 @@
 					}
 				}
 			],
-			"active_spells": [],
+			"active_spells": [
+				{
+					"id": "abyss_apocalypse",
+					"name": "深渊降临",
+					"description": "每18秒引发虚空灾变，对全体玩家单位造成范围伤害",
+					"effect": "abyss_apocalypse",
+					"cooldown": 18.0,
+					"params": {
+						"damage_mult": 1.2
+					}
+				},
+				{
+					"id": "devouring_void",
+					"name": "虚空吞噬",
+					"description": "每14秒对生命最高的玩家单位发动吞噬打击",
+					"effect": "devour_single",
+					"cooldown": 14.0,
+					"params": {
+						"damage_mult": 1.3
+					}
+				}
+			],
 			"passive_spells": [
 				{
 					"id": "dimension_siphon",
@@ -810,7 +958,18 @@
 					}
 				}
 			],
-			"active_spells": [],
+			"active_spells": [
+				{
+					"id": "molten_bombard",
+					"name": "熔铁轰炸",
+					"description": "每17秒对全体玩家单位倾泻熔铁弹幕",
+					"effect": "bombard_explosion",
+					"cooldown": 17.0,
+					"params": {
+						"damage_mult": 1.1
+					}
+				}
+			],
 			"passive_spells": [
 				{
 					"id": "heat_treatment",
@@ -881,7 +1040,28 @@
 					}
 				}
 			],
-			"active_spells": [],
+			"active_spells": [
+				{
+					"id": "victor_chain_lightning",
+					"name": "雷霆贯穿",
+					"description": "每15秒释放连锁闪电，跳跃打击玩家单位",
+					"effect": "chain_lightning",
+					"cooldown": 15.0,
+					"params": {
+						"damage_mult": 1.2
+					}
+				},
+				{
+					"id": "victor_plate",
+					"name": "钢板护盾",
+					"description": "每22秒为自身施加22%最大生命值护盾",
+					"effect": "plate_shield",
+					"cooldown": 22.0,
+					"params": {
+						"shield_pct": 0.22
+					}
+				}
+			],
 			"passive_spells": [
 				{
 					"id": "conductive_armor",
@@ -951,7 +1131,30 @@
 					}
 				}
 			],
-			"active_spells": [],
+			"active_spells": [
+				{
+					"id": "seraphina_void",
+					"name": "虚空烈焰",
+					"description": "每16秒引爆虚空烈焰，对全体玩家单位造成范围伤害",
+					"effect": "void_apocalypse",
+					"cooldown": 16.0,
+					"params": {
+						"damage_mult": 1.2
+					}
+				},
+				{
+					"id": "seraphina_curse",
+					"name": "炽焰诅咒",
+					"description": "每18秒削弱玩家单位，降低攻速与闪避",
+					"effect": "weakness_debuff",
+					"cooldown": 18.0,
+					"params": {
+						"attack_speed_penalty": 0.25,
+						"dodge_penalty": 0.2,
+						"duration": 5.0
+					}
+				}
+			],
 			"passive_spells": [
 				{
 					"id": "entropy_flame",
@@ -1017,7 +1220,25 @@
 					}
 				}
 			],
-			"active_spells": [],
+			"active_spells": [
+				{
+					"id": "atlas_bulwark",
+					"name": "不朽壁垒",
+					"description": "每16秒为自身施加28%最大生命值护盾",
+					"effect": "ward_bulwark",
+					"cooldown": 16.0,
+					"params": {
+						"shield_pct": 0.28
+					}
+				},
+				{
+					"id": "atlas_summon",
+					"name": "不朽军团",
+					"description": "每20秒召唤不朽钢铁单位增援",
+					"effect": "forge_summon",
+					"cooldown": 20.0
+				}
+			],
 			"passive_spells": [
 				{
 					"id": "unbreakable",
@@ -1087,7 +1308,18 @@
 					}
 				}
 			],
-			"active_spells": [],
+			"active_spells": [
+				{
+					"id": "surtr_meteor",
+					"name": "诸神黄昏",
+					"description": "每15秒召唤陨石雨，对全体玩家单位造成毁灭伤害",
+					"effect": "meteor_apocalypse",
+					"cooldown": 15.0,
+					"params": {
+						"damage_mult": 1.3
+					}
+				}
+			],
 			"passive_spells": [
 				{
 					"id": "phoenix_rebirth_auto",
@@ -1154,7 +1386,28 @@
 					}
 				}
 			],
-			"active_spells": [],
+			"active_spells": [
+				{
+					"id": "thunder_lord_chain",
+					"name": "万雷齐发",
+					"description": "每14秒释放强力连锁闪电，跳跃打击玩家单位",
+					"effect": "thunder_chain",
+					"cooldown": 14.0,
+					"params": {
+						"damage_mult": 1.3
+					}
+				},
+				{
+					"id": "thunder_lord_judgment",
+					"name": "雷神之裁",
+					"description": "每16秒对生命最高的玩家单位降下雷罚",
+					"effect": "god_weapon_single",
+					"cooldown": 16.0,
+					"params": {
+						"damage_mult": 1.4
+					}
+				}
+			],
 			"passive_spells": [
 				{
 					"id": "auto_lightning",
@@ -1223,7 +1476,28 @@
 					}
 				}
 			],
-			"active_spells": [],
+			"active_spells": [
+				{
+					"id": "nidhogg_void",
+					"name": "虚空吞噬",
+					"description": "每14秒引发虚空灾变，对全体玩家单位造成范围伤害",
+					"effect": "void_apocalypse",
+					"cooldown": 14.0,
+					"params": {
+						"damage_mult": 1.3
+					}
+				},
+				{
+					"id": "nidhogg_devour",
+					"name": "龙息吞噬",
+					"description": "每12秒对生命最高的玩家单位发动吞噬",
+					"effect": "devour_single",
+					"cooldown": 12.0,
+					"params": {
+						"damage_mult": 1.5
+					}
+				}
+			],
 			"passive_spells": [
 				{
 					"id": "void_lord",
@@ -1293,7 +1567,25 @@
 					}
 				}
 			],
-			"active_spells": [],
+			"active_spells": [
+				{
+					"id": "tyr_thunder",
+					"name": "钢铁雷霆",
+					"description": "每13秒释放连锁闪电，跳跃打击玩家单位",
+					"effect": "tesla_chain",
+					"cooldown": 13.0,
+					"params": {
+						"damage_mult": 1.3
+					}
+				},
+				{
+					"id": "tyr_reinforce",
+					"name": "战争动员",
+					"description": "每16秒召唤钢铁战争机器单位增援",
+					"effect": "mech_deploy",
+					"cooldown": 16.0
+				}
+			],
 			"passive_spells": [
 				{
 					"id": "synergy_boost",
@@ -1368,7 +1660,28 @@
 					}
 				}
 			],
-			"active_spells": [],
+			"active_spells": [
+				{
+					"id": "kargath_inferno",
+					"name": "地狱火",
+					"description": "每12秒引爆烈焰风暴，对全体玩家单位造成范围伤害",
+					"effect": "hell_inferno",
+					"cooldown": 12.0,
+					"params": {
+						"damage_mult": 1.4
+					}
+				},
+				{
+					"id": "kargath_void",
+					"name": "虚空裂隙",
+					"description": "每15秒撕开虚空裂隙，对全体玩家单位造成虚空伤害",
+					"effect": "void_apocalypse",
+					"cooldown": 15.0,
+					"params": {
+						"damage_mult": 1.3
+					}
+				}
+			],
 			"passive_spells": [
 				{
 					"id": "dual_element_boost",
@@ -1439,7 +1752,25 @@
 					}
 				}
 			],
-			"active_spells": [],
+			"active_spells": [
+				{
+					"id": "iron_cavalry_summon",
+					"name": "钢铁洪流",
+					"description": "每13秒召唤战争机器单位增援",
+					"effect": "mech_deploy",
+					"cooldown": 13.0
+				},
+				{
+					"id": "iron_cavalry_bombard",
+					"name": "地毯轰炸",
+					"description": "每15秒对全体玩家单位倾泻火力",
+					"effect": "orbital_bombard",
+					"cooldown": 15.0,
+					"params": {
+						"damage_mult": 1.4
+					}
+				}
+			],
 			"passive_spells": [
 				{
 					"id": "automation",
@@ -1506,7 +1837,29 @@
 					}
 				}
 			],
-			"active_spells": [],
+			"active_spells": [
+				{
+					"id": "phoenix_meteor",
+					"name": "凤凰陨落",
+					"description": "每12秒召唤陨石雨，对全体玩家单位造成毁灭伤害",
+					"effect": "meteor_apocalypse",
+					"cooldown": 12.0,
+					"params": {
+						"damage_mult": 1.5
+					}
+				},
+				{
+					"id": "phoenix_curse",
+					"name": "凤凰灼烧",
+					"description": "每14秒灼烧玩家单位，大幅降低攻速",
+					"effect": "emp_debuff",
+					"cooldown": 14.0,
+					"params": {
+						"attack_speed_penalty": 0.35,
+						"duration": 6.0
+					}
+				}
+			],
 			"passive_spells": [
 				{
 					"id": "fire_mastery",
@@ -1574,7 +1927,40 @@
 					}
 				}
 			],
-			"active_spells": [],
+			"active_spells": [
+				{
+					"id": "cyclonus_storm",
+					"name": "风暴之眼",
+					"description": "每11秒释放强力连锁闪电，跳跃打击玩家单位",
+					"effect": "tesla_chain",
+					"cooldown": 11.0,
+					"params": {
+						"damage_mult": 1.5
+					}
+				},
+				{
+					"id": "cyclonus_judgment",
+					"name": "风暴审判",
+					"description": "每13秒对生命最高的玩家单位降下雷罚",
+					"effect": "god_weapon_single",
+					"cooldown": 13.0,
+					"params": {
+						"damage_mult": 1.6
+					}
+				},
+				{
+					"id": "cyclonus_disruption",
+					"name": "电磁干扰",
+					"description": "每16秒释放EMP，降低玩家单位攻速与暴击",
+					"effect": "emp_pulse",
+					"cooldown": 16.0,
+					"params": {
+						"attack_speed_penalty": 0.3,
+						"crit_penalty": 0.25,
+						"duration": 6.0
+					}
+				}
+			],
 			"passive_spells": [
 				{
 					"id": "storm_speed",
@@ -1643,7 +2029,28 @@
 					}
 				}
 			],
-			"active_spells": [],
+			"active_spells": [
+				{
+					"id": "abyss_void",
+					"name": "深渊降临",
+					"description": "每12秒引发虚空灾变，对全体玩家单位造成毁灭范围伤害",
+					"effect": "void_apocalypse",
+					"cooldown": 12.0,
+					"params": {
+						"damage_mult": 1.6
+					}
+				},
+				{
+					"id": "abyss_devour",
+					"name": "深渊吞噬",
+					"description": "每10秒对生命最高的玩家单位发动吞噬打击",
+					"effect": "devour_single",
+					"cooldown": 10.0,
+					"params": {
+						"damage_mult": 1.8
+					}
+				}
+			],
 			"passive_spells": [
 				{
 					"id": "teleport_behind",
@@ -1720,7 +2127,25 @@
 					}
 				}
 			],
-			"active_spells": [],
+			"active_spells": [
+				{
+					"id": "hephaestus_aegis",
+					"name": "神之壁垒",
+					"description": "每12秒为自身施加35%最大生命值护盾",
+					"effect": "ward_bulwark",
+					"cooldown": 12.0,
+					"params": {
+						"shield_pct": 0.35
+					}
+				},
+				{
+					"id": "hephaestus_forge",
+					"name": "神之熔炉",
+					"description": "每14秒锻造钢铁神兵单位增援战场",
+					"effect": "forge_summon",
+					"cooldown": 14.0
+				}
+			],
 			"passive_spells": [
 				{
 					"id": "massive_heal_aura",
@@ -1791,7 +2216,28 @@
 					}
 				}
 			],
-			"active_spells": [],
+			"active_spells": [
+				{
+					"id": "hecate_inferno",
+					"name": "魔神地狱火",
+					"description": "每11秒引爆地狱烈焰，对全体玩家单位造成毁灭范围伤害",
+					"effect": "hell_inferno",
+					"cooldown": 11.0,
+					"params": {
+						"damage_mult": 1.7
+					}
+				},
+				{
+					"id": "hecate_apocalypse",
+					"name": "末日审判",
+					"description": "每14秒召唤陨石雨，对全体玩家单位造成末日伤害",
+					"effect": "meteor_apocalypse",
+					"cooldown": 14.0,
+					"params": {
+						"damage_mult": 1.6
+					}
+				}
+			],
 			"passive_spells": [
 				{
 					"id": "auto_resurrect",
@@ -1869,7 +2315,28 @@
 					}
 				}
 			],
-			"active_spells": [],
+			"active_spells": [
+				{
+					"id": "thor_mjolnir",
+					"name": "雷霆之锤",
+					"description": "每10秒释放连锁闪电，跳跃打击玩家单位",
+					"effect": "tesla_chain",
+					"cooldown": 10.0,
+					"params": {
+						"damage_mult": 1.7
+					}
+				},
+				{
+					"id": "thor_judgment",
+					"name": "雷神审判",
+					"description": "每12秒对生命最高的玩家单位降下雷罚",
+					"effect": "god_weapon_single",
+					"cooldown": 12.0,
+					"params": {
+						"damage_mult": 1.8
+					}
+				}
+			],
 			"passive_spells": [],
 			"equipment": {
 				"phase_instrument": "pi_thunder_05",
@@ -1927,7 +2394,41 @@
 					}
 				}
 			],
-			"active_spells": [],
+			"active_spells": [
+				{
+					"id": "nyx_eternal_night",
+					"name": "永夜降临",
+					"description": "每10秒引发虚空灾变，对全体玩家单位造成毁灭范围伤害",
+					"effect": "void_apocalypse",
+					"cooldown": 10.0,
+					"params": {
+						"damage_mult": 1.7
+					}
+				},
+				{
+					"id": "nyx_darkness",
+					"name": "永恒黑暗",
+					"description": "每13秒笼罩玩家单位于黑暗，大幅降低攻速暴击闪避",
+					"effect": "darkness_debuff",
+					"cooldown": 13.0,
+					"params": {
+						"attack_speed_penalty": 0.4,
+						"crit_penalty": 0.3,
+						"dodge_penalty": 0.25,
+						"duration": 7.0
+					}
+				},
+				{
+					"id": "nyx_devour",
+					"name": "虚空吞噬",
+					"description": "每11秒对生命最高的玩家单位发动吞噬打击",
+					"effect": "devour_single",
+					"cooldown": 11.0,
+					"params": {
+						"damage_mult": 1.9
+					}
+				}
+			],
 			"passive_spells": [
 				{
 					"id": "goddess_mastery",
@@ -2005,7 +2506,38 @@
 					}
 				}
 			],
-			"active_spells": [],
+			"active_spells": [
+				{
+					"id": "omega_apocalypse",
+					"name": "终末启示",
+					"description": "每9秒引发终极虚空灾变，对全体玩家单位造成毁灭范围伤害",
+					"effect": "void_apocalypse",
+					"cooldown": 9.0,
+					"params": {
+						"damage_mult": 2.0
+					}
+				},
+				{
+					"id": "omega_thunder",
+					"name": "终末雷霆",
+					"description": "每11秒释放终极连锁闪电，跳跃打击玩家单位",
+					"effect": "tesla_chain",
+					"cooldown": 11.0,
+					"params": {
+						"damage_mult": 2.0
+					}
+				},
+				{
+					"id": "omega_judgment",
+					"name": "终焉裁决",
+					"description": "每10秒对生命最高的玩家单位降下终焉打击",
+					"effect": "god_weapon_single",
+					"cooldown": 10.0,
+					"params": {
+						"damage_mult": 2.0
+					}
+				}
+			],
 			"passive_spells": [
 				{
 					"id": "omni_mastery",

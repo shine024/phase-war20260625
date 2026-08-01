@@ -21,7 +21,24 @@ const ERA_MASTERS: Array = [
 				"effects": {"atk_light": 0.15, "atk_armor": 0.15, "atk_air": 0.15}
 			}
 		],
-		"active_spells": [],
+		"active_spells": [
+			{
+				"id": "nidhogg_void",
+				"name": "虚空吞噬",
+				"description": "每14秒引发虚空灾变，对全体玩家单位造成范围伤害",
+				"effect": "void_apocalypse",
+				"cooldown": 14.0,
+				"params": {"damage_mult": 1.3}
+			},
+			{
+				"id": "nidhogg_devour",
+				"name": "龙息吞噬",
+				"description": "每12秒对生命最高的玩家单位发动吞噬",
+				"effect": "devour_single",
+				"cooldown": 12.0,
+				"params": {"damage_mult": 1.5}
+			}
+		],
 		"passive_spells": [
 			{
 				"id": "void_lord",
@@ -70,7 +87,23 @@ const ERA_MASTERS: Array = [
 				"effects": {"synergy_boost": 0.30, "synergy_types": ["steel", "thunder"], "deploy_shield": 200}
 			}
 		],
-		"active_spells": [],
+		"active_spells": [
+			{
+				"id": "tyr_thunder",
+				"name": "钢铁雷霆",
+				"description": "每13秒释放连锁闪电，跳跃打击玩家单位",
+				"effect": "tesla_chain",
+				"cooldown": 13.0,
+				"params": {"damage_mult": 1.3}
+			},
+			{
+				"id": "tyr_reinforce",
+				"name": "战争动员",
+				"description": "每16秒召唤钢铁战争机器单位增援",
+				"effect": "mech_deploy",
+				"cooldown": 16.0
+			}
+		],
 		"passive_spells": [
 			{
 				"id": "synergy_boost",
@@ -117,7 +150,24 @@ const ERA_MASTERS: Array = [
 				"effects": {"synergy_boost": 0.30, "synergy_types": ["flame", "void"], "dual_damage_chance": 0.20}
 			}
 		],
-		"active_spells": [],
+		"active_spells": [
+			{
+				"id": "kargath_inferno",
+				"name": "地狱火",
+				"description": "每12秒引爆烈焰风暴，对全体玩家单位造成范围伤害",
+				"effect": "hell_inferno",
+				"cooldown": 12.0,
+				"params": {"damage_mult": 1.4}
+			},
+			{
+				"id": "kargath_void",
+				"name": "虚空裂隙",
+				"description": "每15秒撕开虚空裂隙，对全体玩家单位造成虚空伤害",
+				"effect": "void_apocalypse",
+				"cooldown": 15.0,
+				"params": {"damage_mult": 1.3}
+			}
+		],
 		"passive_spells": [
 			{
 				"id": "dual_element_boost",
@@ -166,7 +216,23 @@ const ERA_MASTERS: Array = [
 				"effects": {"auto_spawn_interval": 10.0, "time_scaling": {"interval": 10.0, "boost": 0.08}}
 			}
 		],
-		"active_spells": [],
+		"active_spells": [
+			{
+				"id": "iron_cavalry_summon",
+				"name": "钢铁洪流",
+				"description": "每13秒召唤战争机器单位增援",
+				"effect": "mech_deploy",
+				"cooldown": 13.0
+			},
+			{
+				"id": "iron_cavalry_bombard",
+				"name": "地毯轰炸",
+				"description": "每15秒对全体玩家单位倾泻火力",
+				"effect": "orbital_bombard",
+				"cooldown": 15.0,
+				"params": {"damage_mult": 1.4}
+			}
+		],
 		"passive_spells": [
 			{
 				"id": "automation",
@@ -213,7 +279,24 @@ const ERA_MASTERS: Array = [
 				"effects": {"fire_cooldown_reduction": 0.30, "full_resurrect_once": true}
 			}
 		],
-		"active_spells": [],
+		"active_spells": [
+			{
+				"id": "phoenix_meteor",
+				"name": "凤凰陨落",
+				"description": "每12秒召唤陨石雨，对全体玩家单位造成毁灭伤害",
+				"effect": "meteor_apocalypse",
+				"cooldown": 12.0,
+				"params": {"damage_mult": 1.5}
+			},
+			{
+				"id": "phoenix_curse",
+				"name": "凤凰灼烧",
+				"description": "每14秒灼烧玩家单位，大幅降低攻速",
+				"effect": "emp_debuff",
+				"cooldown": 14.0,
+				"params": {"attack_speed_penalty": 0.35, "duration": 6.0}
+			}
+		],
 		"passive_spells": [
 			{
 				"id": "fire_mastery",
@@ -260,7 +343,32 @@ const ERA_MASTERS: Array = [
 				"effects": {"atk_light": 0.08, "atk_armor": 0.08, "atk_air": 0.08}
 			}
 		],
-		"active_spells": [],
+		"active_spells": [
+			{
+				"id": "cyclonus_storm",
+				"name": "风暴之眼",
+				"description": "每11秒释放强力连锁闪电，跳跃打击玩家单位",
+				"effect": "tesla_chain",
+				"cooldown": 11.0,
+				"params": {"damage_mult": 1.5}
+			},
+			{
+				"id": "cyclonus_judgment",
+				"name": "风暴审判",
+				"description": "每13秒对生命最高的玩家单位降下雷罚",
+				"effect": "god_weapon_single",
+				"cooldown": 13.0,
+				"params": {"damage_mult": 1.6}
+			},
+			{
+				"id": "cyclonus_disruption",
+				"name": "电磁干扰",
+				"description": "每16秒释放EMP，降低玩家单位攻速与暴击",
+				"effect": "emp_pulse",
+				"cooldown": 16.0,
+				"params": {"attack_speed_penalty": 0.30, "crit_penalty": 0.25, "duration": 6.0}
+			}
+		],
 		"passive_spells": [
 			{
 				"id": "storm_speed",

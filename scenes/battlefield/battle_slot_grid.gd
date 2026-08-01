@@ -37,8 +37,12 @@ func rebuild_slot_centers_now() -> void:
 ## 与背景车道 / 出生点 Y 对齐（道路「红线」一带）
 func sync_lane(center_y: float, deploy_y_min: float, deploy_y_max: float) -> void:
 	_lane_y_center = clampf(center_y, deploy_y_min, deploy_y_max)
-	_accept_y_min = deploy_y_min - 56.0
-	_accept_y_max = deploy_y_max + 56.0
+	# 双行交错：上行 Y = center - OFFSET，下行 Y = center + OFFSET，点击接受带需覆盖两行全程。
+	# 以车道中心 ±（OFFSET + 容差）为带，容差留给点击手感。
+	var half_span: float = _Layout.CARD_GRID_ROW_Y_OFFSET + 56.0
+	# 双行整体下移 CARD_GRID_ROW_VERTICAL_SHIFT，点击接受带需同步平移，否则点击位置与实际行错位
+	_accept_y_min = _lane_y_center - half_span + _Layout.CARD_GRID_ROW_VERTICAL_SHIFT
+	_accept_y_max = _lane_y_center + half_span + _Layout.CARD_GRID_ROW_VERTICAL_SHIFT
 	_rebuild_centers()
 
 func _rebuild_centers() -> void:
@@ -47,10 +51,16 @@ func _rebuild_centers() -> void:
 	_slot_step_x = _Layout.slot_pitch_px()
 	var p0: float = _Layout.player_band_start_x()
 	for i in range(SLOT_COUNT):
-		player_slot_centers.append(Vector2(_Layout.slot_center_x_in_band(p0, i), _lane_y_center))
+		# 等距 slot + 奇偶分行即天然蜂巢（上行格在下行两格缝隙正中），无需额外 X 错缝。
+		var sx: float = _Layout.slot_center_x_in_band(p0, i)
+		var sy: float = _lane_y_center + _Layout.slot_y_offset_for_index(i)
+		player_slot_centers.append(Vector2(sx, sy))
 	var e0: float = _Layout.enemy_band_start_x()
 	for j in range(SLOT_COUNT):
-		enemy_slot_centers.append(Vector2(_Layout.slot_center_x_in_band(e0, j), _lane_y_center))
+		# 敌方反转奇偶：偶数索引上行、奇数下行，使中缝两侧镜像对称、对位单位同行
+		var ex: float = _Layout.slot_center_x_in_band(e0, j)
+		var ey: float = _lane_y_center + _Layout.slot_y_offset_for_index(j, true)
+		enemy_slot_centers.append(Vector2(ex, ey))
 
 func get_player_slot_center(idx: int) -> Vector2:
 	if idx < 0 or idx >= player_slot_centers.size():

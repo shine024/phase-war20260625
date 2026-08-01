@@ -19,6 +19,7 @@ const TargetSelection = preload("res://scripts/battle/target_selection.gd")
 const DamageAttenuation = preload("res://scripts/battle/damage_attenuation.gd")
 const AttackCalculator = preload("res://scripts/battle/attack_calculator.gd")
 const RuneSpecialHandler = preload("res://managers/rune_special_handler.gd")
+const FactionSkillEffectHandler = preload("res://scripts/battle/faction_skill_effect_handler.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 const EnemyPhaseEquipment = preload("res://data/enemy_phase_equipment.gd")
 const FortShieldAuraScript = preload("res://scripts/battle/fort_shield_aura.gd")
@@ -205,10 +206,7 @@ var _card_nudge_tween: Tween = null
 var _fire_pulse_tween: Tween = null  ## 开火缩放脉冲（独立于 nudge/recoil，只动 Sprite 子节点）
 # v7.4 性能优化：受击闪白/抖动改手写计时动画（原每击 create_tween 2 个 Tween，密集命中时 GC 压力）
 # 模式参考 unit_hp_bar._damage_flash（倒计时 + lerp）与 damage_number_display._pop_age（正计时 + 分段）
-var _hit_flash_t: float = 0.0           # flash 剩余时间（秒），0=未激活
-var _hit_flash_base_modulate: Color = Color.WHITE  # 触发瞬间快照，作 lerp 终点（防 faction_glow/clone 色调冲突）
 var _hit_shake_t: float = -1.0          # shake 已用时间（秒），-1=未激活，>=0=激活
-const _HIT_FLASH_DURATION: float = 0.15  # v8.3: 0.1→0.15（三阶段闪白）
 const _HIT_SHAKE_DURATION: float = 0.14 # v8.3: 0.12→0.14（4×0.035s）
 var _death_fade_tween: Tween = null  ## v6.4: 死亡淡出 Tween
 var _is_dying: bool = false  ## v6.4: 死亡中标志，防止 _die 重复触发
@@ -319,6 +317,9 @@ func setup(p_is_player: bool, p_stats: UnitStats, forced_enemy_visual_archetype_
 	ModAuraHandler.apply_mod_auras(self)
 	# v7.x: 改造光环施加后刷新 buff_strip，让受影响友军立即显示光环图标
 	_update_card_grid_buff_strip(true)
+	# v8.6: 势力技能 stacking_bonus / variety_bonus 运行时叠加（不进 stats 缓存，按实时单位数算）
+	# 必须在 add_to_group 之后调用，此时 get_nodes_in_group 能拿到含自己在内的全部同阵营单位
+	FactionSkillEffectHandler.apply_runtime_stacking(self)
 
 	# 性能优化：初始化卡牌能力缓存（setup时一次性查询）
 	_has_regen_frame = CardAbilityManager.has_platform_card(stats.platform_card_id, "fut_air_regen_frame")
@@ -554,17 +555,6 @@ func _play_card_hit_recoil() -> void:
 	_card_tween.tween_property(self, "rotation", rest_r, 0.12)
 
 
-## v7.4: 受击闪白触发（手写计时，不再 create_tween）。仅设状态变量，动画在 _update_hit_animations 推进。
-func _trigger_hit_flash() -> void:
-	if is_preview_mode:
-		return
-	# 连续命中时保留旧 base（让动画连续回原色，不被中间色截断）
-	if _hit_flash_t <= 0.0:
-		_hit_flash_base_modulate = modulate
-	_hit_flash_t = _HIT_FLASH_DURATION
-	modulate = Color.RED if is_player else Color.WHITE  # 瞬间染色
-
-
 ## v7.4: 受击缩放抖动触发（手写分段计时，不再 create_tween）。
 func _trigger_hit_shake() -> void:
 	if is_preview_mode:
@@ -590,31 +580,9 @@ func _trigger_hit_knockback(direction: Vector2, strength: float) -> void:
 	_knockback_tween.tween_property(self, "position", base_pos, 0.08)
 
 
-## v7.4: 受击动画推进（每 physics 帧调用）。flash 倒计时 lerp 回原色；shake 正计时分段插值。
-## v8.3: flash 改三阶段（基色→武器色→回原色 0.15s）；shake 振幅加大（0.78/1.12/0.92/1.0）段长 0.035s。
+## v7.4: 受击动画推进（每 physics 帧调用）。v8.x: flash 已移除（改命中点血溅），仅剩 shake 分段插值。
+## v8.3: shake 振幅加大（0.78/1.12/0.92/1.0）段长 0.035s。
 func _update_hit_animations(delta: float) -> void:
-	# ── flash：三阶段（0-0.04s 基色全饱和 → 0.04-0.09s 武器色 → 0.09-0.15s lerp 回原色） ──
-	if _hit_flash_t > 0.0:
-		_hit_flash_t -= delta
-		if _hit_flash_t <= 0.0:
-			_hit_flash_t = 0.0
-			modulate = _hit_flash_base_modulate
-		else:
-			var elapsed: float = _HIT_FLASH_DURATION - _hit_flash_t
-			var base_color := Color.RED if is_player else Color.WHITE
-			# 武器色：淡黄白（模拟弹体颜色反射）
-			var weapon_tint := Color(1.0, 0.95, 0.7)
-			if elapsed < 0.04:
-				# 阶段1：基色全饱和
-				modulate = base_color
-			elif elapsed < 0.09:
-				# 阶段2：基色 → 武器色过渡
-				var k2: float = (elapsed - 0.04) / 0.05
-				modulate = base_color.lerp(weapon_tint, k2)
-			else:
-				# 阶段3：武器色 → 原色 lerp
-				var k3: float = (elapsed - 0.09) / 0.06
-				modulate = weapon_tint.lerp(_hit_flash_base_modulate, k3)
 	# ── shake：4 段关键帧（v8.3 加大振幅）0.78→1.12→0.92→1.0，每段 0.035s ──
 	if _hit_shake_t >= 0.0:
 		_hit_shake_t += delta
@@ -1581,6 +1549,10 @@ func _physics_process(delta: float) -> void:
 		_update_nuclear_strike_tick(delta)
 		_update_shield_projector_tick(delta)
 		_update_drone_mark_tick(delta)
+		# v8.6: 势力技能周期效果（periodic_shield / periodic_heal / periodic_invuln）
+		FactionSkillEffectHandler.process_periodic_ticks(self, delta)
+		# v8.6: 势力技能 on_hit_debuff 过期恢复（检查并恢复被 debuff 修改的 stats）
+		FactionSkillEffectHandler.process_debuff_expirations(self, delta)
 
 func _apply_continuous_effects(delta: float) -> void:
 	ConstructUnitAI.apply_continuous_effects(self, delta)
@@ -1677,6 +1649,10 @@ func _update_hp_bar() -> void:
 	var bar = get_node_or_null("HpBar")
 	if bar == null or not bar.has_method("set_ratio") or stats == null:
 		return
+	# 护盾条同步：护盾消耗/归零必须即时反映，不受 HP 变化阈值的早期 return 影响。
+	# 否则护盾吸收伤害但 HP 未降到下一档时，护盾条残留旧值。
+	if bar.has_method("set_shield"):
+		bar.set_shield(shield, stats.max_hp)
 	# 性能优化：只在 HP 比率变化时更新 UI
 	var current_ratio := hp / stats.max_hp if stats.max_hp > 0 else 1.0
 	if absf(current_ratio - _cached_hp_ratio) < 0.01:  # 变化小于1%时不更新
@@ -1689,14 +1665,9 @@ func _update_hp_bar() -> void:
 		bar.set_folded(true)
 	else:
 		bar.set_folded(BattleInputState.current_selected_unit != self)
-	# v7.x: 同步刷新卡框 HP 数值标签
-	_refresh_hp_value_label()
-
-## v7.x: 刷新卡框 HP 数值标签（HpValueLabel）
-func _refresh_hp_value_label() -> void:
-	if stats == null:
-		return
-	CardGridUnitVisuals.update_hp_label_text(self, hp, stats.max_hp, shield)
+	# v7.x: 同步刷新卡框 HP 数值 - 现在HP显示在血条内部，直接调用set_hp_text
+	if bar.has_method("set_hp_text"):
+		bar.set_hp_text(hp, stats.max_hp)
 
 ## v7.x: 低频刷新漂浮 buff/debuff 标签（仅格子战）
 func _refresh_buff_labels() -> void:
@@ -1708,6 +1679,9 @@ func _refresh_buff_labels() -> void:
 func take_damage(amount: float, attacker: Variant = null) -> void:
 	# 预览模式不会受到伤害
 	if is_preview_mode:
+		return
+	# v8.6: 势力技能 periodic_invuln（周期无敌期间免疫伤害）
+	if is_player and FactionSkillEffectHandler.is_invulnerable(self):
 		return
 	# v7.x 战场视觉反馈：记录最后攻击者，供 unit_killed 信号携带（击杀定帧/连杀提示依赖）
 	if attacker != null and is_instance_valid(attacker):
@@ -1729,6 +1703,10 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		# 修复前用 stats.defense（build 时的三维最大值快照，后续加成不更新且不分攻击类型），
 		# 与实际三维脱节，导致高防单位被特定类型攻击打像没防御。与 swarm_enemy_slot 口径对齐。
 		var base_def: float = stats.defense
+		# v8.6: boss（enemy_phase_field_driver）无 stats 属性，attacker_kind 恒 -1 → 走 max-of-3 兜底，
+		# 导致玩家被 boss 技能打时按最高防御结算（难度被低估）。boss 是装甲平台，按 ARMOR 结算。
+		if attacker_kind < 0 and attacker != null and is_instance_valid(attacker) and attacker.has_method("get_master_stats"):
+			attacker_kind = GC.CombatKind.ARMOR
 		match attacker_kind:
 			GC.CombatKind.LIGHT, GC.CombatKind.SUPPORT:
 				base_def = stats.defense_light
@@ -1828,6 +1806,7 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		# v7.2: 护盾承压闪光（护盾环扩张+变亮，让玩家感知"护盾在挡伤害"）
 		_shield_aura_hit_boost = 1.0
 		_update_hp_bar()
+	# v8.6: 势力技能 conditional.hp_below 已在 setup 时永久注入防御加成（走既有防御结算）
 	hp -= hp_loss
 
 	# 性能优化：在 HP 变化时更新 HP 条
@@ -1838,11 +1817,14 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 	# 注：on_damage_taken 需在 hp 扣减之后调用，让 handler 能读取当前 hp 状态
 	ModuleEffectHandler.on_damage_taken(self, attacker, hp_loss)
 	if hp <= 0:
+		# v8.6: 势力技能 death_save（致命伤害免死一次，恢复 pct 血量）
+		if is_player and FactionSkillEffectHandler.try_death_save(self):
+			_update_hp_bar()
+			return  # 已救活，跳过死亡
 		_die()
 		return  # 死亡后跳过受击反馈（节点即将 freed，tween 会报错）
 
-	# 受击闪白/抖动反馈（仅存活单位；死亡时 queue_free 后写 freed instance）
-	_trigger_hit_flash()
+	# 受击反馈：v8.x 去掉整体变色虚化（单位保持卡图清晰），改命中点血溅粒子 + 保留抖动/击退物理反馈
 	_trigger_hit_shake()
 	# v8.3: 受击击退——从攻击者位置推方向（被击沿弹道反方向位移）
 	if attacker != null and is_instance_valid(attacker) and (attacker is Node2D):
@@ -1850,6 +1832,8 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		# 强度按攻击者爆炸半径判定：爆炸类 6，否则直射 3
 		var kb_str: float = 6.0 if (attacker.get("explosion_radius") != null and float(attacker.get("explosion_radius")) > 0.0) else 3.0
 		_trigger_hit_knockback(kb_dir, kb_str)
+		# v8.x: 命中点血溅粒子（沿弹道反向飞溅）——kb_dir 已是 attacker→unit 反向，复用作溅射方向
+		VfxImpactFactory.spawn_hit_blood(get_parent(), global_position, kb_dir, kb_str, true)
 	# v8.1: 血条受击闪白（接通 unit_hp_bar.trigger_damage_flash，原为未连线死功能）
 	var _hpbar := get_node_or_null("HpBar")
 	if _hpbar != null and _hpbar.has_method("trigger_damage_flash"):
@@ -1899,6 +1883,13 @@ func take_damage_with_shield(amount: float) -> float:
 
 	return remaining_damage
 
+# v8.6: 节点退出场景树时撤销改造光环 buff（兜底 _die 未覆盖的路径）。
+# 修复：预览单位(clear_preview_units→queue_free)不走 _die，导致 apply_mod_auras 广播的友军 buff
+# 残留为幽灵属性。_exit_tree 覆盖所有释放路径（预览清理/战斗结算/queue_free）。
+func _exit_tree() -> void:
+	if ModAuraHandler != null:
+		ModAuraHandler.remove_mod_auras(self)
+
 func _die() -> void:
 	if _is_dying:
 		return
@@ -1921,6 +1912,11 @@ func _die() -> void:
 		_killer_for_mod = get_meta("_last_attacker", null)
 	if _killer_for_mod != null and is_instance_valid(_killer_for_mod):
 		ModuleEffectHandler.on_kill(_killer_for_mod)
+		# v8.6: 势力技能 on_kill_energy / on_kill_heal_pct（击杀者回能量/回血）
+		FactionSkillEffectHandler.on_unit_kill(_killer_for_mod, self)
+	# v8.6: 势力技能 on_death_energy_return / on_death_ally_heal（自身死亡返能量/范围友军回血）
+	if is_player:
+		FactionSkillEffectHandler.on_unit_death(self)
 	# 性能优化：从空间分区网格移除
 	_unregister_from_spatial_grid()
 

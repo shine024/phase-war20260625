@@ -35,41 +35,25 @@ func get_total_height() -> float:
 func rebuild(rank_level: int, card_art_width: float = -1.0) -> void:
 	_rank_level = clampi(rank_level, 0, RankRules.RANK_LEVEL_MAX)
 	_card_art_width = card_art_width if card_art_width > 1.0 else CardGridBattleLayout.battle_card_width_px()
+	# 单枚图标尺寸（与血条高度匹配，放血条右侧）
 	var icon_size: float = _card_art_width * ICON_WIDTH_FRAC
-	var icon_gap: float = _card_art_width * ICON_GAP_FRAC
-	var row_gap: float = icon_size * ROW_GAP_FRAC
 	_icons.clear()
 	_total_height = 0.0
-	var tier_count: int = RankRules.visible_tier_count(_rank_level)
-	if tier_count <= 0:
+	if _rank_level <= 0:
 		visible = false
 		queue_redraw()
 		return
 	visible = true
-	var row_w: float = _card_art_width
-	var x0: float = -row_w * 0.5
-	var y: float = 0.0
-	# 高军衔在上（y 小）：先画元帅行 tier4，最后画士档 tier0（靠卡图一侧）
-	for ti: int in range(tier_count - 1, -1, -1):
-		var tier: int = ti
-		var slots: int = 1 if tier == 4 else RankRules.RANK_ICONS_PER_ROW
-		for slot: int in range(slots):
-			if not RankRules.is_rank_icon_shown(_rank_level, tier, slot):
-				continue
-			var slot_x: float = x0 + float(slot) * (icon_size + icon_gap)
-			if tier == 4:
-				slot_x = -icon_size * 0.5
-			var lit: bool = RankRules.is_rank_icon_lit(_rank_level, tier, slot)
-			var global_slot: int = 13 if tier == 4 else tier * RankRules.RANK_ICONS_PER_ROW + slot + 1
-			var rank_id: String = RankRules.RANK_ORDER[global_slot - 1]
-			var tex: Texture2D = RankIcons.get_icon(rank_id)
-			_icons.append({
-				"rect": Rect2(slot_x, y, icon_size, icon_size),
-				"tex": tex,
-				"color": _TIER_LIT[mini(tier, _TIER_LIT.size() - 1)] if lit else _TIER_DIM,
-			})
-		y += icon_size + row_gap
-	_total_height = y - row_gap if y > 0.0 else 0.0
+	# 只画当前实际军衔 1 个图标（rank_level 对应 RANK_ORDER[rank_level-1]）
+	var rank_id: String = RankRules.RANK_ORDER[_rank_level - 1]
+	var tex: Texture2D = RankIcons.get_icon(rank_id)
+	# 图标以本节点原点为中心绘制（position 由 sync_rank_strip 设到血条右侧）
+	_icons.append({
+		"rect": Rect2(-icon_size * 0.5, -icon_size * 0.5, icon_size, icon_size),
+		"tex": tex,
+		"color": Color(1.0, 0.95, 0.82, 1.0),
+	})
+	_total_height = icon_size
 	queue_redraw()
 
 
