@@ -14,8 +14,8 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 ## Godot CLI Commands
 
-Godot not on PATH. Executable: `D:/Downloads/Godot/Godot_v4.5.1-stable/Godot_v4.5.1-stable_win64.exe` (v4.5.1)
-> ⚠️ 实际路径多一层 `-stable/` 子目录（旧文档记为 `D:/Downloads/Godot/Godot_v4.5.1-stable_win64.exe`，该路径在本环境不存在）。
+Godot not on PATH. Executable: `D:/Downloads/Godot/Godot_v4.5.1-stable_win64.exe` (v4.5.1)
+> ⚠️ 实测有效路径为 `D:/Downloads/Godot/Godot_v4.5.1-stable_win64.exe`（直接在 Godot 目录下，无子目录）。旧文档曾记为 `D:/Downloads/Godot/Godot_v4.5.1-stable/Godot_v4.5.1-stable_win64.exe`（多一层 `-stable/` 子目录），该子目录在本环境不存在。
 Add `--rendering-driver opengl3` if Vulkan issues (applies to `--headless` / `--check-only` too).
 
 > **验证方式分层建议（避免撞 5 分钟超时）**：
@@ -25,16 +25,16 @@ Add `--rendering-driver opengl3` if Vulkan issues (applies to `--headless` / `--
 
 ```powershell
 # Version check
-& "D:/Downloads/Godot/Godot_v4.5.1-stable/Godot_v4.5.1-stable_win64.exe" --path "." --version
+& "D:/Downloads/Godot/Godot_v4.5.1-stable_win64.exe" --path "." --version
 
 # Project validation (no UI, recommended) — 全项目兜底，小改动别用
-& "D:/Downloads/Godot/Godot_v4.5.1-stable/Godot_v4.5.1-stable_win64.exe" --headless --rendering-driver opengl3 --path "." --check-only
+& "D:/Downloads/Godot/Godot_v4.5.1-stable_win64.exe" --headless --rendering-driver opengl3 --path "." --check-only
 
 # Smoke test (no GdUnit dependency)
-& "D:/Downloads/Godot/Godot_v4.5.1-stable/Godot_v4.5.1-stable_win64.exe" --headless --rendering-driver opengl3 --path "." --script "tests/star_config_smoke.gd"
+& "D:/Downloads/Godot/Godot_v4.5.1-stable_win64.exe" --headless --rendering-driver opengl3 --path "." --script "tests/star_config_smoke.gd"
 
 # Full GdUnit test suite
-& "D:/Downloads/Godot/Godot_v4.5.1-stable/Godot_v4.5.1-stable_win64.exe" --headless --rendering-driver opengl3 --path "." --script "tests/gdunit4_runner.gd"
+& "D:/Downloads/Godot/Godot_v4.5.1-stable_win64.exe" --headless --rendering-driver opengl3 --path "." --script "tests/gdunit4_runner.gd"
 ```
 
 ## Architecture
@@ -1960,3 +1960,143 @@ inf_19单兵电台(ally_bonus)、arm_15数据链(ally_hit_bonus)、for_10指挥�
 - `e_mod_*` 敌方装备 ID 全部未注册（敌方 mod 槽装饰化，预先存在，非本次回归）
 - ally_fort_regen 敌方无光环（敌方不接入 ModAuraHandler，但敌方不用 ally_* 改造，无影响）
 - v8.5 主动技能 tick（核武/护盾投射等）对敌方仍缺失（敌方 boss 已有独立技能系统，工作量大收益低，保留现状）
+
+## v9.1 我方组合技套路系统 (2026-08-01)
+
+**目标**: 把"我方套路"从纯数值堆叠升级为"组件协同 > 数值堆叠"。6 套固定套路，每套路是一条状态链：A 投射写状态 → B 投射读状态增伤/变形。新增 22 个改造 + 13 个新机制 flag + 战场级浓度状态管理器。全部向后兼容（套路未激活时行为 100% 等同改动前）。
+
+**核心架构（3 个新文件）:**
+
+| 文件 | 职责 |
+|------|------|
+| `scripts/battle/combo_field_state.gd` | **战场状态管理器**（RefCounted）。承载跨单位累积的"战场浓度"（纳米粒子/化学污染，自然衰减）+ 封装目标级 meta 读写（石墨电子损坏/助燃剂层数/激光谐振/雷达锁定/弱点暴露，带过期语义）。由 BattleManager 持有，end_battle 时 reset。 |
+| `data/combo_tactics.gd` | **6 套路定义**。每套路：mod_ids（配套改造）+ mod_combo_min（单卡激活阈值）+ kind_combo（兵种组合条件）+ mechanisms（新机制 flag 列表）。提供 detect_card_combos（单卡改造组合检测）+ detect_team_combos（全队兵种组合检测）。 |
+| `scripts/battle/combo_engine.gd` | **套路引擎**（RefCounted）。update(delta)：① 衰减战场浓度 ② 每 1s 刷新全队机制 flag。6 个新机制执行函数（static，供 module_effect_handler/bullet 直接调）：try_chem_burst/try_emp_reflect/try_nano_spread/try_chem_spread/try_beam_resonance/try_weakpoint_expose。 |
+
+**6 套路（每套路 1 状态链 + 新机制）:**
+
+| 套路 | 状态链 | 新机制 | 配套改造 |
+|------|--------|--------|---------|
+| 🔥 助燃燃烧链 | 助燃剂弹写 _incendiary_stacks → 燃烧弹读 stacks（层数上限 5→10，dps×1.5） | 化学爆发（层数≥8 范围扩散感染 3 个相邻敌人） | art_incendiary_mix/art_white_phosphorus/air_thermolite_bomb/gen_combustion_catalyst |
+| ⚡ 电磁脉冲链 | 石墨纤维弹写 _graphite_charge → 电磁武器读 charge（emp×(1+charge×0.15)） | 电磁脉冲反射（charge≥5 连锁反射 3 个相邻敌方弱化 emp） | art_graphite_fiber/aa_emp_warhead/air_antiradiation_missile/gen_overload_capacitor |
+| 🧬 纳米浓度场 | 纳米蜂群相位仪写战场 _nano_concentration → 纳米病毒读浓度（dot×(1+浓度×0.05)） | 纳米感染扩散（浓度≥50 时 30% 概率感染相邻敌人） | art_nano_amp/sup_nano_seeder/gen_nano_catalyst |
+| ✨ 光束谐振链 | 瞄准激光写 _laser_resonance → 光束武器读 resonance | 光束反射（30% 反射到相邻敌方，衰减 60%）+ 多重攻击（resonance≥3 追加 2 道次级光束，每道 40%） | gen_beam_splitter/gen_reflector_array/air_targeting_laser/eng_optical_fiber |
+| 🎯 侦察链式 | 无人机标记 _drone_marked_until + 雷达锁定 _radar_locked → 狙击手读双标记 | 集火链式弱点暴露（双标记同时存在时下次命中 +50% 暴击伤害） | rec_phased_radar/sup_targeting_drone/gen_weakpoint_analyzer |
+| ☠ 化学污染场 | 化学弹写战场 _chem_pollution + 目标 _chem_stacks → 化学武器读浓度/层数 | 化学腐蚀（层数≥5 护甲穿透 +20%）+ 污染扩散（浓度≥40 感染相邻敌人） | art_chem_cluster/aa_acid_warhead/eng_chem_sprayer/gen_pollution_accumulator |
+
+**触发检测（双层叠加）:**
+- **改造组合**（单卡）：单卡装了 ≥2 个同套路配套改造 → 该卡获得套路增益（在 `unit_stats_table._apply_mod_stat_effects` 一次性检测，写 `combo_active` + `mod_special_flags` meta）
+- **兵种组合**（全队）：场上满足 kind_combo 条件 → 全队解锁新机制 flag（combo_engine 每 1s 刷新 `_active_mechanisms`）
+- 两者叠加：改造组合激活时给单卡增伤；兵种组合激活时给全队解锁新机制
+
+**关键设计决策:**
+1. **复用 meta 标记链范式**——A 写 `_*_until` meta → bullet/module_effect_handler 读 meta，与现有 `_drone_marked_until`/`_marked_until`/`_burn_stacks` 完全一致，零侵入
+2. **战场浓度独立容器**——`combo_field_state` 是独立 RefCounted，不修改任何现有 meta/字段；end_battle 时 reset
+3. **新机制 flag 走全队激活**——避免单卡过强（单卡只拿改造组合的数值增益，新机制需兵种组合解锁）
+4. **v8.6 dot 是现成载体**——chem/burn/emp/nano 已实装，套路直接增强这些 dot（叠层上限放宽/dps 放大/感染扩散）
+5. **静态写入 + 运行时触发分工**——数值增益（burn_dps_mult 等）建卡时一次性算；触发 flag（chem_pollute/emp_reflect_trigger 等）存 `mod_special_flags` meta，运行时按事件读取
+6. **全队机制节流**——combo_engine 每 1s 刷新一次 `_active_mechanisms`（仿 tactic_detector），避免每帧扫描全场
+
+**改造现有文件（7 个，全向后兼容）:**
+- `managers/battle/battle_manager.gd` — +combo_engine/combo_field_state 字段 + _ready 实例化 + update 驱动 + start_battle setup + end_battle reset + get_combo_engine/get_combo_field_state getter
+- `resources/unit_stats.gd` — +4 字段（burn_dps_mult/chem_dps_mult/emp_true_damage_bonus/beam_damage_bonus，默认 0）
+- `resources/unit_stats_table.gd` — +ComboTactics preload；_apply_mod_stat_effects 末尾加改造组合检测（写 combo_active + mod_special_flags meta）；base dict + 4 字段；回写 + 4 字段
+- `scripts/systems/modification_registry.gd` — _apply_single_mod_effects +4 数值 effect key 分支（burn_dps_mult/chem_dps_mult/emp_true_damage_bonus/beam_damage_bonus），其余触发 flag 走 _special 兜底
+- `scripts/battle/module_effect_handler.gd` — +ComboEngine/ComboFieldState preload；+3 helper（_get_combo_engine/_get_combo_field_state/_get_attacker_special_flags）；4 个 on_hit 函数 +attacker 参数 + 套路触发（石墨累积/助燃层数/浓度注入/dot 放大/emp 反射）；_tick_dot_damage 末尾加 chem_burst/chem_spread/nano_spread 扩散
+- `scenes/units/bullet.gd` — +ComboEngine preload；命中乘区（bullet.gd:856 后）加套路读取（光束反射/多重攻击/弱点暴露触发+消费/化学腐蚀/光束伤害加成）
+- `managers/battle/phase_instrument_abilities.gd` — nano_swarm tick 注入战场纳米浓度（套路3 纳米浓度场）
+- `data/modification_modules/{artillery,air,anti_air,universal,engineer,recon}_mods.gd` — 6 文件共 +22 个套路配套改造
+
+**新机制落地路径:**
+| 机制 | 触发点 | 代码位置 |
+|------|--------|---------|
+| 化学爆发/污染扩散 | dot tick 结算后 | module_effect_handler._tick_dot_damage → ComboEngine.try_chem_burst/try_chem_spread |
+| 电磁脉冲反射 | emp 命中后 | module_effect_handler._apply_emp_on_hit → ComboEngine.try_emp_reflect |
+| 纳米感染扩散 | nano dot 结算后 | module_effect_handler._tick_dot_damage → ComboEngine.try_nano_spread |
+| 光束反射/多重攻击 | 光束命中（weapon_type=8/11） | bullet.gd:856 后 → ComboEngine.try_beam_resonance |
+| 集火链式弱点暴露 | 狙击命中带双标记目标 | bullet.gd → ComboEngine.try_weakpoint_expose |
+| 化学腐蚀降防 | 伤害结算 | bullet.gd:856 后读 _chem_stacks |
+| 纳米浓度注入 | nano_swarm 相位仪能力 tick | phase_instrument_abilities._apply_nano_swarm_tick |
+
+**不做的事（范围外）:**
+- 不改伤害公式骨架（套路乘区插在 bullet.gd:856 无人机标记旁，与现有乘区正交）
+- 不动 tactic_detector（套路系统独立，未来可整合）
+- 不补玩家单位 `_behavior_tags_cached`（现有 bullet.gd 兜底已够用，tag 计数问题预先存在非本次回归）
+- 武器类型差异化仅限光束（套路4），不做全 weapon_type 机制重构
+
+**验证:** 3 新文件 + 7 改造文件独立编译通过；静态核对全部链路（22 mod_id 全在 combo_tactics 与 mod 文件配对、4 数值 effect key registry→stats→table→bullet 全链路、6 机制函数调用配对）；combo_smoke smoke test（战场浓度 add/decay + 目标 meta/stacks + 6 套路定义完整 + 改造组合检测 + 兵种组合检测 + 引擎 setup）全 PASS。注：实机运行时行为（套路触发手感/数值平衡/扩散范围体感）需游戏内验证；Godot headless --check-only 因项目体量常撞 5 分钟超时（42 autoload + 133 卡），属既有现象。
+
+## v9.1b 组合技套路系统全面审计修复 (2026-08-02)
+
+**背景:** v9.1 落地后做三路全面审计（effect key 全链路 / 机制触发闭合 / 状态流转），发现 7 个 bug：3 个套路整体失效（P0）+ 2 个单改造部分失效（P1）+ 4 个死机制 flag + 4 个空转 trigger flag（P2）。状态流转三大链路（单卡检测/战场浓度/兵种组合）全部闭合正常，问题集中在机制触发层。
+
+**修复 7 个 bug:**
+
+| 级别 | bug | 修复 |
+|------|-----|------|
+| **P0-1** | 套路4 `laser_resonance_chance/stacks` 零 writer → beam_split/beam_reflect 永不触发，整个光束谐振链失效 | module_effect_handler 新增 `_apply_laser_resonance_on_hit`：命中按概率挂 `META_LASER_RESONANCE` 层数（≥3 触发多重攻击，>0 触发反射）；加 beam_split_trigger/beam_reflect_trigger 单卡闸门；全队 laser_resonance 机制激活时层数上限 5→8 |
+| **P0-2** | 套路5 `radar_lock_*` 零 writer → weakpoint_expose 永不触发，整个侦察链式失效 | module_effect_handler 新增 `_apply_radar_lock_on_hit`（命中刷新已有锁定）+ `_tick_radar_lock`（on_tick 周期扫描挂 `META_RADAR_LOCKED`，仿 drone_mark 范式）；bullet.gd 加雷达锁定易伤乘区 |
+| **P0-3** | combo_engine `try_weakpoint_expose` 把 `META_RADAR_LOCKED` 同时当 value_key 和 until_key（逻辑错） | 改为直接判存在性+过期（META_RADAR_LOCKED 是 until_key 秒时间戳） |
+| **P1-1** | sup_targeting_drone `drone_mark_amp/vuln_bonus/radius_bonus` 3 flag 零消费方 | `drone_mark_vuln_bonus` 在 `_apply_radar_lock_on_hit`/`_tick_radar_lock` 叠加进雷达易伤值（drone_mark_amp/radius_bonus 属描述性 flag，与固有无人机标记机制协同） |
+| **P1-2** | eng_chem_sprayer `splash_radius_bonus` registry 无 match 分支（只有 splash_radius），误入 _special | 改造 effects 改用 `splash_radius` key（命中现有分支，写 splash_radius_bonus 字段） |
+| **P2-1** | 4 个死机制 flag（incendiary_boost/graphite_accumulate/nano_concentration/radar_lock）零执行点 | 接通为"全队激活额外效果"：incendiary_boost→燃烧上限+dot×1.2；graphite_accumulate→石墨上限15+概率+0.2；nano_concentration→浓度系数×2；radar_lock→经 P0-2 writer 接通 |
+| **P2-2** | 4 个 trigger flag（chem_burst/nano_spread/beam_split/beam_reflect）空转 | chem_burst/nano_spread 属全队扩散机制（trigger 改造通过属套路配套集参与激活判定，注释修正澄清）；beam_split/beam_reflect 在 P0-1 加单卡闸门 |
+
+**关键设计决策:**
+1. **P2 采用"接通机制 flag"而非"删除"**——保留"全队激活套路提供额外效果"的设计深度（单卡 _special flag 给基础增益，全队机制 flag 给额外增益），避免套路深度降低
+2. **radar_lock 仿 drone_mark 范式**——周期扫描+命中刷新，复用 construct_unit 已验证的 tick meta 模式，零新机制
+3. **trigger flag 双闸门设计**——beam_split/beam_reflect 必须"装触发器改造（单卡 _special）+ 全队机制激活"双满足才触发，避免全队激活后任意光束武器都触发（过强）
+4. **combo_active 保留为 UI 预留**——单卡套路增益实际靠 mod_special_flags 驱动，combo_active 供未来 UI 显示"该卡激活了哪些套路"，删除会丢未来 UI 数据
+
+**修复后 6 套路全部端到端可触发:**
+| 套路 | 触发链路 | 状态 |
+|------|---------|------|
+| 🔥 助燃燃烧链 | incendiary_mix 写 stacks → white_phosphorus 读 stacks（上限10）→ thermolite_bomb 化学爆发 | ✅ |
+| ⚡ 电磁脉冲链 | graphite_fiber 写 charge → emp_warhead 读 charge 增伤 → overload_capacitor 脉冲反射 | ✅ |
+| 🧬 纳米浓度场 | nano_swarm 相位仪写浓度 → nano_seeder 累加 → nano_amp 增伤 → nano_catalyst 扩散 | ✅ |
+| ✨ 光束谐振链 | targeting_laser 写 resonance → beam_splitter 多重攻击 + reflector_array 反射 + optical_fiber 增伤 | ✅（P0-1 修复后） |
+| 🎯 侦察链式 | phased_radar 周期锁定 + targeting_drone 增强标记 → weakpoint_analyzer 弱点暴露 | ✅（P0-2/P0-3 修复后） |
+| ☠ 化学污染场 | chem_cluster/sprayer 写浓度+层数 → acid_warhead 腐蚀穿透 + pollution_accumulator 扩散 | ✅ |
+
+**关键文件（修复涉及）:**
+- `scripts/battle/module_effect_handler.gd` — +`_apply_laser_resonance_on_hit`/`_apply_radar_lock_on_hit`/`_tick_radar_lock`；on_hit +2 调用点，on_tick +1 调用点；4 个机制 flag 接通（incendiary_boost/graphite_accumulate/nano_concentration/radar_lock 经 is_mechanism_active 读取）
+- `scripts/battle/combo_engine.gd` — try_weakpoint_expose 雷达锁定读取逻辑修复（META_RADAR_LOCKED 作 until_key 正确判定）
+- `scenes/units/bullet.gd` — +雷达锁定易伤乘区（读 _radar_locked_until + _radar_vuln）
+- `data/modification_modules/engineer_mods.gd` — eng_chem_sprayer effects splash_radius_bonus→splash_radius
+
+**验证:** Godot headless --check-only 零编译错误（修复前报 bullet.gd compile error：module_effect_handler.gd:940 Cannot call non-static get_target_stacks；修复 static/instance + 7 bug 后零错误）；静态核对全部修复点（laser resonance writer→META_LASER_RESONANCE、radar lock writer→META_RADAR_LOCKED、combo_engine 读取修复、4 机制 flag is_mechanism_active 调用、eng_chem_sprayer key 修正）链路完整。
+
+## v9.1c 复审修复 (2026-08-02)
+
+**背景:** v9.1b 修复后再做三路复审（机制触发闭合/数值叠加边界/改造数据注册），确认上轮 8 个修复全部真正闭合，但发现 2 个新真 bug + 2 个数值平衡问题。
+
+**修复 4 项:**
+
+| # | 问题 | 修复 |
+|---|------|------|
+| **bug1** | `_apply_burn_on_hit` 的 `inc_cap` 变量算了却没用（add_target_stacks 硬编码 10），且 `META_INCENDIARY_STACKS` 写入后全项目零读取（死代码） | inc_cap 真正传入 add_target_stacks；接通 META_INCENDIARY_STACKS 到 burn cap 动态抬高（助燃层数每层 +1 燃烧上限） |
+| **bug2** | graphite charge 持续命中全程保持高层数，emp_reflect 阈值≥5 几乎全程触发（套路2 失衡） | emp_reflect 触发后消耗 3 点 charge（target 需重新累积才能再次反射，给玩家压制窗口） |
+| **平衡1** | graphite 全队上限 15 偏强（emp_dmg_mult 达 3.25x） | 上限 15→12 |
+| **平衡2** | nano/chem 浓度无上限，极端局放大 10x+ | combo_field_state 新增 FIELD_CAPS（nano=50/chem=60）软上限，add_field 后 clamp |
+
+**额外清理:** `_prefix_to_type` 补 `"sup": return "artillery"` 映射（防未来 sup_ 前缀 mod 未注册时回退失败）。
+
+**关键文件（v9.1c 修复涉及）:**
+- `scripts/battle/module_effect_handler.gd` — incendiary_layers 接通 burn cap；graphite 上限 15→12
+- `scripts/battle/combo_engine.gd` — try_emp_reflect 反射后消耗 3 点 graphite charge
+- `scripts/battle/combo_field_state.gd` — +FIELD_CAPS 软上限常量 + add_field clamp
+- `scripts/systems/modification_registry.gd` — _prefix_to_type 补 sup 映射
+
+**复审确认的闭合项（无需修复）:**
+- 5 个改动文件 load() 编译全 PASS（module_effect_handler/combo_engine/combo_field_state/modification_registry/battle_manager）
+- 所有 `_get_combo_engine()` 调用点 null 短路守卫完整（无 null deref 崩溃风险）
+- bullet.gd 套路乘区 null 守卫完整
+- radar lock 时间戳口径一致（秒）；drone mark 口径一致（毫秒）——两者各自自洽
+- getter 位置在 end_battle 之后，函数体完整
+- 22 改造 effect key 全字符级一致，无拼写漂移
+- combo_tactics mod_ids 与改造定义全匹配
+
+**已知设计权衡（非 bug，保留现状）:**
+- 套路4 光束谐振：resonance 写入闸门看单卡（装 air_targeting_laser 的单位），split/reflect 触发看全队机制——写读不对称但不会崩（未装触发器的单位累积的 resonance 无害，仅一行 set_meta）
+- `combo_active` meta 零读取——单卡套路增益实际靠 mod_special_flags 驱动，combo_active 供未来 UI 预留
+- chem_burst_trigger/nano_spread_trigger 等 trigger flag 仅作套路配套标记，不直接驱动逻辑（靠套路配套集参与激活判定）

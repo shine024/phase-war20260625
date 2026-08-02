@@ -213,6 +213,12 @@ var nano_chance: float = 0.0       ## 触发概率
 var nano_pct: float = 0.0          ## 每秒掉 maxHP 的百分比（如 0.02 = 每秒 2%）
 var nano_duration: float = 0.0     ## 持续秒数
 
+## ── v9.1 组合技套路增益乘区（默认 0，向后兼容）──
+var burn_dps_mult: float = 0.0        ## 燃烧 dot 总放大（套路1 燃烧催化剂）
+var chem_dps_mult: float = 0.0        ## 化学 dot 总放大（套路6 污染蓄能器）
+var emp_true_damage_bonus: float = 0.0 ## 电磁真实伤害加成（套路2 过载电容）
+var beam_damage_bonus: float = 0.0    ## 光束类武器伤害加成（套路4 光纤链路）
+
 # ─────────────────────────────────────────────
 #  变异词条标记
 # ─────────────────────────────────────────────

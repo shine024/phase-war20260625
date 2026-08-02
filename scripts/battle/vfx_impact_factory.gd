@@ -145,7 +145,6 @@ static func spawn_crit_sparks(parent: Node2D, world_pos: Vector2, is_full_crit: 
 ## v8.x: 单位受击血溅（复用 debris 池）。替代 v7.4 受击"整体变色虚化"——单位保持卡图清晰，
 ## 打击感外化到命中点：暗红血溅（沿弹道反向飞溅+重力下落）+ 叠加少量金色火花（BLEND_ADD 一闪）。
 ## direction：弹道反方向（attacker→unit 反向），强度越大粒子越多越远。
-static var _blood_ramp: Gradient = null
 static var _spark_blood_ramp: Gradient = null
 static func spawn_hit_blood(parent: Node2D, world_pos: Vector2, direction: Vector2, strength: float, is_player: bool) -> void:
 	if parent == null or not is_instance_valid(parent):
@@ -175,8 +174,9 @@ static func spawn_hit_blood(parent: Node2D, world_pos: Vector2, direction: Vecto
 			p.scale_amount_min = 1.6
 			p.scale_amount_max = 3.0
 			p.color_ramp = _get_blood_ramp(is_player)
-			# 血溅不用 ADD（叠亮会糊），改普通混合
-			p.material = null
+			# 注：debris 池默认带 ADD material（_acquire_debris_particle 新建时设）。
+			# 不在此覆盖 material=null——会污染池（复用时其他 debris 特效失去 ADD）。
+			# 血溅走 ADD 偏亮（暗红→粉红血雾高光），与火花层视觉协调，且零池污染风险。
 			parent.add_child(p)
 			var tree := p.get_tree()
 			if tree != null:

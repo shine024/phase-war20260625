@@ -13,6 +13,8 @@ const EnemyStatResolver = preload("res://data/enemy_stat_resolver.gd")
 const RuneDefs = preload("res://data/runes.gd")
 const BattleSlotGrid = preload("res://scenes/battlefield/battle_slot_grid.gd")
 const EnemyAffixes = preload("res://data/enemy_affixes.gd")
+# v9.0: 敌方相位师固定套路系统（补兵规则按套路走）
+const MasterPatterns = preload("res://data/enemy_phase_master_patterns.gd")
 
 ## 兜底：EnemyArchetypes 生成（当没有装备数据时使用）
 const USE_FALLBACK_SPAWN: bool = true
@@ -80,6 +82,23 @@ var _tier2_cap: int = 20
 var _exhaustion_cap: int = 30
 ## 缓存 setup 时设置的 Body 原始 tint，供疲劳视觉反馈叠加暗化使用
 var _base_body_tint: Color = Color.WHITE
+
+# ─── v9.0 套路补兵系统 ───
+## 当前相位师套路 id（setup 时识别/读取，见 MasterPatterns.get_pattern）
+var _pattern_id: String = MasterPatterns.PATTERN_NONE
+## 套路配置缓存（respawn_delay/max_respawns 等）
+var _pattern_cfg: Dictionary = {}
+## master_config 引用（补兵时按平台 id 查 archetype cfg 用）
+var _master_config_cache: Dictionary = {}
+## 待补兵队列：[{slot_index, platform_id, kind, due_time, remaining_retries}]
+## 单位死亡时入队，_process 中检查 due_time 到点即补
+var _respawn_queue: Array = []
+## 每个槽位已补兵次数（slot_index -> count），达 max_respawns 后该槽永久留空
+var _slot_respawn_counts: Dictionary = {}
+## 玩家近期击杀间隔（秒）滑动窗口（用于动态调整补兵延迟）
+var _recent_kill_intervals: Array = []
+var _last_kill_time: float = -1.0
+const _KILL_WINDOW_SIZE: int = 5  # 滑动窗口大小
 
 ## 平台类型字符串 -> GC.PlatformType 映射
 const _PLATFORM_TYPE_MAP: Dictionary = {
@@ -220,6 +239,17 @@ func setup(master_config: Dictionary) -> void:
 	# 每次重建基地都重置累计召唤计数与疲劳阶梯
 	_total_spawned = 0
 	_fatigue_tier = 0
+	# v9.0: 识别套路 + 初始化补兵系统
+	_master_config_cache = master_config
+	_pattern_id = MasterPatterns.get_pattern(master_config)
+	_pattern_cfg = MasterPatterns.get_pattern_config(_pattern_id)
+	_respawn_queue.clear()
+	_slot_respawn_counts.clear()
+	_recent_kill_intervals.clear()
+	_last_kill_time = -1.0
+	# v9.0: 连接 unit_died 信号——敌方单位死亡时按套路精准补位
+	if SignalBus and not SignalBus.unit_died.is_connected(_on_any_unit_died):
+		SignalBus.unit_died.connect(_on_any_unit_died)
 	if SignalBus:
 		SignalBus.enemy_phase_driver_hp_changed.emit(hp, max_hp)
 	var mode_str := "装备模式" if _has_equipment else "经典模式"
@@ -309,8 +339,17 @@ func stop_production() -> void:
 
 ## v8.5: 强制立即产兵一次（补满到 unit_limit）。供 EnemyMasterSkillEngine 召唤类技能调用。
 ## 格子战约束：敌方槽位上限 6，补满即止，不会越界。
+## v9.1c 修复：召唤技能也受疲劳系统约束——枯竭（_fatigue_tier>=3）或总召唤数超上限时停止，
+## 防止 boss 无限召唤导致玩家永远打不完。原实现 force_produce_once 绕过疲劳系统，
+## 即使 _process 定时产兵已停，boss 召唤技能仍每 CD 补满，造成"一直召唤"问题。
 func force_produce_once() -> void:
 	if not is_instance_valid(self):
+		return
+	# 疲劳守卫：枯竭后停止召唤（与 _process 定时产兵一致）
+	if _fatigue_tier >= 3:
+		return
+	# 总召唤数守卫：超 exhaustion_cap 后不再召唤（防 boss 技能绕过疲劳无限补兵）
+	if _total_spawned >= _exhaustion_cap:
 		return
 	_produce_unit()
 
@@ -327,6 +366,8 @@ func _process(delta: float) -> void:
 	if tree == null or tree.paused:
 		return
 	_spawn_timer += delta
+	# v9.0: 套路补兵队列处理（单位死亡后按套路精准补位，独立于波次产兵）
+	_process_respawn_queue()
 	# 枯竭后彻底停止产兵（_fatigue_tier >= 3），玩家只需专注输出基地 HP
 	if _fatigue_tier >= 3:
 		return
@@ -444,8 +485,10 @@ func _pick_reactive_platform(valid_platforms: Array, reactive_chance: float) -> 
 	return String(matched[randi() % matched.size()])
 
 
-## 从装备数据生成单位（使用 ConstructUnit）
-func _produce_unit_with_equipment() -> void:
+## 从装备数据生成单位（使用 ConstructUnit）。
+## override_platform_id（v9.0）：非空时强制用该平台产兵（套路补位"那个兵掉了补那个兵"），
+## 空时走 spawn_sequence + 反应式 AI 选平台（原逻辑）。
+func _produce_unit_with_equipment(override_platform_id: String = "") -> void:
 	if not BattleManager:
 		return
 	var current_count: int = BattleManager.get_enemy_unit_count()
@@ -478,11 +521,16 @@ func _produce_unit_with_equipment() -> void:
 	if valid_platforms.is_empty():
 		return
 
-	# v6.14: 按 spawn_sequence 序列选平台（替代纯随机），序列耗尽则循环。
-	# 序列为空时回退纯随机（向后兼容）。
+	# v9.0: 套路补位优先——override_platform_id 非空时直接用该平台（"那个兵掉了补那个兵"）。
+	# 仅 override 无效/为空时才走 spawn_sequence + 反应式 AI 原逻辑。
 	var platform_id: String = ""
 	var seq_entry_type: String = "normal"
-	if not _spawn_sequence.is_empty():
+	if not override_platform_id.is_empty() and valid_platforms.has(override_platform_id):
+		platform_id = override_platform_id
+		# override 补位走 normal 类型（不走 elite/boss 序列标记，避免重复加成）
+		seq_entry_type = "normal"
+	elif not _spawn_sequence.is_empty():
+		# v6.14: 按 spawn_sequence 序列选平台（替代纯随机），序列耗尽则循环。
 		var entry: Dictionary = _spawn_sequence[_spawn_seq_index % _spawn_sequence.size()]
 		_spawn_seq_index += 1
 		platform_id = String(entry.get("platform", ""))
@@ -495,9 +543,10 @@ func _produce_unit_with_equipment() -> void:
 
 	# v8: 反应式 AI——相位师侦测玩家主力兵种，按概率出克制兵。
 	# 70% 概率覆盖序列选择为克制玩家主力 combat_kind 的 platform；30% 保留原序列（维持出兵节奏）。
-	# valid_platforms 池中无克制候选时回退原选择（向后兼容）。
-	# entry 的 reactive_chance 字段（可选）可覆盖默认 0.7 概率，让不同相位师有不同"聪明度"。
-	if valid_platforms.size() > 1:
+	# v9.0: override 补位时跳过反应式 AI（精准补位优先于反制）。
+	if override_platform_id.is_empty() and valid_platforms.size() > 1:
+		# valid_platforms 池中无克制候选时回退原选择（向后兼容）。
+		# entry 的 reactive_chance 字段（可选）可覆盖默认 0.7 概率，让不同相位师有不同"聪明度"。
 		var reactive_chance: float = 0.7
 		if not _spawn_sequence.is_empty():
 			var cur_entry: Dictionary = _spawn_sequence[(_spawn_seq_index - 1) % _spawn_sequence.size()]
@@ -657,6 +706,10 @@ func _produce_unit_with_equipment() -> void:
 	# v8.x boss 唯一性：记录 archetype_id 到 meta，供后续 boss 数量统计（ConstructUnit 无 archetype_id 裸字段）
 	if not effective_archetype.is_empty():
 		unit.set_meta("archetype_id", effective_archetype)
+	# v9.0 fix: 记录产兵用的 platform_id 到 meta，供套路补兵"同款优先"精准匹配。
+	# 直引模式下 platform_id == archetype_id，旧平台卡模式下两者不同（archetype_id 是视觉 archetype，
+	# platform_id 才是产兵来源）。补兵时优先读 spawn_platform_id，避免旧平台卡模式下规则1 失效。
+	unit.set_meta("spawn_platform_id", platform_id)
 	# v7.x(敌方加成来源明细): 把产兵 7 层加成明细挂到单位 meta，供情报面板显示。
 	# base 取 _build_stats_from_archetype 后的值（含 enhance_level，未乘任何战场加成）；
 	# final 取乘完所有加成后的 stats 值；total_*_mul = base→final 的总比值。
@@ -804,6 +857,154 @@ func _apply_fatigue_visual(tier: int) -> void:
 		2: spr.modulate = base.lerp(Color(0.35, 0.2, 0.2), 0.55)
 		3: spr.modulate = base.lerp(Color(0.2, 0.1, 0.1), 0.7)
 
+# ============================ v9.0 套路补兵系统 ============================
+# 核心流程：敌方单位死亡 → unit_died 信号 → _on_any_unit_died 判定是否该补位
+#   → 入 _respawn_queue（带 due_time）→ _process 每 tick 检查 due_time 到点 → 补位产兵。
+# 补位规则："那个兵掉了补那个兵"——优先补同款 archetype；池中无同款才退套路 preferred 选兵。
+# 补兵频率随玩家击杀速度动态调整（杀得快→延迟拉长，杀得慢→延迟缩短）。
+
+## unit_died 信号回调：仅处理敌方单位死亡。
+func _on_any_unit_died(unit: Node, is_player: bool) -> void:
+	if is_player:
+		return   # 玩家单位死亡不管
+	# v9.0 同时记录玩家击杀速度（用于动态调整补兵延迟）——仅当死因有玩家攻击者时
+	_record_kill_interval()
+	if _pattern_id == MasterPatterns.PATTERN_NONE:
+		return   # 未识别套路：走原波次补兵，不套路补位
+	if _fatigue_tier >= 3:
+		return   # 弹尽粮绝：不再补兵
+	_schedule_respawn_for_dead_unit(unit)
+
+## 记录玩家击杀间隔（滑动窗口），供 compute_respawn_delay 用。
+func _record_kill_interval() -> void:
+	var now: float = Time.get_ticks_msec() / 1000.0
+	if _last_kill_time > 0.0:
+		var interval: float = now - _last_kill_time
+		if interval > 0.0 and interval < 120.0:   # 过滤异常值（战斗中断/暂停）
+			_recent_kill_intervals.append(interval)
+			if _recent_kill_intervals.size() > _KILL_WINDOW_SIZE:
+				_recent_kill_intervals.pop_front()
+	_last_kill_time = now
+
+## 单位死亡时判定是否补位 + 入队。
+func _schedule_respawn_for_dead_unit(dead_unit: Node) -> void:
+	if dead_unit == null:
+		return
+	# v9.0 fix: 取死亡单位的产兵来源 platform_id（套路补位"那个兵掉了补那个兵"的关键）。
+	# 优先读 spawn_platform_id meta（产兵时写入，直引/旧平台卡模式都准），
+	# 回退 archetype_id（兼容无 spawn_platform_id 的老单位/经典模式产兵）。
+	var dead_arch: String = ""
+	if dead_unit.has_meta("spawn_platform_id"):
+		dead_arch = String(dead_unit.get_meta("spawn_platform_id"))
+	if dead_arch.is_empty():
+		if "archetype_id" in dead_unit:
+			dead_arch = String(dead_unit.archetype_id)
+		elif dead_unit.has_meta("archetype_id"):
+			dead_arch = String(dead_unit.get_meta("archetype_id"))
+	# 取槽位（用于 max_respawns_per_slot 计数）
+	var slot_i: int = -1
+	if "card_grid_enemy_slot" in dead_unit:
+		slot_i = int(dead_unit.card_grid_enemy_slot)
+	elif dead_unit.has_meta("card_grid_enemy_slot"):
+		slot_i = int(dead_unit.get_meta("card_grid_enemy_slot"))
+	# 槽位补兵次数上限检查（鼓励玩家速杀，超过上限该槽永久留空）
+	if slot_i >= 0:
+		var count: int = int(_slot_respawn_counts.get(slot_i, 0))
+		var max_r: int = int(_pattern_cfg.get("max_respawns_per_slot", 3))
+		if count >= max_r:
+			return   # 该槽已补满次数上限，不再补
+	# 计算补兵延迟（随玩家击杀速度动态调整）
+	var delay: float = MasterPatterns.compute_respawn_delay(_pattern_id, _recent_kill_intervals)
+	# 取 combat_kind（套路 preferred 选兵兜底用）
+	var dead_kind: int = -1
+	var stats_v: Variant = dead_unit.get("stats") if "stats" in dead_unit else null
+	if stats_v != null and "combat_kind" in stats_v:
+		dead_kind = int(stats_v.combat_kind)
+	# 入队
+	_respawn_queue.append({
+		"dead_arch": dead_arch,
+		"dead_kind": dead_kind,
+		"slot_index": slot_i,
+		"due_time": Time.get_ticks_msec() / 1000.0 + delay,
+		"delay": delay,
+	})
+
+## 每 tick 检查补兵队列：到点的补位任务立即执行补兵。
+func _process_respawn_queue() -> void:
+	if _respawn_queue.is_empty():
+		return
+	if not _has_equipment:
+		return   # 无装备模式不支持套路补兵（走经典 fallback 产兵）
+	var now: float = Time.get_ticks_msec() / 1000.0
+	# 场上单位已满时不补（避免越界 6 上限）
+	if BattleManager and BattleManager.get_enemy_unit_count() >= _unit_limit:
+		return
+	var i: int = 0
+	while i < _respawn_queue.size():
+		var task: Dictionary = _respawn_queue[i]
+		if float(task.get("due_time", now)) <= now:
+			# 到点：先记录产兵前数量，用于判断是否真的补成功
+			var count_before: int = BattleManager.get_enemy_unit_count() if BattleManager else 0
+			_respawn_queue.remove_at(i)
+			var spawned: bool = _do_respawn(task)
+			if not spawned:
+				# v9.0 fix: 产兵失败（场上满/平台池空/valid_platforms 空等）→ 任务不能直接丢弃，
+				# 否则死亡的单位永久不补。改为推后 due_time 重新入队重试（最多 3 次，防卡队列）。
+				var retries: int = int(task.get("retries", 0)) + 1
+				if retries <= 3 and count_before < _unit_limit:
+					task["retries"] = retries
+					task["due_time"] = now + 0.5   # 0.5s 后重试
+					_respawn_queue.append(task)
+			# 补兵后若场上满则停（一次 tick 只补一个，避免瞬间刷出多个）
+			if BattleManager and BattleManager.get_enemy_unit_count() >= _unit_limit:
+				break
+		else:
+			i += 1
+
+## 执行单个补兵任务：按套路选平台 + 调 _produce_unit_with_equipment(override)。
+## 返回 true 表示真的产兵成功（场上单位数 +1），false 表示产兵失败（调用方据此决定是否重试）。
+func _do_respawn(task: Dictionary) -> bool:
+	var platforms_pool: Array = _equipment.get("platforms", [])
+	if platforms_pool.is_empty():
+		return false
+	# 场上已满时直接返回 false（让调用方推后重试，而非丢弃任务）
+	if BattleManager and BattleManager.get_enemy_unit_count() >= _unit_limit:
+		return false
+	var count_before: int = BattleManager.get_enemy_unit_count() if BattleManager else 0
+	var dead_arch: String = String(task.get("dead_arch", ""))
+	var dead_kind: int = int(task.get("dead_kind", -1))
+	# 收集存活单位（协同套路补缺元素用）
+	var alive_units: Array = []
+	var tree: SceneTree = get_tree()
+	if tree != null:
+		alive_units = tree.get_nodes_in_group("enemy_units")
+	# 套路选平台：核心规则"那个兵掉了补那个兵"（dead_arch 命中池则补同款）
+	var picked: String = MasterPatterns.pick_respawn_platform(
+		_pattern_id, platforms_pool, dead_arch, dead_kind, alive_units,
+		Callable(EnemyArchetypes, "get_config"))
+	# picked 为空时退平台池首项（兜底，避免卡死）
+	if picked.is_empty():
+		picked = String(platforms_pool[0])
+	# 执行补兵（override_platform_id = picked，跳过序列/反应式 AI）
+	_produce_unit_with_equipment(picked)
+	# 判断是否真的产兵成功（数量 +1 才算成功，避免 _produce_unit_with_equipment 内部静默 return 吞任务）
+	var count_after: int = BattleManager.get_enemy_unit_count() if BattleManager else 0
+	if count_after <= count_before:
+		return false   # 产兵失败，调用方据此重试
+	# 产兵成功：槽位补兵计数 +1（计数推迟到成功后，避免"计数加了没补成"导致槽位提前达上限）
+	var slot_i: int = int(task.get("slot_index", -1))
+	if slot_i >= 0:
+		_slot_respawn_counts[slot_i] = int(_slot_respawn_counts.get(slot_i, 0)) + 1
+	return true
+
+## 暴露当前套路 id（供 UI 显示"敌方套路：钢铁壁垒"等）
+func get_pattern_id() -> String:
+	return _pattern_id
+
+## 暴露套路配置（供 UI/调试用）
+func get_pattern_config() -> Dictionary:
+	return _pattern_cfg
+
 ## 回退路径：扫描 enemy_units 组，从远端(最大索引)倒序找第一个空闲敌槽；
 ## 敌方仅 slot N-1（位置 15，最右靠屏幕边）禁放，可用 slot 0~N-2。
 func _fallback_pick_free_enemy_slot() -> int:
@@ -855,6 +1056,10 @@ func get_boss_shield() -> float:
 
 func _on_destroyed() -> void:
 	stop_production()
+	# v9.0: 基地被摧毁时断开 unit_died 信号（停止补兵）+ 清空补兵队列
+	_respawn_queue.clear()
+	if SignalBus and SignalBus.unit_died.is_connected(_on_any_unit_died):
+		SignalBus.unit_died.disconnect(_on_any_unit_died)
 	# v8.5: 死亡类被动（death_explosion 等）必须在 queue_free 前触发（此时 driver 仍有效）
 	if _master_skill_engine != null and _master_skill_engine.has_method("on_boss_destroyed"):
 		_master_skill_engine.on_boss_destroyed()

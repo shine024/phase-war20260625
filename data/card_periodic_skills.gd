@@ -1,5 +1,9 @@
 extends RefCounted
 class_name CardPeriodicSkills
+
+const GC = preload("res://resources/game_constants.gd")
+const AuraData = preload("res://data/aura_data.gd")
+
 ## ═══════════════════════════════════════════════════════════
 ##  v8.x 卡片定时技能定义（20 个）
 ##
@@ -291,3 +295,59 @@ static func get_skills_by_family(family: String) -> Array:
 static func is_ultimate(skill_id: String) -> bool:
 	var def: Dictionary = SKILLS.get(skill_id, {})
 	return bool(def.get("is_ultimate", false))
+
+
+# ═══════════════════════════════════════════════════════════
+#  source_tag 派生（供 CardPeriodicSkillEngine 触发判定 + 卡牌情报面板显示）
+#
+#  - compute_source_tags_for_stats(stats)：从 UnitStats 派生该单位应带的全部 source_tag
+#    单一映射源：construct_unit._cache_behavior_tags 与 card_info_panel 共用，避免两处分叉
+#  - get_family_for_faction(faction_id)：玩家激活阵营 → 法则家族（flame/thunder/void/steel）
+# ═══════════════════════════════════════════════════════════
+
+## 玩家势力 → 法则家族（单一权威；合并 game_manager.gd:1027 战略层 + enemy_phase_field_driver.gd:319 视觉层）
+## aether_dynamics 在两源冲突，按战略层（game_manager）仲裁为 thunder；若设计意图为 steel，改本表一行即可
+const FACTION_TO_FAMILY := {
+	"iron_wall_corp": "steel",
+	"quantum_logistics": "steel",
+	"nova_arms": "flame",
+	"aether_dynamics": "thunder",
+	"helix_recon": "thunder",
+	"frontier_union": "thunder",
+	"void_research": "void",
+}
+
+## 玩家激活阵营 → 法则家族（空阵营返回空串 → flame/thunder/void 类技能休眠）
+static func get_family_for_faction(faction_id: String) -> String:
+	return String(FACTION_TO_FAMILY.get(faction_id, ""))
+
+## 从 UnitStats 派生该单位应带的全部 source_tag。
+## stats 需由 build_stats_from_card 路径构建（已写好 is_* meta 与 law_family meta）。
+## 含 stalker+stealth：保证 bullet.gd 切到读 _behavior_tags_cached 后仍是其 stats-meta 兜底集的超集（防回归）。
+## 不含 steel：无卡片技能用 steel 做 source_tag。
+static func compute_source_tags_for_stats(stats) -> Array:
+	var tags: Array = []
+	if stats == null:
+		return tags
+	# ── 兵种/定位类（对应 source_tag 表）──
+	if int(stats.unit_subtype) == GC.UnitSubType.ARTILLERY:
+		tags.append("artillery")
+	if int(stats.combat_kind) == GC.CombatKind.FORT:
+		tags.append("fort")
+	if bool(stats.get_meta("is_engineer", false)):
+		tags.append("engineer")
+	if bool(stats.get_meta("is_ecm", false)):
+		tags.append("ecm")
+	if bool(stats.get_meta("is_sniper", false)):
+		tags.append("sniper")
+	if AuraData.is_mechanical_platform(int(stats.platform_type)):
+		tags.append("mechanical")
+	# ── 行为 tag（补全 bullet.gd:839-849 兜底集，防其回退失效造成回归）──
+	if bool(stats.get_meta("is_stalker", false)):
+		tags.append("stalker")
+		tags.append("stealth")
+	# ── 家族类（由 UnitStatsTable._apply_law_family_meta 写入 stats meta "law_family"）──
+	var fam: String = String(stats.get_meta("law_family", ""))
+	if not fam.is_empty() and fam in ["flame", "thunder", "void"]:
+		tags.append(fam)
+	return tags

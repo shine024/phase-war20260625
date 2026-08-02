@@ -5,6 +5,8 @@ extends PanelContainer
 
 signal card_clicked(card: CardResource, source_item: Control)
 signal drag_completed(card: CardResource, target_slot: Control)
+## v7.x: 选择模式信号——Shift+点击时触发，用于批量选择拆解
+signal selection_changed(is_selected: bool)
 
 var card: CardResource = null
 
@@ -69,6 +71,104 @@ var _pulse_tween: Tween = null
 var _hover_base_style: StyleBoxFlat = null  # hover 进入前的 stylebox，退出时恢复
 var _is_hovering := false
 var _hover_base_pos_y: float = 0.0  # hover 进入前 position.y，退出/复位时恢复
+## v7.x: 选择模式状态
+var is_selected := false: set = _set_is_selected
+var _selected_style: StyleBoxFlat = null  # 选择态 stylebox 缓存
+## v7.x: 池化复用复位选中状态时抑制信号（避免 panel 统计误更新）
+var _suppress_selection_emit := false
+
+func _set_is_selected(value: bool) -> void:
+	if is_selected == value:
+		return
+	is_selected = value
+	if not _suppress_selection_emit:
+		_emit_selection_changed()
+	if value:
+		_apply_selected_style()
+	else:
+		_remove_selected_style()
+
+func _emit_selection_changed() -> void:
+	if has_signal("selection_changed"):
+		selection_changed.emit(is_selected)
+
+func _apply_selected_style() -> void:
+	# 创建青色选中边框（复用 hover glow 的 duplicate 模式）
+	if _hover_base_style == null:
+		return
+	if _selected_style == null:
+		_selected_style = _hover_base_style.duplicate() as StyleBoxFlat
+		_selected_style.border_color = Color(0.0, 0.94, 1.0, 1.0)  # 青色
+		_selected_style.border_width_left = 3
+		_selected_style.border_width_top = 3
+		_selected_style.border_width_right = 3
+		_selected_style.border_width_bottom = 3
+		_selected_style.shadow_color = Color(0.0, 0.94, 1.0, 0.5)
+		_selected_style.shadow_size = 6
+	add_theme_stylebox_override("panel", _selected_style)
+	# 右上角勾选标记（实心青色圆 + 白色 ✓）
+	_ensure_selected_mark(true)
+
+func _remove_selected_style() -> void:
+	if _hover_base_style != null:
+		add_theme_stylebox_override("panel", _hover_base_style)
+	else:
+		remove_theme_stylebox_override("panel")
+	_ensure_selected_mark(false)
+
+## v7.x: 右上角选中标记。is_on=true 时显示实心青色圆 + 白色「拆」字。
+## 定位：右上角，offset_top=4 / 距右边 4px，直径 18px。
+## 避开 EquippedMark（左上 offset_left=4~42/offset_top=26~38）和 InstanceNo（右下）。
+func _ensure_selected_mark(is_on: bool) -> void:
+	var layer: Control = _ensure_decoration_layer()
+	var badge: Control = layer.get_node_or_null("SelectedMark") as Control
+	if not is_on:
+		if badge:
+			badge.visible = false
+		return
+	var circle: PanelContainer = null
+	var check_lbl: Label = null
+	if badge == null:
+		badge = Control.new()
+		badge.name = "SelectedMark"
+		badge.anchor_left = 1.0
+		badge.anchor_right = 1.0
+		badge.anchor_top = 0.0
+		badge.anchor_bottom = 0.0
+		badge.offset_left = -26.0
+		badge.offset_right = -4.0
+		badge.offset_top = 4.0
+		badge.offset_bottom = 26.0
+		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		badge.z_index = 8  # 高于其他装饰（RarityTopStrip z=5/卡图，确保标记可见）
+		layer.add_child(badge)
+		circle = PanelContainer.new()
+		circle.name = "Circle"
+		circle.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		circle.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var bg_style := StyleBoxFlat.new()
+		bg_style.bg_color = Color(0.961, 0.62, 0.043, 0.96)  # 琥珀色实心（与拆解按钮同色系）
+		bg_style.set_corner_radius_all(11)  # 圆形（半径=尺寸/2，22px 直径）
+		bg_style.border_color = Color(1, 1, 1, 0.9)
+		bg_style.set_border_width_all(1)
+		circle.add_theme_stylebox_override("panel", bg_style)
+		badge.add_child(circle)
+		check_lbl = Label.new()
+		check_lbl.name = "Check"
+		check_lbl.text = "拆"  # 中间字：直接表明"待拆解"
+		check_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		check_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		check_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		check_lbl.add_theme_font_size_override("font_size", 11)
+		check_lbl.add_theme_color_override("font_color", Color(1, 1, 1, 1))
+		check_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		circle.add_child(check_lbl)
+	else:
+		circle = badge.get_node_or_null("Circle") as PanelContainer
+		check_lbl = badge.get_node_or_null("Circle/Check") as Label
+	# 置顶确保覆盖在其他装饰之上（池化复用时 z_index 可能被重置）
+	badge.z_index = 8
+	badge.visible = true
 
 
 func _ready() -> void:
@@ -149,11 +249,13 @@ func _disconnect_drag_frame_hook() -> void:
 	BackpackCardItemDrag.disconnect_drag_frame_hook(self)
 
 func _exit_tree() -> void:
-	# v7.3: 退出树时确保断开 process_frame（防对象池游离节点持续触发）
+	# v7.x: 退出树时确保断开 process_frame（防对象池游离节点持续触发）
 	_disconnect_drag_frame()
 	BackpackCardItemDrag.exit_tree_cleanup(self)
 	# v7.x：清理 hover/脉冲 Tween，防对象池游离节点持续触发
 	_kill_hover_tweens()
+	# v7.x: 清除选中状态（避免对象池回收残留高亮）
+	is_selected = false
 
 ## v7.x hover 动效：上浮 + 发光增强；Legendary/Mythic 额外脉冲（仅 hover 时）
 func _on_mouse_entered() -> void:
@@ -292,6 +394,11 @@ func set_card(c: CardResource) -> void:
 		z_index = 0
 		scale = Vector2(1.0, 1.0)
 		position.y = _hover_base_pos_y  # 恢复 hover 进入前的 y
+	# v7.x: 池化复用复位选中状态残留
+	if is_selected:
+		_suppress_selection_emit = true
+		is_selected = false  # 走 setter 清除高亮（信号被抑制，避免误触 panel 统计）
+		_suppress_selection_emit = false
 	var icon_row_sync: Control = _find_icon_row()
 	if icon_row_sync:
 		var want_mtg: bool = _backpack_uses_mtg_face()
@@ -1558,6 +1665,11 @@ func mtg_preview_refresh_art_layout() -> void:
 
 
 func _on_gui_input(ev: InputEvent) -> void:
+	# v7.x: Shift+点击进入选择模式（不触发详情弹窗）
+	if ev is InputEventMouseButton and ev.pressed:
+		if Input.is_key_pressed(KEY_SHIFT) and card != null:
+			is_selected = !is_selected
+			return
 	BackpackCardItemDrag.on_gui_input(self, ev)
 
 ## 开始拖拽

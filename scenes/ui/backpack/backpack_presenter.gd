@@ -321,6 +321,62 @@ func on_dismantle_button_pressed(card: CardResource) -> void:
 		SignalBus.backpack_changed.emit()
 	_show_toast_success("拆解成功：+%d 研究点，+%d 纳米材料" % [research_gain, nano_gain])
 
+## v7.x: 批量拆解回调——循环调用单卡拆解核心逻辑，累计资源，最后一次刷新网格 + toast。
+## View 已在确认回调里清空选中态，这里只管数据/资源/刷新。
+func on_batch_dismantle_pressed(cards: Array) -> void:
+	if cards.is_empty():
+		return
+	if _data == null or not _data.has_method("remove_extra_card_strict"):
+		return
+	var ir: Node = _get_autoload_node("InstanceRegistry")
+	var bpm: Node = _get_autoload_node("BlueprintManager")
+	var brm: Node = _get_autoload_node("BasicResourceManager")
+	var total_research: int = 0
+	var total_nano: int = 0
+	var actually_removed: int = 0
+	var removed_inst_ids: Array[String] = []
+	for card in cards:
+		if card == null:
+			continue
+		var inst_id: String = card.instance_id if not card.instance_id.is_empty() else card.card_id
+		# 仅允许拆解背包中的"额外卡"；不在列表里的跳过（防重复领取资源）
+		var removed: bool = bool(_data.remove_extra_card_strict(inst_id, true))
+		if not removed:
+			continue
+		actually_removed += 1
+		# 同步清理 InstanceRegistry 实例 + SaveManager 队列
+		if ir != null and ir.has_method("dispose_instance") and not card.instance_id.is_empty():
+			ir.dispose_instance(card.instance_id)
+		if SaveManager and SaveManager.has_method("consume_pending_backpack_card_id"):
+			SaveManager.consume_pending_backpack_card_id(inst_id)
+		# 累计收益
+		var gains: Dictionary = _calculate_dismantle_gains(card)
+		total_research += int(gains.get("research", 0))
+		total_nano += int(gains.get("nano", 0))
+		removed_inst_ids.append(inst_id)
+	# 一次性发放资源
+	if total_research > 0 or total_nano > 0:
+		if bpm != null:
+			if total_research > 0 and bpm.has_method("add_research_points"):
+				bpm.add_research_points(total_research)
+			if total_nano > 0 and bpm.has_method("add_nano_materials"):
+				bpm.add_nano_materials(total_nano)
+		elif brm != null and brm.has_method("add_resource"):
+			if total_research > 0:
+				brm.add_resource(BasicResources.ID_RESEARCH_POINTS, total_research)
+			if total_nano > 0:
+				brm.add_resource(BasicResources.ID_NANO_MATERIALS, total_nano)
+	# 一次性刷新网格（避免逐张 remove_last_card_by_id 多次重排）
+	_refresh_card_grid()
+	if SignalBus and SignalBus.has_signal("backpack_changed"):
+		SignalBus.backpack_changed.emit()
+	if actually_removed == 0:
+		_show_toast_error("所选卡牌均不在背包中，未拆解")
+	elif actually_removed < cards.size():
+		_show_toast_success("批量拆解 %d/%d 张：+%d 研究点，+%d 纳米材料" % [actually_removed, cards.size(), total_research, total_nano])
+	else:
+		_show_toast_success("批量拆解 %d 张：+%d 研究点，+%d 纳米材料" % [actually_removed, total_research, total_nano])
+
 ## 关闭详情弹窗
 func on_detail_close() -> void:
 	if _view and _view.has_method("hide_card_detail"):

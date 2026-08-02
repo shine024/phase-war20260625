@@ -24,6 +24,7 @@ const DefaultCards = preload("res://data/default_cards.gd")
 const EnemyPhaseEquipment = preload("res://data/enemy_phase_equipment.gd")
 const FortShieldAuraScript = preload("res://scripts/battle/fort_shield_aura.gd")
 const CompanyDefs = preload("res://data/company_definitions.gd")  # v6.14: 部署阵营泛光用
+const CardPeriodicSkills = preload("res://data/card_periodic_skills.gd")  # 卡片定时技能 source_tag 缓存
 # ObjectPoolManager 为 autoload
 const BATTLE_MIN_X: float = 40.0
 const BATTLE_MAX_X: float = 1240.0
@@ -161,6 +162,9 @@ var _card_skill_bonus_acc: float = 0.0
 const CARD_SKILL_BONUS_CHECK_INTERVAL: float = 0.5
 # 运行时累积的卡片技能 stat_bonus（attack_speed/crit_chance/dodge_chance/damage_reduction）
 var _card_skill_runtime_bonus: Dictionary = {}
+# 卡片定时技能 source_tag 缓存：供 CardPeriodicSkillEngine._try_trigger 匹配（修复玩家侧技能不触发）。
+# 在 setup() 内 _init_unit_mechanisms 之后由 _cache_behavior_tags 填充；也供 bullet.gd TAG_COUNTER_RULES 读取。
+var _behavior_tags_cached: Array = []
 var attack_timer: float = 0.0
 ## v5.0 攻速分离: 三阶段攻击状态机 (idle → windup → active → cooldown → idle)
 enum AttackPhase { IDLE, WINDUP, ACTIVE, COOLDOWN }
@@ -223,6 +227,7 @@ var _buff_strip_timer: float = 0.0
 var _ability_accum: float = 0.0  ## 平台能力累加器（降低调用频率）
 var _buff_strip_signature: String = ""
 var _buff_label_refresh_accum: float = 0.0  ## v7.x 漂浮 buff 标签低频刷新累加器
+var _hp_status_refresh_accum: float = 0.0   ## v9.x 血条状态图标低频刷新累加器（不 gate 模式，两种战斗都刷新）
 ## 跨实例共享的资源缓存，避免运行时重复 load()
 var _res_cache: Dictionary = {}
 
@@ -259,6 +264,8 @@ func setup(p_is_player: bool, p_stats: UnitStats, forced_enemy_visual_archetype_
 			set_meta("mod_aura_summary", aura_summary)
 	# v8 兵种固定机制初始化（从 stats meta 读取 apply_combat_kind_modifiers 设置的标记）
 	_init_unit_mechanisms()
+	# 卡片定时技能：缓存 source_tag（兵种+家族），供 CardPeriodicSkillEngine 触发判定（修复玩家侧不触发）
+	_cache_behavior_tags()
 	hp = stats.max_hp
 	velocity = Vector2.ZERO
 	_weapon_cfgs.clear()
@@ -504,9 +511,21 @@ func apply_card_grid_enemy_presentation() -> void:
 			poly.visible = true
 		else:
 			poly.visible = false
+	# v7.x: 敌方格子战（含相位师产兵）启用迷你 HP 条，与 enemy_unit.gd 口径对齐
+	# 设计稿 v9：HP 条 + HP 数值配套。默认折叠态，选中时展开。
 	var hb := get_node_or_null("HpBar") as CanvasItem
 	if hb != null:
-		hb.visible = false
+		hb.visible = true
+		# 敌方 Sprite2D 有 z_index=1（见 construct_unit.tscn），会盖住 z_index 默认 0 的 HpBar，
+		# 抬高 HpBar 根节点 z_index 到立绘之上（与 enemy_unit.gd 一致）。
+		(hb as Node2D).z_index = 10
+		# 血条移到头顶：锚定实体顶部上方（与玩家/普通敌方单位对称）
+		var top_y: float = CardGridUnitVisuals.entity_top_y(spr) if spr != null else -50.0
+		hb.position = Vector2(0.0, top_y - 14.0)
+		if hb.has_method("set_side"):
+			hb.set_side(false)  # 敌方色（红）
+		if hb.has_method("set_folded"):
+			hb.set_folded(true)  # 默认折叠，选中时展开
 	var aura_ring := get_node_or_null("AuraRing") as CanvasItem
 	var rank_badge := get_node_or_null("RankBadge") as CanvasItem
 	if aura_ring != null:
@@ -564,7 +583,7 @@ func _trigger_hit_shake() -> void:
 
 
 ## v8.3: 受击击退位移——沿弹道反方向微位移，给物理反馈（被击不再是"被风吹过"）
-## strength：直射 3 / 爆炸 6 / 暴击 10。motion_reduce 时短路（仅保留 flash+shake）。
+## strength：直射 3 / 爆炸 6 / 暴击 10。motion_reduce 时短路（仅保留 shake；v8.x flash 已改命中点血溅）。
 var _knockback_tween: Tween = null
 func _trigger_hit_knockback(direction: Vector2, strength: float) -> void:
 	if is_preview_mode or DT.is_motion_reduce():
@@ -749,6 +768,18 @@ func _init_unit_mechanisms() -> void:
 	if stats.has_meta("is_drone_mark") and bool(stats.get_meta("is_drone_mark", false)):
 		_is_drone_mark_unit = true
 		_drone_mark_cd = DRONE_MARK_INTERVAL
+
+
+## 卡片定时技能：缓存 source_tag（兵种+家族），供 CardPeriodicSkillEngine._try_trigger 匹配，
+## 也供 bullet.gd 的 TAG_COUNTER_RULES 读取。在 setup() 内 _init_unit_mechanisms 之后调用（stats meta 已就绪）。
+## 仅玩家单位填充；敌方复用 construct 视觉时跳过（敌方走 enemy_unit._apply_behavior_tags 独立路径）。
+func _cache_behavior_tags() -> void:
+	_behavior_tags_cached.clear()
+	if not is_player:
+		return  # 敌方复用 construct 时跳过（敌方走 enemy_unit._apply_behavior_tags 独立路径）
+	if stats == null:
+		return
+	_behavior_tags_cached = CardPeriodicSkills.compute_source_tags_for_stats(stats)
 
 
 ## v8.x: ECM 电子战光环——周期性给范围内敌方挂减益 meta
@@ -1503,6 +1534,13 @@ func _physics_process(delta: float) -> void:
 		if _buff_label_refresh_accum >= 0.3:
 			_buff_label_refresh_accum = 0.0
 			_refresh_buff_labels()
+	# v9.x 血条上方状态图标（buff/debuff）：不 gate 模式，两种战斗都刷新
+	_hp_status_refresh_accum += delta
+	if _hp_status_refresh_accum >= 0.3:
+		_hp_status_refresh_accum = 0.0
+		var _hpbar := get_node_or_null("HpBar")
+		if _hpbar != null and _hpbar.has_method("refresh_status_icons"):
+			_hpbar.refresh_status_icons()
 	# 性能优化：静止单位跳过空间网格更新
 	if velocity != Vector2.ZERO:
 		_update_in_spatial_grid()
@@ -1644,8 +1682,6 @@ func _do_attack_with_damage(damage: float, weapon_type_override: int = -1) -> vo
 	ConstructUnitAI.do_attack_with_damage(self, damage, weapon_type_override)
 
 func _update_hp_bar() -> void:
-	if _presentation_card_grid and not is_player:
-		return
 	var bar = get_node_or_null("HpBar")
 	if bar == null or not bar.has_method("set_ratio") or stats == null:
 		return
@@ -1653,6 +1689,20 @@ func _update_hp_bar() -> void:
 	# 否则护盾吸收伤害但 HP 未降到下一档时，护盾条残留旧值。
 	if bar.has_method("set_shield"):
 		bar.set_shield(shield, stats.max_hp)
+	# 敌方格子战（含相位师产兵）：用敌方口径更新血条（红侧），与 enemy_unit.gd 对齐
+	if _presentation_card_grid and not is_player:
+		var enemy_ratio := hp / stats.max_hp if stats.max_hp > 0 else 1.0
+		if absf(enemy_ratio - _cached_hp_ratio) >= 0.01:
+			_cached_hp_ratio = enemy_ratio
+			bar.set_side(false)
+			bar.set_ratio(enemy_ratio)
+			if typeof(SignalBus) == TYPE_NIL:
+				bar.set_folded(true)
+			else:
+				bar.set_folded(BattleInputState.current_selected_unit != self)
+		if bar.has_method("set_hp_text"):
+			bar.set_hp_text(hp, stats.max_hp)
+		return
 	# 性能优化：只在 HP 比率变化时更新 UI
 	var current_ratio := hp / stats.max_hp if stats.max_hp > 0 else 1.0
 	if absf(current_ratio - _cached_hp_ratio) < 0.01:  # 变化小于1%时不更新
@@ -1670,7 +1720,10 @@ func _update_hp_bar() -> void:
 		bar.set_hp_text(hp, stats.max_hp)
 
 ## v7.x: 低频刷新漂浮 buff/debuff 标签（仅格子战）
+## v9.x: 已停用——状态图标改由血条上方矢量图标统一显示（refresh_status_icons），
+##       避免卡顶文字标签与血条图标重复。保留函数体便于回退。
 func _refresh_buff_labels() -> void:
+	return
 	if not _presentation_card_grid:
 		return
 	var spr: Sprite2D = get_node_or_null("Sprite") as Sprite2D
@@ -1957,7 +2010,10 @@ func _die() -> void:
 			_killer = get_meta("_last_attacker", null)
 		if _killer != null and not is_instance_valid(_killer):
 			_killer = null
-		SignalBus.unit_killed.emit(self, _killer, is_player)
+		# meta 取出的对象类型信息会退化为 Object 基类，emit 信号(killer: Node)严格检查会报转换错。
+		# 显式 as Node 转换：是 Node 则传入，否则 null（与 enemy_unit.gd 同款修复）。
+		var _killer_node: Node = _killer as Node if (_killer != null and is_instance_valid(_killer)) else null
+		SignalBus.unit_killed.emit(self, _killer_node, is_player)
 	# v6.2: 符文之语特殊效果 — 敌方单位死亡时，触发玩家方单位的击杀回能
 	if not is_player:
 		_trigger_allied_kill_rewards()

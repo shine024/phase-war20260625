@@ -36,6 +36,10 @@ class_name GameConfig
 @export_group("调试配置")
 @export var enable_debug_logs: bool = true  ## 启用调试日志
 @export var enable_performance_stats: bool = false  ## 启用性能统计
+## v8.x 测试开关：true = 去掉部署的兵种类/数目限制（无视 restrict_platforms 白名单、
+## 同卡存活上限、总数/绿槽数上限），方便测试阶段自由放兵。默认 false（生产零影响）。
+## 注意：物理格子上限（6 个可点击位置）不受此开关影响，仍由 BattleSlotGrid 决定。
+@export var debug_no_deploy_limits: bool = false
 
 ## 默认配置实例
 static var _default_config: GameConfig = null
@@ -61,6 +65,7 @@ static func get_default() -> GameConfig:
 		_default_config.target_find_interval = 0.3
 		_default_config.enable_debug_logs = true
 		_default_config.enable_performance_stats = false
+		_default_config.debug_no_deploy_limits = false
 
 	return _default_config
 

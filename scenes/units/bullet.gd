@@ -11,6 +11,8 @@ const WeaponProjectileVfx = preload("res://scripts/weapon_projectile_vfx.gd")
 const AttackCalculator = preload("res://scripts/battle/attack_calculator.gd")
 const RuneSpecialHandler = preload("res://managers/rune_special_handler.gd")
 const FactionSkillEffectHandler = preload("res://scripts/battle/faction_skill_effect_handler.gd")
+# v9.1: 组合技套路机制（光束反射/多重攻击/弱点暴露/化学腐蚀等乘区）
+const ComboEngine = preload("res://scripts/battle/combo_engine.gd")
 ## 曲射弹道：炮口火焰特效纹理（预加载，避免运行时 ResourceLoader.load 卡顿）
 const ARTILLERY_MUZZLE_TEX := preload("res://assets/effects/projectiles/weapons_realistic/weapon_artillery_muzzle.png")
 ## v6.4: 重型武器拖尾贴图（曲射/爆炸类），复用 omega_platform 拖尾资源
@@ -854,6 +856,65 @@ func _on_hit(primary: Node2D) -> void:
 		if Time.get_ticks_msec() < _dm_until:
 			var _dm_vuln: float = float(primary.get_meta("_drone_mark_vuln", 0.25))
 			final_damage *= (1.0 + _dm_vuln)
+
+	# v9.1: 组合技套路乘区（光束谐振/弱点暴露/化学腐蚀/激光谐振标记）
+	# 读 shooter 的 _special flags + 全队激活机制（通过 combo_engine 查询）。
+	# 光束武器判定：weapon_type 为 LASER(8)/RAIL(11)。
+	var _is_beam: bool = (weapon_type == 8 or weapon_type == 11)
+	# v9.1 光束武器伤害加成（套路4 beam_damage_bonus，光纤链路）
+	if _is_beam and shooter_stats != null and shooter_stats.beam_damage_bonus > 0.0:
+		final_damage *= (1.0 + shooter_stats.beam_damage_bonus)
+	var _combo_eng: RefCounted = null
+	var _bm_combo := get_tree().root.get_node_or_null("BattleManager") if (get_tree() != null) else null
+	if _bm_combo != null and _bm_combo.has_method("get_combo_engine"):
+		_combo_eng = _bm_combo.get_combo_engine()
+	if _combo_eng != null and _combo_eng.has_method("get_active_mechanisms"):
+		var _mechs: Array = _combo_eng.get_active_mechanisms()
+		# 套路4 光束谐振：多重攻击（beam_split）+ 反射（beam_reflect）
+		if _is_beam and is_instance_valid(shooter) and primary != null:
+			var _beam_res: Dictionary = ComboEngine.try_beam_resonance(_mechs, _combo_eng.get_field_state(), shooter, primary, _is_beam)
+			if _beam_res.get("split", false):
+				# 多重攻击：追加 2 道次级光束伤害（每道 40%，直接 take_damage 不再生成子弹）
+				for _si in range(2):
+					if primary.has_method("take_damage"):
+						primary.take_damage(final_damage * 0.4, shooter)
+			if _beam_res.get("reflect", false):
+				# 反射：找 1 个相邻敌方单位，衰减 60% 伤害（衰减后 40%）
+				var _tpos: Vector2 = (primary.global_position if primary is Node2D else global_position)
+				var _grp: String = "enemy_units" if shooter_is_player else "player_units"
+				for _n in (get_tree().get_nodes_in_group(_grp) if get_tree() != null else []):
+					if _n == null or not is_instance_valid(_n) or not (_n is Node2D) or _n == primary:
+						continue
+					if _tpos.distance_to((_n as Node2D).global_position) <= 120.0:
+						if _n.has_method("take_damage"):
+							_n.take_damage(final_damage * 0.4, shooter)   # 衰减 60% → 40%
+						break
+		# 套路5 集火链式弱点暴露：读 shooter _special weakpoint_trigger + 目标有双标记
+		if is_instance_valid(shooter) and primary != null:
+			var _shooter_stats_v = shooter.get("stats") if "stats" in shooter else null
+			var _has_weakpoint_trigger: bool = false
+			if _shooter_stats_v != null and _shooter_stats_v.has_meta("mod_special_flags"):
+				_has_weakpoint_trigger = (_shooter_stats_v.get_meta("mod_special_flags", {}) as Dictionary).has("weakpoint_trigger")
+			if _has_weakpoint_trigger and _mechs.has("weakpoint_expose"):
+				ComboEngine.try_weakpoint_expose(_mechs, _combo_eng.get_field_state(), shooter, primary)
+		# v9.1 弱点暴露消费：目标有 _weakpoint_until（未过期）且本次命中是暴击 → 暴击伤害额外 +
+		if primary != null and is_instance_valid(primary) and primary.has_meta("_weakpoint_until"):
+			var _wp_until: float = float(primary.get_meta("_weakpoint_until", 0.0))
+			if Time.get_ticks_msec() / 1000.0 < _wp_until and is_crit:
+				var _wp_bonus: float = float(primary.get_meta("_weakpoint_bonus", 0.5))
+				final_damage += final_damage * _wp_bonus
+				primary.remove_meta("_weakpoint_until")   # 一次性消费
+		# v9.1 化学腐蚀（套路6）：目标 _chem_stacks ≥5 时护甲穿透 +20%（通过伤害放大实现）
+		if primary != null and is_instance_valid(primary) and _mechs.has("chem_corrosion"):
+			if primary.has_meta("_chem_stacks") and int(primary.get_meta("_chem_stacks", 0)) >= 5:
+				final_damage *= 1.20
+		# v9.1 套路5 雷达锁定易伤：目标有 _radar_locked_until（未过期）则伤害 ×(1+vuln)
+		# P1-1：sup_targeting_drone 的 drone_mark_vuln_bonus 已在 _apply_radar_lock_on_hit 叠加进 vuln
+		if primary != null and is_instance_valid(primary) and primary.has_meta("_radar_locked_until"):
+			var _rl_until: float = float(primary.get_meta("_radar_locked_until", 0.0))
+			if Time.get_ticks_msec() / 1000.0 < _rl_until:
+				var _rl_vuln: float = float(primary.get_meta("_radar_vuln", 0.15))
+				final_damage *= (1.0 + _rl_vuln)
 
 	# 范围伤害
 	if explosion_radius > 0.0:

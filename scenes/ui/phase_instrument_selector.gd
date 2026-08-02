@@ -36,11 +36,59 @@ func _ready() -> void:
 	if close_button:
 		close_button.pressed.connect(_on_close)
 		UiAssetLoader.apply_button_icon(close_button, "icon_close")
+	# v8.x: 监听属性点分配变化 → 刷新列表（重建属性点区块，反映新点数）
+	if SignalBus and SignalBus.has_signal("phase_field_points_changed"):
+		if not SignalBus.phase_field_points_changed.is_connected(_on_phase_field_points_changed):
+			SignalBus.phase_field_points_changed.connect(_on_phase_field_points_changed)
 	_refresh_instrument_list()
 
 func _on_backdrop_gui_input(ev: InputEvent) -> void:
 	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
 		queue_free()
+
+## v8.x: 属性点分配变化时刷新列表（重建属性点区块，反映新分配状态）
+func _on_phase_field_points_changed(_unspent: int) -> void:
+	_refresh_instrument_list()
+
+## v8.x: 给某属性分配 1 点
+func _on_allocate_pressed(key: String) -> void:
+	if PhaseInstrumentManager == null:
+		return
+	var ok: bool = false
+	if PhaseInstrumentManager.has_method("allocate_phase_field_point"):
+		ok = PhaseInstrumentManager.allocate_phase_field_point(key, 1)
+	if not ok:
+		var reason: String = ""
+		if PhaseInstrumentManager.has_method("can_allocate_phase_field_point"):
+			reason = String(PhaseInstrumentManager.can_allocate_phase_field_point(key).get("reason", ""))
+		if reason == "not_enough_points":
+			_show_toast("❌ 可分配点数不足")
+		elif reason == "invalid_key":
+			_show_toast("❌ 属性无效")
+	# 成功时 phase_field_points_changed 信号会驱动 _refresh，无需手动调
+
+## v8.x: 从某属性回收 1 点
+func _on_refund_pressed(key: String) -> void:
+	if PhaseInstrumentManager == null:
+		return
+	if PhaseInstrumentManager.has_method("refund_phase_field_point"):
+		PhaseInstrumentManager.refund_phase_field_point(key, 1)
+	# 信号驱动刷新
+
+## v8.x: 重置全部属性点分配（洗点）
+func _on_reset_allocations_pressed() -> void:
+	if PhaseInstrumentManager == null:
+		return
+	var refunded: int = 0
+	if PhaseInstrumentManager.has_method("reset_phase_field_allocations"):
+		refunded = PhaseInstrumentManager.reset_phase_field_allocations()
+	if refunded > 0:
+		_show_toast("✨ 已返还 %d 点属性点" % refunded)
+	# 信号驱动刷新
+
+func _show_toast(msg: String) -> void:
+	if SignalBus and SignalBus.has_signal("show_toast"):
+		SignalBus.show_toast.emit(msg)
 
 ## 刷新相位仪列表
 func _refresh_instrument_list() -> void:
@@ -87,7 +135,8 @@ func _create_phase_field_info_item() -> Control:
 		return null
 	var panel := PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.custom_minimum_size = Vector2(0, 88)
+	# v8.x: 高度自适应（加了分配按钮区，固定 88 会挤压）
+	panel.custom_minimum_size = Vector2(0, 0)
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.05, 0.16, 0.20, 0.95)
 	style.border_color = Color(0.35, 0.82, 0.95, 0.75)
@@ -171,6 +220,73 @@ func _create_phase_field_info_item() -> Control:
 		total_bonus_line.add_theme_font_size_override("font_size", 10)
 		total_bonus_line.add_theme_color_override("font_color", Color(0.70, 0.95, 0.90, 0.95))
 		vbox.add_child(total_bonus_line)
+
+	# ══ v8.x: 属性点分配按钮区 ══
+	var alloc_title := Label.new()
+	alloc_title.text = "▼ 分配属性点（剩余 %d 点）" % unspent
+	alloc_title.add_theme_font_size_override("font_size", 12)
+	alloc_title.add_theme_color_override("font_color", Color(0.95, 0.85, 0.40, 1.0) if unspent > 0 else Color(0.60, 0.65, 0.70, 0.9))
+	vbox.add_child(alloc_title)
+
+	var rules: Dictionary = {}
+	if PhaseInstrumentManager.has_method("get_phase_field_growth_rules"):
+		rules = PhaseInstrumentManager.get_phase_field_growth_rules()
+	# 4 维属性各一行：名称+每点收益 | 已分配点 | [−] [+]
+	for key in rules.keys():
+		var rule: Dictionary = rules[key]
+		var lbl: String = String(rule.get("label", key))
+		var per_point: float = float(rule.get("per_point", 0.0))
+		var unit: String = String(rule.get("display_unit", ""))
+		var per_text: String = "+%.0f%%/点" % (per_point * 100.0) if unit == "%" else "+%.2f/点" % per_point
+		var cur_pts: int = int(alloc.get(key, 0))
+
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+
+		var name_lbl := Label.new()
+		name_lbl.text = "%s（%s）" % [lbl, per_text]
+		name_lbl.add_theme_font_size_override("font_size", 11)
+		name_lbl.add_theme_color_override("font_color", Color(0.82, 0.90, 1.0, 0.95))
+		name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		name_lbl.clip_text = true
+		row.add_child(name_lbl)
+
+		var pts_lbl := Label.new()
+		pts_lbl.text = "已 %d 点" % cur_pts
+		pts_lbl.add_theme_font_size_override("font_size", 11)
+		pts_lbl.add_theme_color_override("font_color", Color(0.70, 0.95, 0.90, 0.95))
+		pts_lbl.custom_minimum_size = Vector2(60, 0)
+		row.add_child(pts_lbl)
+
+		# [−] 回收按钮（已分配 0 时禁用）
+		var minus_btn := Button.new()
+		minus_btn.text = "−"
+		minus_btn.add_theme_font_size_override("font_size", 13)
+		minus_btn.custom_minimum_size = Vector2(28, 24)
+		minus_btn.disabled = cur_pts <= 0
+		minus_btn.pressed.connect(_on_refund_pressed.bind(key))
+		row.add_child(minus_btn)
+
+		# [+] 分配按钮（剩余点 0 时禁用）
+		var plus_btn := Button.new()
+		plus_btn.text = "+"
+		plus_btn.add_theme_font_size_override("font_size", 13)
+		plus_btn.custom_minimum_size = Vector2(28, 24)
+		plus_btn.disabled = unspent <= 0
+		plus_btn.pressed.connect(_on_allocate_pressed.bind(key))
+		row.add_child(plus_btn)
+
+		vbox.add_child(row)
+
+	# 重置按钮（无任何分配时禁用）
+	var reset_btn := Button.new()
+	reset_btn.text = "↺ 重置全部属性点"
+	reset_btn.add_theme_font_size_override("font_size", 11)
+	reset_btn.custom_minimum_size = Vector2(0, 26)
+	reset_btn.disabled = alloc.is_empty()
+	reset_btn.pressed.connect(_on_reset_allocations_pressed)
+	vbox.add_child(reset_btn)
+
 	return panel
 
 ## 创建相位仪列表项

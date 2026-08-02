@@ -230,7 +230,135 @@ const DATA: Dictionary = {
 			effects = {emp_chance = 0.35, emp_true_damage = 10.0},
 			unlock_conditions = {required_level = 4}
 		},
-}
+
+		# ==================== v9.1 组合技套路配套改造（7 个，通用槽） ====================
+		# 套路1 助燃燃烧链：燃烧催化剂（所有燃烧 dot ×1.3）
+		"gen_combustion_catalyst" = {
+			id = "gen_combustion_catalyst",
+			name = "燃烧催化剂",
+			name_en = "Combustion Catalyst",
+			icon = "res://assets/ui/icons/mod_icons/mod_combustion_catalyst.png",
+			prototype = "化学催化涂层",
+			description = "所有燃烧持续伤害×1.3，助燃燃烧链全局增益",
+			rarity = "epic",
+			power_mult = 1.5,
+			cost_research = 300,
+			cost_install = 150,
+			slot_type = "special",
+			conflict_group = "catalyst",
+			applicable_types = [0, 1, 2, 3, 4],
+			effects = {burn_dps_mult = 0.30, attack_light = 0.05},
+			unlock_conditions = {required_level = 5}
+		},
+		# 套路2 电磁脉冲链：过载电容（emp 真实伤害+电磁脉冲反射触发）
+		"gen_overload_capacitor" = {
+			id = "gen_overload_capacitor",
+			name = "过载电容",
+			name_en = "Overload Capacitor",
+			icon = "res://assets/ui/icons/mod_icons/mod_overload.png",
+			prototype = "储能电容阵列",
+			description = "电磁脉冲真实伤害+，目标石墨电子损坏≥5时触发电磁脉冲反射（连锁3个相邻敌方）；电磁脉冲链触发器",
+			rarity = "legendary",
+			power_mult = 1.7,
+			cost_research = 380,
+			cost_install = 190,
+			slot_type = "electronic",
+			conflict_group = "electronic",
+			applicable_types = [0, 1, 2, 3, 4],
+			effects = {emp_true_damage_bonus = 8.0, emp_reflect_trigger = true},
+			unlock_conditions = {required_level = 6}
+		},
+		# 套路3 纳米浓度场：纳米催化剂（感染扩散触发）
+		"gen_nano_catalyst" = {
+			id = "gen_nano_catalyst",
+			name = "纳米催化剂",
+			name_en = "Nano Catalyst",
+			icon = "res://assets/ui/icons/mod_icons/mod_nano_catalyst.png",
+			prototype = "自复制纳米颗粒",
+			description = "纳米病毒概率+，浓度≥50时 30%概率感染扩散相邻敌人；纳米浓度场触发器",
+			rarity = "legendary",
+			power_mult = 1.8,
+			cost_research = 400,
+			cost_install = 200,
+			slot_type = "special",
+			conflict_group = "catalyst",
+			applicable_types = [0, 1, 2, 3, 4],
+			effects = {nano_chance = 0.20, nano_pct = 0.015, nano_duration = 6.0, nano_spread_trigger = true},
+			unlock_conditions = {required_level = 6}
+		},
+		# 套路4 光束谐振链：光束分裂器（多重攻击触发）
+		"gen_beam_splitter" = {
+			id = "gen_beam_splitter",
+			name = "光束分裂器",
+			name_en = "Beam Splitter",
+			icon = "res://assets/ui/icons/mod_icons/mod_beam_splitter.png",
+			prototype = "分光棱镜组件",
+			description = "光束武器命中带激光谐振≥3的目标追加2道次级光束（每道40%伤害）；光束谐振链触发器",
+			rarity = "legendary",
+			power_mult = 1.8,
+			cost_research = 400,
+			cost_install = 200,
+			slot_type = "optical",
+			conflict_group = "optical",
+			applicable_types = [0, 1, 2, 3, 4],
+			effects = {beam_split_trigger = true, attack_light = 0.08},
+			unlock_conditions = {required_level = 6}
+		},
+		# 套路4 光束谐振链：反射阵列（光束反射触发）
+		"gen_reflector_array" = {
+			id = "gen_reflector_array",
+			name = "反射阵列",
+			name_en = "Reflector Array",
+			icon = "res://assets/ui/icons/mod_icons/mod_reflector.png",
+			prototype = "可调反射镜组",
+			description = "光束武器命中带激光谐振的目标30%概率反射到相邻敌方（衰减60%）；光束谐振链触发器",
+			rarity = "epic",
+			power_mult = 1.6,
+			cost_research = 340,
+			cost_install = 170,
+			slot_type = "optical",
+			conflict_group = "optical",
+			applicable_types = [0, 1, 2, 3, 4],
+			effects = {beam_reflect_trigger = true, crit_chance = 0.04},
+			unlock_conditions = {required_level = 5}
+		},
+		# 套路5 侦察链式：弱点分析仪（集火链式触发）
+		"gen_weakpoint_analyzer" = {
+			id = "gen_weakpoint_analyzer",
+			name = "弱点分析仪",
+			name_en = "Weakpoint Analyzer",
+			icon = "res://assets/ui/icons/mod_icons/mod_weakpoint.png",
+			prototype = "目标弱点推演模块",
+			description = "命中同时有无人机标记+雷达锁定的目标触发弱点暴露（下次命中+50%暴击伤害）；侦察链式触发器",
+			rarity = "legendary",
+			power_mult = 1.7,
+			cost_research = 380,
+			cost_install = 190,
+			slot_type = "sensor",
+			conflict_group = "sensor",
+			applicable_types = [0, 1, 2, 3, 4],
+			effects = {weakpoint_trigger = true, crit_damage_bonus = 0.10},
+			unlock_conditions = {required_level = 6}
+		},
+		# 套路6 化学污染场：污染蓄能器（化学 dot ×1.2 + 累积浓度）
+		"gen_pollution_accumulator" = {
+			id = "gen_pollution_accumulator",
+			name = "污染蓄能器",
+			name_en = "Pollution Accumulator",
+			icon = "res://assets/ui/icons/mod_icons/mod_pollution.png",
+			prototype = "化学物质浓缩舱",
+			description = "化学持续伤害×1.2，每次化学命中额外累积战场污染度；化学污染场触发器",
+			rarity = "epic",
+			power_mult = 1.6,
+			cost_research = 340,
+			cost_install = 170,
+			slot_type = "special",
+			conflict_group = "catalyst",
+			applicable_types = [0, 1, 2, 3, 4],
+			effects = {chem_dps_mult = 0.20, chem_pollute = 2.0},
+			unlock_conditions = {required_level = 5}
+		},
+	}
 
 static func get_mod_data(mod_id: String) -> Dictionary:
 	return DATA.get(mod_id, {}).duplicate(true)

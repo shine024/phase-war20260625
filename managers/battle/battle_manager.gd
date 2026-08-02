@@ -30,6 +30,9 @@ var _tactic_detector: RefCounted = null  ## TacticDetector
 var _card_skill_engine: RefCounted = null  ## CardPeriodicSkillEngine
 # v8.5: 敌方相位师主动技能引擎（boss active_spells 定时触发）
 var _enemy_master_skill_engine: RefCounted = null  ## EnemyMasterSkillEngine
+# v9.1: 我方组合技套路引擎 + 战场状态管理器
+var _combo_engine: RefCounted = null  ## ComboEngine
+var _combo_field_state: RefCounted = null  ## ComboFieldState
 
 # ---- 性能优化：空间分区系统 ----
 var spatial_grid: Node = null  ## SpatialGrid 实例
@@ -97,6 +100,11 @@ func _ready() -> void:
 	_tactic_detector = TacticDetectorScript.new()
 	_card_skill_engine = CardSkillEngineScript.new()
 	_enemy_master_skill_engine = EnemyMasterSkillEngineScript.new()
+	# v9.1: 组合技套路引擎 + 战场状态管理器
+	const ComboEngineScript = preload("res://scripts/battle/combo_engine.gd")
+	const ComboFieldStateScript = preload("res://scripts/battle/combo_field_state.gd")
+	_combo_field_state = ComboFieldStateScript.new()
+	_combo_engine = ComboEngineScript.new()
 	var skill_mgr: Node = get_node_or_null("/root/PhaseMasterSkillManager")
 	_tactic_detector.setup({
 		"player_units_node": null,  # 战斗开始后更新
@@ -153,6 +161,9 @@ func _process(delta: float) -> void:
 		_enemy_master_skill_engine.update(delta)
 	if _tactic_detector != null:
 		_tactic_detector.update(delta)
+	# v9.1: 组合技套路引擎（战场浓度衰减 + 全队机制刷新）
+	if _combo_engine != null:
+		_combo_engine.update(delta)
 
 	# 相位师战斗：不执行波次逻辑
 	if _is_phase_master_battle:
@@ -343,6 +354,13 @@ func start_battle(battle_scene: Node) -> void:
 	# v8.x: 启动卡片定时技能引擎（从 PhaseMasterSkillManager 读取已解锁 card_skill）
 	if _card_skill_engine != null:
 		_card_skill_engine.on_battle_start()
+	# v9.1: 启动组合技套路引擎（战场状态 + 全队机制检测）
+	if _combo_engine != null:
+		if _combo_field_state == null:
+			const ComboFieldStateScript2 = preload("res://scripts/battle/combo_field_state.gd")
+			_combo_field_state = ComboFieldStateScript2.new()
+		_combo_field_state.reset()
+		_combo_engine.setup(battle_scene, _combo_field_state)
 
 	call_deferred("_deferred_refresh_card_grid_hud")
 
@@ -364,6 +382,9 @@ func end_battle(player_won: bool) -> void:
 		_card_skill_engine.reset()
 	if _tactic_detector != null:
 		_tactic_detector.reset()
+	# v9.1: 重置组合技套路引擎 + 战场状态
+	if _combo_engine != null:
+		_combo_engine.reset()
 	# v6.7: 清空相位师排名星级缓存（恢复 3★ 基准，避免影响下一场战斗）
 	if PhaseInstrumentManager and PhaseInstrumentManager.has_method("clear_rank_cache"):
 		PhaseInstrumentManager.clear_rank_cache()
@@ -412,6 +433,15 @@ func end_battle(player_won: bool) -> void:
 	# 都不被 clear_all_units 触碰；battle_active=false 后 _process 首行 return，
 	# _battle_elapsed_time 不再增长；各入口有 battle_active 守卫，延迟期间不重入。
 	call_deferred("_deferred_end_battle_finalize", player_won)
+
+
+## v9.1: 暴露组合技引擎（供 module_effect_handler / bullet 查询激活机制）
+func get_combo_engine() -> RefCounted:
+	return _combo_engine
+
+## v9.1: 暴露战场状态管理器（供 phase_instrument_abilities 注入浓度）
+func get_combo_field_state() -> RefCounted:
+	return _combo_field_state
 
 
 # v7.x 性能：原 end_battle 末尾的重负载部分，延迟到下一帧执行以消除胜利瞬间卡顿。

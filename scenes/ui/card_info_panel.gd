@@ -33,10 +33,12 @@ const ModEffectLabels = preload("res://scripts/ui/mod_effect_labels.gd")
 const AuraData = preload("res://data/aura_data.gd")
 const EvolutionHelpers = preload("res://managers/evolution/evolution_helpers.gd")
 const ModEffects = preload("res://data/mod_effects.gd")  # v7.x: MAX_MOD_SLOTS 槽位上限权威源
+const CardPeriodicSkills = preload("res://data/card_periodic_skills.gd")  # 卡片定时技能（关联技能显示）
 
 var current_card: CardResource = null
 var _current_unit: Node = null
 var _current_mode: int = PanelMode.MODE_BACKPACK
+var _status_refresh_accum: float = 0.0  ## v9.x 当前状态区低频刷新累加器（仅战场单位模式）
 var _context_data: Dictionary = {}
 # v7.3 性能优化：单次 show_card_info 内复用的 UnitStats 缓存。
 # 原 _refresh_stat_cards 和 _build_affix_tag_list 各自调 _build_display_stats（含 build_stats_from_card 重操作），
@@ -56,10 +58,13 @@ var _star_detail_label: Label = null
 var _star_section: PanelContainer = null
 var _nurture_section: PanelContainer = null
 var nurture_label: Label = null
+# 关联卡片技能显示段（该卡作为 source_tag 触发源的已解锁卡片定时技能）
+var _card_skill_section: PanelContainer = null
+var _card_skill_label: Label = null
 # v7.x(敌方加成来源明细): 敌方单位"为什么这么强"的加成来源 section
 var _bonus_section: PanelContainer = null
 var _bonus_label: Label = null
-var status_label: Label = null
+var status_label: RichTextLabel = null
 var desc_label: Label = null
 var flavor_label: Label = null
 var rank_badge_host: HBoxContainer = null
@@ -141,11 +146,16 @@ func _resolve_nodes() -> void:
 	_star_section = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StarSection") as PanelContainer
 	_nurture_section = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/NurtureSection") as PanelContainer
 	nurture_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/NurtureSection/NurtureVBox/NurtureLabel") as Label
+	_card_skill_section = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/CardSkillSection") as PanelContainer
+	_card_skill_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/CardSkillSection/CardSkillVBox/CardSkillLabel") as Label
 	# v7.x(敌方加成来源明细): 加成来源 section 节点连接
 	_bonus_section = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/BonusSection") as PanelContainer
 	_bonus_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/BonusSection/BonusVBox/BonusLabel") as Label
 	status_section = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StatusSection") as PanelContainer
-	status_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StatusSection/StatusVBox/StatusLabel") as Label
+	status_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/StatusSection/StatusVBox/StatusLabel") as RichTextLabel
+	# v9.x 当前状态区用 BBCode 渲染彩色 [正面]/[负面] 标记
+	if status_label:
+		status_label.bbcode_enabled = true
 	desc_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/DescSection/DescVBox/DescLabel") as Label
 	flavor_label = get_node_or_null("Margin/VBox/TabBar/TabInfo/InfoVBox/FlavorLabel") as Label
 	action_buttons_container = get_node_or_null("Margin/VBox/ActionButtons") as HBoxContainer
@@ -521,6 +531,7 @@ func _refresh_info_sections(card: CardResource) -> void:
 	# v7.x：卡牌模式恢复所有 section 可见性（战场单位模式可能 visible=false 残留）
 	if _star_section: _star_section.visible = true
 	if _nurture_section: _nurture_section.visible = true
+	if _card_skill_section: _card_skill_section.visible = true
 	# v7.x(敌方加成来源明细): 卡牌模式不显示战场加成来源（那是敌方单位专属），确保隐藏
 	if _bonus_section: _bonus_section.visible = false
 	if _bonus_label: _bonus_label.text = ""
@@ -552,6 +563,8 @@ func _refresh_info_sections(card: CardResource) -> void:
 			_nurture = "兵种机制：%s\n" % _mech_desc + _nurture
 		_nurture += _build_aura_preview_text(card, _cached_display_stats)
 		nurture_label.text = _nurture
+	# 关联卡片技能（source_tag 命中该卡 + 已解锁）
+	_refresh_card_skill_section(card)
 	# 描述
 	if desc_label:
 		desc_label.text = card.description
@@ -561,6 +574,53 @@ func _refresh_info_sections(card: CardResource) -> void:
 	# 隐藏战场专用状态区
 	if status_section:
 		status_section.visible = false
+
+## 显示该卡作为 source_tag 触发源关联的、已解锁的卡片定时技能。
+## 数据源：_cached_display_stats（已含 law_family meta，与单位侧同源）。
+## 仅显示已解锁且 source_tag 命中本卡的技能；空 source_tag 技能（cps_steel_storm）无特定触发源不显示。
+func _refresh_card_skill_section(card: CardResource) -> void:
+	if _card_skill_label == null:
+		return
+	var lines: Array[String] = []
+	if card != null and card.card_type == GC.CardType.COMBAT_UNIT and _cached_display_stats != null:
+		var tags: Array = CardPeriodicSkills.compute_source_tags_for_stats(_cached_display_stats)
+		var sm: Node = get_node_or_null("/root/PhaseMasterSkillManager")
+		for sid in CardPeriodicSkills.get_all_skill_ids():
+			var sk: Dictionary = CardPeriodicSkills.get_skill(sid)
+			var st: String = String(sk.get("source_tag", ""))
+			if st.is_empty():
+				continue  # 空 source_tag 技能（如 cps_steel_storm）无特定触发源，不在本卡显示
+			if not (st in tags):
+				continue  # 本卡不带该 source_tag
+			# 仅显示已解锁（未解锁则战斗中也不会触发，避免噪声）
+			var unlocked: bool = sm != null and sm.has_method("is_content_unlocked") and sm.is_content_unlocked("card_skill", sid)
+			if not unlocked:
+				continue
+			var nm: String = String(sk.get("name", sid))
+			var ulti: String = " [终极]" if bool(sk.get("is_ultimate", false)) else ""
+			var itv: float = float(sk.get("interval", 0.0))
+			var itv_s: String = ("每%.0fs" % itv) if itv > 0.0 else ""
+			var eff_cn: String = _card_skill_effect_summary(sk.get("effect", {}))
+			lines.append("  · %s%s（%s）：%s" % [nm, ulti, itv_s, eff_cn])
+	var text: String = "\n".join(lines)
+	_card_skill_label.text = text
+	_set_section_visible_by_content(_card_skill_section, text)
+
+## 卡片技能 effect.type → 中文摘要（情报面板紧凑单行）
+func _card_skill_effect_summary(effect: Dictionary) -> String:
+	match String(effect.get("type", "")):
+		"area_damage": return "范围伤害"
+		"single_target_damage": return "单体打击"
+		"global_damage": return "全图打击"
+		"chain_damage": return "链式打击"
+		"debuff_target": return "单体减益"
+		"debuff_area": return "范围减益"
+		"debuff_global": return "全图减益"
+		"debuff_spread": return "减益传染"
+		"buff_allies": return "友军增益"
+		"summon_temp_unit": return "召唤援军"
+		"execute": return "斩杀"
+		_: return "特效"
 
 ## v6.4: 三维攻防图形化——构建 UnitStats 后结构化填充 HP/攻击/防御三张数值卡
 func _refresh_stat_cards(card: CardResource) -> void:
@@ -922,6 +982,40 @@ func _refresh_unit_display(unit: Node, is_player: bool) -> void:
 		_show_enemy_unit(unit)
 	if status_section:
 		status_section.visible = true
+	# v9.x 当前状态区：战场单位模式立即填充一次（之后由 _process 周期刷新）
+	_refresh_status_section(unit)
+
+# v9.x 战场单位模式：周期刷新"当前状态"区（单位 buff/debuff 随战斗变化）
+func _process(delta: float) -> void:
+	# 仅当处于战场单位模式、单位有效、状态区可见时才刷新（避免静态面板空跑）
+	if status_section == null or not status_section.visible:
+		return
+	if _current_unit == null or not is_instance_valid(_current_unit):
+		return
+	_status_refresh_accum += delta
+	if _status_refresh_accum >= 0.4:
+		_status_refresh_accum = 0.0
+		_refresh_status_section(_current_unit)
+
+## 填充"当前状态"区：复用 UnitStatusCollector 收集激活的 buff/debuff，每条显示
+## [正面/负面] 名称：效果说明。无激活状态时给出提示并隐藏明细。
+func _refresh_status_section(unit: Node) -> void:
+	if status_label == null:
+		return
+	if unit == null or not is_instance_valid(unit):
+		status_label.text = ""
+		if status_section:
+			status_section.visible = false
+		return
+	var entries: Array = UnitStatusCollector.collect(unit)
+	if entries.is_empty():
+		# 无激活状态：保留"当前状态"标题，正文提示无加成
+		status_label.text = "[color=#9a9a9a]当前无激活的正面/负面状态[/color]"
+		return
+	var lines: PackedStringArray = []
+	for e in entries:
+		lines.append(UnitStatusCollector.format_status_line(e as Dictionary, unit))
+	status_label.text = "\n".join(lines)
 
 func _refresh_rank_badge(unit: Node) -> void:
 	if rank_badge_host == null:
@@ -1465,7 +1559,7 @@ func _show_player_phase_driver(unit: Node) -> void:
 	lines.append("保护我方相位场驱动器，摧毁敌方即获胜；己方会持续部署战斗单位。")
 	var pm: Node = get_node_or_null("/root/PhaseInstrumentManager")
 	if pm != null:
-		# ── 相位场等级（Lv1-16，养成进度）──
+		# ── 相位场等级（Lv1-30，养成进度）──
 		var pf_level: int = 1
 		if pm.has_method("get_phase_field_level"):
 			pf_level = int(pm.get_phase_field_level())
@@ -1532,6 +1626,8 @@ func _clear_non_summary_info_sections() -> void:
 	_set_section_visible_by_content(_star_section, "")
 	if nurture_label: nurture_label.text = ""
 	_set_section_visible_by_content(_nurture_section, "")
+	if _card_skill_label: _card_skill_label.text = ""
+	_set_section_visible_by_content(_card_skill_section, "")
 
 ## v6.5: 构建武器名标签文本。
 ## 优先级：card.weapon_names[]（具体型号）> weapon_id 名称 > 战斗方式（直射/曲射等）
@@ -1885,6 +1981,8 @@ func _clear_other_unit_sections() -> void:
 	_set_section_visible_by_content(_star_section, "")
 	if nurture_label: nurture_label.text = ""
 	_set_section_visible_by_content(_nurture_section, "")
+	if _card_skill_label: _card_skill_label.text = ""
+	_set_section_visible_by_content(_card_skill_section, "")
 	# v7.x(敌方加成来源明细): 切换到无明细单位时隐藏加成来源 section
 	if _bonus_label: _bonus_label.text = ""
 	_set_section_visible_by_content(_bonus_section, "")

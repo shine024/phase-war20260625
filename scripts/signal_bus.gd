@@ -21,6 +21,8 @@ signal card_unequipped(slot_index: int)
 signal phase_slots_changed(slots: Array)
 signal phase_field_xp_changed(source: String, delta: int, total: int)
 signal phase_field_level_up(old_level: int, new_level: int, unspent_points: int)
+# v8.x: 相位场属性点分配/回收/重置时触发，UI 据此刷新（区别于 phase_field_level_up 的"升级"语义）
+signal phase_field_points_changed(unspent_points: int)
 
 # 单位生成 / 指令
 signal unit_spawned(unit: Node, is_player: bool)

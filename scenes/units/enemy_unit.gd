@@ -133,6 +133,7 @@ func _cached_load(path: String, type_hint: int = -1) -> Resource:
 
 var _presentation_card_grid: bool = false
 var _buff_label_refresh_accum: float = 0.0  ## v7.x 漂浮 buff 标签低频刷新累加器
+var _hp_status_refresh_accum: float = 0.0   ## v9.x 血条状态图标低频刷新累加器（不 gate 模式，两种战斗都刷新）
 var _buff_strip_timer: float = 0.0  ## v8.x buff/改造条周期刷新累加器（与 construct_unit 对齐）
 var _buff_strip_signature: String = ""  ## v8.x buff_strip signature 去重（避免无变化时重建）
 var _hit_stun_left: float = 0.0
@@ -884,6 +885,13 @@ func _physics_process(delta: float) -> void:
 		if _buff_strip_timer >= 0.25:
 			_buff_strip_timer = 0.0
 			_update_card_grid_buff_strip()
+	# v9.x 血条上方状态图标（buff/debuff）：不 gate 模式，两种战斗都刷新（与 construct_unit 对齐）
+	_hp_status_refresh_accum += delta
+	if _hp_status_refresh_accum >= 0.3:
+		_hp_status_refresh_accum = 0.0
+		var _hpbar := get_node_or_null("HpBar")
+		if _hpbar != null and _hpbar.has_method("refresh_status_icons"):
+			_hpbar.refresh_status_icons()
 	# P2 性能优化：静止单位跳过空间网格更新（格子战敌人 velocity=0，原每帧无谓 update）
 	if velocity != Vector2.ZERO:
 		_update_in_spatial_grid()
@@ -1330,7 +1338,10 @@ func _update_card_grid_buff_strip(force: bool = false) -> void:
 	CardGridUnitVisuals.sync_mod_strip(self, self, spr)
 
 ## v7.x: 低频刷新漂浮 buff/debuff 标签（仅格子战）
+## v9.x: 已停用——状态图标改由血条上方矢量图标统一显示（refresh_status_icons），
+##       避免卡顶文字标签与血条图标重复。保留函数体便于回退。
 func _refresh_buff_labels() -> void:
+	return
 	if not _presentation_card_grid:
 		return
 	var spr: Sprite2D = get_node_or_null("Sprite") as Sprite2D

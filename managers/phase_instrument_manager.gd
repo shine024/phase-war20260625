@@ -24,24 +24,43 @@ func _get_default_cards() -> Variant:
 const LoadoutSync = preload("res://managers/phase_instrument_loadout_sync.gd")
 var _loadout_sync: PhaseInstrumentLoadoutSync = null
 
-## 累计相位场经验阈值（Lv1..Lv16），与每关 victory 发放的 LevelEras.get_base_xp_for_level 对齐调参
+## 累计相位场经验阈值（Lv1..Lv30），与每关 victory 发放的 LevelEras.get_base_xp_for_level 对齐调参
+## v8.x: 等级上限 16→30。Lv1-16 沿用原值（旧档向后兼容不降级）；
+##       Lv17-30 后期加速——每级增量按 +100 递增（原 Lv1-16 规律是 +50 递增）。
+##       满级 29900 XP ≈ 单遍通关第 80 关（总通关约 67100 XP），满级稀有但可达。
 const PHASE_FIELD_XP_THRESHOLDS: Array = [
-	0,
-	150,
-	350,
-	600,
-	900,
-	1250,
-	1650,
-	2100,
-	2600,
-	3150,
-	3750,
-	4400,
-	5100,
-	5850,
-	6650,
-	7500,
+	# ── Lv1-16：原值不变（向后兼容）──
+	0,      # Lv1
+	150,    # Lv2   (+150)
+	350,    # Lv3   (+200)
+	600,    # Lv4   (+250)
+	900,    # Lv5   (+300)
+	1250,   # Lv6   (+350)
+	1650,   # Lv7   (+400)
+	2100,   # Lv8   (+450)
+	2600,   # Lv9   (+500)
+	3150,   # Lv10  (+550)
+	3750,   # Lv11  (+600)
+	4400,   # Lv12  (+650)
+	5100,   # Lv13  (+700)
+	5850,   # Lv14  (+750)
+	6650,   # Lv15  (+800)
+	7500,   # Lv16  (+850)  ← 原满级
+	# ── Lv17-30：后期加速（每级增量按 +100 递增）──
+	8450,   # Lv17  (+950)
+	9500,   # Lv18  (+1050)
+	10650,  # Lv19  (+1150)
+	11900,  # Lv20  (+1250)
+	13250,  # Lv21  (+1350)
+	14700,  # Lv22  (+1450)
+	16250,  # Lv23  (+1550)
+	17900,  # Lv24  (+1650)
+	19650,  # Lv25  (+1750)
+	21500,  # Lv26  (+1850)
+	23450,  # Lv27  (+1950)
+	25500,  # Lv28  (+2050)
+	27650,  # Lv29  (+2150)
+	29900,  # Lv30  (+2250)  ← 新满级
 ]
 
 ## 与 backpack 扁平索引一致：红→蓝→绿→黄→符文（v6.2 符文追加在末尾，不破坏旧索引）
@@ -55,6 +74,10 @@ var selected_instrument_id: String = ""
 var instrument_slots: Dictionary = {} # color -> Array[CardResource | null]
 var unlocked_instrument_ids: Array[String] = []
 const PHASE_FIELD_POINTS_PER_LEVEL: int = 1
+## ⚠️ 属性点系统当前为死代码：升级会累加 unspent_phase_field_points，但全项目
+## 无分配入口（phase_field_allocations 从未被写入，恒为空字典），
+## 故 apply_phase_field_bonus_to_unit_stats 读到的加成恒为 0。等级上限 16→30 后
+## 该数字会变大但无害（没出口）。待补 UI 分配按钮后才会真正生效。
 const PHASE_FIELD_GROWTH_RULES: Dictionary = {
 	"atk_pct": {"label": "攻击", "per_point": 0.02, "display_unit": "%"},
 	"def_pct": {"label": "防御", "per_point": 0.02, "display_unit": "%"},
@@ -296,6 +319,66 @@ func get_phase_field_total_bonus() -> Dictionary:
 		var per_point: float = float(rule.get("per_point", 0.0))
 		bonus[key] = points * per_point
 	return bonus
+
+# ═══════════════════════════════════════════════════════════
+# v8.x: 相位场属性点分配（接通死系统——此前 allocations 恒空，加成恒 0）
+# 模式对齐 PhaseMasterSkillManager 的 can_unlock_node/unlock_node/reset_all。
+# 生效无需额外代码：apply_phase_field_bonus_to_unit_stats 读 allocations 自动应用。
+# ═══════════════════════════════════════════════════════════
+
+## 校验能否给某属性分配 1 点。返回 {ok, reason}（失败原因可读化，供 UI 提示）
+func can_allocate_phase_field_point(key: String) -> Dictionary:
+	if not PHASE_FIELD_GROWTH_RULES.has(key):
+		return {"ok": false, "reason": "invalid_key"}
+	if unspent_phase_field_points < 1:
+		return {"ok": false, "reason": "not_enough_points"}
+	return {"ok": true}
+
+## 分配 amount 点到某属性（默认 1）。扣 unspent、写 allocations、发信号。
+func allocate_phase_field_point(key: String, amount: int = 1) -> bool:
+	if amount <= 0:
+		return false
+	var can: Dictionary = can_allocate_phase_field_point(key)
+	if not bool(can.get("ok", false)):
+		return false
+	# 最后一次分配时夹紧到剩余点数（支持 amount>1 但点数不足时部分分配）
+	amount = mini(amount, unspent_phase_field_points)
+	phase_field_allocations[key] = int(phase_field_allocations.get(key, 0)) + amount
+	unspent_phase_field_points = maxi(0, unspent_phase_field_points - amount)
+	_emit_phase_field_points_changed()
+	return true
+
+## 回收某属性 amount 点（返还到 unspent）。受 0 下限保护，返回实际回收数。
+func refund_phase_field_point(key: String, amount: int = 1) -> int:
+	if amount <= 0 or not phase_field_allocations.has(key):
+		return 0
+	var cur: int = int(phase_field_allocations[key])
+	var actual: int = mini(amount, cur)
+	if actual <= 0:
+		return 0
+	var left: int = cur - actual
+	if left <= 0:
+		phase_field_allocations.erase(key)
+	else:
+		phase_field_allocations[key] = left
+	unspent_phase_field_points += actual
+	_emit_phase_field_points_changed()
+	return actual
+
+## 一次性重置全部属性点分配（洗点），返还总点数。
+func reset_phase_field_allocations() -> int:
+	var total: int = 0
+	for key in phase_field_allocations.keys():
+		total += int(phase_field_allocations[key])
+	phase_field_allocations.clear()
+	if total > 0:
+		unspent_phase_field_points += total
+		_emit_phase_field_points_changed()
+	return total
+
+func _emit_phase_field_points_changed() -> void:
+	if SignalBus and SignalBus.has_signal("phase_field_points_changed"):
+		SignalBus.phase_field_points_changed.emit(maxi(0, unspent_phase_field_points))
 
 func apply_phase_field_bonus_to_unit_stats(stats: UnitStats) -> void:
 	if stats == null:

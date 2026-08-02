@@ -918,19 +918,30 @@ func _on_enhance_pressed() -> void:
 	_open_phase_master_skill_panel()
 
 ## v8.x: 打开相位师技能树面板
-## 直接实例化场景挂到 PopupLayer（不依赖 UILazyLoader 的 parent_path，避免 main.tscn 无 overlay 节点）
+## 用独立的高 layer CanvasLayer（layer=110）包裹，避免被成长面板 GrowthOverlay 的全屏
+## Backdrop（layer=100，mouse_filter=STOP）吞噬点击——此前技能面板挂 PopupLayer（layer=100），
+## 与成长面板 Backdrop 同层，Backdrop 全屏覆盖拦截所有点击，导致技能面板无法操作。
+## 修复：技能面板 + 自带 backdrop 放在更高 layer，彻底脱离成长面板遮挡。
 func _open_phase_master_skill_panel() -> void:
-	# 先查 PopupLayer 下是否已存在面板（复用，避免重复实例化）
-	var canvas: CanvasLayer = get_tree().root.get_node_or_null("PopupLayer")
+	var root = get_tree().root
+	# 复用已创建的独立 CanvasLayer（避免重复叠加）
+	var canvas: CanvasLayer = root.get_node_or_null("PhaseMasterSkillCanvas")
 	if canvas == null:
 		canvas = CanvasLayer.new()
-		canvas.name = "PopupLayer"
-		canvas.layer = 100
-		get_tree().root.add_child(canvas)
-	var existing: Node = canvas.get_node_or_null("PhaseMasterSkillPanel")
-	var panel: Node = existing
+		canvas.name = "PhaseMasterSkillCanvas"
+		canvas.layer = 110  # 高于 PopupLayer(100) 和 GrowthOverlay 的 Backdrop
+		root.add_child(canvas)
+		# 自带全屏 backdrop：拦截外部点击（点击空白处关闭），同时把面板和成长面板隔离开
+		var backdrop := ColorRect.new()
+		backdrop.name = "Backdrop"
+		backdrop.color = Color(0, 0, 0, 0.55)
+		backdrop.anchors_preset = Control.PRESET_FULL_RECT
+		backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
+		backdrop.gui_input.connect(_on_skill_panel_backdrop_gui_input)
+		canvas.add_child(backdrop)
+
+	var panel: Node = canvas.get_node_or_null("PhaseMasterSkillPanel")
 	if panel == null:
-		# 实例化场景
 		var scene = load("res://scenes/ui/phase_master_skill_panel.tscn")
 		if scene == null:
 			push_error("[growth_panel] 无法加载相位师技能树面板场景")
@@ -942,17 +953,29 @@ func _open_phase_master_skill_panel() -> void:
 		canvas.add_child(panel)
 		if panel.has_signal("closed") and not panel.closed.is_connected(_on_phase_master_skill_closed):
 			panel.closed.connect(_on_phase_master_skill_closed)
-	# 居中显示
+	# 居中显示（面板挂在 backdrop 之后，同 layer 内后添加者在上层，点击优先命中面板）
 	if panel is Control:
 		(panel as Control).anchors_preset = Control.PRESET_CENTER
 	panel.visible = true
+	canvas.visible = true
 	if panel.has_method("_refresh"):
 		panel._refresh()
 
-## v8.x: 技能树面板关闭回调
+## v8.x: 点击技能面板 backdrop（空白区域）→ 关闭面板
+func _on_skill_panel_backdrop_gui_input(ev: InputEvent) -> void:
+	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+		_close_phase_master_skill_panel()
+
+## v8.x: 技能树面板关闭回调（关闭按钮 / backdrop 点击 / 外部调用）
 func _on_phase_master_skill_closed() -> void:
-	# 面板自身已 hide；关闭后刷新红点（点数可能已变化）
+	_close_phase_master_skill_panel()
 	_update_skill_tree_badge()
+
+## 隐藏技能面板（连 CanvasLayer 一起隐藏，彻底释放点击拦截）
+func _close_phase_master_skill_panel() -> void:
+	var canvas: CanvasLayer = get_tree().root.get_node_or_null("PhaseMasterSkillCanvas")
+	if canvas != null:
+		canvas.visible = false
 
 
 func _on_mod_pressed() -> void:

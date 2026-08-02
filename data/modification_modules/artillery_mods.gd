@@ -300,6 +300,134 @@ const DATA: Dictionary = {
 		applicable_types = [2],
 		unlock_conditions = {required_level = 6}
 	},
+
+	# ==================== v9.1 组合技套路配套改造（5 个） ====================
+	# 套路1 助燃燃烧链：助燃剂弹（命中挂 _incendiary_stacks）
+	"art_incendiary_mix" = {
+		id = "art_incendiary_mix",
+		name = "助燃剂弹",
+		name_en = "Incendiary Mix",
+		icon = "res://assets/ui/icons/mod_icons/mod_ammo_incendiary.png",
+		prototype = "镁粉混合弹药",
+		description = "命中40%概率挂助燃剂标记（层数累积），与白磷弹/温压弹组成助燃燃烧链",
+		rarity = "epic",
+		power_mult = 1.6,
+		cost_research = 320,
+		cost_install = 160,
+		slot_type = "ammunition",
+		conflict_group = "special_ammo",
+		effects = {incendiary_chance = 0.40, incendiary_stacks = 1, attack_light = 0.08},
+		applicable_types = [2],
+		unlock_conditions = {required_level = 5}
+	},
+	# 套路1 助燃燃烧链：白磷弹（读 stacks 提升燃烧概率+层数上限）
+	"art_white_phosphorus" = {
+		id = "art_white_phosphorus",
+		name = "白磷弹",
+		name_en = "White Phosphorus",
+		icon = "res://assets/ui/icons/mod_icons/mod_ammo_phosphorus.png",
+		prototype = "M825白磷发烟弹",
+		description = "35%概率挂燃烧，助燃剂层数越高燃烧概率越大；套路激活时燃烧层数上限 5→10",
+		rarity = "epic",
+		power_mult = 1.7,
+		cost_research = 360,
+		cost_install = 180,
+		slot_type = "ammunition",
+		conflict_group = "special_ammo",
+		effects = {burn_chance = 0.35, burn_dps = 8.0, incendiary_synergy = true, attack_light = 0.06},
+		applicable_types = [2],
+		unlock_conditions = {required_level = 5}
+	},
+	# 套路2 电磁脉冲链：石墨纤维弹（命中累积电子损坏）
+	"art_graphite_fiber" = {
+		id = "art_graphite_fiber",
+		name = "石墨纤维弹",
+		name_en = "Graphite Fiber Shell",
+		icon = "res://assets/ui/icons/mod_icons/mod_ammo_graphite.png",
+		prototype = "石墨纤维战斗部",
+		description = "命中50%概率累积石墨电子损坏层数，与电磁战斗部/反辐射导弹组成电磁脉冲链",
+		rarity = "epic",
+		power_mult = 1.6,
+		cost_research = 340,
+		cost_install = 170,
+		slot_type = "ammunition",
+		conflict_group = "special_ammo",
+		effects = {graphite_chance = 0.50, graphite_stacks = 1},
+		applicable_types = [2],
+		unlock_conditions = {required_level = 5}
+	},
+	# 套路3 纳米浓度场：纳米放大器（读浓度增伤）
+	"art_nano_amp" = {
+		id = "art_nano_amp",
+		name = "纳米放大器",
+		name_en = "Nano Amplifier",
+		icon = "res://assets/ui/icons/mod_icons/mod_nano_amp.png",
+		prototype = "纳米谐振弹头",
+		description = "纳米病毒概率+伤害+，与纳米播种机/纳米催化剂组成纳米浓度场套路",
+		rarity = "legendary",
+		power_mult = 1.9,
+		cost_research = 420,
+		cost_install = 210,
+		slot_type = "special",
+		conflict_group = "special_ammo",
+		effects = {nano_chance = 0.30, nano_pct = 0.03, nano_duration = 8.0, nano_concentration_amp = true},
+		applicable_types = [2],
+		unlock_conditions = {required_level = 6}
+	},
+	# 套路6 化学污染场：化学集束弹（高概率挂毒+累积浓度）
+	"art_chem_cluster" = {
+		id = "art_chem_cluster",
+		name = "化学集束弹",
+		name_en = "Chem Cluster",
+		icon = "res://assets/ui/icons/mod_icons/mod_ammo_chem.png",
+		prototype = "M687化学子母弹",
+		description = "50%概率挂化学毒，每次命中累积战场化学污染度；与酸液战斗部/化学喷洒器组成化学污染场套路",
+		rarity = "epic",
+		power_mult = 1.7,
+		cost_research = 360,
+		cost_install = 180,
+		slot_type = "ammunition",
+		conflict_group = "special_ammo",
+		effects = {chem_chance = 0.50, chem_dps = 12.0, chem_duration = 5.0, chem_pollute = 3.0, attack_light = 0.05},
+		applicable_types = [2],
+		unlock_conditions = {required_level = 5}
+	},
+	# 套路3 纳米浓度场：纳米播种机（攻击累加浓度）
+	"sup_nano_seeder" = {
+		id = "sup_nano_seeder",
+		name = "纳米播种机",
+		name_en = "Nano Seeder",
+		icon = "res://assets/ui/icons/mod_icons/mod_nano_seeder.png",
+		prototype = "纳米粒子播撒装置",
+		description = "每次攻击累积战场纳米浓度，浓度越高纳米病毒伤害越高；纳米浓度场触发器",
+		rarity = "epic",
+		power_mult = 1.6,
+		cost_research = 340,
+		cost_install = 170,
+		slot_type = "special",
+		conflict_group = "special_ammo",
+		effects = {nano_seeder_amount = 1.5, nano_chance = 0.15, nano_pct = 0.015, nano_duration = 6.0},
+		applicable_types = [2],
+		unlock_conditions = {required_level = 5}
+	},
+	# 套路5 侦察链式：目标指示无人机（增强无人机标记范围+易伤）
+	"sup_targeting_drone" = {
+		id = "sup_targeting_drone",
+		name = "目标指示无人机",
+		name_en = "Targeting Drone",
+		icon = "res://assets/ui/icons/mod_icons/mod_targeting_drone.png",
+		prototype = "标定攻击无人机",
+		description = "增强无人机标记范围+易伤值，与相控阵雷达叠加触发集火链式弱点暴露；侦察链式触发器",
+		rarity = "legendary",
+		power_mult = 1.7,
+		cost_research = 380,
+		cost_install = 190,
+		slot_type = "sensor",
+		conflict_group = "sensor",
+		effects = {drone_mark_amp = true, drone_mark_vuln_bonus = 0.10, drone_mark_radius_bonus = 100.0, crit_chance = 0.04},
+		applicable_types = [2],
+		unlock_conditions = {required_level = 6}
+	},
 }
 
 static func get_mod_data(mod_id: String) -> Dictionary:

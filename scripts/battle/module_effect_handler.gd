@@ -11,6 +11,9 @@ extends RefCounted
 ##   - on_damage_taken()   — 受击时：怒气积累、反击标记、反伤（v7.x 新增活跃路径）
 
 const GC = preload("res://resources/game_constants.gd")
+# v9.1: 组合技套路机制（chem_burst/emp_reflect/nano_spread/chem_spread 在 dot tick 后调用）
+const ComboEngine = preload("res://scripts/battle/combo_engine.gd")
+const ComboFieldState = preload("res://scripts/battle/combo_field_state.gd")
 
 # ─────────────────────────────────────────────
 #  弹道命中处理
@@ -94,10 +97,14 @@ static func apply_on_hit_side_effects(attacker: Node, target: Node, deal_damage:
 	_apply_laser_mark(target, stats)                          # 激光指示器（命中100%标记）
 	# v8.6 现实/科幻伤害类型（命中触发）
 	_apply_true_damage(target, stats, attacker)               # 真实伤害（无视护甲即时结算）
-	_apply_chem_on_hit(target, stats)                         # 化学武器（概率挂毒）
-	_apply_burn_on_hit(target, stats)                         # 燃烧弹（概率挂燃烧，可叠加）
+	_apply_chem_on_hit(target, stats, attacker)               # 化学武器（概率挂毒）v9.1 +attacker
+	_apply_burn_on_hit(target, stats, attacker)               # 燃烧弹（概率挂燃烧，可叠加）v9.1 +attacker
 	_apply_emp_on_hit(target, stats, attacker)                # 电磁静电（降攻速+真实伤害）
-	_apply_nano_on_hit(target, stats)                         # 纳米病毒（概率挂比例dot）
+	_apply_nano_on_hit(target, stats, attacker)               # 纳米病毒（概率挂比例dot）v9.1 +attacker
+	# v9.1 套路4 光束谐振：读 laser_resonance_chance/stacks，命中挂 META_LASER_RESONANCE 层数
+	_apply_laser_resonance_on_hit(target, stats, attacker)
+	# v9.1 套路5 雷达锁定：读 radar_lock_interval/radius，周期性挂 META_RADAR_LOCKED（在 on_tick 处理）
+	_apply_radar_lock_on_hit(target, stats, attacker)
 
 ## v7.x: 主目标减伤补偿（single_target_penalty 的落地）。对目标恢复 heal_amount 血量。
 ## 直接操作 hp 字段并 clamp 到 max_hp，避免触发 take_damage 的反击/信号链路。
@@ -150,6 +157,8 @@ static func on_tick(unit: Node, delta: float) -> void:
 	_regen_phase_shield(unit, stats, delta)
 	# v8.6 现实/科幻 dot 伤害 tick（化学/燃烧/纳米，挂载在目标自身 meta 上）
 	_tick_dot_damage(unit, delta)
+	# v9.1 套路5 雷达锁定周期扫描（装了 rec_phased_radar 的单位每 N 秒锁定范围内敌方）
+	_tick_radar_lock(unit, delta)
 
 # ─────────────────────────────────────────────
 #  受击处理（v7.x 新增活跃路径）
@@ -347,6 +356,33 @@ static func _get_battle_manager() -> Node:
 		if tree.root != null:
 			return tree.root.get_node_or_null("BattleManager")
 	return null
+
+## v9.1: 获取组合技引擎（可能为 null，--script 模式或非战斗时）
+static func _get_combo_engine() -> RefCounted:
+	var bm: Node = _get_battle_manager()
+	if bm != null and bm.has_method("get_combo_engine"):
+		return bm.get_combo_engine()
+	return null
+
+## v9.1: 获取战场状态管理器（可能为 null）
+static func _get_combo_field_state() -> RefCounted:
+	var bm: Node = _get_battle_manager()
+	if bm != null and bm.has_method("get_combo_field_state"):
+		return bm.get_combo_field_state()
+	return null
+
+## v9.1: 读取攻击者的 _special flag（mod_special_flags meta，建卡时由 unit_stats_table 写入）。
+## 返回空字典表示无触发 flag。
+static func _get_attacker_special_flags(attacker: Node) -> Dictionary:
+	if attacker == null or not is_instance_valid(attacker):
+		return {}
+	var stats = _get_attacker_stats(attacker)
+	if stats != null and stats.has_meta("mod_special_flags"):
+		return stats.get_meta("mod_special_flags", {})
+	# 兼容：单位节点也可能复制了该 meta
+	if attacker.has_meta("mod_special_flags"):
+		return attacker.get_meta("mod_special_flags", {})
+	return {}
 
 static func _find_nearby_enemies(center: Node, radius: float) -> Array:
 	if center == null or not is_instance_valid(center):
@@ -827,7 +863,7 @@ static func _apply_true_damage(target: Node, stats: UnitStats, attacker: Node) -
 	_deal_damage_to_unit(target, stats.true_damage, attacker)
 
 ## 化学武器：命中按概率挂毒（固定 DPS 持续 N 秒，刷新覆盖）
-static func _apply_chem_on_hit(target: Node, stats: UnitStats) -> void:
+static func _apply_chem_on_hit(target: Node, stats: UnitStats, attacker: Node) -> void:
 	if stats.chem_chance <= 0.0 or stats.chem_dps <= 0.0:
 		return
 	if randf() > clampf(stats.chem_chance, 0.0, 1.0):
@@ -835,7 +871,21 @@ static func _apply_chem_on_hit(target: Node, stats: UnitStats) -> void:
 	if target == null or not is_instance_valid(target):
 		return
 	var now: float = Time.get_ticks_msec() / 1000.0
-	target.set_meta("_chem_dps", stats.chem_dps)
+	# v9.1 化学腐蚀：化学层数 ≥5 时额外护甲穿透（套路6 chem_corrosion flag）
+	# 层数累积（化学污染场套路用）
+	var chem_stacks: int = int(target.get_meta("_chem_stacks", 0))
+	chem_stacks = min(chem_stacks + 1, 8)
+	target.set_meta("_chem_stacks", chem_stacks)
+	# v9.1 化学污染度累积（套路6 chem_pollute 触发 flag）
+	var _sp: Dictionary = _get_attacker_special_flags(attacker)
+	var pollute_amt: float = float(_sp.get("chem_pollute", 0.0))
+	if pollute_amt > 0.0:
+		var fs: RefCounted = _get_combo_field_state()
+		if fs != null:
+			fs.add_field(ComboFieldState.FIELD_CHEM, pollute_amt, 1.5, 25.0)
+	# v9.1 化学 dot 放大（chem_dps_mult 套路6 蓄能器）
+	var dps_final: float = stats.chem_dps * (1.0 + stats.chem_dps_mult)
+	target.set_meta("_chem_dps", dps_final)
 	target.set_meta("_chem_until", now + maxf(0.1, stats.chem_duration))
 	# VFX：绿色毒雾（仅首次挂载时播一次，tick 时不再播避免刷屏）
 	if target is Node2D:
@@ -844,7 +894,7 @@ static func _apply_chem_on_hit(target: Node, stats: UnitStats) -> void:
 			VfxImpactFactory.spawn_shockwave(parent, (target as Node2D).global_position, 30.0, Color(0.3, 0.9, 0.2, 0.7))
 
 ## 燃烧弹：命中按概率挂燃烧，可叠加层数（dps = base × stacks）
-static func _apply_burn_on_hit(target: Node, stats: UnitStats) -> void:
+static func _apply_burn_on_hit(target: Node, stats: UnitStats, attacker: Node) -> void:
 	if stats.burn_chance <= 0.0 or stats.burn_dps <= 0.0:
 		return
 	if randf() > clampf(stats.burn_chance, 0.0, 1.0):
@@ -852,11 +902,31 @@ static func _apply_burn_on_hit(target: Node, stats: UnitStats) -> void:
 	if target == null or not is_instance_valid(target):
 		return
 	var now: float = Time.get_ticks_msec() / 1000.0
-	# 叠加层数（上限 5 层），刷新持续时间
+	# v9.1 助燃剂层数（套路1 incendiary flag）——读 attacker 的 _special，命中时挂助燃剂 stacks
+	var _sp: Dictionary = _get_attacker_special_flags(attacker)
+	var incendiary_chance: float = float(_sp.get("incendiary_chance", 0.0))
+	var incendiary_stacks: int = int(_sp.get("incendiary_stacks", 0))
+	if incendiary_chance > 0.0 and incendiary_stacks > 0 and randf() < incendiary_chance:
+		# 助燃剂层数累积（套路1）。层数越多，下方 burn cap 越高（每层 +1 上限）。
+		# v9.1b 修复：inc_cap 真正传入 add_target_stacks（原硬编码 10 是死代码）。
+		var inc_cap: int = (10 if _sp.has("incendiary_synergy") else 5)
+		ComboFieldState.add_target_stacks(target, ComboFieldState.META_INCENDIARY_STACKS, ComboFieldState.META_INCENDIARY_UNTIL, incendiary_stacks, inc_cap, 8.0)
+	# v9.1b：读助燃层数，用于下方动态抬高 burn cap（接通原死代码 META_INCENDIARY_STACKS）
+	var _incendiary_layers: int = ComboFieldState.get_target_stacks(target, ComboFieldState.META_INCENDIARY_STACKS, ComboFieldState.META_INCENDIARY_UNTIL)
+	# 叠加层数：基础 cap 5，套路激活（incendiary_synergy 单卡 / incendiary_boost 全队）放宽到 10，
+	# 助燃剂层数（_incendiary_layers）每层额外 +1 上限（接通 META_INCENDIARY_STACKS 链路）。
 	var stacks: int = int(target.get_meta("_burn_stacks", 0))
-	stacks = min(stacks + 1, 5)
+	var _burn_eng: RefCounted = _get_combo_engine()
+	var _incendiary_team: bool = _burn_eng != null and _burn_eng.has_method("is_mechanism_active") and _burn_eng.is_mechanism_active("incendiary_boost")
+	var _base_cap: int = 10 if (_sp.has("incendiary_synergy") or _incendiary_team) else 5
+	var cap: int = _base_cap + _incendiary_layers   # 助燃层数动态抬高燃烧上限
+	stacks = min(stacks + 1, cap)
 	target.set_meta("_burn_stacks", stacks)
-	target.set_meta("_burn_base_dps", stats.burn_dps)
+	# v9.1 燃烧 dot 放大（burn_dps_mult 套路1 催化剂 + 全队 incendiary_boost 额外 +20%）
+	var _burn_mult: float = stats.burn_dps_mult
+	if _incendiary_team:
+		_burn_mult += 0.20
+	target.set_meta("_burn_base_dps", stats.burn_dps * (1.0 + _burn_mult))
 	target.set_meta("_burn_until", now + maxf(0.1, stats.burn_duration))
 	if target is Node2D:
 		var parent: Node2D = _resolve_fx_parent_node(target)
@@ -871,15 +941,35 @@ static func _apply_emp_on_hit(target: Node, stats: UnitStats, attacker: Node) ->
 		return
 	if target == null or not is_instance_valid(target):
 		return
+	# v9.1 石墨电子损坏累积（套路2 graphite flag）+ emp 真实伤害加成（emp_true_damage_bonus）
+	var _sp: Dictionary = _get_attacker_special_flags(attacker)
+	var graphite_chance: float = float(_sp.get("graphite_chance", 0.0))
+	var graphite_stacks: int = int(_sp.get("graphite_stacks", 0))
+	# v9.1：全队 graphite_accumulate 机制激活时累积上限 10→12（v9.1b 从 15 下调平衡）+ 概率 +0.2
+	var _emp_eng: RefCounted = _get_combo_engine()
+	var _graphite_team: bool = _emp_eng != null and _emp_eng.has_method("is_mechanism_active") and _emp_eng.is_mechanism_active("graphite_accumulate")
+	var _graphite_cap: int = 12 if _graphite_team else 10
+	var _graphite_chance_final: float = graphite_chance + (0.20 if _graphite_team else 0.0)
+	if _graphite_chance_final > 0.0 and graphite_stacks > 0 and randf() < clampf(_graphite_chance_final, 0.0, 1.0):
+		ComboFieldState.add_target_stacks(target, ComboFieldState.META_GRAPHITE_CHARGE, ComboFieldState.META_GRAPHITE_UNTIL, graphite_stacks, _graphite_cap, 8.0)
+	# 石墨电荷越高 emp 伤害越高（套路2 graphite_amp / 反辐射导弹 graphite_execute）
+	var graphite_charge: int = ComboFieldState.get_target_stacks(target, ComboFieldState.META_GRAPHITE_CHARGE, ComboFieldState.META_GRAPHITE_UNTIL)
+	var emp_dmg_mult: float = 1.0 + graphite_charge * 0.15
 	# 复用 ECM debuff meta（攻速-30%/暴击-20%/闪避-15%，持续 4 秒）
 	var now_msec: int = Time.get_ticks_msec()
 	target.set_meta("_ecm_debuffed_until", now_msec + 4000)
 	target.set_meta("_ecm_attack_speed_penalty", 0.30)
 	target.set_meta("_ecm_crit_penalty", 0.20)
 	target.set_meta("_ecm_dodge_penalty", 0.15)
-	# 真实伤害即时结算
-	if stats.emp_true_damage > 0.0:
-		_deal_damage_to_unit(target, stats.emp_true_damage, attacker)
+	# 真实伤害即时结算（v9.1 + emp_true_damage_bonus + 石墨电荷增伤）
+	var emp_dmg: float = (stats.emp_true_damage + stats.emp_true_damage_bonus) * emp_dmg_mult
+	if emp_dmg > 0.0:
+		_deal_damage_to_unit(target, emp_dmg, attacker)
+	# v9.1 电磁脉冲反射（套路2 emp_reflect_trigger flag + 全队 emp_reflect 机制）
+	if _sp.has("emp_reflect_trigger"):
+		var eng: RefCounted = _get_combo_engine()
+		if eng != null and eng.has_method("is_mechanism_active") and eng.is_mechanism_active("emp_reflect"):
+			ComboEngine.try_emp_reflect(eng.get_active_mechanisms(), eng.get_field_state(), target, attacker)
 	# VFX：蓝色电弧（攻击者→目标，如果攻击者有效）
 	if target is Node2D and attacker != null and is_instance_valid(attacker) and attacker is Node2D:
 		var parent: Node2D = _resolve_fx_parent_node(target)
@@ -887,7 +977,7 @@ static func _apply_emp_on_hit(target: Node, stats: UnitStats, attacker: Node) ->
 			VfxImpactFactory.spawn_lightning_arc(parent, (attacker as Node2D).global_position, (target as Node2D).global_position, Color(0.4, 0.7, 1.0, 1.0))
 
 ## 纳米病毒：命中按概率挂病毒（按目标 maxHP 百分比每秒掉血，打肉盾专用）
-static func _apply_nano_on_hit(target: Node, stats: UnitStats) -> void:
+static func _apply_nano_on_hit(target: Node, stats: UnitStats, attacker: Node) -> void:
 	if stats.nano_chance <= 0.0 or stats.nano_pct <= 0.0:
 		return
 	if randf() > clampf(stats.nano_chance, 0.0, 1.0):
@@ -895,12 +985,121 @@ static func _apply_nano_on_hit(target: Node, stats: UnitStats) -> void:
 	if target == null or not is_instance_valid(target):
 		return
 	var now: float = Time.get_ticks_msec() / 1000.0
-	target.set_meta("_nano_pct", stats.nano_pct)
+	# v9.1 纳米浓度场（套路3 nano_seeder 浓度注入）+ 浓度增伤
+	var _sp: Dictionary = _get_attacker_special_flags(attacker)
+	var seeder_amt: float = float(_sp.get("nano_seeder_amount", 0.0))
+	var fs: RefCounted = _get_combo_field_state()
+	if seeder_amt > 0.0 and fs != null:
+		fs.add_field(ComboFieldState.FIELD_NANO, seeder_amt, 0.8, 30.0)
+	# 浓度越高 nano dot 越强（套路3 nano_concentration_amp 单卡 flag）
+	# v9.1：全队 nano_concentration 机制激活时浓度系数 ×2（0.05 → 0.10）
+	var nano_pct_final: float = stats.nano_pct
+	var _nano_eng: RefCounted = _get_combo_engine()
+	var _nano_team: bool = _nano_eng != null and _nano_eng.has_method("is_mechanism_active") and _nano_eng.is_mechanism_active("nano_concentration")
+	if (_sp.has("nano_concentration_amp") or _nano_team) and fs != null:
+		var conc: float = fs.get_field(ComboFieldState.FIELD_NANO)
+		var _coef: float = 0.10 if _nano_team else 0.05
+		nano_pct_final = stats.nano_pct * (1.0 + conc * _coef)
+	target.set_meta("_nano_pct", nano_pct_final)
 	target.set_meta("_nano_until", now + maxf(0.1, stats.nano_duration))
 	if target is Node2D:
 		var parent: Node2D = _resolve_fx_parent_node(target)
 		if parent != null:
 			VfxImpactFactory.spawn_shockwave(parent, (target as Node2D).global_position, 32.0, Color(0.7, 0.2, 0.9, 0.7))
+
+## v9.1 套路4 光束谐振：读 attacker 的 _special.laser_resonance_chance/stacks，
+## 命中时按概率挂 META_LASER_RESONANCE 层数（累积≥3 触发 beam_split，>0 触发 beam_reflect）。
+static func _apply_laser_resonance_on_hit(target: Node, stats: UnitStats, attacker: Node) -> void:
+	if target == null or not is_instance_valid(target):
+		return
+	var _sp: Dictionary = _get_attacker_special_flags(attacker)
+	var res_chance: float = float(_sp.get("laser_resonance_chance", 0.0))
+	var res_stacks: int = int(_sp.get("laser_resonance_stacks", 0))
+	if res_chance <= 0.0 or res_stacks <= 0.0:
+		return
+	if randf() > clampf(res_chance, 0.0, 1.0):
+		return
+	# v9.1 P2-2: beam_split_trigger/beam_reflect_trigger 是单卡闸门——必须装触发器改造才能累积谐振
+	if not _sp.has("beam_split_trigger") and not _sp.has("beam_reflect_trigger"):
+		return
+	# 全队 laser_resonance 机制激活时层数累积上限放宽（单卡默认上限 5，全队激活 →8）
+	var eng: RefCounted = _get_combo_engine()
+	var cap: int = 5
+	if eng != null and eng.has_method("is_mechanism_active") and eng.is_mechanism_active("laser_resonance"):
+		cap = 8
+	ComboFieldState.add_target_stacks(target, ComboFieldState.META_LASER_RESONANCE, ComboFieldState.META_LASER_UNTIL, res_stacks, cap, 5.0)
+	if target is Node2D:
+		var parent: Node2D = _resolve_fx_parent_node(target)
+		if parent != null:
+			VfxImpactFactory.spawn_shockwave(parent, (target as Node2D).global_position, 24.0, Color(0.9, 0.8, 1.0, 0.6))
+
+## v9.1 套路5 雷达锁定：读 attacker 的 _special.radar_lock_*，
+## 命中时周期性挂 META_RADAR_LOCKED（带易伤值），供 try_weakpoint_expose 双标记判定。
+## 注：真正的"周期性扫描"由 on_tick 驱动（见 _tick_radar_lock），命中时仅刷新已有锁定的过期时间。
+static func _apply_radar_lock_on_hit(target: Node, stats: UnitStats, attacker: Node) -> void:
+	if target == null or not is_instance_valid(target):
+		return
+	var _sp: Dictionary = _get_attacker_special_flags(attacker)
+	if not _sp.has("radar_lock_interval"):
+		return   # 未装 rec_phased_radar，不触发
+	# 命中时若目标已被雷达锁定（未过期），刷新锁定时间（维持锁定链）
+	if target.has_meta(ComboFieldState.META_RADAR_LOCKED):
+		var expire: float = float(target.get_meta(ComboFieldState.META_RADAR_LOCKED, 0.0))
+		if Time.get_ticks_msec() / 1000.0 < expire:
+			var dur: float = float(_sp.get("radar_lock_duration", 8.0))
+			target.set_meta(ComboFieldState.META_RADAR_LOCKED, Time.get_ticks_msec() / 1000.0 + dur)
+			# P1-1: sup_targeting_drone 的 drone_mark_vuln_bonus 叠加到雷达易伤
+			var vuln: float = float(_sp.get("radar_lock_vuln", 0.15)) + float(_sp.get("drone_mark_vuln_bonus", 0.0))
+			target.set_meta(ComboFieldState.META_RADAR_VULN, vuln)
+
+## v9.1 套路5 雷达锁定周期扫描：装了 rec_phased_radar 的单位每 radar_lock_interval 秒
+## 扫描 radar_lock_radius 范围内的敌方高威胁单位，挂 META_RADAR_LOCKED（首次锁定）。
+## 在 on_tick 调用（attacker 是单位节点本身）。
+static func _tick_radar_lock(unit: Node, delta: float) -> void:
+	if unit == null or not is_instance_valid(unit):
+		return
+	var stats = _get_attacker_stats(unit)
+	if stats == null:
+		return
+	var _sp: Dictionary = _get_attacker_special_flags(unit)
+	if not _sp.has("radar_lock_interval"):
+		return   # 未装 rec_phased_radar
+	# 节流累积
+	var acc_key: String = "_radar_lock_acc"
+	var acc: float = float(unit.get_meta(acc_key, 0.0)) + delta
+	var interval: float = float(_sp.get("radar_lock_interval", 12.0))
+	if acc < interval:
+		unit.set_meta(acc_key, acc)
+		return
+	unit.set_meta(acc_key, 0.0)
+	# 扫描范围内敌方单位，锁 1 个高威胁（HP 最高且未被锁定）
+	var radius: float = float(_sp.get("radar_lock_radius", 400.0))
+	var vuln: float = float(_sp.get("radar_lock_vuln", 0.15)) + float(_sp.get("drone_mark_vuln_bonus", 0.0))
+	var dur: float = float(_sp.get("radar_lock_duration", 8.0))
+	var upos: Vector2 = (unit as Node2D).global_position if unit is Node2D else Vector2.ZERO
+	var grp: String = "enemy_units" if unit.is_in_group("player_units") else "player_units"
+	var tree: SceneTree = unit.get_tree() if unit != null else null
+	if tree == null:
+		return
+	var best: Node = null
+	var best_hp: float = -1.0
+	for n in tree.get_nodes_in_group(grp):
+		if n == null or not is_instance_valid(n) or not (n is Node2D):
+			continue
+		# 跳过已被锁定的
+		if n.has_meta(ComboFieldState.META_RADAR_LOCKED):
+			var ex: float = float(n.get_meta(ComboFieldState.META_RADAR_LOCKED, 0.0))
+			if Time.get_ticks_msec() / 1000.0 < ex:
+				continue
+		if upos.distance_to((n as Node2D).global_position) > radius:
+			continue
+		var hp_v: float = float(n.get("hp")) if "hp" in n else 0.0
+		if hp_v > best_hp:
+			best_hp = hp_v
+			best = n
+	if best != null:
+		best.set_meta(ComboFieldState.META_RADAR_LOCKED, Time.get_ticks_msec() / 1000.0 + dur)
+		best.set_meta(ComboFieldState.META_RADAR_VULN, vuln)
 
 ## dot tick：每帧消费化学/燃烧/纳米状态，按 delta 累积掉血，过期清理
 ## 复用 minefield 的 meta 节流思路，但 dot 每 tick 间隔短（0.25s，更平滑）
@@ -929,6 +1128,10 @@ static func _tick_dot_damage(unit: Node, delta: float) -> void:
 		else:
 			unit.remove_meta("_chem_until")
 			unit.remove_meta("_chem_dps")
+			# v9.1 fix: 化学毒过期时一并清理 _chem_stacks（套路6 化学腐蚀读它：层数≥5 伤害×1.20）。
+			# 原仅清 _until/_dps，层数残留会导致套路6 激活时对该目标的所有后续伤害永久挂 +20%。
+			if unit.has_meta("_chem_stacks"):
+				unit.remove_meta("_chem_stacks")
 	# 燃烧：dps = base × stacks
 	if unit.has_meta("_burn_until"):
 		var burn_until: float = float(unit.get_meta("_burn_until", 0.0))
@@ -948,9 +1151,25 @@ static func _tick_dot_damage(unit: Node, delta: float) -> void:
 			var max_hp: float = _get_unit_max_hp(unit)
 			if max_hp > 0.0:
 				total_dmg += max_hp * nano_pct * tick_dt
+			# v9.1 纳米感染扩散（套路3 nano_spread 机制 + nano_spread_trigger flag）
+			var eng3: RefCounted = _get_combo_engine()
+			if eng3 != null and eng3.is_mechanism_active("nano_spread"):
+				ComboEngine.try_nano_spread(eng3.get_active_mechanisms(), eng3.get_field_state(), unit, unit)
 		else:
 			unit.remove_meta("_nano_until")
 			unit.remove_meta("_nano_pct")
+	# v9.1 套路 dot 扩散（在统一结算前触发，扩散产生的 dot 走目标自己的下次 tick）
+	# 设计：扩散是全队机制（mechs.has 守卫），trigger 改造（air_thermolite_bomb/gen_nano_catalyst）
+	# 通过属于套路配套改造集（combo_tactics.mod_ids）参与套路激活判定，不在此处单独读取 _sp。
+	var eng_spread: RefCounted = _get_combo_engine()
+	if eng_spread != null:
+		var mechs: Array = eng_spread.get_active_mechanisms()
+		# 套路1 化学爆发：燃烧层数 ≥8 时扩散（chem_burst 机制激活）
+		if mechs.has("chem_burst") and unit.has_meta("_burn_stacks"):
+			ComboEngine.try_chem_burst(mechs, eng_spread.get_field_state(), unit, unit)
+		# 套路6 污染扩散：化学污染浓度 ≥40 时扩散（chem_spread 机制激活）
+		if mechs.has("chem_spread") and unit.has_meta("_chem_until"):
+			ComboEngine.try_chem_spread(mechs, eng_spread.get_field_state(), unit, unit)
 	# 统一结算（避免每个状态单独调 take_damage）
 	if total_dmg > 0.0:
 		_deal_damage_to_unit(unit, total_dmg, null)

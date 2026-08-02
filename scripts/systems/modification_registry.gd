@@ -728,6 +728,21 @@ static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary) -
 			"nano_duration":
 				if not result.has("nano_duration"): result["nano_duration"] = 0.0
 				result["nano_duration"] += float(effect_value)
+			# ── v9.1 组合技套路 effect key ──
+			# 数值增益类（累加到 stats，建卡时一次性写入）
+			"burn_dps_mult":
+				if not result.has("burn_dps_mult"): result["burn_dps_mult"] = 0.0
+				result["burn_dps_mult"] += float(effect_value)
+			"chem_dps_mult":
+				if not result.has("chem_dps_mult"): result["chem_dps_mult"] = 0.0
+				result["chem_dps_mult"] += float(effect_value)
+			"emp_true_damage_bonus":
+				if not result.has("emp_true_damage_bonus"): result["emp_true_damage_bonus"] = 0.0
+				result["emp_true_damage_bonus"] += float(effect_value)
+			"beam_damage_bonus":
+				if not result.has("beam_damage_bonus"): result["beam_damage_bonus"] = 0.0
+				result["beam_damage_bonus"] += float(effect_value)
+			# 套路触发/配置类（写入 _special，运行时由 module_effect_handler 读取）
 			_:
 				if not result.has("_special"):
 					result["_special"] = {}
@@ -753,6 +768,7 @@ static func _prefix_to_type(prefix: String) -> String:
 		"eng": return "engineer"
 		"for": return "fort"
 		"gen": return "universal"
+		"sup": return "artillery"   # v9.1b：sup_ 前缀（支援类改造，放 artillery_mods，复用 SUPPORT 兵种）
 		_: return ""
 
 ## 获取所有改造ID（用于调试）

@@ -171,6 +171,42 @@ const DATA: Dictionary = {
 		effects = {death_heal = 0.15, death_heal_radius = 180.0},
 		unlock_conditions = {required_level = 5}
 	},
+
+	# ==================== v9.1 组合技套路配套改造（2 个） ====================
+	# 套路4 光束谐振链：光纤链路（光束武器伤害+20%）
+	"eng_optical_fiber" = {
+		id = "eng_optical_fiber",
+		name = "光纤链路",
+		name_en = "Optical Fiber Link",
+		icon = "res://assets/ui/icons/mod_icons/mod_optical_fiber.png",
+		prototype = "战场光纤通信网",
+		description = "光束类武器伤害+20%，光束谐振链全局增益",
+		rarity = "epic",
+		power_mult = 1.6,
+		cost_research = 340,
+		cost_install = 170,
+		slot_type = "electronic",
+		conflict_group = "electronic",
+		effects = {beam_damage_bonus = 0.20, attack_light = 0.05},
+		unlock_conditions = {required_level = 5}
+	},
+	# 套路6 化学污染场：化学喷洒器（范围挂毒）
+	"eng_chem_sprayer" = {
+		id = "eng_chem_sprayer",
+		name = "化学喷洒器",
+		name_en = "Chem Sprayer",
+		icon = "res://assets/ui/icons/mod_icons/mod_chem_sprayer.png",
+		prototype = "车载化学喷洒系统",
+		description = "攻击50%概率范围挂化学毒（累积战场污染度），化学污染场触发器",
+		rarity = "epic",
+		power_mult = 1.6,
+		cost_research = 340,
+		cost_install = 170,
+		slot_type = "special",
+		conflict_group = "special",
+		effects = {chem_chance = 0.50, chem_dps = 8.0, chem_duration = 5.0, chem_pollute = 4.0, splash_radius = 0.30},
+		unlock_conditions = {required_level = 5}
+	},
 }
 
 static func get_mod_data(mod_id: String) -> Dictionary:

@@ -10,6 +10,10 @@ class_name UnitStatsTable
 
 const GC = preload("res://resources/game_constants.gd")
 const BattleCardV3 = preload("res://data/battle_card_v3.gd")
+# v9.1: 组合技套路检测（单卡改造组合 → 激活套路增益）
+const ComboTactics = preload("res://data/combo_tactics.gd")
+# 卡片定时技能：派生 law_family meta（阵营→flame/thunder/void），供 source_tag 触发判定
+const CardPeriodicSkills = preload("res://data/card_periodic_skills.gd")
 
 
 # ─────────────────────────────────────────────
@@ -425,6 +429,9 @@ static func _apply_mod_stat_effects(stats: UnitStats, mods: Array) -> void:
 		"burn_chance": stats.burn_chance, "burn_dps": stats.burn_dps, "burn_duration": stats.burn_duration,
 		"emp_chance": stats.emp_chance, "emp_true_damage": stats.emp_true_damage,
 		"nano_chance": stats.nano_chance, "nano_pct": stats.nano_pct, "nano_duration": stats.nano_duration,
+		# v9.1 组合技套路增益乘区
+		"burn_dps_mult": stats.burn_dps_mult, "chem_dps_mult": stats.chem_dps_mult,
+		"emp_true_damage_bonus": stats.emp_true_damage_bonus, "beam_damage_bonus": stats.beam_damage_bonus,
 	}
 	# 统一应用（支持 level_effects + effects 两种格式）
 	var result: Dictionary = ModificationRegistry.apply_with_level(base_dict, mods)
@@ -516,6 +523,11 @@ static func _apply_mod_stat_effects(stats: UnitStats, mods: Array) -> void:
 	stats.nano_chance = float(result.get("nano_chance", stats.nano_chance))
 	stats.nano_pct = float(result.get("nano_pct", stats.nano_pct))
 	stats.nano_duration = float(result.get("nano_duration", stats.nano_duration))
+	# v9.1 组合技套路增益乘区回写
+	stats.burn_dps_mult = float(result.get("burn_dps_mult", stats.burn_dps_mult))
+	stats.chem_dps_mult = float(result.get("chem_dps_mult", stats.chem_dps_mult))
+	stats.emp_true_damage_bonus = float(result.get("emp_true_damage_bonus", stats.emp_true_damage_bonus))
+	stats.beam_damage_bonus = float(result.get("beam_damage_bonus", stats.beam_damage_bonus))
 	# v6.5→v6.6: 武器类改造改变武器型号，写入 legacy_weapon_type（不污染 weapon_type 弹道字段）
 	# bullet 的 VFX/弹道 match 读 legacy_weapon_type，AI 曲射判断读 weapon_type
 	if result.has("legacy_weapon_type"):
@@ -523,6 +535,22 @@ static func _apply_mod_stat_effects(stats: UnitStats, mods: Array) -> void:
 	# _special 里的效果暂不处理（如 smoke_ignore 等无直接stat对应）
 	# 同步旧兼容字段
 	stats.attack_damage = stats.attack_light
+	# v9.1: 组合技套路——单卡改造组合检测。装了 ≥2 个同套路配套改造 → 该卡激活套路。
+	# 把激活的 combo_id 列表 + _special 里的触发 flag 写入 stats meta，供 construct_unit 运行时读取。
+	var _combo_mods_on_card: Array = []
+	for m in mods:
+		if m is Dictionary:
+			_combo_mods_on_card.append(String(m.get("id", "")))
+		else:
+			_combo_mods_on_card.append(String(m))
+	var _card_combos: Array = ComboTactics.detect_card_combos(_combo_mods_on_card)
+	if not _card_combos.is_empty():
+		stats.set_meta("combo_active", _card_combos.duplicate())
+	# 把 _special 里的触发 flag（incendiary_chance/graphite_chance/chem_pollute 等）也存 meta，
+	# 供 construct_unit 复制到节点，module_effect_handler 运行时读取后触发套路机制。
+	if result.has("_special") and not result["_special"].is_empty():
+		var _sp: Dictionary = result["_special"]
+		stats.set_meta("mod_special_flags", _sp.duplicate(true))
 
 
 ## v6.8: 扫描 mods，提取 ally_* 光环配置存到 stats meta
@@ -671,6 +699,8 @@ static func apply_combat_kind_modifiers(stats: UnitStats) -> void:
 	# 标记来源优先级：① 卡牌 tags 字段含 stalker/engineer/ecm/sniper → ② card_id 前缀匹配
 	# 注意：这里只打标记，实际机制（隐身/首击/光环）由 construct_unit._init_unit_mechanisms 读取 meta 实现
 	_apply_v8_unit_type_meta(stats)
+	# 卡片定时技能：把玩家激活阵营的 law_family 写入 stats meta，供 source_tag 触发判定与卡牌面板显示
+	_apply_law_family_meta(stats)
 	# v8.6: 把 attack_*_bonus 同步到 weapon_slots[].damage（战斗主路径读 weapon.damage 不读 get_attack_vs，
 	#   否则装甲碾压/防空封锁/对堡垒特攻的 bonus 字段全部空转）。weapon_slots 在本函数之前已建立。
 	_sync_kind_bonus_to_weapon_slots(stats)
@@ -798,6 +828,33 @@ static func _apply_v8_unit_type_meta(stats: UnitStats) -> void:
 			stats.nano_chance = maxf(stats.nano_chance, 0.20)
 			stats.nano_pct = maxf(stats.nano_pct, 0.015)
 			stats.nano_duration = maxf(stats.nano_duration, 6.0)
+
+
+## 卡片定时技能：把玩家激活阵营的 law_family 写入 stats meta。
+## 供 CardPeriodicSkills.compute_source_tags_for_stats 读取（flame/thunder/void 类技能触发源）。
+## 复用 _apply_v8_unit_type_meta 的 autoload 读取模式（静态上下文 Engine.get_singleton → 兜底 autoload 节点）。
+## 未激活阵营（空串）→ 不写 meta → flame/thunder/void 类技能休眠（设计如此：阵营选定后开启）。
+static func _apply_law_family_meta(stats: UnitStats) -> void:
+	if stats == null:
+		return
+	var fsm = null
+	if Engine.has_singleton("FactionSystemManager"):
+		fsm = Engine.get_singleton("FactionSystemManager")
+	else:
+		# 静态上下文无 Engine.get_singleton 时，走 autoload 节点路径（运行时有效）
+		var tree = Engine.get_main_loop() as SceneTree
+		if tree != null and tree.root != null:
+			fsm = tree.root.get_node_or_null("FactionSystemManager")
+	if fsm == null:
+		return
+	var fid: String = ""
+	if "active_faction" in fsm:
+		fid = String(fsm.active_faction)
+	elif fsm.has_method("get_active_faction"):
+		fid = String(fsm.get_active_faction())
+	var fam: String = CardPeriodicSkills.get_family_for_faction(fid)
+	if not fam.is_empty():
+		stats.set_meta("law_family", fam)
 
 
 # ─────────────────────────────────────────────

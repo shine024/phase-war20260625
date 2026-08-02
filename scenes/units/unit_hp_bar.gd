@@ -1,13 +1,25 @@
 extends Node2D
-## 单位头顶血条：可折叠（紧凑一线）或展开显示，增强视觉效果
+## 单位头顶血条：固定单一形态（不再随选中展开/折叠）。HP 数字常显，选中只靠金色描边。
 
 const BAR_WIDTH: float = 98.0  # 固定宽度（130 缩减 1/4 → 98）
-const HEIGHT_COMPACT: float = 15.0  # 折叠高度（16→15）
-const HEIGHT_EXPANDED: float = 21.0  # 展开高度（22→21）
+const BAR_HEIGHT: float = 15.0  # 固定高度（v8.x: 去掉展开机制，统一用此值）
+# 以下两个常量保留为旧值仅向后兼容（外部 get_bar_height 仍引用 HEIGHT_EXPANDED），
+# 实际渲染已统一到 BAR_HEIGHT，不再随选中变化。
+const HEIGHT_COMPACT: float = BAR_HEIGHT
+const HEIGHT_EXPANDED: float = BAR_HEIGHT
+
+# ── 血条上方状态图标行（buff/debuff，v9.x 新增）──
+# 数据由 UnitStatusCollector 从 parent（单位）meta 收集，单位 _physics_process 每 0.3s 调 refresh_status_icons。
+const STATUS_ICON_SIZE: float = 11.0        # 基准图标边长（px）
+const STATUS_ICON_GAP: float = 2.0          # 图标间距
+const STATUS_ROW_Y: float = -22.0           # 图标行垂直中心（护盾条运行时顶约 y=-14，留 8px）
+const STATUS_ROW_MAX_W: float = BAR_WIDTH - 4.0  # 行宽上限，超出自适应缩小
+const STATUS_DEBUFF_BUFF_GAP: float = 4.0   # debuff 组与 buff 组之间的额外间隔
+const STATUS_MAX_ICONS: int = 10            # 单位最多显示图标数（超出按 debuff 优先丢弃）
+const STATUS_MIN_ICON_SIZE: float = 5.0     # 自适应缩放下限
 
 var _ratio: float = 1.0
 var _target_ratio: float = 1.0
-var _folded: bool = true
 var _is_player: bool = true
 var _bg: Polygon2D
 var _fill: Polygon2D
@@ -27,6 +39,12 @@ var _shield_bg_pts: PackedVector2Array = PackedVector2Array([Vector2.ZERO, Vecto
 var _shield_gain: float = 0.0  # 护盾获得时的闪光值（0-1）
 var _cur_hp: float = 0.0       # 当前HP（用于文本显示）
 var _max_hp: float = 100.0     # 最大HP（用于文本显示）
+
+# ── 状态图标行（v9.x）──
+var _status_entries: Array = []   # collector 返回的当前状态列表 [{kind,stacks,color,is_buff}]
+var _status_layout: Array = []    # 排好序 + 算好 rect 的渲染列表（_draw 遍历它）
+var _status_sig: String = ""      # signature 去重（状态不变则跳过重绘）
+var _status_font: Font = null     # 层数数字字体（_ready 从 HpLabel 缓存）
 
 ## 血条颜色配置
 var _player_colors: Dictionary = {
@@ -89,6 +107,9 @@ func _ready() -> void:
 	if sb != null and sb.has_signal("unit_selected"):
 		sb.unit_selected.connect(_on_unit_selected)
 	_update_view()
+	# 缓存默认字体用于绘制状态层数数字（Node2D 无 get_theme_default_font，从 HpLabel 取）
+	if _hp_label != null:
+		_status_font = _hp_label.get_theme_default_font()
 	set_process(false)
 
 ## 选中信号回调
@@ -111,7 +132,7 @@ func set_selected(value: bool) -> void:
 func _update_selection_border() -> void:
 	if _selection_border == null: return
 	var w: float = BAR_WIDTH + 10.0
-	var h: float = HEIGHT_EXPANDED + 6.0
+	var h: float = BAR_HEIGHT + 6.0
 	var x0: float = -w * 0.5
 	var y0: float = -h * 0.5
 	_selection_border.polygon = PackedVector2Array([
@@ -167,13 +188,12 @@ func trigger_heal_flash() -> void:
 	_heal_flash = 1.0
 	set_process(true)
 
-func set_folded(folded: bool) -> void:
-	_folded = folded
-	_update_view()
-	_sync_process_state()
+## v8.x: 血条已固定单一形态，set_folded 保留为空操作以兼容外部调用方（不再影响渲染）。
+func set_folded(_folded: bool) -> void:
+	pass
 
 func get_bar_height() -> float:
-	return HEIGHT_COMPACT if _folded else HEIGHT_EXPANDED
+	return BAR_HEIGHT
 
 func set_side(is_player: bool) -> void:
 	_is_player = is_player
@@ -191,7 +211,7 @@ func set_hp_text(cur_hp: float, max_hp: float) -> void:
 		_hp_label.visible = true
 
 func _update_view() -> void:
-	var h: float = HEIGHT_COMPACT if _folded else HEIGHT_EXPANDED
+	var h: float = BAR_HEIGHT
 	var half_w: float = BAR_WIDTH * 0.5
 	var half_h: float = h * 0.5
 
@@ -224,15 +244,15 @@ func _update_view() -> void:
 		# position.y 上移 1px：文字 TOP 对齐时 baseline 偏下，整体上提让字紧贴血条顶边
 		_hp_label.position = Vector2(-lbl_size.x * 0.5, -lbl_size.y * 0.5 - 1.0)
 		# Godot 4.x：font_size 须用主题覆盖（add_theme_font_size_override），非直接属性
-		# 折叠态(16px高)用 12pt，展开态(22px高)用 16pt，文字紧靠血条上边
-		_hp_label.add_theme_font_size_override("font_size", 12 if _folded else 16)
+		# v8.x: 血条固定单一高度(15px)，字号恒定 12pt
+		_hp_label.add_theme_font_size_override("font_size", 12)
 	
 	_update_fill_only()
 
 func _update_fill_only() -> void:
 	if _fill == null: return
 
-	var h: float = HEIGHT_COMPACT if _folded else HEIGHT_EXPANDED
+	var h: float = BAR_HEIGHT
 	var half_w: float = BAR_WIDTH * 0.5
 	var half_h: float = h * 0.5
 
@@ -313,3 +333,97 @@ func _update_shield_gain_effect() -> void:
 func trigger_shield_gain(amount: float, max_hp_val: float) -> void:
 	_shield_gain = 1.0
 	set_process(true)
+
+# ============================================================================
+#  v9.x 血条上方状态图标行（buff/debuff）
+#  渲染由单位 _physics_process 每 0.3s 调 refresh_status_icons 驱动；
+#  signature 去重，仅状态变化时 queue_redraw。
+# ============================================================================
+
+## 外部驱动：收集 parent（单位）当前状态，变化才重绘。parent 无效时清空。
+func refresh_status_icons() -> void:
+	var unit: Node = get_parent()
+	if unit == null or not is_instance_valid(unit):
+		if not _status_layout.is_empty() or _status_sig != "":
+			_status_entries.clear()
+			_status_layout.clear()
+			_status_sig = ""
+			queue_redraw()
+		return
+	var entries: Array = UnitStatusCollector.collect(unit)
+	var sig: String = UnitStatusCollector.signature(entries)
+	if sig == _status_sig:
+		return  # 状态未变，跳过重绘
+	_status_sig = sig
+	_status_entries = entries
+	_layout_status_row()
+	queue_redraw()
+
+## 计算每个图标的 rect：debuff 在左、buff 在右，组间额外间隔；总宽超限自适应缩小。
+func _layout_status_row() -> void:
+	_status_layout.clear()
+	if _status_entries.is_empty():
+		return
+	var debuff: Array = []
+	var buff: Array = []
+	for e in _status_entries:
+		if bool((e as Dictionary).get("is_buff", false)):
+			buff.append(e)
+		else:
+			debuff.append(e)
+	var ordered: Array = debuff + buff
+	var count: int = mini(ordered.size(), STATUS_MAX_ICONS)
+	var debuff_kept: int = mini(debuff.size(), count)
+	var buff_kept: int = count - debuff_kept
+	var both_groups: bool = debuff_kept > 0 and buff_kept > 0
+	var icon_size: float = STATUS_ICON_SIZE
+	var gap: float = STATUS_ICON_GAP
+	var total_w: float = float(count) * icon_size + float(maxi(count - 1, 0)) * gap
+	if both_groups:
+		total_w += STATUS_DEBUFF_BUFF_GAP
+	# 自适应缩小（复用 card_grid_buff_strip 的算法思路）
+	if total_w > STATUS_ROW_MAX_W:
+		var sc: float = STATUS_ROW_MAX_W / total_w
+		icon_size = maxf(icon_size * sc, STATUS_MIN_ICON_SIZE)
+	# 缩放后重算总宽用于居中
+	total_w = float(count) * icon_size + float(maxi(count - 1, 0)) * gap
+	if both_groups:
+		total_w += STATUS_DEBUFF_BUFF_GAP
+	var x_cursor: float = -total_w * 0.5
+	for i in range(count):
+		var e: Dictionary = ordered[i]
+		e["rect"] = Rect2(x_cursor, STATUS_ROW_Y - icon_size * 0.5, icon_size, icon_size)
+		_status_layout.append(e)
+		x_cursor += icon_size
+		if i < count - 1:
+			x_cursor += gap
+			# debuff→buff 组界处加额外间隔
+			if both_groups and i == debuff_kept - 1:
+				x_cursor += STATUS_DEBUFF_BUFF_GAP
+
+## 血条根 Node2D 的 _draw：仅画状态图标行（HP/护盾由子 Polygon2D 节点自绘，互不干扰）。
+func _draw() -> void:
+	if _status_layout.is_empty():
+		return
+	for e in _status_layout:
+		var d: Dictionary = e
+		var r: Rect2 = d.get("rect", Rect2())
+		var kind: int = int(d.get("kind", -1))
+		var col: Color = d.get("color", Color.WHITE)
+		var cx: float = r.position.x + r.size.x * 0.5
+		var cy: float = r.position.y + r.size.y * 0.5
+		var s: float = minf(r.size.x, r.size.y) * 0.42
+		UnitStatusCollector.draw_status_icon(kind, self, cx, cy, s, col)
+		# 可叠加状态显示层数（右下角小数字，白字 + 黑描边）
+		var stacks: int = int(d.get("stacks", 0))
+		if stacks > 1 and _status_font != null and UnitStatusCollector.is_stackable(kind):
+			var txt: String = str(stacks)
+			var fs: int = 6
+			var ts: Vector2 = _status_font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs)
+			var pos: Vector2 = Vector2(r.position.x + r.size.x - ts.x, r.position.y + r.size.y - ts.y)
+			var outline := Color(0.0, 0.0, 0.0, 0.95)
+			draw_string(_status_font, pos + Vector2(1, 0), txt, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs, outline)
+			draw_string(_status_font, pos + Vector2(-1, 0), txt, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs, outline)
+			draw_string(_status_font, pos + Vector2(0, 1), txt, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs, outline)
+			draw_string(_status_font, pos + Vector2(0, -1), txt, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs, outline)
+			draw_string(_status_font, pos, txt, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs, Color.WHITE)

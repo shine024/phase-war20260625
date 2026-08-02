@@ -178,6 +178,25 @@ const DATA: Dictionary = {
 		effects = {crit_mark_chance = 0.30, crit_mark_bonus = 0.50, crit_mark_duration = 5.0},
 		unlock_conditions = {required_level = 5}
 	},
+
+	# ==================== v9.1 组合技套路配套改造（1 个） ====================
+	# 套路5 侦察链式：相控阵雷达（周期性挂 _radar_locked 标记）
+	"rec_phased_radar" = {
+		id = "rec_phased_radar",
+		name = "相控阵雷达",
+		name_en = "Phased Array Radar",
+		icon = "res://assets/ui/icons/mod_icons/mod_radar.png",
+		prototype = "AN/APG-81 相控阵",
+		description = "周期性扫描锁定敌方高威胁单位（雷达锁定易伤+15%），与无人机标记叠加触发集火链式；侦察链式触发器",
+		rarity = "legendary",
+		power_mult = 1.7,
+		cost_research = 380,
+		cost_install = 190,
+		slot_type = "sensor",
+		conflict_group = "sensor",
+		effects = {radar_lock_interval = 12.0, radar_lock_radius = 400.0, radar_lock_vuln = 0.15, radar_lock_duration = 8.0, crit_chance = 0.05},
+		unlock_conditions = {required_level = 6}
+	},
 }
 
 static func get_mod_data(mod_id: String) -> Dictionary:

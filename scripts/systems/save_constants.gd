@@ -45,5 +45,9 @@ const SK_INTEL_EVOLUTION: String = "intel_evolution"
 const SK_EOM_MANAGER: String = "eom_manager"
 # v7.x: SK_INTEL_ITEM_BAG 从 save_manager.gd:131 迁移至此集中（与其余4个情报键并列；SAV-1 常量提取初衷）
 const SK_INTEL_ITEM_BAG: String = "intel_item_bag"
+# v8.x: 相位师技能树（unlocked_nodes / spent_points / bonus_points / phase_field_level）
+# BUG 修复：原 PhaseMasterSkillManager 有 save_state/load_state 但从未接入存档系统，
+# 导致技能点（含测试模式 add_bonus_points 发放的）重启/读档后全部丢失。
+const SK_PHASE_MASTER_SKILL: String = "phase_master_skill"
 # v6.6: 挂机系统存档键（slots/mode/push_level/accumulated_rewards）
 const SK_AFK: String = "afk"

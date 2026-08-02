@@ -443,7 +443,20 @@ static func _apply_nano_swarm_tick(owner: Owner, ab: Dictionary, delta: float) -
 
 	var params: Dictionary = ab.get("params", {})
 	var hp_pct: float = float(params.get("hp_pct_per_sec", 0.02))
+	# v9.1: nano_swarm 注入战场纳米浓度（套路3 纳米浓度场）——按存活敌方单位数累积。
+	# 每个敌方单位每 tick 贡献 0.5 浓度（tick=0.25s，即每单位每秒 +2.0 浓度）。
+	# 浓度供纳米病毒改造读取增伤 + 纳米感染扩散触发。
+	var _combo_fs: RefCounted = null
+	var _ml := Engine.get_main_loop()
+	var _bm_for_combo: Node = null
+	if _ml != null and _ml is SceneTree and (_ml as SceneTree).root != null:
+		_bm_for_combo = (_ml as SceneTree).root.get_node_or_null("BattleManager")
+	if _bm_for_combo != null and _bm_for_combo.has_method("get_combo_field_state"):
+		_combo_fs = _bm_for_combo.get_combo_field_state()
 	var targets: Array = _get_targets(owner)
+	if _combo_fs != null and targets.size() > 0:
+		var _CFS = preload("res://scripts/battle/combo_field_state.gd")
+		_combo_fs.add_field(_CFS.FIELD_NANO, float(targets.size()) * 0.5, 0.8, 30.0)
 	for e in targets:
 		if e == null or not is_instance_valid(e):
 			continue

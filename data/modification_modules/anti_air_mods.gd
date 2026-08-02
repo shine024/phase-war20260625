@@ -167,6 +167,44 @@ const DATA: Dictionary = {
 		effects = {target_marking = 0.40, mark_vuln = 0.30, mark_duration = 5.0},
 		unlock_conditions = {required_level = 6}
 	},
+
+	# ==================== v9.1 组合技套路配套改造（2 个） ====================
+	# 套路2 电磁脉冲链：电磁战斗部（读 graphite charge 增伤）
+	"aa_emp_warhead" = {
+		id = "aa_emp_warhead",
+		name = "电磁战斗部",
+		name_en = "EMP Warhead",
+		icon = "res://assets/ui/icons/mod_icons/mod_emp_warhead.png",
+		prototype = "微波战斗部",
+		description = "40%概率释放电磁脉冲（降攻速/暴击/闪避+真实伤害），目标石墨电子损坏层数越高伤害越高；电磁脉冲链触发器",
+		rarity = "legendary",
+		power_mult = 1.8,
+		cost_research = 400,
+		cost_install = 200,
+		slot_type = "ammunition",
+		conflict_group = "special_ammo",
+		effects = {emp_chance = 0.40, emp_true_damage = 12.0, graphite_amp = true},
+		applicable_types = [0, 4],
+		unlock_conditions = {required_level = 6}
+	},
+	# 套路6 化学污染场：酸液战斗部（化学腐蚀触发器）
+	"aa_acid_warhead" = {
+		id = "aa_acid_warhead",
+		name = "酸液战斗部",
+		name_en = "Acid Warhead",
+		icon = "res://assets/ui/icons/mod_icons/mod_acid.png",
+		prototype = "腐蚀性酸战斗部",
+		description = "45%概率挂化学毒，目标化学层数≥5时额外护甲穿透+20%；化学污染场触发器",
+		rarity = "epic",
+		power_mult = 1.7,
+		cost_research = 360,
+		cost_install = 180,
+		slot_type = "ammunition",
+		conflict_group = "special_ammo",
+		effects = {chem_chance = 0.45, chem_dps = 10.0, chem_duration = 5.0, chem_corrosion = true, attack_air = 0.06},
+		applicable_types = [0, 4],
+		unlock_conditions = {required_level = 5}
+	},
 }
 
 static func get_mod_data(mod_id: String) -> Dictionary:

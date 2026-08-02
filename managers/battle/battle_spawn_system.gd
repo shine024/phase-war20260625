@@ -5,6 +5,7 @@ extends RefCounted
 ## 从 BattleManager 中提取，负责所有单位创建与生命周期管理。
 
 const GC = preload("res://resources/game_constants.gd")
+const GameConfig = preload("res://resources/game_config.gd")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const UnitStatsTable = preload("res://resources/unit_stats_table.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
@@ -470,6 +471,8 @@ func request_player_deploy(platform_card_id: String, world_pos: Vector2, battle_
 		push_warning("[BattleSpawnSystem] 部署失败: 节点未初始化 (player_units=%s, phase_instrument=%s)" % [_player_units_node != null, _phase_instrument != null])
 		_emit_deploy_failed("internal", "当前无法部署。")
 		return false
+	# v8.x 测试开关：true 时跳过所有兵种类/数目限制（仅测试用，生产默认 false 零影响）
+	var _no_limits: bool = bool(GameConfig.get_default().debug_no_deploy_limits)
 	# 使用相位仪的绿色槽位数量作为单位上限
 	var max_units: int = GC.PLAYER_MAX_UNITS
 	if _phase_instrument.has_method("get_max_deployable_units"):
@@ -483,15 +486,16 @@ func request_player_deploy(platform_card_id: String, world_pos: Vector2, battle_
 	var _deploy_limit: int = int(_level_rules.get("deploy_limit", 0))
 	if _deploy_limit > 0:
 		max_units = mini(max_units, _deploy_limit)
-	# v6.5: 用实时 recount（与 HUD 显示口径一致）替代缓存 player_unit_count，
-	# 避免单位死亡淡出/幽灵态导致缓存与实际脱节，出现"显示4个却不让部署"的错位。
-	var live_count: int = player_unit_count
-	if BattleManager != null and BattleManager.has_method("recount_player_units_on_field"):
-		live_count = BattleManager.recount_player_units_on_field()
-		player_unit_count = live_count  # 同步缓存，保持后续逻辑一致
-	if live_count >= max_units:
-		_emit_deploy_failed("max_units", "我方单位数量已达上限（%d/%d）。" % [live_count, max_units])
-		return false
+	if not _no_limits:
+		# v6.5: 用实时 recount（与 HUD 显示口径一致）替代缓存 player_unit_count，
+		# 避免单位死亡淡出/幽灵态导致缓存与实际脱节，出现"显示4个却不让部署"的错位。
+		var live_count: int = player_unit_count
+		if BattleManager != null and BattleManager.has_method("recount_player_units_on_field"):
+			live_count = BattleManager.recount_player_units_on_field()
+			player_unit_count = live_count  # 同步缓存，保持后续逻辑一致
+		if live_count >= max_units:
+			_emit_deploy_failed("max_units", "我方单位数量已达上限（%d/%d）。" % [live_count, max_units])
+			return false
 	# v7.x 修复（同名卡部署属性相同）：调用方现在可能传 instance_id（cold_t72#1）或裸 card_id。
 	# "同卡上限"检查需要裸 card_id（统计同名卡装备数/存活数），故先剥离 #序号 得到 base_card_id。
 	# loadout 查找仍用原 platform_card_id（get_loadout_by_platform_card_id 会优先按 instance_id
@@ -500,7 +504,7 @@ func request_player_deploy(platform_card_id: String, world_pos: Vector2, battle_
 	var _hi: int = platform_card_id.rfind("#")
 	if _hi > 0:
 		base_card_id = platform_card_id.substr(0, _hi)
-	if _reach_alive_limit_for_card(base_card_id, platform_card_id):
+	if not _no_limits and _reach_alive_limit_for_card(base_card_id, platform_card_id):
 		_emit_deploy_failed("unit_on_field", "该单位同配置已全部在场上，请待其离场后再部署。")
 		return false
 	var loadout: Dictionary = {}
@@ -516,7 +520,7 @@ func request_player_deploy(platform_card_id: String, world_pos: Vector2, battle_
 		return false
 	# v8 批次3: 关卡限定兵种（special_rules.restrict_platforms 白名单）
 	var _restrict: Array = _level_rules.get("restrict_platforms", [])
-	if not _restrict.is_empty():
+	if not _no_limits and not _restrict.is_empty():
 		var _pt: int = int(platform_card.platform_type)
 		if not _restrict.has(_pt):
 			_emit_deploy_failed("restricted_unit", "本关限定兵种，该单位不可部署。")
@@ -757,6 +761,9 @@ func _current_battle_era(level: int) -> int:
 ## 内部复用 get_max_deployable_units + recount_player_units_on_field，
 ## 确保与 request_player_deploy 的判定逻辑 100% 一致。
 func get_remaining_deployable_count() -> int:
+	# v8.x 测试开关：开时返回大数，让 AutoDeployController 不卡（仍受物理格子数限制）
+	if bool(GameConfig.get_default().debug_no_deploy_limits):
+		return 999
 	var max_units: int = GC.PLAYER_MAX_UNITS
 	if _phase_instrument != null and _phase_instrument.has_method("get_max_deployable_units"):
 		max_units = _phase_instrument.get_max_deployable_units()

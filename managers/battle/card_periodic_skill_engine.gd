@@ -24,6 +24,8 @@ class_name CardPeriodicSkillEngine
 
 const CPS = preload("res://data/card_periodic_skills.gd")
 const GC = preload("res://resources/game_constants.gd")
+const VfxImpactFactory = preload("res://scripts/battle/vfx_impact_factory.gd")
+const PhaseLawCastEffect = preload("res://scenes/effects/phase_law_cast_effect.gd")
 
 const CHECK_INTERVAL: float = 0.5  # 每 0.5s 检查一次计时器
 
@@ -137,6 +139,7 @@ func _execute_effect(skill: Dictionary) -> void:
 	var skill_id: String = String(skill.get("id", ""))
 	if CPS.is_ultimate(skill_id):
 		_emit_skill_toast(skill)
+		_play_ultimate_shake()
 	var effect_type: String = effect.get("type", "")
 	match effect_type:
 		"area_damage": _exec_area_damage(effect)
@@ -204,6 +207,9 @@ func _exec_area_damage(effect: Dictionary) -> void:
 	var center: Node2D = _find_densest_enemy(enemies)
 	if center == null:
 		return
+	# v8.x VFX：炮击警告标记 → 延迟爆炸（纯视觉，伤害即时结算）
+	if String(effect.get("vfx", "")) == "artillery_barrage":
+		_play_area_damage_vfx(center.global_position, radius)
 	# 对范围内所有敌方造成伤害
 	for e in enemies:
 		if e == null or not is_instance_valid(e):
@@ -233,6 +239,9 @@ func _exec_global_damage(effect: Dictionary) -> void:
 	var enemies: Array = _collect_enemy_units()
 	if enemies.is_empty():
 		return
+	# v8.x VFX：核爆全屏演出（仅 nuclear_bombardment；heaven_thunder/annihilate 走大招震屏）
+	if String(effect.get("vfx", "")) == "nuclear_bombardment":
+		_play_global_damage_vfx((enemies[0] as Node2D).global_position)
 	var allies: Array = _collect_player_units()
 	var avg_atk: float = _get_avg_ally_atk(allies)
 	var damage: float = float(effect.get("damage_flat", 0.0))
@@ -305,6 +314,8 @@ func _exec_debuff_target(effect: Dictionary) -> void:
 	var target: Node2D = _select_target(enemies, target_sel)
 	if target == null:
 		return
+	# v8.x VFX：EMP 紫波 / 其它 debuff 轻警告
+	_play_debuff_vfx(target.global_position, String(effect.get("vfx", "")))
 	_apply_debuff_to_unit(target, effect)
 
 ## 对区域施加 debuff
@@ -577,3 +588,66 @@ func _emit_skill_toast(skill: Dictionary) -> void:
 	var sb = Engine.get_main_loop().root.get_node_or_null("/root/SignalBus")
 	if sb != null and sb.has_signal("show_toast"):
 		sb.show_toast.emit(toast_msg)
+
+
+# ─────────────────────────────────────────────
+#  v8.x VFX：大招专属视觉反馈
+#  复用 VfxImpactFactory / PhaseLawCastEffect / BattleSpectacle（phase_instrument_ability_triggered 信号）
+#  按 effect.vfx 字段精确分发（避免给 heaven_thunder/annihilate 误播核爆视觉）
+# ─────────────────────────────────────────────
+
+## 终极技能通用反馈：屏幕震动（所有大招至少有震屏+Toast）。Battlefield.gd:request_screen_shake 现成入口。
+func _play_ultimate_shake() -> void:
+	if _battlefield == null or not is_instance_valid(_battlefield):
+		return
+	if _battlefield.has_method("request_screen_shake"):
+		_battlefield.request_screen_shake(8.0, 0.5)
+
+## 范围伤害 VFX（artillery_barrage 范式：橙色警告标记 → 延迟 0.4s → 冲击波+爆炸）。
+## 纯视觉，伤害即时结算不变。仿 phase_instrument_abilities._fire_artillery_shot_enemy 的 captured_pos+tween 范式。
+func _play_area_damage_vfx(center_pos: Vector2, radius: float) -> void:
+	if _battlefield == null or not is_instance_valid(_battlefield):
+		return
+	# 第一阶段：橙色警告标记
+	PhaseLawCastEffect.create_phase_law_effect(_battlefield, center_pos, Color(1.0, 0.5, 0.2, 1.0))
+	# 第二阶段：延迟爆炸（captured_pos 为值类型，延迟期间安全）
+	var captured_pos: Vector2 = center_pos
+	var captured_radius: float = radius
+	var tw = _battlefield.create_tween()
+	tw.tween_interval(0.4)
+	tw.tween_callback(func():
+		if _battlefield == null or not is_instance_valid(_battlefield):
+			return
+		VfxImpactFactory.spawn_shockwave(_battlefield, captured_pos, captured_radius, Color(1.0, 0.6, 0.2, 0.85))
+		VfxImpactFactory.spawn_layered_impact(_battlefield, captured_pos, 3, true, -1)
+	)
+
+## 全图伤害 VFX（nuclear_bombardment：复用 BattleSpectacle 全屏红预警+白闪+极限震）。
+## emit phase_instrument_ability_triggered 信号，warning 即时、impact 延迟 0.6s。
+func _play_global_damage_vfx(first_pos: Vector2) -> void:
+	var sb = Engine.get_main_loop().root.get_node_or_null("/root/SignalBus")
+	if sb == null or not sb.has_signal("phase_instrument_ability_triggered"):
+		return
+	# warning 阶段 → BattleSpectacle._play_nuclear_warning（红屏+标题）
+	sb.phase_instrument_ability_triggered.emit("nuclear_bombardment", "warning", {"position": first_pos, "is_enemy": false})
+	# impact 阶段延迟 → _play_nuclear_impact（白闪+极限震）
+	var captured_pos: Vector2 = first_pos
+	if _battlefield == null or not is_instance_valid(_battlefield):
+		return
+	var tw = _battlefield.create_tween()
+	tw.tween_interval(0.6)
+	tw.tween_callback(func():
+		var sb2 = Engine.get_main_loop().root.get_node_or_null("/root/SignalBus")
+		if sb2 != null and sb2.has_signal("phase_instrument_ability_triggered"):
+			sb2.phase_instrument_ability_triggered.emit("nuclear_bombardment", "impact", {"position": captured_pos, "is_enemy": false})
+	)
+
+## 单体减益 VFX：emp_blast 无现成特效，降级紫色冲击波（仿 battle_spectacle jamming_field）；其它 mark 类走橙色警告。
+func _play_debuff_vfx(target_pos: Vector2, vfx_name: String) -> void:
+	if _battlefield == null or not is_instance_valid(_battlefield):
+		return
+	match vfx_name:
+		"emp_blast":
+			VfxImpactFactory.spawn_shockwave(_battlefield, target_pos, 60.0, Color(0.6, 0.3, 0.9, 0.85))
+		_:
+			PhaseLawCastEffect.create_phase_law_effect(_battlefield, target_pos, Color(1.0, 0.5, 0.2, 1.0))

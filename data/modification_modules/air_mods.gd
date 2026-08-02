@@ -184,6 +184,62 @@ const DATA: Dictionary = {
 		effects = {combo_system = 3, combo_bonus = 0.40},
 		unlock_conditions = {required_level = 6}
 	},
+
+	# ==================== v9.1 组合技套路配套改造（3 个） ====================
+	# 套路1 助燃燃烧链：温压弹（化学爆发的范围扩散触发器）
+	"air_thermolite_bomb" = {
+		id = "air_thermolite_bomb",
+		name = "温压弹",
+		name_en = "Thermobaric Bomb",
+		icon = "res://assets/ui/icons/mod_icons/mod_thermolite.png",
+		prototype = "云爆弹战斗部",
+		description = "命中30%概率挂燃烧，层数≥8时触发化学爆发（半径80感染3个相邻敌人）；助燃燃烧链触发器",
+		rarity = "legendary",
+		power_mult = 1.8,
+		cost_research = 400,
+		cost_install = 200,
+		slot_type = "ammunition",
+		conflict_group = "special_ammo",
+		effects = {burn_chance = 0.30, burn_dps = 10.0, chem_burst_trigger = true, attack_air = 0.08},
+		applicable_types = [3],
+		unlock_conditions = {required_level = 6}
+	},
+	# 套路2 电磁脉冲链：反辐射导弹（对高 charge 目标斩杀）
+	"air_antiradiation_missile" = {
+		id = "air_antiradiation_missile",
+		name = "反辐射导弹",
+		name_en = "Anti-Radiation Missile",
+		icon = "res://assets/ui/icons/mod_icons/mod_antiradiation.png",
+		prototype = "AGM-88 HARM",
+		description = "电磁伤害+，目标石墨电子损坏层数越高伤害越高（每层+15%）；电磁脉冲链触发器",
+		rarity = "legendary",
+		power_mult = 1.9,
+		cost_research = 420,
+		cost_install = 210,
+		slot_type = "ammunition",
+		conflict_group = "special_ammo",
+		effects = {emp_chance = 0.45, emp_true_damage = 15.0, graphite_execute = true, attack_air = 0.10},
+		applicable_types = [3],
+		unlock_conditions = {required_level = 6}
+	},
+	# 套路4 光束谐振链：瞄准激光（强化 resonance 标记）
+	"air_targeting_laser" = {
+		id = "air_targeting_laser",
+		name = "瞄准激光",
+		name_en = "Targeting Laser",
+		icon = "res://assets/ui/icons/mod_icons/mod_targeting_laser.png",
+		prototype = "机载激光指示吊舱",
+		description = "命中60%概率挂激光谐振层数（累积≥3触发多重攻击）；光束谐振链触发器",
+		rarity = "epic",
+		power_mult = 1.6,
+		cost_research = 340,
+		cost_install = 170,
+		slot_type = "sensor",
+		conflict_group = "sensor",
+		effects = {laser_resonance_chance = 0.60, laser_resonance_stacks = 1, crit_chance = 0.05},
+		applicable_types = [3],
+		unlock_conditions = {required_level = 5}
+	},
 }
 
 static func get_mod_data(mod_id: String) -> Dictionary:

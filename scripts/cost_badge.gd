@@ -24,69 +24,57 @@ func _ready() -> void:
 func follow_host(host: Control, anchor_right: bool = false) -> void:
 	_host = host
 	_anchor_right = anchor_right
-	_update_position()
+	# 首帧立即定位（_process 会在后续帧持续校正 + 裁剪判断）
+	global_position = _compute_badge_global_position()
 
 func _process(_delta: float) -> void:
 	# 跟随宿主位置（宿主可能移动/重布局）
 	if _host == null or not is_instance_valid(_host):
 		visible = false
 		return
-	# v9.3：宿主被最近的 clip 祖先（如背包 ScrollContainer）裁出可视区时隐藏——
-	# set_as_top_level 不受父级 clip 影响，否则滚动时费用数字会残留在面板其他区域。
-	if _is_host_clipped_away():
+	# v9.3 修复：set_as_top_level 不受父级 clip 影响，必须手动判断角标的实际渲染位置
+	# 是否落在最近 clip 祖先（背包 ScrollContainer）的可视矩形内。
+	# 旧实现用 host_rect 与 clip_rect 的交集判断——交集只要有 1 像素重叠就为 false，
+	# 导致卡牌大部分滚出、仅剩底边在可视区时，顶部费用角标仍被画在面板错误位置。
+	var badge_target_pos := _compute_badge_global_position()
+	if _is_point_clipped_away(badge_target_pos):
 		visible = false
 		return
 	visible = true
-	_update_position()
+	global_position = badge_target_pos
 
 
-## v9.3：遍历宿主祖先，若最近的 clip_contents=true 祖先的可见矩形不含宿主，则宿主已滚出可视区。
-func _is_host_clipped_away() -> bool:
+## v9.3 修复：计算角标应处的全局位置（不写入 global_position，仅用于裁剪判断）
+func _compute_badge_global_position() -> Vector2:
 	if _host == null or not is_instance_valid(_host):
-		return true
-	var host_rect := _host.get_global_rect()
-	var p: Node = _host.get_parent()
-	while p != null:
-		if p is Control and (p as Control).clip_contents:
-			var clip_rect: Rect2 = (p as Control).get_global_rect()
-			# Check if host intersects clip area - if not, host is scrolled out of view
-			if not clip_rect.intersects(host_rect):
-				return true
-		p = p.get_parent()
-	return false
-
-func _update_position() -> void:
-	if _host == null or not is_instance_valid(_host):
-		return
+		return Vector2.ZERO
 	var host_rect: Rect2 = _host.get_global_rect()
 	var ts: Vector2 = get_theme_default_font().get_string_size(_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10) if get_theme_default_font() != null else Vector2(22, 12)
 	size = Vector2(ts.x + 4.0, ts.y + 2.0)
-	# v9.3：向内偏移（6→6 / 1→4），避开较宽的稀有度边框/发光，不被卡框盖住
 	var px: float
 	if _anchor_right:
 		px = host_rect.end.x - size.x - 6.0
 	else:
 		px = host_rect.position.x + 6.0
-	var py = host_rect.position.y + 4.0
-	global_position = Vector2(px, py)
-	
-	# Additional check: ensure badge stays within safe bounds to prevent it from
-	# appearing outside the backpack panel during scrolling
-	# If the badge is too far from its host or outside reasonable viewport areas, hide it
-	var badge_rect = Rect2(global_position, size)
-	var host_min_x = min(host_rect.position.x, px)
-	var host_max_x = max(host_rect.end.x, px + size.x)
-	# Calculate the offset point on the host (left edge for left anchor, right edge for right anchor)
-	var host_offset_x: float = 0
-	if _anchor_right:
-		host_offset_x = host_rect.end.x
-	else:
-		host_offset_x = host_rect.position.x
-	# If badge is significantly separated from host (more than 50px), it's likely misplaced due to scroll/layout issues
-	if abs(px - host_offset_x) > 50.0 or abs(py - host_rect.position.y) > 50.0:
-		visible = false
-	else:
-		visible = true
+	var py: float = host_rect.position.y + 4.0
+	return Vector2(px, py)
+
+
+## v9.3 修复：判断角标目标位置是否被最近 clip 祖先裁出可视区。
+## 取角标矩形（含其自身尺寸），只要它不完全在最近 clip 祖先的可见矩形内，即视为被裁掉。
+func _is_point_clipped_away(badge_pos: Vector2) -> bool:
+	if _host == null or not is_instance_valid(_host):
+		return true
+	var badge_rect := Rect2(badge_pos, size)
+	var p: Node = _host.get_parent()
+	while p != null:
+		if p is Control and (p as Control).clip_contents:
+			var clip_rect: Rect2 = (p as Control).get_global_rect()
+			# 角标必须完全在 clip 矩形内，否则隐藏（避免半溢出时残留在面板边界）
+			if not clip_rect.encloses(badge_rect):
+				return true
+		p = p.get_parent()
+	return false
 
 func _draw() -> void:
 	if _text.is_empty():

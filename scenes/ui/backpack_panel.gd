@@ -150,6 +150,12 @@ var _last_rune_info_signature: String = "__INIT__"  ## 符文信息栏（符文�
 var _last_phase_inst_signature: String = "__INIT__"  ## 相位仪标签签名去重
 var _loading_label: Label = null
 
+## v7.x: 批量拆解多选状态
+## 选中卡的 instance_id 集合（含裸 card_id 回退）。用 instance_id 精确匹配各实例。
+var _batch_select_ids: Dictionary = {}  ## key=instance_id/card_id, value=true
+## 批量拆解按钮引用（运行时创建，挂工具栏右侧）
+var _batch_dismantle_btn: Button = null
+
 ## ============================================================
 ## 生命周期
 ## ============================================================
@@ -448,6 +454,53 @@ func _setup_toolbar_signals() -> void:
 		_search_edit.text_changed.connect(_on_search_changed)
 	if _sort_option:
 		_sort_option.item_selected.connect(_on_sort_option_changed)
+	# v7.x: 创建批量拆解按钮（仅战斗卡 Tab 可见）
+	_ensure_batch_dismantle_button()
+
+## v7.x: 在工具栏右侧创建"批量拆解"按钮。仅在战斗卡 Tab 显示。
+## 按钮常态禁用（selected_count == 0），有选中时启用 + 显示数量。
+func _ensure_batch_dismantle_button() -> void:
+	if _batch_dismantle_btn != null and is_instance_valid(_batch_dismantle_btn):
+		return
+	var tb_right: HBoxContainer = get_node_or_null("VBoxOuter/Toolbar/ToolbarRight") as HBoxContainer
+	if tb_right == null:
+		return
+	var btn := Button.new()
+	btn.name = "BatchDismantleButton"
+	btn.text = "批量拆解"
+	btn.custom_minimum_size = Vector2(96, 28)
+	btn.add_theme_font_size_override("font_size", 11)
+	btn.add_theme_color_override("font_color", Color(0.95, 0.82, 0.35, 1.0))
+	btn.add_theme_color_override("font_hover_color", Color(1.0, 0.92, 0.6, 1.0))
+	btn.add_theme_color_override("font_disabled_color", Color(0.5, 0.5, 0.5, 0.5))
+	btn.tooltip_text = "Shift+点击卡片选择多张，再点此按钮一次性拆解"
+	btn.disabled = true
+	btn.visible = false
+	# 主题：琥珀色边框（与选择态视觉呼应）
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.961, 0.62, 0.043, 0.12)
+	style.border_color = Color(0.961, 0.62, 0.043, 0.7)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(4)
+	btn.add_theme_stylebox_override("normal", style)
+	var style_hover := style.duplicate() as StyleBoxFlat
+	style_hover.bg_color = Color(0.961, 0.62, 0.043, 0.22)
+	btn.add_theme_stylebox_override("hover", style_hover)
+	var style_disabled := StyleBoxFlat.new()
+	style_disabled.bg_color = Color(0.1, 0.12, 0.16, 0.3)
+	style_disabled.border_color = Color(0.3, 0.3, 0.3, 0.3)
+	style_disabled.set_border_width_all(1)
+	style_disabled.set_corner_radius_all(4)
+	btn.add_theme_stylebox_override("disabled", style_disabled)
+	btn.pressed.connect(_on_batch_dismantle_pressed)
+	# 插到 CapacityLabel 之前（视觉左起）
+	var cap_lbl: Node = tb_right.get_node_or_null("CapacityLabel")
+	if cap_lbl:
+		tb_right.add_child(btn)
+		tb_right.move_child(btn, cap_lbl.get_index())
+	else:
+		tb_right.add_child(btn)
+	_batch_dismantle_btn = btn
 
 
 ## 搜索框文本变化：写入 _search_query 并刷新当前 Tab
@@ -772,6 +825,8 @@ func _exit_tree() -> void:
 	if SignalBus != null and SignalBus.has_signal("rune_acquired"):
 		if SignalBus.rune_acquired.is_connected(_on_rune_acquired):
 			SignalBus.rune_acquired.disconnect(_on_rune_acquired)
+	# v7.x: 清空批量选择（防游离 item 触发信号）
+	_batch_select_ids.clear()
 	if _presenter:
 		_presenter.cleanup()
 		_presenter = null
@@ -863,9 +918,14 @@ func _fallback_on_card_swapped(_slot_index: int, old_card: CardResource, new_car
 
 ## 标签页切换事件
 func _on_tab_changed(tab_index: int) -> void:
+	# v7.x: 离开战斗卡 Tab 时清空批量选择（避免选中态残留 + 按钮状态错位）
+	if tab_index != TabIndex.COMBAT_CARDS and not _batch_select_ids.is_empty():
+		_clear_batch_selection()
 	# v9.2: 先刷新顶部框架（顶线条色 + 标题 + 元信息）和工具栏 chips
 	_refresh_title_bar(tab_index)
 	_rebuild_toolbar_chips(tab_index)
+	# v7.x: 批量拆解按钮可见性跟随 Tab
+	_refresh_batch_dismantle_button()
 	# v7.x：切换时对内容区做一次透明度闪现（受 motion_reduce 守卫）
 	_play_tab_change_fade()
 	match tab_index:
@@ -1236,6 +1296,141 @@ func _on_dismantle_confirmed(dialog: ConfirmationDialog) -> void:
 
 ## 拆解取消回调
 func _on_dismantle_canceled(dialog: ConfirmationDialog) -> void:
+	dialog.queue_free()
+
+## ============================================================
+## v7.x: 批量拆解多选
+## ============================================================
+
+## 获取卡的稳定标识（instance_id 优先，回退 card_id）
+func _card_select_id(card: CardResource) -> String:
+	if card == null:
+		return ""
+	return card.instance_id if not card.instance_id.is_empty() else card.card_id
+
+## 单卡选中状态变化回调（item 绑定为最后一个参数）
+func _on_card_selection_changed(is_selected: bool, item: Control) -> void:
+	if item == null or not is_instance_valid(item):
+		return
+	var card: CardResource = item.card if "card" in item else null
+	if card == null:
+		return
+	var sel_id := _card_select_id(card)
+	if sel_id.is_empty():
+		return
+	if is_selected:
+		_batch_select_ids[sel_id] = true
+	else:
+		_batch_select_ids.erase(sel_id)
+	_refresh_batch_dismantle_button()
+
+## 刷新批量拆解按钮（可见性 + 文案 + 启用态）
+func _refresh_batch_dismantle_button() -> void:
+	if _batch_dismantle_btn == null or not is_instance_valid(_batch_dismantle_btn):
+		return
+	# 仅战斗卡 Tab 显示
+	var on_combat_tab: bool = _tab_container != null and _tab_container.current_tab == TabIndex.COMBAT_CARDS
+	_batch_dismantle_btn.visible = on_combat_tab
+	if not on_combat_tab:
+		_batch_dismantle_btn.disabled = true
+		_batch_dismantle_btn.text = "批量拆解"
+		return
+	var count: int = _batch_select_ids.size()
+	_batch_dismantle_btn.text = "批量拆解" if count == 0 else "批量拆解(%d)" % count
+	_batch_dismantle_btn.disabled = count == 0
+
+## 清空所有选中（用于切 Tab/关闭面板/拆解完成后）
+func _clear_batch_selection() -> void:
+	if _combat_cards_grid == null:
+		_batch_select_ids.clear()
+		_refresh_batch_dismantle_button()
+		return
+	for child in _combat_cards_grid.get_children():
+		if child.has_method("set_card") and "is_selected" in child:
+			if child.is_selected:
+				child.is_selected = false
+	_batch_select_ids.clear()
+	_refresh_batch_dismantle_button()
+
+## 批量拆解按钮点击
+func _on_batch_dismantle_pressed() -> void:
+	if _batch_select_ids.is_empty():
+		return
+	if _presenter == null or not _presenter.has_method("on_batch_dismantle_pressed"):
+		return
+	# 收集选中卡（从网格 item 取 card 对象，避免重新查 InstanceRegistry）
+	var selected_cards: Array[CardResource] = []
+	if _combat_cards_grid != null:
+		for child in _combat_cards_grid.get_children():
+			if not child.has_method("set_card"):
+				continue
+			var card: CardResource = child.card if "card" in child else null
+			if card == null:
+				continue
+			if _batch_select_ids.has(_card_select_id(card)):
+				selected_cards.append(card)
+	if selected_cards.is_empty():
+		_clear_batch_selection()
+		return
+	_confirm_batch_dismantle(selected_cards)
+
+## 批量拆解确认弹窗（列出清单 + 合计收益）
+func _confirm_batch_dismantle(cards: Array) -> void:
+	if cards.is_empty() or _presenter == null:
+		return
+	# 合计收益 + 构建清单文本
+	var total_research: int = 0
+	var total_nano: int = 0
+	var name_lines: Array[String] = []
+	var preview_count := 0
+	const MAX_PREVIEW := 10  # 清单最多显示 10 条，超出提示"等N张"
+	for card in cards:
+		if card == null:
+			continue
+		var preview: Dictionary = {}
+		if _presenter.has_method("get_dismantle_preview"):
+			preview = _presenter.get_dismantle_preview(card)
+		total_research += int(preview.get("research", 0))
+		total_nano += int(preview.get("nano", 0))
+		if preview_count < MAX_PREVIEW:
+			var card_name: String = String(preview.get("name", card.card_id))
+			name_lines.append("· %s" % card_name)
+			preview_count += 1
+	var overflow: int = cards.size() - preview_count
+	if overflow > 0:
+		name_lines.append("· …（等 %d 张）" % overflow)
+	var list_text: String = "\n".join(name_lines)
+	var dialog := ConfirmationDialog.new()
+	dialog.title = "批量拆解卡牌"
+	dialog.dialog_text = "确定要批量拆解 %d 张卡牌吗？\n\n%s\n\n合计获得：\n- %d 研究点\n- %d 纳米材料\n\n此操作不可撤销。" % [
+		cards.size(), list_text, total_research, total_nano,
+	]
+	dialog.ok_button_text = "确认拆解"
+	dialog.get_cancel_button().text = "取消"
+	dialog.set_meta("batch_dismantle_cards", cards)
+	dialog.confirmed.connect(_on_batch_dismantle_confirmed.bind(dialog))
+	dialog.canceled.connect(_on_batch_dismantle_canceled.bind(dialog))
+	add_child(dialog)
+	dialog.popup_centered(Vector2i(440, 360))
+
+## 批量拆解确认回调
+func _on_batch_dismantle_confirmed(dialog: ConfirmationDialog) -> void:
+	var cards: Array = dialog.get_meta("batch_dismantle_cards", [])
+	dialog.queue_free()
+	if cards.is_empty():
+		return
+	# 先清空选择态（避免拆解后 item 回收时重复触发信号）
+	_batch_select_ids.clear()
+	if _combat_cards_grid != null:
+		for child in _combat_cards_grid.get_children():
+			if child.has_method("set_card") and "is_selected" in child:
+				child.is_selected = false
+	if _presenter != null and _presenter.has_method("on_batch_dismantle_pressed"):
+		_presenter.on_batch_dismantle_pressed(cards)
+	_refresh_batch_dismantle_button()
+
+## 批量拆解取消回调
+func _on_batch_dismantle_canceled(dialog: ConfirmationDialog) -> void:
 	dialog.queue_free()
 
 ## 供相位仪等外部 UI 直接打开详情
@@ -2467,6 +2662,9 @@ func _add_card_item(grid: GridContainer, card: CardResource, at_top: bool = fals
 	item.set_card(card)
 	if not item.card_clicked.is_connected(_on_card_clicked):
 		item.card_clicked.connect(_on_card_clicked)
+	# v7.x: 连接批量选择信号（仅 backpack_card_item 有此信号）
+	if item.has_signal("selection_changed") and not item.selection_changed.is_connected(_on_card_selection_changed):
+		item.selection_changed.connect(_on_card_selection_changed.bind(item))
 	var insert_idx := 0 if at_top else _find_first_empty_slot_index(grid)
 	if insert_idx >= 0:
 		grid.move_child(item, insert_idx)

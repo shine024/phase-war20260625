@@ -54,6 +54,8 @@ const CRITICAL_MANAGER_LOADS: Array = [
 	["/root/IntelItemBag", "intel_item_bag"],
 	# v6.6: 情报手册（战斗实时查询，需 critical）
 	["/root/IntelManual", "intel_manual"],
+	# v8.x: 相位师技能树（get_active_effects 被战斗实时查询，需 critical）
+	["/root/PhaseMasterSkillManager", "phase_master_skill"],
 ]
 const DEFERRED_MANAGER_LOADS: Array = [
 	["/root/LoreManager", "lore"],
@@ -84,6 +86,8 @@ const CRITICAL_RESETTABLE_MANAGERS: Array[String] = [
 	"IntelItemBag",
 	# v6.6: 情报手册
 	"IntelManual",
+	# v8.x: 相位师技能树（修复新游戏未清空导致技能点跨档残留）
+	"PhaseMasterSkillManager",
 ]
 const DEFERRED_RESET_BATCH_SIZE := 4
 
@@ -152,6 +156,8 @@ const SK_CHALLENGE_RECORDS: String = SaveConstants.SK_CHALLENGE_RECORDS
 const SK_CARD_COLLECTION: String = SaveConstants.SK_CARD_COLLECTION
 const SK_LEADERBOARD: String = SaveConstants.SK_LEADERBOARD
 const SK_LEGACY_COMPANY_REP: String = SaveConstants.SK_LEGACY_COMPANY_REP
+# v8.x: 相位师技能树（修复未接入存档导致技能点丢失的 BUG）
+const SK_PHASE_MASTER_SKILL: String = SaveConstants.SK_PHASE_MASTER_SKILL
 # v6.6(挂机): AFK 状态存档键别名
 const SK_AFK: String = SaveConstants.SK_AFK
 
@@ -689,6 +695,8 @@ func save_game() -> bool:
 	_collect_manager_state(data, "/root/IntelItemBag", SK_INTEL_ITEM_BAG)
 	# v6.6: 情报手册（critical，战斗实时查询）
 	_collect_manager_state(data, "/root/IntelManual", SK_INTEL_MANUAL)
+	# v8.x: 相位师技能树（critical，战斗实时查询 get_active_effects）
+	_collect_manager_state(data, "/root/PhaseMasterSkillManager", SK_PHASE_MASTER_SKILL)
 	_collect_noncritical_save_data(data, now_ms)
 	var gmgr: Node = get_node_or_null("/root/GameManager")
 	# 保存前同步 current_level：确保与 LevelProgressManager.max_unlocked_level 一致
@@ -857,15 +865,20 @@ func _enqueue_starter_backpack_cards() -> void:
 			if inst != null and not inst.instance_id.is_empty():
 				starter_id = inst.instance_id
 		enqueue_backpack_card_id(starter_id)
-	# 初始资源：新手起步量（原 100000 每种是开发期"无限资源测试"残留，
-	# 架空了经济系统——单次强化仅需 ~100-500 纳米，玩家可无脑满级所有卡。
-	# 改为合理起步量：够初期体验几张卡强化，但需要通过战斗/任务/掉落积累。）
+	# ⚠️ 测试模式：初始资源各 10 万（开发/测试用，正式上线前需改回起步量）
+	# 正式起步量参考：nano 1500 / alloy 800 / crystal 500 / energy 1000 / research 500
+	# （单次强化约 ~100-500 纳米，起步量应让玩家初期体验几张卡强化、靠战斗积累）
 	if BasicResourceManager:
-		BasicResourceManager.add_resource("nano_materials", 1500)
-		BasicResourceManager.add_resource("alloy", 800)
-		BasicResourceManager.add_resource("crystal", 500)
-		BasicResourceManager.add_resource("energy_block", 1000)
-		BasicResourceManager.add_resource("research_points", 500)
+		BasicResourceManager.add_resource("nano_materials", 100000)
+		BasicResourceManager.add_resource("alloy", 100000)
+		BasicResourceManager.add_resource("crystal", 100000)
+		BasicResourceManager.add_resource("energy_block", 100000)
+		BasicResourceManager.add_resource("research_points", 100000)
+	# 测试模式：初始技能点 +100（相位师技能树 bonus_points，供测试解锁多分支）
+	# PhaseMasterSkillManager 未注册存档 → 每次开新档都是干净 0 基线，加 100 不累积。
+	var pmsm_starter: Node = get_node_or_null("/root/PhaseMasterSkillManager")
+	if pmsm_starter != null and pmsm_starter.has_method("add_bonus_points"):
+		pmsm_starter.add_bonus_points(100)
 
 	# 初始情报：逐步发现（原"解锁所有情报"是测试残留，破坏探索乐趣）
 		# 情报应在战斗中击败敌人后逐步揭示（IntelDiscoveryManager），不再开局全解锁。
@@ -886,6 +899,29 @@ func _enqueue_starter_backpack_cards() -> void:
 				for blueprint_id in IntelManualItems.ALL_TYPES:
 					if not bag.has_item(blueprint_id):
 						bag.add_item(blueprint_id, 1)
+
+				# ⚠️ 测试模式：开局发放全部改造蓝图 + 全部进化蓝图（开发/测试用，上线前需改回）
+				# 正式设计：改造/进化蓝图应靠战斗掉落（精英/Boss）逐步解锁，不开局全送。
+				# 改造蓝图口径：ModificationRegistry 全集，排除 enhancement（强化词条，非改造模块）。
+				#   → 与 modification_panel/_refresh_mod_list 同口径（blueprint_ 前缀，排除 blueprint_evol_）
+				# 进化蓝图口径：IntelManualItems._collect_all_evolution_steps()（lineage 权威口径，
+				#   与 UnitLineageConfig 判定对齐，避免 evolution_paths 的 15 个幽灵卡）。
+				const ModificationRegistry = preload("res://scripts/systems/modification_registry.gd")
+				const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
+				# ① 全部改造蓝图
+				for mod_id in ModificationRegistry.get_all_ids():
+					# 排除强化词条（source=enhancement，非可安装改造模块，有独立系统）
+					if String(ModificationRegistry.get_data(mod_id).get("source", "")) == "enhancement":
+						continue
+					var mod_bp: String = BlueprintDefinitions.get_mod_blueprint_id(mod_id)
+					if not mod_bp.is_empty() and not bag.has_item(mod_bp):
+						bag.add_item(mod_bp, 1)
+				# ② 全部进化蓝图（复用 lineage 口径的进化跳收集器）
+				for step in IntelManualItems._collect_all_evolution_steps():
+					var evo_bp: String = BlueprintDefinitions.get_evolution_blueprint_id(
+						String(step.from), String(step.to))
+					if not evo_bp.is_empty() and not bag.has_item(evo_bp):
+						bag.add_item(evo_bp, 1)
 
 		# v7.1: 移除 _grant_all_evolution_blueprints() 调用。
 		# 进化蓝图现应通过战斗掉落（精英/Boss，20%概率）逐步解锁，不再开局全送。

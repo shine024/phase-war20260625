@@ -371,7 +371,13 @@ static func process_debuff_expirations(unit, delta: float) -> void:
 static func on_unit_kill(killer, victim) -> void:
 	if killer == null or not is_instance_valid(killer):
 		return
-	if not bool(killer.get("is_player")):
+	# 击杀者不一定是我方单位（boss AOE 攻击源是 enemy_phase_field_driver，
+	# 无 is_player 属性；Object 走 bool() 会触发 "Nonexistent 'bool' constructor"）。
+	# 用 in 操作符守卫属性存在性，并对取值做类型校验后再判定。
+	if not ("is_player" in killer):
+		return
+	var killer_ip = killer.get("is_player")
+	if not (killer_ip is bool) or not killer_ip:
 		return
 	var stats = killer.get("stats") if "stats" in killer else null
 	if stats == null:
