@@ -685,6 +685,18 @@ func _refresh_stat_cards(card: CardResource) -> void:
 		var dps: float = best_atk * best_speed
 		_extra_stat_label.text = "攻速 %.1f/s · 秒伤 %d · 移速 %d" % [best_speed, int(dps), int(stats.move_speed)]
 
+## 相位师技能树解锁签名（供 _cached_display_stats 缓存 key 使用）。
+## 解锁 unit_mechanism（战术核武等）后机制 meta 才写入 stats；若不纳入 key，
+## 解锁前打开过的卡会在解锁后命中旧缓存 → 机制 meta 缺失 → 情报面板不显示兵种机制。
+func _get_pmsm_unlock_sig() -> String:
+	var tree_s := Engine.get_main_loop() as SceneTree
+	if tree_s != null and tree_s.root != null:
+		var pmsm: Node = tree_s.root.get_node_or_null("PhaseMasterSkillManager")
+		if pmsm != null and pmsm.has_method("get_unlocked_signature"):
+			return pmsm.get_unlocked_signature()
+	return ""
+
+
 ## v7.3 性能优化：在 _refresh_info_sections 顶部构建一次 UnitStats 缓存，供子函数共用。
 ## 避免 _refresh_stat_cards 和 _build_affix_tag_list 各自调 _build_display_stats（build_stats_from_card 重操作）跑2遍。
 func _prepare_display_stats_cache(card: CardResource) -> void:
@@ -700,7 +712,7 @@ func _prepare_display_stats_cache(card: CardResource) -> void:
 			if gm_check != null and "current_level" in gm_check:
 				era_key = str(int(gm_check.current_level))
 	var id_str: String = String(card.instance_id) if (card != null and "instance_id" in card and not String(card.instance_id).is_empty()) else (String(card.card_id) if card != null else "")
-	_cached_display_stats_key = id_str + "|" + era_key
+	_cached_display_stats_key = id_str + "|" + era_key + "|" + _get_pmsm_unlock_sig()
 
 ## v6.4: 构建 UnitStats（含时代缩放 + growth + affix），供三维卡显示
 func _build_display_stats(card: CardResource) -> UnitStats:
@@ -714,7 +726,7 @@ func _build_display_stats(card: CardResource) -> UnitStats:
 			var gm_e: Node = tree_e.root.get_node_or_null("GameManager")
 			if gm_e != null and "current_level" in gm_e:
 				era_key = str(int(gm_e.current_level))
-	if _cached_display_stats != null and _cached_display_stats_key == (id_str + "|" + era_key):
+	if _cached_display_stats != null and _cached_display_stats_key == (id_str + "|" + era_key + "|" + _get_pmsm_unlock_sig()):
 		return _cached_display_stats
 
 	var tree := Engine.get_main_loop() as SceneTree

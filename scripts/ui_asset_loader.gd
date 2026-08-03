@@ -189,6 +189,21 @@ const PLAYER_ICON_OVERRIDE: Dictionary = {
 	"guardian_cold_thunder": "vis_player_112",     # 雷霆守护者·冷战
 	"guardian_modern_stealth": "vis_player_113",   # 幽灵守护者·现代
 	"guardian_future_omega": "vis_player_114",     # 终焉守护者·近未来
+	# ── v8.x 势力专属卡（14张，AI生成专属图，落盘 player/{card_id}.png）
+	"fe_iron_wall_bastion": "fe_iron_wall_bastion",          # 不朽堡垒·钢壁防务
+	"fe_iron_wall_juggernaut": "fe_iron_wall_juggernaut",    # 重装先驱·钢壁防务
+	"fe_nova_devastator": "fe_nova_devastator",              # 歼灭者自行火炮·新星兵工
+	"fe_nova_ghost_sniper": "fe_nova_ghost_sniper",          # 幽灵狙击组·新星兵工
+	"fe_aether_hover_cavalry": "fe_aether_hover_cavalry",    # 以太骑兵·以太动力
+	"fe_aether_swarm_queen": "fe_aether_swarm_queen",        # 蜂群母机·以太动力
+	"fe_quantum_mobile_base": "fe_quantum_mobile_base",      # 移动堡垒基地·量子后勤
+	"fe_quantum_repair_drone": "fe_quantum_repair_drone",    # 纳米修复蜂群·量子后勤
+	"fe_helix_phantom": "fe_helix_phantom",                  # 幻影特工·螺旋侦察
+	"fe_helix_orbital_strike": "fe_helix_orbital_strike",    # 轨道打击引导组·螺旋侦察
+	"fe_void_phase_cannon": "fe_void_phase_cannon",          # 相位炮台·虚空相位
+	"fe_void_dimensional_soldier": "fe_void_dimensional_soldier",  # 次元行者·虚空相位
+	"fe_frontier_veteran": "fe_frontier_veteran",            # 边境老兵·边境联合
+	"fe_frontier_mixed_company": "fe_frontier_mixed_company", # 混编突击队·边境联合
 }
 
 

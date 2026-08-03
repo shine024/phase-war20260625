@@ -226,6 +226,22 @@ const FOOT_FRAC: Dictionary = {
 	"ww2_arty_pak40": 0.352,
 	"ww2_inf_kar98k": 0.064,
 	"ww2_sup_gmc_truck": 0.314,
+	# v8.x 势力专属卡（14张，AI生成）
+	"fe_iron_wall_bastion": 0.113,
+	"fe_iron_wall_juggernaut": 0.061,
+	"fe_nova_devastator": 0.219,
+	"fe_nova_ghost_sniper": 0.061,
+	"fe_aether_hover_cavalry": 0.000,
+	"fe_aether_swarm_queen": 0.289,
+	"fe_quantum_mobile_base": 0.156,
+	"fe_quantum_repair_drone": 0.133,
+	"fe_helix_phantom": 0.026,
+	"fe_helix_orbital_strike": 0.246,
+	"fe_void_phase_cannon": 0.232,
+	"fe_void_dimensional_soldier": 0.061,
+	"fe_frontier_veteran": 0.061,
+	"fe_frontier_mixed_company": 0.170,
+
 }
 
 const HEAD_FRAC: Dictionary = {
@@ -438,6 +454,22 @@ const HEAD_FRAC: Dictionary = {
 	"ww2_arty_pak40": 0.350,
 	"ww2_inf_kar98k": 0.064,
 	"ww2_sup_gmc_truck": 0.314,
+	# v8.x 势力专属卡（14张，AI生成）
+	"fe_iron_wall_bastion": 0.111,
+	"fe_iron_wall_juggernaut": 0.061,
+	"fe_nova_devastator": 0.192,
+	"fe_nova_ghost_sniper": 0.061,
+	"fe_aether_hover_cavalry": 0.000,
+	"fe_aether_swarm_queen": 0.287,
+	"fe_quantum_mobile_base": 0.156,
+	"fe_quantum_repair_drone": 0.240,
+	"fe_helix_phantom": 0.046,
+	"fe_helix_orbital_strike": 0.246,
+	"fe_void_phase_cannon": 0.223,
+	"fe_void_dimensional_soldier": 0.061,
+	"fe_frontier_veteran": 0.061,
+	"fe_frontier_mixed_company": 0.170,
+
 }
 
 static func get_foot_frac(file_name: String) -> float:
@@ -632,6 +664,28 @@ const VISUAL_SCALE: Dictionary = {
 	"foe_fut_inf_storm_rider": 0.8,  # [估算] 无我方同名卡
 	"foe_fut_air_heavy_carrier": 1.6,  # [估算] 无我方同名卡
 	"foe_fut_air_regen_frame": 1.2,  # [估算] 无我方同名卡
+	# v8.x 势力专属卡（14张，AI生成专属图，按 combat_kind + 终极单位定位配缩放）
+	# 钢壁防务
+	"fe_iron_wall_bastion": 2.0,         # 不朽堡垒·重型堡垒（3200血，终极防御）→ 满格 boss 级
+	"fe_iron_wall_juggernaut": 1.6,      # 重装先驱·超级重装步兵（1800血）→ 大型步兵
+	# 新星兵工
+	"fe_nova_devastator": 1.85,          # 歼灭者自行火炮（终极火力平台）→ 重型载具
+	"fe_nova_ghost_sniper": 1.0,         # 幽灵狙击组·精锐步兵（280血）→ 标准步兵
+	# 以太动力
+	"fe_aether_hover_cavalry": 1.5,      # 以太骑兵·悬浮突击（450血）→ 中型悬浮
+	"fe_aether_swarm_queen": 2.0,        # 蜂群母机·空中母舰（boss 级）→ 大型空中
+	# 量子后勤
+	"fe_quantum_mobile_base": 2.0,       # 移动堡垒基地（2500血）→ 满格 boss 级
+	"fe_quantum_repair_drone": 0.9,      # 纳米修复蜂群·小型无人机（200血）→ 小型空中
+	# 螺旋侦察
+	"fe_helix_phantom": 1.0,             # 幻影特工·精锐步兵（380血）→ 标准步兵
+	"fe_helix_orbital_strike": 1.7,      # 轨道打击引导组·重型支援设备 → 大型载具
+	# 虚空相位
+	"fe_void_phase_cannon": 1.85,        # 相位炮台·重型堡垒（800血）→ 重型载具
+	"fe_void_dimensional_soldier": 1.2,  # 次元行者·改造超级步兵（500血）→ 中型步兵
+	# 边境联合
+	"fe_frontier_veteran": 1.0,          # 边境老兵·均衡步兵（600血）→ 标准步兵
+	"fe_frontier_mixed_company": 1.7,    # 混编突击队·中型装甲（1100血）→ 中大型载具
 }
 
 ## 我方平台类型(platform_type) → 用于查缩放的 archetype_id。

@@ -14,6 +14,10 @@ bin/
 *.dylib
 *.app
 
+# ── 临时下载/转换目录（音频/图片等资源的下载源和中间产物，不入库）──
+tmp_audio_dl/
+tmp_*/
+
 # ── 导出预设（含密钥，不应提交）──
 export_presets.cfg
 

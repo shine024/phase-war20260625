@@ -1059,6 +1059,19 @@ static func resolve_deploy_weapon_types(card: CardResource) -> Array:
 	return [default_wt]
 
 
+## 深拷贝 UnitStats 并保留所有 meta。
+## Godot 的 Resource.duplicate() 仅复制 properties，不复制 meta（get_meta_list/get_meta）。
+## 直接缓存 duplicate() 会让 is_nuclear_strike / mod_special_flags / law_family / combo_active
+## 等机制 meta 在缓存副本中全部丢失 → 兵种机制/组合套路/卡片技能在"命中缓存的单位"上空转。
+func _dup_stats_with_meta(src: UnitStats) -> UnitStats:
+	if src == null:
+		return null
+	var copy: UnitStats = src.duplicate()
+	for mk in src.get_meta_list():
+		copy.set_meta(mk, src.get_meta(mk))
+	return copy
+
+
 func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapon_types: Array, battle_era: int) -> UnitStats:
 	var weapon_ids: Array[String] = []
 	for wc in weapon_cards:
@@ -1128,9 +1141,16 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 
 	# 缓存 key：v7.0 实例卡用 instance_id（避免两张同名实例共享缓存），非实例卡用 card_id
 	var card_key: String = instance_id_key if not instance_id_key.is_empty() else platform_card.card_id
-	var key: String = "%s|%s|%s|%d|%s|%s" % [
+	# v9.x 修复：纳入相位师技能树解锁签名。解锁 unit_mechanism（战术核武/护盾投射/...）
+	# 或 unit_ability（暴击/穿甲）后 build_stats_from_card 结果会变（写入机制 meta / 数值加成）；
+	# 若不纳入 key，解锁前缓存的 stats 会在解锁后命中旧缓存 → 机制 meta 缺失 → 兵种机制空转。
+	var pmsm_sig: String = ""
+	var _pmsm_node: Node = _get_autoload_node("PhaseMasterSkillManager")
+	if _pmsm_node != null and _pmsm_node.has_method("get_unlocked_signature"):
+		pmsm_sig = _pmsm_node.get_unlocked_signature()
+	var key: String = "%s|%s|%s|%d|%s|%s|%s" % [
 		card_key, ",".join(weapon_ids), weapon_types_key, battle_era, pf_bonus_key,
-		active_faction_cache_key
+		active_faction_cache_key, pmsm_sig
 	]
 	if DEBUG_DEPLOY_POWER_LOG:
 		print("[DIAG deploy-in] card=%s inst=<%s> enhance=%d mods=%d mslots=%d | era=%d | key=%s" % [platform_card.card_id, platform_card.instance_id, int(platform_card.enhance_level), platform_card.mods.size(), platform_card.module_slots.size(), battle_era, key])
@@ -1138,7 +1158,7 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 		var cached_stats: UnitStats = _stats_cache[key]
 		if DEBUG_DEPLOY_POWER_LOG:
 			print("[DIAG deploy-out CACHED] hp=%.0f" % float(cached_stats.max_hp))
-		return cached_stats.duplicate() as UnitStats
+		return _dup_stats_with_meta(cached_stats)
 
 	var stats = UnitStatsTable.build_stats_from_card(effective_card, battle_era)
 
@@ -1169,7 +1189,7 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 	# v8.x: 相位师技能树 stat_bonus 全局加成注入（所有玩家单位共享）
 	_apply_skill_tree_stat_bonus(stats)
 	# v6.8: 敌源MOD（D槽）战斗加成已停用（EOM 面板/掉落/存档保留）
-	_stats_cache[key] = stats.duplicate()
+	_stats_cache[key] = _dup_stats_with_meta(stats)
 	# v7.x 诊断：对比上场端 vs 评估端 stats，定位战场/面板战力差异（默认关，调试时改 true）
 	# 与 master_platform_power.gd:compute_player_card_power 的 [PowerDebug][评估端] 格式对称
 	if DEBUG_DEPLOY_POWER_LOG:

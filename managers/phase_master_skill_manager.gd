@@ -58,6 +58,15 @@ func is_content_unlocked(unlock_type: String, content_id: String) -> bool:
 	return false
 
 
+## 已解锁节点签名（供 UnitStats 缓存 key 使用）。
+## 任何 unit_mechanism/unit_ability 节点解锁、或 reset_all，都会改变签名 →
+## stats 缓存（battle_spawn_system._stats_cache / card_info_panel._cached_display_stats）
+## 自动失效。避免"解锁前缓存的无机制 stats 在解锁后仍命中旧缓存"导致机制空转
+## （典型症状：战术核武技能树已点开，但导弹发射井战斗不发射、情报也不显示）。
+func get_unlocked_signature() -> String:
+	return ":".join(_unlocked_nodes)
+
+
 ## 是否解锁了某 era 的进化（era=-1 表示全时代）
 func is_evolution_era_unlocked(era: int) -> bool:
 	for nid in _unlocked_nodes:
