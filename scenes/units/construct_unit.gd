@@ -764,7 +764,6 @@ func _init_unit_mechanisms() -> void:
 		# cd 加随机偏移（0~10s）错峰触发，避免多个导弹井同一帧部署后在完全相同时刻核爆，
 		# 导致蘑菇云重叠成一团（每个发射井的 cd 独立随机，视觉上分散开）
 		_nuclear_strike_cd = NUCLEAR_STRIKE_INTERVAL + randf() * 10.0
-		print("[NUKE_DIAG] 导弹井已部署，核武单位激活，初始CD=", _nuclear_strike_cd)
 	if stats.has_meta("is_shield_projector") and bool(stats.get_meta("is_shield_projector", false)):
 		_is_shield_projector_unit = true
 		_shield_projector_cd = SHIELD_PROJECTOR_INTERVAL
@@ -929,11 +928,9 @@ func _update_nuclear_strike_tick(delta: float) -> void:
 	if _nuclear_strike_cd > 0.0:
 		return
 	_nuclear_strike_cd = NUCLEAR_STRIKE_INTERVAL
-	print("[NUKE_DIAG] 核武CD到期，准备发射，单位位置=", global_position)
 	# 找敌方最密集区域（简化：取敌方单位平均位置作为爆心）
 	var enemies: Array = _collect_enemy_units_for_mechanism()
 	if enemies.is_empty():
-		print("[NUKE_DIAG] 无敌方单位，核武取消")
 		return
 	var center: Vector2 = Vector2.ZERO
 	var count: int = 0
@@ -961,10 +958,7 @@ func _update_nuclear_strike_tick(delta: float) -> void:
 			victims.append({"target": e, "damage": dmg, "attacker": self})
 	# VFX：核弹发射+弹道飞行+多层核爆+延迟伤害结算（battle_spectacle 编排）
 	if SignalBus.has_signal("mechanism_nuclear_launched"):
-		print("[NUKE_DIAG] emit mechanism_nuclear_launched, 落点=", center, " victims数=", victims.size())
 		SignalBus.mechanism_nuclear_launched.emit(global_position, center, "player", victims)
-	else:
-		print("[NUKE_DIAG] WARNING: SignalBus 无 mechanism_nuclear_launched 信号！")
 
 ## 机制6·护盾投射（堡垒·护盾器）：CD 到期 → 为半径内3个最低血友军投射护盾
 func _update_shield_projector_tick(delta: float) -> void:

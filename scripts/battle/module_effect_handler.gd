@@ -14,6 +14,8 @@ const GC = preload("res://resources/game_constants.gd")
 # v9.1: 组合技套路机制（chem_burst/emp_reflect/nano_spread/chem_spread 在 dot tick 后调用）
 const ComboEngine = preload("res://scripts/battle/combo_engine.gd")
 const ComboFieldState = preload("res://scripts/battle/combo_field_state.gd")
+const CombatFeedback = preload("res://scripts/combat_feedback.gd")
+const DotVfxManager = preload("res://scripts/battle/dot_vfx_manager.gd")
 
 # ─────────────────────────────────────────────
 #  弹道命中处理
@@ -926,7 +928,10 @@ static func _apply_chem_on_hit(target: Node, stats: UnitStats, attacker: Node) -
 	if target is Node2D:
 		var parent: Node2D = _resolve_fx_parent_node(target)
 		if parent != null:
-			VfxImpactFactory.spawn_shockwave(parent, (target as Node2D).global_position, 30.0, Color(0.3, 0.9, 0.2, 0.7))
+			# 化学命中：绿色毒液溅射冲击波（加大半径到 42，强化绿色辨识度）
+			VfxImpactFactory.spawn_shockwave(parent, (target as Node2D).global_position, 42.0, Color(0.3, 1.0, 0.2, 0.85))
+	# v9.x: 挂 DOT 持续视觉（单位身上毒雾贴图）
+	DotVfxManager.attach_dot_vfx(target, "chem")
 
 ## 燃烧弹：命中按概率挂燃烧，可叠加层数（dps = base × stacks）
 static func _apply_burn_on_hit(target: Node, stats: UnitStats, attacker: Node) -> void:
@@ -966,7 +971,10 @@ static func _apply_burn_on_hit(target: Node, stats: UnitStats, attacker: Node) -
 	if target is Node2D:
 		var parent: Node2D = _resolve_fx_parent_node(target)
 		if parent != null:
-			VfxImpactFactory.spawn_shockwave(parent, (target as Node2D).global_position, 28.0, Color(1.0, 0.5, 0.1, 0.8))
+			# 燃烧命中：橙红火光冲击波（加大半径到 40，比通用环更醒目）
+			VfxImpactFactory.spawn_shockwave(parent, (target as Node2D).global_position, 40.0, Color(1.0, 0.4, 0.1, 0.85))
+	# v9.x: 挂 DOT 持续视觉（单位身上火焰贴图）
+	DotVfxManager.attach_dot_vfx(target, "burn")
 
 ## 电磁静电：命中按概率降目标攻速（复用 ECM debuff meta）+ 小额真实伤害即时结算
 static func _apply_emp_on_hit(target: Node, stats: UnitStats, attacker: Node) -> void:
@@ -1005,11 +1013,13 @@ static func _apply_emp_on_hit(target: Node, stats: UnitStats, attacker: Node) ->
 		var eng: RefCounted = _get_combo_engine()
 		if eng != null and eng.has_method("is_mechanism_active") and eng.is_mechanism_active("emp_reflect"):
 			ComboEngine.try_emp_reflect(eng.get_active_mechanisms(), eng.get_field_state(), target, attacker)
-	# VFX：蓝色电弧（攻击者→目标，如果攻击者有效）
+	# VFX：紫色电弧（攻击者→目标，EMP 专属紫色区别于普通蓝电）+ EMP 持续视觉
 	if target is Node2D and attacker != null and is_instance_valid(attacker) and attacker is Node2D:
 		var parent: Node2D = _resolve_fx_parent_node(target)
 		if parent != null:
-			VfxImpactFactory.spawn_lightning_arc(parent, (attacker as Node2D).global_position, (target as Node2D).global_position, Color(0.4, 0.7, 1.0, 1.0))
+			VfxImpactFactory.spawn_lightning_arc(parent, (attacker as Node2D).global_position, (target as Node2D).global_position, Color(0.75, 0.35, 1.0, 1.0))
+	# v9.x: 挂 DOT 持续视觉（单位身上电弧贴图，EMP debuff 期间显示）
+	DotVfxManager.attach_dot_vfx(target, "emp")
 
 ## 纳米病毒：命中按概率挂病毒（按目标 maxHP 百分比每秒掉血，打肉盾专用）
 static func _apply_nano_on_hit(target: Node, stats: UnitStats, attacker: Node) -> void:
@@ -1040,7 +1050,10 @@ static func _apply_nano_on_hit(target: Node, stats: UnitStats, attacker: Node) -
 	if target is Node2D:
 		var parent: Node2D = _resolve_fx_parent_node(target)
 		if parent != null:
-			VfxImpactFactory.spawn_shockwave(parent, (target as Node2D).global_position, 32.0, Color(0.7, 0.2, 0.9, 0.7))
+			# 纳米命中：青色纳米粒子云冲击波（青色专属，区别于 chem 的绿）
+			VfxImpactFactory.spawn_shockwave(parent, (target as Node2D).global_position, 36.0, Color(0.2, 0.9, 1.0, 0.85))
+	# v9.x: 挂 DOT 持续视觉（单位身上纳米光点贴图）
+	DotVfxManager.attach_dot_vfx(target, "nano")
 
 ## v9.1 套路4 光束谐振：读 attacker 的 _special.laser_resonance_chance/stacks，
 ## 命中时按概率挂 META_LASER_RESONANCE 层数（累积≥3 触发 beam_split，>0 触发 beam_reflect）。
@@ -1144,6 +1157,10 @@ static func _tick_dot_damage(unit: Node, delta: float) -> void:
 		return
 	var now: float = Time.get_ticks_msec() / 1000.0
 	var total_dmg: float = 0.0
+	# v9.x: 分别追踪每种 DOT 伤害，结算后显示彩色数字（玩家一眼看出被哪种伤害）
+	var chem_dmg_done: float = 0.0
+	var burn_dmg_done: float = 0.0
+	var nano_dmg_done: float = 0.0
 	# 节流累积（0.25s 结算一次，减少 take_damage 调用频率）
 	var acc: float = 0.0
 	if unit.has_meta("_dot_acc"):
@@ -1159,7 +1176,9 @@ static func _tick_dot_damage(unit: Node, delta: float) -> void:
 		var chem_until: float = float(unit.get_meta("_chem_until", 0.0))
 		if now < chem_until:
 			var chem_dps: float = float(unit.get_meta("_chem_dps", 0.0))
-			total_dmg += chem_dps * tick_dt
+			var d: float = chem_dps * tick_dt
+			total_dmg += d
+			chem_dmg_done += d
 		else:
 			unit.remove_meta("_chem_until")
 			unit.remove_meta("_chem_dps")
@@ -1173,7 +1192,9 @@ static func _tick_dot_damage(unit: Node, delta: float) -> void:
 		if now < burn_until:
 			var burn_base: float = float(unit.get_meta("_burn_base_dps", 0.0))
 			var burn_stacks: int = int(unit.get_meta("_burn_stacks", 0))
-			total_dmg += burn_base * burn_stacks * tick_dt
+			var d2: float = burn_base * burn_stacks * tick_dt
+			total_dmg += d2
+			burn_dmg_done += d2
 		else:
 			unit.remove_meta("_burn_until")
 			unit.remove_meta("_burn_base_dps")
@@ -1185,7 +1206,9 @@ static func _tick_dot_damage(unit: Node, delta: float) -> void:
 			var nano_pct: float = float(unit.get_meta("_nano_pct", 0.0))
 			var max_hp: float = _get_unit_max_hp(unit)
 			if max_hp > 0.0:
-				total_dmg += max_hp * nano_pct * tick_dt
+				var d3: float = max_hp * nano_pct * tick_dt
+				total_dmg += d3
+				nano_dmg_done += d3
 			# v9.1 纳米感染扩散（套路3 nano_spread 机制 + nano_spread_trigger flag）
 			var eng3: RefCounted = _get_combo_engine()
 			if eng3 != null and eng3.is_mechanism_active("nano_spread"):
@@ -1208,3 +1231,15 @@ static func _tick_dot_damage(unit: Node, delta: float) -> void:
 	# 统一结算（避免每个状态单独调 take_damage）
 	if total_dmg > 0.0:
 		_deal_damage_to_unit(unit, total_dmg, null)
+		# v9.x: 分别显示彩色 DOT 数字（按伤害类型着色，玩家一眼区分）
+		# EMP 无 DOT tick（即时真实伤害），此处不显示
+		if unit is Node2D:
+			var upos: Vector2 = (unit as Node2D).global_position
+			if chem_dmg_done > 0.0:
+				CombatFeedback.show_damage(upos, chem_dmg_done, unit, false, "dot_chem")
+			if burn_dmg_done > 0.0:
+				CombatFeedback.show_damage(upos, burn_dmg_done, unit, false, "dot_burn")
+			if nano_dmg_done > 0.0:
+				CombatFeedback.show_damage(upos, nano_dmg_done, unit, false, "dot_nano")
+	# v9.x: 刷新 DOT 持续视觉（移除过期的，保留激活的）——修复③接入点
+	DotVfxManager.refresh_dot_vfx(unit)

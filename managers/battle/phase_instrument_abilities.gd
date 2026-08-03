@@ -404,7 +404,8 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 				cur_pos = (captured_enemy as Node2D).global_position
 			# 完整核爆效果（火球+冲击波+蘑菇云帧动画+焦痕），复用战术核武同一套 VFX
 			# 核子轰炸=全域多点核爆，每个敌方位置都打；全局闪白/震屏由 BattleSpectacle 首次触发
-			VfxImpactFactory.spawn_nuclear_explosion(_battlefield, cur_pos, nuke_textures, nuke_colors)
+			# size_scale=0.6：多点核爆每个缩小（半径200→120/余波320→192），避免视觉覆盖到靠近的我方单位
+			VfxImpactFactory.spawn_nuclear_explosion(_battlefield, cur_pos, nuke_textures, nuke_colors, 0.6)
 			if is_instance_valid(captured_enemy):
 				CombatFeedback.show_damage(cur_pos, base_dmg, captured_enemy, true, "critical")
 				if captured_enemy.has_method("take_damage"):

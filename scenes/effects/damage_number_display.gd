@@ -46,6 +46,39 @@ const DAMAGE_STYLES: Dictionary = {
 		"outline_color": Color(0.3, 0.2, 0.0, 0.8),
 		"scale": 0.75
 	},
+	# v9.x: DOT 按伤害类型差异化（玩家一眼看出在被哪种伤害）
+	"dot_burn": {
+		"font_size": 13,
+		"color": Color(1.0, 0.4, 0.1, 1.0),
+		"outline_color": Color(0.4, 0.1, 0.0, 0.85),
+		"scale": 0.78,
+		"glow_color": Color(1.0, 0.35, 0.1, 0.7),
+		"glow_size": 2
+	},
+	"dot_chem": {
+		"font_size": 13,
+		"color": Color(0.35, 1.0, 0.25, 1.0),
+		"outline_color": Color(0.0, 0.3, 0.05, 0.85),
+		"scale": 0.78,
+		"glow_color": Color(0.3, 1.0, 0.2, 0.7),
+		"glow_size": 2
+	},
+	"dot_emp": {
+		"font_size": 13,
+		"color": Color(0.75, 0.35, 1.0, 1.0),
+		"outline_color": Color(0.25, 0.05, 0.4, 0.85),
+		"scale": 0.78,
+		"glow_color": Color(0.7, 0.3, 1.0, 0.7),
+		"glow_size": 2
+	},
+	"dot_nano": {
+		"font_size": 13,
+		"color": Color(0.25, 0.9, 1.0, 1.0),
+		"outline_color": Color(0.0, 0.25, 0.35, 0.85),
+		"scale": 0.78,
+		"glow_color": Color(0.2, 0.9, 1.0, 0.7),
+		"glow_size": 2
+	},
 	"miss": {
 		"font_size": 14,
 		"color": Color(0.6, 0.6, 0.6, 0.7),

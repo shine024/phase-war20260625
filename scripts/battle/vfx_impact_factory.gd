@@ -625,40 +625,55 @@ static func spawn_energy_pillar(parent: Node2D, pos: Vector2, color: Color = Col
 ##   缺失的贴图自动跳过对应层（部分核爆仍可见）；mushroom_frames 空则蘑菇云回退单 sprite
 ## colors: 配色 {"shock":C, "aftershock":C, "smoke":C}
 ## 全屏闪白/震屏/标题等全局效果不在此方法——由调用方按需触发（多点时只触发一次）。
-static func spawn_nuclear_explosion(parent: Node2D, pos: Vector2, textures: Dictionary, colors: Dictionary) -> void:
+## 完整局部核爆效果（火球+冲击波+蘑菇云帧动画+焦痕）。
+## 供战术核武（单点）和核子轰炸（多点循环）共用同一套核爆视觉。
+## textures: 预加载的核爆贴图包 {"fireball":Tex, "shockwave":Tex, "burn":Tex, "mushroom_frames":Tex[]}
+##   缺失的贴图自动跳过对应层（部分核爆仍可见）；mushroom_frames 空则蘑菇云回退单 sprite
+## colors: 配色 {"shock":C, "aftershock":C, "smoke":C}
+## size_scale: 整体尺寸缩放（1.0=战术核武完整尺寸；核子轰炸多点用 0.6 缩小，避免半径覆盖到己方）
+## 全屏闪白/震屏/标题等全局效果不在此方法——由调用方按需触发（多点时只触发一次）。
+static func spawn_nuclear_explosion(parent: Node2D, pos: Vector2, textures: Dictionary, colors: Dictionary, size_scale: float = 1.0) -> void:
 	if parent == null or not is_instance_valid(parent):
 		return
 	var shock_color: Color = colors.get("shock", Color(1.0, 0.85, 0.5, 0.9))
 	var aftershock_color: Color = colors.get("aftershock", Color(0.9, 0.5, 0.2, 0.5))
 	var smoke_tint: Color = colors.get("smoke", Color(0.35, 0.32, 0.30, 0.6))
+	# 尺寸缩放（核子轰炸多点用 0.6，避免半径 320 的余波环覆盖到靠近的我方单位）
+	var fireball_scale: float = 0.35 * size_scale
+	var shockwave_tex_scale: float = 0.30 * size_scale
+	var main_radius: float = 200.0 * size_scale
+	var after_radius: float = 320.0 * size_scale
+	var mushroom_w: float = 320.0 * size_scale
+	var mushroom_rise: float = 120.0 * size_scale
+	var burn_radius: float = 90.0 * size_scale
 	# ①火球贴图
 	var fireball_tex: Texture2D = textures.get("fireball", null)
 	if fireball_tex != null:
-		spawn_impact_sprite(parent, pos, fireball_tex, 0.35, 0.4)
+		spawn_impact_sprite(parent, pos, fireball_tex, fireball_scale, 0.4)
 	# ②主冲击波：贴图 + 程序化环叠加
 	var shockwave_tex: Texture2D = textures.get("shockwave", null)
 	if shockwave_tex != null:
-		spawn_impact_sprite(parent, pos, shockwave_tex, 0.30, 0.45)
-	spawn_shockwave(parent, pos, 200.0, shock_color)
+		spawn_impact_sprite(parent, pos, shockwave_tex, shockwave_tex_scale, 0.45)
+	spawn_shockwave(parent, pos, main_radius, shock_color)
 	# ③余波环（延迟 0.08s）
 	var after_tw := parent.create_tween()
 	after_tw.tween_interval(0.08)
 	after_tw.tween_callback(func():
 		if is_instance_valid(parent):
-			spawn_shockwave(parent, pos, 320.0, aftershock_color))
+			spawn_shockwave(parent, pos, after_radius, aftershock_color))
 	# ④蘑菇云：优先帧动画，失败回退单 sprite
 	var mushroom_frames: Array = textures.get("mushroom_frames", [])
 	var mushroom_played: bool = false
 	if not mushroom_frames.is_empty():
-		mushroom_played = spawn_animated_nuclear(parent, pos, mushroom_frames, 320.0, 120.0, 8.0)
+		mushroom_played = spawn_animated_nuclear(parent, pos, mushroom_frames, mushroom_w, mushroom_rise, 8.0)
 	if not mushroom_played:
 		var mushroom_tex: Texture2D = textures.get("mushroom", null)
 		if mushroom_tex != null:
-			spawn_rising_sprite(parent, pos, mushroom_tex, 320.0, 120.0, 1.4)
+			spawn_rising_sprite(parent, pos, mushroom_tex, mushroom_w, mushroom_rise, 1.4)
 	spawn_smoke_column(parent, pos, smoke_tint)
 	# ⑤地面焦痕（贴图版，缺失回退纯色多边形）
 	var burn_tex: Texture2D = textures.get("burn", null)
-	spawn_ground_burn(parent, pos, 90.0, 0.3, burn_tex)
+	spawn_ground_burn(parent, pos, burn_radius, 0.3, burn_tex)
 
 
 ## ======================================================================
@@ -959,10 +974,12 @@ static func _impact_color(weapon_type: int, combat_kind: int, is_player: bool) -
 		3: Color(1.0, 1.0, 1.0),    # AIR 保留原色
 	}
 	var base: Color = COLOR_BY_WT.get(weapon_type, Color(0.95, 0.92, 0.5))
+	# 武器本色保留为主（70%），combat_kind 只做轻微染色（30%），不再完全覆盖丢失武器特征色。
+	# 原 base = TINT_BY_KIND[...] 直接覆盖导致所有武器打同目标都同色（看不出差异）。
 	if combat_kind >= 0 and TINT_BY_KIND.has(combat_kind):
-		base = TINT_BY_KIND[combat_kind]
-	elif not is_player:
-		base = Color(1.0, 0.45, 0.55)  # 敌方粉红
+		base = base.lerp(TINT_BY_KIND[combat_kind], 0.3)
+	if not is_player:
+		base = base.lerp(Color(1.0, 0.45, 0.55), 0.25)  # 敌方轻微偏粉（25%），保留武器色
 	return base
 
 

@@ -679,9 +679,7 @@ func _on_mechanism_jamming_field_activated(center: Vector2, radius: float) -> vo
 ## 伤害延后到爆炸 tween_callback 结算（参考 phase_instrument_abilities._fire_nuclear_bombardment 范式），
 ## 避免「敌人 0.35s 前就死、导弹还在飞」的视觉伤害脱节。
 func _on_mechanism_nuclear_launched(from_pos: Vector2, target_pos: Vector2, owner_str: String, victims: Array) -> void:
-	print("[NUKE_DIAG] battle_spectacle 收到核武信号! from=", from_pos, " to=", target_pos, " victims=", victims.size())
 	var parent: Node2D = _get_vfx_parent()
-	print("[NUKE_DIAG] VFX parent=", parent, " (null=找不到战场节点，VFX无法渲染!)")
 	# 写实橙白核爆配色（白热闪光→橙红火球→黑灰蘑菇云→焦黑地面）
 	# 与核子轰炸（科幻绿紫能量调）彻底拉开：玩家一眼识别橙红+蘑菇云=导弹井
 	var fireball_tint: Color = Color(1.0, 0.6, 0.2, 0.95)  # 橙红火球（写实核爆火光）
