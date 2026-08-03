@@ -132,6 +132,9 @@ func _ready() -> void:
 	if SignalBus:
 		if not SignalBus.unit_died.is_connected(_on_unit_died):
 			SignalBus.unit_died.connect(_on_unit_died)
+		# v9.x: 订阅 unit_spawned 用于单位数变化广播（spawn 后计数器已递增）
+		if not SignalBus.unit_spawned.is_connected(_on_unit_spawned):
+			SignalBus.unit_spawned.connect(_on_unit_spawned)
 		if not SignalBus.phase_driver_destroyed.is_connected(_on_phase_driver_destroyed):
 			SignalBus.phase_driver_destroyed.connect(_on_phase_driver_destroyed)
 		if SignalBus.has_signal("enemy_phase_driver_destroyed"):
@@ -544,6 +547,18 @@ func _deferred_refresh_card_grid_hud() -> void:
 #  信号回调
 # =========================================================================
 
+## v9.x: 单位生成后广播当前计数（spawn_system 在 emit unit_spawned 前已递增计数器）
+func _on_unit_spawned(_unit: Node, _is_player: bool) -> void:
+	if not battle_active:
+		return
+	_emit_unit_counts()
+
+## v9.x: 统一广播单位数（供 UI 信号驱动刷新，替代各自 _process 轮询）
+func _emit_unit_counts() -> void:
+	if SignalBus:
+		SignalBus.unit_counts_changed.emit(get_player_unit_count(), get_enemy_unit_count())
+
+
 func _on_unit_died(unit: Node, is_player: bool) -> void:
 	if not battle_active:
 		return
@@ -567,6 +582,8 @@ func _on_unit_died(unit: Node, is_player: bool) -> void:
 		## v6.0: record defeated enemy for intel system
 		_record_defeated_enemy(unit)
 	_check_win_lose()
+	# v9.x: 死亡后计数器已更新，广播单位数供 UI 信号驱动刷新
+	_emit_unit_counts()
 
 
 ## v6.11: _record_battle_star_kill 已移除（战力星级系统②已合并到强化等级①）

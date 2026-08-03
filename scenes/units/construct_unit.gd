@@ -761,7 +761,10 @@ func _init_unit_mechanisms() -> void:
 		_jamming_field_cd = JAMMING_FIELD_INTERVAL
 	if stats.has_meta("is_nuclear_strike") and bool(stats.get_meta("is_nuclear_strike", false)):
 		_is_nuclear_strike_unit = true
-		_nuclear_strike_cd = NUCLEAR_STRIKE_INTERVAL
+		# cd 加随机偏移（0~10s）错峰触发，避免多个导弹井同一帧部署后在完全相同时刻核爆，
+		# 导致蘑菇云重叠成一团（每个发射井的 cd 独立随机，视觉上分散开）
+		_nuclear_strike_cd = NUCLEAR_STRIKE_INTERVAL + randf() * 10.0
+		print("[NUKE_DIAG] 导弹井已部署，核武单位激活，初始CD=", _nuclear_strike_cd)
 	if stats.has_meta("is_shield_projector") and bool(stats.get_meta("is_shield_projector", false)):
 		_is_shield_projector_unit = true
 		_shield_projector_cd = SHIELD_PROJECTOR_INTERVAL
@@ -915,7 +918,10 @@ func _update_jamming_field_tick(delta: float) -> void:
 	if SignalBus.has_signal("mechanism_jamming_field_activated"):
 		SignalBus.mechanism_jamming_field_activated.emit(global_position, JAMMING_FIELD_RADIUS)
 
-## 机制5·战术核武（堡垒·导弹井）：CD 到期 → 找敌方密集区 → 范围 35% 最大生命伤害
+## 机制5·战术核武（堡垒·导弹井）：CD 到期 → 找敌方密集区 → 弹道飞行 → 落地核爆范围伤
+## v8.5+: 拆两阶段——①发射时锁定 victims（目标+预计算伤害），伤害暂不结算，emit 信号；
+##        ②battle_spectacle 在弹道飞行 0.35s 结束的爆炸回调里对 victims 逐个 take_damage。
+##        避免「敌人 0.35s 前就死、导弹还在飞」的视觉伤害脱节。
 func _update_nuclear_strike_tick(delta: float) -> void:
 	if not _is_nuclear_strike_unit or is_deploy_ghost or is_preview_mode:
 		return
@@ -923,9 +929,11 @@ func _update_nuclear_strike_tick(delta: float) -> void:
 	if _nuclear_strike_cd > 0.0:
 		return
 	_nuclear_strike_cd = NUCLEAR_STRIKE_INTERVAL
+	print("[NUKE_DIAG] 核武CD到期，准备发射，单位位置=", global_position)
 	# 找敌方最密集区域（简化：取敌方单位平均位置作为爆心）
 	var enemies: Array = _collect_enemy_units_for_mechanism()
 	if enemies.is_empty():
+		print("[NUKE_DIAG] 无敌方单位，核武取消")
 		return
 	var center: Vector2 = Vector2.ZERO
 	var count: int = 0
@@ -937,7 +945,12 @@ func _update_nuclear_strike_tick(delta: float) -> void:
 	if count == 0:
 		return
 	center /= float(count)
-	# 对爆心半径内敌方造成 35% 最大生命伤害
+	# 落点加随机扰动（±40px），多个导弹井同时触发时蘑菇云不重叠在同一位置。
+	# 扰动幅度小于伤害半径 200，不影响打击效果，仅让视觉分散。
+	center += Vector2(randf_range(-40.0, 40.0), randf_range(-40.0, 40.0))
+	# 收集爆心半径内的 victims（发射时锁定，含预计算伤害）
+	# 伤害结算延后到 battle_spectacle 爆炸回调，结算时用锁定目标不重算位置
+	var victims: Array = []
 	for e in enemies:
 		if e == null or not is_instance_valid(e) or not ("global_position" in e):
 			continue
@@ -945,11 +958,13 @@ func _update_nuclear_strike_tick(delta: float) -> void:
 			var e_stats = e.stats if "stats" in e else null
 			var t_hp: float = float(e_stats.max_hp) if e_stats != null and "max_hp" in e_stats else 100.0
 			var dmg: float = maxf(200.0, t_hp * NUCLEAR_STRIKE_HP_PCT)
-			if e.has_method("take_damage"):
-				e.take_damage(dmg, self)
-	# VFX：核弹发射+爆炸信号（battle_spectacle 播抛物线+蘑菇云+震屏）
+			victims.append({"target": e, "damage": dmg, "attacker": self})
+	# VFX：核弹发射+弹道飞行+多层核爆+延迟伤害结算（battle_spectacle 编排）
 	if SignalBus.has_signal("mechanism_nuclear_launched"):
-		SignalBus.mechanism_nuclear_launched.emit(global_position, center)
+		print("[NUKE_DIAG] emit mechanism_nuclear_launched, 落点=", center, " victims数=", victims.size())
+		SignalBus.mechanism_nuclear_launched.emit(global_position, center, "player", victims)
+	else:
+		print("[NUKE_DIAG] WARNING: SignalBus 无 mechanism_nuclear_launched 信号！")
 
 ## 机制6·护盾投射（堡垒·护盾器）：CD 到期 → 为半径内3个最低血友军投射护盾
 func _update_shield_projector_tick(delta: float) -> void:

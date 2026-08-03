@@ -367,14 +367,23 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 		first_pos = (targets[0] as Node2D).global_position
 	_emit_ability_triggered("nuclear_bombardment", "warning",
 		{"damage": base_dmg, "position": first_pos, "count": targets.size(), "is_enemy": owner == Owner.ENEMY})
-	# owner 选色：玩家=紫标记/绿核爆；敌方=红标记/橙核爆
-	var mark_color: Color = Color(0.5, 0.0, 1.0, 1.0) if owner == Owner.PLAYER else Color(1.0, 0.2, 0.2, 1.0)
-	var shock_color: Color = Color(0.2, 1.0, 0.2, 0.85) if owner == Owner.PLAYER else Color(1.0, 0.4, 0.2, 0.85)
-	var smoke_tint: Color = Color(0.5, 0.85, 0.4, 0.6) if owner == Owner.PLAYER else Color(0.85, 0.4, 0.3, 0.6)
+	# owner 选色：玩家=紫青能量调（与战术核武橙白写实核爆互补色，差异最大）；敌方=红橙
+	# 去蘑菇云（核武专属符号），改能量光柱从天而降——核子轰炸=科幻能量武器，非核武器
+	var mark_color: Color = Color(0.6, 0.3, 1.0, 1.0) if owner == Owner.PLAYER else Color(1.0, 0.2, 0.2, 1.0)
+	var shock_color: Color = Color(0.3, 0.7, 1.0, 0.85) if owner == Owner.PLAYER else Color(1.0, 0.4, 0.2, 0.85)
+	var beam_color: Color = Color(0.5, 0.6, 1.0, 0.7) if owner == Owner.PLAYER else Color(1.0, 0.5, 0.3, 0.7)
 	var layer_count: int = 9 if owner == Owner.PLAYER else 3
 	var layer_critical: bool = true if owner == Owner.PLAYER else false
 	var mark_delay: float = 0.35
 	var fired_impact: bool = false
+	# 预加载核爆贴图包（循环外加载一次，循环内复用；缺失的贴图自动跳过对应层）
+	var nuke_textures: Dictionary = _load_nuke_texture_pack()
+	# 核爆配色（与战术核武统一橙白写实，但保留 owner 分流供将来扩展）
+	var nuke_colors: Dictionary = {
+		"shock": shock_color,
+		"aftershock": Color(0.9, 0.5, 0.2, 0.5) if owner == Owner.PLAYER else Color(1.0, 0.4, 0.2, 0.5),
+		"smoke": Color(0.35, 0.32, 0.30, 0.6),
+	}
 	for e in targets:
 		if e == null or not is_instance_valid(e):
 			continue
@@ -393,12 +402,9 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 			var cur_pos: Vector2 = captured_pos
 			if is_instance_valid(captured_enemy) and captured_enemy is Node2D:
 				cur_pos = (captured_enemy as Node2D).global_position
-			# v8.4: 迁移自 visual_effects_manager.create_explosion → VfxImpactFactory（三层组合特效）
-			# 大冲击波 + 完整爆炸配方（碎片/烟尘）
-			VfxImpactFactory.spawn_shockwave(_battlefield, cur_pos, 120.0, shock_color)
-			VfxImpactFactory.spawn_layered_impact(_battlefield, cur_pos, layer_count, layer_critical, -1)
-			# v8.1: 上升烟柱粒子（核爆蘑菇云效果）
-			_spawn_smoke_column(cur_pos, smoke_tint)
+			# 完整核爆效果（火球+冲击波+蘑菇云帧动画+焦痕），复用战术核武同一套 VFX
+			# 核子轰炸=全域多点核爆，每个敌方位置都打；全局闪白/震屏由 BattleSpectacle 首次触发
+			VfxImpactFactory.spawn_nuclear_explosion(_battlefield, cur_pos, nuke_textures, nuke_colors)
 			if is_instance_valid(captured_enemy):
 				CombatFeedback.show_damage(cur_pos, base_dmg, captured_enemy, true, "critical")
 				if captured_enemy.has_method("take_damage"):
@@ -414,6 +420,36 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 	_show_toast(_owner_msg(owner,
 		"☢ 核子轰炸！敌方全体受到 %.0f 伤害" % base_dmg,
 		"☢ 敌方核子轰炸！我方全体受到 %.0f 伤害" % base_dmg))
+
+
+## 预加载核爆贴图包（供 spawn_nuclear_explosion 使用）。
+## 火球/冲击波/焦痕/蘑菇云单帧/蘑菇云9帧序列，缺失的自动跳过（部分核爆仍可见）。
+static func _load_nuke_texture_pack() -> Dictionary:
+	var pack: Dictionary = {}
+	var dir := "res://assets/effects/nuclear/"
+	# 单帧贴图
+	for key in ["fireball", "shockwave", "burn", "mushroom"]:
+		var path: String = dir + "nuke_" + str(key) + ".png"
+		if ResourceLoader.exists(path):
+			pack[key] = load(path)
+	# 蘑菇云9帧序列（精灵表切割产物）
+	var frames: Array = []
+	for i in 9:
+		var fpath := dir + "nuke_mushroom_f" + str(i) + ".png"
+		if ResourceLoader.exists(fpath):
+			var tex = load(fpath)
+			if tex != null:
+				frames.append(tex)
+			else:
+				frames.clear()
+				break
+		else:
+			frames.clear()
+			break
+	if not frames.is_empty():
+		pack["mushroom_frames"] = frames
+	return pack
+
 
 static func _compute_nuclear_damage(owner: Owner) -> float:
 	# 固定基础伤害 + allies 总攻击力比例，确保有实质威胁
@@ -843,58 +879,14 @@ static func _make_hexagon_points(size: float) -> PackedVector2Array:
 		pts.append(Vector2(cos(ang), sin(ang)) * size)
 	return pts
 
-## v8.1: 上升烟柱粒子（核爆蘑菇云效果）（v8.1a：加倍粒子量+加大尺寸，真蘑菇云）
+## v8.1: 上升烟柱粒子（核爆蘑菇云效果）。
+## v8.5+: 实现已迁移到 VfxImpactFactory.spawn_smoke_column（公共化），本方法转发调用，
+##        让战术核武机制与相位仪核子轰炸共用同一蘑菇云实现（避免重复维护）。
 ## tint 由调用方按 owner 传入（玩家绿 / 敌方暗红橙）
 static func _spawn_smoke_column(pos: Vector2, tint: Color = Color(0.5, 0.5, 0.5, 0.5)) -> void:
 	if _battlefield == null or not is_instance_valid(_battlefield):
 		return
-	var p := CPUParticles2D.new()
-	p.position = pos
-	p.amount = 36  # v8.1a：16→36，蘑菇云密度
-	p.lifetime = 2.4  # v8.1a：1.8→2.4，烟柱持续更久
-	p.one_shot = false
-	p.emitting = true
-	p.explosiveness = 0.25
-	p.direction = Vector2(0, -1)  # 向上
-	p.spread = 30.0  # v8.1a：25→30，蘑菇头扩散
-	p.initial_velocity_min = 50.0
-	p.initial_velocity_max = 110.0  # v8.1a：提速，烟柱窜得更高
-	p.gravity = Vector2(0, -20.0)  # 持续上飘
-	p.scale_amount_min = 5.0  # v8.1a：4→5
-	p.scale_amount_max = 11.0  # v8.1a：8→11，蘑菇云更大
-	p.color = tint
-	# 烟柱渐变：底部浓→顶部淡
-	var grad := Gradient.new()
-	grad.add_point(0, Color(tint.r, tint.g, tint.b, 0.85))
-	grad.add_point(0.5, Color(tint.r, tint.g, tint.b, 0.45))
-	grad.add_point(1.0, Color(tint.r, tint.g, tint.b, 0.0))
-	p.color_ramp = grad
-	var mat := CanvasItemMaterial.new()
-	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-	p.material = mat
-	_battlefield.add_child(p)
-	# 2.5s 后停止发射并回收（v8.1a：2→2.5s）
-	var tree := _battlefield.get_tree()
-	if tree != null:
-		var timer := tree.create_timer(2.5)
-		# v7.5: 用 WeakRef 捕获粒子节点。原直接捕获强引用 captured_p，当粒子随
-		# 战场节点树整体清理（战斗提前结束）被 free() 时，引擎在 gdscript_lambda_callable
-		# 调用前就检测到捕获对象已释放，报 "Lambda capture was freed. Passed null"，
-		# is_instance_valid 守卫根本来不及执行。WeakRef 不持有强引用，get_ref() 在对象
-		# 已释放时返回 null，守卫才能生效。
-		var weak_p: WeakRef = weakref(p)
-		timer.timeout.connect(func():
-			var captured_p: Variant = weak_p.get_ref()
-			if captured_p == null or not is_instance_valid(captured_p):
-				return
-			captured_p.emitting = false
-			# +0.1s 余量让残余粒子彻底淡出（虽已停发射，仍防帧率波动截断尾段）
-			var t2 := tree.create_timer(captured_p.lifetime + 0.1)
-			t2.timeout.connect(func():
-				var captured_p2: Variant = weak_p.get_ref()
-				if captured_p2 != null and is_instance_valid(captured_p2):
-					captured_p2.queue_free())
-		)
+	VfxImpactFactory.spawn_smoke_column(_battlefield, pos, tint)
 
 ## 狂暴光环：单位脚下脉动环（自敌方版搬入；PLAYER=金橙 / ENEMY=红色）
 static func _create_rage_aura(pos: Vector2, owner: Owner) -> void:

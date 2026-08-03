@@ -22,10 +22,6 @@ var _back_btn: Button = null
 var _battle_time: float = 0.0
 var _time_refresh_accum: float = 0.0
 
-# ── 波次轮询（搬自 enemy_spawn_hud.gd）──
-var _wave_refresh_accum: float = 0.0
-const _WAVE_REFRESH_SEC: float = 0.25
-
 # ── 状态绿点 ──
 var _in_battle: bool = false
 
@@ -90,6 +86,9 @@ func _connect_signals() -> void:
 			sb.battle_started.connect(_on_battle_started)
 		if sb.has_signal("battle_ended"):
 			sb.battle_ended.connect(_on_battle_ended)
+		# v9.x: 波次推进信号驱动刷新（替代每 0.25s 轮询 BattleManager）
+		if sb.has_signal("wave_spawned"):
+			sb.wave_spawned.connect(_on_wave_changed)
 
 
 func _apply_button_icons() -> void:
@@ -230,11 +229,7 @@ func _process(delta: float) -> void:
 	if _time_refresh_accum >= 1.0:
 		_time_refresh_accum = 0.0
 		_refresh_time()
-	# 波次：每 0.25s 轮询
-	_wave_refresh_accum += delta
-	if _wave_refresh_accum >= _WAVE_REFRESH_SEC:
-		_wave_refresh_accum = 0.0
-		_refresh_wave()
+	# v9.x: 波次刷新改由 wave_spawned 信号驱动（_on_wave_changed），不再每 0.25s 轮询
 
 
 func _refresh_time() -> void:
@@ -296,9 +291,15 @@ func set_level(level: int) -> void:
 func _on_battle_started() -> void:
 	_in_battle = true
 	_battle_time = 0.0
+	# v9.x: 战斗开始时刷新一次波次初始显示（后续由 wave_spawned 信号驱动）
+	_refresh_wave()
 
 func _on_battle_ended(_won) -> void:
 	_in_battle = false
+
+## v9.x: 波次推进时刷新 dots 显示（替代每 0.25s 轮询）
+func _on_wave_changed(_wave_index: int) -> void:
+	_refresh_wave()
 
 
 # ========== 暂停态切换 ==========

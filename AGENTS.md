@@ -37,6 +37,57 @@ Add `--rendering-driver opengl3` if Vulkan issues (applies to `--headless` / `--
 & "D:/Downloads/Godot/Godot_v4.5.1-stable_win64.exe" --headless --rendering-driver opengl3 --path "." --script "tests/gdunit4_runner.gd"
 ```
 
+## agent_tools 编辑器插件（已启用，可用）
+
+**`addons/agent_tools`** 是 Godot 编辑器插件（`@tool` + `EditorPlugin`），在编辑器进程里跑一个 **line-delimited JSON-RPC over TCP** 服务，对外暴露 70+ 工具 / 12 命名空间，全走编辑器真实 API（比手改 `.tscn`/`.tres` 安全）。**2026-08-03 实测可用。**
+
+### 运行前提（重要）
+- **只在带 GUI 的编辑器进程里加载**（`plugin.gd` 是 `EditorPlugin`）。`--headless` / `--check-only` / `--script` 模式**不会**加载此插件 → 无 9920 端口。
+- 用前先确认编辑器在跑：`tasklist | grep -i godot` 且 `netstat -ano | grep 9920` 有 LISTENING。
+- 端口：默认 `9920`；被占用自动顺延到 `9921..9929`（`project.godot` 设 `agent_tools/port` 可强制端口）。多编辑器实例靠此共存。
+
+### 调用方式（无需 MCP 客户端，Bash+Python 直连）
+```python
+import socket, json
+def call(method, params=None, port=9920, timeout=8.0):
+    req = {'id': 1, 'method': method}
+    if params is not None: req['params'] = params
+    s = socket.socket(); s.settimeout(timeout)
+    s.connect(('127.0.0.1', port)); s.sendall((json.dumps(req)+'\n').encode())
+    buf=b''
+    while b'\n' not in buf:
+        c=s.recv(8192);  # 每行一条响应（\n 分隔）
+        if not c: break
+        buf+=c
+    s.close(); return json.loads(buf.decode().strip())
+print(call('editor.state'))                       # 读编辑器状态（连通性探针首选）
+print(call('project.get_setting', {'key':'application/config/name'}))  # 参数名是 key 不是 setting
+print(call('autoload.list'))
+print(call('logs.read'))                          # 读 Output 面板日志（查报错，比跑 headless 快）
+```
+
+### 工具命名空间速查（`registry.gd` 全量）
+| 命名空间 | 代表方法 | 用途 |
+|---------|---------|------|
+| `scene.*` | new/add_node/set_property/get_property/call_method/build_tree/open/save/current/inspect/capture_screenshot | 场景节点增删改/属性/调用/打包存盘 |
+| `signal.*` | connect/disconnect/list | 信号接线（走编辑器 API，自动写 `.tscn`） |
+| `script.*` | create/attach/patch | 建脚本/挂载/补丁 |
+| `resource.*` | create/set_property/call_method | 建/改 `.tres` 资源 |
+| `refs.*` | validate_project/find_usages/rename/rename_class | **引用校验/重命名**（大项目慢，注意超时） |
+| `project.*` / `autoload.*` | get_setting/set_setting/autoload_add/list | 项目设置/autoload 管理 |
+| `editor.*` / `logs.*` | state/selection_get/game_screenshot/logs_read/logs_clear | 编辑器状态/选择/运行中游戏截图/日志 |
+| `run.*` | scene_headless | 通过编辑器跑 headless 场景 |
+| `fs.*` / `user_fs.*` | list/read_text/write_text | 读写文件（走编辑器 FS） |
+| `test.*` / `input_map.*` / `animation.*` / `theme.*` / `physics.*` / `client.*` / `performance.*` / `docs.*` | — | 测试/输入映射/动画/主题/碰撞形状/客户端配置/性能监视器/类参考 |
+
+### 实测要点 / 踩坑
+1. **`project.get_setting` 参数名是 `key`** 不是 `setting`（报 `-32602 missing 'key'`）。
+2. **响应 `id` 返回浮点数**（`1.0`）—— JSON-RPC 客户端如按 int 匹配 id 会失败，需容忍。
+3. **空响应=工具模块解析错误**：`registry.dispatch` 对 preload 失败的工具返回空，server 会发 `-32000 tool returned empty response — likely a parse error`，此时看编辑器 Output 面板的真错误。
+4. **大项目慢工具**：`refs.validate_project`/`fs.list res://`（本项目 2043 文件）可能数秒到超时，按需缩小范围或分批。
+5. **方法不存在** → `-32601 method not found: <method>`（去 `registry.gd` 核对全名）。
+6. **会话注册表**：插件按 PID 在 `~/.godot-agent-tools/sessions/<pid>.json` 写端口/项目路径，供 MCP shim 的 `session.list` 发现多个编辑器实例。
+
 ## Architecture
 
 ### Autoload Singletons (实际 42 个，project.godot load order)

@@ -576,15 +576,20 @@ func _refresh_info_sections(card: CardResource) -> void:
 		status_section.visible = false
 
 ## 显示该卡作为 source_tag 触发源关联的、已解锁的卡片定时技能。
-## 数据源：_cached_display_stats（已含 law_family meta，与单位侧同源）。
+## 数据源：override_stats（战场单位模式传 unit.stats）或 _cached_display_stats（卡牌查看模式，已含 law_family meta，与单位侧同源）。
 ## 仅显示已解锁且 source_tag 命中本卡的技能；空 source_tag 技能（cps_steel_storm）无特定触发源不显示。
-func _refresh_card_skill_section(card: CardResource) -> void:
+func _refresh_card_skill_section(card: CardResource, override_stats: UnitStats = null) -> void:
 	if _card_skill_label == null:
+		print("[CardSkillDebug] _card_skill_label is null —— CardSkillSection 节点未找到")
 		return
 	var lines: Array[String] = []
-	if card != null and card.card_type == GC.CardType.COMBAT_UNIT and _cached_display_stats != null:
-		var tags: Array = CardPeriodicSkills.compute_source_tags_for_stats(_cached_display_stats)
+	# 战场单位模式：优先用传入的 unit.stats（已含全部 meta）；卡牌查看模式：用 _cached_display_stats
+	var stats_for_tags: UnitStats = override_stats if override_stats != null else _cached_display_stats
+	print("[CardSkillDebug] card=%s card_type=%s override_stats=%s stats_for_tags=%s" % [DefaultCards.safe_name(card) if card != null else "null", int(card.card_type) if card != null else -1, override_stats != null, stats_for_tags != null])
+	if card != null and card.card_type == GC.CardType.COMBAT_UNIT and stats_for_tags != null:
+		var tags: Array = CardPeriodicSkills.compute_source_tags_for_stats(stats_for_tags)
 		var sm: Node = get_node_or_null("/root/PhaseMasterSkillManager")
+		print("[CardSkillDebug] tags=%s sm=%s" % [tags, sm != null])
 		for sid in CardPeriodicSkills.get_all_skill_ids():
 			var sk: Dictionary = CardPeriodicSkills.get_skill(sid)
 			var st: String = String(sk.get("source_tag", ""))
@@ -603,6 +608,7 @@ func _refresh_card_skill_section(card: CardResource) -> void:
 			var eff_cn: String = _card_skill_effect_summary(sk.get("effect", {}))
 			lines.append("  · %s%s（%s）：%s" % [nm, ulti, itv_s, eff_cn])
 	var text: String = "\n".join(lines)
+	print("[CardSkillDebug] 最终 lines 数=%d text=%s" % [lines.size(), text])
 	_card_skill_label.text = text
 	_set_section_visible_by_content(_card_skill_section, text)
 
@@ -1816,6 +1822,9 @@ func _show_player_unit(unit: Node) -> void:
 		desc_label.text = _build_unit_description(stats, true, "向敌侧推进，在射程内交战。选中后可点击地面微调站位。")
 	if flavor_label:
 		flavor_label.text = "“装甲军团永不疲倦。”"
+	# v8.x：战场单位也显示关联卡片技能（source_tag 命中本单位 + 已解锁），口径与卡牌查看模式一致。
+	# 直接传 unit.stats（已含 law_family/is_engineer 等 meta），无需构建显示缓存。
+	_refresh_card_skill_section(card_res, stats)
 
 ## ── 敌方单位 ──
 
@@ -2490,7 +2499,7 @@ const _UNIT_MECHANISM_DESC := {
 	"is_sniper_aim": "瞄准狙击：每15秒进入瞄准，下次攻击必暴+50%伤（对Boss×2）",
 	"is_blitz_pierce": "闪电穿插：每10秒下次攻击穿透打后排2个单位",
 	"is_jamming_field": "电子屏蔽：每18秒释放屏蔽波，敌方攻击失效3秒",
-	"is_nuclear_strike": "战术核武：每45秒发射核弹，敌方密集区35%最大生命范围伤",
+		"is_nuclear_strike": "战术核武：每45秒由导弹发射井发射战术核弹，弹道飞行后对敌方密集区半径200内造成35%最大生命（保底200）范围伤害",
 	"is_shield_projector": "护盾投射：每20秒为3个低血友军投射护盾",
 	"is_drone_mark": "定时标记：每14秒标记2个最高威胁敌方+25%易伤",
 	# ⚠️ stealth 为死代码：_format_unit_mechanism_from_stats 不读 stealth meta，

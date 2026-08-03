@@ -1,0 +1,329 @@
+你说得对！我刚才只给了代码，但 **没有纹理资源，代码跑不起来**。
+
+---
+
+## 实际情况
+
+战术核武需要 **4~6 张纹理** 才能做出效果：
+
+| 纹理 | 用途 | 如果没有会怎样 |
+|------|------|--------------|
+| 导弹本体 | 飞行弹道 | 看不到导弹，只有光点 |
+| 火球光晕 | 核爆中心 | 爆炸变成白屏 |
+| 冲击波环 | 扩散圈 | 没有冲击波视觉效果 |
+| 蘑菇云 | 标志性核爆 | 不像核武器 |
+| 地面焦痕 | 持久痕迹 | 爆完地面什么都没留下 |
+| 闪光 | 全屏白 | 用 ColorRect 可替代（无需纹理）|
+
+---
+
+## 给你的选择
+
+### 选项 A：我帮你画纹理（但做不到）
+
+我不是图像生成 AI，没法给你输出 `.png` 文件。如果你需要纹理，可以用：
+- **AI 图像生成**（Midjourney/Stable Diffusion）生成核爆蘑菇云
+- **免费素材网站**（如 [OpenGameArt](https://opengameart.org)）搜 "nuke explosion sprite"
+- **程序化生成**（用 Godot 的 `Image` 类动态画纹理）
+
+### 选项 B：不用纹理，纯代码生成（推荐）
+
+**用 `ColorRect` + `CircleShape2D` + `GradientTexture2D` 在代码里生成所有视觉效果**，完全不需要外部图片：
+
+```gdscript
+# 纯代码生成火球纹理
+func _create_fireball_texture() -> ImageTexture:
+    var img := Image.create(256, 256, false, Image.FORMAT_RGBA8)
+    img.fill(Color(0, 0, 0, 0))
+    
+    for x in range(256):
+        for y in range(256):
+            var dx := x - 128
+            var dy := y - 128
+            var dist := sqrt(dx*dx + dy*dy) / 128.0  # 0~1
+            if dist < 1.0:
+                var brightness := 1.0 - dist * dist
+                var r := 1.0
+                var g := 0.3 + 0.5 * (1.0 - dist)
+                var b := 0.0
+                var alpha := brightness * 0.9
+                img.set_pixel(x, y, Color(r, g, b, alpha))
+    
+    return ImageTexture.create_from_image(img)
+```
+
+**优点**：零外部资源，游戏包体更小  
+**缺点**：视觉效果上限不如手绘/AI 生成的好看
+
+---
+
+### 选项 C：我给你完整的脚本 + 告诉你如何生成纹理
+
+我写一个完整脚本，同时给你 **Stable Diffusion 提示词**，你用 AI 生成 5 张纹理：
+
+| 纹理 | SD 提示词 |
+|------|----------|
+| 核爆火球 | `nuclear explosion fireball, bright white core, orange glow, transparent background, 512x512` |
+| 冲击波环 | `shockwave ring expanding, white blue glow, transparent background, 512x512` |
+| 蘑菇云 | `mushroom cloud nuclear explosion, gray white smoke, transparent background, 512x512` |
+| 导弹 | `ICBM missile flying upward, detailed, transparent background, 256x256` |
+| 地面焦痕 | `scorched earth mark, dark burn circle, transparent background, 256x256` |
+
+生成后用 Godot 导入，我的脚本直接使用。
+
+---
+
+## 我建议的路径
+
+**先拿我给你的纯代码脚本跑起来**（选项 B），看到效果后再决定是否替换成 AI 生成的纹理。
+
+这样你可以：
+1. **立即**在游戏里看到核爆效果（不用等出图）
+2. 确认动画逻辑（弹道 / 爆炸时机 / 屏幕震动）是否 OK
+3. 之后用精美纹理替换 `_create_fireball_texture()` 等函数，换成加载外部图片
+
+---
+
+## 现在需要你决定
+
+| 选项 | 我能给 | 你需要做 |
+|------|--------|---------|
+| **A** | 完整的 `NukeEffect.gd` 脚本（含纹理生成函数） | 复制粘贴，跑起来 |
+| **B** | 同上 + 详细步骤教你用 AI 生成替换纹理 | 用 AI 生成 5 张图，替换代码里的纹理生成函数 |
+| **C** | 只给脚本，不画纹理 | 你自己找纹理素材，或者让 AI 画 |
+
+选哪个？我直接给你对应的完整代码。
+
+**战术核武的弹道和命中效果**——这是战场上的视觉高潮，值得花性能做高级效果。给你分层建议：
+
+---
+
+## 弹道部分（3 段式）
+
+### ① 发射升空（0~0.5s）
+**方案：Sprite + 粒子尾迹**
+
+```gdscript
+# 导弹本体
+var missile := Sprite2D.new()
+missile.texture = preload("res://assets/missile_icbm.png")
+missile.scale = Vector2(0.5, 0.5)
+add_child(missile)
+
+# 发射火焰（Sprite + 缩放动画，替代粒子）
+var launch_flame := Sprite2D.new()
+launch_flame.texture = preload("res://assets/flame_jet.png")
+launch_flame.position = Vector2(0, 40)
+launch_flame.scale = Vector2(0.3, 1.0)
+missile.add_child(launch_flame)
+
+var tween := create_tween()
+tween.parallel().tween_property(missile, "position", launch_pos + Vector2(0, -200), 0.5)
+tween.parallel().tween_property(launch_flame, "scale:x", 1.0, 0.5)
+```
+
+**性能**：2 个 Sprite + Tween，接近零开销
+
+---
+
+### ② 高空飞行（1~2s，弧形弹道）
+
+**方案：Sprite + 贝塞尔曲线 Tween**
+
+```gdscript
+# 用 Tween 的 3 点贝塞尔曲线
+var tween := create_tween()
+tween.set_trans(Tween.TRANS_SINE)
+tween.set_ease(Tween.EASE_IN_OUT)
+
+# 三点：起点 → 弧顶 → 目标
+var start := missile.global_position
+var apex := Vector2((start.x + target.x) / 2, min(start.y, target.y) - 300)
+var end := target
+
+# 方法1：用 Tween 的 bezier 插值（Godot 4.3+）
+tween.tween_method(
+    func(progress: float):
+        var t := progress
+        var q0 := start.lerp(apex, t)
+        var q1 := apex.lerp(end, t)
+        var point := q0.lerp(q1, t)
+        missile.global_position = point
+        missile.rotation = (point - _prev_point).angle()
+        _prev_point = point
+    , 0.0, 1.0, 1.5
+)
+
+# 加导弹旋转（根据飞行方向）
+# 加拖尾光效：2~3 个半透明 Sprite 跟随，延迟 0.05s
+```
+
+**性能**：1 个 Sprite + 几个跟随光点（Sprite），完全无粒子
+
+---
+
+### ③ 再入大气层（0.3s，垂直俯冲）
+
+**方案：Sprite + 速度提升 + 火焰覆盖**
+
+```gdscript
+# 俯冲阶段用多个 Sprite 叠加热障效果
+var reentry_glow := Sprite2D.new()
+reentry_glow.texture = preload("res://assets/glow_ring.png")
+reentry_glow.modulate = Color(1, 0.5, 0, 0.6)
+reentry_glow.scale = Vector2(0.2, 0.2)
+missile.add_child(reentry_glow)
+
+# 急速下坠 + 旋转
+var tween2 := create_tween()
+tween2.parallel().tween_property(missile, "position", target + Vector2(0, -50), 0.3)
+tween2.parallel().tween_property(reentry_glow, "scale", Vector2(3, 3), 0.3)
+tween2.parallel().tween_property(reentry_glow, "modulate:a", 0.0, 0.3)
+```
+
+**性能**：3~4 个 Sprite + Tween
+
+---
+
+## 命中效果（核爆）
+
+### 推荐方案：**多层 Sprite + Shader + 屏幕震动**
+
+不建议用粒子做核爆（粒子数需要上千才够震撼，会卡死）。
+
+#### 结构（按时间顺序叠加）：
+
+```
+0.00s：闪白（全屏白色闪光，0.1s）
+0.05s：爆心光球（Sprite，scale 从0→5，0.3s）
+0.10s：冲击波环（Sprite 环，scale 从0→8，淡出，0.5s）
+0.15s：蘑菇云（Sprite，scale 从0→3，上飘 + 淡出，1.0s）
+0.20s：地面灼烧痕迹（Sprite，静态，持续到战斗结束）
+0.00s：屏幕震动（强度 20px，0.5s 衰减）
+0.30s：冲击波扫过单位（Sprite 横扫线，0.2s）
+持续：辐射粒子（极少量，粒子数 20，禁用碰撞）
+```
+
+#### 实现代码：
+
+```gdscript
+# nuclear_strike.gd
+extends Node2D
+
+@onready var flash := $Flash  # ColorRect，白色
+@onready var fireball := $Fireball  # Sprite，圆形光球
+@onready var shockwave := $Shockwave  # Sprite，环形纹理
+@onready var mushroom := $Mushroom  # Sprite，蘑菇云纹理
+@onready var burn_mark := $BurnMark  # Sprite，地面焦痕
+@onready var screen_shake := $ScreenShake
+
+func trigger_nuke(target_pos: Vector2) -> void:
+    global_position = target_pos
+    
+    # 1. 闪白（0.1s）
+    flash.modulate = Color.WHITE
+    var t1 := create_tween()
+    t1.tween_property(flash, "modulate:a", 1.0, 0.02)
+    t1.tween_property(flash, "modulate:a", 0.0, 0.08).set_delay(0.02)
+    
+    # 2. 火球（0.3s 膨胀 + 淡出）
+    fireball.scale = Vector2(0.1, 0.1)
+    fireball.modulate = Color(1, 0.8, 0.3, 0.9)
+    var t2 := create_tween()
+    t2.parallel().tween_property(fireball, "scale", Vector2(5, 5), 0.3).set_ease(Tween.EASE_OUT)
+    t2.parallel().tween_property(fireball, "modulate:a", 0.0, 0.3).set_delay(0.1)
+    
+    # 3. 冲击波环（0.5s 扩散 + 淡出）
+    shockwave.scale = Vector2(0.1, 0.1)
+    shockwave.modulate = Color(1, 0.6, 0.2, 0.7)
+    var t3 := create_tween()
+    t3.parallel().tween_property(shockwave, "scale", Vector2(8, 8), 0.5).set_ease(Tween.EASE_OUT)
+    t3.parallel().tween_property(shockwave, "modulate:a", 0.0, 0.5)
+    
+    # 4. 蘑菇云（1s 上升 + 膨胀）
+    mushroom.scale = Vector2(0.1, 0.1)
+    mushroom.position = Vector2(0, -100)
+    var t4 := create_tween()
+    t4.parallel().tween_property(mushroom, "scale", Vector2(3, 3), 1.0).set_ease(Tween.EASE_OUT)
+    t4.parallel().tween_property(mushroom, "position:y", -300, 1.0)
+    t4.parallel().tween_property(mushroom, "modulate:a", 0.3, 1.0).set_delay(0.5)
+    
+    # 5. 地面焦痕（永久）
+    burn_mark.scale = Vector2(2, 2)
+    burn_mark.modulate = Color(0.1, 0.05, 0.0, 0.6)
+    
+    # 6. 屏幕震动
+    ScreenShaker.shake(20.0, 0.5)
+    
+    # 7. 辐射粒子（极少量）
+    _spawn_radiation_particles(20)  # 只 20 个粒子
+```
+
+---
+
+## 资源准备
+
+你需要这些纹理（可用工具生成）：
+
+| 纹理 | 尺寸 | 制作方式 |
+|------|------|---------|
+| 白色闪屏 | 全屏 | 纯白 ColorRect，无需纹理 |
+| 火球光晕 | 512×512 | 径向渐变，中心亮白→边缘橙红 |
+| 冲击波环 | 512×512 | 环形渐变，Alpha 由内到外 |
+| 蘑菇云 | 512×512 | 参考真实核爆照片（或 AI 生成） |
+| 地面焦痕 | 256×256 | 黑色径向渐变 + 噪点 |
+| 导弹本体 | 128×128 | 简单圆柱体 |
+
+---
+
+## 性能评估（12 单位场景）
+
+| 方案 | CPU | GPU | 内存 | 效果评级 |
+|------|-----|-----|------|---------|
+| **多层 Sprite + Shader** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+| GPUParticles2D（1000 粒子） | ⭐⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ |
+| 视频（VideoStreamPlayer） | ⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐⭐ |
+
+**推荐理由**：多层 Sprite 方案在 12 单位战场上，即使同时出现 2~3 个核爆，也完全流畅（~60fps）。
+
+---
+
+## 额外效果（可选，提升视觉层次）
+
+### Shader 增强（在 Sprite 上加动态效果）
+
+```gdglsl
+// 火球 Shader：脉动 + 边缘发光
+shader_type canvas_item;
+
+uniform float time;
+uniform vec4 glow_color : source_color = vec4(1.0, 0.5, 0.1, 0.8);
+
+void fragment() {
+    vec2 center = UV - 0.5;
+    float dist = length(center);
+    float pulse = 0.8 + 0.2 * sin(time * 8.0 - dist * 20.0);
+    float alpha = smoothstep(0.5, 0.0, dist) * pulse;
+    COLOR = vec4(glow_color.rgb, alpha * 0.9);
+}
+```
+
+### 冲击波扫过单位（用扫线 Sprite）
+
+一个长条 Sprite 从爆心向屏幕外快速移动，给单位一个"被冲击波推过"的视觉反馈。
+
+---
+
+## 我的最终建议
+
+**全部用 Sprite + Tween + 少量 Shader，不用粒子**：
+
+1. 弹道：Sprite + 贝塞尔 Tween（1 个导弹 + 3 个尾迹光点）
+2. 核爆：5 层 Sprite 叠加（闪白/火球/冲击波/蘑菇云/焦痕）+ 屏幕震动
+3. 辐射残留：20 个 CPUParticles2D（极少量，只是为了"动感"）
+
+这套方案在 12 单位战场上，即使同时引爆 3 颗核弹，也能稳 60fps。
+
+---
+
+需要我帮你生成这套 **`NukeEffect.gd`** 完整脚本吗？包括弹道跟踪、命中检测、多层动画、对象池复用。

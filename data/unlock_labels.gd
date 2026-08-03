@@ -42,12 +42,12 @@ const UNIT_MECHANISM_LABELS: Dictionary = {
 		"desc": "防空/电子战单位每18秒释放屏蔽波（半径300），范围内敌方攻击失效3秒",
 		"icon": "📡"
 	},
-	"nuclear_strike": {
-		"name": "战术核武",
-		"short": "核武",
-		"desc": "导弹发射井堡垒每45秒发射战术核弹，对敌方密集区造成35%最大生命的范围伤害",
-		"icon": "☢"
-	},
+		"nuclear_strike": {
+			"name": "战术核武",
+			"short": "核武",
+			"desc": "导弹发射井堡垒每45秒发射战术核弹，弹道飞行后对敌方密集区半径200内造成35%最大生命（保底200）的范围伤害",
+			"icon": "☢"
+		},
 	"shield_projector": {
 		"name": "护盾投射",
 		"short": "护盾",

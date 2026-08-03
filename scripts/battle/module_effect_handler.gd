@@ -145,11 +145,11 @@ static func on_tick(unit: Node, delta: float) -> void:
 			_heal_unit(unit, regen_amount)
 	# v7.x: 检查怒气状态过期（成长型机制的持续时间管理）
 	_check_rage_expiry(unit, stats, delta)
-	# v7.x 第二批：堡垒区域控制（每帧刷新范围内的 meta）
-	_apply_slow_aura(unit, stats)       # 区域减速光环
-	_apply_command_aura(unit, stats)    # 指挥光环
+	# v7.x 第二批：堡垒区域控制（每 AURA_TICK_INTERVAL 秒刷新范围内的 meta）
+	_apply_slow_aura(unit, stats, delta)       # 区域减速光环
+	_apply_command_aura(unit, stats, delta)    # 指挥光环
 	# v8: 堡垒阵地坚守光环（地面友军减伤）
-	_apply_fort_shelter_aura(unit, stats)
+	_apply_fort_shelter_aura(unit, stats, delta)
 	# v8.x: 雷场范围伤害（for_11_advanced_minefield 等的读取端复活）
 	# minefield_damage 此前写入 stats 但战斗侧零读取；现每 0.5s 对范围内敌方造成持续真实伤害
 	_apply_minefield_damage(unit, stats, delta)
@@ -755,35 +755,65 @@ static func _find_nearby_allies(center: Node, radius: float) -> Array:
 # ── 堡垒区域控制（on_tick 扩展）──
 
 ## 区域减速光环：范围内敌方移速降低（通过 meta 挂载，on_tick 刷新）
-static func _apply_slow_aura(unit: Node, stats: UnitStats) -> void:
+## v9.x: 加 0.3s 累加器节流（照搬 _apply_minefield_damage 范式），避免每帧全组扫描。
+static func _apply_slow_aura(unit: Node, stats: UnitStats, delta: float) -> void:
 	if stats.slow_aura_pct <= 0.0:
 		return
+	# 累积计时（meta 挂在单位上，跨帧保留）
+	var acc: float = 0.0
+	if unit.has_meta("_slow_aura_acc"):
+		acc = float(unit.get_meta("_slow_aura_acc", 0.0))
+	acc += delta
+	if acc < AURA_TICK_INTERVAL:
+		unit.set_meta("_slow_aura_acc", acc)
+		return
+	unit.set_meta("_slow_aura_acc", 0.0)
 	var enemies: Array = _find_nearby_enemies(unit, stats.slow_aura_radius)
 	var slow_mult: float = 1.0 - stats.slow_aura_pct
 	for e in enemies:
 		if e == null or not is_instance_valid(e):
 			continue
-		# 挂减速 meta（持续 1 秒，on_tick 每帧刷新）
+		# 挂减速 meta（持续 1 秒，每 AURA_TICK_INTERVAL 秒刷新）
 		e.set_meta("_slow_aura_until", Time.get_ticks_msec() / 1000.0 + 1.0)
 		e.set_meta("_slow_aura_mult", slow_mult)
 
 ## 指挥光环：范围内友军暴击加成（通过 meta 挂载）
-static func _apply_command_aura(unit: Node, stats: UnitStats) -> void:
+## v9.x: 加 0.3s 累加器节流（照搬 _apply_minefield_damage 范式），避免每帧全组扫描。
+static func _apply_command_aura(unit: Node, stats: UnitStats, delta: float) -> void:
 	if stats.command_aura_bonus <= 0.0:
 		return
+	# 累积计时（meta 挂在单位上，跨帧保留）
+	var acc: float = 0.0
+	if unit.has_meta("_command_aura_acc"):
+		acc = float(unit.get_meta("_command_aura_acc", 0.0))
+	acc += delta
+	if acc < AURA_TICK_INTERVAL:
+		unit.set_meta("_command_aura_acc", acc)
+		return
+	unit.set_meta("_command_aura_acc", 0.0)
 	var allies: Array = _find_nearby_allies(unit, 250.0)
 	for ally in allies:
 		if ally == null or not is_instance_valid(ally):
 			continue
-		# 挂指挥 meta（持续 1 秒，on_tick 每帧刷新）
+		# 挂指挥 meta（持续 1 秒，每 AURA_TICK_INTERVAL 秒刷新）
 		ally.set_meta("_command_aura_until", Time.get_ticks_msec() / 1000.0 + 1.0)
 		ally.set_meta("_command_aura_bonus", stats.command_aura_bonus)
 
 ## v8: 堡垒阵地坚守光环——范围内地面友军（非空中）受伤减免
 ## 复用 _apply_command_aura 的扫描+meta 模式，区别：排除 AIR 友军、挂减伤 meta
-static func _apply_fort_shelter_aura(unit: Node, stats: UnitStats) -> void:
+## v9.x: 加 0.3s 累加器节流（照搬 _apply_minefield_damage 范式），避免每帧全组扫描。
+static func _apply_fort_shelter_aura(unit: Node, stats: UnitStats, delta: float) -> void:
 	if stats.fort_shelter_aura <= 0.0:
 		return
+	# 累积计时（meta 挂在单位上，跨帧保留）
+	var acc: float = 0.0
+	if unit.has_meta("_fort_shelter_acc"):
+		acc = float(unit.get_meta("_fort_shelter_acc", 0.0))
+	acc += delta
+	if acc < AURA_TICK_INTERVAL:
+		unit.set_meta("_fort_shelter_acc", acc)
+		return
+	unit.set_meta("_fort_shelter_acc", 0.0)
 	var allies: Array = _find_nearby_allies(unit, stats.fort_shelter_radius)
 	for ally in allies:
 		if ally == null or not is_instance_valid(ally):
@@ -792,9 +822,14 @@ static func _apply_fort_shelter_aura(unit: Node, stats: UnitStats) -> void:
 		var ally_stats = _get_unit_stats(ally)
 		if ally_stats != null and ally_stats.combat_kind == GC.CombatKind.AIR:
 			continue
-		# 挂堡垒庇护 meta（持续 1 秒，on_tick 每帧刷新）
+		# 挂堡垒庇护 meta（持续 1 秒，每 AURA_TICK_INTERVAL 秒刷新）
 		ally.set_meta("_fort_shelter_until", Time.get_ticks_msec() / 1000.0 + 1.0)
 		ally.set_meta("_fort_shelter_bonus", stats.fort_shelter_aura)
+
+## v9.x: 光环（slow/command/fort_shelter）节流累加器间隔。
+## 此前 on_tick 每帧刷新光环 meta（每帧全组扫描），改造后每 0.3s 刷新一次。
+## 光环 meta 持续 1.0s（见下方 set_meta(... + 1.0)），0.3s 节流留 0.7s 安全余量，肉眼无感知差异。
+const AURA_TICK_INTERVAL: float = 0.3
 
 ## v8.x: 雷场范围伤害（minefield_damage 的读取端复活）
 ## for_11_advanced_minefield 等写入 stats.minefield_damage 后此前战斗侧零读取。

@@ -478,7 +478,17 @@ func _finish_tex_bullet() -> void:
 	if _finished:
 		return
 	_finished = true
-	ObjectPoolManager.return_object("bullets", self)
+	# v9.x: 池满回退实例化的游离子弹不在对象池 in_use 字典中，return_object 会被拒导致泄漏。
+	# 此前 4 个调用点（construct_unit_ai/enemy_unit/swarm/phase_instrument_abilities）在
+	# ObjectPoolManager.get_object("bullets") 返回 null 时回退到 BulletScene.instantiate()，
+	# 这些游离子弹从未登记进 in_use，飞完调 return_object 撞上 in_use.has(self) 守卫被直接丢弃，
+	# 既不归池也不 queue_free，永久驻留场景树（_process 仍跑、内存只增不减）。
+	# 修复：检测自身是否在池的 in_use 字典中，不在则走 queue_free 销毁。
+	var pool = ObjectPoolManager._pools.get("bullets", null)
+	if pool != null and pool.in_use.has(self):
+		ObjectPoolManager.return_object("bullets", self)
+	else:
+		queue_free()
 
 
 func _process(delta: float) -> void:

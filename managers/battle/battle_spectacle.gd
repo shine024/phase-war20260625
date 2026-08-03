@@ -604,13 +604,21 @@ func _get_vfx_parent() -> Node2D:
 	var tree := get_tree()
 	if tree == null:
 		return null
-	# 优先按 group 查（battlefield/battle_layer），回退到 root 下第一个 Node2D 子节点
+	# 优先按 group 查（battlefield/battle_layer）
 	var by_group: Node = tree.get_first_node_in_group("battlefield_layer")
 	if by_group == null:
 		by_group = tree.get_first_node_in_group("battlefield")
 	if by_group != null and by_group is Node2D:
 		return by_group
-	# 回退：遍历 root 子节点找第一个 Node2D（main 场景根）
+	# 回退1：从 BattleManager 拿显式持有的 battlefield（Battlefield 嵌在 SubViewport 里，
+	# 不在 root 直接子节点，也没加 group——group 查找和 root 遍历都找不到它。
+	# BattleManager.start_battle 时显式持有 battlefield 成员，这是最可靠的来源）
+	var bm: Node = get_node_or_null("/root/BattleManager")
+	if bm != null:
+		var bf: Variant = bm.get("battlefield")
+		if bf is Node2D and is_instance_valid(bf):
+			return bf
+	# 回退2：遍历 root 子节点找第一个 Node2D（main 场景根）
 	if tree.root != null:
 		for c in tree.root.get_children():
 			if c is Node2D:
@@ -664,23 +672,208 @@ func _on_mechanism_jamming_field_activated(center: Vector2, radius: float) -> vo
 	VfxImpactFactory.spawn_shockwave(parent, center, radius, Color(0.6, 0.3, 0.9, 0.6))
 
 
-## 战术核武：from→to 抛物线（用 laser 简化）+ 蘑菇云（冲击波）+ 震屏
-func _on_mechanism_nuclear_launched(from_pos: Vector2, target_pos: Vector2) -> void:
+## 战术核武（导弹发射井）：弹道飞行 → 落点预警 → 多层核爆（闪光/火球/双冲击波/蘑菇云/焦痕）→ 延迟伤害结算
+## v8.5+: 从原「瞬时闪白+冲击波」升级为完整演出。
+##   owner_str: "player"/"enemy" 用于敌我配色（当前仅玩家）
+##   victims: [{"target": Node, "damage": float, "attacker": Node}, ...] 发射时锁定，爆炸回调结算
+## 伤害延后到爆炸 tween_callback 结算（参考 phase_instrument_abilities._fire_nuclear_bombardment 范式），
+## 避免「敌人 0.35s 前就死、导弹还在飞」的视觉伤害脱节。
+func _on_mechanism_nuclear_launched(from_pos: Vector2, target_pos: Vector2, owner_str: String, victims: Array) -> void:
+	print("[NUKE_DIAG] battle_spectacle 收到核武信号! from=", from_pos, " to=", target_pos, " victims=", victims.size())
 	var parent: Node2D = _get_vfx_parent()
-	# 轨迹（橙白）
+	print("[NUKE_DIAG] VFX parent=", parent, " (null=找不到战场节点，VFX无法渲染!)")
+	# 写实橙白核爆配色（白热闪光→橙红火球→黑灰蘑菇云→焦黑地面）
+	# 与核子轰炸（科幻绿紫能量调）彻底拉开：玩家一眼识别橙红+蘑菇云=导弹井
+	var fireball_tint: Color = Color(1.0, 0.6, 0.2, 0.95)  # 橙红火球（写实核爆火光）
+	var shock_color: Color = Color(1.0, 0.85, 0.5, 0.9)   # 淡金/白热冲击波（非绿）
+	var aftershock_color: Color = Color(0.9, 0.5, 0.2, 0.5) # 暗橙余波
+	var smoke_tint: Color = Color(0.35, 0.32, 0.30, 0.6)   # 黑灰蘑菇云（写实烟尘色，非绿）
+	var flash_overlay_color: Color = Color(1.0, 0.98, 0.92) # 纯白偏暖热闪光
+	var ember_color: Color = Color(1.0, 0.5, 0.15)         # 橙红余烬
+
+	# ── 阶段1：弹道飞行（0.35s，贝塞尔短弧，适配俯视网格战场）──
+	# 减动效模式：跳过弹道，直接进入爆炸（保留核心反馈）
+	if parent != null and not DT.is_motion_reduce():
+		_spawn_nuclear_missile(parent, from_pos, target_pos)
+
+	# 文字提示（发射瞬间）：toast 告知战术核武触发
+	if SignalBus.has_signal("show_toast"):
+		SignalBus.show_toast.emit("☢ 战术核弹发射！")
+
+	# ── 阶段2：预警（弹道飞行中段，落点红圈标记）──
 	if parent != null:
+		var warn_tween := create_tween()
+		warn_tween.tween_interval(0.15)  # 弹道飞行 0.15s 后出现预警
+		warn_tween.tween_callback(func():
+			if is_instance_valid(parent):
+				# 收缩预警环（橙红→警示）
+				VfxImpactFactory.spawn_shockwave(parent, target_pos, 220.0, Color(1.0, 0.2, 0.1, 0.45)))
+
+	# ── 阶段3：落地核爆（弹道飞行 0.5s 后，与 _spawn_nuclear_missile 的飞行时间一致）
+	var detonate_tween := create_tween()
+	detonate_tween.tween_interval(0.5)
+	detonate_tween.tween_callback(func():
+		# 伤害结算（延迟回调内逐个 take_damage，victims 在发射时已锁定）
+		_settle_nuclear_victims(victims, target_pos)
+		# ①全屏闪白（overlay 0→0.95→0，0.15s）
+		_ensure_overlay()
+		_overlay.color = Color(flash_overlay_color.r, flash_overlay_color.g, flash_overlay_color.b, 0.0)
+		_overlay.visible = true
+		var flash_tw: Tween = create_tween()
+		flash_tw.tween_property(_overlay, "color:a", 0.95, 0.05)
+		flash_tw.tween_property(_overlay, "color:a", 0.0, 0.15)
+		flash_tw.tween_callback(func(): _overlay.visible = false)
+		# 核爆标题（红字「☢ 核爆」闪现 0.4s，与闪白同步冲击，复用核子轰炸 _title_label 范式）
+		_ensure_title_label()
+		_title_label.text = "☢ 核打击"
+		_title_label.label_settings = _make_label_settings(Color(1.0, 0.3, 0.15), DT.FONT_SIZE_TITLE)
+		_title_label.visible = true
+		_title_label.modulate.a = 0.0
+		_title_label.position.x = (get_viewport().get_visible_rect().size.x - _title_label.size.x) / 2.0
+		_title_label.position.y = 110
+		var title_tw: Tween = create_tween()
+		title_tw.tween_property(_title_label, "modulate:a", 1.0, 0.08)
+		title_tw.tween_interval(0.25)
+		title_tw.tween_property(_title_label, "modulate:a", 0.0, 0.25)
+		title_tw.tween_callback(func(): _title_label.visible = false)
+		# ②火球贴图（scale 0→大，0.4s）
+		# ③主冲击波（半径 200，实际伤害半径）
+		# ④余波环（半径 320，延迟 0.08s，更淡）
+		# ⑤蘑菇云（ADD 混合，2.5s 上飘淡出）
+		# ⑥地面焦痕（永久）
+		if is_instance_valid(parent):
+			# ②火球贴图（1024px贴图×0.35≈360px，醒目不溢屏）
+			var fireball_tex: Texture2D = _load_nuclear_texture("nuke_fireball")
+			if fireball_tex != null:
+				VfxImpactFactory.spawn_impact_sprite(parent, target_pos, fireball_tex, 0.35, 0.4)
+			# ③主冲击波：贴图（形状感）+ 程序化环（扩散动感）叠加
+			var shockwave_tex: Texture2D = _load_nuclear_texture("nuke_shockwave")
+			if shockwave_tex != null:
+				VfxImpactFactory.spawn_impact_sprite(parent, target_pos, shockwave_tex, 0.30, 0.45)
+			VfxImpactFactory.spawn_shockwave(parent, target_pos, 200.0, shock_color)
+			# ④余波环（延迟 0.08s，参考 spawn_crit_aura 双层范式）
+			var after_tw := create_tween()
+			after_tw.tween_interval(0.08)
+			after_tw.tween_callback(func():
+				if is_instance_valid(parent):
+					VfxImpactFactory.spawn_shockwave(parent, target_pos, 320.0, aftershock_color))
+			# ⑤蘑菇云：优先帧动画（AI精灵表切割的多帧），失败回退单 sprite + tween
+			var mushroom_frames: Array = _load_nuclear_frames("nuke_mushroom_f", 9)
+			var mushroom_played: bool = false
+			if not mushroom_frames.is_empty():
+				mushroom_played = VfxImpactFactory.spawn_animated_nuclear(parent, target_pos, mushroom_frames, 320.0, 120.0, 8.0)
+			if not mushroom_played:
+				# 回退：单 sprite + tween（帧贴图缺失或减动效模式）
+				var mushroom_tex: Texture2D = _load_nuclear_texture("nuke_mushroom")
+				if mushroom_tex != null:
+					VfxImpactFactory.spawn_rising_sprite(parent, target_pos, mushroom_tex, 320.0, 120.0, 1.4)
+			VfxImpactFactory.spawn_smoke_column(parent, target_pos, smoke_tint)
+			# ⑥地面焦痕（贴图版，更逼真；贴图加载失败回退纯色多边形）
+			var burn_tex: Texture2D = _load_nuclear_texture("nuke_burn")
+			VfxImpactFactory.spawn_ground_burn(parent, target_pos, 90.0, 0.3, burn_tex)
+		# ⑦屏幕震动（extreme 档）
+		_request_shake(16.0, 1.0)
+		# ⑧绿光余烬（overlay 0.35→0，1.0s，参考 _play_nuclear_impact）
+		var ember_tw: Tween = create_tween()
+		ember_tw.tween_interval(0.05)
+		_ensure_overlay()
+		_overlay.color = Color(ember_color.r, ember_color.g, ember_color.b, 0.0)
+		_overlay.visible = true
+		ember_tw.tween_property(_overlay, "color:a", 0.35, 0.06)
+		ember_tw.tween_property(_overlay, "color:a", 0.0, 1.0)
+		ember_tw.tween_callback(func(): _overlay.visible = false)
+	)
+
+
+## 核爆伤害结算（在爆炸 tween_callback 内调用，对 victims 逐个 take_damage）
+## victims: [{"target": Node, "damage": float, "attacker": Node}, ...]
+## 结算时复查目标有效性（延迟期间目标可能已死亡/移除），位置用爆心（伤害范围已在发射时锁定）
+func _settle_nuclear_victims(victims: Array, center: Vector2) -> void:
+	for v in victims:
+		var target: Variant = v.get("target", null)
+		if target == null or not is_instance_valid(target):
+			continue
+		var dmg: float = float(v.get("damage", 0.0))
+		var attacker: Variant = v.get("attacker", null)
+		# 伤害数字（用目标当前位置，复用 CombatFeedback 的 critical 样式突出核爆）
+		var cur_pos: Vector2 = center
+		if target is Node2D:
+			cur_pos = (target as Node2D).global_position
+		if target.has_method("take_damage"):
+			target.take_damage(dmg, attacker if attacker is Node else null)
+
+
+## 核爆弹道：导弹 Sprite2D 沿贝塞尔短弧飞行 0.5s + 橙白拖尾激光
+func _spawn_nuclear_missile(parent: Node2D, from_pos: Vector2, target_pos: Vector2) -> void:
+	var missile_tex: Texture2D = _load_nuclear_texture("nuke_missile")
+	# 无导弹贴图时用激光线代替弹体（保证弹道可见）
+	if missile_tex == null:
 		VfxImpactFactory.spawn_laser_beam(parent, from_pos, target_pos, Color(1.0, 0.9, 0.4, 1.0))
-	# 爆炸：白闪 + 大冲击波 + 强震屏（复用 nuclear_impact 的全屏效果）
-	_ensure_overlay()
-	_overlay.color = Color(1.0, 1.0, 1.0, 0.0)
-	_overlay.visible = true
-	var tw: Tween = create_tween()
-	tw.tween_property(_overlay, "color:a", 0.7, 0.05)
-	tw.tween_property(_overlay, "color:a", 0.0, 0.25)
-	tw.tween_callback(func(): _overlay.visible = false)
-	if parent != null:
-		VfxImpactFactory.spawn_shockwave(parent, target_pos, 120.0, Color(1.0, 0.7, 0.3, 0.95))
-	_request_shake(12.0, 0.8)
+		return
+	var missile := Sprite2D.new()
+	missile.texture = missile_tex
+	# 1024px 贴图缩放到约 56px 宽（导弹应有的大小，像坦克炮弹而非巨物）
+	var tex_w: float = float(missile_tex.get_width())
+	var missile_scale: float = 56.0 / tex_w if tex_w > 0.0 else 0.06
+	missile.scale = Vector2(missile_scale, missile_scale)
+	missile.modulate = Color(1.0, 0.92, 0.75, 1.0)
+	missile.global_position = from_pos
+	# 导弹放单位层之上（z_index 高），确保飞行时盖在单位上方可见
+	missile.z_index = 50
+	parent.add_child(missile)
+	# 贝塞尔短弧：起点 → 弧顶（中点上方抬升）→ 目标
+	var apex := Vector2((from_pos.x + target_pos.x) / 2.0, min(from_pos.y, target_pos.y) - 160.0)
+	var prev_pt := from_pos
+	var trail_tw := create_tween()
+	# tween_method 沿二次贝塞尔曲线移动 + 朝向飞行方向旋转（0.5s 飞行，足够看清导弹）
+	trail_tw.tween_method(func(progress: float):
+		if not is_instance_valid(missile):
+			return
+		var t: float = progress
+		var q0 := from_pos.lerp(apex, t)
+		var q1 := apex.lerp(target_pos, t)
+		var pt := q0.lerp(q1, t)
+		missile.global_position = pt
+		# 朝向飞行方向
+		var dir := pt - prev_pt
+		if dir.length() > 0.5:
+			missile.rotation = dir.angle()
+		prev_pt = pt
+	, 0.0, 1.0, 0.5)
+	# 落地时移除导弹（爆炸特效接管）
+	trail_tw.tween_callback(func():
+		if is_instance_valid(missile):
+			missile.queue_free())
+
+
+## 加载核爆专用纹理（带资源守卫，缺失返回 null 由调用方回退）
+## name_id: "nuke_fireball" / "nuke_missile" / "nuke_mushroom" 等
+func _load_nuclear_texture(name_id: String) -> Texture2D:
+	var path := "res://assets/effects/nuclear/" + name_id + ".png"
+	if ResourceLoader.exists(path):
+		return load(path)
+	# 回退：火球用通用爆炸贴图，导弹/其他返回 null
+	if name_id == "nuke_fireball":
+		var fallback := "res://assets/effects/projectiles/weapons_realistic/weapon_artillery_impact.png"
+		if ResourceLoader.exists(fallback):
+			return load(fallback)
+	return null
+
+
+## 加载核爆帧动画序列（蘑菇云精灵表切割的多帧）。
+## prefix: 帧文件名前缀（如 "nuke_mushroom_f"），实际文件 = prefix + i + ".png"（i=0..count-1）
+## 任一帧缺失返回空数组（调用方回退单 sprite）。全部存在返回 Texture2D 数组。
+func _load_nuclear_frames(prefix: String, count: int) -> Array:
+	var frames: Array = []
+	for i in count:
+		var path := "res://assets/effects/nuclear/" + prefix + str(i) + ".png"
+		if not ResourceLoader.exists(path):
+			return []  # 任一帧缺失，整体回退
+		var tex: Texture2D = load(path)
+		if tex == null:
+			return []
+		frames.append(tex)
+	return frames
 
 
 ## 护盾投射：from 施放者 + 多个友军位置播蓝色护盾展开

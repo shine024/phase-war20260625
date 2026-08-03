@@ -37,6 +37,9 @@ signal unit_damaged(unit: Node, is_player: bool, amount: float, at_position: Vec
 signal battle_started()
 signal battle_ended(player_won: bool)
 signal wave_spawned(wave_index: int)
+# v9.x UI 性能：单位数变化广播（替代各 UI 面板各自 _process 轮询 BattleManager 计数）。
+# BattleManager 在单位 spawn/die 后 emit，top_hud_bar / battle_status_strip 监听刷新。
+signal unit_counts_changed(player_count: int, enemy_count: int)
 # v8.x 战斗经验升星：卡牌升星通知（供 UI 刷新）
 signal card_star_up(instance_id: String, old_star: int, new_star: int)
 
@@ -243,8 +246,12 @@ signal mechanism_sniper_fired(from_pos: Vector2, to_pos: Vector2)
 signal mechanism_blitz_fired(from_pos: Vector2, to_pos: Vector2)
 # 电子屏蔽（防空/电子战释放屏蔽波，center+radius 播紫色扩散波纹）
 signal mechanism_jamming_field_activated(center: Vector2, radius: float)
-# 战术核武（堡垒发射核弹，from→to 播抛物线+蘑菇云+震屏）
-signal mechanism_nuclear_launched(from_pos: Vector2, target_pos: Vector2)
+# 战术核武（导弹发射井发射核弹：from→to 弹道飞行+落点预警+多层核爆+震屏）
+# owner_str: "player"/"enemy" 用于敌我配色（当前仅玩家发射井，预留敌方扩展）
+# victims: [{"target": Node, "damage": float, "attacker": Node}, ...] 发射时锁定的目标列表
+#   伤害结算延后到 battle_spectacle 的爆炸回调（tween_callback），避免「敌人先死、导弹还在飞」脱节
+#   延迟期间目标可能移动，但 victims 在发射时已锁定，结算不重算位置（A1 风险缓解）
+signal mechanism_nuclear_launched(from_pos: Vector2, target_pos: Vector2, owner_str: String, victims: Array)
 # 护盾投射（堡垒投射护盾，from 施放者 + target_positions 多个友军位置，播蓝色护盾展开）
 signal mechanism_shield_projected(from_pos: Vector2, target_positions: Array)
 # 无人机定时标记（无人机标记敌方，from 无人机 + target_positions 多个敌方位置，播红色锁定框+扫描波纹）

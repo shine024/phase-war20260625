@@ -407,6 +407,261 @@ static func spawn_impact_sprite(parent: Node2D, world_pos: Vector2, texture: Tex
 
 
 ## ======================================================================
+# v8.5+: 战术核武专用公共 VFX（蘑菇云 / 地面焦痕）
+# 蘑菇云移植自 phase_instrument_abilities._spawn_smoke_column（公共化复用），
+# 让战术核武机制与相位仪核子轰炸共用同一蘑菇云实现。
+## ======================================================================
+
+## 上升烟柱粒子（核爆蘑菇云效果）。移植自 phase_instrument_abilities._spawn_smoke_column。
+## CPUParticles2D 向上发射 + ADD 混合 + 底浓顶淡渐变，2.5s 后停发并回收。
+## tint 由调用方传入（玩家绿 / 敌方暗红橙 / 中性灰）。
+static func spawn_smoke_column(parent: Node2D, pos: Vector2, tint: Color = Color(0.5, 0.5, 0.5, 0.5)) -> void:
+	if parent == null or not is_instance_valid(parent):
+		return
+	var p := CPUParticles2D.new()
+	p.position = pos
+	p.amount = 36
+	p.lifetime = 2.4
+	p.one_shot = false
+	p.emitting = true
+	p.explosiveness = 0.25
+	p.direction = Vector2(0, -1)  # 向上
+	p.spread = 30.0  # 蘑菇头扩散
+	p.initial_velocity_min = 50.0
+	p.initial_velocity_max = 110.0
+	p.gravity = Vector2(0, -20.0)  # 持续上飘
+	p.scale_amount_min = 5.0
+	p.scale_amount_max = 11.0
+	p.color = tint
+	# 烟柱渐变：底部浓→顶部淡
+	var grad := Gradient.new()
+	grad.add_point(0, Color(tint.r, tint.g, tint.b, 0.85))
+	grad.add_point(0.5, Color(tint.r, tint.g, tint.b, 0.45))
+	grad.add_point(1.0, Color(tint.r, tint.g, tint.b, 0.0))
+	p.color_ramp = grad
+	var mat := CanvasItemMaterial.new()
+	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	p.material = mat
+	parent.add_child(p)
+	# 2.5s 后停止发射并回收（WeakRef 防 "Lambda capture was freed"）
+	var tree := parent.get_tree()
+	if tree == null:
+		return
+	var timer := tree.create_timer(2.5)
+	var weak_p: WeakRef = weakref(p)
+	timer.timeout.connect(func():
+		var captured_p: Variant = weak_p.get_ref()
+		if captured_p == null or not is_instance_valid(captured_p):
+			return
+		captured_p.emitting = false
+		var t2 := tree.create_timer(captured_p.lifetime + 0.1)
+		t2.timeout.connect(func():
+			var captured_p2: Variant = weak_p.get_ref()
+			if captured_p2 != null and is_instance_valid(captured_p2):
+				captured_p2.queue_free())
+	)
+
+
+## 地面焦痕（核爆遗留痕迹）。加到 parent，永久持续到战斗结束随场景清理。
+## radius: 焦痕半径；fade_in: 初始淡入到目标 alpha 的时间（默认 0.3s，模拟焦痕"烧出来"）。
+## texture: 可选焦痕贴图（有则用贴图更逼真，无则回退纯色多边形）。贴图按 radius 缩放到目标尺寸。
+static func spawn_ground_burn(parent: Node2D, pos: Vector2, radius: float, fade_in: float = 0.3, texture: Texture2D = null) -> void:
+	if parent == null or not is_instance_valid(parent):
+		return
+	if DT.is_motion_reduce():
+		return  # 减动效：跳过永久焦痕（视觉冗余）
+	# 焦痕放单位层之下（z_index 负值，地面层），避免盖住单位
+	if texture != null:
+		# 贴图版焦痕：按 radius 缩放贴图（贴图基准半径=纹理宽度/2，缩放=radius/基准）
+		var burn_sprite := Sprite2D.new()
+		burn_sprite.position = pos
+		burn_sprite.texture = texture
+		var base_r: float = float(texture.get_width()) * 0.5
+		var s: float = radius / base_r if base_r > 0.0 else 1.0
+		burn_sprite.scale = Vector2(s, s)
+		burn_sprite.modulate = Color(1.0, 1.0, 1.0, 0.0)
+		burn_sprite.z_index = -5
+		parent.add_child(burn_sprite)
+		if fade_in > 0.0:
+			var tween := burn_sprite.create_tween()
+			tween.tween_property(burn_sprite, "modulate:a", 0.85, fade_in)
+		else:
+			burn_sprite.modulate.a = 0.85
+	else:
+		# 纯色多边形版（无贴图回退）
+		var burn := Polygon2D.new()
+		burn.position = pos
+		# 32 段实心圆（焦痕不需要空心环）
+		var segments := 32
+		var pts := PackedVector2Array()
+		for i in range(segments):
+			var ang := (TAU * i) / segments
+			pts.append(Vector2(cos(ang), sin(ang)) * radius)
+		burn.polygon = pts
+		burn.color = Color(0.08, 0.04, 0.02, 0.0)  # 起始透明，淡入到目标 alpha
+		# 焦痕放单位层之下（z_index 负值，地面层），避免盖住单位
+		burn.z_index = -5
+		parent.add_child(burn)
+		if fade_in > 0.0:
+			var tween := burn.create_tween()
+			tween.tween_property(burn, "color:a", 0.55, fade_in)
+		else:
+			burn.color.a = 0.55
+
+
+## 上升贴图精灵（蘑菇云贴图版）：放大+上飘+淡出，区别于 spawn_impact_sprite 的纯放大。
+## target_width: 蘑菇云峰值宽度（像素，默认 320）——按贴图原始像素反算 scale，避免贴图分辨率不同时尺寸失控。
+## rise: 上飘距离（像素）；life: 总生命周期。
+## 普通混合（非 ADD）——蘑菇云是烟尘实体不是发光体，ADD 会让它过曝失去形状。
+static func spawn_rising_sprite(parent: Node2D, pos: Vector2, texture: Texture2D, target_width: float = 320.0, rise: float = 120.0, life: float = 1.4) -> void:
+	if parent == null or not is_instance_valid(parent) or texture == null:
+		return
+	if DT.is_motion_reduce():
+		return
+	var sprite := _acquire_impact_sprite()
+	if sprite == null:
+		return
+	sprite.texture = texture
+	sprite.position = pos
+	# 按目标像素宽度反算 scale（贴图分辨率不同时尺寸一致）
+	var tex_w: float = float(texture.get_width())
+	var peak_scale: float = target_width / tex_w if tex_w > 0.0 else 1.0
+	var start_scale: float = peak_scale * 0.4  # 起始 40% 大小，放大到峰值
+	sprite.scale = Vector2(start_scale, start_scale)
+	sprite.modulate = Color(1.0, 1.0, 1.0, 0.95)
+	sprite.visible = true
+	# 普通混合（不 ADD）——保留蘑菇云形状的明暗细节
+	parent.add_child(sprite)
+	# 放大到峰值 + 上飘 + 淡出（模拟蘑菇云升腾消散）
+	var tween := sprite.create_tween()
+	tween.parallel().tween_property(sprite, "scale", Vector2(peak_scale, peak_scale), life * 0.5).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(sprite, "position:y", pos.y - rise, life).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(sprite, "modulate:a", 0.0, life).set_ease(Tween.EASE_IN)
+	tween.tween_callback(func():
+		_release_impact_sprite(sprite))
+
+
+## 蘑菇云帧动画版（核爆专用）：用 AI 生成的精灵表切割出的多帧，AnimatedSprite2D 逐帧播放。
+## 比 spawn_rising_sprite（单 sprite + tween 缩放）更流畅震撼——每帧都是 AI 画的不同成长阶段。
+## frame_textures: 帧贴图数组（ Texture2D[]，按时间顺序）；空或 null 回退 false 让调用方用单 sprite。
+## target_width: 峰值宽度（像素）；rise: 上飘距离；fps: 帧率（8fps × 9帧 ≈ 1.1s）。
+## 成功创建 AnimatedSprite2D 返回 true；帧贴图不足返回 false（调用方回退 spawn_rising_sprite）。
+static func spawn_animated_nuclear(parent: Node2D, pos: Vector2, frame_textures: Array, target_width: float = 320.0, rise: float = 120.0, fps: float = 8.0) -> bool:
+	if parent == null or not is_instance_valid(parent):
+		return false
+	if frame_textures == null or frame_textures.size() < 2:
+		return false  # 帧数不足，调用方回退单 sprite
+	if DT.is_motion_reduce():
+		return false  # 减动效：回退单 sprite（帧动画细节多，减动效不需要）
+	# 按第一帧贴图分辨率反算 scale（所有帧应同分辨率）
+	var first_tex: Texture2D = frame_textures[0]
+	var tex_w: float = float(first_tex.get_width())
+	var peak_scale: float = target_width / tex_w if tex_w > 0.0 else 1.0
+	# 代码建 SpriteFrames（VFX 是临时节点，代码建比 .tres 灵活，不占资源树）
+	var frames := SpriteFrames.new()
+	frames.add_animation("grow")
+	frames.set_animation_loop("grow", false)  # 播完自动停（非循环）
+	frames.set_animation_speed("grow", fps)
+	for i in frame_textures.size():
+		var tex: Texture2D = frame_textures[i]
+		if tex != null:
+			frames.add_frame("grow", tex)
+	# 创建 AnimatedSprite2D
+	var anim := AnimatedSprite2D.new()
+	anim.sprite_frames = frames
+	anim.position = pos
+	anim.scale = Vector2(peak_scale, peak_scale)
+	anim.modulate = Color(1.0, 1.0, 1.0, 0.95)
+	anim.z_index = 30  # 蘑菇云盖在单位上方
+	anim.play("grow")
+	parent.add_child(anim)
+	# 总时长 = 帧数 / fps
+	var life: float = float(frame_textures.size()) / fps
+	# 上飘 + 淡出（与 spawn_rising_sprite 同范式，但配合帧动画播放）
+	var tween := anim.create_tween()
+	tween.parallel().tween_property(anim, "position:y", pos.y - rise, life).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(anim, "modulate:a", 0.0, life).set_ease(Tween.EASE_IN)
+	# 播完销毁（帧动画不进对象池——核爆 CD 45s 频率低，new 节点无性能压力）
+	tween.tween_callback(func():
+		if is_instance_valid(anim):
+			anim.queue_free())
+	return true
+
+
+## 能量光柱（核子轰炸专用，替代蘑菇云）。从天而降的垂直能量束打击命中点。
+## 与 spawn_rising_sprite（蘑菇云向上）方向相反——能量武器=从天而降，核武器=地面升腾。
+## 实现一条从高空降落到命中点的 Line2D 光束 + ADD 混合发光 + 快速收缩消散。
+static func spawn_energy_pillar(parent: Node2D, pos: Vector2, color: Color = Color(0.5, 0.6, 1.0, 0.7), height: float = 400.0, life: float = 0.6) -> void:
+	if parent == null or not is_instance_valid(parent):
+		return
+	if DT.is_motion_reduce():
+		return
+	var beam := _acquire_beam()
+	if beam == null:
+		return
+	beam.width = 18.0
+	beam.default_color = color
+	beam.joint_mode = Line2D.LINE_JOINT_ROUND
+	beam.end_cap_mode = Line2D.LINE_CAP_ROUND
+	# 从命中点正上方 height 高度降落到命中点（垂直能量束）
+	beam.add_point(Vector2(pos.x, pos.y - height))
+	beam.add_point(pos)
+	beam.position = Vector2.ZERO
+	# ADD 混合发光（与蘑菇云 spawn_smoke_column 同 blend 模式，能量武器感）
+	beam.material = _get_add_mat()
+	parent.add_child(beam)
+	# 光束快速变细 + 淡出（能量打击瞬间消散，非持续燃烧）
+	var tween := beam.create_tween()
+	tween.tween_property(beam, "width", 3.0, life * 0.5)
+	tween.parallel().tween_property(beam, "modulate:a", 0.0, life)
+	tween.tween_callback(func():
+		beam.material = null  # 清理材质引用（_add_mat 是共享缓存，不 free）
+		_release_beam(beam))
+
+
+## 完整局部核爆效果（火球+冲击波+蘑菇云帧动画+焦痕）。
+## 供战术核武（单点）和核子轰炸（多点循环）共用同一套核爆视觉。
+## textures: 预加载的核爆贴图包 {"fireball":Tex, "shockwave":Tex, "burn":Tex, "mushroom_frames":Tex[]}
+##   缺失的贴图自动跳过对应层（部分核爆仍可见）；mushroom_frames 空则蘑菇云回退单 sprite
+## colors: 配色 {"shock":C, "aftershock":C, "smoke":C}
+## 全屏闪白/震屏/标题等全局效果不在此方法——由调用方按需触发（多点时只触发一次）。
+static func spawn_nuclear_explosion(parent: Node2D, pos: Vector2, textures: Dictionary, colors: Dictionary) -> void:
+	if parent == null or not is_instance_valid(parent):
+		return
+	var shock_color: Color = colors.get("shock", Color(1.0, 0.85, 0.5, 0.9))
+	var aftershock_color: Color = colors.get("aftershock", Color(0.9, 0.5, 0.2, 0.5))
+	var smoke_tint: Color = colors.get("smoke", Color(0.35, 0.32, 0.30, 0.6))
+	# ①火球贴图
+	var fireball_tex: Texture2D = textures.get("fireball", null)
+	if fireball_tex != null:
+		spawn_impact_sprite(parent, pos, fireball_tex, 0.35, 0.4)
+	# ②主冲击波：贴图 + 程序化环叠加
+	var shockwave_tex: Texture2D = textures.get("shockwave", null)
+	if shockwave_tex != null:
+		spawn_impact_sprite(parent, pos, shockwave_tex, 0.30, 0.45)
+	spawn_shockwave(parent, pos, 200.0, shock_color)
+	# ③余波环（延迟 0.08s）
+	var after_tw := parent.create_tween()
+	after_tw.tween_interval(0.08)
+	after_tw.tween_callback(func():
+		if is_instance_valid(parent):
+			spawn_shockwave(parent, pos, 320.0, aftershock_color))
+	# ④蘑菇云：优先帧动画，失败回退单 sprite
+	var mushroom_frames: Array = textures.get("mushroom_frames", [])
+	var mushroom_played: bool = false
+	if not mushroom_frames.is_empty():
+		mushroom_played = spawn_animated_nuclear(parent, pos, mushroom_frames, 320.0, 120.0, 8.0)
+	if not mushroom_played:
+		var mushroom_tex: Texture2D = textures.get("mushroom", null)
+		if mushroom_tex != null:
+			spawn_rising_sprite(parent, pos, mushroom_tex, 320.0, 120.0, 1.4)
+	spawn_smoke_column(parent, pos, smoke_tint)
+	# ⑤地面焦痕（贴图版，缺失回退纯色多边形）
+	var burn_tex: Texture2D = textures.get("burn", null)
+	spawn_ground_burn(parent, pos, 90.0, 0.3, burn_tex)
+
+
+## ======================================================================
 ## v8.4: 武器类改造专属视觉（变体叠加层）
 ## 在基础三层特效之上，为 5 种武器类改造叠加独有的视觉特征：
 ##   cluster     — 子母弹：主爆炸 + 6 个随机散布的小溅射点（子弹药撒布）

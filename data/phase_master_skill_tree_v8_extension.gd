@@ -171,12 +171,12 @@ const EXTENSION_NODES: Dictionary = {
 		# tier 9a：智能维修（卡片技能）
 		{"id": "pms_int_9a", "name": "智能维修", "desc": "解锁卡片技能「定时维修」：每 10s 全体机械+3% HP",
 		 "branch": BRANCH_INTELLIGENCE, "tier": 9, "cost": 3, "requires": ["pms_int_8"],
-		 "unlocks": [{"type": "card_skill", "id": "cps_smart_repair"}],
+		 "unlocks": [{"type": "card_skill", "id": "cps_repair_aura"}],
 		 "effects": {}},
 		# tier 9b：智能净化（卡片技能）
 		{"id": "pms_int_9b", "name": "智能净化", "desc": "解锁卡片技能「定时净化」：每 18s 清除全体 debuff",
 		 "branch": BRANCH_INTELLIGENCE, "tier": 9, "cost": 3, "requires": ["pms_int_8"],
-		 "unlocks": [{"type": "card_skill", "id": "cps_smart_cleanse"}],
+		 "unlocks": [{"type": "card_skill", "id": "cps_cleanse"}],
 		 "effects": {}},
 		# tier 9c：纳米病毒（v8.6 机制解锁——支援/火炮单位自带纳米病毒弹头）
 		{"id": "pms_int_9c", "name": "纳米病毒", "desc": "解锁机制：支援/火炮单位攻击20%概率注入纳米病毒（每秒损失1.5%最大生命值，持续6秒，打肉盾专用）",

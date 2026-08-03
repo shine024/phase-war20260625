@@ -181,7 +181,7 @@ const SKILL_TREE: Dictionary = {
 			 "branch": BRANCH_CONCEPT_WEAPON, "tier": 0, "cost": 1, "requires": [],
 			 "unlocks": [], "effects": {"stat_bonus": {"atk_light": 0.05, "atk_armor": 0.05, "atk_air": 0.05, "crit_chance": 0.05}}},
 			# tier 1：战术核武（v8.5：原 phase_shield_8000 空转——由相位仪能力触发不走技能树；改为机制技能：导弹发射井堡垒发射核弹）
-			{"id": "pms_cw_1", "name": "战术核武", "desc": "解锁机制：导弹发射井堡垒每45秒发射战术核弹，对敌方密集区造成 35% 最大生命的范围伤害",
+			{"id": "pms_cw_1", "name": "战术核武", "desc": "解锁机制：导弹发射井堡垒每45秒发射战术核弹，弹道飞行后对敌方密集区半径200内造成35%最大生命（保底200）的范围伤害",
 			 "branch": BRANCH_CONCEPT_WEAPON, "tier": 1, "cost": 2, "requires": ["pms_cw_0"],
 			 "unlocks": [{"type": "unit_mechanism", "id": "nuclear_strike"}],
 			 "effects": {}},
