@@ -180,7 +180,11 @@ func _create_phase_field_info_item() -> Control:
 		# PHASE_FIELD_GROWTH_RULES 是 PhaseInstrumentManager 的 const，通过 autoload 单例访问
 		var rule: Dictionary = PhaseInstrumentManager.PHASE_FIELD_GROWTH_RULES.get(key, {}) if PhaseInstrumentManager != null else {}
 		var label: String = String(rule.get("label", key))
-		alloc_parts.append("%s+%s" % [label, String(alloc[key])])
+		# alloc[key] 是 Variant（存档 JSON 往返后可能是 float/null），String() 构造函数
+		# 对部分 Variant 类型会抛 "Nonexistent 'String' constructor"。str() 是通用转换，
+		# 对任意类型都安全。先转 int 再 str，使显示为整数点数（如 "攻击+2" 而非 "攻击+2.0"）。
+		var alloc_val: int = int(alloc[key])
+		alloc_parts.append("%s+%s" % [label, str(alloc_val)])
 	alloc_parts.sort()
 	var alloc_text: String = "未分配"
 	if not alloc_parts.is_empty():

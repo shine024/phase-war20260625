@@ -94,10 +94,12 @@ const SKILLS: Dictionary = {
 		"trigger": "periodic", "interval": 90.0,
 		"source_tag": "", "min_source_count": 0,
 		"effect": {
-			"type": "summon_temp_unit",
-			"summon_id": "steel_golem", "count": 3,
-			"inherit_atk_pct": 0.25, "duration": 12.0,
-			"death_explosion_pct_atk": 2.0, "explosion_radius": 100
+			# 原 summon_temp_unit（召唤钢铁傀儡）已废弃：battlefield 无 summon_temp_unit 方法，
+			# 兜底信号也无人监听 → 静默失败。改为 buff_allies（终极版护盾+减伤，无需召唤战斗单位）。
+			"type": "buff_allies", "target": "all_allies",
+			"shield": 3000, "shield_duration": 10.0,
+			"stat_bonus": {"damage_reduction": 0.20},
+			"stat_bonus_duration": 10.0
 		}
 	},
 
@@ -346,8 +348,29 @@ static func compute_source_tags_for_stats(stats) -> Array:
 	if bool(stats.get_meta("is_stalker", false)):
 		tags.append("stalker")
 		tags.append("stealth")
-	# ── 家族类（由 UnitStatsTable._apply_law_family_meta 写入 stats meta "law_family"）──
+	# ── 家族类 ──
+	# 旧设计：仅由 law_family meta（玩家激活势力时写入）派生 flame/thunder/void。
+	# 问题：v6.8 停用势力战斗加成后，玩家多不激活势力 → law_family 恒空 →
+	#       火焰/雷霆/虚空 3 家族共 15 个卡片大招全部静默（已解锁也不触发）。
+	# 修复（解耦）：保留 law_family meta 作为"势力加成来源"，同时按兵种特征兜底派生——
+	#   - flame：火炮（ARTILLERY，燃烧/温压弹载体）
+	#   - thunder：防空/电子战（ANTI_AIR 子类或 is_ecm meta，电磁载体）
+	#   - void：狙击/渗透（is_sniper 或 is_stalker meta，虚空打击载体）
+	# 这样不激活势力时，派出对应兵种单位也能触发大招；激活势力仍让对应家族全员带 tag（保留势力加成）。
 	var fam: String = String(stats.get_meta("law_family", ""))
 	if not fam.is_empty() and fam in ["flame", "thunder", "void"]:
 		tags.append(fam)
+	# 兜底派生（不重复添加已有 tag）
+	if "flame" not in tags and int(stats.unit_subtype) == GC.UnitSubType.ARTILLERY:
+		tags.append("flame")
+	if "thunder" not in tags:
+		var is_thunder_carrier := (int(stats.unit_subtype) == GC.UnitSubType.ANTI_AIR) \
+		                          or bool(stats.get_meta("is_ecm", false))
+		if is_thunder_carrier:
+			tags.append("thunder")
+	if "void" not in tags:
+		var is_void_carrier := bool(stats.get_meta("is_sniper", false)) \
+		                       or bool(stats.get_meta("is_stalker", false))
+		if is_void_carrier:
+			tags.append("void")
 	return tags

@@ -88,6 +88,67 @@ print(call('logs.read'))                          # 读 Output 面板日志（�
 5. **方法不存在** → `-32601 method not found: <method>`（去 `registry.gd` 核对全名）。
 6. **会话注册表**：插件按 PID 在 `~/.godot-agent-tools/sessions/<pid>.json` 写端口/项目路径，供 MCP shim 的 `session.list` 发现多个编辑器实例。
 
+## 崩溃/错误日志诊断速查（2026-08-05 踩坑沉淀）
+
+> 游戏崩溃（signal 11 / 0xc0000005 段错误）后，"日志在哪"反复找不准。下面是**每个日志源的确切位置 + 局限**，按优先级排查。
+
+### 日志源清单（按可用性排序）
+
+| # | 日志源 | 路径 | 能抓什么 | 局限 |
+|---|--------|------|---------|------|
+| 1 | **agent_tools `logs.read`** | 编辑器进程内存缓冲（socket `logs.read` 方法）| 运行中游戏的 print/push_error，含 **GDScript backtrace** | ⚠️ **游戏崩溃退出后缓冲随进程消失**，必须"游戏还活着"时读。嵌入式窗口游戏崩溃通常进程已退 → 抓不到 |
+| 2 | **Godot 全局游戏日志** | `%APPDATA%/Godot/app_userdata/Phase War/logs/godot.log`（+ 时间戳轮转 `godot2026-XX-XX...log`）| 游戏运行期全部 stdout/stderr | ⚠️ **嵌入式窗口子进程**（编辑器 F5）的日志常不落盘（被父编辑器捕获到 Output 面板而非写文件）；只有**独立进程**（双击 exe / `--script` 模式）才稳定落盘。本项目该目录历史日志多是 2026-02 旧原型残留，看**文件修改时间**别被误导 |
+| 3 | **Windows 事件查看器（WER）** | 事件查看器 → Windows 日志 → 应用程序， ProviderName=`Application Error`；或 PowerShell：`Get-WinEvent -FilterHashtable @{LogName='Application';ProviderName='Application Error';StartTime=(Get-Date).AddHours(-2)} \| Where-Object {$_.Message -match 'Godot'}` | 崩溃的 C++ 层信息：异常代码（`0xc0000005`=访问违例/段错误，`0xc000041d`=未处理异常）、故障模块（`ntdll.dll`/`msvcrt.dll`=堆破坏，`Godot.exe`=引擎内部）、进程 ID、时间戳 | ⚠️ **只有 C++ 堆栈地址，无 debug info**（`PE/COFF executable`），**没有 GDScript backtrace**。只够判断"崩了 + 大概类型"，定位不到具体 GDScript 行 |
+| 4 | **编辑器 Output 面板** | 编辑器 GUI（无文件落盘）| F5 嵌入式游戏的 stdout/stderr，含 GDScript backtrace | ⚠️ agent_tools 的 `logs.read` **读不到**（它读的是游戏进程的 `_MCPGameBridge` autoload 缓冲，不是编辑器 Output）。只能人眼看；崩溃后 Output 内容**保留**（不随游戏子进程消失） |
+| 5 | **磁盘 `.godot/` 下** | `.godot/` 无崩溃日志 | — | Godot 不在项目目录写崩溃转储 |
+
+### 各崩溃场景该读哪个
+
+| 场景 | 推荐日志源 | 备注 |
+|------|-----------|------|
+| **编辑器 F5 跑游戏崩溃退出** | ①人眼看编辑器 Output 面板（GDScript backtrace 在那）②Windows 事件查看器（确认崩溃类型/时间）| agent_tools `logs.read` **抓不到**（游戏进程已退）。这是最常见的坑 |
+| **headless `--script` 模式崩溃** | 命令行 stdout 直接打印（含完整 GDScript backtrace） | `run_scene_headless` 工具会捕获并结构化返回 `errors[]` |
+| **独立进程（双击 exe）崩溃** | `%APPDATA%/.../logs/godot.log`（落盘）| 嵌入式窗口模式不落盘，这是与独立的区别 |
+| **游戏运行中（未崩）报错** | agent_tools `logs.read`（socket 直读，最快）| 游戏必须**正在运行**；`playing_scene` 非 false |
+
+### 关键鉴别点（别被误导）
+
+1. **`%APPDATA%/.../Phase War/logs/` 里的旧日志**：本项目该目录有大量 `2026-02-25` 的日志，内容是 `[Battlefield] ERROR: Key N already exists!` / `RealtimeBattleLayer` / `BattleGameManager` / `battle_unit` 字典等前缀——**这些在当前代码里零出现**（`grep -r "RealtimeBattleLayer" --include=*.gd .` 无结果），是某个旧原型残留，**对当前 Phase War 代码无诊断价值**。看日志务必先看文件**修改时间**。
+
+2. **GDScript backtrace 是定位崩溃的金标准**：形如
+   ```
+   GDScript backtrace (most recent call first):
+       [0] _apply_card_icon_to_clip (res://scenes/ui/backpack_card_item.gd:856)
+       [1] _set_compact_slot_view (res://scenes/ui/backpack_card_item.gd:895)
+       ...
+   ```
+   它在**游戏 stdout**。嵌入式 F5 崩溃后只能从编辑器 Output 面板人眼看到；headless 模式直接打到终端。
+
+3. **C++ backtrace（`[1] error(-1): no debug info in PE/COFF executable`）**：发行版 Godot 无调试符号，几十行地址全部 `no debug info`，**无法定位**。别花时间解析这些地址。
+
+4. **异常代码速查**：`0xc0000005`=访问违例（空指针/野指针/堆破坏）；`signal 11`=同前（Linux/跨平台叫法）；`0xc000041d`=未处理异常；`mem is null`（`alloc_static`）=**堆耗尽**（OOM）。
+
+### 当所有日志源都抓不到时的兜底：给游戏加 stdout 落盘
+
+嵌入式 F5 崩溃 + 编辑器 Output 滚太快看不清时，在 `scenes/main.gd:_ready()` 开头加全局 print 重定向：
+
+```gdscript
+func _redirect_stdout_to_file() -> void:
+    var path := "user://game_stdout.log"
+    var f := FileAccess.open(path, FileAccess.WRITE)  # WRITE=每次覆盖；想追加用 READ_WRITE + seek_end
+    if f == null:
+        push_warning("[Main] 无法打开日志文件: %s" % path)
+        return
+    # 把全局 print 输出重定向到文件（OS.execute 不受影响）
+    # Godot 4.x：用 LoggerServer 或直接 hook print；最简方式是设 ProjectSettings 的 logging
+    # 这里用一个轻量 trick：重定向 _print_handler
+    _log_file = f
+    # 注：实际实现需注册 print handler（见 OS.add_logger），下方简化版仅做示意
+    print("[Main] stdout 重定向到 ", path)
+```
+
+> ⚠️ Godot 4.5 没有 `OS.add_logger` 公开 API，完整重定向需用 `Logger` 类的 `add_logger`（编辑器构建可用）。**实战更稳的做法**：在崩溃点前后手动 `f.store_string(...)` + `f.flush()`，或临时把关键路径的 `print` 改成写文件。本项目 main.gd 曾临时加 `_redirect_stdout_to_file()`，复现稳定后应移除。
+
 ## Architecture
 
 ### Autoload Singletons (实际 42 个，project.godot load order)
@@ -2151,3 +2212,73 @@ inf_19单兵电台(ally_bonus)、arm_15数据链(ally_hit_bonus)、for_10指挥�
 - 套路4 光束谐振：resonance 写入闸门看单卡（装 air_targeting_laser 的单位），split/reflect 触发看全队机制——写读不对称但不会崩（未装触发器的单位累积的 resonance 无害，仅一行 set_meta）
 - `combo_active` meta 零读取——单卡套路增益实际靠 mod_special_flags 驱动，combo_active 供未来 UI 预留
 - chem_burst_trigger/nano_spread_trigger 等 trigger flag 仅作套路配套标记，不直接驱动逻辑（靠套路配套集参与激活判定）
+
+## v9.1d 组合技套路视觉优化 (2026-08-04)
+
+**背景**: v9.1/v9.1b/v9.1c 完成了 6 套组合技的战斗逻辑实现，但视觉反馈严重不足——浓度场（纳米/化学）全战场累积却完全不可见、套路激活无任何通知、光束分裂/反射代码已执行但玩家看不出、雷达锁定/弱点暴露无视觉标志、DOT 贴图静态不生动。玩家在战斗中难以感知这些组合技的存在。
+
+**核心策略**: 纯视觉/反馈层叠加，不动战斗数值逻辑。新增 12 项改动覆盖 3 个优先级（P0 浓度场+横幅、P1 光束/弱点/雷达/状态条、P2 DOT动态+图标纹理）。
+
+**12 个改动点（按优先级）:**
+
+### P0 战场浓度场可视化
+| 文件 | 改动 |
+|------|------|
+| `scripts/battle/vfx_impact_factory.gd` | +`spawn_nano_field`/`spawn_chem_field`（半透明 Polygon2D 区域，浓度→半径+alpha 映射，z_index=-5 盖地面背景之上单位之下）；+`_cleanup_field_vfx`（防重复） |
+| `scripts/battle/combo_field_state.gd` | +`field_changed(tag, amount)` 信号；`add_field`/`update` 衰减后 emit |
+| `scenes/battlefield/Battlefield.gd` | +`_subscribe_combo_field_state`（call_deferred 订阅）；`_process` 加浓度场 dirty+0.4s 节流重绘；+`_redraw_combo_field_vfx`（取玩家/敌方 spawn 中心点为浓度场中心） |
+
+### P0 套路激活横幅
+| 文件 | 改动 |
+|------|------|
+| `scripts/battle/vfx_impact_factory.gd` | +`show_combo_activate_banner`（HudLayer 顶部 Label，Tween 滑入淡出，全队激活带相机震动，防重复 has_node 守卫） |
+| `scripts/battle/combo_engine.gd` | +`_last_banner_combos` 缓存；`_refresh_team_mechanisms` 检测新激活 combo 触发横幅；+`_emit_team_activate_banner`（mechanisms→combo_id→name 拼接）；reset 清空缓存 |
+
+### P1 光束分裂/反射 VFX
+| 文件 | 改动 |
+|------|------|
+| `scripts/battle/vfx_impact_factory.gd` | +`spawn_beam_split_arcs`（复用 spawn_laser_beam 射 2 条次级光束）；+`spawn_beam_reflect_arc`（暗色反射弧） |
+| `scenes/units/bullet.gd` | `try_beam_resonance` 分裂/反射处理块末尾追加 VFX 调用（找相邻 2 单位画次级光束 + 反射弧）；弱点暴露成功时 `spawn_weakpoint_indicator` |
+
+### P1 弱点暴露 + 雷达锁定 + 激光谐振 VFX
+| 文件 | 改动 |
+|------|------|
+| `scripts/battle/vfx_impact_factory.gd` | +`spawn_weakpoint_indicator`（红色 X 十字，脉动，duration 后淡出）；+`spawn_radar_lock_ring`（蓝色旋转扫描圈，脚下，duration 后淡出）；+`spawn_resonance_ring`（白色光环，头顶，层数→alpha） |
+| `scripts/battle/module_effect_handler.gd` | `_tick_radar_lock` 锁定 best 后 `spawn_radar_lock_ring`；`_apply_laser_resonance_on_hit` 累积后 `spawn_resonance_ring`（读当前层数） |
+
+### P1 扩散波纹（化学爆发/纳米传染/EMP反射）
+| 文件 | 改动 |
+|------|------|
+| `scripts/battle/vfx_impact_factory.gd` | +`spawn_chem_burst_wave`（绿冲击波 r=80）；+`spawn_nano_spread_wave`（青冲击波 r=60） |
+| `scripts/battle/combo_engine.gd` | `try_chem_burst` 感染后 `spawn_chem_burst_wave`；`try_nano_spread` 感染后 `spawn_nano_spread_wave`；`try_emp_reflect` 反射后 `spawn_lightning_arc` 到各被反射单位 |
+
+### P1 组合技状态条（底部 HUD）
+| 文件 | 改动 |
+|------|------|
+| `scenes/ui/combo_status_strip.gd/.tscn`（新增） | 底部 HUD，6 套路图标横排，三态色（灰未激活/橙单卡/绿全队+发光边框）；0.6s 轮询 combo_engine + 扫描场上单位 mods；tooltip 动态显示名称+描述+状态 |
+| `scenes/main.tscn` | +`ComboStatusStrip` 节点（HudLayer，offset_left=165 紧贴 BattleStatusStrip 右侧） |
+
+### P2 DOT 动态 aura + 套路图标纹理
+| 文件 | 改动 |
+|------|------|
+| `scripts/battle/dot_vfx_manager.gd` | +`_attach_dynamic_aura`（按 dot_type 分派）；+`_attach_burn_aura`（橙旋转环）/`_attach_chem_aura`（绿反向慢转环）/`_attach_nano_aura`（青六边形脉冲）/`_attach_emp_aura`（紫电弧闪烁） |
+| `data/combo_tactics.gd` | 6 套路定义 +`icon_tex` 字段（纹理路径）；+`get_combo_icon_texture`（带缓存，无资源返回 null 回退 emoji） |
+
+**关键设计决策:**
+1. **浓度场用 Polygon2D 而非 GPUParticles2D**——0.4s 重建零 GC，复用 canvas item 创建模式，z_index=-5 分层正确
+2. **横幅 Tween 生命周期自管**——~2s 后自动 queue_free，has_node 防重复，不常驻内存
+3. **信号驱动浓度刷新**——field_changed 标 dirty + 定时器双保险，避免每帧重建
+4. **光束分裂 VFX 复用 beam 池**——spawn_laser_beam 已有对象池，零额外内存
+5. **单行 lambda 规避 gdparse 误报**——`func(): if x: y` 单行形式（Godot 引擎支持，gdtoolkit 4.5.0 误报但不影响运行）
+6. **图标纹理延迟加载+缓存**——无美术资源时返回 null，UI 回退 emoji，功能不受影响
+
+**附带修复（分支已有 bug）:**
+- `scripts/battle/vfx_impact_factory.gd` L1417 `_release_impact_sprite` 错误缩进一级 tab（分支改动引入，导致整个文件 parse 失败、所有依赖它的文件连锁报错）。修复为顶格 static func。
+
+**验证:**
+- Godot `--script` 单文件验证：16 OK / 0 FAIL（10 个新 VFX 方法 + field_changed 信号 + icon_tex 字段 + get_combo_icon_texture + ComboEngine/DotVfxManager/combo_status_strip load 通过）
+- gdparse 多文件检查：8/8 OK（vfx_impact_factory 的单行 lambda 误报属 gdtoolkit 4.5.0 已知限制，Godot 引擎已验证通过）
+- 全项目 `--check-only` 因项目体量（133卡+42 autoload）5 分钟超时（AGENTS.md 记录的既有现象），无我改动相关的早期 parse/compile 错误
+
+**资源需求（代码已回退兼容，不影响功能）:**
+- `assets/ui/combo_icons/{incendiary,emp,nano,laser,recon,chem}.png`（44×36）——状态条纹理图标，缺失时回退 emoji

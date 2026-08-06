@@ -32,7 +32,39 @@ const SHAPE_KEY_UNIT_ICON: Dictionary = {
 	"堡": "vis_player_003",   # FORTRESS → fortress（堡垒）
 }
 
+## 全局贴图缓存（path → Texture2D 或 null）。
+## v9.4: 加 LRU 上限，避免背包/图鉴等列表场景一次性加载大量图标后常驻显存导致 OOM。
+## 访问顺序队列（队首=最久未用，队尾=最近使用）；超出上限时从队首淘汰。
+const MAX_CACHED_TEXTURES := 80
 static var _tex_cache: Dictionary = {}
+static var _tex_cache_lru: Array[String] = []
+
+
+## 把 path 移到 LRU 队尾（最近使用）。命中或插入时调用。
+static func _tex_touch(path: String) -> void:
+	var idx := _tex_cache_lru.find(path)
+	if idx >= 0:
+		_tex_cache_lru.remove_at(idx)
+	_tex_cache_lru.push_back(path)
+
+
+## LRU 淘汰：若缓存条目超过 MAX_CACHED_TEXTURES，从队首释放最久未用的真纹理。
+## null（负缓存）条目不计入上限，但也会被一并清理过期项。
+static func _tex_evict_if_needed() -> void:
+	# 先按上限淘汰真纹理（Texture2D）
+	while _tex_cache_lru.size() > MAX_CACHED_TEXTURES:
+		var oldest: String = _tex_cache_lru.pop_front()
+		# 释放引用：置 null 让引擎可回收 VRAM（若没有其它强引用）
+		_tex_cache[oldest] = null
+		_tex_cache.erase(oldest)
+	# 顺带清理 null 负缓存条目中已不在 LRU 的（防负缓存无限增长）
+	if _tex_cache.size() > MAX_CACHED_TEXTURES * 2:
+		var keys_to_drop: Array = []
+		for k in _tex_cache.keys():
+			if _tex_cache[k] == null:
+				keys_to_drop.append(k)
+		for k in keys_to_drop:
+			_tex_cache.erase(k)
 
 ## 时代(0-4) + combat_kind(0-4) → 最接近的 vis_player 代表图
 ## key = "era_kind"，value = vis_player_NNN
@@ -237,8 +269,11 @@ static func load_tex(path: String) -> Texture2D:
 	if _tex_cache.has(path):
 		var prev: Variant = _tex_cache[path]
 		if prev is Texture2D:
+			# v9.4: LRU 命中，移到队尾
+			_tex_touch(path)
 			return prev as Texture2D
 		_tex_cache.erase(path)
+		# 负缓存（null）不进 LRU，命中时也不 touch
 	if not ResourceLoader.exists(path):
 		_tex_cache[path] = null
 		return null
@@ -255,6 +290,9 @@ static func load_tex(path: String) -> Texture2D:
 		_tex_cache[path] = null
 		return null
 	_tex_cache[path] = t
+	# v9.4: 插入新纹理后 touch + 触发淘汰
+	_tex_touch(path)
+	_tex_evict_if_needed()
 	return t
 
 
@@ -467,7 +505,46 @@ static func card_icon_path_for(c: CardResource) -> String:
 	return ""
 
 
-## 法则槽：优先 `law_id` 卡面，否则 `law` 聚合图，再否则 UI `icon_law`。
+## v9.4: 把 card_icon_path_for 的全分辨率路径转成缩略图路径。
+## 规则：`res://assets/card_icons/<subdir>/<name>.png` → `res://assets/card_icons/_thumb256/<subdir>/<name>.png`
+## 根目录下的聚合图（如 law.png/_enemy_placeholder.png）无缩略图，返回空。
+## 缩略图不存在时返回空（调用方回退全分辨率）。
+const THUMB_DIR_PREFIX := "res://assets/card_icons/_thumb256/"
+
+static func _to_thumbnail_path(full_path: String) -> String:
+	# 只处理 res://assets/card_icons/<subdir>/... 形式
+	const BASE := "res://assets/card_icons/"
+	if not full_path.begins_with(BASE):
+		return ""
+	var rest: String = full_path.substr(BASE.length())
+	# rest 形如 "player/vis_player_001.png"；根目录文件（无 /）不转
+	var slash := rest.find("/")
+	if slash <= 0:
+		return ""
+	return THUMB_DIR_PREFIX + rest
+
+
+## v9.4: 列表场景（背包/图鉴网格）专用——优先返回 256 缩略图路径，不存在则回退全分辨率。
+## 这样列表场景 VRAM 占用降至 1/4~1/16，避免一次性渲染上百张全分辨率图标导致 OOM。
+static func card_icon_path_for_list(c: CardResource) -> String:
+	var full: String = card_icon_path_for(c)
+	if full.is_empty():
+		return ""
+	var thumb: String = _to_thumbnail_path(full)
+	if not thumb.is_empty() and ResourceLoader.exists(thumb):
+		return thumb
+	return full
+
+
+## v9.4: 列表场景专用便捷加载——先试缩略图，失败回退全分辨率。
+static func card_icon_for_list(c: CardResource) -> Texture2D:
+	var p: String = card_icon_path_for_list(c)
+	if p.is_empty():
+		return null
+	return load_tex(p)
+
+
+
 static func law_slot_icon_path(law_id: String) -> String:
 	if not law_id.is_empty():
 		var by_law: String = "res://assets/card_icons/%s.png" % law_id

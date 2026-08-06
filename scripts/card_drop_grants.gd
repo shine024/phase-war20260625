@@ -38,6 +38,8 @@ static func _get_drop_manager() -> Node:
 ## 敌方风格奖励：规范化 id 后，若有对应卡牌资源则经 DropManager 发掉落卡，否则写入蓝图副本
 ## v7.x 胜利面板漏显修复：新增可选 source 参数，非空时记录到 GameManager 本局收集器，
 ## 供胜利面板"本局缴获与战利品"分区显示。默认空 → 不记录（向后兼容，普通关 pending_drops claim 路径零变化）。
+## v7.x 战报一致性修复：只有真正发掉落卡成功（get_card_by_id 命中）才记战报；回退到
+## add_blueprint_copy（只解锁蓝图+给研究点，背包无卡）时不记，避免"战报显示但实际没得到卡"。
 static func grant_enemy_style_card(bm: Node, card_id: String, _era: int, amount: int, source: String = "") -> void:
 	if bm == null or not is_instance_valid(bm):
 		return
@@ -51,13 +53,14 @@ static func grant_enemy_style_card(bm: Node, card_id: String, _era: int, amount:
 		id = String(bm.normalize_storage_id(id))
 	if id.is_empty():
 		return
-	# v7.x 胜利面板漏显修复：source 非空时记录到本局收集器（显示名多层回退，杜绝裸 ID）
-	if not source.is_empty():
-		_record_card_to_collector(id, n, source)
 	var dm: Node = _get_drop_manager()
 	if dm != null and dm.has_method("grant_dropped_cards_by_id"):
 		if DefaultCards.get_card_by_id(id) != null:
 			dm.grant_dropped_cards_by_id(id, n)
+			# v7.x 战报一致性修复：只有真正发卡成功才记入战报收集器（显示名多层回退，杜绝裸 ID）。
+			# 回退蓝图副本不记——蓝图副本只解锁蓝图库+给研究点，背包无卡，不该冒充"缴获卡牌"显示。
+			if not source.is_empty():
+				_record_card_to_collector(id, n, source)
 			return
 	if bm.has_method("add_blueprint_copy"):
 		bm.add_blueprint_copy(id, n)

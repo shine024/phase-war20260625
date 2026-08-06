@@ -67,6 +67,8 @@ func _draw() -> void:
 	var truncated: String = _fit_name(_display_name, _bar_rect.size.x - 4.0)
 	# Node2D 无 get_theme_default_font()，使用 ThemeDB 回退字体
 	var font: Font = ThemeDB.get_fallback_font()
+	if font == null:
+		return
 	var text_size: Vector2 = font.get_string_size(truncated, HORIZONTAL_ALIGNMENT_LEFT, -1, _font_size)
 	var text_pos: Vector2 = Vector2(
 		_bar_rect.position.x + (_bar_rect.size.x - text_size.x) * 0.5,

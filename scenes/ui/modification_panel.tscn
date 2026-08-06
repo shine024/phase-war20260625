@@ -182,7 +182,7 @@ theme_override_font_sizes/font_size = 20
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 [node name="TitleSub" type="Label" parent="VBoxContainer/TitleRow/TitleHBox"]
 layout_mode = 2
-text = "TACTICAL MODIFICATION BAY"
+text = "战术改造舱"
 theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 0.7)
 [node name="Spacer" type="Control" parent="VBoxContainer/TitleRow/TitleHBox"]

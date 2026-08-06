@@ -13,6 +13,8 @@ const DamageAttenuation = preload("res://scripts/battle/damage_attenuation.gd")
 const AttackCalculator = preload("res://scripts/battle/attack_calculator.gd")
 const VfxImpactFactory = preload("res://scripts/battle/vfx_impact_factory.gd")
 const DT = preload("res://resources/design_tokens.gd")
+const CardGridLayout = preload("res://scripts/card_grid_battle_layout.gd")  # v9.2: 分行索敌行判定
+const CardGridUnitVisuals = preload("res://scripts/card_grid_unit_visuals.gd")  # v8.x: 战场卡图视觉数据（头脚锚点）
 
 ## v7.x: 光环/指挥单位的 platform_type 集合（与 construct_unit.gd 光环注册对齐）
 ## FORTRESS=3, RADAR=4, SCOUT=5, CARRIER=8, MEDIC=9, STEALTH=10, COMMAND=12
@@ -69,12 +71,20 @@ static func find_target(u: CharacterBody2D, _delta: float) -> void:
 		var spatial_grid = BattleManager.spatial_grid
 		if spatial_grid:
 			var max_range: float = mini(acquisition_range(u), 250.0)
+			# v9.2: 分行索敌——先查同行最近目标，无则回退全行最近。
+			# spatial_grid.query_nearest_target_with_mode 不支持行过滤，故采用两步：
+			# ① 查射程内最近（同行/跨行都有）；② 若该目标与攻击者不同行，再查一次"最近同行目标"优先。
 			var nearest_target = spatial_grid.query_nearest_target_with_mode(
 				u.global_position,
 				u.is_player,
 				max_range,
 				targeting_mode
 			)
+			# v9.2: 若最近目标不在同行，尝试在同行找一个；同行无则接受原最近目标（跨行回退）。
+			if nearest_target != null and not CardGridLayout.units_in_same_row(u, nearest_target):
+				var same_row_target: Node2D = _query_nearest_same_row_spatial(u, spatial_grid, max_range, targeting_mode)
+				if same_row_target != null:
+					nearest_target = same_row_target
 			if nearest_target != null:
 				u.target = nearest_target
 				return
@@ -97,6 +107,11 @@ static func find_target(u: CharacterBody2D, _delta: float) -> void:
 				max_range2,
 				targeting_mode
 			)
+			# v9.2: 分行索敌——同行优先，无则接受跨行最近（回退）
+			if nearest_target2 != null and not CardGridLayout.units_in_same_row(u, nearest_target2):
+				var same_row_t2: Node2D = _query_nearest_same_row_spatial(u, spatial_grid2, max_range2, targeting_mode)
+				if same_row_t2 != null:
+					nearest_target2 = same_row_t2
 			if nearest_target2 != null:
 				u.target = nearest_target2
 				return
@@ -113,6 +128,8 @@ static func find_target(u: CharacterBody2D, _delta: float) -> void:
 	if not candidates.is_empty():
 		var candidate_nodes: Array = []
 		var final_candidates: Array = []
+		# v9.2: 分行索敌——候选按"同行优先"筛选（空则跨行回退）
+		candidates = _prefer_same_row(u, candidates)
 		# 限制候选数量到最多10个
 		var limit: int = mini(candidates.size(), 10)
 		for i in range(limit):
@@ -190,6 +207,8 @@ static func _find_target_by_card_grid(u: CharacterBody2D, targeting_mode: int = 
 			candidates.append(n)
 	if candidates.is_empty():
 		return null
+	# v9.2: 分行索敌——同行优先，空则跨行回退（在 select_target 前过滤候选集）
+	candidates = _prefer_same_row(u, candidates)
 	if u.stats != null:
 		return TargetSelection.select_target(u, candidates, u.stats.weapon_type)
 	# 回退：取距离最近
@@ -209,6 +228,47 @@ static func _get_unit_slot_index(n: Node) -> int:
 	if s >= 0:
 		return s
 	return int(n.get_meta("card_grid_enemy_slot", -1))
+
+
+## v9.2: 分行索敌——同行优先，空则跨行回退。
+## candidates 为已收集的候选数组，返回按"同行优先"筛过的数组：
+## 若同行候选非空则只返回同行候选；否则原样返回全候选（避免单位空转）。
+## 攻击者无 slot meta（异常情况）时原样返回，不参与行过滤。
+static func _prefer_same_row(attacker: Node, candidates: Array) -> Array:
+	if candidates.is_empty():
+		return candidates
+	if attacker == null or not is_instance_valid(attacker):
+		return candidates
+	if not attacker.has_meta("card_grid_slot") and not attacker.has_meta("card_grid_enemy_slot"):
+		return candidates  # 无 slot meta，不参与行过滤
+	var same_row: Array = []
+	for c in candidates:
+		if c == null or not is_instance_valid(c):
+			continue
+		if CardGridLayout.units_in_same_row(attacker, c):
+			same_row.append(c)
+	return same_row if not same_row.is_empty() else candidates
+
+
+## v9.2: spatial_grid 行过滤辅助——在射程内找同行最近敌方目标。
+## 复用 spatial_grid.query_enemies 拿到半径内所有敌方，按同行过滤后取最近；无同行则返回 null。
+static func _query_nearest_same_row_spatial(u: CharacterBody2D, spatial_grid: Node, max_range: float, _targeting_mode: int) -> Node2D:
+	var enemies: Array = spatial_grid.query_enemies(u.global_position, max_range, u.is_player)
+	if enemies.is_empty():
+		return null
+	var origin: Vector2 = u.global_position
+	var best: Node2D = null
+	var best_d2: float = INF
+	for e in enemies:
+		if e == null or not is_instance_valid(e) or not (e is Node2D):
+			continue
+		if not CardGridLayout.units_in_same_row(u, e):
+			continue
+		var d2: float = origin.distance_squared_to((e as Node2D).global_position)
+		if d2 < best_d2:
+			best_d2 = d2
+			best = e
+	return best
 
 
 ## v8: 防空单位优先索敌——射程内优先打 AIR 类目标（空域封锁语义）。
@@ -246,6 +306,10 @@ static func _scan_slot_targets(u: CharacterBody2D, gr: Array) -> Node2D:
 	if valid.is_empty():
 		return null
 
+	# v9.2: 分行索敌——曲射单位也优先打同行敌人（同行优先，空则跨行）。
+	# L0~L3 用同行候选筛选；L4 兜底用全 valid（保证总有目标可打，不空转）。
+	var valid_row: Array = _prefer_same_row(u, valid)
+
 	var origin: Vector2 = u.global_position
 
 	# L0 反击标记目标（仅当本单位装了 art_14_counter_battery 等反击改造时生效）
@@ -253,10 +317,11 @@ static func _scan_slot_targets(u: CharacterBody2D, gr: Array) -> Node2D:
 	# 此前该 meta 写入后战斗侧零读取，现复活：炮兵优先反击刚刚打自己的敌人。
 	# 过期检查复用 _marked_until（与标记系统同源），避免攻击者死亡后 meta 残留被永久优先。
 	# v8: 兵种固定机制「火炮反炮兵」加计数器——counter_battery_shots 限制优先射击次数，
-	# 归零后清理标记回退常规索敌（炮兵反击不再无限优先）。
+	# 归零时清理标记回退常规索敌（炮兵反击不再无限优先）。
+	# v9.2: 反击标记优先在同行候选中找（反击者通常就在同行），无则不强制跨行（反击是战术优先，非兜底）。
 	if u.stats != null and u.stats.has_counter_battery and u.stats.counter_battery_shots > 0:
 		var _now_cb: float = Time.get_ticks_msec() / 1000.0
-		var marked: Array = valid.filter(func(n):
+		var marked: Array = valid_row.filter(func(n):
 			return n is Node and n.has_meta("_counter_marked_by") and n.has_meta("_marked_until") and _now_cb < float(n.get_meta("_marked_until", 0.0)))
 		if not marked.is_empty():
 			# v8: 递减反炮兵剩余次数；归零时清理所有标记目标的 _counter_marked_by（停止优先）
@@ -267,24 +332,24 @@ static func _scan_slot_targets(u: CharacterBody2D, gr: Array) -> Node2D:
 						n.remove_meta("_counter_marked_by")
 			return _nearest_of(origin, marked)
 
-	# L1 指挥单位
-	var commanders: Array = valid.filter(func(n):
+	# L1 指挥单位（同行优先）
+	var commanders: Array = valid_row.filter(func(n):
 		return _is_command_unit(n.get("stats") as UnitStats))
 	if not commanders.is_empty():
 		return _nearest_of(origin, commanders)
 
-	# L2 光环单位
-	var aura_units: Array = valid.filter(func(n):
+	# L2 光环单位（同行优先）
+	var aura_units: Array = valid_row.filter(func(n):
 		return _is_aura_unit(n.get("stats") as UnitStats))
 	if not aura_units.is_empty():
 		return _nearest_of(origin, aura_units)
 
-	# L3 输出最高单位（DPS 最高，并列容差内取最近）
-	var best: Node2D = _highest_dps_unit(origin, valid)
+	# L3 输出最高单位（DPS 最高，并列容差内取最近）——同行优先
+	var best: Node2D = _highest_dps_unit(origin, valid_row)
 	if best != null:
 		return best
 
-	# L4 最后排单位（槽位远→近，原逻辑兜底）
+	# L4 最后排单位（槽位远→近兜底）——跨行兜底（保证单位总能选到目标）
 	return _farthest_slot_unit(u, valid)
 
 
@@ -408,6 +473,19 @@ static func do_attack(u: CharacterBody2D) -> void:
 	# 回退：用攻击值获取攻击值（配对防御）
 	var damage: float = u.stats.attack_damage if u.stats else 0.0
 	do_attack_with_damage(u, damage, u.stats.weapon_type if u.stats else 0, "")
+
+## 获取直射武器发射起点：单位 Sprite 头脚垂直中点（相对节点原点），加节点全局位置。
+## 曲射/波次武器保持脚部发射（u.global_position），此处仅用于直射路径。
+static func _get_direct_fire_spawn_pos(u: CharacterBody2D) -> Vector2:
+	var offsetY: float = 0.0
+	var unit_spr: Sprite2D = null
+	if u.is_player:
+		unit_spr = u.get_node_or_null("Sprite") as Sprite2D
+	else:
+		unit_spr = u.get_node_or_null("Sprite2D") as Sprite2D
+	if unit_spr != null:
+		offsetY = CardGridUnitVisuals.entity_top_y(unit_spr) * 0.5
+	return u.global_position + Vector2.UP * offsetY
 
 ## 执行攻击（指定伤害值）
 static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type_override: int = -1, weapon_name: String = "", weapon_resource: Variant = null, p_pre_calculated: bool = false) -> void:
@@ -546,11 +624,12 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 				return
 		# 批处理不可用时回退到独立子弹
 
-	# 高速直射 → 批处理
+	# 高速直射 → 批处理（v8.x: 发射点改为头脚中点，不再从脚部发射）
 	if wt == GC.WeaponType.DIRECT and weapon_speed > 2.0:
+		var _fire_spawn_pos = _get_direct_fire_spawn_pos(u)
 		var batch = BattleManager.player_projectile_batch if u.is_player else BattleManager.enemy_projectile_batch
 		if batch and is_instance_valid(batch) and batch.has_method("fire"):
-			batch.fire(u.global_position, u.target, damage, wt, u, u.stats, miss)
+			batch.fire(_fire_spawn_pos, u.target, damage, wt, u, u.stats, miss)
 			return
 
 	# 低速直射 或 曲射/空射回退 → 独立子弹节点（对象池）
@@ -558,12 +637,13 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 	var pellet_n := 6 if wt == 5 else 1
 	var pellet_dmg := damage / float(pellet_n)
 	var root_2d = u.get_parent().get_parent() if u.get_parent() else u
+	var _fire_spawn_pos = _get_direct_fire_spawn_pos(u)
 
 	for _p in range(pellet_n):
 		var bullet: Node2D = ObjectPoolManager.get_object("bullets")
 		if bullet == null:
 			bullet = BulletScene.instantiate()
-		bullet.global_position = u.global_position
+		bullet.global_position = _fire_spawn_pos
 		# v7.x: 子弹 VFX 弹道类型优先用槽位 weapon_resource.weapon_type（按目标类型差异化），
 		# 回退单位级 legacy_weapon_type（effects.weapon_type 改造保留的单位级默认），
 		# 再回退到 wt（路由判定值）。

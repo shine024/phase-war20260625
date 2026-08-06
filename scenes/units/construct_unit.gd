@@ -493,8 +493,15 @@ func apply_card_grid_enemy_presentation() -> void:
 	if arch_for_icon.is_empty():
 		arch_for_icon = stats.platform_card_id
 	var cfg: Dictionary = EnemyArchetypes.get_config(arch_for_icon)
-	if card_res == null:
-		card_res = CardGridUnitVisuals.resolve_card_for_archetype(arch_for_icon)
+	# v9.x: 敌方产兵（_visual_archetype_id 非空）时，card_res 必须用真实 archetype 解析
+	# （供 CardFootAnchors.get_visual_scale 查正确缩放 + apply_battle_card_chrome 显示正确势力底/名称）。
+	# 原 card_res 从 platform_card_id 查到平台蓝图卡（card_id=steel_titan_basic），缩放查不到 → 错误。
+	# 现优先从 arch_for_icon 反查真实兵种卡（resolve_card_for_archetype 走 manifest/drops），
+	# 查不到再回退 platform 蓝图卡，最后合成卡。
+	if not _visual_archetype_id.is_empty():
+		var arch_card: CardResource = CardGridUnitVisuals.resolve_card_for_archetype(arch_for_icon)
+		if arch_card != null:
+			card_res = arch_card
 	if card_res == null:
 		card_res = CardGridUnitVisuals.synthetic_card_for_archetype(arch_for_icon, cfg)
 	var tex: Texture2D = CardGridUnitVisuals.resolve_battle_icon_texture(card_res, arch_for_icon, cfg, false)
@@ -658,6 +665,23 @@ func _play_faction_glow_pulse() -> void:
 		_faction_glow_tween.kill()
 	_faction_glow_tween = create_tween()
 	_faction_glow_tween.tween_property(self, "modulate", Color.WHITE, 0.5).set_ease(Tween.EASE_OUT)
+
+
+## v8.x: 部署实体化落地反馈——脚下青蓝冲击波涟漪 + 向上火花迸射。
+## 让进度条走完后单位有"降临"感，而非"啪"地出现。走对象池 + motion_reduce 短路。
+func _play_materialize_fx() -> void:
+	if not is_instance_valid(self) or is_preview_mode:
+		return
+	# 仅玩家单位（敌方产兵走 enemy spawn 自带路径）
+	if not is_player:
+		return
+	var vp: Node = get_parent()
+	if vp == null:
+		return
+	# 脚下落地涟漪（扁圆扩散环，我方青蓝）
+	VfxImpactFactory.spawn_shockwave(vp, global_position, 40.0, Color(0.4, 0.75, 1.0, 0.8))
+	# 向上迸射的能量火花（复用 spawn_crit_sparks 的金色径向，体现"实体化能量凝结"）
+	VfxImpactFactory.spawn_crit_sparks(vp, global_position, false)
 
 
 ## 单武器：法则改写 `stats` 后，把唯一槽位 `_weapon_cfgs[0]` 与 `stats.weapons[0]` 与主行对齐
@@ -2064,6 +2088,8 @@ func _trigger_allied_kill_rewards() -> void:
 
 ## v6.4: 死亡视觉淡出——快速缩放并淡出后销毁节点（逻辑结算已完成，不依赖 _process）
 func _play_death_fadeout() -> void:
+	# v8.x: 死亡爆散反馈（阵营色冲击波 + 碎片），让死亡与受击产生明确视觉差
+	VfxImpactFactory.spawn_death_burst(get_parent(), global_position, is_player)
 	if _death_fade_tween != null and _death_fade_tween.is_valid():
 		_death_fade_tween.kill()
 	var start_scale := scale

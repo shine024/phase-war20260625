@@ -42,9 +42,7 @@ func _initialize() -> void:
 	var asset_bad: Array[String] = []
 
 	var ids: Array[String] = []
-		# EnemyBlueprints removed
-		ids.append(String(id_raw))
-	ids.sort()
+	# 原 EnemyBlueprints 来源已被移除（见 git 历史），现仅从 DefaultCards 收集平台卡 ID。
 	for cid in DefaultCards.get_all_blueprint_ids():
 		var s: String = String(cid)
 		if s.begins_with("platform_") or s == "fut_arm_omega":
@@ -57,9 +55,9 @@ func _initialize() -> void:
 		if card == null:
 			lines.append("[NO_CARD] %s" % card_id)
 			continue
-		if card.card_type != GC.CardType.COMBAT_UNIT and card.card_type != GC.CardType.COMBAT_UNIT:
-			if card.card_type == GC.CardType.COMBAT_UNIT:
-				rev_miss_weapon.append(card_id)
+		# 仅审计 COMBAT_UNIT 类型（WEAPON/ENERGY/LAW 跳过，记录到 weapon blueprint 供参考）
+		if card.card_type != GC.CardType.COMBAT_UNIT:
+			rev_miss_weapon.append(card_id)
 			continue
 
 		var arch: String = EnemyArchetypes.get_visual_archetype_id_for_card(card_id)

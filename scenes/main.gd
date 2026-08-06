@@ -19,7 +19,6 @@ const AFKModeManagerScript = preload("res://scripts/systems/afk_mode_manager.gd"
 const OfflineIdleManagerScript = preload("res://scripts/systems/offline_idle_manager.gd")
 const OfflineRewardDialogScript = preload("res://scenes/ui/offline_reward_dialog.gd")
 const DEBUG_MAIN_LOG := false
-const DEBUG_LOG_PATH := "debug-22f19e.log"
 
 var _blueprints_unlocked_this_battle: Array = []
 var _phase_field_xp_before_battle: int = 0
@@ -30,24 +29,6 @@ var _deploy_toast: ToastUtils = null
 var _save_toast: ToastUtils = null
 var _afk_manager: AFKModeManager = null
 var _offline_idle_manager: OfflineIdleManager = null
-
-func _debug_log(hypothesis_id: String, location: String, message: String, data: Dictionary = {}) -> void:
-	var payload := {
-		"sessionId": "22f19e",
-		"runId": "initial",
-		"hypothesisId": hypothesis_id,
-		"location": location,
-		"message": message,
-		"data": data,
-		"timestamp": Time.get_unix_time_from_system() * 1000
-	}
-	var mode := FileAccess.READ_WRITE if FileAccess.file_exists(DEBUG_LOG_PATH) else FileAccess.WRITE_READ
-	var f := FileAccess.open(DEBUG_LOG_PATH, mode)
-	if f == null:
-		return
-	f.seek_end()
-	f.store_line(JSON.stringify(payload))
-	f.close()
 
 # ── 节点引用 ──────────────────────────────────────────────────
 @onready var battle_container: Control            = $BattleContainer
@@ -240,13 +221,6 @@ func _prune_preloaded_panels() -> void:
 			continue
 		for child in container.get_children():
 			if child is Control and (String(child.name).findn("panel") >= 0 or child.has_signal("closed")):
-				# #region agent log
-				_debug_log("H3", "Main.gd:_prune_preloaded_panels", "pruning preloaded panel child", {
-					"panel_id": panel_id,
-					"overlay": overlay.name,
-					"child_name": child.name
-				})
-				# #endregion
 				child.queue_free()
 
 func _update_level_display() -> void:
@@ -622,22 +596,8 @@ func _ensure_lazy_panel(panel_key: String) -> void:
 		if panel_key == "progression" and child.name == "CardEnhancementPanel":
 			is_panel_node = true
 		if is_panel_node:
-			# #region agent log
-			_debug_log("H4", "Main.gd:_ensure_lazy_panel:reuse_existing", "existing panel found in container", {
-				"panel_key": panel_key,
-				"lazy_id": lazy_id,
-				"child_name": child.name
-			})
-			# #endregion
 			_connect_panel_closed_runtime(child, lazy_id)
 			return
-	# #region agent log
-	_debug_log("H4", "Main.gd:_ensure_lazy_panel:request_lazy_load", "no panel found, requesting UILazyLoader", {
-		"panel_key": panel_key,
-		"lazy_id": lazy_id,
-		"container_path": container_path
-	})
-	# #endregion
 	var loaded_panel: Control = UILazyLoader.get_panel(lazy_id)
 	if loaded_panel != null:
 		_connect_panel_closed_runtime(loaded_panel, lazy_id)

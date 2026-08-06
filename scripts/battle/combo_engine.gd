@@ -21,6 +21,7 @@ class_name ComboEngine
 const ComboTactics = preload("res://data/combo_tactics.gd")
 const ComboFieldState = preload("res://scripts/battle/combo_field_state.gd")
 const ModuleEffectHandler = preload("res://scripts/battle/module_effect_handler.gd")
+const VfxImpactFactory = preload("res://scripts/battle/vfx_impact_factory.gd")
 
 const TEAM_REFRESH_INTERVAL: float = 1.0   # 全队机制刷新节流
 
@@ -31,6 +32,8 @@ var _active_mechanisms: Array = []
 var _team_refresh_acc: float = 0.0
 ## 是否已激活（战斗开始后才有数据）
 var _active: bool = false
+## v9.1 上一次横幅展示的 combo_id 集合（防止同一组合反复弹横幅）
+var _last_banner_combos: Array = []
 
 func setup(battlefield: Node, field_state: ComboFieldState) -> void:
 	_battlefield = battlefield
@@ -46,6 +49,7 @@ func reset() -> void:
 	_active_mechanisms.clear()
 	_team_refresh_acc = 0.0
 	_active = false
+	_last_banner_combos.clear()
 	if _field_state != null:
 		_field_state.reset()
 
@@ -69,9 +73,35 @@ func _refresh_team_mechanisms() -> void:
 	var allies: Array = _get_player_units()
 	if allies.is_empty():
 		_active_mechanisms.clear()
+		_last_banner_combos.clear()
 		return
 	var team_combos: Array = ComboTactics.detect_team_combos(allies)
 	_active_mechanisms = ComboTactics.get_active_mechanisms(team_combos)
+	# v9.1 横幅触发：新激活的 combo（对比上次）→ 弹全队激活横幅
+	if not team_combos.is_empty():
+		var new_ones: Array = []
+		for cid in team_combos:
+			if not _last_banner_combos.has(cid):
+				new_ones.append(cid)
+		if not new_ones.is_empty():
+			_emit_team_activate_banner(new_ones)
+		_last_banner_combos = team_combos.duplicate()
+	else:
+		_last_banner_combos.clear()
+
+
+## v9.1 弹全队激活横幅
+func _emit_team_activate_banner(new_combo_ids: Array) -> void:
+	var names: Array = []
+	for cid in new_combo_ids:
+		var def: Dictionary = ComboTactics.get_combo_def(String(cid))
+		if not def.is_empty():
+			names.append(String(def.get("name", cid)))
+	if names.is_empty():
+		return
+	VfxImpactFactory.show_combo_activate_banner(
+		"「%s」全队激活！" % ", ".join(names), 2.0, true
+	)
 
 ## 获取当前全队激活的新机制 flag 列表（供战斗侧查询）
 func get_active_mechanisms() -> Array:
@@ -113,6 +143,11 @@ static func try_chem_burst(mechanisms: Array, field_state: ComboFieldState, targ
 		# 复用 burn 叠层（写 _burn_stacks + _burn_base_dps + _burn_until）
 		_infect_burn(n, 3, 4.0)   # 3 层，4 秒
 		infected += 1
+	# v9.1 化学爆炸扩散波纹 VFX（在源单位位置播放）
+	if infected > 0 and target is Node2D:
+		var parent: Node2D = (target as Node2D).get_parent() as Node2D
+		if parent != null:
+			VfxImpactFactory.spawn_chem_burst_wave(parent, (target as Node2D).global_position)
 
 ## 套路6 污染扩散：化学污染浓度 ≥40 时，化学 dot tick 感染相邻敌人。
 ## 由 module_effect_handler._tick_dot_damage 在 chem 结算后调用。
@@ -157,6 +192,14 @@ static func try_emp_reflect(mechanisms: Array, field_state: ComboFieldState, tar
 		n.set_meta("_ecm_crit_penalty", 0.10)
 		n.set_meta("_ecm_dodge_penalty", 0.05)
 		reflected += 1
+	# v9.1 EMP 反射 VFX：从被攻击敌方画电弧到各被反射单位
+	if reflected > 0 and target is Node2D:
+		var tparent: Node2D = (target as Node2D).get_parent() as Node2D
+		if tparent != null:
+			var tpos: Vector2 = (target as Node2D).global_position
+			for n in neighbors:
+				if n is Node2D:
+					VfxImpactFactory.spawn_lightning_arc(tparent, tpos, (n as Node2D).global_position, Color(0.75, 0.35, 1.0))
 	# v9.1b：反射后消耗 3 点石墨电荷（防持续命中全程触发 emp_reflect，平衡套路2）。
 	# 目标需重新累积 graphite 才能再次触发反射，给玩家压制窗口。
 	if reflected > 0 and target != null and is_instance_valid(target):
@@ -184,6 +227,11 @@ static func try_nano_spread(mechanisms: Array, field_state: ComboFieldState, tar
 			continue
 		# 感染纳米病毒（写 _nano_pct + _nano_until）
 		_infect_nano(n, 0.02, 4.0)   # 2% max_hp/s，4 秒
+		# v9.1 纳米传染波纹 VFX（在被感染者位置播放）
+		if n is Node2D:
+			var nparent: Node2D = (n as Node2D).get_parent() as Node2D
+			if nparent != null:
+				VfxImpactFactory.spawn_nano_spread_wave(nparent, (n as Node2D).global_position)
 		break   # 单次只扩散 1 个
 
 ## 套路4 光束反射/多重攻击：在 bullet.gd 命中后调用。

@@ -11,6 +11,7 @@ extends RefCounted
 ##   - on_damage_taken()   — 受击时：怒气积累、反击标记、反伤（v7.x 新增活跃路径）
 
 const GC = preload("res://resources/game_constants.gd")
+const CardGridLayout = preload("res://scripts/card_grid_battle_layout.gd")  # v9.2: 溅射同行收敛
 # v9.1: 组合技套路机制（chem_burst/emp_reflect/nano_spread/chem_spread 在 dot tick 后调用）
 const ComboEngine = preload("res://scripts/battle/combo_engine.gd")
 const ComboFieldState = preload("res://scripts/battle/combo_field_state.gd")
@@ -269,14 +270,21 @@ static func _apply_splash(attacker: Node, target: Node, damage: float, stats: Un
 	# v7.x: 半径支持改造加成（子母弹/近炸引信），改造加成 x2 使其更显著
 	var radius: float = 80.0 * (1.0 + maxf(0.0, stats.splash_radius_bonus) * 2.0)
 	# v8.1: 溅射冲击波环——在主目标位置 spawn 地面扩散环，半径=溅射范围
+	# v9.2: 用鲜明亮橙黄色（区别于燃烧的橙红、化学的绿、纳米的青），让"溅射爆炸"一眼可辨。
+	#   色值 1.0/0.75/0.15 = 亮橙黄（爆炸火光），alpha 0.9 比默认 0.8 更醒目。
 	if target != null and is_instance_valid(target) and target is Node2D:
 		var parent: Node2D = _resolve_fx_parent_node(target)
 		if parent != null:
-			VfxImpactFactory.spawn_shockwave(parent, (target as Node2D).global_position, radius)
+			VfxImpactFactory.spawn_shockwave(parent, (target as Node2D).global_position, radius, Color(1.0, 0.75, 0.15, 0.9))
 	var targets = _find_nearby_enemies(target, radius)
+	# v9.2: 分行索敌配套——溅射只波及主目标同行的敌方（让分行索敌的隔离感不被爆炸跨行打乱）。
+	# 若目标无 slot meta（相位场等），units_in_same_row 返回 true 不排除，行为同改动前。
+	var filtered: Array = []
 	for t in targets:
-		if t != target and is_instance_valid(t):
-			_deal_damage_to_unit(t, splash_dmg, attacker)
+		if t != target and is_instance_valid(t) and CardGridLayout.units_in_same_row(target, t):
+			filtered.append(t)
+	for t in filtered:
+		_deal_damage_to_unit(t, splash_dmg, attacker)
 
 static func _apply_chain(attacker: Node, target: Node, damage: float, stats: UnitStats) -> void:
 	if stats.chain_chance <= 0.0:
@@ -1080,6 +1088,10 @@ static func _apply_laser_resonance_on_hit(target: Node, stats: UnitStats, attack
 		var parent: Node2D = _resolve_fx_parent_node(target)
 		if parent != null:
 			VfxImpactFactory.spawn_shockwave(parent, (target as Node2D).global_position, 24.0, Color(0.9, 0.8, 1.0, 0.6))
+			# v9.1 激光谐振标记环（目标头顶白色光环，层数越多越亮）
+			var cur_stacks: int = ComboFieldState.get_target_stacks(target, ComboFieldState.META_LASER_RESONANCE, ComboFieldState.META_LASER_UNTIL)
+			if cur_stacks > 0:
+				VfxImpactFactory.spawn_resonance_ring(parent, (target as Node2D).global_position, cur_stacks, 5.0)
 
 ## v9.1 套路5 雷达锁定：读 attacker 的 _special.radar_lock_*，
 ## 命中时周期性挂 META_RADAR_LOCKED（带易伤值），供 try_weakpoint_expose 双标记判定。
@@ -1148,6 +1160,11 @@ static func _tick_radar_lock(unit: Node, delta: float) -> void:
 	if best != null:
 		best.set_meta(ComboFieldState.META_RADAR_LOCKED, Time.get_ticks_msec() / 1000.0 + dur)
 		best.set_meta(ComboFieldState.META_RADAR_VULN, vuln)
+		# v9.1 雷达锁定 VFX：目标脚下蓝色旋转扫描圈
+		if best is Node2D:
+			var rp: Node2D = (best as Node2D).get_parent() as Node2D
+			if rp != null:
+				VfxImpactFactory.spawn_radar_lock_ring(rp, (best as Node2D).global_position, dur)
 
 ## dot tick：每帧消费化学/燃烧/纳米状态，按 delta 累积掉血，过期清理
 ## 复用 minefield 的 meta 节流思路，但 dot 每 tick 间隔短（0.25s，更平滑）

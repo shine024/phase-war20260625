@@ -64,6 +64,7 @@ const SPECIAL_DROP_CARD_IDS: Array[String] = [
 	"drop_thunder_field",        # mod_inf_delta_e（三角洲部队）
 	"drop_overclock_matrix",     # mod_air_apache_e（阿帕奇直升机）
 	"drop_mega_particle_cannon", # fut_arm_colossus_e / fut_boss_nexus
+	"mod_arm_abrams_mk2",        # mod_arm_abrams_e（艾布拉姆斯Mk.II 升级版，现代装甲 CHAMPION，enemy_only 需显式注册）
 ]
 
 

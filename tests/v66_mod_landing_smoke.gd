@@ -20,11 +20,10 @@ func _initialize() -> void:
 	var card := _make_test_card()
 	var base_hp: float = 0.0
 	var base_def_light: float = 0.0
-	{
-		var st_base: UnitStats = UnitStatsTable.build_stats_from_card(card, 0)
-		base_hp = st_base.max_hp
-		base_def_light = st_base.defense_light
-	}
+	# GDScript 无 {} 块作用域，直接在此作用域声明即可
+	var st_base: UnitStats = UnitStatsTable.build_stats_from_card(card, 0)
+	base_hp = st_base.max_hp
+	base_def_light = st_base.defense_light
 	# 装上 gen_04_vest（effects = {max_hp=0.10, defense_light=0.05}）
 	card.mods.append({id = "gen_04_vest", enabled = true})
 	var st_modded: UnitStats = UnitStatsTable.build_stats_from_card(card, 0)

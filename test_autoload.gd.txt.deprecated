@@ -1,0 +1,3 @@
+[autoload]
+
+GameConstants="*res://resources/game_constants.gd"

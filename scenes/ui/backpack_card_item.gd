@@ -47,6 +47,11 @@ var CARD_LIST_ICON_DISPLAY_MIN: Vector2 = Vector2(72, 72)
 ## 拖拽预览外框同槽位；内图标竖向略小于外框
 const DRAG_PREVIEW_ICON_DISPLAY_MIN := Vector2(36, 56)
 var _icon_cache: Dictionary = {}
+## v9.4: 视口裁切状态——当前卡牌图标是否已加载纹理。
+## false 时 icon_rect 显示 placeholder glyph，进入视口后才真正加载（避免 OOM）。
+var _icon_loaded: bool = false
+## v9.4: 当前关联的 icon_rect（set_card 时记录），供滚动钩子重扫时复用。
+var _bound_icon_rect: TextureRect = null
 
 # 各卡片类型对应的顶部色条颜色
 const TYPE_BAR_COLORS := {
@@ -211,10 +216,12 @@ func _ready() -> void:
 
 
 ## 卡图等比缩放到固定槽位（不随贴图像素尺寸撑开布局）
+## v9.4: 列表场景默认走缩略图（card_icon_path_for_list），VRAM 占用降至 1/4~1/16，
+## 避免背包一次性渲染上百张全分辨率图标导致 OOM。全分辨率图保留给战场/卡详情。
 func _card_icon_tex_path(c: CardResource) -> String:
 	if c == null:
 		return ""
-	return UiAssetLoader.card_icon_path_for(c)
+	return UiAssetLoader.card_icon_path_for_list(c)
 
 
 func _apply_icon_texture_rect_fixed(icon_rect: TextureRect, min_size: Vector2) -> void:
@@ -412,6 +419,9 @@ func set_card(c: CardResource) -> void:
 
 	if c == null:
 		_set_empty_style(name_label, lv_label, icon_rect)
+		# v9.4: 重置视口裁切状态，避免池化复用时残留"已加载"标记
+		_icon_loaded = false
+		_bound_icon_rect = null
 		return
 
 	if ENABLE_MINIMAL_CARD_RENDER:
@@ -835,9 +845,21 @@ func _layout_compact_art_clip(art_clip: Control) -> void:
 
 
 ## v8.0: 把图标纹理应用到 CompactArtClip 内的 Icon（不设最小尺寸，纯靠容器裁切）
+## v9.4: 懒加载——set_card 时永远只显示 placeholder glyph，不立即加载纹理。
+## 原因：_flush_rebuild_card_grid 一次性 add_child 上百张卡，此时节点未布局，
+## get_global_rect() 不可靠，无法做视口裁切；且同步加载上百张纹理会触发内存峰值 OOM。
+## 贴图加载推迟到布局完成后，由滚动钩子 _check_viewport_visibility 按视口可见性触发。
+## 无滚动容器的场景（卡详情弹窗/拖拽预览）由 _check_viewport_visibility 的 _NOTIFICATION_READY 兜底立即加载。
 func _apply_card_icon_to_clip(icon_rect: TextureRect, c: CardResource) -> void:
 	if icon_rect == null or c == null:
 		return
+	_bound_icon_rect = icon_rect
+	_icon_loaded = false
+	_show_icon_placeholder(icon_rect, c)
+
+
+## v9.4: 实际加载并应用图标纹理（视口内或无滚动容器时调用）。
+func _load_and_apply_icon(icon_rect: TextureRect, c: CardResource) -> void:
 	var tex_path := _card_icon_tex_path(c)
 	var tex: Texture2D = _get_cached_icon_texture(tex_path)
 	var art_clip: Control = icon_rect.get_parent() as Control
@@ -845,15 +867,9 @@ func _apply_card_icon_to_clip(icon_rect: TextureRect, c: CardResource) -> void:
 	if art_clip != null:
 		placeholder = art_clip.get_node_or_null("Placeholder") as Label
 	if tex == null:
-		icon_rect.texture = null
-		icon_rect.visible = false
-		# v9.3：无图时显示兵种占位 glyph，避免立绘区空洞
-		if placeholder:
-			if c.card_type == GC.CardType.COMBAT_UNIT:
-				placeholder.text = _v9_kind_glyph(int(c.combat_kind))
-			else:
-				placeholder.text = "？"
-			placeholder.visible = true
+		# 真无图（路径无效/导入失败）：显示 placeholder，标记已加载避免反复重试
+		_icon_loaded = true
+		_show_icon_placeholder(icon_rect, c, placeholder)
 		return
 	icon_rect.texture = tex
 	icon_rect.visible = true
@@ -862,6 +878,85 @@ func _apply_card_icon_to_clip(icon_rect: TextureRect, c: CardResource) -> void:
 	icon_rect.stretch_mode = TextureRect.STRETCH_SCALE
 	if placeholder:
 		placeholder.visible = false
+	_icon_loaded = true
+
+
+## v9.4: 显示占位 glyph（无图 或 视口外未加载）。
+func _show_icon_placeholder(icon_rect: TextureRect, c: CardResource, placeholder: Label = null) -> void:
+	icon_rect.texture = null
+	icon_rect.visible = false
+	if placeholder == null:
+		var art_clip: Control = icon_rect.get_parent() as Control
+		if art_clip != null:
+			placeholder = art_clip.get_node_or_null("Placeholder") as Label
+	if placeholder:
+		if c.card_type == GC.CardType.COMBAT_UNIT:
+			placeholder.text = _v9_kind_glyph(int(c.combat_kind))
+		else:
+			placeholder.text = "？"
+		placeholder.visible = true
+
+
+## v9.4: 判断本节点是否在某个 ScrollContainer 的可见视口内。
+## 沿父链向上找 ScrollContainer；找不到（卡详情弹窗/拖拽预览等无滚动场景）返回 true（视为可见，照常加载）。
+## 找到则比较本节点的全局矩形与 ScrollContainer 全局矩形是否相交（含一定预加载边距）。
+const _VIEWPORT_PRELOAD_MARGIN := 200.0
+func _is_in_any_viewport() -> bool:
+	var p: Node = get_parent()
+	var scroll: ScrollContainer = null
+	while p != null:
+		if p is ScrollContainer:
+			scroll = p as ScrollContainer
+			break
+		p = p.get_parent()
+	# 无滚动容器 → 视为可见（非列表场景，如弹窗/预览，照常加载全分辨率或缩略图）
+	if scroll == null:
+		return true
+	var self_rect := get_global_rect()
+	var view_rect := scroll.get_global_rect()
+	# 扩展视口边距，让即将进入视口的卡牌预加载，减少滚动时闪烁
+	view_rect = view_rect.grow_individual(_VIEWPORT_PRELOAD_MARGIN, _VIEWPORT_PRELOAD_MARGIN, _VIEWPORT_PRELOAD_MARGIN, _VIEWPORT_PRELOAD_MARGIN)
+	return self_rect.intersects(view_rect)
+
+
+## v9.4: 供 backpack_panel 滚动钩子调用——重扫视口可见性，按需加载/卸载图标。
+## 在视口内且未加载 → 加载；在视口外且已加载 → 卸载（仅当当前仍持有同一张卡）。
+## 无参重载：自己向上找 ScrollContainer 取视口矩形（用于 set_card 后 deferred 首次加载）。
+func _check_viewport_visibility(viewport_rect: Rect2 = Rect2()) -> void:
+	if card == null:
+		return
+	var icon_rect: TextureRect = _bound_icon_rect
+	if icon_rect == null or not is_instance_valid(icon_rect):
+		icon_rect = _find_icon_row_icon()
+		if icon_rect == null:
+			return
+		_bound_icon_rect = icon_rect
+	# 无参调用：自己找 ScrollContainer；找不到（卡详情弹窗等）视为可见，直接加载
+	var check_rect: Rect2 = viewport_rect
+	if check_rect.size == Vector2.ZERO:
+		var scroll: ScrollContainer = null
+		var p: Node = get_parent()
+		while p != null:
+			if p is ScrollContainer:
+				scroll = p as ScrollContainer
+				break
+			p = p.get_parent()
+		if scroll == null:
+			# 非滚动场景（弹窗/预览）：照常加载
+			if not _icon_loaded:
+				_load_and_apply_icon(icon_rect, card)
+			return
+		check_rect = scroll.get_global_rect()
+	# 用视口矩形判断，扩展预加载边距
+	var self_rect := get_global_rect()
+	var grown := check_rect.grow_individual(_VIEWPORT_PRELOAD_MARGIN, _VIEWPORT_PRELOAD_MARGIN, _VIEWPORT_PRELOAD_MARGIN, _VIEWPORT_PRELOAD_MARGIN)
+	var in_view: bool = self_rect.intersects(grown)
+	if in_view and not _icon_loaded:
+		_load_and_apply_icon(icon_rect, card)
+	elif not in_view and _icon_loaded:
+		# 离开视口：卸载纹理释放 VRAM，保留 placeholder glyph
+		_icon_loaded = false
+		_show_icon_placeholder(icon_rect, card)
 
 
 func _compact_display_name(c: CardResource) -> String:
@@ -907,6 +1002,9 @@ func _set_compact_slot_view(c: CardResource, name_label, lv_label, icon_rect) ->
 		call_deferred("_layout_compact_art_clip", art_clip)
 	_apply_v9_decorations(c)
 	_ensure_instance_no(c)
+	# v9.4: 布局完成后 deferred 触发首次视口可见性扫描——此时 get_global_rect() 已可靠，
+	# 滚动钩子（backpack_panel）会在下一帧批量扫描；单卡（弹窗/预览）在此 self-trigger 加载。
+	call_deferred("_check_viewport_visibility")
 
 
 ## v9.1: 填充 stat-line（HTML .stat-line 结构：左 Lv·改N/M · 右 战力）

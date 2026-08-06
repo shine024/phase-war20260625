@@ -13,6 +13,53 @@ const TEX_DIR := "res://assets/effects/projectiles/weapons_realistic/"
 ## 当武器 display_name 不在 WEAPON_ID_MAP（如"炮射导弹"/"萨姆-7防空导弹"/未来单位）时，
 ## fallback 到此贴图，保证所有重型爆炸武器的命中贴图层都能生效（而非回退纯粒子）。
 const FALLBACK_IMPACT_TEX := preload(TEX_DIR + "weapon_artillery_impact.png")
+## v9.2: 按武器类型的通用命中贴图——仓库现有但此前零引用的 5 张通用图。
+## 让 OMEGA/RAIL/激光/狙击/霰弹/轻武器的命中从纯粒子升级为"贴图+粒子"分层，
+## 大幅提升真实感（此前这些武器命中只有 CPUParticles2D 小方块）。
+const IMPACT_TEX_OMEGA := preload(TEX_DIR + "weapon_impact_omega.png")        # 能量/磁轨/欧米茄/激光
+const IMPACT_TEX_SNIPER := preload(TEX_DIR + "weapon_impact_sniper.png")      # 狙击
+const IMPACT_TEX_SHOTGUN := preload(TEX_DIR + "weapon_impact_shotgun.png")    # 霰弹
+const IMPACT_TEX_SMALL_ARMS := preload(TEX_DIR + "weapon_impact_small_arms.png")  # 轻武器(机枪/步枪/手枪/直射)
+const IMPACT_TEX_EXPLOSIVE := preload(TEX_DIR + "weapon_impact_explosive.png")    # 通用爆炸(曲射/空射兜底)
+## v9.2: 爆炸帧动画序列——下放核武帧动画范式给常规爆炸武器。
+## 6 帧 512×512（火球膨胀→烟尘弥散），10fps，0.6s 总长。
+## 生成工作流：docs/VFX特效纹理生成工作流.md，当前为占位透明 PNG。
+const EXPLOSION_FRAMES_DIR := "res://assets/effects/explosion_frames/"
+const EXPLOSION_CONV_FRAMES := [
+	preload(EXPLOSION_FRAMES_DIR + "explosion_conv_f0.png"),
+	preload(EXPLOSION_FRAMES_DIR + "explosion_conv_f1.png"),
+	preload(EXPLOSION_FRAMES_DIR + "explosion_conv_f2.png"),
+	preload(EXPLOSION_FRAMES_DIR + "explosion_conv_f3.png"),
+	preload(EXPLOSION_FRAMES_DIR + "explosion_conv_f4.png"),
+	preload(EXPLOSION_FRAMES_DIR + "explosion_conv_f5.png"),
+]
+const EXPLOSION_ENERGY_FRAMES := [
+	preload(EXPLOSION_FRAMES_DIR + "explosion_energy_f0.png"),
+	preload(EXPLOSION_FRAMES_DIR + "explosion_energy_f1.png"),
+	preload(EXPLOSION_FRAMES_DIR + "explosion_energy_f2.png"),
+	preload(EXPLOSION_FRAMES_DIR + "explosion_energy_f3.png"),
+	preload(EXPLOSION_FRAMES_DIR + "explosion_energy_f4.png"),
+	preload(EXPLOSION_FRAMES_DIR + "explosion_energy_f5.png"),
+]
+
+## v9.2: 按 weapon_type 返回通用命中贴图（无专属贴图时的类型化兜底，区别于 FALLBACK 的单一图）。
+## 返回 null 表示该类型不推荐贴图层（理论上不会发生，所有类型都有映射）。
+static func generic_impact_tex_by_wt(weapon_type: int) -> Texture2D:
+	match weapon_type:
+		10, 11, 8:   # OMEGA / RAIL / LASER — 能量类，复用 omega 贴图（蓝白能量爆裂感）
+			return IMPACT_TEX_OMEGA
+		6:           # SNIPER
+			return IMPACT_TEX_SNIPER
+		5:           # SHOTGUN
+			return IMPACT_TEX_SHOTGUN
+		0, 4:        # DIRECT(新枚举)/SMG/PISTOL — 轻武器
+			return IMPACT_TEX_SMALL_ARMS
+		1, 2:        # INDIRECT/AERIAL(新枚举) — 曲射/空射，无专属时用通用爆炸
+			return IMPACT_TEX_EXPLOSIVE
+		3, 7, 9:     # ROCKET/FLAK/MISSILE — 旧物理爆炸类，走专属查表，兜底通用爆炸
+			return IMPACT_TEX_EXPLOSIVE
+		_:           # 未知类型，兜底
+			return IMPACT_TEX_EXPLOSIVE
 
 ## 旧 WeaponType 枚举 → 默认贴图（兼容 v3 旧武器 ID）
 ## v6.1 新枚举映射：INDIRECT(1) -> 曲射弹道, AERIAL(2) -> 空射导弹
@@ -247,6 +294,19 @@ static func impact_scale_by_name(weapon_name: String) -> float:
 		_: return 0.33
 
 
+## v9.2: 按 weapon_type 返回爆炸帧序列（有帧动画的武器才有，无则返回空数组）。
+## 常规爆炸（ROCKET=3/FLAK=7/MISSILE=9）用橙红火球帧；能量爆炸（OMEGA=10/RAIL=11/LASER=8）用蓝白能量帧。
+## 调用方用 _frames.size() >= 2 守卫判断是否有帧序列，空数组回退单贴图+粒子。
+static func explosion_frames_by_wt(weapon_type: int) -> Array:
+	match weapon_type:
+		10, 11, 8:   # OMEGA / RAIL / LASER — 能量爆炸
+			return EXPLOSION_ENERGY_FRAMES
+		3, 7, 9:     # ROCKET / FLAK / MISSILE — 常规爆炸
+			return EXPLOSION_CONV_FRAMES
+		_:            # 其他类型无帧序列
+			return []
+
+
 ## ========== 旧接口（兼容） ==========
 
 static func has_proj_texture(weapon_type: int) -> bool:
@@ -325,17 +385,43 @@ static func spawn_impact(parent: Node2D, world_pos: Vector2, weapon_type: int, i
 static func spawn_impact_with_kind(parent: Node2D, world_pos: Vector2, weapon_type: int, is_player_shot: bool, target_combat_kind: int = -1, opts: Dictionary = {}, weapon_name: String = "") -> void:
 	if parent == null:
 		return
-	# v8.4: 重型爆炸武器（ROCKET=3/FLAK=7/MISSILE=9）——有专属命中贴图时叠加贴图层
-	# 仅这三类触发贴图查找（符合"仅重型爆炸武器"决策），轻武器直接走粒子省查表
+	# v9.2: 命中贴图层——所有武器都叠加贴图（此前仅 ROCKET/FLAK/MISSILE 有）。
+	#   ① 重型爆炸类(3/7/9) + 有 weapon_name → 查专属贴图（impact_texture_by_name，含 fallback）
+	#   ② 其他所有类型 → 按 weapon_type 取通用贴图（generic_impact_tex_by_wt）
+	# 贴图与下方粒子层(VfxFactory.spawn_layered_impact)叠加，形成"火球+粒子"分层真实感。
+	# 轻武器贴图缩放较小（避免小口径命中出现巨大爆炸图），重型按 impact_scale_by_name 放大。
+	var impact_tex: Texture2D = null
+	var peak_scale: float = 0.33 * 2.0  # 默认缩放（通用贴图基础值 ×2 显示）
 	if weapon_name != "" and weapon_type in [3, 7, 9]:
-		var impact_tex: Texture2D = impact_texture_by_name(weapon_name)
+		impact_tex = impact_texture_by_name(weapon_name)
 		if impact_tex != null:
-			var peak_scale: float = impact_scale_by_name(weapon_name) * 2.0  # 贴图爆炸放大显示
-			VfxFactory.spawn_impact_sprite(parent, world_pos, impact_tex, peak_scale, 0.45)
+			peak_scale = impact_scale_by_name(weapon_name) * 2.0
+	else:
+		# v9.2: 非爆炸类/能量类/轻武器——按 weapon_type 取通用贴图
+		impact_tex = generic_impact_tex_by_wt(weapon_type)
+		# 通用贴图缩放：能量/狙击/霰弹稍大（命中醒目），轻武器较小
+		match weapon_type:
+			10, 11:   peak_scale = 0.51 * 2.0   # OMEGA/RAIL — 大型能量爆裂
+			8:        peak_scale = 0.40 * 2.0   # LASER — 中等能量
+			6:        peak_scale = 0.42 * 2.0   # SNIPER — 精确命中药剂感
+			5:        peak_scale = 0.36 * 2.0   # SHOTGUN — 散射命中
+			0, 4:     peak_scale = 0.26 * 2.0   # 轻武器 — 小口径，贴图小避免夸张
+			1, 2:     peak_scale = 0.40 * 2.0   # 曲射/空射 — 中等爆炸
+	if impact_tex != null:
+		VfxFactory.spawn_impact_sprite(parent, world_pos, impact_tex, peak_scale, 0.45)
+	# v9.2: 爆炸帧动画层——有帧序列的武器优先播帧动画（火球膨胀过程 0.6s），叠加在贴图层之上。
+	#   帧动画 fade out 后贴图层接力，两层的视觉连续性靠帧动画淡出+贴图淡入衔接。
+	#   无帧序列的武器（light weapons 等）explosion_frames_by_wt 返回空数组，跳过此层。
+	var _frames: Array = explosion_frames_by_wt(weapon_type)
+	if _frames.size() >= 2:
+		# 256px 帧 × 6 帧，target_width=96（峰值 96px，醒目但不盖住整个单位）
+		# fps=10（0.6s 总长，紧凑爆炸感）；rise=24（轻微上飘，模拟烟尘升腾）
+		VfxFactory.spawn_animated_nuclear(parent, world_pos, _frames, 96.0, 24.0, 10.0)
 	# v8.1: 委托 VfxImpactFactory 三层组合特效（粒子层，与贴图层叠加）
 	# 注：SMG(0)/PISTOL(4) 的跳过守卫仍在 bullet._spawn_tex_impact_at 维护；
 	# batch 路径（轻武器密集命中）不跳过——工厂配方表对轻武器用小快特效，命中反馈必要。
-	VfxFactory.spawn_layered_impact(parent, world_pos, weapon_type, is_player_shot, target_combat_kind, opts)
+	# v8.x: 透传 weapon_name，让命中配方能按直射亚类（机枪/步枪/坦克炮等）细分
+	VfxFactory.spawn_layered_impact(parent, world_pos, weapon_type, is_player_shot, target_combat_kind, opts, weapon_name)
 	# v8.4: 武器类改造专属视觉——在基础特效之上叠加变体独有特征
 	var _variant: String = String(opts.get("vfx_variant", ""))
 	if not _variant.is_empty():

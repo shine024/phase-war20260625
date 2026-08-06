@@ -853,7 +853,7 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 	btn.add_child(hbox)
 	# 禁用规则：已安装、不适用、被 block（冲突/槽满/情报不足）、或战力档位不足时禁用点击
 	btn.disabled = is_installed or not is_applicable or not block_reason.is_empty() or tier_blocked
-	btn.tooltip_text = "%s\n%s\n稀有度：%s" % [String(mod_data.get("prototype", "")), String(mod_data.get("description", "")), rarity_cn]
+	btn.tooltip_text = "%s\n稀有度：%s" % [String(mod_data.get("description", "")), rarity_cn]
 	btn.pressed.connect(func(): _on_mod_selected(mod_id, mod_data))
 	return btn
 
@@ -1062,12 +1062,13 @@ func _build_power_block(power_val: float, current_tier: int, tier_str: String) -
 	var left := VBoxContainer.new()
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var lbl1 := Label.new()
-	lbl1.text = "战力评分 · POWER"
+	lbl1.text = "战力评分"
 	_style_lbl(lbl1, 10, Color(0.5, 0.55, 0.65, 0.85), -1, true)
 	left.add_child(lbl1)
 	var tier_name_cn := PowerTiers.get_tier_name(current_tier) if power_val > 0 else ""
 	var lbl2 := Label.new()
-	lbl2.text = "%s · %s" % [tier_str, tier_name_cn] if not tier_str.is_empty() else "—"
+	# v1.5：_get_card_tier_str 已返回中文档位名，此处直接显示，避免与 tier_name_cn 重复
+	lbl2.text = tier_str if not tier_str.is_empty() else "—"
 	lbl2.clip_text = true
 	_style_lbl(lbl2, 12, DT.COLOR_CYAN_TECH_SOFT, -1, true, true)
 	left.add_child(lbl2)
@@ -1082,12 +1083,19 @@ func _build_power_block(power_val: float, current_tier: int, tier_str: String) -
 	return block
 
 
-## 构建 5 档进度条（GRUNT/VETERAN/ELITE/CHAMPION/OVERLORD）
+## 构建 5 档进度条（杂兵/老兵/精英/勇士/霸主）
 func _build_tier_progress(current_tier: int) -> Control:
 	var grid := GridContainer.new()
 	grid.columns = 5
 	grid.add_theme_constant_override("h_separation", 3)
-	var names := ["GRUNT", "VET", "ELITE", "CHAMP", "OVER"]
+	# v1.5：档位名改读 PowerTiers.TIER_NAMES 单一源（原硬编码英文缩写数组，与中文 UI 风格不一致）
+	var names := [
+		PowerTiers.TIER_NAMES[PowerTiers.Tier.GRUNT],
+		PowerTiers.TIER_NAMES[PowerTiers.Tier.VETERAN],
+		PowerTiers.TIER_NAMES[PowerTiers.Tier.ELITE],
+		PowerTiers.TIER_NAMES[PowerTiers.Tier.CHAMPION],
+		PowerTiers.TIER_NAMES[PowerTiers.Tier.OVERLORD],
+	] if PowerTiers != null else ["杂兵", "老兵", "精英", "勇士", "霸主"]
 	# v1.5：阈值改读 PowerTiers.POWER_THRESHOLDS 单一源（原硬编码 [150,260,420,720]，改阈值会两处不同步）
 	var thresholds: Array = PowerTiers.POWER_THRESHOLDS if PowerTiers != null else [150, 260, 420, 720]
 	# 阈值标签对齐档位语义：GRUNT<首阈值（未达标）/ 后续档=达到该阈值进入该档
@@ -1351,7 +1359,7 @@ func _format_int(n: int) -> String:
 
 ## v7.x 辅助：取卡牌战力档位名（基于 EvolutionHelpers 估算）
 ## v1.5：阈值判定改调 PowerTiers.get_tier_by_power（原硬编码 [150,260,420,720] if 链，
-## 改阈值会两处不同步）。返回英文档位名（资源条/档位 chip 用），中文走 PowerTiers.get_tier_name。
+## 改阈值会两处不同步）。返回中文档位名，与 UI 整体风格统一。
 func _get_card_tier_str(card: CardResource) -> String:
 	if card == null or BlueprintManager == null:
 		return ""
@@ -1361,17 +1369,15 @@ func _get_card_tier_str(card: CardResource) -> String:
 	var power := EvolutionHelpers.estimate_power_score(key, BlueprintManager)
 	if power <= 0:
 		return ""
-	# 英文档位名（PowerTiers.TIER_NAMES 是中文，这里需英文显示）
-	var tier_en := ["GRUNT", "VETERAN", "ELITE", "CHAMPION", "OVERLORD"]
+	# 中文档位名（直接读 PowerTiers.get_tier_name，单一数据源）
 	if PowerTiers != null:
-		var t: int = PowerTiers.get_tier_by_power(power)
-		return tier_en[clampi(t, 0, tier_en.size() - 1)]
+		return PowerTiers.get_tier_name(PowerTiers.get_tier_by_power(power))
 	# PowerTiers 不可用时回退硬编码（防御性）
-	if power < 150: return "GRUNT"
-	if power < 260: return "VETERAN"
-	if power < 420: return "ELITE"
-	if power < 720: return "CHAMPION"
-	return "OVERLORD"
+	if power < 150: return "杂兵"
+	if power < 260: return "老兵"
+	if power < 420: return "精英"
+	if power < 720: return "勇士"
+	return "霸主"
 
 func _refresh_installed_list(installed_list: Control) -> void:
 	# 同步移除（remove_child + free），不要用 queue_free：InstalledList 不在 ScrollContainer 内

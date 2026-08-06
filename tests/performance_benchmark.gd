@@ -163,7 +163,7 @@ func _complete_test() -> void:
 		"min_fps": _calculate_min(_fps_samples),
 		"max_fps": _calculate_max(_fps_samples),
 		"avg_memory_mb": _calculate_average(_memory_samples) / 1024 / 1024,
-		"avg_gc_count": _calculate_average(_gc_samples),
+		"avg_gc_count": _calculate_average(_gc_samples),  # Godot 4 无 GC（引用计数），此处实际采 OBJECT_COUNT
 		"avg_node_count": _calculate_average(_node_count_samples),
 	}
 
@@ -179,7 +179,9 @@ func _complete_test() -> void:
 func _capture_performance_sample() -> void:
 	var fps = Performance.get_monitor(Performance.TIME_FPS)
 	var memory = Performance.get_monitor(Performance.MEMORY_STATIC)
-	var gc = Performance.get_monitor(Performance.GC_COUNT)
+	# Godot 4 的 Performance 单例无 GC_COUNT（GDScript 用引用计数，非 tracing GC）。
+	# 改用 OBJECT_COUNT 作为内存压力代理指标（字段名 avg_gc_count 保留以兼容下游消费者）。
+	var gc = Performance.get_monitor(Performance.OBJECT_COUNT)
 	var node_count = Performance.get_monitor(Performance.OBJECT_NODE_COUNT)
 
 	_fps_samples.append(fps)
@@ -233,13 +235,13 @@ func export_results_json() -> String:
 func show_current_performance() -> void:
 	var fps = Performance.get_monitor(Performance.TIME_FPS)
 	var memory = Performance.get_monitor(Performance.MEMORY_STATIC) / 1024 / 1024
-	var gc = Performance.get_monitor(Performance.GC_COUNT)
+	var gc = Performance.get_monitor(Performance.OBJECT_COUNT)
 	var node_count = Performance.get_monitor(Performance.OBJECT_NODE_COUNT)
 
 	print("=== 当前性能 ===")
 	print("FPS: ", fps)
 	print("内存: ", memory, " MB")
-	print("GC次数: ", gc)
+	print("对象数量(代理GC): ", gc)
 	print("节点数量: ", node_count)
 	print("================")
 

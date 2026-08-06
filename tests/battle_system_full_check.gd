@@ -35,7 +35,11 @@ func check_game_constants() -> void:
 	print("    SUPPORT = ", GC.CombatKind.SUPPORT)
 
 	print("  索敌方式:")
-	if GC.has_method("get_targeting_mode_for_combat_kind"):
+	# GC 是 preload 返回的 Script 类对象；has_method 是实例方法，需实例化调用。
+	# get_targeting_mode_for_combat_kind 若存在则本身是 static func，可直接在类上调。
+	# 此处用 _gc_instance 仅用于 has_method 存在性探测。
+	var _gc_instance = GC.new()
+	if _gc_instance.has_method("get_targeting_mode_for_combat_kind"):
 		print("    ✅ get_targeting_mode_for_combat_kind 存在")
 		print("      LIGHT → ", GC.TargetingMode.find_key(GC.get_targeting_mode_for_combat_kind(GC.CombatKind.LIGHT)))
 		print("      ARMOR → ", GC.TargetingMode.find_key(GC.get_targeting_mode_for_combat_kind(GC.CombatKind.ARMOR)))
@@ -47,7 +51,9 @@ func check_default_cards() -> void:
 	var DefaultCards = preload("res://data/default_cards.gd")
 
 	# 检查 _infer_weapon_type 函数
-	if DefaultCards.has_method("_infer_weapon_type"):
+	# DefaultCards 是 preload 返回的 Script 类对象；has_method 是实例方法。
+	var _dc_instance = DefaultCards.new()
+	if _dc_instance.has_method("_infer_weapon_type"):
 		print("  ✅ _infer_weapon_type 方法存在")
 
 		# 测试野战炮的武器类型推断

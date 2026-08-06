@@ -24,7 +24,9 @@ func test_game_constants() -> void:
 	print("  CombatKind.SUPPORT = ", GC.CombatKind.SUPPORT)
 
 	# 测试索敌方式
-	if GC.has_method("get_targeting_mode_for_combat_kind"):
+	# GC 是 preload 返回的 Script 类对象；has_method 是实例方法，需实例化调用。
+	var _gc_instance = GC.new()
+	if _gc_instance.has_method("get_targeting_mode_for_combat_kind"):
 		print("  ✅ get_targeting_mode_for_combat_kind 方法存在")
 		print("    LIGHT 索敌模式: ", GC.get_targeting_mode_for_combat_kind(GC.CombatKind.LIGHT))
 		print("    ARMOR 索敌模式: ", GC.get_targeting_mode_for_combat_kind(GC.CombatKind.ARMOR))
@@ -64,7 +66,8 @@ func test_targeting_mode() -> void:
 	}
 
 	print("  模拟野战炮索敌方式:")
-	if GC.has_method("get_targeting_mode_for_combat_kind"):
+	var _gc_instance2 = GC.new()
+	if _gc_instance2.has_method("get_targeting_mode_for_combat_kind"):
 		var mode = GC.get_targeting_mode_for_combat_kind(mock_stats.combat_kind)
 		print("    结果: ", GC.TargetingMode.find_key(mode))
 	else:

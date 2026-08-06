@@ -103,7 +103,7 @@ static func apply_battle_unit_presentation(
 	if card != null:
 		apply_battle_card_chrome(host, unit_spr, card)
 	sync_rank_strip(host, rank_level, unit_spr)
-	sync_name_strip(host, unit_spr, card, face_right)
+	sync_name_strip(host, unit_spr, card, face_right, unit)
 	# v7.x 战场视觉反馈：单位头顶增强——稀有度角标 + 等级标签
 	if card != null:
 		sync_rarity_badge(host, unit_spr, card)
@@ -165,7 +165,7 @@ static func sync_elite_badge(host: Node2D, unit_spr: Sprite2D, unit: Node) -> vo
 
 
 ## v6.5: 在卡片立绘底部绘制单位名称条（我方青 / 敌方橙），补齐格子战可读性。
-static func sync_name_strip(host: Node2D, unit_spr: Sprite2D, card: CardResource, is_player: bool) -> void:
+static func sync_name_strip(host: Node2D, unit_spr: Sprite2D, card: CardResource, is_player: bool, unit: Node = null) -> void:
 	if host == null or unit_spr == null or unit_spr.texture == null:
 		return
 	var strip = host.get_node_or_null("CardGridNameStrip")
@@ -178,6 +178,12 @@ static func sync_name_strip(host: Node2D, unit_spr: Sprite2D, card: CardResource
 	var display_name: String = ""
 	if card != null:
 		display_name = card.display_name
+	# v9.x: 势力前缀平台产兵（一战 4 相位师）名称加势力前缀，显示「势力前缀·真实兵种名」。
+	# faction_prefix meta 由 enemy_phase_field_driver 在产兵时按 LEGACY_PLATFORM_TO_ARCHETYPE 记录。
+	if unit != null and not display_name.is_empty():
+		var prefix: String = String(unit.get_meta("faction_prefix", ""))
+		if not prefix.is_empty():
+			display_name = "%s·%s" % [prefix, display_name]
 	# 卡的尺寸取标准卡宽（CardBattleBg 已在 apply_battle_card_chrome 强制隐藏且不加载纹理，
 	# 故 bg_spr.texture 恒为 null，原 bg_spr 读取分支永不命中，已清理）
 	var card_w: float = CardGridBattleLayout.battle_card_width_px()

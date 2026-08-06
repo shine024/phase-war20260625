@@ -19,8 +19,12 @@ class NotificationItem extends Control:
 		# 设置自动关闭定时器
 		var duration = notification_data.get("duration", 5.0)
 		if duration > 0:
-			var item = self
+			var weak_item: WeakRef = weakref(self)
 			get_tree().create_timer(duration).timeout.connect(func() -> void:
+				var ref_item = weak_item.get_ref()
+				if ref_item == null or not is_instance_valid(ref_item):
+					return
+				var item = ref_item as NotificationItem
 				if not item._timer_cancelled:
 					item._on_timeout()
 			)

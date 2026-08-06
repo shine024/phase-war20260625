@@ -284,22 +284,19 @@ static func can_purchase_item(current_rep: int, current_level: int, item: StoreI
 
 	return {"ok": true}
 
-static func _get_autoload(root_path: String, run_id: String, hypothesis_id: String) -> Node:
+static func _get_autoload(root_path: String) -> Node:
 	var loop_obj := Engine.get_main_loop()
 	if not (loop_obj is SceneTree):
 		return null
 	var tree := loop_obj as SceneTree
 	if tree == null or tree.get_root() == null:
 		return null
-	var node := tree.get_root().get_node_or_null(root_path)
-	return node
-	# #endregion
+	return tree.get_root().get_node_or_null(root_path)
 
 ## 发放商店物品
 ## @param item: StoreItem
 ## @return bool 是否成功发放
 static func deliver_item(item: StoreItem) -> bool:
-	var run_id := "run-pre-fix"
 	# StoreItem 无 count 字段，材料数量按 item_id 用合理默认值（v6.4 修正：原固定 50/20 不区分商品）
 	match item.item_type:
 		StoreItemType.CARD:
@@ -308,7 +305,7 @@ static func deliver_item(item: StoreItem) -> bool:
 			const EnemyBlueprintsRef = preload("res://data/enemy_blueprints.gd")
 			var cid: String = item.item_id
 			# v7.0: 购买的卡牌全部实例化（独立养成身份）
-			var ir := _get_autoload("/root/InstanceRegistry", run_id, "v70")
+			var ir := _get_autoload("/root/InstanceRegistry")
 			# v6.4: 法则卡通过 PhaseLaws 生成
 			if cid.begins_with("steel_") or cid.begins_with("flame_") \
 				or cid.begins_with("thunder_") or cid.begins_with("void_"):
@@ -343,7 +340,7 @@ static func deliver_item(item: StoreItem) -> bool:
 				push_error("[FactionShop] 商店找不到卡牌: " + cid)
 				return false
 		StoreItemType.MATERIAL:
-			var brm := _get_autoload("/root/BasicResourceManager", run_id, "H1")
+			var brm := _get_autoload("/root/BasicResourceManager")
 			if brm and brm.has_method("add_resource"):
 				match item.item_id:
 					"nano_materials":
@@ -360,14 +357,14 @@ static func deliver_item(item: StoreItem) -> bool:
 						return true
 					# v6.4: stat_boost 走 StatBoostManager
 					"stat_boost_hp", "stat_boost_atk", "stat_boost_damage":
-						var sbm := _get_autoload("/root/StatBoostManager", run_id, "H2")
+						var sbm := _get_autoload("/root/StatBoostManager")
 						if sbm and sbm.has_method("apply_boost"):
 							sbm.apply_boost(item.item_id, 1)
 							return true
 						return false
 					# v6.4: lore_page 走 LoreManager
 					"lore_page":
-						var lm := _get_autoload("/root/LoreManager", run_id, "H3")
+						var lm := _get_autoload("/root/LoreManager")
 						if lm and lm.has_method("grant_random_lore"):
 							lm.grant_random_lore()
 							return true
@@ -380,7 +377,7 @@ static func deliver_item(item: StoreItem) -> bool:
 			return true
 		StoreItemType.RUNE:
 			# v6.2: 符文发放到 PhaseInstrumentManager
-			var pim := _get_autoload("/root/PhaseInstrumentManager", run_id, "RUNE")
+			var pim := _get_autoload("/root/PhaseInstrumentManager")
 			if pim and pim.has_method("add_owned_rune"):
 				pim.add_owned_rune(item.item_id)
 				return true

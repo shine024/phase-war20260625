@@ -1,7 +1,9 @@
 class_name MockPlayerPm
-extends RefCounted
+extends Node
 ## 测试用 PhaseInstrumentManager 替身（duck-typing，assembler/compute_player_card_power 只调 has_method）
 ## 提供最小可用的 loadouts/instrument/rune/phase_field 接口，供玩家侧战力链路测试。
+## extends Node 而非 RefCounted：MasterPlayerAssembler.evaluate_player_stars(pm: Node)
+## 类型标注要求 Node，且 build_player_master_dict 内部会调 is_instance_valid(pm)。
 
 var _loadouts: Array = []
 var _instrument: Dictionary = {"id": "pi_test", "star": 5, "name": "测试相位仪"}

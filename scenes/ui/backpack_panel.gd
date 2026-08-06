@@ -248,6 +248,9 @@ func _ready() -> void:
 	# v9.3: 连接各网格父容器（ScrollContainer）的 resized——切 Tab 布局完成时 size 确定会触发，
 	# 自动重排到准确列数，避免首次进入回退 4 列。
 	_connect_grid_scroll_resized()
+	# v9.4: 连接滚动条 value_changed——滚动时触发卡牌图标的视口裁切重扫，
+	# 让离开视口的卡牌卸载图标纹理、进入视口的卡牌按需加载，避免 OOM。
+	_connect_scroll_visibility_hooks()
 
 
 ## v9.2: 应用 Rajdhani 字体到标题栏 + Tab 标题（与养成面板统一设计语言）
@@ -1049,6 +1052,10 @@ func _flush_rebuild_card_grid() -> void:
 				grid.remove_child(child)
 				if child.card_clicked.is_connected(_on_card_clicked):
 					child.card_clicked.disconnect(_on_card_clicked)
+				# v9.4: 回收入池前清空卡牌引用，释放图标纹理 + 装饰层，
+				# 避免池化 item 长期持有旧 Texture2D 导致显存累积（OOM 根因之一）。
+				# _set_empty_style 会把 icon_rect.texture 置 null 并隐藏装饰。
+				child.set_card(null)
 				_card_item_pool.append(child)
 			elif child.has_meta("is_resource_slot") and child.get_meta("is_resource_slot"):
 				grid.remove_child(child)
@@ -1076,6 +1083,9 @@ func _flush_rebuild_card_grid() -> void:
 	_ensure_min_card_slots(grid)
 	_sync_card_grid_scroll_size_for_grid(grid)
 	_hide_loading_indicator()
+	# v9.4: rebuild 完成后 deferred 扫描视口可见性，触发可见区卡牌的图标懒加载。
+	# 用 call_deferred 确保布局已完成（get_global_rect 可靠）。
+	call_deferred("_apply_viewport_visibility_scan")
 
 
 ## 检查网格中是否有加载指示器（区分"加载中"与"空背包"）
@@ -1161,6 +1171,8 @@ func remove_last_card_by_id(card_id: String) -> bool:
 	grid.remove_child(target)
 	if target.has_signal("card_clicked") and target.card_clicked.is_connected(_on_card_clicked):
 		target.card_clicked.disconnect(_on_card_clicked)
+	# v9.4: 回收入池前清空卡牌引用，释放图标纹理（同 _flush_rebuild_card_grid）。
+	target.set_card(null)
 	_card_item_pool.append(target)
 	_ensure_min_card_slots(grid)
 	_schedule_sync_card_grid_scroll_size()
@@ -2909,6 +2921,42 @@ func _connect_grid_scroll_resized() -> void:
 func _on_grid_scroll_resized(grid: GridContainer) -> void:
 	if grid != null and is_instance_valid(grid):
 		_apply_backpack_grid_layout(grid)
+
+
+## v9.4: 连接战斗卡 ScrollContainer 的滚动条 value_changed + resized 信号。
+## 滚动/缩放时重扫所有卡牌的视口可见性，让 CardItem 按需加载/卸载图标纹理。
+## 连接是幂等的（用 is_connected 守卫），重复 _ready 安全。
+func _connect_scroll_visibility_hooks() -> void:
+	if _scroll == null or not is_instance_valid(_scroll):
+		return
+	var vsb: VScrollBar = _scroll.get_v_scroll_bar()
+	if vsb and not vsb.value_changed.is_connected(_on_card_grid_scroll_changed):
+		vsb.value_changed.connect(_on_card_grid_scroll_changed)
+	if not _scroll.resized.is_connected(_on_card_grid_scroll_changed):
+		_scroll.resized.connect(_on_card_grid_scroll_changed)
+
+
+## v9.4: 滚动/尺寸变化时遍历战斗卡网格，触发每个 CardItem 的视口可见性重扫。
+## 用 call_deferred 避免在滚动信号回调里直接改节点树引发布局抖动。
+func _on_card_grid_scroll_changed(_v: float = 0.0) -> void:
+	call_deferred("_apply_viewport_visibility_scan")
+
+
+## v9.4: 扫描战斗卡网格所有子项，对每个 CardItem 调用其视口裁切钩子。
+func _apply_viewport_visibility_scan() -> void:
+	var grid: GridContainer = _combat_cards_grid
+	if grid == null or not is_instance_valid(grid):
+		return
+	if _scroll == null or not is_instance_valid(_scroll):
+		return
+	var viewport_rect: Rect2 = _scroll.get_global_rect()
+	for child in grid.get_children():
+		if not is_instance_valid(child):
+			continue
+		# v9.4: 用鸭子类型（backpack_card_item.gd 无 class_name 声明，不能 is BackpackCardItem）。
+		# 仅对持有视口裁切钩子的卡牌 item 做重扫（空槽/加载指示器跳过）。
+		if child.has_method("_check_viewport_visibility"):
+			child._check_viewport_visibility(viewport_rect)
 
 func _setup_drag_through_support() -> void:
 	# 自定义拖拽系统在 backpack_card_item.gd 中实现

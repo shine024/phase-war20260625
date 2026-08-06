@@ -84,7 +84,7 @@ const DATA := {
 		"weapon_type": 3,
 		"tags": ["elite", "tank", "armored"],
 		"drops": [
-			{"card_id": "fut_air_regen_frame", "chance": 0.3},
+			{"card_id": "cold_t72", "chance": 0.3},
 		],
 	},
 

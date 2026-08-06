@@ -952,6 +952,11 @@ func _find_target(_delta: float) -> void:
 					false,  # 敌方单位
 					acq
 				)
+				# v9.2: 分行索敌——同行优先，最近目标不同行时尝试找同行最近；无同行则接受原目标（跨行回退）
+				if nearest_target != null and not CardGridBattleLayout.units_in_same_row(self, nearest_target):
+					var same_row_t: Node2D = _query_nearest_same_row_player(spatial_grid, acq)
+					if same_row_t != null:
+						nearest_target = same_row_t
 				if nearest_target != null:
 					target = nearest_target
 					return
@@ -965,10 +970,22 @@ func _find_target(_delta: float) -> void:
 		var attack_range_sq := acq * acq
 		var gr: Array = BattleManager.get_cached_nodes_in_group("player_units") if BattleManager else get_tree().get_nodes_in_group("player_units")
 		var found_alive: bool = false
+		# v9.2: 分行索敌——两遍扫描：先找同行射程内目标，无则跨行（避免单位空转）
+		var same_row_hit: Node2D = null
 		for n in gr:
 			if not CombatTargeting.is_attackable_combat_unit(n):
 				continue
 			found_alive = true
+			var dist_sq := global_position.distance_squared_to(n.global_position)
+			if dist_sq <= attack_range_sq and CardGridBattleLayout.units_in_same_row(self, n):
+				same_row_hit = n as Node2D
+				break  # 同行射程内取第一个（gr 顺序即扫描顺序）
+		if same_row_hit != null:
+			target = same_row_hit
+			return
+		for n in gr:
+			if not CombatTargeting.is_attackable_combat_unit(n):
+				continue
 			var dist_sq := global_position.distance_squared_to(n.global_position)
 			if dist_sq <= attack_range_sq:
 				target = n as Node2D
@@ -1026,8 +1043,10 @@ func _get_weapon_type_for_targeting() -> int:
 
 
 ## v7.x: 收集射程内可攻击的我方单位候选（曲射/空射索敌用）
+## v9.2: 分行索敌——同行优先，空则跨行（在候选集上筛同行，无同行回退全候选）
 func _collect_player_candidates(acq: float) -> Array:
 	var result: Array = []
+	var same_row: Array = []
 	var attack_range_sq := acq * acq
 	var gr: Array = BattleManager.get_cached_nodes_in_group("player_units") if BattleManager else get_tree().get_nodes_in_group("player_units")
 	for n in gr:
@@ -1036,7 +1055,32 @@ func _collect_player_candidates(acq: float) -> Array:
 		var dist_sq := global_position.distance_squared_to(n.global_position)
 		if dist_sq <= attack_range_sq:
 			result.append(n as Node2D)
-	return result
+			if CardGridBattleLayout.units_in_same_row(self, n):
+				same_row.append(n as Node2D)
+	return same_row if not same_row.is_empty() else result
+
+
+## v9.2: spatial_grid 行过滤辅助——敌方直射索敌时，在射程内找同行最近的玩家单位。
+## 复用 spatial_grid.query_enemies 拿半径内所有玩家方单位（敌方视角 is_player=false 查玩家），
+## 按同行过滤后取最近；无同行返回 null。
+func _query_nearest_same_row_player(spatial_grid: Node, max_range: float) -> Node2D:
+	# query_enemies(position, radius, is_player) 中 is_player 是"中心方是否为玩家"，
+	# 敌方单位查玩家方目标时 is_player=false（敌方不是玩家），返回玩家方单位。
+	var players: Array = spatial_grid.query_enemies(global_position, max_range, false)
+	if players.is_empty():
+		return null
+	var best: Node2D = null
+	var best_d2: float = INF
+	for p in players:
+		if p == null or not is_instance_valid(p) or not (p is Node2D):
+			continue
+		if not CardGridBattleLayout.units_in_same_row(self, p):
+			continue
+		var d2: float = global_position.distance_squared_to((p as Node2D).global_position)
+		if d2 < best_d2:
+			best_d2 = d2
+			best = p
+	return best
 
 
 ## v8: stealth 单位优先级索敌——优先打指挥单位(platform_type==12)，其次光环单位。
@@ -1265,7 +1309,7 @@ func _do_attack() -> void:
 		var bullet: Node2D = ObjectPoolManager.get_object("bullets")
 		if bullet == null:
 			bullet = BulletScene.instantiate()
-		bullet.global_position = global_position
+		bullet.global_position = _get_direct_fire_spawn_pos()
 		# v7.x: 子弹 VFX 优先用槽位 weapon_type（按目标类型差异化弹道），
 		# 回退单位级 legacy_weapon_type（改造单位级默认），再回退 wt。
 		var _vfx_wt: int = wt
@@ -1286,8 +1330,17 @@ func _try_fire_enemy_projectile_batch(p_target: Node2D, wt: int, p_damage: float
 	if BattleManager == null or BattleManager.enemy_projectile_batch == null:
 		return false
 	var dmg: float = attack_damage if p_damage < 0.0 else p_damage
-	BattleManager.enemy_projectile_batch.fire(global_position, p_target, dmg, wt, self, stats, p_miss)
+	BattleManager.enemy_projectile_batch.fire(_get_direct_fire_spawn_pos(), p_target, dmg, wt, self, stats, p_miss)
 	return true
+
+## 获取直射武器发射起点：单位 Sprite 头脚垂直中点（相对节点原点），加节点全局位置。
+## 曲射/波次武器保持脚部发射（global_position），此处仅用于直射路径。
+func _get_direct_fire_spawn_pos() -> Vector2:
+	var offsetY: float = 0.0
+	var spr = get_node_or_null("Sprite2D") as Sprite2D
+	if spr != null:
+		offsetY = CardGridUnitVisuals.entity_top_y(spr) * 0.5
+	return global_position + Vector2.UP * offsetY
 
 func _update_hp_bar() -> void:
 	if _presentation_card_grid:
@@ -1587,6 +1640,8 @@ func _die() -> void:
 
 ## v6.4: 死亡视觉淡出——快速缩放并淡出后销毁节点（逻辑结算已完成，不依赖 _process）
 func _play_death_fadeout() -> void:
+	# v8.x: 死亡爆散反馈（阵营色冲击波 + 碎片），让死亡与受击产生明确视觉差
+	VfxImpactFactory.spawn_death_burst(get_parent(), global_position, false)
 	if _death_fade_tween != null and _death_fade_tween.is_valid():
 		_death_fade_tween.kill()
 	var start_scale := scale

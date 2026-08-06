@@ -66,6 +66,40 @@ static func slot_y_offset_for_index(slot_index: int, for_enemy: bool = false) ->
 	return CARD_GRID_ROW_Y_OFFSET + CARD_GRID_ROW_VERTICAL_SHIFT
 
 
+## v9.2: 判定单位是否位于上行（分行索敌/溅射同行收敛用）。
+## 规则与 slot_y_offset_for_index 对齐：奇数 slot 上行，敌方镜像反转。
+## 读 meta card_grid_slot（玩家）或 card_grid_enemy_slot（敌方）；无 slot meta 返回 false（按下行兜底）。
+## 敌我同 slot 号同 Y 行——故"分行索敌"只需比较攻击者与目标的上行标志是否一致。
+static func is_unit_in_upper_row(unit: Node) -> bool:
+	if unit == null or not is_instance_valid(unit):
+		return false
+	var slot: int = -1
+	var is_enemy: bool = false
+	if unit.has_meta("card_grid_slot"):
+		slot = int(unit.get_meta("card_grid_slot", -1))
+	if slot < 0 and unit.has_meta("card_grid_enemy_slot"):
+		slot = int(unit.get_meta("card_grid_enemy_slot", -1))
+		is_enemy = true
+	if slot < 0:
+		return false  # 无 slot meta（如相位场），按下行兜底
+	var upper: bool = (slot % 2 == 1)
+	if is_enemy:
+		upper = not upper
+	return upper
+
+
+## v9.2: 判定两个单位是否位于同一行（分行索敌核心判定）。
+## 任一无 slot meta 视为"同行"（不参与行过滤，避免相位场/特殊单位被错误排除）。
+static func units_in_same_row(a: Node, b: Node) -> bool:
+	if a == null or b == null or not is_instance_valid(a) or not is_instance_valid(b):
+		return true  # 防御性：无效单位视为同行
+	if not a.has_meta("card_grid_slot") and not a.has_meta("card_grid_enemy_slot"):
+		return true  # 攻击者无 slot（相位场等）——不参与行过滤
+	if not b.has_meta("card_grid_slot") and not b.has_meta("card_grid_enemy_slot"):
+		return true  # 目标无 slot——不排除
+	return is_unit_in_upper_row(a) == is_unit_in_upper_row(b)
+
+
 static func player_band_start_x() -> float:
 	return BATTLE_X0
 

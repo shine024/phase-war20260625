@@ -40,6 +40,7 @@ const COMBOS: Dictionary = {
 		"id": COMBO_INCENDIARY,
 		"name": "助燃燃烧链",
 		"icon": "🔥",
+		"icon_tex": "res://assets/ui/combo_icons/incendiary.png",
 		"desc": "助燃剂+燃烧弹协同，燃烧层数上限翻倍并触发化学爆发",
 		"mod_ids": ["art_incendiary_mix", "art_white_phosphorus", "air_thermolite_bomb", "gen_combustion_catalyst"],
 		"mod_combo_min": 2,
@@ -51,6 +52,7 @@ const COMBOS: Dictionary = {
 		"id": COMBO_EMP,
 		"name": "电磁脉冲链",
 		"icon": "⚡",
+		"icon_tex": "res://assets/ui/combo_icons/emp.png",
 		"desc": "石墨纤维累积电子损坏，电磁武器触发脉冲反射",
 		"mod_ids": ["art_graphite_fiber", "aa_emp_warhead", "air_antiradiation_missile", "gen_overload_capacitor"],
 		"mod_combo_min": 2,
@@ -62,6 +64,7 @@ const COMBOS: Dictionary = {
 		"id": COMBO_NANO,
 		"name": "纳米浓度场",
 		"icon": "🧬",
+		"icon_tex": "res://assets/ui/combo_icons/nano.png",
 		"desc": "纳米蜂群提升战场纳米浓度，纳米病毒感染扩散",
 		"mod_ids": ["art_nano_amp", "sup_nano_seeder", "gen_nano_catalyst"],
 		"mod_combo_min": 2,
@@ -73,6 +76,7 @@ const COMBOS: Dictionary = {
 		"id": COMBO_LASER,
 		"name": "光束谐振链",
 		"icon": "✨",
+		"icon_tex": "res://assets/ui/combo_icons/laser.png",
 		"desc": "激光标记积累谐振，光束武器多重攻击+反射",
 		"mod_ids": ["gen_beam_splitter", "gen_reflector_array", "air_targeting_laser", "eng_optical_fiber"],
 		"mod_combo_min": 2,
@@ -84,6 +88,7 @@ const COMBOS: Dictionary = {
 		"id": COMBO_RECON,
 		"name": "侦察链式",
 		"icon": "🎯",
+		"icon_tex": "res://assets/ui/combo_icons/recon.png",
 		"desc": "无人机+雷达双标记，狙击手集火链式触发弱点暴露",
 		"mod_ids": ["rec_phased_radar", "sup_targeting_drone", "gen_weakpoint_analyzer"],
 		"mod_combo_min": 2,
@@ -95,6 +100,7 @@ const COMBOS: Dictionary = {
 		"id": COMBO_CHEM,
 		"name": "化学污染场",
 		"icon": "☠",
+		"icon_tex": "res://assets/ui/combo_icons/chem.png",
 		"desc": "化学弹累积战场污染，腐蚀降防+污染扩散",
 		"mod_ids": ["art_chem_cluster", "aa_acid_warhead", "eng_chem_sprayer", "gen_pollution_accumulator"],
 		"mod_combo_min": 2,
@@ -177,6 +183,20 @@ static func get_all_combo_mod_ids() -> Array:
 			if not all.has(ms):
 				all.append(ms)
 	return all
+
+## v9.1 获取套路图标纹理（icon_tex 字段，无资源返回 null，调用方回退 emoji）。
+static var _icon_tex_cache: Dictionary = {}
+static func get_combo_icon_texture(combo_id: String) -> Texture2D:
+	if _icon_tex_cache.has(combo_id):
+		return _icon_tex_cache[combo_id]
+	var def: Dictionary = COMBOS.get(combo_id, {})
+	var path: String = String(def.get("icon_tex", ""))
+	if path.is_empty() or not ResourceLoader.exists(path):
+		_icon_tex_cache[combo_id] = null
+		return null
+	var tex: Texture2D = load(path)
+	_icon_tex_cache[combo_id] = tex
+	return tex
 
 # ─────────────────────────────────────────────
 #  辅助

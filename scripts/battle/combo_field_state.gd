@@ -30,6 +30,9 @@ const FIELD_CAPS: Dictionary = {
 
 var _fields: Dictionary = {}   # tag -> {amount: float, decay: float, expire_at: float}
 
+## 浓度变化信号（tag, 新值）。供 battlefield 层订阅以驱动浓度场 VFX。
+signal field_changed(tag: String, amount: float)
+
 # ─────────────────────────────────────────────
 #  目标级 meta key 常量
 # ─────────────────────────────────────────────
@@ -72,6 +75,8 @@ func add_field(tag: String, amount: float, decay_per_sec: float = 1.0, duration:
 	f["decay"] = minf(float(f.get("decay", decay_per_sec)), decay_per_sec)
 	# 过期时间取较远（浓度持续时间刷新）
 	f["expire_at"] = maxf(float(f.get("expire_at", now + duration)), now + duration)
+	# 通知订阅方（battlefield 浓度场 VFX）
+	field_changed.emit(tag, float(f["amount"]))
 
 ## 读取战场浓度当前值（已扣除自然衰减）。每帧调用 update() 后读到的就是衰减后的实时值。
 func get_field(tag: String) -> float:
@@ -101,6 +106,11 @@ func update(delta: float) -> void:
 			to_erase.append(tag)
 	for tag in to_erase:
 		_fields.erase(tag)
+		field_changed.emit(tag, 0.0)
+	# 衰减后通知仍在激活的浓度（让 VFX 跟随衰减）
+	for tag in _fields.keys():
+		var f2: Dictionary = _fields[tag]
+		field_changed.emit(tag, float(f2.get("amount", 0.0)))
 
 # ─────────────────────────────────────────────
 #  目标级 meta API（封装过期语义）

@@ -160,17 +160,23 @@ static func ability_phantom_clone(star: int) -> Dictionary:
 	}
 
 ## 3. 直射穿透（影幕势力）— 100%穿透，每穿一个目标衰减
+## v9.2: 新增 pierce_targets（多单位穿透次数）——真正实现"穿多目标"语义。
+##   pen_ratio 仍是护甲穿透比例（attack_calculator 消费，减防御）。
+##   pierce_targets 是子弹可额外穿透的目标数（bullet.gd 消费，让子弹穿过去打下一个）。
+##   falloff_per_target 是每穿一个目标的伤害衰减（bullet.gd 消费）。
+##   三参数各司其职：pen_ratio=穿甲, pierce_targets=穿几个, falloff=衰减多少。
 static func ability_piercing_shot(star: int) -> Dictionary:
 	var pen_ratio: float = 1.0   # 100%
 	var falloff: float = 0.1     # 每穿一个衰减10%
+	var pierce_targets: int = 6  # 7星：穿透6个额外目标（"100%穿透"名副其实）
 	match star:
-		3: pen_ratio = 0.4; falloff = 0.2
-		6: pen_ratio = 0.7; falloff = 0.15
+		3: pen_ratio = 0.4; falloff = 0.2; pierce_targets = 2
+		6: pen_ratio = 0.7; falloff = 0.15; pierce_targets = 4
 	return {
 		"id": "piercing_shot",
 		"name": "直射穿透",
 		"type": "passive",
-		"params": {"pen_ratio": pen_ratio, "falloff_per_target": falloff},
+		"params": {"pen_ratio": pen_ratio, "falloff_per_target": falloff, "pierce_targets": pierce_targets},
 		"description": "直射攻击%d%%穿透，每穿透一个目标衰减%d%%" % [int(pen_ratio * 100), int(falloff * 100)],
 	}
 

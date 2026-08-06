@@ -80,6 +80,16 @@ const EXTENSION_NODES: Dictionary = {
 		 "branch": BRANCH_COMMAND, "tier": 12, "cost": 5, "requires": ["pms_cmd_11"],
 		 "unlocks": [{"type": "tactic", "id": "tactic_sky_net"}],
 		 "effects": {}},
+		# tier 13a：钢铁壁垒（卡片技能——堡垒周期护盾，原幽灵技能补挂）
+		{"id": "pms_cmd_13a", "name": "钢铁壁垒", "desc": "解锁卡片技能「堡垒护盾」：每 20s 全体堡垒+2000护盾、-10%受伤（10s）",
+		 "branch": BRANCH_COMMAND, "tier": 13, "cost": 5, "requires": ["pms_cmd_12"],
+		 "unlocks": [{"type": "card_skill", "id": "cps_steel_bulwark"}],
+		 "effects": {}},
+		# tier 13b：反坦克雷区（卡片技能——工兵周期布雷，原幽灵技能补挂）
+		{"id": "pms_cmd_13b", "name": "反坦克雷区", "desc": "解锁卡片技能「工兵布雷」：每 18s 敌方密集区布雷（对装甲+50%，8s）",
+		 "branch": BRANCH_COMMAND, "tier": 13, "cost": 5, "requires": ["pms_cmd_12"],
+		 "unlocks": [{"type": "card_skill", "id": "cps_minefield"}],
+		 "effects": {}},
 	],
 
 	# ═══════════ 火力分支扩展（10 节点）：狙击手 / 火炮协调 / 战法 ═══════════
@@ -194,6 +204,11 @@ const EXTENSION_NODES: Dictionary = {
 		 "branch": BRANCH_INTELLIGENCE, "tier": 12, "cost": 5, "requires": ["pms_int_10"],
 		 "unlocks": [{"type": "tactic", "id": "tactic_total_war"}],
 		 "effects": {}},
+		# tier 13：闪电链（卡片技能——电子战链式雷击，原幽灵技能补挂）
+		{"id": "pms_int_13", "name": "闪电链", "desc": "解锁卡片技能「链式雷击」：每 10s 弹跳 5 次雷伤（对装甲+50%）",
+		 "branch": BRANCH_INTELLIGENCE, "tier": 13, "cost": 5, "requires": ["pms_int_12"],
+		 "unlocks": [{"type": "card_skill", "id": "cps_chain_lightning"}],
+		 "effects": {}},
 	],
 
 	# ═══════════ 概念武器分支扩展（10 节点）：卡片终极技能 ═══════════
@@ -247,6 +262,16 @@ const EXTENSION_NODES: Dictionary = {
 		{"id": "pms_cw_12b", "name": "烈焰风暴", "desc": "解锁卡片技能「全图燃烧」：每 80s 全图燃烧+恐慌",
 		 "branch": BRANCH_CONCEPT_WEAPON, "tier": 12, "cost": 5, "requires": ["pms_cw_11"],
 		 "unlocks": [{"type": "card_skill", "id": "cps_firestorm"}],
+		 "effects": {}},
+		# tier 13a：火焰传导（卡片技能——燃烧传染，原幽灵技能补挂）
+		{"id": "pms_cw_13a", "name": "火焰传导", "desc": "解锁卡片技能「燃烧传染」：每 18s 燃烧传染 5 个邻近敌方（4s）",
+		 "branch": BRANCH_CONCEPT_WEAPON, "tier": 13, "cost": 5, "requires": ["pms_cw_12b"],
+		 "unlocks": [{"type": "card_skill", "id": "cps_combustion"}],
+		 "effects": {}},
+		# tier 13b：太阳耀斑（卡片技能——全体易伤，原幽灵技能补挂）
+		{"id": "pms_cw_13b", "name": "太阳耀斑", "desc": "解锁卡片技能「全体易伤」：每 35s 全体敌方+25%易伤（5s）",
+		 "branch": BRANCH_CONCEPT_WEAPON, "tier": 13, "cost": 5, "requires": ["pms_cw_12b"],
+		 "unlocks": [{"type": "card_skill", "id": "cps_solar_flare"}],
 		 "effects": {}},
 	],
 }

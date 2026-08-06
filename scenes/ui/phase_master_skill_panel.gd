@@ -300,12 +300,19 @@ func _format_unlocks(unlocks: Array) -> String:
 		else:
 			# 翻译表未覆盖的类型走原逻辑
 			match u_type:
-				"phase_instrument": parts.append("相位仪[%s]" % u_id)
+				"phase_instrument":
+					# 查 PhaseInstruments 取中文名，查不到回退原始 ID
+					var PhaseInstrumentsCls = preload("res://data/phase_instruments.gd")
+					var inst_cfg: Dictionary = PhaseInstrumentsCls.get_by_id(u_id)
+					var inst_name: String = String(inst_cfg.get("name", u_id))
+					parts.append("相位仪：%s" % inst_name)
 				"concept_weapon": parts.append("概念武器[%s]" % u_id)
 				"special_card": parts.append("特殊卡[%s]" % u_id)
 				"evolution":
 					var era: int = int(u.get("era", 0))
-					parts.append("进化解锁[时代%d]" % era if era >= 0 else "进化解锁[全时代]")
+					var era_names: Array = ["一战", "二战", "冷战", "现代", "近未来"]
+					var era_label: String = era_names[clampi(era, 0, 4)] if era >= 0 and era < 5 else "全时代"
+					parts.append("进化解锁[%s]" % era_label)
 				"affix": parts.append("词条赋予")
 				_: parts.append("%s[%s]" % [u_type, u_id])
 	return "、".join(parts)

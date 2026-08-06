@@ -8,42 +8,14 @@ extends RefCounted
 
 class_name AchievementRewards
 
-const DEBUG_LOG_PATH := "debug-756b82.log"
-
-static func _debug_log(run_id: String, hypothesis_id: String, location: String, message: String, data: Dictionary = {}) -> void:
-	# #region agent log
-	var payload: Dictionary = {
-		"sessionId": "756b82",
-		"runId": run_id,
-		"hypothesisId": hypothesis_id,
-		"location": location,
-		"message": message,
-		"data": data,
-		"timestamp": int(Time.get_unix_time_from_system() * 1000.0),
-	}
-	var f: FileAccess = FileAccess.open(DEBUG_LOG_PATH, FileAccess.READ_WRITE)
-	if f == null:
-		f = FileAccess.open(DEBUG_LOG_PATH, FileAccess.WRITE)
-	if f != null:
-		f.seek_end()
-		f.store_line(JSON.stringify(payload))
-		f.close()
-	# #endregion
-
-static func _get_autoload(root_path: String, run_id: String, hypothesis_id: String) -> Node:
-	# #region agent log
+static func _get_autoload(root_path: String) -> Node:
 	var loop_obj := Engine.get_main_loop()
 	if not (loop_obj is SceneTree):
-		_debug_log(run_id, hypothesis_id, "achievement_rewards.gd:_get_autoload", "main_loop_not_scenetree", {"root_path": root_path, "main_loop_type": typeof(loop_obj)})
 		return null
 	var tree := loop_obj as SceneTree
 	if tree == null or tree.get_root() == null:
-		_debug_log(run_id, hypothesis_id, "achievement_rewards.gd:_get_autoload", "scene_tree_or_root_null", {"root_path": root_path})
 		return null
-	var node := tree.get_root().get_node_or_null(root_path)
-	_debug_log(run_id, hypothesis_id, "achievement_rewards.gd:_get_autoload", "autoload_lookup", {"root_path": root_path, "found": node != null})
-	return node
-	# #endregion
+	return tree.get_root().get_node_or_null(root_path)
 
 ## 尝试发放成就奖励
 ## @param reward: 成就定义中的 reward 字典
@@ -60,52 +32,39 @@ static func grant(reward: Dictionary, resource_managers: Dictionary = {}) -> boo
 	if reward.is_empty():
 		return false
 
-	var run_id := "run-pre-fix-achievement-rewards"
 	var reward_type: String = reward.get("type", "")
 	var reward_amount: int = reward.get("amount", 0)
-	# #region agent log
-	_debug_log(run_id, "H4", "achievement_rewards.gd:grant", "grant_enter", {"reward_type": reward_type, "reward_amount": reward_amount, "has_managers": not resource_managers.is_empty()})
-	# #endregion
 
 	# v8 批次5: 旧格式兼容——无 type 字段时按资源键直填发放
 	# 现有成就定义用 {nano_materials: N} 格式，此前因 grant 只读 type 导致全部空转
 	if reward_type.is_empty():
-		return _grant_legacy_format(reward, resource_managers, run_id)
+		return _grant_legacy_format(reward, resource_managers)
 
 	match reward_type:
 		"basic_nano":
 			var brm: Node = resource_managers.get("BasicResourceManager")
 			if brm == null:
-				brm = _get_autoload("/root/BasicResourceManager", run_id, "H1")
+				brm = _get_autoload("/root/BasicResourceManager")
 			if brm != null and brm.has_method("add_resource"):
 				brm.add_resource("nano_materials", reward_amount)
-				# #region agent log
-				_debug_log(run_id, "H5", "achievement_rewards.gd:grant", "basic_nano_granted", {"amount": reward_amount})
-				# #endregion
 				return true
 			return false
 
 		"energy_block":
 			var brm: Node = resource_managers.get("BasicResourceManager")
 			if brm == null:
-				brm = _get_autoload("/root/BasicResourceManager", run_id, "H1")
+				brm = _get_autoload("/root/BasicResourceManager")
 			if brm != null and brm.has_method("add_resource"):
 				brm.add_resource("energy_block", reward_amount)
-				# #region agent log
-				_debug_log(run_id, "H5", "achievement_rewards.gd:grant", "energy_block_granted", {"amount": reward_amount})
-				# #endregion
 				return true
 			return false
 
 		"phase_xp", "phase_field_xp":
 			var pm: Node = resource_managers.get("PhaseInstrumentManager")
 			if pm == null:
-				pm = _get_autoload("/root/PhaseInstrumentManager", run_id, "H2")
+				pm = _get_autoload("/root/PhaseInstrumentManager")
 			if pm != null and pm.has_method("grant_phase_field_xp"):
 				pm.grant_phase_field_xp("achievement", reward_amount)
-				# #region agent log
-				_debug_log(run_id, "H5", "achievement_rewards.gd:grant", "phase_field_xp_granted", {"amount": reward_amount})
-				# #endregion
 				return true
 			return false
 
@@ -113,27 +72,23 @@ static func grant(reward: Dictionary, resource_managers: Dictionary = {}) -> boo
 			ManagerLazyLoader.ensure_loaded("drop")  # v7.x: DropManager 已改懒加载
 			var dm: Node = resource_managers.get("DropManager")
 			if dm == null:
-				dm = _get_autoload("/root/DropManager", run_id, "H3")
+				dm = _get_autoload("/root/DropManager")
 			var card_id: String = reward.get("card_id", "")
 			var card_count: int = maxi(1, int(reward.get("amount", 1)))
 			if dm != null and dm.has_method("grant_dropped_cards_by_id") and not card_id.is_empty():
 				dm.grant_dropped_cards_by_id(card_id, card_count)
-				# #region agent log
-				_debug_log(run_id, "H5", "achievement_rewards.gd:grant", "card_granted", {"card_id": card_id, "count": card_count})
-				# #endregion
 				return true
 			return false
 
 		# v8 批次5: 改造蓝图奖励（独占改造）
 		"mod_blueprint":
-			var bag: Node = _get_autoload("/root/IntelItemBag", run_id, "H6")
+			var bag: Node = _get_autoload("/root/IntelItemBag")
 			var mod_id: String = reward.get("mod_blueprint_id", "")
 			var mod_count: int = maxi(1, int(reward.get("amount", 1)))
 			if bag != null and bag.has_method("add_item") and not mod_id.is_empty():
 				var bp_id: String = "blueprint_" + mod_id
 				for _i in range(mod_count):
 					bag.add_item(bp_id, 1)
-				_debug_log(run_id, "H5", "achievement_rewards.gd:grant", "mod_blueprint_granted", {"mod_id": mod_id, "count": mod_count})
 				return true
 			return false
 
@@ -143,10 +98,10 @@ static func grant(reward: Dictionary, resource_managers: Dictionary = {}) -> boo
 ## v8 批次5: 旧格式兼容发放（无 type 字段的 reward 字典）
 ## 处理 {nano_materials: N, energy_block: N, company_rep: {fid: N}, rare_card: N, mythic_card: N}
 ## 此前因 grant 只读 type 导致所有旧格式成就奖励空转——本方法修复该 bug
-static func _grant_legacy_format(reward: Dictionary, resource_managers: Dictionary, run_id: String) -> bool:
+static func _grant_legacy_format(reward: Dictionary, resource_managers: Dictionary) -> bool:
 	var brm: Node = resource_managers.get("BasicResourceManager")
 	if brm == null:
-		brm = _get_autoload("/root/BasicResourceManager", run_id, "H1")
+		brm = _get_autoload("/root/BasicResourceManager")
 	var granted: bool = false
 	# 纳米材料
 	var nano: int = int(reward.get("nano_materials", 0))
@@ -161,7 +116,7 @@ static func _grant_legacy_format(reward: Dictionary, resource_managers: Dictiona
 	# 势力声望
 	var rep: Dictionary = reward.get("company_rep", {})
 	if not rep.is_empty():
-		var fsm: Node = _get_autoload("/root/FactionSystemManager", run_id, "H7")
+		var fsm: Node = _get_autoload("/root/FactionSystemManager")
 		if fsm != null and fsm.has_method("add_reputation"):
 			for fid in rep:
 				fsm.add_reputation(String(fid), int(rep[fid]))
@@ -170,7 +125,7 @@ static func _grant_legacy_format(reward: Dictionary, resource_managers: Dictiona
 	ManagerLazyLoader.ensure_loaded("drop")  # v7.x: DropManager 已改懒加载
 	var dm: Node = resource_managers.get("DropManager")
 	if dm == null:
-		dm = _get_autoload("/root/DropManager", run_id, "H3")
+		dm = _get_autoload("/root/DropManager")
 	if dm != null and dm.has_method("grant_dropped_cards_by_id"):
 		for card_key in ["rare_card", "rare_cards", "legendary_card", "mythic_card"]:
 			var cnt: int = int(reward.get(card_key, 0))
@@ -181,7 +136,6 @@ static func _grant_legacy_format(reward: Dictionary, resource_managers: Dictiona
 					if not picked_id.is_empty():
 						dm.grant_dropped_cards_by_id(picked_id, 1)
 						granted = true
-	_debug_log(run_id, "H5", "achievement_rewards.gd:_grant_legacy_format", "legacy_granted", {"granted": granted, "keys": reward.keys()})
 	return granted
 
 

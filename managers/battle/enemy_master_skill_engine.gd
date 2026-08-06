@@ -108,6 +108,9 @@ func update_passives(delta: float) -> void:
 		var params: Dictionary = spell.get("params", {})
 		if _is_aura_effect(effect):
 			_tick_aura_damage(params, effect, tick_dt)
+		# v9.1: 治疗光环类（massive_heal_aura/healing_aura）→ 持续治疗范围内友军
+		elif _is_heal_aura_effect(effect):
+			_tick_aura_heal(params, tick_dt)
 
 ## v8.5: 一次性应用 buff 类被动（armor_boost/formation_bonus 等直接改敌方单位 stats）
 ## 直接修改 stats（每单位独立实例，安全），立即生效不依赖 meta 读取
@@ -146,6 +149,47 @@ func _apply_passive_buffs(passives: Array) -> void:
 			if _driver != null and is_instance_valid(_driver) and _driver.has_method("set_boss_thorn"):
 				_driver.set_boss_thorn(thorn_pct)
 			_show_toast("🌵 %s：boss 反伤 %d%%" % [name_text, int(thorn_pct * 100)])
+		# v9.1: 能量护盾类（energy_shield/shield_base）→ boss 自身获得护盾（一次性开局施加）
+		# 注：active_spell 的 energy_shield 由 _trigger_spell 的 _exec_shield_self 定时处理，
+		# 此处仅处理 passive_spells 中的同名 effect（开局即生效，非定时）。
+		elif effect.find("energy_shield") >= 0 or effect == "shield_base":
+			var shield_pct: float = float(params.get("shield_pct", params.get("bonus", 0.20)))
+			if _driver != null and is_instance_valid(_driver) and _driver.has_method("add_boss_shield"):
+				var boss_max_hp: float = float(_driver.get("max_hp")) if "max_hp" in _driver else 1000.0
+				var shield_amt: float = boss_max_hp * shield_pct
+				shield_amt = minf(shield_amt, boss_max_hp * 0.60)
+				_driver.add_boss_shield(shield_amt)
+				_show_toast("🛡 %s：boss 获得 %.0f 护盾" % [name_text, shield_amt])
+				_flash_driver_on_buff()
+		# v9.1: 高能量增益类（high_energy_bonus/overcharge）→ 记录阈值与加成到 driver meta，
+		# 由 driver._process 自行检查能量状态并应用攻速加成（engine 不持有能量状态）。
+		elif effect.find("high_energy") >= 0 or effect.find("overcharge") >= 0:
+			var threshold: float = float(params.get("threshold", 0.8))
+			var boost_val: float = float(params.get("attack_speed_boost", params.get("boost", 0.4)))
+			if _driver != null and is_instance_valid(_driver):
+				_driver.set_meta("high_energy_threshold", threshold)
+				_driver.set_meta("high_energy_boost", boost_val)
+			_show_toast("⚡ %s：能量超 %d%% 时攻速+%d%%" % [name_text, int(threshold * 100), int(boost_val * 100)])
+			_flash_driver_on_buff()
+		# v9.1: 大规模治疗光环类（massive_heal_aura/healing_aura）→ 记录到 driver meta，
+		# 由 engine.update_passives 的 tick 路径调 _tick_aura_heal 持续治疗友军。
+		elif effect.find("heal") >= 0 or effect.find("healing") >= 0 or effect.find("massive_heal") >= 0:
+			var heal_pct: float = float(params.get("heal_percent", params.get("bonus", 0.04)))
+			var heal_radius: float = float(params.get("radius", 250.0))
+			if _driver != null and is_instance_valid(_driver):
+				_driver.set_meta("heal_aura_percent", heal_pct)
+				_driver.set_meta("heal_aura_radius", heal_radius)
+			_show_toast("✨ %s：范围内友军每秒恢复 %d%% HP" % [name_text, int(heal_pct * 100)])
+			_flash_driver_on_buff()
+		# v9.1: death_shield 类（友军死亡回盾）→ 标记到 driver，由 _on_any_unit_died 触发
+		# （不在此处应用，仅 set_meta 占位；实际触发在 enemy_phase_field_driver._try_trigger_death_shield）
+		elif effect.find("death_shield") >= 0:
+			# 占位 meta（driver._try_trigger_death_shield 直接读 passive_spells，不依赖此 meta，
+			# 但保留 set_meta 供其他系统查询 boss 是否有此被动）
+			if _driver != null and is_instance_valid(_driver):
+				var ds_pct: float = float(params.get("shield_percent", params.get("shield_pct", 0.05)))
+				_driver.set_meta("death_shield_pct", ds_pct)
+			_show_toast("💚 %s：友军阵亡时 boss 回护盾" % name_text)
 
 ## v8.5: 光环类被动 tick（damage_aura/max_hp_drain/entropy_drain 等范围内持续伤害）
 func _tick_aura_damage(params: Dictionary, effect: String, tick_dt: float) -> void:
@@ -172,6 +216,46 @@ func _tick_aura_damage(params: Dictionary, effect: String, tick_dt: float) -> vo
 			dmg = dps * tick_dt
 		if dmg > 0.0 and t.has_method("take_damage"):
 			t.take_damage(dmg, _driver)
+
+## v9.1: 治疗光环 tick（massive_heal_aura/healing_aura 类，正向治疗范围内友军）。
+## 治疗量 = 友军 max_hp × heal_percent × tick_dt（每秒值，按 tick_dt 缩放）。
+## 半径优先读 spell.params.radius，回退 driver meta heal_aura_radius（_apply_passive_buffs 写入）。
+func _tick_aura_heal(params: Dictionary, tick_dt: float) -> void:
+	if _driver == null or not is_instance_valid(_driver):
+		return
+	# heal_percent 优先读 params，回退 driver meta（_apply_passive_buffs 标记）
+	var heal_pct: float = float(params.get("heal_percent", params.get("bonus", 0.04)))
+	if _driver.has_meta("heal_aura_percent"):
+		heal_pct = float(_driver.get_meta("heal_aura_percent", heal_pct))
+	var radius: float = float(params.get("radius", 250.0))
+	if _driver.has_meta("heal_aura_radius"):
+		radius = float(_driver.get_meta("heal_aura_radius", radius))
+	var boss_pos: Vector2 = _get_driver_pos()
+	var allies: Array = _get_enemy_units()
+	for a in allies:
+		if a == null or not is_instance_valid(a) or not (a is Node2D):
+			continue
+		if boss_pos.distance_to((a as Node2D).global_position) > radius:
+			continue
+		# 友军 max_hp：优先 stats.max_hp，回退顶层 max_hp，再回退 100
+		var a_max_hp: float = 100.0
+		if "stats" in a and a.stats != null and "max_hp" in a.stats:
+			a_max_hp = float(a.stats.max_hp)
+		elif "max_hp" in a:
+			a_max_hp = float(a.max_hp)
+		var heal_amt: float = a_max_hp * heal_pct * tick_dt
+		if heal_amt > 0.0:
+			# 优先 heal 方法（ConstructUnit 有），回退 heal_hp（EnemyUnit 风格），再回退直接改 hp
+			if a.has_method("heal"):
+				a.heal(heal_amt)
+			elif a.has_method("heal_hp"):
+				a.heal_hp(heal_amt)
+			elif "hp" in a:
+				a.hp = minf(float(a.hp) + heal_amt, a_max_hp)
+
+## v9.1: 治疗光环 effect 判定（区别于伤害类 _is_aura_effect）
+func _is_heal_aura_effect(effect: String) -> bool:
+	return effect.find("heal") >= 0 or effect.find("healing") >= 0 or effect.find("massive_heal") >= 0
 
 ## v8.5: boss 死亡时触发死亡类被动（death_explosion/cheat_death 等）
 ## 在 driver._on_destroyed 调 queue_free 之前调用（此时 driver 仍有效）
@@ -493,3 +577,11 @@ func _trigger_screen_shake(intensity: float, duration: float) -> void:
 func _show_toast(msg: String) -> void:
 	if SignalBus.has_signal("show_toast"):
 		SignalBus.show_toast.emit(msg)
+
+## v9.1: 被动 buff 应用时触发 driver 基地闪光（视觉反馈，让玩家感知"boss 有被动加成"）
+func _flash_driver_on_buff() -> void:
+	if _driver == null or not is_instance_valid(_driver):
+		return
+	if not _driver.has_method("_flash_body_on_buff"):
+		return
+	_driver._flash_body_on_buff()

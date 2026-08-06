@@ -215,36 +215,10 @@ func _make_header_label(text: String, min_width: int, align: int) -> Label:
 	lbl.horizontal_alignment = align
 	return lbl
 
-static func _rank_text(rank: int) -> String:
-	match rank:
-		1: return "1"
-		2: return "2"
-		3: return "3"
-		_: return str(rank)
-
-static func _level_color(cur_lv: int) -> Color:
-	if cur_lv >= 81:
-		return Color(0.85, 0.5, 1.0, 1)
-	elif cur_lv >= 61:
-		return Color(0.0, 0.85, 0.95, 1)
-	elif cur_lv >= 41:
-		return Color(0.45, 0.7, 1.0, 1)
-	elif cur_lv >= 21:
-		return Color(0.4, 0.95, 0.35, 1)
-	else:
-		return Color(0.95, 0.78, 0.45, 1)
-
-static func _enemy_level_color(level: int) -> Color:
-	if level >= 25:
-		return Color(0.85, 0.5, 1.0, 1)
-	elif level >= 20:
-		return Color(0.0, 0.85, 0.95, 1)
-	elif level >= 15:
-		return Color(0.45, 0.7, 1.0, 1)
-	elif level >= 10:
-		return Color(0.4, 0.95, 0.35, 1)
-	else:
-		return Color(0.95, 0.78, 0.45, 1)
+# 注：_rank_text / _enemy_level_color 原定义于此，已被内联到 enemy_row.gd 以打破
+# preload 循环依赖（enemy_row.tscn ↔ leaderboard_presenter.gd）。
+# _level_color 为死代码（无调用方）一并删除。
+# 若未来需跨文件复用，请新建 LeaderboardFormat 工具类承载。
 
 ## 创建单个小型 Label（用于详情弹窗内嵌数据）
 static func _make_stat_label(text: String, font_size: int, color: Color) -> Label:

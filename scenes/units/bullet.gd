@@ -13,6 +13,7 @@ const RuneSpecialHandler = preload("res://managers/rune_special_handler.gd")
 const FactionSkillEffectHandler = preload("res://scripts/battle/faction_skill_effect_handler.gd")
 # v9.1: 组合技套路机制（光束反射/多重攻击/弱点暴露/化学腐蚀等乘区）
 const ComboEngine = preload("res://scripts/battle/combo_engine.gd")
+const DirectWeaponFlavor = preload("res://data/direct_weapon_flavor.gd")
 ## 曲射弹道：炮口火焰特效纹理（预加载，避免运行时 ResourceLoader.load 卡顿）
 const ARTILLERY_MUZZLE_TEX := preload("res://assets/effects/projectiles/weapons_realistic/weapon_artillery_muzzle.png")
 ## v6.4: 重型武器拖尾贴图（曲射/爆炸类），复用 omega_platform 拖尾资源
@@ -56,6 +57,13 @@ var _blitz_applied: bool = false   # v8.5: 闪电穿插 pierce 补充已应用�
 var explosion_radius: float = 0.0  # >0 时命中产生范围伤害（ROCKET/MISSILE/FLAK）
 var pellet_count: int = 1          # 霰弹多发
 var spread_angle_deg: float = 0.0  # 多发散射角
+# v9.2: 多单位穿透伤害衰减（每穿一个目标，后续伤害 × (1 - falloff)）。
+# 默认 0.0 = 不衰减（保持现有狙击/激光/磁轨/欧米茄行为）。
+# 相位仪直射穿透等显式配置衰减的来源会设置此值（见 _on_hit 能力检测块）。
+var _pierce_falloff: float = 0.0
+var _pierce_damage_mult: float = 1.0  # 当前穿透命中的伤害乘数（每次穿透递减）
+# v9.2: 穿透子弹已撞目标记录——避免同一颗子弹反复命中同一目标（穿透次数变多后尤其重要）。
+var _pierce_hit_targets: Array = []
 
 ## 曲射（INDIRECT）弹道参数
 var _is_indirect: bool = false
@@ -383,7 +391,23 @@ func _apply_trail_tier() -> void:
 	var smax: float = 3.0
 	match weapon_type:
 		0, 1, 2, 4:  # SMG / RIFLE / MG / PISTOL — 轻武器，连发轨迹感
-			amount = 16; life = 0.50; vmin = 15.0; vmax = 40.0; smin = 1.5; smax = 3.0
+			# v8.x 亚类分流：用武器名把"看不出差异的直射系"做成有辨识度的拖尾
+			match DirectWeaponFlavor.classify(_weapon_name, weapon_type):
+				DirectWeaponFlavor.Flavor.MG:
+					# 机枪：粒子翻倍 + 寿命略长，连发时形成密集弹幕轨迹
+					amount = 30; life = 0.55; vmin = 18.0; vmax = 48.0; smin = 1.8; smax = 3.2
+				DirectWeaponFlavor.Flavor.TANK_GUN:
+					# 坦克炮：加粗粒子，单发重炮的厚实尾焰感（区别于轻武器的细碎火星）
+					amount = 20; life = 0.50; vmin = 12.0; vmax = 35.0; smin = 2.5; smax = 4.5
+				DirectWeaponFlavor.Flavor.RIFLE:
+					# 步枪：细长高速，冷白凌厉感（区别于冲锋枪的短黄）
+					amount = 14; life = 0.45; vmin = 25.0; vmax = 55.0; smin = 1.0; smax = 2.0
+				DirectWeaponFlavor.Flavor.SMALL_ARMS:
+					# 手枪/卡宾：最弱拖尾，体现轻武器（几乎无轨迹，仅一闪）
+					amount = 8; life = 0.35; vmin = 10.0; vmax = 25.0; smin = 1.0; smax = 1.8
+				_:
+					# GENERIC/UNKNOWN：原基准档（冲锋枪/通用直射）
+					amount = 16; life = 0.50; vmin = 15.0; vmax = 40.0; smin = 1.5; smax = 3.0
 		5:  # SHOTGUN — 宽散布霰弹
 			amount = 24; life = 0.45; vmin = 20.0; vmax = 60.0; smin = 2.0; smax = 4.0
 		6:  # SNIPER — 高速细长
@@ -408,8 +432,17 @@ func _trail_color_for_weapon() -> Color:
 		return Color(1.0, 0.45, 0.5, 0.7)  # 敌方粉红
 	match weapon_type:
 		8:  return Color(0.3, 0.8, 1.0, 0.8)   # LASER 蓝
-		10, 11: return Color(0.5, 0.9, 1.0, 0.8)  # OMEGA/RAIL 青
-		3, 7, 9, 1, 2: return Color(1.0, 0.55, 0.2, 0.8)  # 爆炸类 橙
+		10: return Color(0.45, 0.65, 1.0, 0.8)  # OMEGA 能量蓝
+		11: return Color(0.55, 0.95, 1.0, 0.8)  # RAIL 电磁青
+		3, 7, 9: return Color(1.0, 0.55, 0.2, 0.8)  # 爆炸类 橙
+		0, 1, 2, 4:  # 直射系——按亚类细分配色
+			# v8.x: MG 亮黄/步枪冷白/坦克炮橙白/手枪暗黄，让连发混战也能辨出武器类型
+			match DirectWeaponFlavor.classify(_weapon_name, weapon_type):
+				DirectWeaponFlavor.Flavor.MG: return Color(1.0, 0.92, 0.45, 0.8)   # 机枪 亮黄
+				DirectWeaponFlavor.Flavor.TANK_GUN: return Color(1.0, 0.7, 0.35, 0.8)  # 坦克炮 橙白
+				DirectWeaponFlavor.Flavor.RIFLE: return Color(0.85, 0.9, 1.0, 0.75)  # 步枪 冷白
+				DirectWeaponFlavor.Flavor.SMALL_ARMS: return Color(0.95, 0.85, 0.5, 0.6)  # 手枪 暗黄弱
+				_: return Color(1.0, 0.95, 0.6, 0.7)   # 通用直射 黄白
 		_: return Color(1.0, 0.95, 0.6, 0.7)   # 枪械 黄白
 
 
@@ -525,7 +558,9 @@ func _process(delta: float) -> void:
 		_finish_tex_bullet()
 		return
 	if target and is_instance_valid(target) and global_position.distance_squared_to(target.global_position) < 100.0:
-		_on_hit(target)
+		# v9.2: 穿透去重——同一颗子弹不反复撞已撞过的目标（穿透次数多时尤其重要）
+		if target not in _pierce_hit_targets:
+			_on_hit(target)
 
 ## v6.5: 不同曲射武器的弧线高度倍率
 ## 迫击炮最高弧线（高抛物线），火箭筒最低弧线（接近平射）
@@ -609,6 +644,11 @@ func _spawn_muzzle_effect(pos: Vector2) -> void:
 	if host == null or not (host is Node2D):
 		return
 	VfxImpactFactory.spawn_muzzle_flash(host, pos, shooter_is_player)
+	# v9.2: 重型武器叠加炮口火贴图层（ARTILLERY_MUZZLE_TEX 此前 preload 但零调用）。
+	# 贴图与粒子火花叠加，让火炮/导弹/磁轨开火有真实炮口火球，而非纯粒子小方块。
+	# 仅重型武器（HEAVY_TRAIL_WEAPON_TYPES）触发，轻武器保持纯粒子（贴图对小口径过于夸张）。
+	if weapon_type in HEAVY_TRAIL_WEAPON_TYPES:
+		VfxImpactFactory.spawn_impact_sprite(host as Node2D, pos, ARTILLERY_MUZZLE_TEX, 0.55, 0.18)
 
 func _spawn_impact_explosion(pos: Vector2, opts: Dictionary = {}) -> void:
 	# v8.0: 统一走 spawn_impact_with_kind（粒子化）
@@ -623,24 +663,29 @@ func _spawn_impact_explosion(pos: Vector2, opts: Dictionary = {}) -> void:
 
 ## v6.4: 命中时触发屏幕震动——曲射/爆炸类中震动，直射轻震动
 ## v7.x: 优先用 combat_kind 的震动参数（对轻装轻震/对装甲中震/对空重震），无 combat_kind 走原逻辑
+## v9.2: 爆炸震动强度按 explosion_radius 线性映射——大爆炸(OMEGA70/RAIL58)震动显著强于小爆炸(FLAK36)
 func _request_hit_shake() -> void:
 	if BattleManager == null or not is_instance_valid(BattleManager):
 		return
 	if not BattleManager.has_method("request_screen_shake"):
 		return
+	# v9.2: 爆炸震动倍率——半径 40 基准 8.0，每多 1 像素 +0.15（OMEGA70→12.5, RAIL58→10.5, FLAK36→7.7）
+	var explosion_mag: float = 8.0
+	if explosion_radius > 0.0:
+		explosion_mag = maxf(8.0, 8.0 + (explosion_radius - 40.0) * 0.15)
 	# v7.x: 有 combat_kind 时按目标类型定震动强度
 	if _target_combat_kind >= 0:
 		var shake: Vector2 = WeaponProjectileVfx.impact_shake_for_kind(_target_combat_kind)
 		if shake.x > 0.0:
-			# 爆炸/曲射类增强：combat_kind 基础值 + 爆炸加成
+			# 爆炸/曲射类增强：combat_kind 基础值 + 爆炸加成（按半径）
 			var mag: float = shake.x
 			if _is_indirect or explosion_radius > 0.0:
-				mag = maxf(mag, 8.0)  # v8.3: 5.0→8.0
+				mag = maxf(mag, explosion_mag)
 			BattleManager.request_screen_shake(mag, shake.y)
 			return
-	# v8.3 视觉增强：fallback 直射 1.8→3.0 / 爆炸 5.0→8.0
+	# v8.3 视觉增强：fallback 直射 1.8→3.0 / 爆炸按半径
 	if _is_indirect or explosion_radius > 0.0:
-		BattleManager.request_screen_shake(8.0, 0.35)
+		BattleManager.request_screen_shake(explosion_mag, 0.35)
 	else:
 		BattleManager.request_screen_shake(3.0, 0.15)
 
@@ -719,6 +764,9 @@ func _get_aoe_damage_targets(center: Vector2, radius: float, primary: Node2D) ->
 	return targets
 
 func _on_hit(primary: Node2D) -> void:
+	# v9.2: 记录已撞目标（穿透去重用，非穿透子弹仅撞一次无副作用）
+	if primary != null and not _pierce_hit_targets.has(primary):
+		_pierce_hit_targets.append(primary)
 	# v8.5: 闪电穿插机制——首次命中时读 shooter 的 _blitz_pierce_bonus meta，加到本弹 pierce_count
 	# （meta 由 construct_unit_ai.do_attack_with_damage 在 _blitz_pierce_ready 时挂上，一次性消费）
 	if not _blitz_applied and shooter != null and is_instance_valid(shooter):
@@ -779,12 +827,22 @@ func _on_hit(primary: Node2D) -> void:
 	var final_damage: float = damage * (1.0 - defender_reduction)
 	# v8.1: 穿透检测——命中特效紫色穿甲光线 + pierce 伤害数字样式
 	# 检测相位仪 piercing_shot 能力 或 符文 on_attack_penetration（与 attack_calculator 逻辑对齐）
+	# v9.2: piercing_shot 能力此前只设 VFX 标记 + 护甲穿透，"穿多目标+衰减"承诺空转。
+	#       现真正接通：检测到能力时给 pierce_count 加次数 + 设 _pierce_falloff，让子弹穿透多目标并衰减。
+	#       本块由 if not _pending_pierce 守卫，仅首次命中进入（一次性，不重复累加）。
 	if not _pending_pierce:
 		var pen_ratio: float = 0.0
 		# 相位仪直射穿透
 		var ability: Dictionary = PhaseInstrumentAbilities.get_active_ability(PhaseInstrumentAbilities.Owner.PLAYER)
 		if not ability.is_empty() and String(ability.get("id", "")) == "piercing_shot":
 			pen_ratio = maxf(pen_ratio, float(ability.get("params", {}).get("pen_ratio", 0.0)))
+			# v9.2: 接通多单位穿透——加穿透次数 + 设衰减系数（params.pierce_targets 默认 0 兼容旧数据）
+			var p_targets: int = int(ability.get("params", {}).get("pierce_targets", 0))
+			if p_targets > 0:
+				pierce_count += p_targets
+			var p_falloff: float = float(ability.get("params", {}).get("falloff_per_target", 0.0))
+			if p_falloff > 0.0:
+				_pierce_falloff = p_falloff
 		# 符文穿透
 		if shooter_stats != null and shooter_stats.has_meta("rune_specials"):
 			var specials = shooter_stats.get_meta("rune_specials")
@@ -878,53 +936,78 @@ func _on_hit(primary: Node2D) -> void:
 	var _bm_combo := get_tree().root.get_node_or_null("BattleManager") if (get_tree() != null) else null
 	if _bm_combo != null and _bm_combo.has_method("get_combo_engine"):
 		_combo_eng = _bm_combo.get_combo_engine()
-	if _combo_eng != null and _combo_eng.has_method("get_active_mechanisms"):
-		var _mechs: Array = _combo_eng.get_active_mechanisms()
-		# 套路4 光束谐振：多重攻击（beam_split）+ 反射（beam_reflect）
-		if _is_beam and is_instance_valid(shooter) and primary != null:
-			var _beam_res: Dictionary = ComboEngine.try_beam_resonance(_mechs, _combo_eng.get_field_state(), shooter, primary, _is_beam)
-			if _beam_res.get("split", false):
-				# 多重攻击：追加 2 道次级光束伤害（每道 40%，直接 take_damage 不再生成子弹）
-				for _si in range(2):
-					if primary.has_method("take_damage"):
-						primary.take_damage(final_damage * 0.4, shooter)
-			if _beam_res.get("reflect", false):
-				# 反射：找 1 个相邻敌方单位，衰减 60% 伤害（衰减后 40%）
-				var _tpos: Vector2 = (primary.global_position if primary is Node2D else global_position)
-				var _grp: String = "enemy_units" if shooter_is_player else "player_units"
-				for _n in (get_tree().get_nodes_in_group(_grp) if get_tree() != null else []):
-					if _n == null or not is_instance_valid(_n) or not (_n is Node2D) or _n == primary:
-						continue
-					if _tpos.distance_to((_n as Node2D).global_position) <= 120.0:
-						if _n.has_method("take_damage"):
-							_n.take_damage(final_damage * 0.4, shooter)   # 衰减 60% → 40%
-						break
-		# 套路5 集火链式弱点暴露：读 shooter _special weakpoint_trigger + 目标有双标记
-		if is_instance_valid(shooter) and primary != null:
-			var _shooter_stats_v = shooter.get("stats") if "stats" in shooter else null
-			var _has_weakpoint_trigger: bool = false
-			if _shooter_stats_v != null and _shooter_stats_v.has_meta("mod_special_flags"):
-				_has_weakpoint_trigger = (_shooter_stats_v.get_meta("mod_special_flags", {}) as Dictionary).has("weakpoint_trigger")
-			if _has_weakpoint_trigger and _mechs.has("weakpoint_expose"):
-				ComboEngine.try_weakpoint_expose(_mechs, _combo_eng.get_field_state(), shooter, primary)
-		# v9.1 弱点暴露消费：目标有 _weakpoint_until（未过期）且本次命中是暴击 → 暴击伤害额外 +
-		if primary != null and is_instance_valid(primary) and primary.has_meta("_weakpoint_until"):
-			var _wp_until: float = float(primary.get_meta("_weakpoint_until", 0.0))
-			if Time.get_ticks_msec() / 1000.0 < _wp_until and is_crit:
-				var _wp_bonus: float = float(primary.get_meta("_weakpoint_bonus", 0.5))
-				final_damage += final_damage * _wp_bonus
-				primary.remove_meta("_weakpoint_until")   # 一次性消费
-		# v9.1 化学腐蚀（套路6）：目标 _chem_stacks ≥5 时护甲穿透 +20%（通过伤害放大实现）
-		if primary != null and is_instance_valid(primary) and _mechs.has("chem_corrosion"):
-			if primary.has_meta("_chem_stacks") and int(primary.get_meta("_chem_stacks", 0)) >= 5:
-				final_damage *= 1.20
-		# v9.1 套路5 雷达锁定易伤：目标有 _radar_locked_until（未过期）则伤害 ×(1+vuln)
-		# P1-1：sup_targeting_drone 的 drone_mark_vuln_bonus 已在 _apply_radar_lock_on_hit 叠加进 vuln
-		if primary != null and is_instance_valid(primary) and primary.has_meta("_radar_locked_until"):
-			var _rl_until: float = float(primary.get_meta("_radar_locked_until", 0.0))
-			if Time.get_ticks_msec() / 1000.0 < _rl_until:
-				var _rl_vuln: float = float(primary.get_meta("_radar_vuln", 0.15))
-				final_damage *= (1.0 + _rl_vuln)
+		if _combo_eng != null and _combo_eng.has_method("get_active_mechanisms"):
+			var _mechs: Array = _combo_eng.get_active_mechanisms()
+			# 套路4 光束谐振：多重攻击（beam_split）+ 反射（beam_reflect）
+			if _is_beam and is_instance_valid(shooter) and primary != null:
+				var _beam_res: Dictionary = ComboEngine.try_beam_resonance(_mechs, _combo_eng.get_field_state(), shooter, primary, _is_beam)
+				if _beam_res.get("split", false):
+					# 多重攻击：追加 2 道次级光束伤害（每道 40%，直接 take_damage 不再生成子弹）
+					for _si in range(2):
+						if primary.has_method("take_damage"):
+							primary.take_damage(final_damage * 0.4, shooter)
+					# v9.1 光束分裂 VFX：从主目标射向相邻 2 个敌人
+					var _split_pos: Vector2 = (primary.global_position if primary is Node2D else global_position)
+					var _split_grp: String = "enemy_units" if shooter_is_player else "player_units"
+					var _split_targets: Array = []
+					for _n in (get_tree().get_nodes_in_group(_split_grp) if get_tree() != null else []):
+						if _n == null or not is_instance_valid(_n) or not (_n is Node2D) or _n == primary:
+							continue
+						if _split_pos.distance_to((_n as Node2D).global_position) <= 120.0:
+							_split_targets.append((_n as Node2D).global_position)
+							if _split_targets.size() >= 2:
+								break
+					var _vfx_parent := get_parent() as Node2D
+					if _vfx_parent != null:
+						VfxImpactFactory.spawn_beam_split_arcs(_vfx_parent, _split_pos, _split_targets, Color(0.9, 0.8, 1.0))
+				if _beam_res.get("reflect", false):
+					# 反射：找 1 个相邻敌方单位，衰减 60% 伤害（衰减后 40%）
+					var _tpos: Vector2 = (primary.global_position if primary is Node2D else global_position)
+					var _grp: String = "enemy_units" if shooter_is_player else "player_units"
+					var _reflect_pos: Vector2 = _tpos
+					for _n in (get_tree().get_nodes_in_group(_grp) if get_tree() != null else []):
+						if _n == null or not is_instance_valid(_n) or not (_n is Node2D) or _n == primary:
+							continue
+						if _tpos.distance_to((_n as Node2D).global_position) <= 120.0:
+							if _n.has_method("take_damage"):
+								_n.take_damage(final_damage * 0.4, shooter)   # 衰减 60% → 40%
+							_reflect_pos = (_n as Node2D).global_position
+							# v9.1 光束反射 VFX
+							var _rp := get_parent() as Node2D
+							if _rp != null:
+								VfxImpactFactory.spawn_beam_reflect_arc(_rp, _tpos, _reflect_pos)
+							break
+			# 套路5 集火链式弱点暴露：读 shooter _special weakpoint_trigger + 目标有双标记
+			if is_instance_valid(shooter) and primary != null:
+				var _shooter_stats_v = shooter.get("stats") if "stats" in shooter else null
+				var _has_weakpoint_trigger: bool = false
+				if _shooter_stats_v != null and _shooter_stats_v.has_meta("mod_special_flags"):
+					_has_weakpoint_trigger = (_shooter_stats_v.get_meta("mod_special_flags", {}) as Dictionary).has("weakpoint_trigger")
+				if _has_weakpoint_trigger and _mechs.has("weakpoint_expose"):
+					var _exposed: bool = ComboEngine.try_weakpoint_expose(_mechs, _combo_eng.get_field_state(), shooter, primary)
+					# v9.1 弱点暴露成功 → 在目标身上生成红色 X 指示器
+					if _exposed and primary is Node2D:
+						var _wp_parent := (primary as Node2D).get_parent() as Node2D
+						if _wp_parent != null:
+							VfxImpactFactory.spawn_weakpoint_indicator(_wp_parent, (primary as Node2D).global_position, 3.0)
+			# v9.1 弱点暴露消费：目标有 _weakpoint_until（未过期）且本次命中是暴击 → 暴击伤害额外 +
+			if primary != null and is_instance_valid(primary) and primary.has_meta("_weakpoint_until"):
+				var _wp_until: float = float(primary.get_meta("_weakpoint_until", 0.0))
+				if Time.get_ticks_msec() / 1000.0 < _wp_until and is_crit:
+					var _wp_bonus: float = float(primary.get_meta("_weakpoint_bonus", 0.5))
+					final_damage += final_damage * _wp_bonus
+					primary.remove_meta("_weakpoint_until")   # 一次性消费
+			# v9.1 化学腐蚀（套路6）：目标 _chem_stacks ≥5 时护甲穿透 +20%（通过伤害放大实现）
+			if primary != null and is_instance_valid(primary) and _mechs.has("chem_corrosion"):
+				if primary.has_meta("_chem_stacks") and int(primary.get_meta("_chem_stacks", 0)) >= 5:
+					final_damage *= 1.20
+			# v9.1 套路5 雷达锁定易伤：目标有 _radar_locked_until（未过期）则伤害 ×(1+vuln)
+			# P1-1：sup_targeting_drone 的 drone_mark_vuln_bonus 已在 _apply_radar_lock_on_hit 叠加进 vuln
+			if primary != null and is_instance_valid(primary) and primary.has_meta("_radar_locked_until"):
+				var _rl_until: float = float(primary.get_meta("_radar_locked_until", 0.0))
+				if Time.get_ticks_msec() / 1000.0 < _rl_until:
+					var _rl_vuln: float = float(primary.get_meta("_radar_vuln", 0.15))
+					final_damage *= (1.0 + _rl_vuln)
 
 	# 范围伤害
 	if explosion_radius > 0.0:
@@ -932,6 +1015,12 @@ func _on_hit(primary: Node2D) -> void:
 		var aoe_parent := get_parent() as Node2D
 		if aoe_parent != null:
 			VfxImpactFactory.spawn_shockwave(aoe_parent, global_position, explosion_radius)
+		# v9.2: 大型爆炸全屏微闪——下放核武闪白范式给 OMEGA/RAIL/MISSILE 等大爆炸。
+		# 仅 explosion_radius >= 50 触发（OMEGA70/RAIL58/MISSILE55），强度按半径线性增长（0.18~0.32）。
+		# 小爆炸(FLAK36/ROCKET40)不闪，避免频繁闪屏；受 BattleSpectacle 内 motion_reduce 控制。
+		if explosion_radius >= 50.0 and BattleSpectacle != null and is_instance_valid(BattleSpectacle) and BattleSpectacle.has_method("play_explosion_flash"):
+			var _flash_intensity: float = clampf((explosion_radius - 50.0) * 0.004 + 0.18, 0.18, 0.32)
+			BattleSpectacle.play_explosion_flash(_flash_intensity)
 		for child in _get_aoe_damage_targets(global_position, explosion_radius, primary):
 			# v7.5: 删除原 `if GameManager == null: splash_red = ...` 死分支（同主目标修复理由）
 			var splash_red: float = 0.0
@@ -965,6 +1054,10 @@ func _on_hit(primary: Node2D) -> void:
 	# 直击伤害
 	if primary.has_method("take_damage"):
 		var final_after_wall: float = _apply_shield_wall_mitigation(final_damage, primary)
+		# v9.2: 多单位穿透伤害衰减——主目标命中时 mult=1.0 不衰减；
+		# 穿透到后续目标时 mult 已在上一轮 pierce 消费中递减，此处自然应用。
+		if _pierce_damage_mult < 1.0:
+			final_after_wall *= _pierce_damage_mult
 		var atk_primary: Variant = shooter if is_instance_valid(shooter) else null
 		# v8.6: 势力技能 first_hit_damage（首次命中伤害加成，take_damage 前乘到伤害上）
 		if is_instance_valid(shooter):
@@ -980,6 +1073,17 @@ func _on_hit(primary: Node2D) -> void:
 			# v8.6: 势力技能 extra_attack_chance（概率触发额外一次伤害结算）
 			if FactionSkillEffectHandler.roll_extra_attack(shooter):
 				primary.take_damage(final_after_wall, atk_primary)
+	# v9.2: 多目标穿透视觉——子弹穿透到后续目标（非首次命中）时，在命中点播紫色冲击波环+短穿甲光线，
+	# 让玩家清楚看到"这颗子弹穿过了几个单位"。首次命中（_pierce_hit_targets.size()==1）由既有
+	# _pending_pierce 机制在命中特效里处理紫色光线，此处只补"后续穿透命中"的视觉。
+	if _pierce_hit_targets.size() > 1 and primary != null and is_instance_valid(primary) and primary is Node2D:
+		var _pfx_parent: Node2D = get_parent() as Node2D
+		if _pfx_parent != null:
+			var _pierce_pos: Vector2 = (primary as Node2D).global_position
+			# 紫色冲击波环（半径 26，区别于溅射的橙黄大环）
+			VfxImpactFactory.spawn_shockwave(_pfx_parent, _pierce_pos, 26.0, Color(0.85, 0.55, 1.0, 0.9))
+			# 沿子弹飞行方向的短紫色穿甲光线（强调"穿过"的方向感）
+			VfxImpactFactory.spawn_pierce_beam(_pfx_parent, _pierce_pos, _direction)
 	# 兜底：若目标无 take_damage（不应发生），meta 不会经信号清除，此处手动清避免残留
 	elif is_instance_valid(primary):
 		if is_crit and primary.has_meta("_vfx_crit_pending"):
@@ -1004,10 +1108,15 @@ func _on_hit(primary: Node2D) -> void:
 		)
 
 	# 穿透：减少一次计数，>0 时继续飞行
+	# v9.2: 穿透到下一个目标时递减伤害乘数（每穿一个 ×(1-falloff)，falloff=0 时无衰减=旧行为）
 	if _use_tex_sprite:
 		_spawn_tex_impact_at(primary.global_position if primary else global_position)
 	if pierce_count > 0:
 		pierce_count -= 1
+		if _pierce_falloff > 0.0:
+			_pierce_damage_mult *= (1.0 - _pierce_falloff)
+			# 衰减下限保护：避免穿透太多次后伤害趋近 0（保留至少 10% 伤害）
+			_pierce_damage_mult = maxf(_pierce_damage_mult, 0.10)
 		return
 
 	_finish_tex_bullet()
@@ -1065,6 +1174,10 @@ func reset_pool_object() -> void:
 	_pending_pierce = false
 	_pierce_dir = Vector2.RIGHT
 	_target_combat_kind = -1
+	# v9.2: 穿透去重 + 衰减状态重置
+	_pierce_falloff = 0.0
+	_pierce_damage_mult = 1.0
+	_pierce_hit_targets.clear()
 
 	_start_position = Vector2.ZERO
 	_direction = Vector2.RIGHT

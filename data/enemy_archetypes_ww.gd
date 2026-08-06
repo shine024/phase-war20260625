@@ -84,7 +84,7 @@ const DATA := {
 		"weapon_type": 2,
 		"tags": ["elite", "vehicle", "armored"],
 		"drops": [
-			{"card_id": "fut_sup_bulwark", "chance": 0.2},
+			{"card_id": "ww1_saint", "chance": 0.2},
 		],
 	},
 
@@ -100,7 +100,7 @@ const DATA := {
 		"weapon_type": 3,
 		"tags": ["boss", "tank", "armored"],
 		"drops": [
-			{"card_id": "fut_arm_titan_mk2", "chance": 1.0},
+			{"card_id": "ww1_a7v", "chance": 1.0},
 		],
 	},
 
@@ -185,7 +185,7 @@ const DATA := {
 		"weapon_type": 3,
 		"tags": ["elite", "tank", "armored"],
 		"drops": [
-			{"card_id": "fut_inf_storm_rider", "chance": 0.25},
+			{"card_id": "ww2_panther", "chance": 0.25},
 		],
 	},
 
@@ -201,7 +201,7 @@ const DATA := {
 		"weapon_type": 3,
 		"tags": ["boss", "tank", "armored"],
 		"drops": [
-			{"card_id": "fut_air_heavy_carrier", "chance": 1.0},
+			{"card_id": "ww2_kingtiger", "chance": 1.0},
 		],
 	},
 }

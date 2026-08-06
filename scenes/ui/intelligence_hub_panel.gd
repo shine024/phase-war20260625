@@ -168,15 +168,61 @@ func _refresh_runes_tab() -> void:
 		equipped_runes = pim.get_rune_slots()
 	# ── 第一部分：符文列表 ──
 	_add_rune_section_header("◈ 符文列表（%d/%d 已获得）" % [owned_runes.size(), RuneDefs.ALL_RUNES.size()])
-	for rune in RuneDefs.ALL_RUNES:
-		var rune_id: String = rune.get("id", "")
-		var is_owned: bool = owned_runes.has(rune_id)
-		var is_equipped: bool = equipped_runes.has(rune_id)
-		_add_rune_card(rune, is_owned, is_equipped)
-	# ── 第二部分：符文之语列表 ──
+	# v9.4: 分帧加载符文卡——56 张符文图标（995×995 RGBA ~4MB/张）一次性加载会触发内存峰值，
+	# 改为每帧加载若干个，避免 _ready 阶段集中分配导致 OOM（首次崩溃即发生在此）。
+	# 符文之语列表（无图标）紧跟首帧后同步加载，开销小。
+	_rune_load_queue = RuneDefs.ALL_RUNES.duplicate()
+	_rune_load_owned = owned_runes
+	_rune_load_equipped = equipped_runes
+	# 首帧先加载一批，让用户立即看到内容
+	_process_rune_load_batch(RUNE_PER_FRAME_FIRST)
+	# 符文之语列表（无图标，纯文本，内存开销小，直接同步加载）
 	_add_rune_section_header("✦ 符文之语列表（共%d种）" % RunewordDefs.ALL_RUNEWORDS.size())
 	for rw in RunewordDefs.ALL_RUNEWORDS:
 		_add_runeword_card(rw, owned_runes)
+	# 若还有剩余符文未加载，启动分帧定时器
+	if not _rune_load_queue.is_empty():
+		_start_rune_load_timer()
+
+
+## v9.4: 分帧加载状态
+var _rune_load_queue: Array = []
+var _rune_load_owned: Array = []
+var _rune_load_equipped: Array = []
+const RUNE_PER_FRAME_FIRST := 12   # 首帧加载量（立即可见）
+const RUNE_PER_FRAME := 10         # 后续每帧加载量
+var _rune_load_timer: Timer = null
+
+
+## v9.4: 从队列里取出 batch_count 个符文，创建卡片。
+func _process_rune_load_batch(batch_count: int) -> void:
+	var n := 0
+	while n < batch_count and not _rune_load_queue.is_empty():
+		var rune: Dictionary = _rune_load_queue.pop_front()
+		var rune_id: String = rune.get("id", "")
+		var is_owned: bool = _rune_load_owned.has(rune_id)
+		var is_equipped: bool = _rune_load_equipped.has(rune_id)
+		_add_rune_card(rune, is_owned, is_equipped)
+		n += 1
+
+
+## v9.4: 启动分帧加载定时器，每帧处理 RUNE_PER_FRAME 个直到队列清空。
+func _start_rune_load_timer() -> void:
+	if _rune_load_timer == null:
+		_rune_load_timer = Timer.new()
+		_rune_load_timer.wait_time = 0.016  # 约一帧
+		_rune_load_timer.one_shot = false
+		_rune_load_timer.timeout.connect(_on_rune_load_timer_timeout)
+		add_child(_rune_load_timer)
+	_rune_load_timer.start()
+
+
+func _on_rune_load_timer_timeout() -> void:
+	if _rune_load_queue.is_empty():
+		if _rune_load_timer:
+			_rune_load_timer.stop()
+		return
+	_process_rune_load_batch(RUNE_PER_FRAME)
 
 
 func _add_rune_section_header(title_text: String) -> void:

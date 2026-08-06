@@ -2,29 +2,8 @@ extends Node
 ## UI延迟加载管理器
 ## 按需实例化UI面板，减少内存占用和初始化时间
 const DEBUG_UI_LAZY_LOG := false
-const DEBUG_LOG_PATH := "debug-22f19e.log"
 
 
-
-func _debug_log(hypothesis_id: String, location: String, message: String, data: Dictionary = {}) -> void:
-	if not DEBUG_UI_LAZY_LOG:
-		return
-	var payload := {
-		"sessionId": "22f19e",
-		"runId": "initial",
-		"hypothesisId": hypothesis_id,
-		"location": location,
-		"message": message,
-		"data": data,
-		"timestamp": Time.get_unix_time_from_system() * 1000
-	}
-	var mode := FileAccess.READ_WRITE if FileAccess.file_exists(DEBUG_LOG_PATH) else FileAccess.WRITE_READ
-	var f := FileAccess.open(DEBUG_LOG_PATH, mode)
-	if f == null:
-		return
-	f.seek_end()
-	f.store_line(JSON.stringify(payload))
-	f.close()
 
 ## UI面板配置
 var _panel_configs: Dictionary = {}
@@ -164,13 +143,6 @@ func _ready() -> void:
 
 ## 获取UI面板（按需加载）
 func get_panel(panel_id: String) -> Control:
-	# #region agent log
-	_debug_log("H1", "ui_lazy_loader.gd:get_panel:entry", "get_panel called", {
-		"panel_id": panel_id,
-		"has_config": _panel_configs.has(panel_id),
-		"is_loaded": _loaded_panels.has(panel_id)
-	})
-	# #endregion
 	# 如果已加载，直接返回
 	if _loaded_panels.has(panel_id):
 		var panel = _loaded_panels[panel_id]
@@ -188,13 +160,6 @@ func get_panel(panel_id: String) -> Control:
 
 	# 加载场景
 	var scene_path = config.get("scene", "")
-	# #region agent log
-	_debug_log("H2", "ui_lazy_loader.gd:get_panel:scene_path", "about to load scene path", {
-		"panel_id": panel_id,
-		"scene_path": scene_path,
-		"resource_exists": ResourceLoader.exists(scene_path)
-	})
-	# #endregion
 	if scene_path.is_empty():
 		push_error("[UILazyLoader] 面板场景路径为空: ", panel_id)
 		return null
@@ -211,23 +176,8 @@ func get_panel(panel_id: String) -> Control:
 	else:
 		scene = load(scene_path)
 	if scene == null:
-		# #region agent log
-		_debug_log("H2", "ui_lazy_loader.gd:get_panel:load_failed", "scene load returned null", {
-			"panel_id": panel_id,
-			"scene_path": scene_path
-		})
-		# #endregion
 		push_error("[UILazyLoader] 无法加载面板场景: ", scene_path)
 		return null
-
-	# #region agent log
-	_debug_log("H2", "ui_lazy_loader.gd:get_panel:scene_loaded", "scene loaded successfully", {
-		"panel_id": panel_id,
-		"scene_path": scene_path,
-		"scene_type": String(scene.resource_path),
-		"scene_class": String(scene.get_class())
-	})
-	# #endregion
 
 	# 查找父节点
 	var main_scene = get_tree().current_scene

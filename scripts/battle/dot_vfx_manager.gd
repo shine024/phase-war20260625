@@ -91,6 +91,99 @@ static func attach_dot_vfx(unit: Node, dot_type: String) -> void:
 	# 脉动动画（缩放呼吸，让持续视觉不死板）
 	_start_pulse(vfx)
 	unit.add_child(vfx)
+	# v9.1 类型特定动态 aura（让 4 种 DOT 各有独特动态特征）
+	_attach_dynamic_aura(vfx, dot_type)
+
+
+## v9.1 按 DOT 类型附加动态特征（火焰环/毒液环/六边形脉冲/电弧闪烁）。
+## 挂在 vfx 主节点下，vfx queue_free 时自动清理。
+static func _attach_dynamic_aura(vfx: Node2D, dot_type: String) -> void:
+	match dot_type:
+		"burn": _attach_burn_aura(vfx)
+		"chem": _attach_chem_aura(vfx)
+		"nano": _attach_nano_aura(vfx)
+		"emp": _attach_emp_aura(vfx)
+
+
+## 火焰旋转环（橙红，快速旋转）
+static func _attach_burn_aura(dot_node: Node2D) -> void:
+	var ring := Polygon2D.new()
+	var segments := 12
+	var pts := PackedVector2Array()
+	for i in range(segments):
+		var ang := TAU * float(i) / float(segments)
+		pts.append(Vector2(cos(ang), sin(ang)) * 18.0)
+	ring.polygon = pts
+	ring.position = Vector2(0, -2)
+	ring.color = Color(1.0, 0.5, 0.15, 0.45)
+	var mat := CanvasItemMaterial.new()
+	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	ring.material = mat
+	dot_node.add_child(ring)
+	var tw := ring.create_tween()
+	tw.set_loops()
+	tw.tween_property(ring, "rotation", TAU, 2.0).set_trans(Tween.TRANS_LINEAR)
+
+
+## 毒液环（绿色，反向慢转）
+static func _attach_chem_aura(dot_node: Node2D) -> void:
+	var ring := Polygon2D.new()
+	var segments := 10
+	var pts := PackedVector2Array()
+	for i in range(segments):
+		var ang := TAU * float(i) / float(segments)
+		pts.append(Vector2(cos(ang), sin(ang)) * 16.0)
+	ring.polygon = pts
+	ring.position = Vector2(0, -4)
+	ring.color = Color(0.35, 1.0, 0.25, 0.40)
+	var mat := CanvasItemMaterial.new()
+	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	ring.material = mat
+	dot_node.add_child(ring)
+	var tw := ring.create_tween()
+	tw.set_loops()
+	tw.tween_property(ring, "rotation", -TAU, 3.0).set_trans(Tween.TRANS_LINEAR)
+
+
+## 六边形脉冲（青蓝，快速呼吸）
+static func _attach_nano_aura(dot_node: Node2D) -> void:
+	var hex := Polygon2D.new()
+	var pts := PackedVector2Array()
+	for i in range(6):
+		var ang := TAU * float(i) / 6.0 + PI / 6.0
+		pts.append(Vector2(cos(ang), sin(ang)) * 20.0)
+	hex.polygon = pts
+	hex.position = Vector2(0, -3)
+	hex.color = Color(0.2, 0.9, 1.0, 0.40)
+	var mat := CanvasItemMaterial.new()
+	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	hex.material = mat
+	dot_node.add_child(hex)
+	var tw := hex.create_tween()
+	tw.set_loops()
+	tw.tween_property(hex, "scale", Vector2(1.25, 1.25), 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_property(hex, "scale", Vector2(0.75, 0.75), 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+
+
+## 电弧闪烁（紫色，随机透明度抖动）
+static func _attach_emp_aura(dot_node: Node2D) -> void:
+	var arc := Line2D.new()
+	arc.width = 2.0
+	arc.default_color = Color(0.85, 0.6, 1.0, 1.0)
+	arc.joint_mode = Line2D.LINE_JOINT_ROUND
+	arc.add_point(Vector2(-10, -8))
+	arc.add_point(Vector2(-3, 2))
+	arc.add_point(Vector2(5, -4))
+	arc.add_point(Vector2(10, 8))
+	arc.position = Vector2(0, -6)
+	dot_node.add_child(arc)
+	var tw := arc.create_tween()
+	tw.set_loops()
+	tw.tween_property(arc, "modulate:a", 0.15, 0.06)
+	tw.tween_property(arc, "modulate:a", 1.0, 0.06)
+	tw.tween_property(arc, "modulate:a", 0.25, 0.06)
+	tw.tween_property(arc, "modulate:a", 1.0, 0.06)
+	tw.tween_interval(0.12)
 
 
 ## 刷新单位的所有 DOT 视觉：过期的移除，激活的保留。

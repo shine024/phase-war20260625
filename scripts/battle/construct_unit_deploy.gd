@@ -62,6 +62,8 @@ static func materialize_deploy_ghost(u: CharacterBody2D) -> void:
 	u._update_card_grid_buff_strip(true)
 	# v6.14: 实体化后播阵营泛光（我方单位 + 有激活势力时）
 	u._play_faction_glow_pulse()
+	# v8.x: 部署落地反馈（脚下涟漪 + 能量火花），仅玩家单位
+	u._play_materialize_fx()
 	# 隐藏进度条
 	if u._deploy_bar:
 		u._deploy_bar.set_visible(false)

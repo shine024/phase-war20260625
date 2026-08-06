@@ -580,21 +580,18 @@ func _refresh_info_sections(card: CardResource) -> void:
 ## 仅显示已解锁且 source_tag 命中本卡的技能；空 source_tag 技能（cps_steel_storm）无特定触发源不显示。
 func _refresh_card_skill_section(card: CardResource, override_stats: UnitStats = null) -> void:
 	if _card_skill_label == null:
-		print("[CardSkillDebug] _card_skill_label is null —— CardSkillSection 节点未找到")
 		return
 	var lines: Array[String] = []
 	# 战场单位模式：优先用传入的 unit.stats（已含全部 meta）；卡牌查看模式：用 _cached_display_stats
 	var stats_for_tags: UnitStats = override_stats if override_stats != null else _cached_display_stats
-	print("[CardSkillDebug] card=%s card_type=%s override_stats=%s stats_for_tags=%s" % [DefaultCards.safe_name(card) if card != null else "null", int(card.card_type) if card != null else -1, override_stats != null, stats_for_tags != null])
 	if card != null and card.card_type == GC.CardType.COMBAT_UNIT and stats_for_tags != null:
 		var tags: Array = CardPeriodicSkills.compute_source_tags_for_stats(stats_for_tags)
 		var sm: Node = get_node_or_null("/root/PhaseMasterSkillManager")
-		print("[CardSkillDebug] tags=%s sm=%s" % [tags, sm != null])
 		for sid in CardPeriodicSkills.get_all_skill_ids():
 			var sk: Dictionary = CardPeriodicSkills.get_skill(sid)
 			var st: String = String(sk.get("source_tag", ""))
 			if st.is_empty():
-				continue  # 空 source_tag 技能（如 cps_steel_storm）无特定触发源，不在本卡显示
+				continue  # 空 source_tag 全局终极技（如 cps_steel_storm）不在单位卡显示，改由相位师面板承载
 			if not (st in tags):
 				continue  # 本卡不带该 source_tag
 			# 仅显示已解锁（未解锁则战斗中也不会触发，避免噪声）
@@ -608,7 +605,6 @@ func _refresh_card_skill_section(card: CardResource, override_stats: UnitStats =
 			var eff_cn: String = _card_skill_effect_summary(sk.get("effect", {}))
 			lines.append("  · %s%s（%s）：%s" % [nm, ulti, itv_s, eff_cn])
 	var text: String = "\n".join(lines)
-	print("[CardSkillDebug] 最终 lines 数=%d text=%s" % [lines.size(), text])
 	_card_skill_label.text = text
 	_set_section_visible_by_content(_card_skill_section, text)
 
@@ -1363,6 +1359,91 @@ func _format_enemy_combat_summary(unit: Node, scombat: Array, extra_suffix: Stri
 
 ## ── 敌方相位驱动器 ──
 
+## v9.1: 将 trait.effects dict 格式化为中文数值描述（如"防御+10%、攻击+8%"）。
+## 用于情报面板 trait 显示，让玩家直观感知 trait 带来的具体加成。
+## 支持 key：atk_*/def_*/hp/crit_chance/dodge_chance/all_stat_boost/unit_limit_bonus。
+## 不识别的 key 跳过（如 void_damage_boost/auto_resurrect 等复杂 effect 留待后续）。
+## 无 effects 或 effects 为空 → 返回空串（调用方回退到 description 文字）。
+## 注：参数 `trait_def` 是 trait 条目字典（Godot 4.5 起 `trait` 已为保留关键字，故参数不命名 trait）。
+func _format_trait_effects(trait_def: Dictionary) -> String:
+	if not (trait_def is Dictionary):
+		return ""
+	var fx: Dictionary = trait_def.get("effects", {})
+	if fx.is_empty():
+		return ""
+	var parts: Array[String] = []
+	# 先处理 all_stat_boost（合并显示，避免重复"攻击+X% 防御+X%"）
+	if fx.has("all_stat_boost"):
+		var val: float = float(fx["all_stat_boost"])
+		if val != 0.0:
+			parts.append("全属性+%d%%" % int(val * 100))
+		fx.erase("all_stat_boost")  # 避免后续重复处理
+	# 处理 hp（特殊标签）
+	if fx.has("hp"):
+		var val: float = float(fx["hp"])
+		if val != 0.0:
+			parts.append("生命+%d%%" % int(val * 100))
+	# 处理 unit_limit_bonus（整数加成）
+	if fx.has("unit_limit_bonus"):
+		var val: int = int(fx["unit_limit_bonus"])
+		if val != 0:
+			parts.append("出兵上限+%d" % val)
+	# 处理三维攻击/防御（合并同维显示，如 atk_light+atk_armor+atk_air 全相同 → "攻击+8%"）
+	var atk_val: float = -1.0
+	var atk_consistent: bool = true
+	for k in ["atk_light", "atk_armor", "atk_air"]:
+		if fx.has(k):
+			var v: float = float(fx[k])
+			if atk_val < 0.0:
+				atk_val = v
+			elif atk_val != v:
+				atk_consistent = false
+	if atk_val > 0.0:
+		if atk_consistent:
+			parts.append("攻击+%d%%" % int(atk_val * 100))
+		else:
+			# 三维不一致，分别显示
+			for k in ["atk_light", "atk_armor", "atk_air"]:
+				if fx.has(k):
+					parts.append("%s+%d%%" % [_trait_key_to_label(k), int(float(fx[k]) * 100)])
+	var def_val: float = -1.0
+	var def_consistent: bool = true
+	for k in ["def_light", "def_armor", "def_air"]:
+		if fx.has(k):
+			var v: float = float(fx[k])
+			if def_val < 0.0:
+				def_val = v
+			elif def_val != v:
+				def_consistent = false
+	if def_val > 0.0:
+		if def_consistent:
+			parts.append("防御+%d%%" % int(def_val * 100))
+		else:
+			for k in ["def_light", "def_armor", "def_air"]:
+				if fx.has(k):
+					parts.append("%s+%d%%" % [_trait_key_to_label(k), int(float(fx[k]) * 100)])
+	# 暴击/闪避（加值）
+	if fx.has("crit_chance"):
+		var val: float = float(fx["crit_chance"])
+		if val != 0.0:
+			parts.append("暴击率+%d%%" % int(val * 100))
+	if fx.has("dodge_chance"):
+		var val: float = float(fx["dodge_chance"])
+		if val != 0.0:
+			parts.append("闪避+%d%%" % int(val * 100))
+	return "、".join(parts)
+
+## v9.1: trait effect key → 中文标签映射（供 _format_trait_effects 在三维不一致时使用）
+func _trait_key_to_label(key: String) -> String:
+	match key:
+		"atk_light": return "轻攻"
+		"atk_armor": return "重攻"
+		"atk_air":   return "防空攻"
+		"def_light": return "轻防"
+		"def_armor": return "重防"
+		"def_air":   return "防空防"
+		_: return ""
+
 ## v6.14: 获取敌方相位仪显示名（解析 enemy_phase_instruments 数据）
 func _get_enemy_instrument_display_name(instrument_id: String) -> String:
 	if instrument_id.is_empty():
@@ -1545,14 +1626,19 @@ func _show_enemy_phase_driver(unit: Node) -> void:
 				var runes_line: String = _format_enemy_runes_full(runes, raw_level)
 				if not runes_line.is_empty():
 					lines.append("符文：%s" % runes_line)
-			# v7.x: 相位师特性（与单位路径一致，消除敌方内部不一致）
+			# v9.1: 相位师特性（与单位路径一致，消除敌方内部不一致）。
+			# 优先展示 trait.effects 数值化描述（如"防御+10%"），无 effects 才回退 description 文字。
 			var trait_lines: Array[String] = []
 			for t in cfg.get("traits", []) as Array:
 				if t is Dictionary:
 					var tn: String = str(t.get("name", ""))
-					var td: String = str(t.get("description", ""))
+					var val_str: String = _format_trait_effects(t)
 					if not tn.is_empty():
-						trait_lines.append("◆ %s%s" % [tn, "：" + td if not td.is_empty() else ""])
+						if not val_str.is_empty():
+							trait_lines.append("◆ %s：%s" % [tn, val_str])
+						else:
+							var td: String = str(t.get("description", ""))
+							trait_lines.append("◆ %s%s" % [tn, "：" + td if not td.is_empty() else ""])
 			if not trait_lines.is_empty():
 				lines.append("【相位师特性】")
 				lines.append_array(trait_lines)
@@ -1634,6 +1720,27 @@ func _show_player_phase_driver(unit: Node) -> void:
 				lines.append("主动能力：%s" % ab_name)
 			if not ab_desc.is_empty():
 				lines.append("  %s" % ab_desc)
+		# ── 已解锁卡片技能（相位师面板承载全局终极技）──
+		# 本卡触发的 source_tag 技能在各战斗卡的 _refresh_card_skill_section 显示；
+		# 空 source_tag 的全局终极技（如 cps_steel_storm 钢铁风暴）无特定触发源，
+		# 按用户决策只在相位师面板统一列出全部已解锁 CPS 技能（含全局终极技）。
+		var sm: Node = get_node_or_null("/root/PhaseMasterSkillManager")
+		if sm != null and sm.has_method("is_content_unlocked"):
+			var skill_lines: Array[String] = []
+			for sid in CardPeriodicSkills.get_all_skill_ids():
+				if not sm.is_content_unlocked("card_skill", sid):
+					continue
+				var sk: Dictionary = CardPeriodicSkills.get_skill(sid)
+				var nm: String = String(sk.get("name", sid))
+				var ulti: String = " [终极]" if bool(sk.get("is_ultimate", false)) else ""
+				var itv: float = float(sk.get("interval", 0.0))
+				var itv_s: String = ("每%.0fs" % itv) if itv > 0.0 else ""
+				var eff_cn: String = _card_skill_effect_summary(sk.get("effect", {}))
+				skill_lines.append("  · %s%s（%s）：%s" % [nm, ulti, itv_s, eff_cn])
+			if not skill_lines.is_empty():
+				lines.append("已解锁卡片技能：")
+				for sl in skill_lines:
+					lines.append(sl)
 	if desc_label: desc_label.text = "\n".join(lines)
 	if flavor_label: flavor_label.text = "“守护这片相位场，即是守护军团存续。”"
 	_clear_non_summary_info_sections()
@@ -1687,6 +1794,14 @@ func _show_enemy_construct_unit(unit: Node) -> void:
 	# v7.5: 产兵 platform_card_id 可能是敌方装备平台 ID（不在 DefaultCards 表），card_res 为 null。
 	# 此处先判空，避免 safe_name(null) 触发无意义警告（下方 fallback 链已正确处理 null 情况）。
 	var dn := DefaultCards.safe_name(card_res) if card_res != null else ""
+	# v9.x: 势力前缀平台产兵（一战 4 相位师）名称加势力前缀。
+	# faction_prefix meta 由 enemy_phase_field_driver 在产兵时按 LEGACY_PLATFORM_TO_ARCHETYPE 记录。
+	var _faction_prefix: String = String(unit.get_meta("faction_prefix", ""))
+	if not _faction_prefix.is_empty():
+		if not dn.is_empty():
+			dn = "%s·%s" % [_faction_prefix, dn]
+		elif not safe_name.is_empty():
+			safe_name = "%s·%s" % [_faction_prefix, safe_name]
 	if name_label:
 		name_label.text = dn if not dn.is_empty() else (safe_name if not safe_name.is_empty() else "敌方构装单位")
 	var platform_name := dn if not dn.is_empty() else (safe_name if not safe_name.is_empty() else DefaultCards.get_platform_display_name(stats.platform_type))
@@ -1863,16 +1978,21 @@ func _show_enemy_phase_master_unit(unit: Node, master_name: String) -> void:
 		master_power_text = "军团战力：%d · %s" % [int(_er_m.get("total_score", 0)), MasterPowerEvaluator.get_stars_display(master_cfg)]
 		# v7.x: 澄清口径——军团战力是相位师裸装固有战力，不含本关难度加成（战场单位实战值会高于此数）
 		master_power_text += "\n（相位师固有战力，战场单位会叠加本关难度加成）"
+		# v9.1: trait 数值化——优先展示 effects 数值（如"攻击+15%"），无 effects 才回退 description
 		var traits: Array = master_cfg.get("traits", []) as Array
 		for t in traits:
 			if t is Dictionary:
 				var tn: String = str(t.get("name", ""))
-				var td: String = str(t.get("description", ""))
+				var val_str: String = _format_trait_effects(t)
 				if not tn.is_empty():
-					if not td.is_empty():
-						trait_lines.append("◆ %s：%s" % [tn, td])
+					if not val_str.is_empty():
+						trait_lines.append("◆ %s：%s" % [tn, val_str])
 					else:
-						trait_lines.append("◆ %s" % tn)
+						var td: String = str(t.get("description", ""))
+						if not td.is_empty():
+							trait_lines.append("◆ %s：%s" % [tn, td])
+						else:
+							trait_lines.append("◆ %s" % tn)
 	if name_label:
 		name_label.text = master_disp_name if not master_disp_name.is_empty() else "敌方相位师"
 	var type_parts: Array[String] = []

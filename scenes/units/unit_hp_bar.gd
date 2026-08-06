@@ -145,7 +145,9 @@ func _needs_active_process() -> bool:
 	if absf(_ratio - _target_ratio) > 0.001: return true
 	if _damage_flash > 0.0 or _heal_flash > 0.0: return true
 	if _shield_gain > 0.0: return true
-	if _ratio <= 0.3: return true
+	# v8.x: 用 _target_ratio 判断低血量脉动需求（lerp 收敛后 _ratio==_target_ratio，两者等价；
+	# 但掉血瞬间 _target_ratio 先变，用它能立刻激活 process 驱动脉动）
+	if _target_ratio <= 0.3: return true
 	return false
 
 func _sync_process_state() -> void:
@@ -168,6 +170,10 @@ func _process(delta: float) -> void:
 		_shield_gain -= delta * 3.0
 		if _shield_gain < 0: _shield_gain = 0
 		_update_shield_gain_effect()
+	# v8.x: 低血量脉动——血条 lerp 收敛后仍需每帧刷新 glow，否则 sin 脉动冻在末帧形同虚设。
+	# 用 _target_ratio 判断（即时响应掉血），避开 lerp 未收敛的过渡帧。
+	if _target_ratio <= 0.3:
+		_update_low_hp_pulse()
 	_sync_process_state()
 
 func set_ratio(r: float) -> void:
@@ -271,11 +277,24 @@ func _update_fill_only() -> void:
 	elif _ratio <= 0.6: color_key = "medium"
 	_fill.color = colors[color_key]
 
-	if _ratio <= 0.3 and _glow:
-		var pulse = (sin(Time.get_ticks_msec() * 0.01) + 1.0) * 0.5
-		_glow.color = colors[color_key] * Color(1, 1, 1, 0.3 * pulse)
-	else:
-		if _glow: _glow.color = Color(0, 0, 0, 0)
+	# v8.x: 低血量 glow 脉动统一交给 _update_low_hp_pulse（每帧由 _process 驱动），
+	# 此处仅在非低血量时清零 glow，避免满血时残留发光。
+	if _ratio > 0.3 and _glow:
+		_glow.color = Color(0, 0, 0, 0)
+
+## v8.x: 低血量（≤30%）glow 红色脉动——独立于 fill 几何，每帧只改 _glow.color。
+## 修复原 bug：脉动公式原写在 _update_fill_only 里，但该函数仅在血条 lerp 变化时调用，
+## lerp 收敛后脉动冻在末帧。现由 _process 的低血量分支每帧驱动，脉动持续可见。
+func _update_low_hp_pulse() -> void:
+	if _glow == null:
+		return
+	var colors = _player_colors if _is_player else _enemy_colors
+	var low_c: Color = colors.low
+	# 频率 0.008 → 周期约 785ms，比原 0.01(628ms) 稍慢，更有"警报"节奏感
+	var pulse: float = (sin(Time.get_ticks_msec() * 0.008) + 1.0) * 0.5
+	# 峰值 alpha 0.55（原 0.3 偏弱，战场上看不清），最低保留 0.15 底亮避免完全熄灭
+	var a: float = lerpf(0.15, 0.55, pulse)
+	_glow.color = Color(low_c.r, low_c.g, low_c.b, a)
 
 func _update_flash_effect() -> void:
 	if _fill: _fill.color = Color.WHITE.lerp(_fill.color, 1.0 - _damage_flash)

@@ -1,4 +1,4 @@
-[gd_scene load_steps=35 format=3 uid="uid://main"]
+[gd_scene load_steps=36 format=3 uid="uid://main"]
 
 [ext_resource type="Script" uid="uid://d0jpdmko5mrnu" path="res://scenes/main.gd" id="1_script"]
 [ext_resource type="PackedScene" uid="uid://battlefield" path="res://scenes/battlefield/battlefield.tscn" id="2_battlefield"]
@@ -30,6 +30,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/top_hud_bar.tscn" id="45_top_hud_bar"]
 [ext_resource type="PackedScene" path="res://scenes/ui/battle_status_strip.tscn" id="47_status_strip"]
 [ext_resource type="PackedScene" path="res://scenes/ui/buff_fold_card.tscn" id="48_buff_card"]
+[ext_resource type="PackedScene" uid="uid://combo_status_strip" path="res://scenes/ui/combo_status_strip.tscn" id="49_combo_strip"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_level_display"]
 font_size = 24
@@ -161,6 +162,17 @@ layout_mode = 1
 
 [node name="BattleStatusStrip" parent="HudLayer" instance=ExtResource("47_status_strip")]
 layout_mode = 1
+
+[node name="ComboStatusStrip" parent="HudLayer" instance=ExtResource("49_combo_strip")]
+layout_mode = 1
+# v9.1 修复重叠：原 (165,8,690,48) 把 TopHudBar 居中区(关卡名/波次/计时，x≥500) 压住。
+# 左移到 (8,8,480,48)，右边界 480 在 CenterSection(500~780) 左侧留 20px 间隙。
+# custom_minimum_size 同步从 520 收到 360（实际内容仅 348px），避免 PanelContainer 被强制撑宽顶回。
+anchors_preset = 0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 480.0
+offset_bottom = 48.0
 
 [node name="BuffFoldCard" parent="HudLayer" instance=ExtResource("48_buff_card")]
 layout_mode = 1

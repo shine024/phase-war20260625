@@ -135,10 +135,12 @@ func _execute_effect(skill: Dictionary) -> void:
 	var effect: Dictionary = skill.get("effect", {})
 	if effect.is_empty():
 		return
-	# v8.x 视觉反馈：终极技能触发时弹 Toast（普通技能不弹，避免刷屏）
+	# v8.x 视觉反馈：所有技能触发都弹 Toast（普通技金色轻量提示，终极技红色+震屏）。
+	# 终极技仍额外触发震屏；普通技 cooldown 短（10-18s）故 Toast 用短持续时间避免刷屏。
 	var skill_id: String = String(skill.get("id", ""))
-	if CPS.is_ultimate(skill_id):
-		_emit_skill_toast(skill)
+	var is_ult: bool = CPS.is_ultimate(skill_id)
+	_emit_skill_toast(skill, is_ult)
+	if is_ult:
 		_play_ultimate_shake()
 	var effect_type: String = effect.get("type", "")
 	match effect_type:
@@ -576,16 +578,28 @@ func _apply_temporary_stat_bonus(unit: Node2D, stat_bonus: Dictionary, duration:
 	unit.set_meta("_card_skill_stat_bonus", stat_bonus.duplicate(true))
 	unit.set_meta("_card_skill_stat_bonus_until", Time.get_ticks_msec() + int(duration * 1000))
 
-## v8.x 视觉反馈：终极技能触发时弹 Toast（防御性访问 SignalBus，兼容 --script 测试）
-func _emit_skill_toast(skill: Dictionary) -> void:
+## v8.x 视觉反馈：技能触发时弹 Toast（防御性访问，兼容 --script 测试）
+## ultimate=true → 红色 + 2.0s（大招醒目）；false → 金色 + 1.2s（普通技轻量，避免刷屏）
+## 直接调 ToastManager.show_toast(message, duration, color) 而非 emit 信号——
+## SignalBus.show_toast 只声明 1 参（message），不支持传颜色/时长；ToastManager 预加载后战斗时存活。
+func _emit_skill_toast(skill: Dictionary, ultimate: bool = true) -> void:
 	var UnlockLabelsRef = preload("res://data/unlock_labels.gd")
 	var skill_id: String = String(skill.get("id", ""))
 	var label: Dictionary = UnlockLabelsRef.get_unlock_label("card_skill", skill_id)
 	var name: String = String(label.get("name", skill_id))
 	var icon: String = String(label.get("icon", "💥"))
 	var toast_msg: String = "%s 触发：%s" % [icon, name]
-	# 防御性访问 SignalBus（autoload 全局名在 --script 模式不可用）
-	var sb = Engine.get_main_loop().root.get_node_or_null("/root/SignalBus")
+	var dur: float = 2.0 if ultimate else 1.2
+	var color: Color = Color(0.9, 0.2, 0.2) if ultimate else Color(0.95, 0.75, 0.2)
+	# 优先直接调 ToastManager（支持 duration/color 参数）
+	var tree = Engine.get_main_loop() as SceneTree
+	if tree != null and tree.root != null:
+		var tm = tree.root.get_node_or_null("/root/ToastManager")
+		if tm != null and tm.has_method("show_toast"):
+			tm.show_toast(toast_msg, dur, color)
+			return
+	# 兜底：ToastManager 未就绪时降级走 SignalBus（单参 message，颜色用默认）
+	var sb = tree.root.get_node_or_null("/root/SignalBus") if tree != null else null
 	if sb != null and sb.has_signal("show_toast"):
 		sb.show_toast.emit(toast_msg)
 

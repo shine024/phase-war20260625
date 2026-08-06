@@ -288,6 +288,15 @@ func _grant_exclusive_cards_on_level_up(faction_id: String, new_rep: int) -> voi
 						enqueue_id = inst.instance_id
 				sm.enqueue_backpack_card_id(enqueue_id)
 			exclusive_cards_granted.append(card_id)
+			# v7.x 战报一致性修复：势力专属卡实际已入包，但原路径不调 collect_battle_card，
+			# 导致战报"本局缴获"区不显示这些卡（玩家得到了但战报没写）。
+			# 时序安全：声望升级发生在 _on_battle_ended 的 _apply_faction_reaction_for_conquest（同步），
+			# 面板弹出在 call_deferred（下一帧），本局收集器此时仍存活，补记的条目会被面板读到。
+			var _gm_collector: Node = get_node_or_null("/root/GameManager")
+			if _gm_collector != null and _gm_collector.has_method("collect_battle_card"):
+				var _DefaultCardsForName = preload("res://data/default_cards.gd")
+				var _fe_display_name: String = _DefaultCardsForName.get_safe_display_name(card_id)
+				_gm_collector.collect_battle_card(card_id, _fe_display_name, 1, "势力专属卡")
 			granted_any = true
 	if granted_any and sm and sm.has_method("save_game"):
 		sm.call_deferred("save_game")

@@ -11,6 +11,14 @@ class_name VfxImpactFactory
 ## 可访问性：DT.is_motion_reduce() 时只保留第2层主火花（减层）。
 
 const DT = preload("res://resources/design_tokens.gd")
+const DirectWeaponFlavor = preload("res://data/direct_weapon_flavor.gd")
+## v9.2: 粒子贴图——CPUParticles2D 赋 texture 告别方形小方块。
+## 4 张 32×32 小图（spark/smoke/shrapnel/ember），按池差异化赋贴图。
+## 生成工作流：docs/VFX特效纹理生成工作流.md，当前为占位透明 PNG，后续用 agnes-ai 替换。
+const PARTICLE_TEX_SPARK := preload("res://assets/effects/particle_textures/particle_spark.png")
+const PARTICLE_TEX_SMOKE := preload("res://assets/effects/particle_textures/particle_smoke.png")
+const PARTICLE_TEX_SHRAPNEL := preload("res://assets/effects/particle_textures/particle_shrapnel.png")
+const PARTICLE_TEX_EMBER := preload("res://assets/effects/particle_textures/particle_ember.png")
 
 # ── 池化上限 ──
 const MAX_RINGS: int = 80
@@ -45,6 +53,16 @@ static var _impact_sprite_pool: Array = []
 static var _active_impact_sprites: int = 0
 const MAX_IMPACT_SPRITES: int = 80
 
+# v9.x: 组合技指示器池（weakpoint_expose / radar_lock / laser_resonance）。
+# 原每次 new Node2D/Polygon2D + queue_free，违背文件"所有特效走对象池"原则。
+# resonance 每次命中触发（高频）、radar 周期性 tick、持续 5-6s，密集战斗累积节点。
+# 池按 kind 分组（weakpoint=Node2D+2Line2D子 / radar_lock=Polygon2D / resonance=Polygon2D）。
+# 每个指示器有 2 个 tween（脉动 loops + 延迟淡出），release 时通过 _vfx_tweens meta 全部 kill。
+static var _indicator_pool: Dictionary = {}  # kind -> Array[Node]
+static var _active_indicators: int = 0
+const MAX_INDICATORS: int = 40  # weakpoint 3s / radar 6s / resonance 5s，并发量可控
+const _INDICATOR_KINDS: Array = ["weakpoint", "radar_lock", "resonance"]
+
 # ── ADD 混合材质缓存 ──
 static var _add_mat: CanvasItemMaterial = null
 
@@ -55,14 +73,15 @@ static var _add_mat: CanvasItemMaterial = null
 ##   "is_crit": bool     — 暴击（叠加金色脉动光环）
 ##   "is_pierce": bool   — 穿透（叠加紫色穿甲光线，需配合 direction）
 ##   "direction": Vector2 — 穿透光线方向（默认向右）
-static func spawn_layered_impact(parent: Node2D, world_pos: Vector2, weapon_type: int, is_player: bool, combat_kind: int = -1, opts: Dictionary = {}) -> void:
+## [param p_weapon_name] 武器名（v8.x：直射系亚类分流用，区分机枪/步枪/坦克炮等）
+static func spawn_layered_impact(parent: Node2D, world_pos: Vector2, weapon_type: int, is_player: bool, combat_kind: int = -1, opts: Dictionary = {}, p_weapon_name: String = "") -> void:
 	if parent == null or not is_instance_valid(parent):
 		return
 	var motion_reduce: bool = DT.is_motion_reduce()
 	# 基色（复用 WeaponProjectileVfx 的配色逻辑）
 	var base_color: Color = _impact_color(weapon_type, combat_kind, is_player)
-	# 配方
-	var recipe: Dictionary = _impact_recipe(weapon_type)
+	# 配方（v8.x：传 weapon_name 做直射系亚类细分）
+	var recipe: Dictionary = _impact_recipe(weapon_type, p_weapon_name)
 	# 第1层：冲击波环（motion_reduce 时跳过）
 	if not motion_reduce:
 		_spawn_ring(parent, world_pos, recipe.get("ring_r", 24.0), recipe.get("ring_dur", 0.2), base_color)
@@ -207,6 +226,44 @@ static func spawn_hit_blood(parent: Node2D, world_pos: Vector2, direction: Vecto
 			if tree2 != null:
 				var timer2 := tree2.create_timer(sp.lifetime + 0.1)
 				_connect_deferred_release(timer2, sp, _release_spark_particle)
+
+
+## 单位死亡反馈：阵营色冲击波 + 碎片/血雾爆散（复用 debris 池，0.45s 重力下落）。
+## 在单位 _play_death_fadeout 开头调用一次，让"死亡"与"受击"产生明确的视觉差。
+## 走对象池 + motion_reduce 短路，零额外 GC。
+static func spawn_death_burst(parent: Node2D, world_pos: Vector2, is_player: bool) -> void:
+	if parent == null or not is_instance_valid(parent):
+		return
+	if DT.is_motion_reduce():
+		return
+	# 阵营色：我方青蓝、敌方暗红（与 hit_blood 配色一致，避免饱和糊图）
+	var faction_c: Color = Color(0.35, 0.7, 1.0, 0.85) if is_player else Color(0.9, 0.35, 0.2, 0.85)
+	# 第1层：阵营色小冲击波（半径 8→32，0.38s 扩散淡出）
+	spawn_shockwave(parent, world_pos, 32.0, faction_c)
+	# 第2层：碎片/血雾爆散（debris 池，向上+四周迸射后重力下落）
+	if _active_debris < MAX_DEBRIS:
+		_active_debris += 1
+		var p := _acquire_debris_particle()
+		if p == null:
+			_active_debris -= 1
+		else:
+			p.position = world_pos
+			p.lifetime = 0.45
+			p.amount = 10  # 克制：10 粒碎片，足够形成"散开"感而不撞池上限
+			p.emission_sphere_radius = 4.0
+			p.direction = Vector2(0, -1)  # 略微向上的爆散方向
+			p.spread = 110.0
+			p.initial_velocity_min = 80.0
+			p.initial_velocity_max = 180.0
+			p.gravity = Vector2(0, 240.0)
+			p.scale_amount_min = 1.8
+			p.scale_amount_max = 3.2
+			p.color_ramp = _get_blood_ramp(is_player)
+			parent.add_child(p)
+			var tree := p.get_tree()
+			if tree != null:
+				var timer := tree.create_timer(p.lifetime + 0.1)
+				_connect_deferred_release(timer, p, _release_debris_particle)
 
 
 ## v8.x: 血溅 Gradient 缓存（敌我各一份，alpha 1.0→0.0 渐隐）
@@ -726,11 +783,14 @@ static func _spawn_thermobaric_blast(parent: Node2D, pos: Vector2, is_player: bo
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
 	if tree == null:
 		return
-	var captured_parent: Node2D = parent
-	var captured_pos: Vector2 = pos
+	var weak_parent: WeakRef = weakref(parent)
 	tree.create_timer(0.15).timeout.connect(func():
-		if is_instance_valid(captured_parent):
-			spawn_layered_impact(captured_parent, captured_pos, 3, is_player, -1)
+		if not is_instance_valid(weak_parent.get_ref()):
+			return
+		var captured_parent: Node2D = weak_parent.get_ref() as Node2D
+		if captured_parent == null:
+			return
+		spawn_layered_impact(captured_parent, pos, 3, is_player, -1)
 	)
 
 
@@ -785,17 +845,18 @@ static func _spawn_guided_indicator(parent: Node2D, pos: Vector2, is_player: boo
 	# 内环（延迟 0.08s，更小更快 → 强化"锁定"感）
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
 	if tree:
-		var captured_parent: Node2D = parent
-		var captured_pos: Vector2 = pos
+		var weak_parent: WeakRef = weakref(parent)
+		var captured_pos: Vector2 = pos  # 值类型，lambda 直接捕获安全
 		tree.create_timer(0.08).timeout.connect(func():
-			if not is_instance_valid(captured_parent):
+			var wp: Node2D = weak_parent.get_ref() as Node2D
+			if wp == null or not is_instance_valid(wp):
 				return
 			var inner := _acquire_ring()
 			if inner == null:
 				return
 			inner.position = captured_pos
 			_configure_ring_polygon(inner, 30.0, Color(0.6, 1.0, 1.0, 0.8))
-			captured_parent.add_child(inner)
+			wp.add_child(inner)
 			var tw2 := inner.create_tween()
 			tw2.tween_method(func(r: float): _configure_ring_polygon(inner, r, Color(0.6, 1.0, 1.0, 0.8 * (r / 30.0))), 30.0, 5.0, 0.18)
 			tw2.tween_callback(func(): _release_ring(inner))
@@ -928,10 +989,17 @@ static func _spawn_debris(parent: Node2D, pos: Vector2, debris_cfg: Dictionary, 
 	p.scale_amount_max = float(debris_cfg.get("smax", 4.0))
 	# 烟尘向上、碎片有重力
 	if bool(debris_cfg.get("is_smoke", false)):
-		p.direction = Vector2(0, -1)  # 向上
-		p.spread = 40.0
-		p.gravity = Vector2(0, -8.0)  # 轻微上飘
-		p.color = debris_cfg.get("smoke_color", Color(0.4, 0.35, 0.3, 0.6))
+		if bool(debris_cfg.get("low_dust", false)):
+			# v8.x: 曲射落地扬尘——横向低矮扩散（贴地），区别于爆炸烟柱的垂直上升
+			p.direction = Vector2(1, 0)  # 横向（左甩+右甩由 spread=180 实现）
+			p.spread = 180.0
+			p.gravity = Vector2(0, 40.0)  # 轻微下沉，模拟尘土回落
+			p.color = debris_cfg.get("smoke_color", Color(0.5, 0.45, 0.38, 0.45))
+		else:
+			p.direction = Vector2(0, -1)  # 向上
+			p.spread = 40.0
+			p.gravity = Vector2(0, -8.0)  # 轻微上飘
+			p.color = debris_cfg.get("smoke_color", Color(0.4, 0.35, 0.3, 0.6))
 	else:
 		p.direction = Vector2(0, 0)
 		p.spread = 360.0
@@ -989,17 +1057,50 @@ static func _impact_color(weapon_type: int, combat_kind: int, is_player: bool) -
 ## v8.2: 整体加长寿命到"可清晰感知"区间（火花≥0.45s/环≥0.35s），保留武器间梯度。
 ## v8.3 视觉增强：环 ×1.5、duration +0.08、spark_amount +50%、spark_vmax +60%、debris +30%
 ## 让命中爆炸有"砰"的分量感（原环到 24px 就没了，火花 0.15s 消散）
-static func _impact_recipe(weapon_type: int) -> Dictionary:
+static func _impact_recipe(weapon_type: int, weapon_name: String = "") -> Dictionary:
+	# v8.x: 直射系亚类分类（仅 0/1/2/4 生效，其他返回 NONE 走原配方）
+	var flavor: int = DirectWeaponFlavor.classify(weapon_name, weapon_type)
 	match weapon_type:
 		0, 4:  # DIRECT/SMG/PISTOL — 小环 + 少量高亮火花（v8.4 重平衡：减粒子数提单粒子亮度）
-			# v8.4: 原配方 28 小火花在高速连发(MG 4次/秒)下视觉糊成一片且耗性能。
-			# 改为 16 个更亮的火花(smin/smax↑) + 更小集中的环(像弹着点而非爆炸)，
-			# 既减负载(单次粒子数↓40%)又能看清弹着反馈(单粒子 scale↑67%)。
-			return {
-				"ring_r": 28.0, "ring_dur": 0.32,
-				"spark_amount": 16, "spark_vmin": 100.0, "spark_vmax": 260.0,
-				"spark_smin": 2.5, "spark_smax": 4.0, "spark_life": 0.45, "spark_spread": 360.0,
-			}
+			# v8.x 亚类细分：机枪/坦克炮/步枪/手枪 各自不同的命中反馈强度
+			match flavor:
+				DirectWeaponFlavor.Flavor.MG:
+					# 机枪：弹着点更密（火花略多 + 环略大），连发时形成密集弹痕
+					return {
+						"ring_r": 34.0, "ring_dur": 0.34,
+						"spark_amount": 22, "spark_vmin": 110.0, "spark_vmax": 280.0,
+						"spark_smin": 2.2, "spark_smax": 3.6, "spark_life": 0.42, "spark_spread": 360.0,
+					}
+				DirectWeaponFlavor.Flavor.TANK_GUN:
+					# 坦克炮：重炮命中（大环 + 粗火花），与轻武器弹着点明显区分
+					return {
+						"ring_r": 52.0, "ring_dur": 0.42,
+						"spark_amount": 26, "spark_vmin": 120.0, "spark_vmax": 300.0,
+						"spark_smin": 3.0, "spark_smax": 5.0, "spark_life": 0.50, "spark_spread": 360.0,
+					}
+				DirectWeaponFlavor.Flavor.RIFLE:
+					# 步枪：高速集中喷射（窄角，穿甲感），区别于冲锋枪的圆散
+					return {
+						"ring_r": 30.0, "ring_dur": 0.32,
+						"spark_amount": 18, "spark_vmin": 130.0, "spark_vmax": 320.0,
+						"spark_smin": 2.0, "spark_smax": 3.2, "spark_life": 0.44, "spark_spread": 70.0,
+						"spark_dir": true,
+					}
+				DirectWeaponFlavor.Flavor.SMALL_ARMS:
+					# 手枪/卡宾：最弱命中（小环 + 少火花），体现轻武器
+					return {
+						"ring_r": 22.0, "ring_dur": 0.28,
+						"spark_amount": 12, "spark_vmin": 80.0, "spark_vmax": 200.0,
+						"spark_smin": 2.0, "spark_smax": 3.2, "spark_life": 0.38, "spark_spread": 360.0,
+					}
+				_:
+					# GENERIC/UNKNOWN：原基准（冲锋枪/通用直射）
+					# v8.4: 原配方 28 小火花在高速连发下糊成一片，改为 16 个更亮火花
+					return {
+						"ring_r": 28.0, "ring_dur": 0.32,
+						"spark_amount": 16, "spark_vmin": 100.0, "spark_vmax": 260.0,
+						"spark_smin": 2.5, "spark_smax": 4.0, "spark_life": 0.45, "spark_spread": 360.0,
+					}
 		6:  # SNIPER — 中环 + 高速集中喷射
 			return {
 				"ring_r": 48.0, "ring_dur": 0.44,
@@ -1014,10 +1115,21 @@ static func _impact_recipe(weapon_type: int) -> Dictionary:
 				"spark_smin": 1.5, "spark_smax": 2.8, "spark_life": 0.52, "spark_spread": 360.0,
 			}
 		1:  # INDIRECT(曲射) / RIFLE(batch直射) — 中火折中
+			# v8.x 亚类细分：曲射(迫击炮/野战炮等无步枪关键词)加地面扬尘，体现"炮弹落地"；
+			# RIFLE 直射(batch 路径) 走窄角集中火花，与直射步枪一致。
+			if flavor == DirectWeaponFlavor.Flavor.RIFLE:
+				return {
+					"ring_r": 36.0, "ring_dur": 0.40,
+					"spark_amount": 22, "spark_vmin": 120.0, "spark_vmax": 300.0,
+					"spark_smin": 2.0, "spark_smax": 3.4, "spark_life": 0.50, "spark_spread": 70.0,
+					"spark_dir": true,
+				}
+			# 曲射：加低矮横向扬尘（is_smoke + 低重力），模拟炮弹落地激起的尘土
 			return {
 				"ring_r": 48.0, "ring_dur": 0.48,
 				"spark_amount": 32, "spark_vmin": 90.0, "spark_vmax": 260.0,
 				"spark_smin": 2.0, "spark_smax": 3.8, "spark_life": 0.60, "spark_spread": 360.0,
+				"debris": {"amount": 14, "life": 0.9, "vmin": 40.0, "vmax": 90.0, "smin": 3.5, "smax": 5.5, "is_smoke": true, "smoke_color": Color(0.5, 0.45, 0.38, 0.45), "low_dust": true},
 			}
 		3:  # ROCKET — 大环 + 烟尘
 			return {
@@ -1047,11 +1159,19 @@ static func _impact_recipe(weapon_type: int) -> Dictionary:
 				"spark_smin": 1.2, "spark_smax": 2.2, "spark_life": 0.40, "spark_spread": 40.0,
 				"spark_dir": true,
 			}
-		10, 11:  # OMEGA / RAIL — 快环 + 青色火花
+		10:  # OMEGA(离子/等离子炮) — 蓝色 + 蓝紫灼烧烟尘（能量武器融化装甲感）
 			return {
 				"ring_r": 50.0, "ring_dur": 0.45,
 				"spark_amount": 35, "spark_vmin": 90.0, "spark_vmax": 280.0,
 				"spark_smin": 2.0, "spark_smax": 4.5, "spark_life": 0.58, "spark_spread": 360.0,
+				"debris": {"amount": 12, "life": 0.7, "vmin": 30.0, "vmax": 70.0, "smin": 2.5, "smax": 4.0, "is_smoke": true, "smoke_color": Color(0.35, 0.4, 0.8, 0.4)},
+			}
+		11:  # RAIL(电磁轨道炮) — 青色 + 高速定向喷射（电磁穿透感，窄角集中）
+			return {
+				"ring_r": 44.0, "ring_dur": 0.40,
+				"spark_amount": 30, "spark_vmin": 160.0, "spark_vmax": 380.0,
+				"spark_smin": 1.5, "spark_smax": 3.0, "spark_life": 0.50, "spark_spread": 45.0,
+				"spark_dir": true,
 			}
 		_:
 			return {
@@ -1218,6 +1338,8 @@ static func _acquire_debris_particle() -> CPUParticles2D:
 	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
 	p.emission_sphere_radius = 4.0
 	p.material = _get_add_mat()
+	# v9.2: 烟尘/碎片粒子赋贴图（烟球形状），告别方形小方块
+	p.texture = PARTICLE_TEX_SMOKE
 	return p
 
 
@@ -1231,6 +1353,8 @@ static func _release_debris_particle(p: CPUParticles2D) -> void:
 	p.emitting = false
 	p.visible = false
 	p.position = Vector2.ZERO
+	# v9.2: 不清 texture（粒子池 texture 在 new 时一次性赋值，复用时保留即可；
+	# 清掉会导致下次 acquire 从池取的粒子无贴图，回退方形方块）
 	_active_debris -= 1
 	if _debris_pool.size() < MAX_DEBRIS:
 		_debris_pool.append(p)
@@ -1270,6 +1394,8 @@ static func _acquire_spark_particle() -> CPUParticles2D:
 	p.scale_amount_max = 3.0
 	p.color = Color(1.0, 0.95, 0.6, 1.0)
 	p.material = _get_add_mat()
+	# v9.2: 火花粒子赋贴图（长条火花形状），告别方形小方块
+	p.texture = PARTICLE_TEX_SPARK
 	p.emitting = true
 	return p
 
@@ -1284,6 +1410,7 @@ static func _release_spark_particle(p: CPUParticles2D) -> void:
 	p.emitting = false
 	p.visible = false
 	p.position = Vector2.ZERO
+	# v9.2: 不清 texture（同 _release_debris_particle，池复用需保留贴图）
 	_active_sparks -= 1
 	if _spark_pool.size() < MAX_SPARKS:
 		_spark_pool.append(p)
@@ -1329,3 +1456,391 @@ static func _release_impact_sprite(s: Sprite2D) -> void:
 		_impact_sprite_pool.append(s)
 	else:
 		s.queue_free()
+
+
+
+
+## ======================================================================
+## v9.1 组合技套路视觉层
+## 浓度场区域 / 激活横幅 / 光束分裂反射 / 弱点暴露 / 雷达锁定 / 扩散波纹
+## ======================================================================
+
+## 战场纳米浓度可视化（青色半透明区域）。
+## amount: 当前浓度（0~50）；parent 是 battlefield Node2D；world_pos 是战场中心。
+## 浓度越高：范围越大、alpha 越高。每 0.5s 由 battlefield 重建（非每帧 spawn）。
+static func spawn_nano_field(parent: Node2D, world_pos: Vector2, amount: float) -> void:
+	if parent == null or not is_instance_valid(parent):
+		return
+	if amount <= 0.5:
+		_cleanup_field_vfx(parent, "combo_nano_field")
+		return
+	var t: float = clampf(amount / 50.0, 0.0, 1.0)
+	var radius: float = lerp(100.0, 280.0, t)
+	var alpha: float = lerp(0.0, 0.15, t)
+	_cleanup_field_vfx(parent, "combo_nano_field")
+	var pts := PackedVector2Array()
+	var segments := 32
+	for i in range(segments):
+		var ang := TAU * float(i) / float(segments)
+		pts.append(Vector2(cos(ang), sin(ang)) * radius)
+	var poly := Polygon2D.new()
+	poly.polygon = pts
+	poly.position = world_pos
+	poly.color = Color(0.2, 0.9, 1.0, alpha)
+	poly.z_index = -5  # 盖在地面背景之上、单位之下
+	var mat := CanvasItemMaterial.new()
+	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	poly.material = mat
+	poly.name = "combo_nano_field"
+	parent.add_child(poly)
+
+
+## 战场化学污染可视化（绿色半透明区域）。
+## amount: 当前浓度（0~60）；同 spawn_nano_field 参数约定。
+static func spawn_chem_field(parent: Node2D, world_pos: Vector2, amount: float) -> void:
+	if parent == null or not is_instance_valid(parent):
+		return
+	if amount <= 0.5:
+		_cleanup_field_vfx(parent, "combo_chem_field")
+		return
+	var t: float = clampf(amount / 60.0, 0.0, 1.0)
+	var radius: float = lerp(80.0, 320.0, t)
+	var alpha: float = lerp(0.0, 0.18, t)
+	_cleanup_field_vfx(parent, "combo_chem_field")
+	var pts := PackedVector2Array()
+	var segments := 32
+	for i in range(segments):
+		var ang := TAU * float(i) / float(segments)
+		pts.append(Vector2(cos(ang), sin(ang)) * radius)
+	var poly := Polygon2D.new()
+	poly.polygon = pts
+	poly.position = world_pos
+	poly.color = Color(0.3, 1.0, 0.2, alpha)
+	poly.z_index = -5
+	var mat := CanvasItemMaterial.new()
+	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	poly.material = mat
+	poly.name = "combo_chem_field"
+	parent.add_child(poly)
+
+
+## 清理已存在的浓度场 VFX（防止重复创建）。
+static func _cleanup_field_vfx(parent: Node2D, node_name: String) -> void:
+	if parent == null or not is_instance_valid(parent):
+		return
+	var old := parent.get_node_or_null(node_name)
+	if old != null and is_instance_valid(old):
+		old.queue_free()
+
+
+## 化学爆炸扩散波纹（套路1 chem_burst 触发时）。
+## 从源单位向外 radiate 绿色冲击波环。
+static func spawn_chem_burst_wave(parent: Node2D, pos: Vector2) -> void:
+	spawn_shockwave(parent, pos, 80.0, Color(0.3, 1.0, 0.2, 0.9))
+
+
+## 纳米传染波纹（套路3 nano_spread 触发时）。
+## 青色冲击波环。
+static func spawn_nano_spread_wave(parent: Node2D, pos: Vector2) -> void:
+	spawn_shockwave(parent, pos, 60.0, Color(0.2, 0.9, 1.0, 0.85))
+
+
+## 屏幕顶部组合技激活横幅。
+## text: 横幅文字；duration: 显示时长（秒）；is_team: 是否全队激活（影响样式+震动）。
+static func show_combo_activate_banner(text: String, duration: float = 2.0, is_team: bool = false) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null or tree.root == null:
+		return
+	var hud := tree.root.get_node_or_null("Main/HudLayer")
+	if hud == null:
+		return
+	# 防重复：同名横幅未消失则跳过
+	if hud.has_node("ComboActivateBanner"):
+		return
+	var banner := Label.new()
+	banner.name = "ComboActivateBanner"
+	banner.text = text
+	var banner_w: float = 400.0
+	banner.size = Vector2(banner_w, 36)
+	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	banner.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	banner.add_theme_font_size_override("font_size", 18 if is_team else 14)
+	banner.add_theme_color_override("font_color", Color(1.0, 0.95, 0.6, 1))
+	banner.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
+	banner.add_theme_constant_override("outline_size", 3)
+	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud.add_child(banner)
+	# v9.x：动态居中 x（原硬编码 440 = (1280-400)/2，stretch/缩放时不居中）。
+	# 必须在 add_child 后取 viewport（之前 banner 未入树，get_viewport() 返回 null）。
+	# y 起点 -40 保持（与下方 tween 的 position:y 动画解耦，不受影响）。
+	var vp_w: float = 1280.0
+	var vp := banner.get_viewport()
+	if vp != null:
+		vp_w = vp.get_visible_rect().size.x
+	banner.position = Vector2((vp_w - banner_w) * 0.5, -40)
+	# 入场（从上方滑入 + 淡入）
+	var tw := banner.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(banner, "position:y", 60.0, 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(banner, "modulate:a", 1.0, 0.3)
+	# 停留后淡出 + 滑出
+	var hold := maxf(duration - 0.6, 0.2)
+	tw.chain().tween_interval(hold)
+	tw.tween_property(banner, "modulate:a", 0.0, 0.3)
+	tw.parallel().tween_property(banner, "position:y", -20.0, 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_callback(func(): if is_instance_valid(banner): banner.queue_free())
+	# 全队激活：轻微震动
+	if is_team:
+		var cam := tree.root.get_node_or_null("Main/BattleContainer/SubViewportContainer/SubViewport/Battlefield/BattleCamera")
+		if cam != null and cam.has_method("shake"):
+			cam.call("shake", 3.0, 0.15)
+
+
+## 光束多重攻击次级射线（套路4 beam_split）。
+## 从 target_pos 射向各 secondary_pos，color 同主激光。复用 spawn_laser_beam。
+static func spawn_beam_split_arcs(parent: Node2D, target_pos: Vector2,
+		secondary_positions: Array, color: Color = Color(0.9, 0.8, 1.0, 0.95)) -> void:
+	if parent == null or not is_instance_valid(parent):
+		return
+	for sp in secondary_positions:
+		if sp == null:
+			continue
+		spawn_laser_beam(parent, target_pos, sp, color)
+
+
+## 光束反射射线（套路4 beam_reflect）。
+## 从 target_pos 反射到 reflect_pos，颜色偏暗。
+static func spawn_beam_reflect_arc(parent: Node2D, target_pos: Vector2,
+		reflect_pos: Vector2) -> void:
+	spawn_laser_beam(parent, target_pos, reflect_pos, Color(0.7, 0.6, 0.9, 0.7))
+
+
+## 弱点暴露指示器（套路5 weakpoint_expose）。
+## 目标头顶红色 X 十字，脉动放大，duration 秒后淡出移除。
+## parent 应为目标单位的父节点（让指示器跟随世界坐标）。
+## v9.x：改走 _indicator_pool（Node2D 父 + 2 Line2D 子结构池化，子节点保留只重置父）。
+static func spawn_weakpoint_indicator(parent: Node2D, pos: Vector2, duration: float = 3.0) -> void:
+	if parent == null or not is_instance_valid(parent):
+		return
+	var marker := _acquire_indicator("weakpoint")
+	if marker == null:
+		return
+	marker.position = pos
+	marker.scale = Vector2.ONE
+	marker.modulate = Color(1, 1, 1, 1)
+	marker.z_index = 30
+	parent.add_child(marker)
+	# 脉动呼吸
+	var pulse := marker.create_tween()
+	pulse.set_loops()
+	pulse.tween_property(marker, "scale", Vector2(1.2, 1.2), 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	pulse.tween_property(marker, "scale", Vector2(0.85, 0.85), 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	# duration 后淡出移除
+	var fade := marker.create_tween()
+	fade.tween_interval(duration)
+	fade.tween_property(marker, "modulate:a", 0.0, 0.3)
+	fade.tween_callback(func(): if is_instance_valid(marker): _release_indicator(marker))
+	# 记录 tween 供 release 时 kill（脉动是 loops 无限，淡出完成后 callback 触发 release）
+	marker.set_meta("_vfx_tweens", [pulse, fade])
+
+
+## 雷达锁定圈（套路5 radar_lock）。
+## 目标脚下蓝色旋转扫描圈，duration 秒后淡出。
+## parent 应为目标单位的父节点。
+## v9.x：改走 _indicator_pool。防重复仍用 name 标记（acquire 时设，release 时清）。
+static func spawn_radar_lock_ring(parent: Node2D, pos: Vector2, duration: float = 6.0) -> void:
+	if parent == null or not is_instance_valid(parent):
+		return
+	# 防重复：同一位置已有雷达圈则跳过（用 name 标记）
+	var ring_name := "combo_radar_lock_%d_%d" % [int(pos.x), int(pos.y)]
+	if parent.has_node(ring_name):
+		return
+	var poly: Polygon2D = _acquire_indicator("radar_lock")
+	if poly == null:
+		return
+	poly.name = ring_name  # 防重复标记（release 时清除，避免池中残留 name 干扰 has_node）
+	poly.position = Vector2(pos.x, pos.y + 18)  # 脚下
+	poly.scale = Vector2.ONE
+	poly.rotation = 0.0
+	poly.modulate = Color(1, 1, 1, 1)
+	poly.color = Color(0.35, 0.88, 1.0, 0.35)
+	poly.z_index = 15
+	parent.add_child(poly)
+	# 缓慢旋转
+	var rot_tw := poly.create_tween()
+	rot_tw.set_loops()
+	rot_tw.tween_property(poly, "rotation", TAU, 4.0).set_trans(Tween.TRANS_LINEAR)
+	# duration 后淡出
+	var fade_tw := poly.create_tween()
+	fade_tw.tween_interval(duration)
+	fade_tw.tween_property(poly, "modulate:a", 0.0, 0.5)
+	fade_tw.tween_callback(func(): if is_instance_valid(poly): _release_indicator(poly))
+	poly.set_meta("_vfx_tweens", [rot_tw, fade_tw])
+
+
+## 激光谐振标记环（套路4 laser_resonance）。
+## 目标头顶白色光环，层数越多越亮。持续 5s（与谐振 meta 同步刷新）。
+## v9.x：改走 _indicator_pool。
+static func spawn_resonance_ring(parent: Node2D, pos: Vector2, stacks: int, duration: float = 5.0) -> void:
+	if parent == null or not is_instance_valid(parent):
+		return
+	if stacks <= 0:
+		return
+	var ring: Polygon2D = _acquire_indicator("resonance")
+	if ring == null:
+		return
+	ring.position = Vector2(pos.x, pos.y - 30)  # 头顶
+	ring.scale = Vector2.ONE
+	ring.modulate = Color(1, 1, 1, 1)
+	var alpha: float = clampf(0.25 + stacks * 0.08, 0.25, 0.8)
+	ring.color = Color(0.9, 0.8, 1.0, alpha)
+	ring.z_index = 28
+	parent.add_child(ring)
+	# 脉动
+	var pulse := ring.create_tween()
+	pulse.set_loops()
+	pulse.tween_property(ring, "scale", Vector2(1.15, 1.15), 0.35).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	pulse.tween_property(ring, "scale", Vector2(0.9, 0.9), 0.35).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	# duration 后淡出
+	var fade := ring.create_tween()
+	fade.tween_interval(duration)
+	fade.tween_property(ring, "modulate:a", 0.0, 0.3)
+	fade.tween_callback(func(): if is_instance_valid(ring): _release_indicator(ring))
+	ring.set_meta("_vfx_tweens", [pulse, fade])
+
+
+# =========================================================================
+## v9.x: 组合技指示器对象池（acquire/release + 三种 kind 的节点构造）
+# =========================================================================
+
+## 从指示器池取一个节点（按 kind）。池空或达上限则新建；满则返回 null 节流。
+## kind: "weakpoint"(Node2D+2Line2D子) / "radar_lock"(Polygon2D) / "resonance"(Polygon2D)
+## 返回的节点已剥离残留 parent、kill 残留 tween、重置 transform/modulate。
+static func _acquire_indicator(kind: String) -> Node2D:
+	var pool: Array = _indicator_pool.get(kind, [])
+	# 从池尾向前取，首个有效节点返回
+	var i := pool.size() - 1
+	while i >= 0:
+		var candidate: Node = pool[i]
+		pool.remove_at(i)
+		if candidate != null and is_instance_valid(candidate) and not candidate.is_queued_for_deletion():
+			# 剥离残留 parent（防 add_child "already has a parent"）
+			if candidate.get_parent() != null:
+				candidate.get_parent().remove_child(candidate)
+			# kill 残留 tween（脉动 loops + 淡出，复用时重建）
+			_kill_indicator_tweens(candidate)
+			# 重置通用状态
+			candidate.visible = true
+			candidate.modulate = Color(1, 1, 1, 1)
+			candidate.scale = Vector2.ONE
+			candidate.rotation = 0.0
+			# radar_lock 带 name 防重复标记，acquire 时清除（由 spawn 重设）
+			if not candidate.name.is_empty() and candidate.name.begins_with("combo_radar_lock_"):
+				candidate.name = ""
+			_indicator_pool[kind] = pool
+			_active_indicators += 1
+			return candidate
+		i -= 1
+	_indicator_pool[kind] = pool
+	# 池空：检查全局上限
+	if _active_indicators >= MAX_INDICATORS:
+		return null  # 节流
+	_active_indicators += 1
+	# 按 kind 新建对应结构
+	return _create_indicator(kind)
+
+
+## 新建一个指示器节点（首次或池扩容时）。
+## 所有新建节点都 set_meta("_vfx_kind", kind)，_release_indicator 据此归还对应池。
+static func _create_indicator(kind: String) -> Node2D:
+	match kind:
+		"weakpoint":
+			# Node2D 父 + 2 Line2D 子（X 十字），子节点配置固定，池化时保留只重置父
+			var marker := Node2D.new()
+			marker.set_meta("_vfx_kind", kind)
+			var line_a := Line2D.new()
+			line_a.width = 3.0
+			line_a.default_color = Color(1.0, 0.3, 0.2, 1.0)
+			line_a.joint_mode = Line2D.LINE_JOINT_ROUND
+			line_a.end_cap_mode = Line2D.LINE_CAP_ROUND
+			line_a.add_point(Vector2(-14, -14))
+			line_a.add_point(Vector2(14, 14))
+			marker.add_child(line_a)
+			var line_b := Line2D.new()
+			line_b.width = 3.0
+			line_b.default_color = Color(1.0, 0.3, 0.2, 1.0)
+			line_b.joint_mode = Line2D.LINE_JOINT_ROUND
+			line_b.end_cap_mode = Line2D.LINE_CAP_ROUND
+			line_b.add_point(Vector2(-14, 14))
+			line_b.add_point(Vector2(14, -14))
+			marker.add_child(line_b)
+			return marker
+		"radar_lock":
+			# 雷达锁定圈：28 段实心圆（半径 30），ADD 混合。顶点固定，池化时只重设 color/position。
+			var poly := Polygon2D.new()
+			poly.set_meta("_vfx_kind", kind)
+			poly.material = _get_add_mat()
+			poly.polygon = _build_circle_polygon(28, 30.0)
+			return poly
+		"resonance":
+			# 谐振环：24 段实心圆（半径 16），ADD 混合。顶点固定。
+			var poly := Polygon2D.new()
+			poly.set_meta("_vfx_kind", kind)
+			poly.material = _get_add_mat()
+			poly.polygon = _build_circle_polygon(24, 16.0)
+			return poly
+		_:
+			# 未知 kind 兜底：返回普通 Node2D（不应发生）
+			var fallback := Node2D.new()
+			fallback.set_meta("_vfx_kind", "resonance")
+			return fallback
+
+
+## 归还指示器到池。kill 所有 tween、移除 parent、清 name、归还对应 kind 池。
+static func _release_indicator(node: Node2D) -> void:
+	if node == null or not is_instance_valid(node):
+		_active_indicators -= 1
+		return
+	# kill 该节点所有 tween（通过 _vfx_tweens meta 记录的引用）
+	_kill_indicator_tweens(node)
+	# 移除 parent
+	if node.get_parent() != null:
+		node.get_parent().remove_child(node)
+	# 清 name（radar_lock 防重复标记），避免池中残留 name 干扰下次 has_node 检查
+	if not node.name.is_empty() and node.name.begins_with("combo_radar_lock_"):
+		node.name = ""
+	node.visible = false
+	# 按 _vfx_kind meta 归还对应池
+	var kind: String = node.get_meta("_vfx_kind", "")
+	if kind.is_empty():
+		kind = "resonance"  # 兜底（未知 kind 归到最简单的 resonance 池）
+	var pool: Array = _indicator_pool.get(kind, [])
+	if pool.size() < MAX_INDICATORS:
+		pool.append(node)
+		_indicator_pool[kind] = pool
+	else:
+		node.queue_free()
+	_active_indicators -= 1
+
+
+## kill 指示器节点记录的所有 tween（_vfx_tweens meta），清 meta。
+## 脉动 tween 是 set_loops() 无限循环，release 时若不 kill 会继续跑并泄露。
+static func _kill_indicator_tweens(node: Node) -> void:
+	if node == null or not is_instance_valid(node):
+		return
+	if node.has_meta("_vfx_tweens"):
+		var tweens: Array = node.get_meta("_vfx_tweens", [])
+		for tw in tweens:
+			if tw is Tween and (tw as Tween).is_valid():
+				(tw as Tween).kill()
+		node.remove_meta("_vfx_tweens")
+
+
+## 构建实心圆 Polygon2D 顶点数组（segments 段，radius 半径）。
+## 供 radar_lock / resonance 指示器建顶点用（顶点固定，池化时不重建）。
+static func _build_circle_polygon(segments: int, radius: float) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	for i in range(segments):
+		var ang := TAU * float(i) / float(segments)
+		pts.append(Vector2(cos(ang), sin(ang)) * radius)
+	return pts

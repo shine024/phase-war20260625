@@ -1142,6 +1142,14 @@ func load_state(data: Dictionary) -> void:
 	phase_field_allocations = data.get("phase_field_allocations", {})
 	if not (phase_field_allocations is Dictionary):
 		phase_field_allocations = {}
+	else:
+		# v8.x 修复：JSON 存档往返可能把 int 变成 float（{"atk_pct": 2} → 2.0），
+		# 下游消费者（如 phase_instrument_selector 的 String(alloc[key])）对 Variant-float
+		# 会抛 "Nonexistent 'String' constructor"。此处统一强转回 int，保持不变式。
+		var _casted: Dictionary = {}
+		for _k in phase_field_allocations.keys():
+			_casted[String(_k)] = int(phase_field_allocations[_k])
+		phase_field_allocations = _casted
 	_runtime_instrument_defs.clear()
 	var runtime_defs_raw: Dictionary = data.get("runtime_instrument_defs", {})
 	if runtime_defs_raw is Dictionary:

@@ -54,6 +54,14 @@ var _bg_pending_level: int = 1
 var _bg_pending_era: int = 0
 var _bg_pending_battle_bottom_y: float = 580.0
 
+# v9.1 组合技浓度场 VFX：订阅 combo_field_state.field_changed 信号，按浓度绘制半透明区域
+var _combo_field_state: RefCounted = null
+var _field_vfx_dirty: bool = false
+var _field_vfx_acc: float = 0.0
+const _FIELD_VFX_REFRESH_SEC: float = 0.4
+const _ComboFieldStateScript: Script = preload("res://scripts/battle/combo_field_state.gd")
+const _VfxImpactFactory: Script = preload("res://scripts/battle/vfx_impact_factory.gd")
+
 func _ready() -> void:
 	if OS.is_debug_build() and not Engine.is_editor_hint():
 		var pm := Node.new()
@@ -68,6 +76,30 @@ func _ready() -> void:
 	call_deferred("_sync_battle_slot_grid_lane")
 	# v6.4: 把震动相机对齐到视口中心，使其严格等价于无相机渲染（世界原点在视口左上）
 	call_deferred("_align_battle_camera")
+	# v9.1 组合技浓度场：延迟订阅（battle_manager 在 _ready 后才 setup combo_field_state）
+	call_deferred("_subscribe_combo_field_state")
+
+
+## v9.1 订阅 combo_field_state 的 field_changed 信号以驱动浓度场 VFX
+func _subscribe_combo_field_state() -> void:
+	var bm: Node = get_node_or_null("/root/BattleManager")
+	if bm == null:
+		bm = get_node_or_null("/root/Main/BattleManager")
+	if bm == null:
+		return
+	if bm.has_method("get_combo_field_state"):
+		_combo_field_state = bm.get_combo_field_state()
+	if _combo_field_state != null and _combo_field_state.has_signal("field_changed"):
+		if not _combo_field_state.field_changed.is_connected(_on_combo_field_changed):
+			_combo_field_state.field_changed.connect(_on_combo_field_changed)
+
+
+## v9.1 浓度变化回调：标记 dirty，下一帧 _process 重绘（避免信号密集触发时重复重建）
+func _on_combo_field_changed(_tag: String, _amount: float) -> void:
+	_field_vfx_dirty = true
+	# 若 _process 因背景加载完成被停过，浓度变化时重新启用（确保 dirty 被消费）
+	if not is_processing():
+		set_process(true)
 
 
 ## v6.4: 根据所在 SubViewport 实际尺寸，把 BattleCamera position 设为视口中心，
@@ -95,8 +127,17 @@ func _sync_battle_slot_grid_lane() -> void:
 	snap_card_grid_units_to_slots()
 
 func _process(_delta: float) -> void:
+	# v9.1 组合技浓度场 VFX：dirty 标记驱动 + 定时衰减刷新
+	if _combo_field_state != null:
+		_field_vfx_acc += _delta
+		if _field_vfx_dirty or _field_vfx_acc >= _FIELD_VFX_REFRESH_SEC:
+			_field_vfx_acc = 0.0
+			_field_vfx_dirty = false
+			_redraw_combo_field_vfx()
 	if _bg_loading_path.is_empty():
-		set_process(false)
+		# v9.1：浓度场需要持续刷新，不能直接 set_process(false)
+		if _combo_field_state == null:
+			set_process(false)
 		return
 	var path_loading := _bg_loading_path
 	var gen := _bg_load_generation
@@ -729,3 +770,28 @@ func request_screen_shake(intensity: float, duration: float) -> void:
 ## v6.4: 获取战场相机（供外部系统如 BattleManager 读取）
 func get_battle_camera() -> Camera2D:
 	return battle_camera
+
+
+# ═══════════════════════════════════════════════════════════════════
+# v9.1 组合技浓度场 VFX（战场地面半透明区域）
+# ═══════════════════════════════════════════════════════════════════
+
+## 重绘战场浓度场（纳米/化学）。由 _process 节流（dirty 或 0.4s 周期）。
+func _redraw_combo_field_vfx() -> void:
+	if _combo_field_state == null:
+		return
+	var center := _get_field_vfx_center()
+	var nano_amt: float = _combo_field_state.get_field(_ComboFieldStateScript.FIELD_NANO)
+	var chem_amt: float = _combo_field_state.get_field(_ComboFieldStateScript.FIELD_CHEM)
+	_VfxImpactFactory.spawn_nano_field(self, center, nano_amt)
+	_VfxImpactFactory.spawn_chem_field(self, center, chem_amt)
+
+
+## 浓度场中心：取玩家单位与敌方单位的战场中心点（让区域覆盖双方交战区）
+func _get_field_vfx_center() -> Vector2:
+	var cx: float = 640.0
+	var cy: float = 360.0
+	if player_spawn != null and enemy_spawn != null:
+		cx = (player_spawn.position.x + enemy_spawn.position.x) * 0.5
+		cy = (player_spawn.position.y + enemy_spawn.position.y) * 0.5
+	return Vector2(cx, cy)

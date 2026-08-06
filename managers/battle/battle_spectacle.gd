@@ -247,7 +247,25 @@ func _play_nano_swarm_start(params: Dictionary) -> void:
 func _create_nano_rain_layer(duration: float) -> void:
 	if _nano_rain_layer != null and is_instance_valid(_nano_rain_layer):
 		_nano_rain_layer.queue_free()
-	var vp_size: Vector2 = get_viewport().get_visible_rect().size
+	# v9.x：改挂 Battlefield Node2D（战场坐标系），原挂 get_tree().root（窗口坐标系）会导致
+	# 粒子穿过战场 SubViewport（1280×580）下落到 HUD 区（580→720），污染 HUD 可读性，
+	# 且与同能力的浓度场（spawn_nano_field 挂 Battlefield）坐标系不一致。
+	# 拿不到 battlefield 时回退 root（保持原行为，不崩）。
+	# 注：parent 类型用 Node 而非 Node2D——_get_vfx_parent 返回 Node2D（battlefield），
+	# 但兜底 get_tree().root 是 Window（Node 子类，非 Node2D），CPUParticles2D 挂载只需 Node parent。
+	var parent: Node = _get_vfx_parent()
+	var use_root: bool = false
+	if parent == null:
+		parent = get_tree().root  # Window（Node 子类），能 add_child，坐标走窗口视口
+		use_root = true
+	# 发射区横向覆盖：战场坐标用 parent 的视口宽度，root 回退用窗口视口
+	var vp_size: Vector2
+	if use_root:
+		vp_size = get_viewport().get_visible_rect().size
+	else:
+		# Battlefield 在 SubViewport 里，用其所在 SubViewport 的尺寸（战场实际宽高）
+		var sv: Viewport = parent.get_viewport()
+		vp_size = sv.get_visible_rect().size if sv != null else Vector2(1280.0, 580.0)
 	var rain := CPUParticles2D.new()
 	rain.name = "NanoSwarmRainLayer"
 	rain.amount = 120  # v8.1a：80→120，更密集的虫群雨
@@ -267,12 +285,12 @@ func _create_nano_rain_layer(duration: float) -> void:
 	# 注：emission_rect_extents 是半宽半高，所以实际区域 = 2×extents
 	rain.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
 	rain.emission_rect_extents = Vector2((vp_size.x + 200) * 0.5, 10.0)
-	rain.position = Vector2(vp_size.x / 2.0, -40)  # 屏幕顶部上方
+	rain.position = Vector2(vp_size.x / 2.0, -40)  # 战场顶部上方（粒子从这里开始下落）
 	rain.z_index = 150
 	var mat := CanvasItemMaterial.new()
 	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	rain.material = mat
-	get_tree().root.add_child(rain)
+	parent.add_child(rain)
 	_nano_rain_layer = rain
 	# 持续 duration 秒后淡出移除
 	var tw: Tween = create_tween()
@@ -358,6 +376,23 @@ func _play_kill_flash(killer: Node) -> void:
 		kt.tween_property(killer, "modulate", orig_mod, 0.22)
 	# 轻微屏幕震动（克制：light 档）
 	_request_shake(2.0, 0.10)
+
+
+## v9.2: 大型常规爆炸的全屏微闪——下放核武闪白范式给 OMEGA/RAIL/MISSILE 等大爆炸。
+## intensity 0.0~1.0 控制峰值透明度（0.25=微弱白闪，区别于核武的 0.95 强闪）。
+## 让大爆炸有"砰"的视觉冲击，而非仅震动+粒子。受 motion_reduce 开关控制（无障碍）。
+func play_explosion_flash(intensity: float = 0.25) -> void:
+	if DT.is_motion_reduce():
+		return
+	_ensure_overlay()
+	_overlay.color = Color(1.0, 0.95, 0.85, 0.0)  # 暖白（爆炸火光感，非纯白）
+	_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_overlay.visible = true
+	var peak: float = clampf(intensity, 0.0, 0.5)  # 上限 0.5，避免常规爆炸闪瞎
+	var tw: Tween = create_tween()
+	tw.tween_property(_overlay, "color:a", peak, 0.04)   # 快速达到峰值（爆炸瞬间）
+	tw.tween_property(_overlay, "color:a", 0.0, 0.12)   # 快速消退
+	tw.tween_callback(func(): _overlay.visible = false)
 
 
 ## 连杀提示：右上角滑入"3 连击！"小标签
@@ -718,7 +753,9 @@ func _on_mechanism_nuclear_launched(from_pos: Vector2, target_pos: Vector2, owne
 		_overlay.color = Color(flash_overlay_color.r, flash_overlay_color.g, flash_overlay_color.b, 0.0)
 		_overlay.visible = true
 		var flash_tw: Tween = create_tween()
-		flash_tw.tween_property(_overlay, "color:a", 0.95, 0.05)
+		# v9.x：战术核武闪白峰值 0.95→0.75 降温（CD 45s 比 _play_nuclear_impact 终极能力频繁，
+		# 叠加 extreme shake 1s 对前庭敏感用户偏强；0.75 保留震撼感。对比 play_explosion_flash 已 clamp 0.5）
+		flash_tw.tween_property(_overlay, "color:a", 0.75, 0.05)
 		flash_tw.tween_property(_overlay, "color:a", 0.0, 0.15)
 		flash_tw.tween_callback(func(): _overlay.visible = false)
 		# 核爆标题（红字「☢ 核爆」闪现 0.4s，与闪白同步冲击，复用核子轰炸 _title_label 范式）
@@ -771,7 +808,7 @@ func _on_mechanism_nuclear_launched(from_pos: Vector2, target_pos: Vector2, owne
 			VfxImpactFactory.spawn_ground_burn(parent, target_pos, 90.0, 0.3, burn_tex)
 		# ⑦屏幕震动（extreme 档）
 		_request_shake(16.0, 1.0)
-		# ⑧绿光余烬（overlay 0.35→0，1.0s，参考 _play_nuclear_impact）
+		# ⑧橙红余烬（overlay 0.35→0，1.0s；战术核武写实橙调，区别于核子轰炸的科幻绿）
 		var ember_tw: Tween = create_tween()
 		ember_tw.tween_interval(0.05)
 		_ensure_overlay()

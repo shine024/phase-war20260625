@@ -90,7 +90,7 @@ const CARD_SKILL_LABELS: Dictionary = {
 	"cps_minefield": {"name": "反坦克雷区", "desc": "每18秒敌方密集区布雷（对装甲+50%）", "icon": "💣", "family": "steel"},
 	"cps_repair_aura": {"name": "机械维修站", "desc": "每10秒全体机械单位+3%最大HP", "icon": "🔧", "family": "steel"},
 	"cps_cleanse": {"name": "工程抢修", "desc": "每18秒清除全体debuff+800护盾", "icon": "✨", "family": "steel"},
-	"cps_steel_storm": {"name": "钢铁风暴", "desc": "每90秒召唤3个钢铁傀儡（12秒）", "icon": "🤖", "family": "steel", "is_ultimate": true},
+	"cps_steel_storm": {"name": "钢铁风暴", "desc": "每90秒全体友军+3000护盾+20%减伤（10秒）", "icon": "🛡", "family": "steel", "is_ultimate": true},
 	# 火焰家族
 	"cps_scorched_earth": {"name": "焦土政策", "desc": "每16秒敌方密集区燃烧8秒", "icon": "🔥", "family": "flame"},
 	"cps_burn_city": {"name": "焚城", "desc": "每100秒全图轰炸250火伤+燃烧", "icon": "🌋", "family": "flame", "is_ultimate": true},
@@ -109,10 +109,9 @@ const CARD_SKILL_LABELS: Dictionary = {
 	"cps_annihilate": {"name": "湮灭之光", "desc": "每120秒全图300%虚空伤+斩杀低血", "icon": "💀", "family": "void", "is_ultimate": true},
 	"cps_time_rewind": {"name": "时间回溯", "desc": "每90秒全体恢复30%HP+清除debuff", "icon": "🔄", "family": "void", "is_ultimate": true},
 	"cps_dimension_overlay": {"name": "维度叠加", "desc": "每150秒全体闪避+40%、受伤-30%（12秒）", "icon": "🌌", "family": "void", "is_ultimate": true},
-	# 智能化分支额外
-	"cps_adaptive_shield": {"name": "自适应护盾", "desc": "HP<30%时自动+2000护盾", "icon": "🛡", "family": "thunder"},
-	"cps_smart_repair": {"name": "智能维修", "desc": "每10秒全体机械+3%HP", "icon": "🔧", "family": "steel"},
-	"cps_smart_cleanse": {"name": "智能净化", "desc": "每18秒清除全体debuff", "icon": "✨", "family": "steel"},
+	# v8.5 清理：cps_adaptive_shield（已废弃改为 jamming_field 机制）、
+	# cps_smart_repair（cps_repair_aura 旧别名）、cps_smart_cleanse（cps_cleanse 旧别名）
+	# 三个孤儿标签无对应技能定义，删除避免 UI 误显示。
 }
 
 ## 战法标签（tactic）
@@ -208,11 +207,14 @@ static func get_unlocked_summary(unlocked_nodes: Array) -> Array:
 					"node_name": String(node.get("name", "")),
 				})
 			elif u_type == "phase_instrument":
-				# 相位仪解锁单独处理（已有自己的名称系统）
+				# 相位仪解锁：查 PhaseInstruments 取中文名，查不到回退原始 ID
+				var PhaseInstrumentsCls = preload("res://data/phase_instruments.gd")
+				var inst_cfg: Dictionary = PhaseInstrumentsCls.get_by_id(u_id)
+				var inst_name: String = String(inst_cfg.get("name", u_id))
 				summary.append({
 					"type": u_type,
 					"id": u_id,
-					"name": "相位仪：" + u_id,
+					"name": "相位仪：" + inst_name,
 					"desc": "已解锁相位仪装备",
 					"icon": "🔮",
 					"node_name": String(node.get("name", "")),
@@ -227,11 +229,14 @@ static func get_unlocked_summary(unlocked_nodes: Array) -> Array:
 					"node_name": String(node.get("name", "")),
 				})
 			elif u_type == "evolution":
-				var era_name: String = "全时代" if int(u.get("era", -1)) == -1 else "时代" + str(u.get("era"))
+				# era: -1=全时代, 0-4=一战/二战/冷战/现代/近未来
+				var era: int = int(u.get("era", -1))
+				var era_names: Array = ["一战", "二战", "冷战", "现代", "近未来"]
+				var era_label: String = "全时代" if era == -1 else (era_names[clampi(era, 0, 4)] if era >= 0 and era < 5 else "时代%d" % era)
 				summary.append({
 					"type": u_type,
 					"id": u_id,
-					"name": "进化：" + era_name,
+					"name": "进化：" + era_label,
 					"desc": "解锁卡牌进化形态",
 					"icon": "🧬",
 					"node_name": String(node.get("name", "")),

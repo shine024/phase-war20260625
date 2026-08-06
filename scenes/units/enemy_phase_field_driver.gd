@@ -51,6 +51,9 @@ var _equipment: Dictionary = {}
 var _master_stats: Dictionary = {}
 var _unit_limit: int = 6
 var _has_equipment: bool = false
+## v9.x 势力前缀平台 ID → 势力前缀缓存（setup/产兵时按 LEGACY_PLATFORM_TO_ARCHETYPE 填充，
+## 供 ConstructUnit meta faction_prefix 使用，让格子战名称显示「势力前缀·真实兵种名」）
+var _platform_faction_prefix: Dictionary = {}
 # v6.14: 相位师符文 + 出兵序列（程序化派生，见 EnemyPhaseMasters.get_enriched_equipment）
 var _master_runes: Array = []           # 相位师自带符文 id 列表
 var _spawn_sequence: Array = []         # 出兵序列 [{platform, type}, ...]
@@ -82,6 +85,16 @@ var _tier2_cap: int = 20
 var _exhaustion_cap: int = 30
 ## 缓存 setup 时设置的 Body 原始 tint，供疲劳视觉反馈叠加暗化使用
 var _base_body_tint: Color = Color.WHITE
+
+# ─── v9.1 相位师 traits 战斗化 + buff 闪光 ───
+## traits 效果缓存（setup 时计算，产兵时复用）。
+## key 为 UnitStats 字段名（attack_light/defense_light/max_hp/crit_chance/dodge_chance），
+## value 为加成比值（乘区用 1.0+val 累乘；crit/dodge 用 +val 累加）。
+var _trait_stat_mods: Dictionary = {}
+## trait 出兵上限加成（unit_limit_bonus 累加值，不影响单位 stats）
+var _trait_unit_limit_bonus: int = 0
+## v9.1: buff 闪光 Tween（应用 trait/passive 时基地短暂变亮）
+var _buff_flash_tween: Tween = null
 
 # ─── v9.0 套路补兵系统 ───
 ## 当前相位师套路 id（setup 时识别/读取，见 MasterPatterns.get_pattern）
@@ -157,6 +170,43 @@ const _PLATFORM_TYPE_TO_TAGS: Dictionary = {
 	"sniper": ["infantry", "elite"],
 	"stealth": ["infantry", "fast"],
 	"mage": ["infantry", "elite"],
+}
+## v9.x 势力前缀平台 ID → 真实 ww1 archetype 精确映射（卡图/数值/缩放统一走映射目标）
+## 背景：一战 4 相位师的 platforms 存 legacy 平台 ID（如 steel_titan_basic），只在
+## EnemyEquipmentArmorModules.LEGACY_WAR_PLATFORMS 有数值定义，不在 EnemyArchetypes 配置里，
+## 导致产兵卡图引用错误（_pick_visual_archetype_for_platform 粗粒度派生 → 同类平台撞图，
+## 且 stats.platform_card_id 与 visual_archetype_id 不一致 → card_res/缩放/名称错位）。
+## 映射后：产兵走"直引模式"，卡图/数值/缩放用真实 archetype，名称显示「势力前缀·真实兵种名」。
+## 卡图存在性已验证（2026-08-04）：8 个目标 archetype 的 PNG 全部存在。
+const LEGACY_PLATFORM_TO_ARCHETYPE: Dictionary = {
+	# 钢铁势力（steel）—— 厚甲重武器
+	"steel_fortress_basic":    {"archetype": "ww1_fort_artillery", "prefix": "钢铁"},
+	"steel_titan_basic":       {"archetype": "ww1_arm_rolls_e",    "prefix": "钢铁"},
+	"steel_fortress_advanced": {"archetype": "ww1_fort_artillery", "prefix": "钢铁"},
+	"steel_titan_advanced":    {"archetype": "ww1_arm_rolls_e",    "prefix": "钢铁"},
+	"steel_fortress_expert":   {"archetype": "ww1_fort_artillery", "prefix": "钢铁"},
+	"steel_titan_expert":      {"archetype": "ww1_arm_rolls_e",    "prefix": "钢铁"},
+	# 烈焰势力（flame）—— 快攻突击
+	"flame_raider_basic":    {"archetype": "ww1_arm_rolls_mk2", "prefix": "烈焰"},
+	"flame_siege_basic":     {"archetype": "ww1_arty_mortar",   "prefix": "烈焰"},
+	"flame_raider_advanced": {"archetype": "ww1_arm_rolls_mk2", "prefix": "烈焰"},
+	"flame_siege_advanced":  {"archetype": "ww1_arty_mortar",   "prefix": "烈焰"},
+	"flame_raider_expert":   {"archetype": "ww1_arm_rolls_mk2", "prefix": "烈焰"},
+	"flame_siege_expert":    {"archetype": "ww1_arty_mortar",   "prefix": "烈焰"},
+	# 雷霆势力（thunder）—— 步兵精锐（注意源数据是 thunter 拼写，与 LEGACY_WAR_PLATFORMS 一致）
+	"thunter_striker_basic":    {"archetype": "ww1_inf_storm_e", "prefix": "雷霆"},
+	"thunter_sniper_basic":     {"archetype": "ww1_inf_rifle",   "prefix": "雷霆"},
+	"thunter_striker_advanced": {"archetype": "ww1_inf_storm_e", "prefix": "雷霆"},
+	"thunter_sniper_advanced":  {"archetype": "ww1_inf_rifle",   "prefix": "雷霆"},
+	"thunter_striker_expert":   {"archetype": "ww1_inf_storm_e", "prefix": "雷霆"},
+	"thunter_sniper_expert":    {"archetype": "ww1_inf_rifle",   "prefix": "雷霆"},
+	# 虚空势力（void）—— 隐秘特种
+	"void_stealth_basic":    {"archetype": "ww1_inf_mp18",   "prefix": "虚空"},
+	"void_mage_basic":       {"archetype": "ww1_sup_mg_nest", "prefix": "虚空"},
+	"void_stealth_advanced": {"archetype": "ww1_inf_mp18",   "prefix": "虚空"},
+	"void_mage_advanced":    {"archetype": "ww1_sup_mg_nest", "prefix": "虚空"},
+	"void_stealth_expert":   {"archetype": "ww1_inf_mp18",   "prefix": "虚空"},
+	"void_mage_expert":      {"archetype": "ww1_sup_mg_nest", "prefix": "虚空"},
 }
 
 func _ready() -> void:
@@ -255,6 +305,8 @@ func setup(master_config: Dictionary) -> void:
 	var mode_str := "装备模式" if _has_equipment else "经典模式"
 	# [LOG-v5.1] print("[EnemyPhaseDriver] 相位师 %s 基地建立 (HP=%d, era=%d, limit=%d, exhaust=%d, interval=%.1f) [%s]" % [master_name, int(max_hp), era, _unit_limit, _exhaustion_cap, spawn_interval, mode_str])
 	_apply_body_visual_from_master(master_config)
+	# v9.1: 应用相位师 traits 加成到现有敌方单位 + 缓存供产兵复用
+	_apply_trait_effects()
 
 ## v7.x: 从当前装备的相位仪读取 active_ability（供 EnemyPhaseInstrumentAbilities 使用）
 func _read_enemy_active_ability() -> Dictionary:
@@ -281,6 +333,151 @@ func get_boss_passive_spells() -> Array:
 ## 导致 _compute_boss_damage 永远走 max_hp×0.05 fallback，attack_power 从不生效。
 func get_master_stats() -> Dictionary:
 	return _master_stats
+
+## v9.1: 返回缓存的 trait 统计加成 dict（key=UnitStats 字段名，value=比值/加值），供 UI 和测试使用
+func get_trait_stat_mods() -> Dictionary:
+	return _trait_stat_mods.duplicate()
+
+# ============================ v9.1 相位师 traits 战斗化 ============================
+
+## v9.1: 读取 master_config.traits，按 effect key 分类计算统计加成，应用到所有现有敌方单位。
+## traits.effects 的 key 集合见 EnemyPhaseMasters 顶部注释（atk_*/def_*/hp/crit/dodge/all_stat_boost）。
+## 多个 trait 修改同一字段时按乘法累乘（如两个 trait 各 +10% 防御 → 1.10×1.10=1.21）。
+## crit/dodge 为加法累加，最后 clamp 到 [0,1]。
+func _apply_trait_effects() -> void:
+	var traits: Array = _master_config_cache.get("traits", []) if not _master_config_cache.is_empty() else []
+	if traits.is_empty():
+		return
+	_trait_stat_mods.clear()
+	_trait_unit_limit_bonus = 0
+	# 注：`trait` 在 Godot 4.5 已成为保留关键字（实验性 trait 特性），循环变量改名 trait_def。
+	for trait_def in traits:
+		if not (trait_def is Dictionary):
+			continue
+		var fx: Dictionary = trait_def.get("effects", {})
+		if fx.is_empty():
+			continue
+		for key in fx.keys():
+			var val_raw = fx[key]
+			# 防 crash：trait effect value 可能是嵌套 dict（如 divine_transform: {duration, all_stat_boost}）
+			# 此类 complex effect 由上层 spell 系统消费，此处仅处理标量数值
+			if typeof(val_raw) != TYPE_FLOAT and typeof(val_raw) != TYPE_INT:
+				continue
+			_apply_trait_effect_key(String(key), float(val_raw))
+	# 应用到 setup 时已存在的 enemy_units（补兵残留/同帧产兵）
+	_apply_trait_mods_to_units()
+	# v9.1: buff 视觉反馈——基地短暂闪光，让玩家感知"这个 boss 有 trait 加成"
+	if not _trait_stat_mods.is_empty():
+		_flash_body_on_buff()
+
+## v9.1: 按 trait effect key 分类写入 _trait_stat_mods。
+## 乘区字段（atk/def/hp）默认值 1.0，累乘 (1+val)；
+## 加值字段（crit/dodge）默认值 0.0，累加 val。
+## all_stat_boost 同时作用于三维攻防 + max_hp，统一乘区。
+func _apply_trait_effect_key(key: String, val: float) -> void:
+	if val == 0.0:
+		return
+	match key:
+		"unit_limit_bonus":
+			_trait_unit_limit_bonus += int(val)
+		"all_stat_boost":
+			_trait_stat_mods["attack_light"]  = float(_trait_stat_mods.get("attack_light", 1.0))  * (1.0 + val)
+			_trait_stat_mods["attack_armor"]  = float(_trait_stat_mods.get("attack_armor", 1.0))  * (1.0 + val)
+			_trait_stat_mods["attack_air"]    = float(_trait_stat_mods.get("attack_air", 1.0))    * (1.0 + val)
+			_trait_stat_mods["defense_light"] = float(_trait_stat_mods.get("defense_light", 1.0)) * (1.0 + val)
+			_trait_stat_mods["defense_armor"] = float(_trait_stat_mods.get("defense_armor", 1.0)) * (1.0 + val)
+			_trait_stat_mods["defense_air"]   = float(_trait_stat_mods.get("defense_air", 1.0))   * (1.0 + val)
+			_trait_stat_mods["max_hp"]        = float(_trait_stat_mods.get("max_hp", 1.0))        * (1.0 + val)
+		"atk_light":    _trait_stat_mods["attack_light"]  = float(_trait_stat_mods.get("attack_light", 1.0))  * (1.0 + val)
+		"atk_armor":    _trait_stat_mods["attack_armor"]  = float(_trait_stat_mods.get("attack_armor", 1.0))  * (1.0 + val)
+		"atk_air":      _trait_stat_mods["attack_air"]    = float(_trait_stat_mods.get("attack_air", 1.0))    * (1.0 + val)
+		"def_light":    _trait_stat_mods["defense_light"] = float(_trait_stat_mods.get("defense_light", 1.0)) * (1.0 + val)
+		"def_armor":    _trait_stat_mods["defense_armor"] = float(_trait_stat_mods.get("defense_armor", 1.0)) * (1.0 + val)
+		"def_air":      _trait_stat_mods["defense_air"]   = float(_trait_stat_mods.get("defense_air", 1.0))   * (1.0 + val)
+		"hp":           _trait_stat_mods["max_hp"]        = float(_trait_stat_mods.get("max_hp", 1.0))        * (1.0 + val)
+		"crit_chance":  _trait_stat_mods["crit_chance"]   = float(_trait_stat_mods.get("crit_chance", 0.0))   + val
+		"dodge_chance": _trait_stat_mods["dodge_chance"]  = float(_trait_stat_mods.get("dodge_chance", 0.0))  + val
+		# 其他 key（void_damage_boost/auto_resurrect/divine_transform 等复杂 effect）暂不映射到 stats，
+		# 留待后续按 effect 语义独立实装（需写入 unit meta 并在事件触发时消费）。
+
+## v9.1: 将缓存的 trait 加成应用到所有现有 enemy_units 组单位的 stats。
+## 仅在 setup 时调用一次（处理已存在单位）；后续产兵由 _apply_trait_to_spawned_unit 独立应用。
+func _apply_trait_mods_to_units() -> void:
+	if _trait_stat_mods.is_empty():
+		return
+	var tree: SceneTree = get_tree()
+	if tree == null:
+		return
+	for u in tree.get_nodes_in_group("enemy_units"):
+		if u == null or not is_instance_valid(u):
+			continue
+		if "stats" in u and u.stats != null:
+			_apply_trait_mods_to_stats(u.stats)
+
+## v9.1: 将 _trait_stat_mods 应用到单个 UnitStats 实例。
+## stats 可能是 UnitStats（ConstructUnit）或 EnemyUnit 的 stats 对象，只要字段名匹配即可。
+func _apply_trait_mods_to_stats(stats: Object) -> void:
+	if stats == null:
+		return
+	# 三维攻击（乘区，默认 1.0 不改）
+	if stats.has_method("_set") == false and "attack_light" in stats:
+		if _trait_stat_mods.has("attack_light"):
+			stats.attack_light  *= float(_trait_stat_mods["attack_light"])
+		if _trait_stat_mods.has("attack_armor"):
+			stats.attack_armor  *= float(_trait_stat_mods["attack_armor"])
+		if _trait_stat_mods.has("attack_air"):
+			stats.attack_air    *= float(_trait_stat_mods["attack_air"])
+		# 三维防御
+		if _trait_stat_mods.has("defense_light"):
+			stats.defense_light *= float(_trait_stat_mods["defense_light"])
+		if _trait_stat_mods.has("defense_armor"):
+			stats.defense_armor *= float(_trait_stat_mods["defense_armor"])
+		if _trait_stat_mods.has("defense_air"):
+			stats.defense_air   *= float(_trait_stat_mods["defense_air"])
+		# 生命上限
+		if _trait_stat_mods.has("max_hp"):
+			stats.max_hp *= float(_trait_stat_mods["max_hp"])
+		# 暴击/闪避（加值，clamp [0,1]）
+		if _trait_stat_mods.has("crit_chance"):
+			stats.crit_chance = clampf(stats.crit_chance + float(_trait_stat_mods["crit_chance"]), 0.0, 1.0)
+		if _trait_stat_mods.has("dodge_chance"):
+			stats.dodge_chance = clampf(stats.dodge_chance + float(_trait_stat_mods["dodge_chance"]), 0.0, 1.0)
+
+## v9.1: 给产出的单个单位应用 trait 加成（产兵路径调用，复用缓存的 _trait_stat_mods）。
+func _apply_trait_to_spawned_unit(unit: Node2D) -> void:
+	if unit == null or not is_instance_valid(unit):
+		return
+	if _trait_stat_mods.is_empty():
+		return
+	if "stats" in unit and unit.stats != null:
+		_apply_trait_mods_to_stats(unit.stats)
+
+# ============================ v9.1 基地光环环 ============================
+
+# ============================ v9.1 buff 视觉脉冲 ============================
+
+## v9.1: buff 应用时基地短暂变亮（0.4s 亮度脉冲），让玩家感知"boss 有被动/trait 加成"。
+## 用 Tween 驱动 modulate 在 _base_body_tint ↔ 偏白之间往返，不与疲劳暗化冲突（基于 base tint 插值）。
+func _flash_body_on_buff() -> void:
+	var spr: Sprite2D = get_node_or_null("Body") as Sprite2D
+	if spr == null:
+		return
+	if _buff_flash_tween != null and _buff_flash_tween.is_valid():
+		_buff_flash_tween.kill()
+	_buff_flash_tween = create_tween()
+	_buff_flash_tween.set_trans(Tween.TRANS_QUAD)
+	_buff_flash_tween.set_ease(Tween.EASE_OUT)
+	# 上升：0→0.3（变亮 30%），持续 0.15s
+	_buff_flash_tween.tween_method(_set_flash_modulate, 0.0, 0.3, 0.15)
+	# 下降：0.3→0（回归），持续 0.25s
+	_buff_flash_tween.tween_method(_set_flash_modulate, 0.3, 0.0, 0.25)
+
+## v9.1: Tween 回调——按 t 在 [_base_body_tint, White] 之间插值设置 Body.modulate
+func _set_flash_modulate(t: float) -> void:
+	var spr: Sprite2D = get_node_or_null("Body") as Sprite2D
+	if spr == null:
+		return
+	spr.modulate = _base_body_tint.lerp(Color.WHITE, t)
 
 func _apply_body_visual_from_master(master_config: Dictionary) -> void:
 	var spr := get_node_or_null("Body") as Sprite2D
@@ -502,11 +699,24 @@ func _produce_unit_with_equipment(override_platform_id: String = "") -> void:
 
 	# v7.x: platforms 字段现在直接存 archetype id（旧平台卡层已删除）。
 	# 兼容回退：若 id 在 EnemyArchetypes 查不到 cfg，再尝试当平台卡 id 查（_legacy_platforms 路径）。
+	# v9.x: 一战 4 相位师的 platforms 存势力前缀平台 ID（steel_titan_basic 等），不在 EnemyArchetypes。
+	# 先查 LEGACY_PLATFORM_TO_ARCHETYPE 精确映射表 → 命中则走直引模式（卡图/数值/缩放用真实 archetype），
+	# 并记录势力前缀（供格子战名称显示「势力前缀·真实兵种名」）。
+	_platform_faction_prefix.clear()
 	var valid_platforms: Array = []
 	var direct_archetype_ids: Dictionary = {}  # pid -> archetype_id（直引模式）
 	var legacy_platform_ids: Array = []         # 旧平台卡模式
 	for pid in platforms:
 		var pid_str := String(pid)
+		# v9.x: 先查势力前缀平台精确映射（命中=走直引模式 + 记录前缀）
+		var mapping: Dictionary = LEGACY_PLATFORM_TO_ARCHETYPE.get(pid_str, {})
+		if not mapping.is_empty():
+			var mapped_arch: String = String(mapping.get("archetype", ""))
+			if not mapped_arch.is_empty() and not EnemyArchetypes.get_config(mapped_arch).is_empty():
+				valid_platforms.append(pid_str)
+				direct_archetype_ids[pid_str] = mapped_arch  # 映射到真实 archetype
+				_platform_faction_prefix[pid_str] = String(mapping.get("prefix", ""))
+				continue  # 映射命中，跳过下面的 legacy 回退
 		var arch_cfg := EnemyArchetypes.get_config(pid_str)
 		if not arch_cfg.is_empty():
 			# 直引 archetype 模式
@@ -710,6 +920,10 @@ func _produce_unit_with_equipment(override_platform_id: String = "") -> void:
 	# 直引模式下 platform_id == archetype_id，旧平台卡模式下两者不同（archetype_id 是视觉 archetype，
 	# platform_id 才是产兵来源）。补兵时优先读 spawn_platform_id，避免旧平台卡模式下规则1 失效。
 	unit.set_meta("spawn_platform_id", platform_id)
+	# v9.x: 势力前缀平台产兵——记录势力前缀到 meta，供格子战名称显示「势力前缀·真实兵种名」。
+	# 仅在 platform_id 命中 LEGACY_PLATFORM_TO_ARCHETYPE 时有值（一战 4 相位师产兵）。
+	if _platform_faction_prefix.has(platform_id):
+		unit.set_meta("faction_prefix", String(_platform_faction_prefix[platform_id]))
 	# v7.x(敌方加成来源明细): 把产兵 7 层加成明细挂到单位 meta，供情报面板显示。
 	# base 取 _build_stats_from_archetype 后的值（含 enhance_level，未乘任何战场加成）；
 	# final 取乘完所有加成后的 stats 值；total_*_mul = base→final 的总比值。
@@ -733,6 +947,8 @@ func _produce_unit_with_equipment(override_platform_id: String = "") -> void:
 	# 部署期不计入存活数（不影响产兵上限与胜负判定）。
 	if unit.has_method("start_as_deploy_ghost"):
 		unit.start_as_deploy_ghost()
+	# v9.1: 应用相位师 traits 加成到新产出的单位（复用 setup 时缓存的 _trait_stat_mods）
+	_apply_trait_to_spawned_unit(unit)
 	if _add_unit_to_battle(unit, current_count):
 		_record_spawn_and_check_fatigue()
 
@@ -755,6 +971,8 @@ func _produce_unit_fallback() -> void:
 		wave_idx = BattleManager.get_enemy_wave_index()
 	var unit = EnemyUnitScene.instantiate()
 	unit.setup(false, wave_idx, archetype_id)
+	# v9.1: fallback 产兵同样应用 traits 加成（与装备模式产兵对称）
+	_apply_trait_to_spawned_unit(unit)
 	if _add_unit_to_battle(unit, current_count):
 		_record_spawn_and_check_fatigue()
 
@@ -869,11 +1087,36 @@ func _on_any_unit_died(unit: Node, is_player: bool) -> void:
 		return   # 玩家单位死亡不管
 	# v9.0 同时记录玩家击杀速度（用于动态调整补兵延迟）——仅当死因有玩家攻击者时
 	_record_kill_interval()
+	# v9.1: 友军死亡触发 death_shield 类被动——boss 回复一定比例护盾。
+	# 数据来源：passive_spells 中 effect 含 "death_shield" 的 spell.params.shield_percent。
+	# 只对敌方单位死亡触发（is_player=false 且 unit 是敌方），boss 自身存活时才回盾。
+	if hp > 0 and not _boss_passive_spells.is_empty():
+		_try_trigger_death_shield()
 	if _pattern_id == MasterPatterns.PATTERN_NONE:
 		return   # 未识别套路：走原波次补兵，不套路补位
 	if _fatigue_tier >= 3:
 		return   # 弹尽粮绝：不再补兵
 	_schedule_respawn_for_dead_unit(unit)
+
+## v9.1: 遍历 boss passive_spells，触发 death_shield 类被动（友军死亡时 boss 回复护盾）。
+## 护盾量 = boss max_hp × shield_percent，上限 60% max_hp（与 energy_shield 一致，防堆叠到无敌）。
+func _try_trigger_death_shield() -> void:
+	for spell in _boss_passive_spells:
+		if not (spell is Dictionary):
+			continue
+		var effect: String = String(spell.get("effect", "")).to_lower()
+		if effect.find("death_shield") < 0:
+			continue
+		var params: Dictionary = spell.get("params", {})
+		var pct: float = float(params.get("shield_percent", params.get("shield_pct", 0.05)))
+		var shield_amt: float = max_hp * pct
+		shield_amt = minf(shield_amt, max_hp * 0.60)
+		if shield_amt > 0.0:
+			add_boss_shield(shield_amt)
+			var name_text: String = String(spell.get("name", "death_shield"))
+			if SignalBus:
+				SignalBus.show_toast.emit("💚 %s：友军阵亡，boss 回复 %.0f 护盾" % [name_text, shield_amt])
+		break  # 同类被动只触发一次（防多 spell 重复回盾）
 
 ## 记录玩家击杀间隔（滑动窗口），供 compute_respawn_delay 用。
 func _record_kill_interval() -> void:
