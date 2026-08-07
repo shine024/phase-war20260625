@@ -388,6 +388,10 @@ func end_battle(player_won: bool) -> void:
 	# v9.1: 重置组合技套路引擎 + 战场状态
 	if _combo_engine != null:
 		_combo_engine.reset()
+	# v9.x: 重置组合技指示器对象池——长生命周期指示器（弱点/雷达/谐振 3-6s）在战斗拆卸时
+	# fade callback 可能不触发，_active_indicators 计数会泄漏累积，多场后池被永久锁死。
+	# reset 归零计数 + free 池中归还节点，下场战斗可重新分配。
+	VfxImpactFactory.reset_indicator_pool()
 	# v6.7: 清空相位师排名星级缓存（恢复 3★ 基准，避免影响下一场战斗）
 	if PhaseInstrumentManager and PhaseInstrumentManager.has_method("clear_rank_cache"):
 		PhaseInstrumentManager.clear_rank_cache()

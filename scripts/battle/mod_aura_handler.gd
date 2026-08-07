@@ -68,11 +68,16 @@ static func _get_aura_summary(unit: Node) -> Dictionary:
 
 ## 获取单位同阵营的所有友军（不含自身）
 ## 复用 AuraManager.get_slot_targets 的全体广播逻辑
+## 注意：apply_mod_auras 在 construct_unit.setup() 中被调用，此时单位可能尚未 add_child
+## 入树（_create_player_unit 先 setup 后 add_child）。unit.get_tree() 在节点未入树时会
+## 在 C++ 层打印 "Parameter is null" 错误（即使本函数有 null 守卫也来不及，因为错误
+## 在 get_tree() 内部已触发）。改用 Engine.get_main_loop() 取全局 SceneTree，与
+## FactionSkillEffectHandler._apply_stacking_to_unit 同款模式，避免触发出树 get_tree 错误。
 static func _get_all_allies(unit: Node) -> Array:
 	if unit == null or not is_instance_valid(unit):
 		return []
-	var tree: SceneTree = unit.get_tree()
-	if tree == null:
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	if tree == null or tree.root == null:
 		return []
 	var is_player: bool = bool(unit.get("is_player")) if "is_player" in unit else true
 	var group_name: String = "player_units" if is_player else "enemy_units"

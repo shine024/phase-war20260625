@@ -266,9 +266,17 @@ static func calculate_damage_with_weapon(
 ## v8.x: 计算标签硬克制的伤害倍率（由 bullet.gd 在伤害结算时调用）
 ## attacker_tags: 攻击者标签数组（从 Node._behavior_tags_cached 或 stats meta 读取）
 ## target: 目标节点（用于读取 target_tags / target_priority_tag meta / casting meta）
-## 返回 {mult: float, never_miss: bool, ignore_stealth: bool, bypass_damage_reduction: bool}
-static func compute_tag_counter_multiplier(attacker_tags: Array, target: Node) -> Dictionary:
-	var result: Dictionary = {"mult": 1.0, "never_miss": false, "ignore_stealth": false, "bypass_damage_reduction": false}
+## v9.2: 新增 out_result 按引用传入模式（消除每次 new Dictionary）；原无参重载保留向后兼容。
+## 传 out_result 时清空并填充它（调用方复用成员字典），返回 out_result 本身；不传则内部 new（原行为）。
+static func compute_tag_counter_multiplier(attacker_tags: Array, target: Node, out_result: Dictionary = {}) -> Dictionary:
+	# v9.2: result 直接指向 out_result（调用方复用）或新建（向后兼容原行为）
+	var result: Dictionary = out_result if out_result != null else {}
+	# 清空并填默认值（复用同一字典对象，避免 new）
+	result.clear()
+	result["mult"] = 1.0
+	result["never_miss"] = false
+	result["ignore_stealth"] = false
+	result["bypass_damage_reduction"] = false
 	if attacker_tags.is_empty() or target == null or not is_instance_valid(target):
 		return result
 	# 收集目标标签：优先 _behavior_tags_cached，其次 tags 属性，最后 meta target_priority_tag

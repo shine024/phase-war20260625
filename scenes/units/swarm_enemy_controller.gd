@@ -256,15 +256,16 @@ func _fire_from_slot(s: Node2D) -> void:
 	if s.target == null or not is_instance_valid(s.target):
 		return
 	var dist_t: float = s.global_position.distance_to(s.target.global_position)
-	var falloff: Dictionary = CombatTargeting.range_falloff(dist_t, float(s.attack_range))
+	# v9.2: range_falloff 改返回 float（p_hit==damage_mult，合并消除字典分配）
+	var falloff: float = CombatTargeting.range_falloff(dist_t, float(s.attack_range))
 	var dmg_out: float = float(s.attack_damage)
 	var miss: bool = false
 	if dist_t > float(s.attack_range) and float(s.attack_range) > 0.5:
-		if randf() > float(falloff.get("p_hit", 1.0)):
+		if randf() > falloff:
 			miss = true
 			CombatFeedback.show_miss(s.target.global_position, s.target)
 		else:
-			dmg_out *= float(falloff.get("damage_mult", 1.0))
+			dmg_out *= falloff
 	var wt: int = s.weapon_type
 	if s.weapon_types.size() > 0:
 		wt = int(s.weapon_types[s._attack_weapon_index % s.weapon_types.size()])

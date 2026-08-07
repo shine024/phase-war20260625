@@ -225,6 +225,13 @@ var _storm_rider_cd: float = 0.0
 var _repair_fortress_cd: float = 0.0
 var _buff_strip_timer: float = 0.0
 var _ability_accum: float = 0.0  ## 平台能力累加器（降低调用频率）
+var _ecm_aura_accum: float = 0.0  ## v9.2: ECM 光环独立节流累加器（0.2s，与 _ability_accum 分离避免互相干扰）
+# v9.2: 单武器 timing 缓存——目标不变时复用，避免每帧 get_weapon_attack_timing/get_weapon_range
+# 每次 new Dictionary（与多武器路径 cached_timing + enemy_unit._cached_target_ref 同范式）。
+var _cached_single_target_ref: Node2D = null
+var _cached_single_timing: Dictionary = {}
+var _cached_single_fire_range: float = 0.0
+var _cached_single_wt: int = 0
 var _buff_strip_signature: String = ""
 var _buff_label_refresh_accum: float = 0.0  ## v7.x 漂浮 buff 标签低频刷新累加器
 var _hp_status_refresh_accum: float = 0.0   ## v9.x 血条状态图标低频刷新累加器（不 gate 模式，两种战斗都刷新）
@@ -810,13 +817,21 @@ func _cache_behavior_tags() -> void:
 
 ## v8.x: ECM 电子战光环——周期性给范围内敌方挂减益 meta
 ## （敌方 attack_speed_penalty / crit_penalty / dodge_penalty，由敌方自身读取应用）
-## 复用 _ability_accum 节流（0.2s），扫描半径 ECM_DEBUFF_RADIUS
+## v9.2 修复：原注释称"复用 _ability_accum 节流"但实际每帧调用且内部无节流（_ability_accum 被
+## regen/abrams 等占用），且用 get_nodes_in_group 全组 O(N) 扫描。改为：
+##   ① 调用点加独立 _ecm_aura_accum 节流（0.2s）
+##   ② 用 spatial_grid.query_enemies 替代全组遍历（与 module_effect_handler._find_nearby_enemies 同范式）
 func _update_ecm_debuff_aura() -> void:
 	if not _is_ecm_unit or is_deploy_ghost or is_preview_mode:
 		return
-	# 扫描敌方单位（与自身阵营相反）
-	var enemy_group: String = "enemy_units" if is_player else "player_units"
-	var enemies: Array = get_tree().get_nodes_in_group(enemy_group)
+	# v9.2: 优先用 spatial_grid（bounding-box 只遍历覆盖格子，替代全组遍历 + 逐个 distance_to）
+	var enemies: Array = []
+	if BattleManager != null and BattleManager.get("spatial_grid") != null and is_instance_valid(BattleManager.get("spatial_grid")):
+		enemies = BattleManager.spatial_grid.query_enemies(global_position, ECM_DEBUFF_RADIUS, is_player)
+	else:
+		# 防御性回退：spatial_grid 不可用时用原全组遍历（保持向后兼容）
+		var enemy_group: String = "enemy_units" if is_player else "player_units"
+		enemies = get_tree().get_nodes_in_group(enemy_group)
 	var now_msec: int = Time.get_ticks_msec()
 	var expire_msec: int = now_msec + int(ECM_DEBUFF_DURATION_SEC * 1000)
 	for e in enemies:
@@ -824,6 +839,7 @@ func _update_ecm_debuff_aura() -> void:
 			continue
 		if not ("global_position" in e):
 			continue
+		# query_enemies 已按 bounding-box 过滤，但需精确半径校验（bounding-box 比 radius 略大）
 		if global_position.distance_to(e.global_position) <= ECM_DEBUFF_RADIUS:
 			# 给敌方挂临时减益 meta（敌方在 attack/damage 路径读取应用）
 			e.set_meta("_ecm_debuffed_until", expire_msec)
@@ -1608,9 +1624,14 @@ func _physics_process(delta: float) -> void:
 		if _buff_strip_timer >= 0.25:
 			_buff_strip_timer = 0.0
 			_update_card_grid_buff_strip()
-	# v8.x: ECM 电子战光环（复用 0.2s 节流，与 _ability_accum 同步）
+	# v8.x/v9.2: ECM 电子战光环——独立 _ecm_aura_accum 节流 0.2s（原注释称复用 _ability_accum
+	# 但 _ability_accum 被 regen/abrams 等占用，ECM 实际每帧调用无节流）。节流后 5 次/秒，
+	# 配合 ECM_DEBUFF_DURATION_SEC=0.25s 仍能连续覆盖（0.05s 重叠余量）。
 	if _is_ecm_unit and not is_deploy_ghost and not is_preview_mode:
-		_update_ecm_debuff_aura()
+		_ecm_aura_accum += delta
+		if _ecm_aura_accum >= 0.2:
+			_ecm_aura_accum = 0.0
+			_update_ecm_debuff_aura()
 	# v8.5: 兵种机制技能 tick（全部 delta 驱动 CD 递减，到期触发效果）
 	if not is_deploy_ghost and not is_preview_mode:
 		_update_demolition_tick(delta)

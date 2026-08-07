@@ -646,23 +646,17 @@ static func _expire_rage_if_active(owner: Owner) -> void:
 # ─────────────────────────────────────────────
 
 static func _show_toast(msg: String) -> void:
-	var sb := Engine.get_main_loop() as SceneTree
-	if sb == null or sb.root == null:
-		return
-	if sb.root.has_node("/root/SignalBus"):
-		var SignalBusRef = sb.root.get_node("/root/SignalBus")
-		if SignalBusRef and SignalBusRef.has_signal("show_toast"):
-			SignalBusRef.show_toast.emit(msg)
+	# v9.2: SignalBus 是 autoload 全局单例，直接用全局名访问（与 quest_manager/toast_manager 范式一致）。
+	# 旧写法 sb.root.get_node("/root/SignalBus") 是 API 误用——绝对路径必须从 SceneTree 调用，
+	# 从 root 节点调用会报 "get_node() with absolute paths from outside the active scene tree"。
+	if Engine.get_main_loop() != null:
+		SignalBus.show_toast.emit(msg)
 
 ## v8.1: emit 相位仪能力触发信号（供 BattleSpectacle 编排全屏演出）
 static func _emit_ability_triggered(ability_id: String, stage: String, params: Dictionary = {}) -> void:
-	var sb := Engine.get_main_loop() as SceneTree
-	if sb == null or sb.root == null:
-		return
-	if sb.root.has_node("/root/SignalBus"):
-		var SignalBusRef = sb.root.get_node("/root/SignalBus")
-		if SignalBusRef and SignalBusRef.has_signal("phase_instrument_ability_triggered"):
-			SignalBusRef.phase_instrument_ability_triggered.emit(ability_id, stage, params)
+	# v9.2: 同 _show_toast，改用 autoload 全局名 SignalBus。
+	if Engine.get_main_loop() != null:
+		SignalBus.phase_instrument_ability_triggered.emit(ability_id, stage, params)
 
 ## v6.6 正式：触发屏幕震动（使用 ScreenShake 脚本）
 static func _trigger_screen_shake(intensity: float, duration: float) -> void:

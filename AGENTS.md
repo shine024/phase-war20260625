@@ -14,8 +14,32 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 ## Godot CLI Commands
 
-Godot not on PATH. Executable: `D:/Downloads/Godot/Godot_v4.5.1-stable_win64.exe` (v4.5.1)
-> ⚠️ 实测有效路径为 `D:/Downloads/Godot/Godot_v4.5.1-stable_win64.exe`（直接在 Godot 目录下，无子目录）。旧文档曾记为 `D:/Downloads/Godot/Godot_v4.5.1-stable/Godot_v4.5.1-stable_win64.exe`（多一层 `-stable/` 子目录），该子目录在本环境不存在。
+Godot not on PATH. **本项目跨两台机器开发，Godot 可执行文件位置不同——按下表选当前机器可用的那个**
+（两台机器均为 v4.5.1 stable，`--version` 验证通过）。
+
+| 机器 | 主路径（实测可用） | 布局说明 |
+|------|--------------------|----------|
+| 机器 A | `D:/Downloads/Godot/Godot_v4.5.1-stable_win64.exe` | 顶层、无子目录（旧文档记载，该机器子目录布局不存在） |
+| 机器 B（2026-08-06 实测） | `D:/Downloads/Godot/Godot_v4.5.1-stable/Godot_v4.5.1-stable_win64.exe` | 多一层 `-stable/` 子目录。同机顶层另有别名 `Godot_v4.5.1.exe`（163MB，等价主 exe）与 `Godot_v4.5.1-stable_win64_console.exe`（console launcher，stderr 直打终端，**排错/抓崩溃日志首选**） |
+
+> **自动探测（bash，复制即用，跨机器无需改路径）**——优先 console 版（排错友好）→ 子目录正身 → 顶层各候选，命中第一个即用：
+> ```bash
+> GODOT=""
+> for c in \
+>   "/d/Downloads/Godot/Godot_v4.5.1-stable/Godot_v4.5.1-stable_win64_console.exe" \
+>   "/d/Downloads/Godot/Godot_v4.5.1-stable_win64_console.exe" \
+>   "/d/Downloads/Godot/Godot_v4.5.1-stable/Godot_v4.5.1-stable_win64.exe" \
+>   "/d/Downloads/Godot/Godot_v4.5.1-stable_win64.exe" \
+>   "/d/Downloads/Godot/Godot_v4.5.1.exe"; do
+>   [ -x "$c" ] && GODOT="$c" && break
+> done
+> echo "GODOT=$GODOT"; "$GODOT" --version
+> ```
+
+> ⚠️ **历史踩坑**：旧文档只记机器 A 的顶层路径，在机器 B 上不存在 → bash 报
+> `No such file or directory`（上一轮 vfx_impact_factory 排错时即踩此坑）。
+> 两台机器都记下 + 自动探测后此问题不再复现。
+
 Add `--rendering-driver opengl3` if Vulkan issues (applies to `--headless` / `--check-only` too).
 
 > **验证方式分层建议（避免撞 5 分钟超时）**：

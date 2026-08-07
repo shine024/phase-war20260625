@@ -90,7 +90,9 @@ class ObjectPool extends Node:
 		if obj == null:
 			# 池为空，检查是否可以创建新对象
 			if total_created >= config.max_size:
-				push_error("[ObjectPool] 已达到最大池大小 (%d)，无法创建新对象" % config.max_size)
+				# v9.2: 降级为 warning——调用方（如 battleSpawn）均有 instantiate 兜底，池击穿非致命，
+				# 但 ERROR 级刷屏会污染真正的错误排查（密集战斗可每秒数十条）。
+				push_warning("[ObjectPool] 已达到最大池大小 (%d)，回退到直接实例化" % config.max_size)
 				return null
 			if config.auto_expand:
 				obj = _create_object()
@@ -180,7 +182,7 @@ func _register_default_pools() -> void:
 		60,  # 从 25 增加到 60，支持多个曲射单位同时攻击
 		BULLET_SCENE_PATH,
 		true,
-		200,  # 最大池从 100 增加到 200
+		450,  # v9.2: 200→450，batch 路径 _MAX_PROJ=720 说明设计上子弹量很大，200 在密集战斗频繁击穿
 		true
 	))
 	register_pool("damage_numbers", PoolConfig.new(

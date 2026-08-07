@@ -18,6 +18,16 @@ class_name DotVfxManager
 const VfxImpactFactory = preload("res://scripts/battle/vfx_impact_factory.gd")
 const DT = preload("res://resources/design_tokens.gd")
 
+# v9.2: 共享 ADD 混合材质（lazy 单例）——5 处 attach_dot_vfx 原本每次 new CanvasItemMaterial，
+# DOT 上百次 attach/detach 造成 GC 压力。ADD 材质无状态可全局共享（与 vfx_impact_factory._add_mat 同范式）。
+static var _shared_add_mat: CanvasItemMaterial = null
+
+static func _get_add_mat() -> CanvasItemMaterial:
+	if _shared_add_mat == null:
+		_shared_add_mat = CanvasItemMaterial.new()
+		_shared_add_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	return _shared_add_mat
+
 # 4 种 DOT 的配置：节点名、贴图路径、回退色、目标尺寸（贴图宽度像素）
 const DOT_CONFIGS: Dictionary = {
 	"burn": {
@@ -78,10 +88,8 @@ static func attach_dot_vfx(unit: Node, dot_type: String) -> void:
 		var s: float = cfg["target_width"] / tw if tw > 0.0 else 1.0
 		(vfx as Sprite2D).scale = Vector2(s, s)
 		(vfx as Sprite2D).modulate = Color(1.0, 1.0, 1.0, 0.85)
-		# ADD 混合（发光感）
-		var mat := CanvasItemMaterial.new()
-		mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-		(vfx as Sprite2D).material = mat
+		# ADD 混合（发光感）——v9.2: 复用共享材质
+		(vfx as Sprite2D).material = _get_add_mat()
 	else:
 		# 回退：程序化色环（Polygon2D）
 		vfx = _make_fallback_ring(cfg["fallback_color"], cfg["target_width"] * 0.5)
@@ -116,9 +124,7 @@ static func _attach_burn_aura(dot_node: Node2D) -> void:
 	ring.polygon = pts
 	ring.position = Vector2(0, -2)
 	ring.color = Color(1.0, 0.5, 0.15, 0.45)
-	var mat := CanvasItemMaterial.new()
-	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-	ring.material = mat
+	ring.material = _get_add_mat()  # v9.2: 复用共享 ADD 材质
 	dot_node.add_child(ring)
 	var tw := ring.create_tween()
 	tw.set_loops()
@@ -136,9 +142,7 @@ static func _attach_chem_aura(dot_node: Node2D) -> void:
 	ring.polygon = pts
 	ring.position = Vector2(0, -4)
 	ring.color = Color(0.35, 1.0, 0.25, 0.40)
-	var mat := CanvasItemMaterial.new()
-	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-	ring.material = mat
+	ring.material = _get_add_mat()  # v9.2: 复用共享 ADD 材质
 	dot_node.add_child(ring)
 	var tw := ring.create_tween()
 	tw.set_loops()
@@ -155,9 +159,7 @@ static func _attach_nano_aura(dot_node: Node2D) -> void:
 	hex.polygon = pts
 	hex.position = Vector2(0, -3)
 	hex.color = Color(0.2, 0.9, 1.0, 0.40)
-	var mat := CanvasItemMaterial.new()
-	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-	hex.material = mat
+	hex.material = _get_add_mat()  # v9.2: 复用共享 ADD 材质
 	dot_node.add_child(hex)
 	var tw := hex.create_tween()
 	tw.set_loops()
@@ -253,9 +255,7 @@ static func _make_fallback_ring(color: Color, radius: float) -> Node2D:
 		pts.append(Vector2(cos(ang), sin(ang)) * radius)
 	poly.polygon = pts
 	poly.color = color
-	var mat := CanvasItemMaterial.new()
-	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-	poly.material = mat
+	poly.material = _get_add_mat()  # v9.2: 复用共享 ADD 材质
 	return poly
 
 

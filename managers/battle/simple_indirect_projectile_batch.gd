@@ -39,6 +39,17 @@ var _proj: Array = []
 var _layers: Dictionary = {}  # weapon_type -> MultiMeshInstance2D
 # v7.4 性能优化：buckets 提升为成员变量 + clear() 复用，消除每帧 Dictionary + Array 分配
 var _buckets: Dictionary = {}  # weapon_type -> Array（成员级复用，clear 保留 buffer 容量）
+# v9.2: 弹道字典池——fire 时从池取，落地/清场时归还，消除每发字典分配（同 player/enemy batch）
+var _dict_pool: Array[Dictionary] = []
+
+func _acquire_proj_dict() -> Dictionary:
+	if not _dict_pool.is_empty():
+		return _dict_pool.pop_back()
+	return {}
+
+func _release_proj_dict(d: Dictionary) -> void:
+	d.clear()
+	_dict_pool.append(d)
 
 func _ready() -> void:
 	# 初始化时不启用 physics_process，等有弹道时再启用
@@ -110,29 +121,33 @@ func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, shoo
 	# v6.5: 不同曲射武器的弧线高低不同（按 weapon_type 差异化）
 	var apex := (100.0 + dist * 0.25) * _get_indirect_arc_multiplier(wt)
 
-	_proj.append({
-		"start": start,
-		"end": end,
-		"pos": from,
-		"tgt": tgt,
-		"dmg": dmg,
-		"wt": wt,
-		"shooter": shooter,
-		"shooter_stats": shooter_stats,
-		"forced_miss": forced_miss,
-		"weapon_name": weapon_name,
-		"vfx_variant": p_vfx_variant,  # v8.4: 武器类改造专属视觉标识
-		"progress": 0.0,
-		"duration": duration,
-		"apex": apex,
-		"dir": Vector2.RIGHT,
-		"prev_pos": from,
-		"muzzle_spawned": true,  # Fix-5: 禁用炮口火焰，标记为已生成
-		"impact_spawned": false,
-		"is_player": is_player_side,
-	})
+	# v9.2: 从字典池取复用字典（替代每次 new 字典字面量）
+	var d: Dictionary = _acquire_proj_dict()
+	d["start"] = start
+	d["end"] = end
+	d["pos"] = from
+	d["tgt"] = tgt
+	d["dmg"] = dmg
+	d["wt"] = wt
+	d["shooter"] = shooter
+	d["shooter_stats"] = shooter_stats
+	d["forced_miss"] = forced_miss
+	d["weapon_name"] = weapon_name
+	d["vfx_variant"] = p_vfx_variant  # v8.4: 武器类改造专属视觉标识
+	d["progress"] = 0.0
+	d["duration"] = duration
+	d["apex"] = apex
+	d["dir"] = Vector2.RIGHT
+	d["prev_pos"] = from
+	d["muzzle_spawned"] = true  # Fix-5: 禁用炮口火焰，标记为已生成
+	d["impact_spawned"] = false
+	d["is_player"] = is_player_side
+	_proj.append(d)
 
 func clear_all() -> void:
+	# v9.2: 归还所有活跃弹道字典到池
+	for d: Dictionary in _proj:
+		_release_proj_dict(d)
 	_proj.clear()
 	for wt: int in _BATCH_WEAPON_TYPES:
 		var mmi: MultiMeshInstance2D = _layers.get(wt)
@@ -163,6 +178,7 @@ func _physics_process(delta: float) -> void:
 		r["progress"] = float(r["progress"]) + delta / float(r["duration"])
 		if r["progress"] >= 1.0:
 			_apply_hit(r)
+			_release_proj_dict(r)  # v9.2: 归还池（曲射落地爆炸结算完）
 			continue
 
 		var t := float(r["progress"])

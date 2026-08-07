@@ -10,15 +10,16 @@ const CARD_GRID_ENEMY_ACQUISITION_MIN: float = 1600.0
 ## 原玩家索敌仅 attack_range×2.6 无保底，后排短射程单位够不到战场另一端。
 const CARD_GRID_PLAYER_ACQUISITION_MIN: float = 1600.0
 
-static func range_falloff(dist: float, attack_range: float) -> Dictionary:
+## v9.2: 返回单个 mult（p_hit 与 damage_mult 相等，合并为一个值，避免每次返回 new Dictionary）。
+## 该值同时用于：命中检定（randf() > mult 则 miss）与伤害衰减（damage *= mult）。
+static func range_falloff(dist: float, attack_range: float) -> float:
 	if attack_range <= 0.5:
-		return {"p_hit": 1.0, "damage_mult": 1.0}
+		return 1.0
 	if dist <= attack_range:
-		return {"p_hit": 1.0, "damage_mult": 1.0}
+		return 1.0
 	var over: float = dist - attack_range
 	var t: float = over / maxf(attack_range * RANGE_FALLOFF_SPAN_MULT, 1.0)
-	var mult: float = clampf(1.0 - t * (1.0 - MIN_FALLOFF_MULT), MIN_FALLOFF_MULT, 1.0)
-	return {"p_hit": mult, "damage_mult": mult}
+	return clampf(1.0 - t * (1.0 - MIN_FALLOFF_MULT), MIN_FALLOFF_MULT, 1.0)
 
 
 static func card_grid_enemy_acquisition_range(attack_range: float, combat_started: bool) -> float:

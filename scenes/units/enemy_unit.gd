@@ -4,6 +4,7 @@ extends CharacterBody2D
 const BulletScene = preload("res://scenes/units/bullet.tscn")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const EnemyStatResolver = preload("res://data/enemy_stat_resolver.gd")
+const MuzzleAnchors = preload("res://data/muzzle_anchors.gd")
 const ModuleEffectHandler = preload("res://scripts/battle/module_effect_handler.gd")
 const GC = preload("res://resources/game_constants.gd")
 const DT = preload("res://resources/design_tokens.gd")
@@ -1333,11 +1334,16 @@ func _try_fire_enemy_projectile_batch(p_target: Node2D, wt: int, p_damage: float
 	BattleManager.enemy_projectile_batch.fire(_get_direct_fire_spawn_pos(), p_target, dmg, wt, self, stats, p_miss)
 	return true
 
-## 获取直射武器发射起点：单位 Sprite 头脚垂直中点（相对节点原点），加节点全局位置。
+## 获取直射武器发射起点：优先用 MuzzleAnchors 标注的枪口位置（fireX/fireY 独立二维），
+## 无标注时回退到 entity_top_y * 0.5（实体垂直中点）。
 ## 曲射/波次武器保持脚部发射（global_position），此处仅用于直射路径。
 func _get_direct_fire_spawn_pos() -> Vector2:
-	var offsetY: float = 0.0
 	var spr = get_node_or_null("Sprite2D") as Sprite2D
+	var muzzle_offset: Vector2 = MuzzleAnchors.get_fire_offset(archetype_id, spr)
+	if muzzle_offset != Vector2.ZERO:
+		return global_position + muzzle_offset
+	# 回退：无标注，用实体垂直中点
+	var offsetY: float = 0.0
 	if spr != null:
 		offsetY = CardGridUnitVisuals.entity_top_y(spr) * 0.5
 	return global_position + Vector2.UP * offsetY

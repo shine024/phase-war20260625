@@ -4,6 +4,7 @@ const GC = preload("res://resources/game_constants.gd")
 const ActiveLawEffects = preload("res://managers/active_law_effects.gd")
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 const WeaponProjectileVfx = preload("res://scripts/weapon_projectile_vfx.gd")
+const VfxImpactFactory = preload("res://scripts/battle/vfx_impact_factory.gd")  # v9.2: 枪口火
 
 const _HIT_R2: float = 100.0
 const _MAX_PROJ: int = 720
@@ -13,12 +14,23 @@ const _BATCH_WEAPON_TYPES: Array[int] = [
 	1,
 	2,
 ]
-const _ENEMY_TINT := Color(1.0, 0.38, 0.52)
+const _ENEMY_TINT := Color(1.0, 0.55, 0.25)  # v9.2: 亮橙红（原暗粉 1.0/0.38/0.52），在战场上更醒目
 
 var _proj: Array = []
 var _layers: Dictionary = {}  # weapon_type -> MultiMeshInstance2D
 # v7.4 性能优化：buckets 提升为成员变量 + clear() 复用，消除每帧 Dictionary + Array 分配
 var _buckets: Dictionary = {}  # weapon_type -> Array（成员级复用，clear 保留 buffer 容量）
+# v9.2: 弹道字典池——fire 时从池取，命中/出界/清场时归还，消除每发字典分配（同 player batch）
+var _dict_pool: Array[Dictionary] = []
+
+func _acquire_proj_dict() -> Dictionary:
+	if not _dict_pool.is_empty():
+		return _dict_pool.pop_back()
+	return {}
+
+func _release_proj_dict(d: Dictionary) -> void:
+	d.clear()
+	_dict_pool.append(d)
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_PAUSABLE
@@ -49,20 +61,30 @@ func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, _sho
 		return
 	if not _layers.has(wt):
 		return
-	_proj.append({
-		"pos": from,
-		"tgt": tgt,
-		"dmg": dmg,
-		"wt": wt,
-		"shooter": shooter,
-		"forced_miss": forced_miss,
-		"traveled": 0.0,
-		"speed": _speed_for(wt),
-		"max_dist": _max_dist_for(wt),
-		"dir": Vector2.RIGHT,
-	})
+	# v9.2: 从字典池取复用字典（替代每次 new 字典字面量）
+	var d: Dictionary = _acquire_proj_dict()
+	d["pos"] = from
+	d["tgt"] = tgt
+	d["dmg"] = dmg
+	d["wt"] = wt
+	d["shooter"] = shooter
+	d["forced_miss"] = forced_miss
+	d["traveled"] = 0.0
+	d["speed"] = _speed_for(wt)
+	d["max_dist"] = _max_dist_for(wt)
+	d["dir"] = Vector2.RIGHT
+	_proj.append(d)
+	# v9.2: 枪口火——batch 路径无 Bullet 节点，原本无开火反馈，敌方小兵射击"看不到攻击"。
+	# 在发射点播一个枪口火（敌方朝左），让玩家看到"敌人在开火"。
+	# 节流：60% 抽样——密集齐射时 spark 池(MAX_SPARKS=200)会被枪口火打满挤压命中/暴击火花，
+	# 抽样后既保留"敌方齐射"的视觉反馈，又把火花槽占用砍掉近一半。
+	if not forced_miss and randf() < 0.6:
+		VfxImpactFactory.spawn_muzzle_flash(self, from, false, wt)
 
 func clear_all() -> void:
+	# v9.2: 归还所有活跃弹道字典到池
+	for d: Dictionary in _proj:
+		_release_proj_dict(d)
 	_proj.clear()
 	for wt: int in _BATCH_WEAPON_TYPES:
 		var mmi: MultiMeshInstance2D = _layers.get(wt)
@@ -87,6 +109,7 @@ func _physics_process(delta: float) -> void:
 		var raw_tgt: Variant = r["tgt"]
 		var tgt: Node2D = raw_tgt if raw_tgt != null and is_instance_valid(raw_tgt) else null
 		if tgt == null:
+			_release_proj_dict(r)  # v9.2: 归还池（目标失效）
 			continue
 		var pos: Vector2 = r["pos"]
 		var spd: float = r["speed"]
@@ -97,8 +120,10 @@ func _physics_process(delta: float) -> void:
 		r["traveled"] = float(r["traveled"]) + spd * delta
 		if pos.distance_squared_to(tgt.global_position) <= _HIT_R2:
 			_apply_hit(r)
+			_release_proj_dict(r)  # v9.2: 归还池（命中结算完）
 			continue
 		if float(r["traveled"]) > float(r["max_dist"]):
+			_release_proj_dict(r)  # v9.2: 归还池（超射程丢失）
 			continue
 		if write != read_idx:
 			_proj[write] = r

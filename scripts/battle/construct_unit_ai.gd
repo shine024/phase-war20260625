@@ -15,6 +15,7 @@ const VfxImpactFactory = preload("res://scripts/battle/vfx_impact_factory.gd")
 const DT = preload("res://resources/design_tokens.gd")
 const CardGridLayout = preload("res://scripts/card_grid_battle_layout.gd")  # v9.2: 分行索敌行判定
 const CardGridUnitVisuals = preload("res://scripts/card_grid_unit_visuals.gd")  # v8.x: 战场卡图视觉数据（头脚锚点）
+const MuzzleAnchors = preload("res://data/muzzle_anchors.gd")  # 弹道/枪口锚点（独立二维）
 
 ## v7.x: 光环/指挥单位的 platform_type 集合（与 construct_unit.gd 光环注册对齐）
 ## FORTRESS=3, RADAR=4, SCOUT=5, CARRIER=8, MEDIC=9, STEALTH=10, COMMAND=12
@@ -474,15 +475,33 @@ static func do_attack(u: CharacterBody2D) -> void:
 	var damage: float = u.stats.attack_damage if u.stats else 0.0
 	do_attack_with_damage(u, damage, u.stats.weapon_type if u.stats else 0, "")
 
-## 获取直射武器发射起点：单位 Sprite 头脚垂直中点（相对节点原点），加节点全局位置。
+## 获取直射武器发射起点：优先用 MuzzleAnchors 标注的枪口位置（fireX/fireY 独立二维），
+## 无标注时回退到 entity_top_y * 0.5（实体垂直中点）。
 ## 曲射/波次武器保持脚部发射（u.global_position），此处仅用于直射路径。
 static func _get_direct_fire_spawn_pos(u: CharacterBody2D) -> Vector2:
-	var offsetY: float = 0.0
 	var unit_spr: Sprite2D = null
 	if u.is_player:
 		unit_spr = u.get_node_or_null("Sprite") as Sprite2D
 	else:
 		unit_spr = u.get_node_or_null("Sprite2D") as Sprite2D
+	# 优先用 MuzzleAnchors：我方经 _visual_archetype_id 或 PLAYER_MIRROR_ARCHETYPE_BY_PLATFORM 反查
+	var aid: String = ""
+	if "_visual_archetype_id" in u:
+		aid = String(u.get("_visual_archetype_id"))
+	if aid.is_empty() and u.stats != null:
+		# 我方卡按 platform_type 映射到 archetype
+		var pt: int = int(u.stats.platform_type)
+		if "PLAYER_MIRROR_ARCHETYPE_BY_PLATFORM" in u:
+			aid = String(u.get("PLAYER_MIRROR_ARCHETYPE_BY_PLATFORM").get(pt, ""))
+		# platform_card_id 直接作 archetype_id（部分单位同名）
+		if aid.is_empty() and not u.stats.platform_card_id.is_empty():
+			aid = u.stats.platform_card_id
+	if not aid.is_empty():
+		var muzzle_offset: Vector2 = MuzzleAnchors.get_fire_offset(aid, unit_spr)
+		if muzzle_offset != Vector2.ZERO:
+			return u.global_position + muzzle_offset
+	# 回退：无标注，用实体垂直中点
+	var offsetY: float = 0.0
 	if unit_spr != null:
 		offsetY = CardGridUnitVisuals.entity_top_y(unit_spr) * 0.5
 	return u.global_position + Vector2.UP * offsetY
@@ -578,12 +597,13 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 				else:
 					damage *= att_mult
 			elif wt != 0:
-				var falloff: Dictionary = CombatTargeting.range_falloff(dist_t, u.stats.attack_range if u.stats else 120.0)
-				if randf() > float(falloff.get("p_hit", 1.0)):
+				# v9.2: range_falloff 改返回 float（p_hit==damage_mult，合并消除字典分配）
+				var falloff: float = CombatTargeting.range_falloff(dist_t, u.stats.attack_range if u.stats else 120.0)
+				if randf() > falloff:
 					miss = true
 					CombatFeedback.show_miss(u.target.global_position, u.target)
 				else:
-					damage *= float(falloff.get("damage_mult", 1.0))
+					damage *= falloff
 	# 卡牌特殊能力：平台攻击修改
 	if u._has_titan_mk2:
 		damage *= CardAbilityManager.get_titan_mk2_damage_multiplier(u)
@@ -697,19 +717,32 @@ static func _process_single_weapon_attack(u: CharacterBody2D, delta: float) -> v
 	var target_kind: int = target_stats.combat_kind if target_stats else 0
 
 	# v6.0: 从武器槽位获取武器并计算 timing
-	var weapon = AttackCalculator.get_weapon_for_target(u.stats, target_kind)
+	# v9.2: 单武器路径加 target 缓存（与多武器路径 cached_timing、enemy_unit._cached_target_ref 同范式）。
+	# 原每帧每单位调 get_weapon_attack_timing（new Dictionary）+ get_weapon_range（has_method 反射），
+	# 现仅在目标变化时重算，timing/range/wt 缓存复用。
 	var timing: Dictionary
 	var fire_range: float
 	var wt: int
-	if weapon and weapon.enabled:
-		timing = AttackCalculator.get_weapon_attack_timing(weapon)
-		fire_range = AttackCalculator.get_weapon_range(weapon)
-		wt = weapon.weapon_type
-		u.set("attack_interval", timing["cycle"])
-	else:
-		timing = AttackCalculator.get_attack_timing(u.stats, target_kind)
-		fire_range = u.stats.attack_range if u.stats else 120.0
-		wt = u.stats.weapon_type if u.stats else 0
+	# 失效条件：目标变化，或首次进入（缓存为空）
+	var need_recompute: bool = (u.target != u._cached_single_target_ref) or u._cached_single_timing.is_empty()
+	if need_recompute:
+		# 目标变了（或首次）→ 重算并更新缓存
+		u._cached_single_target_ref = u.target
+		var weapon = AttackCalculator.get_weapon_for_target(u.stats, target_kind)
+		if weapon and weapon.enabled:
+			u._cached_single_timing = AttackCalculator.get_weapon_attack_timing(weapon)
+			u._cached_single_fire_range = AttackCalculator.get_weapon_range(weapon)
+			u._cached_single_wt = weapon.weapon_type
+		else:
+			u._cached_single_timing = AttackCalculator.get_attack_timing(u.stats, target_kind)
+			u._cached_single_fire_range = u.stats.attack_range if u.stats else 120.0
+			u._cached_single_wt = u.stats.weapon_type if u.stats else 0
+		u.set("attack_interval", u._cached_single_timing["cycle"])
+	timing = u._cached_single_timing
+	fire_range = u._cached_single_fire_range
+	wt = u._cached_single_wt
+	# 保持与原行为一致：每帧同步 attack_interval（set 已存在属性是廉价操作，比 new Dictionary 便宜）
+	u.set("attack_interval", timing["cycle"])
 
 	var dist: float = u.global_position.distance_to(u.target.global_position)
 	var is_card_grid_active: bool = (
@@ -940,10 +973,33 @@ static func _play_muzzle_feedback(u: Node2D) -> void:
 	if u == null or not is_instance_valid(u):
 		return
 	var facing_right: bool = bool(u.get("is_player"))
-	# 炮口闪光：粒子挂到单位本体下，local_pos 为相对单位中心的本地偏移。
-	# 朝向偏移：我方 +x（朝右），敌方 -x（朝左），与 _play_card_attack_nudge 方向一致。
-	var off_x: float = 48.0 if facing_right else -48.0
-	VfxImpactFactory.spawn_muzzle_flash(u, Vector2(off_x, -6.0), facing_right)
+	# v9.2: 枪口火位置对齐弹道起点——优先用 MuzzleAnchors（与 _get_direct_fire_spawn_pos 同源），
+	# 无标注时回退 entity_top_y * 0.5。
+	var muzzle_offset: Vector2 = Vector2.ZERO
+	var unit_spr: Sprite2D = null
+	if u.get("is_player"):
+		unit_spr = u.get_node_or_null("Sprite") as Sprite2D
+	else:
+		unit_spr = u.get_node_or_null("Sprite2D") as Sprite2D
+	# 取 archetype_id（敌方裸字段 / 我方 _visual_archetype_id 或 platform 映射）
+	var aid: String = ""
+	if "archetype_id" in u:
+		aid = String(u.get("archetype_id"))
+	if aid.is_empty() and "_visual_archetype_id" in u:
+		aid = String(u.get("_visual_archetype_id"))
+	if aid.is_empty() and u.has_method("get") and u.get("stats") != null:
+		var st = u.get("stats")
+		if st != null and "platform_card_id" in st:
+			aid = String(st.platform_card_id)
+	if not aid.is_empty():
+		muzzle_offset = MuzzleAnchors.get_fire_offset(aid, unit_spr)
+	if muzzle_offset == Vector2.ZERO:
+		# 回退：实体垂直中点
+		var fallback_y: float = 0.0
+		if unit_spr != null:
+			fallback_y = CardGridUnitVisuals.entity_top_y(unit_spr) * 0.5
+		muzzle_offset = Vector2(0.0, -fallback_y)
+	VfxImpactFactory.spawn_muzzle_flash(u, muzzle_offset, facing_right, u.stats.weapon_type)
 	# 开火缩放脉冲：交给单位实例方法处理（避开根 scale.x 翻转，只动 Sprite 子节点）
 	# reduce motion 时跳过脉冲（保留炮口火——静态闪烁非抖动）
 	var reduce_motion: bool = false

@@ -13,12 +13,20 @@ class_name VfxImpactFactory
 const DT = preload("res://resources/design_tokens.gd")
 const DirectWeaponFlavor = preload("res://data/direct_weapon_flavor.gd")
 ## v9.2: 粒子贴图——CPUParticles2D 赋 texture 告别方形小方块。
-## 4 张 32×32 小图（spark/smoke/shrapnel/ember），按池差异化赋贴图。
-## 生成工作流：docs/VFX特效纹理生成工作流.md，当前为占位透明 PNG，后续用 agnes-ai 替换。
-const PARTICLE_TEX_SPARK := preload("res://assets/effects/particle_textures/particle_spark.png")
-const PARTICLE_TEX_SMOKE := preload("res://assets/effects/particle_textures/particle_smoke.png")
-const PARTICLE_TEX_SHRAPNEL := preload("res://assets/effects/particle_textures/particle_shrapnel.png")
-const PARTICLE_TEX_EMBER := preload("res://assets/effects/particle_textures/particle_ember.png")
+## 按武器类型分流：动能武器（金属火花/灰烟）vs 能量武器（蓝色电弧/蓝烟）。
+## 池复用继续（性能优先），texture 在 spawn 时按 weapon_type 重新赋值。
+## 生成工作流：docs/VFX特效纹理生成工作流.md。
+const PARTICLE_TEX_SPARK_METAL := preload("res://assets/effects/particle_textures/spark_metal.png")     # 动能火花（黄橙短条，DIRECT/PISTOL/SMG/MG/RIFLE/SHOTGUN/SNIPER）
+const PARTICLE_TEX_SPARK_ENERGY := preload("res://assets/effects/particle_textures/spark_energy.png")   # 能量火花（蓝白电弧，OMEGA/RAIL/LASER）
+const PARTICLE_TEX_SPARK_HEAVY  := preload("res://assets/effects/particle_textures/spark_heavy.png")    # 重型碎片（不规则金属块，ROCKET/FLAK/MISSILE）
+const PARTICLE_TEX_SMOKE_GENERIC := preload("res://assets/effects/particle_textures/smoke_generic.png") # 常规烟尘（灰棕团，ROCKET/FLAK/MISSILE）
+const PARTICLE_TEX_SMOKE_ENERGY  := preload("res://assets/effects/particle_textures/smoke_energy.png")   # 能量烟（蓝灰团，OMEGA/RAIL/LASER）
+const PARTICLE_TEX_MUZZLE_HEAVY  := preload("res://assets/effects/particle_textures/muzzle_heavy.png")  # 重型枪口火（橙红喷射，ROCKET/FLAK/MISSILE/OMEGA/RAIL）
+const PARTICLE_TEX_MUZZLE_LIGHT  := preload("res://assets/effects/particle_textures/muzzle_light.png")  # 轻型枪口火（橙点，DIRECT/PISTOL/RIFLE）
+const PARTICLE_TEX_EMBER         := preload("res://assets/effects/particle_textures/spark_ember.png")    # 火星点缀（橙色小点）
+## v9.2: 放射状命中贴图——区别于拖尾的顺向条纹，命中用放射爆点（"飞行"vs"撞击"形状可分）
+const PARTICLE_TEX_IMPACT_METAL  := preload("res://assets/effects/particle_textures/impact_metal.png")   # 动能命中放射火花
+const PARTICLE_TEX_IMPACT_ENERGY := preload("res://assets/effects/particle_textures/impact_energy.png") # 能量命中放射爆裂
 
 # ── 池化上限 ──
 const MAX_RINGS: int = 80
@@ -51,7 +59,7 @@ const MAX_BEAMS: int = 60
 # 现重接贴图让爆炸有"形状感"——仅 weapon_projectile_vfx 在有 impact_texture 时调用。
 static var _impact_sprite_pool: Array = []
 static var _active_impact_sprites: int = 0
-const MAX_IMPACT_SPRITES: int = 80
+const MAX_IMPACT_SPRITES: int = 160  # v9.2: 80→160（双层贴图：光晕+主体，每次爆炸/开火用 2 个）
 
 # v9.x: 组合技指示器池（weakpoint_expose / radar_lock / laser_resonance）。
 # 原每次 new Node2D/Polygon2D + queue_free，违背文件"所有特效走对象池"原则。
@@ -65,6 +73,9 @@ const _INDICATOR_KINDS: Array = ["weakpoint", "radar_lock", "resonance"]
 
 # ── ADD 混合材质缓存 ──
 static var _add_mat: CanvasItemMaterial = null
+
+# ── v9.2: 烟柱 Gradient 按颜色缓存（spawn_smoke_column 频繁调用）──
+static var _smoke_grad_cache: Dictionary = {}
 
 ## ======================================================================
 ## 主入口：分层化命中特效
@@ -140,6 +151,8 @@ static func spawn_crit_sparks(parent: Node2D, world_pos: Vector2, is_full_crit: 
 	if p == null:
 		_active_sparks -= 1
 		return
+	# v9.2: 暴击火花用金属火花贴图（池复用需显式赋值，否则继承上次的 texture）
+	p.texture = PARTICLE_TEX_SPARK_METAL
 	var intensity: float = 0.8 if is_full_crit else 0.5
 	p.position = world_pos
 	p.lifetime = 0.40
@@ -149,8 +162,9 @@ static func spawn_crit_sparks(parent: Node2D, world_pos: Vector2, is_full_crit: 
 	p.spread = 360.0
 	p.initial_velocity_min = 20.0
 	p.initial_velocity_max = 60.0
-	p.scale_amount_min = 0.6
-	p.scale_amount_max = 1.2
+	# v9.2: 暴击火花贴图化缩小（原 0.6-1.2 → 0.3-0.5）
+	p.scale_amount_min = 0.3
+	p.scale_amount_max = 0.5
 	# 金色渐变（暴击配色）；固定 Gradient 可考虑缓存，但暴击频率远低于普通命中，暂不复用 _spark_ramp_cache
 	var ramp := _get_crit_ramp()
 	p.color_ramp = ramp
@@ -177,6 +191,8 @@ static func spawn_hit_blood(parent: Node2D, world_pos: Vector2, direction: Vecto
 		if p == null:
 			_active_debris -= 1
 		else:
+			# v9.2: 血溅用常规烟尘贴图（池复用需显式赋值，否则继承上次的 texture）
+			p.texture = PARTICLE_TEX_SMOKE_GENERIC
 			# 我方/敌方血色微差（我方亮红、敌方暗红），均不饱和以免糊图
 			var d: Vector2 = direction.normalized() if direction.length() > 0.01 else Vector2.ZERO
 			p.position = world_pos
@@ -190,8 +206,9 @@ static func spawn_hit_blood(parent: Node2D, world_pos: Vector2, direction: Vecto
 			p.initial_velocity_min = 60.0
 			p.initial_velocity_max = 150.0
 			p.gravity = Vector2(0, 220.0)
-			p.scale_amount_min = 1.6
-			p.scale_amount_max = 3.0
+			# v9.2: 血溅贴图化缩小（原 1.6-3.0 → 0.6-1.2）
+			p.scale_amount_min = 0.6
+			p.scale_amount_max = 1.2
 			p.color_ramp = _get_blood_ramp(is_player)
 			# 注：debris 池默认带 ADD material（_acquire_debris_particle 新建时设）。
 			# 不在此覆盖 material=null——会污染池（复用时其他 debris 特效失去 ADD）。
@@ -208,6 +225,8 @@ static func spawn_hit_blood(parent: Node2D, world_pos: Vector2, direction: Vecto
 		if sp == null:
 			_active_sparks -= 1
 		else:
+			# v9.2: 血溅金色火花用金属贴图（池复用需显式赋值）
+			sp.texture = PARTICLE_TEX_SPARK_METAL
 			var d: Vector2 = direction.normalized() if direction.length() > 0.01 else Vector2.ZERO
 			sp.position = world_pos
 			sp.lifetime = 0.16
@@ -218,8 +237,9 @@ static func spawn_hit_blood(parent: Node2D, world_pos: Vector2, direction: Vecto
 			sp.initial_velocity_min = 90.0
 			sp.initial_velocity_max = 200.0
 			sp.gravity = Vector2(0, 0)
-			sp.scale_amount_min = 1.0
-			sp.scale_amount_max = 1.8
+			# v9.2: 血溅金色火花贴图化缩小
+			sp.scale_amount_min = 0.4
+			sp.scale_amount_max = 0.7
 			sp.color_ramp = _get_blood_spark_ramp()
 			parent.add_child(sp)
 			var tree2 := sp.get_tree()
@@ -247,6 +267,8 @@ static func spawn_death_burst(parent: Node2D, world_pos: Vector2, is_player: boo
 		if p == null:
 			_active_debris -= 1
 		else:
+			# v9.2: 死亡爆散用常规烟尘贴图（池复用需显式赋值）
+			p.texture = PARTICLE_TEX_SMOKE_GENERIC
 			p.position = world_pos
 			p.lifetime = 0.45
 			p.amount = 10  # 克制：10 粒碎片，足够形成"散开"感而不撞池上限
@@ -256,8 +278,9 @@ static func spawn_death_burst(parent: Node2D, world_pos: Vector2, is_player: boo
 			p.initial_velocity_min = 80.0
 			p.initial_velocity_max = 180.0
 			p.gravity = Vector2(0, 240.0)
-			p.scale_amount_min = 1.8
-			p.scale_amount_max = 3.2
+			# v9.2: 死亡爆散贴图化缩小
+			p.scale_amount_min = 0.7
+			p.scale_amount_max = 1.3
 			p.color_ramp = _get_blood_ramp(is_player)
 			parent.add_child(p)
 			var tree := p.get_tree()
@@ -294,7 +317,7 @@ static func _get_blood_spark_ramp() -> Gradient:
 
 ## v7.4: 炮口火焰（复用 spark 池，替代 bullet.gd 每次 new CPUParticles2D+Gradient）。
 ## 参数对齐原 bullet._spawn_muzzle_effect 的配置。
-static func spawn_muzzle_flash(parent: Node2D, local_pos: Vector2, facing_right: bool) -> void:
+static func spawn_muzzle_flash(parent: Node2D, local_pos: Vector2, facing_right: bool, weapon_type: int = 0) -> void:
 	if parent == null or not is_instance_valid(parent):
 		return
 	if _active_sparks >= MAX_SPARKS:
@@ -304,6 +327,11 @@ static func spawn_muzzle_flash(parent: Node2D, local_pos: Vector2, facing_right:
 	if p == null:
 		_active_sparks -= 1
 		return
+	# v9.2: 枪口火按武器类型分流贴图
+	if weapon_type in [3, 7, 9, 10, 11]:  # 重型/能量武器
+		p.texture = PARTICLE_TEX_MUZZLE_HEAVY
+	else:  # 轻型动能武器
+		p.texture = PARTICLE_TEX_MUZZLE_LIGHT
 	p.position = local_pos
 	p.lifetime = 0.40
 	# v8.3 视觉增强：炮口火焰 amount 12→20, spread 120→150, velocity 翻倍, scale 加大
@@ -313,8 +341,10 @@ static func spawn_muzzle_flash(parent: Node2D, local_pos: Vector2, facing_right:
 	p.spread = 150.0
 	p.initial_velocity_min = 50.0
 	p.initial_velocity_max = 140.0
-	p.scale_amount_min = 1.5
-	p.scale_amount_max = 2.5
+	# v9.2: 枪口火贴图化后 scale 需缩小（32/64px 贴图 × scale）。
+	# 原 1.5-2.5 → 0.5-0.9，显示 16-57px（紧凑枪口火，不盖住单位）
+	p.scale_amount_min = 0.5
+	p.scale_amount_max = 0.9
 	p.color_ramp = _get_muzzle_ramp()
 	parent.add_child(p)
 	var tree := p.get_tree()
@@ -441,24 +471,41 @@ static func spawn_laser_beam(parent: Node2D, from_pos: Vector2, to_pos: Vector2,
 ## v8.4: 命中贴图爆炸（重型爆炸武器专属）。
 ## 在 world_pos 处用 Sprite2D 渲染 *_impact.png 贴图，快速放大→缓慢淡出，让爆炸有"形状感"。
 ## 与 spawn_layered_impact 配合使用：贴图层 + 粒子层叠加（先贴图后粒子）。
+## v9.2: ADD 发光混合（爆炸火光感）+ 两层叠加（外层光晕 + 内层主体），真实感对标核武 fireball。
 ## life: 总生命周期秒（默认 0.45）；scale_peak: 峰值缩放（默认 1.0，调用方按贴图基准像素调整）
 static func spawn_impact_sprite(parent: Node2D, world_pos: Vector2, texture: Texture2D, scale_peak: float = 1.0, life: float = 0.45) -> void:
 	if parent == null or not is_instance_valid(parent) or texture == null:
 		return
 	if DT.is_motion_reduce():
 		return  # 减动效：跳过贴图层，粒子层已足够
+	# v9.2: 第1层——外层光晕（ADD 混合，大尺度低 alpha，模拟爆炸整体火光弥散）
+	var glow := _acquire_impact_sprite()
+	if glow != null:
+		glow.texture = texture
+		glow.position = world_pos
+		glow.scale = Vector2(scale_peak * 1.4, scale_peak * 1.4)
+		glow.modulate = Color(1.0, 0.85, 0.6, 0.5)  # 暖白光晕
+		glow.visible = true
+		glow.material = _get_add_mat()  # ADD 混合让光晕发亮
+		parent.add_child(glow)
+		var tw_glow := glow.create_tween()
+		tw_glow.tween_property(glow, "scale", Vector2(scale_peak * 1.8, scale_peak * 1.8), life * 0.5).set_ease(Tween.EASE_OUT)
+		tw_glow.parallel().tween_property(glow, "modulate:a", 0.0, life * 0.8).set_ease(Tween.EASE_IN)
+		tw_glow.tween_callback(func(): _release_impact_sprite(glow))
+	# v9.2: 第2层——主体火球（ADD 混合，快速膨胀→淡出，模拟火球爆炸消散）
 	var sprite := _acquire_impact_sprite()
 	if sprite == null:
 		return  # 池满，静默丢弃（节流）
 	sprite.texture = texture
 	sprite.position = world_pos
-	sprite.scale = Vector2(scale_peak * 0.6, scale_peak * 0.6)  # 起始略小
-	sprite.modulate.a = 1.0
+	sprite.scale = Vector2(scale_peak * 0.5, scale_peak * 0.5)  # 起始小
+	sprite.modulate = Color(1.0, 1.0, 1.0, 1.0)
 	sprite.visible = true
+	sprite.material = _get_add_mat()  # v9.2: ADD 混合让爆炸有火光明亮感
 	parent.add_child(sprite)
-	# 快速放大到峰值 → 缓慢淡出（模拟爆炸火球膨胀消散）
+	# 快速膨胀到峰值 → 缓慢淡出（模拟爆炸火球膨胀消散）
 	var tween := sprite.create_tween()
-	tween.tween_property(sprite, "scale", Vector2(scale_peak, scale_peak), life * 0.35).set_ease(Tween.EASE_OUT)
+	tween.tween_property(sprite, "scale", Vector2(scale_peak, scale_peak), life * 0.3).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(sprite, "modulate:a", 0.0, life).set_ease(Tween.EASE_IN)
 	tween.tween_callback(func(): _release_impact_sprite(sprite))
 
@@ -490,15 +537,10 @@ static func spawn_smoke_column(parent: Node2D, pos: Vector2, tint: Color = Color
 	p.scale_amount_min = 5.0
 	p.scale_amount_max = 11.0
 	p.color = tint
-	# 烟柱渐变：底部浓→顶部淡
-	var grad := Gradient.new()
-	grad.add_point(0, Color(tint.r, tint.g, tint.b, 0.85))
-	grad.add_point(0.5, Color(tint.r, tint.g, tint.b, 0.45))
-	grad.add_point(1.0, Color(tint.r, tint.g, tint.b, 0.0))
-	p.color_ramp = grad
-	var mat := CanvasItemMaterial.new()
-	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-	p.material = mat
+	# 烟柱渐变：底部浓→顶部淡（v9.2: 按 tint 颜色缓存 Gradient，避免每次烟柱 new）
+	p.color_ramp = _get_smoke_grad(tint)
+	# v9.2: 复用共享 ADD 材质（_get_add_mat 已缓存），不再每次 new CanvasItemMaterial
+	p.material = _get_add_mat()
 	parent.add_child(p)
 	# 2.5s 后停止发射并回收（WeakRef 防 "Lambda capture was freed"）
 	var tree := parent.get_tree()
@@ -809,6 +851,8 @@ static func _spawn_proximity_airburst(parent: Node2D, pos: Vector2, is_player: b
 	if p == null:
 		_active_sparks -= 1
 		return
+	# v9.2: 空爆火花用金属贴图（池复用需显式赋值）
+	p.texture = PARTICLE_TEX_SPARK_METAL
 	p.position = pos + Vector2(0, -10)  # v8.4: 用 position（与工厂惯例一致，pos 已是 world 坐标）
 	p.amount = 16
 	p.lifetime = 0.40
@@ -819,8 +863,9 @@ static func _spawn_proximity_airburst(parent: Node2D, pos: Vector2, is_player: b
 	p.gravity = Vector2(0, 150)
 	p.color = Color(1.0, 0.8, 0.4, 1.0)
 	p.color_ramp = _get_spark_ramp(p.color)  # v8.4: 与 _spawn_sparks 一致，设色带避免池复用残留
-	p.scale_amount_min = 1.5
-	p.scale_amount_max = 3.0
+	# v9.2: 空爆火花贴图化缩小
+	p.scale_amount_min = 0.6
+	p.scale_amount_max = 1.2
 	parent.add_child(p)
 	var tree := p.get_tree()
 	if tree != null:
@@ -872,6 +917,8 @@ static func _spawn_gun_missile_trail(parent: Node2D, pos: Vector2, is_player: bo
 	if p == null:
 		_active_sparks -= 1
 		return
+	# v9.2: 导弹尾迹用金属贴图（池复用需显式赋值）
+	p.texture = PARTICLE_TEX_SPARK_METAL
 	p.position = pos  # v8.4: 用 position（与工厂惯例一致）
 	p.amount = 20
 	p.lifetime = 0.45
@@ -883,8 +930,9 @@ static func _spawn_gun_missile_trail(parent: Node2D, pos: Vector2, is_player: bo
 	# 蓝白色调（炮射导弹特征，区别于标准导弹的橙红）
 	p.color = Color(0.6, 0.8, 1.0, 1.0)
 	p.color_ramp = _get_spark_ramp(p.color)  # v8.4: 与 _spawn_sparks 一致，设色带避免池复用残留
-	p.scale_amount_min = 1.2
-	p.scale_amount_max = 2.5
+	# v9.2: 导弹尾迹贴图化缩小
+	p.scale_amount_min = 0.5
+	p.scale_amount_max = 1.0
 	parent.add_child(p)
 	var tree := p.get_tree()
 	if tree != null:
@@ -919,12 +967,25 @@ static func _spawn_sparks(parent: Node2D, pos: Vector2, recipe: Dictionary, base
 		return
 	p.position = pos
 	p.color = base_color
+	# v9.2: 命中粒子用放射状贴图（区别于拖尾的顺向条纹）——让"飞行"和"撞击"形状可分
+	#   动能武器 → 放射状金属火花爆点；能量武器 → 放射状能量爆裂
+	#   重型爆炸（3/7/9）保持碎片贴图（爆炸碎块语义）
+	if weapon_type in [8, 10, 11]:  # LASER / OMEGA / RAIL — 放射能量爆裂
+		p.texture = PARTICLE_TEX_IMPACT_ENERGY
+	elif weapon_type in [3, 7, 9]:  # ROCKET / FLAK / MISSILE — 爆炸碎片
+		p.texture = PARTICLE_TEX_SPARK_HEAVY
+	else:                           # 动能直射类 — 放射状撞击火花
+		p.texture = PARTICLE_TEX_IMPACT_METAL
 	# 按配方差异化参数
 	p.amount = int(recipe.get("spark_amount", 18))
 	p.initial_velocity_min = float(recipe.get("spark_vmin", 40.0))
 	p.initial_velocity_max = float(recipe.get("spark_vmax", 120.0))
-	p.scale_amount_min = float(recipe.get("spark_smin", 1.5))
-	p.scale_amount_max = float(recipe.get("spark_smax", 3.0))
+	# v9.2: 贴图化后 scale_amount 需除以贴图尺寸系数（原无贴图时 scale=像素直径，
+	# 现 32px 贴图 × scale = 显示尺寸，会爆炸）。统一 ×0.4 让命中火花回到合理范围。
+	# 配方值 1.5-7.0 × 0.4 = 0.6-2.8 → 32px 贴图显示 19-90px（合理，单位约 60-80px）
+	const SPARK_SCALE_FIX: float = 0.4
+	p.scale_amount_min = float(recipe.get("spark_smin", 1.5)) * SPARK_SCALE_FIX
+	p.scale_amount_max = float(recipe.get("spark_smax", 3.0)) * SPARK_SCALE_FIX
 	p.lifetime = float(recipe.get("spark_life", 0.28))
 	p.spread = float(recipe.get("spark_spread", 360.0))
 	# 激光/能量类用线性方向（集中喷射感）
@@ -981,12 +1042,20 @@ static func _spawn_debris(parent: Node2D, pos: Vector2, debris_cfg: Dictionary, 
 		_active_debris -= 1
 		return
 	p.position = pos
+	# v9.2: 烟尘/碎片按武器类型分流贴图（池复用需显式赋值，否则继承上次的 texture）
+	if weapon_type in [8, 10, 11]:
+		p.texture = PARTICLE_TEX_SMOKE_ENERGY
+	else:
+		p.texture = PARTICLE_TEX_SMOKE_GENERIC
 	p.amount = int(debris_cfg.get("amount", 10))
 	p.lifetime = float(debris_cfg.get("life", 0.5))
 	p.initial_velocity_min = float(debris_cfg.get("vmin", 30.0))
 	p.initial_velocity_max = float(debris_cfg.get("vmax", 90.0))
-	p.scale_amount_min = float(debris_cfg.get("smin", 2.0))
-	p.scale_amount_max = float(debris_cfg.get("smax", 4.0))
+	# v9.2: 烟尘贴图化后 scale 同样需缩小（64px 贴图 × scale）。统一 ×0.5
+	# 配方值 2.0-5.5 × 0.5 = 1.0-2.75 → 64px 贴图显示 64-176px（烟尘本就该大些）
+	const DEBRIS_SCALE_FIX: float = 0.5
+	p.scale_amount_min = float(debris_cfg.get("smin", 2.0)) * DEBRIS_SCALE_FIX
+	p.scale_amount_max = float(debris_cfg.get("smax", 4.0)) * DEBRIS_SCALE_FIX
 	# 烟尘向上、碎片有重力
 	if bool(debris_cfg.get("is_smoke", false)):
 		if bool(debris_cfg.get("low_dust", false)):
@@ -1057,9 +1126,24 @@ static func _impact_color(weapon_type: int, combat_kind: int, is_player: bool) -
 ## v8.2: 整体加长寿命到"可清晰感知"区间（火花≥0.45s/环≥0.35s），保留武器间梯度。
 ## v8.3 视觉增强：环 ×1.5、duration +0.08、spark_amount +50%、spark_vmax +60%、debris +30%
 ## 让命中爆炸有"砰"的分量感（原环到 24px 就没了，火花 0.15s 消散）
+## v9.2: 命中配方缓存——配方是只读静态数据（按 weapon_type+flavor 固定），
+## 每次 new Dictionary 字面量在密集命中下是显著的堆分配源。
+## 按 (weapon_type*100+flavor) 整数键缓存，命中后返回同一引用（调用方只 .get() 读不改）。
+static var _recipe_cache: Dictionary = {}
+
 static func _impact_recipe(weapon_type: int, weapon_name: String = "") -> Dictionary:
 	# v8.x: 直射系亚类分类（仅 0/1/2/4 生效，其他返回 NONE 走原配方）
 	var flavor: int = DirectWeaponFlavor.classify(weapon_name, weapon_type)
+	# v9.2: 缓存命中——同一 (weapon_type, flavor) 的配方是只读的，首次构建后直接返回引用。
+	var cache_key: int = weapon_type * 100 + flavor
+	if _recipe_cache.has(cache_key):
+		return _recipe_cache[cache_key]
+	var d: Dictionary = _impact_recipe_build(weapon_type, flavor)
+	_recipe_cache[cache_key] = d
+	return d
+
+## v9.2: 原 _impact_recipe 的 match 主体（拆出以便 _impact_recipe 做缓存包装）。
+static func _impact_recipe_build(weapon_type: int, flavor: int) -> Dictionary:
 	match weapon_type:
 		0, 4:  # DIRECT/SMG/PISTOL — 小环 + 少量高亮火花（v8.4 重平衡：减粒子数提单粒子亮度）
 			# v8.x 亚类细分：机枪/坦克炮/步枪/手枪 各自不同的命中反馈强度
@@ -1190,6 +1274,19 @@ static func _get_add_mat() -> CanvasItemMaterial:
 		_add_mat = CanvasItemMaterial.new()
 		_add_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	return _add_mat
+
+## v9.2: 烟柱 Gradient 按颜色键缓存——tint 颜色种类有限（几种烟色），
+## 按 RGB 量化键复用同一 Gradient 引用，避免每次烟柱 new Gradient + 3 个 add_point。
+static func _get_smoke_grad(tint: Color) -> Gradient:
+	var key: String = "%02x%02x%02x" % [int(tint.r * 255), int(tint.g * 255), int(tint.b * 255)]
+	if _smoke_grad_cache.has(key):
+		return _smoke_grad_cache[key]
+	var grad := Gradient.new()
+	grad.add_point(0, Color(tint.r, tint.g, tint.b, 0.85))
+	grad.add_point(0.5, Color(tint.r, tint.g, tint.b, 0.45))
+	grad.add_point(1.0, Color(tint.r, tint.g, tint.b, 0.0))
+	_smoke_grad_cache[key] = grad
+	return grad
 
 
 ## 冲击波环（Polygon2D）池
@@ -1338,8 +1435,8 @@ static func _acquire_debris_particle() -> CPUParticles2D:
 	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
 	p.emission_sphere_radius = 4.0
 	p.material = _get_add_mat()
-	# v9.2: 烟尘/碎片粒子赋贴图（烟球形状），告别方形小方块
-	p.texture = PARTICLE_TEX_SMOKE
+	# v9.2: 默认贴图（常规烟尘）——调用方 acquire 后会按 weapon_type 覆盖
+	p.texture = PARTICLE_TEX_SMOKE_GENERIC
 	return p
 
 
@@ -1353,8 +1450,8 @@ static func _release_debris_particle(p: CPUParticles2D) -> void:
 	p.emitting = false
 	p.visible = false
 	p.position = Vector2.ZERO
-	# v9.2: 不清 texture（粒子池 texture 在 new 时一次性赋值，复用时保留即可；
-	# 清掉会导致下次 acquire 从池取的粒子无贴图，回退方形方块）
+	# v9.2: 不清 texture——粒子池复用时保留贴图，调用方 acquire 后按 weapon_type 覆盖。
+	# 若清 null，下次 acquire 若调用方漏赋 texture 会回退方形方块。
 	_active_debris -= 1
 	if _debris_pool.size() < MAX_DEBRIS:
 		_debris_pool.append(p)
@@ -1390,12 +1487,14 @@ static func _acquire_spark_particle() -> CPUParticles2D:
 	p.spread = 360.0
 	p.initial_velocity_min = 40.0
 	p.initial_velocity_max = 120.0
-	p.scale_amount_min = 1.5
-	p.scale_amount_max = 3.0
+	# v9.2: 贴图化后的默认 scale（调用方会覆盖，此为防御性兜底）
+	p.scale_amount_min = 0.6
+	p.scale_amount_max = 1.2
 	p.color = Color(1.0, 0.95, 0.6, 1.0)
 	p.material = _get_add_mat()
-	# v9.2: 火花粒子赋贴图（长条火花形状），告别方形小方块
-	p.texture = PARTICLE_TEX_SPARK
+	# v9.2: 默认贴图（动能火花）——调用方 acquire 后会按 weapon_type 覆盖；
+	# 此处赋默认值是防御性：若未来新增调用方漏赋 texture，至少不是方块
+	p.texture = PARTICLE_TEX_SPARK_METAL
 	p.emitting = true
 	return p
 
@@ -1797,10 +1896,12 @@ static func _create_indicator(kind: String) -> Node2D:
 
 
 ## 归还指示器到池。kill 所有 tween、移除 parent、清 name、归还对应 kind 池。
+## 设计与 _release_ring 一致：失效节点直接返回不操作（不计入 active，避免计数变负）。
+## 指示器生命周期长（3-6s），战斗拆卸时 fade callback 可能不触发 → 计数有慢速泄漏风险，
+## 但与现有 ring/spark 池同等行为，且泄漏只导致节流（不崩溃），可接受。
 static func _release_indicator(node: Node2D) -> void:
 	if node == null or not is_instance_valid(node):
-		_active_indicators -= 1
-		return
+		return  # 失效节点：不操作（不计入 active，避免计数变负）
 	# kill 该节点所有 tween（通过 _vfx_tweens meta 记录的引用）
 	_kill_indicator_tweens(node)
 	# 移除 parent
@@ -1844,3 +1945,19 @@ static func _build_circle_polygon(segments: int, radius: float) -> PackedVector2
 		var ang := TAU * float(i) / float(segments)
 		pts.append(Vector2(cos(ang), sin(ang)) * radius)
 	return pts
+
+
+## v9.x：战斗结束时重置指示器池（由 BattleManager.end_battle 调用）。
+## 解决长生命周期指示器（3-6s）的计数泄漏：战斗中途结束/场景拆卸时 fade callback
+## 可能不触发，节点被外部 free 而 _active_indicators 未 -1，累积多场后池被永久锁死。
+## 本方法：① free 池中所有归还节点 ② 清空池 ③ 计数归零。
+## 仍在场景树中活跃的指示器（未淡出）由场景树拆卸自然回收，不在此强行清理——
+## reset 后计数归零即允许下场战斗重新分配，不再因计数泄漏阻塞节流。
+static func reset_indicator_pool() -> void:
+	for kind in _INDICATOR_KINDS:
+		var pool: Array = _indicator_pool.get(kind, [])
+		for node in pool:
+			if node != null and is_instance_valid(node):
+				node.queue_free()
+		_indicator_pool[kind] = []
+	_active_indicators = 0

@@ -115,16 +115,20 @@ const PROJ_TEX_SCALE: Dictionary = {
 	0: 0.27,
 	1: 0.45,
 	2: 0.48,
+	# v9.2: 拉大轻武器与终极武器的弹体尺寸差异，让"小兵 vs 终极单位"一眼可辨。
+	#   轻武器（SMG/PISTOL）：保持小但可见（显示 ~4-5px 高）
+	#   中型（RIFLE/MG/SHOTGUN/SNIPER/FLAK）：中等（显示 ~6-10px 高）
+	#   能量/重型（LASER/OMEGA/RAIL/MISSILE/ROCKET）：粗壮（显示 ~10-18px 高，威慑感）
 	# Legacy: SMG=0, RIFLE=1, MG=2, ROCKET=3, PISTOL=4, SHOTGUN=5, SNIPER=6, FLAK=7, LASER=8, MISSILE=9, OMEGA=10, RAIL=11
-	3: 0.45,
-	5: 0.33,
-	6: 0.33,
-	7: 0.39,
-	8: 0.30,
-	9: 0.48,
-	10: 0.51,
-	11: 0.48,
-	4: 0.24,
+	3: 0.70,    # ROCKET — 粗壮火箭弹（原 0.45）
+	5: 0.50,    # SHOTGUN — 霰弹团（原 0.33，加粗让霰弹团可见）
+	6: 0.55,    # SNIPER — 高速穿甲弹（原 0.33）
+	7: 0.60,    # FLAK — 高炮弹（原 0.39）
+	8: 0.70,    # LASER — 能量光束（原 0.30）
+	9: 0.75,    # MISSILE — 大型导弹（原 0.48）
+	10: 0.95,   # OMEGA — 终极能量炮，最粗（原 0.51）
+	11: 0.85,   # RAIL — 电磁轨道炮（原 0.48）
+	4: 0.38,    # PISTOL — 轻武器但可见（原 0.22，加粗让手枪弹看得见）
 }
 
 const IMPACT_TEX_SCALE: Dictionary = {

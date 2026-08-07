@@ -20,6 +20,10 @@ const ARTILLERY_MUZZLE_TEX := preload("res://assets/effects/projectiles/weapons_
 const HEAVY_TRAIL_TEX := preload("res://assets/effects/projectiles/omega_platform/omega_platform_projectile_trail.png")
 ## 启用拖尾的重型武器类型：INDIRECT(1)/AERIAL(2)/ROCKET(3)/FLAK(7)/MISSILE(9)/OMEGA(10)/RAIL(11)
 const HEAVY_TRAIL_WEAPON_TYPES: Array = [1, 2, 3, 7, 9, 10, 11]
+## v9.2: 拖尾粒子贴图——按武器类型分流，让拖尾形状区分武器级别（告别方块拖尾）
+const TRAIL_TEX_SPARK_METAL := preload("res://assets/effects/particle_textures/spark_metal.png")    # 动能轻武器（黄橙小火花）
+const TRAIL_TEX_SPARK_ENERGY := preload("res://assets/effects/particle_textures/spark_energy.png")  # 能量武器（蓝白电弧）
+const TRAIL_TEX_SMOKE_GENERIC := preload("res://assets/effects/particle_textures/smoke_generic.png") # 重型爆炸（灰烟）
 # ObjectPoolManager 为 autoload
 
 var speed: float = 600.0
@@ -50,6 +54,9 @@ var _target_combat_kind: int = -1
 var _pending_crit: bool = false
 var _pending_pierce: bool = false
 var _pierce_dir: Vector2 = Vector2.RIGHT  # 穿透光线方向
+## v9.3: TANK_GUN 单发重炮快速消失（避免与下一发重叠，重炮视觉清晰）
+var _tank_gun_terminate: bool = false  # TANK_GUN 命中后开始淡出计时
+var _tank_gun_timer: float = 0.0       # 命中后保持可见的帧数（0.2s ≈ 12 帧）
 
 # 行为参数：由武器类型决定
 var pierce_count: int = 0          # 可额外穿透多少个目标（LASER/SNIPER 用）
@@ -64,6 +71,9 @@ var _pierce_falloff: float = 0.0
 var _pierce_damage_mult: float = 1.0  # 当前穿透命中的伤害乘数（每次穿透递减）
 # v9.2: 穿透子弹已撞目标记录——避免同一颗子弹反复命中同一目标（穿透次数变多后尤其重要）。
 var _pierce_hit_targets: Array = []
+# v9.2: 标签克制命中复用——_on_hit 高频，原每次 new Array + new Dictionary，改成员复用（reset 时清理）
+var _cached_atk_tags: Array = []
+var _tag_result_cache: Dictionary = {}
 
 ## 曲射（INDIRECT）弹道参数
 var _is_indirect: bool = false
@@ -360,12 +370,6 @@ func _apply_trail() -> void:
 		else:
 			_trail_sprite.visible = true
 			_trail_sprite.texture = HEAVY_TRAIL_TEX
-			_trail_sprite.centered = true
-			_trail_sprite.scale = Vector2(0.35, 0.35)
-			_trail_sprite.modulate = Color.WHITE if shooter_is_player else Color(1.0, 0.55, 0.45)
-			_trail_sprite.material = _get_add_blend_mat()
-			_trail_sprite.rotation = 0.0
-			_trail_sprite.position = Vector2.ZERO
 	# v8.3 视觉增强：粒子拖尾按 weapon_type 6 档分级（原 _is_heavy 二分太粗，轻武器几乎无轨迹）
 	if _trail_particles != null:
 		_trail_particles.material = _get_add_blend_mat()
@@ -374,6 +378,21 @@ func _apply_trail() -> void:
 			_trail_particles.emitting = false
 			_trail_particles.visible = false
 			return
+		# v9.3: TANK_GUN（重型单发炮）禁用粒子拖尾——单发重炮只需要清晰弹体，火星拖尾会让多发射击重叠成杂乱光带
+		if DirectWeaponFlavor.classify(_weapon_name, weapon_type) == DirectWeaponFlavor.Flavor.TANK_GUN:
+			_trail_particles.emitting = false
+			_trail_particles.visible = false
+			return
+		# v9.2: 拖尾粒子赋贴图（按武器类型分流）——告别方块拖尾，让弹道轨迹有形状辨识度
+		#   能量武器（LASER/OMEGA/RAIL）→ 蓝白电弧贴图（能量光带感）
+		#   重型爆炸（ROCKET/FLAK/MISSILE）→ 灰烟贴图（浓烈尾焰感）
+		#   动能轻武器（SMG/PISTOL/RIFLE/MG/SHOTGUN/SNIPER）→ 金属火花贴图（细碎火星轨迹）
+		if weapon_type in [8, 10, 11]:
+			_trail_particles.texture = TRAIL_TEX_SPARK_ENERGY
+		elif weapon_type in [3, 7, 9]:
+			_trail_particles.texture = TRAIL_TEX_SMOKE_GENERIC
+		else:
+			_trail_particles.texture = TRAIL_TEX_SPARK_METAL
 		_apply_trail_tier()
 		_trail_particles.color = _trail_color_for_weapon()
 		_trail_particles.emitting = true
@@ -529,6 +548,16 @@ func _process(delta: float) -> void:
 	if _is_indirect:
 		_process_indirect(delta)
 		return
+	# TANK_GUN 命中后淡出计时
+	if _tank_gun_terminate:
+		_tank_gun_timer += delta
+		var life_pct := 1.0 - _tank_gun_timer / TANK_GUN_DISAPPEAR_AFTER
+		if _tex_sprite:
+			_tex_sprite.modulate.a = maxf(0.0, life_pct)
+		if _trail_particles:
+			# CPUParticles2D 无 process_material；停止 emitting 后粒子按自身 lifetime 自然消散
+			_trail_particles.emitting = _tank_gun_timer < TANK_GUN_DISAPPEAR_AFTER
+		return
 	# 目标死亡时：直接消失（曲射由 _process_indirect 单独处理）
 	if target == null or not is_instance_valid(target):
 		_finish_tex_bullet()
@@ -554,6 +583,9 @@ func _process(delta: float) -> void:
 			_beam_line.points = _beam_pts
 		_beam_visual_phase += 1
 	var max_d2: float = max_distance * max_distance
+	if _tank_gun_terminate and _tank_gun_timer >= TANK_GUN_DISAPPEAR_AFTER:
+		_finish_tex_bullet()
+		return
 	if global_position.distance_squared_to(_start_position) > max_d2:
 		_finish_tex_bullet()
 		return
@@ -643,12 +675,19 @@ func _spawn_muzzle_effect(pos: Vector2) -> void:
 	var host: Node = get_parent()
 	if host == null or not (host is Node2D):
 		return
-	VfxImpactFactory.spawn_muzzle_flash(host, pos, shooter_is_player)
-	# v9.2: 重型武器叠加炮口火贴图层（ARTILLERY_MUZZLE_TEX 此前 preload 但零调用）。
-	# 贴图与粒子火花叠加，让火炮/导弹/磁轨开火有真实炮口火球，而非纯粒子小方块。
-	# 仅重型武器（HEAVY_TRAIL_WEAPON_TYPES）触发，轻武器保持纯粒子（贴图对小口径过于夸张）。
+	VfxImpactFactory.spawn_muzzle_flash(host, pos, shooter_is_player, weapon_type)
+	# v9.2: 所有武器叠加炮口火贴图层（ADD 发光，真实火球感）。
+	# 重型武器（火炮/导弹/能量）用大贴图 + 长 life；轻武器用小贴图 + 短 life（一闪）。
+	# spawn_impact_sprite 已加 ADD 混合 + 光晕层，开火有真实火光明亮感。
+	var muzzle_scale: float = 0.35
+	var muzzle_life: float = 0.14
 	if weapon_type in HEAVY_TRAIL_WEAPON_TYPES:
-		VfxImpactFactory.spawn_impact_sprite(host as Node2D, pos, ARTILLERY_MUZZLE_TEX, 0.55, 0.18)
+		muzzle_scale = 0.65  # 重型火炮大火球
+		muzzle_life = 0.22
+	elif weapon_type in [6, 8]:  # SNIPER / LASER — 中等
+		muzzle_scale = 0.45
+		muzzle_life = 0.16
+	VfxImpactFactory.spawn_impact_sprite(host as Node2D, pos, ARTILLERY_MUZZLE_TEX, muzzle_scale, muzzle_life)
 
 func _spawn_impact_explosion(pos: Vector2, opts: Dictionary = {}) -> void:
 	# v8.0: 统一走 spawn_impact_with_kind（粒子化）
@@ -687,7 +726,11 @@ func _request_hit_shake() -> void:
 	if _is_indirect or explosion_radius > 0.0:
 		BattleManager.request_screen_shake(explosion_mag, 0.35)
 	else:
-		BattleManager.request_screen_shake(3.0, 0.15)
+		# v9.3: TANK_GUN 重炮应有重打击感（5.5 vs 原 3.0），与 OMEGA/RAIL 量级对齐
+		if DirectWeaponFlavor.classify(_weapon_name, weapon_type) == DirectWeaponFlavor.Flavor.TANK_GUN:
+			BattleManager.request_screen_shake(5.5, 0.25)
+		else:
+			BattleManager.request_screen_shake(3.0, 0.15)
 
 
 ## v8.3: 发射音效——按 weapon_type（WeaponTypeLegacy）+ 敌我分流，直接调 AudioManager（autoload）
@@ -763,7 +806,14 @@ func _get_aoe_damage_targets(center: Vector2, radius: float, primary: Node2D) ->
 					targets.append(child)
 	return targets
 
+## v9.3: TANK_GUN 命中后淡出（避免与下一发射击叠加，让重炮视觉清晰）
+const TANK_GUN_DISAPPEAR_AFTER: float = 0.20  # 命中后保持可见 0.2s（约 12 帧）
+
 func _on_hit(primary: Node2D) -> void:
+	# v9.3: TANK_GUN 命中后立即开始淡出计时
+	if DirectWeaponFlavor.classify(_weapon_name, weapon_type) == DirectWeaponFlavor.Flavor.TANK_GUN:
+		_tank_gun_terminate = true
+		_tank_gun_timer = 0.0
 	# v9.2: 记录已撞目标（穿透去重用，非穿透子弹仅撞一次无副作用）
 	if primary != null and not _pierce_hit_targets.has(primary):
 		_pierce_hit_targets.append(primary)
@@ -898,26 +948,27 @@ func _on_hit(primary: Node2D) -> void:
 	final_damage += ability_result["damage_bonus"]
 	final_damage *= (1.0 + ability_result["damage_mult_bonus"])
 	# v8.x: 标签硬克制加成（SNIPER 打 Boss +50%、STEALTH 打指挥 +30%、FORT 对空 +40% 等）
+	# v9.2: _atk_tags 改成员数组复用（原每次 new Array）+ compute_tag_counter 按引用填 _tag_result_cache
 	if is_instance_valid(shooter) and primary != null:
-		var _atk_tags: Array = []
+		_cached_atk_tags.clear()
 		if "_behavior_tags_cached" in shooter:
 			var _st = shooter.get("_behavior_tags_cached")
 			if _st is Array:
-				_atk_tags = _st
+				_cached_atk_tags.append_array(_st)  # 复制，避免直接引用外部数组导致 clear 时破坏原数组
 		# 兼容 construct_unit：读 stats meta 的 is_stalker/is_sniper 等转成标签
-		if _atk_tags.is_empty() and "stats" in shooter and shooter.stats != null:
+		if _cached_atk_tags.is_empty() and "stats" in shooter and shooter.stats != null:
 			if shooter.stats.has_meta("is_sniper") and bool(shooter.stats.get_meta("is_sniper", false)):
-				_atk_tags.append("sniper")
+				_cached_atk_tags.append("sniper")
 			if shooter.stats.has_meta("is_stalker") and bool(shooter.stats.get_meta("is_stalker", false)):
-				_atk_tags.append("stalker")
-				_atk_tags.append("stealth")
+				_cached_atk_tags.append("stalker")
+				_cached_atk_tags.append("stealth")
 			if shooter.stats.has_meta("is_ecm") and bool(shooter.stats.get_meta("is_ecm", false)):
-				_atk_tags.append("ecm")
+				_cached_atk_tags.append("ecm")
 			if shooter.stats.has_meta("is_engineer") and bool(shooter.stats.get_meta("is_engineer", false)):
-				_atk_tags.append("engineer")
-		if not _atk_tags.is_empty():
-			var _tag_result: Dictionary = AttackCalculator.compute_tag_counter_multiplier(_atk_tags, primary)
-			final_damage *= float(_tag_result.get("mult", 1.0))
+				_cached_atk_tags.append("engineer")
+		if not _cached_atk_tags.is_empty():
+			AttackCalculator.compute_tag_counter_multiplier(_cached_atk_tags, primary, _tag_result_cache)
+			final_damage *= float(_tag_result_cache.get("mult", 1.0))
 	# v8.5: 无人机定时标记易伤——目标有 _drone_marked_until（未过期）则伤害 ×(1+vuln)
 	if primary != null and is_instance_valid(primary) and primary.has_meta("_drone_marked_until"):
 		var _dm_until: int = int(primary.get_meta("_drone_marked_until", 0))
@@ -1178,6 +1229,9 @@ func reset_pool_object() -> void:
 	_pierce_falloff = 0.0
 	_pierce_damage_mult = 1.0
 	_pierce_hit_targets.clear()
+	# v9.2: 标签克制复用清理（防对象池复用残留）
+	_cached_atk_tags.clear()
+	_tag_result_cache.clear()
 
 	_start_position = Vector2.ZERO
 	_direction = Vector2.RIGHT
