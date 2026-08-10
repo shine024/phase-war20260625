@@ -180,6 +180,48 @@ func _on_ability_triggered(ability_id: String, stage: String, params: Dictionary
 		"enemy_rage_buff":
 			if stage == "start":
 				_play_enemy_warning_flash(Color(1.0, 0.15, 0.1, 0.4), "🔥 敌方狂暴激活")
+		# v9.3: 敌方相位师 active_spells 差异化大招演出（6 类，按 effect 语义分）
+		# 由 EnemyMasterSkillEngine._play_spell_cinematic emit 触发
+		"enemy_spell_apocalypse":
+			if stage == "warning":
+				_play_enemy_warning_flash(Color(0.4, 0.05, 0.5, 0.45),
+					"☄ " + String(params.get("title", "虚空灾变")))
+			elif stage == "impact":
+				_play_spell_impact(Color(0.5, 0.1, 0.8))  # v9.3c: 紫白定帧闪
+		"enemy_spell_inferno":
+			if stage == "warning":
+				_play_enemy_warning_flash(Color(0.7, 0.25, 0.05, 0.4),
+					"🔥 " + String(params.get("title", "地狱烈焰")))
+			elif stage == "impact":
+				_play_spell_impact(Color(1.0, 0.5, 0.2))  # 橙白定帧闪
+		"enemy_spell_chain":
+			if stage == "warning":
+				_play_enemy_warning_flash(Color(0.4, 0.55, 1.0, 0.45),
+					"⚡ " + String(params.get("title", "连锁闪电")))
+			elif stage == "impact":
+				_play_spell_impact(Color(0.6, 0.8, 1.0))  # 蓝白定帧闪
+		"enemy_spell_single":
+			if stage == "warning":
+				_play_enemy_warning_flash(Color(0.9, 0.2, 0.5, 0.45),
+					"🎯 " + String(params.get("title", "精准打击")))
+			elif stage == "impact":
+				_play_spell_impact(Color(1.0, 0.4, 0.7))  # 红紫定帧闪
+		"enemy_spell_summon":
+			if stage == "warning":
+				_play_enemy_warning_flash(Color(0.35, 0.1, 0.6, 0.4),
+					"⚙ " + String(params.get("title", "敌方召唤援军")))
+		"enemy_spell_debuff":
+			if stage == "warning":
+				# v9.3b: 升级为带标题全屏预警，按类别配色调：黑暗=深紫、EMP=青、虚弱=灰
+				var kind: String = String(params.get("debuff_kind", "weakness"))
+				var db_title: String = String(params.get("title", "敌方削弱"))
+				match kind:
+					"darkness":
+						_play_enemy_warning_flash(Color(0.3, 0.05, 0.45, 0.5), "🌑 " + db_title)
+					"emp":
+						_play_enemy_warning_flash(Color(0.15, 0.5, 0.55, 0.45), "📵 " + db_title)
+					_:
+						_play_enemy_warning_flash(Color(0.4, 0.4, 0.4, 0.4), "💫 " + db_title)
 
 
 ## 核子轰炸预警：全屏红色暗化 + 标题
@@ -226,6 +268,24 @@ func _play_nuclear_impact(params: Dictionary) -> void:
 	tw3.tween_property(_overlay, "color:a", 0.35, 0.06)
 	tw3.tween_property(_overlay, "color:a", 0.0, 1.1)
 	tw3.tween_callback(func(): _overlay.visible = false)
+
+
+## v9.3c: 大招命中定帧闪（敌我通用，对齐核子轰炸的白闪定帧效果）。
+## 比 _play_nuclear_impact 轻量（单层闪 + 震屏），用于敌方 boss 大招 + 我方非核爆能力的命中瞬间。
+## tint: 配色（lerp 到白闪，让闪屏带技能色调）。
+func _play_spell_impact(tint: Color = Color.WHITE) -> void:
+	_ensure_overlay()
+	# 染色白闪定帧（0.04+0.16=0.2s，与核子轰炸同款时长）
+	var flash_c: Color = Color(1.0, 1.0, 1.0, 0.0).lerp(tint, 0.4) if tint != Color.WHITE else Color(1.0, 1.0, 1.0, 0.0)
+	_overlay.color = flash_c
+	_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_overlay.visible = true
+	var tw: Tween = create_tween()
+	tw.tween_property(_overlay, "color:a", 0.85, 0.04)
+	tw.tween_property(_overlay, "color:a", 0.0, 0.16)
+	tw.tween_callback(func(): _overlay.visible = false)
+	# extreme shake（略低于核子轰炸 16.0，大招级用 12.0）
+	_request_shake(12.0, 0.6)
 
 
 ## 纳米虫群开始：全屏紫色降雨粒子层（持续整个周期）

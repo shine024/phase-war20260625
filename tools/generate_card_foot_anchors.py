@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""生成卡图脚部锚点元数据（card_foot_anchors.gd 的字典内容）。
+"""生成卡图脚部锚点元数据（card_foot_anchors.gd 的 FOOT_FRAC/HEAD_FRAC 字典）。
 
 背景：战场单位卡图的抠图精灵，"脚（最低非透明像素）距画布底部"的比例
 在全库 0% ~ 37.5% 浮动（步兵贴底、坦克偏高、飞机最高，同类还不一致）。
@@ -8,16 +8,23 @@
 
 本脚本遍历 assets/card_icons/*.png，读 alpha 通道找非透明 bbox，
 算出脚距底比例 foot_frac = (tex_h - bbox_bottom) / tex_h，
-输出 data/card_foot_anchors.gd 的字典内容（控制台打印 + 写文件）。
+就地更新 data/card_foot_anchors.gd 的 FOOT_FRAC 和 HEAD_FRAC 两个字典块。
+
+⚠️ 重要（2026-08-08 修复）：本脚本只更新 FOOT_FRAC/HEAD_FRAC 两块，
+保留文件其余部分（VISUAL_SCALE 表 / PLAYER_PLATFORM_TO_SCALE_ARCHETYPE /
+get_visual_scale / entity_top_y_for_sprite 等手工维护的函数和常量）。
+早期版本会整体覆盖文件，冲掉这些手工内容导致全单位缩放崩溃。
 
 用法：python tools/generate_card_foot_anchors.py
 新增卡图后需重跑本脚本。
 """
+import re
 from pathlib import Path
 from PIL import Image
 
-ROOT = Path(r"F:\godot fair duet\create\phase-war\assets\card_icons")
-OUT = Path(r"F:\godot fair duet\create\phase-war\data\card_foot_anchors.gd")
+# 相对脚本自身定位项目根目录（跨机器通用，2026-08-08 修正硬编码 F 盘路径）
+ROOT = Path(__file__).resolve().parent.parent / "assets" / "card_icons"
+OUT = Path(__file__).resolve().parent.parent / "data" / "card_foot_anchors.gd"
 
 # alpha 阈值：大于此值视为非透明（去除边缘半透明噪声）
 ALPHA_THRESH = 10
@@ -94,38 +101,49 @@ def main():
     print(f"记录 {recorded} 张（脚位/头位偏离），跳过 {skipped} 张（贴边或异常）")
     entries = sorted(anchor_map.items())
 
-    # 生成 .gd 文件内容
-    lines = []
-    lines.append('extends RefCounted')
-    lines.append('class_name CardFootAnchors')
-    lines.append('## 卡图锚点表（自动生成，勿手改）。扫描 alpha 通道找实体边界。')
-    lines.append('## key = 卡图文件名（assets/card_icons/enemy|player/ 下，去扩展名）')
-    lines.append('## FOOT_FRAC: 脚（最低非透明像素）距纹理底部的比例（0.0=脚贴底，0.3=脚悬在底部上方30%）')
-    lines.append('## HEAD_FRAC: 头（最高非透明像素）距纹理顶部的比例（0.0=头贴顶）')
-    lines.append('## 脚对齐地面：立绘 offset.y = -(0.5 - foot_frac) * tex_h')
-    lines.append('## 头顶 UI 锚定实体顶部：实体顶 y = -(1 - head_frac - foot_frac) * tex_h * scale（相对脚部）')
-    lines.append('## 贴边的图（比例<%.2f）不在此表，按默认 0.0 处理。' % MIN_FRAC_TO_RECORD)
-    lines.append('## 重新生成：python tools/generate_card_foot_anchors.py')
-    lines.append('')
-    lines.append('const FOOT_FRAC: Dictionary = {')
-    for key, (foot_frac, head_frac) in entries:
-        lines.append('\t"%s": %.3f,' % (key, foot_frac))
-    lines.append('}')
-    lines.append('')
-    lines.append('const HEAD_FRAC: Dictionary = {')
-    for key, (foot_frac, head_frac) in entries:
-        lines.append('\t"%s": %.3f,' % (key, head_frac))
-    lines.append('}')
-    lines.append('')
-    lines.append('static func get_foot_frac(file_name: String) -> float:')
-    lines.append('\treturn float(FOOT_FRAC.get(file_name, 0.0))')
-    lines.append('')
-    lines.append('static func get_head_frac(file_name: String) -> float:')
-    lines.append('\treturn float(HEAD_FRAC.get(file_name, 0.0))')
-    lines.append('')
+    # 生成两个字典块的文本（只含 FOOT_FRAC / HEAD_FRAC，不含文件头尾和其它函数）
+    def build_block(dict_name: str, value_idx: int) -> str:
+        lines = ['const %s: Dictionary = {' % dict_name]
+        for key, fracs in entries:
+            lines.append('\t"%s": %.3f,' % (key, fracs[value_idx]))
+        lines.append('}')
+        return "\n".join(lines)
 
-    OUT.write_text("\n".join(lines), encoding="utf-8")
-    print(f"\n已写入 {OUT}")
+    foot_block = build_block("FOOT_FRAC", 0)
+    head_block = build_block("HEAD_FRAC", 1)
+
+    # 就地更新：读现有文件，用正则替换 FOOT_FRAC / HEAD_FRAC 两个字典块，保留其余内容。
+    # ⚠️ 这避免了早期版本"整体覆盖"冲掉 VISUAL_SCALE / 查询函数的致命 bug。
+    if OUT.exists():
+        content = OUT.read_text(encoding="utf-8")
+        # 匹配 "const FOOT_FRAC: Dictionary = { ... }"（非贪婪到首个独占行的 }）
+        foot_pattern = re.compile(r'const FOOT_FRAC: Dictionary = \{[^}]*\}', re.DOTALL)
+        head_pattern = re.compile(r'const HEAD_FRAC: Dictionary = \{[^}]*\}', re.DOTALL)
+        if foot_pattern.search(content) and head_pattern.search(content):
+            content = foot_pattern.sub(foot_block, content)
+            content = head_pattern.sub(head_block, content)
+        else:
+            # 现有文件结构异常（缺字典块）→ 安全兜底：报错不写，避免破坏
+            print(f"[错误] {OUT} 未找到 FOOT_FRAC/HEAD_FRAC 字典块，文件结构异常，跳过写入避免破坏。")
+            print(f"       请检查该文件是否包含 'const FOOT_FRAC: Dictionary = {{...}}' 块。")
+            return
+        OUT.write_text(content, encoding="utf-8")
+        print(f"\n已就地更新 {OUT}（仅 FOOT_FRAC/HEAD_FRAC 两块，保留 VISUAL_SCALE 等手工内容）")
+    else:
+        # 文件不存在 → 生成最小骨架（仅首次创建用；正常项目里文件已存在）
+        lines = ['extends RefCounted', 'class_name CardFootAnchors', '']
+        lines.append(foot_block)
+        lines.append('')
+        lines.append(head_block)
+        lines.append('')
+        lines.append('static func get_foot_frac(file_name: String) -> float:')
+        lines.append('\treturn float(FOOT_FRAC.get(file_name, 0.0))')
+        lines.append('')
+        lines.append('static func get_head_frac(file_name: String) -> float:')
+        lines.append('\treturn float(HEAD_FRAC.get(file_name, 0.0))')
+        lines.append('')
+        OUT.write_text("\n".join(lines), encoding="utf-8")
+        print(f"\n已创建 {OUT}（首次生成骨架，请手工补充 VISUAL_SCALE 等表）")
     print(f"表项数：{len(entries)}")
 
     # 打印分布统计

@@ -37,6 +37,9 @@ func _ready() -> void:
 	var slot_btn: Button = get_node_or_null("CenterContainer/MainVBox/ButtonsVBox/SwitchSlotButton")
 	if slot_btn:
 		slot_btn.pressed.connect(_on_switch_slot)
+	var cc_btn: Button = get_node_or_null("CenterContainer/MainVBox/ButtonsVBox/CombatCheckButton")
+	if cc_btn:
+		cc_btn.pressed.connect(_on_combat_check)
 	var settings_panel = get_node_or_null("SettingsOverlay/CenterContainer/SettingsPanel")
 	if settings_panel and settings_panel.has_signal("closed"):
 		settings_panel.closed.connect(_on_settings_closed)
@@ -192,6 +195,11 @@ func _update_slot_display() -> void:
 			var level_str := "第 %d 关" % int(s.get("level", 0)) if int(s.get("level", 0)) > 0 else "空"
 			parts.append("%s%d: %s" % [marker, int(s.get("slot", 0)), level_str])
 		slot_label.text = "\n".join(parts)
+
+
+## 进入战斗效果检查场（独立测试场景，复用项目真实战斗效果）
+func _on_combat_check() -> void:
+	get_tree().change_scene_to_file("res://scenes/tools/combat_check.tscn")
 
 
 func _on_quit() -> void:

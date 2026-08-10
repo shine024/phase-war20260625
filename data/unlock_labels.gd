@@ -93,7 +93,7 @@ const CARD_SKILL_LABELS: Dictionary = {
 	"cps_steel_storm": {"name": "钢铁风暴", "desc": "每90秒全体友军+3000护盾+20%减伤（10秒）", "icon": "🛡", "family": "steel", "is_ultimate": true},
 	# 火焰家族
 	"cps_scorched_earth": {"name": "焦土政策", "desc": "每16秒敌方密集区燃烧8秒", "icon": "🔥", "family": "flame"},
-	"cps_burn_city": {"name": "焚城", "desc": "每100秒全图轰炸250火伤+燃烧", "icon": "🌋", "family": "flame", "is_ultimate": true},
+	"cps_burn_city": {"name": "焚城", "desc": "每60秒全图轰炸250火伤+燃烧", "icon": "🌋", "family": "flame", "is_ultimate": true},
 	"cps_firestorm": {"name": "烈焰风暴", "desc": "每80秒全图燃烧+恐慌", "icon": "🌪", "family": "flame", "is_ultimate": true},
 	"cps_solar_flare": {"name": "太阳耀斑", "desc": "每35秒全体敌方+25%易伤", "icon": "☀", "family": "flame"},
 	"cps_combustion": {"name": "火焰传导", "desc": "每18秒燃烧传染5个邻近敌方", "icon": "🔗", "family": "flame"},

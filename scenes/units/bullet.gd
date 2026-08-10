@@ -54,6 +54,9 @@ var _target_combat_kind: int = -1
 var _pending_crit: bool = false
 var _pending_pierce: bool = false
 var _pierce_dir: Vector2 = Vector2.RIGHT  # 穿透光线方向
+## v9.4: 标记本次穿透由相位仪 piercing_shot 能力触发（区别于武器自带 pierce_count）。
+## 后续穿透命中据此走 enhanced 加宽版穿甲光线（spawn_pierce_beam），让"技能穿透"更醒目。
+var _pierce_from_ability: bool = false
 ## v9.3: TANK_GUN 单发重炮快速消失（避免与下一发重叠，重炮视觉清晰）
 var _tank_gun_terminate: bool = false  # TANK_GUN 命中后开始淡出计时
 var _tank_gun_timer: float = 0.0       # 命中后保持可见的帧数（0.2s ≈ 12 帧）
@@ -94,6 +97,9 @@ var _tex_sprite: Sprite2D
 var _trail_sprite: Sprite2D
 var _trail_particles: CPUParticles2D  # v8.1: 粒子拖尾（替代/补充静态 TrailSprite）
 var _use_tex_sprite: bool = false
+## v9.4: 弹体是否随飞行方向旋转（贴图弹道 _use_tex_sprite 和程序化弹头都需旋转）。
+## 光束类（SNIPER/LASER）不旋转（用 Line2D 端点）。命中特效也据此判断走贴图路径。
+var _rotates_with_direction: bool = false
 var _direction: Vector2 = Vector2.RIGHT
 var _beam_visual_phase: int = 0
 const BEAM_VISUAL_LEN: float = 52.0
@@ -233,9 +239,16 @@ func _apply_visual() -> void:
 		_sprite.material = blend_mat
 	if _beam_line:
 		_beam_line.material = blend_mat
-	_use_tex_sprite = WeaponProjectileVfx.has_proj_texture(weapon_type)
+	# v9.4: 直射轻武器（SMG/RIFLE/MG/PISTOL，wt 0/1/2/4）改用程序化弹头多边形（与直射 batch 的
+	# ArrayMesh 弹头视觉一致），弃用横向长条贴图——长条贴图（weapon_rifle/smg/mg_projectile.png
+	# 比例 5:1~12:1）旋转到斜向弹道时视觉违和（长条横躺）。程序化弹头短粗（12×7）、指向 +X、
+	# 原点居中，rotation=_direction.angle() 后任意角度自然对齐飞行方向。
+	# 重型/能量/曲射武器（wt 3/5/6/7/8/9/10/11）保留贴图（形状语义明确：火箭/导弹/激光等）。
+	var _use_procedural_bullet := weapon_type in [0, 1, 2, 4]
+	_use_tex_sprite = WeaponProjectileVfx.has_proj_texture(weapon_type) and not _use_procedural_bullet
 	if _use_tex_sprite:
 		_apply_tex_sprite_visual(is_player)
+		_rotates_with_direction = true   # 贴图弹道随飞行方向旋转
 		return
 	_hide_tex_sprite_visual()
 	var bullet_color: Color
@@ -275,6 +288,7 @@ func _apply_visual() -> void:
 			_sprite.color = bullet_color
 			## v7.x: 程序化子弹形状替代简陋三角箭头（弹头形 + 按武器类型差异化）
 			_apply_bullet_shape(size_scale)
+			_rotates_with_direction = true   # v9.4: 程序化弹头随飞行方向旋转
 	if _beam_line:
 		_beam_line.visible = use_beam
 		if use_beam:
@@ -286,46 +300,13 @@ func _apply_visual() -> void:
 ## 形状 = 弹体（平底矩形段）+ 弹头（锥形过渡段），指向 +X（飞行方向）
 ## 按 weapon_type 差异化比例，让不同武器视觉上有辨识度
 ## v8.3 视觉增强：基准 ×2（body 4→8 / nose 2→4 / half_h 1.5→3.5），让弹体在战场上清晰可见
+## v9.4: 几何算法迁移到 WeaponProjectileVfx.build_bullet_points（与 MultiMesh batch 共享单一真理源）。
+##       新版本原点居中（绕弹头中心旋转，比原左端原点更自然）。
 ## 注意：整体尺寸需与放大后的基准 (12×8*scale) 保持一致，各 override 同步 ×2
 func _apply_bullet_shape(size_scale: float) -> void:
 	if _sprite == null:
 		return
-	var s := size_scale
-	# 基准尺寸（v8.3 ×2）：总长约 12*scale，高约 8*scale
-	var body_len: float = 8.0 * s   # 弹体长度（原 4.0）
-	var nose_len: float = 4.0 * s   # 弹头锥形长度（原 2.0）
-	var half_h: float = 3.5 * s     # 弹体半高（原 1.5）
-	# 按武器类型调整比例（v8.3 同步 ×2）
-	match weapon_type:
-		5:  # SHOTGUN — 圆胖霰弹丸
-			body_len = 6.0 * s
-			nose_len = 3.0 * s
-			half_h = 4.0 * s
-		3, 9:  # ROCKET / MISSILE — 长粗导弹
-			body_len = 9.0 * s
-			nose_len = 4.0 * s
-			half_h = 4.0 * s
-		10, 11:  # OMEGA / RAIL — 细长高能弹
-			body_len = 8.0 * s
-			nose_len = 4.0 * s
-			half_h = 1.6 * s
-		7:  # FLAK — 短粗高炮弹
-			body_len = 5.0 * s
-			nose_len = 3.0 * s
-			half_h = 3.6 * s
-	var tip_x: float = body_len + nose_len  # 弹头顶点 X
-	# 7 点顺时针多边形（从弹体底部后端起）：
-	# 后端平底 → 弹体底前 → 锥面收窄 → 弹尖 → 锥面展开 → 弹体顶前 → 后端平顶
-	var pts: PackedVector2Array = PackedVector2Array([
-		Vector2(0.0,        -half_h),   # 弹体底部后端
-		Vector2(body_len,   -half_h),   # 弹体底部前端
-		Vector2(body_len,   -nose_len * 0.4),  # 弹头底部锥面（下）
-		Vector2(tip_x,       0.0),      # 弹头顶点
-		Vector2(body_len,    nose_len * 0.4),  # 弹头底部锥面（上）
-		Vector2(body_len,    half_h),   # 弹体顶部前端
-		Vector2(0.0,         half_h),   # 弹体顶部后端
-	])
-	_sprite.polygon = pts
+	_sprite.polygon = WeaponProjectileVfx.build_bullet_points(weapon_type, size_scale)
 
 
 func _apply_tex_sprite_visual(is_player: bool) -> void:
@@ -380,6 +361,14 @@ func _apply_trail() -> void:
 			return
 		# v9.3: TANK_GUN（重型单发炮）禁用粒子拖尾——单发重炮只需要清晰弹体，火星拖尾会让多发射击重叠成杂乱光带
 		if DirectWeaponFlavor.classify(_weapon_name, weapon_type) == DirectWeaponFlavor.Flavor.TANK_GUN:
+			_trail_particles.emitting = false
+			_trail_particles.visible = false
+			return
+		# v9.4: 直射轻武器（SMG/RIFLE/MG/PISTOL，wt 0/1/2/4）禁用粒子拖尾。
+		# 原因：这些武器改用程序化短粗弹头（build_bullet_points），弹头本体就是视觉主体；
+		# 叠加 8-30 颗拖尾粒子会在密集交战时形成杂乱的"长条火星带"，糊屏且与短粗弹头矛盾。
+		# 与直射 batch（MultiMesh 弹道无拖尾）视觉统一。仅保留重型/能量/曲射武器的拖尾（它们弹道稀疏、拖尾有尾焰语义）。
+		if weapon_type in [0, 1, 2, 4]:
 			_trail_particles.emitting = false
 			_trail_particles.visible = false
 			return
@@ -495,8 +484,13 @@ func _spawn_tex_impact_at(world_pos: Vector2) -> void:
 	if _pending_pierce:
 		opts["is_pierce"] = true
 		opts["direction"] = _pierce_dir
+		# v9.4: 技能穿透(piercing_shot)标记→首次命中穿甲光线走 enhanced 加宽版
+		opts["pierce_enhanced"] = _pierce_from_ability
 	_pending_crit = false
 	_pending_pierce = false
+	# v9.4: 计算 power_tier（命中特效威力分级）——用 damage+explosion_radius 复合判据。
+	# 写入 opts 透传给 spawn_impact_with_kind，驱动核武级/重型/中型/轻型视觉分级。
+	opts["power_tier"] = WeaponProjectileVfx.compute_power_tier(weapon_type, explosion_radius, damage)
 
 	# 曲射/空射/火箭/导弹 → 使用完整爆炸特效
 	# 新枚举: INDIRECT=1, AERIAL=2
@@ -570,7 +564,7 @@ func _process(delta: float) -> void:
 			var desired := (target.global_position - global_position).normalized()
 			_direction = _direction.lerp(desired, 1.0 - exp(-4.5 * delta)).normalized()
 		global_position += _direction * speed * delta
-	if _use_tex_sprite:
+	if _rotates_with_direction:
 		rotation = _direction.angle()
 	# v6.4: 重型武器拖尾跟随飞行方向（直射类，如 RAIL/OMEGA）
 	_update_trail_transform()
@@ -662,7 +656,7 @@ func _process_indirect(delta: float) -> void:
 	_update_trail_transform()
 
 	# 更新朝向（Sprite2D 旋转）
-	if _use_tex_sprite:
+	if _rotates_with_direction:
 		rotation = _direction.angle()
 
 	# 目标死亡：沿抛物线继续飞完
@@ -726,11 +720,19 @@ func _request_hit_shake() -> void:
 	if _is_indirect or explosion_radius > 0.0:
 		BattleManager.request_screen_shake(explosion_mag, 0.35)
 	else:
-		# v9.3: TANK_GUN 重炮应有重打击感（5.5 vs 原 3.0），与 OMEGA/RAIL 量级对齐
-		if DirectWeaponFlavor.classify(_weapon_name, weapon_type) == DirectWeaponFlavor.Flavor.TANK_GUN:
-			BattleManager.request_screen_shake(5.5, 0.25)
-		else:
-			BattleManager.request_screen_shake(3.0, 0.15)
+		# v9.4: 按 power_tier 分级震屏（补齐 radius-only 盲区：直射终极武器 radius=0 但伤害高）
+		var tier: int = WeaponProjectileVfx.compute_power_tier(weapon_type, explosion_radius, damage)
+		match tier:
+			3:  # NUCLEAR — 极限震动（与战术核武对齐）
+				BattleManager.request_screen_shake(20.0, 0.8)
+			2:  # HEAVY — 重打击（直射终极武器：高能弹/重型加农炮）
+				BattleManager.request_screen_shake(10.0, 0.45)
+			_:
+				# v9.3: TANK_GUN 重炮应有重打击感（5.5 vs 原 3.0），与 OMEGA/RAIL 量级对齐
+				if DirectWeaponFlavor.classify(_weapon_name, weapon_type) == DirectWeaponFlavor.Flavor.TANK_GUN:
+					BattleManager.request_screen_shake(5.5, 0.25)
+				else:
+					BattleManager.request_screen_shake(3.0, 0.15)
 
 
 ## v8.3: 发射音效——按 weapon_type（WeaponTypeLegacy）+ 敌我分流，直接调 AudioManager（autoload）
@@ -833,7 +835,7 @@ func _on_hit(primary: Node2D) -> void:
 	if forced_miss:
 		var miss_pos: Vector2 = primary.global_position if primary else global_position
 		CombatFeedback.show_miss(miss_pos, primary)
-		if _use_tex_sprite:
+		if _rotates_with_direction:
 			_spawn_tex_impact_at(miss_pos)
 		elif GameManager != null:
 			var root := get_parent() as Node2D
@@ -841,7 +843,7 @@ func _on_hit(primary: Node2D) -> void:
 				CardGridFx.spawn_impact(root, miss_pos, weapon_type)
 		_finish_tex_bullet()
 		return
-	if not _use_tex_sprite and GameManager != null:
+	if not _rotates_with_direction and GameManager != null:
 		var root2 := get_parent() as Node2D
 		if root2 != null:
 			CardGridFx.spawn_impact(root2, primary.global_position if primary else global_position, weapon_type)
@@ -886,6 +888,7 @@ func _on_hit(primary: Node2D) -> void:
 		var ability: Dictionary = PhaseInstrumentAbilities.get_active_ability(PhaseInstrumentAbilities.Owner.PLAYER)
 		if not ability.is_empty() and String(ability.get("id", "")) == "piercing_shot":
 			pen_ratio = maxf(pen_ratio, float(ability.get("params", {}).get("pen_ratio", 0.0)))
+			_pierce_from_ability = true  # v9.4: 标记技能穿透，后续命中走 enhanced 穿甲光线
 			# v9.2: 接通多单位穿透——加穿透次数 + 设衰减系数（params.pierce_targets 默认 0 兼容旧数据）
 			var p_targets: int = int(ability.get("params", {}).get("pierce_targets", 0))
 			if p_targets > 0:
@@ -1131,10 +1134,12 @@ func _on_hit(primary: Node2D) -> void:
 		var _pfx_parent: Node2D = get_parent() as Node2D
 		if _pfx_parent != null:
 			var _pierce_pos: Vector2 = (primary as Node2D).global_position
-			# 紫色冲击波环（半径 26，区别于溅射的橙黄大环）
-			VfxImpactFactory.spawn_shockwave(_pfx_parent, _pierce_pos, 26.0, Color(0.85, 0.55, 1.0, 0.9))
+			# 紫色冲击波环（半径 26，区别于溅射的橙黄大环；技能穿透时加宽环）
+			var _pierce_ring_r: float = 36.0 if _pierce_from_ability else 26.0
+			VfxImpactFactory.spawn_shockwave(_pfx_parent, _pierce_pos, _pierce_ring_r, Color(0.85, 0.55, 1.0, 0.9))
 			# 沿子弹飞行方向的短紫色穿甲光线（强调"穿过"的方向感）
-			VfxImpactFactory.spawn_pierce_beam(_pfx_parent, _pierce_pos, _direction)
+			# v9.4: 技能穿透(piercing_shot)走 enhanced 加宽加长版，区别于普通穿甲
+			VfxImpactFactory.spawn_pierce_beam(_pfx_parent, _pierce_pos, _direction, Color(0.85, 0.55, 1.0, 1.0), _pierce_from_ability)
 	# 兜底：若目标无 take_damage（不应发生），meta 不会经信号清除，此处手动清避免残留
 	elif is_instance_valid(primary):
 		if is_crit and primary.has_meta("_vfx_crit_pending"):
@@ -1160,7 +1165,7 @@ func _on_hit(primary: Node2D) -> void:
 
 	# 穿透：减少一次计数，>0 时继续飞行
 	# v9.2: 穿透到下一个目标时递减伤害乘数（每穿一个 ×(1-falloff)，falloff=0 时无衰减=旧行为）
-	if _use_tex_sprite:
+	if _rotates_with_direction:
 		_spawn_tex_impact_at(primary.global_position if primary else global_position)
 	if pierce_count > 0:
 		pierce_count -= 1
@@ -1190,7 +1195,7 @@ func _on_hit_basic(primary: Node2D) -> void:
 		var basic_primary: float = _apply_shield_wall_mitigation(damage, primary)
 		var atk_bp: Variant = shooter if is_instance_valid(shooter) else null
 		primary.take_damage(basic_primary, atk_bp)
-	if _use_tex_sprite:
+	if _rotates_with_direction:
 		_spawn_tex_impact_at(primary.global_position if primary else global_position)
 	if pierce_count > 0:
 		pierce_count -= 1
@@ -1225,6 +1230,10 @@ func reset_pool_object() -> void:
 	_pending_pierce = false
 	_pierce_dir = Vector2.RIGHT
 	_target_combat_kind = -1
+	# v8.x: TANK_GUN 命中淡出状态重置（防对象池复用残留——上一发 TANK_GUN 的淡出
+	# 状态会延续到下一发任意武器类型，导致新子弹一出生就立刻淡出消失）
+	_tank_gun_terminate = false
+	_tank_gun_timer = 0.0
 	# v9.2: 穿透去重 + 衰减状态重置
 	_pierce_falloff = 0.0
 	_pierce_damage_mult = 1.0
@@ -1237,6 +1246,7 @@ func reset_pool_object() -> void:
 	_direction = Vector2.RIGHT
 	_beam_visual_phase = 0
 	_use_tex_sprite = false
+	_rotates_with_direction = false  # v9.4: 对象池卫生（防复用残留）
 
 	# 曲射弹道重置
 	_is_indirect = false

@@ -10,6 +10,12 @@ script = ExtResource("1_script")
 	# 适配 BAR_WIDTH=98, HEIGHT_COMPACT=15 (折叠) / HEIGHT_EXPANDED=21 (展开)
 	polygon = PackedVector2Array(-49, -7.5, 49, -7.5, 49, 7.5, -49, 7.5)
 
+[node name="Glow" type="Polygon2D" parent="."]
+# v8.x 低血量（≤30%）红色脉动光晕——_update_low_hp_pulse 每帧改 color 的 alpha
+# 比 Bg 略大形成外发光；初始透明，仅低血量时由 _process 驱动脉动
+	color = Color(0, 0, 0, 0)
+	polygon = PackedVector2Array(-50, -8.5, 50, -8.5, 50, 8.5, -50, 8.5)
+
 [node name="Fill" type="Polygon2D" parent="."]
 	color = Color(0.2, 0.75, 0.35, 0.95)
 	# 适配 BAR_WIDTH=98，留2px边距

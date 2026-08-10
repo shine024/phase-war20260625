@@ -241,6 +241,16 @@ func _exec_global_damage(effect: Dictionary) -> void:
 	var enemies: Array = _collect_enemy_units()
 	if enemies.is_empty():
 		return
+	# [NUKE-DIAG] 卡牌周期技能核爆（如 cps_burn_city 焚城），诊断目标是否混入我方单位
+	if OS.is_debug_build():
+		var wrong_side: int = 0
+		for _t in enemies:
+			if _t == null or not is_instance_valid(_t):
+				continue
+			var _tp: bool = bool(_t.get("is_player")) if "is_player" in _t else false
+			if _tp:
+				wrong_side += 1
+		print("[NUKE-DIAG] 卡牌核爆 目标数=%d 错阵营目标=%d" % [enemies.size(), wrong_side])
 	# v8.x VFX：核爆全屏演出（仅 nuclear_bombardment；heaven_thunder/annihilate 走大招震屏）
 	if String(effect.get("vfx", "")) == "nuclear_bombardment":
 		_play_global_damage_vfx((enemies[0] as Node2D).global_position)

@@ -51,6 +51,8 @@ static var _battle_active: bool = false
 static var _battlefield: Node = null
 ## 开局一次性能力是否已触发  "<owner_key>" -> bool
 static var _start_fired: Dictionary = {}
+## v9.3c: 我方相位仪能力专属贴图缓存（assets/effects/spell_burst/player_*，懒加载）
+static var _spell_texture_cache: Dictionary = {}
 
 # ─────────────────────────────────────────────
 #  公共入口
@@ -321,6 +323,10 @@ static func _fire_artillery_shot_enemy(target: Node, dmg: float) -> void:
 		# 大冲击波（橙色炮击）+ 完整爆炸配方（碎片/烟尘）
 		VfxImpactFactory.spawn_shockwave(_battlefield, cur_pos, 100.0, Color(1.0, 0.4, 0.2, 0.85))
 		VfxImpactFactory.spawn_layered_impact(_battlefield, cur_pos, 3, false, -1)
+		# v9.3c: 专属炮击贴图（敌方炮击橙红，叠加在程序化爆炸上）
+		var barrage_tex: Texture2D = _load_spell_texture("player_barrage")
+		if barrage_tex != null:
+			VfxImpactFactory.spawn_spell_burst(_battlefield, cur_pos, barrage_tex, Color(1.0, 0.4, 0.2), 200.0, 0.6)
 		if is_instance_valid(captured_target):
 			CombatFeedback.show_damage(cur_pos, captured_dmg, captured_target, false, "critical")
 			if captured_target.has_method("take_damage"):
@@ -360,6 +366,19 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 	var dmg_mult: float = float(params.get("dmg_mult", 1.0))
 	var base_dmg: float = _compute_nuclear_damage(owner) * dmg_mult
 	var targets: Array = _get_targets(owner)
+	# [NUKE-DIAG] 诊断核子轰炸目标阵营是否正确（排查"波及我方"现象）
+	# 预期：PLAYER owner 的 targets 应全部 is_player=false（敌方）；ENEMY owner 应全部 is_player=true（我方）
+	if OS.is_debug_build():
+		var wrong_side: int = 0
+		for _t in targets:
+			if _t == null or not is_instance_valid(_t):
+				continue
+			var _tp: bool = bool(_t.get("is_player")) if "is_player" in _t else false
+			if owner == Owner.PLAYER and _tp:
+				wrong_side += 1
+			elif owner == Owner.ENEMY and not _tp:
+				wrong_side += 1
+		print("[NUKE-DIAG] 相位仪核爆 owner=%s 目标数=%d 伤害=%.0f 错阵营目标=%d" % [_owner_key(owner), targets.size(), base_dmg, wrong_side])
 	# v6.6 正式动画：分两阶段——先标记（警告），延迟后核爆 + 伤害结算
 	# v8.1: emit warning 信号供 BattleSpectacle 播放全屏红屏预警
 	var first_pos: Vector2 = Vector2.ZERO
@@ -384,38 +403,75 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 		"aftershock": Color(0.9, 0.5, 0.2, 0.5) if owner == Owner.PLAYER else Color(1.0, 0.4, 0.2, 0.5),
 		"smoke": Color(0.35, 0.32, 0.30, 0.6),
 	}
+	# v9.5: 计算发射方阵地位置（导弹从这里飞出）——取 owner 方单位的平均位置
+	# 玩家版=从我方阵地发射导弹飞向敌方；敌方版=从 boss/敌方区发射飞向我方
+	var launch_pos: Vector2 = first_pos  # 默认用首个目标位置兜底
+	var allies: Array = _get_allies(owner)
+	if not allies.is_empty():
+		var sum: Vector2 = Vector2.ZERO
+		var cnt: int = 0
+		for a in allies:
+			if a != null and is_instance_valid(a) and a is Node2D:
+				sum += (a as Node2D).global_position
+				cnt += 1
+		if cnt > 0:
+			launch_pos = sum / float(cnt)
+	# 发射点抬高到阵地上方（导弹从"发射井"升起的感觉）
+	launch_pos = Vector2(launch_pos.x, launch_pos.y - 80.0)
+	# v9.5: 飞行弹体贴图（玩家=我方核导弹；敌方复用同一弹体但染红橙）
+	var missile_tex: Texture2D = _load_projectile_texture("ult_nuke_player")
+	var missile_tint: Color = Color(0.7, 0.85, 1.0) if owner == Owner.PLAYER else Color(1.0, 0.4, 0.2)
+	var missile_trail: Color = Color(1.0, 0.7, 0.3, 0.95) if owner == Owner.PLAYER else Color(1.0, 0.35, 0.15, 0.95)
 	for e in targets:
 		if e == null or not is_instance_valid(e):
 			continue
 		var epos: Vector2 = (e as Node2D).global_position if e is Node2D else Vector2.ZERO
 		# 第一阶段：标记（立即出现，提示轰炸即将命中）
 		PhaseLawCastEffect.create_phase_law_effect(_battlefield, epos, mark_color)
-		# 第二阶段：延迟核爆 + 伤害结算（用 tween，避免阻塞；结算时复查有效性）
+		# v9.5: 发射核导弹弹道（arc 抛物线，飞行 mark_delay 秒），到达时触发核爆 + 伤害
 		var captured_enemy = e
 		var captured_pos = epos
-		var tw := _battlefield.create_tween()
-		tw.tween_interval(mark_delay)
-		tw.tween_callback(func():
+		var captured_owner = owner
+		var captured_dmg = base_dmg
+		var captured_nuke_tex = nuke_textures
+		var captured_nuke_colors = nuke_colors
+		var captured_fired = fired_impact  # 注意：bool 按值拷贝，回调内修改不影响外层
+		# 每发导弹错开 0.06s（多点核爆=多枚导弹依次发射，齐射感）
+		var launch_delay: float = float(targets.find(e)) * 0.06
+		var captured_launch = launch_pos
+		var captured_missile_tex = missile_tex
+		var captured_missile_tint = missile_tint
+		var captured_missile_trail = missile_trail
+		var tw_launch := _battlefield.create_tween()
+		tw_launch.tween_interval(launch_delay)
+		tw_launch.tween_callback(func():
 			if _battlefield == null or not is_instance_valid(_battlefield):
 				return
-			# 延迟后目标可能已死亡/移除，跟踪其当前位置
-			var cur_pos: Vector2 = captured_pos
-			if is_instance_valid(captured_enemy) and captured_enemy is Node2D:
-				cur_pos = (captured_enemy as Node2D).global_position
-			# 完整核爆效果（火球+冲击波+蘑菇云帧动画+焦痕），复用战术核武同一套 VFX
-			# 核子轰炸=全域多点核爆，每个敌方位置都打；全局闪白/震屏由 BattleSpectacle 首次触发
-			# size_scale=0.6：多点核爆每个缩小（半径200→120/余波320→192），避免视觉覆盖到靠近的我方单位
-			VfxImpactFactory.spawn_nuclear_explosion(_battlefield, cur_pos, nuke_textures, nuke_colors, 0.6)
-			if is_instance_valid(captured_enemy):
-				CombatFeedback.show_damage(cur_pos, base_dmg, captured_enemy, true, "critical")
-				if captured_enemy.has_method("take_damage"):
-					captured_enemy.take_damage(base_dmg, null)
-			# v8.1: 首次爆炸时 emit impact 信号（供 BattleSpectacle 白闪定帧）
-			if not fired_impact:
-				fired_impact = true
-				_emit_ability_triggered("nuclear_bombardment", "impact",
-					{"position": cur_pos, "damage": base_dmg, "is_enemy": owner == Owner.ENEMY})
+			VfxImpactFactory.spawn_ultimate_projectile(_battlefield, captured_launch, captured_pos, captured_missile_tex, "arc", 52.0, captured_missile_tint, captured_missile_trail, mark_delay,
+				func(land_pos: Vector2):
+					if _battlefield == null or not is_instance_valid(_battlefield):
+						return
+					# 延迟后目标可能已死亡/移除，跟踪其当前位置
+					var cur_pos: Vector2 = land_pos
+					if is_instance_valid(captured_enemy) and captured_enemy is Node2D:
+						cur_pos = (captured_enemy as Node2D).global_position
+					# 完整核爆效果（火球+冲击波+蘑菇云帧动画+焦痕），复用战术核武同一套 VFX
+					VfxImpactFactory.spawn_nuclear_explosion(_battlefield, cur_pos, captured_nuke_tex, captured_nuke_colors, 0.6)
+					if is_instance_valid(captured_enemy):
+						CombatFeedback.show_damage(cur_pos, captured_dmg, captured_enemy, true, "critical")
+						if captured_enemy.has_method("take_damage"):
+							captured_enemy.take_damage(captured_dmg, null)
+			)
 		)
+	# v8.1: impact 信号延迟到首枚导弹落地后（mark_delay + 0.06s 首发延迟）
+	var tw_impact := _battlefield.create_tween()
+	tw_impact.tween_interval(mark_delay + 0.06)
+	tw_impact.tween_callback(func():
+		if not fired_impact:
+			fired_impact = true
+			_emit_ability_triggered("nuclear_bombardment", "impact",
+				{"position": first_pos, "damage": base_dmg, "is_enemy": owner == Owner.ENEMY})
+	)
 	# 全屏震动（与标记同步出现，强化预警冲击）
 	_trigger_screen_shake(10.0, 0.6)
 	_show_toast(_owner_msg(owner,
@@ -528,6 +584,12 @@ static func _apply_mega_shield(owner: Owner, params: Dictionary) -> void:
 			u.add_shield(shield_amount)
 		if u is Node2D:
 			_create_shield_dome((u as Node2D).global_position, owner)
+	# v9.3c: 战场中央专属护盾贴图（owner 配色：玩家蓝青/敌方红橙）
+	var shield_tex: Texture2D = _load_spell_texture("player_shield")
+	if shield_tex != null and _battlefield is Node2D and not allies.is_empty():
+		var center: Vector2 = (allies[0] as Node2D).global_position if allies[0] is Node2D else (_battlefield as Node2D).global_position
+		var shield_tint: Color = Color(0.3, 0.7, 1.0) if owner == Owner.PLAYER else Color(1.0, 0.35, 0.2)
+		VfxImpactFactory.spawn_spell_burst(_battlefield, center, shield_tex, shield_tint, 260.0, 1.2)
 	_trigger_screen_shake(6.0, 0.4)
 
 # ── 狂暴（periodic，临时提升 allies 攻击/攻速；自敌方版搬入）──
@@ -568,6 +630,18 @@ static func _activate_rage_buff(owner: Owner, params: Dictionary) -> void:
 		"spd_mult": spd_mult,
 	}
 	_trigger_screen_shake(8.0, 0.5)
+	# v9.3c: 专属狂暴贴图（每个 ally 位置金红光环，owner 配色）
+	var rage_tex: Texture2D = _load_spell_texture("player_rage")
+	if rage_tex != null and _battlefield is Node2D:
+		var rage_tint: Color = Color(1.0, 0.7, 0.2) if owner == Owner.PLAYER else Color(1.0, 0.3, 0.15)
+		var spawned: int = 0
+		for u in allies:
+			if spawned >= 6:
+				break
+			if u == null or not is_instance_valid(u) or not (u is Node2D):
+				continue
+			VfxImpactFactory.spawn_spell_burst(_battlefield, (u as Node2D).global_position, rage_tex, rage_tint, 170.0, 0.7)
+			spawned += 1
 	_show_toast(_owner_msg(owner,
 		"🔥 相位仪激活狂暴！我方攻击力飙升！",
 		"🔥 敌方相位仪激活狂暴！敌兵攻击力飙升！"))
@@ -653,6 +727,29 @@ static func _show_toast(msg: String) -> void:
 		SignalBus.show_toast.emit(msg)
 
 ## v8.1: emit 相位仪能力触发信号（供 BattleSpectacle 编排全屏演出）
+## v9.3c: 懒加载我方能力专属贴图（assets/effects/spell_burst/player_*）。缺失返回 null。
+static func _load_spell_texture(name_id: String) -> Texture2D:
+	if _spell_texture_cache.has(name_id):
+		return _spell_texture_cache[name_id]
+	var path := "res://assets/effects/spell_burst/" + name_id + ".png"
+	var tex: Texture2D = null
+	if ResourceLoader.exists(path):
+		tex = load(path)
+	_spell_texture_cache[name_id] = tex
+	return tex
+
+## v9.5: 懒加载大招飞行弹体贴图（assets/effects/ultimate_projectiles/）。缺失返回 null。
+static var _projectile_texture_cache: Dictionary = {}
+static func _load_projectile_texture(name_id: String) -> Texture2D:
+	if _projectile_texture_cache.has(name_id):
+		return _projectile_texture_cache[name_id]
+	var path := "res://assets/effects/ultimate_projectiles/" + name_id + ".png"
+	var tex: Texture2D = null
+	if ResourceLoader.exists(path):
+		tex = load(path)
+	_projectile_texture_cache[name_id] = tex
+	return tex
+
 static func _emit_ability_triggered(ability_id: String, stage: String, params: Dictionary = {}) -> void:
 	# v9.2: 同 _show_toast，改用 autoload 全局名 SignalBus。
 	if Engine.get_main_loop() != null:

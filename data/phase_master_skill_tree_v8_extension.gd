@@ -219,7 +219,7 @@ const EXTENSION_NODES: Dictionary = {
 		 "unlocks": [{"type": "unit_mechanism", "id": "drone_mark"}],
 		 "effects": {}},
 		# tier 6：焚城（卡片技能——全图火焰轰炸）
-		{"id": "pms_cw_6", "name": "焚城", "desc": "解锁卡片技能「全图火焰轰炸」：每 100s 全图 250 火伤+燃烧",
+		{"id": "pms_cw_6", "name": "焚城", "desc": "解锁卡片技能「全图火焰轰炸」：每 60s 全图 250 火伤+燃烧",
 		 "branch": BRANCH_CONCEPT_WEAPON, "tier": 6, "cost": 3, "requires": ["pms_cw_5"],
 		 "unlocks": [{"type": "card_skill", "id": "cps_burn_city"}],
 		 "effects": {}},

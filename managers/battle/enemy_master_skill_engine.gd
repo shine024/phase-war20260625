@@ -19,6 +19,21 @@ extends RefCounted
 
 const VfxImpactFactory = preload("res://scripts/battle/vfx_impact_factory.gd")
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
+const DT = preload("res://resources/design_tokens.gd")
+
+## v9.3: 敌方相位师大招差异化演出
+## 背景：原 6 个 _exec_* 全部走通用程序化 VFX（同质化冲击波环），玩家无法区分
+## void_apocalypse / hell_inferno / tesla_chain 等不同大招。
+## v9.3c: 每类大招接入 AI 生成的专属贴图（spawn_spell_burst），对齐核子轰炸表现力。
+##   核爆贴图只用给核爆类技能，不滥用到其他语义大招。
+## 全屏演出经 SignalBus.phase_instrument_ability_triggered 委托 BattleSpectacle（职责分离）。
+##
+## 贴图懒加载缓存（首次需要时加载，后续命中复用）。ResourceLoader.exists 守卫缺失贴图。
+var _nuke_texture_cache: Dictionary = {}
+## v9.3c: 大招专属贴图缓存（assets/effects/spell_burst/，AI 生成 + 抠图）
+var _spell_texture_cache: Dictionary = {}
+## v9.5: 大招飞行弹体贴图缓存（assets/effects/ultimate_projectiles/，AI 生成 + 抠图）
+var _projectile_texture_cache: Dictionary = {}
 
 ## boss driver 引用（取 active_spells + stats + 全局位置）
 var _driver: Node = null
@@ -275,6 +290,11 @@ func on_boss_destroyed() -> void:
 		# death_explosion：死亡时对全场玩家造成一次大伤害 + 爆炸 VFX
 		if effect.find("death") >= 0 and (effect.find("explosion") >= 0 or effect.find("blast") >= 0):
 			var dmg_mult: float = float(params.get("damage_mult", 2.0))
+			# [NUKE-DIAG] BOSS 死亡爆炸——这是"敌方死→玩家伤"的唯一活跃路径，
+			# VFX(橙红冲击波)与玩家核爆高度重合，是"核爆波及我方"的最可能根因
+			if OS.is_debug_build():
+				var _diag_targets: Array = _get_player_units()
+				print("[NUKE-DIAG] BOSS死亡爆炸触发！effect=%s dmg_mult=%.1f 将对%d个玩家单位造成AOE伤害" % [effect, dmg_mult, _diag_targets.size()])
 			_exec_aoe_damage(dmg_mult, name_text)
 			# 中心大爆炸 VFX
 			if _battlefield != null and is_instance_valid(_battlefield):
@@ -307,6 +327,8 @@ func _trigger_spell(spell: Dictionary) -> void:
 	var name_text: String = String(spell.get("name", effect))
 	# 伤害倍率（默认 1.0，可被 params.damage_mult 覆盖）
 	var dmg_mult: float = float(params.get("damage_mult", 1.0))
+	# v9.3: 差异化演出（在伤害结算前触发，给玩家预警反应时间）
+	_play_spell_cinematic(effect, name_text, params)
 	# 按关键字聚类（顺序敏感：先匹配更具体的）
 	if _is_aoe_effect(effect):
 		_exec_aoe_damage(dmg_mult, name_text)
@@ -375,6 +397,341 @@ func _is_single_target_effect(effect: String) -> bool:
 		if effect.find(k) >= 0:
 			return true
 	return false
+
+# ─────────────────────────────────────────────
+#  v9.3: 差异化演出分流（在伤害结算前触发）
+# ─────────────────────────────────────────────
+
+## 按 effect 语义判定演出类别，触发对应的局部 VFX + 全屏演出。
+## 局部 VFX 直接调 VfxImpactFactory；全屏演出经 SignalBus 委托 BattleSpectacle。
+## 性能：每次大招只 emit 一次全屏信号；局部 VFX 复用对象池；尊重 motion_reduce。
+func _play_spell_cinematic(effect: String, name_text: String, _params: Dictionary) -> void:
+	if DT.is_motion_reduce():
+		return  # 减动效：跳过全部演出（伤害结算不受影响）
+	if _battlefield == null or not is_instance_valid(_battlefield):
+		return
+	# 天降毁灭类（void_apocalypse / meteor_apocalypse / orbital_bombard / abyss / bombard_explosion）
+	if _is_cinematic_apocalypse(effect):
+		_play_apocalypse_cinematic(effect, name_text)
+	# 地狱火焰类（hell_inferno / napalm / meteor_flame / hellfire_explosion）
+	elif _is_cinematic_inferno(effect):
+		_play_inferno_cinematic(effect, name_text)
+	# 连锁闪电类（tesla_chain / chain_lightning / thunderstorm / thunder / lightning_chain）
+	elif _is_cinematic_chain(effect):
+		_play_chain_cinematic(effect, name_text)
+	# 单体打击类（god_weapon_single / devour_single）
+	elif _is_single_target_effect(effect):
+		_play_single_target_cinematic(effect, name_text)
+	# 召唤/传送类（mech_deploy / forge_summon / deploy_legion / summon）
+	elif _is_summon_effect(effect):
+		_play_summon_cinematic(effect, name_text)
+	# debuff 类（darkness / emp / weakness）
+	elif _is_debuff_effect(effect):
+		_play_debuff_cinematic(effect, name_text)
+
+# ── 演出类别判定 ──
+
+func _is_cinematic_apocalypse(effect: String) -> bool:
+	# 注：用 "meteor_apocalypse" 而非裸 "meteor"，避免误命中 meteor_flame（归 inferno 类）
+	for k in ["apocalypse", "orbital_bombard", "bombard_explosion", "void_explosion", "meteor_apocalypse"]:
+		if effect.find(k) >= 0:
+			return true
+	return false
+
+func _is_cinematic_inferno(effect: String) -> bool:
+	for k in ["inferno", "napalm", "meteor_flame", "hellfire"]:
+		if effect.find(k) >= 0:
+			return true
+	return false
+
+func _is_cinematic_chain(effect: String) -> bool:
+	for k in ["chain", "tesla", "thunder", "lightning"]:
+		if effect.find(k) >= 0:
+			return true
+	return false
+
+# ── 各类演出实现 ──
+
+## A. 天降毁灭：全屏暗红预警 + 飞行弹体从天而降（不同 effect 不同弹体/配色）+ 落地爆炸。
+## v9.5: 从"原地能量光柱"升级为"有飞行弹道"——陨石/轨道弹/虚空球从屏幕外飞到目标点再爆炸，更写实。
+## 覆盖 void_apocalypse(×6)/meteor_apocalypse(×3)/orbital_bombard/abyss/bombard 等 11 个 boss 大招。
+func _play_apocalypse_cinematic(effect: String, name_text: String) -> void:
+	var title: String = "陨石雨"
+	if effect.find("void") >= 0:
+		title = "虚空灾变"
+	elif effect.find("orbital") >= 0 or effect.find("bombard") >= 0:
+		title = "轨道轰炸"
+	elif effect.find("abyss") >= 0:
+		title = "深渊降临"
+	# 按 effect 类型选飞行弹体 + 配色 + 拖尾色（针对性区分）
+	var proj_id: String = "ult_meteor"  # 默认陨石
+	var proj_tint: Color = Color(1.0, 0.5, 0.2)  # 橙红
+	var trail_color: Color = Color(1.0, 0.6, 0.2, 0.9)
+	var burst_id: String = "apocalypse_meteor"
+	var burst_tint: Color = Color(1.0, 0.5, 0.2)
+	if effect.find("void") >= 0 or effect.find("abyss") >= 0:
+		proj_id = "ult_void_orb"
+		proj_tint = Color(0.75, 0.25, 1.0)
+		trail_color = Color(0.75, 0.3, 1.0, 0.9)
+		burst_id = "apocalypse_void"
+		burst_tint = Color(0.75, 0.25, 1.0)
+	elif effect.find("orbital") >= 0 or effect.find("bombard") >= 0:
+		proj_id = "ult_orbital"
+		proj_tint = Color(0.5, 0.85, 1.0)
+		trail_color = Color(0.5, 0.85, 1.0, 0.9)
+	# 全屏预警（委托 BattleSpectacle）
+	_emit_cinematic("enemy_spell_apocalypse", "warning", {"title": "%s·%s" % [name_text, title]})
+	_flash_driver_on_cast(0.7)  # boss 本体施法闪光（紫红调，大招峰值）
+	var boss_pos: Vector2 = _get_driver_pos()
+	var proj_tex: Texture2D = _load_projectile_texture(proj_id)
+	var burst_tex: Texture2D = _load_spell_texture(burst_id)
+	# boss 位置：一发大弹体从正上方高空垂直落下 → 落地大爆炸（on_arrival 回调触发）
+	var sky_height: float = 500.0  # 起点在目标上方 500px（屏幕外高空）
+	var boss_from: Vector2 = Vector2(boss_pos.x, boss_pos.y - sky_height)
+	VfxImpactFactory.spawn_ultimate_projectile(_battlefield, boss_from, boss_pos, proj_tex, "vertical", 64.0, proj_tint, trail_color, 0.55,
+		func(land_pos: Vector2):
+			if _battlefield == null or not is_instance_valid(_battlefield):
+				return
+			# 落地：冲击波 + 大爆炸贴图（替代原能量光柱）
+			VfxImpactFactory.spawn_shockwave(_battlefield, land_pos, 150.0, Color(proj_tint.r, proj_tint.g, proj_tint.b, 0.7))
+			if burst_tex != null:
+				VfxImpactFactory.spawn_spell_burst(_battlefield, land_pos, burst_tex, burst_tint, 360.0, 0.9)
+	)
+	# 各玩家单位位置：小弹体从高空垂直落下（节流：最多 6 个目标，分时延迟避免同时糊屏）
+	var spawned: int = 0
+	for t in _get_player_units():
+		if spawned >= 6:
+			break
+		if t == null or not is_instance_valid(t) or not (t is Node2D):
+			continue
+		var tpos: Vector2 = (t as Node2D).global_position
+		var t_from: Vector2 = Vector2(tpos.x, tpos.y - sky_height)
+		# 错开 0.08s 让弹体依次落下（地毯轰炸感），而非同时
+		var delay: float = float(spawned) * 0.08
+		var captured_tpos: Vector2 = tpos
+		var captured_delay: float = delay
+		var tw_d := _battlefield.create_tween()
+		tw_d.tween_interval(captured_delay)
+		tw_d.tween_callback(func():
+			VfxImpactFactory.spawn_ultimate_projectile(_battlefield, Vector2(captured_tpos.x, captured_tpos.y - sky_height), captured_tpos, proj_tex, "vertical", 40.0, proj_tint, trail_color, 0.45,
+				func(lp: Vector2):
+					if _battlefield == null or not is_instance_valid(_battlefield):
+						return
+					VfxImpactFactory.spawn_shockwave(_battlefield, lp, 80.0, Color(proj_tint.r * 0.8, proj_tint.g * 0.8, proj_tint.b * 0.8, 0.8))
+			)
+		)
+		spawned += 1
+	# impact 信号延迟到主弹体落地后（0.55s），与爆炸同步
+	var tw_impact := _battlefield.create_tween()
+	tw_impact.tween_interval(0.55)
+	tw_impact.tween_callback(func():
+		_emit_cinematic("enemy_spell_apocalypse", "impact", {})
+		_trigger_screen_shake(9.0, 0.55)
+	)
+
+## B. 地狱火焰：燃烧弹从侧方低空俯冲飞入 → 落地火焰爆炸 + 橙红烟柱。
+## v9.5: 从"原地火球"升级为"空投燃烧弹弹道"，体现"从天投下火海"的写实感。
+## 覆盖 hell_inferno(×2)/napalm/meteor_flame/hellfire_explosion 5 个 boss 大招。
+func _play_inferno_cinematic(_effect: String, name_text: String) -> void:
+	_emit_cinematic("enemy_spell_inferno", "warning", {"title": "%s·地狱烈焰" % name_text})
+	_flash_driver_on_cast(0.65, Color(1.0, 0.4, 0.15))  # boss 本体施法闪光（橙红调）
+	var boss_pos: Vector2 = _get_driver_pos()
+	var hell_tex: Texture2D = _load_spell_texture("inferno_hell")
+	var bomb_tex: Texture2D = _load_projectile_texture("ult_inferno_bomb")
+	var bomb_tint: Color = Color(1.0, 0.4, 0.15)
+	var trail_color: Color = Color(1.0, 0.35, 0.1, 0.95)  # 火焰拖尾
+	# boss 位置：大燃烧弹从侧方高空俯冲 → 落地大火球 + 烟柱
+	# 起点在 boss 左上方屏幕外（dive 轨迹=低空俯冲，体现"空投"）
+	var bomb_from: Vector2 = Vector2(boss_pos.x - 350.0, boss_pos.y - 400.0)
+	VfxImpactFactory.spawn_ultimate_projectile(_battlefield, bomb_from, boss_pos, bomb_tex, "dive", 56.0, bomb_tint, trail_color, 0.5,
+		func(land_pos: Vector2):
+			if _battlefield == null or not is_instance_valid(_battlefield):
+				return
+			# 落地：大火球爆炸 + 冲击波 + 烟柱（火焰蔓延感）
+			if hell_tex != null:
+				VfxImpactFactory.spawn_spell_burst(_battlefield, land_pos, hell_tex, Color(1.0, 0.3, 0.1), 340.0, 0.9)
+			VfxImpactFactory.spawn_shockwave(_battlefield, land_pos, 120.0, Color(1.0, 0.35, 0.1, 0.9))
+			VfxImpactFactory.spawn_smoke_column(_battlefield, land_pos, Color(0.85, 0.30, 0.10, 0.7))
+	)
+	# 各玩家位置：小燃烧弹依次俯冲（节流：最多 6 个，分时延迟）
+	var spawned: int = 0
+	for t in _get_player_units():
+		if spawned >= 6:
+			break
+		if t == null or not is_instance_valid(t) or not (t is Node2D):
+			continue
+		var tpos: Vector2 = (t as Node2D).global_position
+		var t_from: Vector2 = Vector2(tpos.x - 200.0, tpos.y - 300.0)
+		var delay: float = 0.15 + float(spawned) * 0.1  # boss 落地后 0.15s 开始，每个间隔 0.1s
+		var captured_tpos: Vector2 = tpos
+		var captured_from: Vector2 = t_from
+		var captured_delay: float = delay
+		var tw_d := _battlefield.create_tween()
+		tw_d.tween_interval(captured_delay)
+		tw_d.tween_callback(func():
+			VfxImpactFactory.spawn_ultimate_projectile(_battlefield, captured_from, captured_tpos, bomb_tex, "dive", 36.0, bomb_tint, trail_color, 0.4,
+				func(lp: Vector2):
+					if _battlefield == null or not is_instance_valid(_battlefield):
+						return
+					if hell_tex != null:
+						VfxImpactFactory.spawn_spell_burst(_battlefield, lp, hell_tex, Color(1.0, 0.35, 0.12), 150.0, 0.6)
+					else:
+						VfxImpactFactory.spawn_shockwave(_battlefield, lp, 85.0, Color(1.0, 0.4, 0.12, 0.9))
+			)
+		)
+		spawned += 1
+	# impact 信号延迟到 boss 燃烧弹落地后（0.5s）
+	var tw_impact := _battlefield.create_tween()
+	tw_impact.tween_interval(0.5)
+	tw_impact.tween_callback(func():
+		_emit_cinematic("enemy_spell_inferno", "impact", {})
+		_trigger_screen_shake(8.0, 0.5)
+	)
+
+## C. 连锁闪电：boss 起手蓝白能量爆发 + 全屏蓝紫微闪。
+## 覆盖 tesla_chain(×5)/chain_lightning(×3)/thunderstorm/thunder/lightning_chain 11 个 boss 大招。
+func _play_chain_cinematic(_effect: String, name_text: String) -> void:
+	# v9.3b: 升级为带标题的全屏预警（原 quick_flash 太短促无标题，玩家不知道发生了什么）
+	_emit_cinematic("enemy_spell_chain", "warning", {"title": "%s·连锁闪电" % name_text})
+	_flash_driver_on_cast(0.65)  # boss 本体施法闪光（蓝白调）
+	# boss 起手蓝白能量爆发环（三层递进，强化"蓄力→释放"感）
+	var boss_pos: Vector2 = _get_driver_pos()
+	VfxImpactFactory.spawn_shockwave(_battlefield, boss_pos, 70.0, Color(0.6, 0.85, 1.0, 1.0))
+	VfxImpactFactory.spawn_shockwave(_battlefield, boss_pos, 120.0, Color(0.45, 0.7, 1.0, 0.8))
+	VfxImpactFactory.spawn_shockwave(_battlefield, boss_pos, 180.0, Color(0.3, 0.55, 1.0, 0.5))
+	# v9.3c: boss 位置专属闪电贴图爆炸（蓝白调）
+	var chain_tex: Texture2D = _load_spell_texture("chain_lightning")
+	if chain_tex != null:
+		VfxImpactFactory.spawn_spell_burst(_battlefield, boss_pos, chain_tex, Color(0.5, 0.75, 1.0), 300.0, 0.7)
+	_emit_cinematic("enemy_spell_chain", "impact", {})
+	_trigger_screen_shake(7.0, 0.45)
+
+## D. 单体打击：神罚光矛从天垂直劈下 → 命中激光+穿甲光线 + 全屏红色锁定闪。
+## v9.5: 加垂直下劈弹道（ult_divine_spear 从目标正上方落下），强化"神罚降临"的写实飞行过程。
+##   原来的 boss→目标激光线保留作为"命中瞬间的能量贯穿"，与光矛弹道形成"下劈→贯穿"层次。
+## 覆盖 god_weapon_single(×4)/devour_single(×4) 8 个 boss 大招。
+func _play_single_target_cinematic(_effect: String, name_text: String) -> void:
+	_emit_cinematic("enemy_spell_single", "warning", {"title": "%s·精准打击" % name_text})
+	_flash_driver_on_cast(0.7)  # boss 本体施法闪光（红紫调）
+	# 找 HP 最高目标（与 _exec_single_target 同款选法），预打激光
+	var best: Node = null
+	var best_hp: float = -1.0
+	for t in _get_player_units():
+		if t == null or not is_instance_valid(t):
+			continue
+		var t_hp: float = float(t.get("hp")) if "hp" in t else 0.0
+		if t_hp > best_hp:
+			best_hp = t_hp
+			best = t
+	if best == null or not (best is Node2D):
+		return
+	var boss_pos: Vector2 = _get_driver_pos()
+	var tpos: Vector2 = (best as Node2D).global_position
+	# 目标锁定双层环（预警，立即出现）
+	VfxImpactFactory.spawn_shockwave(_battlefield, tpos, 80.0, Color(1.0, 0.3, 0.7, 0.95))
+	VfxImpactFactory.spawn_shockwave(_battlefield, tpos, 120.0, Color(0.9, 0.2, 0.6, 0.5))
+	# v9.5: 神罚光矛从目标正上方垂直劈下（0.4s 飞行），到达时触发激光+穿甲+震屏
+	var spear_tex: Texture2D = _load_projectile_texture("ult_divine_spear")
+	var spear_from: Vector2 = Vector2(tpos.x, tpos.y - 450.0)  # 正上方高空
+	var captured_boss_pos: Vector2 = boss_pos
+	var captured_tpos: Vector2 = tpos
+	VfxImpactFactory.spawn_ultimate_projectile(_battlefield, spear_from, tpos, spear_tex, "vertical", 50.0, Color(1.0, 0.85, 0.5), Color(1.0, 0.85, 0.4, 0.95), 0.4,
+		func(land_pos: Vector2):
+			if _battlefield == null or not is_instance_valid(_battlefield):
+				return
+			# 光矛落地：主激光（boss→命中点，红紫能量贯穿）+ 命中点穿甲光线（垂直下劈）
+			VfxImpactFactory.spawn_laser_beam(_battlefield, captured_boss_pos, land_pos, Color(1.0, 0.3, 0.85, 1.0))
+			var strike_dir: Vector2 = (land_pos - captured_boss_pos)
+			if strike_dir.length_squared() < 1.0:
+				strike_dir = Vector2.DOWN
+			VfxImpactFactory.spawn_pierce_beam(_battlefield, land_pos, strike_dir, Color(1.0, 0.3, 0.8, 1.0), true, 1.4)
+			_emit_cinematic("enemy_spell_single", "impact", {})
+			_trigger_screen_shake(8.0, 0.4)
+	)
+
+## E. 召唤/传送：boss 基地紫色螺旋传送门 + 全屏紫雾微闪。
+## 覆盖 mech_deploy(×2)/forge_summon(×2)/deploy_legion 5 个 boss 大招。
+func _play_summon_cinematic(_effect: String, name_text: String) -> void:
+	_emit_cinematic("enemy_spell_summon", "warning", {"title": "%s·召唤援军" % name_text})
+	_flash_driver_on_cast(0.6, Color(0.7, 0.3, 1.0))  # boss 本体施法闪光（紫调）
+	var boss_pos: Vector2 = _get_driver_pos()
+	# v9.3c: 专属传送门贴图（紫绿调，叠加在程序化螺旋环上）
+	var portal_tex: Texture2D = _load_spell_texture("summon_portal")
+	if portal_tex != null:
+		VfxImpactFactory.spawn_spell_burst(_battlefield, boss_pos, portal_tex, Color(0.7, 0.35, 1.0), 280.0, 1.0)
+	VfxImpactFactory.spawn_summon_portal(_battlefield, boss_pos, Color(0.7, 0.3, 1.0, 0.9), 0.9)
+
+## F. debuff：全屏对应色调暗化 + 目标头顶紫色减益标记。
+## 覆盖 darkness_debuff/emp_pulse/emp_debuff/weakness_debuff 7 个 boss 大招。
+func _play_debuff_cinematic(effect: String, name_text: String) -> void:
+	var debuff_kind: String = "weakness"
+	var title_suffix: String = "虚弱"
+	if effect.find("dark") >= 0:
+		debuff_kind = "darkness"
+		title_suffix = "黑暗降临"
+	elif effect.find("emp") >= 0:
+		debuff_kind = "emp"
+		title_suffix = "电磁干扰"
+	# v9.3b: 升级为带标题全屏预警 + boss 本体施法闪光
+	_emit_cinematic("enemy_spell_debuff", "warning", {"debuff_kind": debuff_kind, "title": "%s·%s" % [name_text, title_suffix]})
+	_flash_driver_on_cast(0.55)  # boss 本体施法闪光（按 debuff 类别调色）
+	# v9.3c: darkness 类 debuff 叠加专属黑暗笼罩贴图（boss 位置）
+	if debuff_kind == "darkness":
+		var dark_tex: Texture2D = _load_spell_texture("debuff_dark")
+		if dark_tex != null:
+			VfxImpactFactory.spawn_spell_burst(_battlefield, _get_driver_pos(), dark_tex, Color(0.4, 0.15, 0.6), 380.0, 1.2)
+
+# ── 演出辅助 ──
+
+## v9.3b: boss 放大招时本体施法闪光（让玩家感知"是 boss 在放技能"）。
+## 调 driver 的 _flash_body_on_buff（加 intensity 参数控制峰值亮度）。
+## intensity: 闪光峰值 0-1（默认 0.65，大招级；被动 buff 原 0.3）。
+## tint: 可选闪光色调（默认白色=纯变亮；传橙/紫等让闪光带技能配色）。
+func _flash_driver_on_cast(intensity: float = 0.65, tint: Color = Color.WHITE) -> void:
+	if _driver == null or not is_instance_valid(_driver):
+		return
+	if _driver.has_method("_flash_body_on_buff"):
+		_driver._flash_body_on_buff(intensity, tint)
+
+## emit 全屏演出信号（委托 BattleSpectacle）。每次大招只调用一次。
+func _emit_cinematic(ability_id: String, stage: String, params: Dictionary) -> void:
+	if Engine.get_main_loop() != null:
+		SignalBus.phase_instrument_ability_triggered.emit(ability_id, stage, params)
+
+## 懒加载核爆贴图（缓存，缺失返回 null）。
+func _load_nuke_texture(name_id: String) -> Texture2D:
+	if _nuke_texture_cache.has(name_id):
+		return _nuke_texture_cache[name_id]
+	var path := "res://assets/effects/nuclear/" + name_id + ".png"
+	var tex: Texture2D = null
+	if ResourceLoader.exists(path):
+		tex = load(path)
+	_nuke_texture_cache[name_id] = tex  # null 也缓存（缺失贴图不重复 load）
+	return tex
+
+## v9.3c: 懒加载大招专属贴图（assets/effects/spell_burst/，AI 生成 + 抠图）。
+## 缺失返回 null（调用方有 null 守卫，缺失时回退纯程序化 VFX，向后兼容）。
+func _load_spell_texture(name_id: String) -> Texture2D:
+	if _spell_texture_cache.has(name_id):
+		return _spell_texture_cache[name_id]
+	var path := "res://assets/effects/spell_burst/" + name_id + ".png"
+	var tex: Texture2D = null
+	if ResourceLoader.exists(path):
+		tex = load(path)
+	_spell_texture_cache[name_id] = tex
+	return tex
+
+## v9.5: 懒加载大招飞行弹体贴图（assets/effects/ultimate_projectiles/，AI 生成 + 抠图）。
+## 缺失返回 null（spawn_ultimate_projectile 有 null 守卫，回退激光线段，向后兼容）。
+func _load_projectile_texture(name_id: String) -> Texture2D:
+	if _projectile_texture_cache.has(name_id):
+		return _projectile_texture_cache[name_id]
+	var path := "res://assets/effects/ultimate_projectiles/" + name_id + ".png"
+	var tex: Texture2D = null
+	if ResourceLoader.exists(path):
+		tex = load(path)
+	_projectile_texture_cache[name_id] = tex
+	return tex
 
 # ─────────────────────────────────────────────
 #  通用执行函数

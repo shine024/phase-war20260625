@@ -45,15 +45,16 @@ func _ready() -> void:
 
 func _make_layer(wt: int) -> MultiMeshInstance2D:
 	var mmi := MultiMeshInstance2D.new()
-	mmi.texture = WeaponProjectileVfx.proj_texture(wt)
+	# v9.4: 程序化弹头多边形替代长条横向贴图（与 simple_enemy_projectile_batch 同步改造）。
+	# 原用 QuadMesh + weapon_*_projectile.png（横向长条），弹道斜向时视觉违和。
+	# 改用 7 点弹头 ArrayMesh（弹体矩形+弹头锥形，指向 +X，原点居中），
+	# Transform2D(dir.angle()) 旋转后任意角度自然对齐。纯色 + ADD 发光，无需贴图。
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_2D
 	mm.use_colors = true
-	var q := QuadMesh.new()
-	q.size = WeaponProjectileVfx.proj_quad_size(wt)
-	mm.mesh = q
+	mm.mesh = WeaponProjectileVfx.build_bullet_arraymesh(wt)
 	mmi.multimesh = mm
-	# v6.4: 发光叠加，让子弹贴图产生霓虹发光
+	# v6.4: 发光叠加，让弹头产生霓虹发光
 	var mat := CanvasItemMaterial.new()
 	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	mmi.material = mat
@@ -78,9 +79,9 @@ func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, shoo
 	d["max_dist"] = _max_dist_for(wt)
 	d["dir"] = Vector2.RIGHT
 	_proj.append(d)
-	# v9.2: 枪口火——batch 路径无 Bullet 节点，原本无开火反馈。玩家侧朝右。
-	# 节流：60% 抽样（与敌方 batch 一致），避免密集齐射时火花槽被枪口火打满挤压命中/暴击火花。
-	if not forced_miss and randf() < 0.6:
+	# v9.2/v9.4: 枪口火——batch 路径无 Bullet 节点，原本无开火反馈。玩家侧朝右。
+	# 节流：25% 抽样（v9.2 原 60%，v9.4 降到 25%，与敌方 batch 一致），减少密集齐射粒子污染。
+	if not forced_miss and randf() < 0.25:
 		VfxImpactFactory.spawn_muzzle_flash(self, from, true, wt)
 
 func clear_all() -> void:
@@ -186,7 +187,19 @@ func _apply_hit(r: Dictionary) -> void:
 	if bool(r.get("forced_miss", false)):
 		CombatFeedback.show_miss(tgt.global_position, tgt)
 	else:
-		WeaponProjectileVfx.spawn_impact_with_kind(self, hit_pos, wt, true, _tgt_kind)
+		# v9.4: power_tier 威力分级（直射轻武器 radius=0，tier 由 damage 决定）。
+		var _tier: int = WeaponProjectileVfx.compute_power_tier(wt, 0.0, float(r.get("dmg", 0.0)))
+		var _opts: Dictionary = {"power_tier": _tier}
+		WeaponProjectileVfx.spawn_impact_with_kind(self, hit_pos, wt, true, _tgt_kind, _opts)
+		# v9.4: 仅 HEAVY+ 档震屏（轻武器密集命中不震屏避免干扰；重型直射/核武才震）
+		if _tier >= 2:
+			var tree := get_tree()
+			var bm: Node = tree.root.get_node_or_null("BattleManager") if tree else null
+			if bm != null and is_instance_valid(bm) and bm.has_method("request_screen_shake"):
+				if _tier == 3:
+					bm.request_screen_shake(20.0, 0.8)
+				else:
+					bm.request_screen_shake(10.0, 0.45)
 	var raw: float = float(r["dmg"])
 	var shooter_raw: Variant = r["shooter"]
 	var shooter: Node2D = shooter_raw if shooter_raw != null and is_instance_valid(shooter_raw) and shooter_raw is Node2D else null

@@ -118,7 +118,7 @@ const SKILLS: Dictionary = {
 	"cps_burn_city": {
 		"id": "cps_burn_city", "name": "焚城",
 		"family": "flame", "is_ultimate": true,
-		"trigger": "periodic", "interval": 100.0,
+		"trigger": "periodic", "interval": 60.0,
 		"source_tag": "flame", "min_source_count": 1,
 		"effect": {
 			"type": "global_damage", "damage_flat": 250,

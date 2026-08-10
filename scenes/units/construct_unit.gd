@@ -637,6 +637,7 @@ func _update_hit_animations(delta: float) -> void:
 ## v6.6: 幻影克隆体入场脉冲——青色发光放大后回落，让玩家部署时立刻识别克隆体
 ## 基础半透明色调（青蓝 alpha 0.72）由 BattleSpawnSystem._apply_phantom_clone_buff 预设，
 ## 本方法仅播一次性入场脉冲，结束后回到该基础色调（非纯白）。
+## v9.4: 追加青色螺旋传送门式环形扩散（复用 spawn_summon_portal），让"幻影分裂生成"有可见的能量场。
 func _play_phantom_clone_spawn_pulse() -> void:
 	if not is_instance_valid(self) or is_preview_mode:
 		return
@@ -650,6 +651,10 @@ func _play_phantom_clone_spawn_pulse() -> void:
 	var start_scale := scale
 	tw.tween_property(self, "scale", start_scale * 1.18, 0.12).set_ease(Tween.EASE_OUT)
 	tw.chain().tween_property(self, "scale", start_scale, 0.25).set_ease(Tween.EASE_IN_OUT)
+	# v9.4: 克隆体脚下青色螺旋传送门（与克隆体青蓝配色统一，区别于普通部署的落地涟漪）
+	var vp: Node = get_parent()
+	if vp != null:
+		VfxImpactFactory.spawn_summon_portal(vp, global_position, Color(0.45, 0.85, 1.0, 0.9), 0.7)
 
 
 ## v6.14: 部署阵营泛光——实体化后单位泛出激活势力色，0.5s 渐隐回白
@@ -1940,7 +1945,10 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		var kb_str: float = 6.0 if (attacker.get("explosion_radius") != null and float(attacker.get("explosion_radius")) > 0.0) else 3.0
 		_trigger_hit_knockback(kb_dir, kb_str)
 		# v8.x: 命中点血溅粒子（沿弹道反向飞溅）——kb_dir 已是 attacker→unit 反向，复用作溅射方向
-		VfxImpactFactory.spawn_hit_blood(get_parent(), global_position, kb_dir, kb_str, true)
+		# v9.4: FORT（堡垒/导弹发射井）是固定高HP单位，前排持续承伤时血溅会堆积成杂乱粒子带；
+		# 堡垒受击应"沉闷"而非小兵式飞溅，降低血溅强度（粒子数减半）。
+		var blood_str: float = kb_str * 0.5 if _is_fort_aura_unit else kb_str
+		VfxImpactFactory.spawn_hit_blood(get_parent(), global_position, kb_dir, blood_str, true)
 	# v8.1: 血条受击闪白（接通 unit_hp_bar.trigger_damage_flash，原为未连线死功能）
 	var _hpbar := get_node_or_null("HpBar")
 	if _hpbar != null and _hpbar.has_method("trigger_damage_flash"):

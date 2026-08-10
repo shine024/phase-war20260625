@@ -593,6 +593,10 @@ func request_player_deploy(platform_card_id: String, world_pos: Vector2, battle_
 		unit.set_meta("card_grid_slot", deploy_slot_idx)
 	_player_units_node.add_child(unit)
 	unit.global_position = world_pos
+	# v9.4: 免能量部署反馈——deploy_cost_mult < 1.0 时（free_energy 生效）在单位位置播金色环形闪光，
+	# 让玩家感知"这部署没花能量/打折了"。金色=经济/免费语义，区别于部署落地涟漪的青蓝。
+	if deploy_cost_mult < 1.0 and unit is Node2D:
+		VfxImpactFactory.spawn_shockwave(_player_units_node, world_pos, 42.0, Color(1.0, 0.85, 0.3, 0.9))
 	if deploy_slot_idx >= 0 and _battlefield != null and _battlefield.has_method("snap_card_grid_unit") and unit is Node2D:
 		_battlefield.snap_card_grid_unit(unit as Node2D)
 	if unit.has_method("start_as_deploy_ghost"):

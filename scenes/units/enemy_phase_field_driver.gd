@@ -458,26 +458,35 @@ func _apply_trait_to_spawned_unit(unit: Node2D) -> void:
 
 ## v9.1: buff 应用时基地短暂变亮（0.4s 亮度脉冲），让玩家感知"boss 有被动/trait 加成"。
 ## 用 Tween 驱动 modulate 在 _base_body_tint ↔ 偏白之间往返，不与疲劳暗化冲突（基于 base tint 插值）。
-func _flash_body_on_buff() -> void:
+## v9.3b: 加 intensity（峰值亮度）+ tint（闪光色调）参数，供大招施法闪光复用。
+##   intensity 默认 0.3（buff 级，向后兼容）；大招传 0.55-0.7（更醒目）。
+##   tint 默认白色=纯变亮；传橙/紫/蓝等让闪光带技能配色。
+func _flash_body_on_buff(intensity: float = 0.3, tint: Color = Color.WHITE) -> void:
 	var spr: Sprite2D = get_node_or_null("Body") as Sprite2D
 	if spr == null:
 		return
 	if _buff_flash_tween != null and _buff_flash_tween.is_valid():
 		_buff_flash_tween.kill()
+	_flash_target_color = tint
+	var peak: float = clampf(intensity, 0.0, 0.95)
 	_buff_flash_tween = create_tween()
 	_buff_flash_tween.set_trans(Tween.TRANS_QUAD)
 	_buff_flash_tween.set_ease(Tween.EASE_OUT)
-	# 上升：0→0.3（变亮 30%），持续 0.15s
-	_buff_flash_tween.tween_method(_set_flash_modulate, 0.0, 0.3, 0.15)
-	# 下降：0.3→0（回归），持续 0.25s
-	_buff_flash_tween.tween_method(_set_flash_modulate, 0.3, 0.0, 0.25)
+	# 上升：0→peak（变亮），持续 0.15s（大招级加长到 0.2s 蓄力感）
+	var rise: float = 0.2 if peak > 0.4 else 0.15
+	_buff_flash_tween.tween_method(_set_flash_modulate, 0.0, peak, rise)
+	# 下降：peak→0（回归），持续 0.25s（大招级加长到 0.4s 余韵）
+	var fall: float = 0.4 if peak > 0.4 else 0.25
+	_buff_flash_tween.tween_method(_set_flash_modulate, peak, 0.0, fall)
 
-## v9.1: Tween 回调——按 t 在 [_base_body_tint, White] 之间插值设置 Body.modulate
+## v9.1: Tween 回调——按 t 在 [_base_body_tint, _flash_target_color] 之间插值设置 Body.modulate
+## v9.3b: 目标色可配（默认白色=原行为），让大招施法闪光带技能配色
+var _flash_target_color: Color = Color.WHITE
 func _set_flash_modulate(t: float) -> void:
 	var spr: Sprite2D = get_node_or_null("Body") as Sprite2D
 	if spr == null:
 		return
-	spr.modulate = _base_body_tint.lerp(Color.WHITE, t)
+	spr.modulate = _base_body_tint.lerp(_flash_target_color, t)
 
 func _apply_body_visual_from_master(master_config: Dictionary) -> void:
 	var spr := get_node_or_null("Body") as Sprite2D

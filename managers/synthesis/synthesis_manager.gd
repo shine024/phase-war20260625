@@ -72,16 +72,20 @@ func _get_faction_level(faction_id: String) -> int:
 func synthesize(card_id_a: String, card_id_b: String) -> Dictionary:
 	var check: Dictionary = can_synthesize(card_id_a, card_id_b)
 	if not check.get("ok", false):
-		synthesis_failed.emit(check.get("reason", "unknown"))
+		var reason: String = check.get("reason", "unknown")
+		synthesis_failed.emit(reason)
+		SignalBus.synthesis_failed.emit(reason)
 		return check
 	# 检查并消耗资源
 	var cost: Dictionary = SynthesisRecipes.get_synthesis_cost(check["base_card_id"], check["faction_a"], check["faction_b"])
 	var brm: Node = get_node_or_null("/root/BasicResourceManager")
 	if brm == null:
 		synthesis_failed.emit("economy_unavailable")
+		SignalBus.synthesis_failed.emit("economy_unavailable")
 		return {"ok": false, "reason": "economy_unavailable"}
 	if not _check_and_spend_cost(brm, cost):
 		synthesis_failed.emit("insufficient_resources")
+		SignalBus.synthesis_failed.emit("insufficient_resources")
 		return {"ok": false, "reason": "insufficient_resources", "cost": cost}
 	# 获取势力等级
 	var level_a: int = _get_faction_level(check["faction_a"])
@@ -92,6 +96,7 @@ func synthesize(card_id_a: String, card_id_b: String) -> Dictionary:
 		# 回滚资源消耗
 		_refund_cost(brm, cost)
 		synthesis_failed.emit("base_card_not_found")
+		SignalBus.synthesis_failed.emit("base_card_not_found")
 		return {"ok": false, "reason": "base_card_not_found"}
 	hybrid_cards.append(check["hybrid_id"])
 	# 存储重建配方（存档后可重建）
@@ -115,6 +120,7 @@ func synthesize(card_id_a: String, card_id_b: String) -> Dictionary:
 	if sm and sm.has_method("enqueue_backpack_card_id"):
 		sm.enqueue_backpack_card_id(enqueue_id)
 	synthesis_completed.emit(check["hybrid_id"])
+	SignalBus.synthesis_completed.emit(check["hybrid_id"])
 	return {"ok": true, "hybrid_card": hybrid_instance, "hybrid_id": check["hybrid_id"]}
 
 ## 检查并扣除合成资源（返回 false 表示资源不足）

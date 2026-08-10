@@ -16,6 +16,7 @@ const DT = preload("res://resources/design_tokens.gd")
 const CardGridLayout = preload("res://scripts/card_grid_battle_layout.gd")  # v9.2: 分行索敌行判定
 const CardGridUnitVisuals = preload("res://scripts/card_grid_unit_visuals.gd")  # v8.x: 战场卡图视觉数据（头脚锚点）
 const MuzzleAnchors = preload("res://data/muzzle_anchors.gd")  # 弹道/枪口锚点（独立二维）
+const PlayerMuzzleAnchors = preload("res://data/player_muzzle_anchors.gd")  # 我方卡头脚+开火点（117条，fireX已按我方朝左转换）
 
 ## v7.x: 光环/指挥单位的 platform_type 集合（与 construct_unit.gd 光环注册对齐）
 ## FORTRESS=3, RADAR=4, SCOUT=5, CARRIER=8, MEDIC=9, STEALTH=10, COMMAND=12
@@ -484,7 +485,17 @@ static func _get_direct_fire_spawn_pos(u: CharacterBody2D) -> Vector2:
 		unit_spr = u.get_node_or_null("Sprite") as Sprite2D
 	else:
 		unit_spr = u.get_node_or_null("Sprite2D") as Sprite2D
-	# 优先用 MuzzleAnchors：我方经 _visual_archetype_id 或 PLAYER_MIRROR_ARCHETYPE_BY_PLATFORM 反查
+	# v9.x: 我方单位优先用 PlayerMuzzleAnchors（按 card_id 直查，fireX 已按我方朝左图转换）
+	# 敌方仍走 MuzzleAnchors（按 archetype_id，敌原图朝右）
+	if u.is_player and u.stats != null:
+		var pcid: String = String(u.stats.platform_card_id)
+		if pcid.is_empty() and "card_id" in u.stats:
+			pcid = String(u.stats.card_id)
+		if not pcid.is_empty() and PlayerMuzzleAnchors.has_anchor(pcid):
+			var pm_offset: Vector2 = PlayerMuzzleAnchors.get_fire_offset(pcid, unit_spr)
+			if pm_offset != Vector2.ZERO:
+				return u.global_position + pm_offset
+	# 回退链：MuzzleAnchors（敌方 / 我方无专属标注时经 _visual_archetype_id 或 PLAYER_MIRROR 反查）
 	var aid: String = ""
 	if "_visual_archetype_id" in u:
 		aid = String(u.get("_visual_archetype_id"))
@@ -982,17 +993,28 @@ static func _play_muzzle_feedback(u: Node2D) -> void:
 	else:
 		unit_spr = u.get_node_or_null("Sprite2D") as Sprite2D
 	# 取 archetype_id（敌方裸字段 / 我方 _visual_archetype_id 或 platform 映射）
-	var aid: String = ""
-	if "archetype_id" in u:
-		aid = String(u.get("archetype_id"))
-	if aid.is_empty() and "_visual_archetype_id" in u:
-		aid = String(u.get("_visual_archetype_id"))
-	if aid.is_empty() and u.has_method("get") and u.get("stats") != null:
-		var st = u.get("stats")
-		if st != null and "platform_card_id" in st:
-			aid = String(st.platform_card_id)
-	if not aid.is_empty():
-		muzzle_offset = MuzzleAnchors.get_fire_offset(aid, unit_spr)
+	# v9.x: 我方单位优先用 PlayerMuzzleAnchors（按 card_id 直查，fireX 已按我方朝左图转换）
+	var is_player_unit: bool = bool(u.get("is_player"))
+	if is_player_unit and u.get("stats") != null:
+		var st_p = u.get("stats")
+		var pcid: String = String(st_p.platform_card_id) if "platform_card_id" in st_p else ""
+		if pcid.is_empty() and "card_id" in st_p:
+			pcid = String(st_p.card_id)
+		if not pcid.is_empty() and PlayerMuzzleAnchors.has_anchor(pcid):
+			muzzle_offset = PlayerMuzzleAnchors.get_fire_offset(pcid, unit_spr)
+	# 我方未命中 或 敌方：走 MuzzleAnchors
+	if muzzle_offset == Vector2.ZERO:
+		var aid: String = ""
+		if "archetype_id" in u:
+			aid = String(u.get("archetype_id"))
+		if aid.is_empty() and "_visual_archetype_id" in u:
+			aid = String(u.get("_visual_archetype_id"))
+		if aid.is_empty() and u.get("stats") != null:
+			var st = u.get("stats")
+			if st != null and "platform_card_id" in st:
+				aid = String(st.platform_card_id)
+		if not aid.is_empty():
+			muzzle_offset = MuzzleAnchors.get_fire_offset(aid, unit_spr)
 	if muzzle_offset == Vector2.ZERO:
 		# 回退：实体垂直中点
 		var fallback_y: float = 0.0

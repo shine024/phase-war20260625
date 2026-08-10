@@ -102,10 +102,9 @@ func _ready() -> void:
 	_selection_border.visible = false
 	add_child(_selection_border)
 	_update_selection_border()
-	# 监听选中信号
-	var sb = get_node_or_null("/root/SignalBus")
-	if sb != null and sb.has_signal("unit_selected"):
-		sb.unit_selected.connect(_on_unit_selected)
+	# 监听选中信号（SignalBus 为 autoload 全局标识符，比 /root/ 绝对路径更稳）
+	if SignalBus.has_signal("unit_selected"):
+		SignalBus.unit_selected.connect(_on_unit_selected)
 	_update_view()
 	# 缓存默认字体用于绘制状态层数数字（Node2D 无 get_theme_default_font，从 HpLabel 取）
 	if _hp_label != null:

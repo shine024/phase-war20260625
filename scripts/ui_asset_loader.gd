@@ -110,7 +110,7 @@ const PLAYER_ICON_OVERRIDE: Dictionary = {
 	# 一战
 	"ww1_lanchest": "vis_player_001",   # 兰彻斯特装甲车 → 罗尔斯装甲车（同期轮式装甲车）
 	"ww1_105mm": "vis_player_003",      # 105mm榴弹炮 → 77mm野战炮（重型火炮）
-	"ww1_37mm": "vis_player_003",       # 37mm高射炮 → 77mm野战炮（火炮通用）
+	"ww1_37mm": "vis_player_088",       # 37mm高射炮 ★专属卡图（v8.x生成）
 	"ww1_mp18": "vis_player_036",       # MP18突击班 → 步兵班·MP18 ★完美同名
 	"ww1_mauser": "vis_player_037",     # 毛瑟步枪班 → 步兵班·步枪
 	"ww1_enfield": "vis_player_037",    # 李恩菲尔德班 → 步兵班·步枪
@@ -169,14 +169,14 @@ const PLAYER_ICON_OVERRIDE: Dictionary = {
 	"mod_m1a2": "vis_player_062",       # M1A2艾布拉姆斯 → M1A2坦克 ★完美同名
 	"mod_ah1": "vis_player_063",        # AH-1眼镜蛇 → 阿帕奇直升机（武装直升机）
 	"mod_ah64": "vis_player_063",       # AH-64阿帕奇 → 阿帕奇直升机 ★完美同名
-		"mod_stinger": "vis_player_017",    # 毒刺导弹兵 → ZSU-23-4自行高炮（防空，v7.x修正：原误用063阿帕奇直升机）
+		"mod_stinger": "vis_player_090",    # 毒刺导弹兵 ★专属卡图（v8.x生成）
 	"mod_uh60": "vis_player_063",       # UH-60黑鹰 → 阿帕奇直升机（直升机通用）
-	"mod_javelin": "vis_player_046",    # 标枪导弹兵 → 反坦克组（导弹步兵）
+	"mod_javelin": "vis_player_089",    # 标枪导弹兵 ★专属卡图（v8.x生成）
 	# 近未来
-	"fut_attack_drone": "vis_player_065",   # 攻击无人机 → 无人机群
-	"fut_nano_drone": "vis_player_065",     # 纳米修复机 → 无人机群
-	"fut_space_fighter": "vis_player_065",  # 空天战斗机 → 无人机群（飞行器）
-	"fut_stealth_bomber": "vis_player_065", # 隐形轰炸机 → 无人机群
+	"fut_attack_drone": "vis_player_091",   # 攻击无人机 ★专属卡图（v8.x生成）
+	"fut_nano_drone": "vis_player_092",     # 纳米修复机 ★专属卡图（v8.x生成）
+	"fut_space_fighter": "vis_player_093",  # 空天战斗机 ★专属卡图（v8.x生成）
+	"fut_stealth_bomber": "vis_player_094", # 隐形轰炸机 ★专属卡图（v8.x生成）
 	"fut_swarm": "vis_player_065",          # 蜂群无人机 → 无人机群 ★完美同名
 	"fut_cyborg": "vis_player_066",         # 机械步兵 → 机械步兵 ★完美同名
 	"fut_heavy_trooper": "vis_player_066",  # 重装机兵 → 机械步兵

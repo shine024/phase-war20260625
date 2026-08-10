@@ -353,6 +353,11 @@ func start_battle(battle_scene: Node) -> void:
 	if PerformanceMetricsManager and PerformanceMetricsManager.has_method("begin_battle_sampling"):
 		PerformanceMetricsManager.begin_battle_sampling()
 	# v6.6: 触发相位仪主动特殊能力（酸雨/能量罩等开局能力）
+	# v8.x 修复：on_battle_start(PLAYER) 只覆盖玩家侧能力字典，不清敌方 static var。
+	# 若上一场相位师战未正常走完 end_battle()（如战斗中回标题页 change_scene 直接跳走），
+	# _enemy_active 会残留到本场普通关，导致"无敌方相位师却持续被红橙色炮击"。
+	# 在注入玩家能力前先 reset_state() 兜底清理上一场残留，确保新战斗从干净状态开始。
+	PhaseInstrumentAbilities.reset_state()
 	PhaseInstrumentAbilities.on_battle_start(PhaseInstrumentManager, battle_scene, PhaseInstrumentAbilities.Owner.PLAYER)
 	# v8.x: 启动卡片定时技能引擎（从 PhaseMasterSkillManager 读取已解锁 card_skill）
 	if _card_skill_engine != null:
@@ -486,6 +491,13 @@ func _deferred_end_battle_intel_harvest(player_won: bool) -> void:
 # v7.x 性能：掉落表+情报收获都完成后的收尾——任务通知/清状态/广播，帧C 执行。
 # 依赖 _battle_result（帧B 写入掉落/星级，帧B' 追加情报字段，本帧安全读取）。
 func _deferred_end_battle_broadcast(player_won: bool) -> void:
+	# ①c 清理 battle_vfx 组所有节点（焦痕/烟柱/核爆动画/浓度场等延迟 spawn 或永久残留的 VFX）。
+	# 放在 battle_ended emit 前：覆盖 prune_transient_children 漏掉的延迟回调 spawn 节点
+	# （核爆余波环 0.08s 延迟、烟柱 2.5s 自毁链等在清场后才生成的漏网之鱼）。
+	# get_nodes_in_group 返回快照副本，循环内 queue_free 安全（帧末才真正释放）。
+	for node in get_tree().get_nodes_in_group("battle_vfx"):
+		if is_instance_valid(node):
+			node.queue_free()
 	# ②通知任务系统（读 _battle_result.victory_stars，必须在掉落生成之后）
 	ManagerLazyLoader.ensure_loaded("quest")
 	var qm = get_node_or_null("/root/QuestManager")

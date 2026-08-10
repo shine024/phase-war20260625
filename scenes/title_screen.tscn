@@ -182,6 +182,18 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_btn_disabled")
 text = "切换存档 SAVE SLOT"
 
+[node name="CombatCheckButton" type="Button" parent="CenterContainer/MainVBox/ButtonsVBox"]
+custom_minimum_size = Vector2(280, 30)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.7, 0.3, 1)
+theme_override_colors/font_hover_color = Color(1, 0.85, 0.4, 1)
+theme_override_font_sizes/font_size = 13
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_btn_disabled")
+text = "🔧 战斗效果检查 COMBAT CHECK"
+
 [node name="SlotLabel" type="Label" parent="CenterContainer/MainVBox/ButtonsVBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.45, 0.45, 0.55, 1)

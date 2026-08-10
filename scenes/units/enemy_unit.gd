@@ -691,6 +691,13 @@ func _ensure_enemy_weapon_slots(s: UnitStats) -> void:
 		w.attack_speed = float(cfg_w.spd)
 		w.range_value = maxi(1, int(round(s.attack_range / 100.0)))
 		w.weapon_type = _default_enemy_slot_weapon_type(i, s.weapon_type, GC2)
+		# v9.4: 真光束武器（武器名含激光/光束/粒子/电磁炮/轨道炮/狙击）保留 SNIPER(6) 光束弹道。
+		# slot 1 默认已改直射，这里按武器名恢复光束类武器的光束弹道（与 CardResource._BEAM_WEAPON_KEYWORDS 同步）。
+		if w.weapon_type == GC2.WeaponType.DIRECT and not str(s.weapon_label).is_empty():
+			for kw in ["激光", "光束", "粒子束", "粒子炮", "粒子主炮", "电磁炮", "轨道炮", "电磁轨道", "狙击", "雷射"]:
+				if str(s.weapon_label).find(kw) >= 0:
+					w.weapon_type = 6  # SNIPER：光束弹道
+					break
 		w.windup = 0.2
 		w.active = 0.1
 		w.display_name = s.weapon_label
@@ -712,7 +719,7 @@ static func _default_enemy_slot_weapon_type(slot_idx: int, unit_weapon_type: int
 		0:
 			return GC2.WeaponType.DIRECT  # 对轻装：直射曳光
 		1:
-			return 6  # SNIPER：对装甲穿甲
+			return GC2.WeaponType.DIRECT  # v9.4: 对装甲改直射（原 SNIPER(6) 光束——满屏贯穿长线）。真光束武器由武器名覆盖保留。
 		2:
 			return 9  # MISSILE：对空导弹
 		_:
@@ -1392,7 +1399,7 @@ func _update_card_grid_buff_strip(force: bool = false) -> void:
 	if not force and sig == _buff_strip_signature:
 		return
 	_buff_strip_signature = sig
-	var spr: Sprite2D = get_node_or_null("Sprite") as Sprite2D
+	var spr: Sprite2D = get_node_or_null("Sprite2D") as Sprite2D
 	CardGridUnitVisuals.sync_buff_strip(self, self, spr)
 	CardGridUnitVisuals.sync_mod_strip(self, self, spr)
 
@@ -1403,7 +1410,7 @@ func _refresh_buff_labels() -> void:
 	return
 	if not _presentation_card_grid:
 		return
-	var spr: Sprite2D = get_node_or_null("Sprite") as Sprite2D
+	var spr: Sprite2D = get_node_or_null("Sprite2D") as Sprite2D
 	CardGridUnitVisuals.sync_buff_labels(self, spr, self)
 
 func take_damage(amount: float, attacker: Variant = null) -> void:

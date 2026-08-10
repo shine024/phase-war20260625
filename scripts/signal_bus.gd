@@ -227,8 +227,6 @@ signal phase_master_appeared(master_config: Dictionary)
 signal player_phase_master_power_changed(raw_score: float, score_alias: float, stars: int, star_name: String, display_level: int)
 # 符文之语激活：RunewordMatcher 命中时广播，供 Announcer 播报。
 signal runeword_triggered(rw_id: String, unit: Node)
-# 通用高光事件（连杀/特殊触发等），payload 含 event_id + 自定义字段。
-signal combat_highlight(event_id: String, payload: Dictionary)
 # v8.1 相位仪主动能力触发：供 BattleSpectacle 编排全屏演出。
 # ability_id: 能力标识（nuclear_bombardment/nano_swarm/mega_shield 等）
 # stage: "warning"(预警) / "impact"(命中) / "start"(开局开始) / "end"(结束)

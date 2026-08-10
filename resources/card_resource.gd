@@ -400,7 +400,9 @@ func clone() -> CardResource:
 	# v7.0: instance_id 默认不透传（clone 出来的新对象应是空模板，避免误复制实例身份）
 	# 需要"克隆实例保持身份"的场景应显式赋值 clone.instance_id = source.instance_id
 	new_card.enhance_level = enhance_level
-	new_card.mods = mods.duplicate()
+	# v9.5: mods 深拷贝（元素是 Dictionary，浅拷贝会与源共享 entry 引用，
+	# 后续改 clone 的 mods entry 会反向污染源）。对齐 multi_weapons 的 deep 写法。
+	new_card.mods = mods.duplicate(true)
 	new_card.evolution_paths = evolution_paths.duplicate()
 	new_card.evolution_stage = evolution_stage
 	new_card.intel_progress = intel_progress
@@ -730,7 +732,7 @@ func _default_weapon_type_for_slot(slot_idx: int) -> int:
 		0:
 			return GC.WeaponType.DIRECT  # 对轻装：直射曳光
 		1:
-			return 6  # SNIPER：对装甲穿甲
+			return GC.WeaponType.DIRECT  # v9.4: 对装甲改直射（原 SNIPER(6) 光束——所有非曲射单位对装甲都射贯穿青色长线，满屏滥用）。真光束武器（激光/光束步枪等）由 _WEAPON_NAME_TRAJECTORY_OVERRIDE 保留 SNIPER 光束。
 		2:
 			return 9  # MISSILE：对空导弹
 		_:
@@ -745,11 +747,27 @@ const _WEAPON_NAME_TRAJECTORY_OVERRIDE: Dictionary = {
 	"霰弹枪": 5,  # SHOTGUN：6 发 18° 散射（原误配 DIRECT 单发直射）
 }
 
+## v9.4: 光束武器关键词——v9.4 把对装甲槽(slot 1)默认从 SNIPER(6)光束改为 DIRECT(0)直射
+## （消除满屏贯穿青色长线）。真光束武器（激光/光束/粒子束/狙击/电磁炮/轨道炮）通过
+## 武器名子串匹配保留 SNIPER(6) 光束弹道。子串匹配兼容组合武器名（"地狱火导弹/激光炮"等）。
+const _BEAM_WEAPON_KEYWORDS: Array = [
+	"激光", "光束", "粒子束", "粒子炮", "粒子主炮", "电磁炮", "轨道炮", "电磁轨道", "狙击", "雷射",
+]
+
 ## v8.4: 查武器名是否需要覆盖默认弹道，返回 weapon_type 或 -1（不覆盖）
+## v9.4: 新增光束武器关键词检测——含光束语义词的武器名覆盖为 SNIPER(6) 光束弹道
 func _trajectory_override_for_weapon_name(weapon_name: String) -> int:
 	if weapon_name.is_empty():
 		return -1
-	return _WEAPON_NAME_TRAJECTORY_OVERRIDE.get(weapon_name, -1)
+	# 精确匹配优先（霰弹枪等）
+	var exact: int = _WEAPON_NAME_TRAJECTORY_OVERRIDE.get(weapon_name, -1)
+	if exact >= 0:
+		return exact
+	# v9.4: 光束武器关键词子串匹配 → SNIPER(6) 光束
+	for kw in _BEAM_WEAPON_KEYWORDS:
+		if weapon_name.find(kw) >= 0:
+			return 6  # SNIPER：光束弹道（Line2D）
+	return -1
 
 ## 获取武器槽位名称（v6.0：从 weapon_names 数组读取）
 func get_weapon_name_for_slot(slot_idx: int) -> String:

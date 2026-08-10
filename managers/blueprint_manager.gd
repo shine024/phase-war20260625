@@ -864,6 +864,12 @@ func _refresh_player_master_eval_safe() -> void:
 func apply_reinforcement(card: CardResource, target_level: int) -> Dictionary:
 	var result = {success = false, cost = 0, message = ""}
 
+	# v9.5: 养成隔离守卫——严禁直接改 DefaultCards 共享模板（会污染所有同名卡）
+	if card == null or card.instance_id.is_empty():
+		result.message = "卡牌未实例化，无法强化（拒绝操作共享模板）"
+		push_warning("[BlueprintManager] apply_reinforcement 拒绝模板: instance_id 为空")
+		return result
+
 	# 验证等级范围
 	if target_level < 1 or target_level > 10:
 		result.message = "强化等级超出范围（1-10）"
@@ -927,6 +933,12 @@ func _get_rank_cost_multiplier(level: int) -> float:
 ## 改造需要：纳米材料 + 改造指南（根据稀有度）
 func install_modification(card: CardResource, mod_id: String, slot: int = -1) -> Dictionary:
 	var result = {success = false, cost = 0, message = ""}
+
+	# v9.5: 养成隔离守卫——严禁直接改 DefaultCards 共享模板
+	if card == null or card.instance_id.is_empty():
+		result.message = "卡牌未实例化，无法改造（拒绝操作共享模板）"
+		push_warning("[BlueprintManager] install_modification 拒绝模板: instance_id 为空")
+		return result
 
 	# 检查槽位
 	if card.mods.size() >= 9:
@@ -1024,6 +1036,10 @@ func set_mod_enabled(card_id: String, mod_index: int, enabled: bool) -> bool:
 	var card: CardResource = _get_card_for_mods(card_id)
 	if card == null:
 		return false
+	# v9.5: 养成隔离守卫——_get_card_for_mods 回退到模板时拒绝操作（避免污染共享模板）
+	if card.instance_id.is_empty():
+		push_warning("[BlueprintManager] set_mod_enabled 拒绝模板: %s 未实例化" % card_id)
+		return false
 	if mod_index < 0 or mod_index >= card.mods.size():
 		return false
 	var mod_entry = card.mods[mod_index]
@@ -1073,6 +1089,12 @@ func _get_card_for_mods(id_str: String) -> CardResource:
 ## 替换改造（新接口）
 func replace_modification(card: CardResource, old_mod_id: String, new_mod_id: String) -> Dictionary:
 	var result = {success = false, refund = 0, cost = 0, message = ""}
+
+	# v9.5: 养成隔离守卫——严禁直接改 DefaultCards 共享模板
+	if card == null or card.instance_id.is_empty():
+		result.message = "卡牌未实例化，无法替换改造（拒绝操作共享模板）"
+		push_warning("[BlueprintManager] replace_modification 拒绝模板: instance_id 为空")
+		return result
 
 	# 查找旧改造位置
 	var old_index = -1

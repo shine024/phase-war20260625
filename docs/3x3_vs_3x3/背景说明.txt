@@ -1,0 +1,141 @@
+针对《剑与远征》和《第七史诗》这两款游戏，我们来拆解它们的战斗背景、地图和站位，并总结成可直接用于AI生图的提示词要点。
+
+---
+
+### 一、《剑与远征》风格分析
+
+这是典型的“绘本风”2D放置战斗，强调层次感、氛围感和英雄的“立绘感”。
+
+**战斗背景与地图**
+
+-   **层次结构**：严格的三层视差滚动。**远景**是巨大的天穹、远山、城堡剪影，几乎静止；**中景**是战场主体，有草丛、石砾、魔法阵痕迹，轻微横移；**近景**是镜头边缘的虚化岩石、树叶或雾气，用于增强景深。
+-   **色彩与光影**：整体高饱和、明快。常用暖色顶光（模拟阳光）照亮战场中心，英雄脚下有清晰的圆形暗色阴影来固定位置。场景边缘会压暗，制造一种舞台追光效果，让视线聚焦在中间的3x3英雄身上。
+-   **核心元素**：幻想风地形，如翠绿草地、荒芜戈壁、魔法浮空岛。地图本身不复杂，没有需要绕路的障碍物，本质就是一个华丽的“舞台”。
+
+**站位与布局**
+
+-   **固定六宫格**：双方各占一个3x2的矩形区域，严格分为前排（坦克/战士）和后排（法师/射手/辅助）。
+-   **角色比例与间距**：角色为4-5头身的Q版比例，在格子里显得饱满但不拥挤。同一方的角色站位间距紧凑，以表现并肩作战感；敌我双方之间有明显的对峙空间，用于容纳冲刺、飞行道具等战斗动作。
+-   **动态表现**：角色攻击有小幅位移，但完成动作后会立刻回位。大招特写时，背景会完全变暗或虚化，只突显角色。
+
+---
+
+### 二、《第七史诗》风格分析
+
+这款游戏是日韩魔幻风，用2D骨骼动画实现了极强的3D感演出，镜头调度丰富。
+
+**战斗背景与地图**
+
+-   **场景纵深**：比《剑与远征》的平面布景感更强。地图有清晰的前后延伸，比如一条通往远方的道路、深邃的宫殿长廊，敌我双方就站在这条纵轴线的两端。
+-   **细节与质感**：场景绘制更精细写实，有明确的地面材质（反光的大理石、干裂的泥土）。场景中有动态元素，如飘落的火花、飞舞的粒子、摇曳的魔法火焰，让静态场景也充满动感。
+-   **核心元素**：经典的魔幻副本场景。比如阳光下的圣殿遗迹、阴冷的魔王城、月光下的森林。场景中常有高大建筑或巨型雕塑，用以衬托角色的渺小，增加史诗感。
+
+**站位与布局**
+
+-   **标准3x3对峙**：同样是清晰的3x3格子，但角色是正常头身比的日系画风，身材修长。因此，格子间距比《剑与远征》更宽松，以容纳更大的动作幅度。
+-   **镜头与纵深感**：默认视角略带俯视。角色会跑出格子去攻击敌人，再跑回来，移动轨迹构成了横版与纵深的结合。
+-   **强大的技能演出**：这是重点。普通战斗在战场进行，但释放核心大招时，会瞬间切入一个独立的、有强烈透视感和特效的“专属动画场景”，与战场背景完全切割。
+
+---
+
+### 三、AI生图核心提示词要点
+
+要让AI生成这类战斗背景，关键在于**锁定风格、结构、透视、细节**。
+
+#### 1. 核心风格限定词（必加）
+
+-   **剑与远征风**：`AFK Arena style`, `storybook fantasy`, `high fantasy illustration`, `vibrant colors`, `cel-shaded`, `chibi characters`
+-   **第七史诗风**：`Epic Seven style`, `anime fantasy`, `high detail`, `epic scene`, `polished 2D animation art`, `dramatic lighting`
+
+#### 2. 构建分层背景
+
+-   **通用结构词**：`video game battle background`, `side-scrolling view`, `no characters`
+    -   **远景层**：`distant fantasy castle silhouette`, `huge moon`, `misty mountains`, `soft focus`
+    -   **中景层(战场)**：`destroyed temple ruins`, `magic circle on the ground`, `meadow with scattered stones`, `long red carpet`
+    -   **近景层**：`blurred foliage framing`, `dark rock silhouettes at edges`, `fog effects`, `depth of field`
+-   **加入光影特效**：`god rays`, `spotlight effect on the center`, `warm sun light`, `dust particles floating`, `stage-like lighting`
+
+#### 3. 战斗站位示意图提示词（生成布局图时使用）
+
+-   **关键描述**：`top-down view of a 3x3 grid battle formation`, `2D game layout`, `spaced evenly`
+    -   `3 heroes on the left side, front row tank, back row mage and archer`
+    -   `3 monsters on the right side`
+    -   `empty space in the middle for battle`
+    -   `clean background`, `UI mockup`, `dashed lines connecting positions`
+-   **补充提示**：目前的AI很难精确生成3x3站位，你需要加入**"top-down view of a 3x3 grid"** 和 **"blueprint"** 等词来引导，或者只在生成了好的空战场后，用其他软件手动贴上角色。
+
+#### 4. 产出角色动作片段提示词（针对战斗抓拍）
+
+如果你需要生成一个激战中的静态画面而不是空场景，直接对AI描述，比如：
+`AFK Arena style, battle scene, a fierce warrior in armor slashing a dark slime, 2D game screenshot, dynamic angle, impact frames, motion blur, particles, centered on action, background is a blurred medieval village, dramatic lighting`
+
+---
+
+总结一下，你可以优先用**故事书风、舞台光**去生成《剑与远征》背景；用**日韩魔幻、高细节**去生成《第七史诗》背景。然后通过补充俯视、3x3网格等词，逐步定位到你的游戏布局需求。
+
+明白了，从“魔幻”换成“战争与科幻”，核心的美术框架、站位逻辑不变，但视觉元素要彻底替换。
+
+针对你的新方向，我们同样拆解为“背景地图”和“站位布局”两部分，并附上AI生图提示词。
+
+---
+
+### 一、战斗背景与地图：从“自然旷野”到“人造战场”
+
+战争与科幻的背景，核心在于用硬表面、工业光、科技废墟替代之前的山石草木。
+
+**1. 层次结构参照（依然三层）**
+
+-   **远景层：被战争重塑的天际线**
+    -   **元素**：巨大的被击穿的星际战舰残骸斜插在地平线上、硝烟弥漫的橘红色天空、轨道电梯的断裂缆线、远处燃烧的都市楼群、信号塔残骸。
+    -   **作用**：交代世界观是宏观星际战争还是近未来废土，保持静止或极缓慢移动。
+-   **中景层：核心交战区域**
+    -   **元素**：铺设了防滑钢板的战舰甲板、龟裂的柏油公路、布满弹坑的混凝土要塞地面、坠毁机甲的废墟、废弃的战壕与铁丝网、闪烁着微弱蓝光的能量导管。
+    -   **作用**：这是英雄站立和战斗的“舞台”，需要有清晰的材质和战损细节，但不能有阻挡寻路的高大障碍物。
+-   **近景层：战场的喧嚣感**
+    -   **元素**：镜头边缘因爆炸而飞溅的碎石、飘过的火星与灰烬、被气浪吹起的破损迷彩布、虚化的枪口火光。
+    -   **作用**：增强景深和临场感，这比魔幻场景的落叶花瓣更能体现“战争”。
+
+**2. 色彩与光影核心**
+
+-   **从“舞台追光”变为“战场照明”**：摒弃暖阳，采用**戏剧化的冷峻侧光**（如战舰探照灯、信号弹的惨白或幽蓝光、燃烧废墟的橘红色底光）。
+-   **色调**：主体偏暗、低饱和，但关键区域（如能量核心、弹道轨迹、爆炸点）使用高饱和警示色（亮橙、青蓝、危险红）来聚焦视线。
+-   **特效**：用电磁干扰的雪花噪点、热浪扭曲的空气、全息投影的扫描线替代魔法粒子。
+
+---
+
+### 二、站位与布局：固定框架的科幻演绎
+
+**1. 九宫格地板的重新包装**
+
+-   **将3x3的六宫格区直接画成战场设施**：
+    -   **我方区域**：可以是**战舰的升降甲板、作战指挥平台**，地面有清晰的蓝色冷光引导线和编号。
+    -   **敌方区域**：可以是**被击毁战舰的倾斜甲板、叛军的防御工事**，地面布满裂痕，散发着不稳定的红色应急灯光。
+    -   **中场对峙区**：中央地带可以是深不见底的机械竖井、被能量屏障分割的焦土，或是散落着残骸的“无人区”。这比单纯的空地更有张力。
+
+**2. 角色比例与间距**
+
+-   **画风**：不再是Q版或日系美型，转向**写实比例或硬朗的军武风**。
+-   **装备外显**：角色会携带大型枪械、外骨骼装甲、悬浮无人机等。因此，**格子间距要比魔幻风格更大**，以容纳武器的射击弹道和机械装备的体积感。
+-   **动态与回位**：士兵冲出掩体射击、机甲推进冲撞后，会战术翻滚回掩体，动作强调战术感和物理重量。
+
+---
+
+### 三、AI生图提示词要点（针对战争科幻）
+
+以下提示词可以直接组合使用，用于生成空无一人的战斗场景。
+
+**核心风格锁定词（必加）**
+`Sci-fi war`, `battlefield`, `military sci-fi`, `dieselpunk` or `cyberpunk` (二选一), `video game battle background`, `2.5D side-scrolling view`, `apocalyptic`, `high detail`, `matte painting`
+
+**场景结构提示词组合示例**
+
+-   **远景**：`distant burning futuristic city skyline`, `crashed colossal starship wreckage on horizon`, `orange smoke and dark clouds`, `orbital debris falling`
+-   **中景**：`destroyed highway overpass`, `stark metal warship deck with glowing blue energy lines`, `bomb craters filled with toxic green liquid`, `scattered spent shell casings`
+-   **近景**：`motion blur sparks and rubble at screen edges`, `heat haze distortion effect`, `blurred pieces of tattered tactical fabric`, `flickering holographic static`
+-   **光影**：`dramatic cold side lighting from searchlights`, `ominous red glow from a reactor core`, `cinematic lighting`, `volumetric smoke`, `lens flare`
+
+**站位示意图生成要点**
+想要获得俯视的布局图，可以输入：
+`top-down view of a 3x3 grid on a metal warship deck, 3 mech soldiers positions on the left marked by blue tactical markers, 3 alien drone positions on the right marked by red markers, central battleground with a glowing energy barrier, blueprint style, military UI elements, no characters, clean technical drawing`
+
+总结来说，你的参考不再是《剑与远征》的自然旷野，而是《星际争霸》或《战争机器》这种充满军事工业感和废墟美学的战场。在保持3x3对峙的清晰舞台感上，用**战损金属、信号灯、烟尘**来填充各个图层。

@@ -13,6 +13,7 @@ extends PanelContainer
 ## 队列：最多积压 3 条，超出丢弃最旧的（LOW 优先丢）
 
 const DT = preload("res://resources/design_tokens.gd")
+const RunewordDefinitions = preload("res://data/runewords.gd")
 
 enum Priority { LOW = 0, NORMAL = 1, HIGH = 2 }
 
@@ -62,6 +63,8 @@ func _ready() -> void:
 		SignalBus.phase_master_appeared.connect(_on_phase_master_appeared)
 		SignalBus.phase_law_cast.connect(_on_phase_law_cast)
 		SignalBus.battle_started.connect(_on_battle_started)
+		# v9.5: 符文之语激活播报（phase_instrument_manager 增量 emit）
+		SignalBus.runeword_triggered.connect(_on_runeword_triggered)
 
 
 # =========================================================================
@@ -101,6 +104,12 @@ func _on_phase_master_appeared(master_config: Dictionary) -> void:
 func _on_phase_law_cast(law_id: String, _position: Vector2, family: String) -> void:
 	var color: Color = _family_color(family)
 	_enqueue("⚡ %s" % _law_display_name(law_id), color, DT.FONT_SIZE_LARGE, _HIGH_DURATION, Priority.HIGH)
+
+
+func _on_runeword_triggered(rw_id: String, _unit: Node) -> void:
+	# v9.5: 符文之语激活——NORMAL 优先级（注释里明确"波次/符文"档），金色（稀有成就感）
+	var display_name: String = String(RunewordDefinitions.RUNEWORD_NAMES.get(rw_id, rw_id))
+	_enqueue("✦ 符文之语 · %s" % display_name, DT.COLOR_GOLD, DT.FONT_SIZE_MEDIUM, _NORMAL_DURATION, Priority.NORMAL)
 
 
 # =========================================================================

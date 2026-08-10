@@ -1,6 +1,13 @@
 
 Agnes 免费API 可生图 Agnes
 
+agnes-image-2.1-flash
+
+POST /v1/images/generations
+
+POST https://apihub.agnes-ai.com/v1/images/generations
+
+
 https://apihub.agnes-ai.cn/v1 
 
 sk-thpXTkWon9RiLMdnsZgqlQUH7XI6SdlhLYsx7eQToj7GtIPv
@@ -8,3 +15,12 @@ sk-thpXTkWon9RiLMdnsZgqlQUH7XI6SdlhLYsx7eQToj7GtIPv
 sk-2mxCpSC8Nf0nm2TAf9fYHuRxNj7aeoIttPuuu9ivodbU3zXN
 
 sk-Pzu3QigNdQlVhFC7cVDVsTDwfvt3T6nIDq23HeJgaKMnRo6K
+
+Agnes Image 2.1 Flash 可根据文本提示词生成图像，也可基于输入图像进行转换、重绘和风格化编辑。它支持以图像 URL 或 Base64 数据形式返回结果。
+
+请求头
+-H "Authorization: Bearer YOUR_API_KEY"
+-H "Content-Type: application/json"
+
+帮助
+https://www.agnes-ai.com/zh-Hans/docs/agnes-image-21-flash

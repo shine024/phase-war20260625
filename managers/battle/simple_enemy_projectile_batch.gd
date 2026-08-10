@@ -42,13 +42,15 @@ func _ready() -> void:
 
 func _make_layer(wt: int) -> MultiMeshInstance2D:
 	var mmi := MultiMeshInstance2D.new()
-	mmi.texture = WeaponProjectileVfx.proj_texture(wt)
+	# v9.4: 程序化弹头多边形替代长条横向贴图。
+	# 原用 QuadMesh + weapon_*_projectile.png（横向长条，比例 4:1~12:1），弹道斜向时
+	# 即使旋转也视觉违和（长条横躺）。改用 7 点弹头 ArrayMesh（弹体矩形+弹头锥形，
+	# 指向 +X，原点居中），Transform2D(dir.angle()) 旋转后任意角度自然对齐飞行方向。
+	# 纯色弹头靠 set_instance_color(tint) + ADD blend 发光，无需贴图。
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_2D
 	mm.use_colors = true
-	var q := QuadMesh.new()
-	q.size = WeaponProjectileVfx.proj_quad_size(wt)
-	mm.mesh = q
+	mm.mesh = WeaponProjectileVfx.build_bullet_arraymesh(wt)
 	mmi.multimesh = mm
 	# v6.4: 发光叠加
 	var mat := CanvasItemMaterial.new()
@@ -74,11 +76,11 @@ func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, _sho
 	d["max_dist"] = _max_dist_for(wt)
 	d["dir"] = Vector2.RIGHT
 	_proj.append(d)
-	# v9.2: 枪口火——batch 路径无 Bullet 节点，原本无开火反馈，敌方小兵射击"看不到攻击"。
+	# v9.2/v9.4: 枪口火——batch 路径无 Bullet 节点，原本无开火反馈，敌方小兵射击"看不到攻击"。
 	# 在发射点播一个枪口火（敌方朝左），让玩家看到"敌人在开火"。
-	# 节流：60% 抽样——密集齐射时 spark 池(MAX_SPARKS=200)会被枪口火打满挤压命中/暴击火花，
-	# 抽样后既保留"敌方齐射"的视觉反馈，又把火花槽占用砍掉近一半。
-	if not forced_miss and randf() < 0.6:
+	# 节流：25% 抽样（v9.2 原 60%，v9.4 降到 25%）——密集齐射时 60% 抽样仍会糊屏（粒子滥用），
+	# 25% 既保留"敌方齐射"的视觉反馈，又大幅减少粒子污染，把 spark 池留给命中/暴击火花。
+	if not forced_miss and randf() < 0.25:
 		VfxImpactFactory.spawn_muzzle_flash(self, from, false, wt)
 
 func clear_all() -> void:
@@ -182,7 +184,20 @@ func _apply_hit(r: Dictionary) -> void:
 	if bool(r.get("forced_miss", false)):
 		CombatFeedback.show_miss(tgt.global_position, tgt)
 	else:
-		WeaponProjectileVfx.spawn_impact_with_kind(self, hit_pos, wt, false, _tgt_kind)
+		# v9.4: power_tier 威力分级（直射轻武器 radius=0，tier 由 damage 决定）。
+		# 轻武器小兵 damage 低（LIGHT），重型直射单位 damage 高（HEAVY）。
+		var _tier: int = WeaponProjectileVfx.compute_power_tier(wt, 0.0, float(r.get("dmg", 0.0)))
+		var _opts: Dictionary = {"power_tier": _tier}
+		WeaponProjectileVfx.spawn_impact_with_kind(self, hit_pos, wt, false, _tgt_kind, _opts)
+		# v9.4: 仅 HEAVY+ 档震屏（轻武器密集命中不震屏避免干扰；重型直射/核武才震）
+		if _tier >= 2:
+			var tree := get_tree()
+			var bm: Node = tree.root.get_node_or_null("BattleManager") if tree else null
+			if bm != null and is_instance_valid(bm) and bm.has_method("request_screen_shake"):
+				if _tier == 3:
+					bm.request_screen_shake(20.0, 0.8)
+				else:
+					bm.request_screen_shake(10.0, 0.45)
 	var raw: float = float(r["dmg"])
 	var shooter_raw: Variant = r["shooter"]
 	var shooter: Node2D = shooter_raw if shooter_raw != null and is_instance_valid(shooter_raw) and shooter_raw is Node2D else null

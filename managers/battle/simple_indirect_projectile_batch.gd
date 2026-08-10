@@ -266,15 +266,27 @@ func _apply_hit(r: Dictionary) -> void:
 		var _wname: String = String(r.get("weapon_name", ""))
 		var _variant: String = String(r.get("vfx_variant", ""))
 		var _opts: Dictionary = {} if _variant.is_empty() else {"vfx_variant": _variant}
+		# v9.4: power_tier 威力分级——曲射武器有 explosion_radius（_WEAPON_CONFIG），
+		# 叠加 damage 判定：普通火箭(radius40/MEDIUM) vs 导弹(radius55/HEAVY) vs 终极粒子炮(高伤/可能NUCLEAR)。
+		var _ind_radius: float = float(_WEAPON_CONFIG.get(wt, {}).get("explosion_radius", 0.0))
+		_opts["power_tier"] = WeaponProjectileVfx.compute_power_tier(wt, _ind_radius, float(r.get("dmg", 0.0)))
 		_spawn_impact_explosion(hit_pos, proj_is_player, wt, _tgt_kind, _wname, _opts)
 		# v6.4: 曲射爆炸触发中等屏幕震动
 		# v7.x: 优先用 combat_kind 的震动参数（对空重震/对装甲中震/对轻装轻震）
 		var tree := get_tree()
 		var bm: Node = tree.root.get_node_or_null("BattleManager") if tree else null
 		if bm != null and is_instance_valid(bm) and bm.has_method("request_screen_shake"):
-			var _shake: Vector2 = WeaponProjectileVfx.impact_shake_for_kind(_tgt_kind) if _tgt_kind >= 0 else Vector2(5.0, 0.25)
-			if _shake.x > 0.0:
-				bm.request_screen_shake(_shake.x, _shake.y)
+			# v9.4: 按 power_tier 分级震屏（HEAVY/NUCLEAR 显著强于 MEDIUM）
+			var _tier: int = int(_opts.get("power_tier", 1))
+			var _base_shake: Vector2 = WeaponProjectileVfx.impact_shake_for_kind(_tgt_kind) if _tgt_kind >= 0 else Vector2(5.0, 0.25)
+			var _shake_mag: float = _base_shake.x
+			var _shake_dur: float = _base_shake.y
+			if _tier == 3:  # NUCLEAR
+				_shake_mag = 20.0; _shake_dur = 0.8
+			elif _tier == 2:  # HEAVY
+				_shake_mag = maxf(_shake_mag, 10.0); _shake_dur = maxf(_shake_dur, 0.45)
+			if _shake_mag > 0.0:
+				bm.request_screen_shake(_shake_mag, _shake_dur)
 			else:
 				bm.request_screen_shake(5.0, 0.25)
 

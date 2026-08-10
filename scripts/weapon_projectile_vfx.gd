@@ -151,6 +151,94 @@ const REF_TEX_PX: float = 512.0
 # v8.3 视觉增强：0.05 → 0.10（×2），让贴图弹体在战场上清晰可见
 const PROJ_DISPLAY_SCALE_MUL: float = 0.10
 
+## ========== v9.4: 程序化弹头多边形（替代长条横向贴图）==========
+## 原因：weapon_*_projectile.png 系列是水平长条贴图（比例 4:1~12:1），弹道斜向时
+## 即使旋转也对不齐飞行方向，视觉违和（长条横躺）。改用程序化 7 点弹头多边形：
+## 弹体矩形 + 弹头锥形，指向 +X，原点居中（绕中心旋转），任意角度自然对齐。
+## 被 simple_enemy/player_projectile_batch（直射轻武器 MultiMesh）和 bullet.gd 共用。
+## 算法迁移自 bullet.gd:_apply_bullet_shape（v8.3 基准 ×2），消除重复定义。
+
+# 程序化弹头战场显示缩放。基准多边形约 12×7 逻辑像素（body=8/nose=4/half_h=3.5），
+# × 此缩放后约 9.6×5.6 px，与原长条贴图轻武器显示尺寸（SMG ~18×3 / PISTOL ~15×3）量级相当。
+# batch 调用 build_bullet_arraymesh 时传入；bullet.gd 的 Polygon2D 路径用各自 size_scale。
+const PROJ_BULLET_DISPLAY_SCALE: float = 0.8
+
+## 返回弹头多边形顶点（7 点，顺时针，原点居中，指向 +X）。
+## 可直接赋值给 Polygon2D.polygon（bullet.gd 路径），或传给 build_bullet_arraymesh 三角化。
+## size_scale：尺寸系数（bullet.gd 传 _apply_bullet_shape 的 size_scale；batch 传 1.0，缩放交给 display_scale）。
+## 注意：原 bullet.gd 多边形原点在左端（x 从 0 起），此处改为居中（x 从 -tip_x/2 起），
+## 以便 MultiMesh 的 Transform2D 旋转时绕弹头中心转（左端原点会导致旋转时弹头偏离位置）。
+static func build_bullet_points(weapon_type: int, size_scale: float = 1.0) -> PackedVector2Array:
+	var s := size_scale
+	# 基准尺寸（v8.3 ×2）：总长约 12*scale，高约 7*scale
+	var body_len: float = 8.0 * s   # 弹体长度
+	var nose_len: float = 4.0 * s   # 弹头锥形长度
+	var half_h: float = 3.5 * s     # 弹体半高
+	# 按武器类型差异化比例（与 bullet.gd 原算法完全一致）
+	match weapon_type:
+		0, 4:  # SMG / PISTOL — 小口径手枪/冲锋枪：极短弹头（接近光点），高速密集时不连成长条
+			body_len = 3.0 * s
+			nose_len = 2.0 * s
+			half_h = 2.5 * s
+		1, 2:  # RIFLE / MG — 步枪/机枪：中等弹头（比冲锋枪长，体现步枪弹）
+			body_len = 6.0 * s
+			nose_len = 3.0 * s
+			half_h = 2.8 * s
+		5:  # SHOTGUN — 圆胖霰弹丸
+			body_len = 6.0 * s
+			nose_len = 3.0 * s
+			half_h = 4.0 * s
+		3, 9:  # ROCKET / MISSILE — 长粗导弹
+			body_len = 9.0 * s
+			nose_len = 4.0 * s
+			half_h = 4.0 * s
+		10, 11:  # OMEGA / RAIL — 细长高能弹
+			body_len = 8.0 * s
+			nose_len = 4.0 * s
+			half_h = 1.6 * s
+		7:  # FLAK — 短粗高炮弹
+			body_len = 5.0 * s
+			nose_len = 3.0 * s
+			half_h = 3.6 * s
+	var tip_x: float = body_len + nose_len  # 弹头顶点 X
+	var cx: float = tip_x * 0.5  # 居中原点
+	# 7 点顺时针多边形（居中版，从弹体底部后端起）：
+	# 后端平底 → 弹体底前 → 锥面收窄 → 弹尖 → 锥面展开 → 弹体顶前 → 后端平顶
+	return PackedVector2Array([
+		Vector2(-cx,             -half_h),            # 弹体底部后端
+		Vector2(body_len - cx,   -half_h),            # 弹体底部前端
+		Vector2(body_len - cx,   -nose_len * 0.4),    # 弹头底部锥面（下）
+		Vector2(tip_x - cx,       0.0),               # 弹头顶点
+		Vector2(body_len - cx,    nose_len * 0.4),    # 弹头底部锥面（上）
+		Vector2(body_len - cx,    half_h),            # 弹体顶部前端
+		Vector2(-cx,              half_h),            # 弹体顶部后端
+	])
+
+## 构建弹头 ArrayMesh（供 MultiMesh batch 用）。
+## 取 build_bullet_points 的点 → triangulate_polygon 三角化 → add_surface_from_arrays。
+## display_scale：战场显示缩放（默认 PROJ_BULLET_DISPLAY_SCALE）。
+static func build_bullet_arraymesh(weapon_type: int, display_scale: float = PROJ_BULLET_DISPLAY_SCALE) -> ArrayMesh:
+	var pts: PackedVector2Array = build_bullet_points(weapon_type, display_scale)
+	var tris: PackedInt32Array = Geometry2D.triangulate_polygon(pts)
+	if tris.is_empty():
+		push_warning("[WeaponProjectileVfx] 弹头三角化失败 wt=%d，回退矩形" % weapon_type)
+		# 兜底：用 body 段矩形（4 点）保证不崩
+		var s := display_scale
+		var bw := 8.0 * s
+		var hh := 3.5 * s
+		pts = PackedVector2Array([
+			Vector2(-bw * 0.5, -hh), Vector2(bw * 0.5, -hh),
+			Vector2(bw * 0.5, hh), Vector2(-bw * 0.5, hh)
+		])
+		tris = Geometry2D.triangulate_polygon(pts)
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = pts
+	arrays[Mesh.ARRAY_INDEX] = tris
+	var am := ArrayMesh.new()
+	am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, Mesh.ARRAY_FLAG_USE_2D_VERTICES)
+	return am
+
 
 ## ========== v6.0: 按武器名称查贴图 ==========
 
@@ -385,9 +473,19 @@ static func spawn_impact(parent: Node2D, world_pos: Vector2, weapon_type: int, i
 ## combat_kind = -1 时走原逻辑；>=0 时叠加 IMPACT_TINT_BY_KIND 色调
 ## opts（v8.1 新增，可选）：{"is_crit":bool, "is_pierce":bool, "direction":Vector2}
 ##        v8.4 新增可选："vfx_variant":String（武器类改造专属视觉标识）
+##        v9.4 新增可选："power_tier":int（0-3，命中特效威力分级，见 compute_power_tier）
 ## weapon_name（v8.4 新增，可选）：武器显示名，用于查命中贴图（仅重型爆炸武器 3/7/9 触发贴图层）
 static func spawn_impact_with_kind(parent: Node2D, world_pos: Vector2, weapon_type: int, is_player_shot: bool, target_combat_kind: int = -1, opts: Dictionary = {}, weapon_name: String = "") -> void:
 	if parent == null:
+		return
+	# v9.4: power_tier 核武级分派——NUCLEAR 直接走完整核爆特效栈（火球+双冲击波+蘑菇云+焦痕），
+	# 跳过普通贴图/帧动画/粒子三层（核爆特效已包含这些层级的超级版）。
+	# 缺省（opts 无 power_tier）按 -1 处理，走原逻辑，向后兼容。
+	# 注：相位仪核子轰炸能力有独立的特效路径（phase_instrument_abilities），不走本函数；
+	# 此处 NUCLEAR 分支处理的是普通武器弹道因高威力（radius≥70且atk≥1500）判为核武级的命中。
+	var power_tier: int = int(opts.get("power_tier", -1))
+	if power_tier == POWER_TIER.NUCLEAR:
+		VfxFactory.spawn_nuclear_explosion(parent, world_pos, _NUKE_TEX, _nuke_colors(is_player_shot), 0.7)
 		return
 	# v9.2: 命中贴图层——所有武器都叠加贴图（此前仅 ROCKET/FLAK/MISSILE 有）。
 	#   ① 重型爆炸类(3/7/9) + 有 weapon_name → 查专属贴图（impact_texture_by_name，含 fallback）
@@ -411,16 +509,22 @@ static func spawn_impact_with_kind(parent: Node2D, world_pos: Vector2, weapon_ty
 			5:        peak_scale = 0.36 * 2.0   # SHOTGUN — 散射命中
 			0, 4:     peak_scale = 0.26 * 2.0   # 轻武器 — 小口径，贴图小避免夸张
 			1, 2:     peak_scale = 0.40 * 2.0   # 曲射/空射 — 中等爆炸
+	# v9.4: HEAVY 档贴图放大（重型武器命中更醒目）
+	if power_tier == POWER_TIER.HEAVY:
+		peak_scale *= 1.4
 	if impact_tex != null:
 		VfxFactory.spawn_impact_sprite(parent, world_pos, impact_tex, peak_scale, 0.45)
-	# v9.2: 爆炸帧动画层——有帧序列的武器优先播帧动画（火球膨胀过程 0.6s），叠加在贴图层之上。
-	#   帧动画 fade out 后贴图层接力，两层的视觉连续性靠帧动画淡出+贴图淡入衔接。
-	#   无帧序列的武器（light weapons 等）explosion_frames_by_wt 返回空数组，跳过此层。
+	# v9.2/v9.4: 爆炸帧动画层——有帧序列的武器播帧动画（火球膨胀），宽度按 power_tier 分级。
+	#   MEDIUM=96px（标准）/ HEAVY=160px（放大）/ LIGHT=0（无帧动画）。
+	#   无帧序列的武器（轻武器等）explosion_frames_by_wt 返回空数组，跳过此层。
 	var _frames: Array = explosion_frames_by_wt(weapon_type)
-	if _frames.size() >= 2:
-		# 256px 帧 × 6 帧，target_width=96（峰值 96px，醒目但不盖住整个单位）
+	# v9.4: 按 tier 决定帧动画宽度（LIGHT 不播；缺省 tier 走原 96px 逻辑兼容）
+	var _frame_w: float = 96.0
+	if power_tier >= 0:
+		_frame_w = frame_width_for_tier(power_tier)
+	if _frames.size() >= 2 and _frame_w > 0.0:
 		# fps=10（0.6s 总长，紧凑爆炸感）；rise=24（轻微上飘，模拟烟尘升腾）
-		VfxFactory.spawn_animated_nuclear(parent, world_pos, _frames, 96.0, 24.0, 10.0)
+		VfxFactory.spawn_animated_nuclear(parent, world_pos, _frames, _frame_w, 24.0, 10.0)
 	# v8.1: 委托 VfxImpactFactory 三层组合特效（粒子层，与贴图层叠加）
 	# 注：SMG(0)/PISTOL(4) 的跳过守卫仍在 bullet._spawn_tex_impact_at 维护；
 	# batch 路径（轻武器密集命中）不跳过——工厂配方表对轻武器用小快特效，命中反馈必要。
@@ -436,3 +540,94 @@ static func impact_shake_for_kind(target_combat_kind: int) -> Vector2:
 	if target_combat_kind >= 0 and IMPACT_SHAKE_BY_KIND.has(target_combat_kind):
 		return IMPACT_SHAKE_BY_KIND[target_combat_kind]
 	return Vector2.ZERO
+
+
+## ========== v9.4: 命中特效 power_tier 四档分级（战术核武级区分标准）==========
+## 解决问题：weapon_type 不含量级信息（终极粒子炮 atk2250 与普通曲射 wt 都=1），
+## 同武器类型命中特效无差异。power_tier 用复合信号（explosion_radius+伤害+能力id）
+## 把命中特效分 4 档，让"核武级"武器有明显视觉区分。
+##
+## Tier 分档与判据（任一满足即升级）：
+##   0 LIGHT    默认（直射无爆炸+非狙击+低伤）—— 小火花，无帧动画
+##   1 MEDIUM   explosion_radius∈[1,50) 或 damage∈[100,700) —— 96px 帧动画
+##   2 HEAVY    explosion_radius∈[50,70) 或 damage∈[700,1500) —— 160px 帧动画 + 配方×1.4
+##   3 NUCLEAR  radius≥70 且 damage≥1500 —— 完整核爆特效栈（相位仪核子轰炸能力走独立路径，不经本函数）
+##
+## 调用方（bullet/batch）命中时算 tier 写入 opts["power_tier"]，本函数据此分派渲染。
+## 缺省（opts 无 power_tier）走原逻辑，向后兼容。
+const POWER_TIER := {
+	"LIGHT": 0,
+	"MEDIUM": 1,
+	"HEAVY": 2,
+	"NUCLEAR": 3,
+}
+# 阈值常量（可调，集中管理）
+const POWER_TIER_ATK_MEDIUM: float = 100.0    # damage≥100 → 至少 MEDIUM
+const POWER_TIER_ATK_HEAVY: float = 700.0     # damage≥700 → HEAVY
+const POWER_TIER_ATK_NUCLEAR: float = 1500.0  # damage≥1500（且 radius≥70）→ NUCLEAR
+const POWER_TIER_RADIUS_MEDIUM: float = 1.0   # 有爆炸半径 → 至少 MEDIUM
+const POWER_TIER_RADIUS_HEAVY: float = 50.0   # radius≥50 → HEAVY（MISSILE55/RAIL58）
+const POWER_TIER_RADIUS_NUCLEAR: float = 70.0 # radius≥70（OMEGA，需叠加高伤才核武）
+
+# v9.4: 核武级命中特效贴图包（preload，NUCLEAR tier 命中时用，与 phase_instrument_abilities 核爆共用资源）
+const _NUKE_DIR := "res://assets/effects/nuclear/"
+const _NUKE_TEX: Dictionary = {
+	"fireball": preload(_NUKE_DIR + "nuke_fireball.png"),
+	"shockwave": preload(_NUKE_DIR + "nuke_shockwave.png"),
+	"mushroom": preload(_NUKE_DIR + "nuke_mushroom.png"),
+	"burn": preload(_NUKE_DIR + "nuke_burn.png"),
+	"mushroom_frames": [
+		preload(_NUKE_DIR + "nuke_mushroom_f0.png"),
+		preload(_NUKE_DIR + "nuke_mushroom_f1.png"),
+		preload(_NUKE_DIR + "nuke_mushroom_f2.png"),
+		preload(_NUKE_DIR + "nuke_mushroom_f3.png"),
+		preload(_NUKE_DIR + "nuke_mushroom_f4.png"),
+		preload(_NUKE_DIR + "nuke_mushroom_f5.png"),
+		preload(_NUKE_DIR + "nuke_mushroom_f6.png"),
+		preload(_NUKE_DIR + "nuke_mushroom_f7.png"),
+		preload(_NUKE_DIR + "nuke_mushroom_f8.png"),
+	],
+}
+
+## 核武级命中配色（按阵营分色，与 phase_instrument_abilities 核爆统一风格）
+static func _nuke_colors(is_player_shot: bool) -> Dictionary:
+	return {
+		"shock": Color(1.0, 0.85, 0.5, 0.9),
+		"aftershock": Color(0.6, 0.7, 1.0, 0.5) if is_player_shot else Color(1.0, 0.4, 0.2, 0.5),
+		"smoke": Color(0.35, 0.32, 0.30, 0.6),
+	}
+
+## 复合判据计算 power_tier。调用方命中时调用，写入 opts["power_tier"]。
+## explosion_radius：爆炸半径（直射武器=0）；damage：本次伤害值。
+## 返回 0-3（POWER_TIER.LIGHT..NUCLEAR）。
+## 注：相位仪「核子轰炸」能力有独立特效路径（phase_instrument_abilities 直接调
+## spawn_nuclear_explosion + emit 闪白信号），不走本函数；此处 NUCLEAR 档
+## 处理的是普通武器弹道因高威力（radius≥70 且 damage≥1500，如终极粒子炮）的命中。
+static func compute_power_tier(weapon_type: int, explosion_radius: float, damage: float) -> int:
+	# radius 维度：≥70 且叠加高伤(≥1500) → 核武（OMEGA 粒子炮/终极武器）
+	if explosion_radius >= POWER_TIER_RADIUS_NUCLEAR and damage >= POWER_TIER_ATK_NUCLEAR:
+		return POWER_TIER.NUCLEAR
+	# radius 维度：[50,70) → HEAVY
+	if explosion_radius >= POWER_TIER_RADIUS_HEAVY:
+		return POWER_TIER.HEAVY
+	# atk 维度：≥700 → HEAVY（直射终极武器补救：radius=0 但伤害 700-1500）
+	if damage >= POWER_TIER_ATK_HEAVY:
+		return POWER_TIER.HEAVY
+	# radius 维度：[1,50) → MEDIUM（普通曲射/火箭/高炮）
+	if explosion_radius >= POWER_TIER_RADIUS_MEDIUM:
+		return POWER_TIER.MEDIUM
+	# atk 维度：[100,700) → MEDIUM（中型直射武器）
+	if damage >= POWER_TIER_ATK_MEDIUM:
+		return POWER_TIER.MEDIUM
+	# 默认 LIGHT（轻武器直射小兵）
+	return POWER_TIER.LIGHT
+
+## 按 power_tier 返回帧动画 target_width（px）。0=无帧动画。
+static func frame_width_for_tier(tier: int) -> float:
+	match tier:
+		0:  return 0.0     # LIGHT 无帧动画
+		1:  return 96.0    # MEDIUM 标准
+		2:  return 160.0   # HEAVY 放大
+		3:  return 0.0     # NUCLEAR 走 spawn_nuclear_explosion，不播普通帧动画
+		_: return 96.0
+

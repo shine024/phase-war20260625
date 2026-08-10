@@ -141,6 +141,8 @@ var _owned_runes: Array[String] = []
 var _cached_rune_bonus: Dictionary = {}
 # 缓存：当前激活的符文之语列表
 var _cached_active_runewords: Array = []
+# v9.5: 上次已播报过的符文之语ID集合（增量检测，避免每次刷新重复广播）
+var _last_broadcast_rw_ids: Dictionary = {}
 # 缓存失效标记
 var _rune_bonus_dirty: bool = true
 
@@ -1185,6 +1187,9 @@ func load_state(data: Dictionary) -> void:
 	# v7.x: 能量卡系统移除——清理 Registry 里所有 energy_start_* 实例（背包残留）并补偿纳米材料。
 	# 槽位里的能量卡已由 set_slots_from_card_ids 守卫处理；此处清理背包里的实例。
 	_cleanup_removed_energy_card_instances()
+	# v9.5: 读档后同步符文之语播报基线——把当前已激活的符文之语记入 _last_broadcast_rw_ids，
+	# 避免读档恢复时的自动刷新把"已激活"误判为新激活而触发 Announcer 播报。
+	_sync_rw_broadcast_baseline()
 
 func _emit_slots_changed() -> void:
 	_mark_loadouts_dirty()
@@ -1681,6 +1686,17 @@ func get_owned_runes() -> Array[String]:
 func _mark_rune_bonus_dirty() -> void:
 	_rune_bonus_dirty = true
 
+## v9.5: 同步符文之语播报基线——把当前已激活的符文之语全部记入 _last_broadcast_rw_ids（不 emit）。
+## 读档/初始化后调用，避免后续首次刷新把"已激活"误判为新激活而触发 Announcer 播报。
+func _sync_rw_broadcast_baseline() -> void:
+	var slot_count := get_rune_slot_count()
+	var matched := RunewordMatcher.check_active_runewords(_rune_slots, slot_count)
+	_last_broadcast_rw_ids.clear()
+	for rw in matched:
+		var rw_id := String(rw.get("id", ""))
+		if not rw_id.is_empty():
+			_last_broadcast_rw_ids[rw_id] = true
+
 ## 刷新缓存的符文加成
 ## v6.2: 同时累加每个已装备符文的基础加成（primary_effect/secondary_effect），
 ## 这样即使没凑齐符文之语组合，单个符文也有加成显示。
@@ -1689,6 +1705,25 @@ func _refresh_rune_bonus() -> void:
 	var slot_count := get_rune_slot_count()
 	var matched := RunewordMatcher.check_active_runewords(_rune_slots, slot_count)
 	_cached_active_runewords = matched
+	# v9.5: 增量检测——仅对"本次新激活"的符文之语广播 runeword_triggered，
+	# 避免每次装备符文都重复播报。玩家相位仪激活无具体单位，unit 传 null。
+	for rw in matched:
+		var rw_id := String(rw.get("id", ""))
+		if rw_id.is_empty() or _last_broadcast_rw_ids.has(rw_id):
+			continue
+		_last_broadcast_rw_ids[rw_id] = true
+		SignalBus.runeword_triggered.emit(rw_id, null)
+	# v9.5: 失效清理——卸下符文导致某符文之语不再激活时，从播报记录移除，
+	# 使其下次重新激活时能再次播报（否则同组合重新装备不再提示）。
+	var current_ids: Dictionary = {}
+	for rw in matched:
+		current_ids[String(rw.get("id", ""))] = true
+	var stale_ids: Array = []
+	for old_id in _last_broadcast_rw_ids.keys():
+		if not current_ids.has(old_id):
+			stale_ids.append(old_id)
+	for old_id in stale_ids:
+		_last_broadcast_rw_ids.erase(old_id)
 	# ── 单符文加成 ──
 	var rune_stats: Dictionary = {}
 	var rune_specials: Array = []

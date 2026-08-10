@@ -223,8 +223,9 @@ static func get_enriched_equipment(master_id: String) -> Dictionary:
 ## v6.14: 按 level 派生相位师符文。
 ## v7.x 重构：从"随机抽 generic 符文"改为"符文之语驱动"——先按 level 选一个符文之语，
 ## 取它的 required_runes 作为装备符文（必然能组成该词），槽位富余再补 generic 符文。
-## 这样敌方符文战力（MasterPowerEvaluator H维）才真正反映符文之语加成，而非散装符文。
+## 这样敌方装备符文必然触发符文之语加成（RunewordMatcher 命中），而非散装符文。
 ## 沿用 H3：用 master_id 哈希种子保证同相位师每次派生一致。
+## 注：MasterPowerEvaluator v7.x 已重构为单分量公式（仅装备槽战力），不再有 A-H 维划分。
 static func _derive_runes(level: int, faction_family: String, master_id: String = "") -> Array:
 	var rng := RandomNumberGenerator.new()
 	# master_id 为空（理论不发生，兜底）时退化为 level 种子，仍可复现

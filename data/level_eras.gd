@@ -33,13 +33,14 @@ const ERA_SPAWN_COUNT: Dictionary = {
 	Era.NEAR_FUTURE: [3, 4], # 近未来控制上限
 }
 
-## 波次间隔（秒）- 调整后期节奏，避免过快
+## 波次间隔（秒）- v8.x：整体缩短 ~40%（原 14/13/12/12/11），
+# 配合波次内敌方部署虚影时间，避免玩家等待过久。星级评定的预估时间随此自动跟随。
 const ERA_WAVE_INTERVAL: Dictionary = {
-	Era.WW1: 14.0,
-	Era.WW2: 13.0,
-	Era.COLD_WAR: 12.0,
-	Era.MODERN: 12.0,  # 维持现代节奏
-	Era.NEAR_FUTURE: 11.0,  # 近未来略微加快但不过度
+	Era.WW1: 9.0,
+	Era.WW2: 8.5,
+	Era.COLD_WAR: 8.0,
+	Era.MODERN: 7.5,
+	Era.NEAR_FUTURE: 7.0,
 }
 
 ## 掉落率倍数（时代越靠后掉落越高）
