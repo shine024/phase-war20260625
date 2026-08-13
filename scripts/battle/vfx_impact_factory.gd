@@ -27,11 +27,12 @@ const PARTICLE_TEX_EMBER         := preload("res://assets/effects/particle_textu
 ## v9.2: 放射状命中贴图——区别于拖尾的顺向条纹，命中用放射爆点（"飞行"vs"撞击"形状可分）
 const PARTICLE_TEX_IMPACT_METAL  := preload("res://assets/effects/particle_textures/impact_metal.png")   # 动能命中放射火花
 const PARTICLE_TEX_IMPACT_ENERGY := preload("res://assets/effects/particle_textures/impact_energy.png") # 能量命中放射爆裂
+const PARTICLE_TEX_IMPACT_SCORCH := preload("res://assets/effects/particle_textures/impact_scorch.png")  # v11 弹痕锚点(暗凹陷+刮擦线,持久贴命中点)
 
 # ── 池化上限 ──
 const MAX_RINGS: int = 80
-const MAX_DEBRIS: int = 60
-const MAX_SPARKS: int = 200
+const MAX_DEBRIS: int = 140  # v10: smoke_puff/shrapnel 层复用 debris 池
+const MAX_SPARKS: int = 320  # v10: flash 层复用 spark 池
 # v7.4 性能优化：ring 顶点预分配。原 _configure_ring_polygon 每帧 new PackedVector2Array + 48 append，
 # 80 ring 激活时每帧 80×48 分配。改为每 ring 绑定预分配 buffer，每帧只原地改坐标（零堆分配）。
 const _RING_SEGS: int = 24       # 圆环段数（外圈+内圈交错 = 48 顶点）
@@ -99,11 +100,19 @@ static func spawn_layered_impact(parent: Node2D, world_pos: Vector2, weapon_type
 	# 第1层：冲击波环（motion_reduce 时跳过）
 	if not motion_reduce:
 		_spawn_ring(parent, world_pos, recipe.get("ring_r", 24.0), recipe.get("ring_dur", 0.2), base_color)
+		_spawn_impact_decal(parent, world_pos, weapon_type)  # v11 弹痕锚点(在火花之下,火花从弹痕溅起)
 	# 第2层：主火花（始终生成）
 	_spawn_sparks(parent, world_pos, recipe, base_color, weapon_type)
 	# 第3层：碎片/烟尘（重型武器，motion_reduce 时跳过）
 	if not motion_reduce and recipe.has("debris"):
 		_spawn_debris(parent, world_pos, recipe["debris"], base_color, weapon_type)
+	# v10 真实度层（报告建议）：瞬时闪光 / 轻烟团 / 金属破片。按武器族驱动，motion_reduce 时全跳过。
+	# 已有 debris（重型烟尘）的不重复加 smoke_puff，避免双烟。
+	if not motion_reduce:
+		_spawn_flash_layer(parent, world_pos, base_color, weapon_type, {})
+		if not recipe.has("debris"):
+			_spawn_smoke_puff_layer(parent, world_pos, base_color, weapon_type, {})
+		_spawn_shrapnel_layer(parent, world_pos, base_color, weapon_type, {})
 	# 特殊伤害叠加
 	if opts.get("is_crit", false) and not motion_reduce:
 		spawn_crit_aura(parent, world_pos)
@@ -397,10 +406,29 @@ static func _get_crit_ramp() -> Gradient:
 static func _get_muzzle_ramp() -> Gradient:
 	if _muzzle_ramp == null:
 		_muzzle_ramp = Gradient.new()
-		_muzzle_ramp.add_point(0, Color(1.0, 0.9, 0.4, 1.0))
+		_muzzle_ramp.add_point(0, Color(1.0, 0.98, 0.85, 1.0))  # v10: 白热核心(原黄 0.9,0.4)
+		_muzzle_ramp.add_point(0.25, Color(1.0, 0.85, 0.4, 1.0))
 		_muzzle_ramp.add_point(0.6, Color(1.0, 0.5, 0.1, 0.5))
 		_muzzle_ramp.add_point(1.0, Color(1.0, 0.3, 0.0, 0.0))
 	return _muzzle_ramp
+
+
+## v10 真实度：光束辉光晕——锐利主光束后铺宽低 alpha 的 ADD 辉光(报告:激光/穿透/闪电/光柱缺辉光,仅一条细线)。
+static func _spawn_beam_glow(parent: Node2D, from_pos: Vector2, to_pos: Vector2, color: Color, width: float, fade: float = 0.35) -> void:
+	var glow := _acquire_beam()
+	if glow == null:
+		return
+	glow.width = width
+	glow.default_color = Color(color.r, color.g, color.b, 0.32)
+	glow.joint_mode = Line2D.LINE_JOINT_ROUND
+	glow.end_cap_mode = Line2D.LINE_CAP_ROUND
+	glow.add_point(from_pos)
+	glow.add_point(to_pos)
+	glow.position = Vector2.ZERO
+	parent.add_child(glow)
+	var tw := glow.create_tween()
+	tw.tween_property(glow, "modulate:a", 0.0, fade)
+	tw.tween_callback(func(): _release_beam(glow))
 
 
 ## 穿透紫色穿甲光线（v8.2：加长淡出到可看清）。v7.4: 改用 beam 池
@@ -424,6 +452,7 @@ static func spawn_pierce_beam(parent: Node2D, world_pos: Vector2, direction: Vec
 	var head_off: float = 60.0 * length_scale * (1.6 if enhanced else 1.0)  # 增强版加长
 	var start := world_pos - d * tail_off
 	var end := world_pos + d * head_off  # 加长
+	_spawn_beam_glow(parent, start, end, color, 16.0 if enhanced else 12.0, 0.40)  # v10: 穿透辉光
 	beam.add_point(start)
 	beam.add_point(end)
 	beam.position = Vector2.ZERO
@@ -459,6 +488,7 @@ static func spawn_lightning_arc(parent: Node2D, from_pos: Vector2, to_pos: Vecto
 	var arc := _acquire_beam()
 	if arc == null:
 		return
+	_spawn_beam_glow(parent, from_pos, to_pos, color, 11.0, 0.28)  # v10: 闪电辉光晕
 	arc.width = 2.5
 	arc.default_color = color
 	arc.joint_mode = Line2D.LINE_JOINT_ROUND
@@ -496,6 +526,7 @@ static func spawn_laser_beam(parent: Node2D, from_pos: Vector2, to_pos: Vector2,
 	beam.default_color = color
 	beam.joint_mode = Line2D.LINE_JOINT_ROUND
 	beam.end_cap_mode = Line2D.LINE_CAP_ROUND
+	_spawn_beam_glow(parent, from_pos, to_pos, color, 24.0, 0.34)  # v10: 激光辉光晕
 	beam.add_point(from_pos)
 	beam.add_point(to_pos)
 	beam.position = Vector2.ZERO
@@ -800,17 +831,19 @@ static func spawn_animated_nuclear(parent: Node2D, pos: Vector2, frame_textures:
 	anim.sprite_frames = frames
 	anim.position = pos
 	anim.scale = Vector2(peak_scale, peak_scale)
-	anim.modulate = Color(1.0, 1.0, 1.0, 0.95)
+	# v11: 蘑菇云帧本身仅 33-44% 不透明(灰烟),提亮 modulate 让烟柱在战场上清晰可辨(原 1.0 太暗被吞)
+	anim.modulate = Color(1.35, 1.3, 1.25, 1.0)
 	anim.z_index = 30  # 蘑菇云盖在单位上方
 	anim.play("grow")
 	parent.add_child(anim)
 	anim.add_to_group("battle_vfx")  # ~1s 自毁，可能跨清场，战斗结束统一兜底清理
 	# 总时长 = 帧数 / fps
 	var life: float = float(frame_textures.size()) / fps
-	# 上飘 + 淡出（与 spawn_rising_sprite 同范式，但配合帧动画播放）
+	# v11 修复:生长期间保持完全不透明,【生长完成后】才淡出。原代码边长边淡(EASE_IN),
+	# 导致蘑菇云永远到不了"完全成型且可见"的状态——展示场峰值帧拍到的是近乎透明的空景。
 	var tween := anim.create_tween()
-	tween.parallel().tween_property(anim, "position:y", pos.y - rise, life).set_ease(Tween.EASE_OUT)
-	tween.parallel().tween_property(anim, "modulate:a", 0.0, life).set_ease(Tween.EASE_IN)
+	tween.tween_property(anim, "position:y", pos.y - rise, life).set_ease(Tween.EASE_OUT)  # 上飘(生长期间不透明)
+	tween.tween_property(anim, "modulate:a", 0.0, 0.5).set_ease(Tween.EASE_IN)  # 生长完成后才淡出
 	# 播完销毁（帧动画不进对象池——核爆 CD 45s 频率低，new 节点无性能压力）
 	tween.tween_callback(func():
 		if is_instance_valid(anim):
@@ -834,6 +867,7 @@ static func spawn_energy_pillar(parent: Node2D, pos: Vector2, color: Color = Col
 	beam.joint_mode = Line2D.LINE_JOINT_ROUND
 	beam.end_cap_mode = Line2D.LINE_CAP_ROUND
 	# 从命中点正上方 height 高度降落到命中点（垂直能量束）
+	_spawn_beam_glow(parent, Vector2(pos.x, pos.y - height), pos, color, 46.0, life)  # v10: 加宽辉光(原仅 width18 细线)
 	beam.add_point(Vector2(pos.x, pos.y - height))
 	beam.add_point(pos)
 	beam.position = Vector2.ZERO
@@ -1003,9 +1037,28 @@ static func spawn_nuclear_explosion(parent: Node2D, pos: Vector2, textures: Dict
 	var shockwave_tex_scale: float = 0.30 * size_scale
 	var main_radius: float = 200.0 * size_scale
 	var after_radius: float = 320.0 * size_scale
-	var mushroom_w: float = 320.0 * size_scale
-	var mushroom_rise: float = 120.0 * size_scale
+	var mushroom_w: float = 400.0 * size_scale
+	var mushroom_rise: float = 140.0 * size_scale
 	var burn_radius: float = 90.0 * size_scale
+	# v10: t=0 瞬时强光闪(报告:核爆缺电磁脉冲闪光)——大尺度 ADD 白黄光斑 0.18s 衰减
+	var flash_tex: Texture2D = textures.get("fireball", null)
+	if flash_tex != null and _active_impact_sprites < MAX_IMPACT_SPRITES:
+		var nuke_flash := _acquire_impact_sprite()
+		if nuke_flash != null:
+			nuke_flash.texture = flash_tex
+			nuke_flash.position = pos
+			nuke_flash.scale = Vector2(size_scale * 2.0, size_scale * 2.0)
+			nuke_flash.modulate = Color(1.0, 0.95, 0.82, 0.92)
+			nuke_flash.visible = true
+			nuke_flash.material = _get_add_mat()
+			parent.add_child(nuke_flash)
+			nuke_flash.add_to_group("battle_vfx")
+			var twf := nuke_flash.create_tween()
+			twf.tween_property(nuke_flash, "modulate:a", 0.0, 0.18).set_ease(Tween.EASE_OUT)
+			twf.tween_callback(func():
+				if is_instance_valid(nuke_flash):
+					nuke_flash.material = null
+					_release_impact_sprite(nuke_flash))
 	# ①火球贴图
 	var fireball_tex: Texture2D = textures.get("fireball", null)
 	if fireball_tex != null:
@@ -1235,33 +1288,46 @@ static func _spawn_sparks(parent: Node2D, pos: Vector2, recipe: Dictionary, base
 		p.texture = PARTICLE_TEX_IMPACT_ENERGY
 	elif weapon_type in [3, 7, 9]:  # ROCKET / FLAK / MISSILE — 爆炸碎片
 		p.texture = PARTICLE_TEX_SPARK_HEAVY
-	else:                           # 动能直射类 — 放射状撞击火花
-		# v9.4: 改用圆点贴图（MUZZLE_LIGHT），弃用 IMPACT_METAL 星芒长条
-		# （星芒贴图高速运动拉成长条，密集命中时围成杂乱长条光环；圆点保留放射感但不拉长）
-		p.texture = PARTICLE_TEX_MUZZLE_LIGHT
+	else:                           # 动能直射类 — v10: 短条贴图(SPARK_METAL)让火花呈细长锥形而非圆点
+		p.texture = PARTICLE_TEX_SPARK_METAL
 	# 按配方差异化参数
 	p.amount = int(recipe.get("spark_amount", 18))
 	p.initial_velocity_min = float(recipe.get("spark_vmin", 40.0))
 	p.initial_velocity_max = float(recipe.get("spark_vmax", 120.0))
-	# v9.4: 轻武器（SMG/RIFLE/MG/PISTOL，wt 0/1/2/4）命中火花克制——
-	# 这些武器 attack_speed 高、命中密集（冲锋枪每秒数十次命中），16-22 颗高速火花
-	# 累积成满屏"长条火星"（impact_metal 贴图高速运动拉长）。
-	# 减半粒子数 + 缩短寿命，保留"命中"反馈但不糊屏。重型/能量武器不动（命中稀疏）。
+	# v11 真实度:轻武器(SMG/RIFLE/MG/PISTOL,wt 0/1/2/4)命中密集,改用【短寿命】控累积,
+	# 不再减半数量——减半让单次命中火花稀疏(报告:步枪该有 20-30 颗)。短寿命(≤0.22s)让
+	# 前一次命中的火花在下次命中前已熄灭,既不糊屏又保证单次命中密集锐利。
+	var base_life: float = float(recipe.get("spark_life", 0.28))
 	if weapon_type in [0, 1, 2, 4]:
-		p.amount = maxi(6, p.amount / 2)
-		p.lifetime = minf(p.lifetime, 0.25)
-	# v9.2: 贴图化后 scale_amount 需除以贴图尺寸系数（原无贴图时 scale=像素直径，
-	# 现 32px 贴图 × scale = 显示尺寸，会爆炸）。统一 ×0.4 让命中火花回到合理范围。
-	# 配方值 1.5-7.0 × 0.4 = 0.6-2.8 → 32px 贴图显示 19-90px（合理，单位约 60-80px）
+		base_life = minf(base_life, 0.34)  # v11c: 0.22→0.34 配合延长的亮黄梯度,让火花散开时仍亮
+	p.lifetime = base_life
+	# scale: 贴图化后需 ×SPARK_SCALE_FIX 压回合理显示尺寸(32px 贴图 × scale = 显示像素)
 	const SPARK_SCALE_FIX: float = 0.4
 	p.scale_amount_min = float(recipe.get("spark_smin", 1.5)) * SPARK_SCALE_FIX
 	p.scale_amount_max = float(recipe.get("spark_smax", 3.0)) * SPARK_SCALE_FIX
-	p.lifetime = float(recipe.get("spark_life", 0.28))
-	p.spread = float(recipe.get("spark_spread", 360.0))
-	# 激光/能量类用线性方向（集中喷射感）
+	# v11c: 动能火花需【独立分散+明亮】(报告:火花融合成发光团,无独立火花)。
+	# 提速 ×1.6 让火花散得更开(不再叠成一团)+ 缩小 ×0.7 让每颗独立可辨。
+	if weapon_type not in [8, 10, 11, 3, 7, 9]:
+		p.initial_velocity_min *= 1.6
+		p.initial_velocity_max *= 1.6
+		p.scale_amount_min *= 0.7
+		p.scale_amount_max *= 0.7
+	p.lifetime_randomness = 0.3  # 寿命随机,火花不同步熄灭更自然
+	# v11 关键修复:动能火花用 spark_metal【短条贴图】(横向 streak)。原代码不旋转 → 所有
+	# 火花恒朝水平方向,读起来像"枪口焰/弹道"而非放射火花锥(报告原话)。加随机旋转(0-360°)
+	# 让 streak 四散 → 真正的金属火花放射爆裂。能量武器(激光/等离子)保持定向(相干光束感)。
+	if weapon_type not in [8, 10, 11]:
+		p.angle_min = 0.0
+		p.angle_max = 360.0
+	# v10 真实度:火花沿撞击法线向上锥形喷射(修旧 bug:spark_dir 只改 spread 不设 direction→恒朝右)。
+	p.direction = Vector2(0, -1)  # 默认向上(顶视角命中目标,火花向上扇散)
 	if recipe.get("spark_dir", false):
-		p.spread = float(recipe.get("spark_spread", 45.0))
-	p.color_ramp = _get_spark_ramp(base_color)
+		# 窄角集中喷射类(步枪/狙击/激光/电磁):向上的窄锥
+		p.spread = float(recipe.get("spark_spread", 55.0))
+	else:
+		# 原球形/宽散布类:收敛为向上扇形锥(保留方向性,上限 110°)
+		p.spread = minf(float(recipe.get("spark_spread", 360.0)), 110.0)
+	p.color_ramp = _get_spark_ramp(base_color, weapon_type)
 	parent.add_child(p)
 	var tree := p.get_tree()
 	if tree != null:
@@ -1290,14 +1356,27 @@ static func _connect_deferred_release(timer: SceneTreeTimer, node: Node, release
 
 ## 火花色带缓存（Gradient，按颜色键缓存）
 static var _spark_ramp_cache: Dictionary = {}
-static func _get_spark_ramp(base_color: Color) -> Gradient:
-	var key := "%02x%02x%02x" % [int(base_color.r*255), int(base_color.g*255), int(base_color.b*255)]
+# v10: 火花色带按武器族分——动能/爆炸走热衰减(白→黄→橙→暗红→淡出),
+# 能量武器(激光/欧米茄/电磁)保留蓝青但加白热核心。报告:原"白→武器色→淡出"颜色单一缺高温梯度。
+static func _get_spark_ramp(base_color: Color, weapon_type: int = -1) -> Gradient:
+	var family: String = "energy" if weapon_type in [8, 10, 11] else "thermal"
+	var key: String = family + "_%02x%02x%02x" % [int(base_color.r*255), int(base_color.g*255), int(base_color.b*255)]
 	if _spark_ramp_cache.has(key):
 		return _spark_ramp_cache[key]
 	var g := Gradient.new()
-	g.add_point(0, Color(1.0, 1.0, 1.0, 1.0))
-	g.add_point(0.3, base_color)
-	g.add_point(1.0, Color(base_color.r, base_color.g, base_color.b, 0.0))
+	if family == "thermal":
+		# 真实金属火花热衰减:白热核心→亮黄→橙→暗红→近黑淡出
+		# v11c: 亮黄阶段延长(0.15→0.32),让散开的火花仍处白热/亮黄(报告:火花过快变暗变橙)
+		g.add_point(0.0, Color(1.0, 1.0, 1.0, 1.0))
+		g.add_point(0.32, Color(1.0, 0.9, 0.4, 1.0))
+		g.add_point(0.58, Color(1.0, 0.55, 0.12, 0.95))
+		g.add_point(0.82, Color(0.5, 0.06, 0.0, 0.65))
+		g.add_point(1.0, Color(0.2, 0.02, 0.0, 0.0))
+	else:
+		# 能量武器:白热核心→武器本色(蓝青)→淡出
+		g.add_point(0.0, Color(1.0, 1.0, 1.0, 1.0))
+		g.add_point(0.25, base_color)
+		g.add_point(1.0, Color(base_color.r, base_color.g, base_color.b, 0.0))
 	_spark_ramp_cache[key] = g
 	return g
 
@@ -1351,6 +1430,144 @@ static func _spawn_debris(parent: Node2D, pos: Vector2, debris_cfg: Dictionary, 
 		# +0.1s 余量（同 _spawn_sparks，防尾段截断）
 		var timer := tree.create_timer(p.lifetime + 0.1)
 		_connect_deferred_release(timer, p, _release_debris_particle)
+
+
+## ======================================================================
+## v10 真实度层：瞬时闪光 / 轻烟团 / 金属破片（报告建议新增层，复用现有池）
+## ======================================================================
+## 瞬时白光闪光——命中瞬间动能→热能强光(0.06-0.12s)。复用 spark 池。
+static func _spawn_flash_layer(parent: Node2D, pos: Vector2, base_color: Color, weapon_type: int, cfg: Dictionary) -> void:
+	if _active_sparks >= MAX_SPARKS:
+		return
+	_active_sparks += 1
+	var p := _acquire_spark_particle()
+	if p == null:
+		_active_sparks -= 1
+		return
+	p.position = pos
+	# v11: 命中瞬时白光锚点(报告:命中点缺瞬时高光,金属撞击应有"星芒状白闪")。
+	# 动能用放射状星贴图(IMPACT_METAL)+纯白过曝+极短寿命+放大尺寸 → 清晰命中闪光视觉锚。
+	p.texture = PARTICLE_TEX_IMPACT_METAL if not (weapon_type in [8, 10, 11]) else PARTICLE_TEX_IMPACT_ENERGY
+	var is_energy: bool = weapon_type in [8, 10, 11]
+	p.angle_min = 0.0
+	p.angle_max = 0.0
+	p.amount = int(cfg.get("amount", 2))
+	p.explosiveness = 1.0
+	p.lifetime = float(cfg.get("life", 0.07))
+	p.initial_velocity_min = 0.0
+	p.initial_velocity_max = 0.0
+	p.direction = Vector2.ZERO
+	p.spread = 0.0
+	p.gravity = Vector2.ZERO
+	const FSCALE: float = 0.4
+	p.scale_amount_min = float(cfg.get("smin", 6.0)) * FSCALE
+	p.scale_amount_max = float(cfg.get("smax", 11.0)) * FSCALE
+	var flash_col: Color = Color(1.0, 1.0, 0.96, 1.0) if not is_energy else Color(0.85, 0.95, 1.0, 1.0)
+	p.color = flash_col
+	var g := Gradient.new()
+	g.add_point(0.0, flash_col)
+	g.add_point(0.5, Color(flash_col.r, flash_col.g * 0.9, flash_col.b * 0.6, 0.6))
+	g.add_point(1.0, Color(flash_col.r, flash_col.g * 0.6, flash_col.b * 0.3, 0.0))
+	p.color_ramp = g
+	parent.add_child(p)
+	var tree := p.get_tree()
+	if tree != null:
+		var timer := tree.create_timer(p.lifetime + 0.05)
+		_connect_deferred_release(timer, p, _release_spark_particle)
+
+
+## 轻烟团——金属撞击微量黑灰烟(动能武器原完全无烟)。复用 debris 池。
+static func _spawn_smoke_puff_layer(parent: Node2D, pos: Vector2, base_color: Color, weapon_type: int, cfg: Dictionary) -> void:
+	if _active_debris >= MAX_DEBRIS:
+		return
+	_active_debris += 1
+	var p := _acquire_debris_particle()
+	if p == null:
+		_active_debris -= 1
+		return
+	p.position = pos
+	var is_energy: bool = weapon_type in [8, 10, 11]
+	p.texture = PARTICLE_TEX_SMOKE_ENERGY if is_energy else PARTICLE_TEX_SMOKE_GENERIC
+	var light_factor: float = 0.85 if weapon_type in [0, 1, 2, 4] else 1.0  # v11b: 0.5→0.85 轻武器烟量恢复可见(报告:完全无烟)
+	p.amount = int(float(cfg.get("amount", 6)) * light_factor)
+	p.lifetime = float(cfg.get("life", 0.7))
+	p.initial_velocity_min = float(cfg.get("vmin", 20.0))
+	p.initial_velocity_max = float(cfg.get("vmax", 55.0))
+	const DSCALE: float = 0.5
+	p.scale_amount_min = float(cfg.get("smin", 2.5)) * DSCALE
+	p.scale_amount_max = float(cfg.get("smax", 4.5)) * DSCALE
+	p.direction = Vector2(0, -1)   # 向上飘
+	p.spread = 55.0
+	p.gravity = Vector2(0, -15.0)  # 轻微上飘
+	var smoke_col: Color = cfg.get("color", (Color(0.32, 0.3, 0.28, 0.55) if not is_energy else Color(0.3, 0.38, 0.6, 0.45)))
+	p.color = smoke_col
+	p.color_ramp = _get_smoke_grad(smoke_col)
+	parent.add_child(p)
+	var tree := p.get_tree()
+	if tree != null:
+		var timer := tree.create_timer(p.lifetime + 0.1)
+		_connect_deferred_release(timer, p, _release_debris_particle)
+
+
+## 金属破片——装甲剥落的小碎片(银白/暗金,重力下坠)。复用 debris 池。
+static func _spawn_shrapnel_layer(parent: Node2D, pos: Vector2, base_color: Color, weapon_type: int, cfg: Dictionary) -> void:
+	if _active_debris >= MAX_DEBRIS:
+		return
+	_active_debris += 1
+	var p := _acquire_debris_particle()
+	if p == null:
+		_active_debris -= 1
+		return
+	p.position = pos
+	p.texture = PARTICLE_TEX_SPARK_ENERGY if weapon_type in [8, 10, 11] else PARTICLE_TEX_SPARK_HEAVY
+	var light_factor: float = 0.85 if weapon_type in [0, 1, 2, 4] else 1.0  # v11b: 0.5→0.85 破片恢复可见
+	p.amount = int(float(cfg.get("amount", 10)) * light_factor)
+	p.lifetime = float(cfg.get("life", 0.6))
+	p.initial_velocity_min = float(cfg.get("vmin", 120.0))
+	p.initial_velocity_max = float(cfg.get("vmax", 320.0))
+	const DSCALE2: float = 0.5
+	p.scale_amount_min = float(cfg.get("smin", 1.0)) * DSCALE2
+	p.scale_amount_max = float(cfg.get("smax", 2.2)) * DSCALE2
+	p.direction = Vector2(0, -1)   # 向上锥扇出后重力下坠
+	p.spread = 100.0
+	p.gravity = Vector2(0, 260.0)  # 重力下落(破片抛物线)
+	var shrap_col: Color = cfg.get("color", (Color(0.85, 0.78, 0.55, 1.0) if weapon_type not in [8, 10, 11] else Color(0.6, 0.75, 1.0, 1.0)))
+	p.color = shrap_col
+	var sg := Gradient.new()
+	sg.add_point(0.0, shrap_col)
+	sg.add_point(0.6, Color(shrap_col.r * 0.6, shrap_col.g * 0.5, shrap_col.b * 0.4, 0.9))
+	sg.add_point(1.0, Color(0.2, 0.15, 0.1, 0.0))
+	p.color_ramp = sg
+	parent.add_child(p)
+	var tree := p.get_tree()
+	if tree != null:
+		var timer := tree.create_timer(p.lifetime + 0.1)
+		_connect_deferred_release(timer, p, _release_debris_particle)
+
+
+## v11 弹痕锚点层:持久(0.6s)暗凹陷+刮擦线贴图贴在命中点,给"打中了"明确视觉定位。
+## 报告反复要求"弹孔/凹陷视觉锚点/弹痕"——纯粒子无定位感,这个静态贴图锚住命中点。
+## 仅动能武器(能量灼烧/重型爆炸另留各自的灼痕/爆坑,不叠小弹痕)。
+static func _spawn_impact_decal(parent: Node2D, pos: Vector2, weapon_type: int) -> void:
+	if weapon_type in [8, 10, 11, 3, 7, 9]:
+		return  # 能量/重型爆炸不留小弹痕
+	if parent == null or not is_instance_valid(parent):
+		return
+	var decal := Sprite2D.new()
+	decal.texture = PARTICLE_TEX_IMPACT_SCORCH
+	decal.position = pos
+	decal.scale = Vector2(0.6, 0.6)
+	decal.rotation = randf() * TAU   # 随机旋转,避免每个弹痕朝向一致
+	decal.modulate = Color(1.0, 1.0, 1.0, 0.92)
+	decal.add_to_group("battle_vfx")
+	parent.add_child(decal)
+	var tree := decal.get_tree()
+	if tree != null:
+		# bind_node:节点被清场 group-free 时自动 kill tween,避免操作已释放节点
+		var tw := tree.create_tween().bind_node(decal)
+		tw.tween_interval(0.35)   # 先保持清晰可辨
+		tw.tween_property(decal, "modulate:a", 0.0, 0.30)
+		tw.tween_callback(decal.queue_free)
 
 
 ## ======================================================================
@@ -1420,62 +1637,67 @@ static func _impact_recipe_build(weapon_type: int, flavor: int) -> Dictionary:
 			match flavor:
 				DirectWeaponFlavor.Flavor.MG:
 					# 机枪：弹着点更密（火花略多 + 环略大），连发时形成密集弹痕
+					# v11: 高速+短寿+小尺寸 → 锐利密集火花(报告:机枪该有密集弹痕,非大火球)
 					return {
-						"ring_r": 34.0, "ring_dur": 0.34,
-						"spark_amount": 22, "spark_vmin": 110.0, "spark_vmax": 280.0,
-						"spark_smin": 2.2, "spark_smax": 3.6, "spark_life": 0.42, "spark_spread": 360.0,
+						"ring_r": 34.0, "ring_dur": 0.30,
+						"spark_amount": 30, "spark_vmin": 340.0, "spark_vmax": 660.0,
+						"spark_smin": 0.55, "spark_smax": 1.2, "spark_life": 0.24, "spark_spread": 360.0,
 					}
 				DirectWeaponFlavor.Flavor.TANK_GUN:
 					# 坦克炮：重炮命中（大环 + 粗火花），与轻武器弹着点明显区分
+					# v11: 重炮保持较大尺寸/较长寿命(穿甲重击),但速度提高显冲击力
 					return {
-						"ring_r": 52.0, "ring_dur": 0.42,
-						"spark_amount": 26, "spark_vmin": 120.0, "spark_vmax": 300.0,
-						"spark_smin": 3.0, "spark_smax": 5.0, "spark_life": 0.50, "spark_spread": 360.0,
+						"ring_r": 52.0, "ring_dur": 0.40,
+						"spark_amount": 34, "spark_vmin": 380.0, "spark_vmax": 740.0,
+						"spark_smin": 0.8, "spark_smax": 1.6, "spark_life": 0.30, "spark_spread": 360.0,
 					}
 				DirectWeaponFlavor.Flavor.RIFLE:
 					# 步枪：高速集中喷射（窄角，穿甲感），区别于冲锋枪的圆散
+					# v11: 窄锥高速喷射(报告:步枪该 800-1200px/s 窄角扇形)
 					return {
-						"ring_r": 30.0, "ring_dur": 0.32,
-						"spark_amount": 18, "spark_vmin": 130.0, "spark_vmax": 320.0,
-						"spark_smin": 2.0, "spark_smax": 3.2, "spark_life": 0.44, "spark_spread": 70.0,
+						"ring_r": 30.0, "ring_dur": 0.28,
+						"spark_amount": 28, "spark_vmin": 360.0, "spark_vmax": 700.0,
+						"spark_smin": 0.5, "spark_smax": 1.1, "spark_life": 0.22, "spark_spread": 70.0,
 						"spark_dir": true,
 					}
 				DirectWeaponFlavor.Flavor.SMALL_ARMS:
 					# 手枪/卡宾：最弱命中（小环 + 少火花），体现轻武器
 					return {
-						"ring_r": 22.0, "ring_dur": 0.28,
-						"spark_amount": 12, "spark_vmin": 80.0, "spark_vmax": 200.0,
-						"spark_smin": 2.0, "spark_smax": 3.2, "spark_life": 0.38, "spark_spread": 360.0,
+						"ring_r": 22.0, "ring_dur": 0.26,
+						"spark_amount": 18, "spark_vmin": 280.0, "spark_vmax": 540.0,
+						"spark_smin": 0.5, "spark_smax": 1.0, "spark_life": 0.20, "spark_spread": 360.0,
 					}
 				_:
 					# GENERIC/UNKNOWN：原基准（冲锋枪/通用直射）
-					# v8.4: 原配方 28 小火花在高速连发下糊成一片，改为 16 个更亮火花
+					# v11: 高速短寿小尺寸锐利火花(报告:冲锋枪该尖锐瞬时冲击,非松散云团)
 					return {
-						"ring_r": 28.0, "ring_dur": 0.32,
-						"spark_amount": 16, "spark_vmin": 100.0, "spark_vmax": 260.0,
-						"spark_smin": 2.5, "spark_smax": 4.0, "spark_life": 0.45, "spark_spread": 360.0,
+						"ring_r": 28.0, "ring_dur": 0.28,
+						"spark_amount": 24, "spark_vmin": 320.0, "spark_vmax": 620.0,
+						"spark_smin": 0.5, "spark_smax": 1.1, "spark_life": 0.22, "spark_spread": 360.0,
 					}
 		6:  # SNIPER — 中环 + 高速集中喷射
+			# v11: 狙击最高速集中(大口径穿甲,火花最猛烈)
 			return {
-				"ring_r": 48.0, "ring_dur": 0.44,
-				"spark_amount": 25, "spark_vmin": 150.0, "spark_vmax": 350.0,
-				"spark_smin": 1.8, "spark_smax": 3.2, "spark_life": 0.50, "spark_spread": 55.0,
+				"ring_r": 48.0, "ring_dur": 0.36,
+				"spark_amount": 32, "spark_vmin": 420.0, "spark_vmax": 820.0,
+				"spark_smin": 0.5, "spark_smax": 1.0, "spark_life": 0.26, "spark_spread": 55.0,
 				"spark_dir": true,
 			}
 		5:  # SHOTGUN — 宽散布
+			# v11: 霰弹多粒子宽散布(弹丸散射火花)
 			return {
-				"ring_r": 44.0, "ring_dur": 0.42,
-				"spark_amount": 40, "spark_vmin": 80.0, "spark_vmax": 250.0,
-				"spark_smin": 1.5, "spark_smax": 2.8, "spark_life": 0.52, "spark_spread": 360.0,
+				"ring_r": 44.0, "ring_dur": 0.34,
+				"spark_amount": 46, "spark_vmin": 300.0, "spark_vmax": 600.0,
+				"spark_smin": 0.5, "spark_smax": 1.0, "spark_life": 0.24, "spark_spread": 360.0,
 			}
 		1:  # INDIRECT(曲射) / RIFLE(batch直射) — 中火折中
 			# v8.x 亚类细分：曲射(迫击炮/野战炮等无步枪关键词)加地面扬尘，体现"炮弹落地"；
 			# RIFLE 直射(batch 路径) 走窄角集中火花，与直射步枪一致。
 			if flavor == DirectWeaponFlavor.Flavor.RIFLE:
 				return {
-					"ring_r": 36.0, "ring_dur": 0.40,
-					"spark_amount": 22, "spark_vmin": 120.0, "spark_vmax": 300.0,
-					"spark_smin": 2.0, "spark_smax": 3.4, "spark_life": 0.50, "spark_spread": 70.0,
+					"ring_r": 36.0, "ring_dur": 0.32,
+					"spark_amount": 28, "spark_vmin": 360.0, "spark_vmax": 700.0,
+					"spark_smin": 0.5, "spark_smax": 1.1, "spark_life": 0.22, "spark_spread": 70.0,
 					"spark_dir": true,
 				}
 			# 曲射：加低矮横向扬尘（is_smoke + 低重力），模拟炮弹落地激起的尘土

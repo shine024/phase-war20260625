@@ -1,0 +1,11 @@
+[gd_scene load_steps=2 format=3 uid="uid://s3kwu8smw0u4"]
+
+[ext_resource type="Script" uid="uid://c4km4y0jqh0mn" path="res://scenes/tools/vfx_showcase.gd" id="1_7v06s"]
+
+[node name="VfxShowcase" type="Node2D"]
+script = ExtResource("1_7v06s")
+
+[node name="Bg" type="CanvasLayer" parent="."]
+layer = -100
+
+[node name="Battlefield" type="Node2D" parent="."]
