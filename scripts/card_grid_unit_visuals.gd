@@ -159,7 +159,7 @@ static func sync_elite_badge(host: Node2D, unit_spr: Sprite2D, unit: Node) -> vo
 	# 金色（boss 更亮）
 	badge.color = Color(1.0, 0.78, 0.20, 1.0) if spawn_type == "boss" else Color(0.98, 0.75, 0.15, 1.0)
 	# 定位：实体左上角（与右上角的 RarityBadge 对称），锚定实体顶部
-	var card_w_eb: float = CardGridBattleLayout.battle_card_width_px()
+	var card_w_eb: float = CardGridBattleLayout.BASE_CARD_WIDTH_PX
 	badge.position = Vector2(-card_w_eb * 0.42, entity_top_y(unit_spr) - s)
 	badge.visible = true
 
@@ -186,7 +186,7 @@ static func sync_name_strip(host: Node2D, unit_spr: Sprite2D, card: CardResource
 			display_name = "%s·%s" % [prefix, display_name]
 	# 卡的尺寸取标准卡宽（CardBattleBg 已在 apply_battle_card_chrome 强制隐藏且不加载纹理，
 	# 故 bg_spr.texture 恒为 null，原 bg_spr 读取分支永不命中，已清理）
-	var card_w: float = CardGridBattleLayout.battle_card_width_px()
+	var card_w: float = CardGridBattleLayout.BASE_CARD_WIDTH_PX
 	var card_h: float = card_w * 8.0 / 5.0
 	strip.rebuild(display_name, is_player, card_w, card_h)
 	# 名字条锚定到实体脚部（地面线 y=0）下方固定距离，不再随卡框尺寸浮动。
@@ -293,7 +293,7 @@ static func sync_buff_strip(host: Node2D, unit: Node, spr: Sprite2D) -> void:
 		host.add_child(strip)
 	strip.z_index = 13
 	# 卡宽取标准值（CardBattleBg 已隐藏不加载纹理，bg_spr 读取分支永不命中，已清理）
-	var card_w: float = CardGridBattleLayout.battle_card_width_px()
+	var card_w: float = CardGridBattleLayout.BASE_CARD_WIDTH_PX
 	var card_h: float = card_w * 8.0 / 5.0
 	strip.rebuild(kinds, card_w)
 	# buff 条移到血条上方横排：血条在 entity_top_y-14，buff 条在血条上方（留 4px 间距）。
@@ -332,7 +332,7 @@ static func sync_rarity_badge(host: Node2D, unit_spr: Sprite2D, card: CardResour
 	])
 	badge.color = GC.get_rarity_color(card.rarity)
 	# 定位：实体右上角，锚定实体顶部（不随卡框/缩放浮动）
-	var card_w_rb: float = CardGridBattleLayout.battle_card_width_px()
+	var card_w_rb: float = CardGridBattleLayout.BASE_CARD_WIDTH_PX
 	badge.position = Vector2(card_w_rb * 0.42, entity_top_y(unit_spr) - s)
 	badge.visible = true
 
@@ -363,7 +363,7 @@ static func sync_level_tag(host: Node2D, unit_spr: Sprite2D, card: CardResource,
 	label.set_text("Lv.%d" % level)
 	label.set_style(11, Color(1.0, 0.85, 0.35, 1.0), Color(0, 0, 0, 0.85), 3, HORIZONTAL_ALIGNMENT_CENTER)
 	# 定位：实体左上角，锚定实体顶部
-	var card_w_lt: float = CardGridBattleLayout.battle_card_width_px()
+	var card_w_lt: float = CardGridBattleLayout.BASE_CARD_WIDTH_PX
 	label.position = Vector2(-card_w_lt * 0.5 - 18.0, entity_top_y(unit_spr) - 8.0)
 	label.visible = true
 
@@ -395,7 +395,7 @@ static func sync_mod_strip(host: Node2D, unit: Node, spr: Sprite2D) -> void:
 	# v8.x: mod_strip 在 buff_strip 上方，分层 z_index(14>13) 防止小卡图下两行重叠
 	strip.z_index = 14
 	# 卡宽取标准值（CardBattleBg 已隐藏不加载纹理，bg_spr 读取分支永不命中，已清理）
-	var card_w: float = CardGridBattleLayout.battle_card_width_px()
+	var card_w: float = CardGridBattleLayout.BASE_CARD_WIDTH_PX
 	var card_h: float = card_w * 8.0 / 5.0
 	strip.rebuild(kinds, card_w)
 	# mod 条移到 buff 条上方横排（头顶最上层）：buff 条在 hp_bar_y-4-0.22w，mod 再往上。

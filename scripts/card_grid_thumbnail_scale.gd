@@ -91,9 +91,10 @@ static func compute_battlefield_art_scale(rank_id: String, power_score: float, t
 	return base * (_battlefield_art_ref_px(screen_height_px) / m)
 
 
-## 格子战立绘：固定卡宽，不随军衔/战力变化（敌我同规则）
+## 格子战立绘：固定基础卡宽（BASE_CARD_WIDTH_PX=58.9，与旧双行布局一致），再乘以军衔/战力乘数。
+## 三行布局槽位水平间距变大（列宽171px），但卡图视觉大小保持与旧布局相同，不撑爆格子。
 static func compute_battlefield_uniform_width_scale(tex: Texture2D) -> float:
 	if tex == null:
 		return 0.1
 	var tw: float = maxf(float(tex.get_width()), 1.0)
-	return _CardGridBattleLayout.battle_card_width_px() / tw
+	return _CardGridBattleLayout.BASE_CARD_WIDTH_PX / tw

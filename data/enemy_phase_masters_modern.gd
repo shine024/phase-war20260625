@@ -63,8 +63,8 @@ const ERA_MASTERS: Array = [
 			"energy_cards": ["void_energy_expert"]
 		},
 		"stats": {
-			"max_hp": 17650,
-			"attack_power": 207,
+			"max_hp": 16800,
+			"attack_power": 198,
 			"defense": 40,
 			"energy_regen": 4.5,
 			"unit_limit": 8
@@ -128,8 +128,8 @@ const ERA_MASTERS: Array = [
 			"energy_cards": ["hybrid_energy_advanced"]
 		},
 		"stats": {
-			"max_hp": 17450,
-			"attack_power": 203,
+			"max_hp": 17500,
+			"attack_power": 206,
 			"defense": 56,
 			"energy_regen": 4.0,
 			"unit_limit": 8
@@ -192,8 +192,8 @@ const ERA_MASTERS: Array = [
 			"energy_cards": ["hybrid_energy_advanced"]
 		},
 		"stats": {
-			"max_hp": 17650,
-			"attack_power": 207,
+			"max_hp": 18400,
+			"attack_power": 214,
 			"defense": 37,
 			"energy_regen": 4.5,
 			"unit_limit": 7
@@ -257,8 +257,8 @@ const ERA_MASTERS: Array = [
 			"energy_cards": ["steel_energy_expert"]
 		},
 		"stats": {
-			"max_hp": 17850,
-			"attack_power": 211,
+			"max_hp": 19200,
+			"attack_power": 224,
 			"defense": 55,
 			"energy_regen": 3.5,
 			"unit_limit": 10
@@ -321,8 +321,8 @@ const ERA_MASTERS: Array = [
 			"energy_cards": ["flame_energy_expert"]
 		},
 		"stats": {
-			"max_hp": 18050,
-			"attack_power": 214,
+			"max_hp": 20000,
+			"attack_power": 232,
 			"defense": 32,
 			"energy_regen": 4.2,
 			"unit_limit": 9
@@ -393,8 +393,8 @@ const ERA_MASTERS: Array = [
 			"energy_cards": ["thunder_energy_expert"]
 		},
 		"stats": {
-			"max_hp": 18050,
-			"attack_power": 214,
+			"max_hp": 20800,
+			"attack_power": 240,
 			"defense": 30,
 			"energy_regen": 4.8,
 			"unit_limit": 8

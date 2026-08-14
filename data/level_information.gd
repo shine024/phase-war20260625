@@ -549,7 +549,6 @@ func get_level_info(level: int) -> Dictionary:
 ##     "energy_regen_mult": 0.5,       # 能量回复乘率（1.0=正常）
 ##     "win_type": "survive_waves",    # 特殊胜利：survive_waves=坚守N波后判胜
 ##     "win_param": 5,                 # 胜利参数（survive_waves 的波数）
-##     "deploy_limit": 4               # 本关部署上限（缺省=正常上限6）
 ##   }
 func get_special_rules(level: int) -> Dictionary:
 	if level < 1 or level > LEVEL_COUNT:
@@ -561,44 +560,44 @@ func get_special_rules(level: int) -> Dictionary:
 ## 给关键关（每时代 Boss 关 + 时代首关 + 中段关卡）挂规则。
 ## 字段全可选；未挂规则的关卡 get_special_rules 返回空字典=普通关。
 func _apply_special_rules() -> void:
+	# 注：deploy_limit（关卡部署上限）已移除——可上场单位数现由相位仪实际装备的战斗卡数决定。
 	# ─── 一战时代（1-20）───
 	# 第5关：能量受限（教学"能量管理"，回复减半）
 	_set_rules(5, {"energy_regen_mult": 0.5})
 	# 第15关：限定步兵（巷战，重装备无法展开）—— platform_type 0=INFANTRY
 	_set_rules(15, {"restrict_platforms": [0]})
-	# 第20关 Boss：坚守8波（时代 Boss 考验耐力）
-	_set_rules(20, {"win_type": "survive_waves", "win_param": 8})
+	# 第20关 Boss：坚守5波（=wave_total，survive_waves 先于清场判定：最后一波刷出即胜）
+	_set_rules(20, {"win_type": "survive_waves", "win_param": 5})
 
 	# ─── 二战时代（21-40）───
 	# 第25关：能量减半（资源匮乏战场）
 	_set_rules(25, {"energy_mult": 0.5})
 	# 第30关：限定装甲（装甲突击战）—— platform_type 1=ARMOR
 	_set_rules(30, {"restrict_platforms": [1]})
-	# 第40关 Boss：坚守10波（时代 Boss 考验耐力）
-	_set_rules(40, {"win_type": "survive_waves", "win_param": 10})
+	# 第40关 Boss：坚守7波（=wave_total）
+	_set_rules(40, {"win_type": "survive_waves", "win_param": 7})
 
 	# ─── 冷战时代（41-60）───
 	# 第50关：回复减半
 	_set_rules(50, {"energy_regen_mult": 0.5})
 	# 第55关：限定空军/支援（机动战）—— platform_type 2=AIR, 3=SUPPORT
 	_set_rules(55, {"restrict_platforms": [2, 3]})
-	# 第60关 Boss：坚守12波
-	_set_rules(60, {"win_type": "survive_waves", "win_param": 12})
+	# 第60关 Boss：坚守8波（=wave_total）
+	_set_rules(60, {"win_type": "survive_waves", "win_param": 8})
 
 	# ─── 现代时代（61-80）───
 	# 第65关：能量减半 + 回复减半（双压）
 	_set_rules(65, {"energy_mult": 0.5, "energy_regen_mult": 0.5})
-	# 第70关：原部署上限3已移除（不再限制单位数量）
-	# 第80关 Boss：坚守14波 + 能量减半
-	_set_rules(80, {"win_type": "survive_waves", "win_param": 14, "energy_mult": 0.5})
+	# 第80关 Boss：坚守9波（=wave_total）+ 能量减半
+	_set_rules(80, {"win_type": "survive_waves", "win_param": 9, "energy_mult": 0.5})
 
 	# ─── 近未来时代（81-100）───
 	# 第85关：限定支援/工兵（阵地防御战）—— platform_type 3=SUPPORT, 7=ENGINEER
 	_set_rules(85, {"restrict_platforms": [3, 7]})
 	# 第90关：能量减半
 	_set_rules(90, {"energy_mult": 0.5})
-	# 第100关 终局：坚守15波（终极考验）
-	_set_rules(100, {"win_type": "survive_waves", "win_param": 15, "energy_mult": 0.5})
+	# 第100关 终局：坚守10波（=wave_total，终极考验）+ 能量减半
+	_set_rules(100, {"win_type": "survive_waves", "win_param": 10, "energy_mult": 0.5})
 
 
 ## v8 批次3: 给指定关卡挂 special_rules（内部辅助，合并到已有字典）。

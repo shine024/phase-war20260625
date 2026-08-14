@@ -200,6 +200,10 @@ func _update_visual_color() -> void:
 func _on_phase_law_runtime_changed() -> void:
 	_apply_phase_law_passives()
 
+# v10: 受击闪白计时(MultiMesh 不能 tween,由 controller _sync 时 lerp visual_color 向白)
+var _hit_flash_t: float = 0.0
+const _HIT_FLASH_DUR: float = 0.08
+
 func take_damage(amount: float, attacker: Variant = null) -> void:
 	var hp_loss: float = amount
 	if GameManager and GameManager.has_method("is_card_grid_battle") and GameManager.is_card_grid_battle():
@@ -271,6 +275,8 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 	# v6.6 修复：_incoming_damage_mul 同样需作用于伤害数字显示，保持飘字与血条扣血一致
 	var final_loss: float = hp_loss * _incoming_damage_mul
 	hp -= final_loss
+	if hp > 0.0 and final_loss > 0.0:
+		_hit_flash_t = _HIT_FLASH_DUR  # v10: 受击闪白(controller 同步时 lerp 向白)
 	if SignalBus:
 		SignalBus.unit_damaged.emit(self, false, final_loss, global_position)
 	if hp <= 0.0:

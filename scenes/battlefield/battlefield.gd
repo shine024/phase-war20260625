@@ -21,11 +21,12 @@ const _PROCEDURAL_BG_HEIGHT: int = 720
 const _BattlePerfMonScript: Script = preload("res://scripts/battle_performance_monitor.gd")
 ## 道路带位置（基于背景纹理比例）：用于敌我刷新与部署区
 const BATTLE_LANE_CENTER_RATIO := 0.80
-## 双行交错：车道带需覆盖上行(center - 80)到下行(center + 80)全程，故从 0.14 提到 0.28。
-## 0.28 × 背景高(720) ≈ 200px，半高 100px > 80px 偏移，双行 Y 不会被 _deploy_y clamp 截断。
+## 三行布局：车道带需覆盖上行(center - 30)到下行(center + 60)全程，故从 0.14 提到 0.28。
+## 0.28 × 背景高(720) ≈ 200px，半高 100px > 60px 偏移，三行 Y 不会被 _deploy_y clamp 截断。
 const BATTLE_LANE_HEIGHT_RATIO := 0.28
 
 const _BattleSlotGridScript: Script = preload("res://scenes/battlefield/battle_slot_grid.gd")
+const _CardGridLayout = preload("res://scripts/card_grid_battle_layout.gd")
 
 ## 结算/清场时保留的战场子节点（勿在此列表外的节点会被 queue_free）
 const PERSISTENT_CHILD_NAMES: Dictionary = {
@@ -438,10 +439,11 @@ func _apply_background_texture(tex: Texture2D) -> void:
 		enemy_spawn.position.y = lane_center_y
 	var driver := get_node_or_null("PhaseFieldDriver") as Node2D
 	if driver != null:
-		driver.position.y = lane_center_y
+		# 基地对齐中行(row1)：lane_center + 中行偏移（在双方中行后面）
+		driver.position.y = lane_center_y + _CardGridLayout.ROW_Y_OFFSETS[1]
 	var enemy_driver := get_node_or_null("EnemyPhaseFieldDriver") as Node2D
 	if enemy_driver != null:
-		enemy_driver.position.y = lane_center_y
+		enemy_driver.position.y = lane_center_y + _CardGridLayout.ROW_Y_OFFSETS[1]
 	_deploy_y_min = lane_top_y + 8.0
 	_deploy_y_max = lane_bottom_y - 8.0
 	_sync_battle_slot_grid_lane()
@@ -581,7 +583,7 @@ func get_card_grid_player_slot_global(slot_idx: int) -> Vector2:
 	return _card_grid_slot_local_to_global(grid.get_player_slot_center(slot_idx))
 
 
-## 格子战术：敌槽位 → 全局坐标；Y 与 `_deploy_y_*` 对齐，避免槽位 Y 与单位脚本 280~440 硬夹不一致导致叠点、错位
+## 格子战术：敌槽位 → 全局坐标；Y 与 `_deploy_y_*` 对齐，避免槽位 Y 与单位脚本硬夹不一致导致叠点、错位
 func get_card_grid_enemy_slot_global(slot_idx: int) -> Vector2:
 	var grid: Node2D = get_node_or_null("BattleSlotGrid") as Node2D
 	if grid == null or not grid.has_method("get_enemy_slot_center"):
@@ -673,14 +675,14 @@ func ensure_phase_driver() -> void:
 	if not has_node("PhaseFieldDriver"):
 		var driver: Node2D = PhaseDriverScene.instantiate()
 		add_child(driver)
-		driver.global_position = get_player_spawn_position() + Vector2(-40, 0)
+		driver.global_position = get_player_spawn_position() + Vector2(-40, _CardGridLayout.ROW_Y_OFFSETS[1])  # Y 对齐中行(row1)
 
 func ensure_enemy_phase_driver(master_config: Dictionary = {}) -> Node2D:
 	var driver := get_node_or_null("EnemyPhaseFieldDriver") as Node2D
 	if driver == null:
 		driver = EnemyPhaseDriverScene.instantiate()
 		add_child(driver)
-		driver.global_position = get_enemy_spawn_position() + Vector2(80, 0)
+		driver.global_position = get_enemy_spawn_position() + Vector2(80, _CardGridLayout.ROW_Y_OFFSETS[1])  # Y 对齐中行(row1)
 	if driver != null:
 		if driver.has_method("stop_production"):
 			driver.stop_production()

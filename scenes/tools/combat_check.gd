@@ -13,6 +13,7 @@ const EnemyArchetypes := preload("res://data/enemy_archetypes.gd")
 const UnitStatsTable := preload("res://resources/unit_stats_table.gd")
 const CardFootAnchors := preload("res://data/card_foot_anchors.gd")
 const MuzzleAnchors := preload("res://data/muzzle_anchors.gd")
+const PlayerMuzzleAnchors := preload("res://data/player_muzzle_anchors.gd")  # 我方卡专属开火点（fireX 已按朝左转换）
 const ConstructUnitAI := preload("res://scripts/battle/construct_unit_ai.gd")
 const CardGridUnitVisuals := preload("res://scripts/card_grid_unit_visuals.gd")
 
@@ -66,6 +67,8 @@ var _stepping: bool = false
 @onready var _step_frames_slider: HSlider = $UiLayer/ControlPanel/StepFramesSlider
 @onready var _step_frames_label: Label = $UiLayer/ControlPanel/StepFramesLabel
 @onready var _info_panel: RichTextLabel = $UiLayer/InfoPanel
+@onready var _effect_toggle_btn: Button = get_node_or_null("UiLayer/ControlPanel/EffectToggleButton")
+@onready var _effect_panel: Control = get_node_or_null("UiLayer/EffectLabPanel")
 
 
 func _ready() -> void:
@@ -83,6 +86,11 @@ func _ready() -> void:
 	_speed_slider.value_changed.connect(_on_speed_changed)
 	_step_frames_slider.value_changed.connect(_on_step_frames_changed)
 	_muzzle_marker_toggle.toggled.connect(_on_muzzle_marker_toggled)
+	if _effect_toggle_btn != null:
+		_effect_toggle_btn.pressed.connect(_on_effect_toggle)
+	if _effect_panel != null:
+		# 用 getter 传单位引用（单位会随切换/重置重建，固持引用会失效）
+		_effect_panel.configure(Callable(self, "_get_player_unit"), Callable(self, "_get_enemy_unit"), $Battlefield)
 
 	# 让 BattleManager 进入战斗态（建 spatial_grid + 四个 batch，bullet 路径才完整）
 	_setup_battle_manager()
@@ -111,6 +119,31 @@ func _exit_tree() -> void:
 	# 关闭 BattleManager 战斗态（避免它的 _process 继续跑）
 	if BattleManager != null:
 		BattleManager.battle_active = false
+
+
+# ============================================================
+# 效果实验室面板：接线（单位 getter + 切换按钮）
+# ============================================================
+func _get_player_unit() -> Node:
+	if _player_unit != null and is_instance_valid(_player_unit):
+		return _player_unit
+	return null
+
+
+func _get_enemy_unit() -> Node:
+	if _enemy_unit != null and is_instance_valid(_enemy_unit):
+		return _enemy_unit
+	return null
+
+
+func _on_effect_toggle() -> void:
+	if _effect_panel != null:
+		_effect_panel.toggle()
+
+
+func _notify_effect_panel_units_changed() -> void:
+	if _effect_panel != null:
+		_effect_panel.notify_units_changed()
 
 
 # ============================================================
@@ -209,6 +242,7 @@ func _spawn_both() -> void:
 		_enemy_unit.target = _player_unit
 	# 应用开火开关状态
 	_apply_fire_toggles()
+	_notify_effect_panel_units_changed()
 
 
 func _spawn_player() -> void:
@@ -428,6 +462,22 @@ func _process(_delta: float) -> void:
 	_update_muzzle_markers()
 
 
+## F12 截图：用 Godot 引擎内部截屏（绕过远程桌面 GPU 渲染问题）
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and event.keycode == KEY_F12:
+		var img := get_viewport().get_texture().get_image()
+		var path := "user://combat_check_screenshot.png"
+		img.save_png(path)
+		print("[CombatCheck] 截图已保存: ", path)
+		# 也存一份到项目目录（编辑器模式下可写）
+		var path2 := "res://screenshot_panel.png"
+		var f_err := img.save_png(path2)
+		if f_err == OK:
+			print("[CombatCheck] 截图已保存到项目目录: ", path2)
+		else:
+			print("[CombatCheck] 项目目录保存失败 err=", f_err, "，用 user:// 路径: ", path)
+
+
 # ============================================================
 # 可视化开火点标记：红色十字 + 圆圈，标在单位实际开火点
 # 子弹/炮口火从此处冒出，方便肉眼核对位置对不对
@@ -471,33 +521,53 @@ func _hide_marker(m: Node2D) -> void:
 		m.visible = false
 
 
-# 我方开火点：完全复刻 construct_unit_ai.gd:481 的解析逻辑（项目真身）
+## 解析我方单位开火点偏移（局部坐标），完全复刻 construct_unit_ai.gd:_get_direct_fire_spawn_pos。
+## v9.x：PlayerMuzzleAnchors（按 card_id 直查，fireX 已按我方朝左转换）优先 → MuzzleAnchors 回退 → 实体中点。
+## 返回 {"offset": Vector2, "src": String, "fallback": bool}
+func _resolve_player_muzzle_offset(u: Node, spr: Node) -> Dictionary:
+	var offset: Vector2 = Vector2.ZERO
+	var src: String = ""
+	# v9.x 优先：我方卡按 platform_card_id（回退 card_id）直查 PlayerMuzzleAnchors
+	if u.get("stats") != null:
+		var pcid: String = String(u.stats.platform_card_id)
+		if pcid.is_empty() and "card_id" in u.stats:
+			pcid = String(u.stats.card_id)
+		if not pcid.is_empty() and PlayerMuzzleAnchors.has_anchor(pcid):
+			offset = PlayerMuzzleAnchors.get_fire_offset(pcid, spr)
+			if offset != Vector2.ZERO:
+				src = pcid
+	# 回退链：MuzzleAnchors（按 _visual_archetype_id → PLAYER_MIRROR → platform_card_id 反查）
+	if offset == Vector2.ZERO:
+		var aid: String = String(u.get("_visual_archetype_id"))
+		if aid.is_empty() and u.get("stats") != null:
+			var pt: int = int(u.stats.platform_type)
+			if u.get("PLAYER_MIRROR_ARCHETYPE_BY_PLATFORM") != null:
+				aid = String(u.PLAYER_MIRROR_ARCHETYPE_BY_PLATFORM.get(pt, ""))
+			if aid.is_empty() and not u.stats.platform_card_id.is_empty():
+				aid = u.stats.platform_card_id
+		if not aid.is_empty():
+			offset = MuzzleAnchors.get_fire_offset(aid, spr)
+			if offset != Vector2.ZERO:
+				src = aid
+	# 最终回退：实体垂直中点（无锚点）
+	if offset == Vector2.ZERO:
+		if spr != null:
+			offset = Vector2.UP * (CardGridUnitVisuals.entity_top_y(spr) * 0.5)
+		return {"offset": offset, "src": "", "fallback": true}
+	return {"offset": offset, "src": src, "fallback": false}
+
+
+# 我方开火点：复刻 construct_unit_ai.gd:_get_direct_fire_spawn_pos 的解析逻辑（项目真身）
 func _position_player_marker() -> void:
 	if _player_muzzle_marker == null:
 		return
 	var u = _player_unit
 	var unit_spr: Sprite2D = u.get_node_or_null("Sprite")
-	# 解析 archetype_id：_visual_archetype_id → PLAYER_MIRROR_ARCHETYPE_BY_PLATFORM → platform_card_id
-	var aid: String = String(u.get("_visual_archetype_id"))
-	if aid.is_empty() and u.get("stats") != null:
-		var pt: int = int(u.stats.platform_type)
-		if u.get("PLAYER_MIRROR_ARCHETYPE_BY_PLATFORM") != null:
-			aid = String(u.PLAYER_MIRROR_ARCHETYPE_BY_PLATFORM.get(pt, ""))
-		if aid.is_empty() and not u.stats.platform_card_id.is_empty():
-			aid = u.stats.platform_card_id
-	var muzzle_offset: Vector2 = Vector2.ZERO
-	var using_fallback: bool = false
-	if not aid.is_empty():
-		muzzle_offset = MuzzleAnchors.get_fire_offset(aid, unit_spr)
-	if muzzle_offset == Vector2.ZERO:
-		# 回退：实体垂直中点（与项目一致）
-		if unit_spr != null:
-			muzzle_offset = Vector2.UP * (CardGridUnitVisuals.entity_top_y(unit_spr) * 0.5)
-		using_fallback = true
-	_player_muzzle_marker.position = muzzle_offset  # 相对单位原点的局部坐标
+	var r: Dictionary = _resolve_player_muzzle_offset(u, unit_spr)
+	_player_muzzle_marker.position = Vector2(r["offset"])  # 相对单位原点的局部坐标
 	_player_muzzle_marker.visible = true
-	_player_muzzle_marker.set_meta("using_fallback", using_fallback)
-	_player_muzzle_marker.set_meta("archetype_id", aid)
+	_player_muzzle_marker.set_meta("using_fallback", bool(r["fallback"]))
+	_player_muzzle_marker.set_meta("archetype_id", String(r["src"]))
 
 
 # 敌方开火点：复刻 enemy_unit.gd:1340 的逻辑（项目真身）
@@ -577,21 +647,15 @@ func _describe_player() -> String:
 		lines.append("攻速: %.2f/s | 间隔: %.2fs" % [float(s.attack_light_speed), float(s.attack_interval)])
 	var max_hp: float = float(s.max_hp) if s != null else float(u.hp)
 	lines.append("血量: %.0f / %.0f" % [float(u.hp), max_hp])
-	# muzzle 锚点：复刻 construct_unit_ai.gd:481 的解析（vis_id → PLAYER_MIRROR → platform_card_id）
+	# 开火点：复刻 construct_unit_ai.gd:_get_direct_fire_spawn_pos（PlayerMuzzleAnchors 优先 → MuzzleAnchors → 中点回退）
 	var spr = u.get_node_or_null("Sprite")
-	var aid: String = vis_id
-	if aid.is_empty() and s != null:
-		var pt: int = int(s.platform_type)
-		if u.get("PLAYER_MIRROR_ARCHETYPE_BY_PLATFORM") != null:
-			aid = String(u.PLAYER_MIRROR_ARCHETYPE_BY_PLATFORM.get(pt, ""))
-		if aid.is_empty() and not s.platform_card_id.is_empty():
-			aid = s.platform_card_id
+	var mr: Dictionary = _resolve_player_muzzle_offset(u, spr)
+	var mp: Vector2 = Vector2(mr["offset"])
 	if spr != null:
-		var mp: Vector2 = MuzzleAnchors.get_fire_offset(aid, spr) if not aid.is_empty() else Vector2.ZERO
-		if mp != Vector2.ZERO:
-			lines.append("开火点(本地): (%d, %d) [锚点: %s]" % [int(mp.x), int(mp.y), aid])
+		if mp != Vector2.ZERO and not bool(mr["fallback"]):
+			lines.append("开火点(本地): (%d, %d) [锚点: %s]" % [int(mp.x), int(mp.y), String(mr["src"])])
 		else:
-			lines.append("开火点: [color=yellow]无锚点→回退中点[/color] [查: %s]" % aid)
+			lines.append("开火点: [color=yellow]无锚点→回退中点[/color] [查: %s]" % String(mr["src"]))
 	return "\n".join(lines)
 
 

@@ -299,6 +299,10 @@ func get_unit_aura_types(unit: Node2D) -> Array[int]:
 	return result
 
 ## 清理所有光环
+## v9.x: 修复回归——3fdb0a6 提交在新增 get_unit_aura_types 时误删了本函数头，
+## 导致 L302-314 成为 get_unit_aura_types return 之后的死代码。补回后由
+## battle_manager.end_battle 调用，清空 autoload 单例跨战斗残留的 _unit_auras 缓存。
+func clear_all() -> void:
 	if _global_tick_timer != null and is_instance_valid(_global_tick_timer):
 		_global_tick_timer.stop()
 	_aura_timers.clear()

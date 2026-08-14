@@ -1,0 +1,347 @@
+好，我按**第3关自走棋棋盘版V2**的模板格式，生成**5-20关**，底部空地保持开阔（65%），但增加**小型装饰物**点缀（木桩、弹药箱、沙袋、铁丝网桩、碎石堆等），不侵入中央区域。
+
+---
+
+## 第 5 关
+
+**关卡介绍：** 山丘阵地，视野开阔的攻防战
+
+**场景说明：** 雨天、平原、白昼、强能量场；钢壁防务（Iron Wall Corp）
+
+```text
+16:9 horizontal 2D side-scrolling mobile game background, bright, clean, polished art style, high detail, readable composition, no characters, no combat VFX, no text.
+
+A World War I rainy morning on open plains, viewed from a low side-scrolling perspective. The upper portion of the frame features an overcast rainy sky with cool gray-blue atmosphere and light rain haze, occupying about 35% of the frame. The open plains horizon stretches across with distant low ridges fading into the mist, and a faint cyan electric haze glows along the horizon, hinting at subtle sci-fi undertones. The sky serves as atmospheric backdrop only.
+
+A narrow midground transition band below the skyline shows open hill crest lines, observation posts, and zigzag trench cuts on slopes, rendered in Iron Wall Corp's steel-blue, earthy brown, and khaki palette. This midground occupies only a thin strip between sky and ground.
+
+The entire lower 65% of the frame is open battlefield ground extending across the full width — flat, muddy with wet and worn texture. Scattered across this ground are small decorative elements placed only along the extreme left and right edges and the bottom margin: low wooden stakes, a few sandbag clusters, small ammunition crates, short barbed wire posts, and scattered碎石 piles. These small props add visual richness without obstructing the central two-thirds of the ground area. The central open space remains completely clear and unobstructed, designed as a clean 9v9 autochess board with ample room for units to be placed symmetrically on the left and right sides. The lower ground area is intentionally larger than the upper sky area to prioritize gameplay readability.
+
+The scene is thematically aligned with "山丘阵地，视野开阔的攻防战" — no text appears in the image. Stage 5 — World War I, Iron Wall Corp defensive position.
+
+Negative prompt: characters, people, soldiers, infantry, human silhouettes, enemies, monsters, weapons held by figures, rifles, pistols, MP18, combat effects, blood, corpses, aircraft, airplanes, helicopters, drones, tanks, armored vehicles, warships, missiles, skill VFX, muzzle flashes, explosions with debris bodies, UI, HUD, buttons, text, letters, numbers, watermark, logo, large obstacles, dense clutter, crowded foreground, curved road, S-shaped path, broken path, blocked ground, top-down view, isometric, strong perspective distortion, fisheye, photorealistic 3D render, unreal engine screenshot, dark horror, gore, blur, low resolution, messy composition, duplicate lanes, three separate images, split composition, stitched together, panorama panels, collage, grid layout, central obstruction, middle ground clutter, terrain blocking the ground, sky larger than ground, upper portion larger than lower
+```
+
+
+## 第 6 关
+
+**关卡介绍：** 林地密林，丛林中的游击战
+
+**场景说明：** 风暴、山地、黄昏、虚空裂隙；钢壁防务（Iron Wall Corp）
+
+```text
+16:9 horizontal 2D side-scrolling mobile game background, bright, clean, polished art style, high detail, readable composition, no characters, no combat VFX, no text.
+
+A World War I stormy evening at the edge of dense woodland, viewed from a low side-scrolling perspective. The upper portion of the frame features a dramatic golden hour storm sky with long shadows, amber rim light, dramatic cloud stacks, and wind-swept cloud motion feel (static image), occupying about 35% of the frame. Layered mountain ranges fade into atmospheric perspective, and thin purple-void aurora streaks in the sky suggest subtle dimensional shimmer from a sci-fi rift. The sky serves as atmospheric backdrop only.
+
+A narrow midground transition band below the skyline shows the forest edge with splintered trunks, mossy stumps, and hidden trench mouths, rendered in Iron Wall Corp's steel-blue, earthy brown, and khaki palette. This midground occupies only a thin strip between sky and ground.
+
+The entire lower 65% of the frame is open battlefield ground extending across the full width — flat, muddy with wet and worn forest-floor texture. Scattered across this ground are small decorative elements placed only along the extreme left and right edges and the bottom margin: fallen branches, low wooden stakes, scattered stone piles, small ammunition crates, and short barbed wire posts. These small props add visual richness without obstructing the central two-thirds of the ground area. The central open space remains completely clear and unobstructed, designed as a clean 9v9 autochess board with ample room for units to be placed symmetrically on the left and right sides. The lower ground area is intentionally larger than the upper sky area to prioritize gameplay readability.
+
+The scene is thematically aligned with "林地密林，丛林中的游击战" — no text appears in the image. Stage 6 — World War I, Iron Wall Corp defensive position.
+
+Negative prompt: characters, people, soldiers, infantry, human silhouettes, enemies, monsters, weapons held by figures, rifles, pistols, MP18, combat effects, blood, corpses, aircraft, airplanes, helicopters, drones, tanks, armored vehicles, warships, missiles, skill VFX, muzzle flashes, explosions with debris bodies, UI, HUD, buttons, text, letters, numbers, watermark, logo, large obstacles, dense clutter, crowded foreground, curved road, S-shaped path, broken path, blocked ground, top-down view, isometric, strong perspective distortion, fisheye, photorealistic 3D render, unreal engine screenshot, dark horror, gore, blur, low resolution, messy composition, duplicate lanes, three separate images, split composition, stitched together, panorama panels, collage, grid layout, central obstruction, middle ground clutter, terrain blocking the ground, sky larger than ground, upper portion larger than lower
+```
+
+
+## 第 7 关
+
+**关卡介绍：** 河道要塞，水上运输线的争夺
+
+**场景说明：** 浓雾、城市、夜晚、纳米雾场；钢壁防务（Iron Wall Corp）
+
+```text
+16:9 horizontal 2D side-scrolling mobile game background, bright, clean, polished art style, high detail, readable composition, no characters, no combat VFX, no text.
+
+A World War I foggy night at a riverbank fortress, viewed from a low side-scrolling perspective. The upper portion of the frame features a night scene with cool moonlight diffused through thick fog and low-visibility mist, occupying about 35% of the frame. Distant city skyline silhouettes with industrial roofs and chimneys fade into the haze, and soft silver nano-fog bands above the midground blend subtle sci-fi tech-mist readability into the horizon. The sky serves as atmospheric backdrop only.
+
+A narrow midground transition band below the skyline shows riverbank piers, broken bridge spans, mooring posts, and faint water glint, rendered in Iron Wall Corp's steel-blue, earthy brown, and khaki palette. This midground occupies only a thin strip between sky and ground.
+
+The entire lower 65% of the frame is open battlefield ground extending across the full width — flat, muddy with wet riverbank texture. Scattered across this ground are small decorative elements placed only along the extreme left and right edges and the bottom margin: wooden mooring posts, coiled rope piles, small ammunition crates, sandbag clusters, and scattered stones. These small props add visual richness without obstructing the central two-thirds of the ground area. The central open space remains completely clear and unobstructed, designed as a clean 9v9 autochess board with ample room for units to be placed symmetrically on the left and right sides. The lower ground area is intentionally larger than the upper sky area to prioritize gameplay readability.
+
+The scene is thematically aligned with "河道要塞，水上运输线的争夺" — no text appears in the image. Stage 7 — World War I, Iron Wall Corp defensive position.
+
+Negative prompt: characters, people, soldiers, infantry, human silhouettes, enemies, monsters, weapons held by figures, rifles, pistols, MP18, combat effects, blood, corpses, aircraft, airplanes, helicopters, drones, tanks, armored vehicles, warships, missiles, skill VFX, muzzle flashes, explosions with debris bodies, UI, HUD, buttons, text, letters, numbers, watermark, logo, large obstacles, dense clutter, crowded foreground, curved road, S-shaped path, broken path, blocked ground, top-down view, isometric, strong perspective distortion, fisheye, photorealistic 3D render, unreal engine screenshot, dark horror, gore, blur, low resolution, messy composition, duplicate lanes, three separate images, split composition, stitched together, panorama panels, collage, grid layout, central obstruction, middle ground clutter, terrain blocking the ground, sky larger than ground, upper portion larger than lower
+```
+
+
+## 第 8 关
+
+**关卡介绍：** 工业区废墟，工厂遗骸中的激战
+
+**场景说明：** 晴朗、森林、黎明、常规能量场；钢壁防务（Iron Wall Corp）
+
+```text
+16:9 horizontal 2D side-scrolling mobile game background, bright, clean, polished art style, high detail, readable composition, no characters, no combat VFX, no text.
+
+A World War I dawn at an industrial ruin, viewed from a low side-scrolling perspective. The upper portion of the frame features a warm-cool gradient dawn sky with soft morning glow and clear layered clouds, occupying about 35% of the frame. Dense forest canopy and broken treelines form distant silhouettes, with subtle normal battlefield atmosphere without flashy magical elements. The sky serves as atmospheric backdrop only.
+
+A narrow midground transition band below the skyline shows factory skeleton frames, rusted gantries, broken chimneys, and industrial rubble piles, rendered in Iron Wall Corp's steel-blue, earthy brown, and khaki palette. This midground occupies only a thin strip between sky and ground.
+
+The entire lower 65% of the frame is open battlefield ground extending across the full width — flat, muddy with worn industrial-ground texture. Scattered across this ground are small decorative elements placed only along the extreme left and right edges and the bottom margin: rusted metal scraps, concrete debris, wooden stakes, small ammunition crates, and sandbag clusters. These small props add visual richness without obstructing the central two-thirds of the ground area. The central open space remains completely clear and unobstructed, designed as a clean 9v9 autochess board with ample room for units to be placed symmetrically on the left and right sides. The lower ground area is intentionally larger than the upper sky area to prioritize gameplay readability.
+
+The scene is thematically aligned with "工业区废墟，工厂遗骸中的激战" — no text appears in the image. Stage 8 — World War I, Iron Wall Corp defensive position.
+
+Negative prompt: characters, people, soldiers, infantry, human silhouettes, enemies, monsters, weapons held by figures, rifles, pistols, MP18, combat effects, blood, corpses, aircraft, airplanes, helicopters, drones, tanks, armored vehicles, warships, missiles, skill VFX, muzzle flashes, explosions with debris bodies, UI, HUD, buttons, text, letters, numbers, watermark, logo, large obstacles, dense clutter, crowded foreground, curved road, S-shaped path, broken path, blocked ground, top-down view, isometric, strong perspective distortion, fisheye, photorealistic 3D render, unreal engine screenshot, dark horror, gore, blur, low resolution, messy composition, duplicate lanes, three separate images, split composition, stitched together, panorama panels, collage, grid layout, central obstruction, middle ground clutter, terrain blocking the ground, sky larger than ground, upper portion larger than lower
+```
+
+
+## 第 9 关
+
+**关卡介绍：** 平原冲锋，大规模骑兵冲锋战
+
+**场景说明：** 雨天、沙漠、白昼、强能量场；钢壁防务（Iron Wall Corp）
+
+```text
+16:9 horizontal 2D side-scrolling mobile game background, bright, clean, polished art style, high detail, readable composition, no characters, no combat VFX, no text.
+
+A World War I rainy day on open desert plains, viewed from a low side-scrolling perspective. The upper portion of the frame features an overcast rainy sky with cool gray-blue atmosphere and light rain haze, occupying about 35% of the frame. Distant dune silhouettes stretch across the horizon with subtle heat shimmer suggestion, and a faint cyan electric haze glows along the horizon with subtle sci-fi undertones. The sky serves as atmospheric backdrop only.
+
+A narrow midground transition band below the skyline shows wide plain horizon, distant fence lines, low earthworks, and hoof-rutted ground suggestion, rendered in Iron Wall Corp's steel-blue, earthy brown, and khaki palette. This midground occupies only a thin strip between sky and ground.
+
+The entire lower 65% of the frame is open battlefield ground extending across the full width — flat, sandy with wet and worn desert texture. Scattered across this ground are small decorative elements placed only along the extreme left and right edges and the bottom margin: low wooden stakes, scattered stones, small ammunition crates, sandbag clusters, and short fence posts. These small props add visual richness without obstructing the central two-thirds of the ground area. The central open space remains completely clear and unobstructed, designed as a clean 9v9 autochess board with ample room for units to be placed symmetrically on the left and right sides. The lower ground area is intentionally larger than the upper sky area to prioritize gameplay readability.
+
+The scene is thematically aligned with "平原冲锋，大规模骑兵冲锋战" — no text appears in the image. Stage 9 — World War I, Iron Wall Corp defensive position.
+
+Negative prompt: characters, people, soldiers, infantry, human silhouettes, enemies, monsters, weapons held by figures, rifles, pistols, MP18, combat effects, blood, corpses, aircraft, airplanes, helicopters, drones, tanks, armored vehicles, warships, missiles, skill VFX, muzzle flashes, explosions with debris bodies, UI, HUD, buttons, text, letters, numbers, watermark, logo, large obstacles, dense clutter, crowded foreground, curved road, S-shaped path, broken path, blocked ground, top-down view, isometric, strong perspective distortion, fisheye, photorealistic 3D render, unreal engine screenshot, dark horror, gore, blur, low resolution, messy composition, duplicate lanes, three separate images, split composition, stitched together, panorama panels, collage, grid layout, central obstruction, middle ground clutter, terrain blocking the ground, sky larger than ground, upper portion larger than lower
+```
+
+
+## 第 10 关
+
+**关卡介绍：** 山谷陷阱，敌方伏击的突围战
+
+**场景说明：** 风暴、平原、黄昏、虚空裂隙；钢壁防务（Iron Wall Corp）
+
+```text
+16:9 horizontal 2D side-scrolling mobile game background, bright, clean, polished art style, high detail, readable composition, no characters, no combat VFX, no text.
+
+A World War I stormy evening in a valley, viewed from a low side-scrolling perspective. The upper portion of the frame features a dramatic golden hour storm sky with long shadows, amber rim light, dramatic cloud stacks, and wind-swept cloud motion feel (static image), occupying about 35% of the frame. Open plains horizon stretches across with distant low ridges, and thin purple-void aurora streaks suggest subtle dimensional shimmer from a sci-fi rift. The sky serves as atmospheric backdrop only.
+
+A narrow midground transition band below the skyline shows valley mouth choke point, steep ridge silhouettes, and fallen logs as barriers, rendered in Iron Wall Corp's steel-blue, earthy brown, and khaki palette. This midground occupies only a thin strip between sky and ground.
+
+The entire lower 65% of the frame is open battlefield ground extending across the full width — flat, muddy with wet and worn valley-floor texture. Scattered across this ground are small decorative elements placed only along the extreme left and right edges and the bottom margin: fallen branches, scattered stones, low wooden stakes, small ammunition crates, and sandbag clusters. These small props add visual richness without obstructing the central two-thirds of the ground area. The central open space remains completely clear and unobstructed, designed as a clean 9v9 autochess board with ample room for units to be placed symmetrically on the left and right sides. The lower ground area is intentionally larger than the upper sky area to prioritize gameplay readability.
+
+The scene is thematically aligned with "山谷陷阱，敌方伏击的突围战" — no text appears in the image. Stage 10 — World War I, Iron Wall Corp defensive position.
+
+Negative prompt: characters, people, soldiers, infantry, human silhouettes, enemies, monsters, weapons held by figures, rifles, pistols, MP18, combat effects, blood, corpses, aircraft, airplanes, helicopters, drones, tanks, armored vehicles, warships, missiles, skill VFX, muzzle flashes, explosions with debris bodies, UI, HUD, buttons, text, letters, numbers, watermark, logo, large obstacles, dense clutter, crowded foreground, curved road, S-shaped path, broken path, blocked ground, top-down view, isometric, strong perspective distortion, fisheye, photorealistic 3D render, unreal engine screenshot, dark horror, gore, blur, low resolution, messy composition, duplicate lanes, three separate images, split composition, stitched together, panorama panels, collage, grid layout, central obstruction, middle ground clutter, terrain blocking the ground, sky larger than ground, upper portion larger than lower
+```
+
+
+## 第 11 关
+
+**关卡介绍：** 补给站争夺，后勤线的防守战
+
+**场景说明：** 浓雾、山地、夜晚、纳米雾场；钢壁防务（Iron Wall Corp）
+
+```text
+16:9 horizontal 2D side-scrolling mobile game background, bright, clean, polished art style, high detail, readable composition, no characters, no combat VFX, no text.
+
+A World War I foggy night at a supply depot, viewed from a low side-scrolling perspective. The upper portion of the frame features a night scene with cool moonlight diffused through thick fog and low-visibility mist, occupying about 35% of the frame. Layered mountain ranges fade into atmospheric perspective, and soft silver nano-fog bands above the midground blend subtle sci-fi tech-mist readability into the horizon. The sky serves as atmospheric backdrop only.
+
+A narrow midground transition band below the skyline shows supply dump crates stacks, tarp covers, wheel ruts, and barrel clusters, rendered in Iron Wall Corp's steel-blue, earthy brown, and khaki palette. This midground occupies only a thin strip between sky and ground.
+
+The entire lower 65% of the frame is open battlefield ground extending across the full width — flat, muddy with wet and worn depot-ground texture. Scattered across this ground are small decorative elements placed only along the extreme left and right edges and the bottom margin: low wooden stakes, small barrel clusters, sandbag clusters, scattered stones, and short ammunition crates. These small props add visual richness without obstructing the central two-thirds of the ground area. The central open space remains completely clear and unobstructed, designed as a clean 9v9 autochess board with ample room for units to be placed symmetrically on the left and right sides. The lower ground area is intentionally larger than the upper sky area to prioritize gameplay readability.
+
+The scene is thematically aligned with "补给站争夺，后勤线的防守战" — no text appears in the image. Stage 11 — World War I, Iron Wall Corp defensive position.
+
+Negative prompt: characters, people, soldiers, infantry, human silhouettes, enemies, monsters, weapons held by figures, rifles, pistols, MP18, combat effects, blood, corpses, aircraft, airplanes, helicopters, drones, tanks, armored vehicles, warships, missiles, skill VFX, muzzle flashes, explosions with debris bodies, UI, HUD, buttons, text, letters, numbers, watermark, logo, large obstacles, dense clutter, crowded foreground, curved road, S-shaped path, broken path, blocked ground, top-down view, isometric, strong perspective distortion, fisheye, photorealistic 3D render, unreal engine screenshot, dark horror, gore, blur, low resolution, messy composition, duplicate lanes, three separate images, split composition, stitched together, panorama panels, collage, grid layout, central obstruction, middle ground clutter, terrain blocking the ground, sky larger than ground, upper portion larger than lower
+```
+
+
+## 第 12 关
+
+**关卡介绍：** 机关枪阵地，死神镰刀的扫射
+
+**场景说明：** 晴朗、城市、黎明、常规能量场；钢壁防务（Iron Wall Corp）
+
+```text
+16:9 horizontal 2D side-scrolling mobile game background, bright, clean, polished art style, high detail, readable composition, no characters, no combat VFX, no text.
+
+A World War I dawn at a machine gun position near urban ruins, viewed from a low side-scrolling perspective. The upper portion of the frame features a warm-cool gradient dawn sky with soft morning glow and clear layered clouds, occupying about 35% of the frame. Distant city skyline silhouettes with industrial roofs and chimneys stretch across the horizon, with subtle normal battlefield atmosphere without flashy magical elements. The sky serves as atmospheric backdrop only.
+
+A narrow midground transition band below the skyline shows MG nest concrete lips, sandbag walls, embrasure shapes, and spent brass piles (static props), rendered in Iron Wall Corp's steel-blue, earthy brown, and khaki palette. This midground occupies only a thin strip between sky and ground.
+
+The entire lower 65% of the frame is open battlefield ground extending across the full width — flat, muddy with worn urban-ground texture. Scattered across this ground are small decorative elements placed only along the extreme left and right edges and the bottom margin: low wooden stakes, sandbag clusters, small ammunition crates, spent shell casings, and scattered stones. These small props add visual richness without obstructing the central two-thirds of the ground area. The central open space remains completely clear and unobstructed, designed as a clean 9v9 autochess board with ample room for units to be placed symmetrically on the left and right sides. The lower ground area is intentionally larger than the upper sky area to prioritize gameplay readability.
+
+The scene is thematically aligned with "机关枪阵地，死神镰刀的扫射" — no text appears in the image. Stage 12 — World War I, Iron Wall Corp defensive position.
+
+Negative prompt: characters, people, soldiers, infantry, human silhouettes, enemies, monsters, weapons held by figures, rifles, pistols, MP18, combat effects, blood, corpses, aircraft, airplanes, helicopters, drones, tanks, armored vehicles, warships, missiles, skill VFX, muzzle flashes, explosions with debris bodies, UI, HUD, buttons, text, letters, numbers, watermark, logo, large obstacles, dense clutter, crowded foreground, curved road, S-shaped path, broken path, blocked ground, top-down view, isometric, strong perspective distortion, fisheye, photorealistic 3D render, unreal engine screenshot, dark horror, gore, blur, low resolution, messy composition, duplicate lanes, three separate images, split composition, stitched together, panorama panels, collage, grid layout, central obstruction, middle ground clutter, terrain blocking the ground, sky larger than ground, upper portion larger than lower
+```
+
+
+## 第 13 关
+
+**关卡介绍：** 堑壕防线，步步为营的攻坚
+
+**场景说明：** 雨天、森林、白昼、强能量场；钢壁防务（Iron Wall Corp）
+
+```text
+16:9 horizontal 2D side-scrolling mobile game background, bright, clean, polished art style, high detail, readable composition, no characters, no combat VFX, no text.
+
+A World War I rainy day at a trench defensive line, viewed from a low side-scrolling perspective. The upper portion of the frame features an overcast rainy sky with cool gray-blue atmosphere and light rain haze, occupying about 35% of the frame. Dense forest canopy and broken treelines form distant silhouettes, and a faint cyan electric haze glows along the horizon with subtle sci-fi undertones. The sky serves as atmospheric backdrop only.
+
+A narrow midground transition band below the skyline shows deep zigzag trenches, duckboards suggestion, parapet sandbags, and communication trenches, rendered in Iron Wall Corp's steel-blue, earthy brown, and khaki palette. This midground occupies only a thin strip between sky and ground.
+
+The entire lower 65% of the frame is open battlefield ground extending across the full width — flat, muddy with wet and worn trench-ground texture. Scattered across this ground are small decorative elements placed only along the extreme left and right edges and the bottom margin: low wooden stakes, sandbag clusters, small ammunition crates, short barbed wire posts, and scattered stones. These small props add visual richness without obstructing the central two-thirds of the ground area. The central open space remains completely clear and unobstructed, designed as a clean 9v9 autochess board with ample room for units to be placed symmetrically on the left and right sides. The lower ground area is intentionally larger than the upper sky area to prioritize gameplay readability.
+
+The scene is thematically aligned with "堑壕防线，步步为营的攻坚" — no text appears in the image. Stage 13 — World War I, Iron Wall Corp defensive position.
+
+Negative prompt: characters, people, soldiers, infantry, human silhouettes, enemies, monsters, weapons held by figures, rifles, pistols, MP18, combat effects, blood, corpses, aircraft, airplanes, helicopters, drones, tanks, armored vehicles, warships, missiles, skill VFX, muzzle flashes, explosions with debris bodies, UI, HUD, buttons, text, letters, numbers, watermark, logo, large obstacles, dense clutter, crowded foreground, curved road, S-shaped path, broken path, blocked ground, top-down view, isometric, strong perspective distortion, fisheye, photorealistic 3D render, unreal engine screenshot, dark horror, gore, blur, low resolution, messy composition, duplicate lanes, three separate images, split composition, stitched together, panorama panels, collage, grid layout, central obstruction, middle ground clutter, terrain blocking the ground, sky larger than ground, upper portion larger than lower
+```
+
+
+## 第 14 关
+
+**关卡介绍：** 炮火覆盖区，地狱之火的轰炸
+
+**场景说明：** 风暴、沙漠、黄昏、虚空裂隙；钢壁防务（Iron Wall Corp）
+
+```text
+16:9 horizontal 2D side-scrolling mobile game background, bright, clean, polished art style, high detail, readable composition, no characters, no combat VFX, no text.
+
+A World War I stormy evening in an artillery bombardment zone, viewed from a low side-scrolling perspective. The upper portion of the frame features a dramatic golden hour storm sky with long shadows, amber rim light, dramatic cloud stacks, and wind-swept cloud motion feel (static image), occupying about 35% of the frame. Distant dune silhouettes stretch across the horizon with subtle heat shimmer, and thin purple-void aurora streaks suggest subtle dimensional shimmer from a sci-fi rift. The sky serves as atmospheric backdrop only.
+
+A narrow midground transition band below the skyline shows charred tree spikes, smoke-stained ground, crater lips, and scattered shell casings, rendered in Iron Wall Corp's steel-blue, earthy brown, and khaki palette. This midground occupies only a thin strip between sky and ground.
+
+The entire lower 65% of the frame is open battlefield ground extending across the full width — flat, sandy with scorched and worn texture. Scattered across this ground are small decorative elements placed only along the extreme left and right edges and the bottom margin: low wooden stakes, scattered stones, small ammunition crates, sandbag clusters, and charred debris pieces. These small props add visual richness without obstructing the central two-thirds of the ground area. The central open space remains completely clear and unobstructed, designed as a clean 9v9 autochess board with ample room for units to be placed symmetrically on the left and right sides. The lower ground area is intentionally larger than the upper sky area to prioritize gameplay readability.
+
+The scene is thematically aligned with "炮火覆盖区，地狱之火的轰炸" — no text appears in the image. Stage 14 — World War I, Iron Wall Corp defensive position.
+
+Negative prompt: characters, people, soldiers, infantry, human silhouettes, enemies, monsters, weapons held by figures, rifles, pistols, MP18, combat effects, blood, corpses, aircraft, airplanes, helicopters, drones, tanks, armored vehicles, warships, missiles, skill VFX, muzzle flashes, explosions with debris bodies, UI, HUD, buttons, text, letters, numbers, watermark, logo, large obstacles, dense clutter, crowded foreground, curved road, S-shaped path, broken path, blocked ground, top-down view, isometric, strong perspective distortion, fisheye, photorealistic 3D render, unreal engine screenshot, dark horror, gore, blur, low resolution, messy composition, duplicate lanes, three separate images, split composition, stitched together, panorama panels, collage, grid layout, central obstruction, middle ground clutter, terrain blocking the ground, sky larger than ground, upper portion larger than lower
+```
+
+
+## 第 15 关
+
+**关卡介绍：** 城市街道，巷战中的血战
+
+**场景说明：** 浓雾、平原、夜晚、纳米雾场；钢壁防务（Iron Wall Corp）
+
+```text
+16:9 horizontal 2D side-scrolling mobile game background, bright, clean, polished art style, high detail, readable composition, no characters, no combat VFX, no text.
+
+A World War I foggy night on city streets, viewed from a low side-scrolling perspective. The upper portion of the frame features a night scene with cool moonlight diffused through thick fog and low-visibility mist, occupying about 35% of the frame. Open plains horizon stretches across with distant low ridges, and soft silver nano-fog bands above the midground blend subtle sci-fi tech-mist readability into the horizon. The sky serves as atmospheric backdrop only.
+
+A narrow midground transition band below the skyline shows narrow street ruins, barricade debris, shattered windows, and cobble patches, rendered in Iron Wall Corp's steel-blue, earthy brown, and khaki palette. This midground occupies only a thin strip between sky and ground.
+
+The entire lower 65% of the frame is open battlefield ground extending across the full width — flat, cobbled with worn and wet street texture. Scattered across this ground are small decorative elements placed only along the extreme left and right edges and the bottom margin: low wooden stakes, sandbag clusters, scattered cobblestones, small ammunition crates, and debris piles. These small props add visual richness without obstructing the central two-thirds of the ground area. The central open space remains completely clear and unobstructed, designed as a clean 9v9 autochess board with ample room for units to be placed symmetrically on the left and right sides. The lower ground area is intentionally larger than the upper sky area to prioritize gameplay readability.
+
+The scene is thematically aligned with "城市街道，巷战中的血战" — no text appears in the image. Stage 15 — World War I, Iron Wall Corp defensive position.
+
+Negative prompt: characters, people, soldiers, infantry, human silhouettes, enemies, monsters, weapons held by figures, rifles, pistols, MP18, combat effects, blood, corpses, aircraft, airplanes, helicopters, drones, tanks, armored vehicles, warships, missiles, skill VFX, muzzle flashes, explosions with debris bodies, UI, HUD, buttons, text, letters, numbers, watermark, logo, large obstacles, dense clutter, crowded foreground, curved road, S-shaped path, broken path, blocked ground, top-down view, isometric, strong perspective distortion, fisheye, photorealistic 3D render, unreal engine screenshot, dark horror, gore, blur, low resolution, messy composition, duplicate lanes, three separate images, split composition, stitched together, panorama panels, collage, grid layout, central obstruction, middle ground clutter, terrain blocking the ground, sky larger than ground, upper portion larger than lower
+```
+
+
+## 第 16 关
+
+**关卡介绍：** 沙地要塞，沙漠中的防御
+
+**场景说明：** 晴朗、山地、黎明、常规能量场；钢壁防务（Iron Wall Corp）
+
+```text
+16:9 horizontal 2D side-scrolling mobile game background, bright, clean, polished art style, high detail, readable composition, no characters, no combat VFX, no text.
+
+A World War I dawn at a desert fortress, viewed from a low side-scrolling perspective. The upper portion of the frame features a warm-cool gradient dawn sky with soft morning glow and clear layered clouds, occupying about 35% of the frame. Layered mountain ranges fade into atmospheric perspective, with subtle normal battlefield atmosphere without flashy magical elements. The sky serves as atmospheric backdrop only.
+
+A narrow midground transition band below the skyline shows desert redoubt silhouettes, stone sangars, wind fences, and distant watchtower, rendered in Iron Wall Corp's steel-blue, earthy brown, and khaki palette. This midground occupies only a thin strip between sky and ground.
+
+The entire lower 65% of the frame is open battlefield ground extending across the full width — flat, sandy with worn desert texture. Scattered across this ground are small decorative elements placed only along the extreme left and right edges and the bottom margin: low wooden stakes, sandbag clusters, scattered stones, small ammunition crates, and short fence posts. These small props add visual richness without obstructing the central two-thirds of the ground area. The central open space remains completely clear and unobstructed, designed as a clean 9v9 autochess board with ample room for units to be placed symmetrically on the left and right sides. The lower ground area is intentionally larger than the upper sky area to prioritize gameplay readability.
+
+The scene is thematically aligned with "沙地要塞，沙漠中的防御" — no text appears in the image. Stage 16 — World War I, Iron Wall Corp defensive position.
+
+Negative prompt: characters, people, soldiers, infantry, human silhouettes, enemies, monsters, weapons held by figures, rifles, pistols, MP18, combat effects, blood, corpses, aircraft, airplanes, helicopters, drones, tanks, armored vehicles, warships, missiles, skill VFX, muzzle flashes, explosions with debris bodies, UI, HUD, buttons, text, letters, numbers, watermark, logo, large obstacles, dense clutter, crowded foreground, curved road, S-shaped path, broken path, blocked ground, top-down view, isometric, strong perspective distortion, fisheye, photorealistic 3D render, unreal engine screenshot, dark horror, gore, blur, low resolution, messy composition, duplicate lanes, three separate images, split composition, stitched together, panorama panels, collage, grid layout, central obstruction, middle ground clutter, terrain blocking the ground, sky larger than ground, upper portion larger than lower
+```
+
+
+## 第 17 关
+
+**关卡介绍：** 森林伏击，林间突袭战
+
+**场景说明：** 雨天、城市、白昼、强能量场；钢壁防务（Iron Wall Corp）
+
+```text
+16:9 horizontal 2D side-scrolling mobile game background, bright, clean, polished art style, high detail, readable composition, no characters, no combat VFX, no text.
+
+A World War I rainy day in a forest ambush corridor, viewed from a low side-scrolling perspective. The upper portion of the frame features an overcast rainy sky with cool gray-blue atmosphere and light rain haze, occupying about 35% of the frame. Distant city skyline silhouettes with industrial roofs and chimneys stretch across the horizon, and a faint cyan electric haze glows along the horizon with subtle sci-fi undertones. The sky serves as atmospheric backdrop only.
+
+A narrow midground transition band below the skyline shows forest ambush corridor with ferns, fallen timber, and low earth berms, rendered in Iron Wall Corp's steel-blue, earthy brown, and khaki palette. This midground occupies only a thin strip between sky and ground.
+
+The entire lower 65% of the frame is open battlefield ground extending across the full width — flat, muddy with wet and worn forest-floor texture. Scattered across this ground are small decorative elements placed only along the extreme left and right edges and the bottom margin: fallen branches, low wooden stakes, scattered stones, small ammunition crates, and sandbag clusters. These small props add visual richness without obstructing the central two-thirds of the ground area. The central open space remains completely clear and unobstructed, designed as a clean 9v9 autochess board with ample room for units to be placed symmetrically on the left and right sides. The lower ground area is intentionally larger than the upper sky area to prioritize gameplay readability.
+
+The scene is thematically aligned with "森林伏击，林间突袭战" — no text appears in the image. Stage 17 — World War I, Iron Wall Corp defensive position.
+
+Negative prompt: characters, people, soldiers, infantry, human silhouettes, enemies, monsters, weapons held by figures, rifles, pistols, MP18, combat effects, blood, corpses, aircraft, airplanes, helicopters, drones, tanks, armored vehicles, warships, missiles, skill VFX, muzzle flashes, explosions with debris bodies, UI, HUD, buttons, text, letters, numbers, watermark, logo, large obstacles, dense clutter, crowded foreground, curved road, S-shaped path, broken path, blocked ground, top-down view, isometric, strong perspective distortion, fisheye, photorealistic 3D render, unreal engine screenshot, dark horror, gore, blur, low resolution, messy composition, duplicate lanes, three separate images, split composition, stitched together, panorama panels, collage, grid layout, central obstruction, middle ground clutter, terrain blocking the ground, sky larger than ground, upper portion larger than lower
+```
+
+
+## 第 18 关
+
+**关卡介绍：** 鼓动全线，最后的总攻
+
+**场景说明：** 风暴、森林、黄昏、虚空裂隙；钢壁防务（Iron Wall Corp）
+
+```text
+16:9 horizontal 2D side-scrolling mobile game background, bright, clean, polished art style, high detail, readable composition, no characters, no combat VFX, no text.
+
+A World War I stormy evening before a final offensive, viewed from a low side-scrolling perspective. The upper portion of the frame features a dramatic golden hour storm sky with long shadows, amber rim light, dramatic cloud stacks, and wind-swept cloud motion feel (static image), occupying about 35% of the frame. Dense forest canopy and broken treelines form layered silhouettes, and thin purple-void aurora streaks suggest subtle dimensional shimmer from a sci-fi rift. The sky serves as atmospheric backdrop only.
+
+A narrow midground transition band below the skyline shows multiple parallel trench lines, flagless poles, and distant signal masts, rendered in Iron Wall Corp's steel-blue, earthy brown, and khaki palette. This midground occupies only a thin strip between sky and ground.
+
+The entire lower 65% of the frame is open battlefield ground extending across the full width — flat, muddy with wet and worn texture. Scattered across this ground are small decorative elements placed only along the extreme left and right edges and the bottom margin: low wooden stakes, sandbag clusters, small ammunition crates, short barbed wire posts, and scattered stones. These small props add visual richness without obstructing the central two-thirds of the ground area. The central open space remains completely clear and unobstructed, designed as a clean 9v9 autochess board with ample room for units to be placed symmetrically on the left and right sides. The lower ground area is intentionally larger than the upper sky area to prioritize gameplay readability.
+
+The scene is thematically aligned with "鼓动全线，最后的总攻" — no text appears in the image. Stage 18 — World War I, Iron Wall Corp defensive position.
+
+Negative prompt: characters, people, soldiers, infantry, human silhouettes, enemies, monsters, weapons held by figures, rifles, pistols, MP18, combat effects, blood, corpses, aircraft, airplanes, helicopters, drones, tanks, armored vehicles, warships, missiles, skill VFX, muzzle flashes, explosions with debris bodies, UI, HUD, buttons, text, letters, numbers, watermark, logo, large obstacles, dense clutter, crowded foreground, curved road, S-shaped path, broken path, blocked ground, top-down view, isometric, strong perspective distortion, fisheye, photorealistic 3D render, unreal engine screenshot, dark horror, gore, blur, low resolution, messy composition, duplicate lanes, three separate images, split composition, stitched together, panorama panels, collage, grid layout, central obstruction, middle ground clutter, terrain blocking the ground, sky larger than ground, upper portion larger than lower
+```
+
+
+## 第 19 关
+
+**关卡介绍：** 指挥中枢，敌方司令部争夺战
+
+**场景说明：** 浓雾、沙漠、夜晚、纳米雾场；钢壁防务（Iron Wall Corp）
+
+```text
+16:9 horizontal 2D side-scrolling mobile game background, bright, clean, polished art style, high detail, readable composition, no characters, no combat VFX, no text.
+
+A World War I foggy night at a command bunker, viewed from a low side-scrolling perspective. The upper portion of the frame features a night scene with cool moonlight diffused through thick fog and low-visibility mist, occupying about 35% of the frame. Distant dune silhouettes stretch across the horizon, and soft silver nano-fog bands above the midground blend subtle sci-fi tech-mist readability into the horizon. The sky serves as atmospheric backdrop only.
+
+A narrow midground transition band below the skyline shows command bunker bulkhead shapes, antenna masts, and sandbag revetments, rendered in Iron Wall Corp's steel-blue, earthy brown, and khaki palette. This midground occupies only a thin strip between sky and ground.
+
+The entire lower 65% of the frame is open battlefield ground extending across the full width — flat, sandy with worn desert texture. Scattered across this ground are small decorative elements placed only along the extreme left and right edges and the bottom margin: low wooden stakes, sandbag clusters, scattered stones, small ammunition crates, and short fence posts. These small props add visual richness without obstructing the central two-thirds of the ground area. The central open space remains completely clear and unobstructed, designed as a clean 9v9 autochess board with ample room for units to be placed symmetrically on the left and right sides. The lower ground area is intentionally larger than the upper sky area to prioritize gameplay readability.
+
+The scene is thematically aligned with "指挥中枢，敌方司令部争夺战" — no text appears in the image. Stage 19 — World War I, Iron Wall Corp defensive position.
+
+Negative prompt: characters, people, soldiers, infantry, human silhouettes, enemies, monsters, weapons held by figures, rifles, pistols, MP18, combat effects, blood, corpses, aircraft, airplanes, helicopters, drones, tanks, armored vehicles, warships, missiles, skill VFX, muzzle flashes, explosions with debris bodies, UI, HUD, buttons, text, letters, numbers, watermark, logo, large obstacles, dense clutter, crowded foreground, curved road, S-shaped path, broken path, blocked ground, top-down view, isometric, strong perspective distortion, fisheye, photorealistic 3D render, unreal engine screenshot, dark horror, gore, blur, low resolution, messy composition, duplicate lanes, three separate images, split composition, stitched together, panorama panels, collage, grid layout, central obstruction, middle ground clutter, terrain blocking the ground, sky larger than ground, upper portion larger than lower
+```
+
+
+## 第 20 关
+
+**关卡介绍：** 胜利时刻，一战结束前夜的最后一战
+
+**场景说明：** 晴朗、平原、黎明、常规能量场；钢壁防务（Iron Wall Corp）
+
+```text
+16:9 horizontal 2D side-scrolling mobile game background, bright, clean, polished art style, high detail, readable composition, no characters, no combat VFX, no text.
+
+A World War I dawn of the armistice, viewed from a low side-scrolling perspective. The upper portion of the frame features a warm-cool gradient dawn sky with soft morning glow and clear layered clouds, occupying about 35% of the frame. Open plains horizon stretches across with distant low ridges, with subtle normal battlefield atmosphere without flashy magical elements. The sky serves as atmospheric backdrop only.
+
+A narrow midground transition band below the skyline shows the armistice dawn battlefield — quiet terrain, lowered barriers, and distant crosses silhouetted without figures, rendered in Iron Wall Corp's steel-blue, earthy brown, and khaki palette. This midground occupies only a thin strip between sky and ground.
+
+The entire lower 65% of the frame is open battlefield ground extending across the full width — flat, muddy with worn and quiet texture. Scattered across this ground are small decorative elements placed only along the extreme left and right edges and the bottom margin: low wooden stakes, sandbag clusters, small ammunition crates, scattered stones, and short barbed wire posts. These small props add visual richness without obstructing the central two-thirds of the ground area. The central open space remains completely clear and unobstructed, designed as a clean 9v9 autochess board with ample room for units to be placed symmetrically on the left and right sides. The lower ground area is intentionally larger than the upper sky area to prioritize gameplay readability.
+
+The scene is thematically aligned with "胜利时刻，一战结束前夜的最后一战" — no text appears in the image. Stage 20 — World War I, Iron Wall Corp final battle. BOSS STAGE finale mood — extra epic sky, still no characters.
+
+Negative prompt: characters, people, soldiers, infantry, human silhouettes, enemies, monsters, weapons held by figures, rifles, pistols, MP18, combat effects, blood, corpses, aircraft, airplanes, helicopters, drones, tanks, armored vehicles, warships, missiles, skill VFX, muzzle flashes, explosions with debris bodies, UI, HUD, buttons, text, letters, numbers, watermark, logo, large obstacles, dense clutter, crowded foreground, curved road, S-shaped path, broken path, blocked ground, top-down view, isometric, strong perspective distortion, fisheye, photorealistic 3D render, unreal engine screenshot, dark horror, gore, blur, low resolution, messy composition, duplicate lanes, three separate images, split composition, stitched together, panorama panels, collage, grid layout, central obstruction, middle ground clutter, terrain blocking the ground, sky larger than ground, upper portion larger than lower
+```
+
+---
+
+5-20 已全部生成，每一关都保持了：
+- **天空35%** + **中景窄带** + **底部空地65%**
+- **底部有小型装饰物**（木桩、沙袋、弹药箱、碎石等）点缀边缘
+- **中央区域完全留空**，作为 9v9 自走棋棋盘
+
+需要我继续生成 **21-40** 吗？🎯

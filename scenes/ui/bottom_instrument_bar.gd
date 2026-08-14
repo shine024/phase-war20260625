@@ -35,6 +35,9 @@ var _slot_panels: Array = []
 var _deployed_card_ids: Array = []
 const SLOT_FIXED_SIZE := Vector2(90, 64)
 const BAR_FIXED_HEIGHT := SLOT_FIXED_SIZE.y
+## v9.3: 动态槽位宽度——13槽（green9+rune4）满槽时自动缩窄适配屏幕宽。
+## _fit_slots_to_bar 按 SlotSection 可用宽 / 槽数 + 间距计算实际宽度，上限90px。
+var _slot_width: float = SLOT_FIXED_SIZE.x
 ## 槽底双行文字区高度（名称 + 费用），卡图只占上方区域避免遮挡
 const _SLOT_BOTTOM_TEXT_H := 30
 ## 槽位 tooltip 过长会拖慢每次装备/刷新；限制长度
@@ -383,7 +386,7 @@ func _update_slot_panel(panel: Control, entry: Dictionary) -> void:
 			Vector2(-6, 0), Vector2(6, 0), Vector2(0, -10)
 		])
 		indicator.color = Color(0.2, 1.0, 0.3, 0.9)
-		indicator.position = Vector2(SLOT_FIXED_SIZE.x * 0.5, -2)
+		indicator.position = Vector2(_slot_width * 0.5, -2)
 		indicator.visible = String(panel.get_meta("card_id", "")) in _deployed_card_ids
 		panel.add_child(indicator)
 	elif not needs_indicator and indicator != null:
@@ -447,7 +450,7 @@ func _update_slot_panel(panel: Control, entry: Dictionary) -> void:
 		var slot_h: float = panel.size.y if panel.size.y > 4.0 else float(SLOT_FIXED_SIZE.y)
 		# v7.x：精简模式无底部文字区，图标占满（留 4px 边距）
 		var art_h: float = maxf(18.0, slot_h - 4.0)
-		var art_w: float = SLOT_FIXED_SIZE.x - 6.0
+		var art_w: float = _slot_width - 6.0
 		UiAssetLoader.setup_texrect_icon(rune_tr, rune_tex, Vector2(art_w, art_h))
 		_sync_slot_card_background(panel, null)
 		_sync_slot_card_frame(panel, null)
@@ -475,16 +478,35 @@ func _is_card_platform_restricted(card: CardResource) -> bool:
 	return not restrict.has(int(card.platform_type))
 
 ## 让格子高度精确填满条的可用高度（抵消 PanelContainer content_margin 等开销）
+## v9.3: 同时按视口可用宽度动态缩放槽位宽度，避免 13 槽（green9+rune4）溢出屏幕。
+## 不依赖 slot_section.size.x（布局未稳定时为0不可靠），直接按视口宽扣除固定元素计算。
 func _fit_slots_to_bar() -> void:
 	if not is_instance_valid(slot_section):
 		return
-	var available: float = slot_section.size.y
-	if available < 1.0:
-		return
+	var available_h: float = slot_section.size.y
+	if available_h < 1.0:
+		available_h = BAR_FIXED_HEIGHT
+	# 按视口宽度计算槽位可用宽度，扣除固定元素（保守估计，确保不溢出）：
+	# margin(16) + 自动按钮(48) + 图标(48) + 名称区(100) + InstrumentSection间距(12) + 分隔线(2) + HBox间距(6)
+	# v9.3: 额外预留 40px 安全余量，防止 content_margin/边框等隐藏开销累积导致溢出
+	var viewport_width: float = get_viewport_rect().size.x
+	if viewport_width <= 1.0:
+		viewport_width = 1280.0
+	var reserved_w: float = 16.0 + 48.0 + 48.0 + 100.0 + 12.0 + 2.0 + 6.0 + 40.0  # ≈ 272px
+	var slot_available_w: float = maxf(200.0, viewport_width - reserved_w)
+	var slot_count: int = _slot_panels.size()
+	var separation: float = 6.0
+	if slot_count > 0:
+		var total_sep: float = separation * float(slot_count - 1)
+		# 每槽宽度 = (可用宽 - 间距) / 槽数，上限90px（槽少时不放大），下限40px（再窄看不清）
+		var dynamic_w: float = maxf(40.0, (slot_available_w - total_sep) / float(slot_count))
+		_slot_width = minf(dynamic_w, SLOT_FIXED_SIZE.x)
+	else:
+		_slot_width = SLOT_FIXED_SIZE.x
 	for p in _slot_panels:
 		if p and is_instance_valid(p):
-			p.custom_minimum_size.y = available
-			p.size.y = available
+			p.custom_minimum_size = Vector2(_slot_width, available_h)
+			p.size = Vector2(_slot_width, available_h)
 
 func _update_name_section_width() -> void:
 	if name_section == null or not is_instance_valid(name_section):
@@ -492,10 +514,13 @@ func _update_name_section_width() -> void:
 	var viewport_width: float = get_viewport_rect().size.x
 	if viewport_width <= 1.0:
 		return
-	# 信息区（自动按钮+图标+名称+情报）占屏宽 3/13；NameSection 需扣除自动按钮(48)+图标(48)宽度
-	# v7.x: 新增自动部署按钮(48px)，需从 NameSection 预留空间
+	# v9.3: NameSection 占屏宽比例从 3/13 下调到 1.5/13（13槽满载时给 SlotSection 让出空间）。
+	# 旧 3/13 在 1280 宽下 = 295px，扣除 reserved 144 = 151px 给名称区，
+	# 但 NameSection 的 size_flags=0（不扩展），实际由 tscn 的 custom_minimum_size=260 主导，
+	# 挤压了 SlotSection。现统一用动态计算，名称区收紧到 ~100px，槽位区获得更多空间。
 	var reserved: float = 48.0 + 48.0 + 48.0  # 自动按钮 + 图标 + 分隔线余量
-	name_section.custom_minimum_size.x = floor(viewport_width * 3.0 / 13.0 - reserved)
+	var name_w: float = floor(viewport_width * 1.5 / 13.0 - reserved * 0.5)
+	name_section.custom_minimum_size.x = maxf(60.0, name_w)
 
 
 func _sync_slot_rank_badge(panel: Control, card: CardResource) -> void:
@@ -571,7 +596,7 @@ func _sync_slot_icon(panel: Control, card: CardResource, law_id: String) -> void
 	var slot_h: float = panel.size.y if panel.size.y > 4.0 else float(SLOT_FIXED_SIZE.y)
 	# v7.x：精简模式槽位无底部文字区，图标占满整个可用高度（留 4px 上下边距）
 	var art_h: float = maxf(18.0, slot_h - 4.0)
-	var art_w: float = SLOT_FIXED_SIZE.x - 6.0
+	var art_w: float = _slot_width - 6.0
 	if card != null:
 		UiAssetLoader.setup_card_unit_icon(tr, tex, Vector2(art_w, art_h), true)
 	else:
@@ -587,7 +612,7 @@ func _build_slot_panel(entry: Dictionary) -> PanelContainer:
 	var card: Variant = entry.get("card", null)
 	var has_card: bool = card != null and card is CardResource
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(SLOT_FIXED_SIZE.x, 0)
+	panel.custom_minimum_size = Vector2(_slot_width, 0)
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	panel.set_meta("slot_color", color)
 	panel.set_meta("slot_index", color_index)
@@ -639,7 +664,7 @@ func _build_slot_panel(entry: Dictionary) -> PanelContainer:
 		var slot_h: float = panel.size.y if panel.size.y > 4.0 else float(SLOT_FIXED_SIZE.y)
 		# v7.x：精简模式无底部文字区，图标占满（留 4px 边距）
 		var art_h: float = maxf(18.0, slot_h - 4.0)
-		var art_w: float = SLOT_FIXED_SIZE.x - 6.0
+		var art_w: float = _slot_width - 6.0
 		UiAssetLoader.setup_texrect_icon(rune_tr, rune_tex, Vector2(art_w, art_h))
 		_sync_slot_rank_badge(panel, null)
 		_sync_slot_card_background(panel, null)
@@ -662,7 +687,7 @@ func _build_slot_panel(entry: Dictionary) -> PanelContainer:
 				Vector2(-6, 0), Vector2(6, 0), Vector2(0, -10)
 			])
 			indicator.color = Color(0.2, 1.0, 0.3, 0.9)
-			indicator.position = Vector2(SLOT_FIXED_SIZE.x * 0.5, -2)
+			indicator.position = Vector2(_slot_width * 0.5, -2)
 			indicator.visible = false
 			panel.add_child(indicator)
 	elif not law_id.is_empty():

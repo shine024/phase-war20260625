@@ -28,6 +28,11 @@ var _spent_points: int = 0
 var _bonus_points: int = 0
 ## 当前相位场等级（驱动技能点上限，由 PhaseInstrumentManager 通知）
 var _phase_field_level: int = 1
+## v7.x perf: get_active_effects() 合并结果缓存。
+## 原实现每次部署单位都遍历所有已解锁节点 × SkillTree.get_skill() 的 2 次全树扫描
+## （~30-40 节点 × 60 遍历 = ~2400 hash 查找/次部署）。缓存后仅在节点变化时重算。
+var _effects_cache: Dictionary = {}
+var _effects_cache_signature: String = ""
 
 
 func _ready() -> void:
@@ -170,7 +175,14 @@ func _grant_affix_pool(pool: Array) -> void:
 # ─────────────────────────────────────────────
 
 ## 获取所有已解锁节点的合并战斗效果（stat_bonus 累加，special 收集）
+##
+## v7.x perf: 缓存结果。原实现每次部署单位都遍历所有已解锁节点 ×
+## SkillTree.get_skill() 的 2 次全树扫描（~2400 hash 查找/次）。
+## 现在按 unlocked_nodes 签名缓存，仅在节点变化（unlock_node/reset_all/load_state）时重算。
 func get_active_effects() -> Dictionary:
+	var sig: String = get_unlocked_signature()
+	if sig == _effects_cache_signature and not _effects_cache.is_empty():
+		return _effects_cache
 	var merged: Dictionary = {"stat_bonus": {}, "special": [], "experience_bonus": 0.0}
 	for nid in _unlocked_nodes:
 		var node: Dictionary = SkillTree.get_skill(nid)
@@ -188,6 +200,8 @@ func get_active_effects() -> Dictionary:
 		# 收集 special（conditional/aura 等）
 		if fx.has("conditional") or fx.has("aura"):
 			merged["special"].append(fx)
+	_effects_cache = merged
+	_effects_cache_signature = sig
 	return merged
 
 
@@ -218,6 +232,9 @@ func reset_all() -> int:
 	var total: int = _spent_points
 	_unlocked_nodes.clear()
 	_spent_points = 0
+	# v7.x perf: 节点变化，失效效果缓存
+	_effects_cache.clear()
+	_effects_cache_signature = ""
 	points_changed.emit(get_available_points())
 	return total
 
@@ -241,6 +258,9 @@ func load_state(data: Dictionary) -> void:
 	_spent_points = int(data.get("spent_points", 0))
 	_bonus_points = int(data.get("bonus_points", 0))
 	_phase_field_level = int(data.get("phase_field_level", 1))
+	# v7.x perf: 节点变化，失效效果缓存
+	_effects_cache.clear()
+	_effects_cache_signature = ""
 	# 注意：load_state 时不重新 _apply_unlocks（避免重复解锁相位仪/重复赋予 affix）
 	# 已解锁状态直接恢复，子系统状态由各自存档负责
 
@@ -250,3 +270,6 @@ func reset_to_defaults() -> void:
 	_spent_points = 0
 	_bonus_points = 0
 	_phase_field_level = 1
+	# v7.x perf: 节点变化，失效效果缓存
+	_effects_cache.clear()
+	_effects_cache_signature = ""

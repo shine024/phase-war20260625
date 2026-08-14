@@ -134,22 +134,26 @@ TEXTURES = [
         "id": "player_rage",
         "size": "1024x1024",
         "prompt": (
-            "rage berserk aura, intense golden-red energy ring pulse outward, "
-            "furious power surge with flame-like energy waves, aggressive buff glow, "
-            "top-down view, perfectly centered, symmetrical ring, "
+            "pure abstract energy rage aura, intense golden-red glowing energy ring pulsing outward, "
+            "swirling gold and crimson magic energy vortex with flame-like energy waves and flying sparks, "
+            "aggressive power-up buff glow effect, top-down view, perfectly centered, symmetrical ring of light, "
             "solid pure black background #000000, high contrast, "
-            "game VFX sprite texture, power aura, gold-red"
+            "game VFX sprite texture ONLY, abstract magic energy effect, "
+            "NO human NO character NO person NO creature NO face NO body NO soldier NO warrior, "
+            "pure glowing energy aura only"
         ),
     },
     {
         "id": "player_fortress",
         "size": "1024x1024",
         "prompt": (
-            "fortress bulwark barrier, steel-blue heavy metal armor plates formation, "
-            "thick reinforced defensive wall with rivets and plates, impenetrable bulwark, "
-            "top-down view, perfectly centered, circular formation, "
+            "pure abstract energy fortress shield force field, glowing steel-blue translucent hexagonal energy dome, "
+            "protective glowing force field canopy with bright tech grid pattern and energy circuits, "
+            "defensive energy bubble barrier radiating soft blue light, top-down view, perfectly centered, dome shape energy field, "
             "solid pure black background #000000, high contrast, "
-            "game VFX sprite texture, heavy armor, steel-blue"
+            "game VFX sprite texture ONLY, abstract energy shield effect, "
+            "NO solid metal NO armor plates NO rivets NO wall NO building NO structure NO object NO machine, "
+            "pure glowing energy force field only"
         ),
     },
 ]
@@ -234,23 +238,29 @@ def call_api(prompt, key, size, tag, output_path):
 def main():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     keys = load_keys()
+    # v12e: 支持只重生指定 ID——命令行传 ID 名则只处理那些(强制重生),不传则全量。
+    target_ids = [a for a in sys.argv if not a.startswith("-") and a not in ("--force",)]
+    # 排除脚本名本身
+    target_ids = [t for t in target_ids if t in {x["id"] for x in TEXTURES}]
+    force = "--force" in sys.argv or len(target_ids) > 0
+    todo = [t for t in TEXTURES if (not target_ids or t["id"] in target_ids)]
     print("=== 大招专属 VFX 纹理生成 ===")
     print("输出目录: " + OUTPUT_DIR)
-    print("贴图数量: " + str(len(TEXTURES)))
+    print("待生成: " + ", ".join(t["id"] for t in todo) + ("  (强制重生)" if force else ""))
     print("API key 数: " + str(len(keys)) + " (" + ", ".join(mask(k) for k in keys) + ")")
     print("")
     success = 0
     failed = []
-    for i, tex in enumerate(TEXTURES):
+    for i, tex in enumerate(todo):
         tid = tex["id"]
         output_path = os.path.join(OUTPUT_DIR, tid + ".png")
-        # 已存在则跳过（除非 --force）
-        if os.path.exists(output_path) and "--force" not in sys.argv:
-            print("[" + str(i + 1) + "/" + str(len(TEXTURES)) + "] " + tid + " 已存在，跳过（--force 重生成）")
+        # 非 force 且已存在则跳过
+        if os.path.exists(output_path) and not force:
+            print("[" + str(i + 1) + "/" + str(len(todo)) + "] " + tid + " 已存在，跳过")
             success += 1
             continue
         key = keys[i % len(keys)]  # 轮换 key
-        print("[" + str(i + 1) + "/" + str(len(TEXTURES)) + "] " + tid + " 生成中... (key " + mask(key) + ")")
+        print("[" + str(i + 1) + "/" + str(len(todo)) + "] " + tid + " 生成中... (key " + mask(key) + ")")
         ok, msg = call_api(tex["prompt"], key, tex["size"], tid, output_path)
         print("  " + msg)
         if ok:

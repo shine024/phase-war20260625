@@ -52,12 +52,16 @@ static func get_bonus_for_tier(tier: int) -> Dictionary:
 static func get_tier_for_level_progress(era_progress: float, is_phase_master: bool = false) -> int:
 	if is_phase_master:
 		return TIER_HIGH  # 相位师战固定高配（旧路径保留，新代码用 get_phase_master_tier）
-	if era_progress < 0.33:
-		return TIER_LOW   # 时代前1/3：低配
-	elif era_progress < 0.75:
-		return TIER_MID   # 时代中段：中配
+	# v9.x 平衡：阈值从 0.33/0.75 收紧到 0.15/0.55——
+	# 时代边界（progress 1.0→0.0）从高档(×2.00)回低档(×1.30)的 -35% 断崖过大；
+	# 收紧后低档只持续 in_era 1-3（3 关，原 7 关），第 4 关即回中档，断崖范围缩小。
+	# 保留"新时代首关较低档"的教学友好，但不再持续 7 关。
+	if era_progress < 0.15:
+		return TIER_LOW   # 时代首 3 关：低配（in_era 1-3）
+	elif era_progress < 0.55:
+		return TIER_MID   # 时代中段：中配（in_era 4-11）
 	else:
-		return TIER_HIGH  # 时代后期：高配
+		return TIER_HIGH  # 时代后期：高配（in_era 12-20）
 
 ## v8.2: 相位师产兵固定高档（用户要求"敌方相位师都是高配置敌人"）。
 ## 恒返回 TIER_HIGH（enh10 + 满改造 + 满符文 + ×2.00 系数）。

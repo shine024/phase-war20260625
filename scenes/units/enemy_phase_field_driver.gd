@@ -11,6 +11,7 @@ const EnemyUnitScene = preload("res://scenes/units/enemy_unit.tscn")
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const EnemyStatResolver = preload("res://data/enemy_stat_resolver.gd")
 const RuneDefs = preload("res://data/runes.gd")
+const RunewordMatcher = preload("res://managers/runeword_matcher.gd")
 const BattleSlotGrid = preload("res://scenes/battlefield/battle_slot_grid.gd")
 const EnemyAffixes = preload("res://data/enemy_affixes.gd")
 # v9.0: 敌方相位师固定套路系统（补兵规则按套路走）
@@ -26,9 +27,11 @@ const _PHASE_BODY_MAX_EXTENT_PX: float = 220.0
 ## 相位师不死即无限产兵会导致长战斗拖延；改为三档阶梯递进→彻底枯竭停止，
 ## 给玩家「熬过兵力潮就赢」的终局，避免消耗战。
 ## 阈值按 _unit_limit 倍数动态派生（setup 时缓存），让高容量相位师总兵力也更多。
+## v9.3: 倍数从 2/4/6 下调到 2/3/4——9 格布局 unit_limit 可达 9，
+## 旧 6×6=36 总兵力变成 9×6=54 (+50%)；下调到 9×4=36，持平旧总兵力。
 const FATIGUE_TIER1_MULT: int = 2   # 轻度疲劳阈值 = unit_limit × 2
-const FATIGUE_TIER2_MULT: int = 4   # 重度疲劳阈值 = unit_limit × 4
-const EXHAUSTION_MULT: int = 6      # 彻底枯竭阈值 = unit_limit × 6
+const FATIGUE_TIER2_MULT: int = 3   # 重度疲劳阈值 = unit_limit × 3
+const EXHAUSTION_MULT: int = 4      # 彻底枯竭阈值 = unit_limit × 4
 ## 轻度疲劳产兵间隔（原 spawn_interval 约 3~6s），大幅延长以缓解压制。
 const FATIGUED_SPAWN_INTERVAL: float = 18.0
 ## 重度疲劳产兵间隔，进一步放慢。
@@ -49,7 +52,7 @@ var _battle_active: bool = false
 ## 装备数据（从 EnemyPhaseMasters 配置传入）
 var _equipment: Dictionary = {}
 var _master_stats: Dictionary = {}
-var _unit_limit: int = 6
+var _unit_limit: int = 9  # v9.3: 对齐 3行×3列 SLOT_COUNT；setup 时会被 master config/instrument green 覆盖
 var _has_equipment: bool = false
 ## v9.x 势力前缀平台 ID → 势力前缀缓存（setup/产兵时按 LEGACY_PLATFORM_TO_ARCHETYPE 填充，
 ## 供 ConstructUnit meta faction_prefix 使用，让格子战名称显示「势力前缀·真实兵种名」）
@@ -253,7 +256,7 @@ func setup(master_config: Dictionary) -> void:
 	_boss_passive_spells = master_config.get("passive_spells", []) if master_config.has("passive_spells") else []
 	_unit_limit = int(_master_stats.get("unit_limit", 5))
 	# v7.x: 相位仪战斗卡槽数限制产兵数——"出兵x相位仪，绿槽数y成为限制"。
-	# v7.x 统一池：读 slot_counts.green（玩家同款 schema），按星级梯度 1~6（见 _STAR_LAYOUT）。
+	# v7.x 统一池：读 slot_counts.green（玩家同款 schema），按星级梯度 1~9（见 _STAR_LAYOUT）。
 	# 与 stats.unit_limit 取最小，让低配相位师产兵数更少（战斗卡可高级但数目受限）。
 	# 缺省（无 slot_counts / green）时不约束：_cap 回退到 _unit_limit → mini 不改变值。
 	var _inst_id_for_cap: String = String(_equipment.get("phase_instrument", ""))
@@ -263,10 +266,10 @@ func setup(master_config: Dictionary) -> void:
 		var _cap: int = int(_sc.get("green", _unit_limit))
 		if _cap > 0:
 			_unit_limit = mini(_unit_limit, _cap)
-	# 格子战场敌方仅 6 个可用槽位（SLOT_COUNT - 1）。数据表 unit_limit 可达 7~15，
-	# 超出会导致产兵越过 6 上限、多单位挤同格。统一钳制到格子可用槽位数。
+	# 格子战场敌方有 9 个可用槽位（3行×3列，无边缘禁放）。数据表 unit_limit 可达 7~15，
+	# 超出会导致产兵越过 9 上限、多单位挤同格。统一钳制到格子可用槽位数。
 	# 注：master_power_evaluator 直接读原始配置 dict 评分，不受此钳制影响。
-	_unit_limit = mini(_unit_limit, BattleSlotGrid.SLOT_COUNT - 1)
+	_unit_limit = mini(_unit_limit, BattleSlotGrid.SLOT_COUNT)
 	# v7.x: 出兵疲劳阶梯阈值按 _unit_limit 倍数派生（钳制后计算，保证与实际场上容量一致）
 	_tier1_cap = _unit_limit * FATIGUE_TIER1_MULT
 	_tier2_cap = _unit_limit * FATIGUE_TIER2_MULT
@@ -544,7 +547,7 @@ func stop_production() -> void:
 	_battle_active = false
 
 ## v8.5: 强制立即产兵一次（补满到 unit_limit）。供 EnemyMasterSkillEngine 召唤类技能调用。
-## 格子战约束：敌方槽位上限 6，补满即止，不会越界。
+## 格子战约束：敌方槽位上限 9，补满即止，不会越界。
 ## v9.1c 修复：召唤技能也受疲劳系统约束——枯竭（_fatigue_tier>=3）或总召唤数超上限时停止，
 ## 防止 boss 无限召唤导致玩家永远打不完。原实现 force_produce_once 绕过疲劳系统，
 ## 即使 _process 定时产兵已停，boss 召唤技能仍每 CD 补满，造成"一直召唤"问题。
@@ -986,10 +989,16 @@ func _produce_unit_fallback() -> void:
 		_record_spawn_and_check_fatigue()
 
 func _produce_unit() -> void:
-	# v7.x: 一次产满全部槽位（而非每次1个）。相位师开局直接上场6个单位，
-	# 之后等场上单位阵亡后再补满。这样战斗节奏更紧凑，玩家面对的是完整波次的压力。
+	# v9.3: 分批产兵——开局先产 ceil(limit/2) 个（而非一次产满），剩余按 spawn_interval 补。
+	# 9 格布局下 limit 可达 9，一次产满会让玩家在 3 秒内面对满场敌兵（旧 6 格布局才 6 个）。
+	# 分批让玩家有逐个应对的窗口，节奏更合理。
+	# 首次调用（_total_spawned==0）产一半，后续调用每次产 1 个。
+	var batch_size: int = 1
+	if _total_spawned == 0:
+		batch_size = maxi(1, int(ceil(float(_unit_limit) * 0.5)))
+	var produced: int = 0
 	var attempts: int = 0
-	while attempts < _unit_limit:
+	while produced < batch_size and attempts < _unit_limit:
 		attempts += 1
 		if _has_equipment:
 			_produce_unit_with_equipment()
@@ -999,6 +1008,7 @@ func _produce_unit() -> void:
 		var current_count: int = BattleManager.get_enemy_unit_count() if BattleManager else 0
 		if current_count >= _unit_limit:
 			break
+		produced += 1
 
 ## 返回 true 表示单位已成功进入战场（用于累计召唤计数）；false 表示场地已满被丢弃。
 func _add_unit_to_battle(unit: Node2D, current_count: int) -> bool:
@@ -1007,7 +1017,7 @@ func _add_unit_to_battle(unit: Node2D, current_count: int) -> bool:
 			return true
 	# 主路径返回 false 通常意味着场地已满（enemy_unit_count >= 6）。
 	# 不应继续产兵，否则会越过 6 上限、导致多单位挤同格。
-	var field_cap: int = BattleSlotGrid.SLOT_COUNT - 1
+	var field_cap: int = BattleSlotGrid.SLOT_COUNT  # 3行×3列 = 9 格
 	if current_count >= field_cap:
 		if is_instance_valid(unit):
 			unit.queue_free()
@@ -1188,7 +1198,7 @@ func _process_respawn_queue() -> void:
 	if not _has_equipment:
 		return   # 无装备模式不支持套路补兵（走经典 fallback 产兵）
 	var now: float = Time.get_ticks_msec() / 1000.0
-	# 场上单位已满时不补（避免越界 6 上限）
+	# 场上单位已满时不补（避免越界 9 上限）
 	if BattleManager and BattleManager.get_enemy_unit_count() >= _unit_limit:
 		return
 	var i: int = 0
@@ -1257,12 +1267,12 @@ func get_pattern_id() -> String:
 func get_pattern_config() -> Dictionary:
 	return _pattern_cfg
 
-## 回退路径：扫描 enemy_units 组，从远端(最大索引)倒序找第一个空闲敌槽；
-## 敌方仅 slot N-1（位置 15，最右靠屏幕边）禁放，可用 slot 0~N-2。
+## 回退路径：扫描 enemy_units 组，按部署顺序（中行→下行→上行）找第一个空闲敌槽
+## v9.5: 与波次刷敌/自动部署顺序一致
 func _fallback_pick_free_enemy_slot() -> int:
 	var tree: SceneTree = get_tree()
 	if tree == null:
-		return BattleSlotGrid.SLOT_COUNT - 2
+		return 3  # 中行首位兜底
 	var occupied := {}
 	for n in tree.get_nodes_in_group("enemy_units"):
 		if n == null or not is_instance_valid(n):
@@ -1270,12 +1280,13 @@ func _fallback_pick_free_enemy_slot() -> int:
 		var esi: int = int(n.get_meta("card_grid_enemy_slot", -1))
 		if esi >= 0 and esi < BattleSlotGrid.SLOT_COUNT:
 			occupied[esi] = true
-	# 从远端(最大索引 N-2)倒序至 slot 0；敌方仅 slot N-1 禁放
-	for si in range(BattleSlotGrid.SLOT_COUNT - 2, -1, -1):
+	# v9.5: 按 中行(3,4,5)→下行(6,7,8)→上行(0,1,2) 顺序找空闲槽
+	const FALLBACK_ORDER: Array[int] = [3, 4, 5, 6, 7, 8, 0, 1, 2]
+	for si in FALLBACK_ORDER:
 		if not occupied.has(si):
 			return si
-	# 全满兜底：用最大可用索引 N-2（避免返回 -1 导致 get_card_grid_enemy_slot_global 越界）
-	return BattleSlotGrid.SLOT_COUNT - 2
+	# 全满兜底：用中行首位（避免返回 -1 导致 get_card_grid_enemy_slot_global 越界）
+	return 3
 
 func take_damage(amount: float, attacker: Variant = null) -> void:
 	var actual: float = amount
@@ -1574,6 +1585,35 @@ func _apply_master_rune_bonus(stats: UnitStats) -> void:
 				stats.attack_air_speed /= mult
 				stats.attack_interval /= mult
 		_applied += 1
+	# v9.x: 符文之语组合加成（与我方 phase_instrument_manager._refresh_rune_bonus 对称）。
+	# _master_runes 来自 _derive_runes（符文之语驱动派生：按 level 选 tier → 选一个符文之语
+	# → 取其 required_runes 作为装备符文），必然命中至少 1 个词。此前应用端漏接 RunewordMatcher，
+	# 敌方只拿单符文 primary_effect，符文之语的组合 stats 加成完全丢失——现已补齐。
+	var slot_count := maxi(_master_runes.size(), 2)
+	var rw_bonus: Dictionary = RunewordMatcher.get_active_bonus(_master_runes, slot_count)
+	for stat_key in rw_bonus.get("stats", {}):
+		var rw_val: float = float(rw_bonus["stats"][stat_key])
+		if rw_val == 0.0:
+			continue
+		var rw_mult: float = 1.0 + rw_val
+		match stat_key:
+			"attack":
+				stats.attack_light *= rw_mult
+				stats.attack_armor *= rw_mult
+				stats.attack_air *= rw_mult
+				_sync_enemy_weapon_slot_damage(stats, rw_mult)
+			"defense":
+				stats.defense_light *= rw_mult
+				stats.defense_armor *= rw_mult
+				stats.defense_air *= rw_mult
+				stats.defense *= rw_mult
+			"hp":
+				stats.max_hp *= rw_mult
+			"attack_speed":
+				stats.attack_light_speed /= rw_mult
+				stats.attack_armor_speed /= rw_mult
+				stats.attack_air_speed /= rw_mult
+				stats.attack_interval /= rw_mult
 
 
 ## v6.14: 出兵序列 elite/boss 标记加成。

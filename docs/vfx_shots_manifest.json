@@ -1,0 +1,430 @@
+{
+ "frame_rate": 60,
+ "shots": [
+  {
+   "captures": [
+    {
+     "file": "impact_wt0_0.png",
+     "frame": 14,
+     "peak_index": 0
+    }
+   ],
+   "category": "命中特效",
+   "description": "9mm冲锋枪子弹 命中金属装甲目标产生的火花/冲击",
+   "era": "现代",
+   "id": "impact_wt0",
+   "ref_weapon": "冲锋枪SMG"
+  },
+  {
+   "captures": [
+    {
+     "file": "impact_wt1_0.png",
+     "frame": 79,
+     "peak_index": 0
+    }
+   ],
+   "category": "命中特效",
+   "description": "7.62mm步枪弹 命中金属装甲目标产生的火花/冲击",
+   "era": "现代",
+   "id": "impact_wt1",
+   "ref_weapon": "步枪RIFLE"
+  },
+  {
+   "captures": [
+    {
+     "file": "impact_wt2_0.png",
+     "frame": 144,
+     "peak_index": 0
+    }
+   ],
+   "category": "命中特效",
+   "description": "7.62mm机枪弹 命中金属装甲目标产生的火花/冲击",
+   "era": "现代",
+   "id": "impact_wt2",
+   "ref_weapon": "机枪MG"
+  },
+  {
+   "captures": [
+    {
+     "file": "impact_wt3_0.png",
+     "frame": 213,
+     "peak_index": 0
+    }
+   ],
+   "category": "命中特效",
+   "description": "RPG破甲火箭弹 命中金属装甲目标产生的火花/冲击",
+   "era": "现代",
+   "id": "impact_wt3",
+   "ref_weapon": "火箭弹ROCKET"
+  },
+  {
+   "captures": [
+    {
+     "file": "impact_wt4_0.png",
+     "frame": 274,
+     "peak_index": 0
+    }
+   ],
+   "category": "命中特效",
+   "description": "9mm手枪弹 命中金属装甲目标产生的火花/冲击",
+   "era": "现代",
+   "id": "impact_wt4",
+   "ref_weapon": "手枪PISTOL"
+  },
+  {
+   "captures": [
+    {
+     "file": "impact_wt5_0.png",
+     "frame": 339,
+     "peak_index": 0
+    }
+   ],
+   "category": "命中特效",
+   "description": "12号霰弹 命中金属装甲目标产生的火花/冲击",
+   "era": "现代",
+   "id": "impact_wt5",
+   "ref_weapon": "霰弹SHOTGUN"
+  },
+  {
+   "captures": [
+    {
+     "file": "impact_wt6_0.png",
+     "frame": 404,
+     "peak_index": 0
+    }
+   ],
+   "category": "命中特效",
+   "description": "12.7mm大口径狙击弹 命中金属装甲目标产生的火花/冲击",
+   "era": "现代",
+   "id": "impact_wt6",
+   "ref_weapon": "狙击SNIPER"
+  },
+  {
+   "captures": [
+    {
+     "file": "impact_wt7_0.png",
+     "frame": 473,
+     "peak_index": 0
+    }
+   ],
+   "category": "命中特效",
+   "description": "40mm高射炮榴弹 命中金属装甲目标产生的火花/冲击",
+   "era": "现代",
+   "id": "impact_wt7",
+   "ref_weapon": "高射炮FLAK"
+  },
+  {
+   "captures": [
+    {
+     "file": "impact_wt8_0.png",
+     "frame": 538,
+     "peak_index": 0
+    }
+   ],
+   "category": "命中特效",
+   "description": "战术激光束 命中金属装甲目标产生的火花/冲击",
+   "era": "现代",
+   "id": "impact_wt8",
+   "ref_weapon": "激光LASER"
+  },
+  {
+   "captures": [
+    {
+     "file": "impact_wt9_0.png",
+     "frame": 603,
+     "peak_index": 0
+    }
+   ],
+   "category": "命中特效",
+   "description": "反坦克导弹 命中金属装甲目标产生的火花/冲击",
+   "era": "现代",
+   "id": "impact_wt9",
+   "ref_weapon": "导弹MISSILE"
+  },
+  {
+   "captures": [
+    {
+     "file": "impact_wt10_0.png",
+     "frame": 668,
+     "peak_index": 0
+    }
+   ],
+   "category": "命中特效",
+   "description": "欧米茄粒子炮 命中金属装甲目标产生的火花/冲击",
+   "era": "现代",
+   "id": "impact_wt10",
+   "ref_weapon": "欧米茄粒子炮OMEGA"
+  },
+  {
+   "captures": [
+    {
+     "file": "impact_wt11_0.png",
+     "frame": 733,
+     "peak_index": 0
+    }
+   ],
+   "category": "命中特效",
+   "description": "电磁轨道炮动能弹 命中金属装甲目标产生的火花/冲击",
+   "era": "现代",
+   "id": "impact_wt11",
+   "ref_weapon": "电磁轨道炮RAIL"
+  },
+  {
+   "captures": [
+    {
+     "file": "tier_wt3_light_0.png",
+     "frame": 798,
+     "peak_index": 0
+    }
+   ],
+   "category": "威力档位",
+   "description": "火箭弹命中 轻威力档(纯粒子无爆炸半径)",
+   "era": "现代",
+   "id": "tier_wt3_light",
+   "ref_weapon": "ROCKET power_tier LIGHT"
+  },
+  {
+   "captures": [
+    {
+     "file": "tier_wt3_medium_0.png",
+     "frame": 869,
+     "peak_index": 0
+    }
+   ],
+   "category": "威力档位",
+   "description": "火箭弹命中 中威力档(96px帧动画火球)",
+   "era": "现代",
+   "id": "tier_wt3_medium",
+   "ref_weapon": "ROCKET power_tier MEDIUM"
+  },
+  {
+   "captures": [
+    {
+     "file": "tier_wt3_heavy_0.png",
+     "frame": 938,
+     "peak_index": 0
+    }
+   ],
+   "category": "威力档位",
+   "description": "火箭弹命中 重威力档(160px帧动画+1.4x缩放)",
+   "era": "现代",
+   "id": "tier_wt3_heavy",
+   "ref_weapon": "ROCKET power_tier HEAVY"
+  },
+  {
+   "captures": [
+    {
+     "file": "crit_aura_0.png",
+     "frame": 989,
+     "peak_index": 0
+    }
+   ],
+   "category": "特殊伤害",
+   "description": "暴击命中 金色脉动光环+辐射火花",
+   "era": "通用",
+   "id": "crit_aura",
+   "ref_weapon": "CRITICAL HIT"
+  },
+  {
+   "captures": [
+    {
+     "file": "pierce_beam_0.png",
+     "frame": 1047,
+     "peak_index": 0
+    }
+   ],
+   "category": "特殊伤害",
+   "description": "穿甲增强 紫色穿透光线(贯穿多个目标)",
+   "era": "通用",
+   "id": "pierce_beam",
+   "ref_weapon": "PIERCE enhanced"
+  },
+  {
+   "captures": [
+    {
+     "file": "shockwave_0.png",
+     "frame": 1121,
+     "peak_index": 0
+    }
+   ],
+   "category": "特殊伤害",
+   "description": "溅射冲击波 橙色地面扩散环",
+   "era": "通用",
+   "id": "shockwave",
+   "ref_weapon": "SHOCKWAVE r80"
+  },
+  {
+   "captures": [
+    {
+     "file": "lightning_arc_0.png",
+     "frame": 1179,
+     "peak_index": 0
+    }
+   ],
+   "category": "特殊伤害",
+   "description": "闪电链 锯齿电弧跨越双目标",
+   "era": "能量",
+   "id": "lightning_arc",
+   "ref_weapon": "LIGHTNING ARC"
+  },
+  {
+   "captures": [
+    {
+     "file": "laser_beam_0.png",
+     "frame": 1244,
+     "peak_index": 0
+    }
+   ],
+   "category": "特殊伤害",
+   "description": "激光命中 青蓝色光束余晖",
+   "era": "近未来",
+   "id": "laser_beam",
+   "ref_weapon": "LASER BEAM"
+  },
+  {
+   "captures": [
+    {
+     "file": "nuclear_explosion_0.png",
+     "frame": 1331,
+     "peak_index": 0
+    },
+    {
+     "file": "nuclear_explosion_1.png",
+     "frame": 1351,
+     "peak_index": 1
+    }
+   ],
+   "category": "核爆",
+   "description": "战术核武器地面爆炸(火球+双冲击波+蘑菇云帧动画+地面焦痕)",
+   "era": "近未来",
+   "id": "nuclear_explosion",
+   "ref_weapon": "NUCLEAR size1.0"
+  },
+  {
+   "captures": [
+    {
+     "file": "skill_shield_dome_0.png",
+     "frame": 1425,
+     "peak_index": 0
+    }
+   ],
+   "category": "技能演出",
+   "description": "巨型能量罩 蓝色护盾爆发术",
+   "era": "近未来",
+   "id": "skill_shield_dome",
+   "ref_weapon": "MEGA SHIELD"
+  },
+  {
+   "captures": [
+    {
+     "file": "skill_rage_aura_0.png",
+     "frame": 1488,
+     "peak_index": 0
+    }
+   ],
+   "category": "技能演出",
+   "description": "狂暴激涌 金红色光环术",
+   "era": "通用",
+   "id": "skill_rage_aura",
+   "ref_weapon": "RAGE BUFF"
+  },
+  {
+   "captures": [
+    {
+     "file": "skill_inferno_0.png",
+     "frame": 1553,
+     "peak_index": 0
+    }
+   ],
+   "category": "技能演出",
+   "description": "地狱火术 橙红大招命中爆裂",
+   "era": "能量",
+   "id": "skill_inferno",
+   "ref_weapon": "INFERNO HELL"
+  },
+  {
+   "captures": [
+    {
+     "file": "skill_summon_portal_0.png",
+     "frame": 1608,
+     "peak_index": 0
+    }
+   ],
+   "category": "技能演出",
+   "description": "幻影克隆召唤 青色螺旋传送门",
+   "era": "近未来",
+   "id": "skill_summon_portal",
+   "ref_weapon": "SUMMON PORTAL"
+  },
+  {
+   "captures": [
+    {
+     "file": "skill_energy_pillar_0.png",
+     "frame": 1667,
+     "peak_index": 0
+    }
+   ],
+   "category": "技能演出",
+   "description": "从天而降能量光柱",
+   "era": "能量",
+   "id": "skill_energy_pillar",
+   "ref_weapon": "ENERGY PILLAR"
+  },
+  {
+   "captures": [
+    {
+     "file": "skill_ult_projectile_0.png",
+     "frame": 1738,
+     "peak_index": 0
+    }
+   ],
+   "category": "技能演出",
+   "description": "大招核弹飞行体(抛物线弹道+橙黄拖尾)",
+   "era": "近未来",
+   "id": "skill_ult_projectile",
+   "ref_weapon": "ULTIMATE NUKE"
+  },
+  {
+   "captures": [
+    {
+     "file": "muzzle_light_0.png",
+     "frame": 1795,
+     "peak_index": 0
+    }
+   ],
+   "category": "炮口火",
+   "description": "轻武器枪口火焰(冲锋枪,短促轻焰)",
+   "era": "现代",
+   "id": "muzzle_light",
+   "ref_weapon": "MUZZLE wt0"
+  },
+  {
+   "captures": [
+    {
+     "file": "muzzle_rocket_0.png",
+     "frame": 1860,
+     "peak_index": 0
+    }
+   ],
+   "category": "炮口火",
+   "description": "火箭筒枪口火焰(重型尾焰)",
+   "era": "现代",
+   "id": "muzzle_rocket",
+   "ref_weapon": "MUZZLE wt3"
+  },
+  {
+   "captures": [
+    {
+     "file": "muzzle_missile_0.png",
+     "frame": 1925,
+     "peak_index": 0
+    }
+   ],
+   "category": "炮口火",
+   "description": "导弹发射口火焰(重型发射烟)",
+   "era": "近未来",
+   "id": "muzzle_missile",
+   "ref_weapon": "MUZZLE wt9"
+  }
+ ]
+}

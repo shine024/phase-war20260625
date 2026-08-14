@@ -3,14 +3,19 @@ extends Node2D
 const GC = preload("res://resources/game_constants.gd")
 const CombatTargeting = preload("res://scripts/combat_targeting.gd")
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
+const MuzzleAnchors = preload("res://data/muzzle_anchors.gd")  # 蜂群开火点（补齐 muzzle 接入，与经典 enemy_unit 对齐）
+const DT = preload("res://resources/design_tokens.gd")  # v10: motion_reduce 守卫(受击闪)
 
 const BATTLE_MIN_X: float = 40.0
 const BATTLE_MAX_X: float = 1240.0
-const BATTLE_MIN_Y: float = 280.0
-const BATTLE_MAX_Y: float = 440.0
+# v9.3: 扩大 Y 硬夹范围（原 280~440 仅覆盖旧双行布局，三行布局下行 center+60
+# 在高背景纹理关卡可能 >440；扩大到 200~560 覆盖三行全程 + 高/低车道中心）
+const BATTLE_MIN_Y: float = 200.0
+const BATTLE_MAX_Y: float = 560.0
 
 var _mmi: MultiMeshInstance2D
 var _slots: Array = []
+var _muzzle_offset_cache: Dictionary = {}  # archetype_id -> Vector2 枪口偏移（相对 slot 中心）
 var _death_fx_pool: Array[CPUParticles2D] = []
 var _death_fx_active: Array[CPUParticles2D] = []
 const MAX_DEATH_FX_POOL: int = 20
@@ -146,6 +151,9 @@ func _tick_slot(s: Node2D, delta: float) -> void:
 		if gs._ghost_materialize_time_left <= 0.0:
 			gs.materialize_swarm_deploy_ghost()
 		return
+	# v10: 受击闪白计时递减(MultiMesh 不能 tween,靠 _sync 时 lerp visual_color)
+	if s is SwarmEnemySlot and (s as SwarmEnemySlot)._hit_flash_t > 0.0:
+		(s as SwarmEnemySlot)._hit_flash_t = maxf(0.0, (s as SwarmEnemySlot)._hit_flash_t - delta)
 	s._target_find_timer += delta
 	var should_find := false
 	if s.target == null or not is_instance_valid(s.target):
@@ -252,6 +260,30 @@ func _clamp_slot(s: Node2D) -> void:
 	if cx != gx.x or cy != gx.y:
 		s.global_position = Vector2(cx, cy)
 
+## 蜂群开火点：slot.global_position 是 QuadMesh 中心（非脚部），offset 相对中心算。
+## 同 archetype 共享纹理与尺寸，按 archetype 缓存。无标注回退 ZERO（从中心发射）。
+func _get_swarm_muzzle_offset(s: Node2D) -> Vector2:
+	var aid: String = ""
+	if s is SwarmEnemySlot:
+		aid = (s as SwarmEnemySlot).archetype_id
+	if aid.is_empty():
+		return Vector2.ZERO
+	if _muzzle_offset_cache.has(aid):
+		return _muzzle_offset_cache[aid]
+	var off: Vector2 = Vector2.ZERO
+	var anchor: Dictionary = MuzzleAnchors.get_anchor(aid)
+	if not anchor.is_empty():
+		var tex_w: float = 12.0
+		var tex_h: float = 9.0
+		if _mmi != null and _mmi.multimesh != null and _mmi.multimesh.mesh is QuadMesh:
+			tex_w = (_mmi.multimesh.mesh as QuadMesh).size.x
+			tex_h = (_mmi.multimesh.mesh as QuadMesh).size.y
+		var fx: float = float(anchor.get("fireX", 0.5))
+		var fy: float = float(anchor.get("fireY_pct", 50.0))
+		off = Vector2((fx - 0.5) * tex_w, (fy - 50.0) / 100.0 * tex_h)
+	_muzzle_offset_cache[aid] = off
+	return off
+
 func _fire_from_slot(s: Node2D) -> void:
 	if s.target == null or not is_instance_valid(s.target):
 		return
@@ -270,10 +302,11 @@ func _fire_from_slot(s: Node2D) -> void:
 	if s.weapon_types.size() > 0:
 		wt = int(s.weapon_types[s._attack_weapon_index % s.weapon_types.size()])
 		s._attack_weapon_index += 1
+	var spawn_pos := s.global_position + _get_swarm_muzzle_offset(s)
 	if _should_use_projectile_batch(wt):
 		if BattleManager and BattleManager.enemy_projectile_batch:
 			BattleManager.enemy_projectile_batch.fire(
-				s.global_position, s.target, dmg_out, wt, s, null, miss
+				spawn_pos, s.target, dmg_out, wt, s, null, miss
 			)
 			return
 	_fallthrough_bullet(s, wt, dmg_out, miss)
@@ -286,7 +319,7 @@ func _fallthrough_bullet(s: Node2D, wt: int, p_damage: float = -1.0, p_miss: boo
 	var bullet: Node2D = ObjectPoolManager.get_object("bullets") if ObjectPoolManager else null
 	if bullet == null:
 		bullet = BulletScene.instantiate()
-	bullet.global_position = s.global_position
+	bullet.global_position = s.global_position + _get_swarm_muzzle_offset(s)
 	var dmg: float = float(s.attack_damage) if p_damage < 0.0 else p_damage
 	bullet.setup(s.target, dmg, false, wt, s, null, p_miss, "")
 	var root_2d: Node = get_parent().get_parent() if get_parent() else self
@@ -314,5 +347,9 @@ func _sync_multimesh_transforms() -> void:
 		mm.set_instance_transform_2d(i, local_xf)
 		var col: Color = Color.WHITE
 		if s is SwarmEnemySlot:
-			col = (s as SwarmEnemySlot).visual_color
+			var _gs: SwarmEnemySlot = s as SwarmEnemySlot
+			col = _gs.visual_color
+			# v10: 受击闪白——按 _hit_flash_t 把颜色 lerp 向白(motion_reduce 时跳过; 0.08 对齐 slot _HIT_FLASH_DUR)
+			if _gs._hit_flash_t > 0.0 and not DT.is_motion_reduce():
+				col = col.lerp(Color.WHITE, _gs._hit_flash_t / 0.08)
 		mm.set_instance_color(i, col)

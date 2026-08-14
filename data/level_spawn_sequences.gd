@@ -119,9 +119,9 @@ static func _make_wave_spec(wave_index: int, wave_total: int, is_tutorial: bool,
 			0:
 				bias_tags = ["infantry"]
 			1:
-				bias_tags = ["vehicle", "armor"] if (progress > 0.3) else ["infantry"]
+				bias_tags = ["vehicle", "armored"] if (progress > 0.3) else ["infantry"]
 			2:
-				bias_tags = ["air"] if (progress > 0.5) else []
+				bias_tags = ["aircraft"] if (progress > 0.5) else []
 			_:
 				bias_tags = []  # 不限
 

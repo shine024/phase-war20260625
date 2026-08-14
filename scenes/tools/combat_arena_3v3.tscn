@@ -1,0 +1,225 @@
+[gd_scene load_steps=2 format=3 uid="uid://bcombatarena3v3tool"]
+
+[ext_resource type="Script" path="res://scenes/tools/combat_arena_3v3.gd" id="1_script"]
+
+[node name="Arena3v3" type="Node2D"]
+script = ExtResource("1_script")
+
+[node name="Background" type="ColorRect" parent="."]
+offset_right = 1280.0
+offset_bottom = 720.0
+color = Color(0.03, 0.045, 0.075, 1)
+
+[node name="Battlefield" type="Node2D" parent="."]
+
+[node name="PlayerUnits" type="Node2D" parent="Battlefield"]
+
+[node name="EnemyUnits" type="Node2D" parent="Battlefield"]
+
+[node name="GroundLine" type="Line2D" parent="."]
+points = PackedVector2Array(40, 420, 1240, 420)
+width = 2.0
+default_color = Color(0, 0.941, 1, 0.15)
+
+[node name="CenterMark" type="Line2D" parent="."]
+points = PackedVector2Array(640, 360, 640, 480)
+width = 1.0
+default_color = Color(1, 1, 1, 0.1)
+
+[node name="UiLayer" type="CanvasLayer" parent="."]
+layer = 40
+
+[node name="TitleBar" type="Label" parent="UiLayer"]
+offset_left = 0.0
+offset_top = 4.0
+offset_right = 1280.0
+offset_bottom = 36.0
+theme_override_colors/font_color = Color(0.9, 0.7, 0.3, 1)
+theme_override_font_sizes/font_size = 22
+text = "⚔ 3v3 群战演练场  —  我方3 vs 敌方3 自动对打；选卡后切换即重生；可暂停 / 单帧 / 调速"
+horizontal_alignment = 1
+
+[node name="PlayerSelectPanel" type="Panel" parent="UiLayer"]
+layout_mode = 1
+offset_left = 8.0
+offset_top = 40.0
+offset_right = 440.0
+offset_bottom = 120.0
+
+[node name="Label" type="Label" parent="UiLayer/PlayerSelectPanel"]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 6.0
+offset_right = 120.0
+offset_bottom = 28.0
+theme_override_colors/font_color = Color(0.3, 0.9, 0.4, 1)
+theme_override_font_sizes/font_size = 14
+text = "我方单位 (×3)"
+
+[node name="PlayerOptionButton" type="OptionButton" parent="UiLayer/PlayerSelectPanel"]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 30.0
+offset_right = 340.0
+offset_bottom = 60.0
+theme_override_font_sizes/font_size = 13
+clip_text = true
+
+[node name="PlayerSwitchButton" type="Button" parent="UiLayer/PlayerSelectPanel"]
+layout_mode = 0
+offset_left = 348.0
+offset_top = 30.0
+offset_right = 428.0
+offset_bottom = 60.0
+theme_override_font_sizes/font_size = 13
+text = "切换"
+
+[node name="EnemySelectPanel" type="Panel" parent="UiLayer"]
+layout_mode = 1
+offset_left = 840.0
+offset_top = 40.0
+offset_right = 1272.0
+offset_bottom = 120.0
+
+[node name="Label" type="Label" parent="UiLayer/EnemySelectPanel"]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 6.0
+offset_right = 120.0
+offset_bottom = 28.0
+theme_override_colors/font_color = Color(0.95, 0.4, 0.4, 1)
+theme_override_font_sizes/font_size = 14
+text = "敌方单位 (×3)"
+
+[node name="EnemyOptionButton" type="OptionButton" parent="UiLayer/EnemySelectPanel"]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 30.0
+offset_right = 338.0
+offset_bottom = 60.0
+theme_override_font_sizes/font_size = 13
+clip_text = true
+
+[node name="EnemySwitchButton" type="Button" parent="UiLayer/EnemySelectPanel"]
+layout_mode = 0
+offset_left = 346.0
+offset_top = 30.0
+offset_right = 424.0
+offset_bottom = 60.0
+theme_override_font_sizes/font_size = 13
+text = "切换"
+
+[node name="ControlPanel" type="Panel" parent="UiLayer"]
+layout_mode = 1
+offset_left = 8.0
+offset_top = 624.0
+offset_right = 820.0
+offset_bottom = 712.0
+
+[node name="PlayerFireToggle" type="CheckButton" parent="UiLayer/ControlPanel"]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 6.0
+offset_right = 150.0
+offset_bottom = 40.0
+theme_override_font_sizes/font_size = 13
+text = "我方开火"
+button_pressed = true
+
+[node name="EnemyFireToggle" type="CheckButton" parent="UiLayer/ControlPanel"]
+layout_mode = 0
+offset_left = 150.0
+offset_top = 6.0
+offset_right = 290.0
+offset_bottom = 40.0
+theme_override_font_sizes/font_size = 13
+text = "敌方开火"
+button_pressed = true
+
+[node name="PlayPauseButton" type="Button" parent="UiLayer/ControlPanel"]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 46.0
+offset_right = 88.0
+offset_bottom = 80.0
+theme_override_font_sizes/font_size = 13
+text = "⏸ 暂停"
+
+[node name="StepButton" type="Button" parent="UiLayer/ControlPanel"]
+layout_mode = 0
+offset_left = 92.0
+offset_top = 46.0
+offset_right = 172.0
+offset_bottom = 80.0
+theme_override_font_sizes/font_size = 13
+text = "⏭ 单帧"
+
+[node name="ResetButton" type="Button" parent="UiLayer/ControlPanel"]
+layout_mode = 0
+offset_left = 176.0
+offset_top = 46.0
+offset_right = 256.0
+offset_bottom = 80.0
+theme_override_font_sizes/font_size = 13
+text = "↻ 重置"
+
+[node name="SpeedLabel" type="Label" parent="UiLayer/ControlPanel"]
+layout_mode = 0
+offset_left = 270.0
+offset_top = 8.0
+offset_right = 340.0
+offset_bottom = 30.0
+theme_override_colors/font_color = Color(0.8, 0.8, 0.85, 1)
+theme_override_font_sizes/font_size = 12
+text = "速度: 1.0x"
+
+[node name="SpeedSlider" type="HSlider" parent="UiLayer/ControlPanel"]
+layout_mode = 0
+offset_left = 270.0
+offset_top = 32.0
+offset_right = 440.0
+offset_bottom = 48.0
+min_value = 0.1
+max_value = 3.0
+step = 0.05
+value = 1.0
+
+[node name="StepFramesLabel" type="Label" parent="UiLayer/ControlPanel"]
+layout_mode = 0
+offset_left = 448.0
+offset_top = 8.0
+offset_right = 540.0
+offset_bottom = 30.0
+theme_override_colors/font_color = Color(0.8, 0.8, 0.85, 1)
+theme_override_font_sizes/font_size = 12
+text = "步进帧数: 1"
+
+[node name="StepFramesSlider" type="HSlider" parent="UiLayer/ControlPanel"]
+layout_mode = 0
+offset_left = 448.0
+offset_top = 32.0
+offset_right = 620.0
+offset_bottom = 48.0
+min_value = 1.0
+max_value = 30.0
+step = 1.0
+value = 1.0
+
+[node name="BackButton" type="Button" parent="UiLayer/ControlPanel"]
+layout_mode = 0
+offset_left = 628.0
+offset_top = 46.0
+offset_right = 810.0
+offset_bottom = 80.0
+theme_override_font_sizes/font_size = 13
+text = "← 返回主菜单"
+
+[node name="InfoPanel" type="RichTextLabel" parent="UiLayer"]
+layout_mode = 1
+offset_left = 828.0
+offset_top = 624.0
+offset_right = 1272.0
+offset_bottom = 712.0
+theme_override_font_sizes/normal_font_size = 12
+bbcode_enabled = true
+text = ""

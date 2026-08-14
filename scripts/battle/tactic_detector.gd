@@ -68,8 +68,11 @@ func _detect_and_apply() -> void:
 	var counts_by_tag: Dictionary = {}   # 标签 → 数量
 	var distinct_kinds: int = 0
 	var card_skill_families: Dictionary = {}  # family → 数量（P1 接入后填充）
+	# ultimate_count 不能走 _analyze_allies 出参（int 值类型，函数内赋值不影响调用方）
+	_analyze_allies(allies, counts_by_kind, counts_by_tag, distinct_kinds, card_skill_families)
 	var ultimate_count: int = 0
-	_analyze_allies(allies, counts_by_kind, counts_by_tag, distinct_kinds, card_skill_families, ultimate_count)
+	if _card_skill_engine != null and _card_skill_engine.has_method("get_ultimate_count"):
+		ultimate_count = _card_skill_engine.get_ultimate_count()
 
 	# 检测每个战法
 	var new_active: Dictionary = {}
@@ -99,7 +102,7 @@ func _collect_player_units() -> Array:
 
 ## 分析友军阵容统计
 func _analyze_allies(allies: Array, counts_by_kind: Dictionary, counts_by_tag: Dictionary,
-					 distinct_kinds: int, card_skill_families: Dictionary, ultimate_count: int) -> void:
+					 distinct_kinds: int, card_skill_families: Dictionary) -> void:
 	var seen_kinds: Dictionary = {}
 	for u in allies:
 		# 按 CombatKind 计数
@@ -125,10 +128,7 @@ func _analyze_allies(allies: Array, counts_by_kind: Dictionary, counts_by_tag: D
 		var fams = _card_skill_engine.get_active_families()
 		for fam in fams:
 			card_skill_families[fam] = int(card_skill_families.get(fam, 0)) + 1
-	# 终极技能数
-	if _card_skill_engine != null and _card_skill_engine.has_method("get_ultimate_count"):
-		# 用 dict 包装返回值（GDScript 无出参）
-		ultimate_count = _card_skill_engine.get_ultimate_count()
+	# ultimate_count 已移至 _detect_and_apply 内直接查询（GDScript int 值类型不能做出参）
 
 ## 检测战法条件是否满足
 func _check_conditions(conditions: Dictionary, counts_by_kind: Dictionary, counts_by_tag: Dictionary,
@@ -165,14 +165,14 @@ func _check_conditions(conditions: Dictionary, counts_by_kind: Dictionary, count
 	var need_ult: int = int(conditions.get("min_ultimate_skill_count", 0))
 	if need_ult > 0 and ultimate_count < need_ult:
 		return false
-	# min_backline_count（后排单位数：slot 索引靠玩家方）
+	# min_backline_count（后排单位数：col=0，远离敌方）
 	var need_backline: int = int(conditions.get("min_backline_count", 0))
 	if need_backline > 0:
 		var backline_count: int = 0
 		for u in allies:
 			var slot_idx: int = int(u.get_meta("card_grid_slot", -1))
-			# 玩家方 slot 0-6，slot 0-2 视为后排（远离敌方）
-			if slot_idx >= 0 and slot_idx <= 2:
+			# 3行×3列布局：col=0（slot 0/3/6）为玩家后排（远离敌方）
+			if slot_idx >= 0 and slot_idx % 3 == 0:
 				backline_count += 1
 		if backline_count < need_backline:
 			return false

@@ -4,6 +4,7 @@ extends RefCounted
 class_name EnemyEquipmentSpecials
 
 ## 能量卡数据
+## v9.x: 删除 19 个 special_effect 死字段（全项目零战斗消费，仅 UI 卡面回退读 name/energy_amount/energy_regen_boost）。
 const LEGACY_ENERGY_CARDS: Dictionary = {
 	"steel_energy_basic": {
 		"id": "steel_energy_basic",
@@ -11,8 +12,7 @@ const LEGACY_ENERGY_CARDS: Dictionary = {
 		"faction": "steel",
 		"level": 5,
 		"energy_amount": 50,
-		"energy_regen_boost": 0.5,
-		"special_effect": "steel_skin_boost"
+		"energy_regen_boost": 0.5
 	},
 	"flame_energy_basic": {
 		"id": "flame_energy_basic",
@@ -20,8 +20,7 @@ const LEGACY_ENERGY_CARDS: Dictionary = {
 		"faction": "flame",
 		"level": 6,
 		"energy_amount": 60,
-		"energy_regen_boost": 0.6,
-		"special_effect": "burning_aura"
+		"energy_regen_boost": 0.6
 	},
 	"thunder_energy_basic": {
 		"id": "thunder_energy_basic",
@@ -29,8 +28,7 @@ const LEGACY_ENERGY_CARDS: Dictionary = {
 		"faction": "thunder",
 		"level": 7,
 		"energy_amount": 55,
-		"energy_regen_boost": 0.7,
-		"special_effect": "static_field"
+		"energy_regen_boost": 0.7
 	},
 	"void_energy_basic": {
 		"id": "void_energy_basic",
@@ -38,8 +36,7 @@ const LEGACY_ENERGY_CARDS: Dictionary = {
 		"faction": "void",
 		"level": 8,
 		"energy_amount": 65,
-		"energy_regen_boost": 0.8,
-		"special_effect": "entropy_aura"
+		"energy_regen_boost": 0.8
 	},
 
 	# ==================== 进阶能量卡 ====================
@@ -49,8 +46,7 @@ const LEGACY_ENERGY_CARDS: Dictionary = {
 		"faction": "steel",
 		"level": 12,
 		"energy_amount": 100,
-		"energy_regen_boost": 1.0,
-		"special_effect": "fortress_mode"
+		"energy_regen_boost": 1.0
 	},
 	"flame_energy_advanced": {
 		"id": "flame_energy_advanced",
@@ -58,8 +54,7 @@ const LEGACY_ENERGY_CARDS: Dictionary = {
 		"faction": "flame",
 		"level": 13,
 		"energy_amount": 120,
-		"energy_regen_boost": 1.2,
-		"special_effect": "heat_wave"
+		"energy_regen_boost": 1.2
 	},
 
 	# ==================== 专家能量卡 ====================
@@ -69,8 +64,7 @@ const LEGACY_ENERGY_CARDS: Dictionary = {
 		"faction": "steel",
 		"level": 18,
 		"energy_amount": 150,
-		"energy_regen_boost": 1.5,
-		"special_effect": "industrial_warfare"
+		"energy_regen_boost": 1.5
 	},
 	"flame_energy_expert": {
 		"id": "flame_energy_expert",
@@ -78,8 +72,7 @@ const LEGACY_ENERGY_CARDS: Dictionary = {
 		"faction": "flame",
 		"level": 19,
 		"energy_amount": 180,
-		"energy_regen_boost": 1.8,
-		"special_effect": "eternal_flame"
+		"energy_regen_boost": 1.8
 	},
 
 	# ==================== 混合能量卡 ====================
@@ -89,8 +82,7 @@ const LEGACY_ENERGY_CARDS: Dictionary = {
 		"faction": "hybrid",
 		"level": 16,
 		"energy_amount": 80,
-		"energy_regen_boost": 1.0,
-		"special_effect": "hybrid_bonus"
+		"energy_regen_boost": 1.0
 	},
 	"hybrid_energy_advanced": {
 		"id": "hybrid_energy_advanced",
@@ -98,8 +90,7 @@ const LEGACY_ENERGY_CARDS: Dictionary = {
 		"faction": "hybrid",
 		"level": 18,
 		"energy_amount": 120,
-		"energy_regen_boost": 1.4,
-		"special_effect": "fusion_power"
+		"energy_regen_boost": 1.4
 	},
 
 	# ==================== 神级能量卡 ====================
@@ -109,8 +100,7 @@ const LEGACY_ENERGY_CARDS: Dictionary = {
 		"faction": "steel",
 		"level": 29,
 		"energy_amount": 300,
-		"energy_regen_boost": 3.0,
-		"special_effect": "divine_protection_all"
+		"energy_regen_boost": 3.0
 	},
 	"flame_energy_god": {
 		"id": "flame_energy_god",
@@ -118,8 +108,7 @@ const LEGACY_ENERGY_CARDS: Dictionary = {
 		"faction": "flame",
 		"level": 30,
 		"energy_amount": 350,
-		"energy_regen_boost": 3.5,
-		"special_effect": "immortal_flame_all"
+		"energy_regen_boost": 3.5
 	},
 	"thunder_energy_god": {
 		"id": "thunder_energy_god",
@@ -127,8 +116,7 @@ const LEGACY_ENERGY_CARDS: Dictionary = {
 		"faction": "thunder",
 		"level": 30,
 		"energy_amount": 320,
-		"energy_regen_boost": 4.0,
-		"special_effect": "thunder_god_avatar"
+		"energy_regen_boost": 4.0
 	},
 	"void_energy_god": {
 		"id": "void_energy_god",
@@ -136,8 +124,7 @@ const LEGACY_ENERGY_CARDS: Dictionary = {
 		"faction": "void",
 		"level": 30,
 		"energy_amount": 330,
-		"energy_regen_boost": 3.8,
-		"special_effect": "void_goddess_transformation"
+		"energy_regen_boost": 3.8
 	},
 	"hybrid_energy_god": {
 		"id": "hybrid_energy_god",
@@ -145,8 +132,7 @@ const LEGACY_ENERGY_CARDS: Dictionary = {
 		"faction": "all",
 		"level": 30,
 		"energy_amount": 500,
-		"energy_regen_boost": 5.0,
-		"special_effect": "perfect_harmony_all"
+		"energy_regen_boost": 5.0
 	},
 
 	# ==================== 补充能量卡 ====================
@@ -156,8 +142,7 @@ const LEGACY_ENERGY_CARDS: Dictionary = {
 		"faction": "thunder",
 		"level": 14,
 		"energy_amount": 90,
-		"energy_regen_boost": 1.0,
-		"special_effect": "chain_boost"
+		"energy_regen_boost": 1.0
 	},
 	"void_energy_advanced": {
 		"id": "void_energy_advanced",
@@ -165,8 +150,7 @@ const LEGACY_ENERGY_CARDS: Dictionary = {
 		"faction": "void",
 		"level": 15,
 		"energy_amount": 100,
-		"energy_regen_boost": 1.1,
-		"special_effect": "entropy_drain_boost"
+		"energy_regen_boost": 1.1
 	},
 	"thunder_energy_expert": {
 		"id": "thunder_energy_expert",
@@ -174,8 +158,7 @@ const LEGACY_ENERGY_CARDS: Dictionary = {
 		"faction": "thunder",
 		"level": 20,
 		"energy_amount": 140,
-		"energy_regen_boost": 1.6,
-		"special_effect": "storm_command"
+		"energy_regen_boost": 1.6
 	},
 	"void_energy_expert": {
 		"id": "void_energy_expert",
@@ -183,8 +166,6 @@ const LEGACY_ENERGY_CARDS: Dictionary = {
 		"faction": "void",
 		"level": 21,
 		"energy_amount": 160,
-		"energy_regen_boost": 1.8,
-		"special_effect": "void_mastery_energy"
+		"energy_regen_boost": 1.8
 	}
 }
-

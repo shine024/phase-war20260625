@@ -289,8 +289,15 @@ static func _get_nearby_enemies(target: Node, radius: float, source: Node) -> Ar
 	var tree: SceneTree = target.get_tree() if target != null else null
 	if tree == null:
 		return []
+	# 优先用 BattleManager 的节流缓存，避免每次扩散全树遍历
 	var result: Array = []
-	for n in tree.get_nodes_in_group(group_name):
+	var cached: Array = []
+	var _bm = tree.root.get_node_or_null("BattleManager")
+	if _bm != null and _bm.has_method("get_cached_nodes_in_group"):
+		cached = _bm.get_cached_nodes_in_group(group_name)
+	else:
+		cached = tree.get_nodes_in_group(group_name)
+	for n in cached:
 		if n == null or not is_instance_valid(n) or not (n is Node2D):
 			continue
 		if n == target:
@@ -307,8 +314,15 @@ static func _get_nearby_player_units(target: Node, radius: float) -> Array:
 	var tree: SceneTree = target.get_tree() if target != null else null
 	if tree == null:
 		return []
+	# 优先用 BattleManager 的节流缓存
 	var result: Array = []
-	for n in tree.get_nodes_in_group("player_units"):
+	var cached: Array = []
+	var _bm = tree.root.get_node_or_null("BattleManager")
+	if _bm != null and _bm.has_method("get_cached_nodes_in_group"):
+		cached = _bm.get_cached_nodes_in_group("player_units")
+	else:
+		cached = tree.get_nodes_in_group("player_units")
+	for n in cached:
 		if n == null or not is_instance_valid(n) or not (n is Node2D):
 			continue
 		if tpos.distance_to((n as Node2D).global_position) <= radius:
@@ -355,4 +369,8 @@ func _get_player_units() -> Array:
 	var tree: SceneTree = _battlefield.get_tree() if _battlefield != null else null
 	if tree == null:
 		return []
+	# 优先用 BattleManager 的节流缓存
+	var _bm = tree.root.get_node_or_null("BattleManager")
+	if _bm != null and _bm.has_method("get_cached_nodes_in_group"):
+		return _bm.get_cached_nodes_in_group("player_units")
 	return tree.get_nodes_in_group("player_units")

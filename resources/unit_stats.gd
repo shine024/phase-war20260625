@@ -169,7 +169,7 @@ var attack_light_bonus: float = 0.0
 var attack_air_bonus: float = 0.0
 
 ## v6.6: 溅射半径加成（来自 splash_radius 改造，如子母弹/近炸引信）
-## _apply_splash 的半径 = 80 × (1 + splash_radius_bonus)，默认 0 时与原硬编码行为一致
+## _apply_splash 的半径 = 100 × (1 + splash_radius_bonus)，默认 0 时为 v9.3 三行布局基础半径
 var splash_radius_bonus: float = 0.0
 
 ## v6.6: 主目标伤害惩罚（来自 single_target_penalty 改造，值是负小数）

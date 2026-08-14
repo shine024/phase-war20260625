@@ -98,6 +98,27 @@ static func reset_state() -> void:
 	_battle_active = false
 	_battlefield = null
 
+## 清除指定 owner 的全部能力状态（仅该侧，不影响另一侧）。
+## 供战斗效果检查面板 toggle 关闭用；正常战斗结束走 reset_state 清双方。
+static func clear_owner_state(owner: Owner) -> void:
+	# 先恢复狂暴 stats 乘数（防残留），再清该 owner 的 active 能力
+	_expire_rage_if_active(owner)
+	if owner == Owner.PLAYER:
+		_player_active.clear()
+	else:
+		_enemy_active.clear()
+	var key: String = _owner_key(owner)
+	# 清该 owner 的周期计时器（key 形如 "player:artillery_barrage"）
+	for tk in _periodic_timers.keys():
+		if String(tk).begins_with(key + ":"):
+			_periodic_timers.erase(tk)
+	# 清该 owner 的连发队列 / 纳米虫群 / 狂暴 / 开局标记（均按 owner_key 分键）
+	_barrage_queue.erase(key)
+	_nano_remaining.erase(key)
+	_nano_tick_acc.erase(key)
+	_rage_state.erase(key)
+	_start_fired.erase(key)
+
 ## 获取指定 owner 的 active_ability（被动能力查询也用这个）。
 ## owner 默认 PLAYER，保持对旧调用方（bullet / attack_calculator）的向后兼容；Task 8 将显式传入。
 static func get_active_ability(owner: Owner = Owner.PLAYER) -> Dictionary:
@@ -636,7 +657,7 @@ static func _activate_rage_buff(owner: Owner, params: Dictionary) -> void:
 		var rage_tint: Color = Color(1.0, 0.7, 0.2) if owner == Owner.PLAYER else Color(1.0, 0.3, 0.15)
 		var spawned: int = 0
 		for u in allies:
-			if spawned >= 6:
+			if spawned >= 9:  # v9.3: 适配三行9格布局（原6）
 				break
 			if u == null or not is_instance_valid(u) or not (u is Node2D):
 				continue

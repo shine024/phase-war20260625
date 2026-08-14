@@ -497,10 +497,10 @@ func _play_apocalypse_cinematic(effect: String, name_text: String) -> void:
 			if burst_tex != null:
 				VfxImpactFactory.spawn_spell_burst(_battlefield, land_pos, burst_tex, burst_tint, 360.0, 0.9)
 	)
-	# 各玩家单位位置：小弹体从高空垂直落下（节流：最多 6 个目标，分时延迟避免同时糊屏）
+	# 各玩家单位位置：小弹体从高空垂直落下（节流：最多 9 个目标，适配三行布局）
 	var spawned: int = 0
 	for t in _get_player_units():
-		if spawned >= 6:
+		if spawned >= 9:  # v9.3: 适配三行9格布局（原6）
 			break
 		if t == null or not is_instance_valid(t) or not (t is Node2D):
 			continue
@@ -553,10 +553,10 @@ func _play_inferno_cinematic(_effect: String, name_text: String) -> void:
 			VfxImpactFactory.spawn_shockwave(_battlefield, land_pos, 120.0, Color(1.0, 0.35, 0.1, 0.9))
 			VfxImpactFactory.spawn_smoke_column(_battlefield, land_pos, Color(0.85, 0.30, 0.10, 0.7))
 	)
-	# 各玩家位置：小燃烧弹依次俯冲（节流：最多 6 个，分时延迟）
+	# 各玩家位置：小燃烧弹依次俯冲（节流：最多 9 个，适配三行布局）
 	var spawned: int = 0
 	for t in _get_player_units():
-		if spawned >= 6:
+		if spawned >= 9:  # v9.3: 适配三行9格布局（原6）
 			break
 		if t == null or not is_instance_valid(t) or not (t is Node2D):
 			continue

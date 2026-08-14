@@ -40,6 +40,9 @@ func _ready() -> void:
 	var cc_btn: Button = get_node_or_null("CenterContainer/MainVBox/ButtonsVBox/CombatCheckButton")
 	if cc_btn:
 		cc_btn.pressed.connect(_on_combat_check)
+	var arena_btn: Button = get_node_or_null("CenterContainer/MainVBox/ButtonsVBox/Arena3v3Button")
+	if arena_btn:
+		arena_btn.pressed.connect(_on_arena_3v3)
 	var settings_panel = get_node_or_null("SettingsOverlay/CenterContainer/SettingsPanel")
 	if settings_panel and settings_panel.has_signal("closed"):
 		settings_panel.closed.connect(_on_settings_closed)
@@ -200,6 +203,11 @@ func _update_slot_display() -> void:
 ## 进入战斗效果检查场（独立测试场景，复用项目真实战斗效果）
 func _on_combat_check() -> void:
 	get_tree().change_scene_to_file("res://scenes/tools/combat_check.tscn")
+
+
+## 进入 3v3 群战演练场（我方3 vs 敌方3 自动对打，看群体弹道/命中/大招效果）
+func _on_arena_3v3() -> void:
+	get_tree().change_scene_to_file("res://scenes/tools/combat_arena_3v3.tscn")
 
 
 func _on_quit() -> void:

@@ -170,7 +170,8 @@ func _apply_bar_icon(btn: Button, icon_basename: Variant) -> void:
 func _make_func_button(label_text: String) -> Button:
 	var btn := Button.new()
 	btn.text = label_text
-	btn.custom_minimum_size = Vector2(72, 56)
+	# v9.3: 12按钮宽度从72缩到62，12×62+66间距=810px，留足边距防溢出
+	btn.custom_minimum_size = Vector2(62, 56)
 	btn.add_theme_font_size_override("font_size", 13)
 	btn.add_theme_color_override("font_color", Color(0.75, 0.85, 1.0, 0.9))
 	var normal_style := StyleBoxFlat.new()

@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>敌方单位·弹道起始点标注工具</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background:#0e1117; color:#e2e8f0; font-family:sans-serif; font-size:13px; }
+h1 { text-align:center; padding:14px; color:#58a6ff; font-size:18px; }
+.toolbar { display:flex; gap:6px; justify-content:center; padding:8px; flex-wrap:wrap; border-bottom:1px solid #2a2f3a; margin-bottom:12px; }
+.btn { padding:4px 10px; border:1px solid #2a2f3a; border-radius:5px; background:#161b26; color:#e2e8f0; cursor:pointer; font-size:11px; }
+.btn:hover { border-color:#58a6ff; }
+.btn.active { background:#58a6ff; color:#000; }
+.search { padding:4px 8px; background:#0d1117; border:1px solid #2a2f3a; color:#e2e8f0; border-radius:5px; font-size:11px; width:140px; }
+.search:focus { outline:none; border-color:#58a6ff; }
+.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(420px,1fr)); gap:10px; padding:0 14px 40px; max-width:1700px; margin:0 auto; }
+.card { background:#161b26; border:1px solid #2a2f3a; border-radius:7px; overflow:hidden; }
+.card-header { display:flex; align-items:center; gap:8px; padding:6px 8px; border-bottom:1px solid #2a2f3a; }
+.card-icon { width:48px; height:48px; object-fit:cover; border-radius:3px; background:#1e2430; border:1px solid #333; }
+.card-info { flex:1; min-width:0; }
+.card-name { font-size:12px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.card-id { font-size:8px; color:#8892a4; font-family:monospace; }
+.card-body { display:flex; gap:8px; padding:6px 8px; }
+.canvas-wrap { position:relative; flex-shrink:0; }
+.canvas-wrap canvas { display:block; border-radius:3px; cursor:crosshair; background:#0d1117; touch-action:none; }
+.stats { flex:1; min-width:0; font-size:9px; }
+.stat-row { display:flex; justify-content:space-between; padding:1px 0; border-bottom:1px solid rgba(255,255,255,0.04); }
+.stat-label { color:#8892a4; }
+.stat-value { font-weight:600; }
+.wt-badge { display:inline-block; padding:0 3px; border-radius:2px; font-size:8px; font-weight:700; color:#000; }
+.edit-row { display:flex; align-items:center; gap:3px; padding:1px 0; }
+.edit-row label { color:#8892a4; font-size:9px; min-width:50px; }
+.edit-row input { width:46px; background:#0d1117; border:1px solid #2a2f3a; color:#e2e8f0; border-radius:2px; padding:1px 3px; font-size:9px; }
+.edit-row input:focus { outline:none; border-color:#58a6ff; }
+.card-footer { padding:3px 8px; border-top:1px solid #2a2f3a; font-size:8px; color:#8892a4; }
+.formula { text-align:center; color:#8892a4; font-size:10px; padding:5px 14px; border-bottom:1px solid #2a2f3a; line-height:1.6; }
+.toast { position:fixed; top:14px; right:14px; padding:6px 12px; border-radius:4px; font-size:11px; z-index:999; opacity:0; transition:opacity .3s; pointer-events:none; background:#3fb950; color:#000; }
+.toast.show { opacity:1; }
+.legend { text-align:center; font-size:10px; color:#8892a4; padding:4px; }
+.legend span { display:inline-block; margin:0 8px; }
+</style>
+</head>
+<body>
+<h1>敌方单位·弹道起始点标注工具（106 卡）</h1>
+<p class="formula">
+  <span style="color:#50c878">● 绿点</span>=脚部/头部（拖动调实体范围，互不影响） |
+  <span style="color:#ff4040">● 红点</span>=弹道起点（独立二维，拖动只改弹道X/Y）<br>
+  三点完全独立。红点拖动不碰 ff/hf；绿点拖动不碰弹道。
+</p>
+<div class="toolbar">
+  <button class="btn active" onclick="filter('all')">全部(106)</button>
+  <button class="btn" onclick="filter('一战')">一战(19)</button>
+  <button class="btn" onclick="filter('二战')">二战(20)</button>
+  <button class="btn" onclick="filter('冷战')">冷战(19)</button>
+  <button class="btn" onclick="filter('现代')">现代(22)</button>
+  <button class="btn" onclick="filter('近未来')">近未来(26)</button>
+  <input class="search" id="search" placeholder="搜索名称/ID..." oninput="onSearch()">
+  <span style="flex:1"></span>
+  <button class="btn" onclick="exportJSON()">导出JSON</button>
+  <button class="btn" onclick="exportGD()">导出GDScript</button>
+</div>
+<div class="legend">
+  <span>武器: <b style="color:#f5e642">黄</b>=SMG/RIFLE <b style="color:#e8943a">橙</b>=ROCKET <b style="color:#5ce8a8">绿</b>=SNIPER <b style="color:#40d8f0">蓝</b>=LASER <b style="color:#e86030">红</b>=MISSILE <b style="color:#8060f0">紫</b>=OMEGA</span>
+</div>
+<div class="grid" id="grid"></div>
+<div id="toast" class="toast"></div>
+
+<script>
+const ERA_COLOR = {一战:'#a08060',二战:'#80a060',冷战:'#6080c0',现代:'#c08060',近未来:'#c060c0'};
+const ICON_BASE = 'enemy_fire_icons/';
+const enemies = [{"id": "ww1_inf_mp18", "name": "步兵班·MP18", "era": "一战", "tier": "GRUNT", "hp": 91, "rng": 1, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_036.png", "vis": "vis_enemy_036"}, {"id": "ww1_inf_rifle", "name": "步兵班·步枪", "era": "一战", "tier": "GRUNT", "hp": 100, "rng": 2, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_037.png", "vis": "vis_enemy_037"}, {"id": "ww1_inf_enfield", "name": "李-恩菲尔德志愿兵排", "era": "一战", "tier": "GRUNT", "hp": 108, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "ww1_inf_enfield.png", "vis": "ww1_inf_enfield"}, {"id": "fut_inf_c96", "name": "毛瑟 C96 征召兵排", "era": "一战", "tier": "GRUNT", "hp": 91, "rng": 1, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "fut_inf_c96.png", "vis": "fut_inf_c96"}, {"id": "platform_ww1_light", "name": "一战轻型平台", "era": "一战", "tier": "GRUNT", "hp": 110, "rng": 2, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_004.png", "vis": "vis_enemy_004"}, {"id": "ww1_inf_mp18_x", "name": "MP18 突击队", "era": "一战", "tier": "VETERAN", "hp": 112, "rng": 2, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "ww1_inf_mp18_x.png", "vis": "ww1_inf_mp18_x"}, {"id": "ww1_inf_storm_e", "name": "暴风突击队·精锐", "era": "一战", "tier": "ELITE", "hp": 150, "rng": 2, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_040.png", "vis": "vis_enemy_040"}, {"id": "drop_smg_mk2", "name": "MP18-II 冲锋班", "era": "一战", "tier": "ELITE", "hp": 165, "rng": 2, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_040.png", "vis": "vis_enemy_040"}, {"id": "ww1_arm_rolls_mk2", "name": "劳斯莱斯 Mk.II 装甲车", "era": "一战", "tier": "VETERAN", "hp": 280, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "ww1_arm_rolls_mk2.png", "vis": "ww1_arm_rolls_mk2"}, {"id": "platform_ww1_medium", "name": "一战中型平台", "era": "一战", "tier": "VETERAN", "hp": 300, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_001.png", "vis": "vis_enemy_001"}, {"id": "ww1_arm_rolls_e", "name": "装甲车·精锐", "era": "一战", "tier": "ELITE", "hp": 280, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_041.png", "vis": "vis_enemy_041"}, {"id": "ww1_boss_av7", "name": "圣沙蒙坦克·Boss", "era": "一战", "tier": "BOSS", "hp": 650, "rng": 4, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_042.png", "vis": "vis_enemy_042"}, {"id": "ww1_sup_mg_nest", "name": "机枪巢", "era": "一战", "tier": "GRUNT", "hp": 109, "rng": 1, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_038.png", "vis": "vis_enemy_038"}, {"id": "ww1_arty_mortar", "name": "迫击炮组", "era": "一战", "tier": "GRUNT", "hp": 82, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_039.png", "vis": "vis_enemy_039"}, {"id": "ww1_sup_vickers", "name": "维克斯 .303 机枪阵地", "era": "一战", "tier": "GRUNT", "hp": 130, "rng": 2, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "ww1_sup_vickers.png", "vis": "ww1_sup_vickers"}, {"id": "ww1_sup_ford_ambulance", "name": "福特 T 型战地救护车", "era": "一战", "tier": "GRUNT", "hp": 100, "rng": 2, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "ww1_sup_ford_ambulance.png", "vis": "ww1_sup_ford_ambulance"}, {"id": "platform_ww1_radar", "name": "一战雷达平台", "era": "一战", "tier": "GRUNT", "hp": 120, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_082.png", "vis": "vis_enemy_082"}, {"id": "platform_ww1_medic", "name": "一战医疗平台", "era": "一战", "tier": "GRUNT", "hp": 100, "rng": 2, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_005.png", "vis": "vis_enemy_005"}, {"id": "platform_ww1_fort", "name": "一战炮台平台", "era": "一战", "tier": "FORT", "hp": 500, "rng": 4, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_003.png", "vis": "vis_enemy_003"}, {"id": "ww2_inf_thompson", "name": "步兵班·汤普森", "era": "二战", "tier": "GRUNT", "hp": 150, "rng": 1, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_043.png", "vis": "vis_enemy_043"}, {"id": "ww2_inf_garand", "name": "步枪班·加兰德", "era": "二战", "tier": "GRUNT", "hp": 160, "rng": 2, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_044.png", "vis": "vis_enemy_044"}, {"id": "platform_ww2_light", "name": "二战轻型平台", "era": "二战", "tier": "GRUNT", "hp": 160, "rng": 2, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_009.png", "vis": "vis_enemy_009"}, {"id": "platform_ww2_raider", "name": "二战突袭平台", "era": "二战", "tier": "GRUNT", "hp": 170, "rng": 2, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_006.png", "vis": "vis_enemy_006"}, {"id": "ww2_arm_garand_para", "name": "M1 加兰德伞兵班", "era": "二战", "tier": "VETERAN", "hp": 190, "rng": 2, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "ww2_arm_garand_para.png", "vis": "ww2_arm_garand_para"}, {"id": "ww2_inf_kar98k", "name": "毛瑟 Kar98k 狙击组", "era": "二战", "tier": "VETERAN", "hp": 180, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "ww2_inf_kar98k.png", "vis": "ww2_inf_kar98k"}, {"id": "ww2_inf_panzerschreck_e", "name": "反坦克组·精锐", "era": "二战", "tier": "ELITE", "hp": 157, "rng": 2, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_046.png", "vis": "vis_enemy_046"}, {"id": "ww2_inf_para_e", "name": "伞兵精英", "era": "二战", "tier": "ELITE", "hp": 178, "rng": 2, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_047.png", "vis": "vis_enemy_047"}, {"id": "drop_phase_lance", "name": "相位刺刀班", "era": "二战", "tier": "ELITE", "hp": 200, "rng": 2, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_047.png", "vis": "vis_enemy_047"}, {"id": "platform_ww2_medium", "name": "二战中型平台", "era": "二战", "tier": "VETERAN", "hp": 350, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_007.png", "vis": "vis_enemy_007"}, {"id": "ww2_arm_panther_e", "name": "黑豹坦克·精锐", "era": "二战", "tier": "ELITE", "hp": 471, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_048.png", "vis": "vis_enemy_048"}, {"id": "platform_ww2_heavy", "name": "二战重型平台", "era": "二战", "tier": "ELITE", "hp": 500, "rng": 4, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_008.png", "vis": "vis_enemy_008"}, {"id": "ww2_boss_kingtiger", "name": "虎王坦克·Boss", "era": "二战", "tier": "BOSS", "hp": 1000, "rng": 4, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_049.png", "vis": "vis_enemy_049"}, {"id": "ww2_sup_gmc_truck", "name": "GMC 2.5t 补给卡车", "era": "二战", "tier": "GRUNT", "hp": 130, "rng": 2, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "ww2_sup_gmc_truck.png", "vis": "ww2_sup_gmc_truck"}, {"id": "platform_ww2_radar", "name": "二战雷达平台", "era": "二战", "tier": "GRUNT", "hp": 150, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_083.png", "vis": "vis_enemy_083"}, {"id": "ww2_sup_mg42", "name": "MG42机枪组·敌方", "era": "二战", "tier": "VETERAN", "hp": 200, "rng": 2, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_045.png", "vis": "vis_enemy_045"}, {"id": "ww2_arty_hummel", "name": "黄蜂 Hummel 自行火炮", "era": "二战", "tier": "VETERAN", "hp": 210, "rng": 5, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "ww2_arty_hummel.png", "vis": "ww2_arty_hummel"}, {"id": "ww2_arty_pak40", "name": "PaK 40 反坦克炮组", "era": "二战", "tier": "VETERAN", "hp": 190, "rng": 4, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "ww2_arty_pak40.png", "vis": "ww2_arty_pak40"}, {"id": "platform_ww2_siege", "name": "二战攻城平台", "era": "二战", "tier": "FORT", "hp": 600, "rng": 5, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_084.png", "vis": "vis_enemy_084"}, {"id": "platform_ww2_fortress", "name": "二战要塞平台", "era": "二战", "tier": "FORT", "hp": 800, "rng": 5, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_011.png", "vis": "vis_enemy_011"}, {"id": "cold_inf_m60", "name": "美军步兵·M60", "era": "冷战", "tier": "GRUNT", "hp": 205, "rng": 2, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_051.png", "vis": "vis_enemy_051"}, {"id": "cold_inf_ak", "name": "苏军步兵", "era": "冷战", "tier": "GRUNT", "hp": 197, "rng": 2, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_050.png", "vis": "vis_enemy_050"}, {"id": "platform_cold_light", "name": "冷战轻型平台", "era": "冷战", "tier": "GRUNT", "hp": 200, "rng": 2, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_085.png", "vis": "vis_enemy_085"}, {"id": "platform_cold_scout", "name": "冷战侦察平台", "era": "冷战", "tier": "GRUNT", "hp": 180, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_086.png", "vis": "vis_enemy_086"}, {"id": "cold_inf_metis", "name": "9K111 法特导弹组", "era": "冷战", "tier": "VETERAN", "hp": 230, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "cold_inf_metis.png", "vis": "cold_inf_metis"}, {"id": "cold_inf_spetsnaz_e", "name": "特种部队·精锐", "era": "冷战", "tier": "ELITE", "hp": 210, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_054.png", "vis": "vis_enemy_054"}, {"id": "cold_arm_btr_e", "name": "BTR装甲车·敌方", "era": "冷战", "tier": "VETERAN", "hp": 320, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_052.png", "vis": "vis_enemy_052"}, {"id": "cold_air_m113_e", "name": "M113装甲车·敌方", "era": "冷战", "tier": "VETERAN", "hp": 340, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_053.png", "vis": "vis_enemy_053"}, {"id": "cold_arty_bmd1", "name": "BMD-1 空降战车", "era": "冷战", "tier": "VETERAN", "hp": 300, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "cold_arty_bmd1.png", "vis": "cold_arty_bmd1"}, {"id": "cold_sup_bmp1_x", "name": "BMP-1 步兵战车·改", "era": "冷战", "tier": "VETERAN", "hp": 330, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "cold_sup_bmp1_x.png", "vis": "cold_sup_bmp1_x"}, {"id": "cold_arty_brem1", "name": "BREM-1 装甲抢修车", "era": "冷战", "tier": "VETERAN", "hp": 380, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "cold_arty_brem1.png", "vis": "cold_arty_brem1"}, {"id": "platform_cold_medium", "name": "冷战中型平台", "era": "冷战", "tier": "VETERAN", "hp": 400, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_014.png", "vis": "vis_enemy_014"}, {"id": "platform_cold_ifv", "name": "冷战步战车平台", "era": "冷战", "tier": "VETERAN", "hp": 350, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_013.png", "vis": "vis_enemy_013"}, {"id": "cold_arm_t72_e", "name": "T-72坦克·精锐", "era": "冷战", "tier": "ELITE", "hp": 560, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_055.png", "vis": "vis_enemy_055"}, {"id": "cold_arm_p18", "name": "P-18 雷达警戒车", "era": "冷战", "tier": "GRUNT", "hp": 200, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "cold_arm_p18.png", "vis": "cold_arm_p18"}, {"id": "platform_cold_radar", "name": "冷战雷达平台", "era": "冷战", "tier": "GRUNT", "hp": 180, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_017.png", "vis": "vis_enemy_017"}, {"id": "drop_mega_beam_cannon", "name": "巨型光束炮", "era": "冷战", "tier": "CHAMPION", "hp": 600, "rng": 6, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_064.png", "vis": "vis_enemy_064"}, {"id": "platform_cold_carrier", "name": "冷战运输平台", "era": "冷战", "tier": "VETERAN", "hp": 350, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_016.png", "vis": "vis_enemy_016"}, {"id": "cold_boss_mig", "name": "米格-29·Boss", "era": "冷战", "tier": "BOSS", "hp": 1400, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_056.png", "vis": "vis_enemy_056"}, {"id": "mod_air_technical_e", "name": "皮卡武装·敌方", "era": "现代", "tier": "GRUNT", "hp": 280, "rng": 2, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_058.png", "vis": "vis_enemy_058"}, {"id": "platform_modern_light", "name": "现代轻型平台", "era": "现代", "tier": "GRUNT", "hp": 280, "rng": 2, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_018.png", "vis": "vis_enemy_018"}, {"id": "platform_modern_stealth", "name": "现代隐形平台", "era": "现代", "tier": "GRUNT", "hp": 250, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_022.png", "vis": "vis_enemy_022"}, {"id": "mod_inf_marine", "name": "海军陆战队·敌方", "era": "现代", "tier": "VETERAN", "hp": 350, "rng": 2, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_057.png", "vis": "vis_enemy_057"}, {"id": "mod_sup_m4_carbine", "name": "M4 卡宾特遣班", "era": "现代", "tier": "VETERAN", "hp": 360, "rng": 2, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "mod_sup_m4_carbine.png", "vis": "mod_sup_m4_carbine"}, {"id": "mod_inf_delta_e", "name": "三角洲部队·精锐", "era": "现代", "tier": "ELITE", "hp": 750, "rng": 2, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_061.png", "vis": "vis_enemy_061"}, {"id": "drop_thunder_field", "name": "雷霆突击班", "era": "现代", "tier": "ELITE", "hp": 500, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_061.png", "vis": "vis_enemy_061"}, {"id": "mod_arm_stryker_e", "name": "斯特赖克装甲车·敌方", "era": "现代", "tier": "VETERAN", "hp": 450, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_059.png", "vis": "vis_enemy_059"}, {"id": "platform_modern_medium", "name": "现代中型平台", "era": "现代", "tier": "VETERAN", "hp": 550, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_019.png", "vis": "vis_enemy_019"}, {"id": "platform_modern_guard_heavy", "name": "现代重型卫戍平台", "era": "现代", "tier": "ELITE", "hp": 800, "rng": 4, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_023.png", "vis": "vis_enemy_023"}, {"id": "mod_arm_abrams_e", "name": "M1A2坦克·精锐", "era": "现代", "tier": "CHAMPION", "hp": 900, "rng": 4, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_062.png", "vis": "vis_enemy_062"}, {"id": "mod_arm_abrams_mk2", "name": "艾布拉姆斯Mk.II", "era": "现代", "tier": "CHAMPION", "hp": 950, "rng": 4, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_035.png", "vis": "vis_enemy_035"}, {"id": "platform_modern_radar", "name": "现代雷达平台", "era": "现代", "tier": "GRUNT", "hp": 250, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_020.png", "vis": "vis_enemy_020"}, {"id": "mod_arty_mlrs_e", "name": "火箭炮车·敌方", "era": "现代", "tier": "VETERAN", "hp": 380, "rng": 4, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_060.png", "vis": "vis_enemy_060"}, {"id": "mod_inf_patriot", "name": "爱国者 PAC-3 发射车", "era": "现代", "tier": "ELITE", "hp": 480, "rng": 5, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "mod_inf_patriot.png", "vis": "mod_inf_patriot"}, {"id": "mod_arm_himars", "name": "HIMARS 火箭炮组", "era": "现代", "tier": "ELITE", "hp": 450, "rng": 6, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "mod_arm_himars.png", "vis": "mod_arm_himars"}, {"id": "platform_modern_spg", "name": "现代自行火炮平台", "era": "现代", "tier": "FORT", "hp": 900, "rng": 6, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_021.png", "vis": "vis_enemy_021"}, {"id": "mod_arty_rq7", "name": "RQ-7 影子无人机班", "era": "现代", "tier": "VETERAN", "hp": 220, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "mod_arty_rq7.png", "vis": "mod_arty_rq7"}, {"id": "mod_sup_growler", "name": "EA-18G 电子战小组", "era": "现代", "tier": "VETERAN", "hp": 250, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "mod_sup_growler.png", "vis": "mod_sup_growler"}, {"id": "mod_air_apache_e", "name": "阿帕奇直升机·精锐", "era": "现代", "tier": "ELITE", "hp": 950, "rng": 4, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_063.png", "vis": "vis_enemy_063"}, {"id": "drop_overclock_matrix", "name": "超频矩阵机", "era": "现代", "tier": "ELITE", "hp": 600, "rng": 4, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_063.png", "vis": "vis_enemy_063"}, {"id": "mod_boss_command", "name": "指挥中枢·Boss", "era": "现代", "tier": "BOSS", "hp": 1800, "rng": 4, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_064.png", "vis": "vis_enemy_064"}, {"id": "platform_future_light", "name": "近未来轻型平台", "era": "近未来", "tier": "GRUNT", "hp": 360, "rng": 2, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_024.png", "vis": "vis_enemy_024"}, {"id": "fut_inf_cyborg", "name": "机械步兵·敌方", "era": "近未来", "tier": "VETERAN", "hp": 640, "rng": 2, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_066.png", "vis": "vis_enemy_066"}, {"id": "fut_inf_spectre_e", "name": "幽灵特工·精锐", "era": "近未来", "tier": "ELITE", "hp": 800, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_069.png", "vis": "vis_enemy_069"}, {"id": "fut_inf_storm_rider", "name": "暴风骑士", "era": "近未来", "tier": "ELITE", "hp": 700, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_032.png", "vis": "vis_enemy_032"}, {"id": "fut_inf_neural", "name": "神经接口突击兵", "era": "近未来", "tier": "ELITE", "hp": 750, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "fut_inf_neural.png", "vis": "fut_inf_neural"}, {"id": "fut_inf_x9", "name": "X-9 猎杀者渗透组", "era": "近未来", "tier": "ELITE", "hp": 720, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "fut_inf_x9.png", "vis": "fut_inf_x9"}, {"id": "drop_railgun", "name": "电磁步枪班", "era": "近未来", "tier": "ELITE", "hp": 800, "rng": 2, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_054.png", "vis": "vis_enemy_054"}, {"id": "fut_arm_mech_e", "name": "机甲步兵·敌方", "era": "近未来", "tier": "VETERAN", "hp": 750, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_067.png", "vis": "vis_enemy_067"}, {"id": "fut_arm_hk07", "name": "HK-07 量产机兵", "era": "近未来", "tier": "VETERAN", "hp": 900, "rng": 2, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "fut_arm_hk07.png", "vis": "fut_arm_hk07"}, {"id": "fut_arm_sdkfz", "name": "Sd.Kfz.251/1 半履带车", "era": "近未来", "tier": "VETERAN", "hp": 680, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "fut_arm_sdkfz.png", "vis": "fut_arm_sdkfz"}, {"id": "platform_future_medium", "name": "近未来中型平台", "era": "近未来", "tier": "VETERAN", "hp": 700, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_025.png", "vis": "vis_enemy_025"}, {"id": "fut_arm_hovertank_e", "name": "悬浮坦克·精锐", "era": "近未来", "tier": "ELITE", "hp": 1000, "rng": 4, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_068.png", "vis": "vis_enemy_068"}, {"id": "platform_future_heavy", "name": "近未来重型平台", "era": "近未来", "tier": "ELITE", "hp": 1100, "rng": 4, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_026.png", "vis": "vis_enemy_026"}, {"id": "fut_arm_colossus_e", "name": "巨神机甲·精锐", "era": "近未来", "tier": "CHAMPION", "hp": 1500, "rng": 4, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_070.png", "vis": "vis_enemy_070"}, {"id": "fut_arm_titan_mk2", "name": "泰坦Mk.II", "era": "近未来", "tier": "CHAMPION", "hp": 1600, "rng": 5, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_031.png", "vis": "vis_enemy_031"}, {"id": "drop_mega_particle_cannon", "name": "巨型粒子炮", "era": "近未来", "tier": "CHAMPION", "hp": 1400, "rng": 6, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_070.png", "vis": "vis_enemy_070"}, {"id": "fut_boss_nexus", "name": "风暴核心·Boss", "era": "近未来", "tier": "BOSS", "hp": 2500, "rng": 5, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_071.png", "vis": "vis_enemy_071"}, {"id": "platform_future_radar", "name": "近未来雷达平台", "era": "近未来", "tier": "GRUNT", "hp": 300, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_087.png", "vis": "vis_enemy_087"}, {"id": "fut_sup_nrepair", "name": "N-Repair 纳米工程车", "era": "近未来", "tier": "VETERAN", "hp": 500, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "fut_sup_nrepair.png", "vis": "fut_sup_nrepair"}, {"id": "fut_sup_ps9", "name": "PS-9 相位中继站", "era": "近未来", "tier": "VETERAN", "hp": 480, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "fut_sup_ps9.png", "vis": "fut_sup_ps9"}, {"id": "fut_sup_bulwark", "name": "壁垒", "era": "近未来", "tier": "ELITE", "hp": 900, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_030.png", "vis": "vis_enemy_030"}, {"id": "fut_arty_hel30", "name": "HEL-30 激光炮阵列", "era": "近未来", "tier": "ELITE", "hp": 700, "rng": 5, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "fut_arty_hel30.png", "vis": "fut_arty_hel30"}, {"id": "fut_arty_ssc1", "name": "SS-C-1 岸防导弹组", "era": "近未来", "tier": "ELITE", "hp": 750, "rng": 6, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "fut_arty_ssc1.png", "vis": "fut_arty_ssc1"}, {"id": "fut_air_drone", "name": "无人机群", "era": "近未来", "tier": "GRUNT", "hp": 240, "rng": 4, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_065.png", "vis": "vis_enemy_065"}, {"id": "fut_air_regen_frame", "name": "再生骨架", "era": "近未来", "tier": "VETERAN", "hp": 600, "rng": 3, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_034.png", "vis": "vis_enemy_034"}, {"id": "fut_air_heavy_carrier", "name": "重装母舰", "era": "近未来", "tier": "ELITE", "hp": 1400, "rng": 4, "ff": 0.15, "hf": 0.15, "fireX": 0.5, "fireY_pct": 50.0, "icon": "vis_enemy_033.png", "vis": "vis_enemy_033"}];
+
+let currentFilter = 'all';
+let searchTerm = '';
+let dragState = null;
+
+// Canvas 坐标系
+const CW=150, CH=190, TEX_W=60, TEX_H=150;
+const TEX_X=(CW-TEX_W)/2, TEX_TOP=10, TEX_BOT=TEX_TOP+TEX_H;
+
+function getPoints(e) {
+  return {
+    footY: TEX_BOT - e.ff * TEX_H,
+    headY: TEX_TOP + e.hf * TEX_H,
+    fireX: TEX_X + e.fireX * TEX_W,
+    fireY: TEX_TOP + e.fireY_pct/100 * TEX_H,
+    centerX: TEX_X + TEX_W/2
+  };
+}
+
+function render() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  let list = enemies;
+  if (currentFilter !== 'all') list = list.filter(e => e.era === currentFilter);
+  if (searchTerm) {
+    const s = searchTerm.toLowerCase();
+    list = list.filter(e => e.id.toLowerCase().includes(s) || e.name.toLowerCase().includes(s));
+  }
+  list.forEach(e => {
+    const idx = enemies.indexOf(e);
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.idx = idx;
+    const iconHtml = e.icon
+      ? `<img class="card-icon" src="${ICON_BASE}${e.icon}" alt="${e.name}" onerror="this.style.display='none'">`
+      : `<div class="card-icon" style="display:flex;align-items:center;justify-content:center;font-size:8px;color:#555">${e.id.slice(0,6)}</div>`;
+    card.innerHTML = `
+      <div class="card-header" style="border-top:2px solid ${ERA_COLOR[e.era]}">
+        ${iconHtml}
+        <div class="card-info">
+          <div class="card-name">${e.name} <span style="font-size:8px;color:${ERA_COLOR[e.era]}">${e.era}·${e.tier}</span></div>
+          <div class="card-id">${e.id}</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="canvas-wrap"><canvas id="cv${idx}" width="${CW}" height="${CH}"></canvas></div>
+        <div class="stats">
+          <div class="stat-row"><span class="stat-label">HP/射程</span><span class="stat-value">${e.hp} / ${e.rng}</span></div>
+          <div class="stat-row"><span class="stat-label">弹道Y</span><span class="stat-value" style="color:#ff6b6b" id="fy${idx}">${e.fireY_pct.toFixed(1)}%</span></div>
+          <div class="stat-row"><span class="stat-label">弹道X</span><span class="stat-value" style="color:#ff6b6b" id="fx${idx}">${(e.fireX*100).toFixed(0)}%</span></div>
+          <div style="margin-top:3px">
+            <div class="edit-row"><label style="color:#50c878">脚ff</label><input type="number" step="0.001" min="0" max="1" value="${e.ff.toFixed(3)}" data-idx="${idx}" data-f="ff"></div>
+            <div class="edit-row"><label style="color:#50c878">头hf</label><input type="number" step="0.001" min="0" max="1" value="${e.hf.toFixed(3)}" data-idx="${idx}" data-f="hf"></div>
+            <div class="edit-row"><label style="color:#ff4040">弹道Y%</label><input type="number" step="0.1" min="0" max="100" value="${e.fireY_pct.toFixed(1)}" data-idx="${idx}" data-f="fireY_pct"></div>
+            <div class="edit-row"><label style="color:#ff4040">弹道X%</label><input type="number" step="1" min="0" max="100" value="${(e.fireX*100).toFixed(0)}" data-idx="${idx}" data-f="fireX"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-footer">绿=脚/头 红=弹道(独立) | ff/hf/弹道 三者互不影响</div>
+    `;
+    grid.appendChild(card);
+    setTimeout(() => draw(idx), 0);
+  });
+
+  document.querySelectorAll('canvas').forEach(cv => {
+    const idx = parseInt(cv.id.replace('cv',''));
+    cv.addEventListener('mousedown', ev => startDrag(idx, ev, cv));
+    cv.addEventListener('touchstart', ev => startDrag(idx, ev, cv), {passive:false});
+  });
+  document.onmousemove = onMove;
+  document.onmouseup = endDrag;
+  document.ontouchmove = onMove;
+  document.ontouchend = endDrag;
+
+  document.querySelectorAll('.edit-row input').forEach(inp => {
+    inp.onchange = ev => {
+      const idx = parseInt(ev.target.dataset.idx);
+      const f = ev.target.dataset.f;
+      const v = parseFloat(ev.target.value);
+      if (isNaN(v)) return;
+      const e = enemies[idx];
+      if (f === 'fireY_pct') e.fireY_pct = Math.max(0, Math.min(100, v));
+      else if (f === 'fireX') e.fireX = Math.max(0, Math.min(1, v/100));
+      else { if (v<0||v>1) return; e[f] = v; }
+      sync(idx); draw(idx);
+      toast(e.name + ' 已更新');
+    };
+  });
+}
+
+function draw(idx) {
+  const cv = document.getElementById('cv'+idx);
+  if (!cv) return;
+  const ctx = cv.getContext('2d');
+  const e = enemies[idx];
+  ctx.clearRect(0,0,CW,CH);
+  const {footY, headY, fireX, fireY, centerX} = getPoints(e);
+
+  ctx.fillStyle = '#0d1117'; ctx.fillRect(0,0,CW,CH);
+
+  // 卡图
+  const card = document.querySelector(`.card[data-idx="${idx}"]`);
+  const img = card ? card.querySelector('.card-icon') : null;
+  if (img && img.naturalWidth > 0) {
+    const s = Math.min(TEX_W/img.naturalWidth, TEX_H/img.naturalHeight);
+    const dw=img.naturalWidth*s, dh=img.naturalHeight*s;
+    ctx.drawImage(img, TEX_X+(TEX_W-dw)/2, TEX_TOP+(TEX_H-dh)/2, dw, dh);
+  }
+
+  // 纹理框
+  ctx.strokeStyle='#333'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+  ctx.strokeRect(TEX_X, TEX_TOP, TEX_W, TEX_H); ctx.setLineDash([]);
+
+  // 实体范围
+  ctx.fillStyle='rgba(80,200,120,0.06)'; ctx.fillRect(TEX_X, headY, TEX_W, footY-headY);
+  ctx.strokeStyle='#50c878'; ctx.lineWidth=1; ctx.strokeRect(TEX_X, headY, TEX_W, footY-headY);
+
+  // 脚/头标注
+  ctx.fillStyle='#50c878'; ctx.font='8px sans-serif';
+  ctx.fillText('脚'+e.ff.toFixed(2), TEX_X+TEX_W+3, footY+3);
+  ctx.fillText('头'+e.hf.toFixed(2), TEX_X+TEX_W+3, headY+3);
+
+  // 弹道标注
+  ctx.fillStyle='#ff6b6b'; ctx.font='bold 8px sans-serif';
+  ctx.fillText('Y'+e.fireY_pct.toFixed(0), TEX_X+TEX_W+3, fireY-3);
+  ctx.fillText('X'+(e.fireX*100).toFixed(0), TEX_X+TEX_W+3, fireY+7);
+
+  // 三个点（小而清晰）
+  // 绿-脚
+  ctx.fillStyle='#50c878'; ctx.beginPath(); ctx.arc(centerX, footY, 4, 0, 6.28); ctx.fill();
+  ctx.strokeStyle='#0d1117'; ctx.lineWidth=1; ctx.stroke();
+  // 绿-头
+  ctx.beginPath(); ctx.arc(centerX, headY, 4, 0, 6.28); ctx.fill(); ctx.stroke();
+  // 红-弹道（白描边醒目）
+  ctx.fillStyle='#ff4040'; ctx.beginPath(); ctx.arc(fireX, fireY, 5, 0, 6.28); ctx.fill();
+  ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke();
+
+  // 时代色条
+  ctx.fillStyle = ERA_COLOR[e.era]; ctx.fillRect(0,0,2,CH);
+}
+
+function getCoord(ev, cv) {
+  const r = cv.getBoundingClientRect();
+  const cx = ev.clientX !== undefined ? ev.clientX : (ev.touches && ev.touches[0] ? ev.touches[0].clientX : 0);
+  const cy = ev.clientY !== undefined ? ev.clientY : (ev.touches && ev.touches[0] ? ev.touches[0].clientY : 0);
+  return { x:(cx-r.left)/r.width*CW, y:(cy-r.top)/r.height*CH };
+}
+
+function startDrag(idx, ev, cv) {
+  const {x, y} = getCoord(ev, cv);
+  const e = enemies[idx];
+  const {footY, headY, fireX, fireY, centerX} = getPoints(e);
+  // 距离判断（取最近点）
+  const dFoot = Math.hypot(x-centerX, y-footY);
+  const dHead = Math.hypot(x-centerX, y-headY);
+  const dFire = Math.hypot(x-fireX, y-fireY);
+  let type = null, best = 14;
+  if (dFire < best) { best = dFire; type = 'fire'; }
+  if (dFoot < best) { best = dFoot; type = 'ff'; }
+  if (dHead < best) { best = dHead; type = 'hf'; }
+  if (type) { dragState = {idx, type, cv}; ev.preventDefault(); }
+}
+
+function onMove(ev) {
+  if (!dragState) return;
+  const cv = dragState.cv;
+  const {x, y} = getCoord(ev, cv);
+  const e = enemies[dragState.idx];
+  if (dragState.type === 'ff') {
+    const v = Math.max(0, Math.min(1, (TEX_BOT-y)/TEX_H));
+    if (Math.abs(v-e.ff)>0.0005) { e.ff = v; sync(dragState.idx); draw(dragState.idx); }
+  } else if (dragState.type === 'hf') {
+    const v = Math.max(e.ff, Math.min(1, (y-TEX_TOP)/TEX_H));
+    if (Math.abs(v-e.hf)>0.0005) { e.hf = v; sync(dragState.idx); draw(dragState.idx); }
+  } else if (dragState.type === 'fire') {
+    // 红点：独立改 fireX 和 fireY_pct，不碰 ff/hf
+    const nx = Math.max(0, Math.min(1, (x-TEX_X)/TEX_W));
+    const ny = Math.max(0, Math.min(100, (y-TEX_TOP)/TEX_H*100));
+    if (Math.abs(nx-e.fireX)>0.003 || Math.abs(ny-e.fireY_pct)>0.1) {
+      e.fireX = nx; e.fireY_pct = ny;
+      sync(dragState.idx); draw(dragState.idx);
+    }
+  }
+  if (ev.cancelable) ev.preventDefault();
+}
+
+function endDrag() {
+  if (dragState) { toast(enemies[dragState.idx].name + ' 已调整'); dragState = null; }
+}
+
+function sync(idx) {
+  const card = document.querySelector(`.card[data-idx="${idx}"]`);
+  if (!card) return;
+  const e = enemies[idx];
+  card.querySelector('input[data-f="ff"]').value = e.ff.toFixed(3);
+  card.querySelector('input[data-f="hf"]').value = e.hf.toFixed(3);
+  card.querySelector('input[data-f="fireY_pct"]').value = e.fireY_pct.toFixed(1);
+  card.querySelector('input[data-f="fireX"]').value = (e.fireX*100).toFixed(0);
+  const fy = document.getElementById('fy'+idx); if (fy) fy.textContent = e.fireY_pct.toFixed(1)+'%';
+  const fx = document.getElementById('fx'+idx); if (fx) fx.textContent = (e.fireX*100).toFixed(0)+'%';
+}
+
+function filter(f) {
+  currentFilter = f;
+  document.querySelectorAll('.toolbar .btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  render();
+}
+
+function onSearch() {
+  searchTerm = document.getElementById('search').value;
+  render();
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 1500);
+}
+
+function exportJSON() {
+  const d = JSON.stringify(enemies.map(e => ({
+    id:e.id, ff:e.ff, hf:e.hf, fireX:e.fireX, fireY_pct:e.fireY_pct
+  })), null, 2);
+  const blob = new Blob([d], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'enemy_fire_spawn.json'; a.click();
+  toast('JSON 已导出');
+}
+
+function exportGD() {
+  const NL = String.fromCharCode(10);
+  const lines = ['# 弹道锚点 - 来源：enemy_fire_spawn.html','# fireX: 0~1 (0=纹理左, 0.5=中, 1=右)','# fireY_pct: 0~100 (占纹理顶部百分比)','const MUZZLE: Dictionary = {'];
+  enemies.forEach(e => {
+    lines.push(`  "${e.id}": {"fireX": ${e.fireX.toFixed(3)}, "fireY_pct": ${e.fireY_pct.toFixed(2)}},`);
+  });
+  lines.push('}');
+  const blob = new Blob([lines.join(NL)], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'muzzle_anchors.gd'; a.click();
+  toast('GDScript 已导出');
+}
+
+render();
+</script>
+</body>
+</html>

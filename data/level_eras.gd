@@ -111,7 +111,8 @@ static func get_spawn_count_for_wave(level: int, wave_index: int) -> int:
 	return clampi(base + wave_bonus, 1, 5)  # 限制上限为5，匹配玩家单位上限
 
 
-## 格子战术：单侧部署格上限与 BattleSlotGrid.SLOT_COUNT 同步
+## 格子战术：单侧部署格上限与 BattleSlotGrid.SLOT_COUNT 同步（3行×3列 = 9 格全部可用）
+## v9.3: wave_bonus 上限从 3 降到 2——9 格布局下 3×bonus 易单波铺满敌阵压制玩家
 static func get_spawn_count_for_wave_card_grid(level: int, wave_index: int) -> int:
 	const SLOT_CAP: int = BattleSlotGrid.SLOT_COUNT
 	var era: int = get_era(level)
@@ -119,7 +120,7 @@ static func get_spawn_count_for_wave_card_grid(level: int, wave_index: int) -> i
 	var min_c: int = maxi(2, int(r[0]))
 	var max_c: int = mini(SLOT_CAP, maxi(min_c + 1, int(r[1]) + 1))
 	var w: int = maxi(1, wave_index)
-	var wave_bonus: int = mini(int((w - 1) / 2.0), 3)
+	var wave_bonus: int = mini(int((w - 1) / 2.0), 2)  # v9.3: 上限 3→2
 	var base: int = randi_range(min_c, max_c)
 	return clampi(base + wave_bonus, 2, SLOT_CAP)
 

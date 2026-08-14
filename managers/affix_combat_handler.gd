@@ -86,7 +86,7 @@ static func apply_splash_damage(
 		return []
 
 	var splash_dmg: float = damage_dealt * attacker_stats.splash_damage
-	var splash_radius: float = 80.0  # 溅射范围（像素）
+	var splash_radius: float = 100.0  # v9.3: 溅射范围（像素），与 module_effect_handler._apply_splash 口径一致
 	var targets_hit: Array = []
 
 	# 获取 primary_target 的父节点（战斗单位容器）

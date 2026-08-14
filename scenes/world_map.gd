@@ -808,10 +808,7 @@ func _format_special_rules(rules: Dictionary) -> String:
 	var wt: String = String(rules.get("win_type", ""))
 	if wt == "survive_waves":
 		parts.append("胜利条件: 坚守 %d 波" % int(rules.get("win_param", 0)))
-	# 部署上限
-	var dl: int = int(rules.get("deploy_limit", 0))
-	if dl > 0:
-		parts.append("部署上限 %d" % dl)
+	# 注：deploy_limit 已移除——可上场单位数现由相位仪实际装备的战斗卡数决定，不再作为关卡修饰显示。
 	return "  ·  ".join(parts) if not parts.is_empty() else ""
 
 

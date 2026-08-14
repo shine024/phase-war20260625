@@ -1,0 +1,245 @@
+[gd_scene load_steps=2 format=3 uid="uid://beffectlabpanel01"]
+
+[ext_resource type="Script" path="res://scenes/tools/effect_lab_panel.gd" id="1_script"]
+
+[node name="EffectLabPanel" type="Control"]
+layout_mode = 1
+offset_right = 1280.0
+offset_bottom = 720.0
+mouse_filter = 2
+script = ExtResource("1_script")
+
+[node name="Overlay" type="Panel" parent="."]
+visible = false
+layout_mode = 1
+offset_left = 4.0
+offset_top = 120.0
+offset_right = 1276.0
+offset_bottom = 620.0
+mouse_filter = 0
+
+[node name="LeftPanel" type="Panel" parent="Overlay"]
+layout_mode = 1
+offset_left = 4.0
+offset_top = 4.0
+offset_right = 632.0
+offset_bottom = 496.0
+
+[node name="TitleLeft" type="Label" parent="Overlay/LeftPanel"]
+layout_mode = 1
+offset_left = 8.0
+offset_top = 4.0
+offset_right = 200.0
+offset_bottom = 24.0
+theme_override_colors/font_color = Color(0.35, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 14
+text = "🧪 效果注入"
+
+[node name="TargetLabel" type="Label" parent="Overlay/LeftPanel"]
+layout_mode = 1
+offset_left = 8.0
+offset_top = 28.0
+offset_right = 50.0
+offset_bottom = 50.0
+theme_override_font_sizes/font_size = 12
+text = "目标:"
+
+[node name="TargetOpt" type="OptionButton" parent="Overlay/LeftPanel"]
+layout_mode = 1
+offset_left = 50.0
+offset_top = 26.0
+offset_right = 120.0
+offset_bottom = 52.0
+theme_override_font_sizes/font_size = 12
+item_count = 3
+popup/item_0/text = "我方"
+popup/item_1/text = "敌方"
+popup/item_2/text = "双方"
+
+[node name="DurLabel" type="Label" parent="Overlay/LeftPanel"]
+layout_mode = 1
+offset_left = 124.0
+offset_top = 28.0
+offset_right = 170.0
+offset_bottom = 50.0
+theme_override_font_sizes/font_size = 12
+text = "持续:"
+
+[node name="DurSpin" type="SpinBox" parent="Overlay/LeftPanel"]
+layout_mode = 1
+offset_left = 168.0
+offset_top = 26.0
+offset_right = 228.0
+offset_bottom = 52.0
+theme_override_font_sizes/font_size = 12
+min_value = 1.0
+max_value = 30.0
+step = 1.0
+value = 5.0
+suffix = "s"
+
+[node name="StackLabel" type="Label" parent="Overlay/LeftPanel"]
+layout_mode = 1
+offset_left = 232.0
+offset_top = 28.0
+offset_right = 270.0
+offset_bottom = 50.0
+theme_override_font_sizes/font_size = 12
+text = "层数:"
+
+[node name="StackSpin" type="SpinBox" parent="Overlay/LeftPanel"]
+layout_mode = 1
+offset_left = 270.0
+offset_top = 26.0
+offset_right = 320.0
+offset_bottom = 52.0
+theme_override_font_sizes/font_size = 12
+min_value = 1.0
+max_value = 10.0
+step = 1.0
+value = 3.0
+
+[node name="ClearPlayerBtn" type="Button" parent="Overlay/LeftPanel"]
+layout_mode = 1
+offset_left = 330.0
+offset_top = 26.0
+offset_right = 420.0
+offset_bottom = 52.0
+theme_override_font_sizes/font_size = 12
+text = "清我方"
+
+[node name="ClearEnemyBtn" type="Button" parent="Overlay/LeftPanel"]
+layout_mode = 1
+offset_left = 424.0
+offset_top = 26.0
+offset_right = 514.0
+offset_bottom = 52.0
+theme_override_font_sizes/font_size = 12
+text = "清敌方"
+
+[node name="CollapseBtn" type="Button" parent="Overlay/LeftPanel"]
+layout_mode = 1
+offset_left = 518.0
+offset_top = 26.0
+offset_right = 600.0
+offset_bottom = 52.0
+theme_override_colors/font_color = Color(0.85, 0.75, 0.35, 1)
+theme_override_font_sizes/font_size = 12
+text = "收起 ✕"
+
+[node name="EffectScroll" type="ScrollContainer" parent="Overlay/LeftPanel"]
+layout_mode = 1
+offset_left = 4.0
+offset_top = 56.0
+offset_right = 624.0
+offset_bottom = 410.0
+clip_contents = true
+
+[node name="EffectVBox" type="VBoxContainer" parent="Overlay/LeftPanel/EffectScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 3
+
+[node name="PlayerStatus" type="RichTextLabel" parent="Overlay/LeftPanel"]
+layout_mode = 1
+offset_left = 4.0
+offset_top = 414.0
+offset_right = 312.0
+offset_bottom = 492.0
+theme_override_font_sizes/normal_font_size = 11
+bbcode_enabled = true
+text = "[color=#3ce66c]【我方】[/color]
+无激活状态"
+
+[node name="EnemyStatus" type="RichTextLabel" parent="Overlay/LeftPanel"]
+layout_mode = 1
+offset_left = 316.0
+offset_top = 414.0
+offset_right = 624.0
+offset_bottom = 492.0
+theme_override_font_sizes/normal_font_size = 11
+bbcode_enabled = true
+text = "[color=#f06666]【敌方】[/color]
+无激活状态"
+
+[node name="RightPanel" type="Panel" parent="Overlay"]
+layout_mode = 1
+offset_left = 636.0
+offset_top = 4.0
+offset_right = 1268.0
+offset_bottom = 496.0
+
+[node name="TitleRight" type="Label" parent="Overlay/RightPanel"]
+layout_mode = 1
+offset_left = 8.0
+offset_top = 4.0
+offset_right = 200.0
+offset_bottom = 24.0
+theme_override_colors/font_color = Color(0.95, 0.75, 0.35, 1)
+theme_override_font_sizes/font_size = 14
+text = "📋 检查报告"
+
+[node name="CheckInfo" type="RichTextLabel" parent="Overlay/RightPanel"]
+layout_mode = 1
+offset_left = 4.0
+offset_top = 28.0
+offset_right = 628.0
+offset_bottom = 120.0
+theme_override_font_sizes/normal_font_size = 11
+bbcode_enabled = true
+text = "检查时间: --
+我方: (未选择)
+敌方: (未选择)
+已注入: 0 项"
+
+[node name="ReviewLabel" type="Label" parent="Overlay/RightPanel"]
+layout_mode = 1
+offset_left = 4.0
+offset_top = 124.0
+offset_right = 200.0
+offset_bottom = 142.0
+theme_override_font_sizes/font_size = 12
+text = "检查评价（输入后点保存）："
+
+[node name="ReviewEdit" type="TextEdit" parent="Overlay/RightPanel"]
+layout_mode = 1
+offset_left = 4.0
+offset_top = 144.0
+offset_right = 628.0
+offset_bottom = 452.0
+theme_override_font_sizes/font_size = 12
+placeholder_text = "在此输入你对当前效果检查的评价..."
+wrap_mode = 2
+
+[node name="SaveBtn" type="Button" parent="Overlay/RightPanel"]
+layout_mode = 1
+offset_left = 4.0
+offset_top = 456.0
+offset_right = 628.0
+offset_bottom = 492.0
+theme_override_colors/font_color = Color(0.4, 1, 0.5, 1)
+theme_override_font_sizes/font_size = 14
+text = "📋 保存检查报告到 docs/effect_check_reports/"
+
+[node name="SaveHint" type="Label" parent="Overlay/RightPanel"]
+visible = false
+layout_mode = 1
+offset_left = 200.0
+offset_top = 4.0
+offset_right = 624.0
+offset_bottom = 24.0
+theme_override_colors/font_color = Color(0.4, 1, 0.5, 1)
+theme_override_font_sizes/font_size = 12
+text = ""
+
+[node name="CollapsedHint" type="Label" parent="."]
+layout_mode = 1
+offset_left = 460.0
+offset_top = 48.0
+offset_right = 820.0
+offset_bottom = 72.0
+theme_override_colors/font_color = Color(0.85, 0.75, 0.35, 1)
+theme_override_font_sizes/font_size = 13
+horizontal_alignment = 1
+text = "🧪 效果面板已收起  |  我方 0 项 · 敌方 0 项  |  再点🧪按钮展开"
+mouse_filter = 2

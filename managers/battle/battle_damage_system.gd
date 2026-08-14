@@ -216,23 +216,13 @@ func _get_recon_fragment_bonus_multiplier() -> float:
 	var bonus: float = minf(GC.RECON_FRAGMENT_BONUS_CAP, float(recon_unit_count) * GC.RECON_FRAGMENT_BONUS_PER_UNIT)
 	return bonus
 
-## v6.6: 判定单位是否为侦察/隐匿类（用于情报碎片加成）
-## v6.2 后 platform_type 已废弃，改用 card_id 模式 + 单位特征识别
+## 判定单位是否为侦察/隐匿类（用于情报碎片加成）
+## v9.x: 统一判据——读 unit_stats_table.apply_combat_kind_modifiers 设的 is_recon_unit meta。
+## 消除原"platform_type + card_id 子串"独立判定与权威源 (unit_stats_table._RECON_PREFIXES) 的口径漂移。
+## 影响：仅情报碎片加成统计（_get_recon_fragment_bonus_multiplier），不影响战斗减伤
+## （减伤走 construct_unit.gd:757 读同一 meta）。
 static func _is_recon_unit(stats: UnitStats) -> bool:
-	if stats == null:
-		return false
-	# 1. 旧枚举兼容：platform_type == 5(SCOUT) 或 10(STEALTH)
-	if stats.platform_type == 5 or stats.platform_type == 10:
-		return true
-	# 2. v6.2+：按 card_id 模式匹配（侦察/隐匿类单位命名约定）
-	var cid: String = stats.card_id.to_lower()
-	if cid.is_empty():
-		return false
-	if "scout" in cid or "recon" in cid or "stealth" in cid or "spectre" in cid or "drone" in cid:
-		return true
-	# 3. 高视野远程轻型单位（视野大、射程远、轻装类）也算侦察特性
-	#    （按需可扩展，此处保守起见仅用命名匹配）
-	return false
+	return stats != null and stats.has_meta("is_recon_unit") and bool(stats.get_meta("is_recon_unit", false))
 
 # =========================================================================
 #  根据当前关卡环境获取随机法则ID
@@ -340,14 +330,6 @@ func calculate_victory_stars(max_deployed: int, units_lost: int, elapsed_time: f
 	return stars
 
 # =========================================================================
-#  战斗胜利后为参战卡牌尝试奖励词条
-# =========================================================================
-
-func try_grant_battle_affixes(phase_instrument: Node) -> void:
-	# v6.0: 旧的 affix 战斗奖励系统已废弃
-	pass
-
-# =========================================================================
 #  战斗结算掉落生成
 # =========================================================================
 
@@ -411,9 +393,11 @@ func generate_battle_drops_only(player_won: bool, elapsed_time: float, wave_tota
 	return battle_result
 
 
-func generate_intel_harvest(existing_result: Dictionary) -> Dictionary:
+func generate_intel_harvest(existing_result: Dictionary, p_has_recon: bool = false) -> Dictionary:
 	## 帧B'：情报收获生成（遍历击败敌人做情报掷骰，胜利后单帧最重操作）
 	## 接收帧B的 _battle_result 字典，追加 intel_harvest/eom_fragments 后返回
+	## p_has_recon: 侦查加成标志，由 BattleManager 在 end_battle 清场前计算传入
+	## （单位此时已 queue_free，无法在 B' 自行遍历 get_children 计算）
 	if not existing_result.get("player_won", false):
 		return existing_result
 
@@ -429,7 +413,7 @@ func generate_intel_harvest(existing_result: Dictionary) -> Dictionary:
 		if gm and gm.has_method("get"):
 			var gm_level: Variant = gm.current_level if "current_level" in gm else 1
 			current_env = BattleEnvs.get_for_level(int(gm_level))
-		var has_recon: bool = _get_recon_fragment_bonus_multiplier() > 0.0
+		var has_recon: bool = p_has_recon
 		# v7.x: 相位师战时屏蔽情报道具的改造蓝图掉落——
 		# 相位师专属掉落（game_manager._grant_phase_master_victory_reward）已必掉1-4个改造蓝图，
 		# 此处再掉会造成改造蓝图双爆。进化蓝图/情报增量/EOM碎片不受影响（它们不与相位师掉落重叠）。

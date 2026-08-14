@@ -487,6 +487,25 @@ static func spawn_impact_with_kind(parent: Node2D, world_pos: Vector2, weapon_ty
 	if power_tier == POWER_TIER.NUCLEAR:
 		VfxFactory.spawn_nuclear_explosion(parent, world_pos, _NUKE_TEX, _nuke_colors(is_player_shot), 0.7)
 		return
+	# v12: 轨道炮(RAIL=11)走签名穿透效果(白闪+穿透光迹+出口spall),跳过通用贴图+爆炸帧+
+	# 蓝色能量粒子三层(原轨道炮与激光/欧米茄共享能量贴图,毫无穿透动能感)。
+	# v12d: 三把签名武器统一从 opts 读 attack direction(弹丸飞行方向,bullet.gd 已透传),
+	# 让特效按真实来弹方向定向(贯穿/来弹光束 朝射手反方向)。
+	var atk_dir: Variant = opts.get("direction", Vector2.RIGHT)
+	var atk_d: Vector2 = atk_dir if atk_dir is Vector2 else Vector2.RIGHT
+	if weapon_type == 11:
+		VfxFactory.spawn_railgun_penetration(parent, world_pos, atk_d, 170.0)
+		return
+	# v12d: 激光(LASER=8)走签名灼烧效果(来弹光束+白热光斑+焦痕+热火花),跳过通用 OMEGA 贴图+
+	# 能量帧(原与轨道炮/欧米茄共享,读成"通用能量团")。激光是表面能量沉积,非动能穿透。
+	if weapon_type == 8:
+		VfxFactory.spawn_laser_burn(parent, world_pos, is_player_shot, atk_d)
+		return
+	# v12d: 欧米茄粒子炮(OMEGA=10)走签名径向放电(来弹粒子流+大能量核+星芒射线+外向电火花),
+	# 跳过通用 OMEGA 贴图+能量帧(原与激光/轨道炮共享)。欧米茄=重型粒子径向迸发。
+	if weapon_type == 10:
+		VfxFactory.spawn_omega_discharge(parent, world_pos, is_player_shot, atk_d)
+		return
 	# v9.2: 命中贴图层——所有武器都叠加贴图（此前仅 ROCKET/FLAK/MISSILE 有）。
 	#   ① 重型爆炸类(3/7/9) + 有 weapon_name → 查专属贴图（impact_texture_by_name，含 fallback）
 	#   ② 其他所有类型 → 按 weapon_type 取通用贴图（generic_impact_tex_by_wt）

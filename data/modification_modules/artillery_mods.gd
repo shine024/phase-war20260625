@@ -424,7 +424,7 @@ const DATA: Dictionary = {
 		cost_install = 190,
 		slot_type = "sensor",
 		conflict_group = "sensor",
-		effects = {drone_mark_amp = true, drone_mark_vuln_bonus = 0.10, drone_mark_radius_bonus = 100.0, crit_chance = 0.04},
+		effects = {drone_mark_vuln_bonus = 0.10, crit_chance = 0.04},
 		applicable_types = [2],
 		unlock_conditions = {required_level = 6}
 	},

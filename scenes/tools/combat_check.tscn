@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://bcombatchecktools1"]
+[gd_scene load_steps=3 format=3 uid="uid://bcombatchecktools1"]
 
 [ext_resource type="Script" path="res://scenes/tools/combat_check.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://scenes/tools/effect_lab_panel.tscn" id="2_panel"]
 
 [node name="CombatCheck" type="Node2D"]
 script = ExtResource("1_script")
@@ -242,6 +243,16 @@ theme_override_font_sizes/font_size = 12
 text = "标记开火点"
 button_pressed = true
 
+[node name="EffectToggleButton" type="Button" parent="UiLayer/ControlPanel"]
+layout_mode = 0
+offset_left = 448.0
+offset_top = 46.0
+offset_right = 600.0
+offset_bottom = 80.0
+theme_override_colors/font_color = Color(0.85, 0.75, 0.35, 1)
+theme_override_font_sizes/font_size = 13
+text = "🧪 效果实验"
+
 [node name="InfoPanel" type="RichTextLabel" parent="UiLayer"]
 layout_mode = 1
 offset_left = 828.0
@@ -251,3 +262,5 @@ offset_bottom = 712.0
 theme_override_font_sizes/normal_font_size = 12
 bbcode_enabled = true
 text = ""
+
+[node name="EffectLabPanel" parent="UiLayer" instance=ExtResource("2_panel")]

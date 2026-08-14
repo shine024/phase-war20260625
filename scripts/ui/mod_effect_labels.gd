@@ -183,9 +183,7 @@ static func translate(key: String) -> String:
 		"radar_lock_radius": return "雷达锁定半径"
 		"radar_lock_vuln": return "雷达锁定易伤"
 		"radar_lock_duration": return "雷达锁定持续"
-		"drone_mark_amp": return "无人机增幅"
 		"drone_mark_vuln_bonus": return "无人机易伤"
-		"drone_mark_radius_bonus": return "无人机半径"
 		"chem_burst_trigger": return "化毒burst触发"
 		"vfx_variant": return "特效变体"
 		_: return key

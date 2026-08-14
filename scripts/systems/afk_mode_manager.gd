@@ -67,9 +67,10 @@ var _auto_deploy_interval: float = 0.5  # 每0.5秒部署一张（设计文档5.
 const _AUTO_DEPLOY_INITIAL_DELAY: float = 0.3  # 战斗开始后延迟0.3秒再开始部署
 const _AUTO_DEPLOY_FAIL_GIVEUP: int = 20       # 单张连续失败次数上限，超过则放弃该张避免死循环
 var _deploy_fail_streak: int = 0
-## 玩家可用部署槽位范围：slot 1..6（slot 0 为屏幕边缘禁放位）
-const _PLAYER_SLOT_RANGE_START: int = 1
-const _PLAYER_SLOT_RANGE_END: int = 6
+## 玩家可用部署槽位范围：3行×3列 = 9 格全部可用（无边缘禁放，slot 0~8）
+## 运行时读 BattleSlotGrid.SLOT_COUNT（避免 const 求值时全局类加载顺序问题）
+const _PLAYER_SLOT_RANGE_START: int = 0
+var _player_slot_range_end: int = -1  # 延迟到首次使用时初始化为 SLOT_COUNT - 1
 
 # ── 推图失败重试（v6.6）──
 ## 推图模式同一关失败重试次数上限；耗尽才停止（消化偶发失败）
@@ -530,7 +531,13 @@ func _deploy_next_from_queue() -> void:
 			_deploy_fail_streak = 0
 
 
-## 遍历玩家可用槽位 1..6，返回第一个空槽的世界坐标；全占用返回 Vector2.INF
+## 返回玩家可用槽位末端索引（延迟初始化，避免 const 求值时全局类加载顺序问题）
+func _get_player_slot_range_end() -> int:
+	if _player_slot_range_end < 0:
+		_player_slot_range_end = BattleSlotGrid.SLOT_COUNT - 1
+	return _player_slot_range_end
+
+## 遍历玩家可用槽位 0..SLOT_COUNT-1，返回第一个空槽的世界坐标；全占用返回 Vector2.INF
 func _find_free_slot_world_pos(bf: Node2D) -> Vector2:
 	if bf == null or not bf.has_method("get_card_grid_player_slot_global"):
 		return Vector2.INF
@@ -546,7 +553,7 @@ func _find_free_slot_world_pos(bf: Node2D) -> Vector2:
 		player_units = bf.get_player_units_node()
 	if player_units == null:
 		player_units = bf.get_node_or_null("PlayerUnits")
-	for si in range(_PLAYER_SLOT_RANGE_START, _PLAYER_SLOT_RANGE_END + 1):
+	for si in range(_PLAYER_SLOT_RANGE_START, _get_player_slot_range_end() + 1):
 		var occupied: bool = false
 		if grid.has_method("is_player_slot_occupied") and player_units != null:
 			occupied = grid.is_player_slot_occupied(si, player_units)

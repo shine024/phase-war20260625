@@ -19,6 +19,12 @@ const EnemyLoadoutTiers = preload("res://data/enemy_loadout_tiers.gd")
 static func wave_hp_multiplier(wave_index: int) -> float:
 	return 1.0 + 0.12 * float(max(0, wave_index - 1))
 
+## v9.x 平衡：防御的波次乘区。原 def 只乘 tier_def（1 乘区），HP/ATK 有 4 乘区，
+## 后期 def 被 hp/atk 严重稀释（终局 hp ×6.65 而 def 仅 ×1.85）。补 wave_def 让 def 跟随波次增长，
+## 但系数 0.06 < hp 的 0.12，使 def 增长远慢于 hp——保留"破防"机制的意义，高防单位不会变得无法击穿。
+static func wave_def_multiplier(wave_index: int) -> float:
+	return 1.0 + 0.06 * float(max(0, wave_index - 1))
+
 
 static func wave_damage_multiplier(wave_index: int) -> float:
 	return 1.0 + 0.08 * float(max(0, wave_index - 1))
@@ -162,6 +168,7 @@ static func resolve_classic_enemy(archetype_id: String, ctx: EnemyStatContext) -
 	var cfg: Dictionary = EnemyArchetypes.get_config(archetype_id)
 	var w_hp: float = wave_hp_multiplier(ctx.wave_index)
 	var w_dmg: float = wave_damage_multiplier(ctx.wave_index)
+	var w_def: float = wave_def_multiplier(ctx.wave_index)  # v9.x：防御波次乘区
 	# v8.2: 档位系数（低1.30/中1.75/高2.00），hp/atk/def 同系数，平衡只调一处（TIER_BONUS）。
 	var tier_bonus: Dictionary = EnemyLoadoutTiers.get_bonus_for_tier(ctx.tier)
 	var tier_hp: float = 1.0 + float(tier_bonus.get("hp_pct", 0.0))
@@ -308,10 +315,13 @@ static func resolve_classic_enemy(archetype_id: String, ctx: EnemyStatContext) -
 				def_air = single_def
 	# 格子战单一 defense：取三维中最大值（与 build_stats_from_card 一致）
 	# v8.2: 防御也乘档位系数（与 hp/atk 同系数，平衡更直观）。
-	var def_out: float = maxf(def_l, maxf(def_a, def_air)) * tier_def
-	def_l *= tier_def
-	def_a *= tier_def
-	def_air *= tier_def
+	# v9.x 平衡：防御补全 wave_def + difficulty 乘区（原只乘 tier_def 1 乘区，后期被 hp/atk 严重稀释）。
+	# def 链 = tier_def × wave_def × difficulty（无 faction 乘区——faction 表无 f_def，势力主要增强 hp/atk）。
+	var def_mul_chain: float = tier_def * w_def * d_mul
+	var def_out: float = maxf(def_l, maxf(def_a, def_air)) * def_mul_chain
+	def_l *= def_mul_chain
+	def_a *= def_mul_chain
+	def_air *= def_mul_chain
 	# v8.1: 三维攻速——cfg 有三维 interval 则各自读取，否则用单一 attack_interval 统一
 	var base_ivl: float = float(cfg.get("attack_interval", 1.0))
 	var ivl_l: float = float(cfg.get("attack_light_interval", base_ivl))
@@ -329,8 +339,8 @@ static func resolve_classic_enemy(archetype_id: String, ctx: EnemyStatContext) -
 	var _base_atk_for_breakdown: float = maxf(float(cfg.get("attack_light", 0.0)), maxf(float(cfg.get("attack_armor", 0.0)), float(cfg.get("attack_air", 0.0))))
 	if _base_atk_for_breakdown <= 0.0:
 		_base_atk_for_breakdown = float(cfg.get("attack_damage", 10.0))
-	# def_out 已乘 tier_def，除回得到 base_def（三维最大值的原始量级）
-	var _base_def_for_breakdown: float = def_out / tier_def if tier_def > 0.0 else def_out
+	# def_out 已乘 def_mul_chain(tier_def × w_def × d_mul)，除回得到 base_def（三维最大值的原始量级）
+	var _base_def_for_breakdown: float = def_out / def_mul_chain if def_mul_chain > 0.0 else def_out
 	var _breakdown: Dictionary = _build_classic_breakdown(ctx, tier_hp, tier_atk, tier_def, w_hp, w_dmg, f_hp, f_atk, d_mul, _base_hp_for_breakdown, _base_atk_for_breakdown, _base_def_for_breakdown)
 	return {
 		"hp": hp_out,
@@ -376,8 +386,10 @@ static func apply_phase_master_to_unit_stats(stats: UnitStats, master_stats: Dic
 	# 区分度的字段，HP 9× 量级，但不接入加成链导致单卡战力评估严重偏低）。
 	# 系数 0.00015 与 master_defense_hp_multiplier（defense×0.0008）量级协调：
 	# max_hp 3000→×1.45, 5000→×1.75。仅相位师战（master_stats 非空）生效，普通波次零影响。
+	# v9.x 平衡：加 clamp 上限 2.0——终局 master_030(max_hp 23450) 原达 ×4.5 导致产兵极肉，
+	# clamp 后高端封顶 ×2.0，低端 m001(2900) 仍 ×1.43 不受影响，高低端差距从 ×3.1 缩到 ×1.4。
 	if master_stats.has("max_hp"):
-		var mhp_m: float = 1.0 + float(master_stats["max_hp"]) * 0.00015
+		var mhp_m: float = minf(1.0 + float(master_stats["max_hp"]) * 0.00015, 2.0)
 		stats.max_hp *= mhp_m
 
 

@@ -414,8 +414,8 @@ static func _highest_dps_unit(origin: Vector2, candidates: Array) -> Node2D:
 
 
 ## 最后排单位（槽位远→近，第一个存活单位）
-## 布局：玩家7槽(左带, slot0最左→slot6靠中线) | 中间空带 | 敌方7槽(右带, slot0靠中线→slot6最右)
-## 玩家方扫敌方 slot 6→0（远→近）；敌方方扫玩家 slot 0→6（远→近）
+## 3行×3列布局：按列（col = slot % 3）排序，
+## 玩家方扫敌方 col=0（最左/离玩家最远）→ col=2；敌方方扫玩家 col=2（最右/离敌方最远）→ col=0
 static func _farthest_slot_unit(u: CharacterBody2D, candidates: Array) -> Node2D:
 	var slot_units: Dictionary = {}  # slot -> Array
 	for n in candidates:
@@ -429,15 +429,28 @@ static func _farthest_slot_unit(u: CharacterBody2D, candidates: Array) -> Node2D
 		return null
 
 	var slots: Array = slot_units.keys()
-	if u.is_player:
-		slots.sort_custom(func(a, b): return int(a) > int(b))  # 敌方 slot 6→0（远→近）
-	else:
-		slots.sort()  # 玩家 slot 0→6（远→近）
+	## 按列（col = slot % SLOTS_PER_SIDE）排序：
+	## 玩家打敌方：col=0（最左/最远）优先 → col=2（最近）
+	## 敌方打玩家：col=2（最右/最远）优先 → col=0（最近）
+	slots.sort_custom(func(a, b):
+		var cola: int = int(a) % CardGridLayout.SLOTS_PER_SIDE
+		var colb: int = int(b) % CardGridLayout.SLOTS_PER_SIDE
+		if u.is_player:
+			return cola < colb  # 敌方 col 0→2（远→近）
+		return cola > colb  # 玩家 col 2→0（远→近）
+	)
 
 	for s in slots:
-		for unit in slot_units[s]:
-			if is_instance_valid(unit):
-				return unit
+		## 列内可能有多个单位（3行布局下每列3个），取距离最近的存活单位
+		## 避免按场景树迭代顺序任意选择（旧逻辑在三行下结果不确定）
+		var col_units: Array = slot_units[s]
+		if col_units.size() == 1:
+			if is_instance_valid(col_units[0]):
+				return col_units[0]
+			continue
+		var nearest_in_col: Node2D = _nearest_of(u.global_position, col_units)
+		if nearest_in_col != null:
+			return nearest_in_col
 	return null
 
 ## 执行攻击（使用 stats 计算伤害）

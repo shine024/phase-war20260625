@@ -40,7 +40,7 @@ theme_override_constants/separation = 6
 
 [node name="LeftSection" type="HBoxContainer" parent="Margin/HBox"]
 layout_mode = 2
-size_flags_horizontal = 3
+size_flags_horizontal = 0
 theme_override_constants/separation = 6
 
 [node name="Spacer" type="Control" parent="Margin/HBox"]

@@ -25,8 +25,10 @@ const ConstructUnitAI = preload("res://scripts/battle/construct_unit_ai.gd")
 const UnitStatsTable = preload("res://resources/unit_stats_table.gd")
 const BATTLE_MIN_X: float = 40.0
 const BATTLE_MAX_X: float = 1240.0
-const BATTLE_MIN_Y: float = 280.0
-const BATTLE_MAX_Y: float = 440.0
+# v9.3: 扩大 Y 硬夹范围（原 280~440 仅覆盖旧双行布局；三行布局下行 center+60
+# 在高背景纹理关卡可能 >440；扩大到 200~560 覆盖三行全程 + 高/低车道中心）
+const BATTLE_MIN_Y: float = 200.0
+const BATTLE_MAX_Y: float = 560.0
 ## 单帧贴图超过此边长视为整张地图/错误资源，不使用（卡面立绘标准为 1024）
 const MAX_ENEMY_FRAME_TEX_DIM := 1280
 ## 最终显示在战场上的最大宽高（像素），防止误配大图占满屏
@@ -1592,6 +1594,7 @@ func _update_hit_animations(delta: float) -> void:
 		if _hit_shake_t >= _HIT_SHAKE_DURATION:
 			scale = Vector2.ONE
 			_hit_shake_t = -1.0
+			modulate = Color.WHITE  # v10: 闪白结束复位(敌方正常态 modulate=WHITE)
 		else:
 			var seg: int = int(_hit_shake_t / 0.035)
 			if seg > 3:
@@ -1602,6 +1605,12 @@ func _update_hit_animations(delta: float) -> void:
 			var s_end: float = keys[seg]
 			var s: float = lerpf(s_start, s_end, local_t)
 			scale = Vector2(s, s)
+			# v10: 受击闪白(复用 _hit_shake_t 计时,零新 tween 零 GC)——前 0.08s 把 modulate 推亮再回白
+			# 敌方受击频繁,沿用本类"手写计时避免每击 create_tween GC"的既有设计。motion_reduce 跳过。
+			if not DT.is_motion_reduce():
+				var ft: float = clampf(_hit_shake_t / 0.08, 0.0, 1.0)
+				var fb: float = 0.8 * (1.0 - ft)  # 0.8 → 0
+				modulate = Color(1.0 + fb, 1.0 + fb, 1.0 + fb, 1.0)
 
 
 ## 治疗方法（用于词条吸血效果）

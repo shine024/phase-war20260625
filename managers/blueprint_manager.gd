@@ -63,6 +63,10 @@ var unlocked_blueprint_ids: Array = []
 ## card_id -> 副本数量（≥1 表示可制造）
 var blueprint_copies: Dictionary = {}
 
+## v7.x 性能：脏集——记录自上次 take_blueprint_copy_delta() 以来 blueprint_copies 变动过的卡
+## {card_id: 变动前的副本数}。结算面板的"卡牌副本 +N"据此增量计算，免去全量遍历 ~133 蓝图。
+var _dirty_blueprint_deltas: Dictionary = {}
+
 ## blueprint_stars 已在 v5 迁移中彻底废弃，不再保留字段
 
 ## card_id -> 已选改装分支（最多9项，同 conflict_group 冲突自动替换）
@@ -254,6 +258,8 @@ func add_blueprint_copy(card_id: String, count: int = 1) -> void:
 		return
 	if not is_blueprint_unlocked(card_id):
 		unlock_blueprint(card_id)
+	if not _dirty_blueprint_deltas.has(card_id):
+		_dirty_blueprint_deltas[card_id] = int(blueprint_copies.get(card_id, 0))
 	blueprint_copies[card_id] = max(1, int(blueprint_copies.get(card_id, 0)))
 	# 多余副本 → 研究点奖励
 	var rarity: String = get_card_rarity(card_id)
@@ -269,6 +275,20 @@ func add_blueprint_copy(card_id: String, count: int = 1) -> void:
 func get_blueprint_copies(card_id: String) -> int:
 	return int(blueprint_copies.get(card_id, 0))
 
+## v7.x 性能：取出并清空自上次调用以来的蓝图副本增量
+## 仅遍历变动过的卡（通常 0-5 张），替代结算面板旧的全量 ~133 蓝图 before/after diff。
+## 返回 {card_id: 净增量}，调用方负责消费；返回后脏集清空。
+func take_blueprint_copy_delta() -> Dictionary:
+	var result: Dictionary = {}
+	for card_id in _dirty_blueprint_deltas.keys():
+		var before: int = int(_dirty_blueprint_deltas[card_id])
+		var after: int = int(blueprint_copies.get(card_id, 0))
+		var gain: int = after - before
+		if gain > 0:
+			result[card_id] = gain
+	_dirty_blueprint_deltas.clear()
+	return result
+
 ## 首次从「掉卡」获得某张卡：解锁蓝图并保证至少 1 副本
 func apply_card_drop_first_copy(card_id: String) -> void:
 	var plm := _ensure_plm()
@@ -277,6 +297,8 @@ func apply_card_drop_first_copy(card_id: String) -> void:
 		return
 	if not is_blueprint_unlocked(id):
 		unlock_blueprint(id)
+	if not _dirty_blueprint_deltas.has(id):
+		_dirty_blueprint_deltas[id] = int(blueprint_copies.get(id, 0))
 	blueprint_copies[id] = maxi(1, int(blueprint_copies.get(id, 0)))
 	if is_law_blueprint_id(id) and plm and plm.has_method("ensure_law_unlocked"):
 		plm.ensure_law_unlocked(law_id_from_blueprint_id(id))

@@ -26,8 +26,8 @@ const DEPLOY_INTERVAL: float = 0.4
 const INITIAL_DELAY: float = 0.3
 ## 单张连续失败次数上限：超过则放弃该张（防死循环，如该卡能量永远不够）
 const FAIL_GIVEUP: int = 20
-## 绿槽索引 → 战场位的偏移量（绿槽0→位1, 绿槽1→位2, ...）
-const SLOT_INDEX_OFFSET: int = 1
+## 绿槽索引 → 战场位的偏移量（单行 3×3 布局：绿槽0→战场位0，无偏移）
+const SLOT_INDEX_OFFSET: int = 0
 
 
 # ── 状态 ──
@@ -153,9 +153,8 @@ func process(delta: float) -> void:
 # ── 核心逻辑 ──
 
 ## 收集装备的战斗卡，填充部署队列（保留绿槽索引用于固定映射）
-## v7.x: 过滤掉已在战场上存活的卡（不管它在哪个位置），避免手动+自动混用时报错
-## v8.1d: 先用 get_remaining_deployable_count 做快速门控——与 request_player_deploy
-##         的 live_count 检查口径一致，杜绝"slot 检查说有空位但 recount 说已满"的错位。
+## v9.4: green 槽位只决定卡组多样化，不限制上场数。循环复用已装卡填满所有可用战场位。
+## 例如装3张卡(green=3)，战场有9格 → 卡0→位0, 卡1→位1, 卡2→位2, 卡0→位3, 卡1→位4...
 func _start_deploy_round() -> void:
 	# v8.1d: 快速门控——如果BattleSpawnSystem认为已无部署余量，直接清队
 	var bss: Node = _get_node("/root/BattleSpawnSystem")
@@ -168,10 +167,8 @@ func _start_deploy_round() -> void:
 	if pim == null or not pim.has_method("get_loadouts"):
 		return
 	var loadouts: Array = pim.get_loadouts()
-	# v8.1b: 存活过滤改为按"槽位对应的战场位是否已占用"判断，而非按卡 id。
-	# 原按 instance_id/card_id 过滤会误杀"同一实例装多槽"的第二张（用户把同一张卡放两个槽
-	# 想部署两个单位，或游戏开局送的同名卡被装多槽）。固定映射下每个绿槽有独立战场位，
-	# _deploy_next 的 is_player_slot_occupied 已能精确判断该位是否需要补。
+	if loadouts.is_empty():
+		return
 	var bf: Node2D = _get_battlefield()
 	var grid: Node = null
 	if bf != null:
@@ -185,29 +182,37 @@ func _start_deploy_round() -> void:
 			player_units = bf.get_player_units_node()
 		if player_units == null:
 			player_units = bf.get_node_or_null("PlayerUnits")
-	var entries: Array = []
+	# v9.4: 收集已装卡列表（过滤非战斗卡），循环映射到战场位 0~N 填满可用格子
+	var valid_loadouts: Array = []
 	for loadout in loadouts:
 		var platform = loadout.get("platform")
 		if platform == null:
 			continue
 		if not ("card_id" in platform) or String(platform.card_id).is_empty():
 			continue
-		# 仅战斗单位卡可部署（过滤能量卡/法则卡）
 		if "card_type" in platform and int(platform.card_type) != GC.CardType.COMBAT_UNIT:
 			continue
-		var slot_index: int = int(loadout.get("slot_index", 0))
-		# v8.1b: 该槽位对应的战场位已被占用 → 跳过（该位已有单位，无需补）
-		var battlefield_slot: int = slot_index + SLOT_INDEX_OFFSET
+		valid_loadouts.append(loadout)
+	if valid_loadouts.is_empty():
+		return
+	var entries: Array = []
+	# v9.5: 自动部署顺序——中行(3,4,5) → 下行(6,7,8) → 上行(0,1,2)
+	# 槽位编号行主序：row0=[0,1,2] row1=[3,4,5] row2=[6,7,8]
+	const SLOT_COUNT: int = 9
+	const DEPLOY_ORDER: Array[int] = [3, 4, 5, 6, 7, 8, 0, 1, 2]
+	for battlefield_slot in DEPLOY_ORDER:
 		if grid != null and player_units != null and grid.has_method("is_player_slot_occupied"):
 			if grid.is_player_slot_occupied(battlefield_slot, player_units):
-				continue
-		# v8.1c: 补阵冷却——该槽位刚部署的单位若很快死亡（秒死），冷却期内不重复补，
-		# 避免"死亡→立即补→又秒死→又补"的死循环（烧能量无意义）。
-		if _slot_deploy_time.has(slot_index):
-			var elapsed_sec: float = (Time.get_ticks_msec() - float(_slot_deploy_time[slot_index])) / 1000.0
+				continue  # 该位已有单位，跳过
+		# 循环取卡：battlefield_slot % valid_loadouts.size()
+		var loadout: Dictionary = valid_loadouts[battlefield_slot % valid_loadouts.size()]
+		var slot_index: int = int(loadout.get("slot_index", 0))
+		# 补阵冷却检查（v9.4: 按 battlefield_slot 独立冷却，循环复用时每个位各自计时）
+		if _slot_deploy_time.has(battlefield_slot):
+			var elapsed_sec: float = (Time.get_ticks_msec() - float(_slot_deploy_time[battlefield_slot])) / 1000.0
 			if elapsed_sec < REPLOY_COOLDOWN_SEC:
 				continue
-		entries.append({"platform": platform, "slot_index": slot_index})
+		entries.append({"platform": loadout.get("platform"), "slot_index": slot_index, "battlefield_slot": battlefield_slot})
 	if entries.is_empty():
 		return
 	_deploy_queue = entries
@@ -276,8 +281,11 @@ func _deploy_next() -> void:
 	for i in range(_deploy_queue.size()):
 		var entry: Dictionary = _deploy_queue[i]
 		var platform = entry.get("platform")
-		var slot_index: int = int(entry.get("slot_index", 0))
-		var battlefield_slot: int = slot_index + SLOT_INDEX_OFFSET
+		# v9.4: 优先用 entry 中记录的 battlefield_slot（循环复用映射），回退到 slot_index+offset
+		var battlefield_slot: int = int(entry.get("battlefield_slot", -1))
+		if battlefield_slot < 0:
+			var slot_index_fallback: int = int(entry.get("slot_index", 0))
+			battlefield_slot = slot_index_fallback + SLOT_INDEX_OFFSET
 		# 该战场位已有单位 → 跳过（不部署，不报错）
 		if grid.has_method("is_player_slot_occupied") and player_units != null:
 			if grid.is_player_slot_occupied(battlefield_slot, player_units):
@@ -303,9 +311,14 @@ func _deploy_next() -> void:
 		# 部署失败（能量不足等）→ 继续尝试下一个条目
 	if deployed_index >= 0:
 		var dep_entry: Dictionary = _deploy_queue[deployed_index]
-		var dep_slot: int = int(dep_entry.get("slot_index", -1))
-		if dep_slot >= 0:
-			_slot_deploy_time[dep_slot] = Time.get_ticks_msec()  # v8.1c: 记录补阵时间用于冷却
+		# v9.4: 用 battlefield_slot 做冷却 key（循环复用时同卡映射到多个战场位，各自独立冷却）
+		var dep_bf_slot: int = int(dep_entry.get("battlefield_slot", -1))
+		if dep_bf_slot >= 0:
+			_slot_deploy_time[dep_bf_slot] = Time.get_ticks_msec()
+		else:
+			var dep_slot: int = int(dep_entry.get("slot_index", -1))
+			if dep_slot >= 0:
+				_slot_deploy_time[dep_slot] = Time.get_ticks_msec()
 		_deploy_queue.remove_at(deployed_index)
 		_fail_streak = 0
 	else:

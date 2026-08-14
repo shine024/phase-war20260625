@@ -28,6 +28,15 @@ var _battlefield: Node = null
 var _player_units_node: Node = null
 var _enemy_units_node: Node = null
 
+# ---- 常驻 autoload 引用（setup 时一次性缓存，避免 per-deploy 重复遍历） ----
+var _cached_autoload_game_manager: Node = null
+var _cached_autoload_battle_manager: Node = null
+var _cached_autoload_faction_system: Node = null
+var _cached_autoload_card_enhancement: Node = null
+var _cached_autoload_phase_master_skill: Node = null
+var _cached_autoload_blueprint_manager: Node = null
+var _cached_autoload_affix_manager: Node = null
+
 # ---- 玩家部署追踪 ----
 var player_unit_count: int = 0
 var _max_player_units_deployed: int = 0
@@ -49,24 +58,35 @@ var _stats_cache: Dictionary = {}
 ## 卡牌格子战术
 var _card_grid_active: bool = false
 var _card_grid_enemy_quota: int = _CardGridSlotsPerSide
-## 每侧可用槽位数：SLOTS_PER_SIDE(7) 减去 1 个靠屏幕外缘的禁放位（我方 slot 0 / 敌方 slot N-1）= 6
-var _usable_enemy_slots: int = max(1, _CardGridSlotsPerSide - 1)
+## 每侧可用槽位数：3行×3列 = 9 格全部可用（无边缘禁放）
+var _usable_enemy_slots: int = _CardGridSlotsPerSide
 
 func setup(deps: Dictionary) -> void:
 	_energy_manager = deps.get("energy_manager", null)
 	_phase_instrument = deps.get("phase_instrument", null)
 	_signal_bus = deps.get("signal_bus", null)
+	# 缓存常驻 autoload 引用，后续部署/建卡路径不再重复遍历 SceneTree.root
+	if _signal_bus != null:
+		var _root := _signal_bus.get_tree().root if _signal_bus.get_tree() else null
+		if _root != null:
+			_cached_autoload_game_manager      = _root.get_node_or_null("GameManager")
+			_cached_autoload_battle_manager    = _root.get_node_or_null("BattleManager")
+			_cached_autoload_faction_system    = _root.get_node_or_null("FactionSystemManager")
+			_cached_autoload_card_enhancement  = _root.get_node_or_null("CardEnhancementManager")
+			_cached_autoload_phase_master_skill= _root.get_node_or_null("PhaseMasterSkillManager")
+			_cached_autoload_blueprint_manager = _root.get_node_or_null("BlueprintManager")
+			_cached_autoload_affix_manager     = _root.get_node_or_null("AffixManager")
 
 func configure_card_grid_battle(enemy_quota: int) -> void:
 	_card_grid_active = true
 	_card_grid_enemy_quota = clampi(enemy_quota, 1, _CardGridSlotsPerSide)
-	# 敌方仅 slot N-1（全局位置 15，最右靠屏幕边）禁放，实际可用 = SLOTS_PER_SIDE - 1
-	_usable_enemy_slots = max(1, _CardGridSlotsPerSide - 1)
+	# 3行×3列 = 9 格全部可用（无边缘禁放）
+	_usable_enemy_slots = _CardGridSlotsPerSide
 
 
 func _enemy_field_unit_cap() -> int:
-	# 敌方仅 slot N-1 禁放，实际可用 = SLOTS_PER_SIDE - 1
-	return max(0, _CardGridSlotsPerSide - 1)
+	# 3行×3列 = 9 格全部可用（无边缘禁放）
+	return max(0, _CardGridSlotsPerSide)
 
 
 func finalize_card_grid_and_spawn_enemies(current_level: int) -> void:
@@ -97,8 +117,8 @@ func _apply_player_card_grid_post_placement() -> void:
 
 func _card_grid_count_free_enemy_slots() -> int:
 	var n: int = 0
-	# 敌方仅 slot N-1（位置 15）禁放，可用 slot 0~N-2
-	for si in range(0, _CardGridSlotsPerSide - 1):
+	# 3行×3列 = 9 格全部可用
+	for si in range(0, _CardGridSlotsPerSide):
 		if not _is_enemy_grid_slot_occupied(si):
 			n += 1
 	return n
@@ -129,11 +149,14 @@ func _find_enemy_subtree_with_slot(n: Node, slot_idx: int) -> Node:
 	return null
 
 
-## 敌方区域：从远端 slot(最大索引，靠屏幕右缘、离玩家最远)开始填，依次向近端
-## 敌方仅 slot N-1（位置 15，最右靠屏幕边）禁放，可用 slot 0~N-2；远端即 N-2
-## 这样少量敌人也部署在远端，玩家曲射(先远后近)能优先打到后排
+## 敌方部署顺序：中行(3,4,5) → 下行(6,7,8) → 上行(0,1,2)
+## 与我方自动部署顺序一致，优先填中行（主战线），再下行（前线），最后上行（后卫）
+const _ENEMY_DEPLOY_ORDER: Array[int] = [3, 4, 5, 6, 7, 8, 0, 1, 2]
+
+
+## 敌方区域：按部署顺序（中行→下行→上行）找第一个空闲槽位
 func _card_grid_next_free_enemy_slot_index() -> int:
-	for si in range(_CardGridSlotsPerSide - 2, -1, -1):
+	for si in _ENEMY_DEPLOY_ORDER:
 		if not _is_enemy_grid_slot_occupied(si):
 			return si
 	return -1
@@ -163,17 +186,23 @@ func _pick_archetype_with_bias(pool: Array, bias_tags: Array) -> String:
 	return String(pool[randi() % pool.size()])
 
 
-## 按单位射程选敌方槽位：长程(>=阈值)放远端(slot N-2 起倒序)，短程放近端(slot 0 起顺序)
-## 敌方仅 slot N-1（位置 15）禁放，可用 slot 0~N-2
-## 短程直射单位放近端才够得到玩家；长程/曲射放远端供玩家曲射打击
+## 按单位射程选敌方槽位：
+## v9.5: 短程(堡垒/装甲)优先放最前一列(col0=slot 0,3,6)，再中列(col1=1,4,7)，最后后列(col2=2,5,8)
+##       长程(曲射/支援)放后方(col2→col1→col0)，让短程坦克在前排抗伤
+## 每列内按行顺序：中行→下行→上行（与自动部署一致）
+## col0=[3,0,6]（中行3,下行6,上行0），col1=[4,1,7]，col2=[5,2,8]
 func _pick_enemy_slot_by_range(attack_range: float) -> int:
 	const LONG_RANGE_THRESHOLD: float = 300.0
-	if attack_range >= LONG_RANGE_THRESHOLD:
-		for si in range(_CardGridSlotsPerSide - 2, -1, -1):
+	# 短程：前排→中排→后排（堡垒/装甲顶在最前 col0）
+	if attack_range < LONG_RANGE_THRESHOLD:
+		const FRONT_FIRST: Array[int] = [3, 0, 6, 4, 1, 7, 5, 2, 8]
+		for si in FRONT_FIRST:
 			if not _is_enemy_grid_slot_occupied(si):
 				return si
 	else:
-		for si in range(0, _CardGridSlotsPerSide - 1):
+		# 长程：后排→中排→前排（曲射/支援在后方）
+		const BACK_FIRST: Array[int] = [5, 2, 8, 4, 1, 7, 3, 0, 6]
+		for si in BACK_FIRST:
 			if not _is_enemy_grid_slot_occupied(si):
 				return si
 	return -1
@@ -217,15 +246,15 @@ func spawn_card_grid_enemy_wave(current_level: int) -> bool:
 		grid.rebuild_slot_centers_now()
 
 	var next_wave: int = enemy_wave_index + 1
-	var gm: Node = _get_autoload_node("GameManager")
+	var gm: Node = _get_cached_autoload("GameManager")
 	var to_spawn: int = 1 + (next_wave % 2)
 	if gm and gm.has_method("get_enemy_spawn_count_for_wave_card_grid"):
 		to_spawn = gm.get_enemy_spawn_count_for_wave_card_grid(gm.current_level, next_wave)
 	elif gm and gm.has_method("get_enemy_spawn_count_for_wave"):
 		to_spawn = gm.get_enemy_spawn_count_for_wave(gm.current_level, next_wave)
 	to_spawn = mini(to_spawn, _card_grid_enemy_quota)
-	# 敌方仅 slot N-1（位置 15）禁放，实际可用槽位 = SLOTS_PER_SIDE - 1
-	var usable_enemy_slots: int = max(1, _CardGridSlotsPerSide - 1)
+	# 3行×3列 = 9 格全部可用
+	var usable_enemy_slots: int = _CardGridSlotsPerSide
 	_card_grid_enemy_quota = mini(_card_grid_enemy_quota, usable_enemy_slots)
 	to_spawn = mini(to_spawn, free_n)
 	if to_spawn <= 0:
@@ -463,7 +492,7 @@ func consume_wave_timer() -> void:
 # =========================================================================
 
 func request_player_deploy(platform_card_id: String, world_pos: Vector2, battle_era: int) -> bool:
-	var bm: Node = _get_autoload_node("BattleManager")
+	var bm: Node = _get_cached_autoload("BattleManager")
 	if bm != null and "battle_active" in bm and not bool(bm.battle_active):
 		_emit_deploy_failed("internal", "战斗已结束，无法部署。")
 		return false
@@ -473,19 +502,15 @@ func request_player_deploy(platform_card_id: String, world_pos: Vector2, battle_
 		return false
 	# v8.x 测试开关：true 时跳过所有兵种类/数目限制（仅测试用，生产默认 false 零影响）
 	var _no_limits: bool = bool(GameConfig.get_default().debug_no_deploy_limits)
-	# 使用相位仪的绿色槽位数量作为单位上限
+	# 单位上限 = 相位仪实际装备的战斗卡数（get_max_deployable_units 返回 get_loadouts().size()），
+	# 再由战场格子数（9）截断。关卡不再压缩上限。
 	var max_units: int = GC.PLAYER_MAX_UNITS
 	if _phase_instrument.has_method("get_max_deployable_units"):
 		max_units = _phase_instrument.get_max_deployable_units()
 	if _card_grid_active:
-		# 玩家侧仅 slot 0（位置 1，最左靠屏幕边）禁放，实际可用 = SLOTS_PER_SIDE - 1
-		var usable_slots: int = max(1, _CardGridSlotsPerSide - 1)
+		# 3行×3列 = 9 格全部可用（无边缘禁放）
+		var usable_slots: int = _CardGridSlotsPerSide
 		max_units = mini(max_units, usable_slots)
-	# v8 批次3: 关卡部署上限（special_rules.deploy_limit 覆盖默认上限）
-	var _level_rules: Dictionary = _get_current_level_rules()
-	var _deploy_limit: int = int(_level_rules.get("deploy_limit", 0))
-	if _deploy_limit > 0:
-		max_units = mini(max_units, _deploy_limit)
 	if not _no_limits:
 		# v6.5: 用实时 recount（与 HUD 显示口径一致）替代缓存 player_unit_count，
 		# 避免单位死亡淡出/幽灵态导致缓存与实际脱节，出现"显示4个却不让部署"的错位。
@@ -519,6 +544,7 @@ func request_player_deploy(platform_card_id: String, world_pos: Vector2, battle_
 		_emit_deploy_failed("invalid_loadout", "未找到有效战斗卡配置，请检查绿槽。")
 		return false
 	# v8 批次3: 关卡限定兵种（special_rules.restrict_platforms 白名单）
+	var _level_rules: Dictionary = _get_current_level_rules()
 	var _restrict: Array = _level_rules.get("restrict_platforms", [])
 	if not _no_limits and not _restrict.is_empty():
 		var _pt: int = int(platform_card.platform_type)
@@ -772,12 +798,9 @@ func get_remaining_deployable_count() -> int:
 	if _phase_instrument != null and _phase_instrument.has_method("get_max_deployable_units"):
 		max_units = _phase_instrument.get_max_deployable_units()
 	if _card_grid_active:
-		var usable_slots: int = max(1, _CardGridSlotsPerSide - 1)
+		# 3行×3列 = 9 格全部可用（无边缘禁放）
+		var usable_slots: int = _CardGridSlotsPerSide
 		max_units = mini(max_units, usable_slots)
-	var _level_rules: Dictionary = _get_current_level_rules()
-	var _deploy_limit: int = int(_level_rules.get("deploy_limit", 0))
-	if _deploy_limit > 0:
-		max_units = mini(max_units, _deploy_limit)
 	var live_count: int = player_unit_count
 	if BattleManager != null and BattleManager.has_method("recount_player_units_on_field"):
 		live_count = BattleManager.recount_player_units_on_field()
@@ -852,15 +875,18 @@ func _count_alive_player_units_from_instance_id(inst_id: String) -> int:
 func _reach_alive_limit_for_card(base_card_id: String, _platform_card_id: String) -> bool:
 	if base_card_id.is_empty():
 		return false
-	# 按 base card_id 统计绿槽装备数（ww1_ft17#1 和 ww1_ft17#2 都匹配 base ww1_ft17）
-	var equipped_count: int = _count_equipped_loadouts_from_card(base_card_id)
-	if equipped_count <= 0:
-		# 回退旧行为：未知装配信息时，仍保持"同卡最多一台"保护
-		return _has_alive_player_unit_from_card(base_card_id)
-	# 幻影克隆（phantom_clone）— 同卡可放倍率个单位
-	var alive_limit: int = equipped_count * _get_phantom_deploy_multiplier()
-	var alive_count: int = _count_alive_player_units_from_card(base_card_id)
-	return alive_count >= alive_limit
+	# 总单位上限 = 相位仪实际装备的战斗卡数（get_max_deployable_units 返回 get_loadouts().size()），
+	# 由战场格子数(9)截断；单卡场上数量不再单独限制（同名卡可重复部署填满该总名额）。
+	# 唯一例外：幻影克隆（phantom_clone）仍按 equipped_count × deploy_multiplier 做上限，
+	# 因为该能力的语义就是"同卡可放2个"。
+	if _get_phantom_deploy_multiplier() > 1:
+		var equipped_count: int = _count_equipped_loadouts_from_card(base_card_id)
+		if equipped_count > 0:
+			var alive_limit: int = equipped_count * _get_phantom_deploy_multiplier()
+			var alive_count: int = _count_alive_player_units_from_card(base_card_id)
+			return alive_count >= alive_limit
+	# 正常情况：不限制单卡场上数量（由总单位数上限和格子数管控）
+	return false
 
 ## v6.6: 获取免能量部署的成本倍率（0=全免，1=正常，0.5=半价）
 func _get_free_energy_multiplier() -> float:
@@ -1036,6 +1062,7 @@ func _emit_deploy_failed(reason_code: String, message: String) -> void:
 
 
 ## v8 批次3: 获取当前关卡的 special_rules（读 GameManager.current_level → LevelInformation）
+## 用于 restrict_platforms 等关卡限定（deploy_limit 已移除，不再在此读）。
 func _get_current_level_rules() -> Dictionary:
 	if GameManager == null:
 		return {}
@@ -1106,7 +1133,7 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 	var active_faction_cache_key: String = ""
 	# v6.14: 取激活势力技能效果（stat_bonus），用于注入我方单位 + 纳入缓存 key
 	var _active_faction_fx: Dictionary = {}
-	var _fsm_node: Node = _get_autoload_node("FactionSystemManager")
+	var _fsm_node: Node = _get_cached_autoload("FactionSystemManager")
 	if _fsm_node != null and _fsm_node.has_method("get_active_faction_skill_effects"):
 		_active_faction_fx = _fsm_node.get_active_faction_skill_effects()
 		if not _active_faction_fx.is_empty():
@@ -1130,7 +1157,7 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 	var instance_id_key: String = platform_card.instance_id if platform_card != null else ""
 	if instance_id_key.is_empty():
 		# 旧路径兼容：非实例卡，按 card_id 查 CardEnhancementManager 注入养成
-		var cem: Node = _get_autoload_node("CardEnhancementManager")
+		var cem: Node = _get_cached_autoload("CardEnhancementManager")
 		if cem and cem.has_method("get_module_slots"):
 			var enhance_slots: Array = cem.get_module_slots(platform_card.card_id)
 			if not enhance_slots.is_empty():
@@ -1149,7 +1176,7 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 	# 或 unit_ability（暴击/穿甲）后 build_stats_from_card 结果会变（写入机制 meta / 数值加成）；
 	# 若不纳入 key，解锁前缓存的 stats 会在解锁后命中旧缓存 → 机制 meta 缺失 → 兵种机制空转。
 	var pmsm_sig: String = ""
-	var _pmsm_node: Node = _get_autoload_node("PhaseMasterSkillManager")
+	var _pmsm_node: Node = _get_cached_autoload("PhaseMasterSkillManager")
 	if _pmsm_node != null and _pmsm_node.has_method("get_unlocked_signature"):
 		pmsm_sig = _pmsm_node.get_unlocked_signature()
 	var key: String = "%s|%s|%s|%d|%s|%s|%s" % [
@@ -1169,7 +1196,7 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 	# v6.14: 重接势力技能注入——玩家"主动构筑"的激活势力 stat_bonus 应用到我方单位。
 	# 注意：v6.8 停用的是"势力变体生成路径"，此处注入的是技能树的数值加成（玩家选择投入技能点获得），
 	# 与变体无关，所有我方单位共享（体现玩家构筑的势力偏好）。stat_bonus 字段映射到 UnitStats。
-	var bm_growth: Node = _get_autoload_node("BlueprintManager")
+	var bm_growth: Node = _get_cached_autoload("BlueprintManager")
 	if bm_growth and bm_growth.has_method("apply_growth_to_stats"):
 		bm_growth.apply_growth_to_stats(stats, platform_card, weapon_cards)
 	# v6.14: 注入激活势力技能 stat_bonus（非空才注入，避免无势力时多余计算）
@@ -1182,7 +1209,7 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 	# v7.x 修复 B1（affix 战斗空转）：原注释误称"词条已由 build_stats_from_card 内部处理"，
 	# 但 build_stats_from_card / apply_growth_to_stats 实际都不读 affix，导致词条养成在实战完全失效。
 	# 在养成加成之后、相位仪/符文加成之前应用词条（与 UI 预览面板调用方式一致）。
-	var _am = _get_autoload_node("AffixManager")
+	var _am = _get_cached_autoload("AffixManager")
 	if _am and _am.has_method("apply_affixes_to_stats"):
 		_am.apply_affixes_to_stats(stats, platform_card, weapon_cards)
 	if _phase_instrument and _phase_instrument.has_method("apply_phase_field_bonus_to_unit_stats"):
@@ -1284,7 +1311,7 @@ func _apply_rune_bonus_to_stats(stats: UnitStats, bonus: Dictionary) -> void:
 ## v8.x: 应用相位师技能树的 stat_bonus 全局加成
 ## 复用 _apply_active_faction_stat_bonus 处理 atk/def/hp，单独处理技能树特有的 key
 func _apply_skill_tree_stat_bonus(stats: UnitStats) -> void:
-	var pmsm: Node = _get_autoload_node("PhaseMasterSkillManager")
+	var pmsm: Node = _get_cached_autoload("PhaseMasterSkillManager")
 	if pmsm == null or not pmsm.has_method("get_active_effects"):
 		return
 	var effects: Dictionary = pmsm.get_active_effects()
@@ -1358,6 +1385,20 @@ func _get_autoload_node(name: String) -> Node:
 		if tree.root != null:
 			return tree.root.get_node_or_null(name)
 	return null
+
+
+## v9.x: 缓存版 autoload 查询——setup() 时已一次性缓存到实例变量，直接返回
+##        避免 per-deploy 重复 SceneTree.root.get_node_or_null() 遍历。
+func _get_cached_autoload(name: String) -> Node:
+	match name:
+		"GameManager":              return _cached_autoload_game_manager
+		"BattleManager":            return _cached_autoload_battle_manager
+		"FactionSystemManager":     return _cached_autoload_faction_system
+		"CardEnhancementManager":   return _cached_autoload_card_enhancement
+		"PhaseMasterSkillManager":  return _cached_autoload_phase_master_skill
+		"BlueprintManager":         return _cached_autoload_blueprint_manager
+		"AffixManager":             return _cached_autoload_affix_manager
+		_: return _get_autoload_node(name)
 
 
 # ───────────────────────────────────────────────────────────────

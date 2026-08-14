@@ -61,6 +61,9 @@ var _cached_nodes_by_group: Dictionary = {}
 var _phase_master_config: Dictionary = {}
 var _is_phase_master_battle: bool = false
 var _enemy_phase_driver: Node2D = null
+# v7.x 性能：侦查加成标志——在 end_battle 清场前计算（单位还活着），传给 Frame B' 情报收获。
+# 原先 B' 才算，但那时单位已被 clear_all_units 清空 → 恒返回 false（侦查加成从未生效）。
+var _pending_has_recon: bool = false
 
 # ---- 战斗结果数据 ----
 var _battle_result: Dictionary = {
@@ -407,6 +410,11 @@ func end_battle(player_won: bool) -> void:
 	_cleanup_player_projectile_batch()
 	_cleanup_player_indirect_batch()
 	_cleanup_enemy_indirect_batch()
+	# v9.x: 清理光环缓存（AuraManager 是 autoload 单例，单位 queue_free 滞后会导致
+	# _unit_auras 字典残留过期 unit_id 到下场战斗。end_battle 兜底清空。）
+	var _am: Node = get_node_or_null("/root/AuraManager")
+	if _am != null and _am.has_method("clear_all"):
+		_am.clear_all()
 
 	# 停止敌方相位驱动器
 	if _enemy_phase_driver != null and is_instance_valid(_enemy_phase_driver):
@@ -422,6 +430,12 @@ func end_battle(player_won: bool) -> void:
 	# 清空节点引用，防止悬空指针
 	player_units_node = null
 	enemy_units_node = null
+	# v7.x 性能：在清场前计算侦查加成标志（单位还存活），供 Frame B' 情报收获使用。
+	# 必须在 clear_all_units 之前——之后单位已 queue_free，_player_units_node.get_children() 为空。
+	if _damage_system != null and _damage_system.has_method("_get_recon_fragment_bonus_multiplier"):
+		_pending_has_recon = _damage_system._get_recon_fragment_bonus_multiplier() > 0.0
+	else:
+		_pending_has_recon = false
 	# 清理战场单位（queue_free 仅入队，帧末才真正释放，不阻塞本帧）
 	if DEBUG_BATTLE_LOG:
 		pass
@@ -468,7 +482,6 @@ func get_combo_field_state() -> RefCounted:
 func _deferred_end_battle_finalize(player_won: bool) -> void:
 	# ①掉落表生成（中等负载：DropManager 掉落表 + 相位仪掉落）
 	if player_won:
-		_damage_system.try_grant_battle_affixes(phase_instrument)
 		_battle_result = _damage_system.generate_battle_drops_only(
 			true,
 			_battle_elapsed_time,
@@ -483,8 +496,9 @@ func _deferred_end_battle_finalize(player_won: bool) -> void:
 
 func _deferred_end_battle_intel_harvest(player_won: bool) -> void:
 	# ①b 情报收获生成（重负载：遍历全部击败敌人做情报掷骰，胜利后单帧最重操作）
+	# has_recon 由 end_battle（Frame A）清场前计算，此处直接传入，避免遍历已清空的单位。
 	if player_won:
-		_battle_result = _damage_system.generate_intel_harvest(_battle_result)
+		_battle_result = _damage_system.generate_intel_harvest(_battle_result, _pending_has_recon)
 	# ②③④ 推迟到下一帧（让渲染线程先画情报收获后的胜利画面）
 	call_deferred("_deferred_end_battle_broadcast", player_won)
 
@@ -943,8 +957,8 @@ func _setup_spatial_grid() -> void:
 	spatial_grid.name = "SpatialGrid"
 
 	# 配置网格参数（根据战场尺寸）
-	# 战场范围: X(40-1240)；Y 覆盖双行交错全程（车道中心≈576，双行 ±80 → 约 496~656）。
-	# 原 Y 边界 280~440 不覆盖双行，会导致单位插不进空间网格 → 索敌/点击/AOE 全失效。
+	# 战场范围: X(40-1240)；Y 覆盖三行布局全程（车道中心≈576，三行偏移 -30/0/+60 → 约 466~636）。
+	# 空间网格 Y 范围 200~720 覆盖整个战场垂直区，确保所有行单位可被索敌/点击/AOE 命中。
 	spatial_grid.setup(100.0, 40.0, 1240.0, 200.0, 720.0)
 
 	# 添加到场景树

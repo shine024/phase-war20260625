@@ -105,8 +105,8 @@ func _init() -> void:
 	var min_g: int = green_values.min() if not green_values.is_empty() else 0
 	var max_g: int = green_values.max() if not green_values.is_empty() else 0
 	print("  green 范围：%d ~ %d" % [min_g, max_g])
-	if min_g < 1 or max_g > 6:
-		fail.call("green 范围异常：%d~%d（应在 1~6）" % [min_g, max_g])
+	if min_g < 1 or max_g > 9:
+		fail.call("green 范围异常：%d~%d（应在 1~9）" % [min_g, max_g])
 
 	print("")
 	print("=== 5. era_progress 公式核对（与 battle_spawn_system 一致）===")

@@ -28,8 +28,10 @@ const CardPeriodicSkills = preload("res://data/card_periodic_skills.gd")  # 卡�
 # ObjectPoolManager 为 autoload
 const BATTLE_MIN_X: float = 40.0
 const BATTLE_MAX_X: float = 1240.0
-const BATTLE_MIN_Y: float = 280.0
-const BATTLE_MAX_Y: float = 440.0
+# v9.3: 扩大 Y 硬夹范围（原 280~440 仅覆盖旧双行布局；三行布局下行 center+60
+# 在高背景纹理关卡可能 >440；扩大到 200~560 覆盖三行全程 + 高/低车道中心）
+const BATTLE_MIN_Y: float = 200.0
+const BATTLE_MAX_Y: float = 560.0
 ## 我方单位前进上限（留出屏幕边缘余量）
 var PLAYER_MAX_ADVANCE_X: float = BATTLE_MAX_X - 80.0
 ## 全装型静态回退：已对齐 manifest vis_player_029
@@ -594,6 +596,23 @@ func _trigger_hit_shake() -> void:
 		return
 	scale = Vector2.ONE  # 关键：每次重置基准（防 scale 累积漂移）
 	_hit_shake_t = 0.0   # 0.0=开始计时
+
+
+## v10: 受击闪白——极短(0.08s)过亮 modulate 脉冲,补 v8.x 移除的整体变色(做成轻闪,不糊卡图)。
+## 独立 _hit_flash_tween 句柄,与 faction_glow/phantom/fire_pulse/knockback 各不干扰。
+## 仅正常态(modulate=WHITE)触发:克隆体青蓝/阵营泛光进行中跳过,避免色调冲突。
+## motion_reduce/preview 跳过。玩家侧用 tween(因需守卫 modulate 状态);敌方走 _update_hit_animations 计时。
+var _hit_flash_tween: Tween = null
+func _play_hit_flash() -> void:
+	if not is_instance_valid(self) or is_preview_mode or DT.is_motion_reduce():
+		return
+	if modulate != Color.WHITE:
+		return  # 克隆体青蓝/阵营泛光进行中,跳过避免冲突
+	if _hit_flash_tween != null and _hit_flash_tween.is_valid():
+		_hit_flash_tween.kill()
+	modulate = Color(1.8, 1.8, 1.8, 1.0)  # 过亮闪(modulate>1 把卡图中色调推白,模拟受击高光)
+	_hit_flash_tween = create_tween()
+	_hit_flash_tween.tween_property(self, "modulate", Color.WHITE, 0.08).set_ease(Tween.EASE_OUT)
 
 
 ## v8.3: 受击击退位移——沿弹道反方向微位移，给物理反馈（被击不再是"被风吹过"）
@@ -1938,6 +1957,7 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 
 	# 受击反馈：v8.x 去掉整体变色虚化（单位保持卡图清晰），改命中点血溅粒子 + 保留抖动/击退物理反馈
 	_trigger_hit_shake()
+	_play_hit_flash()  # v10: 受击闪白(补 v8.x 移除的整体变色,极短轻闪,不糊卡图)
 	# v8.3: 受击击退——从攻击者位置推方向（被击沿弹道反方向位移）
 	if attacker != null and is_instance_valid(attacker) and (attacker is Node2D):
 		var kb_dir: Vector2 = global_position - (attacker as Node2D).global_position

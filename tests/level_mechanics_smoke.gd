@@ -79,32 +79,29 @@ func _initialize() -> void:
 	if restrict15.has(1):
 		fail.call("装甲(1)不应在白名单")
 
-	# ══════════ 第70关：部署上限已移除（不限单位数量）══════════
-	print("=== 第70关: 部署上限已移除 ===")
+	# ══════════ 第70关：deploy_limit 已移除（上场数现由装备战斗卡数决定）══════════
+	print("=== 第70关: deploy_limit 已移除 ===")
 	var r70: Dictionary = li.get_special_rules(70)
-	var dl70: int = int(r70.get("deploy_limit", 0))
-	print("  deploy_limit=%d (期望 0，无限制)" % dl70)
-	if dl70 != 0:
-		fail.call("第70关 deploy_limit 应已移除（0），实际 %d" % dl70)
-	# 无 deploy_limit：max_units 不被关卡限制，保持基础值 6
-	var base_max_units: int = 6
-	var final_max: int = base_max_units
-	if dl70 > 0:
-		final_max = mini(final_max, dl70)
-	print("  无 deploy_limit 时 max_units 保持 %d (期望 6)" % final_max)
-	if final_max != 6:
-		fail.call("第70关无 deploy_limit，max_units 应保持 6，实际 %d" % final_max)
+	# 关卡不再设 deploy_limit——可上场单位数 = 相位仪实际装备的战斗卡数（get_loadouts().size()）
+	if r70.has("deploy_limit"):
+		fail.call("第70关不应再含 deploy_limit（已改为装备战斗卡数决定）")
+	# 全关卡都不应有 deploy_limit（系统已移除）
+	for lvl in range(1, 101):
+		if li.get_special_rules(lvl).has("deploy_limit"):
+			fail.call("第%d关仍含已废弃的 deploy_limit" % lvl)
+	print("  全 100 关均无 deploy_limit ✓")
 
-	# ══════════ 第100关：多重规则 ══════════
+	# ══════════ 第100关：多重规则（deploy_limit 已移除，仅余 survive_waves + energy）══════════
 	print("=== 第100关: 终局多重规则 ===")
 	var r100: Dictionary = li.get_special_rules(100)
 	var has_win: bool = String(r100.get("win_type", "")) == "survive_waves"
 	var has_energy: bool = absf(float(r100.get("energy_mult", 1.0)) - 0.5) < 0.001
-	var has_deploy: bool = int(r100.get("deploy_limit", 0)) == 4
 	var param100: int = int(r100.get("win_param", 0))
-	print("  survive_waves=%s, energy_mult=0.5: %s, deploy_limit=4: %s, win_param=%d" % [has_win, has_energy, has_deploy, param100])
-	if not has_win or not has_energy or not has_deploy:
-		fail.call("第100关应含多重规则")
+	print("  survive_waves=%s, energy_mult=0.5: %s, win_param=%d" % [has_win, has_energy, param100])
+	if not has_win or not has_energy:
+		fail.call("第100关应含 survive_waves + energy_mult")
+	if r100.has("deploy_limit"):
+		fail.call("第100关不应再含 deploy_limit")
 	if param100 != 15:
 		fail.call("第100关 win_param 应 15")
 
@@ -178,27 +175,28 @@ func _initialize() -> void:
 	if absf(floored - 50.0) > 0.1:
 		fail.call("energy_mult 惩罚应受 50 下限保护")
 
-	# ══════════ 运行时：deploy_limit 三者取 mini ══════════
-	print("=== 运行时: deploy_limit 与相位仪上限/槽位数取 mini ===")
-	# 模拟 request_player_deploy: max_units = mini(相位仪上限, 槽位数, deploy_limit)
-	# 第70关 deploy_limit 已移除，相位仪6槽, 格子5 → mini(6,5)=5
-	var pi_cap: int = 6
-	var grid_slots: int = 5
-	var dl_70: int = int(li.get_special_rules(70).get("deploy_limit", 0))
-	var final_cap_70: int = mini(pi_cap, grid_slots)
-	if dl_70 > 0:
-		final_cap_70 = mini(final_cap_70, dl_70)
-	print("  mini(6, 5, 无) = %d (期望 5)" % final_cap_70)
-	if final_cap_70 != 5:
-		fail.call("第70关无 deploy_limit，应 mini(6,5)=5，实际 %d" % final_cap_70)
-	# 普通关（无 deploy_limit）：deploy_limit=0 时不改变 max_units
-	var dl_normal: int = int(li.get_special_rules(7).get("deploy_limit", 0))
-	var final_cap_normal: int = mini(pi_cap, grid_slots)
-	if dl_normal > 0:
-		final_cap_normal = mini(final_cap_normal, dl_normal)
-	print("  普通关 mini(6, 5, 无) = %d (期望 5)" % final_cap_normal)
-	if final_cap_normal != 5:
-		fail.call("无 deploy_limit 关应保持 mini(6,5)=5")
+	# ══════════ 运行时：上场数 = 装备战斗卡数，由格子数截断（deploy_limit 已移除）══════════
+	print("=== 运行时: max_units = mini(装备战斗卡数, 格子数9) ===")
+	# 模拟 request_player_deploy: max_units = mini(get_max_deployable_units(), grid_slots)
+	# get_max_deployable_units() = 相位仪绿槽实际装备的战斗卡数（get_loadouts().size()）
+	var grid_slots: int = 9
+	# 装备 5 张战斗卡 → 上场 5
+	var equipped_5: int = 5
+	var max_5: int = mini(equipped_5, grid_slots)
+	print("  装备5张 → mini(5, 9) = %d (期望 5)" % max_5)
+	if max_5 != 5:
+		fail.call("装备5张战斗卡应可上场5个，实际 %d" % max_5)
+	# 装备 9 张 → 填满 9 格
+	var equipped_9: int = 9
+	var max_9: int = mini(equipped_9, grid_slots)
+	print("  装备9张 → mini(9, 9) = %d (期望 9)" % max_9)
+	if max_9 != 9:
+		fail.call("装备9张战斗卡应可上场9个，实际 %d" % max_9)
+	# deploy_limit 不再参与：任何关卡都不应读到 deploy_limit
+	for lvl in range(1, 101):
+		if li.get_special_rules(lvl).has("deploy_limit"):
+			fail.call("第%d关仍含已废弃 deploy_limit" % lvl)
+	print("  deploy_limit 已从全关卡移除 ✓")
 
 	# ══════════ 运行时：restrict_platforms 拦截判定 ══════════
 	print("=== 运行时: restrict_platforms 拦截分支 ===")

@@ -336,8 +336,8 @@ const ERA_MASTERS: Array = [
 			"energy_cards": ["flame_energy_advanced"]
 		},
 		"stats": {
-			"max_hp": 3200,
-			"attack_power": 43,
+			"max_hp": 3400,
+			"attack_power": 48,
 			"defense": 23,
 			"energy_regen": 3.0,
 			"unit_limit": 7

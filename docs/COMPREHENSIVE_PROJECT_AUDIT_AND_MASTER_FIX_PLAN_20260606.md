@@ -37,10 +37,10 @@
 | `ENERGY_REGEN_PER_SEC` | 1.0 | 每秒回能 |
 | `PHASE_BASE_DRAIN_PER_SEC` | 0.5 | 相位仪基础消耗/秒 |
 | `PLAYER_SPAWN_INTERVAL` | 10.0s | 玩家单位刷新间隔 |
-| `PLAYER_MAX_UNITS` | 5 | 场上最多5单位 |
+| `PLAYER_MAX_UNITS` | 9 | 场上最多9单位 |
 | `ENEMY_SPAWN_INTERVAL` | 12.0s | 敌方单位刷新间隔 |
 | `ENEMY_WAVE_INTERVAL` | 12.0s | 敌方波次间隔 |
-| `ENEMY_MAX_UNITS` | 5 | 场上最多5敌人 |
+| `ENEMY_MAX_UNITS` | 9 | 场上最多9敌人 |
 
 ### 1.2 核心枚举系统
 

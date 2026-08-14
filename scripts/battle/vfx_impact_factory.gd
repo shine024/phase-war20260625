@@ -465,6 +465,451 @@ static func spawn_pierce_beam(parent: Node2D, world_pos: Vector2, direction: Vec
 	tween.tween_callback(func(): _release_beam(beam))
 
 
+## v12 轨道炮签名穿透命中 —— 动能穿透,不走通用"贴图+爆炸帧"流水线。
+## 轨道炮是超高初速动能穿甲弹,该有的是【震撼+穿透】,而非蓝色能量球:
+##   ① 入口瞬时过曝白闪(ADD 星芒) + 锐利白冲击环 = 撞击"震撼"
+##   ② 白热穿透光迹:从入口贯穿目标到出口(亮核+辉光,短促保留后淡出) = "穿透感"灵魂
+##   ③ 出口 spall:目标背面喷一锥白热碎片+尘(证明打穿了,不是表面爆炸)
+##   ④ 入口少量白火花(动能,非蓝色能量粒子)
+## [param dir] 穿透方向(默认右);[param penetrate_dist] 贯穿距离(目标宽+余量)
+static func spawn_railgun_penetration(parent: Node2D, pos: Vector2, dir: Vector2 = Vector2.RIGHT, penetrate_dist: float = 170.0) -> void:
+	if parent == null or not is_instance_valid(parent):
+		return
+	var motion_reduce: bool = DT.is_motion_reduce()
+	var d := dir.normalized() if dir.length() > 0.01 else Vector2.RIGHT
+	var entry := pos
+	var exit := pos + d * penetrate_dist
+	# ① 入口过曝白闪(impact_metal 星芒贴图,纯白,ADD,极短放大后骤淡)
+	if _active_impact_sprites < MAX_IMPACT_SPRITES:
+		var flash := _acquire_impact_sprite()
+		if flash != null:
+			flash.texture = PARTICLE_TEX_IMPACT_METAL
+			flash.position = entry
+			flash.scale = Vector2(1.8, 1.8)
+			flash.modulate = Color(1.0, 1.0, 1.0, 1.0)
+			flash.visible = true
+			flash.material = _get_add_mat()
+			parent.add_child(flash)
+			flash.add_to_group("battle_vfx")
+			var twf := flash.create_tween().bind_node(flash)
+			twf.tween_property(flash, "scale", Vector2(2.8, 2.8), 0.05)
+			twf.parallel().tween_property(flash, "modulate:a", 0.0, 0.12)
+			twf.tween_callback(func():
+				if is_instance_valid(flash):
+					flash.material = null
+					_release_impact_sprite(flash))
+	# 入口锐利白冲击环(震撼)
+	if not motion_reduce:
+		spawn_shockwave(parent, entry, 95.0, Color(1.0, 1.0, 0.95, 0.9))
+	# ② 白热穿透光迹:贯穿入口→出口,亮核 + 辉光,贯穿瞬间保持全亮后骤淡
+	var core := _acquire_beam()
+	if core != null:
+		var start := entry - d * 26.0
+		var endp := exit + d * 36.0
+		core.width = 8.0
+		core.default_color = Color(1.0, 0.98, 0.92, 1.0)
+		core.joint_mode = Line2D.LINE_JOINT_ROUND
+		core.end_cap_mode = Line2D.LINE_CAP_ROUND
+		core.add_point(start)
+		core.add_point(endp)
+		core.position = Vector2.ZERO
+		core.material = _get_add_mat()  # ADD 让白热光迹过曝发亮
+		parent.add_child(core)
+		_spawn_beam_glow(parent, start, endp, Color(1.0, 0.95, 0.85, 1.0), 26.0, 0.30)
+		var twb := core.create_tween().bind_node(core)
+		twb.tween_interval(0.10)  # v12b: 全亮保持更久(0.04→0.10),让峰值帧仍见清晰光迹
+		twb.tween_property(core, "width", 2.5, 0.20)
+		twb.parallel().tween_property(core, "modulate:a", 0.0, 0.28)
+		twb.tween_callback(func():
+			if is_instance_valid(core):
+				core.material = null
+				_release_beam(core))
+	# ②b 超高速运动模糊线(streak lines):穿透光迹接近侧的细平行余像,卖"超高速弹丸的残影"。
+	# 视觉报告建议——原效果光迹读成激光,缺"速度感";加 3 条逐条后移的细线给动量方向。
+	# 只铺在接近侧(入口左/射击者方向),不穿过目标——是"弹丸飞来的速度线",非二次光迹。
+	if not motion_reduce:
+		var perp := Vector2(-d.y, d.x)  # 垂直法线
+		for i in range(3):
+			var sl := _acquire_beam()
+			if sl == null:
+				break
+			var side: float = 1.0 if i % 2 == 0 else -1.0
+			var off: float = (5.0 + i * 3.5) * side       # 两侧逐条外扩
+			var trail_back: float = 40.0 + i * 16.0        # 逐条后移(拖尾层次),v12d 加长
+			var s_start := entry - d * (24.0 + trail_back) + perp * off
+			var s_end := entry - d * 4.0 + perp * off
+			sl.width = 3.2 - i * 0.4  # v12d 加粗(2.4→3.2)让速度线更醒目
+			sl.default_color = Color(0.88, 0.95, 1.0, 0.95)  # v12d 提亮(0.80→0.95)+微蓝:电磁等离子余像
+			sl.joint_mode = Line2D.LINE_JOINT_ROUND
+			sl.end_cap_mode = Line2D.LINE_CAP_ROUND
+			sl.add_point(s_start)
+			sl.add_point(s_end)
+			sl.position = Vector2.ZERO
+			sl.material = _get_add_mat()
+			parent.add_child(sl)
+			var tsl := sl.create_tween().bind_node(sl)
+			tsl.tween_interval(0.02)
+			tsl.tween_property(sl, "modulate:a", 0.0, 0.16 + i * 0.03)  # v12d 延长淡出(0.10→0.16)峰值帧仍可见
+			tsl.tween_callback(func():
+				if is_instance_valid(sl):
+					sl.material = null
+					_release_beam(sl))
+	# ③ 出口 spall:目标背面喷一锥白热碎片+尘(穿透证据)——这是区分"激光"与"动能穿透"的
+	# 关键视觉锚(报告原效果读成激光:缺出口碎片)。加大数量/尺寸/速度让碎片云清晰可辨。
+	if not motion_reduce and _active_debris < MAX_DEBRIS:
+		_active_debris += 1
+		var spall := _acquire_debris_particle()
+		if spall != null:
+			spall.position = exit
+			spall.texture = PARTICLE_TEX_SPARK_HEAVY
+			spall.amount = 26
+			spall.lifetime = 0.6
+			spall.lifetime_randomness = 0.3
+			spall.initial_velocity_min = 340.0
+			spall.initial_velocity_max = 660.0
+			spall.direction = d
+			spall.spread = 60.0
+			spall.gravity = Vector2(0, 55.0)  # v12e: 斜俯视地面感知——大幅降重力(260→55),碎片飞出后 gently 沉降在落点附近,不穿透地面下坠
+			spall.scale_amount_min = 0.7
+			spall.scale_amount_max = 1.6
+			spall.color = Color(1.0, 0.95, 0.85, 1.0)
+			var sg := Gradient.new()
+			sg.add_point(0.0, Color(1.0, 1.0, 0.95, 1.0))
+			sg.add_point(0.4, Color(1.0, 0.7, 0.4, 0.9))
+			sg.add_point(1.0, Color(0.4, 0.2, 0.1, 0.0))
+			spall.color_ramp = sg
+			spall.emitting = true
+			parent.add_child(spall)
+			var tree := spall.get_tree()
+			if tree != null:
+				var timer := tree.create_timer(spall.lifetime + 0.1)
+				_connect_deferred_release(timer, spall, _release_debris_particle)
+		else:
+			_active_debris -= 1
+	# ③b 出口尘云:碎片伴随的灰白烟尘(被穿透的装甲蒸发感),复用 debris 池 is_smoke 模式
+	if not motion_reduce and _active_debris < MAX_DEBRIS:
+		_active_debris += 1
+		var dust := _acquire_debris_particle()
+		if dust != null:
+			dust.position = exit
+			dust.texture = PARTICLE_TEX_SMOKE_GENERIC
+			dust.amount = 8
+			dust.lifetime = 0.7
+			dust.initial_velocity_min = 60.0
+			dust.initial_velocity_max = 160.0
+			dust.direction = d
+			dust.spread = 70.0
+			dust.gravity = Vector2(0, -20.0)
+			dust.scale_amount_min = 1.2
+			dust.scale_amount_max = 2.4
+			dust.color = Color(0.6, 0.58, 0.55, 0.5)
+			dust.color_ramp = _get_smoke_grad(Color(0.6, 0.58, 0.55, 0.5))
+			dust.emitting = true
+			parent.add_child(dust)
+			var tree2 := dust.get_tree()
+			if tree2 != null:
+				var timer3 := tree2.create_timer(dust.lifetime + 0.1)
+				_connect_deferred_release(timer3, dust, _release_debris_particle)
+		else:
+			_active_debris -= 1
+	# ④ 入口回溅(超高速反向 ejecta):真实弹道学——hyper-velocity 命中入口向射击者方向反喷
+	# 白热碎片(方向 -d = 反穿透)。这是给静态帧定"动量方向"的关键:碎片朝左飞+出口 spall
+	# 朝右飞 = 弹丸从左穿到右,一眼读出"贯穿方向"。原方向 (0,-1) 是通用上喷,无方向信息。
+	if not motion_reduce and _active_sparks < MAX_SPARKS:
+		_active_sparks += 1
+		var sp := _acquire_spark_particle()
+		if sp != null:
+			sp.position = entry
+			sp.texture = PARTICLE_TEX_SPARK_METAL
+			sp.amount = 14
+			sp.lifetime = 0.24
+			sp.lifetime_randomness = 0.3
+			sp.initial_velocity_min = 320.0
+			sp.initial_velocity_max = 620.0
+			sp.direction = -d  # 反穿透方向(向射击者)
+			sp.spread = 50.0
+			sp.angle_min = 0.0
+			sp.angle_max = 360.0
+			sp.gravity = Vector2(0, 45.0)  # v12e: 斜俯视地面感知(130→45),回溅碎片不穿透地面
+			sp.scale_amount_min = 0.34
+			sp.scale_amount_max = 0.56
+			sp.color = Color(1.0, 0.98, 0.9, 1.0)
+			sp.color_ramp = _get_spark_ramp(Color(1.0, 0.98, 0.9, 1.0), 0)
+			sp.emitting = true
+			parent.add_child(sp)
+			var tree := sp.get_tree()
+			if tree != null:
+				var timer2 := tree.create_timer(sp.lifetime + 0.1)
+				_connect_deferred_release(timer2, sp, _release_spark_particle)
+		else:
+			_active_sparks -= 1
+
+
+## v12d: 激光签名灼烧效果——表面能量沉积(非动能穿透)。
+##   与轨道炮刻意区分:轨道炮=贯穿+出口spall+速度线(实心弹丸);激光=表面灼烧+焦痕+
+##   热火花上升+辉光脉冲(相干光束烧蚀)。原激光与轨道炮/欧米茄共用 OMEGA 贴图+能量帧,
+##   读成"通用能量团";本函数给它独立签名。
+##   is_player: 玩家方=青白冷光;敌方=红橙热光——战术可读性(一眼分清谁的激光)。
+##   dir: 攻击方向(来弹方向,v12d 加)——激光是从射手射来的相干光束,命中点画一段指向来源的来弹光束。
+static func spawn_laser_burn(parent: Node2D, pos: Vector2, is_player: bool = true, dir: Vector2 = Vector2.RIGHT) -> void:
+	if parent == null or not is_instance_valid(parent):
+		return
+	var motion_reduce: bool = DT.is_motion_reduce()
+	var beam_col: Color = Color(0.70, 0.95, 1.0, 1.0) if is_player else Color(1.0, 0.50, 0.35, 1.0)
+	var d := dir.normalized() if dir.length() > 0.01 else Vector2.RIGHT
+	# ⓪ 来弹光束:从射手方向(pos - d*L)射向命中点的相干光束——给激光"从哪打来"的方向感。
+	# 比核心光斑细、ADD、快速淡出(命中瞬间残留的入射光路)。
+	var lb := _acquire_beam()
+	if lb != null:
+		var lb_start := pos - d * 110.0
+		var lb_end := pos
+		lb.width = 4.0
+		lb.default_color = Color(beam_col.r, beam_col.g, beam_col.b, 0.95)
+		lb.joint_mode = Line2D.LINE_JOINT_ROUND
+		lb.end_cap_mode = Line2D.LINE_CAP_ROUND
+		lb.add_point(lb_start)
+		lb.add_point(lb_end)
+		lb.position = Vector2.ZERO
+		lb.material = _get_add_mat()
+		parent.add_child(lb)
+		_spawn_beam_glow(parent, lb_start, lb_end, beam_col, 12.0, 0.16)
+		var twlb := lb.create_tween().bind_node(lb)
+		twlb.tween_interval(0.03)
+		twlb.tween_property(lb, "width", 1.5, 0.14)
+		twlb.parallel().tween_property(lb, "modulate:a", 0.0, 0.20)
+		twlb.tween_callback(func():
+			if is_instance_valid(lb):
+				lb.material = null
+				_release_beam(lb))
+	# ① 聚焦灼热光斑:白热核心(亮于光束色),放大→收缩→转光束色(冷却),ADD 过曝
+	if _active_impact_sprites < MAX_IMPACT_SPRITES:
+		var spot := _acquire_impact_sprite()
+		if spot != null:
+			spot.texture = PARTICLE_TEX_IMPACT_ENERGY
+			spot.position = pos
+			spot.scale = Vector2(1.6, 1.6)
+			spot.modulate = Color(1.0, 1.0, 1.0, 1.0)  # 白热核心(冲击瞬间全白)
+			spot.visible = true
+			spot.material = _get_add_mat()
+			parent.add_child(spot)
+			spot.add_to_group("battle_vfx")
+			var tws := spot.create_tween().bind_node(spot)
+			tws.tween_property(spot, "scale", Vector2(1.8, 1.8), 0.06)  # 紧聚焦光斑(激光=相干,小光点)
+			tws.tween_property(spot, "modulate", beam_col, 0.10)  # 白热→光束色(冷却)
+			tws.parallel().tween_property(spot, "scale", Vector2(0.9, 0.9), 0.18)
+			tws.tween_property(spot, "modulate:a", 0.0, 0.22)
+			tws.tween_callback(func():
+				if is_instance_valid(spot):
+					spot.material = null
+					_release_impact_sprite(spot))
+	# ② 能量辉光晕:光束色冲击环脉冲一次(能量扩散,非动能震波)
+	if not motion_reduce:
+		spawn_shockwave(parent, pos, 60.0, Color(beam_col.r, beam_col.g, beam_col.b, 0.55))
+	# ③ 焦痕:深色烧蚀印记,长留(1.2s——比动能焦痕久,激光持续烧蚀表面)。
+	# v12d-fix: 焦痕必须比光斑大(scale 1.6→2.6,>光斑 2.15),否则被 ADD 光斑完全淹没看不到。
+	# 外圈焦黑+微暖色边(烧灼感,非纯黑阴影),作为"激光烧穿表面"的核心证据。
+	if not motion_reduce and _active_impact_sprites < MAX_IMPACT_SPRITES:
+		var scorch := _acquire_impact_sprite()
+		if scorch != null:
+			scorch.texture = PARTICLE_TEX_IMPACT_SCORCH
+			scorch.position = pos
+			scorch.scale = Vector2(1.6, 1.6)
+			scorch.modulate = Color(0.14, 0.08, 0.05, 0.82)  # 深焦黑+微暖红边(烧灼)
+			scorch.visible = true
+			parent.add_child(scorch)
+			scorch.add_to_group("battle_vfx")
+			var twc := scorch.create_tween().bind_node(scorch)
+			twc.tween_property(scorch, "scale", Vector2(2.6, 2.6), 0.25)  # 焦痕扩大到超光斑(持续烧)
+			twc.tween_interval(0.6)
+			twc.tween_property(scorch, "modulate:a", 0.0, 0.4)
+			twc.tween_callback(func():
+				if is_instance_valid(scorch):
+					_release_impact_sprite(scorch))
+	# ④ 上升热火花:小火花向上飘(热对流),非定向 spall——区别于轨道炮的锥形碎片。
+	# v12d-fix: 原 16 个/慢速 40-110/小 0.3-0.5 太弱,峰值帧几乎看不见;加到 26 个/快 100-210/大 0.5-0.8。
+	if not motion_reduce and _active_sparks < MAX_SPARKS:
+		_active_sparks += 1
+		var heat := _acquire_spark_particle()
+		if heat != null:
+			heat.position = pos
+			heat.texture = PARTICLE_TEX_SPARK_ENERGY
+			heat.amount = 26
+			heat.lifetime = 0.5
+			heat.lifetime_randomness = 0.3
+			heat.initial_velocity_min = 100.0
+			heat.initial_velocity_max = 210.0
+			heat.direction = Vector2(0, -1)  # 向上(热气上升)
+			heat.spread = 35.0
+			heat.angle_min = 0.0
+			heat.angle_max = 360.0
+			heat.gravity = Vector2(0, -40.0)  # 负重力(持续上飘)
+			heat.scale_amount_min = 0.5
+			heat.scale_amount_max = 0.8
+			heat.color = beam_col
+			var hg := Gradient.new()
+			hg.add_point(0.0, Color(1.0, 1.0, 1.0, 1.0))
+			hg.add_point(0.4, Color(beam_col.r, beam_col.g, beam_col.b, 0.9))
+			hg.add_point(1.0, Color(beam_col.r * 0.4, beam_col.g * 0.4, beam_col.b * 0.5, 0.0))
+			heat.color_ramp = hg
+			heat.emitting = true
+			parent.add_child(heat)
+			var tree := heat.get_tree()
+			if tree != null:
+				_connect_deferred_release(tree.create_timer(heat.lifetime + 0.1), heat, _release_spark_particle)
+		else:
+			_active_sparks -= 1
+	# ④b 熔融火星:几颗亮橙熔融碎屑上飞(激光烧熔金属溅起),区别于光束色火花——是"被烧熔的物质"。
+	if not motion_reduce and _active_debris < MAX_DEBRIS:
+		_active_debris += 1
+		var molten := _acquire_debris_particle()
+		if molten != null:
+			molten.position = pos
+			molten.texture = PARTICLE_TEX_EMBER
+			molten.amount = 8
+			molten.lifetime = 0.55
+			molten.lifetime_randomness = 0.3
+			molten.initial_velocity_min = 120.0
+			molten.initial_velocity_max = 240.0
+			molten.direction = Vector2(0, -1)
+			molten.spread = 50.0
+			molten.gravity = Vector2(0, 55.0)  # v12e: 斜俯视地面感知(180→55),熔融火星上飞后 gently 落回不穿透地面
+			molten.scale_amount_min = 0.4
+			molten.scale_amount_max = 0.7
+			molten.color = Color(1.0, 0.6, 0.2, 1.0)
+			var mg := Gradient.new()
+			mg.add_point(0.0, Color(1.0, 0.9, 0.5, 1.0))
+			mg.add_point(0.5, Color(1.0, 0.45, 0.1, 0.9))
+			mg.add_point(1.0, Color(0.3, 0.1, 0.0, 0.0))
+			molten.color_ramp = mg
+			molten.emitting = true
+			parent.add_child(molten)
+			var tree3 := molten.get_tree()
+			if tree3 != null:
+				_connect_deferred_release(tree3.create_timer(molten.lifetime + 0.1), molten, _release_debris_particle)
+		else:
+			_active_debris -= 1
+
+
+## v12d: 欧米茄粒子炮签名放电——重型带电粒子径向迸发(大能量核+星芒射线+外向电火花+持续辉光)。
+##   与激光/轨道炮刻意区分:激光=紧焦烧灼+焦痕+上升火星;轨道炮=贯穿+spall+速度线;
+##   欧米茄=大范围径向放电(粒子炮打到表面炸开放射状能量,四面八方)。原与激光/轨道炮共用 OMEGA 贴图。
+##   is_player: 玩家=紫罗兰粒子;敌方=酸绿粒子——战术可读性。
+##   dir: 攻击方向(来弹方向,v12d 加)——粒子炮从射手射来一束粒子流,命中点画指向来源的入射流。
+static func spawn_omega_discharge(parent: Node2D, pos: Vector2, is_player: bool = true, dir: Vector2 = Vector2.RIGHT) -> void:
+	if parent == null or not is_instance_valid(parent):
+		return
+	var motion_reduce: bool = DT.is_motion_reduce()
+	var pcol: Color = Color(0.75, 0.40, 1.0, 1.0) if is_player else Color(0.50, 1.0, 0.40, 1.0)
+	var d := dir.normalized() if dir.length() > 0.01 else Vector2.RIGHT
+	# ⓪ 来弹粒子流:从射手方向(pos - d*L)射向命中点的粒子束——给欧米茄"从哪打来"的方向感。
+	# 比激光粗(粒子流非相干光束)、带辉光、ADD。
+	var istream := _acquire_beam()
+	if istream != null:
+		var is_start := pos - d * 95.0
+		var is_end := pos
+		istream.width = 7.0
+		istream.default_color = Color(pcol.r, pcol.g, pcol.b, 0.9)
+		istream.joint_mode = Line2D.LINE_JOINT_ROUND
+		istream.end_cap_mode = Line2D.LINE_CAP_ROUND
+		istream.add_point(is_start)
+		istream.add_point(is_end)
+		istream.position = Vector2.ZERO
+		istream.material = _get_add_mat()
+		parent.add_child(istream)
+		_spawn_beam_glow(parent, is_start, is_end, pcol, 18.0, 0.16)
+		var twis := istream.create_tween().bind_node(istream)
+		twis.tween_interval(0.03)
+		twis.tween_property(istream, "width", 2.0, 0.16)
+		twis.parallel().tween_property(istream, "modulate:a", 0.0, 0.22)
+		twis.tween_callback(func():
+			if is_instance_valid(istream):
+				istream.material = null
+				_release_beam(istream))
+	# ① 大型能量核心:impact_energy 贴图,ADD,放大后缓缩(重武器,比激光核大且久)
+	if _active_impact_sprites < MAX_IMPACT_SPRITES:
+		var ocore := _acquire_impact_sprite()
+		if ocore != null:
+			ocore.texture = PARTICLE_TEX_IMPACT_ENERGY
+			ocore.position = pos
+			ocore.scale = Vector2(2.0, 2.0)
+			ocore.modulate = Color(1.0, 1.0, 1.0, 1.0)  # 白热冲击瞬间
+			ocore.visible = true
+			ocore.material = _get_add_mat()
+			parent.add_child(ocore)
+			ocore.add_to_group("battle_vfx")
+			var twc := ocore.create_tween().bind_node(ocore)
+			twc.tween_property(ocore, "scale", Vector2(3.2, 3.2), 0.08)  # 大爆开
+			twc.tween_property(ocore, "modulate", pcol, 0.12)  # 白→粒子色
+			twc.parallel().tween_property(ocore, "scale", Vector2(1.8, 1.8), 0.30)  # 缓缩(持续辉光)
+			twc.tween_property(ocore, "modulate:a", 0.0, 0.35)
+			twc.tween_callback(func():
+				if is_instance_valid(ocore):
+					ocore.material = null
+					_release_impact_sprite(ocore))
+	# ② 径向星芒放电:7 条细线从中心向外辐射(粒子迸发特征——能量四面八方炸开)
+	if not motion_reduce:
+		var ray_count := 7
+		for i in range(ray_count):
+			var ray := _acquire_beam()
+			if ray == null:
+				continue
+			var ang: float = (float(i) / float(ray_count)) * TAU + randf() * 0.3
+			var rdir := Vector2(cos(ang), sin(ang))
+			var inner := 8.0
+			var outer := 70.0 + randf() * 30.0
+			ray.width = 2.6
+			ray.default_color = Color(pcol.r, pcol.g, pcol.b, 0.95)
+			ray.joint_mode = Line2D.LINE_JOINT_ROUND
+			ray.end_cap_mode = Line2D.LINE_CAP_ROUND
+			ray.add_point(pos + rdir * inner)
+			ray.add_point(pos + rdir * outer)
+			ray.position = Vector2.ZERO
+			ray.material = _get_add_mat()
+			parent.add_child(ray)
+			var twr := ray.create_tween().bind_node(ray)
+			twr.tween_interval(0.02)
+			twr.tween_property(ray, "modulate:a", 0.0, 0.18)
+			twr.tween_callback(func():
+				if is_instance_valid(ray):
+					ray.material = null
+					_release_beam(ray))
+	# ③ 外向能量火花:粒子向四面散开(spread 180 径向),区别于激光的上升火星。
+	if not motion_reduce and _active_sparks < MAX_SPARKS:
+		_active_sparks += 1
+		var sp := _acquire_spark_particle()
+		if sp != null:
+			sp.position = pos
+			sp.texture = PARTICLE_TEX_SPARK_ENERGY
+			sp.amount = 22
+			sp.lifetime = 0.4
+			sp.lifetime_randomness = 0.3
+			sp.initial_velocity_min = 180.0
+			sp.initial_velocity_max = 360.0
+			sp.direction = Vector2(0, -1)
+			sp.spread = 180.0  # 全方向(径向迸发)
+			sp.angle_min = 0.0
+			sp.angle_max = 360.0
+			sp.gravity = Vector2(0, 35.0)  # v12e: 斜俯视地面感知(60→35),径向电火花不穿透地面
+			sp.scale_amount_min = 0.4
+			sp.scale_amount_max = 0.7
+			sp.color = pcol
+			var sg := Gradient.new()
+			sg.add_point(0.0, Color(1.0, 1.0, 1.0, 1.0))
+			sg.add_point(0.4, Color(pcol.r, pcol.g, pcol.b, 0.9))
+			sg.add_point(1.0, Color(pcol.r * 0.4, pcol.g * 0.4, pcol.b * 0.5, 0.0))
+			sp.color_ramp = sg
+			sp.emitting = true
+			parent.add_child(sp)
+			var tree := sp.get_tree()
+			if tree != null:
+				_connect_deferred_release(tree.create_timer(sp.lifetime + 0.1), sp, _release_spark_particle)
+		else:
+			_active_sparks -= 1
+	# ④ 持续辉光环:慢扩散能量环(重武器余波)
+	if not motion_reduce:
+		spawn_shockwave(parent, pos, 80.0, Color(pcol.r, pcol.g, pcol.b, 0.5))
+
+
 ## 溅射冲击波环（v8.2：加长到可看清）
 static func spawn_shockwave(parent: Node2D, world_pos: Vector2, radius: float, color: Color = Color(1.0, 0.6, 0.2, 0.8)) -> void:
 	if parent == null or not is_instance_valid(parent):
@@ -475,9 +920,18 @@ static func spawn_shockwave(parent: Node2D, world_pos: Vector2, radius: float, c
 	ring.position = world_pos
 	_configure_ring_polygon(ring, 8.0, color)
 	parent.add_child(ring)
+	# v12e: 消散感——扩散到 1.22x 半径(向外继续散,不停在固定位置=不"撞墙消失"),
+	# alpha 用 ease(开头实→末尾平滑渐淡,非末尾骤淡),duration 0.40→0.52 留尾。
 	var tween := ring.create_tween()
-	var col_closing: Color = Color(color.r, color.g, color.b, 0.0)
-	tween.tween_method(func(r: float): _configure_ring_polygon(ring, r, color.lerp(col_closing, 1.0 - (radius - r) / maxf(radius - 8.0, 1.0) if r < radius else 1.0)), 8.0, radius, 0.40)
+	var end_r: float = radius * 1.22
+	var base_a: float = color.a
+	tween.tween_method(
+		func(r: float):
+			var t: float = clampf((r - 8.0) / maxf(end_r - 8.0, 1.0), 0.0, 1.0)
+			# ease_out_cubic 近似:留尾(前段实,后段渐淡),t^1.6 让淡出更柔
+			var a: float = base_a * (1.0 - pow(t, 1.6))
+			_configure_ring_polygon(ring, r, Color(color.r, color.g, color.b, a)),
+		8.0, end_r, 0.52)
 	tween.tween_callback(func(): _release_ring(ring))
 
 
@@ -547,19 +1001,25 @@ static func spawn_impact_sprite(parent: Node2D, world_pos: Vector2, texture: Tex
 		return
 	if DT.is_motion_reduce():
 		return  # 减动效：跳过贴图层，粒子层已足够
+	# v12e: 每次爆炸加随机旋转 + 缩放抖动(±10%),避免每次都轴对齐=死圆/重复。
+	# (爆炸贴图非完美对称,旋转能制造变化;即便贴图偏圆,缩放抖动也让大小不死板)
+	var rot: float = randf() * TAU
+	var sc_jit: float = 0.90 + randf() * 0.22  # 0.90~1.12
+	var pk: float = scale_peak * sc_jit
 	# v9.2: 第1层——外层光晕（ADD 混合，大尺度低 alpha，模拟爆炸整体火光弥散）
 	var glow := _acquire_impact_sprite()
 	if glow != null:
 		glow.texture = texture
 		glow.position = world_pos
-		glow.scale = Vector2(scale_peak * 1.4, scale_peak * 1.4)
+		glow.rotation = rot
+		glow.scale = Vector2(pk * 1.4, pk * 1.4)
 		glow.modulate = Color(1.0, 0.85, 0.6, 0.5)  # 暖白光晕
 		glow.visible = true
 		glow.material = _get_add_mat()  # ADD 混合让光晕发亮
 		parent.add_child(glow)
 		glow.add_to_group("battle_vfx")  # v9.4: 战斗结束兜底清理（tween 中断时不残留）
 		var tw_glow := glow.create_tween()
-		tw_glow.tween_property(glow, "scale", Vector2(scale_peak * 1.8, scale_peak * 1.8), life * 0.5).set_ease(Tween.EASE_OUT)
+		tw_glow.tween_property(glow, "scale", Vector2(pk * 1.8, pk * 1.8), life * 0.5).set_ease(Tween.EASE_OUT)
 		tw_glow.parallel().tween_property(glow, "modulate:a", 0.0, life * 0.8).set_ease(Tween.EASE_IN)
 		tw_glow.tween_callback(func(): _release_impact_sprite(glow))
 	# v9.2: 第2层——主体火球（ADD 混合，快速膨胀→淡出，模拟火球爆炸消散）
@@ -568,7 +1028,8 @@ static func spawn_impact_sprite(parent: Node2D, world_pos: Vector2, texture: Tex
 		return  # 池满，静默丢弃（节流）
 	sprite.texture = texture
 	sprite.position = world_pos
-	sprite.scale = Vector2(scale_peak * 0.5, scale_peak * 0.5)  # 起始小
+	sprite.rotation = rot + (randf() - 0.5) * 0.6  # 主体与光晕略错开旋转(更不规则)
+	sprite.scale = Vector2(pk * 0.5, pk * 0.5)  # 起始小
 	sprite.modulate = Color(1.0, 1.0, 1.0, 1.0)
 	sprite.visible = true
 	sprite.material = _get_add_mat()  # v9.2: ADD 混合让爆炸有火光明亮感
@@ -576,7 +1037,7 @@ static func spawn_impact_sprite(parent: Node2D, world_pos: Vector2, texture: Tex
 	sprite.add_to_group("battle_vfx")  # v9.4: 战斗结束兜底清理（tween 中断时不残留）
 	# 快速膨胀到峰值 → 缓慢淡出（模拟爆炸火球膨胀消散）
 	var tween := sprite.create_tween()
-	tween.tween_property(sprite, "scale", Vector2(scale_peak, scale_peak), life * 0.3).set_ease(Tween.EASE_OUT)
+	tween.tween_property(sprite, "scale", Vector2(pk, pk), life * 0.3).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(sprite, "modulate:a", 0.0, life).set_ease(Tween.EASE_IN)
 	tween.tween_callback(func(): _release_impact_sprite(sprite))
 

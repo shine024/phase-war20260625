@@ -203,6 +203,9 @@ static func _weapon_pool_for_era_and_kind(era: int, kind: int) -> Array:
 
 static var _generated_cache: Dictionary = {}
 static var _era_bp_count_cache: Dictionary = {}
+## v9.x: get_ids_for_era 结果按 era 缓存，避免每波次 O(150) 全量遍历
+static var _era_ids_cache: Dictionary = {}
+static var _era_ids_cache_valid: bool = false
 
 static func _get_generated_archetypes() -> Dictionary:
 	if not _generated_cache.is_empty():
@@ -323,6 +326,9 @@ static func _ensure_manifest_merged() -> void:
 		if not _manifest_merged.has(aid):
 			_manifest_merged[aid] = sub.duplicate(true)
 	_manifest_building = false
+	# v9.x: manifest 重建后失效 era 缓存，确保下次 get_ids_for_era 读新数据
+	_era_ids_cache_valid = false
+	_era_ids_cache.clear()
 
 	# ─────────────────────────────────────────────
 	# 合并生成敌人的数据，确保不覆盖已存在的 display_name
@@ -490,11 +496,16 @@ static func should_spawn_as_swarm(id: String) -> bool:
 	return bool(get_config(id).get("swarm_unit", false))
 
 static func get_ids_for_era(era: int) -> Array:
+	if _era_ids_cache_valid and _era_ids_cache.has(era):
+		return _era_ids_cache[era]
+	var safe_era: int = clampi(era, 0, ERA_PREFIX.size() - 1)
 	var result: Array = []
 	for id_key in get_all_ids():
 		var cfg: Dictionary = get_config(id_key)
-		if cfg.get("era", 0) == era:
+		if cfg.get("era", 0) == safe_era:
 			result.append(id_key)
+	_era_ids_cache[safe_era] = result
+	_era_ids_cache_valid = true
 	return result
 
 static func get_drop_definitions(id: String) -> Array:
@@ -646,6 +657,9 @@ static func get_visual_archetype_id_for_card(card_id: String) -> String:
 static func rebuild_card_to_archetype_lookup() -> void:
 	_card_to_archetype_lookup_built = false
 	_build_card_to_archetype_lookup()
+	# v9.x: 强制重建时也失效 era 缓存
+	_era_ids_cache_valid = false
+	_era_ids_cache.clear()
 
 static func _build_card_to_archetype_lookup() -> void:
 	_card_to_archetype_lookup.clear()

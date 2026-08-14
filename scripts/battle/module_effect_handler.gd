@@ -268,7 +268,8 @@ static func _apply_splash(attacker: Node, target: Node, damage: float, stats: Un
 	# 溅射逻辑：对目标周围其他敌人造成溅射伤害
 	var splash_dmg = damage * clampf(stats.splash_damage, 0.10, 0.80)  # v7.x: 上限 60%→80%，下限 10%
 	# v7.x: 半径支持改造加成（子母弹/近炸引信），改造加成 x2 使其更显著
-	var radius: float = 80.0 * (1.0 + maxf(0.0, stats.splash_radius_bonus) * 2.0)
+	# v9.3: 基础半径 80→100，覆盖三行布局对角线（row0↔row2 = 90px）
+	var radius: float = 100.0 * (1.0 + maxf(0.0, stats.splash_radius_bonus) * 2.0)
 	# v8.1: 溅射冲击波环——在主目标位置 spawn 地面扩散环，半径=溅射范围
 	# v9.2: 用鲜明亮橙黄色（区别于燃烧的橙红、化学的绿、纳米的青），让"溅射爆炸"一眼可辨。
 	#   色值 1.0/0.75/0.15 = 亮橙黄（爆炸火光），alpha 0.9 比默认 0.8 更醒目。
@@ -415,11 +416,18 @@ static func _find_nearby_enemies(center: Node, radius: float) -> Array:
 	var tree = center.get_tree()
 	if tree == null:
 		return []
-	# 找同组目标（玩家打敌人/敌人打玩家）
-	if center.is_in_group("player_units"):
-		targets = tree.get_nodes_in_group("enemy_units")
-	elif center.is_in_group("enemy_units"):
-		targets = tree.get_nodes_in_group("player_units")
+	# 优先用 BattleManager 的节流缓存，避免每命中一次全树扫描
+	bm = _get_battle_manager()
+	if bm != null and bm.has_method("get_cached_nodes_in_group"):
+		if center.is_in_group("player_units"):
+			targets = bm.get_cached_nodes_in_group("enemy_units")
+		elif center.is_in_group("enemy_units"):
+			targets = bm.get_cached_nodes_in_group("player_units")
+	else:
+		if center.is_in_group("player_units"):
+			targets = tree.get_nodes_in_group("enemy_units")
+		elif center.is_in_group("enemy_units"):
+			targets = tree.get_nodes_in_group("player_units")
 	var result: Array = []
 	for t in targets:
 		if is_instance_valid(t) and t != center:
@@ -752,8 +760,13 @@ static func _find_nearby_allies(center: Node, radius: float) -> Array:
 	var tree = center.get_tree()
 	if tree == null:
 		return []
+	# 优先用 BattleManager 的节流缓存，避免每帧全树扫描
 	var group_name: String = "player_units" if is_player_center else "enemy_units"
-	var targets: Array = tree.get_nodes_in_group(group_name)
+	var targets: Array = []
+	if bm != null and bm.has_method("get_cached_nodes_in_group"):
+		targets = bm.get_cached_nodes_in_group(group_name)
+	else:
+		targets = tree.get_nodes_in_group(group_name)
 	var result: Array = []
 	for t in targets:
 		if is_instance_valid(t) and t != center:
@@ -860,8 +873,8 @@ static func _apply_minefield_damage(unit: Node, stats: UnitStats, delta: float) 
 	# 到达节流阈值，重置计时并触发伤害
 	unit.set_meta("_minefield_acc", 0.0)
 	var dmg_per_tick: float = stats.minefield_damage * MINEFIELD_TICK_INTERVAL  # 每秒 = minefield_damage
-	# 复用 splash 半径口径（80 × (1 + bonus)），让 for_11 改造数值与溅射机制视觉一致
-	var radius: float = 80.0 * (1.0 + maxf(0.0, stats.splash_radius_bonus) * 2.0)
+	# v9.3: 复用 splash 半径口径（100 × (1 + bonus)），与 _apply_splash 保持一致
+	var radius: float = 100.0 * (1.0 + maxf(0.0, stats.splash_radius_bonus) * 2.0)
 	var enemies: Array = _find_nearby_enemies(unit, radius)
 	for e in enemies:
 		if e == null or not is_instance_valid(e):
@@ -1141,9 +1154,16 @@ static func _tick_radar_lock(unit: Node, delta: float) -> void:
 	var tree: SceneTree = unit.get_tree() if unit != null else null
 	if tree == null:
 		return
+	# 优先用 BattleManager 的节流缓存，避免每次雷达扫描全树遍历
+	var targets: Array = []
+	var _rm = _get_battle_manager()
+	if _rm != null and _rm.has_method("get_cached_nodes_in_group"):
+		targets = _rm.get_cached_nodes_in_group(grp)
+	else:
+		targets = tree.get_nodes_in_group(grp)
 	var best: Node = null
 	var best_hp: float = -1.0
-	for n in tree.get_nodes_in_group(grp):
+	for n in targets:
 		if n == null or not is_instance_valid(n) or not (n is Node2D):
 			continue
 		# 跳过已被锁定的

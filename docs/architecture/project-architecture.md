@@ -247,7 +247,7 @@ Phase Law passive bonus: `value *= (1 + (law_level - 1) * 0.02)`
 | Effect | Trigger | Formula |
 |--------|---------|---------|
 | Lifesteal | Every hit | `heal = damage_dealt * lifesteal` |
-| Splash | Every hit | `splash_dmg = damage * splash_damage`, 80px radius |
+| Splash | Every hit | `splash_dmg = damage * splash_damage`, 100px radius |
 | Chain Lightning | Probabilistic (randf() < chain_chance) | 75% damage per hop, max 5 targets, 200px |
 | Shield on Kill | Enemy death | `shield = max_hp * shield_on_kill` |
 | HP Regen | Every frame | `heal = max_hp * hp_regen * delta` |
@@ -495,7 +495,7 @@ abandoned feature branches or incomplete refactors.
 | `survival_rate = (max_deployed - lost) / max_deployed` | battle_manager.gd |
 | `fragment_bonus = min(1.0, recon_units * 0.25)` | battle_manager.gd |
 | `crit: damage *= 1.5 when randf() < crit_chance` | affix_combat_handler.gd |
-| `splash: damage * splash_damage, 80px radius` | affix_combat_handler.gd |
+| `splash: damage * splash_damage, 100px radius` | affix_combat_handler.gd |
 | `chain: damage * 0.75, max 5 hops, 200px` | affix_combat_handler.gd |
 | `passive law: value *= 1 + (lv - 1) * 0.02` | phase_law_manager.gd |
 | `mutation trigger: 25% chance at affix level 5` | affix_definitions.gd |

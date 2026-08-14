@@ -63,8 +63,8 @@ const ERA_MASTERS: Array = [
 			"energy_cards": ["void_energy_expert"]
 		},
 		"stats": {
-			"max_hp": 22950,
-			"attack_power": 315,
+			"max_hp": 25200,
+			"attack_power": 295,
 			"defense": 41,
 			"energy_regen": 4.5,
 			"unit_limit": 7
@@ -127,8 +127,8 @@ const ERA_MASTERS: Array = [
 			"energy_cards": ["steel_energy_god"]
 		},
 		"stats": {
-			"max_hp": 22950,
-			"attack_power": 315,
+			"max_hp": 26200,
+			"attack_power": 308,
 			"defense": 76,
 			"energy_regen": 4.0,
 			"unit_limit": 12
@@ -197,8 +197,8 @@ const ERA_MASTERS: Array = [
 			"energy_cards": ["flame_energy_god"]
 		},
 		"stats": {
-			"max_hp": 23200,
-			"attack_power": 320,
+			"max_hp": 27400,
+			"attack_power": 322,
 			"defense": 50,
 			"energy_regen": 4.5,
 			"unit_limit": 11
@@ -243,7 +243,22 @@ const ERA_MASTERS: Array = [
 				"params": {"damage_mult": 1.8}
 			}
 		],
-		"passive_spells": [],
+		"passive_spells": [
+			{
+				"id": "thunder_mastery_028",
+				"name": "雷神威能",
+				"description": "三维攻击+12%",
+				"effect": "thunder_mastery",
+				"params": {"damage_boost": 0.12}
+			},
+			{
+				"id": "lightning_aura_028",
+				"name": "雷暴光环",
+				"description": "周期性对范围内玩家单位造成雷电伤害",
+				"effect": "lightning_aura",
+				"params": {"damage_mult": 1.0}
+			}
+		],
 		"equipment": {
 			"phase_instrument": "pi_thunder_05",
 			"level": 29,
@@ -252,8 +267,8 @@ const ERA_MASTERS: Array = [
 			"energy_cards": ["thunder_energy_god"]
 		},
 		"stats": {
-			"max_hp": 23200,
-			"attack_power": 320,
+			"max_hp": 28400,
+			"attack_power": 335,
 			"defense": 50,
 			"energy_regen": 6.0,
 			"unit_limit": 10
@@ -330,8 +345,8 @@ const ERA_MASTERS: Array = [
 			"energy_cards": ["void_energy_god"]
 		},
 		"stats": {
-			"max_hp": 23450,
-			"attack_power": 325,
+			"max_hp": 29600,
+			"attack_power": 348,
 			"defense": 44,
 			"energy_regen": 5.5,
 			"unit_limit": 9
@@ -410,8 +425,8 @@ const ERA_MASTERS: Array = [
 			"energy_cards": ["hybrid_energy_god"]
 		},
 		"stats": {
-			"max_hp": 23450,
-			"attack_power": 325,
+			"max_hp": 30800,
+			"attack_power": 360,
 			"defense": 47,
 			"energy_regen": 8.0,
 			"unit_limit": 15

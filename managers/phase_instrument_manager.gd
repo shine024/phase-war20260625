@@ -124,6 +124,11 @@ var _cached_player_rank_stars: int = 3
 var _cached_enemy_rank_stars: int = 3
 # v7.x: 当前战斗缓存的玩家相位师完整评估（含 raw/compressed/Lv/scores），供 UI 读取
 var _cached_player_master_eval: Dictionary = {}
+# v7.x perf: refresh_player_master_eval 是否已排队等待下帧执行。
+# 重算涉及遍历所有绿槽卡 × 7 层加成链（每张卡 build_stats_from_card→apply_growth→
+# 势力技能→affix→相位仪/场→符文之语→combat_power），同步执行会阻塞当前帧造成卡顿。
+# 用 call_deferred 推迟到帧尾，多次请求合并为一次执行。
+var _refresh_eval_pending: bool = false
 
 ## 相位师星级 → 排名加成系数（0.85~1.25）
 static func get_rank_coefficient(stars: int) -> float:
@@ -524,11 +529,26 @@ func clear_rank_cache() -> void:
 	_cached_player_rank_stars = 3
 	_cached_enemy_rank_stars = 3
 	_cached_player_master_eval = {}
+	_refresh_eval_pending = false
 
 ## v7.x: 重算并刷新玩家相位师战力缓存，emit 变化信号。
 ## 任何会改变玩家卡战力的养成操作（强化/改造/进化/装卸卡/换相位仪/装卸符文/升相位场/激活势力/装词条）
 ## 都应在操作成功后调用此方法，避免 UI 显示陈旧缓存（面板 3000 vs 上场 12000 的根因）。
+##
+## v7.x perf: 改为延迟执行。重算要遍历所有绿槽卡走完整 7 层加成链，同步执行会阻塞帧
+## （典型症状：升相位场/加技能点时画面卡顿）。call_deferred 把重算推到帧尾，且多次请求
+## 合并为一次执行（_refresh_eval_pending 守卫）。信号在下帧 emit，UI 在下帧刷新——
+## 玩家操作（点击按钮、动画播放）无感知延迟，但帧不再被重算阻塞。
 func refresh_player_master_eval() -> void:
+	if _refresh_eval_pending:
+		return
+	_refresh_eval_pending = true
+	call_deferred("_refresh_player_master_eval_impl")
+
+
+## v7.x perf: refresh_player_master_eval 的延迟实现（勿直接调用，用上面的公开接口）。
+func _refresh_player_master_eval_impl() -> void:
+	_refresh_eval_pending = false
 	var eval: Dictionary = MasterPlayerAssembler.evaluate_player_stars(self)
 	_cached_player_master_eval = eval
 	_cached_player_rank_stars = clampi(int(eval.get("stars", 3)), 1, 7)
@@ -1535,14 +1555,12 @@ func _can_equip_card_to_color(card: CardResource, color: String) -> bool:
 func get_card_by_id(card_id: String) -> CardResource:
 	return _get_default_cards().get_card_by_id(card_id)
 
-## 获取当前相位仪的最大单位上场数量（基于绿色槽位数量）
-## 绿色槽位数量直接决定可上场的平台卡数量
+## 获取当前相位仪的最大单位上场数量。
+## = 当前实际装备的战斗卡（绿槽）数量——装几张战斗卡就可上场几个单位。
+## get_loadouts() 已过滤 card_type==COMBAT_UNIT 且带缓存（equip/unequip 时失效）。
+## 上限仍由战场格子数（9）在 BattleSpawnSystem 侧 mini 截断。
 func get_max_deployable_units() -> int:
-	var cfg: Dictionary = get_current_instrument()
-	var slot_counts: Dictionary = cfg.get("slot_counts", {})
-	var green_slots: int = int(slot_counts.get("green", 1))
-	# 绿色槽位数量 = 可上场的平台卡数量
-	return clampi(green_slots, 1, GC.PLAYER_MAX_UNITS)
+	return get_loadouts().size()
 
 ## 获取当前相位仪的绿色槽位数量
 func get_green_slot_count() -> int:

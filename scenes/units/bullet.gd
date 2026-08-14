@@ -479,6 +479,10 @@ func _spawn_tex_impact_at(world_pos: Vector2) -> void:
 
 	# v8.1: 构造命中特效 opts（暴击/穿透标记），读取后清零
 	var opts: Dictionary = {}
+	# v12d: 始终传攻击方向(弹丸飞行 _direction)给命中特效——签名武器(轨道炮贯穿/激光灼烧/
+	# 欧米茄放电)按真实来弹方向定向。原仅穿透技能传 direction,普通直射命中方向恒为默认右
+	# (vfx_impact_factory 里 opts.get("direction", RIGHT) 永远取 RIGHT → 方向错乱)。
+	opts["direction"] = _direction
 	if _pending_crit:
 		opts["is_crit"] = true
 	if _pending_pierce:
@@ -557,8 +561,13 @@ func _process(delta: float) -> void:
 		_finish_tex_bullet()
 		return
 	else:
-		# 激光/狙击等保持精准指向目标，其他武器略带跟踪
-		if weapon_type in [8, 6, 9]:
+		# v9.3: 穿透子弹（已撞过至少1个目标）保持直线飞行，不跟踪新目标——
+		# 穿透语义是"子弹沿原方向直线穿过多个单位"，跟踪会让子弹急转弯不合理
+		if _pierce_hit_targets.size() > 0:
+			# 保持 _direction 不变，直线继续飞向下一个穿透目标
+			pass
+		elif weapon_type in [8, 6, 9]:
+			# 激光/狙击等保持精准指向目标，其他武器略带跟踪
 			_direction = (target.global_position - global_position).normalized()
 		else:
 			var desired := (target.global_position - global_position).normalized()
@@ -807,6 +816,48 @@ func _get_aoe_damage_targets(center: Vector2, radius: float, primary: Node2D) ->
 				if child.global_position.distance_squared_to(center) <= r2:
 					targets.append(child)
 	return targets
+
+## v9.3: 穿透子弹找下一个目标——沿子弹飞行方向，找前方扇形区域内最近且未撞过的敌方单位。
+## 复用 spatial_grid.query_nearby 做候选收集（避免全树遍历），再用方向点积筛选"前方"目标。
+## search_radius：扫描半径（像素），覆盖三行布局单位间距（约 150~200px）
+## dir_threshold：方向点积下限（cos 阈值），>0 表示只选飞行方向前方的目标（不选身后的）
+func _find_next_pierce_target(origin: Vector2, fly_dir: Vector2, search_radius: float = 300.0, dir_threshold: float = 0.3) -> Node2D:
+	var dir: Vector2 = fly_dir.normalized()
+	var tree := get_tree()
+	if tree == null:
+		return null
+	var bm: Node = tree.root.get_node_or_null("BattleManager")
+	if bm == null or not is_instance_valid(bm) or bm.get("battle_active") != true:
+		return null
+	var grid: Variant = bm.get("spatial_grid")
+	if grid == null or not is_instance_valid(grid) or not grid.has_method("query_nearby"):
+		return null
+	var best: Node2D = null
+	var best_d2: float = 1e12
+	for node in grid.query_nearby(origin, search_radius):
+		if node == null or not is_instance_valid(node):
+			continue
+		if not (node is Node2D):
+			continue
+		if not node.has_method("take_damage"):
+			continue
+		# 跳过已撞过的目标（穿透去重）
+		if _pierce_hit_targets.has(node):
+			continue
+		var np: Node2D = node as Node2D
+		var to_node: Vector2 = (np.global_position - origin)
+		var dist: float = to_node.length()
+		if dist < 1.0 or dist > search_radius:
+			continue
+		# 方向筛选：只选飞行方向前方的目标（点积 > 阈值），避免穿透子弹回头打身后的
+		var dot: float = to_node.normalized().dot(dir)
+		if dot < dir_threshold:
+			continue
+		var d2: float = dist * dist
+		if d2 < best_d2:
+			best_d2 = d2
+			best = np
+	return best
 
 ## v9.3: TANK_GUN 命中后淡出（避免与下一发射击叠加，让重炮视觉清晰）
 const TANK_GUN_DISAPPEAR_AFTER: float = 0.20  # 命中后保持可见 0.2s（约 12 帧）
@@ -1173,6 +1224,12 @@ func _on_hit(primary: Node2D) -> void:
 			_pierce_damage_mult *= (1.0 - _pierce_falloff)
 			# 衰减下限保护：避免穿透太多次后伤害趋近 0（保留至少 10% 伤害）
 			_pierce_damage_mult = maxf(_pierce_damage_mult, 0.10)
+		# v9.3: 穿透后获取下一个目标——沿子弹飞行方向找最近未撞过的敌方单位，
+		# 重新赋给 target，让 _process 下一帧的距离检测能命中它。
+		# 之前只递减计数/衰减伤害但未重设 target，子弹穿透后永远撞不到第二个目标（既有 bug）。
+		var _next_target: Node2D = _find_next_pierce_target(global_position, _direction)
+		if _next_target != null:
+			target = _next_target
 		return
 
 	_finish_tex_bullet()

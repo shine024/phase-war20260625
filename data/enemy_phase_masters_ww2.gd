@@ -55,8 +55,8 @@ const ERA_MASTERS: Array = [
 			"energy_cards": ["thunder_energy_advanced"]
 		},
 		"stats": {
-			"max_hp": 5200,
-			"attack_power": 73,
+			"max_hp": 5000,
+			"attack_power": 68,
 			"defense": 32,
 			"energy_regen": 3.5,
 			"unit_limit": 6

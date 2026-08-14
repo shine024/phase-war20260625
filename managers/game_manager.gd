@@ -29,7 +29,6 @@ var last_battle_reward_summary: Dictionary = {}
 # 供 mvp_panel 新增"本局缴获与战利品"分区逐项显示。每项形如
 # {category:"card|rune|mod_blueprint|instrument|resource", id, name, count, rarity, star, source}
 var _battle_reward_collector: Array = []
-var _blueprint_copies_before_battle: Dictionary = {}
 var _knowledge_before_battle: Dictionary = {}
 var _plm: Node = null  ## 安全引用：PhaseLawManager 本地缓存
 var _cached_power_rating: int = 0  ## v6.6(剧情): 玩家战力评级缓存（补剧情.txt L41）
@@ -1211,29 +1210,28 @@ func _grant_battle_experience(player_won: bool) -> void:
 		ir.add_experience(iid, per_card)
 
 func _snapshot_battle_reward_baselines() -> void:
-	_blueprint_copies_before_battle.clear()
 	_knowledge_before_battle.clear()
 	_ensure_plm()
 	if _plm and _plm.has_method("get_knowledge_snapshot"):
 		_knowledge_before_battle = _plm.get_knowledge_snapshot()
-	if BlueprintManager and BlueprintManager.has_method("get_all_blueprint_ids"):
-		for id_raw in BlueprintManager.get_all_blueprint_ids():
-			var card_id: String = String(id_raw)
-			_blueprint_copies_before_battle[card_id] = int(BlueprintManager.get_blueprint_copies(card_id))
+	# v7.x 性能：蓝图片段改用 BlueprintManager 脏集增量计算（见 _calculate_blueprint_fragment_gain），
+	# 不再开战时全量快照 ~133 蓝图。此处清空脏集，确保只统计本场战斗的增量。
+	if BlueprintManager and BlueprintManager.has_method("take_blueprint_copy_delta"):
+		BlueprintManager.take_blueprint_copy_delta()
 
 func _calculate_blueprint_fragment_gain() -> Dictionary:
+	# v7.x 性能：改读 BlueprintManager 脏集增量（仅变动过的卡，通常 0-5 张），
+	# 替代旧的全量 ~133 蓝图 before/after diff。
+	if not BlueprintManager or not BlueprintManager.has_method("take_blueprint_copy_delta"):
+		return {"total": 0, "items": []}
+	var deltas: Dictionary = BlueprintManager.take_blueprint_copy_delta()
 	var total_gain: int = 0
 	var items: Array = []
-	if not BlueprintManager or not BlueprintManager.has_method("get_all_blueprint_ids"):
-		return {"total": 0, "items": []}
-	for id_raw in BlueprintManager.get_all_blueprint_ids():
-		var card_id: String = String(id_raw)
-		var before_count: int = int(_blueprint_copies_before_battle.get(card_id, 0))
-		var after_count: int = int(BlueprintManager.get_blueprint_copies(card_id))
-		var gain: int = after_count - before_count
+	for card_id in deltas:
+		var gain: int = int(deltas[card_id])
 		if gain > 0:
 			total_gain += gain
-			items.append({"id": card_id, "gain": gain})
+			items.append({"id": String(card_id), "gain": gain})
 	return {"total": total_gain, "items": items}
 
 func _calculate_knowledge_gain() -> Dictionary:
