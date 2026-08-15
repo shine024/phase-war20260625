@@ -76,6 +76,13 @@ const _INDICATOR_KINDS: Array = ["weakpoint", "radar_lock", "resonance"]
 # ── ADD 混合材质缓存 ──
 static var _add_mat: CanvasItemMaterial = null
 
+# ── v13.1: 攻击方阵营色——命中环/攻击追踪线的阵营辨识（一眼看出"谁在打谁"）──
+const SIDE_COLOR_PLAYER := Color(0.35, 0.85, 1.0, 0.9)   # 我方攻击 = 青蓝
+const SIDE_COLOR_ENEMY := Color(1.0, 0.45, 0.25, 0.9)    # 敌方攻击 = 橙红
+
+static func side_color(is_player: bool) -> Color:
+	return SIDE_COLOR_PLAYER if is_player else SIDE_COLOR_ENEMY
+
 # ── v9.2: 烟柱 Gradient 按颜色缓存（spawn_smoke_column 频繁调用）──
 static var _smoke_grad_cache: Dictionary = {}
 
@@ -99,8 +106,11 @@ static func spawn_layered_impact(parent: Node2D, world_pos: Vector2, weapon_type
 	# LIGHT/MEDIUM ×1.0 不变。配方表本身不动（保持 weapon_type+flavor 分级），tier 只做倍率叠加。
 	recipe = _apply_tier_scale(recipe, opts)
 	# 第1层：冲击波环（motion_reduce 时跳过）
+	# v13.1: 环色混入攻击方阵营色（55%）——密集交火时一眼分辨"这团爆炸是谁打的"。
+	# 火花/碎片层保持武器本色（武器辨识优先），阵营信息只承载在环上不喧宾夺主。
 	if not motion_reduce:
-		_spawn_ring(parent, world_pos, recipe.get("ring_r", 24.0), recipe.get("ring_dur", 0.2), base_color)
+		var ring_color: Color = base_color.lerp(side_color(is_player), 0.55)
+		_spawn_ring(parent, world_pos, recipe.get("ring_r", 24.0), recipe.get("ring_dur", 0.2), ring_color)
 		_spawn_impact_decal(parent, world_pos, weapon_type)  # v11 弹痕锚点(在火花之下,火花从弹痕溅起)
 	# 第2层：主火花（始终生成）
 	_spawn_sparks(parent, world_pos, recipe, base_color, weapon_type)
@@ -448,6 +458,20 @@ static func _get_muzzle_ramp() -> Gradient:
 		_muzzle_ramp.add_point(1.0, Color(1.0, 0.3, 0.0, 0.0))
 	return _muzzle_ramp
 
+
+## v13.1: 攻击追踪线——瞬发/技能伤害（无弹道）时从攻击方到受击方拉一条阵营色细线，
+## 补足"谁在打谁"的方向感。窄线+短淡出（0.16s），不与子弹弹道（自带 tracer）叠加。
+## 复用 _spawn_beam_glow 池；距离过近（<40px，近战/同位）不画。
+static func spawn_attack_tracer(parent: Node2D, from_pos: Vector2, to_pos: Vector2, is_player: bool) -> void:
+	if parent == null or not is_instance_valid(parent):
+		return
+	if DT.is_motion_reduce():
+		return
+	if from_pos.distance_to(to_pos) < 40.0:
+		return
+	var col: Color = side_color(is_player)
+	col.a = 0.75
+	_spawn_beam_glow(parent, from_pos, from_pos.lerp(to_pos, 0.92), col, 3.0, 0.16)
 
 ## v10 真实度：光束辉光晕——锐利主光束后铺宽低 alpha 的 ADD 辉光(报告:激光/穿透/闪电/光柱缺辉光,仅一条细线)。
 static func _spawn_beam_glow(parent: Node2D, from_pos: Vector2, to_pos: Vector2, color: Color, width: float, fade: float = 0.35) -> void:

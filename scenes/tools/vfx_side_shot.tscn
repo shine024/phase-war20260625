@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://vfxsideshot01"]
+
+[ext_resource type="Script" path="res://scenes/tools/vfx_side_shot.gd" id="1"]
+
+[node name="VfxSideShot" type="Node2D"]
+script = ExtResource("1")

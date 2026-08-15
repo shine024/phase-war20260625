@@ -85,6 +85,29 @@ const DAMAGE_STYLES: Dictionary = {
 		"outline_color": Color(0.2, 0.2, 0.2, 0.6),
 		"scale": 0.85
 	},
+	# v13.1: 阵营双色 normal——敌人掉血=我方输出(青)，我方掉血=敌方输出(暖红)。
+	# 一眼读出"谁在打谁"；特殊类型(暴击/穿甲/DOT/治疗)保持原有类型语义色。
+	"dmg_out": {
+		"font_size": 16,
+		"color": Color(0.55, 0.92, 1.0, 1.0),
+		"outline_color": Color(0.0, 0.25, 0.4, 0.85),
+		"scale": 0.85
+	},
+	"dmg_in": {
+		"font_size": 16,
+		"color": Color(1.0, 0.55, 0.4, 1.0),
+		"outline_color": Color(0.4, 0.1, 0.0, 0.85),
+		"scale": 0.85
+	},
+	# v13.1: 敌人身上跳的暴击改金色（红色留给"我方被打"语义），我方暴击保持红
+	"critical_out": {
+		"font_size": 24,
+		"color": Color(1.0, 0.85, 0.35, 1.0),
+		"outline_color": Color(0.5, 0.3, 0.0, 0.9),
+		"scale": 1.12,
+		"glow_color": Color(1.0, 0.85, 0.35, 0.9),
+		"glow_size": 4
+	},
 	# v7.x：大额伤害（>500）专用——金色 outline + 更大 scale，强化"重击"感
 	"big_crit": {
 		"font_size": 28,
@@ -243,7 +266,10 @@ func reset_pool_object() -> void:
 	# 保留 Label 供下次 prepare 复用，避免反复 new/free
 
 ## 静态创建：走 ObjectPoolManager.damage_numbers
-static func create_damage_number(parent: Node, world_pos: Vector2, damage: int, is_crit: bool = false, type: String = "normal") -> void:
+## side: "" = 不区分阵营（默认，兼容旧调用）；"out" = 我方造成（敌人掉血，青色）；
+##       "in" = 敌方造成（我方掉血，暖红）。normal 映射 dmg_out/dmg_in，critical 在
+##       out 侧映射 critical_out（金色，红色留给"我方被打"语义）。
+static func create_damage_number(parent: Node, world_pos: Vector2, damage: int, is_crit: bool = false, type: String = "normal", side: String = "") -> void:
 	if not parent or not is_instance_valid(parent):
 		return
 	if ObjectPoolManager == null:
@@ -259,6 +285,15 @@ static func create_damage_number(parent: Node, world_pos: Vector2, damage: int, 
 	if type == "normal" and damage > 500:
 		effective_type = "big_crit"
 		is_crit = true  # 大额伤害也触发粒子和暴击标记
+	# v13.1: 阵营双色映射（大额伤害 big_crit 金色不分阵营，保持原语义）
+	if side == "out":
+		if effective_type == "normal":
+			effective_type = "dmg_out"
+		elif effective_type == "critical":
+			effective_type = "critical_out"
+	elif side == "in":
+		if effective_type == "normal":
+			effective_type = "dmg_in"
 	if display.has_method("prepare_for_display"):
 		display.call("prepare_for_display", damage, is_crit, effective_type)
 	parent.add_child(display)

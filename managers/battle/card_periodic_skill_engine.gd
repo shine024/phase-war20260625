@@ -232,9 +232,27 @@ func _exec_single_target_damage(effect: Dictionary) -> void:
 	if target == null:
 		return
 	var damage: float = avg_atk * float(effect.get("damage_pct_atk", 2.0))
+	# v13.1: 攻击方向感——以离目标最近的我方单位为视觉攻击源：拉阵营色追踪线 +
+	# 把攻击源传给 take_damage（此前传 null，受击无击退/无方向血溅，看不出谁在打谁）。
+	var source: Node2D = _nearest_unit_to(target, allies)
+	if source != null and _battlefield != null and is_instance_valid(_battlefield):
+		VfxImpactFactory.spawn_attack_tracer(_battlefield, source.global_position, target.global_position, true)
 	# 穿透比例（降低目标有效防御）
 	if target.has_method("take_damage"):
-		target.take_damage(damage, null)
+		target.take_damage(damage, source)
+
+## v13.1: 目标最近的我方单位（技能无单体施法者时的视觉攻击源）
+func _nearest_unit_to(target: Node2D, units: Array) -> Node2D:
+	var best: Node2D = null
+	var best_d: float = INF
+	for u in units:
+		if u == null or not is_instance_valid(u) or not (u is Node2D):
+			continue
+		var d: float = (u as Node2D).global_position.distance_to(target.global_position)
+		if d < best_d:
+			best_d = d
+			best = u
+	return best
 
 ## 全图伤害
 func _exec_global_damage(effect: Dictionary) -> void:

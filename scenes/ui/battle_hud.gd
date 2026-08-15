@@ -168,8 +168,9 @@ func _on_unit_selected(unit: Node, _is_player: bool, _at_position: Vector2) -> v
 	# BottomCenterPanel 已被移除，单位信息现在由 UnitInfoPanel（暂停时）显示
 	pass
 
-func _on_unit_damaged(unit: Node, _is_player: bool, amount: float, at_position: Vector2) -> void:
-	show_damage_popup(amount, at_position, unit)
+func _on_unit_damaged(unit: Node, is_player: bool, amount: float, at_position: Vector2) -> void:
+	# v13.1: 信号自带受害方阵营（无友伤 → 受害方反推攻击方），优先于分组探测
+	show_damage_popup(amount, at_position, unit, "in" if is_player else "out")
 
 func _on_battle_started() -> void:
 	_battle_active = true
@@ -284,11 +285,11 @@ func _make_danger_panel_style() -> StyleBoxFlat:
 
 const DamageNumberScript = preload("res://scenes/effects/damage_number_display.gd")
 
-func show_damage_popup(damage: float, world_pos: Vector2, _unit: Node = null) -> void:
+func show_damage_popup(damage: float, world_pos: Vector2, unit: Node = null, side: String = "") -> void:
 	# 使用对象池的 damage_number_display 替代每击创建 Label+Tween
 	var parent: Node = null
-	if _unit and is_instance_valid(_unit):
-		parent = _unit.get_parent()
+	if unit and is_instance_valid(unit):
+		parent = unit.get_parent()
 	if parent == null:
 		parent = get_tree().current_scene if get_tree() else null
 	if parent == null:
@@ -300,7 +301,15 @@ func show_damage_popup(damage: float, world_pos: Vector2, _unit: Node = null) ->
 	elif damage >= 40:
 		dmg_type = "normal"
 
-	DamageNumberScript.create_damage_number(parent, world_pos, int(damage), damage >= 80, dmg_type)
+	# v13.1: 阵营双色——敌人掉血=我方输出(out/青)，我方掉血=敌方输出(in/红)。
+	# 调用方未传 side 时按受害方分组兜底（覆盖直接调用路径）；判定不了保持 neutral 白。
+	if side.is_empty() and unit != null and is_instance_valid(unit):
+		if unit.is_in_group("enemy_units"):
+			side = "out"
+		elif unit.is_in_group("player_units"):
+			side = "in"
+
+	DamageNumberScript.create_damage_number(parent, world_pos, int(damage), damage >= 80, dmg_type, side)
 
 # ── 公开 API（兼容旧调用） ────────────────────────────────────
 
