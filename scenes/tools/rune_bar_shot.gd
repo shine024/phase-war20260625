@@ -20,12 +20,26 @@ func _seed() -> void:
 	if pm == null:
 		push_error("[RUNEBAR] PhaseInstrumentManager 不可用")
 		return
-	# 对比样本：归一修复过的5张小圆盘 + 原正常图对照；rune 槽共 4 个
+	# 13 槽满载：green 0-8 装卡 + rune 0-3 装符文（复现动态收窄后的右裁问题）
+	var card_ids: Array = [
+		"ww1_arm_ft17", "ww1_inf_enfield", "ww1_arty_77mm",
+		"ww2_arm_sherman", "ww2_arm_tiger", "ww2_arty_pak40",
+		"cold_t72", "mod_arm_m1a2sep", "fut_arm_omega",
+	]
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	var ci: int = 0
+	for cid in card_ids:
+		if ir == null or not ir.has_method("create_instance"):
+			break
+		ir.create_instance(String(cid))
+		var ids: Array = ir.get_all_instance_ids()
+		var card = ir.get_instance(ids[ids.size() - 1])
+		if card and pm.has_method("equip_card"):
+			var okc: bool = pm.equip_card(ci, card)
+			print("[RUNEBAR] equip card %d=%s -> %s" % [ci, cid, okc])
+		ci += 1
 	var runes: Array = [
-		"attack_03",      # 归一修复（原 0.82 小盘）
-		"defense_01",     # 归一修复（原 0.83 小盘）
-		"attack_07",      # 归一修复（原 0.84 小盘）
-		"attack_01",      # 正常对照
+		"attack_03", "defense_01", "attack_07", "attack_01",
 	]
 	for rid in runes:
 		if pm.has_method("add_owned_rune"):
@@ -33,18 +47,7 @@ func _seed() -> void:
 	for i in range(runes.size()):
 		if pm.has_method("equip_rune"):
 			var ok: bool = pm.equip_rune(i, String(runes[i]))
-			print("[RUNEBAR] equip %d=%s -> %s" % [i, runes[i], ok])
-	# 绿槽装一张卡做尺寸对比
-	var ir: Node = get_node_or_null("/root/InstanceRegistry")
-	if ir and pm.has_method("equip_card"):
-		if ir.has_method("get_all_instance_ids") and ir.get_all_instance_ids().size() == 0:
-			ir.create_instance("ww1_arm_ft17")
-		var ids: Array = ir.get_all_instance_ids()
-		if ids.size() > 0:
-			var card = ir.get_instance(ids[0])
-			if card:
-				var okc: bool = pm.equip_card("green_1", card)
-				print("[RUNEBAR] equip card -> ", okc)
+			print("[RUNEBAR] equip rune %d=%s -> %s" % [i, runes[i], ok])
 
 func _tick() -> void:
 	if _bar == null:
@@ -69,7 +72,10 @@ func _capture() -> void:
 	await RenderingServer.frame_post_draw
 	await RenderingServer.frame_post_draw
 	var img: Image = get_viewport().get_texture().get_image()
-	img.save_png("user://panel_tour/rune_bar.png")
-	print("[RUNEBAR] shot saved")
+	var tag: String = "rune_bar13_after"
+	if String(get_meta("tag", "")) != "":
+		tag = String(get_meta("tag"))
+	img.save_png("user://panel_tour/%s.png" % tag)
+	print("[RUNEBAR] shot saved: ", tag)
 	_bar.queue_free()
 	_bar = null

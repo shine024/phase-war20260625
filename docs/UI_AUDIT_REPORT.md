@@ -376,4 +376,16 @@ text = "该卡暂无词条
 
 **复验**: 全量缺陷 0（98 张全部圆外透明 + 直径占比 ≥0.9）；尺寸统一 98×(995,995)；`--import` 重导；相位仪栏实拍（4 槽装 3 修复 + 1 对照）视觉确认尺寸完全一致。
 
+---
+
+## 十七、v10.7 相位仪栏 13 槽满载图标右裁修复（2026-08-15 第十一批）
+
+**用户反馈**: "符文在相位仪中右边会有图不全，战斗卡在相位仪中右方也会少"。
+
+**根因（构建时序）**: `SlotIcon` 锚定铺满 `SlotIconClip`（`clip_contents=true`），其 `custom_minimum_size` 在 `_update_slot_panel`/`_build_slot_panel` 时按**当时的** `_slot_width`（初值 90）写死为 84×60；随后 deferred 的 `_fit_slots_to_bar()` 把 13 槽（green9+rune4）收窄到 ~72px，但图标 min 尺寸不刷新——锚定子节点被钳在 84px 宽、超出 ~70px 裁剪容器的部分被 `clip_contents` 切掉。战斗卡/符文共用同一 SlotIcon，所以两者右侧都缺。窗口 resize 触发 `_fit_slots_to_bar` 同样复发。
+
+**修复**: `bottom_instrument_bar.gd` 新增 `_resync_slot_icon_min_sizes(available_h)`，在 `_fit_slots_to_bar()` 更新槽位尺寸后按新 `_slot_width` 重写每个槽 SlotIcon 的 min 尺寸（艺术区 = 宽-6 / 高-4，与 _update_slot_panel 同公式）。
+
+**复验**: rune_bar_shot 工具升级为 13 槽满载实拍（9 卡 + 4 符文，1280×720）——修复前卡图/符文右侧被裁，修复后全部完整居中（视觉确认坦克双侧履带完整、符文圆盘正圆居中）。
+
 **报告结束**

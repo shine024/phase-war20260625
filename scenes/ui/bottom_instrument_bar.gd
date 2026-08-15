@@ -507,6 +507,22 @@ func _fit_slots_to_bar() -> void:
 		if p and is_instance_valid(p):
 			p.custom_minimum_size = Vector2(_slot_width, available_h)
 			p.size = Vector2(_slot_width, available_h)
+	_resync_slot_icon_min_sizes(available_h)
+
+## v9.4 修复：槽位收窄后图标右侧被裁。
+## SlotIcon 锚定铺满 SlotIconClip（clip_contents=true），但 custom_minimum_size 在
+## _update_slot_panel 时按当时的 _slot_width 写死（如 90 宽时 min=84）；_fit_slots_to_bar
+## 随后把 13 槽收窄到 ~72，图标 min 宽仍 84 > 裁剪容器 ~70 → 锚定子节点被钳在 84px、
+## 溢出部分被 clip_contents 切掉（战斗卡/符文右侧均缺一块）。宽度变化后必须重同步 min 尺寸。
+func _resync_slot_icon_min_sizes(available_h: float) -> void:
+	var art_h: float = maxf(18.0, available_h - 4.0)
+	var art_w: float = maxf(18.0, _slot_width - 6.0)
+	for p in _slot_panels:
+		if p == null or not is_instance_valid(p):
+			continue
+		var tr: TextureRect = _slot_icon_rect(p)
+		if tr:
+			tr.custom_minimum_size = Vector2(art_w, art_h)
 
 func _update_name_section_width() -> void:
 	if name_section == null or not is_instance_valid(name_section):
