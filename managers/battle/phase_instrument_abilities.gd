@@ -611,6 +611,25 @@ static func _apply_mega_shield(owner: Owner, params: Dictionary) -> void:
 		var center: Vector2 = (allies[0] as Node2D).global_position if allies[0] is Node2D else (_battlefield as Node2D).global_position
 		var shield_tint: Color = Color(0.3, 0.7, 1.0) if owner == Owner.PLAYER else Color(1.0, 0.35, 0.2)
 		VfxImpactFactory.spawn_spell_burst(_battlefield, center, shield_tex, shield_tint, 260.0, 1.2)
+		# v14: 读图 6/10"缺呼吸脉动"——爆发后留 2.5s 呼吸能量罩,补"护盾持续存在"语义
+		var dome := Sprite2D.new()
+		dome.texture = shield_tex
+		var dome_scale: float = 300.0 / float(shield_tex.get_width())
+		dome.position = center
+		dome.scale = Vector2(dome_scale, dome_scale)
+		dome.modulate = Color(shield_tint.r, shield_tint.g, shield_tint.b, 0.0)
+		dome.z_index = 6
+		(_battlefield as Node2D).add_child(dome)
+		dome.add_to_group("battle_vfx")
+		var dome_tw := dome.create_tween()
+		dome_tw.tween_property(dome, "modulate:a", 0.38, 0.25)
+		var dome_breath := dome.create_tween()
+		dome_breath.set_loops(3)
+		dome_breath.tween_property(dome, "scale", Vector2(dome_scale * 1.06, dome_scale * 1.06), 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		dome_breath.tween_property(dome, "scale", Vector2(dome_scale, dome_scale), 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		dome_tw.tween_interval(2.5)
+		dome_tw.tween_property(dome, "modulate:a", 0.0, 0.5)
+		dome_tw.tween_callback(func(): if is_instance_valid(dome): dome.queue_free())
 	_trigger_screen_shake(6.0, 0.4)
 
 # ── 狂暴（periodic，临时提升 allies 攻击/攻速；自敌方版搬入）──
@@ -794,6 +813,8 @@ static func _trigger_screen_shake(intensity: float, duration: float) -> void:
 # ─────────────────────────────────────────────
 
 ## 纳米虫群云：大范围粒子覆盖（PLAYER=紫色向上扩散；ENEMY=暗紫红向下酸雨）
+const NANO_SWARM_DOT_TEX := preload("res://assets/effects/particle_textures/spark_ember.png")  # v14: 虫群颗粒贴图(告别方形/团状模糊粒子)
+
 static func _create_nano_swarm_cloud(center: Vector2, owner: Owner) -> void:
 	if _battlefield == null or not (_battlefield is Node2D):
 		return
@@ -809,34 +830,39 @@ static func _create_nano_swarm_cloud(center: Vector2, owner: Owner) -> void:
 	p1.emission_sphere_radius = 180.0
 	if owner == Owner.PLAYER:
 		# 玩家：紫色纳米虫群向上扩散
-		p1.amount = 80
+		# v14: 读图 4/10"偏暗偏弱,模糊粒子团"——颗粒贴图化+数量翻倍+提亮,
+		# 让虫群有"密集个体颗粒"的微观感而非一团雾
+		p1.amount = 150
+		p1.texture = NANO_SWARM_DOT_TEX
 		p1.direction = Vector2(0, -1)
 		p1.spread = 45.0
 		p1.initial_velocity_min = 40.0
 		p1.initial_velocity_max = 120.0
 		p1.gravity = Vector2(0, 50)
-		p1.scale_amount_min = 0.6
-		p1.scale_amount_max = 1.8
+		p1.scale_amount_min = 0.22
+		p1.scale_amount_max = 0.5
 		var gradient := Gradient.new()
-		gradient.add_point(0.0, Color(0.7, 0.2, 1.0, 1.0))
-		gradient.add_point(0.4, Color(0.5, 0.1, 0.8, 0.8))
-		gradient.add_point(0.8, Color(0.3, 0.05, 0.6, 0.3))
+		gradient.add_point(0.0, Color(0.85, 0.45, 1.0, 1.0))
+		gradient.add_point(0.4, Color(0.6, 0.2, 0.95, 0.85))
+		gradient.add_point(0.8, Color(0.4, 0.1, 0.7, 0.35))
 		gradient.add_point(1.0, Color.TRANSPARENT)
 		p1.color_ramp = gradient
 	else:
 		# 敌方：暗紫红酸雨下落
-		p1.amount = 60
+		# v14: 同步颗粒化+加密提亮
+		p1.amount = 120
+		p1.texture = NANO_SWARM_DOT_TEX
 		p1.direction = Vector2(0, 1)
 		p1.spread = 35.0
 		p1.initial_velocity_min = 40.0
 		p1.initial_velocity_max = 100.0
 		p1.gravity = Vector2(0, 80)
-		p1.scale_amount_min = 0.5
-		p1.scale_amount_max = 1.5
+		p1.scale_amount_min = 0.2
+		p1.scale_amount_max = 0.45
 		var gradient := Gradient.new()
-		gradient.add_point(0.0, Color(0.6, 0.1, 0.3, 1.0))
-		gradient.add_point(0.4, Color(0.4, 0.05, 0.2, 0.8))
-		gradient.add_point(0.8, Color(0.2, 0.0, 0.1, 0.3))
+		gradient.add_point(0.0, Color(0.85, 0.25, 0.45, 1.0))
+		gradient.add_point(0.4, Color(0.6, 0.1, 0.3, 0.85))
+		gradient.add_point(0.8, Color(0.35, 0.02, 0.15, 0.35))
 		gradient.add_point(1.0, Color.TRANSPARENT)
 		p1.color_ramp = gradient
 	cloud.add_child(p1)
@@ -846,7 +872,8 @@ static func _create_nano_swarm_cloud(center: Vector2, owner: Owner) -> void:
 		var p2 := CPUParticles2D.new()
 		p2.emitting = true
 		p2.lifetime = 4.0
-		p2.amount = 40
+		p2.amount = 90  # v14: 40→90 加密,虫群密度感
+		p2.texture = NANO_SWARM_DOT_TEX  # v14: 颗粒贴图化
 		p2.one_shot = false
 		# 注：CPUParticles2D 没有 autofree 属性（autofree 仅存在于 RefCounted 资源）。
 		# p2 作为 cloud 的子节点，会在 cloud.queue_free() 时自动随之释放。
@@ -857,8 +884,8 @@ static func _create_nano_swarm_cloud(center: Vector2, owner: Owner) -> void:
 		p2.initial_velocity_min = 5.0
 		p2.initial_velocity_max = 25.0
 		p2.gravity = Vector2(0, 10)
-		p2.scale_amount_min = 0.3
-		p2.scale_amount_max = 0.8
+		p2.scale_amount_min = 0.12  # v14: 颗粒贴图化缩小(微观微粒)
+		p2.scale_amount_max = 0.3
 		# 注：原代码尝试条件 preload 一个不存在的 nano_process_material.gd，
 		# 但 preload 是编译期指令，ResourceLoader.exists 守卫无法阻止其求值，
 		# 会导致 "Preload file does not exist" 报错。CPUParticles2D 无自定义

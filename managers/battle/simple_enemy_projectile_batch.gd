@@ -5,6 +5,7 @@ const ActiveLawEffects = preload("res://managers/active_law_effects.gd")
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 const WeaponProjectileVfx = preload("res://scripts/weapon_projectile_vfx.gd")
 const VfxImpactFactory = preload("res://scripts/battle/vfx_impact_factory.gd")  # v9.2: 枪口火
+const CardGridUnitVisuals = preload("res://scripts/card_grid_unit_visuals.gd")  # v14: 蜂群开火冲撞
 
 const _HIT_R2: float = 100.0
 const _MAX_PROJ: int = 720
@@ -82,6 +83,9 @@ func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, _sho
 	# 25% 既保留"敌方齐射"的视觉反馈，又大幅减少粒子污染，把 spark 池留给命中/暴击火花。
 	if not forced_miss and randf() < 0.25:
 		VfxImpactFactory.spawn_muzzle_flash(self, from, false, wt)
+		# v14: 蜂群开火冲撞——与枪口火同抽样率(25%,密集齐射节流),本体参与开火演出
+		if shooter is Node:
+			CardGridUnitVisuals.fire_lunge_unit(shooter, false, wt in [1, 2, 3, 7, 9, 10, 11])
 
 func clear_all() -> void:
 	# v9.2: 归还所有活跃弹道字典到池

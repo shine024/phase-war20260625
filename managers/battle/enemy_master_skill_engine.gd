@@ -680,6 +680,8 @@ func _play_debuff_cinematic(effect: String, name_text: String) -> void:
 		var dark_tex: Texture2D = _load_spell_texture("debuff_dark")
 		if dark_tex != null:
 			VfxImpactFactory.spawn_spell_burst(_battlefield, _get_driver_pos(), dark_tex, Color(0.4, 0.15, 0.6), 380.0, 1.2)
+			# v14: 读图 6/10"读作一次性爆炸"——叠加 4s 持续暗蚀环,"削弱挂身"语义成立
+			VfxImpactFactory.spawn_lingering_debuff_ring(_battlefield, _get_driver_pos(), Color(0.45, 0.18, 0.65), 4.0)
 
 # ── 演出辅助 ──
 

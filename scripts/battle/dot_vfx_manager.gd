@@ -132,24 +132,40 @@ static func _attach_burn_aura(dot_node: Node2D) -> void:
 
 
 ## 毒液环（绿色，反向慢转）
+## v14: 读图 5/10"浓度淡,与背景绿混淆"——饱和度/alpha 上调+双环反向嵌套(毒雾漩涡感)
 static func _attach_chem_aura(dot_node: Node2D) -> void:
 	var ring := Polygon2D.new()
 	var segments := 10
 	var pts := PackedVector2Array()
 	for i in range(segments):
 		var ang := TAU * float(i) / float(segments)
-		pts.append(Vector2(cos(ang), sin(ang)) * 16.0)
+		pts.append(Vector2(cos(ang), sin(ang)) * 19.0)
 	ring.polygon = pts
 	ring.position = Vector2(0, -4)
-	ring.color = Color(0.35, 1.0, 0.25, 0.40)
+	ring.color = Color(0.12, 1.0, 0.15, 0.66)
 	ring.material = _get_add_mat()  # v9.2: 复用共享 ADD 材质
 	dot_node.add_child(ring)
 	var tw := ring.create_tween()
 	tw.set_loops()
 	tw.tween_property(ring, "rotation", -TAU, 3.0).set_trans(Tween.TRANS_LINEAR)
+	# v14 内环:亮黄绿正向转,双环嵌套读作"毒雾漩涡"
+	var inner := Polygon2D.new()
+	var pts2 := PackedVector2Array()
+	for i in range(segments):
+		var ang2 := TAU * float(i) / float(segments) + 0.3
+		pts2.append(Vector2(cos(ang2), sin(ang2)) * 12.0)
+	inner.polygon = pts2
+	inner.position = Vector2(0, -4)
+	inner.color = Color(0.55, 1.0, 0.2, 0.5)
+	inner.material = _get_add_mat()
+	dot_node.add_child(inner)
+	var tw2 := inner.create_tween()
+	tw2.set_loops()
+	tw2.tween_property(inner, "rotation", TAU, 2.0).set_trans(Tween.TRANS_LINEAR)
 
 
 ## 六边形脉冲（青蓝，快速呼吸）
+## v14: 读图 4/10"粒子稀疏,轻微附魔感"——提亮提对比+反向内六边,侵蚀感更强
 static func _attach_nano_aura(dot_node: Node2D) -> void:
 	var hex := Polygon2D.new()
 	var pts := PackedVector2Array()
@@ -158,34 +174,69 @@ static func _attach_nano_aura(dot_node: Node2D) -> void:
 		pts.append(Vector2(cos(ang), sin(ang)) * 20.0)
 	hex.polygon = pts
 	hex.position = Vector2(0, -3)
-	hex.color = Color(0.2, 0.9, 1.0, 0.40)
+	hex.color = Color(0.15, 0.95, 1.0, 0.62)
 	hex.material = _get_add_mat()  # v9.2: 复用共享 ADD 材质
 	dot_node.add_child(hex)
 	var tw := hex.create_tween()
 	tw.set_loops()
-	tw.tween_property(hex, "scale", Vector2(1.25, 1.25), 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	tw.tween_property(hex, "scale", Vector2(0.75, 0.75), 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tw.tween_property(hex, "scale", Vector2(1.4, 1.4), 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_property(hex, "scale", Vector2(0.8, 0.8), 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	# v14 内六边:反向慢转的暗青小六边,"纳米在爬"的机械感
+	var hex2 := Polygon2D.new()
+	var pts2 := PackedVector2Array()
+	for i in range(6):
+		var ang2 := TAU * float(i) / 6.0
+		pts2.append(Vector2(cos(ang2), sin(ang2)) * 11.0)
+	hex2.polygon = pts2
+	hex2.position = Vector2(0, -3)
+	hex2.color = Color(0.4, 1.0, 0.9, 0.5)
+	hex2.material = _get_add_mat()
+	dot_node.add_child(hex2)
+	var tw2 := hex2.create_tween()
+	tw2.set_loops()
+	tw2.tween_property(hex2, "rotation", -TAU, 4.0).set_trans(Tween.TRANS_LINEAR)
 
 
 ## 电弧闪烁（紫色，随机透明度抖动）
+## v14: 读图 4/10"电弧细小暗淡"——加宽加长提亮+第二条副弧,闪烁对比拉满
 static func _attach_emp_aura(dot_node: Node2D) -> void:
 	var arc := Line2D.new()
-	arc.width = 2.0
-	arc.default_color = Color(0.85, 0.6, 1.0, 1.0)
+	arc.width = 4.0
+	arc.default_color = Color(0.75, 0.85, 1.0, 1.0)
 	arc.joint_mode = Line2D.LINE_JOINT_ROUND
-	arc.add_point(Vector2(-10, -8))
-	arc.add_point(Vector2(-3, 2))
-	arc.add_point(Vector2(5, -4))
-	arc.add_point(Vector2(10, 8))
+	arc.add_point(Vector2(-16, -10))
+	arc.add_point(Vector2(-6, 3))
+	arc.add_point(Vector2(4, -6))
+	arc.add_point(Vector2(16, 10))
 	arc.position = Vector2(0, -6)
+	arc.material = _get_add_mat()
 	dot_node.add_child(arc)
 	var tw := arc.create_tween()
 	tw.set_loops()
-	tw.tween_property(arc, "modulate:a", 0.15, 0.06)
-	tw.tween_property(arc, "modulate:a", 1.0, 0.06)
-	tw.tween_property(arc, "modulate:a", 0.25, 0.06)
-	tw.tween_property(arc, "modulate:a", 1.0, 0.06)
+	tw.tween_property(arc, "modulate:a", 0.1, 0.05)
+	tw.tween_property(arc, "modulate:a", 1.0, 0.05)
+	tw.tween_property(arc, "modulate:a", 0.2, 0.05)
+	tw.tween_property(arc, "modulate:a", 1.0, 0.05)
 	tw.tween_interval(0.12)
+	# v14 副弧:细一号反向锯齿,滞后相位——"电弧乱窜"感
+	var arc2 := Line2D.new()
+	arc2.width = 2.0
+	arc2.default_color = Color(0.9, 0.95, 1.0, 0.9)
+	arc2.joint_mode = Line2D.LINE_JOINT_ROUND
+	arc2.add_point(Vector2(-12, 8))
+	arc2.add_point(Vector2(-2, -4))
+	arc2.add_point(Vector2(8, 6))
+	arc2.add_point(Vector2(13, -8))
+	arc2.position = Vector2(0, 2)
+	arc2.material = _get_add_mat()
+	dot_node.add_child(arc2)
+	var tw2 := arc2.create_tween()
+	tw2.set_loops()
+	tw2.tween_interval(0.08)
+	tw2.tween_property(arc2, "modulate:a", 1.0, 0.05)
+	tw2.tween_property(arc2, "modulate:a", 0.15, 0.05)
+	tw2.tween_property(arc2, "modulate:a", 0.9, 0.05)
+	tw2.tween_interval(0.15)
 
 
 ## 刷新单位的所有 DOT 视觉：过期的移除，激活的保留。

@@ -30,6 +30,19 @@ const TEX_INF := preload("res://assets/card_icons/enemy/cold_inf_metis.png")    
 const INF_SCALE := 0.26                                                          # 步兵比装甲小很多(0.26 vs 0.58),让特效尺寸有参照
 const TEX_SHIELD_BUBBLE := preload("res://assets/effects/spell_burst/player_fortress.png") # v12e: 护盾罩贴图(单位有盾时常驻覆盖)
 const TEX_AIR := preload("res://assets/card_icons/player/fe_helix_phantom.png")            # v12e: 空中单位(演示整球罩 vs 地面贴地罩)
+# v13 全量覆盖:相位仪大招 / boss 技能电影化 / 状态 / 弹道
+const PIA := preload("res://managers/battle/phase_instrument_abilities.gd")
+const DotVfx := preload("res://scripts/battle/dot_vfx_manager.gd")
+const TEX_BARRAGE := preload("res://assets/effects/spell_burst/player_barrage.png")
+const TEX_APOC_METEOR := preload("res://assets/effects/spell_burst/apocalypse_meteor.png")
+const TEX_APOC_VOID := preload("res://assets/effects/spell_burst/apocalypse_void.png")
+const TEX_CHAIN := preload("res://assets/effects/spell_burst/chain_lightning.png")
+const TEX_DARK := preload("res://assets/effects/spell_burst/debuff_dark.png")
+const TEX_PORTAL := preload("res://assets/effects/spell_burst/summon_portal.png")
+const TEX_ULT_SPEAR := preload("res://assets/effects/ultimate_projectiles/ult_divine_spear.png")
+const TEX_ULT_INFERNO := preload("res://assets/effects/ultimate_projectiles/ult_inferno_bomb.png")
+const TEX_ULT_METEOR := preload("res://assets/effects/ultimate_projectiles/ult_meteor.png")
+const TEX_ULT_ORBITAL := preload("res://assets/effects/ultimate_projectiles/ult_orbital.png")
 
 var _bf: Node2D
 var _frame: int = 0
@@ -277,6 +290,33 @@ func _build_entries() -> void:
 	_entries.append({"id":"muzzle_light","category":"炮口火","desc":"轻武器枪口火焰(冲锋枪,短促轻焰)","era":"现代","ref":"MUZZLE wt0","span":SPAN_DEFAULT,"peaks":[4],"trigger":_trig_muzzle(0)})
 	_entries.append({"id":"muzzle_rocket","category":"炮口火","desc":"火箭筒枪口火焰(重型尾焰)","era":"现代","ref":"MUZZLE wt3","span":SPAN_DEFAULT,"peaks":[4],"trigger":_trig_muzzle(3)})
 	_entries.append({"id":"muzzle_missile","category":"炮口火","desc":"导弹发射口火焰(重型发射烟)","era":"近未来","ref":"MUZZLE wt9","span":SPAN_DEFAULT,"peaks":[4],"trigger":_trig_muzzle(9)})
+	# --- v13 全量覆盖:相位仪大招 ---
+	_entries.append({"id":"pi_artillery_barrage","category":"相位仪大招","desc":"炮击弹幕(冲击波100+火箭命中+200px弹幕爆裂,真实生产参数)","era":"现代","ref":"ARTILLERY BARRAGE","span":SPAN_DEFAULT,"peaks":[14],"trigger":_trig_pi_barrage()})
+	_entries.append({"id":"pi_nuclear_bombardment","category":"相位仪大招","desc":"核子轰炸完整序列(导弹arc飞行→核爆蘑菇云0.6)","era":"近未来","ref":"NUCLEAR BOMBARDMENT","span":150,"peaks":[18,55,90],"trigger":_trig_pi_nuclear()})
+	_entries.append({"id":"pi_nano_swarm","category":"相位仪大招","desc":"纳米虫群降临(owner配色虫群云覆盖战场)","era":"近未来","ref":"NANO SWARM","span":SPAN_DEFAULT,"peaks":[20],"trigger":_trig_pi_nano()})
+	_entries.append({"id":"pi_mega_shield","category":"相位仪大招","desc":"巨型能量罩(260px/1.2s 真实参数,全队护盾)","era":"近未来","ref":"MEGA SHIELD 260","span":SPAN_DEFAULT,"peaks":[24],"trigger":_trig_spell(TEX_SHIELD, Color(0.3,0.7,1.0,1.0))})
+	# --- v13 全量覆盖:相位师(boss)技能电影化 ---
+	_entries.append({"id":"boss_apocalypse","category":"boss技能演出","desc":"天降毁灭(陨石vertical飞行→360px毁灭爆裂)","era":"近未来","ref":"APOCALYPSE","span":90,"peaks":[14,40],"trigger":_trig_boss("apocalypse")})
+	_entries.append({"id":"boss_inferno","category":"boss技能演出","desc":"地狱火(燃烧弹dive俯冲→340px地狱火+次级150px溅射)","era":"能量","ref":"HELL INFERNO","span":90,"peaks":[12,38],"trigger":_trig_boss("inferno")})
+	_entries.append({"id":"boss_chain","category":"boss技能演出","desc":"连锁闪电(300px闪电核心+双跳锯齿电弧)","era":"能量","ref":"TESLA CHAIN","span":SPAN_DEFAULT,"peaks":[10],"trigger":_trig_boss("chain")})
+	_entries.append({"id":"boss_divine_spear","category":"boss技能演出","desc":"神圣之矛(vertical天降→增强穿透光束)","era":"能量","ref":"DIVINE SPEAR","span":80,"peaks":[12,34],"trigger":_trig_boss("spear")})
+	_entries.append({"id":"boss_summon","category":"boss技能演出","desc":"幻影召唤(280px传送门爆裂+三层螺旋门环)","era":"近未来","ref":"SUMMON CLONE","span":SPAN_DEFAULT,"peaks":[20],"trigger":_trig_boss("summon")})
+	_entries.append({"id":"boss_debuff_dark","category":"boss技能演出","desc":"暗蚀debuff(380px暗紫蚀刻,大尺度)","era":"虚空","ref":"DARK DEBUFF","span":SPAN_DEFAULT,"peaks":[26],"trigger":_trig_boss("dark")})
+	_entries.append({"id":"boss_void_orbital","category":"boss技能演出","desc":"虚空轨道炮(orbital弹vertical→apocalypse_void 380px)","era":"虚空","ref":"VOID ORBITAL","span":90,"peaks":[14,40],"trigger":_trig_boss("orbital")})
+	# --- v13 全量覆盖:状态附加 ---
+	_entries.append({"id":"dot_burn","category":"状态附加","desc":"燃烧dot(单位挂火圈+动态火焰余烬)","era":"通用","ref":"DOT BURN","span":SPAN_DEFAULT,"peaks":[12],"trigger":_trig_dot("burn")})
+	_entries.append({"id":"dot_chem","category":"状态附加","desc":"化学毒雾dot(绿色毒雾环绕)","era":"通用","ref":"DOT CHEM","span":SPAN_DEFAULT,"peaks":[12],"trigger":_trig_dot("chem")})
+	_entries.append({"id":"dot_emp","category":"状态附加","desc":"EMP dot(蓝色电弧麻痹环)","era":"近未来","ref":"DOT EMP","span":SPAN_DEFAULT,"peaks":[12],"trigger":_trig_dot("emp")})
+	_entries.append({"id":"dot_nano","category":"状态附加","desc":"纳米侵蚀dot(青色纳米粒环绕)","era":"近未来","ref":"DOT NANO","span":SPAN_DEFAULT,"peaks":[12],"trigger":_trig_dot("nano")})
+	_entries.append({"id":"combo_weakpoint","category":"状态附加","desc":"弱点暴露指示器(红色X十字脉动3s)","era":"通用","ref":"WEAKPOINT","span":SPAN_DEFAULT,"peaks":[15],"trigger":_trig_combo("weakpoint")})
+	_entries.append({"id":"combo_radar_lock","category":"状态附加","desc":"雷达锁定环(目标锁定指示6s)","era":"通用","ref":"RADAR LOCK","span":SPAN_DEFAULT,"peaks":[20],"trigger":_trig_combo("radar")})
+	_entries.append({"id":"combo_resonance","category":"状态附加","desc":"激光共鸣环(3层堆叠共振环)","era":"能量","ref":"RESONANCE x3","span":SPAN_DEFAULT,"peaks":[18],"trigger":_trig_combo("resonance")})
+	_entries.append({"id":"combo_banner","category":"状态附加","desc":"组合技激活横幅(全队激活+震动)","era":"通用","ref":"COMBO BANNER","span":SPAN_DEFAULT,"peaks":[18],"trigger":_trig_banner()})
+	_entries.append({"id":"death_burst","category":"状态附加","desc":"单位死亡爆散(阵营色冲击波+碎片血雾)","era":"通用","ref":"DEATH BURST","span":SPAN_DEFAULT,"peaks":[10],"trigger":_trig_death()})
+	_entries.append({"id":"hit_blood","category":"状态附加","desc":"受击血溅(弹道反向血雾+金色火花高光)","era":"通用","ref":"HIT BLOOD","span":SPAN_DEFAULT,"peaks":[8],"trigger":_trig_blood()})
+	# --- v13 全量覆盖:大招弹道轨迹(arc 已有,补 dive/vertical) ---
+	_entries.append({"id":"traj_dive","category":"弹道轨迹","desc":"俯冲弹道(燃烧弹从右上俯冲+拖尾)","era":"能量","ref":"TRAJECTORY dive","span":70,"peaks":[12,38],"trigger":_trig_traj("dive")})
+	_entries.append({"id":"traj_vertical","category":"弹道轨迹","desc":"垂直天降弹道(轨道弹从天而降+拖尾)","era":"虚空","ref":"TRAJECTORY vertical","span":70,"peaks":[12,38],"trigger":_trig_traj("vertical")})
 
 # ============================================================
 # 触发器工厂(每个返回独立 Callable,避免循环闭包捕获问题)
@@ -413,3 +453,100 @@ func _trig_ult() -> Callable:
 
 func _trig_muzzle(wt: int) -> Callable:
 	return func(): VfxFactory.spawn_muzzle_flash(_bf, Vector2.ZERO, true, wt)
+
+# ============================================================
+# v13 全量覆盖触发器(相位仪大招 / boss 技能 / 状态 / 弹道)
+# 参数对齐生产代码(phase_instrument_abilities / enemy_master_skill_engine)
+# ============================================================
+
+## 炮击弹幕:对齐 _fire_artillery_shot(冲击波100 + 火箭命中 + 200px弹幕爆裂)
+func _trig_pi_barrage() -> Callable:
+	return func():
+		VfxFactory.spawn_shockwave(_bf, Vector2.ZERO, 100.0, Color(1.0, 0.4, 0.2, 0.85))
+		VfxFactory.spawn_layered_impact(_bf, Vector2.ZERO, 3, false, -1)
+		VfxFactory.spawn_spell_burst(_bf, Vector2.ZERO, TEX_BARRAGE, Color(1.0, 0.4, 0.2), 200.0, 0.6)
+
+## 核子轰炸:对齐 _fire_nuclear_bombardment(核弹arc飞行 0.6s → 蘑菇云核爆 0.6)
+func _trig_pi_nuclear() -> Callable:
+	return func():
+		var pack: Dictionary = _load_nuke_texture_pack()
+		var colors := {"shock": Color(1.0, 0.85, 0.5, 0.9), "aftershock": Color(0.6, 0.7, 1.0, 0.5), "smoke": Color(0.35, 0.32, 0.30, 0.6)}
+		VfxFactory.spawn_ultimate_projectile(_bf, Vector2(-260, -200), Vector2.ZERO, TEX_ULT_NUKE, "arc", 52.0, Color.WHITE, Color(1.0, 0.8, 0.3, 0.9), 0.6,
+			func(_p: Vector2): VfxFactory.spawn_nuclear_explosion(_bf, Vector2.ZERO, pack, colors, 0.6))
+
+## 纳米虫群:对齐 on_battle_start nano_swarm(owner=PLAYER 配色虫群云)
+func _trig_pi_nano() -> Callable:
+	return func(): PIA._create_nano_swarm_cloud(_bf.global_position, 0)
+
+## boss 技能电影化:对齐 enemy_master_skill_engine._play_*_cinematic 的 VFX 序列
+func _trig_boss(kind: String) -> Callable:
+	match kind:
+		"apocalypse":
+			return func():
+				VfxFactory.spawn_ultimate_projectile(_bf, Vector2(60, -320), Vector2.ZERO, TEX_ULT_METEOR, "vertical", 64.0, Color(1.0, 0.55, 0.2), Color(1.0, 0.5, 0.2, 0.95), 0.55,
+					func(_p: Vector2): VfxFactory.spawn_spell_burst(_bf, Vector2.ZERO, TEX_APOC_METEOR, Color(1.0, 0.5, 0.2), 360.0, 0.9))
+		"inferno":
+			return func():
+				VfxFactory.spawn_ultimate_projectile(_bf, Vector2(240, -240), Vector2.ZERO, TEX_ULT_INFERNO, "dive", 56.0, Color(1.0, 0.3, 0.1), Color(1.0, 0.45, 0.1, 0.95), 0.5,
+					func(_p: Vector2):
+						VfxFactory.spawn_spell_burst(_bf, Vector2.ZERO, TEX_INFERNO, Color(1.0, 0.3, 0.1), 340.0, 0.9)
+						VfxFactory.spawn_spell_burst(_bf, Vector2(-90, 40), TEX_INFERNO, Color(1.0, 0.35, 0.12), 150.0, 0.6))
+		"chain":
+			return func():
+				VfxFactory.spawn_spell_burst(_bf, Vector2.ZERO, TEX_CHAIN, Color(0.5, 0.75, 1.0), 300.0, 0.7)
+				VfxFactory.spawn_lightning_arc(_bf, Vector2.ZERO, Vector2(-110, -60), Color(0.5, 0.7, 1.0))
+				VfxFactory.spawn_lightning_arc(_bf, Vector2(-110, -60), Vector2(-200, 10), Color(0.5, 0.7, 1.0))
+		"spear":
+			return func():
+				VfxFactory.spawn_ultimate_projectile(_bf, Vector2(0, -300), Vector2.ZERO, TEX_ULT_SPEAR, "vertical", 50.0, Color(1.0, 0.85, 0.5), Color(1.0, 0.85, 0.4, 0.95), 0.4,
+					func(_p: Vector2): VfxFactory.spawn_pierce_beam(_bf, Vector2.ZERO, Vector2(1, 0), Color(1.0, 0.9, 0.6, 1.0), true, 1.4))
+		"summon":
+			return func():
+				VfxFactory.spawn_spell_burst(_bf, Vector2.ZERO, TEX_PORTAL, Color(0.7, 0.35, 1.0), 280.0, 1.0)
+				VfxFactory.spawn_summon_portal(_bf, Vector2.ZERO, Color(0.7, 0.3, 1.0, 0.9), 0.9)
+		"dark":
+			return func():
+				VfxFactory.spawn_spell_burst(_bf, Vector2.ZERO, TEX_DARK, Color(0.4, 0.15, 0.6), 380.0, 1.2)
+				VfxFactory.spawn_lingering_debuff_ring(_bf, Vector2.ZERO, Color(0.45, 0.18, 0.65), 4.0)
+		"orbital":
+			return func():
+				VfxFactory.spawn_ultimate_projectile(_bf, Vector2(0, -300), Vector2.ZERO, TEX_ULT_ORBITAL, "vertical", 48.0, Color(0.7, 0.4, 1.0), Color(0.6, 0.4, 1.0, 0.9), 0.45,
+					func(_p: Vector2): VfxFactory.spawn_spell_burst(_bf, Vector2.ZERO, TEX_APOC_VOID, Color(0.5, 0.25, 0.8), 380.0, 1.2))
+	return func(): pass
+
+## dot 状态:挂在参照坦克单位上(生产中挂在受 debuff 单位)
+func _trig_dot(dot_type: String) -> Callable:
+	return func():
+		var tank: Sprite2D = _bf.get_node_or_null("Target") as Sprite2D
+		if tank != null:
+			DotVfx.attach_dot_vfx(tank, dot_type)
+
+## 组合技指示器
+func _trig_combo(kind: String) -> Callable:
+	match kind:
+		"weakpoint":
+			return func(): VfxFactory.spawn_weakpoint_indicator(_bf, Vector2.ZERO, 3.0)
+		"radar":
+			return func(): VfxFactory.spawn_radar_lock_ring(_bf, Vector2.ZERO, 6.0)
+		"resonance":
+			return func(): VfxFactory.spawn_resonance_ring(_bf, Vector2.ZERO, 3, 5.0)
+	return func(): pass
+
+func _trig_banner() -> Callable:
+	return func(): VfxFactory.show_combo_activate_banner("组合技·铁壁突袭", 1.6, true)
+
+func _trig_death() -> Callable:
+	return func(): VfxFactory.spawn_death_burst(_bf, Vector2.ZERO, false)
+
+func _trig_blood() -> Callable:
+	return func(): VfxFactory.spawn_hit_blood(_bf, Vector2.ZERO, Vector2(-1, 0), 8.0, false)
+
+## 大招弹道轨迹(飞行中+命中 两个峰值)
+func _trig_traj(mode: String) -> Callable:
+	if mode == "dive":
+		return func():
+			VfxFactory.spawn_ultimate_projectile(_bf, Vector2(230, -230), Vector2.ZERO, TEX_ULT_INFERNO, "dive", 56.0, Color(1.0, 0.3, 0.1), Color(1.0, 0.45, 0.1, 0.95), 0.5,
+				func(_p: Vector2): VfxFactory.spawn_spell_burst(_bf, Vector2.ZERO, TEX_INFERNO, Color(1.0, 0.3, 0.1), 300.0, 0.8))
+	return func():
+		VfxFactory.spawn_ultimate_projectile(_bf, Vector2(0, -300), Vector2.ZERO, TEX_ULT_ORBITAL, "vertical", 48.0, Color(0.7, 0.4, 1.0), Color(0.6, 0.4, 1.0, 0.9), 0.45,
+			func(_p: Vector2): VfxFactory.spawn_spell_burst(_bf, Vector2.ZERO, TEX_APOC_VOID, Color(0.5, 0.25, 0.8), 300.0, 0.8))

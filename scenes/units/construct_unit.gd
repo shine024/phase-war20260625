@@ -574,6 +574,9 @@ func _play_fire_scale_pulse() -> void:
 	_fire_pulse_tween = create_tween()
 	_fire_pulse_tween.tween_property(spr, "scale", base_s * 1.10, 0.04)
 	_fire_pulse_tween.tween_property(spr, "scale", base_s, 0.07)
+	# v14: 方向冲撞——前倾→后坐→归位(预备-发力-跟随),本体参与开火演出
+	var wt: int = stats.weapon_type if stats != null else 0
+	CardGridUnitVisuals.fire_lunge_sprite(spr, true, wt in [1, 2, 3, 7, 9, 10, 11])
 
 
 func _play_card_hit_recoil() -> void:

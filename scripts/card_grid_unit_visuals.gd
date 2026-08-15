@@ -8,6 +8,8 @@ const CardGridModStrip = preload("res://scripts/card_grid_mod_strip.gd")
 const CardGridBattleLayout = preload("res://scripts/card_grid_battle_layout.gd")
 const CardGridFloatingLabel = preload("res://scripts/card_grid_floating_label.gd")
 const RankRules = preload("res://data/rank_rules.gd")
+const DT = preload("res://resources/design_tokens.gd")  # v13: 待机微动效 motion_reduce 守卫
+const BossIdleAnim = preload("res://scripts/battle/boss_idle_anim.gd")  # v14/P2: boss 帧动画
 const CardFrameUi = preload("res://scripts/card_frame_ui.gd")
 const CardBackgroundUi = preload("res://scripts/card_background_ui.gd")
 const UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")
@@ -114,7 +116,100 @@ static func apply_battle_unit_presentation(
 	sync_hp_label(host, unit_spr, unit)
 	# v7.x 战场视觉反馈：漂浮 buff/debuff 标签（卡顶上方，破甲/标记/暴击标注/反炮）
 	sync_buff_labels(host, unit_spr, unit)
+	_apply_idle_motion(unit_spr, card)
+	# v14/P2: boss/相位师专属待机——有帧资产走帧动画,无则 boss 级程序化待机(威压摇摆)
+	var anim_id: String = card.card_id if card != null else ""
+	if anim_id.is_empty() and unit != null and "_visual_archetype_id" in unit:
+		anim_id = String(unit.get("_visual_archetype_id"))
+	var is_boss_tier: bool = anim_id.begins_with("enemy_master") or anim_id.begins_with("boss_")
+	if unit != null and unit.has_method("get_elite_spawn_type"):
+		var st: String = String(unit.call("get_elite_spawn_type"))
+		is_boss_tier = is_boss_tier or st == "elite" or st == "boss"
+	if is_boss_tier and not anim_id.is_empty():
+		BossIdleAnim.attach(unit_spr, anim_id)
+		_boss_sway_idle(unit_spr)
 	return true
+
+
+## v14/P2: boss 级程序化待机——威压摇摆(rotation 缓摆,±0.6°)。
+## 与待机浮动(y)/开火冲撞(x)/开火脉冲(scale)/受击闪白(modulate)全部不同属性,零冲突。
+## rotation 在 host 上有受击后仰(_play_card_hit_recoil),这里只动 unit_spr 自身 rotation。
+## Godot 4.5 实测:get_meta(key, default) 在 key 不存在时即使给了默认值,
+## 引擎仍会向日志打 ERROR(功能正常但刷屏)——杀 meta 旧 tween 必须先 has_meta 守卫。
+static func _kill_meta_tween(o: Object, key: String) -> void:
+	if o == null or not o.has_meta(key):
+		return
+	var old: Variant = o.get_meta(key)
+	if old is Tween:
+		(old as Tween).kill()
+
+
+static func _boss_sway_idle(unit_spr: Sprite2D) -> void:
+	if unit_spr == null or DT.is_motion_reduce():
+		return
+	_kill_meta_tween(unit_spr, "_boss_sway_tw")
+	var tw := unit_spr.create_tween().set_loops()
+	tw.tween_property(unit_spr, "rotation", 0.011, 2.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_property(unit_spr, "rotation", -0.011, 5.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_property(unit_spr, "rotation", 0.0, 2.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	unit_spr.set_meta("_boss_sway_tw", tw)
+
+
+## v13/v14: 待机微动效——Phase2 审计实锤"单位完全静止站桩,画面死"。
+## v14 按兵种差异化:空中(AIR)大幅浮动±3px / 装甲缓浮(2.2s 周期,厚重) /
+## 步兵轻快浮动±1.2px / 堡垒(FORT)完全不动(稳重感)。
+## 全部走 position:y——scale 留给开火脉冲,避免两个 tween 同属性打架。
+## 相位随机错开避免全屏同频;尊重 motion_reduce(无障碍)。
+static func _apply_idle_motion(unit_spr: Sprite2D, card: CardResource) -> void:
+	if unit_spr == null or DT.is_motion_reduce():
+		return
+	_kill_meta_tween(unit_spr, "_idle_tw")
+	var kind: int = card.combat_kind if card != null else -1
+	if kind == GC.CombatKind.FORT:
+		return  # v14: 堡垒不动——要塞/工事的厚重稳重感
+	var amp: float = 3.0 if kind == GC.CombatKind.AIR else 1.2
+	var half: float = 1.0 if kind == GC.CombatKind.AIR else (1.8 if kind == GC.CombatKind.ARMOR else 1.3)
+	half += randf() * 0.4  # 相位错开
+	var base_y: float = unit_spr.position.y
+	var tw := unit_spr.create_tween().set_loops()
+	tw.tween_property(unit_spr, "position:y", base_y - amp, half).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_property(unit_spr, "position:y", base_y, half).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	unit_spr.set_meta("_idle_tw", tw)
+
+
+## v14: 开火冲撞——前倾冲撞(0.05s)→后坐回弹(0.08s)→归位(0.10s)。
+## 预备-发力-跟随三段,让单位本体参与开火演出(此前只有枪口火在动,本体纹丝不动)。
+## 与待机浮动不同轴(x vs y)不打架;与开火缩放脉冲(scale)不同属性不打架。
+## fire_right: 攻击朝向;heavy: 重武器(曲射/火箭/导弹/能量)冲撞幅度加倍。
+static func fire_lunge_sprite(spr: Sprite2D, face_right: bool, heavy: bool) -> void:
+	if spr == null or DT.is_motion_reduce():
+		return
+	_kill_meta_tween(spr, "_lunge_tw")
+	var base_x: float = spr.position.x
+	if spr.has_meta("_lunge_base_x"):
+		base_x = float(spr.get_meta("_lunge_base_x"))
+		spr.position.x = base_x  # 杀旧冲撞后先归位再重放
+	var dir: float = 1.0 if face_right else -1.0
+	var amp: float = 8.0 if heavy else 4.0
+	spr.set_meta("_lunge_base_x", base_x)
+	var tw := spr.create_tween()
+	tw.tween_property(spr, "position:x", base_x + amp * dir, 0.05).set_ease(Tween.EASE_OUT)
+	tw.tween_property(spr, "position:x", base_x - amp * 0.4 * dir, 0.08).set_ease(Tween.EASE_OUT)
+	tw.tween_property(spr, "position:x", base_x, 0.10).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	spr.set_meta("_lunge_tw", tw)
+
+
+## v14: 开火冲撞(按单位节点找 Sprite 子节点)——给蜂群等无实例方法的单位用。
+## Sprite 子节点名兼容 "Sprite"(玩家) / "Sprite2D"(敌方);找不到静默返回。
+static func fire_lunge_unit(unit: Node, face_right: bool, heavy: bool) -> void:
+	if unit == null or not is_instance_valid(unit) or DT.is_motion_reduce():
+		return
+	var spr: Sprite2D = unit.get_node_or_null("Sprite") as Sprite2D
+	if spr == null:
+		spr = unit.get_node_or_null("Sprite2D") as Sprite2D
+	if spr == null:
+		return
+	fire_lunge_sprite(spr, face_right, heavy)
 
 
 ## 敌方精英金角标：当 unit 是 elite/boss 时，卡框左上角显示金色星形角标
