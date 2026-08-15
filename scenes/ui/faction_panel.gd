@@ -12,6 +12,9 @@ class_name FactionPanel
 const GC = preload("res://resources/game_constants.gd")
 const FactionSkillTree = preload("res://data/faction_skill_tree.gd")
 const FactionSkillManager = preload("res://managers/faction/faction_skill_manager.gd")
+const DT = preload("res://resources/design_tokens.gd")
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
+const PanelChrome = preload("res://scenes/ui/components/panel_chrome.gd")
 
 signal closed
 
@@ -24,10 +27,12 @@ var selected_faction_id: String = ""
 var faction_items: Array = []
 
 func _ready() -> void:
-	# 连接关闭按钮
-	var close_btn = get_node_or_null("VBoxContainer/TitleRow/CloseButton")
-	if close_btn:
-		close_btn.pressed.connect(_on_close)
+	# v7.x 面板统一：MEDIUM 档 + 紫色签名框架 + PanelChrome 标题栏（右上 ✕ 关闭）
+	custom_minimum_size = DT.PANEL_SIZE_MEDIUM
+	var accent := DT.get_panel_accent("faction")
+	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(accent))
+	var chrome = PanelChrome.attach_to($VBoxContainer, "势力系统", accent, "FACTION")
+	chrome.closed.connect(_on_close)
 	# 连接信号
 	ManagerLazyLoader.ensure_loaded("faction")
 	var faction_mgr = get_node_or_null("/root/FactionSystemManager")
@@ -100,6 +105,16 @@ func _init_faction_list() -> void:
 		var level = faction_info.get("level", 1)
 		item_button.text = "%s (Lv.%d)" % [faction_name, level]
 		item_button.custom_minimum_size = Vector2(200, 50)
+		var item_styles := PanelStyles.make_button_styles(DT.get_panel_accent("faction"))
+		item_button.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		item_button.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
+		item_button.add_theme_color_override("font_hover_color", Color(1, 1, 1, 1))
+		item_button.add_theme_color_override("font_pressed_color", Color(1, 1, 1, 1))
+		item_button.add_theme_color_override("font_focus_color", Color(1, 1, 1, 1))
+		item_button.add_theme_stylebox_override("normal", item_styles["normal"])
+		item_button.add_theme_stylebox_override("hover", item_styles["hover"])
+		item_button.add_theme_stylebox_override("pressed", item_styles["pressed"])
+		item_button.add_theme_stylebox_override("disabled", item_styles["disabled"])
 		var logo: Texture2D = UiAssetLoader.faction_logo_128(faction_id)
 		if logo != null:
 			item_button.icon = logo
@@ -130,7 +145,7 @@ func _update_faction_detail() -> void:
 	# 势力名称
 	var name_label = Label.new()
 	name_label.text = faction_info.get("name", "")
-	name_label.add_theme_font_size_override("font_size", 24)
+	name_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_LARGE)
 	faction_detail.add_child(name_label)
 
 	# v8.5: 激活势力按钮（战斗注入只对激活势力生效，必须让玩家能激活）
@@ -144,6 +159,16 @@ func _update_faction_detail() -> void:
 		active_btn.text = "☆ 激活此势力（战斗加成切换到此）"
 		active_btn.disabled = false
 	active_btn.custom_minimum_size = Vector2(0, 32)
+	var active_styles := PanelStyles.make_button_styles(DT.COLOR_GREEN_UP if not is_this_active else DT.COLOR_TEXT_DIM)
+	active_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	active_btn.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
+	active_btn.add_theme_color_override("font_hover_color", Color(1, 1, 1, 1))
+	active_btn.add_theme_color_override("font_pressed_color", Color(1, 1, 1, 1))
+	active_btn.add_theme_color_override("font_focus_color", Color(1, 1, 1, 1))
+	active_btn.add_theme_stylebox_override("normal", active_styles["normal"])
+	active_btn.add_theme_stylebox_override("hover", active_styles["hover"])
+	active_btn.add_theme_stylebox_override("pressed", active_styles["pressed"])
+	active_btn.add_theme_stylebox_override("disabled", active_styles["disabled"])
 	if not is_this_active:
 		active_btn.pressed.connect(_on_activate_faction_pressed.bind(selected_faction_id))
 	faction_detail.add_child(active_btn)
@@ -195,7 +220,8 @@ func _update_faction_detail() -> void:
 	# 显示商店库存预览
 	var store_label = Label.new()
 	store_label.text = "势力商店库存"
-	store_label.add_theme_font_size_override("font_size", 14)
+	store_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
+	store_label.add_theme_color_override("font_color", DT.COLOR_VIOLET)
 	faction_detail.add_child(store_label)
 	
 	var store_inventory = faction_info.get("store_inventory", [])
@@ -226,7 +252,8 @@ func _append_faction_skill_tree(faction_mgr: Node, faction_id: String, faction_l
 	# 分隔标题
 	var skill_title = Label.new()
 	skill_title.text = "◆ 势力技能树"
-	skill_title.add_theme_font_size_override("font_size", 16)
+	skill_title.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
+	skill_title.add_theme_color_override("font_color", DT.COLOR_VIOLET)
 	faction_detail.add_child(skill_title)
 
 	# 可用技能点
@@ -236,7 +263,7 @@ func _append_faction_skill_tree(faction_mgr: Node, faction_id: String, faction_l
 	var spent: int = FactionSkillManager.get_total_spent(state)
 	var points_label = Label.new()
 	points_label.text = "可用技能点：%d（已用 %d，势力等级 %d）" % [avail, spent, faction_level]
-	points_label.add_theme_font_size_override("font_size", 13)
+	points_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	faction_detail.add_child(points_label)
 
 	# 按节点数判断是否放入 ScrollContainer（12 节点 + 分组标题可能超出高度）
@@ -244,7 +271,7 @@ func _append_faction_skill_tree(faction_mgr: Node, faction_id: String, faction_l
 	if skills.is_empty():
 		var empty_sk = Label.new()
 		empty_sk.text = "（该势力无技能定义）"
-		empty_sk.add_theme_font_size_override("font_size", 12)
+		empty_sk.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		faction_detail.add_child(empty_sk)
 		return
 
@@ -260,8 +287,8 @@ func _append_faction_skill_tree(faction_mgr: Node, faction_id: String, faction_l
 		# tier 分组标题
 		var tier_label = Label.new()
 		tier_label.text = "— 等级 %d 解锁 —" % tier
-		tier_label.add_theme_font_size_override("font_size", 12)
-		tier_label.modulate = Color(0.7, 0.7, 0.75)
+		tier_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		tier_label.modulate = DT.COLOR_TEXT_DIM
 		faction_detail.add_child(tier_label)
 
 		# 该 tier 的节点（A/B 并排）
@@ -302,14 +329,14 @@ func _make_faction_skill_node(skill: Dictionary, faction_id: String, faction_lev
 	# 三态着色（StyleBoxFlat）
 	var sb = StyleBoxFlat.new()
 	if is_unlocked:
-		sb.bg_color = Color(0.08, 0.18, 0.10, 1.0)
-		sb.border_color = Color(0.30, 0.70, 0.45, 1.0)
+		sb.bg_color = Color(DT.COLOR_GREEN_UP.r, DT.COLOR_GREEN_UP.g, DT.COLOR_GREEN_UP.b, 0.12)
+		sb.border_color = Color(DT.COLOR_GREEN_UP.r, DT.COLOR_GREEN_UP.g, DT.COLOR_GREEN_UP.b, 0.8)
 	elif can_unlock and avail > 0:
-		sb.bg_color = Color(0.12, 0.14, 0.20, 1.0)
-		sb.border_color = Color(0.95, 0.75, 0.30, 1.0)
+		sb.bg_color = Color(DT.COLOR_GOLD.r, DT.COLOR_GOLD.g, DT.COLOR_GOLD.b, 0.10)
+		sb.border_color = Color(DT.COLOR_GOLD.r, DT.COLOR_GOLD.g, DT.COLOR_GOLD.b, 0.9)
 	else:
-		sb.bg_color = Color(0.06, 0.07, 0.10, 1.0)
-		sb.border_color = Color(0.30, 0.32, 0.36, 1.0)
+		sb.bg_color = DT.COLOR_SLOT_LOCKED
+		sb.border_color = Color(DT.COLOR_BORDER_DIM.r, DT.COLOR_BORDER_DIM.g, DT.COLOR_BORDER_DIM.b, 0.9)
 	sb.set_border_width_all(1)
 	sb.content_margin_left = 6
 	sb.content_margin_right = 6
@@ -327,13 +354,13 @@ func _make_faction_skill_node(skill: Dictionary, faction_id: String, faction_lev
 	# 节点名称
 	var name_lbl = Label.new()
 	name_lbl.text = String(skill.get("name", skill_id))
-	name_lbl.add_theme_font_size_override("font_size", 13)
+	name_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	vb.add_child(name_lbl)
 
 	# 描述
 	var desc_lbl = Label.new()
 	desc_lbl.text = String(skill.get("desc", ""))
-	desc_lbl.add_theme_font_size_override("font_size", 11)
+	desc_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc_lbl.custom_minimum_size = Vector2(180, 0)
 	vb.add_child(desc_lbl)
@@ -343,20 +370,29 @@ func _make_faction_skill_node(skill: Dictionary, faction_id: String, faction_lev
 	if is_unlocked:
 		var ok_lbl = Label.new()
 		ok_lbl.text = "✓ 已解锁"
-		ok_lbl.add_theme_font_size_override("font_size", 12)
-		ok_lbl.modulate = Color(0.5, 0.9, 0.6)
+		ok_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		ok_lbl.modulate = DT.COLOR_GREEN_UP
 		vb.add_child(ok_lbl)
 	elif is_conflict:
 		var conflict_lbl = Label.new()
 		conflict_lbl.text = "⚠ 已选另一分支"
-		conflict_lbl.add_theme_font_size_override("font_size", 11)
-		conflict_lbl.modulate = Color(0.9, 0.5, 0.5)
+		conflict_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		conflict_lbl.modulate = DT.COLOR_RED_DOWN
 		vb.add_child(conflict_lbl)
 	else:
 		var unlock_btn = Button.new()
 		unlock_btn.text = "解锁 (%d点)" % cost
-		unlock_btn.add_theme_font_size_override("font_size", 12)
+		unlock_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		unlock_btn.custom_minimum_size = Vector2(0, 26)
+		var unlock_styles := PanelStyles.make_button_styles(DT.COLOR_GOLD)
+		unlock_btn.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
+		unlock_btn.add_theme_color_override("font_hover_color", Color(1, 1, 1, 1))
+		unlock_btn.add_theme_color_override("font_pressed_color", Color(1, 1, 1, 1))
+		unlock_btn.add_theme_color_override("font_focus_color", Color(1, 1, 1, 1))
+		unlock_btn.add_theme_stylebox_override("normal", unlock_styles["normal"])
+		unlock_btn.add_theme_stylebox_override("hover", unlock_styles["hover"])
+		unlock_btn.add_theme_stylebox_override("pressed", unlock_styles["pressed"])
+		unlock_btn.add_theme_stylebox_override("disabled", unlock_styles["disabled"])
 		unlock_btn.disabled = not can_unlock or avail < cost
 		if can_unlock and avail >= cost:
 			unlock_btn.pressed.connect(_on_unlock_faction_skill.bind(faction_id, skill_id))

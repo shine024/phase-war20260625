@@ -1,23 +1,10 @@
-[gd_scene load_steps=3 format=3 uid="uid://collection_panel_v7"]
+[gd_scene load_steps=2 format=3 uid="uid://collection_panel_v7"]
 
 [ext_resource type="Script" path="res://scenes/ui/collection_panel.gd" id="1_script"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
-bg_color = Color(0.04, 0.06, 0.1, 0.98)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0, 0.941, 1, 0.5)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
 
 [node name="CollectionPanel" type="PanelContainer"]
 custom_minimum_size = Vector2(960, 600)
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 script = ExtResource("1_script")
 
 [node name="Margin" type="MarginContainer" parent="."]
@@ -30,20 +17,6 @@ theme_override_constants/margin_bottom = 16
 [node name="VBox" type="VBoxContainer" parent="Margin"]
 layout_mode = 2
 theme_override_constants/separation = 10
-
-[node name="TitleRow" type="HBoxContainer" parent="Margin/VBox"]
-layout_mode = 2
-
-[node name="Title" type="Label" parent="Margin/VBox/TitleRow"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0, 0.941, 1, 1)
-theme_override_font_sizes/font_size = 22
-text = "卡牌图鉴"
-[node name="TitleSub" type="Label" parent="Margin/VBox/TitleRow"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 0.7)
-theme_override_font_sizes/font_size = 10
-text = "COLLECTION"
 
 [node name="ProgressRow" type="HBoxContainer" parent="Margin/VBox"]
 layout_mode = 2
@@ -127,15 +100,3 @@ theme_override_colors/font_color = Color(0.75, 0.82, 0.9, 1)
 theme_override_font_sizes/font_size = 14
 text = ""
 autowrap_mode = 2
-
-[node name="CloseRow" type="HBoxContainer" parent="Margin/VBox"]
-layout_mode = 2
-alignment = 1
-
-[node name="CloseBtn" type="Button" parent="Margin/VBox/CloseRow"]
-custom_minimum_size = Vector2(160, 40)
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_hover_color = Color(0, 0.941, 1, 1)
-theme_override_font_sizes/font_size = 16
-text = "关闭 CLOSE"

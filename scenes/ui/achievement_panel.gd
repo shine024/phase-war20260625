@@ -8,9 +8,11 @@ signal reward_claimed(achievement_id: String)
 
 const AchievementDefs = preload("res://data/achievement_definitions.gd")
 const AchievementDefsExtended = preload("res://data/achievement_definitions_extended.gd")
+const DT = preload("res://resources/design_tokens.gd")
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
+const PanelChrome = preload("res://scenes/ui/components/panel_chrome.gd")
 
 # UI组件引用
-@onready var close_button: Button = $Margin/VBox/Header/CloseButton
 @onready var category_tabs: TabContainer = $Margin/VBox/Body/CategoryTabs
 # 注：路径解析到的是 ScrollContainer 下的同名 VBoxContainer 子节点（用于 add_child 排列成就条目）
 @onready var achievement_list: VBoxContainer = $Margin/VBox/Body/AchievementList/AchievementList
@@ -35,10 +37,23 @@ func _ready() -> void:
 	# 检查是否使用扩展成就定义（AchievementDefsExtended 是 preload 脚本对象）
 	use_extended_definitions = AchievementDefsExtended != null
 
-	if close_button:
-		close_button.pressed.connect(_on_close)
+	# v7.x 面板统一：SMALL 档 + 金色签名框架 + PanelChrome 标题栏（右上 ✕ 关闭）
+	custom_minimum_size = DT.PANEL_SIZE_SMALL
+	var accent := DT.get_panel_accent("achievement")
+	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(accent))
+	var chrome = PanelChrome.attach_to($Margin/VBox, "成就系统", accent, "ACHIEVEMENTS")
+	chrome.closed.connect(_on_close)
 
 	if claim_all_button != null:
+		var claim_all_styles := PanelStyles.make_button_styles(accent)
+		claim_all_button.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
+		claim_all_button.add_theme_color_override("font_hover_color", Color(1, 1, 1, 1))
+		claim_all_button.add_theme_color_override("font_pressed_color", Color(1, 1, 1, 1))
+		claim_all_button.add_theme_color_override("font_focus_color", Color(1, 1, 1, 1))
+		claim_all_button.add_theme_stylebox_override("normal", claim_all_styles["normal"])
+		claim_all_button.add_theme_stylebox_override("hover", claim_all_styles["hover"])
+		claim_all_button.add_theme_stylebox_override("pressed", claim_all_styles["pressed"])
+		claim_all_button.add_theme_stylebox_override("disabled", claim_all_styles["disabled"])
 		claim_all_button.pressed.connect(_on_claim_all_rewards)
 
 	_setup_categories()
@@ -179,7 +194,7 @@ func _create_achievement_item(data: Dictionary) -> Control:
 	var icon_label = Label.new()
 	icon_label.text = data.get("icon", "🏆")
 	icon_label.custom_minimum_size = Vector2(40, 0)
-	icon_label.add_theme_font_size_override("font_size", 24)
+	icon_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_LARGE)
 	header_row.add_child(icon_label)
 
 	# 名称和状态
@@ -188,14 +203,14 @@ func _create_achievement_item(data: Dictionary) -> Control:
 
 	var name_label = Label.new()
 	name_label.text = data.get("name", "未知成就")
-	name_label.add_theme_font_size_override("font_size", 14)
-	name_label.add_theme_color_override("font_color", Color(1, 0.9, 0.6, 1))
+	name_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
+	name_label.add_theme_color_override("font_color", DT.COLOR_GOLD)
 	name_box.add_child(name_label)
 
 	var status_label = Label.new()
 	if is_unlocked:
 		status_label.text = "✓ 已解锁"
-		status_label.add_theme_color_override("font_color", Color(0.3, 0.9, 0.5, 1))
+		status_label.add_theme_color_override("font_color", DT.COLOR_GREEN_BRIGHT)
 	else:
 		# 显示进度信息
 		var progress_info = _get_achievement_progress_info(achievement_id)
@@ -205,7 +220,7 @@ func _create_achievement_item(data: Dictionary) -> Control:
 			status_label.text = "进度: %d/%d" % [current, max_val]
 		else:
 			status_label.text = "○ 未解锁"
-		status_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.7, 1))
+		status_label.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
 	name_box.add_child(status_label)
 
 	header_row.add_child(name_box)
@@ -215,6 +230,15 @@ func _create_achievement_item(data: Dictionary) -> Control:
 		var claim_button = Button.new()
 		claim_button.text = "领取奖励"
 		claim_button.custom_minimum_size = Vector2(80, 30)
+		var claim_styles := PanelStyles.make_button_styles(DT.COLOR_GOLD, "solid")
+		claim_button.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		claim_button.add_theme_color_override("font_color", DT.COLOR_VOID)
+		claim_button.add_theme_color_override("font_hover_color", DT.COLOR_VOID)
+		claim_button.add_theme_color_override("font_pressed_color", DT.COLOR_VOID)
+		claim_button.add_theme_color_override("font_focus_color", DT.COLOR_VOID)
+		claim_button.add_theme_stylebox_override("normal", claim_styles["normal"])
+		claim_button.add_theme_stylebox_override("hover", claim_styles["hover"])
+		claim_button.add_theme_stylebox_override("pressed", claim_styles["pressed"])
 		claim_button.pressed.connect(_on_achievement_claim.bind(achievement_id))
 		header_row.add_child(claim_button)
 
@@ -223,8 +247,8 @@ func _create_achievement_item(data: Dictionary) -> Control:
 	# 描述
 	var desc_label = Label.new()
 	desc_label.text = data.get("description", "")
-	desc_label.add_theme_font_size_override("font_size", 11)
-	desc_label.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85, 1))
+	desc_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+	desc_label.add_theme_color_override("font_color", DT.COLOR_TEXT_MID)
 	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	container.add_child(desc_label)
 
@@ -233,8 +257,8 @@ func _create_achievement_item(data: Dictionary) -> Control:
 	if not flavor_text.is_empty():
 		var flavor_label = Label.new()
 		flavor_label.text = "\"%s\"" % flavor_text
-		flavor_label.add_theme_font_size_override("font_size", 10)
-		flavor_label.add_theme_color_override("font_color", Color(0.5, 0.6, 0.7, 1))
+		flavor_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		flavor_label.add_theme_color_override("font_color", DT.COLOR_TEXT_FAINT)
 		flavor_label.add_theme_stylebox_override("normal", StyleBoxFlat.new())
 		flavor_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 		container.add_child(flavor_label)
@@ -245,8 +269,8 @@ func _create_achievement_item(data: Dictionary) -> Control:
 		var reward_label = Label.new()
 		var reward_text = _format_rewards(rewards)
 		reward_label.text = "奖励：%s" % reward_text
-		reward_label.add_theme_font_size_override("font_size", 10)
-		reward_label.add_theme_color_override("font_color", Color(0.4, 0.8, 1.0, 1))
+		reward_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		reward_label.add_theme_color_override("font_color", DT.COLOR_RARITY_RARE)
 		container.add_child(reward_label)
 
 	# 分隔线

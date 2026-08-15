@@ -16,46 +16,6 @@ corner_radius_bottom_left = 6
 shadow_color = Color(0, 0.941, 1, 0.2)
 shadow_size = 8
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_action_btn"]
-bg_color = Color(0, 0.941, 1, 0.15)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0, 0.941, 1, 0.6)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
-shadow_color = Color(0, 0.941, 1, 0.25)
-shadow_size = 4
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_action_btn_hover"]
-bg_color = Color(0, 0.941, 1, 0.25)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0, 0.941, 1, 0.9)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
-shadow_color = Color(0, 0.941, 1, 0.4)
-shadow_size = 6
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_action_btn_disabled"]
-bg_color = Color(0.1, 0.1, 0.15, 0.5)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.3, 0.3, 0.35, 0.3)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
-
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_close_btn"]
 bg_color = Color(0.545, 0.361, 0.965, 0.15)
 border_width_left = 1
@@ -90,7 +50,6 @@ script = ExtResource("1_script")
 visible = false
 layout_mode = 2
 custom_minimum_size = Vector2(760, 400)
-theme_override_styles/panel = SubResource("StyleBoxFlat_popup")
 
 [node name="Margin" type="MarginContainer" parent="AssemblePopup"]
 layout_mode = 1
@@ -106,15 +65,9 @@ theme_override_constants/margin_bottom = 14
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="TitleLabel" type="Label" parent="AssemblePopup/Margin/VBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0, 0.941, 1, 1)
-theme_override_font_sizes/font_size = 18
-text = "装配卡 ASSEMBLE"
-
 [node name="DescLabel" type="Label" parent="AssemblePopup/Margin/VBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.7, 0.75, 0.85, 1)
+theme_override_colors/font_color = Color(0.67, 0.72, 0.82, 1)
 theme_override_font_sizes/font_size = 13
 text = "选择已学会的蓝图，装配后加入背包："
 
@@ -137,19 +90,19 @@ theme_override_constants/separation = 4
 [node name="CardInfoLabel" type="Label" parent="AssemblePopup/Margin/VBox/ComboArea"]
 layout_mode = 2
 custom_minimum_size = Vector2(0, 60)
-theme_override_colors/font_color = Color(0.7, 0.75, 0.85, 1)
+theme_override_colors/font_color = Color(0.67, 0.72, 0.82, 1)
 theme_override_font_sizes/font_size = 12
 text = "选择平台或武器查看详情"
 
 [node name="PlatformLabel" type="Label" parent="AssemblePopup/Margin/VBox/ComboArea"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.2, 0.6, 0.9, 1)
+theme_override_colors/font_color = Color(0.302, 0.498, 0.898, 1)
 theme_override_font_sizes/font_size = 13
 text = "已选平台：—"
 
 [node name="WeaponLabel" type="Label" parent="AssemblePopup/Margin/VBox/ComboArea"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.9, 0.5, 0.2, 1)
+theme_override_colors/font_color = Color(0.9, 0.6, 0.1, 1)
 theme_override_font_sizes/font_size = 13
 text = "已选武器：—"
 
@@ -157,33 +110,14 @@ text = "已选武器：—"
 custom_minimum_size = Vector2(0, 38)
 layout_mode = 2
 disabled = true
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_hover_color = Color(0, 0.941, 1, 1)
 theme_override_font_sizes/font_size = 14
-theme_override_styles/normal = SubResource("StyleBoxFlat_action_btn")
-theme_override_styles/hover = SubResource("StyleBoxFlat_action_btn_hover")
-theme_override_styles/disabled = SubResource("StyleBoxFlat_action_btn_disabled")
 text = "装配整机（平台+武器）"
 
 [node name="AssembleSingleButton" type="Button" parent="AssemblePopup/Margin/VBox/ComboArea"]
 custom_minimum_size = Vector2(0, 38)
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_hover_color = Color(0, 0.941, 1, 1)
 theme_override_font_sizes/font_size = 14
-theme_override_styles/normal = SubResource("StyleBoxFlat_action_btn")
-theme_override_styles/hover = SubResource("StyleBoxFlat_action_btn_hover")
 text = "仅装配此卡（单张）"
-
-[node name="CloseButton" type="Button" parent="AssemblePopup/Margin/VBox"]
-custom_minimum_size = Vector2(0, 36)
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_hover_color = Color(0.545, 0.361, 0.965, 1)
-theme_override_font_sizes/font_size = 13
-theme_override_styles/normal = SubResource("StyleBoxFlat_close_btn")
-theme_override_styles/hover = SubResource("StyleBoxFlat_close_btn_hover")
-text = "关闭"
 
 [node name="InfoPopup" type="PopupPanel" parent="."]
 custom_minimum_size = Vector2(420, 360)
@@ -207,14 +141,14 @@ theme_override_constants/separation = 8
 
 [node name="TitleLabel" type="Label" parent="InfoPopup/Margin/VBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.7, 0.75, 0.85, 1)
+theme_override_colors/font_color = Color(0.67, 0.72, 0.82, 1)
 theme_override_font_sizes/font_size = 18
 text = "信息库 DATABASE"
 
 [node name="DescLabel" type="Label" parent="InfoPopup/Margin/VBox"]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_colors/font_color = Color(0.6, 0.65, 0.75, 1)
+theme_override_colors/font_color = Color(0.6, 0.66, 0.78, 1)
 theme_override_font_sizes/font_size = 13
 text = "记录已经获得的知识、背景信息与解析结果。"
 autowrap_mode = 2

@@ -21,7 +21,11 @@ const COLOR_TEXT_BRIGHT := Color(0.88, 0.92, 0.98, 1)    # 亮文本白（面板
 const COLOR_BORDER := Color(0.25, 0.35, 0.42, 0.7)       # 暗边框（槽位/分隔）
 
 # Typography sizes (base)
+# v7.x 面板统一：字号收敛到 7 档（XS/S/BODY/M/L/TITLE/HUGE），
+# 迁移映射规则：7-11→XS、12/13→S、14/15→BODY、16/17→M、18/20/22→L、24/32→TITLE。
+const FONT_SIZE_XSMALL := 10
 const FONT_SIZE_SMALL := 12
+const FONT_SIZE_BODY := 14
 const FONT_SIZE_MEDIUM := 16
 const FONT_SIZE_LARGE := 20
 const FONT_SIZE_TITLE := 32
@@ -294,3 +298,26 @@ static func get_system_glow(system: String) -> Color:
 		"violet", "evolve": return COLOR_VIOLET_GLOW
 		"gold", "growth": return Color(1.0, 0.85, 0.35, 0.40)
 		_: return Color(0, 0.94, 1, 0.35)
+
+
+# ===== 面板签名色（v7.x 面板统一：每个功能面板一个 accent，标题栏/边框/强调态共用） =====
+# 视觉方向对齐 docs/界面一致性/design_06_visual_direction.html（军事科幻 + 霓虹光晕 + 冷色调）。
+# 养成四面板沿用签名色：强化=amber；本表覆盖未接入 DT 的功能面板。
+const PANEL_ACCENTS := {
+	"store": COLOR_GOLD,             # 公司商店 · 金（货币/交易语义，沿用原金色主题）
+	"quest": COLOR_ACCENT_CYAN,      # 任务 · 霓虹青
+	"faction": COLOR_ACCENT_PURPLE,  # 势力 · 霓虹紫
+	"occupation": COLOR_ACCENT_CYAN, # 势力领地图 · 青（地图/战术语义）
+	"intelligence": COLOR_VIOLET,    # 情报中心 · 紫（隐秘语义）
+	"drops": COLOR_ENERGY,           # 掉落背包 · 橙（战利品语义）
+	"achievement": COLOR_GOLD,       # 成就 · 金（荣誉语义）
+	"daily": COLOR_GREEN_BRIGHT,     # 每日任务 · 亮绿（日常/刷新语义）
+	"settings": Color(0.55, 0.65, 0.75, 1),  # 设置 · 中性冷灰蓝（工具面板不抢戏）
+	"collection": COLOR_CYAN_TECH,   # 图鉴 · 科技青
+	"reinforcement": COLOR_GREEN_BRIGHT,  # 强化面板 · 亮绿（提升语义，区别于 card_enhancement 的琥珀）
+	"leaderboard": COLOR_GOLD,       # 排行榜 · 金（竞技荣誉语义）
+}
+
+## 面板 accent 单一入口：未知 panel_id 回退霓虹青
+static func get_panel_accent(panel_id: String) -> Color:
+	return PANEL_ACCENTS.get(panel_id, COLOR_ACCENT_CYAN)

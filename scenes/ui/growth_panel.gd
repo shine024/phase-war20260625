@@ -434,15 +434,27 @@ func _create_card_list_item(card: CardResource, instance_id_raw: Variant) -> Con
 	rarity_strip.custom_minimum_size = Vector2(32, 2)
 	rarity_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# 兵种字母（占位图）
-	var thumb_icon := Label.new()
-	thumb_icon.text = _get_unit_icon(card)
-	thumb_icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	thumb_icon.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	thumb_icon.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	thumb_icon.add_theme_font_size_override("font_size", 16)
-	thumb_icon.add_theme_color_override("font_color", Color(1, 1, 1, 0.55))
-	thumb_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	thumb.add_child(thumb_icon)
+	# v7.x 视觉审查：缩略区改用真实卡图（原为兵种字母占位）；无图时回退字母
+	var thumb_tex: Texture2D = UiAssetLoader.card_icon_for_list(card)
+	if thumb_tex != null:
+		var thumb_icon := TextureRect.new()
+		thumb_icon.texture = thumb_tex
+		thumb_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		thumb_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		thumb_icon.size_flags_horizontal = Control.SIZE_FILL
+		thumb_icon.size_flags_vertical = Control.SIZE_FILL
+		thumb_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		thumb.add_child(thumb_icon)
+	else:
+		var thumb_fallback := Label.new()
+		thumb_fallback.text = _get_unit_icon(card)
+		thumb_fallback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		thumb_fallback.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		thumb_fallback.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		thumb_fallback.add_theme_font_size_override("font_size", 16)
+		thumb_fallback.add_theme_color_override("font_color", Color(1, 1, 1, 0.55))
+		thumb_fallback.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		thumb.add_child(thumb_fallback)
 	hbox.add_child(thumb)
 
 	# 信息列

@@ -5,18 +5,21 @@ class_name ReinforcementPanel
 
 signal closed
 
-# === 主题色（绿色强化主题） ===
-const THEME_GREEN := Color(0.3, 0.92, 0.5, 1)
-const THEME_GREEN_SOFT := Color(0.2, 0.7, 0.38, 1)
-const THEME_CYAN := Color(0.0, 0.9, 1.0, 1)
-const THEME_GOLD := Color(1.0, 0.85, 0.35, 1)
-const THEME_PURPLE := Color(0.75, 0.55, 1.0, 1)
-const THEME_RED := Color(0.95, 0.4, 0.4, 1)
-const THEME_TEXT := Color(0.88, 0.92, 0.98, 1)
-const THEME_TEXT_DIM := Color(0.6, 0.66, 0.78, 1)
-const THEME_BG_CARD := Color(0.07, 0.12, 0.16, 0.92)
-const THEME_BG_SLOT := Color(0.05, 0.08, 0.11, 0.95)
-const THEME_BORDER_DIM := Color(0.25, 0.35, 0.42, 0.7)
+# === 主题色（绿色强化语义，v7.x 收口到 DesignTokens 单一真源） ===
+const DT = preload("res://resources/design_tokens.gd")
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
+const PanelChrome = preload("res://scenes/ui/components/panel_chrome.gd")
+const THEME_GREEN := DT.COLOR_GREEN_BRIGHT
+const THEME_GREEN_SOFT := DT.COLOR_RARITY_UNCOMMON
+const THEME_CYAN := DT.COLOR_ACCENT_CYAN
+const THEME_GOLD := DT.COLOR_GOLD
+const THEME_PURPLE := DT.COLOR_VIOLET
+const THEME_RED := DT.COLOR_RED_DOWN
+const THEME_TEXT := DT.COLOR_TEXT_BRIGHT
+const THEME_TEXT_DIM := DT.COLOR_TEXT_DIM
+const THEME_BG_CARD := Color(DT.COLOR_CARD.r, DT.COLOR_CARD.g, DT.COLOR_CARD.b, 0.92)
+const THEME_BG_SLOT := Color(DT.COLOR_SLOT_LOCKED.r, DT.COLOR_SLOT_LOCKED.g, DT.COLOR_SLOT_LOCKED.b, 0.95)
+const THEME_BORDER_DIM := DT.COLOR_BORDER
 
 # v9.x: 战力口径统一为「属性战力」（与改造面板/情报面板一致，敌我可对比）
 const EvolutionHelpers = preload("res://managers/evolution/evolution_helpers.gd")
@@ -32,16 +35,32 @@ var selected_card: CardResource = null
 var _embedded_mode: bool = false
 
 func _ready() -> void:
-	# 连接关闭按钮
-	var close_btn = get_node_or_null("VBoxContainer/TitleRow/CloseButton")
-	if close_btn:
-		close_btn.pressed.connect(_on_close)
+	# v7.x 面板统一：LARGE 档 + 绿色签名框架 + PanelChrome 标题栏（右上 ✕ 关闭）
+	custom_minimum_size = DT.PANEL_SIZE_LARGE
+	var accent := DT.get_panel_accent("reinforcement")
+	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(accent))
+	var title_hbox := get_node_or_null("VBoxContainer/TitleRow/TitleHBox")
+	if title_hbox is BoxContainer:
+		var chrome = PanelChrome.attach_to(title_hbox, "强化面板", accent, "REINFORCEMENT")
+		chrome.closed.connect(_on_close)
+		# "← 成长首页"保持在 ✕ 左侧：把 ✕ 移到 TitleHBox 末尾
+		title_hbox.add_child(chrome.close_button)
 	# v9.x: 连接"返回成长首页"按钮（与 modification/evolution 面板同模式，用 unique_name）
 	var back_btn = get_node_or_null("%BackToGrowthButton")
 	if back_btn:
 		back_btn.pressed.connect(_on_back_to_growth)
 	# 连接晋升按钮
 	if reinforce_button:
+		var reinforce_styles := PanelStyles.make_button_styles(DT.get_panel_accent("reinforcement"), "solid")
+		reinforce_button.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
+		reinforce_button.add_theme_color_override("font_color", DT.COLOR_VOID)
+		reinforce_button.add_theme_color_override("font_hover_color", DT.COLOR_VOID)
+		reinforce_button.add_theme_color_override("font_pressed_color", DT.COLOR_VOID)
+		reinforce_button.add_theme_color_override("font_focus_color", DT.COLOR_VOID)
+		reinforce_button.add_theme_stylebox_override("normal", reinforce_styles["normal"])
+		reinforce_button.add_theme_stylebox_override("hover", reinforce_styles["hover"])
+		reinforce_button.add_theme_stylebox_override("pressed", reinforce_styles["pressed"])
+		reinforce_button.add_theme_stylebox_override("disabled", reinforce_styles["disabled"])
 		reinforce_button.pressed.connect(_on_reinforce_pressed)
 
 	if _embedded_mode:

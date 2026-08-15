@@ -14,6 +14,11 @@ const LevelInformation = preload("res://data/level_information.gd")
 const CompanyDefs = preload("res://data/company_definitions.gd")
 const FactionConquestBuffs = preload("res://data/faction_conquest_buffs.gd")
 const FactionStatus = preload("res://data/faction_status.gd")
+const DT = preload("res://resources/design_tokens.gd")
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
+const PanelChrome = preload("res://scenes/ui/components/panel_chrome.gd")
+
+signal closed
 
 ## 势力代表色统一来源：CompanyDefinitions.get_faction_color()（Palette B 高饱和）
 ## 无主之地兜底色
@@ -32,11 +37,15 @@ func _ready() -> void:
 	_legend_container = get_node_or_null("Margin/VBox/LegendScroll/LegendContainer")
 	_territory_container = get_node_or_null("Margin/VBox/TerritoryScroll/TerritoryContainer")
 	_detail_label = get_node_or_null("Margin/VBox/DetailLabel")
-	_active_faction_label = get_node_or_null("Margin/VBox/TitleRow/ActiveFactionLabel")
+	_active_faction_label = get_node_or_null("Margin/VBox/ActiveFactionLabel")
 
-	var close_btn: Button = get_node_or_null("Margin/VBox/TitleRow/CloseButton")
-	if close_btn:
-		close_btn.pressed.connect(_on_close)
+	# v7.x 面板统一：MEDIUM 档 + 青色签名框架 + PanelChrome 标题栏（右上 ✕ 关闭）
+	# 修复：原关闭只藏面板自身，Overlay/Backdrop 卡屏——改发 closed 信号交 main.gd 统一收 overlay
+	custom_minimum_size = DT.PANEL_SIZE_MEDIUM
+	var accent := DT.get_panel_accent("occupation")
+	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(accent))
+	var chrome = PanelChrome.attach_to($Margin/VBox, "势力领地图", accent, "TERRITORY MAP")
+	chrome.closed.connect(_on_close)
 
 	# 监听占领/声望变化实时刷新
 	if SignalBus:
@@ -58,7 +67,7 @@ func _on_visibility_changed() -> void:
 
 
 func _on_close() -> void:
-	visible = false
+	closed.emit()
 
 
 func _on_occupation_changed(_level: int, _old_f: String, _new_f: String) -> void:
@@ -96,13 +105,13 @@ func _refresh_active_faction_label() -> void:
 	var active: String = fsm.get("active_faction") if "active_faction" in fsm else ""
 	if active.is_empty():
 		_active_faction_label.text = "（未激活势力，攻克=解放为无主之地）"
-		_active_faction_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.65, 0.8))
+		_active_faction_label.add_theme_color_override("font_color", Color(DT.COLOR_TEXT_DIM.r, DT.COLOR_TEXT_DIM.g, DT.COLOR_TEXT_DIM.b, 0.8))
 	else:
 		var fname: String = active
 		if fsm.has_method("get_faction_info"):
 			fname = String(fsm.get_faction_info(active).get("name", active))
 		_active_faction_label.text = "当前激活：%s（攻克关卡将归属此势力）" % fname
-		_active_faction_label.add_theme_color_override("font_color", Color(0.95, 0.85, 0.35, 1.0))
+		_active_faction_label.add_theme_color_override("font_color", DT.COLOR_GOLD)
 
 
 ## 刷新势力图例（7势力状态 + 占领数）
@@ -126,19 +135,19 @@ func _refresh_legend() -> void:
 		# 名称
 		var name_l := Label.new()
 		name_l.text = fname
-		name_l.add_theme_font_size_override("font_size", 12)
-		name_l.add_theme_color_override("font_color", Color(0.88, 0.9, 0.95, 0.95))
+		name_l.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		name_l.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
 		name_l.custom_minimum_size = Vector2(110, 0)
 		row.add_child(name_l)
 		# 状态标签（派生）
 		var status_text: String = "未知"
-		var status_color: Color = Color(0.7, 0.7, 0.7)
+		var status_color: Color = DT.COLOR_TEXT_DIM
 		if fsm and fsm.has_method("get_faction_status_name"):
 			status_text = String(fsm.get_faction_status_name(fid))
 			status_color = fsm.get_faction_status_color(fid) if fsm.has_method("get_faction_status_color") else status_color
 		var status_l := Label.new()
 		status_l.text = "[%s]" % status_text
-		status_l.add_theme_font_size_override("font_size", 11)
+		status_l.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
 		status_l.add_theme_color_override("font_color", status_color)
 		status_l.custom_minimum_size = Vector2(70, 0)
 		row.add_child(status_l)
@@ -148,8 +157,8 @@ func _refresh_legend() -> void:
 			territory_text = "%d关" % int(fsm.get_territory_count(fid))
 		var terr_l := Label.new()
 		terr_l.text = territory_text
-		terr_l.add_theme_font_size_override("font_size", 11)
-		terr_l.add_theme_color_override("font_color", Color(0.6, 0.8, 1.0, 0.85))
+		terr_l.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		terr_l.add_theme_color_override("font_color", Color(DT.COLOR_KIND_ARMOR.r, DT.COLOR_KIND_ARMOR.g, DT.COLOR_KIND_ARMOR.b, 0.85))
 		row.add_child(terr_l)
 		# 声望
 		var rep_text: String = ""
@@ -157,8 +166,8 @@ func _refresh_legend() -> void:
 			rep_text = "声望%d" % int(fsm.get_faction_reputation(fid))
 		var rep_l := Label.new()
 		rep_l.text = rep_text
-		rep_l.add_theme_font_size_override("font_size", 11)
-		rep_l.add_theme_color_override("font_color", Color(0.7, 0.75, 0.8, 0.7))
+		rep_l.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		rep_l.add_theme_color_override("font_color", Color(DT.COLOR_TEXT_MID.r, DT.COLOR_TEXT_MID.g, DT.COLOR_TEXT_MID.b, 0.7))
 		row.add_child(rep_l)
 		_legend_container.add_child(row)
 
@@ -177,8 +186,8 @@ func _refresh_territory_grid() -> void:
 		# 时代标题行
 		var era_title := Label.new()
 		era_title.text = ERA_NAMES[era_idx] if era_idx < ERA_NAMES.size() else "时代%d" % era_idx
-		era_title.add_theme_font_size_override("font_size", 13)
-		era_title.add_theme_color_override("font_color", Color(0.85, 0.78, 0.45, 0.95))
+		era_title.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		era_title.add_theme_color_override("font_color", Color(DT.COLOR_GOLD.r, DT.COLOR_GOLD.g, DT.COLOR_GOLD.b, 0.95))
 		_territory_container.add_child(era_title)
 		# 关卡网格（10列×2行）
 		var grid := GridContainer.new()
@@ -196,18 +205,18 @@ func _make_territory_button(level: int, fsm: Node) -> Button:
 	var btn := Button.new()
 	btn.text = str(level)
 	btn.custom_minimum_size = Vector2(46, 32)
-	btn.add_theme_font_size_override("font_size", 11)
+	btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
 	# 查占领势力
 	var fid: String = ""
 	if fsm and fsm.has_method("get_level_occupation"):
 		fid = String(fsm.get_level_occupation(level))
 	var bg_color: Color = NEUTRAL_COLOR
-	var border_color: Color = Color(0.3, 0.32, 0.36, 0.5)
-	var font_color: Color = Color(0.7, 0.72, 0.78, 0.85)
+	var border_color: Color = Color(DT.COLOR_BORDER_DIM.r, DT.COLOR_BORDER_DIM.g, DT.COLOR_BORDER_DIM.b, 0.5)
+	var font_color: Color = Color(DT.COLOR_TEXT_DIM.r, DT.COLOR_TEXT_DIM.g, DT.COLOR_TEXT_DIM.b, 0.85)
 	if not fid.is_empty():
 		bg_color = CompanyDefs.get_faction_color(fid)
 		border_color = bg_color.lightened(0.2)
-		font_color = Color(0.05, 0.05, 0.08, 1.0)  # 深色字配亮底
+		font_color = DT.COLOR_VOID  # 深色字配亮底
 	# 样式
 	var s := StyleBoxFlat.new()
 	s.bg_color = bg_color

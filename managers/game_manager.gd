@@ -98,9 +98,9 @@ func check_phase_master_encounter() -> Dictionary:
 		pass  # LOG: 当前关卡势力
 
 	# 从排行榜获取活跃相位师（按优先级尝试多条路径）
-	var lp = get_node_or_null("/root/Main/PopupLayer/LeaderboardPanel")
+	var lp = get_node_or_null("/root/Main/PopupLayer/LeaderboardOverlay/CenterContainer/LeaderboardPanel")
 	if lp == null:
-		lp = get_node_or_null("/root/Main/LeaderboardOverlay/CenterContainer/LeaderboardPanel")
+		lp = get_node_or_null("/root/Main/PopupLayer/LeaderboardPanel")
 	if lp == null:
 		lp = get_node_or_null("/root/Main/Margin/VBox/LeaderboardPanel")
 	if lp == null:

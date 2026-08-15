@@ -2,20 +2,6 @@
 
 [ext_resource type="Script" uid="uid://b0be1y4feesii" path="res://scenes/ui/reinforcement_panel.gd" id="1_script"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg"]
-bg_color = Color(0.04, 0.06, 0.12, 0.97)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.2, 0.85, 0.5, 0.6)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-shadow_color = Color(0.2, 0.85, 0.5, 0.25)
-shadow_size = 10
-
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_title_bg"]
 bg_color = Color(0.06, 0.10, 0.18, 0.9)
 
@@ -106,10 +92,9 @@ corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
 
 [node name="ReinforcementPanel" type="PanelContainer"]
-custom_minimum_size = Vector2(960, 600)
+custom_minimum_size = Vector2(1180, 640)
 layout_mode = 2
 script = ExtResource("1_script")
-theme_override_styles/panel = SubResource("StyleBoxFlat_bg")
 
 [node name="VBoxContainer" type="VBoxContainer" parent="."]
 layout_mode = 1
@@ -134,20 +119,6 @@ theme_override_constants/margin_right = 20
 theme_override_constants/margin_bottom = 0
 theme_override_constants/separation = 20
 
-[node name="TitleLabel" type="Label" parent="VBoxContainer/TitleRow/TitleHBox"]
-layout_mode = 2
-text = "💪 强化面板"
-theme_override_font_sizes/font_size = 24
-theme_override_colors/font_color = Color(0.3, 0.95, 0.55, 1)
-theme_override_colors/font_outline_color = Color(0.02, 0.18, 0.09, 0.9)
-theme_override_constants/outline_size = 3
-[node name="TitleSub" type="Label" parent="VBoxContainer/TitleRow/TitleHBox"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.533, 0.6, 0.678, 0.7)
-theme_override_font_sizes/font_size = 10
-text = "REINFORCEMENT"
-
 [node name="BackToGrowthButton" type="Button" parent="VBoxContainer/TitleRow/TitleHBox"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -156,16 +127,6 @@ text = "← 成长首页"
 theme_override_font_sizes/font_size = 15
 theme_override_colors/font_color = Color(1, 0.92, 0.55, 0.9)
 theme_override_colors/font_hover_color = Color(1, 0.85, 0.3, 1)
-theme_override_styles/normal = SubResource("StyleBoxFlat_close_btn")
-theme_override_styles/hover = SubResource("StyleBoxFlat_close_btn_hover")
-
-[node name="CloseButton" type="Button" parent="VBoxContainer/TitleRow/TitleHBox"]
-layout_mode = 2
-custom_minimum_size = Vector2(80, 36)
-text = "关闭"
-theme_override_font_sizes/font_size = 15
-theme_override_colors/font_color = Color(1, 1, 1, 0.85)
-theme_override_colors/font_hover_color = Color(0.3, 0.95, 0.6, 1)
 theme_override_styles/normal = SubResource("StyleBoxFlat_close_btn")
 theme_override_styles/hover = SubResource("StyleBoxFlat_close_btn_hover")
 

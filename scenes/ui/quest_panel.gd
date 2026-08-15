@@ -3,6 +3,9 @@ extends PanelContainer
 
 const QuestDefs = preload("res://data/quest_definitions.gd")
 const CompanyDefs = preload("res://data/company_definitions.gd")
+const DT = preload("res://resources/design_tokens.gd")
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
+const PanelChrome = preload("res://scenes/ui/components/panel_chrome.gd")
 
 signal closed
 
@@ -10,14 +13,18 @@ signal closed
 @onready var commission_list: VBoxContainer = $Margin/VBox/TabContainer/CommissionTab/CommissionScroll/CommissionList
 @onready var daily_list: VBoxContainer = $Margin/VBox/TabContainer/DailyTab/DailyScroll/DailyList
 @onready var accepted_label: Label = $Margin/VBox/AcceptedLabel
-@onready var close_btn: Button = $Margin/VBox/CloseButton
 @onready var tab_container: TabContainer = $Margin/VBox/TabContainer
 
 # v8.x 性能：on_overlay_opened 拆帧重入守卫
 var _open_refresh_inflight: bool = false
 
 func _ready() -> void:
-	close_btn.pressed.connect(_on_close)
+	# v7.x 面板统一：MEDIUM 档 + 青色签名框架 + PanelChrome 标题栏（右上 ✕ 关闭）
+	custom_minimum_size = DT.PANEL_SIZE_MEDIUM
+	var accent := DT.get_panel_accent("quest")
+	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(accent))
+	var chrome = PanelChrome.attach_to($Margin/VBox, "任务面板", accent, "QUESTS")
+	chrome.closed.connect(_on_close)
 	ManagerLazyLoader.ensure_loaded("quest")
 	var QuestManager = get_node_or_null("/root/QuestManager")
 	if QuestManager:
@@ -87,8 +94,8 @@ func _refresh_company_summary() -> void:
 		# PanelContainer 包裹
 		var panel := PanelContainer.new()
 		var ps := StyleBoxFlat.new()
-		ps.bg_color = Color(0.05, 0.07, 0.13, 0.85)
-		ps.border_color = Color(0.3, 0.55, 0.9, 0.4)
+		ps.bg_color = Color(DT.COLOR_PANEL_DEEP.r, DT.COLOR_PANEL_DEEP.g, DT.COLOR_PANEL_DEEP.b, 0.9)
+		ps.border_color = Color(DT.COLOR_KIND_ARMOR.r, DT.COLOR_KIND_ARMOR.g, DT.COLOR_KIND_ARMOR.b, 0.4)
 		ps.border_width_left = 2
 		ps.border_width_top = 0
 		ps.border_width_right = 0
@@ -106,13 +113,13 @@ func _refresh_company_summary() -> void:
 		var name_label := Label.new()
 		name_label.text = cname
 		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		name_label.add_theme_font_size_override("font_size", 13)
-		name_label.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95, 1))
+		name_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		name_label.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
 		var rep_label := Label.new()
 		rep_label.text = "声望：%d" % rep_value
-		rep_label.add_theme_font_size_override("font_size", 11)
+		rep_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
 		rep_label.add_theme_color_override("font_color",
-			Color(0.4, 0.9, 0.55, 1) if rep_value > 0 else Color(0.5, 0.55, 0.65, 0.7))
+			DT.COLOR_GREEN_BRIGHT if rep_value > 0 else Color(DT.COLOR_TEXT_DIM.r, DT.COLOR_TEXT_DIM.g, DT.COLOR_TEXT_DIM.b, 0.7))
 		rep_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		line.add_child(name_label)
 		line.add_child(rep_label)
@@ -153,13 +160,13 @@ func _refresh_list() -> void:
 			_:
 				commission_list.add_child(row)
 	if daily_list.get_child_count() == 0:
-		daily_list.add_child(_make_empty_hint("日常任务将在每日刷新时出现。", Color(0.5, 0.55, 0.6, 0.75)))
+		daily_list.add_child(_make_empty_hint("日常任务将在每日刷新时出现。"))
 
 ## v6.7(剧情任务): 空列表提示（v7.x: 加可选强调色，提升可读性）
-func _make_empty_hint(text: String, color: Color = Color(0.5, 0.55, 0.6, 0.75)) -> Control:
+func _make_empty_hint(text: String, color: Color = DT.COLOR_TEXT_DIM) -> Control:
 	var lbl := Label.new()
 	lbl.text = text
-	lbl.add_theme_font_size_override("font_size", 12)
+	lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	lbl.add_theme_color_override("font_color", color)
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	return lbl
@@ -174,18 +181,18 @@ func _make_quest_row(quest_id: String, def: Dictionary, is_accepted: bool) -> Co
 	var border_color: Color
 	var bg_color: Color
 	if is_accepted:
-		border_color = Color(0.3, 0.85, 0.55, 0.6)
-		bg_color     = Color(0.04, 0.1, 0.07, 0.9)
+		border_color = Color(DT.COLOR_GREEN_UP.r, DT.COLOR_GREEN_UP.g, DT.COLOR_GREEN_UP.b, 0.6)
+		bg_color     = Color(DT.COLOR_GREEN_UP.r, DT.COLOR_GREEN_UP.g, DT.COLOR_GREEN_UP.b, 0.08)
 	elif is_completed:
-		border_color = Color(0.3, 0.35, 0.45, 0.3)
-		bg_color     = Color(0.04, 0.05, 0.08, 0.75)
+		border_color = Color(DT.COLOR_BORDER_DIM.r, DT.COLOR_BORDER_DIM.g, DT.COLOR_BORDER_DIM.b, 0.3)
+		bg_color     = Color(DT.COLOR_SLOT_LOCKED.r, DT.COLOR_SLOT_LOCKED.g, DT.COLOR_SLOT_LOCKED.b, 0.75)
 	elif is_dynamic:
 		# v6.9: 势力动态委托用橙红边框（占领势力主题色）
-		border_color = Color(0.95, 0.6, 0.25, 0.65)
-		bg_color     = Color(0.10, 0.07, 0.04, 0.9)
+		border_color = Color(DT.COLOR_ENERGY.r, DT.COLOR_ENERGY.g, DT.COLOR_ENERGY.b, 0.65)
+		bg_color     = Color(DT.COLOR_ENERGY.r, DT.COLOR_ENERGY.g, DT.COLOR_ENERGY.b, 0.07)
 	else:
-		border_color = Color(0.35, 0.6, 0.9, 0.5)
-		bg_color     = Color(0.04, 0.07, 0.13, 0.9)
+		border_color = Color(DT.COLOR_KIND_ARMOR.r, DT.COLOR_KIND_ARMOR.g, DT.COLOR_KIND_ARMOR.b, 0.5)
+		bg_color     = Color(DT.COLOR_PANEL_DEEP.r, DT.COLOR_PANEL_DEEP.g, DT.COLOR_PANEL_DEEP.b, 0.9)
 	var panel := PanelContainer.new()
 	var ps := StyleBoxFlat.new()
 	ps.bg_color = bg_color
@@ -194,10 +201,7 @@ func _make_quest_row(quest_id: String, def: Dictionary, is_accepted: bool) -> Co
 	ps.border_width_top = 1
 	ps.border_width_right = 1
 	ps.border_width_bottom = 1
-	ps.corner_radius_top_left = 4
-	ps.corner_radius_top_right = 4
-	ps.corner_radius_bottom_right = 4
-	ps.corner_radius_bottom_left = 4
+	ps.set_corner_radius_all(4)
 	panel.add_theme_stylebox_override("panel", ps)
 	var mg := MarginContainer.new()
 	mg.add_theme_constant_override("margin_left", 10)
@@ -213,17 +217,17 @@ func _make_quest_row(quest_id: String, def: Dictionary, is_accepted: bool) -> Co
 	var title_l := Label.new()
 	var title_text: String = def.get("title", quest_id)
 	title_l.text = title_text
-	title_l.add_theme_font_size_override("font_size", 14)
+	title_l.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
 	var title_color: Color
 	if is_accepted:
-		title_color = Color(0.5, 1.0, 0.7, 1)
+		title_color = DT.COLOR_GREEN_BRIGHT
 	elif is_completed:
-		title_color = Color(0.55, 0.6, 0.65, 0.7)
+		title_color = Color(DT.COLOR_TEXT_DIM.r, DT.COLOR_TEXT_DIM.g, DT.COLOR_TEXT_DIM.b, 0.7)
 	elif is_dynamic:
 		# v6.9: 势力动态委托标题用暖橙，体现"势力委托"主题
-		title_color = Color(1.0, 0.78, 0.4, 1)
+		title_color = DT.COLOR_GOLD
 	else:
-		title_color = Color(0.85, 0.9, 1.0, 1)
+		title_color = DT.COLOR_TEXT_BRIGHT
 	title_l.add_theme_color_override("font_color", title_color)
 	v.add_child(title_l)
 	# 公司与奖励
@@ -241,15 +245,15 @@ func _make_quest_row(quest_id: String, def: Dictionary, is_accepted: bool) -> Co
 					rep_text = "（完成 +%d 贡献）" % rv
 		var company_l := Label.new()
 		company_l.text = "▸ %s%s" % [company_name, rep_text]
-		company_l.add_theme_font_size_override("font_size", 11)
-		company_l.add_theme_color_override("font_color", Color(0.5, 0.75, 1.0, 0.85))
+		company_l.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+		company_l.add_theme_color_override("font_color", Color(DT.COLOR_KIND_ARMOR.r, DT.COLOR_KIND_ARMOR.g, DT.COLOR_KIND_ARMOR.b, 0.85))
 		v.add_child(company_l)
 	# 描述
 	var desc_l := Label.new()
 	desc_l.text = def.get("description", "")
 	desc_l.add_theme_color_override("font_color",
-		Color(0.45, 0.48, 0.55, 0.7) if is_completed else Color(0.7, 0.72, 0.8, 0.85))
-	desc_l.add_theme_font_size_override("font_size", 11)
+		Color(DT.COLOR_TEXT_DIM.r, DT.COLOR_TEXT_DIM.g, DT.COLOR_TEXT_DIM.b, 0.7) if is_completed else Color(DT.COLOR_TEXT_MID.r, DT.COLOR_TEXT_MID.g, DT.COLOR_TEXT_MID.b, 0.85))
+	desc_l.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
 	desc_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(desc_l)
 	row.add_child(v)
@@ -261,32 +265,47 @@ func _make_quest_row(quest_id: String, def: Dictionary, is_accepted: bool) -> Co
 		var progress_l := Label.new()
 		progress_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		progress_l.text = _format_progress(quest_id, def)
-		progress_l.add_theme_font_size_override("font_size", 12)
-		progress_l.add_theme_color_override("font_color", Color(0.4, 1.0, 0.65, 1))
+		progress_l.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		progress_l.add_theme_color_override("font_color", DT.COLOR_GREEN_UP)
 		btn_col.add_child(progress_l)
 		var abandon_btn := Button.new()
 		abandon_btn.text = "放弃"
 		abandon_btn.custom_minimum_size = Vector2(70, 28)
-		abandon_btn.add_theme_font_size_override("font_size", 12)
-		abandon_btn.add_theme_color_override("font_color", Color(1, 0.45, 0.45, 0.9))
+		var abandon_styles := PanelStyles.make_button_styles(DT.COLOR_RED_DOWN, "danger")
+		abandon_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		abandon_btn.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
+		abandon_btn.add_theme_color_override("font_hover_color", Color(1, 1, 1, 1))
+		abandon_btn.add_theme_color_override("font_pressed_color", Color(1, 1, 1, 1))
+		abandon_btn.add_theme_color_override("font_focus_color", Color(1, 1, 1, 1))
+		abandon_btn.add_theme_stylebox_override("normal", abandon_styles["normal"])
+		abandon_btn.add_theme_stylebox_override("hover", abandon_styles["hover"])
+		abandon_btn.add_theme_stylebox_override("pressed", abandon_styles["pressed"])
+		abandon_btn.add_theme_stylebox_override("disabled", abandon_styles["disabled"])
 		abandon_btn.pressed.connect(_on_abandon.bind(quest_id))
 		btn_col.add_child(abandon_btn)
 	else:
 		if is_completed:
 			var done_l := Label.new()
 			done_l.text = "✓ 已完成"
-			done_l.add_theme_color_override("font_color", Color(0.4, 0.75, 0.45, 0.75))
-			done_l.add_theme_font_size_override("font_size", 12)
+			done_l.add_theme_color_override("font_color", Color(DT.COLOR_GREEN_UP.r, DT.COLOR_GREEN_UP.g, DT.COLOR_GREEN_UP.b, 0.75))
+			done_l.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 			btn_col.add_child(done_l)
 		else:
 			var accept_btn := Button.new()
 			accept_btn.text = "接取"
 			accept_btn.custom_minimum_size = Vector2(70, 32)
-			accept_btn.add_theme_font_size_override("font_size", 13)
+			var accept_styles := PanelStyles.make_button_styles(DT.COLOR_GREEN_UP)
+			accept_btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+			accept_btn.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
+			accept_btn.add_theme_color_override("font_hover_color", Color(1, 1, 1, 1))
+			accept_btn.add_theme_color_override("font_pressed_color", Color(1, 1, 1, 1))
+			accept_btn.add_theme_color_override("font_focus_color", Color(1, 1, 1, 1))
+			accept_btn.add_theme_stylebox_override("normal", accept_styles["normal"])
+			accept_btn.add_theme_stylebox_override("hover", accept_styles["hover"])
+			accept_btn.add_theme_stylebox_override("pressed", accept_styles["pressed"])
+			accept_btn.add_theme_stylebox_override("disabled", accept_styles["disabled"])
 			var can_accept: bool = quest_mgr.get_accepted_quest_ids().size() < quest_mgr.MAX_ACCEPTED if quest_mgr else false
 			accept_btn.disabled = not can_accept
-			if can_accept:
-				accept_btn.add_theme_color_override("font_color", Color(0.3, 0.95, 0.6, 1))
 			accept_btn.pressed.connect(_on_accept.bind(quest_id))
 			btn_col.add_child(accept_btn)
 	row.add_child(btn_col)

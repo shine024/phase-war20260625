@@ -3,9 +3,29 @@ extends PanelContainer
 
 signal closed
 
+const UiAssetLoaderClass = preload("res://scripts/ui_asset_loader.gd")
 const DefaultCardsData = preload("res://data/default_cards.gd")
 const DropTables = preload("res://resources/drop_tables.gd")
 const StarConfig = preload("res://data/blueprint_star_config.gd")
+const DT = preload("res://resources/design_tokens.gd")
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
+const PanelChrome = preload("res://scenes/ui/components/panel_chrome.gd")
+
+## 资源图标映射（v7.x 视觉审查：原 TextureRect 无贴图=灰占位；AI 生成 res_* 系列）
+const MATERIAL_ICONS := {
+	"nano_materials": "res_nano", "basic_nano": "res_nano",
+	"alloy": "res_alloy", "crystal": "res_crystal",
+	"energy_block": "res_energy", "research_points": "res_research",
+	"permit_steel": "res_permit", "permit_flame": "res_permit",
+	"permit_thunder": "res_permit", "permit_void": "res_permit",
+}
+## 许可按法则家族着色（同一张证卡图标 tint）
+const PERMIT_TINT := {
+	"permit_steel": Color(0.55, 0.62, 0.72),
+	"permit_flame": Color(0.9, 0.6, 0.1),
+	"permit_thunder": Color(0.024, 0.714, 0.831),
+	"permit_void": Color(0.653, 0.546, 0.980),
+}
 
 ## UI引用
 @onready var _tabs_container: TabContainer = $VBoxOuter/TabsContainer
@@ -19,10 +39,12 @@ var _all_drops: Array = []  # 存储所有掉落物品
 var _drop_tables: DropTables = null  # 缓存实例
 
 func _ready() -> void:
-	# 连接关闭按钮
-	var close_btn = get_node_or_null("VBoxOuter/TitleRow/CloseButton")
-	if close_btn:
-		close_btn.pressed.connect(_on_close)
+	# v7.x 面板统一：SMALL 档 + 橙色签名框架 + PanelChrome 标题栏（右上 ✕ 关闭）
+	custom_minimum_size = DT.PANEL_SIZE_SMALL
+	var accent := DT.get_panel_accent("drops")
+	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(accent))
+	var chrome = PanelChrome.attach_to($VBoxOuter, "掉落物品", accent, "DROPS")
+	chrome.closed.connect(_on_close)
 
 	# 连接信号更新
 	if SignalBus:
@@ -112,14 +134,16 @@ func _show_empty_lore(grid: GridContainer, message: String) -> void:
 	empty_label.text = message
 	empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	empty_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	empty_label.add_theme_color_override("font_color", Color(0.5, 0.5, 0.6, 0.7))
-	empty_label.add_theme_font_size_override("font_size", 13)
+	empty_label.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
+	empty_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	grid.add_child(empty_label)
 
 ## 添加情报物品项
 func _add_lore_item(grid: GridContainer, lore_data: Dictionary) -> void:
 	var item_container = PanelContainer.new()
 	item_container.custom_minimum_size = Vector2(200, 100)
+	item_container.add_theme_stylebox_override("panel",
+		PanelStyles.make_card_style(Color(DT.COLOR_CARD.r, DT.COLOR_CARD.g, DT.COLOR_CARD.b, 0.9), DT.COLOR_BORDER_DIM, 1, 4, 8))
 
 	var vbox = VBoxContainer.new()
 	item_container.add_child(vbox)
@@ -127,16 +151,16 @@ func _add_lore_item(grid: GridContainer, lore_data: Dictionary) -> void:
 	# 情报名称
 	var name_label = Label.new()
 	name_label.text = lore_data.get("name", "未知情报")
-	name_label.add_theme_font_size_override("font_size", 13)
-	name_label.add_theme_color_override("font_color", Color(0.95, 0.85, 0.5, 1.0))
+	name_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	name_label.add_theme_color_override("font_color", DT.COLOR_GOLD)
 	vbox.add_child(name_label)
 
 	# 分类标签
 	var category_label = Label.new()
 	var category_text = _get_category_display_name(lore_data.get("category", ""))
 	category_label.text = "[" + category_text + "]"
-	category_label.add_theme_font_size_override("font_size", 10)
-	category_label.add_theme_color_override("font_color", Color(0.6, 0.7, 0.9, 0.8))
+	category_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+	category_label.add_theme_color_override("font_color", Color(DT.COLOR_KIND_ARMOR.r, DT.COLOR_KIND_ARMOR.g, DT.COLOR_KIND_ARMOR.b, 0.85))
 	vbox.add_child(category_label)
 
 	# 描述
@@ -144,8 +168,8 @@ func _add_lore_item(grid: GridContainer, lore_data: Dictionary) -> void:
 	desc_label.text = lore_data.get("description", "")
 	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc_label.custom_minimum_size = Vector2(180, 0)
-	desc_label.add_theme_font_size_override("font_size", 10)
-	desc_label.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85, 0.9))
+	desc_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+	desc_label.add_theme_color_override("font_color", Color(DT.COLOR_TEXT_MID.r, DT.COLOR_TEXT_MID.g, DT.COLOR_TEXT_MID.b, 0.9))
 	vbox.add_child(desc_label)
 
 	grid.add_child(item_container)
@@ -202,24 +226,28 @@ func _show_empty_items(grid: GridContainer) -> void:
 	empty_label.text = "暂无任何掉落物品\n通过战斗获得素材、蓝图和情报"
 	empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	empty_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	empty_label.add_theme_color_override("font_color", Color(0.5, 0.5, 0.6, 0.7))
-	empty_label.add_theme_font_size_override("font_size", 12)
+	empty_label.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
+	empty_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	grid.add_child(empty_label)
 
 ## 添加情报物品项（紧凑版，用于综合显示）
 func _add_lore_item_compact(grid: GridContainer, lore_data: Dictionary) -> void:
 	var item_container = PanelContainer.new()
 	item_container.custom_minimum_size = Vector2(120, 80)
+	item_container.add_theme_stylebox_override("panel",
+		PanelStyles.make_card_style(Color(DT.COLOR_CARD.r, DT.COLOR_CARD.g, DT.COLOR_CARD.b, 0.9), DT.COLOR_BORDER_DIM, 1, 4, 6))
 
 	var vbox = VBoxContainer.new()
 	item_container.add_child(vbox)
 
-	# 情报图标（用emoji代替）
-	var icon_label = Label.new()
-	icon_label.text = "📜"
-	icon_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	icon_label.add_theme_font_size_override("font_size", 24)
-	vbox.add_child(icon_label)
+	# 情报图标（AI 生成的文献图标，替代原 emoji 占位）
+	var icon_rect := TextureRect.new()
+	icon_rect.custom_minimum_size = Vector2(36, 36)
+	icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon_rect.texture = UiAssetLoaderClass.ui_icon("res_lore")
+	icon_rect.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	vbox.add_child(icon_rect)
 
 	# 情报名称
 	var name_label = Label.new()
@@ -227,8 +255,8 @@ func _add_lore_item_compact(grid: GridContainer, lore_data: Dictionary) -> void:
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	name_label.custom_minimum_size = Vector2(100, 0)
-	name_label.add_theme_font_size_override("font_size", 10)
-	name_label.add_theme_color_override("font_color", Color(0.95, 0.85, 0.5, 1.0))
+	name_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+	name_label.add_theme_color_override("font_color", DT.COLOR_GOLD)
 	vbox.add_child(name_label)
 
 	grid.add_child(item_container)
@@ -237,6 +265,8 @@ func _add_lore_item_compact(grid: GridContainer, lore_data: Dictionary) -> void:
 func _add_material_item(grid: GridContainer, item_id: String, amount: int) -> void:
 	var item_container = PanelContainer.new()
 	item_container.custom_minimum_size = Vector2(80, 80)
+	item_container.add_theme_stylebox_override("panel",
+		PanelStyles.make_card_style(Color(DT.COLOR_CARD.r, DT.COLOR_CARD.g, DT.COLOR_CARD.b, 0.9), DT.COLOR_BORDER_DIM, 1, 4, 6))
 
 	var vbox = VBoxContainer.new()
 	item_container.add_child(vbox)
@@ -244,6 +274,14 @@ func _add_material_item(grid: GridContainer, item_id: String, amount: int) -> vo
 	var icon = TextureRect.new()
 	icon.custom_minimum_size = Vector2(40, 40)
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	var icon_name: String = String(MATERIAL_ICONS.get(item_id, ""))
+	if not icon_name.is_empty():
+		icon.texture = UiAssetLoaderClass.ui_icon(icon_name)
+		if icon.texture == null:
+			icon.texture = UiAssetLoaderClass.ui_icon("icon_blueprint")
+		if PERMIT_TINT.has(item_id) and icon.texture != null:
+			icon.modulate = PERMIT_TINT[item_id]
 	vbox.add_child(icon)
 
 	var label = Label.new()
@@ -257,6 +295,8 @@ func _add_material_item(grid: GridContainer, item_id: String, amount: int) -> vo
 func _add_blueprint_item(grid: GridContainer, card_id: String, count: int) -> void:
 	var item_container = PanelContainer.new()
 	item_container.custom_minimum_size = Vector2(80, 80)
+	item_container.add_theme_stylebox_override("panel",
+		PanelStyles.make_card_style(Color(DT.COLOR_CARD.r, DT.COLOR_CARD.g, DT.COLOR_CARD.b, 0.9), DT.COLOR_BORDER_DIM, 1, 4, 6))
 
 	var vbox = VBoxContainer.new()
 	item_container.add_child(vbox)
@@ -264,6 +304,8 @@ func _add_blueprint_item(grid: GridContainer, card_id: String, count: int) -> vo
 	var icon = TextureRect.new()
 	icon.custom_minimum_size = Vector2(40, 40)
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.texture = UiAssetLoaderClass.ui_icon("icon_blueprint")
 	vbox.add_child(icon)
 
 	var card_name = _get_blueprint_fragment_display_name(card_id)
@@ -285,8 +327,8 @@ func _add_blueprint_item(grid: GridContainer, card_id: String, count: int) -> vo
 		star_progress.step = 1.0
 		star_progress.show_percentage = false
 		star_progress.custom_minimum_size = Vector2(60, 8)
-		star_progress.add_theme_color_override("fill", Color(1, 0.9, 0, 1))
-		star_progress.add_theme_color_override("background", Color(0.2, 0.2, 0.2, 0.5))
+		star_progress.add_theme_color_override("fill", DT.COLOR_GOLD)
+		star_progress.add_theme_color_override("background", Color(DT.COLOR_SLOT_LOCKED.r, DT.COLOR_SLOT_LOCKED.g, DT.COLOR_SLOT_LOCKED.b, 0.8))
 		star_progress.tooltip_text = "星级 %d/%d" % [disp_star, max_star]
 		vbox.add_child(star_progress)
 

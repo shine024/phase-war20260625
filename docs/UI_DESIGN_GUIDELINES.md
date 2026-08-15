@@ -1,326 +1,141 @@
 # Phase War UI 设计规范
 
-**版本**: v1.0
-**创建日期**: 2026-06-09
+**版本**: v2.0（v7.x 面板统一改造重写）
+**创建日期**: 2026-06-09 · **重写日期**: 2026-08-15
 **基准分辨率**: 1280x720
 
----
-
-## 一、面板尺寸标准
-
-### 1.1 大型面板（全屏或接近全屏）
-用于复杂功能，如强化、进化等：
-
-| 面板类型 | 推荐尺寸 | 最大尺寸 |
-|---------|---------|---------|
-| 强化面板 | 1000x580 | 1100x620 |
-| 进化面板 | 全屏 | - |
-| 改装面板 | 960x600 | 1000x640 |
-
-### 1.2 中型面板（内容面板）
-用于常规功能：
-
-| 面板类型 | 推荐尺寸 | 最大尺寸 |
-|---------|---------|---------|
-| 背包面板 | 1000x520 | 1100x580 |
-| 情报中心 | 840x580 | 900x620 |
-| 掉落物品 | 800x520 | 880x580 |
-| 阵营面板 | 720x480 | 800x540 |
-
-### 1.3 小型面板（信息面板）
-用于简单功能：
-
-| 面板类型 | 推荐尺寸 | 最大尺寸 |
-|---------|---------|---------|
-| 词缀面板 | 520x420 | 580x480 |
-| 成就面板 | 600x500 | 680x560 |
-| 排行榜 | 560x500 | 620x560 |
+> **单一真源原则**：颜色/字号/间距/尺寸常量一律以 `resources/design_tokens.gd`（下称 DT）为准，
+> StyleBox 一律经 `scripts/ui/panel_styles.gd`（下称 PS）工厂生成，面板外壳一律用
+> `scenes/ui/components/panel_chrome.gd`（下称 PanelChrome）。
+> 本文不再罗列具体色值——罗列会过期，代码里的常量不会。
+> 视觉方向详见 `docs/界面一致性/design_06_visual_direction.html`（军事科幻 · 霓虹光晕 · 几何切割 · 冷色调）。
 
 ---
 
-## 二、字体大小标准
+## 一、面板尺寸三档（DT.PANEL_SIZE_*）
 
-### 2.1 字体大小分级
+| 档位 | 常量 | 尺寸 | 适用 |
+|------|------|------|------|
+| LARGE | `DT.PANEL_SIZE_LARGE` | 1180x640 | 养成四面板（强化/改造/进化/成长）、reinforcement |
+| MEDIUM | `DT.PANEL_SIZE_MEDIUM` | 960x600 | 商店/任务/势力/领地图/情报/图鉴/排行榜 |
+| SMALL | `DT.PANEL_SIZE_SMALL` | 840x580 | 掉落背包/成就等次级弹窗 |
 
-| 级别 | 大小 | 用途 | 示例 |
-|-----|------|------|------|
-| 超大标题 | 28-32px | 主标题 | 进化系统主标题 |
-| 大标题 | 20-24px | 区块标题 | 基础信息 |
-| 标题 | 16-18px | 面板标题 | 背包、强化 |
-| 正文大 | 14-15px | 重要内容 | 卡牌名称 |
-| 正文 | 13px | 普通内容 | 描述文字 |
-| 小字 | 11-12px | 辅助信息 | 提示文字 |
-| 微小字 | 10px | 次要信息 | 时间显示 |
+- 设置等特殊紧凑面板可保留自定义尺寸（当前 settings 480x560），但必须挂 PanelChrome + 框架。
+- **新面板禁止自造第五种宽度**；尺寸在 `_ready` 里 `custom_minimum_size = DT.PANEL_SIZE_X` 赋值（tscn 里的字面量仅作编辑器预览镜像）。
 
-### 2.2 字体粗细
+## 二、字号七档（DT.FONT_SIZE_*）
 
-- 标题: 可加粗
-- 正文: 常规
-- 辅助文字: 细体或常规
+| 常量 | 值 | 用途 |
+|------|----|------|
+| `FONT_SIZE_XSMALL` | 10 | 角标/极次要信息 |
+| `FONT_SIZE_SMALL` | 12 | 辅助信息/标签/次级正文 |
+| `FONT_SIZE_BODY` | 14 | 普通正文/列表行标题 |
+| `FONT_SIZE_MEDIUM` | 16 | 面板小节标题 |
+| `FONT_SIZE_LARGE` | 20 | 面板主标题（PanelChrome 默认） |
+| `FONT_SIZE_TITLE` | 32 | 大数字/特大标题 |
+| `FONT_SIZE_HUGE` | 48 | 稀有场景（结算等） |
 
----
+迁移映射（旧代码 → 档位）：7-11→XS、12/13→S、14/15→BODY、16/17→M、18/20/22→L、24/32→TITLE。
 
-## 三、颜色主题
+## 三、颜色体系
 
-### 3.1 主色调
+全部经 `DT.*` 常量取值，禁止新代码写 `Color(0.x, ...)` 字面量（数据表 fallback 色除外）：
 
-```gdscript
-# 主色调 - 青色
-PRIMARY = Color(0, 0.941, 1, 1)
+- **语义色**：`COLOR_TEXT_BRIGHT`（正文）/ `COLOR_TEXT_MID`（次要）/ `COLOR_TEXT_DIM`（暗文本）/ `COLOR_TEXT_FAINT`（角标）
+- **面板中性色**：`COLOR_VOID`（深空黑底）/ `COLOR_PANEL_DEEP` / `COLOR_CARD` / `COLOR_CARD_HI` / `COLOR_SLOT_LOCKED`
+- **状态色**：`COLOR_GOLD`（金·货币/荣誉）、`COLOR_GREEN_BRIGHT`（绿·提升）、`COLOR_GREEN_UP`/`COLOR_RED_DOWN`（数值升降）、`COLOR_DANGER`（红·危险）
+- **面板签名色**：`DT.get_panel_accent(panel_id)` —— store=金 / quest=青 / faction=紫 / occupation=青 / intelligence=紫 / drops=橙 / achievement=金 / daily=绿 / settings=中性灰蓝 / collection=科技青 / reinforcement=绿 / leaderboard=金。未知 id 回退霓虹青。
+- **稀有度/兵种色**：`COLOR_RARITY_*` 六档、`DT.get_kind_color(kind)`。
 
-# 强调色 - 紫色
-ACCENT = Color(0.545, 0.361, 0.965, 1)
-
-# 成功色 - 绿色
-SUCCESS = Color(0.2, 0.8, 0.4, 1)
-
-# 警告色 - 金色
-WARNING = Color(1, 0.843, 0, 1)
-
-# 危险色 - 红色
-DANGER = Color(1, 0.4, 0.4, 1)
-```
-
-### 3.2 背景色
+## 四、面板外壳接入规范（新面板 checklist）
 
 ```gdscript
-# 深色背景
-BG_DARK = Color(0.04, 0.06, 0.12, 0.97)
+const DT = preload("res://resources/design_tokens.gd")
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
+const PanelChrome = preload("res://scenes/ui/components/panel_chrome.gd")
 
-# 中等背景
-BG_MEDIUM = Color(0.06, 0.10, 0.18, 0.8)
+signal closed
 
-# 浅色背景
-BG_LIGHT = Color(0.03, 0.05, 0.10, 0.6)
+func _ready() -> void:
+    custom_minimum_size = DT.PANEL_SIZE_MEDIUM                      # ① 尺寸归档
+    var accent := DT.get_panel_accent("my_panel")                   # ② 签名色（DT 注册）
+    add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(accent))  # ③ 深空框架+accent边+外发光
+    var chrome = PanelChrome.attach_to($Margin/VBox, "面板名", accent, "ENGLISH SUBTITLE")
+    chrome.closed.connect(_on_close)                                # ④ 右上 ✕ 关闭（唯一关闭模式）
 ```
 
-### 3.3 文本色
+- **关闭按钮统一为 PanelChrome 右上 ✕**（44x44 点击区、hover 红色发光警示）。不再新增底部"关闭 CLOSE"大按钮。
+- tscn 中删除旧 TitleRow/TitleLabel/CloseButton 节点与对应 StyleBoxFlat sub_resource。
+- 面板必须声明 `signal closed` 并在 ✕ 触发时 emit——main.gd `_on_panel_closed` 据此收起 Overlay。
+
+## 五、按钮样式（PanelStyles.make_button_styles）
 
 ```gdscript
-# 主文本
-TEXT_PRIMARY = Color(0.8, 0.85, 1, 1)
-
-# 次要文本
-TEXT_SECONDARY = Color(0.6, 0.65, 0.8, 1)
-
-# 禁用文本
-TEXT_DISABLED = Color(0.4, 0.45, 0.55, 1)
+var styles := PanelStyles.make_button_styles(accent)   # kind: "ghost"(默认)/"solid"(主按钮)/"danger"(红)
+btn.add_theme_stylebox_override("normal", styles["normal"])   # hover/pressed/disabled/focus 同理
 ```
 
----
+- 四态齐全：normal（淡描边）/ hover（accent 外发光）/ pressed（加深）/ disabled（中性暗）。
+- solid 主按钮文字用深色（`DT.COLOR_VOID`），ghost 按钮文字用 `DT.COLOR_TEXT_BRIGHT`。
+- 关闭按钮用 `PanelStyles.make_close_button_styles()`（PanelChrome 已内置）。
 
-## 四、间距标准
+## 六、卡片/列表项样式
 
-### 4.1 外边距
+- 卡片容器：`PanelStyles.make_card_style(bg, border, bw, corner, padding)` 或 `make_panel_style(...)`。
+- 标签 chip：`PanelStyles.make_chip_style(accent)`。
+- 属性对比格：`PanelStyles.make_stat_cell_style(accent)`。
+- 列表项选中包：`PanelStyles.make_roster_item_style(selected, accent)`。
 
-```gdscript
-# 面板外边距
-MARGIN_PANEL_LARGE = 20px
-MARGIN_PANEL_MEDIUM = 16px
-MARGIN_PANEL_SMALL = 12px
+## 七、打开/关闭契约（main.gd）
 
-# 内容边距
-MARGIN_CONTENT = 15px
-MARGIN_CONTENT_TIGHT = 10px
-```
+- Overlay 结构统一：`PopupLayer/XxxOverlay(Control) + Backdrop + CenterContainer + 面板实例`。
+- 打开走 `_open_overlay(overlay, panel_key)`；常规面板只需实现 `on_overlay_opened()`（推荐，拆帧刷新）或 `refresh()` / `show_panel(null)` / `_refresh_all()` 之一，由 `_notify_panel_opened` 通用分发——**新面板不再往 _open_overlay 加 if 分支**。
+- 特例仅存四类：map（refresh）/ backpack（性能打点）/ growth（show_panel+日志）/ afk（显式 _open）。
+- 全局广播：`SignalBus.panel_opened(panel_id)` / `panel_closed(panel_id)`。
+- 排行榜已从 PopupPanel 迁移为常驻 Overlay（v7.x），**禁止再新建 PopupPanel 弹窗面板**。
 
-### 4.2 内边距
+## 八、间距/圆角/边框
 
-```gdscript
-# 容器间距
-SPACING_CONTAINER = 8px
-SPACING_CONTAINER_TIGHT = 6px
+- 间距：`DT.PADDING_SMALL/MEDIUM/LARGE`（8/16/24）；容器 separation 6-10。
+- 圆角：面板框架 12（PS.make_panel_frame 内置）、按钮 6、卡片 4-8。
+- 边框：主边框 2px、次边框 1px；选中/强调态用**外发光**（shadow_color=accent）而非加粗边框。
 
-# 元素间距
-SPACING_ELEMENT = 10px
-SPACING_ELEMENT_LARGE = 12px
-SPACING_ELEMENT_SMALL = 4px
-```
+## 九、Grid 布局
 
----
+| 面板宽度 | 推荐列数 |
+|---------|---------|
+| ~840 (SMALL) | 6 列 |
+| ~960 (MEDIUM) | 6-8 列 |
+| ~1180 (LARGE) | 8-12 列 |
 
-## 五、圆角标准
+间距 8px（紧凑 6px）。
 
-```gdscript
-# 大圆角 - 面板
-CORNER_LARGE = 8px
+## 十、文本处理
 
-# 中圆角 - 区块
-CORNER_MEDIUM = 5px
-
-# 小圆角 - 按钮/标签
-CORNER_SMALL = 4px
-```
-
----
-
-## 六、边框标准
-
-### 6.1 边框宽度
-
-```gdscript
-# 主边框
-BORDER_MAIN = 2px
-
-# 次要边框
-BORDER_MINOR = 1px
-```
-
-### 6.2 阴影
-
-```gdscript
-# 轻阴影
-SHADOW_LIGHT = 6px
-
-# 标准阴影
-SHADOW_NORMAL = 8px
-
-# 重阴影
-SHADOW_HEAVY = 10px
-```
-
----
-
-## 七、按钮样式
-
-### 7.1 按钮尺寸
-
-```gdscript
-# 大按钮
-BUTTON_LARGE = Vector2(100, 50)
-
-# 标准按钮
-BUTTON_NORMAL = Vector2(80, 36)
-
-# 小按钮
-BUTTON_SMALL = Vector2(60, 28)
-
-# 图标按钮
-BUTTON_ICON = Vector2(32, 32)
-```
-
-### 7.2 按钮状态
-
-- **正常**: 背景透明度 0.12
-- **悬停**: 背景透明度 0.25
-- **按下**: 边框加粗到 2px
-- **禁用**: 透明度降低到 0.5
-
----
-
-## 八、Grid布局标准
-
-### 8.1 列数标准
-
-| 面板宽度 | 推荐列数 | 每列宽度 |
-|---------|---------|---------|
-| 800-900 | 6列 | ~120px |
-| 900-1000 | 8列 | ~110px |
-| 1000-1100 | 10列 | ~95px |
-| 1100+ | 12列 | ~85px |
-
-### 8.2 间距标准
-
-```gdscript
-# Grid间距
-GRID_H_SPACING = 8px
-GRID_V_SPACING = 8px
-
-# 紧凑Grid
-GRID_H_SPACING_TIGHT = 6px
-GRID_V_SPACING_TIGHT = 6px
-```
-
----
-
-## 九、文本处理
-
-### 9.1 自动换行
-
-```gdscript
-# 内容文本
-autowrap_mode = 3  # Word Smart
-
-# 简短文本
-autowrap_mode = 2  # Word
-```
-
-### 9.2 文本裁剪
-
-```gdscript
-# 需要裁剪的标签
-clip_text = true
-
-# 多行显示
-clip_text = false
-autowrap_mode = 3
-```
-
----
-
-## 十、面板布局模式
-
-### 10.1 居中面板（推荐）
-
-```gdscript
-[node name="Panel" type="PanelContainer"]
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -400.0  # 宽度的一半
-offset_top = -250.0   # 高度的一半
-offset_right = 400.0
-offset_bottom = 250.0
-grow_horizontal = 2
-grow_vertical = 2
-```
-
-### 10.2 全屏面板
-
-```gdscript
-[node name="Panel" type="Control"]
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-```
-
----
+- 描述文本 `autowrap_mode = TextServer.AUTOWRAP_WORD_SMART`。
+- 列表行标题可 `clip_text = true`。
+- 空列表必须有 EmptyHint（居中 + `DT.COLOR_TEXT_DIM`）。
 
 ## 十一、命名规范
 
-### 11.1 节点命名
-
-- 面板: `XxxPanel`
-- 容器: `XxxContainer` / `XxxVBox` / `XxxHBox`
-- 标签: `XxxLabel`
-- 按钮: `XxxButton`
-- 滚动: `XxxScroll`
-
-### 11.2 样式命名
-
-- `StyleBoxFlat_bg` - 背景
-- `StyleBoxFlat_panel` - 面板
-- `StyleBoxFlat_btn_normal` - 按钮正常状态
-- `StyleBoxFlat_btn_hover` - 按钮悬停状态
-
----
+- 面板: `XxxPanel`；容器: `XxxContainer/XxxVBox/XxxHBox`；标签: `XxxLabel`；按钮: `XxxButton`；滚动: `XxxScroll`。
+- tscn 内 sub_resource（如还有）：`StyleBoxFlat_bg` / `StyleBoxFlat_btn_normal` 等按状态命名。
 
 ## 十二、可访问性
 
-### 12.1 对比度
-
-- 文本与背景对比度 ≥ 4.5:1
-- 大文本与背景对比度 ≥ 3:1
-
-### 12.2 交互区域
-
-- 按钮最小点击区域: 44x44px
-- 重要操作按钮建议 ≥ 60x36px
+- 文本对比度 ≥ 4.5:1；大文本 ≥ 3:1。
+- 按钮最小点击区 44x44（PanelChrome ✕ 已达标）；重要操作 ≥ 60x36。
+- 高对比度/大字号/减少动效经 `DT.set_accessibility()` 全局切换，监听 `SignalBus.accessibility_changed`。
 
 ---
+
+## 附：防回潮检查（提交前自查）
+
+```bash
+# 新改动文件中不应再出现裸颜色字面量（数据表 fallback 除外）：
+grep -n "Color(0\." scenes/ui/<改动文件>.gd
+# 面板应引用 DT/PanelStyles/PanelChrome：
+grep -c "DesignTokens\|design_tokens\|panel_styles\|panel_chrome" scenes/ui/<改动文件>.gd
+```
 
 **文档结束**

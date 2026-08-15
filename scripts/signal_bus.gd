@@ -154,6 +154,10 @@ signal level_selected(level: int)
 # 通用 UI 反馈
 signal show_toast(message: String)
 
+# v7.x 面板统一：main.gd overlay 开关的全局广播（高亮联动/统计解耦用）
+signal panel_opened(panel_id: String)
+signal panel_closed(panel_id: String)
+
 # v6.2: 符文系统信号
 signal rune_acquired(rune_id: String, source: String)  ## 获得符文（掉落/购买/奖励）
 

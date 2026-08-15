@@ -41,6 +41,7 @@ static func get_backpack_panel() -> Node:
 ## 获取排行榜面板
 static func get_leaderboard_panel() -> Node:
 	var paths := [
+		"/root/Main/PopupLayer/LeaderboardOverlay/CenterContainer/LeaderboardPanel",
 		"/root/Main/PopupLayer/LeaderboardPanel",
 		"/root/Main/PopupLayer/LeaderboardPanel/LeaderboardPanel",
 		"/root/Main/LeaderboardOverlay/CenterContainer/LeaderboardPanel",

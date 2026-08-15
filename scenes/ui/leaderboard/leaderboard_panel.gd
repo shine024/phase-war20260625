@@ -1,8 +1,12 @@
-extends PopupPanel
+extends PanelContainer
 ## 排行榜面板：显示公司势力排名和相位师排名
-## 注意：本面板 extends PopupPanel，弹出使用 popup_centered()，关闭使用 hide()
+## v7.x 面板统一：迁出 PopupPanel，改走常驻 Overlay（与其他 20+ 面板同构），
+## 由 main.gd _toggle_overlay 统一开关；关闭统一 PanelChrome 右上 ✕。
 
 const CompanyDefs = preload("res://data/company_definitions.gd")  # 统一阵营色来源
+const DT = preload("res://resources/design_tokens.gd")
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
+const PanelChrome = preload("res://scenes/ui/components/panel_chrome.gd")
 
 signal closed
 signal master_selected(master_id: String)  # 相位师选择信号
@@ -28,7 +32,6 @@ static func _get_skill_panel_style() -> StyleBox:
 
 var _tab_bar: TabBar
 var _list_container: VBoxContainer
-var _close_btn: Button
 var _current_tab: int = 0
 var _faction_data: Array = []  # 公司势力数据（从 FactionSystemManager 读取）
 var _player_data: Array = []   # 相位师排名数据
@@ -65,13 +68,15 @@ func get_phase_master_config(name: String) -> Dictionary:
 	return {}
 
 func _ready() -> void:
+	# v7.x 面板统一：MEDIUM 档 + 金色签名框架 + PanelChrome 标题栏（右上 ✕ 关闭）
+	custom_minimum_size = DT.PANEL_SIZE_MEDIUM
+	var accent := DT.get_panel_accent("leaderboard")
+	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(accent))
+	var chrome = PanelChrome.attach_to($Margin/VBox, "排行榜", accent, "LEADERBOARD")
+	chrome.closed.connect(_on_close)
 	# 获取各个节点
 	_tab_bar = get_node_or_null("Margin/VBox/TabBar") as TabBar
 	_list_container = get_node_or_null("Margin/VBox/ScrollContainer/LeaderboardList") as VBoxContainer
-	_close_btn = get_node_or_null("Margin/VBox/CloseButton") as Button
-
-	if _close_btn:
-		_close_btn.pressed.connect(_on_close)
 
 	if _tab_bar:
 		_tab_bar.tab_changed.connect(_on_tab_changed)
@@ -318,8 +323,8 @@ func _make_empty_hint(text: String) -> Control:
 	var lbl := Label.new()
 	lbl.text = text
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl.add_theme_color_override("font_color", Color(0.6, 0.65, 0.75, 0.7))
-	lbl.add_theme_font_size_override("font_size", 13)
+	lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
+	lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	lbl.custom_minimum_size = Vector2(0, 80)
 	lbl.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -332,15 +337,13 @@ func _on_master_selected(master_id: String) -> void:
 	# 显示详细信息面板
 	_show_master_details_popup(master_id)
 
-## 关闭弹窗
+## 关闭弹窗（Overlay 由 main.gd 统一收起）
 func _on_close() -> void:
-	hide()
 	closed.emit()
 
-## 外部接口：显示排行榜（自动刷新最新声望）
+## 外部接口：显示排行榜（可见性由 Overlay 管理，这里只负责刷新数据）
 func show_leaderboard() -> void:
 	refresh()
-	popup_centered()
 
 ## 刷新排行榜数据（可在面板可见时随时调用）
 func refresh() -> void:
@@ -395,8 +398,8 @@ func _build_enemy_header() -> Control:
 func _make_header_label(text: String, min_width: int, align: int) -> Label:
 	var lbl = Label.new()
 	lbl.text = text
-	lbl.add_theme_font_size_override("font_size", 12)
-	lbl.add_theme_color_override("font_color", Color(0.6, 0.85, 1, 1))
+	lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	lbl.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH)
 	if min_width > 0:
 		lbl.custom_minimum_size = Vector2(min_width, 0)
 	lbl.horizontal_alignment = align
@@ -404,7 +407,7 @@ func _make_header_label(text: String, min_width: int, align: int) -> Label:
 
 func _make_separator() -> HSeparator:
 	var sep = HSeparator.new()
-	sep.add_theme_color_override("color", Color(0.3, 0.4, 0.5, 0.3))
+	sep.add_theme_color_override("color", Color(DT.COLOR_BORDER.r, DT.COLOR_BORDER.g, DT.COLOR_BORDER.b, 0.3))
 	return sep
 
 ## 创建单个小型 Label（用于详情弹窗内嵌数据）

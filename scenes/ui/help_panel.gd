@@ -4,8 +4,11 @@ extends PanelContainer
 
 signal closed
 
+const DT = preload("res://resources/design_tokens.gd")
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
+const PanelChrome = preload("res://scenes/ui/components/panel_chrome.gd")
+
 # UI 组件引用
-@onready var close_button: Button = $Margin/VBox/CloseButton
 @onready var tab_container: TabContainer = $Margin/VBox/TabContainer
 
 # 动画参数
@@ -17,9 +20,12 @@ func _ready() -> void:
 	visible = false
 	modulate.a = 0.0
 
-	# 连接关闭按钮
-	if close_button:
-		close_button.pressed.connect(_on_close)
+	# v7.x 面板统一：SMALL 档 + 青色签名框架 + PanelChrome 标题栏（右上 ✕ 关闭）
+	custom_minimum_size = DT.PANEL_SIZE_SMALL
+	var accent := DT.get_panel_accent("help")
+	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(accent))
+	var chrome = PanelChrome.attach_to($Margin/VBox, "游戏帮助", accent, "HELP")
+	chrome.closed.connect(_on_close)
 
 	# 填充 Tab 内容
 	_populate_tabs()

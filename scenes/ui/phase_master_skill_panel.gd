@@ -8,21 +8,25 @@ extends PanelContainer
 
 const SkillTree = preload("res://data/phase_master_skill_tree.gd")
 const UnlockLabels = preload("res://data/unlock_labels.gd")
+const DT = preload("res://resources/design_tokens.gd")
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
+const PanelChrome = preload("res://scenes/ui/components/panel_chrome.gd")
 
 signal closed()
 
 var _tab_container: TabContainer = null
 var _points_label: Label = null
-var _close_btn: Button = null
 var _branch_containers: Dictionary = {}  # branch -> ScrollContainer
 var _summary_container: ScrollContainer = null  # v8.x 已解锁总览 tab
 var _dirty: bool = false
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(960, 640)
+	# v7.x 面板统一：MEDIUM 档 + 金色签名框架
+	custom_minimum_size = DT.PANEL_SIZE_MEDIUM
 	# 居中定位（挂在 CanvasLayer 下时需显式设置，PRESET_CENTER 对 PanelContainer 不可靠）
 	anchors_preset = Control.PRESET_CENTER
-	size = Vector2(960, 640)
+	size = DT.PANEL_SIZE_MEDIUM
+	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(DT.get_panel_accent("phase_master_skill")))
 	_build_ui()
 	# 监听解锁/点数变化信号
 	if PhaseMasterSkillManager:
@@ -38,29 +42,10 @@ func _build_ui() -> void:
 	main_vb.name = "MainVBox"
 	add_child(main_vb)
 
-	# 顶部栏：标题 + 技能点 + 关闭
-	var top_bar := HBoxContainer.new()
-	top_bar.name = "TopBar"
-	main_vb.add_child(top_bar)
-
-	var title := Label.new()
-	title.text = "◆ 相位师技能树"
-	title.add_theme_font_size_override("font_size", 22)
-	title.add_theme_color_override("font_color", Color(0.95, 0.75, 0.30))
-	top_bar.add_child(title)
-
-	_points_label = Label.new()
-	_points_label.name = "PointsLabel"
-	_points_label.add_theme_font_size_override("font_size", 18)
-	_points_label.add_theme_color_override("font_color", Color(0.40, 1.0, 0.50))
-	top_bar.add_child(_points_label)
-	top_bar.add_child(_make_spacer(true))
-
-	_close_btn = Button.new()
-	_close_btn.name = "CloseBtn"
-	_close_btn.text = "✕ 关闭"
-	_close_btn.pressed.connect(_on_close_pressed)
-	top_bar.add_child(_close_btn)
+	# v7.x 面板统一：PanelChrome 标题栏（右上 ✕ 关闭），技能点挂 chrome 状态行
+	var chrome = PanelChrome.attach_to(main_vb, "相位师技能树", DT.get_panel_accent("phase_master_skill"), "SKILL TREE")
+	chrome.closed.connect(_on_close_pressed)
+	_points_label = chrome.add_status_line()
 
 	# Tab 容器：4 分支
 	_tab_container = TabContainer.new()
@@ -120,7 +105,7 @@ func _populate_branch(branch: String, scroll: ScrollContainer) -> void:
 			current_tier = tier
 			var tier_label := Label.new()
 			tier_label.text = "  — 第 %d 层 —" % tier
-			tier_label.add_theme_color_override("font_color", Color(0.55, 0.57, 0.62))
+			tier_label.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
 			vb.add_child(tier_label)
 
 		vb.add_child(_make_node_row(skill, branch_color))
@@ -141,7 +126,7 @@ func _populate_summary() -> void:
 	if PhaseMasterSkillManager == null:
 		var empty_label := Label.new()
 		empty_label.text = "（技能管理器未加载）"
-		empty_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+		empty_label.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
 		vb.add_child(empty_label)
 		return
 
@@ -150,7 +135,7 @@ func _populate_summary() -> void:
 	var unlocked_nodes: Array = PhaseMasterSkillManager.get("_unlocked_nodes") if PhaseMasterSkillManager.get("_unlocked_nodes") != null else []
 	header.text = "▎ 已解锁内容（%d 个节点）" % unlocked_nodes.size()
 	header.add_theme_font_size_override("font_size", 18)
-	header.add_theme_color_override("font_color", Color(0.95, 0.75, 0.30))
+	header.add_theme_color_override("font_color", DT.COLOR_GOLD)
 	vb.add_child(header)
 
 	# 调用 UnlockLabels 获取已解锁内容摘要
@@ -206,14 +191,14 @@ func _make_node_row(skill: Dictionary, branch_color: Color) -> Control:
 	var can_unlock: bool = PhaseMasterSkillManager and PhaseMasterSkillManager.can_unlock_node(node_id).get("ok", false)
 
 	if is_unlocked:
-		sb.bg_color = Color(0.08, 0.18, 0.10, 0.95)
+		sb.bg_color = Color(DT.COLOR_GREEN_UP.r, DT.COLOR_GREEN_UP.g, DT.COLOR_GREEN_UP.b, 0.12)
 		sb.border_color = branch_color
 	elif can_unlock:
-		sb.bg_color = Color(0.12, 0.14, 0.20, 0.95)
-		sb.border_color = Color(0.95, 0.75, 0.30)
+		sb.bg_color = Color(DT.COLOR_GOLD.r, DT.COLOR_GOLD.g, DT.COLOR_GOLD.b, 0.10)
+		sb.border_color = DT.COLOR_GOLD
 	else:
-		sb.bg_color = Color(0.06, 0.07, 0.10, 0.95)
-		sb.border_color = Color(0.30, 0.32, 0.36)
+		sb.bg_color = DT.COLOR_SLOT_LOCKED
+		sb.border_color = Color(DT.COLOR_BORDER_DIM.r, DT.COLOR_BORDER_DIM.g, DT.COLOR_BORDER_DIM.b, 0.9)
 	sb.set_border_width_all(2)
 	sb.set_corner_radius_all(6)
 	sb.set_content_margin_all(10)
@@ -230,14 +215,14 @@ func _make_node_row(skill: Dictionary, branch_color: Color) -> Control:
 
 	var name_label := Label.new()
 	name_label.text = skill.get("name", "")
-	name_label.add_theme_font_size_override("font_size", 16)
-	name_label.add_theme_color_override("font_color", branch_color if is_unlocked else Color(0.85, 0.87, 0.90))
+	name_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
+	name_label.add_theme_color_override("font_color", branch_color if is_unlocked else DT.COLOR_TEXT_BRIGHT)
 	info_vb.add_child(name_label)
 
 	var desc_label := Label.new()
 	desc_label.text = skill.get("desc", "")
-	desc_label.add_theme_color_override("font_color", Color(0.62, 0.64, 0.68))
-	desc_label.add_theme_font_size_override("font_size", 13)
+	desc_label.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
+	desc_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	info_vb.add_child(desc_label)
 
 	# 解锁内容提示
@@ -247,8 +232,8 @@ func _make_node_row(skill: Dictionary, branch_color: Color) -> Control:
 		if not unlock_text.is_empty():
 			var unlock_label := Label.new()
 			unlock_label.text = "解锁：" + unlock_text
-			unlock_label.add_theme_color_override("font_color", Color(0.65, 0.55, 0.95))
-			unlock_label.add_theme_font_size_override("font_size", 12)
+			unlock_label.add_theme_color_override("font_color", DT.COLOR_VIOLET)
+			unlock_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
 			info_vb.add_child(unlock_label)
 
 	# 前置提示
@@ -262,20 +247,30 @@ func _make_node_row(skill: Dictionary, branch_color: Color) -> Control:
 		if not req_met:
 			var req_label := Label.new()
 			req_label.text = "⚠ 需先解锁前置节点"
-			req_label.add_theme_color_override("font_color", Color(0.90, 0.45, 0.35))
-			req_label.add_theme_font_size_override("font_size", 12)
+			req_label.add_theme_color_override("font_color", Color(DT.COLOR_RED_DOWN.r, DT.COLOR_RED_DOWN.g, DT.COLOR_RED_DOWN.b, 0.9))
+			req_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
 			info_vb.add_child(req_label)
 
 	# 右：状态/按钮
 	if is_unlocked:
 		var done_label := Label.new()
 		done_label.text = "✓ 已解锁"
-		done_label.add_theme_color_override("font_color", Color(0.40, 1.0, 0.50))
-		done_label.add_theme_font_size_override("font_size", 15)
+		done_label.add_theme_color_override("font_color", DT.COLOR_GREEN_BRIGHT)
+		done_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
 		hb.add_child(done_label)
 	else:
 		var btn := Button.new()
 		btn.text = "解锁 (%d点)" % int(skill.get("cost", 1))
+		var unlock_styles := PanelStyles.make_button_styles(DT.COLOR_GOLD, "solid")
+		btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		btn.add_theme_color_override("font_color", DT.COLOR_VOID)
+		btn.add_theme_color_override("font_hover_color", DT.COLOR_VOID)
+		btn.add_theme_color_override("font_pressed_color", DT.COLOR_VOID)
+		btn.add_theme_color_override("font_focus_color", DT.COLOR_VOID)
+		btn.add_theme_stylebox_override("normal", unlock_styles["normal"])
+		btn.add_theme_stylebox_override("hover", unlock_styles["hover"])
+		btn.add_theme_stylebox_override("pressed", unlock_styles["pressed"])
+		btn.add_theme_stylebox_override("disabled", unlock_styles["disabled"])
 		btn.disabled = not can_unlock
 		btn.set_meta("node_id", node_id)
 		btn.pressed.connect(_on_unlock_pressed.bind(node_id))
@@ -339,15 +334,15 @@ func _make_summary_row(item: Dictionary) -> Control:
 	hb.add_child(info_vb)
 	var name_label := Label.new()
 	name_label.text = String(item.get("name", ""))
-	name_label.add_theme_font_size_override("font_size", 14)
-	name_label.add_theme_color_override("font_color", Color(0.40, 1.0, 0.50))
+	name_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_BODY)
+	name_label.add_theme_color_override("font_color", DT.COLOR_GREEN_BRIGHT)
 	info_vb.add_child(name_label)
 	var desc: String = String(item.get("desc", ""))
 	if not desc.is_empty():
 		var desc_label := Label.new()
 		desc_label.text = desc
-		desc_label.add_theme_color_override("font_color", Color(0.62, 0.64, 0.68))
-		desc_label.add_theme_font_size_override("font_size", 12)
+		desc_label.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
+		desc_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
 		info_vb.add_child(desc_label)
 	return hb
 

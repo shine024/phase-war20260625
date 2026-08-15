@@ -1,35 +1,10 @@
-[gd_scene load_steps=3 format=3 uid="uid://settings_panel"]
+[gd_scene load_steps=2 format=3 uid="uid://settings_panel"]
 
 [ext_resource type="Script" path="res://scenes/ui/settings_panel.gd" id="1_script"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
-bg_color = Color(0.04, 0.06, 0.1, 0.98)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0, 0.941, 1, 0.5)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn"]
-bg_color = Color(0, 0.941, 1, 0.15)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0, 0.941, 1, 0.7)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
-
 [node name="SettingsPanel" type="PanelContainer"]
-custom_minimum_size = Vector2(480, 540)
+custom_minimum_size = Vector2(480, 560)
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 script = ExtResource("1_script")
 
 [node name="Margin" type="MarginContainer" parent="."]
@@ -39,39 +14,37 @@ theme_override_constants/margin_top = 20
 theme_override_constants/margin_right = 20
 theme_override_constants/margin_bottom = 20
 
-[node name="Scroll" type="ScrollContainer" parent="Margin"]
+[node name="VBoxMain" type="VBoxContainer" parent="Margin"]
 layout_mode = 2
+theme_override_constants/separation = 10
 
-[node name="VBox" type="VBoxContainer" parent="Margin/Scroll"]
+[node name="Scroll" type="ScrollContainer" parent="Margin/VBoxMain"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="VBox" type="VBoxContainer" parent="Margin/VBoxMain/Scroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 14
 
-[node name="Title" type="Label" parent="Margin/Scroll/VBox"]
+[node name="SectionAudio" type="Label" parent="Margin/VBoxMain/Scroll/VBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0, 0.941, 1, 1)
-theme_override_font_sizes/font_size = 22
-text = "设置 SETTINGS"
-horizontal_alignment = 1
-
-[node name="SectionAudio" type="Label" parent="Margin/Scroll/VBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.75, 0.9, 1.0, 0.9)
+theme_override_colors/font_color = Color(0.024, 0.714, 0.831, 0.9)
 theme_override_font_sizes/font_size = 14
 text = "—— 音频 ——"
 
-[node name="MasterVolumeRow" type="HBoxContainer" parent="Margin/Scroll/VBox"]
+[node name="MasterVolumeRow" type="HBoxContainer" parent="Margin/VBoxMain/Scroll/VBox"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="MasterLabel" type="Label" parent="Margin/Scroll/VBox/MasterVolumeRow"]
+[node name="MasterLabel" type="Label" parent="Margin/VBoxMain/Scroll/VBox/MasterVolumeRow"]
 custom_minimum_size = Vector2(110, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.85, 0.9, 0.95, 1)
+theme_override_colors/font_color = Color(0.88, 0.92, 0.98, 1)
 theme_override_font_sizes/font_size = 14
 text = "主音量"
 
-[node name="MasterSlider" type="HSlider" parent="Margin/Scroll/VBox/MasterVolumeRow"]
+[node name="MasterSlider" type="HSlider" parent="Margin/VBoxMain/Scroll/VBox/MasterVolumeRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 min_value = 0.0
@@ -79,18 +52,18 @@ max_value = 1.0
 step = 0.05
 value = 1.0
 
-[node name="SfxVolumeRow" type="HBoxContainer" parent="Margin/Scroll/VBox"]
+[node name="SfxVolumeRow" type="HBoxContainer" parent="Margin/VBoxMain/Scroll/VBox"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="SfxLabel" type="Label" parent="Margin/Scroll/VBox/SfxVolumeRow"]
+[node name="SfxLabel" type="Label" parent="Margin/VBoxMain/Scroll/VBox/SfxVolumeRow"]
 custom_minimum_size = Vector2(110, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.85, 0.9, 0.95, 1)
+theme_override_colors/font_color = Color(0.88, 0.92, 0.98, 1)
 theme_override_font_sizes/font_size = 14
 text = "音效"
 
-[node name="SfxSlider" type="HSlider" parent="Margin/Scroll/VBox/SfxVolumeRow"]
+[node name="SfxSlider" type="HSlider" parent="Margin/VBoxMain/Scroll/VBox/SfxVolumeRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 min_value = 0.0
@@ -98,18 +71,18 @@ max_value = 1.0
 step = 0.05
 value = 1.0
 
-[node name="BgmVolumeRow" type="HBoxContainer" parent="Margin/Scroll/VBox"]
+[node name="BgmVolumeRow" type="HBoxContainer" parent="Margin/VBoxMain/Scroll/VBox"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="BgmLabel" type="Label" parent="Margin/Scroll/VBox/BgmVolumeRow"]
+[node name="BgmLabel" type="Label" parent="Margin/VBoxMain/Scroll/VBox/BgmVolumeRow"]
 custom_minimum_size = Vector2(110, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.85, 0.9, 0.95, 1)
+theme_override_colors/font_color = Color(0.88, 0.92, 0.98, 1)
 theme_override_font_sizes/font_size = 14
 text = "音乐"
 
-[node name="BgmSlider" type="HSlider" parent="Margin/Scroll/VBox/BgmVolumeRow"]
+[node name="BgmSlider" type="HSlider" parent="Margin/VBoxMain/Scroll/VBox/BgmVolumeRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 min_value = 0.0
@@ -117,30 +90,30 @@ max_value = 1.0
 step = 0.05
 value = 0.7
 
-[node name="BgmHint" type="Label" parent="Margin/Scroll/VBox"]
+[node name="BgmHint" type="Label" parent="Margin/VBoxMain/Scroll/VBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.66, 0.78, 0.8)
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 10
 text = "（音乐待补音频包，当前静音）"
 
-[node name="SectionGame" type="Label" parent="Margin/Scroll/VBox"]
+[node name="SectionGame" type="Label" parent="Margin/VBoxMain/Scroll/VBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.75, 0.9, 1.0, 0.9)
+theme_override_colors/font_color = Color(0.024, 0.714, 0.831, 0.9)
 theme_override_font_sizes/font_size = 14
 text = "—— 游戏 ——"
 
-[node name="DifficultyRow" type="HBoxContainer" parent="Margin/Scroll/VBox"]
+[node name="DifficultyRow" type="HBoxContainer" parent="Margin/VBoxMain/Scroll/VBox"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="DifficultyLabel" type="Label" parent="Margin/Scroll/VBox/DifficultyRow"]
+[node name="DifficultyLabel" type="Label" parent="Margin/VBoxMain/Scroll/VBox/DifficultyRow"]
 custom_minimum_size = Vector2(110, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.85, 0.9, 0.95, 1)
+theme_override_colors/font_color = Color(0.88, 0.92, 0.98, 1)
 theme_override_font_sizes/font_size = 14
 text = "难度"
 
-[node name="DifficultyOption" type="OptionButton" parent="Margin/Scroll/VBox/DifficultyRow"]
+[node name="DifficultyOption" type="OptionButton" parent="Margin/VBoxMain/Scroll/VBox/DifficultyRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 item_count = 3
@@ -151,97 +124,88 @@ popup/item_1/id = 1
 popup/item_2/text = "困难（敌方 +15%）"
 popup/item_2/id = 2
 
-[node name="DifficultyHint" type="Label" parent="Margin/Scroll/VBox"]
+[node name="DifficultyHint" type="Label" parent="Margin/VBoxMain/Scroll/VBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.66, 0.78, 0.8)
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 10
 text = "（下一场战斗生效，仅缩放敌方血量与攻击）"
 
-[node name="SectionFullscreen" type="Label" parent="Margin/Scroll/VBox"]
+[node name="SectionFullscreen" type="Label" parent="Margin/VBoxMain/Scroll/VBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.75, 0.9, 1.0, 0.9)
+theme_override_colors/font_color = Color(0.024, 0.714, 0.831, 0.9)
 theme_override_font_sizes/font_size = 14
 text = "—— 显示 ——"
 
-[node name="FullscreenRow" type="HBoxContainer" parent="Margin/Scroll/VBox"]
+[node name="FullscreenRow" type="HBoxContainer" parent="Margin/VBoxMain/Scroll/VBox"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="FullscreenLabel" type="Label" parent="Margin/Scroll/VBox/FullscreenRow"]
+[node name="FullscreenLabel" type="Label" parent="Margin/VBoxMain/Scroll/VBox/FullscreenRow"]
 custom_minimum_size = Vector2(110, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.85, 0.9, 0.95, 1)
+theme_override_colors/font_color = Color(0.88, 0.92, 0.98, 1)
 theme_override_font_sizes/font_size = 14
 text = "全屏"
 
-[node name="FullscreenCheck" type="CheckButton" parent="Margin/Scroll/VBox/FullscreenRow"]
+[node name="FullscreenCheck" type="CheckButton" parent="Margin/VBoxMain/Scroll/VBox/FullscreenRow"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.85, 0.9, 0.95, 1)
+theme_override_colors/font_color = Color(0.88, 0.92, 0.98, 1)
 theme_override_font_sizes/font_size = 14
 text = "全屏模式"
 
-[node name="SectionA11y" type="Label" parent="Margin/Scroll/VBox"]
+[node name="SectionA11y" type="Label" parent="Margin/VBoxMain/Scroll/VBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.75, 0.9, 1.0, 0.9)
+theme_override_colors/font_color = Color(0.024, 0.714, 0.831, 0.9)
 theme_override_font_sizes/font_size = 14
 text = "—— 可访问性 ——"
 
-[node name="HighContrastRow" type="HBoxContainer" parent="Margin/Scroll/VBox"]
+[node name="HighContrastRow" type="HBoxContainer" parent="Margin/VBoxMain/Scroll/VBox"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="HighContrastLabel" type="Label" parent="Margin/Scroll/VBox/HighContrastRow"]
+[node name="HighContrastLabel" type="Label" parent="Margin/VBoxMain/Scroll/VBox/HighContrastRow"]
 custom_minimum_size = Vector2(110, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.85, 0.9, 0.95, 1)
+theme_override_colors/font_color = Color(0.88, 0.92, 0.98, 1)
 theme_override_font_sizes/font_size = 14
 text = "高对比度"
 
-[node name="HighContrastCheck" type="CheckButton" parent="Margin/Scroll/VBox/HighContrastRow"]
+[node name="HighContrastCheck" type="CheckButton" parent="Margin/VBoxMain/Scroll/VBox/HighContrastRow"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.85, 0.9, 0.95, 1)
+theme_override_colors/font_color = Color(0.88, 0.92, 0.98, 1)
 theme_override_font_sizes/font_size = 14
 text = "更高亮度/对比"
 
-[node name="LargeTypeRow" type="HBoxContainer" parent="Margin/Scroll/VBox"]
+[node name="LargeTypeRow" type="HBoxContainer" parent="Margin/VBoxMain/Scroll/VBox"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="LargeTypeLabel" type="Label" parent="Margin/Scroll/VBox/LargeTypeRow"]
+[node name="LargeTypeLabel" type="Label" parent="Margin/VBoxMain/Scroll/VBox/LargeTypeRow"]
 custom_minimum_size = Vector2(110, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.85, 0.9, 0.95, 1)
+theme_override_colors/font_color = Color(0.88, 0.92, 0.98, 1)
 theme_override_font_sizes/font_size = 14
 text = "大字号"
 
-[node name="LargeTypeCheck" type="CheckButton" parent="Margin/Scroll/VBox/LargeTypeRow"]
+[node name="LargeTypeCheck" type="CheckButton" parent="Margin/VBoxMain/Scroll/VBox/LargeTypeRow"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.85, 0.9, 0.95, 1)
+theme_override_colors/font_color = Color(0.88, 0.92, 0.98, 1)
 theme_override_font_sizes/font_size = 14
 text = "字号放大 25%"
 
-[node name="MotionReduceRow" type="HBoxContainer" parent="Margin/Scroll/VBox"]
+[node name="MotionReduceRow" type="HBoxContainer" parent="Margin/VBoxMain/Scroll/VBox"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="MotionReduceLabel" type="Label" parent="Margin/Scroll/VBox/MotionReduceRow"]
+[node name="MotionReduceLabel" type="Label" parent="Margin/VBoxMain/Scroll/VBox/MotionReduceRow"]
 custom_minimum_size = Vector2(110, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.85, 0.9, 0.95, 1)
+theme_override_colors/font_color = Color(0.88, 0.92, 0.98, 1)
 theme_override_font_sizes/font_size = 14
 text = "减少动效"
 
-[node name="MotionReduceCheck" type="CheckButton" parent="Margin/Scroll/VBox/MotionReduceRow"]
+[node name="MotionReduceCheck" type="CheckButton" parent="Margin/VBoxMain/Scroll/VBox/MotionReduceRow"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.85, 0.9, 0.95, 1)
+theme_override_colors/font_color = Color(0.88, 0.92, 0.98, 1)
 theme_override_font_sizes/font_size = 14
 text = "关闭屏幕震动"
-
-[node name="CloseButton" type="Button" parent="Margin/Scroll/VBox"]
-custom_minimum_size = Vector2(0, 44)
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_hover_color = Color(0, 0.941, 1, 1)
-theme_override_font_sizes/font_size = 16
-theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
-text = "关闭 CLOSE"

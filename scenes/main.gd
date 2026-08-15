@@ -45,7 +45,9 @@ var _offline_idle_manager: OfflineIdleManager = null
 @onready var faction_overlay: Control            = $PopupLayer/FactionOverlay
 @onready var map_overlay: Control                = $PopupLayer/MapOverlay
 @onready var settings_overlay: Control           = $PopupLayer/SettingsOverlay
-@onready var leaderboard_panel: PopupPanel       = $PopupLayer/LeaderboardPanel
+# v7.x 面板统一：排行榜迁出 PopupPanel，改走常驻 Overlay（与其他面板同构）
+@onready var leaderboard_overlay: Control       = $PopupLayer/LeaderboardOverlay
+@onready var leaderboard_panel: Control         = $PopupLayer/LeaderboardOverlay/CenterContainer/LeaderboardPanel
 @onready var manufacture_overlay: Control      = $PopupLayer/ManufactureOverlay
 @onready var intelligence_overlay: Control     = $PopupLayer/IntelligenceOverlay
 @onready var growth_overlay: Control           = $PopupLayer/GrowthOverlay
@@ -302,11 +304,12 @@ func _connect_panel_closed_signals() -> void:
 		"quest":              $PopupLayer/QuestOverlay/CenterContainer/QuestPanel,
 		"store":              $PopupLayer/StoreOverlay/CenterContainer/StorePanel,
 		"faction":            $PopupLayer/FactionOverlay/CenterContainer/FactionPanel,
-		"leaderboard":        $PopupLayer/LeaderboardPanel,
+		"leaderboard":        $PopupLayer/LeaderboardOverlay/CenterContainer/LeaderboardPanel,
 		"backpack":           get_node_or_null("PopupLayer/BackpackOverlay/BackpackVBox/CenterRow/BackpackCenter/BackpackPanel"),
 		"progression":        progression_panel,
 		"settings":           $PopupLayer/SettingsOverlay/CenterContainer/SettingsPanel,
 		"info":               $PopupLayer/IntelligenceOverlay/CenterContainer/IntelligenceHubPanel,
+		"occupation":         get_node_or_null("PopupLayer/OccupationOverlay/CenterContainer/OccupationPanel"),
 		"growth":             get_node_or_null("PopupLayer/GrowthOverlay/CenterContainer/GrowthPanel"),
 		"collection":         get_node_or_null("PopupLayer/CollectionOverlay/CenterContainer/CollectionPanel"),
 		"afk":                get_node_or_null("PopupLayer/AFKOverlay/CenterContainer/AFKPanel"),
@@ -336,73 +339,82 @@ func _open_overlay(overlay: Control, panel_key: String = "") -> void:
 	var cc_reset: Node = overlay.get_node_or_null("CenterContainer")
 	if cc_reset is Control:
 		(cc_reset as Control).visible = true
-	# 地图面板常驻主场景：打开时刷新一次状态（关卡高亮/可解锁信息）
-	if panel_key == "map":
-		var world_map_panel: Node = overlay.get_node_or_null("CenterContainer/WorldMapPanel")
-		if world_map_panel and world_map_panel.has_method("refresh"):
-			world_map_panel.refresh()
-	elif panel_key == "backpack":
-		var backpack_panel: Node = overlay.get_node_or_null("BackpackVBox/CenterRow/BackpackCenter/BackpackPanel")
-		if backpack_panel == null:
-			backpack_panel = overlay.find_child("BackpackPanel", true, false)
-		if backpack_panel and backpack_panel.has_method("on_overlay_opened"):
-			backpack_panel.on_overlay_opened()
-			if PerformanceMetricsManager and PerformanceMetricsManager.has_method("mark_backpack_open_ready"):
-				PerformanceMetricsManager.mark_backpack_open_ready()
-	elif panel_key == "store":
-		# 商店面板：触发打开分帧刷新（on_overlay_opened 将 _refresh_items 拆到下一帧，降低首开尖峰）
-		var store_panel: Node = overlay.get_node_or_null("CenterContainer/StorePanel")
-		if store_panel == null:
-			store_panel = overlay.find_child("StorePanel", true, false)
-		if store_panel and store_panel.has_method("on_overlay_opened"):
-			store_panel.on_overlay_opened()
-	elif panel_key == "info":
-		var hub: Node = overlay.get_node_or_null("CenterContainer/IntelligenceHubPanel")
-		if hub and hub.has_method("refresh"):
-			hub.refresh()
-	elif panel_key == "growth":
-		var gp: Control = overlay.get_node_or_null("CenterContainer/GrowthPanel")
-		if gp == null:
-			gp = overlay.find_child("GrowthPanel", true, false)
-		if gp and gp.has_method("show_panel"):
-			if DEBUG_MAIN_LOG:
-				print("[Main] Calling GrowthPanel.show_panel")
-			gp.show_panel(null)
-	# v8.x 性能：以下 4 个面板的列表刷新已从 _ready 移到 on_overlay_opened（拆帧），
-	# 打开时显式调用以触发下一帧刷新，避免 LazyLoader 实例化同帧的列表构建尖峰。
-	elif panel_key == "modification":
-		var mp: Node = overlay.get_node_or_null("CenterContainer/ModificationPanel")
-		if mp == null:
-			mp = overlay.find_child("ModificationPanel", true, false)
-		if mp and mp.has_method("on_overlay_opened"):
-			mp.on_overlay_opened()
-	elif panel_key == "evolution":
-		var ep: Node = overlay.get_node_or_null("CenterContainer/EvolutionPanel")
-		if ep == null:
-			ep = overlay.find_child("EvolutionPanel", true, false)
-		if ep and ep.has_method("on_overlay_opened"):
-			ep.on_overlay_opened()
-	elif panel_key == "collection":
-		var cp: Node = overlay.get_node_or_null("CenterContainer/CollectionPanel")
-		if cp == null:
-			cp = overlay.find_child("CollectionPanel", true, false)
-		if cp and cp.has_method("on_overlay_opened"):
-			cp.on_overlay_opened()
-	elif panel_key == "quest":
-		var qp: Node = overlay.get_node_or_null("CenterContainer/QuestPanel")
-		if qp == null:
-			qp = overlay.find_child("QuestPanel", true, false)
-		if qp and qp.has_method("on_overlay_opened"):
-			qp.on_overlay_opened()
-	elif panel_key == "afk":
-		# AFKPanel 在 _ready 中将自身 visible 置 false（依赖 _open() 控制），
-		# 故 overlay 可见后必须显式调用面板 _open()，否则面板主体与 Backdrop 均不显示。
-		var ap: Node = overlay.get_node_or_null("CenterContainer/AFKPanel")
-		if ap and ap.has_method("_open"):
-			ap._open()
+	# v7.x 面板统一：打开通知收敛为 match + _notify_panel_opened 通用分发，
+	# 仅保留行为特殊的面板特判（map 刷新 / backpack 性能打点 / growth 日志 / afk 显式 _open）。
+	match panel_key:
+		"map":
+			var world_map_panel: Node = overlay.get_node_or_null("CenterContainer/WorldMapPanel")
+			if world_map_panel and world_map_panel.has_method("refresh"):
+				world_map_panel.refresh()
+		"backpack":
+			var backpack_panel: Node = overlay.get_node_or_null("BackpackVBox/CenterRow/BackpackCenter/BackpackPanel")
+			if backpack_panel == null:
+				backpack_panel = overlay.find_child("BackpackPanel", true, false)
+			if backpack_panel and backpack_panel.has_method("on_overlay_opened"):
+				backpack_panel.on_overlay_opened()
+				if PerformanceMetricsManager and PerformanceMetricsManager.has_method("mark_backpack_open_ready"):
+					PerformanceMetricsManager.mark_backpack_open_ready()
+		"growth":
+			var gp: Control = overlay.get_node_or_null("CenterContainer/GrowthPanel")
+			if gp == null:
+				gp = overlay.find_child("GrowthPanel", true, false)
+			if gp and gp.has_method("show_panel"):
+				if DEBUG_MAIN_LOG:
+					print("[Main] Calling GrowthPanel.show_panel")
+				gp.show_panel(null)
+		"afk":
+			# AFKPanel 在 _ready 中将自身 visible 置 false（依赖 _open() 控制），
+			# 故 overlay 可见后必须显式调用面板 _open()，否则面板主体与 Backdrop 均不显示。
+			var ap: Node = overlay.get_node_or_null("CenterContainer/AFKPanel")
+			if ap and ap.has_method("_open"):
+				ap._open()
+		_:
+			_notify_panel_opened(overlay, panel_key)
+	# v7.x 面板统一：全局广播（高亮联动/统计解耦）
+	if not panel_key.is_empty() and SignalBus and SignalBus.has_signal("panel_opened"):
+		SignalBus.panel_opened.emit(panel_key)
 	# 性能优化：非战斗中打开面板时，冻结 SubViewport 避免无谓渲染
 	if panel_key != "growth":
 		_freeze_subviewport_if_not_in_battle()
+
+## v7.x 面板统一：通用打开通知。
+## 按 on_overlay_opened → refresh → show_panel(null) → _refresh_all 顺序尝试，
+## 覆盖 store/quest/faction/info/modification/evolution/collection/leaderboard/occupation 等
+## 常规面板的打开契约，新面板无需再往 _open_overlay 加分支。
+const _PANEL_NODE_NAMES := {
+	"store": "StorePanel",
+	"quest": "QuestPanel",
+	"faction": "FactionPanel",
+	"settings": "SettingsPanel",
+	"info": "IntelligenceHubPanel",
+	"modification": "ModificationPanel",
+	"evolution": "EvolutionPanel",
+	"collection": "CollectionPanel",
+	"leaderboard": "LeaderboardPanel",
+	"occupation": "OccupationPanel",
+}
+
+func _notify_panel_opened(overlay: Control, panel_key: String) -> void:
+	if overlay == null or panel_key.is_empty():
+		return
+	var panel_name: String = String(_PANEL_NODE_NAMES.get(panel_key, ""))
+	if panel_name.is_empty():
+		return
+	var panel: Node = overlay.get_node_or_null("CenterContainer/" + panel_name)
+	if panel == null:
+		panel = overlay.find_child(panel_name, true, false)
+	if panel == null:
+		return
+	# v8.x 性能：多数列表面板的刷新已从 _ready 移到 on_overlay_opened（拆帧），
+	# 打开时显式调用以触发下一帧刷新，避免 LazyLoader 实例化同帧的列表构建尖峰。
+	if panel.has_method("on_overlay_opened"):
+		panel.on_overlay_opened()
+	elif panel.has_method("refresh"):
+		panel.refresh()
+	elif panel.has_method("show_panel"):
+		panel.show_panel(null)
+	elif panel.has_method("_refresh_all"):
+		panel._refresh_all()
 
 func _close_overlay(overlay: Control, panel_key: String = "") -> void:
 	if overlay == null:
@@ -425,6 +437,9 @@ func _close_overlay(overlay: Control, panel_key: String = "") -> void:
 		overlay.visible = false
 	if panel_key != "" and bottom_function_bar:
 		bottom_function_bar.notify_panel_closed(panel_key)
+	# v7.x 面板统一：全局广播（高亮联动/统计解耦）
+	if not panel_key.is_empty() and SignalBus and SignalBus.has_signal("panel_closed"):
+		SignalBus.panel_closed.emit(panel_key)
 	# 性能优化：面板全部关闭后，若无其他面板打开，恢复 SubViewport 状态
 	_restore_subviewport_if_needed()
 
@@ -444,34 +459,23 @@ func _on_panel_closed(key: String) -> void:
 		"faction":            _close_overlay(faction_overlay, "faction")
 		"map":                _close_overlay(map_overlay, "map")
 		"settings":           _close_overlay(settings_overlay, "settings")
-		"leaderboard":
-			if bottom_function_bar:
-				bottom_function_bar.notify_panel_closed("leaderboard")
+		"leaderboard":        _close_overlay(leaderboard_overlay, "leaderboard")
 		"backpack":           _close_overlay(backpack_overlay, "backpack")
 		"growth":             _close_overlay(growth_overlay, "growth")
 		"collection":         _close_overlay(collection_overlay, "collection")
 		"info":               _close_overlay(intelligence_overlay, "info")
+		"occupation":         _close_overlay(get_node_or_null("PopupLayer/OccupationOverlay"), "occupation")
 		"enhancement":        _close_overlay(enhancement_overlay, "enhancement")
 		"modification":       _close_overlay(modification_overlay, "modification")
 		"evolution":          _close_overlay(evolution_overlay, "evolution")
 		"afk":                _close_overlay(afk_overlay, "afk")
 
-# ── 排行榜：PopupPanel 特殊处理 ──────────────────────────────
+# ── 排行榜：v7.x 面板统一，改走常驻 Overlay（与其他面板同构） ──────
 func _toggle_leaderboard() -> void:
-	if leaderboard_panel == null:
-		return
-	if leaderboard_panel.visible:
-		_close_leaderboard()
-	else:
-		if leaderboard_panel.has_method("refresh"):
-			leaderboard_panel.refresh()
-		leaderboard_panel.popup_centered()
-		if bottom_function_bar:
-			bottom_function_bar.notify_panel_closed("")  # 排行榜不在功能键高亮列表
+	_toggle_overlay(leaderboard_overlay, "leaderboard")
 
 func _close_leaderboard() -> void:
-	if leaderboard_panel:
-		leaderboard_panel.hide()
+	_close_overlay(leaderboard_overlay, "leaderboard")
 
 # ── 底部仪表栏信号 ────────────────────────────────────────────
 func _on_instrument_area_clicked() -> void:
@@ -549,6 +553,7 @@ func _overlay_for_panel_key(panel_key: String) -> Control:
 		"modification": return modification_overlay
 		"evolution": return evolution_overlay
 		"afk": return afk_overlay
+		"leaderboard": return leaderboard_overlay
 	return null
 
 func _ensure_lazy_panel(panel_key: String) -> void:
@@ -580,6 +585,8 @@ func _ensure_lazy_panel(panel_key: String) -> void:
 			lazy_id = "modification"
 		"evolution":
 			lazy_id = "evolution"
+		"leaderboard":
+			lazy_id = "leaderboard"
 		_:
 			return
 	var overlay: Control = _overlay_for_panel_key(lazy_id)
@@ -953,6 +960,7 @@ func _close_all_overlays() -> void:
 		backpack_overlay, faction_overlay,
 		map_overlay, settings_overlay, intelligence_overlay,
 		growth_overlay, afk_overlay,
+		leaderboard_overlay,
 	]
 	for ov in overlays:
 		if ov == null:
@@ -966,9 +974,6 @@ func _close_all_overlays() -> void:
 		if ov == afk_overlay:
 			_reset_afk_panel_visibility(false)
 		ov.visible = false
-	# PopupPanel 类型的排行榜单独处理
-	if leaderboard_panel:
-		leaderboard_panel.hide()
 	if bottom_function_bar:
 		bottom_function_bar.notify_panel_closed("")
 

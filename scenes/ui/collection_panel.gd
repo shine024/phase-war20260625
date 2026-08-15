@@ -7,12 +7,13 @@ signal closed
 
 const DefaultCards = preload("res://data/default_cards.gd")
 const DT = preload("res://resources/design_tokens.gd")
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
+const PanelChrome = preload("res://scenes/ui/components/panel_chrome.gd")
 
 var _selected_card_id: String = ""
 # v8.x 性能：on_overlay_opened 拆帧重入守卫
 var _open_refresh_inflight: bool = false
 
-@onready var _title_lbl: Label = $Margin/VBox/TitleRow/Title
 @onready var _progress_lbl: Label = $Margin/VBox/ProgressRow/ProgressLabel
 @onready var _progress_bar: ProgressBar = $Margin/VBox/ProgressRow/ProgressBar
 @onready var _rarity_row: HBoxContainer = $Margin/VBox/RarityRow
@@ -21,12 +22,15 @@ var _open_refresh_inflight: bool = false
 @onready var _detail_name: Label = $Margin/VBox/ContentHBox/RightVBox/DetailScroll/DetailVBox/DetailName
 @onready var _detail_status: Label = $Margin/VBox/ContentHBox/RightVBox/DetailScroll/DetailVBox/DetailStatus
 @onready var _detail_info: Label = $Margin/VBox/ContentHBox/RightVBox/DetailScroll/DetailVBox/DetailInfo
-@onready var _close_btn: Button = $Margin/VBox/CloseRow/CloseBtn
 
 
 func _ready() -> void:
-	if _close_btn:
-		_close_btn.pressed.connect(_on_close)
+	# v7.x 面板统一：MEDIUM 档 + 科技青签名框架 + PanelChrome 标题栏（右上 ✕ 关闭）
+	custom_minimum_size = DT.PANEL_SIZE_MEDIUM
+	var accent := DT.get_panel_accent("collection")
+	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(accent))
+	var chrome = PanelChrome.attach_to($Margin/VBox, "卡牌图鉴", accent, "COLLECTION")
+	chrome.closed.connect(_on_close)
 	# v7.x 性能：CardCollectionManager 延迟加载，面板初始化时确保已实例化（否则本地信号连不上）
 	var _mll: Node = get_node_or_null("/root/ManagerLazyLoader")
 	if _mll and _mll.has_method("ensure_loaded"):
@@ -140,7 +144,7 @@ func _refresh_header() -> void:
 				var s: Dictionary = stats.get(rarity, {"total": 0, "owned": 0, "rate": 0.0})
 				var lbl := Label.new()
 				lbl.text = "%s %d/%d" % [rarity, int(s.get("owned", 0)), int(s.get("total", 0))]
-				lbl.add_theme_font_size_override("font_size", 12)
+				lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 				lbl.add_theme_color_override("font_color", _rarity_color(rarity))
 				_rarity_row.add_child(lbl)
 
@@ -182,9 +186,25 @@ func _refresh_card_list() -> void:
 func _make_card_row(card_id: String) -> Control:
 	var btn := Button.new()
 	btn.text = _card_display_name(card_id)
-	btn.custom_minimum_size = Vector2(220, 32)
-	btn.add_theme_font_size_override("font_size", 13)
+	btn.custom_minimum_size = Vector2(220, 34)
+	# v7.x 视觉审查：列表行补卡牌缩略图（原来纯文字，无视觉层级）
+	var card = DefaultCards.get_card_by_id(card_id) if DefaultCards else null
+	if card != null and UiAssetLoader.card_icon_for_list(card) != null:
+		btn.icon = UiAssetLoader.card_icon_for_list(card)
+		btn.expand_icon = false
+		btn.add_theme_constant_override("icon_max_width", 26)
+		btn.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	var row_styles := PanelStyles.make_button_styles(DT.get_panel_accent("collection"))
+	btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	btn.add_theme_color_override("font_color", _status_color(card_id))
+	btn.add_theme_color_override("font_hover_color", DT.COLOR_TEXT_BRIGHT)
+	btn.add_theme_color_override("font_pressed_color", DT.COLOR_TEXT_BRIGHT)
+	btn.add_theme_color_override("font_focus_color", DT.COLOR_TEXT_BRIGHT)
+	btn.add_theme_stylebox_override("normal", row_styles["normal"])
+	btn.add_theme_stylebox_override("hover", row_styles["hover"])
+	btn.add_theme_stylebox_override("pressed", row_styles["pressed"])
+	# 选中态沿用 disabled 高亮惯例：disabled 复用 pressed 样式（accent 填充），观感即"选中"
+	btn.add_theme_stylebox_override("disabled", row_styles["pressed"])
 	btn.pressed.connect(func() -> void:
 		_selected_card_id = card_id
 		_refresh_detail()
@@ -282,21 +302,21 @@ func _rarity_display(rarity: String) -> String:
 
 func _rarity_color(rarity: String) -> Color:
 	match rarity:
-		"common", "普通": return Color(0.7, 0.7, 0.7)
-		"uncommon": return Color(0.4, 0.8, 0.4)
-		"rare", "稀有": return Color(0.35, 0.55, 1.0)
-		"epic", "史诗": return Color(0.7, 0.4, 1.0)
-		"legendary", "传说": return Color(1.0, 0.7, 0.2)
-		"mythic", "神话": return Color(1.0, 0.3, 0.5)
-		_: return Color(0.8, 0.8, 0.8)
+		"common", "普通": return DT.COLOR_RARITY_COMMON
+		"uncommon": return DT.COLOR_RARITY_UNCOMMON
+		"rare", "稀有": return DT.COLOR_RARITY_RARE
+		"epic", "史诗": return DT.COLOR_RARITY_EPIC
+		"legendary", "传说": return DT.COLOR_RARITY_LEGENDARY
+		"mythic", "神话": return DT.COLOR_RARITY_MYTHIC
+		_: return DT.COLOR_TEXT_MID
 
 
 func _status_color(card_id: String) -> Color:
 	if _is_max_level(card_id):
-		return Color(1.0, 0.85, 0.3)  # 金
+		return DT.COLOR_GOLD
 	if _is_owned(card_id):
-		return Color(0.85, 0.9, 0.95)  # 正常文本
-	return Color(0.45, 0.45, 0.5)  # 灰（未获得）
+		return DT.COLOR_TEXT_BRIGHT
+	return Color(DT.COLOR_TEXT_DIM.r, DT.COLOR_TEXT_DIM.g, DT.COLOR_TEXT_DIM.b, 0.8)  # 灰（未获得）
 
 
 func _on_close() -> void:

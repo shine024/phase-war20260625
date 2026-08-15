@@ -209,6 +209,7 @@ func _render_battle_stats(vbox: VBoxContainer) -> void:
 	time_lbl.text = "战斗时长  %s" % _format_time(stats.get("battle_time", 0.0))
 	time_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
 	time_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
+	time_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	top_row.add_child(time_lbl)
 	# 星级
 	var stars: int = _compute_stars(stats)
@@ -216,6 +217,7 @@ func _render_battle_stats(vbox: VBoxContainer) -> void:
 	_star_lbl.text = _star_text(stars)
 	_star_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_TITLE)
 	_star_lbl.add_theme_color_override("font_color", DT.COLOR_GOLD if stars >= 2 else DT.COLOR_TEXT_DIM)
+	_star_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	top_row.add_child(_star_lbl)
 
 	# 核心数据网格
@@ -237,6 +239,7 @@ func _render_battle_stats(vbox: VBoxContainer) -> void:
 		kb_lbl.text = "击破分布"
 		kb_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 		kb_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
+		kb_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		vbox.add_child(kb_lbl)
 		var kb_val := Label.new()
 		kb_val.text = ", ".join(kill_breakdown)
@@ -260,7 +263,7 @@ func _render_phase_field_xp(vbox: VBoxContainer) -> void:
 	var phase_xp_gain: int = max(0, phase_xp_after - _xp_before)
 	var phase_info := Label.new()
 	phase_info.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	phase_info.add_theme_color_override("font_color", Color(0.55, 0.9, 1.0, 0.95))
+	phase_info.add_theme_color_override("font_color", Color(DT.COLOR_CYAN_TECH.r, DT.COLOR_CYAN_TECH.g, DT.COLOR_CYAN_TECH.b, 0.95))
 	if player_won:
 		var lv_up_text: String = ""
 		if phase_level_after > _level_before:
@@ -280,7 +283,7 @@ func _render_reward_summary(vbox: VBoxContainer) -> void:
 	var reward_title := Label.new()
 	reward_title.text = "◆ 本关获得"
 	reward_title.add_theme_font_size_override("font_size", 13)
-	reward_title.add_theme_color_override("font_color", Color(0.35, 0.95, 0.75, 1))
+	reward_title.add_theme_color_override("font_color", DT.COLOR_GREEN_BRIGHT)
 	vbox.add_child(reward_title)
 	var reward_list := VBoxContainer.new()
 	reward_list.add_theme_constant_override("separation", 3)
@@ -302,7 +305,7 @@ func _render_reward_summary(vbox: VBoxContainer) -> void:
 		var reward_lbl := Label.new()
 		reward_lbl.text = line_text
 		reward_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-		reward_lbl.add_theme_color_override("font_color", Color(0.85, 0.95, 1, 0.95))
+		reward_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
 		reward_list.add_child(reward_lbl)
 	vbox.add_child(reward_list)
 
@@ -312,7 +315,7 @@ func _render_intel_harvest(vbox: VBoxContainer) -> void:
 	if intel_harvest.is_empty():
 		return
 	var intel_sep := HSeparator.new()
-	intel_sep.add_theme_color_override("color", Color(0.5, 0.3, 0.9, 0.25))
+	intel_sep.add_theme_color_override("color", Color(DT.COLOR_VIOLET.r, DT.COLOR_VIOLET.g, DT.COLOR_VIOLET.b, 0.25))
 	vbox.add_child(intel_sep)
 	var IHD = preload("res://scenes/ui/intel_harvest_display.gd")
 	var harvest_ui = IHD.new()
@@ -333,12 +336,12 @@ func _render_drops(vbox: VBoxContainer) -> void:
 	if drops.is_empty():
 		return
 	var drop_sep := HSeparator.new()
-	drop_sep.add_theme_color_override("color", Color(0.0, 0.8, 1.0, 0.25))
+	drop_sep.add_theme_color_override("color", Color(DT.COLOR_CYAN_TECH.r, DT.COLOR_CYAN_TECH.g, DT.COLOR_CYAN_TECH.b, 0.25))
 	vbox.add_child(drop_sep)
 	var drop_title := Label.new()
 	drop_title.text = "◆ 战斗掉落（点击继续自动领取）"
 	drop_title.add_theme_font_size_override("font_size", 13)
-	drop_title.add_theme_color_override("font_color", Color(0.55, 0.9, 1.0, 1.0))
+	drop_title.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH)
 	vbox.add_child(drop_title)
 	# 性能优化：get_drop_info 内部会查 DefaultCards(133卡表)/PhaseLaws，
 	# 每次 sort 比较重复调用是 O(n²) 量级。一次性预建每个 drop 的 info 缓存。
@@ -374,7 +377,7 @@ func _render_drops(vbox: VBoxContainer) -> void:
 		var sh := Label.new()
 		sh.text = subhdr
 		sh.add_theme_font_size_override("font_size", 11)
-		sh.add_theme_color_override("font_color", Color(0.5, 0.82, 0.98, 0.92))
+		sh.add_theme_color_override("font_color", Color(DT.COLOR_TEXT_MID.r, DT.COLOR_TEXT_MID.g, DT.COLOR_TEXT_MID.b, 0.95))
 		drop_list.add_child(sh)
 		for dr in rows:
 			var line_text: String = "  ▸ 未知掉落"
@@ -392,7 +395,7 @@ func _render_drops(vbox: VBoxContainer) -> void:
 			var dl := Label.new()
 			dl.text = line_text
 			dl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-			dl.add_theme_color_override("font_color", Color(0.8, 0.92, 1.0, 0.95))
+			dl.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
 			drop_list.add_child(dl)
 	_append_drop_rows.call(primary_drops, "  ▸ 缴获 / 研发类")
 	_append_drop_rows.call(secondary_drops, "  ▸ 物资 / 情报类")
@@ -404,19 +407,19 @@ func _render_phase_instrument_drop(vbox: VBoxContainer) -> void:
 	if not (pi_drop is Dictionary) or pi_drop.is_empty():
 		return
 	var pi_sep := HSeparator.new()
-	pi_sep.add_theme_color_override("color", Color(0.55, 0.9, 1.0, 0.25))
+	pi_sep.add_theme_color_override("color", Color(DT.COLOR_CYAN_TECH.r, DT.COLOR_CYAN_TECH.g, DT.COLOR_CYAN_TECH.b, 0.25))
 	vbox.add_child(pi_sep)
 	var pi_title := Label.new()
 	pi_title.text = "◆ 相位仪掉落"
 	pi_title.add_theme_font_size_override("font_size", 13)
-	pi_title.add_theme_color_override("font_color", Color(0.6, 0.95, 1.0, 1.0))
+	pi_title.add_theme_color_override("font_color", DT.COLOR_CYAN_TECH)
 	vbox.add_child(pi_title)
 	var pi_name: String = String(pi_drop.get("name", "未知相位仪"))
 	var pi_star: int = int(pi_drop.get("star", 1))
 	var pi_line := Label.new()
 	pi_line.text = "  ▸ %s ★%d（已加入相位仪库）" % [pi_name, pi_star]
 	pi_line.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
-	pi_line.add_theme_color_override("font_color", Color(0.85, 0.95, 1.0, 0.95))
+	pi_line.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT)
 	vbox.add_child(pi_line)
 	var pi_props: Array = pi_drop.get("properties", [])
 	if pi_props is Array and not pi_props.is_empty():
@@ -431,13 +434,13 @@ func _render_phase_instrument_drop(vbox: VBoxContainer) -> void:
 			var p_line := Label.new()
 			p_line.text = "    · %s" % p_display
 			p_line.add_theme_font_size_override("font_size", 11)
-			p_line.add_theme_color_override("font_color", Color(0.72, 0.88, 1.0, 0.92))
+			p_line.add_theme_color_override("font_color", Color(DT.COLOR_TEXT_MID.r, DT.COLOR_TEXT_MID.g, DT.COLOR_TEXT_MID.b, 0.95))
 			vbox.add_child(p_line)
 		if pi_props.size() > show_n:
 			var more_line := Label.new()
 			more_line.text = "    · 还有 %d 条属性…" % (pi_props.size() - show_n)
 			more_line.add_theme_font_size_override("font_size", 11)
-			more_line.add_theme_color_override("font_color", Color(0.60, 0.78, 0.95, 0.88))
+			more_line.add_theme_color_override("font_color", Color(DT.COLOR_TEXT_DIM.r, DT.COLOR_TEXT_DIM.g, DT.COLOR_TEXT_DIM.b, 0.95))
 			vbox.add_child(more_line)
 
 
@@ -468,12 +471,12 @@ func _render_collected_rewards(vbox: VBoxContainer) -> void:
 	if grouped.is_empty():
 		return
 	var col_sep := HSeparator.new()
-	col_sep.add_theme_color_override("color", Color(0.95, 0.8, 0.25, 0.3))
+	col_sep.add_theme_color_override("color", Color(DT.COLOR_GOLD.r, DT.COLOR_GOLD.g, DT.COLOR_GOLD.b, 0.3))
 	vbox.add_child(col_sep)
 	var col_title := Label.new()
 	col_title.text = "◆ 本局缴获与战利品"
 	col_title.add_theme_font_size_override("font_size", 13)
-	col_title.add_theme_color_override("font_color", Color(0.98, 0.84, 0.35, 1))
+	col_title.add_theme_color_override("font_color", DT.COLOR_GOLD)
 	vbox.add_child(col_title)
 	var col_list := VBoxContainer.new()
 	col_list.add_theme_constant_override("separation", 3)
@@ -492,7 +495,7 @@ func _render_collected_section(parent_vbox: VBoxContainer, cat: String, entries:
 	var sh := Label.new()
 	sh.text = "  ▸ %s（共%d）" % [section_title, entries.size()]
 	sh.add_theme_font_size_override("font_size", 11)
-	sh.add_theme_color_override("font_color", Color(0.95, 0.82, 0.5, 0.95))
+	sh.add_theme_color_override("font_color", Color(DT.COLOR_GOLD.r, DT.COLOR_GOLD.g, DT.COLOR_GOLD.b, 0.95))
 	parent_vbox.add_child(sh)
 	for entry in entries:
 		if not (entry is Dictionary):
@@ -547,12 +550,12 @@ static func _collected_entry_line(cat: String, entry: Dictionary) -> String:
 ## 单项颜色（按 category / 稀有度区分）
 static func _collected_entry_color(cat: String, entry: Dictionary) -> Color:
 	match cat:
-		"card": return Color(0.85, 0.95, 1.0, 0.95)
-		"instrument": return Color(0.95, 0.75, 0.3, 0.98)
-		"resource": return Color(0.6, 0.95, 0.75, 0.95)
+		"card": return DT.COLOR_TEXT_BRIGHT
+		"instrument": return DT.COLOR_GOLD
+		"resource": return DT.COLOR_GREEN_BRIGHT
 		"rune", "mod_blueprint":
 			return _collected_rarity_color(String(entry.get("rarity", "")))
-		_: return Color(0.8, 0.92, 1.0, 0.95)
+		_: return DT.COLOR_TEXT_BRIGHT
 
 
 ## 稀有度中文名（符文/改造蓝图用）
@@ -569,12 +572,12 @@ static func _collected_rarity_name(rarity: String) -> String:
 ## 稀有度配色
 static func _collected_rarity_color(rarity: String) -> Color:
 	match rarity:
-		"common": return Color(0.78, 0.82, 0.85, 0.95)
-		"rare": return Color(0.35, 0.7, 1.0, 0.98)
-		"epic": return Color(0.75, 0.45, 1.0, 0.98)
-		"legendary": return Color(1.0, 0.7, 0.25, 0.98)
-		"mythic": return Color(1.0, 0.35, 0.45, 0.98)
-		_: return Color(0.8, 0.92, 1.0, 0.95)
+		"common": return DT.COLOR_RARITY_COMMON
+		"rare": return DT.COLOR_RARITY_RARE
+		"epic": return DT.COLOR_RARITY_EPIC
+		"legendary": return DT.COLOR_RARITY_LEGENDARY
+		"mythic": return DT.COLOR_RARITY_MYTHIC
+		_: return DT.COLOR_TEXT_BRIGHT
 
 
 ## 资源 id → 中文名
@@ -615,7 +618,7 @@ func _render_close_button_anchored(panel: Control) -> void:
 	btn_style.corner_radius_bottom_right = 4
 	btn_style.corner_radius_bottom_left = 4
 	btn.add_theme_stylebox_override("normal", btn_style)
-	btn.add_theme_color_override("font_color", Color(0.05, 0.05, 0.08, 1.0))
+	btn.add_theme_color_override("font_color", DT.COLOR_VOID)
 	btn.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
 	btn.pressed.connect(_on_continue_pressed)
 	panel.add_child(btn)

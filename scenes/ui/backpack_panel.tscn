@@ -112,12 +112,9 @@ text = ""
 
 [node name="CloseButton" type="Button" parent="VBoxOuter/TitleRow"]
 layout_mode = 2
-custom_minimum_size = Vector2(60, 32)
-theme_override_colors/font_color = Color(1, 1, 1, 0.85)
-theme_override_colors/font_hover_color = Color(0, 0.941, 1, 1)
-theme_override_font_sizes/font_size = 13
-theme_override_styles/normal = SubResource("StyleBoxFlat_close_btn")
-text = "关闭"
+custom_minimum_size = Vector2(44, 44)
+theme_override_font_sizes/font_size = 20
+text = "✕"
 
 [node name="TitleSep" type="PanelContainer" parent="VBoxOuter"]
 layout_mode = 2

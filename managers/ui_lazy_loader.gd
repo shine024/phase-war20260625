@@ -63,7 +63,7 @@ func _ready() -> void:
 		},
 		"leaderboard": {
 			"scene": "res://scenes/ui/leaderboard_panel.tscn",
-			"parent_path": "PopupLayer/LeaderboardPanel",
+			"parent_path": "PopupLayer/LeaderboardOverlay/CenterContainer",
 			"node_name": "LeaderboardPanel",
 			"autoload": false
 		},

@@ -515,8 +515,34 @@ grow_vertical = 2
 
 [node name="AFKPanel" parent="PopupLayer/AFKOverlay/CenterContainer" instance=ExtResource("39_afk_panel")]
 
-[node name="LeaderboardPanel" parent="PopupLayer" instance=ExtResource("23_leaderboard")]
-size = Vector2i(560, 500)
+[node name="LeaderboardOverlay" type="Control" parent="PopupLayer"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Backdrop" type="ColorRect" parent="PopupLayer/LeaderboardOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.55)
+mouse_filter = 0
+
+[node name="CenterContainer" type="CenterContainer" parent="PopupLayer/LeaderboardOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="LeaderboardPanel" parent="PopupLayer/LeaderboardOverlay/CenterContainer" instance=ExtResource("23_leaderboard")]
 
 [node name="IntelligenceOverlay" type="Control" parent="PopupLayer"]
 visible = false

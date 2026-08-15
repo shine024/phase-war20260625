@@ -506,10 +506,10 @@ static func card_icon_path_for(c: CardResource) -> String:
 
 
 ## v9.4: 把 card_icon_path_for 的全分辨率路径转成缩略图路径。
-## 规则：`res://assets/card_icons/<subdir>/<name>.png` → `res://assets/card_icons/_thumb256/<subdir>/<name>.png`
+## 规则：`res://assets/card_icons/<subdir>/<name>.png` → `res://assets/card_icons/_thumb384/<subdir>/<name>.png`（v10: 256→384，网格清晰度提升，135 张同屏 ~80MB VRAM 可接受）
 ## 根目录下的聚合图（如 law.png/_enemy_placeholder.png）无缩略图，返回空。
 ## 缩略图不存在时返回空（调用方回退全分辨率）。
-const THUMB_DIR_PREFIX := "res://assets/card_icons/_thumb256/"
+const THUMB_DIR_PREFIX := "res://assets/card_icons/_thumb384/"
 
 static func _to_thumbnail_path(full_path: String) -> String:
 	# 只处理 res://assets/card_icons/<subdir>/... 形式

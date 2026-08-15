@@ -2,18 +2,6 @@
 
 [ext_resource type="Script" path="res://scenes/ui/afk_panel.gd" id="1_afk_panel"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_afk_panel_bg"]
-bg_color = Color(0.03, 0.05, 0.1, 0.98)
-border_color = Color(0, 0.65, 1, 0.2)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
-
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_afk_start_btn"]
 bg_color = Color(0, 0.94, 0.7, 1)
 border_color = Color(0, 0.94, 0.7, 1)
@@ -70,7 +58,7 @@ offset_right = 320
 offset_bottom = 360
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_styles/background = SubResource("StyleBoxFlat_afk_panel_bg")
+
 
 [node name="MarginContainer" type="MarginContainer" parent="Panel"]
 layout_mode = 1
@@ -92,21 +80,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 10
-
-[node name="HeaderHBox" type="HBoxContainer" parent="Panel/MarginContainer/MainVBox"]
-layout_mode = 2
-size_flags_horizontal = 3
-alignment = 1
-
-[node name="Title" type="Label" parent="Panel/MarginContainer/MainVBox/HeaderHBox"]
-layout_mode = 2
-size_flags_horizontal = 3
-text = "挂机模式"
-
-[node name="CloseBtn" type="Button" parent="Panel/MarginContainer/MainVBox/HeaderHBox"]
-layout_mode = 2
-text = "X"
-custom_minimum_size = Vector2(32, 28)
 
 [node name="PreviewArea" type="Panel" parent="Panel/MarginContainer/MainVBox"]
 layout_mode = 2

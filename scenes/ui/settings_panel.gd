@@ -4,6 +4,10 @@ extends PanelContainer
 
 signal closed()
 
+const DT = preload("res://resources/design_tokens.gd")
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
+const PanelChrome = preload("res://scenes/ui/components/panel_chrome.gd")
+
 const SETTINGS_PATH: String = "user://settings.cfg"
 const SECTION: String = "settings"
 
@@ -12,18 +16,24 @@ const SECTION: String = "settings"
 const _DIFFICULTY_IDS := ["easy", "normal", "hard"]
 const _DEFAULT_DIFFICULTY_IDX := 1
 
-@onready var _master_slider: HSlider = get_node_or_null("Margin/Scroll/VBox/MasterVolumeRow/MasterSlider")
-@onready var _sfx_slider: HSlider = get_node_or_null("Margin/Scroll/VBox/SfxVolumeRow/SfxSlider")
-@onready var _bgm_slider: HSlider = get_node_or_null("Margin/Scroll/VBox/BgmVolumeRow/BgmSlider")
-@onready var _difficulty_option: OptionButton = get_node_or_null("Margin/Scroll/VBox/DifficultyRow/DifficultyOption")
-@onready var _fullscreen_check: CheckButton = get_node_or_null("Margin/Scroll/VBox/FullscreenRow/FullscreenCheck")
-@onready var _hc_check: CheckButton = get_node_or_null("Margin/Scroll/VBox/HighContrastRow/HighContrastCheck")
-@onready var _lt_check: CheckButton = get_node_or_null("Margin/Scroll/VBox/LargeTypeRow/LargeTypeCheck")
-@onready var _mr_check: CheckButton = get_node_or_null("Margin/Scroll/VBox/MotionReduceRow/MotionReduceCheck")
-@onready var _close_btn: Button = get_node_or_null("Margin/Scroll/VBox/CloseButton")
+@onready var _master_slider: HSlider = get_node_or_null("Margin/VBoxMain/Scroll/VBox/MasterVolumeRow/MasterSlider")
+@onready var _sfx_slider: HSlider = get_node_or_null("Margin/VBoxMain/Scroll/VBox/SfxVolumeRow/SfxSlider")
+@onready var _bgm_slider: HSlider = get_node_or_null("Margin/VBoxMain/Scroll/VBox/BgmVolumeRow/BgmSlider")
+@onready var _difficulty_option: OptionButton = get_node_or_null("Margin/VBoxMain/Scroll/VBox/DifficultyRow/DifficultyOption")
+@onready var _fullscreen_check: CheckButton = get_node_or_null("Margin/VBoxMain/Scroll/VBox/FullscreenRow/FullscreenCheck")
+@onready var _hc_check: CheckButton = get_node_or_null("Margin/VBoxMain/Scroll/VBox/HighContrastRow/HighContrastCheck")
+@onready var _lt_check: CheckButton = get_node_or_null("Margin/VBoxMain/Scroll/VBox/LargeTypeRow/LargeTypeCheck")
+@onready var _mr_check: CheckButton = get_node_or_null("Margin/VBoxMain/Scroll/VBox/MotionReduceRow/MotionReduceCheck")
+@onready var _content_vbox: VBoxContainer = get_node_or_null("Margin/VBoxMain")
 
 
 func _ready() -> void:
+	# v7.x 面板统一：中性冷灰蓝签名框架 + PanelChrome 标题栏（右上 ✕ 关闭）
+	var accent := DT.get_panel_accent("settings")
+	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(accent))
+	if _content_vbox:
+		var chrome = PanelChrome.attach_to(_content_vbox, "设置", accent, "SETTINGS")
+		chrome.closed.connect(_on_close)
 	_load_and_apply()
 	# 音频
 	if _master_slider:
@@ -45,8 +55,6 @@ func _ready() -> void:
 		_lt_check.toggled.connect(_on_accessibility_changed)
 	if _mr_check:
 		_mr_check.toggled.connect(_on_accessibility_changed)
-	if _close_btn:
-		_close_btn.pressed.connect(_on_close)
 
 
 func _load_and_apply() -> void:
@@ -169,7 +177,6 @@ func _on_fullscreen_toggled(enabled: bool) -> void:
 func _apply_accessibility(hc: bool, lt: bool, mr: bool) -> void:
 	# v7.x(A3): 经 DesignTokens 静态 API 切换，并由 SignalBus.accessibility_changed
 	# 广播给已打开的血条/能量条等即时重绘。
-	const DT = preload("res://resources/design_tokens.gd")
 	DT.set_accessibility(hc, lt, mr)
 
 func _on_accessibility_changed(_toggled: bool) -> void:

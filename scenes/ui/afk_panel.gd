@@ -5,6 +5,10 @@ class_name AFKPanel
 
 signal closed
 
+const DT = preload("res://resources/design_tokens.gd")
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
+const PanelChrome = preload("res://scenes/ui/components/panel_chrome.gd")
+
 const _HIGHLIGHT := Color(0, 0.94, 0.7, 1.0)
 const _NORMAL_FONT := Color(0.5, 0.5, 0.6, 0.8)
 const _SELECTED_BG := Color(0, 0.18, 0.32, 0.95)
@@ -12,7 +16,6 @@ const _NORMAL_BG := Color(0.06, 0.1, 0.18, 0.85)
 
 @onready var backdrop: ColorRect = $Backdrop
 @onready var panel: Panel = $Panel
-@onready var close_btn: Button = $Panel/MarginContainer/MainVBox/HeaderHBox/CloseBtn
 
 # Slot 节点
 @onready var slot_labels: Array[Label] = [
@@ -68,8 +71,13 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	
-	close_btn.pressed.connect(_on_close)
+
+	# v7.x 面板统一：青色签名框架 + PanelChrome 标题栏（右上 ✕ 关闭）。
+	# 注意：本面板的 Backdrop/Panel/自身三层可见性协议特殊（main.gd 依赖），保持不变。
+	var accent := DT.COLOR_ACCENT_CYAN
+	panel.add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(accent))
+	var chrome = PanelChrome.attach_to($Panel/MarginContainer/MainVBox, "挂机模式", accent, "AFK MODE")
+	chrome.closed.connect(_on_close)
 	start_btn.pressed.connect(_on_start)
 	stop_btn.pressed.connect(_on_stop)
 	cycle_btn.pressed.connect(func(): _set_mode(AFKModeManager.Mode.CYCLE))

@@ -2,34 +2,10 @@
 
 [ext_resource type="Script" path="res://scenes/ui/achievement_panel.gd" id="1"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg"]
-bg_color = Color(0.04, 0.07, 0.12, 0.98)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0, 0.941, 1, 0.5)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-shadow_color = Color(0, 0.941, 1, 0.2)
-shadow_size = 10
-
 [node name="AchievementPanel" type="PanelContainer"]
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -300.0
-offset_top = -250.0
-offset_right = 300.0
-offset_bottom = 250.0
-grow_horizontal = 2
-grow_vertical = 2
+custom_minimum_size = Vector2(840, 580)
+layout_mode = 2
 script = ExtResource("1")
-theme_override_styles/panel = SubResource("StyleBoxFlat_bg")
 
 [node name="Margin" type="MarginContainer" parent="."]
 layout_mode = 1
@@ -47,22 +23,6 @@ theme_override_constants/margin_bottom = 12
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="Header" type="HBoxContainer" parent="Margin/VBox"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 36)
-
-[node name="TitleLabel" type="Label" parent="Margin/VBox/Header"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0, 0.941, 1, 1)
-theme_override_font_sizes/font_size = 16
-text = "🏆 成就系统"
-
-[node name="CloseButton" type="Button" parent="Margin/VBox/Header"]
-layout_mode = 2
-custom_minimum_size = Vector2(70, 32)
-text = "关闭"
-
 [node name="Body" type="VBoxContainer" parent="Margin/VBox"]
 layout_mode = 2
 size_flags_vertical = 3
@@ -71,6 +31,9 @@ theme_override_constants/separation = 8
 [node name="CategoryTabs" type="TabContainer" parent="Margin/VBox/Body"]
 layout_mode = 2
 size_flags_vertical = 3
+theme_override_colors/font_selected_color = Color(1, 0.85, 0.35, 1)
+theme_override_colors/font_hovered_color = Color(1, 0.85, 0.35, 0.8)
+theme_override_colors/font_unselected_color = Color(0.6, 0.66, 0.78, 0.7)
 
 [node name="All" type="Control" parent="Margin/VBox/Body/CategoryTabs"]
 layout_mode = 2
@@ -103,14 +66,14 @@ theme_override_constants/separation = 12
 
 [node name="TotalLabel" type="Label" parent="Margin/VBox/SummaryPanel"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.8, 0.82, 0.88, 1)
-theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.88, 0.92, 0.98, 1)
+theme_override_font_sizes/font_size = 12
 text = "总成就数: 0"
 
 [node name="UnlockedLabel" type="Label" parent="Margin/VBox/SummaryPanel"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.5, 0.9, 0.6, 1)
-theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.3, 0.92, 0.5, 1)
+theme_override_font_sizes/font_size = 12
 text = "已解锁: 0"
 
 [node name="ProgressBar" type="ProgressBar" parent="Margin/VBox/SummaryPanel"]
@@ -123,13 +86,13 @@ show_percentage = false
 
 [node name="ClaimableLabel" type="Label" parent="Margin/VBox/SummaryPanel"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.95, 0.8, 0.4, 1)
-theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(1, 0.85, 0.35, 1)
+theme_override_font_sizes/font_size = 12
 text = "可领取奖励: 0"
 
 [node name="ClaimAllButton" type="Button" parent="Margin/VBox/SummaryPanel"]
 custom_minimum_size = Vector2(90, 0)
 layout_mode = 2
-theme_override_font_sizes/font_size = 13
+theme_override_font_sizes/font_size = 12
 text = "全部领取"
 disabled = true

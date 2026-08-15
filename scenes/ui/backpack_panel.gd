@@ -264,11 +264,21 @@ func _setup_title_bar_fonts() -> void:
 		_title_label.add_theme_font_size_override("font_size", 18)
 	if _meta_info_label:
 		_meta_info_label.add_theme_font_override("font", title_font)
-	# 关闭按钮
+	# 关闭按钮：v7.x 面板统一 ✕ 模式（44x44、hover 红色发光，与 PanelChrome 同款）
 	var close_btn: Button = get_node_or_null("VBoxOuter/TitleRow/CloseButton") as Button
 	if close_btn:
+		var _ps = preload("res://scripts/ui/panel_styles.gd")
+		var close_styles: Dictionary = _ps.make_close_button_styles()
 		close_btn.add_theme_font_override("font", title_font)
-		close_btn.add_theme_font_size_override("font_size", 12)
+		close_btn.add_theme_font_size_override("font_size", 20)
+		close_btn.add_theme_color_override("font_color", DesignTokens.COLOR_TEXT_MID)
+		close_btn.add_theme_color_override("font_hover_color", DesignTokens.COLOR_TEXT_BRIGHT)
+		close_btn.add_theme_color_override("font_pressed_color", DesignTokens.COLOR_TEXT_BRIGHT)
+		close_btn.add_theme_color_override("font_focus_color", DesignTokens.COLOR_TEXT_BRIGHT)
+		close_btn.add_theme_stylebox_override("normal", close_styles["normal"])
+		close_btn.add_theme_stylebox_override("hover", close_styles["hover"])
+		close_btn.add_theme_stylebox_override("pressed", close_styles["pressed"])
+		close_btn.add_theme_stylebox_override("focus", close_styles["focus"])
 
 
 ## v9.2: 按 Tab 刷新顶部框架（顶线条色 + 标题菱形 + 标题文字 + 元信息行）
@@ -473,7 +483,7 @@ func _ensure_batch_dismantle_button() -> void:
 	btn.text = "批量拆解"
 	btn.custom_minimum_size = Vector2(96, 28)
 	btn.add_theme_font_size_override("font_size", 11)
-	btn.add_theme_color_override("font_color", Color(0.95, 0.82, 0.35, 1.0))
+	btn.add_theme_color_override("font_color", DesignTokens.COLOR_GOLD)
 	btn.add_theme_color_override("font_hover_color", Color(1.0, 0.92, 0.6, 1.0))
 	btn.add_theme_color_override("font_disabled_color", Color(0.5, 0.5, 0.5, 0.5))
 	btn.tooltip_text = "Shift+点击卡片选择多张，再点此按钮一次性拆解"
@@ -481,13 +491,13 @@ func _ensure_batch_dismantle_button() -> void:
 	btn.visible = false
 	# 主题：琥珀色边框（与选择态视觉呼应）
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.961, 0.62, 0.043, 0.12)
-	style.border_color = Color(0.961, 0.62, 0.043, 0.7)
+	style.bg_color = Color(DesignTokens.COLOR_AMBER.r, DesignTokens.COLOR_AMBER.g, DesignTokens.COLOR_AMBER.b, 0.12)
+	style.border_color = Color(DesignTokens.COLOR_AMBER.r, DesignTokens.COLOR_AMBER.g, DesignTokens.COLOR_AMBER.b, 0.7)
 	style.set_border_width_all(1)
 	style.set_corner_radius_all(4)
 	btn.add_theme_stylebox_override("normal", style)
 	var style_hover := style.duplicate() as StyleBoxFlat
-	style_hover.bg_color = Color(0.961, 0.62, 0.043, 0.22)
+	style_hover.bg_color = Color(DesignTokens.COLOR_AMBER.r, DesignTokens.COLOR_AMBER.g, DesignTokens.COLOR_AMBER.b, 0.22)
 	btn.add_theme_stylebox_override("hover", style_hover)
 	var style_disabled := StyleBoxFlat.new()
 	style_disabled.bg_color = Color(0.1, 0.12, 0.16, 0.3)
@@ -1555,8 +1565,7 @@ func refresh_intel_tab() -> void:
 			"effect_text": effect_text,
 		})
 	if acquired_blueprints.is_empty():
-		_add_intel_placeholder(_intel_grid, "暂无已获得的改造
-	（获得改造图纸后，所有取得过的改造会显示于此）")
+		_add_intel_placeholder(_intel_grid, "暂无已获得的改造\n（获得改造图纸后，所有取得过的改造会显示于此）")
 		return
 	# v9.2: 应用工具栏过滤（前缀桶 + 装配状态 + 搜索关键字）
 	if not _mod_bucket_filter.is_empty() or not _mod_status_filter.is_empty() or not _search_query.is_empty():
@@ -2043,12 +2052,12 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 	var style := StyleBoxFlat.new()
 	if is_equipped:
 		style.bg_color = Color(0.15, 0.18, 0.10, 0.95)
-		style.border_color = Color(0.98, 0.75, 0.14, 0.85)  # 金色 border
+		style.border_color = Color(DesignTokens.COLOR_AMBER_SOFT.r, DesignTokens.COLOR_AMBER_SOFT.g, DesignTokens.COLOR_AMBER_SOFT.b, 0.85)  # 金色 border
 		style.border_width_left = 3  # 左侧加粗金条（HTML 设计稿的当前装备高亮签名）
 		style.border_width_right = 1
 		style.border_width_top = 1
 		style.border_width_bottom = 1
-		style.shadow_color = Color(0.98, 0.75, 0.14, 0.25)
+		style.shadow_color = Color(DesignTokens.COLOR_AMBER_SOFT.r, DesignTokens.COLOR_AMBER_SOFT.g, DesignTokens.COLOR_AMBER_SOFT.b, 0.25)
 		style.shadow_size = 8
 	else:
 		style.bg_color = Color(0.08, 0.10, 0.15, 0.92)
@@ -2115,7 +2124,7 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 		star_dot.text = "★" if i < star else "☆"
 		star_dot.add_theme_font_size_override("font_size", 14)
 		if i < star:
-			star_dot.add_theme_color_override("font_color", Color(0.98, 0.75, 0.14, 1.0))
+			star_dot.add_theme_color_override("font_color", DesignTokens.COLOR_AMBER_SOFT)
 		else:
 			star_dot.add_theme_color_override("font_color", Color(0.35, 0.4, 0.5, 0.6))
 		stars_row.add_child(star_dot)
@@ -2135,7 +2144,7 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 		var faction_cfg: Dictionary = CompanyDefs.get_by_id(faction_id)
 		if not faction_cfg.is_empty():
 			faction_label.text = String(faction_cfg.get("name", "")) + " · 专属"
-			faction_label.add_theme_color_override("font_color", Color(0.024, 0.714, 0.831, 0.95))  # 青色
+			faction_label.add_theme_color_override("font_color", Color(DesignTokens.COLOR_CYAN_TECH.r, DesignTokens.COLOR_CYAN_TECH.g, DesignTokens.COLOR_CYAN_TECH.b, 0.95))  # 青色
 		else:
 			faction_label.text = "专属"
 			faction_label.add_theme_color_override("font_color", Color(0.75, 0.55, 0.95, 0.9))

@@ -8,8 +8,10 @@ signal open_progression_requested(card_id: String)
 
 const RuneDefs = preload("res://data/runes.gd")
 const RunewordDefs = preload("res://data/runewords.gd")
+const DT = preload("res://resources/design_tokens.gd")
+const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
+const PanelChrome = preload("res://scenes/ui/components/panel_chrome.gd")
 
-@onready var _close_btn: Button = $Margin/VBox/TitleRow/CloseButton
 @onready var _tab_container: TabContainer = $Margin/VBox/TabContainer
 @onready var _lore_grid: GridContainer = $Margin/VBox/TabContainer/LoreTab/LoreScroll/LoreGrid
 @onready var _evolution_host: Control = $Margin/VBox/TabContainer/EvolutionTab/EvolutionHost
@@ -20,15 +22,12 @@ var _detail: UnitProgressionDetailView
 
 
 func _ready() -> void:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.06, 0.08, 0.12, 0.97)
-	style.border_color = Color(0.2, 0.45, 0.72, 0.65)
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(10)
-	add_theme_stylebox_override("panel", style)
-
-	if _close_btn:
-		_close_btn.pressed.connect(_on_close)
+	# v7.x 面板统一：MEDIUM 档 + 紫色签名框架 + PanelChrome 标题栏（右上 ✕ 关闭）
+	custom_minimum_size = DT.PANEL_SIZE_MEDIUM
+	var accent := DT.get_panel_accent("intelligence")
+	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(accent))
+	var chrome = PanelChrome.attach_to($Margin/VBox, "情报中心", accent, "INTEL HUB")
+	chrome.closed.connect(_on_close)
 	_setup_evolution_tab()
 	_refresh_lore()
 	_refresh_runes_tab()
@@ -101,28 +100,30 @@ func _add_lore_placeholder(message: String) -> void:
 	lbl.text = message
 	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl.add_theme_color_override("font_color", Color(0.55, 0.6, 0.7, 0.9))
+	lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
 	_lore_grid.add_child(lbl)
 
 
 func _add_lore_card(lore_data: Dictionary) -> void:
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(220, 100)
+	panel.add_theme_stylebox_override("panel",
+		PanelStyles.make_card_style(Color(DT.COLOR_CARD.r, DT.COLOR_CARD.g, DT.COLOR_CARD.b, 0.9), DT.COLOR_BORDER_DIM, 1, 4, 8))
 	var vbox := VBoxContainer.new()
 	panel.add_child(vbox)
 
 	var name_lbl := Label.new()
 	name_lbl.text = lore_data.get("name", "情报资料")
-	name_lbl.add_theme_color_override("font_color", Color(0.95, 0.85, 0.5))
-	name_lbl.add_theme_font_size_override("font_size", 13)
+	name_lbl.add_theme_color_override("font_color", DT.COLOR_GOLD)
+	name_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	vbox.add_child(name_lbl)
 
 	var desc := Label.new()
 	desc.text = lore_data.get("description", "")
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc.custom_minimum_size = Vector2(200, 0)
-	desc.add_theme_font_size_override("font_size", 10)
-	desc.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85))
+	desc.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+	desc.add_theme_color_override("font_color", DT.COLOR_TEXT_MID)
 	vbox.add_child(desc)
 
 	_lore_grid.add_child(panel)
@@ -228,8 +229,8 @@ func _on_rune_load_timer_timeout() -> void:
 func _add_rune_section_header(title_text: String) -> void:
 	var header := Label.new()
 	header.text = title_text
-	header.add_theme_font_size_override("font_size", 16)
-	header.add_theme_color_override("font_color", Color(0.75, 0.55, 0.95, 1.0))
+	header.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
+	header.add_theme_color_override("font_color", DT.COLOR_VIOLET)
 	_rune_content.add_child(header)
 
 
@@ -239,12 +240,12 @@ func _add_rune_card(rune_def: Dictionary, is_owned: bool, is_equipped: bool) -> 
 	var style := StyleBoxFlat.new()
 	var rarity: String = str(rune_def.get("rarity", "common"))
 	var border_color: Color = RuneDefs.RARITY_COLORS.get(rarity, Color(0.5, 0.5, 0.5))
-	style.bg_color = Color(0.08, 0.10, 0.15, 0.9)
+	style.bg_color = Color(DT.COLOR_CARD.r, DT.COLOR_CARD.g, DT.COLOR_CARD.b, 0.9)
 	style.border_width_left = 2
 	style.border_width_right = 2
 	style.border_width_top = 1
 	style.border_width_bottom = 1
-	style.border_color = border_color if is_owned else Color(0.2, 0.2, 0.25, 0.5)
+	style.border_color = border_color if is_owned else Color(DT.COLOR_BORDER_DIM.r, DT.COLOR_BORDER_DIM.g, DT.COLOR_BORDER_DIM.b, 0.5)
 	style.set_corner_radius_all(4)
 	style.content_margin_left = 8
 	style.content_margin_right = 8
@@ -275,13 +276,13 @@ func _add_rune_card(rune_def: Dictionary, is_owned: bool, is_equipped: bool) -> 
 	icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon_rect.texture = UiAssetLoader.rune_icon(rune_id)
-	icon_rect.modulate = border_color if is_owned else Color(0.4, 0.4, 0.45, 0.5)
+	icon_rect.modulate = border_color if is_owned else Color(DT.COLOR_TEXT_FAINT.r, DT.COLOR_TEXT_FAINT.g, DT.COLOR_TEXT_FAINT.b, 0.5)
 	hbox.add_child(icon_rect)
 
 	var name_lbl := Label.new()
 	name_lbl.text = "%s  (%s·%s)%s" % [rune_name, category_name, rarity_name, status]
-	name_lbl.add_theme_font_size_override("font_size", 13)
-	name_lbl.add_theme_color_override("font_color", border_color if is_owned else Color(0.4, 0.4, 0.45))
+	name_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	name_lbl.add_theme_color_override("font_color", border_color if is_owned else DT.COLOR_TEXT_FAINT)
 	name_lbl.custom_minimum_size = Vector2(300, 0)
 	hbox.add_child(name_lbl)
 
@@ -293,8 +294,8 @@ func _add_rune_card(rune_def: Dictionary, is_owned: bool, is_equipped: bool) -> 
 	if not secondary.is_empty():
 		effect_text += " / " + secondary
 	effect_lbl.text = effect_text
-	effect_lbl.add_theme_font_size_override("font_size", 11)
-	effect_lbl.add_theme_color_override("font_color", Color(0.65, 0.7, 0.8) if is_owned else Color(0.35, 0.35, 0.4))
+	effect_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+	effect_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_MID if is_owned else Color(DT.COLOR_TEXT_FAINT.r, DT.COLOR_TEXT_FAINT.g, DT.COLOR_TEXT_FAINT.b, 0.85))
 	effect_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	effect_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hbox.add_child(effect_lbl)
@@ -314,12 +315,12 @@ func _add_runeword_card(rw_def: Dictionary, owned_runes: Array) -> void:
 		if not owned_runes.has(str(rid)):
 			has_all = false
 			break
-	style.bg_color = Color(0.08, 0.06, 0.14, 0.9)
+	style.bg_color = Color(DT.COLOR_VIOLET.r, DT.COLOR_VIOLET.g, DT.COLOR_VIOLET.b, 0.08)
 	style.border_width_left = 2
 	style.border_width_right = 2
 	style.border_width_top = 1
 	style.border_width_bottom = 1
-	style.border_color = tier_color if has_all else Color(0.2, 0.2, 0.25, 0.5)
+	style.border_color = tier_color if has_all else Color(DT.COLOR_BORDER_DIM.r, DT.COLOR_BORDER_DIM.g, DT.COLOR_BORDER_DIM.b, 0.5)
 	style.set_corner_radius_all(4)
 	style.content_margin_left = 8
 	style.content_margin_right = 8
@@ -338,8 +339,8 @@ func _add_runeword_card(rw_def: Dictionary, owned_runes: Array) -> void:
 	var status_str: String = " [可激活]" if has_all else " [符文不足]"
 	var name_lbl := Label.new()
 	name_lbl.text = "★ %s  (%s·%d符文)%s" % [rw_name, tier_name, required.size(), status_str]
-	name_lbl.add_theme_font_size_override("font_size", 13)
-	name_lbl.add_theme_color_override("font_color", tier_color if has_all else Color(0.4, 0.4, 0.45))
+	name_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	name_lbl.add_theme_color_override("font_color", tier_color if has_all else DT.COLOR_TEXT_FAINT)
 	vbox.add_child(name_lbl)
 
 	# 所需符文行
@@ -350,15 +351,15 @@ func _add_runeword_card(rw_def: Dictionary, owned_runes: Array) -> void:
 		runes_str += RuneDefs.RUNE_NAMES.get(str(rid), str(rid))
 	var req_lbl := Label.new()
 	req_lbl.text = "所需符文：%s" % runes_str
-	req_lbl.add_theme_font_size_override("font_size", 10)
-	req_lbl.add_theme_color_override("font_color", Color(0.6, 0.65, 0.75))
+	req_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+	req_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
 	vbox.add_child(req_lbl)
 
 	# 效果行
 	var effect_lbl := Label.new()
 	effect_lbl.text = RunewordDefs.get_effects_description(rw_id)
-	effect_lbl.add_theme_font_size_override("font_size", 11)
-	effect_lbl.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85) if has_all else Color(0.35, 0.35, 0.4))
+	effect_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+	effect_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_MID if has_all else Color(DT.COLOR_TEXT_FAINT.r, DT.COLOR_TEXT_FAINT.g, DT.COLOR_TEXT_FAINT.b, 0.85))
 	effect_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vbox.add_child(effect_lbl)
 
