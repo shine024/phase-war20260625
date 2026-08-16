@@ -80,6 +80,11 @@ const ERA_XP_LAST: Dictionary = {
 	Era.NEAR_FUTURE: 1650,
 }
 
+## XP 锚点设计说明（2026-08-16 关卡设计审查标注，防误判为 bug）：
+## 锚点按时代整体抬升（每时代 FIRST/MID/LAST 均 = 上一时代 × 1.5），时代内从 FIRST
+## 爬到 LAST。因此时代边界存在有意的"锯齿回落"（如 L20=550 → L21=198，-64%）——
+## 新时代首关回撤与敌方档位回撤（高档→低档）同步，属设计节奏而非数据错误。
+
 static func get_era(level: int) -> int:
 	var lv: int = clampi(level, 1, LEVEL_COUNT)
 	var idx: int = int((lv - 1) / float(ERA_LEVELS))
@@ -101,6 +106,9 @@ static func get_wave_interval_for_level(level: int) -> float:
 	return float(ERA_WAVE_INTERVAL.get(era, 12.0))
 
 static func get_spawn_count_for_wave(level: int, wave_index: int) -> int:
+	# 注（2026-08-16 关卡设计审查标注）：本函数用裸 randi_range（非种子 RNG）——
+	# 与 LevelSpawnSequences 的"序列种子化可复现、序列内随机保留扰动"设计一致，
+	# 每局刷兵数有意不同，非可复现性缺陷。
 	var era: int = get_era(level)
 	var r: Array = ERA_SPAWN_COUNT.get(era, [1, 2])
 	var min_c: int = int(r[0])

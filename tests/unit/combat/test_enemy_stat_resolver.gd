@@ -6,10 +6,12 @@ const EnemyStatContext = preload("res://data/enemy_stat_context.gd")
 
 
 func test_wave_multipliers_match_legacy_constants() -> void:
+	# 2026-08-16 平衡批次：波次斜率收敛（hp 0.12→0.08 / dmg 0.08→0.06），
+	# 与档位递进的双重堆叠拉平（详见 tests/unit/balance/test_progression_curve_balance.gd H1）
 	assert_float(EnemyStatResolver.wave_hp_multiplier(1)).is_equal(1.0)
-	assert_float(EnemyStatResolver.wave_hp_multiplier(2)).is_equal(1.12)
+	assert_float(EnemyStatResolver.wave_hp_multiplier(2)).is_equal(1.08)
 	assert_float(EnemyStatResolver.wave_damage_multiplier(1)).is_equal(1.0)
-	assert_float(EnemyStatResolver.wave_damage_multiplier(3)).is_equal(1.16)
+	assert_float(EnemyStatResolver.wave_damage_multiplier(3)).is_equal(1.12)
 
 
 func test_resolve_infantry_basic_wave1() -> void:

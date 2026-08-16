@@ -36,6 +36,8 @@ const FactionConquestBuffs = preload("res://data/faction_conquest_buffs.gd")  # 
 const CompanyDefs = preload("res://data/company_definitions.gd")  # v6.14: 统一阵营色来源
 const PhaseMasterGarrison = preload("res://data/phase_master_garrison.gd")  # v7.x: Boss相位师驻守关判定
 const EnemyPhaseMasters = preload("res://data/enemy_phase_masters.gd")  # v7.x: 相位师详情查询
+const BattleEnvironments = preload("res://data/battle_environments.gd")  # 2026-08-16: 环境单一真源（与 phase_law_manager/battle_damage_system 同源）
+const EnemyLoadoutTiers = preload("res://data/enemy_loadout_tiers.gd")  # 2026-08-16: 难度显示单一真源（战斗链真实档位乘区）
 
 # v6.10: 关卡按钮占领色标——势力色统一从 CompanyDefinitions.get_faction_color() 读取（Palette B）
 # 无主之地兜底（右边框半透明灰）
@@ -569,10 +571,14 @@ func _show_level_info_popup(level_index: int) -> void:
 	# ▸ 基本信息
 	body.add_child(_make_detail_section_title("基本信息"))
 	var in_era_pos: int = ((level_index - 1) % ERA_SIZE) + 1
-	var diff_tier: String = _difficulty_label(in_era_pos)
+	# 2026-08-16: 难度显示改用战斗链真实乘区（敌方配置档位），不再显示已死链的
+	# difficulty_modifier 线性公式值（v8.2 起该公式不在任何战斗乘区中）
+	var era_progress: float = float(in_era_pos - 1) / 19.0
+	var diff_tier_id: int = EnemyLoadoutTiers.get_tier_for_level_progress(era_progress)
+	var diff_tier: String = _difficulty_label(diff_tier_id)
+	var diff_mult: float = 1.0 + float(EnemyLoadoutTiers.get_bonus_for_tier(diff_tier_id).get("hp_pct", 0.0))
 	# v7.x 性能：用全局单例（与 _collect_level_info 一致）
 	var _li_instance := LevelInformation.get_shared()
-	var diff_mod: float = _li_instance.get_difficulty_modifier(level_index)
 	var lpm: Node = get_node_or_null("/root/LevelProgressManager")
 	var stars: int = 0
 	if lpm and lpm.has_method("get_level_stars"):
@@ -580,7 +586,7 @@ func _show_level_info_popup(level_index: int) -> void:
 	var stars_text: String = _stars_to_text(stars)
 	var rec_level: int = max(1, level_index - 5)
 	body.add_child(_make_detail_row("关卡编号", "第 %d 关（时代内 %d）" % [level_index, in_era_pos]))
-	body.add_child(_make_detail_row("难度", "%s  (%.2f×)" % [diff_tier, diff_mod]))
+	body.add_child(_make_detail_row("难度", "%s  (敌方配置 ×%.2f)" % [diff_tier, diff_mult]))
 	body.add_child(_make_detail_row("评价", stars_text))
 	body.add_child(_make_detail_row("推荐等级", "Lv.%d" % rec_level))
 	# 驻防势力（沿用现有 garrison 逻辑）
@@ -729,6 +735,8 @@ static func _translate_env(key: String, raw: String) -> String:
 			"rain": "降雨",
 			"storm": "风暴",
 			"fog": "迷雾",
+			"snow": "降雪",
+			"sandstorm": "沙暴",
 		},
 		"terrain": {
 			"plain": "平原",
@@ -740,6 +748,7 @@ static func _translate_env(key: String, raw: String) -> String:
 		"energy_field": {
 			"normal": "常规",
 			"high_field": "高能",
+			"low_field": "低能",
 			"nano_fog": "纳米雾",
 			"void_rift": "虚空裂隙",
 		},
@@ -765,15 +774,17 @@ func _make_detail_desc(text: String, color: Color = Color(0.7, 0.75, 0.85, 0.9))
 	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return lbl
 
-## 难度档位（按时代内关卡号派生）
-func _difficulty_label(in_era_pos: int) -> String:
-	if in_era_pos <= 5:
-		return "简单"
-	elif in_era_pos <= 10:
-		return "普通"
-	elif in_era_pos <= 15:
-		return "困难"
-	return "极难"
+## 难度档位标签（2026-08-16: 与敌方配置档位 EnemyLoadoutTiers 同源——
+## 时代内 in_era 1-3 低配 / 4-11 中配 / 12-20 高配，与战斗乘区一致）
+func _difficulty_label(tier: int) -> String:
+	match tier:
+		EnemyLoadoutTiers.TIER_LOW:
+			return "简单"
+		EnemyLoadoutTiers.TIER_MID:
+			return "普通"
+		EnemyLoadoutTiers.TIER_HIGH:
+			return "困难"
+	return "普通"
 
 ## 星级文本
 func _stars_to_text(stars: int) -> String:
@@ -863,7 +874,9 @@ func _enter_level_from_popup(level_index: int, popup: Window) -> void:
 func _collect_level_info(level_index: int) -> Dictionary:
 	var info_db = LevelInformation.get_shared()
 	var li: Dictionary = info_db.get_level_info(level_index)
-	var env: Dictionary = li.get("environment", {})
+	# 2026-08-16: 环境单一真源 = BattleEnvironments（战斗侧 phase_law_manager/battle_damage_system
+	# 同源读取）。原读 li["environment"]（level_information 程序循环生成）与战斗环境不同步。
+	var env: Dictionary = BattleEnvironments.get_for_level(level_index)
 	var drops: Dictionary = BasicResourcesData.get_drops_for_level(level_index)
 	var era: int = LevelEras.get_era(level_index)
 	var enemy_ids: Array = EnemyArchetypesData.get_ids_for_era(era)

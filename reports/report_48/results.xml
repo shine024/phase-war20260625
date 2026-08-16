@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites id="2026-08-16" name="report_48" tests="19" failures="1" skipped="0" flaky="0" time="0.000">
+	<testsuite id="0" name="test_economy_balance" package="tests/unit/balance" timestamp="2026-08-16T03:32:36" hostname="localhost" tests="5" failures="0" errors="0" skipped="0" flaky="0" time="1.104">
+		<testcase name="test_deploy_energy_differentiated" classname="test_economy_balance" time="0.148">
+		</testcase>
+		<testcase name="test_income_curve_monotonic_with_bounded_era_jumps" classname="test_economy_balance" time="0.114">
+		</testcase>
+		<testcase name="test_mod_sink_vs_income_sync" classname="test_economy_balance" time="0.102">
+		</testcase>
+		<testcase name="test_mod_effect_caps" classname="test_economy_balance" time="0.120">
+		</testcase>
+		<testcase name="test_first_level_affords_cheapest_mod" classname="test_economy_balance" time="0.103">
+		</testcase>
+	</testsuite>
+	<testsuite id="1" name="test_progression_curve_balance" package="tests/unit/balance" timestamp="2026-08-16T03:32:38" hostname="localhost" tests="6" failures="1" errors="0" skipped="0" flaky="0" time="1.607">
+		<testcase name="test_difficulty_chain_monotonic" classname="test_progression_curve_balance" time="0.178">
+			<failure message="FAILED: res://tests/unit/balance/test_progression_curve_balance.gd:97" type="FAILURE">
+<![CDATA[
+
+全程链值极差 17.1 > 8.0
+]]>
+			</failure>
+		</testcase>
+		<testcase name="test_player_enemy_hp_sync_across_eras" classname="test_progression_curve_balance" time="0.113">
+		</testcase>
+		<testcase name="test_player_enemy_dps_sync_across_eras" classname="test_progression_curve_balance" time="0.109">
+		</testcase>
+		<testcase name="test_intra_era_enemy_ramp_capped" classname="test_progression_curve_balance" time="0.117">
+		</testcase>
+		<testcase name="test_enhance_level_10_multiplier_capped" classname="test_progression_curve_balance" time="0.115">
+		</testcase>
+		<testcase name="test_enemy_tier_mirrors_player_progression" classname="test_progression_curve_balance" time="0.099">
+		</testcase>
+	</testsuite>
+	<testsuite id="2" name="test_unit_era_balance" package="tests/unit/balance" timestamp="2026-08-16T03:32:40" hostname="localhost" tests="8" failures="0" errors="0" skipped="0" flaky="0" time="1.917">
+		<testcase name="test_adjacent_era_dps_ratio_within_threshold" classname="test_unit_era_balance" time="0.124">
+		</testcase>
+		<testcase name="test_adjacent_era_hp_ratio_within_threshold" classname="test_unit_era_balance" time="0.105">
+		</testcase>
+		<testcase name="test_intra_era_kind_hp_outlier" classname="test_unit_era_balance" time="0.119">
+		</testcase>
+		<testcase name="test_aa_specialist_air_is_primary_output" classname="test_unit_era_balance" time="0.096">
+		</testcase>
+		<testcase name="test_aa_specialist_vs_era_best" classname="test_unit_era_balance" time="0.102">
+		</testcase>
+		<testcase name="test_no_boundary_violations" classname="test_unit_era_balance" time="0.116">
+		</testcase>
+		<testcase name="test_card_id_prefix_matches_era" classname="test_unit_era_balance" time="0.112">
+		</testcase>
+		<testcase name="test_at_specialist_armor_is_primary_output" classname="test_unit_era_balance" time="0.099">
+		</testcase>
+	</testsuite>
+</testsuites>

@@ -658,6 +658,9 @@ func _check_win_lose() -> void:
 
 	# v8 批次3: 特殊胜利条件——坚守N波（survive_waves）
 	# 达到指定波数后立即判胜（无需清场），考验玩家在持续压力下的生存能力
+	# ⚠️ 2026-08-16 关卡设计审查：本分支只对普通关生效——上方 _is_phase_master_battle
+	# 已提前 return（驻守相位师胜负=摧毁基地）。survive_waves 不可挂在驻守关
+	# （LevelInformation._set_rules 有守卫拒绝挂载）。
 	var rules: Dictionary = _get_current_special_rules()
 	var win_type: String = String(rules.get("win_type", ""))
 	if win_type == "survive_waves":

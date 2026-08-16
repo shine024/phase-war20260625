@@ -18,12 +18,20 @@ static func select_target_direct(attacker: Node2D, enemies: Array) -> Node2D:
 	var best_dist_sq: float = INF
 	var best_hp: float = INF
 	const SAME_DIST_TOL_SQ: float = 100.0  # 10^2
+	# 平衡修复（2026-08-16 克制链审查）：无对空能力（attack_air=0）的直射单位跳过
+	# 空中目标——伤害侧已禁止对空回退，索敌侧同步过滤，避免锁定飞机后干站。
+	var stats = attacker.get("stats") as UnitStats
+	var can_hit_air: bool = stats != null and stats.attack_air > 0.0
 	# 单遍：找距离最近，同距（容差内）取最低 HP
 	for e in enemies:
 		if e == null or not is_instance_valid(e):
 			continue
 		if "hp" in e and float(e.hp) <= 0.0:
 			continue
+		if not can_hit_air:
+			var es = e.get("stats") as UnitStats
+			if es != null and es.combat_kind == GameConstants.CombatKind.AIR:
+				continue
 		var d_sq: float = origin.distance_squared_to(e.global_position)
 		if d_sq < best_dist_sq - SAME_DIST_TOL_SQ:
 			# 明显更近，直接选

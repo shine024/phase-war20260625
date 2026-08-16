@@ -499,6 +499,10 @@ static func do_attack(u: CharacterBody2D) -> void:
 
 	# 回退：无武器资源时用裸 attack_damage。v10(C7)：预计算标记 true——格子战（唯一模式）
 	# 防御由受击侧 take_damage→resolve_hit 统一结算，强化曲线只在武器路径应用一次。
+	# 平衡修复（2026-08-16 克制链审查）：对空武器槽缺失/禁用（attack_air=0）时不得回退
+	# attack_damage 打空中单位——否则任何步兵都能用步枪伤害飞机，防空特化失去意义。
+	if target_kind == GC.CombatKind.AIR:
+		return
 	var damage: float = u.stats.attack_damage if u.stats else 0.0
 	do_attack_with_damage(u, damage, u.stats.weapon_type if u.stats else 0, "", null, true)
 
@@ -948,6 +952,12 @@ static func _process_multi_weapons(u: CharacterBody2D, delta: float) -> void:
 							is_card_grid
 						)
 					else:
+						# 平衡修复（2026-08-16 克制链审查）：武器槽禁用时若目标是空中单位
+						# （对空槽 damage=0），不得回退裸 attack_damage 开火——无防空不能打飞机。
+						if target_kind == GC.CombatKind.AIR:
+							w["phase"] = u.AttackPhase.COOLDOWN
+							w["phase_timer"] = 0.0
+							continue
 						dmg = u.stats.attack_damage if u.stats else 0.0
 					# v10(C6/C7): dmg 已含 calculate_damage_with_weapon 的强化曲线 → 必须标记预计算，
 					# 否则 bullet/indirect batch 再乘一遍 0.05 旧曲线（强化双乘）+ bullet 再乘防御（双曲线）

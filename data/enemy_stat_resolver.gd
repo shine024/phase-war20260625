@@ -7,7 +7,7 @@ class_name EnemyStatResolver
 ##   atk = base_atk × 档位系数 × 波数 [× 势力] [× 难度]
 ##   def = base_def × 档位系数
 ## 档位系数（EnemyLoadoutTiers）：低1.30 / 中1.75 / 高2.00（hp/atk/def 同系数）。
-## 砍掉的旧乘区：level_stat_multiplier（关卡线性）、master_stats、player_pressure（恒空死乘区）。
+## 砍掉的旧乘区：level_stat_multiplier（关卡线性，函数已删）、master_stats、player_pressure（恒空死乘区）。
 
 const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const GC = preload("res://resources/game_constants.gd")
@@ -16,26 +16,30 @@ const FactionConquestBuffs = preload("res://data/faction_conquest_buffs.gd")
 const EnemyLoadoutTiers = preload("res://data/enemy_loadout_tiers.gd")
 
 
+## 平衡修复（2026-08-16 难度链审查）：波次 HP 斜率 0.12→0.08。
+## 原 0.12 与档位递进（1.3→2.0）在时代末双重堆叠——全程敌方有效 HP 链膨胀 ~17×，
+## 而玩家中位战力指数（HP×DPS 开方）仅 ~7×，后期 TTK 失配 ~2×。
+## 0.08 保留"末波 +72% HP"的波内压迫感，砍掉跨关卡端的叠加通胀。
 static func wave_hp_multiplier(wave_index: int) -> float:
-	return 1.0 + 0.12 * float(max(0, wave_index - 1))
+	return 1.0 + 0.08 * float(max(0, wave_index - 1))
 
 ## v9.x 平衡：防御的波次乘区。原 def 只乘 tier_def（1 乘区），HP/ATK 有 4 乘区，
 ## 后期 def 被 hp/atk 严重稀释（终局 hp ×6.65 而 def 仅 ×1.85）。补 wave_def 让 def 跟随波次增长，
-## 但系数 0.06 < hp 的 0.12，使 def 增长远慢于 hp——保留"破防"机制的意义，高防单位不会变得无法击穿。
+## 但系数 0.04 < hp 的 0.08，使 def 增长远慢于 hp——保留"破防"机制的意义，高防单位不会变得无法击穿。
 static func wave_def_multiplier(wave_index: int) -> float:
+	return 1.0 + 0.04 * float(max(0, wave_index - 1))
+
+
+## 平衡修复（2026-08-16）：伤害斜率 0.08→0.06，与 HP 斜率同比收敛（保持 hp>dmg 增长差）。
+static func wave_damage_multiplier(wave_index: int) -> float:
 	return 1.0 + 0.06 * float(max(0, wave_index - 1))
 
 
-static func wave_damage_multiplier(wave_index: int) -> float:
-	return 1.0 + 0.08 * float(max(0, wave_index - 1))
-
-
 ## v6.4: 接入关卡难度曲线（原 difficulty_modifier 公式：0.8 + level × 0.014）
-## 第1关≈0.814（略低于基础值，新手友好），第20关≈1.08，第100关=2.2
-## 此值乘到敌人 HP/攻击上，使关卡随进度逐步变强
-static func level_stat_multiplier(level: int) -> float:
-	var lv: int = clampi(int(level), 1, 100)
-	return 0.8 + lv * 0.014
+## 2026-08-16 关卡设计审查：level_stat_multiplier 函数已删除——v8.2 简化公式后
+## 战斗链不再引用关卡线性乘区（跨关卡递进由 base 属性表的时代递进 + 档位承担），
+## 该函数沦为零调用死代码，且与 level_information 旧字段构成公式双拷贝漂移隐患。
+## UI 侧难度显示已改用 EnemyLoadoutTiers 档位系数（战斗链真实乘区）。
 
 
 static func master_attack_multiplier(master_stats: Dictionary) -> float:

@@ -80,12 +80,8 @@ func _ready() -> void:
 			"node_name": "DropsInventoryPanel",
 			"autoload": false
 		},
-		"level_select": {
-			"scene": "res://scenes/ui/level_select_panel.tscn",
-			"parent_path": "PopupLayer/LevelSelectOverlay/CenterContainer",
-			"node_name": "LevelSelectPanel",
-			"autoload": false
-		},
+		# 2026-08-16 关卡设计审查：level_select 配置已移除——全项目零开启方
+		# （选关由 world_map 承担），属死配置（同 v6.6 C3 world_map_panel 先例）。
 		"phase_master_skill": {
 			"scene": "res://scenes/ui/phase_master_skill_panel.tscn",
 			"parent_path": "PopupLayer/PhaseMasterSkillOverlay/CenterContainer",

@@ -1,11 +1,13 @@
 # 无 GdUnit 依赖的快速校验：v8 批次3 关卡特殊机制
-#   - special_rules 数据挂载（15 个关键关有规则，其余无）
+#   - special_rules 数据挂载（2026-08-16 关卡设计审查后为 11 个关键关，其余无）
 #   - get_special_rules 读取正确
 #   - 能量惩罚倍率计算
-#   - 坚守N波胜利条件逻辑
+#   - 坚守N波胜利条件逻辑（机制保留，仅普通关可挂载）
 #   - 限定兵种白名单判定
 #   - 部署上限叠加
 #   - _format_special_rules 格式化
+# 2026-08-16 更新：20/40/60/80/100 的 survive_waves 已移除（全是驻守相位师关，
+# 胜负=摧毁基地，battle_manager 对相位师战提前 return，该规则永远不评估——死规则+UI 误导）。
 # Usage: godot --headless --rendering-driver opengl3 --path . --script tests/level_mechanics_smoke.gd
 extends SceneTree
 
@@ -22,35 +24,29 @@ func _initialize() -> void:
 
 	# ══════════ special_rules 数据挂载 ══════════
 	print("=== special_rules 数据挂载 ===")
-	# 有规则的关键关
-	var ruled_levels: Array = [5, 15, 20, 25, 30, 40, 50, 55, 60, 65, 70, 80, 85, 90, 100]
+	# 有规则的关键关（2026-08-16 后：20/40/60 不再挂规则）
+	var ruled_levels: Array = [5, 15, 25, 30, 50, 55, 65, 80, 85, 90, 100]
 	var ruled_count: int = 0
 	for lvl in ruled_levels:
 		var rules: Dictionary = li.get_special_rules(lvl)
 		if not rules.is_empty():
 			ruled_count += 1
-	print("  %d 个关键关有规则 (期望 15)" % ruled_count)
-	if ruled_count != 15:
-		fail.call("关键关规则数 %d != 15" % ruled_count)
-	# 无规则的普通关（如 1, 2, 3, 7, 8...）
-	for lvl in [1, 2, 3, 7, 8, 11, 12, 22, 23, 100 + 1]:
+	print("  %d 个关键关有规则 (期望 11)" % ruled_count)
+	if ruled_count != 11:
+		fail.call("关键关规则数 %d != 11" % ruled_count)
+	# 无规则的普通关（如 1, 2, 3, 7, 8...）+ 已移除 survive_waves 的驻守关
+	for lvl in [1, 2, 3, 7, 8, 11, 12, 20, 22, 23, 40, 60, 70, 100 + 1]:
 		var r: Dictionary = li.get_special_rules(lvl)
 		if lvl <= 100 and not r.is_empty():
-			# 确认非关键关确实无规则（除 100 关外）
-			if lvl not in ruled_levels:
-				fail.call("关 %d 不应有规则" % lvl)
+			fail.call("关 %d 不应有规则" % lvl)
 	print("  普通关无规则: 确认")
 
-	# ══════════ 第20关：坚守8波 ══════════
-	print("=== 第20关: 坚守8波 ===")
+	# ══════════ 第20关：驻守相位师关，无特殊胜利规则 ══════════
+	print("=== 第20关: 驻守关无 survive_waves ===")
 	var r20: Dictionary = li.get_special_rules(20)
-	var wt20: String = String(r20.get("win_type", ""))
-	var wp20: int = int(r20.get("win_param", 0))
-	print("  win_type=%s, win_param=%d (期望 survive_waves/8)" % [wt20, wp20])
-	if wt20 != "survive_waves":
-		fail.call("第20关 win_type 应 survive_waves")
-	if wp20 != 8:
-		fail.call("第20关 win_param 应 8")
+	print("  rules=%s (期望空——胜负=摧毁驻守相位师基地)" % str(r20))
+	if not r20.is_empty():
+		fail.call("第20关不应再挂 survive_waves（驻守关死规则，2026-08-16 已移除）")
 
 	# ══════════ 第25关：能量减半 ══════════
 	print("=== 第25关: 能量减半 ===")
@@ -91,24 +87,22 @@ func _initialize() -> void:
 			fail.call("第%d关仍含已废弃的 deploy_limit" % lvl)
 	print("  全 100 关均无 deploy_limit ✓")
 
-	# ══════════ 第100关：多重规则（deploy_limit 已移除，仅余 survive_waves + energy）══════════
-	print("=== 第100关: 终局多重规则 ===")
+	# ══════════ 第100关：终局（能量减半；胜负=摧毁奥米伽基地）══════════
+	print("=== 第100关: 终局规则 ===")
 	var r100: Dictionary = li.get_special_rules(100)
-	var has_win: bool = String(r100.get("win_type", "")) == "survive_waves"
 	var has_energy: bool = absf(float(r100.get("energy_mult", 1.0)) - 0.5) < 0.001
-	var param100: int = int(r100.get("win_param", 0))
-	print("  survive_waves=%s, energy_mult=0.5: %s, win_param=%d" % [has_win, has_energy, param100])
-	if not has_win or not has_energy:
-		fail.call("第100关应含 survive_waves + energy_mult")
+	print("  energy_mult=0.5: %s, win_type=%s (期望 true/空)" % [has_energy, r100.get("win_type", "")])
+	if not has_energy:
+		fail.call("第100关应含 energy_mult=0.5")
+	if r100.has("win_type") or r100.has("win_param"):
+		fail.call("第100关不应再含 survive_waves（驻守关死规则，2026-08-16 已移除）")
 	if r100.has("deploy_limit"):
 		fail.call("第100关不应再含 deploy_limit")
-	if param100 != 15:
-		fail.call("第100关 win_param 应 15")
 
-	# ══════════ 坚守N波胜利判定逻辑 ══════════
+	# ══════════ 坚守N波胜利判定逻辑（机制保留，仅普通关可挂载）══════════
 	print("=== 坚守N波胜利判定 ===")
-	# 模拟 _check_win_lose 的 survive_waves 分支
-	var survive_target: int = 8  # 第20关
+	# 模拟 _check_win_lose 的 survive_waves 分支（纯逻辑验证；当前无关卡挂载该规则）
+	var survive_target: int = 8
 	# 当前波数 < 目标 → 不胜
 	var wave_before: int = 5
 	var should_win_before: bool = (wave_before >= survive_target)

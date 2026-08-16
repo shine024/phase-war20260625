@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites id="2026-08-16" name="report_44" tests="13" failures="2" skipped="0" flaky="0" time="0.000">
+	<testsuite id="0" name="test_economy_balance" package="tests/unit/balance" timestamp="2026-08-16T03:23:52" hostname="localhost" tests="5" failures="1" errors="16" skipped="0" flaky="0" time="4.916">
+		<testcase name="test_deploy_energy_differentiated" classname="test_economy_balance" time="0.126">
+		</testcase>
+		<testcase name="test_income_curve_monotonic_with_bounded_era_jumps" classname="test_economy_balance" time="0.089">
+		</testcase>
+		<testcase name="test_mod_sink_vs_income_sync" classname="test_economy_balance" time="0.099">
+		</testcase>
+		<testcase name="test_mod_effect_caps" classname="test_economy_balance" time="0.676">
+			<error message="ERROR: res://tests/unit/balance/test_economy_balance.gd:155" type="ABORT">
+<![CDATA[
+Godot Runtime Error !
+	'at: EconomyBalanceTest._scan_effect_caps (res://tests/unit/balance/test_economy_balance.gd:155)'
+Error: 'Invalid call. Nonexistent 'String' constructor.'
+]]>
+			</error>
+			<error message="ERROR: res://tests/unit/balance/test_economy_balance.gd:155" type="ABORT">
+<![CDATA[
+Godot Runtime Error !
+	'at: EconomyBalanceTest._scan_effect_caps (res://tests/unit/balance/test_economy_balance.gd:155)'
+Error: 'Invalid call. Nonexistent 'String' constructor.'
+]]>
+			</error>
+			<error message="ERROR: res://tests/unit/balance/test_economy_balance.gd:155" type="ABORT">
+<![CDATA[
+Godot Runtime Error !
+	'at: EconomyBalanceTest._scan_effect_caps (res://tests/unit/balance/test_economy_balance.gd:155)'
+Error: 'Invalid call. Nonexistent 'String' constructor.'
+]]>
+			</error>
+			<error message="ERROR: res://tests/unit/balance/test_economy_balance.gd:155" type="ABORT">
+<![CDATA[
+Godot Runtime Error !
+	'at: EconomyBalanceTest._scan_effect_caps (res://tests/unit/balance/test_economy_balance.gd:155)'
+Error: 'Invalid call. Nonexistent 'String' constructor.'
+]]>
+			</error>
+			<error message="ERROR: res://tests/unit/balance/test_economy_balance.gd:155" type="ABORT">
+<![CDATA[
+Godot Runtime Error !
+	'at: EconomyBalanceTest._scan_effect_caps (res://tests/unit/balance/test_economy_balance.gd:155)'
+Error: 'Invalid call. Nonexistent 'String' constructor.'
+]]>
+			</error>
+			<error message="ERROR: res://tests/unit/balance/test_economy_balance.gd:155" type="ABORT">
+<![CDATA[
+Godot Runtime Error !
+	'at: EconomyBalanceTest._scan_effect_caps (res://tests/unit/balance/test_economy_balance.gd:155)'
+Error: 'Invalid call. Nonexistent 'String' constructor.'
+]]>
+			</error>
+			<error message="ERROR: res://tests/unit/balance/test_economy_balance.gd:155" type="ABORT">
+<![CDATA[
+Godot Runtime Error !
+	'at: EconomyBalanceTest._scan_effect_caps (res://tests/unit/balance/test_economy_balance.gd:155)'
+Error: 'Invalid call. Nonexistent 'String' constructor.'
+]]>
+			</error>
+			<error message="ERROR: res://tests/unit/balance/test_economy_balance.gd:155" type="ABORT">
+<![CDATA[
+Godot Runtime Error !
+	'at: EconomyBalanceTest._scan_effect_caps (res://tests/unit/balance/test_economy_balance.gd:155)'
+Error: 'Invalid call. Nonexistent 'String' constructor.'
+]]>
+			</error>
+			<error message="ERROR: res://tests/unit/balance/test_economy_balance.gd:155" type="ABORT">
+<![CDATA[
+Godot Runtime Error !
+	'at: EconomyBalanceTest._scan_effect_caps (res://tests/unit/balance/test_economy_balance.gd:155)'
+Error: 'Invalid call. Nonexistent 'String' constructor.'
+]]>
+			</error>
+			<error message="ERROR: res://tests/unit/balance/test_economy_balance.gd:155" type="ABORT">
+<![CDATA[
+Godot Runtime Error !
+	'at: EconomyBalanceTest._scan_effect_caps (res://tests/unit/balance/test_economy_balance.gd:155)'
+Error: 'Invalid call. Nonexistent 'String' constructor.'
+]]>
+			</error>
+			<error message="ERROR: res://tests/unit/balance/test_economy_balance.gd:155" type="ABORT">
+<![CDATA[
+Godot Runtime Error !
+	'at: EconomyBalanceTest._scan_effect_caps (res://tests/unit/balance/test_economy_balance.gd:155)'
+Error: 'Invalid call. Nonexistent 'String' constructor.'
+]]>
+			</error>
+			<error message="ERROR: res://tests/unit/balance/test_economy_balance.gd:155" type="ABORT">
+<![CDATA[
+Godot Runtime Error !
+	'at: EconomyBalanceTest._scan_effect_caps (res://tests/unit/balance/test_economy_balance.gd:155)'
+Error: 'Invalid call. Nonexistent 'String' constructor.'
+]]>
+			</error>
+			<error message="ERROR: res://tests/unit/balance/test_economy_balance.gd:155" type="ABORT">
+<![CDATA[
+Godot Runtime Error !
+	'at: EconomyBalanceTest._scan_effect_caps (res://tests/unit/balance/test_economy_balance.gd:155)'
+Error: 'Invalid call. Nonexistent 'String' constructor.'
+]]>
+			</error>
+			<error message="ERROR: res://tests/unit/balance/test_economy_balance.gd:155" type="ABORT">
+<![CDATA[
+Godot Runtime Error !
+	'at: EconomyBalanceTest._scan_effect_caps (res://tests/unit/balance/test_economy_balance.gd:155)'
+Error: 'Invalid call. Nonexistent 'String' constructor.'
+]]>
+			</error>
+			<error message="ERROR: res://tests/unit/balance/test_economy_balance.gd:155" type="ABORT">
+<![CDATA[
+Godot Runtime Error !
+	'at: EconomyBalanceTest._scan_effect_caps (res://tests/unit/balance/test_economy_balance.gd:155)'
+Error: 'Invalid call. Nonexistent 'String' constructor.'
+]]>
+			</error>
+			<error message="ERROR: res://tests/unit/balance/test_economy_balance.gd:155" type="ABORT">
+<![CDATA[
+Godot Runtime Error !
+	'at: EconomyBalanceTest._scan_effect_caps (res://tests/unit/balance/test_economy_balance.gd:155)'
+Error: 'Invalid call. Nonexistent 'String' constructor.'
+]]>
+			</error>
+			<failure message="FAILED: res://tests/unit/balance/test_economy_balance.gd:198" type="FAILURE">
+<![CDATA[
+
+infantry_mods.gd.inf_10_saw.effects.move_speed = -10.00 超属性类上限 0.60
+infantry_mods.gd.inf_14_knee_pads.effects.move_speed = 5.00 超属性类上限 0.60
+infantry_mods.gd.inf_15_riot_shield.effects.move_speed = -20.00 超属性类上限 0.60
+infantry_mods.gd.inf_16_exoskeleton.effects.move_speed = 15.00 超属性类上限 0.60
+infantry_mods.gd.inf_22_breaching.effects.urban_move_bonus = 10.00 超属性类上限 0.60
+armor_mods.gd.arm_07_gun_missile.grant_slot.windup = 0.60 超攻速类上限 0.50
+armor_mods.gd.arm_09_turbine.effects.move_speed = 20.00 超属性类上限 0.60
+armor_mods.gd.arm_10_diesel_turbo.effects.move_speed = 10.00 超属性类上限 0.60
+armor_mods.gd.arm_14_mine_plow.effects.move_speed = -5.00 超属性类上限 0.60
+artillery_mods.gd.art_13_apfsds_sabot.effects.armor_break_stacks = 5.00 超属性类上限 0.60
+air_mods.gd.air_01_turbofan.effects.move_speed = 30.00 超属性类上限 0.60
+air_mods.gd.air_14_swing_wing.effects.move_speed = 20.00 超属性类上限 0.60
+recon_mods.gd.rec_07_gps.effects.move_speed = 10.00 超属性类上限 0.60
+recon_mods.gd.rec_09_breaching.effects.urban_move_bonus = 20.00 超属性类上限 0.60
+recon_mods.gd.rec_12_atv.effects.move_speed = 30.00 超属性类上限 0.60
+engineer_mods.gd.eng_04_bridge.effects.ally_river_bonus = 1.00 超属性类上限 0.60
+engineer_mods.gd.eng_05_shovel.effects.move_speed = -5.00 超属性类上限 0.60
+universal_mods.gd.gen_05_shield.effects.move_speed = -10.00 超属性类上限 0.60
+universal_mods.gd.gen_overload_capacitor.effects.emp_true_damage_bonus = 8.00 超属性类上限 0.60
+mod_effects.gd.MOD_01.attack_multiplier = 1.15 超属性类上限 0.60
+mod_effects.gd.MOD_02.attack_multiplier = 1.00 超属性类上限 0.60
+mod_effects.gd.MOD_03.attack_multiplier = 1.00 超属性类上限 0.60
+mod_effects.gd.MOD_04.attack_multiplier = 1.00 超属性类上限 0.60
+mod_effects.gd.MOD_05.attack_multiplier = 1.30 超属性类上限 0.60
+mod_effects.gd.MOD_06.attack_multiplier = 1.30 超属性类上限 0.60
+mod_effects.gd.MOD_07.attack_multiplier = 1.40 超属性类上限 0.60
+mod_effects.gd.MOD_08.attack_multiplier = 1.00 超属性类上限 0.60
+mod_effects.gd.MOD_09.attack_multiplier = 1.00 超属性类上限 0.60
+mod_effects.gd.MOD_10.attack_multiplier = 1.00 超属性类上限 0.60
+mod_effects.gd.MOD_11.attack_multiplier = 1.00 超属性类上限 0.60
+mod_effects.gd.MOD_12.attack_multiplier = 1.00 超属性类上限 0.60
+mod_effects.gd.MOD_13.attack_multiplier = 1.00 超属性类上限 0.60
+mod_effects.gd.MOD_14.attack_multiplier = 1.00 超属性类上限 0.60
+mod_effects.gd.MOD_15.attack_multiplier = 1.00 超属性类上限 0.60
+mod_effects.gd.MOD_16.attack_multiplier = 1.00 超属性类上限 0.60
+mod_effects.gd.MOD_17.attack_multiplier = 1.00 超属性类上限 0.60
+mod_effects.gd.MOD_18.attack_multiplier = 1.00 超属性类上限 0.60
+mod_effects.gd.MOD_19.attack_multiplier = 1.00 超属性类上限 0.60
+mod_effects.gd.MOD_20.attack_multiplier = 1.00 超属性类上限 0.60
+]]>
+			</failure>
+		</testcase>
+		<testcase name="test_first_level_affords_cheapest_mod" classname="test_economy_balance" time="0.107">
+		</testcase>
+	</testsuite>
+	<testsuite id="1" name="test_unit_era_balance" package="tests/unit/balance" timestamp="2026-08-16T03:23:57" hostname="localhost" tests="8" failures="1" errors="0" skipped="0" flaky="0" time="2.050">
+		<testcase name="test_adjacent_era_dps_ratio_within_threshold" classname="test_unit_era_balance" time="0.127">
+			<failure message="FAILED: res://tests/unit/balance/test_unit_era_balance.gd:103" type="FAILURE">
+<![CDATA[
+
+era 2→3 DPS中位数比 1.86 > 1.60（中位数 [68.0, 155.5, 235.5, 437.5, 456.0]）
+]]>
+			</failure>
+		</testcase>
+		<testcase name="test_adjacent_era_hp_ratio_within_threshold" classname="test_unit_era_balance" time="0.111">
+		</testcase>
+		<testcase name="test_intra_era_kind_hp_outlier" classname="test_unit_era_balance" time="0.101">
+		</testcase>
+		<testcase name="test_aa_specialist_air_is_primary_output" classname="test_unit_era_balance" time="0.094">
+		</testcase>
+		<testcase name="test_aa_specialist_vs_era_best" classname="test_unit_era_balance" time="0.099">
+		</testcase>
+		<testcase name="test_no_boundary_violations" classname="test_unit_era_balance" time="0.101">
+		</testcase>
+		<testcase name="test_card_id_prefix_matches_era" classname="test_unit_era_balance" time="0.101">
+		</testcase>
+		<testcase name="test_at_specialist_armor_is_primary_output" classname="test_unit_era_balance" time="0.108">
+		</testcase>
+	</testsuite>
+</testsuites>

@@ -127,7 +127,7 @@ const _TABLE: Array = [
 	 "w_light":"81mm/105mm火炮","w_armor":"迫击炮/野战炮","w_air":""},
 
 	{"card_id":"ww1_storm","display_name":"暴风突击队","era":0,"combat_kind":0,"tier":Tier.VETERAN,
-	 "base_hp":201,"range_value":2,"deploy_speed":5,"base_speed":90,"power":24,"weapon_type":0,
+	 "base_hp":195,"range_value":2,"deploy_speed":5,"base_speed":90,"power":24,"weapon_type":0,
 	 "weapon_label":"暴风冲锋枪",
 	 "atk_l":54,"atk_l_speed":1.5,"atk_l_windup":0.133,"atk_l_active":0.067,
 	 "atk_a":24,"atk_a_speed":1.0,"atk_a_windup":0.2,"atk_a_active":0.1,
@@ -211,13 +211,13 @@ const _TABLE: Array = [
 	 "base_hp":139,"range_value":5,"deploy_speed":0,"base_speed":0,"power":28,"weapon_type":0,
 	 "weapon_label":"37mm高射炮",
 	 "atk_l":33,"atk_l_speed":1.0,"atk_l_windup":0.2,"atk_l_active":0.1,
-	 "atk_a":111,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
-	 "atk_air":7,"atk_air_speed":2.5,"atk_air_windup":0.08,"atk_air_active":0.04,
+	 "atk_a":60,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
+	 "atk_air":55,"atk_air_speed":2.5,"atk_air_windup":0.08,"atk_air_active":0.04,
 	 "def_l":4,"def_a":15,"def_air":3,
 	 "w_light":"迫击炮/野战炮","w_armor":"迫击炮/野战炮","w_air":"23mm/30mm高射炮"},
 
 	{"card_id":"ww1_inf_cavalry","display_name":"骑兵斥候","era":0,"combat_kind":0,"tier":Tier.GRUNT,
-	 "base_hp":91,"range_value":1,"deploy_speed":6,"base_speed":120,"power":18,"weapon_type":0,
+	 "base_hp":102,"range_value":1,"deploy_speed":6,"base_speed":120,"power":18,"weapon_type":0,
 	 "weapon_label":"骑兵卡宾枪/马刀",
 	 "atk_l":27,"atk_l_speed":1.5,"atk_l_windup":0.133,"atk_l_active":0.067,
 	 "atk_a":12,"atk_a_speed":1.0,"atk_a_windup":0.2,"atk_a_active":0.1,
@@ -226,7 +226,7 @@ const _TABLE: Array = [
 	 "w_light":"骑兵卡宾枪/马刀","w_armor":"","w_air":""},
 
 	{"card_id":"ww1_flame","display_name":"火焰喷射兵","era":0,"combat_kind":0,"tier":Tier.GRUNT,
-	 "base_hp":100,"range_value":1,"deploy_speed":3,"base_speed":80,"power":22,"weapon_type":0,
+	 "base_hp":102,"range_value":1,"deploy_speed":3,"base_speed":80,"power":22,"weapon_type":0,
 	 "weapon_label":"暴风冲锋枪",
 	 "atk_l":30,"atk_l_speed":1.5,"atk_l_windup":0.133,"atk_l_active":0.067,
 	 "atk_a":14,"atk_a_speed":1.0,"atk_a_windup":0.2,"atk_a_active":0.1,
@@ -433,7 +433,7 @@ const _TABLE: Array = [
 	 "base_hp":233,"range_value":2,"deploy_speed":3,"base_speed":80,"power":78,"weapon_type":0,
 	 "weapon_label":"毛瑟G98步枪",
 	 "atk_l":62,"atk_l_speed":1.5,"atk_l_windup":0.133,"atk_l_active":0.067,
-	 "atk_a":28,"atk_a_speed":1.0,"atk_a_windup":0.2,"atk_a_active":0.1,
+	 "atk_a":200,"atk_a_speed":0.75,"atk_a_windup":0.2,"atk_a_active":0.1,
 	 "atk_air":0,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
 	 "def_l":16,"def_a":20,"def_air":5,
 	 "w_light":"毛瑟G98步枪","w_armor":"88mm/105mm反坦克炮","w_air":""},
@@ -442,7 +442,7 @@ const _TABLE: Array = [
 	 "base_hp":225,"range_value":2,"deploy_speed":3,"base_speed":80,"power":78,"weapon_type":0,
 	 "weapon_label":"加兰德M1步枪",
 	 "atk_l":60,"atk_l_speed":1.5,"atk_l_windup":0.133,"atk_l_active":0.067,
-	 "atk_a":27,"atk_a_speed":1.0,"atk_a_windup":0.2,"atk_a_active":0.1,
+	 "atk_a":200,"atk_a_speed":0.75,"atk_a_windup":0.2,"atk_a_active":0.1,
 	 "atk_air":0,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
 	 "def_l":16,"def_a":20,"def_air":5,
 	 "w_light":"加兰德M1步枪","w_armor":"85mm/105mm反坦克炮","w_air":""},
@@ -691,7 +691,7 @@ const _TABLE: Array = [
 	 "base_hp":288,"range_value":2,"deploy_speed":3,"base_speed":80,"power":204,"weapon_type":0,
 	 "weapon_label":"AK-47突击步枪",
 	 "atk_l":77,"atk_l_speed":1.5,"atk_l_windup":0.133,"atk_l_active":0.067,
-	 "atk_a":35,"atk_a_speed":1.0,"atk_a_windup":0.2,"atk_a_active":0.1,
+	 "atk_a":260,"atk_a_speed":0.6,"atk_a_windup":0.2,"atk_a_active":0.1,
 	 "atk_air":0,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
 	 "def_l":20,"def_a":25,"def_air":6,
 	 "w_light":"AK-47突击步枪","w_armor":"RPG-7火箭筒","w_air":""},
@@ -841,7 +841,7 @@ const _TABLE: Array = [
 	 "w_light":"迫击炮/野战炮","w_armor":"迫击炮/野战炮","w_air":"23mm/30mm高射炮"},
 
 	{"card_id":"cold_sam7","display_name":"萨姆-7防空组","era":2,"combat_kind":2,"tier":Tier.VETERAN,
-	 "base_hp":245,"range_value":99,"deploy_speed":3,"base_speed":70,"power":210,"weapon_type":1,
+	 "base_hp":255,"range_value":99,"deploy_speed":3,"base_speed":70,"power":210,"weapon_type":1,
 	 "weapon_label":"AK-47突击步枪",
 	 "atk_l":59,"atk_l_speed":1.0,"atk_l_windup":0.2,"atk_l_active":0.1,
 	 "atk_a":60,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
@@ -1030,17 +1030,17 @@ const _TABLE: Array = [
 	 "base_hp":600,"range_value":99,"deploy_speed":3,"base_speed":80,"power":396,"weapon_type":1,
 	 "weapon_label":"标枪反坦克导弹",
 	 "atk_l":152,"atk_l_speed":1.5,"atk_l_windup":0.133,"atk_l_active":0.067,
-	 "atk_a":68,"atk_a_speed":1.0,"atk_a_windup":0.2,"atk_a_active":0.1,
+	 "atk_a":340,"atk_a_speed":0.75,"atk_a_windup":0.2,"atk_a_active":0.1,
 	 "atk_air":76,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
 	 "def_l":42,"def_a":52,"def_air":13,
 	 "w_light":"M4卡宾枪","w_armor":"标枪反坦克导弹","w_air":"便携式防空导弹"},
 
 	{"card_id":"mod_stinger","display_name":"毒刺导弹兵","era":3,"combat_kind":2,"tier":Tier.VETERAN,
-	 "base_hp":407,"range_value":99,"deploy_speed":3,"base_speed":80,"power":384,"weapon_type":1,
+	 "base_hp":460,"range_value":99,"deploy_speed":3,"base_speed":80,"power":384,"weapon_type":1,
 	 "weapon_label":"M4卡宾枪",
 	 "atk_l":98,"atk_l_speed":1.0,"atk_l_windup":0.2,"atk_l_active":0.1,
-	 "atk_a":326,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
-	 "atk_air":20,"atk_air_speed":2.5,"atk_air_windup":0.08,"atk_air_active":0.04,
+	 "atk_a":90,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
+	 "atk_air":320,"atk_air_speed":2.0,"atk_air_windup":0.08,"atk_air_active":0.04,
 	 "def_l":12,"def_a":42,"def_air":7,
 	 "w_light":"M4卡宾枪","w_armor":"毒刺防空导弹","w_air":"毒刺防空导弹"},
 
@@ -1054,19 +1054,19 @@ const _TABLE: Array = [
 	 "w_light":"AK-47突击步枪","w_armor":"RPG-7火箭筒","w_air":"便携式防空导弹"},
 
 	{"card_id":"mod_stryker_mgs","display_name":"斯特赖克MGS","era":3,"combat_kind":1,"tier":Tier.ELITE,
-	 "base_hp":2250,"range_value":4,"deploy_speed":4,"base_speed":80,"power":1080,"weapon_type":0,
+	 "base_hp":1100,"range_value":4,"deploy_speed":4,"base_speed":80,"power":1080,"weapon_type":0,
 	 "weapon_label":"105mm主炮",
-	 "atk_l":383,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
-	 "atk_a":1710,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
+	 "atk_l":220,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
+	 "atk_a":750,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":0,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
 	 "def_l":158,"def_a":556,"def_air":135,
 	 "w_light":"105mm主炮","w_armor":"120mm/125mm主炮","w_air":""},
 
 	{"card_id":"mod_stryker_m2","display_name":"斯特赖克M2","era":3,"combat_kind":1,"tier":Tier.ELITE,
-	 "base_hp":2125,"range_value":3,"deploy_speed":4,"base_speed":85,"power":1056,"weapon_type":0,
+	 "base_hp":1000,"range_value":3,"deploy_speed":4,"base_speed":85,"power":1056,"weapon_type":0,
 	 "weapon_label":"105mm/120mm主炮",
-	 "atk_l":362,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
-	 "atk_a":1615,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
+	 "atk_l":210,"atk_l_speed":0.67,"atk_l_windup":0.299,"atk_l_active":0.149,
+	 "atk_a":740,"atk_a_speed":0.5,"atk_a_windup":0.4,"atk_a_active":0.2,
 	 "atk_air":109,"atk_air_speed":0.5,"atk_air_windup":0.4,"atk_air_active":0.2,
 	 "def_l":149,"def_a":524,"def_air":128,
 	 "w_light":"105mm/120mm主炮","w_armor":"122mm主炮","w_air":"20mm机炮"},
@@ -1075,7 +1075,7 @@ const _TABLE: Array = [
 	 "base_hp":481,"range_value":99,"deploy_speed":5,"base_speed":110,"power":396,"weapon_type":1,
 	 "weapon_label":"M4卡宾枪",
 	 "atk_l":128,"atk_l_speed":1.5,"atk_l_windup":0.133,"atk_l_active":0.067,
-	 "atk_a":58,"atk_a_speed":1.0,"atk_a_windup":0.2,"atk_a_active":0.1,
+	 "atk_a":300,"atk_a_speed":0.7,"atk_a_windup":0.2,"atk_a_active":0.1,
 	 "atk_air":64,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
 	 "def_l":34,"def_a":42,"def_air":10,
 	 "w_light":"M4卡宾枪","w_armor":"陶式反坦克导弹","w_air":"便携式防空导弹"},
@@ -1189,7 +1189,7 @@ const _TABLE: Array = [
 	 "w_light":"81mm/105mm火炮","w_armor":"迫击炮/野战炮","w_air":"25mm近防炮"},
 
 	{"card_id":"mod_inf_scout_drone","display_name":"侦察无人机","era":3,"combat_kind":3,"tier":Tier.VETERAN,
-	 "base_hp":333,"range_value":99,"deploy_speed":7,"base_speed":140,"power":1100,"weapon_type":2,
+	 "base_hp":480,"range_value":99,"deploy_speed":7,"base_speed":140,"power":1100,"weapon_type":2,
 	 "weapon_label":"7.62mm舱门机枪/轻型机炮",
 	 "atk_l":80,"atk_l_speed":0.83,"atk_l_windup":0.241,"atk_l_active":0.12,
 	 "atk_a":99,"atk_a_speed":0.67,"atk_a_windup":0.299,"atk_a_active":0.149,
@@ -1475,7 +1475,7 @@ const _TABLE: Array = [
 	 "w_light":"植入式自动步枪/重型粒子炮","w_armor":"85mm/105mm主炮","w_air":"12.7mm重机枪"},
 
 	{"card_id":"fut_nano_drone","display_name":"纳米修复机","era":4,"combat_kind":3,"tier":Tier.VETERAN,
-	 "base_hp":440,"range_value":99,"deploy_speed":5,"base_speed":120,"power":1000,"weapon_type":3,
+	 "base_hp":590,"range_value":99,"deploy_speed":5,"base_speed":120,"power":1000,"weapon_type":3,
 	 "weapon_label":"纳米修复射线",
 	 "atk_l":106,"atk_l_speed":0.83,"atk_l_windup":0.241,"atk_l_active":0.12,
 	 "atk_a":131,"atk_a_speed":0.67,"atk_a_windup":0.299,"atk_a_active":0.149,
@@ -1684,13 +1684,13 @@ const _TABLE: Array = [
 	 "def_l":52,"def_a":88,"def_air":15,
 	 "w_light":"相位刃","w_armor":"","w_air":""},
 
-	{"card_id":"fut_inf_c96","display_name":"毛瑟 C96 征召兵排","era":0,"combat_kind":0,"tier":Tier.GRUNT,
-	 "base_hp":91,"range_value":1,"deploy_speed":4,"base_speed":80,"power":120,"weapon_type":0,
+	{"card_id":"fut_inf_c96","display_name":"毛瑟 C96 征召兵排","era":4,"combat_kind":0,"tier":Tier.GRUNT,
+	 "base_hp":500,"range_value":1,"deploy_speed":4,"base_speed":100,"power":350,"weapon_type":0,
 	 "weapon_label":"冲锋枪","enemy_only":true,
-	 "atk_l":27,"atk_l_speed":1.5,"atk_l_windup":0.133,"atk_l_active":0.067,
-	 "atk_a":12,"atk_a_speed":1.0,"atk_a_windup":0.2,"atk_a_active":0.1,
+	 "atk_l":170,"atk_l_speed":1.5,"atk_l_windup":0.133,"atk_l_active":0.067,
+	 "atk_a":75,"atk_a_speed":1.0,"atk_a_windup":0.2,"atk_a_active":0.1,
 	 "atk_air":0,"atk_air_speed":1.0,"atk_air_windup":0.2,"atk_air_active":0.1,
-	 "def_l":6,"def_a":3,"def_air":2,
+	 "def_l":45,"def_a":50,"def_air":15,
 	 "w_light":"冲锋枪","w_armor":"","w_air":""},
 
 	{"card_id":"fut_arm_sdkfz","display_name":"Sd.Kfz.251/1 半履带车","era":4,"combat_kind":1,"tier":Tier.VETERAN,
@@ -2200,6 +2200,10 @@ static func _entry_to_card(entry: Dictionary) -> CardResource:
 	c.power = int(entry.get("power", 10))
 	c.weapon_type = int(entry.get("weapon_type", 0))
 	c.weapon_label = String(entry.get("weapon_label", ""))
+	# 平衡修复（2026-08-16 经济审查）：此前全表未设 energy_cost，所有卡吃
+	# CardResource 默认 5.0——蜂群与终极单位同价，战中能量经济无约束力。
+	# 改按战力定价（4~15），配合 ENERGY_START=100 形成群海 vs 精英的真实取舍。
+	c.energy_cost = _deploy_energy_cost(entry)
 	# 三维攻击
 	c.attack_light = float(entry.get("atk_l", 0.0))
 	c.attack_armor = float(entry.get("atk_a", 0.0))
@@ -2238,6 +2242,13 @@ static func _entry_to_card(entry: Dictionary) -> CardResource:
 	# 类型行
 	c.type_line = _make_type_line(c.era, c.combat_kind, c.is_dropped_card)
 	return c
+
+
+## 平衡修复（2026-08-16）：部署能耗按战力定价。clampi(2 + power/120, 4, 15)——
+## 一战步兵(power 18)≈4、冷战坦克(576)≈6、现代重坦(1140)≈11、近未来终极(1590)=15。
+static func _deploy_energy_cost(entry: Dictionary) -> float:
+	var p: int = int(entry.get("power", 10))
+	return float(clampi(2 + int(p / 120.0), 4, 15))
 
 
 ## v7.x 修复：rarity 推断（与 default_cards._infer_rarity 同口径）。

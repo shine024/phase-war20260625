@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<meta http-equiv="x-ua-compatible" content="IE=edge" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>GdUnit4 Testsuite</title>
+	<link rel="stylesheet" href="../css/styles.css">
+	<link href="../css/breadcrumb.css" rel="stylesheet" type="text/css" />
+
+	<script src="https://code.jquery.com/jquery-3.6.4.js"></script>
+	<script>
+		$(document).ready(function () {
+			var report_view = $('#report_area').find('.report-column')
+
+			$('#report-table tr').click(function () {
+				var report = $(this).find('.report-column').html();
+				report_view.html(report)
+				$('.selected').removeClass('selected');
+				$(this).addClass('selected');
+			});
+		});
+	</script>
+</head>
+
+<body>
+	<header>
+		<div class="logo">
+			<img src="../css/logo.png" alt="GdUnit4 Logo">
+			<span>GdUnit4</span>
+		</div>
+		<div class="report-container">
+			<h1>Testsuite Report</h1>
+			<div>
+				<span class="label">res://tests/unit/balance/test_unit_era_balance.gd</span>
+			</div>
+			<div class="summary">
+				<div class="summary-item">
+					<span class="label">Tests</span>
+					<span class="value">8</span>
+				</div>
+				<div class="summary-item">
+					<span class="label">Skipped</span>
+					<span class="value">0</span>
+				</div>
+				<div class="summary-item">
+					<span class="label">Flaky</span>
+					<span class="value">0</span>
+				</div>
+				<div class="summary-item">
+					<span class="label">Failures</span>
+					<span class="value">7</span>
+				</div>
+				<div class="summary-item">
+					<span class="label">Orphans</span>
+					<span class="value">0</span>
+				</div>
+				<div class="summary-item">
+					<span class="label">Duration</span>
+					<span class="value">3s 273ms</span>
+				</div>
+				<div class="success-rate">
+					<div class="check-icon status-failed">✓</div>
+					<div class="rate-text">
+						<span class="label">Success Rate</span>
+						<span class="value">12%</span>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="breadcrumb">
+			<a href="../index.html"><span>All</span></a>
+			<a href="../path/tests.unit.balance.html"><span>tests/unit/balance</span></a>
+			<a class="active" href="#"><span>test_unit_era_balance</span></a>
+		</div>
+	</header>
+
+	<main>
+		<div class="tab-report-grid">
+			<div class="grid-item tab">
+				<table id="report-table">
+					<thead>
+						<tr>
+							<th>Testcase</th>
+							<th>Result</th>
+							<th>Skipped</th>
+							<th>Orphans</th>
+							<th>Duration</th>
+							<th class="report-column">Report</th>
+						</tr>
+					</thead>
+					<tbody>
+						
+								<tr class="testcase-group">
+									<td>test_adjacent_era_dps_ratio_within_threshold</td>
+									<td><span class="status status-failed">FAILED</span></td>
+									<td>0</td>
+									<td>0</td>
+									<td>113ms</td>
+									<td class="report-column">
+										<pre>
+line 97: 
+era 0→1 DPS中位数比 2.39 > 1.50（中位数 [65.0, 155.5, 235.5, 408.5, 456.0]）
+era 1→2 DPS中位数比 1.51 > 1.50（中位数 [65.0, 155.5, 235.5, 408.5, 456.0]）
+era 2→3 DPS中位数比 1.73 > 1.50（中位数 [65.0, 155.5, 235.5, 408.5, 456.0]）
+
+										</pre>
+									</td>
+								</tr>
+
+
+								<tr class="testcase-group">
+									<td>test_adjacent_era_hp_ratio_within_threshold</td>
+									<td><span class="status status-failed">FAILED</span></td>
+									<td>0</td>
+									<td>0</td>
+									<td>124ms</td>
+									<td class="report-column">
+										<pre>
+line 115: 
+era 0→1 HP中位数比 2.52 > 1.60（中位数 [162.0, 409.0, 548.5, 925.0, 1175.0]）
+era 2→3 HP中位数比 1.69 > 1.60（中位数 [162.0, 409.0, 548.5, 925.0, 1175.0]）
+
+										</pre>
+									</td>
+								</tr>
+
+
+								<tr class="testcase-group">
+									<td>test_intra_era_kind_hp_outlier</td>
+									<td><span class="status status-failed">FAILED</span></td>
+									<td>0</td>
+									<td>0</td>
+									<td>118ms</td>
+									<td class="report-column">
+										<pre>
+line 136: 
+era 0 kind 0 同档HP max/min 2.21 > 2.00（min 91 max 201）
+era 2 kind 2 同档HP max/min 2.06 > 2.00（min 245 max 504）
+era 3 kind 1 同档HP max/min 2.07 > 2.00（min 1086 max 2250）
+era 3 kind 2 同档HP max/min 2.21 > 2.00（min 407 max 900）
+era 3 kind 3 同档HP max/min 2.85 > 2.00（min 333 max 950）
+era 4 kind 3 同档HP max/min 2.67 > 2.00（min 440 max 1175）
+
+										</pre>
+									</td>
+								</tr>
+
+
+								<tr class="testcase-group">
+									<td>test_aa_specialist_air_is_primary_output</td>
+									<td><span class="status status-failed">FAILED</span></td>
+									<td>0</td>
+									<td>0</td>
+									<td>113ms</td>
+									<td class="report-column">
+										<pre>
+line 154: 
+ww1_37mm（37mm高射炮）对空DPS 18 应≥对轻 33 与对装甲 56——防空特化被通用火力反超
+mod_stinger（毒刺导弹兵）对空DPS 50 应≥对轻 98 与对装甲 163——防空特化被通用火力反超
+
+										</pre>
+									</td>
+								</tr>
+
+
+								<tr class="testcase-group">
+									<td>test_aa_specialist_vs_era_best</td>
+									<td><span class="status status-failed">FAILED</span></td>
+									<td>0</td>
+									<td>0</td>
+									<td>124ms</td>
+									<td class="report-column">
+										<pre>
+line 170: 
+ww1_37mm（37mm高射炮，era 0）对空DPS 18 < 时代最佳 96 的 30%
+mod_stinger（毒刺导弹兵，era 3）对空DPS 50 < 时代最佳 1650 的 30%
+
+										</pre>
+									</td>
+								</tr>
+
+
+								<tr class="testcase-group">
+									<td>test_no_boundary_violations</td>
+									<td><span class="status status-passed">PASSED</span></td>
+									<td>0</td>
+									<td>0</td>
+									<td>119ms</td>
+									<td class="report-column">
+										<pre>
+
+										</pre>
+									</td>
+								</tr>
+
+
+								<tr class="testcase-group">
+									<td>test_card_id_prefix_matches_era</td>
+									<td><span class="status status-failed">FAILED</span></td>
+									<td>0</td>
+									<td>0</td>
+									<td>100ms</td>
+									<td class="report-column">
+										<pre>
+line 227: 
+fut_inf_c96 前缀暗示 era 4 但 era 字段=0（时代池错位）
+
+										</pre>
+									</td>
+								</tr>
+
+
+								<tr class="testcase-group">
+									<td>test_at_specialist_armor_is_primary_output</td>
+									<td><span class="status status-failed">FAILED</span></td>
+									<td>0</td>
+									<td>0</td>
+									<td>124ms</td>
+									<td class="report-column">
+										<pre>
+line 244: 
+ww2_inf_panzerschreck 不在统一卡表（AT_SPECIALIST_IDS 需更新）
+ww2_inf_bazooka（巴祖卡组）对装甲DPS 27 < 对轻装DPS 90——反装甲特化反转（对照敌方同名系 266 vs 40）
+cold_rpg（RPG火箭筒组）对装甲DPS 35 < 对轻装DPS 116——反装甲特化反转（对照敌方同名系 266 vs 40）
+mod_javelin（标枪导弹兵）对装甲DPS 68 < 对轻装DPS 228——反装甲特化反转（对照敌方同名系 266 vs 40）
+mod_hummer_tow（悍马·陶式）对装甲DPS 58 < 对轻装DPS 192——反装甲特化反转（对照敌方同名系 266 vs 40）
+
+										</pre>
+									</td>
+								</tr>
+
+					</tbody>
+				</table>
+			</div>
+			<div id="report_area" class="grid-item tab">
+				<h4>Failure Report</h4>
+				<div class="report-column"></div>
+			</div>
+		</div>
+	</main>
+
+	<footer>
+		<p>Generated by <a href="https://github.com/MikeSchulze/gdUnit4">GdUnit4</a> at 2026-08-16 03:00:54</p>
+		<div class="status-legend">
+			<span class="status-legend-item">
+				<span class="status-box status-skipped"></span> Skipped
+			</span>
+			<span class="status-legend-item">
+				<span class="status-box status-passed"></span> Passed
+			</span>
+			<span class="status-legend-item">
+				<span class="status-box status-flaky"></span> Flaky
+			</span>
+			<span class="status-legend-item">
+				<span class="status-box status-warning"></span> Warning
+			</span>
+			<span class="status-legend-item">
+				<span class="status-box status-failed"></span> Failed
+			</span>
+			<span class="status-legend-item">
+				<span class="status-box status-error"></span> Error
+			</span>
+		</div>
+	</footer>
+</body>
+
+<script>
+	function groupTableRows() {
+		const table = document.getElementById('report-table');
+		const rows = table.querySelectorAll('tbody tr');
+
+		let previousTestCase = '';
+		let groupStartIndex = 0;
+		let groupColorToggle = true; // Toggle between two colors
+
+		rows.forEach((row, index) => {
+			const testCaseName = row.cells[0].textContent.trim();
+
+			if (testCaseName !== previousTestCase) {
+				// Close the previous group
+				if (index > 0 && groupStartIndex !== index - 1) {
+					// Apply background color to the group
+					const groupClass = groupColorToggle ? 'group-bg-1' : 'group-bg-2';
+					for (let i = groupStartIndex; i <= index - 1; i++) {
+						rows[i].classList.add(groupClass);
+					}
+
+					// Toggle background color for the next group
+					groupColorToggle = !groupColorToggle;
+				}
+
+				// Start a new group
+				groupStartIndex = index;
+			}
+
+			previousTestCase = testCaseName;
+		});
+
+		// Handle the last group
+		if (groupStartIndex !== rows.length - 1) {
+			// Apply background color to the last group
+			const groupClass = groupColorToggle ? 'group-bg-1' : 'group-bg-2';
+			for (let i = groupStartIndex; i < rows.length; i++) {
+				rows[i].classList.add(groupClass);
+			}
+		}
+	}
+
+	// Call the function to group table rows after the DOM loads
+	document.addEventListener('DOMContentLoaded', groupTableRows);
+</script>
+
+</html>

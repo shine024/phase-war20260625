@@ -989,20 +989,16 @@ static func _describe_attack_speed(interval_sec: float) -> String:
 	return "极慢"
 
 ## 用于战斗单位卡文案
+## 平衡修复（2026-08-16）：移除时代倍率乘算——v6.8 起我方单位不按时代放大数值，
+## 统一卡表 base_* 字段已按时代标定，此处再乘 era_damage_multiplier 会双重计数
+## （近未来显示伤害虚高 1.8×）。era_override 参数保留签名兼容但不再参与缩放。
+@warning_ignore("unused_parameter")
 static func summarize_weapon_stats_from_card(card: CardResource, era_override: int = -1) -> String:
-	var e: int = era_override if era_override >= 0 else card.era
 	var atk_light: float = card.attack_light
 	var atk_armor: float = card.attack_armor
 	var atk_air: float = card.attack_air
-	# v3：使用新字段
 	var rng: float = float(card.range_value * 100.0)  # 格转像素
 	var ivl: float = 1.0 / card.attack_speed if card.attack_speed > 0 else 1.0
-	if e >= 0:
-		var multiplier = BattleCardV3.era_damage_multiplier(clampi(e, 0, 4))
-		atk_light *= multiplier
-		atk_armor *= multiplier
-		atk_air *= multiplier
-		rng *= BattleCardV3.era_range_multiplier(clampi(e, 0, 4))
 	var total_dmg = atk_light + atk_armor + atk_air
 	return "伤害 %d｜射程 %s｜攻速 %s" % [int(round(total_dmg)), _describe_weapon_range(rng), _describe_attack_speed(ivl)]
 

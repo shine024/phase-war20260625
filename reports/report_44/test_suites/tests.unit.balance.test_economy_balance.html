@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<meta http-equiv="x-ua-compatible" content="IE=edge" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>GdUnit4 Testsuite</title>
+	<link rel="stylesheet" href="../css/styles.css">
+	<link href="../css/breadcrumb.css" rel="stylesheet" type="text/css" />
+
+	<script src="https://code.jquery.com/jquery-3.6.4.js"></script>
+	<script>
+		$(document).ready(function () {
+			var report_view = $('#report_area').find('.report-column')
+
+			$('#report-table tr').click(function () {
+				var report = $(this).find('.report-column').html();
+				report_view.html(report)
+				$('.selected').removeClass('selected');
+				$(this).addClass('selected');
+			});
+		});
+	</script>
+</head>
+
+<body>
+	<header>
+		<div class="logo">
+			<img src="../css/logo.png" alt="GdUnit4 Logo">
+			<span>GdUnit4</span>
+		</div>
+		<div class="report-container">
+			<h1>Testsuite Report</h1>
+			<div>
+				<span class="label">res://tests/unit/balance/test_economy_balance.gd</span>
+			</div>
+			<div class="summary">
+				<div class="summary-item">
+					<span class="label">Tests</span>
+					<span class="value">5</span>
+				</div>
+				<div class="summary-item">
+					<span class="label">Skipped</span>
+					<span class="value">0</span>
+				</div>
+				<div class="summary-item">
+					<span class="label">Flaky</span>
+					<span class="value">0</span>
+				</div>
+				<div class="summary-item">
+					<span class="label">Failures</span>
+					<span class="value">17</span>
+				</div>
+				<div class="summary-item">
+					<span class="label">Orphans</span>
+					<span class="value">0</span>
+				</div>
+				<div class="summary-item">
+					<span class="label">Duration</span>
+					<span class="value">4s 916ms</span>
+				</div>
+				<div class="success-rate">
+					<div class="check-icon status-error">✓</div>
+					<div class="rate-text">
+						<span class="label">Success Rate</span>
+						<span class="value">0%</span>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="breadcrumb">
+			<a href="../index.html"><span>All</span></a>
+			<a href="../path/tests.unit.balance.html"><span>tests/unit/balance</span></a>
+			<a class="active" href="#"><span>test_economy_balance</span></a>
+		</div>
+	</header>
+
+	<main>
+		<div class="tab-report-grid">
+			<div class="grid-item tab">
+				<table id="report-table">
+					<thead>
+						<tr>
+							<th>Testcase</th>
+							<th>Result</th>
+							<th>Skipped</th>
+							<th>Orphans</th>
+							<th>Duration</th>
+							<th class="report-column">Report</th>
+						</tr>
+					</thead>
+					<tbody>
+						
+								<tr class="testcase-group">
+									<td>test_deploy_energy_differentiated</td>
+									<td><span class="status status-passed">PASSED</span></td>
+									<td>0</td>
+									<td>0</td>
+									<td>126ms</td>
+									<td class="report-column">
+										<pre>
+
+										</pre>
+									</td>
+								</tr>
+
+
+								<tr class="testcase-group">
+									<td>test_income_curve_monotonic_with_bounded_era_jumps</td>
+									<td><span class="status status-passed">PASSED</span></td>
+									<td>0</td>
+									<td>0</td>
+									<td>89ms</td>
+									<td class="report-column">
+										<pre>
+
+										</pre>
+									</td>
+								</tr>
+
+
+								<tr class="testcase-group">
+									<td>test_mod_sink_vs_income_sync</td>
+									<td><span class="status status-passed">PASSED</span></td>
+									<td>0</td>
+									<td>0</td>
+									<td>99ms</td>
+									<td class="report-column">
+										<pre>
+
+										</pre>
+									</td>
+								</tr>
+
+
+								<tr class="testcase-group">
+									<td>test_mod_effect_caps</td>
+									<td><span class="status status-error">ERROR</span></td>
+									<td>0</td>
+									<td>0</td>
+									<td>676ms</td>
+									<td class="report-column">
+										<pre>
+line 155: Godot Runtime Error !
+	'at: EconomyBalanceTest._scan_effect_caps (res://tests/unit/balance/test_economy_balance.gd:155)'
+Error: 'Invalid call. Nonexistent 'String' constructor.'
+line 155: Godot Runtime Error !
+	'at: EconomyBalanceTest._scan_effect_caps (res://tests/unit/balance/test_economy_balance.gd:155)'
+Error: 'Invalid call. Nonexistent 'String' constructor.'
+line 155: Godot Runtime Error !
+	'at: EconomyBalanceTest._scan_effect_caps (res://tests/unit/balance/test_economy_balance.gd:155)'
+Error: 'Invalid call. Nonexistent 'String' constructor.'
+line 155: Godot Runtime Error !
+	'at: EconomyBalanceTest._scan_effect_caps (res://tests/unit/balance/test_economy_balance.gd:155)'
+Error: 'Invalid call. Nonexistent 'String' constructor.'
+line 155: Godot Runtime Error !
+	'at: EconomyBalanceTest._scan_effect_caps (res://tests/unit/balance/test_economy_balance.gd:155)'
+Error: 'Invalid call. Nonexistent 'String' constructor.'
+line 155: Godot Runtime Error !
+	'at: EconomyBalanceTest._scan_effect_caps (res://tests/unit/balance/test_economy_balance.gd:155)'
+Error: 'Invalid call. Nonexistent 'String' constructor.'
+line 155: Godot Runtime Error !
+	'at: EconomyBalanceTest._scan_effect_caps (res://tests/unit/balance/test_economy_balance.gd:155)'
+Error: 'Invalid call. Nonexistent 'String' constructor.'
+line 155: Godot Runtime Error !
+	'at: EconomyBalanceTest._scan_effect_caps (res://tests/unit/balance/test_economy_balance.gd:155)'
+Error: 'Invalid call. Nonexistent 'String' constructor.'
+line 155: Godot Runtime Error !
+	'at: EconomyBalanceTest._scan_effect_caps (res://tests/unit/balance/test_economy_balance.gd:155)'
+Error: 'Invalid call. Nonexistent 'String' constructor.'
+line 155: Godot Runtime Error !
+	'at: EconomyBalanceTest._scan_effect_caps (res://tests/unit/balance/test_economy_balance.gd:155)'
+Error: 'Invalid call. Nonexistent 'String' constructor.'
+line 155: Godot Runtime Error !
+	'at: EconomyBalanceTest._scan_effect_caps (res://tests/unit/balance/test_economy_balance.gd:155)'
+Error: 'Invalid call. Nonexistent 'String' constructor.'
+line 155: Godot Runtime Error !
+	'at: EconomyBalanceTest._scan_effect_caps (res://tests/unit/balance/test_economy_balance.gd:155)'
+Error: 'Invalid call. Nonexistent 'String' constructor.'
+line 155: Godot Runtime Error !
+	'at: EconomyBalanceTest._scan_effect_caps (res://tests/unit/balance/test_economy_balance.gd:155)'
+Error: 'Invalid call. Nonexistent 'String' constructor.'
+line 155: Godot Runtime Error !
+	'at: EconomyBalanceTest._scan_effect_caps (res://tests/unit/balance/test_economy_balance.gd:155)'
+Error: 'Invalid call. Nonexistent 'String' constructor.'
+line 155: Godot Runtime Error !
+	'at: EconomyBalanceTest._scan_effect_caps (res://tests/unit/balance/test_economy_balance.gd:155)'
+Error: 'Invalid call. Nonexistent 'String' constructor.'
+line 155: Godot Runtime Error !
+	'at: EconomyBalanceTest._scan_effect_caps (res://tests/unit/balance/test_economy_balance.gd:155)'
+Error: 'Invalid call. Nonexistent 'String' constructor.'
+line 198: 
+infantry_mods.gd.inf_10_saw.effects.move_speed = -10.00 超属性类上限 0.60
+infantry_mods.gd.inf_14_knee_pads.effects.move_speed = 5.00 超属性类上限 0.60
+infantry_mods.gd.inf_15_riot_shield.effects.move_speed = -20.00 超属性类上限 0.60
+infantry_mods.gd.inf_16_exoskeleton.effects.move_speed = 15.00 超属性类上限 0.60
+infantry_mods.gd.inf_22_breaching.effects.urban_move_bonus = 10.00 超属性类上限 0.60
+armor_mods.gd.arm_07_gun_missile.grant_slot.windup = 0.60 超攻速类上限 0.50
+armor_mods.gd.arm_09_turbine.effects.move_speed = 20.00 超属性类上限 0.60
+armor_mods.gd.arm_10_diesel_turbo.effects.move_speed = 10.00 超属性类上限 0.60
+armor_mods.gd.arm_14_mine_plow.effects.move_speed = -5.00 超属性类上限 0.60
+artillery_mods.gd.art_13_apfsds_sabot.effects.armor_break_stacks = 5.00 超属性类上限 0.60
+air_mods.gd.air_01_turbofan.effects.move_speed = 30.00 超属性类上限 0.60
+air_mods.gd.air_14_swing_wing.effects.move_speed = 20.00 超属性类上限 0.60
+recon_mods.gd.rec_07_gps.effects.move_speed = 10.00 超属性类上限 0.60
+recon_mods.gd.rec_09_breaching.effects.urban_move_bonus = 20.00 超属性类上限 0.60
+recon_mods.gd.rec_12_atv.effects.move_speed = 30.00 超属性类上限 0.60
+engineer_mods.gd.eng_04_bridge.effects.ally_river_bonus = 1.00 超属性类上限 0.60
+engineer_mods.gd.eng_05_shovel.effects.move_speed = -5.00 超属性类上限 0.60
+universal_mods.gd.gen_05_shield.effects.move_speed = -10.00 超属性类上限 0.60
+universal_mods.gd.gen_overload_capacitor.effects.emp_true_damage_bonus = 8.00 超属性类上限 0.60
+mod_effects.gd.MOD_01.attack_multiplier = 1.15 超属性类上限 0.60
+mod_effects.gd.MOD_02.attack_multiplier = 1.00 超属性类上限 0.60
+mod_effects.gd.MOD_03.attack_multiplier = 1.00 超属性类上限 0.60
+mod_effects.gd.MOD_04.attack_multiplier = 1.00 超属性类上限 0.60
+mod_effects.gd.MOD_05.attack_multiplier = 1.30 超属性类上限 0.60
+mod_effects.gd.MOD_06.attack_multiplier = 1.30 超属性类上限 0.60
+mod_effects.gd.MOD_07.attack_multiplier = 1.40 超属性类上限 0.60
+mod_effects.gd.MOD_08.attack_multiplier = 1.00 超属性类上限 0.60
+mod_effects.gd.MOD_09.attack_multiplier = 1.00 超属性类上限 0.60
+mod_effects.gd.MOD_10.attack_multiplier = 1.00 超属性类上限 0.60
+mod_effects.gd.MOD_11.attack_multiplier = 1.00 超属性类上限 0.60
+mod_effects.gd.MOD_12.attack_multiplier = 1.00 超属性类上限 0.60
+mod_effects.gd.MOD_13.attack_multiplier = 1.00 超属性类上限 0.60
+mod_effects.gd.MOD_14.attack_multiplier = 1.00 超属性类上限 0.60
+mod_effects.gd.MOD_15.attack_multiplier = 1.00 超属性类上限 0.60
+mod_effects.gd.MOD_16.attack_multiplier = 1.00 超属性类上限 0.60
+mod_effects.gd.MOD_17.attack_multiplier = 1.00 超属性类上限 0.60
+mod_effects.gd.MOD_18.attack_multiplier = 1.00 超属性类上限 0.60
+mod_effects.gd.MOD_19.attack_multiplier = 1.00 超属性类上限 0.60
+mod_effects.gd.MOD_20.attack_multiplier = 1.00 超属性类上限 0.60
+
+										</pre>
+									</td>
+								</tr>
+
+
+								<tr class="testcase-group">
+									<td>test_first_level_affords_cheapest_mod</td>
+									<td><span class="status status-passed">PASSED</span></td>
+									<td>0</td>
+									<td>0</td>
+									<td>107ms</td>
+									<td class="report-column">
+										<pre>
+
+										</pre>
+									</td>
+								</tr>
+
+					</tbody>
+				</table>
+			</div>
+			<div id="report_area" class="grid-item tab">
+				<h4>Failure Report</h4>
+				<div class="report-column"></div>
+			</div>
+		</div>
+	</main>
+
+	<footer>
+		<p>Generated by <a href="https://github.com/MikeSchulze/gdUnit4">GdUnit4</a> at 2026-08-16 03:23:59</p>
+		<div class="status-legend">
+			<span class="status-legend-item">
+				<span class="status-box status-skipped"></span> Skipped
+			</span>
+			<span class="status-legend-item">
+				<span class="status-box status-passed"></span> Passed
+			</span>
+			<span class="status-legend-item">
+				<span class="status-box status-flaky"></span> Flaky
+			</span>
+			<span class="status-legend-item">
+				<span class="status-box status-warning"></span> Warning
+			</span>
+			<span class="status-legend-item">
+				<span class="status-box status-failed"></span> Failed
+			</span>
+			<span class="status-legend-item">
+				<span class="status-box status-error"></span> Error
+			</span>
+		</div>
+	</footer>
+</body>
+
+<script>
+	function groupTableRows() {
+		const table = document.getElementById('report-table');
+		const rows = table.querySelectorAll('tbody tr');
+
+		let previousTestCase = '';
+		let groupStartIndex = 0;
+		let groupColorToggle = true; // Toggle between two colors
+
+		rows.forEach((row, index) => {
+			const testCaseName = row.cells[0].textContent.trim();
+
+			if (testCaseName !== previousTestCase) {
+				// Close the previous group
+				if (index > 0 && groupStartIndex !== index - 1) {
+					// Apply background color to the group
+					const groupClass = groupColorToggle ? 'group-bg-1' : 'group-bg-2';
+					for (let i = groupStartIndex; i <= index - 1; i++) {
+						rows[i].classList.add(groupClass);
+					}
+
+					// Toggle background color for the next group
+					groupColorToggle = !groupColorToggle;
+				}
+
+				// Start a new group
+				groupStartIndex = index;
+			}
+
+			previousTestCase = testCaseName;
+		});
+
+		// Handle the last group
+		if (groupStartIndex !== rows.length - 1) {
+			// Apply background color to the last group
+			const groupClass = groupColorToggle ? 'group-bg-1' : 'group-bg-2';
+			for (let i = groupStartIndex; i < rows.length; i++) {
+				rows[i].classList.add(groupClass);
+			}
+		}
+	}
+
+	// Call the function to group table rows after the DOM loads
+	document.addEventListener('DOMContentLoaded', groupTableRows);
+</script>
+
+</html>

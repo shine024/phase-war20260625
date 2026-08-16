@@ -994,8 +994,13 @@ func install_modification(card: CardResource, mod_id: String, slot: int = -1) ->
 			return result
 
 	# 计算纳米材料消耗
-	var base_power = get_base_power_for_mod_cost(card.card_id)
-	var nano_cost = int(base_power * 0.5)  # 改造消耗卡牌战力50%的纳米材料
+	# 平衡修复（2026-08-16 经济审查）：原公式 (80+28)×rarity×0.5 与卡牌本身无关——
+	# 虚空领主与一战步枪班同价（~54 纳米），后期单关收入 ~2000 纳米下改造形同免费
+	# （水槽压力跨时代通缩 ~25×）。改按卡牌战力定价，且每已装一个改造 +20% 递增，
+	# 恢复"满改一张时代顶级卡 ≈ 数关收入"的 sink 压力。
+	var card_power: float = maxf(60.0, float(card.power))
+	var installed_count: int = card.mods.size()
+	var nano_cost = int(card_power * 0.5 * (1.0 + 0.2 * installed_count))
 
 	# 检查纳米材料
 	if not BasicResourceManager.can_afford("nano", nano_cost):
@@ -1021,6 +1026,7 @@ func install_modification(card: CardResource, mod_id: String, slot: int = -1) ->
 		id = mod_id,
 		installed_at = Time.get_unix_time_from_system(),
 		enabled = true,  # v6.5: 武器类改造可启用/禁用
+		paid_cost = nano_cost,  # 2026-08-16: 记录实付，供替换/卸下时 50% 返还
 	}
 
 	if slot >= 0 and slot < card.mods.size():
@@ -1120,11 +1126,14 @@ func replace_modification(card: CardResource, old_mod_id: String, new_mod_id: St
 
 	# 查找旧改造位置
 	var old_index = -1
+	var old_paid: int = 0
 	for i in range(card.mods.size()):
 		var mod_entry = card.mods[i]
 		var entry_id = mod_entry.get("id", "") if mod_entry is Dictionary else ""
 		if entry_id == old_mod_id:
 			old_index = i
+			if mod_entry is Dictionary:
+				old_paid = int(mod_entry.get("paid_cost", 0))
 			break
 
 	if old_index < 0:
@@ -1138,10 +1147,15 @@ func replace_modification(card: CardResource, old_mod_id: String, new_mod_id: St
 	var install_result = install_modification(card, new_mod_id, old_index)
 
 	if install_result.success:
-		# 计算返还
-		var old_mod_data = _get_mod_data_from_registry(old_mod_id)
-		var refund = int(old_mod_data.get("cost_install", 0) * 0.5)
-		_add_research(refund)
+		# 计算返还（2026-08-16 经济审查修复：返还与扣费同币种——原扣纳米返研究点属货币错配；
+		# 按实付 paid_cost 50% 返纳米，旧存档条目无 paid_cost 时回退模块表 cost_install 口径）
+		var refund: int = 0
+		if old_paid > 0:
+			refund = int(old_paid * 0.5)
+		else:
+			var old_mod_data = _get_mod_data_from_registry(old_mod_id)
+			refund = int(old_mod_data.get("cost_install", 0) * 0.5)
+		BasicResourceManager.add_resource("nano", refund)
 
 		result.success = true
 		result.refund = refund

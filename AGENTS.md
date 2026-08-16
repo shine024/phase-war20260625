@@ -2306,3 +2306,43 @@ inf_19单兵电台(ally_bonus)、arm_15数据链(ally_hit_bonus)、for_10指挥�
 
 **资源需求（代码已回退兼容，不影响功能）:**
 - `assets/ui/combo_icons/{incendiary,emp,nano,laser,recon,chem}.png`（44×36）——状态条纹理图标，缺失时回退 emoji
+
+## v9.x 关卡设计领域系统性审查修复 (2026-08-16)
+
+**背景:** 用户要求对"关卡设计"领域做系统性审查（先交付情景定义/缺陷分类/量化标准，确认后全量检查再修复，禁止反应式点修）。按 13 类缺陷分类（A完备性/B一致性/C难度曲线/D节奏/E进程星级/F奖励经济/G内容质量/H特殊规则/I相位师遭遇/J环境/K教学/L数据健康/M呈现）过 14 项关卡资产，修复 4 CRITICAL + 2 HIGH + 3 文档/常量级，全部可回溯到分类编号。
+
+**CRITICAL 修复:**
+
+| # | 分类 | 问题 | 修复 |
+|---|------|------|------|
+| C1 | B5/B2/H1 | **survive_waves 全量死规则**：20/40/60/80/100 五关挂了 survive_waves，但这五关全是驻守相位师关（100% 遭遇），`battle_manager._check_win_lose` 对 `_is_phase_master_battle` 提前 return → 规则永不评估（胜负实际=摧毁基地）；而 world_map 向玩家显示"胜利条件: 坚守N波"——显示与行为直接矛盾 | 删除 5 关 win_type/win_param（80/100 保留 energy_mult）；`_set_rules` 加守卫拒绝在驻守关挂 win_type（机器强制标准）；battle_manager 分支保留（普通关未来可用）+ 警示注释 |
+| C2 | A2/B4/H2 | **第85关兵种限制反义**：`restrict_platforms [3,7]` 注释称"3=SUPPORT,7=ENGINEER"，实际 CombatKind 3=AIR、7 不存在（枚举 0-4）→ 实际效果"仅空军可部署"，与"阵地防御战·限支援/工兵"完全相反 | 改 `[2]`（SUPPORT；工兵卡如 ww1_sup_engineer 本身 combat_kind=2）。era4 SUPPORT 卡 9 张，可玩性达标 |
+| C3 | B1/B5/J3 | **环境双源不同步**：world_map/level_info_panel 显示 level_information 程序循环生成的 environment（第10关显示"风暴"），战斗侧（phase_law_manager/battle_damage_system）读 battle_environments（第10关实为"雨"）→ 95 关显示与战斗环境不一致 | 单一真源=BattleEnvironments：world_map/level_info_panel 改读 `get_for_level`；删除 level_information 的环境生成死代码（`_get_environment_for_era_level`/`get_level_environment`/字段）；翻译表补 snow/sandstorm/desert/low_field |
+| C4 | B2/B3/C6 | **难度显示死链**：difficulty_modifier（0.8+level×0.014）自 v8.2 起不在任何战斗乘区中，但 world_map 显示"(0.81×)"、level_info_panel 显示"难度倍数"；公式在 level_information×5 处+enemy_stat_resolver.level_stat_multiplier 双拷贝 | 显示改真实乘区（EnemyLoadoutTiers 档位系数 1.30/1.75/2.00，与战斗链同源）；删 difficulty_modifier 字段+getter+level_stat_multiplier 死函数；`_difficulty_label` 改按档位派生 |
+
+**HIGH 修复:**
+
+| # | 分类 | 问题 | 修复 |
+|---|------|------|------|
+| H1 | A3 | 每时代 descriptions 数组 60 条只用前 20（`range(1,21)`），200 条死数据（67%） | 5 个数组裁剪到 20 条 |
+| H2 | A4/M | level_select 面板零开启方（选关由 world_map 承担），死配置 | 删 ui_lazy_loader 的 level_select 注册（同 v6.6 C3 先例） |
+
+**文档/常量级:** E4 XP 时代边界锯齿（550→198）加设计声明注释（时代整体抬升 1.5×、首关回撤与档位回撤同步）；L1 刷兵数裸 randi_range 加"设计如此"注释；L4 星级公式魔数常量化（STAR_SURVIVAL_*/STAR_TIME_*）。
+
+**审查通过项（零改动）:** A1 字段完备 ✓、D1 时长带宽 ✓、D3 刷兵≤9格（card_grid 路径 max 7）✓、E1/E2 解锁链与时代门槛 ✓、E3 首通奖励单调 ✓、H3 特殊规则 UI 可见 ✓、I1 驻守 20 id 全在 JSON ✓（smoke 复核）、I3 随机遭遇三层回退+旱灾保底 ✓、I4 驻守表时代分区 ✓、K1 时代首关档位回撤（v9.x 阈值 0.15/0.55 已收紧）✓、K3 L5 教学能量惩罚（注释声明教学意图）✓、L2 序列缓存 level-keyed 确定性无害 ✓、L3 边界 clamp ✓。
+
+**保留观察（设计决策，未动）:** ① 剧情关键关（如 L99）无随机遭遇抑制——15% 概率叠加相位师战增加难度方差，是否抑制属玩法决策；② 关卡描述为风味文本（海战关打陆战单位等）——接受现状，不做 100 条文案重写；③ 驻守关×特殊规则叠加（L25/L30/L55/L85/L100）为设计意图，已核实组合可玩（restrict 关对应时代卡池均 ≥2 张/类型）。
+
+**关键文件:**
+- `data/level_information.gd` — 删 environment/difficulty_modifier 死链 + 200 死描述 + 5 处 survive_waves；L85 restrict 修正；_set_rules 驻守守卫
+- `scenes/world_map.gd` — 环境/难度单一真源接入 + 翻译表补值
+- `scenes/ui/level_info_panel.gd` — 同上
+- `data/enemy_stat_resolver.gd` — 删 level_stat_multiplier 死函数
+- `managers/ui_lazy_loader.gd` — 删 level_select 死配置
+- `data/level_eras.gd` — XP 锯齿/刷兵随机设计声明注释
+- `managers/battle/battle_damage_system.gd` — 星级魔数常量化
+- `managers/battle/battle_manager.gd` — survive_waves 分支驻守关警示注释
+- `tests/level_design_audit_smoke.gd`（新增）— 审查回归 1470 断言
+- `tests/level_mechanics_smoke.gd` — 同步新数据真值（原断言与数据早已脱节，属分支既有红灯）
+
+**验证:** level_design_audit_smoke **1470 PASS / 0 FAIL**（字段完备/死键清零/驻守 id×JSON/restrict 枚举+卡池可玩/守卫生效/无重名/法则值域/边界 clamp/7 文件编译）；level_mechanics_smoke **ALL PASS**（数据同步后全绿）；star_config_smoke OK（无回归）；gdparse 8/8 编辑文件通过。`--script` 模式下 world_map/battle_damage_system 等的 SignalBus/ManagerLazyLoader 编译失败为项目既有 autoload 环境限制（报错行均为未改动行）。全项目 `--check-only` 因项目体量长耗时（既有现象）。**待实机:** world_map 关卡弹窗的环境/难度新显示效果、L85 限支援实机体感。

@@ -312,6 +312,12 @@ func process_kill_rewards(killed_unit: Node) -> void:
 #  星级评定（战斗胜利时调用）
 # =========================================================================
 
+# 2026-08-16 关卡设计审查（L4）：星级公式魔数常量化，语义一处可查
+const STAR_SURVIVAL_2STAR: float = 0.5       # 存活率 ≥50% → 2星
+const STAR_SURVIVAL_3STAR: float = 0.8       # 存活率 ≥80% → 3星前提
+const STAR_TIME_ESTIMATE_BIAS: float = 15.0  # 预估时长 = 波数×间隔 + 偏移（含进场/部署时间）
+const STAR_TIME_GOLD_RATIO: float = 0.7      # 3星需在预估时长的 70% 内结束
+
 func calculate_victory_stars(max_deployed: int, units_lost: int, elapsed_time: float, wave_total: int, wave_interval: float) -> int:
 	if max_deployed <= 0:
 		return 1
@@ -320,11 +326,11 @@ func calculate_victory_stars(max_deployed: int, units_lost: int, elapsed_time: f
 		var survived: int = max_deployed - units_lost
 		survival_rate = float(survived) / float(max_deployed)
 	var stars: int = 1
-	if survival_rate >= 0.5:
+	if survival_rate >= STAR_SURVIVAL_2STAR:
 		stars = 2
-	if survival_rate >= 0.8:
-		var estimated_time: float = float(wave_total) * wave_interval + 15.0
-		if estimated_time > 0.0 and elapsed_time <= estimated_time * 0.7:
+	if survival_rate >= STAR_SURVIVAL_3STAR:
+		var estimated_time: float = float(wave_total) * wave_interval + STAR_TIME_ESTIMATE_BIAS
+		if estimated_time > 0.0 and elapsed_time <= estimated_time * STAR_TIME_GOLD_RATIO:
 			stars = 3
 	# [LOG-v5.1] if DEBUG_DAMAGE_LOG: print("[BattleDamageSystem] 星级计算: 部署=%d, 损失=%d, 存活率=%.0f%%, 时间=%.1fs → %d星" % [max_deployed, units_lost, survival_rate * 100.0, elapsed_time, stars])
 	return stars

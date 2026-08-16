@@ -1,15 +1,22 @@
 extends RefCounted
 class_name LevelInformation
-## 关卡详细信息：背景故事、环境、势力控制、可用法则等
+## 关卡详细信息：背景故事、势力控制、可用法则等
 ##
 ## 字段：
 ## - display_name: 关卡显示名称
 ## - description: 关卡背景故事简介
 ## - faction_id: 控制该关卡的势力ID
-## - environment: 环境配置 { weather, terrain, energy_field, time_of_day }
 ## - available_law_families: 该关卡允许的法则家族列表（空=全部可用）
 ##   家族: "STEEL"|"FLAME"|"THUNDER"|"VOID"
-## - difficulty_modifier: 难度倍数（影响敌人属性）
+## - special_rules: v8 批次3 特殊规则（见 _apply_special_rules，仅部分关卡挂载）
+##
+## 2026-08-16 关卡设计审查（单源真理收敛）：
+## - 环境单一真源 = data/battle_environments.gd（BattleEnvironments.get_for_level，
+##   被 phase_law_manager / battle_damage_system 消费）。本表原程序循环生成的
+##   environment 字段与战斗环境双源不同步（如第10关本表显示"风暴"、战斗实为"雨"），已删除。
+## - 难度显示单一真源 = data/enemy_loadout_tiers.gd（时代内进度→档位系数 1.30/1.75/2.00，
+##   即战斗链真实乘区）。本表原 difficulty_modifier（0.8+level×0.014 线性公式）
+##   自 v8.2 起不在任何战斗乘区链中，沦为纯展示误导，已删除。
 ##
 ## 法则限制设计理念：
 ## - 每关至少允许1个家族（玩家总有选择）
@@ -18,7 +25,7 @@ class_name LevelInformation
 ## - 早期关卡限制较严格（1-2个），后期逐渐放宽（2-3个）
 ## - 特殊关卡有特殊限制（如城市关卡禁虚空等）
 
-const LevelEras = preload("res://data/level_eras.gd")
+const PhaseMasterGarrison = preload("res://data/phase_master_garrison.gd")
 
 # 关卡总数：100关 × 5时代
 const LEVEL_COUNT = 100
@@ -89,36 +96,6 @@ func _add_ww1_levels() -> void:
 		"鼓动全线，最后的总攻",
 		"指挥中枢，敌方司令部争夺战",
 		"胜利时刻，一战结束前夜的最后一战",
-		# 新增多样化描述
-		"沼泽地带，泥泞中的艰难推进",
-		"铁路枢纽，物资转运的关键节点",
-		"通讯塔楼，无线电波的秘密",
-		"医疗站遗址，伤员的最后希望",
-		"弹药库爆炸，连环殉爆的震撼",
-		"战俘营突袭，解放被囚的战士",
-		"瞭望塔防线，高处的狙击战场",
-		"浮桥渡口，河流跨越的激战",
-		"废弃教堂，战火中的宁静角落",
-		"石油设施，燃烧的黑色黄金",
-		"潜艇基地，海底威胁的源头",
-		"飞艇库房，空中堡垒的停泊地",
-		"毒气弥漫，化学武器的恐怖",
-		"火焰喷射器，近身的炽热对决",
-		"骑兵冲锋，最后的装甲力量展示",
-		"狙击手对决，子弹与心跳的赛跑",
-		"工兵爆破，铁丝网的撕裂声",
-		"堑壕战马拉松，消耗战的极致",
-		"毒刺陷阱，隐蔽杀手的狩猎场",
-		"信号站劫持，情报战的制高点",
-		"炊事车袭击，战争中的日常温情",
-		"战地邮局，家书的珍贵传递",
-		"红十字医院，中立区的生死线",
-		"水塔争夺，水源控制的拉锯战",
-		"桥梁保卫战，撤退路线的生死线",
-		"后方医院，伤兵归途的驿站",
-		"补给线切断，饥饿围困的绝望",
-		"战壕足球，士兵们的片刻欢乐",
-		"将军指挥所，战略决策的核心"
 	]
 
 	for i in range(1, 21):
@@ -143,9 +120,7 @@ func _add_ww1_levels() -> void:
 			"display_name": "一战·%s" % short_name,
 			"description": descriptions[i - 1],
 			"faction_id": faction_id,
-			"environment": _get_environment_for_era_level(LevelEras.Era.WW1, i),
 			"available_law_families": families,
-			"difficulty_modifier": 0.8 + level_num * 0.014,
 		}
 
 func _add_ww2_levels() -> void:
@@ -175,43 +150,6 @@ func _add_ww2_levels() -> void:
 		"原子弹之影，核武的威胁",
 		"战争机器，二战巅峰之作",
 		"世界重生，新时代的开端",
-		# 新增多样化描述
-		"斯大林格勒废墟，废墟中的巷战",
-		"库尔斯克草原，史上最大规模坦克战",
-		"中途岛海战，航母命运的转折点",
-		"珍珠港突袭，太平洋战争的导火索",
-		"敦刻尔克撤退，失败的胜利",
-		"阿拉曼战役，沙漠之狐的陨落",
-		"瓜达尔卡纳尔岛，太平洋绞肉机",
-		"巴斯通突出部，魔鬼的峡谷",
-		"突出部战役，圣诞节的血战",
-		"市场花园行动，空降兵的悲剧",
-		"布达佩斯围城，多瑙河畔的决战",
-		"安特卫普港，物资补给的生命线",
-		"鲁尔工业区，工业心脏的争夺",
-		"维也纳攻势，纳粹的最终堡垒",
-		"柏林地堡，帝国最后的巢穴",
-		"波兹坦会议，战后秩序的奠定",
-		"广岛与长崎，核时代的开启",
-		"满洲边境，关东军的最后挣扎",
-		"菲律宾群岛，麦克阿瑟的回归",
-		"马里亚纳猎火鸡，空中优势的奠定",
-		# 更多扩展
-		"加莱海峡，登陆佯攻的掩护",
-		"西西里岛，地中海的跳板",
-		"卡西诺山，修道院下的血战",
-		"安齐奥登陆，滩头的僵持",
-		"科罗内斯海战，史上最惨烈的战列舰对决",
-		"威尔士亲王号沉没，日不落帝国的落日",
-		"俾斯麦号猎杀，大西洋上的追逐",
-		"猎杀U艇，大西洋反潜战",
-		"珊瑚海海战，航母时代的来临",
-		"圣克鲁斯群岛，太平洋的拉锯",
-		"塔拉瓦环礁，血腥滩头的教训",
-		"塞班岛失守，日本本土门户大开",
-		"关岛战役，夺回太平洋要塞",
-		"莱特湾海战，史上最大规模海战",
-		"神风特攻，疯狂的最后抵抗"
 	]
 
 	for i in range(1, 21):
@@ -233,9 +171,7 @@ func _add_ww2_levels() -> void:
 			"display_name": "二战·%s" % short_name,
 			"description": descriptions[i - 1],
 			"faction_id": faction_id,
-			"environment": _get_environment_for_era_level(LevelEras.Era.WW2, i),
 			"available_law_families": families,
-			"difficulty_modifier": 0.8 + level_num * 0.014,
 		}
 
 func _add_cold_war_levels() -> void:
@@ -265,43 +201,6 @@ func _add_cold_war_levels() -> void:
 		"冷战峰值，对立的最高点",
 		"苏联解体，帝国的终结",
 		"新世界秩序，冷战的落幕",
-		# 新增多样化描述
-		"柏林墙下，穿越铁幕的逃亡",
-		"核潜艇暗战，大洋深处的幽灵",
-		"U-2侦察机，被击落的雄鹰",
-		"猪湾入侵，切尔诺贝利的阴影",
-		"太空竞赛，月球上的旗帜争夺",
-		"安哥拉内战，代理人的棋盘",
-		"萨尔瓦多内战，中美洲的火焰",
-		"格林纳达政变，小国的大博弈",
-		"巴拿马运河，战略水道的争夺",
-		"乍得冲突，法国的非洲棋局",
-		"埃塞俄比亚饥荒，冷战的人道危机",
-		"伊朗门事件，秘密交易的曝光",
-		"星球大战计划，战略防御的幻想",
-		"潘兴导弹，欧洲核均衡的棋子",
-		"巡航导弹，新式精确打击的诞生",
-		"隐形飞机，雷达盲区的革命",
-		"电子战，信息时代的雏形",
-		"网络中心战概念萌芽的年代",
-		"生化武器库，魔鬼的实验",
-		"太空武器化，制高点的争夺",
-		# 更多扩展
-		"柬埔寨红色高棉，共产主义的极端",
-		"尼加拉瓜桑地诺，反美武装的火种",
-		"阿富汗圣战者，山地中的抵抗",
-		"波兰团结工会，的铁幕裂缝",
-		"罗马尼亚革命，齐奥塞斯库的末日",
-		"波罗的海三国，独立运动的浪潮",
-		"车臣战争，帝国的消化不良",
-		"南斯拉夫解体，血腥的民族冲突",
-		"两伊战争，毒气与人体盾牌",
-		"黎巴嫩内战，中东的火药桶",
-		"以色列黎巴嫩，占领与抵抗",
-		"南非种族隔离，种族的围墙",
-		"纳米比亚独立，非洲的独立浪潮",
-		"莫桑比克内战，葡萄牙帝国的终结",
-		"安哥拉内战终章，冷战非洲的句号"
 	]
 
 	for i in range(1, 21):
@@ -323,9 +222,7 @@ func _add_cold_war_levels() -> void:
 			"display_name": "冷战·%s" % short_name,
 			"description": descriptions[i - 1],
 			"faction_id": faction_id,
-			"environment": _get_environment_for_era_level(LevelEras.Era.COLD_WAR, i),
 			"available_law_families": families,
-			"difficulty_modifier": 0.8 + level_num * 0.014,
 		}
 
 func _add_modern_levels() -> void:
@@ -355,43 +252,6 @@ func _add_modern_levels() -> void:
 		"现代战争，终极的高科技对抗",
 		"多线作战，全球化的冲突",
 		"和平的曙光，战争的可能性",
-		# 新增多样化描述
-		"沙漠之狐行动，夜幕下的精确打击",
-		"斩首行动，无人机的外科手术",
-		"网络渗透，黑暗中的较量",
-		"社交媒体战争，宣传的新战线",
-		"金融战，经济制裁的武器化",
-		"太空博弈，卫星战的雏形",
-		"极地竞争，北极资源的争夺",
-		"深海采矿，蓝色边疆的冲突",
-		"网络勒索，黑客的勒索战争",
-		"关键基础设施，能源系统的脆弱",
-		"电磁脉冲威胁，现代社会的瘫痪",
-		"量子计算威胁，加密体系动摇",
-		"AI武器化，智能战争的黎明",
-		"外骨骼单兵，未来战士的雏形",
-		"高超音速导弹，防御的噩梦",
-		"激光武器，光速的毁灭打击",
-		"网络战司令部，数字战场的指挥",
-		"第五代战机，制空权的革命",
-		"网络情报战，棱镜门的余波",
-		"混合战争，旧战术新包装",
-		# 更多扩展
-		"阿拉伯之春，社交媒体点燃的火焰",
-		"乌克兰危机，欧洲新冷战的序幕",
-		"克里米亚并入，领土变更的争议",
-		"伊斯兰国的崛起，恐怖组织的扩张",
-		"巴黎恐袭，欧洲反恐的转折",
-		"伦敦恐袭，持刀与汽车袭击",
-		"斯诺登事件，监控帝国的崩塌",
-		"朝鲜网络攻击，勒索软件的威胁",
-		"伊朗核协议，破局与重启",
-		"以巴冲突，永不愈合的伤口",
-		"罗兴亚危机，人道主义灾难",
-		"罗卜冲突，军事政变的轮回",
-		"埃塞俄比亚提格雷内战",
-		"苏丹内战，两支军队的对抗",
-		"也门代理人战争，沙特与伊朗的博弈"
 	]
 
 	for i in range(1, 21):
@@ -411,9 +271,7 @@ func _add_modern_levels() -> void:
 			"display_name": "现代·%s" % short_name,
 			"description": descriptions[i - 1],
 			"faction_id": faction_id,
-			"environment": _get_environment_for_era_level(LevelEras.Era.MODERN, i),
 			"available_law_families": families,
-			"difficulty_modifier": 0.8 + level_num * 0.014,
 		}
 
 func _add_future_levels() -> void:
@@ -444,48 +302,6 @@ func _add_future_levels() -> void:
 		"相位临界，构装纪元的终章",
 		"永恒战争，循环的宿命",
 		"新纪元黎明，超越一切的存在",
-		# 新增多样化描述
-		"全息投影战场，虚实难辨的迷雾",
-		"意识上传，数字永生的悖论",
-		"基因武器，定制化的生物威胁",
-		"气候武器，地球本身的武器化",
-		"太空电梯，能源咽喉的争夺",
-		"小行星采矿，宇宙资源的竞赛",
-		"月球基地，前进火星的跳板",
-		"轨道打击武器，天基炮的威胁",
-		"反物质炸弹，万物的终结者",
-		"暗物质探测器，宇宙的阴影",
-		"引力波通讯，无法拦截的信息",
-		"等离子护盾，能量场的壁垒",
-		"相变装甲，适应性防御系统",
-		"自愈金属，机械的再生能力",
-		"蜂群无人机，群体的智慧",
-		"战术AI指挥官，算法将军的崛起",
-		"神经链接武器，脑波控制的可能",
-		"量子加密通信，绝对安全的幻象",
-		"增强现实战场，叠加的死亡线",
-		"元宇宙冲突，虚拟领土的战争",
-		# 更多扩展
-		"时间循环战士，重复的战斗",
-		"平行宇宙干涉，多重现实的交汇",
-		"相位战士，虚实两界的行者",
-		"暗能量引擎，宇宙的推进力",
-		"零点能提取，真空的能量矿藏",
-		"拓扑量子计算机，极致的算力",
-		"情感模拟AI，有意识的武器",
-		"纳米医疗舱，战地即时救治",
-		"模块化机甲，可变形的杀手",
-		"磁轨炮阵列，电磁加速的毁灭",
-		"太空港攻防，轨道工厂的争夺",
-		"卫星网络战，天基系统的瘫痪",
-		"等离子刀，近身的炽白切割",
-		"冷冻休眠舱，极远距离投送",
-		"相位干扰器，空间稳定性的崩溃",
-		"引力透镜伪装，隐形的极致",
-		"熵减场，局部时间倒流",
-		"真空衰变武器，宇宙的终结按钮",
-		"宇宙弦切割，不可阻挡的切割",
-		"暗能量装甲，宇宙级护盾"
 	]
 
 	for i in range(1, 21):
@@ -508,32 +324,8 @@ func _add_future_levels() -> void:
 			"display_name": "近未来·%s" % short_name,
 			"description": descriptions[i - 1],
 			"faction_id": faction_id,
-			"environment": _get_environment_for_era_level(LevelEras.Era.NEAR_FUTURE, i),
 			"available_law_families": families,
-			"difficulty_modifier": 0.8 + level_num * 0.014,
 		}
-
-func _get_environment_for_era_level(era: int, level_in_era: int) -> Dictionary:
-	"""根据时代和关卡内序号生成环境配置"""
-	var env = {}
-
-	# 天气循环：晴朗→雨天→风暴→晴朗
-	var weather_cycle = ["clear", "rain", "storm", "fog"]
-	env["weather"] = weather_cycle[(era * 5 + level_in_era) % weather_cycle.size()]
-
-	# 地形循环
-	var terrain_cycle = ["plain", "mountain", "city", "forest", "desert"]
-	env["terrain"] = terrain_cycle[(era + level_in_era) % terrain_cycle.size()]
-
-	# 能量场循环
-	var energy_cycle = ["normal", "high_field", "void_rift", "nano_fog"]
-	env["energy_field"] = energy_cycle[(era * 3 + level_in_era) % energy_cycle.size()]
-
-	# 时间循环
-	var time_cycle = ["dawn", "day", "dusk", "night"]
-	env["time_of_day"] = time_cycle[(level_in_era) % time_cycle.size()]
-
-	return env
 
 func get_level_info(level: int) -> Dictionary:
 	"""获取指定关卡的详细信息"""
@@ -547,9 +339,9 @@ func get_level_info(level: int) -> Dictionary:
 ##     "restrict_platforms": [0,1],   # 限定可部署 platform_type 白名单（空/缺省=不限）
 ##     "energy_mult": 0.5,             # 能量上限/开局乘率（1.0=正常）
 ##     "energy_regen_mult": 0.5,       # 能量回复乘率（1.0=正常）
-##     "win_type": "survive_waves",    # 特殊胜利：survive_waves=坚守N波后判胜
-##     "win_param": 5,                 # 胜利参数（survive_waves 的波数）
 ##   }
+## win_type=survive_waves 机制保留（battle_manager/_format_special_rules 通用路径），
+## 但【只能挂在非驻守相位师关】——见 _set_rules 守卫说明。
 func get_special_rules(level: int) -> Dictionary:
 	if level < 1 or level > LEVEL_COUNT:
 		return {}
@@ -559,50 +351,58 @@ func get_special_rules(level: int) -> Dictionary:
 ## v8 批次3: 集中挂载关卡特殊规则。
 ## 给关键关（每时代 Boss 关 + 时代首关 + 中段关卡）挂规则。
 ## 字段全可选；未挂规则的关卡 get_special_rules 返回空字典=普通关。
+## 2026-08-16 关卡设计审查修复：
+## - 移除 20/40/60/80/100 的 survive_waves——这 5 关全是驻守相位师关（100% 遭遇，
+##   见 phase_master_garrison.gd），战斗胜负由基地销毁驱动（battle_manager._check_win_lose
+##   对 _is_phase_master_battle 提前 return），survive_waves 永远不会被评估，
+##   属"死规则 + UI 误导读"（world_map 会显示"胜利条件: 坚守N波"但实际必须拆基地）。
+## - 第85关 restrict_platforms [3,7]→[2]：7 不在 CombatKind(0-4)，3=AIR 非 SUPPORT，
+##   原值实际效果="仅空军可部署"，与"阵地防御战·限支援/工兵"意图完全相反。
+##   工兵卡（如 ww1_sup_engineer）combat_kind=2=SUPPORT，修正为 [2] 即覆盖支援+工兵。
 func _apply_special_rules() -> void:
 	# 注：deploy_limit（关卡部署上限）已移除——可上场单位数现由相位仪实际装备的战斗卡数决定。
 	# ─── 一战时代（1-20）───
 	# 第5关：能量受限（教学"能量管理"，回复减半）
 	_set_rules(5, {"energy_regen_mult": 0.5})
-	# 第15关：限定步兵（巷战，重装备无法展开）—— platform_type 0=INFANTRY
+	# 第15关：限定步兵（巷战，重装备无法展开）—— platform_type 0=CombatKind.LIGHT
 	_set_rules(15, {"restrict_platforms": [0]})
-	# 第20关 Boss：坚守5波（=wave_total，survive_waves 先于清场判定：最后一波刷出即胜）
-	_set_rules(20, {"win_type": "survive_waves", "win_param": 5})
 
 	# ─── 二战时代（21-40）───
 	# 第25关：能量减半（资源匮乏战场）
 	_set_rules(25, {"energy_mult": 0.5})
-	# 第30关：限定装甲（装甲突击战）—— platform_type 1=ARMOR
+	# 第30关：限定装甲（装甲突击战）—— platform_type 1=CombatKind.ARMOR
 	_set_rules(30, {"restrict_platforms": [1]})
-	# 第40关 Boss：坚守7波（=wave_total）
-	_set_rules(40, {"win_type": "survive_waves", "win_param": 7})
 
 	# ─── 冷战时代（41-60）───
 	# 第50关：回复减半
 	_set_rules(50, {"energy_regen_mult": 0.5})
-	# 第55关：限定空军/支援（机动战）—— platform_type 2=AIR, 3=SUPPORT
+	# 第55关：限定支援/空军（机动战）—— 2=SUPPORT, 3=AIR（CombatKind）
 	_set_rules(55, {"restrict_platforms": [2, 3]})
-	# 第60关 Boss：坚守8波（=wave_total）
-	_set_rules(60, {"win_type": "survive_waves", "win_param": 8})
 
 	# ─── 现代时代（61-80）───
 	# 第65关：能量减半 + 回复减半（双压）
 	_set_rules(65, {"energy_mult": 0.5, "energy_regen_mult": 0.5})
-	# 第80关 Boss：坚守9波（=wave_total）+ 能量减半
-	_set_rules(80, {"win_type": "survive_waves", "win_param": 9, "energy_mult": 0.5})
+	# 第80关 Boss：能量减半（胜负=摧毁驻守相位师基地）
+	_set_rules(80, {"energy_mult": 0.5})
 
 	# ─── 近未来时代（81-100）───
-	# 第85关：限定支援/工兵（阵地防御战）—— platform_type 3=SUPPORT, 7=ENGINEER
-	_set_rules(85, {"restrict_platforms": [3, 7]})
+	# 第85关：限定支援/工兵（阵地防御战）—— 工兵卡 combat_kind=2=SUPPORT
+	_set_rules(85, {"restrict_platforms": [2]})
 	# 第90关：能量减半
 	_set_rules(90, {"energy_mult": 0.5})
-	# 第100关 终局：坚守10波（=wave_total，终极考验）+ 能量减半
-	_set_rules(100, {"win_type": "survive_waves", "win_param": 10, "energy_mult": 0.5})
+	# 第100关 终局：能量减半（胜负=摧毁奥米伽基地）
+	_set_rules(100, {"energy_mult": 0.5})
 
 
 ## v8 批次3: 给指定关卡挂 special_rules（内部辅助，合并到已有字典）。
+## 2026-08-16 守卫：win_type 类特殊胜利依赖 battle_manager._check_win_lose 的普通关路径；
+## 驻守相位师关（PhaseMasterGarrison）胜负由基地销毁信号驱动、提前 return，
+## 挂上去就是死规则 + UI 误导读，故拒绝挂载。
 func _set_rules(level: int, rules: Dictionary) -> void:
 	if not _level_db.has(level):
+		return
+	if rules.has("win_type") and PhaseMasterGarrison.is_garrison_level(level):
+		push_warning("[LevelInformation] 关卡 %d 是驻守相位师关（胜负=摧毁基地），不支持 win_type 特殊胜利，已拒绝挂载。" % level)
 		return
 	var entry: Dictionary = _level_db[level]
 	entry["special_rules"] = rules
@@ -623,11 +423,6 @@ func get_level_faction(level: int) -> String:
 	var info = get_level_info(level)
 	return info.get("faction_id", "")
 
-func get_level_environment(level: int) -> Dictionary:
-	"""获取关卡环境配置"""
-	var info = get_level_info(level)
-	return info.get("environment", {}).duplicate(true)
-
 func get_available_law_families_for_level(level: int) -> Array:
 	"""获取该关卡允许的法则家族列表（空数组表示全部可用）"""
 	var info = get_level_info(level)
@@ -644,11 +439,6 @@ func is_law_family_available_for_level(family: String, level: int) -> bool:
 ## 已弃用：请使用 get_available_law_families_for_level
 func get_available_laws_for_level(level: int) -> Array:
 	return get_available_law_families_for_level(level)
-
-func get_difficulty_modifier(level: int) -> float:
-	"""获取关卡难度倍数"""
-	var info = get_level_info(level)
-	return info.get("difficulty_modifier", 1.0)
 
 func get_levels_for_faction(faction_id: String) -> Array:
 	"""获取某个势力控制的所有关卡"""
