@@ -133,6 +133,20 @@
     "fireY_pct": 41.333333333333336
   },
   {
+    "id": "ww1_fort_pillbox",
+    "ff": 0.3573,
+    "hf": 0.3573,
+    "fireX": 0.1054,
+    "fireY_pct": 44.93
+  },
+  {
+    "id": "ww1_fort_artillery",
+    "ff": 0.384,
+    "hf": 0.384,
+    "fireX": 0.1177,
+    "fireY_pct": 45.6
+  },
+  {
     "id": "ww2_inf_thompson",
     "ff": 0.3200000000000001,
     "hf": 0.3200000000000001,
@@ -273,6 +287,20 @@
     "fireY_pct": 40.79998779296875
   },
   {
+    "id": "ww2_fort_bunker",
+    "ff": 0.38,
+    "hf": 0.38,
+    "fireX": 0.1677,
+    "fireY_pct": 45.33
+  },
+  {
+    "id": "ww2_fort_flak",
+    "ff": 0.34,
+    "hf": 0.34,
+    "fireX": 0.1221,
+    "fireY_pct": 46.67
+  },
+  {
     "id": "cold_inf_m60",
     "ff": 0.3106667073567708,
     "hf": 0.3106667073567708,
@@ -404,6 +432,20 @@
     "hf": 0.43600006103515626,
     "fireX": 0.32,
     "fireY_pct": 54.4
+  },
+  {
+    "id": "cold_fort_missile",
+    "ff": 0.3213,
+    "hf": 0.3213,
+    "fireX": 0.5177,
+    "fireY_pct": 30.53
+  },
+  {
+    "id": "cold_fort_radar",
+    "ff": 0.328,
+    "hf": 0.328,
+    "fireX": 0.0721,
+    "fireY_pct": 48.53
   },
   {
     "id": "mod_air_technical_e",
@@ -558,6 +600,20 @@
     "hf": 0.4133333333333332,
     "fireX": 0.365625,
     "fireY_pct": 46.666666666666664
+  },
+  {
+    "id": "mod_fort_citadel",
+    "ff": 0.3627,
+    "hf": 0.3627,
+    "fireX": 0.101,
+    "fireY_pct": 48.4
+  },
+  {
+    "id": "mod_fort_phalanx",
+    "ff": 0.3493,
+    "hf": 0.3493,
+    "fireX": 0.0721,
+    "fireY_pct": 48.4
   },
   {
     "id": "platform_future_light",
@@ -739,6 +795,27 @@
     "ff": 0.3559999593098958,
     "hf": 0.3559999593098958,
     "fireX": 0,
-    "fireY_pct": 49.06667073567708
+    "fireY_pct": 49.06667071667708
+  },
+  {
+    "id": "fut_arm_omega",
+    "ff": 0.3067,
+    "hf": 0.3067,
+    "fireX": 0.1033,
+    "fireY_pct": 44
+  },
+  {
+    "id": "fut_fort_ion",
+    "ff": 0.3307,
+    "hf": 0.3307,
+    "fireX": 0.051,
+    "fireY_pct": 50.93
+  },
+  {
+    "id": "fut_fort_shield",
+    "ff": 0.3173,
+    "hf": 0.3173,
+    "fireX": 0.4888,
+    "fireY_pct": 36.93
   }
 ]

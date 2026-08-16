@@ -149,6 +149,11 @@ const _FOE_ID_TO_PLATFORM: Dictionary = {
 		"mod_arm_m1a2sep": "platform_modern_guard_heavy",
 	}
 
+## foe 卡 id → 共用卡图的视觉 archetype id（如 ww2_arm_tiger → platform_ww2_heavy）。
+## 无映射返回空串。供 MuzzleAnchors 等视觉查询做键名回退（foe_X 表里无标注时转查映射目标）。
+static func platform_visual_id_for(card_id: String) -> String:
+	return String(_FOE_ID_TO_PLATFORM.get(String(card_id).strip_edges(), ""))
+
 ## v8.0: 统一表条目（玩家口径）→ foe_stats 口径转换。
 ## 字段映射：base_hp→hp, range_value格→rng像素(×100), atk_l_speed次/秒→ivl秒(1/speed),
 ##           base_speed正值→spd正值(manifest 内部再转负), combat_kind→kind
