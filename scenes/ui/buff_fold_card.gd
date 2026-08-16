@@ -97,6 +97,9 @@ func _toggle(info: Dictionary) -> void:
 
 
 func _process(delta: float) -> void:
+	# P2 性能优化：卡片隐藏时不做任何刷新
+	if not visible:
+		return
 	_refresh_accum += delta
 	if _refresh_accum >= _REFRESH_SEC:
 		_refresh_accum = 0.0

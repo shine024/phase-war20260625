@@ -68,6 +68,21 @@ func _connect_enhancement_signal() -> void:
 	if not cem.enhancement_completed.is_connected(_on_enhancement_completed):
 		cem.enhancement_completed.connect(_on_enhancement_completed)
 
+## P0 性能优化：退出时断开所有信号连接，防止场景切换后连接累积
+func _exit_tree() -> void:
+	if SignalBus:
+		if SignalBus.battle_ended.is_connected(_on_battle_ended):
+			SignalBus.battle_ended.disconnect(_on_battle_ended)
+		if SignalBus.has_signal("unit_died") and SignalBus.unit_died.is_connected(_on_unit_died):
+			SignalBus.unit_died.disconnect(_on_unit_died)
+		if SignalBus.has_signal("quest_progress_changed") and quest_progress_changed.is_connected(_forward_progress_to_signal_bus):
+			quest_progress_changed.disconnect(_forward_progress_to_signal_bus)
+		if SignalBus.has_signal("quest_accepted") and quest_accepted.is_connected(_forward_accepted_to_signal_bus):
+			quest_accepted.disconnect(_forward_accepted_to_signal_bus)
+	var cem = get_node_or_null("/root/CardEnhancementManager")
+	if cem != null and cem.enhancement_completed.is_connected(_on_enhancement_completed):
+		cem.enhancement_completed.disconnect(_on_enhancement_completed)
+
 
 ## v7.x 修复(H5): 本地 quest_progress_changed/quest_accepted 信号转发到 SignalBus，
 ## 让任何不直接持有 QuestManager、订阅 SignalBus 版本的全局监听者都能收到全部进度/接取事件。

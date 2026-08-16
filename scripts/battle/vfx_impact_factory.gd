@@ -458,6 +458,38 @@ static func _get_muzzle_ramp() -> Gradient:
 		_muzzle_ramp.add_point(1.0, Color(1.0, 0.3, 0.0, 0.0))
 	return _muzzle_ramp
 
+## P3 性能优化：热路径 Gradient 缓存（轨道炮碎片/激光灼热/熔融火星/欧米茄放电，
+## 原每次命中 new Gradient + add_point 堆分配）。颜色随武器变的按 Color 键缓存（武器色离散有限）。
+static var _rail_spall_ramp: Gradient = null
+static var _molten_ramp: Gradient = null
+static var _tinted_ramp_cache: Dictionary = {}  # Color -> Gradient（beam/pcol 渐变同构复用）
+
+static func _get_rail_spall_ramp() -> Gradient:
+	if _rail_spall_ramp == null:
+		_rail_spall_ramp = Gradient.new()
+		_rail_spall_ramp.add_point(0.0, Color(1.0, 1.0, 0.95, 1.0))
+		_rail_spall_ramp.add_point(0.4, Color(1.0, 0.7, 0.4, 0.9))
+		_rail_spall_ramp.add_point(1.0, Color(0.4, 0.2, 0.1, 0.0))
+	return _rail_spall_ramp
+
+static func _get_molten_ramp() -> Gradient:
+	if _molten_ramp == null:
+		_molten_ramp = Gradient.new()
+		_molten_ramp.add_point(0.0, Color(1.0, 0.9, 0.5, 1.0))
+		_molten_ramp.add_point(0.5, Color(1.0, 0.45, 0.1, 0.9))
+		_molten_ramp.add_point(1.0, Color(0.3, 0.1, 0.0, 0.0))
+	return _molten_ramp
+
+## 按基色缓存的渐变（白核 → 基色 40% 亮度衰减），激光灼热与欧米茄放电共用同构
+static func _get_tinted_ramp(base_col: Color) -> Gradient:
+	if not _tinted_ramp_cache.has(base_col):
+		var g := Gradient.new()
+		g.add_point(0.0, Color(1.0, 1.0, 1.0, 1.0))
+		g.add_point(0.4, Color(base_col.r, base_col.g, base_col.b, 0.9))
+		g.add_point(1.0, Color(base_col.r * 0.4, base_col.g * 0.4, base_col.b * 0.5, 0.0))
+		_tinted_ramp_cache[base_col] = g
+	return _tinted_ramp_cache[base_col]
+
 
 ## v13.1: 攻击追踪线——瞬发/技能伤害（无弹道）时从攻击方到受击方拉一条阵营色细线，
 ## 补足"谁在打谁"的方向感。窄线+短淡出（0.16s），不与子弹弹道（自带 tracer）叠加。
@@ -634,11 +666,7 @@ static func spawn_railgun_penetration(parent: Node2D, pos: Vector2, dir: Vector2
 			spall.scale_amount_min = 0.7
 			spall.scale_amount_max = 2.0  # v13: 1.6→2.0,碎片尺寸加大
 			spall.color = Color(1.0, 0.95, 0.85, 1.0)
-			var sg := Gradient.new()
-			sg.add_point(0.0, Color(1.0, 1.0, 0.95, 1.0))
-			sg.add_point(0.4, Color(1.0, 0.7, 0.4, 0.9))
-			sg.add_point(1.0, Color(0.4, 0.2, 0.1, 0.0))
-			spall.color_ramp = sg
+			spall.color_ramp = _get_rail_spall_ramp()  # P3: 固定色渐变缓存
 			spall.emitting = true
 			parent.add_child(spall)
 			var tree := spall.get_tree()
@@ -808,11 +836,7 @@ static func spawn_laser_burn(parent: Node2D, pos: Vector2, is_player: bool = tru
 			heat.scale_amount_min = 0.5
 			heat.scale_amount_max = 0.8
 			heat.color = beam_col
-			var hg := Gradient.new()
-			hg.add_point(0.0, Color(1.0, 1.0, 1.0, 1.0))
-			hg.add_point(0.4, Color(beam_col.r, beam_col.g, beam_col.b, 0.9))
-			hg.add_point(1.0, Color(beam_col.r * 0.4, beam_col.g * 0.4, beam_col.b * 0.5, 0.0))
-			heat.color_ramp = hg
+			heat.color_ramp = _get_tinted_ramp(beam_col)  # P3: 按武器色缓存渐变
 			heat.emitting = true
 			parent.add_child(heat)
 			var tree := heat.get_tree()
@@ -838,11 +862,7 @@ static func spawn_laser_burn(parent: Node2D, pos: Vector2, is_player: bool = tru
 			molten.scale_amount_min = 0.4
 			molten.scale_amount_max = 0.7
 			molten.color = Color(1.0, 0.6, 0.2, 1.0)
-			var mg := Gradient.new()
-			mg.add_point(0.0, Color(1.0, 0.9, 0.5, 1.0))
-			mg.add_point(0.5, Color(1.0, 0.45, 0.1, 0.9))
-			mg.add_point(1.0, Color(0.3, 0.1, 0.0, 0.0))
-			molten.color_ramp = mg
+			molten.color_ramp = _get_molten_ramp()  # P3: 固定色渐变缓存
 			molten.emitting = true
 			parent.add_child(molten)
 			var tree3 := molten.get_tree()
@@ -956,11 +976,7 @@ static func spawn_omega_discharge(parent: Node2D, pos: Vector2, is_player: bool 
 			sp.scale_amount_min = 0.4
 			sp.scale_amount_max = 0.7
 			sp.color = pcol
-			var sg := Gradient.new()
-			sg.add_point(0.0, Color(1.0, 1.0, 1.0, 1.0))
-			sg.add_point(0.4, Color(pcol.r, pcol.g, pcol.b, 0.9))
-			sg.add_point(1.0, Color(pcol.r * 0.4, pcol.g * 0.4, pcol.b * 0.5, 0.0))
-			sp.color_ramp = sg
+			sp.color_ramp = _get_tinted_ramp(pcol)  # P3: 按基色缓存渐变（与激光灼热同构复用）
 			sp.emitting = true
 			parent.add_child(sp)
 			var tree := sp.get_tree()

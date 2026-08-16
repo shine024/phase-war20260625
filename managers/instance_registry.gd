@@ -25,6 +25,8 @@ signal instance_disposed(instance_id: String)
 
 const DefaultCards = preload("res://data/default_cards.gd")
 const GC = preload("res://resources/game_constants.gd")
+# P3 性能优化：动态卡模板注册脚本（原两处独立运行时 load）
+const CapturedUnitCardsScript = preload("res://data/captured_unit_cards.gd")
 
 ## instance_id -> CardResource（独立 clone 对象，带完整养成）
 var _instances: Dictionary = {}
@@ -419,18 +421,15 @@ func _load_one_instance(instance_id: String, inst_data: Dictionary) -> void:
 ## v8.x 修复：预注册 captured_/drop_ 等动态卡模板到 DefaultCards 缓存。
 ## 见 load_state 顶部注释——消除"读档时序早于动态卡懒注册"导致的实例加载失败。
 func _ensure_dynamic_card_templates_registered() -> void:
-	var CapturedUnitCards = load("res://data/captured_unit_cards.gd")
-	if CapturedUnitCards != null and CapturedUnitCards.has_method("register_into_default_cards_cache"):
-		CapturedUnitCards.register_into_default_cards_cache()
+	# P3 性能优化：preload 常量 + 静态方法直调（原两处独立运行时 load + has_method 反射）
+	CapturedUnitCardsScript.register_into_default_cards_cache()
 
 
 ## v8.x 兜底：模板缺失时尝试现场重建并注册，避免养成数据永久丢失。
 ## ① 再次触发 captured/drop 完整注册（防御 manifest 首轮未注册全）；
 ## ② 从统一卡牌表直接构建（captured_/foe_ 前缀剥离后查，或直接查 card_id）。
 func _reconstruct_missing_template(card_id: String) -> bool:
-	var CapturedUnitCards = load("res://data/captured_unit_cards.gd")
-	if CapturedUnitCards != null and CapturedUnitCards.has_method("register_into_default_cards_cache"):
-		CapturedUnitCards.register_into_default_cards_cache()
+	CapturedUnitCardsScript.register_into_default_cards_cache()
 	if DefaultCards.get_card_by_id(card_id) != null:
 		return true
 	var UnifiedCardTable = load("res://data/unified_card_table.gd")

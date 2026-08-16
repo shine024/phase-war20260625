@@ -64,6 +64,14 @@ func _ready() -> void:
 		update_env_for_level(level)
 	# 法则解锁仅由四维知识值驱动（v3 ADR-002）。
 
+## P0 性能优化：退出时断开 SignalBus 连接，防止场景切换后连接累积
+func _exit_tree() -> void:
+	if SignalBus:
+		if SignalBus.battle_started.is_connected(_on_battle_started):
+			SignalBus.battle_started.disconnect(_on_battle_started)
+		if SignalBus.battle_ended.is_connected(_on_battle_ended):
+			SignalBus.battle_ended.disconnect(_on_battle_ended)
+
 ## ---- 战外：知识与研究 ----
 
 const KNOWLEDGE_KEYS: Array[String] = [

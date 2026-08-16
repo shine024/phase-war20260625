@@ -691,11 +691,9 @@ func _refresh_stat_cards(card: CardResource) -> void:
 ## 解锁 unit_mechanism（战术核武等）后机制 meta 才写入 stats；若不纳入 key，
 ## 解锁前打开过的卡会在解锁后命中旧缓存 → 机制 meta 缺失 → 情报面板不显示兵种机制。
 func _get_pmsm_unlock_sig() -> String:
-	var tree_s := Engine.get_main_loop() as SceneTree
-	if tree_s != null and tree_s.root != null:
-		var pmsm: Node = tree_s.root.get_node_or_null("PhaseMasterSkillManager")
-		if pmsm != null and pmsm.has_method("get_unlocked_signature"):
-			return pmsm.get_unlocked_signature()
+	# P1 性能优化：直接用 autoload 全局引用（原每次经 Engine.get_main_loop + 全树遍历）
+	if PhaseMasterSkillManager != null and PhaseMasterSkillManager.has_method("get_unlocked_signature"):
+		return PhaseMasterSkillManager.get_unlocked_signature()
 	return ""
 
 
@@ -705,14 +703,10 @@ func _prepare_display_stats_cache(card: CardResource) -> void:
 	_cached_display_stats = _build_display_stats(card)
 	# 缓存键：card 身份 + 当前战斗态（era 影响构建结果）
 	var era_key: String = ""
-	var bm_node_check: Node = null
-	var tree_c := Engine.get_main_loop() as SceneTree
-	if tree_c != null and tree_c.root != null:
-		bm_node_check = tree_c.root.get_node_or_null("BattleManager")
-		if bm_node_check != null and "battle_active" in bm_node_check and bm_node_check.battle_active:
-			var gm_check: Node = tree_c.root.get_node_or_null("GameManager")
-			if gm_check != null and "current_level" in gm_check:
-				era_key = str(int(gm_check.current_level))
+	# P1 性能优化：直接用 autoload 全局引用（原经 Engine.get_main_loop + 全树遍历）
+	if BattleManager != null and "battle_active" in BattleManager and BattleManager.battle_active:
+		if GameManager != null and "current_level" in GameManager:
+			era_key = str(int(GameManager.current_level))
 	var id_str: String = String(card.instance_id) if (card != null and "instance_id" in card and not String(card.instance_id).is_empty()) else (String(card.card_id) if card != null else "")
 	_cached_display_stats_key = id_str + "|" + era_key + "|" + _get_pmsm_unlock_sig()
 
@@ -720,31 +714,23 @@ func _prepare_display_stats_cache(card: CardResource) -> void:
 func _build_display_stats(card: CardResource) -> UnitStats:
 	# v7.3 性能优化：若缓存键匹配（同一卡同一战斗态），直接返回缓存，避免重复 build_stats_from_card
 	var id_str: String = String(card.instance_id) if ("instance_id" in card and not String(card.instance_id).is_empty()) else String(card.card_id)
+	# P1 性能优化：直接用 autoload 全局引用（原经 Engine.get_main_loop + 全树遍历）
 	var era_key: String = ""
-	var tree_e := Engine.get_main_loop() as SceneTree
-	if tree_e != null and tree_e.root != null:
-		var bm_e: Node = tree_e.root.get_node_or_null("BattleManager")
-		if bm_e != null and "battle_active" in bm_e and bm_e.battle_active:
-			var gm_e: Node = tree_e.root.get_node_or_null("GameManager")
-			if gm_e != null and "current_level" in gm_e:
-				era_key = str(int(gm_e.current_level))
+	if BattleManager != null and "battle_active" in BattleManager and BattleManager.battle_active:
+		if GameManager != null and "current_level" in GameManager:
+			era_key = str(int(GameManager.current_level))
 	if _cached_display_stats != null and _cached_display_stats_key == (id_str + "|" + era_key + "|" + _get_pmsm_unlock_sig()):
 		return _cached_display_stats
 
-	var tree := Engine.get_main_loop() as SceneTree
-	if tree == null or tree.root == null:
-		return null
-	var root: Node = tree.root
-	var bm: Node = root.get_node_or_null("BlueprintManager")
-	var am: Node = root.get_node_or_null("AffixManager")
+	var bm: Node = BlueprintManager
+	var am: Node = AffixManager
 	# v6.2 修复 M7：非战斗场景（背包/商店查看卡牌）应传 -1 让 build_stats_from_card 用卡牌自身 era，
 	# 原强制取 GameManager.current_level 的 era 会导致非战斗场景按错误时代缩放（如看现代卡显示一战数值）
 	var era: int = -1
-	var gm: Node = root.get_node_or_null("GameManager")
-	var bm_node: Node = root.get_node_or_null("BattleManager")
-	# 仅在战斗进行中才用当前关卡的 era 缩放
-	if bm_node != null and "battle_active" in bm_node and bm_node.battle_active and gm and "current_level" in gm:
-		era = GC.get_era_for_level(int(gm.current_level))
+	# 仅在战斗进行中才用当前关卡的 era 缩放（P1 优化：autoload 全局引用）
+	if BattleManager != null and "battle_active" in BattleManager and BattleManager.battle_active \
+			and GameManager != null and "current_level" in GameManager:
+		era = GC.get_era_for_level(int(GameManager.current_level))
 	var stats: UnitStats = UnitStatsTable.build_stats_from_card(card, era)
 	if bm and bm.has_method("apply_growth_to_stats"):
 		bm.apply_growth_to_stats(stats, card, [])
@@ -795,19 +781,14 @@ func _refresh_affix_tags(card: CardResource) -> void:
 func _build_card_affix_summary(card: CardResource) -> String:
 	if card.card_type != GC.CardType.COMBAT_UNIT:
 		return ""
-	var tree := Engine.get_main_loop() as SceneTree
-	if tree == null or tree.root == null:
-		return ""
-	var root: Node = tree.root
-	var mll: Node = root.get_node_or_null("ManagerLazyLoader")
-	if mll and mll.has_method("ensure_loaded"):
-		mll.ensure_loaded("affix")
-	var bm: Node = root.get_node_or_null("BlueprintManager")
-	var am: Node = root.get_node_or_null("AffixManager")
+	# P1 性能优化：直接用 autoload 全局引用（原经 Engine.get_main_loop + 全树遍历）
+	if ManagerLazyLoader != null and ManagerLazyLoader.has_method("ensure_loaded"):
+		ManagerLazyLoader.ensure_loaded("affix")
+	var bm: Node = BlueprintManager
+	var am: Node = AffixManager
 	var era: int = 0
-	var gm: Node = root.get_node_or_null("GameManager")
-	if gm and "current_level" in gm:
-		era = GC.get_era_for_level(int(gm.current_level))
+	if GameManager != null and "current_level" in GameManager:
+		era = GC.get_era_for_level(int(GameManager.current_level))
 
 	# v5.0: 使用新的 build_stats_from_card 方法，不再检查已弃用的 platform_type
 	if card.card_type == GC.CardType.COMBAT_UNIT:
@@ -1001,6 +982,9 @@ func _refresh_unit_display(unit: Node, is_player: bool) -> void:
 
 # v9.x 战场单位模式：周期刷新"当前状态"区（单位 buff/debuff 随战斗变化）
 func _process(delta: float) -> void:
+	# P2 性能优化：面板隐藏时直接跳过（status_section 可能未随面板隐藏而清除）
+	if not visible:
+		return
 	# 仅当处于战场单位模式、单位有效、状态区可见时才刷新（避免静态面板空跑）
 	if status_section == null or not status_section.visible:
 		return

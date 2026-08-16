@@ -64,6 +64,9 @@ func _make_row_label() -> Label:
 
 
 func _process(delta: float) -> void:
+	# P2 性能优化：面板隐藏时不做任何刷新（原隐藏时仍每帧累计并周期刷新）
+	if not visible:
+		return
 	_refresh_accum += delta
 	if _refresh_accum >= _REFRESH_SEC:
 		_refresh_accum = 0.0

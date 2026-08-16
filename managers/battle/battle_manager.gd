@@ -146,6 +146,20 @@ func _ready() -> void:
 		if not SignalBus.unit_damaged.is_connected(_on_unit_damaged_combat_feedback):
 			SignalBus.unit_damaged.connect(_on_unit_damaged_combat_feedback)
 
+## P0 性能优化：退出时断开 SignalBus 连接，防止场景切换后连接累积
+func _exit_tree() -> void:
+	if SignalBus:
+		if SignalBus.unit_died.is_connected(_on_unit_died):
+			SignalBus.unit_died.disconnect(_on_unit_died)
+		if SignalBus.unit_spawned.is_connected(_on_unit_spawned):
+			SignalBus.unit_spawned.disconnect(_on_unit_spawned)
+		if SignalBus.phase_driver_destroyed.is_connected(_on_phase_driver_destroyed):
+			SignalBus.phase_driver_destroyed.disconnect(_on_phase_driver_destroyed)
+		if SignalBus.has_signal("enemy_phase_driver_destroyed") and SignalBus.enemy_phase_driver_destroyed.is_connected(_on_enemy_phase_driver_destroyed):
+			SignalBus.enemy_phase_driver_destroyed.disconnect(_on_enemy_phase_driver_destroyed)
+		if SignalBus.unit_damaged.is_connected(_on_unit_damaged_combat_feedback):
+			SignalBus.unit_damaged.disconnect(_on_unit_damaged_combat_feedback)
+
 
 func _process(delta: float) -> void:
 	if Engine.is_editor_hint() or not battle_active or battlefield == null:

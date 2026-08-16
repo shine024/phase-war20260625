@@ -17,8 +17,8 @@ func _ready() -> void:
 func _connect_signals() -> void:
 	if not SignalBus:
 		return
-	if SignalBus.has_signal("unit_damaged") and not SignalBus.unit_damaged.is_connected(_on_unit_damaged):
-		SignalBus.unit_damaged.connect(_on_unit_damaged)
+	# T1 性能优化：移除 unit_damaged 空监听（v8.1 暴击震动迁移 BattleManager 后函数体为 pass，
+	# 但每次命中仍被派发一次纯空调用，密集交火时白白占用信号派发）
 	if SignalBus.has_signal("unit_died") and not SignalBus.unit_died.is_connected(_on_unit_died):
 		SignalBus.unit_died.connect(_on_unit_died)
 	if SignalBus.has_signal("phase_law_cast") and not SignalBus.phase_law_cast.is_connected(_on_phase_law_cast):
@@ -48,12 +48,27 @@ func _connect_enhancement_signal_retry() -> void:
 	await get_tree().create_timer(2.0).timeout
 	_connect_enhancement_signal()
 
-## 单位受伤 → 暴击屏幕震动（v8.1 已迁移到 BattleManager._on_unit_damaged_combat_feedback）
-## 原实现因 meta 竞态失效（battle_manager 先 connect 先清 _vfx_crit_pending meta，本处读不到），
-## 属死逻辑。暴击屏幕震动现由 battle_manager 在读取 meta 后统一触发。
-## 此处保留信号连接（避免断连报错），但函数体空操作。
-func _on_unit_damaged(_unit: Node, _is_player: bool, _damage: float, _position: Vector2) -> void:
-	pass  # v8.1: 暴击震动已迁移至 BattleManager._on_unit_damaged_combat_feedback
+## P0 性能优化：退出时断开所有信号连接，防止场景切换后连接累积
+func _exit_tree() -> void:
+	if not SignalBus:
+		return
+	if SignalBus.has_signal("unit_died") and SignalBus.unit_died.is_connected(_on_unit_died):
+		SignalBus.unit_died.disconnect(_on_unit_died)
+	if SignalBus.has_signal("phase_law_cast") and SignalBus.phase_law_cast.is_connected(_on_phase_law_cast):
+		SignalBus.phase_law_cast.disconnect(_on_phase_law_cast)
+	if SignalBus.has_signal("battle_ended"):
+		if SignalBus.battle_ended.is_connected(_on_battle_ended_daily):
+			SignalBus.battle_ended.disconnect(_on_battle_ended_daily)
+		if SignalBus.battle_ended.is_connected(_on_battle_ended_achievement):
+			SignalBus.battle_ended.disconnect(_on_battle_ended_achievement)
+	if SignalBus.has_signal("blueprint_unlocked") and SignalBus.blueprint_unlocked.is_connected(_on_blueprint_unlocked):
+		SignalBus.blueprint_unlocked.disconnect(_on_blueprint_unlocked)
+	var cem = get_node_or_null("/root/CardEnhancementManager")
+	if cem != null and cem.has_signal("enhancement_completed") and cem.enhancement_completed.is_connected(_on_enhancement_completed):
+		cem.enhancement_completed.disconnect(_on_enhancement_completed)
+
+## 单位受伤 → 暴击屏幕震动：v8.1 已迁移到 BattleManager._on_unit_damaged_combat_feedback
+## （原实现因 meta 竞态失效属死逻辑）。T1 性能优化：连空监听一并移除，本处不再订阅 unit_damaged。
 
 ## 相位法则施放 → 特效（委托给 BattleFeedbackManager）+ 日常任务计数
 ## v7.x 修复 B5：施放相位法则时推进 USE_PHASE_LAWS 日常任务

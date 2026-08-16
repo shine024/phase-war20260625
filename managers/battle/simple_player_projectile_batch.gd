@@ -18,6 +18,8 @@ const _PLAYER_TINT := Color(1.0, 0.95, 0.4)  # v9.2: 亮金黄（原淡黄，提
 
 var _proj: Array = []
 var _layers: Dictionary = {}  # weapon_type -> MultiMeshInstance2D
+# T1 性能优化：轻武器命中特效限流时间戳（见 _apply_hit）
+var _last_impact_msec: int = -10000
 # v7.4 性能优化：buckets 提升为成员变量 + clear() 复用，消除每帧 Dictionary + Array 分配
 var _buckets: Dictionary = {}  # weapon_type -> Array（成员级复用，clear 保留 buffer 容量）
 # v9.2: 弹道字典池——fire 时从池取，命中/出界/清场时归还，消除每发字典分配。
@@ -190,7 +192,19 @@ func _apply_hit(r: Dictionary) -> void:
 		# v9.4: power_tier 威力分级（直射轻武器 radius=0，tier 由 damage 决定）。
 		var _tier: int = WeaponProjectileVfx.compute_power_tier(wt, 0.0, float(r.get("dmg", 0.0)))
 		var _opts: Dictionary = {"power_tier": _tier}
-		WeaponProjectileVfx.spawn_impact_with_kind(self, hit_pos, wt, true, _tgt_kind, _opts)
+		# T1 性能优化：轻武器命中特效时间窗限流——每次命中无条件生成 7-10 个特效节点
+		# （2 Sprite + ring + decal + 3-4 CPUParticles2D，30-90 粒），密集齐射时按命中频率爆炸。
+		# HEAVY+ 档不限流（低频且视觉重要）；轻武器 40ms 窗口内只出一次（≤25 次/秒）。
+		# 交火稀疏时（<25 命中/秒）每次命中仍有特效，视觉零损失。
+		var _spawn_fx: bool = true
+		if _tier < 2:
+			var _now: int = Time.get_ticks_msec()
+			if _now - _last_impact_msec < 40:
+				_spawn_fx = false
+			else:
+				_last_impact_msec = _now
+		if _spawn_fx:
+			WeaponProjectileVfx.spawn_impact_with_kind(self, hit_pos, wt, true, _tgt_kind, _opts)
 		# v9.4: 仅 HEAVY+ 档震屏（轻武器密集命中不震屏避免干扰；重型直射/核武才震）
 		if _tier >= 2:
 			var tree := get_tree()

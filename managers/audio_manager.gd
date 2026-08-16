@@ -124,9 +124,71 @@ func _ready() -> void:
 		# v7.x 修复: CardEnhancementManager.enhancement_completed 此前零订阅 + handler 签名错配（Dictionary vs String）。
 		# 延迟到首次强化时连接（cem 是 lazy-load，启动时不一定就绪）。
 		_connect_enhancement_signal()
-	
+
 	# 初始化 BGM 系统
 	_init_music_player()
+
+## P0 性能优化：退出时断开所有 SignalBus 连接并释放播放器，
+## 防止场景切换后信号连接累积（原无任何清理，长时间游玩 GC 压力持续增长）
+func _exit_tree() -> void:
+	if SignalBus:
+		if SignalBus.unit_damaged.is_connected(_on_unit_damaged):
+			SignalBus.unit_damaged.disconnect(_on_unit_damaged)
+		if SignalBus.active_law_cast_at.is_connected(_on_cast):
+			SignalBus.active_law_cast_at.disconnect(_on_cast)
+		if SignalBus.battle_ended.is_connected(_on_battle_ended):
+			SignalBus.battle_ended.disconnect(_on_battle_ended)
+		if SignalBus.has_signal("blueprint_unlocked") and SignalBus.blueprint_unlocked.is_connected(_on_blueprint_unlocked):
+			SignalBus.blueprint_unlocked.disconnect(_on_blueprint_unlocked)
+		if SignalBus.has_signal("achievement_unlocked") and SignalBus.achievement_unlocked.is_connected(_on_achievement_unlocked):
+			SignalBus.achievement_unlocked.disconnect(_on_achievement_unlocked)
+		if SignalBus.has_signal("quest_completed") and SignalBus.quest_completed.is_connected(_on_quest_completed):
+			SignalBus.quest_completed.disconnect(_on_quest_completed)
+		if SignalBus.has_signal("task_completed") and SignalBus.task_completed.is_connected(_on_task_completed):
+			SignalBus.task_completed.disconnect(_on_task_completed)
+		if SignalBus.has_signal("play_sound") and SignalBus.play_sound.is_connected(play_sfx):
+			SignalBus.play_sound.disconnect(play_sfx)
+		if SignalBus.has_signal("wave_spawned") and SignalBus.wave_spawned.is_connected(_on_wave_spawned):
+			SignalBus.wave_spawned.disconnect(_on_wave_spawned)
+		if SignalBus.has_signal("boss_wave_started") and SignalBus.boss_wave_started.is_connected(_on_boss_wave_started):
+			SignalBus.boss_wave_started.disconnect(_on_boss_wave_started)
+		if SignalBus.has_signal("phase_master_appeared") and SignalBus.phase_master_appeared.is_connected(_on_phase_master_appeared):
+			SignalBus.phase_master_appeared.disconnect(_on_phase_master_appeared)
+		if SignalBus.has_signal("phase_driver_destroyed") and SignalBus.phase_driver_destroyed.is_connected(_on_phase_driver_destroyed):
+			SignalBus.phase_driver_destroyed.disconnect(_on_phase_driver_destroyed)
+		if SignalBus.has_signal("player_deploy_failed") and SignalBus.player_deploy_failed.is_connected(_on_player_deploy_failed):
+			SignalBus.player_deploy_failed.disconnect(_on_player_deploy_failed)
+		if SignalBus.has_signal("energy_insufficient") and SignalBus.energy_insufficient.is_connected(_on_energy_insufficient):
+			SignalBus.energy_insufficient.disconnect(_on_energy_insufficient)
+		if SignalBus.has_signal("synthesis_completed") and SignalBus.synthesis_completed.is_connected(_on_synthesis_completed):
+			SignalBus.synthesis_completed.disconnect(_on_synthesis_completed)
+		if SignalBus.has_signal("synthesis_failed") and SignalBus.synthesis_failed.is_connected(_on_synthesis_failed):
+			SignalBus.synthesis_failed.disconnect(_on_synthesis_failed)
+		if SignalBus.has_signal("rune_acquired") and SignalBus.rune_acquired.is_connected(_on_rune_acquired):
+			SignalBus.rune_acquired.disconnect(_on_rune_acquired)
+		if SignalBus.has_signal("faction_level_up") and SignalBus.faction_level_up.is_connected(_on_faction_level_up):
+			SignalBus.faction_level_up.disconnect(_on_faction_level_up)
+		if SignalBus.has_signal("milestone_reached") and SignalBus.milestone_reached.is_connected(_on_milestone_reached):
+			SignalBus.milestone_reached.disconnect(_on_milestone_reached)
+		if SignalBus.has_signal("phase_field_level_up") and SignalBus.phase_field_level_up.is_connected(_on_phase_field_level_up):
+			SignalBus.phase_field_level_up.disconnect(_on_phase_field_level_up)
+		# BGM 监听（_init_music_player 内连接的 3 条）
+		if SignalBus.has_signal("battle_ended") and SignalBus.battle_ended.is_connected(_on_battle_ended_bgm):
+			SignalBus.battle_ended.disconnect(_on_battle_ended_bgm)
+		if SignalBus.has_signal("battle_started") and SignalBus.battle_started.is_connected(_on_battle_started_bgm):
+			SignalBus.battle_started.disconnect(_on_battle_started_bgm)
+		if SignalBus.has_signal("phase_master_appeared") and SignalBus.phase_master_appeared.is_connected(_on_phase_master_appeared_bgm):
+			SignalBus.phase_master_appeared.disconnect(_on_phase_master_appeared_bgm)
+	# CardEnhancementManager（lazy-load，可能未连接）
+	var cem: Node = get_node_or_null("/root/CardEnhancementManager")
+	if cem != null and cem.has_signal("enhancement_completed") and cem.enhancement_completed.is_connected(_on_enhancement_completed):
+		cem.enhancement_completed.disconnect(_on_enhancement_completed)
+	# 释放音频播放器
+	for p_name in _players.keys():
+		var p: AudioStreamPlayer = _players.get(p_name)
+		if p is Node and is_instance_valid(p):
+			p.queue_free()
+	_players.clear()
 
 ## 播放音效
 ## v8.3: 增加 volume（0.0~1.0，线性→db）和 pitch（0.5~2.0，音高倍率）参数（默认值保证旧调用零变化）
@@ -340,7 +402,17 @@ func play_ui_sfx(action: String) -> void:
 		_:
 			play_sfx("button")
 
+## T1 性能优化：命中音效最小间隔节流——原每次命中无条件重启同一 AudioStreamPlayer，
+## 密集交火 + DOT tick 时每秒几十次音频重启（声音上也糊成一片）。
+## 80ms 间隔下听觉无损失（人耳对同类短音效 12 次/秒已饱和）。
+var _last_hit_sfx_msec: int = -10000
+const HIT_SFX_MIN_INTERVAL_MSEC: int = 80
+
 func _on_unit_damaged(_unit: Node, _is_player: bool, _amount: float, _at_position: Vector2) -> void:
+	var now: int = Time.get_ticks_msec()
+	if now - _last_hit_sfx_msec < HIT_SFX_MIN_INTERVAL_MSEC:
+		return
+	_last_hit_sfx_msec = now
 	play_sfx("hit")
 
 func _on_cast(_law_id: String, _world_pos: Vector2) -> void:

@@ -920,8 +920,7 @@ func _grant_phase_master_victory_reward(master_name: String) -> void:
 				PhaseInstrumentManager.unlock_instrument(_special_drop_id)
 				last_battle_reward_summary["special_instrument"] = _special_drop_id
 				# v7.x 胜利面板漏显修复：特殊相位仪记入本局收集器（显示名从 PhaseInstruments 数据表取）
-				var _PhaseInstrumentsData = load("res://data/phase_instruments.gd")
-				var _spec_inst_cfg: Dictionary = _PhaseInstrumentsData.get_by_id(_special_drop_id) if _PhaseInstrumentsData != null else {}
+				var _spec_inst_cfg: Dictionary = PhaseInstrumentsData.get_by_id(_special_drop_id)
 				var _spec_inst_name: String = String(_spec_inst_cfg.get("name", _special_drop_id))
 				collect_battle_instrument(_special_drop_id, _spec_inst_name, _stars, "相位师掉落")
 				if DEBUG_GAME_LOG:
@@ -1097,6 +1096,8 @@ const BasicResources = preload("res://data/basic_resources.gd")
 const EnemyPhaseEquipment = preload("res://data/enemy_phase_equipment.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
 const CardDropGrants = preload("res://scripts/card_drop_grants.gd")
+# P3 性能优化：相位仪数据表改 preload（原胜利结算路径每次运行时 load）
+const PhaseInstrumentsData = preload("res://data/phase_instruments.gd")
 
 func _grant_basic_resources_for_current_level() -> void:
 	var drops: Dictionary = BasicResources.get_drops_for_level(current_level)
