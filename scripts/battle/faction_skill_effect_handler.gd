@@ -112,10 +112,8 @@ static func _apply_stacking_to_unit(stats, cfg) -> void:
 	var sb: Dictionary = cfg.get("stat_bonus", {})
 	if per_unit <= 0 or max_stacks <= 0 or sb.is_empty():
 		return
-	var tree = Engine.get_main_loop() as SceneTree
-	if tree == null or tree.root == null or not (tree.root is Node):
-		return
-	var count: int = (tree.root as Node).get_nodes_in_group("player_units").size()
+	# P1 性能优化：优先走 BattleManager 节流缓存（0.28s 刷新），替代实时全组遍历
+	var count: int = _get_player_units_cached().size()
 	var stacks: int = clampi(count / per_unit, 0, max_stacks)
 	if stacks <= 0:
 		return
@@ -131,11 +129,8 @@ static func _apply_variety_to_unit(stats, cfg) -> void:
 	var sb: Dictionary = cfg.get("stat_bonus", {})
 	if per_type <= 0 or max_stacks <= 0 or sb.is_empty():
 		return
-	var tree = Engine.get_main_loop() as SceneTree
-	if tree == null or tree.root == null or not (tree.root is Node):
-		return
 	var kinds_seen: Dictionary = {}
-	for u in (tree.root as Node).get_nodes_in_group("player_units"):
+	for u in _get_player_units_cached():
 		if u == null or not is_instance_valid(u):
 			continue
 		var ck: int = int(u.get("combat_kind")) if "combat_kind" in u else -1
@@ -308,26 +303,41 @@ static func _apply_on_hit_debuff(target, cfg) -> void:
 	var t_stats = target.get("stats") if "stats" in target else null
 	if t_stats == null:
 		return
-	# 攻速降低：attack_interval 增大（攻速 = 1/interval，interval 大=攻速慢）
+	# 攻速降低。v10 双修复：
+	# ① H10：激活期内重复命中 → 续时（原 has_meta 守卫使后续命中完全无效）
+	# ② H1：factor 供 ConstructUnitAI.get_attack_delta_scale 的 delta 通道消费——
+	#    有武器槽的单位攻速 timing 走 weapon.attack_speed，interval 直改对其无效；
+	#    interval 写入保留（蜂群槽位直接消费 interval；两类消费方不重叠，无双乘）
 	var aspd_red: float = float(cfg.get("attack_speed_reduction", 0.0))
-	if aspd_red > 0.0 and not target.has_meta("_faction_aspd_debuff"):
-		# 记录原始 interval（仅首次，防止重复叠加），过期恢复。remaining 每帧递减。
-		var base_ivl: float = float(t_stats.attack_interval)
-		t_stats.attack_interval = base_ivl / maxf(0.1, 1.0 - aspd_red)
-		target.set_meta("_faction_aspd_debuff", {"base_interval": base_ivl, "remaining": duration})
-	# 防御降低：三维防御按比例降低
+	if aspd_red > 0.0:
+		if target.has_meta("_faction_aspd_debuff"):
+			var d_exist: Dictionary = target.get_meta("_faction_aspd_debuff")
+			d_exist["remaining"] = maxf(float(d_exist.get("remaining", 0.0)), duration)
+			target.set_meta("_faction_aspd_debuff", d_exist)
+		else:
+			var base_ivl: float = float(t_stats.attack_interval)
+			t_stats.attack_interval = base_ivl / maxf(0.1, 1.0 - aspd_red)
+			target.set_meta("_faction_aspd_debuff", {
+				"base_interval": base_ivl, "remaining": duration, "factor": maxf(0.1, 1.0 - aspd_red),
+			})
+	# 防御降低：三维防御按比例降低。v10(H10)：重复命中续时（保留首次 base，防叠加）
 	var def_red: float = float(cfg.get("defense_reduction", 0.0))
-	if def_red > 0.0 and not target.has_meta("_faction_def_debuff"):
-		var base_dl: float = float(t_stats.defense_light)
-		var base_da: float = float(t_stats.defense_armor)
-		var base_dai: float = float(t_stats.defense_air)
-		t_stats.defense_light = maxf(0, base_dl * (1.0 - def_red))
-		t_stats.defense_armor = maxf(0, base_da * (1.0 - def_red))
-		t_stats.defense_air = maxf(0, base_dai * (1.0 - def_red))
-		target.set_meta("_faction_def_debuff", {
-			"base_def_light": base_dl, "base_def_armor": base_da, "base_def_air": base_dai,
-			"remaining": duration,
-		})
+	if def_red > 0.0:
+		if target.has_meta("_faction_def_debuff"):
+			var d2_exist: Dictionary = target.get_meta("_faction_def_debuff")
+			d2_exist["remaining"] = maxf(float(d2_exist.get("remaining", 0.0)), duration)
+			target.set_meta("_faction_def_debuff", d2_exist)
+		else:
+			var base_dl: float = float(t_stats.defense_light)
+			var base_da: float = float(t_stats.defense_armor)
+			var base_dai: float = float(t_stats.defense_air)
+			t_stats.defense_light = maxf(0, base_dl * (1.0 - def_red))
+			t_stats.defense_armor = maxf(0, base_da * (1.0 - def_red))
+			t_stats.defense_air = maxf(0, base_dai * (1.0 - def_red))
+			target.set_meta("_faction_def_debuff", {
+				"base_def_light": base_dl, "base_def_armor": base_da, "base_def_air": base_dai,
+				"remaining": duration,
+			})
 
 
 ## 过期检查：恢复被 on_hit_debuff 修改的 stats。由 construct_unit._physics_process 调用。
@@ -555,13 +565,10 @@ static func _death_ally_heal(unit, cfg) -> void:
 	var radius_cells: float = float(cfg.get("radius", 2.0))
 	var pct: float = float(cfg.get("pct", 0.10))
 	var radius_px: float = radius_cells * 100.0  # 每格约100px
-	var tree = Engine.get_main_loop() as SceneTree
-	if tree == null or tree.root == null or not (tree.root is Node):
-		return
 	var my_pos = unit.global_position if "global_position" in unit else Vector2.ZERO
 	var stats = unit.get("stats") if "stats" in unit else null
 	var heal_base: float = float(stats.max_hp) if stats != null else 100.0
-	for ally in (tree.root as Node).get_nodes_in_group("player_units"):
+	for ally in _get_player_units_cached():
 		if ally == null or not is_instance_valid(ally) or ally == unit:
 			continue
 		if not ("global_position" in ally):
@@ -574,6 +581,18 @@ static func _death_ally_heal(unit, cfg) -> void:
 				ally.hp = minf(float(ally_stats.max_hp), float(ally.hp) + healed)
 				if ally.has_method("_update_hp_bar"):
 					ally._update_hp_bar()
+
+
+## P1 性能优化：player_units 组查询统一入口——
+## 战斗中优先走 BattleManager 节流缓存（0.28s 刷新，索敌同源），
+## 战斗外/缓存未命中时回退实时 get_nodes_in_group（与原行为一致）
+static func _get_player_units_cached() -> Array:
+	if BattleManager != null and is_instance_valid(BattleManager) and BattleManager.has_method("get_cached_nodes_in_group"):
+		return BattleManager.get_cached_nodes_in_group("player_units")
+	var tree = Engine.get_main_loop() as SceneTree
+	if tree == null or tree.root == null or not (tree.root is Node):
+		return []
+	return (tree.root as Node).get_nodes_in_group("player_units")
 
 
 ## 获取 autoload 节点

@@ -231,7 +231,8 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 					eff_defense = stats.defense_air
 		var eff_def: float = CardGridDamage.effective_defense(eff_defense, pen)
 		# v7.5: 接入 dodge 和 damage_reduction（此前 swarm 全程无闪避/无减伤结算）
-		var swarm_dodge: float = float(stats.dodge_chance) if stats != null else 0.0
+		# v10(H3): ECM 闪避削弱（带激活中的 _ecm_dodge_penalty 时扣减，此前四处写零读）
+		var swarm_dodge: float = maxf(0.0, (float(stats.dodge_chance) if stats != null else 0.0) - ModuleEffectHandler.get_ecm_dodge_penalty(self))
 		var swarm_red: float = float(stats.damage_reduction) if stats != null else 0.0
 		swarm_red = minf(0.60, swarm_red + float(damage_reduction))
 		var _swarm_hit: Dictionary = CardGridDamage.resolve_hit(amount, eff_def, swarm_dodge, swarm_red)
@@ -241,12 +242,20 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 			return
 		hp_loss = float(_swarm_hit.get("hp_loss", amount))
 		# v7.x: 新机制 meta 读取（破甲叠加/标记易伤/巷战免伤）——与 construct_unit 口径一致
-		# 这些 meta 由攻击者的 ModuleEffectHandler.apply_on_hit_side_effects 挂载
+		# v10(C9): 破甲带 8s 到期，过期惰性清理（原永久生效）
 		if has_meta("_armor_break_stacks"):
-			var _ab_stacks: int = int(get_meta("_armor_break_stacks", 0))
-			var _ab_ratio: float = float(get_meta("_armor_break_ratio", 0.0))
-			if _ab_stacks > 0 and _ab_ratio > 0.0:
-				eff_defense = eff_defense * maxf(0.1, 1.0 - _ab_stacks * _ab_ratio)
+			var _ab_expired: bool = false
+			if has_meta("_armor_break_until") \
+					and Time.get_ticks_msec() / 1000.0 >= float(get_meta("_armor_break_until", 0.0)):
+				remove_meta("_armor_break_stacks")
+				remove_meta("_armor_break_ratio")
+				remove_meta("_armor_break_until")
+				_ab_expired = true
+			if not _ab_expired:
+				var _ab_stacks: int = int(get_meta("_armor_break_stacks", 0))
+				var _ab_ratio: float = float(get_meta("_armor_break_ratio", 0.0))
+				if _ab_stacks > 0 and _ab_ratio > 0.0:
+					eff_defense = eff_defense * maxf(0.1, 1.0 - _ab_stacks * _ab_ratio)
 		if has_meta("_marked_until"):
 			var _mark_expire: float = float(get_meta("_marked_until", 0.0))
 			var _now: float = Time.get_ticks_msec() / 1000.0

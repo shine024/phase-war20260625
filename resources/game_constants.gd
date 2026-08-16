@@ -74,6 +74,10 @@ enum WeaponType {
 static func is_indirect_weapon_type(wt: int) -> bool:
 	return wt == WeaponType.INDIRECT or wt == WeaponType.AERIAL or wt in [3, 7, 9]
 
+## v10(H6): 批量弹道出口的武器类型集合与霰弹弹丸数——原两个文件各写一份字面量分头维护
+const BATCH_FIRE_WEAPON_TYPES: Array = [0, 4, 1, 2]  # SMG / PISTOL / RIFLE / MG（走 projectile batch）
+const SHOTGUN_PELLET_COUNT: int = 6
+
 # v7.x: legacy 12 值武器类型（WeaponTypeLegacy）→ 新 4 值 WeaponType 映射。
 # 敌方 archetype 配的是 legacy 值（0/1/2/3/7/9…），而 TargetSelection.select_target
 # 用新枚举（0=DIRECT/1=INDIRECT/2=AERIAL）分派。这里集中映射，避免敌兵(enemy_unit.gd)

@@ -286,7 +286,8 @@ func spawn_card_grid_enemy_wave(current_level: int) -> bool:
 	var wave_spec: Dictionary = LevelSpawnSequences.get_wave_spec(current_level, enemy_wave_index)
 	var use_sequence: bool = not wave_spec.is_empty()
 
-	var is_last_wave: bool = (_enemy_wave_total > 0 and enemy_wave_index >= _enemy_wave_total)
+	# v10(M3): 末波判定改精确等于——原 >= 在序列耗尽后的每一波都判"末波"（boss 节律跳变）
+	var is_last_wave: bool = (_enemy_wave_total > 0 and enemy_wave_index == _enemy_wave_total)
 	var is_elite_wave: bool = (enemy_wave_index > 1 and enemy_wave_index % 3 == 0)
 
 	# bias_tags：本波偏好的 archetype tag（如 ["infantry"]），空=不限
@@ -345,8 +346,13 @@ func spawn_card_grid_enemy_wave(current_level: int) -> bool:
 			continue
 
 		# v8.x boss 唯一性限制：同名 boss 单位战场上只能存在 1 个
+		# v10(H14): 唯一性命中时重抽非 boss 池补足名额（原 continue 静默丢名额——
+		# 波次索引已推进，实际刷出数可能少于 to_spawn）
 		if type_pick == "boss" and _count_alive_enemy_by_archetype(archetype_id) >= 1:
-			continue  # 场上已有同名 boss，跳过本个产兵
+			var repick_pool: Array = elite_ids if not elite_ids.is_empty() else basic_ids
+			if not repick_pool.is_empty():
+				archetype_id = _pick_archetype_with_bias(repick_pool, bias_tags)
+			type_pick = "elite" if not elite_ids.is_empty() else "basic"
 
 		# 普通单位：先创建，再按实际射程选 slot（长程远端、短程近端）
 		var unit: Node2D = _create_enemy_unit_with_id(archetype_id) as Node2D
@@ -1268,13 +1274,11 @@ func _apply_rune_bonus_to_stats(stats: UnitStats, bonus: Dictionary) -> void:
 	# 生命值加成
 	if stat_map.has("hp") and float(stat_map["hp"]) != 0.0:
 		stats.max_hp *= (1.0 + float(stat_map["hp"]))
-	# 攻击速度加成（attack_speed → 降低 attack_interval）
+	# 攻击速度加成。v10(H1) 修复：原实现把攻速"率"字段除以 (1+bonus)——正向加成反而变慢，
+	# 且 weapon_slots[].attack_speed（timing 真实来源）完全漏同步。改走统一入口
+	# AttackCalculator.scale_attack_speeds（率 ×(1+bonus)、interval ÷(1+bonus)、武器槽同步）。
 	if stat_map.has("attack_speed") and float(stat_map["attack_speed"]) != 0.0:
-		var speed_mult: float = 1.0 + float(stat_map["attack_speed"])
-		stats.attack_light_speed /= speed_mult
-		stats.attack_armor_speed /= speed_mult
-		stats.attack_air_speed /= speed_mult
-		stats.attack_interval /= speed_mult
+		AttackCalculator.scale_attack_speeds(stats, 1.0 + float(stat_map["attack_speed"]))
 	# 部署速度加成（影响部署间隔）
 	if stat_map.has("deploy_speed") and float(stat_map["deploy_speed"]) != 0.0:
 		# v6.2: 部署速度加成（UnitStats.deploy_speed 是部署速度倍率，直接叠加）
@@ -1370,13 +1374,9 @@ func _apply_active_faction_stat_bonus(stats: UnitStats, stat_bonus: Dictionary) 
 	# HP
 	if stat_bonus.has("hp") and float(stat_bonus["hp"]) != 0.0:
 		stats.max_hp *= (1.0 + float(stat_bonus["hp"]))
-	# 攻击速度（提速）
+	# 攻击速度（提速）。v10(H1)：统一走 scale_attack_speeds（见上方同款修复说明）
 	if stat_bonus.has("attack_speed") and float(stat_bonus["attack_speed"]) != 0.0:
-		var speed_mult: float = 1.0 + float(stat_bonus["attack_speed"])
-		stats.attack_light_speed /= speed_mult
-		stats.attack_armor_speed /= speed_mult
-		stats.attack_air_speed /= speed_mult
-		stats.attack_interval /= speed_mult
+		AttackCalculator.scale_attack_speeds(stats, 1.0 + float(stat_bonus["attack_speed"]))
 
 func _get_autoload_node(name: String) -> Node:
 	var loop := Engine.get_main_loop()

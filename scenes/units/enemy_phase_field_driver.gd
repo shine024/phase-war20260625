@@ -576,7 +576,10 @@ func _process(delta: float) -> void:
 		return
 	_spawn_timer += delta
 	# v9.0: 套路补兵队列处理（单位死亡后按套路精准补位，独立于波次产兵）
-	_process_respawn_queue()
+	# v10(H15): 传 delta 递减倒计时（原用墙钟 due_time，暂停后到期任务集中触发）
+	# v10(H19): 补兵成功当帧重置定时产兵计时（原双通道同帧可并发各产 1 个）
+	if _process_respawn_queue(delta):
+		_spawn_timer = 0.0
 	# 枯竭后彻底停止产兵（_fatigue_tier >= 3），玩家只需专注输出基地 HP
 	if _fatigue_tier >= 3:
 		return
@@ -776,6 +779,9 @@ func _produce_unit_with_equipment(override_platform_id: String = "") -> void:
 		var reactive_pick: String = _pick_reactive_platform(valid_platforms, reactive_chance)
 		if not reactive_pick.is_empty():
 			platform_id = reactive_pick
+			# v10(M6): 反应式替换平台时加成标记同步重算——elite/boss 序列加成属于原条目，
+			# 不应作用于被替换上场的克制兵（防止 ×1.25/×1.5 跟随覆盖到非序列单位）
+			seq_entry_type = "normal"
 
 	# v7.x: 分流——直引 archetype vs 旧平台卡
 	var direct_archetype_id: String = String(direct_archetype_ids.get(platform_id, ""))
@@ -928,6 +934,12 @@ func _produce_unit_with_equipment(override_platform_id: String = "") -> void:
 	# v8.x boss 唯一性：记录 archetype_id 到 meta，供后续 boss 数量统计（ConstructUnit 无 archetype_id 裸字段）
 	if not effective_archetype.is_empty():
 		unit.set_meta("archetype_id", effective_archetype)
+	# v10(H2): elite/boss 序列产兵写高价值目标标记（与波次侧 apply_elite_affixes 同源，
+	# target_priority_tag 此前全项目零写入者）
+	if seq_entry_type == "boss":
+		unit.set_meta("target_priority_tag", "boss")
+	elif seq_entry_type == "elite":
+		unit.set_meta("target_priority_tag", "elite")
 	# v9.0 fix: 记录产兵用的 platform_id 到 meta，供套路补兵"同款优先"精准匹配。
 	# 直引模式下 platform_id == archetype_id，旧平台卡模式下两者不同（archetype_id 是视觉 archetype，
 	# platform_id 才是产兵来源）。补兵时优先读 spawn_platform_id，避免旧平台卡模式下规则1 失效。
@@ -1000,15 +1012,18 @@ func _produce_unit() -> void:
 	var attempts: int = 0
 	while produced < batch_size and attempts < _unit_limit:
 		attempts += 1
+		# v10(H14): 名额守恒——以"场上单位数是否实际增加"判定成功（原 produced 无条件 +1，
+		# 装备产兵内部静默失败的尝试也吞分批名额：boss 唯一性/武器映射失败/平台池空等）
+		var count_before: int = BattleManager.get_enemy_unit_count() if BattleManager else 0
 		if _has_equipment:
 			_produce_unit_with_equipment()
 		elif USE_FALLBACK_SPAWN:
 			_produce_unit_fallback()
-		# 检查是否已满——每次产兵后重新判断，避免一口气出太多
 		var current_count: int = BattleManager.get_enemy_unit_count() if BattleManager else 0
 		if current_count >= _unit_limit:
 			break
-		produced += 1
+		if current_count > count_before:
+			produced += 1
 
 ## 返回 true 表示单位已成功进入战场（用于累计召唤计数）；false 表示场地已满被丢弃。
 func _add_unit_to_battle(unit: Node2D, current_count: int) -> bool:
@@ -1036,6 +1051,11 @@ func _add_unit_to_battle(unit: Node2D, current_count: int) -> bool:
 	# cap 满 / 槽满而返回 false 时，推算出的 slot 会撞上已占用槽，导致两单位 meta 相同、被吸附到同一点
 	# （表现为"同一位置刷新两张牌"）。
 	var slot_i: int = _fallback_pick_free_enemy_slot()
+	if slot_i < 0:
+		# v10(H16): 全满——放弃本次产兵（原兜底撞 3 号槽导致两单位同格吸附）
+		if is_instance_valid(unit):
+			unit.queue_free()
+		return false
 	if battlefield_node.has_method("get_card_grid_enemy_slot_global"):
 		unit.global_position = battlefield_node.get_card_grid_enemy_slot_global(slot_i)
 		unit.set_meta("card_grid_enemy_slot", slot_i)
@@ -1187,41 +1207,49 @@ func _schedule_respawn_for_dead_unit(dead_unit: Node) -> void:
 		"dead_arch": dead_arch,
 		"dead_kind": dead_kind,
 		"slot_index": slot_i,
-		"due_time": Time.get_ticks_msec() / 1000.0 + delay,
+		# v10(H15): 剩余延迟倒计时（delta 递减），替代墙钟 due_time
+		"delay_remaining": delay,
 		"delay": delay,
 	})
 
 ## 每 tick 检查补兵队列：到点的补位任务立即执行补兵。
-func _process_respawn_queue() -> void:
+## v10(H15): 改 delta 倒计时驱动（原墙钟 due_time 在暂停后集中触发）；
+## v10(H19): 返回本 tick 是否成功补兵（调用方据此与定时产兵互斥，防同帧双产）
+func _process_respawn_queue(delta: float) -> bool:
 	if _respawn_queue.is_empty():
-		return
+		return false
 	if not _has_equipment:
-		return   # 无装备模式不支持套路补兵（走经典 fallback 产兵）
-	var now: float = Time.get_ticks_msec() / 1000.0
+		return false   # 无装备模式不支持套路补兵（走经典 fallback 产兵）
 	# 场上单位已满时不补（避免越界 9 上限）
 	if BattleManager and BattleManager.get_enemy_unit_count() >= _unit_limit:
-		return
+		return false
+	var spawned_this_tick: bool = false
 	var i: int = 0
 	while i < _respawn_queue.size():
 		var task: Dictionary = _respawn_queue[i]
-		if float(task.get("due_time", now)) <= now:
+		var rem: float = float(task.get("delay_remaining", 0.0)) - delta
+		task["delay_remaining"] = rem
+		if rem <= 0.0:
 			# 到点：先记录产兵前数量，用于判断是否真的补成功
 			var count_before: int = BattleManager.get_enemy_unit_count() if BattleManager else 0
 			_respawn_queue.remove_at(i)
 			var spawned: bool = _do_respawn(task)
 			if not spawned:
 				# v9.0 fix: 产兵失败（场上满/平台池空/valid_platforms 空等）→ 任务不能直接丢弃，
-				# 否则死亡的单位永久不补。改为推后 due_time 重新入队重试（最多 3 次，防卡队列）。
+				# 否则死亡的单位永久不补。改为推后重试（最多 3 次，防卡队列）。
 				var retries: int = int(task.get("retries", 0)) + 1
 				if retries <= 3 and count_before < _unit_limit:
 					task["retries"] = retries
-					task["due_time"] = now + 0.5   # 0.5s 后重试
+					task["delay_remaining"] = 0.5   # 0.5s 后重试
 					_respawn_queue.append(task)
+			else:
+				spawned_this_tick = true
 			# 补兵后若场上满则停（一次 tick 只补一个，避免瞬间刷出多个）
 			if BattleManager and BattleManager.get_enemy_unit_count() >= _unit_limit:
 				break
 		else:
 			i += 1
+	return spawned_this_tick
 
 ## 执行单个补兵任务：按套路选平台 + 调 _produce_unit_with_equipment(override)。
 ## 返回 true 表示真的产兵成功（场上单位数 +1），false 表示产兵失败（调用方据此决定是否重试）。
@@ -1285,8 +1313,10 @@ func _fallback_pick_free_enemy_slot() -> int:
 	for si in FALLBACK_ORDER:
 		if not occupied.has(si):
 			return si
-	# 全满兜底：用中行首位（避免返回 -1 导致 get_card_grid_enemy_slot_global 越界）
-	return 3
+	# v10(H16): 全满返回 -1（调用方放弃本次产兵）——原兜底返回 3 会与新单位吸附到同格
+	# （两单位 meta 同槽叠一起）。占用口径说明：蜂群 slot 已加入 enemy_units 组（slot:77），
+	# 组扫描与 battle_spawn_system 的子树递归覆盖面一致。
+	return -1
 
 func take_damage(amount: float, attacker: Variant = null) -> void:
 	var actual: float = amount
@@ -1580,10 +1610,8 @@ func _apply_master_rune_bonus(stats: UnitStats) -> void:
 			"hp":
 				stats.max_hp *= mult
 			"attack_speed":
-				stats.attack_light_speed /= mult
-				stats.attack_armor_speed /= mult
-				stats.attack_air_speed /= mult
-				stats.attack_interval /= mult
+				# v10(H1): 统一攻速入口（原率字段方向反 + 武器槽漏同步——正符文反而变慢）
+				AttackCalculator.scale_attack_speeds(stats, mult)
 		_applied += 1
 	# v9.x: 符文之语组合加成（与我方 phase_instrument_manager._refresh_rune_bonus 对称）。
 	# _master_runes 来自 _derive_runes（符文之语驱动派生：按 level 选 tier → 选一个符文之语
@@ -1610,10 +1638,8 @@ func _apply_master_rune_bonus(stats: UnitStats) -> void:
 			"hp":
 				stats.max_hp *= rw_mult
 			"attack_speed":
-				stats.attack_light_speed /= rw_mult
-				stats.attack_armor_speed /= rw_mult
-				stats.attack_air_speed /= rw_mult
-				stats.attack_interval /= rw_mult
+				# v10(H1): 统一攻速入口（同上）
+				AttackCalculator.scale_attack_speeds(stats, rw_mult)
 
 
 ## v6.14: 出兵序列 elite/boss 标记加成。

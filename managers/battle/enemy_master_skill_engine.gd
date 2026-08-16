@@ -826,13 +826,13 @@ func _exec_debuff_players(params: Dictionary, name_text: String) -> void:
 	var crit_penalty: float = float(params.get("crit_penalty", 0.20))
 	var dodge_penalty: float = float(params.get("dodge_penalty", 0.15))
 	var duration: float = float(params.get("duration", 5.0))
-	var now_msec: int = Time.get_ticks_msec()
-	var expire_msec: int = now_msec + int(duration * 1000)
+	# v10(C4) 统一：时间戳秒制
+	var expire_sec: float = Time.get_ticks_msec() / 1000.0 + duration
 	for t in targets:
 		if t == null or not is_instance_valid(t):
 			continue
 		# 复用 ECM 减益 meta 名（construct_unit/attack 路径已读 _ecm_*_penalty）
-		t.set_meta("_ecm_debuffed_until", expire_msec)
+		t.set_meta("_ecm_debuffed_until", expire_sec)
 		t.set_meta("_ecm_attack_speed_penalty", atk_penalty)
 		t.set_meta("_ecm_crit_penalty", crit_penalty)
 		t.set_meta("_ecm_dodge_penalty", dodge_penalty)

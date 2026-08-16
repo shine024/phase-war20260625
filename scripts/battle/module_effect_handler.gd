@@ -559,6 +559,31 @@ static func _apply_armor_break(target: Node, stats: UnitStats) -> void:
 	target.set_meta("_armor_break_stacks", current_stacks)
 	# 同时记录每层的减免比例和来源 stats（供 take_damage 读取）
 	target.set_meta("_armor_break_ratio", stats.armor_break_per_hit)
+	# v10(C9): 破甲不再永久——8s 到期，消费方（CU/EU/swarm take_damage）惰性清理
+	target.set_meta("_armor_break_until", Time.get_ticks_msec() / 1000.0 + 8.0)
+
+## v10(H3): 读取激活中的 ECM 暴击/闪避削弱（未激活/已过期返回 0）。
+## 此前 _ecm_crit_penalty/_ecm_dodge_penalty 四处写入零消费——ECM/EMP/boss 削弱的
+## 暴击、闪避部分完全空转。现由 bullet.gd（暴击）与三方 take_damage（闪避）消费。
+static func get_ecm_crit_penalty(u: Node) -> float:
+	if u == null or not is_instance_valid(u):
+		return 0.0
+	if not u.has_meta("_ecm_debuffed_until") or not u.has_meta("_ecm_crit_penalty"):
+		return 0.0
+	if Time.get_ticks_msec() / 1000.0 >= float(u.get_meta("_ecm_debuffed_until", 0.0)):
+		return 0.0
+	return float(u.get_meta("_ecm_crit_penalty", 0.0))
+
+
+static func get_ecm_dodge_penalty(u: Node) -> float:
+	if u == null or not is_instance_valid(u):
+		return 0.0
+	if not u.has_meta("_ecm_debuffed_until") or not u.has_meta("_ecm_dodge_penalty"):
+		return 0.0
+	if Time.get_ticks_msec() / 1000.0 >= float(u.get_meta("_ecm_debuffed_until", 0.0)):
+		return 0.0
+	return float(u.get_meta("_ecm_dodge_penalty", 0.0))
+
 
 # ── debuff 型：标记系统（命中概率标记，被标记目标受额外伤害）──
 
@@ -658,6 +683,23 @@ static func _revive_unit(unit: Node, stats: UnitStats) -> void:
 	# 清除死亡标记（construct_unit._is_dying）
 	if "_is_dying" in unit:
 		unit._is_dying = false
+	# v10(C10): 复活清战斗状态——DOT/ECM/破甲/标记/屏蔽残留会让复活单位立即再死或带永久减益。
+	# 势力 debuff（_faction_*）不在此清——其 stats 修改须由 process_debuff_expirations 按 base 恢复。
+	for mk in [
+		"_chem_dps", "_chem_until", "_chem_stacks",
+		"_burn_dps", "_burn_base_dps", "_burn_stacks", "_burn_until",
+		"_nano_pct", "_nano_until",
+		"_ecm_debuffed_until", "_ecm_attack_speed_penalty", "_ecm_crit_penalty", "_ecm_dodge_penalty",
+		"_atk_speed_penalty_until", "_atk_speed_penalty_mult",
+		"_armor_break_stacks", "_armor_break_ratio", "_armor_break_until",
+		"_marked_until", "_mark_vuln_bonus",
+		"_crit_marked_until", "_crit_mark_bonus",
+		"_jammed_until", "_slow_aura_until", "_slow_aura_mult",
+	]:
+		if unit.has_meta(mk):
+			unit.remove_meta(mk)
+	if "_hit_stun_left" in unit:
+		unit._hit_stun_left = 0.0
 	# 调用单位的 on_revived 钩子（可选，单位可重置状态）
 	if unit.has_method("on_revived"):
 		unit.on_revived()
@@ -1020,8 +1062,10 @@ static func _apply_emp_on_hit(target: Node, stats: UnitStats, attacker: Node) ->
 	var graphite_charge: int = ComboFieldState.get_target_stacks(target, ComboFieldState.META_GRAPHITE_CHARGE, ComboFieldState.META_GRAPHITE_UNTIL)
 	var emp_dmg_mult: float = 1.0 + graphite_charge * 0.15
 	# 复用 ECM debuff meta（攻速-30%/暴击-20%/闪避-15%，持续 4 秒）
-	var now_msec: int = Time.get_ticks_msec()
-	target.set_meta("_ecm_debuffed_until", now_msec + 4000)
+	# v10(C4) 统一：全部 _xxx_until 时间戳一律秒制（Time.get_ticks_msec()/1000.0 基准），
+	# 消费方统一在 ConstructUnitAI.get_attack_delta_scale / unit_status_collector 等秒制读取
+	var now_sec: float = Time.get_ticks_msec() / 1000.0
+	target.set_meta("_ecm_debuffed_until", now_sec + 4.0)
 	target.set_meta("_ecm_attack_speed_penalty", 0.30)
 	target.set_meta("_ecm_crit_penalty", 0.20)
 	target.set_meta("_ecm_dodge_penalty", 0.15)

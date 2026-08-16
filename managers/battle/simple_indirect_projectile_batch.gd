@@ -321,19 +321,10 @@ func _apply_hit(r: Dictionary) -> void:
 					var def_val: float = AttackCalculator.get_defense_vs(target_stats, shooter_stats.combat_kind)
 					final_primary_dmg = raw_dmg * (100.0 / (100.0 + def_val))
 
-				# 3. 强化加成
-				if shooter_stats.enhance_level > 0:
-					var enhance_mult: float
-					if shooter_stats.enhance_level >= 10:
-						enhance_mult = 1.60
-					elif shooter_stats.enhance_level >= 9:
-						enhance_mult = 1.50
-					else:
-						enhance_mult = 1.0 + float(shooter_stats.enhance_level) * 0.05
-					final_primary_dmg *= enhance_mult
-
-					# v6.4: 改造伤害加成已由 ModificationRegistry.apply_with_level 在 UnitStats 构建阶段
-					# 直接叠加到 attack_light/armor/air，此处无需再乘倍率。
+				# v10(C6) 修复：删除强化加成块——调用方（construct_unit_ai / enemy_unit）传入的 dmg
+				# 已含 AttackCalculator.calculate_damage_with_weapon 的强化曲线（v7.x 0.08/级），
+				# 此处再乘 0.05/级旧曲线构成双乘。强化现全链路仅应用一次。
+				# （v6.4 注：改造伤害加成由 ModificationRegistry 在 UnitStats 构建阶段直叠 attack_*。）
 
 				# 5. 词缀战斗效果（如果shooter节点有效）
 				if shooter and is_instance_valid(shooter):

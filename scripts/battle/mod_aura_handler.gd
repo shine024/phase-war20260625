@@ -52,6 +52,53 @@ static func remove_mod_auras(unit: Node) -> void:
 		# 清除该友军接收的来自 unit 的光环记录
 		_remove_aura_receiver(ally, unit)
 
+## v10(H9): 后部署单位的补偿接收——光环源的 setup 广播只覆盖"当时在场"友军，
+## 之后部署的单位原先永久吃不到光环。新单位 setup 时反向扫描场上光环源并接收其 buff。
+## 由 construct_unit.setup 在 apply_mod_auras(self) 之后调用。
+static func receive_mod_auras_from_field(unit: Node) -> void:
+	if unit == null or not is_instance_valid(unit):
+		return
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	if tree == null or tree.root == null:
+		return
+	var is_player: bool = bool(unit.get("is_player")) if "is_player" in unit else true
+	var group_name: String = "player_units" if is_player else "enemy_units"
+	var allies: Array = []
+	var bm: Node = tree.root.get_node_or_null("BattleManager")
+	if bm != null and is_instance_valid(bm) and bm.has_method("get_cached_nodes_in_group"):
+		allies = bm.get_cached_nodes_in_group(group_name)
+	if allies.is_empty():
+		allies = tree.get_nodes_in_group(group_name)
+	for src in allies:
+		if src == null or not is_instance_valid(src) or src == unit:
+			continue
+		var summary: Dictionary = _get_aura_summary(src)
+		if summary.is_empty():
+			continue
+		# 已接收过该源的光环（含死亡撤销后重挂场景）则跳过，防止重复施加
+		if _has_receiver_record(unit, src):
+			continue
+		_apply_buffs_to_unit(unit, summary, true)
+		_record_aura_receiver(unit, src)
+
+## 单位是否已记录接收过 src 的光环
+static func _has_receiver_record(unit: Node, src: Node) -> bool:
+	if not unit.has_meta("mod_aura_applied"):
+		return false
+	var src_id: String = ""
+	if src.has_meta("source_instance_id"):
+		src_id = String(src.get_meta("source_instance_id"))
+	elif is_instance_valid(src):
+		src_id = str(src.get_instance_id())
+	if src_id.is_empty():
+		return false
+	var rec: Variant = unit.get_meta("mod_aura_applied")
+	if rec is Array:
+		for entry in rec:
+			if entry is Dictionary and String(entry.get("source", "")) == src_id:
+				return true
+	return false
+
 # ─────────────────────────────────────────────
 # 内部实现
 # ─────────────────────────────────────────────
@@ -105,30 +152,42 @@ static func _apply_buffs_to_unit(ally: Node, summary: Dictionary, apply: bool) -
 	if not "stats" in ally or ally.stats == null:
 		return
 	var stats = ally.stats
-	var sign := 1.0 if apply else -1.0
 	for stat_field in summary:
 		var rule: Dictionary = summary[stat_field]
 		var op: String = rule.get("op", "add")
 		var raw: float = float(rule.get("raw", 0.0))
 		match op:
 			"add":
-				# 加法叠加（crit_chance/dodge_chance/hp_regen），带上限保护
-				var cur: float = float(stats.get(stat_field))
-				stats.set(stat_field, clampf(cur + sign * raw, 0.0, 1.0))
-			"abs_add":
-				# 负值取绝对值后加法（ally_detection -0.30 → +0.30 闪避）
-				var cur_abs: float = float(stats.get(stat_field))
-				stats.set(stat_field, clampf(cur_abs + sign * absf(raw), 0.0, 1.0))
-			"ammo":
-				# 弹药/指挥 → 攻速提升（attack_interval 乘法减少）
-				var cur_int: float = float(stats.get(stat_field))
+				# 加法叠加（crit_chance/dodge_chance/hp_regen），带上限保护。
+				# v10(H11): 按"实际施加量"记录并回退——原撤销按 raw 回退，施加被 clamp
+				# 截断时（如 0.9+0.3→1.0）撤销后变 0.7，友军属性被永久削低。
+				# 注：两个光环源写同一 stat 时记录为最近一次的施加量（优于 raw，非完美）
 				if apply:
-					stats.set(stat_field, maxf(0.1, cur_int * (1.0 - raw)))
+					var cur: float = float(stats.get(stat_field))
+					var applied_add: float = clampf(cur + raw, 0.0, 1.0) - cur
+					stats.set(stat_field, cur + applied_add)
+					_record_applied_delta(ally, stat_field, applied_add)
 				else:
-					# 撤销时反向除（恢复原始值）
-					var divisor: float = (1.0 - raw)
-					if divisor > 0.0:
-						stats.set(stat_field, cur_int / divisor)
+					var cur_u: float = float(stats.get(stat_field))
+					var prev_add: float = _pop_applied_delta(ally, stat_field, raw)
+					stats.set(stat_field, clampf(cur_u - prev_add, 0.0, 1.0))
+			"abs_add":
+				# 负值取绝对值后加法（ally_detection -0.30 → +0.30 闪避）。v10(H11) 同上
+				if apply:
+					var cur_abs: float = float(stats.get(stat_field))
+					var applied_abs: float = clampf(cur_abs + absf(raw), 0.0, 1.0) - cur_abs
+					stats.set(stat_field, cur_abs + applied_abs)
+					_record_applied_delta(ally, stat_field, applied_abs)
+				else:
+					var cur_abs_u: float = float(stats.get(stat_field))
+					var prev_abs: float = _pop_applied_delta(ally, stat_field, absf(raw))
+					stats.set(stat_field, clampf(cur_abs_u - prev_abs, 0.0, 1.0))
+			"ammo":
+				# 弹药/指挥 → 攻速提升。v10(H1) 修复：原只改 attack_interval，对有武器槽的单位
+				# （timing 走 weapon.attack_speed）无效。改走统一入口同步全部 timing 来源。
+				# raw 语义：interval 减少比例（interval ×(1-raw) ⇔ 攻速率 ×1/(1-raw)）
+				var rate_mult: float = 1.0 / maxf(0.1, 1.0 - raw)
+				AttackCalculator.scale_attack_speeds(stats, rate_mult if apply else 1.0 / rate_mult)
 			"mult_int":
 				# 乘法伤害加成（attack_armor/attack_all），结果取整
 				if stat_field == "attack_all":
@@ -157,6 +216,32 @@ static func _apply_buffs_to_unit(ally: Node, summary: Dictionary, apply: bool) -
 
 
 # ─────────────────────────────────────────────
+# ── v10(H11): clamp 施加量记账——撤销按实际施加量回退，防属性漂移 ──
+
+static func _record_applied_delta(ally: Node, stat_field: String, delta: float) -> void:
+	var d: Dictionary = {}
+	if ally.has_meta("_mod_aura_applied_delta"):
+		var ex: Variant = ally.get_meta("_mod_aura_applied_delta")
+		if ex is Dictionary:
+			d = ex
+	d[stat_field] = delta
+	ally.set_meta("_mod_aura_applied_delta", d)
+
+
+static func _pop_applied_delta(ally: Node, stat_field: String, fallback: float) -> float:
+	if ally.has_meta("_mod_aura_applied_delta"):
+		var d: Variant = ally.get_meta("_mod_aura_applied_delta")
+		if d is Dictionary and d.has(stat_field):
+			var v: float = float(d[stat_field])
+			d.erase(stat_field)
+			if d.is_empty():
+				ally.remove_meta("_mod_aura_applied_delta")
+			else:
+				ally.set_meta("_mod_aura_applied_delta", d)
+			return v
+	return fallback
+
+
 #  mod_aura 接收者追踪（供 buff_strip / 情报面板显示）
 # ─────────────────────────────────────────────
 

@@ -182,7 +182,7 @@ func _configure_behavior() -> void:
 		5:
 			speed = 650.0
 			max_distance = 900.0
-			pellet_count = 6
+			pellet_count = GC.SHOTGUN_PELLET_COUNT
 			spread_angle_deg = 18.0
 		6:
 			speed = 1100.0
@@ -556,10 +556,22 @@ func _process(delta: float) -> void:
 			# CPUParticles2D 无 process_material；停止 emitting 后粒子按自身 lifetime 自然消散
 			_trail_particles.emitting = _tank_gun_timer < TANK_GUN_DISAPPEAR_AFTER
 		return
-	# 目标死亡时：直接消失（曲射由 _process_indirect 单独处理）
+	# v10(H12): 帧前位置（供命中扫掠判定，见下方 _seg_point_dist_sq）
+	var _prev_pos: Vector2 = global_position
+	# 目标死亡时：直接消失（曲射由 _process_indirect 单独处理）。
+	# v10(H13)：穿透中的子弹（已撞过≥1目标且还有穿透次数）不随目标死亡销毁——
+	# 沿飞行方向扇形重找下一穿透目标，找不到才回收（原提前销毁使穿透链随目标死亡中断）
 	if target == null or not is_instance_valid(target):
-		_finish_tex_bullet()
-		return
+		if _pierce_hit_targets.size() > 0 and pierce_count > 0:
+			var _next_t: Node2D = _find_next_pierce_target(global_position, _direction)
+			if _next_t != null:
+				target = _next_t
+			else:
+				_finish_tex_bullet()
+				return
+		else:
+			_finish_tex_bullet()
+			return
 	else:
 		# v9.3: 穿透子弹（已撞过至少1个目标）保持直线飞行，不跟踪新目标——
 		# 穿透语义是"子弹沿原方向直线穿过多个单位"，跟踪会让子弹急转弯不合理
@@ -592,10 +604,24 @@ func _process(delta: float) -> void:
 	if global_position.distance_squared_to(_start_position) > max_d2:
 		_finish_tex_bullet()
 		return
-	if target and is_instance_valid(target) and global_position.distance_squared_to(target.global_position) < 100.0:
-		# v9.2: 穿透去重——同一颗子弹不反复撞已撞过的目标（穿透次数多时尤其重要）
-		if target not in _pierce_hit_targets:
-			_on_hit(target)
+	if target and is_instance_valid(target):
+		# v10(H12): 扫掠命中——线段（帧前位置→当前位置）最近点距离 ≤10px 即命中。
+		# 高速弹（LASER 1400 / SNIPER 1100 px/s）帧位移 18~23px 超过判定圈直径 20px，
+		# 原逐帧点检查存在隧穿漏命中
+		if _seg_point_dist_sq(_prev_pos, global_position, target.global_position) < 100.0:
+			# v9.2: 穿透去重——同一颗子弹不反复撞已撞过的目标（穿透次数多时尤其重要）
+			if target not in _pierce_hit_targets:
+				_on_hit(target)
+
+## v10(H12): 点到线段最近距离的平方（扫掠命中判定用，替代逐帧点检查的隧穿缺口）
+func _seg_point_dist_sq(a: Vector2, b: Vector2, p: Vector2) -> float:
+	var ab: Vector2 = b - a
+	var ab_len_sq: float = ab.length_squared()
+	if ab_len_sq < 0.0001:
+		return a.distance_squared_to(p)
+	var t: float = clampf((p - a).dot(ab) / ab_len_sq, 0.0, 1.0)
+	return (a + ab * t).distance_squared_to(p)
+
 
 ## v6.5: 不同曲射武器的弧线高度倍率
 ## 迫击炮最高弧线（高抛物线），火箭筒最低弧线（接近平射）
@@ -791,9 +817,10 @@ func _play_impact_sfx(is_crit: bool) -> void:
 func _get_aoe_damage_targets(center: Vector2, radius: float, primary: Node2D) -> Array:
 	var targets: Array = []
 	var r2: float = radius * radius
-	var tree := get_tree()
-	var bm: Node = tree.root.get_node_or_null("BattleManager") if tree else null
-	if bm != null and is_instance_valid(bm) and bm.get("battle_active") == true:
+	# P1 性能优化：BattleManager 是 autoload 全局单例，直接引用，
+	# 替代原 get_tree().root.get_node_or_null("BattleManager") 的每次命中全树遍历
+	var bm: Node = BattleManager if (BattleManager != null and is_instance_valid(BattleManager)) else null
+	if bm != null and bm.get("battle_active") == true:
 		var grid: Variant = bm.get("spatial_grid")
 		if grid != null and is_instance_valid(grid) and grid.has_method("query_nearby"):
 			for node in grid.query_nearby(center, radius):
@@ -823,11 +850,9 @@ func _get_aoe_damage_targets(center: Vector2, radius: float, primary: Node2D) ->
 ## dir_threshold：方向点积下限（cos 阈值），>0 表示只选飞行方向前方的目标（不选身后的）
 func _find_next_pierce_target(origin: Vector2, fly_dir: Vector2, search_radius: float = 300.0, dir_threshold: float = 0.3) -> Node2D:
 	var dir: Vector2 = fly_dir.normalized()
-	var tree := get_tree()
-	if tree == null:
-		return null
-	var bm: Node = tree.root.get_node_or_null("BattleManager")
-	if bm == null or not is_instance_valid(bm) or bm.get("battle_active") != true:
+	# P1 性能优化：直接用 autoload 全局引用，替代全树遍历
+	var bm: Node = BattleManager if (BattleManager != null and is_instance_valid(BattleManager)) else null
+	if bm == null or bm.get("battle_active") != true:
 		return null
 	var grid: Variant = bm.get("spatial_grid")
 	if grid == null or not is_instance_valid(grid) or not grid.has_method("query_nearby"):
@@ -862,6 +887,10 @@ func _find_next_pierce_target(origin: Vector2, fly_dir: Vector2, search_radius: 
 ## v9.3: TANK_GUN 命中后淡出（避免与下一发射击叠加，让重炮视觉清晰）
 const TANK_GUN_DISAPPEAR_AFTER: float = 0.20  # 命中后保持可见 0.2s（约 12 帧）
 
+## v10(G-4) 结构豁免说明：本函数 ~370 行，按固定段落顺序执行（基础守卫→穿透检测→暴击→
+## 武器变异→卡牌能力→TAG 克制→组合技→溅射/连锁→直击结算→命中副作用）。每段自带早退守卫，
+## 单次命中只走命中段落；热路径已做缓存优化（out_result/复用字典），拆分收益低于回归风险，
+## 按"性能注释豁免"保留；后续重构建议按上述段落拆私有函数。
 func _on_hit(primary: Node2D) -> void:
 	# v9.3: TANK_GUN 命中后立即开始淡出计时
 	if DirectWeaponFlavor.classify(_weapon_name, weapon_type) == DirectWeaponFlavor.Flavor.TANK_GUN:
@@ -908,24 +937,11 @@ func _on_hit(primary: Node2D) -> void:
 	# bullet 消费实际全链路空转。现格子战的 damage_reduction 已在 take_damage→resolve_hit
 	# 正确结算，bullet 这里不再处理减伤。保留 defender_reduction=0 让下方公式行为不变。
 	var defender_reduction: float = 0.0
-	# v5.0: 击穿检查 + 三维防御减免（仅当伤害未预计算时）
-	if not _pre_calculated:
-		var primary_stats: UnitStats = primary.get("stats") as UnitStats if primary != null else null
-		if primary_stats != null and shooter_stats != null:
-			# v6.2: 攻防维度对齐——按攻击者单位类型选防御值
-			var def_val: float = AttackCalculator.get_defense_vs(primary_stats, shooter_stats.combat_kind)
-		# 修复：统一应用防御减免，移除错误的击穿跳过逻辑
-			damage = damage * (100.0 / (100.0 + def_val))
-		# 强化加成
-		if shooter_stats != null and shooter_stats.enhance_level > 0:
-			var enhance_mult: float
-			if shooter_stats.enhance_level >= 10:
-				enhance_mult = 1.60
-			elif shooter_stats.enhance_level >= 9:
-				enhance_mult = 1.50
-			else:
-				enhance_mult = 1.0 + float(shooter_stats.enhance_level) * 0.05
-			damage *= enhance_mult
+	# v10(C6/C7) 修复：删除"未预计算时再乘防御+强化"块。格子战（唯一战斗模式）中防御由
+	# 受击侧 take_damage→CardGridDamage.resolve_hit 统一结算，强化曲线仅在
+	# AttackCalculator.calculate_damage_with_weapon 应用一次。原块与受击侧叠加造成：
+	# 防御双曲线（100/(100+def) 与 def/(def+50) 各扣一次）+ 强化双乘（0.08 与 0.05 两曲线复合）。
+	# _pre_calculated 字段保留仅为 setup API 兼容（第 9 参），已无结算消费方。
 	# 词缀战斗效果已移除：直接使用已计算的 damage 值
 	var final_damage: float = damage * (1.0 - defender_reduction)
 	# v8.1: 穿透检测——命中特效紫色穿甲光线 + pierce 伤害数字样式
@@ -959,12 +975,18 @@ func _on_hit(primary: Node2D) -> void:
 			_pierce_dir = _direction
 	# v6.3: 真实暴击判定（基于 crit_chance；基础1.5x + crit_damage_bonus 每级+0.2x）
 	# v7.x: 目标的 crit_resist 降低被暴击概率（暴抗从攻击者 crit_chance 中扣减，下限 0）
+	# v10(L5) 判定顺序声明：暴击在此处（攻击侧）结算 → 受击侧 take_damage→resolve_hit 再做
+	# 闪避/防御/减伤——即闪避可以躲掉已判暴击的一击（先攻方暴击、后验守方闪避，设计语义）
 	var is_crit: bool = false
 	var effective_crit: float = shooter_stats.crit_chance
 	if effective_crit > 0.0 and primary != null:
 		var target_stats_v: UnitStats = primary.get("stats") as UnitStats if "stats" in primary else null
 		if target_stats_v != null and target_stats_v.crit_resist > 0.0:
 			effective_crit = maxf(0.0, effective_crit - target_stats_v.crit_resist)
+	# v10(H3): ECM 暴击削弱——射手带激活中的 _ecm_crit_penalty 时扣减暴击率（此前四处写零读）
+	var _ecm_crit_pen: float = ModuleEffectHandler.get_ecm_crit_penalty(shooter if is_instance_valid(shooter) else null)
+	if _ecm_crit_pen > 0.0:
+		effective_crit = maxf(0.0, effective_crit - _ecm_crit_pen)
 	# v8.x: 暴击标注——被标注目标受到攻击时暴击率额外提升（独立乘区，不受 crit_resist 扣减）
 	if primary != null and primary.has_meta("_crit_marked_until"):
 		var _cm_expire: float = float(primary.get_meta("_crit_marked_until", 0.0))
@@ -1038,7 +1060,8 @@ func _on_hit(primary: Node2D) -> void:
 	if _is_beam and shooter_stats != null and shooter_stats.beam_damage_bonus > 0.0:
 		final_damage *= (1.0 + shooter_stats.beam_damage_bonus)
 	var _combo_eng: RefCounted = null
-	var _bm_combo := get_tree().root.get_node_or_null("BattleManager") if (get_tree() != null) else null
+	# P1 性能优化：直接用 autoload 全局引用，替代每次命中全树遍历
+	var _bm_combo: Node = BattleManager if (BattleManager != null and is_instance_valid(BattleManager)) else null
 	if _bm_combo != null and _bm_combo.has_method("get_combo_engine"):
 		_combo_eng = _bm_combo.get_combo_engine()
 		if _combo_eng != null and _combo_eng.has_method("get_active_mechanisms"):
@@ -1157,7 +1180,7 @@ func _on_hit(primary: Node2D) -> void:
 		primary.set_meta("_vfx_pierce_pending", true)
 
 	# 直击伤害
-	if primary.has_method("take_damage"):
+	if primary != null and primary.has_method("take_damage"):
 		var final_after_wall: float = _apply_shield_wall_mitigation(final_damage, primary)
 		# v9.2: 多单位穿透伤害衰减——主目标命中时 mult=1.0 不衰减；
 		# 穿透到后续目标时 mult 已在上一轮 pierce 消费中递减，此处自然应用。
@@ -1248,7 +1271,7 @@ func _on_hit_basic(primary: Node2D) -> void:
 			var atk_b: Variant = shooter if is_instance_valid(shooter) else null
 			child.take_damage(basic_splash, atk_b)
 	# 直击伤害
-	if primary.has_method("take_damage"):
+	if primary != null and primary.has_method("take_damage"):
 		var basic_primary: float = _apply_shield_wall_mitigation(damage, primary)
 		var atk_bp: Variant = shooter if is_instance_valid(shooter) else null
 		primary.take_damage(basic_primary, atk_bp)

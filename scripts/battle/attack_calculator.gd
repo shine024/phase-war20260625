@@ -236,7 +236,8 @@ static func calculate_damage_with_weapon(
 
 	# 防御减免（非格子战模式）
 	var final_damage = base_damage
-	if not skip_defense_reduction:
+	# v10(C11): target_stats 可空（相位场/boss 等无 stats 目标）——不再依赖 skip 恒真掩盖
+	if not skip_defense_reduction and target_stats != null:
 		# 用攻击者单位类型决定穿透哪个防御值（v6.2: 攻防维度对齐）
 		var def = get_defense_vs(target_stats, attacker_stats.combat_kind)
 		# v7.x: 符文+相位仪穿透整合（使用统一上限 MAX_PENETRATION_RATIO）
@@ -294,8 +295,10 @@ static func compute_tag_counter_multiplier(attacker_tags: Array, target: Node, o
 	if target.has_meta("target_priority_tag"):
 		target_priority_tag = String(target.get_meta("target_priority_tag", ""))
 	# 遍历 TAG_COUNTER_RULES，匹配 attacker_tag
+	# P1 性能优化：去掉 String() 强转（TAG_COUNTER_RULES 数据本就是 String 字面量，
+	# 原每次命中每条规则做 3 次 Variant→String 转换），直接用 Variant 比较
 	for rule in GC.TAG_COUNTER_RULES:
-		var atk_tag: String = String(rule.get("attacker_tag", ""))
+		var atk_tag = rule.get("attacker_tag", "")
 		if not attacker_tags.has(atk_tag):
 			continue
 		# 检查目标条件
@@ -309,14 +312,14 @@ static func compute_tag_counter_multiplier(attacker_tags: Array, target: Node, o
 					break
 		# 条件2: target_condition（is_casting 等）
 		if not matched:
-			var cond: String = String(rule.get("target_condition", ""))
+			var cond = rule.get("target_condition", "")
 			if cond == "is_casting" and target.has_meta("_is_casting"):
 				if bool(target.get_meta("_is_casting", false)):
 					matched = true
 		if not matched:
 			continue
 		# 应用效果
-		var effect: String = String(rule.get("effect", ""))
+		var effect = rule.get("effect", "")
 		var value: float = float(rule.get("value", 0.0))
 		match effect:
 			"damage_bonus":
@@ -369,6 +372,24 @@ static func get_weapon_speed(attacker_stats: UnitStats, weapon_resource: WeaponR
 		GC.CombatKind.AIR:
 			speed = attacker_stats.attack_air_speed
 	return speed if speed > 0.0 else DEFAULT_ATTACK_SPEED
+
+
+## v10(H1): 攻速乘区统一入口——同步全部 timing 真实来源。
+## 攻击节奏的实际计算走 weapon_slots[].attack_speed（get_weapon_attack_timing）与
+## stats.attack_*_speed（get_attack_timing 兜底），单独改 stats.attack_interval 对有武器槽的
+## 单位无效（此前多个系统的攻速效果因此空转，且率字段方向曾是反的）。
+## 生成期攻速调整（势力技能注入/战法/敌方符文/符文之语/改造"弹药"光环）一律走本函数。
+## speed_mult 为攻速"率"倍率（1.2 = +20% 提速）；interval 自动反向。
+static func scale_attack_speeds(stats: UnitStats, speed_mult: float) -> void:
+	if stats == null or speed_mult <= 0.0 or absf(speed_mult - 1.0) < 0.0001:
+		return
+	stats.attack_light_speed *= speed_mult
+	stats.attack_armor_speed *= speed_mult
+	stats.attack_air_speed *= speed_mult
+	stats.attack_interval /= speed_mult
+	for w in stats.weapon_slots:
+		if w is WeaponResource and w.enabled:
+			w.attack_speed = maxf(0.05, float(w.attack_speed) * speed_mult)
 
 
 ## v6.2: 从攻击者 UnitStats 的符文特殊效果中读取攻击穿透比例（0.0-1.0）

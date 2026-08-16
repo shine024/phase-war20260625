@@ -181,7 +181,6 @@ var _cached_hp_ratio: float = -1.0
 var _cached_is_card_grid: bool = true
 # 性能优化：目标查找计时器，减少频繁查找
 var _target_find_timer: float = 0.0
-const TARGET_FIND_INTERVAL: float = 0.3  # 每300ms重新查找一次目标
 var _using_enemy_archetype_visual: bool = false
 var _visual_archetype_id: String = ""
 ## 部署虚影：可被敌方攻击、不移动、不还击；计时结束后实体化
@@ -331,6 +330,9 @@ func setup(p_is_player: bool, p_stats: UnitStats, forced_enemy_visual_archetype_
 	# v6.8: 改造光环（ally_* 类改造）— 复用全体广播，给所有同阵营友军加 buff
 	# 单位已加入 player_units/enemy_units 分组（上方 add_to_group），广播可正常查询
 	ModAuraHandler.apply_mod_auras(self)
+	# v10(H9): 补偿接收场上既有光环源（光环源 setup 广播只覆盖当时在场友军，
+	# 后部署的单位原先永久吃不到光环）
+	ModAuraHandler.receive_mod_auras_from_field(self)
 	# v7.x: 改造光环施加后刷新 buff_strip，让受影响友军立即显示光环图标
 	_update_card_grid_buff_strip(true)
 	# v8.6: 势力技能 stacking_bonus / variety_bonus 运行时叠加（不进 stats 缓存，按实时单位数算）
@@ -859,8 +861,8 @@ func _update_ecm_debuff_aura() -> void:
 		# 防御性回退：spatial_grid 不可用时用原全组遍历（保持向后兼容）
 		var enemy_group: String = "enemy_units" if is_player else "player_units"
 		enemies = get_tree().get_nodes_in_group(enemy_group)
-	var now_msec: int = Time.get_ticks_msec()
-	var expire_msec: int = now_msec + int(ECM_DEBUFF_DURATION_SEC * 1000)
+	# v10(C4) 统一：时间戳秒制
+	var expire_sec: float = Time.get_ticks_msec() / 1000.0 + ECM_DEBUFF_DURATION_SEC
 	for e in enemies:
 		if e == null or not is_instance_valid(e):
 			continue
@@ -869,8 +871,8 @@ func _update_ecm_debuff_aura() -> void:
 		# query_enemies 已按 bounding-box 过滤，但需精确半径校验（bounding-box 比 radius 略大）
 		if global_position.distance_to(e.global_position) <= ECM_DEBUFF_RADIUS:
 			# 给敌方挂临时减益 meta（敌方在 attack/damage 路径读取应用）
-			e.set_meta("_ecm_debuffed_until", expire_msec)
-			e.set_meta("_ecm_attack_speed_penalty", 0.25)  # 攻速 -25%
+			e.set_meta("_ecm_debuffed_until", expire_sec)
+			e.set_meta("_ecm_attack_speed_penalty", ConstructUnitAI.ECM_DEFAULT_ATK_SPEED_PENALTY)  # 攻速 -25%
 			e.set_meta("_ecm_crit_penalty", 0.15)          # 暴击 -15%
 			e.set_meta("_ecm_dodge_penalty", 0.20)         # 闪避 -20%
 
@@ -970,8 +972,8 @@ func _update_jamming_field_tick(delta: float) -> void:
 		return
 	_jamming_field_cd = JAMMING_FIELD_INTERVAL
 	# 给范围内敌方挂"攻击失效"meta（敌方 attack 路径读取，失效则跳过攻击）
-	var now_msec: int = Time.get_ticks_msec()
-	var expire_msec: int = now_msec + int(JAMMING_FIELD_DURATION * 1000)
+	# v10(C4) 统一：时间戳秒制
+	var expire_sec: float = Time.get_ticks_msec() / 1000.0 + JAMMING_FIELD_DURATION
 	var enemies: Array = _collect_enemy_units_for_mechanism()
 	for e in enemies:
 		if e == null or not is_instance_valid(e):
@@ -979,7 +981,7 @@ func _update_jamming_field_tick(delta: float) -> void:
 		if not ("global_position" in e):
 			continue
 		if global_position.distance_to(e.global_position) <= JAMMING_FIELD_RADIUS:
-			e.set_meta("_jammed_until", expire_msec)
+			e.set_meta("_jammed_until", expire_sec)
 	# VFX：屏蔽波信号（battle_spectacle 播紫色扩散波纹）
 	if SignalBus.has_signal("mechanism_jamming_field_activated"):
 		SignalBus.mechanism_jamming_field_activated.emit(global_position, JAMMING_FIELD_RADIUS)
@@ -1093,8 +1095,8 @@ func _update_drone_mark_tick(delta: float) -> void:
 	if candidates.is_empty():
 		return
 	candidates.sort_custom(func(a, b): return a.threat > b.threat)
-	var now_msec: int = Time.get_ticks_msec()
-	var expire_msec: int = now_msec + int(DRONE_MARK_DURATION * 1000)
+	# v10(C4) 统一：时间戳秒制（unit_status_collector 一直按秒读，原毫秒写入=永久标记）
+	var expire_sec: float = Time.get_ticks_msec() / 1000.0 + DRONE_MARK_DURATION
 	var target_positions: Array = []
 	var marked: int = 0
 	for c in candidates:
@@ -1102,7 +1104,7 @@ func _update_drone_mark_tick(delta: float) -> void:
 			break
 		var u = c.unit
 		if u != null and is_instance_valid(u):
-			u.set_meta("_drone_marked_until", expire_msec)
+			u.set_meta("_drone_marked_until", expire_sec)
 			u.set_meta("_drone_mark_vuln", DRONE_MARK_VULN)
 			target_positions.append(u.global_position)
 			marked += 1
@@ -1574,10 +1576,15 @@ func _physics_process(delta: float) -> void:
 			return
 
 	# 性能优化：减少目标查找频率
+	# v10(C1) 修复：计时器清零移入触发分支内（原无条件清零致"周期重索敌"分支恒不可达——
+	# 已锁目标永不重评估，反炮兵/集火标记/同行优先/克制切换只在新索敌时生效）；
+	# 无目标快速重试节流至 20Hz（原每物理帧跑完整索敌流程）
 	_target_find_timer += delta
 	var should_find_target := false
 	if target == null or not is_instance_valid(target):
-		should_find_target = true
+		if _target_find_timer >= 0.05:
+			should_find_target = true
+			_target_find_timer = 0.0
 	elif _target_find_timer >= _get_target_find_interval():
 		should_find_target = true
 		_target_find_timer = 0.0
@@ -1781,8 +1788,10 @@ func _update_hp_bar() -> void:
 				bar.set_folded(true)
 			else:
 				bar.set_folded(BattleInputState.current_selected_unit != self)
-		if bar.has_method("set_hp_text"):
-			bar.set_hp_text(hp, stats.max_hp)
+			# T1 性能优化：set_hp_text 挪进 1% 门槛内（与下方我方分支对齐）——
+			# 原在门槛外，敌方单位每次被击都触发 "%d/%d" 字符串格式化 + Label 重排
+			if bar.has_method("set_hp_text"):
+				bar.set_hp_text(hp, stats.max_hp)
 		return
 	# 性能优化：只在 HP 比率变化时更新 UI
 	var current_ratio := hp / stats.max_hp if stats.max_hp > 0 else 1.0
@@ -1818,8 +1827,11 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 	if is_player and FactionSkillEffectHandler.is_invulnerable(self):
 		return
 	# v7.x 战场视觉反馈：记录最后攻击者，供 unit_killed 信号携带（击杀定帧/连杀提示依赖）
+	# v10(M4): 同时记录时间戳——DOT 致死 source=null 回退归属时只认 5s 内的攻击者，
+	# 防止 credit 给若干秒前的无关单位
 	if attacker != null and is_instance_valid(attacker):
 		set_meta("_last_attacker", attacker)
+		set_meta("_last_attacker_at", Time.get_ticks_msec() / 1000.0)
 	var hp_loss: float = amount
 	if stats != null and _cached_is_card_grid:
 		var pen: float = 0.0
@@ -1851,15 +1863,24 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 			_:
 				base_def = maxf(stats.defense_light, maxf(stats.defense_armor, stats.defense_air))
 		# v7.x: 破甲叠加——读取自身 meta 的破甲层数，降低有效防御
-		# 每层按 armor_break_ratio 比例降低防御（_apply_armor_break 在攻击者命中时挂载）
+		# v10(C9): 破甲不再永久——带 _armor_break_until（8s），过期惰性清理并失效
 		if has_meta("_armor_break_stacks"):
-			var _ab_stacks: int = int(get_meta("_armor_break_stacks", 0))
-			var _ab_ratio: float = float(get_meta("_armor_break_ratio", 0.0))
-			if _ab_stacks > 0 and _ab_ratio > 0.0:
-				var _total_reduction: float = _ab_stacks * _ab_ratio
-				base_def = base_def * maxf(0.1, 1.0 - _total_reduction)
+			var _ab_expired: bool = false
+			if has_meta("_armor_break_until") \
+					and Time.get_ticks_msec() / 1000.0 >= float(get_meta("_armor_break_until", 0.0)):
+				remove_meta("_armor_break_stacks")
+				remove_meta("_armor_break_ratio")
+				remove_meta("_armor_break_until")
+				_ab_expired = true
+			if not _ab_expired:
+				var _ab_stacks: int = int(get_meta("_armor_break_stacks", 0))
+				var _ab_ratio: float = float(get_meta("_armor_break_ratio", 0.0))
+				if _ab_stacks > 0 and _ab_ratio > 0.0:
+					var _total_reduction: float = _ab_stacks * _ab_ratio
+					base_def = base_def * maxf(0.1, 1.0 - _total_reduction)
 		var eff_def: float = CardGridDamage.effective_defense(base_def, pen)
-		var dodge: float = float(stats.dodge_chance)
+		# v10(H3): ECM 闪避削弱——带激活中的 _ecm_dodge_penalty 时闪避率扣减（此前四处写零读）
+		var dodge: float = maxf(0.0, float(stats.dodge_chance) - ModuleEffectHandler.get_ecm_dodge_penalty(self))
 		# v7.5: 传入 damage_reduction（此前全链路空转，现 resolve_hit 接入）
 		var dmg_red: float = float(stats.damage_reduction)
 		var hit: Dictionary = CardGridDamage.resolve_hit(amount, eff_def, dodge, dmg_red)
@@ -2028,6 +2049,19 @@ func _exit_tree() -> void:
 	if ModAuraHandler != null:
 		ModAuraHandler.remove_mod_auras(self)
 
+## v10(M4): 带时效的最后攻击者（5s 外不作为击杀/信号归属，防 DOT 致死 credit 陈旧攻击者）
+func _fresh_last_attacker() -> Variant:
+	if not has_meta("_last_attacker"):
+		return null
+	var a: Variant = get_meta("_last_attacker", null)
+	if a == null or not is_instance_valid(a):
+		return null
+	if has_meta("_last_attacker_at"):
+		var age: float = Time.get_ticks_msec() / 1000.0 - float(get_meta("_last_attacker_at", 0.0))
+		if age > 5.0:
+			return null
+	return a
+
 func _die() -> void:
 	if _is_dying:
 		return
@@ -2037,17 +2071,13 @@ func _die() -> void:
 		return
 	# v7.x 第二批：改造濒死复活（IFAK/急救包）+ 亡语治疗
 	# on_death 返回 true 表示复活成功，中止死亡流程（亡语治疗不触发）
-	var _killer_for_death: Variant = null
-	if has_meta("_last_attacker"):
-		_killer_for_death = get_meta("_last_attacker", null)
+	var _killer_for_death: Variant = _fresh_last_attacker()
 	if ModuleEffectHandler.on_death(self, _killer_for_death):
 		return  # 复活成功
 	# v7.x: 触发击杀型改造效果（击杀护盾 shield_on_kill 等）
 	# 注：此前 on_kill 全项目零调用方，shield_on_kill 改造空转；此处接通断链
 	# 取最后攻击者作为击杀者，传递给 ModuleEffectHandler
-	var _killer_for_mod: Variant = null
-	if has_meta("_last_attacker"):
-		_killer_for_mod = get_meta("_last_attacker", null)
+	var _killer_for_mod: Variant = _fresh_last_attacker()
 	if _killer_for_mod != null and is_instance_valid(_killer_for_mod):
 		ModuleEffectHandler.on_kill(_killer_for_mod)
 		# v8.6: 势力技能 on_kill_energy / on_kill_heal_pct（击杀者回能量/回血）
@@ -2090,9 +2120,7 @@ func _die() -> void:
 		SignalBus.unit_died.emit(self, is_player)
 		# v7.x 战场视觉反馈：emit unit_killed（含击杀者），供 BattleSpectacle/BattleLog/MVP
 		# 用 has_meta 先判定，避免从未被击中过的单位打印 "no meta values" 警告。
-		var _killer: Variant = null
-		if has_meta("_last_attacker"):
-			_killer = get_meta("_last_attacker", null)
+		var _killer: Variant = _fresh_last_attacker()
 		if _killer != null and not is_instance_valid(_killer):
 			_killer = null
 		# meta 取出的对象类型信息会退化为 Object 基类，emit 信号(killer: Node)严格检查会报转换错。

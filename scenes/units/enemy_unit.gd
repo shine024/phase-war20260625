@@ -48,7 +48,6 @@ var _fort_aura_meta_set: bool = false
 var attack_damage: float = 10.0
 var attack_range: float = 100.0
 var attack_interval: float = 1.0
-var attack_timer: float = 0.0
 ## v5.0 攻速分离: 三阶段攻击状态机 (IDLE=0, WINDUP=1, ACTIVE=2, COOLDOWN=3)
 var _attack_phase: int = 0
 var _attack_phase_timer: float = 0.0
@@ -64,7 +63,6 @@ var stats: UnitStats = null  # 用于词条效果计算
 # 与 ConstructUnit 不同：敌兵实体化时 NOT 回满血（保留布置期间被打掉的血，避免玩家输出被回满白费）。
 var is_deploy_ghost: bool = false
 var _ghost_materialize_time_left: float = 0.0
-var _ghost_total_time: float = 0.0
 var _attack_weapon_index: int = 0  # 多武器时轮换
 # 性能优化：缓存 archetype 配置，避免每次攻击查字典
 var _cached_archetype_cfg: Dictionary = {}
@@ -417,6 +415,13 @@ func _apply_behavior_tags(cfg: Dictionary) -> void:
 	if not (tags_var is Array):
 		return
 	_behavior_tags_cached = tags_var.duplicate()
+	# v10(H2): 高价值目标标记写入——target_selection._is_high_value_target 与
+	# TAG_COUNTER_RULES 读 target_priority_tag，此前全项目零写入者（sniper 的
+	# boss/elite 优先索敌空转，只剩 HP>500 启发分支）。
+	if _behavior_tags_cached.has("boss"):
+		set_meta("target_priority_tag", "boss")
+	elif _behavior_tags_cached.has("elite"):
+		set_meta("target_priority_tag", "elite")
 	if _behavior_tags_cached.has("fast"):
 		_is_fast_unit = true
 		# fast：攻速 +20%（interval ×0.80）。同步裸字段、UnitStats 与武器槽 attack_speed。
@@ -486,6 +491,12 @@ func _sync_bare_fields_from_stats() -> void:
 
 func apply_elite_affixes(spawn_type: String) -> void:
 	_elite_spawn_type = spawn_type
+	# v10(H2): 波次 elite/boss 写高价值目标标记（target_priority_tag 此前全项目零写入者，
+	# sniper 的 boss/elite 优先索敌与 TAG_COUNTER_RULES 的 target_tags 匹配全部空转）
+	if spawn_type == "boss":
+		set_meta("target_priority_tag", "boss")
+	elif spawn_type == "elite":
+		set_meta("target_priority_tag", "elite")
 	if stats == null:
 		return
 	if spawn_type == "normal":
@@ -812,7 +823,7 @@ func _enemy_fire_range_for_motion() -> float:
 	var r: float = attack_range
 	if _cached_is_card_grid:
 		if _cached_combat_started:
-			r *= 2.6
+			r *= CombatTargeting.CARD_GRID_RANGE_MULT
 	return r
 
 
@@ -852,14 +863,20 @@ func _physics_process(delta: float) -> void:
 	# 修复：敌方堡垒此前不 tick → fort_shelter_aura 双失效（不写入+不读取）。
 	if stats != null and hp > 0.0:
 		ModuleEffectHandler.on_tick(self, delta)
+		# v10(H1): 势力 on_hit_debuff 过期恢复——此前仅玩家单位 tick，敌方中了 debuff 永不过期
+		FactionSkillEffectHandler.process_debuff_expirations(self, delta)
 	# v8: stealth 开局减伤计时器递减
 	_update_stealth_grace(delta)
 	# 性能优化：不再每帧更新 HP 条，改为在 HP 变化时更新
 	# 性能优化：减少目标查找频率
+	# v10(C1) 修复：同 construct_unit——清零移入触发分支内；无目标快速重试节流 20Hz。
+	# 修复后 _should_retain_current_target（含"我方有存活单位时放弃打相位场"）恢复可达。
 	_target_find_timer += delta
 	var should_find_target := false
 	if target == null or not is_instance_valid(target):
-		should_find_target = true
+		if _target_find_timer >= 0.05:
+			should_find_target = true
+			_target_find_timer = 0.0
 	elif _target_find_timer >= _get_target_find_interval():
 		should_find_target = true
 		_target_find_timer = 0.0
@@ -932,8 +949,9 @@ func _should_retain_current_target() -> bool:
 		return false
 	if CombatTargeting.is_phase_field_node(target):
 		return not CombatTargeting.has_alive_player_units(BattleManager)
-	var d: float = global_position.distance_to(target.global_position)
-	return d <= _enemy_acquisition_range()
+	# v10(L3): 平方比较（避免每周期 sqrt）
+	var acq: float = _enemy_acquisition_range()
+	return global_position.distance_squared_to(target.global_position) <= acq * acq
 
 
 func _find_target(_delta: float) -> void:
@@ -984,25 +1002,34 @@ func _find_target(_delta: float) -> void:
 		var gr: Array = BattleManager.get_cached_nodes_in_group("player_units") if BattleManager else get_tree().get_nodes_in_group("player_units")
 		var found_alive: bool = false
 		# v9.2: 分行索敌——两遍扫描：先找同行射程内目标，无则跨行（避免单位空转）
+		# v10(H8): fallback 与 spatial_grid 路径口径对齐——取"最近"而非"组顺序第一个"
+		# （原两套规则使同单位的目标选择依赖网格可用性）
 		var same_row_hit: Node2D = null
+		var same_row_best_d2: float = INF
+		var any_row_hit: Node2D = null
+		var any_row_best_d2: float = INF
 		for n in gr:
 			if not CombatTargeting.is_attackable_combat_unit(n):
 				continue
+			var n2d: Node2D = n as Node2D
+			if n2d == null:
+				continue
 			found_alive = true
-			var dist_sq := global_position.distance_squared_to(n.global_position)
-			if dist_sq <= attack_range_sq and CardGridBattleLayout.units_in_same_row(self, n):
-				same_row_hit = n as Node2D
-				break  # 同行射程内取第一个（gr 顺序即扫描顺序）
+			var dist_sq := global_position.distance_squared_to(n2d.global_position)
+			if dist_sq > attack_range_sq:
+				continue
+			if dist_sq < any_row_best_d2:
+				any_row_best_d2 = dist_sq
+				any_row_hit = n2d
+			if CardGridBattleLayout.units_in_same_row(self, n2d) and dist_sq < same_row_best_d2:
+				same_row_best_d2 = dist_sq
+				same_row_hit = n2d
 		if same_row_hit != null:
 			target = same_row_hit
 			return
-		for n in gr:
-			if not CombatTargeting.is_attackable_combat_unit(n):
-				continue
-			var dist_sq := global_position.distance_squared_to(n.global_position)
-			if dist_sq <= attack_range_sq:
-				target = n as Node2D
-				return
+		if any_row_hit != null:
+			target = any_row_hit
+			return
 
 		# 我方场上无单位时，攻击我方相位场
 		if not found_alive:
@@ -1177,26 +1204,27 @@ func _process_attack_timing(delta: float) -> void:
 		_attack_phase = 0
 		_attack_phase_timer = 0.0
 		return
-	# v8.x: ECM 电子战减益——被 ECM 光环覆盖时攻速 -25%（攻击节奏变慢）
-	# meta 由玩家方 ECM 单位的 _update_ecm_debuff_aura 周期性挂载（_ecm_debuffed_until）
-	var _ecm_attack_speed_mult: float = 1.0
-	if has_meta("_ecm_debuffed_until"):
-		var _ecm_expire: int = int(get_meta("_ecm_debuffed_until", 0))
-		if Time.get_ticks_msec() < _ecm_expire:
-			_ecm_attack_speed_mult = 0.75  # 攻速 ×0.75 = 攻击周期 ×1.33
-		else:
-			remove_meta("_ecm_debuffed_until")
-			remove_meta("_ecm_attack_speed_penalty")
-			remove_meta("_ecm_crit_penalty")
-			remove_meta("_ecm_dodge_penalty")
-	# 应用 ECM 减益：delta 乘以减益系数（攻击节奏变慢）
-	if _ecm_attack_speed_mult < 1.0:
-		delta = delta * _ecm_attack_speed_mult
+	# v10(C4/H1): 攻速类 debuff 统一 delta 通道——ECM/EMP/势力攻速/周期技能攻速惩罚/减速光环。
+	# 与玩家侧同源（ConstructUnitAI.get_attack_delta_scale，秒制时间戳 + 过期顺带清理），
+	# 替换原硬编码 0.75（boss 削弱 30% 此前被硬编码吞成 25%）。
+	var _atk_delta_mult: float = ConstructUnitAI.get_attack_delta_scale(self)
+	if _atk_delta_mult < 1.0:
+		delta = delta * _atk_delta_mult
 	# 获取攻速参数：优先使用缓存（仅目标变化时重算）
 	var timing: Dictionary
 	var fire_range: float
 	var wt: int
-	if target != _cached_target_ref:
+	# v10(M5): 缓存失效条件扩展——目标变化 或 当前武器攻速变化（攻速类效果改写
+	# weapon.attack_speed 后原缓存永不重算）。武器查询是索引级开销，不进反射。
+	var _timing_stale: bool = target != _cached_target_ref
+	if not _timing_stale and stats != null and _cached_timing.has("speed"):
+		var _ts_chk = target.get("stats") as UnitStats
+		var _tk_chk: int = _ts_chk.combat_kind if _ts_chk != null else 0
+		var _w_chk: WeaponResource = AttackCalculator.get_weapon_for_target(stats, _tk_chk)
+		if _w_chk != null and _w_chk.enabled \
+				and absf(float(_cached_timing.get("speed", 1.0)) - float(_w_chk.attack_speed)) > 0.0001:
+			_timing_stale = true
+	if _timing_stale:
 		_cached_target_ref = target
 		if stats != null:
 			var target_stats = target.get("stats") as UnitStats
@@ -1222,7 +1250,7 @@ func _process_attack_timing(delta: float) -> void:
 	# P0 性能优化：用缓存字段替代 has_method + is_xxx 反射链
 	var _is_card_grid_combat: bool = _cached_is_card_grid and _cached_combat_started
 	if _is_card_grid_combat:
-		fire_range *= 2.6
+		fire_range *= CombatTargeting.CARD_GRID_RANGE_MULT
 
 	var dist: float = global_position.distance_to(target.global_position)
 	# 格子战：超射程不拦截（伤害由 calculate_damage_with_weapon 的 range_falloff 保底 30%）
@@ -1338,7 +1366,7 @@ func _do_attack() -> void:
 			root_2d.add_child(bullet)
 
 func _try_fire_enemy_projectile_batch(p_target: Node2D, wt: int, p_damage: float = -1.0, p_miss: bool = false) -> bool:
-	if wt not in [0, 4, 1, 2]:  # SMG, PISTOL, RIFLE, MG
+	if wt not in GC.BATCH_FIRE_WEAPON_TYPES:  # SMG, PISTOL, RIFLE, MG
 		return false
 	if BattleManager == null or BattleManager.enemy_projectile_batch == null:
 		return false
@@ -1456,7 +1484,8 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		var eff_def: float = CardGridDamage.effective_defense(base_def, pen)
 		var dodge: float = 0.0
 		if stats != null:
-			dodge = float(stats.dodge_chance)
+			# v10(H3): ECM 闪避削弱（带激活中的 _ecm_dodge_penalty 时扣减，此前四处写零读）
+			dodge = maxf(0.0, float(stats.dodge_chance) - ModuleEffectHandler.get_ecm_dodge_penalty(self))
 		# v7.5: 传入 damage_reduction（此前全链路空转，现 resolve_hit 接入）
 		# 优先 stats.damage_reduction（改造/词条加成），叠加节点 damage_reduction（卡牌能力 debuff）
 		var dmg_red: float = 0.0
@@ -1472,11 +1501,20 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		hp_loss = float(hit.get("hp_loss", amount))
 		# v7.x: 新机制 meta 读取（破甲叠加/标记易伤/巷战免伤）——与 construct_unit 口径一致
 		# 这些 meta 由攻击者的 ModuleEffectHandler.apply_on_hit_side_effects 挂载
+		# v10(C9): 破甲带 8s 到期，过期惰性清理（原永久生效）
 		if has_meta("_armor_break_stacks"):
-			var _ab_stacks: int = int(get_meta("_armor_break_stacks", 0))
-			var _ab_ratio: float = float(get_meta("_armor_break_ratio", 0.0))
-			if _ab_stacks > 0 and _ab_ratio > 0.0:
-				hp_loss = hp_loss * maxf(0.1, 1.0 - _ab_stacks * _ab_ratio)
+			var _ab_expired: bool = false
+			if has_meta("_armor_break_until") \
+					and Time.get_ticks_msec() / 1000.0 >= float(get_meta("_armor_break_until", 0.0)):
+				remove_meta("_armor_break_stacks")
+				remove_meta("_armor_break_ratio")
+				remove_meta("_armor_break_until")
+				_ab_expired = true
+			if not _ab_expired:
+				var _ab_stacks: int = int(get_meta("_armor_break_stacks", 0))
+				var _ab_ratio: float = float(get_meta("_armor_break_ratio", 0.0))
+				if _ab_stacks > 0 and _ab_ratio > 0.0:
+					hp_loss = hp_loss * maxf(0.1, 1.0 - _ab_stacks * _ab_ratio)
 		if has_meta("_marked_until"):
 			var _mark_expire: float = float(get_meta("_marked_until", 0.0))
 			var _now: float = Time.get_ticks_msec() / 1000.0
@@ -1773,7 +1811,6 @@ func start_as_deploy_ghost() -> void:
 	is_deploy_ghost = true
 	var actual_delay: float = ConstructUnitDeploy.calculate_deploy_delay(stats)
 	_ghost_materialize_time_left = maxf(0.05, actual_delay)
-	_ghost_total_time = _ghost_materialize_time_left
 	modulate = Color(1.0, 1.0, 1.0, 0.42)
 
 ## 部署虚影每帧更新（由 _physics_process 调用，返回 true 表示本帧已实体化）

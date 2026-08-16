@@ -1,5 +1,12 @@
 extends Node2D
 ## 蜂群敌人控制器：单 _physics_process 驱动全部轻量槽位；MultiMesh 绘制；死亡 CPUParticles。
+##
+## v10(H18) 设计差异声明——蜂群与经典敌人（enemy_unit.gd）的口径差异（有意为之，非 bug）：
+##   · 索敌/保持/开火半径用裸 attack_range（无 ×2.6 与 1600 保底）——蜂群均为近战贴脸单位
+##   · 固定 interval 冷却攻击模型（无三阶段状态机/per-target 武器攻速）——MultiMesh 槽位无武器槽
+##   · 无硬直/眩晕、词缀、fast/stealth 响应——MultiMesh 表现层限制（与"蜂群无二周目加成"同源）
+##   · H5 已对齐：目标失效复位攻击计时器（原新目标首帧瞬发）
+## 如需与经典敌人完全对齐，须先给 slot 引入武器槽与完整 stats 消费链。
 const GC = preload("res://resources/game_constants.gd")
 const CombatTargeting = preload("res://scripts/combat_targeting.gd")
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
@@ -154,15 +161,21 @@ func _tick_slot(s: Node2D, delta: float) -> void:
 	# v10: 受击闪白计时递减(MultiMesh 不能 tween,靠 _sync 时 lerp visual_color)
 	if s is SwarmEnemySlot and (s as SwarmEnemySlot)._hit_flash_t > 0.0:
 		(s as SwarmEnemySlot)._hit_flash_t = maxf(0.0, (s as SwarmEnemySlot)._hit_flash_t - delta)
+	# v10(C1) 修复：计时器清零移入触发分支内（原无条件清零致周期重索敌永不触发）；
+	# 无目标快速重试节流至 20Hz（原每物理帧跑完整索敌流程）
 	s._target_find_timer += delta
 	var should_find := false
 	if s.target == null or not is_instance_valid(s.target):
-		should_find = true
+		if s._target_find_timer >= 0.05:
+			should_find = true
+			s._target_find_timer = 0.0
 	elif s._target_find_timer >= _find_interval_for_battle_load():
 		should_find = true
 		s._target_find_timer = 0.0
 	if should_find:
 		_find_target_for_slot(s)
+	# v10(H1): 势力 on_hit_debuff 过期恢复（蜂群 slot 也可能中 debuff——其 interval 直改被消费）
+	FactionSkillEffectHandler.process_debuff_expirations(s, delta)
 
 	_clamp_slot(s)
 	s.grid_update_timer -= delta
@@ -170,6 +183,10 @@ func _tick_slot(s: Node2D, delta: float) -> void:
 		s.update_spatial_grid()
 		s.grid_update_timer = 0.08
 
+	# v10(H5): 目标失效时复位攻击计时——原无目标期照常累加，新目标首帧瞬发；
+	# 与经典敌人"目标失效即复位 _attack_phase"口径对齐
+	if s.target == null or not is_instance_valid(s.target):
+		s.attack_timer = 0.0
 	s.attack_timer += delta
 	if s.target != null and is_instance_valid(s.target) and s.attack_timer >= s.attack_interval:
 		var max_rng: float = float(s.attack_range)
@@ -198,7 +215,8 @@ func _find_target_for_slot(s: Node2D) -> void:
 			if not CombatTargeting.has_alive_player_units(BattleManager):
 				return
 			s.target = null
-		elif s.global_position.distance_to(s.target.global_position) <= s.attack_range:
+		# v10(L3): 平方比较（避免 sqrt）
+		elif s.global_position.distance_squared_to(s.target.global_position) <= float(s.attack_range) * float(s.attack_range):
 			return
 		else:
 			s.target = null
@@ -215,12 +233,22 @@ func _find_target_for_slot(s: Node2D) -> void:
 				return
 	var attack_range: float = float(s.attack_range)
 	var attack_range_sq: float = attack_range * attack_range
+	# v10(H8): fallback 取最近（原取组顺序第一个，与 spatial_grid 路径口径分叉）
+	var fb_best: Node2D = null
+	var fb_best_d2: float = INF
 	for n in _fallback_player_units:
 		if not CombatTargeting.is_attackable_combat_unit(n):
 			continue
-		if s.global_position.distance_squared_to(n.global_position) <= attack_range_sq:
-			s.target = n as Node2D
-			return
+		var n2d: Node2D = n as Node2D
+		if n2d == null:
+			continue
+		var d2: float = s.global_position.distance_squared_to(n2d.global_position)
+		if d2 <= attack_range_sq and d2 < fb_best_d2:
+			fb_best_d2 = d2
+			fb_best = n2d
+	if fb_best != null:
+		s.target = fb_best
+		return
 	if not CombatTargeting.has_alive_player_units(BattleManager):
 		var phase_field: Node2D = CombatTargeting.find_opponent_phase_field(
 			s.global_position, false, BattleManager, -1.0
@@ -312,7 +340,7 @@ func _fire_from_slot(s: Node2D) -> void:
 	_fallthrough_bullet(s, wt, dmg_out, miss)
 
 func _should_use_projectile_batch(wt: int) -> bool:
-	return wt in [0, 4, 1, 2]  # SMG, PISTOL, RIFLE, MG
+	return wt in GC.BATCH_FIRE_WEAPON_TYPES  # SMG, PISTOL, RIFLE, MG
 
 func _fallthrough_bullet(s: Node2D, wt: int, p_damage: float = -1.0, p_miss: bool = false) -> void:
 	const BulletScene = preload("res://scenes/units/bullet.tscn")

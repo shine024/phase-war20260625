@@ -9,12 +9,9 @@ class_name UnitStatusCollector
 ##   光环系统（与 card_grid_buff_strip.gd 对齐）—— radar/scout/fortress/command/carrier/mod_aura
 ##   construct_unit.gd —— 电子干扰(_jammed_until)
 ##
-## ⚠️ 关键正确性陷阱：时间戳单位不统一！
-##   毫秒（与 Time.get_ticks_msec() 比）：_ecm_debuffed_until、_jammed_until
-##   秒  （与 Time.get_ticks_msec()/1000.0 比）：_marked_until / _crit_marked_until / _chem_until
-##       / _burn_until / _nano_until / _slow_aura_until / _fort_shelter_until / _command_aura_until
-##       / _drone_marked_until
-##   无时间戳：_armor_break_stacks、光环 *_buffed bool、mod_aura_applied Array、_faction_* Dictionary
+## v10(C4) 起时间戳已全局统一为秒制（Time.get_ticks_msec()/1000.0 基准；含 _ecm_debuffed_until
+## 与 _jammed_until——原毫秒写入方已全部改秒）。无时间戳：_armor_break_stacks、光环 *_buffed bool、
+## mod_aura_applied Array、_faction_* Dictionary（remaining 由 process_debuff_expirations 按 delta 递减）。
 
 enum StatusKind {
 	# ── DEBUFF（负向，kind < FIRST_BUFF）──
@@ -37,6 +34,10 @@ enum StatusKind {
 	SCOUT,         # 侦察光环
 	FORTRESS,      # 堡垒防御光环
 	COMMAND,       # 指挥光环（command_buffed 或 _command_aura_until 任一）
+	               # v10(M7) 声明：二者是**两个不同来源**的指挥加成，非同一 buff 双表达——
+	               # command_buffed = 平台 COMMAND 光环（CardAbilityManager，存活期持续）
+	               # _command_aura_until = 改造 for_13_command_bunker 定时光环（MEH，1s 刷新）
+	               # 仅显示层合并；战斗层各自独立消费（后者由 bullet.gd 暴击结算读取）
 	CARRIER,       # 航母维修光环
 	MOD_AURA,      # 改造光环
 	FORT_SHELTER,  # 堡垒庇护（减伤）
@@ -109,7 +110,6 @@ static func collect(unit: Node) -> Array:
 	if unit == null or not is_instance_valid(unit):
 		return entries
 	var now_sec: float = Time.get_ticks_msec() / 1000.0
-	var now_msec: int = Time.get_ticks_msec()
 
 	# ── DEBUFF 组 ──
 	if unit.has_meta("_armor_break_stacks"):
@@ -132,9 +132,8 @@ static func collect(unit: Node) -> Array:
 	if unit.has_meta("_burn_until"):
 		if float(unit.get_meta("_burn_until", 0.0)) > now_sec:
 			entries.append(_entry(StatusKind.BURN, int(unit.get_meta("_burn_stacks", 0))))
-	# ⚠ ECM 毫秒
 	if unit.has_meta("_ecm_debuffed_until"):
-		if float(unit.get_meta("_ecm_debuffed_until", 0.0)) > float(now_msec):
+		if float(unit.get_meta("_ecm_debuffed_until", 0.0)) > now_sec:
 			entries.append(_entry(StatusKind.ECM, 0))
 	if unit.has_meta("_nano_until"):
 		if float(unit.get_meta("_nano_until", 0.0)) > now_sec:
@@ -142,9 +141,8 @@ static func collect(unit: Node) -> Array:
 	if unit.has_meta("_slow_aura_until"):
 		if float(unit.get_meta("_slow_aura_until", 0.0)) > now_sec:
 			entries.append(_entry(StatusKind.SLOW_AURA, 0))
-	# ⚠ 电子干扰毫秒
 	if unit.has_meta("_jammed_until"):
-		if int(unit.get_meta("_jammed_until", 0)) > now_msec:
+		if float(unit.get_meta("_jammed_until", 0.0)) > now_sec:
 			entries.append(_entry(StatusKind.JAMMED, 0))
 	if unit.has_meta("_drone_marked_until"):
 		if float(unit.get_meta("_drone_marked_until", 0.0)) > now_sec:

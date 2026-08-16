@@ -264,14 +264,8 @@ static func refresh_dot_vfx(unit: Node) -> void:
 		var active: bool = false
 		var until_meta: String = st["until_meta"]
 		if unit.has_meta(until_meta):
-			var until_val: Variant = unit.get_meta(until_meta)
-			# until 可能是秒（float）或毫秒（int，ECM 用 now_msec + 4000）
-			var until_f: float = float(until_val)
-			# ECM 用毫秒，其他用秒——简单判断：>1e6 视为毫秒
-			if until_f > 1e6:
-				active = now * 1000.0 < until_f
-			else:
-				active = now < until_f
+			# v10(C4) 统一：全部 until 时间戳秒制（旧"ECM 毫秒 >1e6 启发式"随口径统一移除）
+			active = now < float(unit.get_meta(until_meta, 0.0))
 		if not active and has_node:
 			# 过期：移除视觉节点
 			var node: Node = unit.get_node(node_name)

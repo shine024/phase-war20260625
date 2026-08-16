@@ -186,8 +186,9 @@ static func try_emp_reflect(mechanisms: Array, field_state: ComboFieldState, tar
 		if reflected >= 3:
 			break
 		# 弱化 emp：写 _ecm_debuffed_until + 减益 meta（复用现有 ECM debuff 路径）
-		var now_msec: int = Time.get_ticks_msec()
-		n.set_meta("_ecm_debuffed_until", now_msec + 1500)   # 1.5s
+		# v10(C4) 统一：时间戳秒制（与其他 ECM 写入方一致）
+		var now_sec: float = Time.get_ticks_msec() / 1000.0
+		n.set_meta("_ecm_debuffed_until", now_sec + 1.5)
 		n.set_meta("_ecm_attack_speed_penalty", 0.15)
 		n.set_meta("_ecm_crit_penalty", 0.10)
 		n.set_meta("_ecm_dodge_penalty", 0.05)

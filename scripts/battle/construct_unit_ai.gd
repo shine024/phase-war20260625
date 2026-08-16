@@ -22,6 +22,12 @@ const PlayerMuzzleAnchors = preload("res://data/player_muzzle_anchors.gd")  # �
 ## FORTRESS=3, RADAR=4, SCOUT=5, CARRIER=8, MEDIC=9, STEALTH=10, COMMAND=12
 const AURA_PLATFORM_TYPES := [3, 4, 5, 8, 9, 10, 12]
 
+## v10(M1): 格子战模式判定。本作格子战是唯一战斗模式（AGENTS H-2 硬约束），恒为 true。
+## 原各处写 `GameManager != null and BattleManager != null`（autoload 恒非 null，判定恒真），
+## 对应"传统战场"分支均为死分支；如未来恢复传统战场模式，只需改本函数一处。
+static func is_card_grid_battle() -> bool:
+	return true
+
 ## 主循环攻击处理：由 construct_unit._physics_process 调用
 ## 返回值暂未使用，保留以备扩展
 static func process_attack(u: CharacterBody2D, delta: float) -> void:
@@ -33,10 +39,16 @@ static func process_attack(u: CharacterBody2D, delta: float) -> void:
 			_process_single_weapon_attack(u, delta)
 
 ## 获取目标查找间隔
+## P1 性能优化：has_method 反射结果缓存——BattleManager 单例方法集运行期不变，
+## 原每轮索敌（每单位 ~0.3s 一次）都做一次 has_method 反射查询
+static var _bm_has_unit_count_method: int = -1  # -1 未检测 / 0 无 / 1 有
 static func get_target_find_interval(u: CharacterBody2D) -> float:
 	var n: int = 0
-	if BattleManager and BattleManager.has_method("get_enemy_unit_count"):
-		n = BattleManager.get_enemy_unit_count()
+	if BattleManager != null:
+		if _bm_has_unit_count_method < 0:
+			_bm_has_unit_count_method = 1 if BattleManager.has_method("get_enemy_unit_count") else 0
+		if _bm_has_unit_count_method == 1:
+			n = BattleManager.get_enemy_unit_count()
 	if n > 55:
 		return 0.55
 	if n > 35:
@@ -92,7 +104,7 @@ static func find_target(u: CharacterBody2D, _delta: float) -> void:
 				return
 
 	# 曲射/空射单位，或 spatial_grid 未命中时：用卡牌网格槽位系统
-	if GameManager != null:
+	if is_card_grid_battle():
 		var slot_target = _find_target_by_card_grid(u, targeting_mode)
 		if slot_target != null:
 			u.target = slot_target
@@ -468,7 +480,7 @@ static func do_attack(u: CharacterBody2D) -> void:
 	var weapon = AttackCalculator.get_weapon_for_target(u.stats, target_kind)
 	if weapon != null and weapon.enabled:
 		# 检测格子战模式：防御由 CardGridDamage 处理，跳过防御减免避免双重计算
-		var is_card_grid = GameManager != null
+		var is_card_grid := is_card_grid_battle()
 		var damage = AttackCalculator.calculate_damage_with_weapon(
 			u.stats, target_stats,
 			distance, weapon,
@@ -485,9 +497,10 @@ static func do_attack(u: CharacterBody2D) -> void:
 		do_attack_with_damage(u, damage, weapon.weapon_type, weapon.display_name, weapon, true)
 		return
 
-	# 回退：用攻击值获取攻击值（配对防御）
+	# 回退：无武器资源时用裸 attack_damage。v10(C7)：预计算标记 true——格子战（唯一模式）
+	# 防御由受击侧 take_damage→resolve_hit 统一结算，强化曲线只在武器路径应用一次。
 	var damage: float = u.stats.attack_damage if u.stats else 0.0
-	do_attack_with_damage(u, damage, u.stats.weapon_type if u.stats else 0, "")
+	do_attack_with_damage(u, damage, u.stats.weapon_type if u.stats else 0, "", null, true)
 
 ## 获取直射武器发射起点：优先用 MuzzleAnchors 标注的枪口位置（fireX/fireY 独立二维），
 ## 无标注时回退到 entity_top_y * 0.5（实体垂直中点）。
@@ -539,9 +552,9 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 	if u.target == null or not is_instance_valid(u.target):
 		return
 	# v8.5: 电子屏蔽机制——被屏蔽单位攻击失效（_jammed_until 未过期则跳过本次攻击）
+	# v10(C4) 统一：秒制时间戳
 	if u.has_meta("_jammed_until"):
-		var jammed_until: int = int(u.get_meta("_jammed_until", 0))
-		if Time.get_ticks_msec() < jammed_until:
+		if Time.get_ticks_msec() / 1000.0 < float(u.get_meta("_jammed_until", 0.0)):
 			return  # 攻击失效（屏蔽持续期内）
 	# v8.x: 首击加成检测（SNIPER 必爆 / STALKER ×1.5）
 	# 通过临时 meta 传递给 bullet.gd 的暴击判定路径
@@ -597,14 +610,8 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 		range_val = u.stats.attack_range
 
 	if range_val > 0 and dist_t > range_val:
-		# 格子战：允许超射程继续攻击，伤害由 calculate_damage_with_weapon 的 range_falloff 衰减处理
-		var _is_card_grid_here: bool = GameManager != null
-		if _is_card_grid_here:
-			pass  # 不拦截，继续发射（伤害在 do_attack/do_attack_with_multiple_weapons 阶段已含衰减）
-		# 武器资源射程超限：直接 Miss（不依赖旧 stats.attack_range 判断）
-		elif weapon_resource and weapon_resource is WeaponResource:
-			CombatFeedback.show_miss(u.target.global_position, u.target)
-			return
+		# v10(M1): 格子战（唯一模式）超射程不拦截，伤害由 range_falloff 衰减处理。
+		# 原"传统战场直射 Miss 拦截"死分支随 is_card_grid_battle() 常量化移除
 		# 旧逻辑：无武器资源时按 stats.attack_range 衰减
 		if wt == GC.WeaponType.DIRECT or wt == -1:
 			if wt == 0 and u.stats and u.stats.attack_range > 0.5 and dist_t > u.stats.attack_range:
@@ -678,7 +685,7 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 
 	# 低速直射 或 曲射/空射回退 → 独立子弹节点（对象池）
 	# 霰弹（weapon_type 5）：创建多枚子弹，每枚均分伤害并独立散布
-	var pellet_n := 6 if wt == 5 else 1
+	var pellet_n := GC.SHOTGUN_PELLET_COUNT if wt == 5 else 1
 	var pellet_dmg := damage / float(pellet_n)
 	var root_2d = u.get_parent().get_parent() if u.get_parent() else u
 	var _fire_spawn_pos = _get_direct_fire_spawn_pos(u)
@@ -715,20 +722,55 @@ static func apply_continuous_effects(u: CharacterBody2D, delta: float) -> void:
 	ModuleEffectHandler.on_tick(u, delta)
 
 ## v5.0 攻速分离: 单武器三阶段攻击状态机
-## v8.6: 获取 ECM debuff 的攻速减速系数（1.0=正常，<1.0=被削弱减速）。
-## 读 _ecm_debuffed_until meta（boss _exec_debuff_players / 玩家 ECM 光环 / EMP on_hit 挂载）。
-## 修复：此前玩家侧零消费方，boss 削弱技能对玩家攻速完全无效。
-static func _get_ecm_attack_slow_mult(u: Node) -> float:
-	if u == null or not u.has_meta("_ecm_debuffed_until"):
+## v10(C4/H1/H3/H4): 攻速类 debuff 的统一 delta 缩放系数（1.0=正常，<1.0=变慢）。
+## 合并四条通道（时间戳全局统一秒制，见 v10 C4）：
+##   ① ECM/EMP（_ecm_debuffed_until + _ecm_attack_speed_penalty；boss 削弱/EMP 命中/ECM 光环/EMP 反射）
+##   ② 势力 on_hit_debuff（_faction_aspd_debuff.remaining>0 时按 factor 缩放；remaining 由
+##      FactionSkillEffectHandler.process_debuff_expirations 递减——敌我两侧都会 tick）
+##   ③ 卡片周期技能攻速惩罚（_atk_speed_penalty_until/_mult，此前只写不读=死通道）
+##   ④ 区域减速光环（_slow_aura_until/_mult——UI 一直显示"攻速降低"，本次按同语义接通）
+## 敌我共用：enemy_unit._process_attack_timing 也调本函数。①③④过期时顺带清理 meta。
+const ECM_DEFAULT_ATK_SPEED_PENALTY: float = 0.25  ## ECM 攻速削弱缺省值（写入端 construct_unit 同源引用）
+
+static func get_attack_delta_scale(u: Node) -> float:
+	if u == null:
 		return 1.0
 	var now: float = Time.get_ticks_msec() / 1000.0
-	if now >= float(u.get_meta("_ecm_debuffed_until", 0.0)):
-		return 1.0  # 已过期
-	# 默认削弱 25% 攻速（与 enemy_unit 的 0.75 口径一致），可被 _ecm_attack_speed_penalty 覆盖
-	var penalty: float = float(u.get_meta("_ecm_attack_speed_penalty", 0.25))
-	return maxf(0.1, 1.0 - penalty)
+	var mult: float = 1.0
+	# ① ECM/EMP
+	if u.has_meta("_ecm_debuffed_until"):
+		if now < float(u.get_meta("_ecm_debuffed_until", 0.0)):
+			var penalty: float = float(u.get_meta("_ecm_attack_speed_penalty", ECM_DEFAULT_ATK_SPEED_PENALTY))
+			mult *= maxf(0.1, 1.0 - penalty)
+		else:
+			u.remove_meta("_ecm_debuffed_until")
+			u.remove_meta("_ecm_attack_speed_penalty")
+			u.remove_meta("_ecm_crit_penalty")
+			u.remove_meta("_ecm_dodge_penalty")
+	# ② 势力攻速 debuff
+	if u.has_meta("_faction_aspd_debuff"):
+		var d: Variant = u.get_meta("_faction_aspd_debuff")
+		if d is Dictionary and float(d.get("remaining", 0.0)) > 0.0:
+			mult *= clampf(float(d.get("factor", 1.0)), 0.1, 1.0)
+	# ③ 卡片周期技能攻速惩罚
+	if u.has_meta("_atk_speed_penalty_until"):
+		if now < float(u.get_meta("_atk_speed_penalty_until", 0.0)):
+			mult *= clampf(float(u.get_meta("_atk_speed_penalty_mult", 1.0)), 0.1, 1.0)
+		else:
+			u.remove_meta("_atk_speed_penalty_until")
+			u.remove_meta("_atk_speed_penalty_mult")
+	# ④ 区域减速光环
+	if u.has_meta("_slow_aura_until"):
+		if now < float(u.get_meta("_slow_aura_until", 0.0)):
+			mult *= clampf(float(u.get_meta("_slow_aura_mult", 1.0)), 0.1, 1.0)
+		else:
+			u.remove_meta("_slow_aura_until")
+			u.remove_meta("_slow_aura_mult")
+	return clampf(mult, 0.1, 1.0)
 
 
+# TODO(v10/M2): 单武器路径当前不可达——construct_unit.setup 恒给 _weapon_cfgs 至少 1 个占位项，
+# process_attack 恒走多武器分支。保留作无武器单位的防御性回退；重构删除时需连 do_attack 一并评估。
 static func _process_single_weapon_attack(u: CharacterBody2D, delta: float) -> void:
 	if u.target == null or not is_instance_valid(u.target):
 		u._attack_phase = u.AttackPhase.IDLE
@@ -736,7 +778,7 @@ static func _process_single_weapon_attack(u: CharacterBody2D, delta: float) -> v
 		return
 	# v8.6: ECM debuff（boss 削弱技能/电子战）——被削弱时攻速降低，计时累加变慢。
 	# 修复：此前玩家侧零消费方，boss _exec_debuff_players 给玩家挂的 meta 完全空转。
-	delta = delta * _get_ecm_attack_slow_mult(u)
+	delta = delta * get_attack_delta_scale(u)
 	var target_stats = u.target.get("stats") as UnitStats
 	var target_kind: int = target_stats.combat_kind if target_stats else 0
 
@@ -769,14 +811,10 @@ static func _process_single_weapon_attack(u: CharacterBody2D, delta: float) -> v
 	u.set("attack_interval", timing["cycle"])
 
 	var dist: float = u.global_position.distance_to(u.target.global_position)
-	var is_card_grid_active: bool = (
-		GameManager
-		and GameManager != null
-		and BattleManager != null
-	)
+	var is_card_grid_active: bool = is_card_grid_battle()
 	# v6.4 修复：格子战时攻击射程与索敌判定一致（×2.6），避免双方固定两端时射程不足永不攻击
 	if is_card_grid_active:
-		fire_range *= 2.6
+		fire_range *= CombatTargeting.CARD_GRID_RANGE_MULT
 	# 格子战：超射程不拦截（伤害由 calculate_damage_with_weapon 的 range_falloff 保底 30% 衰减）
 	# 传统战场：直射超射程仍重置 IDLE
 	if not is_card_grid_active and dist > fire_range and wt == GC.WeaponType.DIRECT:
@@ -821,15 +859,11 @@ static func _process_multi_weapons(u: CharacterBody2D, delta: float) -> void:
 			w["phase_timer"] = 0.0
 		return
 	# v8.6: ECM debuff 攻速降低（同单武器路径）
-	delta = delta * _get_ecm_attack_slow_mult(u)
+	delta = delta * get_attack_delta_scale(u)
 	var target_stats = u.target.get("stats") as UnitStats
 	var target_kind: int = target_stats.combat_kind if target_stats else 0
 	var eff_rng: float = effective_fire_range(u)
-	var is_card_grid_multi: bool = (
-		GameManager
-		and GameManager != null
-		and BattleManager != null
-	)
+	var is_card_grid_multi: bool = is_card_grid_battle()
 	for i in range(u._weapon_cfgs.size()):
 		var w = u._weapon_cfgs[i]
 		var phase: int = int(w.get("phase", u.AttackPhase.IDLE))
@@ -848,7 +882,9 @@ static func _process_multi_weapons(u: CharacterBody2D, delta: float) -> void:
 			w_weapon = u.stats.weapon_slots[i] as WeaponResource
 			if w_weapon and w_weapon.enabled:
 				# 检查武器引用是否变化（同一对象则复用缓存）
-				if w.get("cached_weapon_ref", null) == w_weapon:
+				# v10(M5): 复用条件加攻速比对——攻速类效果改写 weapon.attack_speed 后缓存必须失效
+				if w.get("cached_weapon_ref", null) == w_weapon \
+						and absf(float(w.get("cached_speed", -1.0)) - float(w_weapon.attack_speed)) < 0.0001:
 					timing = w.get("cached_timing", {})
 					w_range = float(w.get("cached_range", 0.0))
 					w_wt = int(w.get("cached_wt", GC.WeaponType.DIRECT))
@@ -862,6 +898,7 @@ static func _process_multi_weapons(u: CharacterBody2D, delta: float) -> void:
 					w["cached_timing"] = timing
 					w["cached_range"] = w_range
 					w["cached_wt"] = w_wt
+					w["cached_speed"] = float(w_weapon.attack_speed)
 			else:
 				timing = AttackCalculator.get_attack_timing(u.stats, target_kind)
 				w_range = u.stats.attack_range
@@ -877,7 +914,7 @@ static func _process_multi_weapons(u: CharacterBody2D, delta: float) -> void:
 		var dist: float = u.global_position.distance_to(u.target.global_position)
 		# v6.4 修复：格子战时多武器攻击射程同步×2.6（与索敌判定一致）
 		if is_card_grid_multi:
-			w_range *= 2.6
+			w_range *= CombatTargeting.CARD_GRID_RANGE_MULT
 		# 格子战：超射程不拦截（伤害由 calculate_damage_with_weapon 的 range_falloff 保底 30%）
 		# 传统战场：直射超射程仍重置 IDLE
 		if not is_card_grid_multi and dist > w_range and w_wt == GC.WeaponType.DIRECT:
@@ -903,7 +940,7 @@ static func _process_multi_weapons(u: CharacterBody2D, delta: float) -> void:
 					var w_name: String = ""
 					if w_weapon and w_weapon is WeaponResource and w_weapon.enabled:
 						w_name = w_weapon.display_name if w_weapon.display_name else ""
-						var is_card_grid: bool = GameManager != null
+						var is_card_grid: bool = is_card_grid_battle()
 						dmg = AttackCalculator.calculate_damage_with_weapon(
 							u.stats, target_stats, dist, w_weapon,
 							u.stats.enhance_level, _get_mod_array(u.stats),
@@ -912,7 +949,9 @@ static func _process_multi_weapons(u: CharacterBody2D, delta: float) -> void:
 						)
 					else:
 						dmg = u.stats.attack_damage if u.stats else 0.0
-					do_attack_with_damage(u, dmg, w_wt, w_name, w_weapon)
+					# v10(C6/C7): dmg 已含 calculate_damage_with_weapon 的强化曲线 → 必须标记预计算，
+					# 否则 bullet/indirect batch 再乘一遍 0.05 旧曲线（强化双乘）+ bullet 再乘防御（双曲线）
+					do_attack_with_damage(u, dmg, w_wt, w_name, w_weapon, true)
 				if phase_timer >= timing["active"]:
 					phase = u.AttackPhase.COOLDOWN
 					phase_timer = 0.0
@@ -929,16 +968,12 @@ static func _process_multi_weapons(u: CharacterBody2D, delta: float) -> void:
 static func acquisition_range(u: CharacterBody2D) -> float:
 	if u.stats == null:
 		return 120.0
-	var combat_started: bool = (
-		GameManager
-		and GameManager != null
-		and BattleManager != null
-	)
-	if not u.is_player and GameManager != null:
+	var combat_started: bool = is_card_grid_battle()
+	if not u.is_player:
 		return CombatTargeting.card_grid_enemy_acquisition_range(u.stats.attack_range, combat_started)
 	var r: float = u.stats.attack_range
 	if combat_started:
-		r *= 2.6
+		r *= CombatTargeting.CARD_GRID_RANGE_MULT
 	# v6.2: 玩家单位格子战索敌范围保底（与敌方对称），确保后排短射程单位也能索到战场另一端
 	if combat_started:
 		r = maxf(r, CombatTargeting.CARD_GRID_PLAYER_ACQUISITION_MIN)
@@ -948,12 +983,8 @@ static func effective_fire_range(u: CharacterBody2D) -> float:
 	if u.stats == null:
 		return 120.0
 	var rng: float = u.stats.attack_range
-	if (
-		GameManager
-		and GameManager != null
-		and BattleManager != null
-	):
-		rng *= 2.6
+	if is_card_grid_battle():
+		rng *= CombatTargeting.CARD_GRID_RANGE_MULT
 	if u.target != null and is_instance_valid(u.target) and CombatTargeting.is_phase_field_node(u.target):
 		if targeting_opponent_phase_field_only(u):
 			return maxf(rng, acquisition_range(u) * 1.5)

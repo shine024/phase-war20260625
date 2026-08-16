@@ -553,35 +553,39 @@ func _apply_debuff_to_unit(unit: Node2D, effect: Dictionary) -> void:
 		"mark":
 			# 易伤标记（复用 _marked_until）
 			if vuln > 0.0:
-				unit.set_meta("_marked_until", Time.get_ticks_msec() + int(duration * 1000))
+				unit.set_meta("_marked_until", Time.get_ticks_msec() / 1000.0 + duration)
 				unit.set_meta("_mark_vuln_bonus", vuln)
 		"crit_mark":
 			# 暴击标记
 			if crit_bonus > 0.0:
-				unit.set_meta("_crit_marked_until", Time.get_ticks_msec() + int(duration * 1000))
+				unit.set_meta("_crit_marked_until", Time.get_ticks_msec() / 1000.0 + duration)
 				unit.set_meta("_crit_mark_bonus", crit_bonus)
 		"burn_mark":
 			# 燃烧标记（持续伤害+减速）
-			unit.set_meta("_marked_until", Time.get_ticks_msec() + int(duration * 1000))
+			unit.set_meta("_marked_until", Time.get_ticks_msec() / 1000.0 + duration)
 			unit.set_meta("_mark_vuln_bonus", vuln)
 			unit.set_meta("_burn_dps", dps)
-			unit.set_meta("_burn_until", Time.get_ticks_msec() + int(duration * 1000))
+			unit.set_meta("_burn_until", Time.get_ticks_msec() / 1000.0 + duration)
 		"minefield_damage":
 			# 矿场伤害（通过 _incoming_damage_mul 机制）
 			if dps > 0.0 and unit.has_method("take_damage"):
 				unit.take_damage(dps * 0.5, null)  # 单次伤害（持续由调用方周期触发）
 		"slow_aura":
 			# 慢速光环
-			unit.set_meta("_slow_aura_until", Time.get_ticks_msec() + int(duration * 1000))
+			unit.set_meta("_slow_aura_until", Time.get_ticks_msec() / 1000.0 + duration)
 			unit.set_meta("_slow_aura_mult", slow_move)
 		"attack_speed_penalty":
 			# 攻速惩罚（用于 EMP）
-			unit.set_meta("_atk_speed_penalty_until", Time.get_ticks_msec() + int(duration * 1000))
+			unit.set_meta("_atk_speed_penalty_until", Time.get_ticks_msec() / 1000.0 + duration)
 			unit.set_meta("_atk_speed_penalty_mult", 1.0 + atk_pen)  # atk_pen 为负值
 		"armor_break":
-			# 破甲
-			unit.set_meta("_armor_break_until", Time.get_ticks_msec() + int(duration * 1000))
-			unit.set_meta("_armor_break_ratio", 0.25)
+			# v10(C8): 破甲统一 stacks 语义——与 ModuleEffectHandler._apply_armor_break 同源。
+			# 原实现写固定 0.25 覆写 MEH 的每层比例，且 _armor_break_until 曾无消费方
+			# （现由 take_damage 惰性过期）。层数 +1，ratio 首写者定值。
+			unit.set_meta("_armor_break_stacks", int(unit.get_meta("_armor_break_stacks", 0)) + 1)
+			if not unit.has_meta("_armor_break_ratio"):
+				unit.set_meta("_armor_break_ratio", 0.25)
+			unit.set_meta("_armor_break_until", Time.get_ticks_msec() / 1000.0 + duration)
 		_:
 			pass
 
@@ -604,7 +608,7 @@ func _apply_temporary_stat_bonus(unit: Node2D, stat_bonus: Dictionary, duration:
 	if stat_bonus.is_empty():
 		return
 	unit.set_meta("_card_skill_stat_bonus", stat_bonus.duplicate(true))
-	unit.set_meta("_card_skill_stat_bonus_until", Time.get_ticks_msec() + int(duration * 1000))
+	unit.set_meta("_card_skill_stat_bonus_until", Time.get_ticks_msec() / 1000.0 + duration)
 
 ## v8.x 视觉反馈：技能触发时弹 Toast（防御性访问，兼容 --script 测试）
 ## ultimate=true → 红色 + 2.0s（大招醒目）；false → 金色 + 1.2s（普通技轻量，避免刷屏）
