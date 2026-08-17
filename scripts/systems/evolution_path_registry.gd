@@ -1,54 +1,11 @@
 extends Node
 ## 进化路径注册表
 ## 管理所有73个进化节点的查询和验证
+## v9.x：兵种识别委托 data/evolution_paths/__init__.gd（112卡前缀测试覆盖）。
+## 原 _identify_unit_type/_unit_type_to_key 第二套映射已删——其 2/3（空中↔火炮）对调、
+## 5/6/7（侦察/工兵/反空）返回空、火炮/防空前缀缺失默认落步兵，是进化属性预览空白的断裂源。
 
-## ─────────────────────────────────────────────
-##  缓存
-## ─────────────────────────────────────────────
-
-static var _cache: Dictionary = {}
-static var _initialized: bool = false
-
-## ─────────────────────────────────────────────
-##  初始化
-## ─────────────────────────────────────────────
-
-func _ready() -> void:
-	# v8.x 性能优化：不在 autoload 启动时同步 register_all（注册 8 兵种 × 主线+隐藏分支 = 73 节点，
-	# 含 8 个 evolution_paths/*.gd 的 preload 链 + duplicate(true) 深拷贝）。
-	# 所有公开查询入口（get_evolution_path/get_evolution_targets/check_evolution_requirements/
-	# calculate_evolved_stats/evolve_weapon_slots）首行均调 _ensure_initialized()，
-	# 首次查询会自动触发 register_all。开销从启动期转移到首次进化面板/战斗构建时。
-	pass
-
-## ─────────────────────────────────────────────
-##  注册
-## ─────────────────────────────────────────────
-
-static func register_all() -> void:
-	if _initialized:
-		return
-
-	_cache.clear()
-
-	# 注册所有兵种进化路径
-	_register_path("infantry", InfantryEvolution.get_main_line(), InfantryEvolution.get_hidden_branches())
-	_register_path("armor", ArmorEvolution.get_main_line(), ArmorEvolution.get_hidden_branches())
-	_register_path("air", AirEvolution.get_main_line(), AirEvolution.get_hidden_branches())
-	_register_path("artillery", ArtilleryEvolution.get_main_line(), ArtilleryEvolution.get_hidden_branches())
-	_register_path("fort", FortEvolution.get_main_line(), FortEvolution.get_hidden_branches())
-	_register_path("recon", ReconEvolution.get_main_line(), ReconEvolution.get_hidden_branches())
-	_register_path("engineer", EngineerEvolution.get_main_line(), EngineerEvolution.get_hidden_branches())
-	_register_path("anti_air", AntiAirEvolution.get_main_line(), AntiAirEvolution.get_hidden_branches())
-
-	_initialized = true
-	# [LOG-v5.1] print("[EvolutionPathRegistry] Registered evolution paths for all 8 unit types")
-
-static func _register_path(type_key: String, main_line: Dictionary, hidden_branches: Dictionary) -> void:
-	_cache[type_key] = {
-		main_line = main_line.duplicate(true),
-		hidden_branches = hidden_branches.duplicate(true),
-	}
+const EvolutionPathsIndex = preload("res://data/evolution_paths/__init__.gd")
 
 ## ─────────────────────────────────────────────
 ##  查询接口
@@ -56,18 +13,10 @@ static func _register_path(type_key: String, main_line: Dictionary, hidden_branc
 
 ## 获取卡牌的进化路径
 static func get_evolution_path(card_id: String) -> Dictionary:
-	_ensure_initialized()
-
-	# 识别兵种类型
-	var unit_type = _identify_unit_type(card_id)
-	var type_key = _unit_type_to_key(unit_type)
-
-	return _cache.get(type_key, {})
+	return EvolutionPathsIndex.get_evolution_path(card_id)
 
 ## 获取可进化到的目标列表
 static func get_evolution_targets(card: Dictionary) -> Array:
-	_ensure_initialized()
-
 	var card_id = card.get("id", "")
 	var path = get_evolution_path(card_id)
 	var result = []
@@ -116,8 +65,6 @@ static func get_evolution_targets(card: Dictionary) -> Array:
 
 ## 检查进化条件
 static func check_evolution_requirements(card: Dictionary, target_card_id: String) -> Dictionary:
-	_ensure_initialized()
-
 	var result = {
 		passed = true,
 		missing = [],
@@ -239,96 +186,18 @@ static func calculate_evolved_stats(old_card: Dictionary, target_card_id: String
 ##  内部工具
 ## ─────────────────────────────────────────────
 
-static func _ensure_initialized() -> void:
-	if not _initialized:
-		register_all()
-
-static func _identify_unit_type(card_id: String) -> int:
-	# 根据卡牌ID前缀识别兵种类型
-	# 步兵 (LIGHT)
-	if card_id.begins_with("ww1_mp18") or card_id.begins_with("ww2_thompson"):
-		return 0
-
-	# 装甲 (MEDIUM)
-	if card_id.begins_with("ww1_arm_ft17") or card_id.begins_with("ww1_saint"):
-		return 1
-	if card_id.begins_with("ww2_pz3") or card_id.begins_with("ww2_arm_tiger"):
-		return 1
-	if card_id.begins_with("cold_arm_t55") or card_id.begins_with("cold_t72") or card_id.begins_with("cold_leo1"):
-		return 1
-	if card_id.begins_with("mod_arm_m1a1") or card_id.begins_with("mod_arm_m1a2sep") or card_id.begins_with("mod_leo2a6"):
-		return 1
-	if card_id.begins_with("fut_arm_hovertank") or card_id.begins_with("fut_arm_heavy_mech") or card_id.begins_with("fut_arm_prism"):
-		return 1
-
-	# 空中 (HEAVY)
-	if card_id.begins_with("cold_mig21") or card_id.begins_with("mod_f16"):
-		return 2
-	if card_id.begins_with("mod_ah1") or card_id.begins_with("mod_ah64"):
-		return 2
-	if card_id.begins_with("fut_f22") or card_id.begins_with("fut_space_fighter") or card_id.begins_with("fut_attack_drone") or card_id.begins_with("fut_swarm"):
-		return 2
-	if card_id.begins_with("fut_b2") or card_id.begins_with("fut_stealth_bomber"):
-		return 2
-
-	# 火炮 (HEAVY)
-	if card_id.begins_with("mod_katyusha") or card_id.begins_with("mod_self_propelled"):
-		return 3
-	if card_id.begins_with("cold_fort_missile"):
-		return 3
-
-	# 要塞 (HEAVY)
-	if card_id.begins_with("ww1_fort_pillbox") or card_id.begins_with("ww2_fort_bunker"):
-		return 4
-	if card_id.begins_with("ww2_fort_flak"):
-		return 4
-	if card_id.begins_with("cold_fort_missile") or card_id.begins_with("cold_fort_radar"):
-		return 4
-	if card_id.begins_with("mod_fort_citadel") or card_id.begins_with("mod_fort_phalanx"):
-		return 4
-	if card_id.begins_with("fut_fort_ion") or card_id.begins_with("fut_fort_shield"):
-		return 4
-
-	# 侦察 (SUPPORT)
-	if card_id.begins_with("ww1_inf_cavalry") or card_id.begins_with("ww2_motorcycle"):
-		return 5
-	if card_id.begins_with("cold_spetsnaz"):
-		return 5
-	if card_id.begins_with("mod_ranger") or card_id.begins_with("mod_m24"):
-		return 5
-	if card_id.begins_with("cold_sniper"):
-		return 5
-	if card_id.begins_with("fut_spectre") or card_id.begins_with("fut_nexus_archer"):
-		return 5
-
-	# 工兵 (SUPPORT)
-	if card_id.begins_with("mod_pioneer") or card_id.begins_with("mod_sapper") or card_id.begins_with("mod_engineer"):
-		return 6
-	if card_id.begins_with("mod_captain") or card_id.begins_with("mod_commissar"):
-		return 6
-
-	# 反空 (HEAVY)
-	if card_id.begins_with("mod_flak") or card_id.begins_with("ww2_fort_flak"):
-		return 7
-
-	# 默认返回步兵
-	return 0
-
-static func _unit_type_to_key(unit_type: int) -> String:
-	match unit_type:
-		0: return "infantry"
-		1: return "armor"
-		2: return "artillery"
-		3: return "air"
-		4: return "fort"
-		_: return ""
-
 static func _find_target_node(path: Dictionary, target_card_id: String) -> Dictionary:
 	# 搜索主线
 	var main_line = path.get("main_line", {})
 	for stage_key in main_line.keys():
 		if main_line[stage_key].get("card_id", "") == target_card_id:
 			return main_line[stage_key]
+
+	# 搜索副线（装甲/空中的 secondary_line，v9.x 委托后可用）
+	var secondary_line = path.get("secondary_line", {})
+	for stage_key in secondary_line.keys():
+		if secondary_line[stage_key].get("card_id", "") == target_card_id:
+			return secondary_line[stage_key]
 
 	# 搜索隐藏分支
 	var hidden_branches = path.get("hidden_branches", {})
@@ -376,7 +245,6 @@ static func _estimate_modifications_power_bonus(modifications: Array) -> int:
 ## preserve_mods: bool - 是否保留改造加成（默认true）
 ## 返回：进化后的武器槽位数组
 static func evolve_weapon_slots(source_card: CardResource, target_card_id: String, preserve_mods: bool = true) -> Array:
-	_ensure_initialized()
 	
 	# 获取目标卡牌（延迟加载避免循环依赖）
 	var target_dc: GDScript = load("res://data/default_cards.gd")

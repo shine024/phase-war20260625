@@ -36,7 +36,17 @@ func _ready() -> void:
 			plm.law_env_changed.connect(_refresh)
 	var brm := get_node_or_null("/root/BasicResourceManager")
 	if brm and brm.has_signal("resources_changed"):
-		brm.resources_changed.connect(_refresh)
+		# v9 perf：resources_changed 战斗中每次击杀都发——原直连 _refresh 触发全量重建
+		#（含 _refresh_panel 的全蓝图线性扫描）。改为隐藏跳过 + 可见时只刷资源段
+		#（BUFF/面板段与资源无关，由 1s 定时器刷新）
+		brm.resources_changed.connect(_on_resources_changed_light)
+
+
+## v9 perf：resources_changed 轻量回调——资源变化只影响资源段，不做全量刷新
+func _on_resources_changed_light() -> void:
+	if not is_visible_in_tree():
+		return
+	_refresh_resource()
 
 
 ## 构建一段折叠卡，返回 {root: PanelContainer, content: VBoxContainer, toggle: Button}

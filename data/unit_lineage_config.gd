@@ -607,12 +607,9 @@ static func check_same_combat_kind(from_card_id: String, to_card_id: String) -> 
 		return true  # 无法判断时放行
 	return from_card.combat_kind == to_card.combat_kind
 
-## 获取目标单位的基础战力（用于战力达标检查）
-static func get_target_base_power(target_card_id: String) -> int:
-	var card: CardResource = DefaultCards.get_card_by_id(target_card_id)
-	if card == null:
-		return 0
-	return card.power
+## v9.x 重设：原 get_target_base_power（读卡表 power 字段）已删——它与判定左侧
+## estimate_power_score（战斗公式）不同标尺，战力条件形同虚设。新口径见
+## EvolutionHelpers.get_target_white_combat / get_target_power_bar（同标尺，白板×0.70）。
 
 ## ═══════════════════════════════════════════════════════════
 ## 工具函数

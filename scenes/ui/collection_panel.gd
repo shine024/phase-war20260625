@@ -275,6 +275,10 @@ func _on_milestone_reached(milestone: Dictionary) -> void:
 
 
 func _on_collection_changed(_arg = null) -> void:
+	# v9 perf：隐藏时跳过——战后掉落逐张 emit，同帧 N 次全量重建所有卡牌行；
+	# 打开路径 on_overlay_opened 全量刷新，不漏内容
+	if not is_visible_in_tree():
+		return
 	_refresh()
 
 

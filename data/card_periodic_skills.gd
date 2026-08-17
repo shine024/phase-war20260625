@@ -336,6 +336,12 @@ static func compute_source_tags_for_stats(stats) -> Array:
 		tags.append("artillery")
 	if int(stats.combat_kind) == GC.CombatKind.FORT:
 		tags.append("fort")
+	# v10 解题式玩法：主类派生 armored/aircraft 标签（与敌方 archetype tag 体系对齐，
+	# 供 TAG_COUNTER_RULES 的 armored vs urban_infantry 等规则使用）
+	if int(stats.combat_kind) == GC.CombatKind.ARMOR:
+		tags.append("armored")
+	if int(stats.combat_kind) == GC.CombatKind.AIR:
+		tags.append("aircraft")
 	if bool(stats.get_meta("is_engineer", false)):
 		tags.append("engineer")
 	if bool(stats.get_meta("is_ecm", false)):

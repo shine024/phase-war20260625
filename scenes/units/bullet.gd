@@ -15,7 +15,9 @@ const FactionSkillEffectHandler = preload("res://scripts/battle/faction_skill_ef
 const ComboEngine = preload("res://scripts/battle/combo_engine.gd")
 const DirectWeaponFlavor = preload("res://data/direct_weapon_flavor.gd")
 ## 曲射弹道：炮口火焰特效纹理（预加载，避免运行时 ResourceLoader.load 卡顿）
-const ARTILLERY_MUZZLE_TEX := preload("res://assets/effects/projectiles/weapons_realistic/weapon_artillery_muzzle.png")
+## v9.x 修复：原 weapons_realistic/weapon_artillery_muzzle.png 从未进 git（机器间缺失导致整脚本 Parse Error），
+## 改用已入库的 muzzle_heavy.png（火炮炮口焰语义一致）。
+const ARTILLERY_MUZZLE_TEX := preload("res://assets/effects/particle_textures/muzzle_heavy.png")
 ## v6.4: 重型武器拖尾贴图（曲射/爆炸类），复用 omega_platform 拖尾资源
 const HEAVY_TRAIL_TEX := preload("res://assets/effects/projectiles/omega_platform/omega_platform_projectile_trail.png")
 ## 启用拖尾的重型武器类型：INDIRECT(1)/AERIAL(2)/ROCKET(3)/FLAK(7)/MISSILE(9)/OMEGA(10)/RAIL(11)
@@ -1045,6 +1047,26 @@ func _on_hit(primary: Node2D) -> void:
 		if not _cached_atk_tags.is_empty():
 			AttackCalculator.compute_tag_counter_multiplier(_cached_atk_tags, primary, _tag_result_cache)
 			final_damage *= float(_tag_result_cache.get("mult", 1.0))
+			# v10 解题式玩法：巷战命中惩罚——装甲打巷战步兵"打不中而非打不动"（miss 而非减伤）。
+			# 命中惩罚走 forced_miss 同款流程（飘 MISS + 弹着特效 + 回收）。
+			var _acc_pen: float = float(_tag_result_cache.get("accuracy_penalty", 0.0))
+			if _acc_pen > 0.0 and randf() < _acc_pen:
+				var _urban_miss_pos: Vector2 = primary.global_position if primary else global_position
+				CombatFeedback.show_miss(_urban_miss_pos, primary)
+				if _rotates_with_direction:
+					_spawn_tex_impact_at(_urban_miss_pos)
+				_finish_tex_bullet()
+				return
+			# v10 打破型质变效果（strip_fort_aura / ground_aircraft / interrupt_cast / guaranteed_crit）
+			var _break_fx: Dictionary = _tag_result_cache.get("break_effect", {})
+			if not _break_fx.is_empty() and primary != null and is_instance_valid(primary):
+				var _applied: bool = ModuleEffectHandler.apply_break_effect(primary, _break_fx, shooter)
+				# guaranteed_crit：狙击对高价值目标必暴（此前未暴时补强制暴击，倍率与主路径一致；
+				# 已随机暴击则不叠加）
+				if String(_break_fx.get("type", "")) == "guaranteed_crit" and not is_crit:
+					is_crit = true
+					final_damage *= (1.5 + shooter_stats.crit_damage_bonus)
+					_pending_crit = true
 	# v8.5: 无人机定时标记易伤——目标有 _drone_marked_until（未过期）则伤害 ×(1+vuln)
 	if primary != null and is_instance_valid(primary) and primary.has_meta("_drone_marked_until"):
 		var _dm_until: int = int(primary.get_meta("_drone_marked_until", 0))

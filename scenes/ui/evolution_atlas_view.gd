@@ -55,7 +55,16 @@ func _build_ui() -> void:
 	_scroll.add_child(_columns_row)
 
 
+## v9.x 性能：分帧构建状态——133 卡条目一次性同步建（每条 ~7 节点 + 图标加载）
+## 是情报中心首开冻结 1.2~3s 的主热点，改为骨架同步 + 条目每帧 N 个出队。
+const ATLAS_PER_FRAME_FIRST := 16   # 首帧加载量（立即可见）
+const ATLAS_PER_FRAME := 12         # 后续每帧加载量
+var _pending_entries: Array = []    # [{list: VBoxContainer, entry: Dictionary}]
+var _atlas_timer: Timer = null
+
+
 func refresh() -> void:
+	_stop_pending_build()
 	_graph = EvolutionGraphBuilder.build()
 	_rebuild_columns()
 
@@ -85,6 +94,7 @@ func _rebuild_columns() -> void:
 	for child in _columns_row.get_children():
 		child.queue_free()
 	_unit_entries.clear()
+	_pending_entries.clear()
 
 	var by_era: Array = _graph.get("by_era", [])
 	var era_labels: PackedStringArray = _graph.get("era_labels", PackedStringArray())
@@ -93,6 +103,43 @@ func _rebuild_columns() -> void:
 		var col_entries: Array = by_era[era] if era < by_era.size() else []
 		var col := _make_era_column(era, era_labels, col_entries)
 		_columns_row.add_child(col)
+
+	# v9.x 性能：条目分帧——首帧出一批让用户立即看到内容，剩余走 timer
+	_process_atlas_batch(ATLAS_PER_FRAME_FIRST)
+	if not _pending_entries.is_empty():
+		_start_atlas_timer()
+
+
+func _process_atlas_batch(batch_count: int) -> void:
+	var n := 0
+	while n < batch_count and not _pending_entries.is_empty():
+		var item: Dictionary = _pending_entries.pop_front()
+		var list: VBoxContainer = item.get("list")
+		if is_instance_valid(list):
+			list.add_child(_make_unit_entry(item.get("entry", {})))
+		n += 1
+	if _pending_entries.is_empty():
+		_stop_atlas_timer()
+
+
+func _start_atlas_timer() -> void:
+	if _atlas_timer == null:
+		_atlas_timer = Timer.new()
+		_atlas_timer.wait_time = 0.016  # 约一帧
+		_atlas_timer.one_shot = false
+		_atlas_timer.timeout.connect(_process_atlas_batch.bind(ATLAS_PER_FRAME))
+		add_child(_atlas_timer)
+	_atlas_timer.start()
+
+
+func _stop_atlas_timer() -> void:
+	if _atlas_timer and not _atlas_timer.is_stopped():
+		_atlas_timer.stop()
+
+
+func _stop_pending_build() -> void:
+	_pending_entries.clear()
+	_stop_atlas_timer()
 
 
 func _make_era_column(era: int, era_labels: PackedStringArray, entries: Array) -> Control:
@@ -147,9 +194,10 @@ func _make_era_column(era: int, era_labels: PackedStringArray, entries: Array) -
 		empty.add_theme_color_override("font_color", Color(0.4, 0.45, 0.5, 0.8))
 		list.add_child(empty)
 	else:
+		# v9.x 性能：条目入队，由 _rebuild_columns 统一分帧出队
 		for entry in entries:
 			if entry is Dictionary:
-				list.add_child(_make_unit_entry(entry))
+				_pending_entries.append({"list": list, "entry": entry})
 
 	return panel
 

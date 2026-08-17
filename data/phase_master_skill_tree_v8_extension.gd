@@ -1,36 +1,49 @@
 extends RefCounted
 class_name PhaseMasterSkillTreeV8Extension
 ## ═══════════════════════════════════════════════════════════
-##  v8.x 相位师技能树扩展（40 个新节点，4 分支 × 10 节点）
+##  相位师技能树扩展（深层节点 tier 5-15）
 ##
-##  本文件独立于 phase_master_skill_tree.gd 主文件，避免破坏现有 20 节点结构。
+##  本文件独立于 phase_master_skill_tree.gd 主文件（基础层 tier 0-4）。
 ##  PhaseMasterSkillTree 通过 get_skills_for_branch() 合并本扩展：
 ##    主表 SKILL_TREE[branch] + V8Extension.get_extension_nodes(branch)
 ##
-##  新增解锁类型（unlocks[].type）：
+##  v9 重设计：概念武器分支解散，原 12 个深层 cw 节点按主题归位三系：
+##    指挥（守护/时空系）：cw_2 形态进化 / cw_4 护盾投射 / cw_11 时间回溯 / cw_10 维度叠加
+##    智能化（控制/电子系）：cw_5 无人机协同 / cw_8 时间迟缓 / cw_7a 天罚雷阵 / cw_13b 太阳耀斑
+##    火力（大杀伤系）：cw_3 能量过载 / cw_1 战术核武 / cw_6 焚城 / cw_12a 焦土政策 /
+##                     cw_7b 湮灭之光 / cw_12b 烈焰风暴 / cw_9 现实崩溃 / cw_13a 火焰传导
+##  节点 ID 全部保留（pms_cw_ 前缀不改），旧存档零迁移。
+##  奇点节点带 "capstone": true，统一以「奇点解算」（pms_cw_0，主表智能化 tier 3）
+##  为门关：要求三系 tier2 全点亮；个别强节点另有跨系前置。
+##
+##  解锁类型（unlocks[].type）：
 ##    card_skill      → 卡片定时技能解锁（CardPeriodicSkillEngine 查询）
 ##    tactic          → 战法解锁（TacticDetector 查询）
-##    unit_mechanism  → 兵种机制技能解锁（v8.5：blitz_pierce/sniper_aim/demolition/jamming_field/drone_mark）
+##    unit_mechanism  → 兵种机制技能解锁（blitz_pierce/sniper_aim/demolition/jamming_field/drone_mark 等）
 ##
-##  新增效果字段（effects）：
-##    stat_bonus      → 累加到 get_active_effects()（已有）
-##    conditional     → 条件型 Buff（已有）
-##    aura            → 光环（已有）
+##  效果字段（effects）：
+##    stat_bonus      → 累加到 get_active_effects()
+##    conditional     → 条件型 Buff
+##    aura            → 光环
 ## ═══════════════════════════════════════════════════════════
 
 const BRANCH_COMMAND := "command"
 const BRANCH_INTELLIGENCE := "intelligence"
 const BRANCH_FIREPOWER := "firepower"
-const BRANCH_CONCEPT_WEAPON := "concept_weapon"
 
-## 4 分支扩展节点（tier 5-12），每节点结构与 phase_master_skill_tree.gd 完全一致
+## 3 分支扩展节点（tier 5-15），每节点结构与 phase_master_skill_tree.gd 完全一致
 const EXTENSION_NODES: Dictionary = {
-	# ═══════════ 指挥分支扩展（10 节点）：渗透战术 / 工兵 / 战法 ═══════════
+	# ═══════════ 指挥分支扩展（13+4 节点）：渗透战术 / 工兵 / 战法 + 奇点（进化/护盾/时空） ═══════════
 	BRANCH_COMMAND: [
 		# tier 5：闪电穿插训练（v8.5：原 stalker_stealth 空转——兵种机制靠卡牌tags驱动与技能树无关；改为机制技能：装甲单位穿透攻击后排）
 		{"id": "pms_cmd_5", "name": "闪电穿插", "desc": "解锁机制：装甲单位每10秒下次攻击变为穿透弹（越过前排直击后排2个单位）",
 		 "branch": BRANCH_COMMAND, "tier": 5, "cost": 2, "requires": ["pms_cmd_4"],
 		 "unlocks": [{"type": "unit_mechanism", "id": "blitz_pierce"}],
+		 "effects": {}},
+		# tier 5 并列：形态进化（v9 归位自概念武器分支；军团养成归指挥系）
+		{"id": "pms_cw_2", "name": "形态进化", "desc": "解锁卡牌进化能力（一战时代）",
+		 "branch": BRANCH_COMMAND, "tier": 5, "cost": 2, "requires": ["pms_cmd_4"],
+		 "unlocks": [{"type": "evolution", "era": 0}],
 		 "effects": {}},
 		# tier 6：坚壁清野（v8.5：原 engineer_build 空转——维修/布雷/净化均未实装；改数值加成）
 		{"id": "pms_cmd_6", "name": "坚壁清野", "desc": "所有单位三维防御 +10%，暴击抗性 +10%",
@@ -70,16 +83,32 @@ const EXTENSION_NODES: Dictionary = {
 		 "branch": BRANCH_COMMAND, "tier": 10, "cost": 4, "requires": ["pms_cmd_9a", "pms_cmd_9b"],
 		 "unlocks": [],
 		 "effects": {"stat_bonus": {"tactic_effect_mult": 0.20, "def_light": 0.10, "def_armor": 0.10, "def_air": 0.10}}},
+		# tier 10 并列：护盾投射（v9 奇点归位指挥系——守护系奇点链链首；需奇点解算门关）
+		{"id": "pms_cw_4", "name": "护盾投射", "desc": "◈奇点 解锁机制：护盾发射器堡垒每20秒为半径250内生命最低的3个友军投射护盾；解锁所有时代进化",
+		 "branch": BRANCH_COMMAND, "tier": 10, "cost": 4, "requires": ["pms_cmd_9a", "pms_cw_0"],
+		 "unlocks": [{"type": "unit_mechanism", "id": "shield_projector"},
+		              {"type": "evolution", "era": -1}],
+		 "effects": {}, "capstone": true},
 		# tier 11：闪电穿插（高级战法）
 		{"id": "pms_cmd_11", "name": "闪电穿插", "desc": "解锁高级战法「闪电穿插」：≥3 FAST 时 FAST 攻速+40%、伤害+30%",
 		 "branch": BRANCH_COMMAND, "tier": 11, "cost": 4, "requires": ["pms_cmd_10"],
 		 "unlocks": [{"type": "tactic", "id": "tactic_blitz"}],
 		 "effects": {}},
+		# tier 11 并列：时间回溯（v9 奇点归位指挥系——时空系，接护盾投射链）
+		{"id": "pms_cw_11", "name": "时间回溯", "desc": "◈奇点 解锁卡片技能「全体回血」：每 90s 全体恢复 30% HP+清除 debuff",
+		 "branch": BRANCH_COMMAND, "tier": 11, "cost": 5, "requires": ["pms_cw_4"],
+		 "unlocks": [{"type": "card_skill", "id": "cps_time_rewind"}],
+		 "effects": {}, "capstone": true},
 		# tier 12：天罗地网（高级战法）
 		{"id": "pms_cmd_12", "name": "天罗地网", "desc": "解锁高级战法「天罗地网」：STEEL+THUNDER 时全体敌方攻速-30%、移速-30%",
 		 "branch": BRANCH_COMMAND, "tier": 12, "cost": 5, "requires": ["pms_cmd_11"],
 		 "unlocks": [{"type": "tactic", "id": "tactic_sky_net"}],
 		 "effects": {}},
+		# tier 12 并列：维度叠加（v9 奇点归位指挥系——时空系，指挥奇点链终点）
+		{"id": "pms_cw_10", "name": "维度叠加", "desc": "◈奇点 解锁卡片技能「全体虚化」：每 150s 全体闪避+40%、受伤-30%（12s）",
+		 "branch": BRANCH_COMMAND, "tier": 12, "cost": 4, "requires": ["pms_cw_11"],
+		 "unlocks": [{"type": "card_skill", "id": "cps_dimension_overlay"}],
+		 "effects": {}, "capstone": true},
 		# tier 13a：钢铁壁垒（卡片技能——堡垒周期护盾，原幽灵技能补挂）
 		{"id": "pms_cmd_13a", "name": "钢铁壁垒", "desc": "解锁卡片技能「堡垒护盾」：每 20s 全体堡垒+2000护盾、-10%受伤（10s）",
 		 "branch": BRANCH_COMMAND, "tier": 13, "cost": 5, "requires": ["pms_cmd_12"],
@@ -92,7 +121,7 @@ const EXTENSION_NODES: Dictionary = {
 		 "effects": {}},
 	],
 
-	# ═══════════ 火力分支扩展（10 节点）：狙击手 / 火炮协调 / 战法 ═══════════
+	# ═══════════ 火力分支扩展（11+8 节点）：狙击手 / 火炮协调 / 战法 + 奇点（核武/大杀伤/火焰） ═══════════
 	BRANCH_FIREPOWER: [
 		# tier 5：狙击大师（v8.5：原 sniper_training 空转——兵种机制靠卡牌tags驱动与技能树无关；改为机制技能：狙击单位定时瞄准必暴）
 		{"id": "pms_fp_5", "name": "狙击大师", "desc": "解锁机制：狙击单位每15秒进入瞄准状态（瞄准动画），下次攻击必暴击且伤害+50%（对Boss×2）",
@@ -114,6 +143,10 @@ const EXTENSION_NODES: Dictionary = {
 		 "branch": BRANCH_FIREPOWER, "tier": 7, "cost": 3, "requires": ["pms_fp_6"],
 		 "unlocks": [{"type": "tactic", "id": "tactic_saturation"}],
 		 "effects": {}},
+		# tier 7c：能量过载（v9 归位自概念武器分支，纯数值不设门关）
+		{"id": "pms_cw_3", "name": "能量过载", "desc": "所有单位三维攻击 +12%，暴击伤害 +25%",
+		 "branch": BRANCH_FIREPOWER, "tier": 7, "cost": 3, "requires": ["pms_fp_6"],
+		 "unlocks": [], "effects": {"stat_bonus": {"atk_light": 0.12, "atk_armor": 0.12, "atk_air": 0.12, "crit_damage_bonus": 0.25}}},
 		# tier 8：斩首行动（战法）
 		{"id": "pms_fp_8", "name": "斩首行动", "desc": "解锁战法「斩首行动」：SNIPER+STALKER+VOID 时对 Boss/相位师伤害×2",
 		 "branch": BRANCH_FIREPOWER, "tier": 8, "cost": 3, "requires": ["pms_fp_7a"],
@@ -144,14 +177,49 @@ const EXTENSION_NODES: Dictionary = {
 		 "branch": BRANCH_FIREPOWER, "tier": 11, "cost": 4, "requires": ["pms_fp_10"],
 		 "unlocks": [{"type": "tactic", "id": "tactic_inferno_counter"}],
 		 "effects": {}},
+		# tier 11 并列：战术核武（v9 奇点归位火力系——大杀伤奇点链链首；需火力精通+奇点解算门关）
+		{"id": "pms_cw_1", "name": "战术核武", "desc": "◈奇点 解锁机制：导弹发射井堡垒每45秒发射战术核弹，弹道飞行后对敌方密集区半径200内造成35%最大生命（保底200）的范围伤害",
+		 "branch": BRANCH_FIREPOWER, "tier": 11, "cost": 4, "requires": ["pms_fp_10", "pms_cw_0"],
+		 "unlocks": [{"type": "unit_mechanism", "id": "nuclear_strike"}],
+		 "effects": {}, "capstone": true},
 		# tier 12：四维打击（高级战法）
 		{"id": "pms_fp_12", "name": "四维打击", "desc": "解锁高级战法「四维打击」：4 家族技能时全体 +25% 全属性",
 		 "branch": BRANCH_FIREPOWER, "tier": 12, "cost": 5, "requires": ["pms_fp_11"],
 		 "unlocks": [{"type": "tactic", "id": "tactic_4d_strike"}],
 		 "effects": {}},
+		# tier 12 并列：焚城（v9 奇点归位火力系，接战术核武链）
+		{"id": "pms_cw_6", "name": "焚城", "desc": "◈奇点 解锁卡片技能「全图火焰轰炸」：每 60s 全图 250 火伤+燃烧",
+		 "branch": BRANCH_FIREPOWER, "tier": 12, "cost": 3, "requires": ["pms_cw_1"],
+		 "unlocks": [{"type": "card_skill", "id": "cps_burn_city"}],
+		 "effects": {}, "capstone": true},
+		# tier 13a：焦土政策（v9 奇点归位火力系）
+		{"id": "pms_cw_12a", "name": "焦土政策", "desc": "◈奇点 解锁卡片技能「区域燃烧」：每 16s 敌方密集区燃烧 8s",
+		 "branch": BRANCH_FIREPOWER, "tier": 13, "cost": 5, "requires": ["pms_cw_6"],
+		 "unlocks": [{"type": "card_skill", "id": "cps_scorched_earth"}],
+		 "effects": {}, "capstone": true},
+		# tier 13b：湮灭之光（v9 奇点归位火力系；额外跨系前置智能「AI 指挥」——锁定系统支撑全图打击）
+		{"id": "pms_cw_7b", "name": "湮灭之光", "desc": "◈奇点 解锁卡片技能「全图虚空伤害」：3s 蓄力后全图 300% ATK，HP<30% 斩杀",
+		 "branch": BRANCH_FIREPOWER, "tier": 13, "cost": 3, "requires": ["pms_cw_6", "pms_int_10"],
+		 "unlocks": [{"type": "card_skill", "id": "cps_annihilate"}],
+		 "effects": {}, "capstone": true},
+		# tier 14a：烈焰风暴（v9 奇点归位火力系，接焦土政策链）
+		{"id": "pms_cw_12b", "name": "烈焰风暴", "desc": "◈奇点 解锁卡片技能「全图燃烧」：每 80s 全图燃烧+恐慌",
+		 "branch": BRANCH_FIREPOWER, "tier": 14, "cost": 5, "requires": ["pms_cw_12a"],
+		 "unlocks": [{"type": "card_skill", "id": "cps_firestorm"}],
+		 "effects": {}, "capstone": true},
+		# tier 14b：现实崩溃（v9 奇点归位火力系，接湮灭之光链——大杀伤奇点终点）
+		{"id": "pms_cw_9", "name": "现实崩溃", "desc": "◈奇点 解锁卡片技能「斩杀低 HP」：每 60s HP<15% 敌方直接斩杀",
+		 "branch": BRANCH_FIREPOWER, "tier": 14, "cost": 4, "requires": ["pms_cw_7b"],
+		 "unlocks": [{"type": "card_skill", "id": "cps_reality_collapse"}],
+		 "effects": {}, "capstone": true},
+		# tier 15：火焰传导（v9 奇点归位火力系——火焰链终点）
+		{"id": "pms_cw_13a", "name": "火焰传导", "desc": "◈奇点 解锁卡片技能「燃烧传染」：每 18s 燃烧传染 5 个邻近敌方（4s）",
+		 "branch": BRANCH_FIREPOWER, "tier": 15, "cost": 5, "requires": ["pms_cw_12b"],
+		 "unlocks": [{"type": "card_skill", "id": "cps_combustion"}],
+		 "effects": {}, "capstone": true},
 	],
 
-	# ═══════════ 智能化分支扩展（10 节点）：电子战 / 卡片技能 / 战法 ═══════════
+	# ═══════════ 智能化分支扩展（11+4 节点）：电子战 / 卡片技能 / 战法 + 奇点（控制/时空/雷系） ═══════════
 	BRANCH_INTELLIGENCE: [
 		# tier 5：侦察特战（v8.5：原 ecm_aura 空转——兵种机制靠卡牌tags驱动与技能树无关；改为机制技能：侦察单位定向爆破）
 		{"id": "pms_int_5", "name": "侦察特战", "desc": "解锁机制：侦察单位每12秒原地发射曲射爆破弹打最近敌方堡垒/装甲，造成8%最大生命的真实伤害",
@@ -193,86 +261,42 @@ const EXTENSION_NODES: Dictionary = {
 		 "branch": BRANCH_INTELLIGENCE, "tier": 9, "cost": 3, "requires": ["pms_int_8"],
 		 "unlocks": [{"type": "unit_mechanism", "id": "nano_virus"}],
 		 "effects": {}},
+		# tier 9d：无人机协同（v9 奇点归位智能系——侦察标记链链首；需奇点解算门关）
+		{"id": "pms_cw_5", "name": "无人机协同", "desc": "◈奇点 解锁机制：无人机每14秒标记半径400内最高威胁的2个敌方，被标记目标受到+25%额外伤害（持续8秒）",
+		 "branch": BRANCH_INTELLIGENCE, "tier": 9, "cost": 3, "requires": ["pms_int_8", "pms_cw_0"],
+		 "unlocks": [{"type": "unit_mechanism", "id": "drone_mark"}],
+		 "effects": {}, "capstone": true},
 		# tier 10：AI 指挥
 		{"id": "pms_int_10", "name": "AI 指挥", "desc": "全体友军攻速+15%、暴击+10%",
 		 "branch": BRANCH_INTELLIGENCE, "tier": 10, "cost": 4, "requires": ["pms_int_9a", "pms_int_9b"],
 		 "unlocks": [],
 		 "effects": {"stat_bonus": {"attack_speed": 0.15, "crit_chance": 0.10}}},
+		# tier 11：时间迟缓（v9 奇点归位智能系——时空控制链链首；需 AI 指挥+奇点解算门关）
+		{"id": "pms_cw_8", "name": "时间迟缓", "desc": "◈奇点 解锁卡片技能「全场减速」：每 30s 全体敌方移速-50%、攻速-50%（4s）",
+		 "branch": BRANCH_INTELLIGENCE, "tier": 11, "cost": 4, "requires": ["pms_int_10", "pms_cw_0"],
+		 "unlocks": [{"type": "card_skill", "id": "cps_time_slow"}],
+		 "effects": {}, "capstone": true},
 		# tier 11：诸神黄昏节点已删除（原虚空降临，奇幻概念过重，用户要求移除）
 		# tier 12：全面战争（高级战法）—— requires 直接接 pms_int_10（AI 指挥）
 		{"id": "pms_int_12", "name": "全面战争", "desc": "解锁高级战法「全面战争」：4 终极技能时全体 +40% 全属性，敌方每秒-1% HP",
 		 "branch": BRANCH_INTELLIGENCE, "tier": 12, "cost": 5, "requires": ["pms_int_10"],
 		 "unlocks": [{"type": "tactic", "id": "tactic_total_war"}],
 		 "effects": {}},
+		# tier 12 并列：天罚雷阵（v9 奇点归位智能系，接时间迟缓链）
+		{"id": "pms_cw_7a", "name": "天罚雷阵", "desc": "◈奇点 解锁卡片技能「全图雷击」：每 100s 15 道闪电，全图感电",
+		 "branch": BRANCH_INTELLIGENCE, "tier": 12, "cost": 3, "requires": ["pms_cw_8"],
+		 "unlocks": [{"type": "card_skill", "id": "cps_heaven_thunder"}],
+		 "effects": {}, "capstone": true},
 		# tier 13：闪电链（卡片技能——电子战链式雷击，原幽灵技能补挂）
 		{"id": "pms_int_13", "name": "闪电链", "desc": "解锁卡片技能「链式雷击」：每 10s 弹跳 5 次雷伤（对装甲+50%）",
 		 "branch": BRANCH_INTELLIGENCE, "tier": 13, "cost": 5, "requires": ["pms_int_12"],
 		 "unlocks": [{"type": "card_skill", "id": "cps_chain_lightning"}],
 		 "effects": {}},
-	],
-
-	# ═══════════ 概念武器分支扩展（10 节点）：卡片终极技能 ═══════════
-	BRANCH_CONCEPT_WEAPON: [
-		# tier 5：无人机协同（v8.5：原 cps_steel_storm 召唤技能换为机制技能：无人机定时标记易伤）
-		{"id": "pms_cw_5", "name": "无人机协同", "desc": "解锁机制：无人机每14秒标记半径400内最高威胁的2个敌方，被标记目标受到+25%额外伤害（持续8秒）",
-		 "branch": BRANCH_CONCEPT_WEAPON, "tier": 5, "cost": 3, "requires": ["pms_cw_4"],
-		 "unlocks": [{"type": "unit_mechanism", "id": "drone_mark"}],
-		 "effects": {}},
-		# tier 6：焚城（卡片技能——全图火焰轰炸）
-		{"id": "pms_cw_6", "name": "焚城", "desc": "解锁卡片技能「全图火焰轰炸」：每 60s 全图 250 火伤+燃烧",
-		 "branch": BRANCH_CONCEPT_WEAPON, "tier": 6, "cost": 3, "requires": ["pms_cw_5"],
-		 "unlocks": [{"type": "card_skill", "id": "cps_burn_city"}],
-		 "effects": {}},
-		# tier 7a：天罚雷阵（卡片技能）
-		{"id": "pms_cw_7a", "name": "天罚雷阵", "desc": "解锁卡片技能「全图雷击」：每 100s 15 道闪电，全图感电",
-		 "branch": BRANCH_CONCEPT_WEAPON, "tier": 7, "cost": 3, "requires": ["pms_cw_6"],
-		 "unlocks": [{"type": "card_skill", "id": "cps_heaven_thunder"}],
-		 "effects": {}},
-		# tier 7b：湮灭之光（卡片技能——全图虚空+斩杀）
-		{"id": "pms_cw_7b", "name": "湮灭之光", "desc": "解锁卡片技能「全图虚空伤害」：3s 蓄力后全图 300% ATK，HP<30% 斩杀",
-		 "branch": BRANCH_CONCEPT_WEAPON, "tier": 7, "cost": 3, "requires": ["pms_cw_6"],
-		 "unlocks": [{"type": "card_skill", "id": "cps_annihilate"}],
-		 "effects": {}},
-		# tier 8：时间迟缓（卡片技能）
-		{"id": "pms_cw_8", "name": "时间迟缓", "desc": "解锁卡片技能「全场减速」：每 30s 全体敌方移速-50%、攻速-50%（4s）",
-		 "branch": BRANCH_CONCEPT_WEAPON, "tier": 8, "cost": 4, "requires": ["pms_cw_7a"],
-		 "unlocks": [{"type": "card_skill", "id": "cps_time_slow"}],
-		 "effects": {}},
-		# tier 9：现实崩溃（卡片技能——斩杀）
-		{"id": "pms_cw_9", "name": "现实崩溃", "desc": "解锁卡片技能「斩杀低 HP」：每 60s HP<15% 敌方直接斩杀",
-		 "branch": BRANCH_CONCEPT_WEAPON, "tier": 9, "cost": 4, "requires": ["pms_cw_8"],
-		 "unlocks": [{"type": "card_skill", "id": "cps_reality_collapse"}],
-		 "effects": {}},
-		# tier 10：维度叠加（卡片技能——全体虚化）
-		{"id": "pms_cw_10", "name": "维度叠加", "desc": "解锁卡片技能「全体虚化」：每 150s 全体闪避+40%、受伤-30%（12s）",
-		 "branch": BRANCH_CONCEPT_WEAPON, "tier": 10, "cost": 4, "requires": ["pms_cw_9"],
-		 "unlocks": [{"type": "card_skill", "id": "cps_dimension_overlay"}],
-		 "effects": {}},
-		# tier 11：时间回溯（卡片技能——回血清 debuff）
-		{"id": "pms_cw_11", "name": "时间回溯", "desc": "解锁卡片技能「全体回血」：每 90s 全体恢复 30% HP+清除 debuff",
-		 "branch": BRANCH_CONCEPT_WEAPON, "tier": 11, "cost": 5, "requires": ["pms_cw_10"],
-		 "unlocks": [{"type": "card_skill", "id": "cps_time_rewind"}],
-		 "effects": {}},
-		# tier 12a：焦土政策（卡片技能）
-		{"id": "pms_cw_12a", "name": "焦土政策", "desc": "解锁卡片技能「区域燃烧」：每 16s 敌方密集区燃烧 8s",
-		 "branch": BRANCH_CONCEPT_WEAPON, "tier": 12, "cost": 5, "requires": ["pms_cw_11"],
-		 "unlocks": [{"type": "card_skill", "id": "cps_scorched_earth"}],
-		 "effects": {}},
-		# tier 12b：烈焰风暴（卡片技能——全图燃烧）
-		{"id": "pms_cw_12b", "name": "烈焰风暴", "desc": "解锁卡片技能「全图燃烧」：每 80s 全图燃烧+恐慌",
-		 "branch": BRANCH_CONCEPT_WEAPON, "tier": 12, "cost": 5, "requires": ["pms_cw_11"],
-		 "unlocks": [{"type": "card_skill", "id": "cps_firestorm"}],
-		 "effects": {}},
-		# tier 13a：火焰传导（卡片技能——燃烧传染，原幽灵技能补挂）
-		{"id": "pms_cw_13a", "name": "火焰传导", "desc": "解锁卡片技能「燃烧传染」：每 18s 燃烧传染 5 个邻近敌方（4s）",
-		 "branch": BRANCH_CONCEPT_WEAPON, "tier": 13, "cost": 5, "requires": ["pms_cw_12b"],
-		 "unlocks": [{"type": "card_skill", "id": "cps_combustion"}],
-		 "effects": {}},
-		# tier 13b：太阳耀斑（卡片技能——全体易伤，原幽灵技能补挂）
-		{"id": "pms_cw_13b", "name": "太阳耀斑", "desc": "解锁卡片技能「全体易伤」：每 35s 全体敌方+25%易伤（5s）",
-		 "branch": BRANCH_CONCEPT_WEAPON, "tier": 13, "cost": 5, "requires": ["pms_cw_12b"],
+		# tier 13 并列：太阳耀斑（v9 奇点归位智能系，接天罚雷阵链——时空控制链终点）
+		{"id": "pms_cw_13b", "name": "太阳耀斑", "desc": "◈奇点 解锁卡片技能「全体易伤」：每 35s 全体敌方+25%易伤（5s）",
+		 "branch": BRANCH_INTELLIGENCE, "tier": 13, "cost": 5, "requires": ["pms_cw_7a"],
 		 "unlocks": [{"type": "card_skill", "id": "cps_solar_flare"}],
-		 "effects": {}},
+		 "effects": {}, "capstone": true},
 	],
 }
 

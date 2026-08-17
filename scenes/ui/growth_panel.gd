@@ -8,7 +8,6 @@ const DefaultCards = preload("res://data/default_cards.gd")
 const StarConfig = preload("res://data/blueprint_star_config.gd")
 const ModRegistry = preload("res://scripts/systems/modification_registry.gd")
 const EvoPathRegistry = preload("res://scripts/systems/evolution_path_registry.gd")
-const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
 const FormatUtil = preload("res://scripts/ui/format_util.gd")
 const UiAssetLoader = preload("res://scripts/ui_asset_loader.gd")
 const DT = preload("res://resources/design_tokens.gd")
@@ -796,35 +795,20 @@ func _refresh_evolution_section() -> void:
 				var sign := "+" if pct >= 0 else ""
 				power_delta = "%s%d%%" % [sign, pct]
 		# 进化条件（取首个目标的校验结果）
+		# v9.x: 用 conditions 快照统计 met/total（与进化面板逐条件行同源），
+		# 旧版 ok 时硬编码 3/3、失败时手工数 3 项，口径不齐已删
 		var met_count := 0
 		var total_count := 0
 		var bp = get_node_or_null("/root/BlueprintManager")
 		if bp and bp.has_method("can_evolve_blueprint"):
-			var can_info: Dictionary = bp.can_evolve_blueprint(c.card_id, target_id)
-			if bool(can_info.get("ok", false)):
-				met_count = 3
-				total_count = 3
-			else:
-				# 统计已满足/总数
-				var enh_req: int = int(can_info.get("enhance_requirement", 0))
-				var mod_req: int = int(can_info.get("mod_requirement", 0))
-				if enh_req > 0:
+			# v7.0 口径统一：传 instance_id（实例化养成），与 evolution_panel 相同
+			var src_id: String = c.instance_id if not c.instance_id.is_empty() else c.card_id
+			var can_info: Dictionary = bp.can_evolve_blueprint(src_id, target_id)
+			for cond in can_info.get("conditions", []):
+				if cond is Dictionary:
 					total_count += 1
-					if int(can_info.get("current_enhance", 0)) >= enh_req:
+					if bool(cond.get("met", false)):
 						met_count += 1
-				if mod_req > 0:
-					total_count += 1
-					if int(can_info.get("current_mod_count", 0)) >= mod_req:
-						met_count += 1
-				# 图纸
-				total_count += 1
-				var evo_bp_id := BlueprintDefinitions.get_evolution_blueprint_id(c.card_id, target_id)
-				var has_bp := false
-				var _iib = Engine.get_main_loop().get_root().get_node_or_null("IntelItemBag")
-				if _iib and not evo_bp_id.is_empty():
-					has_bp = _iib.has_item(evo_bp_id)
-				if has_bp:
-					met_count += 1
 		_add_evo_target_row(body, target_name, type_label, type_col, power_delta, met_count, total_count)
 
 	# 属性对比（取首个目标的 before→after）

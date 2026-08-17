@@ -31,6 +31,84 @@ static var _unit_type_cache: Dictionary = {}
 static var _flat_index: Dictionary = {}
 
 ## ─────────────────────────────────────────────
+##  v10 改造二分法：机制改造 vs 交换比改造
+## ─────────────────────────────────────────────
+## 设计原则：改造分两类——
+##   机制改造（mechanic）：改变单位"怎么打"（行为规则/触发条件/新能力）。
+##     例：爆反反弹、APS拦截、连击爆发、破甲叠层、标记集火、跨维度武器、DOT弹头。
+##   交换比改造（ratio）：改变"打得多划算"（数值效率）。
+##     例：攻击+15%、防御+20%、攻速-10%、HP+10%。
+## 玩家感知差异：机制改造改变战法（可组合出新解法），交换比改造只是变强。
+## 分类依据 effect key：effects 命中 MECHANIC_EFFECT_KEYS 任一 key → mechanic。
+## 新增机制型 effect 时必须把 key 加进此表，否则面板会把它当数值改造显示。
+
+const MECHANIC_EFFECT_KEYS: Array = [
+	# 反伤/拦截（受击规则变化）
+	"reactive_armor", "reflect_charges", "intercept_system", "intercept_charges", "missile_intercept",
+	# 成长爆发（积累触发规则）
+	"combo_system", "combo_bonus", "rage_system", "rage_bonus",
+	# 叠层 debuff（持续性规则变化）
+	"armor_break", "armor_break_stacks",
+	# 标记系统（集火规则）
+	"crit_mark_chance", "crit_mark_bonus", "crit_mark_duration",
+	"target_marking", "mark_vuln", "mark_duration",
+	# 真实伤害/百分比伤害（绕过护甲规则）
+	"true_damage", "siege_bonus_pct",
+	# DOT 弹头（持续伤害规则）
+	"chem_chance", "chem_dps", "chem_duration", "burn_chance", "burn_dps", "burn_duration", "nano_infect",
+	# 亡语/濒死（死亡规则变化）
+	"death_heal", "death_heal_radius", "ifak_revive",
+	# 溅射（范围规则）
+	"splash_radius", "splash_damage",
+	# 反炮兵（反击规则）
+	"counter_battery", "has_counter_battery",
+	# 跨维度武器创造（攻击维度解锁）
+	"grant_slot",
+	# 弹道类型（行为变化：散射/直射/火箭/曲射）
+	"weapon_type", "slot_weapon_type",
+	# 条件规则（环境/位置条件加成）
+	"urban_defense", "night_bonus", "smoke_ignore", "mine_immunity",
+	# 吸血/回收（资源转换规则——机制型，设定包装待后续迭代）
+	"lifesteal",
+	# v10 转换型（劣势转优势）
+	"salvage_repair", "phase_shift_counter", "hijack_aura",
+]
+
+## 改造分类查询：返回 "mechanic"（机制改造）或 "ratio"（交换比改造）。
+## 依据 effects 字典是否含 MECHANIC_EFFECT_KEYS 中的 key。
+static func get_mod_class(mod_id: String) -> String:
+	var data: Dictionary = get_data(mod_id)
+	if data.is_empty():
+		return "ratio"
+	var effects: Dictionary = data.get("effects", {})
+	if not effects.is_empty() and _has_mechanic_key(effects):
+		return "mechanic"
+	# 强化词条（level_effects 分级）也检查
+	var level_effects: Dictionary = data.get("level_effects", {})
+	for lv in level_effects.keys():
+		var lv_fx: Dictionary = level_effects[lv]
+		if lv_fx is Dictionary and not lv_fx.is_empty() and _has_mechanic_key(lv_fx):
+			return "mechanic"
+	return "ratio"
+
+
+static func _has_mechanic_key(effects: Dictionary) -> bool:
+	for k in effects.keys():
+		if MECHANIC_EFFECT_KEYS.has(k):
+			return true
+	return false
+
+
+## 改造分类显示信息（改造面板/情报面板用）。
+## 返回 {class: String, tag: String, color: String}：
+##   mechanic → {tag: "机制", color: "#ff9d4d"}（橙色高亮——改变战法）
+##   ratio    → {tag: "数值", color: "#8a94a6"}（灰色——变强）
+static func get_mod_class_display(mod_id: String) -> Dictionary:
+	if get_mod_class(mod_id) == "mechanic":
+		return {"class": "mechanic", "tag": "机制", "color": "#ff9d4d"}
+	return {"class": "ratio", "tag": "数值", "color": "#8a94a6"}
+
+## ─────────────────────────────────────────────
 ##  初始化
 ## ─────────────────────────────────────────────
 

@@ -270,7 +270,7 @@ static func calculate_damage_with_weapon(
 ## v9.2: 新增 out_result 按引用传入模式（消除每次 new Dictionary）；原无参重载保留向后兼容。
 ## 传 out_result 时清空并填充它（调用方复用成员字典），返回 out_result 本身；不传则内部 new（原行为）。
 static func compute_tag_counter_multiplier(attacker_tags: Array, target: Node, out_result: Dictionary = {}) -> Dictionary:
-	# v9.2: result 直接指向 out_result（调用方复用）或新建（向后兼容原行为）
+	# v9.2: result 直接指向 out_result（调用方复用）或新建（向后兼容）
 	var result: Dictionary = out_result if out_result != null else {}
 	# 清空并填默认值（复用同一字典对象，避免 new）
 	result.clear()
@@ -278,6 +278,9 @@ static func compute_tag_counter_multiplier(attacker_tags: Array, target: Node, o
 	result["never_miss"] = false
 	result["ignore_stealth"] = false
 	result["bypass_damage_reduction"] = false
+	# v10 解题式玩法：break_effect（打破型质变效果，由 bullet 结算点应用）+ accuracy_penalty
+	result["break_effect"] = {}
+	result["accuracy_penalty"] = 0.0
 	if attacker_tags.is_empty() or target == null or not is_instance_valid(target):
 		return result
 	# 收集目标标签：优先 _behavior_tags_cached，其次 tags 属性，最后 meta target_priority_tag
@@ -290,6 +293,15 @@ static func compute_tag_counter_multiplier(attacker_tags: Array, target: Node, o
 		var t2 = target.get("tags")
 		if t2 is Array:
 			target_tags = t2
+	# v10 解题式玩法：巷战步兵派生 tag——装有巷战改造（urban_defense_bonus ≥ 0.5，
+	# 如 inf_24_urban_warfare）的步兵视为"巷战步兵"，装甲对其命中率下降（打不中而非打不动）。
+	# 天生 0.15 巷战掩蔽不算（巷战是改造选择的战法，不是免费 passive）。
+	# 注意：target_tags 可能直接引用单位 _behavior_tags_cached（原逻辑只读安全），
+	# 追加派生 tag 前必须复制，否则污染单位缓存数组。
+	if "stats" in target and target.stats != null and "urban_defense_bonus" in target.stats:
+		if float(target.stats.urban_defense_bonus) >= 0.5 and not target_tags.has("urban_infantry"):
+			target_tags = target_tags.duplicate()
+			target_tags.append("urban_infantry")
 	# 高价值目标 meta（boss/master/command）
 	var target_priority_tag: String = ""
 	if target.has_meta("target_priority_tag"):
@@ -328,8 +340,15 @@ static func compute_tag_counter_multiplier(attacker_tags: Array, target: Node, o
 				result["mult"] *= (1.0 + value)
 			"bypass_front", "bypass_damage_reduction":
 				result["bypass_damage_reduction"] = true
+			"accuracy_penalty":
+				# v10：巷战步兵被装甲攻击——命中率惩罚（打不中而非打不动，取最大值不叠加）
+				result["accuracy_penalty"] = maxf(float(result["accuracy_penalty"]), value)
 			_:
 				pass
+		# v10 打破型质变效果：同一轮结算可能命中多条规则，后命中不覆盖先命中（取首个非空）
+		var break_fx: Dictionary = rule.get("break_effect", {})
+		if break_fx is Dictionary and not break_fx.is_empty() and (result["break_effect"] is Dictionary) and (result["break_effect"] as Dictionary).is_empty():
+			result["break_effect"] = break_fx
 		# extra 标记
 		var extra: Array = rule.get("extra", [])
 		if extra.has("never_miss"):

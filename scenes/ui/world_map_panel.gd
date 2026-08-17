@@ -7,16 +7,29 @@ const WorldMapScene = preload("res://scenes/world_map.tscn")
 var world_map_content: Node = null
 
 func _ready() -> void:
-	# 加载世界地图场景
-	if WorldMapScene:
-		world_map_content = WorldMapScene.instantiate()
-		# 嵌入模式：世界地图返回时关闭 overlay，而不是切场景。
-		world_map_content.set_meta("embedded_mode", true)
-		add_child(world_map_content)
+	# v9.x 性能：不再在主场景实例化时同步构建世界地图（100 关按钮 + 星空 + 样式）。
+	# MapOverlay 启动即隐藏，启动期构建纯属占用主线程——是"进游戏后要等一会"的构成之一。
+	# 懒实例化：首次可见或首次 refresh 时再建；world_map 自身 _build_level_map 有幂等守卫，
+	# refresh_for_open 也会兜底未构建状态，时序安全。
+	visibility_changed.connect(_on_visibility_changed_lazy)
 
-		# 连接返回信号
-		if world_map_content.has_signal("back_to_main"):
-			world_map_content.back_to_main.connect(_on_back_to_main)
+func _on_visibility_changed_lazy() -> void:
+	if visible:
+		_ensure_content()
+
+func _ensure_content() -> void:
+	if world_map_content != null and is_instance_valid(world_map_content):
+		return
+	if WorldMapScene == null:
+		return
+	world_map_content = WorldMapScene.instantiate()
+	# 嵌入模式：世界地图返回时关闭 overlay，而不是切场景。
+	world_map_content.set_meta("embedded_mode", true)
+	add_child(world_map_content)
+
+	# 连接返回信号
+	if world_map_content.has_signal("back_to_main"):
+		world_map_content.back_to_main.connect(_on_back_to_main)
 
 func _on_back_to_main() -> void:
 	# 关闭整层地图 Overlay（而非仅隐藏 CenterContainer），避免透明层残留拦截输入导致“卡住”。
@@ -31,6 +44,7 @@ func _on_back_to_main() -> void:
 		(get_parent() as Control).hide()
 
 func refresh() -> void:
+	_ensure_content()
 	# 打开地图时仅做轻量刷新，避免每次重建100关按钮
 	if world_map_content == null:
 		return

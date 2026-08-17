@@ -1,15 +1,23 @@
 extends PanelContainer
 ## 右上角：敌方刷新进度（从上到下）
+## v10 解题式玩法：新增下波构成预警行（PreviewLabel）——显示下一波敌方类型倾向，
+## 让玩家在波次到来前有针对部署的窗口。情报精度联动：情报完成度低只显示"敌方来袭"，
+## 中级显示类型，高级显示类型+数量（情报价值落地：高情报=战场透明）。
 
 const GC = preload("res://resources/game_constants.gd")
 const REFRESH_INTERVAL_SEC := 0.25
+## 预警数据刷新间隔（秒）——构成不像倒计时那样每帧变，低频查询即可
+const PREVIEW_REFRESH_SEC := 1.0
 
 var _wave_total_logged: bool = false
 var _next_label: Label
 var _wave_label: Label
 var _count_label: Label
+var _preview_label: Label
 var _bar: ProgressBar
 var _refresh_accum: float = 0.0
+var _preview_accum: float = 0.0
+var _preview_text: String = ""
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -20,6 +28,7 @@ func _ready() -> void:
 	_next_label = get_node_or_null("Margin/VBox/NextLabel") as Label
 	_wave_label = get_node_or_null("Margin/VBox/WaveLabel") as Label
 	_count_label = get_node_or_null("Margin/VBox/CountLabel") as Label
+	_preview_label = get_node_or_null("Margin/VBox/PreviewLabel") as Label
 	_bar = get_node_or_null("Margin/VBox/ProgressBar") as ProgressBar
 	if SignalBus:
 		if not SignalBus.battle_started.is_connected(_on_battle_started):
@@ -92,3 +101,52 @@ func _process(delta: float) -> void:
 		_bar.value = (interval - remaining) / interval * 100.0
 	if not _wave_total_logged and wave_total > 0:
 		_wave_total_logged = true
+	# v10：下波构成预警（低频刷新，1s 一次）
+	if _preview_label:
+		_preview_accum += delta
+		if _preview_accum >= PREVIEW_REFRESH_SEC:
+			_preview_accum = 0.0
+			_refresh_wave_preview()
+		_preview_label.text = _preview_text
+
+
+## v10：刷新下波构成预警文本（情报精度分级：0=只显示来袭 / 1=类型 / 2=类型+数量）
+func _refresh_wave_preview() -> void:
+	if BattleManager == null or not BattleManager.has_method("get_next_wave_preview"):
+		_preview_text = ""
+		return
+	var preview: Dictionary = BattleManager.get_next_wave_preview()
+	if not bool(preview.get("valid", false)):
+		_preview_text = ""
+		return
+	var precision: int = _intel_preview_precision()
+	var bias: String = String(preview.get("bias_display", "混合"))
+	var to_spawn: int = int(preview.get("to_spawn", 0))
+	var is_boss: bool = bool(preview.get("is_boss_wave", false))
+	if precision <= 0:
+		_preview_text = "⚠ 敌方来袭"
+	elif precision == 1:
+		if is_boss:
+			_preview_text = "☠ 下波: BOSS 波次"
+		else:
+			_preview_text = "⚠ 下波: %s单位为主" % bias
+	else:
+		if is_boss:
+			_preview_text = "☠ 下波: BOSS 波次 ×%d" % to_spawn
+		else:
+			_preview_text = "⚠ 下波: %s ×%d" % [bias, to_spawn]
+
+
+## v10：情报精度分级（0/1/2）。
+## 全局情报水平近似：IntelManual 条目完成度——完成 0 条=无预警细节，1-7 条=类型级，
+## 8+ 条=完整构成。阈值宽松（预警是体验增益，不该让早期玩家完全瞎打）。
+func _intel_preview_precision() -> int:
+	var im: Node = get_node_or_null("/root/IntelManual")
+	if im == null or not im.has_method("get_total_completed"):
+		return 2  # 无情报系统（异常兜底）→ 给最高精度，惩罚不应由系统缺失造成
+	var completed: int = int(im.get_total_completed())
+	if completed >= 8:
+		return 2
+	if completed >= 1:
+		return 1
+	return 0

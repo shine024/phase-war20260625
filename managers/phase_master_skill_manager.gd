@@ -1,18 +1,22 @@
 extends Node
 ## ═══════════════════════════════════════════════════════════
-##  相位师技能树管理器（v8.x 新增）
-##  全局 autoload singleton，管理玩家在 4 分支技能树的解锁状态。
+##  相位师技能树管理器（v8.x 新增，v9 重设计）
+##  全局 autoload singleton，管理玩家在 3 分支技能树的解锁状态。
 ##
 ##  技能点来源：相位场 XP 升级（PhaseInstrumentManager 通知本 manager）
 ##  解锁时根据节点 unlocks 字段驱动子系统：
-##    - phase_instrument → PhaseInstrumentManager.unlock_instrument
 ##    - unit_ability / unit_mechanism → 记录解锁状态供 UnitStatsTable 查询
 ##      （v8.5 unit_mechanism：定向爆破/瞄准狙击/闪电穿插/电子屏蔽/战术核武/护盾投射/定时标记）
 ##    - evolution → 记录已解锁的进化 era 供 CardEvolutionManager 查询
 ##    - affix → 通知 AffixManager 赋予对应 affix 池
 ##    - card_skill → 记录供 CardPeriodicSkillEngine 查询
 ##    - tactic → 记录供 TacticDetector 查询
+##  v9 废弃：phase_instrument（技能树不再解锁相位仪，零节点使用；
+##    _apply_unlocks 的派发分支仅旧档防御性保留）
 ##  v8.5 废弃：concept_weapon / special_card（旧存档兼容读取，无新节点）
+##
+##  v9 存档兼容：节点 ID 全部保留（奇点节点沿用 pms_cw_ 前缀），
+##  旧档 unlocked_nodes 直接加载，仅分支归属/前置/cost 随新表变化。
 ## ═══════════════════════════════════════════════════════════
 
 signal node_unlocked(node_id: String)
@@ -140,6 +144,8 @@ func _apply_unlocks(node_id: String) -> void:
 		var u_type: String = u.get("type", "")
 		match u_type:
 			"phase_instrument":
+				# v9: 技能树不再有 phase_instrument 类型节点（相位仪回归声望/商店/掉落渠道）。
+				# 保留派发仅为旧档防御性兼容（load_state 不重放解锁，正常不会触达）。
 				_unlock_phase_instrument(str(u.get("id", "")))
 			"affix":
 				_grant_affix_pool(u.get("pool", []))

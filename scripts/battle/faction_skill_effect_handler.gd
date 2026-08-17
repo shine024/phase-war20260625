@@ -345,11 +345,17 @@ static func _apply_on_hit_debuff(target, cfg) -> void:
 static func process_debuff_expirations(unit, delta: float) -> void:
 	if unit == null or not is_instance_valid(unit):
 		return
-	var t_stats = unit.get("stats") if "stats" in unit else null
+	# v9 perf：绝大多数单位无 debuff——先零成本 has_meta 早退，再取 stats
+	#（原顺序每帧每单位白付一次 "stats" in + get("stats") 反射；蜂群 slot 同路径放大百倍）
+	var has_aspd: bool = unit.has_meta("_faction_aspd_debuff")
+	var has_def: bool = unit.has_meta("_faction_def_debuff")
+	if not has_aspd and not has_def:
+		return
+	var t_stats = _get_unit_stats_cached(unit)
 	if t_stats == null:
 		return
 	# 攻速 debuff 过期
-	if unit.has_meta("_faction_aspd_debuff"):
+	if has_aspd:
 		var d: Dictionary = unit.get_meta("_faction_aspd_debuff")
 		var rem: float = float(d.get("remaining", 0.0)) - delta
 		if rem <= 0.0:
@@ -359,7 +365,7 @@ static func process_debuff_expirations(unit, delta: float) -> void:
 			d["remaining"] = rem
 			unit.set_meta("_faction_aspd_debuff", d)
 	# 防御 debuff 过期
-	if unit.has_meta("_faction_def_debuff"):
+	if has_def:
 		var d: Dictionary = unit.get_meta("_faction_def_debuff")
 		var rem: float = float(d.get("remaining", 0.0)) - delta
 		if rem <= 0.0:
@@ -448,6 +454,14 @@ static func on_unit_death(unit) -> void:
 static func process_periodic_ticks(unit, delta: float) -> void:
 	if unit == null or not is_instance_valid(unit):
 		return
+	# v9 perf：先走 stats 的零分配早退（未挂 faction_runtime_specials 的单位占绝大多数——
+	# 没装势力技能也全跑），再做 is_player/ghost 反射检查——
+	# 原顺序每帧每单位白付 3-4 次属性反射 + 一次 [] 默认值分配
+	var stats = _get_unit_stats_cached(unit)
+	if stats == null:
+		return
+	if not stats.has_meta("faction_runtime_specials"):
+		return
 	if not bool(unit.get("is_player")):
 		return
 	# 预览/部署幽灵不触发（Object.get 不支持默认值参数，用 in 守卫）
@@ -455,10 +469,7 @@ static func process_periodic_ticks(unit, delta: float) -> void:
 	var _is_preview: bool = bool(unit.get("is_preview_mode")) if "is_preview_mode" in unit else false
 	if _is_ghost or _is_preview:
 		return
-	var stats = unit.get("stats") if "stats" in unit else null
-	if stats == null:
-		return
-	var specials: Array = stats.get_meta("faction_runtime_specials", [])
+	var specials: Array = stats.get_meta("faction_runtime_specials")
 	if specials.is_empty():
 		return
 	for fx in specials:
@@ -470,6 +481,19 @@ static func process_periodic_ticks(unit, delta: float) -> void:
 			_tick_periodic_heal(unit, stats, fx["periodic_heal"], delta)
 		if fx.has("periodic_invuln"):
 			_tick_periodic_invuln(unit, stats, fx["periodic_invuln"], delta)
+
+
+## v9 perf：单位 stats 引用的 meta 快路径（缓存键由 construct_unit/enemy_unit/swarm_enemy_slot
+## 的 spawn 赋值点写入，module_effect_handler._get_unit_stats 懒写兜底）——
+## 替代每帧的 unit.get("stats") 脚本属性字符串反射
+static func _get_unit_stats_cached(unit) -> UnitStats:
+	if unit.has_meta("_meh_stats_cache"):
+		return unit.get_meta("_meh_stats_cache") as UnitStats
+	var s = unit.get("stats") if "stats" in unit else null
+	if s is UnitStats:
+		unit.set_meta("_meh_stats_cache", s)
+		return s as UnitStats
+	return null
 
 
 ## periodic_shield：每 interval 秒给自己加 pct×max_hp 护盾

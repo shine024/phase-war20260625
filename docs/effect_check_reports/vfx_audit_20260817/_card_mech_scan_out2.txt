@@ -1,0 +1,55 @@
+parsed entries: 192
+
+===== 机制数量分布（每卡命中机制条数 → 卡数）=====
+  1 条机制: 181 张卡
+  2 条机制: 10 张卡
+  3 条机制: 1 张卡
+
+===== 0 条机制的卡（固定机制应为每卡至少1条，出现0=异常）=====
+
+===== 特殊机制叠加 ≥2 的卡（前缀误伤/堆叠）=====
+
+===== 特殊机制命中明细（stalker/engineer/ecm/sniper）=====
+  [stalker] 3 张:
+     fut_stealth_bomber (隐形轰炸机, 近未来空中/NONE)
+     fut_spectre (幽灵特工, 近未来轻装/NONE)
+     fut_inf_spectre_e (幽灵特工·精锐, 近未来轻装/NONE)
+  [engineer] 1 张:
+     ww1_sup_engineer (工兵班, 一战支援/ARTILLERY)
+  [ecm] 4 张:
+     mod_inf_scout_drone (侦察无人机, 现代空中/NONE)
+     fut_attack_drone (攻击无人机, 近未来空中/NONE)
+     fut_nano_drone (纳米修复机, 近未来空中/NONE)
+     fut_air_drone (无人机群, 近未来空中/NONE)
+  [sniper] 2 张:
+     cold_spetsnaz (阿尔法特种部队, 冷战轻装/NONE)
+     cold_inf_spetsnaz_e (特种部队·精锐, 冷战轻装/NONE)
+
+===== 侦察前缀命中（潜入开局减伤）=====
+   mod_inf_scout_drone (侦察无人机, 现代空中/NONE)
+   fut_inf_scout_mech (侦察机甲, 近未来轻装/NONE)
+
+===== 武器标签异常扫描 =====
+
+===== 时代递进异常（HP 非单调递增，同兵种同类卡跨时代）=====
+
+===== 空中兵种跨时代数值链 =====
+   era2 冷战 [BOSS] cold_boss_mig 米格-29·Boss: HP=1400 atk_l=380 atk_a=470 atk_air=350 label=空空导弹
+   era2 冷战 [ELITE] cold_f4 F-4鬼怪战机: HP=267 atk_l=61 atk_a=76 atk_air=101 label=空空导弹/20mm机炮
+   era2 冷战 [ELITE] cold_mig21 米格-21战机: HP=238 atk_l=54 atk_a=67 atk_air=90 label=空空导弹/23mm航炮
+   era3 现代 [ELITE] mod_ah64 AH-64阿帕奇: HP=950 atk_l=217 atk_a=269 atk_air=361 label=地狱火导弹/30mm链炮
+   era3 现代 [ELITE] mod_air_apache_e 阿帕奇直升机·精锐: HP=950 atk_l=217 atk_a=269 atk_air=361 label=地狱火导弹
+   era3 现代 [ELITE] mod_ah1 AH-1眼镜蛇: HP=875 atk_l=200 atk_a=248 atk_air=332 label=地狱火导弹/20mm链炮
+   era3 现代 [ELITE] drop_overclock_matrix 超频矩阵机: HP=600 atk_l=160 atk_a=200 atk_air=80 label=超频矩阵炮
+   era3 现代 [VETERAN] mod_uh60 UH-60黑鹰: HP=593 atk_l=143 atk_a=177 atk_air=237 label=7.62mm舱门机枪/轻型机炮
+   era3 现代 [VETERAN] mod_inf_scout_drone 侦察无人机: HP=480 atk_l=80 atk_a=99 atk_air=133 label=机载机枪/光电侦察吊舱
+   era3 现代 [VETERAN] mod_sup_growler EA-18G 电子战小组: HP=250 atk_l=60 atk_a=95 atk_air=35 label=反辐射导弹/电子战吊舱
+   era3 现代 [VETERAN] mod_arty_rq7 RQ-7 影子无人机班: HP=220 atk_l=65 atk_a=20 atk_air=0 label=无人机
+   era4 近未来 [ELITE] fut_air_heavy_carrier 重装母舰: HP=1400 atk_l=280 atk_a=336 atk_air=448 label=近防炮/舰载导弹
+   era4 近未来 [ELITE] fut_space_fighter 空天战斗机: HP=1175 atk_l=269 atk_a=333 atk_air=446 label=空天导弹/粒子炮
+   era4 近未来 [ELITE] fut_stealth_bomber 隐形轰炸机: HP=1050 atk_l=240 atk_a=298 atk_air=399 label=轨道炮/激光
+   era4 近未来 [ELITE] fut_attack_drone 攻击无人机: HP=1000 atk_l=229 atk_a=284 atk_air=380 label=激光炮/制导导弹
+   era4 近未来 [VETERAN] fut_swarm 蜂群无人机: HP=640 atk_l=154 atk_a=191 atk_air=256 label=微型导弹/激光
+   era4 近未来 [VETERAN] fut_air_regen_frame 再生骨架: HP=600 atk_l=162 atk_a=450 atk_air=130 label=激光炮
+   era4 近未来 [VETERAN] fut_nano_drone 纳米修复机: HP=590 atk_l=106 atk_a=131 atk_air=176 label=纳米修复射线
+   era4 近未来 [GRUNT] fut_air_drone 无人机群: HP=460 atk_l=135 atk_a=115 atk_air=0 label=微型导弹

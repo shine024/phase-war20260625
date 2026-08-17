@@ -97,8 +97,12 @@ static func get_secondary_line() -> Dictionary:
 static func get_hidden_branches() -> Dictionary:
 	return {radar = RADAR_BRANCH.duplicate(true)}
 
+## @deprecated v9.x 权威判定见 BlueprintManager.can_evolve_blueprint /
+## EvolutionPathRegistry.check_evolution_requirements。遗留存根恒 passed=false（fail-closed），
+## 防止误用绕过进化门槛。
 static func check_requirements(card: Dictionary, target_stage: String) -> Dictionary:
-	return {passed = true, missing = []}
+	push_warning("[FortEvolution] check_requirements 为废弃存根，请改用 BlueprintManager.can_evolve_blueprint / EvolutionPathRegistry.check_evolution_requirements")
+	return {passed = false, missing = ["deprecated_entry_point: 权威判定见 EvolutionPathRegistry.check_evolution_requirements"]}
 
 static func calculate_evolved_stats(old_card: Dictionary, target_node: Dictionary) -> Dictionary:
 	return {

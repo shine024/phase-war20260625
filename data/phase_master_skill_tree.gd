@@ -2,31 +2,39 @@ extends RefCounted
 class_name PhaseMasterSkillTree
 
 ## ═══════════════════════════════════════════════════════════
-##  相位师技能树（v8.x 新增）
-##  全局独立养成系统，4 分支：指挥 / 智能化 / 火力 / 概念武器
+##  相位师技能树（v9 重设计）
+##  全局独立养成系统，3 分支：指挥 / 智能化 / 火力
+##
+##  v9 变更：
+##    - 概念武器不再独占分支（独支可绕开三系基础直接点满，过强）。
+##      原内容以「奇点」节点（capstone: true）形式沉入三系深层 tier 5-15，
+##      由「奇点解算」门关统一把门：要求三系 tier2 全点亮才能接触奇点科技
+##    - 相位仪不再经技能树解锁（phase_instrument 类型 v9 起零节点），
+##      仪器回归声望/商店/掉落等自有获取渠道；manager 派发代码仅旧档防御性保留
 ##
 ##  技能点来源：相位场 XP 升级（PhaseInstrumentManager.grant_phase_field_xp）
-##  解锁内容：相位仪 / 兵种特殊能力 / 新兵种独占机制 / 概念武器 / 特殊卡 / 进化 / affix
+##  解锁内容：兵种特殊能力 / 新兵种独占机制 / 进化 / affix / 卡片技能 / 战法
 ##
 ##  节点结构：
-##    id:        唯一 ID（pms_<branch>_<n>）
+##    id:        唯一 ID（pms_<branch>_<n>；奇点节点沿用历史 pms_cw_ 前缀，ID 不改保存档兼容）
 ##    name:      显示名称
 ##    desc:      描述
-##    branch:    分支（command/intelligence/firepower/concept_weapon）
-##    tier:      等级层（0-7，技能树深度，需逐层解锁）
+##    branch:    分支（command/intelligence/firepower）
+##    tier:      等级层（基础层 0-4 在本文件，深层 5-15 在 v8_extension）
 ##    cost:      技能点消耗
-##    requires:  前置节点 ID 数组（全部解锁才能点本节点）
+##    requires:  前置节点 ID 数组（全部解锁才能点本节点；奇点链含跨分支前置）
 ##    unlocks:   解锁内容（见下方 UNLOCK_TYPES）
 ##    effects:   战斗效果（stat_bonus/aura/conditional 等，参照 faction_skill_tree）
+##    capstone:  可选，true = 奇点节点（原概念武器内容，UI 紫色 ◈ 徽标）
 ##
 ##  UNLOCK_TYPES（unlocks 字段的 type 值，驱动不同子系统）：
-##    phase_instrument  → PhaseInstrumentManager.unlock_instrument(id)
 ##    unit_ability      → 兵种特殊能力解锁（原 enhance_level 解锁的暴击/吸血等）
 ##    unit_mechanism    → 兵种机制技能解锁（v8.5：定向爆破/瞄准狙击/闪电穿插/电子屏蔽/战术核武/护盾投射/定时标记）
 ##    evolution         → 进化形态解锁（替代 enhance_level 门槛）
 ##    affix             → affix 词条池赋予（替代随机 roll）
 ##    card_skill        → 卡片定时技能解锁（CardPeriodicSkillEngine 查询）
 ##    tactic            → 战法解锁（TacticDetector 查询）
+##  v9 废弃：phase_instrument（技能树不再解锁相位仪，仅旧档兼容）
 ##  v8.5 废弃类型（仅旧存档兼容读取，不再有新节点使用）：
 ##    concept_weapon    → 原概念武器大技（已改为 unit_mechanism 或 stat_bonus）
 ##    special_card      → 原特殊卡解锁（已改为 unit_mechanism）
@@ -35,11 +43,11 @@ class_name PhaseMasterSkillTree
 const BRANCH_COMMAND := "command"
 const BRANCH_INTELLIGENCE := "intelligence"
 const BRANCH_FIREPOWER := "firepower"
-const BRANCH_CONCEPT_WEAPON := "concept_weapon"
 
 ## 技能点随相位场等级（Lv1-30）增长的【累计上限】表。
 ## v8.x: 等级上限 16→30。Lv1-2 不给点（起步），Lv3 起 2/3 点交替发放（累计）。
-## 满 Lv30 = 70 点 ≈ 占节点总 cost 183 的 38%，可点满 ~1.5 个分支。
+## 满 Lv30 = 70 点 ≈ 占节点总 cost 187 的 37%，可点满 ~1.2 个分支
+## （v9：奇点节点沉入深层 + 交叉前置，满级也难凑齐全树，奇点是 endgame 追求）。
 ## 旧档兼容：Lv16 由原 30 点 → 新 35 点（玩家多 5 点可花，不丢失不降级）。
 ## 历史：v8.5 满级 15→28（Lv16）；v8.x 满级 28→70（Lv30，2-3 交替累计）
 ## ⚠️ 索引 = 等级（max_skill_points_at_phase_field_level 用 level 直接做下标），
@@ -79,7 +87,7 @@ const POINTS_BY_PHASE_FIELD_LEVEL := [
 	70,         # Lv30 (+3)  ← 新满级（累计 70）
 ]
 
-## 4 分支技能节点（v8.x 骨架版，阶段 1 先填代表性节点，阶段 6 逐步填充）
+## 3 分支技能节点（基础层 tier 0-4；深层 tier 5-15 见 phase_master_skill_tree_v8_extension）
 const SKILL_TREE: Dictionary = {
 	# ═══════════ 指挥分支：单位上限 / 光环 / 部署 / 特殊卡 ═══════════
 		"command": [
@@ -98,11 +106,11 @@ const SKILL_TREE: Dictionary = {
 			{"id": "pms_cmd_2", "name": "战术协调", "desc": "所有单位暴击伤害 +15%",
 			 "branch": BRANCH_COMMAND, "tier": 2, "cost": 2, "requires": ["pms_cmd_1a"],
 			 "unlocks": [], "effects": {"stat_bonus": {"crit_damage_bonus": 0.15}}},
-			# tier 3：解锁一架指挥专用相位仪
-			{"id": "pms_cmd_3", "name": "指挥相位仪", "desc": "解锁相位仪：擎天-战术核心",
-			 "branch": BRANCH_COMMAND, "tier": 3, "cost": 2, "requires": ["pms_cmd_2"],
-			 "unlocks": [{"type": "phase_instrument", "id": "pi_atlas_01"}],
-			 "effects": {}},
+			# tier 3：军团韧性（v9：原「指挥相位仪」——相位仪不再经技能树解锁，改三维防御数值）
+			{"id": "pms_cmd_3", "name": "军团韧性", "desc": "所有友军三维防御 +8%，暴击抗性 +8%",
+				"branch": BRANCH_COMMAND, "tier": 3, "cost": 2, "requires": ["pms_cmd_2"],
+				"unlocks": [],
+				"effects": {"stat_bonus": {"def_light": 0.08, "def_armor": 0.08, "def_air": 0.08, "crit_resist": 0.08}}},
 			# tier 4：军团统帅（v8.5：删无效 unit_limit，三维防御 12%→15%）
 			{"id": "pms_cmd_4", "name": "军团统帅", "desc": "所有友军三维防御 +15%",
 			 "branch": BRANCH_COMMAND, "tier": 4, "cost": 3, "requires": ["pms_cmd_3"],
@@ -133,8 +141,15 @@ const SKILL_TREE: Dictionary = {
 		 "effects": {}},
 			# tier 3：智能火控（v8.5：原 smart_targeting 未实装，换暴击+闪避数值）
 			{"id": "pms_int_3", "name": "智能火控", "desc": "所有单位暴击率 +8%，闪避 +5%",
-			 "branch": BRANCH_INTELLIGENCE, "tier": 3, "cost": 2, "requires": ["pms_int_2"],
-			 "unlocks": [], "effects": {"stat_bonus": {"crit_chance": 0.08, "dodge_chance": 0.05}}},
+				"branch": BRANCH_INTELLIGENCE, "tier": 3, "cost": 2, "requires": ["pms_int_2"],
+				"unlocks": [], "effects": {"stat_bonus": {"crit_chance": 0.08, "dodge_chance": 0.05}}},
+			# tier 3 并列：奇点解算（v9 奇点门关——三系 tier2 全点亮才可解锁，
+			# 是所有奇点节点（原概念武器内容）的统一前置；ID 沿用 pms_cw_0 保旧档兼容）
+			{"id": "pms_cw_0", "name": "奇点解算", "desc": "三系基础修成后解算相位奇点：解锁各分支深层的「奇点」技能（时间/空间/现实规则级兵器）。三维攻击 +5%，暴击率 +5%",
+				"branch": BRANCH_INTELLIGENCE, "tier": 3, "cost": 2, "requires": ["pms_cmd_2", "pms_int_2", "pms_fp_2"],
+				"unlocks": [],
+				"effects": {"stat_bonus": {"atk_light": 0.05, "atk_armor": 0.05, "atk_air": 0.05, "crit_chance": 0.05}},
+				"capstone": true},
 		# tier 4：智能化终极——自动升级
 		{"id": "pms_int_4", "name": "自适应进化", "desc": "战斗中存活超过 30 秒的单位全属性 +15%",
 		 "branch": BRANCH_INTELLIGENCE, "tier": 4, "cost": 3, "requires": ["pms_int_3"],
@@ -157,11 +172,11 @@ const SKILL_TREE: Dictionary = {
 		 "branch": BRANCH_FIREPOWER, "tier": 1, "cost": 1, "requires": ["pms_fp_0"],
 		 "unlocks": [{"type": "unit_ability", "id": "light_crit"}],
 		 "effects": {"stat_bonus": {"crit_chance": 0.15}}},
-		# tier 2：解锁一架火力专用相位仪
-		{"id": "pms_fp_2", "name": "火力相位仪", "desc": "解锁相位仪：新星-超弦",
-		 "branch": BRANCH_FIREPOWER, "tier": 2, "cost": 2, "requires": ["pms_fp_1a"],
-		 "unlocks": [{"type": "phase_instrument", "id": "pi_nova_03"}],
-		 "effects": {}},
+		# tier 2：弹道改良（v9：原「火力相位仪」——相位仪不再经技能树解锁，改射程+穿甲数值）
+		{"id": "pms_fp_2", "name": "弹道改良", "desc": "所有单位射程 +8%，穿甲 +10%",
+			"branch": BRANCH_FIREPOWER, "tier": 2, "cost": 2, "requires": ["pms_fp_1a"],
+			"unlocks": [],
+			"effects": {"stat_bonus": {"attack_range": 0.08, "armor_penetration": 0.10}}},
 		# tier 3：射程 + 吸血（更多兵种能力）
 		{"id": "pms_fp_3", "name": "纵深打击", "desc": "所有单位射程 +10%，解锁吸血能力",
 		 "branch": BRANCH_FIREPOWER, "tier": 3, "cost": 2, "requires": ["pms_fp_2"],
@@ -169,38 +184,19 @@ const SKILL_TREE: Dictionary = {
 		 "effects": {"stat_bonus": {"attack_range": 0.10, "lifesteal": 0.08}}},
 		# tier 4：火力终极——狂暴
 		{"id": "pms_fp_4", "name": "火力压制", "desc": "所有单位三维攻击 +15%，暴击伤害 +30%",
-		 "branch": BRANCH_FIREPOWER, "tier": 4, "cost": 3, "requires": ["pms_fp_3"],
-		 "unlocks": [],
-		 "effects": {"stat_bonus": {"atk_light": 0.15, "atk_armor": 0.15, "atk_air": 0.15, "crit_damage_bonus": 0.30}}},
+			"branch": BRANCH_FIREPOWER, "tier": 4, "cost": 3, "requires": ["pms_fp_3"],
+			"unlocks": [],
+			"effects": {"stat_bonus": {"atk_light": 0.15, "atk_armor": 0.15, "atk_air": 0.15, "crit_damage_bonus": 0.30}}},
 	],
 
-	# ═══════════ 概念武器分支：核子轰炸 / 酸雨 / 能量罩等大技 + 进化解锁 ═══════════
-		"concept_weapon": [
-			# tier 0：起点（v8.5：原 energy_regen 字段战斗侧从不读取，改三维攻击+暴击）
-			{"id": "pms_cw_0", "name": "概念突破", "desc": "相位师掌握概念武器基础，三维攻击 +5%，暴击率 +5%",
-			 "branch": BRANCH_CONCEPT_WEAPON, "tier": 0, "cost": 1, "requires": [],
-			 "unlocks": [], "effects": {"stat_bonus": {"atk_light": 0.05, "atk_armor": 0.05, "atk_air": 0.05, "crit_chance": 0.05}}},
-			# tier 1：战术核武（v8.5：原 phase_shield_8000 空转——由相位仪能力触发不走技能树；改为机制技能：导弹发射井堡垒发射核弹）
-			{"id": "pms_cw_1", "name": "战术核武", "desc": "解锁机制：导弹发射井堡垒每45秒发射战术核弹，弹道飞行后对敌方密集区半径200内造成35%最大生命（保底200）的范围伤害",
-			 "branch": BRANCH_CONCEPT_WEAPON, "tier": 1, "cost": 2, "requires": ["pms_cw_0"],
-			 "unlocks": [{"type": "unit_mechanism", "id": "nuclear_strike"}],
-			 "effects": {}},
-			# tier 2：进化形态解锁（替代 enhance_level 门槛）
-			{"id": "pms_cw_2", "name": "形态进化", "desc": "解锁卡牌进化能力（一战时代）",
-			 "branch": BRANCH_CONCEPT_WEAPON, "tier": 2, "cost": 2, "requires": ["pms_cw_1"],
-			 "unlocks": [{"type": "evolution", "era": 0}],
-			 "effects": {}},
-			# tier 3：能量过载（v8.5：原 nuclear_bombardment 空转——由相位仪能力触发不走技能树；改数值加成）
-			{"id": "pms_cw_3", "name": "能量过载", "desc": "所有单位三维攻击 +12%，暴击伤害 +25%",
-			 "branch": BRANCH_CONCEPT_WEAPON, "tier": 3, "cost": 3, "requires": ["pms_cw_2"],
-			 "unlocks": [], "effects": {"stat_bonus": {"atk_light": 0.12, "atk_armor": 0.12, "atk_air": 0.12, "crit_damage_bonus": 0.25}}},
-			# tier 4：护盾投射（v8.5：原 phase_guardian 特殊卡空转——special_card 分支未实装；改为机制技能 + 保留全时代进化解锁）
-			{"id": "pms_cw_4", "name": "护盾投射", "desc": "解锁机制：护盾发射器堡垒每20秒为半径250内生命最低的3个友军投射护盾；解锁所有时代进化",
-			 "branch": BRANCH_CONCEPT_WEAPON, "tier": 4, "cost": 3, "requires": ["pms_cw_3"],
-			 "unlocks": [{"type": "unit_mechanism", "id": "shield_projector"},
-			             {"type": "evolution", "era": -1}],
-			 "effects": {}},
-		],
+	# ═══════════ 概念武器分支：v9 已解散 ═══════════
+	# 原节点未删除，按主题重新安家（ID 全保留 → 旧档零迁移）：
+	#   pms_cw_0  奇点解算（门关）→ 智能化 tier 3（见上方）
+	#   pms_cw_1  战术核武        → 火力 tier 11（v8_extension）
+	#   pms_cw_2  形态进化        → 指挥 tier 5（v8_extension）
+	#   pms_cw_3  能量过载        → 火力 tier 7（v8_extension）
+	#   pms_cw_4  护盾投射        → 指挥 tier 10（v8_extension）
+	#   其余 cw 节点（5-13）      → 见 v8_extension 三系深层
 }
 
 ## 获取分支技能列表
@@ -221,34 +217,43 @@ static func get_skills_at_tier(branch: String, tier: int) -> Array:
 			out.append(s)
 	return out
 
-## 获取技能定义
-## v8.x: 优先查主表，找不到再查 V8Extension
-static func get_skill(skill_id: String) -> Dictionary:
-	for branch in SKILL_TREE.keys():
-		for s in SKILL_TREE[branch]:
-			if s.get("id", "") == skill_id:
-				return s.duplicate(true)
-	# v8.x: 查扩展节点
-	var V8Ext = preload("res://data/phase_master_skill_tree_v8_extension.gd")
-	var ext_node: Dictionary = V8Ext.get_extension_skill(skill_id)
-	if not ext_node.is_empty():
-		return ext_node
-	return {}
+## v9 perf: ID→节点 / ID→分支 懒建索引。
+## get_skill/get_branch_of 原为线性全表扫描（主表+扩展表双遍历），
+## 技能树面板每行渲染都要经 can_unlock_node→get_skill 查一次（71 行/次重建），
+## manager 的 is_content_unlocked/is_evolution_era_unlocked/get_unlocked_summary 同样逐节点查。
+## 数据为 const 静态表，索引一次建成后永不失效。
+static var _id_index: Dictionary = {}
+static var _branch_index: Dictionary = {}
 
-## 获取技能所属分支
-## v8.x: 支持扩展节点
-static func get_branch_of(skill_id: String) -> String:
+static func _ensure_lookup_index() -> void:
+	if not _id_index.is_empty():
+		return
 	for branch in SKILL_TREE.keys():
 		for s in SKILL_TREE[branch]:
-			if s.get("id", "") == skill_id:
-				return branch
-	# v8.x: 查扩展节点
+			var sid: String = String(s.get("id", ""))
+			_id_index[sid] = s
+			_branch_index[sid] = branch
 	var V8Ext = preload("res://data/phase_master_skill_tree_v8_extension.gd")
 	for branch in V8Ext.EXTENSION_NODES.keys():
 		for s in V8Ext.EXTENSION_NODES[branch]:
-			if s.get("id", "") == skill_id:
-				return branch
-	return ""
+			var sid: String = String(s.get("id", ""))
+			_id_index[sid] = s
+			_branch_index[sid] = branch
+
+## 获取技能定义
+## v9 perf: O(1) 索引查询（原主表全扫 + 扩展表全扫）；返回深拷贝防调用方污染静态表
+static func get_skill(skill_id: String) -> Dictionary:
+	_ensure_lookup_index()
+	var node: Variant = _id_index.get(skill_id)
+	if node != null:
+		return (node as Dictionary).duplicate(true)
+	return {}
+
+## 获取技能所属分支
+## v9 perf: O(1) 索引查询（原主表全扫 + 扩展表全扫）
+static func get_branch_of(skill_id: String) -> String:
+	_ensure_lookup_index()
+	return String(_branch_index.get(skill_id, ""))
 
 ## 相位场等级对应的总技能点
 static func max_skill_points_at_phase_field_level(phase_field_level: int) -> int:
@@ -265,7 +270,6 @@ static func get_branch_display_name(branch: String) -> String:
 		BRANCH_COMMAND: return "指挥"
 		BRANCH_INTELLIGENCE: return "智能化"
 		BRANCH_FIREPOWER: return "火力"
-		BRANCH_CONCEPT_WEAPON: return "概念武器"
 		_: return branch
 
 ## 分支代表色
@@ -274,5 +278,7 @@ static func get_branch_color(branch: String) -> Color:
 		BRANCH_COMMAND: return Color(0.30, 0.70, 1.00)       # 蓝（指挥）
 		BRANCH_INTELLIGENCE: return Color(0.40, 1.00, 0.50)  # 绿（智能）
 		BRANCH_FIREPOWER: return Color(1.00, 0.45, 0.25)     # 橙红（火力）
-		BRANCH_CONCEPT_WEAPON: return Color(0.80, 0.40, 1.00) # 紫（概念）
 		_: return Color.WHITE
+
+## 奇点节点统一配色（原概念武器内容，沉入三系深层的 capstone 节点）
+const CAPSTONE_COLOR := Color(0.80, 0.40, 1.00)  # 紫（奇点）

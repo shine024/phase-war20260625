@@ -7,7 +7,7 @@ class_name ReconEvolution
 
 const MAIN_LINE: Dictionary = {
 	E0 = {
-		stage = 0, card_id = "ww1_cavalry", name = "骑兵斥候",
+		stage = 0, card_id = "ww1_inf_cavalry", name = "骑兵斥候",
 		era = "WW1", power = 15, max_hp = 85,
 		attack_light = 20, attack_armor = 0, attack_air = 0,
 		defense_light = 6, defense_armor = 4, defense_air = 2,
@@ -47,8 +47,12 @@ static func get_main_line() -> Dictionary:
 static func get_hidden_branches() -> Dictionary:
 	return {}
 
+## @deprecated v9.x 权威判定见 BlueprintManager.can_evolve_blueprint /
+## EvolutionPathRegistry.check_evolution_requirements。遗留存根恒 passed=false（fail-closed），
+## 防止误用绕过进化门槛。
 static func check_requirements(card: Dictionary, target_stage: String) -> Dictionary:
-	return {passed = true, missing = []}
+	push_warning("[ReconEvolution] check_requirements 为废弃存根，请改用 BlueprintManager.can_evolve_blueprint / EvolutionPathRegistry.check_evolution_requirements")
+	return {passed = false, missing = ["deprecated_entry_point: 权威判定见 EvolutionPathRegistry.check_evolution_requirements"]}
 
 static func calculate_evolved_stats(old_card: Dictionary, target_node: Dictionary) -> Dictionary:
 	return {

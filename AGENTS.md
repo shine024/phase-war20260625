@@ -2346,3 +2346,209 @@ inf_19单兵电台(ally_bonus)、arm_15数据链(ally_hit_bonus)、for_10指挥�
 - `tests/level_mechanics_smoke.gd` — 同步新数据真值（原断言与数据早已脱节，属分支既有红灯）
 
 **验证:** level_design_audit_smoke **1470 PASS / 0 FAIL**（字段完备/死键清零/驻守 id×JSON/restrict 枚举+卡池可玩/守卫生效/无重名/法则值域/边界 clamp/7 文件编译）；level_mechanics_smoke **ALL PASS**（数据同步后全绿）；star_config_smoke OK（无回归）；gdparse 8/8 编辑文件通过。`--script` 模式下 world_map/battle_damage_system 等的 SignalBus/ManagerLazyLoader 编译失败为项目既有 autoload 环境限制（报错行均为未改动行）。全项目 `--check-only` 因项目体量长耗时（既有现象）。**待实机:** world_map 关卡弹窗的环境/难度新显示效果、L85 限支援实机体感。
+
+## v9 相位师技能树重设计：三系 + 奇点层 (2026-08-16)
+
+**背景:** 用户要求重设计相位师技能树——① 相位仪不再经技能树解锁；② 概念武器不再独占分支（独支可绕开三系基础直接点满，过强）；③ 新名词授权代理决定。
+
+**术语决策:** 概念武器内容以**「奇点」节点**（capstone）形式沉入三系深层。"相位奇点"取自奇点物理（时空/维度/现实规则崩坏之处），与时间回溯/现实崩溃/维度叠加等技能题材吻合，不与相位仪/相位法则/相位场撞名。UI 统一紫色 ◈ 徽标。
+
+**防"单独一树太强"的三层机制:**
+1. **奇点门关**「奇点解算」（pms_cw_0，智能化 tier 3）：要求**三系各自 tier2 全点亮**（cmd_2+int_2+fp_2），是所有奇点链的统一前置——想碰奇点科技必须先修三系基础
+2. **深层沉底**：奇点链首挂在本系 tier 9-11 深节点上（fp_10/cmd_9a/int_8/int_10），全部奇点位于 tier 9-15
+3. **二次交叉**：湮灭之光额外要求跨系 int_10（AI 指挥）
+
+**新结构:** 3 分支持挥（24 节点）/智能化（22）/火力（25），共 71 节点不变；总 cost 183→187，满级 70 点 ≈ 37% 完成度。
+
+**节点重分配（17 个 cw 节点 ID 全保留 → 存档零迁移）:**
+
+| 节点 | 新家 | tier | cost | requires |
+|---|---|---|---|---|
+| pms_cw_0 奇点解算（门关） | 智能化 | 3 | 1→2 | [cmd_2, int_2, fp_2] 三系交叉 |
+| pms_cw_1 战术核武 | 火力 | 11 | 2→4 | [fp_10, cw_0] |
+| pms_cw_2 形态进化 | 指挥 | 5 | 2 | [cmd_4] |
+| pms_cw_3 能量过载 | 火力 | 7 | 3 | [fp_6] |
+| pms_cw_4 护盾投射 | 指挥 | 10 | 3→4 | [cmd_9a, cw_0] |
+| pms_cw_5 无人机协同 | 智能化 | 9 | 3 | [int_8, cw_0] |
+| pms_cw_8 时间迟缓 | 智能化 | 11 | 4 | [int_10, cw_0] |
+| pms_cw_7a 天罚雷阵 | 智能化 | 12 | 3 | [cw_8] |
+| pms_cw_13b 太阳耀斑 | 智能化 | 13 | 5 | [cw_7a] |
+| pms_cw_11 时间回溯 | 指挥 | 11 | 5 | [cw_4] |
+| pms_cw_10 维度叠加 | 指挥 | 12 | 4 | [cw_11] |
+| pms_cw_6 焚城 | 火力 | 12 | 3 | [cw_1] |
+| pms_cw_12a 焦土政策 | 火力 | 13 | 5 | [cw_6] |
+| pms_cw_7b 湮灭之光 | 火力 | 13 | 3 | [cw_6, int_10] 跨系 |
+| pms_cw_12b 烈焰风暴 | 火力 | 14 | 5 | [cw_12a] |
+| pms_cw_9 现实崩溃 | 火力 | 14 | 4 | [cw_7b] |
+| pms_cw_13a 火焰传导 | 火力 | 15 | 5 | [cw_12b] |
+
+（cw_2 形态进化/cw_3 能量过载为纯数值/进化解锁，不带 capstone 标记转为常规节点；其余 15 个含门关带标记）
+
+**相位仪解锁断开:** 仅有的 2 个相位仪节点原地替换（ID 不变链路不断）——pms_cmd_3「指挥相位仪」→「军团韧性」（三维防御+8%/暴击抗性+8%，修正原 desc 与 pi_atlas_01 实名"擎天-工蜂"不符的瑕疵）；pms_fp_2「火力相位仪」→「弹道改良」（射程+8%/穿甲+10%，消除 tier2 白嫖 7 星声望仪 pi_nova_03 的问题）。phase_instrument unlock 类型 v9 起零节点；manager 派发分支保留作旧档防御（load_state 本就不重放解锁）。
+
+**关键文件:**
+- `data/phase_master_skill_tree.gd` — 3 分支主表 + 门关节点 + CAPSTONE_COLOR 常量 + 删 concept_weapon 分支
+- `data/phase_master_skill_tree_v8_extension.gd` — 12 个深层 cw 节点归位三系（tier 5-15），删 cw 段
+- `managers/phase_master_skill_manager.gd` — 仅注释（逻辑零改动；存档存节点 ID 不存分支）
+- `scenes/ui/phase_master_skill_panel.gd` — capstone 紫色 ◈ 徽标/加粗边框/大一号字号；tab 自动收敛 3+1
+- `managers/evolution/card_evolution_manager.gd` — 1 行注释（evolution 查询逻辑不变）
+- `tests/phase_master_skill_smoke.gd` — v9 结构断言（门关三系前置/链首门关依赖/15 capstone/相位仪清零/requires 全链可解析）
+- `tests/v8_skills_smoke.gd` — 扩展节点 51（cmd17/fp19/int15）+ command 合并 24
+
+**存档兼容（零迁移）:** unlocked_nodes 直接加载；旧档已解锁的技能树相位仪（擎天-工蜂/新星-超弦）存于 phase_instrument 段自然继承不回收；已解锁深链奇点的玩家不受 requires 变化影响（仅约束新解锁）。
+
+**验证:** phase_master_skill_smoke **44 项 ALL PASS**；v8_skills_smoke **20/22**——2 失败为存量 stale 断言（Test 5 战法总数 17≠18、Test 22 stalker_stealth 翻译 v8.5 已删），相关文件（tactics.gd/unlock_labels.gd）本次零改动。grep 确认 concept_weapon 分支引用清零（unlock_labels/panel 的 unlock **类型**兼容显示除外）。**待实机:** 技能树面板 3 tab + 奇点紫标视觉、门关三系前置的实际节奏体感。
+
+## v9 技能树面板性能修复：打开慢/解锁卡顿 (2026-08-16)
+
+**现象:** 打开技能树面板明显卡顿；点一次"解锁"要等很久才刷新。
+
+**根因（4 项叠加）:**
+
+| # | 问题 | 量级 |
+|---|------|------|
+| 1 | **解锁一个节点 = 同帧 3 次全量重建**——`unlock_node()` 依次发 `node_unlocked` 信号、`points_changed` 信号，`_on_unlock_pressed` 末尾又直调 `_refresh()`；三个入口各重建全部 3 tab 71 行节点（每行 ~8 控件 ≈ 570 控件创建）+ 总览 | 每次 ≈ 1700+ 控件创建 |
+| 2 | **queue_free 延迟释放叠加**——清旧行用 `queue_free()`（帧末才真释放），同帧重建 #2/#3 时容器堆叠新旧两三代 150+ 行，VBox 布局成本超线性膨胀 | 给 #1 再乘系数 |
+| 3 | **打开面板无条件全量重建**——growth_panel 每次打开都调 `panel._refresh()`（状态零变化也重建）；首开更是 `_build_ui()` 全量建 4 tab + growth 再 `_refresh()` = 首开 2 次全量 | 每次打开/首开双倍 |
+| 4 | **`get_skill()`/`get_branch_of()` 线性全表扫描**（主表 20 + 扩展表 51 双遍历）——每行渲染经 `can_unlock_node` 查一次；manager 的 `is_content_unlocked`/`is_evolution_era_unlocked`/`get_unlocked_summary` 逐节点查 | 量大面广的小税 |
+
+**修复（面板刷新链路 4 项 + 数据层 1 项）:**
+
+| # | 修复 | 效果 |
+|---|------|------|
+| 1 | `_request_refresh()` 去抖（同步 flag + `call_deferred`），三入口统一走它 | 同帧 3 次重建 → 帧末 1 次 |
+| 2 | `_rendered_sig` 状态签名（已解锁节点集合 + 可用点数，二者唯一决定所有行三态渲染）；签名不变跳过重建 | 打开面板零重建；首开双倍 → 单倍 |
+| 3 | 懒填充 tab：`_build_ui` 只建当前 tab（首个分支 24 行），`tab_changed` 切到时按需构建；`_refresh` 只重建已构建过的 tab | 首开 71+总览行 → 24 行 |
+| 4 | `_populate_branch`/`_populate_summary` 清理改"先 `remove_child` 摘除再 `queue_free`" | 消除同帧多代节点布局叠加 |
+| 5 | `PhaseMasterSkillTree` 懒建 static ID→节点/ID→分支 索引，`get_skill`/`get_branch_of` O(1)（const 静态表一次建成永不失效；仍返回深拷贝防污染） | 面板/manager/总览全部查询提速 |
+
+**顺带修复:** `_on_visibility_changed` 原定义了但从未连接（死代码），已接通——隐藏期间积累的 `_dirty` 重新显示时补刷，有签名兜底零成本。
+
+**关键文件:**
+- `scenes/ui/phase_master_skill_panel.gd` — 刷新去抖/签名跳过/懒填充/摘除式清理
+- `data/phase_master_skill_tree.gd` — `_ensure_lookup_index()` + O(1) `get_skill`/`get_branch_of`
+- `scenes/ui/growth_panel.gd` — 零改动（其打开时调的 `_refresh()` 被签名比对自然拦截）
+
+**验证:** gdparse 2/2 通过；phase_master_skill_smoke 44 项 ALL PASS（get_skill/get_branch_of 索引化后被全量 exercised）。**待实机:** 打开/解锁的实际体感。
+
+## v9 全项目卡顿源排查与修复（四批次）(2026-08-16)
+
+**背景:** 用户要求全面检查系统剩余卡顿源。三路并行排查（UI 面板层/战斗每帧热路径/manager 周期任务）后确认四类问题，经用户选定全部修复。排查确认健康的部分：SpatialGrid 增量维护、三路弹道批处理、伤害数字合并节流、HP 条默认不 process、背包系（v8.x 已优化）、UI 面板 _process 全部有节流、懒加载器无轮询、音频缓存。
+
+### 批次1 · UI 隐藏面板信号风暴守卫（6 处 + buff 卡轻量化）
+
+隐藏面板被战斗高频信号（resources_changed 每击杀/quest_progress 每任务/card_added 每张掉落卡/occupation_changed 每过关）触发全量重建——玩家看不见却在吃帧：
+
+| 面板 | 修复 |
+|------|------|
+| store_panel | `_on_resources_changed` 加 `is_visible_in_tree()` 早退（打开路径 on_overlay_opened 全量刷新兜底） |
+| quest_panel | 两个任务信号回调同上（原战斗胜利同帧 3-5 次全量重建 ~600 节点） |
+| collection_panel | `_on_collection_changed` 同上（原战后掉落逐张 emit 同帧 N 次重建） |
+| drops_inventory_panel | backpack_changed 隐藏置脏 + `visibility_changed` 补刷（无 on_overlay_opened 钩子的面板用脏标志模式） |
+| faction_panel | 3 个势力信号回调置脏 + 可见补刷（原每过关最多 7 次详情区重建） |
+| world_map | occupation_changed 隐藏置脏 + `refresh_for_open` 补刷（原每次过关无条件重建 100 关卡按钮，即使地图从未打开） |
+| buff_fold_card | resources_changed 从直连 `_refresh`（全量重建含全蓝图线性扫描）改为隐藏跳过 + 可见时只刷资源段（BUFF/面板段由 1s 定时器负责） |
+
+### 批次2 · 一行级战斗修复
+
+| 修复 | 位置 | 效果 |
+|------|------|------|
+| 敌方 HP 文本挪进 1% 门槛 | enemy_unit.gd `_update_hp_bar` | 原每次受击 "%d/%d" 格式化+Label 重排（construct_unit 同款已修，敌方漏修） |
+| 无目标索敌重试 20Hz→5Hz | enemy_unit.gd `_target_find_timer` 0.05→0.2 | 目标出现最多晚 0.2s 锁定，行为无感 |
+| **索敌查询环形扩张** | spatial_grid.gd `query_nearest_target` | 原按 max_range 包围盒全扫（敌侧最小 1600px × 100px 格距 = 单次 ~1089 格探测），改为从中心格逐环扩张 + 数学下界提前退出（更外环单位必然 ≥ r×格距，已有更近候选即返回）——常态前线接敌 1-3 环命中（~25-49 格），波次刷出/清场瞬间尖峰大幅削减。**1000 次随机布局与暴力扫描对拍全一致** |
+
+### 批次3 · 战斗每帧反射税
+
+| 修复 | 位置 | 说明 |
+|------|------|------|
+| stats 引用 meta 缓存 | module_effect_handler `_get_unit_stats`/`_get_unit_max_hp` + faction_skill_effect_handler `_get_unit_stats_cached` | `unit.get("stats")` 是脚本属性字符串反射，on_tick 链每帧每单位多次（50 单位≈每秒 2-3 万次）；缓存在 spawn 赋值点写入（construct_unit:setup/enemy_unit/swarm_enemy_slot×2 共 4 处，全项目无外部 stats 替换点已核实），读取走 meta 字典快一个量级 |
+| 雷达锁零成本门关 | module_effect_handler `_tick_radar_lock` | 未装 special flag 的单位（绝大多数）先 has_meta 早退——原每帧白付 stats 反射 + 空字典分配 |
+| debuff 过期早退 | faction_skill_effect_handler `process_debuff_expirations` | 无 debuff 单位先零成本 has_meta 早退再取 stats（蜂群 slot 同路径放大百倍） |
+| 势力周期 tick 重排 | faction_skill_effect_handler `process_periodic_ticks` | 先查 stats 的 faction_runtime_specials（零分配）再反射 is_player/ghost——没装势力技能不再每帧全跑 |
+| special_rules 战斗内缓存 | battle_manager `_get_current_special_rules` | 按关卡号缓存（静态数据），原 _check_win_lose 每帧两次默认值空字典分配 |
+
+### 批次4 · 存档 + 工具桥
+
+| 修复 | 位置 | 说明 |
+|------|------|------|
+| sanitize 条件重建 | save_migration.gd `sanitize_save_variant` | 原每次存档无条件递归重建整棵存档树（等效全量深拷贝，主线程）；改为先零分配检测 `_has_invalid_float`，干净直接原样返回（战斗结束自动存档的高频路径不再白付），污染才走 `_rebuild_sanitize_variant` |
+| agent_tools 游戏桥守卫 | addons/agent_tools/runtime/game_bridge.gd | release 导出不初始化（原 20Hz 文件轮询+每条日志落盘随 autoload 进正式运行）；debug 轮询 20Hz→10Hz |
+
+**验证:** 新增 `tests/v9_perf_smoke.gd`（SceneTree 模式）：环形索敌 200 随机布局 × 5 查询点 = 1000 次与暴力扫描对拍全一致 + 4 边界用例 + sanitize 条件重建 4 断言，**9 PASS / 0 FAIL**；gdparse 18/18 改动文件通过；phase_master_skill_smoke ALL PASS、v8_skills_smoke 20/22（2 失败为存量 stale 断言，与本次无关）、star_config OK。**待实机:** 战斗波次刷出/清场瞬间的帧率体感、连续过关时世界地图不再卡顿、存档瞬间卡顿减轻。
+
+**遗留观察项（本轮未修，量级可接受）:** 每次开火 2 个 Tween 分配+锚点查找（40-120 次/s）、曲射索敌 lambda 链、unit_damaged×5 监听者/unit_died×8 监听者的信号分发本身、PerformanceMetricsManager 15s 写盘、DebugLog 1s flush（当前流量低）、resource_info_panel 每击杀 tween churn。
+
+## v9.x 进化条件列表 + 达成/未达成显示（含判定链 P0 修复）(2026-08-16)
+
+**背景:** 用户要求"进化要列出条件，达成/未达成要能看出来"。审查发现两层问题：① UI 只列图纸/强化/改造 3 项且是单 Label 拼行全行一色，而 `can_evolve_blueprint` 是早退式——失败时只返回首个原因、不带各项数字，**玩家越不满足条件详情页越显示不出进度**；② 判定链有 P0 断裂：evolution_paths 16 个旧 card_id（v7.x 规范化漏改）+ intel_evolution_branches 旧 source ID（情报隐藏分支永不出现）+ evolution_path_registry 类型映射错乱（空中↔火炮对调、侦察/工兵/反空空映射、火炮/防空默认落 infantry → 属性对比对多数卡返回空）。
+
+**用户确认的两项口径:** P0 连同本功能一起修；条件列表以执行层实际校验的 7 项为准（不接入 evolution_paths 未实装的 intel_*/power_ratio 条件，不改玩法平衡）。
+
+**4 个改动层:**
+
+| 层 | 改动 | 文件 |
+|----|------|------|
+| 数据修复 | 21 处旧 ID 批量替换（16 处 evolution_paths 节点 + 5 处情报分支 source/target），以 unit_id_migration_config 映射为准 | data/evolution_paths/{armor,artillery,anti_air,infantry,recon}_evolution.gd、data/intel_evolution_branches.gd |
+| registry 委托 | `get_evolution_path` 委托 `data/evolution_paths/__init__.gd` 的已测试实现（112 卡前缀覆盖）；删除错乱的 `_identify_unit_type`/`_unit_type_to_key` 第二套映射与 register/_cache 缓存机制；`_find_target_node` 补搜 secondary_line | scripts/systems/evolution_path_registry.gd |
+| **条件快照（核心）** | `can_evolve_blueprint` 玩法条件改**非早退式**：7 项条件全量评估进 `conditions: Array`（每项 `{key, met, current_text, required_text}`：power/evo_blueprint/skill_tree_era/enhance/mods/enemy_mod/faction_level，后两项按 stage 适用性增减）；`ok`=全满足、`reason`=首个未满足（拒绝码经 `_condition_key_to_reason` 保持旧语义）；**失败路径同样填充 enhance/mod 数字**（旧行为只有成功路径填）；结构性错误早退时 conditions 为空数组。纯增量，旧返回键全部保留 | managers/evolution/card_evolution_manager.gd |
+| UI 渲染 | tscn `ReqDetails` 单 Label → `ReqList` VBoxContainer；面板逐条件行渲染（"✓/✗ 条件名 当前 / 需求"，达成绿/未达成橙，布尔型条件只显 ✓+名）；中栏 badge 与进化按钮从 reason 字符串猜测改为快照首未满足项直读；growth_panel met/total 改按快照计数（删 ok→3/3 硬编码）+ 传参 instance_id 口径统一 | scenes/ui/evolution_panel.tscn/.gd、scenes/ui/growth_panel.gd |
+
+**关键设计决策:**
+1. **非早退重构而非 UI 并行取数**——单一真身：UI 不再自己调 IntelItemBag/FactionSystemManager 拼条件（旧 has_bp 本地计算已删），快照与判定同源，永不出现"UI 显示满足但判定拒绝"的分叉。
+2. **委托而非修映射表**——registry 的前缀表残缺（mod_arty_*/防空新 ID 全缺失），补表是打地鼠；`__init__.gd` 实现有 tests/evolution_path_coverage.gd 112 卡覆盖，委托即继承测试保障。
+3. **reason 语义不变**——首个未满足项的拒绝码与旧早退顺序一致（power→blueprint→skill_tree→enhance→mods→eom→faction），EVOLVE_REASON_ZH/toast/既有调用方零影响。
+4. **情报分支修复是连带收益**——intel_evolution_branches 旧 source ID 修正后，`get_branches_for_card("ww2_inf_panzerschrek")` 等真实卡 ID 首次能命中，情报隐藏分支目标（fut_arm_heavy_mech 等）进入进化面板可选列表。
+
+**验证:** 新增 `tests/evolution_condition_smoke.gd`（SceneTree 模式 4 节全 PASS）：A 数据完整性（55 节点 card_id + 情报分支 source/target 全在统一卡表、panzerschrek 情报分支回归锚点）；B registry 委托（防空/火炮/空中映射回归 + 主线/副线 calculate_evolved_stats 非空）；C 条件快照（全新状态 5 conditions、失败路径 current_enhance=0 填充、结构性错误 conditions 空数组）；D evolution_panel.tscn ReqList 节点结构。既有 `tests/evolution_path_coverage.gd` **112 PASS / 0 FAIL**（registry 委托后全量回归）。gdparse 11/11 改动文件通过。调用方核查：blueprint_manager/evolution_panel×4/growth_panel/unit_progression_detail_view 全部只读保留字段。**待实机:** 面板视觉（逐条件行配色/对齐）、badge 文案、按钮禁用文案。
+
+**连带说明:** growth_panel 的 BlueprintDefinitions preload 已删（唯一使用方被快照替代）；evolution_panel 的图纸本地 has_bp 计算块已删（快照内含）。
+
+### v9.x 追加：进化面板战力显示口径对齐判定口径 (2026-08-16)
+
+**用户反馈:** "初始坦克已改造、达到战力标准还不让改造"。headless 诊断（强化5+2改造的 ww1_arm_ft17 实例）实测三套战力口径：面板显示 get_current_power=84、进化判定 estimate_power_score=697、档位校准 estimate_power_score_meta_only=264，阈值 get_target_base_power(ww2_pz3)=216。**战力条件其实早已满足（697≫216），真正挡住进化的是另两项**：缺 ww2_pz3 进化蓝图（evo_blueprint_missing，首个未满足）+ 相位师技能树未解锁一战进化（pms_cw_2「形态进化」，指挥系 tier5 cost2，需前置 cmd_1→4 链约 9 点，相位场约 Lv6-7）。面板顶部"当前战力 84"与按钮判定互相矛盾是误导根源——v6.2 M15 曾把显示"统一"到 get_current_power 简化公式，但进化判定从来用的是 estimate_power_score 战斗公式，两套量级差数倍。
+
+**修复:** evolution_panel.gd `_get_current_power_score` 改用 `EvolutionHelpers.estimate_power_score(instance_id)`、`_get_target_power_score` 改用 `UnitLineageConfig.get_target_base_power`（与 can_evolve_blueprint/conditions 快照/growth_panel `_estimate_power_value` 全部同源）——面板"当前战力"“战力 X ▶ Y"对比行与条件行现在所见即所判。
+
+**遗留（平衡决策，未擅动）:** ①改造档位门 `POWER_THRESHOLDS [150,260,420,720]` 注释自述按 meta_only 公式校准（H4 论证用 meta 值 464/502），但 install_modification 实际传战斗公式 estimate_power_score（同卡 697 vs 264）——阈值表与传入值口径错位，实际档位判定比 H4 设计意图偏松；②战力进化门槛形同虚设：统一表 power 字段量级（216）远低于战斗公式战力（白板 ~179、轻度养成 697），早期玩家战力条件几乎恒满足。两项如要修需重新校准（改传 meta 口径=变严 / 重标阈值=变松），属平衡调整需用户拍板。
+
+### v9.x 追加：战力口径全面重设——档位阈值表 + 进化战力门槛 (2026-08-16)
+
+**背景:** 用户确认重设前一轮报告的两个口径遗留问题。实测定标数据（tests/power_calibration_probe.gd，5 时代 × 步兵/侦察/装甲 × 白板/强化5+2改/强化10+5改）揭示两个决定性事实：①战斗公式（estimate_power_score）下投入养成仅抬升 ~10% 战力，时代+兵种决定主体；②同类同时代步兵与装甲差 ~2.6 倍（mp18=253 vs ft17=662）。因此阈值语义只能按"时代台阶"设计，无法表达"投入深度"。
+
+**重设 1：POWER_THRESHOLDS [150,260,420,720] → [250,600,900,1300]**（data/power_tiers.gd）
+- 根因：原阈值按 meta_only 简化公式校准（H4 论证全用 meta 值），但全部 5 个调用方（install_modification 门槛 + modification_panel 显示×4）传的本就是战斗公式值——量级差 2-3 倍，判定长期错位。**只改阈值表，零调用方改动。**
+- 新档位语义：老兵 250+=一战/二战步兵起步；精英 600+=早期装甲(662/715)与现代步兵(786)；勇士 900+=冷战装甲(917)/现代侦察(906)/未来步兵(1095)；霸主 1300+=现代坦克（白板 1296 差 4 点，强化5 即 1418 跨线——轻度投入跨线的设计点）与未来全系(1869+)。
+- 与掉落节奏自洽：rare 改造从精英档敌人掉落时玩家已有二战+装甲可装。
+
+**重设 2：进化战力门槛 = 目标白板战斗战力 × 0.70**（managers/evolution/evolution_helpers.gd 新增 get_target_white_combat/get_target_power_bar）
+- 根因：原门槛读目标卡 power 字段（pz3=216），与判定左侧战斗公式（初始坦克投入后 697）不同标尺，战力条件形同虚设且随时代漂移。
+- 0.70 实测定标：装甲线白板即过线（662 ≥ 0.70×715=500，投入门槛由强化/改造数条件承担）；步兵首进化恰在 E1 数值门槛（强化5+2改 ≈ 白板×1.05）附近过线（白板 mp18 253 差 2 点不过，强化5 266 过）；各时代满投入对下一时代目标均留 3%+ 余量无锁死。
+- 两侧同用 _preview_battle_era()（防御派生带 era 乘区 1+era×0.15，时代基准不一致会漂移：pz3 era0=715 vs era1=771）；白板口径跳过 apply_growth（目标卡可能已有玩家养成实例，需确定性）。
+- 连带：can_evolve_blueprint 门槛改用 get_target_power_bar；evolution_panel 对比行目标侧改用 get_target_white_combat；UnitLineageConfig.get_target_base_power 已删（调用方清零）。
+
+**验证:** evolution_condition_smoke 新增 E 节锁定（阈值表值、5 个档位锚点、门槛=白板×0.70 一致性、白板 mp18 不过线/投入 ft17 过线语义锚点），A-E 五节 ALL PASS；evolution_path_coverage 112 PASS / 0 FAIL；gdparse 6/6 改动文件通过。定标探针 tests/power_calibration_probe.gd 保留（数值调整后可重跑验证分布）。**待实机:** 改造面板档位显示文案、进化面板战力对比行观感、史诗改造在现代卡的跨线体验。
+
+## v9.x 战斗卡数据全面整理——飞机数值链/机制分配/power重标/子类推断断裂修复 (2026-08-17)
+
+**背景:** 用户审查敌方卡基础数据后指出三类问题：①空天战机等飞机数据错误（和最早的飞机差不多）；②敌方战斗卡固定/特殊机制分布失衡（有的兵种没有、有的好多）；③武器文案错乱。全量扫描（223 卡）证实并连带挖出两个系统性断裂。
+
+**5 个修复层:**
+
+| 层 | 改动 | 文件 |
+|----|------|------|
+| 飞机数值链 | `fut_air_drone` 重标（HP 240→460/atk 72·32→135·115，原 HP≈冷战米格-21 的 238 跨两时代无代差）；era3/era4 空中卡建立**攻击时序代差**（era3 l0.91·a0.73·air1.1；era4 l1.0·a0.8·air1.2，配 windup/active 收窄与移速提升——空天战机 185、隐形轰炸机 165、攻击无人机 170）；`ww1_37mm` 对空 55→90/对甲 60→45（防空卡对空竟不占主导，无法进防空子类） | data/unified_card_table.gd |
+| 武器标签错乱链 | 12 张卡修复：空天战机主标签“地狱火导弹/127mm舰炮”→“空天导弹/粒子炮”（原抄阿帕奇/舰炮系）；米格-21/F-4 对空槽“地狱火/127mm舰炮”→“空空导弹”；fut_attack_drone/fut_swarm（三槽全空空导弹）/mod_arm_abrams_mk2（现代坦克挂轨道炮）/guard_heavy（同）/carrier/titan/bulwark/storm_rider/侦察无人机（舱门机枪）/工兵班（迫击炮→步枪/爆破装药）/隐形轰炸机 w_air（舱门机枪→激光拦截炮） | data/unified_card_table.gd |
+| power 重标 | B 段缴获卡 5 张（titan 202→1450 / carrier 92→1250 / bulwark 181→950 / storm_rider 125→800 / regen_frame 79→850）+ fut_swarm 1325→650（原与空天战机完全相同，抄串）；全部保持原稀有度档（era4 ≤1500=legendary）；**能耗随 power 联动自动修正**（蜂群 13→7，原比空天战机还贵） | data/unified_card_table.gd |
+| **子类推断断裂（P0）** | v8.0 切数据源时 `_entry_to_card` 漏设 unit_subtype（恒 NONE）→ apply_combat_kind_modifiers 把所有 SUPPORT 卡兜底成工兵子类——**火炮反炮兵/防空空域封锁在玩家侧全链路空转**（测试手动设 subtype 掩盖了此 bug）。补 `_infer_subtype_for_entry`（防空对空主导/火炮远射程或对甲主导/工兵+机枪巢 card_id 前缀例外）；敌方对称修复：`_infer_enemy_subtype` 补对空主导判定（原防空炮 range≥400px 全判成火炮） | data/unified_card_table.gd、scenes/units/enemy_unit.gd |
+| ECM 前缀收紧 | 原 `"drone" in cid` 误伤全部无人机（纳米修复机治疗单位带敌方减益光环）；改为 ecm/jammer/**growler**/electronic 显式匹配——EA-18G 电子战机从“0 攻击 0 机制纯站桩”激活（顺带补 60/95/35 攻击与反辐射导弹武器），治疗/侦察无人机卸载误配光环 | resources/unit_stats_table.gd |
+
+**死数据清理:** `data/base_unit_stats.gd`（v6.3 旧统一基础表）已删除——全项目零消费方，且数值与统一表差 2.6 倍（future_fighter HP450 vs 1175）、“近未来空天战机对地火力低于现代直升机”等误导性数据；`docs/UNIFIED_BASE_STATS_DESIGN.md` 顶部加废弃声明指向 unified_card_table.gd。
+
+**关键设计决策:**
+1. power 重标值全部落在原稀有度档内（era4 ≤1500）——避免 rarity 连锁变化（rarity 驱动养成乘区/强化消耗）；能耗联动上升是正确方向（2026-08-16 经济修复按 power 定价，power 错=价格错）。
+2. 时序代差替代纯数值放大——飞机“手感一样”的根因是全空军共享同一套攻速/前摇模板+射程全 99+移速 150 档；数值再大打起来无区别。Boss/运输平台/自定义时序卡（boss_mig/heavy_carrier/rq7/overclock/guardian 系列）保留原节奏不动。
+3. 子类修断用“数值推断+前缀例外”而非全表显式 subtype 字段——223 卡逐张标注维护成本高；例外只列工兵/机枪巢两类语义卡（对甲攻击占比高但非火炮）。fut_shield/fut_sup_bulwark 等对甲主导支援卡判 ARTILLERY 属可接受副作用（反炮兵标记无害）。
+4. guardian_cold_thunder(2200) vs fut_stormcore(1105) 的同档跨代 HP 差是守护者家族与原型炮台的定位差异，非数据错误，不修。
+5. fut_inf_c96（近未来“毛瑟C96征召兵”）名字与时代错位但数值/战力正常（power 350 符合 era4 GRUNT 递进），仅命名问题不动。
+
+**验证:** 新增 `tests/card_data_reorg_verify_20260817.gd`（SceneTree 模式 8 节 **46 PASS / 0 FAIL**）：表完整性(223 卡无重复)/子类推断 15 锚点/固定机制落地（zsu23 空域封锁 +25%、105mm 反炮兵、工兵爆破 2%、机枪巢不再误判）/ECM 收紧（growler 获得、nano/scout 卸载）/飞机链数据/power+稀有度+能耗联动/223 卡全构建+全表时序合法（windup+active<周期，连带修了 av7/kingtiger 两张 Boss 的对空槽超周期）/死数据删除。gdparse 4/4 改动脚本通过。--script 模式的 "Compile Error: ModificationRegistry not found" 为 card_resource.gd:467 存量问题（autoload 依赖），非本次引入。审计脚本 `docs/effect_check_reports/vfx_audit_20260817/_card_mech_scan.py` 已同步新 ECM 口径并修正条目切分（注释行剥离，193→223 全覆盖）。**待实机:** 相位师产兵面板武器名显示、近未来关卡敌方无人机群体感、缴获卡改造档位解锁体验。

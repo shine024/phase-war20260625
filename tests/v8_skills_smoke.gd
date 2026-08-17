@@ -135,29 +135,33 @@ func _init():
 		print("  FAIL: CardPeriodicSkillEngine API 缺失")
 		failed += 1
 
-	# 测试 12: V8Extension 扩展节点数
-	print("=== Test 12: V8Extension 节点数 ===")
+	# 测试 12: V8Extension 扩展节点数（v9：概念武器段解散，16 个 cw 深层节点归位三系）
+	print("=== Test 12: V8Extension 节点数（v9 重分配后 51）===")
 	var all_ext := V8Extension.get_all_extension_nodes()
-	if all_ext.size() == 40:
+	if all_ext.size() == 51:
 		var cmd_count := V8Extension.get_extension_nodes("command").size()
 		var fp_count := V8Extension.get_extension_nodes("firepower").size()
 		var int_count := V8Extension.get_extension_nodes("intelligence").size()
-		var cw_count := V8Extension.get_extension_nodes("concept_weapon").size()
-		print("  PASS: 40 扩展节点 (cmd=", cmd_count, " fp=", fp_count, " int=", int_count, " cw=", cw_count, ")")
-		passed += 1
+		var cw_gone := V8Extension.get_extension_nodes("concept_weapon").is_empty()
+		if cmd_count == 17 and fp_count == 19 and int_count == 15 and cw_gone:
+			print("  PASS: 51 扩展节点 (cmd=", cmd_count, " fp=", fp_count, " int=", int_count, " cw段已删)")
+			passed += 1
+		else:
+			print("  FAIL: 分布 cmd=", cmd_count, " fp=", fp_count, " int=", int_count, " cw段空=", cw_gone)
+			failed += 1
 	else:
-		print("  FAIL: 扩展节点数 = ", all_ext.size())
+		print("  FAIL: 扩展节点数 = ", all_ext.size(), " (期望 51)")
 		failed += 1
 
 	# 测试 13: 主技能树合并扩展节点
 	print("=== Test 13: 主技能树合并扩展节点 ===")
 	var cmd_skills := PhaseMasterSkillTree.get_skills_for_branch("command")
-	# 主表 6 节点（pms_cmd_0~4 含 1a/1b）+ 扩展 10 节点 = 16
-	if cmd_skills.size() >= 15:
+	# v9：主表 7 节点（含替换后的军团韧性）+ 扩展 17 节点（含归位的 4 个奇点）= 24
+	if cmd_skills.size() == 24:
 		print("  PASS: command 分支合并后 ", cmd_skills.size(), " 节点")
 		passed += 1
 	else:
-		print("  FAIL: command 分支节点数 = ", cmd_skills.size())
+		print("  FAIL: command 分支节点数 = ", cmd_skills.size(), " (期望 24)")
 		failed += 1
 
 	# 测试 14: get_skill 支持扩展节点

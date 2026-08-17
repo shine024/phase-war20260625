@@ -28,18 +28,33 @@ func _ready() -> void:
 	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(accent))
 	var chrome = PanelChrome.attach_to($Margin/VBox, "情报中心", accent, "INTEL HUB")
 	chrome.closed.connect(_on_close)
+	# v9.x 性能：同步路径只保留样式/标题/骨架。atlas 条目与 lore 卡全部入队分帧
+	# （首开同步冻结 1.2~3s 的热点即 _setup_evolution_tab 全量构建 + _refresh_lore 整表重建）。
 	_setup_evolution_tab()
 	_refresh_lore()
+	_lore_dirty = false
 	_refresh_runes_tab()
 	if _tab_container:
 		_tab_container.set_tab_title(0, "世界观情报")
 		_tab_container.set_tab_title(1, "单位进化图谱")
 		_tab_container.set_tab_title(2, "符文图鉴")
 		_tab_container.tab_changed.connect(_on_tab_changed)
+	# v9.x 性能：监听 lore 解锁置脏，refresh() 未脏时跳过 lore 整表重建
+	var lm: Node = get_node_or_null("/root/LoreManager")
+	if lm and lm.has_signal("lore_unlocked") and not lm.lore_unlocked.is_connected(_on_lore_unlocked):
+		lm.lore_unlocked.connect(_on_lore_unlocked)
+
+
+func _exit_tree() -> void:
+	var lm: Node = get_node_or_null("/root/LoreManager")
+	if lm and lm.has_signal("lore_unlocked") and lm.lore_unlocked.is_connected(_on_lore_unlocked):
+		lm.lore_unlocked.disconnect(_on_lore_unlocked)
 
 
 func refresh() -> void:
-	_refresh_lore()
+	if _lore_dirty:
+		_refresh_lore()
+		_lore_dirty = false
 	_refresh_runes_tab()
 	if _atlas:
 		_atlas.refresh()
@@ -75,11 +90,23 @@ func _on_tab_changed(tab: int) -> void:
 		_refresh_runes_tab()
 
 
+## v9.x 性能：lore 分帧加载状态（整表销毁重建曾是首开冻结热点之一）
+var _lore_load_queue: Array = []
+var _lore_dirty := true
+const LORE_PER_FRAME_FIRST := 8   # 首帧加载量（立即可见）
+const LORE_PER_FRAME := 8         # 后续每帧加载量
+
+
+func _on_lore_unlocked(_lore_id: String, _lore_name: String) -> void:
+	_lore_dirty = true
+
+
 func _refresh_lore() -> void:
 	if _lore_grid == null:
 		return
 	for child in _lore_grid.get_children():
 		child.queue_free()
+	_lore_load_queue.clear()
 
 	var lm: Node = get_node_or_null("/root/LoreManager")
 	if lm == null or not lm.has_method("get_unlocked_lore"):
@@ -91,8 +118,18 @@ func _refresh_lore() -> void:
 		_add_lore_placeholder("暂无已解锁世界观情报\n（战斗掉落情报页后显示于此）")
 		return
 
-	for lore_data in unlocked:
-		_add_lore_card(lore_data)
+	# v9.x 性能：lore 卡入队分帧出队（复用符文页签的分帧 timer）
+	_lore_load_queue = unlocked.duplicate()
+	_process_lore_batch(LORE_PER_FRAME_FIRST)
+	if not _lore_load_queue.is_empty():
+		_start_rune_load_timer()
+
+
+func _process_lore_batch(batch_count: int) -> void:
+	var n := 0
+	while n < batch_count and not _lore_load_queue.is_empty():
+		_add_lore_card(_lore_load_queue.pop_front())
+		n += 1
 
 
 func _add_lore_placeholder(message: String) -> void:
@@ -219,11 +256,18 @@ func _start_rune_load_timer() -> void:
 
 
 func _on_rune_load_timer_timeout() -> void:
-	if _rune_load_queue.is_empty():
+	# v9.x 性能：统一分帧 tick——lore 与 rune 两个队列都空时才停表
+	var did_work := false
+	if not _rune_load_queue.is_empty():
+		_process_rune_load_batch(RUNE_PER_FRAME)
+		did_work = true
+	if not _lore_load_queue.is_empty():
+		_process_lore_batch(LORE_PER_FRAME)
+		did_work = true
+	if not did_work:
 		if _rune_load_timer:
 			_rune_load_timer.stop()
 		return
-	_process_rune_load_batch(RUNE_PER_FRAME)
 
 
 func _add_rune_section_header(title_text: String) -> void:

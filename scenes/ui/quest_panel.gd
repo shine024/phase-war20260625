@@ -69,10 +69,16 @@ func _on_close() -> void:
 	closed.emit()
 
 func _on_quest_changed(_quest_id: String) -> void:
+	# v9 perf：隐藏时跳过——战斗胜利时每个已接任务 emit 一次，同帧多次全量重建
+	#（~58 任务行 + 7 公司行）；打开路径 on_overlay_opened 拆帧全量刷新，不漏内容
+	if not is_visible_in_tree():
+		return
 	_refresh_company_summary()
 	_refresh_list()
 
 func _on_quest_completed(quest_id: String, rewards: Dictionary) -> void:
+	if not is_visible_in_tree():
+		return
 	_refresh_company_summary()
 	_refresh_list()
 

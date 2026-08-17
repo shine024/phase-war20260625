@@ -763,9 +763,11 @@ static func _apply_v8_unit_type_meta(stats: UnitStats) -> void:
 	if "engineer" in card_tags or cid.find("engineer") >= 0 or cid.find("support") >= 0 \
 	   or cid.find("combat_eng") >= 0:
 		stats.set_meta("is_engineer", true)
-	# ECM：电子战（光环减益）
-	if "ecm" in card_tags or cid.find("ecm") >= 0 or cid.find("drone") >= 0 \
-	   or cid.find("jammer") >= 0:
+	# ECM：电子战（光环减益）。v8.7 收紧匹配——原 "drone" 子串误伤全部无人机
+	# （纳米修复机等非电子战单位也带敌方减益光环）；电子战单位改按
+	# ecm/jammer/growler/electronic 显式匹配（growler=EA-18G 电子战机，此前漏配成零机制白板）。
+	if "ecm" in card_tags or cid.find("ecm") >= 0 or cid.find("jammer") >= 0 \
+	   or cid.find("growler") >= 0 or cid.find("electronic") >= 0:
 		stats.set_meta("is_ecm", true)
 	# SNIPER：狙击手（首击必爆 + 锁 Boss）
 	if "sniper" in card_tags or cid.find("sniper") >= 0 or cid.find("marksman") >= 0 \

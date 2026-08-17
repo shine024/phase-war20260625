@@ -98,6 +98,10 @@ func _on_close() -> void:
 	closed.emit()
 
 func _on_resources_changed() -> void:
+	# v9 perf：面板隐藏时直接跳过——resources_changed 战斗中每次击杀都发，
+	# 隐藏商店的全量重建是纯浪费；打开路径 on_overlay_opened 会全量刷新，余额/商品都不会漏
+	if not is_visible_in_tree():
+		return
 	# 余额轻量，保持即时刷新（购买后用户立即看到扣减后的数字）
 	_refresh_balance()
 	# 购买流程自身会统一刷新 items，期间跳过回弹触发的全量重建（一次购买从 2-3 次降到 1 次）

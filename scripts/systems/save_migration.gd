@@ -239,19 +239,45 @@ static func apply_fast_load_normalization(data: Dictionary) -> void:
 	data[SaveConstants.SK_GAME] = gd
 
 ## 递归清洗存档数据中的非法浮点值（inf/-inf/nan → 0.0）
+## v9 perf：先零分配检测，仅存在非法浮点才做重建清洗——原实现无条件递归重建整棵
+## 存档树（每个 Dictionary/Array 新建容器 + 全节点遍历），等效全量深拷贝，
+## 每次存档（战斗结束自动存档等高频路径）都在主线程白付一次；正常存档直接原样返回。
 static func sanitize_save_variant(v: Variant) -> Variant:
+	if not _has_invalid_float(v):
+		return v
+	return _rebuild_sanitize_variant(v)
+
+## 零分配检测：树中是否存在 inf/-inf/nan 浮点（早退遍历）
+static func _has_invalid_float(v: Variant) -> bool:
+	match typeof(v):
+		TYPE_DICTIONARY:
+			for k in v:
+				if _has_invalid_float(v[k]):
+					return true
+		TYPE_ARRAY:
+			for e in v:
+				if _has_invalid_float(e):
+					return true
+		TYPE_FLOAT:
+			var f: float = v
+			if is_nan(f) or is_inf(f):
+				return true
+	return false
+
+## 实际重建清洗（原 sanitize_save_variant 主体，仅检测到污染时触达）
+static func _rebuild_sanitize_variant(v: Variant) -> Variant:
 	if v is Dictionary:
 		var src: Dictionary = v
 		var out: Dictionary = {}
 		for k in src.keys():
-			out[k] = sanitize_save_variant(src[k])
+			out[k] = _rebuild_sanitize_variant(src[k])
 		return out
 	if v is Array:
 		var src_arr: Array = v
 		var out_arr: Array = []
 		out_arr.resize(src_arr.size())
 		for i in range(src_arr.size()):
-			out_arr[i] = sanitize_save_variant(src_arr[i])
+			out_arr[i] = _rebuild_sanitize_variant(src_arr[i])
 		return out_arr
 	if v is float:
 		var f: float = v

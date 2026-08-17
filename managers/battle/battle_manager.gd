@@ -634,15 +634,23 @@ func _on_unit_died(unit: Node, is_player: bool) -> void:
 
 
 ## v8 批次3: 获取当前关卡的特殊规则（读 GameManager.current_level → LevelInformation）
+## v9 perf：按关卡号缓存——规则是静态数据且整场战斗不变，_check_win_lose 每帧调用，
+## 原实现每帧 Dictionary.get + 两次默认值空字典分配（小额常驻垃圾）
+var _cached_special_rules: Dictionary = {}
+var _cached_special_rules_level: int = -1
+
 func _get_current_special_rules() -> Dictionary:
 	if GameManager == null:
 		return {}
 	var level: int = 1
 	if "current_level" in GameManager:
 		level = int(GameManager.current_level)
-	# v7.x 性能：用全局单例，避免 _check_win_lose 每帧重建 100 关字典
-	var li = LevelInformation.get_shared()
-	return li.get_special_rules(level)
+	if level != _cached_special_rules_level:
+		# v7.x 性能：用全局单例，避免 _check_win_lose 每帧重建 100 关字典
+		var li = LevelInformation.get_shared()
+		_cached_special_rules = li.get_special_rules(level)
+		_cached_special_rules_level = level
+	return _cached_special_rules
 
 
 func _check_win_lose() -> void:
@@ -903,6 +911,14 @@ func _is_active_combat_unit(node: Node, ally: bool) -> bool:
 
 func get_enemy_wave_total() -> int:
 	return _spawn_system.get_enemy_wave_total() if battle_active else 0
+
+
+## v10 解题式玩法：下一波敌方构成预览（波次预警 HUD 数据源）。
+## 返回结构见 BattleSpawnSystem.get_next_wave_preview()；无下一波返回 {valid: false}。
+func get_next_wave_preview() -> Dictionary:
+	if not battle_active:
+		return {"valid": false}
+	return _spawn_system.get_next_wave_preview()
 
 
 func try_place_enemy_unit_on_card_grid(unit: Node2D) -> bool:

@@ -6,6 +6,9 @@ const DefaultCards = preload("res://data/default_cards.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
 const UnitLineageConfig = preload("res://data/unit_lineage_config.gd")
 const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
+## v9.x 条件指引：技能树节点名/势力中文名查询（detail 字段用）
+const SkillTreeData = preload("res://data/phase_master_skill_tree.gd")
+const CompanyDefinitions = preload("res://data/company_definitions.gd")
 
 ## 通过 Autoload 名称获取节点
 static func _get_autoload_node(autoload_name: String) -> Node:
@@ -44,13 +47,27 @@ static func get_card_intel_progress(card_id: String) -> float:
 			return im.get_intel_progress(card_id)
 	return 0.0
 
-## 拒绝结果构建
+## 拒绝结果构建（结构性错误早退：invalid/card_locked/invalid_target/target_not_in_path/cross_class）
+## conditions 恒为数组，UI 可安全遍历
 static func _evolve_check_denied(reason: String) -> Dictionary:
 	return {
 		"ok": false,
 		"reason": reason,
 		"reason_zh": UnitLineageConfig.localize_evolve_reason(reason),
+		"conditions": [],
 	}
+
+## v9.x: conditions 快照的 key → 旧拒绝码映射（保持 reason/EVOLVE_REASON_ZH 语义不变）
+static func _condition_key_to_reason(key: String) -> String:
+	match key:
+		"power": return "power_not_enough"
+		"evo_blueprint": return "evo_blueprint_missing"
+		"skill_tree_era": return "evolution_not_unlocked_in_skill_tree"
+		"enhance": return "enhance_not_enough"
+		"mods": return "mod_not_enough"
+		"enemy_mod": return "enemy_mod_not_enough"
+		"faction_level": return "faction_level_not_enough"
+		_: return "invalid"
 
 ## v7.0: 从参数中解析出 card_id（支持 instance_id 和裸 card_id）
 ## "cold_t72#1" → "cold_t72"，"cold_t72" → "cold_t72"
@@ -134,31 +151,55 @@ static func can_evolve_blueprint(card_id_or_instance: String, target_card_id: St
 				if not (_is_intel_branch and _intel_branch_data.get("unique_bonus", {}).get("cross_class", false)):
 					return _evolve_check_denied("cross_class")
 
-	## v5.0 Phase 4: 战力达标检查（培养后战力 >= 目标基础战力）
-	var target_base_power: int = UnitLineageConfig.get_target_base_power(target_card_id)
+	## v9.x: 玩法条件改为非早退式全量评估——收集进 conditions 数组供 UI 逐条渲染达成/未达成。
+	## ok = 全部满足；reason = 首个未满足项（拒绝码语义与旧早退版一致）。
+	## 失败路径同样填充 enhance/mod 数字字段（旧版只有成功路径填，未达标时 UI 反而看不到进度）。
+	var conditions: Array = []
+
+	## v5.0 Phase 4: 战力达标检查（v9.x 重设：门槛 = 目标白板战斗战力×0.70，与判定左侧同标尺）
+	var target_base_power: int = EvolutionHelpers.get_target_power_bar(target_card_id)
 	if target_base_power > 0:
 		# v7.0: 战力估算传 instance_id（让估算读到实例的养成数据）
 		var current_power: float = EvolutionHelpers.estimate_power_score(card_id_or_instance, bpm_ref)
-		if current_power < float(target_base_power):
-			return _evolve_check_denied("power_not_enough")
+		conditions.append({
+			"key": "power",
+			"met": current_power >= float(target_base_power),
+			"current_text": str(int(current_power)),
+			"required_text": str(target_base_power),
+		})
 
 	## 进化蓝图检查：持有目标卡进化蓝图即可解锁进化（蓝图不消耗）
 	var evo_blueprint_id: String = BlueprintDefinitions.get_evolution_blueprint_id(card_id, target_card_id)
 	var iib: Node = _get_autoload_node("IntelItemBag")
-	if iib == null or not iib.has_item(evo_blueprint_id):
-		return _evolve_check_denied("evo_blueprint_missing")
+	var has_evo_bp: bool = iib != null and not evo_blueprint_id.is_empty() and iib.has_item(evo_blueprint_id)
+	conditions.append({
+		"key": "evo_blueprint",
+		"met": has_evo_bp,
+		"current_text": "持有" if has_evo_bp else "缺失",
+		"required_text": "持有",
+		## v9.x：指明获取渠道（战后掉落规则见 intel_discovery_manager 掉落表）
+		"detail": "击败精英/Boss 敌人，战后结算几率掉落进化图纸",
+	})
 
 	var stage: String = UnitLineageConfig.get_stage(card_id, target_card_id)
 
 	## v8.x: 进化能力需先在相位师技能树解锁。
-	## 技能树 concept_weapon 分支的 evolution 节点按 era 解锁进化能力（era=-1 表示全时代）。
-	## 若技能树未解锁该 era 的进化，直接拒绝（数值门槛 enhance_level/mod 不再检查）。
+	## 技能树指挥系的 evolution 节点按 era 解锁进化能力（era=-1 表示全时代）。
+	## （v9：原 concept_weapon 分支已解散，形态进化/护盾投射两节点归位指挥系深层）
 	var card_era: int = _get_card_era(card_id, is_instance, card_id_or_instance)
 	var pmsm: Node = _get_autoload_node("PhaseMasterSkillManager")
 	if pmsm != null and pmsm.has_method("is_evolution_era_unlocked"):
-		if not pmsm.is_evolution_era_unlocked(card_era):
-			return _evolve_check_denied("evolution_not_unlocked_in_skill_tree")
-	# 注：若 PhaseMasterSkillManager 不可用（旧环境），回退到原 enhance_level 门槛（向后兼容）
+		var era_ok: bool = pmsm.is_evolution_era_unlocked(card_era)
+		conditions.append({
+			"key": "skill_tree_era",
+			"met": era_ok,
+			"current_text": "已解锁" if era_ok else "未解锁",
+			"required_text": "已解锁",
+			## v9.x：点名可解锁该时代进化的技能树节点及分支（与技能面板前置提示同风格，
+			## 避免玩家看到"未解锁"却不知去哪点）
+			"detail": _skill_tree_era_hint(card_era),
+		})
+	# 注：若 PhaseMasterSkillManager 不可用（旧环境），跳过该项（向后兼容）
 
 	## v6.0: 新门槛 — 强化等级 + MOD数量 + 敌源MOD
 	# v7.0: 优先从实例对象读 enhance_level 和 mods；实例不存在回退 blueprint_mods 字典
@@ -174,14 +215,31 @@ static func can_evolve_blueprint(card_id_or_instance: String, target_card_id: St
 	else:
 		enhance_lvl = _get_card_enhance_level(card_id, bpm_ref)
 		mod_count = ModManager.get_modification_count(card_id, bpm_ref.blueprint_mods)
-	
-	if enhance_lvl < UnitLineageConfig.get_enhance_requirement(stage):
-		return _evolve_check_denied("enhance_not_enough")
-	if mod_count < UnitLineageConfig.get_mod_requirement(stage):
-		return _evolve_check_denied("mod_not_enough")
+
+	var enh_req: int = UnitLineageConfig.get_enhance_requirement(stage)
+	var mod_req: int = UnitLineageConfig.get_mod_requirement(stage)
+	conditions.append({
+		"key": "enhance",
+		"met": enhance_lvl >= enh_req,
+		"current_text": str(enhance_lvl),
+		"required_text": str(enh_req),
+	})
+	conditions.append({
+		"key": "mods",
+		"met": mod_count >= mod_req,
+		"current_text": str(mod_count),
+		"required_text": str(mod_req),
+	})
 	if UnitLineageConfig.get_enemy_mod_required(stage):
-		if not ModManager.has_enemy_origin_mod(card_id, bpm_ref.blueprint_mods):
-			return _evolve_check_denied("enemy_mod_not_enough")
+		var has_eom: bool = ModManager.has_enemy_origin_mod(card_id, bpm_ref.blueprint_mods)
+		conditions.append({
+			"key": "enemy_mod",
+			"met": has_eom,
+			"current_text": "持有" if has_eom else "缺失",
+			"required_text": "持有",
+			## v9.x：指明获取渠道（EOM 碎片战后掉落，集齐解锁）
+			"detail": "收集敌源改造碎片解锁（战后掉落，敌源MOD面板查看进度）",
+		})
 
 	## 势力贡献度检查：E2（势力分支）需要目标势力达到指定等级
 	var required_faction_lv: int = UnitLineageConfig.get_faction_level_required(stage)
@@ -196,14 +254,32 @@ static func can_evolve_blueprint(card_id_or_instance: String, target_card_id: St
 			push_warning("[CardEvolutionManager] E2进化目标 %s 不在 %s 的势力分支中，跳过势力等级检查" % [target_card_id, card_id])
 		else:
 			var fsm: Node = _get_autoload_node("FactionSystemManager")
-			if fsm == null or not fsm.has_method("get_faction_level") or fsm.get_faction_level(target_faction_id) < required_faction_lv:
-				return _evolve_check_denied("faction_level_not_enough")
+			var faction_lv: int = 0
+			if fsm != null and fsm.has_method("get_faction_level"):
+				faction_lv = fsm.get_faction_level(target_faction_id)
+			## v9.x：点名目标势力中文名（多势力分支并存时玩家需知道提升哪家声望）
+			var faction_name: String = String(CompanyDefinitions.get_by_id(target_faction_id).get("name", target_faction_id))
+			conditions.append({
+				"key": "faction_level",
+				"met": faction_lv >= required_faction_lv,
+				"current_text": str(faction_lv),
+				"required_text": str(required_faction_lv),
+				"detail": "提升「%s」声望等级（做该势力委托/击败其占领关卡敌人）" % faction_name,
+			})
+
+	## 汇总：首个未满足项决定 reason（评估顺序与旧早退版一致）
+	var first_fail_key: String = ""
+	for c in conditions:
+		if not bool(c.get("met", false)):
+			first_fail_key = String(c.get("key", ""))
+			break
 	var out: Dictionary = {
-		"ok": true,
-		"reason": "ok",
+		"ok": first_fail_key.is_empty(),
+		"reason": "ok" if first_fail_key.is_empty() else _condition_key_to_reason(first_fail_key),
 		"stage": stage,
-		"enhance_requirement": UnitLineageConfig.get_enhance_requirement(stage),
-		"mod_requirement": UnitLineageConfig.get_mod_requirement(stage),
+		"conditions": conditions,
+		"enhance_requirement": enh_req,
+		"mod_requirement": mod_req,
 		"current_enhance": enhance_lvl,
 		"current_mod_count": mod_count,
 	}
@@ -368,3 +444,23 @@ static func _get_card_era(card_id: String, is_instance: bool, instance_or_id: St
 		if tpl != null:
 			return int(tpl.era)
 	return 0
+
+## v9.x: 技能树进化解锁条件的具体指引——按卡时代列出可解锁该时代进化的技能树节点。
+## 数据驱动：扫描技能树 unlocks 含 evolution 且 era 匹配（-1=全时代）的节点，
+## 技能树重排/加节点后文案自动跟随，无需手工同步。
+static func _skill_tree_era_hint(card_era: int) -> String:
+	var node_names: Array = []
+	for branch in SkillTreeData.get_all_branches():
+		for s in SkillTreeData.get_skills_for_branch(branch):
+			for u in s.get("unlocks", []):
+				if not (u is Dictionary) or u.get("type", "") != "evolution":
+					continue
+				var u_era: int = int(u.get("era", -99))
+				if u_era == -1 or u_era == card_era:
+					node_names.append("「%s」（%s分支·第%d层）" % [
+						String(s.get("name", String(s.get("id", "")))),
+						SkillTreeData.get_branch_display_name(String(branch)),
+						int(s.get("tier", 0))])
+	if node_names.is_empty():
+		return "需在相位师技能树解锁该时代的进化能力"
+	return "在技能树点亮：%s" % " 或 ".join(PackedStringArray(node_names))

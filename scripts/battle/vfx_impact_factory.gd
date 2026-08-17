@@ -370,6 +370,14 @@ static func _get_blood_spark_ramp() -> Gradient:
 	return _spark_blood_ramp
 
 
+## v9.6 枪口火轻重分派域——全 VFX 层统一"新枚举优先"约定（与 WeaponProjectileVfx.proj_texture 一致）：
+## 碰撞值 1/2 恒按新枚举 INDIRECT/AERIAL 解释（曲射火炮/空射=重型窄锥喷射），
+## legacy RIFLE(1)/MG(2) 在 VFX 层已让位（proj_texture 同样不达，本处与其对齐）。
+## 重型域 = 新枚举 INDIRECT(1)/AERIAL(2)/SUPPORT(3，与 legacy ROCKET(3) 撞值，均取重型) +
+##          legacy ROCKET(3)/FLAK(7)/MISSILE(9)/OMEGA(10)/RAIL(11)。
+## 审计编号 V8：原分支只认 legacy 域，新枚举主链路上曲射火炮(INDIRECT=1)拿的是轻枪口火。
+const HEAVY_MUZZLE_WT: Array = [1, 2, 3, 7, 9, 10, 11]
+
 ## v7.4: 炮口火焰（复用 spark 池，替代 bullet.gd 每次 new CPUParticles2D+Gradient）。
 ## 参数对齐原 bullet._spawn_muzzle_effect 的配置。
 static func spawn_muzzle_flash(parent: Node2D, local_pos: Vector2, facing_right: bool, weapon_type: int = 0) -> void:
@@ -382,18 +390,18 @@ static func spawn_muzzle_flash(parent: Node2D, local_pos: Vector2, facing_right:
 	if p == null:
 		_active_sparks -= 1
 		return
-	# v9.2: 枪口火按武器类型分流贴图
-	if weapon_type in [3, 7, 9, 10, 11]:  # 重型/能量武器
-		p.texture = PARTICLE_TEX_MUZZLE_HEAVY
-	else:  # 轻型动能武器
+	# v9.2: 枪口火按武器类型分流贴图；v9.6: 轻重判定改用 HEAVY_MUZZLE_WT（双枚举归一）
+	var is_light_wt: bool = not (weapon_type in HEAVY_MUZZLE_WT)
+	if is_light_wt:  # 轻型动能武器
 		p.texture = PARTICLE_TEX_MUZZLE_LIGHT
+	else:  # 重型/能量武器
+		p.texture = PARTICLE_TEX_MUZZLE_HEAVY
 	p.position = local_pos
 	p.lifetime = 0.40
 	# v8.3 视觉增强：炮口火焰 amount 12→20, spread 120→150, velocity 翻倍, scale 加大
 	# v9.4: 轻武器枪口火粒子减半（20→10）——轻武器密集齐射是粒子滥用主源；
 	# v13: 重型(火箭/高炮/导弹/粒子炮/磁轨)方向化——窄锥(32°)+高速拉出喷射形态，
 	# 替代原 150° 圆形亮斑(读图 6/10:"无尾焰喷射感,更像小火球")。轻武器保持原样。
-	var is_light_wt: bool = weapon_type in [0, 1, 2, 4, 5, 6]
 	p.amount = 10 if is_light_wt else 26
 	p.emission_sphere_radius = 4.0
 	p.direction = Vector2(1, 0) if facing_right else Vector2(-1, 0)

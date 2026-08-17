@@ -191,7 +191,7 @@ const SPECIAL_BRANCH: Dictionary = {
 const AT_BRANCH: Dictionary = {
 	E2_AT = {
 		stage = 2,
-		card_id = "ww2_panzerschrek",
+		card_id = "ww2_inf_panzerschrek",
 		name = "铁拳反坦克组",
 		era = "WW2",
 		power = 65,
@@ -280,14 +280,19 @@ static func get_hidden_branches() -> Dictionary:
 	}
 
 ## 检查进化条件
+## @deprecated v9.x 权威判定入口已收敛：BlueprintManager.can_evolve_blueprint()（面板/UI 用，
+## 返回 conditions 快照）与 EvolutionPathRegistry.check_evolution_requirements()（数据层，
+## 含等级/改造/EOM/战力/情报全量校验）。本方法为遗留存根，不再维护；
+## 为防误用绕过进化门槛，恒返回 passed=false 并打警告（fail-closed）。
 static func check_requirements(card: Dictionary, target_stage: String) -> Dictionary:
-	var result = {passed = true, missing = []}
-	# TODO: 实现条件检查逻辑
-	return result
+	push_warning("[InfantryEvolution] check_requirements 为废弃存根，请改用 BlueprintManager.can_evolve_blueprint / EvolutionPathRegistry.check_evolution_requirements")
+	return {passed = false, missing = ["deprecated_entry_point: 权威判定见 EvolutionPathRegistry.check_evolution_requirements"]}
 
 ## 获取进化后的属性计算
+## @deprecated v9.x 属性预览权威入口：EvolutionPathRegistry.calculate_evolved_stats()
+## （目标白板 + 旧改造加成 × inherit_multiplier 继承，与 card_evolution_manager.evolve_blueprint
+## 的全量复制口径一致）。本方法仅返回目标白板属性，保留仅为签名兼容。
 static func calculate_evolved_stats(old_card: Dictionary, target_node: Dictionary) -> Dictionary:
-	var inherit_mult = target_node.get("inherit_multiplier", 0.30)
 	var base_stats = {
 		max_hp = target_node.max_hp,
 		attack_light = target_node.attack_light,
@@ -297,6 +302,4 @@ static func calculate_evolved_stats(old_card: Dictionary, target_node: Dictionar
 		defense_armor = target_node.defense_armor,
 		defense_air = target_node.defense_air,
 	}
-	# 继承旧卡牌的改造加成（30%-55%）
-	# TODO: 实现继承计算
 	return base_stats

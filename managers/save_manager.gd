@@ -612,6 +612,11 @@ func _collect_noncritical_save_data(data: Dictionary, now_ms: int) -> void:
 	for key in _noncritical_save_cache.keys():
 		data[key] = _noncritical_save_cache[key]
 
+## 按名称重置管理器（新游戏用）。
+## 设计说明（P1-1 复审结论）：此处与 _collect_manager_state 不同，**不**经 ManagerLazyLoader
+## 兜底实例化——未被实例化的懒加载管理器本就没有内存态可清，跳过即正确；
+## 若在此强行实例化，"新游戏"路径会一次性拉起 15+ 个 DEFERRED 管理器，破坏懒加载收益。
+## 已实例化的管理器（如读档后开新档、或本会话早前访问过）则正常走 clear_all/reset 重置。
 func _reset_manager_by_name(manager_name: String) -> void:
 	var mgr: Node = get_node_or_null("/root/" + manager_name)
 	if mgr == null:
@@ -881,59 +886,61 @@ func _enqueue_starter_backpack_cards() -> void:
 		pmsm_starter.add_bonus_points(100)
 
 	# 初始情报：逐步发现（原"解锁所有情报"是测试残留，破坏探索乐趣）
-		# 情报应在战斗中击败敌人后逐步揭示（IntelDiscoveryManager），不再开局全解锁。
-		# 保留 ManagerLazyLoader 引用以确保后续 ensure_loaded 调用正常。
-		var ml = get_node_or_null("/root/ManagerLazyLoader")
-		if ml and ml.has_method("ensure_loaded"):
-			# 仅确保 IntelManual 加载，不再 unlock_all_intel（情报逐步发现）
-			ml.ensure_loaded("intel_manual")
+	# v7.x 结构修复（P1-3）：本段与下方"初始蓝图/初始进化分支"原先因缩进错误整体嵌套在
+	# if pmsm_starter 块内——PhaseMasterSkillManager 缺失或无 add_bonus_points 时会被静默跳过。
+	# 现提升为函数级，var ml 在函数作用域声明。
+	# 情报应在战斗中击败敌人后逐步揭示（IntelDiscoveryManager），不再开局全解锁。
+	var ml = get_node_or_null("/root/ManagerLazyLoader")
+	if ml and ml.has_method("ensure_loaded"):
+		# 仅确保 IntelManual 加载，不再 unlock_all_intel（情报逐步发现）
+		ml.ensure_loaded("intel_manual")
 
 	# 初始蓝图：授予起步改造图纸 + 进化蓝图（其余改造图纸靠战斗掉落解锁）
-		# v7.1: 不再开局全送所有改造图纸，仅授予 IntelManualItems.ALL_TYPES 中的基础起步图纸
-		if ml and ml.has_method("ensure_loaded"):
-			ml.ensure_loaded("intel_item_bag")
-			var bag = get_node_or_null("/root/IntelItemBag")
-			if bag:
-				const IntelManualItems = preload("res://data/intel_manual_items.gd")
-				# 授予起步改造图纸（7张基础图纸）
-				for blueprint_id in IntelManualItems.ALL_TYPES:
-					if not bag.has_item(blueprint_id):
-						bag.add_item(blueprint_id, 1)
+	# v7.1: 不再开局全送所有改造图纸，仅授予 IntelManualItems.ALL_TYPES 中的基础起步图纸
+	if ml and ml.has_method("ensure_loaded"):
+		ml.ensure_loaded("intel_item_bag")
+		var bag = get_node_or_null("/root/IntelItemBag")
+		if bag:
+			const IntelManualItems = preload("res://data/intel_manual_items.gd")
+			# 授予起步改造图纸（7张基础图纸）
+			for blueprint_id in IntelManualItems.ALL_TYPES:
+				if not bag.has_item(blueprint_id):
+					bag.add_item(blueprint_id, 1)
 
-				# ⚠️ 测试模式：开局发放全部改造蓝图 + 全部进化蓝图（开发/测试用，上线前需改回）
-				# 正式设计：改造/进化蓝图应靠战斗掉落（精英/Boss）逐步解锁，不开局全送。
-				# 改造蓝图口径：ModificationRegistry 全集，排除 enhancement（强化词条，非改造模块）。
-				#   → 与 modification_panel/_refresh_mod_list 同口径（blueprint_ 前缀，排除 blueprint_evol_）
-				# 进化蓝图口径：IntelManualItems._collect_all_evolution_steps()（lineage 权威口径，
-				#   与 UnitLineageConfig 判定对齐，避免 evolution_paths 的 15 个幽灵卡）。
-				const ModificationRegistry = preload("res://scripts/systems/modification_registry.gd")
-				const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
-				# ① 全部改造蓝图
-				for mod_id in ModificationRegistry.get_all_ids():
-					# 排除强化词条（source=enhancement，非可安装改造模块，有独立系统）
-					if String(ModificationRegistry.get_data(mod_id).get("source", "")) == "enhancement":
-						continue
-					var mod_bp: String = BlueprintDefinitions.get_mod_blueprint_id(mod_id)
-					if not mod_bp.is_empty() and not bag.has_item(mod_bp):
-						bag.add_item(mod_bp, 1)
-				# ② 全部进化蓝图（复用 lineage 口径的进化跳收集器）
-				for step in IntelManualItems._collect_all_evolution_steps():
-					var evo_bp: String = BlueprintDefinitions.get_evolution_blueprint_id(
-						String(step.from), String(step.to))
-					if not evo_bp.is_empty() and not bag.has_item(evo_bp):
-						bag.add_item(evo_bp, 1)
+			# ⚠️ 测试模式：开局发放全部改造蓝图 + 全部进化蓝图（开发/测试用，上线前需改回）
+			# 正式设计：改造/进化蓝图应靠战斗掉落（精英/Boss）逐步解锁，不开局全送。
+			# 改造蓝图口径：ModificationRegistry 全集，排除 enhancement（强化词条，非改造模块）。
+			#   → 与 modification_panel/_refresh_mod_list 同口径（blueprint_ 前缀，排除 blueprint_evol_）
+			# 进化蓝图口径：IntelManualItems._collect_all_evolution_steps()（lineage 权威口径，
+			#   与 UnitLineageConfig 判定对齐，避免 evolution_paths 的 15 个幽灵卡）。
+			const ModificationRegistry = preload("res://scripts/systems/modification_registry.gd")
+			const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
+			# ① 全部改造蓝图
+			for mod_id in ModificationRegistry.get_all_ids():
+				# 排除强化词条（source=enhancement，非可安装改造模块，有独立系统）
+				if String(ModificationRegistry.get_data(mod_id).get("source", "")) == "enhancement":
+					continue
+				var mod_bp: String = BlueprintDefinitions.get_mod_blueprint_id(mod_id)
+				if not mod_bp.is_empty() and not bag.has_item(mod_bp):
+					bag.add_item(mod_bp, 1)
+			# ② 全部进化蓝图（复用 lineage 口径的进化跳收集器）
+			for step in IntelManualItems._collect_all_evolution_steps():
+				var evo_bp: String = BlueprintDefinitions.get_evolution_blueprint_id(
+					String(step.from), String(step.to))
+				if not evo_bp.is_empty() and not bag.has_item(evo_bp):
+					bag.add_item(evo_bp, 1)
 
-		# v7.1: 移除 _grant_all_evolution_blueprints() 调用。
-		# 进化蓝图现应通过战斗掉落（精英/Boss，20%概率）逐步解锁，不再开局全送。
-		# 老存档已持有的进化蓝图由 IntelItemBag.load_state 保留，不受影响。
-		# _grant_all_evolution_blueprints() 方法本体保留，供测试/调试手动调用。
+	# v7.1: 移除 _grant_all_evolution_blueprints() 调用。
+	# 进化蓝图现应通过战斗掉落（精英/Boss，20%概率）逐步解锁，不再开局全送。
+	# 老存档已持有的进化蓝图由 IntelItemBag.load_state 保留，不受影响。
+	# _grant_all_evolution_blueprints() 方法本体保留，供测试/调试手动调用。
 
-		# 初始进化分支：发现所有情报进化分支（通过ManagerLazyLoader获取）
-		if ml and ml.has_method("ensure_loaded"):
-			ml.ensure_loaded("intel_evolution")
-			var iem = get_node_or_null("/root/IntelEvolutionManager")
-			if iem and iem.has_method("check_and_discover_branches"):
-				iem.check_and_discover_branches()
+	# 初始进化分支：发现所有情报进化分支（通过ManagerLazyLoader获取）
+	if ml and ml.has_method("ensure_loaded"):
+		ml.ensure_loaded("intel_evolution")
+		var iem = get_node_or_null("/root/IntelEvolutionManager")
+		if iem and iem.has_method("check_and_discover_branches"):
+			iem.check_and_discover_branches()
 
 	# v7.1: 移除 _unlock_all_enemy_origin_mods() 调用。
 	# 原逻辑新游戏时无条件全解锁所有敌源MOD，导致击杀掉落解锁机制失效。

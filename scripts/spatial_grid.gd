@@ -159,37 +159,59 @@ func query_allies(position: Vector2, radius: float, is_player: bool) -> Array:
 
 	return allies
 
-## 查询最近的目标（使用bounding-box优化，避免遍历所有格子）
+## 查询最近的目标（v9 perf：环形扩张 + 提前退出）
+## 原实现按 max_range 的包围盒全量扫描格子：敌侧索敌半径最小 1600px、格距 100px
+## → 单次查询探测 ~1089 格；无目标时每敌高频重试，波次刷出/清场瞬间形成同步尖峰。
+## 改为从中心格逐环（切比雪夫距离）向外扩张：扫完第 r 环后，任何 ≥ r+1 环的单位
+## 其距离必然 ≥ r×格距（相邻格下界），若已有候选且比该下界近即可提前返回——
+## 常态（前线接敌）1-3 环内命中，探测格数从 ~1089 降到 ~25-49。
+var _qnt_best_d2: float = 0.0
+var _qnt_nearest: Node2D = null
+
 func query_nearest_target(position: Vector2, is_player: bool, max_range: float = 1000.0) -> Node2D:
 	_query_count += 1
-	var nearest: Node2D = null
-	var nearest_dist_sq: float = max_range * max_range
+	_qnt_best_d2 = max_range * max_range
+	_qnt_nearest = null
+	var center: Vector2i = _get_cell_coords(position)
+	var max_ring: int = int(max_range / _cell_size) + 1
+	for r in range(max_ring + 1):
+		if r == 0:
+			_scan_ring_cell(center, position, is_player)
+		else:
+			# 第 r 环周界：上下两行 + 左右两列（去角）
+			for x in range(center.x - r, center.x + r + 1):
+				_scan_ring_cell(Vector2i(x, center.y - r), position, is_player)
+				_scan_ring_cell(Vector2i(x, center.y + r), position, is_player)
+			for y in range(center.y - r + 1, center.y + r):
+				_scan_ring_cell(Vector2i(center.x - r, y), position, is_player)
+				_scan_ring_cell(Vector2i(center.x + r, y), position, is_player)
+		# 提前退出：更外环（≥ r+1）单位距离必然 ≥ r×格距，已有更近候选则不可能被超越
+		var ring_floor: float = float(r) * _cell_size
+		if _qnt_nearest != null and _qnt_best_d2 < ring_floor * ring_floor:
+			break
+		# 半径耗尽：更外环全部超出 max_range
+		if ring_floor >= max_range:
+			break
+	return _qnt_nearest
 
-	# 只遍历 max_range 范围内的网格格子
-	var min_c: Vector2i = _get_cell_coords(position - Vector2(max_range, max_range))
-	var max_c: Vector2i = _get_cell_coords(position + Vector2(max_range, max_range))
-
-	for x in range(min_c.x, max_c.x + 1):
-		for y in range(min_c.y, max_c.y + 1):
-			var cell_key := Vector2i(x, y)
-			if not _grid.has(cell_key):
+## 单格内扫描最近目标（query_nearest_target 的环形扩张辅助；累加器走成员变量避免分配）
+func _scan_ring_cell(cell_key: Vector2i, position: Vector2, is_player: bool) -> void:
+	if not _grid.has(cell_key):
+		return
+	for unit in _grid[cell_key]:
+		if unit == null or not is_instance_valid(unit):
+			continue
+		if not (unit is Node2D):
+			continue
+		if "is_player" in unit:
+			if unit.is_player == is_player:
 				continue
-			for unit in _grid[cell_key]:
-				if unit == null or not is_instance_valid(unit):
-					continue
-				if not (unit is Node2D):
-					continue
-				if "is_player" in unit:
-					if unit.is_player == is_player:
-						continue
-				else:
-					continue
-				var d2: float = unit.global_position.distance_squared_to(position)
-				if d2 < nearest_dist_sq:
-					nearest_dist_sq = d2
-					nearest = unit
-
-	return nearest
+		else:
+			continue
+		var d2: float = unit.global_position.distance_squared_to(position)
+		if d2 < _qnt_best_d2:
+			_qnt_best_d2 = d2
+			_qnt_nearest = unit
 
 ## ========== 三攻三防系统：双向索敌 ==========
 

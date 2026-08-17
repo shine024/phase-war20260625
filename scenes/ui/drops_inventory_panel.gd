@@ -37,6 +37,9 @@ const PERMIT_TINT := {
 ## 数据
 var _all_drops: Array = []  # 存储所有掉落物品
 var _drop_tables: DropTables = null  # 缓存实例
+# v9 perf：隐藏期间的 backpack_changed 置脏（战后/拆解触发的 4 网格全量重建是纯浪费），
+# 重新显示时补刷一次
+var _display_dirty: bool = false
 
 func _ready() -> void:
 	# v7.x 面板统一：SMALL 档 + 橙色签名框架 + PanelChrome 标题栏（右上 ✕ 关闭）
@@ -46,12 +49,26 @@ func _ready() -> void:
 	var chrome = PanelChrome.attach_to($VBoxOuter, "掉落物品", accent, "DROPS")
 	chrome.closed.connect(_on_close)
 
-	# 连接信号更新
+	# 连接信号更新（v9 perf：隐藏时置脏，可见时才重建）
 	if SignalBus:
-		SignalBus.backpack_changed.connect(_refresh_all_displays)
+		SignalBus.backpack_changed.connect(_on_backpack_changed)
+	visibility_changed.connect(_on_visibility_refresh)
 
 	# 初始化显示
 	_refresh_all_displays()
+
+## v9 perf：backpack_changed 回调——隐藏时跳过重建
+func _on_backpack_changed() -> void:
+	if not is_visible_in_tree():
+		_display_dirty = true
+		return
+	_refresh_all_displays()
+
+## v9 perf：重新显示时补刷隐藏期间积累的变化
+func _on_visibility_refresh() -> void:
+	if is_visible_in_tree() and _display_dirty:
+		_display_dirty = false
+		_refresh_all_displays()
 
 ## 刷新所有显示
 func _refresh_all_displays() -> void:

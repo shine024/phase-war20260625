@@ -14,7 +14,7 @@ const MAIN_LINE: Dictionary = {
 		inherit_multiplier = 0.0,
 	},
 	E1 = {
-		stage = 1, card_id = "cold_zsu23", name = "ZSU-23-4",
+		stage = 1, card_id = "cold_sup_zsu23", name = "ZSU-23-4",
 		era = "Cold", power = 240, max_hp = 350,
 		attack_light = 30, attack_armor = 10, attack_air = 150,
 		defense_light = 35, defense_armor = 25, defense_air = 50,
@@ -22,7 +22,7 @@ const MAIN_LINE: Dictionary = {
 		requirements = {level = 5, mods_count = 2, intel_basic = 50, power_ratio = 0.8},
 	},
 	E2 = {
-		stage = 2, card_id = "mod_m6", name = "M6自行高炮",
+		stage = 2, card_id = "mod_sup_m6", name = "M6自行高炮",
 		era = "Modern", power = 480, max_hp = 380,
 		attack_light = 40, attack_armor = 20, attack_air = 280,
 		defense_light = 45, defense_armor = 35, defense_air = 60,
@@ -46,8 +46,12 @@ static func get_main_line() -> Dictionary:
 static func get_hidden_branches() -> Dictionary:
 	return {}
 
+## @deprecated v9.x 权威判定见 BlueprintManager.can_evolve_blueprint /
+## EvolutionPathRegistry.check_evolution_requirements。遗留存根恒 passed=false（fail-closed），
+## 防止误用绕过进化门槛。
 static func check_requirements(card: Dictionary, target_stage: String) -> Dictionary:
-	return {passed = true, missing = []}
+	push_warning("[AntiAirEvolution] check_requirements 为废弃存根，请改用 BlueprintManager.can_evolve_blueprint / EvolutionPathRegistry.check_evolution_requirements")
+	return {passed = false, missing = ["deprecated_entry_point: 权威判定见 EvolutionPathRegistry.check_evolution_requirements"]}
 
 static func calculate_evolved_stats(old_card: Dictionary, target_node: Dictionary) -> Dictionary:
 	return {

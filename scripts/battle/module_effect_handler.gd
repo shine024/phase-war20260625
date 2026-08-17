@@ -167,6 +167,64 @@ static func on_tick(unit: Node, delta: float) -> void:
 #  受击处理（v7.x 新增活跃路径）
 # ─────────────────────────────────────────────
 
+## v10 解题式玩法：打破型质变效果（TAG_COUNTER_RULES 的 break_effect 消费端）。
+## 由 bullet.gd 在标签克制命中时调用——克制不再是单纯"+30% 伤害"，而是瓦解敌方优势机制：
+##   strip_fort_aura  — 堡垒阵地庇护光环失效（duration 秒内 _apply_fort_shelter_aura 跳过）
+##   ground_aircraft  — 空中单位俯冲修正失效（duration 秒内 dodge 视为 0，take_damage 读 _grounded_until）
+##   interrupt_cast   — 打断施法（清 _is_casting；目标有 interrupt_casting 方法则一并调用）
+##   guaranteed_crit  — 由调用方（bullet）直接强制暴击，此处无操作
+## 持续型效果用 meta 时间戳 + 读端惰性过期检查（无需主动恢复 tick）。
+## 返回 true 表示应用了任何效果（调用方可据此发反馈信号）。
+static func apply_break_effect(target: Node, break_fx: Dictionary, attacker: Variant = null) -> bool:
+	if target == null or not is_instance_valid(target) or break_fx.is_empty():
+		return false
+	var fx_type: String = String(break_fx.get("type", ""))
+	if fx_type.is_empty():
+		return false
+	var now_sec: float = Time.get_ticks_msec() / 1000.0
+	var duration: float = float(break_fx.get("duration", 0.0))
+	match fx_type:
+		"strip_fort_aura":
+			target.set_meta("_fort_aura_suppressed_until", now_sec + maxf(0.5, duration))
+			return true
+		"ground_aircraft":
+			target.set_meta("_grounded_until", now_sec + maxf(0.5, duration))
+			return true
+		"interrupt_cast":
+			var interrupted: bool = false
+			if target.has_meta("_is_casting") and bool(target.get_meta("_is_casting", false)):
+				target.set_meta("_is_casting", false)
+				interrupted = true
+			# 目标实现interrupt_casting 方法时一并通知（进入冷却/取消技能状态）
+			if target.has_method("interrupt_casting"):
+				target.call("interrupt_casting")
+				interrupted = true
+			return interrupted
+		"guaranteed_crit":
+			return true  # 暴击由 bullet 结算方处理（effective_crit = 1.0）
+		_:
+			return false
+
+
+## v10：目标是否处于"俯冲修正失效"（ground_aircraft）期间——dodge 消费端（take_damage）调用。
+## 命中期间 dodge 视为 0（被防空火力网锁定的空中单位无法规避）。
+static func is_grounded_for_dodge(unit: Node) -> bool:
+	if unit == null or not is_instance_valid(unit):
+		return false
+	if not unit.has_meta("_grounded_until"):
+		return false
+	return Time.get_ticks_msec() / 1000.0 < float(unit.get_meta("_grounded_until", 0.0))
+
+
+## v10：堡垒阵地光环是否被压制（strip_fort_aura 期间）——_apply_fort_shelter_aura 调用。
+static func is_fort_aura_suppressed(unit: Node) -> bool:
+	if unit == null or not is_instance_valid(unit):
+		return false
+	if not unit.has_meta("_fort_aura_suppressed_until"):
+		return false
+	return Time.get_ticks_msec() / 1000.0 < float(unit.get_meta("_fort_aura_suppressed_until", 0.0))
+
+
 ## 受击时处理：怒气积累、反击标记
 ## [param target] 被攻击的单位
 ## [param attacker] 攻击者（可能为 null）
@@ -443,8 +501,16 @@ static func _find_nearby_enemies(center: Node, radius: float) -> Array:
 static func _get_unit_stats(unit: Node) -> UnitStats:
 	if not is_instance_valid(unit):
 		return null
-	if unit.get("stats") is UnitStats:
-		return unit.stats as UnitStats
+	# v9 perf：stats 引用走 meta 缓存。unit.get("stats") 是脚本属性字符串反射，
+	# on_tick 链每帧每单位多次调用（50 单位战场 ≈ 每秒 2-3 万次反射查找），
+	# meta 是引擎侧字典查找，快一个量级。缓存在单位 spawn 时写入
+	#（construct_unit/enemy_unit/swarm_enemy_slot 的 stats 赋值点），此处懒写兜底。
+	if unit.has_meta("_meh_stats_cache"):
+		return unit.get_meta("_meh_stats_cache") as UnitStats
+	var s = unit.get("stats")
+	if s is UnitStats:
+		unit.set_meta("_meh_stats_cache", s)
+		return s as UnitStats
 	return null
 
 static func _get_attacker_stats(attacker: Node) -> UnitStats:
@@ -456,8 +522,10 @@ static func _get_target_stats(target: Node) -> UnitStats:
 static func _get_unit_max_hp(unit: Node) -> float:
 	if not is_instance_valid(unit):
 		return 0.0
-	if unit.get("stats") is UnitStats:
-		return (unit.stats as UnitStats).max_hp
+	# v9 perf：优先走 meta 缓存的 stats（原 unit.get("stats") 每次反射）
+	var s: UnitStats = _get_unit_stats(unit)
+	if s != null:
+		return s.max_hp
 	if "max_hp" in unit:
 		return float(unit.max_hp)
 	return 0.0
@@ -870,6 +938,9 @@ static func _apply_command_aura(unit: Node, stats: UnitStats, delta: float) -> v
 static func _apply_fort_shelter_aura(unit: Node, stats: UnitStats, delta: float) -> void:
 	if stats.fort_shelter_aura <= 0.0:
 		return
+	# v10 打破型效果：阵地光环被压制期间（artillery 克制命中触发 strip_fort_aura）跳过刷新
+	if is_fort_aura_suppressed(unit):
+		return
 	# 累积计时（meta 挂在单位上，跨帧保留）
 	var acc: float = 0.0
 	if unit.has_meta("_fort_shelter_acc"):
@@ -1175,8 +1246,12 @@ static func _apply_radar_lock_on_hit(target: Node, stats: UnitStats, attacker: N
 static func _tick_radar_lock(unit: Node, delta: float) -> void:
 	if unit == null or not is_instance_valid(unit):
 		return
+	# v9 perf：先零成本门关挡掉未装 special flag 的单位（绝大多数）——
+	# 原顺序每帧每单位白付 stats 反射 + _get_attacker_special_flags 的空字典分配
 	var stats = _get_attacker_stats(unit)
 	if stats == null:
+		return
+	if not stats.has_meta("mod_special_flags") and not unit.has_meta("mod_special_flags"):
 		return
 	var _sp: Dictionary = _get_attacker_special_flags(unit)
 	if not _sp.has("radar_lock_interval"):

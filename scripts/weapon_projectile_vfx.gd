@@ -44,19 +44,23 @@ const EXPLOSION_ENERGY_FRAMES := [
 
 ## v9.2: 按 weapon_type 返回通用命中贴图（无专属贴图时的类型化兜底，区别于 FALLBACK 的单一图）。
 ## 返回 null 表示该类型不推荐贴图层（理论上不会发生，所有类型都有映射）。
+## v9.6(审计V9) 域约定：weapon_type 碰撞值按【新枚举优先】解释——与 proj_texture() 的
+## "New enum first" 一致。即 1/2 恒为 INDIRECT/AERIAL（曲射/空射→爆炸贴图）；
+## legacy RIFLE(1)/MG(2) 在 VFX 层已让位（其弹丸贴图 PROJ_TEX_LEGACY[1]/[2] 同样不达）。
+## 新增分派代码时严禁在同一 match 里混写两套枚举语义（本次审计的病根）。
 static func generic_impact_tex_by_wt(weapon_type: int) -> Texture2D:
 	match weapon_type:
-		10, 11, 8:   # OMEGA / RAIL / LASER — 能量类，复用 omega 贴图（蓝白能量爆裂感）
+		10, 11, 8:   # legacy OMEGA / RAIL / LASER — 能量类，复用 omega 贴图（蓝白能量爆裂感）
 			return IMPACT_TEX_OMEGA
-		6:           # SNIPER
+		6:           # legacy SNIPER（光束武器名覆盖也返回 6）
 			return IMPACT_TEX_SNIPER
-		5:           # SHOTGUN
+		5:           # legacy SHOTGUN
 			return IMPACT_TEX_SHOTGUN
-		0, 4:        # DIRECT(新枚举)/SMG/PISTOL — 轻武器
+		0, 4:        # 新枚举 DIRECT / legacy SMG / legacy PISTOL — 轻武器
 			return IMPACT_TEX_SMALL_ARMS
-		1, 2:        # INDIRECT/AERIAL(新枚举) — 曲射/空射，无专属时用通用爆炸
+		1, 2:        # 新枚举 INDIRECT/AERIAL — 曲射/空射，无专属时用通用爆炸
 			return IMPACT_TEX_EXPLOSIVE
-		3, 7, 9:     # ROCKET/FLAK/MISSILE — 旧物理爆炸类，走专属查表，兜底通用爆炸
+		3, 7, 9:     # legacy ROCKET/FLAK/MISSILE + 新枚举 SUPPORT(3 撞值) — 爆炸类，走专属查表，兜底通用爆炸
 			return IMPACT_TEX_EXPLOSIVE
 		_:           # 未知类型，兜底
 			return IMPACT_TEX_EXPLOSIVE

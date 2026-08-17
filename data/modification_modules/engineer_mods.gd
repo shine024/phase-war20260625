@@ -207,6 +207,25 @@ const DATA: Dictionary = {
 		effects = {chem_chance = 0.50, chem_dps = 8.0, chem_duration = 5.0, chem_pollute = 4.0, splash_radius = 0.30},
 		unlock_conditions = {required_level = 5}
 	},
+
+	# ==================== v10 解题式玩法：转换型改造 ====================
+	# 回收无人机：击杀→修复（吸血的设定合理版——敌方是相位构造体，击毁后回收残余纳米材料）
+	"eng_14_salvage_drone" = {
+		id = "eng_14_salvage_drone",
+		name = "回收无人机",
+		name_en = "Salvage Drone",
+		icon = "res://assets/ui/icons/mod_icons/mod_special.png",
+		prototype = "战场回收无人机群",
+		description = "击毁敌方单位时自动回收其残余纳米材料修复自身（回复目标最大生命 8%）",
+		rarity = "epic",
+		power_mult = 1.6,
+		cost_research = 320,
+		cost_install = 160,
+		slot_type = "special",
+		conflict_group = "special",
+		effects = {salvage_repair = 0.08},
+		unlock_conditions = {required_level = 5}
+	},
 }
 
 static func get_mod_data(mod_id: String) -> Dictionary:

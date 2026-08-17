@@ -240,6 +240,26 @@ const DATA: Dictionary = {
 		applicable_types = [3],
 		unlock_conditions = {required_level = 5}
 	},
+
+	# ==================== v10 解题式玩法：转换型改造 ====================
+	# 相位偏移：受暴击→下次必暴（敌方暴击优势转为我方反击优势）
+	"air_16_phase_shift" = {
+		id = "air_16_phase_shift",
+		name = "相位偏移",
+		name_en = "Phase Shift",
+		icon = "res://assets/ui/icons/mod_icons/mod_special.png",
+		prototype = "相位偏移装甲板",
+		description = "受到暴击时相位偏移引擎储能，下次攻击必定暴击（敌方暴击优势转化为我方反击）",
+		rarity = "legendary",
+		power_mult = 1.8,
+		cost_research = 400,
+		cost_install = 200,
+		slot_type = "special",
+		conflict_group = "special",
+		effects = {phase_shift_counter = 1},
+		applicable_types = [3],
+		unlock_conditions = {required_level = 6}
+	},
 }
 
 static func get_mod_data(mod_id: String) -> Dictionary:

@@ -65,7 +65,10 @@ func setup(p_wave: int, p_archetype_id: String, local_pos: Vector2) -> void:
 	_target_find_timer = 0.0
 	_attack_weapon_index = 0
 	last_damage_source = null
+	# v9 perf：stats 置空时同步清缓存（module_effect_handler._get_unit_stats 的 meta 快路径）
 	stats = null
+	if has_meta("_meh_stats_cache"):
+		remove_meta("_meh_stats_cache")
 	damage_reduction = 0.0
 	grid_update_timer = randf_range(0.0, 0.08)
 	_apply_archetype_stats()
@@ -116,6 +119,8 @@ func _apply_archetype_stats() -> void:
 	# take_damage 会优先用 stats.defense_light/armor/air（按攻击者类型）
 	if stats == null:
 		stats = UnitStats.new()
+		# v9 perf：stats 引用缓存（module_effect_handler._get_unit_stats 的 meta 快路径）
+		set_meta("_meh_stats_cache", stats)
 	stats.combat_kind = combat_kind
 	stats.max_hp = hp
 	stats.attack_range = attack_range

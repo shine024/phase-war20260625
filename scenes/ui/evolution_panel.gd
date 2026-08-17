@@ -38,7 +38,7 @@ var result_label: Label = null
 var no_selection_label: Label = null
 var target_name_label: Label = null
 var info_details: Label = null
-var req_details: Label = null
+var req_list: VBoxContainer = null
 var resource_details: Label = null
 var evolve_button: Button = null
 
@@ -89,7 +89,7 @@ func _ready() -> void:
 	no_selection_label = get_node_or_null("%NoSelectionLabel")
 	target_name_label = get_node_or_null("%TargetNameLabel")
 	info_details = get_node_or_null("%InfoDetails")
-	req_details = get_node_or_null("%ReqDetails")
+	req_list = get_node_or_null("%ReqList")
 	resource_details = get_node_or_null("%ResourceDetails")
 	evolve_button = get_node_or_null("%EvolveButton")
 
@@ -574,16 +574,24 @@ func _create_evolution_node(target: Dictionary) -> Control:
 		badge_lbl.text = "✓可进化"
 		badge_lbl.add_theme_color_override("font_color", THEME_GREEN)
 	else:
-		# 锁定原因分级（按 reason 字段细分）
-		var reason := String(check_result.get("reason", ""))
+		# 锁定原因分级（v9.x：从 conditions 快照取首个未满足项，替代 reason 字符串猜测）
+		var first_unmet: Dictionary = _first_unmet_condition(check_result)
 		var badge_text := "🔒条件不足"
-		if reason.find("enhance") >= 0:
-			var enh_req: int = int(check_result.get("enhance_requirement", 0))
-			badge_text = "🔒需Lv.%d" % enh_req
-		elif reason.find("mod") >= 0:
-			badge_text = "🔒改造不足"
-		elif reason.find("blueprint") >= 0 or reason.find("evo_blueprint") >= 0:
-			badge_text = "🔒缺图纸"
+		match String(first_unmet.get("key", "")):
+			"enhance":
+				badge_text = "🔒需Lv.%s" % String(first_unmet.get("required_text", "?"))
+			"mods":
+				badge_text = "🔒改造 %s/%s" % [String(first_unmet.get("current_text", "?")), String(first_unmet.get("required_text", "?"))]
+			"power":
+				badge_text = "🔒战力不足"
+			"evo_blueprint":
+				badge_text = "🔒缺图纸"
+			"skill_tree_era":
+				badge_text = "🔒需技能树"
+			"enemy_mod":
+				badge_text = "🔒缺敌源改造"
+			"faction_level":
+				badge_text = "🔒势力等级"
 		badge_lbl.text = badge_text
 		badge_lbl.add_theme_color_override("font_color", THEME_RED)
 	badge_lbl.add_theme_font_size_override("font_size", 10)
@@ -834,21 +842,21 @@ func _update_current_card_info() -> void:
 		meta_label.text = dn
 
 ## 获取当前卡牌的战力评分
-## v6.2 修复 M15：统一用 CardResource.get_current_power（与 reinforcement_panel 一致），
-## 原 _estimate_power_score 与 get_current_power 口径不同，导致同一张卡在不同面板显示不同战力
+## v9.x 修复：统一到判定口径 EvolutionHelpers.estimate_power_score（与 can_evolve_blueprint/
+## conditions 快照/growth_panel 同源）。v6.2 曾统一到 get_current_power（简化公式），但进化判定
+## 从来不用它——两套公式量级差数倍（初始坦克强化5+2改：显示 84 vs 判定 697），面板显示
+## "已达标/未达标"与按钮启停互相矛盾，玩家被误导。目标侧同用战斗标尺（get_target_white_combat）。
 func _get_current_power_score() -> int:
 	if not selected_card:
 		return 0
-	return selected_card.get_current_power()
+	var src_id: String = selected_card.instance_id if not selected_card.instance_id.is_empty() else selected_card.card_id
+	return int(EvolutionHelpers.estimate_power_score(src_id, BlueprintManager))
 
-## v6.2: 获取目标卡的战力评分（统一用 get_current_power，确保对比基准一致）
+## v9.x: 目标侧显示目标白板战斗战力（与判定门槛 get_target_power_bar 同源同标尺）
 func _get_target_power_score(target_id: String) -> int:
 	if target_id.is_empty():
 		return 0
-	var target_card = DefaultCards.get_card_by_id(target_id)
-	if target_card == null:
-		return 0
-	return target_card.get_current_power()
+	return EvolutionHelpers.get_target_white_combat(target_id)
 
 func _update_detail_panel() -> void:
 	if detail_content == null:
@@ -873,15 +881,10 @@ func _update_detail_panel() -> void:
 
 	# 条件检查（提升到函数作用域，后续多处使用）
 	# v7.0: 传 instance_id（实例化养成身份）
+	# v9.x: can_evolve_blueprint 返回 conditions 快照（含图纸持有态），图纸本地计算已删
 	var src_id_ck: String = selected_card.instance_id if (selected_card and not selected_card.instance_id.is_empty()) else (selected_card.card_id if selected_card else "")
 	var check_result = BlueprintManager.can_evolve_blueprint(src_id_ck, selected_target_id)
 	var can_ok_res: bool = bool(check_result.get("ok", false))
-	# 进化图纸持有状态（提到函数顶层，供 ReqDetails + EvolveButton 共用）
-	var evo_bp_id: String = BlueprintDefinitions.get_evolution_blueprint_id(selected_card.card_id, selected_target_id)
-	var has_bp: bool = false
-	var _iib_bp: Node = Engine.get_main_loop().get_root().get_node_or_null("IntelItemBag")
-	if _iib_bp != null and not evo_bp_id.is_empty():
-		has_bp = _iib_bp.has_item(evo_bp_id)
 
 	# 更新基础信息（对齐网页设计稿：阶段+目标名+card_id 居中显示）
 	if info_details:
@@ -891,27 +894,9 @@ func _update_detail_panel() -> void:
 			target_pw, era_name if not era_name.is_empty() else str(target_card.era),
 			CardResource.get_combat_kind_name(target_card.combat_kind),
 			target_card.card_id]
-	# 进化条件（行式列表，对齐网页 evo-cond-row）
-	if req_details:
-		var req_lines: Array = []
-		# 进化图纸（has_bp 在函数顶层已计算）
-		req_lines.append("%s 进化图纸" % ("✓" if has_bp else "✗"))
-		# 强化等级
-		var enh_req: int = int(check_result.get("enhance_requirement", 0))
-		if enh_req > 0:
-			var cur_enh: int = int(check_result.get("current_enhance", selected_card.enhance_level))
-			req_lines.append("%s 强化 Lv.%d / %d" % [("✓" if cur_enh >= enh_req else "✗"), cur_enh, enh_req])
-		# 改造数量
-		var mod_req: int = int(check_result.get("mod_requirement", 0))
-		if mod_req > 0:
-			var cur_mod: int = int(check_result.get("current_mod_count", selected_card.mods.size()))
-			req_lines.append("%s 改造 %d / %d" % [("✓" if cur_mod >= mod_req else "✗"), cur_mod, mod_req])
-		req_details.text = " · ".join(req_lines)
-		if can_ok_res:
-			req_details.add_theme_color_override("font_color", THEME_GREEN)
-		else:
-			# 失败时标橙，但仍显示各项进度
-			req_details.add_theme_color_override("font_color", Color(0.95, 0.6, 0.4))
+	# 进化条件（v9.x：conditions 快照逐行渲染，✓/✗ + 当前/需求，达成绿/未达成橙）
+	if req_list:
+		_render_condition_rows(check_result)
 
 	# 更新属性对比（当前 → 进化后 + 增量），并修复射程/移速恒为 0 的问题
 	var new_stats = selected_card.calculate_evolved_stats(selected_target_id)
@@ -946,28 +931,90 @@ func _update_detail_panel() -> void:
 		resource_details.text = res_text
 		resource_details.add_theme_color_override("font_color", THEME_GREEN if can_ok_res else Color(0.95, 0.6, 0.4))
 
-	# 进化按钮：只看图纸持有 + can_evolve_blueprint 结果（不再校验纳米）
-	# v7.x：has_bp 在 ReqDetails 段已定义；can_ok_res 已定义
+	# 进化按钮（v9.x：按首个未满足条件显示缺口；结构性错误走兜底文案）
 	if evolve_button:
-		if not has_bp:
-			evolve_button.text = "缺少图纸 ✗"
-			evolve_button.disabled = true
-		elif not can_ok_res:
-			# 显示具体未满足项（从 reason 推断）
-			var reason := String(check_result.get("reason", ""))
-			var btn_text := "进化条件未满足"
-			if reason.find("enhance") >= 0:
-				btn_text = "需更高强化 ✗"
-			elif reason.find("mod") >= 0:
-				btn_text = "需更多改造 ✗"
-			evolve_button.text = btn_text
+		if not can_ok_res:
+			var btn_unmet: Dictionary = _first_unmet_condition(check_result)
+			if btn_unmet.is_empty():
+				evolve_button.text = "进化条件未满足"
+			elif String(btn_unmet.get("current_text", "")).is_valid_int():
+				evolve_button.text = "需%s %s/%s ✗" % [
+					_condition_label_zh(String(btn_unmet.get("key", ""))),
+					String(btn_unmet.get("current_text", "?")),
+					String(btn_unmet.get("required_text", "?"))]
+			else:
+				evolve_button.text = "需%s ✗" % _condition_label_zh(String(btn_unmet.get("key", "")))
+			# v9.x：按钮 tooltip 携带首个缺口的具体指引（悬停即见，不必扫条件列表）
+			var btn_detail: String = String(btn_unmet.get("detail", ""))
+			evolve_button.tooltip_text = btn_detail if not btn_detail.is_empty() else "见上方条件列表"
 			evolve_button.disabled = true
 		else:
 			evolve_button.text = "执行进化 ▶"
+			evolve_button.tooltip_text = ""
 			evolve_button.disabled = false
 
 		if not evolve_button.pressed.is_connected(_evolve_callable):
 			evolve_button.pressed.connect(_evolve_callable)
+
+## v9.x: 进化条件逐行渲染（conditions 快照 → ReqList 逐行 Label）
+## 每行 "✓/✗ 条件名 当前 / 需求"：达成绿、未达成橙；布尔型条件（持有态）只显示 ✓/✗ + 名
+func _render_condition_rows(check_result: Dictionary) -> void:
+	for child in req_list.get_children():
+		child.queue_free()
+	var conditions: Array = check_result.get("conditions", [])
+	if conditions.is_empty():
+		# 结构性错误（目标无效/不在进化链等）：显示拒绝原因单行
+		var err := Label.new()
+		err.text = "⚠ %s" % String(check_result.get("reason_zh", "无法评估进化条件"))
+		err.add_theme_font_size_override("font_size", 12)
+		err.add_theme_color_override("font_color", THEME_RED)
+		err.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		req_list.add_child(err)
+		return
+	for c in conditions:
+		if not (c is Dictionary):
+			continue
+		var met: bool = bool(c.get("met", false))
+		var cur_t: String = String(c.get("current_text", ""))
+		var req_t: String = String(c.get("required_text", ""))
+		var row := Label.new()
+		if met and cur_t == req_t:
+			row.text = "✓ %s" % _condition_label_zh(String(c.get("key", "")))
+		else:
+			row.text = "%s %s　%s / %s" % [
+				("✓" if met else "✗"), _condition_label_zh(String(c.get("key", ""))), cur_t, req_t]
+		row.add_theme_font_size_override("font_size", 12)
+		row.add_theme_color_override("font_color", THEME_GREEN if met else Color(0.95, 0.6, 0.4))
+		req_list.add_child(row)
+		## v9.x：未达成条件附具体指引子行（哪里掉落/去哪个面板/点技能树哪个节点）。
+		## 只给"✗ 未解锁"不指路，玩家无从下手（与技能树前置点名同一修复思路）。
+		var detail_t: String = String(c.get("detail", ""))
+		if not met and not detail_t.is_empty():
+			var hint := Label.new()
+			hint.text = "　└ %s" % detail_t
+			hint.add_theme_font_size_override("font_size", 11)
+			hint.add_theme_color_override("font_color", Color(0.62, 0.62, 0.70))
+			hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			req_list.add_child(hint)
+
+## v9.x: conditions key → 中文短名（badge/按钮/条件行共用）
+func _condition_label_zh(key: String) -> String:
+	match key:
+		"power": return "战力"
+		"evo_blueprint": return "进化图纸"
+		"skill_tree_era": return "技能树·进化能力"
+		"enhance": return "强化等级"
+		"mods": return "改造模块"
+		"enemy_mod": return "敌源改造"
+		"faction_level": return "势力等级"
+		_: return key
+
+## v9.x: 取首个未满足条件（无则返回空字典）
+func _first_unmet_condition(check_result: Dictionary) -> Dictionary:
+	for c in check_result.get("conditions", []):
+		if c is Dictionary and not bool(c.get("met", false)):
+			return c
+	return {}
 
 func _clear_detail_panel() -> void:
 	if no_selection_label:
@@ -979,8 +1026,8 @@ func _clear_detail_panel() -> void:
 		target_name_label.visible = false
 	if info_details:
 		info_details.visible = false
-	if req_details:
-		req_details.visible = false
+	if req_list:
+		req_list.visible = false
 	if stat_hp:
 		stat_hp.visible = false
 	if resource_details:
@@ -993,8 +1040,8 @@ func _restore_detail_sub_panels() -> void:
 		target_name_label.visible = true
 	if info_details:
 		info_details.visible = true
-	if req_details:
-		req_details.visible = true
+	if req_list:
+		req_list.visible = true
 	if stat_hp:
 		stat_hp.visible = true
 	if resource_details:

@@ -799,6 +799,12 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 	info.add_theme_constant_override("separation", 1)
 	info.custom_minimum_size = Vector2(150, 0)  # 锁宽：中栏被挤窄时信息列不塌缩（防名字被裁空）
 
+	# v10 改造二分法：名字行 = 名字 + 机制/数值标签（机制改造改变战法，橙色高亮）
+	var name_row := HBoxContainer.new()
+	name_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	name_row.add_theme_constant_override("separation", 4)
+
 	var name_label := Label.new()
 	# 空名兜底：极少数改造数据缺 name 字段时用 mod_id，避免空白
 	var mod_name := String(mod_data.get("name", ""))
@@ -812,7 +818,19 @@ func _create_mod_item(mod_id: String, mod_data: Dictionary) -> Control:
 	# 不裁切：clip_text 在窄列会把名字裁到 0px 致不可见；单行不换行，超长向右溢出可见
 	name_label.clip_text = false
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	info.add_child(name_label)
+	name_row.add_child(name_label)
+
+	# v10 分类标签：机制=改变单位"怎么打"（可组合出新战法）；数值=交换比（更硬/更快）
+	var class_disp: Dictionary = ModificationRegistry.get_mod_class_display(mod_id)
+	var class_tag := Label.new()
+	class_tag.text = "[%s]" % String(class_disp.get("tag", "数值"))
+	class_tag.add_theme_font_size_override("font_size", 10)
+	class_tag.add_theme_color_override("font_color", Color.from_string(String(class_disp.get("color", "#8a94a6")), Color(0.54, 0.58, 0.65, 1)))
+	class_tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	class_tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	class_tag.tooltip_text = "机制改造：改变单位行为规则，可与其他机制组合形成新战法" if class_disp.get("class", "ratio") == "mechanic" else "数值改造：提升属性交换比（更硬/更快/更疼）"
+	name_row.add_child(class_tag)
+	info.add_child(name_row)
 
 	# 效果摘要（取第一条 effect）
 	var effect_summary := _format_effects_for_display(mod_data)

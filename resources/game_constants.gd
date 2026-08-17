@@ -110,14 +110,25 @@ enum CombatKind {
 # 由 AttackCalculator.compute_tag_counter_multiplier 在 bullet.gd 伤害结算时查询
 # （attacker.tags ∩ target.tags 命中即应用 effect），不侵入 get_attack_vs 的三维数值路径。
 # 新兵种（stalker/engineer/ecm/sniper）的差异化伤害加成全部走这套标签层。
+#
+# v10 解题式玩法: 克制升级为"质变"——规则可带 break_effect（打破型效果），
+# 数值乘区微降（+30%→+20% 档），质变补足（瓦解敌方优势机制而非单纯打更疼）。
+# break_effect 类型（由 ModuleEffectHandler.apply_break_effect 应用，bullet.gd 结算点调用）：
+#   {"type": "strip_fort_aura", "duration": 5.0}  — 堡垒阵地庇护光环失效（fort_shelter_aura 临时清零）
+#   {"type": "ground_aircraft", "duration": 3.0}  — 空中单位俯冲修正失效（dodge_chance 临时归零）
+#   {"type": "interrupt_cast"}                     — 打断施法（_is_casting 清除，技能进 CD）
+#   {"type": "accuracy_penalty", "value": 0.40}    — 攻击者对该目标命中率下降（巷战步兵打不中被装甲锁定）
+# break_effect 与 damage_bonus 可共存（先质变后数值）。
 const TAG_COUNTER_RULES: Array = [
-	# SNIPER 专杀高价值目标：boss/master/command 标签 +50% 伤害、必命中、无视隐身
+	# SNIPER 专杀高价值目标：boss/master/command 标签 +35% 伤害（v10: 50→35，质变补足）、
+	# 必命中、无视隐身、必暴击（break_effect: guaranteed_crit）
 	{
 		"attacker_tag": "sniper",
 		"target_tags": ["boss", "master", "command"],
 		"effect": "damage_bonus",
-		"value": 0.50,
-		"extra": ["never_miss", "ignore_stealth"]
+		"value": 0.35,
+		"extra": ["never_miss", "ignore_stealth"],
+		"break_effect": {"type": "guaranteed_crit"},
 	},
 	# STEALTH/STALKER 优先攻击指挥/后勤 +30% 伤害
 	{
@@ -132,19 +143,21 @@ const TAG_COUNTER_RULES: Array = [
 		"effect": "damage_bonus",
 		"value": 0.30
 	},
-	# FORT 对空特攻 +40% 伤害
+	# FORT 对空特攻：v10 质变——命中时空中单位俯冲修正失效 3s（dodge 归零，防空火力网锁定）
 	{
 		"attacker_tag": "fort",
 		"target_tags": ["aircraft"],
 		"effect": "damage_bonus",
-		"value": 0.40
+		"value": 0.25,
+		"break_effect": {"type": "ground_aircraft", "duration": 3.0},
 	},
-	# ARTILLERY 克堡垒/装甲 +20% 范围伤害
+	# ARTILLERY 克堡垒/装甲：v10 质变——命中堡垒时阵地庇护光环失效 5s（温压压制）
 	{
 		"attacker_tag": "artillery",
 		"target_tags": ["fort", "armored"],
 		"effect": "splash_bonus",
-		"value": 0.20
+		"value": 0.15,
+		"break_effect": {"type": "strip_fort_aura", "duration": 5.0},
 	},
 	# AIR 克后勤/远程 +30% 伤害
 	{
@@ -159,12 +172,21 @@ const TAG_COUNTER_RULES: Array = [
 		"target_tags": ["fort"],
 		"effect": "bypass_damage_reduction"
 	},
-	# ENGINEER 打断施法（格子战中=对 casting meta 目标额外+20% 伤害）
+	# ENGINEER 打断施法：v10 质变——对 casting 目标 +20% 伤害并强制打断（技能进 CD）
 	{
 		"attacker_tag": "engineer",
 		"target_condition": "is_casting",
 		"effect": "damage_bonus",
-		"value": 0.20
+		"value": 0.20,
+		"break_effect": {"type": "interrupt_cast"},
+	},
+	# v10 新增：巷战步兵 vs 装甲——装甲对巷战步兵命中率 -40%（打不中而非打不动；
+	# 步兵利用城市掩体，装甲炮塔转动不及。由 ARMOR 攻击 URBAN_INFANTRY 方向判定）
+	{
+		"attacker_tag": "armored",
+		"target_tags": ["urban_infantry"],
+		"effect": "accuracy_penalty",
+		"value": 0.40,
 	},
 ]
 

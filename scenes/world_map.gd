@@ -3,6 +3,9 @@ extends Control
 ## 按时代分组显示，当前关卡高亮
 
 var _map_built: bool = false  # 地图是否已构建（缓存）
+# v9 perf：隐藏期间的占领变化置脏，重新打开时补刷（见 _on_occupation_changed_refresh）
+var _occupation_dirty: bool = false
+var _build_ticket: int = 0  # 拆帧构建票据：并发重建时旧协程作废（见 _build_level_map 内 await 后校验）
 static var _cached_level_map_template: Control = null  # 跨场景复用模板，避免每次重建100按钮
 static var _cached_star_layers: Dictionary = {}  # 按视口尺寸缓存静态星空点位
 
@@ -35,6 +38,7 @@ const DropTablesPreview = preload("res://resources/drop_tables.gd")
 const FactionConquestBuffs = preload("res://data/faction_conquest_buffs.gd")  # v6.9: 占领势力加成描述
 const CompanyDefs = preload("res://data/company_definitions.gd")  # v6.14: 统一阵营色来源
 const PhaseMasterGarrison = preload("res://data/phase_master_garrison.gd")  # v7.x: Boss相位师驻守关判定
+const TacticalThemes = preload("res://data/level_tactical_themes.gd")  # v10: 关卡战术主题（敌情简报）
 const EnemyPhaseMasters = preload("res://data/enemy_phase_masters.gd")  # v7.x: 相位师详情查询
 const BattleEnvironments = preload("res://data/battle_environments.gd")  # 2026-08-16: 环境单一真源（与 phase_law_manager/battle_damage_system 同源）
 const EnemyLoadoutTiers = preload("res://data/enemy_loadout_tiers.gd")  # 2026-08-16: 难度显示单一真源（战斗链真实档位乘区）
@@ -189,6 +193,9 @@ func _build_level_map() -> void:
 	for c in scroll.get_children():
 		c.queue_free()
 
+	_build_ticket += 1
+	var ticket := _build_ticket
+
 	# 跨实例缓存命中：直接复用模板副本，跳过按钮重建与样式计算
 	if _cached_level_map_template != null and is_instance_valid(_cached_level_map_template):
 		var reused := _cached_level_map_template.duplicate(Node.DUPLICATE_USE_INSTANTIATION) as Control
@@ -302,6 +309,11 @@ func _build_level_map() -> void:
 		content_vbox.add_child(era_panel)
 		# 拆帧构建：降低一次性创建100按钮造成的主线程尖峰
 		await get_tree().process_frame
+		# await 期间可能被并发重建打断（refresh_levels/refresh_for_open 再次进入本函数，
+		# 清空循环会 queue_free 掉本协程的 content_vbox）——旧协程凭票作废退出，
+		# 否则恢复后会向已释放实例 add_child（"previously freed instance" 报错）
+		if ticket != _build_ticket or not is_instance_valid(content_vbox):
+			return
 
 	# 标记地图已构建
 	_cached_level_map_template = content_vbox.duplicate(Node.DUPLICATE_USE_INSTANTIATION) as Control
@@ -338,7 +350,12 @@ func refresh_levels() -> void:
 	_build_level_map()
 
 ## v6.10: 占领变化时刷新地图（让关卡按钮的占领色标实时更新）
+## v9 perf：地图隐藏时置脏跳过——world_map 随 WorldMapPanel 常驻主场景但默认不可见，
+## 每次过关都触发 100 按钮全量重建是纯浪费；重新打开时 refresh_for_open 补刷
 func _on_occupation_changed_refresh(_level: int, _old_f: String, _new_f: String) -> void:
+	if not is_visible_in_tree():
+		_occupation_dirty = true
+		return
 	refresh_levels()
 
 func _make_level_button(level_index: int, _era_idx: int, era_info: Dictionary, current_level: int) -> Button:
@@ -602,6 +619,13 @@ func _show_level_info_popup(level_index: int) -> void:
 	var garrison_master_name: String = String(info.get("garrison_master_name", ""))
 	if not garrison_master_name.is_empty():
 		body.add_child(_make_detail_row("驻守相位师", garrison_master_name, Color(1.0, 0.55, 0.3, 1.0)))
+
+	# v10: 敌情简报——关卡战术主题（题面）。威胁=敌方在做什么，建议=可用解法提示
+	var theme_info: Dictionary = TacticalThemes.get_theme_display(level_index)
+	var theme_color: Color = Color.from_string(String(theme_info.get("color", "#ffffff")), Color(1, 1, 1, 1))
+	body.add_child(_make_detail_row("敌情简报", "⚠ %s" % String(theme_info.get("name", "")), theme_color))
+	body.add_child(_make_detail_desc("· %s" % String(theme_info.get("threat", "")), theme_color))
+	body.add_child(_make_detail_desc("· %s" % String(theme_info.get("advice", "")), Color(0.7, 0.85, 0.7, 0.95)))
 
 	# v8 批次3: 关卡特殊规则提示（限定兵种/能量惩罚/特殊胜利/部署上限）
 	var _rules: Dictionary = _li_instance.get_special_rules(level_index)
@@ -1084,6 +1108,10 @@ func _pick_level_enemy_ids(level_index: int, era_enemy_ids: Array) -> Array:
 
 ## 仅在地图打开时执行的轻量刷新（避免每次重建100个按钮）
 func refresh_for_open() -> void:
+	# v9 perf：隐藏期间占领变化过 → 补一次全量重建（占领色标已变）
+	if _occupation_dirty:
+		_occupation_dirty = false
+		refresh_levels()
 	_on_visibility_changed()
 	if not _map_built:
 		_build_level_map()

@@ -37,7 +37,7 @@ const INTEL_BRANCHES: Dictionary = {
 		"branch_id": "IB_ARMOR_BREAKER",
 		"name": "破甲猎手路线",
 		"description": "研究重装甲弱点后开发的反坦克专家进化——从反坦克兵到终极破甲手",
-		"source_card_ids": ["ww2_panzerschrek", "cold_rpg", "mod_javelin"],
+		"source_card_ids": ["ww2_inf_panzerschrek", "cold_rpg", "mod_javelin"],
 		"target_card_id": "fut_cyborg",
 		"intel_requirements": {
 			"heavy_armor": {"threshold": 0.80},
@@ -56,8 +56,8 @@ const INTEL_BRANCHES: Dictionary = {
 		"branch_id": "IB_ADAPTIVE_ARMOR",
 		"name": "自适应装甲路线",
 		"description": "融合纳米技术与热能防护的主战坦克进化——从坦克到纳米机甲",
-		"source_card_ids": ["ww2_pz3", "cold_t55", "mod_m1a1"],
-		"target_card_id": "fut_heavy_mech",
+		"source_card_ids": ["ww2_pz3", "cold_arm_t55", "mod_arm_m1a1"],
+		"target_card_id": "fut_arm_heavy_mech",
 		"intel_requirements": {
 			"boss_nano": {"threshold": 0.80},
 			"flame": {"threshold": 0.60},
@@ -76,7 +76,7 @@ const INTEL_BRANCHES: Dictionary = {
 		"branch_id": "IB_CROSS_ARTILLERY_AIR",
 		"name": "空中炮艇路线",
 		"description": "将火炮装载到飞行平台的跨类型疯狂进化——支援线到空中线",
-		"source_card_ids": ["mod_m270", "fut_howitzer"],
+		"source_card_ids": ["mod_arty_m270", "fut_howitzer"],
 		"target_card_id": "fut_space_fighter",
 		"intel_requirements": {
 			"artillery": {"threshold": 1.00},

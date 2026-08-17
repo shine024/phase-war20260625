@@ -16,7 +16,7 @@ const BRIDGE_DIR := "res://.godot/agent_tools/bridge"
 const REQUEST_PATH := BRIDGE_DIR + "/request.json"
 const RESPONSE_PATH := BRIDGE_DIR + "/response.json"
 const LOGS_PATH := BRIDGE_DIR + "/logs.json"
-const POLL_INTERVAL_SEC := 0.05  # 20 Hz — cheap enough, responsive enough
+const POLL_INTERVAL_SEC := 0.1  # 10 Hz — v9 perf: 20Hz→10Hz（无请求时是纯 stat 系统调用开销，Windows+杀毒下不便宜；工具响应延迟仍 ≤0.1s）
 const LOG_BUFFER_MAX := 500
 
 var _timer: Timer
@@ -28,6 +28,10 @@ func _ready() -> void:
 	if Engine.is_editor_hint():
 		# Tool mode — don't do anything inside the editor. The bridge only
 		# makes sense in the running game.
+		return
+	if not OS.is_debug_build():
+		# v9 perf: release 导出不带开发桥——autoload 会随导出模板进正式运行，
+		# 20Hz 文件轮询 + 每条日志落盘是纯开发期开销。保持未初始化状态（零开销空节点）。
 		return
 	_initialized = true
 	_ensure_bridge_dir()

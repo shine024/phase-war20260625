@@ -7,7 +7,7 @@ class_name PowerTiers
 ##   星级、enhance_level），没有统一概念。本表作为共用基础，让改造掉落/安装门槛/
 ##   关卡掉落共享同一套档位语义。
 ## - 档位与现有 rank（normal/elite/boss）兼容：rank 直接映射到档位，避免破坏旧逻辑。
-## - 档位与连续战力分值兼容：estimate_power_score_meta_only 的分值经阈值表映射到档位。
+## - 档位与连续战力分值兼容：战斗公式战力分（evolution_helpers.estimate_power_score）经阈值表映射到档位（v9.x 重标，见 POWER_THRESHOLDS 注释）。
 ##
 ## 档位语义：
 ##   GRUNT     杂兵    —— 普通波次小怪，掉 common 改造，无安装门槛
@@ -50,14 +50,24 @@ const MOD_DROP_TIER: Dictionary = {
 	Tier.OVERLORD: "legendary",
 }
 
-## 连续战力分值 → 档位 阈值（上界，与 evolution_helpers.estimate_power_score_meta_only 量级对齐）
-## 分值公式参考：(80 + enhance_level×28 + mod_count×22) × rarity_mul × (1 + inherit_bonus)
-## v7.x 校准(H4): 原阈值 [150,300,600,1000] 过严——满强化(enhance10)+4mod 的普通卡≈464，
-## 稀有卡≈502，仍够不到 ELITE(600)，导致 rare/epic/legendary 改造几乎装不上，
-## 与"不同战力装不同改造"（鼓励养成而非封死）的设计意图相悖。
-## 新阈值让常规养成曲线能逐级解锁：满强化普通卡够 VETERAN、稀有卡满强化够 ELITE、
-## 稀有+继承/多mod 的精养卡够 CHAMPION/OVERLORD。
-const POWER_THRESHOLDS: Array = [150, 260, 420, 720]
+## 连续战力分值 → 档位 阈值（上界）
+## v9.x 重设：标尺统一为战斗公式 EvolutionHelpers.estimate_power_score（combat_power_from_unit_stats）。
+## 全部 5 个调用方（install_modification 门槛 + modification_panel 显示×4）传的本就是战斗公式值，
+## 原阈值 [150,260,420,720] 却是按 meta_only 简化公式校准的——两套量级差 2-3 倍，判定长期错位。
+##
+## 实测分布（tests/power_calibration_probe.gd，白板/强化5+2改/强化10+5改）：
+##   战斗公式下投入养成仅抬升 ~10% 战力，时代+兵种决定主体——阈值语义从"投入深度"
+##   改为"时代台阶"：步兵与装甲同类同时代差 ~2.6 倍，各档位含义如下：
+##   VETERAN 250+ : 一战/二战步兵（253/365）起步即达
+##   ELITE   600+ : 早期装甲（WW1 662/WW2 715）与现代步兵（786）
+##   CHAMPION 900+: 冷战装甲（917）、现代侦察（906）、未来步兵（1095）
+##   OVERLORD 1300+: 现代坦克（白板 1296 需轻度投入跨线 → 强化5 1418）与未来全系（1869+）
+## 与掉落节奏自洽：rare 改造从 ELITE 敌人掉落时，玩家手上已有 WW2+ 装甲可装。
+##
+## 历史校准记录：
+##   v7.x H4: [150,300,600,1000]→[150,260,420,720]（当时按 meta_only 公式校准，见旧注释）
+##   v9.x: →[250,600,900,1300]（战斗公式重标，上表）
+const POWER_THRESHOLDS: Array = [250, 600, 900, 1300]
 
 
 ## 按现有 rank（normal/elite/boss）映射到档位。未知值回退 GRUNT。

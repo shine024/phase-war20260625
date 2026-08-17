@@ -174,6 +174,24 @@ func _deferred_non_critical_init() -> void:
 		var _auto_lvl: int = int(Engine.get_meta("world_map_auto_deploy_level"))
 		Engine.remove_meta("world_map_auto_deploy_level")
 		call_deferred("_auto_start_afk_from_world_map", _auto_lvl)
+	# v9.x 性能：SubViewportContainer(stretch) 入树时会把子视口强制 UPDATE_ALWAYS，
+	# tscn/战斗结束还原的 UPDATE_ONCE 全被覆盖，非战斗期战场每帧空渲染。
+	# 入树后补设一次即生效（容器不会再次改写）。挂机运行中除外（缩略图需要持续渲染）。
+	# v9.x 修正：不立即设——主场景首帧布局/战场内容可能尚未收敛，UPDATE_ONCE 会把未收敛的
+	# 早期帧定格（表现为战场区域迟迟不显示）。等短暂布局稳定期后再冻结。
+	if not _is_in_battle() and (_afk_manager == null or not _afk_manager.is_running):
+		_settle_freeze_battle_viewport()
+
+func _settle_freeze_battle_viewport() -> void:
+	await get_tree().create_timer(0.3).timeout
+	# 等待期间进了战斗/开了挂机则放弃（战斗路径自会设 ALWAYS）
+	if _is_in_battle() or (_afk_manager != null and _afk_manager.is_running):
+		return
+	if not is_inside_tree():
+		return
+	var boot_vp: Node = get_node_or_null("BattleContainer/SubViewportContainer/SubViewport")
+	if boot_vp is SubViewport:
+		boot_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
 
 func _preload_common_panels() -> void:
 	# v8.x 性能：后台线程预热高频面板的 .tscn 资源（不实例化、不占主线程）。

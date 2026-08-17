@@ -49,6 +49,12 @@ text = "敌方刷新"
 layout_mode = 2
 text = "下次波次: --"
 
+[node name="PreviewLabel" type="Label" parent="Margin/VBox"]
+layout_mode = 2
+text = ""
+add_theme_font_size_override/font_size = 12
+add_theme_color_override/font_color = Color(1, 0.72, 0.35, 1)
+
 [node name="ProgressBar" type="ProgressBar" parent="Margin/VBox"]
 custom_minimum_size = Vector2(0, 12)
 layout_mode = 2

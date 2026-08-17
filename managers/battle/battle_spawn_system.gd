@@ -10,6 +10,7 @@ const EnemyArchetypes = preload("res://data/enemy_archetypes.gd")
 const UnitStatsTable = preload("res://resources/unit_stats_table.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 const LevelSpawnSequences = preload("res://data/level_spawn_sequences.gd")
+const TacticalThemes = preload("res://data/level_tactical_themes.gd")  # v10: 波次预警 tag 显示
 const LevelInformation = preload("res://data/level_information.gd")
 const SwarmEnemyControllerScript = preload("res://scenes/units/swarm_enemy_controller.gd")
 const _CardGridSlotsPerSide: int = BattleSlotGrid.SLOT_COUNT
@@ -184,6 +185,54 @@ func _pick_archetype_with_bias(pool: Array, bias_tags: Array) -> String:
 		return String(biased[randi() % biased.size()])
 	# 回退全池随机（保留扰动）
 	return String(pool[randi() % pool.size()])
+
+
+## v10 解题式玩法 Phase 2：下一波敌方构成预览（波次预警数据源）。
+## 读波次序列 spec 的 bias_tags + composition，输出"类型构成"（不承诺具体卡——
+## 具体 archetype 每局随机，预警只保证类型倾向，与 _pick_archetype_with_bias 的
+## 70% 偏好抽签语义一致）。
+## 返回：
+##   {
+##     "valid": bool,           # 是否有可预览的下一波（序列耗尽/无数据为 false）
+##     "wave_index": int,       # 下一波序号（1-based）
+##     "to_spawn": int,         # 预计本波单位数（与 spawn 侧同口径）
+##     "bias_tags": Array,      # 本波偏好 tag（空=混合）
+##     "bias_display": String,  # tag 中文显示（"装甲·坦克"），空数组→"混合"
+##     "is_boss_wave": bool,    # 是否末波（boss 概率高）
+##     "elite_ratio": float,    # 本波精英比例（0~1）
+##     "theme_id": String,      # 本关战术主题
+##   }
+func get_next_wave_preview() -> Dictionary:
+	var empty_result: Dictionary = {"valid": false}
+	var next_wave: int = enemy_wave_index + 1
+	if _enemy_wave_total > 0 and next_wave > _enemy_wave_total:
+		return empty_result
+	var gm: Node = _get_cached_autoload("GameManager")
+	var level: int = int(gm.current_level) if gm != null and "current_level" in gm else 0
+	if level <= 0:
+		return empty_result
+	var spec: Dictionary = LevelSpawnSequences.get_wave_spec(level, next_wave)
+	if spec.is_empty():
+		return empty_result
+	# 数量口径与 spawn_card_grid_enemy_wave 一致
+	var to_spawn: int = 1 + (next_wave % 2)
+	if gm and gm.has_method("get_enemy_spawn_count_for_wave_card_grid"):
+		to_spawn = gm.get_enemy_spawn_count_for_wave_card_grid(level, next_wave)
+	elif gm and gm.has_method("get_enemy_spawn_count_for_wave"):
+		to_spawn = gm.get_enemy_spawn_count_for_wave(level, next_wave)
+	var bias_tags: Array = spec.get("archetype_bias_tags", [])
+	var comp: Dictionary = spec.get("composition", {})
+	var is_boss_wave: bool = (_enemy_wave_total > 0 and next_wave == _enemy_wave_total)
+	return {
+		"valid": true,
+		"wave_index": next_wave,
+		"to_spawn": to_spawn,
+		"bias_tags": bias_tags,
+		"bias_display": TacticalThemes.tags_to_display(bias_tags),
+		"is_boss_wave": is_boss_wave,
+		"elite_ratio": float(comp.get("elite", 0.0)),
+		"theme_id": String(spec.get("theme_id", "")),
+	}
 
 
 ## 按单位射程选敌方槽位：

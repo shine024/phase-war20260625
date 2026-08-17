@@ -25,6 +25,8 @@ signal closed
 # 数据
 var selected_faction_id: String = ""
 var faction_items: Array = []
+# v9 perf：隐藏期间的势力信号置脏，重新显示时补刷
+var _detail_dirty: bool = false
 
 func _ready() -> void:
 	# v7.x 面板统一：MEDIUM 档 + 紫色签名框架 + PanelChrome 标题栏（右上 ✕ 关闭）
@@ -33,6 +35,8 @@ func _ready() -> void:
 	add_theme_stylebox_override("panel", PanelStyles.make_panel_frame(accent))
 	var chrome = PanelChrome.attach_to($VBoxContainer, "势力系统", accent, "FACTION")
 	chrome.closed.connect(_on_close)
+	# v9 perf：重新显示时补刷隐藏期间积累的势力变化
+	visibility_changed.connect(_on_visibility_refresh)
 	# 连接信号
 	ManagerLazyLoader.ensure_loaded("faction")
 	var faction_mgr = get_node_or_null("/root/FactionSystemManager")
@@ -433,21 +437,32 @@ func _on_activate_faction_pressed(faction_id: String) -> void:
 
 func _on_faction_reputation_changed(faction_id: String, delta: int, new_value: int) -> void:
 	"""势力声望变化回调"""
+	# v9 perf：面板隐藏时置脏跳过（每过关最多 7 势力反应触发详情区重建）；
+	# 重新显示时 _on_visibility_refresh 补刷
+	if not is_visible_in_tree():
+		_detail_dirty = true
+		return
 	if faction_id == selected_faction_id:
 		_update_faction_detail()
-	
+
 	# 更新列表中的等级显示
 	_update_faction_list_display(faction_id)
 
 func _on_faction_level_up(faction_id: String, new_level: int) -> void:
 	"""势力升级回调"""
+	if not is_visible_in_tree():
+		_detail_dirty = true
+		return
 	if faction_id == selected_faction_id:
 		_update_faction_detail()
-	
+
 	_update_faction_list_display(faction_id)
 
 func _on_faction_store_updated(faction_id: String) -> void:
 	"""势力商店更新回调"""
+	if not is_visible_in_tree():
+		_detail_dirty = true
+		return
 	if faction_id == selected_faction_id:
 		_update_faction_detail()
 
@@ -456,13 +471,23 @@ func _update_faction_list_display(faction_id: String) -> void:
 	var faction_mgr = get_node_or_null("/root/FactionSystemManager")
 	if not faction_mgr:
 		return
-	
+
 	for item in faction_items:
 		if item["id"] == faction_id:
 			var faction_info = faction_mgr.get_faction_info(faction_id)
 			var faction_name = faction_info.get("name", "")
 			var level = faction_info.get("level", 1)
 			item["button"].text = "%s (Lv.%d)" % [faction_name, level]
+
+## v9 perf：重新显示时补刷隐藏期间积累的势力变化（详情区 + 全部列表行）
+func _on_visibility_refresh() -> void:
+	if not is_visible_in_tree() or not _detail_dirty:
+		return
+	_detail_dirty = false
+	if not selected_faction_id.is_empty():
+		_update_faction_detail()
+	for item in faction_items:
+		_update_faction_list_display(String(item.get("id", "")))
 
 func _on_close() -> void:
 	closed.emit()

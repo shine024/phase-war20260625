@@ -1,9 +1,11 @@
 extends PanelContainer
 ## ═══════════════════════════════════════════════════════════
-##  相位师技能树面板（v8.x 新增）
-##  4 分支：指挥 / 智能化 / 火力 / 概念武器
+##  相位师技能树面板（v8.x 新增，v9 重设计）
+##  3 分支：指挥 / 智能化 / 火力
 ##  每分支按 tier 纵向排列节点，点击解锁（消耗技能点）
 ##  技能点来源：相位场 XP 升级
+##  v9 奇点节点（原概念武器内容，capstone: true）：沉入三系深层，
+##  紫色 ◈ 徽标 + 加粗边框统一识别；「奇点解算」为三系共通门关
 ## ═══════════════════════════════════════════════════════════
 
 const SkillTree = preload("res://data/phase_master_skill_tree.gd")
@@ -19,6 +21,16 @@ var _points_label: Label = null
 var _branch_containers: Dictionary = {}  # branch -> ScrollContainer
 var _summary_container: ScrollContainer = null  # v8.x 已解锁总览 tab
 var _dirty: bool = false
+# ── v9 perf: 刷新链路四项优化（打开慢/解锁卡顿根因） ──
+# 1) 去抖：解锁一个节点会触发 node_unlocked + points_changed 两信号 + 按钮回调，
+#    原实现同帧 3 次全量重建（71 行 × 3 销毁重造）；合并为帧末 1 次
+var _refresh_queued: bool = false
+# 2) 状态签名：解锁集合 + 可用点数没变则跳过重建（打开面板零成本，首开不再双重构建）
+var _rendered_sig: String = ""
+# 3) 懒填充：只构建访问过的 tab，切 tab 时按需构建（首开 71+总览行 → 仅当前分支 24 行）
+var _tab_branches: Array = []              # tab 索引 -> branch
+var _populated_branches: Dictionary = {}   # branch -> true（已构建过的分支 tab）
+var _summary_populated: bool = false
 
 func _ready() -> void:
 	# v7.x 面板统一：MEDIUM 档 + 金色签名框架
@@ -34,6 +46,9 @@ func _ready() -> void:
 			PhaseMasterSkillManager.node_unlocked.connect(_on_node_unlocked)
 		if not PhaseMasterSkillManager.points_changed.is_connected(_on_points_changed):
 			PhaseMasterSkillManager.points_changed.connect(_on_points_changed)
+	# v9: 接通 visibility_changed（原 _on_visibility_changed 定义了但从未连接，属死代码；
+	# 接通后隐藏期间积累的 _dirty 在重新显示时补刷，有状态签名兜底，重复刷新零成本）
+	visibility_changed.connect(_on_visibility_changed)
 	_refresh()
 
 ## 构建完整 UI（代码驱动，避免 tscn 节点路径问题）
@@ -47,7 +62,7 @@ func _build_ui() -> void:
 	chrome.closed.connect(_on_close_pressed)
 	_points_label = chrome.add_status_line()
 
-	# Tab 容器：4 分支
+	# Tab 容器：3 分支（v9：概念武器分支解散，奇点节点沉入三系深层）
 	_tab_container = TabContainer.new()
 	_tab_container.name = "BranchTabs"
 	_tab_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -62,9 +77,10 @@ func _build_ui() -> void:
 		_tab_container.add_child(scroll)
 		scroll.name = tab_label  # Tab 标题
 		_branch_containers[branch] = scroll
-		_populate_branch(branch, scroll)
+		_tab_branches.append(branch)
+		# v9 perf: 此处不填充内容——懒填充，切到该 tab 时才构建（见 _on_tab_changed）
 
-	# v8.x: 第 5 个 tab ——「已解锁总览」
+	# v8.x: 第 5 个 tab ——「已解锁总览」（同样懒填充）
 	var summary_scroll := ScrollContainer.new()
 	summary_scroll.name = "Scroll_Summary"
 	summary_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -72,12 +88,24 @@ func _build_ui() -> void:
 	_tab_container.add_child(summary_scroll)
 	summary_scroll.name = "📋 总览"
 	_summary_container = summary_scroll
-	_populate_summary()
+
+	# v9 perf: tab 切换监听（懒填充未访问过的 tab）
+	_tab_container.tab_changed.connect(_on_tab_changed)
+	# v9 perf: 首开只构建当前 tab（第一个分支），其余切到时再建
+	if not _tab_branches.is_empty():
+		var first_branch: String = String(_tab_branches[0])
+		_populate_branch(first_branch, _branch_containers[first_branch])
+		_populated_branches[first_branch] = true
+	# v9 perf: 记录初始渲染签名——growth_panel 打开时的 _refresh() 会被签名比对拦截，
+	# 避免首开 _build_ui 全量构建 + _refresh 再全量重建的双倍开销
+	_rendered_sig = _current_state_signature()
 
 ## 填充单个分支的节点
 func _populate_branch(branch: String, scroll: ScrollContainer) -> void:
-	# 清空旧内容
+	# 清空旧内容（v9 perf: 先 remove_child 摘除再 queue_free——queue_free 实际释放延迟到帧末，
+	# 若直接排队，同帧多次重建时容器里会堆叠新旧多代节点，VBox 布局成本超线性膨胀）
 	for child in scroll.get_children():
+		scroll.remove_child(child)
 		child.queue_free()
 
 	var branch_color: Color = SkillTree.get_branch_color(branch)
@@ -116,6 +144,7 @@ func _populate_summary() -> void:
 		return
 	# 清空旧内容
 	for child in _summary_container.get_children():
+		_summary_container.remove_child(child)  # v9 perf: 先摘除再释放（同 _populate_branch）
 		child.queue_free()
 	var vb := VBoxContainer.new()
 	vb.name = "SummaryVBox"
@@ -185,6 +214,10 @@ func _make_node_row(skill: Dictionary, branch_color: Color) -> Control:
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(880, 0)
 
+	# v9 奇点节点（原概念武器内容）：紫色 ◈ 徽标，覆盖分支配色统一识别
+	var is_capstone: bool = bool(skill.get("capstone", false))
+	var capstone_color: Color = SkillTree.CAPSTONE_COLOR
+
 	var sb := StyleBoxFlat.new()
 	var node_id: String = skill.get("id", "")
 	var is_unlocked: bool = PhaseMasterSkillManager and PhaseMasterSkillManager.is_unlocked(node_id)
@@ -192,7 +225,7 @@ func _make_node_row(skill: Dictionary, branch_color: Color) -> Control:
 
 	if is_unlocked:
 		sb.bg_color = Color(DT.COLOR_GREEN_UP.r, DT.COLOR_GREEN_UP.g, DT.COLOR_GREEN_UP.b, 0.12)
-		sb.border_color = branch_color
+		sb.border_color = capstone_color if is_capstone else branch_color
 	elif can_unlock:
 		sb.bg_color = Color(DT.COLOR_GOLD.r, DT.COLOR_GOLD.g, DT.COLOR_GOLD.b, 0.10)
 		sb.border_color = DT.COLOR_GOLD
@@ -202,6 +235,8 @@ func _make_node_row(skill: Dictionary, branch_color: Color) -> Control:
 	sb.set_border_width_all(2)
 	sb.set_corner_radius_all(6)
 	sb.set_content_margin_all(10)
+	if is_capstone:
+		sb.set_border_width_all(3)
 	panel.add_theme_stylebox_override("panel", sb)
 
 	var hb := HBoxContainer.new()
@@ -214,9 +249,12 @@ func _make_node_row(skill: Dictionary, branch_color: Color) -> Control:
 	hb.add_child(info_vb)
 
 	var name_label := Label.new()
-	name_label.text = skill.get("name", "")
-	name_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
-	name_label.add_theme_color_override("font_color", branch_color if is_unlocked else DT.COLOR_TEXT_BRIGHT)
+	name_label.text = ("◈ " if is_capstone else "") + skill.get("name", "")
+	name_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM + 1 if is_capstone else DT.FONT_SIZE_MEDIUM)
+	if is_capstone:
+		name_label.add_theme_color_override("font_color", capstone_color)
+	else:
+		name_label.add_theme_color_override("font_color", branch_color if is_unlocked else DT.COLOR_TEXT_BRIGHT)
 	info_vb.add_child(name_label)
 
 	var desc_label := Label.new()
@@ -246,7 +284,9 @@ func _make_node_row(skill: Dictionary, branch_color: Color) -> Control:
 				break
 		if not req_met:
 			var req_label := Label.new()
-			req_label.text = "⚠ 需先解锁前置节点"
+			# v9.x 修复：指明缺失的前置节点与所属分支。跨分支前置不可见是"技能加不了却不知
+			# 缺什么"的根源——典型：战术核武在火力页全亮，缺的是智能化分支的「奇点解算」门关。
+			req_label.text = "⚠ 前置未满足：%s" % _format_missing_requires(requires)
 			req_label.add_theme_color_override("font_color", Color(DT.COLOR_RED_DOWN.r, DT.COLOR_RED_DOWN.g, DT.COLOR_RED_DOWN.b, 0.9))
 			req_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
 			info_vb.add_child(req_label)
@@ -312,6 +352,19 @@ func _format_unlocks(unlocks: Array) -> String:
 				_: parts.append("%s[%s]" % [u_type, u_id])
 	return "、".join(parts)
 
+## 格式化缺失前置：节点名（所属分支）列表，如「奇点解算（智能化分支）」。
+## 跨分支前置（奇点门关等）在当前分支页看不到，必须点名否则玩家无从下手。
+func _format_missing_requires(requires: Array) -> String:
+	var missing_names: Array = []
+	for req in requires:
+		if PhaseMasterSkillManager and PhaseMasterSkillManager.is_unlocked(req):
+			continue
+		var req_node: Dictionary = SkillTree.get_skill(String(req))
+		var req_name: String = String(req_node.get("name", String(req)))
+		var req_branch: String = SkillTree.get_branch_display_name(SkillTree.get_branch_of(String(req)))
+		missing_names.append("%s（%s分支）" % [req_name, req_branch])
+	return "、".join(missing_names)
+
 func _make_spacer(expand: bool) -> Control:
 	var c := Control.new()
 	if expand:
@@ -361,11 +414,18 @@ func _on_unlock_pressed(node_id: String) -> void:
 		if reason == "not_enough_points":
 			_show_temp_msg("技能点不足")
 		elif reason == "requires_not_met":
-			_show_temp_msg("需先解锁前置节点")
+			# v9.x 修复：点名缺失前置（can 的 missing 只报第一个，这里列全）
+			var missing_str := _format_missing_requires(
+				SkillTree.get_skill(node_id).get("requires", []))
+			if missing_str.is_empty():
+				_show_temp_msg("需先解锁前置节点")
+			else:
+				_show_temp_msg("需先解锁：%s" % missing_str)
 	else:
 		# 解锁成功：弹 Toast 通知（含节点名称 + 解锁内容摘要）
 		_emit_unlock_toast(node_id)
-	_refresh()
+	# v9 perf: 刷新走去抖入口（node_unlocked/points_changed 信号也会请求，同帧合并为 1 次）
+	_request_refresh()
 
 ## 解锁成功后发射 Toast 通知
 func _emit_unlock_toast(node_id: String) -> void:
@@ -402,26 +462,76 @@ func hide_panel() -> void:
 	closed.emit()
 
 func _on_node_unlocked(_node_id: String) -> void:
-	_refresh()
+	_request_refresh()
 
 func _on_points_changed(_available: int) -> void:
-	_refresh()
+	_request_refresh()
 
-func _refresh() -> void:
-	if not visible:
-		_dirty = true
+## v9 perf: 去抖刷新入口。
+## 解锁一个节点会依次触发 node_unlocked 信号 → points_changed 信号 → 按钮回调收尾，
+## 原实现三个入口各调一次 _refresh() = 同帧 3 次全量重建；统一走本方法后合并为帧末 1 次。
+func _request_refresh() -> void:
+	if _refresh_queued:
 		return
-	_dirty = false
-	# 更新技能点显示
+	_refresh_queued = true
+	_refresh.call_deferred()
+
+## v9 perf: 渲染状态签名 = 已解锁节点集合 + 可用点数。
+## 两者唯一决定所有节点行的三态渲染（已解锁/可解锁/锁定）与按钮可用性，
+## 签名不变即无需重建（打开面板时状态通常没变 → 零重建成本）。
+func _current_state_signature() -> String:
+	if PhaseMasterSkillManager == null:
+		return "no-mgr"
+	return "%s:%d" % [PhaseMasterSkillManager.get_unlocked_signature(),
+			PhaseMasterSkillManager.get_available_points()]
+
+func _update_points_label() -> void:
 	if _points_label and PhaseMasterSkillManager:
 		var avail: int = PhaseMasterSkillManager.get_available_points()
 		var spent: int = PhaseMasterSkillManager.get_spent_points()
 		_points_label.text = "  可用技能点：%d（已用 %d）" % [avail, spent]
-	# 重建各分支（节点状态变化需重绘）
-	for branch in _branch_containers.keys():
-		_populate_branch(branch, _branch_containers[branch])
-	# v8.x: 刷新已解锁总览 tab
-	if _summary_container != null:
+
+## v9 perf: tab 切换 → 懒填充。未访问过的 tab 不预建，切到时才构建（构建即最新状态）。
+func _on_tab_changed(tab_idx: int) -> void:
+	if tab_idx >= 0 and tab_idx < _tab_branches.size():
+		var branch: String = String(_tab_branches[tab_idx])
+		if not _populated_branches.has(branch):
+			_populate_branch(branch, _branch_containers[branch])
+			_populated_branches[branch] = true
+	elif tab_idx == _tab_branches.size() and _summary_container != null and not _summary_populated:
+		_populate_summary()
+		_summary_populated = true
+
+func _refresh() -> void:
+	_refresh_queued = false
+	if not visible:
+		_dirty = true
+		return
+	_dirty = false
+	_update_points_label()
+	# v9 perf: 状态签名比对——签名未变则到此为止（打开面板的常规路径）
+	var sig: String = _current_state_signature()
+	if sig == _rendered_sig:
+		return
+	_rendered_sig = sig
+	# v9 perf: 当前 tab 若从未构建，本次直接构建（即最新状态，无需先建再重建）；
+	# 已构建过的 tab（含当前）重建以刷新三态着色
+	var current_branch := ""
+	var cur_idx: int = _tab_container.current_tab if _tab_container != null else -1
+	if cur_idx >= 0 and cur_idx < _tab_branches.size():
+		current_branch = String(_tab_branches[cur_idx])
+	var newly_populated := ""
+	if current_branch != "" and not _populated_branches.has(current_branch):
+		_populated_branches[current_branch] = true
+		newly_populated = current_branch
+	for branch_key in _populated_branches.keys():
+		var branch: String = String(branch_key)
+		if branch != newly_populated and _branch_containers.has(branch):
+			_populate_branch(branch, _branch_containers[branch])
+	if newly_populated != "":
+		_populate_branch(newly_populated, _branch_containers[newly_populated])
+	# v8.x: 刷新已解锁总览 tab（仅当玩家访问过）
+	if _summary_populated and _summary_container != null:
 		_populate_summary()
 
 func _show_temp_msg(msg: String) -> void:

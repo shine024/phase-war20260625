@@ -220,6 +220,34 @@ static func _get_instance_registry() -> Node:
 		return tree.root.get_node_or_null("InstanceRegistry")
 	return null
 
+## v9.x 重设：目标卡白板战斗战力（模板口径，不吃任何养成——进化战力门槛与面板显示用）。
+## 旧口径 UnitLineageConfig.get_target_base_power 读卡表 power 字段，与判定左侧
+## estimate_power_score（战斗公式）不同标尺，战力条件形同虚设。
+static var _target_white_combat_cache: Dictionary = {}
+
+static func get_target_white_combat(card_id: String) -> int:
+	# 与判定左侧 build_unit_stats_for_power_preview 同用 _preview_battle_era()——防御派生带
+	# era 乘区（1+era×0.15），两侧时代基准必须一致，否则对比漂移（实测 pz3：era0=715 vs era1=771）
+	var era: int = _preview_battle_era()
+	var cache_key: String = "%s|%d" % [card_id, era]
+	if _target_white_combat_cache.has(cache_key):
+		return int(_target_white_combat_cache[cache_key])
+	var card: CardResource = DefaultCards.get_card_by_id(card_id)
+	var pw: int = 0
+	if card != null and card.card_type == GC.CardType.COMBAT_UNIT:
+		var stats: UnitStats = UnitStatsTable.build_stats_from_card(card, era)
+		if stats != null:
+			pw = int(combat_power_from_unit_stats(stats))
+	_target_white_combat_cache[cache_key] = pw
+	return pw
+
+## v9.x 重设：进化战力门槛 = 目标白板战斗战力 × 0.70（判定两侧同标尺）。
+## 实测定标（tests/power_calibration_probe.gd）：战斗公式下投入养成仅抬 ~10% 战力，
+## 装甲线白板即过线（投入门槛由强化/改造数条件承担）；步兵首进化恰在 E1 数值门槛
+## （强化5+2改 ≈ 白板×1.05）附近过线；各时代满投入对下一时代目标均留 3%+ 余量，无锁死。
+static func get_target_power_bar(card_id: String) -> int:
+	return int(float(get_target_white_combat(card_id)) * 0.70)
+
 static func build_unit_stats_for_power_preview(card: CardResource, bpm_ref: Node) -> UnitStats:
 	if card == null:
 		return null

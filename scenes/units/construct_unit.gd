@@ -252,6 +252,9 @@ func _ready() -> void:
 func setup(p_is_player: bool, p_stats: UnitStats, forced_enemy_visual_archetype_id: String = "") -> void:
 	is_player = p_is_player
 	stats = p_stats
+	# v9 perf：stats 引用缓存（module_effect_handler._get_unit_stats 的 meta 快路径；
+	# spawn 期赋值一次，单位存活期 stats 不再整体替换）
+	set_meta("_meh_stats_cache", p_stats)
 	_using_enemy_archetype_visual = false
 	if forced_enemy_visual_archetype_id.is_empty():
 		_visual_archetype_id = ""
@@ -1881,6 +1884,9 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		var eff_def: float = CardGridDamage.effective_defense(base_def, pen)
 		# v10(H3): ECM 闪避削弱——带激活中的 _ecm_dodge_penalty 时闪避率扣减（此前四处写零读）
 		var dodge: float = maxf(0.0, float(stats.dodge_chance) - ModuleEffectHandler.get_ecm_dodge_penalty(self))
+		# v10 打破型效果：俯冲修正失效期间（fort 克制命中触发 ground_aircraft）dodge 归零
+		if dodge > 0.0 and ModuleEffectHandler.is_grounded_for_dodge(self):
+			dodge = 0.0
 		# v7.5: 传入 damage_reduction（此前全链路空转，现 resolve_hit 接入）
 		var dmg_red: float = float(stats.damage_reduction)
 		var hit: Dictionary = CardGridDamage.resolve_hit(amount, eff_def, dodge, dmg_red)

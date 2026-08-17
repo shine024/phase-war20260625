@@ -1,6 +1,8 @@
 extends RefCounted
 class_name LevelSpawnSequences
 ## v6.14: 关卡波次序列系统 —— 为每关生成"序列式 + 随机扰动"的波次配置。
+## v10 解题式玩法: 波次 bias 改由关卡战术主题（LevelTacticalThemes）驱动，
+##               每关有确定的"题面"（装甲突击/空中压制/…），取代原随机 roll。
 ##
 ## 背景：此前 100 关每关敌人完全运行时从时代池 `randi() % size` 随机抽，
 ## 没有节奏感，玩家无法预期。本表为每关生成可复现的波次序列：
@@ -13,12 +15,14 @@ class_name LevelSpawnSequences
 ##   3. 最后波 → Boss 波（若该时代有 boss archetype）
 ##   4. 难度随时代内关卡进度递增（in_era / 20 越大，elite/boss 比例越高）
 ##   5. 种子 = level，保证同关序列可复现（RandomNumberGenerator）
+##   6. v10: bias_tags 从战术主题 wave_patterns 加权抽取（主题确定性 + 波次扰动）
 ##
 ## WaveSpec 结构：
 ##   {
 ##     "wave_index": int,
 ##     "composition": {"basic": float, "elite": float, "boss": float},  # 比例和≈1.0
 ##     "archetype_bias_tags": Array[String]  # 偏好的 archetype tag（如 ["infantry"]），空=不限
+##     "theme_id": String  # v10: 本关战术主题（预警/弹窗显示用）
 ##   }
 ##
 ## 查询接口：
@@ -26,6 +30,7 @@ class_name LevelSpawnSequences
 ##   LevelSpawnSequences.get_wave_spec(level, wave_index) -> Dictionary  # 单波查询，越界返回 {}
 
 const LevelEras = preload("res://data/level_eras.gd")
+const TacticalThemes = preload("res://data/level_tactical_themes.gd")
 
 ## 序列缓存：level → Array[WaveSpec]（同关多次查询复用，避免重复生成）
 static var _cache: Dictionary = {}
@@ -58,6 +63,8 @@ static func _generate_sequence(level: int) -> Array:
 	var in_era: int = ((level - 1) % 20) + 1  # 1..20，时代内进度
 	var wave_total: int = LevelEras.get_wave_total_for_level(level)
 	var is_tutorial: bool = (in_era == 1)  # 每时代首关 = 教学
+	# v10: 本关战术主题（题面）——bias 生成与 composition 修正的数据源
+	var theme_id: String = TacticalThemes.get_theme_id_for_level(level)
 
 	# 种子 RNG：保证同关可复现
 	var rng := RandomNumberGenerator.new()
@@ -68,15 +75,22 @@ static func _generate_sequence(level: int) -> Array:
 
 	var seq: Array = []
 	for w in range(1, wave_total + 1):
-		var spec: Dictionary = _make_wave_spec(w, wave_total, is_tutorial, progress, era, rng)
+		var spec: Dictionary = _make_wave_spec(w, wave_total, is_tutorial, progress, era, rng, theme_id)
 		seq.append(spec)
 	return seq
 
 
 ## 生成单波 WaveSpec。
-static func _make_wave_spec(wave_index: int, wave_total: int, is_tutorial: bool, progress: float, era: int, rng: RandomNumberGenerator) -> Dictionary:
+## v10: theme_id 参数驱动 bias_tags（战术主题加权抽取）与 composition 修正（elite_delta）。
+##      关卡级"战斗配制" = 战术主题（确定倾向）；波次内保留序列扰动（具体单位仍随机）。
+##      主题查询失败/为空时回退原随机 roll 逻辑（防御性，不破坏旧行为）。
+static func _make_wave_spec(wave_index: int, wave_total: int, is_tutorial: bool, progress: float, era: int, rng: RandomNumberGenerator, theme_id: String = "") -> Dictionary:
 	var is_last_wave: bool = (wave_index >= wave_total)
 	var is_elite_wave: bool = (wave_index > 1 and wave_index % 3 == 0)
+
+	# v10: 主题 composition 修正（ELITE_PUSH +精英 / SWARM_RUSH -精英）
+	var comp_mod: Dictionary = TacticalThemes.get_composition_mod(theme_id) if not theme_id.is_empty() else {}
+	var elite_delta: float = float(comp_mod.get("elite_delta", 0.0))
 
 	var basic: float = 1.0
 	var elite: float = 0.0
@@ -88,8 +102,8 @@ static func _make_wave_spec(wave_index: int, wave_total: int, is_tutorial: bool,
 		elite = 0.0
 		boss = 0.0
 	else:
-		# 基础比例：随进度提高 elite 基础概率
-		elite = 0.15 + progress * 0.25  # 0.15 ~ 0.40
+		# 基础比例：随进度提高 elite 基础概率（v10: 叠加主题修正后 clamp）
+		elite = clampf(0.15 + progress * 0.25 + elite_delta, 0.0, 0.70)  # 0.15 ~ 0.70
 		if is_elite_wave:
 			elite = clampf(elite + 0.30, 0.0, 0.70)  # 精英波显著提 elite
 		if is_last_wave and wave_total > 3:
@@ -105,15 +119,18 @@ static func _make_wave_spec(wave_index: int, wave_total: int, is_tutorial: bool,
 				elite = elite / _sum * (1.0 - basic)
 				boss = boss / _sum * (1.0 - basic)
 
-	# archetype tag 偏好：教学关偏 infantry，进度高时引入 vehicle/air 多样性
+	# archetype tag 偏好：v10 起由战术主题驱动（题面确定性）。
 	# 注：用普通 Array 而非 Array[String] —— 三元表达式中含空数组分支（else []）会让 GDScript
 	# 把整体推断为无类型 Array，赋值给 Array[String] 变量会触发运行时报错（见 v6.14 回归）。
 	# 消费方 _pick_archetype_with_bias(pool, bias_tags: Array) 也是普通 Array，保持一致。
 	var bias_tags: Array = []
 	if is_tutorial:
 		bias_tags = ["infantry"]
+	elif not theme_id.is_empty():
+		# v10: 主题加权抽取（主战波/护卫波/混合波），rng 保证同关序列可复现
+		bias_tags = TacticalThemes.roll_wave_bias(theme_id, rng)
 	else:
-		# 用 RNG 决定本波是否带特定兵种偏好（增加序列多样性，但可复现）
+		# 回退：主题缺失时保留原随机 roll（防御性，正常不触达）
 		var roll: int = rng.randi_range(0, 3)
 		match roll:
 			0:
@@ -133,6 +150,7 @@ static func _make_wave_spec(wave_index: int, wave_total: int, is_tutorial: bool,
 			"boss": boss,
 		},
 		"archetype_bias_tags": bias_tags,
+		"theme_id": theme_id,
 	}
 
 

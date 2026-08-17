@@ -577,6 +577,14 @@ func _infer_enemy_subtype(combat_kind: int, cfg: Dictionary) -> int:
 				return GC.UnitSubType.ANTI_AIR
 	# 炮兵：combat_kind == SUPPORT 且 attack_range >= 400（远程间接火力）
 	if combat_kind == GC.CombatKind.SUPPORT:
+		# v8.7: 对空攻击主导的 SUPPORT 单位是防空特化（zsu23/m6/patriot 等）。
+		# 原仅按 range>=400 判火炮，防空炮射程 500px 被误判成 ARTILLERY——
+		# 拿到反炮兵而非空域封锁（+25% 对空），与玩家侧子类口径不一致。
+		var al_v: float = float(cfg.get("attack_light", 0.0))
+		var aa_v: float = float(cfg.get("attack_armor", 0.0))
+		var aair_v: float = float(cfg.get("attack_air", 0.0))
+		if aair_v > al_v and aair_v > aa_v and aair_v > 0.0:
+			return GC.UnitSubType.ANTI_AIR
 		var atk_range: float = float(cfg.get("attack_range", attack_range))
 		if atk_range >= 400.0:
 			return GC.UnitSubType.ARTILLERY
@@ -642,6 +650,8 @@ func _build_enemy_unit_stats(r: Dictionary, cfg: Dictionary) -> void:
 	# 必须同步回节点 hp 字段，否则 setup() 的 max_hp = hp 会用未放大的 hp 覆盖 stats.max_hp。
 	hp = s.max_hp
 	stats = s
+	# v9 perf：stats 引用缓存（module_effect_handler._get_unit_stats 的 meta 快路径）
+	set_meta("_meh_stats_cache", s)
 	# v7.1: stats 就绪后判定并创建堡垒防护光环
 	_ensure_fort_shield_aura()
 
@@ -869,12 +879,14 @@ func _physics_process(delta: float) -> void:
 	_update_stealth_grace(delta)
 	# 性能优化：不再每帧更新 HP 条，改为在 HP 变化时更新
 	# 性能优化：减少目标查找频率
-	# v10(C1) 修复：同 construct_unit——清零移入触发分支内；无目标快速重试节流 20Hz。
-	# 修复后 _should_retain_current_target（含"我方有存活单位时放弃打相位场"）恢复可达。
+	# v10(C1) 修复：同 construct_unit——清零移入触发分支内；无目标快速重试节流。
+	# v9 perf：无目标重试 20Hz → 5Hz——敌侧索敌半径大（最小 1600px），
+	# 无目标时全场都在探测，20Hz 重试是波次刷出/清场瞬间的同步尖峰源头；
+	# 降频后目标出现最多晚 0.2s 锁定，行为无感。
 	_target_find_timer += delta
 	var should_find_target := false
 	if target == null or not is_instance_valid(target):
-		if _target_find_timer >= 0.05:
+		if _target_find_timer >= 0.2:
 			should_find_target = true
 			_target_find_timer = 0.0
 	elif _target_find_timer >= _get_target_find_interval():
@@ -1402,9 +1414,10 @@ func _update_hp_bar() -> void:
 					bar_grid.set_folded(true)
 				else:
 					bar_grid.set_folded(BattleInputState.current_selected_unit != self)
-		# HP 直接显示在血条内部，调用 set_hp_text 同步显示
-		if bar_grid.has_method("set_hp_text"):
-			bar_grid.set_hp_text(hp, max_hp)
+				# HP 直接显示在血条内部（v9 perf：挪进 1% 门槛——原在门槛外每次受击都
+				# "%d/%d" 格式化+Label 重排；construct_unit 同款已修，此处对齐）
+				if bar_grid.has_method("set_hp_text"):
+					bar_grid.set_hp_text(hp, max_hp)
 		return
 	var bar = get_node_or_null("HpBar")
 	if bar == null or not bar.has_method("set_ratio"):
@@ -1486,6 +1499,9 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		if stats != null:
 			# v10(H3): ECM 闪避削弱（带激活中的 _ecm_dodge_penalty 时扣减，此前四处写零读）
 			dodge = maxf(0.0, float(stats.dodge_chance) - ModuleEffectHandler.get_ecm_dodge_penalty(self))
+		# v10 打破型效果：俯冲修正失效期间（fort 克制命中触发 ground_aircraft）dodge 归零
+		if dodge > 0.0 and ModuleEffectHandler.is_grounded_for_dodge(self):
+			dodge = 0.0
 		# v7.5: 传入 damage_reduction（此前全链路空转，现 resolve_hit 接入）
 		# 优先 stats.damage_reduction（改造/词条加成），叠加节点 damage_reduction（卡牌能力 debuff）
 		var dmg_red: float = 0.0
