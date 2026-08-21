@@ -22,6 +22,11 @@ const RuneDefs = preload("res://data/runes.gd")
 const RunewordDefs = preload("res://data/runewords.gd")
 const RunewordMatcher = preload("res://managers/runeword_matcher.gd")
 const EnemyPhaseEquipment = preload("res://data/enemy_phase_equipment.gd")
+# v18 四源重构: 技能树/势力树/专属相位仪真身（敌方加成来源展示）
+const EnemyMasterSkillTree = preload("res://data/enemy_master_skill_tree.gd")
+const EnemyFactionSkills = preload("res://data/enemy_faction_skills.gd")
+const EnemyMasterInstruments = preload("res://data/enemy_master_instruments.gd")
+const CardGrowthConfig = preload("res://data/card_growth_config.gd")
 const UnitStatsTable = preload("res://resources/unit_stats_table.gd")
 const BackpackCombatPreview = preload("res://scenes/ui/backpack_combat_preview.gd")
 const RankDisplayUi = preload("res://scripts/rank_display_ui.gd")
@@ -34,6 +39,7 @@ const AuraData = preload("res://data/aura_data.gd")
 const EvolutionHelpers = preload("res://managers/evolution/evolution_helpers.gd")
 const ModEffects = preload("res://data/mod_effects.gd")  # v7.x: MAX_MOD_SLOTS 槽位上限权威源
 const CardPeriodicSkills = preload("res://data/card_periodic_skills.gd")  # 卡片定时技能（关联技能显示）
+const PowerTiers = preload("res://data/power_tiers.gd")
 
 var current_card: CardResource = null
 var _current_unit: Node = null
@@ -51,6 +57,7 @@ var action_buttons_container: HBoxContainer = null
 var close_button: Button = null
 var name_label: Label = null
 var type_label: Label = null
+var tier_label: Label = null
 var summary_label: Label = null
 var affix_label: Label = null
 var star_label: Label = null
@@ -122,6 +129,7 @@ func _resolve_nodes() -> void:
 	rarity_label = get_node_or_null("Margin/VBox/HeaderPanel/HeaderVBox/RarityCostRow/RarityLabel") as Label
 	cost_label = get_node_or_null("Margin/VBox/HeaderPanel/HeaderVBox/RarityCostRow/CostLabel") as Label
 	type_label = get_node_or_null("Margin/VBox/TypeLabel") as Label
+	tier_label = get_node_or_null("Margin/VBox/TierLabel") as Label
 	rank_badge_host = get_node_or_null("Margin/VBox/RankBadgeHost") as HBoxContainer
 	_tab_container = get_node_or_null("Margin/VBox/TabBar") as TabContainer
 	# 子面板按需刷新：连接 tab_changed，切到强化/改造/进化 Tab 时才刷新对应子面板
@@ -477,10 +485,9 @@ func _refresh_header(card: CardResource) -> void:
 		# v7.x：同名卡追加序号后缀（#1/#2…），区分同名实例
 		var _hdr_name: String = card.display_name if not card.display_name.is_empty() else DefaultCards.get_safe_display_name(card.card_id)
 		name_label.text = _hdr_name + DefaultCards.seq_suffix(card)
-	# v6.4: 头部星级（★N，金色），仅战斗卡/能量卡显示
+	# v19: 头部等级（三十级制 card_level，Lv1-30；与血条等级文字同口径）——仅战斗卡显示
 	if star_label:
-		var star_val: int = int(card.enhance_level) if "enhance_level" in card else 0
-		star_label.text = "★%d" % star_val if star_val > 0 else ""
+		star_label.text = ("Lv%d" % _card_level_for_display(card)) if card.card_type == GC.CardType.COMBAT_UNIT else ""
 	# v6.4: 稀有度色带——染色 HeaderPanel 左侧边框
 	_apply_header_rarity_for_card(card)
 	if cost_label:
@@ -510,6 +517,11 @@ func _refresh_header(card: CardResource) -> void:
 				if not wl.is_empty():
 					parts.append(wl)
 				type_label.text = " · ".join(parts)
+				# v20: 档位徽标（tier 可见性）——仅战斗卡展示
+				if tier_label != null:
+					var _t: int = clampi(int(card.tier), 0, 6)
+					tier_label.text = PowerTiers.get_tier_name(_t)
+					tier_label.visible = _t > 0
 			GC.CardType.ENERGY:
 				type_label.text = "能量卡 · 提供 %d 能量" % int(card.energy_cost)
 			GC.CardType.LAW:
@@ -743,7 +755,11 @@ func _refresh_affix_tags(card: CardResource) -> void:
 	if _affix_flow == null:
 		# 回退：用旧 AffixLabel
 		if affix_label:
-			affix_label.text = _build_card_affix_summary(card) if card.card_type == GC.CardType.COMBAT_UNIT else ""
+			var _fb_text: String = _build_card_affix_summary(card) if card.card_type == GC.CardType.COMBAT_UNIT else ""
+			# v19: 真词条行置顶（标签化容器缺席时拼纯文本）
+			if card.card_type == GC.CardType.COMBAT_UNIT:
+				_fb_text = AffixDisplayFormat.merge_affix_text(AffixDisplayFormat.fmt_player_affix_tags(_card_identity_id(card), AffixManager), _fb_text, "词条")
+			affix_label.text = _fb_text
 			affix_label.visible = not affix_label.text.is_empty()
 		return
 	# 清空旧标签
@@ -755,7 +771,8 @@ func _refresh_affix_tags(card: CardResource) -> void:
 		affix_label.visible = false
 	if card.card_type != GC.CardType.COMBAT_UNIT:
 		return
-	var tags: Array = _build_affix_tag_list(card)
+	# v19: 真词条标签置顶（词条名+稀有度符号+等级），stats 派生标签为效果摘要，互补保留
+	var tags: Array = AffixDisplayFormat.fmt_player_affix_tags(_card_identity_id(card), AffixManager) + _build_affix_tag_list(card)
 	if tags.is_empty():
 		var empty := Label.new()
 		empty.text = "无特殊词条"
@@ -811,26 +828,40 @@ func _card_identity_id(card: CardResource) -> String:
 		return String(card.instance_id)
 	return String(card.card_id)
 
-## v6.11: 强化详情（情报 Tab）——显示真实强化等级 + 词条效果
-## 弃用废弃的 get_star_enhancement_lines（基于已移除的星级系统）
+## v19: 真词条/词缀格式化统一走 AffixDisplayFormat（scripts/affix_display_format.gd）——
+## 独立零依赖工具，敌我双方显示与 headless 测试共用（本面板依赖链裸引用 autoload，--script 不可测）。
+
+## v19: 面板统一等级口径（三十级制 card_level，Lv1-30）——实例经 InstanceRegistry 查经验等级；
+## 未成长/无实例按 Lv1（与血条等级文字同口径）。旧 enhance_level 不再作为等级显示。
+func _card_level_for_display(card: CardResource) -> int:
+	if card == null:
+		return 1
+	var lv: int = 0
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	if ir != null and ir.has_method("get_card_level"):
+		lv = int(ir.get_card_level(_card_identity_id(card)))
+	return clampi(maxi(lv, 1), 1, 30)
+
+## v6.11: 强化详情（情报 Tab）→ v19: 等级统一三十级制 card_level
+## 旧存档 module_slots 的词条效果行保留（旧加成不丢原则），仅等级口径切换
 func _build_star_lines(card: CardResource) -> String:
-	var detail_star: int = int(card.enhance_level) if "enhance_level" in card else 0
-	if detail_star <= 0:
+	if card == null or card.card_type != GC.CardType.COMBAT_UNIT:
 		return ""
+	var detail_lv: int = _card_level_for_display(card)
 	var cem: Node = get_node_or_null("/root/CardEnhancementManager")
 	if cem and cem.has_method("get_module_effect_lines"):
 		# v7.3: 用实例身份查词条（实例化养成后词条存实例对象，按裸 card_id 查永远空）
 		var lines: Array = cem.get_module_effect_lines(_card_identity_id(card))
 		if not lines.is_empty():
-			return "强化 ★%d\n- %s" % [detail_star, "\n- ".join(lines)]
-	return "强化 ★%d" % detail_star
+			return "等级 Lv%d\n- %s" % [detail_lv, "\n- ".join(lines)]
+	return "等级 Lv%d" % detail_lv
 
 func _build_nurture_text(card: CardResource, _stats: UnitStats = null, include_power: bool = true) -> String:
 	if card == null or BlueprintManager == null:
 		return ""
 	var parts: Array[String] = []
 	if card.card_type == GC.CardType.COMBAT_UNIT:
-		parts.append("强化 ★%d" % card.enhance_level)
+		parts.append("等级 Lv%d" % _card_level_for_display(card))
 		# v7.x：战场单位情报面板已把战力移到 summary 行（属性口径，敌我可对比），
 		# 故 include_power=false 时此处不再重复显示养成战力。卡牌查看模式默认 true（养成口径不变）。
 		if include_power:
@@ -845,15 +876,6 @@ func _build_nurture_text(card: CardResource, _stats: UnitStats = null, include_p
 			var eff_lines: Array = cem.get_module_effect_lines(_card_identity_id(card))
 			if not eff_lines.is_empty():
 				enhance_effect_text = "\n词条效果：" + " · ".join(eff_lines)
-	if BlueprintManager.has_method("get_card_xp_progress"):
-		var prog: Dictionary = BlueprintManager.get_card_xp_progress(card.card_id)
-		var lvl: int = int(prog.get("level", 1))
-		var lv_text: String = "Lv.%d" % lvl
-		if BlueprintManager.has_method("get_card_breakthroughs"):
-			var bt: int = BlueprintManager.get_card_breakthroughs(card.card_id)
-			if bt > 0:
-				lv_text += " (突破 %d)" % bt
-		parts.append(lv_text)
 	if "evolution_stage" in card and str(card.evolution_stage) != "":
 		var stage: String = str(card.evolution_stage)
 		if not stage.is_empty():
@@ -1349,6 +1371,58 @@ func _format_enemy_combat_summary(unit: Node, scombat: Array, extra_suffix: Stri
 ## 不识别的 key 跳过（如 void_damage_boost/auto_resurrect 等复杂 effect 留待后续）。
 ## 无 effects 或 effects 为空 → 返回空串（调用方回退到 description 文字）。
 ## 注：参数 `trait_def` 是 trait 条目字典（Godot 4.5 起 `trait` 已为保留关键字，故参数不命名 trait）。
+## v18 四源重构·批次4: 技能树数值节点 effects 格式化（"三维攻击+8% / 生命+15%"）
+func _format_skill_tree_effects(fx: Dictionary) -> String:
+	if fx.is_empty():
+		return ""
+	var parts: Array[String] = []
+	if fx.has("atk_light") or fx.has("atk_armor") or fx.has("atk_air"):
+		var v_a: float = float(fx.get("atk_light", fx.get("atk_armor", 0.0)))
+		parts.append("三维攻击+%d%%" % int(round(v_a * 100.0)))
+	if fx.has("def_light") or fx.has("def_armor") or fx.has("def_air"):
+		var v_d: float = float(fx.get("def_light", fx.get("def_armor", 0.0)))
+		parts.append("三维防御+%d%%" % int(round(v_d * 100.0)))
+	if fx.has("hp"):
+		parts.append("生命+%d%%" % int(round(float(fx.get("hp", 0.0)) * 100.0)))
+	if fx.has("crit_chance"):
+		parts.append("暴击+%d%%" % int(round(float(fx.get("crit_chance", 0.0)) * 100.0)))
+	if fx.has("dodge_chance"):
+		parts.append("闪避+%d%%" % int(round(float(fx.get("dodge_chance", 0.0)) * 100.0)))
+	return " / ".join(parts)
+
+
+## v18 四源重构·批次4: 技能树机制节点 kind → 中文
+func _mech_kind_zh(kind: String) -> String:
+	match kind:
+		"aura_damage": return "范围伤害光环"
+		"aura_heal": return "治疗光环"
+		"thorn": return "反伤"
+		"shield": return "自身护盾"
+		"high_energy": return "能量阈值攻速"
+		"death_shield": return "亡语回盾"
+		"death_explosion": return "死亡爆炸"
+		"todo": return "待实装"
+	return kind
+
+
+## v18 四源重构·批次4: 元素亲和 → 中文
+func _elem_affinity_zh(a: int) -> String:
+	match a:
+		1: return "火"
+		2: return "雷"
+		3: return "虚"
+	return "无"
+
+
+## v18 四源重构·批次4: 敌方势力短名 → 中文
+func _enemy_faction_zh(f: String) -> String:
+	match f:
+		"steel": return "钢"
+		"flame": return "焰"
+		"thunder": return "雷"
+		"void": return "虚"
+	return f
+
 func _format_trait_effects(trait_def: Dictionary) -> String:
 	if not (trait_def is Dictionary):
 		return ""
@@ -1436,6 +1510,18 @@ func _get_enemy_instrument_display_name(instrument_id: String) -> String:
 	if cfg.is_empty():
 		return instrument_id  # 查不到返回 ID 兜底
 	return str(cfg.get("name", instrument_id))
+
+## v18.c: master cfg.era 字符串 → 数字时代（与 driver._era_string_to_int 同口径；
+## 无 era 字段时按等级推算，与 driver._era_from_level 一致）
+func _enemy_master_era_int(cfg: Dictionary) -> int:
+	match str(cfg.get("era", "")).to_lower():
+		"ww1": return 0
+		"ww2": return 1
+		"cold": return 2
+		"modern": return 3
+		"future", "near_future": return 4
+		_:
+			return clampi(floori(float(maxi(int(cfg.get("level", 15)), 5) - 5) / 5.0), 0, 4)
 
 ## v6.14: 格式化敌方相位师符文列表为可读字符串（"符文名×稀有度"）
 func _format_enemy_runes(rune_ids: Array) -> String:
@@ -1610,22 +1696,36 @@ func _show_enemy_phase_driver(unit: Node) -> void:
 				var runes_line: String = _format_enemy_runes_full(runes, raw_level)
 				if not runes_line.is_empty():
 					lines.append("符文：%s" % runes_line)
-			# v9.1: 相位师特性（与单位路径一致，消除敌方内部不一致）。
-			# 优先展示 trait.effects 数值化描述（如"防御+10%"），无 effects 才回退 description 文字。
-			var trait_lines: Array[String] = []
-			for t in cfg.get("traits", []) as Array:
-				if t is Dictionary:
-					var tn: String = str(t.get("name", ""))
-					var val_str: String = _format_trait_effects(t)
-					if not tn.is_empty():
-						if not val_str.is_empty():
-							trait_lines.append("◆ %s：%s" % [tn, val_str])
-						else:
-							var td: String = str(t.get("description", ""))
-							trait_lines.append("◆ %s%s" % [tn, "：" + td if not td.is_empty() else ""])
-			if not trait_lines.is_empty():
-				lines.append("【相位师特性】")
-				lines.append_array(trait_lines)
+			# v18 四源重构·批次4: 相位师特性区改为四源加成展示（等级属性/技能树/势力树 + 元素）。
+			# 相位仪大招在下方【主动能力】区展示（专属相位仪变体即其归宿）。
+			if not pm_id.is_empty() and raw_level > 0:
+				var comp: Dictionary = EnemyMasterSkillTree.get_composition(pm_id, raw_level)
+				# v18.c: 等级属性换 flat 统一——不再有全局 % 曲线，改按产兵兵种派生固定值（加算）。
+				# 展示口径：以 LIGHT 兵种为代表值（实际按兵种权重浮动：堡垒血厚攻弱/空军攻锐血薄）。
+				var lv_flat: Dictionary = CardGrowthConfig.total_growth_raw(_enemy_master_era_int(cfg), 0, "rare", raw_level)
+				lines.append("【等级属性】Lv.%d 成长flat：攻+%.0f / 血+%.0f / 防+%.1f（按兵种派生，加算）" % [raw_level, float(lv_flat.atk), float(lv_flat.hp), float(lv_flat.def)])
+				var num_nodes: Array = comp.get("num", []) as Array
+				var mech_nodes: Array = comp.get("mech", []) as Array
+				var todo_nodes: Array = comp.get("todo", []) as Array
+				if not num_nodes.is_empty() or not mech_nodes.is_empty():
+					var todo_part: String = " · 待实装%d项" % todo_nodes.size() if not todo_nodes.is_empty() else ""
+					lines.append("【相位师技能树】数值%d项 · 机制%d项%s" % [num_nodes.size(), mech_nodes.size(), todo_part])
+					for n in num_nodes:
+						if n is Dictionary:
+							lines.append("◆ %s：%s" % [str(n.get("name", "")), _format_skill_tree_effects((n.get("effects", {}) as Dictionary))])
+					for n in mech_nodes:
+						if n is Dictionary:
+							lines.append("◆ %s（%s）" % [str(n.get("name", "")), _mech_kind_zh(str(n.get("kind", "")))])
+				var elem_e: Dictionary = comp.get("element", {}) as Dictionary
+				if not elem_e.is_empty():
+					lines.append("元素亲和：%s系 · 伤害×%.2f" % [_elem_affinity_zh(int(elem_e.get("affinity", 0))), float(elem_e.get("mult", 1.0))])
+				var syn_e: Dictionary = EnemyFactionSkills.get_synergy(pm_id)
+				if not syn_e.is_empty():
+					var syn_types: Array = syn_e.get("types", []) as Array
+					var type_names: Array[String] = []
+					for st in syn_types:
+						type_names.append(_enemy_faction_zh(str(st)))
+					lines.append("【势力技能树】%s（%s 协同 +%d%%）" % [str(syn_e.get("name", "")), "+".join(type_names), int(round(float(syn_e.get("synergy_boost", 0.0)) * 100.0))])
 			# v7.x: 主动能力（master.active_spells + 相位仪 special_effects，与我方对齐）
 			var abilities_text: String = _format_enemy_active_abilities(pm_id, inst_id)
 			if not abilities_text.is_empty():
@@ -1805,8 +1905,12 @@ func _show_enemy_construct_unit(unit: Node) -> void:
 	if summary_label:
 		summary_label.text = _format_unit_stats_summary(stats, cur_hp, _combat_power_suffix(stats))
 	var base_desc := _build_unit_description(stats, false, "由敌方相位师基地生产的构装单位，自动推进并攻击我方。")
+	# v19: 词缀行置顶——产兵词缀挂在 meta elite_affixes（enemy_phase_field_driver 词缀产兵写入）
+	var _sp_affix_tags: Array = []
+	if unit.has_meta("elite_affixes"):
+		_sp_affix_tags = AffixDisplayFormat.fmt_enemy_affix_tags(unit.get_meta("elite_affixes"))
 	if affix_label:
-		affix_label.text = _build_affix_summary_lines(stats)
+		affix_label.text = AffixDisplayFormat.merge_affix_text(_sp_affix_tags, _build_affix_summary_lines(stats), "词缀")
 	# v7.x：敌方产兵无玩家养成，强化 section 置空并隐藏（避免占位）。
 	# 原 _build_star_enhancement_effects_for_stats 是 v5.1 废弃的孤儿函数恒返回空。
 	if _star_detail_label:
@@ -1867,7 +1971,7 @@ func _resolve_source_instance_card(unit: Node) -> CardResource:
 func _show_player_unit(unit: Node) -> void:
 	var stats: UnitStats = unit.stats
 	# v7.x：优先取带养成的实例卡（强化/改造数据在实例对象上，模板卡为空），
-	# 让 nurture_label 能显示"强化 ★N / 改造 N/9 / 已装改造列表"。stats（HP/攻防）已含养成不变。
+	# 让 nurture_label 能显示"等级 LvN（v19 三十级制）/ 改造 N/9 / 已装改造列表"。stats（HP/攻防）已含养成不变。
 	var card_res: CardResource = _resolve_source_instance_card(unit)
 	if card_res == null:
 		card_res = DefaultCards.get_card_by_id(stats.platform_card_id)
@@ -1880,10 +1984,9 @@ func _show_player_unit(unit: Node) -> void:
 	# v7.x 修复：战场单位也要刷新稀有度标签/色带/星级，否则残留上次卡牌模式或 tscn 默认值
 	# （此前相位仪显示"稀有"、战场却显示"普通"的根因：本函数从不设置 rarity_label）
 	_apply_header_rarity_for_card(card_res)
-	# 头部强化星级（★N）跟随实例卡养成显示
+	# v19: 头部等级（三十级制 card_level，与血条等级文字同口径）
 	if star_label:
-		var _star_val: int = int(card_res.enhance_level) if card_res != null and "enhance_level" in card_res else 0
-		star_label.text = "★%d" % _star_val if _star_val > 0 else ""
+		star_label.text = ("Lv%d" % _card_level_for_display(card_res)) if card_res != null else ""
 	# 战场单位已部署，费用无意义，清空避免残留
 	if cost_label:
 		cost_label.text = ""
@@ -1895,7 +1998,9 @@ func _show_player_unit(unit: Node) -> void:
 	if summary_label:
 		summary_label.text = _format_unit_stats_summary(stats, -1.0, _combat_power_suffix(stats))
 	if affix_label:
-		affix_label.text = _build_affix_summary_lines(stats)
+		# v19: 真词条行（名称+稀有度+等级）置顶，stats 数值摘要保留在后
+		var _p_affix_tags: Array = AffixDisplayFormat.fmt_player_affix_tags(_card_identity_id(card_res) if card_res != null else "", AffixManager)
+		affix_label.text = AffixDisplayFormat.merge_affix_text(_p_affix_tags, _build_affix_summary_lines(stats), "词条")
 	# v7.x 修复：战场单位强化详情改用 _build_star_lines（读实例卡养成），
 	# 原 _build_star_enhancement_effects_for_stats(stats) 是 v5.1 废弃的孤儿函数恒返回空。
 	# 内容为空时整个 StarSection 隐藏，避免空 section 占位。
@@ -1963,7 +2068,10 @@ func _show_enemy_phase_master_unit(unit: Node, master_name: String) -> void:
 		# v7.x: 澄清口径——军团战力是相位师裸装固有战力，不含本关难度加成（战场单位实战值会高于此数）
 		master_power_text += "\n（相位师固有战力，战场单位会叠加本关难度加成）"
 		# v9.1: trait 数值化——优先展示 effects 数值（如"攻击+15%"），无 effects 才回退 description
+		# v18 四源重构: traits 已迁入技能树——直接读为空时经访问器回退（num 节点形态兼容）
 		var traits: Array = master_cfg.get("traits", []) as Array
+		if traits.is_empty():
+			traits = EnemyPhaseMasters.get_master_traits(str(master_cfg.get("id", "")))
 		for t in traits:
 			if t is Dictionary:
 				var tn: String = str(t.get("name", ""))
@@ -2223,8 +2331,14 @@ func _show_generic_enemy_unit(unit: Node) -> void:
 	if desc_label:
 		var _e_stats: UnitStats = unit.stats if ("stats" in unit and unit.stats != null) else null
 		desc_label.text = _build_unit_description(_e_stats, false, "来袭的敌方单位，优先攻击我方单位，其次攻击相位场驱动器。")
+	# v19: 词缀行（名称+档位色）置顶——EnemyUnit.get_elite_affixes()（elite/boss 词缀怪）
+	var _e_affix_tags: Array = []
+	if unit.has_method("get_elite_affixes"):
+		_e_affix_tags = AffixDisplayFormat.fmt_enemy_affix_tags(unit.get_elite_affixes())
 	if "stats" in unit and unit.stats != null:
-		if affix_label: affix_label.text = _build_affix_summary_lines(unit.stats)
+		if affix_label: affix_label.text = AffixDisplayFormat.merge_affix_text(_e_affix_tags, _build_affix_summary_lines(unit.stats), "词缀")
+	elif affix_label:
+		affix_label.text = AffixDisplayFormat.affix_tags_to_text(_e_affix_tags, "词缀")
 	if flavor_label:
 		flavor_label.text = "“相位裂隙的另一侧，总有人在看着你。”"
 	# v7.x：敌方普通单位无玩家养成，强化 section 置空隐藏；但敌方 platform_type 驱动的

@@ -10,10 +10,10 @@ const EnemyAffixes = preload("res://data/enemy_affixes.gd")
 
 
 func _initialize() -> void:
-	var code := 0
+	var code := [0]
 	var fail := func(msg: String) -> void:
 		push_error("[FAIL] " + msg)
-		code = 1
+		code[0] = 1
 
 	# ══════════ 词缀定义表完整性 ══════════
 	print("=== 词缀定义表 ===")
@@ -151,9 +151,125 @@ func _initialize() -> void:
 		fail.call("空词缀不应改变 stats")
 	print("  空词缀: max_hp 保持 %.1f (期望 500)" % stats7.max_hp)
 
+	# ══════════ v19: 兵种分池词缀表结构 ══════════
+	print("=== v19: 兵种词缀结构 ===")
+	var kind_affixes: Dictionary = {
+		"enemy_gale_raid": [0], "enemy_ghost_step": [0],
+		"enemy_steel_tide": [1], "enemy_compound_armor": [1],
+		"enemy_dive_strike": [3], "enemy_airspace_hunt": [3],
+		"enemy_long_bombard": [2], "enemy_field_rebuild": [2],
+		"enemy_permament_works": [4], "enemy_fireweb": [4],
+	}
+	var unique_affixes: Dictionary = {
+		"enemy_execution_protocol": [0], "enemy_titan_armor": [1],
+		"enemy_death_scythe": [3], "enemy_orbital_bombard": [2],
+		"enemy_fortress_will": [4],
+	}
+	var expect_total: int = 10 + kind_affixes.size() + unique_affixes.size()
+	if EnemyAffixes.ENEMY_AFFIXES.size() != expect_total:
+		fail.call("敌方词缀总数应为 %d，实际 %d" % [expect_total, EnemyAffixes.ENEMY_AFFIXES.size()])
+	for aid in kind_affixes:
+		var d: Dictionary = EnemyAffixes.ENEMY_AFFIXES.get(aid, {})
+		if d.is_empty():
+			fail.call("缺少兵种词缀 %s" % aid)
+			continue
+		if (d.get("combat_kinds", []) as Array) != kind_affixes[aid]:
+			fail.call("%s combat_kinds 应为 %s" % [aid, str(kind_affixes[aid])])
+		if int(d.get("min_tier", -1)) != 0:
+			fail.call("%s min_tier 应为 0" % aid)
+	for uid in unique_affixes:
+		var du: Dictionary = EnemyAffixes.ENEMY_AFFIXES.get(uid, {})
+		if du.is_empty():
+			fail.call("缺少独特词缀 %s" % uid)
+			continue
+		if (du.get("combat_kinds", []) as Array) != unique_affixes[uid]:
+			fail.call("%s combat_kinds 应为 %s" % [uid, str(unique_affixes[uid])])
+		if int(du.get("min_tier", -1)) != 3:
+			fail.call("%s min_tier 应为 3" % uid)
+	# 旧 10 词缀保持全兵种通用（向后兼容）
+	for oid in EnemyAffixes.ENEMY_AFFIXES:
+		if not kind_affixes.has(oid) and not unique_affixes.has(oid):
+			if not (EnemyAffixes.ENEMY_AFFIXES[oid].get("combat_kinds", []) as Array).is_empty():
+				fail.call("旧词缀 %s 不应带 combat_kinds 限定" % oid)
+	print("  结构 OK（10 通用 + 10 兵种专属 + 5 独特 = %d）" % expect_total)
+
+	# ══════════ v19: roll 兵种/tier 过滤统计 ══════════
+	print("=== v19: roll 兵种过滤 ===")
+	var all_kind_ids: Array = kind_affixes.keys() + unique_affixes.keys()
+	var armor_valid: Array = ["enemy_steel_tide", "enemy_compound_armor"]
+	var leak: int = 0
+	var armor_hit: int = 0
+	for _i in range(400):
+		var rolled: Array = EnemyAffixes.roll_affixes("elite", rng, 1, 0)
+		for a in rolled:
+			var rid: String = String(a.get("id", ""))
+			if all_kind_ids.has(rid) and not armor_valid.has(rid):
+				leak += 1
+			if armor_valid.has(rid):
+				armor_hit += 1
+	if leak != 0:
+		fail.call("装甲 elite roll 串池 %d 次" % leak)
+	if armor_hit < 100:
+		fail.call("装甲专属命中率过低 %d/400（预期 >100）" % armor_hit)
+	# tier=0 永不出独特词缀（boss 全池 roll）
+	var uniq_leak: int = 0
+	for _i in range(400):
+		for a in EnemyAffixes.roll_affixes("boss", rng, 1, 0):
+			if unique_affixes.has(String(a.get("id", ""))):
+				uniq_leak += 1
+	if uniq_leak != 0:
+		fail.call("tier0 不应 roll 到独特词缀，泄漏 %d 次" % uniq_leak)
+	# tier=3 boss 波可出独特词缀（泰坦装甲）
+	var titan_hit: int = 0
+	for _i in range(400):
+		for a in EnemyAffixes.roll_affixes("boss", rng, 1, 3):
+			if String(a.get("id", "")) == "enemy_titan_armor":
+				titan_hit += 1
+	if titan_hit == 0:
+		fail.call("tier3 boss 应能抽到泰坦装甲")
+	print("  过滤 OK（串池 0，装甲专属 %d/400，tier0 独特泄漏 0，泰坦命中 %d/400）" % [armor_hit, titan_hit])
+
+	# ══════════ v19: apply 新 effect_key 分支 ══════════
+	print("=== v19: apply 新分支 ===")
+	var stats8 := UnitStats.new()
+	stats8.move_speed = 100.0
+	stats8.damage_reduction = 0.10
+	stats8.attack_range = 300.0
+	stats8.defense = 10.0
+	stats8.defense_light = 10.0
+	stats8.defense_armor = 10.0
+	stats8.defense_air = 10.0
+	stats8.crit_damage_bonus = 0.0
+	EnemyAffixes.apply_to_stats(stats8, [
+		{"effect_key": "move_speed", "base_value": 0.35},
+		{"effect_key": "damage_reduction", "base_value": 0.15},
+		{"effect_key": "attack_range", "base_value": 0.30},
+		{"effect_key": "defense", "base_value": 8.0},
+		{"effect_key": "crit_damage_bonus", "base_value": 0.50},
+	])
+	if absf(stats8.move_speed - 135.0) > 0.1:
+		fail.call("疾风突袭 move_speed 应 135，实际 %.1f" % stats8.move_speed)
+	if absf(stats8.damage_reduction - 0.25) > 0.01:
+		fail.call("复合装甲 damage_reduction 应 0.25，实际 %.2f" % stats8.damage_reduction)
+	if absf(stats8.attack_range - 390.0) > 0.1:
+		fail.call("超远程炮击 attack_range 应 390，实际 %.1f" % stats8.attack_range)
+	if absf(stats8.defense - 18.0) > 0.01 or absf(stats8.defense_light - 18.0) > 0.01 \
+			or absf(stats8.defense_armor - 18.0) > 0.01 or absf(stats8.defense_air - 18.0) > 0.01:
+		fail.call("永固工事 defense 应 18，实际 %.1f/%.1f/%.1f/%.1f" % [stats8.defense, stats8.defense_light, stats8.defense_armor, stats8.defense_air])
+	if absf(stats8.crit_damage_bonus - 0.50) > 0.01:
+		fail.call("处刑协议 crit_damage_bonus 应 0.50，实际 %.2f" % stats8.crit_damage_bonus)
+	print("  新分支 OK（移速 135 / 减伤 0.25 / 射程 390 / 防御 18 / 暴伤 +0.50）")
+
+	# ══════════ v19: 相位师产兵接线编译校验 ══════════
+	print("=== v19: 产兵驱动接线 ===")
+	if load("res://scenes/units/enemy_phase_field_driver.gd") == null:
+		fail.call("enemy_phase_field_driver.gd 加载失败（产兵词缀接线编译错误）")
+	else:
+		print("  接线 OK（enemy_phase_field_driver.gd 编译通过，词缀 roll/apply/meta 挂载可用）")
+
 	# ══════════ 总结 ══════════
-	if code == 0:
+	if code[0] == 0:
 		print("\n=== ALL PASS ===")
 	else:
 		print("\n=== FAILED ===")
-	quit(code)
+	quit(code[0])

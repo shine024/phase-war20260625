@@ -50,7 +50,7 @@ static func show_damage(world_pos: Vector2, amount: float, unit: Node = null, is
 	if final_type_for_check.is_empty():
 		crit_for_type = is_critical or amount >= 80.0
 		final_type_for_check = "critical" if crit_for_type else "normal"
-	var is_priority: bool = crit_for_type or final_type_for_check in ["critical", "pierce", "heal", "shield"]
+	var is_priority: bool = crit_for_type or final_type_for_check in ["critical", "pierce", "heal", "shield", "salvage", "counter_break"]
 	if not is_priority and unit != null and is_instance_valid(unit):
 		var uid: int = unit.get_instance_id()
 		var now_ms: int = Time.get_ticks_msec()

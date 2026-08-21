@@ -4,6 +4,7 @@ extends CharacterBody2D
 
 const GC = preload("res://resources/game_constants.gd")
 const DT = preload("res://resources/design_tokens.gd")
+const AttackPoseAnim = preload("res://scripts/battle/attack_pose_anim.gd")  # v9.x: 按武器分化的攻击姿态/攻击帧
 const BulletScene = preload("res://scenes/units/bullet.tscn")
 const ModuleEffectHandler = preload("res://scripts/battle/module_effect_handler.gd")
 const ModAuraHandler = preload("res://scripts/battle/mod_aura_handler.gd")
@@ -562,7 +563,7 @@ func _acquisition_range() -> float:
 
 
 func _play_card_attack_nudge() -> void:
-	ConstructUnitAI._play_card_attack_nudge(self)
+	AttackPoseAnim.play(self)
 
 
 ## 开火缩放脉冲：Sprite 子节点 scale 短暂放大再回弹，模拟开火反冲。
@@ -1886,6 +1887,9 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 		var dodge: float = maxf(0.0, float(stats.dodge_chance) - ModuleEffectHandler.get_ecm_dodge_penalty(self))
 		# v10 打破型效果：俯冲修正失效期间（fort 克制命中触发 ground_aircraft）dodge 归零
 		if dodge > 0.0 and ModuleEffectHandler.is_grounded_for_dodge(self):
+			dodge = 0.0
+		# v10 组合规则①：照明标记+曲射=必中（被标记目标受曲射攻击时闪避失效）
+		if dodge > 0.0 and attacker != null and ModuleEffectHandler.is_marked_for_indirect(self, attacker):
 			dodge = 0.0
 		# v7.5: 传入 damage_reduction（此前全链路空转，现 resolve_hit 接入）
 		var dmg_red: float = float(stats.damage_reduction)

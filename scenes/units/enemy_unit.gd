@@ -7,6 +7,7 @@ const EnemyStatResolver = preload("res://data/enemy_stat_resolver.gd")
 const MuzzleAnchors = preload("res://data/muzzle_anchors.gd")
 const ModuleEffectHandler = preload("res://scripts/battle/module_effect_handler.gd")
 const GC = preload("res://resources/game_constants.gd")
+const AttackPoseAnim = preload("res://scripts/battle/attack_pose_anim.gd")  # v9.x: 按武器分化的攻击姿态/攻击帧
 const DT = preload("res://resources/design_tokens.gd")
 const CardGridUnitVisuals = preload("res://scripts/card_grid_unit_visuals.gd")
 const CardGridBattleLayout = preload("res://scripts/card_grid_battle_layout.gd")
@@ -249,6 +250,9 @@ func apply_card_grid_enemy_presentation() -> void:
 		hb.position = Vector2(0.0, top_y - 14.0)
 		if hb.has_method("set_side"):
 			hb.set_side(false)  # 敌方色（红）
+		# v19: 战场等级文字（血条左侧）——相位师派生等级/关卡映射等级
+		if hb.has_method("set_level_text"):
+			hb.set_level_text(_resolve_display_level_text())
 		if hb.has_method("set_folded"):
 			hb.set_folded(true)  # 默认折叠，选中时展开（与玩家对称）
 	var aura_ring := get_node_or_null("AuraRing") as CanvasItem
@@ -259,22 +263,7 @@ func apply_card_grid_enemy_presentation() -> void:
 		rank_badge.visible = false
 
 
-func _play_card_attack_nudge() -> void:
-	if not _presentation_card_grid:
-		return
-	# 首次 nudge 时记录归位 X
-	if is_nan(_card_grid_rest_x):
-		_card_grid_rest_x = position.x
-	# 若有正在播放的 nudge tween，先 kill 并把 position 修正回归位点
-	if _card_nudge_tween != null and _card_nudge_tween.is_valid():
-		_card_nudge_tween.kill()
-		position.x = _card_grid_rest_x
-	_card_nudge_tween = create_tween()
-	# 与我方 ConstructUnit 一致：前冲向目标侧；我方 +x，敌方面左，用 -x
-	var dir: float = -1.0
-	var rest_x: float = _card_grid_rest_x
-	_card_nudge_tween.tween_property(self, "position:x", rest_x + dir * 22.0, 0.07)
-	_card_nudge_tween.tween_property(self, "position:x", rest_x, 0.09)
+## 格子战术卡面攻击姿态（v9.x 由 AttackPoseAnim 取代——按武器类型分化前冲/后坐/上扬 + 攻击帧）
 
 
 ## 开火缩放脉冲：Sprite2D 子节点 scale 短暂放大再回弹，模拟开火反冲。
@@ -501,7 +490,11 @@ func apply_elite_affixes(spawn_type: String) -> void:
 		return
 	if spawn_type == "normal":
 		return  # 普通怪不 roll
-	var affixes: Array = EnemyAffixes.roll_affixes(spawn_type)
+	# v19: 兵种/档位上下文——兵种专属词缀分池 + 独特词缀档位门槛
+	# combat_kind 读 stats（resolver 已填）；tier 查统一卡表条目（缴获前缀等查不到回退 0）
+	var kind_ctx: int = int(stats.combat_kind)
+	var tier_ctx: int = _lookup_archetype_tier(archetype_id)
+	var affixes: Array = EnemyAffixes.roll_affixes(spawn_type, null, kind_ctx, tier_ctx)
 	if affixes.is_empty():
 		return
 	_elite_affixes = affixes
@@ -512,9 +505,38 @@ func apply_elite_affixes(spawn_type: String) -> void:
 	_sync_bare_fields_from_stats()
 
 
+## v19: 查敌方卡在统一卡表的档位（词缀独特档门槛用；查不到回退 0）
+## archetype_id 可能带 captured_ 前缀或不在 UCT（合成名），get_entry 空字典时自然回退。
+func _lookup_archetype_tier(aid: String) -> int:
+	if aid.is_empty():
+		return 0
+	var entry: Dictionary = UnifiedCardTable.get_entry(aid)
+	return int(entry.get("tier", 0))
+
+
 ## v8 批次2: 获取本单位的词缀显示信息（供 card_info_panel 显示）。
 func get_elite_affixes() -> Array:
 	return _elite_affixes
+
+## v19: 战场等级文字来源——优先外部注入 meta（产兵兜底路径），
+## 相位师单位用战力派生显示等级（EnemyPhaseMasters.get_display_level_by_id），
+## 经典敌兵用关卡映射（ceil(关卡×0.3)，Lv1-30，与 enemy_stat_resolver 同口径）。
+## 解析结果缓存到 meta unit_level（悬浮面板等统一读取）。
+func _resolve_display_level_text() -> String:
+	var lv: int = _resolve_display_level()
+	if lv > 0:
+		set_meta("unit_level", lv)
+		return "Lv%d" % lv
+	return ""
+
+func _resolve_display_level() -> int:
+	if has_meta("unit_level"):
+		return clampi(int(get_meta("unit_level", 1)), 1, 30)
+	if archetype_id.begins_with("phase_master_"):
+		return EnemyPhaseMasters.get_display_level_by_id(archetype_id)
+	if GameManager != null and "current_level" in GameManager:
+		return CardGrowthConfig.enemy_level_for_stage(int(GameManager.current_level))
+	return 0
 
 
 func get_elite_spawn_type() -> String:
@@ -637,6 +659,10 @@ func _build_enemy_unit_stats(r: Dictionary, cfg: Dictionary) -> void:
 	s.defense_air = float(r.get("defense_air", defense))
 	# 武器类型（用于射程衰减/弹道路由）
 	s.weapon_type = int(r.get("weapon_type", int(cfg.get("weapon_type", 0))))
+	# v15: legacy 签名弹道值（>3：SNIPER/LASER/OMEGA/RAIL）同步记录，
+	# 供子弹 VFX 回退链与信息面板武器型号查询使用（与 UCT _entry_to_card 同口径）。
+	if s.weapon_type > 3:
+		s.legacy_weapon_type = s.weapon_type
 	s.weapon_label = String(r.get("weapon_label", String(cfg.get("weapon_label", ""))))
 	# 初始化武器槽位（让 AttackCalculator.get_weapon_for_target 生效）
 	s.weapon_slots.clear()
@@ -717,13 +743,17 @@ func _ensure_enemy_weapon_slots(s: UnitStats) -> void:
 		w.attack_speed = float(cfg_w.spd)
 		w.range_value = maxi(1, int(round(s.attack_range / 100.0)))
 		w.weapon_type = _default_enemy_slot_weapon_type(i, s.weapon_type, GC2)
-		# v9.4: 真光束武器（武器名含激光/光束/粒子/电磁炮/轨道炮/狙击）保留 SNIPER(6) 光束弹道。
-		# slot 1 默认已改直射，这里按武器名恢复光束类武器的光束弹道（与 CardResource._BEAM_WEAPON_KEYWORDS 同步）。
-		if w.weapon_type == GC2.WeaponType.DIRECT and not str(s.weapon_label).is_empty():
-			for kw in ["激光", "光束", "粒子束", "粒子炮", "粒子主炮", "电磁炮", "轨道炮", "电磁轨道", "狙击", "雷射"]:
-				if str(s.weapon_label).find(kw) >= 0:
-					w.weapon_type = 6  # SNIPER：光束弹道
-					break
+		# v9.x: 武器名→弹道覆盖统一走 CardResource 共享解析器（与玩家侧同口径，关键词表不再两处维护）：
+		# ① v15 精确表命中签名武器专属弹道——修复敌方 UCT 特殊 weapon_type(6/10/11) 在槽位层被
+		#    降级的配置错误：攻城电磁炮→RAIL(11) 磁轨穿透 / 重型等离子加农炮→OMEGA(10) 径向放电 /
+		#    磁轨狙击炮→SNIPER(6) 光束（此前统一落进光束关键词→SNIPER，RAIL/OMEGA 签名特效丢失）；
+		# ② 光束关键词 → SNIPER(6)（v9.x 扩展到曲射槽位，敌方曲射单位的光束武器与玩家一致）；
+		# ③ 曲射弹药形态（仅 INDIRECT 单位：机枪/近防炮点防直射、火箭低平弧、导弹中弧）。
+		if (w.weapon_type == GC2.WeaponType.DIRECT or w.weapon_type == GC2.WeaponType.INDIRECT) \
+				and not str(s.weapon_label).is_empty():
+			var _traj: int = CardResource.trajectory_override_for_weapon_name(str(s.weapon_label), s.weapon_type)
+			if _traj >= 0:
+				w.weapon_type = _traj
 		w.windup = 0.2
 		w.active = 0.1
 		w.display_name = s.weapon_label
@@ -1095,21 +1125,18 @@ func _get_weapon_type_for_targeting() -> int:
 
 
 ## v7.x: 收集射程内可攻击的我方单位候选（曲射/空射索敌用）
-## v9.2: 分行索敌——同行优先，空则跨行（在候选集上筛同行，无同行回退全候选）
+## v9.x: 曲射/空射全场索敌——不做同行收敛（直射才有跨行减伤，见 CardGridBattleLayout.cross_row_direct_multiplier）
 func _collect_player_candidates(acq: float) -> Array:
 	var result: Array = []
-	var same_row: Array = []
 	var attack_range_sq := acq * acq
 	var gr: Array = BattleManager.get_cached_nodes_in_group("player_units") if BattleManager else get_tree().get_nodes_in_group("player_units")
 	for n in gr:
 		if not CombatTargeting.is_attackable_combat_unit(n):
 			continue
-		var dist_sq := global_position.distance_squared_to(n.global_position)
+		var dist_sq: float = global_position.distance_squared_to(n.global_position)
 		if dist_sq <= attack_range_sq:
 			result.append(n as Node2D)
-			if CardGridBattleLayout.units_in_same_row(self, n):
-				same_row.append(n as Node2D)
-	return same_row if not same_row.is_empty() else result
+	return result
 
 
 ## v9.2: spatial_grid 行过滤辅助——敌方直射索敌时，在射程内找同行最近的玩家单位。
@@ -1300,9 +1327,6 @@ func _do_attack() -> void:
 		return
 	if _hit_stun_left > 0.0:
 		return
-	# 开火反馈：炮口闪光 + Sprite2D 缩放脉冲（所有武器/所有战斗模式统一生效）
-	# 复用玩家 AI 的静态方法——敌方攻击逻辑独立，但开火视觉反馈无耦合
-	ConstructUnitAI._play_muzzle_feedback(self)
 	var dist_t := global_position.distance_to(target.global_position)
 	var miss := false
 	var weapon_name_str: String = ""
@@ -1340,20 +1364,25 @@ func _do_attack() -> void:
 	else:
 		var cfg: Dictionary = _cached_archetype_cfg
 		wt = int(cfg.get("weapon_type", GC.WeaponType.DIRECT))
-	if _try_fire_enemy_projectile_batch(target, wt, dmg_out, miss):
-		if _presentation_card_grid:
-			_play_card_attack_nudge()
+	# v9.x: 直射武器跨行射击减伤（同行全额；曲射/空射全场全额，不受行约束）
+	dmg_out *= CardGridBattleLayout.cross_row_direct_multiplier(self, target, wt)
+	# 开火反馈：炮口闪光 + Sprite2D 缩放脉冲（所有武器/所有战斗模式统一生效）
+	# 复用玩家 AI 的静态方法——敌方攻击逻辑独立，但开火视觉反馈无耦合。
+	# v17: 传武器名+敌方域标记，火花类别键经 WeaponVisualProfiles 统一解析
+	# （武器名优先+legacy 域兜底，替代函数内部的朝向猜域启发式）。
+	ConstructUnitAI._play_muzzle_feedback(self, wt, weapon_name_str, false)
+	if _try_fire_enemy_projectile_batch(target, wt, dmg_out, miss, weapon_name_str, _vfx_variant):
+		AttackPoseAnim.play(self, wt)
 		return
 	# v6.2: 敌方曲射/空射走 indirect batch 批处理（v6.6: 统一曲射判定）
 	if GC.is_indirect_weapon_type(wt):
 		if BattleManager and is_instance_valid(BattleManager.enemy_indirect_batch):
 			if BattleManager.enemy_indirect_batch.has_method("fire"):
-				BattleManager.enemy_indirect_batch.fire(global_position, target, dmg_out, wt, self, stats, miss, weapon_name_str, _vfx_variant)
-				if _presentation_card_grid:
-					_play_card_attack_nudge()
+				# v16: 发射点改炮口锚点（原传 global_position 脚底，炮弹从脚下钻出与炮口火脱节）
+				BattleManager.enemy_indirect_batch.fire(_get_direct_fire_spawn_pos(), target, dmg_out, wt, self, stats, miss, weapon_name_str, _vfx_variant)
+				AttackPoseAnim.play(self, wt)
 				return
-	if _presentation_card_grid:
-		_play_card_attack_nudge()
+	AttackPoseAnim.play(self, wt)
 	var pellet_n := 6 if wt == 5 else 1
 	var pellet_dmg := dmg_out / float(pellet_n)
 	var root_2d = get_parent().get_parent() if (get_parent() != null and get_parent().get_parent() != null) else self
@@ -1377,18 +1406,19 @@ func _do_attack() -> void:
 				current_parent.remove_child(bullet)
 			root_2d.add_child(bullet)
 
-func _try_fire_enemy_projectile_batch(p_target: Node2D, wt: int, p_damage: float = -1.0, p_miss: bool = false) -> bool:
+func _try_fire_enemy_projectile_batch(p_target: Node2D, wt: int, p_damage: float = -1.0, p_miss: bool = false, p_weapon_name: String = "", p_vfx_variant: String = "") -> bool:
 	if wt not in GC.BATCH_FIRE_WEAPON_TYPES:  # SMG, PISTOL, RIFLE, MG
 		return false
 	if BattleManager == null or BattleManager.enemy_projectile_batch == null:
 		return false
 	var dmg: float = attack_damage if p_damage < 0.0 else p_damage
-	BattleManager.enemy_projectile_batch.fire(_get_direct_fire_spawn_pos(), p_target, dmg, wt, self, stats, p_miss)
+	# v16: 透传 weapon_name/vfx_variant（高速直射路径此前丢失武器名亚类命中配方与改造专属视觉）
+	BattleManager.enemy_projectile_batch.fire(_get_direct_fire_spawn_pos(), p_target, dmg, wt, self, stats, p_miss, p_weapon_name, p_vfx_variant)
 	return true
 
-## 获取直射武器发射起点：优先用 MuzzleAnchors 标注的枪口位置（fireX/fireY 独立二维），
+## 获取武器发射起点（v16 起直射与曲射共用）：优先用 MuzzleAnchors 标注的枪口位置
+## （fireX/fireY 独立二维；锚点表标注语义本就是"弹道起始点"），
 ## 无标注时回退到 entity_top_y * 0.5（实体垂直中点）。
-## 曲射/波次武器保持脚部发射（global_position），此处仅用于直射路径。
 func _get_direct_fire_spawn_pos() -> Vector2:
 	var spr = get_node_or_null("Sprite2D") as Sprite2D
 	var muzzle_offset: Vector2 = MuzzleAnchors.get_fire_offset(archetype_id, spr)
@@ -1501,6 +1531,9 @@ func take_damage(amount: float, attacker: Variant = null) -> void:
 			dodge = maxf(0.0, float(stats.dodge_chance) - ModuleEffectHandler.get_ecm_dodge_penalty(self))
 		# v10 打破型效果：俯冲修正失效期间（fort 克制命中触发 ground_aircraft）dodge 归零
 		if dodge > 0.0 and ModuleEffectHandler.is_grounded_for_dodge(self):
+			dodge = 0.0
+		# v10 组合规则①：照明标记+曲射=必中（被标记目标受曲射攻击时闪避失效）
+		if dodge > 0.0 and attacker != null and ModuleEffectHandler.is_marked_for_indirect(self, attacker):
 			dodge = 0.0
 		# v7.5: 传入 damage_reduction（此前全链路空转，现 resolve_hit 接入）
 		# 优先 stats.damage_reduction（改造/词条加成），叠加节点 damage_reduction（卡牌能力 debuff）

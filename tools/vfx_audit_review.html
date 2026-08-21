@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh"><head><meta charset="utf-8">
+<title>VFX 全矩阵视觉审计</title>
+<style>
+body{background:#101216;color:#cdd3dd;font-family:"Microsoft YaHei",sans-serif;margin:24px;max-width:1400px}
+h1{color:#e8ecf3}h2{color:#9fd0ff;margin-bottom:4px}h2 small{color:#5a6472;font-weight:normal}
+.meta{color:#8b95a5;font-size:14px}.spec{background:#171b22;border-left:3px solid #4cc2ff;padding:8px 12px;margin:8px 0;font-size:14px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+figure{margin:0;background:#0b0d10;border:1px solid #232a35;border-radius:6px;overflow:hidden}
+figure img{width:100%;display:block}figcaption{padding:6px 8px;font-size:12px;color:#8b95a5;text-align:center}
+table{border-collapse:collapse;font-size:13px}td,th{border:1px solid #232a35;padding:3px 10px}
+th{color:#9fd0ff;background:#171b22}.warn{color:#f0883e}
+details{margin-top:16px}
+</style></head><body>
+<h1>VFX 全矩阵视觉审计</h1>
+<p>生成时间：2026-08-21T12:01:33 ｜ 48 格截图（12 武器族 × 敌我 × 开火/命中）｜ 枪口火在参考单位旁、命中在目标单位旁，对照 100px 标尺与验收规格逐格检查。</p>
+<p>武器名解析覆盖：145/155（94%）有明确视觉信号；<span class="warn">wt_fallback 10 个</span>：爆破装药、指挥系统、25mm M242大毒蛇、能量护盾发生器、40mm榴弹、相位刃、守护者防空、闪电防空、雷霆防空、终焉防空</p>
+<div class="fam">
+<h2>轻动能（冲锋枪/步枪/机枪/坦克炮） <small>visual_wt=0</small></h2>
+<div class="meta">枪口火：light ｜ 命中：kinetic ｜ 弹体：poly_bullet ｜ 震屏：none（仅 HEAVY 伤害档震屏）</div>
+<div class="spec"><b>验收规格：</b>枪口=细碎橙火星(~5-9px)一闪即逝；命中=放射状黄白小火花+微量烟，无火球帧无震屏；亚类(机枪弹幕/坦克炮重环)由 DirectWeaponFlavor 按武器名细分</div>
+<div class="grid">
+<figure><img src="../docs/vfx_audit_shots/f00_player_muzzle.png" loading="lazy"><figcaption>我方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f00_enemy_muzzle.png" loading="lazy"><figcaption>敌方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f00_player_impact.png" loading="lazy"><figcaption>我方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f00_enemy_impact.png" loading="lazy"><figcaption>敌方·命中</figcaption></figure>
+</div></div>
+<div class="fam">
+<h2>曲射火炮（迫击炮/榴弹炮） <small>visual_wt=1</small></h2>
+<div class="meta">枪口火：heavy ｜ 命中：explosive ｜ 弹体：poly_bullet ｜ 震屏：medium</div>
+<div class="spec"><b>验收规格：</b>枪口=大爆发火球+发射药烟团；弹道=高抛物线炮弹；命中=火球帧动画+冲击波环+焦痕弹坑(50%概率)</div>
+<div class="grid">
+<figure><img src="../docs/vfx_audit_shots/f01_player_muzzle.png" loading="lazy"><figcaption>我方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f01_enemy_muzzle.png" loading="lazy"><figcaption>敌方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f01_player_impact.png" loading="lazy"><figcaption>我方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f01_enemy_impact.png" loading="lazy"><figcaption>敌方·命中</figcaption></figure>
+</div></div>
+<div class="fam">
+<h2>空射武器 <small>visual_wt=2</small></h2>
+<div class="meta">枪口火：heavy ｜ 命中：explosive ｜ 弹体：missile_body ｜ 震屏：medium</div>
+<div class="spec"><b>验收规格：</b>空射导弹俯冲弹道；命中=通用爆炸贴图+火球帧</div>
+<div class="grid">
+<figure><img src="../docs/vfx_audit_shots/f02_player_muzzle.png" loading="lazy"><figcaption>我方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f02_enemy_muzzle.png" loading="lazy"><figcaption>敌方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f02_player_impact.png" loading="lazy"><figcaption>我方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f02_enemy_impact.png" loading="lazy"><figcaption>敌方·命中</figcaption></figure>
+</div></div>
+<div class="fam">
+<h2>火箭弹（火箭炮/火箭巢） <small>visual_wt=3</small></h2>
+<div class="meta">枪口火：heavy ｜ 命中：explosive ｜ 弹体：rocket_body ｜ 震屏：medium</div>
+<div class="spec"><b>验收规格：</b>枪口=窄锥(32°)定向喷射+尾焰烟；弹道=低平弧火箭弹带尾焰；命中=火球帧+碎片烟尘</div>
+<div class="grid">
+<figure><img src="../docs/vfx_audit_shots/f03_player_muzzle.png" loading="lazy"><figcaption>我方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f03_enemy_muzzle.png" loading="lazy"><figcaption>敌方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f03_player_impact.png" loading="lazy"><figcaption>我方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f03_enemy_impact.png" loading="lazy"><figcaption>敌方·命中</figcaption></figure>
+</div></div>
+<div class="fam">
+<h2>手枪/卡宾（最轻档） <small>visual_wt=4</small></h2>
+<div class="meta">枪口火：light ｜ 命中：kinetic ｜ 弹体：poly_bullet ｜ 震屏：none</div>
+<div class="spec"><b>验收规格：</b>比步枪更弱一档：极短弹头(近光点)+最小火花；密集射击不连成长条</div>
+<div class="grid">
+<figure><img src="../docs/vfx_audit_shots/f04_player_muzzle.png" loading="lazy"><figcaption>我方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f04_enemy_muzzle.png" loading="lazy"><figcaption>敌方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f04_player_impact.png" loading="lazy"><figcaption>我方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f04_enemy_impact.png" loading="lazy"><figcaption>敌方·命中</figcaption></figure>
+</div></div>
+<div class="fam">
+<h2>霰弹 <small>visual_wt=5</small></h2>
+<div class="meta">枪口火：light ｜ 命中：scatter ｜ 弹体：poly_bullet ｜ 震屏：none</div>
+<div class="spec"><b>验收规格：</b>6 发 18° 散射弹丸；命中=散射状小贴图+宽散火花</div>
+<div class="grid">
+<figure><img src="../docs/vfx_audit_shots/f05_player_muzzle.png" loading="lazy"><figcaption>我方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f05_enemy_muzzle.png" loading="lazy"><figcaption>敌方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f05_player_impact.png" loading="lazy"><figcaption>我方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f05_enemy_impact.png" loading="lazy"><figcaption>敌方·命中</figcaption></figure>
+</div></div>
+<div class="fam">
+<h2>狙击/光束武器 <small>visual_wt=6</small></h2>
+<div class="meta">枪口火：energy ｜ 命中：beam_hit ｜ 弹体：beam_line ｜ 震屏：light</div>
+<div class="spec"><b>验收规格：</b>枪口=白青喷射流；弹道=Line2D 直线光束；命中=精确药剂感小爆点（非激光烧灼——激光武器单独归 LASER 族）</div>
+<div class="grid">
+<figure><img src="../docs/vfx_audit_shots/f06_player_muzzle.png" loading="lazy"><figcaption>我方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f06_enemy_muzzle.png" loading="lazy"><figcaption>敌方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f06_player_impact.png" loading="lazy"><figcaption>我方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f06_enemy_impact.png" loading="lazy"><figcaption>敌方·命中</figcaption></figure>
+</div></div>
+<div class="fam">
+<h2>高炮/防空速射炮 <small>visual_wt=7</small></h2>
+<div class="meta">枪口火：heavy ｜ 命中：explosive ｜ 弹体：poly_bullet ｜ 震屏：medium</div>
+<div class="spec"><b>验收规格：</b>短粗高炮弹连发；命中=空爆贴图+小火球帧</div>
+<div class="grid">
+<figure><img src="../docs/vfx_audit_shots/f07_player_muzzle.png" loading="lazy"><figcaption>我方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f07_enemy_muzzle.png" loading="lazy"><figcaption>敌方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f07_player_impact.png" loading="lazy"><figcaption>我方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f07_enemy_impact.png" loading="lazy"><figcaption>敌方·命中</figcaption></figure>
+</div></div>
+<div class="fam">
+<h2>激光（烧灼签名） <small>visual_wt=8</small></h2>
+<div class="meta">枪口火：energy ｜ 命中：burn ｜ 弹体：beam_line ｜ 震屏：light</div>
+<div class="spec"><b>验收规格：</b>命中=来弹光束+白热聚焦光斑+焦痕+上升热火花+熔融火星（表面能量沉积，区别于动能穿透）</div>
+<div class="grid">
+<figure><img src="../docs/vfx_audit_shots/f08_player_muzzle.png" loading="lazy"><figcaption>我方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f08_enemy_muzzle.png" loading="lazy"><figcaption>敌方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f08_player_impact.png" loading="lazy"><figcaption>我方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f08_enemy_impact.png" loading="lazy"><figcaption>敌方·命中</figcaption></figure>
+</div></div>
+<div class="fam">
+<h2>导弹 <small>visual_wt=9</small></h2>
+<div class="meta">枪口火：heavy ｜ 命中：explosive ｜ 弹体：missile_body ｜ 震屏：medium</div>
+<div class="spec"><b>验收规格：</b>大型导弹弹体+中弧弹道+专属命中贴图（按名查表，含通用爆炸兜底）</div>
+<div class="grid">
+<figure><img src="../docs/vfx_audit_shots/f09_player_muzzle.png" loading="lazy"><figcaption>我方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f09_enemy_muzzle.png" loading="lazy"><figcaption>敌方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f09_player_impact.png" loading="lazy"><figcaption>我方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f09_enemy_impact.png" loading="lazy"><figcaption>敌方·命中</figcaption></figure>
+</div></div>
+<div class="fam">
+<h2>欧米茄粒子炮（径向放电签名） <small>visual_wt=10</small></h2>
+<div class="meta">枪口火：energy ｜ 命中：discharge ｜ 弹体：poly_bullet ｜ 震屏：heavy</div>
+<div class="spec"><b>验收规格：</b>命中=来弹粒子流+大能量核+7条星芒射线+外向电火花+持续辉光环（四面八方炸开）</div>
+<div class="grid">
+<figure><img src="../docs/vfx_audit_shots/f10_player_muzzle.png" loading="lazy"><figcaption>我方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f10_enemy_muzzle.png" loading="lazy"><figcaption>敌方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f10_player_impact.png" loading="lazy"><figcaption>我方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f10_enemy_impact.png" loading="lazy"><figcaption>敌方·命中</figcaption></figure>
+</div></div>
+<div class="fam">
+<h2>磁轨炮（动能穿透签名） <small>visual_wt=11</small></h2>
+<div class="meta">枪口火：energy ｜ 命中：pierce ｜ 弹体：poly_bullet ｜ 震屏：heavy</div>
+<div class="spec"><b>验收规格：</b>命中=入口过曝白闪+白热穿透光迹贯穿目标+出口spall碎片锥+回溅火花+速度线（超高初速动能穿甲，非激光）</div>
+<div class="grid">
+<figure><img src="../docs/vfx_audit_shots/f11_player_muzzle.png" loading="lazy"><figcaption>我方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f11_enemy_muzzle.png" loading="lazy"><figcaption>敌方·开火</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f11_player_impact.png" loading="lazy"><figcaption>我方·命中</figcaption></figure>
+<figure><img src="../docs/vfx_audit_shots/f11_enemy_impact.png" loading="lazy"><figcaption>敌方·命中</figcaption></figure>
+</div></div>
+
+<details><summary>全部武器名解析表（155 行）</summary><table>
+<tr><th>武器名</th><th>解析途径</th><th>视觉族</th></tr>
+<tr><td>MP18冲锋枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>毛瑟G98步枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>李恩菲尔德步枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>81mm/105mm火炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>7.62mm/12.7mm高机枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>迫击炮/野战炮</td><td><span style="color:#7ee787">keyword</span></td><td>曲射火炮（迫击炮/榴弹炮）</td></tr>
+<tr><td>暴风冲锋枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>73mm/90mm反坦克炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>57mm/75mm坦克炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>14.5mm车载机枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>37mm/57mm坦克炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>75mm/76mm坦克炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>85mm主炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>37mm高射炮</td><td><span style="color:#7ee787">keyword</span></td><td>高炮/防空速射炮</td></tr>
+<tr><td>骑兵卡宾枪/马刀</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>步枪/爆破装药</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>爆破装药</td><td><span style="color:#f0883e">wt_fallback</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>冲锋枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>步枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>机枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>迫击炮</td><td><span style="color:#7ee787">keyword</span></td><td>曲射火炮（迫击炮/榴弹炮）</td></tr>
+<tr><td>75mm主炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>150mm要塞炮/88mm防空炮</td><td><span style="color:#7ee787">keyword</span></td><td>高炮/防空速射炮</td></tr>
+<tr><td>马克沁重机枪/双联防空枪架</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>自卫手枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>冲锋枪/步枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>105mm/120mm榴弹炮</td><td><span style="color:#7ee787">keyword</span></td><td>曲射火炮（迫击炮/榴弹炮）</td></tr>
+<tr><td>20mm/25mm高炮</td><td><span style="color:#7ee787">keyword</span></td><td>高炮/防空速射炮</td></tr>
+<tr><td>88mm/105mm反坦克炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>加兰德M1步枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>85mm/105mm反坦克炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>105mm主炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>105mm/120mm主炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>122mm主炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>125mm滑膛炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>火箭筒</td><td><span style="color:#7ee787">keyword</span></td><td>火箭弹（火箭炮/火箭巢）</td></tr>
+<tr><td>75mm坦克炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>88mm主炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>150mm榴弹炮</td><td><span style="color:#7ee787">keyword</span></td><td>曲射火炮（迫击炮/榴弹炮）</td></tr>
+<tr><td>75mm反坦克炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>MG42/双联防空炮</td><td><span style="color:#7ee787">keyword</span></td><td>高炮/防空速射炮</td></tr>
+<tr><td>双联37mm高射炮</td><td><span style="color:#7ee787">keyword</span></td><td>高炮/防空速射炮</td></tr>
+<tr><td>AK-47突击步枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>RPG-7火箭筒</td><td><span style="color:#7ee787">keyword</span></td><td>火箭弹（火箭炮/火箭巢）</td></tr>
+<tr><td>M14步枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>12.7mm重机枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>AK-74突击步枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>100mm主炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>23mm/30mm高射炮</td><td><span style="color:#7ee787">keyword</span></td><td>高炮/防空速射炮</td></tr>
+<tr><td>萨姆-7防空导弹</td><td><span style="color:#7ee787">keyword</span></td><td>导弹</td></tr>
+<tr><td>23mm航炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>空空导弹</td><td><span style="color:#7ee787">keyword</span></td><td>导弹</td></tr>
+<tr><td>20mm航炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>M16A4步枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>85mm/105mm主炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>便携式防空导弹</td><td><span style="color:#7ee787">keyword</span></td><td>导弹</td></tr>
+<tr><td>M60机枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>突击步枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>14.5mm高射机枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>12.7mm高射机枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>机炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>73mm低压滑膛炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>73mm炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>反坦克导弹</td><td><span style="color:#7ee787">keyword</span></td><td>导弹</td></tr>
+<tr><td>多管近防炮/88mm防空炮</td><td><span style="color:#7ee787">keyword</span></td><td>高炮/防空速射炮</td></tr>
+<tr><td>反舰巡航导弹</td><td><span style="color:#7ee787">keyword</span></td><td>导弹</td></tr>
+<tr><td>M4卡宾枪/SCAR-H</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>火箭筒/轻型装甲武器</td><td><span style="color:#7ee787">keyword</span></td><td>火箭弹（火箭炮/火箭巢）</td></tr>
+<tr><td>M4卡宾枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>标枪反坦克导弹</td><td><span style="color:#7ee787">keyword</span></td><td>导弹</td></tr>
+<tr><td>毒刺防空导弹</td><td><span style="color:#7ee787">keyword</span></td><td>导弹</td></tr>
+<tr><td>120mm/125mm主炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>20mm机炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>陶式反坦克导弹</td><td><span style="color:#7ee787">keyword</span></td><td>导弹</td></tr>
+<tr><td>120mm主炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>120mm L55主炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>双联装电磁炮</td><td><span style="color:#7ee787">keyword</span></td><td>狙击/光束武器</td></tr>
+<tr><td>地狱火导弹/30mm链炮</td><td><span style="color:#7ee787">keyword</span></td><td>导弹</td></tr>
+<tr><td>空空导弹/20mm机炮</td><td><span style="color:#7ee787">keyword</span></td><td>导弹</td></tr>
+<tr><td>地狱火导弹/20mm链炮</td><td><span style="color:#7ee787">keyword</span></td><td>导弹</td></tr>
+<tr><td>7.62mm舱门机枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>轻型机炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>227mm火箭炮</td><td><span style="color:#7ee787">keyword</span></td><td>火箭弹（火箭炮/火箭巢）</td></tr>
+<tr><td>25mm近防炮</td><td><span style="color:#7ee787">keyword</span></td><td>高炮/防空速射炮</td></tr>
+<tr><td>机载机枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>火箭炮</td><td><span style="color:#7ee787">keyword</span></td><td>火箭弹（火箭炮/火箭巢）</td></tr>
+<tr><td>地狱火导弹</td><td><span style="color:#7ee787">keyword</span></td><td>导弹</td></tr>
+<tr><td>指挥系统</td><td><span style="color:#f0883e">wt_fallback</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>防空导弹</td><td><span style="color:#7ee787">keyword</span></td><td>导弹</td></tr>
+<tr><td>卡宾枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>无人机导弹</td><td><span style="color:#7ee787">keyword</span></td><td>导弹</td></tr>
+<tr><td>微型导弹</td><td><span style="color:#7ee787">keyword</span></td><td>导弹</td></tr>
+<tr><td>反辐射导弹</td><td><span style="color:#7ee787">keyword</span></td><td>导弹</td></tr>
+<tr><td>电子战吊舱/自卫机枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>120mm滑膛炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>密集阵20mm近防炮</td><td><span style="color:#7ee787">keyword</span></td><td>高炮/防空速射炮</td></tr>
+<tr><td>微型导弹/激光</td><td><span style="color:#7ee787">keyword</span></td><td>激光（烧灼签名）</td></tr>
+<tr><td>激光炮/制导导弹</td><td><span style="color:#7ee787">keyword</span></td><td>激光（烧灼签名）</td></tr>
+<tr><td>拦截激光/空空导弹</td><td><span style="color:#7ee787">keyword</span></td><td>激光（烧灼签名）</td></tr>
+<tr><td>植入式自动步枪/重型粒子炮</td><td><span style="color:#7ee787">keyword</span></td><td>狙击/光束武器</td></tr>
+<tr><td>电磁炮</td><td><span style="color:#7ee787">keyword</span></td><td>狙击/光束武器</td></tr>
+<tr><td>粒子束步枪</td><td><span style="color:#7ee787">keyword</span></td><td>狙击/光束武器</td></tr>
+<tr><td>点防御激光</td><td><span style="color:#7ee787">keyword</span></td><td>激光（烧灼签名）</td></tr>
+<tr><td>重型等离子加农炮</td><td><span style="color:#4cc2ff">exact</span></td><td>欧米茄粒子炮（径向放电签名）</td></tr>
+<tr><td>电磁轨道炮</td><td><span style="color:#7ee787">keyword</span></td><td>磁轨炮（动能穿透签名）</td></tr>
+<tr><td>25mm M242大毒蛇</td><td><span style="color:#f0883e">wt_fallback</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>轨道炮/激光</td><td><span style="color:#7ee787">keyword</span></td><td>磁轨炮（动能穿透签名）</td></tr>
+<tr><td>激光拦截炮</td><td><span style="color:#7ee787">keyword</span></td><td>激光（烧灼签名）</td></tr>
+<tr><td>空天导弹/粒子炮</td><td><span style="color:#7ee787">keyword</span></td><td>导弹</td></tr>
+<tr><td>粒子炮/激光</td><td><span style="color:#7ee787">keyword</span></td><td>激光（烧灼签名）</td></tr>
+<tr><td>纳米修复射线</td><td><span style="color:#7ee787">keyword</span></td><td>狙击/光束武器</td></tr>
+<tr><td>能量护盾发生器</td><td><span style="color:#f0883e">wt_fallback</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>攻城电磁炮</td><td><span style="color:#4cc2ff">exact</span></td><td>磁轨炮（动能穿透签名）</td></tr>
+<tr><td>40mm榴弹</td><td><span style="color:#f0883e">wt_fallback</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>全装型导弹巢</td><td><span style="color:#4cc2ff">exact</span></td><td>导弹</td></tr>
+<tr><td>粒子炮</td><td><span style="color:#7ee787">keyword</span></td><td>狙击/光束武器</td></tr>
+<tr><td>等离子炮</td><td><span style="color:#7ee787">keyword</span></td><td>欧米茄粒子炮（径向放电签名）</td></tr>
+<tr><td>爆能炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>重型导弹/粒子炮</td><td><span style="color:#7ee787">keyword</span></td><td>导弹</td></tr>
+<tr><td>磁轨狙击炮</td><td><span style="color:#4cc2ff">exact</span></td><td>狙击/光束武器</td></tr>
+<tr><td>近防炮/舰载导弹</td><td><span style="color:#7ee787">keyword</span></td><td>导弹</td></tr>
+<tr><td>激光炮</td><td><span style="color:#7ee787">keyword</span></td><td>激光（烧灼签名）</td></tr>
+<tr><td>神经接口步枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>相位刃</td><td><span style="color:#f0883e">wt_fallback</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>岸防导弹</td><td><span style="color:#7ee787">keyword</span></td><td>导弹</td></tr>
+<tr><td>离子炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>离子炮阵列</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>坦克炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>火炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>155mm重榴弹炮</td><td><span style="color:#7ee787">keyword</span></td><td>曲射火炮（迫击炮/榴弹炮）</td></tr>
+<tr><td>光束步枪</td><td><span style="color:#7ee787">keyword</span></td><td>狙击/光束武器</td></tr>
+<tr><td>守护者机枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>守护者主炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>守护者防空</td><td><span style="color:#f0883e">wt_fallback</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>闪电机枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>闪电主炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>闪电防空</td><td><span style="color:#f0883e">wt_fallback</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>雷霆机枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>雷霆火箭</td><td><span style="color:#7ee787">keyword</span></td><td>火箭弹（火箭炮/火箭巢）</td></tr>
+<tr><td>雷霆防空</td><td><span style="color:#f0883e">wt_fallback</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>幽灵航炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>幽灵导弹</td><td><span style="color:#7ee787">keyword</span></td><td>导弹</td></tr>
+<tr><td>幽灵空空导弹</td><td><span style="color:#7ee787">keyword</span></td><td>导弹</td></tr>
+<tr><td>终焉光束</td><td><span style="color:#7ee787">keyword</span></td><td>狙击/光束武器</td></tr>
+<tr><td>终焉粒子炮</td><td><span style="color:#7ee787">keyword</span></td><td>狙击/光束武器</td></tr>
+<tr><td>终焉防空</td><td><span style="color:#f0883e">wt_fallback</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>MP18-II冲锋枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>相位刺刀突击枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>电磁轨道步枪</td><td><span style="color:#7ee787">keyword</span></td><td>磁轨炮（动能穿透签名）</td></tr>
+<tr><td>光束炮</td><td><span style="color:#7ee787">keyword</span></td><td>狙击/光束武器</td></tr>
+<tr><td>巨型光束炮</td><td><span style="color:#7ee787">keyword</span></td><td>狙击/光束武器</td></tr>
+<tr><td>雷霆突击步枪</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>超频矩阵炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>粒子副炮</td><td><span style="color:#7ee787">keyword</span></td><td>轻动能（冲锋枪/步枪/机枪/坦克炮）</td></tr>
+<tr><td>巨型粒子炮</td><td><span style="color:#7ee787">keyword</span></td><td>狙击/光束武器</td></tr>
+</table></details>
+</body></html>

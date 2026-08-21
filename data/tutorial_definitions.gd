@@ -157,7 +157,7 @@ const TUTORIALS: Dictionary = {
 				"highlight": null
 			},
 			{
-				"text": "法则卡也属于卡牌体系，可同样升星、改装与进化！",
+				"text": "法则卡也属于卡牌体系，可同样强化、改装与进化！",
 				"position": "bottom",
 				"highlight": "card_detail"
 			}

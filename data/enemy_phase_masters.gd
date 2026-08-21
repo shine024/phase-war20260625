@@ -28,6 +28,9 @@ const _RuneDefs = preload("res://data/runes.gd")
 const _RunewordDefs = preload("res://data/runewords.gd")
 # v7.x: 等级派生用（总战力 → Lv）
 const _MasterPowerEvaluator = preload("res://scripts/master_power_evaluator.gd")
+# v18 四源重构: 大招/技能树新真身（原 active_spells/traits/passive_spells 物理迁入后的访问器回退）
+const EnemyMasterInstruments = preload("res://data/enemy_master_instruments.gd")
+const EnemyMasterSkillTree = preload("res://data/enemy_master_skill_tree.gd")
 
 ## 从子文件合并所有时代数据（兼容原 LEGACY_ENEMY_MASTERS）
 ## 注：曾经用静态 var 直接拼接子文件 ERA_MASTERS，但 GDScript 静态 var 求值时序在
@@ -167,25 +170,35 @@ static func get_master_by_id(master_id: String) -> Dictionary:
 	return {}
 
 ## 获取敌方相位师的特性
+## v18 四源重构·批次3: traits 已物理迁入技能树——字段空时回退技能树数值节点（展示形态兼容）
 static func get_master_traits(master_id: String) -> Array:
 	var master = get_master_by_id(master_id)
 	if not master.is_empty():
-		return master.get("traits", [])
-	return []
+		var tr: Array = master.get("traits", [])
+		if not tr.is_empty():
+			return tr
+	var entry: Dictionary = EnemyMasterSkillTree.MASTER_NODES.get(master_id, {})
+	return entry.get("num", []) as Array
 
 ## 获取敌方相位师的主动技能
+## v18 四源重构·批次2: active_spells 已物理迁入专属相位仪变体——字段空时回退新真身
 static func get_master_active_spells(master_id: String) -> Array:
 	var master = get_master_by_id(master_id)
 	if not master.is_empty():
-		return master.get("active_spells", [])
-	return []
+		var sp: Array = master.get("active_spells", [])
+		if not sp.is_empty():
+			return sp
+	return EnemyMasterInstruments.get_master_ultimate_spells(master_id)
 
 ## 获取敌方相位师的被动技能
+## v18 四源重构·批次3: passive_spells 已物理迁入技能树机制节点——字段空时回退新真身
 static func get_master_passive_spells(master_id: String) -> Array:
 	var master = get_master_by_id(master_id)
 	if not master.is_empty():
-		return master.get("passive_spells", [])
-	return []
+		var ps: Array = master.get("passive_spells", [])
+		if not ps.is_empty():
+			return ps
+	return EnemyMasterSkillTree.get_delivered_mech_nodes(master_id)
 
 ## 获取敌方相位师的装备配置
 static func get_master_equipment(master_id: String) -> Dictionary:

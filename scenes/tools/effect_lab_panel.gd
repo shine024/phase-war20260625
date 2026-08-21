@@ -7,6 +7,10 @@ const PhaseInstrDefs := preload("res://data/phase_instruments.gd")
 const CPS := preload("res://data/card_periodic_skills.gd")
 const CPSEngine := preload("res://managers/battle/card_periodic_skill_engine.gd")
 const FactionFX := preload("res://scripts/battle/faction_skill_effect_handler.gd")
+const EnemyMasterInstruments := preload("res://data/enemy_master_instruments.gd")
+const EnemyMasterSkillEngine := preload("res://managers/battle/enemy_master_skill_engine.gd")
+const EnemyPhaseMasters := preload("res://data/enemy_phase_masters.gd")
+const PMSkillTree := preload("res://data/phase_master_skill_tree.gd")
 
 var _player_getter: Callable = Callable()
 var _enemy_getter: Callable = Callable()
@@ -19,6 +23,11 @@ var _injected_log: Array = []
 var _toggle_states: Dictionary = {}  # "type:id:side" -> Button，跟踪 toggle 激活状态
 var _phase_btn_player: BaseButton = null  # 当前激活的玩家侧相位仪 toggle 按钮（生产系统每侧只能一个）
 var _phase_btn_enemy: BaseButton = null   # 当前激活的敌方侧相位仪 toggle 按钮
+# 敌方相位师大招区：施放引擎 + 相位师选择器 + 大招行容器
+var _enemy_spell_engine: RefCounted = null
+var _enemy_master_opt: OptionButton = null
+var _enemy_spell_vbox: VBoxContainer = null
+var _enemy_master_ids: Array = []
 
 @onready var _overlay: Panel = $Overlay
 @onready var _target_opt: OptionButton = $Overlay/LeftPanel/TargetOpt
@@ -30,6 +39,9 @@ var _phase_btn_enemy: BaseButton = null   # 当前激活的敌方侧相位仪 to
 @onready var _check_info: RichTextLabel = $Overlay/RightPanel/CheckInfo
 @onready var _review_edit: TextEdit = $Overlay/RightPanel/ReviewEdit
 @onready var _save_hint: Label = $Overlay/RightPanel/SaveHint
+@onready var _report_panel: Panel = $Overlay/RightPanel
+@onready var _report_collapse_btn: Button = $Overlay/RightPanel/ReportCollapseBtn
+var _report_collapsed: bool = false
 
 const _DEBUFF_INFO := {
 	0: {"name": "破甲", "short": "每层降低15%防御"},
@@ -81,12 +93,40 @@ const _CLEAR_META_KEYS := [
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Overlay 本体透明化——可见背景板只由 LeftPanel/RightPanel 自带样式承担，
+	# 否则报告区收起后会残留整幅默认灰底蒙板，遮挡下方战场（敌方侧）看效果
+	if _overlay != null:
+		_overlay.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	$Overlay/LeftPanel/ClearPlayerBtn.pressed.connect(_on_clear_player)
 	$Overlay/LeftPanel/ClearEnemyBtn.pressed.connect(_on_clear_enemy)
 	$Overlay/LeftPanel/CollapseBtn.pressed.connect(_on_collapse)
 	$Overlay/RightPanel/SaveBtn.pressed.connect(_on_save_report)
+	if _report_collapse_btn != null:
+		_report_collapse_btn.pressed.connect(_on_report_collapse_toggle)
 	_populate_effects()
 	_set_open(false)  # 默认收起
+
+
+# ============================================================
+# 检查报告面板：收起/展开（收起后缩成右上 32px 标题条，不遮挡右侧战场看效果）
+# ============================================================
+func _on_report_collapse_toggle() -> void:
+	_set_report_collapsed(not _report_collapsed)
+
+
+func _set_report_collapsed(collapsed: bool) -> void:
+	if _report_panel == null:
+		return
+	_report_collapsed = collapsed
+	# 只留标题 + 切换按钮，其余内容（检查信息/评价输入/保存按钮）全部隐藏
+	for child in _report_panel.get_children():
+		if child.name == "TitleRight" or child.name == "ReportCollapseBtn":
+			continue
+		child.visible = not collapsed
+	# 收起：(4,4)-(632,32) 标题条；展开：(4,4)-(632,496)
+	_report_panel.offset_bottom = 32.0 if collapsed else 496.0
+	if _report_collapse_btn != null:
+		_report_collapse_btn.text = "展开 ▸" if collapsed else "收起 ◂"
 
 
 func _exit_tree() -> void:
@@ -137,11 +177,14 @@ func _populate_effects() -> void:
 		var atype: String = String(ab.get("type", ""))
 		var nm: String = ab.get("name", String(ab.get("id", "")))
 		var desc: String = ab.get("description", "")
-		var title: String = "%s %s [%s]" % [_phase_emoji(atype), nm, atype]
+		var title: String = "%s %s [%s]" % [_phase_emoji(atype), nm, _phase_type_zh(atype)]
 		if atype == "passive":
 			_add_row_disabled(title, desc)
 		else:
 			_add_phase_toggle_row(title, desc, ab)
+
+	_add_section_title("◆ 敌方相位师大招（51种·按相位师）— 选相位师后点[触发]，对场上我方单位施放")
+	_build_enemy_ultimate_selector()
 
 	_add_section_title("◆ 卡牌周期技能（20种）— 点[触发]立即施放")
 	for sid in CPS.get_all_skill_ids():
@@ -151,8 +194,11 @@ func _populate_effects() -> void:
 		var nm: String = sk.get("name", sid_s)
 		var mark: String = " ★" if bool(sk.get("is_ultimate", false)) else ""
 		var title: String = "%s %s%s" % [_family_emoji(sk.get("family", "")), nm, mark]
-		var desc: String = "id=%s type=%s" % [sid_s, String(sk.get("effect", {}).get("type", ""))]
+		var desc: String = "%s，每%.0f秒一次" % [_cps_type_zh(String(sk.get("effect", {}).get("type", ""))), float(sk.get("interval", 0.0))]
 		_add_row_btn(title, desc, "触发", Callable(self, "_on_trigger_card_skill").bind(sid_s))
+
+	_add_section_title("◆ 技能树奇点大招（◈capstone）— 机制类注入我方单位·卡片技能类直接触发")
+	_build_capstone_rows()
 
 	_add_section_title("◆ 势力技能效果（6种）— 点[我方/敌方]切换注入/取消")
 	for entry in _FACTION_INFO:
@@ -168,21 +214,11 @@ func _add_section_title(text: String) -> void:
 	_effect_vbox.add_child(l)
 
 
-## toggle 行：标题 + 描述 + [我方(toggle)] + [敌方(toggle)]
-## 点一次=高亮+注入，再点=取消高亮+清除
+## toggle 行：[我方(toggle)] + [敌方(toggle)] + 标题 + 描述
+## 开关放行首（长描述不再把开关挤出可视区）；描述 autowrap 行内换行不出横向滚动
 func _add_toggle_row(title: String, desc: String, etype: String, eid: Variant) -> void:
 	var row := HBoxContainer.new()
 	row.custom_minimum_size.y = 26
-	var tl := Label.new()
-	tl.text = title
-	tl.add_theme_font_size_override("font_size", 12)
-	tl.custom_minimum_size.x = 130
-	row.add_child(tl)
-	var dl := Label.new()
-	dl.text = desc
-	dl.add_theme_font_size_override("font_size", 11)
-	dl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(dl)
 	# 我方 toggle 按钮（CheckButton 带滑块，直观显示开/关状态）
 	var bp := CheckButton.new()
 	bp.text = "我方"
@@ -197,24 +233,28 @@ func _add_toggle_row(title: String, desc: String, etype: String, eid: Variant) -
 	be.custom_minimum_size.x = 72
 	be.pressed.connect(_on_toggle.bind(etype, eid, false, be))
 	row.add_child(be)
-	_effect_vbox.add_child(row)
-
-
-## 相位仪能力 toggle 行：点[我方/敌方]开=触发（高亮），再点=关闭（清除该侧能力）
-## 注意：生产系统每侧 owner 只能持有一个 active_ability，所以同侧激活新能力会替换旧能力。
-func _add_phase_toggle_row(title: String, desc: String, ab: Dictionary) -> void:
-	var row := HBoxContainer.new()
-	row.custom_minimum_size.y = 26
 	var tl := Label.new()
 	tl.text = title
 	tl.add_theme_font_size_override("font_size", 12)
-	tl.custom_minimum_size.x = 140
+	tl.custom_minimum_size.x = 130
+	tl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(tl)
 	var dl := Label.new()
 	dl.text = desc
 	dl.add_theme_font_size_override("font_size", 11)
 	dl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	dl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(dl)
+	_effect_vbox.add_child(row)
+
+
+## 相位仪能力 toggle 行：[我方] + [敌方] + 标题 + 描述
+## 点[我方/敌方]开=触发（高亮），再点=关闭（清除该侧能力）
+## 注意：生产系统每侧 owner 只能持有一个 active_ability，所以同侧激活新能力会替换旧能力。
+func _add_phase_toggle_row(title: String, desc: String, ab: Dictionary) -> void:
+	var row := HBoxContainer.new()
+	row.custom_minimum_size.y = 26
 	var bp := CheckButton.new()
 	bp.text = "我方"
 	bp.add_theme_font_size_override("font_size", 12)
@@ -227,6 +267,19 @@ func _add_phase_toggle_row(title: String, desc: String, ab: Dictionary) -> void:
 	be.custom_minimum_size.x = 72
 	be.pressed.connect(_on_toggle_phase.bind(ab, false, be))
 	row.add_child(be)
+	var tl := Label.new()
+	tl.text = title
+	tl.add_theme_font_size_override("font_size", 12)
+	tl.custom_minimum_size.x = 140
+	tl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(tl)
+	var dl := Label.new()
+	dl.text = desc
+	dl.add_theme_font_size_override("font_size", 11)
+	dl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	dl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(dl)
 	_effect_vbox.add_child(row)
 
 
@@ -334,40 +387,51 @@ func _faction_name(fid: String) -> String:
 		if String(e["id"]) == fid: return String(e["name"])
 	return fid
 
-func _add_row_btn(title: String, desc: String, btn_text: String, callable: Callable) -> void:
+## CPS effect type → 中文说明（card_periodic_skills 全量 10 种）
+func _cps_type_zh(t: String) -> String:
+	match t:
+		"area_damage": return "范围伤害"
+		"buff_allies": return "增益我方全体"
+		"chain_damage": return "连锁伤害"
+		"debuff_area": return "区域减益"
+		"debuff_global": return "全体减益"
+		"debuff_spread": return "减益传染"
+		"debuff_target": return "单体减益"
+		"execute": return "低血斩杀"
+		"global_damage": return "全图伤害"
+		"single_target_damage": return "单体高伤"
+		_: return "特殊效果"
+
+## 按钮行：[按钮] + 标题 + 描述（按钮行首，长描述行内换行）
+func _add_row_btn(title: String, desc: String, btn_text: String, callable: Callable, parent: Container = null) -> void:
 	var row := HBoxContainer.new()
 	row.custom_minimum_size.y = 26
-	var tl := Label.new()
-	tl.text = title
-	tl.add_theme_font_size_override("font_size", 12)
-	tl.custom_minimum_size.x = 140
-	row.add_child(tl)
-	var dl := Label.new()
-	dl.text = desc
-	dl.add_theme_font_size_override("font_size", 11)
-	dl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(dl)
 	var b := Button.new()
 	b.text = btn_text
 	b.add_theme_font_size_override("font_size", 12)
 	b.custom_minimum_size.x = 56
 	b.pressed.connect(callable)
 	row.add_child(b)
-	_effect_vbox.add_child(row)
-
-func _add_row_btns(title: String, desc: String, btns: Array) -> void:
-	var row := HBoxContainer.new()
-	row.custom_minimum_size.y = 26
 	var tl := Label.new()
 	tl.text = title
 	tl.add_theme_font_size_override("font_size", 12)
 	tl.custom_minimum_size.x = 140
+	tl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(tl)
 	var dl := Label.new()
 	dl.text = desc
 	dl.add_theme_font_size_override("font_size", 11)
 	dl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	dl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(dl)
+	if parent != null: parent.add_child(row)
+	else: _effect_vbox.add_child(row)
+
+## 多按钮行：[按钮组] + 标题 + 描述（按钮行首）
+func _add_row_btns(title: String, desc: String, btns: Array) -> void:
+	var row := HBoxContainer.new()
+	row.custom_minimum_size.y = 26
 	for bi in btns:
 		var b := Button.new()
 		b.text = String(bi[0])
@@ -375,27 +439,45 @@ func _add_row_btns(title: String, desc: String, btns: Array) -> void:
 		b.custom_minimum_size.x = 48
 		b.pressed.connect(bi[1])
 		row.add_child(b)
-	_effect_vbox.add_child(row)
-
-func _add_row_disabled(title: String, desc: String) -> void:
-	var row := HBoxContainer.new()
-	row.custom_minimum_size.y = 26
-	row.modulate.a = 0.5
 	var tl := Label.new()
 	tl.text = title
 	tl.add_theme_font_size_override("font_size", 12)
 	tl.custom_minimum_size.x = 140
+	tl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(tl)
 	var dl := Label.new()
 	dl.text = desc
 	dl.add_theme_font_size_override("font_size", 11)
 	dl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	dl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(dl)
+	_effect_vbox.add_child(row)
+
+## 灰行（不可用）：[被动标记] + 标题 + 描述
+func _add_row_disabled(title: String, desc: String, parent: Container = null) -> void:
+	var row := HBoxContainer.new()
+	row.custom_minimum_size.y = 26
+	row.modulate.a = 0.5
 	var b := Button.new()
 	b.text = "被动"
 	b.disabled = true
 	row.add_child(b)
-	_effect_vbox.add_child(row)
+	var tl := Label.new()
+	tl.text = title
+	tl.add_theme_font_size_override("font_size", 12)
+	tl.custom_minimum_size.x = 140
+	tl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(tl)
+	var dl := Label.new()
+	dl.text = desc
+	dl.add_theme_font_size_override("font_size", 11)
+	dl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	dl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(dl)
+	if parent != null: parent.add_child(row)
+	else: _effect_vbox.add_child(row)
 
 
 # ============================================================
@@ -600,6 +682,227 @@ func _collect_phase_defs() -> Array:
 		PhaseInstrDefs.ability_fortress_bulwark(7),
 	]
 
+
+# ============================================================
+# 敌方相位师大招（v18 批次2 物理迁入 EnemyMasterInstruments 的 51 个专属仪器大招）
+# ============================================================
+
+## 构建相位师选择器 + 大招行容器（选相位师 → 重建该相位师的大招行）
+func _build_enemy_ultimate_selector() -> void:
+	var row := HBoxContainer.new()
+	row.custom_minimum_size.y = 28
+	var tl := Label.new()
+	tl.text = "选相位师:"
+	tl.add_theme_font_size_override("font_size", 12)
+	tl.custom_minimum_size.x = 64
+	row.add_child(tl)
+	_enemy_master_opt = OptionButton.new()
+	_enemy_master_opt.add_theme_font_size_override("font_size", 12)
+	_enemy_master_opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_enemy_master_ids.clear()
+	for m in EnemyPhaseMasters.ENEMY_MASTERS:
+		if not (m is Dictionary):
+			continue
+		var mid: String = String(m.get("id", ""))
+		if mid.is_empty():
+			continue
+		_enemy_master_opt.add_item("%s Lv%d·%s" % [String(m.get("name", mid)), int(m.get("level", 5)), String(m.get("era", ""))])
+		_enemy_master_ids.append(mid)
+	_enemy_master_opt.item_selected.connect(_on_enemy_master_selected)
+	row.add_child(_enemy_master_opt)
+	_effect_vbox.add_child(row)
+	_enemy_spell_vbox = VBoxContainer.new()
+	_effect_vbox.add_child(_enemy_spell_vbox)
+	if not _enemy_master_ids.is_empty():
+		_enemy_master_opt.select(0)
+		_rebuild_enemy_spell_rows(0)
+
+
+func _on_enemy_master_selected(idx: int) -> void:
+	_rebuild_enemy_spell_rows(idx)
+
+
+func _rebuild_enemy_spell_rows(idx: int) -> void:
+	if _enemy_spell_vbox == null:
+		return
+	for c in _enemy_spell_vbox.get_children():
+		c.queue_free()
+	if idx < 0 or idx >= _enemy_master_ids.size():
+		return
+	var spells: Array = EnemyMasterInstruments.get_master_ultimate_spells(String(_enemy_master_ids[idx]))
+	if spells.is_empty():
+		_add_row_disabled("（无大招）", "该相位师无专属仪器大招", _enemy_spell_vbox)
+		return
+	for sp in spells:
+		if not (sp is Dictionary):
+			continue
+		var sd: Dictionary = sp as Dictionary
+		var sid: String = String(sd.get("id", ""))
+		var desc: String = String(sd.get("description", ""))
+		if desc.is_empty():
+			desc = "效果：%s" % String(sd.get("effect", sid))
+		var cd: float = float(sd.get("cooldown", 0.0))
+		if cd > 0.0:
+			desc += "（每%.0f秒）" % cd
+		_add_row_btn("◈ %s" % String(sd.get("name", sid)), desc, "触发",
+			Callable(self, "_on_trigger_enemy_spell").bind(sd.duplicate(true)), _enemy_spell_vbox)
+
+
+## 直调 EnemyMasterSkillEngine._trigger_spell 单次施放（绕过 CD 循环）。
+## engine._driver 用场上敌方单位当 boss 替身：站位（VFX 起点）+ get_tree()（目标组解析）。
+## 引擎对 driver 的能力调用全部 has_method 守卫，普通敌兵缺的方法（产兵/加盾）安全跳过。
+func _on_trigger_enemy_spell(spell: Dictionary) -> void:
+	if _battlefield == null:
+		return
+	if _enemy_spell_engine == null:
+		_enemy_spell_engine = EnemyMasterSkillEngine.new()
+	_enemy_spell_engine._battlefield = _battlefield
+	_enemy_spell_engine._driver = _enemy_unit()
+	_enemy_spell_engine._trigger_spell(spell)
+	_injected_log.append("[敌方大招] %s（%s）" % [String(spell.get("name", "")), String(spell.get("effect", ""))])
+
+
+# ============================================================
+# 我方相位师技能树·奇点大招（capstone 节点，按解锁类型分流）
+# ============================================================
+
+## unit_mechanism id → 我方单位内部标志位/CD 变量名（与 construct_unit._init_unit_mechanisms 同源映射）
+const _MECH_UNIT_FIELDS := {
+	"nuclear_strike": {"flag": "_is_nuclear_strike_unit", "cd": "_nuclear_strike_cd"},
+	"shield_projector": {"flag": "_is_shield_projector_unit", "cd": "_shield_projector_cd"},
+	"drone_mark": {"flag": "_is_drone_mark_unit", "cd": "_drone_mark_cd"},
+	"demolition": {"flag": "_is_demolition_unit", "cd": "_demolition_cd"},
+	"sniper_aim": {"flag": "_is_sniper_aim_unit", "cd": "_sniper_aim_cd"},
+	"blitz_pierce": {"flag": "_is_blitz_pierce_unit", "cd": "_blitz_pierce_cd"},
+	"jamming_field": {"flag": "_is_jamming_field_unit", "cd": "_jamming_field_cd"},
+}
+
+
+func _build_capstone_rows() -> void:
+	for branch in ["command", "intelligence", "firepower"]:
+		for node in PMSkillTree.get_skills_for_branch(branch):
+			if node is Dictionary and bool((node as Dictionary).get("capstone", false)):
+				_add_capstone_row(node as Dictionary)
+
+
+## 单个奇点节点行——按解锁类型分流：
+##   unit_mechanism → [我方] toggle 注入/移除场上单位机制标志（约1s后首触发）
+##   card_skill → [触发] 复用卡牌周期技能引擎（与上方 CPS 区同一施放链）
+##   stat_bonus → [我方] 一次性数值注入
+##   仅 evolution → 灰行（养成解锁，非战斗效果）
+func _add_capstone_row(node: Dictionary) -> void:
+	var nid: String = String(node.get("id", ""))
+	var title: String = "◈ %s" % String(node.get("name", nid))
+	var desc: String = String(node.get("desc", ""))
+	var mech_id: String = ""
+	var cps_id: String = ""
+	var has_evolution: bool = false
+	for u in node.get("unlocks", []) as Array:
+		if not (u is Dictionary):
+			continue
+		match String(u.get("type", "")):
+			"unit_mechanism":
+				mech_id = String(u.get("id", ""))
+			"card_skill":
+				cps_id = String(u.get("id", ""))
+			"evolution":
+				has_evolution = true
+	if not mech_id.is_empty() and _MECH_UNIT_FIELDS.has(mech_id):
+		_add_mech_toggle_row(title, desc + "（注入场上我方单位，约1s后首触发）", mech_id)
+	elif not cps_id.is_empty():
+		_add_row_btn(title, desc + "（卡片技能）", "触发", Callable(self, "_on_trigger_card_skill").bind(cps_id))
+	elif not ((node.get("effects", {}) as Dictionary).get("stat_bonus", {}) as Dictionary).is_empty():
+		_add_row_btn(title, desc + "（数值注入我方单位）", "我方", Callable(self, "_on_inject_capstone_stats").bind(node.duplicate(true)))
+	elif has_evolution:
+		_add_row_disabled(title, desc + "（养成解锁，非战斗效果）")
+	else:
+		_add_row_disabled(title, desc)
+
+
+## 机制 toggle 行：[我方] 开关 + 标题 + 描述（开关行首；注入/移除 construct_unit 机制标志位）
+func _add_mech_toggle_row(title: String, desc: String, mech_id: String) -> void:
+	var row := HBoxContainer.new()
+	row.custom_minimum_size.y = 26
+	var bp := CheckButton.new()
+	bp.text = "我方"
+	bp.add_theme_font_size_override("font_size", 12)
+	bp.custom_minimum_size.x = 72
+	bp.toggled.connect(_on_toggle_mechanism.bind(mech_id))
+	row.add_child(bp)
+	var tl := Label.new()
+	tl.text = title
+	tl.add_theme_font_size_override("font_size", 12)
+	tl.custom_minimum_size.x = 140
+	tl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(tl)
+	var dl := Label.new()
+	dl.text = desc
+	dl.add_theme_font_size_override("font_size", 11)
+	dl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	dl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(dl)
+	_effect_vbox.add_child(row)
+
+
+## 注入/移除我方单位机制：直接写 construct_unit 的机制标志位 + 短 CD（测试面板快速首触发）。
+## 实际部署链路是造卡时 stats meta（unit_stats_table._apply_v8_unit_type_meta + 技能树守卫）→
+## setup() 一次性读入；此处对已生成单位热注入等价标志位，不重生成单位。
+func _on_toggle_mechanism(on: bool, mech_id: String) -> void:
+	var unit: Node = _player_unit()
+	if unit == null:
+		return
+	var fields: Dictionary = _MECH_UNIT_FIELDS.get(mech_id, {})
+	var flag_n: String = String(fields.get("flag", ""))
+	if flag_n.is_empty() or not (flag_n in unit):
+		return
+	unit.set(flag_n, on)
+	var cd_n: String = String(fields.get("cd", ""))
+	if on and not cd_n.is_empty() and (cd_n in unit):
+		unit.set(cd_n, 1.0)
+	# 同步 stats meta（信息卡/状态采集可读）
+	if "stats" in unit and unit.stats != null:
+		var meta_key: String = "is_" + mech_id
+		if on:
+			unit.stats.set_meta(meta_key, true)
+		elif unit.stats.has_meta(meta_key):
+			unit.stats.remove_meta(meta_key)
+	_injected_log.append("[奇点机制] %s %s" % [mech_id, "注入" if on else "移除"])
+
+
+## 奇点数值节点一次性注入（atk/def 三维乘区 + hp + 暴击率，口径同技能树 stat_bonus）
+func _on_inject_capstone_stats(node: Dictionary) -> void:
+	var unit: Node = _player_unit()
+	if unit == null or not ("stats" in unit) or unit.stats == null:
+		return
+	var sb: Dictionary = (node.get("effects", {}) as Dictionary).get("stat_bonus", {}) as Dictionary
+	if sb.is_empty():
+		return
+	var st = unit.stats
+	_pct_scale(st, float(sb.get("atk_light", 0.0)), float(sb.get("def_light", 0.0)), float(sb.get("hp", 0.0)))
+	if sb.has("crit_chance"):
+		st.crit_chance = minf(0.75, st.crit_chance + float(sb.get("crit_chance", 0.0)))
+	_injected_log.append("[奇点数值] %s（atk+%.0f%% def+%.0f%% hp+%.0f%%）" % [
+		String(node.get("name", "")),
+		float(sb.get("atk_light", 0.0)) * 100.0,
+		float(sb.get("def_light", 0.0)) * 100.0,
+		float(sb.get("hp", 0.0)) * 100.0])
+
+
+## 三维攻击/三维防御/最大血量按百分比放大（口径同技能树 stat_bonus，与 tests/player_progression_audit.gd 同源）
+func _pct_scale(st, atk_p: float, def_p: float, hp_p: float) -> void:
+	if atk_p != 0.0:
+		st.attack_light *= (1.0 + atk_p)
+		st.attack_armor *= (1.0 + atk_p)
+		st.attack_air *= (1.0 + atk_p)
+	if def_p != 0.0:
+		st.defense_light *= (1.0 + def_p)
+		st.defense_armor *= (1.0 + def_p)
+		st.defense_air *= (1.0 + def_p)
+	if hp_p != 0.0:
+		st.max_hp *= (1.0 + hp_p)
+
+
 func _fmt_status(unit: Node, label: String, col: Color) -> String:
 	var h := col.to_html(false)
 	if unit == null: return "[color=#%s]%s：[/color][color=#888](未生成)[/color]" % [h, label]
@@ -637,6 +940,14 @@ func _phase_emoji(a: String) -> String:
 		"on_battle_start": return "💥"
 		"passive": return "🛡️"
 	return "⚡"
+
+## 相位仪能力 type → 中文标签
+func _phase_type_zh(a: String) -> String:
+	match a:
+		"periodic": return "周期"
+		"on_battle_start": return "开场"
+		"passive": return "被动"
+	return "主动"
 
 func _family_emoji(f: String) -> String:
 	match f:

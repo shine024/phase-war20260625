@@ -346,7 +346,7 @@ func _add_blueprint_item(grid: GridContainer, card_id: String, count: int) -> vo
 		star_progress.custom_minimum_size = Vector2(60, 8)
 		star_progress.add_theme_color_override("fill", DT.COLOR_GOLD)
 		star_progress.add_theme_color_override("background", Color(DT.COLOR_SLOT_LOCKED.r, DT.COLOR_SLOT_LOCKED.g, DT.COLOR_SLOT_LOCKED.b, 0.8))
-		star_progress.tooltip_text = "星级 %d/%d" % [disp_star, max_star]
+		star_progress.tooltip_text = "蓝图星 %d/%d" % [disp_star, max_star]
 		vbox.add_child(star_progress)
 
 	grid.add_child(item_container)

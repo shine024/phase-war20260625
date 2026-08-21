@@ -117,19 +117,19 @@ const IMPACT_SHAKE_BY_KIND: Dictionary = {
 const PROJ_TEX_SCALE: Dictionary = {
 	# New enum: 0=DIRECT, 1=INDIRECT, 2=AERIAL
 	0: 0.27,
-	1: 0.45,
-	2: 0.48,
+	1: 0.70,  # v17m: 曲射炮弹可见性（AI 批'弹道不可见'）。R30 实验放大至 0.95 损害轨迹评分，回退
+	2: 0.60,  # R30 实验放大至 0.85 损害轨迹评分，回退
 	# v9.2: 拉大轻武器与终极武器的弹体尺寸差异，让"小兵 vs 终极单位"一眼可辨。
 	#   轻武器（SMG/PISTOL）：保持小但可见（显示 ~4-5px 高）
 	#   中型（RIFLE/MG/SHOTGUN/SNIPER/FLAK）：中等（显示 ~6-10px 高）
 	#   能量/重型（LASER/OMEGA/RAIL/MISSILE/ROCKET）：粗壮（显示 ~10-18px 高，威慑感）
 	# Legacy: SMG=0, RIFLE=1, MG=2, ROCKET=3, PISTOL=4, SHOTGUN=5, SNIPER=6, FLAK=7, LASER=8, MISSILE=9, OMEGA=10, RAIL=11
-	3: 0.70,    # ROCKET — 粗壮火箭弹（原 0.45）
+	3: 0.95,    # ROCKET — v17m: 0.70→0.95（AI 批"弹道近乎隐形"，火箭弹体要有存在感）
 	5: 0.50,    # SHOTGUN — 霰弹团（原 0.33，加粗让霰弹团可见）
 	6: 0.55,    # SNIPER — 高速穿甲弹（原 0.33）
 	7: 0.60,    # FLAK — 高炮弹（原 0.39）
 	8: 0.70,    # LASER — 能量光束（原 0.30）
-	9: 0.75,    # MISSILE — 大型导弹（原 0.48）
+	9: 0.95,    # MISSILE — v17m: 0.75→0.95（同火箭，弹体可见性）
 	10: 0.95,   # OMEGA — 终极能量炮，最粗（原 0.51）
 	11: 0.85,   # RAIL — 电磁轨道炮（原 0.48）
 	4: 0.38,    # PISTOL — 轻武器但可见（原 0.22，加粗让手枪弹看得见）
@@ -151,6 +151,49 @@ const IMPACT_TEX_SCALE: Dictionary = {
 	11: 0.51,
 }
 
+## v18: 命中贴图内容实宽表（PIL getbbox 实测；画布实为 1536×1024，非旧注释假设的 512px）。
+## 新增贴图必须先量实寸再录（vfx-tuning skill 第 2 步铁律——v17"注释 32px 实为 128px"
+## 同型病根已三次复发）。key=文件名去扩展名。
+const IMPACT_CONTENT_W: Dictionary = {
+	"weapon_artillery_impact": 857.0,    # 1024 画布；按名查表唯一实存贴图（hash 版全部缺失，均回落此图）
+	"weapon_impact_small_arms": 1062.0,  # 1536 画布
+	"weapon_impact_sniper": 1194.0,
+	"weapon_impact_shotgun": 1263.0,
+	"weapon_impact_explosive": 1410.0,
+	"weapon_impact_omega": 1274.0,
+}
+
+## v18: 按武器族的目标显示宽（px，对齐 64px 参考单位验收规格）。
+## 狙击=0.75×单位（精确药剂感）/ 霰弹=1.1× / 爆炸族=1.75×（炮级上限 2×单位内）。
+## 注：8/10/11 的签名特效分支在本层之前早退，表中值仅为兜底。
+const IMPACT_TARGET_W_BY_WT: Dictionary = {
+	6: 48.0,    # SNIPER — 精确命中小爆点
+	5: 72.0,    # SHOTGUN — 散射命中
+	8: 96.0,    # LASER（兜底）
+	# v18-R4: 爆炸族目标宽 112→96（见表内注释）
+	1: 96.0,    # INDIRECT — 炮级
+	2: 96.0,    # AERIAL
+	3: 96.0,    # ROCKET — v18-R4: 112→96（同爆炸族）
+	# v18-R4: 爆炸族(1/2/3/7/9) 112→96px——规格"火炮级爆炸直径≈单位高度1-2倍"，
+	# 96px=1.5×单位取中值；112 叠 HEAVY×1.3 后 146px 仍在 2×上限内。
+	7: 96.0,    # FLAK
+	9: 96.0,    # MISSILE
+	10: 112.0,  # OMEGA（兜底）
+	11: 112.0,  # RAIL（兜底）
+}
+
+## v18: 命中贴图内容宽查表。未收录贴图回退 画布宽×0.7（同目录贴图内容占比实测 0.69-0.92
+## 的保守中值），避免未实测贴图再次爆尺寸。
+static func _impact_content_width(texture: Texture2D) -> float:
+	if texture == null:
+		return 512.0
+	var path: String = texture.resource_path
+	if not path.is_empty():
+		var fname: String = path.get_file().get_basename()
+		if IMPACT_CONTENT_W.has(fname):
+			return float(IMPACT_CONTENT_W[fname])
+	return float(texture.get_width()) * 0.7
+
 const REF_TEX_PX: float = 512.0
 # v8.3 视觉增强：0.05 → 0.10（×2），让贴图弹体在战场上清晰可见
 const PROJ_DISPLAY_SCALE_MUL: float = 0.10
@@ -165,7 +208,7 @@ const PROJ_DISPLAY_SCALE_MUL: float = 0.10
 # 程序化弹头战场显示缩放。基准多边形约 12×7 逻辑像素（body=8/nose=4/half_h=3.5），
 # × 此缩放后约 9.6×5.6 px，与原长条贴图轻武器显示尺寸（SMG ~18×3 / PISTOL ~15×3）量级相当。
 # batch 调用 build_bullet_arraymesh 时传入；bullet.gd 的 Polygon2D 路径用各自 size_scale。
-const PROJ_BULLET_DISPLAY_SCALE: float = 0.8
+const PROJ_BULLET_DISPLAY_SCALE: float = 1.3  # v17k-R2: 0.8→1.3（10px 弹体缩图后不可读，AI 9/12 格批'弹道隐形'）
 
 ## 返回弹头多边形顶点（7 点，顺时针，原点居中，指向 +X）。
 ## 可直接赋值给 Polygon2D.polygon（bullet.gd 路径），或传给 build_bullet_arraymesh 三角化。
@@ -397,7 +440,7 @@ static func explosion_frames_by_wt(weapon_type: int) -> Array:
 	match weapon_type:
 		10, 11, 8:   # OMEGA / RAIL / LASER — 能量爆炸
 			return EXPLOSION_ENERGY_FRAMES
-		3, 7, 9:     # ROCKET / FLAK / MISSILE — 常规爆炸
+		1, 2, 3, 7, 9:  # 曲射炮弹/空射/火箭/高炮/导弹 — 常规爆炸（v9.x: 1/2 补帧，炮弹命中也有火球分帧）
 			return EXPLOSION_CONV_FRAMES
 		_:            # 其他类型无帧序列
 			return []
@@ -510,31 +553,30 @@ static func spawn_impact_with_kind(parent: Node2D, world_pos: Vector2, weapon_ty
 	if weapon_type == 10:
 		VfxFactory.spawn_omega_discharge(parent, world_pos, is_player_shot, atk_d)
 		return
-	# v9.2: 命中贴图层——所有武器都叠加贴图（此前仅 ROCKET/FLAK/MISSILE 有）。
-	#   ① 重型爆炸类(3/7/9) + 有 weapon_name → 查专属贴图（impact_texture_by_name，含 fallback）
-	#   ② 其他所有类型 → 按 weapon_type 取通用贴图（generic_impact_tex_by_wt）
-	# 贴图与下方粒子层(VfxFactory.spawn_layered_impact)叠加，形成"火球+粒子"分层真实感。
-	# 轻武器贴图缩放较小（避免小口径命中出现巨大爆炸图），重型按 impact_scale_by_name 放大。
+	# v18: 命中贴图层 scale 重标定（AI 审计 4.2/10 基线的主病根，像素级实测确认）。
+	# 病根：weapon_impact_*.png 画布实为 1536px（内容 1062-1410px），旧 scale 按"512px
+	# 基准 ×2 显示"标定（0.26-0.51×2）→ 实渲染 550-1300px，比 64px 参考单位大 8-18 倍；
+	# 按名查表的 {hash}_impact.png 全部缺失，一律回落 FALLBACK(857px) 再乘 0.9-1.0
+	# → ~800px 巨爆。修复：按【贴图内容实宽 × 族目标显示宽】反算 scale（v17f 同范式）。
 	var impact_tex: Texture2D = null
-	var peak_scale: float = 0.33 * 2.0  # 默认缩放（通用贴图基础值 ×2 显示）
-	if weapon_name != "" and weapon_type in [3, 7, 9]:
+	if weapon_type in [0, 4]:
+		# v18: 轻动能(0)/手枪(4) 命中不叠加贴图层——族规格明令"放射状小火花+微量烟，
+		# 无火球帧"（v17 审计 3 分格主违规项即此层）。粒子层(spawn_layered_impact)保留。
+		impact_tex = null
+	elif weapon_name != "" and weapon_type in [3, 7, 9]:
 		impact_tex = impact_texture_by_name(weapon_name)
-		if impact_tex != null:
-			peak_scale = impact_scale_by_name(weapon_name) * 2.0
 	else:
-		# v9.2: 非爆炸类/能量类/轻武器——按 weapon_type 取通用贴图
+		# 非爆炸类/能量类——按 weapon_type 取通用贴图
 		impact_tex = generic_impact_tex_by_wt(weapon_type)
-		# 通用贴图缩放：能量/狙击/霰弹稍大（命中醒目），轻武器较小
-		match weapon_type:
-			10, 11:   peak_scale = 0.51 * 2.0   # OMEGA/RAIL — 大型能量爆裂
-			8:        peak_scale = 0.40 * 2.0   # LASER — 中等能量
-			6:        peak_scale = 0.42 * 2.0   # SNIPER — 精确命中药剂感
-			5:        peak_scale = 0.36 * 2.0   # SHOTGUN — 散射命中
-			0, 4:     peak_scale = 0.26 * 2.0   # 轻武器 — 小口径，贴图小避免夸张
-			1, 2:     peak_scale = 0.40 * 2.0   # 曲射/空射 — 中等爆炸
-	# v9.4: HEAVY 档贴图放大（重型武器命中更醒目）
+	var peak_scale: float = 0.08
+	if impact_tex != null:
+		var target_w: float = float(IMPACT_TARGET_W_BY_WT.get(weapon_type, 112.0))
+		peak_scale = target_w / _impact_content_width(impact_tex)
+	# v9.4: HEAVY 档贴图放大（96→125px，对齐 HEAVY 档 128px 帧动画量级）
+	# v18-R4: ×1.4→×1.3——112px 基准×1.4×1.12 抖动=246px 达 3.8×单位；96×1.3×1.12=140px
+	# 落在 2×单位规格上限附近。
 	if power_tier == POWER_TIER.HEAVY:
-		peak_scale *= 1.4
+		peak_scale *= 1.3
 	if impact_tex != null:
 		VfxFactory.spawn_impact_sprite(parent, world_pos, impact_tex, peak_scale, 0.45)
 	# v9.2/v9.4: 爆炸帧动画层——有帧序列的武器播帧动画（火球膨胀），宽度按 power_tier 分级。
@@ -646,11 +688,13 @@ static func compute_power_tier(weapon_type: int, explosion_radius: float, damage
 	return POWER_TIER.LIGHT
 
 ## 按 power_tier 返回帧动画 target_width（px）。0=无帧动画。
+## v18-R4: HEAVY 160→128——规格"火炮级爆炸直径 1-2×单位(64-128px)"，160 已达 2.5×；
+## v12 报告同向建议"主爆炸尺寸缩小 60%"。MEDIUM 96 保持（1.5×单位中值）。
 static func frame_width_for_tier(tier: int) -> float:
 	match tier:
 		0:  return 0.0     # LIGHT 无帧动画
 		1:  return 96.0    # MEDIUM 标准
-		2:  return 160.0   # HEAVY 放大
+		2:  return 128.0   # HEAVY 放大（2×单位上限）
 		3:  return 0.0     # NUCLEAR 走 spawn_nuclear_explosion，不播普通帧动画
 		_: return 96.0
 

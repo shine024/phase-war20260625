@@ -17,6 +17,7 @@ const _CardGridSlotsPerSide: int = BattleSlotGrid.SLOT_COUNT
 const _DamageNumberDisplayScript = preload("res://scenes/effects/damage_number_display.gd")
 const ConstructUnitScene = preload("res://scenes/units/construct_unit.tscn")
 const FactionSkillEffectHandler = preload("res://scripts/battle/faction_skill_effect_handler.gd")
+const CardGrowthConfig = preload("res://data/card_growth_config.gd")
 const DEPLOY_FAIL_LOG_THROTTLE_MS := 350
 # v7.x: 诊断开关——对比「上场端」vs「评估端」单卡 stats，定位战场 vs 面板战力差异源
 const DEBUG_DEPLOY_POWER_LOG := false
@@ -664,6 +665,18 @@ func request_player_deploy(platform_card_id: String, world_pos: Vector2, battle_
 	# （带 enhance_level/mods 养成），否则显示侧只能取共享模板（养成=0），看不到强化/改造。
 	# 非实例卡（旧路径）instance_id 为空，meta 存空串，显示侧回退到模板卡。
 	unit.set_meta("source_instance_id", platform_card.instance_id if (platform_card != null and not platform_card.instance_id.is_empty()) else "")
+	# v19: 战场等级文字（血条左侧）——实例卡 card_level（1-30，战斗经验驱动；
+	# 未成长实例 get_card_level 返回 0，按经验曲线口径视为 Lv1）
+	if unit.has_node("HpBar"):
+		var _lv_bar: Node = unit.get_node("HpBar")
+		if _lv_bar != null and _lv_bar.has_method("set_level_text"):
+			var _card_lv: int = 1
+			if InstanceRegistry != null and InstanceRegistry.has_method("get_card_level") \
+					and not platform_card.instance_id.is_empty():
+				_card_lv = clampi(int(InstanceRegistry.get_card_level(platform_card.instance_id)), 1, 30)
+			_lv_bar.set_level_text("Lv%d" % _card_lv)
+			# v19: meta 供悬浮面板统一读取（敌我同名字段）
+			unit.set_meta("unit_level", _card_lv)
 	# v6.6: 幻影克隆 — 若本次部署是同卡的第2个单位（克隆体），应用克隆加成
 	if _is_phantom_clone_for_card(platform_card.instance_id if platform_card != null and not platform_card.instance_id.is_empty() else platform_card.card_id):
 		_apply_phantom_clone_buff(unit)
@@ -1227,6 +1240,13 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 
 	# 缓存 key：v7.0 实例卡用 instance_id（避免两张同名实例共享缓存），非实例卡用 card_id
 	var card_key: String = instance_id_key if not instance_id_key.is_empty() else platform_card.card_id
+	# v18.c: 战斗卡等级（InstanceRegistry 经验等级；非实例旧卡按 Lv1）。进缓存 key——
+	# 战后经验结算升级后旧缓存失效，不命中陈旧 stats。
+	var card_lv: int = 1
+	if not instance_id_key.is_empty():
+		var _ir_node: Node = _get_cached_autoload("InstanceRegistry")
+		if _ir_node != null and _ir_node.has_method("get_card_level"):
+			card_lv = clampi(int(_ir_node.get_card_level(instance_id_key)), 1, CardGrowthConfig.MAX_CARD_LEVEL)
 	# v9.x 修复：纳入相位师技能树解锁签名。解锁 unit_mechanism（战术核武/护盾投射/...）
 	# 或 unit_ability（暴击/穿甲）后 build_stats_from_card 结果会变（写入机制 meta / 数值加成）；
 	# 若不纳入 key，解锁前缓存的 stats 会在解锁后命中旧缓存 → 机制 meta 缺失 → 兵种机制空转。
@@ -1234,9 +1254,9 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 	var _pmsm_node: Node = _get_cached_autoload("PhaseMasterSkillManager")
 	if _pmsm_node != null and _pmsm_node.has_method("get_unlocked_signature"):
 		pmsm_sig = _pmsm_node.get_unlocked_signature()
-	var key: String = "%s|%s|%s|%d|%s|%s|%s" % [
+	var key: String = "%s|%s|%s|%d|%s|%s|%s|lv%d" % [
 		card_key, ",".join(weapon_ids), weapon_types_key, battle_era, pf_bonus_key,
-		active_faction_cache_key, pmsm_sig
+		active_faction_cache_key, pmsm_sig, card_lv
 	]
 	if DEBUG_DEPLOY_POWER_LOG:
 		print("[DIAG deploy-in] card=%s inst=<%s> enhance=%d mods=%d mslots=%d | era=%d | key=%s" % [platform_card.card_id, platform_card.instance_id, int(platform_card.enhance_level), platform_card.mods.size(), platform_card.module_slots.size(), battle_era, key])
@@ -1274,6 +1294,10 @@ func _build_stats_cached(platform_card: CardResource, weapon_cards: Array, weapo
 		_apply_rune_bonus_to_stats(stats, _phase_instrument.get_rune_bonus())
 	# v8.x: 相位师技能树 stat_bonus 全局加成注入（所有玩家单位共享）
 	_apply_skill_tree_stat_bonus(stats)
+	# v18.c: 战斗卡等级 flat——派生固定值（时代基准×兵种权重×稀有度×步进档累计），
+	# 纯加法叠在全部乘区之后（成长轴不进百分比堆叠，与敌方 resolver 链尾注入对称）。
+	# 经验只发给 platform 卡（game_manager._grant_battle_experience），故只按 platform 等级注入。
+	CardGrowthConfig.apply_to_stats(stats, CardGrowthConfig.total_growth(effective_card, card_lv))
 	# v6.8: 敌源MOD（D槽）战斗加成已停用（EOM 面板/掉落/存档保留）
 	_stats_cache[key] = _dup_stats_with_meta(stats)
 	# v7.x 诊断：对比上场端 vs 评估端 stats，定位战场/面板战力差异（默认关，调试时改 true）

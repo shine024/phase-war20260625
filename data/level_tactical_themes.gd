@@ -238,14 +238,23 @@ const TAG_NAMES_CN: Dictionary = {
 }
 
 
-## tag 数组 → 预警显示文本（如 ["armored","tank"] → "装甲"）。
-## 同义 tag 去重（armored/tank 归并为"装甲"显示）。
+## tag 同义归并表（显示层去重）：键值对映射到同一中文显示。
+## armored/tank 都是"装甲"，vehicle 是"载具"独立保留。
+const TAG_SYNONYM_MERGE: Dictionary = {
+	"tank": "armored",  # tank 归并到 armored 显示
+}
+
+
+## tag 数组 → 预警显示文本（如 ["armored","tank"] → "装甲"，同义 tag 归并去重）。
 static func tags_to_display(tags: Array) -> String:
 	if tags.is_empty():
 		return "混合"
 	var names: Array[String] = []
 	for t in tags:
-		var cn: String = String(TAG_NAMES_CN.get(String(t), ""))
+		var key: String = String(t)
+		# 同义归并（tank → armored 再查中文名）
+		key = String(TAG_SYNONYM_MERGE.get(key, key))
+		var cn: String = String(TAG_NAMES_CN.get(key, ""))
 		if not cn.is_empty() and not names.has(cn):
 			names.append(cn)
 	if names.is_empty():
@@ -295,6 +304,11 @@ static func _assign_theme(level: int) -> String:
 			var idx: int = candidates.find(theme_id)
 			var next_idx: int = (idx + 1) % candidates.size()
 			theme_id = String(candidates[next_idx])
+	# 时代末关去重：下一关（新时代首关）固定 SWARM_RUSH 教学，末关不得与它撞车
+	# （Lv40/41 曾出现 swarm_rush 相邻重复——去重只查上一关不知道下一关是教学关）
+	if in_era == 20 and theme_id == SWARM_RUSH and candidates.size() > 1:
+		var end_idx: int = candidates.find(SWARM_RUSH)
+		theme_id = String(candidates[(end_idx + 1) % candidates.size()])
 	return theme_id
 
 

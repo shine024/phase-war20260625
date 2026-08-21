@@ -307,6 +307,12 @@ static func create_card(cfg: Dictionary) -> CardResource:
 	c.defense_armor = float(cfg.get("def_armor", 0))
 	c.defense_air = float(cfg.get("def_air", 0))
 	c.rarity = cfg.get("rarity", "rare")
+	# v19: 势力专属卡档位映射（无 UCT 条目，按稀有度对齐 Tier 枚举值：epic→2=ELITE, legendary→3=CHAMPION）
+	# 供词条系统特殊兵种独特词条门槛判定
+	match c.rarity:
+		"legendary": c.tier = 3
+		"epic": c.tier = 2
+		_: c.tier = 1
 	c.description = cfg.get("description", "")
 	c.flavor_text = cfg.get("flavor_text", "")
 	# 推断类型行

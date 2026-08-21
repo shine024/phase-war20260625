@@ -226,10 +226,10 @@ func can_enhance(card_id: String, nano_available: int) -> bool:
 ##   而是返回失败。原因：回退到模板后 card.enhance_level = target_level 会污染单例，
 ##   导致背包/装备读的实例（空）与强化的模板（有值）脱节，表现为"强化没生效"。
 func do_enhance(card_id_or_instance: String, nano_available: int) -> Dictionary:
-	# v8.x: 强化②（选词条系统）已停用——养成改为自动经验升星 + 技能树。
+	# v8.x: 强化②（选词条系统）已停用——养成改为自动经验升级 + 技能树。
 	# 本函数保留存档兼容（save/load 仍读旧 module_slots），但强化入口关闭。
 	# 战斗仍读 module_slots（apply_module_effects），旧存档加成不丢。
-	return {"ok": false, "action": "none", "reason": "强化系统已改为自动升星，请通过战斗获取经验"}
+	return {"ok": false, "action": "none", "reason": "强化系统已改为自动升级，请通过战斗获取经验"}
 
 	# v7.3: 强制要求实例——养成数据必须写到实例对象，禁止回退模板污染单例
 	var card = _get_instance_card(card_id_or_instance)
@@ -258,14 +258,14 @@ func do_enhance(card_id_or_instance: String, nano_available: int) -> Dictionary:
 ## 弹窗 _show_module_selection_popup 已用 do_enhance 返回的正确等级拉取并展示词条，
 ## 数据层信任该池，不再重读等级校验（仅校验 module_id 合法性）。
 func choose_module(card_id: String, module_id: String) -> Dictionary:
-	# v8.x: 选词条功能已停用（强化②改自动升星 + 技能树）
+	# v8.x: 选词条功能已停用（强化②改自动升级 + 技能树）
 	# 本函数原逻辑（校验词条 + 写入 module_slots）已移除，保留签名供旧调用方不崩。
-	return {"ok": false, "reason": "词条选择已停用，请通过战斗经验自动升星"}
+	return {"ok": false, "reason": "词条选择已停用，请通过战斗经验自动升级"}
 
 ## 升级已有词条（偶数级时调用）
-## v8.x: 选词条功能已停用（强化②改自动升星 + 技能树）
+## v8.x: 选词条功能已停用（强化②改自动升级 + 技能树）
 func upgrade_module(card_id: String, slot_index: int) -> Dictionary:
-	return {"ok": false, "reason": "词条升级已停用，请通过战斗经验自动升星"}
+	return {"ok": false, "reason": "词条升级已停用，请通过战斗经验自动升级"}
 
 ## 重置单个词条槽位
 func reset_module(card_id: String, slot_index: int) -> Dictionary:

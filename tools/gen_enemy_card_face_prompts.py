@@ -32,6 +32,7 @@ FIXED: dict[str, str] = {
     "elite_future_spectre": "sleek stealth operative in futuristic nano-armor suit, visor glow, suppressed rifle, dark blue and graphite tones",
     "elite_modern_abrams": "US M1 Abrams main battle tank modern, desert tan composite armor, long 120mm gun, desert heat haze minimal",
     "elite_modern_apache": "AH-64 Apache attack helicopter modern, tandem cockpit, rocket pods, olive drab and gray, hovering pose",
+    "enemy_modern_rq7": "RQ-7 Shadow unmanned aerial vehicle in flight, gray camouflage V-tail drone silhouette, wings spread, missile pylons under wings, modern desert tan and gray camouflage, hovering three-quarter view, subtle cloud layer beneath, no markings with readable text",
     "elite_modern_delta": "US special forces operators modern, plate carriers and helmets, carbines, multicam pattern, tight squad wedge",
     "elite_ww1_armored": "WW1 armored car with spoked wheels and riveted hull, machine gun turret, khaki paint, dirt road dust",
     "elite_ww1_storm": "WW1 German Sturmtruppen squad with steel helmets, MP18 style submachine guns, trench coats, storming pose",

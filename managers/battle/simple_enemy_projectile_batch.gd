@@ -6,6 +6,7 @@ const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 const WeaponProjectileVfx = preload("res://scripts/weapon_projectile_vfx.gd")
 const VfxImpactFactory = preload("res://scripts/battle/vfx_impact_factory.gd")  # v9.2: 枪口火
 const CardGridUnitVisuals = preload("res://scripts/card_grid_unit_visuals.gd")  # v14: 蜂群开火冲撞
+const WeaponVisuals = preload("res://data/weapon_visual_profiles.gd")  # v17: 武器视觉档案（名字优先解析）
 
 const _HIT_R2: float = 100.0
 const _MAX_PROJ: int = 720
@@ -25,6 +26,38 @@ var _last_impact_msec: int = -10000
 var _buckets: Dictionary = {}  # weapon_type -> Array（成员级复用，clear 保留 buffer 容量）
 # v9.2: 弹道字典池——fire 时从池取，命中/出界/清场时归还，消除每发字典分配（同 player batch）
 var _dict_pool: Array[Dictionary] = []
+# ── v17k: 曳光线——同玩家 batch（实战主力路径零弹道视觉的最大缺口）。敌方橙红曳光。
+var _tracer_lines: Array = []
+const MAX_TRACERS: int = 48
+const TRACER_COLOR := Color(1.0, 0.45, 0.28, 0.78)  # 敌方橙红曳光
+static var _tracer_mat: CanvasItemMaterial = null
+
+func _update_tracers() -> void:
+	var need: int = mini(_proj.size(), MAX_TRACERS)
+	if _tracer_mat == null:
+		_tracer_mat = CanvasItemMaterial.new()
+		_tracer_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	while _tracer_lines.size() < need:
+		var t := Line2D.new()
+		t.width = 2.5  # v17k-R2: 1.5→2.5（AI 批"弹道不可读"，缩图后 1.5px 线消失）
+		t.default_color = TRACER_COLOR
+		t.material = _tracer_mat
+		t.joint_mode = Line2D.LINE_JOINT_ROUND
+		t.end_cap_mode = Line2D.LINE_CAP_ROUND
+		add_child(t)
+		_tracer_lines.append(t)
+	for i in range(_tracer_lines.size()):
+		var t2: Line2D = _tracer_lines[i]
+		if i >= need:
+			t2.visible = false
+			continue
+		t2.visible = true
+		var r: Dictionary = _proj[i]
+		var dir: Vector2 = r.get("dir", Vector2.RIGHT) as Vector2
+		t2.position = to_local(r["pos"])
+		t2.clear_points()
+		t2.add_point(Vector2.ZERO)
+		t2.add_point(-dir * 26.0)  # v17k-R2: 16→26px 曳光加长
 
 func _acquire_proj_dict() -> Dictionary:
 	if not _dict_pool.is_empty():
@@ -61,7 +94,7 @@ func _make_layer(wt: int) -> MultiMeshInstance2D:
 	mmi.material = mat
 	return mmi
 
-func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, _shooter_stats: Variant, forced_miss: bool = false) -> void:
+func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, _shooter_stats: Variant, forced_miss: bool = false, weapon_name: String = "", p_vfx_variant: String = "") -> void:
 	if _proj.size() >= _MAX_PROJ or tgt == null or not is_instance_valid(tgt):
 		return
 	if not _layers.has(wt):
@@ -78,16 +111,24 @@ func fire(from: Vector2, tgt: Node2D, dmg: float, wt: int, shooter: Node2D, _sho
 	d["speed"] = _speed_for(wt)
 	d["max_dist"] = _max_dist_for(wt)
 	d["dir"] = Vector2.RIGHT
+	# v16: 透传武器名（命中配方亚类：机枪/坦克炮/步枪）与改造专属视觉标识
+	d["weapon_name"] = weapon_name
+	d["vfx_variant"] = p_vfx_variant
 	_proj.append(d)
-	# v9.2/v9.4: 枪口火——batch 路径无 Bullet 节点，原本无开火反馈，敌方小兵射击"看不到攻击"。
-	# 在发射点播一个枪口火（敌方朝左），让玩家看到"敌人在开火"。
-	# 节流：25% 抽样（v9.2 原 60%，v9.4 降到 25%）——密集齐射时 60% 抽样仍会糊屏（粒子滥用），
-	# 25% 既保留"敌方齐射"的视觉反馈，又大幅减少粒子污染，把 spark 池留给命中/暴击火花。
+	# v9.2/v9.4: 枪口火——batch 路径无 Bullet 节点，敌方小兵射击"看不到攻击"。
+	# v16 去重：完整单位（CharacterBody2D：enemy_unit）在 _do_attack 里已播单位级
+	# 炮口火（_play_muzzle_feedback），batch 再播会双重叠加——仅对无单位级反馈的
+	# 射手（蜂群槽位 Node2D）保留抽样枪口火，它是蜂群唯一开火视觉。
+	# 节流：25% 抽样——密集齐射时防粒子污染，把 spark 池留给命中/暴击火花。
 	if not forced_miss and randf() < 0.25:
-		VfxImpactFactory.spawn_muzzle_flash(self, from, false, wt)
-		# v14: 蜂群开火冲撞——与枪口火同抽样率(25%,密集齐射节流),本体参与开火演出
-		if shooter is Node:
-			CardGridUnitVisuals.fire_lunge_unit(shooter, false, wt in [1, 2, 3, 7, 9, 10, 11])
+		var _need_flash: bool = not (shooter is CharacterBody2D)
+		if _need_flash:
+			# v17: 枪口火 wt 经 WeaponVisualProfiles 统一解析（武器名优先+敌方 legacy 域兜底）
+			var _flash_wt: int = WeaponVisuals.resolve_visual_wt(weapon_name, wt, false)
+			VfxImpactFactory.spawn_muzzle_flash(self, from, false, _flash_wt)
+			# v14: 蜂群开火冲撞——与枪口火同抽样率(25%,密集齐射节流),本体参与开火演出
+			if shooter is Node:
+				CardGridUnitVisuals.fire_lunge_unit(shooter, false, _flash_wt in [1, 2, 3, 7, 9, 10, 11])
 
 func clear_all() -> void:
 	# v9.2: 归还所有活跃弹道字典到池
@@ -144,6 +185,7 @@ func _physics_process(delta: float) -> void:
 		write = 0
 	_proj.resize(write)
 	_sync_multimesh_layers()
+	_update_tracers()  # v17k: 曳光随弹道每帧更新
 
 func _sync_multimesh_layers() -> void:
 	if _proj.is_empty():
@@ -181,6 +223,10 @@ func _apply_hit(r: Dictionary) -> void:
 		return
 	var hit_pos: Vector2 = Vector2(r["pos"])
 	var wt: int = int(r["wt"])
+	# v17: 命中特效 wt 经 WeaponVisualProfiles 统一解析（武器名优先+敌方 legacy 域兜底：
+	# 1/2=步枪/机枪归一轻档，防被"新枚举优先"读成曲射/空射火炮爆炸）。
+	var _wname: String = String(r.get("weapon_name", ""))
+	var impact_wt: int = WeaponVisuals.resolve_visual_wt(_wname, wt, false)
 	# v7.x: 从目标提取 combat_kind 实现按目标类型差异化命中色调/缩放
 	var _tgt_kind: int = -1
 	if tgt != null and "stats" in tgt:
@@ -192,8 +238,12 @@ func _apply_hit(r: Dictionary) -> void:
 	else:
 		# v9.4: power_tier 威力分级（直射轻武器 radius=0，tier 由 damage 决定）。
 		# 轻武器小兵 damage 低（LIGHT），重型直射单位 damage 高（HEAVY）。
-		var _tier: int = WeaponProjectileVfx.compute_power_tier(wt, 0.0, float(r.get("dmg", 0.0)))
+		var _tier: int = WeaponProjectileVfx.compute_power_tier(impact_wt, 0.0, float(r.get("dmg", 0.0)))
 		var _opts: Dictionary = {"power_tier": _tier}
+		# v16: 改造专属视觉（集束/温压/近炸等 vfx_variant）
+		var _variant: String = String(r.get("vfx_variant", ""))
+		if not _variant.is_empty():
+			_opts["vfx_variant"] = _variant
 		# T1 性能优化：轻武器命中特效时间窗限流（同 player batch）——
 		# 每次命中 7-10 个特效节点 + 30-90 CPU 粒子，密集齐射时按命中频率爆炸。
 		# HEAVY+ 档不限流；轻武器 40ms 窗口内只出一次；交火稀疏时零损失。
@@ -205,7 +255,7 @@ func _apply_hit(r: Dictionary) -> void:
 			else:
 				_last_impact_msec = _now
 		if _spawn_fx:
-			WeaponProjectileVfx.spawn_impact_with_kind(self, hit_pos, wt, false, _tgt_kind, _opts)
+			WeaponProjectileVfx.spawn_impact_with_kind(self, hit_pos, impact_wt, false, _tgt_kind, _opts, _wname)
 		# v9.4: 仅 HEAVY+ 档震屏（轻武器密集命中不震屏避免干扰；重型直射/核武才震）
 		if _tier >= 2:
 			var tree := get_tree()

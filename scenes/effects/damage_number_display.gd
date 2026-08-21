@@ -85,6 +85,24 @@ const DAMAGE_STYLES: Dictionary = {
 		"outline_color": Color(0.2, 0.2, 0.2, 0.6),
 		"scale": 0.85
 	},
+	# v10 解题式玩法：回收修复（回收无人机击杀→修复，青碧色区别于治疗绿）
+	"salvage": {
+		"font_size": 15,
+		"color": Color(0.3, 0.95, 0.85, 1.0),
+		"outline_color": Color(0.0, 0.3, 0.28, 0.85),
+		"scale": 0.85,
+		"glow_color": Color(0.25, 0.9, 0.8, 0.7),
+		"glow_size": 2
+	},
+	# v10 解题式玩法：克制破解（标签克制质变生效时的伤害数字，金色高亮）
+	"counter_break": {
+		"font_size": 20,
+		"color": Color(1.0, 0.85, 0.25, 1.0),
+		"outline_color": Color(0.45, 0.3, 0.0, 0.9),
+		"scale": 1.05,
+		"glow_color": Color(1.0, 0.8, 0.2, 0.85),
+		"glow_size": 4
+	},
 	# v13.1: 阵营双色 normal——敌人掉血=我方输出(青)，我方掉血=敌方输出(暖红)。
 	# 一眼读出"谁在打谁"；特殊类型(暴击/穿甲/DOT/治疗)保持原有类型语义色。
 	"dmg_out": {

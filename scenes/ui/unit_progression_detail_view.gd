@@ -145,7 +145,7 @@ func _add_progress_block() -> void:
 	var mod_count: int = BlueprintManager.get_modification_count(_card_id) if BlueprintManager.has_method("get_modification_count") else 0
 	var unlocked: bool = EvolutionGraphBuilder.is_blueprint_unlocked(_card_id)
 	_add_line("蓝图：%s" % ("已解锁" if unlocked else "未解锁"), Color(0.8, 0.85, 0.9))
-	_add_line("强化：★%d" % enhance_lvl, Color(0.9, 0.88, 0.55))
+	_add_line("强化：Lv.%d" % enhance_lvl, Color(0.9, 0.88, 0.55))
 	_add_line("改装：%d / %d" % [mod_count, CardProgressionSettings.MOD_MAX], Color(0.85, 0.75, 1.0))
 	# v6.7: 改造具体加成 — 原只显示数字，补充已装改造的中文名 + 效果
 	_add_mod_detail_lines()

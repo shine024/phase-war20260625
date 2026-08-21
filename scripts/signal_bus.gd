@@ -231,6 +231,10 @@ signal phase_master_appeared(master_config: Dictionary)
 signal player_phase_master_power_changed(raw_score: float, score_alias: float, stars: int, star_name: String, display_level: int)
 # 符文之语激活：RunewordMatcher 命中时广播，供 Announcer 播报。
 signal runeword_triggered(rw_id: String, unit: Node)
+# v10 解题式玩法：标签克制质变生效（break_effect 命中）时广播，供 Announcer 播报"敌方优势瓦解"横幅。
+# break_type: strip_fort_aura / ground_aircraft / interrupt_cast / guaranteed_crit
+# target_name: 目标显示名（Announcer 用）
+signal counter_break_triggered(break_type: String, target_name: String)
 # v8.1 相位仪主动能力触发：供 BattleSpectacle 编排全屏演出。
 # ability_id: 能力标识（nuclear_bombardment/nano_swarm/mega_shield 等）
 # stage: "warning"(预警) / "impact"(命中) / "start"(开局开始) / "end"(结束)

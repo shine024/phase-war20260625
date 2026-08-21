@@ -12,13 +12,21 @@ class_name EnemyAffixes
 ## effect_key 分两类：
 ##   A 数值型（apply 时改 stats 字段，战斗路径自动读取）：
 ##     attack_damage / max_hp / attack_speed / dodge_chance / crit_chance / hp_regen
-##   B 机制型（apply 改 stats 字段 + _do_attack 调 AffixCombatHandler 触发）：
-##     lifesteal / chain_chance / splash_damage / shield_on_kill
+##   B 机制型（apply 改 stats 字段 + 战斗路径消费）：
+##     lifesteal / chain_chance / splash_damage / armor_reflect
+##   C v19 兵种专属/独特扩展（战斗路径同样自动读取）：
+##     move_speed / damage_reduction / attack_range / defense / crit_damage_bonus
 
 ## 词缀稀有度档位（决定词缀强度 + 出现概率）
 enum AffixRarity { COMMON, RARE, ELITE_ONLY }
 
-## 词缀定义表：affix_id → {name, description, effect_key, base_value, rarity, combat_kinds(空=全兵种)}
+## v19: 兵种专属词缀池优先概率（两段式：先以此概率走本兵种专属池，空池/未命中走通用池）
+const KIND_POOL_CHANCE: float = 0.55
+
+## v19: 特殊档位独特词缀门槛（卡牌 Tier >= 此值才可 roll；3=CHAMPION/4=BOSS/5=ULTIMATE/6=FORT）
+const UNIQUE_AFFIX_MIN_TIER: int = 3
+
+## 词缀定义表：affix_id → {name, description, effect_key, base_value, rarity, combat_kinds(空=全兵种), min_tier(0=无门槛)}
 const ENEMY_AFFIXES: Dictionary = {
 	# ══════════ COMMON（数值强化，精英/boss 波均有几率） ══════════
 	"enemy_frenzy": {
@@ -102,6 +110,146 @@ const ENEMY_AFFIXES: Dictionary = {
 		"base_value": 0.25,
 		"rarity": AffixRarity.ELITE_ONLY,
 		"combat_kinds": [],  # 装甲/堡垒更配但全兵种可用
+		"min_tier": 0,
+	},
+
+	# ══════════ v19 兵种专属词缀（combat_kinds 限定，每兵种 2 个） ══════════
+	"enemy_gale_raid": {
+		"name": "疾风突袭",
+		"description": "移动速度 +35%",
+		"effect_key": "move_speed",
+		"base_value": 0.35,
+		"rarity": AffixRarity.COMMON,
+		"combat_kinds": [0],  # 轻装
+		"min_tier": 0,
+	},
+	"enemy_ghost_step": {
+		"name": "幽灵步伐",
+		"description": "闪避率 +25%",
+		"effect_key": "dodge_chance",
+		"base_value": 0.25,
+		"rarity": AffixRarity.COMMON,
+		"combat_kinds": [0],  # 轻装
+		"min_tier": 0,
+	},
+	"enemy_steel_tide": {
+		"name": "钢铁洪流",
+		"description": "生命值 +75%",
+		"effect_key": "max_hp",
+		"base_value": 0.75,
+		"rarity": AffixRarity.COMMON,
+		"combat_kinds": [1],  # 装甲
+		"min_tier": 0,
+	},
+	"enemy_compound_armor": {
+		"name": "复合装甲",
+		"description": "受到伤害减少 15%",
+		"effect_key": "damage_reduction",
+		"base_value": 0.15,
+		"rarity": AffixRarity.RARE,
+		"combat_kinds": [1],  # 装甲
+		"min_tier": 0,
+	},
+	"enemy_dive_strike": {
+		"name": "掠袭俯冲",
+		"description": "攻击力 +40%",
+		"effect_key": "attack_damage",
+		"base_value": 0.40,
+		"rarity": AffixRarity.COMMON,
+		"combat_kinds": [3],  # 空中
+		"min_tier": 0,
+	},
+	"enemy_airspace_hunt": {
+		"name": "空域猎杀",
+		"description": "暴击率 +20%",
+		"effect_key": "crit_chance",
+		"base_value": 0.20,
+		"rarity": AffixRarity.RARE,
+		"combat_kinds": [3],  # 空中
+		"min_tier": 0,
+	},
+	"enemy_long_bombard": {
+		"name": "超远程炮击",
+		"description": "攻击射程 +30%",
+		"effect_key": "attack_range",
+		"base_value": 0.30,
+		"rarity": AffixRarity.COMMON,
+		"combat_kinds": [2],  # 支援
+		"min_tier": 0,
+	},
+	"enemy_field_rebuild": {
+		"name": "战地重构",
+		"description": "每秒回复 2.0% 最大生命",
+		"effect_key": "hp_regen",
+		"base_value": 0.020,
+		"rarity": AffixRarity.RARE,
+		"combat_kinds": [2],  # 支援
+		"min_tier": 0,
+	},
+	"enemy_permament_works": {
+		"name": "永固工事",
+		"description": "防御值 +8",
+		"effect_key": "defense",
+		"base_value": 8.0,
+		"rarity": AffixRarity.COMMON,
+		"combat_kinds": [4],  # 堡垒
+		"min_tier": 0,
+	},
+	"enemy_fireweb": {
+		"name": "火网封锁",
+		"description": "攻击弹射附近敌人 +25%",
+		"effect_key": "chain_chance",
+		"base_value": 0.25,
+		"rarity": AffixRarity.RARE,
+		"combat_kinds": [4],  # 堡垒
+		"min_tier": 0,
+	},
+
+	# ══════════ v19 特殊档位独特词缀（min_tier >= CHAMPION，仅 boss 波可出） ══════════
+	"enemy_execution_protocol": {
+		"name": "处刑协议",
+		"description": "暴击伤害 +0.5x",
+		"effect_key": "crit_damage_bonus",
+		"base_value": 0.50,
+		"rarity": AffixRarity.ELITE_ONLY,
+		"combat_kinds": [0],  # 轻装
+		"min_tier": 3,
+	},
+	"enemy_titan_armor": {
+		"name": "泰坦装甲",
+		"description": "生命值 +100%",
+		"effect_key": "max_hp",
+		"base_value": 1.00,
+		"rarity": AffixRarity.ELITE_ONLY,
+		"combat_kinds": [1],  # 装甲
+		"min_tier": 3,
+	},
+	"enemy_death_scythe": {
+		"name": "死神镰刀",
+		"description": "攻击力 +55%",
+		"effect_key": "attack_damage",
+		"base_value": 0.55,
+		"rarity": AffixRarity.ELITE_ONLY,
+		"combat_kinds": [3],  # 空中
+		"min_tier": 3,
+	},
+	"enemy_orbital_bombard": {
+		"name": "轨道轰炸",
+		"description": "范围溅射伤害 +50%",
+		"effect_key": "splash_damage",
+		"base_value": 0.50,
+		"rarity": AffixRarity.ELITE_ONLY,
+		"combat_kinds": [2],  # 支援
+		"min_tier": 3,
+	},
+	"enemy_fortress_will": {
+		"name": "堡垒意志",
+		"description": "受到伤害时反弹 35%",
+		"effect_key": "armor_reflect",
+		"base_value": 0.35,
+		"rarity": AffixRarity.ELITE_ONLY,
+		"combat_kinds": [4],  # 堡垒
+		"min_tier": 3,
 	},
 }
 
@@ -109,7 +257,9 @@ const ENEMY_AFFIXES: Dictionary = {
 ## 按 spawn_type（normal/elite/boss）roll 一组词缀。
 ## 返回词缀定义 Dictionary 列表（{id, name, description, effect_key, base_value}）。
 ## normal → 不 roll（返回空）；elite → 1 个 common/rare；boss → 2 个（含 elite_only 池）。
-static func roll_affixes(spawn_type: String, rng: RandomNumberGenerator = null) -> Array:
+## v19: 新增 combat_kind/tier 参数——池按兵种互斥过滤（他兵种专属词缀不进池），
+## tier 达标的独特词缀（min_tier >= CHAMPION）进池；再两段式分流（55% 优先本兵种专属池）。
+static func roll_affixes(spawn_type: String, rng: RandomNumberGenerator = null, combat_kind: int = -1, tier: int = 0) -> Array:
 	var own_rng: RandomNumberGenerator = rng if rng != null else RandomNumberGenerator.new()
 	if own_rng == rng and rng == null:
 		own_rng = RandomNumberGenerator.new()
@@ -119,12 +269,16 @@ static func roll_affixes(spawn_type: String, rng: RandomNumberGenerator = null) 
 	match spawn_type:
 		"elite":
 			# 精英：1 个词缀，common 权重 2 / rare 权重 1
-			var pool_elite: Array = _filter_by_rarities([AffixRarity.COMMON, AffixRarity.RARE])
+			var pool_elite: Array = _pick_kind_or_generic(
+				_filter_by_rarities([AffixRarity.COMMON, AffixRarity.RARE], combat_kind, tier),
+				combat_kind, own_rng)
 			if not pool_elite.is_empty():
 				result.append(_pick_weighted(pool_elite, [2.0, 1.0], own_rng))
 		"boss":
 			# boss：2 个词缀，从 common/rare/elite_only 池抽（不重复）
-			var pool_boss: Array = _filter_by_rarities([AffixRarity.COMMON, AffixRarity.RARE, AffixRarity.ELITE_ONLY])
+			var pool_boss: Array = _pick_kind_or_generic(
+				_filter_by_rarities([AffixRarity.COMMON, AffixRarity.RARE, AffixRarity.ELITE_ONLY], combat_kind, tier),
+				combat_kind, own_rng)
 			var picks: int = mini(2, pool_boss.size())
 			var available: Array = pool_boss.duplicate()
 			for _i in range(picks):
@@ -138,13 +292,40 @@ static func roll_affixes(spawn_type: String, rng: RandomNumberGenerator = null) 
 	return result
 
 
+## v19: 两段式池分流——以 KIND_POOL_CHANCE 概率走本兵种专属池（combat_kinds 匹配者），
+## 未命中/空池走通用池（combat_kinds 为空者）。入参 pool 需已做过兵种互斥过滤。
+static func _pick_kind_or_generic(pool: Array, combat_kind: int, rng: RandomNumberGenerator) -> Array:
+	if combat_kind < 0 or pool.is_empty():
+		return pool
+	var kind_pool: Array = []
+	var generic_pool: Array = []
+	for entry in pool:
+		var kinds: Array = entry.get("combat_kinds", []) as Array
+		if kinds.is_empty():
+			generic_pool.append(entry)
+		else:
+			kind_pool.append(entry)
+	if not kind_pool.is_empty() and rng.randf() < KIND_POOL_CHANCE:
+		return kind_pool
+	if not generic_pool.is_empty():
+		return generic_pool
+	return pool  # 两池皆空（异常配置）时保留原池兜底
+
+
 ## 按稀有度过滤词缀池，返回 [{id, ...rarity_info}] 列表（带 rarity 标记，用于权重抽取）。
-static func _filter_by_rarities(rarities: Array) -> Array:
+## v19: 新增 combat_kind/tier 过滤——他兵种专属词缀剔除；min_tier 超过 tier 的独特词缀剔除。
+static func _filter_by_rarities(rarities: Array, combat_kind: int = -1, tier: int = 0) -> Array:
 	var result: Array = []
 	for affix_id in ENEMY_AFFIXES:
 		var def: Dictionary = ENEMY_AFFIXES[affix_id]
 		var r: int = int(def.get("rarity", AffixRarity.COMMON))
 		if r in rarities:
+			if combat_kind >= 0:
+				var kinds: Array = def.get("combat_kinds", []) as Array
+				if not kinds.is_empty() and not kinds.has(combat_kind):
+					continue
+				if int(def.get("min_tier", 0)) > tier:
+					continue
 			var entry: Dictionary = {"id": affix_id}
 			entry.merge(def, true)
 			result.append(entry)
@@ -213,6 +394,24 @@ static func apply_to_stats(stats: UnitStats, affixes: Array) -> void:
 					stats.armor_reflect = clampf(stats.armor_reflect + val, 0.0, 0.60)
 				else:
 					stats.set_meta("armor_reflect", clampf(val, 0.0, 0.60))
+			"move_speed":
+				# v19 兵种专属（轻装·疾风突袭）：乘区，下限防归零
+				stats.move_speed = maxf(5.0, stats.move_speed * (1.0 + val))
+			"damage_reduction":
+				# v19 兵种专属（装甲·复合装甲）：加法，封顶对齐玩家侧 0.75
+				stats.damage_reduction = minf(0.75, stats.damage_reduction + val)
+			"attack_range":
+				# v19 兵种专属（支援·超远程炮击）：乘区，下限 50px 防异常
+				stats.attack_range = maxf(50.0, stats.attack_range * (1.0 + val))
+			"defense":
+				# v19 兵种专属（堡垒·永固工事）：主防御 + 三维防御同加（对齐 CardGrowthConfig 口径）
+				stats.defense += val
+				stats.defense_light += val
+				stats.defense_armor += val
+				stats.defense_air += val
+			"crit_damage_bonus":
+				# v19 独特（轻装·处刑协议）：暴伤加成，bullet 单发暴击结算读此字段（1.5x 基础）
+				stats.crit_damage_bonus += val
 
 
 ## 获取词缀显示名列表（供 UI / 信息面板显示）。

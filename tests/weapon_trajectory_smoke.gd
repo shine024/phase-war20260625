@@ -68,7 +68,8 @@ func _test_vfx_combat_kind_tables() -> void:
 	var has_spawn_with_kind: bool = vfx_script.find("spawn_impact_with_kind") >= 0
 	var has_shake_func: bool = vfx_script.find("impact_shake_for_kind") >= 0
 	_assert_eq(has_tint, true, "IMPACT_TINT_BY_KIND 色调表存在")
-	_assert_eq(has_scale, true, "IMPACT_SCALE_MUL_BY_KIND 缩放表存在")
+	# v8.0 已废弃 IMPACT_SCALE_MUL_BY_KIND（粒子系统无 scale 概念）——断言其已移除而非存在
+	_assert_eq(has_scale, false, "IMPACT_SCALE_MUL_BY_KIND 缩放表已按 v8.0 移除")
 	_assert_eq(has_shake, true, "IMPACT_SHAKE_BY_KIND 震动表存在")
 	_assert_eq(has_spawn_with_kind, true, "spawn_impact_with_kind 函数存在")
 	_assert_eq(has_shake_func, true, "impact_shake_for_kind 函数存在")

@@ -125,6 +125,10 @@ static func apply_battle_unit_presentation(
 	if unit != null and unit.has_method("get_elite_spawn_type"):
 		var st: String = String(unit.call("get_elite_spawn_type"))
 		is_boss_tier = is_boss_tier or st == "elite" or st == "boss"
+	elif unit != null and unit.has_meta("elite_spawn_type"):
+		# v19: 产兵（ConstructUnit）无该方法，回退 meta——词缀怪也走 boss 级待机
+		var st_meta: String = String(unit.get_meta("elite_spawn_type", ""))
+		is_boss_tier = is_boss_tier or st_meta == "elite" or st_meta == "boss"
 	if is_boss_tier and not anim_id.is_empty():
 		BossIdleAnim.attach(unit_spr, anim_id)
 		_boss_sway_idle(unit_spr)
@@ -222,9 +226,13 @@ static func sync_elite_badge(host: Node2D, unit_spr: Sprite2D, unit: Node) -> vo
 			stale.visible = false
 		return
 	# 仅当单位暴露 get_elite_spawn_type() 且值为 elite/boss 才显示
+	# v19: 相位师产兵（ConstructUnit）无该方法，回退读 meta elite_spawn_type
+	# （enemy_phase_field_driver 词缀产兵时写入），让词缀怪也有金角标
 	var spawn_type: String = ""
 	if unit.has_method("get_elite_spawn_type"):
 		spawn_type = String(unit.get_elite_spawn_type())
+	elif unit.has_meta("elite_spawn_type"):
+		spawn_type = String(unit.get_meta("elite_spawn_type", ""))
 	var is_elite := (spawn_type == "elite" or spawn_type == "boss")
 	var badge := host.get_node_or_null("EliteBadge") as Polygon2D
 	if not is_elite:

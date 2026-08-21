@@ -8,6 +8,7 @@ const ActiveLawEffects = preload("res://managers/active_law_effects.gd")
 const CardAbilityManager = preload("res://managers/card_ability_manager.gd")
 const CardGridFx = preload("res://scripts/card_grid_fx.gd")
 const WeaponProjectileVfx = preload("res://scripts/weapon_projectile_vfx.gd")
+const WeaponVisuals = preload("res://data/weapon_visual_profiles.gd")  # v17: 武器视觉档案（名字优先解析）
 const AttackCalculator = preload("res://scripts/battle/attack_calculator.gd")
 const RuneSpecialHandler = preload("res://managers/rune_special_handler.gd")
 const FactionSkillEffectHandler = preload("res://scripts/battle/faction_skill_effect_handler.gd")
@@ -17,15 +18,29 @@ const DirectWeaponFlavor = preload("res://data/direct_weapon_flavor.gd")
 ## 曲射弹道：炮口火焰特效纹理（预加载，避免运行时 ResourceLoader.load 卡顿）
 ## v9.x 修复：原 weapons_realistic/weapon_artillery_muzzle.png 从未进 git（机器间缺失导致整脚本 Parse Error），
 ## 改用已入库的 muzzle_heavy.png（火炮炮口焰语义一致）。
-const ARTILLERY_MUZZLE_TEX := preload("res://assets/effects/particle_textures/muzzle_heavy.png")
-## v6.4: 重型武器拖尾贴图（曲射/爆炸类），复用 omega_platform 拖尾资源
+## v6.1: 能量武器（LASER/OMEGA/RAIL）使用方向性长条纹理 weapon_artillery_muzzle.png（1024×1024 已入库），
+## 配合窄锥角喷射形态，替代圆形爆发贴图。
+const ARTILLERY_MUZZLE_TEX := preload("res://assets/effects/particle_textures/muzzle_heavy.png")   # 默认/轻型枪口火（橙红爆发）
+const MUZZLE_JET_TEX       := preload("res://assets/effects/particle_textures/muzzle_jet_sym.png")      # v17e: 侧视前向喷流（白核居中+两侧橙尾，朝左朝右都对）
+const FLAME_STAR_TEX       := preload("res://assets/effects/particle_textures/flame_star.png")    # v17d: 8 放射火舌（已被 FLAME_JET_TEX 替代，保留兼容）
+## v18-R5: 重型枪口水平火舌（对称 ±X，内容 149×25px）——放射星被 AI 读成"径向爆散"。
+const FLAME_JET_TEX        := preload("res://assets/effects/particle_textures/flame_jet_sym.png")
+## v18-R9: 摄影感火舌 v2（黑体色序+噪声边缘，内容 160×45px）。
+const FLAME_JET_V2_TEX     := preload("res://assets/effects/particle_textures/flame_jet_v2.png")
+const ENERGY_MUZZLE_TEX    := preload("res://assets/effects/projectiles/weapons_realistic/weapon_artillery_muzzle.png")  # 能量喷射流（白青，LASER/OMEGA/RAIL）
 const HEAVY_TRAIL_TEX := preload("res://assets/effects/projectiles/omega_platform/omega_platform_projectile_trail.png")
 ## 启用拖尾的重型武器类型：INDIRECT(1)/AERIAL(2)/ROCKET(3)/FLAK(7)/MISSILE(9)/OMEGA(10)/RAIL(11)
 const HEAVY_TRAIL_WEAPON_TYPES: Array = [1, 2, 3, 7, 9, 10, 11]
-## v9.2: 拖尾粒子贴图——按武器类型分流，让拖尾形状区分武器级别（告别方块拖尾）
-const TRAIL_TEX_SPARK_METAL := preload("res://assets/effects/particle_textures/spark_metal.png")    # 动能轻武器（黄橙小火花）
+## v9.2: 拖尾粒子贴图——按武器类型分流，让拖尾形状区分武器级别
+## v17d: 动能拖尾换 spark_streak（白热头+橙尾拖痕，内容 118×17px）——旧 spark_metal 是软条，
+## 且 v9.2 的 scale 表按"32px 贴图"标定而实为 128px → 拖尾渲染成 190-380px 光雾（弹道问题的主因）。
+## 新 scale 表按内容实寸重标定（见 _apply_trail_tier）。
+const TRAIL_TEX_SPARK_STREAK := preload("res://assets/effects/particle_textures/spark_streak.png") # 动能轻武器（火花拖痕，指向+X→局部-X向后）
 const TRAIL_TEX_SPARK_ENERGY := preload("res://assets/effects/particle_textures/spark_energy.png")  # 能量武器（蓝白电弧）
 const TRAIL_TEX_SMOKE_GENERIC := preload("res://assets/effects/particle_textures/smoke_generic.png") # 重型爆炸（灰烟）
+## v18-R12f: 光束轨迹水平光带贴图（256×16，白热中心+透明边缘）
+## -- R12l 回退：Sprite2D 光束在审计矩阵中与其他子弹光束交叉干扰，净效果为负。
+## const BEAM_TEX_H_STRIP := preload("res://assets/effects/particle_textures/beam_h_strip.png")
 # ObjectPoolManager 为 autoload
 
 var speed: float = 600.0
@@ -34,6 +49,13 @@ var target: Node2D = null
 var shooter_is_player: bool = true
 var max_distance: float = 1600.0
 var weapon_type: int = 0
+## v17d: 拖光线——弹体后方速度方向 ADD 亮线。v9.4 弃用长条弹体后轻武器弹体仅 12×7px
+## 混战不可追踪；细拖光线补"一发子弹正在飞"的可读性（曳光弹视觉），随弹体旋转恒对齐。
+var _tracer_line: Line2D = null
+## v17: 视觉专用 wt——经 WeaponVisualProfiles.resolve_visual_wt 解析（武器名优先+域感知
+## 兜底）。weapon_type 本体保留原始值供弹道物理（_configure_behavior）使用，严禁混用。
+## 所有枪口火/命中/贴图消费点统一读 _visual_wt，槽位漏配签名武器时消费侧仍能按名纠正。
+var _visual_wt: int = 0
 var shooter: Node2D = null  # 射手引用（用于词条效果）
 var shooter_stats: UnitStats = null  # 射手数值（用于词条效果计算）
 ## 超射程「哑弹」：飞过但不造成伤害（仍可对卡牌模式播放擦弹表现）
@@ -104,10 +126,11 @@ var _use_tex_sprite: bool = false
 var _rotates_with_direction: bool = false
 var _direction: Vector2 = Vector2.RIGHT
 var _beam_visual_phase: int = 0
-const BEAM_VISUAL_LEN: float = 52.0
-var _beam_pts: PackedVector2Array = PackedVector2Array([Vector2.ZERO, Vector2.ZERO])
+# v18-R12f: 光束轨迹 Sprite2D 方案已回退，恢复 Line2D 光束
+# const BEAM_VISUAL_LEN: float = 100.0
+# const BEAM_FADEOUT_DIST: float = 120.0
 
-## v6.4: 弹道发光叠加材质（与轻武器/曲射批处理一致），所有视觉节点共享同一实例
+## v6.4: 弹道发光叠加材质
 static var _add_blend_mat: CanvasItemMaterial
 
 static func _get_add_blend_mat() -> CanvasItemMaterial:
@@ -145,6 +168,7 @@ func setup(p_target: Node2D, p_damage: float, p_is_player: bool, p_weapon_type: 
 	_pre_calculated = p_pre_calculated
 	if p_weapon_type >= 0:
 		weapon_type = p_weapon_type
+	_visual_wt = WeaponVisuals.resolve_visual_wt(_weapon_name, weapon_type, shooter_is_player)
 	_start_position = global_position
 	_direction = Vector2.RIGHT
 	_sprite = get_node_or_null("Sprite") as Polygon2D
@@ -152,6 +176,17 @@ func setup(p_target: Node2D, p_damage: float, p_is_player: bool, p_weapon_type: 
 	_tex_sprite = get_node_or_null("TexSprite") as Sprite2D
 	_trail_sprite = get_node_or_null("TrailSprite") as Sprite2D
 	_trail_particles = get_node_or_null("TrailParticles") as CPUParticles2D
+	# _beam_sprite removed: R12l reverted
+	# v17d: 拖光线节点（speed≥400 的重武器配）——随子弹旋转，恒对齐飞行方向向后拉出
+	if _tracer_line == null or not is_instance_valid(_tracer_line):
+		_tracer_line = Line2D.new()
+		_tracer_line.width = 2.5
+		_tracer_line.joint_mode = Line2D.LINE_JOINT_ROUND
+		_tracer_line.end_cap_mode = Line2D.LINE_CAP_ROUND
+		_tracer_line.add_point(Vector2(0, 0))      # 子弹根部（中心）
+		_tracer_line.add_point(Vector2(-10.0, 0))  # 尾端（局部-X，世界飞行反方向）
+		add_child(_tracer_line)
+		_tracer_line.visible = false
 	_apply_visual()
 	_configure_behavior()
 	_beam_visual_phase = 0
@@ -235,19 +270,25 @@ func _configure_behavior() -> void:
 
 func _apply_visual() -> void:
 	var is_player: bool = shooter_is_player
-	# v6.4: 弹道发光叠加（与轻武器/曲射批处理保持一致）
+	# v6.4: 弹道发光叠加
 	var blend_mat := _get_add_blend_mat()
 	if _sprite:
 		_sprite.material = blend_mat
 	if _beam_line:
 		_beam_line.material = blend_mat
+	if _tracer_line:
+		_tracer_line.material = blend_mat
 	# v9.4: 直射轻武器（SMG/RIFLE/MG/PISTOL，wt 0/1/2/4）改用程序化弹头多边形（与直射 batch 的
 	# ArrayMesh 弹头视觉一致），弃用横向长条贴图——长条贴图（weapon_rifle/smg/mg_projectile.png
 	# 比例 5:1~12:1）旋转到斜向弹道时视觉违和（长条横躺）。程序化弹头短粗（12×7）、指向 +X、
 	# 原点居中，rotation=_direction.angle() 后任意角度自然对齐飞行方向。
 	# 重型/能量/曲射武器（wt 3/5/6/7/8/9/10/11）保留贴图（形状语义明确：火箭/导弹/激光等）。
 	var _use_procedural_bullet := weapon_type in [0, 1, 2, 4]
-	_use_tex_sprite = WeaponProjectileVfx.has_proj_texture(weapon_type) and not _use_procedural_bullet
+	# v18-R8: 光束族(6狙击/8激光)强制 Line2D 光束渲染——族规格"弹体=光束"。
+	# 旧路径因有投射贴图走 tex-sprite 提前 return，光束分支成死代码；贴图弹体+
+	# 电弧拖尾(spark_energy)被 AI 读成"离散闪电碎片/弹丸断点"（f08 traj 2-3、f06 traj 3 分）。
+	var _use_beam_render := weapon_type in [6, 8]
+	_use_tex_sprite = WeaponProjectileVfx.has_proj_texture(weapon_type) and not _use_procedural_bullet and not _use_beam_render
 	if _use_tex_sprite:
 		_apply_tex_sprite_visual(is_player)
 		_rotates_with_direction = true   # 贴图弹道随飞行方向旋转
@@ -259,31 +300,33 @@ func _apply_visual() -> void:
 	var size_scale: float = 1.0
 	match weapon_type:
 		0, 4:
-			bullet_color = Color(0.95, 0.9, 0.3) if is_player else Color(1, 0.4, 0.2)
-			size_scale = 0.8
+			bullet_color = Color(1.0, 0.95, 0.2) if is_player else Color(1, 0.4, 0.2)
+			size_scale = 1.0   # v6.1: 0.8→1.0，v18-R11d 我方1.3实验回退（影响敌muzzle）
 		1, 2:
-			bullet_color = Color(0.85, 0.85, 0.9) if is_player else Color(0.9, 0.5, 0.3)
-			size_scale = 1.0
+			bullet_color = Color(0.6, 0.95, 1.0) if is_player else Color(0.9, 0.5, 0.3)
+			size_scale = 1.15  # v6.1: 1.0→1.15，步枪/机枪弹体更粗壮
 		5:
-			bullet_color = Color(0.9, 0.85, 0.5) if is_player else Color(1, 0.5, 0.2)
+			bullet_color = Color(1.0, 0.95, 0.2) if is_player else Color(1, 0.5, 0.2)
 			size_scale = 1.2
 		6:
 			use_beam = true
 			beam_color = Color(0.4, 0.9, 1) if is_player else Color(1, 0.5, 0.4)
 		8:
 			use_beam = true
-			beam_color = Color(0.2, 0.85, 1) if is_player else Color(1, 0.3, 0.6)
+			# v18-R8: 敌方激光束改红橙——与命中签名 spawn_laser_burn 的敌我配色对齐
+			# （玩家青白冷光/敌方红橙热光），光束与灼烧命中同一套色彩语言。
+			beam_color = Color(0.2, 0.85, 1) if is_player else Color(1.0, 0.45, 0.30)
 		3, 9:
-			bullet_color = Color(0.9, 0.5, 0.1) if is_player else Color(1, 0.35, 0.15)
+			bullet_color = Color(1.0, 0.7, 0.1) if is_player else Color(1, 0.35, 0.15)
 			size_scale = 1.8
 		7:
-			bullet_color = Color(0.8, 0.75, 0.6) if is_player else Color(0.95, 0.6, 0.3)
+			bullet_color = Color(1.0, 0.9, 0.3) if is_player else Color(0.95, 0.6, 0.3)
 			size_scale = 0.6
 		11:  # RAIL_CANNON
-			bullet_color = Color(0.5, 0.55, 1) if is_player else Color(1, 0.25, 0.45)
+			bullet_color = Color(0.3, 0.85, 1.0) if is_player else Color(1, 0.25, 0.45)
 			size_scale = 1.85
 		_:
-			bullet_color = Color(0.9, 0.9, 0.95) if is_player else Color(0.9, 0.35, 0.25)
+			bullet_color = Color(1.0, 0.95, 0.4) if is_player else Color(0.9, 0.35, 0.25)
 	if _sprite:
 		_sprite.visible = not use_beam
 		if not use_beam:
@@ -295,7 +338,26 @@ func _apply_visual() -> void:
 		_beam_line.visible = use_beam
 		if use_beam:
 			_beam_line.default_color = beam_color
-			_beam_line.width = 3.0 if weapon_type == 6 else 4.5
+			# v19-R14e: 光束加粗——SNIPER 24px / LASER 28px（原 16/20，增加可见度）。
+			if weapon_type == 6:
+				_beam_line.width = 24.0
+			else:
+				_beam_line.width = 28.0
+			_beam_line.default_color.a = 1.0
+			# v19-R27: 白热内芯——复用 TracerLine 节点作为聚焦能量束亮核（AI 批
+			# "矩形色块/扁平条带缺聚焦感"）。2.5px 白线叠加在宽色光束上产生"热核"读感。
+			if _tracer_line:
+				_tracer_line.visible = true
+				_tracer_line.default_color = Color(1.0, 1.0, 1.0, 0.95)
+				_tracer_line.width = 3.0
+	if _tracer_line:
+		# v19-R27: 光束类用 TracerLine 做亮核（而非尾部曳光），非光束类保持原有逻辑。
+		if not use_beam:
+			_tracer_line.visible = (speed >= 400.0)
+			if _tracer_line.visible:
+				_tracer_line.default_color = bullet_color
+				_tracer_line.width = 2.5
+				_tracer_line.set_point_position(1, Vector2(-speed * 0.10, 0.0))  # 拖长=当前速度×0.1s 视觉长度
 
 
 ## v7.x: 程序化生成子弹多边形（替代原 3 点三角形）
@@ -309,6 +371,9 @@ func _apply_bullet_shape(size_scale: float) -> void:
 	if _sprite == null:
 		return
 	_sprite.polygon = WeaponProjectileVfx.build_bullet_points(weapon_type, size_scale)
+
+
+## v18-R11a: 光束辉光底层——实验性修改，R11e 确认无效（像素多 6 倍但 AI 分数不变），已移除调用，保留函数供后续参考。
 
 
 func _apply_tex_sprite_visual(is_player: bool) -> void:
@@ -333,6 +398,17 @@ func _apply_tex_sprite_visual(is_player: bool) -> void:
 		_tex_sprite.modulate = tint
 		# v6.4: 贴图弹道发光叠加
 		_tex_sprite.material = _get_add_blend_mat()
+	# v18-R8b: 贴图弹体补曳光线——_apply_visual 的 tracer 配置块在 tex 路径提前 return
+	# 之后，对贴图弹体是死代码（与 wt6/8 光束死代码同类病根）。炮弹/导弹贴图是暗色
+	# 实物（暗橄榄弹体 78×13px），无曳光在暗背景完全不可见（AI 批"弹体不可见/无曳光痕迹"）。
+	# 曳光线随弹体旋转恒对齐飞行反方向，高速弹（≥400）一条 2.5px 亮线即可读"正在飞"。
+	if _tracer_line:
+		var _show_tracer: bool = speed >= 400.0
+		_tracer_line.visible = _show_tracer
+		if _show_tracer:
+			_tracer_line.default_color = _trail_color_for_weapon()
+			_tracer_line.width = 2.5
+			_tracer_line.set_point_position(1, Vector2(-speed * 0.10, 0.0))
 	_apply_trail()
 
 
@@ -346,6 +422,15 @@ func _hide_tex_sprite_visual() -> void:
 ## 拖尾贴图置于弹体后方，运行时随 _direction 旋转（见 _process / _process_indirect）
 ## v8.1: 新增粒子拖尾——重型武器强粒子（导弹/火炮），轻武器微弱粒子（机枪/步枪增运动感）
 func _apply_trail() -> void:
+	# v18-R8: 光束渲染(6/8)时禁粒子拖尾——Line2D 光束即弹体视觉，电弧/火花粒子
+	# 会让连续光束读成"离散碎片"（AI f08/f06 弹道格主诉）。
+	if weapon_type in [6, 8]:
+		if _trail_sprite != null:
+			_trail_sprite.visible = false
+		if _trail_particles != null:
+			_trail_particles.emitting = false
+			_trail_particles.visible = false
+		return
 	# 静态贴图拖尾（保留给重型武器）
 	if _trail_sprite != null:
 		if not _is_heavy:
@@ -366,68 +451,100 @@ func _apply_trail() -> void:
 			_trail_particles.emitting = false
 			_trail_particles.visible = false
 			return
-		# v9.4: 直射轻武器（SMG/RIFLE/MG/PISTOL，wt 0/1/2/4）禁用粒子拖尾。
-		# 原因：这些武器改用程序化短粗弹头（build_bullet_points），弹头本体就是视觉主体；
-		# 叠加 8-30 颗拖尾粒子会在密集交战时形成杂乱的"长条火星带"，糊屏且与短粗弹头矛盾。
-		# 与直射 batch（MultiMesh 弹道无拖尾）视觉统一。仅保留重型/能量/曲射武器的拖尾（它们弹道稀疏、拖尾有尾焰语义）。
-		if weapon_type in [0, 1, 2, 4]:
-			_trail_particles.emitting = false
-			_trail_particles.visible = false
-			return
+		# v6.1: 恢复直射轻武器（SMG/RIFLE/MG/PISTOL，wt 0/1/2/4）的微弱粒子拖尾。
+		# v9.4 曾完全禁用以避免杂乱，但效果检查发现混战时弹道不可见。
+		# 改为调用 _apply_trail_tier 的低强度档位（亚类分流已覆盖 wt 0/1/2/4），
+		# 粒子数/寿命取各亚类下限值，保持轨迹感但不糊屏。
 		# v9.2: 拖尾粒子赋贴图（按武器类型分流）——告别方块拖尾，让弹道轨迹有形状辨识度
-		#   能量武器（LASER/OMEGA/RAIL）→ 蓝白电弧贴图（能量光带感）
+		#   能量武器（LASER/OMEGA）→ 蓝白电弧贴图（能量光带感）
+		#   磁轨(11)→ SPARK_STREAK 高亮度方向拖痕（avg_lum=190.8），semantic="超音速穿甲"
 		#   重型爆炸（ROCKET/FLAK/MISSILE）→ 灰烟贴图（浓烈尾焰感）
 		#   动能轻武器（SMG/PISTOL/RIFLE/MG/SHOTGUN/SNIPER）→ 金属火花贴图（细碎火星轨迹）
-		if weapon_type in [8, 10, 11]:
+		if weapon_type in [8, 10]:
 			_trail_particles.texture = TRAIL_TEX_SPARK_ENERGY
-		elif weapon_type in [3, 7, 9]:
+		elif weapon_type == 11:
+			# v18-R12b: 磁轨去电弧拖痕——SPARK_ENERGY 蓝白读成"等离子武器"。
+			# SPARK_STREAK 高亮度+方向性拖痕，色调用 bullet_color 白热。
+			_trail_particles.texture = TRAIL_TEX_SPARK_STREAK
+		elif weapon_type in [1, 2, 3, 7, 9]:
+			# v19-R19: 1/2(INDIRECT/AERIAL)归组——旧代码误落 else 火花分支（双枚举碰撞：
+			# 1/2 在新枚举=曲射/空射，旧表按旧枚举当 RIFLE/MG），曲射弧线无烟迹可读。
 			_trail_particles.texture = TRAIL_TEX_SMOKE_GENERIC
 		else:
-			_trail_particles.texture = TRAIL_TEX_SPARK_METAL
+			_trail_particles.texture = TRAIL_TEX_SPARK_STREAK
 		_apply_trail_tier()
+		# v17d: 拖尾定向收紧——旧默认全向低速扩散=弹道后跟一朵"蘑菇云"。
+		# 弹体已旋转到飞行方向，局部 -X 即世界飞行反方向；窄锥+提速=利落尾迹。
+		_trail_particles.direction = Vector2(-1, 0)
+		_trail_particles.spread = 16.0
+		_trail_particles.gravity = Vector2(0, 0)
+		# v19-R20: 世界空间模拟——local_coords 默认 true 时粒子在弹体本地空间，
+		# 弹体飞走把全部已发射粒子拖走，拖尾只是身后 ~22px 的尾巴（初速×寿命），
+		# 曲射弧线/直射弹道线永远画不出来（AI 批"完全缺失弹道/曳光"的根因）。
+		# false = 粒子留在发射点世界坐标，沿飞行路径沉积出可见轨迹。
+		# R22 曾尝试仅 wt1/2 启用，实测总分 4.03 低于全局的 4.16——全局 false 净收益更大。
+		_trail_particles.local_coords = false
+		_trail_particles.initial_velocity_min *= 1.8
+		_trail_particles.initial_velocity_max *= 1.8
 		_trail_particles.color = _trail_color_for_weapon()
 		_trail_particles.emitting = true
 		_trail_particles.visible = true
 
 
 ## v8.3: 按 weapon_type 配置拖尾粒子参数（6 档 + 兜底）
+## v17d: scale 全表按贴图内容实寸（~128px）重标定——v9.2 表按"32px"标定，
+## 实渲染超 2-4 倍（1.5-5.0 → 190-640px 光雾）。新值目标：轻武器尾迹 26-70px、
+## 重型烟尾 60-130px。velocity 由调用处统一 ×1.8（云→尾迹）。
 ## WeaponTypeLegacy: SMG=0,RIFLE=1,MG=2,ROCKET=3,PISTOL=4,SHOTGUN=5,SNIPER=6,FLAK=7,LASER=8,MISSILE=9,OMEGA=10,RAIL=11
 func _apply_trail_tier() -> void:
 	var amount: int = 16
 	var life: float = 0.50
 	var vmin: float = 15.0
 	var vmax: float = 40.0
-	var smin: float = 1.5
-	var smax: float = 3.0
+	var smin: float = 0.35
+	var smax: float = 0.65
 	match weapon_type:
-		0, 1, 2, 4:  # SMG / RIFLE / MG / PISTOL — 轻武器，连发轨迹感
-			# v8.x 亚类分流：用武器名把"看不出差异的直射系"做成有辨识度的拖尾
+		0, 4:  # DIRECT 系轻武器（SMG/RIFLE/MG/PISTOL，flavor 细分），连发轨迹感
+			# v19-R19: 1/2 移出本分支——新枚举 1=INDIRECT/2=AERIAL 是曲射炮弹，
+			# 误入轻武器档（16 粒 0.35-0.65 火花）导致弧线无烟迹。
+			# v19-R34: 世界空间(local_coords=false)下轻武器拖尾在枪口→弹道间
+			# 沉积成"长条火花链"（用户反馈"开火枪口有一个长条火花"）——
+			# 缩寿命(≤0.30s)+减量，让枪口只留短促闪光尾巴。
 			match DirectWeaponFlavor.classify(_weapon_name, weapon_type):
 				DirectWeaponFlavor.Flavor.MG:
-					# 机枪：粒子翻倍 + 寿命略长，连发时形成密集弹幕轨迹
-					amount = 30; life = 0.55; vmin = 18.0; vmax = 48.0; smin = 1.8; smax = 3.2
+					# 机枪：连发弹幕轨迹（量最多但寿命短，沉积密度靠连发频率堆）
+					amount = 20; life = 0.30; vmin = 18.0; vmax = 48.0; smin = 0.4; smax = 0.7
 				DirectWeaponFlavor.Flavor.TANK_GUN:
-					# 坦克炮：加粗粒子，单发重炮的厚实尾焰感（区别于轻武器的细碎火星）
-					amount = 20; life = 0.50; vmin = 12.0; vmax = 35.0; smin = 2.5; smax = 4.5
+					# 坦克炮：加粗粒子单发厚实尾焰（可稍长，重炮语义）
+					amount = 14; life = 0.35; vmin = 12.0; vmax = 35.0; smin = 0.5; smax = 0.9
 				DirectWeaponFlavor.Flavor.RIFLE:
-					# 步枪：细长高速，冷白凌厉感（区别于冲锋枪的短黄）
-					amount = 14; life = 0.45; vmin = 25.0; vmax = 55.0; smin = 1.0; smax = 2.0
+					# 步枪：细碎短尾
+					amount = 10; life = 0.26; vmin = 25.0; vmax = 55.0; smin = 0.25; smax = 0.45
 				DirectWeaponFlavor.Flavor.SMALL_ARMS:
-					# 手枪/卡宾：最弱拖尾，体现轻武器（几乎无轨迹，仅一闪）
-					amount = 8; life = 0.35; vmin = 10.0; vmax = 25.0; smin = 1.0; smax = 1.8
+					# 手枪/卡宾：最弱拖尾（仅一闪）
+					amount = 6; life = 0.22; vmin = 10.0; vmax = 25.0; smin = 0.18; smax = 0.32
 				_:
 					# GENERIC/UNKNOWN：原基准档（冲锋枪/通用直射）
-					amount = 16; life = 0.50; vmin = 15.0; vmax = 40.0; smin = 1.5; smax = 3.0
+					amount = 12; life = 0.28; vmin = 15.0; vmax = 40.0; smin = 0.3; smax = 0.5
 		5:  # SHOTGUN — 宽散布霰弹
-			amount = 24; life = 0.45; vmin = 20.0; vmax = 60.0; smin = 2.0; smax = 4.0
+			# v18-R11c 实验性修改已回退：缩短拖尾使弹丸"独立"但导致弹体不可见，反噬更大。
+			amount = 24; life = 0.45; vmin = 20.0; vmax = 60.0; smin = 0.4; smax = 0.7
 		6:  # SNIPER — 高速细长
-			amount = 12; life = 0.60; vmin = 40.0; vmax = 100.0; smin = 1.0; smax = 2.0
-		3, 9, 7:  # ROCKET / MISSILE / FLAK — 浓烈爆炸类尾焰
-			amount = 30; life = 0.70; vmin = 20.0; vmax = 50.0; smin = 2.5; smax = 5.0
+			amount = 12; life = 0.60; vmin = 40.0; vmax = 100.0; smin = 0.3; smax = 0.5
+		1, 2:  # INDIRECT / AERIAL — 曲射炮弹烟迹（v19-R19 归组修复）
+			# v19-R26: life 0.55→0.90s。R29 实测 f01/f02 轨迹仍 3/10——18 粒沿弧线
+			# 沉积过稀疏（~16 粒在空中），AI 读不出弧线。R30 提量至 36 粒 + 延寿 1.0s，
+			# 密度翻倍使弧线中段清晰可读。
+			amount = 36; life = 1.00; vmin = 15.0; vmax = 40.0; smin = 0.18; smax = 0.32
+		3, 9, 7:  # ROCKET / MISSILE / FLAK — 尾焰烟
+			# v18-R6: 128px 烟贴图 × 0.5-1.0 = 64-128px 烟团把 30-50px 弹体完全吞没
+			# （AI 批"拖尾烟雾膨胀失控/弹体不可见"）。缩烟提密度：30→16 粒、
+			# 0.28-0.5 缩放（36-64px，<弹体）、寿命 0.70→0.50——尾迹可见但不反客为主。
+			amount = 16; life = 0.50; vmin = 20.0; vmax = 50.0; smin = 0.28; smax = 0.50
 		8:  # LASER — 细密能量
-			amount = 10; life = 0.40; vmin = 60.0; vmax = 150.0; smin = 0.8; smax = 1.5
+			amount = 10; life = 0.40; vmin = 60.0; vmax = 150.0; smin = 0.25; smax = 0.45
 		10, 11:  # OMEGA / RAIL — 高能电弧
-			amount = 20; life = 0.55; vmin = 30.0; vmax = 80.0; smin = 1.8; smax = 3.5
+			amount = 20; life = 0.55; vmin = 30.0; vmax = 80.0; smin = 0.4; smax = 0.75
 	_trail_particles.amount = amount
 	_trail_particles.lifetime = life
 	_trail_particles.initial_velocity_min = vmin
@@ -439,21 +556,24 @@ func _apply_trail_tier() -> void:
 ## v8.1: 按武器类型获取拖尾粒子颜色
 func _trail_color_for_weapon() -> Color:
 	if not shooter_is_player:
-		return Color(1.0, 0.45, 0.5, 0.7)  # 敌方粉红
+		# v18-R9b: 敌方拖尾粉红→橙红（AI 批"粉红色棉花糖状完全失真"——粉红是
+		# 阵营代码色不是物理色；橙红保持敌我区分且符合燃烧语义）
+		return Color(1.0, 0.42, 0.22, 0.7)
 	match weapon_type:
 		8:  return Color(0.3, 0.8, 1.0, 0.8)   # LASER 蓝
 		10: return Color(0.45, 0.65, 1.0, 0.8)  # OMEGA 能量蓝
 		11: return Color(0.55, 0.95, 1.0, 0.8)  # RAIL 电磁青
-		3, 7, 9: return Color(1.0, 0.55, 0.2, 0.8)  # 爆炸类 橙
-		0, 1, 2, 4:  # 直射系——按亚类细分配色
-			# v8.x: MG 亮黄/步枪冷白/坦克炮橙白/手枪暗黄，让连发混战也能辨出武器类型
+		1, 2: return Color(0.85, 0.85, 0.80, 0.8)  # INDIRECT/AERIAL 灰白硝烟（v19-R21: R20 中位火球误读→改灰）
+		3, 7, 9: return Color(1.0, 0.55, 0.2, 0.8)  # 爆炸类 橙（火箭/高炮/导弹尾焰）
+		0, 4:  # 直射系——按亚类细分配色
+			# v8.x/6.1: MG 亮黄/步枪冷白/坦克炮橙白/手枪亮黄，让连发混战也能辨出武器类型
 			match DirectWeaponFlavor.classify(_weapon_name, weapon_type):
-				DirectWeaponFlavor.Flavor.MG: return Color(1.0, 0.92, 0.45, 0.8)   # 机枪 亮黄
-				DirectWeaponFlavor.Flavor.TANK_GUN: return Color(1.0, 0.7, 0.35, 0.8)  # 坦克炮 橙白
-				DirectWeaponFlavor.Flavor.RIFLE: return Color(0.85, 0.9, 1.0, 0.75)  # 步枪 冷白
-				DirectWeaponFlavor.Flavor.SMALL_ARMS: return Color(0.95, 0.85, 0.5, 0.6)  # 手枪 暗黄弱
-				_: return Color(1.0, 0.95, 0.6, 0.7)   # 通用直射 黄白
-		_: return Color(1.0, 0.95, 0.6, 0.7)   # 枪械 黄白
+				DirectWeaponFlavor.Flavor.MG: return Color(1.0, 0.95, 0.3, 0.85)   # 机枪 亮黄
+				DirectWeaponFlavor.Flavor.TANK_GUN: return Color(1.0, 0.75, 0.3, 0.85)  # 坦克炮 橙白
+				DirectWeaponFlavor.Flavor.RIFLE: return Color(0.6, 0.95, 1.0, 0.85)  # 步枪 冷青白
+				DirectWeaponFlavor.Flavor.SMALL_ARMS: return Color(1.0, 0.9, 0.3, 0.75)  # 手枪 亮黄
+				_: return Color(1.0, 0.95, 0.5, 0.8)   # 通用直射 亮黄
+		_: return Color(1.0, 0.95, 0.5, 0.8)   # 枪械 亮黄
 
 
 ## v6.4: 每帧更新拖尾朝向。Bullet 节点已旋转到 _direction，
@@ -496,22 +616,24 @@ func _spawn_tex_impact_at(world_pos: Vector2) -> void:
 	_pending_pierce = false
 	# v9.4: 计算 power_tier（命中特效威力分级）——用 damage+explosion_radius 复合判据。
 	# 写入 opts 透传给 spawn_impact_with_kind，驱动核武级/重型/中型/轻型视觉分级。
-	opts["power_tier"] = WeaponProjectileVfx.compute_power_tier(weapon_type, explosion_radius, damage)
+	opts["power_tier"] = WeaponProjectileVfx.compute_power_tier(_visual_wt, explosion_radius, damage)
 
-	# 曲射/空射/火箭/导弹 → 使用完整爆炸特效
+	# 曲射/空射/火箭/导弹 → 使用完整爆炸特效（v17: 分支键用解析后的 _visual_wt——
+	# 武器名明确指向爆炸族（如"防空导弹"）时即使槽位 wt 被降级也走爆炸特效）
 	# 新枚举: INDIRECT=1, AERIAL=2
 	# 旧枚举: ROCKET=3, FLAK=7, MISSILE=9
-	if weapon_type in [1, 2, 3, 7, 9]:  # INDIRECT, AERIAL, ROCKET, FLAK, MISSILE
+	if _visual_wt in [1, 2, 3, 7, 9]:  # INDIRECT, AERIAL, ROCKET, FLAK, MISSILE
 		_spawn_impact_explosion(world_pos, opts)
 		return
 
 	# v6.0: 武器名查 VFX → 旧 weapon_type 回退
 	# v7.x: 透传 _target_combat_kind 实现按目标类型差异化命中色调/缩放
 	# v8.1: 透传 opts（暴击/穿透）
+	# v17: 全部消费点改用 _visual_wt（WeaponVisualProfiles 解析值）
 	if not _weapon_name.is_empty():
 		_spawn_impact_v2(parent, world_pos, _weapon_name, opts)
 	else:
-		WeaponProjectileVfx.spawn_impact_with_kind(parent, world_pos, weapon_type, shooter_is_player, _target_combat_kind, opts)
+		WeaponProjectileVfx.spawn_impact_with_kind(parent, world_pos, _visual_wt, shooter_is_player, _target_combat_kind, opts)
 
 
 ## v6.0/v8.0: 新版命中特效（按武器名）— 粒子化
@@ -523,13 +645,15 @@ func _spawn_impact_v2(parent: Node2D, world_pos: Vector2, weapon_name: String, o
 	if not _vfx_variant.is_empty():
 		_final_opts = opts.duplicate()
 		_final_opts["vfx_variant"] = _vfx_variant
-	WeaponProjectileVfx.spawn_impact_with_kind(parent, world_pos, weapon_type, shooter_is_player, _target_combat_kind, _final_opts, weapon_name)
+	WeaponProjectileVfx.spawn_impact_with_kind(parent, world_pos, _visual_wt, shooter_is_player, _target_combat_kind, _final_opts, weapon_name)
 
 
 func _finish_tex_bullet() -> void:
 	if _finished:
 		return
 	_finished = true
+	if _beam_line:
+		_beam_line.visible = false
 	# v9.x: 池满回退实例化的游离子弹不在对象池 in_use 字典中，return_object 会被拒导致泄漏。
 	# 此前 4 个调用点（construct_unit_ai/enemy_unit/swarm/phase_instrument_abilities）在
 	# ObjectPoolManager.get_object("bullets") 返回 null 时回退到 BulletScene.instantiate()，
@@ -558,6 +682,19 @@ func _process(delta: float) -> void:
 			# CPUParticles2D 无 process_material；停止 emitting 后粒子按自身 lifetime 自然消散
 			_trail_particles.emitting = _tank_gun_timer < TANK_GUN_DISAPPEAR_AFTER
 		return
+	# v19-R35: 光束改回【定长尾段】——R16 的"枪口锚定连续光束"在读图时被感知为
+	# "一条常亮长条"（用户反馈"激光不能是一直长条施放的"；f08 弹道格亮区横跨 797px）。
+	# 真实激光武器 VFX 应是"飞行的弹体 + 身后一段短尾迹"，不是从枪口到弹体的
+	# 持续照射线。定长 BEAM_TAIL_LEN，随弹体移动，命中即消失。
+	const BEAM_TAIL_LEN: float = 160.0
+	if weapon_type in [6, 8] and _beam_line and _beam_line.visible:
+		var _tail_local: Vector2 = to_local(global_position - _direction.normalized() * BEAM_TAIL_LEN)
+		_beam_line.set_point_position(0, Vector2.ZERO)
+		_beam_line.set_point_position(1, _tail_local)
+		# v19-R27: 白热内芯同步尾段——与外层宽光束同起点同终点。
+		if _tracer_line and _tracer_line.visible:
+			_tracer_line.set_point_position(0, Vector2.ZERO)
+			_tracer_line.set_point_position(1, _tail_local)
 	# v10(H12): 帧前位置（供命中扫掠判定，见下方 _seg_point_dist_sq）
 	var _prev_pos: Vector2 = global_position
 	# 目标死亡时：直接消失（曲射由 _process_indirect 单独处理）。
@@ -591,14 +728,6 @@ func _process(delta: float) -> void:
 		rotation = _direction.angle()
 	# v6.4: 重型武器拖尾跟随飞行方向（直射类，如 RAIL/OMEGA）
 	_update_trail_transform()
-	# 光束类：每 3 帧更新线段（命中判定仍每帧）
-	if _beam_line and _beam_line.visible:
-		if _beam_visual_phase % 3 == 0:
-			var tail_world: Vector2 = global_position - _direction.normalized() * BEAM_VISUAL_LEN
-			_beam_pts.set(0, to_local(tail_world))
-			_beam_pts.set(1, Vector2.ZERO)
-			_beam_line.points = _beam_pts
-		_beam_visual_phase += 1
 	var max_d2: float = max_distance * max_distance
 	if _tank_gun_terminate and _tank_gun_timer >= TANK_GUN_DISAPPEAR_AFTER:
 		_finish_tex_bullet()
@@ -627,14 +756,20 @@ func _seg_point_dist_sq(a: Vector2, b: Vector2, p: Vector2) -> float:
 
 ## v6.5: 不同曲射武器的弧线高度倍率
 ## 迫击炮最高弧线（高抛物线），火箭筒最低弧线（接近平射）
+# v19-R25: wt1 倍率 1.6→1.0——原弧顶 376px 高于中点，世界 y≈54（屏幕顶边），
+# 弹体在截图边缘成小斑点，AI 批"完全缺失弹体"。降至 1.0 后弧顶≈141px，
+# 世界 y≈289（画面中部），弧线完整可见。感知优先于弹道学精确。
 static func _get_indirect_arc_multiplier(wt: int) -> float:
 	match wt:
-		1:   # INDIRECT 迫击炮/野战炮 — 高弧线
-			return 1.6
+		1:   # INDIRECT 迫击炮/野战炮 — 中弧线
+			# v19-R33: 1.0→0.5——R25 降到 1.0 后弧顶仍在 y=195（画面上 1/3），
+			# R32 AI 批"弹道完全缺失只看到枪口火"=弹体飞出 AI 关注区。降至 0.5
+			# 使弧顶 y=312（画面中部），弹体始终在可读区域。
+			return 0.5
 		7:   # FLAK 高射炮 — 较高弧线
 			return 1.3
-		9:   # MISSILE 导弹 — 中等弧线（默认基准）
-			return 1.0
+		9:   # MISSILE 导弹 — 低弧线（v19-R33: 1.0→0.5，同 AERIAL；R32 AI 批"弹道缺失"）
+			return 0.5
 		2:   # AERIAL 空射 — 低弧线（俯冲）
 			return 0.5
 		3:   # ROCKET 火箭筒 — 最低弧线（直瞄反坦克）
@@ -706,29 +841,62 @@ func _spawn_muzzle_effect(pos: Vector2) -> void:
 	var host: Node = get_parent()
 	if host == null or not (host is Node2D):
 		return
-	VfxImpactFactory.spawn_muzzle_flash(host, pos, shooter_is_player, weapon_type)
-	# v9.2: 所有武器叠加炮口火贴图层（ADD 发光，真实火球感）。
-	# 重型武器（火炮/导弹/能量）用大贴图 + 长 life；轻武器用小贴图 + 短 life（一闪）。
-	# spawn_impact_sprite 已加 ADD 混合 + 光晕层，开火有真实火光明亮感。
-	var muzzle_scale: float = 0.35
+	# v17: 枪口火类别键用 _visual_wt（WeaponVisualProfiles 解析值，武器名优先）
+	VfxImpactFactory.spawn_muzzle_flash(host, pos, shooter_is_player, _visual_wt)
+	# v17c: 枪口贴图层去火球化（AI 评分基线：枪口格均分 3.67，"贴图=命中爆炸效果"高频批评）
+	#   ①轻武器（步枪/机枪/手枪/霰弹/动能狙击）撤掉贴图层——真实步枪枪口无大火球，
+	#     v17c 粒子参数（瞬发锥形火星）已足够；原 0.35×128px=45px 火球图是"像爆炸"主因之一。
+	#   ②贴图按【实测内容尺寸】标定（v16.1 注释误标 32/64px 实为 128px / 1024px 内容 974×597）：
+	#     能量喷流 0.11 → ~107px 定向喷流（原 0.50 → 512px 喷满半屏读成能量爆炸）；
+	#     重炮爆闪 0.35 → ~44px（原 0.65 → 81px 火球）。
+	var muzzle_scale: float = 0.0   # 0 = 不生成贴图层
 	var muzzle_life: float = 0.14
-	if weapon_type in HEAVY_TRAIL_WEAPON_TYPES:
-		muzzle_scale = 0.65  # 重型火炮大火球
-		muzzle_life = 0.22
-	elif weapon_type in [6, 8]:  # SNIPER / LASER — 中等
-		muzzle_scale = 0.45
+	var muzzle_tex: Texture2D = ARTILLERY_MUZZLE_TEX
+	if _visual_wt in [8, 10, 11]:  # LASER/OMEGA/RAIL — 能量喷流
+		muzzle_scale = 0.14   # v17c-R2: 0.11→0.14 复测批"低功率余晖"，喷流亮体加码
+		muzzle_life = 0.14
+		muzzle_tex = ENERGY_MUZZLE_TEX
+	# v18-R10: 动能狙击(wt=6)也必须有枪口闪光——原条件只覆盖"光束名字武器"，
+	# 普通狙击（如 M4A1-Sniper）完全漏配导致 f06_player_muzzle=1/10。
+	elif _visual_wt == 6:
+		muzzle_scale = 0.10
+		muzzle_life = 0.12
+		muzzle_tex = ENERGY_MUZZLE_TEX
+	elif _visual_wt in HEAVY_TRAIL_WEAPON_TYPES:
+		muzzle_scale = 0.42   # v18-R9: flame_jet_v2 内容 160×45 → ~67×19px 水平火舌
 		muzzle_life = 0.16
-	VfxImpactFactory.spawn_impact_sprite(host as Node2D, pos, ARTILLERY_MUZZLE_TEX, muzzle_scale, muzzle_life)
+		# v18-R10d: 枪口贴图层回退 MUZZLE_JET_TEX——v2 摄影版暗色基底在枪口位置
+		# 被 AI 判为"画面为空"（f00/f04 枪口 6→1/4）。摄影版保留于工厂粒子层
+		# （重型枪口粒子 + 拖尾），那里 v2 的黑体色序摄影感更有效。
+		muzzle_tex = MUZZLE_JET_TEX
+	elif _visual_wt == 0 or _visual_wt == 4:  # v17e: 轻武器 SMG/PISTOL 用前向喷流
+		muzzle_scale = 0.30   # v17k: 0.20→0.30（19px 太小，手枪族 3.5 分批"火花不可见"；29px 侧视喷流）
+		muzzle_life = 0.14
+		muzzle_tex = MUZZLE_JET_TEX
+	elif _visual_wt == 5:  # v17k: 霰弹枪口喷流（此前无贴图层，族 3.5 分）
+		muzzle_scale = 0.44  # v17m: 0.34→0.44（AI 批"缺散射爆发体量感"）
+		muzzle_life = 0.16
+		muzzle_tex = MUZZLE_JET_TEX
+	if muzzle_scale > 0.0:
+		VfxImpactFactory.spawn_impact_sprite(host as Node2D, pos, muzzle_tex, muzzle_scale, muzzle_life)
+
+## wt=6 族混合了动能狙击与光束武器——只有名字带能量语义的才给喷流贴图（v17c）
+func _is_beam_named_weapon() -> bool:
+	for kw in ["激光", "雷射", "光束", "粒子束", "电磁", "轨道", "磁轨", "射线", "等离子"]:
+		if _weapon_name.find(kw) >= 0:
+			return true
+	return false
 
 func _spawn_impact_explosion(pos: Vector2, opts: Dictionary = {}) -> void:
 	# v8.0: 统一走 spawn_impact_with_kind（粒子化）
 	# v8.1: 透传 opts（暴击/穿透）
 	# v8.4: 透传 _weapon_name（重型爆炸武器命中贴图）+ _vfx_variant（改造专属视觉）
+	# v17: wt 用 _visual_wt（WeaponVisualProfiles 解析值）
 	var _final_opts: Dictionary = opts
 	if not _vfx_variant.is_empty():
 		_final_opts = opts.duplicate()
 		_final_opts["vfx_variant"] = _vfx_variant
-	WeaponProjectileVfx.spawn_impact_with_kind(self, pos, weapon_type, shooter_is_player, _target_combat_kind, _final_opts, _weapon_name)
+	WeaponProjectileVfx.spawn_impact_with_kind(self, pos, _visual_wt, shooter_is_player, _target_combat_kind, _final_opts, _weapon_name)
 
 
 ## v6.4: 命中时触发屏幕震动——曲射/爆炸类中震动，直射轻震动
@@ -1009,6 +1177,12 @@ func _on_hit(primary: Node2D) -> void:
 		is_crit = true
 		final_damage *= (1.5 + shooter_stats.crit_damage_bonus)
 		_pending_crit = true  # v8.1: 命中特效暴击光环标记
+		# v10 转换型：相位偏移（air_16）——目标受暴击时储能，下次攻击必暴
+		# （复用 _first_attack_force_crit 既有必暴机制，敌方暴击优势转我方反击）
+		if primary != null and is_instance_valid(primary) and "stats" in primary:
+			var _ps_stats = primary.get("stats")
+			if _ps_stats != null and bool(_ps_stats.get("phase_shift_counter")) and not primary.has_meta("_first_attack_force_crit"):
+				primary.set_meta("_first_attack_force_crit", true)
 	# v8.3: 命中音效（暴击判定后，用 is_crit 调音高/音量）
 	_play_impact_sfx(is_crit)
 
@@ -1067,12 +1241,27 @@ func _on_hit(primary: Node2D) -> void:
 					is_crit = true
 					final_damage *= (1.5 + shooter_stats.crit_damage_bonus)
 					_pending_crit = true
-	# v8.5: 无人机定时标记易伤——目标有 _drone_marked_until（未过期）则伤害 ×(1+vuln)
-	if primary != null and is_instance_valid(primary) and primary.has_meta("_drone_marked_until"):
-		var _dm_until: int = int(primary.get_meta("_drone_marked_until", 0))
-		if Time.get_ticks_msec() < _dm_until:
-			var _dm_vuln: float = float(primary.get_meta("_drone_mark_vuln", 0.25))
-			final_damage *= (1.0 + _dm_vuln)
+				# v10 反馈：质变命中打金色 counter_break 伤害数字（take_damage → unit_damaged 消费）
+				# + 广播瓦解横幅信号（Announcer 播报"敌方优势瓦解"）
+				if String(_break_fx.get("type", "")) != "guaranteed_crit":
+					primary.set_meta("_vfx_counter_pending", true)
+					if SignalBus != null and SignalBus.has_signal("counter_break_triggered"):
+						var _cb_name: String = String(primary.get("display_name")) if "display_name" in primary else ""
+						if _cb_name.is_empty():
+							_cb_name = "敌方单位"
+						SignalBus.counter_break_triggered.emit(String(_break_fx.get("type", "")), _cb_name)
+		# v8.5: 无人机定时标记易伤——目标有 _drone_marked_until（未过期）则伤害 ×(1+vuln)
+		if primary != null and is_instance_valid(primary) and primary.has_meta("_drone_marked_until"):
+			var _dm_until: int = int(primary.get_meta("_drone_marked_until", 0))
+			if Time.get_ticks_msec() < _dm_until:
+				var _dm_vuln: float = float(primary.get_meta("_drone_mark_vuln", 0.25))
+				final_damage *= (1.0 + _dm_vuln)
+
+		# v10 组合规则③：集火协同——3 秒内被不同友军攻击过的目标，后续攻击伤害 +5%/层（max +15%）
+		if primary != null and is_instance_valid(primary):
+			var _ff_mult: float = ModuleEffectHandler.apply_focus_fire_multiplier(primary, shooter)
+			if _ff_mult > 1.0:
+				final_damage *= _ff_mult
 
 	# v9.1: 组合技套路乘区（光束谐振/弱点暴露/化学腐蚀/激光谐振标记）
 	# 读 shooter 的 _special flags + 全队激活机制（通过 combo_engine 查询）。
@@ -1347,6 +1536,7 @@ func reset_pool_object() -> void:
 	_start_position = Vector2.ZERO
 	_direction = Vector2.RIGHT
 	_beam_visual_phase = 0
+	_use_tex_sprite = false
 	_use_tex_sprite = false
 	_rotates_with_direction = false  # v9.4: 对象池卫生（防复用残留）
 

@@ -5,7 +5,6 @@ extends PanelContainer
 
 const GC = preload("res://resources/game_constants.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
-const StarConfig = preload("res://data/blueprint_star_config.gd")
 const ModRegistry = preload("res://scripts/systems/modification_registry.gd")
 const EvoPathRegistry = preload("res://scripts/systems/evolution_path_registry.gd")
 const FormatUtil = preload("res://scripts/ui/format_util.gd")
@@ -337,9 +336,10 @@ func refresh_card_list(unlocked_ids: Array[String]) -> void:
 		var card = _resolve_card(iid)
 		if card == null:
 			continue
-		if _filter_mode == FILTER_ENHANCEABLE and card.enhance_level >= 10:
+		# v19: 筛选口径统一为战斗等级 card_level（1-30）——旧 enhance>=10 口径已废
+		if _filter_mode == FILTER_ENHANCEABLE and _card_level_of(card) >= 30:
 			continue
-		if _filter_mode == FILTER_MAXED and card.enhance_level < 10:
+		if _filter_mode == FILTER_MAXED and _card_level_of(card) < 30:
 			continue
 		filtered.append(iid)
 
@@ -487,13 +487,13 @@ func _create_card_list_item(card: CardResource, instance_id_raw: Variant) -> Con
 			name_hbox.add_child(seq_label)
 	info.add_child(name_hbox)
 
-	# 第二行：Lv.N · Mx/9（单行内联）
+	# 第二行：Lv.N · 改x/9（v19：Lv=战斗等级 card_level；改造数缩写改字）
 	var meta_label := Label.new()
 	var mod_count: int = 0
 	if "mods" in card:
 		var mods_arr = card.mods
 		mod_count = mods_arr.size() if mods_arr is Array else 0
-	meta_label.text = "Lv.%d  ·  M%d/9" % [card.enhance_level, mod_count]
+	meta_label.text = "Lv.%d  ·  改%d/9" % [_card_level_of(card), mod_count]
 	meta_label.add_theme_font_size_override("font_size", 11)
 	meta_label.add_theme_color_override("font_color", Color(0.55, 0.6, 0.7, 0.85))
 	meta_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -613,12 +613,8 @@ func _refresh_header() -> void:
 		# 兵种
 		if c.card_type == GC.CardType.COMBAT_UNIT:
 			_add_hero_tag(CardResource.get_combat_kind_name(c.combat_kind), _get_kind_color(c.combat_kind))
-		# 星级（军衔）
-		var star: int = _calculate_star()
-		var star_str := ""
-		for i in range(5):
-			star_str += "★" if i < star else "☆"
-		_add_hero_tag(star_str, DT.COLOR_GOLD)
+		# v19: 等级标签（card_level 1-30；旧 ★★★☆☆ 星级口径退役）
+		_add_hero_tag("Lv.%d" % _card_level_of(c), DT.COLOR_GOLD)
 		# 可进化标记
 		var evo_paths: Array = c.evolution_paths if "evolution_paths" in c else []
 		if not evo_paths.is_empty():
@@ -632,7 +628,7 @@ func _refresh_header() -> void:
 # ============================================================
 # 2×2 进度卡片填充
 # ============================================================
-# --- 星级评估（ProgCardGold） ---
+# --- 等级进度（ProgCardGold，原"星级评估"卡改版） ---
 func _refresh_star_section() -> void:
 	if prog_card_gold == null or _selected_card == null:
 		return
@@ -643,43 +639,30 @@ func _refresh_star_section() -> void:
 		child.queue_free()
 
 	var c := _selected_card
-	var star: int = _calculate_star()
-	var rarity_name: String = c.rarity
+	var lv: int = _card_level_of(c)
+	var max_lv: int = 30
 
-	# 星星行
-	var stars_row := HBoxContainer.new()
-	stars_row.add_theme_constant_override("separation", 2)
-	for i in range(5):
-		var s := Label.new()
-		s.text = "★" if i < star else "☆"
-		s.add_theme_font_size_override("font_size", 16)
-		s.add_theme_color_override("font_color", DT.COLOR_GOLD if i < star else Color(0.27, 0.31, 0.39, 1))
-		stars_row.add_child(s)
-	body.add_child(stars_row)
-
-	# 统计行
-	_add_prog_stat(body, "综合星级", "%d/5" % star)
-	_add_prog_stat(body, "稀有度", rarity_name, _get_rarity_color(c.rarity))
-	_add_prog_stat(body, "强化等级", "Lv.%d/10" % c.enhance_level)
-
-	# 进度条
-	var next_cost := StarConfig.get_research_cost_for_next_star(star, c.rarity)
-	var bp = get_node_or_null("/root/BlueprintManager")
-	var cur_rp: int = 0
-	if bp and bp.has_method("get_star_progress"):
-		var progress: Dictionary = bp.get_star_progress(c.card_id)
-		cur_rp = int(progress.get("current_research", 0))
-	var bar := _create_progress_bar(DT.COLOR_GOLD, cur_rp, next_cost)
+	# 等级进度条（按等级/30；经验细粒度进度在卡详情看）
+	var bar := _create_progress_bar_pct(DT.COLOR_GOLD, float(lv) / float(max_lv))
 	body.add_child(bar)
 
-	# 提示
-	if next_cost <= 0:
-		_add_prog_hint(body, "已达最高星级")
+	# 统计行
+	_add_prog_stat(body, "等级", "Lv.%d/%d" % [lv, max_lv])
+	_add_prog_stat(body, "稀有度", c.rarity, _get_rarity_color(c.rarity))
+	# 下一词条节点（Lv5/10/15/20/25/30 各获得一个词条）
+	var next_milestone: int = 0
+	for m in [5, 10, 15, 20, 25, 30]:
+		if lv < m:
+			next_milestone = m
+			break
+	if next_milestone > 0:
+		_add_prog_hint(body, "Lv%d 获得新词条（战斗经验自动升级）" % next_milestone)
 	else:
-		_add_prog_hint(body, "下一星 · 研究点 %s / %s" % [_format_number(cur_rp), _format_number(next_cost)])
+		_add_prog_stat(body, "状态", "已满级", DT.COLOR_GOLD)
+		_add_prog_hint(body, "词条节点已全部解锁")
 
 	# 状态标签
-	_set_prog_status(prog_card_gold, "Lv.%d" % star)
+	_set_prog_status(prog_card_gold, "Lv.%d" % lv)
 
 
 # --- 强化系统（ProgCardAmber） ---
@@ -702,15 +685,16 @@ func _refresh_enhance_section() -> void:
 	var bar := _create_progress_bar_pct(DT.COLOR_AMBER, pct)
 	body.add_child(bar)
 
-	# 统计
-	_add_prog_stat(body, "当前等级", "Lv.%d/%d" % [cur_lv, max_lv])
+	# 统计（v19：明确标注"强化等级"——与战斗等级 card_level 是两套独立维度）
+	_add_prog_stat(body, "强化等级", "Lv.%d/%d" % [cur_lv, max_lv])
 	if is_maxed:
 		_add_prog_stat(body, "状态", "已满级", DT.COLOR_GOLD)
 	else:
-		# 下一级消耗（纳米材料）
-		var next_cost := _estimate_next_enhance_cost(c)
-		_add_prog_stat(body, "下一级消耗", "%s 纳米" % _format_number(next_cost))
-		_add_prog_hint(body, "Lv.%d → 全属性+5%%" % (cur_lv + 1))
+		# v19: 消耗用 CardEnhancementManager 真实公式（旧 50×(lv+1) 估算与实际不符已废）
+		var next_cost := _real_enhance_cost(c, cur_lv + 1)
+		if next_cost > 0:
+			_add_prog_stat(body, "下一级消耗", "%s 纳米" % _format_number(next_cost))
+		_add_prog_hint(body, "强化消耗纳米材料，独立于战斗等级")
 
 	# 状态标签
 	_set_prog_status(prog_card_amber, "可强化" if not is_maxed else "已满级")
@@ -743,7 +727,7 @@ func _refresh_mod_section() -> void:
 
 	# 统计
 	_add_prog_stat(body, "已装模块", "%d/%d" % [mod_count, max_mods])
-	_add_prog_stat(body, "战力档位", _get_power_tier_name(c))
+	_add_prog_stat(body, "单位档位", _get_power_tier_name(c))
 	_add_prog_stat(body, "候选改造", "%d 个可用" % _count_available_mods(c))
 
 	# 状态标签
@@ -1182,37 +1166,53 @@ func _format_power(card: CardResource) -> String:
 	return _format_number(int(round(power)))
 
 
-func _estimate_next_enhance_cost(card: CardResource) -> int:
-	# 简化估算：每级 50 × (level+1)
-	return 50 * (card.enhance_level + 1)
+## v19: 强化消耗走 CardEnhancementManager 真实公式（基数×等级系数×时代系数）；查询失败返回 0（隐藏该行）
+func _real_enhance_cost(card: CardResource, target_level: int) -> int:
+	var cem = get_node_or_null("/root/CardEnhancementManager")
+	if cem == null or not cem.has_method("get_enhance_nano_cost"):
+		return 0
+	var identity: String = card.instance_id if not String(card.instance_id).is_empty() else String(card.card_id)
+	return int(cem.get_enhance_nano_cost(identity, target_level))
 
 
 func _count_available_mods(card: CardResource) -> int:
-	# 简化：返回注册表中该兵种类型可用的改造总数（运行时由 modification_panel 详查）
+	# v19: 真实计数（ModificationRegistry 按兵种）；查询失败回退旧估算值
+	var ids: Array = ModRegistry.get_for_unit_type(int(card.combat_kind))
+	if not ids.is_empty():
+		return ids.size()
 	return 14
 
 
+## v19: 档位名改用卡牌真实 tier（UnifiedCardTable.Tier 枚举）——
+## 旧"战力估算 5 档"的 OVERLORD 档名在真实枚举中不存在，且与独特词条门槛（tier≥CHAMPION）口径脱节
 func _get_power_tier_name(card: CardResource) -> String:
-	# 简化：基于战力的 5 档
-	var bp = get_node_or_null("/root/BlueprintManager")
-	if bp == null:
-		return "GRUNT"
-	var id_to_eval: String = card.instance_id if not card.instance_id.is_empty() else card.card_id
-	var power := EvolutionHelpers.estimate_power_score(id_to_eval, bp)
-	if power < 150: return "GRUNT 灰"
-	if power < 260: return "VETERAN 绿"
-	if power < 420: return "ELITE 蓝"
-	if power < 720: return "CHAMPION 紫"
-	return "OVERLORD 金"
+	match clampi(int(card.tier), 0, 6):
+		0: return "普通 GRUNT"
+		1: return "老练 VETERAN"
+		2: return "精英 ELITE"
+		3: return "冠军 CHAMPION"
+		4: return "头目 BOSS"
+		5: return "终极 ULTIMATE"
+		6: return "堡垒 FORT"
+		_: return "普通 GRUNT"
+
+
+## v19: 战斗等级（card_level 1-30）查询——InstanceRegistry 按实例身份；未成长按 Lv1
+func _card_level_of(card: CardResource) -> int:
+	if card == null:
+		return 1
+	var ir = get_node_or_null("/root/InstanceRegistry")
+	if ir != null and ir.has_method("get_card_level"):
+		var identity: String = String(card.instance_id) if not String(card.instance_id).is_empty() else String(card.card_id)
+		return clampi(maxi(int(ir.get_card_level(identity)), 1), 1, 30)
+	return 1
 
 
 # ============================================================
 # 颜色/图标辅助
 # ============================================================
-func _calculate_star() -> int:
-	if _selected_card == null:
-		return 0
-	return StarConfig.calculate_star(_selected_card.enhance_level * 2, _selected_card.rarity)
+## v19: 旧 _calculate_star（enhance_level 派生星级）已删——星级口径退役，
+## 等级显示统一走 _card_level_of（card_level 1-30）。
 
 
 func _get_unit_icon(card: CardResource) -> String:

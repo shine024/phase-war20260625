@@ -70,12 +70,63 @@ static func _format_combat_stats_summary(stats: UnitStats, cur_hp: float = -1.0)
 	]
 	return line
 
+## v20: 拆行辅助——只返回 HP+攻击（不含防御/射程/攻速/移速）
+static func _format_hp_and_attack_line(stats: UnitStats) -> String:
+	if stats == null:
+		return ""
+	var hp_text: String = "生命 %d" % int(stats.max_hp)
+	var weapon_names: Array[String] = ["", "", ""]
+	if not stats.weapon_slots.is_empty():
+		for i in range(min(stats.weapon_slots.size(), 3)):
+			var w = stats.weapon_slots[i]
+			if w is WeaponResource and w.enabled:
+				weapon_names[i] = w.display_name
+	var atk_light: float = stats.attack_light if stats.attack_light > 0.001 else 0.0
+	var atk_armor: float = stats.attack_armor if stats.attack_armor > 0.001 else 0.0
+	var atk_air: float = stats.attack_air if stats.attack_air > 0.001 else 0.0
+	var atk_part: String
+	if weapon_names[0].is_empty() and weapon_names[1].is_empty() and weapon_names[2].is_empty():
+		atk_part = "%d/%d/%d" % [int(atk_light), int(atk_armor), int(atk_air)]
+	else:
+		var a0: String = weapon_names[0] + "%d" % atk_light if not weapon_names[0].is_empty() else "%d" % atk_light
+		var a1: String = weapon_names[1] + "%d" % atk_armor if not weapon_names[1].is_empty() else "%d" % atk_armor
+		var a2: String = weapon_names[2] + "%d" % atk_air if not weapon_names[2].is_empty() else "%d" % atk_air
+		atk_part = "%s/%s/%s" % [a0, a1, a2]
+	return "%s｜攻 %s" % [hp_text, atk_part]
+
+## v20: 拆行辅助——只返回 防御/射程/攻速/移速
+static func _format_def_range_spd_line(stats: UnitStats) -> String:
+	if stats == null:
+		return ""
+	var def_light: float = stats.defense_light if stats.defense_light > 0.001 else 0.0
+	var def_armor: float = stats.defense_armor if stats.defense_armor > 0.001 else 0.0
+	var def_air: float = stats.defense_air if stats.defense_air > 0.001 else 0.0
+	var spd_light: float = stats.attack_light_speed if stats.attack_light_speed > 0.001 else 0.0
+	var spd_armor: float = stats.attack_armor_speed if stats.attack_armor_speed > 0.001 else 0.0
+	var spd_air: float = stats.attack_air_speed if stats.attack_air_speed > 0.001 else 0.0
+	return "防 %d/%d/%d｜射程 %d｜攻速 %.1f/%.1f/%.1f｜移速 %d" % [
+		int(def_light), int(def_armor), int(def_air),
+		int(stats.attack_range),
+		spd_light, spd_armor, spd_air,
+		int(stats.move_speed),
+	]
+
 static func build_line(card: CardResource) -> String:
 	if card == null:
 		return ""
+	var lines: Array[String] = build_lines(card)
+	if lines.is_empty():
+		return ""
+	return "\n".join(lines)
+
+## v20: 战斗预览拆行为两行，带 label 化（HP/攻击 / 防御/射程/攻速/移速）
+static func build_lines(card: CardResource) -> Array[String]:
+	var result: Array[String] = []
+	if card == null:
+		return result
 	var tree := Engine.get_main_loop() as SceneTree
 	if tree == null or tree.root == null:
-		return ""
+		return result
 	var root: Node = tree.root
 	var mll: Node = root.get_node_or_null("ManagerLazyLoader")
 	if mll and mll.has_method("ensure_loaded"):
@@ -86,12 +137,12 @@ static func build_line(card: CardResource) -> String:
 
 	# 只处理战斗卡
 	if card.card_type == GC.CardType.COMBAT_UNIT:
-		# v5.0: 使用新的 build_stats_from_card 方法，不再检查已弃用的 platform_type
 		var stats: UnitStats = UnitStatsTable.build_stats_from_card(card, era)
 		if bm and bm.has_method("apply_growth_to_stats"):
 			bm.apply_growth_to_stats(stats, card, [])
 		if am and am.has_method("apply_affixes_to_stats"):
 			am.apply_affixes_to_stats(stats, card, [])
-		return "战斗中：" + _format_combat_stats_summary(stats)
-
-	return ""
+		# 拆两行：HP+攻击 / 防御+射程+攻速+移速
+		result.append(_format_hp_and_attack_line(stats))
+		result.append(_format_def_range_spd_line(stats))
+	return result

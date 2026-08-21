@@ -1,2589 +1,990 @@
 {
-	"schema_version": 1,
-	"source": "data/enemy_phase_masters.gd",
-	"key": "ENEMY_MASTERS",
-	"data": [
-		{
-			"id": "enemy_master_001",
-			"name": "钢铁先锋·马库斯",
-			"title": "钢铁防线守卫",
-			"level": 5,
-			"faction": "steel",
-			"difficulty": "easy",
-			"traits": [
-				{
-					"id": "recruit_commander",
-					"name": "新兵教官",
-					"description": "所有友军防御+10%，部署冷却-5%",
-					"effects": {
-						"def_light": 0.1,
-						"def_armor": 0.1,
-						"def_air": 0.1
-					}
-				}
-			],
-			"active_spells": [
-				{
-					"id": "iron_bulwark",
-					"name": "钢铁壁垒",
-					"description": "每28秒为自身施加20%最大生命值护盾",
-					"effect": "energy_shield",
-					"cooldown": 28.0,
-					"params": {
-						"shield_pct": 0.2
-					}
-				}
-			],
-			"passive_spells": [
-				{
-					"id": "steel_skin",
-					"name": "钢铁之肤",
-					"description": "所有友军获得12%额外护甲",
-					"effect": "armor_boost",
-					"params": {
-						"bonus": 0.12
-					}
-				},
-				{
-					"id": "fortress_mind",
-					"name": "堡垒思维",
-					"description": "每当友军单位死亡时，获得5%最大生命值护盾",
-					"effect": "death_shield",
-					"params": {
-						"shield_percent": 0.05
-					}
-				}
-			],
-			"equipment": {
-				"phase_instrument": "pi_steel_02",
-				"level": 5,
-				"platforms": [
-					"steel_fortress_basic",
-					"steel_titan_basic"
-				],
-				"weapons": [
-					"steel_machinegun_basic",
-					"steel_cannon_basic"
-				],
-				"energy_cards": [
-					"steel_energy_basic"
-				]
-			},
-			"stats": {
-				"max_hp": 2900,
-				"attack_power": 36,
-				"defense": 32,
-				"energy_regen": 2,
-				"unit_limit": 5
-			}
-		},
-		{
-			"id": "enemy_master_002",
-			"name": "烈焰使者·伊格尼斯",
-			"title": "火焰狂暴者",
-			"level": 6,
-			"faction": "flame",
-			"difficulty": "easy",
-			"traits": [
-				{
-					"id": "first_flame",
-					"name": "初燃之心",
-					"description": "攻击力+8%",
-					"effects": {
-						"atk_light": 0.08,
-						"atk_armor": 0.08,
-						"atk_air": 0.08
-					}
-				}
-			],
-			"active_spells": [
-				{
-					"id": "napalm_explosion",
-					"name": "烈焰风暴",
-					"description": "每26秒对全体玩家单位造成火焰范围伤害",
-					"effect": "napalm_explosion",
-					"cooldown": 26.0,
-					"params": {
-						"damage_mult": 0.8
-					}
-				}
-			],
-			"passive_spells": [
-				{
-					"id": "burning_aura",
-					"name": "燃烧光环",
-					"description": "周围敌人每秒受到30点火焰伤害",
-					"effect": "damage_aura",
-					"params": {
-						"damage": 30,
-						"radius": 100
-					}
-				},
-				{
-					"id": "fire_adaptation",
-					"name": "火焰适应",
-					"description": "攻击力提升8%",
-					"effect": "damage_boost_resistance",
-					"params": {
-						"boost": 0.08,
-						"resistance": 0.3,
-						"damage_type": "fire"
-					}
-				}
-			],
-			"equipment": {
-				"phase_instrument": "pi_flame_02",
-				"level": 6,
-				"platforms": [
-					"flame_raider_basic",
-					"flame_siege_basic"
-				],
-				"weapons": [
-					"flame_thrower_basic",
-					"incendiary_mortar_basic"
-				],
-				"energy_cards": [
-					"flame_energy_basic"
-				]
-			},
-			"stats": {
-				"max_hp": 2950,
-				"attack_power": 37,
-				"defense": 25,
-				"energy_regen": 2.5,
-				"unit_limit": 6
-			}
-		},
-		{
-			"id": "enemy_master_003",
-			"name": "雷击者·沃尔特",
-			"title": "闪电链大师",
-			"level": 7,
-			"faction": "thunder",
-			"difficulty": "medium",
-			"traits": [
-				{
-					"id": "first_thunder",
-					"name": "初雷之印",
-					"description": "暴击率+8%，闪避+5%",
-					"effects": {
-						"crit_chance": 0.08,
-						"dodge_chance": 0.05
-					}
-				}
-			],
-			"active_spells": [
-				{
-					"id": "tesla_chain",
-					"name": "雷霆连锁",
-					"description": "每24秒释放连锁闪电，跳跃打击最多5个玩家单位",
-					"effect": "tesla_chain",
-					"cooldown": 24.0,
-					"params": {
-						"damage_mult": 0.9
-					}
-				}
-			],
-			"passive_spells": [
-				{
-					"id": "static_field",
-					"name": "静电场",
-					"description": "攻击时对目标周围造成30%溅射伤害",
-					"effect": "splash_damage",
-					"params": {
-						"splash_percent": 0.3,
-						"radius": 60
-					}
-				},
-				{
-					"id": "overcharge",
-					"name": "过载",
-					"description": "能量超过80%时，攻击速度提升40%",
-					"effect": "high_energy_bonus",
-					"params": {
-						"threshold": 0.8,
-						"attack_speed_boost": 0.4
-					}
-				}
-			],
-			"equipment": {
-				"phase_instrument": "pi_thunder_02",
-				"level": 7,
-				"platforms": [
-					"thunter_striker_basic",
-					"thunter_sniper_basic"
-				],
-				"weapons": [
-					"tesla_coil_basic",
-					"railgun_basic"
-				],
-				"energy_cards": [
-					"thunder_energy_basic"
-				]
-			},
-			"stats": {
-				"max_hp": 2950,
-				"attack_power": 38,
-				"defense": 25,
-				"energy_regen": 3,
-				"unit_limit": 5
-			}
-		},
-		{
-			"id": "enemy_master_004",
-			"name": "虚空行者·奈克萨斯",
-			"title": "时空操纵者",
-			"level": 8,
-			"faction": "void",
-			"difficulty": "medium",
-			"traits": [
-				{
-					"id": "void_sense",
-					"name": "虚空初感",
-					"description": "攻击力+8%",
-					"effects": {
-						"atk_light": 0.08,
-						"atk_armor": 0.08,
-						"atk_air": 0.08
-					}
-				}
-			],
-			"active_spells": [
-				{
-					"id": "phase_debuff",
-					"name": "相位移领域",
-					"description": "每25秒扭曲玩家单位，降低其攻速与暴击",
-					"effect": "darkness_debuff",
-					"cooldown": 25.0,
-					"params": {
-						"attack_speed_penalty": 0.2,
-						"crit_penalty": 0.15,
-						"duration": 4.0
-					}
-				}
-			],
-			"passive_spells": [
-				{
-					"id": "entropy_aura",
-					"name": "熵增光环",
-					"description": "周围敌人持续失去生命值，最大值每秒减少1%",
-					"effect": "max_hp_drain",
-					"params": {
-						"drain_percent": 0.01,
-						"radius": 150
-					}
-				},
-				{
-					"id": "phase_shift",
-					"name": "相位移",
-					"description": "受到致命伤害时，有30%概率避免并瞬移到安全位置",
-					"effect": "death_avoid_teleport",
-					"params": {
-						"chance": 0.3
-					}
-				}
-			],
-			"equipment": {
-				"phase_instrument": "pi_void_02",
-				"level": 8,
-				"platforms": [
-					"void_stealth_basic",
-					"void_mage_basic"
-				],
-				"weapons": [
-					"void_lance_basic",
-					"gravity_well_basic"
-				],
-				"energy_cards": [
-					"void_energy_basic"
-				]
-			},
-			"stats": {
-				"max_hp": 3000,
-				"attack_power": 39,
-				"defense": 29,
-				"energy_regen": 2.8,
-				"unit_limit": 5
-			}
-		},
-		{
-			"id": "enemy_master_005",
-			"name": "钢铁元帅·克劳斯",
-			"title": "不可破之盾",
-			"level": 10,
-			"faction": "steel",
-			"difficulty": "medium",
-			"traits": [
-				{
-					"id": "iron_wall_command",
-					"name": "铁壁指挥",
-					"description": "HP+15%，三维防御+10%",
-					"effects": {
-						"hp": 0.15,
-						"def_light": 0.1,
-						"def_armor": 0.1,
-						"def_air": 0.1
-					}
-				}
-			],
-			"active_spells": [
-				{
-					"id": "reinforcement_deploy",
-					"name": "钢铁援军",
-					"description": "每22秒召唤一批友军单位增援战场",
-					"effect": "summon_reinforcement",
-					"cooldown": 22.0
-				}
-			],
-			"passive_spells": [
-				{
-					"id": "formation_master",
-					"name": "阵型大师",
-					"description": "每3个相邻友军提供20%伤害加成",
-					"effect": "formation_bonus",
-					"params": {
-						"adjacent_count": 3,
-						"damage_boost": 0.2
-					}
-				},
-				{
-					"id": "siege_breaker",
-					"name": "攻城破坏者",
-					"description": "对建筑类目标造成50%额外伤害",
-					"effect": "damage_vs_building",
-					"params": {
-						"bonus_damage": 0.5
-					}
-				}
-			],
-			"equipment": {
-				"phase_instrument": "pi_steel_03",
-				"level": 10,
-				"platforms": [
-					"ww1_boss_av7",
-					"ww1_boss_av7",
-					"ww1_arm_rolls_e",
-					"ww1_inf_storm_e"
-				],
-				"weapons": [
-					"steel_minigun_advanced",
-					"steel_railcannon_advanced"
-				],
-				"energy_cards": [
-					"steel_energy_advanced"
-				]
-			},
-			"stats": {
-				"max_hp": 3100,
-				"attack_power": 41,
-				"defense": 35,
-				"energy_regen": 2.5,
-				"unit_limit": 7
-			}
-		},
-		{
-			"id": "enemy_master_006",
-			"name": "炎魔女王·赫卡特",
-			"title": "毁灭之焰",
-			"level": 12,
-			"faction": "flame",
-			"difficulty": "medium",
-			"traits": [
-				{
-					"id": "flame_authority",
-					"name": "炎之权柄",
-					"description": "三维攻击+15%",
-					"effects": {
-						"atk_light": 0.15,
-						"atk_armor": 0.15,
-						"atk_air": 0.15
-					}
-				}
-			],
-			"active_spells": [
-				{
-					"id": "inferno_explosion",
-					"name": "地狱烈焰",
-					"description": "每20秒引爆全场，对所有玩家单位造成烈焰伤害",
-					"effect": "hellfire_explosion",
-					"cooldown": 20.0,
-					"params": {
-						"damage_mult": 1.0
-					}
-				}
-			],
-			"passive_spells": [
-				{
-					"id": "eternal_flame",
-					"name": "永恒之火",
-					"description": "友军单位死亡时爆炸，对周围造成200伤害",
-					"effect": "death_explosion",
-					"params": {
-						"damage": 200,
-						"radius": 100
-					}
-				},
-				{
-					"id": "heat_wave",
-					"name": "热浪",
-					"description": "战斗每进行10秒，所有友军攻击力提升10%",
-					"effect": "scaling_damage",
-					"params": {
-						"interval": 10,
-						"boost_per_stack": 0.1,
-						"max_stacks": 5
-					}
-				}
-			],
-			"equipment": {
-				"phase_instrument": "pi_flame_03",
-				"level": 12,
-				"platforms": [
-					"ww1_boss_av7",
-					"ww1_arm_rolls_e",
-					"ww1_arm_rolls_e",
-					"ww1_inf_storm_e"
-				],
-				"weapons": [
-					"flame_thrower_advanced",
-					"incendiary_cannon_advanced"
-				],
-				"energy_cards": [
-					"flame_energy_advanced"
-				]
-			},
-			"stats": {
-				"max_hp": 3200,
-				"attack_power": 43,
-				"defense": 23,
-				"energy_regen": 3,
-				"unit_limit": 7
-			}
-		},
-		{
-			"id": "enemy_master_007",
-			"name": "雷神之子·索尔",
-			"title": "万钧雷霆",
-			"level": 13,
-			"faction": "thunder",
-			"difficulty": "hard",
-			"traits": [
-				{
-					"id": "storm_child",
-					"name": "风暴之子",
-					"description": "三维攻击+8%",
-					"effects": {
-						"atk_light": 0.08,
-						"atk_armor": 0.08,
-						"atk_air": 0.08
-					}
-				}
-			],
-			"active_spells": [
-				{
-					"id": "thunderstorm_chain",
-					"name": "雷暴连锁",
-					"description": "每20秒释放连锁闪电，跳跃打击玩家单位",
-					"effect": "thunderstorm_chain",
-					"cooldown": 20.0,
-					"params": {
-						"damage_mult": 1.0
-					}
-				}
-			],
-			"passive_spells": [
-				{
-					"id": "conductive",
-					"name": "传导",
-					"description": "友军攻击时，电流会在敌人间跳跃",
-					"effect": "chain_attack",
-					"params": {
-						"jump_count": 2,
-						"jump_damage": 80
-					}
-				},
-				{
-					"id": "storm_caller",
-					"name": "风暴召唤者",
-					"description": "能量满时自动释放闪电链，不消耗能量",
-					"effect": "full_energy_trigger",
-					"params": {
-						"trigger_spell": "chain_lightning"
-					}
-				}
-			],
-			"equipment": {
-				"phase_instrument": "pi_thunder_03",
-				"level": 13,
-				"platforms": [
-					"ww1_boss_av7",
-					"ww1_boss_av7",
-					"ww1_arm_rolls_e",
-					"ww1_sup_mg_nest"
-				],
-				"weapons": [
-					"tesla_coil_advanced",
-					"railgun_advanced"
-				],
-				"energy_cards": [
-					"thunder_energy_advanced"
-				]
-			},
-			"stats": {
-				"max_hp": 5200,
-				"attack_power": 73,
-				"defense": 32,
-				"energy_regen": 3.5,
-				"unit_limit": 6
-			}
-		},
-		{
-			"id": "enemy_master_008",
-			"name": "虚空领主·萨洛斯",
-			"title": "维度撕裂者",
-			"level": 14,
-			"faction": "void",
-			"difficulty": "hard",
-			"traits": [
-				{
-					"id": "dimension_perception",
-					"name": "维度感知",
-					"description": "三维攻击+8%",
-					"effects": {
-						"atk_light": 0.08,
-						"atk_armor": 0.08,
-						"atk_air": 0.08
-					}
-				}
-			],
-			"active_spells": [
-				{
-					"id": "void_implosion",
-					"name": "虚空内爆",
-					"description": "每22秒引发虚空坍缩，对全体玩家单位造成范围伤害",
-					"effect": "void_explosion",
-					"cooldown": 22.0,
-					"params": {
-						"damage_mult": 1.0
-					}
-				}
-			],
-			"passive_spells": [
-				{
-					"id": "reality_tear",
-					"name": "现实撕裂",
-					"description": "攻击有20%概率无视敌人护甲",
-					"effect": "armor_ignore_chance",
-					"params": {
-						"chance": 0.2
-					}
-				},
-				{
-					"id": "void_embrace",
-					"name": "虚空拥抱",
-					"description": "周围敌人每秒失去5%能量",
-					"effect": "energy_drain",
-					"params": {
-						"drain_percent": 0.05,
-						"radius": 200
-					}
-				}
-			],
-			"equipment": {
-				"phase_instrument": "pi_void_03",
-				"level": 14,
-				"platforms": [
-					"ww2_boss_kingtiger",
-					"ww2_arm_panther_e",
-					"ww2_arm_panther_e",
-					"ww2_inf_panzerschreck_e",
-					"ww2_inf_para_e"
-				],
-				"weapons": [
-					"void_lance_advanced",
-					"gravity_well_advanced"
-				],
-				"energy_cards": [
-					"void_energy_advanced"
-				]
-			},
-			"stats": {
-				"max_hp": 5250,
-				"attack_power": 74,
-				"defense": 34,
-				"energy_regen": 3.8,
-				"unit_limit": 6
-			}
-		},
-		{
-			"id": "enemy_master_009",
-			"name": "钢铁军团长·费米",
-			"title": "钢铁军团统帅",
-			"level": 16,
-			"faction": "steel",
-			"difficulty": "hard",
-			"traits": [
-				{
-					"id": "industrial_commander",
-					"name": "工业统帅",
-					"description": "HP+15%，三维防御+10%",
-					"effects": {
-						"hp": 0.15,
-						"def_light": 0.1,
-						"def_armor": 0.1,
-						"def_air": 0.1
-					}
-				}
-			],
-			"active_spells": [
-				{
-					"id": "legion_deploy",
-					"name": "军团动员",
-					"description": "每19秒召唤钢铁军团单位增援",
-					"effect": "deploy_legion",
-					"cooldown": 19.0
-				}
-			],
-			"passive_spells": [
-				{
-					"id": "iron_will",
-					"name": "钢铁意志",
-					"description": "友军生命值低于30%时，防御翻倍",
-					"effect": "low_hp_defense_boost",
-					"params": {
-						"threshold": 0.3,
-						"defense_multiplier": 2
-					}
-				},
-				{
-					"id": "auto_production",
-					"name": "自动化生产",
-					"description": "每12秒自动生产一个额外单位",
-					"effect": "auto_production",
-					"params": {
-						"interval": 12
-					}
-				}
-			],
-			"equipment": {
-				"phase_instrument": "pi_steel_04",
-				"level": 16,
-				"platforms": [
-					"ww2_boss_kingtiger",
-					"ww2_boss_kingtiger",
-					"ww2_arm_panther_e",
-					"ww2_inf_panzerschreck_e",
-					"ww2_inf_para_e"
-				],
-				"weapons": [
-					"steel_gatling_expert",
-					"steel_artillery_expert"
-				],
-				"energy_cards": [
-					"steel_energy_expert"
-				]
-			},
-			"stats": {
-				"max_hp": 5400,
-				"attack_power": 78,
-				"defense": 46,
-				"energy_regen": 3,
-				"unit_limit": 8
-			}
-		},
-		{
-			"id": "enemy_master_010",
-			"name": "炎帝·普罗米修斯",
-			"title": "永恒烈焰",
-			"level": 17,
-			"faction": "flame",
-			"difficulty": "hard",
-			"traits": [
-				{
-					"id": "eternal_inferno",
-					"name": "永恒烈焰",
-					"description": "三维攻击+15%",
-					"effects": {
-						"atk_light": 0.15,
-						"atk_armor": 0.15,
-						"atk_air": 0.15
-					}
-				}
-			],
-			"active_spells": [
-				{
-					"id": "prometheus_flame",
-					"name": "普罗米修斯之焰",
-					"description": "每18秒降下天火，对全体玩家单位造成烈焰伤害",
-					"effect": "meteor_flame",
-					"cooldown": 18.0,
-					"params": {
-						"damage_mult": 1.1
-					}
-				}
-			],
-			"passive_spells": [
-				{
-					"id": "hellfire",
-					"name": "地狱火",
-					"description": "友军攻击力提升8%",
-					"effect": "elemental_damage_boost",
-					"params": {
-						"boost": 0.08,
-						"element": "fire"
-					}
-				},
-				{
-					"id": "immolation",
-					"name": "自焚",
-					"description": "友军每秒对周围造成40伤害，自身失去15生命值",
-					"effect": "self_damage_aura",
-					"params": {
-						"aura_damage": 40,
-						"self_damage": 15
-					}
-				}
-			],
-			"equipment": {
-				"phase_instrument": "pi_flame_04",
-				"level": 17,
-				"platforms": [
-					"ww2_arm_panther_e",
-					"ww2_inf_panzerschreck_e",
-					"ww2_boss_kingtiger",
-					"ww2_inf_para_e"
-				],
-				"weapons": [
-					"flame_thrower_expert",
-					"plasma_cannon_expert"
-				],
-				"energy_cards": [
-					"flame_energy_expert"
-				]
-			},
-			"stats": {
-				"max_hp": 5450,
-				"attack_power": 79,
-				"defense": 30,
-				"energy_regen": 3.5,
-				"unit_limit": 8
-			}
-		},
-		{
-			"id": "enemy_master_011",
-			"name": "雷皇·宙斯",
-			"title": "雷霆主宰",
-			"level": 18,
-			"faction": "thunder",
-			"difficulty": "hard",
-			"traits": [
-				{
-					"id": "thunder_domination",
-					"name": "雷霆主宰",
-					"description": "三维攻击+15%",
-					"effects": {
-						"atk_light": 0.15,
-						"atk_armor": 0.15,
-						"atk_air": 0.15
-					}
-				}
-			],
-			"active_spells": [
-				{
-					"id": "zeus_lightning",
-					"name": "宙斯雷霆",
-					"description": "每16秒降下雷霆连锁，跳跃打击多个玩家单位",
-					"effect": "lightning_chain",
-					"cooldown": 16.0,
-					"params": {
-						"damage_mult": 1.2
-					}
-				},
-				{
-					"id": "olympus_ward",
-					"name": "奥林匹斯之护",
-					"description": "每24秒为自身施加18%最大生命值护盾",
-					"effect": "dome_barrier",
-					"cooldown": 24.0,
-					"params": {
-						"shield_pct": 0.18
-					}
-				}
-			],
-			"passive_spells": [
-				{
-					"id": "lightning_speed",
-					"name": "闪电速度",
-					"description": "暴击率+8%，闪避+5%",
-					"effect": "speed_boost",
-					"params": {
-						"crit_chance": 0.08,
-						"dodge_chance": 0.05
-					}
-				},
-				{
-					"id": "static_overload",
-					"name": "静电过载",
-					"description": "友军死亡时释放连锁闪电",
-					"effect": "death_chain_lightning",
-					"params": {
-						"damage": 180,
-						"bounces": 3
-					}
-				}
-			],
-			"equipment": {
-				"phase_instrument": "pi_thunder_04",
-				"level": 18,
-				"platforms": [
-					"ww2_boss_kingtiger",
-					"ww2_arm_panther_e",
-					"ww2_arm_panther_e",
-					"ww2_sup_mg42",
-					"ww2_inf_panzerschreck_e"
-				],
-				"weapons": [
-					"tesla_coil_expert",
-					"railgun_expert"
-				],
-				"energy_cards": [
-					"thunder_energy_expert"
-				]
-			},
-			"stats": {
-				"max_hp": 5550,
-				"attack_power": 81,
-				"defense": 30,
-				"energy_regen": 4,
-				"unit_limit": 7
-			}
-		},
-		{
-			"id": "enemy_master_012",
-			"name": "虚空虚主·阿扎托斯",
-			"title": "虚空君王",
-			"level": 19,
-			"faction": "void",
-			"difficulty": "expert",
-			"traits": [
-				{
-					"id": "void_mastery",
-					"name": "虚空精通",
-					"description": "三维攻击+15%",
-					"effects": {
-						"atk_light": 0.15,
-						"atk_armor": 0.15,
-						"atk_air": 0.15
-					}
-				}
-			],
-			"active_spells": [
-				{
-					"id": "abyss_apocalypse",
-					"name": "深渊降临",
-					"description": "每18秒引发虚空灾变，对全体玩家单位造成范围伤害",
-					"effect": "abyss_apocalypse",
-					"cooldown": 18.0,
-					"params": {
-						"damage_mult": 1.2
-					}
-				},
-				{
-					"id": "devouring_void",
-					"name": "虚空吞噬",
-					"description": "每14秒对生命最高的玩家单位发动吞噬打击",
-					"effect": "devour_single",
-					"cooldown": 14.0,
-					"params": {
-						"damage_mult": 1.3
-					}
-				}
-			],
-			"passive_spells": [
-				{
-					"id": "dimension_siphon",
-					"name": "维度虹吸",
-					"description": "从每个敌人身上每秒吸取40生命值和15能量",
-					"effect": "life_energy_drain",
-					"params": {
-						"hp_drain": 40,
-						"energy_drain": 15
-					}
-				}
-			],
-			"equipment": {
-				"phase_instrument": "pi_void_04",
-				"level": 19,
-				"platforms": [
-					"ww2_boss_kingtiger",
-					"ww2_boss_kingtiger",
-					"ww2_arm_panther_e",
-					"ww2_sup_mg42",
-					"ww2_inf_para_e"
-				],
-				"weapons": [
-					"void_lance_expert",
-					"entropy_caster_expert"
-				],
-				"energy_cards": [
-					"void_energy_expert"
-				]
-			},
-			"stats": {
-				"max_hp": 5600,
-				"attack_power": 82,
-				"defense": 29,
-				"energy_regen": 4.2,
-				"unit_limit": 7
-			}
-		},
-		{
-			"id": "enemy_master_013",
-			"name": "钢铁烈焰·卡尔",
-			"title": "熔铸大师",
-			"level": 18,
-			"faction": "steel_flame",
-			"difficulty": "hard",
-			"traits": [
-				{
-					"id": "forgemaster",
-					"name": "熔铸大师",
-					"description": "钢铁+烈焰协同：相邻的钢铁和烈焰单位互相增强25%伤害",
-					"effects": {
-						"synergy_boost": 0.25,
-						"synergy_types": [
-							"steel",
-							"flame"
-						]
-					}
-				}
-			],
-			"active_spells": [
-				{
-					"id": "molten_bombard",
-					"name": "熔铁轰炸",
-					"description": "每17秒对全体玩家单位倾泻熔铁弹幕",
-					"effect": "bombard_explosion",
-					"cooldown": 17.0,
-					"params": {
-						"damage_mult": 1.1
-					}
-				}
-			],
-			"passive_spells": [
-				{
-					"id": "heat_treatment",
-					"name": "热处理",
-					"description": "友军攻击有15%概率触发额外火焰爆炸",
-					"effect": "proc_explosion",
-					"params": {
-						"chance": 0.15,
-						"explosion_damage": 120
-					}
-				},
-				{
-					"id": "tempered",
-					"name": "回火",
-					"description": "友军受到火焰伤害时，攻击力提升10%，持续5秒",
-					"effect": "fire_damage_boost",
-					"params": {
-						"boost": 0.1,
-						"duration": 5
-					}
-				}
-			],
-			"equipment": {
-				"phase_instrument": "pi_steelflame_01",
-				"level": 18,
-				"platforms": [
-					"cold_arm_t72_e",
-					"cold_arm_t72_e",
-					"cold_arm_btr_e",
-					"cold_air_m113_e",
-					"cold_inf_ak"
-				],
-				"weapons": [
-					"steel_gatling_expert",
-					"flame_thrower_expert"
-				],
-				"energy_cards": [
-					"hybrid_energy_basic"
-				]
-			},
-			"stats": {
-				"max_hp": 9450,
-				"attack_power": 121,
-				"defense": 37,
-				"energy_regen": 3.2,
-				"unit_limit": 8
-			}
-		},
-		{
-			"id": "enemy_master_014",
-			"name": "雷霆钢铁·维克多",
-			"title": "电磁装甲师",
-			"level": 19,
-			"faction": "thunder_steel",
-			"difficulty": "hard",
-			"traits": [
-				{
-					"id": "electromagnetic_armor",
-					"name": "电磁装甲师",
-					"description": "雷霆+钢铁协同：护甲受到攻击时反射雷电，造成80伤害",
-					"effects": {
-						"synergy_boost": 0.2,
-						"synergy_types": [
-							"thunder",
-							"steel"
-						],
-						"armor_reflect": 80
-					}
-				}
-			],
-			"active_spells": [
-				{
-					"id": "victor_chain_lightning",
-					"name": "雷霆贯穿",
-					"description": "每15秒释放连锁闪电，跳跃打击玩家单位",
-					"effect": "chain_lightning",
-					"cooldown": 15.0,
-					"params": {
-						"damage_mult": 1.2
-					}
-				},
-				{
-					"id": "victor_plate",
-					"name": "钢板护盾",
-					"description": "每22秒为自身施加22%最大生命值护盾",
-					"effect": "plate_shield",
-					"cooldown": 22.0,
-					"params": {
-						"shield_pct": 0.22
-					}
-				}
-			],
-			"passive_spells": [
-				{
-					"id": "conductive_armor",
-					"name": "导电护甲",
-					"description": "友军受到攻击时，对攻击者放电造成60伤害",
-					"effect": "lightning_thorn",
-					"params": {
-						"thorn_damage": 60
-					}
-				},
-				{
-					"id": "overclock",
-					"name": "超频",
-					"description": "能量超过70%时，射速提升40%",
-					"effect": "high_energy_attack_speed",
-					"params": {
-						"threshold": 0.7,
-						"speed_boost": 0.4
-					}
-				}
-			],
-			"equipment": {
-				"phase_instrument": "pi_steelthunder_01",
-				"level": 19,
-				"platforms": [
-					"cold_arm_t72_e",
-					"cold_arm_btr_e",
-					"cold_air_m113_e",
-					"cold_inf_spetsnaz_e",
-					"cold_boss_mig"
-				],
-				"weapons": [
-					"steel_railcannon_advanced",
-					"tesla_coil_expert"
-				],
-				"energy_cards": [
-					"hybrid_energy_basic"
-				]
-			},
-			"stats": {
-				"max_hp": 9550,
-				"attack_power": 124,
-				"defense": 46,
-				"energy_regen": 3.5,
-				"unit_limit": 7
-			}
-		},
-		{
-			"id": "enemy_master_015",
-			"name": "虚空烈焰·塞拉菲娜",
-			"title": "熵增炎魔",
-			"level": 20,
-			"faction": "void_flame",
-			"difficulty": "expert",
-			"traits": [
-				{
-					"id": "chaos_flame_trait",
-					"name": "熵增炎魔",
-					"description": "烈焰+虚空协同：被燃烧的敌人能量流失速度翻倍",
-					"effects": {
-						"synergy_boost": 0.2,
-						"synergy_types": [
-							"flame",
-							"void"
-						],
-						"burn_energy_drain_mult": 2
-					}
-				}
-			],
-			"active_spells": [
-				{
-					"id": "seraphina_void",
-					"name": "虚空烈焰",
-					"description": "每16秒引爆虚空烈焰，对全体玩家单位造成范围伤害",
-					"effect": "void_apocalypse",
-					"cooldown": 16.0,
-					"params": {
-						"damage_mult": 1.2
-					}
-				},
-				{
-					"id": "seraphina_curse",
-					"name": "炽焰诅咒",
-					"description": "每18秒削弱玩家单位，降低攻速与闪避",
-					"effect": "weakness_debuff",
-					"cooldown": 18.0,
-					"params": {
-						"attack_speed_penalty": 0.25,
-						"dodge_penalty": 0.2,
-						"duration": 5.0
-					}
-				}
-			],
-			"passive_spells": [
-				{
-					"id": "entropy_flame",
-					"name": "熵增之火",
-					"description": "火焰伤害有25%概率触发虚空吸取效果",
-					"effect": "fire_lifesteal_chance",
-					"params": {
-						"chance": 0.25,
-						"lifesteal_percent": 0.15
-					}
-				},
-				{
-					"id": "void_burn",
-					"name": "虚空燃烧",
-					"description": "被燃烧的敌人移动速度降低35%",
-					"effect": "burn_slow",
-					"params": {
-						"slow_percent": 0.35
-					}
-				}
-			],
-			"equipment": {
-				"phase_instrument": "pi_flamevoid_01",
-				"level": 20,
-				"platforms": [
-					"cold_boss_mig",
-					"cold_arm_t72_e",
-					"cold_arm_t72_e",
-					"cold_air_m113_e",
-					"cold_inf_spetsnaz_e"
-				],
-				"weapons": [
-					"entropy_caster_expert",
-					"plasma_cannon_expert"
-				],
-				"energy_cards": [
-					"hybrid_energy_advanced"
-				]
-			},
-			"stats": {
-				"max_hp": 9700,
-				"attack_power": 126,
-				"defense": 29,
-				"energy_regen": 3.8,
-				"unit_limit": 7
-			}
-		},
-		{
-			"id": "enemy_master_016",
-			"name": "不朽钢铁·阿特拉斯",
-			"title": "世界承载者",
-			"level": 22,
-			"faction": "steel",
-			"difficulty": "expert",
-			"traits": [
-				{
-					"id": "immortal_will",
-					"name": "不朽意志",
-					"description": "友军不会受到超过30%最大HP的单次伤害；每有1个友军全体防御+5%",
-					"effects": {
-						"damage_cap": 0.3,
-						"unit_count_defense": 0.05
-					}
-				}
-			],
-			"active_spells": [
-				{
-					"id": "atlas_bulwark",
-					"name": "不朽壁垒",
-					"description": "每16秒为自身施加28%最大生命值护盾",
-					"effect": "ward_bulwark",
-					"cooldown": 16.0,
-					"params": {
-						"shield_pct": 0.28
-					}
-				},
-				{
-					"id": "atlas_summon",
-					"name": "不朽军团",
-					"description": "每20秒召唤不朽钢铁单位增援",
-					"effect": "forge_summon",
-					"cooldown": 20.0
-				}
-			],
-			"passive_spells": [
-				{
-					"id": "unbreakable",
-					"name": "不可破坏",
-					"description": "友军单位不会受到超过最大生命值30%的单次伤害",
-					"effect": "damage_cap",
-					"params": {
-						"max_damage_percent": 0.3
-					}
-				},
-				{
-					"id": "steel_mountain",
-					"name": "钢铁之山",
-					"description": "友军数量越多，全体防御力越高（每个单位+5%）",
-					"effect": "unit_count_defense",
-					"params": {
-						"defense_per_unit": 0.05
-					}
-				}
-			],
-			"equipment": {
-				"phase_instrument": "pi_steel_04",
-				"level": 22,
-				"platforms": [
-					"cold_boss_mig",
-					"cold_arm_t72_e",
-					"cold_arm_t72_e",
-					"cold_air_m113_e",
-					"cold_inf_spetsnaz_e",
-					"cold_arm_btr_e"
-				],
-				"weapons": [
-					"steel_gatling_expert",
-					"steel_artillery_expert"
-				],
-				"energy_cards": [
-					"steel_energy_expert"
-				]
-			},
-			"stats": {
-				"max_hp": 9900,
-				"attack_power": 131,
-				"defense": 36,
-				"energy_regen": 3.5,
-				"unit_limit": 9
-			}
-		},
-		{
-			"id": "enemy_master_017",
-			"name": "永恒炎魔·苏尔特",
-			"title": "诸神黄昏",
-			"level": 23,
-			"faction": "flame",
-			"difficulty": "expert",
-			"traits": [
-				{
-					"id": "ragnarok",
-					"name": "诸神黄昏",
-					"description": "三维攻击+15%；友军首次死亡时自动复活，恢复30%生命值",
-					"effects": {
-						"atk_light": 0.15,
-						"atk_armor": 0.15,
-						"atk_air": 0.15,
-						"auto_revive_once": {
-							"hp_percent": 0.3
-						}
-					}
-				}
-			],
-			"active_spells": [
-				{
-					"id": "surtr_meteor",
-					"name": "诸神黄昏",
-					"description": "每15秒召唤陨石雨，对全体玩家单位造成毁灭伤害",
-					"effect": "meteor_apocalypse",
-					"cooldown": 15.0,
-					"params": {
-						"damage_mult": 1.3
-					}
-				}
-			],
-			"passive_spells": [
-				{
-					"id": "phoenix_rebirth_auto",
-					"name": "凤凰重生",
-					"description": "友军死亡后会在原位置以30%HP复活",
-					"effect": "phoenix_rebirth_auto",
-					"params": {
-						"rebirth_hp": 0.3,
-						"cooldown_per_unit": 30
-					}
-				},
-				{
-					"id": "time_based_hp_drain",
-					"name": "热寂",
-					"description": "战斗每进行30秒，所有敌人失去8%最大生命值",
-					"effect": "time_based_hp_drain",
-					"params": {
-						"interval": 30,
-						"drain_percent": 0.08
-					}
-				}
-			],
-			"equipment": {
-				"phase_instrument": "pi_flame_04",
-				"level": 23,
-				"platforms": [
-					"cold_arm_t72_e",
-					"cold_inf_ak",
-					"cold_boss_mig",
-					"cold_arm_btr_e"
-				],
-				"weapons": [
-					"flame_thrower_expert",
-					"plasma_cannon_expert"
-				],
-				"energy_cards": [
-					"flame_energy_expert"
-				]
-			},
-			"stats": {
-				"max_hp": 10000,
-				"attack_power": 133,
-				"defense": 24,
-				"energy_regen": 4,
-				"unit_limit": 8
-			}
-		},
-		{
-			"id": "enemy_master_018",
-			"name": "万雷之主·雷神",
-			"title": "雷霆化身",
-			"level": 24,
-			"faction": "thunder",
-			"difficulty": "expert",
-			"traits": [
-				{
-					"id": "thunder_avatar",
-					"name": "万钧雷霆",
-					"description": "三维攻击+15%",
-					"effects": {
-						"atk_light": 0.15,
-						"atk_armor": 0.15,
-						"atk_air": 0.15
-					}
-				}
-			],
-			"active_spells": [
-				{
-					"id": "thunder_lord_chain",
-					"name": "万雷齐发",
-					"description": "每14秒释放强力连锁闪电，跳跃打击玩家单位",
-					"effect": "thunder_chain",
-					"cooldown": 14.0,
-					"params": {
-						"damage_mult": 1.3
-					}
-				},
-				{
-					"id": "thunder_lord_judgment",
-					"name": "雷神之裁",
-					"description": "每16秒对生命最高的玩家单位降下雷罚",
-					"effect": "god_weapon_single",
-					"cooldown": 16.0,
-					"params": {
-						"damage_mult": 1.4
-					}
-				}
-			],
-			"passive_spells": [
-				{
-					"id": "auto_lightning",
-					"name": "无处不在的闪电",
-					"description": "每5秒自动随机打击敌人，造成250伤害",
-					"effect": "auto_lightning",
-					"params": {
-						"interval": 5,
-						"damage": 250
-					}
-				},
-				{
-					"id": "global_damage_boost",
-					"name": "导电世界",
-					"description": "三维攻击+8%",
-					"effect": "global_damage_boost",
-					"params": {
-						"damage_type": "lightning",
-						"boost": 0.08
-					}
-				}
-			],
-			"equipment": {
-				"phase_instrument": "pi_thunder_04",
-				"level": 24,
-				"platforms": [
-					"cold_boss_mig",
-					"cold_boss_mig",
-					"cold_arm_t72_e",
-					"cold_air_m113_e",
-					"cold_inf_spetsnaz_e",
-					"cold_arm_btr_e"
-				],
-				"weapons": [
-					"tesla_coil_expert",
-					"railgun_expert"
-				],
-				"energy_cards": [
-					"thunder_energy_expert"
-				]
-			},
-			"stats": {
-				"max_hp": 10150,
-				"attack_power": 136,
-				"defense": 23,
-				"energy_regen": 4.5,
-				"unit_limit": 8
-			}
-		},
-		{
-			"id": "enemy_master_019",
-			"name": "虚空主宰·尼德霍格",
-			"title": "世界吞噬者",
-			"level": 25,
-			"faction": "void",
-			"difficulty": "expert",
-			"traits": [
-				{
-					"id": "world_devourer",
-					"name": "世界吞噬者",
-					"description": "三维攻击+15%",
-					"effects": {
-						"atk_light": 0.15,
-						"atk_armor": 0.15,
-						"atk_air": 0.15
-					}
-				}
-			],
-			"active_spells": [
-				{
-					"id": "nidhogg_void",
-					"name": "虚空吞噬",
-					"description": "每14秒引发虚空灾变，对全体玩家单位造成范围伤害",
-					"effect": "void_apocalypse",
-					"cooldown": 14.0,
-					"params": {
-						"damage_mult": 1.3
-					}
-				},
-				{
-					"id": "nidhogg_devour",
-					"name": "龙息吞噬",
-					"description": "每12秒对生命最高的玩家单位发动吞噬",
-					"effect": "devour_single",
-					"cooldown": 12.0,
-					"params": {
-						"damage_mult": 1.5
-					}
-				}
-			],
-			"passive_spells": [
-				{
-					"id": "void_lord",
-					"name": "虚空领主",
-					"description": "三维攻击+15%",
-					"effect": "void_mastery_ultimate",
-					"params": {
-						"damage_boost": 0.15
-					}
-				},
-				{
-					"id": "enemy_defense_reduction",
-					"name": "现实崩溃",
-					"description": "三维攻击+8%",
-					"effect": "enemy_defense_reduction",
-					"params": {
-						"reduction": 0.08
-					}
-				}
-			],
-			"equipment": {
-				"phase_instrument": "pi_void_04",
-				"level": 25,
-				"platforms": [
-					"mod_boss_command",
-					"mod_arm_abrams_e",
-					"mod_arm_abrams_e",
-					"mod_air_apache_e",
-					"mod_arm_stryker_e",
-					"mod_inf_delta_e"
-				],
-				"weapons": [
-					"void_lance_expert",
-					"entropy_caster_expert"
-				],
-				"energy_cards": [
-					"void_energy_expert"
-				]
-			},
-			"stats": {
-				"max_hp": 17650,
-				"attack_power": 207,
-				"defense": 40,
-				"energy_regen": 4.5,
-				"unit_limit": 8
-			}
-		},
-		{
-			"id": "enemy_master_020",
-			"name": "钢铁雷霆·泰尔",
-			"title": "电磁战神",
-			"level": 24,
-			"faction": "steel_thunder",
-			"difficulty": "expert",
-			"traits": [
-				{
-					"id": "em_war_god",
-					"name": "电磁战神",
-					"description": "钢铁+雷霆协同：部署时单位获得闪电护盾，反弹200伤害",
-					"effects": {
-						"synergy_boost": 0.3,
-						"synergy_types": [
-							"steel",
-							"thunder"
-						],
-						"deploy_shield": 200
-					}
-				}
-			],
-			"active_spells": [
-				{
-					"id": "tyr_thunder",
-					"name": "钢铁雷霆",
-					"description": "每13秒释放连锁闪电，跳跃打击玩家单位",
-					"effect": "tesla_chain",
-					"cooldown": 13.0,
-					"params": {
-						"damage_mult": 1.3
-					}
-				},
-				{
-					"id": "tyr_reinforce",
-					"name": "战争动员",
-					"description": "每16秒召唤钢铁战争机器单位增援",
-					"effect": "mech_deploy",
-					"cooldown": 16.0
-				}
-			],
-			"passive_spells": [
-				{
-					"id": "synergy_boost",
-					"name": "导电钢铁",
-					"description": "钢铁单位和雷电单位互相增强25%属性",
-					"effect": "synergy_boost",
-					"params": {
-						"boost": 0.25,
-						"types": [
-							"steel",
-							"thunder"
-						]
-					}
-				},
-				{
-					"id": "armor_chain_lightning",
-					"name": "雷霆护甲",
-					"description": "友军受到攻击时，触发连锁闪电",
-					"effect": "armor_chain_lightning",
-					"params": {
-						"chain_count": 3,
-						"damage": 100
-					}
-				}
-			],
-			"equipment": {
-				"phase_instrument": "pi_steelthunder_01",
-				"level": 24,
-				"platforms": [
-					"mod_boss_command",
-					"mod_arm_abrams_e",
-					"mod_arm_abrams_e",
-					"mod_arm_stryker_e",
-					"mod_air_apache_e",
-					"mod_inf_delta_e"
-				],
-				"weapons": [
-					"steel_gatling_expert",
-					"tesla_coil_expert"
-				],
-				"energy_cards": [
-					"hybrid_energy_advanced"
-				]
-			},
-			"stats": {
-				"max_hp": 17450,
-				"attack_power": 203,
-				"defense": 56,
-				"energy_regen": 4,
-				"unit_limit": 8
-			}
-		},
-		{
-			"id": "enemy_master_021",
-			"name": "烈焰虚空·克尔加",
-			"title": "混沌炎魔",
-			"level": 25,
-			"faction": "flame_void",
-			"difficulty": "legendary",
-			"traits": [
-				{
-					"id": "chaos_inferno_trait",
-					"name": "混沌炎魔",
-					"description": "烈焰+虚空协同：被燃烧的敌人随机传送，有20%概率双重伤害",
-					"effects": {
-						"synergy_boost": 0.3,
-						"synergy_types": [
-							"flame",
-							"void"
-						],
-						"dual_damage_chance": 0.2
-					}
-				}
-			],
-			"active_spells": [
-				{
-					"id": "kargath_inferno",
-					"name": "地狱火",
-					"description": "每12秒引爆烈焰风暴，对全体玩家单位造成范围伤害",
-					"effect": "hell_inferno",
-					"cooldown": 12.0,
-					"params": {
-						"damage_mult": 1.4
-					}
-				},
-				{
-					"id": "kargath_void",
-					"name": "虚空裂隙",
-					"description": "每15秒撕开虚空裂隙，对全体玩家单位造成虚空伤害",
-					"effect": "void_apocalypse",
-					"cooldown": 15.0,
-					"params": {
-						"damage_mult": 1.3
-					}
-				}
-			],
-			"passive_spells": [
-				{
-					"id": "dual_element_boost",
-					"name": "混沌之火",
-					"description": "三维攻击+8%",
-					"effect": "dual_element_boost",
-					"params": {
-						"boost": 0.08,
-						"dual_chance": 0.15
-					}
-				},
-				{
-					"id": "immunity",
-					"name": "混沌免疫",
-					"description": "友军对燃烧和虚空能量流失效果免疫",
-					"effect": "immunity",
-					"params": {
-						"effects": [
-							"burn",
-							"void_drain"
-						]
-					}
-				}
-			],
-			"equipment": {
-				"phase_instrument": "pi_flamevoid_01",
-				"level": 25,
-				"platforms": [
-					"mod_arm_abrams_e",
-					"mod_arty_mlrs_e",
-					"mod_boss_command",
-					"mod_air_apache_e"
-				],
-				"weapons": [
-					"plasma_cannon_expert",
-					"entropy_caster_expert"
-				],
-				"energy_cards": [
-					"hybrid_energy_advanced"
-				]
-			},
-			"stats": {
-				"max_hp": 17650,
-				"attack_power": 207,
-				"defense": 37,
-				"energy_regen": 4.5,
-				"unit_limit": 7
-			}
-		},
-		{
-			"id": "enemy_master_022",
-			"name": "战争机器·铁骑",
-			"title": "钢铁风暴",
-			"level": 26,
-			"faction": "steel",
-			"difficulty": "legendary",
-			"traits": [
-				{
-					"id": "automated_warfare",
-					"name": "自动化战争",
-					"description": "每10秒自动生产一个战斗单位；单位每存活10秒获得一层升级(+8%属性)",
-					"effects": {
-						"auto_spawn_interval": 10,
-						"time_scaling": {
-							"interval": 10,
-							"boost": 0.08
-						}
-					}
-				}
-			],
-			"active_spells": [
-				{
-					"id": "iron_cavalry_summon",
-					"name": "钢铁洪流",
-					"description": "每13秒召唤战争机器单位增援",
-					"effect": "mech_deploy",
-					"cooldown": 13.0
-				},
-				{
-					"id": "iron_cavalry_bombard",
-					"name": "地毯轰炸",
-					"description": "每15秒对全体玩家单位倾泻火力",
-					"effect": "orbital_bombard",
-					"cooldown": 15.0,
-					"params": {
-						"damage_mult": 1.4
-					}
-				}
-			],
-			"passive_spells": [
-				{
-					"id": "automation",
-					"name": "自动化",
-					"description": "每12秒自动生产一个战斗单位",
-					"effect": "auto_production_fast",
-					"params": {
-						"interval": 12
-					}
-				},
-				{
-					"id": "modular_upgrade",
-					"name": "模块化升级",
-					"description": "友军单位每存活10秒，获得一层升级（+8%属性）",
-					"effect": "time_based_upgrade",
-					"params": {
-						"interval": 10,
-						"boost_per_level": 0.08
-					}
-				}
-			],
-			"equipment": {
-				"phase_instrument": "pi_steel_04",
-				"level": 26,
-				"platforms": [
-					"mod_boss_command",
-					"mod_arm_abrams_e",
-					"mod_arm_abrams_e",
-					"mod_arm_stryker_e",
-					"mod_air_apache_e",
-					"mod_arty_mlrs_e"
-				],
-				"weapons": [
-					"steel_gatling_expert",
-					"steel_artillery_expert"
-				],
-				"energy_cards": [
-					"steel_energy_expert"
-				]
-			},
-			"stats": {
-				"max_hp": 17850,
-				"attack_power": 211,
-				"defense": 55,
-				"energy_regen": 3.5,
-				"unit_limit": 10
-			}
-		},
-		{
-			"id": "enemy_master_023",
-			"name": "火术宗师·凤凰",
-			"title": "不死鸟",
-			"level": 27,
-			"faction": "flame",
-			"difficulty": "legendary",
-			"traits": [
-				{
-					"id": "phoenix_trait",
-					"name": "不死鸟",
-					"description": "火焰技能冷却-30%；全队每场战斗可触发一次完全复活",
-					"effects": {
-						"fire_cooldown_reduction": 0.3,
-						"full_resurrect_once": true
-					}
-				}
-			],
-			"active_spells": [
-				{
-					"id": "phoenix_meteor",
-					"name": "凤凰陨落",
-					"description": "每12秒召唤陨石雨，对全体玩家单位造成毁灭伤害",
-					"effect": "meteor_apocalypse",
-					"cooldown": 12.0,
-					"params": {
-						"damage_mult": 1.5
-					}
-				},
-				{
-					"id": "phoenix_curse",
-					"name": "凤凰灼烧",
-					"description": "每14秒灼烧玩家单位，大幅降低攻速",
-					"effect": "emp_debuff",
-					"cooldown": 14.0,
-					"params": {
-						"attack_speed_penalty": 0.35,
-						"duration": 6.0
-					}
-				}
-			],
-			"passive_spells": [
-				{
-					"id": "fire_mastery",
-					"name": "火焰精通",
-					"description": "三维攻击+15%",
-					"effect": "elemental_mastery",
-					"params": {
-						"element": "fire",
-						"damage_boost": 0.15
-					}
-				},
-				{
-					"id": "ignite",
-					"name": "点燃",
-					"description": "攻击有20%概率点燃敌人，每秒造成45伤害",
-					"effect": "ignite_chance",
-					"params": {
-						"chance": 0.2,
-						"burn_damage": 45
-					}
-				}
-			],
-			"equipment": {
-				"phase_instrument": "pi_flame_04",
-				"level": 27,
-				"platforms": [
-					"mod_arm_abrams_e",
-					"mod_arty_mlrs_e",
-					"mod_boss_command",
-					"mod_air_apache_e",
-					"mod_inf_delta_e"
-				],
-				"weapons": [
-					"flame_thrower_expert",
-					"plasma_cannon_expert"
-				],
-				"energy_cards": [
-					"flame_energy_expert"
-				]
-			},
-			"stats": {
-				"max_hp": 18050,
-				"attack_power": 214,
-				"defense": 32,
-				"energy_regen": 4.2,
-				"unit_limit": 9
-			}
-		},
-		{
-			"id": "enemy_master_024",
-			"name": "风暴使者·赛勒斯",
-			"title": "疾风迅雷",
-			"level": 27,
-			"faction": "thunder",
-			"difficulty": "legendary",
-			"traits": [
-				{
-					"id": "storm_rush",
-					"name": "超级突袭",
-					"description": "三维攻击+8%",
-					"effects": {
-						"atk_light": 0.08,
-						"atk_armor": 0.08,
-						"atk_air": 0.08
-					}
-				}
-			],
-			"active_spells": [
-				{
-					"id": "cyclonus_storm",
-					"name": "风暴之眼",
-					"description": "每11秒释放强力连锁闪电，跳跃打击玩家单位",
-					"effect": "tesla_chain",
-					"cooldown": 11.0,
-					"params": {
-						"damage_mult": 1.5
-					}
-				},
-				{
-					"id": "cyclonus_judgment",
-					"name": "风暴审判",
-					"description": "每13秒对生命最高的玩家单位降下雷罚",
-					"effect": "god_weapon_single",
-					"cooldown": 13.0,
-					"params": {
-						"damage_mult": 1.6
-					}
-				},
-				{
-					"id": "cyclonus_disruption",
-					"name": "电磁干扰",
-					"description": "每16秒释放EMP，降低玩家单位攻速与暴击",
-					"effect": "emp_pulse",
-					"cooldown": 16.0,
-					"params": {
-						"attack_speed_penalty": 0.3,
-						"crit_penalty": 0.25,
-						"duration": 6.0
-					}
-				}
-			],
-			"passive_spells": [
-				{
-					"id": "storm_speed",
-					"name": "风暴骑手",
-					"description": "暴击率+8%，闪避+5%",
-					"effect": "storm_speed",
-					"params": {
-						"crit_chance": 0.08,
-						"dodge_chance": 0.05
-					}
-				},
-				{
-					"id": "periodic_electric_shock",
-					"name": "电场",
-					"description": "周围敌人每3秒受到一次电击",
-					"effect": "periodic_electric_shock",
-					"params": {
-						"interval": 3,
-						"damage": 100
-					}
-				}
-			],
-			"equipment": {
-				"phase_instrument": "pi_thunder_04",
-				"level": 27,
-				"platforms": [
-					"mod_boss_command",
-					"mod_boss_command",
-					"mod_air_apache_e",
-					"mod_arm_abrams_e",
-					"mod_arm_stryker_e",
-					"mod_arty_mlrs_e"
-				],
-				"weapons": [
-					"tesla_coil_expert",
-					"railgun_expert"
-				],
-				"energy_cards": [
-					"thunder_energy_expert"
-				]
-			},
-			"stats": {
-				"max_hp": 18050,
-				"attack_power": 214,
-				"defense": 30,
-				"energy_regen": 4.8,
-				"unit_limit": 8
-			}
-		},
-		{
-			"id": "enemy_master_025",
-			"name": "暗影主宰·深渊",
-			"title": "暗影之王",
-			"level": 28,
-			"faction": "void",
-			"difficulty": "legendary",
-			"traits": [
-				{
-					"id": "shadow_realm",
-					"name": "暗影领域",
-					"description": "三维攻击+15%",
-					"effects": {
-						"atk_light": 0.15,
-						"atk_armor": 0.15,
-						"atk_air": 0.15
-					}
-				}
-			],
-			"active_spells": [
-				{
-					"id": "abyss_void",
-					"name": "深渊降临",
-					"description": "每12秒引发虚空灾变，对全体玩家单位造成毁灭范围伤害",
-					"effect": "void_apocalypse",
-					"cooldown": 12.0,
-					"params": {
-						"damage_mult": 1.6
-					}
-				},
-				{
-					"id": "abyss_devour",
-					"name": "深渊吞噬",
-					"description": "每10秒对生命最高的玩家单位发动吞噬打击",
-					"effect": "devour_single",
-					"cooldown": 10.0,
-					"params": {
-						"damage_mult": 1.8
-					}
-				}
-			],
-			"passive_spells": [
-				{
-					"id": "teleport_behind",
-					"name": "暗影步",
-					"description": "友军可以瞬间移动到敌人身后",
-					"effect": "teleport_behind",
-					"params": {
-						"cooldown": 8
-					}
-				},
-				{
-					"id": "execute_damage",
-					"name": "暗杀",
-					"description": "攻击低生命值敌人时，伤害提升100%",
-					"effect": "execute_damage",
-					"params": {
-						"threshold": 0.3,
-						"damage_boost": 1
-					}
-				}
-			],
-			"equipment": {
-				"phase_instrument": "pi_void_04",
-				"level": 28,
-				"platforms": [
-					"fut_boss_nexus",
-					"fut_arm_colossus_e",
-					"fut_arm_colossus_e",
-					"fut_arm_mech_e",
-					"fut_inf_spectre_e",
-					"fut_air_drone"
-				],
-				"weapons": [
-					"void_lance_expert",
-					"entropy_caster_expert"
-				],
-				"energy_cards": [
-					"void_energy_expert"
-				]
-			},
-			"stats": {
-				"max_hp": 22950,
-				"attack_power": 315,
-				"defense": 41,
-				"energy_regen": 4.5,
-				"unit_limit": 7
-			}
-		},
-		{
-			"id": "enemy_master_026",
-			"name": "钢铁之神·赫淮斯托斯",
-			"title": "锻造之神",
-			"level": 28,
-			"faction": "steel",
-			"difficulty": "legendary",
-			"traits": [
-				{
-					"id": "divine_forging",
-					"name": "神圣锻造",
-					"description": "每场战斗可使用一次神圣变身：全队全属性+80%持续15秒",
-					"effects": {
-						"divine_transform": {
-							"duration": 15,
-							"all_stat_boost": 0.8
-						}
-					}
-				},
-				{
-					"id": "cheat_death",
-					"name": "神之庇护",
-					"description": "友军受到致命伤害时，有40%概率保留1点生命值（每单位一次）",
-					"effects": {
-						"cheat_death_chance": 0.4
-					}
-				}
-			],
-			"active_spells": [
-				{
-					"id": "hephaestus_aegis",
-					"name": "神之壁垒",
-					"description": "每12秒为自身施加35%最大生命值护盾",
-					"effect": "ward_bulwark",
-					"cooldown": 12.0,
-					"params": {
-						"shield_pct": 0.35
-					}
-				},
-				{
-					"id": "hephaestus_forge",
-					"name": "神之熔炉",
-					"description": "每14秒锻造钢铁神兵单位增援战场",
-					"effect": "forge_summon",
-					"cooldown": 14.0
-				}
-			],
-			"passive_spells": [
-				{
-					"id": "massive_heal_aura",
-					"name": "神之光环",
-					"description": "周围友军每秒恢复4%最大生命值",
-					"effect": "massive_heal_aura",
-					"params": {
-						"heal_percent": 0.04,
-						"radius": 250
-					}
-				}
-			],
-			"equipment": {
-				"phase_instrument": "pi_steel_05",
-				"level": 28,
-				"platforms": [
-					"fut_boss_nexus",
-					"fut_arm_colossus_e",
-					"fut_arm_colossus_e",
-					"fut_arm_hovertank_e",
-					"fut_arm_mech_e",
-					"fut_inf_cyborg"
-				],
-				"weapons": [
-					"steel_gatling_expert",
-					"steel_artillery_expert"
-				],
-				"energy_cards": [
-					"steel_energy_god"
-				]
-			},
-			"stats": {
-				"max_hp": 22950,
-				"attack_power": 315,
-				"defense": 76,
-				"energy_regen": 4,
-				"unit_limit": 12
-			}
-		},
-		{
-			"id": "enemy_master_027",
-			"name": "炎魔之神·赫卡特",
-			"title": "炼狱女王",
-			"level": 29,
-			"faction": "flame",
-			"difficulty": "legendary",
-			"traits": [
-				{
-					"id": "hell_queen",
-					"name": "炼狱女王",
-					"description": "三维攻击+15%；全队单位死亡后3秒自动复活(50%HP)",
-					"effects": {
-						"atk_light": 0.15,
-						"atk_armor": 0.15,
-						"atk_air": 0.15,
-						"auto_resurrect": {
-							"delay": 3,
-							"hp": 0.5
-						}
-					}
-				},
-				{
-					"id": "global_burn",
-					"name": "世界燃烧",
-					"description": "每秒对所有敌人造成150伤害",
-					"effects": {
-						"global_dot": 150
-					}
-				}
-			],
-			"active_spells": [
-				{
-					"id": "hecate_inferno",
-					"name": "魔神地狱火",
-					"description": "每11秒引爆地狱烈焰，对全体玩家单位造成毁灭范围伤害",
-					"effect": "hell_inferno",
-					"cooldown": 11.0,
-					"params": {
-						"damage_mult": 1.7
-					}
-				},
-				{
-					"id": "hecate_apocalypse",
-					"name": "末日审判",
-					"description": "每14秒召唤陨石雨，对全体玩家单位造成末日伤害",
-					"effect": "meteor_apocalypse",
-					"cooldown": 14.0,
-					"params": {
-						"damage_mult": 1.6
-					}
-				}
-			],
-			"passive_spells": [
-				{
-					"id": "auto_resurrect",
-					"name": "不朽之火",
-					"description": "友军不会真正死亡，而是3秒后复活",
-					"effect": "auto_resurrect",
-					"params": {
-						"resurrect_delay": 3,
-						"resurrect_hp": 0.5
-					}
-				},
-				{
-					"id": "global_dot",
-					"name": "世界燃烧",
-					"description": "每秒对所有敌人造成150伤害",
-					"effect": "global_dot",
-					"params": {
-						"damage": 150
-					}
-				}
-			],
-			"equipment": {
-				"phase_instrument": "pi_flame_05",
-				"level": 29,
-				"platforms": [
-					"fut_arm_colossus_e",
-					"fut_arm_hovertank_e",
-					"fut_boss_nexus",
-					"fut_inf_spectre_e",
-					"fut_arm_mech_e"
-				],
-				"weapons": [
-					"flame_thrower_expert",
-					"plasma_cannon_expert"
-				],
-				"energy_cards": [
-					"flame_energy_god"
-				]
-			},
-			"stats": {
-				"max_hp": 23200,
-				"attack_power": 320,
-				"defense": 50,
-				"energy_regen": 4.5,
-				"unit_limit": 11
-			}
-		},
-		{
-			"id": "enemy_master_028",
-			"name": "雷神·托尔",
-			"title": "雷霆之神",
-			"level": 29,
-			"faction": "thunder",
-			"difficulty": "legendary",
-			"traits": [
-				{
-					"id": "god_of_thunder",
-					"name": "雷霆之神",
-					"description": "三维攻击+15%",
-					"effects": {
-						"atk_light": 0.15,
-						"atk_armor": 0.15,
-						"atk_air": 0.15
-					}
-				},
-				{
-					"id": "thunder_dome",
-					"name": "雷霆穹顶",
-					"description": "每60秒自动展开雷霆穹顶，保护友军5秒",
-					"effects": {
-						"auto_thunder_dome": {
-							"interval": 60,
-							"duration": 5
-						}
-					}
-				}
-			],
-			"active_spells": [
-				{
-					"id": "thor_mjolnir",
-					"name": "雷霆之锤",
-					"description": "每10秒释放连锁闪电，跳跃打击玩家单位",
-					"effect": "tesla_chain",
-					"cooldown": 10.0,
-					"params": {
-						"damage_mult": 1.7
-					}
-				},
-				{
-					"id": "thor_judgment",
-					"name": "雷神审判",
-					"description": "每12秒对生命最高的玩家单位降下雷罚",
-					"effect": "god_weapon_single",
-					"cooldown": 12.0,
-					"params": {
-						"damage_mult": 1.8
-					}
-				}
-			],
-			"passive_spells": [],
-			"equipment": {
-				"phase_instrument": "pi_thunder_05",
-				"level": 29,
-				"platforms": [
-					"fut_boss_nexus",
-					"fut_boss_nexus",
-					"fut_arm_colossus_e",
-					"fut_arm_hovertank_e",
-					"fut_inf_spectre_e",
-					"fut_air_drone"
-				],
-				"weapons": [
-					"tesla_coil_expert",
-					"railgun_expert"
-				],
-				"energy_cards": [
-					"thunder_energy_god"
-				]
-			},
-			"stats": {
-				"max_hp": 23200,
-				"attack_power": 320,
-				"defense": 50,
-				"energy_regen": 6,
-				"unit_limit": 10
-			}
-		},
-		{
-			"id": "enemy_master_029",
-			"name": "虚空女神·尼克斯",
-			"title": "夜之女神",
-			"level": 30,
-			"faction": "void",
-			"difficulty": "legendary",
-			"traits": [
-				{
-					"id": "void_goddess_trait",
-					"name": "夜之女神",
-					"description": "虚空伤害+200%；永久黑暗(敌方命中率-60%)；可转化1个敌方单位",
-					"effects": {
-						"void_damage_boost": 2,
-						"permanent_darkness": 0.6,
-						"mass_convert_once": true
-					}
-				},
-				{
-					"id": "reality_erasure",
-					"name": "现实抹除",
-					"description": "每90秒可抹除1个敌方单位",
-					"effects": {
-						"instant_delete": {
-							"cooldown": 90
-						}
-					}
-				}
-			],
-			"active_spells": [
-				{
-					"id": "nyx_eternal_night",
-					"name": "永夜降临",
-					"description": "每10秒引发虚空灾变，对全体玩家单位造成毁灭范围伤害",
-					"effect": "void_apocalypse",
-					"cooldown": 10.0,
-					"params": {
-						"damage_mult": 1.7
-					}
-				},
-				{
-					"id": "nyx_darkness",
-					"name": "永恒黑暗",
-					"description": "每13秒笼罩玩家单位于黑暗，大幅降低攻速暴击闪避",
-					"effect": "darkness_debuff",
-					"cooldown": 13.0,
-					"params": {
-						"attack_speed_penalty": 0.4,
-						"crit_penalty": 0.3,
-						"dodge_penalty": 0.25,
-						"duration": 7.0
-					}
-				},
-				{
-					"id": "nyx_devour",
-					"name": "虚空吞噬",
-					"description": "每11秒对生命最高的玩家单位发动吞噬打击",
-					"effect": "devour_single",
-					"cooldown": 11.0,
-					"params": {
-						"damage_mult": 1.9
-					}
-				}
-			],
-			"passive_spells": [
-				{
-					"id": "goddess_mastery",
-					"name": "虚空女神",
-					"description": "三维攻击+15%",
-					"effect": "goddess_mastery",
-					"params": {
-						"damage_boost": 0.15
-					}
-				},
-				{
-					"id": "permanent_darkness",
-					"name": "永恒之夜",
-					"description": "战场永远保持黑暗状态，敌人命中率降低60%",
-					"effect": "permanent_darkness",
-					"params": {
-						"accuracy_reduction": 0.6
-					}
-				}
-			],
-			"equipment": {
-				"phase_instrument": "pi_void_05",
-				"level": 30,
-				"platforms": [
-					"fut_inf_cyborg",
-					"fut_arm_hovertank_e",
-					"fut_boss_nexus",
-					"fut_inf_spectre_e",
-					"fut_arm_colossus_e",
-					"fut_air_drone"
-				],
-				"weapons": [
-					"void_lance_expert",
-					"entropy_caster_expert"
-				],
-				"energy_cards": [
-					"void_energy_god"
-				]
-			},
-			"stats": {
-				"max_hp": 23450,
-				"attack_power": 325,
-				"defense": 44,
-				"energy_regen": 5.5,
-				"unit_limit": 9
-			}
-		},
-		{
-			"id": "enemy_master_030",
-			"name": "全能相位师·奥米伽",
-			"title": "完美融合",
-			"level": 30,
-			"faction": "all",
-			"difficulty": "ultimate",
-			"traits": [
-				{
-					"id": "master_of_all",
-					"name": "万物主宰",
-					"description": "三维攻击+15%",
-					"effects": {
-						"atk_light": 0.15,
-						"atk_armor": 0.15,
-						"atk_air": 0.15
-					}
-				},
-				{
-					"id": "infinite_potential",
-					"name": "无限潜能",
-					"description": "HP+15%，三维防御+10%",
-					"effects": {
-						"hp": 0.15,
-						"def_light": 0.1,
-						"def_armor": 0.1,
-						"def_air": 0.1
-					}
-				}
-			],
-			"active_spells": [
-				{
-					"id": "omega_apocalypse",
-					"name": "终末启示",
-					"description": "每9秒引发终极虚空灾变，对全体玩家单位造成毁灭范围伤害",
-					"effect": "void_apocalypse",
-					"cooldown": 9.0,
-					"params": {
-						"damage_mult": 2.0
-					}
-				},
-				{
-					"id": "omega_thunder",
-					"name": "终末雷霆",
-					"description": "每11秒释放终极连锁闪电，跳跃打击玩家单位",
-					"effect": "tesla_chain",
-					"cooldown": 11.0,
-					"params": {
-						"damage_mult": 2.0
-					}
-				},
-				{
-					"id": "omega_judgment",
-					"name": "终焉裁决",
-					"description": "每10秒对生命最高的玩家单位降下终焉打击",
-					"effect": "god_weapon_single",
-					"cooldown": 10.0,
-					"params": {
-						"damage_mult": 2.0
-					}
-				}
-			],
-			"passive_spells": [
-				{
-					"id": "omni_mastery",
-					"name": "万物主宰",
-					"description": "三维攻击+15%",
-					"effect": "omni_mastery",
-					"params": {
-						"damage_boost": 0.15
-					}
-				},
-				{
-					"id": "infinite_scaling",
-					"name": "无限潜能",
-					"description": "每使用一个技能，所有属性提升8%，无上限",
-					"effect": "infinite_scaling",
-					"params": {
-						"boost_per_cast": 0.08
-					}
-				}
-			],
-			"equipment": {
-				"phase_instrument": "pi_omega_01",
-				"level": 30,
-				"platforms": [
-					"fut_boss_nexus",
-					"fut_boss_nexus",
-					"fut_arm_colossus_e",
-					"fut_arm_colossus_e",
-					"fut_arm_hovertank_e",
-					"fut_arm_mech_e"
-				],
-				"weapons": [
-					"railgun_expert",
-					"plasma_cannon_expert"
-				],
-				"energy_cards": [
-					"hybrid_energy_god"
-				]
-			},
-			"stats": {
-				"max_hp": 23450,
-				"attack_power": 325,
-				"defense": 47,
-				"energy_regen": 8,
-				"unit_limit": 15
-			}
-		}
-	]
+  "schema_version": 1,
+  "source": "data/enemy_phase_masters.gd",
+  "key": "ENEMY_MASTERS",
+  "data": [
+    {
+      "id": "enemy_master_001",
+      "name": "钢铁先锋·马库斯",
+      "title": "钢铁防线守卫",
+      "level": 5,
+      "faction": "steel",
+      "difficulty": "easy",
+      "equipment": {
+        "phase_instrument": "pi_steel_02",
+        "level": 5,
+        "platforms": [
+          "steel_fortress_basic",
+          "steel_titan_basic"
+        ],
+        "weapons": [
+          "steel_machinegun_basic",
+          "steel_cannon_basic"
+        ],
+        "energy_cards": [
+          "steel_energy_basic"
+        ]
+      },
+      "stats": {
+        "max_hp": 2900,
+        "attack_power": 36,
+        "defense": 32,
+        "energy_regen": 2,
+        "unit_limit": 5
+      }
+    },
+    {
+      "id": "enemy_master_002",
+      "name": "烈焰使者·伊格尼斯",
+      "title": "火焰狂暴者",
+      "level": 6,
+      "faction": "flame",
+      "difficulty": "easy",
+      "equipment": {
+        "phase_instrument": "pi_flame_02",
+        "level": 6,
+        "platforms": [
+          "flame_raider_basic",
+          "flame_siege_basic"
+        ],
+        "weapons": [
+          "flame_thrower_basic",
+          "incendiary_mortar_basic"
+        ],
+        "energy_cards": [
+          "flame_energy_basic"
+        ]
+      },
+      "stats": {
+        "max_hp": 2950,
+        "attack_power": 37,
+        "defense": 25,
+        "energy_regen": 2.5,
+        "unit_limit": 6
+      }
+    },
+    {
+      "id": "enemy_master_003",
+      "name": "雷击者·沃尔特",
+      "title": "闪电链大师",
+      "level": 7,
+      "faction": "thunder",
+      "difficulty": "medium",
+      "equipment": {
+        "phase_instrument": "pi_thunder_02",
+        "level": 7,
+        "platforms": [
+          "thunter_striker_basic",
+          "thunter_sniper_basic"
+        ],
+        "weapons": [
+          "tesla_coil_basic",
+          "railgun_basic"
+        ],
+        "energy_cards": [
+          "thunder_energy_basic"
+        ]
+      },
+      "stats": {
+        "max_hp": 2950,
+        "attack_power": 38,
+        "defense": 25,
+        "energy_regen": 3,
+        "unit_limit": 5
+      }
+    },
+    {
+      "id": "enemy_master_004",
+      "name": "虚空行者·奈克萨斯",
+      "title": "时空操纵者",
+      "level": 8,
+      "faction": "void",
+      "difficulty": "medium",
+      "equipment": {
+        "phase_instrument": "pi_void_02",
+        "level": 8,
+        "platforms": [
+          "void_stealth_basic",
+          "void_mage_basic"
+        ],
+        "weapons": [
+          "void_lance_basic",
+          "gravity_well_basic"
+        ],
+        "energy_cards": [
+          "void_energy_basic"
+        ]
+      },
+      "stats": {
+        "max_hp": 3000,
+        "attack_power": 39,
+        "defense": 29,
+        "energy_regen": 2.8,
+        "unit_limit": 5
+      }
+    },
+    {
+      "id": "enemy_master_005",
+      "name": "钢铁元帅·克劳斯",
+      "title": "不可破之盾",
+      "level": 10,
+      "faction": "steel",
+      "difficulty": "medium",
+      "equipment": {
+        "phase_instrument": "pi_steel_03",
+        "level": 10,
+        "platforms": [
+          "ww1_boss_av7",
+          "ww1_boss_av7",
+          "ww1_arm_rolls_e",
+          "ww1_inf_storm_e"
+        ],
+        "weapons": [
+          "steel_minigun_advanced",
+          "steel_railcannon_advanced"
+        ],
+        "energy_cards": [
+          "steel_energy_advanced"
+        ]
+      },
+      "stats": {
+        "max_hp": 3100,
+        "attack_power": 41,
+        "defense": 35,
+        "energy_regen": 2.5,
+        "unit_limit": 7
+      }
+    },
+    {
+      "id": "enemy_master_006",
+      "name": "炎魔女王·赫卡特",
+      "title": "毁灭之焰",
+      "level": 12,
+      "faction": "flame",
+      "difficulty": "medium",
+      "equipment": {
+        "phase_instrument": "pi_flame_03",
+        "level": 12,
+        "platforms": [
+          "ww1_boss_av7",
+          "ww1_arm_rolls_e",
+          "ww1_arm_rolls_e",
+          "ww1_inf_storm_e"
+        ],
+        "weapons": [
+          "flame_thrower_advanced",
+          "incendiary_cannon_advanced"
+        ],
+        "energy_cards": [
+          "flame_energy_advanced"
+        ]
+      },
+      "stats": {
+        "max_hp": 3200,
+        "attack_power": 43,
+        "defense": 23,
+        "energy_regen": 3,
+        "unit_limit": 7
+      }
+    },
+    {
+      "id": "enemy_master_007",
+      "name": "雷神之子·索尔",
+      "title": "万钧雷霆",
+      "level": 13,
+      "faction": "thunder",
+      "difficulty": "hard",
+      "equipment": {
+        "phase_instrument": "pi_thunder_03",
+        "level": 13,
+        "platforms": [
+          "ww1_boss_av7",
+          "ww1_boss_av7",
+          "ww1_arm_rolls_e",
+          "ww1_sup_mg_nest"
+        ],
+        "weapons": [
+          "tesla_coil_advanced",
+          "railgun_advanced"
+        ],
+        "energy_cards": [
+          "thunder_energy_advanced"
+        ]
+      },
+      "stats": {
+        "max_hp": 5200,
+        "attack_power": 73,
+        "defense": 32,
+        "energy_regen": 3.5,
+        "unit_limit": 6
+      }
+    },
+    {
+      "id": "enemy_master_008",
+      "name": "虚空领主·萨洛斯",
+      "title": "维度撕裂者",
+      "level": 14,
+      "faction": "void",
+      "difficulty": "hard",
+      "equipment": {
+        "phase_instrument": "pi_void_03",
+        "level": 14,
+        "platforms": [
+          "ww2_boss_kingtiger",
+          "ww2_arm_panther_e",
+          "ww2_arm_panther_e",
+          "ww2_inf_panzerschreck_e",
+          "ww2_inf_para_e"
+        ],
+        "weapons": [
+          "void_lance_advanced",
+          "gravity_well_advanced"
+        ],
+        "energy_cards": [
+          "void_energy_advanced"
+        ]
+      },
+      "stats": {
+        "max_hp": 5250,
+        "attack_power": 74,
+        "defense": 34,
+        "energy_regen": 3.8,
+        "unit_limit": 6
+      }
+    },
+    {
+      "id": "enemy_master_009",
+      "name": "钢铁军团长·费米",
+      "title": "钢铁军团统帅",
+      "level": 16,
+      "faction": "steel",
+      "difficulty": "hard",
+      "equipment": {
+        "phase_instrument": "pi_steel_04",
+        "level": 16,
+        "platforms": [
+          "ww2_boss_kingtiger",
+          "ww2_boss_kingtiger",
+          "ww2_arm_panther_e",
+          "ww2_inf_panzerschreck_e",
+          "ww2_inf_para_e"
+        ],
+        "weapons": [
+          "steel_gatling_expert",
+          "steel_artillery_expert"
+        ],
+        "energy_cards": [
+          "steel_energy_expert"
+        ]
+      },
+      "stats": {
+        "max_hp": 5400,
+        "attack_power": 78,
+        "defense": 46,
+        "energy_regen": 3,
+        "unit_limit": 8
+      }
+    },
+    {
+      "id": "enemy_master_010",
+      "name": "炎帝·普罗米修斯",
+      "title": "永恒烈焰",
+      "level": 17,
+      "faction": "flame",
+      "difficulty": "hard",
+      "equipment": {
+        "phase_instrument": "pi_flame_04",
+        "level": 17,
+        "platforms": [
+          "ww2_arm_panther_e",
+          "ww2_inf_panzerschreck_e",
+          "ww2_boss_kingtiger",
+          "ww2_inf_para_e"
+        ],
+        "weapons": [
+          "flame_thrower_expert",
+          "plasma_cannon_expert"
+        ],
+        "energy_cards": [
+          "flame_energy_expert"
+        ]
+      },
+      "stats": {
+        "max_hp": 5450,
+        "attack_power": 79,
+        "defense": 30,
+        "energy_regen": 3.5,
+        "unit_limit": 8
+      }
+    },
+    {
+      "id": "enemy_master_011",
+      "name": "雷皇·宙斯",
+      "title": "雷霆主宰",
+      "level": 18,
+      "faction": "thunder",
+      "difficulty": "hard",
+      "equipment": {
+        "phase_instrument": "pi_thunder_04",
+        "level": 18,
+        "platforms": [
+          "ww2_boss_kingtiger",
+          "ww2_arm_panther_e",
+          "ww2_arm_panther_e",
+          "ww2_sup_mg42",
+          "ww2_inf_panzerschreck_e"
+        ],
+        "weapons": [
+          "tesla_coil_expert",
+          "railgun_expert"
+        ],
+        "energy_cards": [
+          "thunder_energy_expert"
+        ]
+      },
+      "stats": {
+        "max_hp": 5550,
+        "attack_power": 81,
+        "defense": 30,
+        "energy_regen": 4,
+        "unit_limit": 7
+      }
+    },
+    {
+      "id": "enemy_master_012",
+      "name": "虚空虚主·阿扎托斯",
+      "title": "虚空君王",
+      "level": 19,
+      "faction": "void",
+      "difficulty": "expert",
+      "equipment": {
+        "phase_instrument": "pi_void_04",
+        "level": 19,
+        "platforms": [
+          "ww2_boss_kingtiger",
+          "ww2_boss_kingtiger",
+          "ww2_arm_panther_e",
+          "ww2_sup_mg42",
+          "ww2_inf_para_e"
+        ],
+        "weapons": [
+          "void_lance_expert",
+          "entropy_caster_expert"
+        ],
+        "energy_cards": [
+          "void_energy_expert"
+        ]
+      },
+      "stats": {
+        "max_hp": 5600,
+        "attack_power": 82,
+        "defense": 29,
+        "energy_regen": 4.2,
+        "unit_limit": 7
+      }
+    },
+    {
+      "id": "enemy_master_013",
+      "name": "钢铁烈焰·卡尔",
+      "title": "熔铸大师",
+      "level": 18,
+      "faction": "steel_flame",
+      "difficulty": "hard",
+      "equipment": {
+        "phase_instrument": "pi_steelflame_01",
+        "level": 18,
+        "platforms": [
+          "cold_arm_t72_e",
+          "cold_arm_t72_e",
+          "cold_arm_btr_e",
+          "cold_air_m113_e",
+          "cold_inf_ak"
+        ],
+        "weapons": [
+          "steel_gatling_expert",
+          "flame_thrower_expert"
+        ],
+        "energy_cards": [
+          "hybrid_energy_basic"
+        ]
+      },
+      "stats": {
+        "max_hp": 9450,
+        "attack_power": 121,
+        "defense": 37,
+        "energy_regen": 3.2,
+        "unit_limit": 8
+      }
+    },
+    {
+      "id": "enemy_master_014",
+      "name": "雷霆钢铁·维克多",
+      "title": "电磁装甲师",
+      "level": 19,
+      "faction": "thunder_steel",
+      "difficulty": "hard",
+      "equipment": {
+        "phase_instrument": "pi_steelthunder_01",
+        "level": 19,
+        "platforms": [
+          "cold_arm_t72_e",
+          "cold_arm_btr_e",
+          "cold_air_m113_e",
+          "cold_inf_spetsnaz_e",
+          "cold_boss_mig"
+        ],
+        "weapons": [
+          "steel_railcannon_advanced",
+          "tesla_coil_expert"
+        ],
+        "energy_cards": [
+          "hybrid_energy_basic"
+        ]
+      },
+      "stats": {
+        "max_hp": 9550,
+        "attack_power": 124,
+        "defense": 46,
+        "energy_regen": 3.5,
+        "unit_limit": 7
+      }
+    },
+    {
+      "id": "enemy_master_015",
+      "name": "虚空烈焰·塞拉菲娜",
+      "title": "熵增炎魔",
+      "level": 20,
+      "faction": "void_flame",
+      "difficulty": "expert",
+      "equipment": {
+        "phase_instrument": "pi_flamevoid_01",
+        "level": 20,
+        "platforms": [
+          "cold_boss_mig",
+          "cold_arm_t72_e",
+          "cold_arm_t72_e",
+          "cold_air_m113_e",
+          "cold_inf_spetsnaz_e"
+        ],
+        "weapons": [
+          "entropy_caster_expert",
+          "plasma_cannon_expert"
+        ],
+        "energy_cards": [
+          "hybrid_energy_advanced"
+        ]
+      },
+      "stats": {
+        "max_hp": 9700,
+        "attack_power": 126,
+        "defense": 29,
+        "energy_regen": 3.8,
+        "unit_limit": 7
+      }
+    },
+    {
+      "id": "enemy_master_016",
+      "name": "不朽钢铁·阿特拉斯",
+      "title": "世界承载者",
+      "level": 22,
+      "faction": "steel",
+      "difficulty": "expert",
+      "equipment": {
+        "phase_instrument": "pi_steel_04",
+        "level": 22,
+        "platforms": [
+          "cold_boss_mig",
+          "cold_arm_t72_e",
+          "cold_arm_t72_e",
+          "cold_air_m113_e",
+          "cold_inf_spetsnaz_e",
+          "cold_arm_btr_e"
+        ],
+        "weapons": [
+          "steel_gatling_expert",
+          "steel_artillery_expert"
+        ],
+        "energy_cards": [
+          "steel_energy_expert"
+        ]
+      },
+      "stats": {
+        "max_hp": 9900,
+        "attack_power": 131,
+        "defense": 36,
+        "energy_regen": 3.5,
+        "unit_limit": 9
+      }
+    },
+    {
+      "id": "enemy_master_017",
+      "name": "永恒炎魔·苏尔特",
+      "title": "诸神黄昏",
+      "level": 23,
+      "faction": "flame",
+      "difficulty": "expert",
+      "equipment": {
+        "phase_instrument": "pi_flame_04",
+        "level": 23,
+        "platforms": [
+          "cold_arm_t72_e",
+          "cold_inf_ak",
+          "cold_boss_mig",
+          "cold_arm_btr_e"
+        ],
+        "weapons": [
+          "flame_thrower_expert",
+          "plasma_cannon_expert"
+        ],
+        "energy_cards": [
+          "flame_energy_expert"
+        ]
+      },
+      "stats": {
+        "max_hp": 10000,
+        "attack_power": 133,
+        "defense": 24,
+        "energy_regen": 4,
+        "unit_limit": 8
+      }
+    },
+    {
+      "id": "enemy_master_018",
+      "name": "万雷之主·雷神",
+      "title": "雷霆化身",
+      "level": 24,
+      "faction": "thunder",
+      "difficulty": "expert",
+      "equipment": {
+        "phase_instrument": "pi_thunder_04",
+        "level": 24,
+        "platforms": [
+          "cold_boss_mig",
+          "cold_boss_mig",
+          "cold_arm_t72_e",
+          "cold_air_m113_e",
+          "cold_inf_spetsnaz_e",
+          "cold_arm_btr_e"
+        ],
+        "weapons": [
+          "tesla_coil_expert",
+          "railgun_expert"
+        ],
+        "energy_cards": [
+          "thunder_energy_expert"
+        ]
+      },
+      "stats": {
+        "max_hp": 10150,
+        "attack_power": 136,
+        "defense": 23,
+        "energy_regen": 4.5,
+        "unit_limit": 8
+      }
+    },
+    {
+      "id": "enemy_master_019",
+      "name": "虚空主宰·尼德霍格",
+      "title": "世界吞噬者",
+      "level": 25,
+      "faction": "void",
+      "difficulty": "expert",
+      "equipment": {
+        "phase_instrument": "pi_void_04",
+        "level": 25,
+        "platforms": [
+          "mod_boss_command",
+          "mod_arm_abrams_e",
+          "mod_arm_abrams_e",
+          "mod_air_apache_e",
+          "mod_arm_stryker_e",
+          "mod_inf_delta_e"
+        ],
+        "weapons": [
+          "void_lance_expert",
+          "entropy_caster_expert"
+        ],
+        "energy_cards": [
+          "void_energy_expert"
+        ]
+      },
+      "stats": {
+        "max_hp": 17650,
+        "attack_power": 207,
+        "defense": 40,
+        "energy_regen": 4.5,
+        "unit_limit": 8
+      }
+    },
+    {
+      "id": "enemy_master_020",
+      "name": "钢铁雷霆·泰尔",
+      "title": "电磁战神",
+      "level": 24,
+      "faction": "steel_thunder",
+      "difficulty": "expert",
+      "equipment": {
+        "phase_instrument": "pi_steelthunder_01",
+        "level": 24,
+        "platforms": [
+          "mod_boss_command",
+          "mod_arm_abrams_e",
+          "mod_arm_abrams_e",
+          "mod_arm_stryker_e",
+          "mod_air_apache_e",
+          "mod_inf_delta_e"
+        ],
+        "weapons": [
+          "steel_gatling_expert",
+          "tesla_coil_expert"
+        ],
+        "energy_cards": [
+          "hybrid_energy_advanced"
+        ]
+      },
+      "stats": {
+        "max_hp": 17450,
+        "attack_power": 203,
+        "defense": 56,
+        "energy_regen": 4,
+        "unit_limit": 8
+      }
+    },
+    {
+      "id": "enemy_master_021",
+      "name": "烈焰虚空·克尔加",
+      "title": "混沌炎魔",
+      "level": 25,
+      "faction": "flame_void",
+      "difficulty": "legendary",
+      "equipment": {
+        "phase_instrument": "pi_flamevoid_01",
+        "level": 25,
+        "platforms": [
+          "mod_arm_abrams_e",
+          "mod_arty_mlrs_e",
+          "mod_boss_command",
+          "mod_air_apache_e"
+        ],
+        "weapons": [
+          "plasma_cannon_expert",
+          "entropy_caster_expert"
+        ],
+        "energy_cards": [
+          "hybrid_energy_advanced"
+        ]
+      },
+      "stats": {
+        "max_hp": 17650,
+        "attack_power": 207,
+        "defense": 37,
+        "energy_regen": 4.5,
+        "unit_limit": 7
+      }
+    },
+    {
+      "id": "enemy_master_022",
+      "name": "战争机器·铁骑",
+      "title": "钢铁风暴",
+      "level": 26,
+      "faction": "steel",
+      "difficulty": "legendary",
+      "equipment": {
+        "phase_instrument": "pi_steel_04",
+        "level": 26,
+        "platforms": [
+          "mod_boss_command",
+          "mod_arm_abrams_e",
+          "mod_arm_abrams_e",
+          "mod_arm_stryker_e",
+          "mod_air_apache_e",
+          "mod_arty_mlrs_e"
+        ],
+        "weapons": [
+          "steel_gatling_expert",
+          "steel_artillery_expert"
+        ],
+        "energy_cards": [
+          "steel_energy_expert"
+        ]
+      },
+      "stats": {
+        "max_hp": 17850,
+        "attack_power": 211,
+        "defense": 55,
+        "energy_regen": 3.5,
+        "unit_limit": 10
+      }
+    },
+    {
+      "id": "enemy_master_023",
+      "name": "火术宗师·凤凰",
+      "title": "不死鸟",
+      "level": 27,
+      "faction": "flame",
+      "difficulty": "legendary",
+      "equipment": {
+        "phase_instrument": "pi_flame_04",
+        "level": 27,
+        "platforms": [
+          "mod_arm_abrams_e",
+          "mod_arty_mlrs_e",
+          "mod_boss_command",
+          "mod_air_apache_e",
+          "mod_inf_delta_e"
+        ],
+        "weapons": [
+          "flame_thrower_expert",
+          "plasma_cannon_expert"
+        ],
+        "energy_cards": [
+          "flame_energy_expert"
+        ]
+      },
+      "stats": {
+        "max_hp": 18050,
+        "attack_power": 214,
+        "defense": 32,
+        "energy_regen": 4.2,
+        "unit_limit": 9
+      }
+    },
+    {
+      "id": "enemy_master_024",
+      "name": "风暴使者·赛勒斯",
+      "title": "疾风迅雷",
+      "level": 27,
+      "faction": "thunder",
+      "difficulty": "legendary",
+      "equipment": {
+        "phase_instrument": "pi_thunder_04",
+        "level": 27,
+        "platforms": [
+          "mod_boss_command",
+          "mod_boss_command",
+          "mod_air_apache_e",
+          "mod_arm_abrams_e",
+          "mod_arm_stryker_e",
+          "mod_arty_mlrs_e"
+        ],
+        "weapons": [
+          "tesla_coil_expert",
+          "railgun_expert"
+        ],
+        "energy_cards": [
+          "thunder_energy_expert"
+        ]
+      },
+      "stats": {
+        "max_hp": 18050,
+        "attack_power": 214,
+        "defense": 30,
+        "energy_regen": 4.8,
+        "unit_limit": 8
+      }
+    },
+    {
+      "id": "enemy_master_025",
+      "name": "暗影主宰·深渊",
+      "title": "暗影之王",
+      "level": 28,
+      "faction": "void",
+      "difficulty": "legendary",
+      "equipment": {
+        "phase_instrument": "pi_void_04",
+        "level": 28,
+        "platforms": [
+          "fut_boss_nexus",
+          "fut_arm_colossus_e",
+          "fut_arm_colossus_e",
+          "fut_arm_mech_e",
+          "fut_inf_spectre_e",
+          "fut_air_drone"
+        ],
+        "weapons": [
+          "void_lance_expert",
+          "entropy_caster_expert"
+        ],
+        "energy_cards": [
+          "void_energy_expert"
+        ]
+      },
+      "stats": {
+        "max_hp": 22950,
+        "attack_power": 315,
+        "defense": 41,
+        "energy_regen": 4.5,
+        "unit_limit": 7
+      }
+    },
+    {
+      "id": "enemy_master_026",
+      "name": "钢铁之神·赫淮斯托斯",
+      "title": "锻造之神",
+      "level": 28,
+      "faction": "steel",
+      "difficulty": "legendary",
+      "equipment": {
+        "phase_instrument": "pi_steel_05",
+        "level": 28,
+        "platforms": [
+          "fut_boss_nexus",
+          "fut_arm_colossus_e",
+          "fut_arm_colossus_e",
+          "fut_arm_hovertank_e",
+          "fut_arm_mech_e",
+          "fut_inf_cyborg"
+        ],
+        "weapons": [
+          "steel_gatling_expert",
+          "steel_artillery_expert"
+        ],
+        "energy_cards": [
+          "steel_energy_god"
+        ]
+      },
+      "stats": {
+        "max_hp": 22950,
+        "attack_power": 315,
+        "defense": 76,
+        "energy_regen": 4,
+        "unit_limit": 12
+      }
+    },
+    {
+      "id": "enemy_master_027",
+      "name": "炎魔之神·赫卡特",
+      "title": "炼狱女王",
+      "level": 29,
+      "faction": "flame",
+      "difficulty": "legendary",
+      "equipment": {
+        "phase_instrument": "pi_flame_05",
+        "level": 29,
+        "platforms": [
+          "fut_arm_colossus_e",
+          "fut_arm_hovertank_e",
+          "fut_boss_nexus",
+          "fut_inf_spectre_e",
+          "fut_arm_mech_e"
+        ],
+        "weapons": [
+          "flame_thrower_expert",
+          "plasma_cannon_expert"
+        ],
+        "energy_cards": [
+          "flame_energy_god"
+        ]
+      },
+      "stats": {
+        "max_hp": 23200,
+        "attack_power": 320,
+        "defense": 50,
+        "energy_regen": 4.5,
+        "unit_limit": 11
+      }
+    },
+    {
+      "id": "enemy_master_028",
+      "name": "雷神·托尔",
+      "title": "雷霆之神",
+      "level": 29,
+      "faction": "thunder",
+      "difficulty": "legendary",
+      "equipment": {
+        "phase_instrument": "pi_thunder_05",
+        "level": 29,
+        "platforms": [
+          "fut_boss_nexus",
+          "fut_boss_nexus",
+          "fut_arm_colossus_e",
+          "fut_arm_hovertank_e",
+          "fut_inf_spectre_e",
+          "fut_air_drone"
+        ],
+        "weapons": [
+          "tesla_coil_expert",
+          "railgun_expert"
+        ],
+        "energy_cards": [
+          "thunder_energy_god"
+        ]
+      },
+      "stats": {
+        "max_hp": 23200,
+        "attack_power": 320,
+        "defense": 50,
+        "energy_regen": 6,
+        "unit_limit": 10
+      }
+    },
+    {
+      "id": "enemy_master_029",
+      "name": "虚空女神·尼克斯",
+      "title": "夜之女神",
+      "level": 30,
+      "faction": "void",
+      "difficulty": "legendary",
+      "equipment": {
+        "phase_instrument": "pi_void_05",
+        "level": 30,
+        "platforms": [
+          "fut_inf_cyborg",
+          "fut_arm_hovertank_e",
+          "fut_boss_nexus",
+          "fut_inf_spectre_e",
+          "fut_arm_colossus_e",
+          "fut_air_drone"
+        ],
+        "weapons": [
+          "void_lance_expert",
+          "entropy_caster_expert"
+        ],
+        "energy_cards": [
+          "void_energy_god"
+        ]
+      },
+      "stats": {
+        "max_hp": 23450,
+        "attack_power": 325,
+        "defense": 44,
+        "energy_regen": 5.5,
+        "unit_limit": 9
+      }
+    },
+    {
+      "id": "enemy_master_030",
+      "name": "全能相位师·奥米伽",
+      "title": "完美融合",
+      "level": 30,
+      "faction": "all",
+      "difficulty": "ultimate",
+      "equipment": {
+        "phase_instrument": "pi_omega_01",
+        "level": 30,
+        "platforms": [
+          "fut_boss_nexus",
+          "fut_boss_nexus",
+          "fut_arm_colossus_e",
+          "fut_arm_colossus_e",
+          "fut_arm_hovertank_e",
+          "fut_arm_mech_e"
+        ],
+        "weapons": [
+          "railgun_expert",
+          "plasma_cannon_expert"
+        ],
+        "energy_cards": [
+          "hybrid_energy_god"
+        ]
+      },
+      "stats": {
+        "max_hp": 23450,
+        "attack_power": 325,
+        "defense": 47,
+        "energy_regen": 8,
+        "unit_limit": 15
+      }
+    }
+  ]
 }

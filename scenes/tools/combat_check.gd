@@ -8,6 +8,8 @@
 extends Node2D
 
 const GC := preload("res://resources/game_constants.gd")
+const WeaponProjectileVfx = preload("res://scripts/weapon_projectile_vfx.gd")
+const VfxImpactFactory = preload("res://scripts/battle/vfx_impact_factory.gd")
 const DefaultCards := preload("res://data/default_cards.gd")
 const EnemyArchetypes := preload("res://data/enemy_archetypes.gd")
 const UnitStatsTable := preload("res://resources/unit_stats_table.gd")
@@ -69,6 +71,25 @@ var _stepping: bool = false
 @onready var _info_panel: RichTextLabel = $UiLayer/InfoPanel
 @onready var _effect_toggle_btn: Button = get_node_or_null("UiLayer/ControlPanel/EffectToggleButton")
 @onready var _effect_panel: Control = get_node_or_null("UiLayer/EffectLabPanel")
+# v16.2: 独立特效测试按钮（每层一个）
+@onready var _full_btn: Button = get_node_or_null("UiLayer/SparkTestPanel/FullBtn")
+@onready var _ring_btn: Button = get_node_or_null("UiLayer/SparkTestPanel/RingBtn")
+@onready var _decal_btn: Button = get_node_or_null("UiLayer/SparkTestPanel/DecalBtn")
+@onready var _sparks_btn: Button = get_node_or_null("UiLayer/SparkTestPanel/SparksBtn")
+@onready var _debris_btn: Button = get_node_or_null("UiLayer/SparkTestPanel/DebrisBtn")
+@onready var _flash_btn: Button = get_node_or_null("UiLayer/SparkTestPanel/FlashBtn")
+@onready var _smoke_btn: Button = get_node_or_null("UiLayer/SparkTestPanel/SmokeBtn")
+@onready var _shrapnel_btn: Button = get_node_or_null("UiLayer/SparkTestPanel/ShrapnelBtn")
+@onready var _trace_btn: Button = get_node_or_null("UiLayer/SparkTestPanel/TraceBtn")
+@onready var _explosion_btn: Button = get_node_or_null("UiLayer/SparkTestPanel/ExplosionBtn")
+@onready var _bullet_btn: Button = get_node_or_null("UiLayer/SparkTestPanel/BulletBtn")
+@onready var _muzzle_light_btn: Button = get_node_or_null("UiLayer/SparkTestPanel/MuzzleLightBtn")
+@onready var _muzzle_energy_btn: Button = get_node_or_null("UiLayer/SparkTestPanel/MuzzleEnergyBtn")
+@onready var _muzzle_heavy_btn: Button = get_node_or_null("UiLayer/SparkTestPanel/MuzzleHeavyBtn")
+# 独立特效测试面板收起/展开（效果实验面板打开时避免遮挡其阅读）
+@onready var _spark_panel: Control = get_node_or_null("UiLayer/SparkTestPanel")
+@onready var _spark_collapse_btn: Button = get_node_or_null("UiLayer/SparkTestPanel/CollapseBtn")
+var _spark_collapsed: bool = false
 
 
 func _ready() -> void:
@@ -91,6 +112,40 @@ func _ready() -> void:
 	if _effect_panel != null:
 		# 用 getter 传单位引用（单位会随切换/重置重建，固持引用会失效）
 		_effect_panel.configure(Callable(self, "_get_player_unit"), Callable(self, "_get_enemy_unit"), $Battlefield)
+	# v16.2: 火花测试按钮接线
+	if _full_btn != null:
+		_full_btn.pressed.connect(_on_full_impact_test)
+	if _ring_btn != null:
+		_ring_btn.pressed.connect(_on_ring_test)
+	if _decal_btn != null:
+		_decal_btn.pressed.connect(_on_decal_test)
+	if _sparks_btn != null:
+		_sparks_btn.pressed.connect(_on_spark_test_all)
+	if _debris_btn != null:
+		_debris_btn.pressed.connect(_on_debris_test)
+	if _flash_btn != null:
+		_flash_btn.pressed.connect(_on_flash_test)
+	if _smoke_btn != null:
+		_smoke_btn.pressed.connect(_on_smoke_test)
+	if _shrapnel_btn != null:
+		_shrapnel_btn.pressed.connect(_on_shrapnel_test)
+	if _trace_btn != null:
+		_trace_btn.pressed.connect(_on_trace_test)
+	if _explosion_btn != null:
+		_explosion_btn.pressed.connect(_on_explosion_test)
+	if _bullet_btn != null:
+		_bullet_btn.pressed.connect(_on_bullet_test)
+	if _muzzle_light_btn != null:
+		_muzzle_light_btn.pressed.connect(_on_muzzle_light_test)
+	if _muzzle_energy_btn != null:
+		_muzzle_energy_btn.pressed.connect(_on_muzzle_energy_test)
+	if _muzzle_heavy_btn != null:
+		_muzzle_heavy_btn.pressed.connect(_on_muzzle_heavy_test)
+	# 独立特效测试面板：收起/展开切换
+	if _spark_collapse_btn != null:
+		_spark_collapse_btn.pressed.connect(_on_spark_collapse_toggle)
+	# v18.d: 补齐特效项目（更多特效层滚动区，动态追加）
+	_build_extra_vfx_section()
 
 	# 让 BattleManager 进入战斗态（建 spatial_grid + 四个 batch，bullet 路径才完整）
 	_setup_battle_manager()
@@ -182,7 +237,10 @@ func _populate_player_options() -> void:
 			continue
 		if card.card_type != GC.CardType.COMBAT_UNIT:
 			continue  # 排除能量卡
-		var wt_name: String = GC.get_weapon_type_name(int(card.weapon_type))
+		# v16.2: 玩家卡 weapon_type 是新枚举 4 值（0直射/1曲射/2空射/3支援），必须查
+		# weapon_mode_short——原 get_weapon_type_name 走旧 12 武器表（其注释明写"请勿对
+		# 当前 WeaponType 传值"），把 151 张直射卡全错译成"冲锋枪"、曲射炮错译成"步枪"。
+		var wt_name: String = RealWorldUnitLabels.weapon_mode_short(int(card.weapon_type))
 		var era_name: String = GC.get_era_name(int(card.era))
 		var dname: String = String(card.display_name)
 		# 显示「中文名 (card_id) [时代·武器]」；无中文名时回退纯 ID
@@ -323,7 +381,10 @@ func _on_play_pause() -> void:
 
 
 func _on_step() -> void:
-	# 单帧步进：确保处于暂停态，然后临时放 N 个 physics_frame 再暂停
+	# 单帧步进：先确保暂停，再逐帧"放开一个物理帧→立刻重新暂停"。
+	# 若步进期间全程保持 paused，节点不会处理任何一帧，步进等于空转。
+	if _stepping:
+		return  # 防重入：上一次步进尚未走完
 	_stepping = true
 	var tree := get_tree()
 	if tree == null:
@@ -333,8 +394,11 @@ func _on_step() -> void:
 	_play_pause_btn.text = "▶ 播放"
 	var frames: int = int(_step_frames_slider.value)
 	for _i in frames:
+		tree.paused = false
 		await get_tree().physics_frame
-	tree.paused = true
+		tree.paused = true
+	# 步进期间用户可能点了播放，按实际状态同步按钮文案
+	_play_pause_btn.text = "▶ 播放" if tree.paused else "⏸ 暂停"
 	_stepping = false
 
 
@@ -642,7 +706,9 @@ func _describe_player() -> String:
 		lines.append("卡名: %s" % dname)
 	lines.append("ID: %s" % (vis_id if not vis_id.is_empty() else _player_card_id))
 	if s != null:
-		lines.append("武器: %s | 射程: %dpx(%d格)" % [GC.get_weapon_type_name(int(s.weapon_type)), int(s.attack_range), int(s.attack_range / 100.0)])
+		# v16.2: 新枚举 4 值查 weapon_mode_short（弹道大类），旧表会把 0 错译成"冲锋枪"
+		lines.append("武器: %s | 射程: %dpx(%d格)" % [RealWorldUnitLabels.weapon_mode_short(int(s.weapon_type)), int(s.attack_range), int(s.attack_range / 100.0)])
+		lines.append("弹道: %s" % _describe_slot_trajectories(s))
 		lines.append("伤害: 轻%.0f/甲%.0f/空%.0f" % [float(s.attack_light), float(s.attack_armor), float(s.attack_air)])
 		lines.append("攻速: %.2f/s | 间隔: %.2fs" % [float(s.attack_light_speed), float(s.attack_interval)])
 	var max_hp: float = float(s.max_hp) if s != null else float(u.hp)
@@ -657,6 +723,36 @@ func _describe_player() -> String:
 		else:
 			lines.append("开火点: [color=yellow]无锚点→回退中点[/color] [查: %s]" % String(mr["src"]))
 	return "\n".join(lines)
+
+
+## v16.2: 三槽真实弹道描述（轻装/装甲/对空槽各自 trajectory_override 后的 weapon_type + 武器名）。
+## 槽 wt 才是按目标类型分派的实际弹道（单位级 weapon_type 只是默认大类）。
+## 值域规则：0-3 是新枚举（0直射/1曲射/2空射/3撞值——SUPPORT 与 legacy ROCKET 都走曲射判定，显示"曲射"）；
+## ≥4 是 legacy 唯一值（5霰弹/6狙击/7高炮/8激光/9导弹/10粒子炮/11轨道炮），查 weapon_kind_short 正确。
+## 勿对 0-3 查 legacy 表（0 会错译成"冲锋枪"——与下拉框同病根）。
+func _describe_slot_trajectories(s) -> String:
+	if s == null or s.weapon_slots.is_empty():
+		return "(无武器槽)"
+	var parts: Array = []
+	var slot_names := ["轻", "甲", "空"]
+	for i in range(s.weapon_slots.size()):
+		var w = s.weapon_slots[i]
+		if w == null:
+			continue
+		var tag: String = slot_names[i] if i < slot_names.size() else "槽%d" % i
+		if not w.enabled:
+			parts.append("%s:禁用" % tag)
+			continue
+		var wt: int = int(w.weapon_type)
+		var traj: String
+		match wt:
+			0:  traj = "直射"
+			1, 3:  traj = "曲射"
+			2:  traj = "空射"
+			_:  traj = RealWorldUnitLabels.weapon_kind_short(wt)
+		var dn: String = String(w.display_name)
+		parts.append("%s:%s(%s)" % [tag, dn, traj] if not dn.is_empty() else "%s:%s" % [tag, traj])
+	return " / ".join(parts)
 
 
 func _describe_enemy() -> String:
@@ -681,3 +777,283 @@ func _describe_enemy() -> String:
 		else:
 			lines.append("开火点: 无锚点(回退中点)")
 	return "\n".join(lines)
+
+
+# ============================================================
+# 独立特效测试面板：收起/展开（收起后缩成标题条，避免遮挡效果实验面板）
+# ============================================================
+func _on_spark_collapse_toggle() -> void:
+	_set_spark_panel_collapsed(not _spark_collapsed)
+
+
+func _set_spark_panel_collapsed(collapsed: bool) -> void:
+	if _spark_panel == null:
+		return
+	_spark_collapsed = collapsed
+	# 只留标题 + 切换按钮，其余内容（各层测试按钮/副标题）全部隐藏
+	for child in _spark_panel.get_children():
+		if child.name == "Title" or child.name == "CollapseBtn":
+			continue
+		child.visible = not collapsed
+	# 收起：面板从 (8,128)-(500,360) 缩成 32px 标题条 (8,128)-(500,160)
+	# v18.d: 展开态 360→540（容纳"更多特效层"滚动区，区底 248+148=396）
+	_spark_panel.offset_bottom = 160.0 if collapsed else 540.0
+	if _spark_collapse_btn != null:
+		_spark_collapse_btn.text = "展开 ▾" if collapsed else "收起 ✕"
+
+
+# ============================================================
+# v16.2: 独立特效测试（每层单独触发，按当前选中我方单位的 weapon_type）
+# ============================================================
+## 读取当前我方单位卡的 weapon_type（0-11），供各层测试统一使用
+func _get_player_wt() -> int:
+	if _player_card_id.is_empty():
+		return 0
+	var card := DefaultCards.get_card_by_id(_player_card_id)
+	if card != null:
+		return int(card.weapon_type)
+	return 0
+
+## v18.d: 特效展示位——不打在敌方单位身上（立绘遮挡特效分层、混在一起看不清），
+## 固定在敌兵左侧 160px 的空地（无敌兵时用常量位）
+func _get_spark_test_pos() -> Vector2:
+	if _enemy_unit != null and is_instance_valid(_enemy_unit):
+		return Vector2(_enemy_unit.global_position.x - 160.0, GROUND_Y)
+	return Vector2(ENEMY_POS_X - 160.0, GROUND_Y)
+
+func _get_parent() -> Node2D:
+	return $Battlefield/PlayerUnits
+
+
+func _on_spark_test_all() -> void:
+	var pos := _get_spark_test_pos()
+	var wt := _get_player_wt()
+	VfxImpactFactory.spawn_sparks_only(_get_parent(), pos, wt)
+	print("[火花] wt=%d" % wt)
+
+func _on_full_impact_test() -> void:
+	var pos := _get_spark_test_pos()
+	var wt := _get_player_wt()
+	WeaponProjectileVfx.spawn_impact_with_kind(_get_parent(), pos, wt, true, -1, {})
+	print("[完整] wt=%d" % wt)
+
+func _on_ring_test() -> void:
+	var pos := _get_spark_test_pos()
+	var wt := _get_player_wt()
+	VfxImpactFactory.spawn_ring_only(_get_parent(), pos, wt)
+	print("[环] wt=%d" % wt)
+
+func _on_debris_test() -> void:
+	var pos := _get_spark_test_pos()
+	var wt := _get_player_wt()
+	VfxImpactFactory.spawn_debris_only(_get_parent(), pos, wt)
+	print("[碎片/烟尘] wt=%d" % wt)
+
+func _on_bullet_test() -> void:
+	var pos := _get_spark_test_pos()
+	var wt := _get_player_wt()
+	VfxImpactFactory.spawn_bullet_debug(_get_parent(), pos, wt)
+	print("[弹体] wt=%d" % wt)
+
+
+# ============================================================
+# v16.2: 炮口火焰测试（按选中武器类别）
+# v18.d: 修正三档按钮各自用代表武器类型（原三个按钮实现完全相同）——
+#   轻型动能 wt0 / 能量 wt8（energy 集合 ∩ HEAVY_MUZZLE_WT）/ 重型 wt2（HEAVY 且非能量）
+# ============================================================
+func _on_muzzle_light_test() -> void:
+	var pos := _get_spark_test_pos()
+	VfxImpactFactory.spawn_muzzle_flash(_get_parent(), pos, true, 0)
+	print("[开火·轻] wt=0")
+
+func _on_muzzle_energy_test() -> void:
+	var pos := _get_spark_test_pos()
+	VfxImpactFactory.spawn_muzzle_flash(_get_parent(), pos, true, 8)
+	print("[开火·能量] wt=8")
+
+func _on_muzzle_heavy_test() -> void:
+	var pos := _get_spark_test_pos()
+	VfxImpactFactory.spawn_muzzle_flash(_get_parent(), pos, true, 2)
+	print("[开火·重型] wt=2")
+
+
+# ============================================================
+# v16.2: 弹痕锚点测试（按选中武器）
+# ============================================================
+func _on_decal_test() -> void:
+	var pos := _get_spark_test_pos()
+	VfxImpactFactory.spawn_decal_only(_get_parent(), pos, _get_player_wt())
+	print("[弹痕] wt=%d" % _get_player_wt())
+
+
+# ============================================================
+# v16.2: 闪光测试（按选中武器）
+# ============================================================
+func _on_flash_test() -> void:
+	var pos := _get_spark_test_pos()
+	VfxImpactFactory.spawn_flash_only(_get_parent(), pos, _get_player_wt())
+	print("[闪光] wt=%d" % _get_player_wt())
+
+
+# ============================================================
+# v16.2: 轻烟团测试（按选中武器）
+# ============================================================
+func _on_smoke_test() -> void:
+	var pos := _get_spark_test_pos()
+	VfxImpactFactory.spawn_smoke_puff_only(_get_parent(), pos, _get_player_wt())
+	print("[烟团] wt=%d" % _get_player_wt())
+
+
+# ============================================================
+# v16.2: 金属破片测试（按选中武器）
+# ============================================================
+func _on_shrapnel_test() -> void:
+	var pos := _get_spark_test_pos()
+	VfxImpactFactory.spawn_shrapnel_only(_get_parent(), pos, _get_player_wt())
+	print("[破片] wt=%d" % _get_player_wt())
+
+
+# ============================================================
+# v16.2: 焦痕弹坑测试（按选中武器）
+# ============================================================
+func _on_trace_test() -> void:
+	var pos := _get_spark_test_pos()
+	var wt := _get_player_wt()
+	if wt in [1, 2, 3, 7, 9]:
+		VfxImpactFactory.spawn_battle_trace(_get_parent(), pos, 14.0, "scorch")
+		print("[焦痕] wt=%d 触发" % wt)
+	else:
+		print("[焦痕] wt=%d 无此层" % wt)
+
+
+# ============================================================
+# v16.2: 爆炸帧动画测试（按选中武器）
+# ============================================================
+func _on_explosion_test() -> void:
+	var pos := _get_spark_test_pos()
+	var wt := _get_player_wt()
+	const WPV := preload("res://scripts/weapon_projectile_vfx.gd")
+	var frames := WPV.explosion_frames_by_wt(wt)
+	if frames.size() >= 2:
+		VfxImpactFactory.spawn_animated_nuclear(_get_parent(), pos, frames, 96.0)
+		print("[帧动画] wt=%d 播放 %d 帧" % [wt, frames.size()])
+	else:
+		print("[帧动画] wt=%d 无帧序列" % wt)
+
+
+# ============================================================
+# v18.d: 补齐特效项目——弹道/光束/场/环/标记等 24 种此前无测试入口的特效层
+# （vfx_impact_factory 公共 API 40+，面板原只覆盖 14 种命中分层类）
+# ============================================================
+const _EXTRA_VFX_TESTS: Array = [
+	{"label": "冲击波", "kind": "shockwave"},
+	{"label": "攻击弹道", "kind": "tracer"},
+	{"label": "激光光束", "kind": "laser_beam"},
+	{"label": "闪电弧", "kind": "lightning"},
+	{"label": "穿透光束", "kind": "pierce"},
+	{"label": "轨道炮穿透", "kind": "railgun"},
+	{"label": "激光灼烧", "kind": "laser_burn"},
+	{"label": "欧米伽放电", "kind": "omega"},
+	{"label": "能量光柱", "kind": "pillar"},
+	{"label": "召唤传送门", "kind": "portal"},
+	{"label": "暴击光环", "kind": "crit_aura"},
+	{"label": "暴击火花", "kind": "crit_sparks"},
+	{"label": "命中血液", "kind": "blood"},
+	{"label": "死亡爆散", "kind": "death"},
+	{"label": "烟柱", "kind": "smoke_col"},
+	{"label": "地面燃烧", "kind": "burn"},
+	{"label": "纳米场", "kind": "nano"},
+	{"label": "化学场", "kind": "chem"},
+	{"label": "化学扩散波", "kind": "chem_wave"},
+	{"label": "纳米扩散波", "kind": "nano_wave"},
+	{"label": "弱点标记", "kind": "weakpoint"},
+	{"label": "雷达锁定环", "kind": "radar"},
+	{"label": "共鸣环", "kind": "resonance"},
+	{"label": "残留减益环", "kind": "lingering"},
+]
+
+## 动态构建"更多特效层"区（SubTitle 之下的滚动网格），追加到 SparkTestPanel
+func _build_extra_vfx_section() -> void:
+	if _spark_panel == null:
+		return
+	var lbl := Label.new()
+	lbl.text = "更多特效层（v18.d 补齐 · 展示位在敌兵左侧空地）"
+	lbl.position = Vector2(8, 228)
+	lbl.size = Vector2(480, 18)
+	lbl.add_theme_font_size_override("font_size", 11)
+	lbl.modulate = Color(0.85, 0.75, 0.45)
+	_spark_panel.add_child(lbl)
+	var scroll := ScrollContainer.new()
+	scroll.name = "ExtraVfxScroll"
+	scroll.position = Vector2(8, 248)
+	scroll.size = Vector2(480, 148)
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 4)
+	grid.add_theme_constant_override("v_separation", 4)
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(grid)
+	for t in _EXTRA_VFX_TESTS:
+		var b := Button.new()
+		b.text = String(t.label)
+		b.add_theme_font_size_override("font_size", 11)
+		b.custom_minimum_size = Vector2(154, 26)
+		b.pressed.connect(_on_extra_vfx_test.bind(String(t.kind)))
+		grid.add_child(b)
+	_spark_panel.add_child(scroll)
+
+## 通用特效测试分发（展示位/方向起点统一：pos=展示位，from=其左上方来向）
+func _on_extra_vfx_test(kind: String) -> void:
+	var p: Node2D = _get_parent()
+	var pos := _get_spark_test_pos()
+	var from := pos + Vector2(-240.0, -30.0)
+	match kind:
+		"shockwave":
+			VfxImpactFactory.spawn_shockwave(p, pos, 180.0)
+		"tracer":
+			VfxImpactFactory.spawn_attack_tracer(p, from, pos, true)
+		"laser_beam":
+			VfxImpactFactory.spawn_laser_beam(p, from, pos)
+		"lightning":
+			VfxImpactFactory.spawn_lightning_arc(p, from, pos)
+		"pierce":
+			VfxImpactFactory.spawn_pierce_beam(p, pos, Vector2.RIGHT)
+		"railgun":
+			VfxImpactFactory.spawn_railgun_penetration(p, pos)
+		"laser_burn":
+			VfxImpactFactory.spawn_laser_burn(p, pos)
+		"omega":
+			VfxImpactFactory.spawn_omega_discharge(p, pos)
+		"pillar":
+			VfxImpactFactory.spawn_energy_pillar(p, pos)
+		"portal":
+			VfxImpactFactory.spawn_summon_portal(p, pos)
+		"crit_aura":
+			VfxImpactFactory.spawn_crit_aura(p, pos)
+		"crit_sparks":
+			VfxImpactFactory.spawn_crit_sparks(p, pos, true)
+		"blood":
+			VfxImpactFactory.spawn_hit_blood(p, pos, Vector2.RIGHT, 1.0, true)
+		"death":
+			VfxImpactFactory.spawn_death_burst(p, pos, true)
+		"smoke_col":
+			VfxImpactFactory.spawn_smoke_column(p, pos)
+		"burn":
+			VfxImpactFactory.spawn_ground_burn(p, pos, 80.0)
+		"nano":
+			VfxImpactFactory.spawn_nano_field(p, pos, 100.0)
+		"chem":
+			VfxImpactFactory.spawn_chem_field(p, pos, 100.0)
+		"chem_wave":
+			VfxImpactFactory.spawn_chem_burst_wave(p, pos)
+		"nano_wave":
+			VfxImpactFactory.spawn_nano_spread_wave(p, pos)
+		"weakpoint":
+			VfxImpactFactory.spawn_weakpoint_indicator(p, pos)
+		"radar":
+			VfxImpactFactory.spawn_radar_lock_ring(p, pos)
+		"resonance":
+			VfxImpactFactory.spawn_resonance_ring(p, pos, 3)
+		"lingering":
+			VfxImpactFactory.spawn_lingering_debuff_ring(p, pos, Color(0.8, 0.4, 1.0))
+	print("[更多特效] %s" % kind)

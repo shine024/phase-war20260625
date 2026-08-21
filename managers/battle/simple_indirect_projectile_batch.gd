@@ -8,6 +8,7 @@ extends Node2D
 const GC = preload("res://resources/game_constants.gd")
 const CombatFeedback = preload("res://scripts/combat_feedback.gd")
 const WeaponProjectileVfx = preload("res://scripts/weapon_projectile_vfx.gd")
+const WeaponVisuals = preload("res://data/weapon_visual_profiles.gd")  # v17: 武器视觉档案（名字优先解析）
 const AttackCalculator = preload("res://scripts/battle/attack_calculator.gd")
 
 const _HIT_R2: float = 100.0
@@ -425,4 +426,7 @@ func _spawn_impact_explosion(pos: Vector2, is_player_proj: bool = true, weapon_t
 	if WeaponProjectileVfx._active_impacts >= WeaponProjectileVfx.MAX_ACTIVE_IMPACTS:
 		return
 	# 复用 spawn_impact_with_kind 的粒子系统 + 贴图层（v8.4 透传 weapon_name）
-	WeaponProjectileVfx.spawn_impact_with_kind(self, pos, weapon_type, is_player_proj, target_combat_kind, opts, weapon_name)
+	# v17: wt 经 WeaponVisualProfiles 统一解析（武器名优先——"227mm火箭炮"按名取火箭
+	# 弹视觉而非槽位默认炮弹；域兜底保持原值）。
+	var _vwt: int = WeaponVisuals.resolve_visual_wt(weapon_name, weapon_type, is_player_proj)
+	WeaponProjectileVfx.spawn_impact_with_kind(self, pos, _vwt, is_player_proj, target_combat_kind, opts, weapon_name)

@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://vfxmuzzlediag01"]
+
+[ext_resource type="Script" path="res://scenes/tools/vfx_muzzle_diag.tscn.gd" id="1"]
+
+[node name="VfxMuzzleDiag" type="Node2D"]
+script = ExtResource("1")

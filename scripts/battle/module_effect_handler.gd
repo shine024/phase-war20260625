@@ -122,7 +122,7 @@ static func _apply_main_target_compensation(target: Node, heal_amount: float) ->
 # ─────────────────────────────────────────────
 
 ## 击杀时处理护盾
-static func on_kill(attacker: Node) -> void:
+static func on_kill(attacker: Node, victim: Node = null) -> void:
 	var stats = _get_attacker_stats(attacker)
 	if stats == null:
 		return
@@ -131,6 +131,13 @@ static func on_kill(attacker: Node) -> void:
 		if max_hp > 0.0:
 			var shield_amount = max_hp * stats.shield_on_kill
 			_apply_shield(attacker, shield_amount)
+	# v10 转换型：回收无人机（击杀→按目标最大HP修复自身，吸血的设定合理版）
+	if stats.salvage_repair_pct > 0.0 and victim != null and is_instance_valid(victim):
+		var victim_max_hp: float = _get_unit_max_hp(victim)
+		if victim_max_hp > 0.0:
+			var repair: float = victim_max_hp * stats.salvage_repair_pct
+			_heal_unit(attacker, repair)
+			CombatFeedback.show_damage(victim.global_position if victim is Node2D else Vector2.ZERO, repair, attacker, false, "salvage")
 
 # ─────────────────────────────────────────────
 #  持续效果
@@ -162,6 +169,8 @@ static func on_tick(unit: Node, delta: float) -> void:
 	_tick_dot_damage(unit, delta)
 	# v9.1 套路5 雷达锁定周期扫描（装了 rec_phased_radar 的单位每 N 秒锁定范围内敌方）
 	_tick_radar_lock(unit, delta)
+	# v10 转换型：电子劫持周期扫描（装了 gen_17 的单位每 CD 秒劫持范围内敌方增益光环）
+	_tick_hijack_aura(unit, stats, delta)
 
 # ─────────────────────────────────────────────
 #  受击处理（v7.x 新增活跃路径）
@@ -223,6 +232,63 @@ static func is_fort_aura_suppressed(unit: Node) -> bool:
 	if not unit.has_meta("_fort_aura_suppressed_until"):
 		return false
 	return Time.get_ticks_msec() / 1000.0 < float(unit.get_meta("_fort_aura_suppressed_until", 0.0))
+
+
+## v10 组合规则①：照明标记+曲射=必中——目标带任一标记 meta（暴击标注/雷达锁定/普通标记）
+## 且攻击者主武器为曲射（legacy_weapon_type 间接弹道）时，目标闪避失效。
+## 协同：标记单位（侦察/电子战）× 曲射单位（炮兵）——标记提供弹道修正。
+static func is_marked_for_indirect(target: Node, attacker: Variant) -> bool:
+	if target == null or not is_instance_valid(target):
+		return false
+	# 目标必须带未过期的标记 meta（三选一）
+	var now_sec: float = Time.get_ticks_msec() / 1000.0
+	var marked: bool = false
+	for mark_key in ["_crit_marked_until", "_radar_locked_until", "_marked_until"]:
+		if target.has_meta(mark_key) and now_sec < float(target.get_meta(mark_key, 0.0)):
+			marked = true
+			break
+	if not marked:
+		return false
+	# 攻击者必须是曲射武器（legacy_weapon_type 走 GC.is_indirect_weapon_type 判定）
+	if attacker == null or not is_instance_valid(attacker) or not (attacker is Node):
+		return false
+	var a_stats = _get_unit_stats(attacker as Node)
+	if a_stats == null:
+		return false
+	var lwt: int = int(a_stats.legacy_weapon_type) if "legacy_weapon_type" in a_stats else -1
+	if lwt < 0:
+		lwt = int(a_stats.weapon_type) if "weapon_type" in a_stats else -1
+	return GC.is_indirect_weapon_type(lwt)
+
+
+## v10 组合规则③：集火协同——3 秒内被不同友军攻击过的目标，后续攻击伤害递增。
+## 层数在【不同 shooter】命中时递增（同一单位连打不叠层），max 3 层。
+## 每层 +5% 伤害（max +15%）。返回本次攻击的乘数（读已有层数），随后更新层数。
+## 协同语义：多单位打同一目标 = 战术集火（数据链类改造的暴击加成继续独立叠加）。
+static func apply_focus_fire_multiplier(target: Node, attacker: Variant) -> float:
+	if target == null or not is_instance_valid(target):
+		return 1.0
+	var now_sec: float = Time.get_ticks_msec() / 1000.0
+	var stacks: int = 0
+	var last_shooter_id: int = -1
+	if target.has_meta("_focus_fire_until") and now_sec < float(target.get_meta("_focus_fire_until", 0.0)):
+		stacks = int(target.get_meta("_focus_fire_stacks", 0))
+		last_shooter_id = int(target.get_meta("_focus_fire_shooter_id", -1))
+	# 本次乘数按已有层数（先读后写：当前命中吃已有协同加成）
+	var mult: float = 1.0 + 0.05 * clampi(stacks, 0, 3)
+	# 更新层数：不同 shooter 命中才递增
+	var is_new_shooter: bool = true
+	if attacker != null and is_instance_valid(attacker) and attacker is Node:
+		var aid: int = (attacker as Node).get_instance_id()
+		if aid == last_shooter_id:
+			is_new_shooter = false
+		else:
+			target.set_meta("_focus_fire_shooter_id", aid)
+	if is_new_shooter:
+		stacks = mini(stacks + 1, 3)
+	target.set_meta("_focus_fire_stacks", stacks)
+	target.set_meta("_focus_fire_until", now_sec + 3.0)
+	return mult
 
 
 ## 受击时处理：怒气积累、反击标记
@@ -328,6 +394,11 @@ static func _apply_splash(attacker: Node, target: Node, damage: float, stats: Un
 	# v7.x: 半径支持改造加成（子母弹/近炸引信），改造加成 x2 使其更显著
 	# v9.3: 基础半径 80→100，覆盖三行布局对角线（row0↔row2 = 90px）
 	var radius: float = 100.0 * (1.0 + maxf(0.0, stats.splash_radius_bonus) * 2.0)
+	# v10 组合规则②：减速+曲射=溅射扩大——目标被减速（_slow_aura_until 未过期）时溅射半径 ×1.3
+	# （被压制目标无法散开，曲射火力覆盖面扩大。协同：减速光环单位 × 曲射单位）
+	if target != null and is_instance_valid(target) and target.has_meta("_slow_aura_until"):
+		if Time.get_ticks_msec() / 1000.0 < float(target.get_meta("_slow_aura_until", 0.0)):
+			radius *= 1.30
 	# v8.1: 溅射冲击波环——在主目标位置 spawn 地面扩散环，半径=溅射范围
 	# v9.2: 用鲜明亮橙黄色（区别于燃烧的橙红、化学的绿、纳米的青），让"溅射爆炸"一眼可辨。
 	#   色值 1.0/0.75/0.15 = 亮橙黄（爆炸火光），alpha 0.9 比默认 0.8 更醒目。
@@ -915,6 +986,9 @@ static func _apply_slow_aura(unit: Node, stats: UnitStats, delta: float) -> void
 static func _apply_command_aura(unit: Node, stats: UnitStats, delta: float) -> void:
 	if stats.command_aura_bonus <= 0.0:
 		return
+	# v10 转换型：指挥光环被劫持期间（gen_17 电子劫持触发）跳过刷新
+	if is_aura_hijacked(unit):
+		return
 	# 累积计时（meta 挂在单位上，跨帧保留）
 	var acc: float = 0.0
 	if unit.has_meta("_command_aura_acc"):
@@ -940,6 +1014,9 @@ static func _apply_fort_shelter_aura(unit: Node, stats: UnitStats, delta: float)
 		return
 	# v10 打破型效果：阵地光环被压制期间（artillery 克制命中触发 strip_fort_aura）跳过刷新
 	if is_fort_aura_suppressed(unit):
+		return
+	# v10 转换型：光环被劫持期间（gen_17 电子劫持触发）跳过刷新
+	if is_aura_hijacked(unit):
 		return
 	# 累积计时（meta 挂在单位上，跨帧保留）
 	var acc: float = 0.0
@@ -1399,3 +1476,59 @@ static func _tick_dot_damage(unit: Node, delta: float) -> void:
 				CombatFeedback.show_damage(upos, nano_dmg_done, unit, false, "dot_nano")
 	# v9.x: 刷新 DOT 持续视觉（移除过期的，保留激活的）——修复③接入点
 	DotVfxManager.refresh_dot_vfx(unit)
+
+
+## v10 转换型：单位光环是否被电子劫持（gen_17 劫持期间）——光环施加端调用。
+static func is_aura_hijacked(unit: Node) -> bool:
+	if unit == null or not is_instance_valid(unit):
+		return false
+	if not unit.has_meta("_hijacked_until"):
+		return false
+	return Time.get_ticks_msec() / 1000.0 < float(unit.get_meta("_hijacked_until", 0.0))
+
+
+## v10 转换型：电子劫持周期扫描（gen_17_electronic_hijack 的消费端）。
+## 每 CD 秒扫描半径内敌方，对带增益光环的敌方（指挥/堡垒庇护）：
+##   ① 挂 _hijacked_until（期间其光环停止刷新，_apply_command_aura/_apply_fort_shelter_aura 跳过）
+##   ② 其增益效果转由本单位享有（挂等效 meta 到自身）
+## 敌方优势（光环）→ 被抵消 + 转移（我方优势），转换型战法。
+static func _tick_hijack_aura(unit: Node, stats: UnitStats, delta: float) -> void:
+	if stats == null or stats.hijack_aura_radius <= 0.0:
+		return
+	# CD 累积（meta 挂在单位上）
+	var acc: float = float(unit.get_meta("_hijack_acc", 0.0)) + delta
+	var cd: float = maxf(5.0, stats.hijack_aura_cd)
+	if acc < cd:
+		unit.set_meta("_hijack_acc", acc)
+		return
+	unit.set_meta("_hijack_acc", 0.0)
+	# 扫描半径内敌方
+	var enemies: Array = _find_nearby_enemies(unit, stats.hijack_aura_radius)
+	var now_sec: float = Time.get_ticks_msec() / 1000.0
+	var hijacked_any: bool = false
+	for enemy in enemies:
+		if enemy == null or not is_instance_valid(enemy):
+			continue
+		var e_stats = _get_unit_stats(enemy)
+		if e_stats == null:
+			continue
+		# 只劫持有增益光环的敌方（堡垒庇护 / 指挥）
+		var has_shelter: bool = e_stats.fort_shelter_aura > 0.0
+		var has_command: bool = e_stats.command_aura_bonus > 0.0
+		if not has_shelter and not has_command:
+			continue
+		# ① 抑制敌方光环
+		enemy.set_meta("_hijacked_until", now_sec + stats.hijack_aura_duration)
+		hijacked_any = true
+		# ② 转移增益给本单位（挂等效 meta，消费端与正常光环一致）
+		if has_shelter:
+			unit.set_meta("_fort_shelter_until", now_sec + stats.hijack_aura_duration)
+			unit.set_meta("_fort_shelter_bonus", e_stats.fort_shelter_aura)
+		if has_command:
+			unit.set_meta("_command_aura_until", now_sec + stats.hijack_aura_duration)
+			unit.set_meta("_command_aura_bonus", e_stats.command_aura_bonus)
+		# 劫持反馈（金色数字提示转换生效）
+		if enemy is Node2D:
+			CombatFeedback.show_damage((enemy as Node2D).global_position, 0.0 + 1.0, enemy, false, "counter_break")
+		if hijacked_any and unit is Node2D:
+			CombatFeedback.show_damage((unit as Node2D).global_position, 1.0, unit, false, "counter_break")

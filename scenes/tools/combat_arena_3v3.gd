@@ -131,7 +131,8 @@ func _populate_player_options() -> void:
 			continue
 		if card.card_type != GC.CardType.COMBAT_UNIT:
 			continue  # 排除能量卡
-		var wt_name: String = GC.get_weapon_type_name(int(card.weapon_type))
+		# v16.2: 玩家卡 weapon_type 是新枚举 4 值，查 weapon_mode_short（旧 12 武器表会把 0 错译成"冲锋枪"）
+		var wt_name: String = RealWorldUnitLabels.weapon_mode_short(int(card.weapon_type))
 		var era_name: String = GC.get_era_name(int(card.era))
 		var dname: String = String(card.display_name)
 		var display: String

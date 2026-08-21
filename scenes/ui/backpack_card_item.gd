@@ -1017,8 +1017,8 @@ func _fill_stat_line(icon_row: Control, c: CardResource) -> void:
 	var stat_right: Label = icon_row.get_node_or_null("CompactTextVBox/StatLine/StatRight") as Label
 	if lv_label == null or stat_right == null:
 		return
-	# Lv.x（amber-soft）
-	lv_label.text = "Lv.%d" % int(c.enhance_level)
+	# Lv.x（amber-soft）——v19：战斗等级 card_level（1-30，经验驱动），不再用强化等级
+	lv_label.text = "Lv.%d" % _card_level_of(c)
 	# 改N/M（cyan-soft，仅战斗卡且有槽位）
 	if mod_label != null:
 		if c.card_type == GC.CardType.COMBAT_UNIT:
@@ -1419,9 +1419,9 @@ func _build_bottom_info_line(c: CardResource) -> String:
 	# 兵种标识（仅战斗卡）
 	if c.card_type == GC.CardType.COMBAT_UNIT:
 		parts.append(CardResource.get_combat_kind_short(c.combat_kind))
-	# 强化等级 Lv.x/10
+	# 强化等级（v19：明确标注"强"——与战斗等级 Lv 是两套维度；强化系统活跃 1-10）
 	var enhance_lvl: int = int(c.enhance_level)
-	parts.append("Lv%d/10" % enhance_lvl)
+	parts.append("强%d/10" % enhance_lvl)
 	# 改造槽位 🔧N/M
 	if c.card_type == GC.CardType.COMBAT_UNIT:
 		var mod_count: int = _get_mod_count_for_card(c)
@@ -1436,6 +1436,16 @@ func _build_bottom_info_line(c: CardResource) -> String:
 
 
 ## v8.0: 安全获取改造数量（兼容实例/模板）
+## v19: 战斗等级（card_level 1-30）查询——InstanceRegistry 按实例身份；未成长按 Lv1
+func _card_level_of(c: CardResource) -> int:
+	if c == null:
+		return 1
+	var ir: Node = get_node_or_null("/root/InstanceRegistry")
+	if ir != null and ir.has_method("get_card_level"):
+		var identity: String = String(c.instance_id) if not String(c.instance_id).is_empty() else String(c.card_id)
+		return clampi(maxi(int(ir.get_card_level(identity)), 1), 1, 30)
+	return 1
+
 func _get_mod_count_for_card(c: CardResource) -> int:
 	if c == null:
 		return 0
@@ -1734,6 +1744,9 @@ func _set_mtg_minimal_card_view(c: CardResource, name_label, lv_label, icon_rect
 		stars_row.visible = sn > 0
 	var tip_parts: Array[String] = []
 	tip_parts.append("[%s] %s" % [c.rarity, DefaultCards.safe_name(c)])
+	# v19: 悬停提示补等级（card_level）——装配/比较决策的核心维度
+	if c.card_type == GC.CardType.COMBAT_UNIT:
+		tip_parts.append("等级 Lv.%d" % _card_level_of(c))
 	if not c.type_line.is_empty():
 		tip_parts.append(c.type_line)
 	var combat_tip: String = BackpackCombatPreview.build_line(c)

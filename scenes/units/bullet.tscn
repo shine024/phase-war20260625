@@ -5,6 +5,13 @@
 [node name="Bullet" type="Node2D"]
 script = ExtResource("1_script")
 
+[node name="TracerLine" type="Line2D" parent="."]
+visible = false
+width = 2.5
+joint_mode = 1
+end_cap_mode = 1
+points = PackedVector2Array(0, 0, -10, 0)
+
 [node name="Sprite" type="Polygon2D" parent="."]
 color = Color(1, 1, 1, 1)
 polygon = PackedVector2Array(-2, -2, 4, 0, -2, 2)

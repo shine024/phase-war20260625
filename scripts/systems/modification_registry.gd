@@ -71,7 +71,7 @@ const MECHANIC_EFFECT_KEYS: Array = [
 	# 吸血/回收（资源转换规则——机制型，设定包装待后续迭代）
 	"lifesteal",
 	# v10 转换型（劣势转优势）
-	"salvage_repair", "phase_shift_counter", "hijack_aura",
+	"salvage_repair", "phase_shift_counter", "hijack_aura_radius", "hijack_aura_duration", "hijack_aura_cd",
 ]
 
 ## 改造分类查询：返回 "mechanic"（机制改造）或 "ratio"（交换比改造）。
@@ -766,6 +766,22 @@ static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary) -
 					result["phase_shield_regen"] = 50.0
 			"phase_shield_regen":
 				result["phase_shield_regen"] = maxf(0.0, float(effect_value))
+			# ─── v10 解题式玩法：转换型改造分支（劣势转优势）───
+			# 回收无人机（工兵 eng_14：击杀→按目标最大HP修复自身，吸血的设定合理版）
+			"salvage_repair":
+				if not result.has("salvage_repair_pct"):
+					result["salvage_repair_pct"] = 0.0
+				result["salvage_repair_pct"] = min(0.30, float(result["salvage_repair_pct"]) + float(effect_value))
+			# 相位偏移（空军 air_16：受暴击→下次必暴，复用 _first_attack_force_crit 充能）
+			"phase_shift_counter":
+				result["phase_shift_counter"] = true
+			# 电子劫持（通用 gen_17：敌方增益光环抵消并转移）
+			"hijack_aura_radius":
+				result["hijack_aura_radius"] = maxf(0.0, float(effect_value))
+			"hijack_aura_duration":
+				result["hijack_aura_duration"] = maxf(1.0, float(effect_value))
+			"hijack_aura_cd":
+				result["hijack_aura_cd"] = maxf(5.0, float(effect_value))
 			# 激光指示器（命中100%标记）
 			"laser_marker":
 				result["laser_mark_on_hit"] = true

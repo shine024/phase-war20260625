@@ -77,10 +77,11 @@ const DATA: Dictionary = {
 	# v7.x: per-slot 弹道——对轻装槽改 DIRECT 直射
 	condition_slot = 0,
 	effects = {
-		attack_light = 0.15,  # +15%
+		attack_light = 8,
 		weapon_type = 0,  # v6.5 DIRECT（单位级默认）
 		slot_weapon_type = 0,  # v7.x: 对轻装槽直射化
 	},
+	level_effects = {1: {attack_light = 8, weapon_type = 0, slot_weapon_type = 0}, 2: {attack_light = 14, weapon_type = 0, slot_weapon_type = 0}, 3: {attack_light = 21, weapon_type = 0, slot_weapon_type = 0}},
 	unlock_conditions = {
 		required_level = 2,
 	}
@@ -100,9 +101,10 @@ const DATA: Dictionary = {
 		slot_type = "weapon",
 		conflict_group = "damage",
 		effects = {
-			attack_light = 0.12,
+			attack_light = 7,
 			attack_interval = -0.05,
 		},
+		level_effects = {1: {attack_light = 7, attack_interval = -0.05}, 2: {attack_light = 12, attack_interval = -0.05}, 3: {attack_light = 16, attack_interval = -0.05}},
 		unlock_conditions = {
 			required_level = 3,
 		}
@@ -297,9 +299,10 @@ const DATA: Dictionary = {
 		slot_type = "armor",
 		conflict_group = "armor",
 		effects = {
-			max_hp = 0.20,          # +20%
-			defense_light = 0.15,    # +15%
+			max_hp = 60,
+			defense_light = 15,
 		},
+		level_effects = {1: {max_hp = 60, defense_light = 15}, 2: {max_hp = 100, defense_light = 26}, 3: {max_hp = 145, defense_light = 38}},
 		unlock_conditions = {
 			required_level = 2,
 		}
@@ -319,9 +322,10 @@ const DATA: Dictionary = {
 		slot_type = "armor",
 		conflict_group = "armor",
 		effects = {
-			defense_armor = 0.15,   # +15%
-			defense_light = 0.10,   # +10%
+			defense_armor = 15,
+			defense_light = 10,
 		},
+		level_effects = {1: {defense_armor = 15, defense_light = 10}, 2: {defense_armor = 26, defense_light = 18}, 3: {defense_armor = 38, defense_light = 25}},
 		unlock_conditions = {
 			required_level = 3,
 		}

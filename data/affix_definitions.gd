@@ -10,6 +10,8 @@ class_name AffixDefinitions
 ##
 ## card_type_filter:  0=仅平台卡, 1=仅武器卡, 2=平台/武器均可
 ## weapon_type_filter: -1=所有武器, 其他值=GameConstants.WeaponType
+## combat_kinds:      兵种限定（CombatKind 数组：0轻装/1装甲/2支援/3空中/4堡垒；空/缺省=通用词条）
+## min_tier:          单位档位门槛（UnifiedCardTable.Tier；0=无门槛，>=3(CHAMPION)=特殊兵种独特词条）
 ##
 ## unlock_condition: 解锁条件
 ##   - "none": 默认解锁
@@ -24,6 +26,12 @@ const MAX_AFFIX_LEVEL: int = 5
 
 ## 变异触发概率（词条升到5级时）
 const MUTATION_CHANCE: float = 0.25
+
+## v19: 兵种专属池 roll 概率（两段式：先以此概率走本兵种专属池，空池/未命中走通用池）
+const KIND_POOL_CHANCE: float = 0.55
+
+## v19: 特殊兵种独特词条档位门槛（CardResource.tier >= 此值才可 roll；3=CHAMPION/5=ULTIMATE/6=FORT）
+const UNIQUE_AFFIX_MIN_TIER: int = 3
 
 ## 强化触发等级（每5级强化一次）
 const ENHANCE_TRIGGER_LEVELS: Array = [5, 10, 15, 20, 25]
@@ -246,6 +254,205 @@ const AFFIX_TABLE: Dictionary = {
 		"rarity_pool":        ["rare", "epic", "legendary"],
 		"unlock_condition":   "boss_2",
 	},
+
+	# ─── v19 兵种专属词条（combat_kinds 限定，每兵种 2 个） ─────────────────
+	"light_skirmish": {
+		"affix_name":         "游击机动",
+		"description":        "【轻装专属】平台移动速度提升",
+		"affix_type":         "base_property",
+		"effect_key":         "move_speed",
+		"base_value":         0.15,    # +15% 移速 (Lv1)
+		"card_type_filter":   0,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [0],
+		"min_tier":           0,
+	},
+	"light_evasion": {
+		"affix_name":         "战术翻滚",
+		"description":        "【轻装专属】平台获得闪避几率（完全回避一次攻击）",
+		"affix_type":         "combat_feature",
+		"effect_key":         "dodge_chance",
+		"base_value":         0.08,    # +8% 闪避 (Lv1)
+		"card_type_filter":   0,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [0],
+		"min_tier":           0,
+	},
+	"armor_column": {
+		"affix_name":         "重装甲列",
+		"description":        "【装甲专属】平台最大生命值提升",
+		"affix_type":         "base_property",
+		"effect_key":         "max_hp",
+		"base_value":         0.18,    # +18% HP (Lv1)
+		"card_type_filter":   0,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [1],
+		"min_tier":           0,
+	},
+	"armor_plating": {
+		"affix_name":         "复合装甲板",
+		"description":        "【装甲专属】平台受到伤害减少",
+		"affix_type":         "base_property",
+		"effect_key":         "damage_reduction",
+		"base_value":         0.10,    # -10% 受伤 (Lv1)
+		"card_type_filter":   0,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [1],
+		"min_tier":           0,
+	},
+	"air_dive": {
+		"affix_name":         "俯冲打击",
+		"description":        "【空中专属】武器攻击伤害提升",
+		"affix_type":         "base_property",
+		"effect_key":         "attack_damage",
+		"base_value":         0.18,    # +18% 伤害 (Lv1)
+		"card_type_filter":   1,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [3],
+		"min_tier":           0,
+	},
+	"air_supremacy": {
+		"affix_name":         "空中优势",
+		"description":        "【空中专属】攻击附加暴击几率（暴击造成1.5倍伤害）",
+		"affix_type":         "combat_feature",
+		"effect_key":         "crit_chance",
+		"base_value":         0.10,    # +10% 暴击率 (Lv1)
+		"card_type_filter":   1,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [3],
+		"min_tier":           0,
+	},
+	"support_outrange": {
+		"affix_name":         "超视距打击",
+		"description":        "【支援专属】武器攻击射程提升",
+		"affix_type":         "base_property",
+		"effect_key":         "attack_range",
+		"base_value":         0.18,    # +18% 射程 (Lv1)
+		"card_type_filter":   1,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [2],
+		"min_tier":           0,
+	},
+	"support_repair": {
+		"affix_name":         "战场维修",
+		"description":        "【支援专属】战斗中缓慢回复生命值",
+		"affix_type":         "special_mechanic",
+		"effect_key":         "hp_regen",
+		"base_value":         0.008,   # 每秒回复 0.8% 最大HP (Lv1)
+		"card_type_filter":   0,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [2],
+		"min_tier":           0,
+	},
+	"fort_bulwark": {
+		"affix_name":         "永备工事",
+		"description":        "【堡垒专属】平台防御值提升（直接增加护甲）",
+		"affix_type":         "base_property",
+		"effect_key":         "defense",
+		"base_value":         4.0,     # +4 DEF (Lv1)
+		"card_type_filter":   0,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [4],
+		"min_tier":           0,
+	},
+	"fort_crossfire": {
+		"affix_name":         "交叉火力网",
+		"description":        "【堡垒专属】攻击有几率对附近敌人触发连锁伤害",
+		"affix_type":         "special_mechanic",
+		"effect_key":         "chain_chance",
+		"base_value":         0.15,    # +15% 连锁几率 (Lv1)
+		"card_type_filter":   1,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["rare", "epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [4],
+		"min_tier":           0,
+	},
+
+	# ─── v19 特殊兵种独特词条（min_tier >= CHAMPION，每兵种 1 个） ─────────
+	"light_executioner": {
+		"affix_name":         "斩首猎杀",
+		"description":        "【轻装·冠军级独有】暴击伤害倍率提升（基础暴击1.5倍）",
+		"affix_type":         "combat_feature",
+		"effect_key":         "crit_damage_bonus",
+		"base_value":         0.30,    # +0.3x 暴伤 (Lv1)
+		"card_type_filter":   1,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [0],
+		"min_tier":           3,
+	},
+	"armor_titan": {
+		"affix_name":         "泰坦之躯",
+		"description":        "【装甲·冠军级独有】平台最大生命值大幅提升",
+		"affix_type":         "base_property",
+		"effect_key":         "max_hp",
+		"base_value":         0.25,    # +25% HP (Lv1)
+		"card_type_filter":   0,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [1],
+		"min_tier":           3,
+	},
+	"air_reaper": {
+		"affix_name":         "死神俯冲",
+		"description":        "【空中·冠军级独有】武器攻击伤害大幅提升",
+		"affix_type":         "base_property",
+		"effect_key":         "attack_damage",
+		"base_value":         0.25,    # +25% 伤害 (Lv1)
+		"card_type_filter":   1,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [3],
+		"min_tier":           3,
+	},
+	"support_orbital": {
+		"affix_name":         "轨道支援",
+		"description":        "【支援·冠军级独有】攻击造成大范围溅射伤害",
+		"affix_type":         "combat_feature",
+		"effect_key":         "splash_damage",
+		"base_value":         0.30,    # +30% 溅射 (Lv1)
+		"card_type_filter":   1,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [2],
+		"min_tier":           3,
+	},
+	"fort_protocol": {
+		"affix_name":         "堡垒协议",
+		"description":        "【堡垒·冠军级独有】每次击杀获得一层更厚的护盾",
+		"affix_type":         "special_mechanic",
+		"effect_key":         "shield_on_kill",
+		"base_value":         0.10,    # 10% 最大HP的护盾值 (Lv1)
+		"card_type_filter":   0,
+		"weapon_type_filter": -1,
+		"rarity_pool":        ["epic", "legendary"],
+		"unlock_condition":   "none",
+		"combat_kinds":       [4],
+		"min_tier":           3,
+	},
 }
 
 ## 变异配置（词条 Lv5 时有概率触发，为词条额外添加特殊效果描述）
@@ -262,6 +469,22 @@ const MUTATION_TABLE: Dictionary = {
 	"platform_def_up":   "受到暴击时，额外减免30%暴击伤害",
 	"dodge_chance":      "成功闪避后，下次攻击必定暴击",
 	"crit_dmg_up":       "暴击击杀时，恢复10%最大生命值",
+	# ─── v19 兵种专属/独特词条变异（纯描述层，暂无战斗实现，与上表口径一致） ──
+	"light_skirmish":    "生命值低于40%时，移动速度额外提升15%",
+	"light_evasion":     "连续闪避2次后，恢复3%最大生命值",
+	"armor_column":      "生命值高于80%时，额外获得5%伤害减免",
+	"armor_plating":     "受到暴击时，额外减免30%暴击伤害",
+	"air_dive":          "目标生命值低于30%时，伤害额外提升25%",
+	"air_supremacy":     "暴击时无视目标闪避",
+	"support_outrange":  "攻击满射程边缘目标时，伤害提升15%",
+	"support_repair":    "3秒未受攻击后，回复速度翻倍",
+	"fort_bulwark":      "静止不动时，防御每秒+1（最多+10）",
+	"fort_crossfire":    "连锁伤害的衰减减半",
+	"light_executioner": "暴击伤害的20%转化为生命恢复",
+	"armor_titan":       "生命值低于50%时，伤害减免额外+10%",
+	"air_reaper":        "击杀后5秒内伤害提升20%",
+	"support_orbital":   "溅射范围扩大50%",
+	"fort_protocol":     "护盾被击破时，对周围敌人造成一次范围伤害",
 }
 
 # ─────────────────────────────────────────────
@@ -298,6 +521,28 @@ static func get_ids_for_card_type(card_type: int) -> Array:
 			result.append(id)
 	return result
 
+## v19: 词条是否对该兵种/档位可用
+## combat_kinds 空/缺省 = 通用词条（任何兵种可用）；非空 = 仅列表内兵种可用
+## min_tier > tier 时不可用（特殊兵种独特词条门槛）
+static func is_affix_available_for(affix_id: String, combat_kind: int, tier: int = 0) -> bool:
+	var def: Dictionary = get_definition(affix_id)
+	if def.is_empty():
+		return false
+	var kinds: Array = def.get("combat_kinds", []) as Array
+	if not kinds.is_empty() and not kinds.has(combat_kind):
+		return false
+	if int(def.get("min_tier", 0)) > tier:
+		return false
+	return true
+
+## v19: 该兵种可用的全部词条 ID（通用 + 本兵种专属，tier 达标的独特词条也计入）
+static func get_ids_for_combat_kind(combat_kind: int, tier: int = 0) -> Array:
+	var result: Array = []
+	for id in AFFIX_TABLE.keys():
+		if is_affix_available_for(String(id), combat_kind, tier):
+			result.append(id)
+	return result
+
 ## 获取变异描述
 static func get_mutation_description(affix_id: String) -> String:
 	if MUTATION_TABLE.has(affix_id):
@@ -305,10 +550,19 @@ static func get_mutation_description(affix_id: String) -> String:
 	return ""
 
 ## 按稀有度权重随机抽取一个词条ID（card_type: 0=平台, 1=武器）
-static func roll_random_affix_id(card_type: int, rarity_override: String = "") -> String:
+## v19: 新增 combat_kind/tier 可选参数——传入时按兵种/档位过滤（空结果回退全池）
+static func roll_random_affix_id(card_type: int, rarity_override: String = "", combat_kind: int = -1, tier: int = 0) -> String:
 	var pool: Array = get_ids_for_card_type(card_type)
 	if pool.is_empty():
 		return ""
+	# v19: 兵种维度过滤
+	if combat_kind >= 0:
+		var filtered: Array = []
+		for id in pool:
+			if is_affix_available_for(String(id), combat_kind, tier):
+				filtered.append(id)
+		if not filtered.is_empty():
+			pool = filtered
 	# 根据稀有度权重过滤
 	var weighted: Array = []
 	for id in pool:
@@ -441,10 +695,28 @@ static func get_unlocked_affix_ids(card_type: int, unlocked_bosses: Array) -> Ar
 	return result
 
 ## 在已解锁词条中随机抽取一个
-static func roll_unlocked_affix_id(card_type: int, rarity: String, unlocked_bosses: Array) -> String:
+## v19: 新增 combat_kind/tier 参数——两段式 roll：先以 KIND_POOL_CHANCE 概率走本兵种
+## 专属池（combat_kinds 匹配 + tier 达标），未命中/空池走通用池（combat_kinds 为空的词条）
+static func roll_unlocked_affix_id(card_type: int, rarity: String, unlocked_bosses: Array, combat_kind: int = -1, tier: int = 0) -> String:
 	var pool: Array = get_unlocked_affix_ids(card_type, unlocked_bosses)
 	if pool.is_empty():
 		return ""
+	# v19: 兵种两段式分流
+	if combat_kind >= 0:
+		var kind_pool: Array = []
+		var generic_pool: Array = []
+		for id in pool:
+			var def: Dictionary = AFFIX_TABLE[id] as Dictionary
+			var kinds: Array = def.get("combat_kinds", []) as Array
+			if kinds.is_empty():
+				generic_pool.append(id)
+			elif kinds.has(combat_kind) and int(def.get("min_tier", 0)) <= tier:
+				kind_pool.append(id)
+		if not kind_pool.is_empty() and randf() < KIND_POOL_CHANCE:
+			pool = kind_pool
+		elif not generic_pool.is_empty():
+			pool = generic_pool
+		# 两池皆空（异常配置）时保留原 pool 兜底
 	# 按稀有度过滤
 	var weighted: Array = []
 	for id in pool:

@@ -13,9 +13,9 @@ script = ExtResource("1_script")
 visible = false
 layout_mode = 1
 offset_left = 4.0
-offset_top = 120.0
+offset_top = 164.0
 offset_right = 1276.0
-offset_bottom = 620.0
+offset_bottom = 664.0
 mouse_filter = 0
 
 [node name="LeftPanel" type="Panel" parent="Overlay"]
@@ -179,6 +179,16 @@ theme_override_colors/font_color = Color(0.95, 0.75, 0.35, 1)
 theme_override_font_sizes/font_size = 14
 text = "📋 检查报告"
 
+[node name="ReportCollapseBtn" type="Button" parent="Overlay/RightPanel"]
+layout_mode = 1
+offset_left = 540.0
+offset_top = 2.0
+offset_right = 624.0
+offset_bottom = 26.0
+theme_override_colors/font_color = Color(0.85, 0.75, 0.35, 1)
+theme_override_font_sizes/font_size = 12
+text = "收起 ◂"
+
 [node name="CheckInfo" type="RichTextLabel" parent="Overlay/RightPanel"]
 layout_mode = 1
 offset_left = 4.0
@@ -226,7 +236,7 @@ visible = false
 layout_mode = 1
 offset_left = 200.0
 offset_top = 4.0
-offset_right = 624.0
+offset_right = 536.0
 offset_bottom = 24.0
 theme_override_colors/font_color = Color(0.4, 1, 0.5, 1)
 theme_override_font_sizes/font_size = 12

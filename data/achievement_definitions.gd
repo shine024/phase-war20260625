@@ -304,7 +304,7 @@ const ACHIEVEMENTS: Dictionary = {
 	"enhance_card_10": {
 		"id": "enhance_card_10",
 		"name": "强化新手",
-		"description": "将任意卡片强化到等级10",
+		"description": "将任意卡片的强化等级提升至满级（强化 Lv.10）。",
 		"category": "progress",
 		"reward": {
 			"nano_materials": 150,
@@ -317,7 +317,7 @@ const ACHIEVEMENTS: Dictionary = {
 	"enhance_card_20": {
 		"id": "enhance_card_20",
 		"name": "强化大师",
-		"description": "将任意卡片强化到等级20",
+		"description": "将任意卡片的战斗等级达到 Lv.20（通过战斗积累经验）。",
 		"category": "challenge",
 		"reward": {
 			"nano_materials": 300

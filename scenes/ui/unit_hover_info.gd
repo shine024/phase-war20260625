@@ -1,12 +1,12 @@
 extends PanelContainer
 ## v7.x 单位悬浮信息窗（UnitHoverInfo）
 ##
-## 鼠标悬停战场单位 0.3s 后显示的轻量信息面板（HP/攻/防/星级/词条前3）。
+## 鼠标悬停战场单位 0.3s 后显示的轻量信息面板（HP/攻/防/等级/状态标签）。
 ## 单击单位时立即隐藏（让位给全屏 CardInfoPanel）。
 ##
 ## 挂载：InfoPanelLayer（layer=90，与 CardInfoPanel 同层）
 ## 数据来源：复用 card_info_panel._resolve_source_instance_card 反查链思路，
-##           提取轻量字段（不做完整渲染，只取 HP/三维/星级/词条摘要）
+##           提取轻量字段（不做完整渲染，只取 HP/三维/等级 meta/光环状态标签）
 
 const DT = preload("res://resources/design_tokens.gd")
 const GC = preload("res://resources/game_constants.gd")
@@ -147,9 +147,10 @@ func _populate(unit: Node) -> void:
 	for key in ["radar_buffed", "scout_crit_buffed", "fortress_def_buffed", "command_buffed", "carrier_repair_buffed"]:
 		if unit.has_meta(key) and bool(unit.get_meta(key)):
 			tags.append(_buff_tag_name(key))
-	# 强化等级
-	if unit.has_meta("enhance_level") and int(unit.get_meta("enhance_level")) > 0:
-		tags.insert(0, "强化 Lv.%d" % int(unit.get_meta("enhance_level")))
+	# v19: 战斗等级（card_level）——读 meta unit_level（我方部署/敌方生成时统一写入；
+	# 旧"强化 Lv"口径已废，强化等级不再悬浮显示，进详情面板看）
+	if unit.has_meta("unit_level") and int(unit.get_meta("unit_level")) > 0:
+		tags.insert(0, "Lv.%d" % int(unit.get_meta("unit_level")))
 	if tags.is_empty():
 		_tags_label.text = ""
 	else:

@@ -145,6 +145,19 @@ func _ready() -> void:
 				SignalBus.enemy_phase_driver_destroyed.connect(_on_enemy_phase_driver_destroyed)
 		if not SignalBus.unit_damaged.is_connected(_on_unit_damaged_combat_feedback):
 			SignalBus.unit_damaged.connect(_on_unit_damaged_combat_feedback)
+		# v10 解题式玩法：克制质变计数（战后统计"本关克制链生效 N 次"）
+		if SignalBus.has_signal("counter_break_triggered"):
+			if not SignalBus.counter_break_triggered.is_connected(_on_counter_break_count):
+				SignalBus.counter_break_triggered.connect(_on_counter_break_count)
+
+## v10：克制质变触发计数（战斗开始时清零，战斗结束写入 _battle_result）
+var counter_break_count: int = 0
+
+func _on_counter_break_count(_break_type: String, _target_name: String) -> void:
+	counter_break_count += 1
+
+func get_counter_break_count() -> int:
+	return counter_break_count
 
 ## P0 性能优化：退出时断开 SignalBus 连接，防止场景切换后连接累积
 func _exit_tree() -> void:
@@ -159,6 +172,8 @@ func _exit_tree() -> void:
 			SignalBus.enemy_phase_driver_destroyed.disconnect(_on_enemy_phase_driver_destroyed)
 		if SignalBus.unit_damaged.is_connected(_on_unit_damaged_combat_feedback):
 			SignalBus.unit_damaged.disconnect(_on_unit_damaged_combat_feedback)
+		if SignalBus.has_signal("counter_break_triggered") and SignalBus.counter_break_triggered.is_connected(_on_counter_break_count):
+			SignalBus.counter_break_triggered.disconnect(_on_counter_break_count)
 
 
 func _process(delta: float) -> void:
@@ -302,6 +317,7 @@ func start_battle(battle_scene: Node) -> void:
 	_battle_elapsed_time = 0.0
 	_battle_result = {"victory_stars": 0, "era": 0, "player_won": false}
 	battle_active = true
+	counter_break_count = 0  # v10: 克制质变计数清零
 	_defeated_enemies.clear()  ## v6.0: reset defeated enemy tracking
 	_group_target_cache_accum = _GROUP_TARGET_CACHE_INTERVAL_SEC
 
@@ -513,6 +529,8 @@ func _deferred_end_battle_intel_harvest(player_won: bool) -> void:
 	# has_recon 由 end_battle（Frame A）清场前计算，此处直接传入，避免遍历已清空的单位。
 	if player_won:
 		_battle_result = _damage_system.generate_intel_harvest(_battle_result, _pending_has_recon)
+	# v10 解题式玩法：克制链统计写入战报（"本关克制链生效 N 次"，战后结算可读）
+	_battle_result["counter_break_count"] = counter_break_count
 	# ②③④ 推迟到下一帧（让渲染线程先画情报收获后的胜利画面）
 	call_deferred("_deferred_end_battle_broadcast", player_won)
 
@@ -1101,6 +1119,7 @@ func _on_unit_damaged_combat_feedback(unit: Node, _is_player: bool, amount: floa
 	#        因 meta 竞态失效——battle_manager 先清 meta 导致 new_systems 读不到，是死逻辑，已迁移至此）。
 	var is_crit: bool = false
 	var is_pierce: bool = false
+	var is_counter: bool = false
 	if unit != null and is_instance_valid(unit):
 		if unit.has_meta("_vfx_crit_pending"):
 			unit.remove_meta("_vfx_crit_pending")
@@ -1108,7 +1127,11 @@ func _on_unit_damaged_combat_feedback(unit: Node, _is_player: bool, amount: floa
 		if unit.has_meta("_vfx_pierce_pending"):
 			unit.remove_meta("_vfx_pierce_pending")
 			is_pierce = true
-	# 暴击优先于穿透样式（暴击视觉冲击更强）
+		# v10 解题式玩法：标签克制质变命中（break_effect 生效）时用金色 counter_break 样式
+		if unit.has_meta("_vfx_counter_pending"):
+			unit.remove_meta("_vfx_counter_pending")
+			is_counter = true
+	# 暴击优先于穿透/克制样式（暴击视觉冲击更强）；克制优先于穿透（质变更稀有）
 	if is_crit:
 		CombatFeedback.show_damage(at_position, amount, unit, true, "critical")
 		# v8.1: 暴击屏幕震动（从 new_systems_integration 迁移）
@@ -1119,6 +1142,8 @@ func _on_unit_damaged_combat_feedback(unit: Node, _is_player: bool, amount: floa
 				var camera = bf.get_node_or_null("Camera2D")
 				if camera:
 					bfm.shake_screen(camera, 5.0, 0.3)
+	elif is_counter:
+		CombatFeedback.show_damage(at_position, amount, unit, false, "counter_break")
 	elif is_pierce:
 		CombatFeedback.show_damage(at_position, amount, unit, false, "pierce")
 	else:

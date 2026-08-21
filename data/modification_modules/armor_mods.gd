@@ -43,8 +43,9 @@ const DATA: Dictionary = {
 		slot_type = "armor",
 		conflict_group = "armor",
 		effects = {
-			defense_armor = 0.20,   # +20%
+			defense_armor = 20,
 		},
+		level_effects = {1: {defense_armor = 20}, 2: {defense_armor = 35}, 3: {defense_armor = 50}},
 		unlock_conditions = {
 			required_level = 2,
 		}

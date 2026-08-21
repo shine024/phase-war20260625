@@ -348,13 +348,13 @@ func _apply_title_mark_diamond(color: Color) -> void:
 func _compute_meta_info(tab_index: int) -> String:
 	match tab_index:
 		TabIndex.COMBAT_CARDS:
-			# 兵种数 / 时代数 / 满星数
+			# 兵种数 / 时代数 / 满级数（card_level>=30）
 			var stats: Dictionary = get_backpack_statistics()
 			var total: int = int(stats.get("total_cards", 0))
 			var kind_count: int = _count_distinct_kinds_in_backpack()
 			var era_count: int = _count_distinct_eras_in_backpack()
 			var max_stars: int = _count_max_stars_in_backpack()
-			return "共 %d · 兵种 %d · 时代 %d · 满星 %d" % [total, kind_count, era_count, max_stars]
+			return "共 %d · 兵种 %d · 时代 %d · 满级 %d" % [total, kind_count, era_count, max_stars]
 		TabIndex.INTEL:
 			var installed: int = _count_installed_mods()
 			var total_mods: int = _count_owned_mods()
@@ -410,7 +410,7 @@ func _count_distinct_eras_in_backpack() -> int:
 	return eras.size()
 
 
-## v9.2: 战斗卡元信息辅助——统计背包内满星（5星）卡数
+## v9.2: 战斗卡元信息辅助——统计背包内满级（card_level>=30）卡数
 func _count_max_stars_in_backpack() -> int:
 	if _data == null or BlueprintManager == null or not BlueprintManager.has_method("get_card_xp_progress"):
 		return 0

@@ -68,10 +68,10 @@ func _initialize_tutorial_data() -> void:
 			"highlight_elements": ["phase_instrument_button"]
 		},
 		TutorialStep.ENHANCEMENT: {
-			"title": "强化卡牌",
-			"description": "消耗纳米材料提升卡牌强化等级。等级越高，单位属性越强，还会解锁词条槽位。",
-			"highlights": ["强化提升基础属性", "Lv2/4/6/8/10 解锁词条槽", "消耗纳米材料"],
-			"action_text": "打开强化",
+			"title": "卡牌养成",
+			"description": "卡牌有三个养成维度：①战斗等级（Lv1-30）通过战斗获取经验自动升级，Lv5/10/15/20/25/30 各获得一个词条；②强化（Lv1-10）消耗纳米材料提升，提供基础属性成长；③蓝图星级按副本次数累计，激活额外加成。",
+			"highlights": ["战斗经验→等级 Lv1-30", "Lv5/10/15/20/25/30 获得词条", "强化消耗纳米材料 1-10"],
+			"action_text": "打开养成面板",
 			"action_target": "open_enhancement",
 			"highlight_elements": []
 		},

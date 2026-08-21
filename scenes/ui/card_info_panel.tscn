@@ -152,6 +152,13 @@ theme_override_colors/font_color = Color(0.8, 0.74, 0.55, 1)
 theme_override_font_sizes/font_size = 12
 horizontal_alignment = 1
 
+[node name="TierLabel" type="Label" parent="Margin/VBox"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.75, 0.2, 1)
+theme_override_font_sizes/font_size = 11
+horizontal_alignment = 1
+
 [node name="RankBadgeHost" type="HBoxContainer" parent="Margin/VBox"]
 visible = false
 layout_mode = 2

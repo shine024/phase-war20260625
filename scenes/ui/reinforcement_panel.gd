@@ -297,7 +297,7 @@ func _update_rank_info(rank_info: Dictionary, next_rank_info: Dictionary) -> voi
 		var next_label = card_detail_panel.get_node_or_null("NextRankLabel")
 		if next_label:
 			var progress_pct = int(next_rank_info.progress * 100)
-			next_label.text = "晋升进度：%d%% → %s" % [progress_pct, next_rank_info.next_name]
+			next_label.text = "强化进度：%d%% → %s" % [progress_pct, next_rank_info.next_name]
 
 func _update_reinforce_button(rank_info: Dictionary) -> void:
 	if not reinforce_button:
@@ -306,7 +306,7 @@ func _update_reinforce_button(rank_info: Dictionary) -> void:
 	var current_level = selected_card.enhance_level
 	if current_level >= 10:
 		reinforce_button.disabled = true
-		reinforce_button.text = "★ 已达最高强化等级"
+		reinforce_button.text = "已达最高强化等级"
 		return
 
 	reinforce_button.disabled = false
@@ -316,7 +316,7 @@ func _update_reinforce_button(rank_info: Dictionary) -> void:
 	var cost_multiplier = UnifiedRankSystem.get_cost_multiplier(next_level)
 	var nano_cost = int(selected_card.power * cost_multiplier)
 
-	reinforce_button.text = "🎖 晋升（消耗 %d 纳米）" % nano_cost
+	reinforce_button.text = "强化（消耗 %d 纳米）" % nano_cost
 
 ## ─────────────────────────────────────────────
 ##  事件处理

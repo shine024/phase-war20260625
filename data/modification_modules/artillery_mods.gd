@@ -29,7 +29,8 @@ const DATA: Dictionary = {
 		cost_install = 80,
 		slot_type = "barrel",
 		conflict_group = "barrel",
-		effects = {attack_range = 60, attack_light = 0.10, true_damage = 10},  # v8.6: 补真实伤害（膛线=精准命中要害）
+		effects = {attack_range = 60, attack_light = 6, true_damage = 10},
+		level_effects = {1: {attack_light = 6, attack_range = 60, true_damage = 10}, 2: {attack_light = 10, attack_range = 60, true_damage = 10}, 3: {attack_light = 14, attack_range = 60, true_damage = 10}},
 		unlock_conditions = {required_level = 2}
 	},
 
@@ -222,7 +223,8 @@ const DATA: Dictionary = {
 		cost_install = 60,
 		slot_type = "fortification",
 		conflict_group = "fortification",
-		effects = {defense_light = 0.40, deploy_speed = -1},
+		effects = {defense_light = 40, deploy_speed = -1},
+		level_effects = {1: {defense_light = 40, deploy_speed = -1}, 2: {defense_light = 70, deploy_speed = -1}, 3: {defense_light = 100, deploy_speed = -1}},
 		unlock_conditions = {required_level = 2}
 	},
 

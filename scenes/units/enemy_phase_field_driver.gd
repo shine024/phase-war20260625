@@ -16,6 +16,12 @@ const BattleSlotGrid = preload("res://scenes/battlefield/battle_slot_grid.gd")
 const EnemyAffixes = preload("res://data/enemy_affixes.gd")
 # v9.0: 敌方相位师固定套路系统（补兵规则按套路走）
 const MasterPatterns = preload("res://data/enemy_phase_master_patterns.gd")
+# v18 四源重构·批次2: boss 大招真身（原 master_config.active_spells 已物理迁入）
+const EnemyMasterInstruments = preload("res://data/enemy_master_instruments.gd")
+# v18 四源重构·批次3: 技能树真身（原 traits/passive_spells 已物理迁入；数值+机制+元素）
+const EnemyMasterSkillTree = preload("res://data/enemy_master_skill_tree.gd")
+# v18.c: 相位师等级 flat（等级属性加成换 flat 统一，全项目同表）
+const CardGrowthConfig = preload("res://data/card_growth_config.gd")
 
 ## 兜底：EnemyArchetypes 生成（当没有装备数据时使用）
 const USE_FALLBACK_SPAWN: bool = true
@@ -94,6 +100,8 @@ var _base_body_tint: Color = Color.WHITE
 ## key 为 UnitStats 字段名（attack_light/defense_light/max_hp/crit_chance/dodge_chance），
 ## value 为加成比值（乘区用 1.0+val 累乘；crit/dodge 用 +val 累加）。
 var _trait_stat_mods: Dictionary = {}
+## v18 四源重构·批次3: 技能树组合缓存（等级属性/数值节点/机制节点/元素），setup 时填充
+var _skill_comp: Dictionary = {}
 ## trait 出兵上限加成（unit_limit_bonus 累加值，不影响单位 stats）
 var _trait_unit_limit_bonus: int = 0
 ## v9.1: buff 闪光 Tween（应用 trait/passive 时基地短暂变亮）
@@ -251,9 +259,19 @@ func setup(master_config: Dictionary) -> void:
 	_spawn_seq_index = 0
 	# v7.x: 缓存敌方相位仪的主动能力（供 EnemyPhaseInstrumentAbilities 读取）
 	_enemy_active_ability = _read_enemy_active_ability()
-	# v8.5: 缓存 boss 主动/被动技能（透传自 master_config，供 EnemyMasterSkillEngine 定时触发）
-	_boss_active_spells = master_config.get("active_spells", []) if master_config.has("active_spells") else []
-	_boss_passive_spells = master_config.get("passive_spells", []) if master_config.has("passive_spells") else []
+	# v8.5: 缓存 boss 主动/被动技能（供 EnemyMasterSkillEngine 定时触发）
+	# v18 四源重构·批次2: 大招改从专属相位仪变体读取（原 master_config.active_spells
+	# 已物理迁入 EnemyMasterInstruments，master 数据文件该字段已删除）。
+	# 旧配置兜底保留一拍（外部手构 master_config 仍带该字段时照旧读）。
+	var _ultimates: Array = EnemyMasterInstruments.get_master_ultimate_spells(_master_id)
+	if _ultimates.is_empty() and master_config.has("active_spells"):
+		_ultimates = master_config.get("active_spells", [])
+	_boss_active_spells = _ultimates
+	# v18 四源重构·批次3: 被动改从技能树机制节点投递（typed kind；todo 节点不投递=保持现状空转）。
+	var _mech_nodes: Array = EnemyMasterSkillTree.get_delivered_mech_nodes(_master_id)
+	if _mech_nodes.is_empty() and master_config.has("passive_spells"):
+		_mech_nodes = master_config.get("passive_spells", [])
+	_boss_passive_spells = _mech_nodes
 	_unit_limit = int(_master_stats.get("unit_limit", 5))
 	# v7.x: 相位仪战斗卡槽数限制产兵数——"出兵x相位仪，绿槽数y成为限制"。
 	# v7.x 统一池：读 slot_counts.green（玩家同款 schema），按星级梯度 1~9（见 _STAR_LAYOUT）。
@@ -348,30 +366,45 @@ func get_trait_stat_mods() -> Dictionary:
 ## 多个 trait 修改同一字段时按乘法累乘（如两个 trait 各 +10% 防御 → 1.10×1.10=1.21）。
 ## crit/dodge 为加法累加，最后 clamp 到 [0,1]。
 func _apply_trait_effects() -> void:
-	var traits: Array = _master_config_cache.get("traits", []) if not _master_config_cache.is_empty() else []
-	if traits.is_empty():
-		return
+	# v18 四源重构·批次3: 原 traits 已物理迁入技能树（EnemyMasterSkillTree）。
+	# 组合 = 技能树数值节点（原 traits 支持键 + B1/B2 语义正确的被动），
+	# 统一写入 _trait_stat_mods（存量单位/产兵共用同一条链）。
+	# v18.c: 等级属性通道已换 flat 统一（原 +10/10/15/20 乘区移除）——
+	# 改由 _apply_master_level_flat 按单位时代/兵种派生固定值链尾注入（见产兵/存量两处调用）。
 	_trait_stat_mods.clear()
 	_trait_unit_limit_bonus = 0
-	# 注：`trait` 在 Godot 4.5 已成为保留关键字（实验性 trait 特性），循环变量改名 trait_def。
-	for trait_def in traits:
-		if not (trait_def is Dictionary):
+	var mid: String = String(_master_config_cache.get("id", "")) if not _master_config_cache.is_empty() else ""
+	var mlv: int = int(_master_config_cache.get("level", 5)) if not _master_config_cache.is_empty() else 5
+	_skill_comp = EnemyMasterSkillTree.get_composition(mid, mlv)
+	# 数值节点（标量键沿用旧 8 键口径；嵌套 dict 跳过——与旧 traits 行为一致）
+	for node in _skill_comp.get("num", []):
+		if not (node is Dictionary):
 			continue
-		var fx: Dictionary = trait_def.get("effects", {})
-		if fx.is_empty():
-			continue
+		var fx: Dictionary = node.get("effects", {})
 		for key in fx.keys():
 			var val_raw = fx[key]
-			# 防 crash：trait effect value 可能是嵌套 dict（如 divine_transform: {duration, all_stat_boost}）
-			# 此类 complex effect 由上层 spell 系统消费，此处仅处理标量数值
-			if typeof(val_raw) != TYPE_FLOAT and typeof(val_raw) != TYPE_INT:
-				continue
-			_apply_trait_effect_key(String(key), float(val_raw))
+			if typeof(val_raw) == TYPE_FLOAT or typeof(val_raw) == TYPE_INT:
+				_apply_trait_effect_key(String(key), float(val_raw))
 	# 应用到 setup 时已存在的 enemy_units（补兵残留/同帧产兵）
 	_apply_trait_mods_to_units()
-	# v9.1: buff 视觉反馈——基地短暂闪光，让玩家感知"这个 boss 有 trait 加成"
+	# v9.1: buff 视觉反馈——基地短暂闪光，让玩家感知"这个 boss 有技能树加成"
 	if not _trait_stat_mods.is_empty():
 		_flash_body_on_buff()
+
+## v18.c: 相位师等级 flat（等级属性加成换 flat 统一）——
+## 派生自单位自己的时代/兵种 × 相位师等级（CardGrowthConfig 全项目同表：
+## 我方卡等级/经典敌兵关卡映射/相位师等级同源），纯加法，叠在全部乘区之后。
+## 稀有度取中性档 rare(×1.0)——与经典敌兵注入口径一致。
+func _master_level_int() -> int:
+	if not _master_config_cache.is_empty():
+		return clampi(int(_master_config_cache.get("level", 5)), 1, CardGrowthConfig.MAX_CARD_LEVEL)
+	return 5
+
+func _apply_master_level_flat(stats: UnitStats, unit_era: int) -> void:
+	if stats == null:
+		return
+	CardGrowthConfig.apply_to_stats(stats, CardGrowthConfig.total_growth_raw(
+		clampi(unit_era, 0, 4), int(stats.combat_kind), "rare", _master_level_int()))
 
 ## v9.1: 按 trait effect key 分类写入 _trait_stat_mods。
 ## 乘区字段（atk/def/hp）默认值 1.0，累乘 (1+val)；
@@ -406,16 +439,28 @@ func _apply_trait_effect_key(key: String, val: float) -> void:
 ## v9.1: 将缓存的 trait 加成应用到所有现有 enemy_units 组单位的 stats。
 ## 仅在 setup 时调用一次（处理已存在单位）；后续产兵由 _apply_trait_to_spawned_unit 独立应用。
 func _apply_trait_mods_to_units() -> void:
-	if _trait_stat_mods.is_empty():
-		return
 	var tree: SceneTree = get_tree()
 	if tree == null:
 		return
 	for u in tree.get_nodes_in_group("enemy_units"):
 		if u == null or not is_instance_valid(u):
 			continue
-		if "stats" in u and u.stats != null:
-			_apply_trait_mods_to_stats(u.stats)
+		if not ("stats" in u and u.stats != null):
+			continue
+		_apply_trait_mods_to_stats(u.stats)
+		# v18.c: 等级 flat（换统一表）——存量单位按各自 archetype 时代派生，查不到回退相位师时代。
+		# 不受 _trait_stat_mods 空守卫影响（无技能树数值节点的 master，等级 flat 仍生效）。
+		var arch_id: String = ""
+		if "archetype_id" in u:
+			arch_id = String(u.archetype_id)
+		elif u.has_meta("archetype_id"):
+			arch_id = String(u.get_meta("archetype_id"))
+		var unit_era: int = era
+		if not arch_id.is_empty():
+			var ucfg: Dictionary = EnemyArchetypes.get_config(arch_id)
+			if not ucfg.is_empty() and ucfg.has("era"):
+				unit_era = int(ucfg.get("era"))
+		_apply_master_level_flat(u.stats, unit_era)
 
 ## v9.1: 将 _trait_stat_mods 应用到单个 UnitStats 实例。
 ## stats 可能是 UnitStats（ConstructUnit）或 EnemyUnit 的 stats 对象，只要字段名匹配即可。
@@ -450,6 +495,11 @@ func _apply_trait_mods_to_stats(stats: Object) -> void:
 func _apply_trait_to_spawned_unit(unit: Node2D) -> void:
 	if unit == null or not is_instance_valid(unit):
 		return
+	# v18 元素伤害维度：技能树元素节点 → 单位元素亲和/乘区（攻击结算与命中着色消费）
+	var elem: Dictionary = _skill_comp.get("element", {})
+	if not elem.is_empty() and "stats" in unit and unit.stats != null:
+		unit.stats.element_affinity = int(elem.get("affinity", 0))
+		unit.stats.element_damage_mult = float(elem.get("mult", 1.0))
 	if _trait_stat_mods.is_empty():
 		return
 	if "stats" in unit and unit.stats != null:
@@ -868,13 +918,9 @@ func _produce_unit_with_equipment(override_platform_id: String = "") -> void:
 	_sb_hp_before = float(stats.max_hp)
 	_sb_atk_before = float(stats.attack_damage)
 	_sb_def_before = float(stats.defense)
-	# 乘区2：出兵序列 elite/boss 标记加成 —— elite +25%攻/血，boss +50%，普通×1.0。
-	_apply_sequence_entry_bonus(stats, seq_entry_type)
-	var _seq_label: String = "出兵序列(%s)" % (seq_entry_type if not seq_entry_type.is_empty() else "普通")
-	_sb_sources = _record_spawn_step(_sb_sources, _seq_label, _sb_hp_before, _sb_atk_before, _sb_def_before, stats)
-	_sb_hp_before = float(stats.max_hp)
-	_sb_atk_before = float(stats.attack_damage)
-	_sb_def_before = float(stats.defense)
+	# v18 四源重构·批次3: 出兵序列 elite/boss 数值乘区已去除（校准决策——等级属性全员成长
+	# 替代 30% 兵的尖峰，总体威胁比 ≈1.04）。elite/boss 标记仅保留：boss 同名唯一性 +
+	# target_priority_tag 高价值目标（两处在产兵后半段，不受影响）。
 	# 乘区3：相位师相位仪加成 —— pi_atk/pi_def/pi_hp。
 	_apply_enemy_phase_instrument_bonus(stats)
 	_sb_sources = _record_spawn_step(_sb_sources, "相位仪", _sb_hp_before, _sb_atk_before, _sb_def_before, stats)
@@ -907,6 +953,13 @@ func _produce_unit_with_equipment(override_platform_id: String = "") -> void:
 		stats.defense_air = maxf(0.0, stats.defense_air * (1.0 + _tier_def))
 	var _tier_name: String = str(_pm_bonus.get("name", _pm_tier))
 	_sb_sources = _record_spawn_step(_sb_sources, "配档(%s)" % _tier_name, _sb_hp_before, _sb_atk_before, _sb_def_before, stats)
+	# 乘区5（v18.c 纯加法）：相位师等级 flat——等级属性加成换 flat 统一（CardGrowthConfig 同表）。
+	# 在符文/相位仪/配档全部乘区之后注入，保持成长轴纯加法不进百分比堆叠。
+	_sb_hp_before = float(stats.max_hp)
+	_sb_atk_before = float(stats.attack_damage)
+	_sb_def_before = float(stats.defense)
+	_apply_master_level_flat(stats, era)
+	_sb_sources = _record_spawn_step(_sb_sources, "等级Lv%d" % _master_level_int(), _sb_hp_before, _sb_atk_before, _sb_def_before, stats)
 	stats.platform_card_id = platform_id
 
 	## v8.x boss 唯一性限制：同名 boss 单位战场上只能存在 1 个
@@ -925,6 +978,25 @@ func _produce_unit_with_equipment(override_platform_id: String = "") -> void:
 	if _is_boss and _effective_archetype_exists_on_field(effective_archetype):
 		return  # 场上已有同名 boss，跳过本次产兵
 
+	# v19: 相位师产兵沿用敌方卡词条系统——序列 elite/boss 条目按波次同源规则 roll 词缀
+	# （v8.2 砍掉精英词缀后此处恢复，机制升级为兵种分池版）。与波次侧 apply_elite_affixes 同构：
+	# elite→1 个 / boss→2 个 / normal→0；兵种读 stats.combat_kind，档位查统一卡表条目。
+	# 时序对齐波次侧（全部乘区之后）；反应式 AI 替换的兵 seq_entry_type 已重置 normal，不 roll。
+	var _rolled_affixes: Array = []
+	if seq_entry_type == "elite" or seq_entry_type == "boss":
+		var _affix_kind: int = int(stats.combat_kind)
+		var _affix_tier: int = 0
+		if not effective_archetype.is_empty():
+			var _affix_entry: Dictionary = UnifiedCardTable.get_entry(effective_archetype)
+			_affix_tier = int(_affix_entry.get("tier", 0))
+		_rolled_affixes = EnemyAffixes.roll_affixes(seq_entry_type, null, _affix_kind, _affix_tier)
+		if not _rolled_affixes.is_empty():
+			_sb_hp_before = float(stats.max_hp)
+			_sb_atk_before = float(stats.attack_damage)
+			_sb_def_before = float(stats.defense)
+			EnemyAffixes.apply_to_stats(stats, _rolled_affixes)
+			_sb_sources = _record_spawn_step(_sb_sources, "词缀(%s)" % "·".join(EnemyAffixes.get_display_names(_rolled_affixes)), _sb_hp_before, _sb_atk_before, _sb_def_before, stats)
+
 	## 生成 ConstructUnit
 	var unit: Node2D = ConstructUnitScene.instantiate()
 	if unit.has_method("setup_with_enemy_visual"):
@@ -940,6 +1012,17 @@ func _produce_unit_with_equipment(override_platform_id: String = "") -> void:
 		unit.set_meta("target_priority_tag", "boss")
 	elif seq_entry_type == "elite":
 		unit.set_meta("target_priority_tag", "elite")
+	# v19: 词缀展示数据挂 meta（波次侧走 EnemyUnit._elite_affixes + get_elite_affixes()；
+	# 产兵是 ConstructUnit 无该接口，meta 供信息面板后续统一读取）
+	if not _rolled_affixes.is_empty():
+		unit.set_meta("elite_affixes", _rolled_affixes)
+		unit.set_meta("elite_spawn_type", seq_entry_type)
+	# v19: 产兵等级文字（血条左侧）——相位师等级 Lv5-30（等级 flat 注入同源）；
+	# meta 同时供兜底产兵路径（EnemyUnit._resolve_display_level_text）读取
+	unit.set_meta("unit_level", clampi(_master_level_int(), 1, 30))
+	var _unit_lv_bar: Node = unit.get_node_or_null("HpBar")
+	if _unit_lv_bar != null and _unit_lv_bar.has_method("set_level_text"):
+		_unit_lv_bar.set_level_text("Lv%d" % clampi(_master_level_int(), 1, 30))
 	# v9.0 fix: 记录产兵用的 platform_id 到 meta，供套路补兵"同款优先"精准匹配。
 	# 直引模式下 platform_id == archetype_id，旧平台卡模式下两者不同（archetype_id 是视觉 archetype，
 	# platform_id 才是产兵来源）。补兵时优先读 spawn_platform_id，避免旧平台卡模式下规则1 失效。
@@ -1644,27 +1727,9 @@ func _apply_master_rune_bonus(stats: UnitStats) -> void:
 
 ## v6.14: 出兵序列 elite/boss 标记加成。
 ## 序列里标记的 elite/boss 产兵额外加成，让出兵有强度节奏（非所有产兵都一样强）。
-func _apply_sequence_entry_bonus(stats: UnitStats, entry_type: String) -> void:
-	match entry_type:
-		"elite":
-			# v8.x 修复：attack_damage 是 attack_light 别名，同乘会乘两次（见配档乘区注释）。
-			stats.attack_light *= 1.25
-			stats.attack_armor *= 1.25
-			stats.attack_air *= 1.25
-			stats.max_hp *= 1.25
-			_sync_enemy_weapon_slot_damage(stats, 1.25)  # v7.x H2: 同步武器槽伤害
-		"boss":
-			stats.attack_light *= 1.50
-			stats.attack_armor *= 1.50
-			stats.attack_air *= 1.50
-			stats.max_hp *= 1.50
-			# v7.x 修复(H1): 补齐三维防御（原只乘标量 defense，与 elite/instrument 分支不一致；
-			# 防御实际由三维驱动，单乘标量导致 boss 防御加成不完整）。
-			stats.defense *= 1.50
-			stats.defense_light *= 1.50
-			stats.defense_armor *= 1.50
-			stats.defense_air *= 1.50
-			_sync_enemy_weapon_slot_damage(stats, 1.50)
+## v18 四源重构·批次3: _apply_sequence_entry_bonus（elite +25%/boss +50% 攻血防乘区）已删除。
+## 校准决策：等级属性全员成长（+10/10/15/20）替代 30% 兵的序列尖峰，总体威胁比 ≈1.04。
+## elite/boss 标记的 boss 唯一性限制与 target_priority_tag 在产兵后半段，不受本删除影响。
 
 
 ## v6.14/v7.x: 相位师相位仪加成（读统一池 properties 数组 pi_atk/pi_def/pi_hp）。

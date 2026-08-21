@@ -47,7 +47,7 @@ const DEFINITIONS: Dictionary = {
 	ID_RESEARCH_POINTS: {
 		"id": ID_RESEARCH_POINTS,
 		"name": "研究点",
-		"desc": "用于卡牌升星与改装的专用资源。",
+		"desc": "用于卡牌养成与改造的专用资源。",
 		"icon": "res://assets/resources/crystal.png",
 	},
 	# v7.3: 5 种许可证定义已删除（死系统）

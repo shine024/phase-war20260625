@@ -61,7 +61,8 @@ const DATA: Dictionary = {
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 80, cost_install = 40,
 		slot_type = "armor", conflict_group = "armor",
-		effects = {max_hp = 0.10, defense_light = 0.05},
+		effects = {max_hp = 30, defense_light = 5},
+		level_effects = {1: {max_hp = 30, defense_light = 5}, 2: {max_hp = 50, defense_light = 9}, 3: {max_hp = 70, defense_light = 12}},
 		applicable_types = [0, 2],  # LIGHT, SUPPORT（侦察归 LIGHT 已含）
 		unlock_conditions = {required_level = 1}
 	},
@@ -72,7 +73,8 @@ const DATA: Dictionary = {
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 160, cost_install = 80,
 		slot_type = "shield", conflict_group = "shield",
-		effects = {defense_light = 0.40, move_speed = -10},
+		effects = {defense_light = 40, move_speed = -10},
+		level_effects = {1: {defense_light = 40, move_speed = -10}, 2: {defense_light = 70, move_speed = -10}, 3: {defense_light = 100, move_speed = -10}},
 		applicable_types = [0, 2],  # LIGHT, SUPPORT
 		unlock_conditions = {required_level = 2}
 	},
@@ -229,6 +231,26 @@ const DATA: Dictionary = {
 			applicable_types = [0, 1, 2, 3, 4],
 			effects = {emp_chance = 0.35, emp_true_damage = 10.0},
 			unlock_conditions = {required_level = 4}
+		},
+
+		# ==================== v10 解题式玩法：转换型改造 ====================
+		# 电子劫持：敌方增益光环→抵消并转移（敌方优势转我方优势）
+		"gen_17_electronic_hijack" = {
+			id = "gen_17_electronic_hijack",
+			name = "电子劫持",
+			name_en = "Electronic Hijack",
+			icon = "res://assets/ui/icons/mod_icons/mod_electronics.png",
+			prototype = "电子战劫持阵列",
+			description = "周期性劫持半径200内敌方增益光环（指挥/堡垒庇护）：被劫持光环失效，其增益转由本单位享有（持续4秒，冷却18秒）",
+			rarity = "legendary",
+			power_mult = 1.8,
+			cost_research = 400,
+			cost_install = 200,
+			slot_type = "electronic",
+			conflict_group = "electronic",
+			applicable_types = [0, 1, 2, 3, 4],
+			effects = {hijack_aura_radius = 200.0, hijack_aura_duration = 4.0, hijack_aura_cd = 18.0},
+			unlock_conditions = {required_level = 6}
 		},
 
 		# ==================== v9.1 组合技套路配套改造（7 个，通用槽） ====================

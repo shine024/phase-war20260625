@@ -36,6 +36,10 @@ const GC = preload("res://resources/game_constants.gd")
 ## 战斗定位（0=轻装/1=装甲/2=支援/3=空中）
 @export var combat_kind: int = 0
 
+## 单位档次（UnifiedCardTable.Tier：0=GRUNT/1=VETERAN/2=ELITE/3=CHAMPION/4=BOSS/5=ULTIMATE/6=FORT）
+## v19: 词条系统特殊兵种独特词条门槛用（tier >= CHAMPION 可 roll 独特词条）
+@export var tier: int = 0
+
 ## 单位子类（v6.2: GameConstants.UnitSubType，用于战斗定位差异化修正）
 ## NONE=普通单位, ARTILLERY=火炮, SUPPORT=辅助, FORT=堡垒, ANTI_AIR=防空特化
 @export var unit_subtype: int = 0
@@ -362,6 +366,7 @@ func clone() -> CardResource:
 	# 战斗卡字段
 	new_card.era = era
 	new_card.combat_kind = combat_kind
+	new_card.tier = tier
 	new_card.unit_subtype = unit_subtype
 	new_card.tags = tags.duplicate()
 	new_card.power = power
@@ -706,7 +711,7 @@ func _create_slot_from_legacy(slot_idx: int, base_damage: float, base_speed: flo
 	if not specific_name.is_empty():
 		w.display_name = specific_name
 		# v8.4: 按武器名覆盖默认弹道（修正语义错配，如"霰弹枪"应为 SHOTGUN 散射而非 DIRECT 直射）
-		var _traj_override: int = _trajectory_override_for_weapon_name(specific_name)
+		var _traj_override: int = trajectory_override_for_weapon_name(specific_name, weapon_type)
 		if _traj_override >= 0:
 			w.weapon_type = _traj_override
 	else:
@@ -728,6 +733,10 @@ func _default_weapon_type_for_slot(slot_idx: int) -> int:
 	# 曲射单位（火炮/迫击炮 range≥99）三槽都保留曲射弹道
 	if weapon_type == GC.WeaponType.INDIRECT:
 		return GC.WeaponType.INDIRECT
+	# v9.x: 空射单位（飞行器）三槽保留空射弹道（低弧俯冲）——与敌方 _default_enemy_slot_weapon_type
+	# 对齐。此前玩家飞行器轻装/装甲槽默认直射直线，敌方飞行器却是空射弧线，敌我弹道不对称。
+	if weapon_type == GC.WeaponType.AERIAL:
+		return GC.WeaponType.AERIAL
 	match slot_idx:
 		0:
 			return GC.WeaponType.DIRECT  # 对轻装：直射曳光
@@ -745,21 +754,40 @@ func _default_weapon_type_for_slot(slot_idx: int) -> int:
 ## key = 武器显示名（精确匹配），value = WeaponTypeLegacy 值
 const _WEAPON_NAME_TRAJECTORY_OVERRIDE: Dictionary = {
 	"霰弹枪": 5,  # SHOTGUN：6 发 18° 散射（原误配 DIRECT 单发直射）
+	"全装型导弹巢": 9,  # v9.x: 全装型机动舱对地槽——导弹巢齐射流（与巨神机甲的主炮炮弹流区分）
+	# v15: 签名武器精确匹配——这些卡在统一表 weapon_type 显式标注了专属弹道（v6.1 注释），
+	# 但槽位默认分配 + 光束关键词把它们统一降级为 SNIPER(6)，专属命中特效丢失
+	# （weapon_projectile_vfx.spawn_impact_with_kind 的 wt==11/10 签名分支）。
+	"攻城电磁炮": 11,       # RAIL：磁轨弹道+穿透特效（fut_colossus / fut_arm_omega 对装甲槽 + fut_arm_colossus_e 敌方主炮）
+	"重型等离子加农炮": 10,  # OMEGA：径向放电特效（fut_arm_nexus 对装甲槽 + fut_boss_nexus）
+	"磁轨狙击炮": 6,        # SNIPER：光束弹道（fut_inf_storm_rider，与"狙击"关键词同结果，显式声明）
 }
 
 ## v9.4: 光束武器关键词——v9.4 把对装甲槽(slot 1)默认从 SNIPER(6)光束改为 DIRECT(0)直射
 ## （消除满屏贯穿青色长线）。真光束武器（激光/光束/粒子束/狙击/电磁炮/轨道炮）通过
 ## 武器名子串匹配保留 SNIPER(6) 光束弹道。子串匹配兼容组合武器名（"地狱火导弹/激光炮"等）。
+## v9.x: 补"等离子"——"重型等离子加农炮"等含"等离子"不含"粒子"，此前漏网打普通直射弹。
 const _BEAM_WEAPON_KEYWORDS: Array = [
-	"激光", "光束", "粒子束", "粒子炮", "粒子主炮", "电磁炮", "轨道炮", "电磁轨道", "狙击", "雷射",
+	"激光", "光束", "粒子束", "粒子炮", "粒子主炮", "电磁炮", "轨道炮", "电磁轨道", "狙击", "雷射", "等离子",
 ]
+
+## v17: 精确表只读访问器——WeaponVisualProfiles.resolve_traced 第1优先级复用本表
+## （签名武器的视觉身份与弹道身份同源，本表是唯一真身，杜绝两处抄表漂移）。
+static func trajectory_override_exact(weapon_name: String) -> int:
+	return int(_WEAPON_NAME_TRAJECTORY_OVERRIDE.get(weapon_name, -1))
 
 ## v8.4: 查武器名是否需要覆盖默认弹道，返回 weapon_type 或 -1（不覆盖）
 ## v9.4: 新增光束武器关键词检测——含光束语义词的武器名覆盖为 SNIPER(6) 光束弹道
-func _trajectory_override_for_weapon_name(weapon_name: String) -> int:
+## v9.x: 曲射炮兵弹药形态区分——仅 INDIRECT 单位：含"火箭"→ROCKET(3) 低平弧火箭弹，
+##        含"导弹"→MISSILE(9) 中弧导弹；其余保持 INDIRECT(1) 高弧炮弹。
+##        三者弹体贴图/弧线/命中帧全部独立（火箭弹 vs 导弹 vs 炮弹一眼可辨）。
+##        直射单位不参与此路由（反坦克导弹等平射语义保留原弹道）。
+## v15: 改 static 并接收 unit_weapon_type 参数——enemy_unit._ensure_enemy_weapon_slots
+##      复用同一解析器，敌我两侧武器名→弹道口径永不漂移（此前各维护一份关键词表）。
+static func trajectory_override_for_weapon_name(weapon_name: String, unit_weapon_type: int = 0) -> int:
 	if weapon_name.is_empty():
 		return -1
-	# 精确匹配优先（霰弹枪等）
+	# 精确匹配优先（霰弹枪/攻城电磁炮等签名武器）
 	var exact: int = _WEAPON_NAME_TRAJECTORY_OVERRIDE.get(weapon_name, -1)
 	if exact >= 0:
 		return exact
@@ -767,6 +795,15 @@ func _trajectory_override_for_weapon_name(weapon_name: String) -> int:
 	for kw in _BEAM_WEAPON_KEYWORDS:
 		if weapon_name.find(kw) >= 0:
 			return 6  # SNIPER：光束弹道（Line2D）
+	# v9.x: 曲射炮兵弹药形态（仅 INDIRECT 单位）
+	if unit_weapon_type == 1:  # WeaponType.INDIRECT
+		# 点防轻武器（机枪/近防炮）走直射曳光——曲射平台上的自卫/点防武器不应抛物线
+		if weapon_name.find("机枪") >= 0 or weapon_name.find("近防炮") >= 0:
+			return 0  # DIRECT
+		if weapon_name.find("火箭") >= 0:
+			return 3  # ROCKET：低平弧 + 火箭弹贴图 + 尾焰
+		if weapon_name.find("导弹") >= 0:
+			return 9  # MISSILE：中弧 + 导弹贴图
 	return -1
 
 ## 获取武器槽位名称（v6.0：从 weapon_names 数组读取）

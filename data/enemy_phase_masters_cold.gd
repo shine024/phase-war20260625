@@ -13,40 +13,6 @@ const ERA_MASTERS: Array = [
 		"level": 18,
 		"faction": "steel_flame",
 		"difficulty": "hard",
-		"traits": [
-			{
-				"id": "forgemaster",
-				"name": "熔铸大师",
-				"description": "钢铁+烈焰协同：相邻的钢铁和烈焰单位互相增强25%伤害",
-				"effects": {"synergy_boost": 0.25, "synergy_types": ["steel", "flame"]}
-			}
-		],
-		"active_spells": [
-			{
-				"id": "molten_bombard",
-				"name": "熔铁轰炸",
-				"description": "每17秒对全体玩家单位倾泻熔铁弹幕",
-				"effect": "bombard_explosion",
-				"cooldown": 17.0,
-				"params": {"damage_mult": 1.1}
-			}
-		],
-		"passive_spells": [
-			{
-				"id": "heat_treatment",
-				"name": "热处理",
-				"description": "友军攻击有15%概率触发额外火焰爆炸",
-				"effect": "proc_explosion",
-				"params": {"chance": 0.15, "explosion_damage": 120}
-			},
-			{
-				"id": "tempered",
-				"name": "回火",
-				"description": "友军受到火焰伤害时，攻击力提升10%，持续5秒",
-				"effect": "fire_damage_boost",
-				"params": {"boost": 0.1, "duration": 5.0}
-			}
-		],
 		"equipment": {
 			"phase_instrument": "pi_steelflame_01",
 			"level": 18,
@@ -69,48 +35,6 @@ const ERA_MASTERS: Array = [
 		"level": 19,
 		"faction": "thunder_steel",
 		"difficulty": "hard",
-		"traits": [
-			{
-				"id": "electromagnetic_armor",
-				"name": "电磁装甲师",
-				"description": "雷霆+钢铁协同：护甲受到攻击时反射雷电，造成80伤害",
-				"effects": {"synergy_boost": 0.20, "synergy_types": ["thunder", "steel"], "armor_reflect": 80}
-			}
-		],
-		"active_spells": [
-			{
-				"id": "victor_chain_lightning",
-				"name": "雷霆贯穿",
-				"description": "每15秒释放连锁闪电，跳跃打击玩家单位",
-				"effect": "chain_lightning",
-				"cooldown": 15.0,
-				"params": {"damage_mult": 1.2}
-			},
-			{
-				"id": "victor_plate",
-				"name": "钢板护盾",
-				"description": "每22秒为自身施加22%最大生命值护盾",
-				"effect": "plate_shield",
-				"cooldown": 22.0,
-				"params": {"shield_pct": 0.22}
-			}
-		],
-		"passive_spells": [
-			{
-				"id": "conductive_armor",
-				"name": "导电护甲",
-				"description": "友军受到攻击时，对攻击者放电造成60伤害",
-				"effect": "lightning_thorn",
-				"params": {"thorn_damage": 60}
-			},
-			{
-				"id": "overclock",
-				"name": "超频",
-				"description": "能量超过70%时，射速提升40%",
-				"effect": "high_energy_attack_speed",
-				"params": {"threshold": 0.7, "speed_boost": 0.4}
-			}
-		],
 		"equipment": {
 			"phase_instrument": "pi_steelthunder_01",
 			"level": 19,
@@ -133,48 +57,6 @@ const ERA_MASTERS: Array = [
 		"level": 20,
 		"faction": "void_flame",
 		"difficulty": "expert",
-		"traits": [
-			{
-				"id": "chaos_flame_trait",
-				"name": "熵增炎魔",
-				"description": "烈焰+虚空协同：被燃烧的敌人能量流失速度翻倍",
-				"effects": {"synergy_boost": 0.20, "synergy_types": ["flame", "void"], "burn_energy_drain_mult": 2.0}
-			}
-		],
-		"active_spells": [
-			{
-				"id": "seraphina_void",
-				"name": "虚空烈焰",
-				"description": "每16秒引爆虚空烈焰，对全体玩家单位造成范围伤害",
-				"effect": "void_apocalypse",
-				"cooldown": 16.0,
-				"params": {"damage_mult": 1.2}
-			},
-			{
-				"id": "seraphina_curse",
-				"name": "炽焰诅咒",
-				"description": "每18秒削弱玩家单位，降低攻速与闪避",
-				"effect": "weakness_debuff",
-				"cooldown": 18.0,
-				"params": {"attack_speed_penalty": 0.25, "dodge_penalty": 0.20, "duration": 5.0}
-			}
-		],
-		"passive_spells": [
-			{
-				"id": "entropy_flame",
-				"name": "熵增之火",
-				"description": "火焰伤害有25%概率触发虚空吸取效果",
-				"effect": "fire_lifesteal_chance",
-				"params": {"chance": 0.25, "lifesteal_percent": 0.15}
-			},
-			{
-				"id": "void_burn",
-				"name": "虚空燃烧",
-				"description": "被燃烧的敌人移动速度降低35%",
-				"effect": "burn_slow",
-				"params": {"slow_percent": 0.35}
-			}
-		],
 		"equipment": {
 			"phase_instrument": "pi_flamevoid_01",
 			"level": 20,
@@ -199,47 +81,6 @@ const ERA_MASTERS: Array = [
 		"level": 22,
 		"faction": "steel",
 		"difficulty": "expert",
-		"traits": [
-			{
-				"id": "immortal_will",
-				"name": "不朽意志",
-				"description": "友军不会受到超过30%最大HP的单次伤害；每有1个友军全体防御+5%",
-				"effects": {"damage_cap": 0.30, "unit_count_defense": 0.05}
-			}
-		],
-		"active_spells": [
-			{
-				"id": "atlas_bulwark",
-				"name": "不朽壁垒",
-				"description": "每16秒为自身施加28%最大生命值护盾",
-				"effect": "ward_bulwark",
-				"cooldown": 16.0,
-				"params": {"shield_pct": 0.28}
-			},
-			{
-				"id": "atlas_summon",
-				"name": "不朽军团",
-				"description": "每20秒召唤不朽钢铁单位增援",
-				"effect": "forge_summon",
-				"cooldown": 20.0
-			}
-		],
-		"passive_spells": [
-			{
-				"id": "unbreakable",
-				"name": "不可破坏",
-				"description": "友军单位不会受到超过最大生命值30%的单次伤害",
-				"effect": "damage_cap",
-				"params": {"max_damage_percent": 0.3}
-			},
-			{
-				"id": "steel_mountain",
-				"name": "钢铁之山",
-				"description": "友军数量越多，全体防御力越高（每个单位+5%）",
-				"effect": "unit_count_defense",
-				"params": {"defense_per_unit": 0.05}
-			}
-		],
 		"equipment": {
 			"phase_instrument": "pi_steel_04",
 			"level": 22,
@@ -262,40 +103,6 @@ const ERA_MASTERS: Array = [
 		"level": 23,
 		"faction": "flame",
 		"difficulty": "expert",
-		"traits": [
-			{
-				"id": "ragnarok",
-				"name": "诸神黄昏",
-				"description": "三维攻击+15%；友军首次死亡时自动复活，恢复30%生命值",
-				"effects": {"atk_light": 0.15, "atk_armor": 0.15, "atk_air": 0.15, "auto_revive_once": {"hp_percent": 0.30}}
-			}
-		],
-		"active_spells": [
-			{
-				"id": "surtr_meteor",
-				"name": "诸神黄昏",
-				"description": "每15秒召唤陨石雨，对全体玩家单位造成毁灭伤害",
-				"effect": "meteor_apocalypse",
-				"cooldown": 15.0,
-				"params": {"damage_mult": 1.3}
-			}
-		],
-		"passive_spells": [
-			{
-				"id": "phoenix_rebirth_auto",
-				"name": "凤凰重生",
-				"description": "友军死亡后会在原位置以30%HP复活",
-				"effect": "phoenix_rebirth_auto",
-				"params": {"rebirth_hp": 0.3, "cooldown_per_unit": 30.0}
-			},
-			{
-				"id": "time_based_hp_drain",
-				"name": "热寂",
-				"description": "战斗每进行30秒，所有敌人失去8%最大生命值",
-				"effect": "time_based_hp_drain",
-				"params": {"interval": 30.0, "drain_percent": 0.08}
-			}
-		],
 		"equipment": {
 			"phase_instrument": "pi_flame_04",
 			"level": 23,
@@ -318,48 +125,6 @@ const ERA_MASTERS: Array = [
 		"level": 24,
 		"faction": "thunder",
 		"difficulty": "expert",
-		"traits": [
-			{
-				"id": "thunder_avatar",
-				"name": "万钧雷霆",
-				"description": "三维攻击+15%",
-				"effects": {"atk_light": 0.15, "atk_armor": 0.15, "atk_air": 0.15}
-			}
-		],
-		"active_spells": [
-			{
-				"id": "thunder_lord_chain",
-				"name": "万雷齐发",
-				"description": "每14秒释放强力连锁闪电，跳跃打击玩家单位",
-				"effect": "thunder_chain",
-				"cooldown": 14.0,
-				"params": {"damage_mult": 1.3}
-			},
-			{
-				"id": "thunder_lord_judgment",
-				"name": "雷神之裁",
-				"description": "每16秒对生命最高的玩家单位降下雷罚",
-				"effect": "god_weapon_single",
-				"cooldown": 16.0,
-				"params": {"damage_mult": 1.4}
-			}
-		],
-		"passive_spells": [
-			{
-				"id": "auto_lightning",
-				"name": "无处不在的闪电",
-				"description": "每5秒自动随机打击敌人，造成250伤害",
-				"effect": "auto_lightning",
-				"params": {"interval": 5.0, "damage": 250}
-			},
-			{
-				"id": "global_damage_boost",
-				"name": "导电世界",
-				"description": "三维攻击+8%",
-				"effect": "global_damage_boost",
-				"params": {"damage_type": "lightning", "boost": 0.08}
-			}
-		],
 		"equipment": {
 			"phase_instrument": "pi_thunder_04",
 			"level": 24,

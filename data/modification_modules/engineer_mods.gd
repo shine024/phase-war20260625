@@ -21,7 +21,8 @@ const DATA: Dictionary = {
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 140, cost_install = 70,
 		slot_type = "engineering", conflict_group = "engineering",
-		effects = {defense_armor = 0.25, damage_reduction = 0.10},
+		effects = {defense_armor = 25, damage_reduction = 0.10},
+		level_effects = {1: {defense_armor = 25, damage_reduction = 0.10}, 2: {defense_armor = 44, damage_reduction = 0.10}, 3: {defense_armor = 62, damage_reduction = 0.10}},
 		unlock_conditions = {required_level = 2}
 	},
 	"eng_02_explosives" = {
@@ -63,7 +64,8 @@ const DATA: Dictionary = {
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 70, cost_install = 35,
 		slot_type = "digging", conflict_group = "digging",
-		effects = {defense_light = 0.20, move_speed = -5},
+		effects = {defense_light = 20, move_speed = -5},
+		level_effects = {1: {defense_light = 20, move_speed = -5}, 2: {defense_light = 35, move_speed = -5}, 3: {defense_light = 50, move_speed = -5}},
 		unlock_conditions = {required_level = 1}
 	},
 	"eng_06_crane" = {
@@ -73,7 +75,8 @@ const DATA: Dictionary = {
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 180, cost_install = 90,
 		slot_type = "recovery", conflict_group = "recovery",
-		effects = {defense_armor = 0.20, max_hp = 0.08},
+		effects = {defense_armor = 20, max_hp = 25},
+		level_effects = {1: {defense_armor = 20, max_hp = 25}, 2: {defense_armor = 35, max_hp = 40}, 3: {defense_armor = 50, max_hp = 60}},
 		unlock_conditions = {required_level = 3}
 	},
 	"eng_07_generator" = {

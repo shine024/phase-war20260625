@@ -21,7 +21,8 @@ const DATA: Dictionary = {
 		rarity = "rare",
 	power_mult = 1.3, cost_research = 160, cost_install = 80,
 		slot_type = "armor", conflict_group = "armor",
-		effects = {defense_light = 0.40, max_hp = 0.30},
+		effects = {defense_light = 40, max_hp = 85},
+		level_effects = {1: {defense_light = 40, max_hp = 85}, 2: {defense_light = 70, max_hp = 150}, 3: {defense_light = 100, max_hp = 220}},
 		unlock_conditions = {required_level = 2}
 	},
 	"for_02_tunnel" = {
@@ -65,7 +66,8 @@ const DATA: Dictionary = {
 		slot_type = "ammunition", conflict_group = "ammunition",
 		# v7.x: per-slot 弹道——对轻装槽改 MG 机枪压制（弹药充足持续射击）
 		condition_slot = 0,
-		effects = {attack_light = 0.20, slot_weapon_type = 2},  # v7.x: 对轻装槽机枪弹道,
+		effects = {attack_light = 11, slot_weapon_type = 2},
+		level_effects = {1: {attack_light = 11, slot_weapon_type = 2}, 2: {attack_light = 19, slot_weapon_type = 2}, 3: {attack_light = 28, slot_weapon_type = 2}},
 		unlock_conditions = {required_level = 3}
 	},
 	"for_06_radar" = {

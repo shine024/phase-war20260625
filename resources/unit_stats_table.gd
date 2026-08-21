@@ -432,6 +432,12 @@ static func _apply_mod_stat_effects(stats: UnitStats, mods: Array) -> void:
 		# v9.1 组合技套路增益乘区
 		"burn_dps_mult": stats.burn_dps_mult, "chem_dps_mult": stats.chem_dps_mult,
 		"emp_true_damage_bonus": stats.emp_true_damage_bonus, "beam_damage_bonus": stats.beam_damage_bonus,
+		# v10 解题式玩法：转换型改造字段
+		"salvage_repair_pct": stats.salvage_repair_pct,
+		"phase_shift_counter": stats.phase_shift_counter,
+		"hijack_aura_radius": stats.hijack_aura_radius,
+		"hijack_aura_duration": stats.hijack_aura_duration,
+		"hijack_aura_cd": stats.hijack_aura_cd,
 	}
 	# 统一应用（支持 level_effects + effects 两种格式）
 	var result: Dictionary = ModificationRegistry.apply_with_level(base_dict, mods)
@@ -475,6 +481,12 @@ static func _apply_mod_stat_effects(stats: UnitStats, mods: Array) -> void:
 	stats.single_target_penalty = float(result.get("single_target_penalty", stats.single_target_penalty))
 	# v6.9: 部署延迟百分比加成写回（move_speed 类改造经 registry 重定向后落到此字段）
 	stats.deploy_delay_bonus = float(result.get("deploy_delay_bonus", stats.deploy_delay_bonus))
+	# v10 解题式玩法：转换型改造字段写回
+	stats.salvage_repair_pct = float(result.get("salvage_repair_pct", stats.salvage_repair_pct))
+	stats.phase_shift_counter = bool(result.get("phase_shift_counter", stats.phase_shift_counter))
+	stats.hijack_aura_radius = float(result.get("hijack_aura_radius", stats.hijack_aura_radius))
+	stats.hijack_aura_duration = float(result.get("hijack_aura_duration", stats.hijack_aura_duration))
+	stats.hijack_aura_cd = float(result.get("hijack_aura_cd", stats.hijack_aura_cd))
 	# v7.x: 新机制字段写回
 	stats.combo_max = int(result.get("combo_max", stats.combo_max))
 	stats.combo_bonus_mult = float(result.get("combo_bonus_mult", stats.combo_bonus_mult))

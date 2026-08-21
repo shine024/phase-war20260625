@@ -92,19 +92,22 @@ func _test_capstone_layer() -> bool:
 
 ## 测试经验配置
 func _test_experience_config() -> bool:
-	print("\n[3] 经验升星配置")
+	print("\n[3] 经验升级配置（v18.c：星级→30级等级制）")
 	var ok: bool = true
-	# 阈值升星
-	ok = ok and _assert_eq(BattleExperienceConfig.get_star_level_for_exp(0), 0, "0经验=0星")
-	ok = ok and _assert_eq(BattleExperienceConfig.get_star_level_for_exp(100), 1, "100经验=1星")
-	ok = ok and _assert_eq(BattleExperienceConfig.get_star_level_for_exp(500), 3, "500经验=3星（阈值[0,100,250,500,...]）")
-	ok = ok and _assert_eq(BattleExperienceConfig.get_star_level_for_exp(9500), 9, "9500经验=9星")
-	ok = ok and _assert_eq(BattleExperienceConfig.get_star_level_for_exp(99999), 9, "超限=9星(满)")
-	# 下一星经验
-	ok = ok and _assert_eq(BattleExperienceConfig.get_exp_for_next_star(0), 100, "0星→1星需100")
-	ok = ok and _assert_eq(BattleExperienceConfig.get_exp_for_next_star(9), -1, "9星已满级")
-	# 进度：0星区间[0,100)，75经验进度=75/100=0.75
-	ok = ok and _assert_true(absf(BattleExperienceConfig.get_star_progress(75) - 0.75) < 0.01, "75经验进度≈0.75")
+	# 阈值升级（th[i]=升到 Lvi 的累计经验；对外钳制最小 Lv1）
+	ok = ok and _assert_eq(BattleExperienceConfig.get_card_level_for_exp(0), 1, "0经验=Lv1（初始态钳制）")
+	ok = ok and _assert_eq(BattleExperienceConfig.get_card_level_for_exp(10), 1, "10经验=Lv1（首个阈值在60）")
+	ok = ok and _assert_eq(BattleExperienceConfig.get_card_level_for_exp(60), 2, "60经验=Lv2")
+	ok = ok and _assert_eq(BattleExperienceConfig.get_card_level_for_exp(2960), 10, "2960经验=Lv10")
+	ok = ok and _assert_eq(BattleExperienceConfig.get_card_level_for_exp(50770), 30, "50770经验=Lv30（满级）")
+	ok = ok and _assert_eq(BattleExperienceConfig.get_card_level_for_exp(99999), 30, "超限=Lv30(满)")
+	# 下一级经验
+	ok = ok and _assert_eq(BattleExperienceConfig.get_exp_for_next_level(1), 60, "Lv1→Lv2需60")
+	ok = ok and _assert_eq(BattleExperienceConfig.get_exp_for_next_level(30), -1, "Lv30已满级")
+	# 进度：Lv1区间[0,60)，30经验进度=30/60=0.5
+	ok = ok and _assert_true(absf(BattleExperienceConfig.get_level_progress(30) - 0.5) < 0.01, "30经验进度≈0.5")
+	# 废弃别名等价
+	ok = ok and _assert_eq(BattleExperienceConfig.get_star_level_for_exp(60), BattleExperienceConfig.get_card_level_for_exp(60), "废弃别名等价")
 	return ok
 
 ## 测试技能树 manager API（需要 autoload 环境，这里测静态逻辑）

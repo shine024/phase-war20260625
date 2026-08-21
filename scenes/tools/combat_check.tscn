@@ -29,6 +29,7 @@ default_color = Color(1, 1, 1, 0.1)
 
 [node name="UiLayer" type="CanvasLayer" parent="."]
 layer = 40
+process_mode = 3
 
 [node name="TitleBar" type="Label" parent="UiLayer"]
 offset_left = 0.0
@@ -264,3 +265,167 @@ bbcode_enabled = true
 text = ""
 
 [node name="EffectLabPanel" parent="UiLayer" instance=ExtResource("2_panel")]
+
+[node name="SparkTestPanel" type="Panel" parent="UiLayer"]
+layout_mode = 1
+offset_left = 8.0
+offset_top = 128.0
+offset_right = 500.0
+offset_bottom = 360.0
+
+[node name="Title" type="Label" parent="UiLayer/SparkTestPanel"]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 4.0
+offset_right = 404.0
+offset_bottom = 26.0
+theme_override_colors/font_color = Color(0.9, 0.7, 0.3, 1)
+theme_override_font_sizes/font_size = 13
+text = "⚡ 独立特效测试（每层单独触发）"
+
+[node name="CollapseBtn" type="Button" parent="UiLayer/SparkTestPanel"]
+layout_mode = 0
+offset_left = 412.0
+offset_top = 4.0
+offset_right = 488.0
+offset_bottom = 28.0
+theme_override_colors/font_color = Color(0.85, 0.75, 0.35, 1)
+theme_override_font_sizes/font_size = 12
+text = "收起 ✕"
+
+[node name="FullBtn" type="Button" parent="UiLayer/SparkTestPanel"]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 32.0
+offset_right = 208.0
+offset_bottom = 64.0
+theme_override_font_sizes/font_size = 13
+text = "⚡ 完整命中效果（全层）"
+
+[node name="BulletBtn" type="Button" parent="UiLayer/SparkTestPanel"]
+layout_mode = 0
+offset_left = 216.0
+offset_top = 32.0
+offset_right = 356.0
+offset_bottom = 64.0
+theme_override_font_sizes/font_size = 12
+text = "弹体展示"
+
+[node name="MuzzleLightBtn" type="Button" parent="UiLayer/SparkTestPanel"]
+layout_mode = 0
+offset_left = 364.0
+offset_top = 32.0
+offset_right = 492.0
+offset_bottom = 64.0
+theme_override_font_sizes/font_size = 12
+text = "开火·轻武器"
+
+[node name="RingBtn" type="Button" parent="UiLayer/SparkTestPanel"]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 72.0
+offset_right = 100.0
+offset_bottom = 102.0
+theme_override_font_sizes/font_size = 12
+text = "① 冲击波环"
+
+[node name="DecalBtn" type="Button" parent="UiLayer/SparkTestPanel"]
+layout_mode = 0
+offset_left = 108.0
+offset_top = 72.0
+offset_right = 200.0
+offset_bottom = 102.0
+theme_override_font_sizes/font_size = 12
+text = "① 弹痕锚点"
+
+[node name="SparksBtn" type="Button" parent="UiLayer/SparkTestPanel"]
+layout_mode = 0
+offset_left = 208.0
+offset_top = 72.0
+offset_right = 300.0
+offset_bottom = 102.0
+theme_override_font_sizes/font_size = 12
+text = "② 主火花"
+
+[node name="DebrisBtn" type="Button" parent="UiLayer/SparkTestPanel"]
+layout_mode = 0
+offset_left = 308.0
+offset_top = 72.0
+offset_right = 400.0
+offset_bottom = 102.0
+theme_override_font_sizes/font_size = 12
+text = "③ 碎片/烟尘"
+
+[node name="FlashBtn" type="Button" parent="UiLayer/SparkTestPanel"]
+layout_mode = 0
+offset_left = 408.0
+offset_top = 72.0
+offset_right = 492.0
+offset_bottom = 102.0
+theme_override_font_sizes/font_size = 12
+text = "④ 闪光"
+
+[node name="SmokeBtn" type="Button" parent="UiLayer/SparkTestPanel"]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 112.0
+offset_right = 100.0
+offset_bottom = 142.0
+theme_override_font_sizes/font_size = 12
+text = "⑤ 轻烟团"
+
+[node name="ShrapnelBtn" type="Button" parent="UiLayer/SparkTestPanel"]
+layout_mode = 0
+offset_left = 108.0
+offset_top = 112.0
+offset_right = 200.0
+offset_bottom = 142.0
+theme_override_font_sizes/font_size = 12
+text = "⑥ 金属破片"
+
+[node name="TraceBtn" type="Button" parent="UiLayer/SparkTestPanel"]
+layout_mode = 0
+offset_left = 208.0
+offset_top = 112.0
+offset_right = 300.0
+offset_bottom = 142.0
+theme_override_font_sizes/font_size = 12
+text = "⑦ 焦痕弹坑"
+
+[node name="ExplosionBtn" type="Button" parent="UiLayer/SparkTestPanel"]
+layout_mode = 0
+offset_left = 308.0
+offset_top = 112.0
+offset_right = 400.0
+offset_bottom = 142.0
+theme_override_font_sizes/font_size = 12
+text = "⑧ 爆炸帧动画"
+
+[node name="MuzzleEnergyBtn" type="Button" parent="UiLayer/SparkTestPanel"]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 152.0
+offset_right = 148.0
+offset_bottom = 182.0
+theme_override_font_sizes/font_size = 12
+text = "开火·能量武器"
+
+[node name="MuzzleHeavyBtn" type="Button" parent="UiLayer/SparkTestPanel"]
+layout_mode = 0
+offset_left = 156.0
+offset_top = 152.0
+offset_right = 296.0
+offset_bottom = 182.0
+theme_override_font_sizes/font_size = 12
+text = "开火·重型武器"
+
+[node name="SubTitle" type="Label" parent="UiLayer/SparkTestPanel"]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 192.0
+offset_right = 484.0
+offset_bottom = 224.0
+theme_override_colors/font_color = Color(0.65, 0.65, 0.7, 1)
+theme_override_font_sizes/font_size = 11
+text = "选中我方单位后，点击按钮仅展示该武器对应层的特效"
+autowrap_mode = 2

@@ -2,7 +2,7 @@ extends Node
 ## 模块化词条管理器（代码内部沿用 AffixManager 类名以避免大面积重命名）
 ## 设计文档中称为"模块化词条"，代码中 affix = 模块化词条（同义词）
 ## 全局自动加载节点，负责：
-##   - 词条获取：卡牌升级到特定等级（Lv5/10/15/20/25）时触发强化
+##   - 词条获取：卡牌升级到特定等级（Lv5/10/15/20/25/30）时触发强化
 ##   - 词条升级：强化时随机升级已有词条
 ##   - 词条重随：消耗纳米重新随机
 ##   - 词条锁定：消耗锁定符锁定
@@ -19,6 +19,7 @@ signal affix_locked(card_id: String, slot_index: int)
 const AffixDefs = preload("res://data/affix_definitions.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 const GC = preload("res://resources/game_constants.gd")
+const CardGrowthConfig = preload("res://data/card_growth_config.gd")
 
 ## affix_key → Array[AffixResource]（模块化词条实例列表）
 ## key格式: "{card_id}_{affix_type}" (affix_type: 0=机体, 1=武器)
@@ -29,8 +30,8 @@ var _card_affixes: Dictionary = {}
 ## 已解锁的头目（用于词条库解锁）
 var _unlocked_bosses: Array = []
 
-## 强化触发等级（旧系统，保留兼容）
-const ENHANCE_TRIGGER_LEVELS: Array = [5, 10, 15, 20, 25]
+## 强化触发等级（v18.c：30 级制 6 节点，旧 5 节点系统扩到 30）
+const ENHANCE_TRIGGER_LEVELS: Array = [5, 10, 15, 20, 25, 30]
 
 func get_unlocked_bosses() -> Array:
 	return _unlocked_bosses.duplicate()
@@ -128,26 +129,103 @@ func on_blueprint_star_up(card_id: String, old_star: int, new_star: int) -> void
 	# 升星仍刷新玩家相位师战力缓存。
 	_refresh_player_master_eval_safe()
 
-## v8.x: 卡牌自动升星回调（由 InstanceRegistry._on_star_level_up 调用）
-## 改为查技能树：若技能树解锁了 affix 赋予节点，按 star_level 解锁对应词条；
-## 未解锁则升星不赋予新词条（纯战力提升，不获得 affix）。
-func on_card_star_up(instance_id: String, old_star: int, new_star: int) -> void:
-	if instance_id.is_empty():
+## v8.x 已废弃（v18.c 星级制→30级制）：星级不再存在，词条改由等级节点驱动。
+## 保留空壳防旧调用方崩溃；新逻辑见 on_card_level_up_instance。
+func on_card_star_up(_instance_id: String, _old_star: int, _new_star: int) -> void:
+	pass
+
+## v18.c: 实例卡等级提升回调（InstanceRegistry._on_card_level_up 调用）
+## 每 5 级一个词条节点（Lv5/10/15/20/25/30，共 6 个）：
+## 空槽→roll 新词条（机体槽优先，满则落武器槽）；两类槽都满→尝试升级已有词条。
+## 幂等守卫：已拥有词条数 ≥ 该等级应有个数（new_lv/5）时节点不再 roll——
+## 防重复回调/越级重放（old_lv 失真）叠加出超额词条。
+func on_card_level_up_instance(instance_id: String, old_lv: int, new_lv: int) -> void:
+	if instance_id.is_empty() or new_lv <= old_lv:
 		return
-	var pmsm: Node = _get_root_node_or_null("PhaseMasterSkillManager")
-	if pmsm == null:
-		return  # 技能树不可用时不赋予（向后兼容：旧环境无 affix 增长）
-	# 查技能树是否解锁了 affix 赋予节点
-	if not pmsm.has_method("is_content_unlocked"):
-		return
-	if not pmsm.is_content_unlocked("affix", "any"):
-		return  # 技能树未解锁 affix 节点，升星不赋予词条
-	# 已解锁：按 star_level 赋予基础 affix（每 2 星解锁一个，与原随机节奏接近）
-	# 这里调用 grant_skill_tree_affix_pool 赋予基础池词条
-	if new_star > old_star and new_star % 2 == 0:
-		grant_skill_tree_affix_pool(["affix_basic_atk", "affix_basic_def", "affix_basic_hp"], instance_id)
-	emit_signal("affix_changed", instance_id)
-	_refresh_player_master_eval_safe()
+	# v19: 取兵种/档位上下文——兵种专属词条 roll 过滤用
+	var ctx: Array = _combat_context_for_identity(instance_id)
+	var combat_kind: int = int(ctx[0])
+	var card_tier: int = int(ctx[1])
+	var key_body: String = _get_affix_key(instance_id, 0)
+	var key_weapon: String = _get_affix_key(instance_id, 1)
+	var expected: int = clampi(new_lv / 5, 0, ENHANCE_TRIGGER_LEVELS.size())
+	var allow_roll: bool = get_affix_count(key_body) + get_affix_count(key_weapon) < expected
+	var changed: bool = false
+	var _toast_msg: String = ""
+	for lv in range(old_lv + 1, new_lv + 1):
+		if not CardGrowthConfig.is_affix_milestone(lv):
+			continue
+		if allow_roll:
+			if _roll_milestone_affix(key_body, 0, lv, combat_kind, card_tier):
+				changed = true
+				# v20: toast 通知——词条首次获得
+				var _rarity: String = AffixDefs.roll_rarity_by_level(lv)
+				var _aid: String = AffixDefs.roll_unlocked_affix_id(0, _rarity, _unlocked_bosses, combat_kind, card_tier)
+				if _aid.is_empty():
+					_aid = AffixDefs.roll_random_affix_id(0, _rarity, combat_kind, card_tier)
+				var _def: Dictionary = AffixDefs.get_definition(_aid)
+				if not _def.is_empty():
+					_toast_msg = "获得词条：%s" % _def.get("affix_name", _aid)
+				continue
+			if _roll_milestone_affix(key_weapon, 1, lv, combat_kind, card_tier):
+				changed = true
+				var _rarity2: String = AffixDefs.roll_rarity_by_level(lv)
+				var _aid2: String = AffixDefs.roll_unlocked_affix_id(1, _rarity2, _unlocked_bosses, combat_kind, card_tier)
+				if _aid2.is_empty():
+					_aid2 = AffixDefs.roll_random_affix_id(1, _rarity2, combat_kind, card_tier)
+				var _def2: Dictionary = AffixDefs.get_definition(_aid2)
+				if not _def2.is_empty():
+					_toast_msg = "获得词条：%s" % _def2.get("affix_name", _aid2)
+				continue
+			allow_roll = false  # 两类槽都满：后续节点转升级
+		# 槽满（或已达应有数）：节点转为升级已有词条的机会
+		_try_upgrade_existing_affixes(key_body, 0)
+		_try_upgrade_existing_affixes(key_weapon, 1)
+		changed = true
+	if changed:
+		emit_signal("affix_changed", instance_id)
+		_refresh_player_master_eval_safe()
+		# v20: toast 通知（仅首次 roll 成功，upgrade 不 toast）
+		if not _toast_msg.is_empty() and SignalBus:
+			SignalBus.show_toast.emit(_toast_msg)
+
+## v19: 按身份取实例卡（instance_id 优先；裸 card_id 回退首个实例；再回退只读模板）
+## 供兵种/档位过滤读 combat_kind/tier——模板卡只读访问，不构成污染
+func _get_instance_card_by_identity(identity: String) -> CardResource:
+	if identity.is_empty():
+		return null
+	var ir: Node = _get_root_node_or_null("InstanceRegistry")
+	if ir != null and ir.has_method("get_instance"):
+		var inst: CardResource = ir.get_instance(identity) as CardResource
+		if inst != null:
+			return inst
+	if ir != null and not identity.contains("#") and ir.has_method("get_instances_by_card_id"):
+		var iids: Array = ir.get_instances_by_card_id(identity)
+		if not iids.is_empty():
+			var fallback: CardResource = ir.get_instance(String(iids[0])) as CardResource
+			if fallback != null:
+				return fallback
+	return DefaultCards.get_card_by_id(identity)
+
+## 从 affix_key/identity 解析兵种上下文（roll 过滤用；查不到卡回退 -1/0 = 通用池）
+func _combat_context_for_identity(identity: String) -> Array:
+	var ctx_card: CardResource = _get_instance_card_by_identity(identity)
+	if ctx_card == null:
+		return [-1, 0]
+	return [int(ctx_card.combat_kind), int(ctx_card.tier)]
+
+## v18.c: 词条节点 roll 新词条（返回是否成功放入空槽）
+## v19: 新增 combat_kind/card_tier 参数——兵种专属词条按兵种分池、独特词条按档位门槛
+func _roll_milestone_affix(affix_key: String, affix_type: int, level: int, combat_kind: int = -1, card_tier: int = 0) -> bool:
+	if not has_empty_affix_slot(affix_key):
+		return false
+	var rarity: String = AffixDefs.roll_rarity_by_level(level)
+	var affix_id: String = AffixDefs.roll_unlocked_affix_id(affix_type, rarity, _unlocked_bosses, combat_kind, card_tier)
+	if affix_id.is_empty():
+		affix_id = AffixDefs.roll_random_affix_id(affix_type, rarity, combat_kind, card_tier)
+	if affix_id.is_empty():
+		return false
+	return _add_affix(affix_key, affix_id, rarity, 1)
 
 ## v8.x: 技能树解锁 affix 节点时调用，赋予固定词条池
 ## pool: 词条 ID 数组；target_identity: 可选，指定赋予给某实例，空则赋予给所有战斗卡
@@ -199,9 +277,10 @@ func _get_enhance_count_for_level(level: int) -> int:
 ## 蓝图升星用的强化（基于星级和品质）
 func _enhance_card_for_star(card_id: String, affix_type: int, star: int, rarity: String) -> void:
 	var rolled_rarity: String = AffixDefs.roll_rarity_by_level(star)
-	var affix_id: String = AffixDefs.roll_unlocked_affix_id(affix_type, rolled_rarity, _unlocked_bosses)
+	var ectx: Array = _combat_context_for_identity(card_id)
+	var affix_id: String = AffixDefs.roll_unlocked_affix_id(affix_type, rolled_rarity, _unlocked_bosses, int(ectx[0]), int(ectx[1]))
 	if affix_id.is_empty():
-		affix_id = AffixDefs.roll_random_affix_id(affix_type, "")
+		affix_id = AffixDefs.roll_random_affix_id(affix_type, "", int(ectx[0]), int(ectx[1]))
 	if affix_id.is_empty():
 		return
 	var affix_key: String = _get_affix_key(card_id, affix_type)
@@ -211,13 +290,15 @@ func _enhance_card_for_star(card_id: String, affix_type: int, star: int, rarity:
 func _enhance_card(card_id: String, affix_type: int, card_level: int) -> void:
 	# 计算稀有度（基于等级）
 	var rarity: String = AffixDefs.roll_rarity_by_level(card_level)
+	# v19: 兵种上下文（遗留入口对齐新分池逻辑）
+	var ectx2: Array = _combat_context_for_identity(card_id)
 
 	# 随机抽取词条ID（考虑已解锁的头目）
-	var affix_id: String = AffixDefs.roll_unlocked_affix_id(affix_type, rarity, _unlocked_bosses)
+	var affix_id: String = AffixDefs.roll_unlocked_affix_id(affix_type, rarity, _unlocked_bosses, int(ectx2[0]), int(ectx2[1]))
 
 	# 如果随机失败，尝试从所有可用词条中抽取
 	if affix_id.is_empty():
-		affix_id = AffixDefs.roll_random_affix_id(affix_type, "")
+		affix_id = AffixDefs.roll_random_affix_id(affix_type, "", int(ectx2[0]), int(ectx2[1]))
 
 	if affix_id.is_empty():
 		return
@@ -304,10 +385,12 @@ func reroll_affix(affix_key: String, slot_index: int) -> bool:
 
 	# 重新随机词条
 	var rarity: String = affix.rarity  # 同层池：保持不变
-	var new_affix_id: String = AffixDefs.roll_unlocked_affix_id(affix_type, rarity, _unlocked_bosses)
+	# v19: 兵种上下文——重随也按本卡兵种分池（key 前段为 identity）
+	var rctx: Array = _combat_context_for_identity(affix_key.substr(0, sep_idx))
+	var new_affix_id: String = AffixDefs.roll_unlocked_affix_id(affix_type, rarity, _unlocked_bosses, int(rctx[0]), int(rctx[1]))
 
 	if new_affix_id.is_empty():
-		new_affix_id = AffixDefs.roll_random_affix_id(affix_type, rarity)
+		new_affix_id = AffixDefs.roll_random_affix_id(affix_type, rarity, int(rctx[0]), int(rctx[1]))
 
 	if new_affix_id.is_empty():
 		return false
@@ -406,15 +489,17 @@ func batch_reroll_affixes(affix_key: String) -> bool:
 	if sep_idx < 0:
 		return false
 	var affix_type: int = int(affix_key.substr(sep_idx + 1))
+	# v19: 兵种上下文——批量重随同样按本卡兵种分池
+	var bctx: Array = _combat_context_for_identity(affix_key.substr(0, sep_idx))
 
 	for i in range(affixes.size()):
 		var affix: AffixResource = affixes[i] as AffixResource
 		if affix.is_locked:
 			continue
 		var rarity: String = affix.rarity  # 同层池：保持不变
-		var new_affix_id: String = AffixDefs.roll_unlocked_affix_id(affix_type, rarity, _unlocked_bosses)
+		var new_affix_id: String = AffixDefs.roll_unlocked_affix_id(affix_type, rarity, _unlocked_bosses, int(bctx[0]), int(bctx[1]))
 		if new_affix_id.is_empty():
-			new_affix_id = AffixDefs.roll_random_affix_id(affix_type, rarity)
+			new_affix_id = AffixDefs.roll_random_affix_id(affix_type, rarity, int(bctx[0]), int(bctx[1]))
 		if new_affix_id.is_empty():
 			continue
 
@@ -523,13 +608,15 @@ func _seed_affixes_by_star(card_id: String, affix_type: int, star: int) -> void:
 	var affix_key: String = _get_affix_key(card_id, affix_type)
 	var current_count: int = get_affix_count(affix_key)
 	var target_count: int = star
+	# v19: 兵种上下文——初始播种词条同样按本卡兵种分池
+	var sctx: Array = _combat_context_for_identity(card_id)
 	for i in range(target_count - current_count):
 		if not has_empty_affix_slot(affix_key):
 			break
 		var rarity: String = AffixDefs.roll_rarity_by_level(star)
-		var affix_id: String = AffixDefs.roll_unlocked_affix_id(affix_type, rarity, _unlocked_bosses)
+		var affix_id: String = AffixDefs.roll_unlocked_affix_id(affix_type, rarity, _unlocked_bosses, int(sctx[0]), int(sctx[1]))
 		if affix_id.is_empty():
-			affix_id = AffixDefs.roll_random_affix_id(affix_type, rarity)
+			affix_id = AffixDefs.roll_random_affix_id(affix_type, rarity, int(sctx[0]), int(sctx[1]))
 		if affix_id.is_empty():
 			continue
 		_add_affix(affix_key, affix_id, rarity, 1)
@@ -740,6 +827,19 @@ func _apply_card_affixes(stats: UnitStats, affix_key: String) -> void:
 				stats.shield_on_kill += val
 			"hp_regen":
 				stats.hp_regen += val
+			"defense":
+				# v19 修复：原 AFFIX_TABLE 有 defense 词条（复合装甲）但 apply 无分支，roll 到不生效。
+				# 写法对齐 CardGrowthConfig.apply_to_stats：主防御 + 三维防御同加。
+				stats.defense += val
+				stats.defense_light += val
+				stats.defense_armor += val
+				stats.defense_air += val
+			"dodge_chance":
+				# v19 修复：闪避词条空转（UnitStats.dodge_chance 已被战斗侧消费，air_08 等 mod 同字段在写）
+				stats.dodge_chance = minf(0.60, stats.dodge_chance + val)
+			"crit_damage_bonus":
+				# v19 修复：暴伤词条空转（stat_boost_manager 同字段已在写，暴击结算读此值）
+				stats.crit_damage_bonus += val
 
 		# 标记变异词条
 		if affix.is_mutated:

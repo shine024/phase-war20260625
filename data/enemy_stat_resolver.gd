@@ -14,6 +14,7 @@ const GC = preload("res://resources/game_constants.gd")
 const LevelInfoClass = preload("res://data/level_information.gd")
 const FactionConquestBuffs = preload("res://data/faction_conquest_buffs.gd")
 const EnemyLoadoutTiers = preload("res://data/enemy_loadout_tiers.gd")
+const CardGrowthConfig = preload("res://data/card_growth_config.gd")
 
 
 ## 平衡修复（2026-08-16 难度链审查）：波次 HP 斜率 0.12→0.08。
@@ -346,6 +347,27 @@ static func resolve_classic_enemy(archetype_id: String, ctx: EnemyStatContext) -
 	# def_out 已乘 def_mul_chain(tier_def × w_def × d_mul)，除回得到 base_def（三维最大值的原始量级）
 	var _base_def_for_breakdown: float = def_out / def_mul_chain if def_mul_chain > 0.0 else def_out
 	var _breakdown: Dictionary = _build_classic_breakdown(ctx, tier_hp, tier_atk, tier_def, w_hp, w_dmg, f_hp, f_atk, d_mul, _base_hp_for_breakdown, _base_atk_for_breakdown, _base_def_for_breakdown)
+	# v18.c: 战斗卡等级 flat——关卡映射 Lv1-30（ceil(关卡×0.3)），派生自时代基准×兵种权重，
+	# 纯加法叠在全部乘区之后（成长轴不进百分比堆叠）。敌方无稀有度概念，取中性档 rare(×1.0)。
+	# 仅注入真实 cfg 主路径；cfg 空的 fallback 是错误恢复路径（无 era/kind 可派生），保持原样。
+	var _card_level: int = CardGrowthConfig.enemy_level_for_stage(ctx.level)
+	var _growth: Dictionary = CardGrowthConfig.total_growth_raw(int(cfg.get("era", 0)), combat_kind, "rare", _card_level)
+	var _flat_hp: float = float(_growth.hp)
+	var _flat_atk: float = float(_growth.atk)
+	var _flat_def: float = float(_growth.def)
+	hp_out += _flat_hp
+	atk_l += _flat_atk
+	atk_a += _flat_atk
+	atk_air += _flat_atk
+	atk_out = maxf(atk_l, maxf(atk_a, atk_air))
+	def_out += _flat_def
+	def_l += _flat_def
+	def_a += _flat_def
+	def_air += _flat_def
+	_breakdown["card_level"] = _card_level
+	_breakdown["flat_hp"] = _flat_hp
+	_breakdown["flat_atk"] = _flat_atk
+	_breakdown["flat_def"] = _flat_def
 	return {
 		"hp": hp_out,
 		"attack_damage": atk_out,  # 兼容旧字段

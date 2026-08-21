@@ -60,8 +60,9 @@ var _intel_branch_bonus: Dictionary = {}
 
 ## v8.x 自动经验升星：instance_id -> int（累计战斗经验）
 var _battle_experience: Dictionary = {}
-## v8.x 自动经验升星：instance_id -> int（star_level，0-9，与 enhance_level 独立）
-var _star_level: Dictionary = {}
+## v18.c 自动经验升级：instance_id -> int（card_level，1-30，与 enhance_level 独立）
+## 等级驱动派生 flat 成长（CardGrowthConfig）+ 词条节点（每 5 级）。旧 star_level 退役。
+var _card_level: Dictionary = {}
 
 const BattleExperienceConfig = preload("res://data/battle_experience_config.gd")
 
@@ -155,7 +156,7 @@ func dispose_instance(instance_id: String) -> void:
 	_enemy_origin_mod.erase(instance_id)
 	_intel_branch_bonus.erase(instance_id)
 	_battle_experience.erase(instance_id)
-	_star_level.erase(instance_id)
+	_card_level.erase(instance_id)
 	instance_disposed.emit(instance_id)
 	# v7.x：转发到 SignalBus，让背包列表/存档队列同步清理该 instance_id，
 	# 避免出现"背包列表有幽灵 id 但 Registry 无实例"的不一致（表现为 get_all_cards 告警+复用同名实例）。
@@ -250,43 +251,45 @@ func set_intel_branch_bonus(instance_id: String, bonus: Dictionary) -> void:
 
 
 # ─────────────────────────────────────────────
-#  v8.x 战斗经验升星（star_level 与 enhance_level 独立）
+#  v18.c 战斗经验升级（card_level 与 enhance_level 独立；star 概念退役）
 # ─────────────────────────────────────────────
 
 ## 获取实例累计战斗经验
 func get_battle_experience(instance_id: String) -> int:
 	return int(_battle_experience.get(instance_id, 0))
 
-## 获取实例 star_level（0-9）
-func get_star_level(instance_id: String) -> int:
-	return int(_star_level.get(instance_id, 0))
+## 获取实例 card_level（1-30；无经验返回 0 = 未成长）
+func get_card_level(instance_id: String) -> int:
+	return int(_card_level.get(instance_id, 0))
 
-## 增加经验，达阈值自动升 star_level，返回是否触发升星
+## [DEPRECATED v18.c] 旧接口——返回 card_level，过渡期兼容
+func get_star_level(instance_id: String) -> int:
+	return get_card_level(instance_id)
+
+## 增加经验，达阈值自动升 card_level，返回是否触发升级
 func add_experience(instance_id: String, amount: int) -> bool:
 	if amount <= 0 or not _instances.has(instance_id):
 		return false
 	var old_exp: int = int(_battle_experience.get(instance_id, 0))
 	var new_exp: int = old_exp + amount
 	_battle_experience[instance_id] = new_exp
-	var old_star: int = int(_star_level.get(instance_id, 0))
-	var new_star: int = BattleExperienceConfig.get_star_level_for_exp(new_exp)
-	if new_star > old_star:
-		_star_level[instance_id] = new_star
-		# 通知 AffixManager 升星触发（affix 改技能树赋予后，此处仍保留 hook）
-		_on_star_level_up(instance_id, old_star, new_star)
+	var old_lv: int = int(_card_level.get(instance_id, 0))
+	var new_lv: int = BattleExperienceConfig.get_card_level_for_exp(new_exp)
+	if new_lv > old_lv:
+		_card_level[instance_id] = new_lv
+		_on_card_level_up(instance_id, old_lv, new_lv)
 		return true
 	return false
 
-## 升星回调：触发 affix 赋予等升星效果
-func _on_star_level_up(instance_id: String, old_star: int, new_star: int) -> void:
-	# 通知 AffixManager（affix 改技能树赋予后，on_star_up 内部查技能树决定赋予内容）
+## 升级回调：词条节点（AffixManager.on_card_level_up）+ UI 刷新信号
+func _on_card_level_up(instance_id: String, old_lv: int, new_lv: int) -> void:
 	var am = get_node_or_null("/root/AffixManager")
-	if am != null and am.has_method("on_card_star_up"):
-		am.on_card_star_up(instance_id, old_star, new_star)
-	# 转发信号供 UI 刷新
+	if am != null and am.has_method("on_card_level_up_instance"):
+		am.on_card_level_up_instance(instance_id, old_lv, new_lv)
+	# 转发信号供 UI 刷新（沿用 card_star_up 信号名，负载为等级）
 	var sb = get_node_or_null("/root/SignalBus")
 	if sb != null and sb.has_signal("card_star_up"):
-		sb.card_star_up.emit(instance_id, old_star, new_star)
+		sb.card_star_up.emit(instance_id, old_lv, new_lv)
 
 
 # ─────────────────────────────────────────────
@@ -320,7 +323,7 @@ func _serialize_instance(instance_id: String, card: CardResource) -> Dictionary:
 		"enemy_origin_mod": get_enemy_origin_mod(instance_id),
 		"intel_branch_bonus": get_intel_branch_bonus(instance_id),
 		"battle_experience": get_battle_experience(instance_id),
-		"star_level": get_star_level(instance_id),
+		"card_level": get_card_level(instance_id),
 	}
 	return out
 
@@ -334,7 +337,7 @@ func load_state(data: Dictionary) -> void:
 	_enemy_origin_mod.clear()
 	_intel_branch_bonus.clear()
 	_battle_experience.clear()
-	_star_level.clear()
+	_card_level.clear()
 	_index_by_card_id.clear()  # v8.x 性能：清反向索引，下方 _rebuild_index_from_instances 重建
 
 	if data.is_empty():
@@ -409,13 +412,13 @@ func _load_one_instance(instance_id: String, inst_data: Dictionary) -> void:
 	var ibb = inst_data.get("intel_branch_bonus", {})
 	if ibb is Dictionary and not (ibb as Dictionary).is_empty():
 		_intel_branch_bonus[instance_id] = (ibb as Dictionary).duplicate(true)
-	# v8.x 战斗经验升星
+	# v18.c 战斗经验升级：等级从存量经验重算（旧档 star_level 键忽略，零迁移）
 	var bexp: int = int(inst_data.get("battle_experience", 0))
 	if bexp > 0:
 		_battle_experience[instance_id] = bexp
-	var slv: int = int(inst_data.get("star_level", 0))
-	if slv > 0:
-		_star_level[instance_id] = slv
+	var clv: int = BattleExperienceConfig.get_card_level_for_exp(bexp)
+	if clv > 0:
+		_card_level[instance_id] = clv
 
 
 ## v8.x 修复：预注册 captured_/drop_ 等动态卡模板到 DefaultCards 缓存。
@@ -600,5 +603,5 @@ func clear_all() -> void:
 	_enemy_origin_mod.clear()
 	_intel_branch_bonus.clear()
 	_battle_experience.clear()
-	_star_level.clear()
+	_card_level.clear()
 	_index_by_card_id.clear()  # v8.x 性能：清反向索引

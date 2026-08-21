@@ -174,6 +174,8 @@ Godot 会为每个 PNG 生成 `.import` 文件。新图放入 `assets/` 后，�
 |------|------|
 | `tools/generate_missing_card_icons_11.py` | 调 API 生成卡图（模板，改 UNITS 列表即可复用） |
 | `tools/deploy_card_icons_11.py` | 白底转透明+缩放+翻转部署（模板，改 FILES 列表即可复用） |
+| `tools/gen_drone_icons.py` | 2026-08-17 无人机系列 5 张（fut_air_drone/fe_aether_swarm_queen/fut_swarm/fut_attack_drone/fut_nano_drone），card_id 直接做文件名（不走编号），同款模板 |
+| `tools/deploy_drone_icons.py` | 上批配套部署：白底转透明+512+88%留白+敌我成对落盘 `enemy|player/{card_id}.png` |
 | `tools/enemy_card_review.html` | 卡图审查清单（浏览器查看全部卡面，支持批量重生） |
 | `tools/_api_key.txt` | API Key（agnes-ai 图片生成） |
 | `tools/regenerate_7_sprites.py` | 旧版生成脚本（prompt 风格参考） |

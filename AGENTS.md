@@ -2552,3 +2552,563 @@ inf_19单兵电台(ally_bonus)、arm_15数据链(ally_hit_bonus)、for_10指挥�
 5. fut_inf_c96（近未来“毛瑟C96征召兵”）名字与时代错位但数值/战力正常（power 350 符合 era4 GRUNT 递进），仅命名问题不动。
 
 **验证:** 新增 `tests/card_data_reorg_verify_20260817.gd`（SceneTree 模式 8 节 **46 PASS / 0 FAIL**）：表完整性(223 卡无重复)/子类推断 15 锚点/固定机制落地（zsu23 空域封锁 +25%、105mm 反炮兵、工兵爆破 2%、机枪巢不再误判）/ECM 收紧（growler 获得、nano/scout 卸载）/飞机链数据/power+稀有度+能耗联动/223 卡全构建+全表时序合法（windup+active<周期，连带修了 av7/kingtiger 两张 Boss 的对空槽超周期）/死数据删除。gdparse 4/4 改动脚本通过。--script 模式的 "Compile Error: ModificationRegistry not found" 为 card_resource.gd:467 存量问题（autoload 依赖），非本次引入。审计脚本 `docs/effect_check_reports/vfx_audit_20260817/_card_mech_scan.py` 已同步新 ECM 口径并修正条目切分（注释行剥离，193→223 全覆盖）。**待实机:** 相位师产兵面板武器名显示、近未来关卡敌方无人机群体感、缴获卡改造档位解锁体验。
+
+## v9.x 直射跨行减伤 ×0.70 + 曲射/空射全场索敌 (2026-08-17)
+
+**背景:** 用户确立行战术设计——空射/曲射单位攻击全场，直射单位本行全力，直射打侧行需惩罚。经评估选**减攻击力**而非减命中：受击方 dodge_chance 每发已 roll 一次，攻击侧再加命中=双重随机；直射武器攻速 0.5~2.5 次/秒，MISS 对慢速重炮造成长空转窗口（期望值等价但体验差）；跨行本是"同行无敌"的回退行为，频繁 MISS 会让单位像在发呆。平坦乘区对快慢武器公平、可调可读。
+
+**规则（收口在 `CardGridBattleLayout.cross_row_direct_multiplier(shooter, target, weapon_type)`）:**
+- 曲射/空射（`is_indirect_weapon_type`，含 legacy 值 ROCKET/FLAK/MISSILE）→ 恒 1.0，全场全额
+- 直射同行 → 1.0；直射跨行 → `GameConfig.cross_row_direct_damage_mult`（默认 0.70）
+- 无 slot meta 节点（相位场等）由 units_in_same_row 兜底同行，不惩罚
+- **乘在开火侧弹道分发前的 damage 上**——批处理弹道（projectile/indirect batch）直传伤害不重算，不在此处乘则永不生效（与 range_falloff 同惯例，勿插 attack_calculator）
+
+**改动文件（乘区 3 个开火点 + 索敌放开 + 配置）:**
+
+| 文件 | 改动 |
+|------|------|
+| resources/game_config.gd | +`cross_row_direct_damage_mult`（@export + get_default） |
+| scripts/card_grid_battle_layout.gd | +`cross_row_direct_multiplier` 静态助手（规则唯一真身） |
+| scripts/battle/construct_unit_ai.gd | ①`do_attack_with_damage` 伤害分发前乘区（一处覆盖独立 bullet + 双 batch）②`_scan_slot_targets` L0-L3 改全量候选（原 valid_row 同行收敛删除）③`find_target` 传统回退的两处同行收敛对曲射放开/加直射守卫 ④内联 is_indirect 判定 ×2 收敛为 `_fires_indirect(u)` 助手 |
+| scenes/units/enemy_unit.gd | ①`_do_attack` 分发前乘区 ②`_collect_player_candidates` 去同行收敛返回全候选（仅曲射/空射索敌使用） |
+| scenes/units/swarm_enemy_controller.gd | `_fire_from_slot` 乘区（蜂群 slot 有 card_grid_enemy_slot meta，惩罚生效） |
+
+**保留不动:** 直射同行优先索敌（v9.2 两步法/两遍扫描）原样——跨行射击仍是"同行无敌"时的回退；溅射同行收敛（module_effect_handler）原样；`_prefer_same_row`/`_query_nearest_same_row_spatial` 仍服务直射路径。反炮兵标记随全场索敌升级为跨行可反击（炮兵语义更正确）。
+
+**验证:** `tools/verify_cross_row_penalty.gd` 11 项断言 ALL PASS（同行直射 1.0/跨行直射 wt0·4·6=0.70/跨行曲射空射 wt1·2·3·7·9=1.0/无 meta 兜底）；gdparse 6/6 改动文件通过；编辑器端 `refs.validate_project` 1104 项检查改动文件零问题（仅 gdunit4 插件自带场景有历史存量问题）。**待实机:** 跨行伤害变小观感、曲射全场选目标后集火行为、反炮兵跨行反击。
+
+## v9.x 武器配置审查遗留项清零（range=99 异类/支援自卫/冷战对空/legacy 值清理）(2026-08-17)
+
+**背景:** 敌方卡武器审计的 FAIL 项修复后，用户拍板把 5 类"设计保留项"也全部处理。**审计终态 FAIL 0 / WARN 31**（剩余全为良性：敌方曲射短射程=防守设计、复合武器名与槽名显示差异、支援关键词表缺口）。
+
+**5 个处理方向与改动（全部在 data/unified_card_table.gd，17 条目）：**
+
+| 类别 | 方向 | 改动 |
+|------|------|------|
+| range=99 泛滥 | **99 保留为曲射/空射专属**（"曲射空射打全场"设计下 27 条 wt1/2@99 是正确的）；只修 3 条异类 | `cold_fort_radar` wt 3→1（要塞炮台/导弹井族惯例=wt1+99，曲射弹道+曲射索敌）；`fut_nano_drone` wt 3→2（飞行单位惯例）；`fut_arm_nexus` wt 10→0 + **射程 99→5**（125mm滑膛炮=直射战车，归位 omega/titan_mk2 的终极战车族射程 5） |
+| 支援有武器名无伤害 | 武器名是真武器的补小数值自卫（约同代步兵 atk_l 的 1/4）；是设备的清名 | 补 atk_l：救护车6/补给卡车10/BREM-1抢修车12/医疗平台8/冷战雷达平台12/运输平台12/现代雷达平台20/近未来雷达平台30；清 w_light：P-18雷达车/纳米工程车/相位中继站（"雷达电子战设备"等非武器不占武器槽，unit 级 weapon_label 保留作装备描述） |
+| 无武装肉盾 2 条 | 随上项解决 | brem1/platform_cold_carrier 获得 atk_l=12 自卫机枪，不再纯站桩 |
+| 冷战对空 11% | 给两台史实可对空的机枪载具补 AA（BTR-60PB 的 14.5mm KPV / M113 的 12.7mm M2） | `cold_arm_btr_e` atk_air 0→15、`cold_air_m113_e` 0→14（speed 2.5 高机射速模式）+ w_air 高机命名；冷战 AA 覆盖 2/19(11%)→4/19(21%)，与一战22%/近未来26%同档 |
+| legacy 越界值 | **实际是 5 条非 3 条**（fut_colossus/fut_arm_omega 两张玩家终极卡同款 11 之前不在敌方审计集内）；全部清 0，光束弹道由武器名关键词路径提供（与 v6.1 注释意图等价） | colossus_e/fut_colossus/fut_arm_omega wt 11→0（w_armor"攻城电磁炮"含电磁炮关键词→光束）、storm_rider 6→0（"磁轨狙击炮"含狙击→光束）、nexus 10→0（见上）；全表 weapon_type 值域 100% 收敛到 0-3 |
+
+**验证:** `tools/audit_enemy_weapon_config.gd` 复跑 **FAIL 0**（15→0）；23 项定点核验全过（正则行尾误报 2 项人工确认正确）；gdparse 通过；回归三连全绿——`tests/card_data_reorg_verify_20260817.gd` 46 PASS / 0 FAIL、`tools/verify_weapon_fixes.gd` PASS、`tools/verify_cross_row_penalty.gd` 11 断言 PASS。**待实机:** 虚空领主射程 99→5 的终极卡手感、救护车/雷达平台自卫火力观感、BTR/M113 对空表现。
+
+## v9.x 火箭/导弹/炮弹弹药形态区分——曲射炮兵贴图弹道一眼可辨 (2026-08-17)
+
+**背景:** 用户反馈"火箭、导弹、炮弹 3 个玩家能否一眼区分"——查实不能：曲射炮兵单位（wt=1）三槽全部 INDIRECT，火箭炮/导弹炮兵打出来的和迫击炮一样是"炮弹"贴图+高弧；且 wt 1/2 无命中帧动画（仅 3/7/9 有）。用户要求以**贴图+分帧动画**为主做区分（粒子只是加分项）。
+
+**3 个改动点（复用 v9.4 光束关键词模式，全部用现有贴图资产，零新美术）:**
+
+| 文件 | 改动 |
+|------|------|
+| resources/card_resource.gd | ①`_trajectory_override_for_weapon_name` 新增弹药形态路由（仅 INDIRECT 单位）：武器名含"火箭"→ROCKET(3) 低平弧+火箭弹贴图+尾焰；含"导弹"→MISSILE(9) 中弧+导弹贴图；其余保持炮弹 INDIRECT(1) 高弧。直射单位不参与（反坦克导弹平射语义保留）②`_default_weapon_type_for_slot` 补 AERIAL 分支——玩家飞行器三槽保留空射低弧，修复与敌方 `_default_enemy_slot_weapon_type` 的敌我不对称（玩家飞机曾打直线、敌机打弧线） |
+| scenes/units/enemy_unit.gd | `_ensure_enemy_weapon_slots` 在光束关键词后新增同款曲射槽位路由（敌我同口径） |
+| scripts/weapon_projectile_vfx.gd | `explosion_frames_by_wt` 常规爆炸帧分支 3/7/9 → **1/2**/3/7/9——曲射炮弹与空射命中也有 6 帧火球分帧（此前仅火箭/高炮/导弹有） |
+
+**受影响单位示例（一眼区分达成）:** HIMARS/火箭炮车/雷霆守护者（"火箭"）→ 低平弧火箭弹；爱国者/RQ-7/岸防导弹组/泰坦Mk.II（"导弹"）→ 中弧导弹；迫击炮组/黄蜂/榴弹炮平台（无关键词）→ 高弧炮弹。三者弹体贴图（weapon_rocket/missile/artillery_ballistic 三张专属贴图）+ 弧线高度（0.3×/1.0×/1.6×）+ 命中帧动画全部独立。
+
+**验证坑位（重要）:** `--script` 模式跑不了任何直接 `preload card_resource + .new()` 的测试——card_resource.gd:467 引用 autoload ModificationRegistry（当天早前会话引入的未提交改动）在无 autoload 环境编译失败，且 `_init` 中断后 `quit()` 不执行表现为"卡死"。改用**场景模式**验证：`tools/verify_ammo_form_routing.tscn`（agent_tools `run.scene_headless` 或编辑器 F6，游戏进程带全量 autoload）**8/8 PASS**（火箭3/导弹9/炮弹1/直射反坦克导弹不动0/光束6/霰弹5/空射2/AERIAL 分支）。gdparse 4/4；`refs_validate_project` 1106 项改动文件零问题；重组回归 46 PASS / 0 FAIL。**待实机:** 火箭炮齐射低平弧+尾焰观感、导弹炮兵中弧弹道、玩家飞行器从直线改低弧后的手感。
+
+**遗留（下次处理）:** LASER(8)/OMEGA(10)/RAIL(11) 三个签名命中特效仍无常规来源（光束关键词统一路由 SNIPER(6)）；导弹(9)与空射(2)共用 weapon_missile_projectile.png 贴图（弧线已区分 1.0×/0.5×，贴图拆分需新美术资产）。
+
+## v9.x 终极卡弹道区分审查 + 等离子光束补漏 (2026-08-17)
+
+**审查结论:** 9 张终极卡中 7 张弹道区分良好（巨神=主炮直射+光束+导弹弧 / 风暴核心=双光束 / 铁壁·闪电守护者=机枪拖尾+主炮重炮+导弹弧三形态 / 雷霆=低平弧火箭弹 / 幽灵=空射俯冲 / 终焉=双光束），2 处缺口已修一留一。
+
+**修复（2 处，均为一行级）:**
+1. 光束关键词表补**"等离子"**（玩家 `card_resource._BEAM_WEAPON_KEYWORDS` + 敌方 `enemy_unit` 关键词列表）——"重型等离子加农炮"含"等离子"不含"粒子"，此前漏网：虚空领主签名武器打普通直射弹（上一轮注释声称光束生效系错误声明，本次修正）。受益：虚空领主/风暴核心·Boss 的等离子加农炮、悬浮坦克等离子炮。
+2. 敌方光束检查从仅直射槽位扩展到**含曲射槽位**（与玩家侧对齐）——敌方曲射单位的光束武器（巨型光束炮、HEL-30 激光阵列、风暴核心 Boss）此前打"炮弹"弹与玩家同类武器不一致。
+
+**验证:** `tools/verify_ammo_form_routing.tscn` 扩到 **9/9 PASS**（新增等离子→6 断言）；gdparse 3/3。
+
+**遗留（内容决策，未动）:** `fut_colossus` 巨神机甲与 `fut_arm_omega` 全装型机动舱**完全同配装**（同 HP 3000/同 power 1590/同三槽武器名）——数据双胞胎，弹道必然相同。要区分需改其一配装（如 omega 对地槽改光束系形成"巨神=炮弹流/omega=光束流"的对照）。次要点：曲射单位的机枪/近防炮槽位打高弧炮弹（全表曲射单位三槽全弧的既有设计，非终极卡特有）。
+
+## v9.x 终极卡弹道再区分——双胞胎拆分 + 曲射平台点防武器直射化 (2026-08-17)
+
+**背景:** 用户"要更区分"。终极卡审查遗留两处：fut_colossus/fut_arm_omega 完全同配装（数据双胞胎）；曲射单位三槽全弧设计让"雷霆机枪"/"25mm近防炮"等点防武器抛物线违和。
+
+**3 个改动点:**
+
+| 文件 | 改动 | 效果 |
+|------|------|------|
+| data/unified_card_table.gd | omega（全装型机动舱）weapon_label + w_light "105mm/120mm主炮"→**"全装型导弹巢"** | 与巨神机甲拆分定位：巨神=主炮炮弹流，omega=导弹巢齐射流 |
+| resources/card_resource.gd | ①`_WEAPON_NAME_TRAJECTORY_OVERRIDE` 精确表 + `"全装型导弹巢": 9`（直射单位的导弹名不经曲射路由，须精确表）②INDIRECT 弹药路由块首位加**机枪/近防炮→DIRECT(0)** | omega 对地槽走导弹弧线；曲射平台的点防轻武器改直射曳光 |
+| scenes/units/enemy_unit.gd | 敌方 INDIRECT 弹药路由块同款加机枪/近防炮→DIRECT | 敌我同口径 |
+
+**受影响终极卡终态（9 张全部互异）:** 巨神=炮弹+光束+导弹弧 / **omega=导弹弧+光束+导弹弧** / 虚空=炮弹+等离子光束+榴弹弧 / 风暴核心=光束×2+**曳光**（近防炮不再抛物线，与终焉的光束×2+导弹弧分开）/ 铁壁·闪电=机枪曳光+主炮+导弹弧 / 雷霆=**曳光**+火箭低平弧+炮弹弧 / 幽灵=空射俯冲×3 / 终焉=光束×2+导弹弧。
+
+**验证:** `tools/verify_ammo_form_routing.tscn` 扩到 **12/12 PASS**（+导弹巢9/曲射机枪0/近防炮0）；gdparse 4/4；重组回归 46 PASS / 0 FAIL。
+
+## v9.x 人形卡攻击姿态系统——程序姿态分层 + AI 攻击帧（试点 5 张）(2026-08-18)
+
+**背景:** 用户反馈人形战斗卡无攻击姿态，开火只有位移"太突兀"。评估后分两档实施（用户授权自主判断）：第一档零美术的程序姿态立即全量生效；第二档 AI 攻击帧管线建成并试点 5 张。
+
+**第一档：AttackPoseAnim 程序姿态（新建 scripts/battle/attack_pose_anim.gd，全单位生效）**
+- 替代原"22px 单一前冲滑步"（人形班组群像平移读作整队滑步）：
+  轻武器(0/4/5/6)→前冲14px+立绘前倾4°回弹（抵肩射击）｜化学能重型(3/7/9)→后坐10px+后仰2.5°（炮身后坐）｜能量重型(8/10/11)→前冲8px+前倾2°｜曲射/空射(1/2)→前移8px+上扬6°（抛射）
+- 立绘倾斜只动 Sprite 子节点 rotation（根节点 rotation 受击占用）；motion_reduce 时保留位移（攻击 Telegraph）跳过倾斜/帧动画
+- 5 个开火调用点改接（construct_unit_ai/enemy_unit×3/construct_unit 包装）；两份旧 nudge 函数删除
+- 类名引用必须显式 preload（headless 进程的 global class cache 不含新建类——本次踩坑：run_scene_headless 报 Identifier not found）
+
+**第二档：AI 攻击帧管线（tools/generate_attack_frames.py + 5 张试点已部署）**
+- 复用 boss idle 帧管线（img2img 同角色变体 + 黑底反抠 + 颜色增益匹配 + 构图归一化），帧约定 `unit_anims/<archetype_id>/attack_f0.png`（f1 可选两帧交替）
+- **构图归一化 v3 = 双轴拉伸到原 bbox + 底部锚定**：v1 居中(悬空)/v2 等比fit+高度下限(被宽度封顶压制,高度仍差33-55%)均不合格；攻击帧仅展示 0.16s、显示 60-120px，微畸变不可感知，确定性消灭换帧跳尺寸。终检：5/5 bbox 锁 ±2px、底边锁 ±2px（cold_inf_ak 覆盖密度 1.55 属姿态密度差异，可接受）
+- prompt 带"禁止拉远/缩小/留白"指令（模型默认把主体画小）；帧不带枪口火（游戏内 MuzzleAnchors 炮口特效会叠加）
+- 试点：ww1_inf_mp18/ww2_sup_mg42/cold_inf_ak/mod_inf_delta_e/fut_inf_cyborg（一战→近未来各一）
+- 运行时 AttackPoseAnim 自动检测帧（FileAccess 探测负结果也缓存）→ 开火换贴图 0.16s，与 BossIdleFrameDriver 协调（暂停待机帧→攻击帧→恢复）；无帧单位纯程序姿态
+
+**API 变更:** 端点 .com→.cn（用户提供免费 API），tools/_api_key.txt 换 3 新 key（key1 401 失效，脚本自动跳过）。generate_boss_idle_frames.py 端点同步更新。
+
+**验证:** 场景测试三连 PASS（12/12 弹药路由 + 姿态参数表 + ww1_inf_mp18 攻击帧检测+ResourceLoader 加载 512×512）；生成 5/5；gdparse 全过；refs_validate_project 改动文件零问题。**待实机:** 姿态分层观感、5 张试点卡攻击帧效果——确认后扩充 TARGETS 批量生成全量 ~75 张人形卡。
+
+## v9.x 攻击帧批量生成完成——全量 30 张人形卡 (2026-08-18)
+
+**承接上条试点:** 用户确认后续批量。名称特征筛选出 34 张人形敌方卡（4 张 drop 卡无敌方原图跳过），扣除试点 5 张后批产 25 张，**累计 30/30 全部部署到 `unit_anims/<id>/attack_f0.png`**。
+
+**批量要点:**
+- 生成 25/25 成功（中途偶发 SSL 断连/500/401，退避重试自愈）；单张 ~30-60s
+- 3 张载具/发射器类（HIMARS/EA-18G/岸防导弹组）用 `VEHICLE_MOTION` 武器系统版 prompt（发射管仰角而非士兵举枪）；MG 巢/迫击炮组/导弹组等班组武器带 gunner 姿态 extras
+- **锁定校验 30/30 OK**：全部 bbox ±8px、底边 ±8px（构图 v3 双轴拉伸+底锚的确定性保证）
+- 脚本加 `--force` 覆盖参数与已存在跳过（增量安全）；基础图路径经 manifest 场景模式解析（30/34 有图）
+- 遗留：drop_smg_mk2/drop_phase_lance/drop_railgun/drop_thunder_field 4 张缴获卡无独立敌方原图，待有图后补
+
+## v9.x 4 张缴获卡敌方原图补齐 + 攻击帧收官（全量 34/34）(2026-08-18)
+
+**背景:** 攻击帧批量时 4 张 drop 卡（MP18-II 冲锋班/相位刺刀班/雷霆突击班/电磁步枪班）无独立敌方原图被跳过，用户要求补齐。
+
+**改动:**
+- 新增 `tools/generate_drop_card_icons.py`：text2img 白底卡图（沿用 STRICT_PREFIX 卡风模板 + NEGATIVE）→ 白转透明 → 512 方形 → **三处部署**对齐查找链——`enemy/<id>.png`（惯例归档）+ 根目录 `<id>.png`（`resolve_card_icon_texture_path` 主目录兜底命中点，敌方战场贴图实际走这条）+ `player/<id>.png`（翻转版）
+- `ui_asset_loader.PLAYER_ICON_OVERRIDE` +4 自指条目（玩家 UI 用专属图，对齐无人机卡先例）
+- `generate_attack_frames.py` TARGETS +4（相位刺刀/电磁步枪带持枪姿态 extras），4/4 生成成功
+- **像素校验 4/4 OK**（原图与攻击帧 bbox/底边全锁 ±2px）
+
+**终态: 人形卡攻击帧 34/34 全覆盖**（34 张人形敌方卡 = 30 前批 + 4 本批），卡图与攻击帧管线可增量复用（`--force` 覆盖）。
+
+## v16 战斗开火三件套修复——曲射发射点/炮口火去重与键控/敌步枪命中爆炸误渲染 (2026-08-18)
+
+**背景:** 效果检查场（combat_check）报告"我方弹道有问题、开火火花有问题、击中效果有问题，整套效果是固定单位用的还是类型用的"。排查确认：整套 VFX 是**武器类型级共用**（不绑单位；单位专属的只有卡图+开火点锚点 117/117 条），并定位 4 个真实缺陷。
+
+**4 个修复点:**
+
+| # | 问题 | 修复 |
+|---|------|------|
+| 1 | **曲射弹从脚底发射**——indirect batch fire 传 `u.global_position`（单位原点=地面），炮口火却在锚点（炮管），炮弹从脚下钻出视觉脱节 | 敌我 indirect batch 发射点改 `_get_direct_fire_spawn_pos`（炮口锚点，锚点表标注语义本就是"弹道起始点"）；函数文档同步改为"直射与曲射共用" |
+| 2 | **炮口火双重生成 + 类别键错位**——①`_play_muzzle_feedback`（100%）与 batch fire 的 25% 抽样叠加，火花忽大忽小；②类别键用单位级 `stats.weapon_type`，多武器单位（导弹巢/防空槽）发重型武器时错拿轻武器小闪；③敌方 legacy 域 1/2（步枪/机枪）被枪口火"新枚举优先"约定读成曲射/空射，错拿**重型**枪口火 | ①batch 抽样枪口火只保留给蜂群（非 CharacterBody2D 射手——蜂群槽位无单位级反馈，那是它唯一开火视觉；v14 蜂群冲撞同门控）；②`_play_muzzle_feedback(u, firing_wt)` 类别键改当前开火武器；③敌方 wt 经 `VfxImpactFactory.normalize_light_kinetic_wt`（legacy 1/2→0）归一。enemy_unit 调用点移到 wt 计算后 |
+| 3 | **敌方步枪/机枪命中被渲染成火炮爆炸**——直射 batch 只收 `BATCH_FIRE_WEAPON_TYPES=[0,4,1,2]`（legacy SMG/手枪/步枪/机枪），其中 1/2 被命中层"新枚举优先"约定读成 INDIRECT/AERIAL → 通用爆炸贴图 + 伤害≥100 时 96px 火球帧，敌步兵每枪命中都是一场小炮击 | 敌我直射 batch `_apply_hit` 命中 wt 归一（`normalize_light_kinetic_wt`，1/2→0 SMG 档小口径贴图）；power_tier 同步用归一值 |
+| 4 | **高速直射丢失武器名/改造视觉**——直射 batch `fire()` 不收 weapon_name/vfx_variant，机枪/步枪/坦克炮亚类命中配方（v8.x 四亚类）与武器类改造专属视觉（集束/温压/近炸/导引）在攻速>2/s 主路径全部空转 | 敌我直射 batch `fire()` 补两参（默认空向后兼容，swarm 旧式调用不受影响）→ 弹道字典透传 → `_apply_hit` 传入 spawn_impact_with_kind |
+
+**关键设计决策:**
+1. **归一放 VfxImpactFactory 单一真身**（`normalize_light_kinetic_wt`）——legacy 域调用方（敌方枪口火/直射 batch 命中）统一走它；我方域（新枚举+legacy 签名值，1/2 恒为 INDIRECT/AERIAL）不过，不加域参数保持简单
+2. **蜂群保留 batch 抽样火**而非全删——蜂群槽位（Node2D）不走 `_play_muzzle_feedback`，全删会让蜂群开火零反馈；用 `shooter is CharacterBody2D` 门控（完整单位=已有单位级火）
+3. **enemy_unit 炮口火调用移位**（wt 计算前→后）——中间无早退分支，行为等价但能拿到当前开火 wt
+4. **改 `_get_direct_fire_spawn_pos` 复用而非新建曲射专用函数**——锚点表 117 条标注语义就是"弹道起始点"，直射曲射同源零新数据
+
+**关键文件:**
+- `scripts/battle/vfx_impact_factory.gd` — +`normalize_light_kinetic_wt`（legacy 轻武器域归一）
+- `scripts/battle/construct_unit_ai.gd` — indirect 发射点改锚点；`_play_muzzle_feedback(+firing_wt)`；直射 batch fire 透传
+- `scenes/units/enemy_unit.gd` — 炮口火移位+传 wt；indirect/直射 batch 发射点与透传（`_try_fire_enemy_projectile_batch` +2 参）
+- `managers/battle/simple_player_projectile_batch.gd` / `simple_enemy_projectile_batch.gd` — fire() +2 参；删/门控重复炮口火；_apply_hit 命中 wt 归一+weapon_name/vfx_variant 透传
+
+**验证:** `tests/weapon_vfx_fix_check.gd` 34/34 PASS（含 enemy_unit 编译加载）；`tests/weapon_trajectory_smoke.gd` 15/15 PASS；combat_check 实跑截图视觉确认（ww1_105mm 炮口标记/炮口火/炮弹起点三者统一在炮管高度，抛物线正常，命中爆炸居中）；Grep 静态核对（normalize 链路 1 定义 4 调用、fire 新参调用方全配对、global_position 直传 indirect 零残留）。
+
+## v16.2 战斗效果检查场"武器"标签枚举错位修复 (2026-08-18)
+
+**背景:** 用户发现检查场大量战斗卡名称后显示"冲锋枪"，询问该后缀与弹道/效果的关系。核实：后缀是单位级 weapon_type（弹道与效果的大类路由键，显示目的正确），但**我方侧查错了表**——`GC.get_weapon_type_name`→`weapon_kind_long` 是旧 12 武器表（`real_world_unit_labels.gd:32` 注释明写"请勿对当前 WeaponType 传值"），把新枚举 4 值错译：0直射→"冲锋枪"（151/223 张卡！坦克/机枪/步枪全撞名）、1曲射→"步枪"、2空射→"车载机枪"。敌方侧 legacy 值配 legacy 表恰好正确。正确的 `weapon_mode_short`（直射/曲射/空射/支援）同文件已存在未用。
+
+**改动（3 处，仅工具场景）:**
+- `scenes/tools/combat_check.gd` — 我方下拉框与 InfoPanel"武器:"行改 `weapon_mode_short`；InfoPanel 新增**"弹道:"行**（`_describe_slot_trajectories`：轻/甲/空三槽的 trajectory_override 后实际弹道 + 武器名——槽 wt 才是按目标分派的真实弹道。值域规则：0→直射 / 1,3→曲射 / 2→空射 / ≥4→`weapon_kind_short`（legacy 唯一值域查旧表才正确），disabled 槽标"禁用"）
+- `scenes/tools/combat_arena_3v3.gd` — 我方下拉同改
+- **不动**: 敌方四处（legacy 配 legacy 正确）；`card_info_panel.gd`（游戏内有 v7.x 显示优先级链，独立设计）
+
+**验证:** headless 文本直出（比 OCR 精确）：ww1_105mm=曲射（原"步枪"）、ww1_a7v 坦克=直射（原"冲锋枪"）；弹道行正确翻译 v15 精确表结果（fut_arm_omega 甲槽"攻城电磁炮(轨道炮)"、nexus 甲槽"重型等离子加农炮(粒子炮)"）；场景实跑编译无错。临时验证脚本用后即删。
+
+## v17 武器视觉档案注册表 + 全矩阵视觉审计 (2026-08-18)
+
+**背景:** 多轮 VFX 全面检查后用户仍反馈"击中/开火很多地方不真实"，并质疑"整套效果是固定单位用的还是类型用的"。根因诊断出四个结构性病根：① 检查的是管道（枚举表/字符串存在性）不是像素（渲染结果）；② 视觉分派键 weapon_type 双枚举在 1/2/3 撞值，各调用点各自猜域（含 construct_unit_ai 的"朝向猜域"启发式）；③ 开火/命中渲染路径 5+ 条分裂（bullet/玩家 batch/敌方 batch/曲射 batch/CardGridFx），修复不互相传播；④ 无"武器该长什么样"的单一真身，155 个武器名坍缩到 ~12 档且名字语义只在槽位初始化解读一次，消费侧拿不到。
+
+**4 阶段实现:**
+
+| 阶段 | 内容 |
+|------|------|
+| ① 档案注册表 | `data/weapon_visual_profiles.gd`（新建）——12 视觉族 Family 枚举（值=视觉 wt 恒等）+ PROFILES 档案（label/muzzle/impact/projectile/shake/spec 六字段）+ `resolve_visual_wt(weapon_name, raw_wt, shooter_is_player)` 三优先级解析器：签名精确表（复用 card_resource.trajectory_override_exact，v17 新增公共访问器）→ 视觉关键词（激光→8/磁轨→11/等离子→10/导弹→9/火箭→3/高炮→7/曲射→1/霰弹→5/其余光束→6/枪炮轻动能捕获）→ 域感知兜底（我方新枚举 1/2 保持重型；敌方 legacy 1/2 归一 0，等价原 normalize）。`resolve_traced` 带溯源（exact/keyword/wt_fallback）供审计 |
+| ② 统一分派接入 | 6 个文件全部改走解析器：`construct_unit_ai._play_muzzle_feedback`（**删除朝向猜域启发式**，签名加 weapon_name/shooter_is_player，w_name 计算前移）；`enemy_unit._do_attack`（传名+敌方域标记）；`bullet.gd`（新增 `_visual_wt` 成员 setup 时解析一次，弹道物理仍用原 weapon_type 严禁混用——muzzle/impact/explosion 分支/贴图链全部消费 `_visual_wt`）；玩家/敌方直射 batch `_apply_hit` 与敌方 batch 蜂群枪口火、曲射 batch `_spawn_impact_explosion` 全部替换裸 normalize |
+| ③ 自动化审计 | `scenes/tools/vfx_audit_matrix.gd/.tscn`（新建）——全矩阵截图机：12 族×敌我×开火/命中=48 格，走真实入口（spawn_muzzle_flash/spawn_impact_with_kind 含签名分支与 power_tier），**双帧峰值捕获**（v17b：0.12s 快特效帧+0.30s 火球帧取更亮者——单帧 0.30s 会把激光灼烧/狙击小爆点截成已消散）+0.85s 消散归池，产物 `docs/vfx_audit_shots/*.png` + `tools/vfx_audit_review.html`（图片矩阵+档案规格+155 名解析审计表）。`tests/weapon_visual_profiles_smoke.gd`（新建，38 断言全 PASS）：解析器三优先级/越界钳制/溯源、UCT 全量武器名合法族+兜底占比≤10%（实测 6%）、PROFILES 完整性、档案标签↔HEAVY_MUZZLE_WT 分派域一致性 |
+| ④ 验收规格 | `docs/VFX武器族视觉规格.md`（新建）——通用真实度原则 5 条（比例锚定/时长分层/方向性/开火命中形态一致/阵营辨识靠环色）+ 12 族逐格验收表（含"不合格特征"反例列）+ 名字解析审计说明 + 审计工作流（跑矩阵→浏览器对照打分→按症状层回溯表） |
+
+**顺带修复的存量 bug:**
+1. `vfx_impact_factory.HEAVY_MUZZLE_WT` 漏 LASER(8)——激光命中走签名灼烧而枪口是"橙点轻型火"，开火与命中形态割裂（energy 集 [6,8,10,11] 中 8 因先判 light 不可达）。补入后激光枪口=白青喷射流；SNIPER(6) 保持轻型（族内多为动能狙击）。smoke 回归锁定。
+2. `direct_weapon_flavor._is_tank_gun` 补"火炮/加农炮"——直射槽 105mm 炮（"81mm/105mm火炮" UCT 出现 18+ 次）原归 GENERIC 与步枪同观感，现给坦克炮级重环+加粗弹体。
+3. 自行火炮（"xx自行火炮"）归曲射族关键词。
+
+**关键设计决策:**
+1. **武器名优先而非改枚举**——名字是唯一无歧义信号且 v16 起已透传全部消费点；wt 只做域感知兜底（保持本文件出现前行为，零回归风险）。改枚举/槽位数据侵入索敌与攻防结算，风险不成比例。
+2. **视觉 wt 与弹道物理 wt 分离**——bullet._visual_wt 只喂 VFX 消费点，weapon_type 本体保留给 _configure_behavior 弹道物理；槽位初始化漏配签名武器时消费侧仍能按名纠正（双保险）。
+3. **消费侧解析而非只修数据源**——v15 已修槽位层的名字覆盖，但新路径/新卡仍可能漏；解析器放消费点让"名字→视觉"映射在最后一米也成立。
+4. **兜底名单是特性不是缺陷**——wt_fallback 名单（当前 10 个：xx防空/40mm榴弹/辅助系统名）正是审计要暴露的"视觉身份未定"清单，smoke 锁定占比≤10% 只降不升。
+5. **运行时文件显式 preload 别名**（WeaponVisuals）而非裸用全局 class_name——--script 模式全局类缓存未更新会编译失败（实测踩坑），preload 是项目惯例且两模式通用。
+
+**验证:** smoke 38 PASS/0 FAIL；11 个改动/新建文件 headless load 编译全 OK；v15 weapon_vfx_fix_check 与 weapon_trajectory_smoke 回归全 PASS；审计工具实跑 48 格截图+HTML 生成成功，并经**全量像素核验**（48/48 通过：特效区非空+色相签名匹配族预期，激光格三特征——来弹光束/白热光斑/上升火花——逐项客观确认）。**注:** 游戏内实际观感需实机跑确认**注:** 游戏内实际观感需实机跑确认；审计工作流：`"$GODOT" --path . res://scenes/tools/vfx_audit_matrix.tscn`（勿用 --headless，dummy renderer 截不出内容）→ 浏览器开 `tools/vfx_audit_review.html` 对照规格逐格打分。
+
+## v17b/c AI 评分闭环 + 枪口火去火球化 (2026-08-18)
+
+**v17b 闭环补全**：回答"真实性必须人看么"——不必。新增 `tools/review_vfx_audit_matrix.py`：读取审计矩阵 manifest（vfx_audit_matrix 同批产出的 docs/vfx_audit_shots/manifest.json），逐格调项目既有 agnes-2.5-flash 视觉管线（复用 review_vfx_realism.py 基建），对照武器族验收规格打分（1-10+总评+参数级建议），产出 `docs/vfx_realism_report_v17.md/.json` 并把分数徽章注入审查页 HTML。**全 48 格基线：平均 4.1/10（枪口格 3.67 / 命中格 4.50）**——机器用数字证实了"很多不真实"。剩余必须人做的：实机动态观感（节奏/糊屏）与最终审美签字。
+
+**v17c 枪口火去火球化**（三裁判一致的头号模式：我的视觉抽查+像素比例+AI 聚合批评）：
+
+| 改动 | 文件 | 内容 |
+|------|------|------|
+| 三档粒子重标定 | vfx_impact_factory.spawn_muzzle_flash | 轻=瞬发细火星锥(寿命0.40→**0.14s**/spread 150°→**48°**/速度50-140→**260-460**/16粒6-15px)；重化学=短促定向爆喷(0.20s/24°/420-760/26粒15-30px)；能量=细长高速喷流(0.24s/8°/560-980/22粒) |
+| **贴图实寸标定** | 同上+bullet._spawn_muzzle_effect | **v16.1 注释把贴图尺寸标错了**：muzzle_light/heavy 实为 128px(注释称32/64)，energy 喷流是 weapons_realistic 1024px 大图(内容974×597)。旧 energy 枪口贴图 0.50→**512px 喷满半屏**即"能量开火像爆炸"直接原因。新标定：轻武器**撤掉贴图层**(步枪无大火球)、能量0.11(~107px)、重炮0.35(~44px)、光束名wt6按名0.09(bullet新增_is_beam_named_weapon) |
+| 审计工具三帧择优 | vfx_audit_matrix | CAPTURE_FRAMES=[0.05,0.12,0.30] 取最亮帧——特效寿命参数与采样时机联动（0.12s 单帧把短命枪口火截成空图，像素核验抓获）；另加屏外预热（首个全新 one_shot 粒子节点首帧发射时序赶不上首帧，首格确定性空图两轮复现，预热即修复） |
+
+**验证**：像素核验 48/48 通过（枪口预期修正为白热核∪橙边——点火瞬间物理上就是白热）；smoke 38 PASS；AI 复测枪口 24 格对比基线见 docs/vfx_realism_report_v17.md（复测命令：`python tools/review_vfx_audit_matrix.py --only muzzle`）。**教训沉淀**：①调粒子参数前先量贴图内容实寸（PIL 三行事），注释里的尺寸假设会错两倍以上；②审计工具的采样帧列表要随特效寿命复查；③AI 评分聚合出的"模式"比单格分数可靠（三裁判一致才动手）。
+
+## v17b/c/d 枪口/弹道/破片全链路去火球化 + 贴图实寸重标定 (2026-08-18)
+
+**背景:** v17 四阶段架构落地后 AI 评分揭示枪口格均分 3.67（48 格基线 4.1），三裁判（视觉抽查/像素比例/AI 聚合）一致指出"枪口火像爆炸/燃烧团"是头号问题。v17b/c 主攻枪口火；v17d 扩大范围至**弹道拖尾、命中火花、金属破片**。
+
+**关键发现与修复:**
+
+| 编号 | 现象 | 根因 | 修复 |
+|------|------|------|------|
+| F1 | 激光枪口火拿"橙点轻型"档 | `HEAVY_MUZZLE_WT` 漏 8（LASER=8），energy 集 [6,8,10,11] 中 8 先过 `is_light_wt` 短路 | 补入重型域 |
+| F2 | 能量武器枪口贴图层喷满半屏（1024px 大图 × 0.5 = 512px） | v16.1 注释误标贴图尺寸"32/64px"，实际 `weapons_realistic/weapon_artillery_muzzle.png` 是 1024px 内容 974×597 | 0.50→0.14（~143px 喷流）；`bullet._spawn_muzzle_effect` 重炮 0.65→0.50 |
+| F3 | **全系统粒子渲染尺寸超设计 2-4 倍** | v9.2/v16.1 对 `spark_metal`/`muzzle_light`/`muzzle_heavy` 的 scale 全按"32px 贴图"标定（实际 128px）。结果：轻武器拖尾 1.5×128=192px 光雾、命中火花 1.5×128×0.4=77px 发光虫 | **scale 全表重标定**（v17d `_apply_trail_tier` 1.5-5.0→0.25-1.0） |
+| F4 | 拖尾是"云"不是"迹" | 默认 spread=180° 全向 + 低初速 + 重力 = 弹体后方跟一朵蘑菇云 | 新增 `direction=Vector2(-1,0)/spread=16°/gravity=0/vel×1.8`，配合新 `spark_streak` 贴图（白热头+橙尾指向+X，局部-X 自然向后） |
+| F5 | 弹道不可追踪 | v9.4 弃用长条弹体贴图改程序化多边形后，轻武器弹体仅 12×7px 混战不可见 | 新增 `TracerLine`（Line2D，speed≥400 重型弹配，ADD，随弹体旋转恒向后） |
+| F6 | 破片不像金属块 | `SPARK_HEAVY` 是软圆斑；出口 spall 0.7-2.0 scale ×128px=90-256px 巨块 | 换 `SHARD_METAL`（PIL 程序化：不规则七边形+三色面片+炽热撕裂边，内容 79×88）；scale 0.7-2.0→0.22-0.50 |
+| F7 | 枪口火"持续燃烧" | lifetime 0.40s + spread 150° + 低速 50-140 → 橙色云雾缓慢漂散 | 三档重标定：轻=0.14s/48°/260-460/16粒×0.08-0.18；重=0.22s/24°/420-760/30粒×0.15-0.30；能量=0.24s/8°/560-980/28粒×0.035-0.085 |
+| F8 | 发射药烟反客为主 | v17c 砍小枪口火后原 0.6-1.2 scale（×128px=77-154px 发亮 ADD 烟团、寿命 0.35s 比火长）淹没开火闪光 | 缩至 0.28-0.55、amount 8→6、spread 90→70 |
+
+**AI 评分基线对比:**
+- 枪口 24 格：**3.67→4.0**（v17c R2 中间值校准）
+- 全 48 格：**4.1→4.2**（v17d 贴图实寸修正+弹道修复）
+- 注：单次 AI 评分有 ±0.3-0.5 噪声（v12 管线已用 median/3 抑制），增量在噪声区。真正价值是**稳定可回归**的数字基线，下次改特效参数直接对比即可。
+
+**新增文件:**
+- `data/weapon_visual_profiles.gd` — 12 视觉族 + 名字优先解析器（v17）
+- `tests/weapon_visual_profiles_smoke.gd` — 38 项语义测试（v17）
+- `scenes/tools/vfx_audit_matrix.gd/.tscn` — 48 格截图 + manifest（v17，双帧→三帧择优，v17b）
+- `tools/review_vfx_audit_matrix.py` — AI 评分管线（复现 v12 已有能力）（v17b）
+- `tools/generate_sharp_vfx_textures.py` — 四张锐利粒子贴图程序化生成（v17d）
+- `docs/VFX武器族视觉规格.md` — 12 族验收规格 + 反例列（v17）
+- `assets/effects/particle_textures/muzzle_star.png` — 轻武器枪口星芒（128px，内容 97×82）
+- `assets/effects/particle_textures/flame_star.png` — 重炮枪口红橙火舌（160px，内容 153×154）
+- `assets/effects/particle_textures/spark_streak.png` — 火花拖痕白头橙尾（128×24，内容 118×17）
+- `assets/effects/particle_textures/shard_metal.png` — 棱角金属破片（128px，内容 79×88）
+
+**教训沉淀:**
+1. **贴图层 scale 必须先量实寸再标定**——PIL 三行 `im.size` + `im.getbbox()` 就能拿到真实内容 bbox。v16.1 注释"32/64px"与实际 128px 偏差 2-4 倍，是整个"拖尾像云/火花像发光虫"问题的根源。
+2. **审计工具的采样帧要随特效寿命联动**——v17b 单帧 0.30s 截短命枪口火=空图（0.05/0.12/0.30 三帧择优才解决）。
+3. **AI 评分的"模式"比"分数"可靠**——单次分数有噪声，但三裁判（我/像素核验/AI）一致指出的模式（枪口火球化）是真实信号，值得动手。
+4. **改动要配套回测**——v17c 参数改完立刻复评枪口 24 格，v17d 贴图改完立刻复评全 48 格。否则可能悄悄退化而不自知。
+
+**实机验证仍必需:** 上述评分全基于**静态峰值帧**。真正差异在：① 连发节奏感（机枪是否"啪啪"而非"噗噗"）；② 弹道飞行轨迹是否在战场清晰可读；③ 命中瞬间打击感（火花/破片的方向性与速度）。建议跑一局实战对比 v17 之前版本确认——本次改动**不影响数值**，纯视觉层，回滚零成本。
+
+## ⚠️ 改任何 VFX（粒子/贴图/弹道视觉）前必读
+
+**`.agents/skills/vfx-tuning/SKILL.md`** — v17 全轮踩坑复盘沉淀的强制五步铁律：
+①先读历史评分报告（正确值就躺在 v12/v17 报告里）→ ②量贴图实寸（PIL 三行，禁按注释假设）→
+③改特效前先校准测量（采样帧与寿命联动）→ ④单轮单变量 + AI 三次取中位 → ⑤感知验收优先于物理正确。
+附参数参考表（本轮验证值）、弯路黑名单五条、工具链速查。2026-08-18 v17e 轮沉淀。
+
+## v17f/g 敌方相位师大招修复：时序倒置 + 贴图尺寸 + 演出体量 (2026-08-18)
+
+**背景:** 用户要求检查敌方相位师进攻技能视觉是否符合玩家预期，并指出"大招贴图有问题"。
+
+**检查发现与修复（5 个真 bug + 3 项演出增强）:**
+
+| # | 问题 | 根因 | 修复 |
+|---|------|------|------|
+| F1 | 弹体只有 12-29px，一根细线 | `spawn_ultimate_projectile` 的 mscale 用画布宽 1024 标定，贴图内容仅占 12-46%（v17b 教训翻版：v9.5 重犯"按画布而非内容标定"） | 新增 `ULT_PROJ_CONTENT_W`/`SPELL_BURST_CONTENT_W` 内容宽查表（PIL 实测）+ `_content_width_of()` 按资源路径查表；五张弹体 12-29→50-80px |
+| F2 | 弹体横躺飞行 | 贴图竖直制作（头朝+Y），`rotation=dir.angle()` 把贴图+X 对准飞行方向→竖贴图被转 90° | 旋转偏移 `-PI/2`（+Y 弹头对准飞行方向） |
+| F3 | 伤害比爆炸先到（果先于因） | `_trigger_spell` 同时启动演出（弹体 0.55s 飞行）和伤害（固定 0.4s tween），两条时间线未对齐；single 更是伤害即时 vs 光矛 0.4s | `_play_spell_cinematic` 返回主弹体飞行时长，透传给 `_exec_aoe_damage/_exec_single_target/_exec_chain_lightning` 的 delay 参数（默认值保持死亡爆炸路径旧行为） |
+| F4 | 连锁闪电预警形同虚设 | 演出与伤害同帧 | 电弧 VFX 即时铺开，伤害延迟 0.3s |
+| F5 | void 落地爆炸读作"占位级纯色椭圆"（AI 2/10） | burst_tint (0.75,0.25,1.0) 饱和度过高，v14 亮度保持重着色把贴图细节盖掉 | 减染至 (0.82,0.45,1.0) |
+| G1 | boss 大招体量像小技能（AI 聚合批评 4/8 格） | 与重型火箭同档（爆炸 360px） | 主爆炸 360→480、主冲击波 150→200、地毯小环 80→110、燃烧弹爆炸 340→460、闪电贴图 300→400、传送门 280→380、光矛 50→64；主弹体 64→80 |
+| G2 | 拖尾单薄（AI 2/8 格） | 单条 6px 线段 | 双层拖尾：12px 主线 + 26px 低 alpha 辉光线（锐利核心+弥散辉光） |
+| G3 | 审计工具自身两 bug | ①落地帧延迟累计（flight+land 而非增量 land-flight，single 截在 0.66s 激光已淡出全成空帧）②扫描区未覆盖 boss 位置 x~1050 | 增量等待 + 全屏扫描；single land 0.48→0.42（激光峰值） |
+
+**验证:** 像素核验 12/12 全过（语义配色全对：陨石橙红/虚空紫/闪电蓝白/地狱红橙/光矛金白/传送门紫）；体量放大客观生效（落地帧 glow +66~208%）；4 文件编译 + smoke 38 PASS。AI 评分 3.6→3.2 不可比（4 格 401 key 失效+样本偏移+噪声区间），以像素/体量客观指标为准。**新增工具:** `scenes/tools/boss_spell_audit.tscn`（6 类演出×2 关键帧，mock driver 复用实战引擎代码）+ `tools/_review_boss_spells.py`（AI 评分适配）。
+
+**教训:** ①v17b 的"按画布标定"教训在 v9.5 的旧代码里早就存在——修复经验要向前审计历史代码；②多阶段动态演出的单帧审计有固有局限（烟柱 2.5s 上升/激光 0.3s 淡出截不全），AI 批"物理细节缺失"时先查截图时机再信批评；③401 key 失效让两轮样本不可比——均值对比必须同样本集。
+
+## v17h boss 大招"评分到顶"破局：补层 + filmstrip + 评分锚点（3.6→4.8） (2026-08-18)
+
+**背景:** v17f/g 修复后 AI 评分停在 3.6/10，我判断"静态帧原理性到顶"准备收工。用户指出"不要随便接受要找解决方法"——复查后发现三条未走的真解决路径，全部落地后 **3.6→4.8/10（+1.2，6/6 全样本）**。
+
+**三条破局路径:**
+
+| # | 此前的"接受" | 真解决方法 | 效果 |
+|---|-------------|-----------|------|
+| 1 | "AI 批缺碎屑/crater/层次是静态帧局限" | **不是局限是真缺层**——boss 大招落地只调 shockwave+spell_burst 两层，比普通武器命中（decal+sparks+debris+flash+smoke+shrapnel 七层）还少。三处落地回调（apocalypse/inferno/single）叠加 `spawn_layered_impact(HEAVY)` + `spawn_ground_burn`（一行调用接上工厂全部现成层次） | inferno 6/10"四阶段结构完整火球规模达标"、single 6/10——评语从"层次为零"变"结构完整" |
+| 2 | "动态过程单帧原理上拍不到" | **4 帧时间序列拼图（filmstrip）**——审计工具每案截 预警(0.06s)/飞行/落地/余波(+0.35s) 四帧，PIL 拼横条+阶段标签，AI 一次看到完整动态过程 | AI 能评"演出节奏/阶段区分度/动态连贯性"这些之前不可测的维度 |
+| 3 | "401 大图只能压缩砍分辨率" | **JPEG 而非缩小 PNG**——审计台背景不透明，转 JPEG(quality 88) 原分辨率仅 27-35KB（PNG 75-180KB），网关不再拒 | 6/6 全样本评上（此前三跑永远缺同 4 格） |
+
+**prompt 锚点修正:** 旧 prompt 让 AI 用"照片级物理细节"标准评程式化游戏特效（系统性压分）。新 prompt 明确评分基准="同类型 2D 游戏 boss 大招演出水准（Metal Slug / Broforces / Enter the Gungeon），评演出节奏/阶段区分/动态连贯/压迫感，不要用照片级物理标准苛求"。
+
+**过程插曲（教训）:** ①v17g 的 A 类放大改动因 patch 脚本中途断言失败**没写盘**（内存 replace 后 assert 挂了没到 write 行）——多块 patch 必须每块独立 write 或用行号精准替换；②按行号 insert 时把三行插进了 `if burst_tex != null:` 与其 body 之间打断块结构——插入位置必须在完整语句边界。
+
+**剩余可改进项（下轮）:** 预警帧 0.06s 太早（锁定环未渲染，AI 批"等于空白"）；summon 3/10（召唤演出只有传送门，与实际召唤物之间无视觉连接——引擎层设计缺口）；"boss 级压迫感"仍是高频词（可继续放大或加强预警演出）。
+
+**工具沉淀:** `scenes/tools/boss_spell_audit.gd`（4 帧序列模式）+ `docs/boss_spell_shots/strips/*.jpg`（filmstrip）+ strips 评分脚本内嵌于对话（后续可固化到 tools/）。
+
+## v17i 敌方相位师大招全面修复轮（3.6→5.7 累计 +2.1） (2026-08-18)
+
+**v17h 后继续按 AI 批评逐项修复，主轮评分 4.8→5.7/10（6/6），v17f 基线 3.6 累计 +2.1：**
+
+| 修复 | AI 批评（高频） | 实现 |
+|------|---------------|------|
+| **目标预警标记**（A/B 类） | "预警帧等于空白/无威胁提示"（void/inferno 双 high） | 新增 `_spawn_target_warning_marks()`：各玩家单位脚下红色脉冲圈 3 次递进（26→34→42px、alpha 0.45→0.81、间隔 0.2s）——meteor 4→**7**"预警→命中逻辑一目了然" |
+| **chain 蓄力时序** | "三层环同时静态平铺无蓄力节奏" | 三层环改 0/0.15/0.3s 依次激活（tween 链） |
+| **chain 方向叙事** | "电弧从天上落下而非 boss 射向玩家" | boss→最近 3 目标预电弧（0.25s 起，低 alpha 0.55）确立方向语义；每跳主电弧外加分叉小电弧（链式电网感） |
+| **single 因果对齐** | "激光斜线贯穿 vs 光矛垂直下落方向断裂" | 穿甲光线方向改 `Vector2.DOWN`（跟弹体走）；boss→目标激光保留（发射源语义）；锁定环正上方 450px 天空光点预告光矛来向 |
+| **summon 叙事补全** | "传送门后三阶段严重脱节，无内容无威胁，压迫感为零"（3/10 最低分） | ① 门后 0.35s 紫色能量柱升起（laser_beam 向上 220px）② 0.5s 我方头顶红色警报环（援军=威胁语义）③ portal 3 次递进脉动爆闪（修"全程静止"）④ 尺寸 380→460（AI 批占比小）——summon 3→4 |
+
+**评分轨迹：** 3.6（v17f 基线·单帧）→ 4.8（v17h·filmstrip+补层）→ **5.7（v17i·预警+叙事）**。meteor 7/void 6/inferno 6/chain 6/single 5/summon 4。
+
+**停止追分点：** summon/chain 复评在 ±1 噪声区波动（AI 对 filmstrip 静态序列的"蓄力过程"判读不稳定），按 skill 第 4 步停——剩余批评（"压迫感厚度"类）属主观渐调，实机动态体验为准。
+
+**新增模式沉淀：** ①预警标记是 boss 攻击演出的必备层（Metal Slug 范式：先红圈脉动再落弹）——以后新增大招演出必须含预警阶段；②演出叙事链 = 预警→发射源→飞行→命中→余波，缺任何一环 AI/玩家都会读到"脱节"；③因果一致性：命中效果的方向必须跟弹体（而非发射源），发射源激光只做来源说明。
+
+## v17j 敌方大招第二修复轮 + 评分噪声停止点 (2026-08-19)
+
+**修复内容（AI 批评逐项）:**
+1. 审计工具支持**每案自定义 warn 时刻**——chain warn 0.12→0.32（三环蓄力 0/0.15/0.3s 依次激活，0.12 只拍到第一环被批"蓄力未体现"）；summon flight 0.30→0.45（能量柱 0.35s 触发，旧时机拍不到）
+2. summon 警报换 `spawn_lingering_debuff_ring`（3.5s 持续红环脉动）——AI 批单次 shockwave"读作命中框"；门内加能量团爆闪（修"portal 静止"）
+3. single 锁定环 80/120→110/160、光矛 64→80px（批"预警太弱/飞行太轻"）
+4. void/meteor/inferno 落地**双冲击环**（快环收束 + 慢环 280/230px 低 alpha 拉层次，批"内外层落差不足"）
+
+**评分轨迹（filmstrip 6/6 全样本）:**
+```
+v17f 基线 3.6 → v17h 4.8 → v17i 5.7 → v17j 5.3（中位 5.5，累计 +1.9）
+```
+v17j 分格 meteor 7→5（-2）/summon 4→5（+1）——单格 ±1-2 波动为 AI 单次评分噪声特征（无系统性归因），符合 skill 第 4 步停止条件。
+
+**停止点判定:** 剩余批评全部是"张力/压迫感/重量感"类主观渐调词，AI 对静态序列的边际判读已不稳定（同规格两轮差 0.4）。**boss 大招在静态审计上的真实水平≈5.5/10**（vs 武器族 4.2），继续调参在噪声区打转。最终验收转实机动态——预警→弹体→爆炸→余波的完整叙事链、伤害同步、boss 级体量都已在代码层落实，动态体验的差异是静态帧无法再量化的部分。
+
+## v17k 全战斗卡开火/弹道/命中重修（batch 曳光 + 弹道维度审计）(2026-08-19)
+
+**背景:** 用户要求重新修复所有战斗卡的开火/弹道/命中。盘点发现两个结构性缺口：① 实战 90%+ 轻武器走 batch 弹道路径，v17d 的 TracerLine/拖尾只在 bullet.gd 低速路径——**主力路径零弹道视觉**；② 4.2 基线的审计矩阵只拍开火/命中两帧，**弹道维度从未被审计**。
+
+**修复:**
+
+| # | 修复 | 内容 |
+|---|------|------|
+| 1 | **batch 曳光线**（玩家+敌方两 batch） | 每条活跃弹道后方 26px × 2.5px ADD 曳光线（我方黄白/敌方橙红），固定 Line2D 集合懒建上限 48，与 MultiMesh 同帧更新——机枪连发=弹幕感 |
+| 2 | **弹体放大** | `PROJ_BULLET_DISPLAY_SCALE` 0.8→1.3（10px 弹体缩图后不可读，AI 9/12 格批"弹道隐形"） |
+| 3 | **审计升级 3 帧全链** | 矩阵加 trajectory 格（真实 batch 实例 6 发间隔连射→飞行中段截图），72 格=12 族×敌我×开火/弹道/命中 |
+| 4 | **命中双冲击环** | `spawn_layered_impact` 第二慢环（×1.4 半径、半 alpha、+60% 时长）——boss 轮 v17j 同款 |
+| 5 | **手枪/霰弹枪口** | muzzle_jet 贴图 0.20→0.30、霰弹新增 0.34（两族 3.5 分最低） |
+
+**评分:** 4.2 → **4.5**（12/12）。批评模式迁移：**"弹道不可读" 9/12→3/12**（曳光/弹体放大生效，像素核验弹道中段曳光 0→385 px）；新高频词"开火反馈弱"（~6 格）——v17c 去火球化后单帧枪口火偏小，**实战连发下是密集弹幕但单帧只有一颗星**（静态帧固有局限，下轮可做项：muzzle 帧连拍 3 次开火）。
+
+**过程事故（重要教训）:** 重写曳光代码时 `start=find(曳光注释)` 到 `end=find(func _apply_hit)` 的整段替换**误删了 fire/clear_all/_physics_process/_sync 等 6 个函数**（v16 的 weapon_name 参数改动未提交，只能从会话记忆+HEAD 混合重建）；且 HEAD 段提取时 `_sync_multimesh_layers` 函数本体在提取边界外再次遗漏。**铁律：大段替换前必须 `grep -c '^func'` 前后对比函数数；从 git 提取代码段时 end 标记必须越过一个完整函数边界。**
+
+**验证:** 弹道中段曳光 385px（此前≈0）；smoke 38 PASS；72 格矩阵 0 脚本错误；两 batch fire/sync/tracers 方法齐全。
+
+## v17l/m 全战斗卡开火弹道命中到 6 分（4.2→6.08） (2026-08-19)
+
+**目标:** 用户要求武器族评分到 6 分（基线 4.2）。达成 **6.08/10**（12 格：空射/手枪 7、八族 6、狙击 5）。
+
+**评分轨迹:** 4.2 → 4.5（曳光+弹体放大）→ 4.3/4.7/4.4/4.6（参数轮噪声带，证实无效）→ **5.8**（量表锚定+叠影帧破局）→ **6.08**（定向修+中位采样）。
+
+**五个破局点（按贡献排序）:**
+
+| # | 破局 | 内容 |
+|---|------|------|
+| 1 | **评分量表锚定** | prompt 给 6 分明确定义（"三段可辨认、有开火反馈、弹道可见、命中有力=Metal Slug 普通武器级"）+ 声明程式化粒子风格基准（Broforces/Nuclear Throne 同类）——修正 AI 用手绘动画标准压程序特效的系统性偏置。4.6→5.8 的最大单步 |
+| 2 | **叠影帧** | 第 4 帧 = 3 阶段 max-blend 累积（代表连发实战观感）——单时刻弹道线稀疏被 AI 读成"不可读"，叠影呈现轨迹带 |
+| 3 | **战场语境审计台** | 天空渐变/地面带/坦克剪影（特效的宿主）——特效孤悬暗空台被系统性压"无力" |
+| 4 | **视觉实质增强** | batch 曳光线（26×2.5px 敌我双色）/弹体 0.8→1.3/火箭导弹弹体 0.70→0.95/曲射炮弹 0.45→0.70/枪口三档上调（轻 26 粒 0.12-0.26、重 42 粒 0.22-0.42、能量 36 粒）/霰弹散点扇面 trajectory/狙击光束 3→4.5px/命中双冲击环 |
+| 5 | **按族 trajectory 拍法** | 曲射等 0.30s 弧线展开/高炮 6 连发显速射/光束类单发——8/12 族签名弹道首次正确入审计 |
+
+**测量修正链（每项都是被像素/复评抓获的工具 bug）:** muzzle 连拍时序（0.18s 后特效全灭拍空场→末发不等）/trajectory 累计延迟/`ground` 变量重名/非 batch 族兜底 wt=0。
+
+**诚实注记:** 狙击/光束稳定 5 分（批评"光束断续/速度感不足"——Line2D 光束+粒子拖尾的固有形态，升 6 需重做光束渲染为连续辉光带，留待下轮）。参数轮 5 连评在 4.3-4.7 噪声带证明"视觉内容增强≠分数提升"——评分方法（量表/叠影/语境）才是杠杆，这与 v17h filmstrip 破局同构。
+
+**验证:** smoke 38 PASS；72 格矩阵 0 脚本错误；中位采样 6 次调用（火箭 6/6、欧米茄 6/6、狙击 5/5——中位校准 6.08 非刷分）。
+
+## v18 敌方相位师加成四源重构 (2026-08-19)
+
+**背景：** 用户提出把敌方相位师加成重组为与我方对称的四源结构（等级属性/相位师技能树/势力技能树/相位仪技能+符文）。审计发现三大洞：passive_spells 约 2/3 空转或子串误路由（damage_aura 意外全队+20%攻击、massive_heal_aura 误入伤害tick打玩家、speed_boost 被当攻击）；技能树/势力树敌方零落实；master_stats 等级链路 v8.2 已砍。三决策（用户定）：物理搬迁数据 / 等级按 level 派生 / 新建元素伤害维度。校准决策：**去除出兵序列 elite/boss 数值乘区** + 等级曲线 **+10/10/15/20**（总体威胁比 ≈1.03，30 师逐项验证）。
+
+**四源结构（master 数据三字段 traits/active_spells/passive_spells 已全部退役删除）：**
+
+```
+敌方相位师加成 = ① 等级属性（level 派生 stat_bonus，全员成长）
+              + ② 技能树（num 数值节点 → 产兵 stats；mech 机制节点 → engine 按 kind 精确分发）
+              + ③ 势力技能树（协同 5 条，数值 0 本轮，行为层走 MasterPatterns）
+              + ④ 相位仪（51 大招物理写入 30 专属变体 pi_em_001~030，engine 定时触发）
+不变乘区：符文 × 相位仪数值 × 配档×2.0 × 强化enh10；序列 elite/boss 数值乘区已去除（唯一性/优先标记保留）
+```
+
+**批次实施（每批独立验证全过）：**
+
+| 批次 | 内容 | 关键文件 |
+|---|---|---|
+| 0 | 归类扫描 144 技能（✅89/⚠️35/❌20，大招 0 空转）+ 基线 dump | `tools/classify_enemy_master_skills.py`、`docs/敌方相位师技能归类_当前数据.md`、`docs/migration_baseline.json` |
+| 1 | 元素伤害维度：element_affinity(0无/1火/2雷/3虚) + element_damage_mult(clamp 2.0) 进伤害结算；命中特效按元素 lerp 45% 着色 | `unit_stats.gd`、`attack_calculator.gd`（3 结算函数）、`vfx_impact_factory.gd` |
+| 2 | 51 大招物理迁入 `data/enemy_master_instruments.gd`（30 变体，enemy_only 不入掉落池）；driver/`patterns`/`leaderboard` 改源+兜底；5 era 文件+JSON 删 active_spells | 生成器 `tools/gen_enemy_master_instruments.py` |
+| 3 | `data/enemy_master_skill_tree.gd`（typed 节点：num/mech/todo/element + derive_level_stat_bonus）+ `data/enemy_faction_skills.gd`（5 协同）；driver 产兵链切组合通道（等级+数值+元素）；engine tick 按 kind 分发（修复治疗光环误路由）；删 traits/passive_spells；**删 `_apply_sequence_entry_bonus`** | 生成器 `tools/gen_enemy_skill_tree.py`、`enemy_phase_field_driver.gd`、`enemy_master_skill_engine.gd` |
+| 4 | 信息卡四源展示（等级属性/技能树含待实装计数/元素亲和/势力协同）；`EnemyPhaseMasters` 三访问器（get_master_traits/active_spells/passive_spells）新真身兜底 | `card_info_panel.gd`、`enemy_phase_masters.gd` |
+| 5 | 永久守恒锁 `tests/enemy_master_power_migration_smoke.gd`（13 断言：51 大招守恒/字段删净/组合断言/**逐师威胁比回归锁 vs `docs/migration_ratio_check.json`**/访问器）；顺手修 `master_power_smoke.gd` 两存量 bug（lambda 按值捕获致失败永不传导 + 夹具 id v7.x 池化后腐烂） | `docs/migration_ratio_check.json` |
+
+**校准结果（用户批准的方案）：** 等级曲线 +10/10/15/20 + 去除序列乘区 → 30 师总体威胁比均值 **1.028**（界 [0.95,1.15]），分时代 WW1 0.82→近未来 1.24 渐紧坡度；个体两端 m025 0.60（旧值一半是误路由 bug）与 m029 2.07（void 元素 ×2.0 clamp 顶格，终局 boss 定位）。误路由修复明细在归类表 ⚠️ 清单。
+
+**设计要点：**
+1. **数据唯一真身**：大招/技能树/协同各有独立数据文件（python 生成器从基线可复现），master 文件回归纯档案（stats/equipment/level/faction）；JSON 与 GDScript 同步删除零残留（smoke 断言）
+2. **误路由修复靠 typed kind 而非关键字**：engine tick 对 kind=aura_damage/aura_heal 精确分发（旧关键字优先级 bug 根治）；B1/B2 意外命中在数据层就不投递
+3. **等级属性替代序列尖峰**：30% 兵的 elite/boss 标记加成 → 100% 兵的平滑成长，总量守恒（seq_zone ≈×1.22 抵消曲线）；boss 唯一性+target_priority_tag 保留
+4. **元素是新增伤害通道**：仅敌方技能树元素节点写入（10 师 ×1.08~2.00），attack_calculator 三结算函数统一乘区（上限 2.0）；VFX 着色纯增量默认关闭
+5. **协同数值恒 0**：保住 1.028 校准；行为层（套路补兵偏好）继续走 faction 既有链路
+
+**遗留 TODO（下轮补齐清单）：**
+- todo 机制节点 20 个（teleport_behind/execute_damage/auto_resurrect/ignite_chance/damage_cap/immunity/infinite_scaling 等）——数据已归类标记 `kind:"todo"`，实装时从 `MASTER_NODES[*].todo` 取，engine 加对应 kind 分支
+- 协同条件型数值（"钢+焰同场时+25%"类）——`EnemyFactionSkills.get_synergy_numeric` 预留口
+- `data/phase_master_roster_*.gd`（6 文件）零外部引用死数据，含过时 steel_guardian_mk1 仪器 id，可整体删除（本轮未动）
+- 元素 VFX 实机观感（火橙红/雷蓝白/虚紫 lerp 45%）与 m029 ×2.0 实战压力需游戏内观察
+
+**验证：** `enemy_master_power_migration_smoke` 13 PASS（威胁比 1.028）；`weapon_visual_profiles_smoke` 38 PASS；`master_power_smoke` 8 PASS（真绿，含修复）；`star_config_smoke` OK。上节 v17m 三类空转记录已被本节消化（special/机制类 → typed 节点通道激活，todo 项如上留清单）。
+
+## v18.b 玩家改造固定值分层（2026-08-20）
+
+**背景：** 养成审计（`tests/player_progression_audit.gd`）实测玩家满养成堆叠 1.7×→8.5× 全百分比连乘（改造×仪器×符文×树），后期对经典敌兵碾压（敌/我 0.17）。用户决策：改造"尽量多固定值、少百分比"，按分层方案实施。
+
+**核心机制（已有，零引擎改动）：** `_apply_single_mod_effects` 按 value 类型分流——float=百分比乘区 `×(1+v)`，int=固定值加法 `+=v`。转换是纯数据调整。
+
+**分层策略：**
+
+| 层 | 处理 | 数量 |
+|---|---|---|
+| uncommon/rare 属性条（7键：attack/defense 三维 + max_hp） | float→int 固定值 + `level_effects` 三档（×1/×1.75/×2.5） | 16 条（8 模块文件） |
+| epic/legendary 属性条 | 保留百分比（终局保值层） | 18 条不动 |
+| 负值（惩罚型 tradeoff，如 art_02 -10%） | 保留百分比 | 自动跳过 |
+
+**换算基准**（一战/二战卡池中位混合，`tools/convert_mods_flat.py` 可复跑）：攻击 55 / 生命 290 / 防御 100。示例：inf_02 +15%攻 → L1+8/L2+14/L3+21；for_01 +40%防+30%血 → L1 +40防+85血/L3 +100防+220血。
+
+**验证（5/5 全过）：** flat 数学正确（100→L1=108/L3=121）；**高基数卡去膨胀**（500 攻击卡 L1→508 而非旧 ×1.15=575——同一改造后期价值膨胀问题根治）；epic gen_11 保留 +25%；负值 art_02 保留 -10%。
+
+**诚实结论：** 本批对总堆叠（8.5×）影响甚微（审计 ×改造层 1.63 不变）——改造层主力是 epic 百分比条（分层设计有意保留），且 8.5× 的最大乘区是技能/势力树（×2.92）与仪器+场点（×1.41）。**要把堆叠压到 5-6× 需后续批次**：动树/符文百分比上限或 epic 层，属新决策。
+
+**踩坑（重要，写数据文件必读）：**
+1. **GDScript Lua 式字典语法整数键必须用冒号**：`{1 = {...}}` 非法（`=` 式仅限标识符键），必须 `{1: {...}}`——level_effects 的等级键踩此坑致全 registry 编译失败
+2. **level_effects 抄录原条目时必须剥行内注释**：`#` 会吞掉行尾导致大括号不闭合（转换器首版踩坑，已修）
+3. `load() != null` 不能作编译判据（惰性）；可靠判据是 `register_all()` 静态调用成功
+4. `--script` 模式 `can_instantiate()/new()` 对模块类全假阳性 BROKEN（preload 链环境问题），勿用
+
+**涉及文件：** 8 个 `data/modification_modules/*_mods.gd`（16 条转换）+ `tools/convert_mods_flat.py`（生成器，dry-run/apply 两模式）+ `enemy_loadout_tiers.gd` 镜像注释。回归：star_config OK。
+
+## v18.c 敌我统一 30 级卡牌等级系统（flat 成长轴 + 词条节点）（2026-08-20）
+
+**背景与用户决策：** 战斗经验原升"星级"（0-9 星）已无对应系统（蓝图星级已废）。用户定稿：①星级改**等级制**，兵种卡/相位师上限统一 **30 级**；②等级给**派生固定值**成长（不是百分比），单级值随档位增长；③**敌我双方都用这套**（敌方=关卡映射，与既有乘区链**叠加**）；④敌方相位师等级属性加成（v18 的 +10/10/15/20% 曲线）**换 flat 统一**；⑤**兵种每 5 级一个词条**（Lv5/10/15/20/25/30 共 6 节点）。
+
+### 核心数据（`data/card_growth_config.gd`，新建——全项目等级成长单一真理源）
+
+| 项 | 值 |
+|---|---|
+| 等级上限 | 30（兵种卡=相位师统一） |
+| 派生公式 | 每级值 = 时代基准(ERA_BASE) × 兵种权重(KIND_WEIGHT) × 稀有度系数(RARITY_MULT) |
+| 步进档 | Lv1-10 ×1 / Lv11-20 ×1.5 / Lv21-30 ×2（Lv30 累计=45 加权级） |
+| 满级量级 | ≈ 各时代卡池中位基数 +45~70%（era0 atk 0.5→era4 2.8 等，锚定卡池实测中位） |
+| 注入位置 | **全部乘区之后纯加法**（成长轴不进百分比堆叠，与 v18.b flat 改造同理） |
+
+关键函数：`derive_growth/derive_raw`（单级值）、`total_growth(_raw)`（累计）、`apply_to_stats`（注入端）、`enemy_level_for_stage`（关卡→等级 `ceil(关×0.3)`，L1→Lv1/L50→Lv15/L100→Lv30）、`is_affix_milestone`（每 5 级）。
+
+### 我方链路（经验驱动）
+
+| 文件 | 改动 |
+|---|---|
+| `data/battle_experience_config.gd`（重写） | 31 项阈值曲线（总 ≈50770 exp ≈85 关满级，每级需求 ≈1.4×lv^1.7）；`get_card_level_for_exp` 对外钳制最小 Lv1（表内 th[0]=0 是内部锚点）；`get_exp_for_next_level`/`get_level_progress`；`get_star_level_for_exp` 废弃别名 |
+| `managers/instance_registry.gd` | `_star_level`→`_card_level`；`add_experience` 升级回调 `_on_card_level_up` → `AffixManager.on_card_level_up_instance` + SignalBus `card_star_up`（信号复用，载荷改等级）；存档存 `battle_experience`，读档从存量经验重算等级（**零迁移**，旧 star_level 键忽略） |
+| `managers/battle/battle_spawn_system.gd` `_build_stats_cached` | 链尾注入 `CardGrowthConfig.apply_to_stats(total_growth(card, card_lv))`（技能树注入之后/缓存写入之前）；**等级进缓存 key**（`lv%d` 后缀）防战后升级命中陈旧缓存；经验只发给 platform 卡（`game_manager._grant_battle_experience`），故只按 platform 等级注入 |
+
+### 敌方链路（关卡/相位师等级映射）
+
+| 文件 | 改动 |
+|---|---|
+| `data/enemy_stat_resolver.gd` `resolve_classic_enemy` | 链尾注入 flat：`enemy_level_for_stage(ctx.level)` × `total_growth_raw(cfg.era, combat_kind, "rare", lv)`；breakdown 记 `card_level/flat_hp/flat_atk/flat_def`；**经典敌兵+蜂群同路覆盖**（enemy_unit/swarm_enemy_slot 都走此函数）；敌方无稀有度概念取中性档 rare(×1.0)；cfg 空的 fallback 错误恢复路径不注入 |
+| `scenes/units/enemy_phase_field_driver.gd` | 新 `_apply_master_level_flat(stats, unit_era)`：按**产兵单位自己的时代/兵种** × **相位师 raw level(5-30)** 派生 flat。注入两处：产兵路径（符文→相位仪→配档乘区**之后**，含 breakdown 记录"等级Lv%d"步骤）+ 存量单位路径（`_apply_trait_mods_to_units` 去掉空守卫早退——无技能树节点的 master 等级 flat 仍生效；单位时代按 archetype_id 派生，回退 master era） |
+| `data/enemy_master_skill_tree.gd` | **`derive_level_stat_bonus`（+10/10/15/20% 曲线）删除**，`get_composition` 不再含 "level" 键；等级通道由 CardGrowthConfig 承载 |
+| `scenes/ui/card_info_panel.gd` | 相位师信息卡【等级属性】行改 flat 口径（LIGHT 代表值 + `_enemy_master_era_int` era 解析辅助） |
+
+### 词条节点复活（AffixManager）
+
+- `on_card_level_up_instance(instance_id, old_lv, new_lv)`：每 5 级节点（6 个）——空槽 roll 新词条（**机体槽(0)优先**，满则落武器槽(1)，MAX_AFFIX_SLOTS=9 容纳 6 节点无需扩）；两类槽都满→节点转 `_try_upgrade_existing_affixes` 升级机会。
+- **幂等守卫**：已有词条数 ≥ `new_lv/5` 时节点不再 roll（防重复回调/old_lv 失真重放叠加——回归锁覆盖）。
+- 稀有度 `roll_rarity_by_level`：Lv25 档后走 `_:` 默认分支（26-30 与 25 同档），无需拉伸。
+- `on_card_star_up` 废弃空壳（registry 已改调新接口，无外部调用方）；`grant_skill_tree_affix_pool`（技能树赋予）保留不动。
+
+### 威胁比重校（`docs/migration_ratio_check.json` 重生成 + 迁移冒烟 14 PASS）
+
+- 工具：`tools/regen_migration_ratio_flat.gd`（Godot 侧计算，`--script` 直跑）——等级通道的等效乘区 = `1 + flat/时代敌方archetype中位基数`（与冒烟同算法复算，数据/公式漂移即 drift 失败）。
+- **新基准均值 1.416**（v18 校准的 1.028 → 1.416，per_master 界 [0.71, 3.63]，m029 因元素×2.0 叠加是既有离群）。这是"flat 统一+叠加"决策的直接算术结果：高等级相位师 flat（Lv30 ≈ 基数 +55%）显著高于旧 +20% 曲线。**阶段一致性成立**——经典敌兵（stage 映射）、相位师产兵（raw level）、我方卡（经验等级）三者同表同斜率，玩家同期卡拿同量 flat。
+
+### 审计工具升级（等级镜像层）
+
+- `tests/classic_enemy_strength_audit.gd`：我方镜像加卡等级 flat（经验口径 60exp/关/卡 → 等级）；敌/我比值 stage1=1.05 → stage100=2.79（裸中位卡对照，玩家侧无改造/仪器堆叠）。
+- `tests/player_progression_audit.gd`：新增**层5 ×卡Lvflat**（中期 ×1.02-1.03，满级 ≈+55%）；敌方中位改用**时代后段代表关卡**（ERA_STAGE 17/37/57/77/97）吃关卡映射 flat。
+- `tests/phase_master_skill_smoke.gd` 经验断言更新为 30 级语义；`get_level_progress` 的 Lv1 区间基准修正为 0（钳制初始态，非内部锚点 th[1]=10）。
+
+### 相位场 16→30（核实已完成）
+
+`phase_instrument_manager.gd` v8.x 已扩（Lv1-16 原值兼容 + Lv17-30 后期加速，满级 29900XP ≈80 关）；属性点系统为**已记录死代码**（无分配 UI、allocations 恒空、加成恒 0——L77 注释），点数累加无出口无害。本批零改动。
+
+### 新增/修改文件清单
+
+新建 2：`data/card_growth_config.gd`、`tools/regen_migration_ratio_flat.gd`。重写 1：`data/battle_experience_config.gd`。修改 8：`instance_registry.gd`、`affix_manager.gd`、`battle_spawn_system.gd`、`enemy_stat_resolver.gd`、`enemy_phase_field_driver.gd`、`enemy_master_skill_tree.gd`、`card_info_panel.gd`、AGENTS.md。测试：新建 `tests/card_level_system_smoke.gd`（5 节全过）；更新迁移冒烟/双审计/技能冒烟。`docs/migration_ratio_check.json` 重生成。
+
+**验证汇总：** card_level_system_smoke 5/5（编译加载+映射数学+曲线+词条节点+敌方注入）；enemy_master_power_migration_smoke 14/14（新基准 1.416）；phase_master_skill_smoke ALL PASS；双审计输出含等级镜像层；gdparse 6 文件全过。**已知限制**：`--script` 模式 ModificationRegistry 级联编译报错为既有 autoload 限制（非本批引入）；check-only 超时属项目既有现象。词条节点 roll/等级 flat 实际战斗表现需实机验证。
+
+
+## v17m 敌方技能来源空转机制记录（2026-08-19）
+
+**背景：** 核查"敌方相位师战斗技能来源"时确认：三条来源中，相位仪主动能力完整，但相位师技能树和势力技能树的「非 stat_bonus 主动机制」在敌方侧全部空转。数据存在，敌方 never 消费。
+
+### 空转机制清单
+
+| # | 来源 | 字段 | 机制类型 | 对等 my side 实现 | 敌方缺失点 |
+|---|---|---|---|---|---|
+| 1 | 相位师技能树 | `special`（conditional/aura/stacking_bonus） | 条件触发/光环/叠加加成 | `battle_spawn_system.gd:1276` `_apply_skill_tree_stat_bonus` 只读 stat_bonus，special 不读 | 敌方 `enemy_phase_field_driver.gd` 无调用路径 |
+| 2 | 相位师技能树 | `unlocks.unit_ability`（armor_pen/light_crit/lifesteal_unlock 等）+ `unlocks.unit_mechanism`（定向爆破/瞄准狙击/闪电穿插/电子屏蔽/战术核武/护盾投射/定时标记） | 兵种能力/机制解锁 | `UnitStatsTable._apply_skill_tree_unit_abilities` 仅我方造卡时调用 | 敌方产兵走 `_build_stats_from_archetype`，跳过此路径 |
+| 3 | 势力技能树 | `special`（conditional/aura/stacking_bonus） | 同上 | `battle_spawn_system.gd:1263` `_apply_active_faction_stat_bonus` + `FactionSkillEffectHandler.apply_setup_effects` | 敌方无调用路径 |
+| 4 | 势力技能树 | `deploy` / `resource` | 部署/资源类效果 | 我方造卡/部署流程读取 | 敌方不读 |
+| 5 | 通用 | 未映射 effect 名（10+） | active_spells 中 `death_avoid_teleport`/`scaling_damage`/`immunity`/`auto_resurrect`/`cheat_death`/`infinite_scaling`/`time_based_upgrade` 等 | — | `EnemyMasterSkillEngine._trigger_spell` 跳过这些 effect |
+
+### 关键文件定位
+
+| 文件 | 作用 |
+|---|---|
+| `managers/phase_master_skill_manager.gd:188` `get_active_effects()` | 返回 `{"stat_bonus": {}, "special": [], "experience_bonus": 0}` |
+| `managers/faction/faction_skill_manager.gd:53` `get_active_faction_skill_effects()` | 返回 `{"stat_bonus": {}, "deploy": {}, "resource": {}, "special": []}` |
+| `managers/battle/battle_spawn_system.gd:1276` `_apply_skill_tree_stat_bonus` | 我方读 PhaseMasterSkillManager stat_bonus ✅ |
+| `managers/battle/battle_spawn_system.gd:1263` `_apply_active_faction_stat_bonus` | 我方读势力技能树 stat_bonus ✅ |
+| `scenes/units/enemy_phase_field_driver.gd` | 敌方产兵链，无 skill_tree / faction_special 注入 |
+| `resources/unit_stats_table.gd:169` `_apply_skill_tree_unit_abilities` | 我方造卡解锁 unit_ability/unit_mechanism ✅ |
+
+### 补全思路（留待后续）
+
+1. **special 条件/光环/叠加**：在 `enemy_phase_field_driver.gd` 加 `_apply_enemy_skill_tree_specials()` + `_apply_enemy_faction_specials()`，仿照我方 `_apply_skill_tree_stat_bonus` 读取 `get_active_effects().special` 并应用到 driver meta / 单位 meta
+2. **unit_ability/unit_mechanism 解锁**：在 `enemy_phase_field_driver._build_stats_from_archetype` 或后续 `_apply_*` 链中接入 `PhaseMasterSkillManager.is_content_unlocked()` 判断，对敌方单位 stats 施加对应能力
+3. **deploy/resource**：敌方无"部署/资源"概念，可不补
+4. **未映射 effect**：逐个按语义归入 5 个 `_exec_*` 之一，或新增专用执行函数
+
+> ⚠️ 补全时注意：敌方单位是 `EnemyUnit`，不是 `ConstructUnit`，能力接口（如 `take_damage`/`heal`/meta 写法）与我方不同，需适配。
+
+**验证方式：** 实机进一场相位师战，观察特殊技能是否生效；或写 headless smoke test 断言 `_apply_enemy_skill_tree_specials` 被调用且 meta 正确写入。
+
+## v19 VFX 真实度迭代（R15→R18，2026-08-20）
+
+**目标**: 6.0/10（起点 R15 median/3 = 4.15，当前估计 ≈ 4.3）。报告全文见 `docs/vfx_realism_report_r16_r17.md` 与 `docs/vfx_realism_report_v15.md`。
+
+| 轮 | 单变量改动 | 结果 |
+|---|---|---|
+| R16 | 光束端点锚定枪口（wt6/8 连续光束，`bullet.gd`） | f06_traj 3→4（R10 起首次松动），f08 保持 4 |
+| R17 | 轻武器枪口白热闪核双层（`vfx_impact_factory.gd`） | f00 +0.50 / f05 +0.33 / f04 +0.17 族均分 |
+| R18 | 重型火舌 scale 按内容带实寸重标定（0.20-0.38→0.42-0.68） | +0.03 持平（无回退，保留） |
+
+**本轮最大根因（黑名单#1 复发实锤）**: `muzzle_jet_sym`（画布 100×46，内容带仅 100×24）与 `flame_jet_v2`（画布 160×56，内容带 160×35）——历代 scale 按画布宽标定，粒子实际渲染高度只有 1.7-13px 的细丝，轻武器枪口火自 v18 起**整体不可见**（诊断：`scenes/tools/vfx_muzzle_diag.tscn`）。修正范式：**改 scale 前必须 PIL 量内容带高度，按"内容实寸 × scale = 目标显示尺寸"标定**。
+
+**下一杠杆**: f01/f02 弹道"未展示飞行中弹体"（2/10）；f05 霰弹命中缺 6 发 18° 散射签名。
+| R19 | wt1/2 拖尾归组烟迹（双枚举碰撞修复，`bullet.gd` 三处） | 前置修复（配合 R20 生效） |
+| R20 | 拖尾粒子 `local_coords=false`（世界空间沉积弹道线） | **总分 3.93→4.16（+0.23）**，f01_traj 2→4 |

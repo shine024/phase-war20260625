@@ -616,7 +616,7 @@ func _build_store_item_row(
 
 	# 价格
 	var price_label: Label = row_panel.get_node("RowMargin/RowHBox/InfoVBox/PriceLabel")
-	var req_text := "" if required_rep <= 0 else "（需贡献 %d，当前 %d）" % [required_rep, current_rep]
+	var req_text := "" if required_rep <= 0 else "（需声望 %d，当前 %d）" % [required_rep, current_rep]
 	price_label.text = "花费 %d 纳米材料 %s" % [price_nano, req_text]
 	if afford:
 		price_label.add_theme_color_override("font_color", Color(DT.COLOR_TEXT_MID.r, DT.COLOR_TEXT_MID.g, DT.COLOR_TEXT_MID.b, 0.85))

@@ -26,7 +26,7 @@ from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 KEY_FILE = os.path.join(ROOT, "tools", "_api_key.txt")
-IMG = "https://apihub.agnes-ai.com/v1/images/generations"
+IMG = "https://apihub.agnes-ai.cn/v1/images/generations"
 MODEL = "agnes-image-2.1-flash"
 
 # 帧位移(悬浮循环,f1~f5;f0=原图): 上移像素。f5≈回位 → 与 f0 无缝循环

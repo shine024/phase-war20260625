@@ -27,6 +27,8 @@ var _glow: Polygon2D
 var _shield_bg: Polygon2D
 var _shield_fill: Polygon2D
 var _hp_label: Label = null  # HP文本标签（优先使用，自动创建后备）
+var _level_label: Label = null  # v19: 等级文字（血条左侧，底边与血条底边对齐）
+var _pending_level_text: String = ""  # v19: 早于 _ready 的 set_level_text 暂存（单位未入树时调用）
 var _damage_flash: float = 0.0
 var _heal_flash: float = 0.0
 var _tween: Tween = null
@@ -87,6 +89,24 @@ func _ready() -> void:
 	_hp_label.add_theme_constant_override("outline_size", 3)
 	_hp_label.add_theme_color_override("outline_color", Color(0, 0, 0, 1.0))
 	_hp_label.visible = false
+	# v19: 等级文字——血条左侧、右对齐贴近血条左缘、底边与血条底边对齐
+	# position.y = half_h - h：label 底边（y+size.y）恰好落在血条底边（+half_h）
+	_level_label = Label.new()
+	_level_label.name = "LevelLabel"
+	add_child(_level_label)
+	var _lvl_w: float = 42.0
+	var _lvl_h: float = BAR_HEIGHT + 5.0
+	_level_label.size = Vector2(_lvl_w, _lvl_h)
+	_level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_level_label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	_level_label.position = Vector2(-BAR_WIDTH * 0.5 - 3.0 - _lvl_w, BAR_HEIGHT * 0.5 - _lvl_h)
+	_level_label.add_theme_font_size_override("font_size", 13)
+	_level_label.add_theme_color_override("font_color", Color(0.98, 0.85, 0.45, 1))
+	_level_label.add_theme_constant_override("outline_size", 3)
+	_level_label.add_theme_color_override("outline_color", Color(0, 0, 0, 1))
+	_level_label.visible = false
+	# v19: 补应用早于 _ready 设置的等级文字（set_level_text 在 _level_label 就绪前只暂存）
+	_apply_level_text()
 	# 护盾条初始隐藏：单位出生 shield=0，set_shield() 在 shield>0 时才会显示
 	if _shield_bg != null:
 		_shield_bg.visible = false
@@ -214,6 +234,21 @@ func set_hp_text(cur_hp: float, max_hp: float) -> void:
 	if _hp_label != null:
 		_hp_label.text = "%d/%d" % [int(cur_hp), int(max_hp)]
 		_hp_label.visible = true
+
+## v19: 设置等级文字（如 "Lv12"），显示在血条左侧；空串隐藏。
+## 可在 _ready 前调用（单位未入树）——文字暂存，_ready 时补应用。
+func set_level_text(txt: String) -> void:
+	_pending_level_text = txt
+	_apply_level_text()
+
+func _apply_level_text() -> void:
+	if _level_label == null:
+		return
+	if _pending_level_text.is_empty():
+		_level_label.visible = false
+		return
+	_level_label.text = _pending_level_text
+	_level_label.visible = true
 
 func _update_view() -> void:
 	var h: float = BAR_HEIGHT

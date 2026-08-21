@@ -301,12 +301,14 @@ func process_kill_rewards(killed_unit: Node) -> void:
 		return
 
 	var unit_stats: UnitStats = killer_unit.get("stats")
-	if unit_stats == null or unit_stats.shield_on_kill <= 0.0:
+	# v10: 放宽守卫——shield_on_kill 与 salvage_repair_pct 任一存在都需进入 on_kill
+	# （原 shield_on_kill<=0 提前 return 会让回收无人机的击杀修复被跳过）
+	if unit_stats == null or (unit_stats.shield_on_kill <= 0.0 and unit_stats.salvage_repair_pct <= 0.0):
 		return
 
-	# 应用护盾效果
+	# 应用击杀效果（护盾 + v10 回收修复）
 	const ModuleEffectHandler = preload("res://scripts/battle/module_effect_handler.gd")
-	ModuleEffectHandler.on_kill(killer_unit)
+	ModuleEffectHandler.on_kill(killer_unit, killed_unit)
 
 # =========================================================================
 #  星级评定（战斗胜利时调用）

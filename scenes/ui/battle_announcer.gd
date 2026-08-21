@@ -65,6 +65,9 @@ func _ready() -> void:
 		SignalBus.battle_started.connect(_on_battle_started)
 		# v9.5: 符文之语激活播报（phase_instrument_manager 增量 emit）
 		SignalBus.runeword_triggered.connect(_on_runeword_triggered)
+		# v10 解题式玩法：标签克制质变生效播报（"敌方空中优势瓦解"等）
+		if SignalBus.has_signal("counter_break_triggered"):
+			SignalBus.counter_break_triggered.connect(_on_counter_break_triggered)
 
 
 # =========================================================================
@@ -94,6 +97,24 @@ func _on_boss_wave_started(boss_archetype_ids: Array) -> void:
 	if boss_archetype_ids.is_empty():
 		return
 	_enqueue("⚠ 精英波次来袭", DT.COLOR_DANGER, DT.FONT_SIZE_LARGE, _HIGH_DURATION, Priority.HIGH)
+
+
+## v10 解题式玩法：克制质变生效播报（LOW 优先级——高频事件不抢 BOSS/法则横幅）。
+## break_type 对应播报文案：打破的不是血量，是敌方的优势机制。
+func _on_counter_break_triggered(break_type: String, target_name: String) -> void:
+	var text: String = ""
+	match break_type:
+		"strip_fort_aura":
+			text = "敌方阵地庇护瓦解 → %s" % target_name
+		"ground_aircraft":
+			text = "敌方空中优势瓦解 → %s" % target_name
+		"interrupt_cast":
+			text = "敌方施法被打断 → %s" % target_name
+		"guaranteed_crit":
+			text = "弱点锁定 → %s" % target_name
+		_:
+			return
+	_enqueue("⚡ " + text, Color(1.0, 0.85, 0.25), DT.FONT_SIZE_SMALL, _LOW_DURATION, Priority.LOW)
 
 
 func _on_phase_master_appeared(master_config: Dictionary) -> void:

@@ -84,6 +84,10 @@ static func calculate_damage(
 	# v6.4: 改造伤害加成已由 ModificationRegistry.apply_with_level 在 UnitStats 构建阶段
 	# 直接叠加到 attack_light/armor/air，此处无需再乘倍率。
 
+	# v18 元素伤害维度：攻击方带元素亲和时乘元素乘区（防叠加超模，上限 2.0）
+	if attacker_stats != null and attacker_stats.element_affinity != 0:
+		final_damage *= minf(attacker_stats.element_damage_mult, 2.0)
+
 	return final_damage
 
 ## @deprecated v6.2: 完整伤害计算（带max_range版），仅用于测试/验证器。
@@ -129,6 +133,10 @@ static func calculate_damage_with_range(
 
 	# v6.4: 改造伤害加成已由 ModificationRegistry.apply_with_level 在 UnitStats 构建阶段
 	# 直接叠加到 attack_light/armor/air，此处无需再乘倍率。
+
+	# v18 元素伤害维度：攻击方带元素亲和时乘元素乘区（防叠加超模，上限 2.0）
+	if attacker_stats != null and attacker_stats.element_affinity != 0:
+		final_damage *= minf(attacker_stats.element_damage_mult, 2.0)
 
 	return final_damage
 
@@ -261,6 +269,11 @@ static func calculate_damage_with_weapon(
 
 	# v6.4: 改造伤害加成已由 ModificationRegistry.apply_with_level 在 UnitStats 构建阶段
 	# 直接叠加到 attack_light/armor/air，此处无需再乘倍率。
+
+	# v18 元素伤害维度：攻击方带元素亲和时乘元素乘区（防叠加超模，上限 2.0）
+	# attacker_stats 可空（C11：相位场等无 stats 攻击者），守卫与上方 range 回退一致
+	if attacker_stats != null and attacker_stats.element_affinity != 0:
+		final_damage *= minf(attacker_stats.element_damage_mult, 2.0)
 
 	return final_damage
 

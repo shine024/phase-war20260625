@@ -26,10 +26,12 @@ const EnemyPhaseMasters = preload("res://data/enemy_phase_masters.gd")
 
 
 func _initialize() -> void:
-	var code := 0
+	# v18 修复：GDScript lambda 按值捕获局部变量——原 `code = 1` 改的是捕获副本，
+	# 失败永不传导到退出码（本回归锁自创建起就静默失效）。改用数组持有者传递。
+	var code := [0]
 	var fail := func(msg: String) -> void:
 		push_error("[FAIL] " + msg)
-		code = 1
+		code[0] = 1
 
 	print("═══════════════════════════════════════════════════════════")
 	print("  v7.x 单分量战力公式验证（Σ 卡战力之和）")
@@ -37,12 +39,14 @@ func _initialize() -> void:
 
 	# ══════════ 1. evaluate() 单分量结构验证 ══════════
 	print("\n=== 1. evaluate() 返回单分量结构 ===")
+	# v18 修复：夹具 id 更新为当前数据真身（旧 ww1_inf_rifle/steel_guardian_mk2 在
+	# v7.x 统一池化后已不存在，F维恒 0——夹具腐烂致第3节单调性断言长期假失败）
 	var test_master: Dictionary = {
 		"name": "测试相位师",
 		"equipment": {
-			"phase_instrument": "steel_guardian_mk2",
-			"platforms": ["ww1_inf_rifle", "ww1_sup_mg_nest"],
-			"runes": ["attack_01", "attack_02"],
+			"phase_instrument": "pi_steel_03",
+			"platforms": ["steel_fortress_basic", "steel_titan_basic"],
+			"runes": [],
 		},
 		"stats": {"max_hp": 2000, "unit_limit": 7},
 	}
@@ -96,21 +100,21 @@ func _initialize() -> void:
 	# 手动构造一战 vs 近未来相位师（结构对齐 enemy_phase_masters JSON）
 	var m_ww1 := {
 		"id": "enemy_master_001", "name": "钢铁先锋·马库斯", "faction": "steel", "era": 0,
-		"phase_instrument": "steel_guardian_mk1",
+		"phase_instrument": "pi_steel_02",
 		"stats": {"max_hp": 1500, "attack_power": 120, "defense": 80, "energy_regen": 2.0, "unit_limit": 5},
 		"equipment": {
-			"phase_instrument": "steel_guardian_mk1",
-			"platforms": ["ww1_inf_rifle", "ww1_sup_mg_nest"],
+			"phase_instrument": "pi_steel_02",
+			"platforms": ["steel_fortress_basic", "steel_titan_basic"],
 			"runes": [],
 		},
 	}
 	var m_fu := {
 		"id": "enemy_master_030", "name": "全能相位师·奥米伽", "faction": "all", "era": 4,
-		"phase_instrument": "steel_guardian_mk1",
+		"phase_instrument": "pi_omega_01",
 		"stats": {"max_hp": 10000, "attack_power": 1000, "defense": 200, "energy_regen": 8.0, "unit_limit": 15},
 		"equipment": {
-			"phase_instrument": "steel_guardian_mk1",
-			"platforms": ["fut_colossus", "fut_void_reaper"],
+			"phase_instrument": "pi_omega_01",
+			"platforms": ["fut_boss_nexus", "fut_arm_colossus_e"],
 			"runes": [],
 		},
 	}
@@ -130,11 +134,11 @@ func _initialize() -> void:
 	print("\n=== 4. 装卡数量影响战力（槽位多→战力高）===")
 	var m_2cards := {
 		"name": "2张卡", "era": 0,
-		"equipment": {"platforms": ["ww1_inf_rifle", "ww1_sup_mg_nest"], "runes": []},
+		"equipment": {"platforms": ["steel_fortress_basic", "steel_titan_basic"], "runes": []},
 		"stats": {},
 	}
 	var m_3cards := m_2cards.duplicate(true)
-	(m_3cards["equipment"] as Dictionary)["platforms"] = ["ww1_inf_rifle", "ww1_sup_mg_nest", "ww1_inf_rifle"]
+	(m_3cards["equipment"] as Dictionary)["platforms"] = ["steel_fortress_basic", "steel_titan_basic", "steel_fortress_basic"]
 	# 走玩家侧注入路径（精确控制每张卡战力，避免 archetype 查询波动）
 	m_2cards["_player_platform_powers"] = [100.0, 200.0]
 	m_3cards["_player_platform_powers"] = [100.0, 200.0, 300.0]
@@ -199,9 +203,9 @@ func _initialize() -> void:
 		print("  ww1_ft17 卡牌未找到（跳过）")
 
 	print("\n═══════════════════════════════════════════════════════════")
-	if code == 0:
+	if code[0] == 0:
 		print("✅ 全部 PASS（8 项验证）")
 	else:
 		print("❌ 存在失败断言，见上方 [FAIL]")
 	print("═══════════════════════════════════════════════════════════")
-	quit(code)
+	quit(code[0])

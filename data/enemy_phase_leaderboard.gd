@@ -10,6 +10,10 @@ class_name EnemyPhaseLeaderboard
 
 const EnemyPhaseMasters = preload("res://data/enemy_phase_masters.gd")
 const LeaderboardEntry = preload("res://data/leaderboard_entry.gd")
+# v18 四源重构·批次2: 大招真身（详情展示补齐用）
+const EnemyMasterInstruments = preload("res://data/enemy_master_instruments.gd")
+# v18 四源重构·批次3: 技能树真身（被动详情展示补齐用）
+const EnemyMasterSkillTree = preload("res://data/enemy_master_skill_tree.gd")
 
 ## 所有排行榜数据
 var _leaderboards: Dictionary = {}
@@ -157,6 +161,16 @@ func get_master_details(master_id: String) -> Dictionary:
 	if master.is_empty():
 		return {}
 
+	# v18 四源重构·批次2: 大招已物理迁入专属相位仪变体（master 数据该字段已删），
+	# 展示层从新真身补齐，排行榜详情不空。
+	var actives: Array = master.get("active_spells", [])
+	if actives.is_empty():
+		actives = EnemyMasterInstruments.get_master_ultimate_spells(master_id)
+	# v18 四源重构·批次3: 被动已物理迁入技能树机制节点——展示层同款补齐
+	var passives: Array = master.get("passive_spells", [])
+	if passives.is_empty():
+		passives = EnemyMasterSkillTree.get_delivered_mech_nodes(master_id)
+
 	return {
 		"basic_info": {
 			"id": master.get("id", ""),
@@ -166,8 +180,8 @@ func get_master_details(master_id: String) -> Dictionary:
 			"faction": master.get("faction", ""),
 			"difficulty": master.get("difficulty", "medium")
 		},
-		"active_spells": master.get("active_spells", []),
-		"passive_spells": master.get("passive_spells", []),
+		"active_spells": actives,
+		"passive_spells": passives,
 		"equipment": master.get("equipment", {}),
 		"stats": master.get("stats", {}),
 		"leaderboard_data": _get_leaderboard_data_for_master(master_id)

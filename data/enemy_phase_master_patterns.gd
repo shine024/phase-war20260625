@@ -18,6 +18,10 @@ class_name EnemyPhaseMasterPatterns
 ## 消费方：enemy_phase_field_driver.gd（setup 时识别套路，单位死亡时按套路补位）
 
 const GC = preload("res://resources/game_constants.gd")
+# v18 四源重构·批次2: 大招真身（effect key 收集兜底用）
+const EnemyMasterInstruments = preload("res://data/enemy_master_instruments.gd")
+# v18 四源重构·批次3: 技能树真身（traits/passive 迁入后的 effect key 收集兜底）
+const EnemyMasterSkillTree = preload("res://data/enemy_master_skill_tree.gd")
 
 # ─────────────────────────────────────────────
 #  套路 ID 常量
@@ -441,7 +445,13 @@ static func compute_respawn_delay(pattern_id: String, recent_kill_intervals: Arr
 
 static func _collect_trait_effect_keys(master_config: Dictionary) -> Array:
 	var keys: Array = []
-	for tr in master_config.get("traits", []):
+	var traits: Array = master_config.get("traits", [])
+	# v18 四源重构·批次3: traits 已迁入技能树——空时从新真身取（数值节点 effects keys + 机制 effect 名）
+	if traits.is_empty():
+		var mid: String = String(master_config.get("id", ""))
+		if not mid.is_empty():
+			return EnemyMasterSkillTree.get_effect_keys(mid)
+	for tr in traits:
 		if not (tr is Dictionary):
 			continue
 		var effects: Dictionary = tr.get("effects", {})
@@ -453,7 +463,20 @@ static func _collect_trait_effect_keys(master_config: Dictionary) -> Array:
 
 static func _collect_spell_effect_keys(master_config: Dictionary) -> Array:
 	var keys: Array = []
-	for sp in master_config.get("active_spells", []) + master_config.get("passive_spells", []):
+	# v18 四源重构·批次2: active_spells 已物理迁入专属相位仪变体——master_config 无该字段时
+	# 从新真身 EnemyMasterInstruments 补（保证套路派生的 effect key 收集不退化）。
+	var actives: Array = master_config.get("active_spells", [])
+	if actives.is_empty():
+		var mid: String = String(master_config.get("id", ""))
+		if not mid.is_empty():
+			actives = EnemyMasterInstruments.get_master_ultimate_spells(mid)
+	# v18 四源重构·批次3: passive_spells 已迁入技能树机制节点——空时从新真身取
+	var passives: Array = master_config.get("passive_spells", [])
+	if passives.is_empty():
+		var mid2: String = String(master_config.get("id", ""))
+		if not mid2.is_empty():
+			passives = EnemyMasterSkillTree.get_delivered_mech_nodes(mid2)
+	for sp in actives + passives:
 		if not (sp is Dictionary):
 			continue
 		var eff: String = String(sp.get("effect", ""))

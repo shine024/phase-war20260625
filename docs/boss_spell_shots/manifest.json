@@ -1,0 +1,173 @@
+{
+	"cells": [
+		{
+			"file": "apocalypse_meteor_warn.png",
+			"id": "apocalypse_meteor",
+			"label": "天降毁灭·陨石雨",
+			"spec": "飞行帧=陨石弹体(64px宽,橙红,头朝下)从高空落下+拖尾;落地帧=360px火球爆炸+150px冲击波椭圆+9目标地毯轰炸小冲击波",
+			"stage": "warn"
+		},
+		{
+			"file": "apocalypse_meteor_flight.png",
+			"id": "apocalypse_meteor",
+			"label": "天降毁灭·陨石雨",
+			"spec": "飞行帧=陨石弹体(64px宽,橙红,头朝下)从高空落下+拖尾;落地帧=360px火球爆炸+150px冲击波椭圆+9目标地毯轰炸小冲击波",
+			"stage": "flight"
+		},
+		{
+			"file": "apocalypse_meteor_land.png",
+			"id": "apocalypse_meteor",
+			"label": "天降毁灭·陨石雨",
+			"spec": "飞行帧=陨石弹体(64px宽,橙红,头朝下)从高空落下+拖尾;落地帧=360px火球爆炸+150px冲击波椭圆+9目标地毯轰炸小冲击波",
+			"stage": "land"
+		},
+		{
+			"file": "apocalypse_meteor_after.png",
+			"id": "apocalypse_meteor",
+			"label": "天降毁灭·陨石雨",
+			"spec": "飞行帧=陨石弹体(64px宽,橙红,头朝下)从高空落下+拖尾;落地帧=360px火球爆炸+150px冲击波椭圆+9目标地毯轰炸小冲击波",
+			"stage": "after"
+		},
+		{
+			"file": "apocalypse_void_warn.png",
+			"id": "apocalypse_void",
+			"label": "天降毁灭·虚空灾变",
+			"spec": "同陨石但紫色虚空球+紫色爆炸;配色区分橙红",
+			"stage": "warn"
+		},
+		{
+			"file": "apocalypse_void_flight.png",
+			"id": "apocalypse_void",
+			"label": "天降毁灭·虚空灾变",
+			"spec": "同陨石但紫色虚空球+紫色爆炸;配色区分橙红",
+			"stage": "flight"
+		},
+		{
+			"file": "apocalypse_void_land.png",
+			"id": "apocalypse_void",
+			"label": "天降毁灭·虚空灾变",
+			"spec": "同陨石但紫色虚空球+紫色爆炸;配色区分橙红",
+			"stage": "land"
+		},
+		{
+			"file": "apocalypse_void_after.png",
+			"id": "apocalypse_void",
+			"label": "天降毁灭·虚空灾变",
+			"spec": "同陨石但紫色虚空球+紫色爆炸;配色区分橙红",
+			"stage": "after"
+		},
+		{
+			"file": "inferno_warn.png",
+			"id": "inferno",
+			"label": "地狱烈焰·燃烧弹",
+			"spec": "飞行帧=燃烧弹从侧方低空俯冲(红橙,头朝右下);落地帧=340px地狱火球+烟柱+120px冲击波",
+			"stage": "warn"
+		},
+		{
+			"file": "inferno_flight.png",
+			"id": "inferno",
+			"label": "地狱烈焰·燃烧弹",
+			"spec": "飞行帧=燃烧弹从侧方低空俯冲(红橙,头朝右下);落地帧=340px地狱火球+烟柱+120px冲击波",
+			"stage": "flight"
+		},
+		{
+			"file": "inferno_land.png",
+			"id": "inferno",
+			"label": "地狱烈焰·燃烧弹",
+			"spec": "飞行帧=燃烧弹从侧方低空俯冲(红橙,头朝右下);落地帧=340px地狱火球+烟柱+120px冲击波",
+			"stage": "land"
+		},
+		{
+			"file": "inferno_after.png",
+			"id": "inferno",
+			"label": "地狱烈焰·燃烧弹",
+			"spec": "飞行帧=燃烧弹从侧方低空俯冲(红橙,头朝右下);落地帧=340px地狱火球+烟柱+120px冲击波",
+			"stage": "after"
+		},
+		{
+			"file": "chain_warn.png",
+			"id": "chain",
+			"label": "连锁闪电",
+			"spec": "boss三层蓝白能量环爆发+连锁电弧跳向3目标+蓝白闪电贴图爆炸300px",
+			"stage": "warn"
+		},
+		{
+			"file": "chain_flight.png",
+			"id": "chain",
+			"label": "连锁闪电",
+			"spec": "boss三层蓝白能量环爆发+连锁电弧跳向3目标+蓝白闪电贴图爆炸300px",
+			"stage": "flight"
+		},
+		{
+			"file": "chain_land.png",
+			"id": "chain",
+			"label": "连锁闪电",
+			"spec": "boss三层蓝白能量环爆发+连锁电弧跳向3目标+蓝白闪电贴图爆炸300px",
+			"stage": "land"
+		},
+		{
+			"file": "chain_after.png",
+			"id": "chain",
+			"label": "连锁闪电",
+			"spec": "boss三层蓝白能量环爆发+连锁电弧跳向3目标+蓝白闪电贴图爆炸300px",
+			"stage": "after"
+		},
+		{
+			"file": "single_warn.png",
+			"id": "single",
+			"label": "精准打击·神罚光矛",
+			"spec": "飞行帧=红色锁定双环+金白光矛(50px)从天而降;落地帧=红紫激光贯穿(boss→目标)+穿甲光线+80px冲击波",
+			"stage": "warn"
+		},
+		{
+			"file": "single_flight.png",
+			"id": "single",
+			"label": "精准打击·神罚光矛",
+			"spec": "飞行帧=红色锁定双环+金白光矛(50px)从天而降;落地帧=红紫激光贯穿(boss→目标)+穿甲光线+80px冲击波",
+			"stage": "flight"
+		},
+		{
+			"file": "single_land.png",
+			"id": "single",
+			"label": "精准打击·神罚光矛",
+			"spec": "飞行帧=红色锁定双环+金白光矛(50px)从天而降;落地帧=红紫激光贯穿(boss→目标)+穿甲光线+80px冲击波",
+			"stage": "land"
+		},
+		{
+			"file": "single_after.png",
+			"id": "single",
+			"label": "精准打击·神罚光矛",
+			"spec": "飞行帧=红色锁定双环+金白光矛(50px)从天而降;落地帧=红紫激光贯穿(boss→目标)+穿甲光线+80px冲击波",
+			"stage": "after"
+		},
+		{
+			"file": "summon_warn.png",
+			"id": "summon",
+			"label": "召唤援军·传送门",
+			"spec": "紫色传送门280px+螺旋能量,召唤感",
+			"stage": "warn"
+		},
+		{
+			"file": "summon_flight.png",
+			"id": "summon",
+			"label": "召唤援军·传送门",
+			"spec": "紫色传送门280px+螺旋能量,召唤感",
+			"stage": "flight"
+		},
+		{
+			"file": "summon_land.png",
+			"id": "summon",
+			"label": "召唤援军·传送门",
+			"spec": "紫色传送门280px+螺旋能量,召唤感",
+			"stage": "land"
+		},
+		{
+			"file": "summon_after.png",
+			"id": "summon",
+			"label": "召唤援军·传送门",
+			"spec": "紫色传送门280px+螺旋能量,召唤感",
+			"stage": "after"
+		}
+	],
+	"generated": "2026-08-19T00:59:57"
+}

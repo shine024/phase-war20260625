@@ -12,8 +12,10 @@ const TargetSelection = preload("res://scripts/battle/target_selection.gd")
 const DamageAttenuation = preload("res://scripts/battle/damage_attenuation.gd")
 const AttackCalculator = preload("res://scripts/battle/attack_calculator.gd")
 const VfxImpactFactory = preload("res://scripts/battle/vfx_impact_factory.gd")
+const WeaponVisuals = preload("res://data/weapon_visual_profiles.gd")  # v17: 武器视觉档案（名字优先解析）
 const DT = preload("res://resources/design_tokens.gd")
 const CardGridLayout = preload("res://scripts/card_grid_battle_layout.gd")  # v9.2: 分行索敌行判定
+const AttackPoseAnim = preload("res://scripts/battle/attack_pose_anim.gd")  # v9.x: 按武器分化的攻击姿态/攻击帧
 const CardGridUnitVisuals = preload("res://scripts/card_grid_unit_visuals.gd")  # v8.x: 战场卡图视觉数据（头脚锚点）
 const MuzzleAnchors = preload("res://data/muzzle_anchors.gd")  # 弹道/枪口锚点（独立二维）
 const PlayerMuzzleAnchors = preload("res://data/player_muzzle_anchors.gd")  # 我方卡头脚+开火点（117条，fireX已按我方朝左转换）
@@ -70,15 +72,7 @@ static func find_target(u: CharacterBody2D, _delta: float) -> void:
 	# v7.3 性能优化：直射单位优先走 spatial_grid（O(覆盖格数)，比 card_grid 全组 O(N) 遍历快），
 	# card_grid 作 fallback。原实现无论直射曲射都恒走 card_grid，spatial_grid 形同虚设，
 	# 每0.3s 全组遍历+select_target 子遍历造成同步尖峰（20+20单位时每秒~1300次反射+距离比较）。
-	var is_indirect_unit: bool = false
-	if u.stats != null:
-		if GC.is_indirect_weapon_type(u.stats.weapon_type):
-			is_indirect_unit = true
-		else:
-			for _ws in u.stats.weapon_slots:
-				if _ws is WeaponResource and _ws.enabled and GC.is_indirect_weapon_type(_ws.weapon_type):
-					is_indirect_unit = true
-					break
+	var is_indirect_unit: bool = _fires_indirect(u)
 
 	# 直射单位：优先 spatial_grid
 	if not is_indirect_unit and BattleManager and BattleManager.spatial_grid:
@@ -121,11 +115,7 @@ static func find_target(u: CharacterBody2D, _delta: float) -> void:
 				max_range2,
 				targeting_mode
 			)
-			# v9.2: 分行索敌——同行优先，无则接受跨行最近（回退）
-			if nearest_target2 != null and not CardGridLayout.units_in_same_row(u, nearest_target2):
-				var same_row_t2: Node2D = _query_nearest_same_row_spatial(u, spatial_grid2, max_range2, targeting_mode)
-				if same_row_t2 != null:
-					nearest_target2 = same_row_t2
+			# v9.x: 曲射/空射全场索敌——本分支仅曲射/空射单位进入，不再做同行收敛
 			if nearest_target2 != null:
 				u.target = nearest_target2
 				return
@@ -143,7 +133,9 @@ static func find_target(u: CharacterBody2D, _delta: float) -> void:
 		var candidate_nodes: Array = []
 		var final_candidates: Array = []
 		# v9.2: 分行索敌——候选按"同行优先"筛选（空则跨行回退）
-		candidates = _prefer_same_row(u, candidates)
+		# v9.x: 仅直射单位收敛同行；曲射/空射全场选目标
+		if not is_indirect_unit:
+			candidates = _prefer_same_row(u, candidates)
 		# 限制候选数量到最多10个
 		var limit: int = mini(candidates.size(), 10)
 		for i in range(limit):
@@ -189,17 +181,7 @@ static func _find_target_by_card_grid(u: CharacterBody2D, targeting_mode: int = 
 	# 曲射/空射：槽位编号扫描（全场，纯顺序，从远到近）
 	# 判断：主武器 OR 任一武器槽为 INDIRECT/AERIAL
 	# （多武器单位主武器可能为 DIRECT，但配有曲射副武器——之前漏判导致走直射索敌）
-	var is_indirect: bool = false
-	if u.stats != null:
-		# v6.6: 统一曲射判定（含改造引入的 legacy 曲射值 MISSILE/ROCKET/FLAK）
-		if GC.is_indirect_weapon_type(u.stats.weapon_type):
-			is_indirect = true
-		else:
-			for _ws in u.stats.weapon_slots:
-				if _ws is WeaponResource and _ws.enabled and GC.is_indirect_weapon_type(_ws.weapon_type):
-					is_indirect = true
-					break
-	if is_indirect:
+	if _fires_indirect(u):
 		return _scan_slot_targets(u, gr)
 
 	# 直射：射程内距离筛选 + select_target
@@ -264,6 +246,19 @@ static func _prefer_same_row(attacker: Node, candidates: Array) -> Array:
 	return same_row if not same_row.is_empty() else candidates
 
 
+## v9.x: 单位是否曲射/空射（主武器或任一启用槽位，含 legacy 曲射值 MISSILE/ROCKET/FLAK）。
+## 此类单位全场索敌、跨行射击全额伤害（直射才有跨行减伤，见 CardGridBattleLayout.cross_row_direct_multiplier）。
+static func _fires_indirect(u: CharacterBody2D) -> bool:
+	if u.stats == null:
+		return false
+	if GC.is_indirect_weapon_type(u.stats.weapon_type):
+		return true
+	for _ws in u.stats.weapon_slots:
+		if _ws is WeaponResource and _ws.enabled and GC.is_indirect_weapon_type(_ws.weapon_type):
+			return true
+	return false
+
+
 ## v9.2: spatial_grid 行过滤辅助——在射程内找同行最近敌方目标。
 ## 复用 spatial_grid.query_enemies 拿到半径内所有敌方，按同行过滤后取最近；无同行则返回 null。
 static func _query_nearest_same_row_spatial(u: CharacterBody2D, spatial_grid: Node, max_range: float, _targeting_mode: int) -> Node2D:
@@ -320,9 +315,8 @@ static func _scan_slot_targets(u: CharacterBody2D, gr: Array) -> Node2D:
 	if valid.is_empty():
 		return null
 
-	# v9.2: 分行索敌——曲射单位也优先打同行敌人（同行优先，空则跨行）。
-	# L0~L3 用同行候选筛选；L4 兜底用全 valid（保证总有目标可打，不空转）。
-	var valid_row: Array = _prefer_same_row(u, valid)
+	# v9.x: 曲射/空射全场索敌——L0~L3 直接在全量候选上做优先级链，不再收敛同行
+	#（曲射/空射跨行射击全额伤害；直射才有跨行减伤，见 CardGridBattleLayout.cross_row_direct_multiplier）。
 
 	var origin: Vector2 = u.global_position
 
@@ -332,10 +326,10 @@ static func _scan_slot_targets(u: CharacterBody2D, gr: Array) -> Node2D:
 	# 过期检查复用 _marked_until（与标记系统同源），避免攻击者死亡后 meta 残留被永久优先。
 	# v8: 兵种固定机制「火炮反炮兵」加计数器——counter_battery_shots 限制优先射击次数，
 	# 归零时清理标记回退常规索敌（炮兵反击不再无限优先）。
-	# v9.2: 反击标记优先在同行候选中找（反击者通常就在同行），无则不强制跨行（反击是战术优先，非兜底）。
+	# v9.2: 反击标记优先（反击是战术优先，非兜底）；v9.x: 曲射全场索敌后标记跨行也能反击。
 	if u.stats != null and u.stats.has_counter_battery and u.stats.counter_battery_shots > 0:
 		var _now_cb: float = Time.get_ticks_msec() / 1000.0
-		var marked: Array = valid_row.filter(func(n):
+		var marked: Array = valid.filter(func(n):
 			return n is Node and n.has_meta("_counter_marked_by") and n.has_meta("_marked_until") and _now_cb < float(n.get_meta("_marked_until", 0.0)))
 		if not marked.is_empty():
 			# v8: 递减反炮兵剩余次数；归零时清理所有标记目标的 _counter_marked_by（停止优先）
@@ -346,20 +340,20 @@ static func _scan_slot_targets(u: CharacterBody2D, gr: Array) -> Node2D:
 						n.remove_meta("_counter_marked_by")
 			return _nearest_of(origin, marked)
 
-	# L1 指挥单位（同行优先）
-	var commanders: Array = valid_row.filter(func(n):
+	# L1 指挥单位
+	var commanders: Array = valid.filter(func(n):
 		return _is_command_unit(n.get("stats") as UnitStats))
 	if not commanders.is_empty():
 		return _nearest_of(origin, commanders)
 
-	# L2 光环单位（同行优先）
-	var aura_units: Array = valid_row.filter(func(n):
+	# L2 光环单位
+	var aura_units: Array = valid.filter(func(n):
 		return _is_aura_unit(n.get("stats") as UnitStats))
 	if not aura_units.is_empty():
 		return _nearest_of(origin, aura_units)
 
-	# L3 输出最高单位（DPS 最高，并列容差内取最近）——同行优先
-	var best: Node2D = _highest_dps_unit(origin, valid_row)
+	# L3 输出最高单位（DPS 最高，并列容差内取最近）
+	var best: Node2D = _highest_dps_unit(origin, valid)
 	if best != null:
 		return best
 
@@ -506,9 +500,9 @@ static func do_attack(u: CharacterBody2D) -> void:
 	var damage: float = u.stats.attack_damage if u.stats else 0.0
 	do_attack_with_damage(u, damage, u.stats.weapon_type if u.stats else 0, "", null, true)
 
-## 获取直射武器发射起点：优先用 MuzzleAnchors 标注的枪口位置（fireX/fireY 独立二维），
+## 获取武器发射起点（v16 起直射与曲射共用）：优先用 MuzzleAnchors 标注的枪口位置
+## （fireX/fireY 独立二维；锚点表标注的语义本就是"弹道起始点"），
 ## 无标注时回退到 entity_top_y * 0.5（实体垂直中点）。
-## 曲射/波次武器保持脚部发射（u.global_position），此处仅用于直射路径。
 static func _get_direct_fire_spawn_pos(u: CharacterBody2D) -> Vector2:
 	var unit_spr: Sprite2D = null
 	if u.is_player:
@@ -639,19 +633,23 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 					CombatFeedback.show_miss(u.target.global_position, u.target)
 				else:
 					damage *= falloff
+	# v9.x: 直射武器跨行射击减伤（同行全额；曲射/空射全场全额，不受行约束）
+	damage *= CardGridLayout.cross_row_direct_multiplier(u, u.target, wt)
 	# 卡牌特殊能力：平台攻击修改
 	if u._has_titan_mk2:
 		damage *= CardAbilityManager.get_titan_mk2_damage_multiplier(u)
 	if u._has_storm_rider:
 		damage *= CardAbilityManager.get_storm_rider_damage_multiplier(u)
-	# 开火反馈：炮口闪光 + Sprite 缩放脉冲（所有武器/所有战斗模式统一生效）
-	# 修复传统战场零开火反馈——nudge 仅格子战播，此处无条件补
-	_play_muzzle_feedback(u)
-	if u._presentation_card_grid:
-		_play_card_attack_nudge(u)
 	var w_name: String = weapon_name
 	if w_name.is_empty() and weapon_resource and weapon_resource is WeaponResource:
 		w_name = weapon_resource.display_name if weapon_resource.display_name else ""
+	# 开火反馈：炮口闪光 + Sprite 缩放脉冲（所有武器/所有战斗模式统一生效）
+	# 修复传统战场零开火反馈——nudge 仅格子战播，此处无条件补
+	# v17: 火花类别键经 WeaponVisualProfiles 统一解析（武器名优先+域感知兜底），
+	# 替代 v16 的"朝向猜域"启发式——那靠 facing 反推枚举域，玩家侧朝左/敌方持新枚举
+	# 值时都会归一错。解析真身见 data/weapon_visual_profiles.gd。
+	_play_muzzle_feedback(u, wt, w_name, u.is_player)
+	AttackPoseAnim.play(u, wt)
 
 	# 获取武器射速（用于弹道路由决策）
 	var weapon_speed: float = AttackCalculator.get_weapon_speed(u.stats, weapon_resource if weapon_resource is WeaponResource else null)
@@ -669,13 +667,16 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 
 	# 优先路由：曲射/空射武器（v6.6: 统一曲射判定）
 	if GC.is_indirect_weapon_type(wt):
+		# v16: 曲射发射点改用炮口锚点（与直射同源，锚点表本就标注"弹道起始点"）。
+		# 原传 u.global_position（单位原点=脚底地面），炮口火在炮管而炮弹从脚下钻出，视觉脱节。
+		var _indirect_spawn_pos := _get_direct_fire_spawn_pos(u)
 		if u.is_player and BattleManager and is_instance_valid(BattleManager.player_indirect_batch):
 			if BattleManager.player_indirect_batch.has_method("fire"):
-				BattleManager.player_indirect_batch.fire(u.global_position, u.target, damage, wt, u, u.stats, miss, w_name, _vfx_variant)
+				BattleManager.player_indirect_batch.fire(_indirect_spawn_pos, u.target, damage, wt, u, u.stats, miss, w_name, _vfx_variant)
 				return
 		elif not u.is_player and BattleManager and is_instance_valid(BattleManager.enemy_indirect_batch):
 			if BattleManager.enemy_indirect_batch.has_method("fire"):
-				BattleManager.enemy_indirect_batch.fire(u.global_position, u.target, damage, wt, u, u.stats, miss, w_name, _vfx_variant)
+				BattleManager.enemy_indirect_batch.fire(_indirect_spawn_pos, u.target, damage, wt, u, u.stats, miss, w_name, _vfx_variant)
 				return
 		# 批处理不可用时回退到独立子弹
 
@@ -684,7 +685,9 @@ static func do_attack_with_damage(u: CharacterBody2D, damage: float, weapon_type
 		var _fire_spawn_pos = _get_direct_fire_spawn_pos(u)
 		var batch = BattleManager.player_projectile_batch if u.is_player else BattleManager.enemy_projectile_batch
 		if batch and is_instance_valid(batch) and batch.has_method("fire"):
-			batch.fire(_fire_spawn_pos, u.target, damage, wt, u, u.stats, miss)
+			# v16: 透传 weapon_name/vfx_variant——高速直射路径此前丢失武器名亚类命中配方
+			# （机枪/坦克炮/步枪）与武器类改造专属视觉（集束/温压等）
+			batch.fire(_fire_spawn_pos, u.target, damage, wt, u, u.stats, miss, w_name, _vfx_variant)
 			return
 
 	# 低速直射 或 曲射/空射回退 → 独立子弹节点（对象池）
@@ -1015,26 +1018,17 @@ static func should_retain_current_target(u: CharacterBody2D) -> bool:
 	var d: float = u.global_position.distance_to(u.target.global_position)
 	return d <= acquisition_range(u)
 
-## 格子战术卡面攻击前推动画
-static func _play_card_attack_nudge(u: CharacterBody2D) -> void:
-	if not u._presentation_card_grid:
-		return
-	if is_nan(u._card_grid_rest_x):
-		u._card_grid_rest_x = u.position.x
-	if u._card_nudge_tween != null and u._card_nudge_tween.is_valid():
-		u._card_nudge_tween.kill()
-		u.position.x = u._card_grid_rest_x
-	u._card_nudge_tween = u.create_tween()
-	var dir: float = 1.0 if u.is_player else -1.0
-	var rest_x: float = u._card_grid_rest_x
-	u._card_nudge_tween.tween_property(u, "position:x", rest_x + dir * 22.0, 0.07)
-	u._card_nudge_tween.tween_property(u, "position:x", rest_x, 0.09)
+## 格子战术卡面攻击姿态（v9.x 由 AttackPoseAnim 取代——按武器类型分化前冲/后坐/上扬 + 攻击帧）
 
 ## 开火反馈：炮口闪光（池化 CPUParticles2D）+ Sprite 缩放脉冲。
 ## 所有武器类型、所有战斗模式统一生效——修复传统战场零开火反馈。
 ## 调用方：玩家 do_attack_with_damage 顶部（弹道路由前，霰弹只触发一次）。
 ## 敌方 enemy_unit._do_attack 也调用本静态方法（复用同一套逻辑）。
-static func _play_muzzle_feedback(u: Node2D) -> void:
+## v17: 火花类别键 = 当前开火武器（多武器单位槽位武器与单位级默认不同时，火花形态
+## 跟武器走），经 WeaponVisualProfiles.resolve_visual_wt 统一解析——武器名优先，
+## 域感知兜底（我方新枚举 1/2=曲射/空射保持重型；敌方 legacy 1/2=步枪/机枪归一轻档）。
+## 缺省 firing_wt=-1 回退单位级 stats.weapon_type。
+static func _play_muzzle_feedback(u: Node2D, firing_wt: int = -1, weapon_name: String = "", shooter_is_player: bool = true) -> void:
 	if u == null or not is_instance_valid(u):
 		return
 	var facing_right: bool = bool(u.get("is_player"))
@@ -1075,7 +1069,14 @@ static func _play_muzzle_feedback(u: Node2D) -> void:
 		if unit_spr != null:
 			fallback_y = CardGridUnitVisuals.entity_top_y(unit_spr) * 0.5
 		muzzle_offset = Vector2(0.0, -fallback_y)
-	VfxImpactFactory.spawn_muzzle_flash(u, muzzle_offset, facing_right, u.stats.weapon_type)
+	# v17: 火花类别键——WeaponVisualProfiles 统一解析（武器名优先，域感知兜底）。
+	# 替代 v16 的"朝向猜域"（not facing_right 才归一）——朝向不是枚举域的数据事实。
+	var flash_wt: int = firing_wt
+	if flash_wt < 0:
+		var _st = u.get("stats")
+		flash_wt = int(_st.weapon_type) if _st != null else 0
+	flash_wt = WeaponVisuals.resolve_visual_wt(weapon_name, flash_wt, shooter_is_player)
+	VfxImpactFactory.spawn_muzzle_flash(u, muzzle_offset, facing_right, flash_wt)
 	# 开火缩放脉冲：交给单位实例方法处理（避开根 scale.x 翻转，只动 Sprite 子节点）
 	# reduce motion 时跳过脉冲（保留炮口火——静态闪烁非抖动）
 	var reduce_motion: bool = false

@@ -151,7 +151,8 @@ const DATA: Dictionary = {
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 120, cost_install = 60,
 		slot_type = "survival", conflict_group = "survival",
-		effects = {defense_armor = 0.25, max_hp = 0.10},
+		effects = {defense_armor = 25, max_hp = 30},
+		level_effects = {1: {defense_armor = 25, max_hp = 30}, 2: {defense_armor = 44, max_hp = 50}, 3: {defense_armor = 62, max_hp = 70}},
 		unlock_conditions = {required_level = 2}
 	},
 	"air_14_swing_wing" = {

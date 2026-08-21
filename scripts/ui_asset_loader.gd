@@ -173,11 +173,16 @@ const PLAYER_ICON_OVERRIDE: Dictionary = {
 	"mod_uh60": "vis_player_063",       # UH-60黑鹰 → 阿帕奇直升机（直升机通用）
 	"mod_javelin": "vis_player_089",    # 标枪导弹兵 ★专属卡图（v8.x生成）
 	# 近未来
-	"fut_attack_drone": "vis_player_091",   # 攻击无人机 ★专属卡图（v8.x生成）
-	"fut_nano_drone": "vis_player_092",     # 纳米修复机 ★专属卡图（v8.x生成）
+	"fut_attack_drone": "fut_attack_drone",    # 攻击无人机 ★专属卡图（2026-08-17 重生成，落盘 player/{card_id}.png）
+	"fut_nano_drone": "fut_nano_drone",        # 纳米修复机 ★专属卡图（2026-08-17 重生成，落盘 player/{card_id}.png）
 	"fut_space_fighter": "vis_player_093",  # 空天战斗机 ★专属卡图（v8.x生成）
 	"fut_stealth_bomber": "vis_player_094", # 隐形轰炸机 ★专属卡图（v8.x生成）
-	"fut_swarm": "vis_player_065",          # 蜂群无人机 → 无人机群 ★完美同名
+	"fut_swarm": "fut_swarm",                  # 蜂群无人机 ★专属卡图（2026-08-17 重生成，落盘 player/{card_id}.png）
+	# v9.x: 4 张缴获卡专属卡图（2026-08-18 生成，落盘 player/{card_id}.png，敌方原图在 enemy/ 与根目录）
+	"drop_smg_mk2": "drop_smg_mk2",            # MP18-II 冲锋班 ★专属卡图
+	"drop_phase_lance": "drop_phase_lance",    # 相位刺刀班 ★专属卡图
+	"drop_thunder_field": "drop_thunder_field",# 雷霆突击班 ★专属卡图
+	"drop_railgun": "drop_railgun",            # 电磁步枪班 ★专属卡图
 	"fut_cyborg": "vis_player_066",         # 机械步兵 → 机械步兵 ★完美同名
 	"fut_heavy_trooper": "vis_player_066",  # 重装机兵 → 机械步兵
 	"fut_assault_mech": "vis_player_067",   # 突击机甲 → 机甲步兵

@@ -35,7 +35,8 @@ const DATA: Dictionary = {
 		rarity = "uncommon",
 	power_mult = 1.0, cost_research = 80, cost_install = 40,
 		slot_type = "electronics", conflict_group = "electronics",
-		effects = {attack_light = 0.15},
+		effects = {attack_light = 8},
+		level_effects = {1: {attack_light = 8}, 2: {attack_light = 14}, 3: {attack_light = 21}},
 		unlock_conditions = {required_level = 1}
 	},
 	"aa_03_missile_rail" = {

@@ -377,7 +377,7 @@ theme_override_colors/font_hover_color = Color(0.95, 0.96, 0.98, 1)
 [node name="ChipEnh" type="Button" parent="RootVBox/BodyHBox/LeftPanel/LeftVBox/ColFilter"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "可强化"
+text = "可升级"
 custom_minimum_size = Vector2(0, 24)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
@@ -536,7 +536,7 @@ size_flags_horizontal = 3
 theme_override_constants/separation = 4
 [node name="ProgAction" type="Label" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardAmber/ProgVBox"]
 layout_mode = 2
-text = "进入 ▶"
+text = ""
 horizontal_alignment = 2
 theme_override_font_sizes/font_size = 10
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.7)
@@ -579,7 +579,7 @@ size_flags_horizontal = 3
 theme_override_constants/separation = 4
 [node name="ProgAction" type="Label" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardCyan/ProgVBox"]
 layout_mode = 2
-text = "进入 ▶"
+text = ""
 horizontal_alignment = 2
 theme_override_font_sizes/font_size = 10
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.7)
@@ -622,7 +622,7 @@ size_flags_horizontal = 3
 theme_override_constants/separation = 4
 [node name="ProgAction" type="Label" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardViolet/ProgVBox"]
 layout_mode = 2
-text = "进入 ▶"
+text = ""
 horizontal_alignment = 2
 theme_override_font_sizes/font_size = 10
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.7)
@@ -647,7 +647,7 @@ text = "★"
 theme_override_font_sizes/font_size = 15
 [node name="ProgTitle" type="Label" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardGold/ProgVBox/ProgHead"]
 layout_mode = 2
-text = "星级评估"
+text = "等级进度"
 theme_override_font_sizes/font_size = 15
 theme_override_colors/font_color = Color(0.95, 0.96, 0.98, 1)
 [node name="ProgSpacer" type="Control" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardGold/ProgVBox/ProgHead"]
@@ -665,7 +665,7 @@ size_flags_horizontal = 3
 theme_override_constants/separation = 4
 [node name="ProgAction" type="Label" parent="RootVBox/BodyHBox/DetailCol/DetailScroll/DetailBody/ProgressGrid/ProgCardGold/ProgVBox"]
 layout_mode = 2
-text = "进入 ▶"
+text = ""
 horizontal_alignment = 2
 theme_override_font_sizes/font_size = 10
 theme_override_colors/font_color = Color(0.5, 0.55, 0.65, 0.7)

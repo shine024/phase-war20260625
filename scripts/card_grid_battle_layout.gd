@@ -139,6 +139,23 @@ static func units_in_same_row(a: Node, b: Node) -> bool:
 	return true  # 防御性兜底
 
 
+const GC = preload("res://resources/game_constants.gd")
+const GameCfg = preload("res://resources/game_config.gd")
+
+## v9.x: 直射武器跨行射击伤害乘区。
+## 规则：曲射/空射（is_indirect_weapon_type，含 legacy 曲射值 ROCKET/FLAK/MISSILE）全场全额恒 1.0；
+##       直射同行全额 1.0，跨行 ×cross_row_direct_damage_mult（GameConfig 可调，默认 0.70）。
+## 无 slot meta 的节点（相位场等）由 units_in_same_row 兜底视为同行，不惩罚。
+## 由开火侧调用（construct_unit_ai / enemy_unit / swarm_enemy_controller），乘在弹道分发前的
+## damage 上——批处理弹道直传伤害不重算，不在此处乘则永不生效。
+static func cross_row_direct_multiplier(shooter: Node2D, target: Node2D, weapon_type: int) -> float:
+	if GC.is_indirect_weapon_type(weapon_type):
+		return 1.0
+	if units_in_same_row(shooter, target):
+		return 1.0
+	return GameCfg.get_default().cross_row_direct_damage_mult
+
+
 ## 两侧阵型 + 中间空带的总宽度
 static func total_grid_width_px() -> float:
 	return side_band_width_px() * 2.0 + MIDDLE_GAP_PX

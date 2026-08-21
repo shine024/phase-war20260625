@@ -330,6 +330,8 @@ func _fire_from_slot(s: Node2D) -> void:
 	if s.weapon_types.size() > 0:
 		wt = int(s.weapon_types[s._attack_weapon_index % s.weapon_types.size()])
 		s._attack_weapon_index += 1
+	# v9.x: 直射武器跨行射击减伤（同行全额；曲射/空射不受行约束）
+	dmg_out *= CardGridBattleLayout.cross_row_direct_multiplier(s, s.target, wt)
 	var spawn_pos := s.global_position + _get_swarm_muzzle_offset(s)
 	if _should_use_projectile_batch(wt):
 		if BattleManager and BattleManager.enemy_projectile_batch:

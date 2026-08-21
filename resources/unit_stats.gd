@@ -168,6 +168,12 @@ var attack_light_bonus: float = 0.0
 ## 实际伤害 = attack_air × (1 + attack_air_bonus)
 var attack_air_bonus: float = 0.0
 
+## v18 四源重构·元素伤害维度：承载敌方相位师技能树元素节点（火/雷/虚系加成）
+## element_affinity: 0=无元素 / 1=火 / 2=雷 / 3=虚（同时驱动命中特效着色）
+## element_damage_mult: 元素伤害乘区，仅 affinity≠0 时在 attack_calculator 结算（上限 clamp 2.0）
+var element_affinity: int = 0
+var element_damage_mult: float = 1.0
+
 ## v6.6: 溅射半径加成（来自 splash_radius 改造，如子母弹/近炸引信）
 ## _apply_splash 的半径 = 100 × (1 + splash_radius_bonus)，默认 0 时为 v9.3 三行布局基础半径
 var splash_radius_bonus: float = 0.0

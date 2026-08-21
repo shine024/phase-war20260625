@@ -74,7 +74,11 @@ static func _is_tank_gun(weapon_name: String) -> bool:
 		or weapon_name.find("舰炮") >= 0:
 		return false
 	# 再匹配直射坦克炮特征
+	# v17: 补"火炮/加农炮"——直射槽的 81/105mm 炮（如"81mm/105mm火炮"，UCT 出现 18+ 次）
+	# 原归 GENERIC 通用直射，与步枪同观感；直射 HE 炮应有坦克炮级重环+加粗弹体。
+	# 曲射/防空炮已在前排排除；"自行火炮"由 WeaponVisualProfiles 归曲射族不经本函数。
 	if weapon_name.find("主炮") >= 0 or weapon_name.find("滑膛炮") >= 0 \
-		or weapon_name.find("反坦克炮") >= 0 or weapon_name.find("坦克炮") >= 0:
+		or weapon_name.find("反坦克炮") >= 0 or weapon_name.find("坦克炮") >= 0 \
+		or weapon_name.find("火炮") >= 0 or weapon_name.find("加农炮") >= 0:
 		return true
 	return false

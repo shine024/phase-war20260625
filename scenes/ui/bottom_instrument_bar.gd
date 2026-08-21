@@ -258,6 +258,14 @@ func _format_card_slot_tooltip(color: String, card: CardResource) -> String:
 	var detail_lines: Array[String] = []
 	detail_lines.append("%s 槽：%s" % [_slot_name(color), display_name])
 	detail_lines.append("能量消耗：%s" % cost_text)
+	# v19: 战斗等级（card_level 1-30）——装配决策核心维度，tooltip 常驻显示
+	if card.card_type == GC.CardType.COMBAT_UNIT:
+		var _ir_lv: Node = get_node_or_null("/root/InstanceRegistry")
+		var _lv_val: int = 1
+		if _ir_lv != null and _ir_lv.has_method("get_card_level"):
+			var _ident: String = String(card.instance_id) if not String(card.instance_id).is_empty() else String(card.card_id)
+			_lv_val = clampi(maxi(int(_ir_lv.get_card_level(_ident)), 1), 1, 30)
+		detail_lines.append("等级：Lv.%d%s" % [_lv_val, "（强化 Lv.%d/10）" % int(card.enhance_level) if int(card.enhance_level) > 0 else ""])
 	if not String(card.type_line).is_empty():
 		detail_lines.append("类型：%s" % String(card.type_line))
 	if not String(card.summary_line).is_empty():
