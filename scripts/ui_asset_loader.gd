@@ -277,8 +277,9 @@ static func load_tex(path: String) -> Texture2D:
 			# v9.4: LRU 命中，移到队尾
 			_tex_touch(path)
 			return prev as Texture2D
-		_tex_cache.erase(path)
-		# 负缓存（null）不进 LRU，命中时也不 touch
+		# v9.x 复查修复：负缓存（null）命中直接短路——原实现 erase 后重走
+		# ResourceLoader.exists + 回写，每次 miss 都白付一次磁盘查询
+		return null
 	if not ResourceLoader.exists(path):
 		_tex_cache[path] = null
 		return null

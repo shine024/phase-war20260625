@@ -690,6 +690,11 @@ func save_state() -> Dictionary:
 	}
 
 func load_state(data: Dictionary) -> void:
+	# v9.x 复查修复：事件/合成管理器统一在最前重建（幂等，见 _init_event_manager）。
+	# 原实现仅非空档路径初始化 → 新游戏（空字典）整局 _event_manager==null，
+	# 势力事件系统静默失效；且读档后再开新档会残留上一局事件/忠诚度状态。
+	_init_event_manager()
+	_init_synthesis_manager()
 	# 新游戏：SaveManager 传入空字典，必须整表重置（否则仍保留上一局的声望）
 	if data.is_empty():
 		_init_faction_data()
@@ -724,12 +729,10 @@ func load_state(data: Dictionary) -> void:
 		faction_skill_states = (data["faction_skill_states"] as Dictionary).duplicate(true)
 	else:
 		_init_faction_skill_states()
-	# 事件管理器状态
-	_init_event_manager()
+	# 事件管理器状态（实例已在函数开头重建）
 	if data.has("faction_event_state") and data["faction_event_state"] is Dictionary:
 		_event_manager.load_state(data["faction_event_state"])
 	# 合成管理器状态
-	_init_synthesis_manager()
 	if data.has("synthesis_state") and data["synthesis_state"] is Dictionary:
 		_synthesis_manager.load_state(data["synthesis_state"])
 	# v6.6: 已发放独占卡（向后兼容）
@@ -877,7 +880,13 @@ func reset_all_faction_skills(faction_id: String) -> int:
 
 ## 初始化事件管理器
 func _init_event_manager() -> void:
+	# 幂等：reset→读档可能连续两次 load_state，先释放旧实例防止子节点堆积
+	if _event_manager != null and is_instance_valid(_event_manager):
+		_event_manager.queue_free()
 	_event_manager = FactionEventManager.new()
+	# 必须挂进场景树：FactionEventManager 内部用 get_node_or_null("/root/...")
+	# 访问 FactionSystemManager/LevelProgressManager，不在树内会全部失败（势力事件永不触发）
+	add_child(_event_manager)
 	_event_manager.event_generated.connect(func(evt): faction_event_generated.emit(evt))
 
 ## SignalBus.battle_ended 信号处理（触发势力事件检查）
@@ -913,7 +922,13 @@ func get_faction_event_loyalty(faction_id: String) -> float:
 
 ## 初始化合成管理器
 func _init_synthesis_manager() -> void:
+	# 幂等 + 挂树（同 _init_event_manager 先例）：SynthesisManager 内部用
+	# get_node_or_null("/root/...") 访问 FactionSystemManager/BlueprintManager，
+	# 离树节点的绝对路径查找恒 null → 势力变体的基础卡解析/势力等级检查全部失效
+	if _synthesis_manager != null and is_instance_valid(_synthesis_manager):
+		_synthesis_manager.queue_free()
 	_synthesis_manager = SynthesisManager.new()
+	add_child(_synthesis_manager)
 
 ## 获取合成管理器
 func get_synthesis_manager() -> Node:

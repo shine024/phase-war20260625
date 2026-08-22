@@ -15,8 +15,7 @@ var _backpack_first_open_ms: int = -1
 
 var _battle_sampling: bool = false
 var _battle_frame_ms_samples: Array[float] = []
-var _battle_last_flush_ms: int = 0
-## v9.x（3c）：战斗采样 flush 计时改 delta 累加（原每帧 Time.get_ticks_msec）
+## v9.x（3c）：战斗采样 flush 计时改 delta 累加（原每帧 Time.get_ticks_msec；旧 _battle_last_flush_ms 已删）
 var _battle_flush_accum: float = 0.0
 var _phase_start_ms: Dictionary = {}
 var _phase_last_ms: Dictionary = {}
@@ -26,7 +25,6 @@ var _deferred_write_payload: String = ""
 
 func _ready() -> void:
 	_session_started_ms = Time.get_ticks_msec()
-	_battle_last_flush_ms = _session_started_ms
 
 func mark_main_interactive() -> void:
 	if _tti_ms >= 0:

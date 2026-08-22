@@ -220,7 +220,8 @@ func show_panel(card: CardResource) -> void:
 	var tw := create_tween()
 	tw.tween_property(self, "modulate:a", 1.0, _anim_duration).set_trans(Tween.TRANS_SINE)
 	tw.parallel().tween_property(self, "scale", Vector2(1.0, 1.0), _anim_duration).set_trans(Tween.TRANS_BACK)
-	# v8.x 性能：_load_unlocked_cards（扫 InstanceRegistry + SaveManager + Blueprint 重建名册，
+	# v8.x 性能：_load_unlocked_cards（扫 InstanceRegistry + SaveManager 重建名册；
+	# v9.x 蓝图体系已删，Blueprint 回退来源随之移除），
 	# 内部对每张卡调 _format_power 触发 estimate_power_score 重操作）原与显示同帧，
 	# 现挪到打开动画首帧之后，让用户先看到 fade-in 空壳再填充列表，避免打开同帧尖峰。
 	tw.tween_callback(_deferred_load_unlocked_cards)
@@ -284,17 +285,6 @@ func _load_unlocked_cards() -> void:
 			all_ids.append(sid)
 			seen_full[sid] = true
 			seen_base[base_id] = true
-	var bp = get_node_or_null("/root/BlueprintManager")
-	if bp:
-		var bp_ids: Array = bp.get_all_blueprint_ids() if bp.has_method("get_all_blueprint_ids") else bp.get_unlocked_blueprint_ids()
-		for id in bp_ids:
-			var sid: String = String(id)
-			if sid.is_empty():
-				continue
-			if not seen_base.has(sid) and not seen_full.has(sid):
-				all_ids.append(sid)
-				seen_full[sid] = true
-				seen_base[sid] = true
 	_last_unlocked_ids = all_ids
 	if not _selected_card and not all_ids.is_empty():
 		var first_card = _resolve_card(all_ids[0])

@@ -902,6 +902,12 @@ func _physics_process(delta: float) -> void:
 	# v7.x: 部署虚影期间不移动/不索敌/不开火（可被攻击），实体化后才投入战斗
 	if is_deploy_ghost:
 		_update_enemy_deploy_ghost(delta)
+		# v9.x（3d 复查）：虚影期同样推进待机浮动——原 Tween 实现不依赖
+		# _physics_process（虚影也浮动），手写化后在此补推保持视觉等价
+		if _idle_spr == null or not is_instance_valid(_idle_spr):
+			_idle_spr = get_node_or_null("Sprite2D") as Sprite2D
+		if _idle_spr != null:
+			CardGridUnitVisuals.advance_idle_motion(_idle_spr, delta)
 		return
 	if _hit_stun_left > 0.0:
 		_hit_stun_left -= delta

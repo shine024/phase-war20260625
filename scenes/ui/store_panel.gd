@@ -7,6 +7,7 @@ const BasicResources = preload("res://data/basic_resources.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
 const GC = preload("res://resources/game_constants.gd")
 const IntelManualItems = preload("res://data/intel_manual_items.gd")
+const ModRegistry = preload("res://scripts/systems/modification_registry.gd")
 const StoreItemRowScene = preload("res://scenes/ui/store_item_row.tscn")
 const StoreInstrumentRowScene = preload("res://scenes/ui/store_instrument_row.tscn")
 const FormatUtil = preload("res://scripts/ui/format_util.gd")
@@ -240,26 +241,19 @@ func _refresh_items() -> void:
 		var card_name: String = card_id
 		var card = null
 
-		# 先从敌方蓝图表查找
+		# v9.x 复查清理：原"先从敌方蓝图表查找"块删除——enemy_bp 恒 null（自 5 月起死代码），
+		# 两个 elif 条件重复且永不可达；商品名直接走 DefaultCards 解析
 		var enemy_bp = null
-		if enemy_bp:
-			if not String(enemy_bp.display_name).is_empty():
-				card_name = String(enemy_bp.display_name)
-			elif enemy_bp.card_type == GC.CardType.COMBAT_UNIT:
-				card_name = DefaultCards.get_platform_display_name(int(enemy_bp.platform_type))
-			elif enemy_bp.card_type == GC.CardType.COMBAT_UNIT:
-				card_name = DefaultCards.get_weapon_display_name(int(enemy_bp.weapon_type))
-		else:
-			card = DefaultCards.get_card_by_id(card_id)
-			if card:
-				card_name = card.display_name
-			elif card_id.begins_with("permit_card_"):
-				var target_id: String = card_id.trim_prefix("permit_card_")
-				var target_card: CardResource = DefaultCards.get_card_by_id(target_id)
-				var target_name: String = target_card.display_name if target_card != null else target_id
-				card_name = "改造许可函·%s专属" % target_name
-			elif LEGACY_BLUEPRINT_DISPLAY_NAMES.has(card_id):
-				card_name = String(LEGACY_BLUEPRINT_DISPLAY_NAMES[card_id])
+		card = DefaultCards.get_card_by_id(card_id)
+		if card:
+			card_name = card.display_name
+		elif card_id.begins_with("permit_card_"):
+			var target_id: String = card_id.trim_prefix("permit_card_")
+			var target_card: CardResource = DefaultCards.get_card_by_id(target_id)
+			var target_name: String = target_card.display_name if target_card != null else target_id
+			card_name = "改造许可函·%s专属" % target_name
+		elif LEGACY_BLUEPRINT_DISPLAY_NAMES.has(card_id):
+			card_name = String(LEGACY_BLUEPRINT_DISPLAY_NAMES[card_id])
 		# v3 后所有战斗卡都是 COMBAT_UNIT，可以正常在商店售卖
 		# 原错误代码过滤了 COMBAT_UNIT 导致所有战斗卡被隐藏，现已移除
 		# var inspect_card = enemy_bp if enemy_bp != null else card
@@ -479,14 +473,15 @@ func _build_intel_items_section() -> void:
 		var rarity_color: Color = IntelManualItems.get_rarity_color(def.get("rarity", "common"))
 
 		# 简单情报：改造蓝图类道具附上所解锁模块的具体效果（买前知道解锁什么）
+		# v9.x 复查修复：ModificationRegistry.get_data 是 static func——实例 has_method
+		# 对静态方法返回 false，原实例式调用被守卫静默跳过（特性从未生效）；
+		# 改为与全项目一致的 preload 静态调用
 		var intel_desc: String = String(def.get("desc", ""))
 		var mod_id: String = String(def.get("mod_id", ""))
 		if not mod_id.is_empty():
-			var mod_registry: Node = get_node_or_null("/root/ModificationRegistry")
-			if mod_registry != null and mod_registry.has_method("get_data"):
-				var mod_eff: String = String(mod_registry.get_data(mod_id).get("description", ""))
-				if not mod_eff.is_empty():
-					intel_desc = "%s\n  效果：%s" % [intel_desc, mod_eff]
+			var mod_eff: String = String(ModRegistry.get_data(mod_id).get("description", ""))
+			if not mod_eff.is_empty():
+				intel_desc = "%s\n  效果：%s" % [intel_desc, mod_eff]
 
 		var row := PanelContainer.new()
 		var row_style := PanelStyles.make_panel_style(

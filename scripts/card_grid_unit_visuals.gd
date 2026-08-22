@@ -168,9 +168,14 @@ static func _boss_sway_idle(unit_spr: Sprite2D) -> void:
 ## 由单位 _physics_process 的 advance_idle_motion 驱动（搭 _update_hit_animations 便车）。
 static func _apply_idle_motion(unit_spr: Sprite2D, card: CardResource) -> void:
 	if unit_spr == null or DT.is_motion_reduce():
+		# 复查兜底：同一 Sprite 换静止形态重应用时清残留参数，防旧浮动续跑
+		if unit_spr != null and unit_spr.has_meta("_idle_params"):
+			unit_spr.remove_meta("_idle_params")
 		return
 	var kind: int = card.combat_kind if card != null else -1
 	if kind == GC.CombatKind.FORT:
+		if unit_spr.has_meta("_idle_params"):
+			unit_spr.remove_meta("_idle_params")  # 堡垒不动：清残留
 		return  # v14: 堡垒不动——要塞/工事的厚重稳重感
 	var amp: float = 3.0 if kind == GC.CombatKind.AIR else 1.2
 	var half: float = 1.0 if kind == GC.CombatKind.AIR else (1.8 if kind == GC.CombatKind.ARMOR else 1.3)
