@@ -147,6 +147,24 @@ func claim_branch(card_id: String, branch_id: String) -> bool:
 func is_branch_discovered(branch_id: String) -> bool:
 	return _discovered.has(branch_id)
 
+## v9.x: 查询某隐藏分支的情报条件进度（进化面板"如何揭示"提示用）。
+## 返回 [{enemy_type, threshold, current}]（current 为该类型敌人最高情报进度 0.0~1.0）；
+## 分支不存在返回 []。
+func get_requirement_progress(branch_id: String) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var reqs: Dictionary = IntelEvolutionBranches.get_intel_requirements(branch_id)
+	if reqs.is_empty():
+		return out
+	var im: Node = get_node_or_null("/root/IntelManual")
+	for enemy_type in reqs:
+		var req: Dictionary = reqs[enemy_type]
+		if not req is Dictionary:
+			continue
+		var threshold: float = float(req.get("threshold", 0.0))
+		var current: float = _get_best_progress_for_type(im, enemy_type) if im != null else 0.0
+		out.append({"enemy_type": String(enemy_type), "threshold": threshold, "current": current})
+	return out
+
 ## 检查分支是否已领取
 func is_branch_claimed(branch_id: String) -> bool:
 	return _claimed.has(branch_id)

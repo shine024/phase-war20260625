@@ -43,8 +43,9 @@ func _ready() -> void:
 	if title_hbox is BoxContainer:
 		var chrome = PanelChrome.attach_to(title_hbox, "强化面板", accent, "REINFORCEMENT")
 		chrome.closed.connect(_on_close)
-		# "← 成长首页"保持在 ✕ 左侧：把 ✕ 移到 TitleHBox 末尾
-		title_hbox.add_child(chrome.close_button)
+		# "← 成长首页"保持在 ✕ 左侧：把 ✕ 从 chrome 内部 reparent 到 TitleHBox 末尾
+		# （add_child 会对已有父级的节点报错，reparent 才是正确迁移方式）
+		chrome.close_button.reparent(title_hbox)
 	# v9.x: 连接"返回成长首页"按钮（与 modification/evolution 面板同模式，用 unique_name）
 	var back_btn = get_node_or_null("%BackToGrowthButton")
 	if back_btn:

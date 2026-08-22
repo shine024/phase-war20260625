@@ -93,6 +93,11 @@ static func build_stats_from_card(card: CardResource, era_override: int = -1) ->
 			# 添加空槽位占位
 			tmp_slots.append(WeaponResource.create_empty_slot(tmp_slots.size()))
 
+	# v9.x: 兵种防御保底（轻装闪避/堡垒减伤）前置到改造应用之前——
+	# 保底=单位基础属性先立，改造/词条叠加其上。原实现放在 apply_combat_kind_modifiers
+	# （mod 之后）用 maxf，词条值低于保底时被整段吞掉（enh_dodge +6% < 轻装 0.18 保底 → 装了无效）。
+	_apply_unit_type_defense_floors(stats)
+
 	# v6.0/v6.13: 应用改造效果
 	# 时序：先应用 stat 效果（attack_armor 等），再处理武器槽。
 	# 原因：grant_slot 以载体 attack_armor 为基准派生对空伤害，必须读到加成后的值。
@@ -638,6 +643,27 @@ static func _is_recon_card(card_id: String) -> bool:
 ##       （装甲/堡垒擅长防装甲攻击 → defense_armor；空中擅长防空中攻击 → defense_air）
 ##       SUPPORT(2)/FORT(4) 旧值仍按其主类（LIGHT/ARMOR）处理，确保兼容未迁移数据。
 ## v8: 注入 8 兵种固定机制（天生被动，写在 base 层，无需改造/技能树）
+## v9.x: 兵种防御保底（基础属性，改造应用之前执行——改造/词条在保底之上叠加）。
+## 原三行 maxf 在 apply_combat_kind_modifiers（改造之后）执行，词条值低于保底时被吞，
+## enh_dodge(+6~13%)/enh_def_up(+5~10%)/三防类(+30%) 对相应兵种装了无效。
+static func _apply_unit_type_defense_floors(stats: UnitStats) -> void:
+	if stats == null:
+		return
+	var is_light: bool = (stats.combat_kind == 0 or stats.combat_kind == 2)
+	var is_air: bool = (stats.combat_kind == 3)
+	var is_fort: bool = (stats.combat_kind == 4)
+	var sub: int = stats.unit_subtype
+	if sub == GC.UnitSubType.NONE and stats.combat_kind == 2:
+		sub = GC.UnitSubType.SUPPORT
+	if is_light:
+		# 普通轻装步兵有闪避；火炮/重型支援无闪避（笨重装备）
+		if sub != GC.UnitSubType.ARTILLERY:
+			stats.dodge_chance = maxf(stats.dodge_chance, 0.18)
+	elif is_air:
+		stats.dodge_chance = maxf(stats.dodge_chance, 0.12)
+	elif is_fort:
+		stats.damage_reduction = maxf(stats.damage_reduction, 0.30)
+
 static func apply_combat_kind_modifiers(stats: UnitStats) -> void:
 	if stats == null:
 		return
@@ -653,9 +679,7 @@ static func apply_combat_kind_modifiers(stats: UnitStats) -> void:
 			sub = GC.UnitSubType.FORT      # 旧堡垒类 → 堡垒子类
 
 	if is_light:
-		# 普通轻装步兵有闪避；火炮/重型支援无闪避（笨重装备）
-		if sub != GC.UnitSubType.ARTILLERY:
-			stats.dodge_chance = maxf(stats.dodge_chance, 0.18)
+		# （闪避保底已前置至 _apply_unit_type_defense_floors——改造前执行，词条可叠加）
 		if sub == GC.UnitSubType.SUPPORT:
 			stats.max_hp *= 1.08  # 辅助单位（机枪巢/工兵）加HP
 		# ── v8 兵种固定机制：按子类分派（SUPPORT(2) 归入 is_light 主类）──
@@ -689,8 +713,7 @@ static func apply_combat_kind_modifiers(stats: UnitStats) -> void:
 			stats.defense_air += 4.0
 			stats.max_hp *= 1.15
 			# ── v8 兵种固定机制：堡垒阵地坚守 ──
-			# 自身减伤 30%（复用 damage_reduction 字段，take_damage 已读）
-			stats.damage_reduction = maxf(stats.damage_reduction, 0.30)
+			# （自身 30% 减伤保底已前置至 _apply_unit_type_defense_floors——改造前执行，词条可叠加）
 			# 地面友军减伤光环 10%（fort_shelter_aura → module_effect_handler 每 tick 扫描）
 			stats.fort_shelter_aura = maxf(stats.fort_shelter_aura, 0.10)
 		else:
@@ -698,7 +721,7 @@ static func apply_combat_kind_modifiers(stats: UnitStats) -> void:
 			# 对 LIGHT 类目标伤害 +20%（attack_light_bonus → get_attack_vs 叠加）
 			stats.attack_light_bonus = maxf(stats.attack_light_bonus, 0.20)
 	elif stats.combat_kind == 3:  # 空中：高机动，擅长防空中攻击
-		stats.dodge_chance = maxf(stats.dodge_chance, 0.12)
+		# （闪避保底已前置至 _apply_unit_type_defense_floors——改造前执行，词条可叠加）
 		stats.defense_air += 2.0
 		# ── v8 兵种固定机制：空中突袭击速 ──
 		# 前 10s 攻速 ×1.5（标记给 construct_unit 运行时处理，避免此处改 attack_interval 被撤销逻辑覆盖）

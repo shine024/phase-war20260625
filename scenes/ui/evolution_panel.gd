@@ -10,6 +10,7 @@ signal closed
 const DefaultCards = preload("res://data/default_cards.gd")
 const IntelManualItems = preload("res://data/intel_manual_items.gd")
 const BlueprintDefinitions = preload("res://data/blueprint_definitions.gd")
+const IntelEvolutionBranches = preload("res://data/intel_evolution_branches.gd")
 
 # v7.x UI 重设计基建
 const DT = preload("res://resources/design_tokens.gd")
@@ -545,8 +546,11 @@ func _create_evolution_node(target: Dictionary) -> Control:
 	var sb_h := sb_n.duplicate() as StyleBoxFlat
 	sb_h.bg_color = Color(0.653, 0.546, 0.98, 0.08)
 	btn.add_theme_stylebox_override("hover", sb_h)
-	btn.disabled = not can_evo
-	btn.modulate.a = 1.0 if can_evo else 0.6
+	# v9.x：锁定目标不再 disabled——保持可点击，进右侧详情看完整条件列表+达成指引。
+	# 此前 disabled=true 且只在 can_evo 时连 pressed，锁定目标的条件/指引（_render_condition_rows
+	# 的 detail 行）玩家永远看不到，只剩 badge 一行字，无从得知"进化如何达成"。
+	# 锁定视觉保留（暗边框 + badge 红字）；执行进化的按钮仍按条件禁用。
+	btn.modulate.a = 1.0 if can_evo else 0.78
 
 	# 内容 VBox
 	var content := VBoxContainer.new()
@@ -574,6 +578,7 @@ func _create_evolution_node(target: Dictionary) -> Control:
 	else:
 		# 锁定原因分级（v9.x：从 conditions 快照取首个未满足项，替代 reason 字符串猜测）
 		var first_unmet: Dictionary = _first_unmet_condition(check_result)
+		var unmet_count: int = _count_unmet_conditions(check_result)
 		var badge_text := "🔒条件不足"
 		match String(first_unmet.get("key", "")):
 			"enhance":
@@ -588,8 +593,13 @@ func _create_evolution_node(target: Dictionary) -> Control:
 				badge_text = "🔒需技能树"
 			"faction_level":
 				badge_text = "🔒势力等级"
+		# v9.x：多条件未满足时显示剩余数，避免"修完一个又冒一个"的挤牙膏体验
+		if unmet_count > 1:
+			badge_text += " 等%d项" % unmet_count
 		badge_lbl.text = badge_text
 		badge_lbl.add_theme_color_override("font_color", THEME_RED)
+		# v9.x：tooltip 概览全部未满足条件（badge 只放得下首项）
+		badge_lbl.tooltip_text = _unmet_summary_text(check_result)
 	badge_lbl.add_theme_font_size_override("font_size", 10)
 	badge_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	badge_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -640,8 +650,10 @@ func _create_evolution_node(target: Dictionary) -> Control:
 	content.add_child(meta_row)
 
 	btn.add_child(content)
-	if can_evo:
-		btn.pressed.connect(func(): _on_target_selected(target.target_id, target.name))
+	if not can_evo:
+		# v9.x：tooltip 引导点击查看达成路径（不查手册就能知道下一步做什么）
+		btn.tooltip_text = "点击查看全部进化条件与达成指引"
+	btn.pressed.connect(func(): _on_target_selected(target.target_id, target.name))
 	return btn
 
 
@@ -721,6 +733,12 @@ func _update_evolution_tree() -> void:
 		if has_intel:
 			legend_row.add_child(_make_small_chip("●情报隐藏", THEME_CYAN))
 		summary_box.add_child(legend_row)
+		# v9.x：操作引导——锁定目标也可点击查看达成条件（此前 disabled 无从得知）
+		var click_hint := Label.new()
+		click_hint.text = "点击任意目标卡片（含🔒锁定）可查看全部达成条件与指引"
+		click_hint.add_theme_font_size_override("font_size", 10)
+		click_hint.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65, 0.75))
+		summary_box.add_child(click_hint)
 	# 摘要底部分隔线（用 PanelContainer + StyleBox border_bottom）
 	var sep := HSeparator.new()
 	sep.add_theme_color_override("separator", Color(0.25, 0.28, 0.35, 0.4))
@@ -738,6 +756,8 @@ func _update_evolution_tree() -> void:
 		evolution_tree.add_child(final_lbl)
 		if path_head_count:
 			path_head_count.text = "0"
+		# v9.x：终阶卡仍可能是情报隐藏分支的源卡（如 fut_howitzer→空中炮艇路线），照常提示
+		_append_hidden_intel_hints()
 		return
 
 	# "当前形态" 节点（对齐网页设计稿 current 节点）
@@ -751,6 +771,61 @@ func _update_evolution_tree() -> void:
 
 	if path_head_count:
 		path_head_count.text = "%d" % targets.size()
+
+	# v9.x：未揭示的情报隐藏分支提示——让玩家知道隐藏路线存在及揭示方法
+	_append_hidden_intel_hints()
+
+
+## v9.x: 进化树末尾列出"未揭示的情报隐藏分支"。
+## 隐藏分支（intel path）需对应敌人类型情报进度达标才出现（IntelEvolutionManager 发现机制），
+## 此前完全隐形——玩家不知道这张卡有隐藏路线、更不知道去哪刷情报。这里列出揭示条件
+## 与当前进度，指明"战斗击败该类敌人/侦察/分解重复卡"的积累途径。
+func _append_hidden_intel_hints() -> void:
+	if evolution_tree == null or selected_card == null:
+		return
+	var base_id: String = String(selected_card.card_id)
+	if base_id.is_empty():
+		return
+	# IntelEvolutionManager 是纯懒加载 manager（无 autoload），经 ManagerLazyLoader 取
+	var mll: Node = get_node_or_null("/root/ManagerLazyLoader")
+	if mll != null and mll.has_method("ensure_loaded"):
+		mll.ensure_loaded("intel_evolution")
+	var iem: Node = get_node_or_null("/root/IntelEvolutionManager")
+	if iem == null or not iem.has_method("is_branch_discovered"):
+		return
+	for b in IntelEvolutionBranches.get_branches_for_card(base_id):
+		var bid: String = String(b.get("branch_id", ""))
+		if bid.is_empty() or iem.is_branch_discovered(bid):
+			continue  # 已发现的分支已在上方目标列表中
+		var box := VBoxContainer.new()
+		box.add_theme_constant_override("separation", 2)
+		var sep := HSeparator.new()
+		sep.add_theme_color_override("separator", Color(0.25, 0.28, 0.35, 0.4))
+		box.add_child(sep)
+		var head := Label.new()
+		head.text = "🔍 未揭示的隐藏路线：%s" % String(b.get("name", "???"))
+		head.add_theme_font_size_override("font_size", 12)
+		head.add_theme_color_override("font_color", THEME_CYAN)
+		box.add_child(head)
+		var body := Label.new()
+		var parts := PackedStringArray()
+		if iem.has_method("get_requirement_progress"):
+			for req in iem.get_requirement_progress(bid):
+				if not (req is Dictionary):
+					continue
+				parts.append("%s情报 %d%%/%d%%" % [
+					IntelEvolutionBranches.get_enemy_type_display(String(req.get("enemy_type", ""))),
+					int(round(float(req.get("current", 0.0)) * 100.0)),
+					int(round(float(req.get("threshold", 0.0)) * 100.0))])
+		if parts.is_empty():
+			body.text = "　└ 达成对应敌人情报进度后揭示（战斗中击败该类敌人、侦察、分解重复卡均可积累情报）"
+		else:
+			body.text = "　└ %s 即揭示｜积累途径：击败该类敌人 / 侦察 / 分解重复卡（情报中心可查进度）" % "、".join(parts)
+		body.add_theme_font_size_override("font_size", 12)
+		body.add_theme_color_override("font_color", Color(0.62, 0.62, 0.70))
+		body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		box.add_child(body)
+		evolution_tree.add_child(box)
 
 
 ## v7.x 新增：当前形态节点（网页设计稿 current evo-node）
@@ -1010,6 +1085,30 @@ func _first_unmet_condition(check_result: Dictionary) -> Dictionary:
 		if c is Dictionary and not bool(c.get("met", false)):
 			return c
 	return {}
+
+## v9.x: 统计未满足条件总数（badge "等N项"用）
+func _count_unmet_conditions(check_result: Dictionary) -> int:
+	var n := 0
+	for c in check_result.get("conditions", []):
+		if c is Dictionary and not bool(c.get("met", false)):
+			n += 1
+	return n
+
+## v9.x: 全部未满足条件的 tooltip 概览文本（"✗ 条件名 当前/需求" 每行一条）
+func _unmet_summary_text(check_result: Dictionary) -> String:
+	var lines := PackedStringArray()
+	lines.append("未达成条件（点击卡片查看达成指引）：")
+	for c in check_result.get("conditions", []):
+		if not (c is Dictionary) or bool(c.get("met", false)):
+			continue
+		var cur_t: String = String(c.get("current_text", "?"))
+		var req_t: String = String(c.get("required_text", "?"))
+		if cur_t == req_t:
+			lines.append("✗ %s" % _condition_label_zh(String(c.get("key", ""))))
+		else:
+			lines.append("✗ %s　%s/%s" % [
+				_condition_label_zh(String(c.get("key", ""))), cur_t, req_t])
+	return "\n".join(lines)
 
 func _clear_detail_panel() -> void:
 	if no_selection_label:

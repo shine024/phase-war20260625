@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://c3v0calibdrv001"]
+
+[ext_resource type="Script" path="res://tests/calib_scene_driver.gd" id="1"]
+
+[node name="CalibSceneDriver" type="Node"]
+script = ExtResource("1")

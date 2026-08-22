@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3 uid="uid://battlefield"]
 
-[ext_resource type="Script" uid="uid://clwpgv2frbgmp" path="res://scenes/battlefield/Battlefield.gd" id="1_script"]
+[ext_resource type="Script" uid="uid://ds5kighki2251" path="res://scenes/battlefield/Battlefield.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://scenes/units/phase_field_driver.tscn" id="2_phase_driver"]
 [ext_resource type="Script" path="res://scenes/effects/screen_shake.gd" id="3_screen_shake"]
 

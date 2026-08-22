@@ -1,6 +1,6 @@
 [gd_scene load_steps=36 format=3 uid="uid://main"]
 
-[ext_resource type="Script" uid="uid://d0jpdmko5mrnu" path="res://scenes/main.gd" id="1_script"]
+[ext_resource type="Script" uid="uid://c6ojqq5kxkm03" path="res://scenes/main.gd" id="1_script"]
 [ext_resource type="PackedScene" uid="uid://battlefield" path="res://scenes/battlefield/battlefield.tscn" id="2_battlefield"]
 [ext_resource type="PackedScene" path="res://scenes/ui/unit_info_panel.tscn" id="6_unit_info"]
 [ext_resource type="PackedScene" path="res://scenes/ui/player_spawn_hud.tscn" id="8_player_hud"]

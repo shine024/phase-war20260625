@@ -127,3 +127,18 @@ static func get_branches_for_card(card_id: String) -> Array[Dictionary]:
 		if card_id in sources:
 			result.append(b)
 	return result
+
+## v9.x: enemy_type → 中文显示名（进化面板隐藏分支提示用）。
+## 7 类与 intel_reveal_events.gd 的分区注释一致；未知类型回退原键名。
+const ENEMY_TYPE_DISPLAY := {
+	"infantry": "步兵系",
+	"flame": "火焰兵系",
+	"heavy_armor": "重装甲系",
+	"artillery": "火炮系",
+	"stealth": "隐匿系",
+	"boss_nano": "纳米BOSS系",
+	"air": "空中系",
+}
+
+static func get_enemy_type_display(enemy_type: String) -> String:
+	return String(ENEMY_TYPE_DISPLAY.get(enemy_type, enemy_type))

@@ -165,6 +165,8 @@ static func can_evolve_blueprint(card_id_or_instance: String, target_card_id: St
 			"met": current_power >= float(target_base_power),
 			"current_text": str(int(current_power)),
 			"required_text": str(target_base_power),
+			## v9.x：战力是综合评分，指明三条提升途径（否则玩家不知道战力从哪来）
+			"detail": "战力=强化+改造+装备的综合评分：上阵攒经验升级、安装改造模块、装配相位仪器均可提升",
 		})
 
 	## 进化蓝图检查：持有目标卡进化蓝图即可解锁进化（蓝图不消耗）
@@ -222,12 +224,16 @@ static func can_evolve_blueprint(card_id_or_instance: String, target_card_id: St
 		"met": enhance_lvl >= enh_req,
 		"current_text": str(enhance_lvl),
 		"required_text": str(enh_req),
+		## v9.x：强化升级途径（v8.x 自动经验升星：战后经验平分给上场卡）
+		"detail": "将该卡装进绿色战斗槽上阵参战，战后结算自动积累经验升级",
 	})
 	conditions.append({
 		"key": "mods",
 		"met": mod_count >= mod_req,
 		"current_text": str(mod_count),
 		"required_text": str(mod_req),
+		## v9.x：改造模块的安装入口
+		"detail": "在「成长→改造」面板为该卡安装改造模块",
 	})
 
 	## 势力贡献度检查：E2（势力分支）需要目标势力达到指定等级

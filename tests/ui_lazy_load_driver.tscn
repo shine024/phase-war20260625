@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://uila0ydrv001"]
+
+[ext_resource type="Script" path="res://tests/ui_lazy_load_driver.gd" id="1"]
+
+[node name="UiLazyLoadDriver" type="Node"]
+script = ExtResource("1")

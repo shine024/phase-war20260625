@@ -35,13 +35,13 @@ func _initialize() -> void:
 		var iid: String = ir.create_instance(s[1]).instance_id
 		var inst = ir.get_instance(iid)
 		inst.enhance_level = 5
-		inst.mods = [{"id": "arm_01_reactive_armor", "enabled": true}, {"id": "arm_02_smoothbore", "enabled": true}]
+		inst.mods = [{"id": "arm_01_sloped_armor", "enabled": true}, {"id": "arm_05_smoothbore", "enabled": true}]
 		var c5: float = EH.estimate_power_score(iid, bpm)
 		var m5: float = EH.estimate_power_score_meta_only(iid, bpm)
 		inst.enhance_level = 10
 		inst.mods = []
 		for k in range(5):
-			inst.mods.append({"id": "arm_01_reactive_armor", "enabled": true})
+			inst.mods.append({"id": "arm_01_sloped_armor", "enabled": true})
 		var c10: float = EH.estimate_power_score(iid, bpm)
 		var m10: float = EH.estimate_power_score_meta_only(iid, bpm)
 		print("%-10s 强化5+2改: 战斗=%5d meta=%4d | 强化10+5改: 战斗=%5d meta=%4d" % [s[0], int(c5), int(m5), int(c10), int(m10)])

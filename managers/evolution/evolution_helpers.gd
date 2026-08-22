@@ -257,10 +257,48 @@ static func build_unit_stats_for_power_preview(card: CardResource, bpm_ref: Node
 		if stats == null:
 			return null
 		apply_growth_to_stats(stats, card, [], bpm_ref, false)
+		_apply_mod_weapon_dps_gain(stats, card, era, bpm_ref)
 		# v6.0: 词条效果已由 UnitStatsTable.build_stats_from_card 内部处理
 		# 不再需要额外调用 AffixManager
 		return stats
 	return null
+
+## v9.x 武器槽改造增益差分：grant_slot（激活新武器槽）/ slot_damage_mult 等
+## 只改 WeaponResource，不回写 stats.attack_* → 战力公式读不到。
+## 此处双 build（原卡 vs 去 mods 白板 clone，同口径走 growth）取 weapon_slots 的
+## DPS 差值，写入 stats meta "mod_weapon_dps_gain"（combat_power_from_unit_stats
+## 按 DPS 同权 0.75 折算）。白板差恒 0，白板战力零漂移。
+## deploy_speed 同理：有真实战斗消费（部署延迟公式）不能重定向，差分记
+## "mod_deploy_speed_gain"（白板差=0）。
+static func _apply_mod_weapon_dps_gain(stats: UnitStats, card: CardResource, era: int, bpm_ref: Node) -> void:
+	if stats == null or card.mods == null or card.mods.is_empty():
+		return
+	var w_dps_modded := _weapon_dps_of(stats.weapon_slots)
+	var bare: CardResource = card.duplicate(true)
+	if bare == null:
+		return
+	bare.mods = []
+	var bare_stats: UnitStats = UnitStatsTable.build_stats_from_card(bare, era)
+	if bare_stats == null:
+		return
+	apply_growth_to_stats(bare_stats, bare, [], bpm_ref, false)
+	var gain: float = w_dps_modded - _weapon_dps_of(bare_stats.weapon_slots)
+	if gain > 0.5:
+		stats.set_meta("mod_weapon_dps_gain", gain)
+	var d_gain: float = float(stats.deploy_speed) - float(bare_stats.deploy_speed)
+	if d_gain > 0.0:
+		stats.set_meta("mod_deploy_speed_gain", d_gain)
+	# 射程增量（远程卡基数 9900px 线性计权失真，只计 mod 增量；白板差=0）
+	var r_gain: float = float(stats.attack_range) - float(bare_stats.attack_range)
+	if r_gain > 1.0:
+		stats.set_meta("mod_range_gain", r_gain)
+
+static func _weapon_dps_of(slots: Array) -> float:
+	var v: float = 0.0
+	for w in slots:
+		if w is WeaponResource and w.enabled and float(w.damage) > 0.0:
+			v += float(w.damage) * float(w.attack_speed)
+	return v
 
 ## v7.x 战力公式全修（用户主导设计最终版）：
 ##   战力 = HP × 0.35
@@ -270,18 +308,11 @@ static func build_unit_stats_for_power_preview(card: CardResource, bpm_ref: Node
 ##        + armor_pen × 5
 ##        + move_speed × 0.25
 ##
-## 设计要点：
-##   ① HP 权重 0.15 → 0.35：血量重要性提升，后期肉盾卡受益。
-##   ② DPS 三维各自配对（每维用自己的 per-target 攻速，v5.0 独立攻速）×0.75；暴击率进 DPS 乘区
-##      （×(1+暴击×0.5)，暴击 50% 时 DPS×1.25）——暴击成为输出放大器而非独立分项。
-##   ③ 攻速独立项 avg_speed×25：反映"出手快慢"本身的价值（高速单位多项贡献）。
-##   ④ 三维防御求和 ×2.1：奖励全面型单位（后期卡三维都高自然分高），比 def_max 更鼓励均衡发展。
-##   ⑤ 删除射程项：格子战术索敌半径下限 1600px > 战场跨度 1020px，射程不影响能否打到目标。
-##   ⑥ 删除 damage_reduction 独立项：platform_armor 词条价值已由三维防御体现，不重复计。
-##   ⑦ 穿甲 ×5、移速 ×0.25：次要属性保留区分度。
-##
-## 实测（uv 验证）：MP18 裸卡~165 / T72 裸卡~948 / 巨神机甲裸卡~3602 / 虚空领主裸卡~3764。
-## 终极/初期比 ~22×，配合 RankRules.POWER_THRESHOLDS ×2.5 校准，让终极卡裸卡=上将、满养=元帅。
+## v9.x 机制属性折算扩展（标准档，用户拍板：机制属性满载可达总分 25~35%）：
+##   改造能写入约 60 个机制字段（闪避/减伤/吸血/溅射/燃烧/拦截/...），旧公式权重全 0
+##   → 功能性改造装了战力不涨。扩展三段折算（详见 _mechanic_survival_mul /
+##   _mechanic_output_mul / _mechanic_flat_score），白板卡这些字段≈0 → 白板战力零漂移，
+##   进化门槛（白板×0.70）稳定。验收：tests/mod_power_gain_coverage.gd 全改造必涨。
 static func combat_power_from_unit_stats(stats: UnitStats) -> float:
 	if stats == null:
 		return 0.0
@@ -295,9 +326,12 @@ static func combat_power_from_unit_stats(stats: UnitStats) -> float:
 		+ maxf(float(stats.attack_armor), 0.0) * spd_a
 		+ maxf(float(stats.attack_air), 0.0) * spd_air
 	)
-	# 暴击率进 DPS 乘区（暴击 50% → DPS ×1.25）
-	var crit_mul: float = 1.0 + maxf(float(stats.crit_chance), 0.0) * 0.5
-	var dps_score: float = dps_raw * 0.75 * crit_mul
+	# 暴击率进 DPS 乘区（暴击 50% → DPS ×1.25）；v9.x 暴伤扩展（暴伤只在暴击时生效）
+	var crit_mul: float = (1.0 + maxf(float(stats.crit_chance), 0.0) * 0.5) \
+		* (1.0 + maxf(float(stats.crit_chance), 0.0) * maxf(float(stats.crit_damage_bonus), 0.0) * 0.5)
+	# v9.x 功能输出乘区（溅射/连锁/DoT 系对 DPS 的期望增益）
+	var out_mul: float = _mechanic_output_mul(stats, hp)
+	var dps_score: float = dps_raw * 0.75 * crit_mul * out_mul
 	# 攻速独立项（三维平均攻速，反映出手快慢本身的价值）
 	var avg_speed: float = (spd_l + spd_a + spd_air) / 3.0
 	# 三维防御求和（奖励全面型单位，后期卡三维均衡发展自然分高）
@@ -307,15 +341,139 @@ static func combat_power_from_unit_stats(stats: UnitStats) -> float:
 		+ maxf(float(stats.defense_air), 0.0)
 	)
 	var spd: float = maxf(float(stats.move_speed), 0.0)
+	# v9.x 穿甲乘区化（_mechanic_output_mul 内按比率折算 DPS 增益），不再线性计分
+	# v9.x 武器槽改造增益（grant_slot/slot_damage 类不回写 stats.attack_*，由
+	# build_unit_stats_for_power_preview 双 build 差分写入 meta；白板差=0）
+	var w_gain: float = 0.0
+	if stats.has_meta("mod_weapon_dps_gain"):
+		w_gain = maxf(float(stats.get_meta("mod_weapon_dps_gain")), 0.0)
 	var out: float = (
-		hp * 0.35
+		hp * 0.35 * _mechanic_survival_mul(stats)
 		+ dps_score
+		+ w_gain * 0.75
 		+ avg_speed * 25.0
 		+ def_sum * 2.1
-		+ float(stats.armor_penetration) * 5.0
 		+ spd * 0.25
+		+ _mechanic_flat_score(stats, hp, dps_raw, dps_score)
 	)
 	return maxf(out, 1.0)
+
+
+## v9.x 机制折算·等效生存乘区：防护比率类属性折算进等效 HP（闪避 x% ≈ 有效血量 +x%）。
+## 白板全 0 → 乘 1.0，零漂移。乘区各项取保守上限（与 registry 的 cap 一致或更紧）。
+## 注：hp_regen/shield_on_kill 数据层是比率语义（0.005=0.5%HP/秒），按战斗窗口折算等效血量。
+static func _mechanic_survival_mul(stats: UnitStats) -> float:
+	var m: float = 1.0
+	m += minf(maxf(float(stats.dodge_chance), 0.0), 0.5)            # 闪避=免伤概率
+	m += minf(maxf(float(stats.damage_reduction), 0.0), 0.75)        # 直接减伤
+	m += minf(maxf(float(stats.crit_resist), 0.0), 1.0) * 0.5        # 暴抗（受暴伤减免，折半）
+	m += minf(maxf(float(stats.lifesteal), 0.0), 0.6) * 0.5          # 吸血续航≈有效血量，折半
+	if bool(stats.revive_on_death) and stats.revive_hp_ratio > 0.0:
+		m += minf(stats.revive_hp_ratio, 1.0) * 0.6                  # 复活=按比例二条命
+	# 拦截（完全免伤但受次数限制）：按 3 次封顶折算覆盖率
+	if stats.intercept_chance > 0.0 and stats.intercept_charges > 0:
+		m += minf(float(stats.intercept_chance), 1.0) \
+			* (minf(float(stats.intercept_charges), 3.0) / 3.0) * 0.5
+	# 回血/击杀护盾：比率语义，按 12 秒战斗窗口 / 2 击杀期望折算等效血量
+	m += minf(maxf(float(stats.hp_regen), 0.0) * 12.0, 0.3)
+	m += minf(maxf(float(stats.shield_on_kill), 0.0) * 2.0, 0.3)
+	# 相位护盾池按等效血量折算（比率封顶防极端）
+	m += minf(maxf(float(stats.phase_shield_pool), 0.0), 2000.0) * 0.001
+	# 巷战防御（条件型防御加成，白板步兵自带 0.15——统一计权，门槛同比上涨）
+	m += minf(maxf(float(stats.urban_defense_bonus), 0.0), 1.0) * 0.2
+	return m
+
+
+## v9.x 机制折算·等效输出乘区：功能输出类属性对 DPS 的期望增益。
+## 溅射/连锁对多目标场景的期望增伤、DoT 系（燃烧/化学/EMP/纳米）的期望每秒附加输出。
+## 穿甲比率乘区化：0.2 穿甲 ≈ +8% DPS（旧线性 ×5 对比率值只给 1 分，形同虚设）。
+static func _mechanic_output_mul(stats: UnitStats, hp: float) -> float:
+	var m: float = 1.0
+	m += minf(maxf(float(stats.splash_damage), 0.0), 0.8) * 0.35     # 溅射（AOE 增伤，对群才生效→折 0.35）
+	m += minf(maxf(float(stats.chain_chance), 0.0), 0.6) * 0.3       # 连锁弹
+	m += minf(maxf(float(stats.armor_penetration), 0.0), 1.0) * 0.4  # 穿甲（无视护甲=期望增伤）
+	m += (minf(maxf(float(stats.armor_pen_vs_light), 0.0), 1.0)
+		+ minf(maxf(float(stats.armor_pen_vs_armor), 0.0), 1.0)
+		+ minf(maxf(float(stats.armor_pen_vs_air), 0.0), 1.0)) * 0.1  # 定向穿甲（半权×半权）
+	# DoT 系：chance × dps × 有效时长（上限 5 秒，×0.5 折算为期望增伤比）
+	var dot_sum: float = 0.0
+	dot_sum += minf(maxf(float(stats.burn_chance), 0.0), 1.0) \
+		* maxf(float(stats.burn_dps), 0.0) * minf(maxf(float(stats.burn_duration), 0.0), 5.0)
+	dot_sum += minf(maxf(float(stats.chem_chance), 0.0), 1.0) \
+		* maxf(float(stats.chem_dps), 0.0) * minf(maxf(float(stats.chem_duration), 0.0), 5.0)
+	dot_sum += minf(maxf(float(stats.emp_chance), 0.0), 1.0) \
+		* maxf(float(stats.emp_true_damage), 0.0) * 3.0
+	if dot_sum > 0.0:
+		# dot_sum 是"每次命中的期望附加总伤"，粗略按 4 次命中窗口折算成增伤比
+		m += minf(dot_sum * 4.0 * 0.1, 0.5)
+	return m
+
+
+## v9.x 机制折算·线性机制分：数值型字段/条件型机制的直接加分。
+## 白板全 0 → 加 0。权重集中此处便于调参（标准档：单项典型值 5~50 分）。
+static func _mechanic_flat_score(stats: UnitStats, hp: float, dps_raw: float, dps_score: float) -> float:
+	var s: float = 0.0
+	# ── 输出数值型/条件型 ──
+	s += maxf(float(stats.true_damage), 0.0) * 1.2                    # 真伤（无视护甲附加，10 真伤=12 分）
+	s += maxf(float(stats.crit_damage_bonus), 0.0) * dps_score * 0.15  # 暴伤保底分（乘区已按暴击率计期望，此为零暴击卡保底）
+	# 射程：差分法（_apply_mod_weapon_dps_gain 记 meta），白板基数不计权（v7.x 设计⑤：
+	# 索敌半径已覆盖战场，射程基数无价值），只计改造增量——白板零漂移，纯射程改造必涨
+	if stats.has_meta("mod_range_gain"):
+		s += minf(maxf(float(stats.get_meta("mod_range_gain")), 0.0), 300.0) * 0.5
+	s += maxf(float(stats.splash_radius_bonus), 0.0) * dps_score * 0.15  # 溅射半径（AOE 覆盖期望）
+	s += maxf(float(stats.attack_fort_bonus), 0.0) * dps_score * 0.15  # 对堡垒条件加成
+	s += maxf(float(stats.attack_light_bonus), 0.0) * dps_score * 0.15
+	s += maxf(float(stats.attack_air_bonus), 0.0) * dps_score * 0.15
+	s += maxf(float(stats.siege_bonus_pct), 0.0) * dps_score * 0.1     # 攻城加成
+	s += maxf(float(stats.single_target_penalty), 0.0) * dps_score * 0.2  # 平衡负项（子母弹主目标减伤）
+	# 组合技乘区（v9.1/10：burn/chem/emp/beam 增益）
+	s += maxf(float(stats.burn_dps_mult), 0.0) * dps_score * 0.3
+	s += maxf(float(stats.chem_dps_mult), 0.0) * dps_score * 0.3
+	s += maxf(float(stats.emp_true_damage_bonus), 0.0) * 1.2
+	s += maxf(float(stats.beam_damage_bonus), 0.0) * dps_score * 0.3
+	# 成长型：连击/怒气（需前置系统激活，爆发乘数按 0.1 折算期望）
+	if int(stats.combo_max) > 0:
+		s += maxf(float(stats.combo_bonus_mult), 0.0) * dps_score * 0.1
+	if int(stats.rage_max) > 0:
+		s += maxf(float(stats.rage_bonus_mult), 0.0) * dps_score * 0.1
+	# 标记系：标记易伤（chance×vuln×DPS 期望）
+	if float(stats.mark_chance) > 0.0:
+		s += minf(float(stats.mark_chance), 1.0) * maxf(float(stats.mark_vuln_bonus), 0.0) * dps_score * 0.5
+	if float(stats.crit_mark_chance) > 0.0:
+		s += minf(float(stats.crit_mark_chance), 1.0) * maxf(float(stats.crit_mark_bonus), 0.0) * dps_score * 0.3
+	if bool(stats.laser_mark_on_hit):
+		s += dps_score * 0.05
+	# 纳米（百分比削血）：按 HP 期望折算
+	s += minf(maxf(float(stats.nano_chance), 0.0), 1.0) \
+		* minf(maxf(float(stats.nano_pct), 0.0), 0.5) * hp * 2.2
+	# 破甲叠层（每击削护甲，期望按满层折算）
+	if float(stats.armor_break_per_hit) > 0.0:
+		s += float(stats.armor_break_per_hit) * float(maxi(int(stats.armor_break_max_stacks), 1)) \
+			* dps_score * 0.12
+	# 相位转移（v10 转换型：受击相位闪避计数）
+	if bool(stats.phase_shift_counter) or float(stats.phase_shift_counter) > 0.0:
+		s += 12.0
+	# ── 反制/领域型 ──
+	s += maxf(float(stats.reflect_damage_pct), 0.0) * dps_raw * 0.5   # 反伤（受击才有，×0.5 折算）
+	s += float(maxi(int(stats.counter_battery_shots), 0)) * 15.0      # 反炮兵射击次数
+	if bool(stats.has_counter_battery):
+		s += 20.0                                                      # 反炮兵标记（bool 型改造保底分）
+	s += maxf(float(stats.death_heal_allies_pct), 0.0) * hp * 0.15    # 亡语治疗
+	s += maxf(float(stats.minefield_damage), 0.0) * 0.4               # 布雷伤害
+	s += maxf(float(stats.slow_aura_pct), 0.0) * maxf(float(stats.slow_aura_radius), 0.0) * 20.0  # 减速领域
+	s += maxf(float(stats.command_aura_bonus), 0.0) * 25.0            # 指挥光环
+	s += maxf(float(stats.fort_shelter_aura), 0.0) * 10.0             # 堡垒掩体光环
+	s += maxf(float(stats.salvage_repair_pct), 0.0) * hp * 0.2        # 残骸回收维修
+	# 电子劫持（v10 转换型）：按领域半径×占空比折算
+	if float(stats.hijack_aura_radius) > 0.0 and float(stats.hijack_aura_cd) > 0.0:
+		var hj_duty: float = float(stats.hijack_aura_duration) / float(stats.hijack_aura_cd)
+		s += float(stats.hijack_aura_radius) * 0.01 * clampf(hj_duty, 0.0, 1.0) * 15.0
+	# ── 部署价值（部署快=更早参战输出）──
+	s += maxf(-float(stats.deploy_delay_bonus), 0.0) * 80.0           # move_speed 类改造落点（重定向减部署延迟）
+	# deploy_speed 差分增益（build_unit_stats_for_power_preview 写入 meta，白板差=0）
+	if stats.has_meta("mod_deploy_speed_gain"):
+		s += maxf(float(stats.get_meta("mod_deploy_speed_gain")), 0.0) * 8.0
+	return s
 
 
 ## 预览：给卡牌额外装一个改造后的战力（不真正写入养成数据）。
