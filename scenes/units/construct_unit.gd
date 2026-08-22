@@ -237,6 +237,7 @@ var _cached_single_wt: int = 0
 var _buff_strip_signature: String = ""
 var _hp_status_refresh_accum: float = 0.0   ## v9.x 血条状态图标低频刷新累加器（不 gate 模式，两种战斗都刷新）
 var _hpbar_ref: Node = null  ## v9.x（3c）：HpBar 节点引用缓存（原每 0.3s 字符串路径查找）
+var _idle_spr: Sprite2D = null  ## v9.x（3d）：待机浮动手写推进用的立绘引用缓存
 
 ## v9.x（3c 性能批次）：HpBar 引用缓存——命中免字符串路径查找；
 ## 未挂载时保持重查（与原行为一致），被释放后自动失效重查。
@@ -1618,6 +1619,11 @@ func _physics_process(delta: float) -> void:
 	_update_card_skill_bonus(delta)
 	# v7.4: 受击闪白/抖动手写动画推进（原 create_tween 改手写计时）
 	_update_hit_animations(delta)
+	# v9.x（3d）：待机浮动手写推进（原常驻循环 Tween 改 meta 参数，搭受击动画便车）
+	if _idle_spr == null or not is_instance_valid(_idle_spr):
+		_idle_spr = get_node_or_null("Sprite") as Sprite2D
+	if _idle_spr != null:
+		CardGridUnitVisuals.advance_idle_motion(_idle_spr, delta)
 	move_and_slide()
 	_clamp_inside_battlefield()
 	if not is_player and _cached_is_card_grid:

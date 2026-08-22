@@ -164,21 +164,37 @@ static func _boss_sway_idle(unit_spr: Sprite2D) -> void:
 ## 步兵轻快浮动±1.2px / 堡垒(FORT)完全不动(稳重感)。
 ## 全部走 position:y——scale 留给开火脉冲,避免两个 tween 同属性打架。
 ## 相位随机错开避免全屏同频;尊重 motion_reduce(无障碍)。
+## v9.x（3d 性能批次）:常驻循环 Tween（满场 60-110 条）改 meta 参数 + 手写推进，
+## 由单位 _physics_process 的 advance_idle_motion 驱动（搭 _update_hit_animations 便车）。
 static func _apply_idle_motion(unit_spr: Sprite2D, card: CardResource) -> void:
 	if unit_spr == null or DT.is_motion_reduce():
 		return
-	_kill_meta_tween(unit_spr, "_idle_tw")
 	var kind: int = card.combat_kind if card != null else -1
 	if kind == GC.CombatKind.FORT:
 		return  # v14: 堡垒不动——要塞/工事的厚重稳重感
 	var amp: float = 3.0 if kind == GC.CombatKind.AIR else 1.2
 	var half: float = 1.0 if kind == GC.CombatKind.AIR else (1.8 if kind == GC.CombatKind.ARMOR else 1.3)
 	half += randf() * 0.4  # 相位错开
-	var base_y: float = unit_spr.position.y
-	var tw := unit_spr.create_tween().set_loops()
-	tw.tween_property(unit_spr, "position:y", base_y - amp, half).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tw.tween_property(unit_spr, "position:y", base_y, half).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	unit_spr.set_meta("_idle_tw", tw)
+	unit_spr.set_meta("_idle_params", {
+		"base_y": unit_spr.position.y,
+		"amp": amp,
+		"half": half,
+		"t": 0.0,
+	})
+
+## v9.x（3d）：待机浮动逐帧推进——与原两段 SINE/EASE_IN_OUT 循环 Tween 逐帧等价：
+## y(t) = base_y - amp * 0.5 * (1 - cos(PI * t / half))，周期 T = 2*half。
+## 单位脚本每 physics 帧调用；无 _idle_params（堡垒/减动效）时一次 has_meta 即返回。
+static func advance_idle_motion(spr: Sprite2D, delta: float) -> void:
+	if spr == null or not spr.has_meta("_idle_params"):
+		return
+	var p: Dictionary = spr.get_meta("_idle_params")
+	var t: float = float(p["t"]) + delta
+	var half: float = float(p["half"])
+	if t >= half * 2.0:
+		t = fmod(t, half * 2.0)  # 有界化，避免长战浮点累积
+	p["t"] = t
+	spr.position.y = float(p["base_y"]) - float(p["amp"]) * 0.5 * (1.0 - cos(PI * t / half))
 
 
 ## v14: 开火冲撞——前倾冲撞(0.05s)→后坐回弹(0.08s)→归位(0.10s)。
