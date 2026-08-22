@@ -15,7 +15,9 @@ func _initialize() -> void:
 		push_warning("tests/integration directory not found; only unit tests will run.")
 
 	var runner = _GdUnitTestCIRunner.new()
-	var injected: PackedStringArray = ["--ignoreHeadlessMode", "-c", "-a", "res://tests/unit"]
+	# 首参必须是含工具名的脚本路径：CmdArgumentParser.parse 会弹空参数直到遇见
+	# 含工具名的项——缺了它则全部参数被弹光 → 空结果 → 打帮助退出 0（假绿，零测试跑过）
+	var injected: PackedStringArray = ["res://addons/gdunit4/bin/GdUnitCmdTool.gd", "--ignoreHeadlessMode", "-c", "-a", "res://tests/unit"]
 	if DirAccess.dir_exists_absolute("res://tests/integration"):
 		injected.append_array(["-a", "res://tests/integration"])
 	@warning_ignore("unsafe_property_access")

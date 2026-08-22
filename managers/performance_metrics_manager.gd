@@ -118,6 +118,9 @@ func _percentile(values: Array[float], p: float) -> float:
 
 ## v6.6: 延迟磁盘写入：通过 call_deferred 将 I/O 移出当前帧，避免阻塞战斗结算
 func _deferred_flush(reason: String) -> void:
+	# P0-4 发行门控：release 构建不向 user:// 写性能采集文件（编辑器/调试构建保持原行为）
+	if not OS.is_debug_build():
+		return
 	var payload: Dictionary = {
 		"timestamp_ms": Time.get_ticks_msec(),
 		"reason": reason,
