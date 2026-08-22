@@ -44,7 +44,7 @@ func rebuild(display_name: String, is_player: bool, card_art_width: float = -1.0
 		return
 	visible = true
 	# 字号随卡宽缩放，但限定在合理区间
-	_font_size = clampi(int(_card_art_width * FONT_SIZE_FRAC), 9, 14)
+	_font_size = clampi(int(_card_art_width * FONT_SIZE_FRAC), 10, 14)
 	# 名称条尺寸：与卡宽等宽，高度按比例
 	# _bar_rect 从 strip 局部原点(0,0) 起算；绝对定位由宿主在外部设置 position。
 	var bar_h: float = maxf(_card_art_width * NAME_BAR_HEIGHT_FRAC, 14.0)

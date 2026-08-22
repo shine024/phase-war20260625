@@ -69,7 +69,7 @@ static func grant(reward: Dictionary, resource_managers: Dictionary = {}) -> boo
 			return false
 
 		"card":
-			ManagerLazyLoader.ensure_loaded("drop")  # v7.x: DropManager 已改懒加载
+			ManagerLazyLoader.ensure_loaded("drop")  # DropManager 为 autoload+别名双层（ensure_loaded 幂等）
 			var dm: Node = resource_managers.get("DropManager")
 			if dm == null:
 				dm = _get_autoload("/root/DropManager")
@@ -122,7 +122,7 @@ static func _grant_legacy_format(reward: Dictionary, resource_managers: Dictiona
 				fsm.add_reputation(String(fid), int(rep[fid]))
 			granted = true
 	# 稀有/神话卡（rare_card/mythic_card/legendary_card → 从对应池抽卡发放）
-	ManagerLazyLoader.ensure_loaded("drop")  # v7.x: DropManager 已改懒加载
+	ManagerLazyLoader.ensure_loaded("drop")  # DropManager 为 autoload+别名双层（ensure_loaded 幂等）
 	var dm: Node = resource_managers.get("DropManager")
 	if dm == null:
 		dm = _get_autoload("/root/DropManager")

@@ -16,7 +16,7 @@ static func migrate_v7_to_v8(data: Dictionary, debug_log: bool = false) -> void:
 		var bp: Dictionary = data[SaveConstants.SK_BLUEPRINT]
 		# 养成相关字段清空（实例化后会重建）
 		for field in ["blueprint_mods", "blueprint_inherit_bonus", "blueprint_evolution_hp_floor",
-						"blueprint_weapon_slots", "blueprint_enemy_origin_mod",
+						"blueprint_weapon_slots",
 						"blueprint_intel_branch_bonus"]:
 			if bp.has(field):
 				bp[field] = {}

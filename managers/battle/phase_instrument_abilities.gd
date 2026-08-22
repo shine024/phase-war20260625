@@ -387,19 +387,6 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 	var dmg_mult: float = float(params.get("dmg_mult", 1.0))
 	var base_dmg: float = _compute_nuclear_damage(owner) * dmg_mult
 	var targets: Array = _get_targets(owner)
-	# [NUKE-DIAG] 诊断核子轰炸目标阵营是否正确（排查"波及我方"现象）
-	# 预期：PLAYER owner 的 targets 应全部 is_player=false（敌方）；ENEMY owner 应全部 is_player=true（我方）
-	if OS.is_debug_build():
-		var wrong_side: int = 0
-		for _t in targets:
-			if _t == null or not is_instance_valid(_t):
-				continue
-			var _tp: bool = bool(_t.get("is_player")) if "is_player" in _t else false
-			if owner == Owner.PLAYER and _tp:
-				wrong_side += 1
-			elif owner == Owner.ENEMY and not _tp:
-				wrong_side += 1
-		print("[NUKE-DIAG] 相位仪核爆 owner=%s 目标数=%d 伤害=%.0f 错阵营目标=%d" % [_owner_key(owner), targets.size(), base_dmg, wrong_side])
 	# v6.6 正式动画：分两阶段——先标记（警告），延迟后核爆 + 伤害结算
 	# v8.1: emit warning 信号供 BattleSpectacle 播放全屏红屏预警
 	var first_pos: Vector2 = Vector2.ZERO
@@ -408,22 +395,16 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 	_emit_ability_triggered("nuclear_bombardment", "warning",
 		{"damage": base_dmg, "position": first_pos, "count": targets.size(), "is_enemy": owner == Owner.ENEMY})
 	# owner 选色：玩家=紫青能量调（与战术核武橙白写实核爆互补色，差异最大）；敌方=红橙
-	# 去蘑菇云（核武专属符号），改能量光柱从天而降——核子轰炸=科幻能量武器，非核武器
+	# v19-R33: 落实本函数原有设计注释"去蘑菇云（核武专属符号），改能量光柱从天而降——
+	# 核子轰炸=科幻能量武器，非核武器"。原实现每发复用完整战术核爆 VFX（火球+冲击波+
+	# 蘑菇云+焦痕，单点光效 388-614px），视觉读作"区域无差别毁灭"，与每发仅命中单目标
+	# （take_damage 无范围伤害）不符——交战混站位时被玩家读作"敌我都攻击"（历代以
+	# size_scale 0.6+缩环打补丁未解决根因）。现为点状能量打击：光柱+紧凑爆闪+地面环。
 	var mark_color: Color = Color(0.6, 0.3, 1.0, 1.0) if owner == Owner.PLAYER else Color(1.0, 0.2, 0.2, 1.0)
 	var shock_color: Color = Color(0.3, 0.7, 1.0, 0.85) if owner == Owner.PLAYER else Color(1.0, 0.4, 0.2, 0.85)
 	var beam_color: Color = Color(0.5, 0.6, 1.0, 0.7) if owner == Owner.PLAYER else Color(1.0, 0.5, 0.3, 0.7)
-	var layer_count: int = 9 if owner == Owner.PLAYER else 3
-	var layer_critical: bool = true if owner == Owner.PLAYER else false
 	var mark_delay: float = 0.35
 	var fired_impact: bool = false
-	# 预加载核爆贴图包（循环外加载一次，循环内复用；缺失的贴图自动跳过对应层）
-	var nuke_textures: Dictionary = _load_nuke_texture_pack()
-	# 核爆配色（与战术核武统一橙白写实，但保留 owner 分流供将来扩展）
-	var nuke_colors: Dictionary = {
-		"shock": shock_color,
-		"aftershock": Color(0.9, 0.5, 0.2, 0.5) if owner == Owner.PLAYER else Color(1.0, 0.4, 0.2, 0.5),
-		"smoke": Color(0.35, 0.32, 0.30, 0.6),
-	}
 	# v9.5: 计算发射方阵地位置（导弹从这里飞出）——取 owner 方单位的平均位置
 	# 玩家版=从我方阵地发射导弹飞向敌方；敌方版=从 boss/敌方区发射飞向我方
 	var launch_pos: Vector2 = first_pos  # 默认用首个目标位置兜底
@@ -454,8 +435,8 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 		var captured_pos = epos
 		var captured_owner = owner
 		var captured_dmg = base_dmg
-		var captured_nuke_tex = nuke_textures
-		var captured_nuke_colors = nuke_colors
+		var captured_beam_color = beam_color
+		var captured_shock_color = shock_color
 		var captured_fired = fired_impact  # 注意：bool 按值拷贝，回调内修改不影响外层
 		# 每发导弹错开 0.06s（多点核爆=多枚导弹依次发射，齐射感）
 		var launch_delay: float = float(targets.find(e)) * 0.06
@@ -476,8 +457,11 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 					var cur_pos: Vector2 = land_pos
 					if is_instance_valid(captured_enemy) and captured_enemy is Node2D:
 						cur_pos = (captured_enemy as Node2D).global_position
-					# 完整核爆效果（火球+冲击波+蘑菇云帧动画+焦痕），复用战术核武同一套 VFX
-					VfxImpactFactory.spawn_nuclear_explosion(_battlefield, cur_pos, captured_nuke_tex, captured_nuke_colors, 0.6)
+					# v19-R33: 点状能量打击（光柱+紧凑爆闪+地面环，单点足迹 ~210px）——
+					# 蘑菇云/核爆白闪是战术核武专属符号，留给它用
+					VfxImpactFactory.spawn_energy_pillar(_battlefield, cur_pos, captured_beam_color, 300.0, 0.5)
+					VfxImpactFactory.spawn_impact_sprite(_battlefield, cur_pos, VfxImpactFactory.PARTICLE_TEX_IMPACT_ENERGY, 0.9, 0.35)
+					VfxImpactFactory.spawn_shockwave(_battlefield, cur_pos, 90.0, captured_shock_color)
 					if is_instance_valid(captured_enemy):
 						CombatFeedback.show_damage(cur_pos, captured_dmg, captured_enemy, true, "critical")
 						if captured_enemy.has_method("take_damage"):
@@ -498,35 +482,6 @@ static func _fire_nuclear_bombardment(owner: Owner, params: Dictionary) -> void:
 	_show_toast(_owner_msg(owner,
 		"☢ 核子轰炸！敌方全体受到 %.0f 伤害" % base_dmg,
 		"☢ 敌方核子轰炸！我方全体受到 %.0f 伤害" % base_dmg))
-
-
-## 预加载核爆贴图包（供 spawn_nuclear_explosion 使用）。
-## 火球/冲击波/焦痕/蘑菇云单帧/蘑菇云9帧序列，缺失的自动跳过（部分核爆仍可见）。
-static func _load_nuke_texture_pack() -> Dictionary:
-	var pack: Dictionary = {}
-	var dir := "res://assets/effects/nuclear/"
-	# 单帧贴图
-	for key in ["fireball", "shockwave", "burn", "mushroom"]:
-		var path: String = dir + "nuke_" + str(key) + ".png"
-		if ResourceLoader.exists(path):
-			pack[key] = load(path)
-	# 蘑菇云9帧序列（精灵表切割产物）
-	var frames: Array = []
-	for i in 9:
-		var fpath := dir + "nuke_mushroom_f" + str(i) + ".png"
-		if ResourceLoader.exists(fpath):
-			var tex = load(fpath)
-			if tex != null:
-				frames.append(tex)
-			else:
-				frames.clear()
-				break
-		else:
-			frames.clear()
-			break
-	if not frames.is_empty():
-		pack["mushroom_frames"] = frames
-	return pack
 
 
 static func _compute_nuclear_damage(owner: Owner) -> float:

@@ -9,7 +9,6 @@ class_name UnitStatsTable
 ## 保留函数签名做兼容。
 
 const GC = preload("res://resources/game_constants.gd")
-const BattleCardV3 = preload("res://data/battle_card_v3.gd")
 # v9.1: 组合技套路检测（单卡改造组合 → 激活套路增益）
 const ComboTactics = preload("res://data/combo_tactics.gd")
 # 卡片定时技能：派生 law_family meta（阵营→flame/thunder/void），供 source_tag 触发判定
@@ -976,45 +975,6 @@ static func get_combat_kind_growth_bias(kind: int) -> Dictionary:
 			return {"hp_bias": 0.04, "dmg_bias": 0.04}
 
 
-# ─────────────────────────────────────────────
-#  辅助：射程/攻速描述
-# ─────────────────────────────────────────────
-
-static func _describe_weapon_range(range_px: float) -> String:
-	if range_px < 95.0:
-		return "短"
-	if range_px < 135.0:
-		return "中"
-	if range_px < 175.0:
-		return "长"
-	if range_px < 225.0:
-		return "远"
-	return "极远"
-
-static func _describe_attack_speed(interval_sec: float) -> String:
-	if interval_sec <= 0.32:
-		return "极快"
-	if interval_sec <= 0.5:
-		return "快"
-	if interval_sec <= 0.95:
-		return "中"
-	if interval_sec <= 1.55:
-		return "慢"
-	return "极慢"
-
-## 用于战斗单位卡文案
-## 平衡修复（2026-08-16）：移除时代倍率乘算——v6.8 起我方单位不按时代放大数值，
-## 统一卡表 base_* 字段已按时代标定，此处再乘 era_damage_multiplier 会双重计数
-## （近未来显示伤害虚高 1.8×）。era_override 参数保留签名兼容但不再参与缩放。
-@warning_ignore("unused_parameter")
-static func summarize_weapon_stats_from_card(card: CardResource, era_override: int = -1) -> String:
-	var atk_light: float = card.attack_light
-	var atk_armor: float = card.attack_armor
-	var atk_air: float = card.attack_air
-	var rng: float = float(card.range_value * 100.0)  # 格转像素
-	var ivl: float = 1.0 / card.attack_speed if card.attack_speed > 0 else 1.0
-	var total_dmg = atk_light + atk_armor + atk_air
-	return "伤害 %d｜射程 %s｜攻速 %s" % [int(round(total_dmg)), _describe_weapon_range(rng), _describe_attack_speed(ivl)]
 
 
 # ─────────────────────────────────────────────
@@ -1088,97 +1048,12 @@ const _PLATFORM_DEFENSE: Dictionary = {
 	12: 10, # COMMAND
 }
 
-## 旧 WeaponType → 防御值
-const _WEAPON_DEFENSE: Dictionary = {
-	1: 1,   # RIFLE
-	5: 1,   # SHOTGUN
-	8: 1,   # LASER
-	2: 2,   # MG
-	7: 2,   # FLAK
-	3: 1,   # ROCKET
-	9: 1,   # MISSILE
-	10: 2,  # OMEGA_CANNON
-	11: 2,  # RAIL_CANNON
-}
 
 
 # ─────────────────────────────────────────────
 #  旧接口兼容桥接
 # ─────────────────────────────────────────────
 
-## 获取平台基础数据（旧接口兼容）
-static func get_platform_base(pt: int) -> Dictionary:
-	var d: Dictionary = _PLATFORM_BASE.get(pt, {})
-	if d.is_empty():
-		return {"speed": 80.0, "hp": 100.0, "stationary": false}
-	return d.duplicate()
-
-
-## 获取平台防御值（旧接口兼容）
-static func get_platform_defense(pt: int) -> int:
-	return int(_PLATFORM_DEFENSE.get(pt, 8))
-
-
-## 获取武器防御值（旧接口兼容）
-static func get_weapon_defense(wt: int) -> int:
-	return int(_WEAPON_DEFENSE.get(wt, 0))
-
-
-## 获取组合防御值（旧接口兼容）
-static func get_combined_defense(platform_type: int, weapon_type: int) -> int:
-	return get_platform_defense(platform_type) + get_weapon_defense(weapon_type)
-
-
-## 获取武器基础数据（旧接口兼容）
-static func get_weapon_base(wt: int, era: int = -1) -> Dictionary:
-	var base: Dictionary = _WEAPON_BASE.get(wt, {"damage": 10.0, "range": 120.0, "interval": 1.0}).duplicate()
-	if era < 0:
-		return base
-	var e: int = clampi(era, 0, 4)
-	base["damage"] = float(base["damage"]) * BattleCardV3.era_damage_multiplier(e)
-	base["range"] = float(base["range"]) * BattleCardV3.era_range_multiplier(e)
-	return base
-
-
-## 旧接口：武器统计摘要
-static func summarize_weapon_stats_weapon_row(wt: int, era: int = -1) -> String:
-	var w: Dictionary = get_weapon_base(wt, era)
-	var dmg: int = int(round(float(w["damage"])))
-	return "伤害 %d｜射程 %s｜攻速 %s" % [dmg, _describe_weapon_range(float(w["range"])), _describe_attack_speed(float(w["interval"]))]
-
-
-## 从 PlatformType + WeaponType 构造临时 CardResource，再调用 build_stats_from_card
-static func _make_compat_card(platform_type: int, weapon_type: int, era: int) -> CardResource:
-	var p: Dictionary = _PLATFORM_BASE.get(platform_type, {"speed": 80.0, "hp": 100.0, "stationary": false})
-	var w: Dictionary = _WEAPON_BASE.get(weapon_type, {"damage": 10.0, "range": 120.0, "interval": 1.0})
-	var c := CardResource.new()
-	c.card_type = GC.CardType.COMBAT_UNIT
-	c.era = era
-	c.combat_kind = int(PLATFORM_TO_COMBAT_KIND.get(platform_type, 1))
-	c.platform_type = platform_type
-	c.legacy_weapon_type = weapon_type
-	c.weapon_type = weapon_type
-	c.base_hp = float(p.get("hp", 100.0))
-	c.base_speed = float(p.get("speed", 80.0))
-	c.range_value = max(1, int(round(float(w.get("range", 120.0)) / 100.0)))
-	c.attack_speed = 1.0 / maxf(0.001, float(w.get("interval", 1.0)))
-	var dmg: float = float(w.get("damage", 10.0))
-	c.attack_light = dmg
-	c.attack_armor = dmg * 0.8
-	c.attack_air = dmg * 0.7
-	var pd: float = float(_PLATFORM_DEFENSE.get(platform_type, 8))
-	c.defense_light = pd
-	c.defense_armor = pd * 1.2
-	c.defense_air = pd * 0.6
-	return c
-
-
-## @deprecated 旧 build_stats(platform_type, weapon_type, era)，内部已转为调用 build_stats_from_card
-static func build_stats(platform_type: int, weapon_type: int, era: int = -1) -> UnitStats:
-	var card := _make_compat_card(platform_type, weapon_type, era)
-	var stats := build_stats_from_card(card, era)
-	stats.platform_type = platform_type
-	return stats
 
 
 ## @deprecated 旧 build_multi_stats，内部已转为调用 build_stats_from_card
@@ -1233,7 +1108,3 @@ static func build_multi_stats(platform_type: int, weapon_types: Array, era: int 
 	return stats
 
 
-## @deprecated 旧 get_platform_growth_bias，映射到新 get_combat_kind_growth_bias
-static func get_platform_growth_bias(pt: int) -> Dictionary:
-	var kind: int = int(PLATFORM_TO_COMBAT_KIND.get(pt, 0))
-	return get_combat_kind_growth_bias(kind)

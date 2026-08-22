@@ -44,28 +44,16 @@ var _enemy_leaderboard: EnemyPhaseLeaderboard
 var _current_enemy_tab: int = 0  # 敌方相位师当前子标签
 var _selected_master_id: String = ""  # 当前选中的相位师ID
 
-# NPC相位师战斗配置：根据关卡进度使用对应时代的卡牌
-# 格式：{ name: 相位师名, faction: 势力ID, platform_id: 平台卡ID, weapon_ids: [武器卡ID列表], era: 时代 }
-const NPC_PHASE_MASTERS: Array = [
-	{"name": "终焉之镰",   "faction": "void_research",     "era": "future",   "platform": "platform_future_heavy", "weapons": ["weapon_future_plasma", "weapon_future_rail", "weapon_future_laser"]},
-	{"name": "炽焰星痕",   "faction": "nova_arms",         "era": "future",   "platform": "platform_future_medium", "weapons": ["weapon_future_laser", "weapon_future_plasma"]},
-	{"name": "雷霆判官",   "faction": "aether_dynamics",  "era": "cold",     "platform": "platform_cold_medium",   "weapons": ["weapon_cold_missile", "weapon_cold_sniper", "weapon_cold_lmg"]},
-	{"name": "寒霜壁垒",   "faction": "iron_wall_corp",    "era": "ww2",      "platform": "platform_ww2_heavy",    "weapons": ["weapon_ww2_mg", "weapon_ww2_at", "weapon_ww2_rifle"]},
-	{"name": "量子幽灵",   "faction": "quantum_logistics", "era": "modern",   "platform": "platform_modern_medium", "weapons": ["weapon_modern_missile", "weapon_modern_sniper"]},
-	{"name": "虚空低语",   "faction": "helix_recon",       "era": "future",   "platform": "platform_future_light", "weapons": ["weapon_future_laser", "weapon_future_rail"]},
-	{"name": "边境开拓者", "faction": "frontier_union",    "era": "ww2",      "platform": "platform_ww2_light",    "weapons": ["weapon_ww2_smg", "weapon_ww2_mg"]},
-]
+# NPC相位师战斗配置 —— 单一真理源在 data/npc_phase_masters.gd（此处仅委托）
+const NpcPhaseMasters = preload("res://data/npc_phase_masters.gd")
 
 ## 获取当前活跃的相位师配置（基于排行榜前几名的NPC）
 func get_active_phase_masters() -> Array:
-	return NPC_PHASE_MASTERS.duplicate()
+	return NpcPhaseMasters.get_all()
 
 ## 根据相位师名字获取配置
 func get_phase_master_config(name: String) -> Dictionary:
-	for config in NPC_PHASE_MASTERS:
-		if config.get("name") == name:
-			return config
-	return {}
+	return NpcPhaseMasters.get_by_name(name)
 
 func _ready() -> void:
 	# v7.x 面板统一：MEDIUM 档 + 金色签名框架 + PanelChrome 标题栏（右上 ✕ 关闭）

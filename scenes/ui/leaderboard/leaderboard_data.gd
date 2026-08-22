@@ -12,16 +12,8 @@ class_name LeaderboardData
 ##   - get_phase_master_config(name) -> Dictionary
 ##   - refresh() -> void
 
-# NPC相位师战斗配置（用于相位师遭遇战的卡牌选择，非排行榜显示数据）
-const NPC_PHASE_MASTERS: Array = [
-	{"name": "终焉之镰",   "faction": "void_research",     "era": "future",   "platform": "platform_future_heavy"},
-	{"name": "炽焰星痕",   "faction": "nova_arms",         "era": "future",   "platform": "platform_future_medium"},
-	{"name": "雷霆判官",   "faction": "aether_dynamics",   "era": "cold",     "platform": "platform_cold_medium"},
-	{"name": "寒霜壁垒",   "faction": "iron_wall_corp",    "era": "ww2",      "platform": "platform_ww2_heavy"},
-	{"name": "量子幽灵",   "faction": "quantum_logistics", "era": "modern",   "platform": "platform_modern_medium"},
-	{"name": "虚空低语",   "faction": "helix_recon",       "era": "future",   "platform": "platform_future_light"},
-	{"name": "边境开拓者", "faction": "frontier_union",    "era": "ww2",      "platform": "platform_ww2_light"},
-]
+# NPC相位师战斗配置 —— 单一真理源在 data/npc_phase_masters.gd（此处仅委托）
+const NpcPhaseMasters = preload("res://data/npc_phase_masters.gd")
 
 # 各公司势力领地范围（静态配置，仅用于 FSM 不可用时的 fallback）
 const FACTION_RANGES: Array = [
@@ -40,14 +32,11 @@ var _player_data: Array = []
 
 ## 获取当前活跃的相位师配置（用于遭遇战卡牌选择，非排行榜显示）
 func get_active_phase_masters() -> Array:
-	return NPC_PHASE_MASTERS.duplicate()
+	return NpcPhaseMasters.get_all()
 
 ## 根据相位师名字获取配置
 func get_phase_master_config(p_name: String) -> Dictionary:
-	for config in NPC_PHASE_MASTERS:
-		if config.get("name") == p_name:
-			return config
-	return {}
+	return NpcPhaseMasters.get_by_name(p_name)
 
 ## 获取公司势力排名数据
 func get_faction_leaderboard() -> Array:

@@ -640,6 +640,11 @@ func _grant_new_game_starter_knowledge() -> void:
 		if law.is_empty():
 			continue
 		add_knowledge(knowledge_key_for_law_id(law_id), amount * 3)
+	# 开局赠送 starter 符文（add_owned_rune 自带去重，重复调用安全）
+	var pim: Node = get_node_or_null("/root/PhaseInstrumentManager")
+	if pim != null and pim.has_method("add_owned_rune"):
+		for rune_id in GameConstants.NEW_GAME_STARTER_RUNE_IDS:
+			pim.add_owned_rune(rune_id)
 
 ## ---- 存档 ----
 

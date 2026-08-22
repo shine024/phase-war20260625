@@ -28,7 +28,6 @@ const E1_MIN_ENHANCE_LEVEL: int = 5       ## 基础进化：强化至少Lv5
 const E1_MIN_MOD_COUNT: int = 2            ## 基础进化：至少装2个MOD
 const E2_MIN_ENHANCE_LEVEL: int = 8        ## 势力分支：强化至少Lv8
 const E2_MIN_MOD_COUNT: int = 5             ## 势力分支：至少装5个MOD
-const E2_REQUIRE_ENEMY_ORIGIN_MOD: bool = true  ## 势力分支：必须有1个敌源MOD
 const E2_FACTION_LEVEL_REQUIRED: int = 3        ## 势力分支：目标势力需达到Lv3（声望约1200+）
 
 const EVOLVE_REASON_ZH: Dictionary = {
@@ -39,7 +38,6 @@ const EVOLVE_REASON_ZH: Dictionary = {
 	"target_not_in_path": "目标不在该卡进化路线中",
 	"enhance_not_enough": "强化等级不足（基础进化需Lv5，势力分支需Lv8）",
 	"mod_not_enough": "改造模块不足（基础进化需2个，势力分支需5个）",
-	"enemy_mod_not_enough": "未安装敌源改造模块（势力分支进化要求）",
 	"power_not_enough": "培养战力未达标",
 	"cross_class": "不能跨类型进化",
 	"intel_not_full": "目标情报未满100%（已废弃）",
@@ -685,9 +683,6 @@ static func get_enhance_requirement(stage: String) -> int:
 
 static func get_mod_requirement(stage: String) -> int:
 	return E2_MIN_MOD_COUNT if stage == "e2" else E1_MIN_MOD_COUNT
-
-static func get_enemy_mod_required(stage: String) -> bool:
-	return E2_REQUIRE_ENEMY_ORIGIN_MOD if stage == "e2" else false
 
 static func get_faction_level_required(stage: String) -> int:
 	return E2_FACTION_LEVEL_REQUIRED if stage == "e2" else 0

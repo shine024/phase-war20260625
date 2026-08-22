@@ -134,7 +134,6 @@ func _cached_load(path: String, type_hint: int = -1) -> Resource:
 	return res
 
 var _presentation_card_grid: bool = false
-var _buff_label_refresh_accum: float = 0.0  ## v7.x 漂浮 buff 标签低频刷新累加器
 var _hp_status_refresh_accum: float = 0.0   ## v9.x 血条状态图标低频刷新累加器（不 gate 模式，两种战斗都刷新）
 var _buff_strip_timer: float = 0.0  ## v8.x buff/改造条周期刷新累加器（与 construct_unit 对齐）
 var _buff_strip_signature: String = ""  ## v8.x buff_strip signature 去重（避免无变化时重建）
@@ -946,13 +945,8 @@ func _physics_process(delta: float) -> void:
 	_update_fort_shield_aura(delta)
 	# v7.4: 受击闪白/抖动手写动画推进（与 construct_unit 对齐）
 	_update_hit_animations(delta)
-	# v7.x 战场视觉反馈：低频刷新漂浮 buff/debuff 标签（标记过期需自动消失）
+	# v8.x: buff/改造条周期刷新（与 construct_unit 对齐，敌方受光环时卡底图标才更新）
 	if _cached_is_card_grid:
-		_buff_label_refresh_accum += delta
-		if _buff_label_refresh_accum >= 0.3:
-			_buff_label_refresh_accum = 0.0
-			_refresh_buff_labels()
-		# v8.x: buff/改造条周期刷新（与 construct_unit 对齐，敌方受光环时卡底图标才更新）
 		_buff_strip_timer += delta
 		if _buff_strip_timer >= 0.25:
 			_buff_strip_timer = 0.0
@@ -1478,16 +1472,6 @@ func _update_card_grid_buff_strip(force: bool = false) -> void:
 	var spr: Sprite2D = get_node_or_null("Sprite2D") as Sprite2D
 	CardGridUnitVisuals.sync_buff_strip(self, self, spr)
 	CardGridUnitVisuals.sync_mod_strip(self, self, spr)
-
-## v7.x: 低频刷新漂浮 buff/debuff 标签（仅格子战）
-## v9.x: 已停用——状态图标改由血条上方矢量图标统一显示（refresh_status_icons），
-##       避免卡顶文字标签与血条图标重复。保留函数体便于回退。
-func _refresh_buff_labels() -> void:
-	return
-	if not _presentation_card_grid:
-		return
-	var spr: Sprite2D = get_node_or_null("Sprite2D") as Sprite2D
-	CardGridUnitVisuals.sync_buff_labels(self, spr, self)
 
 func take_damage(amount: float, attacker: Variant = null) -> void:
 	# v7.x 战场视觉反馈：记录最后攻击者，供 unit_killed 信号携带（击杀定帧/连杀提示依赖）

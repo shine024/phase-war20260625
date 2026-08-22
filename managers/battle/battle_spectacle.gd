@@ -851,7 +851,8 @@ func _on_mechanism_nuclear_launched(from_pos: Vector2, target_pos: Vector2, owne
 			after_tw.tween_interval(0.08)
 			after_tw.tween_callback(func():
 				if is_instance_valid(parent):
-					VfxImpactFactory.spawn_shockwave(parent, target_pos, 320.0, aftershock_color))
+					# v19-R32 超屏修复：320→240（aspect2.0 椭圆纵向原达781px超580视口高）
+					VfxImpactFactory.spawn_shockwave(parent, target_pos, 240.0, aftershock_color))
 			# ⑤蘑菇云：优先帧动画（AI精灵表切割的多帧），失败回退单 sprite + tween
 			var mushroom_frames: Array = _load_nuclear_frames("nuke_mushroom_f", 9)
 			var mushroom_played: bool = false

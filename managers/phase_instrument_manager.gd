@@ -74,10 +74,10 @@ var selected_instrument_id: String = ""
 var instrument_slots: Dictionary = {} # color -> Array[CardResource | null]
 var unlocked_instrument_ids: Array[String] = []
 const PHASE_FIELD_POINTS_PER_LEVEL: int = 1
-## ⚠️ 属性点系统当前为死代码：升级会累加 unspent_phase_field_points，但全项目
-## 无分配入口（phase_field_allocations 从未被写入，恒为空字典），
-## 故 apply_phase_field_bonus_to_unit_stats 读到的加成恒为 0。等级上限 16→30 后
-## 该数字会变大但无害（没出口）。待补 UI 分配按钮后才会真正生效。
+## 属性点系统（v8.x 已全链路接通）：相位场升级累加 unspent_phase_field_points，
+## phase_instrument_selector 的分配按钮区写入 phase_field_allocations，
+## apply_phase_field_bonus_to_unit_stats 在 battle_spawn_system/master_platform_power 消费。
+## 存档字段：unspent_phase_field_points / phase_field_allocations。
 const PHASE_FIELD_GROWTH_RULES: Dictionary = {
 	"atk_pct": {"label": "攻击", "per_point": 0.02, "display_unit": "%"},
 	"def_pct": {"label": "防御", "per_point": 0.02, "display_unit": "%"},
@@ -1549,7 +1549,12 @@ func _can_equip_card_to_color(card: CardResource, color: String) -> bool:
 		var kind: String = String(law.get("kind", ""))
 		if color == "red":
 			return kind == "active"
-		return kind == "passive"
+		# v6.8 起我方被动战斗加成已停用：ALLY 目标的被动（加成我方单位）无战斗效果，
+		# 不可装入蓝槽（ENEMY/BOTH 目标的被动 = 减益敌方，经 enemy_unit 消费，仍有效）。
+		if kind == "passive":
+			var side: String = String((law.get("runtime_tags", {}) as Dictionary).get("target_side", "ALLY"))
+			return side == "ENEMY" or side == "BOTH"
+		return false
 	return false
 
 func get_card_by_id(card_id: String) -> CardResource:

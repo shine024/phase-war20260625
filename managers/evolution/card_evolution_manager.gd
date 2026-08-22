@@ -230,16 +230,6 @@ static func can_evolve_blueprint(card_id_or_instance: String, target_card_id: St
 		"current_text": str(mod_count),
 		"required_text": str(mod_req),
 	})
-	if UnitLineageConfig.get_enemy_mod_required(stage):
-		var has_eom: bool = ModManager.has_enemy_origin_mod(card_id, bpm_ref.blueprint_mods)
-		conditions.append({
-			"key": "enemy_mod",
-			"met": has_eom,
-			"current_text": "持有" if has_eom else "缺失",
-			"required_text": "持有",
-			## v9.x：指明获取渠道（EOM 碎片战后掉落，集齐解锁）
-			"detail": "收集敌源改造碎片解锁（战后掉落，敌源MOD面板查看进度）",
-		})
 
 	## 势力贡献度检查：E2（势力分支）需要目标势力达到指定等级
 	var required_faction_lv: int = UnitLineageConfig.get_faction_level_required(stage)
@@ -356,7 +346,6 @@ static func _evolve_instance(source_instance_id: String, target_card_id: String,
 	var source_mods: Array = source_inst.mods.duplicate(true)
 	var source_enhance_lvl: int = source_inst.enhance_level
 	var source_module_slots: Array = source_inst.module_slots.duplicate(true)
-	var source_eom: String = ir.get_enemy_origin_mod(source_instance_id)
 	var source_intel_bonus: Dictionary = ir.get_intel_branch_bonus(source_instance_id)
 
 	var inherit_ratio: float = float(can_info.get("inherit_ratio", 0.30))
@@ -382,9 +371,7 @@ static func _evolve_instance(source_instance_id: String, target_card_id: String,
 		var prev_floor: float = ir.get_evolution_hp_floor(target_inst.instance_id)
 		ir.set_evolution_hp_floor(target_inst.instance_id, maxf(prev_floor, floor_hp))
 
-	# 敌源MOD + 情报分支奖励迁移
-	if not source_eom.is_empty():
-		ir.set_enemy_origin_mod(target_inst.instance_id, source_eom)
+	# 情报分支奖励迁移
 	if not source_intel_bonus.is_empty():
 		ir.set_intel_branch_bonus(target_inst.instance_id, source_intel_bonus.duplicate(true))
 

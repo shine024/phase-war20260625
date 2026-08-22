@@ -174,29 +174,6 @@ static func get_active_mechanisms(team_combos: Array) -> Array:
 				mechs.append(ms)
 	return mechs
 
-## 获取所有套路配套改造 id 的扁平集合（供 modification_registry 注册新改造时校验）。
-static func get_all_combo_mod_ids() -> Array:
-	var all: Array = []
-	for combo_id in COMBOS.keys():
-		for mid in COMBOS[combo_id].get("mod_ids", []):
-			var ms: String = String(mid)
-			if not all.has(ms):
-				all.append(ms)
-	return all
-
-## v9.1 获取套路图标纹理（icon_tex 字段，无资源返回 null，调用方回退 emoji）。
-static var _icon_tex_cache: Dictionary = {}
-static func get_combo_icon_texture(combo_id: String) -> Texture2D:
-	if _icon_tex_cache.has(combo_id):
-		return _icon_tex_cache[combo_id]
-	var def: Dictionary = COMBOS.get(combo_id, {})
-	var path: String = String(def.get("icon_tex", ""))
-	if path.is_empty() or not ResourceLoader.exists(path):
-		_icon_tex_cache[combo_id] = null
-		return null
-	var tex: Texture2D = load(path)
-	_icon_tex_cache[combo_id] = tex
-	return tex
 
 # ─────────────────────────────────────────────
 #  辅助

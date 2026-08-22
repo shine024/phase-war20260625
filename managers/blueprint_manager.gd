@@ -81,7 +81,6 @@ var blueprint_evolution_hp_floor: Dictionary = {}
 ## card_id -> 最近一次军衔缓存 {rank_id, rank_name, power_score}
 var blueprint_rank_cache: Dictionary = {}
 ## card_id -> 敌源MOD ID
-var blueprint_enemy_origin_mod: Dictionary = {}
 ## v6.6: card_id -> 情报进化分支奖励 {extra_mod_slot: bool, special_ability: str}
 var blueprint_intel_branch_bonus: Dictionary = {}
 ## card_id -> 自定义武器槽位配置（用于进化/改造后的武器）
@@ -659,9 +658,6 @@ func save_state() -> Dictionary:
 	var rank_dict: Dictionary = {}
 	for k in blueprint_rank_cache:
 		rank_dict[k] = (blueprint_rank_cache[k] as Dictionary).duplicate(true)
-	var eom_dict: Dictionary = {}
-	for k in blueprint_enemy_origin_mod:
-		eom_dict[k] = String(blueprint_enemy_origin_mod[k])
 	var intel_bonus_dict: Dictionary = {}
 	for k3 in blueprint_intel_branch_bonus:
 		intel_bonus_dict[k3] = (blueprint_intel_branch_bonus[k3] as Dictionary).duplicate(true)
@@ -697,7 +693,6 @@ func save_state() -> Dictionary:
 		"blueprint_inherit_bonus": inherit_dict,
 		"blueprint_evolution_hp_floor": hp_floor_dict,
 		"blueprint_rank_cache": rank_dict,
-		"blueprint_enemy_origin_mod": eom_dict,
 		"blueprint_intel_branch_bonus": intel_bonus_dict,
 		"blueprint_weapon_slots": weapon_slots_dict,
 		"legacy_default_energy_copies_migrated": _legacy_default_energy_copies_migrated,
@@ -740,10 +735,6 @@ func load_state(data: Dictionary) -> void:
 		for k in data["blueprint_rank_cache"]:
 			if data["blueprint_rank_cache"][k] is Dictionary:
 				blueprint_rank_cache[String(k)] = (data["blueprint_rank_cache"][k] as Dictionary).duplicate(true)
-	if data.has("blueprint_enemy_origin_mod") and data["blueprint_enemy_origin_mod"] is Dictionary:
-		blueprint_enemy_origin_mod.clear()
-		for k in data["blueprint_enemy_origin_mod"]:
-			blueprint_enemy_origin_mod[String(k)] = String(data["blueprint_enemy_origin_mod"][k])
 
 	# v6.6: 情报进化分支奖励加载
 	if data.has("blueprint_intel_branch_bonus") and data["blueprint_intel_branch_bonus"] is Dictionary:
@@ -836,7 +827,6 @@ func reset_to_defaults() -> void:
 	blueprint_inherit_bonus.clear()
 	blueprint_evolution_hp_floor.clear()
 	blueprint_rank_cache.clear()
-	blueprint_enemy_origin_mod.clear()
 	blueprint_intel_branch_bonus.clear()
 	blueprint_weapon_slots.clear()
 	# v6.11: card_battle_stars.clear() 已移除（字段已删）

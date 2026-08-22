@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<testsuites id="2026-07-21" name="report_41" tests="1" failures="0" skipped="0" flaky="0" time="0.000">
-	<testsuite id="0" name="test_master_power_distribution" package="tests/unit/managers" timestamp="2026-07-21T07:29:59" hostname="localhost" tests="1" failures="0" errors="0" skipped="0" flaky="0" time="5.810">
-		<testcase name="test_print_enemy_power_distribution" classname="test_master_power_distribution" time="5.666">
-		</testcase>
-	</testsuite>
-</testsuites>

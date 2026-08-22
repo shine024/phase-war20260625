@@ -68,18 +68,3 @@ static func get_max_mod_slots() -> int:
 #   - apply_modification（option_id "offense/defense/utility" 在 ModEffects 查不到，永远失败）
 # 改造安装统一走 BlueprintManager.install_modification(card, mod_id)。
 # ModEffects.MOD_DATA（MOD_01~20）保留供 save_migration_v6 的老存档迁移映射使用。
-
-## 检查卡片是否已安装敌源改造模块（EOM_前缀）
-## v7.x 修复(M2): 与 get_modification_count 同款双 key 兼容（instance_id 与裸 card_id）。
-static func has_enemy_origin_mod(card_id: String, mods_dict: Dictionary) -> bool:
-	var mods: Array = mods_dict.get(card_id, [])
-	if mods.is_empty():
-		var hi: int = card_id.rfind("#")
-		if hi > 0:
-			mods = mods_dict.get(card_id.substr(0, hi), [])
-	if mods is Array:
-		for m in mods:
-			var entry_id = m.get("id", "") if m is Dictionary else String(m)
-			if entry_id.begins_with("EOM_"):
-				return true
-	return false

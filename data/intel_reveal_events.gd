@@ -10,8 +10,6 @@ class_name IntelRevealEvents
 # ── 揭示事件表（7类敌人 × 4档 = 28条） ─────────────────────────────
 # rewards type说明：
 #   "stat_visibility"     — 属性可见性等级提升
-#   "eom_unlock_hint"     — 敌源MOD解锁提示
-#   "eom_unlock"          — 直接解锁敌源MOD (mod_id: String)
 #   "intel_branch_hint"   — 进化分支线索文字
 #   "intel_branch_unlock" — 直接解锁进化分支 (branch_id: String)
 #   "lore_page"           — 解锁世界观页面
@@ -42,9 +40,9 @@ const REVEAL_EVENTS: Dictionary = {
 	},
 	"infantry_2": {
 		"title": "弱点破解·步兵反制",
-		"desc": "确认步兵换弹与机动转移时存在约1.5秒的防御间隙！利用此窗口可造成额外伤害。同时解锁敌源改造【步兵战术套件】。",
+		"desc": "确认步兵换弹与机动转移时存在约1.5秒的防御间隙！利用此窗口可造成额外伤害。",
 		"rewards": [
-			{"type": "eom_unlock", "mod_id": "EOM_INFANTRY_01"},
+			{"type": "stat_visibility", "value": "hidden_stats"},
 		],
 		"icon": "💥",
 	},
@@ -81,9 +79,9 @@ const REVEAL_EVENTS: Dictionary = {
 	},
 	"flame_2": {
 		"title": "弱点破解·燃料罐",
-		"desc": "火焰兵的燃料罐是致命弱点！穿甲/爆炸攻击可造成额外伤害。同时解锁敌源改造【热能抗性装甲】。",
+		"desc": "火焰兵的燃料罐是致命弱点！穿甲/爆炸攻击可造成额外伤害。",
 		"rewards": [
-			{"type": "eom_unlock", "mod_id": "EOM_FLAME_01"},
+			{"type": "stat_visibility", "value": "hidden_stats"},
 		],
 		"icon": "💥",
 	},
@@ -120,9 +118,9 @@ const REVEAL_EVENTS: Dictionary = {
 	},
 	"heavy_armor_2": {
 		"title": "弱点破解·侧后装甲",
-		"desc": "重装甲侧面和后方装甲显著薄弱！从侧后方攻击可造成额外伤害。同时解锁敌源改造【反应装甲模块】。",
+		"desc": "重装甲侧面和后方装甲显著薄弱！从侧后方攻击可造成额外伤害。",
 		"rewards": [
-			{"type": "eom_unlock", "mod_id": "EOM_ARMOR_01"},
+			{"type": "stat_visibility", "value": "hidden_stats"},
 		],
 		"icon": "💥",
 	},
@@ -159,9 +157,9 @@ const REVEAL_EVENTS: Dictionary = {
 	},
 	"artillery_2": {
 		"title": "弱点破解·装填窗口",
-		"desc": "火炮开火后有约3秒的装填窗口，此时防御降至最低！攻击可造成额外伤害。同时解锁敌源改造【弹道校准系统】。",
+		"desc": "火炮开火后有约3秒的装填窗口，此时防御降至最低！攻击可造成额外伤害。",
 		"rewards": [
-			{"type": "eom_unlock", "mod_id": "EOM_ARTILLERY_01"},
+			{"type": "stat_visibility", "value": "hidden_stats"},
 		],
 		"icon": "💥",
 	},
@@ -198,9 +196,9 @@ const REVEAL_EVENTS: Dictionary = {
 	},
 	"stealth_2": {
 		"title": "弱点破解·暴露瞬间",
-		"desc": "隐匿单位在攻击瞬间解除隐身！攻击判定后0.5秒内可造成额外伤害。同时解锁敌源改造【光学迷彩涂层】。",
+		"desc": "隐匿单位在攻击瞬间解除隐身！攻击判定后0.5秒内可造成额外伤害。",
 		"rewards": [
-			{"type": "eom_unlock", "mod_id": "EOM_STEALTH_01"},
+			{"type": "stat_visibility", "value": "hidden_stats"},
 		],
 		"icon": "💥",
 	},
@@ -239,7 +237,7 @@ const REVEAL_EVENTS: Dictionary = {
 		"title": "弱点破解·修复中断窗口",
 		"desc": "纳米核心每60秒有5秒纳米再生中断窗口，且自修复时防御降低！此时可造成额外伤害。解锁敌源改造【纳米再生核心】。",
 		"rewards": [
-			{"type": "eom_unlock", "mod_id": "EOM_BOSS_NANO"},
+			{"type": "stat_visibility", "value": "hidden_stats"},
 		],
 		"icon": "💥",
 	},
@@ -278,7 +276,7 @@ const REVEAL_EVENTS: Dictionary = {
 		"title": "弱点破解·爬升恢复期",
 		"desc": "空中单位俯冲后有固定的爬升恢复期，此时防御显著降低！防空攻击可造成额外伤害。解锁敌源改造【精确打击模块】。",
 		"rewards": [
-			{"type": "eom_unlock", "mod_id": "EOM_AIR_01"},
+			{"type": "stat_visibility", "value": "hidden_stats"},
 		],
 		"icon": "💥",
 	},

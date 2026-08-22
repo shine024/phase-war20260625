@@ -42,7 +42,6 @@ const SK_LEGACY_COMPANY_REP: String = "_legacy_company_rep"
 const SK_INTEL_MANUAL: String = "intel_manual"
 const SK_INTEL_DISCOVERY: String = "intel_discovery"
 const SK_INTEL_EVOLUTION: String = "intel_evolution"
-const SK_EOM_MANAGER: String = "eom_manager"
 # v7.x: SK_INTEL_ITEM_BAG 从 save_manager.gd:131 迁移至此集中（与其余4个情报键并列；SAV-1 常量提取初衷）
 const SK_INTEL_ITEM_BAG: String = "intel_item_bag"
 # v8.x: 相位师技能树（unlocked_nodes / spent_points / bonus_points / phase_field_level）

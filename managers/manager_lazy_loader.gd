@@ -15,34 +15,10 @@ var _manager_configs: Dictionary = {}
 ## 已加载的管理器缓存：id -> Node
 var _loaded_managers: Dictionary = {}
 
-## 核心管理器（仍在 project.godot [autoload] 中，此处仅作记录）
-const CORE_MANAGERS: Array = [
-	"SignalBus",
-	"BattleInputState",
-	"GameManager",
-	"BattleManager",
-	"SaveManager",
-	"AudioManager",
-	"EnergyManager",
-	"PhaseInstrumentManager",
-	"PhaseLawManager",
-	"BasicResourceManager",
-	"BlueprintManager",
-	"ObjectPoolManager",
-	"UILazyLoader",
-	"ManagerLazyLoader"
-]
-
 # ─── 生命周期 ───────────────────────────────────────────
 
 func _ready() -> void:
 	_ensure_configs_initialized()
-	if DEBUG_MANAGER_LAZY_LOG:
-		pass
-		# [LOG-v5.1] print("[ManagerLazyLoader] v2 初始化完成")
-		# [LOG-v5.1] print("  核心Autoload: ", CORE_MANAGERS.size(), " 个")
-		# [LOG-v5.1] print("  可延迟加载:   ", _manager_configs.size(), " 个")
-		# [LOG-v5.1] print("  Autoload总计: ", CORE_MANAGERS.size() + 1, " 个 (含ManagerLazyLoader)")
 
 func _ensure_configs_initialized() -> void:
 	if not _manager_configs.is_empty():
@@ -67,7 +43,7 @@ func _ensure_configs_initialized() -> void:
 			"priority": 1,
 			"description": "关卡进度"
 		},
-		# v7.x 性能优化：DropManager 从 autoload 改为懒加载（战斗结算/离线奖励/成就奖励时由调用方 ensure_loaded）
+		# DropManager 实际仍是 project.godot autoload——此处条目是 ensure_loaded 别名入口（命中 /root 复用，不重复实例化）
 		"drop": {
 			"node_name": "DropManager",
 			"script_path": "res://managers/drop_manager.gd",
@@ -113,9 +89,10 @@ func _ensure_configs_initialized() -> void:
 			"description": "词缀系统"
 		},
 	# ── 情报系统 (priority 3) ──
-	# v6.6 说明：以下 5 个 manager 在 project.godot 已是 autoload（启动即创建），
-	# 此处保留配置仅作为 ensure_loaded("intel_xxx") 的统一访问入口。
-	# _instantiate_manager 的 get_node_or_null 防重检查会复用 autoload 节点，不会重复创建。
+	# 情报系统 manager 说明：intel_item_bag / intel_manual 在 project.godot 已是 autoload；
+	# intel_discovery / intel_evolution 为纯懒加载（无 autoload）。此处配置统一作为
+	# ensure_loaded("intel_xxx") 的访问入口——_instantiate_manager 的 get_node_or_null
+	# 防重检查会复用 autoload 节点，不会重复创建。
 	"intel_item_bag": {
 			"node_name": "IntelItemBag",
 			"script_path": "res://managers/intel_item_bag.gd",
@@ -139,12 +116,6 @@ func _ensure_configs_initialized() -> void:
 			"script_path": "res://scripts/systems/intel_evolution_manager.gd",
 			"priority": 3,
 			"description": "情报进化分支"
-		},
-		"enemy_origin_mod": {
-			"node_name": "EnemyOriginModManager",
-			"script_path": "res://scripts/systems/enemy_origin_mod_manager.gd",
-			"priority": 3,
-			"description": "敌源改造MOD"
 		},
 		# ── 收集和强化 (priority 4) ──
 		"card_collection": {
@@ -262,30 +233,6 @@ func get_manager_by_name(node_name: String) -> Node:
 	return get_manager(id)
 
 
-# ─── 批量预加载 ─────────────────────────────────────────
-
-## 按优先级预加载：加载 priority <= max_priority 的所有管理器
-func preload_by_priority(max_priority: int) -> int:
-	var count := 0
-	for id in _manager_configs:
-		if _manager_configs[id].get("priority", 99) <= max_priority:
-			if get_manager(id):
-				count += 1
-	if count > 0:
-		if DEBUG_MANAGER_LAZY_LOG:
-			pass
-			# [LOG-v5.1] print("[ManagerLazyLoader] 预加载 priority<=", max_priority, ": ", count, " 个管理器")
-	return count
-
-
-## 预加载指定管理器列表
-func preload_managers(manager_ids: Array) -> int:
-	var count := 0
-	for id in manager_ids:
-		if get_manager(id):
-			count += 1
-	return count
-
 
 # ─── 状态查询 ───────────────────────────────────────────
 
@@ -325,17 +272,9 @@ func get_all_status() -> Dictionary:
 		result[id] = get_status(id)
 	return result
 
-## 获取核心管理器列表
-func get_core_managers() -> Array:
-	return CORE_MANAGERS.duplicate()
-
 ## 获取所有可延迟加载的管理器 ID 列表
 func get_lazy_manager_ids() -> Array:
 	return _manager_configs.keys()
-
-## 检查是否为核心管理器
-func is_core_manager(node_name: String) -> bool:
-	return node_name in CORE_MANAGERS
 
 ## 获取已加载管理器数量
 func get_loaded_count() -> int:

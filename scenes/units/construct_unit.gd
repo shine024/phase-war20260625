@@ -235,7 +235,6 @@ var _cached_single_timing: Dictionary = {}
 var _cached_single_fire_range: float = 0.0
 var _cached_single_wt: int = 0
 var _buff_strip_signature: String = ""
-var _buff_label_refresh_accum: float = 0.0  ## v7.x 漂浮 buff 标签低频刷新累加器
 var _hp_status_refresh_accum: float = 0.0   ## v9.x 血条状态图标低频刷新累加器（不 gate 模式，两种战斗都刷新）
 ## 跨实例共享的资源缓存，避免运行时重复 load()
 var _res_cache: Dictionary = {}
@@ -1615,12 +1614,6 @@ func _physics_process(delta: float) -> void:
 	_clamp_inside_battlefield()
 	if not is_player and _cached_is_card_grid:
 		velocity = Vector2.ZERO
-	# v7.x 战场视觉反馈：低频刷新漂浮 buff/debuff 标签（标记过期需自动消失）
-	if _cached_is_card_grid:
-		_buff_label_refresh_accum += delta
-		if _buff_label_refresh_accum >= 0.3:
-			_buff_label_refresh_accum = 0.0
-			_refresh_buff_labels()
 	# v9.x 血条上方状态图标（buff/debuff）：不 gate 模式，两种战斗都刷新
 	_hp_status_refresh_accum += delta
 	if _hp_status_refresh_accum >= 0.3:
@@ -1812,16 +1805,6 @@ func _update_hp_bar() -> void:
 	# v7.x: 同步刷新卡框 HP 数值 - 现在HP显示在血条内部，直接调用set_hp_text
 	if bar.has_method("set_hp_text"):
 		bar.set_hp_text(hp, stats.max_hp)
-
-## v7.x: 低频刷新漂浮 buff/debuff 标签（仅格子战）
-## v9.x: 已停用——状态图标改由血条上方矢量图标统一显示（refresh_status_icons），
-##       避免卡顶文字标签与血条图标重复。保留函数体便于回退。
-func _refresh_buff_labels() -> void:
-	return
-	if not _presentation_card_grid:
-		return
-	var spr: Sprite2D = get_node_or_null("Sprite") as Sprite2D
-	CardGridUnitVisuals.sync_buff_labels(self, spr, self)
 
 func take_damage(amount: float, attacker: Variant = null) -> void:
 	# 预览模式不会受到伤害

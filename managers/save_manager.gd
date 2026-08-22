@@ -72,7 +72,6 @@ const DEFERRED_MANAGER_LOADS: Array = [
 	# v6.6: 情报发现/进化/敌源MOD（deferred，非战斗实时）
 	["/root/IntelDiscoveryManager", "intel_discovery"],
 	["/root/IntelEvolutionManager", "intel_evolution"],
-	["/root/EnemyOriginModManager", "eom_manager"],
 ]
 const CRITICAL_RESETTABLE_MANAGERS: Array[String] = [
 	"BlueprintManager",
@@ -112,7 +111,6 @@ const RESETTABLE_MANAGERS := [
 	# v6.6: 情报系统（reset 靠 load_state({}) 清空字段）
 	"IntelDiscoveryManager",
 	"IntelEvolutionManager",
-	"EnemyOriginModManager",
 	# v6.6 修复: 新游戏清空未领取掉落（原 load_state({}) 无法清 pending_drops）
 	"DropManager",
 ]
@@ -135,7 +133,6 @@ const SK_INTEL_ITEM_BAG: String = SaveConstants.SK_INTEL_ITEM_BAG
 const SK_INTEL_MANUAL: String = SaveConstants.SK_INTEL_MANUAL
 const SK_INTEL_DISCOVERY: String = SaveConstants.SK_INTEL_DISCOVERY
 const SK_INTEL_EVOLUTION: String = SaveConstants.SK_INTEL_EVOLUTION
-const SK_EOM_MANAGER: String = SaveConstants.SK_EOM_MANAGER
 const SK_GAME: String = SaveConstants.SK_GAME
 const SK_CURRENT_LEVEL: String = SaveConstants.SK_CURRENT_LEVEL
 const SK_PHASE_SLOTS: String = SaveConstants.SK_PHASE_SLOTS
@@ -602,7 +599,6 @@ func _collect_noncritical_save_data(data: Dictionary, now_ms: int) -> void:
 		# v6.6: 情报系统（deferred 收集）
 		_collect_manager_state(fresh, "/root/IntelDiscoveryManager", SK_INTEL_DISCOVERY)
 		_collect_manager_state(fresh, "/root/IntelEvolutionManager", SK_INTEL_EVOLUTION)
-		_collect_manager_state(fresh, "/root/EnemyOriginModManager", SK_EOM_MANAGER)
 		# v6.6(挂机): AFK 配置/进度/累计奖励（通过 Main 桥接访问 RefCounted manager）
 		var afk_mgr_save = _get_afk_manager()
 		if afk_mgr_save != null and afk_mgr_save.has_method("save_state"):
@@ -695,7 +691,7 @@ func save_game() -> bool:
 	_collect_manager_state(data, "/root/FactionSystemManager", SK_FACTION_SYSTEM)
 	_collect_manager_state(data, "/root/AffixManager", SK_AFFIX_DATA)
 	_collect_manager_state(data, "/root/LevelProgressManager", SK_LEVEL_PROGRESS)
-	ManagerLazyLoader.ensure_loaded("drop")  # v7.x: DropManager 已改懒加载，存档前确保存在
+	ManagerLazyLoader.ensure_loaded("drop")  # DropManager 为 autoload+别名双层（ensure_loaded 幂等，命中 /root 复用）
 	_collect_manager_state(data, "/root/DropManager", SK_DROP_MANAGER)
 	_collect_manager_state(data, "/root/IntelItemBag", SK_INTEL_ITEM_BAG)
 	# v6.6: 情报手册（critical，战斗实时查询）
@@ -942,10 +938,7 @@ func _enqueue_starter_backpack_cards() -> void:
 		if iem and iem.has_method("check_and_discover_branches"):
 			iem.check_and_discover_branches()
 
-	# v7.1: 移除 _unlock_all_enemy_origin_mods() 调用。
 	# 原逻辑新游戏时无条件全解锁所有敌源MOD，导致击杀掉落解锁机制失效。
-	# 敌源MOD现应通过 EnemyOriginModManager 在击杀对应敌人时掉碎片逐步解锁。
-	# 老存档的 EOM 解锁状态由 EnemyOriginModManager.load_state 保留，不受影响。
 
 	# v6.6: 改装/进化材料系统已被"蓝图系统"取代——
 	# 玩家通过收集改造蓝图/进化蓝图（持久持有，不消耗）来解锁改造和进化，
@@ -1062,20 +1055,6 @@ func _grant_all_evolution_blueprints() -> void:
 	_process_evolution_hidden_branches(FortEvolution.get_hidden_branches())   # 雷达站
 
 
-## 解锁所有敌源改造模块（EOM）
-## 在新游戏开始时调用，解锁所有敌源MOD以供玩家使用
-func _unlock_all_enemy_origin_mods() -> void:
-	var eom_mgr = get_node_or_null('/root/EnemyOriginModManager')
-	if eom_mgr == null or not eom_mgr.has_method('unlock_mod'):
-		return
-	
-	const EnemyOriginMods = preload('res://data/enemy_origin_mods.gd')
-	var all_mod_ids = EnemyOriginMods.get_all_mod_ids()
-	for mod_id in all_mod_ids:
-		if mod_id is String and not mod_id.is_empty():
-			eom_mgr.unlock_mod(mod_id)
-	# [LOG-v5.1] print('[SaveManager] 已解锁 %d 个敌源改造模块' % all_mod_ids.size())
-
 
 ## 处理一个待入包的卡牌ID（从pending中移除，标记为已处理）
 func consume_pending_backpack_card_id(card_id: String) -> bool:
@@ -1186,7 +1165,7 @@ func start_ng_plus() -> void:
 	if dc and dc.has_method("reset_for_new_loop"):
 		dc.reset_for_new_loop()
 	# v6.6(剧情): 新周目重置剧情奖励倍率（倒计时×3 不应跨周目继承）
-	ManagerLazyLoader.ensure_loaded("drop")  # v7.x: DropManager 已改懒加载
+	ManagerLazyLoader.ensure_loaded("drop")  # DropManager 为 autoload+别名双层（ensure_loaded 幂等）
 	var dm: Node = get_node_or_null("/root/DropManager")
 	if dm and dm.has_method("reset_multiplier"):
 		dm.reset_multiplier()
@@ -1383,11 +1362,9 @@ func _load_from_path(path: String) -> bool:
 	# 老存档背包里已持有的图纸由 IntelItemBag.load_state 自行加载保留，不受影响。
 	# 新图纸只能通过 intel_discovery_manager 的战斗掉落获得。
 
-	# v6.4: 移除 _ensure_evolution_branches_discovered / _ensure_enemy_origin_mods_unlocked
 	# 这两个方法会在每次读档后无条件全解锁所有进化分支和敌源MOD，破坏情报系统的逐步发现机制。
 	# 进化分支和敌源MOD应由 IntelEvolutionManager.check_and_discover_branches() 和
-	# EnemyOriginModManager 的正常游戏流程解锁。
-
+	#
 	if DEBUG_SAVE_LOG:
 		pass  # LOG: 已加载存档
 	return true

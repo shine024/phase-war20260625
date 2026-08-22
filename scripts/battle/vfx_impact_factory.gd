@@ -589,14 +589,14 @@ static func spawn_muzzle_flash(parent: Node2D, local_pos: Vector2, facing_right:
 				rglow.texture = PARTICLE_TEX_MUZZLE_ENERGY   # 能量贴图（青色辉光）
 				rglow.position = local_pos
 				rglow.rotation = randf() * TAU
-				rglow.scale = Vector2(1.8, 1.8)              # ~1756px 能量弥散
+				rglow.scale = Vector2(0.45, 0.45)            # ~460px 炮级电磁辉光（v19-R32 超屏修复：原1.8/2.6→1843/2662px，2倍屏宽全屏洗礼）
 				rglow.modulate = Color(0.5, 0.85, 1.0, 0.5)   # 青色电磁辉光
 				rglow.visible = true
 				rglow.material = _get_add_mat()
 				parent.add_child(rglow)
 				rglow.add_to_group("battle_vfx")
 				var tw_rg := rglow.create_tween()
-				tw_rg.tween_property(rglow, "scale", Vector2(2.6, 2.6), 0.08).set_ease(Tween.EASE_OUT)
+				tw_rg.tween_property(rglow, "scale", Vector2(0.65, 0.65), 0.08).set_ease(Tween.EASE_OUT)
 				tw_rg.parallel().tween_property(rglow, "modulate:a", 0.0, 0.16).set_ease(Tween.EASE_IN)
 				tw_rg.tween_callback(func(): _release_impact_sprite(rglow))
 	# v13: 重型发射烟团——火箭/导弹发射的发射药烟，喷射后的低速扩散烟（短寿命不糊屏）
@@ -1468,18 +1468,20 @@ static func spawn_spell_burst(parent: Node2D, world_pos: Vector2, texture: Textu
 				if cam != null and cam.has_method("shake"):
 					cam.call("shake", 6.0, 0.3)
 		# 第1层：外光晕（ADD，大尺度低 alpha）
+		# v19-R32 超屏修复：终态 ×2.0→×1.5（起点 ×1.5→×1.3）。原×2.0 时光晕宽≈主体2倍
+		# （480级大招光晕达960px+，chain_lightning 画布1649px），超出 1280×580 战斗视口上下边。
 		var glow := _acquire_impact_sprite()
 		if glow != null:
 			glow.texture = captured_tex
 			glow.position = captured_pos
-			glow.scale = Vector2(captured_scale * 1.5, captured_scale * 1.5)
+			glow.scale = Vector2(captured_scale * 1.3, captured_scale * 1.3)
 			glow.modulate = Color(1, 1, 1, captured_glow.a) if captured_use_shader else captured_glow
 			glow.visible = true
 			glow.material = _get_tint_add_mat(captured_tint_c) if captured_use_shader else _get_add_mat()
 			p.add_child(glow)
 			glow.add_to_group("battle_vfx")
 			var tw_g := glow.create_tween()
-			tw_g.tween_property(glow, "scale", Vector2(captured_scale * 2.0, captured_scale * 2.0), life * 0.5).set_ease(Tween.EASE_OUT)
+			tw_g.tween_property(glow, "scale", Vector2(captured_scale * 1.5, captured_scale * 1.5), life * 0.5).set_ease(Tween.EASE_OUT)
 			tw_g.parallel().tween_property(glow, "modulate:a", 0.0, life * 0.8).set_ease(Tween.EASE_IN)
 			tw_g.tween_callback(func(): _release_impact_sprite(glow))
 		# 第2层：主体（ADD，膨胀→淡出，染色）
@@ -1911,6 +1913,7 @@ const ULT_PROJ_CONTENT_W: Dictionary = {
 	"ult_orbital": 195.0,
 	"ult_inferno_bomb": 263.0,
 	"ult_divine_spear": 317.0,
+	"ult_nuke_player": 988.0,   # v19-R32 补录（核子轰炸弹体，原回退画布1024略偏小）
 }
 const SPELL_BURST_CONTENT_W: Dictionary = {
 	"apocalypse_meteor": 856.0,
@@ -1919,6 +1922,11 @@ const SPELL_BURST_CONTENT_W: Dictionary = {
 	"chain_lightning": 497.0,
 	"summon_portal": 903.0,
 	"debuff_dark": 923.0,
+	# v19-R32 补录（PIL getbbox 实测；原回退画布1024，player系约偏小10%）
+	"player_barrage": 890.0,
+	"player_fortress": 904.0,
+	"player_rage": 883.0,
+	"player_shield": 916.0,
 }
 
 ## v17f: 按贴图资源路径查内容宽（未收录回退画布宽，行为同旧版）。
@@ -2066,11 +2074,13 @@ static func spawn_nuclear_explosion(parent: Node2D, pos: Vector2, textures: Dict
 	var shock_color: Color = colors.get("shock", Color(1.0, 0.85, 0.5, 0.9))
 	var aftershock_color: Color = colors.get("aftershock", Color(0.9, 0.5, 0.2, 0.5))
 	var smoke_tint: Color = colors.get("smoke", Color(0.35, 0.32, 0.30, 0.6))
-	# 尺寸缩放（核子轰炸多点用 0.6，避免半径 320 的余波环覆盖到靠近的我方单位）
+	# 尺寸缩放（核子轰炸多点用 0.6，避免余波环覆盖到靠近的我方单位）
+	# v19-R32 超屏修复：after_radius 320→240（aspect 2.0 椭圆纵向 2×radius×1.22 扩散，
+	# 原 320 达 781px 超出 580 视口高；240→586px 贴边，横向 1171px 不超宽）
 	var fireball_scale: float = 0.35 * size_scale
 	var shockwave_tex_scale: float = 0.30 * size_scale
 	var main_radius: float = 200.0 * size_scale
-	var after_radius: float = 320.0 * size_scale
+	var after_radius: float = 240.0 * size_scale
 	var mushroom_w: float = 400.0 * size_scale
 	var mushroom_rise: float = 140.0 * size_scale
 	var burn_radius: float = 90.0 * size_scale
@@ -2081,7 +2091,7 @@ static func spawn_nuclear_explosion(parent: Node2D, pos: Vector2, textures: Dict
 		if nuke_flash != null:
 			nuke_flash.texture = flash_tex
 			nuke_flash.position = pos
-			nuke_flash.scale = Vector2(size_scale * 2.0, size_scale * 2.0)
+			nuke_flash.scale = Vector2(size_scale * 1.0, size_scale * 1.0)  # v19-R32 超屏修复：原×2.0→1024贴图最大2048px超屏
 			nuke_flash.modulate = Color(1.0, 0.95, 0.82, 0.92)
 			nuke_flash.visible = true
 			nuke_flash.material = _get_add_mat()
@@ -2318,14 +2328,17 @@ static func _spawn_sparks(parent: Node2D, pos: Vector2, recipe: Dictionary, base
 	p.position = pos
 	p.color = base_color
 	# v9.2: 命中粒子用放射状贴图（区别于拖尾的顺向条纹）
+	# v19-R36b: 动能命中火花 SPARK_STREAK→SPARK_DROP——CPUParticles2D 无法随速度
+	# 方向旋转粒子，径向 360° 爆散配固定水平横条 = "竖直飞的火花是横条"形向矛盾
+	# （AI 实锤 >80% 水平横条；条状贴图只适合顺弹道的拖尾场景）。
 	if weapon_type in [8, 10]:  # LASER / OMEGA — 放射能量爆裂
 		p.texture = PARTICLE_TEX_IMPACT_ENERGY
 	elif weapon_type == 11:
 		p.texture = PARTICLE_TEX_IMPACT_METAL
 	elif weapon_type in [3, 7, 9]:  # ROCKET / FLAK / MISSILE — 爆炸火花
 		p.texture = PARTICLE_TEX_SPARK_DROP
-	else:  # 动能直射类（含 SHOTGUN）
-		p.texture = PARTICLE_TEX_SPARK_STREAK
+	else:  # 动能直射类（含 SHOTGUN/SNIPER）— 各向同性圆滴，任意飞散方向形状都正确
+		p.texture = PARTICLE_TEX_SPARK_DROP
 	# 按配方差异化参数
 	p.amount = int(recipe.get("spark_amount", 18))
 	p.initial_velocity_min = float(recipe.get("spark_vmin", 40.0))

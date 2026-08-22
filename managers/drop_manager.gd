@@ -373,10 +373,19 @@ func _add_law_blueprint(law_id: String, count: int) -> void:
 	# [LOG-v5.1] print("[DropManager] 获得法则卡: ", law_id, " x", count)
 
 ## 随机选择一个法则蓝图ID
+## v6.8 起 ALLY 目标被动对我方无战斗效果（已从装配池退池），随机掉落跳过之。
 func _pick_random_law_blueprint() -> String:
 	var all_ids: Array = PhaseLaws.get_all_ids()
-	if not all_ids.is_empty():
-		return String(all_ids[randi() % all_ids.size()])
+	var pool: Array = []
+	for raw_id in all_ids:
+		var law: Dictionary = PhaseLaws.get_by_id(String(raw_id))
+		if law.is_empty():
+			continue
+		if String(law.get("kind", "")) == "passive" 				and String((law.get("runtime_tags", {}) as Dictionary).get("target_side", "ALLY")) == "ALLY":
+			continue
+		pool.append(raw_id)
+	if not pool.is_empty():
+		return String(pool[randi() % pool.size()])
 	return ""
 
 ## 添加完整法则卡

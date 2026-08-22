@@ -116,8 +116,6 @@ func _initialize() -> void:
 	am.on_card_level_up_instance(iid, 1, 30)
 	if am.get_affix_count("%s_0" % iid) != 6:
 		fail.call("重复调用不应叠加词条")
-	# 废弃别名不崩
-	am.on_card_star_up(iid, 1, 2)
 	am.free()
 	print("  词条节点 OK（6 节点→机体槽 6 词条，武器槽 0，重复调用不叠加）")
 

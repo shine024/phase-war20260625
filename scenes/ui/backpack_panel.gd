@@ -2267,7 +2267,7 @@ func _create_phase_inst_item(cfg: Dictionary, is_equipped: bool) -> Control:
 		ability_chip_panel.add_theme_stylebox_override("panel", chip_style)
 		var ability_dot := Label.new()
 		ability_dot.text = "◆"
-		ability_dot.add_theme_font_size_override("font_size", 9)
+		ability_dot.add_theme_font_size_override("font_size", 10)
 		ability_dot.add_theme_color_override("font_color", Color(0.98, 0.75, 0.14, 1.0))
 		ability_chip.add_child(ability_dot)
 		var ability_text := Label.new()
@@ -2320,7 +2320,7 @@ func _add_phase_stat_mini(parent: HBoxContainer, lbl_text: String, val_text: Str
 	cell.add_theme_constant_override("separation", 1)
 	var lbl := Label.new()
 	lbl.text = lbl_text
-	lbl.add_theme_font_size_override("font_size", 9)
+	lbl.add_theme_font_size_override("font_size", 10)
 	lbl.add_theme_color_override("font_color", Color(0.5, 0.58, 0.7, 0.9))
 	cell.add_child(lbl)
 	var val := Label.new()
@@ -2802,7 +2802,7 @@ func _ensure_empty_slot_plus(placeholder: Panel) -> void:
 		line2.name = "EmptySubtitleLabel"
 		line2.text = "— 未获得 —"
 		line2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		line2.add_theme_font_size_override("font_size", 9)
+		line2.add_theme_font_size_override("font_size", 10)
 		line2.add_theme_color_override("font_color", Color(0.35, 0.40, 0.50, 0.5))
 		line2.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		vbox.add_child(line2)

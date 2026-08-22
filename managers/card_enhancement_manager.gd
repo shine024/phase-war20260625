@@ -199,12 +199,6 @@ func get_enhance_nano_cost(card_id_or_instance: String, target_level: int) -> in
 	var era_mult = get_era_multiplier(era)
 	return int(ENHANCE_BASE_COST * level_mult * era_mult)
 
-## 获取战力倍率
-func get_power_multiplier(level: int) -> float:
-	if level >= 9:
-		return 1.50 if level == 9 else 1.60
-	return 1.0 + level * 0.05
-
 # ─────────────────────────────────────────────
 #  强化操作
 # ─────────────────────────────────────────────

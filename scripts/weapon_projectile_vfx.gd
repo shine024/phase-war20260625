@@ -239,6 +239,10 @@ static func build_bullet_points(weapon_type: int, size_scale: float = 1.0) -> Pa
 			body_len = 9.0 * s
 			nose_len = 4.0 * s
 			half_h = 4.0 * s
+		6:  # SNIPER — 长杆穿甲弹（v19-R36：狙击动能弹形，全族最长细，与激光光束分流）
+			body_len = 12.0 * s
+			nose_len = 5.0 * s
+			half_h = 2.0 * s
 		10, 11:  # OMEGA / RAIL — 细长高能弹
 			body_len = 8.0 * s
 			nose_len = 4.0 * s

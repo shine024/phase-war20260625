@@ -148,7 +148,6 @@ func _init() -> void:
 		"res://data/phase_master_garrison.gd",
 		"res://managers/ui_lazy_loader.gd",
 		"res://managers/battle/battle_damage_system.gd",
-		"res://scenes/ui/level_info_panel.gd",
 		"res://scenes/world_map.gd",
 	]:
 		var scr = load(p)

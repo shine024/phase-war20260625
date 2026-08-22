@@ -34,10 +34,6 @@ static func is_mechanical_platform(platform_type: int) -> bool:
 		_:
 				return false
 
-## 光环是否为全场类型
-static func is_global_aura(category: int) -> bool:
-	return category == Category.COMMAND_GLOBAL
-
 ## 获取光环参数（返回 Dictionary，由 CardAbilityManager 消费）
 ## star: 星级（1~9），乘数已在内部应用
 static func get_aura_params(category: int, star: int) -> Dictionary:

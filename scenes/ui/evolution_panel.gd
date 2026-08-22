@@ -588,8 +588,6 @@ func _create_evolution_node(target: Dictionary) -> Control:
 				badge_text = "🔒缺图纸"
 			"skill_tree_era":
 				badge_text = "🔒需技能树"
-			"enemy_mod":
-				badge_text = "🔒缺敌源改造"
 			"faction_level":
 				badge_text = "🔒势力等级"
 		badge_lbl.text = badge_text
@@ -1005,7 +1003,6 @@ func _condition_label_zh(key: String) -> String:
 		"skill_tree_era": return "技能树·进化能力"
 		"enhance": return "强化等级"
 		"mods": return "改造模块"
-		"enemy_mod": return "敌源改造"
 		"faction_level": return "势力等级"
 		_: return key
 

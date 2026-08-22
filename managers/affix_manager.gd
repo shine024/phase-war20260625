@@ -125,14 +125,9 @@ func on_card_level_up(card_id: String, new_level: int, affix_type: int) -> void:
 func on_blueprint_star_up(card_id: String, old_star: int, new_star: int) -> void:
 	# v8.x: affix 改技能树赋予——升星不再随机获得词条，而是由技能树节点（intelligence 分支
 	# 的 affix 解锁节点）统一赋予。本函数保留供旧调用方不崩，但不再主动随机 roll。
-	# 具体赋予逻辑见 grant_skill_tree_affix_pool / on_card_star_up。
+	# 具体赋予逻辑见 grant_skill_tree_affix_pool / on_card_level_up_instance。
 	# 升星仍刷新玩家相位师战力缓存。
 	_refresh_player_master_eval_safe()
-
-## v8.x 已废弃（v18.c 星级制→30级制）：星级不再存在，词条改由等级节点驱动。
-## 保留空壳防旧调用方崩溃；新逻辑见 on_card_level_up_instance。
-func on_card_star_up(_instance_id: String, _old_star: int, _new_star: int) -> void:
-	pass
 
 ## v18.c: 实例卡等级提升回调（InstanceRegistry._on_card_level_up 调用）
 ## 每 5 级一个词条节点（Lv5/10/15/20/25/30，共 6 个）：

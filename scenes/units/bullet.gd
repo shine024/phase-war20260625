@@ -283,11 +283,14 @@ func _apply_visual() -> void:
 	# 比例 5:1~12:1）旋转到斜向弹道时视觉违和（长条横躺）。程序化弹头短粗（12×7）、指向 +X、
 	# 原点居中，rotation=_direction.angle() 后任意角度自然对齐飞行方向。
 	# 重型/能量/曲射武器（wt 3/5/6/7/8/9/10/11）保留贴图（形状语义明确：火箭/导弹/激光等）。
-	var _use_procedural_bullet := weapon_type in [0, 1, 2, 4]
-	# v18-R8: 光束族(6狙击/8激光)强制 Line2D 光束渲染——族规格"弹体=光束"。
+	# v19-R36: 狙击(6)改程序化动能弹形——与激光光束分流（用户反馈"狙击不应该和
+	# 激光一样的弹道"，族规格也区分"狙击=轻型动能 / 激光=光束"）。进程序化列表
+	# 同时拦截旧投射贴图路径（v18-R8 批评的"离散断点"弹体不再回归）。
+	var _use_procedural_bullet := weapon_type in [0, 1, 2, 4, 6]
+	# v18-R8: 激光(8)强制 Line2D 光束渲染——族规格"弹体=光束"（v19-R36 起狙击不再共用）。
 	# 旧路径因有投射贴图走 tex-sprite 提前 return，光束分支成死代码；贴图弹体+
 	# 电弧拖尾(spark_energy)被 AI 读成"离散闪电碎片/弹丸断点"（f08 traj 2-3、f06 traj 3 分）。
-	var _use_beam_render := weapon_type in [6, 8]
+	var _use_beam_render := weapon_type == 8
 	_use_tex_sprite = WeaponProjectileVfx.has_proj_texture(weapon_type) and not _use_procedural_bullet and not _use_beam_render
 	if _use_tex_sprite:
 		_apply_tex_sprite_visual(is_player)
@@ -309,8 +312,10 @@ func _apply_visual() -> void:
 			bullet_color = Color(1.0, 0.95, 0.2) if is_player else Color(1, 0.5, 0.2)
 			size_scale = 1.2
 		6:
-			use_beam = true
-			beam_color = Color(0.4, 0.9, 1) if is_player else Color(1, 0.5, 0.4)
+			# v19-R36: 动能曳光弹——白热穿甲弹头（程序化长杆形）+ 110px 细曳光（speed×0.1），
+			# 高速划过读作"狙击步枪"，与激光的能量光束带完全分流。
+			bullet_color = Color(1.0, 0.97, 0.82) if is_player else Color(1.0, 0.62, 0.35)
+			size_scale = 1.4
 		8:
 			use_beam = true
 			# v18-R8: 敌方激光束改红橙——与命中签名 spawn_laser_burn 的敌我配色对齐
@@ -338,11 +343,9 @@ func _apply_visual() -> void:
 		_beam_line.visible = use_beam
 		if use_beam:
 			_beam_line.default_color = beam_color
-			# v19-R14e: 光束加粗——SNIPER 24px / LASER 28px（原 16/20，增加可见度）。
-			if weapon_type == 6:
-				_beam_line.width = 24.0
-			else:
-				_beam_line.width = 28.0
+			# v19-R34: 激光束收窄回 20（R14e 曾加粗到 28，用户反馈"太宽了"）；
+			# v19-R36: 狙击改动能弹后此分支仅激光使用。可见度由 R27 白热内芯承担。
+			_beam_line.width = 20.0
 			_beam_line.default_color.a = 1.0
 			# v19-R27: 白热内芯——复用 TracerLine 节点作为聚焦能量束亮核（AI 批
 			# "矩形色块/扁平条带缺聚焦感"）。2.5px 白线叠加在宽色光束上产生"热核"读感。
@@ -422,9 +425,10 @@ func _hide_tex_sprite_visual() -> void:
 ## 拖尾贴图置于弹体后方，运行时随 _direction 旋转（见 _process / _process_indirect）
 ## v8.1: 新增粒子拖尾——重型武器强粒子（导弹/火炮），轻武器微弱粒子（机枪/步枪增运动感）
 func _apply_trail() -> void:
-	# v18-R8: 光束渲染(6/8)时禁粒子拖尾——Line2D 光束即弹体视觉，电弧/火花粒子
+	# v18-R8: 光束渲染时禁粒子拖尾——Line2D 光束即弹体视觉，电弧/火花粒子
 	# 会让连续光束读成"离散碎片"（AI f08/f06 弹道格主诉）。
-	if weapon_type in [6, 8]:
+	# v19-R36b: 狙击已改动能曳光弹，仅激光(8)保持禁用——恢复 wt6 的高频细长火花拖尾。
+	if weapon_type == 8:
 		if _trail_sprite != null:
 			_trail_sprite.visible = false
 		if _trail_particles != null:
@@ -529,8 +533,10 @@ func _apply_trail_tier() -> void:
 		5:  # SHOTGUN — 宽散布霰弹
 			# v18-R11c 实验性修改已回退：缩短拖尾使弹丸"独立"但导致弹体不可见，反噬更大。
 			amount = 24; life = 0.45; vmin = 20.0; vmax = 60.0; smin = 0.4; smax = 0.7
-		6:  # SNIPER — 高速细长
-			amount = 12; life = 0.60; vmin = 40.0; vmax = 100.0; smin = 0.3; smax = 0.5
+		6:  # SNIPER — 单发精确保留一丝火星（对齐 TANK_GUN 豁免思路）
+			# v19-R37: 原 12粒/0.60s 沿路径沉积成串珠（AI 读作 3-4 颗独立弹体"多发弹幕"，
+			# 与单发狙击语义矛盾）。砍到 4粒/0.20s：弹体+曳光线读"一发"，火星仅点缀。
+			amount = 4; life = 0.20; vmin = 40.0; vmax = 100.0; smin = 0.22; smax = 0.4
 		1, 2:  # INDIRECT / AERIAL — 曲射炮弹烟迹（v19-R19 归组修复）
 			# v19-R26: life 0.55→0.90s。R29 实测 f01/f02 轨迹仍 3/10——18 粒沿弧线
 			# 沉积过稀疏（~16 粒在空中），AI 读不出弧线。R30 提量至 36 粒 + 延寿 1.0s，
@@ -543,8 +549,10 @@ func _apply_trail_tier() -> void:
 			amount = 16; life = 0.50; vmin = 20.0; vmax = 50.0; smin = 0.28; smax = 0.50
 		8:  # LASER — 细密能量
 			amount = 10; life = 0.40; vmin = 60.0; vmax = 150.0; smin = 0.25; smax = 0.45
-		10, 11:  # OMEGA / RAIL — 高能电弧
-			amount = 20; life = 0.55; vmin = 30.0; vmax = 80.0; smin = 0.4; smax = 0.75
+		10:  # OMEGA — 单发放电（v19-R37b: 用户确认欧米茄也读单发；20粒→6粒/0.25s 同 RAIL 档）
+			amount = 6; life = 0.25; vmin = 30.0; vmax = 80.0; smin = 0.4; smax = 0.75
+		11:  # RAIL — 单发动能穿透（v19-R37: 20粒→6粒/0.25s，理由同 SNIPER——串珠读作多发）
+			amount = 6; life = 0.25; vmin = 30.0; vmax = 80.0; smin = 0.4; smax = 0.75
 	_trail_particles.amount = amount
 	_trail_particles.lifetime = life
 	_trail_particles.initial_velocity_min = vmin
@@ -687,7 +695,7 @@ func _process(delta: float) -> void:
 	# 真实激光武器 VFX 应是"飞行的弹体 + 身后一段短尾迹"，不是从枪口到弹体的
 	# 持续照射线。定长 BEAM_TAIL_LEN，随弹体移动，命中即消失。
 	const BEAM_TAIL_LEN: float = 160.0
-	if weapon_type in [6, 8] and _beam_line and _beam_line.visible:
+	if weapon_type == 8 and _beam_line and _beam_line.visible:
 		var _tail_local: Vector2 = to_local(global_position - _direction.normalized() * BEAM_TAIL_LEN)
 		_beam_line.set_point_position(0, Vector2.ZERO)
 		_beam_line.set_point_position(1, _tail_local)

@@ -2,6 +2,7 @@ extends Node
 ## 游戏流程：战前准备 → 战斗 → 战后
 const DEBUG_GAME_LOG := false
 const PhaseMasterGarrison := preload("res://data/phase_master_garrison.gd")  # v7.x 相位师驻守映射
+const NpcPhaseMasters := preload("res://data/npc_phase_masters.gd")  # NPC 相位师单一真理源
 
 enum GamePhase {
 	PRE_BATTLE,
@@ -97,35 +98,8 @@ func check_phase_master_encounter() -> Dictionary:
 	if DEBUG_GAME_LOG:
 		pass  # LOG: 当前关卡势力
 
-	# 从排行榜获取活跃相位师（按优先级尝试多条路径）
-	var lp = get_node_or_null("/root/Main/PopupLayer/LeaderboardOverlay/CenterContainer/LeaderboardPanel")
-	if lp == null:
-		lp = get_node_or_null("/root/Main/PopupLayer/LeaderboardPanel")
-	if lp == null:
-		lp = get_node_or_null("/root/Main/Margin/VBox/LeaderboardPanel")
-	if lp == null:
-		lp = get_node_or_null("/root/LeaderboardPanel")
-
-	# 获取相位师数据：优先从节点获取，节点不存在时使用内嵌兜底数据
-	var all_masters: Array = []
-	if lp and lp.has_method("get_active_phase_masters"):
-		all_masters = lp.get_active_phase_masters()
-	if all_masters.is_empty():
-		# 兜底：内嵌 NPC 相位师数据（与 leaderboard_panel.gd 保持同步）
-		all_masters = [
-			{"name": "终焉之镰",   "faction": "void_research",     "era": "future",   "platform": "platform_future_heavy"},
-			{"name": "炽焰星痕",   "faction": "nova_arms",         "era": "future",   "platform": "platform_future_medium"},
-			{"name": "雷霆判官",   "faction": "aether_dynamics",   "era": "cold",     "platform": "platform_cold_medium"},
-			{"name": "寒霜壁垒",   "faction": "iron_wall_corp",    "era": "ww2",      "platform": "platform_ww2_heavy"},
-			{"name": "量子幽灵",   "faction": "quantum_logistics", "era": "modern",   "platform": "platform_modern_medium"},
-			{"name": "虚空低语",   "faction": "helix_recon",       "era": "future",   "platform": "platform_future_light"},
-			{"name": "边境开拓者", "faction": "frontier_union",    "era": "ww2",      "platform": "platform_ww2_light"},
-			# v7.x 时代筛选修复：与 leaderboard_panel.gd 的 NPC_PHASE_MASTERS 同步补 2 个一战 NPC
-			{"name": "铁壁先锋",   "faction": "iron_wall_corp",    "era": "ww1",      "platform": "platform_ww1_heavy"},
-			{"name": "旧日雷霆",   "faction": "frontier_union",    "era": "ww1",      "platform": "platform_ww1_medium"},
-		]
-		if DEBUG_GAME_LOG:
-			pass  # LOG: LeaderboardPanel 节点未找到，使用内嵌相位师数据
+	# NPC 相位师数据 —— 单一真理源 data/npc_phase_masters.gd（原 4 路径节点查找 + 内嵌副本已统一）
+	var all_masters: Array = NpcPhaseMasters.get_all()
 
 	if not all_masters.is_empty():
 		# v7.x 时代筛选：低级关不应抽到高时代相位师（否则产兵跨时代，如一战关出近未来堡垒）。
@@ -582,7 +556,7 @@ func _on_battle_ended(player_won: bool) -> void:
 		var afk_mgr = main_scene._afk_manager if (main_scene != null and "_afk_manager" in main_scene) else null
 		if afk_mgr != null and afk_mgr.has_method("accumulate_pending_drops"):
 			afk_mgr.accumulate_pending_drops()
-		ManagerLazyLoader.ensure_loaded("drop")  # v7.x: DropManager 已改懒加载
+		ManagerLazyLoader.ensure_loaded("drop")  # DropManager 为 autoload+别名双层（ensure_loaded 幂等）
 		var dm_afk: Node = get_node_or_null("/root/DropManager")
 		if dm_afk != null and dm_afk.has_method("claim_drops"):
 			dm_afk.claim_drops()
@@ -610,7 +584,7 @@ func _on_battle_ended(player_won: bool) -> void:
 		else:
 			main_scene.call_deferred("show_battle_result", player_won)
 	elif player_won:
-		ManagerLazyLoader.ensure_loaded("drop")  # v7.x: DropManager 已改懒加载
+		ManagerLazyLoader.ensure_loaded("drop")  # DropManager 为 autoload+别名双层（ensure_loaded 幂等）
 		var dm_fallback: Node = get_node_or_null("/root/DropManager")
 		if dm_fallback != null and dm_fallback.has_method("get_pending_drops_count") and dm_fallback.has_method("claim_drops"):
 			if dm_fallback.get_pending_drops_count() > 0:

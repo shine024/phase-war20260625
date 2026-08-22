@@ -4,7 +4,7 @@ extends Node
 ## 所有卡牌实例的唯一真相源。每张卡是独立的 CardResource clone 对象，
 ## 带有唯一 instance_id（格式 card_id#序号，如 cold_t72#1）。
 ## 养成数据（enhance_level / mods / module_slots / weapon_slots / inherit_bonus /
-## evolution_hp_floor / enemy_origin_mod / intel_branch_bonus）全部存在实例对象本身，
+## evolution_hp_floor / intel_branch_bonus）全部存在实例对象本身，
 ## 不再用 Dictionary[card_id] 查表。
 ##
 ## 生命周期：
@@ -49,12 +49,6 @@ var _counter: Dictionary = {}
 var _inherit_bonus: Dictionary = {}
 ## instance_id -> float（进化后 era0 HP 下限）
 var _evolution_hp_floor: Dictionary = {}
-## instance_id -> String（敌源MOD ID）
-## v7.x 现状说明：实际 EOM 装备走 BlueprintManager.blueprint_enemy_origin_mod（card_id 字典），
-## 本字段从未被 EnemyOriginModManager.equip_eom 写入，当前为预留/未接入死字段。
-## card_evolution_manager 进化迁移读此字段，因无写入方故恒读到空串（迁移空转，无害）。
-## 若未来 EOM 重接战斗注入，需把 equip_eom 改为写本字段（走 instance 级隔离）。
-var _enemy_origin_mod: Dictionary = {}
 ## instance_id -> Dictionary（情报进化分支奖励 {extra_mod_slot, special_ability}）
 var _intel_branch_bonus: Dictionary = {}
 
@@ -153,7 +147,6 @@ func dispose_instance(instance_id: String) -> void:
 	_instances.erase(instance_id)
 	_inherit_bonus.erase(instance_id)
 	_evolution_hp_floor.erase(instance_id)
-	_enemy_origin_mod.erase(instance_id)
 	_intel_branch_bonus.erase(instance_id)
 	_battle_experience.erase(instance_id)
 	_card_level.erase(instance_id)
@@ -229,16 +222,6 @@ func get_evolution_hp_floor(instance_id: String) -> float:
 func set_evolution_hp_floor(instance_id: String, floor_base: float) -> void:
 	_evolution_hp_floor[instance_id] = floor_base
 
-## 敌源MOD ID
-func get_enemy_origin_mod(instance_id: String) -> String:
-	return String(_enemy_origin_mod.get(instance_id, ""))
-
-func set_enemy_origin_mod(instance_id: String, mod_id: String) -> void:
-	if mod_id.is_empty():
-		_enemy_origin_mod.erase(instance_id)
-	else:
-		_enemy_origin_mod[instance_id] = mod_id
-
 ## 情报进化分支奖励
 func get_intel_branch_bonus(instance_id: String) -> Dictionary:
 	return _intel_branch_bonus.get(instance_id, {})
@@ -286,10 +269,6 @@ func _on_card_level_up(instance_id: String, old_lv: int, new_lv: int) -> void:
 	var am = get_node_or_null("/root/AffixManager")
 	if am != null and am.has_method("on_card_level_up_instance"):
 		am.on_card_level_up_instance(instance_id, old_lv, new_lv)
-	# 转发信号供 UI 刷新（沿用 card_star_up 信号名，负载为等级）
-	var sb = get_node_or_null("/root/SignalBus")
-	if sb != null and sb.has_signal("card_star_up"):
-		sb.card_star_up.emit(instance_id, old_lv, new_lv)
 
 
 # ─────────────────────────────────────────────
@@ -320,7 +299,6 @@ func _serialize_instance(instance_id: String, card: CardResource) -> Dictionary:
 		"evolution_stage": int(card.evolution_stage),
 		"inherit_bonus": get_inherit_bonus(instance_id),
 		"evolution_hp_floor": get_evolution_hp_floor(instance_id),
-		"enemy_origin_mod": get_enemy_origin_mod(instance_id),
 		"intel_branch_bonus": get_intel_branch_bonus(instance_id),
 		"battle_experience": get_battle_experience(instance_id),
 		"card_level": get_card_level(instance_id),
@@ -334,7 +312,6 @@ func load_state(data: Dictionary) -> void:
 	_counter.clear()
 	_inherit_bonus.clear()
 	_evolution_hp_floor.clear()
-	_enemy_origin_mod.clear()
 	_intel_branch_bonus.clear()
 	_battle_experience.clear()
 	_card_level.clear()
@@ -406,9 +383,6 @@ func _load_one_instance(instance_id: String, inst_data: Dictionary) -> void:
 	# 进化养成数据
 	_inherit_bonus[instance_id] = float(inst_data.get("inherit_bonus", 0.0))
 	_evolution_hp_floor[instance_id] = float(inst_data.get("evolution_hp_floor", 0.0))
-	var eom: String = String(inst_data.get("enemy_origin_mod", ""))
-	if not eom.is_empty():
-		_enemy_origin_mod[instance_id] = eom
 	var ibb = inst_data.get("intel_branch_bonus", {})
 	if ibb is Dictionary and not (ibb as Dictionary).is_empty():
 		_intel_branch_bonus[instance_id] = (ibb as Dictionary).duplicate(true)
@@ -600,7 +574,6 @@ func clear_all() -> void:
 	_counter.clear()
 	_inherit_bonus.clear()
 	_evolution_hp_floor.clear()
-	_enemy_origin_mod.clear()
 	_intel_branch_bonus.clear()
 	_battle_experience.clear()
 	_card_level.clear()

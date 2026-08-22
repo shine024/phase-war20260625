@@ -361,7 +361,7 @@ static func _scan_slot_targets(u: CharacterBody2D, gr: Array) -> Node2D:
 	return _farthest_slot_unit(u, valid)
 
 
-## 是否为指挥单位（platform_type==12, GameConstants.PlatformType.COMMAND）
+## 是否为指挥单位（platform_type==12，legacy COMMAND 平台值）
 static func _is_command_unit(stats: UnitStats) -> bool:
 	return stats != null and stats.platform_type == 12
 

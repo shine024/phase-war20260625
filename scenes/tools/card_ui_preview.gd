@@ -421,7 +421,7 @@ func _post_set_card_tweak(item: Control) -> void:
 				name_hdr.add_theme_font_size_override("font_size", fs)
 			var rank_hdr: Label = item.get_node_or_null("VBox/ContentMargin/InnerVBox/IconRow/MtgHeader/MtgRankLabel") as Label
 			if rank_hdr:
-				rank_hdr.add_theme_font_size_override("font_size", clampi(fs - 1, 7, 26))
+				rank_hdr.add_theme_font_size_override("font_size", clampi(fs - 1, 10, 26))
 			var cost_hdr2: Label = item.get_node_or_null("VBox/ContentMargin/InnerVBox/IconRow/MtgHeader/MtgCostLabel") as Label
 			if cost_hdr2:
 				cost_hdr2.add_theme_font_size_override("font_size", fs)
@@ -517,7 +517,7 @@ func _section(text: String) -> Label:
 func _small_label(text: String) -> Label:
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", 9)
+	l.add_theme_font_size_override("font_size", 10)
 	l.add_theme_color_override("font_color", Color(0.5, 0.55, 0.65))
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.clip_text = true
