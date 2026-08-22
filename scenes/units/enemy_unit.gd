@@ -135,6 +135,14 @@ func _cached_load(path: String, type_hint: int = -1) -> Resource:
 
 var _presentation_card_grid: bool = false
 var _hp_status_refresh_accum: float = 0.0   ## v9.x 血条状态图标低频刷新累加器（不 gate 模式，两种战斗都刷新）
+var _hpbar_ref: Node = null  ## v9.x（3c）：HpBar 节点引用缓存（原每 0.3s 字符串路径查找）
+
+## v9.x（3c 性能批次）：HpBar 引用缓存——命中免字符串路径查找；
+## 未挂载时保持重查（与原行为一致），被释放后自动失效重查。
+func _get_hpbar_cached() -> Node:
+	if _hpbar_ref == null or not is_instance_valid(_hpbar_ref):
+		_hpbar_ref = get_node_or_null("HpBar")
+	return _hpbar_ref
 var _buff_strip_timer: float = 0.0  ## v8.x buff/改造条周期刷新累加器（与 construct_unit 对齐）
 var _buff_strip_signature: String = ""  ## v8.x buff_strip signature 去重（避免无变化时重建）
 var _hit_stun_left: float = 0.0
@@ -955,7 +963,7 @@ func _physics_process(delta: float) -> void:
 	_hp_status_refresh_accum += delta
 	if _hp_status_refresh_accum >= 0.3:
 		_hp_status_refresh_accum = 0.0
-		var _hpbar := get_node_or_null("HpBar")
+		var _hpbar := _get_hpbar_cached()
 		if _hpbar != null and _hpbar.has_method("refresh_status_icons"):
 			_hpbar.refresh_status_icons()
 	# P2 性能优化：静止单位跳过空间网格更新（格子战敌人 velocity=0，原每帧无谓 update）

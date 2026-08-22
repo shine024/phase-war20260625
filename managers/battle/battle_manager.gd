@@ -40,6 +40,9 @@ var spatial_grid: Node = null  ## SpatialGrid 实例
 var player_projectile_batch: Node = null
 ## 敌方轻武器弹道批处理（SimpleEnemyProjectileBatch）
 var enemy_projectile_batch: Node = null
+## v9.x（3c 性能批次）：PerformanceMetricsManager 采样能力首帧判定缓存（免每帧 has_method）
+var _pmm_checked: bool = false
+var _pmm_can_sample: bool = false
 ## 玩家曲射/空射弹道批处理（SimpleIndirectProjectileBatch）
 var player_indirect_batch: Node = null
 ## 敌方曲射/空射弹道批处理（SimpleIndirectProjectileBatch）
@@ -222,7 +225,11 @@ func _process(delta: float) -> void:
 			_spawn_system.consume_wave_timer()
 
 	_check_win_lose()
-	if PerformanceMetricsManager and PerformanceMetricsManager.has_method("sample_battle_frame"):
+	# v9.x（3c 性能批次）：每帧 has_method 反射 → 首帧判定一次缓存
+	if not _pmm_checked:
+		_pmm_checked = true
+		_pmm_can_sample = PerformanceMetricsManager != null and PerformanceMetricsManager.has_method("sample_battle_frame")
+	if _pmm_can_sample:
 		PerformanceMetricsManager.sample_battle_frame(delta)
 
 

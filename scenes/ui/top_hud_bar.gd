@@ -12,6 +12,7 @@ signal btn_back_pressed
 var _level_label: Label = null
 var _wave_label: Label = null
 var _time_label: Label = null
+var _bm_cache: Node = null  ## v9.x（3c）：BattleManager 引用缓存
 var _retreat_btn: Button = null
 var _pause_btn: Button = null
 var _speed_btn: Button = null
@@ -256,7 +257,10 @@ func _refresh_time() -> void:
 func _refresh_wave() -> void:
 	if _wave_label == null:
 		return
-	var bm := get_node_or_null("/root/BattleManager")
+	# v9.x（3c）：BattleManager 引用缓存（原每次刷新绝对路径查找）
+	if not is_instance_valid(_bm_cache):
+		_bm_cache = get_node_or_null("/root/BattleManager")
+	var bm := _bm_cache
 	if bm == null or not _in_battle:
 		_wave_label.text = ""
 		return

@@ -236,6 +236,14 @@ var _cached_single_fire_range: float = 0.0
 var _cached_single_wt: int = 0
 var _buff_strip_signature: String = ""
 var _hp_status_refresh_accum: float = 0.0   ## v9.x 血条状态图标低频刷新累加器（不 gate 模式，两种战斗都刷新）
+var _hpbar_ref: Node = null  ## v9.x（3c）：HpBar 节点引用缓存（原每 0.3s 字符串路径查找）
+
+## v9.x（3c 性能批次）：HpBar 引用缓存——命中免字符串路径查找；
+## 未挂载时保持重查（与原行为一致），被释放后自动失效重查。
+func _get_hpbar_cached() -> Node:
+	if _hpbar_ref == null or not is_instance_valid(_hpbar_ref):
+		_hpbar_ref = get_node_or_null("HpBar")
+	return _hpbar_ref
 ## 跨实例共享的资源缓存，避免运行时重复 load()
 var _res_cache: Dictionary = {}
 
@@ -1618,7 +1626,7 @@ func _physics_process(delta: float) -> void:
 	_hp_status_refresh_accum += delta
 	if _hp_status_refresh_accum >= 0.3:
 		_hp_status_refresh_accum = 0.0
-		var _hpbar := get_node_or_null("HpBar")
+		var _hpbar := _get_hpbar_cached()
 		if _hpbar != null and _hpbar.has_method("refresh_status_icons"):
 			_hpbar.refresh_status_icons()
 	# 性能优化：静止单位跳过空间网格更新

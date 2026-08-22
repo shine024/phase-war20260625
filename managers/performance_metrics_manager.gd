@@ -16,6 +16,8 @@ var _backpack_first_open_ms: int = -1
 var _battle_sampling: bool = false
 var _battle_frame_ms_samples: Array[float] = []
 var _battle_last_flush_ms: int = 0
+## v9.x（3c）：战斗采样 flush 计时改 delta 累加（原每帧 Time.get_ticks_msec）
+var _battle_flush_accum: float = 0.0
 var _phase_start_ms: Dictionary = {}
 var _phase_last_ms: Dictionary = {}
 
@@ -50,15 +52,18 @@ func mark_backpack_open_ready() -> void:
 func begin_battle_sampling() -> void:
 	_battle_sampling = true
 	_battle_frame_ms_samples.clear()
+	_battle_flush_accum = 0.0
 
 func sample_battle_frame(delta_sec: float) -> void:
 	if not _battle_sampling:
 		return
 	_battle_frame_ms_samples.append(maxf(0.0, delta_sec * 1000.0))
-	var now_ms: int = Time.get_ticks_msec()
+	# v9.x（3c 性能批次）：每帧 Time.get_ticks_msec() 系统调用 → delta 累加，
+	# 语义等价（15s flush 周期），采样粒度不变
+	_battle_flush_accum += delta_sec
 	# v7.x 性能优化：写盘频率 4s→15s（已 call_deferred 非阻塞，降频进一步减少磁盘 IO 抖动）
-	if now_ms - _battle_last_flush_ms >= 15000:
-		_battle_last_flush_ms = now_ms
+	if _battle_flush_accum >= 15.0:
+		_battle_flush_accum = 0.0
 		_deferred_flush("battle_live")
 		_battle_frame_ms_samples.clear()
 

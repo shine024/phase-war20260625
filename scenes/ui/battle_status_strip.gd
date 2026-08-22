@@ -10,6 +10,7 @@ var _kill_label: Label = null
 var _dmg_label: Label = null
 # v9.x: 单位数走信号即时刷新；时间/击杀/伤害保留低频轮询（放宽到 1s）
 var _refresh_accum: float = 0.0
+var _bid_cache: Node = null  ## v9.x（3c）：BattleInfoDisplay 引用缓存
 const _REFRESH_SEC: float = 1.0
 # v9.x: 缓存最新单位数（由 unit_counts_changed 信号推送）
 var _player_count: int = 0
@@ -100,10 +101,12 @@ func _refresh() -> void:
 func _get_battle_stats() -> Dictionary:
 	# BattleInfoDisplay 在 HudLayer/BattleTopStatusBar/BattleInfoDisplay（已隐藏但保留 _process 跑）
 	# 状态条在 HudLayer/BattleStatusStrip，需向上到 HudLayer 再下到 BattleTopStatusBar
-	# 用绝对路径最稳妥
-	var bid := get_node_or_null("/root/Main/HudLayer/BattleTopStatusBar/BattleInfoDisplay")
-	if bid == null:
-		bid = get_node_or_null("../BattleTopStatusBar/BattleInfoDisplay")
+	# v9.x（3c）：节点引用缓存（原每次双绝对路径查找）
+	if not is_instance_valid(_bid_cache):
+		_bid_cache = get_node_or_null("/root/Main/HudLayer/BattleTopStatusBar/BattleInfoDisplay")
+		if _bid_cache == null:
+			_bid_cache = get_node_or_null("../BattleTopStatusBar/BattleInfoDisplay")
+	var bid := _bid_cache
 	if bid and bid.has_method("get_battle_stats"):
 		return bid.get_battle_stats()
 	return {}

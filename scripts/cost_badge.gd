@@ -7,6 +7,8 @@ var energy_value: int = 0:
 	set(v):
 		energy_value = v
 		_text = "%d⚡" % v
+		_text_size_known = false
+		_rect_known = false
 		queue_redraw()
 
 var _text: String = ""
@@ -15,6 +17,13 @@ var _host: Control = null
 var _anchor_right: bool = false
 ## v9.3：_draw 圆角背景 stylebox（懒加载缓存，避免每帧 new）
 var _bg_style: StyleBoxFlat = null
+## v9.x（3b 性能批次）：文本尺寸缓存——get_string_size 只在文本变化时算一次，
+## 不再每帧测量；宿主矩形快照——宿主未移动时跳过祖先 clip 链遍历（背包开
+## 几十张卡时 = 每帧几十次字体测量 + 几十次祖先遍历的直接削减）。
+var _text_size := Vector2.ZERO
+var _text_size_known := false
+var _last_host_rect := Rect2()
+var _rect_known := false
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -24,6 +33,7 @@ func _ready() -> void:
 func follow_host(host: Control, anchor_right: bool = false) -> void:
 	_host = host
 	_anchor_right = anchor_right
+	_rect_known = false
 	# 首帧立即定位（_process 会在后续帧持续校正 + 裁剪判断）
 	global_position = _compute_badge_global_position()
 
@@ -32,6 +42,12 @@ func _process(_delta: float) -> void:
 	if _host == null or not is_instance_valid(_host):
 		visible = false
 		return
+	# v9.x 脏检查：宿主矩形未变 + 文本未变 → 位置/可见性维持现状，跳过全部重算
+	var host_rect: Rect2 = _host.get_global_rect()
+	if _rect_known and host_rect == _last_host_rect:
+		return
+	_rect_known = true
+	_last_host_rect = host_rect
 	# v9.3 修复：set_as_top_level 不受父级 clip 影响，必须手动判断角标的实际渲染位置
 	# 是否落在最近 clip 祖先（背包 ScrollContainer）的可视矩形内。
 	# 旧实现用 host_rect 与 clip_rect 的交集判断——交集只要有 1 像素重叠就为 false，
@@ -44,13 +60,21 @@ func _process(_delta: float) -> void:
 	global_position = badge_target_pos
 
 
+func _ensure_text_size() -> Vector2:
+	if not _text_size_known:
+		var font := get_theme_default_font()
+		_text_size = font.get_string_size(_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10) if font != null else Vector2(22, 12)
+		_text_size_known = true
+	return _text_size
+
 ## v9.3 修复：计算角标应处的全局位置（不写入 global_position，仅用于裁剪判断）
 func _compute_badge_global_position() -> Vector2:
 	if _host == null or not is_instance_valid(_host):
 		return Vector2.ZERO
 	var host_rect: Rect2 = _host.get_global_rect()
-	var ts: Vector2 = get_theme_default_font().get_string_size(_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10) if get_theme_default_font() != null else Vector2(22, 12)
-	size = Vector2(ts.x + 4.0, ts.y + 2.0)
+	var ts: Vector2 = _ensure_text_size()
+	if size != Vector2(ts.x + 4.0, ts.y + 2.0):
+		size = Vector2(ts.x + 4.0, ts.y + 2.0)
 	var px: float
 	if _anchor_right:
 		px = host_rect.end.x - size.x - 6.0
