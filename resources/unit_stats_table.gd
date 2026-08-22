@@ -659,6 +659,11 @@ static func _apply_unit_type_defense_floors(stats: UnitStats) -> void:
 		# 普通轻装步兵有闪避；火炮/重型支援无闪避（笨重装备）
 		if sub != GC.UnitSubType.ARTILLERY:
 			stats.dodge_chance = maxf(stats.dodge_chance, 0.18)
+	# 火炮反炮兵保底（v9.x 前置：被攻击时标记攻击者，下 3 次射击优先打标记目标。
+	# art_14 反击炮击改造经 registry 叠加 +2 次——保底须在改造前立好，改造增量才不被覆盖）
+	if sub == GC.UnitSubType.ARTILLERY:
+		stats.has_counter_battery = true
+		stats.counter_battery_shots = maxi(stats.counter_battery_shots, 3)
 	elif is_air:
 		stats.dodge_chance = maxf(stats.dodge_chance, 0.12)
 	elif is_fort:
@@ -693,9 +698,8 @@ static func apply_combat_kind_modifiers(stats: UnitStats) -> void:
 				else:
 					stats.urban_defense_bonus = maxf(stats.urban_defense_bonus, 0.15)
 			GC.UnitSubType.ARTILLERY:
-				# 火炮反炮兵：被攻击时标记攻击者，下 3 次射击优先打标记目标
-				stats.has_counter_battery = true
-				stats.counter_battery_shots = 3
+				# （火炮反炮兵保底已前置至 _apply_unit_type_defense_floors——改造前执行，art_14 增量可叠加）
+				pass
 			GC.UnitSubType.ANTI_AIR:
 				# 防空空域封锁：对 AIR 伤害 +25%（索敌优先锁定 AIR 在 construct_unit_ai 处理）
 				stats.attack_air_bonus = maxf(stats.attack_air_bonus, 0.25)

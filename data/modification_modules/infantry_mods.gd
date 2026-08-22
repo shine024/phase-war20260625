@@ -153,13 +153,16 @@ const DATA: Dictionary = {
 	},
 	# v6.13: grant_slot 激活对装甲武器槽（修复原 attack_armor=0.25 对步枪兵 base=0 失效的 bug）
 	# 步枪兵装穿甲弹 → 获得对装甲能力（反坦克步枪语义）
-	# 以 attack_light 为基准 ×0.5 派生对装甲伤害，步枪式射速
-	# 平衡：mod_marine(attack_light=140)→对装甲70；远弱于专用反坦克组(panzerschrek 90/javelin 250)
+	# 以 attack_light 为基准派生对装甲伤害，反器材步枪式射速
+	# v9.x 修复：原 ratio 0.5×speed 0.67 的派生对装甲 DPS（≈0.34×基准）低于白板对装甲槽
+	# （mp18: 14.5×0.67≈9.7 < 白板 15×1.0=15），加上对轻装 -10% 副作用 → 典型卡净负、装了变弱。
+	# ratio 0.8 + speed 1.0 后派生 DPS ≈ 0.8×基准，明确高于白板槽位，与 epic 弹药定位相符
+	# （mod_marine 基准140 → 对装甲112，接近专用反坦克组 panzerschrek 90/javelin 250 的下半区）。
 	grant_slot = {
 		slot = 1,                      # 对装甲槽位（0=轻装, 1=装甲, 2=对空）
 		base_damage = "attack_light",  # 基准字段：载体单位的对轻装伤害（步枪主火力）
-		damage_ratio = 0.5,            # 基准 × 此系数 = 对装甲基础伤害
-		speed = 0.67,                  # 攻速（次/秒，反坦克步枪式）
+		damage_ratio = 0.8,            # 基准 × 此系数 = 对装甲基础伤害
+		speed = 1.0,                   # 攻速（次/秒，反器材步枪式）
 		windup = 0.3,                  # 前摇（秒）
 		active = 0.15,                 # 动作（秒）
 		weapon_type = 6,               # SNIPER（旧型号6，穿甲弹道）

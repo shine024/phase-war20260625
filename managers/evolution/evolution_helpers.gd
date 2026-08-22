@@ -468,6 +468,20 @@ static func _mechanic_flat_score(stats: UnitStats, hp: float, dps_raw: float, dp
 	if float(stats.hijack_aura_radius) > 0.0 and float(stats.hijack_aura_cd) > 0.0:
 		var hj_duty: float = float(stats.hijack_aura_duration) / float(stats.hijack_aura_cd)
 		s += float(stats.hijack_aura_radius) * 0.01 * clampf(hj_duty, 0.0, 1.0) * 15.0
+	# 组合技参与分（v9.1 套路触发 flag 走 mod_special_flags meta，不落 stats 字段——
+	# graphite/emp 反射/纳米扩散/弱点分析等单独装也有参与价值，每项小分；白板 meta 空=0）
+	if stats.has_meta("mod_special_flags"):
+		var flags: Dictionary = stats.get_meta("mod_special_flags", {})
+		for fk in ["graphite_chance", "graphite_stacks", "emp_reflect_trigger",
+				"nano_spread_trigger", "weakpoint_trigger", "chem_pollute",
+				"graphite_execute", "graphite_amp"]:
+			var fv = flags.get(fk)
+			if fv == null:
+				continue
+			if typeof(fv) == TYPE_BOOL and bool(fv):
+				s += 8.0
+			elif (typeof(fv) == TYPE_FLOAT or typeof(fv) == TYPE_INT) and float(fv) > 0.0:
+				s += 8.0
 	# ── 部署价值（部署快=更早参战输出）──
 	s += maxf(-float(stats.deploy_delay_bonus), 0.0) * 80.0           # move_speed 类改造落点（重定向减部署延迟）
 	# deploy_speed 差分增益（build_unit_stats_for_power_preview 写入 meta，白板差=0）

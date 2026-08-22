@@ -720,8 +720,14 @@ static func _apply_single_mod_effects(result: Dictionary, effects: Dictionary) -
 					result["urban_defense_bonus"] = 0.0
 				result["urban_defense_bonus"] = min(0.75, float(result["urban_defense_bonus"]) + float(effect_value))
 			# 兵种专属：炮兵反击（被攻击时标记攻击者）
+			# v9.x: 炮兵白板已带 has_counter_battery（兵种修正 shots=3），此分支原先只写
+			# has=true 对炮兵零增量（装了无变化）。改为叠加 2 次优先反击机会——
+			# construct_unit_ai 按次消费 shots，战斗真实生效，战力公式 shots×15 同步捕获。
 			"counter_battery":
 				result["has_counter_battery"] = true
+				if not result.has("counter_battery_shots"):
+					result["counter_battery_shots"] = 0
+				result["counter_battery_shots"] = int(result["counter_battery_shots"]) + 2
 			# ─── v7.x 第二批次新机制分支 ───
 			# 濒死复活（IFAK/急救包）
 			"ifak_revive":
@@ -907,9 +913,19 @@ static func apply_to_weapon_slot(weapon: WeaponResource, modifications: Array, s
 		# 仅处理针对当前槽位的 grant
 		if slot_idx < 0 or int(grant.get("slot", -1)) != slot_idx:
 			continue
-		# 槽位已有有效武器（原卡自带，如反坦克组的对装甲槽）→ 跳过 grant，保留原值
+		# 槽位已有有效武器（原卡自带，如反坦克组的对装甲槽）：
+		# v9.x 修复——原逻辑直接跳过，"换弹升级"类改造（穿甲弹 inf_05）对已有对装甲槽的
+		# 单位（多数步兵）完全无效（装了只剩副作用）。改为：派生武器 DPS 更高时升级覆盖
+		# （换装语义），更低时保留原武器（不降级）。
 		if weapon.enabled and weapon.damage > 0:
-			continue
+			var cur_dps: float = float(weapon.damage) * float(weapon.attack_speed)
+			var up_base: float = _read_stat_field(source_stats, String(grant.get("base_damage", "attack_armor")))
+			if up_base <= 0.0:
+				up_base = _read_stat_field(source_stats, "attack_light")
+			var up_dps: float = maxf(1.0, up_base * float(grant.get("damage_ratio", 0.7))) \
+				* maxf(0.05, float(grant.get("speed", 0.33)))
+			if up_dps <= cur_dps:
+				continue
 		# 首次 grant：克隆基座（此时 weapon 必为空槽）
 		if not slot_granted:
 			result = weapon.clone()
