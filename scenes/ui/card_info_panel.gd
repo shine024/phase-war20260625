@@ -612,8 +612,10 @@ func _refresh_card_skill_section(card: CardResource, override_stats: UnitStats =
 	var lines: Array[String] = []
 	# 战场单位模式：优先用传入的 unit.stats（已含全部 meta）；卡牌查看模式：用 _cached_display_stats
 	var stats_for_tags: UnitStats = override_stats if override_stats != null else _cached_display_stats
+	var tag_list: Array = []
 	if card != null and card.card_type == GC.CardType.COMBAT_UNIT and stats_for_tags != null:
 		var tags: Array = CardPeriodicSkills.compute_source_tags_for_stats(stats_for_tags)
+		tag_list = tags
 		var sm: Node = get_node_or_null("/root/PhaseMasterSkillManager")
 		for sid in CardPeriodicSkills.get_all_skill_ids():
 			var sk: Dictionary = CardPeriodicSkills.get_skill(sid)
@@ -634,6 +636,11 @@ func _refresh_card_skill_section(card: CardResource, override_stats: UnitStats =
 			lines.append("  · %s%s（%s）：%s" % [nm, ulti, itv_s, eff_cn])
 	var text: String = "\n".join(lines)
 	_card_skill_label.text = text
+	# 悬浮情报：来源标签清单（标签命中即触发上列技能，由兵种/阵营/法则家族决定）
+	if not tag_list.is_empty():
+		_card_skill_label.tooltip_text = "来源标签：%s\n（标签命中的周期技能见上；标签由兵种/阵营/法则家族决定）" % "、".join(PackedStringArray(tag_list))
+	else:
+		_card_skill_label.tooltip_text = ""
 	_set_section_visible_by_content(_card_skill_section, text)
 
 ## 卡片技能 effect.type → 中文摘要（情报面板紧凑单行）

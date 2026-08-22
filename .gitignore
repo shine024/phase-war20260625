@@ -126,3 +126,6 @@ secrets.json
 tools/_api_key.txt
 tools/_api_keys_level1.txt
 tools/level_bg_workflow/api_keys.txt
+
+# ── GdUnit 测试报告产物（一次性输出，不入库）──
+reports/

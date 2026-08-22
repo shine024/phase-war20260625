@@ -222,6 +222,11 @@ func set_data(id: String, stack_amount: int, type: SlotType = SlotType.RESOURCE,
 			_tile_glow_mode = 1 if bool(extra_data.get("is_equipped", false)) else 0
 			_clear_mod_decorations()  # v9.0: 切到 RUNE 时清掉改造专属装饰
 
+	# 悬浮情报：瓦片名截断 7 字，详细说明走 tooltip（此前 _get_slot_tooltip_text 零调用）
+	tooltip_text = _get_slot_tooltip_text()
+	if _tile_glow_mode == 1:
+		tooltip_text += "\n（已装备）" if slot_type == SlotType.RUNE else "\n（已装配）"
+
 ## 刷新资源显示
 func _refresh_resource(id: String, name_label: Label, amount_label: Label, icon_rect: TextureRect) -> void:
 	var def: Dictionary = BasicResources.get_def(id)

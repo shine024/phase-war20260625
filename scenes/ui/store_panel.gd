@@ -266,8 +266,9 @@ func _refresh_items() -> void:
 		# if inspect_card != null and int(inspect_card.card_type) == GC.CardType.COMBAT_UNIT:
 		# 	continue
 
-		# 高等级商品名称打码
-		if item_tier > current_tier + 1:
+		# 高等级商品名称打码（梯度差 > 1 视为超出当前进度）
+		var masked: bool = item_tier > current_tier + 1
+		if masked:
 			card_name = "？？ 未知卡牌 ？？"
 
 		var locked: bool = current_rep < required_rep and not global_access
@@ -275,7 +276,7 @@ func _refresh_items() -> void:
 
 		var row_panel: PanelContainer = _build_store_item_row(
 			card_id, card_name, frag_amount, price_nano, required_rep, current_rep,
-			locked, afford, enemy_bp, card
+			locked, afford, enemy_bp, card, masked, item_tier - current_tier
 		)
 		item_list.add_child(row_panel)
 
@@ -366,9 +367,17 @@ func _build_rune_items_section(current_rep: int) -> void:
 		name_lbl.custom_minimum_size = Vector2(280, 0)
 		name_lbl.add_theme_color_override("font_color", RuneDefsForStore.RARITY_COLORS.get(rarity, Color.WHITE))
 		hbox.add_child(name_lbl)
-		# 效果
+		# 效果（主 + 副效果拼接，data/runes.gd desc_secondary 字段此前未展示）
+		var eff_parts := PackedStringArray()
+		var dp: String = String(rune_def.get("desc_primary", ""))
+		if not dp.is_empty():
+			eff_parts.append(dp)
+		var ds_raw = rune_def.get("desc_secondary", null)
+		if ds_raw is String and not String(ds_raw).is_empty():
+			eff_parts.append(String(ds_raw))
+		var eff_line: String = " · ".join(eff_parts)
 		var effect_lbl := Label.new()
-		effect_lbl.text = rune_def.get("desc_primary", "")
+		effect_lbl.text = eff_line
 		effect_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
 		effect_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_MID)
 		effect_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -402,6 +411,19 @@ func _build_rune_items_section(current_rep: int) -> void:
 			_on_buy_rune(captured_rune_id, captured_rep, captured_row)
 		)
 		hbox.add_child(buy_btn)
+
+		# 悬浮情报
+		var rune_tip := PackedStringArray()
+		rune_tip.append(display_name)
+		if not eff_line.is_empty():
+			rune_tip.append(eff_line)
+		rune_tip.append("价格：%d 声望（当前 %d）" % [rep_cost, current_rep])
+		if already_owned:
+			rune_tip.append("✓ 已拥有")
+		elif current_rep < rep_cost:
+			rune_tip.append("⚠ 声望不足，暂无法购买")
+		row.tooltip_text = "\n".join(rune_tip)
+
 		item_list.add_child(row)
 
 
@@ -456,6 +478,16 @@ func _build_intel_items_section() -> void:
 		var afford: bool = current_nano >= price
 		var rarity_color: Color = IntelManualItems.get_rarity_color(def.get("rarity", "common"))
 
+		# 简单情报：改造蓝图类道具附上所解锁模块的具体效果（买前知道解锁什么）
+		var intel_desc: String = String(def.get("desc", ""))
+		var mod_id: String = String(def.get("mod_id", ""))
+		if not mod_id.is_empty():
+			var mod_registry: Node = get_node_or_null("/root/ModificationRegistry")
+			if mod_registry != null and mod_registry.has_method("get_data"):
+				var mod_eff: String = String(mod_registry.get_data(mod_id).get("description", ""))
+				if not mod_eff.is_empty():
+					intel_desc = "%s\n  效果：%s" % [intel_desc, mod_eff]
+
 		var row := PanelContainer.new()
 		var row_style := PanelStyles.make_panel_style(
 			Color(DT.COLOR_CARD.r, DT.COLOR_CARD.g, DT.COLOR_CARD.b, 0.92),
@@ -474,7 +506,7 @@ func _build_intel_items_section() -> void:
 		name_lbl.add_theme_color_override("font_color", rarity_color)
 		info_vbox.add_child(name_lbl)
 		var desc_lbl := Label.new()
-		desc_lbl.text = "  %s" % def.get("desc", "")
+		desc_lbl.text = "  %s" % intel_desc
 		desc_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
 		desc_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_MID)
 		info_vbox.add_child(desc_lbl)
@@ -510,6 +542,13 @@ func _build_intel_items_section() -> void:
 		row.add_child(hbox)
 		item_list.add_child(row)
 
+		# 悬浮情报
+		var intel_tip := PackedStringArray()
+		intel_tip.append("%s（持有 %d）" % [def.get("name", ""), count])
+		intel_tip.append(intel_desc)
+		intel_tip.append("价格：%d 纳米材料（当前 %d）" % [price, current_nano])
+		row.tooltip_text = "\n".join(intel_tip)
+
 
 func _on_buy_intel_item(item_type: String, price: int, row_node: Control) -> void:
 	var bag: Node = get_node_or_null("/root/IntelItemBag")
@@ -532,7 +571,8 @@ func _on_buy_intel_item(item_type: String, price: int, row_node: Control) -> voi
 func _build_store_item_row(
 	card_id: String, card_name: String, frag_amount: int,
 	price_nano: int, required_rep: int, current_rep: int,
-	locked: bool, afford: bool, enemy_bp, card
+	locked: bool, afford: bool, enemy_bp, card,
+	masked: bool = false, tier_gap: int = 0
 ) -> PanelContainer:
 	var row_panel: PanelContainer = StoreItemRowScene.instantiate()
 
@@ -554,7 +594,21 @@ func _build_store_item_row(
 	elif card != null:
 		info_card = card
 
-	if info_card != null and not locked:
+	if masked:
+		# 等级打码商品：只透露类型与梯度提示——情报可见性独立于购买能力，
+		# 跨梯度商品保持神秘维持探索驱动（符合 IntelManual 揭示精神）
+		var info_label_m: Label = row_panel.get_node("RowMargin/RowHBox/InfoVBox/InfoLabel")
+		var m_parts: Array[String] = []
+		if info_card != null:
+			match info_card.card_type:
+				GC.CardType.COMBAT_UNIT: m_parts.append("战斗卡")
+				GC.CardType.ENERGY:      m_parts.append("能量卡")
+				GC.CardType.LAW:         m_parts.append("法则卡")
+		m_parts.append("超出当前进度的储备（梯度 +%d）" % maxi(tier_gap, 1))
+		info_label_m.text = "  |  ".join(m_parts)
+		info_label_m.visible = true
+	elif info_card != null:
+		# 声望锁不遮蔽情报：声望只锁交易不锁认知（玩家看得到目标才会规划声望投入）
 		# 类型/稀有度/能量消耗行
 		var info_label: Label = row_panel.get_node("RowMargin/RowHBox/InfoVBox/InfoLabel")
 		var info_parts: Array[String] = []
@@ -649,6 +703,25 @@ func _build_store_item_row(
 	buy_btn.pressed.connect(func() -> void:
 		_on_buy_pressed(cid_copy, frag_copy, price_copy, row_panel)
 	)
+
+	# 悬浮情报：行内文案之外的简明参考（价格/声望门槛/锁定原因一目了然）
+	var tip := PackedStringArray()
+	if masked:
+		tip.append("？？ 未知商品 ？？")
+		tip.append("超出当前进度的储备，推进关卡后揭示")
+	else:
+		tip.append("%s × %d" % [card_name, frag_amount])
+		if info_card != null:
+			if not String(info_card.summary_line).is_empty():
+				tip.append(String(info_card.summary_line))
+			if not String(info_card.description).is_empty():
+				tip.append(String(info_card.description))
+	tip.append("价格：%d 纳米材料" % price_nano)
+	if required_rep > 0:
+		tip.append("声望需求：%d（当前 %d）" % [required_rep, current_rep])
+		if locked:
+			tip.append("⚠ 声望不足，暂无法购买")
+	row_panel.tooltip_text = "\n".join(tip)
 
 	return row_panel
 
