@@ -31,7 +31,10 @@ func _ready() -> void:
 	_populate_tabs()
 
 ## 打开帮助面板
-func show_panel() -> void:
+## v9.x 修复：加可选 card 参数对齐 main._notify_panel_opened 的统一分发约定
+## （show_panel(null)）——原零参签名导致分发侧带参调用不兼容，且面板从未被
+## 分发叫醒（_PANEL_NODE_NAMES 缺 "help" 键），表现为空遮罩且无法关闭。
+func show_panel(_card: CardResource = null) -> void:
 	if _is_open:
 		return
 	_is_open = true

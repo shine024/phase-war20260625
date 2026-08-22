@@ -14,6 +14,7 @@ const PANEL_CHECKS: Array = [
 	["_on_quest_pressed", "QuestOverlay", "QuestPanel"],
 	["_on_faction_pressed", "FactionOverlay", "FactionPanel"],
 	["_on_settings_pressed", "SettingsOverlay", "SettingsPanel"],
+	["_on_help_pressed", "HelpOverlay", "HelpPanel"],
 ]
 
 func _process(_delta: float) -> bool:
@@ -50,6 +51,8 @@ func _assert_panels() -> bool:
 		var pn: String = String(entry[2])
 		var panel: Node = main.get_node_or_null("PopupLayer/%s/CenterContainer/%s" % [key, pn])
 		var ok: bool = panel != null
+		if ok and not panel.visible:
+			ok = false  # 面板存在但未显示（help 事故形态：show_panel 未被分发叫醒）
 		if ok:
 			var items: Node = panel.get_node_or_null("ScrollContainer/ItemList")
 			if items != null and items.get_child_count() == 0:

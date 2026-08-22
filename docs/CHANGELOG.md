@@ -2644,3 +2644,16 @@ v17j 分格 meteor 7→5（-2）/summon 4→5（+1）——单格 ±1-2 波动�
 - **新设 tests/panel_open_smoke.gd**：进主场景→连按四个面板按钮→断言面板重建+内容填充。此测试在此事故下必红，防同类回归
 
 **验证**: panel_open_smoke 四面板 OK + 冒烟 8 项 + ui_unified_check 通过 + main boot 零错误 + gdunit 145 例 19 失败（既有基线不变）
+
+## v20.2 帮助面板修复——空壳+无法关闭（2026-08-22 晚）
+
+**现象**：帮助按钮打开后只有半透明遮罩，无内容，且遮罩吞掉全部点击关不掉。
+
+**根因（既有 bug，非 v20 批次引入）**：v7.x 面板统一重构的 `_notify_panel_opened` 按 `_PANEL_NODE_NAMES` 字典查面板名分发 open 调用，字典漏登 "help" → 帮助面板懒加载实例化后 `_ready` 自置 visible=false 等 `show_panel()` 叫醒，但分发查名落空早退 → 面板永远隐藏，只剩 Backdrop（mouse_filter=STOP，CanvasLayer 100 盖住 HUD 层 40）挡全屏。
+
+**修复**：
+- main.gd `_PANEL_NODE_NAMES` 补 "help": "HelpPanel"
+- help_panel.gd `show_panel()` → `show_panel(_card: CardResource = null)` 对齐分发侧 `show_panel(null)` 的统一签名约定（零参签名与带参调用不兼容）
+- panel_open_smoke 扩到五面板（+help），并给所有面板加 visible 断言（专防"实例化了但没显示"这类形态）
+
+**验证**: panel_open_smoke 五面板 OK（help visible=true + TabContainer 5 标签填充）+ 冒烟 8 项 + ui_unified_check + main boot 零错误 + gdunit 19 失败（既有基线）

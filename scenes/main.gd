@@ -431,6 +431,9 @@ const _PANEL_NODE_NAMES := {
 	"collection": "CollectionPanel",
 	"leaderboard": "LeaderboardPanel",
 	"occupation": "OccupationPanel",
+	# v9.x 修复：v7.x 面板统一重构时漏登——help 懒加载实例化后 _notify 查名
+	# 落空早退，show_panel 永不被调，面板永远隐藏（空遮罩挡全屏无法关闭）
+	"help": "HelpPanel",
 }
 
 func _notify_panel_opened(overlay: Control, panel_key: String) -> void:
