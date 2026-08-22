@@ -138,12 +138,6 @@ func _refresh_card_list() -> void:
 				card_entries[base_id] = { "template": null, "instance_ids": [] }
 			if not card_entries[base_id]["instance_ids"].has(sid):
 				card_entries[base_id]["instance_ids"].append(sid)
-	# 来源3：蓝图（补无实例的卡）
-	for id_raw in BlueprintManager.get_all_blueprint_ids():
-		var card_id: String = str(id_raw)
-		if not card_entries.has(card_id):
-			card_entries[card_id] = { "template": null, "instance_ids": [] }
-
 	# 加载模板 CardResource，生成列表项
 	for card_id in card_entries:
 		var entry = card_entries[card_id]

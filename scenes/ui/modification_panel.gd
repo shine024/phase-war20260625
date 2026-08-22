@@ -386,15 +386,9 @@ func _refresh_card_list() -> void:
 	var DefaultCards = preload("res://data/default_cards.gd")
 	var ir: Node = get_node_or_null("/root/InstanceRegistry")
 
-	## v7.1: 同时显示蓝图中有副本的卡和当前背包中的卡
 	## 用 Dictionary 存 { card_id: { card: CardResource, instance_ids: Array } }
+	## 2026-08-22：蓝图来源已随蓝图体系删除，列表只来自背包实例
 	var card_entries: Dictionary = {}
-
-	## 来源1：蓝图有副本的
-	for id_raw in BlueprintManager.get_all_blueprint_ids():
-		var card_id: String = str(id_raw)
-		if not card_entries.has(card_id):
-			card_entries[card_id] = { "card": null, "instance_ids": [] }
 
 	## 来源2：背包中的（可能是 instance_id 如 "cold_t72#1"）
 	## v7.x 修复（铁律2）：优先读 InstanceRegistry 实例全集（真·实例数据源，永不被 consume）。

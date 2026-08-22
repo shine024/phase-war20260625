@@ -184,12 +184,14 @@ func _refresh_resources() -> void:
 func _refresh_blueprint_count() -> void:
 	if _blueprint_count_label == null:
 		return
-	# DEPRECATED (P0-3c): blueprint_fragments count display replaced with unlocked blueprints count
-	var blueprint_count = 0
-	if BlueprintManager and BlueprintManager.has_method("get_unlocked_count"):
-		blueprint_count = BlueprintManager.get_unlocked_count()
-	elif BlueprintManager and BlueprintManager.has_method("get_total_fragment_count"):
-		blueprint_count = BlueprintManager.get_total_fragment_count()
+	# 2026-08-22：蓝图体系已删除，口径改为图鉴收集数（拥有过的卡种）
+	var blueprint_count := 0
+	var mll: Node = get_node_or_null("/root/ManagerLazyLoader")
+	if mll and mll.has_method("ensure_loaded"):
+		mll.ensure_loaded("card_collection")
+	var ccm: Node = get_node_or_null("/root/CardCollectionManager")
+	if ccm and ccm.has_method("get_collection_progress"):
+		blueprint_count = int(ccm.get_collection_progress().get("owned", 0))
 	_blueprint_count_label.text = str(blueprint_count)
 
 func _refresh_lore_count() -> void:

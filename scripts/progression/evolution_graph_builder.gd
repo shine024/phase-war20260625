@@ -33,13 +33,10 @@ static func get_display_name(card_id: String) -> String:
 static func is_blueprint_unlocked(card_id: String) -> bool:
 	if card_id.is_empty():
 		return false
-	if BlueprintManager == null:
+	# 2026-08-22：蓝图体系已删除，解锁口径改为"拥有该卡种的实例"（InstanceRegistry 计数）
+	if InstanceRegistry == null or not InstanceRegistry.has_method("get_instances_by_card_id"):
 		return false
-	if BlueprintManager.has_method("is_blueprint_unlocked"):
-		return bool(BlueprintManager.is_blueprint_unlocked(card_id))
-	if BlueprintManager.has_method("get_unlocked_blueprint_ids"):
-		return (BlueprintManager.get_unlocked_blueprint_ids() as Array).has(card_id)
-	return false
+	return not (InstanceRegistry.get_instances_by_card_id(card_id) as Array).is_empty()
 
 
 static func build() -> Dictionary:

@@ -258,7 +258,7 @@ func _apply_embedded_layout() -> void:
 ## ─────────────────────────────────────────────
 
 ## v7.x 重构：刷新左栏名册列表（替代旧 OptionButton 下拉）
-## 数据源不变：InstanceRegistry 实例全集（主）+ BlueprintManager 蓝图补无实例卡（兜底）。
+## 数据源：InstanceRegistry 实例全集（2026-08-22 蓝图兜底来源已随蓝图体系删除）。
 ## 应用 chip 筛选：全部/可进化（有进化目标）/终阶（无进化目标）。
 func _refresh_card_list() -> void:
 	if card_list_container == null:
@@ -279,15 +279,6 @@ func _refresh_card_list() -> void:
 			seen_full[iid] = true
 			seen_base[inst.card_id] = true
 			_card_list.append(inst)
-	if BlueprintManager and BlueprintManager.has_method("get_all_blueprint_ids"):
-		for bid_raw in BlueprintManager.get_all_blueprint_ids():
-			var bid: String = str(bid_raw)
-			if bid.is_empty() or seen_base.has(bid):
-				continue
-			var card: CardResource = DefaultCards.get_card_by_id(bid)
-			if card == null:
-				continue
-			_card_list.append(card)
 	# 清空列表 UI
 	for child in card_list_container.get_children():
 		child.queue_free()
