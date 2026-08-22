@@ -21,46 +21,11 @@ func _ready() -> void:
 			"node_name": "BackpackPanel",
 			"autoload": false
 		},
-		"quest": {
-			"scene": "res://scenes/ui/quest_panel.tscn",
-			"parent_path": "PopupLayer/QuestOverlay/CenterContainer",
-			"node_name": "QuestPanel",
-			"autoload": false
-		},
-		"store": {
-			"scene": "res://scenes/ui/store_panel.tscn",
-			"parent_path": "PopupLayer/StoreOverlay/CenterContainer",
-			"node_name": "StorePanel",
-			"autoload": false
-		},
-		"faction": {
-			"scene": "res://scenes/ui/faction_panel.tscn",
-			"parent_path": "PopupLayer/FactionOverlay/CenterContainer",
-			"node_name": "FactionPanel",
-			"autoload": false
-		},
-		# v6.10: 势力领地图面板（世界视角，100关占领状态可视化）
-		"occupation": {
-			"scene": "res://scenes/ui/occupation_panel.tscn",
-			"parent_path": "PopupLayer/OccupationOverlay/CenterContainer",
-			"node_name": "OccupationPanel",
-			"autoload": false
-		},
-		# v6.6: 移除 "map" 配置 —— world_map_panel.tscn 不存在，
-		# 世界地图功能由 main.tscn 内联的 WorldMapPanel 节点承担，
-		# _ensure_lazy_panel 的子节点复用短路逻辑使此 lazy-load 永不触发
-		"settings": {
-			"scene": "res://scenes/ui/settings_panel.tscn",
-			"parent_path": "PopupLayer/SettingsOverlay/CenterContainer",
-			"node_name": "SettingsPanel",
-			"autoload": false
-		},
-		"leaderboard": {
-			"scene": "res://scenes/ui/leaderboard_panel.tscn",
-			"parent_path": "PopupLayer/LeaderboardOverlay/CenterContainer",
-			"node_name": "LeaderboardPanel",
-			"autoload": false
-		},
+		# v9.x 清理（2026-08-22）：以下注册已移除——面板均静态实例化于 main.tscn，
+		# 子节点复用短路使懒加载永不触发（同 v6.6 "map" 先例）：
+		# quest / store / faction / occupation / settings / leaderboard / intelligence
+		# phase_master_skill（parent_path 节点不存在，真实开启方是 growth_panel 自建 CanvasLayer）
+		# reinforcement（无 overlay 开启方；面板活于 card_info_panel 嵌入式实例化）
 		"achievement": {
 			"scene": "res://scenes/ui/achievement_panel.tscn",
 			"parent_path": "PopupLayer/AchievementOverlay/CenterContainer",
@@ -72,22 +37,10 @@ func _ready() -> void:
 		# 掉落展示走 MvpPanel 结算 + backpack_changed 刷新，场景文件已删。
 		# 2026-08-16 关卡设计审查：level_select 配置已移除——全项目零开启方
 		# （选关由 world_map 承担），属死配置（同 v6.6 C3 world_map_panel 先例）。
-		"phase_master_skill": {
-			"scene": "res://scenes/ui/phase_master_skill_panel.tscn",
-			"parent_path": "PopupLayer/PhaseMasterSkillOverlay/CenterContainer",
-			"node_name": "PhaseMasterSkillPanel",
-			"autoload": false
-		},
 		"help": {
 			"scene": "res://scenes/ui/help_panel.tscn",
 			"parent_path": "PopupLayer/HelpOverlay/CenterContainer",
 			"node_name": "HelpPanel",
-			"autoload": false
-		},
-		"reinforcement": {
-			"scene": "res://scenes/ui/reinforcement_panel.tscn",
-			"parent_path": "PopupLayer/ReinforcementOverlay/CenterContainer",
-			"node_name": "ReinforcementPanel",
 			"autoload": false
 		},
 		"modification": {
@@ -100,12 +53,6 @@ func _ready() -> void:
 			"scene": "res://scenes/ui/evolution_panel.tscn",
 			"parent_path": "PopupLayer/EvolutionOverlay/CenterContainer",
 			"node_name": "EvolutionPanel",
-			"autoload": false
-		},
-		"intelligence": {
-			"scene": "res://scenes/ui/intelligence_hub_panel.tscn",
-			"parent_path": "PopupLayer/IntelligenceOverlay/CenterContainer",
-			"node_name": "IntelligenceHubPanel",
 			"autoload": false
 		},
 		"growth": {

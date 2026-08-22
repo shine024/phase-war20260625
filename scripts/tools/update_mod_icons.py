@@ -10,7 +10,6 @@ ICON_BASE = "res://assets/ui/icons/mod_icons/mod_"
 FALLBACK_MAP = {
     "active": "armor_special",
     "deception": "stealth",
-    "enemy_origin": "command",
     "enhancement": "fire_control",
     "fuze": "ammunition",
     "guidance": "radar",

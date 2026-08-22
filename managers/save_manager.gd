@@ -65,8 +65,7 @@ const DEFERRED_MANAGER_LOADS: Array = [
 	["/root/CardEnhancementManager", "card_enhancement"],
 	["/root/TutorialProgressionManager", "tutorial_progress"],
 	["/root/DayClock", SK_DAY_CLOCK],
-	["/root/CharacterManager", "characters"],
-	["/root/ChallengeModeManager", "challenge_records"],
+	# v9.x 清理：characters/challenge_records 管理器已删，旧档 key 静默跳过
 	["/root/CardCollectionManager", "card_collection"],
 	["/root/LeaderboardManager", "leaderboard"],
 	# v6.6: 情报发现/进化/敌源MOD（deferred，非战斗实时）
@@ -104,8 +103,6 @@ const RESETTABLE_MANAGERS := [
 	"CardEnhancementManager",
 	"TutorialProgressionManager",
 	"DayClock",
-	"CharacterManager",
-	"ChallengeModeManager",
 	"CardCollectionManager",
 	"IntelItemBag",
 	# v6.6: 情报系统（reset 靠 load_state({}) 清空字段）
@@ -592,8 +589,8 @@ func _collect_noncritical_save_data(data: Dictionary, now_ms: int) -> void:
 		_collect_manager_state(fresh, "/root/CardEnhancementManager", SK_CARD_ENHANCEMENT)
 		_collect_manager_state(fresh, "/root/TutorialProgressionManager", SK_TUTORIAL_PROGRESS)
 		_collect_manager_state(fresh, "/root/DayClock", SK_DAY_CLOCK)
-		_collect_manager_state(fresh, "/root/CharacterManager", SK_CHARACTERS)
-		_collect_manager_state(fresh, "/root/ChallengeModeManager", SK_CHALLENGE_RECORDS)
+		# v9.x 清理：CharacterManager/ChallengeModeManager 已删（零消费僵尸管理器）；
+		# 旧档 characters/challenge_records key 读档时静默跳过，新档不再写出
 		_collect_manager_state(fresh, "/root/CardCollectionManager", SK_CARD_COLLECTION)
 		_collect_manager_state(fresh, "/root/LeaderboardManager", SK_LEADERBOARD)
 		# v6.6: 情报系统（deferred 收集）

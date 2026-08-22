@@ -70,32 +70,28 @@ func _exit_tree() -> void:
 ## 单位受伤 → 暴击屏幕震动：v8.1 已迁移到 BattleManager._on_unit_damaged_combat_feedback
 ## （原实现因 meta 竞态失效属死逻辑）。T1 性能优化：连空监听一并移除，本处不再订阅 unit_damaged。
 
-## 相位法则施放 → 特效（委托给 BattleFeedbackManager）+ 日常任务计数
+## 相位法则施放 → 特效 + 日常任务计数
 ## v7.x 修复 B5：施放相位法则时推进 USE_PHASE_LAWS 日常任务
+## v9.x 清理：BattleFeedbackManager 从未注册（恒 null），原兜底分支转正为唯一路径
 func _on_phase_law_cast(law_id: String, position: Vector2, _family: String) -> void:
 	# 日常任务：使用相位法则
 	_ensure_lazy("daily_task")  # v7.x 性能：DailyTaskManager 延迟加载守卫
 	var tm = get_node_or_null("/root/DailyTaskManager")
 	if tm and tm.has_method("update_task_progress"):
 		tm.update_task_progress(DailyTaskManager.TaskType.USE_PHASE_LAWS, 1)
-	var bfm = get_node_or_null("/root/BattleFeedbackManager")
 	var bf = _find_battlefield(get_tree().current_scene if get_tree() else null)
-	if bfm and is_instance_valid(bfm) and bf:
-		bfm.on_phase_law_cast(law_id, position, bf)
-	else:
-		# 兜底：如果 BattleFeedbackManager 不可用，直接调用效果脚本
-		var law: Dictionary = _LawDefs.get_by_id(law_id)
-		if law.is_empty():
-			return
-		var fam_raw := String(law.get("family", "")).to_upper()
-		var fx_key: String = _FAMILY_MAP.get(fam_raw, fam_raw)
-		if bf:
-			match fx_key:
-				"钢铁": _LawFx.create_steel_effect(bf, position)
-				"烈焰": _LawFx.create_flame_effect(bf, position)
-				"雷霆": _LawFx.create_thunder_effect(bf, position)
-				"虚空": _LawFx.create_void_effect(bf, position)
-				_:     _LawFx.create_phase_law_effect(bf, position, Color.CYAN)
+	var law: Dictionary = _LawDefs.get_by_id(law_id)
+	if law.is_empty():
+		return
+	var fam_raw := String(law.get("family", "")).to_upper()
+	var fx_key: String = _FAMILY_MAP.get(fam_raw, fam_raw)
+	if bf:
+		match fx_key:
+			"钢铁": _LawFx.create_steel_effect(bf, position)
+			"烈焰": _LawFx.create_flame_effect(bf, position)
+			"雷霆": _LawFx.create_thunder_effect(bf, position)
+			"虚空": _LawFx.create_void_effect(bf, position)
+			_:     _LawFx.create_phase_law_effect(bf, position, Color.CYAN)
 
 ## 战斗胜利 → 更新日常任务
 ## v7.x 修复 B5：原只推进 BATTLE_VICTORY 一类，其余6类无入口 → 接取的日常任务永远完不成。
@@ -192,12 +188,10 @@ func _on_enhancement_completed(success: bool, _card_id: String, _action: String,
 	if tm and tm.has_method("update_task_progress"):
 		tm.update_task_progress(DailyTaskManager.TaskType.UPGRADE_CARDS, 1)
 
-## 单位死亡 → 委托给 BattleFeedbackManager + 日常任务击杀计数
+## 单位死亡 → 日常任务击杀计数
 ## v7.x 修复 B5：敌方单位死亡时推进 KILL_ENEMIES 日常任务（实时计数，不依赖结算摘要）
+## v9.x 清理：BattleFeedbackManager 从未注册（恒 null），死亡反馈委托块删除
 func _on_unit_died(unit: Node, is_player_unit: bool) -> void:
-	var bfm = get_node_or_null("/root/BattleFeedbackManager")
-	if bfm and is_instance_valid(bfm):
-		bfm.on_unit_death(unit)
 	# 仅敌方单位死亡计入击杀任务（is_player 为 true 表示死者是我方）
 	if is_player_unit:
 		return

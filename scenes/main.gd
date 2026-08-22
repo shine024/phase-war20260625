@@ -171,8 +171,7 @@ func _process(delta: float) -> void:
 
 
 func _deferred_non_critical_init() -> void:
-	# 注册新的游戏系统管理器
-	_setup_new_managers()
+	# v9.x 清理：_setup_new_managers 为 no-op 检查（已删）
 	# 集成新系统
 	_integrate_new_systems()
 	# 初始化挂机管理器
@@ -603,16 +602,6 @@ func _ensure_lazy_panel(panel_key: String) -> void:
 		"backpack":
 			lazy_id = "backpack"
 			container_path = "BackpackVBox/CenterRow/BackpackCenter"
-		"quest":
-			lazy_id = "quest"
-		"store":
-			lazy_id = "store"
-		"faction":
-			lazy_id = "faction"
-		"map":
-			lazy_id = "map"
-		"settings":
-			lazy_id = "settings"
 		"growth":
 			lazy_id = "growth"
 		"achievement":
@@ -623,11 +612,11 @@ func _ensure_lazy_panel(panel_key: String) -> void:
 			lazy_id = "modification"
 		"evolution":
 			lazy_id = "evolution"
-		"leaderboard":
-			lazy_id = "leaderboard"
 		"collection":
 			lazy_id = "collection"
 		_:
+			# v9.x 清理：quest/store/faction/map/settings/leaderboard 分支已删——
+			# 面板静态实例化于 main.tscn，closed 信号由 _connect_panel_closed_signals(_ready) 接线
 			return
 	var overlay: Control = _overlay_for_panel_key(lazy_id)
 	if overlay == null:
@@ -640,8 +629,6 @@ func _ensure_lazy_panel(panel_key: String) -> void:
 			continue
 		var child_name_lc: String = String(child.name).to_lower()
 		var is_panel_node: bool = child.has_signal("closed") or child_name_lc.find("panel") >= 0
-		if panel_key == "progression" and child.name == "CardEnhancementPanel":
-			is_panel_node = true
 		if is_panel_node:
 			_connect_panel_closed_runtime(child, lazy_id)
 			return
@@ -1205,27 +1192,6 @@ func _on_phase_selector_selected(_instrument_id: String, selector: Node) -> void
 		bottom_instrument_bar.refresh()
 
 # ── 新系统管理器集成 ─────────────────────────────────────────────
-
-## 注册新的游戏系统管理器
-func _setup_new_managers() -> void:
-	# 简化版本：只检查已在autoload中的管理器，不再动态创建
-	var managers_to_check = [
-		"TutorialProgressionManager",
-		"DailyTaskManager",
-		"ChallengeModeManager",
-		"CardCollectionManager"
-	]
-
-	for manager_name in managers_to_check:
-		var existing = get_node_or_null("/root/" + manager_name)
-		if existing:
-			if DEBUG_MAIN_LOG:
-				pass
-				# [LOG-v5.1] print("[Main] 管理器已加载: ", manager_name)
-		else:
-			if DEBUG_MAIN_LOG:
-				pass
-				# [LOG-v5.1] print("[Main] 管理器未找到: ", manager_name)
 
 ## 启动新手教程（如果是新游戏）
 ## v7.x(A5): 接线 tutorial_overlay —— 新存档首次进入主界面时实例化覆盖层。

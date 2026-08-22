@@ -1139,16 +1139,10 @@ func _on_unit_damaged_combat_feedback(unit: Node, _is_player: bool, amount: floa
 			unit.remove_meta("_vfx_counter_pending")
 			is_counter = true
 	# 暴击优先于穿透/克制样式（暴击视觉冲击更强）；克制优先于穿透（质变更稀有）
+	# v9.x 清理：暴击震屏块删除——BattleFeedbackManager 从未注册（get_node_or_null 恒 null），
+	# 该路径自 v8.1 迁移以来静默失效；恢复震屏应直调 screen_shake.gd（8 个活文件的既有先例）
 	if is_crit:
 		CombatFeedback.show_damage(at_position, amount, unit, true, "critical")
-		# v8.1: 暴击屏幕震动（从 new_systems_integration 迁移）
-		var bfm = get_node_or_null("/root/BattleFeedbackManager")
-		if bfm and is_instance_valid(bfm):
-			var bf = unit.get_parent()
-			if bf:
-				var camera = bf.get_node_or_null("Camera2D")
-				if camera:
-					bfm.shake_screen(camera, 5.0, 0.3)
 	elif is_counter:
 		CombatFeedback.show_damage(at_position, amount, unit, false, "counter_break")
 	elif is_pierce:

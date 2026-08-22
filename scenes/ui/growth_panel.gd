@@ -1013,16 +1013,7 @@ func _preselect_target_card(overlay: Control, panel_key: String, card: CardResou
 	if panel == null:
 		return
 	match panel_key:
-		"enhancement":
-			if panel.has_method("select_card_by_id"):
-				var sel_id: String = card.instance_id if not card.instance_id.is_empty() else card.card_id
-				if card.instance_id.is_empty():
-					var ir: Node = get_node_or_null("/root/InstanceRegistry")
-					if ir != null and ir.has_method("get_instances_by_card_id"):
-						var insts: Array = ir.get_instances_by_card_id(card.card_id)
-						if not insts.is_empty():
-							sel_id = String(insts[0])
-				panel.select_card_by_id(sel_id)
+		# v9.x 清理：enhancement 分支已删（CardEnhancementPanel 场景已删，养成为自动升星+技能树）
 		"modification", "evolution":
 			var card_to_pass: CardResource = card
 			if card.instance_id.is_empty():
@@ -1039,7 +1030,6 @@ func _preselect_target_card(overlay: Control, panel_key: String, card: CardResou
 
 func _target_panel_node_name(panel_key: String) -> String:
 	match panel_key:
-		"enhancement": return "CardEnhancementPanel"
 		"modification": return "ModificationPanel"
 		"evolution": return "EvolutionPanel"
 	return ""

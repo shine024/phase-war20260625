@@ -31,12 +31,8 @@ func _ensure_configs_initialized() -> void:
 			"priority": 1,
 			"description": "光环系统"
 		},
-		"battle_feedback": {
-			"node_name": "BattleFeedbackManager",
-			"script_path": "res://managers/battle_feedback_manager.gd",
-			"priority": 1,
-			"description": "战斗反馈"
-		},
+		# v9.x 清理：battle_feedback（暴击震屏从未生效，battle_manager/new_systems_integration
+		# 的 get_node_or_null 恒 null；将来恢复震屏应直调 screen_shake.gd 静态脚本）——2026-08-22 删
 		"level_progress": {
 			"node_name": "LevelProgressManager",
 			"script_path": "res://managers/level_progress_manager.gd",
@@ -69,12 +65,7 @@ func _ensure_configs_initialized() -> void:
 			"priority": 2,
 			"description": "日常任务"
 		},
-		"challenge_mode": {
-			"node_name": "ChallengeModeManager",
-			"script_path": "res://managers/challenge_mode_manager.gd",
-			"priority": 2,
-			"description": "挑战模式"
-		},
+		# v9.x 清理：challenge_mode（零玩法/UI 消费，仅存档管道被动实例化）——2026-08-22 删
 		# ── 阵营和词缀 (priority 3) ──
 		"faction": {
 			"node_name": "FactionSystemManager",
@@ -155,12 +146,7 @@ func _ensure_configs_initialized() -> void:
 			"priority": 6,
 			"description": "背景故事"
 		},
-		"character": {
-			"node_name": "CharacterManager",
-			"script_path": "res://managers/character_manager.gd",
-			"priority": 6,
-			"description": "角色管理"
-		},
+		# v9.x 清理：character（零玩法/UI 消费，仅存档管道被动实例化）——2026-08-22 删
 		# ── 教程 (priority 7) ──
 		"tutorial": {
 			"node_name": "TutorialProgressionManager",
@@ -182,12 +168,7 @@ func _ensure_configs_initialized() -> void:
 			"priority": 9,
 			"description": "提示消息"
 		},
-		"version": {
-			"node_name": "VersionManager",
-			"script_path": "res://managers/version_manager.gd",
-			"priority": 9,
-			"description": "版本管理"
-		},
+		# v9.x 清理：version（零调用方，永不实例化）——2026-08-22 删
 		"debug_log": {
 			"node_name": "DebugLogManager",
 			"script_path": "res://managers/debug_log_manager.gd",
