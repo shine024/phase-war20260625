@@ -497,14 +497,8 @@ func _on_back_to_title() -> void:
 
 ## v6.10: 打开势力领地图面板
 func _on_territory_map_button() -> void:
-	var lazy_loader = get_node_or_null("/root/UILazyLoader")
-	if lazy_loader == null:
-		return
-	if not lazy_loader.has_method("ensure_loaded"):
-		return
-	# 懒加载 occupation 面板
-	lazy_loader.ensure_loaded("occupation")
-	# 显示 Overlay
+	# OccupationPanel 已静态实例化于 main.tscn（PopupLayer/OccupationOverlay/CenterContainer），
+	# 旧的 UILazyLoader.ensure_loaded("occupation") 守卫恒真（UILazyLoader 无此方法），导致按钮永远早退——已删。
 	var overlay = get_node_or_null("/root/Main/PopupLayer/OccupationOverlay")
 	if overlay == null:
 		return

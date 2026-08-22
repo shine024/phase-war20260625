@@ -591,6 +591,7 @@ func _overlay_for_panel_key(panel_key: String) -> Control:
 		"evolution": return evolution_overlay
 		"afk": return afk_overlay
 		"leaderboard": return leaderboard_overlay
+		"collection": return collection_overlay
 	return null
 
 func _ensure_lazy_panel(panel_key: String) -> void:
@@ -624,6 +625,8 @@ func _ensure_lazy_panel(panel_key: String) -> void:
 			lazy_id = "evolution"
 		"leaderboard":
 			lazy_id = "leaderboard"
+		"collection":
+			lazy_id = "collection"
 		_:
 			return
 	var overlay: Control = _overlay_for_panel_key(lazy_id)
