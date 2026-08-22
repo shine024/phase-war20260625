@@ -74,12 +74,8 @@ func _ready() -> void:
 			"autoload": false
 		},
 		# v8.x: enhancement 注册已移除（强化②停用），养成改为自动经验升星 + 相位师技能树
-		"drops_inventory": {
-			"scene": "res://scenes/ui/drops_inventory_panel.tscn",
-			"parent_path": "PopupLayer/DropsInventoryOverlay/CenterContainer",
-			"node_name": "DropsInventoryPanel",
-			"autoload": false
-		},
+		# 2026-08-22 死面板清理：drops_inventory 注册已移除——全项目零开启方，
+		# 掉落展示走 MvpPanel 结算 + backpack_changed 刷新，场景文件已删。
 		# 2026-08-16 关卡设计审查：level_select 配置已移除——全项目零开启方
 		# （选关由 world_map 承担），属死配置（同 v6.6 C3 world_map_panel 先例）。
 		"phase_master_skill": {

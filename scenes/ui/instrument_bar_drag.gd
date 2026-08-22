@@ -72,7 +72,10 @@ func drop_data(at_position: Vector2, data: Variant) -> void:
 	if flat_index < 0:
 		return
 	if PhaseInstrumentManager and EnergyManager and PhaseInstrumentManager.has_method("equip_card"):
-		PhaseInstrumentManager.equip_card(flat_index, card, EnergyManager)
+		var ok: bool = bool(PhaseInstrumentManager.equip_card(flat_index, card, EnergyManager))
+		if not ok:
+			SignalBus.show_toast.emit("装备失败：%s 无法放入该槽位" % String(card.display_name))
+			SignalBus.play_sound.emit("error")
 
 ## 通过局部坐标定位槽位
 func get_slot_entry_by_local_pos(at_position: Vector2) -> Dictionary:

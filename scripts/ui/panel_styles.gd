@@ -234,3 +234,16 @@ static func make_close_button_styles() -> Dictionary:
 	pressed.shadow_size = 4
 
 	return {"normal": normal, "hover": hover, "pressed": pressed, "focus": hover.duplicate()}
+
+
+## P1-5: 递归给子树内所有 BaseButton 设手型光标。
+## 实测 Godot 4.5 Button 的 mouse_default_cursor_shape 默认是箭头（仅 LinkButton 是手型），
+## 全项目按钮此前一律显示箭头。启动时对主场景跑一次；运行期新增节点由
+## SceneTree.node_added 钩子覆盖（见 main.gd _on_node_added）。
+static func apply_pointing_hand(root: Node) -> void:
+	if root == null or not is_instance_valid(root):
+		return
+	if root is BaseButton:
+		(root as BaseButton).mouse_default_cursor_shape = Input.CURSOR_POINTING_HAND
+	for c in root.get_children():
+		apply_pointing_hand(c)

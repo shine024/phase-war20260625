@@ -334,7 +334,13 @@ static func try_equip_to_slot(item: PanelContainer, slot: Control) -> void:
 		return
 	if not PhaseInstrumentManager or not PhaseInstrumentManager.has_method("equip_card"):
 		return
-	PhaseInstrumentManager.equip_card(flat_index, item.card, null)
+	var ok: bool = bool(PhaseInstrumentManager.equip_card(flat_index, item.card, null))
+	if not ok:
+		# P0-2: 装备失败此前完全静默（拖了没反应），玩家无法区分"失败"还是"卡了"
+		var card_name: String = String(item.card.display_name) if item.card != null else "卡牌"
+		SignalBus.show_toast.emit("装备失败：%s 与该槽位颜色不匹配" % card_name)
+		if SignalBus.has_signal("play_sound"):
+			SignalBus.play_sound.emit("error")
 
 ## 计算扁平索引
 static func calculate_flat_index(_item: PanelContainer, slot_color: String, slot_index: int) -> int:

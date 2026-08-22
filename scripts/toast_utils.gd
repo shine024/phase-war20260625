@@ -20,7 +20,19 @@ func show_toast(parent: Node, message: String, is_error: bool = false, \
 		return
 	_dispose_existing()
 
-	# 优先复用 ToastManager 的 layer=200（永远在最上层）；回退到调用方传入的 parent
+	# P1-7: 统一走 ToastManager 堆叠容器（同文案合并 + 同屏上限 + 与其他 toast 垂直排队）。
+	# 此前本类是"绝对定位替换式"，与 ToastManager 的 VBox 堆叠同层不同位，密集时会视觉重叠。
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree != null and tree.root != null:
+		var tm: Node = tree.root.get_node_or_null("/root/ToastManager")
+		if tm != null:
+			if is_error:
+				tm.show_error(message)
+			else:
+				tm.show_toast(message, show_duration, Color(0.2, 0.8, 0.3))
+			return
+
+	# 回退：ToastManager 未加载（极早期/测试环境），保留原自绘绝对定位实现
 	var host_parent: Node = _get_toast_host(parent)
 
 	var panel := PanelContainer.new()

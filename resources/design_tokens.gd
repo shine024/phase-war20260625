@@ -276,6 +276,33 @@ static func get_body_font() -> Font:
 			return ThemeDB.fallback_font
 	return _body_font
 
+# —— P1-9: 中文字体显式 fallback 链 ——
+# 原注释承诺"中文走 Godot fallback（Noto Sans CJK）"，但全项目无任何显式 fallback 配置，
+# 实际依赖玩家机器上恰好有可用的系统中文字体，不同 Windows/导出平台字形粗细可能不一致。
+# 这里给全部打包字体（Rajdhani×3 + Barlow + title）挂 SystemFont fallback 链：
+# FontFile 缺字形（所有中文）→ 按序解析系统字体。调用方：main._ready / title_screen._ready。
+const CJK_FALLBACK_NAMES := PackedStringArray([
+	"Noto Sans CJK SC", "Source Han Sans SC", "Microsoft YaHei", "Microsoft YaHei UI",
+	"PingFang SC", "SimHei", "sans-serif",
+])
+static var _cjk_fallback_applied := false
+
+static func ensure_cjk_fallback() -> void:
+	if _cjk_fallback_applied:
+		return
+	_cjk_fallback_applied = true
+	var sys := SystemFont.new()
+	sys.font_names = CJK_FALLBACK_NAMES
+	for path in [FONT_PATH_TITLE, FONT_PATH_TITLE_BOLD, FONT_PATH_BODY,
+			"res://assets/fonts/data_font.ttf", "res://assets/fonts/title_font.ttf"]:
+		var f: Font = load(path) as Font
+		if f == null:
+			continue
+		var fbs: Array[Font] = f.fallbacks
+		if not fbs.has(sys):
+			fbs.append(sys)
+			f.fallbacks = fbs
+
 # 系统签名色快捷取（system: "amber"|"cyan"|"violet"|"gold"|"green_up"|"red_down"）
 static func get_system_color(system: String) -> Color:
 	match system:

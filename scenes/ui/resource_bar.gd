@@ -2,16 +2,21 @@ extends PanelContainer
 ## 顶部资源栏：显示关键资源（战斗能量、纳米材料、已解锁蓝图等）
 
 const GC = preload("res://resources/game_constants.gd")
+const DT = preload("res://resources/design_tokens.gd")
 const BasicResources = preload("res://data/basic_resources.gd")
 const FormatUtil = preload("res://scripts/ui/format_util.gd")
 
 var _energy_label: Label
-var _basic_nano_label: Label
 var _nano_material_label: Label
 var _alloy_label: Label
 var _crystal_label: Label
 var _blueprint_count_label: Label
 var _lore_count_label: Label
+
+# P1-6: 资源 +N 飘字——按规范化ID记录图标容器，短窗口聚合增量后一次性上浮
+var _icon_vboxes: Dictionary = {}
+var _pending_deltas: Dictionary = {}
+var _delta_flush_timer: Timer = null
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(0, 40)
@@ -40,29 +45,44 @@ func _build_ui() -> void:
 	margin.add_child(hbox)
 
 	# 战斗能量
-	_energy_label = _create_resource_item(hbox, "⚡", "战斗能量", Color(1.0, 0.85, 0.3, 1.0))
+	_energy_label = _create_resource_item(hbox, "⚡",
+		"战斗能量\n战斗中部署卡牌所需的能量，随时间自动恢复", Color(1.0, 0.85, 0.3, 1.0))
 
-	# 基本纳米颗粒
-	_basic_nano_label = _create_resource_item(hbox, "🔷", "基本纳米", Color(0.3, 0.8, 1.0, 1.0))
-
-	# 纳米材料
-	_nano_material_label = _create_resource_item(hbox, "🔷", "纳米材料", Color(0.3, 0.8, 1.0, 1.0))
+	# 纳米材料（basic_nano 是其废弃别名，同一数值不再重复显示）
+	_nano_material_label = _create_resource_item(hbox, "🔷",
+		_resource_tooltip(BasicResources.ID_NANO_MATERIALS), Color(0.3, 0.8, 1.0, 1.0))
 
 	# 合金
-	_alloy_label = _create_resource_item(hbox, "🔶", "合金", Color(1.0, 0.6, 0.2, 1.0))
+	_alloy_label = _create_resource_item(hbox, "🔶",
+		_resource_tooltip(BasicResources.ID_ALLOY), Color(1.0, 0.6, 0.2, 1.0))
 
 	# 晶体
-	_crystal_label = _create_resource_item(hbox, "💎", "晶体", Color(0.6, 0.3, 1.0, 1.0))
+	_crystal_label = _create_resource_item(hbox, "💎",
+		_resource_tooltip(BasicResources.ID_CRYSTAL), Color(0.6, 0.3, 1.0, 1.0))
+
+	# P1-6: 图标容器映射（飘字定位用；战斗能量/蓝图/情报非 BasicResource，不参与飘字）
+	_icon_vboxes[BasicResources.ID_NANO_MATERIALS] = _nano_material_label.get_parent()
+	_icon_vboxes[BasicResources.ID_ALLOY] = _alloy_label.get_parent()
+	_icon_vboxes[BasicResources.ID_CRYSTAL] = _crystal_label.get_parent()
 
 	# 已解锁蓝图
-	_blueprint_count_label = _create_resource_item(hbox, "📜", "已解锁蓝图", Color(0.4, 0.7, 1.0, 1.0))
+	_blueprint_count_label = _create_resource_item(hbox, "📜",
+		"已解锁蓝图\n已解锁图板的卡牌种类数，解锁后可在制造面板生产", Color(0.4, 0.7, 1.0, 1.0))
 
 	# 情报
-	_lore_count_label = _create_resource_item(hbox, "📖", "情报", Color(0.9, 0.7, 0.2, 1.0))
+	_lore_count_label = _create_resource_item(hbox, "📖",
+		"情报\n已解锁的世界观情报条目数，可在情报中心浏览", Color(0.9, 0.7, 0.2, 1.0))
+
+func _resource_tooltip(res_id: String) -> String:
+	var def := BasicResources.get_def(res_id)
+	if def.is_empty():
+		return res_id
+	return "%s\n%s" % [def.get("name", res_id), def.get("desc", "")]
 
 func _create_resource_item(parent: Container, icon: String, tooltip: String, color: Color) -> Label:
 	var vbox = VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 2)
+	vbox.tooltip_text = tooltip
 	parent.add_child(vbox)
 
 	var icon_lbl = Label.new()
@@ -80,11 +100,6 @@ func _create_resource_item(parent: Container, icon: String, tooltip: String, col
 	value_lbl.modulate = color
 	vbox.add_child(value_lbl)
 
-	# 添加tooltip
-	var tooltip_panel = TooltipPanel.new()
-	tooltip_panel._custom_tooltip = tooltip
-	vbox.add_child(tooltip_panel)
-
 	return value_lbl
 
 func _connect_signals() -> void:
@@ -93,6 +108,13 @@ func _connect_signals() -> void:
 
 	if BasicResourceManager and BasicResourceManager.has_signal("resources_changed"):
 		BasicResourceManager.resources_changed.connect(_on_resources_changed)
+	if BasicResourceManager and BasicResourceManager.has_signal("resource_delta"):
+		BasicResourceManager.resource_delta.connect(_on_resource_delta)
+		_delta_flush_timer = Timer.new()
+		_delta_flush_timer.one_shot = true
+		_delta_flush_timer.wait_time = 0.35
+		_delta_flush_timer.timeout.connect(_flush_delta_floats)
+		add_child(_delta_flush_timer)
 	# DEPRECATED (P0-3c): blueprint_fragments signal connection disabled — fragment-based model removed
 	#if BlueprintManager and BlueprintManager.has_signal("fragments_changed"):
 	#	BlueprintManager.fragments_changed.connect(_on_blueprint_fragments_changed)
@@ -115,6 +137,8 @@ func _exit_tree() -> void:
 		EnergyManager.energy_changed.disconnect(_on_energy_changed)
 	if BasicResourceManager and BasicResourceManager.has_signal("resources_changed") and BasicResourceManager.resources_changed.is_connected(_on_resources_changed):
 		BasicResourceManager.resources_changed.disconnect(_on_resources_changed)
+	if BasicResourceManager and BasicResourceManager.has_signal("resource_delta") and BasicResourceManager.resource_delta.is_connected(_on_resource_delta):
+		BasicResourceManager.resource_delta.disconnect(_on_resource_delta)
 	# DEPRECATED (P0-3c): blueprint_fragments signal disconnect disabled
 	#if BlueprintManager and BlueprintManager.has_signal("fragments_changed") and BlueprintManager.fragments_changed.is_connected(_on_blueprint_fragments_changed):
 	#	BlueprintManager.fragments_changed.disconnect(_on_blueprint_fragments_changed)
@@ -144,10 +168,6 @@ func _refresh_resources() -> void:
 		return
 
 	var totals = BasicResourceManager.get_all_totals()
-
-	if _basic_nano_label:
-		var basic_nano = int(totals.get("basic_nano", 0))
-		_basic_nano_label.text = _format_number(basic_nano)
 
 	if _nano_material_label:
 		var nano = int(totals.get("nano_materials", 0))
@@ -194,6 +214,52 @@ func _on_energy_changed(_new_energy: float) -> void:
 func _on_resources_changed() -> void:
 	_refresh_resources()
 
+## P1-6: 资源增量聚合——0.35s 窗口内的多次变动合并成一个 +N（战斗中逐击杀入账不刷屏）
+func _on_resource_delta(id: String, applied: int) -> void:
+	if not _icon_vboxes.has(id):
+		return
+	_pending_deltas[id] = int(_pending_deltas.get(id, 0)) + applied
+	if _delta_flush_timer != null and _delta_flush_timer.is_stopped():
+		_delta_flush_timer.start()
+
+func _flush_delta_floats() -> void:
+	var deltas: Dictionary = _pending_deltas.duplicate()
+	_pending_deltas.clear()
+	if deltas.is_empty():
+		return
+	# 飘字挂到所在 CanvasLayer（不进布局容器，可浮出资源栏上沿）
+	var host_layer: CanvasLayer = null
+	var p: Node = get_parent()
+	while p != null:
+		if p is CanvasLayer:
+			host_layer = p
+			break
+		p = p.get_parent()
+	if host_layer == null:
+		return  # 找不到 CanvasLayer（异常环境）则放弃飘字，不报错
+	for id in deltas.keys():
+		var delta: int = int(deltas[id])
+		if delta == 0:
+			continue
+		var vbox: Control = _icon_vboxes.get(id)
+		if vbox == null or not is_instance_valid(vbox):
+			continue
+		var lbl := Label.new()
+		lbl.text = ("+%d" % delta) if delta > 0 else str(delta)
+		lbl.add_theme_font_size_override("font_size", 13)
+		lbl.add_theme_color_override("font_color",
+			DT.COLOR_HEALTH if delta > 0 else DT.COLOR_DANGER)
+		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		lbl.z_index = 50
+		host_layer.add_child(lbl)
+		lbl.global_position = vbox.global_position + Vector2(
+			maxf(4.0, vbox.size.x * 0.5 - 14.0), -14.0)
+		var tw := lbl.create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(lbl, "global_position:y", lbl.global_position.y - 24.0, 0.8)
+		tw.tween_property(lbl, "modulate:a", 0.0, 0.45).set_delay(0.35)
+		tw.chain().tween_callback(lbl.queue_free)
+
 func _on_blueprint_fragments_changed() -> void:
 	pass  # DEPRECATED (P0-3c): blueprint_fragments callback disabled
 
@@ -202,19 +268,3 @@ func _on_lore_unlocked(_lore_id: String, _lore_name: String) -> void:
 
 func _on_stat_boost_applied(_boost_id: String, _boost_name: String, _total_count: int) -> void:
 	pass  # 属性提升显示在背包中，这里暂不显示
-
-## 简单的TooltipPanel类
-class TooltipPanel extends Control:
-	var _custom_tooltip: String = ""
-
-	func _ready() -> void:
-		mouse_filter = Control.MOUSE_FILTER_STOP
-		connect("mouse_entered", _on_mouse_entered)
-		connect("mouse_exited", _on_mouse_exited)
-
-	func _on_mouse_entered() -> void:
-		if not _custom_tooltip.is_empty():
-			Input.set_default_cursor_shape(Input.CURSOR_ARROW)
-
-	func _on_mouse_exited() -> void:
-		pass

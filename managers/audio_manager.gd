@@ -117,8 +117,6 @@ func _ready() -> void:
 			SignalBus.rune_acquired.connect(_on_rune_acquired)
 		if SignalBus.has_signal("faction_level_up") and not SignalBus.faction_level_up.is_connected(_on_faction_level_up):
 			SignalBus.faction_level_up.connect(_on_faction_level_up)
-		if SignalBus.has_signal("milestone_reached") and not SignalBus.milestone_reached.is_connected(_on_milestone_reached):
-			SignalBus.milestone_reached.connect(_on_milestone_reached)
 		if SignalBus.has_signal("phase_field_level_up") and not SignalBus.phase_field_level_up.is_connected(_on_phase_field_level_up):
 			SignalBus.phase_field_level_up.connect(_on_phase_field_level_up)
 		# v7.x 修复: CardEnhancementManager.enhancement_completed 此前零订阅 + handler 签名错配（Dictionary vs String）。
@@ -168,8 +166,6 @@ func _exit_tree() -> void:
 			SignalBus.rune_acquired.disconnect(_on_rune_acquired)
 		if SignalBus.has_signal("faction_level_up") and SignalBus.faction_level_up.is_connected(_on_faction_level_up):
 			SignalBus.faction_level_up.disconnect(_on_faction_level_up)
-		if SignalBus.has_signal("milestone_reached") and SignalBus.milestone_reached.is_connected(_on_milestone_reached):
-			SignalBus.milestone_reached.disconnect(_on_milestone_reached)
 		if SignalBus.has_signal("phase_field_level_up") and SignalBus.phase_field_level_up.is_connected(_on_phase_field_level_up):
 			SignalBus.phase_field_level_up.disconnect(_on_phase_field_level_up)
 		# BGM 监听（_init_music_player 内连接的 3 条）
@@ -427,6 +423,10 @@ func _on_blueprint_unlocked(_card_id: String) -> void:
 # v7.x 修复: 签名对齐 CardEnhancementManager.enhancement_completed(success, card_id, action, message)。
 # 原声明第3参为 Dictionary（错配 String action），即使连接也会运行时报错；且从未 connect（死代码）。
 # 由 _connect_enhancement_signal() 延迟连接（cem 为 lazy-load）。
+# 2026-08-22 审计标注：此链路当前为死代码——v8.x 强化停用后 do_enhance 在
+# card_enhancement_manager.gd:222 提前 return "强化系统已改为自动升级"，
+# emit(:243) 不可达，本 handler 永不触发。保留是因 new_systems_integration
+# 也监听同信号；若彻底移除强化管理器，连同本 handler/连接一起删。
 func _on_enhancement_completed(success: bool, _card_id: String, _action: String, _message: String) -> void:
 	play_sfx("enhance" if success else "cancel")
 
@@ -474,8 +474,6 @@ func _on_synthesis_failed(_reason: String) -> void:
 func _on_rune_acquired(_rune_id: String, _source: String) -> void:
 	play_sfx("blueprint_unlock")
 func _on_faction_level_up(_faction_id: String, _new_level: int) -> void:
-	play_sfx("achievement")
-func _on_milestone_reached(_milestone_id: String, _milestone_name: String) -> void:
 	play_sfx("achievement")
 func _on_phase_field_level_up(_old: int, _new: int, _unspent: int) -> void:
 	play_sfx("enhance")

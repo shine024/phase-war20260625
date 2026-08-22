@@ -36,7 +36,7 @@ func _build_initial_ui() -> void:
 	add_theme_stylebox_override("panel", style)
 
 ## 设置情报收获数据（由战斗结算调用）
-## data格式: {"harvests": [...], "reveal_events": [...], "eom_drops": [...], "intel_item_drops": [...]}
+## data格式: {"harvests": [...], "reveal_events": [...], "intel_item_drops": [...]}
 func set_data(data: Dictionary) -> void:
 	_card_entries.clear()
 	for d in data.get("harvests", []):
@@ -83,7 +83,7 @@ func _refresh_ui() -> void:
 	var hidden_count: int = _card_entries.size() - shown_count
 	if hidden_count > 0:
 		var more_lbl := Label.new()
-		more_lbl.text = "  …另 +%d 种敌人（详见情报手册）" % hidden_count
+		more_lbl.text = "  …另 +%d 种敌人（详见 情报中心·敌方情报）" % hidden_count
 		more_lbl.add_theme_font_size_override("font_size", 11)
 		more_lbl.add_theme_color_override("font_color", Color(0.6, 0.7, 0.8, 0.8))
 		outer.add_child(more_lbl)

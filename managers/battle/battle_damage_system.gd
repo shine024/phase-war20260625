@@ -354,7 +354,7 @@ func generate_battle_completion_drops(player_won: bool, elapsed_time: float, wav
 
 
 func generate_battle_drops_only(player_won: bool, elapsed_time: float, wave_total: int, wave_interval: float, max_deployed: int, units_lost: int) -> Dictionary:
-	ManagerLazyLoader.ensure_loaded("drop")  # v7.x: DropManager 已改懒加载
+	ManagerLazyLoader.ensure_loaded("drop")  # DropManager 为 autoload+别名双层（ensure_loaded 幂等）
 	var dm: Node = _get_autoload_node("DropManager")
 	if dm == null or not dm.has_method("generate_battle_drops"):
 		return {"victory_stars": 0, "era": 0, "player_won": player_won}
@@ -385,25 +385,23 @@ func generate_battle_drops_only(player_won: bool, elapsed_time: float, wave_tota
 	var drops: Array = dm.generate_battle_drops(era, level, player_won, victory_stars)
 	# v8.x: 相位仪改为技能树解锁（不再战斗掉落）。掉落触发已禁用。
 	# 玩家通过相位师技能树（command/firepower 等分支的 phase_instrument 节点）解锁相位仪。
-	# var pim: Node = _get_autoload_node("PhaseInstrumentManager")
-	# if pim != null and pim.has_method("try_roll_battle_drop_instrument"):
-	# 	var inst_drop: Dictionary = pim.try_roll_battle_drop_instrument(0.4, maxi(victory_stars - 1, 0))
-	# 	if not inst_drop.is_empty():
-	# 		var safe_drops: Array = []
-	# 		safe_drops.assign(drops)
-	# 		safe_drops.append(inst_drop)
-	# 		drops = safe_drops
-	# 		battle_result["phase_instrument_drop"] = inst_drop
-	if not drops.is_empty():
-		if _signal_bus and _signal_bus.has_signal("drops_ready_to_claim"):
-			_signal_bus.drops_ready_to_claim.emit(drops)
+		# var pim: Node = _get_autoload_node("PhaseInstrumentManager")
+		# if pim != null and pim.has_method("try_roll_battle_drop_instrument"):
+		# 	var inst_drop: Dictionary = pim.try_roll_battle_drop_instrument(0.4, maxi(victory_stars - 1, 0))
+		# 	if not inst_drop.is_empty():
+		# 		var safe_drops: Array = []
+		# 		safe_drops.assign(drops)
+		# 		safe_drops.append(inst_drop)
+		# 		drops = safe_drops
+		# 		battle_result["phase_instrument_drop"] = inst_drop
+	# 2026-08-22 清理：drops_ready_to_claim emit 已删（信号全项目零订阅者，见 signal_bus.gd 注释）
 
 	return battle_result
 
 
 func generate_intel_harvest(existing_result: Dictionary, p_has_recon: bool = false) -> Dictionary:
 	## 帧B'：情报收获生成（遍历击败敌人做情报掷骰，胜利后单帧最重操作）
-	## 接收帧B的 _battle_result 字典，追加 intel_harvest/eom_fragments 后返回
+	## 接收帧B的 _battle_result 字典，追加 intel_harvest 后返回
 	## p_has_recon: 侦查加成标志，由 BattleManager 在 end_battle 清场前计算传入
 	## （单位此时已 queue_free，无法在 B' 自行遍历 get_children 计算）
 	if not existing_result.get("player_won", false):
@@ -433,9 +431,6 @@ func generate_intel_harvest(existing_result: Dictionary, p_has_recon: bool = fal
 			defeated_list, victory_stars, has_recon, current_env, is_phase_master_battle
 		)
 		existing_result["intel_harvest"] = intel_harvest
-		# 敌源MOD碎片
-		if intel_harvest.get("eom_drops", {}).size() > 0:
-			existing_result["eom_fragments"] = intel_harvest["eom_drops"]
 
 	return existing_result
 

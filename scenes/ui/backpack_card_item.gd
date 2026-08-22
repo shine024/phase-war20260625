@@ -180,6 +180,8 @@ func _ready() -> void:
 	gui_input.connect(_on_gui_input)
 	mouse_entered.connect(_on_mouse_entered)
 	mouse_exited.connect(_on_mouse_exited)
+	# P1-5: 可点击卡牌用手型光标（非 Button 控件不在全局 node_added 钩子覆盖范围）
+	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	clip_contents = false
 	set_custom_minimum_size(SLOT_SIZE)
 	custom_minimum_size = SLOT_SIZE
@@ -801,7 +803,7 @@ func _ensure_compact_slot_structure(icon_row: Control, name_label: Label) -> voi
 	lv_label.name = "Lv"
 	lv_label.clip_text = true
 	lv_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	lv_label.add_theme_font_size_override("font_size", 9)
+	lv_label.add_theme_font_size_override("font_size", 10)
 	lv_label.add_theme_color_override("font_color", Color(0.984, 0.749, 0.141, 1.0))  # amber-soft
 	lv_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stat_left.add_child(lv_label)
@@ -809,14 +811,14 @@ func _ensure_compact_slot_structure(icon_row: Control, name_label: Label) -> voi
 	mod_label.name = "Mod"
 	mod_label.clip_text = true
 	mod_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	mod_label.add_theme_font_size_override("font_size", 9)
+	mod_label.add_theme_font_size_override("font_size", 10)
 	mod_label.add_theme_color_override("font_color", Color(0.498, 0.851, 1.0, 1.0))  # cyan-soft
 	mod_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stat_left.add_child(mod_label)
 	stat_line.add_child(stat_left)
 	var stat_right := Label.new()
 	stat_right.name = "StatRight"
-	stat_right.add_theme_font_size_override("font_size", 9)
+	stat_right.add_theme_font_size_override("font_size", 10)
 	stat_right.add_theme_color_override("font_color", Color(0.91, 0.93, 0.97, 1.0))
 	stat_right.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stat_line.add_child(stat_right)
@@ -1235,7 +1237,7 @@ func _ensure_stars_overlay(c: CardResource) -> void:
 			var star := Label.new()
 			star.name = "Star%d" % i
 			star.text = "★"
-			star.add_theme_font_size_override("font_size", 7)
+			star.add_theme_font_size_override("font_size", 10)
 			star.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			hbox.add_child(star)
 		wrapper.add_child(hbox)
@@ -1305,7 +1307,7 @@ func _ensure_equipped_mark(c: CardResource) -> void:
 		text_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		text_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		text_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		text_lbl.add_theme_font_size_override("font_size", 8)
+		text_lbl.add_theme_font_size_override("font_size", 10)
 		text_lbl.add_theme_color_override("font_color", Color(0.30, 0.92, 0.60, 1.0))
 		text_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		badge.add_child(text_lbl)
@@ -1367,7 +1369,7 @@ func _ensure_instance_no(c: CardResource) -> void:
 	chip.visible = true
 	if lbl:
 		lbl.text = seq
-		lbl.add_theme_font_size_override("font_size", 9)
+		lbl.add_theme_font_size_override("font_size", 10)
 		lbl.add_theme_color_override("font_color", Color(0.65, 0.70, 0.80, 0.95))
 
 
@@ -1681,7 +1683,7 @@ func _set_mtg_minimal_card_view(c: CardResource, name_label, lv_label, icon_rect
 		hdr_root.custom_minimum_size.y = hdr_h
 	if name_hdr:
 		name_hdr.text = DefaultCards.safe_name(c)
-		name_hdr.add_theme_font_size_override("font_size", clampi(int(ceil(SLOT_SIZE.y * 0.028)), 9, 18))
+		name_hdr.add_theme_font_size_override("font_size", clampi(int(ceil(SLOT_SIZE.y * 0.028)), 10, 18))
 	if rank_row:
 		var ri: Dictionary = _mtg_rank_info(c)
 		var icon_px: int = clampi(int(ceil(SLOT_SIZE.y * 0.032)), 10, 20)

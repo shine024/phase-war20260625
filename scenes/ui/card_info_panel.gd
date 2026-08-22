@@ -757,9 +757,12 @@ func _refresh_affix_tags(card: CardResource) -> void:
 		if affix_label:
 			var _fb_text: String = _build_card_affix_summary(card) if card.card_type == GC.CardType.COMBAT_UNIT else ""
 			# v19: 真词条行置顶（标签化容器缺席时拼纯文本）
+			var _fb_tags: Array = []
 			if card.card_type == GC.CardType.COMBAT_UNIT:
-				_fb_text = AffixDisplayFormat.merge_affix_text(AffixDisplayFormat.fmt_player_affix_tags(_card_identity_id(card), AffixManager), _fb_text, "词条")
+				_fb_tags = AffixDisplayFormat.fmt_player_affix_tags(_card_identity_id(card), AffixManager)
+				_fb_text = AffixDisplayFormat.merge_affix_text(_fb_tags, _fb_text, "词条")
 			affix_label.text = _fb_text
+			affix_label.tooltip_text = AffixDisplayFormat.tags_tooltip(_fb_tags)
 			affix_label.visible = not affix_label.text.is_empty()
 		return
 	# 清空旧标签
@@ -780,20 +783,23 @@ func _refresh_affix_tags(card: CardResource) -> void:
 		empty.add_theme_font_size_override("font_size", 11)
 		_affix_flow.add_child(empty)
 		return
-	for tag in tags:
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 4)
-		var dot := Label.new()
-		dot.text = "●"
-		dot.add_theme_color_override("font_color", tag.color)
-		dot.add_theme_font_size_override("font_size", 11)
-		var txt := Label.new()
-		txt.text = tag.text
-		txt.add_theme_color_override("font_color", Color(0.85, 0.85, 0.92, 1))
-		txt.add_theme_font_size_override("font_size", 12)
-		row.add_child(dot)
-		row.add_child(txt)
-		_affix_flow.add_child(row)
+		for tag in tags:
+			var row := HBoxContainer.new()
+			row.add_theme_constant_override("separation", 4)
+			var tip: String = String(tag.get("tooltip", ""))
+			if not tip.is_empty():
+				row.tooltip_text = tip
+			var dot := Label.new()
+			dot.text = "●"
+			dot.add_theme_color_override("font_color", tag.color)
+			dot.add_theme_font_size_override("font_size", 11)
+			var txt := Label.new()
+			txt.text = tag.text
+			txt.add_theme_color_override("font_color", Color(0.85, 0.85, 0.92, 1))
+			txt.add_theme_font_size_override("font_size", 12)
+			row.add_child(dot)
+			row.add_child(txt)
+			_affix_flow.add_child(row)
 
 func _build_card_affix_summary(card: CardResource) -> String:
 	if card.card_type != GC.CardType.COMBAT_UNIT:
@@ -2001,6 +2007,7 @@ func _show_player_unit(unit: Node) -> void:
 		# v19: 真词条行（名称+稀有度+等级）置顶，stats 数值摘要保留在后
 		var _p_affix_tags: Array = AffixDisplayFormat.fmt_player_affix_tags(_card_identity_id(card_res) if card_res != null else "", AffixManager)
 		affix_label.text = AffixDisplayFormat.merge_affix_text(_p_affix_tags, _build_affix_summary_lines(stats), "词条")
+		affix_label.tooltip_text = AffixDisplayFormat.tags_tooltip(_p_affix_tags)
 	# v7.x 修复：战场单位强化详情改用 _build_star_lines（读实例卡养成），
 	# 原 _build_star_enhancement_effects_for_stats(stats) 是 v5.1 废弃的孤儿函数恒返回空。
 	# 内容为空时整个 StarSection 隐藏，避免空 section 占位。

@@ -267,6 +267,14 @@ func on_equip_button_pressed(card: CardResource) -> void:
 	if _try_equip_card(card):
 		if _view and _view.has_method("hide_card_detail"):
 			_view.hide_card_detail()
+		_show_toast_success("已装备：%s" % String(card.display_name))
+	else:
+		# P0-2: 失败此前弹窗不关、无任何提示（"点了没反应"），现给出具体原因
+		_show_toast_error("装备失败：%s" % _last_equip_fail_reason)
+		SignalBus.play_sound.emit("error")
+
+## 最近一次装备失败的原因（由 _try_equip_card 各失败分支写入）
+var _last_equip_fail_reason: String = "没有可用的对应槽位"
 
 ## 拆解按钮回调：将背包额外卡拆解为研究点 + 纳米材料（研究公式与重复蓝图副本一致）
 func on_dismantle_button_pressed(card: CardResource) -> void:
@@ -423,6 +431,7 @@ func _try_equip_card(card: CardResource) -> bool:
 	var pim: Node = _get_autoload_node("PhaseInstrumentManager")
 	var em: Node = _get_autoload_node("EnergyManager")
 	if pim == null or not pim.has_method("get_slots") or not pim.has_method("equip_card"):
+		_last_equip_fail_reason = "相位仪系统未就绪"
 		return false
 
 	var slots: Array = pim.get_slots() if pim.has_method("get_slots") else []
@@ -436,6 +445,7 @@ func _try_equip_card(card: CardResource) -> bool:
 	match card.card_type:
 		GC.CardType.COMBAT_UNIT, GC.CardType.COMBAT_UNIT, GC.CardType.COMBAT_UNIT:
 			if green_count <= 0:
+				_last_equip_fail_reason = "当前相位仪没有绿色战斗槽位"
 				push_warning("[BackpackPresenter] 当前相位仪没有平台/武器槽位")
 				return false
 			var first_occupied_green: int = -1
@@ -445,13 +455,18 @@ func _try_equip_card(card: CardResource) -> bool:
 					break
 				if slots[flat_gi] == null:
 					var ok0: bool = bool(pim.equip_card(flat_gi, card, em))
+					if not ok0:
+						_last_equip_fail_reason = "槽位校验未通过"
 					return ok0
 				if first_occupied_green < 0:
 					first_occupied_green = flat_gi
 			# 所有绿色槽位已满 → 替换第一个
 			if first_occupied_green >= 0:
 				var ok0: bool = bool(pim.equip_card(first_occupied_green, card, em))
+				if not ok0:
+					_last_equip_fail_reason = "槽位校验未通过"
 				return ok0
+			_last_equip_fail_reason = "绿色槽位不足"
 			push_warning("[BackpackPresenter] 绿色槽位不足")
 			return false
 		GC.CardType.ENERGY:
@@ -466,6 +481,7 @@ func _try_equip_card(card: CardResource) -> bool:
 			var PL = preload("res://data/phase_laws.gd")
 			var law: Dictionary = PL.get_by_id(lid)
 			if law.is_empty():
+				_last_equip_fail_reason = "法则数据缺失（%s）" % lid
 				push_error("[BackpackPresenter] 法则卡找不到法则数据: " + lid)
 				return false
 			var kind: String = String(law.get("kind", ""))
@@ -473,6 +489,7 @@ func _try_equip_card(card: CardResource) -> bool:
 			var target_start: int = 0 if target_color == "red" else red_count
 			var target_count: int = int(counts.get(target_color, 0))
 			if target_count <= 0:
+				_last_equip_fail_reason = "当前相位仪没有%s槽位" % ("主动" if target_color == "red" else "被动")
 				push_warning("[BackpackPresenter] 当前相位仪没有%s槽位" % ("主动" if target_color == "red" else "被动"))
 				return false
 			var first_occupied_idx: int = -1
@@ -482,15 +499,22 @@ func _try_equip_card(card: CardResource) -> bool:
 					break
 				if slots[flat_idx] == null:
 					var ok1: bool = bool(pim.equip_card(flat_idx, card, em))
+					if not ok1:
+						_last_equip_fail_reason = "槽位校验未通过"
 					return ok1
 				if first_occupied_idx < 0:
 					first_occupied_idx = flat_idx
 			# 所有槽位已满 → 替换第一个同色槽位（旧卡自动退回背包）
 			if first_occupied_idx >= 0:
 				var ok2: bool = bool(pim.equip_card(first_occupied_idx, card, em))
+				if not ok2:
+					_last_equip_fail_reason = "槽位校验未通过"
 				return ok2
+			_last_equip_fail_reason = "%s槽位不足" % ("主动" if target_color == "red" else "被动")
 			push_warning("[BackpackPresenter] %s槽位不足" % ("主动" if target_color == "red" else "被动"))
 			return false
+	# match 兜底：未知卡牌类型（三个分支均自带 return，此处兜不可达的未来类型）
+	_last_equip_fail_reason = "未知卡牌类型，无法装备"
 	return false
 
 ## ============================================================

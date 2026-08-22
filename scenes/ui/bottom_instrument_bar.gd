@@ -2,6 +2,7 @@ extends PanelContainer
 ## 底部常驻栏：统一从相位仪槽数据渲染（绿/红/蓝/黄）
 
 const GC = preload("res://resources/game_constants.gd")
+const DT = preload("res://resources/design_tokens.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
 const PhaseInstruments = preload("res://data/phase_instruments.gd")
 const DefaultCardsData = preload("res://data/default_cards.gd")
@@ -141,24 +142,44 @@ func _on_auto_deploy_state_changed(enabled: bool) -> void:
 	auto_deploy_toggled.emit(enabled)
 
 
-## 按钮样式：关闭态灰色、开启态绿色高亮
+## 按钮样式：关闭态灰色、开启态绿色高亮（P1-5: 补全 hover/pressed 四态 + 颜色走 DesignTokens）
 func _apply_auto_deploy_btn_style(active: bool) -> void:
 	if _auto_deploy_btn == null or not is_instance_valid(_auto_deploy_btn):
 		return
-	var style := StyleBoxFlat.new()
-	style.set_corner_radius_all(4)
-	style.set_border_width_all(1)
-	style.content_margin_left = 4
-	style.content_margin_right = 4
+	var mk_style := func(bg: Color, border: Color, bw: int) -> StyleBoxFlat:
+		var sb := StyleBoxFlat.new()
+		sb.set_corner_radius_all(4)
+		sb.set_border_width_all(bw)
+		sb.bg_color = bg
+		sb.border_color = border
+		sb.content_margin_left = 4
+		sb.content_margin_right = 4
+		return sb
 	if active:
-		style.bg_color = Color(0, 0.5, 0.38, 0.95)
-		style.border_color = Color(0, 0.94, 0.7, 1.0)
+		var g := DT.COLOR_HEALTH
+		_auto_deploy_btn.add_theme_stylebox_override("normal",
+			mk_style(Color(g.r * 0.35, g.g * 0.55, g.b * 0.45, 0.95), g, 1))
+		_auto_deploy_btn.add_theme_stylebox_override("hover",
+			mk_style(Color(g.r * 0.35, g.g * 0.62, g.b * 0.52, 1.0), Color(g.r, 1.0, g.b, 1.0), 2))
+		_auto_deploy_btn.add_theme_stylebox_override("pressed",
+			mk_style(Color(g.r * 0.2, g.g * 0.4, g.b * 0.33, 1.0), g, 2))
+		_auto_deploy_btn.add_theme_stylebox_override("disabled",
+			mk_style(Color(0.08, 0.12, 0.18, 0.6), Color(0.25, 0.45, 0.65, 0.25), 1))
 		_auto_deploy_btn.add_theme_color_override("font_color", Color(1, 1, 1, 1))
+		_auto_deploy_btn.add_theme_color_override("font_hover_color", Color.WHITE)
+		_auto_deploy_btn.add_theme_color_override("font_pressed_color", Color.WHITE)
 	else:
-		style.bg_color = Color(0.08, 0.12, 0.18, 0.85)
-		style.border_color = Color(0.25, 0.45, 0.65, 0.4)
+		_auto_deploy_btn.add_theme_stylebox_override("normal",
+			mk_style(Color(0.08, 0.12, 0.18, 0.85), Color(0.25, 0.45, 0.65, 0.4), 1))
+		_auto_deploy_btn.add_theme_stylebox_override("hover",
+			mk_style(Color(0.13, 0.2, 0.3, 0.95), Color(DT.COLOR_ACCENT_CYAN.r, DT.COLOR_ACCENT_CYAN.g, DT.COLOR_ACCENT_CYAN.b, 0.7), 2))
+		_auto_deploy_btn.add_theme_stylebox_override("pressed",
+			mk_style(Color(0.05, 0.08, 0.13, 1.0), Color(DT.COLOR_ACCENT_CYAN.r, DT.COLOR_ACCENT_CYAN.g, DT.COLOR_ACCENT_CYAN.b, 0.9), 2))
+		_auto_deploy_btn.add_theme_stylebox_override("disabled",
+			mk_style(Color(0.08, 0.12, 0.18, 0.6), Color(0.25, 0.45, 0.65, 0.25), 1))
 		_auto_deploy_btn.add_theme_color_override("font_color", Color(0.6, 0.7, 0.85, 0.9))
-	_auto_deploy_btn.add_theme_stylebox_override("normal", style)
+		_auto_deploy_btn.add_theme_color_override("font_hover_color", DT.COLOR_TEXT_BRIGHT)
+		_auto_deploy_btn.add_theme_color_override("font_pressed_color", DT.COLOR_TEXT_BRIGHT)
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
@@ -195,6 +216,9 @@ func _on_phase_field_level_up(old_level: int, new_level: int, unspent_points: in
 	var tm: Node = get_node_or_null("/root/ToastManager")
 	if tm and tm.has_method("show_success"):
 		tm.show_success("相位场提升至 Lv%d！获得 %d 点（累计待用 %d）" % [new_level, new_level - old_level, unspent_points])
+	# P2-13: 首次升级弹一次属性点说明（相位场属性点系统已接通但入口隐蔽）
+	FeatureUnlockPopup.show_once("phase_field", "相位场升级",
+		"相位场随战斗经验升级，每次升级获得属性点。\n点击底部栏左侧的相位场等级（Lv 标签）可打开分配面板，把点数分配到攻击/防御/生命等属性。")
 
 ## v7.x: 玩家相位师战力变化（战斗开始算出后触发）→ 刷新底部栏显示
 func _on_player_phase_master_power_changed(_raw: float, _compressed: float, _stars: int, _star_name: String, _level: int) -> void:
@@ -641,6 +665,12 @@ func _build_slot_panel(entry: Dictionary) -> PanelContainer:
 	panel.set_meta("slot_color", color)
 	panel.set_meta("slot_index", color_index)
 	panel.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	# P1-5: 悬停提亮反馈（PanelContainer 没有 Button 的 hover 态，用 modulate 模拟；
+	# 只动 rgb 不动 alpha，兼容 v8 关卡限定兵种灰显的 modulate.a=0.4）
+	panel.mouse_entered.connect(func() -> void:
+		panel.modulate = Color(1.18, 1.18, 1.18, panel.modulate.a))
+	panel.mouse_exited.connect(func() -> void:
+		panel.modulate = Color(1.0, 1.0, 1.0, panel.modulate.a))
 	var sb := StyleBoxFlat.new()
 	sb.set_corner_radius_all(4)
 	sb.set_border_width_all(1)
@@ -879,6 +909,35 @@ func _slot_name(color: String) -> String:
 		"yellow": return "能量"
 		"rune": return "符文"
 	return color
+
+## P2-14: 战斗中数字键快捷部署——第 n 个（1 起）有战斗卡的绿槽进入部署选点模式。
+## 与点击槽位走同一条 BattleInputState 链路（含 instance_id 精确匹配语义）。
+func begin_deploy_from_slot_index(n: int) -> bool:
+	var in_battle: bool = BattleManager != null and "battle_active" in BattleManager and BattleManager.battle_active
+	if not in_battle or n < 1:
+		return false
+	var count: int = 0
+	for panel in _slot_panels:
+		if panel == null or not is_instance_valid(panel):
+			continue
+		if String(panel.get_meta("slot_color", "")) != "green":
+			continue
+		if String(panel.get_meta("card_id", "")).is_empty():
+			continue
+		if int(panel.get_meta("card_type", -1)) != GC.CardType.COMBAT_UNIT:
+			continue
+		count += 1
+		if count == n:
+			var m_instance_id: String = String(panel.get_meta("instance_id", ""))
+			var m_card_id: String = String(panel.get_meta("card_id", ""))
+			BattleInputState.pending_cast_law_id = ""
+			BattleInputState.pending_cast_law_origin_global = Vector2.ZERO
+			BattleInputState.pending_deploy_platform_card_id = m_instance_id if not m_instance_id.is_empty() else m_card_id
+			BattleInputState.pending_deploy_origin_global = panel.get_global_rect().get_center()
+			if SignalBus and SignalBus.has_signal("play_sound"):
+				SignalBus.play_sound.emit("card_pickup")
+			return true
+	return false
 
 func _env_value_label(env_key: String, raw: String) -> String:
 	var maps: Dictionary = {

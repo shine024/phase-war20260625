@@ -28,9 +28,12 @@ static func fmt_player_affix_tags(identity: String, am: Node) -> Array:
 				"rare":
 					sym = "◆"
 			var mut: String = "[变]" if bool(a.is_mutated) else ""
+			# P0-4: 悬停效果文本——AffixResource.get_detailed_description 此前在 UI 全程零调用
+			var tip: String = String(a.get_detailed_description()) if a.has_method("get_detailed_description") else ""
 			tags.append({
 				text = "%s %s Lv%d%s" % [sym, String(a.affix_name), int(a.level), mut],
 				color = GC.get_rarity_color(String(a.rarity)),
+				tooltip = tip,
 			})
 	return tags
 
@@ -78,3 +81,12 @@ static func merge_affix_text(tags: Array, summary: String, header: String) -> St
 	if summary.is_empty():
 		return head
 	return head + "\n" + summary
+
+## 合并各词条 tooltip 为整行悬停文本（单 Label 回退模式用；空返回 ""）
+static func tags_tooltip(tags: Array) -> String:
+	var parts: Array = []
+	for t in tags:
+		var tip: String = String(t.get("tooltip", ""))
+		if not tip.is_empty():
+			parts.append(tip)
+	return "\n".join(parts)

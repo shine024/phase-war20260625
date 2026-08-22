@@ -59,7 +59,6 @@ func _process(_delta: float) -> bool:
 	var migrated_scripts: Array[String] = [
 		"res://scenes/ui/store_panel.gd",
 		"res://scenes/ui/quest_panel.gd",
-		"res://scenes/ui/drops_inventory_panel.gd",
 		"res://scenes/ui/achievement_panel.gd",
 		"res://scenes/ui/settings_panel.gd",
 		"res://scenes/ui/occupation_panel.gd",
@@ -87,7 +86,6 @@ func _process(_delta: float) -> bool:
 	var migrated_scenes: Array[String] = [
 		"res://scenes/ui/store_panel.tscn",
 		"res://scenes/ui/quest_panel.tscn",
-		"res://scenes/ui/drops_inventory_panel.tscn",
 		"res://scenes/ui/achievement_panel.tscn",
 		"res://scenes/ui/settings_panel.tscn",
 		"res://scenes/ui/occupation_panel.tscn",

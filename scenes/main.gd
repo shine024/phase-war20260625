@@ -9,6 +9,11 @@ func _play_sfx(name: String) -> void:
 	if am and am.has_method("play_sfx"):
 		am.play_sfx(name)
 
+## P1-5: 运行期新增的 BaseButton 自动设手型光标（含懒加载面板/重建列表行的按钮）
+func _on_node_added(node: Node) -> void:
+	if node is BaseButton:
+		node.mouse_default_cursor_shape = Input.CURSOR_POINTING_HAND
+
 const ActiveLawEffects = preload("res://managers/active_law_effects.gd")
 const PhaseLaws = preload("res://data/phase_laws.gd")
 const MainBattleSetup = preload("res://scripts/systems/main_battle_setup.gd")
@@ -67,6 +72,13 @@ func _ready() -> void:
 	_reward = MainReward.new()
 	_reward.main = self
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	# P1-5: 全局手型光标——所有 BaseButton 进入场景树即设 POINTING_HAND
+	# （实测 Godot 4.5 Button 默认是箭头，仅 LinkButton 是手型；详见 panel_styles.gd 注释）
+	if not get_tree().node_added.is_connected(_on_node_added):
+		get_tree().node_added.connect(_on_node_added)
+	PanelStyles.apply_pointing_hand.call_deferred(self)
+	# P1-9: 中文字体显式 fallback 链（此前依赖玩家机器系统字体隐式回退）
+	DesignTokens.ensure_cjk_fallback()
 	# 连接底部仪表栏信号
 	if bottom_instrument_bar:
 		bottom_instrument_bar.instrument_area_clicked.connect(_on_instrument_area_clicked)
@@ -119,8 +131,6 @@ func _ready() -> void:
 		# v6.6 修复: toggle_* 信号原 emit 无 connect，教程引导的"打开面板"动作失效。
 		if SignalBus.has_signal("toggle_backpack") and not SignalBus.toggle_backpack.is_connected(_on_backpack_pressed):
 			SignalBus.toggle_backpack.connect(_on_backpack_pressed)
-		if SignalBus.has_signal("toggle_factions") and not SignalBus.toggle_factions.is_connected(_on_faction_pressed):
-			SignalBus.toggle_factions.connect(_on_faction_pressed)
 		if SignalBus.has_signal("toggle_phase_instrument") and not SignalBus.toggle_phase_instrument.is_connected(_on_toggle_phase_instrument_from_tutorial):
 			SignalBus.toggle_phase_instrument.connect(_on_toggle_phase_instrument_from_tutorial)
 		# v7.x 教程引导：强化/改造面板切换入口
@@ -270,9 +280,10 @@ func _input(event: InputEvent) -> void:
 	if not event.is_pressed():
 		return
 
-	# ESC键：关闭当前面板
+	# ESC键：P1-8 收敛为"关最上层面板"（原为一键全关，与各面板自己的逐级 ESC 行为不一致）；
+	# 无面板打开时战斗中切换暂停
 	if event.is_action("ui_cancel"):
-		_close_all_overlays()
+		_close_top_overlay()
 		return
 
 	# 只有在非战斗状态才响应快捷键
@@ -285,6 +296,12 @@ func _input(event: InputEvent) -> void:
 		# 战斗中的快捷键
 		if event.is_action("ui_pause") or event.keycode == KEY_SPACE:
 			_on_pause_pressed()
+			return
+		# P2-14: 数字键 1-9 快捷进入部署模式（第 N 个有战斗卡的绿槽，与点击槽位同链路）
+		if event.keycode >= KEY_1 and event.keycode <= KEY_9:
+			var slot_no: int = event.keycode - KEY_1 + 1
+			if bottom_instrument_bar and bottom_instrument_bar.has_method("begin_deploy_from_slot_index"):
+				bottom_instrument_bar.begin_deploy_from_slot_index(slot_no)
 			return
 	else:
 		# 战前准备状态的快捷键
@@ -316,15 +333,12 @@ func _connect_panel_closed_signals() -> void:
 		var child_names: Array[String] = []
 		for child in manufacture_cc.get_children():
 			child_names.append(str(child.name))
-	# CardEnhancementPanel 由 _ensure_card_enhancement_panel 按需创建，勿在 _ready 用 $ 强引用
-	var progression_panel: Node = get_node_or_null("PopupLayer/ManufactureOverlay/CenterContainer/CardEnhancementPanel")
 	var panels := {
 		"quest":              $PopupLayer/QuestOverlay/CenterContainer/QuestPanel,
 		"store":              $PopupLayer/StoreOverlay/CenterContainer/StorePanel,
 		"faction":            $PopupLayer/FactionOverlay/CenterContainer/FactionPanel,
 		"leaderboard":        $PopupLayer/LeaderboardOverlay/CenterContainer/LeaderboardPanel,
 		"backpack":           get_node_or_null("PopupLayer/BackpackOverlay/BackpackVBox/CenterRow/BackpackCenter/BackpackPanel"),
-		"progression":        progression_panel,
 		"settings":           $PopupLayer/SettingsOverlay/CenterContainer/SettingsPanel,
 		"info":               $PopupLayer/IntelligenceOverlay/CenterContainer/IntelligenceHubPanel,
 		"occupation":         get_node_or_null("PopupLayer/OccupationOverlay/CenterContainer/OccupationPanel"),
@@ -525,6 +539,9 @@ func _on_law_slot_clicked(law_id: String, kind: String, origin_global: Vector2) 
 	if not in_battle:
 		return
 	if kind == "active":
+		# P2-13: 首次施放主动法则时弹一次说明（黑猴"广智变身"式解锁引导）
+		FeatureUnlockPopup.show_once("law_cast", "主动法则施放",
+			"点击底部栏红色法则格后，再点击战场目标位置即可施放主动法则。\n施放受环境条件与纳米预算限制，效果与剩余能量可在法则格悬停提示中查看。")
 		# 确保法则已在 PhaseLawManager 的 equipped_active_laws 中（防止 UI 显示但实际未同步的情况）
 		var pim: Node = PhaseInstrumentManager
 		if pim and pim.has_method("sync_law_cards_to_phase_law_manager"):
@@ -722,11 +739,6 @@ func _on_progression_pressed() -> void:
 	if DEBUG_MAIN_LOG:
 		print("[Main] _on_progression_pressed called, growth_overlay=", growth_overlay)
 	_toggle_overlay(growth_overlay, "growth")
-
-func _ensure_card_enhancement_panel() -> void:
-	# v8.x: 强化②面板已停用（养成改为自动经验升星 + 技能树），本函数保留为 no-op 避免调用方报错。
-	# 旧 _on_progression_pressed / 教程引导若调用此函数，直接返回不创建面板。
-	return
 
 func _on_map_pressed() -> void:
 	_play_sfx("button")
@@ -972,15 +984,57 @@ func _on_world_map() -> void:
 	_open_overlay(map_overlay, "map")
 
 # ── 关闭所有弹出面板 ─────────────────────────────────────────
-func _close_all_overlays() -> void:
-	var overlays := [
-		quest_overlay, store_overlay,
-		backpack_overlay, faction_overlay,
-		map_overlay, settings_overlay, intelligence_overlay,
-		growth_overlay, afk_overlay,
-		leaderboard_overlay,
+## P1-8: 全量 overlay 注册表（原 _close_all_overlays 清单缺
+## manufacture/collection/occupation/enhancement/modification/evolution/player_master，
+## 这些面板开着时按 ESC 关不掉）
+func _all_overlays() -> Array:
+	return [
+		{"overlay": quest_overlay, "key": "quest"},
+		{"overlay": store_overlay, "key": "store"},
+		{"overlay": backpack_overlay, "key": "backpack"},
+		{"overlay": faction_overlay, "key": "faction"},
+		{"overlay": map_overlay, "key": "map"},
+		{"overlay": settings_overlay, "key": "settings"},
+		{"overlay": intelligence_overlay, "key": "info"},
+		{"overlay": growth_overlay, "key": "growth"},
+		{"overlay": afk_overlay, "key": "afk"},
+		{"overlay": leaderboard_overlay, "key": "leaderboard"},
+		{"overlay": manufacture_overlay, "key": "progression"},
+		{"overlay": collection_overlay, "key": "collection"},
+		{"overlay": get_node_or_null("PopupLayer/OccupationOverlay"), "key": "occupation"},
+		{"overlay": enhancement_overlay, "key": "enhancement"},
+		{"overlay": modification_overlay, "key": "modification"},
+		{"overlay": evolution_overlay, "key": "evolution"},
+		{"overlay": player_master_overlay, "key": "player_master"},
 	]
-	for ov in overlays:
+
+## P1-8: ESC 语义——只关最上层可见 overlay（PopupLayer 子序最大者），
+## 全关后战斗中再次按 ESC 切换暂停
+func _close_top_overlay() -> void:
+	var top: Control = null
+	var top_key: String = ""
+	var top_idx: int = -1
+	if popup_layer == null:
+		return
+	for entry in _all_overlays():
+		var ov: Control = entry.get("overlay")
+		if ov == null or not ov.visible:
+			continue
+		var idx: int = ov.get_index()
+		if idx > top_idx:
+			top_idx = idx
+			top = ov
+			top_key = String(entry.get("key", ""))
+	if top != null:
+		_close_overlay(top, top_key)
+		return
+	# 无面板：战斗中 ESC 切换暂停（与 SPACE 一致）
+	if _is_in_battle():
+		_on_pause_pressed()
+
+func _close_all_overlays() -> void:
+	for entry in _all_overlays():
+		var ov: Control = entry.get("overlay")
 		if ov == null:
 			continue
 		# v6.6(挂机缩略图): 挂机运行中保持 AFK 面板可见，让战场缩略图实时显示。
@@ -1089,6 +1143,9 @@ func _on_active_law_cast_at(law_id: String, world_pos: Vector2) -> void:
 		SignalBus.phase_law_cast.emit(law_id, world_pos, fam)
 
 func _on_blueprint_unlocked(card_id: String) -> void:
+	# P2-13: 首次解锁蓝图时弹一次说明（此前解锁完全静默，只有结算 UI 一行字）
+	FeatureUnlockPopup.show_once("blueprint", "蓝图解锁",
+		"获得新卡牌蓝图后，可在 制造面板（底部功能栏·成长）中消耗资源生产该卡的副本。\n蓝图永久保留，重复掉落的同名卡可直接拆解为研究点与纳米材料。")
 	_reward.on_blueprint_unlocked(card_id)
 
 # ── 战斗结果 ─────────────────────────────────────────────────

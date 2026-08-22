@@ -40,8 +40,6 @@ signal wave_spawned(wave_index: int)
 # v9.x UI 性能：单位数变化广播（替代各 UI 面板各自 _process 轮询 BattleManager 计数）。
 # BattleManager 在单位 spawn/die 后 emit，top_hud_bar / battle_status_strip 监听刷新。
 signal unit_counts_changed(player_count: int, enemy_count: int)
-# v8.x 战斗经验升星：卡牌升星通知（供 UI 刷新）
-signal card_star_up(instance_id: String, old_star: int, new_star: int)
 
 # 相位场驱动器（我方基地）
 signal phase_driver_hp_changed(current: float, maximum: float)
@@ -65,10 +63,9 @@ signal blueprint_unlocked(card_id: String)
 signal blueprint_obtained(card_id: String, count: int)
 
 # 战斗掉落领取
-# v7.x 现状：battle_damage_system 在掉落生成后 emit，但无 SignalBus 订阅者——
-# 掉落领取 UI（drops_inventory_panel）走 backpack_changed 刷新，post_battle 掉落经 battle_ended → GameManager 流程处理。
-# 此信号保留供未来"掉落就绪即时推送通知"的订阅者使用，属合法预留，非 bug。
-signal drops_ready_to_claim(drops: Array)
+# v7.x 现状：掉落领取 UI 走 backpack_changed 刷新，post_battle 掉落经 battle_ended → GameManager 流程处理。
+# 2026-08-22 清理：drops_ready_to_claim 信号及其 emit 已移除——全项目零订阅者、零触发链路
+# （原 emit 点 battle_damage_system 同步删除；如需"掉落就绪推送"从 git 历史找回）。
 
 # 主动法则施放：点击法则后进入选点模式，再点战场即在此信号中传出
 # 曲线/箭头起点：来自“点击的法则格”的屏幕位置（用于映射到战场子视口坐标）
@@ -86,10 +83,6 @@ signal phase_law_cast(law_id: String, position: Vector2, family: String)
 # 成就系统
 signal achievement_unlocked(achievement_id: String, achievement_name: String)
 signal achievement_progress_updated(achievement_id: String, current_progress: int, max_progress: int)
-# v7.x 数据一致性核对：milestone_reached 当前为预留声明（无 emit/connect）。
-# achievement_manager.gd 顶部注释曾谎称"已迁移至 SignalBus.milestone_reached"，与代码不符，已修正。
-# 如需启用，应在 AchievementManager 发里程碑时 emit。
-signal milestone_reached(milestone_id: String, milestone_name: String)
 
 # 日常任务系统
 signal daily_tasks_refreshed()
@@ -104,21 +97,12 @@ signal quest_progress_changed(quest_id: String)
 signal task_completed(task: Dictionary)
 # v7.x 数据一致性核对：原 task_reward_granted 为死声明（与 daily_task_reward_granted 同义重复，从未 emit），
 # 已删除。日常任务奖励发放统一用 daily_task_reward_granted（daily_task_manager emit）。
-signal all_tasks_completed()
 
 # 挑战模式
-signal challenge_started(challenge_type: int, difficulty: int) ## challenge_type 对应 ChallengeModeManager.ChallengeType, difficulty 对应 ChallengeModeManager.ChallengeDifficulty
-signal challenge_completed(challenge_type: int, difficulty: int, result: Dictionary) ## challenge_type 对应 ChallengeModeManager.ChallengeType, difficulty 对应 ChallengeModeManager.ChallengeDifficulty
-signal challenge_failed(challenge_type: int, reason: String) ## challenge_type 对应 ChallengeModeManager.ChallengeType
 
 # 卡牌收集
-signal card_obtained(card_id: String)
-signal card_max_level(card_id: String)
-signal collection_milestone_reached(milestone: Dictionary)
 
 # 角色系统
-signal relationship_changed(character_id: String, new_value: int)
-signal character_unlocked(character_id: String)
 
 # 音效播放（战斗反馈）
 signal play_sound(sound_id: String)
@@ -126,8 +110,6 @@ signal play_sound(sound_id: String)
 # UI 切换（教程驱动）
 signal toggle_backpack()
 signal toggle_phase_instrument()
-signal toggle_factions()
-signal toggle_phase_laws()
 # v7.x 教程引导：强化/改造面板切换（main.gd _on_*_from_tutorial 监听）
 signal toggle_enhancement()
 signal toggle_modification()
@@ -137,7 +119,6 @@ signal tutorial_completed(tutorial_id: String)
 
 # 关卡/流程控制
 signal start_level(level: int)
-signal level_selected(level: int)
 
 # 塔爬模式
 # @deprecated v6.0 — 爬塔模式已移除，以下信号保留仅供存档兼容
@@ -165,19 +146,10 @@ signal rune_acquired(rune_id: String, source: String)  ## 获得符文（掉落/
 signal daily_task_reward_granted(task: Dictionary)
 
 # 战斗掉落奖励
-signal kill_reward_granted(reward_type: String, amount: float)
 
 # 情报手册系统
-# v6.6 现状说明：以下情报/阵营/合成/强化/改造/成长/进化系统的 SignalBus 信号
-# 目前均为"声明未接通"状态——真实事件流发生在各 manager 的本地 signal 上
-# （如 IntelManual.intel_dimension_changed、FactionSystemManager.faction_reputation_changed、
-#   SynthesisManager.synthesis_completed 等）。
-# 这是因为相关 manager 在 v6.0 重构时改用本地 signal 解耦，未同步迁移到 SignalBus。
-# 后续若需统一总线化，应在各 manager emit 本地信号处追加 SignalBus.xxx.emit()。
-# 保留这些声明供未来接通或外部插件监听使用，不影响当前功能。
-signal intel_updated(card_id: String, progress: float, tier: int)
-signal intel_unlocked(card_id: String)
-signal intel_tier_reached(card_id: String, tier: int)
+# 事件流在各 manager 的本地 signal 上（如 IntelManual.intel_dimension_changed），
+# 未迁移到 SignalBus。需要全局监听时直接订阅对应 manager。
 
 # 势力系统
 signal faction_reputation_changed(faction_id: String, delta: int, new_value: int)
@@ -194,22 +166,12 @@ signal synthesis_completed(hybrid_card_id: String)
 signal synthesis_failed(reason: String)
 
 # 强化系统
-signal card_reinforced(card_id: String, old_level: int, new_level: int)
-signal reinforcement_failed(card_id: String, reason: String)
 
 # 改造系统
-signal modification_installed(card_id: String, mod_id: String)
-signal modification_removed(card_id: String, mod_id: String)
-signal modification_failed(card_id: String, mod_id: String, reason: String)
 
 # 成长面板系统
-signal growth_panel_saved(card: CardResource)
-signal card_data_changed(card_id: String)
 
 # 进化系统
-signal card_evolved(source_card_id: String, target_card_id: String)
-signal evolution_failed(source_card_id: String, target_card_id: String, reason: String)
-signal evolution_path_unlocked(card_id: String, branch_name: String)
 
 # v7.x 实例生命周期（转发 InstanceRegistry.instance_disposed，供背包/存档清理幽灵 instance_id）
 signal instance_disposed(instance_id: String)

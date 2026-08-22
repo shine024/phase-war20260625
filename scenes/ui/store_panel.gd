@@ -774,8 +774,10 @@ func _on_buy_pressed(card_id: String, card_count: int, price_nano: int, row_node
 		return
 	var current_nano: int = BasicResourceManager.get_total(BasicResources.ID_NANO_MATERIALS)
 	if current_nano < price_nano:
-		# 余额不足闪烁提示
+		# 余额不足闪烁提示 + toast（原来只有闪烁，玩家可能没注意到）
 		_flash_row(row_node, Color(DT.COLOR_DANGER.r, DT.COLOR_DANGER.g, DT.COLOR_DANGER.b, 0.6))
+		SignalBus.show_toast.emit("纳米材料不足（还需 %d）" % (price_nano - current_nano))
+		SignalBus.play_sound.emit("error")
 		return
 	_buy_in_progress = true
 	# 屏蔽 add_resource 触发的 resources_changed 回弹（购买流程末尾统一刷一次）
@@ -806,6 +808,13 @@ func _on_buy_pressed(card_id: String, card_count: int, price_nano: int, row_node
 	var qm = get_node_or_null("/root/QuestManager")
 	if qm and qm.has_method("notify_item_bought"):
 		qm.notify_item_bought()
+	# P1-6: 购买成功反馈——此前只有行内绿闪，无 toast/音效（买了卡感知弱）
+	if card_id.begins_with("permit_"):
+		SignalBus.show_toast.emit("已购入：许可函 ×%d" % maxi(1, card_count))
+	else:
+		var bought_name: String = DefaultCards.get_safe_display_name(card_id)
+		SignalBus.show_toast.emit("已购入：%s%s" % [bought_name, (" ×%d" % maxi(1, card_count)) if card_count > 1 else ""])
+	SignalBus.play_sound.emit("card_place")
 	# 购买成功闪烁绿色
 	_flash_row(row_node, Color(DT.COLOR_GREEN_BRIGHT.r, DT.COLOR_GREEN_BRIGHT.g, DT.COLOR_GREEN_BRIGHT.b, 0.6))
 	_refresh_balance()

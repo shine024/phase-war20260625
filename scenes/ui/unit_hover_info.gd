@@ -11,15 +11,18 @@ extends PanelContainer
 const DT = preload("res://resources/design_tokens.gd")
 const GC = preload("res://resources/game_constants.gd")
 const DefaultCards = preload("res://data/default_cards.gd")
+const USC = preload("res://scripts/battle/unit_status_collector.gd")
 
 const _HOVER_DELAY_SEC: float = 0.3
 const _HIDE_DELAY_SEC: float = 0.2
+const _MAX_STATUS_LINES: int = 5
 
 var _content: VBoxContainer = null
 var _name_label: Label = null
 var _rarity_strip: ColorRect = null
 var _stats_label: Label = null
 var _tags_label: Label = null
+var _status_labels: Array[Label] = []
 var _active_tween: Tween = null
 
 
@@ -42,7 +45,7 @@ func _ready() -> void:
 	style.content_margin_bottom = 6.0
 	add_theme_stylebox_override("panel", style)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	custom_minimum_size = Vector2(180, 0)
+	custom_minimum_size = Vector2(200, 0)
 	# 内容容器
 	_content = VBoxContainer.new()
 	_content.add_theme_constant_override("separation", 2)
@@ -66,6 +69,14 @@ func _ready() -> void:
 	_tags_label.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
 	_tags_label.add_theme_color_override("font_color", DT.COLOR_ACCENT_CYAN)
 	_content.add_child(_tags_label)
+	# P0-3: 当前状态效果行（buff/debuff 各一条，"名称：效果说明"点读机式就地解释）
+	for i in range(_MAX_STATUS_LINES):
+		var sl := Label.new()
+		sl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+		sl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		sl.visible = false
+		_content.add_child(sl)
+		_status_labels.append(sl)
 	visible = false
 	modulate.a = 0.0
 
@@ -80,11 +91,11 @@ func show_for_unit(unit: Node, screen_pos: Vector2) -> void:
 	var pos_y: float = screen_pos.y - 120.0
 	if pos_y < 10.0:
 		pos_y = screen_pos.y + 40.0
-	position = Vector2(screen_pos.x - 90.0, pos_y)
+	position = Vector2(screen_pos.x - 100.0, pos_y)
 	# 智能裁剪到屏幕内
 	var vp_w: float = get_viewport().get_visible_rect().size.x
-	if position.x + 180.0 > vp_w:
-		position.x = vp_w - 190.0
+	if position.x + 200.0 > vp_w:
+		position.x = vp_w - 210.0
 	if position.x < 10.0:
 		position.x = 10.0
 	visible = true
@@ -142,19 +153,30 @@ func _populate(unit: Node) -> void:
 		_stats_label.text = "%s · 攻 %d · 防 %d" % [hp_text, int(atk_val), int(def_val)]
 	else:
 		_stats_label.text = ""
-	# 词条摘要（前3，从 meta 读光环 buff）
+	# 等级行：只显示战斗等级（光环/buff 移到下方状态效果行，避免重复）
 	var tags: Array = []
-	for key in ["radar_buffed", "scout_crit_buffed", "fortress_def_buffed", "command_buffed", "carrier_repair_buffed"]:
-		if unit.has_meta(key) and bool(unit.get_meta(key)):
-			tags.append(_buff_tag_name(key))
-	# v19: 战斗等级（card_level）——读 meta unit_level（我方部署/敌方生成时统一写入；
-	# 旧"强化 Lv"口径已废，强化等级不再悬浮显示，进详情面板看）
 	if unit.has_meta("unit_level") and int(unit.get_meta("unit_level")) > 0:
-		tags.insert(0, "Lv.%d" % int(unit.get_meta("unit_level")))
-	if tags.is_empty():
-		_tags_label.text = ""
-	else:
-		_tags_label.text = "  ".join(tags.slice(0, 3))
+		tags.append("Lv.%d" % int(unit.get_meta("unit_level")))
+	_tags_label.text = "  ".join(tags)
+	# P0-3: 状态效果行（复用 UnitStatusCollector，与点击详情面板同一数据源）
+	var entries: Array = USC.collect(unit)
+	for i in range(_MAX_STATUS_LINES):
+		var sl: Label = _status_labels[i]
+		if i < entries.size():
+			var e: Dictionary = entries[i]
+			var kind: int = int(e.get("kind", -1))
+			var stacks: int = int(e.get("stacks", 0))
+			var is_buff: bool = bool(e.get("is_buff", false))
+			var n: String = String(USC.STATUS_NAMES.get(kind, "未知状态"))
+			if stacks > 1:
+				n = "%s ×%d" % [n, stacks]
+			var desc: String = USC.describe(kind, stacks, unit)
+			sl.text = ("%s %s：%s" % ["▲", n, desc]) if is_buff else ("%s %s：%s" % ["▼", n, desc])
+			sl.add_theme_color_override("font_color",
+				DT.COLOR_HEALTH if is_buff else DT.COLOR_DANGER)
+			sl.visible = true
+		else:
+			sl.visible = false
 
 
 func _resolve_display_name(unit: Node) -> String:
@@ -206,12 +228,3 @@ func _resolve_card(unit: Node) -> CardResource:
 		return DefaultCards.get_card_by_id(platform_card_id)
 	return null
 
-
-func _buff_tag_name(key: String) -> String:
-	match key:
-		"radar_buffed": return "雷达"
-		"scout_crit_buffed": return "侦查"
-		"fortress_def_buffed": return "堡垒"
-		"command_buffed": return "指挥"
-		"carrier_repair_buffed": return "运输"
-		_: return key

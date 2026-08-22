@@ -19,6 +19,8 @@ var _stars: Array = []
 
 
 func _ready() -> void:
+	# P1-9: 中文字体显式 fallback 链（标题画面也有大量中文文本）
+	DesignTokens.ensure_cjk_fallback()
 	# 获取按钮节点
 	var new_btn: Button = get_node_or_null("CenterContainer/MainVBox/ButtonsVBox/NewGameButton")
 	var continue_btn: Button = get_node_or_null("CenterContainer/MainVBox/ButtonsVBox/ContinueButton")

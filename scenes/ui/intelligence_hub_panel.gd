@@ -8,6 +8,7 @@ signal open_progression_requested(card_id: String)
 
 const RuneDefs = preload("res://data/runes.gd")
 const RunewordDefs = preload("res://data/runewords.gd")
+const DefaultCards = preload("res://data/default_cards.gd")
 const DT = preload("res://resources/design_tokens.gd")
 const PanelStyles = preload("res://scripts/ui/panel_styles.gd")
 const PanelChrome = preload("res://scenes/ui/components/panel_chrome.gd")
@@ -34,10 +35,14 @@ func _ready() -> void:
 	_refresh_lore()
 	_lore_dirty = false
 	_refresh_runes_tab()
+	# P2-12: 敌方情报手册 Tab（纯代码构建）——intel_harvest_display 承诺"详见情报手册"，
+	# 此前全 UI 无任何面板读取 IntelManual 条目做浏览，情报进度对玩家不可见
+	_setup_intel_tab()
 	if _tab_container:
 		_tab_container.set_tab_title(0, "世界观情报")
 		_tab_container.set_tab_title(1, "单位进化图谱")
 		_tab_container.set_tab_title(2, "符文图鉴")
+		_tab_container.set_tab_title(3, "敌方情报")
 		_tab_container.tab_changed.connect(_on_tab_changed)
 	# v9.x 性能：监听 lore 解锁置脏，refresh() 未脏时跳过 lore 整表重建
 	var lm: Node = get_node_or_null("/root/LoreManager")
@@ -60,6 +65,8 @@ func refresh() -> void:
 		_atlas.refresh()
 	if _detail and _detail.visible and not _detail.get_card_id().is_empty():
 		_detail.show_card(_detail.get_card_id())
+	if _tab_container and _tab_container.current_tab == 3:
+		_refresh_intel_tab()
 
 
 func _setup_evolution_tab() -> void:
@@ -88,6 +95,8 @@ func _on_tab_changed(tab: int) -> void:
 		_atlas.refresh()
 	if tab == 2:
 		_refresh_runes_tab()
+	if tab == 3:
+		_refresh_intel_tab()
 
 
 ## v9.x 性能：lore 分帧加载状态（整表销毁重建曾是首开冻结热点之一）
@@ -418,6 +427,136 @@ func _rune_category_name(category: String) -> String:
 		"mobility": return "机动"
 		"special": return "特殊"
 	return "未知"
+
+
+# ═══════════════════════════════════════════════════════════════════
+# P2-12: 敌方情报手册标签页 — 浏览 IntelManual 全部条目（进度/揭示档位/击败数）
+# ═══════════════════════════════════════════════════════════════════
+
+var _intel_content: VBoxContainer = null
+
+func _setup_intel_tab() -> void:
+	if _tab_container == null:
+		return
+	var tab := VBoxContainer.new()
+	tab.name = "IntelManualTab"
+	_tab_container.add_child(tab)
+	var hint := Label.new()
+	hint.text = "击败同一敌人会累积情报进度（首杀收益最高，逐次递减）：\n25% 基础属性 → 50% 详细属性 → 75% 弱点提示 → 100% 进化资格 + 掉落率+50%"
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+	hint.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
+	tab.add_child(hint)
+	var scroll := ScrollContainer.new()
+	scroll.name = "IntelScroll"
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	tab.add_child(scroll)
+	_intel_content = VBoxContainer.new()
+	_intel_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_intel_content.add_theme_constant_override("separation", 4)
+	scroll.add_child(_intel_content)
+
+func _refresh_intel_tab() -> void:
+	if _intel_content == null:
+		return
+	for child in _intel_content.get_children():
+		child.queue_free()
+	var im: Node = get_node_or_null("/root/IntelManual")
+	if im == null or not im.has_method("get_all_entries"):
+		var lbl := Label.new()
+		lbl.text = "情报手册未初始化"
+		lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
+		_intel_content.add_child(lbl)
+		return
+	var entries: Dictionary = im.get_all_entries()
+	if entries.is_empty():
+		var ph := Label.new()
+		ph.text = "尚无敌方情报记录\n（在战斗中遭遇并击败敌人后，这里会累积情报进度）"
+		ph.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		ph.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
+		_intel_content.add_child(ph)
+		return
+	# 头部汇总行
+	var total_completed: int = 0
+	for card_id in entries:
+		if bool((entries[card_id] as Dictionary).get("is_unlocked", false)):
+			total_completed += 1
+	var header := Label.new()
+	header.text = "◆ 已记录 %d 种敌人 · 完整解锁 %d 种（按进度排序）" % [entries.size(), total_completed]
+	header.add_theme_font_size_override("font_size", DT.FONT_SIZE_MEDIUM)
+	header.add_theme_color_override("font_color", DT.COLOR_VIOLET)
+	_intel_content.add_child(header)
+	# 条目按进度降序
+	var sorted_ids: Array = entries.keys()
+	sorted_ids.sort_custom(func(a, b) -> bool:
+		return float((entries[a] as Dictionary).get("intel_progress", 0.0)) \
+			> float((entries[b] as Dictionary).get("intel_progress", 0.0)))
+	for card_id in sorted_ids:
+		var e: Dictionary = entries[card_id]
+		_add_intel_row(String(card_id), e, im)
+
+func _add_intel_row(card_id: String, entry: Dictionary, im: Node) -> void:
+	var progress: float = clampf(float(entry.get("intel_progress", 0.0)), 0.0, 1.0)
+	var defeat_count: int = int(entry.get("defeat_count", 0))
+	var is_complete: bool = bool(entry.get("is_unlocked", false))
+	var panel := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(DT.COLOR_CARD.r, DT.COLOR_CARD.g, DT.COLOR_CARD.b, 0.9)
+	sb.border_width_left = 3
+	sb.border_width_right = 1
+	sb.border_width_top = 1
+	sb.border_width_bottom = 1
+	# 边框色按揭示档位：0灰 / 1-3青 / 4(满)金
+	if is_complete or progress >= 1.0:
+		sb.border_color = DT.COLOR_GOLD
+	elif progress >= 0.5:
+		sb.border_color = DT.COLOR_ACCENT_CYAN
+	else:
+		sb.border_color = DT.COLOR_BORDER_DIM
+	sb.set_corner_radius_all(4)
+	sb.content_margin_left = 8
+	sb.content_margin_right = 8
+	sb.content_margin_top = 4
+	sb.content_margin_bottom = 4
+	panel.add_theme_stylebox_override("panel", sb)
+
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 10)
+	panel.add_child(hbox)
+
+	var name_lbl := Label.new()
+	var display_name: String = DefaultCards.get_safe_display_name(card_id)
+	name_lbl.text = "%s%s" % [display_name if not display_name.is_empty() else card_id, " ✓" if is_complete else ""]
+	name_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	name_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_BRIGHT if progress > 0.0 else DT.COLOR_TEXT_FAINT)
+	name_lbl.custom_minimum_size = Vector2(190, 0)
+	hbox.add_child(name_lbl)
+
+	var pct_lbl := Label.new()
+	pct_lbl.text = "情报 %d%%" % int(round(progress * 100.0))
+	pct_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_SMALL)
+	pct_lbl.add_theme_color_override("font_color",
+		DT.COLOR_GOLD if is_complete else DT.COLOR_ACCENT_CYAN if progress >= 0.5 else DT.COLOR_TEXT_MID)
+	pct_lbl.custom_minimum_size = Vector2(70, 0)
+	hbox.add_child(pct_lbl)
+
+	var tier_lbl := Label.new()
+	var tier_text: String = String(im.get_tier_description(card_id)) if im.has_method("get_tier_description") else ""
+	tier_lbl.text = tier_text
+	tier_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+	tier_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_MID)
+	tier_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tier_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hbox.add_child(tier_lbl)
+
+	var defeat_lbl := Label.new()
+	defeat_lbl.text = "击败 ×%d" % defeat_count
+	defeat_lbl.add_theme_font_size_override("font_size", DT.FONT_SIZE_XSMALL)
+	defeat_lbl.add_theme_color_override("font_color", DT.COLOR_TEXT_DIM)
+	hbox.add_child(defeat_lbl)
+
+	_intel_content.add_child(panel)
 
 
 func _on_close() -> void:
