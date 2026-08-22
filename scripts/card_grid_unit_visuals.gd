@@ -70,12 +70,12 @@ static func resolve_battle_icon_texture(
 	for_player: bool = true
 ) -> Texture2D:
 	if for_player and card != null:
-		var from_card: Texture2D = UiAssetLoader.load_tex(UiAssetLoader.card_icon_path_for(card))
+		var from_card: Texture2D = UiAssetLoader.battle_tex_for_path(UiAssetLoader.card_icon_path_for(card), card)
 		if from_card != null:
 			return from_card
 	var merged: Dictionary = cfg if not cfg.is_empty() else EnemyArchetypes.get_config(archetype_id)
 	var path: String = EnemyArchetypes.resolve_card_icon_texture_path(archetype_id, merged, archetype_id)
-	return UiAssetLoader.load_tex(path)
+	return UiAssetLoader.battle_tex_for_path(path, card)
 
 
 ## 立绘 + 势力底 + 稀有度框 + 军衔条（与背包简略卡面一致）

@@ -481,7 +481,7 @@ func _update_slot_panel(panel: Control, entry: Dictionary) -> void:
 		panel.tooltip_text = "符文：%s（%s）\n%s" % [rune_name, rarity_name, RuneDefs.get_description(rune_id)]
 		# v6.2: 符文专属图标贴图（参照 _sync_slot_icon 的尺寸算法）
 		var rune_tr: TextureRect = _slot_icon_rect(panel)
-		var rune_tex: Texture2D = UiAssetLoader.rune_icon(rune_id)
+		var rune_tex: Texture2D = UiAssetLoader.rune_icon_small(rune_id)
 		var slot_h: float = panel.size.y if panel.size.y > 4.0 else float(SLOT_FIXED_SIZE.y)
 		# v7.x：精简模式无底部文字区，图标占满（留 4px 边距）
 		var art_h: float = maxf(18.0, slot_h - 4.0)
@@ -641,7 +641,7 @@ func _sync_slot_icon(panel: Control, card: CardResource, law_id: String) -> void
 		return
 	var tex: Texture2D = null
 	if card != null:
-		tex = UiAssetLoader.load_tex(UiAssetLoader.card_icon_path_for(card))
+		tex = UiAssetLoader.load_tex(UiAssetLoader.card_icon_path_for_list(card))
 	elif not law_id.is_empty():
 		tex = UiAssetLoader.load_tex(UiAssetLoader.law_slot_icon_path(law_id))
 	var slot_h: float = panel.size.y if panel.size.y > 4.0 else float(SLOT_FIXED_SIZE.y)
@@ -717,7 +717,7 @@ func _build_slot_panel(entry: Dictionary) -> PanelContainer:
 		_apply_slot_bottom_text(panel, "◈" + short_name, rarity_name)
 		panel.tooltip_text = "符文：%s（%s）\n%s" % [rune_name, rarity_name, RuneDefinitions.get_description(rune_id)]
 		var rune_tr: TextureRect = _slot_icon_rect(panel)
-		var rune_tex: Texture2D = UiAssetLoader.rune_icon(rune_id)
+		var rune_tex: Texture2D = UiAssetLoader.rune_icon_small(rune_id)
 		var slot_h: float = panel.size.y if panel.size.y > 4.0 else float(SLOT_FIXED_SIZE.y)
 		# v7.x：精简模式无底部文字区，图标占满（留 4px 边距）
 		var art_h: float = maxf(18.0, slot_h - 4.0)
@@ -1255,7 +1255,7 @@ func _refresh_instrument_stats() -> void:
 		instrument_stats_label.text += " · " + pm_text
 	# 加载相位仪图标
 	if instrument_icon:
-		var icon_tex: Texture2D = UiAssetLoader.instrument_icon(String(cfg.get("id", "")))
+		var icon_tex: Texture2D = UiAssetLoader.instrument_icon_small(String(cfg.get("id", "")))
 		instrument_icon.texture = icon_tex
 		instrument_icon.visible = (icon_tex != null)
 

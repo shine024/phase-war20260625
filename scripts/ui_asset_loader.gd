@@ -549,6 +549,58 @@ static func card_icon_for_list(c: CardResource) -> Texture2D:
 	return load_tex(p)
 
 
+## v9.x（3a 性能批次）：战场单位专用——512 全分辨率 → _thumb256 优先，miss 回退。
+## 与列表 _thumb384 管线同构：路径即缓存 key（单池 LRU 天然隔离），负缓存保证 miss 回退近零成本。
+const BATTLE_THUMB_PREFIX := "res://assets/card_icons/_thumb256/"
+
+static func _to_battle_thumb_path(full_path: String) -> String:
+	const BASE := "res://assets/card_icons/"
+	if not full_path.begins_with(BASE):
+		return ""
+	var rest: String = full_path.substr(BASE.length())
+	var slash := rest.find("/")
+	if slash <= 0:
+		return ""
+	return BATTLE_THUMB_PREFIX + rest
+
+## 战场单位取图入口：优先 256 缩略图；boss/大体型单位（visual_scale 大、显示超 ~140px）
+## 回退全分辨率保画质。card 为 null 时（无卡上下文）也用缩略图——敌方杂兵显示 60~120px。
+static func battle_tex_for_path(full_path: String, card: CardResource = null) -> Texture2D:
+	if full_path.is_empty():
+		return null
+	var use_full: bool = false
+	if card != null:
+		var vs: float = CardFootAnchors.get_visual_scale(card)
+		if vs >= 1.6:
+			use_full = true
+	if not use_full:
+		var thumb: String = _to_battle_thumb_path(full_path)
+		if not thumb.is_empty():
+			var t: Texture2D = load_tex(thumb)
+			if t != null:
+				return t
+	return load_tex(full_path)
+
+## 底部相位仪栏仪器图标（显示 ~18-60px）：1024 全分辨率 → _thumb128 优先，miss 回退。
+static func instrument_icon_small(pi_id: String) -> Texture2D:
+	var t: Texture2D = load_tex("res://assets/ui/instruments/_thumb128/%s.png" % pi_id)
+	if t != null:
+		return t
+	return instrument_icon(pi_id)
+
+## 底部相位仪栏符文图标（显示 ~18-60px）：995 全分辨率 → _thumb128 优先，miss 回退。
+static func rune_icon_small(rune_id: String) -> Texture2D:
+	var full: String = RuneDefinitions.icon_path_for(rune_id)
+	if full.is_empty():
+		return null
+	const RUNE_BASE := "res://assets/runes/"
+	if full.begins_with(RUNE_BASE):
+		var t: Texture2D = load_tex("res://assets/runes/_thumb128/" + full.substr(RUNE_BASE.length()))
+		if t != null:
+			return t
+	return load_tex(full)
+
+
 
 static func law_slot_icon_path(law_id: String) -> String:
 	if not law_id.is_empty():
